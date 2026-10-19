@@ -69,6 +69,7 @@ scores the pairs into `xref_precision`/`xref_recall` at the file's tier.
 | clang-calls/ | A (call sites the compiler classes: dependent, resolved, construct, cast, declaration) | C, C++ |
 | cmake-file-api/ | A (references, cross_references) | CMake |
 | meson-introspect/ | A (definitions, references, cross_references) | Meson |
+| bazel-query/ | A (definitions, references, cross_references from `bazel query` and its instantiation stacks) | Bazel |
 | clang-compdb/ | A (definitions, references) | compile_commands.json |
 
 ## Tool-format oracles (D4, LB-F30)
@@ -414,3 +415,11 @@ definitions and for alias/import/require/use statements, each resolved to the fi
 (tier B). It replaces universal-ctags as the L1 oracle (design D2: ctags tags `def` and `defmodule` inside heredocs and
 ends modules at them). Calls: `ts-tags` with `elixir-tags.scm`, the grammar's own query (tier C). Usage and numbers:
 `elixir-ast/README.md`.
+
+## bazel and tiltfile
+
+`bazel-query/bazel_oracle.py` (item bazel, LB-Q-bazel) is `bazel query //... --output=streamed_jsonproto` with the
+instantiation and definition stacks (tier A): the BUILD calls that created rules, the labels they spell, and the `.bzl`
+file behind each macro or rule they call. Usage, what it leaves out and `-scope-globs`: `bazel-query/README.md`. The
+Tiltfile (LB-Q-tiltfile) has no tool of its own: `ts-tags` with `starlark-tags.scm`, tree-sitter-python's tags query
+less its class pattern, written with `--as-references` (tier C, the cap is good; O1349).

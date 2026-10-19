@@ -1,0 +1,42 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "TiltModule",
+      "package": "helpers",
+      "line": 1,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "image_name",
+      "kind": "TiltFunction",
+      "package": "helpers",
+      "line": 3,
+      "end_line": 5,
+      "signature": "def image_name(service, tag = \"dev\"):",
+      "tier": "verified"
+    },
+    {
+      "name": "with_port",
+      "kind": "TiltFunction",
+      "package": "helpers",
+      "line": 7,
+      "end_line": 9,
+      "signature": "def with_port(resource, port):",
+      "calls": [
+        "k8s_resource"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "noop",
+      "kind": "TiltFunction",
+      "package": "helpers",
+      "line": 11,
+      "end_line": 12,
+      "signature": "def noop():",
+      "tier": "verified"
+    }
+  ]
+}

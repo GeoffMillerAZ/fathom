@@ -1,0 +1,47 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "TiltModule",
+      "package": "broken",
+      "line": 1,
+      "end_line": 10,
+      "calls": [
+        "local_resource"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "good",
+      "kind": "TiltFunction",
+      "package": "broken",
+      "line": 1,
+      "end_line": 2,
+      "signature": "def good(x):",
+      "calls": [
+        "str"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "after_error",
+      "kind": "TiltResource",
+      "package": "broken",
+      "line": 7,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "also_good",
+      "kind": "TiltFunction",
+      "package": "broken",
+      "line": 9,
+      "end_line": 10,
+      "signature": "def also_good():",
+      "calls": [
+        "good"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

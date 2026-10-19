@@ -39,7 +39,7 @@ import tree_sitter
 
 LANGS = {"bash": ("tree_sitter_bash", "language"), "javascript": ("tree_sitter_javascript", "language"),
          "lua": ("tree_sitter_lua", "language"), "luau": ("tree_sitter_luau", "language"), "ruby": ("tree_sitter_ruby", "language"),
-         "scala": ("tree_sitter_scala", "language"), "elixir": ("tree_sitter_elixir", "language"), "r": ("tree_sitter_r", "language")}
+         "scala": ("tree_sitter_scala", "language"), "starlark": ("tree_sitter_starlark", "language"), "elixir": ("tree_sitter_elixir", "language"), "r": ("tree_sitter_r", "language")}
 
 
 def load_language(name):
@@ -106,6 +106,8 @@ def main():
     ap.add_argument("--basename", action="append", default=[], help="a file name (no extension) that is a candidate, e.g. Rakefile")
     ap.add_argument("--locals", help="the grammar's locals query (see the module doc)")
     ap.add_argument("--defs", action="store_true", help="emit definitions instead of calls")
+    ap.add_argument("--as-references", action="store_true",
+                    help="write the call pairs as `references` (a tool format's L2 family) instead of `calls`")
     ap.add_argument("--enclose-modules", action="store_true",
                     help="a @definition.module also encloses calls (Elixir: a macro called in a defmodule body belongs to "
                          "that module); the innermost enclosing function or module names the caller")
@@ -213,7 +215,8 @@ def main():
     if a.defs:
         out["definitions"] = defs_out
     else:
-        out["calls"] = calls_out
+        # a tool format's L2 is reference recall and precision (design 1.2): the same pairs under `references`
+        out["references" if a.as_references else "calls"] = calls_out
     json.dump(out, sys.stdout, indent=None, separators=(",", ":"))
     sys.stdout.write("\n")
     print("files=%d with_parse_errors=%d definitions=%d calls=%d" % (len(files), errors, len(defs_out), len(calls_out)), file=sys.stderr)

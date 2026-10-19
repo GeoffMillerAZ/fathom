@@ -1,0 +1,74 @@
+{
+  "id": "tiltfile",
+  "display": "Tiltfile (Starlark)",
+  "kind": "tooling",
+  "engine": "tags",
+  "lang_tag": "tiltfile",
+  "match": {
+    "extensions": [],
+    "basenames": [
+      "Tiltfile"
+    ],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": {
+    "blob": "starlark",
+    "entry_point": "tree_sitter_starlark"
+  },
+  "variants": [],
+  "queries": {
+    "tags": "tags.scm"
+  },
+  "kinds": {
+    "function": {
+      "source_kind": "TiltFunction",
+      "canonical": "function",
+      "callable": true
+    },
+    "resource": {
+      "source_kind": "TiltResource",
+      "canonical": "resource"
+    },
+    "image": {
+      "source_kind": "TiltImage",
+      "canonical": "resource"
+    },
+    "manifest": {
+      "source_kind": "TiltManifest",
+      "canonical": "resource"
+    },
+    "setting": {
+      "source_kind": "TiltSetting",
+      "canonical": "variable_decl"
+    },
+    "module": {
+      "source_kind": "TiltModule",
+      "canonical": "module"
+    }
+  },
+  "module_symbol": "module",
+  "required_kinds": [
+    "function"
+  ],
+  "oracle_kinds": {
+    "tool": {
+      "function": "function"
+    }
+  },
+  "name_match": "identity",
+  "qualify": {
+    "chain_containers": false,
+    "container_sep": ".",
+    "method_sep": "."
+  },
+  "package": {
+    "strategy": "dir"
+  },
+  "signature": {
+    "max_chars": 200
+  },
+  "target_level": "L2",
+  "queue_id": "tiltfile"
+}

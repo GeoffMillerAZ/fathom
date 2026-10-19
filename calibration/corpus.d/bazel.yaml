@@ -1,0 +1,42 @@
+id: bazel
+language: Bazel / Starlark
+# Measurement conventions (docs/bench/readings/lang/bazel.json): each subject is a clone read whole, and the tier-A
+# oracle (calibration/oracles/bazel-query/bazel_oracle.py: Bazel's own loading phase, `bazel query //...
+# --output=streamed_jsonproto` with the instantiation and definition stacks) runs inside the workspace the
+# subject names, with its output base outside the checkout:
+#   bazelbuild/examples/rules:           bazel_oracle.py -subject <examples>/rules          -output-user-root <scratch>
+#   bazelbuild/examples/configurations:  bazel_oracle.py -subject <examples>/configurations -output-user-root <scratch>
+#   grpc/grpc:                           bazel_oracle.py -subject <grpc>                    -output-user-root <scratch>
+# bazelbuild/examples holds forty independent workspaces (a MODULE.bazel each), so a subject is one workspace: its
+# labels (//pkg:f.bzl) name its own root. `rules` is the one with in-repository rules, macros and aspects across
+# thirty packages (a BUILD file calling a .bzl file's rule or macro is the cross-file edge); `configurations` adds
+# transitions, select()s and macros over cc_test. grpc/grpc is the large real tree: 278 BUILD files, 59 .bzl files,
+# macros that wrap every rule (grpc_cc_library), proto-library macros and a WORKSPACE beside MODULE.bazel. Bazel
+# 8.7.0 (grpc's .bazelversion, through its tools/bazel wrapper) and 9.3.0 (bazelisk) fetch their module
+# dependencies from the Bazel Central Registry on first use. `bazel_oracle.py -subject <grpc> -scope-globs`
+# prints the files `//...` reaches (it skips the directories .bazelignore names and nested repositories), passed to
+# lang-oracle as -only.
+repos:
+  - name: bazelbuild/examples
+    url: https://github.com/bazelbuild/examples
+    ref: main
+    sha: 45bfd9d9b3d1b8e940890aa90a60483e8179331d
+    licence: Apache-2.0
+    sparse:
+      - /rules/
+      - /configurations/
+    idioms:
+      - 'a Starlark rule defined in a .bzl file (rule(implementation = _impl, attrs = ...)) and instantiated by name from a BUILD file after load(":rule.bzl", "rule")'
+      - 'a macro (def wrapper(name, **kwargs)) that calls a native or loaded rule, so one BUILD call creates rules named differently from it'
+      - 'labels spelled ":local", "//pkg:target" and "@repo//pkg:target" in deps, srcs and data, and select() branches'
+      - 'aspects, providers, transitions and predeclared outputs in the same .bzl files'
+  - name: grpc/grpc
+    url: https://github.com/grpc/grpc
+    ref: v1.84.0
+    sha: 3252a89f10d8e92997862167ca7d095ecda85973
+    licence: Apache-2.0
+    idioms:
+      - 'macros wrapping rules (grpc_cc_library, grpc_cc_test, grpc_proto_library), loaded from //bazel:*.bzl in 278 BUILD files'
+      - 'grpc_package(name = ...), a macro that declares package defaults and creates no target'
+      - 'selects.config_setting_group and package_group targets, config_setting, alias and filegroup rules'
+      - 'a root WORKSPACE (repository rules with names) beside a MODULE.bazel (bazel_dep, use_extension)'

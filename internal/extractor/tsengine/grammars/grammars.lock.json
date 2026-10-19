@@ -566,6 +566,21 @@
       "gz_bytes": 380125
     },
     {
+      "blob": "starlark",
+      "repo": "tree-sitter-grammars/tree-sitter-starlark",
+      "tag": "v1.3.0",
+      "commit": "a453dbf3ba433db0e5ec621a38a7e59d72e4dc69",
+      "tarball_sha256": "31c58a540d738a17b366f2046da298b66dfa0695bcbfa207f61fa63cfe5c03ed",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_starlark"],
+      "scanner": true,
+      "generate": false,
+      "abi": 14,
+      "blob_sha256": "41a5164b77fcaeb8a3ad61516f497d24ec8ce66bc6d1a67d88691a1cdb102c65",
+      "blob_bytes": 433933,
+      "gz_bytes": 107943
+    },
+    {
       "blob": "svelte",
       "repo": "tree-sitter-grammars/tree-sitter-svelte",
       "tag": "v1.0.2",

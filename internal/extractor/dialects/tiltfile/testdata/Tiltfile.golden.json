@@ -1,0 +1,115 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "TiltModule",
+      "package": "Tiltfile",
+      "line": 1,
+      "end_line": 21,
+      "calls": [
+        "build",
+        "custom_build",
+        "dc_resource",
+        "define_string",
+        "docker_build",
+        "get",
+        "helm",
+        "k8s_yaml",
+        "load",
+        "local_resource",
+        "parse",
+        "sync"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "env",
+      "kind": "TiltSetting",
+      "package": "Tiltfile",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "build",
+      "kind": "TiltFunction",
+      "package": "Tiltfile",
+      "line": 7,
+      "end_line": 8,
+      "signature": "def build(name):",
+      "calls": [
+        "docker_build"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "deploy",
+      "kind": "TiltFunction",
+      "package": "Tiltfile",
+      "line": 10,
+      "end_line": 12,
+      "signature": "def deploy(path, port = 8080):",
+      "calls": [
+        "k8s_resource",
+        "k8s_yaml"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "web",
+      "kind": "TiltResource",
+      "package": "Tiltfile",
+      "line": 12,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "lint",
+      "kind": "TiltResource",
+      "package": "Tiltfile",
+      "line": 14,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": "test",
+      "kind": "TiltResource",
+      "package": "Tiltfile",
+      "line": 15,
+      "end_line": 15,
+      "tier": "verified"
+    },
+    {
+      "name": "example/web",
+      "kind": "TiltImage",
+      "package": "Tiltfile",
+      "line": 16,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
+      "name": "example/api",
+      "kind": "TiltImage",
+      "package": "Tiltfile",
+      "line": 17,
+      "end_line": 17,
+      "tier": "verified"
+    },
+    {
+      "name": "deploy.yaml",
+      "kind": "TiltManifest",
+      "package": "Tiltfile",
+      "line": 18,
+      "end_line": 18,
+      "tier": "verified"
+    },
+    {
+      "name": "db",
+      "kind": "TiltResource",
+      "package": "Tiltfile",
+      "line": 20,
+      "end_line": 20,
+      "tier": "verified"
+    }
+  ]
+}

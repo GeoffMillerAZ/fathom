@@ -1,0 +1,68 @@
+{
+  "symbols": [
+    {
+      "name": "_impl",
+      "kind": "BazelFunction",
+      "package": "defs",
+      "line": 6,
+      "end_line": 7,
+      "signature": "def _impl(ctx):",
+      "tier": "verified"
+    },
+    {
+      "name": "my_rule",
+      "kind": "BazelRule",
+      "package": "defs",
+      "line": 9,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "tool_ext",
+      "kind": "BazelRule",
+      "package": "defs",
+      "line": 14,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": "my_macro",
+      "kind": "BazelFunction",
+      "package": "defs",
+      "line": 16,
+      "end_line": 26,
+      "signature": "def my_macro( name, deps = [], **kwargs):",
+      "calls": [
+        "cc_library",
+        "inner",
+        "join"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "helper",
+      "kind": "BazelFunction",
+      "package": "defs",
+      "line": 28,
+      "end_line": 29,
+      "signature": "def helper(x):",
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "join",
+      "exported": "join",
+      "module": "//tools:helpers.bzl",
+      "kind": "named",
+      "line": 3
+    },
+    {
+      "local": "inner",
+      "exported": "local_rule",
+      "module": ":local.bzl",
+      "kind": "named",
+      "line": 4
+    }
+  ]
+}

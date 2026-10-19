@@ -57,6 +57,8 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 | Astro (`.astro`) | tags dialect `astro` | yes (virchau13/tree-sitter-astro 213f6e69) | withastro/docs, withastro/astro (examples) | **file** — a component is its file's module symbol and the component tags its markup writes are its calls; its frontmatter and JavaScript scripts are TypeScript it hosts (F2), whose relative imports resolve via the relative-path strategy, an import of another component an edge between the files' module symbols; no SCIP producer reads `.astro` | an import of a TypeScript or JavaScript module draws no edge (the file resolver's universe is one language's files); a tsconfig `paths` alias is not resolved for an `.astro` importer; the JavaScript of a markup expression (`{...}`) is not read; a destructured prop with a default is no definition (O985, O986, O989) |
 | Angular component views (`.html` a component's decorator names) | tags dialect `html`; refused for an Angular dialect (LB-Q-angular-rest, design §14.2): the only maintained licensed Angular grammar, dlvandenberg/tree-sitter-angular v0.9.2, leaves 13 of the 72 calibration views (18.1%) in error, over the 5% line | no (measured, not pinned) | angular-realworld-example-app, angular/components (`src/material`) | **none** for a view (a selector's use and a pipe are not extracted); the component class is TypeScript's | a tree-sitter-angular release under 5% on both subjects, then the view dialect |
 | Meson (`meson.build`, `meson.options`, `meson_options.txt`) | tags dialect `meson` | yes (tree-sitter-meson v1.3.0) | mesonbuild/meson (parse only), harfbuzz, libxml2 | **syntax** — `subdir('dir')` is a relative-path import that lang-oracle's resolver follows (a name resolves from a file to the directory it imports), but ingest's file-resolve pass is keyed by file extension and `meson.build` has none (O379); and Meson's variables are one namespace across every file, so a link to a sibling or an ancestor has no import to bind it (LB-F128, O375) | a basename-keyed file-resolve pass (O379) and a build-namespace strategy (L3); arithmetic and ternary expressions the grammar does not read (O378) |
+| Bazel / Starlark (`BUILD`, `BUILD.bazel`, `*.bzl`, `WORKSPACE`, `WORKSPACE.bazel`, `WORKSPACE.bzlmod`, `MODULE.bazel`) | tags dialect `bazel` | yes (tree-sitter-starlark v1.3.0) | bazelbuild/examples (rules, configurations), grpc/grpc | **syntax** — a `load()` binds the macros and rules it names to the `.bzl` file defining them (the file-symbol strategy reads `//pkg:f.bzl` and `:f.bzl` labels), and lang-oracle's resolver draws that edge, but ingest's file-resolve pass is keyed by file extension and `BUILD`, `WORKSPACE` and `MODULE.bazel` have none (O379), so only a `.bzl` file's own loads are stored | a basename-keyed file-resolve pass (O379); a label strategy for `//pkg:target` deps between BUILD files (the oracle's `rule_input` edges, not scored); `grpc_package(name = ...)`-style macros that create no target read as targets |
+| Tiltfile (`Tiltfile`) | tags dialect `tiltfile` | yes (tree-sitter-starlark v1.3.0, the grammar Bazel reads) | tilt-dev/tilt-extensions, tilt-dev/tilt-example-go | **syntax** — call names by syntax only; a Tiltfile's `docker_build`, `local_resource`, `k8s_resource`, `k8s_yaml` and `config.define_*` calls are entities named by their literal string, and `load()` and `include()` are not read as imports (no L3 oracle) | an import strategy for `load("./file", "sym")` and `include()`; names built from a variable or a concatenation are no entity |
 | Clang compilation database (`compile_commands.json`) | doc dialect `compile-commands`; JSON plus each entry's flags (`decode: compile-commands`) | n/a | fmt, libuv (cmake-generated databases at the checkout root) | **syntax** — a translation unit's include directories, macros and output are its own references; no cross-file selector is declared | joined `-isystem`/`-iquote`/`-idirafter` flags (O376) |
 | Conan (`conanfile.py`, `conanfile.txt`, `conan.lock`, `conandata.yml`) | doc dialect `conan` | yes (tree-sitter-python) | conan-center-index (54 recipes), conan-io/examples2 | **syntax** — a recipe's requires are references to the recipe names they use; no cross-file edge is declared (the doc-xref pass reads no Conan file and no recipe is an entity it can resolve to, O370) | O370, O371 |
 | C# | tags dialect `csharp` | yes (tree-sitter-c-sharp v0.23.5) | Polly, Newtonsoft.Json | **scip** via scip-dotnet | L2 call precision (scip-dotnet writes no occurrence for a generic method called with type arguments, O271), L3, L4 |
@@ -111,7 +113,7 @@ item's target; the last column also needs every level up to the target graded ex
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | T1 | language | 33 | 1 | 3 | 11 | 10 | 1 | 2 | 0 | 5 | 21 | 8 |
 | T1 | tool format | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |
-| T2 | tool format | 23 | 0 | 8 | 11 | 0 | 1 | 0 | 0 | 3 | 16 | 12 |
+| T2 | tool format | 23 | 0 | 8 | 12 | 0 | 1 | 0 | 0 | 2 | 17 | 12 |
 | T3 | tool format | 16 | 1 | 4 | 11 | 0 | 0 | 0 | 0 | 0 | 15 | 5 |
 | T4 | language | 3 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 1 | 1 | 0 |
 | T4 | tool format | 7 | 0 | 3 | 2 | 0 | 0 | 0 | 0 | 2 | 5 | 4 |
@@ -120,7 +122,7 @@ item's target; the last column also needs every level up to the target graded ex
 | T6 | tool format | 4 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |
 | T7 | tool format | 4 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
 | **Total** | language | 37 | 1 | 4 | 12 | 10 | 1 | 3 | 0 | 6 | 22 | 8 |
-| **Total** | tool format | 63 | 1 | 18 | 34 | 0 | 1 | 0 | 0 | 9 | 48 | 25 |
+| **Total** | tool format | 63 | 1 | 18 | 35 | 0 | 1 | 0 | 0 | 8 | 49 | 25 |
 
 ### T1
 
@@ -175,7 +177,7 @@ item's target; the last column also needs every level up to the target graded ex
 | Go modules (go.mod, go.work) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | MSBuild projects (.csproj .fsproj .vbproj .props .targets, .sln) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | Composer manifests (composer.json) | tool format | L2 | L2 (L1 excellent, L2 excellent) | excellent at target |
-| Bazel / Starlark (BUILD, BUILD.bazel, *.bzl, WORKSPACE, MODULE.bazel) | tool format | L3 | unsupported | no dialect (LB-Q-bazel) |
+| Bazel / Starlark (BUILD, BUILD.bazel, *.bzl, WORKSPACE, MODULE.bazel) | tool format | L3 | L3 (L1 good, L2 excellent, L3 good) | L1 good: sym_precision 0.9554 < 0.98 |
 | CMake (CMakeLists.txt, *.cmake) | tool format | L3 | none (measured) | L1 not met: tenancy floor |
 | Protocol Buffers (.proto) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | GraphQL schemas and operations (.graphql .gql) | tool format | L3 | L2 (L1 excellent, L2 excellent) | L3 not met: xref_precision not measured |
@@ -268,8 +270,8 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 reached (languages at L1 34, L1 excellent 24, L2 29, L3 23, L4 10; tool formats at target 53)
-Milestone M2 progress: languages at L1 34/45, at L1 excellent 24/35, at L2 29/25, at L3 23/14, at L4 10/10; tool formats at target 53/30
+Milestone M1 reached (languages at L1 34, L1 excellent 24, L2 29, L3 23, L4 10; tool formats at target 55)
+Milestone M2 progress: languages at L1 34/45, at L1 excellent 24/35, at L2 29/25, at L3 23/14, at L4 10/10; tool formats at target 55/30
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -321,7 +323,7 @@ Milestone M2 progress: languages at L1 34/45, at L1 excellent 24/35, at L2 29/25
 | Groovy (.groovy .gvy) | language | tags | murtaza64/tree-sitter-groovy (verify at pin) | L2 | refused | — | — | — | re-plan (LB-Q-groovy-rest refused) |
 | Composer manifests (composer.json) | tool format | doc | pure-go:encoding/json (n/a) | L2 | L2 (L1 excellent, L2 excellent) | A composer (Factory::create root package: getPrettyName, getScripts, getRequires, getDevRequires; EventDispatcher::isComposerScript) composer 2.10.3 | — | 2026-10-09 | at target (LB-Q-composer) |
 | Visual Basic .NET (.vb) | language | tags | govindbanura/tree-sitter-vbnet (weak, 2026) (verify at pin) | L1 | unsupported (disclosed) | — | — | — | LB-Q-vbnet |
-| Bazel / Starlark (BUILD, BUILD.bazel, *.bzl, WORKSPACE, MODULE.bazel) | tool format | tags | tree-sitter-grammars/tree-sitter-starlark (MIT) | L3 | unsupported (disclosed) | — | — | — | LB-Q-bazel |
+| Bazel / Starlark (BUILD, BUILD.bazel, *.bzl, WORKSPACE, MODULE.bazel) | tool format | tags | tree-sitter-grammars/tree-sitter-starlark (MIT) | L3 | L3 (L1 good, L2 excellent, L3 good) | A bazel query --output=streamed_jsonproto bazel 8.7.0 | syntax | 2026-10-19 | at target (LB-Q-bazel) |
 | MATLAB (.m by sniff) | language | tags | acristoffers/tree-sitter-matlab (MIT) | L1 | tolerated | — | — | — | LB-Q-matlab |
 | CMake (CMakeLists.txt, *.cmake) | tool format | tags | uyha/tree-sitter-cmake (MIT (verify at pin)) | L3 | none (measured) | A cmake 4.4.3 (File API codemodel-v2, --trace-expand json-v1); B universal-ctags 6.2.1 | syntax | 2026-10-01 | LB-Q-cmake |
 | Perl (.pl .pm .t by sniff) | language | tags | tree-sitter-perl/tree-sitter-perl (MIT) | L2 | L2 (L1 good, L2 good) | C ppi-calls PPI 1.270; B universal-ctags 6.2.1 | syntax | 2026-10-19 | at target (LB-Q-perl) |
@@ -373,7 +375,7 @@ Milestone M2 progress: languages at L1 34/45, at L1 excellent 24/35, at L2 29/25
 | Skaffold (skaffold.yaml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-skaffold |
 | Scheme and Racket (.scm .ss .rkt) | language | tags | 6cdh/tree-sitter-scheme + 6cdh/tree-sitter-racket (MIT) | L1 | unsupported (disclosed) | — | — | — | LB-Q-scheme-racket |
 | Solidity (.sol) | language | tags | JoranHonig/tree-sitter-solidity (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-solidity |
-| Tiltfile (Starlark) | tool format | tags | tree-sitter-grammars/tree-sitter-starlark (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-tiltfile |
+| Tiltfile (Starlark) | tool format | tags | tree-sitter-grammars/tree-sitter-starlark (MIT) | L2 | L2 (L1 good, L2 good) | C tree-sitter-tags:starlark-tags.scm py-tree-sitter 0.25.2, tree-sitter-starlark 1.3.0 | syntax | 2026-10-19 | at target (LB-Q-tiltfile) |
 | Elm (.elm) | language | tags | elm-tooling/tree-sitter-elm (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-elm |
 | Nim (.nim .nims) | language | tags | alaviss/tree-sitter-nim (MPL-2.0 (unmodified; verify at pin)) | L2 | unsupported (disclosed) | — | — | — | LB-Q-nim |
 | just (justfile, .justfile) | tool format | tags | IndianBoy42/tree-sitter-just (MIT (verify at pin)) | L2 | unsupported (disclosed) | — | — | — | LB-Q-justfile |
