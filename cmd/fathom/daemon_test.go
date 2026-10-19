@@ -117,7 +117,7 @@ func TestPlistCarriesResolvedPaths(t *testing.T) {
 	body := plistBody("dev.fathom.serve-http", "/usr/local/bin/fathom", "/home/u/.fathom/db/fathom.sqlite", ":7581", "/home/u/.fathom/logs", "/home/u/.fathom/logs/mcp-calls.jsonl", "/usr/local/go/bin:/usr/bin", nil)
 	for _, want := range []string{
 		"<string>dev.fathom.serve-http</string>",
-		"<string>/usr/local/bin/fathom</string>",
+		"<string>/usr/local/bin/fathomd</string>", // the launcher beside the binary (launcher.go)
 		"<string>serve-http</string>",
 		"<string>/home/u/.fathom/db/fathom.sqlite</string>",
 		"<string>:7581</string>",

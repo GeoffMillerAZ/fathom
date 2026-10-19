@@ -108,14 +108,15 @@ func (s signingIdentity) identity() string {
 // from, and says which: the live process (its pid, found by
 // findManagedDaemon behind the pid-reuse guard) — never the file at its
 // path, which a deploy's `mv` replaces while the old process keeps serving
-// — else the on-disk binary the installed plist names. It returns the
+// — else the on-disk binary the installed plist runs (the launcher's
+// sibling fathom, never the launcher itself). It returns the
 // codesign target, its source line and the pid (0 for the file).
 func runningDaemonBinary(ops daemonOps, addr, plistBinary string) (string, string, int) {
 	if pid, _ := findManagedDaemon(ops, addr); pid > 0 {
 		return strconv.Itoa(pid), fmt.Sprintf("running pid %d", pid), pid
 	}
 	if plistBinary != "" {
-		return plistBinary, "on-disk file named by the installed plist; no running daemon found", 0
+		return plistBinary, "on-disk binary the installed plist runs; no running daemon found", 0
 	}
 	return "", "", 0
 }
@@ -133,7 +134,7 @@ func checkDaemonPosture(label string) doctorCheck {
 	if !ok {
 		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("%s could not be read or parsed", plistPath)}
 	}
-	if len(post.Drift) == 0 {
+	if len(postureDrift(post)) == 0 {
 		return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("%s is schema %d (exit 0 stays down, 60 s throttle, Background)", lbl, post.Schema)}
 	}
 	return doctorCheck{
@@ -149,7 +150,7 @@ func postureReason(post plistPostureReport) string {
 	if post.UnconditionalKeepAlive {
 		head += fmt.Sprintf(" (unconditional KeepAlive: every exit relaunched within %d s)", post.ThrottleSeconds)
 	}
-	return head + ": " + strings.Join(post.Drift, "; ")
+	return head + ": " + strings.Join(postureDrift(post), "; ")
 }
 
 // postureRemedy is reconcile, then the reload line (run from the operator's

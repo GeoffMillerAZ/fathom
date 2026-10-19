@@ -249,8 +249,17 @@ type plistPostureReport struct {
 	UnconditionalKeepAlive bool
 	// ThrottleSeconds is launchd's relaunch interval (10 when unset).
 	ThrottleSeconds int
-	// Binary is ProgramArguments[0].
+	// Program is ProgramArguments[0]: the fathomd launcher, or the binary
+	// itself in the direct shape.
+	Program string
+	// Binary is the daemon's binary, what version and signing checks read:
+	// the launcher's sibling fathom, or Program when it is not the launcher.
 	Binary string
+	// Direct: Program is the binary itself, so every deploy changes the
+	// program launchd tracks (launcherDriftLine reads it as drift; it is
+	// kept out of Drift, which lists only the keys --reconcile's tenancy
+	// rewrite owns).
+	Direct bool
 	// Label is the Label key: what launchd sets XPC_SERVICE_NAME to.
 	Label string
 	// Drift lists each tenancy key that differs from schema 2, sorted.
@@ -292,7 +301,9 @@ func plistPosture(raw []byte) (plistPostureReport, error) {
 	}
 	if args, ok := p.entry("ProgramArguments"); ok && args.Kind == "array" {
 		if len(args.Children) > 0 {
-			rep.Binary = args.Children[0].Text
+			rep.Program = args.Children[0].Text
+			rep.Binary = daemonBinaryFor(rep.Program)
+			rep.Direct = rep.Binary == rep.Program
 		}
 		if !plistArgsHaveManaged(args) {
 			rep.Drift = append(rep.Drift, "ProgramArguments: no --managed (want serve-http --managed)")

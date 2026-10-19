@@ -27,6 +27,22 @@ it once. `server_stats`' `surface_traffic` block (A1-1,
 `docs/plans/activation.md`) answers "is anything flowing on `/rpc/agent`?"
 directly from the daemon, without tailing the call log.
 
+**The agent's program is a launcher no deploy touches (O1233).** On macOS,
+Background Task Management tracks a launchd agent by its program's code hash.
+When the plist ran `~/.local/libexec/fathom/fathom` itself, every `task deploy`
+changed that hash, and after enough deploys BTM stopped issuing the launch
+constraint: launchd logged `Unable to get updated LWCR` and refused to start the
+daemon (exit 78). `fathom daemon install` now writes `fathomd` beside the binary,
+a copy it rewrites only when absent or of another launcher protocol, and the plist
+runs it with `WorkingDirectory` set to `~/.fathom` (the volume its logs already
+use, never the store's). `fathomd` execs the sibling `fathom` with the same
+arguments before doing anything else, so the deploy still swaps only `fathom` and
+kickstarts, and the daemon process is `fathom`. `fathom doctor` and `fathom daemon
+status` read a plist that still runs the binary itself as drift;
+`fathom daemon install --reconcile --label <label>` migrates it in place (keeping
+store, call log and environment), and `fathom daemon install --direct` writes the
+old shape as a rollback.
+
 **The daemon's own Go environment is load-bearing.** launchd hands an agent
 almost nothing, so `fathom daemon install` writes `PATH`, `GOPATH`, `GOCACHE`
 and `GOMODCACHE` (absolute) into the plist. Without them the daemon's

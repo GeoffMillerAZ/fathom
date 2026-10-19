@@ -54,6 +54,7 @@ Release impact: minor
 
 - The test-run hook reads the repository a leading `cd` or `pushd` moves the command into (its config, declared commands and row keys), not only the session's `cwd`, which inside a workflow or Agent subagent working in a scratch clone is the parent's project (O1230).
 - The test-run hook's saved outputs under `workspace/tmp/test-run` are bounded at 50 files and 8 MiB, oldest removed first and only its own `<16 hex>.log` files (RO-36).
+- On macOS the managed daemon stopped starting after many deploys: Background Task Management tracks the launchd agent by its program's hash, and every deploy changed it. `fathom daemon install` now writes a `fathomd` launcher beside the binary that execs the sibling `fathom` and that deploys never rewrite, sets `WorkingDirectory` to `~/.fathom`, and `fathom doctor` and `fathom daemon status` report a plist that still runs the binary itself; `fathom daemon install --reconcile` migrates it and `--direct` keeps the old shape (O1233).
 
 ## [0.15.6] -- 2026-10-18
 

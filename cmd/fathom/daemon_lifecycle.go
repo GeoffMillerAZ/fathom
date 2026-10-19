@@ -22,11 +22,13 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
@@ -429,6 +431,7 @@ func runDaemonReconcile(args []string, stdout, stderr io.Writer, ops daemonOps) 
 	label := fs.String("label", "", "launchd label (default: the installed fathom agent)")
 	adopt := fs.Bool("adopt", false, "reconcile a plist fathom did not write (keeps every non-tenancy key)")
 	fs.Bool("reconcile", true, "rewrite only the tenancy keys of the installed plist to schema 2")
+	direct := fs.Bool("direct", false, "keep the plist running the binary itself instead of moving it to the fathomd launcher beside it")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -451,7 +454,11 @@ func runDaemonReconcile(args []string, stdout, stderr io.Writer, ops daemonOps) 
 		fmt.Fprintf(stderr, "error: %s: %v\n", plistPath, err)
 		return 1
 	}
-	if len(post.Drift) == 0 {
+	// A plist that runs the binary itself moves to the launcher beside it
+	// (launcher.go): macOS tracks the agent by its program's hash, and a
+	// deploy then changes only the binary.
+	migrate := post.Direct && !*direct
+	if len(post.Drift) == 0 && !migrate {
 		fmt.Fprintf(stdout, "%s is already schema %d — nothing to reconcile\n", plistPath, plistSchemaCurrent)
 		return 0
 	}
@@ -472,6 +479,12 @@ func runDaemonReconcile(args []string, stdout, stderr io.Writer, ops daemonOps) 
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %s: %v\n", plistPath, err)
 		return 1
+	}
+	if migrate {
+		if out, changes, err = migrateToLauncher(out, changes, post.Binary, stdout, stderr); err != nil {
+			fmt.Fprintf(stderr, "fathom daemon install --reconcile: %v — the plist is untouched\n", err)
+			return 1
+		}
 	}
 	ts := ops.Now().UTC().Format("20060102T150405Z")
 	// The backup goes with the receipt under ~/.fathom/daemon/<label>/,
@@ -534,4 +547,35 @@ func runDaemonReconcile(args []string, stdout, stderr io.Writer, ops daemonOps) 
 	}
 	fmt.Fprintf(stdout, "reloaded %s\n", lbl)
 	return 0
+}
+
+// migrateToLauncher writes the launcher beside bin, then rewrites the
+// reconciled plist out to run it (launcherMigration), its WorkingDirectory
+// moved to the fathom home. A launcher that cannot be written leaves the
+// program as it is: with tenancy changes to apply, those still apply and
+// stderr says why the plist still runs the binary itself; with none, it is
+// an error.
+func migrateToLauncher(out []byte, changes []string, bin string, stdout, stderr io.Writer) ([]byte, []string, error) {
+	launcher, wrote, err := ensureLauncher(bin)
+	if err != nil {
+		if len(changes) == 0 {
+			return nil, nil, err
+		}
+		fmt.Fprintf(stderr, "warning: the launcher was not written (%v); the plist still runs %s itself\n", err, bin)
+		return out, changes, nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, nil, fmt.Errorf("cannot resolve the home directory for WorkingDirectory: %w", err)
+	}
+	migrated, more, err := launcherMigration(out, fathomhome.Under(home))
+	if err != nil {
+		return nil, nil, err
+	}
+	if wrote {
+		fmt.Fprintf(stdout, "wrote the launcher %s (a copy of %s; deploys replace only the binary)\n", launcher, bin)
+	}
+	changes = append(changes, more...)
+	sort.Strings(changes)
+	return migrated, changes, nil
 }
