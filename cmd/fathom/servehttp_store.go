@@ -76,6 +76,7 @@ func (r *serveRun) openStore() (int, bool) {
 	}
 	r.c = c
 	r.deferred(func() { c.Close() })
+	c.WithStoreStats() // RT-180: a restart reads only the files whose stat moved since the last committed ingest.
 	c.WithLogger(flog) // DG-4: the typed-edge pass's own diagnostics gain a timestamp/level too.
 	return 0, false
 }

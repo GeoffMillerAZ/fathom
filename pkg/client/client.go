@@ -196,6 +196,11 @@ func (c *Client) Ingest(ctx context.Context, svc ServiceRef) (Report, error) {
 // stat gate (RT-102; `fathom ingest --rehash`).
 func (c *Client) SetRehash(on bool) { c.pipe.SetRehash(on) }
 
+// WithStoreStats makes the stat gate read its prior stats from the store's
+// file_stats (RT-180): a restarted daemon or a repeat CLI ingest reads only
+// the files whose (size, mtime, inode) changed.
+func (c *Client) WithStoreStats() { c.pipe.WithStoreStats() }
+
 // ReingestFile (SU-5/SU-6, docs/plans/substrate.md §A, ADR-041 decisions 3
 // and 4) re-extracts ONE file's observations/syntax edges and fingerprint
 // — the daemon's POST /refresh-file route and the pre-edit hook's

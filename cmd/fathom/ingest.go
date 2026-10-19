@@ -195,6 +195,9 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	}
 
 	c.SetRehash(*rehash)
+	// RT-180: a one-shot ingest reads only the files whose stat moved since
+	// the last ingest this store committed.
+	c.WithStoreStats()
 	// RT-106: the typed pass's toolchain children run capped and niced in
 	// a CLI ingest too, not only inside serve-http.
 	if undo, terr := fusion.InstallProcessToolchain(""); terr != nil {
