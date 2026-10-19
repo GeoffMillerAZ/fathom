@@ -123,3 +123,14 @@ tarball, which builds the extension from the committed `src/parser.c`):
 `--ext .r` also reads `.R` (the script lowercases an extension). The dialect's `tags.scm` descends from the same query, so the
 oracle is independent in runtime, not in query shape; the dialect also lists the calls inside an anonymous function and a pipe
 the same way upstream's patterns do, and does not read `obj$method(x)` (upstream does not either).
+
+Elixir (LB-Q-elixir) runs the grammar's own upstream `queries/tags.scm`, `elixir-tags.scm` (elixir-lang/tree-sitter-elixir
+v0.3.5, Apache-2.0, verbatim under a header) with py-tree-sitter 0.25.2 and tree-sitter-elixir 0.3.5. The elixir dialect's
+tags.scm started from the same file, so the oracle is independent in runtime, not in query shape. Two flags exist for it:
+`--honor-ignore` applies tree-sitter-tags' `@ignore` rule (a tag whose name node lies inside an ignored node is dropped:
+upstream ignores `def`, `alias`, an attribute's name... that way) and `--enclose-modules` makes a `@definition.module`
+enclose calls, so a macro called in a `defmodule` body is paired with that module:
+
+    <tools>/pyts/bin/pip install tree-sitter==0.25.2 tree-sitter-elixir==0.3.5
+    <tools>/pyts/bin/python -I tags_oracle.py --lang elixir --query elixir-tags.scm --ext .ex --ext .exs --honor-ignore --enclose-modules <clone> > out/elixir-phoenix-calls.json
+    # phoenixframework/phoenix v1.8.9: 177 files / 8,037 pairs, elixir-ecto/ecto v3.14.2: 126 / 8,335; 0 parse errors

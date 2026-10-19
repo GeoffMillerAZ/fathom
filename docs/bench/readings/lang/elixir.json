@@ -1,0 +1,239 @@
+{
+  "dialect": "elixir",
+  "kind": "language",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "excellent",
+    "L2": "good",
+    "L3": "good",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-10-19",
+  "fathom_commit": "6c9c8ff6",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "elixir-ecto/ecto",
+      "sha": "f6eb492964dbd32bc6924d5330d1cc05b41e89a1",
+      "files": 126,
+      "bytes": 2351586,
+      "counts": {
+        "call_fathom": 8392,
+        "call_fathom_in_truth": 8117,
+        "call_truth": 8335,
+        "call_truth_found": 8117,
+        "callables": 3477,
+        "callables_signed": 3477,
+        "fathom_defs": 3564,
+        "file_edges_agree": 87,
+        "file_edges_fathom": 87,
+        "file_edges_truth": 195,
+        "import_edges_agree": 410,
+        "import_edges_fathom": 411,
+        "import_edges_truth": 410,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "imports": 571,
+        "imports_in_repo": 435,
+        "imports_resolved_agree": 435,
+        "imports_unattested": 1,
+        "kind_equal": 3564,
+        "matched": 3564,
+        "oracle_defs": 3576,
+        "range_eligible": 3564,
+        "range_ok": 3564
+      },
+      "families": {
+        "calls": "C",
+        "file_edges": "B",
+        "imports": "B",
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "class",
+        "function",
+        "interface",
+        "namespace",
+        "type_alias"
+      ],
+      "excluded_by_kind": {
+        "fathom:ElixirTest": 1814
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 1371.4500000000005,
+        "extract_cpu_ms": 1239.7659999999996,
+        "max_file_ms": 68,
+        "peak_module_pages": 439,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "phoenixframework/phoenix",
+      "sha": "734c8d1c32253627e234c8a1cb831367191ff5dd",
+      "files": 177,
+      "bytes": 1621144,
+      "counts": {
+        "call_fathom": 8139,
+        "call_fathom_in_truth": 7859,
+        "call_truth": 8034,
+        "call_truth_found": 7859,
+        "callables": 2622,
+        "callables_signed": 2622,
+        "fathom_defs": 2658,
+        "file_edges_agree": 77,
+        "file_edges_fathom": 77,
+        "file_edges_truth": 214,
+        "import_edges_agree": 289,
+        "import_edges_fathom": 290,
+        "import_edges_truth": 289,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "imports": 524,
+        "imports_in_repo": 316,
+        "imports_resolved_agree": 305,
+        "imports_unattested": 1,
+        "imports_unresolved": 11,
+        "kind_equal": 2658,
+        "matched": 2658,
+        "oracle_defs": 2659,
+        "range_eligible": 2658,
+        "range_ok": 2658
+      },
+      "families": {
+        "calls": "C",
+        "file_edges": "B",
+        "imports": "B",
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "class",
+        "function",
+        "interface",
+        "namespace",
+        "type_alias"
+      ],
+      "excluded_by_kind": {
+        "fathom:ElixirTest": 1063
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 774.705,
+        "extract_cpu_ms": 763.6899999999998,
+        "max_file_ms": 35,
+        "peak_module_pages": 378,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "elixir-ast",
+      "version": "Elixir 1.19.6 Code.string_to_quoted/2 (OTP 29)"
+    },
+    {
+      "tier": "C",
+      "tool": "tree-sitter-tags:elixir-tags.scm",
+      "version": "py-tree-sitter 0.25.2, tree-sitter-elixir 0.3.5"
+    }
+  ],
+  "metrics": {
+    "call_precision": 0.9664,
+    "call_recall": 0.976,
+    "def_mapping": null,
+    "file_edge_precision": 1,
+    "file_edge_recall": 0.401,
+    "import_resolution": 0.9854,
+    "kind_agreement": 1,
+    "range_agreement": 1,
+    "signature_coverage": 1,
+    "sym_precision": 1,
+    "sym_recall": 0.9979,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "C",
+    "call_recall": "C",
+    "file_edge_precision": "B",
+    "file_edge_recall": "B",
+    "import_resolution": "B",
+    "kind_agreement": "B",
+    "range_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "class",
+    "function",
+    "interface",
+    "namespace",
+    "type_alias"
+  ],
+  "kind_intersection": [
+    "class",
+    "function",
+    "interface",
+    "namespace",
+    "type_alias"
+  ],
+  "counts": {
+    "call_fathom": 16531,
+    "call_fathom_in_truth": 15976,
+    "call_truth": 16369,
+    "call_truth_found": 15976,
+    "callables": 6099,
+    "callables_signed": 6099,
+    "fathom_defs": 6222,
+    "file_edges_agree": 164,
+    "file_edges_fathom": 164,
+    "file_edges_truth": 409,
+    "import_edges_agree": 699,
+    "import_edges_fathom": 701,
+    "import_edges_truth": 699,
+    "import_oracle_out_of_scope": 0,
+    "import_oracle_unpaired": 0,
+    "imports": 1095,
+    "imports_in_repo": 751,
+    "imports_resolved_agree": 740,
+    "imports_unattested": 2,
+    "imports_unresolved": 11,
+    "kind_equal": 6222,
+    "matched": 6222,
+    "oracle_defs": 6235,
+    "range_eligible": 6222,
+    "range_ok": 6222
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 0,
+    "throughput_mb_s": 1.98,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 1.85,
+    "max_file_ms": 68,
+    "peak_module_pages": 439,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:ElixirTest": 2877
+  },
+  "notes": [
+    "elixir-ecto/ecto: elixir-ast (tier B): 576 alias, import, require and use statements naming a literal module in 126 files (0 the parser rejected); 435 edges to the file(s) whose defmodule defines the module (nested defmodules expanded; a self-reference is no edge), 117 statements name a module no subject file defines (Logger, a dependency), 18 name no static module (`alias __MODULE__.Foo`, `use unquote(m)`), counted and never listed",
+    "file_edge_precision and file_edge_recall measured against an import dump's (file, imported file) pairs, there being no SCIP index: the truth is what each file's import statements name, not the files its references reach as a SCIP index's cross-file edges are, so a file reached without an import of its own (a file another one required, an autoloaded constant) is outside the truth and a resolved edge to it counts against precision, while a file imported and never referenced is in it (LB-F57)",
+    "import_resolution: 740 of 751 in-repo imports resolve to a file the oracle names (11 unresolved, 0 only to other files; L3 bar: excellent >= 0.95, good >= 0.85); import edges precision 0.9971 (699 of 701) and recall 1 (699 of 699); 2 of 1095 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "phoenixframework/phoenix: elixir-ast (tier B): 524 alias, import, require and use statements naming a literal module in 177 files (0 the parser rejected); 305 edges to the file(s) whose defmodule defines the module (nested defmodules expanded; a self-reference is no edge), 199 statements name a module no subject file defines (Logger, a dependency), 9 name no static module (`alias __MODULE__.Foo`, `use unquote(m)`), counted and never listed",
+    "Subjects: phoenixframework/phoenix v1.8.9 (734c8d1c, 177 .ex/.exs files) and elixir-ecto/ecto v3.14.2 (f6eb4929, 126), whole repositories, tests and integration suites included. Oracles: L1 elixir-ast (Elixir 1.19.6's own parser, calibration/oracles/elixir-ast, tier B), L2 the grammar's own tags.scm run by py-tree-sitter (tier C, independent runtime, not independent query shape: the dialect's tags.scm started from it), L3 elixir-ast's alias/import/require/use statements resolved to the file whose defmodule defines the module (tier B). Tier B and C cap every level at good.",
+    "universal-ctags 6.2.1, the row's named oracle, is not the L1 grade (design D2, observation O1327): it tags `def`/`defmodule` inside heredocs (119 def, 50 defmodule, 22 defp oracle-only on Phoenix) and ends modules at them. Against ctags the same dialect reads sym_recall .9302 and .9617, sym_precision .9985 and .9997, kind_agreement 1, signature_coverage 1 and range_agreement .5965 and .5857 on Phoenix and Ecto, which is level none at L1 on range alone. ExUnit `test` blocks (2,877 in the two subjects) are extracted (kind ElixirTest, canonical `test`) and outside the scored kinds: ctags writes their names with spaces, which the harness's last-segment name rule cannot compare.",
+    "L3: import_resolution .9854 (740 of 751 in-repo statements; module-to-file by namespace-dir over the dialect's captured package, so a module defined in a file its name does not spell, several to a file, resolves) with file_edge_precision 1 and file_edge_recall .401. The recall is the cost of O1328: a statement draws no edge of its own (module_symbol cannot combine with a captured package), only a call the import binds does; the dotted-module + snake_case alternative reads import_resolution .62/.72 on lib/ and is not the dialect's strategy. `alias Foo.Bar` binds the full name (O1329), so `Bar.fun()` after it binds nothing; `Foo.Bar.fun()`, `as: B` and group members bind.",
+    "Calls: call_recall .976 and call_precision .9664 against the grammar's own query (tier C). A call in a definition's own head and a built-in type written in a `@spec` are also calls (O1329); module-level macro calls are the module's (the module kind is callable) and a test's calls are its module's. Not extracted: defexception, defstruct, operator definitions, unquote'd names. Elixir 1.19.6 (compiled for OTP 27) ran on OTP 29.1.2 for the oracle; fathom never runs Elixir."
+  ],
+  "disposition": null
+}

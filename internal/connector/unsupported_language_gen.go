@@ -28,8 +28,6 @@ var unsupportedLangExtMap = map[string]string{
 	".edn":         "clojure",
 	".elm":         "elm",
 	".erl":         "erlang",
-	".ex":          "elixir",
-	".exs":         "elixir",
 	".f":           "fortran",
 	".f03":         "fortran",
 	".f90":         "fortran",

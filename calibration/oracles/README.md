@@ -406,3 +406,11 @@ writes nothing into it; install the tools with `npm --prefix`, never globally.
 a subject's `.md` and `.mdx` files, with universal-ctags (Markdown) naming the headings, into lang-oracle's
 `cross_references` (section to another Markdown file, tier B) and `references` (section to heading within a
 file). Usage and what it leaves out: the header of the script; `node --test calibration/oracles/markdown/`.
+
+## elixir
+
+`elixir-ast/elixir_ast_dump.exs` (item elixir, LB-Q-elixir) is Elixir's own parser (`Code.string_to_quoted/2`) walked for
+definitions and for alias/import/require/use statements, each resolved to the file whose `defmodule` defines the module
+(tier B). It replaces universal-ctags as the L1 oracle (design D2: ctags tags `def` and `defmodule` inside heredocs and
+ends modules at them). Calls: `ts-tags` with `elixir-tags.scm`, the grammar's own query (tier C). Usage and numbers:
+`elixir-ast/README.md`.

@@ -204,6 +204,21 @@
       "gz_bytes": 62982
     },
     {
+      "blob": "elixir",
+      "repo": "elixir-lang/tree-sitter-elixir",
+      "tag": "v0.3.5",
+      "commit": "e2d9e6e0e76b0c436fa48a0b8c32a031d0cbdf49",
+      "tarball_sha256": "7d8bf37949e2bea75a19d38491d7680ed1c9f0f5a41a5235832d718ec174c7c4",
+      "licence": "Apache-2.0",
+      "entry_points": ["tree_sitter_elixir"],
+      "scanner": true,
+      "generate": false,
+      "abi": 14,
+      "blob_sha256": "77398b69666daf0227d9209a70b172374880f191b78031697027cd3a8caafc01",
+      "blob_bytes": 1365700,
+      "gz_bytes": 229991
+    },
+    {
       "blob": "gotemplate",
       "repo": "ngalaiko/tree-sitter-go-template",
       "tag": "aa71f63de226c5592dfbfc1f29949522d7c95fac",

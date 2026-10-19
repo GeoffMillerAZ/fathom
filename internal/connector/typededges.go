@@ -74,6 +74,7 @@ var typedEdgeProducers = map[string]string{
 	"luau":       "syntax",
 	"r":          "syntax",
 	"perl":       "syntax",
+	"elixir":     "syntax",
 	"jupyter":    "syntax",
 	"emacs-lisp": "syntax",
 	"commonlisp": "syntax",
