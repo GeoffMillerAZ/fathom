@@ -171,7 +171,14 @@ func cmdTestRunHook(codec harness.Codec, ev harness.Event, event, baseURL, dirOv
 				rec.Reached++
 			}
 		}
-		return renderTestRunLine(res, cands, saved)
+		var extra []string
+		if loaded.Config.Readouts.Mode == config.ReadoutsRich {
+			// RO-23: rich mode's test delta, a local read of the hook log
+			if d := testRunDeltaClause(&rec, res.Run, in.Command, !m.Piped && !in.OutputTruncated); d != "" {
+				extra = append(extra, d)
+			}
+		}
+		return renderTestRunLine(res, cands, saved, extra...)
 	})
 	rec.DeadlineMissed = missed
 	if line == "" {
@@ -451,10 +458,10 @@ func callTestRunTool(ctx context.Context, baseURL, tool string, args map[string]
 
 // renderTestRunLine is the one injected line: "" unless the run failed;
 // otherwise the failing tests (first frame each), the changed symbols
-// they reach, or localize's candidate when none, then the saved output's
-// path — which survives any cut. Deterministic, one line, at most
-// testRunLineBudget bytes.
-func renderTestRunLine(res testrun.Result, c testrun.Candidates, saved string) string {
+// they reach, or localize's candidate when none, then extra (rich mode's
+// test delta, RO-23), then the saved output's path — which survives any
+// cut. Deterministic, one line, at most testRunLineBudget bytes.
+func renderTestRunLine(res testrun.Result, c testrun.Candidates, saved string, extra ...string) string {
 	if res.Verdict != testrun.Fail {
 		return ""
 	}
@@ -501,6 +508,7 @@ func renderTestRunLine(res testrun.Result, c testrun.Candidates, saved string) s
 		parts = append(parts, fmt.Sprintf("panic in %s: %s", p.Test, testRunClip(p.Message, 60)))
 	}
 	parts = append(parts, reachClauses(leaves, c)...)
+	parts = append(parts, extra...)
 	body := "🧪 fathom test run: " + strings.Join(parts, "; ")
 	tail := ""
 	if saved != "" {
@@ -673,6 +681,9 @@ type testRunRecord struct {
 	// on PostToolUse and PostToolUseFailure alike); "" when the input
 	// carries none, and the row carries no key (O1210).
 	ToolUseID string
+	// Delta is the rich-mode test delta's outcome (RO-23: readout.Delta*,
+	// or unread); "" outside rich mode, and the row carries no key.
+	Delta string
 }
 
 // testRunMaxLoggedIDs caps the failing ids one row carries.
@@ -721,6 +732,9 @@ func logTestRunRow(r testRunRecord) {
 	}
 	if r.ToolUseID != "" {
 		meta["tool_use_id"] = r.ToolUseID // O1210: the baseline locates the run in the transcript by it
+	}
+	if r.Delta != "" {
+		meta["delta"] = r.Delta
 	}
 	for k, v := range testRunRowKeys(r) {
 		meta[k] = v

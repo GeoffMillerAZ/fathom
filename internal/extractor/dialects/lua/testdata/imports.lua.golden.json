@@ -1,0 +1,79 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "LuaModule",
+      "package": "imports",
+      "line": 1,
+      "end_line": 16,
+      "calls": [
+        "other",
+        "pcall",
+        "require"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "load",
+      "kind": "LuaFunction",
+      "package": "imports",
+      "line": 13,
+      "end_line": 16,
+      "signature": "local function load()",
+      "calls": [
+        "require"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "pkg.plain",
+      "module": "pkg.plain",
+      "kind": "whole",
+      "line": 2
+    },
+    {
+      "local": "pkg.bare",
+      "module": "pkg.bare",
+      "kind": "whole",
+      "line": 3
+    },
+    {
+      "local": "pkg.single",
+      "module": "pkg.single",
+      "kind": "whole",
+      "line": 4
+    },
+    {
+      "local": "pkg.long",
+      "module": "pkg.long",
+      "kind": "whole",
+      "line": 5
+    },
+    {
+      "local": "pkg.effect",
+      "module": "pkg.effect",
+      "kind": "whole",
+      "line": 6
+    },
+    {
+      "local": "pkg.guarded",
+      "module": "pkg.guarded",
+      "kind": "whole",
+      "line": 7
+    },
+    {
+      "local": "pkg.chained",
+      "module": "pkg.chained",
+      "kind": "whole",
+      "line": 8
+    },
+    {
+      "local": "pkg.inner",
+      "module": "pkg.inner",
+      "kind": "whole",
+      "line": 14
+    }
+  ]
+}

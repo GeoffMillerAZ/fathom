@@ -1,0 +1,29 @@
+id: luau
+language: Luau
+# Luau's own repository is a C++ project; the Luau it holds is its conformance suite and benchmarks (tests/, bench/),
+# which exercise every syntax form (type annotations, generics, continue, compound assignment, if-expressions).
+# Fusion is a Roblox UI library written in .luau (src/, with its specs beside it). The queue named Roblox/roact, whose
+# 94 sources are .lua (the lua dialect's), so it holds no .luau file to measure.
+repos:
+  - name: luau-lang/luau
+    url: https://github.com/luau-lang/luau
+    ref: "0.743"
+    sha: 9d7748a4f324213a18cb8283fa2a77c330225fa0
+    licence: MIT
+    idioms:
+      - 'type annotations: parameter and return types, generics, unions, optional and function types'
+      - 'type aliases (type T = ..., export type T = ...) and typeof'
+      - 'method definitions (function Class:method) and dotted functions'
+      - 'continue, compound assignment, if-expressions, string interpolation'
+      - 'conformance scripts calling assert and the test harness'
+  - name: dphfox/Fusion
+    url: https://github.com/dphfox/Fusion
+    ref: v0.3-beta
+    sha: 77e603534ff4013f4049611826ff0309d6000b15
+    licence: MIT
+    idioms:
+      - 'module tables (local Module = {}; return Module) with typed dotted function definitions'
+      - 'type aliases (export type) and generics across a library'
+      - 'instance-path requires (require(script.Parent.Foo)) and Roblox services (game:GetService)'
+      - 'table constructors whose fields are functions (lifecycle and spec methods)'
+      - 'spec files with nested anonymous functions'

@@ -1,0 +1,91 @@
+{
+  "symbols": [
+    {
+      "name": "add",
+      "kind": "LuauFunction",
+      "package": "functions",
+      "line": 5,
+      "end_line": 7,
+      "signature": "local function add(a: number, b: number): number",
+      "tier": "verified"
+    },
+    {
+      "name": "M.sub",
+      "kind": "LuauFunction",
+      "package": "functions",
+      "line": 9,
+      "end_line": 11,
+      "signature": "function M.sub(self: Point, n: number): Point",
+      "tier": "verified"
+    },
+    {
+      "name": "M:method",
+      "kind": "LuauFunction",
+      "package": "functions",
+      "line": 13,
+      "end_line": 14,
+      "signature": "function M:method(x: string)",
+      "tier": "verified"
+    },
+    {
+      "name": "M.generic",
+      "kind": "LuauFunction",
+      "package": "functions",
+      "line": 16,
+      "end_line": 21,
+      "signature": "function M.generic<T>(value: T): T",
+      "calls": [
+        "inner"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "inner",
+      "kind": "LuauFunction",
+      "package": "functions",
+      "line": 17,
+      "end_line": 19,
+      "signature": "local function inner(v: T): T",
+      "tier": "verified"
+    },
+    {
+      "name": "assigned",
+      "kind": "LuauFunction",
+      "package": "functions",
+      "line": 23,
+      "end_line": 23,
+      "signature": "local assigned = function(x: number): number",
+      "tier": "verified"
+    },
+    {
+      "name": "M.handler",
+      "kind": "LuauFunction",
+      "package": "functions",
+      "line": 25,
+      "end_line": 30,
+      "signature": "M.handler = function( player: Player, count: number ): ()",
+      "calls": [
+        "print"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "run",
+      "kind": "LuauFunction",
+      "package": "functions",
+      "line": 33,
+      "end_line": 33,
+      "signature": "run = function(self: any)",
+      "tier": "verified"
+    },
+    {
+      "name": "on-close",
+      "kind": "LuauFunction",
+      "package": "functions",
+      "line": 34,
+      "end_line": 34,
+      "signature": "[\"on-close\"] = function()",
+      "tier": "verified"
+    }
+  ]
+}

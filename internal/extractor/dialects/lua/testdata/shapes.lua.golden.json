@@ -1,6 +1,17 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "LuaModule",
+      "package": "shapes",
+      "line": 1,
+      "end_line": 69,
+      "calls": [
+        "setmetatable"
+      ],
+      "tier": "verified"
+    },
+    {
       "name": "hello",
       "kind": "LuaFunction",
       "package": "shapes",

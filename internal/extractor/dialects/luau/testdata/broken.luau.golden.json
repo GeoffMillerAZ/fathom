@@ -1,0 +1,30 @@
+{
+  "symbols": [
+    {
+      "name": "before",
+      "kind": "LuauFunction",
+      "package": "broken",
+      "line": 2,
+      "end_line": 4,
+      "signature": "local function before(a: number): number",
+      "tier": "verified"
+    },
+    {
+      "name": "after",
+      "kind": "LuauFunction",
+      "package": "broken",
+      "line": 9,
+      "end_line": 11,
+      "signature": "local function after(b: string): string",
+      "tier": "verified"
+    },
+    {
+      "name": "Alias",
+      "kind": "LuauType",
+      "package": "broken",
+      "line": 13,
+      "end_line": 13,
+      "tier": "verified"
+    }
+  ]
+}

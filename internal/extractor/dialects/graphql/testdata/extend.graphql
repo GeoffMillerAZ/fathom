@@ -1,0 +1,19 @@
+extend type Query {
+  me: Author
+}
+
+extend interface Node @auth
+
+extend union SearchResult = Review
+
+extend enum Role {
+  GUEST
+}
+
+extend input AuthorFilter {
+  limit: Int
+}
+
+extend scalar DateTime @specifiedBy(url: "x")
+
+extend schema @link(url: "x")

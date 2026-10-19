@@ -73,6 +73,7 @@ var langRowHint = map[string]string{
 	"gradle":           "| Gradle builds ",
 	"jenkinsfile":      "| Jenkins pipelines ",
 	"lua":              "| Lua ",
+	"luau":             "| Luau ",
 	"dart":             "| Dart ",
 	"emacs-lisp":       "| Emacs Lisp ",
 	"commonlisp":       "| Common Lisp ",

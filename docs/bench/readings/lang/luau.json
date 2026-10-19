@@ -1,0 +1,172 @@
+{
+  "dialect": "luau",
+  "kind": "language",
+  "target_level": "L2",
+  "level_met": "L2",
+  "grade": {
+    "L1": "excellent",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-10-19",
+  "fathom_commit": "2cc47437",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "dphfox/Fusion",
+      "sha": "77e603534ff4013f4049611826ff0309d6000b15",
+      "files": 113,
+      "bytes": 321384,
+      "counts": {
+        "call_fathom": 836,
+        "call_fathom_in_truth": 824,
+        "call_truth": 832,
+        "call_truth_found": 824,
+        "callables": 374,
+        "callables_signed": 374,
+        "fathom_defs": 432,
+        "kind_equal": 432,
+        "matched": 432,
+        "oracle_defs": 452,
+        "range_eligible": 432,
+        "range_ok": 429
+      },
+      "families": {
+        "calls": "C",
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "function",
+        "type_alias"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 7,
+        "extract_ms": 150.37599999999998,
+        "extract_cpu_ms": 152.79500000000002,
+        "max_file_ms": 33,
+        "peak_module_pages": 288,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "luau-lang/luau",
+      "sha": "9d7748a4f324213a18cb8283fa2a77c330225fa0",
+      "files": 440,
+      "bytes": 1097128,
+      "counts": {
+        "call_fathom": 3509,
+        "call_fathom_in_truth": 3492,
+        "call_truth": 3496,
+        "call_truth_found": 3492,
+        "callables": 1802,
+        "callables_signed": 1802,
+        "fathom_defs": 1945,
+        "kind_equal": 1863,
+        "matched": 1863,
+        "oracle_defs": 1873,
+        "range_eligible": 1863,
+        "range_ok": 1861
+      },
+      "families": {
+        "calls": "C",
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "function",
+        "type_alias"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 128,
+        "extract_ms": 794.3899999999998,
+        "extract_cpu_ms": 796.9270000000017,
+        "max_file_ms": 213,
+        "peak_module_pages": 328,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "luau-ast",
+      "version": "luau-ast (luau-lang/luau 0.743)"
+    },
+    {
+      "tier": "C",
+      "tool": "tree-sitter-tags:lua-tags.scm",
+      "version": "py-tree-sitter 0.25.2, tree-sitter-luau 1.2.0"
+    }
+  ],
+  "metrics": {
+    "call_precision": 0.9933,
+    "call_recall": 0.9972,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": 0.9978,
+    "signature_coverage": 1,
+    "sym_precision": 0.9655,
+    "sym_recall": 0.9871,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "C",
+    "call_recall": "C",
+    "kind_agreement": "B",
+    "range_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "function",
+    "type_alias"
+  ],
+  "kind_intersection": [
+    "function",
+    "type_alias"
+  ],
+  "counts": {
+    "call_fathom": 4345,
+    "call_fathom_in_truth": 4316,
+    "call_truth": 4328,
+    "call_truth_found": 4316,
+    "callables": 2176,
+    "callables_signed": 2176,
+    "fathom_defs": 2377,
+    "kind_equal": 2295,
+    "matched": 2295,
+    "oracle_defs": 2325,
+    "range_eligible": 2295,
+    "range_ok": 2290
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 135,
+    "throughput_mb_s": 1.49,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 1.5,
+    "max_file_ms": 213,
+    "peak_module_pages": 328,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "L1 oracle: luau-ast (luau-lang/luau 0.743, MIT; Luau's own parser, built with CMake into the tool cache, run per file by calibration/oracles/luau-ast/luau_ast_dump.py): every function stored in a statically named slot and every type alias, 1,873 + 452 definitions on 553 files, 4 files it rejects (the Luau repository's own experimental class syntax: `public function`). Tier B (an independent syntactic parser sharing no code with tree-sitter, the luaparse and JavaParser precedent, D2); the queue named a tree-sitter-tags oracle (tier C), which would have capped L1 at good and which the grammar's own locals.scm cannot serve (it defines `function` statements only: sym_precision .86 against it). The definition scope is the dialect author's rule, written in the oracle's README, so sym_precision shows the queries implement that rule, not that no other is reasonable.",
+    "L2 oracle: tree-sitter-lua's queries/tags.scm (MIT, calibration/oracles/ts-tags/lua-tags.scm, the file the lua dialect is measured against) run by py-tree-sitter 0.25.2 on tree-sitter-luau 1.2.0, tier C (D5), so L2 is capped at good. The Luau grammar descends from tree-sitter-lua and keeps its node names, so the query compiles unchanged. The dialect's tags.scm is derived from the same file, so the oracle is independent in runtime and grammar, not in query shape (disclosed). call_recall .9972, call_precision .9933; top-level calls are skipped by oracle and dialect alike (no module symbol).",
+    "dialect: the Lua dialect's tags.scm, whose function, call and field patterns the Luau grammar's node names match, with the body anchored by field (`body: (block)`, and `!body \"end\"` for an empty body) because a Luau parameter list can be followed by a return type, plus the type alias (`type T = ...`, `export type T<U> = ...`) as LuauType. Kinds: LuauFunction, LuauType. No imports.scm and no module symbol: Luau's `require` takes an instance path (`script.Parent.Foo`) or an alias string, which is no strategy of the closed set; the row's target is L2.",
+    "grammar: tree-sitter-grammars/tree-sitter-luau 1.2.0 at a8914d6c1fc5131f8e1c13f769fa704c9f5eb02f (MIT, LICENSE at the pinned commit), ABI 14, external scanner, built into grammars/luau.wasm.gz (213,773 bytes raw, 72,266 gzip; pin and digests in grammars.lock.json). The repository ships no queries/tags.scm (folds, highlights, indents, injections, locals only).",
+    "misses: dphfox/Fusion sym_recall .956 (432 of 452): the 20 oracle definitions the dialect lacks are all `export type X = <KI, KO>(...) -> ...` aliases whose type is a generic function type, which tree-sitter-luau 1.2.0 does not parse into a type_definition (src/Types.luau lines 130 and after). luau-lang/luau sym_precision .958 (1,863 of 1,945): the 82 dialect-only definitions sit in the 4 files luau-ast rejects (tests/classes, tests/conformance/classes.luau, jit_inliner and explicit_type_instantiations use syntax newer than its parse or errors the conformance suite checks for) and in tests/golden type-function files; they are oracle blind spots, not adjudicated.",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "subjects: luau-lang/luau 0.743 (440 files, tests and benchmarks: the repository's Luau is its conformance suite) and dphfox/Fusion v0.3-beta (113 files, src and spec). The queue named Roblox/roact, whose 94 sources are .lua (the lua dialect's), so it holds no .luau file; Fusion replaces it (MIT, a Roblox UI library written in .luau)."
+  ],
+  "disposition": null
+}

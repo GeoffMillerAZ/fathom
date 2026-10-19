@@ -401,6 +401,9 @@ var extClassMap = map[string]classification{
 	// Lua
 	".lua": {core.KindLuaFunction, "lua"},
 
+	// Luau (LB-Q-luau, wave lang1): the Lua dialect's patterns on the Luau grammar, plus type aliases.
+	".luau": {core.SourceKind("LuauFunction"), "luau"},
+
 	// Dart (LB-Q-dart: a new tree-sitter dialect, no incumbent).
 	".dart": {core.KindDartClass, "dart"},
 

@@ -54,7 +54,7 @@ func TestPromptHookRoutesIssueShapesToLocalize(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			called = false
-			got := routeLineFor(hc, srv.URL, c.prompt, deadline)
+			got := routeLineFor(hc, srv.URL, t.TempDir(), c.prompt, deadline)
 			if called {
 				t.Errorf("issue-shaped prompt %q reached POST /route — must route deterministically, no HTTP call", c.prompt)
 			}
@@ -66,7 +66,7 @@ func TestPromptHookRoutesIssueShapesToLocalize(t *testing.T) {
 
 	t.Run("non-issue prompt still asks the daemon", func(t *testing.T) {
 		called = false
-		got := routeLineFor(hc, srv.URL, "where is HandleLogin defined", deadline)
+		got := routeLineFor(hc, srv.URL, t.TempDir(), "where is HandleLogin defined", deadline)
 		if !called {
 			t.Error("a non-issue-shaped prompt must still ask POST /route")
 		}

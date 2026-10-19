@@ -71,6 +71,7 @@ var typedEdgeProducers = map[string]string{
 	"makefile":   "syntax",
 	"gradle":     "syntax",
 	"lua":        "syntax",
+	"luau":       "syntax",
 	"emacs-lisp": "syntax",
 	"commonlisp": "syntax",
 	"ada":        "syntax",

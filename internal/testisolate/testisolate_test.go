@@ -74,6 +74,7 @@ func TestIsolateAndRun_IsolatesEnvironment(t *testing.T) {
 	t.Setenv("FATHOM_STATE_DIR", "/real/operator/state")
 	t.Setenv("FATHOM_CALL_LOG", "/real/operator/mcp-calls.jsonl")
 	t.Setenv("FATHOM_HOME", "/real/operator/fathom-home")
+	t.Setenv("CLAUDE_CONFIG_DIR", "/real/operator/claude-config")
 	parent := t.TempDir()
 	var root string
 	seen := map[string]string{}
@@ -103,7 +104,7 @@ func TestIsolateAndRun_IsolatesEnvironment(t *testing.T) {
 	if seen[EnvTest] != "1" {
 		t.Errorf("%s = %q, want 1", EnvTest, seen[EnvTest])
 	}
-	for _, k := range []string{"FATHOM_STATE_DIR", "FATHOM_CALL_LOG", "FATHOM_HOME"} {
+	for _, k := range []string{"FATHOM_STATE_DIR", "FATHOM_CALL_LOG", "FATHOM_HOME", "CLAUDE_CONFIG_DIR"} {
 		if seen[k] != "" {
 			t.Errorf("%s = %q, want unset (it resolves under the isolated XDG_STATE_HOME)", k, seen[k])
 		}

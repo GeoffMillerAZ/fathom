@@ -3,8 +3,10 @@ package main
 // The readout hook (ADR-071, docs/design/readouts.md §3-§5 and §10):
 // `fathom readout-hook` on PostToolUse(Bash) and PostToolUseFailure(Bash).
 // It lexes the command, runs the readouts engine over its output and writes
-// one row to the hook log on channel `readout`; this build observes only,
-// so every mode emits nothing and the agent sees the raw output. Off by
+// one row to the hook log on channel `readout`; this build observes, so
+// the agent sees the raw output, and rich mode only adds a line beside it
+// (readouthook_rich.go: a go build or go vet run's errors grouped by root).
+// Off by
 // default ([readouts] mode, user scope only); any error exits 0 with
 // nothing emitted (I9). While the mode is on, the test-run hook folds in as
 // its rich stage (RO-21): the hook runs the test-run tier in process, so the
@@ -110,13 +112,22 @@ func cmdReadoutHook(args []string, stdin io.Reader, stdout, stderr io.Writer) (c
 	readoutStep("envelope")
 	cfg, ok := readoutsUserConfig()
 	readoutStep("config")
+	var richOut *readoutRichOutput
 	if readoutsOn(cfg, ok) {
 		// RO-21: the test-run tier first, inside the descriptor's deadline,
 		// whatever [readouts] roots says (roots gate the readout, never the
 		// test-run hook); the readout row's ms stays the readout's own.
 		readoutStep("test-run")
 		t0 := readoutHookClock()
-		readoutTestRunTier(codec, ev, raw, stdout)
+		tierCodec, tierOut := codec, stdout
+		if cfg.Mode == config.ReadoutsRich {
+			// Rich mode may add a line: the tier's output waits so both
+			// leave in one hook output; any early return writes it as is.
+			richOut = newReadoutRichOutput(codec, ev)
+			tierCodec, tierOut = richOut.capture, &richOut.tier
+			defer richOut.flush(stdout, nil)
+		}
+		readoutTestRunTier(tierCodec, ev, raw, tierOut)
 		start = start.Add(readoutHookClock().Sub(t0))
 	}
 	if !ok || cfg.Mode == config.ReadoutsOff {
@@ -164,10 +175,25 @@ func cmdReadoutHook(args []string, stdin io.Reader, stdout, stderr io.Writer) (c
 	if readoutHookRendered != nil {
 		readoutHookRendered(rin, ro)
 	}
+	var rich readoutRich
+	emitted := false
+	if richOut != nil && cmd.ReadoutPrefix() != "raw" {
+		// Rich mode's lines, inside the joins budget and the hook's
+		// ceiling: past the ceiling nothing is added.
+		readoutStep("rich")
+		ctx, cancel := context.WithTimeout(context.Background(), readoutJoinBudget)
+		rich = readoutRichLines(ctx, in, dir, &cmd)
+		cancel()
+		if len(rich.lines) > 0 && readoutHookClock().Sub(start) > readoutHookCeiling {
+			rich.lines, rich.kinds, rich.missed = nil, nil, append(rich.missed, "ceiling")
+		}
+		emitted = richOut.flush(stdout, rich.lines)
+	}
 	readoutStep("row")
 	logReadoutRow(readoutRow{
 		event: *eventFlag, configured: cfg.Mode, in: in, cmd: &cmd, ro: ro,
 		rule: rule, joins: joins, elapsed: readoutHookClock().Sub(start),
+		rich: rich, emitted: emitted,
 	})
 	return 0
 }
@@ -312,6 +338,8 @@ type readoutRow struct {
 	rule       *readout.Rule
 	joins      readoutJoinRun
 	elapsed    time.Duration
+	rich       readoutRich
+	emitted    bool
 }
 
 // readoutRowMeta is the row's meta: sizes, the rule and its hash, the
@@ -334,7 +362,13 @@ func readoutRowMeta(r readoutRow) map[string]string {
 		"trips":      strconv.Itoa(len(ro.Trips)),
 		"ms":         strconv.FormatInt(r.elapsed.Milliseconds(), 10),
 		"cmd_sha":    sha256Hex(r.in.Command),
-		"emitted":    "false",
+		"emitted":    boolStr(r.emitted),
+	}
+	if r.emitted && len(r.rich.kinds) > 0 {
+		meta["rich"] = strings.Join(r.rich.kinds, ",")
+	}
+	if len(r.rich.missed) > 0 {
+		meta["rich_missed"] = strings.Join(r.rich.missed, ",")
 	}
 	if ro.Reason != "" {
 		meta["reason"] = ro.Reason
@@ -389,5 +423,5 @@ func (readoutHookRunner) execVerb(args []string, stdin io.Reader, stdout, stderr
 
 func init() {
 	declareVerb(verb{Name: "readout-hook", Group: "hooks", Order: 75, Run: readoutHookRunner{},
-		Summary: "PostToolUse and PostToolUseFailure hook on Bash: compute the readout of a command's output and log one row (observe only; off unless [readouts] mode is set), and run the test-run hook in the same process; with --event pre-read, the PreToolUse(Read) outline hint (off unless [hooks] read_outline_hint is set)"})
+		Summary: "PostToolUse and PostToolUseFailure hook on Bash: compute the readout of a command's output and log one row (observe; rich mode adds one line grouping go build and go vet errors by root; off unless [readouts] mode is set), and run the test-run hook in the same process; with --event pre-read, the PreToolUse(Read) outline hint (off unless [hooks] read_outline_hint is set)"})
 }

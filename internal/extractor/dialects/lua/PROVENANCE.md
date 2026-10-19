@@ -27,15 +27,24 @@
   `end`) and an `EndLine`.
 - Not extracted, on purpose: module tables (`local M = {}`), variables and constants, table fields that do not hold a
   function, `local a, b = function..., function...` past the first variable (rare; the anchored pattern reads the
-  first pair), parameters and locals, the `require` graph (L3, later). ctags 6.2.1 defines none of the tables and
+  first pair), parameters and locals. ctags 6.2.1 defines none of the tables and
   variables either.
 - Calls: the callee is the called name's last identifier, whatever the call shape: `f()`, `f "s"`, `f {}`,
   `a.b.f()` (`f`), `obj:f()` (`f`), `builder():name("x"):build()` (`builder`, `name`, `build`). A callee that is not a
   name (`t[i]()`, `f()()`'s outer call, `(g or h)()`) has none to record. A call belongs to the innermost definition
   around it: a call inside an anonymous function passed as an argument belongs to the named definition it sits in,
-  a call inside a nested named definition to that one, a call at the top of a file to none. The walker recorded the
+  a call inside a nested named definition to that one, a call at the top of a file to the file's `<module>` symbol (K18, below). The walker recorded the
   callee's whole text (`M.foo`, `self:bar`); the last identifier is the one the definitions are keyed by.
 - Oracles (calibration/oracles/README.md): L1 against `luaparse` 0.3.1 (MIT, an independent Lua parser; a syntax
   dump, tier B on the D2 precedent of the JavaParser, Roslyn and PSI dumps), L2 against the grammar's own
   `queries/tags.scm` run by py-tree-sitter (tier C, D5). universal-ctags 6.2.1 is a cross-check, not the oracle:
   it writes no end line for Lua and tags text inside comments and strings (see the reading's notes).
+- L3 (wave lang1): `imports.scm` is written for this dialect (Lua 5.4 manual 6.3, `require`). It reads a call of
+  `require` with one string literal (`require("a.b")`, `require "a.b"`, `require 'a.b'`, `require [[a.b]]`) and
+  `pcall(require, "a.b")`; a concatenation, a variable, an escape sequence and a call by another name name no module
+  statically. No alias is bound. The manifest's `file-symbol` strategy reads the dots as directory separators and
+  tries `a/b.lua`, then `a/b/init.lua`, under the repository root, `lua/`, `lib/` and `src/`, the layouts of a plain
+  Lua project, a LuaRocks or OpenResty library and a Neovim plugin. `module_symbol` mints a `LuaModule` symbol
+  (`<module>`, line 1 to the last line) per file (K18), so a `require` at the top of a file, and any call there, is
+  made from it. Oracle: `calibration/oracles/lua-require` (tier B, so L3 is at most good): luaparse for the
+  statements, Lua 5.4.7's own `package.searchpath` over the same path list for the lookup.

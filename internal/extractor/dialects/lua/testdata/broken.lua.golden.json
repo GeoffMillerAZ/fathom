@@ -1,6 +1,14 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "LuaModule",
+      "package": "broken",
+      "line": 1,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
       "name": "before",
       "kind": "LuaFunction",
       "package": "broken",

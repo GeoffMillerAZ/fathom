@@ -1,0 +1,30 @@
+{
+  "id": "luau",
+  "display": "Luau",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "luau",
+  "match": {
+    "extensions": [".luau"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "luau", "entry_point": "tree_sitter_luau" },
+  "variants": [],
+  "queries": { "tags": "tags.scm" },
+  "kinds": {
+    "function": { "source_kind": "LuauFunction", "canonical": "function", "callable": true },
+    "type":     { "source_kind": "LuauType",     "canonical": "type_alias" }
+  },
+  "required_kinds": ["function", "type"],
+  "oracle_kinds": {
+    "tool": { "function": "function", "type": "type_alias" }
+  },
+  "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L2",
+  "queue_id": "luau"
+}

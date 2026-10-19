@@ -98,8 +98,9 @@ func synthPairs(t verify.Task) []string {
 // synthValue quotes v when the grammar requires it: a comma or a brace
 // (which would end the pair or the block), or surrounding space. A value
 // is otherwise written as-is, inner double quotes included — the
-// tokenizer toggles on each one, so a value that parsed from a row reads
-// back the same when written the way that row wrote it.
+// tokenizer toggles on each bare one and reads an escaped one as data, so
+// a value that parsed from a row reads back the same when written the way
+// that row wrote it.
 func synthValue(v string) string {
 	if strings.ContainsAny(v, ",{}") || strings.TrimSpace(v) != v {
 		return `"` + v + `"`

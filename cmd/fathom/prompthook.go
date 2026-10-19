@@ -20,6 +20,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -147,7 +148,7 @@ func cmdPromptHook(args []string, stdout, stderr io.Writer) int {
 	// route line is a bonus this hook can afford to skip, never a reason
 	// to starve it. A route line can stand alone (a prompt naming nothing
 	// obligations resolves, e.g. "why does X crash", is still routable).
-	route := routeLineFor(&http.Client{Timeout: deadlineRemaining(deadline)}, url, prompt, deadline)
+	route := routeLineFor(&http.Client{Timeout: deadlineRemaining(deadline)}, url, projDir, prompt, deadline)
 	text, ok = combineWithRouteLine(text, ok, route)
 	text, ok = withPromptMapPointer(projDir, prompt, sessionID, text, ok) // XM-11: one line naming an exploration map this prompt's paths or symbols lie in, once per session, daemon-free (maphooks.go)
 	if !ok {
@@ -576,13 +577,104 @@ func routeIssueShapedPrompt(prompt string) (verb, shape string, ok bool) {
 // routeLineFor resolves the prompt hook's one-line routing hint. A
 // deterministic issue-shape match (routeIssueShapedPrompt) short-circuits
 // entirely — no HTTP call, no hedge, since the shape itself is the
-// evidence. Everything else still asks POST /route exactly as routeLine
-// always has.
-func routeLineFor(hc *http.Client, baseURL, prompt string, deadline time.Time) string {
+// evidence — and names a tool the session's registered surface serves
+// (O615: localize is on /rpc/extended only, ADR-053). Everything else still
+// asks POST /route exactly as routeLine always has.
+func routeLineFor(hc *http.Client, baseURL, projDir, prompt string, deadline time.Time) string {
 	if verb, shape, ok := routeIssueShapedPrompt(prompt); ok {
-		return fmt.Sprintf("fathom route: this prompt is %s-shaped (a stack trace, failing test, or error string); %s is the opening move.", shape, verb)
+		lead := fmt.Sprintf("fathom route: this prompt is %s-shaped (a stack trace, failing test, or error string); ", shape)
+		const defaultMove = "search its most distinctive frame, test name or error text, then symbol_context on the top in-repo symbol."
+		switch registeredPromptSurface(projDir, deadline) {
+		case promptSurfaceLocalize:
+			return lead + verb + " is the opening move."
+		case promptSurfaceDefault:
+			return lead + defaultMove
+		default:
+			return lead + defaultMove + " On /rpc/extended, " + verb + " does this in one call."
+		}
 	}
 	return routeLine(hc, baseURL, prompt, deadline)
+}
+
+// promptSurface is what the session's fathom MCP registration serves, as
+// far as a local read can tell.
+type promptSurface int
+
+const (
+	promptSurfaceUnknown  promptSurface = iota // no registration found, or a read failed
+	promptSurfaceDefault                       // /rpc/agent: the default eight, no localize
+	promptSurfaceLocalize                      // /rpc/extended, /rpc/companion or /rpc: localize is served
+)
+
+// promptUserConfigCap bounds the read of Claude Code's user config file
+// (and the project's .mcp.json): a larger file is not read, and the
+// surface is unknown.
+const promptUserConfigCap = 1 << 20
+
+// registeredPromptSurface reads the session's "fathom" MCP registration:
+// the project's .mcp.json first, then Claude Code's user config file
+// (harness.ClaudeUserConfigFile: the local scope for projDir, then the user
+// scope), each only under promptUserConfigCap. A spent deadline, a missing
+// entry, or any read or parse error is unknown, never a failure.
+func registeredPromptSurface(projDir string, deadline time.Time) promptSurface {
+	if !time.Now().Before(deadline) {
+		return promptSurfaceUnknown
+	}
+	type mcpEntry struct {
+		URL  string   `json:"url"`
+		Args []string `json:"args"`
+	}
+	type mcpScope struct {
+		MCPServers map[string]mcpEntry `json:"mcpServers"`
+	}
+	type mcpDoc struct {
+		mcpScope
+		Projects map[string]mcpScope `json:"projects"`
+	}
+	read := func(path string) (doc mcpDoc, ok bool) {
+		if path == "" {
+			return doc, false
+		}
+		f, err := os.Open(path)
+		if err != nil {
+			return doc, false
+		}
+		defer f.Close()
+		raw, err := io.ReadAll(io.LimitReader(f, promptUserConfigCap+1))
+		if err != nil || len(raw) > promptUserConfigCap || json.Unmarshal(raw, &doc) != nil {
+			return doc, false
+		}
+		return doc, true
+	}
+	classify := func(e mcpEntry) promptSurface {
+		for _, u := range append([]string{e.URL}, e.Args...) {
+			switch u = strings.TrimRight(u, "/"); {
+			case strings.HasSuffix(u, "/rpc/agent"):
+				return promptSurfaceDefault
+			case strings.HasSuffix(u, "/rpc/extended"), strings.HasSuffix(u, "/rpc/companion"), strings.HasSuffix(u, "/rpc"):
+				return promptSurfaceLocalize
+			}
+		}
+		return promptSurfaceUnknown
+	}
+	if projDir != "" {
+		if doc, ok := read(filepath.Join(projDir, ".mcp.json")); ok {
+			if e, found := doc.MCPServers["fathom"]; found {
+				return classify(e)
+			}
+		}
+	}
+	doc, ok := read(harness.ClaudeUserConfigFile(wiringDriftHome()))
+	if !ok {
+		return promptSurfaceUnknown
+	}
+	if e, found := doc.Projects[projDir].MCPServers["fathom"]; found && projDir != "" {
+		return classify(e)
+	}
+	if e, found := doc.MCPServers["fathom"]; found {
+		return classify(e)
+	}
+	return promptSurfaceUnknown
 }
 
 // promptHookRunner runs `fathom prompt-hook` (registered below; EW-45).

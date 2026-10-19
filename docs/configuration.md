@@ -780,6 +780,12 @@ shapes — a stack trace, a failing test name, an error string
 UNHEDGED line and no `POST /route` call at all: these shapes need no LLM
 judgment, and the 45.7%-right calibration above never applies to them.
 Everything else still goes through `POST /route` exactly as before.
+That line names `localize` only when the session's fathom registration (the
+project's `.mcp.json`, else Claude Code's user config file, read only under
+1 MiB) points at `/rpc/extended`, `/rpc/companion` or `/rpc`; at `/rpc/agent`
+it names `search` then `symbol_context`, and when the registration is unknown
+it names those and adds that `localize` does this in one call on
+`/rpc/extended`.
 
 `route_timeout_ms` (O109) bounds `POST /route`'s own decider call — the design
 point is a **sub-second decision model** (Jev-class latency measured 70-500ms),

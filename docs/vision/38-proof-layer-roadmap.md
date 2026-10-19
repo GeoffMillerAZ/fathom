@@ -333,6 +333,10 @@ the mods program, unless the owner reorders.
     (`docs/plans/fathom-dir.md`, G35) joins as a filler behind the mods program and the tenancy budget fix, wave 1
     (FD-1 to FD-9) first, within the two-wave limit. FD-17 waits on RT-M1 PASS; FD-23, FD-24 and FD-M3 wait on an
     app-kit release carrying the `pack:` header and fixtures.
+  - 2026-10-19 (owner-architect): readouts phase 2's rows may be built now, every line they add reachable only under
+    `[readouts] mode = rich` (user-only, default off); rich mode turns on in any session only at RO-M1 PASS, which
+    measures the hook's cost and safety before any line is injected, not whether the code exists
+    (`docs/plans/readouts.md` phase 2's Start line).
 
 Mods phase 1 (Go and markdown) starts when readouts phase 0 lands (RO-3 to RO-18 verified, RO-M0 filed). RO-M1's 14
 days of observe need time, not a wave, so they run beside it: section 9.6's rule reads a readouts row that waits on

@@ -715,7 +715,13 @@ import (
 // Import-Module, `using module` and a manifest's modules, and its top-level calls are stored only
 // when they bind to a definition of the repository. Every such file fingerprinted before holds the
 // old extraction.
-const ExtractorEpoch = "64"
+// Epoch 65 (wave lang1, one bump for the wave, made by the integrator; ADR-048 D2). Item lua
+// (LB-Q-lua, LB-Q-luau): every Lua file has a <module> symbol and its literal require and
+// pcall(require, ...) calls are file edges; Luau files read through the new luau dialect. Item
+// graphql (LB-Q-graphql): GraphQL files read through the tree-sitter tags dialect, so operations,
+// fragments, extensions, directives and enum values index and a definition's signature is its
+// header as written. Every such file fingerprinted before holds the old extraction.
+const ExtractorEpoch = "65"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
