@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
@@ -31,16 +32,14 @@ type MarkerReport struct {
 	Warnings []string
 }
 
-// IngestCertifyMarkers walks root (a service's repo root) for *.go files
-// — the same skip-dir convention connector.Discover uses (vendor, .git,
-// testdata, generated, node_modules, .idea, .vscode, .claude —
-// connector.IsSkippedDir) so a marker inside a vendored or generated tree
-// is never scanned — parses each for `// certifies:` markers, and writes
-// the declared facts for service, stamped with watermark.
+// IngestCertifyMarkers scans the service's admitted Go source for
+// `// certifies:` markers and writes declared facts stamped with watermark.
+// Discovery is shared with the source index: default caches, permanent skips,
+// project/user/service exclusions, explicit include and Git policy all apply.
 func IngestCertifyMarkers(ctx context.Context, st store.Store, service, watermark, root string) (MarkerReport, error) {
 	var report MarkerReport
 
-	files, err := discoverGoFiles(root)
+	files, err := discoverGoFiles(ctx, service, root)
 	if err != nil {
 		return report, fmt.Errorf("discover Go files under %s: %w", root, err)
 	}
@@ -80,34 +79,18 @@ func IngestCertifyMarkers(ctx context.Context, st store.Store, service, watermar
 	return report, nil
 }
 
-// discoverGoFiles returns every *.go file under root (repo-relative,
-// forward-slash paths, sorted), pruning the same directories
-// connector.Discover always skips.
-func discoverGoFiles(root string) ([]string, error) {
-	var files []string
-	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		rel, relErr := filepath.Rel(root, path)
-		if relErr != nil {
-			return relErr
-		}
-		rel = filepath.ToSlash(rel)
-		if d.IsDir() {
-			if rel != "." && connector.IsSkippedDir(d.Name()) {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if strings.HasSuffix(rel, ".go") {
-			files = append(files, rel)
-		}
-		return nil
-	})
+// discoverGoFiles returns admitted *.go paths, sorted and repo-relative.
+// Delegate policy to the actual connector rather than copying a skip list.
+func discoverGoFiles(ctx context.Context, service, root string) ([]string, error) {
+	refs, err := connector.NewLocalConnector().Discover(ctx, core.ServiceRef{ID: service, Path: root})
 	if err != nil {
 		return nil, err
 	}
-	sort.Strings(files)
+	var files []string
+	for _, ref := range refs {
+		if strings.HasSuffix(ref.Path, ".go") {
+			files = append(files, ref.Path)
+		}
+	}
 	return files, nil
 }
