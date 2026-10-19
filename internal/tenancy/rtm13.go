@@ -85,6 +85,17 @@ type RTM13Verdict struct {
 	// on the days that record entries.
 	ShedRefuseMinutes   int `json:"shed_refuse_minutes"`
 	HostEntriesAtNormal int `json:"host_entries_at_normal"`
+	// ShedMinutesByTrigger splits ShedRefuseMinutes by the trigger that
+	// entered the rung (every trigger name present, zero included), so the
+	// pressure share of a FAIL reads directly; UnattributedShedMinutes are
+	// the minutes of rows logged before the split, named, never zero (I38).
+	ShedMinutesByTrigger    map[string]int `json:"shed_minutes_by_trigger"`
+	UnattributedShedMinutes int            `json:"unattributed_shed_minutes"`
+}
+
+// rungTriggers are the trigger names a verdict reports, in RungEntry order.
+func rungTriggers() []RungTrigger {
+	return []RungTrigger{TriggerOwnMark, TriggerPressure, TriggerSwapGrowth, TriggerSwapVolume, TriggerUnknown}
 }
 
 // JudgeRTM13 reads RT-M13 over the seven complete UTC days before now's:
@@ -92,11 +103,16 @@ type RTM13Verdict struct {
 // entries at normal pressure. A violation is FAIL whatever else is missing
 // (more days only add minutes); a missing or thin day, a day logged before
 // rung entries were recorded, or an entry whose trigger or pressure is
-// unknown leaves it INCOMPLETE, named, never PASS.
+// unknown leaves it INCOMPLETE, named, never PASS. The verdict carries the
+// week's shed + refuse minutes by entering trigger; the split never moves
+// the state.
 func JudgeRTM13(rows []DaySummary, now time.Time) RTM13Verdict {
 	today := now.UTC().Truncate(24 * time.Hour)
 	limit := RTM13ShedShare * 7 * 24 * 60
-	v := RTM13Verdict{}
+	v := RTM13Verdict{ShedMinutesByTrigger: map[string]int{}}
+	for _, t := range rungTriggers() {
+		v.ShedMinutesByTrigger[t.String()] = 0
+	}
 	var gaps []string
 	fail := func(crit, date, why string) {
 		if v.State != "FAIL" {
@@ -113,6 +129,13 @@ func JudgeRTM13(rows []DaySummary, now time.Time) RTM13Verdict {
 		}
 		r := rows[j]
 		v.ShedRefuseMinutes += r.ShedMinutes + r.RefuseMinutes
+		v.UnattributedShedMinutes += r.UnattributedShedMinutes()
+		for k, n := range r.ShedMinutesByTrigger {
+			if _, ok := v.ShedMinutesByTrigger[k]; !ok {
+				k = TriggerUnknown.String() // a foreign name: no trigger it can claim
+			}
+			v.ShedMinutesByTrigger[k] += n
+		}
 		atNormal, unknown := 0, 0
 		for _, e := range r.RungEntries {
 			switch {

@@ -1107,8 +1107,26 @@ func renderDays(w io.Writer, rep resourcesReport) {
 	}
 	fmt.Fprintf(w, "RT-M1 verdict  %s: %s\n", rep.Verdict.State, rep.Verdict.Detail)
 	if rep.RTM13 != nil {
-		fmt.Fprintf(w, "RT-M13 verdict %s: %s\n", rep.RTM13.State, rep.RTM13.Detail)
+		fmt.Fprintf(w, "RT-M13 verdict %s: %s%s\n", rep.RTM13.State, rep.RTM13.Detail, pressureShareClause(*rep.RTM13))
 	}
+}
+
+// pressureShareClause is a FAIL's share of shed + refuse minutes entered by
+// host pressure, with the minutes no trigger accounts for named (I38).
+func pressureShareClause(v tenancy.RTM13Verdict) string {
+	if v.State != "FAIL" {
+		return ""
+	}
+	p := v.ShedMinutesByTrigger[tenancy.TriggerPressure.String()]
+	share := ""
+	if v.ShedRefuseMinutes > 0 {
+		share = fmt.Sprintf(" (%.1f%%)", 100*float64(p)/float64(v.ShedRefuseMinutes))
+	}
+	clause := fmt.Sprintf("; pressure entered %d of %d shed + refuse minutes%s", p, v.ShedRefuseMinutes, share)
+	if v.UnattributedShedMinutes > 0 {
+		clause += fmt.Sprintf(", %d unattributed (logged before minutes were split by trigger)", v.UnattributedShedMinutes)
+	}
+	return clause
 }
 
 // rungEntriesLine is a day's rung entries for the --days table: each rung,

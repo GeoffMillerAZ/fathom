@@ -328,10 +328,50 @@ func TestResourcesDaysPrintsRTM13Verdict(t *testing.T) {
 		}
 	})
 	t.Run("210 shed minutes FAIL on the day the week crosses 201.6", func(t *testing.T) {
-		_, out := setup(t, shedOnWarn, minutes(30)).run(t, "--days", "8", "--json")
+		f := setup(t, shedOnWarn, minutes(30))
+		_, out := f.run(t, "--days", "8", "--json")
 		_, _, v := report(t, out)
 		if v["state"] != "FAIL" || !strings.Contains(v["criterion"].(string), "201.6") || v["day"] != "2026-09-25" {
 			t.Fatalf("rtm13 %v", v)
+		}
+		// the fixture writes ShedMinutes straight onto the rows: no trigger
+		// accounts for them, so they read unattributed, never as zero.
+		if by, _ := v["shed_minutes_by_trigger"].(map[string]any); by == nil || by["pressure"] != float64(0) || v["unattributed_shed_minutes"] != float64(210) {
+			t.Fatalf("rtm13 split %v unattributed %v", v["shed_minutes_by_trigger"], v["unattributed_shed_minutes"])
+		}
+		_, table := f.run(t, "--days", "8")
+		if !strings.Contains(table, "by this day; pressure entered 0 of 210 shed + refuse minutes (0.0%), 210 unattributed (logged before minutes were split by trigger)\n") {
+			t.Errorf("the FAIL line lacks the pressure share:\n%s", table)
+		}
+	})
+	t.Run("a FAIL reads the pressure share of its shed minutes", func(t *testing.T) {
+		episodes := func(i int, day time.Time, log *tenancy.DayLog) {
+			shedFor := func(start time.Time, trig tenancy.RungTrigger, kind tenancy.CauseKind, p tenancy.PressureLevel, n int) {
+				rise(log, start, tenancy.LevelShed, kind, trig, p)
+				for k := 0; k < n; k++ {
+					log.Observe(tenancy.RingRecord{At: start.Add(time.Duration(k) * time.Minute), Level: tenancy.LevelShed, Footprint: 70 * tenancy.MiB, Children: -1, Pressure: p}, m, nil)
+				}
+				log.Observe(tenancy.RingRecord{At: start.Add(time.Duration(n) * time.Minute), Level: tenancy.LevelNormal, Footprint: 70 * tenancy.MiB, Children: -1, Pressure: tenancy.PressureNormal}, m, nil)
+			}
+			shedFor(day.Add(4*time.Hour), tenancy.TriggerPressure, tenancy.CauseHost, tenancy.PressureWarn, 20)
+			shedFor(day.Add(5*time.Hour), tenancy.TriggerOwnMark, tenancy.CauseMark, tenancy.PressureNormal, 10)
+		}
+		f := setup(t, episodes, nil)
+		_, out := f.run(t, "--days", "8", "--json")
+		days, rtm1, v := report(t, out)
+		by, _ := v["shed_minutes_by_trigger"].(map[string]any)
+		if v["state"] != "FAIL" || by["pressure"] != float64(140) || by["own_mark"] != float64(70) || v["unattributed_shed_minutes"] != float64(0) {
+			t.Fatalf("rtm13 %v", v)
+		}
+		if row, _ := days[2]["shed_minutes_by_trigger"].(map[string]any); row["pressure"] != float64(20) || row["own_mark"] != float64(10) {
+			t.Fatalf("day row split %v", days[2]["shed_minutes_by_trigger"])
+		}
+		if rtm1["state"] != "PASS" {
+			t.Errorf("RT-M1 moved: %v", rtm1)
+		}
+		_, table := f.run(t, "--days", "8")
+		if !strings.Contains(table, "; pressure entered 140 of 210 shed + refuse minutes (66.7%)\n") {
+			t.Errorf("the FAIL line lacks the pressure share:\n%s", table)
 		}
 	})
 	t.Run("a host-trigger entry at normal pressure FAILs, naming the day", func(t *testing.T) {
@@ -376,6 +416,7 @@ func TestResourcesDaysPrintsRTM13Verdict(t *testing.T) {
 			without = append(without, d)
 			d.RungEntriesKnown = true
 			d.RungEntries = []tenancy.RungEntry{{Rung: "refuse", Trigger: "swap_volume_floor", Pressure: "normal", Count: 3}}
+			d.ShedMinutesByTrigger = map[string]int{"pressure": 40}
 			with = append(with, d)
 		}
 		a, _ := json.Marshal(tenancy.JudgeRTM1(with, now))

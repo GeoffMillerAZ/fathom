@@ -392,3 +392,131 @@ func TestDayLog_RecordsPastShedAtEntry(t *testing.T) {
 		t.Fatalf("windows = %+v", w)
 	}
 }
+
+// TestDaySummaryAttributesShedMinutesToTheEnteringTrigger: each minute at
+// shed or above counts against the trigger that entered the rung the ladder
+// is on (O1238). A step-down from refuse to shed returns to the trigger that
+// entered the shed rung; a rise that jumped over shed entered it too. The
+// per-trigger minutes sum to the day's shed + refuse minutes, and a day
+// logged before the field reads its minutes as unattributed, never zero.
+func TestDaySummaryAttributesShedMinutesToTheEnteringTrigger(t *testing.T) {
+	rise := func(d *DayLog, at time.Time, from, to Level, trig RungTrigger) {
+		tr := Transition{From: from, To: to, At: at, Changed: true, Cause: Cause{Kind: CauseHost, Detail: "fixture", Trigger: trig}}
+		if trig == TriggerOwnMark {
+			tr.Cause.Kind = CauseMark
+		}
+		d.Observe(RingRecord{At: at, Transition: true, Level: to, Footprint: GiB, Children: 100 * MiB, Pressure: PressureWarn}, dayMarks, &tr)
+	}
+	down := func(d *DayLog, at time.Time, from, to Level) {
+		tr := Transition{From: from, To: to, At: at, Changed: true, Reason: "fixture"}
+		d.Observe(RingRecord{At: at, Transition: true, Level: to, Footprint: GiB, Children: 100 * MiB}, dayMarks, &tr)
+	}
+	minutes := func(d *DayLog, at time.Time, lv Level, n int) {
+		for i := range n {
+			d.Observe(minuteRec(at.Add(time.Duration(i)*time.Minute), lv, GiB), dayMarks, nil)
+		}
+	}
+	sumHolds := func(t *testing.T, r DaySummary) {
+		t.Helper()
+		sum := 0
+		for _, n := range r.ShedMinutesByTrigger {
+			sum += n
+		}
+		if sum != r.ShedMinutes+r.RefuseMinutes || r.UnattributedShedMinutes() != 0 {
+			t.Errorf("%s: per-trigger minutes %v sum %d, shed %d + refuse %d (unattributed %d)", r.Date, r.ShedMinutesByTrigger, sum, r.ShedMinutes, r.RefuseMinutes, r.UnattributedShedMinutes())
+		}
+	}
+	at := time.Date(2026, 10, 3, 4, 0, 0, 0, time.UTC)
+
+	t.Run("pressure entry then ten shed minutes", func(t *testing.T) {
+		d, _ := openDays(t)
+		rise(d, at, LevelNormal, LevelShed, TriggerPressure)
+		minutes(d, at, LevelShed, 10)
+		r := d.Rows()[0]
+		if r.ShedMinutes != 10 || len(r.ShedMinutesByTrigger) != 1 || r.ShedMinutesByTrigger["pressure"] != 10 {
+			t.Fatalf("shed %d by trigger %v, want 10 under pressure", r.ShedMinutes, r.ShedMinutesByTrigger)
+		}
+		sumHolds(t, r)
+	})
+	t.Run("mark entry, a floor refuse and back to shed", func(t *testing.T) {
+		d, _ := openDays(t)
+		rise(d, at, LevelNormal, LevelShed, TriggerOwnMark)
+		minutes(d, at, LevelShed, 3) // 04:00-04:02 own mark
+		rise(d, at.Add(3*time.Minute), LevelShed, LevelRefuse, TriggerSwapVolume)
+		minutes(d, at.Add(4*time.Minute), LevelRefuse, 3) // window 04:03-04:06, 4 min
+		down(d, at.Add(7*time.Minute), LevelRefuse, LevelShed)
+		minutes(d, at.Add(7*time.Minute), LevelShed, 5) // back on the mark's shed rung
+		down(d, at.Add(12*time.Minute), LevelShed, LevelNormal)
+		minutes(d, at.Add(12*time.Minute), LevelNormal, 2)
+		r := d.Rows()[0]
+		if r.ShedMinutes != 8 || r.RefuseMinutes != 4 {
+			t.Fatalf("shed %d refuse %d, want 8 and 4", r.ShedMinutes, r.RefuseMinutes)
+		}
+		if got := r.ShedMinutesByTrigger; len(got) != 2 || got["own_mark"] != 8 || got["swap_volume_floor"] != 4 {
+			t.Fatalf("by trigger %v, want own_mark 8 swap_volume_floor 4", got)
+		}
+		sumHolds(t, r)
+	})
+	t.Run("a rise past shed enters it too", func(t *testing.T) {
+		d, _ := openDays(t)
+		rise(d, at, LevelNormal, LevelRefuse, TriggerSwapVolume)
+		minutes(d, at.Add(time.Minute), LevelRefuse, 2) // window 04:00-04:02, 3 min
+		down(d, at.Add(3*time.Minute), LevelRefuse, LevelShed)
+		minutes(d, at.Add(3*time.Minute), LevelShed, 4)
+		r := d.Rows()[0]
+		if got := r.ShedMinutesByTrigger; len(got) != 1 || got["swap_volume_floor"] != 7 {
+			t.Fatalf("by trigger %v, want swap_volume_floor 7", got)
+		}
+		sumHolds(t, r)
+	})
+	t.Run("an episode across midnight and a restart keep the sum", func(t *testing.T) {
+		d, p := openDays(t)
+		late := time.Date(2026, 10, 3, 23, 55, 0, 0, time.UTC)
+		rise(d, late, LevelNormal, LevelShed, TriggerPressure)
+		minutes(d, late, LevelShed, 3)
+		rise(d, late.Add(3*time.Minute), LevelShed, LevelRefuse, TriggerOwnMark)
+		minutes(d, late.Add(4*time.Minute), LevelRefuse, 4) // crosses 00:00
+		minutes(d, late.Add(8*time.Minute), LevelShed, 3)   // stepped down: pressure's shed rung
+		if err := d.Flush(late.Add(time.Hour), true); err != nil {
+			t.Fatal(err)
+		}
+		d2, err := OpenDayLog(p) // a restart: the ladder starts at normal
+		if err != nil {
+			t.Fatal(err)
+		}
+		minutes(d2, late.Add(11*time.Minute), LevelShed, 2) // no rise seen: unknown, named
+		rows := d2.Rows()
+		if len(rows) != 2 {
+			t.Fatalf("rows %+v", rows)
+		}
+		for _, r := range rows {
+			sumHolds(t, r)
+		}
+		if got := rows[1].ShedMinutesByTrigger; got["pressure"] != 3 || got["unknown"] != 2 {
+			t.Errorf("second day by trigger %v, want pressure 3 unknown 2", got)
+		}
+	})
+	t.Run("a day logged before the field reads unattributed", func(t *testing.T) {
+		now := time.Date(2026, 10, 10, 12, 0, 0, 0, time.UTC)
+		var rows []DaySummary
+		for i := 7; i >= 1; i-- {
+			r := DaySummary{Date: now.AddDate(0, 0, -i).Format("2006-01-02"), Samples: 1440, RungEntriesKnown: true, ShedMinutes: 10}
+			if i <= 5 {
+				r.ShedMinutesByTrigger = map[string]int{"pressure": 6, "own_mark": 4}
+			}
+			rows = append(rows, r)
+		}
+		v := JudgeRTM13(rows, now)
+		if v.UnattributedShedMinutes != 20 || v.ShedMinutesByTrigger["pressure"] != 30 || v.ShedMinutesByTrigger["own_mark"] != 20 {
+			t.Fatalf("unattributed %d by trigger %v, want 20, pressure 30, own_mark 20", v.UnattributedShedMinutes, v.ShedMinutesByTrigger)
+		}
+		for _, k := range []string{"own_mark", "pressure", "swap_growth", "swap_volume_floor", "unknown"} {
+			if _, ok := v.ShedMinutesByTrigger[k]; !ok {
+				t.Errorf("verdict lacks trigger %q: %v", k, v.ShedMinutesByTrigger)
+			}
+		}
+		if v.State != "PASS" || v.ShedRefuseMinutes != 70 {
+			t.Errorf("the split moved RT-M13's reading: %+v", v)
+		}
+	})
+}
