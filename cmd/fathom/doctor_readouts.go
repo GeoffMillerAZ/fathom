@@ -104,8 +104,8 @@ func otherBashRewriters(root string) []string {
 		filepath.Join(root, ".claude", "settings.json"),
 		filepath.Join(root, ".claude", "settings.local.json"),
 	}
-	if home, err := os.UserHomeDir(); err == nil && home != "" {
-		paths = append(paths, filepath.Join(home, ".claude", "settings.json"))
+	if p := claudeUserSettingsFile(); p != "" {
+		paths = append(paths, p)
 	}
 	seen := map[string]bool{}
 	for _, p := range paths {

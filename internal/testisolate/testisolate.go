@@ -67,6 +67,9 @@ var IsolatedVars = []string{
 	// fake port reads the same under any shell; InheritedDecide keeps the
 	// operator's value for a harness that must honour it (EXP-3).
 	EnvDecide,
+	// O1194: Claude Code's per-user config root (harness.ClaudeConfigRoot)
+	// is unset so it resolves under the isolated HOME, never the operator's.
+	"CLAUDE_CONFIG_DIR",
 }
 
 // EnvDecide is the decision port's kill variable (internal/decide KillEnv,

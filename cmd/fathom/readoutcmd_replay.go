@@ -35,6 +35,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/ask"
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/harness"
 	"github.com/geoffmilleraz/fathom/internal/readout"
 	"github.com/geoffmilleraz/fathom/internal/shellcmd"
 )
@@ -47,16 +48,13 @@ var (
 )
 
 // defaultReadoutProjectsDir is $CLAUDE_CONFIG_DIR/projects, else
-// ~/.claude/projects; "" when no home resolves.
+// ~/.claude/projects (harness.ClaudeConfigRoot); "" when no root resolves.
 func defaultReadoutProjectsDir() string {
-	if d := os.Getenv("CLAUDE_CONFIG_DIR"); d != "" {
-		return filepath.Join(d, "projects")
-	}
-	home := wiringDriftHome()
-	if home == "" {
+	root := harness.ClaudeConfigRoot(wiringDriftHome())
+	if root == "" {
 		return ""
 	}
-	return filepath.Join(home, ".claude", "projects")
+	return filepath.Join(root, "projects")
 }
 
 const (

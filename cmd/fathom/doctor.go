@@ -430,6 +430,17 @@ func checkMCPRegistration(root, harnessLabel, baseURL string) doctorCheck {
 	}
 }
 
+// claudeUserSettingsFile is Claude Code's user-scope settings.json under the
+// per-user config root (harness.ClaudeConfigRoot, which honours
+// CLAUDE_CONFIG_DIR); "" when no root resolves.
+func claudeUserSettingsFile() string {
+	cfg := harness.ClaudeConfigRoot(wiringDriftHome())
+	if cfg == "" {
+		return ""
+	}
+	return filepath.Join(cfg, "settings.json")
+}
+
 func registeredAtAgentSurface(url string) bool {
 	trimmed := strings.TrimRight(url, "/")
 	return strings.HasSuffix(trimmed, "/rpc/agent") || strings.HasSuffix(trimmed, "/rpc/companion")
@@ -439,11 +450,10 @@ func checkClaudeMCPRegistration(baseURL string) doctorCheck {
 	const name = "mcp_registration"
 	remedy := fmt.Sprintf("claude mcp add --transport http --scope user fathom %s/rpc/agent", baseURL)
 
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" {
+	path := harness.ClaudeUserConfigFile(wiringDriftHome())
+	if path == "" {
 		return doctorCheck{Name: name, Status: doctorSkipped, Reason: "cannot resolve home directory to read ~/.claude.json — check manually: claude mcp get fathom", Remedy: remedy}
 	}
-	path := filepath.Join(home, ".claude.json")
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("%s not readable (%v) — check manually: claude mcp get fathom", path, err), Remedy: remedy}
@@ -883,8 +893,8 @@ func checkHooksInstalled(root, harness string) doctorCheck {
 		{"project", filepath.Join(root, ".claude", "settings.json")},
 		{"project-local", filepath.Join(root, ".claude", "settings.local.json")},
 	}
-	if home, err := os.UserHomeDir(); err == nil && home != "" {
-		scopes = append(scopes, scopeFile{"user", filepath.Join(home, ".claude", "settings.json")})
+	if p := claudeUserSettingsFile(); p != "" {
+		scopes = append(scopes, scopeFile{"user", p})
 	}
 
 	specs := fathomHookSpecsAt(root)          // RO-38: an opt-in row is expected only while root's config switches it on
