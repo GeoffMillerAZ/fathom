@@ -1,0 +1,91 @@
+{
+  "symbols": [
+    {
+      "name": "Query",
+      "kind": "GraphQLExtension",
+      "package": "extend",
+      "line": 1,
+      "end_line": 3,
+      "signature": "extend type Query",
+      "tier": "verified"
+    },
+    {
+      "name": "Query.me",
+      "kind": "GraphQLField",
+      "package": "extend",
+      "line": 2,
+      "end_line": 2,
+      "signature": "me: Author",
+      "calls": [
+        "Author"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Node",
+      "kind": "GraphQLExtension",
+      "package": "extend",
+      "line": 5,
+      "end_line": 5,
+      "signature": "extend interface Node @auth",
+      "tier": "verified"
+    },
+    {
+      "name": "SearchResult",
+      "kind": "GraphQLExtension",
+      "package": "extend",
+      "line": 7,
+      "end_line": 7,
+      "signature": "extend union SearchResult = Review",
+      "calls": [
+        "Review"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Role",
+      "kind": "GraphQLExtension",
+      "package": "extend",
+      "line": 9,
+      "end_line": 11,
+      "signature": "extend enum Role",
+      "tier": "verified"
+    },
+    {
+      "name": "Role.GUEST",
+      "kind": "GraphQLEnumValue",
+      "package": "extend",
+      "line": 10,
+      "end_line": 10,
+      "signature": "GUEST",
+      "tier": "verified"
+    },
+    {
+      "name": "AuthorFilter",
+      "kind": "GraphQLExtension",
+      "package": "extend",
+      "line": 13,
+      "end_line": 15,
+      "signature": "extend input AuthorFilter",
+      "tier": "verified"
+    },
+    {
+      "name": "AuthorFilter.limit",
+      "kind": "GraphQLField",
+      "package": "extend",
+      "line": 14,
+      "end_line": 14,
+      "signature": "limit: Int",
+      "tier": "verified"
+    },
+    {
+      "name": "DateTime",
+      "kind": "GraphQLExtension",
+      "package": "extend",
+      "line": 17,
+      "end_line": 17,
+      "signature": "extend scalar DateTime @specifiedBy(url: \"x\")",
+      "tier": "verified"
+    }
+  ]
+}

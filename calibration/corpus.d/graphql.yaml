@@ -1,0 +1,33 @@
+id: graphql
+language: "GraphQL schemas and operations"
+# Both subjects are cloned sparse to their GraphQL documents: graphql-js and the dialect read nothing else.
+# octokit/graphql-schema is one machine-written 1.2 MB schema (the GitHub API's, under the ingest's 2 MiB
+# read cap) with descriptions on every definition. 99designs/gqlgen is a code generator whose repository holds
+# many small, independent schemas (examples, codegen test servers, integration queries): schemas that extend
+# each other across files, operations with fragments and variables, directives and unions. testdata/ and
+# generated/ directories are never read by ingest, so neither side measures them.
+repos:
+  - name: octokit/graphql-schema
+    url: https://github.com/octokit/graphql-schema
+    ref: v15.26.1
+    sha: 5f014c99da1fe346ac8d69fd20d8ddb84277d65b
+    licence: MIT
+    sparse: ["**/*.graphql", "**/*.gql"]
+    idioms:
+      - 'descriptions ("""...""") on every type, field, argument and enum value'
+      - 'interfaces implemented by many objects (implements A & B), unions of objects'
+      - 'input objects with default values and nested list/non-null types ([Foo!]!)'
+      - 'directive definitions with arguments and locations'
+      - 'a schema definition naming the root operation types'
+  - name: 99designs/gqlgen
+    url: https://github.com/99designs/gqlgen
+    ref: v0.17.95
+    sha: effb9094afc6dfbad05bb9929ed11e68dbcdd0c7
+    licence: MIT
+    sparse: ["**/*.graphql", "**/*.gql"]
+    idioms:
+      - 'extend type Query / Mutation across several files of one schema'
+      - 'named queries, mutations and fragments with variables and inline fragments'
+      - 'directive definitions and their applications, custom scalars'
+      - 'unions, interfaces and enums with deprecated values'
+      - 'the same type names defined by independent schemas in sibling directories'

@@ -1,0 +1,235 @@
+{
+  "symbols": [
+    {
+      "name": "DateTime",
+      "kind": "GraphQLType",
+      "package": "schema",
+      "line": 7,
+      "end_line": 7,
+      "signature": "scalar DateTime @specifiedBy(url: \"https://example.test/dt\")",
+      "tier": "verified"
+    },
+    {
+      "name": "auth",
+      "kind": "GraphQLDirective",
+      "package": "schema",
+      "line": 9,
+      "end_line": 9,
+      "signature": "directive @auth(role: Role! = USER) repeatable on FIELD_DEFINITION | OBJECT",
+      "calls": [
+        "Role"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Node",
+      "kind": "GraphQLType",
+      "package": "schema",
+      "line": 11,
+      "end_line": 13,
+      "signature": "interface Node",
+      "tier": "verified"
+    },
+    {
+      "name": "Node.id",
+      "kind": "GraphQLField",
+      "package": "schema",
+      "line": 12,
+      "end_line": 12,
+      "signature": "id: ID!",
+      "tier": "verified"
+    },
+    {
+      "name": "Book",
+      "kind": "GraphQLType",
+      "package": "schema",
+      "line": 16,
+      "end_line": 24,
+      "signature": "\"\"\"A book on a shelf.\"\"\" type Book implements Node & Titled @auth",
+      "calls": [
+        "Node",
+        "Titled"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Book.id",
+      "kind": "GraphQLField",
+      "package": "schema",
+      "line": 17,
+      "end_line": 17,
+      "signature": "id: ID!",
+      "tier": "verified"
+    },
+    {
+      "name": "Book.title",
+      "kind": "GraphQLField",
+      "package": "schema",
+      "line": 18,
+      "end_line": 18,
+      "signature": "title: String!",
+      "tier": "verified"
+    },
+    {
+      "name": "Book.author",
+      "kind": "GraphQLField",
+      "package": "schema",
+      "line": 19,
+      "end_line": 22,
+      "signature": "author(",
+      "calls": [
+        "Author",
+        "AuthorFilter"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Book.tags",
+      "kind": "GraphQLField",
+      "package": "schema",
+      "line": 23,
+      "end_line": 23,
+      "signature": "tags: [Tag!]!",
+      "calls": [
+        "Tag"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Author",
+      "kind": "GraphQLType",
+      "package": "schema",
+      "line": 26,
+      "end_line": 29,
+      "signature": "type Author implements Node",
+      "calls": [
+        "Node"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Author.id",
+      "kind": "GraphQLField",
+      "package": "schema",
+      "line": 27,
+      "end_line": 27,
+      "signature": "id: ID!",
+      "tier": "verified"
+    },
+    {
+      "name": "Author.books",
+      "kind": "GraphQLField",
+      "package": "schema",
+      "line": 28,
+      "end_line": 28,
+      "signature": "books(first: Int = 10): [Book!]!",
+      "calls": [
+        "Book"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "SearchResult",
+      "kind": "GraphQLType",
+      "package": "schema",
+      "line": 31,
+      "end_line": 31,
+      "signature": "union SearchResult = Book | Author",
+      "calls": [
+        "Author",
+        "Book"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Role",
+      "kind": "GraphQLType",
+      "package": "schema",
+      "line": 33,
+      "end_line": 36,
+      "signature": "enum Role",
+      "tier": "verified"
+    },
+    {
+      "name": "Role.ADMIN",
+      "kind": "GraphQLEnumValue",
+      "package": "schema",
+      "line": 34,
+      "end_line": 34,
+      "signature": "ADMIN",
+      "tier": "verified"
+    },
+    {
+      "name": "Role.USER",
+      "kind": "GraphQLEnumValue",
+      "package": "schema",
+      "line": 35,
+      "end_line": 35,
+      "signature": "USER @deprecated(reason: \"use ADMIN\")",
+      "tier": "verified"
+    },
+    {
+      "name": "AuthorFilter",
+      "kind": "GraphQLType",
+      "package": "schema",
+      "line": 38,
+      "end_line": 41,
+      "signature": "input AuthorFilter",
+      "tier": "verified"
+    },
+    {
+      "name": "AuthorFilter.active",
+      "kind": "GraphQLField",
+      "package": "schema",
+      "line": 39,
+      "end_line": 39,
+      "signature": "active: Boolean",
+      "tier": "verified"
+    },
+    {
+      "name": "AuthorFilter.born",
+      "kind": "GraphQLField",
+      "package": "schema",
+      "line": 40,
+      "end_line": 40,
+      "signature": "born: DateTime",
+      "calls": [
+        "DateTime"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Query",
+      "kind": "GraphQLType",
+      "package": "schema",
+      "line": 43,
+      "end_line": 46,
+      "signature": "type Query",
+      "tier": "verified"
+    },
+    {
+      "name": "Query.book",
+      "kind": "GraphQLField",
+      "package": "schema",
+      "line": 44,
+      "end_line": 44,
+      "signature": "book(id: ID!): Book",
+      "calls": [
+        "Book"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Query.search",
+      "kind": "GraphQLField",
+      "package": "schema",
+      "line": 45,
+      "end_line": 45,
+      "signature": "search(text: String!): [SearchResult!]!",
+      "calls": [
+        "SearchResult"
+      ],
+      "tier": "verified"
+    }
+  ]
+}
