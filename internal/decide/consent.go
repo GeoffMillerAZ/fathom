@@ -8,9 +8,11 @@ package decide
 // the user-only [decide] enabled (re-checked before each ask, the user
 // config reloaded only when its mtime changed), the user's consent to a
 // provider only the repository names (allow_repo_provider), then, per site,
-// deny_sites, then sites and session_sites. The first source that closes
-// it is returned and named (Gate), recorded in decisions.jsonl
-// (kill_source, consent_layer), disclosed once and shown by doctor.
+// deny_sites, then the site's miss kill (KS-12, sitekill.go), then sites
+// and session_sites. The first source that closes it is returned and named
+// (Gate), recorded in decisions.jsonl (kill_source, consent_layer),
+// disclosed once and shown by doctor. Before each ask the port then counts
+// the ask against the per-site cap (KS-10, caps.go).
 
 import (
 	"context"
@@ -62,7 +64,8 @@ type Gate struct {
 	// Source is the first closing source (KillSource*), "" when open.
 	Source string
 	// Layer is where that source lives: "environment", "file", "user",
-	// "project" or "default".
+	// "project" or "default"; "log" for a site's miss kill (decisions.jsonl)
+	// and "context" for a spent ceiling.
 	Layer string
 	// Reason is one line naming the source and the way to change it.
 	Reason string
@@ -85,11 +88,12 @@ type gateInput struct {
 	disabledWhy     string // the Reason for disabled, "" for the default
 	cfg             config.Decide
 	site            string // "" for the port as a whole
+	siteKill        Gate   // the site's miss verdict (KS-12), open when none
 }
 
 // portGate is the one gate (KS-6): the environment, the kill file,
-// enabled, consent, then for a site deny_sites, then sites and
-// session_sites. It reads nothing itself.
+// enabled, consent, then for a site deny_sites, then its miss kill
+// (KS-12), then sites and session_sites. It reads nothing itself.
 func portGate(in gateInput) Gate {
 	g := Gate{}
 	if in.env != "" && in.env != KillValue {
@@ -119,22 +123,25 @@ func portGate(in gateInput) Gate {
 	if in.site == "" {
 		return g
 	}
-	sg := siteGate(in.cfg, in.site)
+	sg := siteGate(in.cfg, in.site, in.siteKill)
 	sg.ConsentLayer, sg.IgnoredEnv = g.ConsentLayer, g.IgnoredEnv
 	return sg
 }
 
 // siteGate is the site half of portGate (KS-5, I60 as amended by ADR-073):
-// deny_sites refuses whatever any list says; a session site opens only
-// from session_sites; an opt-in site only from the repository's own sites
+// deny_sites refuses whatever any list says; then kill, the site's miss
+// verdict (KS-12), when closed; a session site opens only from
+// session_sites; an opt-in site only from the repository's own sites
 // (JF-4); every other site from sites.
-func siteGate(cfg config.Decide, site string) Gate {
+func siteGate(cfg config.Decide, site string, kill Gate) Gate {
 	closed := func(source, layer, reason string) Gate {
 		return Gate{Closed: true, Source: source, Layer: layer, Reason: reason}
 	}
 	switch {
 	case slices.Contains(cfg.DenySites, site):
 		return closed(KillSourceDeny, "user", fmt.Sprintf("site %s is in [decide] deny_sites", site))
+	case kill.Closed:
+		return kill
 	case IsSessionSite(site):
 		if slices.Contains(cfg.SessionSites, site) {
 			return Gate{}
@@ -217,6 +224,13 @@ func killFilePresent(stat func(string) (fs.FileInfo, error), path string) bool {
 // a site ("" for the port) its lists. It reads no key, execs nothing and
 // dials nothing.
 func Check(cfg config.Decide, site string, opts ...Option) Gate {
+	return CheckSite(cfg, site, nil, opts...)
+}
+
+// CheckSite is Check with rec's miss verdict for site (KS-12), in the one
+// precedence after deny_sites: doctor seeds rec from decisions.jsonl's
+// tail. A nil rec judges no site.
+func CheckSite(cfg config.Decide, site string, rec *Recorder, opts ...Option) Gate {
 	o := resolveOptions(opts)
 	return portGate(gateInput{
 		env:             os.Getenv(KillEnv),
@@ -225,16 +239,19 @@ func Check(cfg config.Decide, site string, opts ...Option) Gate {
 		disabled:        cfg.Disabled,
 		cfg:             cfg,
 		site:            site,
+		siteKill:        rec.siteKill(site),
 	})
 }
 
 // KilledError is what a site's Decide returns when a live kill closed an
-// open port (KS-2): it is decision.ErrNoProvider, so every site takes its
-// deterministic path, and RecordError writes its kill_source.
+// open port (KS-2), or the asking site's miss kill (KS-12), its ask cap or
+// a spent ceiling (KS-10) refused the ask: it is decision.ErrNoProvider, so
+// every site takes its deterministic path, and RecordError writes its
+// kill_source.
 type KilledError struct{ Gate Gate }
 
 func (e *KilledError) Error() string {
-	return fmt.Sprintf("decision port killed (kill_source %s, %s): %s", e.Gate.Source, e.Gate.Layer, e.Gate.Reason)
+	return fmt.Sprintf("decision port %s (kill_source %s, %s): %s", closedVerb(e.Gate.Source), e.Gate.Source, e.Gate.Layer, e.Gate.Reason)
 }
 
 // Unwrap makes a KilledError decision.ErrNoProvider.
@@ -251,6 +268,8 @@ type liveGate struct {
 	stat     func(string) (fs.FileInfo, error)
 	cfg      config.Decide
 	w        io.Writer
+	rec      *Recorder        // the site miss verdicts (KS-12); nil judges none
+	now      func() time.Time // the clock a ceiling is read against (KS-10)
 
 	mu          sync.Mutex
 	userMod     time.Time
@@ -259,6 +278,11 @@ type liveGate struct {
 	disabled    bool
 	disabledWhy string
 	disclosed   map[disclosure]bool
+	// siteDisclosed holds the site-level lines (the miss kill, the cap),
+	// which hold for the process or the session and so never clear;
+	// asks is each scope's asks the cap counted (KS-10).
+	siteDisclosed map[disclosure]bool
+	asks          map[Scope]int
 }
 
 // disclosure is one `killed` line's key: the closing source and who asked
@@ -268,8 +292,9 @@ type disclosure struct {
 	scope  Scope
 }
 
-func newLiveGate(cfg config.Decide, env string, o openOptions) *liveGate {
-	g := &liveGate{env: env, killFile: o.killFile, userPath: o.userConfig, stat: o.stat, cfg: cfg, w: o.disclose, disabled: cfg.Disabled, disclosed: map[disclosure]bool{}}
+func newLiveGate(cfg config.Decide, env string, o openOptions, rec *Recorder) *liveGate {
+	g := &liveGate{env: env, killFile: o.killFile, userPath: o.userConfig, stat: o.stat, cfg: cfg, w: o.disclose, rec: rec, now: time.Now, disabled: cfg.Disabled,
+		disclosed: map[disclosure]bool{}, siteDisclosed: map[disclosure]bool{}, asks: map[Scope]int{}}
 	if g.userPath != "" {
 		if info, err := g.stat(g.userPath); err == nil {
 			g.userExists, g.userMod, g.userSize = true, info.ModTime(), info.Size()
@@ -291,16 +316,54 @@ func (g *liveGate) check(scope Scope) Gate {
 		clear(g.disclosed)
 		return v
 	}
-	key := disclosure{source: v.Source, scope: scope}
-	if !g.disclosed[key] {
-		g.disclosed[key] = true
-		who := ""
-		if s := scope.String(); s != "" {
-			who = " for " + s
+	g.discloseLocked(g.disclosed, v, scope, "every site")
+	return v
+}
+
+// admit is the gate before one ask from ctx's scope: the port's live kills
+// (check), then the asking site's miss kill (KS-12), then a ceiling the
+// path's joins spent (KS-10), then the site's ask cap (allowAsk, KS-10).
+// A site-level verdict is disclosed once per closing source, session and
+// site, and never clears: the miss kill holds for the process, the cap for
+// the session.
+func (g *liveGate) admit(ctx context.Context) Gate {
+	scope := ScopeFrom(ctx)
+	if v := g.check(scope); v.Closed {
+		return v
+	}
+	kill := g.rec.siteKill(scope.Site)
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if kill.Closed {
+		g.discloseLocked(g.siteDisclosed, kill, scope, "the site")
+		return kill
+	}
+	if ceiling, ok := ctx.Deadline(); ok {
+		if _, left := askDeadline(ceiling, g.now(), 0); !left {
+			return Gate{Closed: true, Source: KillSourceDeadline, Layer: "context", Reason: "the path's ceiling was spent before the ask"}
 		}
-		fmt.Fprintf(g.w, "warn: decision port killed (kill_source %s, %s)%s: %s; every site answers on its deterministic path\n", v.Source, v.Layer, who, v.Reason)
+	}
+	v := allowAsk(g.asks, scope, g.cfg)
+	if v.Closed {
+		g.discloseLocked(g.siteDisclosed, v, scope, "the site")
 	}
 	return v
+}
+
+// discloseLocked writes v's one line for scope unless seen already holds
+// it (KS-14): `killed` for a kill, `capped` for the ask cap; who names
+// what answers on its deterministic path. Callers hold g.mu.
+func (g *liveGate) discloseLocked(seen map[disclosure]bool, v Gate, scope Scope, who string) {
+	key := disclosure{source: v.Source, scope: scope}
+	if seen[key] {
+		return
+	}
+	seen[key] = true
+	asker := ""
+	if s := scope.String(); s != "" {
+		asker = " for " + s
+	}
+	fmt.Fprintf(g.w, "warn: decision port %s (kill_source %s, %s)%s: %s; %s answers on its deterministic path\n", closedVerb(v.Source), v.Source, v.Layer, asker, v.Reason, who)
 }
 
 // refreshUserLocked reloads the user layer's enabled when the user config's
@@ -337,8 +400,8 @@ func (g *liveGate) refreshUserLocked() {
 	}
 }
 
-// killable is the port a site asks once Open opened it: the live gate,
-// then the composed provider.
+// killable is the port a site asks once Open opened it: the live gate and
+// the site's own rails (admit), then the composed provider.
 type killable struct {
 	inner decision.Decider
 	gate  *liveGate
@@ -347,7 +410,7 @@ type killable struct {
 func (k killable) Name() string { return k.inner.Name() }
 
 func (k killable) Decide(ctx context.Context, req decision.Request) (decision.Response, error) {
-	if v := k.gate.check(ScopeFrom(ctx)); v.Closed {
+	if v := k.gate.admit(ctx); v.Closed {
 		return decision.Response{Provider: k.inner.Name()}, &KilledError{Gate: v}
 	}
 	return k.inner.Decide(ctx, req)

@@ -16,7 +16,6 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/decide"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
-	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision/typesafe"
 	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
@@ -300,10 +299,10 @@ func typesafeSystemOneFake(t *testing.T) *httptest.Server {
 }
 
 // TestWithDecision_TypeSafeFake pins DP-18: with a real kit TypeSafe
-// Decider (over an httptest fake System One server answering every noul at
-// 0.95) wired through WithDecision, the obligations envelope's RankedBy is
-// "typesafe" and the shared decisions.jsonl recorder gets a row naming
-// provider "typesafe" — proving decide.Open's typesafe branch (DP-16) is
+// Decider (opened by decide.Open over an httptest fake System One server
+// answering every noul at 0.95) wired through WithDecision, the obligations
+// envelope's RankedBy is "typesafe" and the shared decisions.jsonl recorder
+// gets a row naming provider "typesafe" — proving decide.Open's typesafe branch (DP-16) is
 // not just constructible but actually reachable end to end through the
 // same Client.Obligations path TestClient_WithDecision_RankedBy already
 // pins for "llm"/mock.
@@ -345,14 +344,22 @@ func TestWithDecision_TypeSafeFake(t *testing.T) {
 	srv := typesafeSystemOneFake(t)
 	defer srv.Close()
 
-	ts, err := typesafe.NewTypeSafe(typesafe.TypeSafeConfig{APIKey: "test-key", BaseURL: srv.URL})
-	if err != nil {
-		t.Fatalf("NewTypeSafe: %v", err)
+	// Through decide.Open, as the daemon builds it: only internal/decide
+	// imports a provider adapter package (KS-9, ADR-073 decision 2).
+	t.Setenv("FATHOM_HOME", t.TempDir()) // no kill file from the machine running the test
+	t.Setenv(decide.KillEnv, "")
+	keyFile := filepath.Join(t.TempDir(), "typesafe.key")
+	if err := os.WriteFile(keyFile, []byte("test-key"), 0o600); err != nil {
+		t.Fatal(err)
 	}
-
 	var log bytes.Buffer
 	rec := decide.NewRecorder(&log, time.Now, "test-version")
-	c.WithDecision(ts, config.Decide{Provider: "typesafe", RankWithinTier: true, Sites: []string{decide.SiteObligationsRerank}}, rec)
+	cfg := config.Decide{Provider: "typesafe", BaseURL: srv.URL, APIKeyFile: keyFile, RankWithinTier: true, Sites: []string{decide.SiteObligationsRerank}}
+	ports, err := decide.Open(cfg, nil, "", rec, decide.WithUserConfig(""))
+	if err != nil {
+		t.Fatalf("decide.Open: %v", err)
+	}
+	c.WithDecision(ports.Decider, ports.Cfg, rec)
 
 	obl, err := c.Obligations(ctx, "svc", "pkg/foo.go", 10)
 	if err != nil {

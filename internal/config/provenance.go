@@ -343,6 +343,16 @@ func mergeDecideFields(d *Decide, raw map[string]any, source Source, path string
 		d.RerankTimeoutMS = int(v)
 		prov["decide.rerank_timeout_ms"] = SourceInfo{source, path}
 	}
+	if v, ok := numberField(raw, "max_asks_per_site_per_session"); ok {
+		// KS-10: the minimum across layers. The user layer sets the
+		// ceiling (it may raise the default); any later layer only lowers
+		// it, so a repository can never raise what the user allows.
+		if n := int(v); source == SourceUser || n < d.MaxAsks() {
+			d.MaxAsksPerSitePerSession = n
+			d.MaxAsksSource = source
+			prov["decide.max_asks_per_site_per_session"] = SourceInfo{source, path}
+		}
+	}
 	if v, ok := stringField(raw, "base_url"); ok {
 		d.BaseURL = v
 		prov["decide.base_url"] = SourceInfo{source, path}

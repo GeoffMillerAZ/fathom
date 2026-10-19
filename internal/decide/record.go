@@ -67,8 +67,8 @@ type decisionRow struct {
 	RecalibrationDue bool `json:"recalibration_due,omitempty"`
 	// KillSource (KS-6, additive, so no schema_version bump) names the
 	// source that closed an open port before this ask (a RecordError row
-	// whose error is a *KilledError): "file" or "enabled". Omitted
-	// otherwise.
+	// whose error is a *KilledError): "file" or "enabled", or a site's own
+	// "misses" (KS-12), "capped" or "deadline" (KS-10). Omitted otherwise.
 	KillSource string `json:"kill_source,omitempty"`
 	// ConsentLayer (KS-6, additive) is the layer whose consent opened the
 	// port the row's ask went through: "user", or "project" when the
@@ -104,6 +104,11 @@ type Recorder struct {
 	// consentLayer is the open port's Gate.ConsentLayer (Open sets it),
 	// written on every row as consent_layer.
 	consentLayer string
+	// windows is each site's last asks (KS-12, sitekill.go), seeded from
+	// the log's tail and moved by every row written; killed is each site
+	// a verdict turned off, for the Recorder's lifetime. In memory only.
+	windows map[string]*missWindow
+	killed  map[string]Gate
 }
 
 // setConsentLayer records the layer whose consent opened the port this
@@ -132,7 +137,8 @@ const SeedTailBytes = 1 << 20
 // remembers each site's last logged provider and resolved model, so the
 // first row after a restart is compared with what the log last said
 // (JF-10). Unparseable lines, failed-call rows and rows with no model are
-// skipped. A nil Recorder is a no-op.
+// skipped there; every parsed row also moves its site's miss window
+// (KS-12). A nil Recorder is a no-op.
 func (r *Recorder) Seed(rd io.Reader) {
 	if r == nil || rd == nil {
 		return
@@ -146,12 +152,17 @@ func (r *Recorder) Seed(rd io.Reader) {
 	}
 	for sc.Scan() {
 		var row struct {
-			Site     string `json:"site"`
-			Provider string `json:"provider"`
-			Model    string `json:"model"`
-			Error    string `json:"error"`
+			Site       string `json:"site"`
+			Provider   string `json:"provider"`
+			Model      string `json:"model"`
+			Error      string `json:"error"`
+			KillSource string `json:"kill_source"`
 		}
-		if json.Unmarshal(sc.Bytes(), &row) != nil || row.Site == "" || row.Model == "" || row.Error != "" {
+		if json.Unmarshal(sc.Bytes(), &row) != nil {
+			continue
+		}
+		r.observeLocked(row.Site, row.Error, row.KillSource)
+		if row.Site == "" || row.Model == "" || row.Error != "" {
 			continue
 		}
 		r.last[row.Site] = decision.ReadingKey{Site: row.Site, Provider: row.Provider, ResolvedModel: row.Model}
@@ -248,6 +259,7 @@ func (r *Recorder) Append(records []decision.Record) {
 // applied classification. Callers must hold r.mu.
 func (r *Recorder) writeRow(ts string, rec decision.Record, applied bool) {
 	due := r.recalibrationDue(rec)
+	r.observeLocked(rec.Site, "", "")
 	r.writeJSONLine(decisionRow{
 		SchemaVersion: decisionRecordSchemaVersion,
 		FathomVersion: r.fathomVersion,
@@ -314,6 +326,7 @@ func (r *Recorder) RecordError(site, provider, model string, questions int, late
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	r.observeLocked(site, err.Error(), killSourceOf(err))
 	r.writeJSONLine(decisionRow{
 		SchemaVersion: decisionRecordSchemaVersion,
 		FathomVersion: r.fathomVersion,

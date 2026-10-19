@@ -6,6 +6,7 @@ import (
 	"io"
 	"path/filepath"
 	"sort"
+	"strconv"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
 )
@@ -165,6 +166,13 @@ func printConfigText(w io.Writer, loaded config.Loaded, profile config.Profile, 
 	printDaemonRow(w, "auto_refresh", autoRefresh, loaded.Provenance["daemon.auto_refresh"], explain)
 	printDaemonRow(w, "default_profile", loaded.Config.Daemon.DefaultProfile, loaded.Provenance["daemon.default_profile"], explain)
 	printDaemonRow(w, "state_dir", loaded.Config.Daemon.StateDir, loaded.Provenance["daemon.state_dir"], explain)
+
+	// KS-10: the ask cap is the minimum across layers, so its row always
+	// names the layer whose value is in effect; shown when a layer sets it.
+	if si, ok := loaded.Provenance["decide.max_asks_per_site_per_session"]; ok {
+		fmt.Fprintln(w, "\ndecide:")
+		printDaemonRow(w, "max_asks_per_site_per_session", strconv.Itoa(loaded.Config.Decide.MaxAsks()), si, true)
+	}
 }
 
 // SourceDefaultLabel is what --explain prints for a key no layer set.

@@ -524,6 +524,22 @@ func TestPortGatePrecedenceNamesTheFirstClosingSource(t *testing.T) {
 	if g := decide.Check(cfg, decide.SiteCompilePrefilter); g.Closed {
 		t.Fatalf("every source peeled, Check = %+v, want open", g)
 	}
+	// KS-12: the site's miss kill comes after deny_sites and before sites.
+	killedRec := decide.NewRecorder(nil, time.Now, "test")
+	killedRec.Seed(strings.NewReader(logRows(decide.SiteCompilePrefilter, 89, 11)))
+	if g := decide.CheckSite(cfg, decide.SiteCompilePrefilter, killedRec); !g.Closed || g.Source != decide.KillSourceMisses || g.Layer != "log" || g.Reason == "" {
+		t.Errorf("CheckSite(killed site) = %+v, want closed by misses at log, named", g)
+	}
+	denied := cfg
+	denied.DenySites = []string{decide.SiteCompilePrefilter}
+	if g := decide.CheckSite(denied, decide.SiteCompilePrefilter, killedRec); g.Source != decide.KillSourceDeny {
+		t.Errorf("CheckSite(denied and killed) = %+v, want deny_sites first", g)
+	}
+	unlisted := cfg
+	unlisted.Sites = nil
+	if g := decide.CheckSite(unlisted, decide.SiteCompilePrefilter, killedRec); g.Source != decide.KillSourceMisses {
+		t.Errorf("CheckSite(killed and not in sites) = %+v, want the miss kill before sites", g)
+	}
 	if g := decide.Check(cfg, decide.SiteAsk); !g.Closed || g.Source != decide.KillSourceSites {
 		t.Errorf("Check(ask) = %+v, want closed by sites (an opt-in site the repository did not name)", g)
 	}

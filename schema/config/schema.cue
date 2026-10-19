@@ -212,6 +212,13 @@ package config
 	// non-hook use, where nothing is racing a client-side deadline.
 	rerank_timeout_ms?: int & >=100 & <=60000
 
+	// max_asks_per_site_per_session (KS-10, ADR-073 decision 7; default
+	// 200) caps how many times one site asks the decision port in one
+	// session; past it the site answers on its deterministic path with one
+	// `capped` line. The minimum across layers: a repository's value may
+	// lower the user's (or the default) and never raise it.
+	max_asks_per_site_per_session?: int & >=1 & <=100000
+
 	// base_url overrides a remote provider's API origin: provider
 	// "typesafe" (default "https://api.typesafe.ai", or
 	// "https://openrouter.ai" with transport "openrouter") or "openai"

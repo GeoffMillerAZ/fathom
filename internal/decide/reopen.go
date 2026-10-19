@@ -88,7 +88,7 @@ type reopening struct {
 func (v *reopening) Name() string { return v.r.cfg.Provider }
 
 func (v *reopening) Decide(ctx context.Context, req decision.Request) (decision.Response, error) {
-	if g := v.r.live.check(ScopeFrom(ctx)); g.Closed {
+	if g := v.r.live.admit(ctx); g.Closed {
 		return decision.Response{Provider: v.Name()}, &KilledError{Gate: g}
 	}
 	d, err := v.decider()

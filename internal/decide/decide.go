@@ -167,7 +167,7 @@ func IsOptInSite(site string) bool {
 // it, never from any layer's sites (config.Load drops it there). It is
 // portGate's site half (siteGate), so the closing source has one name.
 func SiteAllowed(cfg config.Decide, site string) bool {
-	return !siteGate(cfg, site).Closed
+	return !siteGate(cfg, site, Gate{}).Closed
 }
 
 // SiteReadoutMode is readouts' readout_mode decision (ADR-071 decision 8):
@@ -242,7 +242,7 @@ func Open(cfg config.Decide, lane func(profile string) (llmclient.LLMClient, err
 		// consent are settled for the process.
 		if isLiveKill(gate.Source) {
 			if settled := portGate(gateInput{env: env, cfg: cfg}); !settled.Closed {
-				live := newLiveGate(cfg, env, o)
+				live := newLiveGate(cfg, env, o, rec)
 				r := &reopener{cfg: cfg, lane: lane, model: model, rec: rec, o: o, live: live, consentLayer: settled.ConsentLayer}
 				return &Ports{Decider: &reopening{r: r}, Cfg: cfg, Recorder: rec, Gate: gate, live: live, reopen: r}, nil
 			}
@@ -262,7 +262,8 @@ func Open(cfg config.Decide, lane func(profile string) (llmclient.LLMClient, err
 		return nil, fmt.Errorf("decide: composing the degrade fallback: %w", err)
 	}
 	rec.setConsentLayer(gate.ConsentLayer)
-	live := newLiveGate(cfg, env, o)
+	rec.judgeSites() // KS-12: the seeded rows' verdicts, at Open
+	live := newLiveGate(cfg, env, o, rec)
 	return &Ports{Decider: killable{inner: d, gate: live}, Cfg: cfg, Recorder: rec, Adapter: adapter, Gate: gate, degrade: obs, live: live}, nil
 }
 

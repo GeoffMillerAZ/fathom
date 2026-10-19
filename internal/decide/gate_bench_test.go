@@ -19,7 +19,7 @@ func BenchmarkLiveGateCheck(b *testing.B) {
 	if err := os.WriteFile(user, []byte("[decide]\nprovider = \"typesafe\"\n"), 0o600); err != nil {
 		b.Fatal(err)
 	}
-	g := newLiveGate(config.Decide{Provider: "typesafe"}, "", resolveOptions([]Option{WithUserConfig(user)}))
+	g := newLiveGate(config.Decide{Provider: "typesafe"}, "", resolveOptions([]Option{WithUserConfig(user)}), nil)
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

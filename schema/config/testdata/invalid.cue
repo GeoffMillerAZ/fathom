@@ -235,6 +235,14 @@ package config
 // 	decide: deny_sites: ["made_up_site"]
 // }
 
+// The [decide] ask cap (KS-10) is a whole number from 1 to 100000:
+// badMaxAsksZero: #Config & {
+// 	decide: max_asks_per_site_per_session: 0
+// }
+// badMaxAsksText: #Config & {
+// 	decide: max_asks_per_site_per_session: "many"
+// }
+
 // The [readouts] keys (RO-15): the mode is one of off, observe, lean, rich;
 // roots are non-empty strings; a rule's table is closed:
 // bad37: #Config & {

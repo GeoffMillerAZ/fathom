@@ -193,6 +193,14 @@ bad35: #Config & {
 bad36: #Config & {
 	decide: deny_sites: ["made_up_site"]
 }`},
+		{"[decide] max_asks_per_site_per_session below 1 (KS-10)", `
+badMaxAsksZero: #Config & {
+	decide: max_asks_per_site_per_session: 0
+}`},
+		{"[decide] max_asks_per_site_per_session is not a number (KS-10)", `
+badMaxAsksText: #Config & {
+	decide: max_asks_per_site_per_session: "many"
+}`},
 		{"[console] conserve_max_files below 1", `
 bad17: #Config & {
 	console: conserve_max_files: 0
