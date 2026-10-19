@@ -380,10 +380,10 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// Protocol Buffers
 	p.exts[".proto"] = extractor.NewProtoExtractor()
 
-	// GraphQL
-	gql := extractor.NewGraphQLExtractor()
-	p.exts[".graphql"] = gql
-	p.exts[".gql"] = gql
+	// GraphQL (.graphql, .gql) is not wired here: lang-parity read the graphql tags dialect
+	// (internal/extractor/dialects/graphql/) MERGE against graphqlextract.go on octokit/graphql-schema
+	// and gqlgen (docs/bench/readings/lang/parity/graphql.json; LB-Q-graphql), the incumbent was deleted,
+	// and the manifest loop below claims both extensions.
 
 	// TOML
 	p.exts[".toml"] = extractor.NewTOMLExtractor()
