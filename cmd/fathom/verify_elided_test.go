@@ -248,3 +248,35 @@ func TestVerifyWithCaller_FollowUpsVerifyEachRowOnce(t *testing.T) {
 		t.Errorf("verify_plan calls = %d, want at most %d (one per answer that fits)", calls, want)
 	}
 }
+
+// TestStopHookSkipsFollowUpAfterEmptyPartial (O1304): a stage partial that
+// verified no row ends the Stop hook's verify after one call, while the gate
+// path still follows up.
+func TestStopHookSkipsFollowUpAfterEmptyPartial(t *testing.T) {
+	md := []byte("# p\n\n- [x] one {id: A-1, symbol: One}\n- [x] two {id: A-2, symbol: Two}\n")
+	plan := verify.ParseMarkdownPlan("svc", md)
+	calls := 0
+	call := func([]byte) (httpVerifyResult, error) {
+		calls++
+		var hvr httpVerifyResult
+		hvr.Partial = "the call graph for this index state is still building"
+		hvr.Elided = &struct {
+			Count int `json:"count"`
+			Of    int `json:"of"`
+		}{Count: 2, Of: 2}
+		return hvr, nil
+	}
+	if _, err := verifyWithCallerOpts(call, md, plan, true); err != nil {
+		t.Fatal(err)
+	}
+	if calls != 1 {
+		t.Fatalf("stop-hook verify made %d calls, want 1", calls)
+	}
+	calls = 0
+	if _, err := verifyWithCaller(call, md, plan); err != nil {
+		t.Fatal(err)
+	}
+	if calls < 2 {
+		t.Fatalf("gate verify made %d calls after an empty partial, want its follow-ups", calls)
+	}
+}

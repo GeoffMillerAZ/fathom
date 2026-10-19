@@ -73,6 +73,7 @@ Release impact: minor
 - A restarted daemon or a repeat `fathom ingest` reads only the files whose stats changed: the stat gate's prior record is the store's `file_stats`, whose rows carry the extractor epoch they were written under, so an epoch bump still reads every file (RT-180).
 
 ### Fixed
+- The Stop hook's verify ends after one daemon call when the first answer is a stage partial that verified no row, instead of sending elision follow-ups that can only return the same partial.
 - `fathom doctor` and `fathom daemon status` name the right reload step for a drifted daemon plist: `fathom daemon install --reconcile` run from your own terminal reloads the agent itself, and the `launchctl bootout` and `launchctl bootstrap` lines are only what an agent shell prints instead (O1252).
 - `fathom certify suggest`, `fathom assess` and `fathom plans context --preflight --score` ask the decision port from their own site (`certify_suggest`, `assess`, `preflight`), so `[decide] max_asks_per_site_per_session` and the per-site miss kill cover them (O1246).
 - The edit hook's obligations re-rank asks for its caller's ceiling less the time its joins took, never its own `rerank_timeout_ms` past that ceiling; joins that spent the ceiling ask nothing, and the call's `rank_note` names `kill_source deadline` (KS-10).
@@ -91,6 +92,7 @@ Release impact: minor
 - `fathom tests select` says when the index it reads holds another commit than HEAD, in one line and in `--json` under `index`, instead of printing an empty selection with no reason; the wave guide's worker step names the scratch ingest to pass with `--store` (O1199).
 - The observatory Config panel reports a repository's platform-module bindings from `.fathom/modules.cue`, the file `fathom init` writes and the server reads; it checked `.fathom/bindings.cue`, which nothing writes, so it always reported no bindings.
 - The daemon's ingest (the `ingest` MCP tool and auto-refresh) now refreshes a service's certificates the way `fathom ingest` does: it rescans `// certifies:` markers, then compiles or sweeps, so a certificate whose test moved goes stale without a CLI verb. A service that declares no certificate pays one declaration read.
+- `task stranger-check` and `fathom doctor --stranger` run `fathom init` on a stranger's repository, the fauxtown fixture fleet as its own git repository, instead of the whole copied tree, whose first index outlasted init's wait on a loaded host and failed the gate with nothing wrong; the copy still builds standalone, doctor must read `binary_fresh` as PASS against it, and the first `find_symbol` must find the stranger's code. The check fell from 392 s to 95 s on one host (O1339).
 
 ### Security
 - Requests to a configured decision provider now carry only the fields each site declares, redact secret-shaped strings (counted as the decision row's `redactions`), honour the new `[decide] exclude` path globs (every layer's union), refuse a question that names a security property, and can be printed without sending (`FATHOM_DECIDE_PLAN_ONLY=1`); provider `none` is unchanged.
