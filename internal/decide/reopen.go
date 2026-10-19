@@ -37,6 +37,7 @@ type reopener struct {
 	o            openOptions
 	live         *liveGate
 	consentLayer string
+	plan         *requestPlanner
 
 	once    sync.Once
 	adapter decision.Decider
@@ -111,7 +112,7 @@ func (v *reopening) decider() (decision.Decider, error) {
 	if v.gate != nil {
 		adapter = v.gate(adapter)
 	}
-	d, err := compose(v.r.cfg, adapter, deg)
+	d, err := compose(v.r.cfg, adapter, deg, v.r.plan)
 	if err != nil {
 		return nil, &notOpenedError{err: fmt.Errorf("composing the degrade fallback: %w", err)}
 	}

@@ -171,7 +171,10 @@ func (d *degrader) observe(scope Scope, r decision.FallbackReport) {
 func degradeClass(err error) string {
 	var tse *typesafe.TypeSafeError
 	var oae *openai.OpenAIError
+	var pre *planRefusedError
 	switch {
+	case errors.As(err, &pre):
+		return pre.class // the request plan sent nothing (requestplan.go)
 	case errors.Is(err, decision.ErrDeclined):
 		return "declined" // the provider refused a question (Response.Declined)
 	case errors.Is(err, decision.ErrNoProvider):
@@ -248,10 +251,16 @@ func (d degrading) Decide(ctx context.Context, req decision.Request) (decision.R
 func (d degrading) Capabilities() decision.Capabilities { return decision.CapabilitiesOf(d.fb) }
 
 // compose builds the degrading fallback over leaf (the provider adapter,
-// possibly gated) from cfg's policy.
-func compose(cfg config.Decide, leaf decision.Decider, obs *degrader) (decision.Decider, error) {
+// possibly gated) from cfg's policy, with plan's request plan in front of
+// leaf (I61, requestplan.go): every port that reaches a provider is
+// composed here, so every ask leaves through the plan. A nil plan is a
+// fresh one over cfg (a Ports built in code), never none.
+func compose(cfg config.Decide, leaf decision.Decider, obs *degrader, plan *requestPlanner) (decision.Decider, error) {
+	if plan == nil {
+		plan = newRequestPlanner(cfg, nil, nil)
+	}
 	c, err := decision.ComposeFromConfig(degradePolicy(cfg), decision.Registry{
-		Deciders: map[string]decision.Decider{cfg.Provider: leaf, noneLeaf: decision.None{}},
+		Deciders: map[string]decision.Decider{cfg.Provider: plan.guard(leaf), noneLeaf: decision.None{}},
 		// The kit requires an Observe hook; the line is written by
 		// degrading.Decide, which knows who asked.
 		FallbackObservers: map[string]func(decision.FallbackReport){degradeObserver: func(decision.FallbackReport) {}},
@@ -284,7 +293,7 @@ func (p *Ports) Gated(gate func(decision.Decider) decision.Decider) decision.Dec
 		}
 		return p.Decider
 	}
-	d, err := compose(p.Cfg, gate(p.Adapter), p.degrade)
+	d, err := compose(p.Cfg, gate(p.Adapter), p.degrade, p.plan)
 	if err != nil {
 		// Unreachable: the same policy composed at Open. Never fail open
 		// to the ungated adapter.

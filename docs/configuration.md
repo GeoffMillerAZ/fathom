@@ -113,6 +113,7 @@ an array of tables, and `tenancy.**` for every key under `[tenancy]`.
 | `decide.deny_sites` | user-only | the user's own consent to or kill of the decision port (ADR-073, I66): refuses a site whatever any list says |
 | `decide.enabled` | user-only | the user's own consent to or kill of the decision port (ADR-073, I66): false closes the port, a running daemon included |
 | `decide.endpoint` | behaviour | base_url's older name, under the same key-host rule |
+| `decide.exclude` | behaviour | privacy path globs whose spans never leave for a decision provider; every layer's globs union, so a repository adds and never removes the user's (I61) |
 | `decide.max_asks_per_site_per_session` | behaviour | a cap, the minimum across layers: a repository may lower the user's and never raise it |
 | `decide.model` | behaviour | chooses a model |
 | `decide.profile` | behaviour | chooses a profile by name |
@@ -655,6 +656,7 @@ rank_within_tier  = false    # obligations re-orders rules only inside their gov
 rerank_timeout_ms = 1500     # obligations re-rank's own decider budget, in ms (100-60000)
 max_asks_per_site_per_session = 200  # asks one site may make in one session (1-100000); the minimum across layers
 sites = ["compile_prefilter", "obligations_rerank", "certify_suggest", "assess", "preflight"]  # the egress opt-in — this is the default (route is off: add "route" to turn it on)
+exclude = []                 # path globs whose spans never leave for a provider; every layer's globs union
 ```
 
 `max_asks_per_site_per_session` (ADR-073 decision 7) counts asks in process,
@@ -670,6 +672,24 @@ refusal, an error) turns off for the process's lifetime with one `killed` line
 then from the rows the process writes, and `fathom doctor`'s
 `decision_provider` row names it. It never reopens by itself: once the cause is
 fixed, move `decisions.jsonl` aside and restart.
+
+Every ask a configured provider answers leaves through one request plan
+(I61); provider `none` builds none and sends nothing. The plan keeps only the
+request fields the asking site declares (its state and question text; no site
+sends images), redacts secret-shaped strings (llmsec's extended catalog: AWS
+keys, PEM private keys, tokens and the like) and counts them in the decision
+row's `redactions`. `exclude` takes repo-relative path globs (`**` crosses
+directories): an ask whose request names a matching path, or a trailing part
+of one, so `*.pem` matches at any depth, sends nothing and answers on its
+deterministic path with one `excluded` line. Every layer's globs union, so a
+repository adds globs and never removes yours, and `fathom config` shows the
+union. A site or question that names a security property (authorization,
+injection, encryption and the like) is never asked: it answers on its
+deterministic path with one `security property` line (I62). With
+`FATHOM_DECIDE_PLAN_ONLY=1` in the environment when the port opens, every ask
+prints its plan, the request exactly as it would go to the provider, as one
+JSON line on stderr, sends nothing, and answers on its deterministic path with
+one `plan only` line.
 
 `rank_within_tier` defaults to **false** (amended 2026-09-23, ADR-042): the
 decision-port A/B measured the LLM re-rank net negative on governed edits once

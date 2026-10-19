@@ -11,6 +11,7 @@ package decide
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"slices"
 	"strings"
@@ -48,6 +49,9 @@ type Ports struct {
 	// reopen finishes a port a live kill held closed at Open on the first
 	// ask after the kill lifts (O1132); nil otherwise.
 	reopen *reopener
+	// plan is the request plan every composed port asks through (I61);
+	// nil for provider none.
+	plan *requestPlanner
 }
 
 // Site name constants for [decide] sites (ADR-044 decision 8, design doc
@@ -235,6 +239,13 @@ func Open(cfg config.Decide, lane func(profile string) (llmclient.LLMClient, err
 	case "", "none":
 		return &Ports{Decider: decision.None{}, Cfg: cfg, Recorder: rec, Gate: gate}, nil
 	}
+	// I61: the request plan every ask of this port leaves through
+	// (compose), plan-only when PlanOnlyEnv is exactly "1".
+	var planOnly io.Writer
+	if os.Getenv(PlanOnlyEnv) == "1" {
+		planOnly = o.disclose
+	}
+	plan := newRequestPlanner(cfg, rec, planOnly)
 	if gate.Closed {
 		// O1132: a live kill (the kill file, the user's enabled) is
 		// re-checked before each ask, so a port it alone closed reopens on
@@ -243,8 +254,8 @@ func Open(cfg config.Decide, lane func(profile string) (llmclient.LLMClient, err
 		if isLiveKill(gate.Source) {
 			if settled := portGate(gateInput{env: env, cfg: cfg}); !settled.Closed {
 				live := newLiveGate(cfg, env, o, rec)
-				r := &reopener{cfg: cfg, lane: lane, model: model, rec: rec, o: o, live: live, consentLayer: settled.ConsentLayer}
-				return &Ports{Decider: &reopening{r: r}, Cfg: cfg, Recorder: rec, Gate: gate, live: live, reopen: r}, nil
+				r := &reopener{cfg: cfg, lane: lane, model: model, rec: rec, o: o, live: live, consentLayer: settled.ConsentLayer, plan: plan}
+				return &Ports{Decider: &reopening{r: r}, Cfg: cfg, Recorder: rec, Gate: gate, live: live, reopen: r, plan: plan}, nil
 			}
 		}
 		return &Ports{Decider: decision.None{}, Cfg: cfg, Recorder: rec, Gate: gate}, nil
@@ -257,14 +268,14 @@ func Open(cfg config.Decide, lane func(profile string) (llmclient.LLMClient, err
 	// derived from [decide] (degrade.go): a failed call writes one line and
 	// leaves the site on its deterministic path.
 	obs := &degrader{w: o.disclose}
-	d, err := compose(cfg, adapter, obs)
+	d, err := compose(cfg, adapter, obs, plan)
 	if err != nil {
 		return nil, fmt.Errorf("decide: composing the degrade fallback: %w", err)
 	}
 	rec.setConsentLayer(gate.ConsentLayer)
 	rec.judgeSites() // KS-12: the seeded rows' verdicts, at Open
 	live := newLiveGate(cfg, env, o, rec)
-	return &Ports{Decider: killable{inner: d, gate: live}, Cfg: cfg, Recorder: rec, Adapter: adapter, Gate: gate, degrade: obs, live: live}, nil
+	return &Ports{Decider: killable{inner: d, gate: live}, Cfg: cfg, Recorder: rec, Adapter: adapter, Gate: gate, degrade: obs, live: live, plan: plan}, nil
 }
 
 // buildAdapter builds cfg's provider adapter: the llm lane (its model from

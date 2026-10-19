@@ -243,6 +243,14 @@ package config
 // 	decide: max_asks_per_site_per_session: "many"
 // }
 
+// The [decide] exclude globs (I61) are a list of non-empty strings:
+// badExcludeEmpty: #Config & {
+// 	decide: exclude: [""]
+// }
+// badExcludeText: #Config & {
+// 	decide: exclude: "secrets/**"
+// }
+
 // The [readouts] keys (RO-15): the mode is one of off, observe, lean, rich;
 // roots are non-empty strings; a rule's table is closed:
 // bad37: #Config & {

@@ -201,6 +201,14 @@ badMaxAsksZero: #Config & {
 badMaxAsksText: #Config & {
 	decide: max_asks_per_site_per_session: "many"
 }`},
+		{"[decide] exclude holds an empty glob (I61)", `
+badExcludeEmpty: #Config & {
+	decide: exclude: [""]
+}`},
+		{"[decide] exclude is not a list (I61)", `
+badExcludeText: #Config & {
+	decide: exclude: "secrets/**"
+}`},
 		{"[console] conserve_max_files below 1", `
 bad17: #Config & {
 	console: conserve_max_files: 0
