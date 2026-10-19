@@ -132,6 +132,10 @@ var extClassMap = map[string]classification{
 	".rs":  {core.KindRustFn, "rust"},
 	".cs":  {core.KindCSharpClass, "cs"},
 
+	// Unity assembly definitions declare build facts, not C# source or calls.
+	// Assembly-reference assets and serialized .meta files are not claimed.
+	".asmdef": {core.SourceKind("UnityAssemblyDefinition"), "unity-asmdef"},
+
 	// LB-Q-ruby: Ruby's other source spellings — Rake task files, Rack config
 	// (config.ru) and the Rakefile basename. Gemfile, *.gemspec, Podfile and
 	// *.podspec are the Ruby DSL manifests' (LB-Q-gemfile-podfile), not claimed here.
