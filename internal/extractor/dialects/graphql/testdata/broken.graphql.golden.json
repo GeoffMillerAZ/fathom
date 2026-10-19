@@ -1,0 +1,58 @@
+{
+  "symbols": [
+    {
+      "name": "Before",
+      "kind": "GraphQLType",
+      "package": "broken",
+      "line": 1,
+      "end_line": 3,
+      "signature": "type Before",
+      "tier": "verified"
+    },
+    {
+      "name": "Before.ok",
+      "kind": "GraphQLField",
+      "package": "broken",
+      "line": 2,
+      "end_line": 2,
+      "signature": "ok: Int",
+      "tier": "verified"
+    },
+    {
+      "name": "Broken",
+      "kind": "GraphQLType",
+      "package": "broken",
+      "line": 5,
+      "end_line": 8,
+      "signature": "type Broken",
+      "tier": "verified"
+    },
+    {
+      "name": "Broken.bad",
+      "kind": "GraphQLField",
+      "package": "broken",
+      "line": 6,
+      "end_line": 7,
+      "signature": "bad: [Int",
+      "tier": "verified"
+    },
+    {
+      "name": "After",
+      "kind": "GraphQLType",
+      "package": "broken",
+      "line": 10,
+      "end_line": 12,
+      "signature": "type After",
+      "tier": "verified"
+    },
+    {
+      "name": "After.ok",
+      "kind": "GraphQLField",
+      "package": "broken",
+      "line": 11,
+      "end_line": 11,
+      "signature": "ok: Int",
+      "tier": "verified"
+    }
+  ]
+}

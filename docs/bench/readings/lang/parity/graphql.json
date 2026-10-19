@@ -1,0 +1,59 @@
+{
+  "dialect": "graphql",
+  "incumbent": "graphqlextract",
+  "target_level": "L3",
+  "incumbent_level_met": "none",
+  "dialect_level_met": "L2",
+  "incumbent_grade": {
+    "L1": "unmet",
+    "L2": "unmet",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "dialect_grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "metrics": [
+    {
+      "metric": "sym_recall",
+      "incumbent": 0.8725,
+      "dialect": 1,
+      "delta": 0.1275,
+      "gated": true
+    },
+    {
+      "metric": "sym_precision",
+      "incumbent": 1,
+      "dialect": 1,
+      "delta": 0,
+      "gated": true
+    },
+    {
+      "metric": "ref_recall",
+      "incumbent": 0,
+      "dialect": 1,
+      "delta": 1,
+      "gated": true
+    },
+    {
+      "metric": "ref_precision",
+      "incumbent": null,
+      "dialect": 1,
+      "delta": null,
+      "gated": true
+    }
+  ],
+  "kinds_lost": [],
+  "kinds_gained": [
+    "GraphQLDirective",
+    "GraphQLEnumValue",
+    "GraphQLExtension",
+    "GraphQLFragment",
+    "GraphQLOperation"
+  ],
+  "merge": true,
+  "reasons": []
+}

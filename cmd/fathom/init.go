@@ -937,11 +937,11 @@ func resolveHooksScope(flagValue string) (string, error) {
 // unreadable/unparsable — normal, not a finding; the caller then wires
 // everything at project scope exactly as before this function existed.
 func userScopeHookKeys() (map[hookSpecKey]bool, bool) {
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" {
+	p := claudeUserSettingsFile()
+	if p == "" {
 		return nil, false
 	}
-	data, err := os.ReadFile(filepath.Join(home, ".claude", "settings.json"))
+	data, err := os.ReadFile(p)
 	if err != nil {
 		return nil, false
 	}

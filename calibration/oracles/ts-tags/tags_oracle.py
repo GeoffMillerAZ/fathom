@@ -38,7 +38,7 @@ import sys
 import tree_sitter
 
 LANGS = {"bash": ("tree_sitter_bash", "language"), "javascript": ("tree_sitter_javascript", "language"),
-         "lua": ("tree_sitter_lua", "language"), "ruby": ("tree_sitter_ruby", "language"),
+         "lua": ("tree_sitter_lua", "language"), "luau": ("tree_sitter_luau", "language"), "ruby": ("tree_sitter_ruby", "language"),
          "scala": ("tree_sitter_scala", "language")}
 
 

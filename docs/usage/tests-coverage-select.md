@@ -7,7 +7,7 @@ fathom tests coverage --profile [layer=]<file> [--profile <more>...] \
   [--foreign <format>=<file>...] \
   [--service <id>] [--store <path>] [--diff <ref>] [--mutation <report>] [--json]
 
-fathom tests select --since <ref> [--safe] [--profile [layer=]<file>...] \
+fathom tests select --since <ref> [--safe [--stdlib-dispatch]] [--profile [layer=]<file>...] \
   [--service <id>] [--store <path>] [--json]
 ```
 
@@ -33,7 +33,14 @@ with `--foreign`.
 TQ-16w, SR-50): the minimal set of tests that re-proves every LIVE certificate the diff
 touched (a greedy set cover, deterministic tie-break), what it skipped, the touched
 certificates no live test certifies, and its `go test` commands. `--safe` adds every test
-that statically reaches a changed symbol. A changed file a `//go:embed` directive embeds (a
+that statically reaches a changed symbol, except a test whose reach goes only through a dispatch
+into error's `Error`, `fmt.Stringer`'s `String` or `fmt.GoStringer`'s `GoString`: every
+`err.Error()` call reaches every constructed error type's `Error`, so one edited `Error` method
+selected most of its package. Those tests are counted and the method named in one line (and in
+`--json` under `stdlib_dispatch_only`), and `--stdlib-dispatch` selects them. When the index the
+verb reads holds another commit than HEAD, it says which in one line (and in `--json` under
+`index`): the selection reads that index, so a branch needs an ingest of its HEAD passed with
+`--store`. A changed file a `//go:embed` directive embeds (a
 shipped `SKILL.md`, a template) counts as a change to the embedding variable and to every
 function that reads it, so the tests reaching those functions are selected (TQ-21). It reports the CI time saved, from each selected
 and skipped test's last attested run duration, and appends it to
@@ -63,7 +70,8 @@ measured predicted catch-rate — never a fabricated one.
 | Flag (`tests select`) | Default | Description |
 |---|---|---|
 | `--since` | (required) | git ref: rank tests for the diff since this ref |
-| `--safe` | `false` | also select every test that statically reaches a changed symbol, beside the certifying-first set |
+| `--safe` | `false` | also select every test that statically reaches a changed symbol, beside the certifying-first set, except one that reaches it only through a dispatch into `error.Error`, `fmt.Stringer.String` or `fmt.GoStringer.GoString` |
+| `--stdlib-dispatch` | `false` | with `--safe`, also select the tests that reach a changed symbol only through such a dispatch |
 | `--profile` | (none, repeatable) | Go cover profile(s); enables the coverage ranking tie-break |
 | `--service` | resolved from cwd | Service ID |
 | `--store` | `<repo>/workspace/db/fathom.sqlite` | store path |

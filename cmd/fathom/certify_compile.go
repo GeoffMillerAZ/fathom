@@ -5,8 +5,9 @@ package main
 // (vision 33 / ADR-043 stage 1, TC-6's own wiring instruction): the
 // certifications layer recompiles whenever declarations or runs might
 // have moved, hash-gated so a repeat ingest against an unchanged
-// declaration/run/watermark set is a cheap no-op rather than a full
-// re-derive.
+// declaration/watermark set skips the full re-derive and runs
+// internal/certify.SweepCertifications instead (TC-8), which re-checks
+// every existing certificate against the index and runs just ingested.
 import (
 	"context"
 	"fmt"
@@ -17,9 +18,26 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
-// runCertifyCompile hash-gates and, when needed, runs
-// certify.CompileCertifications for service against st, stamped with
-// watermark. Prints a one-line summary to stdout unless quiet is true (the
+// certifyStep is what the post-ingest certifications pass does for one
+// service: nothing, a full compile, or a sweep of the certificates the
+// layer already holds.
+type certifyStep int
+
+const (
+	certifyNothing certifyStep = iota // nothing declared: the count read is the whole cost
+	certifyCompile                    // declarations or watermark moved: re-derive the layer
+	certifySweep                      // compiled at this watermark: re-check what exists
+)
+
+// runCertifyCompile picks the step for service (certifyNextStep) and runs
+// it against st, stamped with watermark: certify.CompileCertifications
+// when the declarations or the watermark moved, certify.SweepCertifications
+// when the layer is already compiled at this watermark, so a test that
+// moved or went away, or a new attested run picked up from `[tests]
+// results_dir` at the same commit, still reaches the certificates. Both
+// run synchronously inside the caller's ingest; the sweep's git reads stop
+// when ctx ends. Prints a
+// one-line compile summary to stdout unless quiet is true (the
 // JSON-output callers render their own shape instead). Errors are
 // surfaced but never abort the caller's own ingest — certification
 // compilation is a best-effort enrichment pass over data the ingest
@@ -30,12 +48,23 @@ import (
 // the real system git binary (certify.ExecGit) — the same repo root the
 // caller is already ingesting from.
 func runCertifyCompile(ctx context.Context, st store.Store, service, watermark, repoDir string, stdout, stderr io.Writer, quiet bool) {
-	needed, err := certifyNeedsCompile(ctx, st, service, watermark)
+	step, err := certifyNextStep(ctx, st, service, watermark)
 	if err != nil {
 		fmt.Fprintf(stderr, "warning: certify: hash-gate check: %v\n", err)
 		return
 	}
-	if !needed {
+	switch step {
+	case certifyNothing:
+		return
+	case certifySweep:
+		report, err := certify.SweepCertifications(ctx, st, service, repoDir, certify.ExecGitContext(ctx))
+		if err != nil {
+			fmt.Fprintf(stderr, "warning: certify: sweep: %v\n", err)
+			return
+		}
+		for _, w := range report.Skipped {
+			fmt.Fprintf(stderr, "warning: certify: %s\n", w)
+		}
 		return
 	}
 	report, err := certify.CompileCertifications(ctx, st, service, watermark, time.Now(), repoDir, certify.ExecGit)
@@ -54,32 +83,27 @@ func runCertifyCompile(ctx context.Context, st store.Store, service, watermark, 
 	}
 }
 
-// certifyNeedsCompile reports whether the certifications layer needs
-// recompiling: false when nothing is declared at all (a compile would be
-// a pure no-op), or when the layer has already been compiled at least
-// once, every existing claim already carries the CURRENT watermark, and
-// the declared-entry count has changed neither up nor down since — the
-// cheap proxy for "the declarations, runs and watermark are unchanged"
-// the wiring instruction asks for.
+// certifyNextStep reports what the certifications layer needs:
+// certifyNothing when nothing is declared at all (a compile would be a
+// pure no-op, and no claim is read); certifySweep when the layer has
+// already been compiled at least once, every existing claim already
+// carries the CURRENT watermark, and the declared-entry count has changed
+// neither up nor down since — the cheap proxy for "the declarations and
+// watermark are unchanged"; certifyCompile otherwise.
 //
-// Known gap (documented, not silently swallowed): a NEW attested run
-// ingested at the SAME watermark (no commit between two `tests ingest`
-// calls, e.g. a CI rerun) does not by itself change the declared-entry
-// count, so this gate can skip a recompile that would have picked up the
-// fresh run. `fathom tests ingest` always calls CompileCertifications
-// unconditionally on its own runs argument for exactly this reason — see
-// cmdTestsIngest — so the gap only affects a plain `fathom ingest`'s
-// `[tests] results_dir` pickup between two ingests of the same commit.
-// SweepCertifications (TC-8) closes this without a full recompile once a
-// caller wires it in; not required by this wiring instruction.
-func certifyNeedsCompile(ctx context.Context, st store.Store, service, watermark string) (bool, error) {
+// A NEW attested run ingested at the SAME watermark (no commit between
+// two ingests, e.g. a CI rerun picked up from `[tests] results_dir`) does
+// not change the declared-entry count, so this gate skips the recompile;
+// the sweep it hands over to re-derives each certificate's state from the
+// runs now in the store, so the fresh run is not missed.
+func certifyNextStep(ctx context.Context, st store.Store, service, watermark string) (certifyStep, error) {
 	decls, err := st.CertifyDeclarationsForService(ctx, service)
 	if err != nil {
-		return false, err
+		return certifyNothing, err
 	}
 	suites, err := st.TestSuiteStatuses(ctx, service)
 	if err != nil {
-		return false, err
+		return certifyNothing, err
 	}
 	declared := len(decls)
 	for _, s := range suites {
@@ -88,23 +112,23 @@ func certifyNeedsCompile(ctx context.Context, st store.Store, service, watermark
 		}
 	}
 	if declared == 0 {
-		return false, nil
+		return certifyNothing, nil
 	}
 
 	existing, err := st.ClaimsForService(ctx, service, certify.Layer)
 	if err != nil {
-		return false, err
+		return certifyNothing, err
 	}
 	if len(existing) == 0 {
-		return true, nil
+		return certifyCompile, nil
 	}
 	for _, c := range existing {
 		if c.CompiledAtWatermark != watermark {
-			return true, nil
+			return certifyCompile, nil
 		}
 	}
 	if len(existing) != len(decls) {
-		return true, nil
+		return certifyCompile, nil
 	}
-	return false, nil
+	return certifySweep, nil
 }

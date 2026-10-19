@@ -1,0 +1,12 @@
+type Before {
+  ok: Int
+}
+
+type Broken {
+  bad: [Int
+  next: String
+}
+
+type After {
+  ok: Int
+}

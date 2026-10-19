@@ -308,6 +308,8 @@ func TestFileResolveLangsFromManifests(t *testing.T) {
 	// Import-Module, using module and a manifest's modules (LB-Q-powershell).
 	want["bash"], want["powershell"] = "file-symbol", "file-symbol"
 
+	want["lua"] = "file-symbol" // LB-Q-lua (wave lang1): require with a literal module name
+
 	// LB-F536, LB-F537 (wave lf7): an injection host's <script> imports (F2).
 	want["vue"], want["svelte"] = "relative-path", "relative-path"
 	want["astro"] = "relative-path" // LB-F545 (wave lf7): an injection host's ranges' imports, with no imports query of its own

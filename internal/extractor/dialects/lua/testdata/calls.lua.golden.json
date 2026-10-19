@@ -1,6 +1,18 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "LuaModule",
+      "package": "calls",
+      "line": 1,
+      "end_line": 76,
+      "calls": [
+        "require",
+        "setup"
+      ],
+      "tier": "verified"
+    },
+    {
       "name": "helper",
       "kind": "LuaFunction",
       "package": "calls",
@@ -164,6 +176,14 @@
         "go"
       ],
       "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "util",
+      "module": "util",
+      "kind": "whole",
+      "line": 2
     }
   ]
 }

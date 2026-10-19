@@ -93,7 +93,6 @@ var registeredFormats = map[string]Registration{
 	"helm":           {Extractor: "helmextract.go", LangTag: "yaml"},
 	"markdown":       {Extractor: "mdextract.go", LangTag: "md"},
 	"templ":          {Extractor: "templextract.go", LangTag: "templ"},
-	"graphql":        {Extractor: "graphqlextract.go", LangTag: "graphql"},
 	"json-yaml-toml": {Extractor: "jsonextract.go, tomlextract.go", LangTag: "json"},
 }
 

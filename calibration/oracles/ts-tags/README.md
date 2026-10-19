@@ -23,6 +23,8 @@ v0.5.0 `queries/tags.scm`, MIT, verbatim under a header), with py-tree-sitter 0.
     <tools>/pyts/bin/python tags_oracle.py --lang lua --query lua-tags.scm --ext .lua <clone>/kong > out/lua-kong-calls.json
     # Kong/kong 3.9.2 (kong/): 587 files / 10,996 pairs, nvim-telescope/telescope.nvim v0.2.2: 75 / 2,991; 0 parse errors
 
+Since wave lang1 (LB-Q-lua L3) the lua dialect mints a module symbol too (K18), so the lua run adds `--module-caller '<module>'` and a top-level call is paired with it (Kong `kong/`: 12,015 pairs, telescope.nvim: 3,319).
+
 That query's `@definition.function` and `@definition.method` both enclose calls, and its captures are a plain
 `@name` (aider's are `@name.definition.function`); the script reads either. Upstream marks the whole
 `table_constructor` as the definition of its function-valued fields, so a call written in a sibling field of a
@@ -42,6 +44,14 @@ language's run is unchanged (the flag defaults off). 2026-10-10: bats-core
 70 / 958 pairs, nvm 277 / 3,359. A `.` command's bare name is empty (the
 harness keeps a callee's last dotted segment), so its pairs, 298 of them on
 the two subjects, stay in the truth and are never found (O913).
+
+Luau (LB-Q-luau) runs the same `lua-tags.scm` on the Luau grammar (tree-sitter-grammars/tree-sitter-luau 1.2.0, a descendant of tree-sitter-lua that keeps its node names, so the query compiles unchanged) with py-tree-sitter 0.25.2 and tree-sitter-luau 1.2.0:
+
+    <tools>/pyts/bin/pip install tree-sitter==0.25.2 tree-sitter-luau==1.2.0
+    <tools>/pyts/bin/python tags_oracle.py --lang luau --query lua-tags.scm --ext .luau <clone>/luau > out/luau-luau-calls.json
+    # luau-lang/luau 0.743: 440 files / 3,496 pairs, dphfox/Fusion v0.3-beta: 113 / 832; 0 parse failures (128 and 7 files with ERROR nodes)
+
+The dialect's tags.scm descends from the same query, so the oracle is independent in runtime and grammar, not in query shape.
 
 Ruby (LB-Q-ruby) runs the grammar's own upstream `queries/tags.scm` and `queries/locals.scm` (tree-sitter/tree-sitter-ruby
 v0.23.1, `71bd32fb`, MIT, verbatim under headers as `ruby-tags.scm` and `ruby-locals.scm`) with py-tree-sitter 0.25.2 and

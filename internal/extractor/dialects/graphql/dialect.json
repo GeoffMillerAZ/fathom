@@ -1,0 +1,36 @@
+{
+  "id": "graphql",
+  "display": "GraphQL",
+  "kind": "tooling",
+  "engine": "tags",
+  "lang_tag": "graphql",
+  "match": {
+    "extensions": [".graphql", ".gql"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "graphql", "entry_point": "tree_sitter_graphql" },
+  "variants": [],
+  "queries": { "tags": "tags.scm" },
+  "kinds": {
+    "type":       { "source_kind": "GraphQLType",      "canonical": "type_alias",  "container": true, "callable": true },
+    "extension":  { "source_kind": "GraphQLExtension", "canonical": "type_alias",  "container": true, "callable": true },
+    "field":      { "source_kind": "GraphQLField",     "canonical": "field",       "callable": true },
+    "enum_value": { "source_kind": "GraphQLEnumValue", "canonical": "enum_member", "callable": true },
+    "directive":  { "source_kind": "GraphQLDirective", "canonical": "macro",       "callable": true },
+    "operation":  { "source_kind": "GraphQLOperation", "canonical": "function",    "callable": true },
+    "fragment":   { "source_kind": "GraphQLFragment",  "canonical": "function",    "callable": true }
+  },
+  "required_kinds": ["type", "extension", "field", "enum_value", "directive", "operation", "fragment"],
+  "oracle_kinds": {
+    "tool": { "type": "type_alias", "extension": "type_alias", "field": "field", "enum_value": "enum_member",
+              "directive": "macro", "operation": "function", "fragment": "function" }
+  },
+  "qualify": { "chain_containers": true, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "graphql"
+}

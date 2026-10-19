@@ -1,6 +1,14 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "LuaModule",
+      "package": "bodies",
+      "line": 1,
+      "end_line": 30,
+      "tier": "verified"
+    },
+    {
       "name": "M.commented",
       "kind": "LuaFunction",
       "package": "bodies",
