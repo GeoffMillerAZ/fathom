@@ -1,0 +1,55 @@
+{
+  "symbols": [
+    {
+      "name": "Before",
+      "kind": "ElixirModule",
+      "package": "Before",
+      "line": 1,
+      "end_line": 3,
+      "signature": "defmodule Before",
+      "tier": "verified"
+    },
+    {
+      "name": "ok",
+      "kind": "ElixirFunction",
+      "package": "Before",
+      "line": 2,
+      "end_line": 2,
+      "signature": "def ok(x), do: x",
+      "calls": [
+        "ok"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Broken",
+      "kind": "ElixirModule",
+      "package": "Broken",
+      "line": 5,
+      "end_line": 5,
+      "signature": "defmodule Broken",
+      "tier": "verified"
+    },
+    {
+      "name": "After",
+      "kind": "ElixirModule",
+      "package": "After",
+      "line": 11,
+      "end_line": 13,
+      "signature": "defmodule After",
+      "tier": "verified"
+    },
+    {
+      "name": "fine",
+      "kind": "ElixirFunction",
+      "package": "After",
+      "line": 12,
+      "end_line": 12,
+      "signature": "def fine(y), do: y",
+      "calls": [
+        "fine"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

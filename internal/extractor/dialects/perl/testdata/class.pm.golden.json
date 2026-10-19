@@ -1,0 +1,47 @@
+{
+  "symbols": [
+    {
+      "name": "Point",
+      "kind": "PerlClass",
+      "package": "class",
+      "line": 5,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
+      "name": "Point::move",
+      "kind": "PerlMethod",
+      "package": "class",
+      "line": 9,
+      "end_line": 13,
+      "signature": "method move($dx, $dy)",
+      "tier": "verified"
+    },
+    {
+      "name": "Point::coords",
+      "kind": "PerlMethod",
+      "package": "class",
+      "line": 15,
+      "end_line": 15,
+      "signature": "method coords",
+      "tier": "verified"
+    },
+    {
+      "name": "Point3D",
+      "kind": "PerlClass",
+      "package": "class",
+      "line": 18,
+      "end_line": 21,
+      "tier": "verified"
+    },
+    {
+      "name": "Point3D::lift",
+      "kind": "PerlMethod",
+      "package": "class",
+      "line": 20,
+      "end_line": 20,
+      "signature": "method lift($dz)",
+      "tier": "verified"
+    }
+  ]
+}

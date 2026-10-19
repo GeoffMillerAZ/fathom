@@ -40,6 +40,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `dart` | UserNobody14/tree-sitter-dart | be07cf7118d3dba06236a3f19541685a68209934 | `be07cf7118d3dba06236a3f19541685a68209934` | MIT | `tree_sitter_dart` | `b126efb8dfeeba8b71f0c6ae1f0cd09cf8b205560786b31d44cc16b283e782f2` |
 | `dockerfile` | camdencheek/tree-sitter-dockerfile | v0.2.0 | `868e44ce378deb68aac902a9db68ff82d2299dd0` | MIT | `tree_sitter_dockerfile` | `8cbdf50838cc55e841aa9585a1a09e5b8c41454ae30ce0a93a7bd71adb140818` |
 | `elisp` | Wilfred/tree-sitter-elisp | 1.7.2 | `c0417c751a3dcc8724d1f2f6d1437a99dee1e090` | MIT | `tree_sitter_elisp` | `6a5c3df34b5bb1b4fbc1386fc0f24a205ddfff0720801899c3d1b3e3593fa670` |
+| `elixir` | elixir-lang/tree-sitter-elixir | v0.3.5 | `e2d9e6e0e76b0c436fa48a0b8c32a031d0cbdf49` | Apache-2.0 | `tree_sitter_elixir` | `7d8bf37949e2bea75a19d38491d7680ed1c9f0f5a41a5235832d718ec174c7c4` |
 | `gotemplate` | ngalaiko/tree-sitter-go-template | aa71f63de226c5592dfbfc1f29949522d7c95fac | `aa71f63de226c5592dfbfc1f29949522d7c95fac` | MIT | `tree_sitter_helm` | `86bcd2cd462a2fdd94a60bb44b6f15e99b3d02177c5d631cbf45761bae482458` |
 | `graphql` | bkegley/tree-sitter-graphql | 5e66e961eee421786bdda8495ed1db045e06b5fe | `5e66e961eee421786bdda8495ed1db045e06b5fe` | MIT | `tree_sitter_graphql` | `ff542fddb51b1f1c110bb36fa16703d2212eeae0c0d12a2e1bf813c5f5db9507` |
 | `groovy` | murtaza64/tree-sitter-groovy | 2a6ddd558b6aa39c5b77d8db9fe9baf817486b2c | `2a6ddd558b6aa39c5b77d8db9fe9baf817486b2c` | MIT | `tree_sitter_groovy` | `00320c650fdf683337d8a1fffd2f2f36fd4606f26d77f154d3f0fb7b268a5892` |
@@ -52,10 +53,12 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `makefile` | tree-sitter-grammars/tree-sitter-make | 70613f3d812cbabbd7f38d104d60a409c4008b43 | `70613f3d812cbabbd7f38d104d60a409c4008b43` | MIT | `tree_sitter_make` | `bd60f6d2950086ba5d1d81e0890fc3e4e71e4d276b58b8cc1e1e95c9609ce331` |
 | `matlab` | acristoffers/tree-sitter-matlab | v1.3.1 | `f03d0347acd8bb05d4edd8c845ac1718729e1fad` | MIT | `tree_sitter_matlab` | `7d8e0f1131a17e21f576839a4f7a9a16c864d89cbc1536a774445d590e6be470` |
 | `meson` | tree-sitter-grammars/tree-sitter-meson | v1.3.0 | `12edaf0dfef0a43bc74336a4432b2db1c65788d6` | MIT | `tree_sitter_meson` | `fe9923e14405edfc41d76a1ffa82c8a03d8cf42e8651459a57882a55c00c83ea` |
+| `perl` | tree-sitter-perl/tree-sitter-perl | 4586b3f1fc6f8b80cca6ceb23ba863ae986eeae8 | `4586b3f1fc6f8b80cca6ceb23ba863ae986eeae8` | MIT | `tree_sitter_perl` | `a0b339650a78a7eb2b6c3f3223b6518943ed66f3a66bc52a626f5c8e688d91e3` |
 | `php` | tree-sitter/tree-sitter-php | v0.24.2 | `5b5627faaa290d89eb3d01b9bf47c3bb9e797dea` | MIT | `tree_sitter_php` | `0e73ad63dda67ac12c0e012726a4e1a9811c26b020a0a2dea3e889f8246d9cf4` |
 | `powershell` | airbus-cert/tree-sitter-powershell | v0.26.5 | `d398441825243b00e317e87e1829b9d6a3e54ce0` | MIT | `tree_sitter_powershell` | `a949ac2bccd74b94b6199702c8b119cb353785e8a8828150a763b202ae8d4534` |
 | `protobuf` | coder3101/tree-sitter-proto | 0.6.0 | `6c878d18628ebbff3474479d2fdd6d8ba1954c3e` | MIT | `tree_sitter_proto` | `5a6931ce9b0a40470ba642efd775a832f2edf5b1f4d274d3b68f3182c1c920ca` |
 | `python` | tree-sitter/tree-sitter-python | v0.25.0 | `293fdc02038ee2bf0e2e206711b69c90ac0d413f` | MIT | `tree_sitter_python` | `4609a3665a620e117acf795ff01b9e965880f81745f287a16336f4ca86cf270c` |
+| `r` | r-lib/tree-sitter-r | v1.3.0 | `346d3707b8c9301f1051e8f6e32666e67529f7d2` | MIT | `tree_sitter_r` | `35dde81835046514f01c07e66d058c943bb44dd10823c04f7028374080b151dc` |
 | `ruby` | tree-sitter/tree-sitter-ruby | v0.23.1 | `71bd32fb7607035768799732addba884a37a6210` | MIT | `tree_sitter_ruby` | `e7e49577ddc1f2de8e42d42353b477e338c15bbb95b2558e123ddc13d88789f0` |
 | `rust` | tree-sitter/tree-sitter-rust | v0.24.2 | `77a3747266f4d621d0757825e6b11edcbf991ca5` | MIT | `tree_sitter_rust` | `061e90a539a55a6aa65dceb0ad6425c50ab1a6e3e6d4ba430e2795ed4550f10e` |
 | `scala` | tree-sitter/tree-sitter-scala | v0.26.2 | `b931fcc338390925eb893d70ad070033f5856ccf` | MIT | `tree_sitter_scala` | `347ea9f62880b1a32a12bf58ae040f35c866996e80aff5bf28797fa9a40e034c` |
@@ -86,6 +89,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `dart` | (root) | yes | 15 | 914,734 | 205,433 | `50a95508f349684542905dae851d05c6833f7ff517b2db2ecd34bf91219ca4e8` |
 | `dockerfile` | (root) | yes | 14 | 171,375 | 69,325 | `81274400989b6ac9f9d9d0cc9618b0ca5045214742468279fdf089d214e5b6ac` |
 | `elisp` | (root) | no | 15 | 176,723 | 62,982 | `f207321d3e54d07838a585601113055624294da210c90c9de637cf31a2a6b397` |
+| `elixir` | (root) | yes | 14 | 1,365,700 | 229,991 | `77398b69666daf0227d9209a70b172374880f191b78031697027cd3a8caafc01` |
 | `gotemplate` | dialects/helm | no | 15 | 189,463 | 68,230 | `b1a9b7c210be48df96ad4f0a0bec88f4aca1f30fe9cb4bb2e05c6e845181d61f` |
 | `graphql` | (root) | no | 13 | 178,965 | 66,018 | `2562a48542af5bdffed0ba53aa178e883828c124aca5b082b9be47f3aca83017` |
 | `groovy` | (root) | no | 15 | 761,792 | 171,362 | `9bfe78467984483569fd59a44dc85fba0f0115d1bb6a6466b32ab7106ece6bc3` |
@@ -98,10 +102,12 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `makefile` | (root) | no | 15 | 265,371 | 86,559 | `7d6266397d5544d992ad80a03f4333c0680162ed4a37877f84fca8aa11c6dbce` |
 | `matlab` | (root) | yes | 15 | 482,912 | 121,531 | `64f6964fff221ee76611150b791dcaf04b8f7d8a5d77b5c4158646b9423a3c34` |
 | `meson` | (root) | no | 14 | 233,708 | 78,038 | `e17a6126f64f1a172421dc7214e5c8b034e8988b5fe3a1707956399aec324722` |
+| `perl` | (root) | yes | 15 | 2,443,271 | 452,171 | `17bd1fc35b4f62cdaae9547a8bebcf15da3df00b0a72a49565028c2be38f1568` |
 | `php` | php | yes | 15 | 811,496 | 191,343 | `e74d8a8385c252d7d3ce19e47247e48cbee4af9f30e39a6cffe0abe583a55881` |
 | `powershell` | (root) | yes | 15 | 841,031 | 165,241 | `290c26ac0058dbc4eed6b79ef91031018fb5a892aa88b5a5b7e95beb9de01b46` |
 | `protobuf` | (root) | no | 15 | 204,748 | 68,444 | `4211503d39d2cf30cbace8441e7bcced6421eb98617db0be18cbf992c3f92999` |
 | `python` | (root) | yes | 15 | 539,848 | 123,581 | `ef1216ec19691690d3d237759d5ab8c3521e362423eef44f5e5234f7cb507ffc` |
+| `r` | (root) | yes | 14 | 573,742 | 107,258 | `7d41dc36c218d3e87d5a2c932a68fcabbd8dc4122ba480fc6172dda48c978dbb` |
 | `ruby` | (root) | yes | 14 | 1,710,411 | 311,992 | `3299b506f05b73cb341de2cf65f1f327e9427e0149ce47d21f65af3d89b8924f` |
 | `rust` | (root) | yes | 15 | 841,090 | 204,421 | `cf86df357ff237e6c95d24a5f5609e4f4cd45f1700d065ddae5d22099a99ee1c` |
 | `scala` | (root) | yes | 15 | 3,125,460 | 633,687 | `11e9d547bad1ccbb22ff7bcaa49097d83ad5a576090d29de018ad9e29fdbd298` |
@@ -114,7 +120,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `vhdl` | (root) | yes | 15 | 1,314,192 | 240,100 | `3ec7500d69a8177a073f8c42e01fc4b40b4ac7c0259654e781375b3223189a1c` |
 | `vim` | (root) | yes | 15 | 1,177,166 | 212,656 | `fa067ead3ba63fb2610653385665a94ace0a5d56b4cdafcdb8fa68080a7bf3b2` |
 | `vue` | (root) | yes | 15 | 155,696 | 63,858 | `d9389312f43124431ddd3cf3e0914f015ee4be87419e3409be5bf29066430e8a` |
-| **total** | | | | 35,140,772 | 7,696,307 | |
+| **total** | | | | 39,523,485 | 8,485,727 | |
 
 Toolchain that produced the committed blobs: zig 0.16.0, wasm-opt 129, tree-sitter-cli 0.26.11.
 

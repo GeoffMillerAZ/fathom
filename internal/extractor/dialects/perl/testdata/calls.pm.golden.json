@@ -1,0 +1,64 @@
+{
+  "symbols": [
+    {
+      "name": "Calls",
+      "kind": "PerlPackage",
+      "package": "calls",
+      "line": 1,
+      "end_line": 1,
+      "tier": "verified"
+    },
+    {
+      "name": "helper",
+      "kind": "PerlSub",
+      "package": "calls",
+      "line": 4,
+      "end_line": 4,
+      "signature": "sub helper",
+      "tier": "verified"
+    },
+    {
+      "name": "plain",
+      "kind": "PerlSub",
+      "package": "calls",
+      "line": 6,
+      "end_line": 15,
+      "signature": "sub plain",
+      "calls": [
+        "Other::Mod::run",
+        "helper",
+        "log_it"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "methods",
+      "kind": "PerlSub",
+      "package": "calls",
+      "line": 17,
+      "end_line": 24,
+      "signature": "sub methods",
+      "calls": [
+        "boot",
+        "configure",
+        "init",
+        "new",
+        "run"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "in_closure",
+      "kind": "PerlSub",
+      "package": "calls",
+      "line": 26,
+      "end_line": 30,
+      "signature": "sub in_closure",
+      "calls": [
+        "callback",
+        "helper"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

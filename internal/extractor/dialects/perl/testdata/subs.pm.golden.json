@@ -1,0 +1,74 @@
+{
+  "symbols": [
+    {
+      "name": "Shop::Cart",
+      "kind": "PerlPackage",
+      "package": "subs",
+      "line": 1,
+      "end_line": 1,
+      "tier": "verified"
+    },
+    {
+      "name": "new",
+      "kind": "PerlSub",
+      "package": "subs",
+      "line": 5,
+      "end_line": 8,
+      "signature": "sub new",
+      "tier": "verified"
+    },
+    {
+      "name": "total",
+      "kind": "PerlSub",
+      "package": "subs",
+      "line": 10,
+      "end_line": 12,
+      "signature": "sub total($self, $tax = 0.2)",
+      "tier": "verified"
+    },
+    {
+      "name": "proto",
+      "kind": "PerlSub",
+      "package": "subs",
+      "line": 14,
+      "end_line": 14,
+      "signature": "sub proto($$)",
+      "tier": "verified"
+    },
+    {
+      "name": "counter",
+      "kind": "PerlSub",
+      "package": "subs",
+      "line": 16,
+      "end_line": 18,
+      "signature": "sub counter :lvalue",
+      "tier": "verified"
+    },
+    {
+      "name": "Shop::Util::trim",
+      "kind": "PerlSub",
+      "package": "subs",
+      "line": 22,
+      "end_line": 26,
+      "signature": "sub Shop::Util::trim",
+      "tier": "verified"
+    },
+    {
+      "name": "Shop::Order",
+      "kind": "PerlPackage",
+      "package": "subs",
+      "line": 30,
+      "end_line": 30,
+      "tier": "verified"
+    },
+    {
+      "name": "place",
+      "kind": "PerlSub",
+      "package": "subs",
+      "line": 32,
+      "end_line": 34,
+      "signature": "sub place",
+      "tier": "verified"
+    }
+  ]
+}

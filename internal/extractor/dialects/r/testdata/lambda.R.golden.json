@@ -1,0 +1,38 @@
+{
+  "symbols": [
+    {
+      "name": "square",
+      "kind": "RFunction",
+      "package": "lambda",
+      "line": 2,
+      "end_line": 2,
+      "signature": "square <- \\(x)",
+      "tier": "verified"
+    },
+    {
+      "name": "summary.point",
+      "kind": "RFunction",
+      "package": "lambda",
+      "line": 4,
+      "end_line": 6,
+      "signature": "summary.point <- function(object, ...)",
+      "calls": [
+        "sqrt"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "compose",
+      "kind": "RFunction",
+      "package": "lambda",
+      "line": 8,
+      "end_line": 8,
+      "signature": "compose <- function(f, g)",
+      "calls": [
+        "f",
+        "g"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

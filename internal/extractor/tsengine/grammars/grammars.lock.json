@@ -204,6 +204,21 @@
       "gz_bytes": 62982
     },
     {
+      "blob": "elixir",
+      "repo": "elixir-lang/tree-sitter-elixir",
+      "tag": "v0.3.5",
+      "commit": "e2d9e6e0e76b0c436fa48a0b8c32a031d0cbdf49",
+      "tarball_sha256": "7d8bf37949e2bea75a19d38491d7680ed1c9f0f5a41a5235832d718ec174c7c4",
+      "licence": "Apache-2.0",
+      "entry_points": ["tree_sitter_elixir"],
+      "scanner": true,
+      "generate": false,
+      "abi": 14,
+      "blob_sha256": "77398b69666daf0227d9209a70b172374880f191b78031697027cd3a8caafc01",
+      "blob_bytes": 1365700,
+      "gz_bytes": 229991
+    },
+    {
       "blob": "gotemplate",
       "repo": "ngalaiko/tree-sitter-go-template",
       "tag": "aa71f63de226c5592dfbfc1f29949522d7c95fac",
@@ -385,6 +400,21 @@
       "gz_bytes": 78038
     },
     {
+      "blob": "perl",
+      "repo": "tree-sitter-perl/tree-sitter-perl",
+      "tag": "4586b3f1fc6f8b80cca6ceb23ba863ae986eeae8",
+      "commit": "4586b3f1fc6f8b80cca6ceb23ba863ae986eeae8",
+      "tarball_sha256": "a0b339650a78a7eb2b6c3f3223b6518943ed66f3a66bc52a626f5c8e688d91e3",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_perl"],
+      "scanner": true,
+      "generate": false,
+      "abi": 15,
+      "blob_sha256": "17bd1fc35b4f62cdaae9547a8bebcf15da3df00b0a72a49565028c2be38f1568",
+      "blob_bytes": 2443271,
+      "gz_bytes": 452171
+    },
+    {
       "blob": "php",
       "repo": "tree-sitter/tree-sitter-php",
       "tag": "v0.24.2",
@@ -444,6 +474,21 @@
       "blob_sha256": "ef1216ec19691690d3d237759d5ab8c3521e362423eef44f5e5234f7cb507ffc",
       "blob_bytes": 539848,
       "gz_bytes": 123581
+    },
+    {
+      "blob": "r",
+      "repo": "r-lib/tree-sitter-r",
+      "tag": "v1.3.0",
+      "commit": "346d3707b8c9301f1051e8f6e32666e67529f7d2",
+      "tarball_sha256": "35dde81835046514f01c07e66d058c943bb44dd10823c04f7028374080b151dc",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_r"],
+      "scanner": true,
+      "generate": false,
+      "abi": 14,
+      "blob_sha256": "7d41dc36c218d3e87d5a2c932a68fcabbd8dc4122ba480fc6172dda48c978dbb",
+      "blob_bytes": 573742,
+      "gz_bytes": 107258
     },
     {
       "blob": "ruby",

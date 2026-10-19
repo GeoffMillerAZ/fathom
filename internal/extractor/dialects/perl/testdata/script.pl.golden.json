@@ -1,0 +1,25 @@
+{
+  "symbols": [
+    {
+      "name": "main",
+      "kind": "PerlSub",
+      "package": "script",
+      "line": 5,
+      "end_line": 9,
+      "signature": "sub main",
+      "calls": [
+        "report"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "report",
+      "kind": "PerlSub",
+      "package": "script",
+      "line": 11,
+      "end_line": 14,
+      "signature": "sub report",
+      "tier": "verified"
+    }
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "symbols": [
+    {
+      "name": "App.Web",
+      "kind": "ElixirModule",
+      "package": "App.Web",
+      "line": 1,
+      "end_line": 13,
+      "signature": "defmodule App.Web",
+      "tier": "verified"
+    },
+    {
+      "name": "page",
+      "kind": "ElixirFunction",
+      "package": "App.Web",
+      "line": 12,
+      "end_line": 12,
+      "signature": "def page(x), do: money(x)",
+      "calls": [
+        "money",
+        "page"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "App.Repo",
+      "module": "App.Repo",
+      "kind": "whole",
+      "line": 2
+    },
+    {
+      "local": "U",
+      "module": "App.Accounts.User",
+      "kind": "whole",
+      "line": 3
+    },
+    {
+      "local": "Mailer",
+      "module": "App.Mailer",
+      "kind": "whole",
+      "line": 4
+    },
+    {
+      "local": "Billing.Invoice",
+      "module": "App.Billing.Invoice",
+      "kind": "whole",
+      "line": 4
+    },
+    {
+      "local": "*",
+      "module": "App.Helpers",
+      "kind": "wildcard",
+      "line": 5
+    },
+    {
+      "local": "*",
+      "module": "App.Format",
+      "kind": "wildcard",
+      "line": 6
+    },
+    {
+      "local": "App.Log",
+      "module": "App.Log",
+      "kind": "whole",
+      "line": 7
+    },
+    {
+      "local": "App.Schema",
+      "module": "App.Schema",
+      "kind": "whole",
+      "line": 8
+    },
+    {
+      "local": "App.Case",
+      "module": "App.Case",
+      "kind": "whole",
+      "line": 9
+    }
+  ]
+}
