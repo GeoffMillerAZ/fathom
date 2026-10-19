@@ -90,7 +90,9 @@ func resolveDocXrefs(files []DocFile, passes *passRecorder) ([]DocXref, imageRef
 	for i := range files {
 		f := &files[i]
 		byPath[f.Path] = f
-		byDir[path.Dir(f.Path)] = append(byDir[path.Dir(f.Path)], f.Path)
+		if !isMarkdownDoc(f.Path) { // a directory reference names a manifest, never the README beside it
+			byDir[path.Dir(f.Path)] = append(byDir[path.Dir(f.Path)], f.Path)
+		}
 		for _, n := range f.Result.Nodes {
 			k := fk{f.Path, n.Name}
 			if _, dup := nodeAt[k]; !dup {
@@ -183,7 +185,8 @@ func resolveDocXrefs(files []DocFile, passes *passRecorder) ([]DocXref, imageRef
 	stopImg := passes.sub("image_ref")
 	img := BuildImageIndex(files)
 	stopImg()
-	cueIx := newCUEXrefIndex(files) // LB-Q-cue: cue-import and cue-package (cuexref.go)
+	cueIx := newCUEXrefIndex(files)           // LB-Q-cue: cue-import and cue-package (cuexref.go)
+	mdSlugs := map[string]map[string]string{} // Markdown file -> heading slug -> heading name, built on first use (LB-Q-markdown)
 	stats := imageRefStats{Sites: img.Sites, TemplatedBuilds: img.TemplatedBuilds, Ambiguous: img.Ambiguous}
 	for _, f := range files {
 		origin := func(name string) (fk, bool) {
@@ -252,6 +255,19 @@ func resolveDocXrefs(files []DocFile, passes *passRecorder) ([]DocXref, imageRef
 			case extractor.PlanStrategyRow: // needs: <plan>.md#<ID> (LB-F220): that row of that plan
 				if file, id, ok := planRowTarget(c); ok {
 					add(from, fk{file, id}, c)
+				}
+			case extractor.MarkdownAnchorStrategy: // a link's fragment: that heading of the target Markdown file (LB-Q-markdown)
+				tf := byPath[c.Target]
+				if tf == nil {
+					continue
+				}
+				slugs, built := mdSlugs[c.Target]
+				if !built {
+					slugs = extractor.MarkdownHeadingSlugs(tf.Result.Nodes)
+					mdSlugs[c.Target] = slugs
+				}
+				if name, ok := slugs[c.Raw]; ok {
+					add(from, fk{c.Target, name}, c)
 				}
 			case "label-selector":
 				for _, g := range labelsByScope[c.Scope] {
@@ -352,6 +368,17 @@ func DocXrefEdges(xs []DocXref) []core.Edge {
 	return edges
 }
 
+// isMarkdownDoc: a Markdown or MDX file the native markdown dialect reads, as
+// opposed to a plan under docs/plans/ (the fathom-plan-rows dialect's, which a
+// directory reference may still name, as before LB-Q-markdown).
+func isMarkdownDoc(p string) bool {
+	switch strings.ToLower(path.Ext(p)) {
+	case ".md", ".mdx":
+		return path.Dir(p) != "docs/plans"
+	}
+	return false
+}
+
 // isDocCandidate: a path a doc-engine dialect may read (its decode's
 // extensions, and the extensions an XML dialect owns instead of .xml: MSBuild's),
 // or a native dialect's file by basename (go.mod, go.work) or extension (.tf).
@@ -370,8 +397,8 @@ func isDocCandidate(p string) bool {
 		return true
 	case ".cue": // the CUE and Timoni dialects (LB-Q-cue, LB-Q-timoni)
 		return true
-	case ".md": // only a plan: the fathom-plan-rows dialect's docs/plans/*.md (LB-F219), never a blanket .md
-		return path.Dir(p) == "docs/plans"
+	case ".md", ".mdx": // the native markdown dialect (LB-Q-markdown): links between Markdown files; a plan under docs/plans/ is the fathom-plan-rows dialect's (LB-F219)
+		return true
 	case ".hcl", ".nomad": // the native terragrunt and hcl-tools dialects (LB-Q-terragrunt, LB-Q-hcl-tools)
 		return true
 	}

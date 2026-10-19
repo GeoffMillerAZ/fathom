@@ -264,8 +264,8 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 reached (languages at L1 31, L1 excellent 22, L2 26, L3 22, L4 10; tool formats at target 50)
-Milestone M2 progress: languages at L1 31/45, at L1 excellent 22/35, at L2 26/25, at L3 22/14, at L4 10/10; tool formats at target 50/30
+Milestone M1 reached (languages at L1 31, L1 excellent 22, L2 26, L3 22, L4 10; tool formats at target 51)
+Milestone M2 progress: languages at L1 31/45, at L1 excellent 22/35, at L2 26/25, at L3 22/14, at L4 10/10; tool formats at target 51/30
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -376,7 +376,7 @@ Milestone M2 progress: languages at L1 31/45, at L1 excellent 22/35, at L2 26/25
 | Crystal (.cr) | language | tags | crystal-lang-tools/tree-sitter-crystal (MIT (verify at pin)) | L2 | unsupported (disclosed) | — | — | — | LB-Q-crystal |
 | D (.d) | language | tags | gdamore/tree-sitter-d (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-d |
 | Earthly (Earthfile) | tool format | tags | glehmann/tree-sitter-earthfile (verify at pin) | L2 | unsupported (disclosed) | — | — | — | LB-Q-earthfile |
-| Markdown (.md .mdx) | tool format | native | native:github.com/yuin/goldmark (MIT) | L3 | tolerated | — | syntax | — | LB-Q-markdown |
+| Markdown (.md .mdx) | tool format | native | native:github.com/yuin/goldmark (MIT) | L3 | L3 (L1 excellent, L2 good, L3 good) | B lychee+universal-ctags lychee 0.24.2, ctags 6.2.1; B universal-ctags 6.2.1 | syntax | 2026-10-19 | at target (LB-Q-markdown) |
 | VBA (.bas .cls .frm by sniff) | language | tags | harumiWeb/tree-sitter-vba (weak) (verify at pin) | L1 | unsupported (disclosed) | — | — | — | LB-Q-vba |
 | Generic JSON, YAML and TOML documents | tool format | doc | pure-go:encoding/json + gopkg.in/yaml.v3 + go-toml/v2 (n/a) | L1 | tolerated | — | syntax | — | LB-Q-json-yaml-toml |
 | Verilog / SystemVerilog (.v by sniff, .sv .svh .vh) | language | tags | gmlarumbe/tree-sitter-systemverilog (MIT) | L1 | unsupported (disclosed) | — | — | — | LB-Q-verilog |

@@ -1,0 +1,9 @@
+{
+  "path": "docs/front.md",
+  "roots": ["`Code` heading with *em*"],
+  "symbols": [
+    { "name": "`Code` heading with *em*", "kind": "DocChunk", "package": "front", "line": 6, "end_line": 9, "signature": "h1", "calls": ["Second part"], "tier": "doc-claimed" },
+    { "name": "Second part", "kind": "DocChunk", "package": "front", "line": 10, "end_line": 12, "signature": "h2", "calls": ["`Code` heading with *em*"], "tier": "doc-claimed" }
+  ],
+  "cross_file": []
+}

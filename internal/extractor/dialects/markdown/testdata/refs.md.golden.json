@@ -1,0 +1,13 @@
+{
+  "path": "docs/refs.md",
+  "roots": ["Ref style"],
+  "symbols": [
+    { "name": "Ref style", "kind": "DocChunk", "package": "refs", "line": 3, "end_line": 10, "signature": "h1", "tier": "doc-claimed" }
+  ],
+  "cross_file": [
+    { "from": "", "edge": "link", "raw": "a.md", "target": "docs/a.md", "strategy": "repo-path", "line": 1 },
+    { "from": "Ref style", "edge": "link", "raw": "b.md#sec", "target": "docs/b.md", "strategy": "repo-path", "line": 5 },
+    { "from": "Ref style", "edge": "link", "raw": "c file.md", "target": "docs/c file.md", "strategy": "repo-path", "line": 5 },
+    { "from": "Ref style", "edge": "link_anchor", "raw": "sec", "target": "docs/b.md", "strategy": "md-anchor", "line": 5 }
+  ]
+}

@@ -396,3 +396,10 @@ split descriptions' cross-references are out of scope and Azure's `$ref`s betwee
 truth. `-redocly` runs `redocly bundle` on each document that has a file `$ref` and compares the references it cannot
 resolve to the oracle's own (disagreements on stderr, zero on all four subjects). The oracle runs on the checkout and
 writes nothing into it; install the tools with `npm --prefix`, never globally.
+
+## markdown
+
+`markdown/md_oracle.mjs` (item markdown, LB-Q-markdown) turns lychee 0.24.2 `--offline --include-fragments` over
+a subject's `.md` and `.mdx` files, with universal-ctags (Markdown) naming the headings, into lang-oracle's
+`cross_references` (section to another Markdown file, tier B) and `references` (section to heading within a
+file). Usage and what it leaves out: the header of the script; `node --test calibration/oracles/markdown/`.

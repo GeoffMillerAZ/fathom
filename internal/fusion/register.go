@@ -223,7 +223,11 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	p.exts[".cue"] = extractor.NewCUEExtractor()
 
 	// Markdown
-	p.exts[".md"] = extractor.NewMarkdownExtractor()
+	// The native markdown dialect (LB-Q-markdown): headings, and the links
+	// between Markdown files for the doc-xref pass. MDX reads the same way.
+	md := extractor.NewMarkdownExtractor()
+	p.exts[".md"] = md
+	p.exts[".mdx"] = md
 
 	// Templates
 	p.exts[".templ"] = extractor.NewTemplExtractor()
