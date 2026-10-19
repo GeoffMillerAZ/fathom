@@ -104,8 +104,10 @@ func gatePreflightContext() (context.Context, context.CancelFunc) {
 
 // gatePreflightLine is the advisory line for a Bash command, "" for
 // silence (not a gated verb, the switch off, both halves holding, or any
-// error). It logs one row on channel gate-preflight whenever it ran.
-func gatePreflightLine(projDir, command, sessionID, baseURL string) string {
+// error). It logs one row on channel gate-preflight whenever it ran. cwd is
+// the directory the command starts in ("" is projDir): a relative
+// `git -C` resolves from the directory its leading cd reaches (hookGitDir).
+func gatePreflightLine(projDir, cwd, command, sessionID, baseURL string) string {
 	lexed := shellcmd.ParseCommand(command)
 	if lexed.Unreadable {
 		return ""
@@ -117,7 +119,10 @@ func gatePreflightLine(projDir, command, sessionID, baseURL string) string {
 	if at != "" {
 		// `git -C <dir>` commits or pushes from dir's work tree (O1230); a
 		// dir that is not one is no root to preflight.
-		d := resolveBashDir(projDir, at)
+		if cwd == "" {
+			cwd = projDir
+		}
+		d := hookGitDir(command, at, cwd)
 		if st, err := os.Stat(d); err != nil || !st.IsDir() {
 			return ""
 		}

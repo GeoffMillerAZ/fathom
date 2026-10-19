@@ -22,31 +22,43 @@ func TestHookEffectiveDirFollowsALeadingCd(t *testing.T) {
 	if err := os.MkdirAll(sub, 0o755); err != nil {
 		t.Fatal(err)
 	}
+	// gitC set: the case is the directory `git -C <gitC>` acts in
+	// (hookGitDir), a relative one against the leading cd's target.
 	cases := []struct {
 		name, command, file, want string
 		resolved                  bool
+		gitC                      string
 	}{
-		{"a leading cd", "cd " + b + " && go test ./...", "", b, true},
-		{"an assignment alone is a quiet prefix", "X=1; cd " + b + " && go test ./...", "", b, true},
-		{"export and mkdir -p are quiet prefixes", "export GOFLAGS=-count=1 && mkdir -p out && cd " + b + " && make", "", b, true},
-		{"a cd behind a variable", `cd "$D" && go test ./...`, "", a, false},
-		{"a cd behind a command substitution", "cd $(git rev-parse --show-toplevel) && ls", "", a, false},
-		{"a cd then a semicolon", "cd " + b + "; make", "", b, true},
-		{"pushd with a redirect", "pushd " + b + " >/dev/null && ls", "", b, true},
-		{"cd -P", "cd -P " + b + " && ls", "", b, true},
-		{"a target that is not a directory", "cd /no/such/dir && ls", "", a, false},
-		{"a relative cd resolves against cwd", "cd sub && ls", "", sub, true},
-		{"a cd after a command that is not quiet", "ls && cd " + b + " && make", "", a, false},
-		{"an unreadable command", "cd " + b + ` && echo "unterminated`, "", a, false},
-		{"no cd", "go test ./...", "", a, false},
-		{"cd -", "cd - && ls", "", a, false},
-		{"a backgrounded cd", "cd " + b + " & ls", "", a, false},
-		{"a Read of an absolute file", "", filepath.Join(b, "f.go"), b, true},
-		{"a relative file resolves against cwd", "", "sub/x.go", sub, true},
-		{"a file whose directory is missing", "", "/no/such/dir/f.go", a, false},
+		{"a leading cd", "cd " + b + " && go test ./...", "", b, true, ""},
+		{"an assignment alone is a quiet prefix", "X=1; cd " + b + " && go test ./...", "", b, true, ""},
+		{"export and mkdir -p are quiet prefixes", "export GOFLAGS=-count=1 && mkdir -p out && cd " + b + " && make", "", b, true, ""},
+		{"a cd behind a variable", `cd "$D" && go test ./...`, "", a, false, ""},
+		{"a cd behind a command substitution", "cd $(git rev-parse --show-toplevel) && ls", "", a, false, ""},
+		{"a cd then a semicolon", "cd " + b + "; make", "", b, true, ""},
+		{"pushd with a redirect", "pushd " + b + " >/dev/null && ls", "", b, true, ""},
+		{"cd -P", "cd -P " + b + " && ls", "", b, true, ""},
+		{"a target that is not a directory", "cd /no/such/dir && ls", "", a, false, ""},
+		{"a relative cd resolves against cwd", "cd sub && ls", "", sub, true, ""},
+		{"a cd after a command that is not quiet", "ls && cd " + b + " && make", "", a, false, ""},
+		{"an unreadable command", "cd " + b + ` && echo "unterminated`, "", a, false, ""},
+		{"no cd", "go test ./...", "", a, false, ""},
+		{"cd -", "cd - && ls", "", a, false, ""},
+		{"a backgrounded cd", "cd " + b + " & ls", "", a, false, ""},
+		{"a Read of an absolute file", "", filepath.Join(b, "f.go"), b, true, ""},
+		{"a relative file resolves against cwd", "", "sub/x.go", sub, true, ""},
+		{"a file whose directory is missing", "", "/no/such/dir/f.go", a, false, ""},
+		{"a relative git -C resolves against the cd target", "cd sub && git -C rel push", "", filepath.Join(sub, "rel"), true, "rel"},
+		{"a relative git -C with no cd resolves against cwd", "git -C rel push", "", filepath.Join(a, "rel"), true, "rel"},
+		{"an absolute git -C stays as written", "cd sub && git -C " + b + " push", "", b, true, b},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			if c.gitC != "" {
+				if got := hookGitDir(c.command, c.gitC, a); got != c.want {
+					t.Errorf("hookGitDir(%q, %q, A) = %q; want %q", c.command, c.gitC, got, c.want)
+				}
+				return
+			}
 			got, resolved := hookEffectiveDir(c.command, c.file, a)
 			if got != c.want || resolved != c.resolved {
 				t.Errorf("hookEffectiveDir(%q, %q, A) = %q, %v; want %q, %v", c.command, c.file, got, resolved, c.want, c.resolved)
