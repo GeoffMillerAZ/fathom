@@ -27,7 +27,12 @@ Release impact: minor
 
 ### Added
 
+<<<<<<< HEAD
 - The decision port's per-site rails: `[decide] max_asks_per_site_per_session` (default 200, the minimum across layers, so a repository can lower it and never raise it) caps one site's asks per session, after which the site answers on its deterministic path with one `capped` line; a site whose last 100 asks in `decisions.jsonl` hold more than 10% misses turns off for the process's lifetime with one `killed` line (`kill_source: misses`), and `fathom doctor`'s `decision_provider` row names it. Provider `none` is unchanged.
+||||||| c65206ad
+=======
+- Answers shaped by a configured decision provider now say so: the obligations envelope, `POST /route` and `certify suggest` carry `decided_by` (`judged(<site> · <provider>/<model> · conf <x> · calibration <status> <n>/100)`, `computed`, or `computed · not consulted (<class>)` when the provider missed), the degrade line is written once per session, site and class, and `fathom statusline` adds `J:off`, `J:on(<n>)` or `J:killed`; provider `none` output is unchanged.
+>>>>>>> 6aa76a3024d95835a2177d7aae6c9f93dbb330d3
 - `fathom readout report --baseline` reports the share of the test-run hook's failing-run rows whose named file or test is touched by one of the next three calls, with a Wilson 95% interval, the rows it cannot place counted apart, and the window from the first row.
 - `fathom doctor` gains a `readouts` row: the `[readouts]` mode and roots, rules loaded and refused (naming the first failing fixture of each refused rule), the harnesses with no readout view, and another Bash output rewriter wired in the client's hook settings (named by its command's first word). It reads ok or warn, never fail.
 - `[readouts]` config section (`mode` off|observe|lean|rich, `rules.<id>.mode`, `roots`), every key user-only so a repository's config that sets one is dropped and named by doctor.

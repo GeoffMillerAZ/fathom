@@ -878,8 +878,29 @@ serves the prompt hook's route with the same `provider` value.
 When a remote provider answers nothing — a timeout, a 429 rate limit, a quota or
 credit exhausted (OpenAI's `insufficient_quota`), a 5xx, a refused key — or refuses a
 question (an OpenAI `refusal` answer), the port writes one `warn: decision port
-degraded (<class>): ...` line and the site answers on its deterministic path for the
-whole request: a refusal is never read as an answer, a false or a zero.
+degraded (<class>): ...` line (naming the site and session when the asker set them),
+once per session, site and class for the process's lifetime, and the site answers on its deterministic path for
+the whole request: a refusal is never read as an answer, a false or a zero.
+
+**Reading `decided_by`.** With a provider configured, every answer the port was asked
+for says how it was reached. The obligations envelope carries `decided_by` beside
+`ranked_by`, `POST /route` beside `provider`, and each `certify suggest` row (and its
+`suggested:` line) beside its confidence. `judged(<site> · <provider>/<model> · conf <x>
+· calibration <status> <n>/100)` means the model's answer shaped what was served, named
+with the confidence it gave and the site's calibration (`uncalibrated 0/100` until a
+reading of at least 100 samples clears the bar); for the obligations envelope it names
+the weakest answer the re-rank acted on. `computed` means the port answered but the
+deterministic answer stood; `computed · not consulted (<class>)` means the port was
+asked and answered nothing (the degrade line's class, repeated on every answer even when
+the line was written once). `table` and `override` name a fitted table's answer and a
+judged answer that replaced it, with the table's answer beside it. A badge is never
+proof: no surface shows it as a pass, and none reads it back as evidence. It is absent
+whenever the port was not asked: provider `none` (the default, so the bytes never
+change), a site `[decide] sites` leaves out or `deny_sites` names, and every kill
+(`FATHOM_DECIDE=off`, `~/.fathom/decide.off`, `enabled = false`, a refused consent).
+`fathom statusline` adds `J:off`, `J:on(<n>)` (the sites the port may answer) or
+`J:killed` after its state (`decision_port` and `kill_source` under `--json`, never in
+`line`), and nothing when neither config layer has a `[decide]` block.
 
 Every provider is **fail-open** (I14): no key, a key file others can read, a
 `base_url` the rule above refuses, or any other error opening the port at startup is

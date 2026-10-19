@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/decide"
 	"github.com/geoffmilleraz/fathom/internal/modserve"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
@@ -414,6 +415,32 @@ func obligationLayers(ctx context.Context, backend QueryInterface, ob obligation
 	return o, string(semantic.ObligationLayerAll), nil
 }
 
+// obligationsDecidedBy is the envelope's decided_by (JG-2), rendered by the
+// one renderer (decide.DecidedBy): judged from the weakest answer the
+// re-rank acted on, computed when the port answered and the computed order
+// stood, computed with the miss's class when the port answered nothing,
+// and "" when it was not asked (provider none, a closed site, nothing
+// eligible) or a live kill refused the ask.
+func obligationsDecidedBy(obl semantic.Obligations) string {
+	if rec, ok := decide.WeakestRecord(obl.Decisions); ok {
+		provider := rec.Provider
+		if provider == "" {
+			provider = obl.RankedBy
+		}
+		tier := decide.DecidedComputed
+		if obl.RankedBy != "" && obl.RankedBy != "none" {
+			tier = decide.DecidedJudged
+		}
+		return decide.DecidedBy(decide.Decision{Provider: provider, Tier: tier, Record: rec})
+	}
+	for _, de := range obl.DecisionErrors {
+		if class := decide.MissClass(de.Err); class != "" {
+			return decide.DecidedBy(decide.Decision{Provider: de.Provider, Tier: decide.DecidedComputed, Miss: class})
+		}
+	}
+	return ""
+}
+
 // renderObligationReceipt assembles the obligations tool's response
 // envelope (VB-10, ADR-035 decision 2, the anchor for this function).
 // Three guarantees, stated once so the shape means the same thing on every
@@ -467,6 +494,12 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 	result["ranked_by"] = obl.RankedBy
 	if obl.RankNote != "" {
 		result["rank_note"] = obl.RankNote
+	}
+	// JG-2 (ADR-073 decision 6): decided_by rides beside ranked_by only
+	// when a configured port was asked for this envelope; provider none, a
+	// closed site and a live kill ask nothing and add nothing (I42).
+	if db := obligationsDecidedBy(obl); db != "" {
+		result["decided_by"] = db
 	}
 	// DP-24 (O109): ranked_count/candidates_total disclose how many
 	// scope-eligible claims the DP-7 rerank actually asked the Decider

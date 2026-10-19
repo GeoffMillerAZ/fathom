@@ -102,6 +102,10 @@ type routeResponse struct {
 	Band       string  `json:"band"`
 	Provider   string  `json:"provider"`
 	Error      string  `json:"error,omitempty"`
+	// DecidedBy (JG-2, ADR-073 decision 6) names how the answer was reached
+	// when a configured port was asked (decide.DecidedBy); absent with
+	// provider none, a closed site or a live kill (I42).
+	DecidedBy string `json:"decided_by,omitempty"`
 }
 
 // noneRouteResponse is the fixed body DP-9 documents for provider "none" —
@@ -201,6 +205,11 @@ func routeHandler(ports *decide.Ports) http.Handler {
 			ports.Recorder.RecordError("route", ports.Decider.Name(), "", 1, time.Since(callStart), err)
 			out := noneRouteResponse()
 			out.Error = err.Error()
+			// JG-3: a miss names its class on this answer; a kill names
+			// nothing (the port was not asked).
+			if class := decide.MissClass(err); class != "" {
+				out.DecidedBy = decide.DecidedBy(decide.Decision{Provider: ports.Decider.Name(), Tier: decide.DecidedComputed, Miss: class})
+			}
 			writeRouteResponse(w, out)
 			return
 		}
@@ -213,6 +222,7 @@ func routeHandler(ports *decide.Ports) http.Handler {
 			} else {
 				out.Error = "decision port: no answer for question \"verb\""
 			}
+			out.DecidedBy = decide.DecidedBy(decide.Decision{Provider: ports.Decider.Name(), Tier: decide.DecidedComputed})
 			writeRouteResponse(w, out)
 			return
 		}
@@ -227,8 +237,20 @@ func routeHandler(ports *decide.Ports) http.Handler {
 			Confidence: answer.Confidence,
 			Band:       string(band),
 			Provider:   resp.Provider,
+			DecidedBy:  routeDecidedBy(ports.Decider.Name(), resp),
 		})
 	})
+}
+
+// routeDecidedBy is an answered route's decided_by: judged, from the verb
+// answer's own decision row.
+func routeDecidedBy(provider string, resp decision.Response) string {
+	for _, rec := range resp.Records(decide.SiteRoute) {
+		if rec.QuestionID == "verb" {
+			return decide.DecidedBy(decide.Decision{Provider: provider, Tier: decide.DecidedJudged, Record: rec})
+		}
+	}
+	return ""
 }
 
 // routePortActive reports whether ports carries a real decider worth

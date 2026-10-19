@@ -21,8 +21,16 @@ package main
 // The guard is built here rather than by beginHookGuard: a status line
 // refreshes about once a second, and a hook-latency row or a beat per
 // refresh would bury the hooks' own (doctor's hook budget reads those rows).
+//
+// A configured decision port adds its disclosure token after the state
+// (JG-4, ADR-073 decision 6): J:off, J:on(<n>) or J:killed, plain text in no
+// pass colour or glyph, and never part of the state's own line (--json
+// carries it as decision_port), so it cannot enter the evidence band or the
+// proof line. With no [decide] block in either config layer the output is
+// unchanged.
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -34,8 +42,11 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/config"
+	"github.com/geoffmilleraz/fathom/internal/decide"
 	"github.com/geoffmilleraz/fathom/internal/hookguard"
 )
 
@@ -72,6 +83,11 @@ type statuslineState struct {
 	Dirty   *bool  `json:"dirty"`
 	Verdict string `json:"verdict,omitempty"`
 	Reason  string `json:"reason,omitempty"`
+	// DecisionPort is the port's token (J:off, J:on(<n>), J:killed), absent
+	// with no [decide] block; KillSource names the gate's closing source
+	// when killed. Neither is part of Line.
+	DecisionPort string `json:"decision_port,omitempty"`
+	KillSource   string `json:"kill_source,omitempty"`
 }
 
 // statuslineInput is the status-line JSON's fields this reads; every other
@@ -109,18 +125,79 @@ func cmdStatusline(args []string, stdin io.Reader, stdout, stderr io.Writer) int
 	}
 	start := time.Now()
 	deadline := statuslineDeadline(start)
-	st := statuslineCheck(*urlFlag, statuslineDir(stdin, deadline.At()), deadline)
+	dir := statuslineDir(stdin, deadline.At())
+	st := statuslineCheck(*urlFlag, dir, deadline)
+	st.DecisionPort, st.KillSource = statuslineJudgment(dir)
 	if *asJSON {
 		raw, err := json.Marshal(st)
 		if err != nil {
-			fmt.Fprintln(stdout, st.Line)
+			fmt.Fprintln(stdout, st.text())
 			return 0
 		}
 		fmt.Fprintln(stdout, string(raw))
 		return 0
 	}
-	fmt.Fprintln(stdout, st.Line)
+	fmt.Fprintln(stdout, st.text())
 	return 0
+}
+
+// text is what the status line shows: the state's line, then the decision
+// port's token when one is configured.
+func (st statuslineState) text() string {
+	if st.DecisionPort == "" {
+		return st.Line
+	}
+	return st.Line + " " + st.DecisionPort
+}
+
+// statuslineJudgment is the decision port's token for dir (JG-4): "" when
+// neither the user layer nor dir's .fathom/config.toml carries a [decide]
+// block (the two files are read, capped, and loaded only when one names
+// decide), J:off for provider none or no open site, J:killed with the
+// closing source when KS-6's gate (decide.Check) closes the port, else
+// J:on(<n>) with n the sites it may answer. It reads no key, execs nothing
+// and dials nothing; a config that does not load adds nothing.
+func statuslineJudgment(dir string) (token, killSource string) {
+	userPath := config.DefaultUserPath()
+	projPath := ""
+	if dir != "" {
+		projPath = filepath.Join(dir, ".fathom", "config.toml")
+	}
+	word := []byte("decide")
+	if !bytes.Contains(readConfigLayer(userPath), word) && !bytes.Contains(readConfigLayer(projPath), word) {
+		return "", ""
+	}
+	l, err := config.Load(userPath, projPath)
+	if err != nil || !statuslineHasDecide(l.Provenance) {
+		return "", ""
+	}
+	dc := l.Config.Decide
+	if dc.Provider == "" || dc.Provider == "none" {
+		return "J:off", ""
+	}
+	if g := decide.Check(dc, ""); g.Closed {
+		return "J:killed", g.Source
+	}
+	n := 0
+	for _, site := range decide.AllSites {
+		if decide.SiteAllowed(dc, site) {
+			n++
+		}
+	}
+	if n == 0 {
+		return "J:off", ""
+	}
+	return "J:on(" + strconv.Itoa(n) + ")", ""
+}
+
+// statuslineHasDecide reports whether a loaded layer set any [decide] key.
+func statuslineHasDecide(prov config.Provenance) bool {
+	for k := range prov {
+		if strings.HasPrefix(k, "decide.") {
+			return true
+		}
+	}
+	return false
 }
 
 // statuslineDeadline is one run's deadline (hookBudgetScale shrinks it in
