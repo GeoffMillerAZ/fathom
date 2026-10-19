@@ -21,6 +21,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/custodian"
 	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/readcoverage"
 	"github.com/geoffmilleraz/fathom/internal/receipt"
 	"github.com/geoffmilleraz/fathom/internal/verify"
@@ -93,7 +94,7 @@ func cmdConfigAudit(args []string, stdout, stderr io.Writer) int {
 
 	if len(concerns) == 0 && len(loadErrs) == 0 {
 		fmt.Fprintf(stdout, "no concerns registered — the custodian has nothing to hold this repo to.\n")
-		fmt.Fprintf(stdout, "Write ~/.fathom/concerns.cue (user default) or %s (this repo governs);\n", filepath.Join(".fathom", "concerns.cue"))
+		fmt.Fprintf(stdout, "Write ~/.fathom/concerns.cue (user default) or %s (this repo governs);\n", projectdir.Concerns.Path(""))
 		fmt.Fprintf(stdout, "see docs/design/config-custodian.md for the concern model.\n")
 		return 0
 	}
@@ -151,7 +152,7 @@ func configAuditSARIF(root string, findings []custodian.Finding) []verify.SARIFR
 				file, line = sarifLocation(root, f.Evidence[0])
 			}
 			if file == "" {
-				file = ".fathom/concerns.cue"
+				file = projectdir.Concerns.Rel()
 			}
 			out = append(out, verify.SARIFResult{
 				RuleID: f.Concern.ID, Level: "error",
@@ -163,7 +164,7 @@ func configAuditSARIF(root string, findings []custodian.Finding) []verify.SARIFR
 			out = append(out, verify.SARIFResult{
 				RuleID: f.Concern.ID, Level: "note",
 				Message: "unable to check — " + f.Detail,
-				File:    ".fathom/concerns.cue",
+				File:    projectdir.Concerns.Rel(),
 				Help:    configConcernHelp(f.Concern.Want),
 			})
 		}
@@ -267,7 +268,7 @@ func loadConcernsBoth(root string) ([]custodian.Concern, []error) {
 			user = s
 		}
 	}
-	s, lerr := custodian.LoadScopeFile(filepath.Join(root, ".fathom", custodian.ProjectFileName), custodian.ScopeProject)
+	s, lerr := custodian.LoadScopeFile(projectdir.Concerns.Path(root), custodian.ScopeProject)
 	if lerr != nil {
 		errs = append(errs, lerr)
 	} else {

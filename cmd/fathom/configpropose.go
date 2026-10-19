@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 
 	"github.com/geoffmilleraz/fathom/internal/custodian"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 // configProposeModel is --json's envelope (law 10: one shape, many
@@ -57,7 +58,7 @@ func cmdConfigPropose(args []string, stdout, stderr io.Writer) int {
 	if len(concerns) == 0 {
 		if !*patchOnly && !*asJSON {
 			fmt.Fprintln(stdout, "no concerns registered — there is nothing to propose against.")
-			fmt.Fprintf(stdout, "Write ~/.fathom/concerns.cue (user default) or %s (this repo governs), or enable a pack there: packs: [\"claude-code\", \"lefthook\"].\n", filepath.Join(".fathom", "concerns.cue"))
+			fmt.Fprintf(stdout, "Write ~/.fathom/concerns.cue (user default) or %s (this repo governs), or enable a pack there: packs: [\"claude-code\", \"lefthook\"].\n", projectdir.Concerns.Path(""))
 		}
 		if *asJSON {
 			_ = writeProposeJSON(stdout, configProposeModel{RepoRoot: root, Proposals: []custodian.Proposal{}})

@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 // LoadConfiguredCoverage resolves and loads coverage.meta.json (and its
@@ -50,7 +51,7 @@ func LoadConfiguredCoverage(in *Input, root, metaPathOverride string) {
 	explicit := metaPathOverride != ""
 	metaPath := metaPathOverride
 	if metaPath == "" {
-		loaded, err := config.Load(config.DefaultUserPath(), filepath.Join(root, ".fathom", "config.toml"))
+		loaded, err := config.Load(config.DefaultUserPath(), projectdir.Config.Path(root))
 		if err != nil {
 			in.CoverageLoadError = fmt.Sprintf("loading project config: %v", err)
 			return

@@ -37,6 +37,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/pathglob"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 // skipConfigured is why a nested module the repository's skip_modules
@@ -48,7 +49,7 @@ const skipModulesKnob = "[typed] skip_modules in .fathom/config.toml"
 
 // typedConfigName is the corpus-local config file skip_modules is read
 // from.
-var typedConfigName = filepath.Join(".fathom", "config.toml")
+var typedConfigName = projectdir.Config.Path("")
 
 // typedSkipModules returns the `[typed] skip_modules` globs of the corpus
 // at repoPath: each cleaned to a slash-separated repo-relative glob, sorted,

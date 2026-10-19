@@ -2,9 +2,9 @@ package capability
 
 import (
 	"os"
-	"path/filepath"
 
 	"github.com/geoffmilleraz/fathom/internal/fathomhome"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 // ProjectPath returns "<root>/.fathom/capabilities.cue" for a repository
@@ -12,7 +12,7 @@ import (
 // reaches it through [DefaultProjectPath]; every cmd/fathom verb that
 // takes an explicit --repo reaches it here, so the two can never drift.
 func ProjectPath(root string) string {
-	return filepath.Join(root, ".fathom", ProjectFileName)
+	return projectdir.Capabilities.Path(root)
 }
 
 // DefaultUserPath returns "~/.fathom/capabilities.cue", or "" when the

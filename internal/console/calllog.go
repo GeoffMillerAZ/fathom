@@ -18,6 +18,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 )
 
 // CallLogRule names the rule that chose a call-log path.
@@ -181,7 +183,7 @@ func DaemonRecordPath(home, addr string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".fathom", "daemons", key+".json"), nil
+	return fathomhome.At(home, "daemons", key+".json"), nil
 }
 
 // DaemonAddrFromURL turns a base URL (http://localhost:7575) into host:port.

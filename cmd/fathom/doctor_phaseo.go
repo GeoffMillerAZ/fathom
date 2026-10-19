@@ -41,6 +41,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/bindspec"
 	"github.com/geoffmilleraz/fathom/internal/filter"
 	"github.com/geoffmilleraz/fathom/internal/guardspec"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 // callMCPTool POSTs a tools/call request for name/args to baseURL/rpc and
@@ -81,7 +82,7 @@ func callMCPTool(hc *http.Client, baseURL, name string, args map[string]any) (js
 // loud, non-hot-path place that surfaces it instead.
 func checkBindingFile(root string) doctorCheck {
 	const name = "binding_file"
-	path := filepath.Join(root, ".fathom", "modules.cue")
+	path := projectdir.Modules.Path(root)
 	if _, err := os.Stat(path); err != nil {
 		return doctorCheck{Name: name, Status: doctorPass, Reason: "no .fathom/modules.cue (no platform-module bindings configured)"}
 	}
@@ -105,7 +106,7 @@ func checkBindingFile(root string) doctorCheck {
 // checkGuardFile is checkBindingFile's twin for .fathom/guard.cue.
 func checkGuardFile(root string) doctorCheck {
 	const name = "guard_file"
-	path := filepath.Join(root, ".fathom", "guard.cue")
+	path := projectdir.Guard.Path(root)
 	if _, err := os.Stat(path); err != nil {
 		return doctorCheck{Name: name, Status: doctorPass, Reason: "no .fathom/guard.cue (no guarded scopes configured)"}
 	}
@@ -432,7 +433,7 @@ func checkGuardIncludeModulesUnbound(root string) doctorCheck {
 // skipReason=nil means the file exists but is invalid (the caller should
 // point at binding_file).
 func loadBindingSetForDoctor(root string) (bindspec.BindingSet, bool, *string) {
-	path := filepath.Join(root, ".fathom", "modules.cue")
+	path := projectdir.Modules.Path(root)
 	if _, err := os.Stat(path); err != nil {
 		reason := "no .fathom/modules.cue (no platform-module bindings configured)"
 		return bindspec.BindingSet{}, false, &reason
@@ -445,7 +446,7 @@ func loadBindingSetForDoctor(root string) (bindspec.BindingSet, bool, *string) {
 }
 
 func loadGuardSetForDoctor(root string) (guardspec.GuardSet, bool, *string) {
-	path := filepath.Join(root, ".fathom", "guard.cue")
+	path := projectdir.Guard.Path(root)
 	if _, err := os.Stat(path); err != nil {
 		reason := "no .fathom/guard.cue (no guarded scopes configured)"
 		return guardspec.GuardSet{}, false, &reason

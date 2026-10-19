@@ -11,10 +11,10 @@ package main
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 // checkKeyScope is key_source_scope: WARN naming file and field (never a
@@ -23,7 +23,7 @@ import (
 // user-only fields are read.
 func checkKeyScope(root, userPath string) doctorCheck {
 	const name = "key_source_scope"
-	projPath := filepath.Join(root, ".fathom", "config.toml")
+	projPath := projectdir.Config.Path(root)
 	loaded, err := config.Load(userPath, projPath)
 	if err != nil {
 		return doctorCheck{Name: name, Status: doctorWarn, Reason: "config does not load: " + err.Error(), Remedy: "see config_valid"}

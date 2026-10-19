@@ -14,6 +14,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/hookcache"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/testevidence"
 	"github.com/geoffmilleraz/fathom/pkg/client"
@@ -555,7 +556,7 @@ func resolveSCIPPaths(root string, explicit []string) []string {
 	if p := filepath.Join(root, "index.scip"); fileExists(p) {
 		out = append(out, p)
 	}
-	if matches, err := filepath.Glob(filepath.Join(root, ".fathom", "scip", "*.scip")); err == nil {
+	if matches, err := filepath.Glob(projectdir.SCIP.Path(root, "*.scip")); err == nil {
 		sort.Strings(matches)
 		out = append(out, matches...)
 	}

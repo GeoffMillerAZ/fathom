@@ -17,6 +17,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
 	"github.com/geoffmilleraz/fathom/internal/receipt"
 	riskreview "github.com/geoffmilleraz/fathom/internal/review"
@@ -434,7 +435,7 @@ func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, s
 	if receiptV {
 		table := riskreview.DefaultRiskTable()
 		if corpusRoot != "" {
-			if t, terr := riskreview.LoadRiskTable(filepath.Join(corpusRoot, ".fathom", "risk.cue")); terr == nil {
+			if t, terr := riskreview.LoadRiskTable(projectdir.Risk.Path(corpusRoot)); terr == nil {
 				table = t
 			}
 		}

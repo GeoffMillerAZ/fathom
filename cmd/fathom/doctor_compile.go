@@ -28,13 +28,14 @@ import (
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
 
 // checkProfileBins loads the user and project config and verdicts every
 // configured profile's bin (doctor_providers.go's own load shape).
 func checkProfileBins(root string) doctorCheck {
-	loaded, err := config.Load(config.DefaultUserPath(), filepath.Join(root, ".fathom", "config.toml"))
+	loaded, err := config.Load(config.DefaultUserPath(), projectdir.Config.Path(root))
 	if err != nil {
 		return doctorCheck{Name: "profile_bins", Status: doctorSkipped, Reason: fmt.Sprintf("config did not load: %v", err)}
 	}

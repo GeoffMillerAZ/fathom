@@ -79,6 +79,7 @@ Release impact: minor
 - `fathom verify`'s `edge_wired` failure tells a `reachable_from` that names no symbol, or one several symbols carry (with up to five of their keys and how to write the name), from a missing typed path, which is all it said before; the verdict stays a failure (O1258).
 - `fathom tests select --safe` no longer selects a test whose only reach to a changed symbol is a dispatch into error's `Error`, `fmt.Stringer`'s `String` or `fmt.GoStringer`'s `GoString`: one edited `Error` method in `cmd/fathom` selected 624 tests, now 1, and one line counts the 623 left out and names the method; `--stdlib-dispatch` selects them (O887).
 - `fathom tests select` says when the index it reads holds another commit than HEAD, in one line and in `--json` under `index`, instead of printing an empty selection with no reason; the wave guide's worker step names the scratch ingest to pass with `--store` (O1199).
+- The observatory Config panel reports a repository's platform-module bindings from `.fathom/modules.cue`, the file `fathom init` writes and the server reads; it checked `.fathom/bindings.cue`, which nothing writes, so it always reported no bindings.
 
 ### Security
 - Requests to a configured decision provider now carry only the fields each site declares, redact secret-shaped strings (counted as the decision row's `redactions`), honour the new `[decide] exclude` path globs (every layer's union), refuse a question that names a security property, and can be printed without sending (`FATHOM_DECIDE_PLAN_ONLY=1`); provider `none` is unchanged.

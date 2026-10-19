@@ -22,6 +22,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/inventory"
 	"github.com/geoffmilleraz/fathom/internal/analysis/serviceref"
 	"github.com/geoffmilleraz/fathom/internal/config"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 func init() {
@@ -115,7 +116,7 @@ func repoSurfacePatterns(root string) []inventory.Pattern {
 	if root == "" {
 		return nil
 	}
-	loaded, err := config.Load("", filepath.Join(root, ".fathom", "config.toml"))
+	loaded, err := config.Load("", projectdir.Config.Path(root))
 	if err != nil {
 		return nil
 	}

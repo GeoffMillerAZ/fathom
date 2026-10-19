@@ -24,6 +24,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/rulereplay"
 	"github.com/geoffmilleraz/fathom/internal/guardspec"
 	"github.com/geoffmilleraz/fathom/internal/guardspec/guardsarif"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/receipt"
 )
 
@@ -50,9 +51,10 @@ func cmdRules(args []string, stdout, stderr io.Writer) int {
 // commit versus one merely inherited from its parent (VB-16). --format sarif
 // (SR-47w, F-29) emits the violations the range introduced as SARIF 2.1.0.
 func cmdRulesReplay(args []string, stdout, stderr io.Writer) int {
+	const guardRel = projectdir.Dir + "/" + string(projectdir.Guard) // a constant: no work before Parse
 	fs := newFlagSet("rules replay", stderr)
 	root := fs.String("root", ".", "git repository to replay")
-	rulesPath := fs.String("rules", ".fathom/guard.cue", "layer-rule file to evaluate, read once (relative to --root unless absolute)")
+	rulesPath := fs.String("rules", guardRel, "layer-rule file to evaluate, read once (relative to --root unless absolute)")
 	since := fs.String("since", "", "a git ref (replay ref..HEAD) or a bare positive integer N (replay the last N commits)")
 	jsonOut := fs.Bool("json", false, "emit the report as JSON instead of a table")
 	format := fs.String("format", "", "output format: table (default) | json | sarif — SARIF 2.1.0 of the violations the range introduced, one result per violation at the commit that introduced it (an inherited repeat is not a second finding), one rule per rule id, located at the offending package; overrides --json")
@@ -126,9 +128,9 @@ func cmdRulesGenTest(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
-	guardCue := filepath.Join(rootAbs, ".fathom", "guard.cue")
+	guardCue := projectdir.Guard.Path(rootAbs)
 	if _, err := os.Stat(guardCue); err != nil {
-		fmt.Fprintf(stderr, "error: no %s — nothing to generate a test from\n", filepath.Join(*root, ".fathom", "guard.cue"))
+		fmt.Fprintf(stderr, "error: no %s — nothing to generate a test from\n", projectdir.Guard.Path(*root))
 		return 1
 	}
 	rules, err := guardspec.LoadLayerRules(guardCue)
@@ -137,7 +139,7 @@ func cmdRulesGenTest(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	if len(rules.Rules) == 0 {
-		fmt.Fprintf(stdout, "no layer_rules configured in %s — nothing to generate\n", filepath.Join(*root, ".fathom", "guard.cue"))
+		fmt.Fprintf(stdout, "no layer_rules configured in %s — nothing to generate\n", projectdir.Guard.Path(*root))
 		return 0
 	}
 

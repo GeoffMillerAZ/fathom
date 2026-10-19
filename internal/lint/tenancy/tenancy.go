@@ -6,7 +6,7 @@
 // The rules run as a Go test (TestTenancyRules) inside `go test ./...`, so
 // `task validate` enforces them with no new gate step. A site may be excused
 // with `//fathom:tenancy-allow <rule> <reason>` on the line (or the line
-// directly above); every excuse is listed in .fathom/tenancy-allow.txt and the
+// directly above); every excuse is listed in internal/lint/tenancy/allow.txt and the
 // count may only fall (allowlistCeiling).
 package tenancy
 
@@ -485,7 +485,7 @@ func Violations(fs []Finding) []Finding {
 	return v
 }
 
-// RenderAllowlist renders .fathom/tenancy-allow.txt from the excused
+// RenderAllowlist renders internal/lint/tenancy/allow.txt from the excused
 // findings: a comment header, then one `rule<TAB>path<TAB>reason` line per
 // excuse, sorted. Line numbers are left out so an unrelated edit does not
 // churn the file.

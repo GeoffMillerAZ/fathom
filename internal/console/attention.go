@@ -27,6 +27,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 // AttentionKind is an item's kind; the order of the kinds is the queue's.
@@ -603,7 +605,7 @@ func guideItems(r ProjectFacts) []AttentionItem {
 // observationItems are a project's open observations, or its unreadable
 // observations file (which hides an unknown number of them).
 func observationItems(r ProjectFacts) []AttentionItem {
-	file := ".fathom/observations/"
+	file := projectdir.Observations.Rel() + "/"
 	if r.Path != "" {
 		file = strings.TrimSuffix(r.Path, "/") + "/" + file
 	}
