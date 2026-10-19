@@ -62,6 +62,7 @@ type serveRun struct {
 	lifecycleIDFlag    string
 	managed            bool
 	managedLabel       string
+	supervised         *bool // managed only: launchd/systemd runs it (O1363)
 	budget             tenancy.Budget
 	budgetNotes        []tenancy.Note
 

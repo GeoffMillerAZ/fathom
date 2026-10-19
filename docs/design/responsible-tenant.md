@@ -1008,6 +1008,23 @@ whole-service case.
    pid N", exit 0; anything else → exit 75 (counted as `port_held`), `resources` and doctor
    name the holder's pid and command line, `daemon reap` handles a scratch holder.
 
+   A supervised holder only (owner-architect design 2026-10-19, O1363). On 2026-10-19 an
+   agent session hand-started `serve-http --managed` with the managed label's store and
+   address while the launchd job was down; the reloaded job found the port held by an
+   answering managed fathom of its own label, exited 0 as already served, and KeepAlive
+   SuccessfulExit=false never relaunched it, so the managed daemon lived on as a session's
+   child. A managed start now records `supervised` in its daemon record and its start row
+   (darwin: `XPC_SERVICE_NAME` equal to the label; linux: `INVOCATION_ID`; either: init as
+   the parent). Exit 0 stays for a holder recorded supervised, or whose record predates the
+   field (a mixed-version relaunch never loops); a holder recorded `supervised: false` gets
+   exit 75 under `port_held_unsupervised`, which neither the breaker nor RT-M1's day merge
+   counts as unclean or as an exit rung, so launchd relaunches every ThrottleInterval and
+   takes the port over within a minute of the hand start's exit. An unsupervised managed
+   start is not refused (other supervisors exist): it logs one line naming
+   `launchctl kickstart -k gui/<uid>/<label>` (linux: `systemctl --user restart <unit>`),
+   and the daemon-down text agents read names that command and says not to start
+   `serve-http --managed` by hand.
+
 ### 8.5 Drain
 
 `signal.Notify(SIGTERM)`: **first** write the `exit{reason: drain}` row (so a SIGKILL that

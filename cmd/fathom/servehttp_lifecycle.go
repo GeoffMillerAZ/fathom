@@ -35,7 +35,7 @@ func (r *serveRun) startLedger() (int, bool) {
 	r.pid = os.Getpid()
 	r.commit = statuszBuildInfo().BinaryCommit
 	r.lcIn = lifecycleStart{
-		managed: managed, addr: r.addr, pid: r.pid, commit: r.commit, version: Version,
+		managed: managed, supervised: r.supervised, addr: r.addr, pid: r.pid, commit: r.commit, version: Version,
 		breaker:  budget.Breaker,
 		alive:    func(p int) bool { return !pidGone(p) },
 		evidence: func(since time.Time) []tenancy.EvidenceFile { return scanUncleanEvidence(evidenceDirs(), since) },
@@ -190,7 +190,7 @@ func (r *serveRun) bind() (int, bool) {
 	// failed to start never leaves a record behind — and before the store,
 	// so `fathom daemon stop` finds a daemon waiting for its store.
 	r.prevRecord, r.hadPrev = readDaemonRecordFor("http://" + addr)
-	meta := daemonMeta{Managed: managed, Label: managedLabel, PPID: r.startPPID, LifecycleID: r.lcID}
+	meta := daemonMeta{Managed: managed, Label: managedLabel, PPID: r.startPPID, LifecycleID: r.lcID, Supervised: r.supervised}
 	if !managed {
 		meta.IdleExit, meta.TTL = r.idleExit, r.ttl
 	}

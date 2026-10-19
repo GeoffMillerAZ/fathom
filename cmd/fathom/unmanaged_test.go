@@ -67,6 +67,11 @@ func runTestHelper(role string) int {
 	case "rt-startfail":
 		// RT-38: a managed start whose store opens and is wrong.
 		return runServeHTTP([]string{"--managed", "--store", os.Getenv("RT_STORE"), "--addr", os.Getenv("RT_ADDR"), "--call-log", ""}, os.Stdout, os.Stderr)
+	case "rt-handstart":
+		// O1363: a managed start by hand (no supervisor) on a held port;
+		// the bind retry is shortened (the helper process exits).
+		bindRetryMaxWait = 200 * time.Millisecond
+		return runServeHTTP([]string{"--managed", "--store", os.Getenv("RT_STORE"), "--addr", os.Getenv("RT_ADDR"), "--call-log", ""}, os.Stdout, os.Stderr)
 	}
 	return 2
 }

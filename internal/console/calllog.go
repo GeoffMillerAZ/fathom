@@ -160,6 +160,13 @@ type DaemonRecord struct {
 	// ledger, resource ring and diagnostics live under
 	// ~/.fathom/daemon/<LifecycleID>/, not beside this record.
 	LifecycleID string `json:"lifecycle_id,omitempty"`
+	// Supervised is whether launchd or systemd runs this managed daemon,
+	// set at start (darwin: XPC_SERVICE_NAME equal to the label; linux:
+	// INVOCATION_ID; either: init as the parent). A same-label holder
+	// recorded unsupervised (a hand start) does not keep its supervised
+	// successor off the port (design §8.4 step 5). nil: unmanaged, or a
+	// record that predates the field.
+	Supervised *bool `json:"supervised,omitempty"`
 }
 
 // DaemonRecordSchemaVersion is the record's wire version.
