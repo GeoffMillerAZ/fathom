@@ -267,7 +267,7 @@ var claudeCode = Descriptor{
 		HTTPKey:         "url",
 		AddCommand:      "claude mcp add --transport http --scope user fathom {{url}}/rpc/agent",
 		ToolNamePattern: "mcp__{{server}}__{{tool}}",
-		Note:            "type:\"http\" beside url; doctor reads ~/.claude.json. Add \"alwaysLoad\": true beside them (BP-39, ADR-032 as amended 2026-09-13): with ENABLE_TOOL_SEARCH unset Claude Code defers EVERY MCP tool schema behind ToolSearch, and a headless (-p) session pays one ToolSearch turn per cell to load fathom's (O32: 11% of the arm's tokens); alwaysLoad exempts this server. Measured 2026-09-13: plain entry 1 ToolSearch turn, alwaysLoad 0.",
+		Note:            "type:\"http\" beside url; doctor reads local/user ~/.claude.json and project .mcp.json; configuration is not workspace trust or tool consumption. Add \"alwaysLoad\": true beside them (BP-39, ADR-032 as amended 2026-09-13): with ENABLE_TOOL_SEARCH unset Claude Code defers EVERY MCP tool schema behind ToolSearch, and a headless (-p) session pays one ToolSearch turn per cell to load fathom's (O32: 11% of the arm's tokens); alwaysLoad exempts this server. Measured 2026-09-13: plain entry 1 ToolSearch turn, alwaysLoad 0.",
 	},
 	Env: EnvContract{
 		ProjectDir:       "CLAUDE_PROJECT_DIR",

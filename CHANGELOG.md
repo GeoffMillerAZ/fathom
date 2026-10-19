@@ -30,6 +30,7 @@ Release impact: minor
 - Unity `.asmdef` files expose declared assembly/reference facts without call edges; `indexbench lang-unity-asmdef` calibrates per-file-bound ownership, named references and a strict engine boundary against retained Editor receipts, with unsupported cases explicit.
 
 ### Fixed
+- Doctor recognizes Claude CLI local/project/user MCP configuration precedence and the requested endpoint, without changing registrations or claiming workspace trust, connection or tool consumption.
 - Certification-marker discovery shares the indexed service corpus policy, excluding cached dependency copies and honoring scoped/project/Git ignores and explicit includes without a second directory list.
 - Filtered native Unity executions remain unjoined/UNKNOWN because a selected passing parameterized case cannot establish the outcome of the complete method family.
 - Native C# execution joins compare the authoritative extractor fingerprint of raw hash-bound source, avoiding false unjoined results for freshly ingested declarations while refusing old, raw and stale fingerprints.

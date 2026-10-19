@@ -392,7 +392,7 @@ func doctorExitCode(checks []doctorCheck) int {
 func checkMCPRegistration(root, harnessLabel, baseURL string) doctorCheck {
 	switch harnessLabel {
 	case "claude":
-		return checkClaudeMCPRegistration(baseURL)
+		return checkClaudeMCPRegistration(root, baseURL)
 	case "codex":
 		// The TOML read is real evidence (a missing entry is a real FAIL,
 		// an unreadable file is named — ADR-027), but a found entry is not
@@ -432,38 +432,6 @@ func checkMCPRegistration(root, harnessLabel, baseURL string) doctorCheck {
 func registeredAtAgentSurface(url string) bool {
 	trimmed := strings.TrimRight(url, "/")
 	return strings.HasSuffix(trimmed, "/rpc/agent") || strings.HasSuffix(trimmed, "/rpc/companion")
-}
-
-func checkClaudeMCPRegistration(baseURL string) doctorCheck {
-	const name = "mcp_registration"
-	remedy := fmt.Sprintf("claude mcp add --transport http --scope user fathom %s/rpc/agent", baseURL)
-
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" {
-		return doctorCheck{Name: name, Status: doctorSkipped, Reason: "cannot resolve home directory to read ~/.claude.json — check manually: claude mcp get fathom", Remedy: remedy}
-	}
-	path := filepath.Join(home, ".claude.json")
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("%s not readable (%v) — check manually: claude mcp get fathom", path, err), Remedy: remedy}
-	}
-	var doc struct {
-		McpServers map[string]struct {
-			Type string `json:"type"`
-			URL  string `json:"url"`
-		} `json:"mcpServers"`
-	}
-	if err := json.Unmarshal(data, &doc); err != nil {
-		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("%s did not parse as JSON (%v)", path, err), Remedy: remedy}
-	}
-	entry, ok := doc.McpServers["fathom"]
-	if !ok {
-		return doctorCheck{Name: name, Status: doctorFail, Reason: fmt.Sprintf("no \"fathom\" entry in %s's mcpServers", path), Remedy: remedy}
-	}
-	if entry.Type != "http" || !registeredAtAgentSurface(entry.URL) {
-		return doctorCheck{Name: name, Status: doctorFail, Reason: fmt.Sprintf("fathom is registered in %s but not at /rpc/agent (type=%q url=%q)", path, entry.Type, entry.URL), Remedy: remedy}
-	}
-	return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("registered in %s at %s", path, entry.URL)}
 }
 
 // codexMCPEntry mirrors the subset of Codex's [mcp_servers.<name>] TOML
