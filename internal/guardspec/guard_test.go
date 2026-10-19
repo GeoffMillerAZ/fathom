@@ -3,6 +3,7 @@ package guardspec
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -348,4 +349,87 @@ func TestLoadGuards_TopLevelFieldAbsent_IsEmptyNotError(t *testing.T) {
 			t.Errorf("LoadGuards(%q) Guards = %v, want none", content, set.Guards)
 		}
 	}
+}
+
+// TestGuardRequiresIsOptionalAndAdditive: a command guard may name the
+// tokens a matching command must carry (`requires`). A guard without it
+// decodes exactly as before, every guard in this repository's own guard
+// file and the schema's valid examples carries none, and adding it changes
+// nothing but Requires. It is a command guard's field: without
+// command_scopes, empty, or carrying an empty token it is refused, and a
+// user-scope guard may not set it.
+func TestGuardRequiresIsOptionalAndAdditive(t *testing.T) {
+	const before = `guards: [{
+	command_scopes: ["go test *"]
+	note:           "the gate runs the race detector"
+}]
+`
+	const after = `guards: [{
+	command_scopes: ["go test *"]
+	note:           "the gate runs the race detector"
+	requires:       ["-race"]
+}]
+`
+	old, err := LoadGuards(writeGuards(t, before))
+	if err != nil {
+		t.Fatalf("LoadGuards(before): %v", err)
+	}
+	cur, err := LoadGuards(writeGuards(t, after))
+	if err != nil {
+		t.Fatalf("LoadGuards(after): %v", err)
+	}
+	if old.Guards[0].Requires != nil {
+		t.Errorf("a guard without requires decodes Requires = %v, want nil", old.Guards[0].Requires)
+	}
+	if got := cur.Guards[0].Requires; len(got) != 1 || got[0] != "-race" {
+		t.Errorf("Requires = %v, want [-race]", got)
+	}
+	if cur.Guards[0].Line != 1 || old.Guards[0].Line != 1 {
+		t.Errorf("Line = %d / %d, want 1 (the guard entry's line)", old.Guards[0].Line, cur.Guards[0].Line)
+	}
+	stripped := cur.Guards[0]
+	stripped.Requires = nil
+	if !reflect.DeepEqual(stripped, old.Guards[0]) {
+		t.Errorf("adding requires changed more than Requires:\n got %+v\nwant %+v", stripped, old.Guards[0])
+	}
+
+	for _, rel := range []string{".fathom/guard.cue"} {
+		gs, err := LoadGuards(filepath.Join(repoRoot(t), filepath.FromSlash(rel)))
+		if err != nil {
+			t.Fatalf("LoadGuards(%s): %v", rel, err)
+		}
+		for i, g := range gs.Guards {
+			if g.Line <= 0 {
+				t.Errorf("%s guards[%d].Line = %d, want the entry's line", rel, i, g.Line)
+			}
+		}
+	}
+	if err := ValidateStrict(writeGuards(t, after)); err != nil {
+		t.Errorf("ValidateStrict(requires): %v", err)
+	}
+
+	for _, tc := range []struct {
+		name, cue string
+	}{
+		{"requires without command_scopes", `guards: [{scopes: ["**/*.go"], requires: ["-race"]}]`},
+		{"empty requires list", `guards: [{command_scopes: ["go test *"], requires: []}]`},
+		{"empty requires token", `guards: [{command_scopes: ["go test *"], requires: [""]}]`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := LoadGuards(writeGuards(t, tc.cue))
+			le, ok := err.(*LoadError)
+			if !ok {
+				t.Fatalf("LoadGuards = %v, want a *LoadError", err)
+			}
+			for _, f := range le.Fields {
+				if strings.HasSuffix(f.Field, ".requires") {
+					return
+				}
+			}
+			t.Errorf("LoadError.Fields = %v, want one naming requires", le.Fields)
+		})
+	}
+
+	_, err = LoadUserGuards(writeGuards(t, after))
+	assertLoadUserGuardsForbidsField(t, err, "requires")
 }

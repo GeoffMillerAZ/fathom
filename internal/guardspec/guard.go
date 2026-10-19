@@ -27,6 +27,12 @@ type Guard struct {
 	MaxRules       int
 	IncludeModules bool
 	CommandScopes  []string
+	// Requires are the argv tokens a command matching CommandScopes must
+	// carry; nil when the guard declares none (schema/guard/schema.cue).
+	Requires []string
+	// Line is the 1-based line of the guard's entry in its file, the
+	// guard's citation; 0 when the source carries no position.
+	Line int
 
 	// Enforce, ForbiddenPaths and Checks are ADR-038's deny-capable
 	// extension (docs/vision/29-verbs-not-lookups.md §2 thesis 2): see
@@ -138,6 +144,8 @@ func ParseGuards(path string, data []byte) (GuardSet, error) {
 			MaxRules:       lookupIntDefault(gv, "max_rules", DefaultMaxRules),
 			IncludeModules: lookupBoolDefault(gv, "include_modules", false),
 			CommandScopes:  lookupStrings(gv, "command_scopes"),
+			Requires:       lookupStrings(gv, "requires"),
+			Line:           gv.Pos().Line(),
 			Enforce:        lookupBoolDefault(gv, "enforce", false),
 			ForbiddenPaths: lookupStrings(gv, "forbidden_paths"),
 			Checks:         lookupStrings(gv, "checks"),
@@ -153,6 +161,7 @@ func ParseGuards(path string, data []byte) (GuardSet, error) {
 		if cmdField.Exists() && len(g.CommandScopes) == 0 {
 			errs = append(errs, fieldErr(path, prefix+".command_scopes", fmt.Errorf("must be non-empty when present")))
 		}
+		errs = append(errs, checkRequires(path, prefix, gv, g)...)
 		if len(g.Scopes) == 0 && len(g.CommandScopes) == 0 && len(g.ForbiddenPaths) == 0 {
 			errs = append(errs, fieldErr(path, prefix, fmt.Errorf("must set at least one of scopes/command_scopes/forbidden_paths — a guard governing nothing is dead by construction")))
 		}
@@ -173,6 +182,28 @@ func ParseGuards(path string, data []byte) (GuardSet, error) {
 	return out, nil
 }
 
+// checkRequires refuses a `requires` that cannot mean anything: present
+// but empty, carrying an empty token, or on a guard with no command_scopes
+// (requires names what a MATCHING command must carry).
+func checkRequires(path, prefix string, gv cue.Value, g Guard) []*FieldError {
+	if !gv.LookupPath(cue.ParsePath("requires")).Exists() {
+		return nil
+	}
+	field := prefix + ".requires"
+	if len(g.Requires) == 0 {
+		return []*FieldError{fieldErr(path, field, fmt.Errorf("must be a non-empty list of tokens when present"))}
+	}
+	for _, tok := range g.Requires {
+		if strings.TrimSpace(tok) == "" {
+			return []*FieldError{fieldErr(path, field, fmt.Errorf("carries an empty token"))}
+		}
+	}
+	if len(g.CommandScopes) == 0 {
+		return []*FieldError{fieldErr(path, field, fmt.Errorf("requires command_scopes: it names what a command matching them must carry"))}
+	}
+	return nil
+}
+
 // userScopeForbiddenFields are the governance fields a user-scope
 // `~/.fathom/guard.cue` may NEVER set (docs/design/scoped-config.md §3/
 // deliverable 2, law 13): these shape what governance a guard SERVES
@@ -188,6 +219,9 @@ var userScopeForbiddenFields = []string{
 	// never flip a project's rule from advisory to blocking, nor invent
 	// its own forbidden_paths/checks the project never authored.
 	"enforce", "forbidden_paths", "checks",
+	// requires states what the project's own gate demands of a command,
+	// so it is the project's to declare, never a user's.
+	"requires",
 }
 
 // LoadUserGuards reads and decodes a USER-SCOPE guard file

@@ -112,6 +112,14 @@ complements the permission system (which decides IF a command may run)
 with governance context (what the org knows about running it). Doctor
 warns on dead command guards like dead file guards.
 
+`guards[].requires?: ["-race"]` (2026-10-19, `docs/design/readouts.md`
+§18) names the argv tokens a command matching the guard's
+`command_scopes` must carry. It is optional and additive: it needs
+`command_scopes`, is project scope only, and a guard without it behaves
+exactly as before. Its one reader is the rich readout, which names a
+missing token, the guard's `.fathom/guard.cue:N` and its note beside the
+command's output; the PreToolUse path never reads it, so it never denies.
+
 ## 3. Non-goals (v1)
 
 No auto-derived guards (an LLM proposing "this file looks important" is

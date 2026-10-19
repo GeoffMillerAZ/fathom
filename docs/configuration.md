@@ -1645,9 +1645,10 @@ whenever either scope contributes a pattern.
 `.fathom/guard.cue` uses (`docs/design/guarded-edits.md`), but loaded by a
 separate, restricted reader — `guardspec.LoadUserGuards` — that permits
 **only** `note` and `command_scopes`. Any governance field
-(`scopes`, `max_rules`, `include_modules`, and — checked defensively even
-though no such `#Guard` field exists today — `min_tier`) present on a
-user-scope guard is a **strict validation error** naming the field:
+(`scopes`, `max_rules`, `include_modules`, the ADR-038 fields, `requires`,
+and — checked defensively even though no such `#Guard` field exists
+today — `min_tier`) present on a user-scope guard is a **strict
+validation error** naming the field:
 
 ```cue
 guards: [
@@ -1677,7 +1678,12 @@ inversion of that. It stays project-scope-only, always
 `binding_file` / `binding_modules_mounted` / `binding_module_readiness`
 rows report it). The project-scope `.fathom/guard.cue` (`#Guards`: `scopes`
 file globs, `command_scopes`, `note`, `max_rules`, `include_modules`) is the
-PreToolUse guard hook's rule source — `docs/design/guarded-edits.md`.
+PreToolUse guard hook's rule source — `docs/design/guarded-edits.md`. A
+command guard may also set `requires`, the argv tokens a command matching
+its `command_scopes` must carry (`requires: ["-race"]` beside
+`command_scopes: ["go test *"]`); under `[readouts] mode = "rich"` a
+matching command that lacks one gets one advisory line naming the token
+and the guard's `.fathom/guard.cue:N`, and nothing is ever denied for it.
 
 ### `capabilities.cue` — what is on, and the `budgets` block
 

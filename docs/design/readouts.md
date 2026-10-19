@@ -514,7 +514,7 @@ a readout.
 |---|---|---|
 | Test delta and a flake flag at the commit pin | "fixed 2, still failing 1, new 1" and "failed then passed at this HEAD and tree" localize faster than any output text, from rows the hook log already holds | RO-23, RO-35 |
 | Compile and vet errors grouped by root cause and tied to this session's edits | "37 errors, 1 root: the signature of `Foo` you edited two calls ago" turns a wall of errors into one action | RO-24 |
-| Command obligations at output time | the guard matcher already knows `go test` without `-race` misses what the gate runs; saying so beside the output is the cheapest correction | RO-25 |
+| Command obligations at output time | a command guard's `requires` names what a matching command must carry (`go test` without `-race` misses what the gate runs); saying so beside the output is the cheapest correction | RO-25 |
 | One command lexer for guards, test-run, discovery, bash-write and readouts | four approximate splitters disagree today; one tested lexer with a fuzz corpus removes a defect class | RO-3, RO-4 |
 | Typed extractor rules, with joins supplied by fathom | an author writes one pattern and gets delta, outline, guard and edit-set joins for free; text filters cannot do that | RO-7, section 7 |
 | Learned rules from the user's own transcripts | drafts with held-out replay beat hand-written rules for the long tail, with no model | RO-27 |
@@ -524,6 +524,19 @@ a readout.
 | A session map from readouts | reads and greps become anchors a parent or the next worker can use without re-reading | F77 |
 | Readouts as a mod | the same engine in process, no spawn per call | F78 |
 | An index hint beside a code-discovery shell command | the original F75 idea, still behind the grep-blocking non-goal's condition | F75 |
+
+RO-25's guard field (owner-architect decision, 2026-10-19; O1276 found the row's premise false): a command guard's
+`command_scopes` only says which commands it governs, so command guards gain an optional, additive `requires` list,
+the argv tokens a command matching `command_scopes` must carry (`requires: ["-race"]` beside `command_scopes: ["go test
+*"]`). `schema/guard/schema.cue` declares it and `internal/guardspec` reads it. It needs `command_scopes`, it may not
+be empty or hold an empty token, and it is project scope only: a user-scope guard setting it is refused, because what
+the gate demands is the project's to declare. A guard without it behaves exactly as before. Its only reader is rich mode
+(`guardLineForCommand`): each simple command of the parsed line (`internal/shellcmd`) is matched against the guard's
+patterns, and when one lacks a token, one line names the token, the guard's `.fathom/guard.cue:N` citation, its pattern
+and its note. A token is a whole parsed word, a flag's `=value` form or a field of a leading assignment
+(`GOFLAGS=-race`), never a substring of the raw line; a command with an expansion in its argv is skipped. The line is
+advice inside I35 and the hook deadline: the PreToolUse guard path never reads `requires`, so it never denies, even
+under `enforce: true`.
 
 ## 19. Risks and the measurement that kills each
 

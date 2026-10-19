@@ -19,6 +19,15 @@ commandGuard: #Guards & {
 	}]
 }
 
+// A command guard naming the token a matching command must carry.
+requiresGuard: #Guards & {
+	guards: [{
+		command_scopes: ["go test *"]
+		requires: ["-race"]
+		note: "The gate runs go test -race."
+	}]
+}
+
 minimalDefaults: #Guards & {
 	guards: [{
 		scopes: ["**/*.go"]
