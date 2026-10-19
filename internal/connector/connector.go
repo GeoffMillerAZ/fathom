@@ -409,6 +409,10 @@ var extClassMap = map[string]classification{
 	// encoding/json over the notebook and the python dialect over its code cells).
 	".ipynb": {core.SourceKind("JupyterFunc"), "jupyter"},
 
+	// Elixir (LB-Q-elixir, wave lang3): a new tree-sitter dialect, no incumbent.
+	".ex":  {core.SourceKind("ElixirModule"), "elixir"},
+	".exs": {core.SourceKind("ElixirModule"), "elixir"},
+
 	// Dart (LB-Q-dart: a new tree-sitter dialect, no incumbent).
 	".dart": {core.KindDartClass, "dart"},
 

@@ -75,6 +75,7 @@ var langRowHint = map[string]string{
 	"lua":              "| Lua ",
 	"luau":             "| Luau ",
 	"dart":             "| Dart ",
+	"elixir":           "| Elixir ",
 	"emacs-lisp":       "| Emacs Lisp ",
 	"commonlisp":       "| Common Lisp ",
 	"ada":              "| Ada ",

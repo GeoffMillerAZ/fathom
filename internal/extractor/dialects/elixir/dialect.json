@@ -1,0 +1,45 @@
+{
+  "id": "elixir",
+  "display": "Elixir",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "elixir",
+  "match": {
+    "extensions": [".ex", ".exs"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": ["elixir"],
+    "sniff": null
+  },
+  "grammar": { "blob": "elixir", "entry_point": "tree_sitter_elixir" },
+  "variants": [],
+  "queries": { "tags": "tags.scm", "imports": "imports.scm" },
+  "kinds": {
+    "module":         { "source_kind": "ElixirModule",         "canonical": "namespace", "callable": true },
+    "protocol":       { "source_kind": "ElixirProtocol",       "canonical": "interface" },
+    "implementation": { "source_kind": "ElixirImplementation", "canonical": "class" },
+    "function":       { "source_kind": "ElixirFunction",       "canonical": "function",  "callable": true },
+    "macro":          { "source_kind": "ElixirMacro",          "canonical": "function",  "callable": true },
+    "guard":          { "source_kind": "ElixirGuard",          "canonical": "function",  "callable": true },
+    "delegate":       { "source_kind": "ElixirDelegate",       "canonical": "function",  "callable": true },
+    "callback":       { "source_kind": "ElixirCallback",       "canonical": "function",  "callable": true },
+    "type":           { "source_kind": "ElixirType",           "canonical": "type_alias" },
+    "test":           { "source_kind": "ElixirTest",           "canonical": "test" }
+  },
+  "required_kinds": ["module", "protocol", "implementation", "function", "macro", "guard", "delegate", "callback", "type"],
+  "oracle_kinds": {
+    "ctags": { "module": "namespace", "protocol": "interface", "implementation": "class", "function": "function",
+               "macro": "function", "guard": "function", "delegate": "function", "callback": "function",
+               "type": "type_alias" },
+    "tool":  { "module": "namespace", "protocol": "interface", "implementation": "class", "function": "function",
+               "macro": "function", "guard": "function", "delegate": "function", "callback": "function",
+               "type": "type_alias" }
+  },
+  "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "capture" },
+  "imports": { "strategy": "namespace-dir", "suffixes": [".ex", ".exs"] },
+  "signature": { "max_chars": 200 },
+  "ctags": { "languages": ["Elixir"], "args": [] },
+  "target_level": "L3",
+  "queue_id": "elixir"
+}

@@ -111,3 +111,14 @@ Upstream's only call pattern is `(call_expression (identifier) @name)`, a plain 
 call_precision .3896 (scored beside the scalameta definitions, 2026-10-10). The scala reading grades L2 against the
 scalameta dump's call pairs instead (`calibration/oracles/scalameta`, tier B, which reads a member call), and records
 this run in its notes.
+
+Elixir (LB-Q-elixir) runs the grammar's own upstream `queries/tags.scm`, `elixir-tags.scm` (elixir-lang/tree-sitter-elixir
+v0.3.5, Apache-2.0, verbatim under a header) with py-tree-sitter 0.25.2 and tree-sitter-elixir 0.3.5. The elixir dialect's
+tags.scm started from the same file, so the oracle is independent in runtime, not in query shape. Two flags exist for it:
+`--honor-ignore` applies tree-sitter-tags' `@ignore` rule (a tag whose name node lies inside an ignored node is dropped:
+upstream ignores `def`, `alias`, an attribute's name... that way) and `--enclose-modules` makes a `@definition.module`
+enclose calls, so a macro called in a `defmodule` body is paired with that module:
+
+    <tools>/pyts/bin/pip install tree-sitter==0.25.2 tree-sitter-elixir==0.3.5
+    <tools>/pyts/bin/python -I tags_oracle.py --lang elixir --query elixir-tags.scm --ext .ex --ext .exs --honor-ignore --enclose-modules <clone> > out/elixir-phoenix-calls.json
+    # phoenixframework/phoenix v1.8.9: 177 files / 8,037 pairs, elixir-ecto/ecto v3.14.2: 126 / 8,335; 0 parse errors
