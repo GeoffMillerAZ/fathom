@@ -135,6 +135,14 @@ func ResolveTenancyConfigNotes(l Loaded, getenv func(string) string) (tenancy.Co
 	dur(h, "swap_growth_window", &cfg.Host.SwapGrowthWindow)
 	size(h, "min_swap_volume_free", &cfg.Host.MinSwapVolumeFree)
 	size(h, "min_store_volume_free", &cfg.Host.MinStoreVolumeFree)
+	// allowance: 0 is a value here (the old rule), not "the default", so it
+	// maps to AllowanceOff and the zero field keeps meaning the default.
+	if v, ok := numberField(h, "allowance"); ok {
+		cfg.Host.Allowance = v
+		if v <= 0 {
+			cfg.Host.Allowance = tenancy.AllowanceOff
+		}
+	}
 	br := sub("breaker")
 	integer(br, "safe_after", &cfg.Breaker.SafeAfter)
 	dur(br, "safe_window", &cfg.Breaker.SafeWindow)

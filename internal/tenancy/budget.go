@@ -85,7 +85,17 @@ type HostConfig struct {
 	SwapGrowthWindow   time.Duration // 0 = 5 min
 	MinSwapVolumeFree  int64         // 0 = 5 GiB
 	MinStoreVolumeFree int64         // 0 = 2 GiB
+	// Allowance is × budget: host pressure moves the ladder only while
+	// footprint + children is at or above it (§2.1 amended 2026-10-19).
+	// 0 = the default, 0.6 × shed_at (0.45); AllowanceOff (any negative) is
+	// a configured 0: the old rule, pressure moves the ladder at any
+	// footprint. Config resolution maps an explicit 0 to AllowanceOff so the
+	// zero value keeps meaning "the default", as every other key's does.
+	Allowance float64
 }
+
+// AllowanceOff is HostConfig.Allowance for a configured `allowance = 0`.
+const AllowanceOff = -1.0
 
 // BreakerSettings is [tenancy.breaker] (§2.3); zero fields take the
 // defaults (3 in 30 min → safe mode, 5 in 60 min → stop, warm-up 120 s).
@@ -127,6 +137,9 @@ type HostTriggers struct {
 	SwapGrowthWindow   time.Duration
 	MinSwapVolumeFree  int64
 	MinStoreVolumeFree int64
+	// Allowance is the footprint + children, in bytes, at or above which
+	// pressure at shed_on_pressure moves the ladder; 0 = off (any footprint).
+	Allowance int64
 }
 
 // Budget is the resolved budget: marks in bytes of phys_footprint and the
@@ -295,6 +308,17 @@ func ResolveBudget(cfg Config, host HostFacts) (Budget, []Note) {
 	note("host", fmt.Sprintf("shed on pressure %s; refuse on pressure %s, swap growth %s in %s, swap volume free < %s",
 		b.Host.ShedOnPressure, b.Host.RefuseOnPressure, FormatBytes(b.Host.SwapGrowth), b.Host.SwapGrowthWindow, FormatBytes(b.Host.MinSwapVolumeFree)),
 		"[tenancy.host]; the swap-used fraction is never a trigger")
+	switch a := cfg.Host.Allowance; {
+	case a < 0:
+		note("allowance", "off", "[tenancy.host] allowance = 0 (configured): host pressure moves the ladder at any footprint")
+	case a > 0:
+		b.Host.Allowance = int64(float64(b.Budget) * a)
+		note("allowance", FormatBytes(b.Host.Allowance), fmt.Sprintf("[tenancy.host] allowance %.2f × budget (configured): host pressure moves the ladder only at or above it", a))
+	default:
+		a = stepDownFraction * shedAt
+		b.Host.Allowance = int64(float64(b.Budget) * a)
+		note("allowance", FormatBytes(b.Host.Allowance), fmt.Sprintf("%.2f × budget (0.6 × shed_at %.2f): host pressure moves the ladder only at or above it", a, shedAt))
+	}
 
 	if host.Managed {
 		if cfg.GOMAXPROCS > 0 {

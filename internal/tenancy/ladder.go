@@ -7,7 +7,10 @@ package tenancy
 // Footprint + children is compared with the shed and refuse marks; the exit
 // rung compares the daemon's own footprint. The swap-used fraction is never
 // a trigger (macOS grows swap files on demand: 80% used is routine at
-// normal pressure). Pure: StepLadder mutates only the state it is given.
+// normal pressure). Host pressure at shed_on_pressure sheds only while
+// footprint + children is at or above the host allowance (RT-192), and a
+// rung it holds steps down after 60 s under 0.6 × the allowance even while
+// pressure stays. Pure: StepLadder mutates only the state it is given.
 
 import (
 	"fmt"
@@ -107,10 +110,38 @@ const (
 	CauseHost
 )
 
-// Cause is the ladder's cause: its class and the formatted reason.
+// RungTrigger names what entered a rung, for the day log's rung entries
+// (RT-M13): fathom's own mark or one of the three host triggers.
+type RungTrigger uint8
+
+const (
+	TriggerUnknown RungTrigger = iota
+	TriggerOwnMark
+	TriggerPressure
+	TriggerSwapGrowth
+	TriggerSwapVolume
+)
+
+func (t RungTrigger) String() string {
+	switch t {
+	case TriggerOwnMark:
+		return "own_mark"
+	case TriggerPressure:
+		return "pressure"
+	case TriggerSwapGrowth:
+		return "swap_growth"
+	case TriggerSwapVolume:
+		return "swap_volume_floor"
+	}
+	return "unknown"
+}
+
+// Cause is the ladder's cause: its class, the formatted reason and the
+// trigger that fired.
 type Cause struct {
-	Kind   CauseKind
-	Detail string
+	Kind    CauseKind
+	Detail  string
+	Trigger RungTrigger
 }
 
 // BudgetCause reports whether the refusal should keep the memory-budget
@@ -122,9 +153,13 @@ func causeOf(w why, reason string) Cause {
 	case whyNone:
 		return Cause{}
 	case whyShedMark, whyRefuseMark, whyExitMark:
-		return Cause{Kind: CauseMark, Detail: reason}
+		return Cause{Kind: CauseMark, Detail: reason, Trigger: TriggerOwnMark}
+	case whySwapGrowth:
+		return Cause{Kind: CauseHost, Detail: reason, Trigger: TriggerSwapGrowth}
+	case whySwapVolume:
+		return Cause{Kind: CauseHost, Detail: reason, Trigger: TriggerSwapVolume}
 	}
-	return Cause{Kind: CauseHost, Detail: reason}
+	return Cause{Kind: CauseHost, Detail: reason, Trigger: TriggerPressure}
 }
 
 // lateEscalates reports whether s ran at least lateFactor cadences after
@@ -162,6 +197,23 @@ func (st *LadderState) swapGrowth(s *Sample, window time.Duration) int64 {
 
 func pressureAtLeast(p, trigger PressureLevel) bool {
 	return trigger != PressureUnknown && p != PressureUnknown && p >= trigger
+}
+
+// hostPressureApplies reports whether host pressure at shed_on_pressure may
+// move the ladder at this footprint + children: only at or above the host
+// allowance, as swap growth already requires the shed mark (RT-192, §2.1
+// amended 2026-10-19). Trimming a small cache gives a starved host nothing
+// back. No allowance (configured 0) is the old rule: any footprint.
+func hostPressureApplies(combined int64, h *HostTriggers) bool {
+	return h.Allowance <= 0 || combined >= h.Allowance
+}
+
+// pressureHoldsShed reports whether host pressure still holds the shed
+// rung: pressure at shed_on_pressure while combined is at or above 0.6 ×
+// the allowance (the step-down hysteresis of hostPressureApplies).
+func pressureHoldsShed(p PressureLevel, combined int64, h *HostTriggers) bool {
+	return pressureAtLeast(p, h.ShedOnPressure) &&
+		(h.Allowance <= 0 || float64(combined) >= stepDownFraction*float64(h.Allowance))
 }
 
 // StepLadder advances the ladder by one sample. Pure over (st, s, b).
@@ -204,7 +256,7 @@ func StepLadder(st *LadderState, s *Sample, b *Budget) Transition {
 	switch {
 	case combined >= b.Shed:
 		shed = whyShedMark
-	case pressureAtLeast(s.Pressure, b.Host.ShedOnPressure):
+	case pressureAtLeast(s.Pressure, b.Host.ShedOnPressure) && hostPressureApplies(combined, &b.Host):
 		shed = whyPressureWarn
 	}
 	refuse := whyNone
@@ -264,7 +316,10 @@ func StepLadder(st *LadderState, s *Sample, b *Budget) Transition {
 		return Transition{From: from, To: LevelRefuse, At: s.At, Changed: true,
 			Reason: fmt.Sprintf("exit mark not sustained: own footprint %s < %s", FormatBytes(s.Footprint), FormatBytes(b.Exit))}
 	case from > LevelNormal && from < LevelExit:
-		mark, hostActive := b.Shed, shed == whyPressureWarn
+		// A shed rung is held by pressure only while combined is at or
+		// above 0.6 × the allowance; under it the rung steps down after
+		// 60 s at warn too (RT-192), reusing the same belowSince hold.
+		mark, hostActive := b.Shed, pressureHoldsShed(s.Pressure, combined, &b.Host)
 		if from == LevelRefuse {
 			mark = b.Refuse
 			hostActive = refuse == whyPressureCritical || refuse == whySwapGrowth || refuse == whySwapVolume
@@ -277,8 +332,11 @@ func StepLadder(st *LadderState, s *Sample, b *Budget) Transition {
 				to := from - 1
 				st.Level, st.Since, st.belowSince = to, s.At, time.Time{}
 				st.over = [numLevels]int{}
-				return Transition{From: from, To: to, At: s.At, Changed: true,
-					Reason: fmt.Sprintf("60 s below 0.6 × the %s mark (%s < %s)", from, FormatBytes(combined), FormatBytes(int64(stepDownFraction*float64(mark))))}
+				reason := fmt.Sprintf("60 s below 0.6 × the %s mark (%s < %s)", from, FormatBytes(combined), FormatBytes(int64(stepDownFraction*float64(mark))))
+				if from == LevelShed && pressureAtLeast(s.Pressure, b.Host.ShedOnPressure) {
+					reason = fmt.Sprintf("60 s below 0.6 × the host allowance at pressure %s (%s < %s)", s.Pressure, FormatBytes(combined), FormatBytes(int64(stepDownFraction*float64(b.Host.Allowance))))
+				}
+				return Transition{From: from, To: to, At: s.At, Changed: true, Reason: reason}
 			}
 		} else {
 			st.belowSince = time.Time{}
@@ -297,6 +355,9 @@ func reasonFor(w why, s *Sample, b *Budget, combined int64, st *LadderState, lat
 		r = fmt.Sprintf("footprint+children %s ≥ shed mark %s", FormatBytes(combined), FormatBytes(b.Shed))
 	case whyPressureWarn:
 		r = "host memory pressure " + s.Pressure.String()
+		if b.Host.Allowance > 0 {
+			r += fmt.Sprintf(" with footprint+children %s ≥ host allowance %s", FormatBytes(combined), FormatBytes(b.Host.Allowance))
+		}
 	case whyRefuseMark:
 		r = fmt.Sprintf("footprint+children %s ≥ refuse mark %s", FormatBytes(combined), FormatBytes(b.Refuse))
 	case whyPressureCritical:

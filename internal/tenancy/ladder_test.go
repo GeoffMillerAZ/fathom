@@ -166,9 +166,12 @@ func TestLadder_TransitionsAndHysteresis(t *testing.T) {
 	r.stepN(1)
 	r.want(LevelExit, "critical pressure for 60 s with footprint > budget")
 
-	// Host pressure warn sheds; critical refuses (two samples each).
+	// Host pressure warn sheds; critical refuses (two samples each). Warn
+	// sheds only at or above the host allowance (1.8 GiB of 4 GiB, RT-192):
+	// 2 GiB keeps this sequence's meaning.
 	r = newRig(t)
 	r.h.pressure = PressureWarn
+	r.h.footprint = 2 * GiB
 	r.stepN(2)
 	r.want(LevelShed, "pressure warn")
 	r.h.pressure = PressureCritical
@@ -318,4 +321,131 @@ func TestHostSampler_UnknownDisclosedNeverTriggers(t *testing.T) {
 	}
 	r.step(0)
 	r.want(LevelRefuse, "resumed")
+}
+
+// RT-192 (§2.1 amended 2026-10-19, ADR-047): host pressure at or above
+// shed_on_pressure moves the ladder only while footprint + children is at
+// or above the host allowance ([tenancy.host] allowance × budget, default
+// 0.45 = 0.6 × shed_at; an explicit 0 is the old rule). A pressure-entered
+// rung steps down when pressure clears, or when combined stays under 0.6 ×
+// the allowance for 60 s. Pressure critical and the swap-volume floor are
+// unchanged.
+func TestLadder_PressureBelowAllowanceStaysNormal(t *testing.T) {
+	host := HostFacts{RAM: 32 * GiB, NumCPU: 12, Managed: true} // 4 GiB budget, shed 3 GiB
+	t.Run("the allowance resolves with its derivation", func(t *testing.T) {
+		b, notes := ResolveBudget(Config{}, host)
+		frac := 0.45
+		if want := int64(float64(4*GiB) * frac); b.Host.Allowance != want {
+			t.Fatalf("default allowance %d, want %d (0.45 × budget)", b.Host.Allowance, want)
+		}
+		var got string
+		for _, n := range notes {
+			if n.Key == "allowance" {
+				got = n.Value + " " + n.Derivation
+			}
+		}
+		if !strings.Contains(got, "0.45 × budget") || !strings.Contains(got, "0.6 × shed_at") {
+			t.Fatalf("allowance note %q does not name its derivation", got)
+		}
+		b, _ = ResolveBudget(Config{Host: HostConfig{Allowance: 0.25}}, host)
+		if b.Host.Allowance != GiB {
+			t.Fatalf("configured 0.25 resolved to %d, want 1 GiB", b.Host.Allowance)
+		}
+		b, notes = ResolveBudget(Config{Host: HostConfig{Allowance: AllowanceOff}}, host)
+		if b.Host.Allowance != 0 {
+			t.Fatalf("an explicit 0 resolved to %d, want off", b.Host.Allowance)
+		}
+		for _, n := range notes {
+			if n.Key == "allowance" && n.Value != "off" {
+				t.Fatalf("an explicit 0 reads %q, want off", n.Value)
+			}
+		}
+	})
+	t.Run("warn under the allowance stays normal", func(t *testing.T) {
+		r := newRig(t)
+		r.h.pressure = PressureWarn
+		r.h.footprint, r.h.children = 1*GiB, 300*MiB // 1.3 GiB < 1.8 GiB
+		r.stepN(300)
+		r.want(LevelNormal, "warn with fathom under its allowance")
+		r.h.footprint, r.h.children = r.b.Host.Allowance-1, 0
+		r.stepN(50)
+		r.want(LevelNormal, "warn one byte under the allowance")
+	})
+	t.Run("warn at or over the allowance sheds after two samples", func(t *testing.T) {
+		r := newRig(t)
+		r.h.pressure = PressureWarn
+		r.h.footprint = 1 * GiB
+		r.stepN(10)
+		r.want(LevelNormal, "precondition")
+		r.h.footprint, r.h.children = r.b.Host.Allowance-200*MiB, 200*MiB // children count
+		if tr := r.step(0); tr.Changed {
+			t.Fatalf("one sample at the allowance moved the ladder: %+v", tr)
+		}
+		tr := r.step(0)
+		r.want(LevelShed, "two samples at the allowance")
+		if tr.Cause.Kind != CauseHost || tr.Cause.Trigger != TriggerPressure || !strings.Contains(tr.Reason, "allowance") {
+			t.Fatalf("a pressure shed names its trigger and the allowance: %+v", tr)
+		}
+	})
+	t.Run("an explicit 0 sheds as today", func(t *testing.T) {
+		r := newRig(t)
+		r.b, _ = ResolveBudget(Config{Host: HostConfig{Allowance: AllowanceOff}}, host)
+		r.h.pressure = PressureWarn
+		r.h.footprint = 70 * MiB
+		r.step(0)
+		r.want(LevelNormal, "one sample")
+		r.step(0)
+		r.want(LevelShed, "allowance off: warn sheds at any footprint")
+	})
+	t.Run("critical refuses whatever the footprint", func(t *testing.T) {
+		r := newRig(t)
+		r.h.pressure = PressureCritical
+		r.h.footprint = 70 * MiB
+		tr := r.stepN(2)
+		r.want(LevelRefuse, "critical at 70 MB")
+		if tr.Cause.Trigger != TriggerPressure {
+			t.Fatalf("critical names the pressure trigger: %+v", tr.Cause)
+		}
+	})
+	t.Run("a pressure-entered rung steps down after 60 s under 0.6 × the allowance", func(t *testing.T) {
+		r := newRig(t)
+		r.h.pressure = PressureWarn
+		r.h.footprint = 2 * GiB
+		r.stepN(2)
+		r.want(LevelShed, "entered on warn at 2 GiB")
+		// Under the allowance but over 0.6 × it, still at warn: held.
+		r.h.footprint = 1200 * MiB
+		r.stepN(100)
+		r.want(LevelShed, "warn holds between 0.6 × and 1 × the allowance")
+		// Under 0.6 × the allowance (1.08 GiB) at warn: 60 s, then normal.
+		r.h.footprint = 1 * GiB
+		r.stepN(30)
+		r.want(LevelShed, "58 s under 0.6 × the allowance")
+		tr := r.stepN(1)
+		r.want(LevelNormal, "60 s under 0.6 × the allowance")
+		if !strings.Contains(tr.Reason, "allowance") {
+			t.Fatalf("the step-down names the allowance: %+v", tr)
+		}
+		// Pressure clearing steps down by today's rule (0.6 × the shed mark).
+		r = newRig(t)
+		r.h.pressure = PressureWarn
+		r.h.footprint = 2 * GiB
+		r.stepN(2)
+		r.want(LevelShed, "entered on warn")
+		r.h.pressure, r.h.footprint = PressureNormal, 1500*MiB
+		r.stepN(30)
+		r.want(LevelShed, "pressure cleared, 58 s")
+		r.stepN(1)
+		r.want(LevelNormal, "pressure cleared: 60 s below 0.6 × the shed mark")
+	})
+	t.Run("a floor refuse at normal pressure is unchanged", func(t *testing.T) {
+		r := newRig(t)
+		r.h.footprint = 70 * MiB
+		r.h.swapVolFree = 3 * GiB
+		tr := r.stepN(2)
+		r.want(LevelRefuse, "swap volume under 5 GiB at normal pressure")
+		if tr.Cause.Trigger != TriggerSwapVolume || !strings.Contains(tr.Reason, "swap volume free") {
+			t.Fatalf("the floor names itself: %+v", tr)
+		}
+	})
 }

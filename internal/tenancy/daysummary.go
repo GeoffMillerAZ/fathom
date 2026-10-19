@@ -133,6 +133,13 @@ type DaySummary struct {
 	// ExitsKnown is set by the read side when the ledger covers the day;
 	// never persisted true.
 	ExitsKnown bool `json:"exits_known"`
+	// RungEntries are the day's rung entries by rung, trigger and the host
+	// pressure at entry (RT-M13), rolled from the ladder's transitions.
+	RungEntries []RungEntry `json:"rung_entries,omitempty"`
+	// RungEntriesKnown is set on a row opened by a sampler that records
+	// rung entries. A row logged before the field cannot say what entered
+	// its rungs: RT-M13 reads it INCOMPLETE, never as zero entries (I38).
+	RungEntriesKnown bool `json:"rung_entries_known,omitempty"`
 }
 
 type dayFile struct {
@@ -221,7 +228,7 @@ func (d *DayLog) day(at time.Time) *DaySummary {
 			return &d.rows[i]
 		}
 	}
-	d.rows = append(d.rows, DaySummary{Date: date})
+	d.rows = append(d.rows, DaySummary{Date: date, RungEntriesKnown: true})
 	sort.SliceStable(d.rows, func(i, j int) bool { return d.rows[i].Date < d.rows[j].Date })
 	if len(d.rows) > DaysKeep {
 		d.rows = append([]DaySummary(nil), d.rows[len(d.rows)-DaysKeep:]...)
@@ -256,6 +263,9 @@ func (d *DayLog) Observe(rec RingRecord, m DayMarks, tr *Transition) (flushNow b
 		if tr.To == LevelExit && tr.From != LevelExit {
 			row.ExitRungs++
 			flushNow = true
+		}
+		if tr.To > tr.From {
+			row.addRungEntry(tr.To, tr.Cause.Trigger, rec.Pressure)
 		}
 		if tr.To >= LevelRefuse && tr.From < LevelRefuse {
 			d.trigger = RefuseTrigger(tr.Cause)

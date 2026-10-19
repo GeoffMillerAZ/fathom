@@ -440,6 +440,7 @@ refuse_on_swap_growth = "2GiB"      # swap grew this much in the window while fa
 swap_growth_window    = "5m"
 min_swap_volume_free  = "5GiB"      # /System/Volumes/VM
 min_store_volume_free = "2GiB"      # below it the store is in distress: writes and ingest refused
+allowance             = 0.45        # × budget: pressure at shed_on_pressure sheds only while footprint + children ≥ it; unset = 0.6 × shed_at; 0 = at any footprint
 
 [tenancy.breaker]
 safe_after  = 3                     # counted exits in safe_window → next start in safe mode
@@ -475,12 +476,13 @@ free space, and steps a ladder:
 
 | Level | Entered when (two consecutive samples; a sample ≥ 6 s late counts twice) | What happens |
 |---|---|---|
-| `shed` | footprint + children ≥ `shed_at`, or host pressure warn | console and fleet memos dropped, console feeders and auto-refresh paused (reads answer from the index as it stands), memory returned to the OS |
+| `shed` | footprint + children ≥ `shed_at`, or host pressure warn while footprint + children ≥ `[tenancy.host] allowance` | console and fleet memos dropped, console feeders and auto-refresh paused (reads answer from the index as it stands), memory returned to the OS |
 | `refuse` | footprint + children ≥ `refuse_at`; pressure critical; swap grew > 2 GiB in 5 min while fathom ≥ the shed mark; swap volume < 5 GiB free | every cache dropped; every in-flight tree and fleet tool call cancelled, youngest first (`abandoned-by-governor`); whole-tree, fleet and ingest reads stop within one file or 1,000 rows; a heap profile captured |
 | `exit` | own footprint ≥ the exit mark, or pressure critical for 60 s with footprint over budget | an in-flight ingest is halted first and its service **quarantined**; if the next sample is still over (or nothing was in flight), the child tree is killed, `heap.pb.gz` and `inflight.json` written under `~/.fathom/daemon/<id>/diag/`, an `exit` row (`reason: over_budget`) appended to `lifecycle.jsonl`, and the process exits **70** at once |
 
 Step-down: 60 s below 0.6 × the current rung's mark with its host triggers
-clear, one rung at a time. The swap-used fraction is never a trigger (macOS
+clear, one rung at a time; a shed rung held by pressure also steps down after
+60 s under 0.6 × the allowance while pressure stays at warn. The swap-used fraction is never a trigger (macOS
 grows swap on demand; 80% used is routine at normal pressure), and an
 unreadable pressure or swap reading is disclosed, never a trigger; an
 unreadable footprint turns the ladder off, disclosed. The startup line names

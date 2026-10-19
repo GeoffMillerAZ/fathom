@@ -87,7 +87,11 @@ func checkHostPressure(rep resourcesReport) doctorCheck {
 	}
 	var problems, remedies []string
 	if h.Pressure == tenancy.PressureCritical.String() || h.Pressure == tenancy.PressureWarn.String() {
-		problems = append(problems, fmt.Sprintf("the machine is short of memory; fathom sheds %s and refuses heavy work %s", at(tr.ShedOnPressure), at(tr.RefuseOnPressure)))
+		sheds := at(tr.ShedOnPressure)
+		if tr.ShedOnPressure != "off" && tr.Allowance > 0 {
+			sheds += " once its footprint reaches " + fb(tr.Allowance)
+		}
+		problems = append(problems, fmt.Sprintf("the machine is short of memory; fathom sheds %s and refuses heavy work %s", sheds, at(tr.RefuseOnPressure)))
 	}
 	if h.SwapVolumeFree >= 0 && tr.MinSwapVolumeFree > 0 && h.SwapVolumeFree < tr.MinSwapVolumeFree {
 		problems = append(problems, fmt.Sprintf("under %s free on the swap volume, fathom's refuse trigger (min_swap_volume_free)", fb(tr.MinSwapVolumeFree)))

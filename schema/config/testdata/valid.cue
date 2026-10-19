@@ -137,6 +137,7 @@ exampleTenancy: #Config & {
 			swap_growth_window:    "5m"
 			min_swap_volume_free:  "5GiB"
 			min_store_volume_free: "2GiB"
+			allowance:             0.45
 		}
 		breaker: {
 			safe_after:  3
