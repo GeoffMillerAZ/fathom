@@ -882,6 +882,7 @@ func initWiringSpecFor(root, service, binPath string, targets initTargets, hooks
 	spec := wiring.Spec{}
 	regions, notes := instructionRegions(root, targets.StanzaID, service, intentOn)
 	spec.Regions = append(spec.Regions, regions...)
+	spec.Regions = append(spec.Regions, wiring.LocalZoneIgnoreRegion())
 	spec.Keys = append(spec.Keys, settingKeys(targets.Settings)...)
 	if !targets.Hooks {
 		return spec, notes
