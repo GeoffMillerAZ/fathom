@@ -27,6 +27,7 @@ Release impact: minor
 
 ### Added
 
+- `fathom init --dry-run` lists every file init would write or change (repository, home and state directory) and writes none; the same steps decide each write, and a test holds the list equal to what the real run then changes on disk.
 - `[readouts] mode = rich`: a failing test run's line names the tests fixed, still failing (since which HEAD) and new against the session's previous run, `not run` for a previous failure outside this run's scope, and flags a possible flake when a test failed and passed at the same HEAD and working tree.
 - The decision port's per-site rails: `[decide] max_asks_per_site_per_session` (default 200, the minimum across layers, so a repository can lower it and never raise it) caps one site's asks per session, after which the site answers on its deterministic path with one `capped` line; a site whose last 100 asks in `decisions.jsonl` hold more than 10% misses turns off for the process's lifetime with one `killed` line (`kill_source: misses`), and `fathom doctor`'s `decision_provider` row names it. Provider `none` is unchanged.
 - Answers shaped by a configured decision provider now say so: the obligations envelope, `POST /route` and `certify suggest` carry `decided_by` (`judged(<site> · <provider>/<model> · conf <x> · calibration <status> <n>/100)`, `computed`, or `computed · not consulted (<class>)` when the provider missed), the degrade line is written once per session, site and class, and `fathom statusline` adds `J:off`, `J:on(<n>)` or `J:killed`; provider `none` output is unchanged.

@@ -47,7 +47,7 @@ func TestResolveSkillsMode(t *testing.T) {
 func TestInstallSkills_Claude_Fresh(t *testing.T) {
 	root := t.TempDir()
 	var out bytes.Buffer
-	if err := installSkills(root, "claude", &out); err != nil {
+	if err := installSkills(nil, root, "claude", &out); err != nil {
 		t.Fatalf("installSkills: %v", err)
 	}
 	for _, name := range skillsdist.Names {
@@ -83,7 +83,7 @@ func TestInstallSkills_Codex_Fresh(t *testing.T) {
 	root := t.TempDir()
 
 	var out bytes.Buffer
-	if err := installSkills(root, "codex", &out); err != nil {
+	if err := installSkills(nil, root, "codex", &out); err != nil {
 		t.Fatalf("installSkills: %v", err)
 	}
 	for _, name := range skillsdist.Names {
@@ -121,7 +121,7 @@ func TestInstallSkills_CodexPrompts_Fresh(t *testing.T) {
 	root := t.TempDir()
 
 	var out bytes.Buffer
-	if err := installSkills(root, "codex-prompts", &out); err != nil {
+	if err := installSkills(nil, root, "codex-prompts", &out); err != nil {
 		t.Fatalf("installSkills: %v", err)
 	}
 	for _, name := range skillsdist.Names {
@@ -195,7 +195,7 @@ func TestInstallSkills_All_WritesBothHarnesses(t *testing.T) {
 	root := t.TempDir()
 
 	var out bytes.Buffer
-	if err := installSkills(root, "all", &out); err != nil {
+	if err := installSkills(nil, root, "all", &out); err != nil {
 		t.Fatalf("installSkills: %v", err)
 	}
 	for _, name := range skillsdist.Names {
@@ -216,7 +216,7 @@ func TestInstallSkills_All_WritesBothHarnesses(t *testing.T) {
 func TestInstallSkills_Empty_NoOp(t *testing.T) {
 	root := t.TempDir()
 	var out bytes.Buffer
-	if err := installSkills(root, "", &out); err != nil {
+	if err := installSkills(nil, root, "", &out); err != nil {
 		t.Fatalf("installSkills: %v", err)
 	}
 	if out.String() != "" {
@@ -234,7 +234,7 @@ func TestInstallSkills_Idempotent(t *testing.T) {
 	root := t.TempDir()
 
 	var out1 bytes.Buffer
-	if err := installSkills(root, "claude", &out1); err != nil {
+	if err := installSkills(nil, root, "claude", &out1); err != nil {
 		t.Fatalf("first installSkills: %v", err)
 	}
 
@@ -249,7 +249,7 @@ func TestInstallSkills_Idempotent(t *testing.T) {
 	}
 
 	var out2 bytes.Buffer
-	if err := installSkills(root, "claude", &out2); err != nil {
+	if err := installSkills(nil, root, "claude", &out2); err != nil {
 		t.Fatalf("second installSkills: %v", err)
 	}
 	for p, raw := range before {
@@ -282,7 +282,7 @@ func TestInstallSkills_PreexistingNonOwnedFile_RefusesLoudly(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := installSkills(root, "claude", &out)
+	err := installSkills(nil, root, "claude", &out)
 	if err == nil {
 		t.Fatal("expected installSkills to refuse, got nil error")
 	}
@@ -508,7 +508,7 @@ func TestCmdInit_SkillsFlag_ConflictReturnsExit1(t *testing.T) {
 func TestSkillsAgentsRendering(t *testing.T) {
 	root := t.TempDir()
 	var out strings.Builder
-	if err := installSkills(root, "agents", &out); err != nil {
+	if err := installSkills(nil, root, "agents", &out); err != nil {
 		t.Fatal(err)
 	}
 	entries, err := os.ReadDir(filepath.Join(root, ".agents", "skills"))

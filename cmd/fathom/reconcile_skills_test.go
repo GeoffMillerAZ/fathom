@@ -91,7 +91,7 @@ func TestReconcileSkills(t *testing.T) {
 	// A pre-engine render (installSkills wrote it; no ledger entry) that is
 	// behind the shipped source is fathom's by its marker: stale, rewritten.
 	root2 := t.TempDir()
-	if err := installSkills(root2, "agents", &stdout); err != nil {
+	if err := installSkills(nil, root2, "agents", &stdout); err != nil {
 		t.Fatal(err)
 	}
 	// Before FA-23 installSkills recorded no baseline: drop the ledger it

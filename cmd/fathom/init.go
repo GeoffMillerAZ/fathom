@@ -80,6 +80,7 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	seedUserIgnoreFlag := fs.Bool("seed-user-ignore", false, "seed ~/.fathom/ignore with machine-junk defaults (docs/design/scoped-config.md); prints exactly what it writes, never silent, requires this flag")
 	harnessFlag := fs.String("harness", "", initHarnessUsage)
 	noSCIPFlag := fs.Bool("no-scip", false, "do not run scip-typescript / scip-python: by default init runs whichever is already on PATH for a TypeScript/JavaScript or Python repo (never installing one) and has the daemon import its index as typed edges; a producer type-checks the whole repository and can take minutes")
+	dryRun := fs.Bool("dry-run", false, "list every file this init would write or change, and write none: the same steps decide each write, and a dry run stops each one before it lands (it also skips the daemon ingest and any SCIP producer, and names them)")
 	hooksScopeFlag := fs.String("hooks-scope", "auto", "Claude Code hook scope: auto (default) skips a fathom hook already wired at ~/.claude/settings.json; project writes every fathom hook at <root>/.claude/settings.json regardless of user scope — required for a clean room or CI harness that loads only project settings (e.g. claude --restricted --settings), which never sees user-scope hooks. Also settable via FATHOM_HOOKS_SCOPE=project.")
 	if err := fs.Parse(args); err != nil {
 		return 1
@@ -152,15 +153,35 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 
 	fmt.Fprintf(stdout, "fathom init — service %q, root %s\n", svc, root)
 
+	// RH-11: every write below goes through w. A dry run records each one
+	// instead of making it, sends the steps' own narration nowhere, and
+	// prints the recorded list at the end.
+	w := &initWrites{dry: *dryRun}
+	out := stdout
+	if w.dry {
+		fmt.Fprintln(stdout, "dry run: listing every file this init would write or change; nothing is written")
+		out = io.Discard
+	}
+
 	// a. .fathomignore
-	if err := writeFathomIgnore(root, stdout); err != nil {
+	if err := writeFathomIgnore(w, root, out); err != nil {
 		fmt.Fprintf(stderr, "error: writing .fathomignore: %v\n", err)
 		return 1
 	}
 
 	// b. daemon ingest (fail-soft: wiring continues either way).
 	exitCode := 0
-	indexed, ingestErr := initIngest(*url, svc, root, stdout)
+	var indexed bool
+	var ingestErr error
+	if w.dry {
+		// The ingest writes the daemon's store, not a file here: named,
+		// skipped, and assumed to succeed so the steps that follow a
+		// confirmed index (SCIP) list what they would write.
+		w.note(fmt.Sprintf("ingest service %q through the daemon at %s (its store, not a file here)", svc, *url))
+		indexed = true
+	} else {
+		indexed, ingestErr = initIngest(*url, svc, root, stdout)
+	}
 	if ingestErr != nil {
 		printDaemonDownInstructions(stdout, *url)
 		// A "MANUAL:" line above already names this, but a caller that
@@ -181,7 +202,7 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	// default): binding a module or guarding a scope is an explicit,
 	// reviewed opt-in, never something `fathom init` activates on a repo's
 	// behalf (docs/design/platform-modules.md / guarded-edits.md deliverable 1).
-	if err := writeFathomConfigScaffolds(root, stdout); err != nil {
+	if err := writeFathomConfigScaffolds(w, root, out); err != nil {
 		fmt.Fprintf(stderr, "error: writing .fathom/ scaffolds: %v\n", err)
 		return 1
 	}
@@ -195,9 +216,9 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	// and the other files still apply around a blocked one.
 	spec, notes := initWiringSpecFor(root, svc, binPath, targets, hooksScope)
 	for _, n := range notes {
-		fmt.Fprintln(stdout, n)
+		fmt.Fprintln(out, n)
 	}
-	res, err := applyWiringSpec(root, spec, stdout)
+	res, err := applyWiringSpec(w, root, spec, out)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: wiring %s: %v\n", root, err)
 		return 1
@@ -211,7 +232,7 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 
 	// e. ~/.fathom/config.toml scaffold (CF-8, docs/plans/config-experience.md):
 	// write-if-absent, never overwrites an operator's existing file.
-	if err := writeStarterConfig(config.DefaultUserPath(), stdout); err != nil {
+	if err := writeStarterConfig(w, config.DefaultUserPath(), out); err != nil {
 		fmt.Fprintf(stderr, "error: writing config.toml: %v\n", err)
 		return 1
 	}
@@ -220,7 +241,7 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	// deliverable 4) — --seed-user-ignore ONLY: init never touches
 	// user-scope config on its own. Prints exactly what it writes.
 	if *seedUserIgnoreFlag {
-		if err := seedUserIgnoreFile(stdout); err != nil {
+		if err := seedUserIgnoreFile(w, out); err != nil {
 			fmt.Fprintf(stderr, "error: seeding ~/.fathom/ignore: %v\n", err)
 			return 1
 		}
@@ -230,7 +251,7 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	// --skills[=claude|codex|agents|all] only — omitted by default, so a
 	// caller who never asked for skills sees no new files. One real copy in
 	// .claude/skills; .agents/skills is an owned link to it (ADR-059).
-	if err := installSkills(root, skillsMode, stdout); err != nil {
+	if err := installSkills(w, root, skillsMode, out); err != nil {
 		fmt.Fprintf(stderr, "error: installing skills: %v\n", err)
 		return 1
 	}
@@ -241,17 +262,26 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	// producer's minutes never delay the wiring above, and never a reason
 	// for a non-zero exit — a producer that fails is a printed warning.
 	if !*noSCIPFlag {
-		initSCIPStep(context.Background(), *url, root, svc, indexed && ingestErr == nil, stdout, defaultSCIPInitDeps())
+		initSCIPStep(context.Background(), w, *url, root, svc, indexed && ingestErr == nil, out, defaultSCIPInitDeps())
 	}
 
 	// g. manual steps init cannot do for you.
 	// IO-20: the PATH shim — hooks and stanzas spell `fathom`, never a
 	// checkout path; a gate that cannot be invoked must fail loudly, not
 	// pass silently (the 2026-07-31 journal case).
-	if msg, err := installShim(); err != nil {
-		fmt.Fprintf(stdout, "shim: NOT installed — %v (hooks written by this init still work via PATH once you install one)\n", err)
+	if msg, err := installShim(w); err != nil {
+		fmt.Fprintf(out, "shim: NOT installed — %v (hooks written by this init still work via PATH once you install one)\n", err)
 	} else {
-		fmt.Fprintf(stdout, "%s\n", msg)
+		fmt.Fprintf(out, "%s\n", msg)
+	}
+
+	if w.dry {
+		w.printDryRun(stdout, root)
+		if len(blocked) > 0 {
+			printBlockedFiles(stderr, blocked)
+			return 1
+		}
+		return 0
 	}
 
 	if targets.ID == harness.ClaudeCode {
@@ -370,7 +400,7 @@ var defaultFathomIgnore = []string{
 // writeFathomIgnore creates <root>/.fathomignore with sensible defaults if
 // absent. It never touches an existing file — a repo may have deliberately
 // customized its excludes.
-func writeFathomIgnore(root string, stdout io.Writer) error {
+func writeFathomIgnore(w *initWrites, root string, stdout io.Writer) error {
 	p := filepath.Join(root, ".fathomignore")
 	if _, err := os.Stat(p); err == nil {
 		fmt.Fprintln(stdout, "ok .fathomignore (already present)")
@@ -386,7 +416,7 @@ func writeFathomIgnore(root string, stdout io.Writer) error {
 		sb.WriteString(line)
 		sb.WriteString("\n")
 	}
-	if err := os.WriteFile(p, []byte(sb.String()), 0o644); err != nil {
+	if err := w.writeFile(p, []byte(sb.String()), 0o644); err != nil {
 		return err
 	}
 	fmt.Fprintln(stdout, "created .fathomignore")
@@ -400,7 +430,7 @@ func writeFathomIgnore(root string, stdout io.Writer) error {
 // `fathom init` never touches user-scope config on its own (design §5:
 // "No implicit creation"). Write-if-absent, exactly like writeFathomIgnore;
 // prints the exact content on write so nothing here is silent.
-func seedUserIgnoreFile(stdout io.Writer) error {
+func seedUserIgnoreFile(w *initWrites, stdout io.Writer) error {
 	path := connector.UserIgnorePath()
 	if path == "" {
 		fmt.Fprintln(stdout, "skip ~/.fathom/ignore — could not resolve $HOME")
@@ -427,10 +457,10 @@ func seedUserIgnoreFile(stdout io.Writer) error {
 	fmt.Fprintf(stdout, "will write %s:\n", path)
 	fmt.Fprint(stdout, content)
 
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := w.mkdirAll(filepath.Dir(path)); err != nil {
 		return err
 	}
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+	if err := w.writeFile(path, []byte(content), 0o644); err != nil {
 		return err
 	}
 	fmt.Fprintf(stdout, "created %s\n", path)
@@ -494,21 +524,21 @@ const findingsConfigTemplate = `# fathom project configuration (docs/configurati
 // own scaffold is 100% `#` comments, a valid empty TOML document), so
 // `fathom doctor` sees no active guard/binding/findings subject until a
 // human uncomments and commits one.
-func writeFathomConfigScaffolds(root string, stdout io.Writer) error {
+func writeFathomConfigScaffolds(w *initWrites, root string, stdout io.Writer) error {
 	dir := filepath.Join(root, ".fathom")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := w.mkdirAll(dir); err != nil {
 		return err
 	}
-	if err := writeIfAbsent(filepath.Join(dir, "guard.cue"), guardspec.ExampleTemplate(), "guard.cue", stdout); err != nil {
+	if err := writeIfAbsent(w, filepath.Join(dir, "guard.cue"), guardspec.ExampleTemplate(), "guard.cue", stdout); err != nil {
 		return err
 	}
-	if err := writeIfAbsent(filepath.Join(dir, "concerns.cue"), string(custodian.ExampleTemplate()), "concerns.cue", stdout); err != nil {
+	if err := writeIfAbsent(w, filepath.Join(dir, "concerns.cue"), string(custodian.ExampleTemplate()), "concerns.cue", stdout); err != nil {
 		return err
 	}
-	if err := writeIfAbsent(filepath.Join(dir, "modules.cue"), bindspec.ExampleTemplate(), "modules.cue", stdout); err != nil {
+	if err := writeIfAbsent(w, filepath.Join(dir, "modules.cue"), bindspec.ExampleTemplate(), "modules.cue", stdout); err != nil {
 		return err
 	}
-	if err := writeIfAbsent(filepath.Join(dir, "config.toml"), findingsConfigTemplate, "config.toml", stdout); err != nil {
+	if err := writeIfAbsent(w, filepath.Join(dir, "config.toml"), findingsConfigTemplate, "config.toml", stdout); err != nil {
 		return err
 	}
 	// Phase T: the scaffold teaches the vocabulary without changing any
@@ -516,7 +546,7 @@ func writeFathomConfigScaffolds(root string, stdout io.Writer) error {
 	// configuration (internal/capability.LoadSettings' absent-field path,
 	// the O22 contract).
 	caps := string(capability.ExampleTemplate(capability.Default()))
-	if err := writeIfAbsent(filepath.Join(dir, "capabilities.cue"), caps, "capabilities.cue", stdout); err != nil {
+	if err := writeIfAbsent(w, filepath.Join(dir, "capabilities.cue"), caps, "capabilities.cue", stdout); err != nil {
 		return err
 	}
 	return nil
@@ -524,14 +554,14 @@ func writeFathomConfigScaffolds(root string, stdout io.Writer) error {
 
 // writeIfAbsent writes content to p only when p does not already exist,
 // printing an "ok"/"created" line matching writeFathomIgnore's convention.
-func writeIfAbsent(p, content, label string, stdout io.Writer) error {
+func writeIfAbsent(w *initWrites, p, content, label string, stdout io.Writer) error {
 	if _, err := os.Stat(p); err == nil {
 		fmt.Fprintf(stdout, "ok .fathom/%s (already present)\n", label)
 		return nil
 	} else if !os.IsNotExist(err) {
 		return err
 	}
-	if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+	if err := w.writeFile(p, []byte(content), 0o644); err != nil {
 		return err
 	}
 	fmt.Fprintf(stdout, "created .fathom/%s (commented example; no active config)\n", label)
@@ -1477,8 +1507,8 @@ func stanzaRegionsFit(root string, files []string, id, service string, intentOn 
 // "BLOCKED X — <why>", which names the drift and writes nothing to that
 // file while the others still apply. The receipt lands in
 // .fathom/receipts.jsonl; nothing here writes a byte outside the engine.
-func applyWiringSpec(root string, spec wiring.Spec, stdout io.Writer) (wiring.Result, error) {
-	res, err := wiring.ApplyWiring(root, spec, wiring.ApplyOptions{Now: time.Now})
+func applyWiringSpec(w *initWrites, root string, spec wiring.Spec, stdout io.Writer) (wiring.Result, error) {
+	res, err := w.applyWiring(root, spec)
 	if err != nil {
 		return res, err
 	}
@@ -1585,7 +1615,7 @@ func applyStanza(path, stanza string, stdout io.Writer) error {
 	if blocked := plan.Blocked(); len(blocked) > 0 {
 		return fmt.Errorf("%s: %s", file, blocked[0].Reason)
 	}
-	_, err = applyWiringSpec(root, wiring.Spec{Regions: []wiring.Region{region}}, stdout)
+	_, err = applyWiringSpec(nil, root, wiring.Spec{Regions: []wiring.Region{region}}, stdout)
 	return err
 }
 
@@ -1654,7 +1684,7 @@ const starterConfigTOML = `# fathom configuration — generated by ` + "`fathom 
 // a re-run of init. An empty path (config.DefaultUserPath could not resolve
 // a home directory) is a silent no-op, matching how the rest of init treats
 // unresolvable optional paths.
-func writeStarterConfig(path string, stdout io.Writer) error {
+func writeStarterConfig(w *initWrites, path string, stdout io.Writer) error {
 	if path == "" {
 		return nil
 	}
@@ -1665,10 +1695,10 @@ func writeStarterConfig(path string, stdout io.Writer) error {
 		return err
 	}
 
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := w.mkdirAll(filepath.Dir(path)); err != nil {
 		return err
 	}
-	if err := os.WriteFile(path, []byte(starterConfigTOML), 0o644); err != nil {
+	if err := w.writeFile(path, []byte(starterConfigTOML), 0o644); err != nil {
 		return err
 	}
 	fmt.Fprintln(stdout, "created ~/.fathom/config.toml (every profile commented out — see docs/configuration.md)")

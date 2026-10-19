@@ -17,7 +17,7 @@ import (
 func TestCheckAgentsSkills(t *testing.T) {
 	t.Run("codex reads .agents/skills and names the missing", func(t *testing.T) {
 		root := t.TempDir()
-		if err := installSkills(root, "codex", &bytes.Buffer{}); err != nil {
+		if err := installSkills(nil, root, "codex", &bytes.Buffer{}); err != nil {
 			t.Fatal(err)
 		}
 		c := checkAgentsSkills(root, "codex")
@@ -50,7 +50,7 @@ func TestCheckAgentsSkills(t *testing.T) {
 
 	t.Run("claude reads .claude/skills", func(t *testing.T) {
 		root := t.TempDir()
-		if err := installSkills(root, "claude", &bytes.Buffer{}); err != nil {
+		if err := installSkills(nil, root, "claude", &bytes.Buffer{}); err != nil {
 			t.Fatal(err)
 		}
 		c := checkAgentsSkills(root, "claude")
@@ -70,7 +70,7 @@ func TestCheckAgentsSkills(t *testing.T) {
 
 	t.Run("agents compares the one real copy through the link", func(t *testing.T) {
 		root := t.TempDir()
-		if err := installSkills(root, "agents", &bytes.Buffer{}); err != nil {
+		if err := installSkills(nil, root, "agents", &bytes.Buffer{}); err != nil {
 			t.Fatal(err)
 		}
 		p := filepath.Join(root, ".agents", "skills", "fathom-verify", "SKILL.md")

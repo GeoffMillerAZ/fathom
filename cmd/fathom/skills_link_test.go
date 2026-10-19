@@ -31,7 +31,7 @@ func TestSkillsLinkOnlyForAgentsSkillsReaders(t *testing.T) {
 	for _, mode := range []string{"claude", "codex", "agents", "all"} {
 		root := t.TempDir()
 		var out bytes.Buffer
-		writes, err := installSkillsReport(root, mode, &out)
+		writes, err := installSkillsReport(nil, root, mode, &out)
 		if err != nil {
 			t.Fatalf("%s: %v", mode, err)
 		}
@@ -62,7 +62,7 @@ func TestSkillsLinkOnlyForAgentsSkillsReaders(t *testing.T) {
 		}
 		// Idempotent: the second run links nothing and rewrites nothing.
 		out.Reset()
-		again, err := installSkillsReport(root, mode, &out)
+		again, err := installSkillsReport(nil, root, mode, &out)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -86,7 +86,7 @@ func TestSkillsLinkReplacesAnEarlierFathomCopyAndBlocksAForeignOne(t *testing.T)
 		writeRepoFile(t, root, ".agents/skills/"+name+"/SKILL.md", string(body))
 	}
 	var out bytes.Buffer
-	if _, err := installSkillsReport(root, "codex", &out); err != nil {
+	if _, err := installSkillsReport(nil, root, "codex", &out); err != nil {
 		t.Fatalf("migration: %v\n%s", err, out.String())
 	}
 	if isLink, _ := wiring.LinkState(root, agentsSkillsDir); !isLink {
@@ -96,7 +96,7 @@ func TestSkillsLinkReplacesAnEarlierFathomCopyAndBlocksAForeignOne(t *testing.T)
 	foreign := t.TempDir()
 	writeRepoFile(t, foreign, ".agents/skills/fathom-plan/SKILL.md", mustRender(t, skillsTargetAgents, "fathom-plan"))
 	writeRepoFile(t, foreign, ".agents/skills/house-skill/SKILL.md", "---\nname: house-skill\ndescription: ours\n---\n")
-	_, err := installSkillsReport(foreign, "agents", &out)
+	_, err := installSkillsReport(nil, foreign, "agents", &out)
 	if err == nil || !strings.Contains(err.Error(), ".agents/skills/house-skill/SKILL.md") {
 		t.Fatalf("a foreign entry must block the link by name; err = %v", err)
 	}
@@ -148,7 +148,7 @@ func TestShippedSkillsCarryOnlyAgentSkillsFields(t *testing.T) {
 func TestReconcileNeverWritesThroughTheSkillsLink(t *testing.T) {
 	root := t.TempDir()
 	var out bytes.Buffer
-	if _, err := installSkillsReport(root, "all", &out); err != nil {
+	if _, err := installSkillsReport(nil, root, "all", &out); err != nil {
 		t.Fatal(err)
 	}
 	for _, f := range skillOwnedFiles(root) {
@@ -174,7 +174,7 @@ func TestReconcileNeverWritesThroughTheSkillsLink(t *testing.T) {
 func TestCheckAgentsSkillsResolvesTheLink(t *testing.T) {
 	root := t.TempDir()
 	var out bytes.Buffer
-	if _, err := installSkillsReport(root, "codex", &out); err != nil {
+	if _, err := installSkillsReport(nil, root, "codex", &out); err != nil {
 		t.Fatal(err)
 	}
 	c := checkAgentsSkills(root, "codex")
