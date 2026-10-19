@@ -34,17 +34,17 @@ const (
 // internal/fusion's native typed pass (EnrichTypedEdges) is Go-only, so a
 // non-file-resolved, non-empty Edge.Kind from one of these languages'
 // files can only have come from a SCIP import.
-var scipEligible = map[string]bool{"TypeScript": true, "JavaScript": true, "Python": true}
+var scipEligible = map[string]bool{"TypeScript": true, "JavaScript": true, "Python": true, "C#": true}
 
 // TiersByLanguage reports the edge tier backing the store's typed-edge
 // facts for every language among in.ChangedFiles (sorted by Language) —
 // "typed" for Go/CUE unconditionally (their own native pass needs no
-// store lookup to confirm); for TypeScript/JavaScript/Python, "scip" when
+// store lookup to confirm); for TypeScript/JavaScript/Python/C#, "scip" when
 // the store holds at least one typed (non-empty, non-file-resolved) edge
 // from that language's files, "file-resolved" when it holds only
 // core.EdgeFileResolved edges from them, "syntax" when it holds neither;
-// every other language is unconditionally "syntax" (docs/languages.md:
-// no typed-edge source beyond heuristic call names exists for them yet).
+// languages not registered here are reported "syntax" by this reader. This
+// reports the stored edge source, never a language-support/excellence grade.
 // A nil/erroring Store degrades every scip-eligible language's tier to
 // "syntax" rather than failing outright — TiersByLanguage never returns
 // an error; a caller that cares whether the store was even consulted

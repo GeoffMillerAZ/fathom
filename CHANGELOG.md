@@ -25,6 +25,7 @@ Release impact: patch
 - Unity `.asmdef` files expose declared assembly/reference facts without call edges; `indexbench lang-unity-asmdef` calibrates per-file-bound ownership, named references and a strict engine boundary against retained Editor receipts, with unsupported cases explicit.
 
 ### Fixed
+- Evidence/conservation reports disclose C# SCIP or file-resolved edges when actually stored, without promoting unresolved-only/missing-store inputs or claiming a language excellence grade.
 - C# NUnit/Unity test-shaped attributes identify descriptive test methods for static reach, ranking and context; lifecycle hooks and unannotated names do not, and the result labels syntax without claiming framework binding or execution.
 - A SCIP index beneath a symlinked directory keeps its root-relative import identity even when the index leaf is absent, avoiding mixed physical and aliased parent paths.
 - Dispatch byte budgeting measures malformed UTF-8 with the selected JSON encoder's replacement width, preserving exact sizing under both legacy JSON and jsonv2-compatible encoding.
