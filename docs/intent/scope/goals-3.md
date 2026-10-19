@@ -30,3 +30,10 @@ RO-M20; `docs/plans/claude-code-mods.md` MOD-M6; `docs/plans/index-snapshots.md`
 change. Kill: a seam reading's FAIL turns that seam off by default in the same change. Every reading is $0 in model
 spend.
 {bet: interception-seams, instrument: "fathom plans status", threshold: "each seam H1 to H12 reads its seam reading PASS, or a sizing reading re-rates it below Medium with its build rows dispositioned in the same change", review: 2027-01-31}
+
+**G43. Parallel lines stop colliding at append points (ADR-075).** Promoted from F88 on 2026-10-19: the F82 replay classed
+247 of 263 conflicted merges in 30 days as append-point conflicts against a bar of 4 a month. Done when:
+`docs/plans/append-points.md` AP-M1 reads PASS or FAIL (the replay, same script and classifier, from a clone where
+`task merge-drivers` ran, over the 30 days after the last build row). Kill: AP-M1 FAIL reopens ADR-075 at its Revisit
+when; the deferred rows AP-D1 to AP-D4 build only on their triggers. Every reading is $0 in model spend.
+{bet: append-points, instrument: "fathom plans status", threshold: "AP-M1 reads PASS (at most 61 append-point conflicted merges a month, 25% of 247) or FAIL (ADR-075 reopens)", review: 2027-01-31}
