@@ -70,8 +70,11 @@ RO-21 is not lossy and stays.
 
 ## Phase 2: rich, local enrichment
 
-Start: RO-M1 PASS (may run beside phase 1; inject-only on failures needs no view channel). No table, no model, no
-daemon call. Kill: RO-M4 CUT turns that record kind's enrichment off by default.
+Start: the rows may be built now, every line they add reachable only under `[readouts] mode = rich` (user-only,
+default off); rich mode turns on in any session only at RO-M1 PASS, since RO-M1 measures the hook's cost and safety
+before any line is injected, not whether the code exists (owner-architect 2026-10-19). May run beside phase 1
+(inject-only on failures needs no view channel). No table, no model, no daemon call. Kill: RO-M4 CUT turns that record
+kind's enrichment off by default.
 
 - [x] The test-run row gains the keys a delta needs, additive meta only: `head` (the HEAD sha), `tree` (the sha256 of the Go working-tree diff the hook already reads, `workingTreeDiff`, `cmd/fathom/testrunhook.go:239`, with the session's edit set, `cmd/fathom/editset.go`) and `scope` (the lexed package patterns and `-run` and `-skip` filters), computed on every matched run, passing or failing, inside the hook's deadline; a miss leaves the key absent, never empty; today's row carries no HEAD, no passing ids and at most 10 failing ids (`cmd/fathom/testrunhook.go:545-588`) {id: RO-35, symbol: testRunRowKeys, package: cmd/fathom, reachable_from: TestTestRunRowCarriesHeadTreeAndScope}
 - [ ] Test delta and a flake flag: from the session's previous run rows (RO-35's keys), a failing run's injected line names tests fixed (failed before, its package inside this run's scope with no filter excluding it and no build error, and not failing now), still failing (since which HEAD), new, and `not run` for a previous failure outside this run's scope, never `fixed`; a test that failed then passed at the same HEAD and the same `tree` is flagged a possible flake, and an ordinary fix (the tree changed) never is; a previous row whose failing list hit the 10-id cap (`testRunMaxLoggedIDs`) makes the line say `of the first 10`; a row missing a key reads `not compared`; one line inside I35, the saved-output path never cut {id: RO-23, symbol: renderTestDelta, package: internal/readout, reachable_from: TestTestDeltaFromHookLogRows, needs: "RO-35,RO-M7"}
