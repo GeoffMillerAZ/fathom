@@ -108,6 +108,8 @@ After the ingest summary, `verify` prints:
 exit 1
 ```
 
+From the binary alone, `fathom init --demo` wires a throwaway copy of the bundled fixture fleet under a temporary HOME, proves a fixture plan and prints the time to that first proven answer; in your own repository, `fathom init --dry-run` lists every file init would write or change and writes none.
+
 **3. Start the daemon** in its own terminal, from the fathom checkout. The default memory
 budget is 512 MiB; 2 GiB covers a repository the size of fathom (about 10,000 files).
 

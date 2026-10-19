@@ -81,11 +81,19 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	harnessFlag := fs.String("harness", "", initHarnessUsage)
 	noSCIPFlag := fs.Bool("no-scip", false, "do not run scip-typescript / scip-python: by default init runs whichever is already on PATH for a TypeScript/JavaScript or Python repo (never installing one) and has the daemon import its index as typed edges; a producer type-checks the whole repository and can take minutes")
 	dryRun := fs.Bool("dry-run", false, "list every file this init would write or change, and write none: the same steps decide each write, and a dry run stops each one before it lands (it also skips the daemon ingest and any SCIP producer, and names them)")
+	demo := fs.Bool("demo", false, "try fathom on a throwaway copy of its bundled fixture fleet under a temporary HOME: wire it, ingest a service, prove a fixture plan, print the time to that first proven answer, and remove the copy; your HOME, ~/.fathom and any running daemon are never touched")
 	hooksScopeFlag := fs.String("hooks-scope", "auto", "Claude Code hook scope: auto (default) skips a fathom hook already wired at ~/.claude/settings.json; project writes every fathom hook at <root>/.claude/settings.json regardless of user scope — required for a clean room or CI harness that loads only project settings (e.g. claude --restricted --settings), which never sees user-scope hooks. Also settable via FATHOM_HOOKS_SCOPE=project.")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
 	rpcOrigin = "init" // after Parse: help runs flag parsing alone (O671)
+	if *demo {
+		if *dryRun {
+			fmt.Fprintln(stderr, "error: --demo and --dry-run do not combine: the demo writes only into its own throwaway copy")
+			return 1
+		}
+		return initDemo(context.Background(), defaultInitDemoDeps(), stdout, stderr)
+	}
 	hooksScope, err := resolveHooksScope(*hooksScopeFlag)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
