@@ -262,6 +262,15 @@ Every harness run is gated on the operator's go-ahead and runs on a quiet machin
 - [ ] (op) RT-M12: seven days, disk bytes written by the managed daemon ≤ 2 GiB/day outside explicit ingest {id: RT-M12, needs: RT-162}
 - [ ] (op) RT-M13: seven days, time in shed or above ≤ 2% with no host-trigger rung entry while pressure is normal; otherwise retune the host triggers {id: RT-M13, needs: RT-154}
 
+RT-M1 read FAIL on 2026-10-19 (`docs/bench/readings/tenancy/rt-m1-2026-10-19.md`): the availability bar, 216
+host-starved refuse minutes on 2026-10-13 (136 on 10-14, 547 on 10-15), every window entered on the swap-volume floor
+while fathom was under its shed mark; every tenant clause held on all seven days. The next window is pre-registered
+here, forward-only, under the clause as written: 2026-10-19 00:00Z to 2026-10-26 00:00Z, read with the same command
+after it closes. A change to the ladder, its marks, the host triggers or the cache budget deployed inside a window
+restarts it at the next 00:00Z. The same day log puts the daemon in shed for 30% of the week (16% to 51% a day),
+mostly on host pressure while fathom was far under its shed mark: RT-M13's retune condition, which the tenancy
+budget fix (O1073, O1014) designs with.
+
 ## Deferred
 
 - [-] An ingest-time identifier-occurrence index for `references` {id: RT-D1, disposition: deferred, reason: "the budgeted own-service scan answers today; build only on measured demand", trigger: "references returns a partial scan on more than 10% of calls in a week after RT-86"}
