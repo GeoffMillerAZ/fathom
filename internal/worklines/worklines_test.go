@@ -83,6 +83,13 @@ const fooGo = "package pkg\n\nfunc Foo() int { return 1 }\n\nfunc Bar() int { re
 func buildFixture(t *testing.T) (root, wtPath string) {
 	t.Helper()
 	f := &fx{t: t, dir: t.TempDir(), when: fixtureNow.Add(-30 * 24 * time.Hour)}
+	// Git reports physical worktree paths. Keep the fixture's expected
+	// identities physical too when the OS temp root is an alias (macOS /var).
+	var err error
+	f.dir, err = filepath.EvalSymlinks(f.dir)
+	if err != nil {
+		t.Fatal(err)
+	}
 	root = filepath.Join(f.dir, "repo")
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		t.Fatal(err)
@@ -145,6 +152,27 @@ func buildFixture(t *testing.T) (root, wtPath string) {
 	f.write(root, "README", "stashed edit\n")
 	f.git(root, "stash", "push", "-q", "-m", "wip readme")
 	return root, wtPath
+}
+
+func TestClassifyLinesSymlinkedRootPreservesWorktreeIdentity(t *testing.T) {
+	root, wtPath := buildFixture(t)
+	link := filepath.Join(t.TempDir(), "aliased-repo")
+	if err := os.Symlink(root, link); err != nil {
+		t.Fatal(err)
+	}
+	rep, err := ClassifyLines(context.Background(), Options{Root: link, Run: gitro.Output, Now: func() time.Time { return fixtureNow }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, line := range rep.Lines {
+		if line.Name == "wt-dirty" {
+			if line.Worktree != wtPath || line.Class != AtRisk || !hasPrefix(line.AtRisk, "dirty worktree") {
+				t.Fatalf("aliased root changed worktree identity or risk: %+v", line)
+			}
+			return
+		}
+	}
+	t.Fatal("dirty worktree missing")
 }
 
 func TestClassifyLinesLandedAtRiskIdle(t *testing.T) {
