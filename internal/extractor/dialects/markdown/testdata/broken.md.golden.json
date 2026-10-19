@@ -1,0 +1,9 @@
+{
+  "path": "docs/broken.md",
+  "roots": ["Broken"],
+  "symbols": [
+    { "name": "Broken", "kind": "DocChunk", "package": "broken", "line": 1, "end_line": 6, "signature": "h1", "tier": "doc-claimed" },
+    { "name": "Tail", "kind": "DocChunk", "package": "broken", "line": 7, "end_line": 10, "signature": "h2", "tier": "doc-claimed" }
+  ],
+  "cross_file": []
+}

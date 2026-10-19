@@ -110,7 +110,8 @@ var extClassMap = map[string]classification{
 	".yml":    {core.KindK8sWorkload, "yaml"},
 
 	// Documentation
-	".md": {core.KindDocChunk, "md"},
+	".md":  {core.KindDocChunk, "md"},
+	".mdx": {core.KindDocChunk, "md"}, // LB-Q-markdown: MDX is Markdown with JSX
 
 	// Application languages
 	".java": {core.KindJavaClass, "java"},
@@ -403,6 +404,10 @@ var extClassMap = map[string]classification{
 
 	// Luau (LB-Q-luau, wave lang1): the Lua dialect's patterns on the Luau grammar, plus type aliases.
 	".luau": {core.SourceKind("LuauFunction"), "luau"},
+
+	// Jupyter notebooks (LB-Q-jupyter, language-breadth: new, a native dialect:
+	// encoding/json over the notebook and the python dialect over its code cells).
+	".ipynb": {core.SourceKind("JupyterFunc"), "jupyter"},
 
 	// Dart (LB-Q-dart: a new tree-sitter dialect, no incumbent).
 	".dart": {core.KindDartClass, "dart"},

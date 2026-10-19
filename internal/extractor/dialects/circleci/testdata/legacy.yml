@@ -1,0 +1,23 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/golang:1.12
+      - image: circleci/postgres:9.6
+    working_directory: /go/src/example
+    steps:
+      - checkout
+      - run: go build ./...
+  test:
+    machine: true
+    steps:
+      - checkout
+      - run: go test ./...
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - build
+      - test:
+          requires:
+            - build

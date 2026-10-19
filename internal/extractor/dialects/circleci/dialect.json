@@ -1,0 +1,33 @@
+{
+  "id": "circleci",
+  "display": "CircleCI configuration (.circleci/config.yml)",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "circleci",
+  "match": {
+    "extensions": [],
+    "basenames": [],
+    "globs": [
+      ".circleci/config.yml", ".circleci/config.yaml",
+      "**/.circleci/config.yml", "**/.circleci/config.yaml"
+    ],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "job":      { "source_kind": "CircleCIJob",      "canonical": "job" },
+    "workflow": { "source_kind": "CircleCIWorkflow", "canonical": "target" },
+    "command":  { "source_kind": "CircleCICommand",  "canonical": "mixin" },
+    "executor": { "source_kind": "CircleCIExecutor", "canonical": "resource" }
+  },
+  "required_kinds": ["job", "workflow"],
+  "oracle_kinds": {
+    "tool": { "job": "job", "workflow": "target" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L2",
+  "queue_id": "circleci"
+}

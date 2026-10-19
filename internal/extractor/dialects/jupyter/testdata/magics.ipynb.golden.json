@@ -1,0 +1,7 @@
+{
+  "symbols": [
+    { "name": "<module>", "kind": "JupyterModule", "package": "magics", "line": 18, "end_line": 32, "tier": "verified" },
+    { "name": "timed", "kind": "JupyterFunc", "package": "magics", "line": 19, "end_line": 20, "signature": "def timed():", "tier": "verified" },
+    { "name": "inside", "kind": "JupyterFunc", "package": "magics", "line": 30, "end_line": 32, "signature": "def inside():", "calls": ["helper"], "tier": "verified" }
+  ]
+}

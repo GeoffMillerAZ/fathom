@@ -1,0 +1,58 @@
+version: 2.1
+setup: true
+
+executors:
+  mac:
+    macos:
+      xcode: "15.2"
+
+commands:
+  greet:
+    parameters:
+      to: {type: string}
+    steps:
+      - run: echo << parameters.to >>
+
+jobs:
+  unit:
+    parameters:
+      version: {type: string}
+    executor: mac
+    steps:
+      - greet:
+          to: world
+      - unless:
+          condition: true
+          steps:
+            - greet
+            - run: make
+  package:
+    executor: {name: mac, xcode: "16"}
+    steps:
+      - greet
+  smoke:
+    executor: missing
+    steps:
+      - ghost
+      - run: ./smoke.sh
+
+workflows:
+  matrix:
+    jobs:
+      - unit:
+          name: unit-<< matrix.version >>
+          matrix:
+            parameters:
+              version: ["1", "2"]
+      - package:
+          requires:
+            - unit-1
+            - unit
+      - smoke:
+          requires: [package, package, nothing]
+  conditional:
+    when:
+      and: [true, << pipeline.parameters.go >>]
+    jobs:
+      - smoke
+      - smoke

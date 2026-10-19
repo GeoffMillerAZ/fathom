@@ -1,0 +1,33 @@
+{
+  "id": "jupyter",
+  "display": "Jupyter notebooks (.ipynb)",
+  "kind": "tooling",
+  "engine": "native",
+  "lang_tag": "jupyter",
+  "match": {
+    "extensions": [".ipynb"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "class":    { "source_kind": "JupyterClass",     "canonical": "class",      "container": true },
+    "function": { "source_kind": "JupyterFunc",      "canonical": "function",   "callable": true },
+    "variable": { "source_kind": "JupyterVar",       "canonical": "variable" },
+    "type":     { "source_kind": "JupyterTypeAlias", "canonical": "type_alias" },
+    "field":    { "source_kind": "JupyterField",     "canonical": "field" },
+    "module":   { "source_kind": "JupyterModule",    "canonical": "module" }
+  },
+  "required_kinds": ["class", "function"],
+  "oracle_kinds": {
+    "tool": { "class": "class", "function": "function", "member": "function", "variable": "variable" }
+  },
+  "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "signature": { "max_chars": 200 },
+  "calls": { "qualify": true },
+  "target_level": "L2",
+  "queue_id": "jupyter"
+}

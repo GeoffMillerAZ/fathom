@@ -2329,11 +2329,11 @@
       "LB-Q-python"
     ],
     "wave": 3,
-    "engine": "tags+doc",
+    "engine": "native",
     "plan_row": "LB-Q-jupyter",
     "worker_model": "sonnet",
     "notes": "new; code cells run through the Python dialect with cell-relative lines; outputs never read",
-    "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): tier T1"
+    "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): tier T1; 2026-10-19 (wave lang2, worker ci): engine native -- the manifest's tags+doc needs a grammar and a doc spec the dialect does not own, and the cells are read by an extractor of its own over the python dialect (internal/extractor/notebook.go), which the native engine names"
   },
   {
     "id": "luau",

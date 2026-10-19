@@ -88,6 +88,12 @@ func NativeDialectExtractor(id string) (Extractor, bool) {
 		return NewCUEExtractor(), true // LB-Q-cue: the CUE dialect's own DocResulter (cuedoc.go)
 	case "fathom-plan-rows":
 		return NewPlanRowsExtractor(), true // wave fx item fmt
+	case "markdown":
+		return NewMarkdownExtractor(), true // LB-Q-markdown: headings, and the links between Markdown files
+	case "jupyter":
+		if nb, err := NewNotebookDialectExtractor(); err == nil {
+			return nb, true // LB-Q-jupyter: encoding/json over the notebook, the python dialect over its code cells
+		}
 	}
 	return nil, false
 }

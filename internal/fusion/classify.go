@@ -53,6 +53,7 @@ const (
 	ToolKustomize        ToolKind = "kustomize"
 	ToolGHA              ToolKind = "gha"
 	ToolGitLabCI         ToolKind = "gitlab-ci"
+	ToolCircleCI         ToolKind = "circleci"
 	ToolOpenAPI          ToolKind = "openapi"
 	ToolCUEModule        ToolKind = "cue-module"
 	ToolTimoni           ToolKind = "timoni"
@@ -148,6 +149,11 @@ func classifyYAML(relPath string, content []byte, idx *siblingIndex) ToolKind {
 	// is a bare top-level `services:` key too.
 	if connector.ClassifyDialect(dialectRules(), relPath, content).Dialect == "gitlab-ci" {
 		return ToolGitLabCI
+	}
+	// CircleCI (LB-Q-circleci): by path, the manifest's own globs
+	// (.circleci/config.yml at any depth).
+	if connector.ClassifyDialect(dialectRules(), relPath, content).Dialect == "circleci" {
+		return ToolCircleCI
 	}
 	if composeServices(content) {
 		return ToolCompose

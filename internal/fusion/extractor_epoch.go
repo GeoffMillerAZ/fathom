@@ -721,7 +721,14 @@ import (
 // graphql (LB-Q-graphql): GraphQL files read through the tree-sitter tags dialect, so operations,
 // fragments, extensions, directives and enum values index and a definition's signature is its
 // header as written. Every such file fingerprinted before holds the old extraction.
-const ExtractorEpoch = "65"
+// Epoch 66 (wave lang2, one bump for the wave, made by the integrator). Item md
+// (LB-Q-markdown): every .md file's relative links to another .md or .mdx file, and their
+// fragments, are file and heading edges of the doc-xref pass, and .mdx files read as Markdown.
+// The pass waits for a doc input to change, so the salt bump re-reads a store ingested earlier.
+// Item ci (LB-Q-circleci, LB-Q-jupyter): CircleCI configs read through the circleci dialect and
+// notebooks through the native jupyter dialect (JSON over the notebook, the python dialect over its
+// code cells). Every such file fingerprinted before holds the old extraction.
+const ExtractorEpoch = "66"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares

@@ -1,0 +1,172 @@
+{
+  "dialect": "markdown",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "excellent",
+    "L2": "good",
+    "L3": "good",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-19",
+  "fathom_commit": "bc26a8dc",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "facebook/docusaurus",
+      "sha": "f37f9035584917a97a260b91fc2842cba4f8b94f",
+      "files": 99,
+      "bytes": 1638716,
+      "counts": {
+        "fathom_defs": 1547,
+        "kind_equal": 1537,
+        "matched": 1537,
+        "oracle_defs": 1538,
+        "range_eligible": 1537,
+        "range_ok": 1202,
+        "ref_fathom": 8,
+        "ref_fathom_in_truth": 8,
+        "ref_truth": 8,
+        "ref_truth_found": 8,
+        "xref_fathom": 346,
+        "xref_fathom_in_truth": 340,
+        "xref_truth": 344,
+        "xref_truth_found": 340
+      },
+      "families": {
+        "l1": "B",
+        "refs": "B",
+        "xref": "B"
+      },
+      "kind_intersection": [
+        "section"
+      ],
+      "excluded_by_kind": {
+        "ctags:hashtag": 788
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 64.70299999999996,
+        "extract_cpu_ms": 80.352,
+        "max_file_ms": 53,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "rust-lang/book",
+      "sha": "4717cec4ba387b4925cff394d71e3d95fb36476b",
+      "files": 479,
+      "bytes": 2794393,
+      "counts": {
+        "fathom_defs": 1450,
+        "kind_equal": 1420,
+        "matched": 1420,
+        "oracle_defs": 1420,
+        "range_eligible": 1420,
+        "range_ok": 1140,
+        "ref_fathom": 10,
+        "ref_fathom_in_truth": 10,
+        "ref_truth": 10,
+        "ref_truth_found": 10,
+        "xref_fathom": 376,
+        "xref_fathom_in_truth": 375,
+        "xref_truth": 376,
+        "xref_truth_found": 375
+      },
+      "families": {
+        "l1": "B",
+        "refs": "B",
+        "xref": "B"
+      },
+      "kind_intersection": [
+        "section"
+      ],
+      "excluded_by_kind": {
+        "ctags:footnote": 1,
+        "ctags:hashtag": 3
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 51.30999999999998,
+        "extract_cpu_ms": 61.00500000000002,
+        "max_file_ms": 3,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "lychee+universal-ctags",
+      "version": "lychee 0.24.2, ctags 6.2.1"
+    },
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 0.9867,
+    "sym_recall": 0.9997,
+    "xref_precision": 0.9903,
+    "xref_recall": 0.9931
+  },
+  "metric_tiers": {
+    "ref_precision": "B",
+    "ref_recall": "B",
+    "sym_precision": "B",
+    "sym_recall": "B",
+    "xref_precision": "B",
+    "xref_recall": "B"
+  },
+  "required_kinds": [
+    "section"
+  ],
+  "kind_intersection": [
+    "section"
+  ],
+  "counts": {
+    "fathom_defs": 2997,
+    "kind_equal": 2957,
+    "matched": 2957,
+    "oracle_defs": 2958,
+    "range_eligible": 2957,
+    "range_ok": 2342,
+    "ref_fathom": 18,
+    "ref_fathom_in_truth": 18,
+    "ref_truth": 18,
+    "ref_truth_found": 18,
+    "xref_fathom": 722,
+    "xref_fathom_in_truth": 715,
+    "xref_truth": 720,
+    "xref_truth_found": 715
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 31.36,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 38.21,
+    "max_file_ms": 53,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:footnote": 1,
+    "ctags:hashtag": 791
+  },
+  "notes": [
+    "facebook/docusaurus: lychee 0.24.2 --offline: 498 local links it resolved, 344 distinct (section, file) pairs to another Markdown file of the subject, 8 (section, heading) references within a file (left out: 6 not markdown, 113 within its own file, not a reference); 72 links it could not resolve are not truth",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "rust-lang/book: lychee 0.24.2 --offline: 414 local links it resolved, 376 distinct (section, file) pairs to another Markdown file of the subject, 10 (section, heading) references within a file (left out: 28 not markdown); 573 links it could not resolve are not truth"
+  ],
+  "disposition": null
+}

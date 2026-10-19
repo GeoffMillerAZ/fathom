@@ -1,0 +1,36 @@
+{
+  "id": "markdown",
+  "display": "Markdown (.md .mdx)",
+  "kind": "tooling",
+  "engine": "native",
+  "lang_tag": "md",
+  "match": {
+    "extensions": [".md", ".mdx"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "heading": { "source_kind": "DocChunk", "canonical": "section" }
+  },
+  "required_kinds": ["heading"],
+  "oracle_kinds": {
+    "ctags": {
+      "chapter": "section",
+      "section": "section",
+      "subsection": "section",
+      "subsubsection": "section",
+      "l4subsection": "section",
+      "l5subsection": "section"
+    },
+    "tool": { "section": "section" }
+  },
+  "name_match": "identity",
+  "ctags": { "languages": ["Markdown"], "args": ["--langmap=Markdown:+.mdx"] },
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "markdown"
+}

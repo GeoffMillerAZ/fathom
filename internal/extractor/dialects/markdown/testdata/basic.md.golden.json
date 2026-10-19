@@ -1,0 +1,17 @@
+{
+  "path": "docs/basic.md",
+  "roots": ["Title"],
+  "symbols": [
+    { "name": "Title", "kind": "DocChunk", "package": "basic", "line": 1, "end_line": 4, "signature": "h1", "tier": "doc-claimed" },
+    { "name": "Install steps", "kind": "DocChunk", "package": "basic", "line": 5, "end_line": 12, "signature": "h2", "tier": "doc-claimed" },
+    { "name": "Setext Heading", "kind": "DocChunk", "package": "basic", "line": 13, "end_line": 16, "signature": "h2", "calls": ["Title"], "tier": "doc-claimed" }
+  ],
+  "cross_file": [
+    { "from": "Title", "edge": "link", "raw": "guide.md", "target": "docs/guide.md", "strategy": "repo-path", "line": 3 },
+    { "from": "Title", "edge": "link", "raw": "guide.md#install-steps", "target": "docs/guide.md", "strategy": "repo-path", "line": 3 },
+    { "from": "Title", "edge": "link_anchor", "raw": "install-steps", "target": "docs/guide.md", "strategy": "md-anchor", "line": 3 },
+    { "from": "Setext Heading", "edge": "link", "raw": "../README.md", "target": "README.md", "strategy": "repo-path", "line": 16 },
+    { "from": "Setext Heading", "edge": "link", "raw": "/docs/guide.md#a", "target": "docs/guide.md", "strategy": "repo-path", "line": 16 },
+    { "from": "Setext Heading", "edge": "link_anchor", "raw": "a", "target": "docs/guide.md", "strategy": "md-anchor", "line": 16 }
+  ]
+}
