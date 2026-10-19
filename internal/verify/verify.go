@@ -58,6 +58,18 @@ type Plan struct {
 	// one (I45's "rows deleted since base"). nil when no comparison was
 	// made.
 	DeletedRows []string
+
+	// UnparsedRows are the lines carrying an author-id annotation (`{id:`)
+	// that ParseMarkdownPlan did not read as a row under that id, in line
+	// order: LintPlan names each as an error. nil when every one parsed.
+	UnparsedRows []UnparsedRow
+}
+
+// UnparsedRow is one `{id:` line ParseMarkdownPlan could not read as a row.
+type UnparsedRow struct {
+	Line   int    // 1-based line of the row's checkbox, or of the stray line
+	ReadAs string // the positional id the row was read under; "" when no row was
+	Reason string // why the annotation was not read
 }
 
 // Task is one unit of planned work with an acceptance contract.
