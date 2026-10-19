@@ -3914,7 +3914,7 @@ the compatibility surface (`docs/intent/scope.md`) and vision 41 sections 4.1 an
 
 ## ADR-061: The `.fathom/` directory in four zones with one keyed schema, and tech packs: one format, three authors, bound by the repository's own pin (2026-10-09)
 
-**Status.** Proposed 2026-10-09. Owner decisions D11 (tech packs), K5 (projects describe themselves in `.fathom/`; committed index snapshots rejected), K9 (an authored, anchored orientation set in the project pack) and K10 (one noun, one format: the custodian's packs and app-kit's fathom-pack become tech packs) of 2026-10-09, and the owner's ask of the same day: "are some of the patterns or features that we already have better reworked into a .fathom dir paradigm … as we add new capabilities we don't sprawl the config and surface area further than it needs." Design: `docs/design/fathom-dir.md` (normative once accepted). Plan: `docs/plans/fathom-dir.md` (FD-…). Goal G35. Promotes F5 (TX-3); fires ADR-024 *Revisit when* (1); reframes F27; adds F62 to F65.
+**Status.** Accepted 2026-10-19 (owner-architect), with amendments A1-A7 below. Originally proposed 2026-10-09. Owner decisions D11 (tech packs), K5 (projects describe themselves in `.fathom/`; committed index snapshots rejected), K9 (an authored, anchored orientation set in the project pack) and K10 (one noun, one format: the custodian's packs and app-kit's fathom-pack become tech packs) of 2026-10-09, and the owner's ask of the same day: "are some of the patterns or features that we already have better reworked into a .fathom dir paradigm … as we add new capabilities we don't sprawl the config and surface area further than it needs." Design: `docs/design/fathom-dir.md` (normative once accepted). Plan: `docs/plans/fathom-dir.md` (FD-…). Goal G35. Promotes F5 (TX-3); fires ADR-024 *Revisit when* (1); reframes F27; adds F62 to F65.
 
 **Context.** An inventory of every file fathom reads or writes (design §2) found: a kit's guidance adopted by copy drifted inside this repository (three guards marked "app-kit fathom-pack v0.1" in `.fathom/guard.cue` while the pinned `third_party/app-kit/fathom-pack` is v0.2, and `.fathom/layers/ui-appkit` differing from the pinned layer in all three files); per-checkout state in three homes, with `owned.json` and `leases.jsonl` left in the committed `.fathom/` and no ignore written for adopters; the literal `.fathom` spelled by hand in 96 non-test lines across 65 files, one of which (`cmd/fathom/configpanel.go:69`) reads a binding file name nothing writes; two architecture-rule formats (`layer_rules`, `.fathom/rules/archconformance.cue`); two switchboards (`capabilities.cue` and four `config.toml` booleans); tuning tables (`risk.cue`, `learning.cue`) outside `config.toml`'s provenance; and growth by file, each capability adding a file name, schema, loader, doctor row and docs section, with five more designed. Meanwhile the parked provider stratum's trigger fired: fathom is a named consumer and app-kit and env-kit are concrete providers.
 
@@ -3945,6 +3945,32 @@ the compatibility surface (`docs/intent/scope.md`) and vision 41 sections 4.1 an
 - Two files in one repository fight over a `#Project` key in practice, or the one-loader parse measurably slows a hook past I53's deadline.
 - A release before 1.0 proposes dropping a legacy read (`.fathom/rules/archconformance.cue`, `risk.cue`, `learning.cue`, the in-tree state names): that is a breaking change with its own migration note, and a mechanical move verb is weighed then.
 - F62, F63 or F64's promotion trigger fires.
+
+**Amendments (2026-10-19, acceptance; owner-architect).** Decisions 1 to 7 stand except where an amendment says so.
+- *A1. Discovery gains a third source: an in-tree mirror.* Decision 5's closed set (a Go or CUE pin on disk) adds a
+  committed in-tree mirror directory that carries a pin file (`.vendor-commit`, ADR-070 decision 4), read offline,
+  never through `go.work`. ADR-070 made `go.mod` carry no kit require and no replace, so this repository's kits are
+  discovered by their mirror, not by a `replace`. Revisit-when condition 2 (a third discovery source needs its own
+  offline resolution rule) is recorded as fired 2026-10-19 by ADR-070. Design sections 7.2 and 10 are updated.
+- *A2. `auto-refresh` stays user-only.* A committed capabilities file never switches automatic execution on (I64,
+  SEC-2; `daemon.auto_refresh` is `ScopeUserOnly` with `whyAutoExec` in `internal/config/scope.go`). FD-34 surfaces
+  only the switches whose config field is not `ScopeUserOnly` (`test-run-hook`, `pin-check`, `guard-enforce`) and
+  names `auto-refresh` as the one that remains in user scope.
+- *A3. Design section 13 is answered.* Q1: tech packs are on by default when discovered (adoption is the binding and
+  no judgment is made, so I60's default-off posture does not apply). Q2: the per-pack cap stays 2 lines until FD-M2
+  evidence says otherwise.
+- *A4. FD-17 start condition.* Pack identity joins the ingest watermark only after RT-M1 reads PASS and lifts the
+  table freeze; no new column before.
+- *A5. FD-31 names scope classes; the plan's refused set is corrected.* Each new `[risk]` and `[learning]` field
+  gets a `config.ScopeOf` class (`TestEveryConfigFieldHasAScopeClass`). Decision 4 stands as written: a kit pack may
+  carry `concerns` (FD-25, gated by `packs:`); the refused set is `layer_rules`, `capabilities`, `bindings` and
+  `exclude_packs`, and `orientation` is the project's pack only.
+- *A6. Repository-scope readouts rules (ADR-071 decision 10) land as a `#Project` key,* not a new TOML file name
+  (decision 2). ADR-071 and the design carry the same note.
+- *A7. G35's consumer #1 (FD-23, FD-24, FD-M3) waits on an app-kit release* whose fathom-pack carries the `pack:`
+  header and fixtures. Fathom never edits a kit repository (ADR-070); the change lands upstream first, then arrives by
+  `task sync-kit`.
+- Invariants (a) and (b) are numbered I67 and I68. Acceptance does not schedule: roadmap section 9.7 orders the work.
 
 ## ADR-062: Telemetry links: a pasted frame, error payload or telemetry identity reaches the code that threw; Stage A is dialect work, Stage B waits for the census (2026-10-09)
 
@@ -4565,7 +4591,7 @@ among declared layers", opt-in per repository.
 - RT-M1 reads PASS: a role column is weighed if a consumer measured the cost of filtering without one, and SG-2,
   the feature map and the env and config links proceed. RT-M1 still FAIL on 2026-11-15: feature-map v0 on the
   ADR-044 inventory keys is weighed.
-- ADR-061 is accepted: tool-config `configures` readers are weighed.
+- ADR-061 is accepted: tool-config `configures` readers are weighed. *Fired 2026-10-19 (ADR-061 accepted).*
 - J0 reads PASS and the spend hold lifts: F37 and F69 are weighed. J0 reads FAIL: both stay down.
 - A consumer with production Kubernetes manifests is named, or policy-kit lands its first canonId join: the
   selector join is weighed, and membership reads policy-kit's controls instead of the upstream Kyverno library. No
@@ -5135,7 +5161,8 @@ the hook path is abandoned on this index today (EW-75: localize 385 of 437 at it
    only the shown part, never a total.
 10. *Repository and pack scopes later, add-only.* A repository's own readout rules and a pack's `readouts` key wait
     on ADR-061's acceptance and FD-1 to FD-6. When they come they may extract and add, never drop or replace, and
-    they run in observe until the user lists the file's sha256 in user scope (I55's pattern).
+    they run in observe until the user lists the file's sha256 in user scope (I55's pattern). *Amended 2026-10-19
+    (ADR-061 A6): a repository's readouts rules land as a `#Project` key, not a new TOML file name.*
 11. *rtk: keep, separate, with a boundary (ADR-063's rule; no delegate, no merge).* Fathom does not adopt rtk, and
     never reads, writes, imports or ships rtk configuration (owner, 2026-10-16: the filters-file item is removed). A
     command that starts `rtk ` and an output carrying rtk's recall marker stay raw: one rewriter per command, and two
@@ -5245,7 +5272,7 @@ referenced within five calls in 280 of 634 views. The lossy track stops at lossl
 RO-20, RO-22, RO-M2 and RO-M3 are deferred until RO-M19 reads KEEP or a later RO-M0 reading reads KEEP, seam H1 is
 re-rated Low, and the mods program is the main line (roadmap §9.7). Observe, replay, report, the claim check, the
 gate preflight and the config audit stay.
-- ADR-061 is accepted: phase 5 (repository and pack rules, add-only) is scheduled.
+- ADR-061 is accepted: phase 5 (repository and pack rules, add-only) is scheduled. *Fired 2026-10-19 (ADR-061 accepted); scheduling stays with roadmap section 9.7.*
 - The owner reverses Q-RO-3: the program stops at observe and inject-only enrichment.
 - The owner answers Q-RO-4 yes (lifts the budget hold for this A/B): phase 4 (calibration, then the A/B) may start.
 
