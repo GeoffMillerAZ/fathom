@@ -70,9 +70,13 @@ import (
 // certificate the diff touched, what it skipped, what no live test certifies,
 // and the CI time it saves from attested run durations (recorded for
 // economics). --safe adds every test that statically reaches a changed
-// symbol to that selection.
+// symbol to that selection, except a test whose reach goes only through a
+// dispatch into error's Error, fmt.Stringer's String or fmt.GoStringer's
+// GoString (impact.SplitStdlibDispatch, O887): those are counted and named
+// in one line, and --stdlib-dispatch selects them. When the index the verb
+// reads holds another commit than HEAD, it says which (O1199).
 //
-//	fathom tests select --since <ref> [--safe] [--profile [layer=]path]... [--service S] [--store DB] [--json]
+//	fathom tests select --since <ref> [--safe [--stdlib-dispatch]] [--profile [layer=]path]... [--service S] [--store DB] [--json]
 func cmdTestsSelect(args []string, stdout, stderr io.Writer) int {
 	return runTestsSelect(args, defaultGitRunner, stdout, stderr)
 }
@@ -85,7 +89,8 @@ func runTestsSelect(args []string, gitRunner func(args ...string) ([]byte, error
 	service := fs.String("service", "", "service ID (default: resolved from the repo directory name, the same guess the Claude Code hooks use)")
 	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db)")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a table")
-	safe := fs.Bool("safe", false, "also select every test that statically reaches a changed symbol, beside the minimal certifying-first set")
+	safe := fs.Bool("safe", false, "also select every test that statically reaches a changed symbol, beside the minimal certifying-first set, except one that reaches it only through a dispatch into error's Error, fmt.Stringer's String or fmt.GoStringer's GoString")
+	stdlibDispatch := fs.Bool("stdlib-dispatch", false, "with --safe, also select a test that reaches a changed symbol only through a dispatch into error's Error, fmt.Stringer's String or fmt.GoStringer's GoString")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -130,6 +135,10 @@ func runTestsSelect(args []string, gitRunner func(args ...string) ([]byte, error
 		return 1
 	}
 	nodes = dropNestedModuleNodes(testsSelectRoot, nodes)
+	index := testsSelectIndexOf(ctx, st, svc, gitRunner)
+	if index.Commit != "" && index.Head != "" && index.Commit != index.Head {
+		fmt.Fprintf(stderr, "note: tests select: the index holds commit %s, not HEAD %s, and this selection reads that index; ingest HEAD into a --store to select for it\n", shortSHA(index.Commit), shortSHA(index.Head))
+	}
 	typed, _ := c.TypedEdges(ctx, svc) // best effort: absent for a fixture/module with no typed pass
 
 	out, gerr := gitRunner("diff", "--name-only", *since)
@@ -171,6 +180,17 @@ func runTestsSelect(args []string, gitRunner func(args ...string) ([]byte, error
 	}
 	gap := impact.TestGapSelectOn(g, nodes, seeds)
 	confirmed := append([]impact.TestReach(nil), gap.AffectedTests...)
+	var dispatchOnly impact.StdlibDispatchOnly
+	if *safe && !*stdlibDispatch {
+		gap, dispatchOnly = impact.SplitStdlibDispatch(g, nodes, typed, seeds, gap)
+		if n := len(dispatchOnly.Tests); n > 0 {
+			via := strings.Join(dispatchOnly.Methods, " or ")
+			if via == "" {
+				via = "a standard-library interface method's"
+			}
+			fmt.Fprintf(stderr, "note: tests select: %d test(s) reach a changed symbol only through %s dispatch, not selected; --stdlib-dispatch includes them\n", n, via)
+		}
+	}
 	gap.AffectedTests = addSrcReadTests(nodes, gap.AffectedTests, srcTests)
 
 	var coverageSyms []coverage.SymbolLayerCoverage
@@ -193,6 +213,7 @@ func runTestsSelect(args []string, gitRunner func(args ...string) ([]byte, error
 	// record of that time for economics — a known estimate only, never a
 	// fabricated zero.
 	sel := selectCertifyingFirstOn(nodes, claims, seeds, confirmed, *safe)
+	sel.Tests = dropSafeOnlyTests(sel, dispatchOnly.Tests)
 	if *safe {
 		sel.Tests = unionSorted(sel.Tests, srcTests)
 	}
@@ -210,11 +231,58 @@ func runTestsSelect(args []string, gitRunner func(args ...string) ([]byte, error
 	}
 
 	if *jsonOut {
-		return renderTestsSelectJSON(stdout, *since, ranked, invocations, gap.Gap, replay, len(profiles) > 0, view)
+		return renderTestsSelectJSON(stdout, *since, ranked, invocations, gap.Gap, replay, len(profiles) > 0, view, testsSelectNotes{index: index, dispatchOnly: dispatchOnly})
 	}
 	renderCertifyingSelectionText(stdout, *since, view)
 	renderTestsSelectTable(stdout, *since, ranked, invocations, gap.Gap, replay, len(profiles) > 0)
 	return 0
+}
+
+// testsSelectIndex is the commit the index the verb reads holds and the
+// work tree's HEAD ("" when either is unknown).
+type testsSelectIndex struct {
+	Commit string
+	Head   string
+}
+
+// testsSelectNotes is what the JSON carries beside the selection: the index
+// it read and the tests --safe took out as standard-library dispatch only.
+type testsSelectNotes struct {
+	index        testsSelectIndex
+	dispatchOnly impact.StdlibDispatchOnly
+}
+
+// testsSelectIndexOf reads the service's indexed commit from the store and
+// HEAD through gitRunner. A store with no record, or an answer that is not
+// a commit id, leaves that side empty.
+func testsSelectIndexOf(ctx context.Context, st store.Store, svc string, gitRunner func(args ...string) ([]byte, error)) testsSelectIndex {
+	var idx testsSelectIndex
+	if meta, found, err := st.GetServiceMeta(ctx, svc); err == nil && found && isHexCommit(meta.IndexedCommit) {
+		idx.Commit = meta.IndexedCommit
+	}
+	if out, err := gitRunner("rev-parse", "HEAD"); err == nil {
+		if h := strings.TrimSpace(string(out)); isHexCommit(h) {
+			idx.Head = h
+		}
+	}
+	return idx
+}
+
+// dropSafeOnlyTests is sel.Tests without the tests in drop that only --safe
+// added (they re-prove no touched certificate). drop is sorted.
+func dropSafeOnlyTests(sel certify.Selection, drop []string) []string {
+	if len(drop) == 0 {
+		return sel.Tests
+	}
+	out := make([]string, 0, len(sel.Tests))
+	for _, k := range sel.Tests {
+		i := sort.SearchStrings(drop, k)
+		if i < len(drop) && drop[i] == k && len(sel.Reproves[k]) == 0 {
+			continue
+		}
+		out = append(out, k)
+	}
+	return out
 }
 
 // testsSelectRoot is the repository root the indexed paths are relative to
@@ -560,7 +628,7 @@ func renderTestsSelectTable(w io.Writer, since string, ranked []rankedTest, invo
 	}
 }
 
-func renderTestsSelectJSON(w io.Writer, since string, ranked []rankedTest, invocations []testInvocation, gap []impact.SymbolGap, replay replayStats, haveCoverage bool, view certifyingSelectionView) int {
+func renderTestsSelectJSON(w io.Writer, since string, ranked []rankedTest, invocations []testInvocation, gap []impact.SymbolGap, replay replayStats, haveCoverage bool, view certifyingSelectionView, notes testsSelectNotes) int {
 	rankedItems := make([]any, len(ranked))
 	for i, rt := range ranked {
 		item := map[string]any{
@@ -599,6 +667,16 @@ func renderTestsSelectJSON(w io.Writer, since string, ranked []rankedTest, invoc
 		"ranked_tests": rankedItems,
 		"invocations":  invItems,
 		"test_gap":     gapItems,
+	}
+	if idx := notes.index; idx.Commit != "" || idx.Head != "" {
+		m := map[string]any{"commit": idx.Commit, "head": idx.Head}
+		if idx.Commit != "" && idx.Head != "" {
+			m["holds_head"] = idx.Commit == idx.Head
+		}
+		payload["index"] = m
+	}
+	if d := notes.dispatchOnly; len(d.Tests) > 0 {
+		payload["stdlib_dispatch_only"] = map[string]any{"methods": nonNilStrList(d.Methods), "tests": nonNilStrList(d.Tests)}
 	}
 	if replay.Total > 0 {
 		payload["replay"] = map[string]any{
