@@ -14,6 +14,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/guardspec"
 	"github.com/geoffmilleraz/fathom/internal/intent"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 // intentexport.go — edit-time intent, generated (ADR-074 decision 6, IV-3a).
@@ -286,7 +287,7 @@ func spliceIntentGuards(content, routerPath string, entries []intentGuardEntry) 
 	return "", fmt.Errorf("could not find the line closing the guards list (a lone `]`) — add the markers by hand")
 }
 
-func guardCuePath(root string) string { return filepath.Join(root, ".fathom", "guard.cue") }
+func guardCuePath(root string) string { return projectdir.Guard.Path(root) }
 
 func writeIntentGuards(root, routerPath string, entries []intentGuardEntry, stdout, stderr io.Writer) int {
 	path := guardCuePath(root)

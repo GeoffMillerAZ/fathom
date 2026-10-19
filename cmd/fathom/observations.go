@@ -16,15 +16,17 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 // observationsRelPath is the project-relative path both FW-1 and FW-2
 // resolve against --root.
-const observationsRelPath = ".fathom/observations.md"
+const observationsRelPath = projectdir.Dir + "/" + string(projectdir.ObservationLog)
 
 // observationsDirRelPath is the per-entry directory: one O<n>.md per
 // observation, so parallel writers add files instead of editing one log.
-const observationsDirRelPath = ".fathom/observations"
+const observationsDirRelPath = projectdir.Dir + "/" + string(projectdir.Observations)
 
 // observationEntryFile matches a per-entry file name.
 var observationEntryFile = regexp.MustCompile(`^O(\d+)\.md$`)

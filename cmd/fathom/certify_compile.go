@@ -29,7 +29,13 @@ const (
 	certifySweep                      // compiled at this watermark: re-check what exists
 )
 
-// runCertifyCompile picks the step for service (certifyNextStep) and runs
+// certifySweepRuns counts the sweeps runCertifyCompileGated starts, so a
+// test can assert the gate through the CLI ingest entry point. The call
+// itself stays direct: a function-valued seam would leave
+// certify.SweepCertifications reachable only through a heuristic edge (I57).
+var certifySweepRuns int
+
+// runCertifyCompileGated picks the step for service (certifyNextStep) and runs
 // it against st, stamped with watermark: certify.CompileCertifications
 // when the declarations or the watermark moved, certify.SweepCertifications
 // when the layer is already compiled at this watermark, so a test that
@@ -47,7 +53,12 @@ const (
 // tree evaluateCertificate's reach check runs `git diff` against, using
 // the real system git binary (certify.ExecGit) — the same repo root the
 // caller is already ingesting from.
-func runCertifyCompile(ctx context.Context, st store.Store, service, watermark, repoDir string, stdout, stderr io.Writer, quiet bool) {
+//
+// sweep gates the sweep step. It is
+// false for an ingest that read no file and picked up no new test run,
+// where nothing a sweep checks (a test or reached symbol moved or gone, a
+// new attested run) can have changed.
+func runCertifyCompileGated(ctx context.Context, st store.Store, service, watermark, repoDir string, stdout, stderr io.Writer, quiet, sweep bool) {
 	step, err := certifyNextStep(ctx, st, service, watermark)
 	if err != nil {
 		fmt.Fprintf(stderr, "warning: certify: hash-gate check: %v\n", err)
@@ -57,6 +68,13 @@ func runCertifyCompile(ctx context.Context, st store.Store, service, watermark, 
 	case certifyNothing:
 		return
 	case certifySweep:
+		if !sweep {
+			if !quiet {
+				fmt.Fprintln(stdout, "certify: sweep skipped (no file read, no new test run)")
+			}
+			return
+		}
+		certifySweepRuns++
 		report, err := certify.SweepCertifications(ctx, st, service, repoDir, certify.ExecGitContext(ctx))
 		if err != nil {
 			fmt.Fprintf(stderr, "warning: certify: sweep: %v\n", err)

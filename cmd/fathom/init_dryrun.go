@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/wiring"
 )
 
@@ -39,7 +40,7 @@ type initTouch struct {
 // initLedgerFile is the wiring engine's ownership ledger, repo-relative
 // (internal/wiring's ledgerRelPath): an apply that writes an owned key,
 // file or link records it there.
-const initLedgerFile = ".fathom/owned.json"
+const initLedgerFile = projectdir.Dir + "/" + string(projectdir.Owned)
 
 func (w *initWrites) isDry() bool { return w != nil && w.dry }
 

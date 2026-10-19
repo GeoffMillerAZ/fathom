@@ -48,6 +48,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
 	"github.com/geoffmilleraz/fathom/internal/llmsec"
 	"github.com/geoffmilleraz/fathom/internal/metrics"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
 )
 
@@ -731,7 +732,7 @@ func renderAssessDryRun(run assessRun, est int, opts assessOpts, w io.Writer) in
 // the repository whose diffs are sent, so `--project R` from any directory
 // honours R's narrowing (I14; doctor's decide rows read the same layer).
 func defaultAssessOpenPorts(root string, stderr io.Writer) *decide.Ports {
-	loaded, err := config.Load(config.DefaultUserPath(), filepath.Join(root, ".fathom", "config.toml"))
+	loaded, err := config.Load(config.DefaultUserPath(), projectdir.Config.Path(root))
 	if err != nil {
 		fmt.Fprintf(stderr, "warn: decision port disabled: loading config: %v\n", err)
 		return &decide.Ports{Decider: decision.None{}}

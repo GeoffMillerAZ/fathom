@@ -19,10 +19,12 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 const (
-	ledgerRelPath = ".fathom/owned.json"
+	ledgerRelPath = projectdir.Dir + "/" + string(projectdir.Owned)
 	ledgerVersion = 1
 )
 

@@ -84,3 +84,14 @@ func TestUnderHonorsTheOverrideForAnInjectedHome(t *testing.T) {
 		t.Fatalf("Under(\"\") with override = %q, want %q", got, scratch)
 	}
 }
+
+func TestAtIgnoresTheOverride(t *testing.T) {
+	home, scratch := t.TempDir(), t.TempDir()
+	t.Setenv(Env, scratch)
+	if got, want := At(home, "daemons", "k.json"), filepath.Join(home, ".fathom", "daemons", "k.json"); got != want {
+		t.Fatalf("At = %q, want %q", got, want)
+	}
+	if got, want := At(home), filepath.Join(home, ".fathom"); got != want {
+		t.Fatalf("At(home) = %q, want %q", got, want)
+	}
+}

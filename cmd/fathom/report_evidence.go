@@ -39,6 +39,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/conserve"
 	"github.com/geoffmilleraz/fathom/internal/contextbench/publicloc"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/receiptverify"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/pkg/client"
@@ -238,7 +239,7 @@ func evidenceSurfacePatterns(root string) []inventory.Pattern {
 	if root == "" {
 		return nil
 	}
-	loaded, err := config.Load("", filepath.Join(root, ".fathom", "config.toml"))
+	loaded, err := config.Load("", projectdir.Config.Path(root))
 	if err != nil {
 		return nil
 	}

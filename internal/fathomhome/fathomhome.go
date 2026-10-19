@@ -62,6 +62,14 @@ func Under(home string) string {
 	return filepath.Join(home, dirName)
 }
 
+// At joins elem under home's own fathom directory, home/.fathom, literally:
+// it never reads FATHOM_HOME. It is for a caller that must see one home's
+// directory whatever the override says (the guard that keeps a scratch run
+// off the operator's daemon) or that addresses a fixture home it built.
+func At(home string, elem ...string) string {
+	return filepath.Join(append([]string{home, dirName}, elem...)...)
+}
+
 // Path joins elem under FathomHome, or returns "" when FathomHome is.
 func Path(elem ...string) string {
 	h := FathomHome()

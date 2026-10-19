@@ -62,6 +62,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
@@ -122,7 +123,7 @@ func hasScipIndex(repoPath string) bool {
 	if _, err := os.Stat(filepath.Join(repoPath, "index.scip")); err == nil {
 		return true
 	}
-	entries, err := os.ReadDir(filepath.Join(repoPath, ".fathom", "scip"))
+	entries, err := os.ReadDir(projectdir.SCIP.Path(repoPath))
 	if err != nil {
 		return false
 	}

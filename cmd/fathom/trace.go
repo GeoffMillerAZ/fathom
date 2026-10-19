@@ -35,6 +35,7 @@ import (
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/certify"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/review"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/verify"
@@ -235,7 +236,7 @@ func buildTracePack(ctx context.Context, repo, commit, svc, storePath, standard 
 		digests = append(digests, traceDigest{Path: path, SHA256: hex.EncodeToString(sum[:])})
 	}
 
-	mappingPath := ".fathom/trace/" + standard + ".cue"
+	mappingPath := projectdir.Trace.Rel() + "/" + standard + ".cue"
 	mappingSrc, err := show(mappingPath)
 	if err != nil {
 		return nil, fmt.Errorf("no standard mapping %s at %s (fathom ships none — the repository authors it, schema/trace/schema.cue): %w", mappingPath, shortCommit(commit), err)

@@ -37,6 +37,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/guardspec"
 	"github.com/geoffmilleraz/fathom/internal/pathglob"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/review"
 )
 
@@ -81,7 +82,7 @@ func migrationBlockerFactsFor(svc, root string, m review.Migration, remaining []
 	if root == "" {
 		return facts
 	}
-	guard := filepath.Join(root, ".fathom", "guard.cue")
+	guard := projectdir.Guard.Path(root)
 	if _, err := os.Stat(guard); err != nil {
 		return facts // no rules file: nothing governs
 	}

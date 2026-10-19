@@ -40,6 +40,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/conserve"
 	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"github.com/geoffmilleraz/fathom/internal/harness"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 const (
@@ -249,7 +250,7 @@ func firstN(s []string, n int) []string {
 // only a layer that does costs a config.Load. A config that does not load
 // leaves the default, record.
 func pinCheckMode(root string) string {
-	userPath, projPath := config.DefaultUserPath(), filepath.Join(root, ".fathom", "config.toml")
+	userPath, projPath := config.DefaultUserPath(), projectdir.Config.Path(root)
 	if !bytes.Contains(readConfigLayer(userPath), []byte("pin_check")) && !bytes.Contains(readConfigLayer(projPath), []byte("pin_check")) {
 		return config.PinCheckRecord
 	}

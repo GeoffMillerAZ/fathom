@@ -40,6 +40,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"github.com/geoffmilleraz/fathom/internal/harness"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/testrun"
 )
 
@@ -107,7 +108,7 @@ func cmdTestRunHook(codec harness.Codec, ev harness.Event, event, baseURL, dirOv
 	// The raw pre-gate honors the scope registry (SEC-2): the repository's
 	// file can open it only for a field a repository may set, so a
 	// user-only field config.Load would drop never opens the gate.
-	userRaw, projRaw := readConfigLayer(config.DefaultUserPath()), readConfigLayer(filepath.Join(root, ".fathom", "config.toml"))
+	userRaw, projRaw := readConfigLayer(config.DefaultUserPath()), readConfigLayer(projectdir.Config.Path(root))
 	names := func(key, word string) bool {
 		return bytes.Contains(userRaw, []byte(word)) || (config.RepoMaySet(key) && bytes.Contains(projRaw, []byte(word)))
 	}
@@ -117,7 +118,7 @@ func cmdTestRunHook(codec harness.Codec, ev harness.Event, event, baseURL, dirOv
 	m, matched := matchDeclaredTestCommand(root, in.Command, nil)
 	var loaded *config.Loaded
 	if !matched && names("tests.commands", "commands") {
-		if l, err := config.Load(config.DefaultUserPath(), filepath.Join(root, ".fathom", "config.toml")); err == nil {
+		if l, err := config.Load(config.DefaultUserPath(), projectdir.Config.Path(root)); err == nil {
 			loaded = &l
 			m, matched = matchDeclaredTestCommand(root, in.Command, l.Config.Tests.Commands)
 		}
@@ -126,7 +127,7 @@ func cmdTestRunHook(codec harness.Codec, ev harness.Event, event, baseURL, dirOv
 		return 0
 	}
 	if loaded == nil {
-		l, err := config.Load(config.DefaultUserPath(), filepath.Join(root, ".fathom", "config.toml"))
+		l, err := config.Load(config.DefaultUserPath(), projectdir.Config.Path(root))
 		if err != nil {
 			return 0
 		}

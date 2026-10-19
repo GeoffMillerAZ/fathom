@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/harness"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/wiring"
 )
 
@@ -535,7 +536,7 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 				fmt.Fprintf(stdout, "  refused: %s\n", r)
 			}
 			if len(recorded) > 0 {
-				changed[".fathom/owned.json"] = true
+				changed[projectdir.Owned.Rel()] = true
 			}
 		}
 		// Safe subset as ONE plan → apply (law 15): the stanza regions
@@ -607,7 +608,7 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 	// just refuses to let the absence be invisible.
 	uncovered := 0
 	for _, root := range roots {
-		if _, err := os.Stat(filepath.Join(root, ".fathom", "concerns.cue")); err != nil {
+		if _, err := os.Stat(projectdir.Concerns.Path(root)); err != nil {
 			uncovered++
 		}
 	}

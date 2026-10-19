@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 )
 
 // `fathom init --demo` (RH-12, docs/design/reach.md §5.1): a newcomer sees
@@ -204,7 +205,7 @@ func demoEnv(base []string, dir, home string, extra []string) []string {
 		"XDG_CACHE_HOME="+filepath.Join(home, ".cache"),
 		"XDG_DATA_HOME="+filepath.Join(home, ".local", "share"),
 		"XDG_STATE_HOME="+filepath.Join(home, ".local", "state"),
-		"FATHOM_HOME="+filepath.Join(home, ".fathom"),
+		"FATHOM_HOME="+fathomhome.At(home),
 		"FATHOM_STATE_DIR="+filepath.Join(dir, "state"),
 		"FATHOM_HTTP="+demoNoDaemon,
 	)

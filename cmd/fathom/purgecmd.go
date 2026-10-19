@@ -45,6 +45,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/filter"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/scope"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
@@ -166,7 +167,7 @@ func cmdPurge(args []string, stdout, stderr io.Writer) int {
 	// check for a file left over from before the retirement.
 	var memPurger store.MemoryPurger
 	if meta, found, err := sq.GetServiceMeta(context.Background(), *service); err == nil && found && meta.Path != "" {
-		memPurger = retiredMemoriesFile{path: filepath.Join(meta.Path, ".fathom", "memories.jsonl")}
+		memPurger = retiredMemoriesFile{path: projectdir.Memories.Path(meta.Path)}
 	}
 
 	// ---- phase 2 + 3: execute and verify ----

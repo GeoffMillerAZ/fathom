@@ -79,8 +79,7 @@ func AnchorRun(ctx context.Context, run Run, results []verify.SARIFResult) (veri
 		prov.RepositoryURI = run.RepositoryURIAt(c.Root)
 	}
 
-	secret := SecretFiles(run.Nodes)
-	set, now := scope.NewSource(scope.PathFromEnv(), nil).Snapshot()
+	sourceOf := run.sources()
 	type key struct {
 		path       string
 		start, end int
@@ -101,13 +100,7 @@ func AnchorRun(ctx context.Context, run Run, results []verify.SARIFResult) (veri
 		k := key{rel, start, end}
 		a, seen := anchors[k]
 		if !seen {
-			src := Source{Withheld: withheldReason(rel, secret, set, run.Service, now)}
-			if run.Stored != nil {
-				if fp, ok := run.Stored(rel); ok {
-					src.Fingerprint = fp
-				}
-			}
-			if got, aerr := AnchorAt(ctx, c, Span{Path: rel, StartLine: start, EndLine: end}, src); aerr == nil {
+			if got, aerr := AnchorAt(ctx, c, Span{Path: rel, StartLine: start, EndLine: end}, sourceOf(rel)); aerr == nil {
 				a = &got
 			}
 			anchors[k] = a
@@ -123,6 +116,23 @@ func AnchorRun(ctx context.Context, run Run, results []verify.SARIFResult) (veri
 		}
 	}
 	return prov, out
+}
+
+// sources is what the run's producer read each repo-relative file from:
+// the index's stored fingerprint, and why its bytes are withheld (a
+// secret-valued definition in it, or an active suppression).
+func (run Run) sources() func(rel string) Source {
+	secret := SecretFiles(run.Nodes)
+	set, now := scope.NewSource(scope.PathFromEnv(), nil).Snapshot()
+	return func(rel string) Source {
+		src := Source{Withheld: withheldReason(rel, secret, set, run.Service, now)}
+		if run.Stored != nil {
+			if fp, ok := run.Stored(rel); ok {
+				src.Fingerprint = fp
+			}
+		}
+		return src
+	}
 }
 
 // repoRelative is file as a clean slash-separated path relative to root,

@@ -32,6 +32,7 @@ import (
 	"cuelang.org/go/cue/cuecontext"
 
 	"github.com/geoffmilleraz/fathom/internal/fsfault"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 // LayerSource identifies where a resolved layer definition came from.
@@ -65,7 +66,7 @@ type LayerInfo struct {
 // ProjectLayersDir is the project-local pack root, relative to a project's
 // repo root (docs/vision/02-shape.md §3, docs/plans/layer-catalog.md LC-3):
 // "<root>/.fathom/layers/<name>/{layer.cue,prompt.md,eval/,KILL.md}".
-const ProjectLayersDir = ".fathom/layers"
+const ProjectLayersDir = projectdir.Dir + "/" + string(projectdir.Layers)
 
 // LoadLayerIn resolves the named layer from the union of embedded packs and
 // root's project-local .fathom/layers/ (LC-3). root == "" (or a root with no

@@ -19,6 +19,7 @@ import (
 	"sync"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	toml "github.com/pelletier/go-toml/v2"
 )
 
@@ -81,7 +82,7 @@ type ExclusionReporter interface {
 
 // connectorConfigName is the corpus-local config file `[connector] include`
 // is read from.
-var connectorConfigName = filepath.Join(".fathom", "config.toml")
+var connectorConfigName = projectdir.Config.Path("")
 
 type includeMemo struct {
 	size    int64

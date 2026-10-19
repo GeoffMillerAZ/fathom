@@ -32,6 +32,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 // initSCIPTimeout bounds one producer: it type-checks the whole repository.
@@ -136,7 +138,7 @@ func repoHasAny(root string, markers []string) bool {
 // its .gitignore each producer would leave, and runs no producer.
 func initRunSCIP(ctx context.Context, w *initWrites, root, svc string, stdout io.Writer, d scipInitDeps) []string {
 	var produced []string
-	outDir := filepath.Join(root, ".fathom", "scip")
+	outDir := projectdir.SCIP.Path(root)
 	prepared := false
 	for _, p := range scipProducers {
 		if !repoHasAny(root, p.markers) {

@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/testisolate"
 )
 
@@ -178,7 +179,7 @@ func checkOperatorState(storePath, callLog string, homes []string, managedAddr s
 		// The operator's own records, literally under home/.fathom and never
 		// FATHOM_HOME: this guard exists to keep a scratch run off the
 		// operator's daemon, so a scratch environment must not blind it.
-		recs, errs := listDaemonRecordsAt(filepath.Join(home, ".fathom"), nil)
+		recs, errs := listDaemonRecordsAt(fathomhome.At(home), nil)
 		for _, e := range errs {
 			var re *recordReadError
 			if !errors.As(e, &re) {

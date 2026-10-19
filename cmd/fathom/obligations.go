@@ -35,11 +35,11 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/guardspec"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/receipt"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 	"github.com/geoffmilleraz/fathom/internal/store"
@@ -108,7 +108,7 @@ func layerRulesServed(root, service, file string) servedLayerRules {
 		out.Note = "not read: " + service + " has no local root on this machine; pass --root"
 		return out
 	}
-	path := filepath.Join(root, ".fathom", "guard.cue")
+	path := projectdir.Guard.Path(root)
 	if _, err := os.Stat(path); err != nil {
 		out.Note = "no layer rules: " + path + " does not exist"
 		return out
@@ -170,7 +170,7 @@ func cmdObligationsPromote(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	id := fs.Arg(0)
-	path := filepath.Join(*root, ".fathom", "guard.cue")
+	path := projectdir.Guard.Path(*root)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v%s\n", err, tccWedgeHint(path))
