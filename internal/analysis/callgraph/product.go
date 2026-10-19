@@ -24,6 +24,12 @@ package callgraph
 // package-level var initializer is attributed to that variable by the
 // typed pass (TypedEdgeEpoch 6, O1124), and the variable is rooted with
 // its package's init functions, so the table is reached with its package.
+// A method only the standard library calls, through an interface it
+// declares (net/http calling an http.RoundTripper's RoundTrip), is reached
+// through the function that converts a value of its type to that
+// interface: the typed pass gives that function a dispatch edge to each of
+// the type's methods in the interface's method set (TypedEdgeEpoch 7,
+// O1237), followed like any dispatch edge after the cross-check below.
 //
 // Hardened against the 2026-09-29 adversarial corpus (EW-15,
 // testdata/hardening):
