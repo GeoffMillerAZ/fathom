@@ -38,13 +38,15 @@ var securityProperties = []string{
 }
 
 // refuseSecurityTemplate refuses req from site when the site's name or a
-// question's template names a security property; nil otherwise.
+// question's template names a security property; nil otherwise. An
+// identifier a question's instructions interpolate (certify suggest's Go
+// test name, TestHandle_Injection_ThenBlocked) is data, not the template.
 func refuseSecurityTemplate(site string, req decision.Request) error {
 	if term := namedSecurityProperty(site); term != "" {
 		return &planRefusedError{class: classSecurity, reason: fmt.Sprintf("site %s names a security property (%s), and a security property is never judged for serving", site, term)}
 	}
 	for _, q := range req.Questions {
-		parts := append([]string{q.Instructions, q.Rubric}, q.Levels...)
+		parts := append([]string{withoutIdentifiers(q.Instructions), q.Rubric}, q.Levels...)
 		for _, o := range q.Options {
 			parts = append(parts, o.Name)
 		}
@@ -99,4 +101,20 @@ func pathShaped(tok string) bool {
 		}
 	}
 	return true
+}
+
+// withoutIdentifiers is text without its identifier-shaped tokens: those
+// that, sentence punctuation trimmed, hold `_` or `::`
+// (TestHandle_Injection_ThenBlocked, tests::encrypt_roundtrip).
+func withoutIdentifiers(text string) string {
+	toks := strings.Fields(text)
+	kept := toks[:0]
+	for _, tok := range toks {
+		core := strings.Trim(tok, ".,;:!?()[]{}\"'`")
+		if strings.Contains(core, "_") || strings.Contains(core, "::") {
+			continue
+		}
+		kept = append(kept, tok)
+	}
+	return strings.Join(kept, " ")
 }

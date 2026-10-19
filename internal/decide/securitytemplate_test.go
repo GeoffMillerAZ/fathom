@@ -79,4 +79,23 @@ func TestSecurityPropertiesNeverJudgedForServing(t *testing.T) {
 			t.Fatalf("%d requests and lines %q, want 1 request and no line", n, disclose.String())
 		}
 	})
+
+	// certify suggest interpolates each Go test's name into its question:
+	// TestHandle_Injection_ThenBlocked is an identifier the template
+	// carries as data, so its chunk is asked, not refused whole.
+	t.Run("an identifier the template interpolates is data", func(t *testing.T) {
+		var disclose, log bytes.Buffer
+		fake := decision.NewMockDecider("typesafe", planAnswer("q1"))
+		d := planPort(t, user, "", &disclose, &log, fake, decide.SiteCertifySuggest)
+		req := decision.Request{
+			State:     "=== TestHandle_Injection_ThenBlocked (internal/hook/hook_test.go:12) ===\nfunc TestHandle_Injection_ThenBlocked(t *testing.T) {}",
+			Questions: []decision.Question{predicate("TestHandle_Injection_ThenBlocked (shown above in State) asserts a real behaviour or outcome, rather than merely executing code with no meaningful check.")},
+		}
+		if _, err := d.Decide(context.Background(), req); err != nil {
+			t.Fatalf("Decide: %v (a test's name is data, not the template)", err)
+		}
+		if n := len(fake.Calls()); n != 1 || disclose.Len() != 0 {
+			t.Fatalf("%d requests and lines %q, want 1 request and no line", n, disclose.String())
+		}
+	})
 }
