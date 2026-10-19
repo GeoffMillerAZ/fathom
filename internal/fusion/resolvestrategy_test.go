@@ -313,6 +313,7 @@ func TestFileResolveLangsFromManifests(t *testing.T) {
 	// LB-F536, LB-F537 (wave lf7): an injection host's <script> imports (F2).
 	want["vue"], want["svelte"] = "relative-path", "relative-path"
 	want["astro"] = "relative-path" // LB-F545 (wave lf7): an injection host's ranges' imports, with no imports query of its own
+	want["bazel"] = "file-symbol"   // LB-Q-bazel (wave lang4): load() labels, //pkg:file.bzl and :file.bzl
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("FileResolveLangs = %v, want %v", got, want)
 	}

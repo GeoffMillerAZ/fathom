@@ -1,0 +1,27 @@
+id: tiltfile
+language: Tiltfile
+# Measurement conventions (docs/bench/readings/lang/tiltfile.json): each subject is a shallow clone read whole, with the
+# tier-C oracle calibration/oracles/ts-tags (starlark-tags.scm, tree-sitter-python's tags query less its class pattern,
+# run by py-tree-sitter): calls written as references for L2, functions for L1. tilt-extensions holds 104 Tiltfiles,
+# 61 of them with defs; tilt-example-go is the six small Tiltfiles of an application (docker_build, k8s_yaml,
+# local_resource).
+repos:
+  - name: tilt-dev/tilt-extensions
+    url: https://github.com/tilt-dev/tilt-extensions
+    ref: master
+    sha: 7f9f376076bbe18cb76474d7cdda16894d139b81
+    licence: Apache-2.0
+    idioms:
+      - 'an extension as a Tiltfile of def functions (def helm_remote(chart, ...)) that other Tiltfiles load("ext://name", "fn")'
+      - 'load_dynamic, os.getenv, config.define_string and config.parse for settings'
+      - 'k8s_yaml(encode_yaml(...)), local(...) and read_file(...) building manifests at load time'
+      - 'k8s_resource(workload, port_forwards = ..., resource_deps = [...]) beside the functions that call it'
+  - name: tilt-dev/tilt-example-go
+    url: https://github.com/tilt-dev/tilt-example-go
+    ref: master
+    sha: ec079fd2a4df431064579687bd49e03dcaa3de69
+    licence: Apache-2.0
+    idioms:
+      - "docker_build('example-go-image', '.', dockerfile = ...), with live_update = [sync(...), run(...)] in the optimized variant"
+      - "k8s_yaml('deployments/kubernetes.yaml') and k8s_resource('example-go', port_forwards = 8000, resource_deps = [...])"
+      - 'local_resource("compile", "go build ...", deps = [...]) for the compiled-binary variant'

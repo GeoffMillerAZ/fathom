@@ -1,0 +1,91 @@
+{
+  "id": "bazel",
+  "display": "Bazel / Starlark (BUILD, BUILD.bazel, *.bzl, WORKSPACE, MODULE.bazel)",
+  "kind": "tooling",
+  "engine": "tags",
+  "lang_tag": "bazel",
+  "match": {
+    "extensions": [
+      ".bzl"
+    ],
+    "basenames": [
+      "BUILD",
+      "BUILD.bazel",
+      "MODULE.bazel",
+      "WORKSPACE",
+      "WORKSPACE.bazel",
+      "WORKSPACE.bzlmod"
+    ],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": {
+    "blob": "starlark",
+    "entry_point": "tree_sitter_starlark"
+  },
+  "variants": [],
+  "queries": {
+    "tags": "tags.scm",
+    "imports": "imports.scm"
+  },
+  "kinds": {
+    "target": {
+      "source_kind": "BazelTarget",
+      "canonical": "target",
+      "callable": true
+    },
+    "function": {
+      "source_kind": "BazelFunction",
+      "canonical": "function",
+      "callable": true
+    },
+    "rule": {
+      "source_kind": "BazelRule",
+      "canonical": "rule"
+    },
+    "package_group": {
+      "source_kind": "BazelPackageGroup",
+      "canonical": "policy"
+    },
+    "dependency": {
+      "source_kind": "BazelDependency",
+      "canonical": "import"
+    }
+  },
+  "required_kinds": [
+    "target"
+  ],
+  "oracle_kinds": {
+    "tool": {
+      "target": "target"
+    }
+  },
+  "name_match": "identity",
+  "names": {
+    "strip_prefix": [
+      ":"
+    ]
+  },
+  "qualify": {
+    "chain_containers": false,
+    "container_sep": ".",
+    "method_sep": "."
+  },
+  "package": {
+    "strategy": "dir"
+  },
+  "imports": {
+    "strategy": "file-symbol",
+    "labels": "bazel",
+    "index_files": [
+      "BUILD.bazel",
+      "BUILD"
+    ]
+  },
+  "signature": {
+    "max_chars": 200
+  },
+  "target_level": "L3",
+  "queue_id": "bazel"
+}

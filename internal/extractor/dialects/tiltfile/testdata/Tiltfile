@@ -1,0 +1,21 @@
+load("ext://restart_process", "docker_build_with_restart")
+load("./lib/helpers", "image_name")
+
+config.define_string("env")
+cfg = config.parse()
+
+def build(name):
+    docker_build("example/" + name, ".")
+
+def deploy(path, port = 8080):
+    k8s_yaml(path)
+    k8s_resource("web", port_forwards = port)
+
+local_resource("lint", cmd = "make lint")
+local_resource(cmd = "make test", name = "test", deps = ["src"])
+docker_build("example/web", "./web", live_update = [sync("./web", "/app")])
+custom_build("example/api", "make image")
+k8s_yaml("deploy.yaml")
+k8s_yaml(helm("chart"))
+dc_resource("db")
+build(cfg.get("env", "dev"))

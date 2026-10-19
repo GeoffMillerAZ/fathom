@@ -195,6 +195,20 @@ var extClassMap = map[string]classification{
 	"meson.options":     {core.KindMesonTarget, "meson"},
 	"meson_options.txt": {core.KindMesonTarget, "meson"},
 
+	// Bazel / Starlark (LB-Q-bazel, wave lang4: a new tags dialect, no incumbent).
+	// BUILD files declare targets, .bzl files define rules and macros, and
+	// MODULE.bazel and WORKSPACE declare the modules and repositories.
+	".bzl":             {core.SourceKind("BazelTarget"), "bazel"},
+	"BUILD":            {core.SourceKind("BazelTarget"), "bazel"},
+	"BUILD.bazel":      {core.SourceKind("BazelTarget"), "bazel"},
+	"MODULE.bazel":     {core.SourceKind("BazelTarget"), "bazel"},
+	"WORKSPACE":        {core.SourceKind("BazelTarget"), "bazel"},
+	"WORKSPACE.bazel":  {core.SourceKind("BazelTarget"), "bazel"},
+	"WORKSPACE.bzlmod": {core.SourceKind("BazelTarget"), "bazel"},
+
+	// Tiltfile (LB-Q-tiltfile, wave lang4: a new tags dialect on the Starlark grammar, no incumbent).
+	"Tiltfile": {core.SourceKind("TiltModule"), "tiltfile"},
+
 	// Clang compilation database (LB-Q-compile-commands, language-breadth: new,
 	// a doc-engine tool format, no incumbent). The basename check
 	// (kindForFile/classify) takes precedence over ".json" (the generic JSON

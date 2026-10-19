@@ -1,0 +1,8 @@
+workspace(name = "demo")
+
+http_archive(
+    name = "com_example_lib",
+    urls = ["https://example.invalid/lib.tar.gz"],
+)
+
+register_toolchains("//toolchains:all")

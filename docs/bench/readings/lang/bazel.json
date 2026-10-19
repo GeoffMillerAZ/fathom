@@ -1,0 +1,232 @@
+{
+  "dialect": "bazel",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "good",
+    "L2": "excellent",
+    "L3": "good",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-19",
+  "fathom_commit": "02255415",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "bazelbuild/examples/configurations",
+      "sha": "45bfd9d9b3d1b8e940890aa90a60483e8179331d",
+      "files": 33,
+      "bytes": 25877,
+      "counts": {
+        "callables": 50,
+        "callables_signed": 50,
+        "fathom_defs": 50,
+        "kind_equal": 50,
+        "matched": 50,
+        "oracle_defs": 50,
+        "range_eligible": 50,
+        "range_ok": 50,
+        "ref_fathom": 57,
+        "ref_fathom_in_truth": 56,
+        "ref_truth": 67,
+        "ref_truth_found": 56,
+        "xref_fathom": 25,
+        "xref_fathom_in_truth": 25,
+        "xref_truth": 25,
+        "xref_truth_found": 25
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "target"
+      ],
+      "excluded_by_kind": {
+        "fathom:BazelDependency": 5,
+        "fathom:BazelFunction": 24,
+        "fathom:BazelRule": 19
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 13.249999999999998,
+        "extract_cpu_ms": 12.702999999999998,
+        "max_file_ms": 1,
+        "peak_module_pages": 302,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "bazelbuild/examples/rules",
+      "sha": "45bfd9d9b3d1b8e940890aa90a60483e8179331d",
+      "files": 42,
+      "bytes": 42748,
+      "counts": {
+        "callables": 54,
+        "callables_signed": 54,
+        "fathom_defs": 54,
+        "kind_equal": 54,
+        "matched": 54,
+        "oracle_defs": 54,
+        "range_eligible": 54,
+        "range_ok": 54,
+        "ref_fathom": 77,
+        "ref_fathom_in_truth": 74,
+        "ref_truth": 76,
+        "ref_truth_found": 74,
+        "xref_fathom": 40,
+        "xref_fathom_in_truth": 39,
+        "xref_truth": 39,
+        "xref_truth_found": 39
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "target"
+      ],
+      "excluded_by_kind": {
+        "fathom:BazelDependency": 5,
+        "fathom:BazelFunction": 39,
+        "fathom:BazelRule": 32
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 18.551,
+        "extract_cpu_ms": 18.136999999999997,
+        "max_file_ms": 2,
+        "peak_module_pages": 303,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "grpc/grpc",
+      "sha": "3252a89f10d8e92997862167ca7d095ecda85973",
+      "files": 284,
+      "bytes": 1640938,
+      "counts": {
+        "callables": 2518,
+        "callables_signed": 2518,
+        "fathom_defs": 2518,
+        "kind_equal": 2401,
+        "matched": 2401,
+        "oracle_defs": 2401,
+        "range_eligible": 2401,
+        "range_ok": 2401,
+        "ref_fathom": 3281,
+        "ref_fathom_in_truth": 3173,
+        "ref_truth": 3197,
+        "ref_truth_found": 3173,
+        "xref_fathom": 2130,
+        "xref_fathom_in_truth": 2007,
+        "xref_truth": 2013,
+        "xref_truth_found": 2007
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "target"
+      ],
+      "excluded_by_kind": {
+        "fathom:BazelDependency": 44,
+        "fathom:BazelFunction": 126,
+        "fathom:BazelPackageGroup": 47,
+        "fathom:BazelRule": 13
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 568.9100000000001,
+        "extract_cpu_ms": 526.6299999999998,
+        "max_file_ms": 131,
+        "peak_module_pages": 488,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "bazel query --output=streamed_jsonproto",
+      "version": "bazel 8.7.0"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 0.9672,
+    "ref_recall": 0.9889,
+    "sym_precision": 0.9554,
+    "sym_recall": 1,
+    "xref_precision": 0.9435,
+    "xref_recall": 0.9971
+  },
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A",
+    "xref_precision": "A",
+    "xref_recall": "A"
+  },
+  "required_kinds": [
+    "target"
+  ],
+  "kind_intersection": [
+    "target"
+  ],
+  "counts": {
+    "callables": 2622,
+    "callables_signed": 2622,
+    "fathom_defs": 2622,
+    "kind_equal": 2505,
+    "matched": 2505,
+    "oracle_defs": 2505,
+    "range_eligible": 2505,
+    "range_ok": 2505,
+    "ref_fathom": 3415,
+    "ref_fathom_in_truth": 3303,
+    "ref_truth": 3340,
+    "ref_truth_found": 3303,
+    "xref_fathom": 2195,
+    "xref_fathom_in_truth": 2071,
+    "xref_truth": 2077,
+    "xref_truth_found": 2071
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 0,
+    "throughput_mb_s": 3.07,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 2.85,
+    "max_file_ms": 131,
+    "peak_module_pages": 488,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:BazelDependency": 54,
+    "fathom:BazelFunction": 189,
+    "fathom:BazelPackageGroup": 47,
+    "fathom:BazelRule": 64
+  },
+  "notes": [
+    "grpc/grpc: 11 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
+    "grpc/grpc: 149 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "grpc/grpc: 2 files skipped by ingest's gates (generated)",
+    "grpc/grpc: restricted to .bazelci/**, .bcr/**, .gemini/**, .github/**, bazel/**, cmake/**, doc/**, etc/**, examples/**, include/**, py_xds_protos/**, spm-core-include/**, spm-cpp-include/**, src/abseil-cpp/**, src/android/**, src/benchmark/**, src/boringssl/**, src/c-ares/**, src/compiler/**, src/core/**, src/cpp/**, src/csharp/**, src/objective-c/**, src/php/**, src/proto/**, src/python/grpcio/**, src/python/grpcio_admin/**, src/python/grpcio_channelz/**, src/python/grpcio_csds/**, src/python/grpcio_csm_observability/**, src/python/grpcio_health_checking/**, src/python/grpcio_observability/grpc_observability/**, src/python/grpcio_observability/*, src/python/grpcio_reflection/**, src/python/grpcio_status/**, src/python/grpcio_testing/**, src/python/grpcio_tests/tests/**, src/python/grpcio_tests/tests_aio/**, src/python/grpcio_tests/tests_gevent/**, src/python/grpcio_tests/tests_py3_only/**, src/python/grpcio_tests/*, src/python/*, src/ruby/**, summerofcode/**, templates/**, test/boringssl_spm_build/**, test/build/**, test/build_test/**, test/core/**, test/cpp/**, test/csharp/**, test/distrib/bazel/*, test/distrib/cpp/**, test/distrib/csharp/**, test/distrib/gcf/**, test/distrib/php/**, test/distrib/python/**, test/distrib/ruby/**, test/http2_test/**, test/spm_build/**, test/*, third_party/address_sorting/**, third_party/cares/**, third_party/cel-spec/**, third_party/grpc-proto/**, third_party/objective_c/**, third_party/opentelemetry/**, third_party/rake-compiler-dock/**, third_party/toolchains/dockerfile/**, third_party/toolchains/rbe_ubuntu2004_bazel7/config/**, third_party/toolchains/rbe_ubuntu2004_bazel7/*, third_party/toolchains/rbe_windows_vs2022_bazel7/config/**, third_party/toolchains/rbe_windows_vs2022_bazel7/*, third_party/toolchains/*, third_party/xxhash/**, third_party/zlib/**, third_party/*, tools/api_reference/**, tools/bazelify_tests/**, tools/buildgen/**, tools/codegen/**, tools/debug/**, tools/distrib/c-ish/**, tools/distrib/docgen/**, tools/distrib/php/**, tools/distrib/python/grpc_prefixed/**, tools/distrib/python/grpcio_tools/grpc_tools/**, tools/distrib/python/grpcio_tools/*, tools/distrib/python/*, tools/distrib/*, tools/docker_runners/**, tools/dockerfile/**, tools/doxygen/**, tools/gce/**, tools/gcp/**, tools/gource/**, tools/http2_interop/**, tools/internal_ci/**, tools/interop_matrix/**, tools/package_hosting/**, tools/profiling/**, tools/release/**, tools/remote_build/**, tools/run_tests/**, tools/*, * (-only; the files outside are a disclosed gap, not measured)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "xref_precision and xref_recall of a tags-engine tool format score the file resolver's file-resolved edges (fusion.ResolveFileEdges over the dialect's import strategy, the edges ingest stores) against the oracle's cross_references at file granularity: (file, referring definition, referenced file), the referenced definition's name not compared (LB-F56)"
+  ],
+  "disposition": null
+}

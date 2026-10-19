@@ -62,6 +62,14 @@ var typedEdgeProducers = map[string]string{
 	// stored and "syntax" is the honest baseline claim (ADR-027).
 	"meson": "syntax",
 
+	// bazel (LB-Q-bazel): a load() binds the symbols it names to the .bzl file, but ingest's
+	// file-resolve pass is keyed by file extension and BUILD, WORKSPACE and MODULE.bazel have none
+	// (O379), so "syntax" is the honest baseline claim (ADR-027).
+	"bazel": "syntax",
+
+	// tiltfile (LB-Q-tiltfile): call names by syntax only; no import is read (L2).
+	"tiltfile": "syntax",
+
 	// syntax: call names by syntax only — every other registered
 	// language, CUE included (see the doc comment above).
 	"cue":        "syntax",
