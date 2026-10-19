@@ -80,7 +80,7 @@ Project scope, `<repo>/.fathom/` and the root:
 | `scip/*.scip` | Z3 | fathom | no |
 | `receipts.jsonl` (legacy, receipts moved to the state directory) | Z3 | fathom | no |
 | `memories.jsonl` (retired) | Z3 | fathom | no |
-| `tenancy-allow.txt` (this repository's own lint excuses, moving under `internal/lint/tenancy/`) | development artifact | fathom's maintainers | yes |
+| `tenancy-allow.txt` (this repository's own lint excuses, moved to `internal/lint/tenancy/allow.txt`) | development artifact | fathom's maintainers | yes |
 
 Outside the tree, per checkout (Z3):
 `$XDG_STATE_HOME/fathom/<repo-id>/` holds receipts, session and discovery
