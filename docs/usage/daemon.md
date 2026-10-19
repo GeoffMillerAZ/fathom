@@ -75,7 +75,7 @@ fathom did not write, and refuses unless the plist's binary answers
 `version --json` with `tenancy_contract >= 1` (order: `task deploy`,
 confirm, reconcile, reload). Doctor's `daemon_posture` row and `status`
 WARN on drift with the exact command. `status` also prints the running
-daemon's codesigning identity — read from the live process (`codesign -dv
+daemon's codesigning identity — read from the live process (`codesign -dvv
 <pid>`), since a deploy replaces the file under it, or from the plist's
 binary on disk when none is running, and says which — and names an ad-hoc
 one (RT-148). Adoption by the self-restart watcher exits 75, so schema 2

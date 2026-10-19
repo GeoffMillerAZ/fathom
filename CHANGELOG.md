@@ -55,6 +55,7 @@ Release impact: minor
 - Memory pressure at `warn` now sheds only while fathom's own footprint + children is a real share of its budget: at or above `[tenancy.host] allowance` × budget (default 0.45, 0.6 × `shed_at`; `allowance = 0` restores shedding at any footprint), and a rung held by pressure steps down after 60 s under 0.6 × the allowance; pressure `critical` and the swap-volume floor are unchanged, and `fathom resources --json` names the allowance in `host_triggers`.
 
 ### Fixed
+- `fathom daemon status` and doctor read a binary's signing authority with `codesign -dvv`: on macOS 27 one `-v` prints no `Authority` line, so a binary signed with fathom-dev read as "signed, no authority named".
 
 - The test-run hook reads the repository a leading `cd` or `pushd` moves the command into (its config, declared commands and row keys), not only the session's `cwd`, which inside a workflow or Agent subagent working in a scratch clone is the parent's project (O1230).
 - The test-run hook's saved outputs under `workspace/tmp/test-run` are bounded at 50 files and 8 MiB, oldest removed first and only its own `<16 hex>.log` files (RO-36).
