@@ -391,6 +391,11 @@ func scipIndexKey(root, path string) string {
 			}
 			if a, aerr := filepath.EvalSymlinks(abs); aerr == nil {
 				abs = a
+			} else if parent, perr := filepath.EvalSymlinks(filepath.Dir(abs)); perr == nil {
+				// A missing leaf still has a stable root-relative identity.
+				// Resolve its existing parent too, rather than mixing a physical
+				// root with an aliased path (/var vs /private/var on macOS).
+				abs = filepath.Join(parent, filepath.Base(abs))
 			}
 			if rel, rerr := filepath.Rel(root, abs); rerr == nil && rel != "." && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !filepath.IsAbs(rel) {
 				return filepath.ToSlash(rel)

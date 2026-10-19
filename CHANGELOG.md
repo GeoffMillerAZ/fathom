@@ -25,6 +25,7 @@ Release impact: patch
 - Unity `.asmdef` files expose declared assembly/reference facts without call edges; `indexbench lang-unity-asmdef` calibrates per-file-bound ownership, named references and a strict engine boundary against retained Editor receipts, with unsupported cases explicit.
 
 ### Fixed
+- A SCIP index beneath a symlinked directory keeps its root-relative import identity even when the index leaf is absent, avoiding mixed physical and aliased parent paths.
 - Dispatch byte budgeting measures malformed UTF-8 with the selected JSON encoder's replacement width, preserving exact sizing under both legacy JSON and jsonv2-compatible encoding.
 - `symbol_context` resolves repeated declarations of one canonical key without false ambiguity, and lists their bounded, deterministic source locations; different keys remain ambiguous.
 
