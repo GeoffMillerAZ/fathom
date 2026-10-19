@@ -317,7 +317,9 @@ tasks:
     # broken because every machine that ran validate had the siblings.
     # stranger-check (RP-23) is the same lesson one step further: the copy
     # must init and pass doctor for someone who is not the author. Measured
-    # 26–43s on 2026-09-02, under the two-minute budget that admits it here.
+    # 26–43s on 2026-09-02; the whole-tree first index then grew it to
+    # 392-1132s and past init's wait under load, so since O1339 init wires
+    # the fixture fleet: 95s on 2026-10-19, nearly all of it the build.
     # scenariobench is not a dep: `task test` already runs
     # ./internal/scenariobench (race, under the test task's CGO_ENABLED=1), and
     # the dep ran it a second time (77–102 s each, measured 2026-09-30).
@@ -384,8 +386,8 @@ tasks:
     cmds: ["bash scripts/testkit-schema-check.sh"]
 
   stranger-check:
-    desc: "Adopter guard (RP-23) — copy the tracked tree to $TMPDIR (outside the module, so a parallel `go vet ./...` never walks it), build with GOWORK=off, run `fathom init --harness=none --skills` and `fathom doctor` against a throwaway daemon + temp store with a temp HOME; fail on any FAIL row. Prints its elapsed seconds."
-    cmds: ["bash scripts/stranger-check.sh"]
+    desc: "Adopter guard (RP-23) — copy the tracked tree to $TMPDIR (outside the module, so a parallel `go vet ./...` never walks it), build with GOWORK=off, run `fathom init --harness=none --skills` on a stranger's repository (the fauxtown fleet as its own git repo, a fixed first index: O1339) and `fathom doctor` against a throwaway daemon + temp store with a temp HOME; fail on any FAIL row or a binary_fresh against the copy that is not PASS. Its stubbed test runs first. Prints its elapsed seconds."
+    cmds: ["bash scripts/stranger-check_test.sh", "bash scripts/stranger-check.sh"]
 
   store-purego:
     desc: Purity guard (invariant I2, ADR-025) — internal/store must build and pass -race under CGO_ENABLED=0
