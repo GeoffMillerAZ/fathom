@@ -123,4 +123,47 @@ func TestLoadGuardsThroughProjectValueByteIdentical(t *testing.T) {
 	if g, err := guardspec.GuardsFromProject(p); err != nil || len(g.Guards) == 0 {
 		t.Errorf("this repository's guards through the project value: %d guards, err %v", len(g.Guards), err)
 	}
+
+	// No second parse: every reading comes from the loaded value, so
+	// rewriting each file on disk after Load changes none of them. A reader
+	// that went back to its file would read the syntax error instead.
+	root := t.TempDir()
+	if err := os.MkdirAll(projectdir.Under(root), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	files := []projectdir.File{projectdir.Guard, projectdir.Modules, projectdir.Capabilities, projectdir.Concerns}
+	for _, f := range files {
+		data, err := os.ReadFile(f.Path(filepath.Join("..", "..")))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(f.Path(root), data, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	p, err = projectdir.Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	readAll := func() []any {
+		g, ge := guardspec.GuardsFromProject(p)
+		l, le := guardspec.LayerRulesFromProject(p)
+		b, be := bindspec.BindingsFromProject(p)
+		s, se := reg.SettingsFromProject(p)
+		u, ue := capability.BudgetsFromProject(p)
+		c, ce := custodian.ScopeFileFromProject(p)
+		return []any{g, errText(ge), l, errText(le), b, errText(be), s, errText(se), u, errText(ue), c, errText(ce)}
+	}
+	before := readAll()
+	for _, f := range files {
+		if err := os.WriteFile(f.Path(root), []byte("rewritten: [\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := guardspec.LoadGuards(projectdir.Guard.Path(root)); err == nil {
+		t.Fatal("the rewritten guard.cue still parses: the probe proves nothing")
+	}
+	if after := readAll(); !reflect.DeepEqual(before, after) {
+		t.Errorf("a reading changed after the files changed on disk: a reader parsed its file a second time\n before: %#v\n after:  %#v", before, after)
+	}
 }

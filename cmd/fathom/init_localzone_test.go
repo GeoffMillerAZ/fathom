@@ -72,6 +72,26 @@ func TestInitWritesLocalZoneIgnore(t *testing.T) {
 		}
 	})
 
+	t.Run("fleet reconcile carries the region", func(t *testing.T) {
+		dir := t.TempDir()
+		spec, _ := reconcileSpec(dir, wiringDiff{Repo: dir})
+		found := false
+		for _, r := range spec.Regions {
+			if r.File != ".fathom/.gitignore" {
+				continue
+			}
+			found = true
+			for _, n := range localZoneNames {
+				if !strings.Contains("\n"+r.Body+"\n", "\n"+n+"\n") {
+					t.Errorf("reconcile's .fathom/.gitignore region missing line %q:\n%s", n, r.Body)
+				}
+			}
+		}
+		if !found {
+			t.Errorf("reconcile spec carries no .fathom/.gitignore region: %+v", spec.Regions)
+		}
+	})
+
 	t.Run("dry run lists the file and writes nothing", func(t *testing.T) {
 		dir := t.TempDir()
 		svc := strings.ToLower(filepath.Base(dir))
