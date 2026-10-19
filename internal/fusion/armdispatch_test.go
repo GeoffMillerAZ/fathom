@@ -143,9 +143,15 @@ func TestIngest_ARMRepo(t *testing.T) {
 	policyDefs := 0
 	for _, o := range obs {
 		switch o.SourceRef {
-		case "schemas/deploymentTemplate.json", "conf/settings.json":
+		case "conf/settings.json":
 			if o.SourceKind != core.KindJSONKey {
 				t.Errorf("%s read as %s; it keeps the JSON extractor", o.SourceRef, o.SourceKind)
+			}
+		case "schemas/deploymentTemplate.json":
+			// The ARM schema is a JSON Schema (its $schema is a json-schema.org
+			// meta-schema): the json-schema dialect reads it (LB-Q-json-schema), never ARM's.
+			if strings.HasPrefix(string(o.SourceKind), "ARM") {
+				t.Errorf("%s read as %s; the ARM schema is no ARM template", o.SourceRef, o.SourceKind)
 			}
 		case "policy/deploy-storage.json":
 			// An Azure Policy definition embedding a template is never ARM's: wave pc's

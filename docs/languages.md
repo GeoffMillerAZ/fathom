@@ -111,7 +111,7 @@ item's target; the last column also needs every level up to the target graded ex
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | T1 | language | 33 | 1 | 3 | 11 | 10 | 1 | 2 | 0 | 5 | 21 | 8 |
 | T1 | tool format | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |
-| T2 | tool format | 23 | 0 | 8 | 11 | 0 | 1 | 0 | 0 | 3 | 16 | 12 |
+| T2 | tool format | 23 | 0 | 8 | 12 | 0 | 1 | 0 | 0 | 2 | 17 | 13 |
 | T3 | tool format | 16 | 1 | 4 | 11 | 0 | 0 | 0 | 0 | 0 | 15 | 5 |
 | T4 | language | 3 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 1 | 1 | 0 |
 | T4 | tool format | 7 | 0 | 3 | 2 | 0 | 0 | 0 | 0 | 2 | 5 | 4 |
@@ -120,7 +120,7 @@ item's target; the last column also needs every level up to the target graded ex
 | T6 | tool format | 4 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |
 | T7 | tool format | 4 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
 | **Total** | language | 37 | 1 | 4 | 12 | 10 | 1 | 3 | 0 | 6 | 22 | 8 |
-| **Total** | tool format | 63 | 1 | 18 | 34 | 0 | 1 | 0 | 0 | 9 | 48 | 25 |
+| **Total** | tool format | 63 | 1 | 18 | 35 | 0 | 1 | 0 | 0 | 8 | 49 | 26 |
 
 ### T1
 
@@ -179,7 +179,7 @@ item's target; the last column also needs every level up to the target graded ex
 | CMake (CMakeLists.txt, *.cmake) | tool format | L3 | none (measured) | L1 not met: tenancy floor |
 | Protocol Buffers (.proto) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | GraphQL schemas and operations (.graphql .gql) | tool format | L3 | L2 (L1 excellent, L2 excellent) | L3 not met: xref_precision not measured |
-| JSON Schema documents | tool format | L3 | unsupported | no dialect (LB-Q-json-schema) |
+| JSON Schema documents | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | Taskfile (go-task: Taskfile.yml) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | Jenkins pipelines (Jenkinsfile, *.jenkinsfile) | tool format | L3 | L3 (L1 good, L2 good, L3 good) | L1 good: oracle tier C caps at good |
 | Azure Pipelines (azure-pipelines.yml, templates) | tool format | L3 | unsupported | no dialect (LB-Q-azure-pipelines) |
@@ -268,8 +268,8 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 reached (languages at L1 34, L1 excellent 24, L2 29, L3 23, L4 10; tool formats at target 53)
-Milestone M2 progress: languages at L1 34/45, at L1 excellent 24/35, at L2 29/25, at L3 23/14, at L4 10/10; tool formats at target 53/30
+Milestone M1 reached (languages at L1 34, L1 excellent 24, L2 29, L3 23, L4 10; tool formats at target 54)
+Milestone M2 progress: languages at L1 34/45, at L1 excellent 24/35, at L2 29/25, at L3 23/14, at L4 10/10; tool formats at target 54/30
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -333,7 +333,7 @@ Milestone M2 progress: languages at L1 34/45, at L1 excellent 24/35, at L2 29/25
 | Prometheus rules, configuration and promtool tests | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A promtool 3.15.0 (5241a27f); A promtool+routes 3.15.0 (5241a27f) | — | 2026-10-10 | at target (LB-Q-prometheus) |
 | Alertmanager configuration (routes, receivers, inhibit rules, time intervals) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A amtool v0.34.1 (amtool, config and dispatch packages); A amtool+dispatch v0.34.1 (amtool, config and dispatch packages) | — | 2026-10-10 | at target (LB-Q-alertmanager) |
 | Grafana dashboards and provisioning (dashboard JSON, v2 resources, providers, datasources, alerting) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 good, L2 good, L3 good) | C grafana-model-walk 1 (prometheus/promql/parser v0.315.0 ExtractSelectors) | — | 2026-10-10 | at target (LB-Q-grafana-dashboard) |
-| JSON Schema documents | tool format | doc | pure-go:encoding/json (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-json-schema |
+| JSON Schema documents | tool format | doc | pure-go:encoding/json (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A @apidevtools/json-schema-ref-parser 16.0.5; A @apidevtools/json-schema-ref-parser ($refs.paths) 16.0.5 | — | 2026-10-19 | at target (LB-Q-json-schema) |
 | Scala (.scala .sc) | language | tags | tree-sitter/tree-sitter-scala (MIT) | L4 | L2 (L1 good, L2 good) | B scalameta 4.17.4 | scip:scip-java | 2026-10-10 | LB-Q-scala |
 | Nix (.nix, flake.nix) | tool format | tags | nix-community/tree-sitter-nix (MIT) | L3 | unsupported (disclosed) | — | — | — | LB-Q-nix |
 | Objective-C (.m .mm, .h by sniff) | language | tags | tree-sitter-grammars/tree-sitter-objc (MIT) | L3 | unsupported (disclosed) | — | — | — | LB-Q-objective-c |

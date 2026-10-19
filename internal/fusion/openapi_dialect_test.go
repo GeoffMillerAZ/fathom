@@ -48,7 +48,7 @@ func TestOpenAPIRoutingByContent(t *testing.T) {
 		{"api/openapi.json", oaJSONDoc, oa, ToolOpenAPI, "openapi"},
 		{"api/swagger.json", oaMinified, oa, ToolOpenAPI, "openapi"},
 		{"api/example.json", "{\"title\": \"x\", \"example\": {\"openapi\": \"3.0.0\"}}\n", p.exts[".json"], "", ""},
-		{"schema/openapi.schema.json", "{\"properties\": {\"openapi\": {\"type\": \"string\"}}}\n", p.exts[".json"], "", ""},
+		{"schema/openapi-schema.json", "{\"properties\": {\"openapi\": {\"type\": \"string\"}}}\n", p.exts[".json"], "", ""},
 		{"data/data.json", "{\"a\": 1}\n", p.exts[".json"], "", ""},
 		{"package.json", "{\"name\": \"x\", \"openapi\": \"3.0.0\", \"info\": {}}\n", p.exts["package.json"], "", ""},
 		{"api/no-info.json", "{\"openapi\": \"3.0.0\", \"paths\": {}}\n", p.exts[".json"], "", ""},

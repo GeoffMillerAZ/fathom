@@ -1,0 +1,67 @@
+{
+  "symbols": [
+    {
+      "name": "legacy.json",
+      "kind": "JSONSchemaDocument",
+      "package": "legacy",
+      "line": 1,
+      "end_line": 19,
+      "signature": "http://json-schema.org/draft-07/schema#",
+      "tier": "verified"
+    },
+    {
+      "name": "positiveInt",
+      "kind": "JSONSchemaDef",
+      "package": "legacy",
+      "line": 5,
+      "end_line": 5,
+      "signature": "integer",
+      "tier": "verified"
+    },
+    {
+      "name": "size",
+      "kind": "JSONSchemaDef",
+      "package": "legacy",
+      "line": 6,
+      "end_line": 6,
+      "calls": [
+        "positiveInt"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "shape",
+      "kind": "JSONSchemaDef",
+      "package": "legacy",
+      "line": 7,
+      "end_line": 12,
+      "calls": [
+        "size"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "width",
+      "kind": "JSONSchemaProperty",
+      "package": "legacy",
+      "line": 15,
+      "end_line": 15,
+      "calls": [
+        "size"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "height",
+      "kind": "JSONSchemaProperty",
+      "package": "legacy",
+      "line": 16,
+      "end_line": 16,
+      "calls": [
+        "size"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}
