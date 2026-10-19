@@ -22,6 +22,7 @@ Compatibility surface: `docs/intent/scope.md`.
 Release impact: minor
 
 ### Breaking
+- Trace exports can replace legacy decision inputs with repeatable `--decision-source` paths, pinned in `readings.json` and re-read at the pack's commit; explicit mode recognizes exact project ADR forms without inventing invariant IDs. Verify these packs with an updated binary; omitted-flag exports retain legacy sources, grammar and bytes (migration: `docs/upgrades/unreleased-trace-decision-sources.md`).
 - `scip-dotnet` typed imports require a source-bound sidecar; stale, incomplete or missing receipts refuse enrichment, invalidate that index's prior rows and evict served graph memos across client, CLI and daemon refresh paths. See `docs/guides/scip-source-receipts.md` for migration; legacy producers remain unchanged unless they opt in.
 
 ### Added

@@ -40,7 +40,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
-const traceUsage = "usage: fathom trace export --standard <id> --out <dir> [--service S] [--store DB] [--commit REF]\n       fathom trace verify <dir> [--service S] [--store DB]"
+const traceUsage = "usage: fathom trace export --standard <id> --out <dir> [--service S] [--store DB] [--commit REF] [--decision-source PATH ...]\n       fathom trace verify <dir> [--service S] [--store DB]"
 
 func cmdTrace(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
@@ -69,6 +69,8 @@ func cmdTraceExport(args []string, stdout, stderr io.Writer) int {
 	service := fs.String("service", "", "service ID (default: resolved from the repo directory name)")
 	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db)")
 	commitRef := fs.String("commit", "HEAD", "the commit whose plans, mapping and decisions the pack reads")
+	var decisionSources stringSliceFlag
+	fs.Var(&decisionSources, "decision-source", "committed Markdown file/directory replacing legacy decision inputs; literal repository-relative path (repeatable)")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -92,7 +94,7 @@ func cmdTraceExport(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "error: resolve commit %q: %v\n", *commitRef, err)
 		return 2
 	}
-	files, err := buildTracePack(ctx, repo, strings.TrimSpace(commit), svc, *storePath, *standard)
+	files, err := buildTracePackWithDecisionSources(ctx, repo, strings.TrimSpace(commit), svc, *storePath, *standard, decisionSources)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: trace export: %v\n", err)
 		return 1
@@ -156,7 +158,25 @@ func cmdTraceVerify(args []string, stdout, stderr io.Writer) int {
 		svc = head.Service
 	}
 	ctx := context.Background()
-	recomputed, err := buildTracePack(ctx, verifyRepoRoot(), commit, svc, *storePath, head.Standard)
+	var pinned []string
+	var readings map[string]json.RawMessage
+	// Missing/malformed legacy readings still become the existing named byte
+	// difference. A present explicit selector field must be a nonempty list.
+	if json.Unmarshal(onDisk["readings.json"], &readings) == nil {
+		if raw, exists := readings["decision_sources"]; exists {
+			if err := json.Unmarshal(raw, &pinned); err != nil || len(pinned) == 0 {
+				fmt.Fprintln(stderr, "error: decision_sources must be a nonempty string list")
+				return 2
+			}
+			var err error
+			pinned, err = canonicalTraceDecisionSources(pinned)
+			if err != nil {
+				fmt.Fprintf(stderr, "error: pinned decision sources: %v\n", err)
+				return 2
+			}
+		}
+	}
+	recomputed, err := buildTracePackWithDecisionSources(ctx, verifyRepoRoot(), commit, svc, *storePath, head.Standard, pinned)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: recompute at %s: %v\n", shortCommit(commit), err)
 		return 2
@@ -207,9 +227,10 @@ type traceDigest struct {
 // traceReadings is readings.json: the verify and certificate readings the
 // matrix was computed from.
 type traceReadings struct {
-	Verify       []traceVerifyReading      `json:"verify"`
-	Certificates []review.TraceCertificate `json:"certificates"`
-	Unread       []string                  `json:"unread,omitempty"`
+	Verify          []traceVerifyReading      `json:"verify"`
+	Certificates    []review.TraceCertificate `json:"certificates"`
+	Unread          []string                  `json:"unread,omitempty"`
+	DecisionSources []string                  `json:"decision_sources,omitempty"`
 }
 
 type traceVerifyReading struct {
@@ -225,6 +246,14 @@ type traceVerifyReading struct {
 // at the commit (git show), and the service's own verify and certificate
 // readings from the store.
 func buildTracePack(ctx context.Context, repo, commit, svc, storePath, standard string) (map[string][]byte, error) {
+	return buildTracePackWithDecisionSources(ctx, repo, commit, svc, storePath, standard, nil)
+}
+
+func buildTracePackWithDecisionSources(ctx context.Context, repo, commit, svc, storePath, standard string, selectors []string) (map[string][]byte, error) {
+	decisionSources, err := canonicalTraceDecisionSources(selectors)
+	if err != nil {
+		return nil, err
+	}
 	show := func(path string) ([]byte, error) {
 		s, err := traceGit(ctx, repo, "show", commit+":"+path)
 		return []byte(s), err
@@ -272,26 +301,46 @@ func buildTracePack(ctx context.Context, repo, commit, svc, storePath, standard 
 
 	decisions := map[string]bool{}
 	var unread []string
-	for _, p := range []string{"ADR.md", "docs/intent/invariants.md"} {
-		b, err := show(p)
+	if len(decisionSources) > 0 {
+		blobs, err := traceDecisionBlobs(ctx, repo, commit, decisionSources)
 		if err != nil {
-			unread = append(unread, p)
-			continue
+			return nil, err
 		}
-		digest(p, b)
-		for _, re := range []*regexp.Regexp{traceADRHeading, traceInvariant} {
-			for _, m := range re.FindAllSubmatch(b, -1) {
-				decisions[string(m[1])] = true
+		for _, blob := range blobs {
+			b, err := traceDecisionGit(ctx, repo, traceDecisionFileBytes, "show", commit+":"+blob.path)
+			if err != nil {
+				return nil, err
+			}
+			if len(b) != blob.size {
+				return nil, fmt.Errorf("decision source %q size differs from committed metadata", blob.path)
+			}
+			digest(blob.path, b)
+			traceProjectDecisionIDs(b, decisions)
+		}
+	} else {
+		// Preserve legacy source/parser/missing disclosure and pack bytes.
+		for _, p := range []string{"ADR.md", "docs/intent/invariants.md"} {
+			b, err := show(p)
+			if err != nil {
+				unread = append(unread, p)
+				continue
+			}
+			digest(p, b)
+			for _, re := range []*regexp.Regexp{traceADRHeading, traceInvariant} {
+				for _, m := range re.FindAllSubmatch(b, -1) {
+					decisions[string(m[1])] = true
+				}
 			}
 		}
-	}
-	if len(unread) == 2 {
-		decisions = nil // nothing resolvable: cited ids read "cited", unchecked
+		if len(unread) == 2 {
+			decisions = nil // nothing resolvable: cited ids read "cited", unchecked
+		}
 	}
 
 	reports := map[string]verify.Report{}
 	var readings traceReadings
 	readings.Unread = unread
+	readings.DecisionSources = decisionSources
 	if len(plans) > 0 {
 		reps, err := verifyAllAgainstStore(plans, svc, storePath, "", verify.DirFiles(repo), "", false)
 		if err != nil {
@@ -315,6 +364,7 @@ func buildTracePack(ctx context.Context, repo, commit, svc, storePath, standard 
 
 	mx := review.BuildTraceMatrix(review.TraceInput{
 		Sources: sources, Reports: reports, Certificates: certs, Commit: commit, Decisions: decisions,
+		ProjectDecisionReferences: len(decisionSources) > 0,
 	})
 	pack := review.TracePack{Standard: mapping.Standard, Commit: commit, Service: svc, Clauses: review.ApplyMapping(mapping, mx), Matrix: mx}
 
@@ -379,5 +429,5 @@ func (traceRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer
 
 func init() {
 	declareVerb(verb{Name: "trace", Group: "review", Order: 60, Run: traceRunner{},
-		Summary: "trace export --standard <id> --out <dir> [--service S] [--store DB] [--commit REF]: the evidence pack, only on request — the traceability matrix (requirement, code, test, certificate, attested run, decision; each cell with its live state and reading) as JSON and Markdown, grouped by the repository-authored .fathom/trace/<id>.cue mapping, with artifact digests, readings, the commit and a sha256 manifest | trace verify <dir>: recompute the pack at its commit; byte-identical or each difference named by file and cell"})
+		Summary: "trace export --standard <id> --out <dir> [--service S] [--store DB] [--commit REF] [--decision-source PATH ...]: the evidence pack, only on request — the traceability matrix (requirement, code, test, certificate, attested run, decision; each cell with its live state and reading) as JSON and Markdown, grouped by the repository-authored .fathom/trace/<id>.cue mapping, with artifact digests, readings, the commit and a sha256 manifest | trace verify <dir>: recompute the pack at its commit and pinned decision sources; byte-identical or each difference named by file and cell"})
 }
