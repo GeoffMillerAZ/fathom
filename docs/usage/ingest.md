@@ -178,3 +178,11 @@ fathom ingest --service payment-service --path /src/payment
 ```
 
 ---
+
+
+### Source-bound SCIP
+
+`scip-dotnet` imports require a validated source sidecar. See
+[the receipt contract](../guides/scip-source-receipts.md) for generated projects,
+reference assemblies, failed attempts and refresh-time invalidation. A static
+import remains separate from executed tests or serialized runtime wiring.
