@@ -70,7 +70,7 @@ is not HEAD. It leads with the certifying-first set, the fewest tests
 that re-prove every live certificate the diff touches (TQ-15w, TQ-16w, SR-50). With no live
 certificates that set is empty, so add `--safe`, which also selects every test that statically
 reaches a changed symbol (one that reaches it only through `error.Error`, `fmt.Stringer.String` or
-`fmt.GoStringer.GoString` dispatch is counted, and `--stdlib-dispatch` adds it), and every test that reads a changed file's source by a literal path (a
+`fmt.GoStringer.GoString` dispatch is counted, and `--skip-stdlib-dispatch` leaves it out), and every test that reads a changed file's source by a literal path (a
 `filepath.Glob("../store/*.go")` through go/parser; a dynamic path is counted, not matched). The whole-package run is the gate's, once, at the end.
 
 ## The gate and the push

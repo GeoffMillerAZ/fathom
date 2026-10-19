@@ -70,13 +70,14 @@ import (
 // certificate the diff touched, what it skipped, what no live test certifies,
 // and the CI time it saves from attested run durations (recorded for
 // economics). --safe adds every test that statically reaches a changed
-// symbol to that selection, except a test whose reach goes only through a
-// dispatch into error's Error, fmt.Stringer's String or fmt.GoStringer's
-// GoString (impact.SplitStdlibDispatch, O887): those are counted and named
-// in one line, and --stdlib-dispatch selects them. When the index the verb
-// reads holds another commit than HEAD, it says which (O1199).
+// symbol to that selection (TQ-M6: --safe is never shipped less safe). The
+// tests among them whose reach goes only through a dispatch into error's
+// Error, fmt.Stringer's String or fmt.GoStringer's GoString
+// (impact.SplitStdlibDispatch, O887) are counted and the method named in one
+// line, and the opt-out --skip-stdlib-dispatch leaves them out. When the
+// index the verb reads holds another commit than HEAD, it says which (O1199).
 //
-//	fathom tests select --since <ref> [--safe [--stdlib-dispatch]] [--profile [layer=]path]... [--service S] [--store DB] [--json]
+//	fathom tests select --since <ref> [--safe [--skip-stdlib-dispatch]] [--profile [layer=]path]... [--service S] [--store DB] [--json]
 func cmdTestsSelect(args []string, stdout, stderr io.Writer) int {
 	return runTestsSelect(args, defaultGitRunner, stdout, stderr)
 }
@@ -89,8 +90,8 @@ func runTestsSelect(args []string, gitRunner func(args ...string) ([]byte, error
 	service := fs.String("service", "", "service ID (default: resolved from the repo directory name, the same guess the Claude Code hooks use)")
 	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db)")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a table")
-	safe := fs.Bool("safe", false, "also select every test that statically reaches a changed symbol, beside the minimal certifying-first set, except one that reaches it only through a dispatch into error's Error, fmt.Stringer's String or fmt.GoStringer's GoString")
-	stdlibDispatch := fs.Bool("stdlib-dispatch", false, "with --safe, also select a test that reaches a changed symbol only through a dispatch into error's Error, fmt.Stringer's String or fmt.GoStringer's GoString")
+	safe := fs.Bool("safe", false, "also select every test that statically reaches a changed symbol, beside the minimal certifying-first set")
+	skipStdlibDispatch := fs.Bool("skip-stdlib-dispatch", false, "with --safe, leave out a test that reaches a changed symbol only through a dispatch into error's Error, fmt.Stringer's String or fmt.GoStringer's GoString (counted on stderr either way)")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -180,15 +181,25 @@ func runTestsSelect(args []string, gitRunner func(args ...string) ([]byte, error
 	}
 	gap := impact.TestGapSelectOn(g, nodes, seeds)
 	confirmed := append([]impact.TestReach(nil), gap.AffectedTests...)
+	// O887 under TQ-M6: --safe keeps a test whose only reach is a
+	// standard-library interface dispatch and counts it; the opt-out drops it.
 	var dispatchOnly impact.StdlibDispatchOnly
-	if *safe && !*stdlibDispatch {
-		gap, dispatchOnly = impact.SplitStdlibDispatch(g, nodes, typed, seeds, gap)
+	if *safe {
+		split, only := impact.SplitStdlibDispatch(g, nodes, typed, seeds, gap)
+		dispatchOnly = only
+		if *skipStdlibDispatch {
+			gap = split
+		}
 		if n := len(dispatchOnly.Tests); n > 0 {
 			via := strings.Join(dispatchOnly.Methods, " or ")
 			if via == "" {
 				via = "a standard-library interface method's"
 			}
-			fmt.Fprintf(stderr, "note: tests select: %d test(s) reach a changed symbol only through %s dispatch, not selected; --stdlib-dispatch includes them\n", n, via)
+			if *skipStdlibDispatch {
+				fmt.Fprintf(stderr, "note: tests select: %d test(s) reach the change only through %s dispatch and are left out (--skip-stdlib-dispatch)\n", n, via)
+			} else {
+				fmt.Fprintf(stderr, "note: tests select: %d of these tests reach the change only through %s dispatch; --skip-stdlib-dispatch leaves them out\n", n, via)
+			}
 		}
 	}
 	gap.AffectedTests = addSrcReadTests(nodes, gap.AffectedTests, srcTests)
@@ -213,7 +224,9 @@ func runTestsSelect(args []string, gitRunner func(args ...string) ([]byte, error
 	// record of that time for economics — a known estimate only, never a
 	// fabricated zero.
 	sel := selectCertifyingFirstOn(nodes, claims, seeds, confirmed, *safe)
-	sel.Tests = dropSafeOnlyTests(sel, dispatchOnly.Tests)
+	if *skipStdlibDispatch {
+		sel.Tests = dropSafeOnlyTests(sel, dispatchOnly.Tests)
+	}
 	if *safe {
 		sel.Tests = unionSorted(sel.Tests, srcTests)
 	}
@@ -231,7 +244,7 @@ func runTestsSelect(args []string, gitRunner func(args ...string) ([]byte, error
 	}
 
 	if *jsonOut {
-		return renderTestsSelectJSON(stdout, *since, ranked, invocations, gap.Gap, replay, len(profiles) > 0, view, testsSelectNotes{index: index, dispatchOnly: dispatchOnly})
+		return renderTestsSelectJSON(stdout, *since, ranked, invocations, gap.Gap, replay, len(profiles) > 0, view, testsSelectNotes{index: index, dispatchOnly: dispatchOnly, dispatchSelected: !*skipStdlibDispatch})
 	}
 	renderCertifyingSelectionText(stdout, *since, view)
 	renderTestsSelectTable(stdout, *since, ranked, invocations, gap.Gap, replay, len(profiles) > 0)
@@ -246,10 +259,12 @@ type testsSelectIndex struct {
 }
 
 // testsSelectNotes is what the JSON carries beside the selection: the index
-// it read and the tests --safe took out as standard-library dispatch only.
+// it read, the tests --safe counted as standard-library dispatch only, and
+// whether the selection kept them (it does unless --skip-stdlib-dispatch).
 type testsSelectNotes struct {
-	index        testsSelectIndex
-	dispatchOnly impact.StdlibDispatchOnly
+	index            testsSelectIndex
+	dispatchOnly     impact.StdlibDispatchOnly
+	dispatchSelected bool
 }
 
 // testsSelectIndexOf reads the service's indexed commit from the store and
@@ -676,7 +691,7 @@ func renderTestsSelectJSON(w io.Writer, since string, ranked []rankedTest, invoc
 		payload["index"] = m
 	}
 	if d := notes.dispatchOnly; len(d.Tests) > 0 {
-		payload["stdlib_dispatch_only"] = map[string]any{"methods": nonNilStrList(d.Methods), "tests": nonNilStrList(d.Tests)}
+		payload["stdlib_dispatch_only"] = map[string]any{"methods": nonNilStrList(d.Methods), "tests": nonNilStrList(d.Tests), "selected": notes.dispatchSelected}
 	}
 	if replay.Total > 0 {
 		payload["replay"] = map[string]any{

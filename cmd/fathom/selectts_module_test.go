@@ -3,11 +3,11 @@ package main
 // selectts_module_test.go — LB-F412 (wave lf4, owner ruling D1, O748): with
 // the module-to-module edge a binding import duplicates left out (LB-F411),
 // the graph `fathom tests select` walks (callgraph.BuildBoth over the stored
-// symbols and typed edges) still reaches a TypeScript test file's module
-// symbol, through the calls its describe/it callbacks write, from the
-// function they call. tests select itself names a test by a Test* symbol
-// only, so it selects no JS/TS test file (O786); this pins the reach a
-// selection of one would walk.
+// symbols and typed edges) still reaches a TypeScript test file's it block,
+// a test symbol named by its quoted titles that owns the calls its callback
+// writes (TQ-27), from the function they call. tests select itself names a
+// test by a Test* symbol only, so it selects no JS/TS test file (O786,
+// TQ-28); this pins the reach a selection of one would walk.
 
 import (
 	"bytes"
@@ -70,16 +70,16 @@ func TestTestsSelectGraphReachesTSTestFileThroughModuleCalls(t *testing.T) {
 		}
 	}
 	g := callgraph.BuildBoth(nodes, typed)
-	if !callgraph.Reachable(g, key("src/price.test", core.ModuleSymbolName), key("src/price", "total")) {
+	if !callgraph.Reachable(g, key("src/price.test", `"total" "doubles"`), key("src/price", "total")) {
 		var calls []string
 		for _, n := range nodes {
 			if n.FilePath == "src/price.test.ts" {
 				calls = append(calls, n.Name+" -> "+strings.Join(n.Calls, ","))
 			}
 		}
-		t.Errorf("tests select's graph does not reach src/price.test.ts's module from total; its rows: %v", calls)
+		t.Errorf("tests select's graph does not reach src/price.test.ts's it block from total; its rows: %v", calls)
 	}
-	if callgraph.Reachable(g, key("src/other.spec", core.ModuleSymbolName), key("src/price", "total")) {
+	if callgraph.Reachable(g, key("src/other.spec", `"unrelated" "is zero"`), key("src/price", "total")) {
 		t.Errorf("a test file calling only another module reaches total")
 	}
 }

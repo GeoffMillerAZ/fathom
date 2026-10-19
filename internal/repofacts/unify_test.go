@@ -116,7 +116,7 @@ func TestNoSecondTestOrVendorRuleInProductCode(t *testing.T) {
 			t.Errorf("IsTestMaterial(%q) = true, want false", p)
 		}
 	}
-	if !IsTestEntry("TestRole", "internal/repofacts/role_test.go") || IsTestEntry("TestImpact", "internal/analysis/callgraph/graph.go") {
+	if !IsTestEntry("TestRole", "internal/repofacts/role_test.go", "") || IsTestEntry("TestImpact", "internal/analysis/callgraph/graph.go", "") {
 		t.Error("IsTestEntry: a Test-named function counts only in a test file")
 	}
 	for p, want := range map[string]bool{"vendor/a/b.go": true, "web/node_modules/x/i.js": true, "third_party/k/CLAUDE.md": true,
