@@ -220,6 +220,21 @@
       "gz_bytes": 68230
     },
     {
+      "blob": "graphql",
+      "repo": "bkegley/tree-sitter-graphql",
+      "tag": "5e66e961eee421786bdda8495ed1db045e06b5fe",
+      "commit": "5e66e961eee421786bdda8495ed1db045e06b5fe",
+      "tarball_sha256": "ff542fddb51b1f1c110bb36fa16703d2212eeae0c0d12a2e1bf813c5f5db9507",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_graphql"],
+      "scanner": false,
+      "generate": false,
+      "abi": 13,
+      "blob_sha256": "2562a48542af5bdffed0ba53aa178e883828c124aca5b082b9be47f3aca83017",
+      "blob_bytes": 178965,
+      "gz_bytes": 66018
+    },
+    {
       "blob": "groovy",
       "repo": "murtaza64/tree-sitter-groovy",
       "tag": "2a6ddd558b6aa39c5b77d8db9fe9baf817486b2c",

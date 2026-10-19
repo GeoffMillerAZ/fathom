@@ -51,6 +51,7 @@ scores the pairs into `xref_precision`/`xref_recall` at the file's tier.
 | luaparse/ | B | Lua (definitions) |
 | scalameta/ | B | Scala (definitions, calls) |
 | protoc-descriptors/ | A (definitions, references, imports) | Protocol Buffers |
+| graphql-js/ | A (definitions, references, cross_references) | GraphQL |
 | opa-parse/ | A (definitions, calls, imports) | Rego |
 | cedar/ | A (definitions, schema references, the governed scope as cross_references; lines located by the writer) | Cedar |
 | ts-tags/ | C | Bash, Lua and Ruby (calls); Scala (a calls cross-check) |
