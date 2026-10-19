@@ -144,9 +144,7 @@ func TestAdded(t *testing.T) { _ = Added() }
 // TestTestsSelectSafeDispatchNeedsConstruction is TQ-30: a new error type
 // built only in package p selects only the tests that reach p's
 // constructor, though every test's err.Error() call dispatches to it; an
-// existing type's Error body edit selects the tests that build it under
-// --stdlib-dispatch (without it they reach the edit only through error's
-// Error and are counted instead, O887).
+// existing type's Error body edit still selects the tests that build it.
 func TestTestsSelectSafeDispatchNeedsConstruction(t *testing.T) {
 	files := map[string]string{
 		"go.mod":     "module example.com/rta\n\ngo 1.22\n",
@@ -196,12 +194,8 @@ func TestN(t *testing.T) { _ = use.Describe(p.NewN()) }
 
 	r.commit()
 	r.write("q/q.go", strings.Replace(files["q/q.go"], `return "q"`, `return "Q"`, 1))
-	storePath := r.ingestTo("rta-edit")
-	if got := r.selectWith("rta-edit", storePath, []string{"--safe", "--stdlib-dispatch"}, "q/q.go").Tests; strings.Join(got, ",") != "TestQ" {
-		t.Fatalf("an Error body edit selected %v under --stdlib-dispatch, want [TestQ] (the test that builds QErr)", got)
-	}
-	if got := r.selectWith("rta-edit", storePath, []string{"--safe"}, "q/q.go"); len(got.Tests) != 0 || strings.Join(bareTestNames(got.DispatchOnly.Tests), ",") != "TestQ" {
-		t.Fatalf("an Error body edit under --safe selected %v and counted %v, want none selected and [TestQ] counted", got.Tests, got.DispatchOnly.Tests)
+	if got := r.selectSafe("rta-edit", "q/q.go"); strings.Join(got, ",") != "TestQ" {
+		t.Fatalf("an Error body edit selected %v, want [TestQ] (the test that builds QErr)", got)
 	}
 }
 

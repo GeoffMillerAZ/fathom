@@ -272,8 +272,8 @@ var skillsHomeDir = os.UserHomeDir
 // targets skillsTargetsFor(mode) names. mode is a value already normalized
 // by resolveSkillsMode ("" is a no-op). root is the target repo; the
 // codex-prompts target is user-global regardless of root.
-func installSkills(root, mode string, stdout io.Writer) error {
-	_, err := installSkillsReport(root, mode, stdout)
+func installSkills(iw *initWrites, root, mode string, stdout io.Writer) error {
+	_, err := installSkillsReport(iw, root, mode, stdout)
 	return err
 }
 
@@ -295,10 +295,24 @@ type skillWrite struct {
 // .fathom/owned.json from the bytes on disk, after the writes and also when
 // a refusal stops the loop part-way: this writer used to record none, so a
 // later release's reconcile read fathom's own render as a hand edit.
-func installSkillsReport(root, mode string, stdout io.Writer) (writes []skillWrite, err error) {
+//
+// iw is init's write door (init_dryrun.go): a dry run records each skill
+// file and the link instead of writing them, and records the ledger when a
+// skill file would be created or updated (a fresh baseline moves it).
+func installSkillsReport(iw *initWrites, root, mode string, stdout io.Writer) (writes []skillWrite, err error) {
 	var written []wiring.SkillFile
 	defer func() {
 		if len(written) == 0 {
+			return
+		}
+		if iw.isDry() {
+			for _, sw := range writes {
+				if sw.Action == "created" || sw.Action == "updated" {
+					lp := filepath.Join(root, filepath.FromSlash(initLedgerFile))
+					iw.record(lp, writeAction(lp))
+					break
+				}
+			}
 			return
 		}
 		recorded, rerr := wiring.RecordWritten(root, written, time.Now().UTC().Format(time.RFC3339))
@@ -311,7 +325,7 @@ func installSkillsReport(root, mode string, stdout io.Writer) (writes []skillWri
 	}()
 	for _, target := range skillsTargetsFor(mode) {
 		if target == skillsTargetAgents {
-			w, err := installAgentsSkillsLink(root, stdout)
+			w, err := installAgentsSkillsLink(iw, root, stdout)
 			if err != nil {
 				return writes, err
 			}
@@ -332,7 +346,7 @@ func installSkillsReport(root, mode string, stdout io.Writer) (writes []skillWri
 				return writes, err
 			}
 			dest := skillDest(root, home, target, name)
-			action, err := installSkillFile(dest, content, stdout)
+			action, err := installSkillFile(iw, dest, content, stdout)
 			if err != nil {
 				return writes, err
 			}
@@ -351,9 +365,9 @@ func installSkillsReport(root, mode string, stdout io.Writer) (writes []skillWri
 // BLOCKED link (a real directory with entries fathom did not write, a link
 // to elsewhere, a regular file) is refused loudly, exactly as a colliding
 // skill file is.
-func installAgentsSkillsLink(root string, stdout io.Writer) (skillWrite, error) {
+func installAgentsSkillsLink(iw *initWrites, root string, stdout io.Writer) (skillWrite, error) {
 	dest := filepath.Join(root, filepath.FromSlash(agentsSkillsDir))
-	res, err := wiring.ApplyWiring(root, wiring.Spec{Links: []wiring.Link{agentsSkillsLink()}}, wiring.ApplyOptions{Now: time.Now})
+	res, err := iw.applyWiring(root, wiring.Spec{Links: []wiring.Link{agentsSkillsLink()}})
 	if err != nil {
 		return skillWrite{}, fmt.Errorf("linking %s: %w", dest, err)
 	}
@@ -374,7 +388,7 @@ func installAgentsSkillsLink(root string, stdout io.Writer) (skillWrite, error) 
 // refuse loudly — an error, not a silent skip — if a different,
 // non-fathom-owned file already lives there. It returns the action taken
 // (created | updated | current).
-func installSkillFile(destPath string, content []byte, stdout io.Writer) (string, error) {
+func installSkillFile(iw *initWrites, destPath string, content []byte, stdout io.Writer) (string, error) {
 	existing, err := os.ReadFile(destPath)
 	switch {
 	case err == nil:
@@ -385,16 +399,16 @@ func installSkillFile(destPath string, content []byte, stdout io.Writer) (string
 			fmt.Fprintf(stdout, "ok %s (already current)\n", destPath)
 			return "current", nil
 		}
-		if err := os.WriteFile(destPath, content, 0o644); err != nil {
+		if err := iw.writeFile(destPath, content, 0o644); err != nil {
 			return "", err
 		}
 		fmt.Fprintf(stdout, "updated %s\n", destPath)
 		return "updated", nil
 	case os.IsNotExist(err):
-		if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
+		if err := iw.mkdirAll(filepath.Dir(destPath)); err != nil {
 			return "", err
 		}
-		if err := os.WriteFile(destPath, content, 0o644); err != nil {
+		if err := iw.writeFile(destPath, content, 0o644); err != nil {
 			return "", err
 		}
 		fmt.Fprintf(stdout, "created %s\n", destPath)

@@ -23,7 +23,7 @@ import (
 
 type initWriteJSON struct {
 	Path   string `json:"path"`
-	Action string `json:"action"` // created | updated | ok | blocked | shim
+	Action string `json:"action"` // created | updated | ok | blocked | shim; a dry run's would-create | would-update | would-link | would-remove
 	Detail string `json:"detail,omitempty"`
 }
 
@@ -59,6 +59,7 @@ var (
 	initBlockedLine = regexp.MustCompile(`^BLOCKED (\S+) — (.*)$`)
 	initManualLine  = regexp.MustCompile(`^MANUAL:\s?(.*)$`)
 	initShimLine    = regexp.MustCompile(`^shim: (.*)$`)
+	initDryRunLine  = regexp.MustCompile(`^would (create|update|link|remove) (\S+)$`)
 )
 
 // hasJSONFlag reports whether args spell --json / -json (init's flag set
@@ -144,6 +145,9 @@ func renderInitJSON(args []string, stdout, stderr io.Writer) int {
 		case initManualLine.MatchString(line):
 			m := initManualLine.FindStringSubmatch(line)
 			out.ManualSteps = append(out.ManualSteps, manualStepOf(m[1]))
+		case initDryRunLine.MatchString(line):
+			m := initDryRunLine.FindStringSubmatch(line)
+			out.Writes = append(out.Writes, initWriteJSON{Path: m[2], Action: "would-" + m[1]})
 		case initShimLine.MatchString(line):
 			m := initShimLine.FindStringSubmatch(line)
 			out.Writes = append(out.Writes, initWriteJSON{Path: "shim", Action: "shim", Detail: m[1]})

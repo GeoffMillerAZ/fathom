@@ -79,7 +79,7 @@ func TestDelegatesAnswerAsBeforeTheCut(t *testing.T) {
 		if IsTest(c.path) != c.isTest || IsTestMaterial(c.path) != c.isMat {
 			t.Errorf("%q: IsTest %v IsTestMaterial %v, want %v %v", c.path, IsTest(c.path), IsTestMaterial(c.path), c.isTest, c.isMat)
 		}
-		if IsTestEntry("TestX", c.path) != c.isTest {
+		if IsTestEntry("TestX", c.path, "") != c.isTest {
 			t.Errorf("IsTestEntry(TestX, %q) = %v, want %v", c.path, !c.isTest, c.isTest)
 		}
 	}

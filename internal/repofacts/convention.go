@@ -38,6 +38,9 @@ type pack struct {
 	TestDirPrefixes []string `json:"test_dir_prefixes"`
 	FixtureNames    []string `json:"fixture_names"`
 	SupportDirs     []string `json:"support_dirs"`
+	EntryPrefixes   []string `json:"entry_prefixes"`
+	EntryAttributes []string `json:"entry_attributes"`
+	EntryCalls      []string `json:"entry_calls"`
 }
 
 // packByExt maps a lower-case extension to its pack. Built once at init
@@ -138,14 +141,168 @@ func IsTestMaterial(rel string) bool {
 	return c == testFile || c == testSupport
 }
 
-// IsTestEntry reports whether a symbol is a test entry point: a Test-named
-// function or method (Go's convention, which callgraph's test reach also
-// reads) declared in a test file. A production TestHelper is not one.
-func IsTestEntry(name, file string) bool {
+// IsTestEntry reports whether a symbol is a test entry point, a symbol its
+// runner collects, declared in a test file (IsTest): a Test-named function
+// or method (Go's convention, which callgraph's test reach also reads, in a
+// test file of any language), or one its file's pack names (packs.json,
+// TQ-27): a name prefix (pytest's test functions, PHPUnit's test methods),
+// an attribute leading the signature (JUnit's @Test, xUnit's [Fact] and
+// [Theory], NUnit's [Test], MSTest's [TestMethod], PHPUnit's #[Test],
+// Rust's #[test]) or a registering call (a jest, vitest or mocha describe,
+// it or test block). A production TestHelper is not one, and neither is a
+// test file's helper.
+func IsTestEntry(name, file, signature string) bool {
+	if !IsTest(file) {
+		return false
+	}
 	if i := strings.LastIndexAny(name, ".:"); i >= 0 {
 		name = name[i+1:]
 	}
-	return strings.HasPrefix(name, "Test") && IsTest(file)
+	if strings.HasPrefix(name, "Test") {
+		return true
+	}
+	p := packByExt[strings.ToLower(path.Ext(file))]
+	if p == nil {
+		return false
+	}
+	for _, s := range p.EntryPrefixes {
+		if strings.HasPrefix(name, s) {
+			return true
+		}
+	}
+	for _, c := range p.EntryCalls {
+		if rest, ok := strings.CutPrefix(signature, c); ok && rest != "" && (rest[0] == '(' || rest[0] == '.') {
+			return true
+		}
+	}
+	if len(p.EntryAttributes) > 0 {
+		for _, a := range leadingAttributes(signature) {
+			for _, want := range p.EntryAttributes {
+				if a == want {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// leadingAttributes is the names of the attributes and annotations that
+// open sig, in order, each by its last path segment: Java's @a.b.Test,
+// C#'s [Fact] and [Theory, InlineData(1)], PHP's #[Test] and Rust's
+// #[test] or #[tokio::test]. The scan stops at the first token that opens
+// none, so a parameter's annotation or an array type is never read.
+func leadingAttributes(sig string) []string {
+	var names []string
+	i := 0
+	for {
+		for i < len(sig) && sig[i] == ' ' {
+			i++
+		}
+		switch {
+		case strings.HasPrefix(sig[i:], "@"):
+			name, n := attrPath(sig[i+1:])
+			if name == "" {
+				return names
+			}
+			names = append(names, name)
+			i += 1 + n
+			if i < len(sig) && sig[i] == '(' {
+				i += balancedLen(sig[i:], '(', ')')
+			}
+		case strings.HasPrefix(sig[i:], "#["), strings.HasPrefix(sig[i:], "["):
+			if sig[i] == '#' {
+				i++
+			}
+			group := balancedLen(sig[i:], '[', ']')
+			if group < 2 {
+				return names
+			}
+			for _, item := range splitTopLevel(sig[i+1 : i+group-1]) {
+				if name, _ := attrPath(strings.TrimSpace(item)); name != "" {
+					names = append(names, name)
+				}
+			}
+			i += group
+		default:
+			return names
+		}
+	}
+}
+
+// attrPath reads a dotted, :: or \ separated path at the start of s and
+// returns its last segment and the bytes read.
+func attrPath(s string) (string, int) {
+	i, seg := 0, 0
+	for i < len(s) {
+		c := s[i]
+		switch {
+		case c == '_' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9':
+			i++
+		case c == '.' || c == '\\':
+			i++
+			seg = i
+		case c == ':' && i+1 < len(s) && s[i+1] == ':':
+			i += 2
+			seg = i
+		default:
+			return s[seg:i], i
+		}
+	}
+	return s[seg:i], i
+}
+
+// balancedLen is the length of the bracketed group open...close at the
+// start of s, nested groups and quoted strings skipped; 0 when s does not
+// open one or never closes it.
+func balancedLen(s string, open, close byte) int {
+	if s == "" || s[0] != open {
+		return 0
+	}
+	depth := 0
+	for i := 0; i < len(s); i++ {
+		switch c := s[i]; c {
+		case '"', '\'':
+			j := strings.IndexByte(s[i+1:], c)
+			if j < 0 {
+				return 0
+			}
+			i += 1 + j
+		case open:
+			depth++
+		case close:
+			depth--
+			if depth == 0 {
+				return i + 1
+			}
+		}
+	}
+	return 0
+}
+
+// splitTopLevel splits s at the commas outside parentheses, brackets and
+// quoted strings.
+func splitTopLevel(s string) []string {
+	var out []string
+	depth, start := 0, 0
+	for i := 0; i < len(s); i++ {
+		switch c := s[i]; c {
+		case '"', '\'':
+			if j := strings.IndexByte(s[i+1:], c); j >= 0 {
+				i += 1 + j
+			}
+		case '(', '[', '{':
+			depth++
+		case ')', ']', '}':
+			depth--
+		case ',':
+			if depth == 0 {
+				out = append(out, s[start:i])
+				start = i + 1
+			}
+		}
+	}
+	return append(out, s[start:])
 }
 
 // testClass is what the convention says of a path for the delegates.

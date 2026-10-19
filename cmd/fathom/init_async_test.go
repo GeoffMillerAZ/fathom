@@ -17,7 +17,7 @@ func TestInitWiringRegistersObserverAsync(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	root := t.TempDir()
 	spec, _ := initWiringSpec(root, "svc", "/opt/fathom")
-	if _, err := applyWiringSpec(root, spec, io.Discard); err != nil {
+	if _, err := applyWiringSpec(nil, root, spec, io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	b, err := os.ReadFile(filepath.Join(root, ".claude", "settings.json"))

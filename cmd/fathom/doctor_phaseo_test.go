@@ -343,7 +343,7 @@ func TestCheckGuardIncludeModulesUnbound_ScaffoldEmpty_Pass(t *testing.T) {
 func TestPhaseOChecks_RealInitScaffold_ZeroFails(t *testing.T) {
 	root := t.TempDir()
 	var stdout strings.Builder
-	if err := writeFathomConfigScaffolds(root, &stdout); err != nil {
+	if err := writeFathomConfigScaffolds(nil, root, &stdout); err != nil {
 		t.Fatalf("writeFathomConfigScaffolds: %v", err)
 	}
 

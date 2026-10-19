@@ -669,7 +669,7 @@ func TestWriteStarterConfig_CreatesFile(t *testing.T) {
 	path := filepath.Join(dir, ".fathom", "config.toml")
 
 	var out bytes.Buffer
-	if err := writeStarterConfig(path, &out); err != nil {
+	if err := writeStarterConfig(nil, path, &out); err != nil {
 		t.Fatalf("writeStarterConfig: %v", err)
 	}
 	raw, err := os.ReadFile(path)
@@ -701,7 +701,7 @@ func TestWriteStarterConfig_WriteIfAbsent_NeverOverwrites(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := writeStarterConfig(path, &out); err != nil {
+	if err := writeStarterConfig(nil, path, &out); err != nil {
 		t.Fatalf("writeStarterConfig: %v", err)
 	}
 	raw, err := os.ReadFile(path)
@@ -718,7 +718,7 @@ func TestWriteStarterConfig_WriteIfAbsent_NeverOverwrites(t *testing.T) {
 
 func TestWriteStarterConfig_EmptyPath_NoOp(t *testing.T) {
 	var out bytes.Buffer
-	if err := writeStarterConfig("", &out); err != nil {
+	if err := writeStarterConfig(nil, "", &out); err != nil {
 		t.Fatalf("writeStarterConfig(\"\"): %v", err)
 	}
 	if out.String() != "" {

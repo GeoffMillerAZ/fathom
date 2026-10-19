@@ -232,6 +232,8 @@ func TestJavaScriptDialectScope(t *testing.T) {
 			"Router": "JSClass", "Router.route": "JSMethod", "fixture": "JSFunc",
 			"<module>": "JSModule", // K18 (LB-F381)
 			"routes":   "JSConst",  // a module-level const (LB-F382); its object literal's keys are none
+			// A jest/mocha block, named by its quoted title (TQ-27).
+			`"server"`: "JSTest", `"server" "listens"`: "JSTest",
 		},
 		notDefs: []string{
 			"localArrow", "localExpr", "named", "reassigned", "handler", "onload",
@@ -257,6 +259,9 @@ func TestTypeScriptDialectScope(t *testing.T) {
 			"encode":        "JSFunc", "decode": "JSFunc",
 			"<module>": "JSModule", // K18 (LB-F381)
 			"handlers": "JSConst",  // an exported module-level const (LB-F382); its object literal's keys are none
+			// A jest block, named by its quoted title (TQ-27): describe('handle')
+			// is not the function handle a call resolves to.
+			`"handle"`: "JSTest", `"handle" "answers"`: "JSTest",
 		},
 		notDefs: []string{
 			"toBody", "fallback", "miss", "hiddenHelper", "create",

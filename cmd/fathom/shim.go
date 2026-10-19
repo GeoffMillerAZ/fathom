@@ -35,8 +35,9 @@ func shimPath() string {
 // installShim links ~/.local/bin/fathom at the deployed binary when present,
 // else at the currently-running executable — and REFUSES to clobber a real
 // (non-symlink) file it did not create. Returns what it did, for init's
-// report line.
-func installShim() (string, error) {
+// report line. w is init's write door (init_dryrun.go); nil is a plain
+// real run.
+func installShim(w *initWrites) (string, error) {
 	shim := shimPath()
 	if shim == "" {
 		return "", fmt.Errorf("no home directory")
@@ -56,14 +57,14 @@ func installShim() (string, error) {
 		if existing, rerr := os.Readlink(shim); rerr == nil && existing == target {
 			return "shim current: " + shim + " → " + target, nil
 		}
-		if err := os.Remove(shim); err != nil {
+		if err := w.remove(shim); err != nil {
 			return "", err
 		}
 	}
-	if err := os.MkdirAll(filepath.Dir(shim), 0o755); err != nil {
+	if err := w.mkdirAll(filepath.Dir(shim)); err != nil {
 		return "", err
 	}
-	if err := os.Symlink(target, shim); err != nil {
+	if err := w.symlink(target, shim); err != nil {
 		return "", err
 	}
 	return "shim installed: " + shim + " → " + target, nil

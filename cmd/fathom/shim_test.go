@@ -14,7 +14,7 @@ func TestInstallShim(t *testing.T) {
 	t.Setenv("HOME", home)
 
 	t.Run("falls_back_to_running_executable", func(t *testing.T) {
-		msg, err := installShim()
+		msg, err := installShim(nil)
 		if err != nil {
 			t.Fatalf("installShim: %v", err)
 		}
@@ -28,7 +28,7 @@ func TestInstallShim(t *testing.T) {
 	})
 
 	t.Run("idempotent", func(t *testing.T) {
-		msg, err := installShim()
+		msg, err := installShim(nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -41,7 +41,7 @@ func TestInstallShim(t *testing.T) {
 		deployed := filepath.Join(home, ".local", "libexec", "fathom")
 		os.MkdirAll(deployed, 0o755)
 		os.WriteFile(filepath.Join(deployed, "fathom"), []byte("#!/bin/sh\n"), 0o755)
-		if _, err := installShim(); err != nil {
+		if _, err := installShim(nil); err != nil {
 			t.Fatal(err)
 		}
 		target, _ := os.Readlink(filepath.Join(home, ".local", "bin", "fathom"))
@@ -54,7 +54,7 @@ func TestInstallShim(t *testing.T) {
 		shim := filepath.Join(home, ".local", "bin", "fathom")
 		os.Remove(shim)
 		os.WriteFile(shim, []byte("someone else's binary"), 0o755)
-		if _, err := installShim(); err == nil {
+		if _, err := installShim(nil); err == nil {
 			t.Fatal("must refuse to clobber a non-symlink")
 		}
 	})

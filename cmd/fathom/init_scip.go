@@ -133,7 +133,10 @@ func repoHasAny(root string, markers []string) bool {
 // the names of those that left an index at .fathom/scip/<name>.scip, in run
 // order. It prints one line per producer it acts on or wants installed and
 // nothing for a language the repo is not.
-func initRunSCIP(ctx context.Context, root, svc string, stdout io.Writer, d scipInitDeps) []string {
+//
+// w is init's write door (init_dryrun.go): a dry run records the index and
+// its .gitignore each producer would leave, and runs no producer.
+func initRunSCIP(ctx context.Context, w *initWrites, root, svc string, stdout io.Writer, d scipInitDeps) []string {
 	var produced []string
 	outDir := projectdir.SCIP.Path(root)
 	prepared := false
@@ -147,18 +150,24 @@ func initRunSCIP(ctx context.Context, root, svc string, stdout io.Writer, d scip
 			continue
 		}
 		if !prepared {
-			if err := os.MkdirAll(outDir, 0o755); err != nil {
+			if err := w.mkdirAll(outDir); err != nil {
 				fmt.Fprintf(stdout, "warning: %s not run: cannot create %s: %v\n", p.name, outDir, err)
 				return produced
 			}
 			// A directory that ignores itself: a binary index is never committed.
 			if gi := filepath.Join(outDir, ".gitignore"); !fileExists(gi) {
-				_ = os.WriteFile(gi, []byte("*\n"), 0o644)
+				_ = w.writeFile(gi, []byte("*\n"), 0o644)
 			}
 			prepared = true
 		}
 		out := filepath.Join(outDir, p.name+".scip")
-		_ = os.Remove(out) // a stale index is never imported in place of a failed run's
+		_ = w.remove(out) // a stale index is never imported in place of a failed run's
+		if w.isDry() {
+			w.record(out, writeAction(out))
+			w.note(fmt.Sprintf("run %s once the service is indexed (it type-checks the whole repository)", p.name))
+			produced = append(produced, p.name)
+			continue
+		}
 		fmt.Fprintf(stdout, "running %s (it type-checks the whole repository and can take minutes)\n", p.name)
 		runCtx, cancel := context.WithTimeout(ctx, d.timeout)
 		runErr := d.run(runCtx, root, bin, p.args(root, out, svc))
@@ -190,7 +199,7 @@ func scipLanguage(name string) string {
 // daemon to import it. indexed is whether the ingest just confirmed the
 // service — an index is imported onto the syntax pass, and a producer's
 // minutes are not spent for a daemon that has nothing to import onto.
-func initSCIPStep(ctx context.Context, baseURL, root, svc string, indexed bool, stdout io.Writer, d scipInitDeps) {
+func initSCIPStep(ctx context.Context, w *initWrites, baseURL, root, svc string, indexed bool, stdout io.Writer, d scipInitDeps) {
 	if !indexed {
 		for _, p := range scipProducers {
 			if !repoHasAny(root, p.markers) {
@@ -202,8 +211,12 @@ func initSCIPStep(ctx context.Context, baseURL, root, svc string, indexed bool, 
 		}
 		return
 	}
-	produced := initRunSCIP(ctx, root, svc, stdout, d)
+	produced := initRunSCIP(ctx, w, root, svc, stdout, d)
 	if len(produced) == 0 {
+		return
+	}
+	if w.isDry() {
+		w.note(fmt.Sprintf("import the %s index into the daemon (its store, not a file here)", strings.Join(produced, ", ")))
 		return
 	}
 	initImportSCIP(baseURL, svc, root, produced, stdout)

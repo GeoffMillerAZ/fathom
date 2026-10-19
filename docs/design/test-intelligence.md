@@ -88,9 +88,9 @@ For a diff: the touched certificates are those whose target or reach intersects 
 symbols. The selection is the minimal set of tests that re-proves every touched certificate
 (a set cover over certificate targets; greedy by tests-per-certificate, deterministic
 tie-break by name), plus every test that statically reaches a changed symbol when
-`--safe` is set, except a test whose only reach is a dispatch into error's `Error`,
-`fmt.Stringer`'s `String` or `fmt.GoStringer`'s `GoString`: that test is counted, not
-selected, unless `--stdlib-dispatch` is set too (O887). Output: the list, the certificates each re-proves, the tests skipped, and the
+`--safe` is set. A test among them whose only reach is a dispatch into error's `Error`,
+`fmt.Stringer`'s `String` or `fmt.GoStringer`'s `GoString` is selected and counted, and
+`--skip-stdlib-dispatch` leaves it out (O887). Output: the list, the certificates each re-proves, the tests skipped, and the
 estimated CI time saved from the last attested run durations. Selection is advice to CI; it
 never marks a certificate live (only an attested run does, I43).
 

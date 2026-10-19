@@ -446,7 +446,7 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	if msg, err := installShim(); err != nil {
+	if msg, err := installShim(nil); err != nil {
 		fmt.Fprintf(stdout, "shim: %v\n", err)
 	} else {
 		fmt.Fprintf(stdout, "%s\n", msg)

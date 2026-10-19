@@ -444,3 +444,19 @@
 
 ; @body (LB-F3, design §3.3): a callable's Signature is its definition's text up to
 ; the start of this capture, whitespace collapsed; without it, the first line.
+
+; A jest, vitest or mocha test block: describe, it or test (or .only, .skip,
+; .concurrent and the like) called with a title and a callback. It is a
+; callable named by its quoted title, so the calls in the callback are the
+; test's, and a block inside another is named by both titles, the runner's
+; full name ("sum" "adds", the kind's titled). The test-entry rule reads the
+; call from the signature, in a file the role classifier calls a test (TQ-27).
+(call_expression
+  function: [(identifier) @_fn
+             (member_expression object: (identifier) @_fn)]
+  arguments: (arguments
+    .
+    (string (string_fragment) @name)
+    .
+    [(arrow_function body: (_) @body) (function_expression body: (_) @body)])
+  (#match? @_fn "^(describe|it|test)$")) @definition.test
