@@ -106,3 +106,18 @@ func (d Deadline) Scale(f float64) Deadline {
 	}
 	return Deadline{start: d.start, at: d.start.Add(time.Duration(float64(d.Budget()) * f))}
 }
+
+// rpcDeadlineHeader is one RPC's X-Fathom-Deadline value: the shorter of
+// the hook's remaining deadline and ctx's own deadline — the one
+// http.Client.Timeout sets on the request — in whole milliseconds, never
+// negative, so the daemon sizes its answer to the call's cap (the stop
+// hook's 5 s verify_plan, the pre-edit hook's 500 ms blast_radius), not the
+// hook's remainder (§11.1). "" when there is neither.
+func rpcDeadlineHeader(ctx context.Context, d Deadline) string {
+	dl, capped := ctx.Deadline()
+	if !capped {
+		return d.HeaderValue()
+	}
+	left := min(d.Remaining(), max(time.Until(dl), 0))
+	return strconv.FormatInt(left.Milliseconds(), 10)
+}
