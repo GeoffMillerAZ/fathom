@@ -10,12 +10,12 @@ package main
 
 import (
 	"bytes"
-	"path/filepath"
 	"slices"
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/harness"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 // The opt-in [hooks] keys a hook binding or an advisory line names.
@@ -37,7 +37,7 @@ func hooksConfigAt(root, key string) (config.Config, bool) {
 	userPath := config.DefaultUserPath()
 	projPath := ""
 	if root != "" {
-		projPath = filepath.Join(root, ".fathom", "config.toml")
+		projPath = projectdir.Config.Path(root)
 	}
 	if !bytes.Contains(readConfigLayer(userPath), word) &&
 		!(config.RepoMaySet(key) && bytes.Contains(readConfigLayer(projPath), word)) {

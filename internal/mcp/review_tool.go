@@ -23,6 +23,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/memo"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
 	"github.com/geoffmilleraz/fathom/internal/receipt"
 	riskreview "github.com/geoffmilleraz/fathom/internal/review"
@@ -228,7 +229,7 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 			// already keeps).
 			table := riskreview.DefaultRiskTable()
 			if in.Root != "" {
-				if t, terr := riskreview.LoadRiskTable(filepath.Join(in.Root, ".fathom", "risk.cue")); terr == nil {
+				if t, terr := riskreview.LoadRiskTable(projectdir.Risk.Path(in.Root)); terr == nil {
 					table = t
 				}
 			}

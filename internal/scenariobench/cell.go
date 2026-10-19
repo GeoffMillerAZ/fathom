@@ -19,6 +19,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 // CellInvariants are the invariants that bind one scored scenario cell.
@@ -886,7 +888,7 @@ func pathIsInstrumentOwned(owned, gitIgnoredWorkspace map[string]bool, repoRelPa
 	if owned[repoRelPath] {
 		return true
 	}
-	if repoRelPath == ".fathom" || strings.HasPrefix(repoRelPath, ".fathom/") {
+	if repoRelPath == projectdir.Dir || strings.HasPrefix(repoRelPath, projectdir.Dir+"/") {
 		// The whole .fathom/ namespace is fathom's own reserved runtime
 		// state — not just owned.json: internal/wiring's own ApplyWiring
 		// also writes .fathom/receipts.jsonl (undo receipts) unprompted,

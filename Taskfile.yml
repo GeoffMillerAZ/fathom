@@ -98,6 +98,27 @@ tasks:
         # LB-F108: the language queue vets against #Queue (a top-level JSON
         # list vets with -d '#Queue'; ADR-018: JSON authors, CUE validates).
         cue vet -d '#Queue' schema/langqueue/schema.cue docs/plans/language-breadth.queue.json || { echo "cue vet FAILED: docs/plans/language-breadth.queue.json"; exit 1; }
+        # FD-3 (docs/plans/fathom-dir.md): this repository's .fathom/*.cue
+        # vet as ONE value against #Project (docs/design/fathom-dir.md s5).
+        # risk.cue and learning.cue are mapped by file name, not key, so each
+        # vets on its own. Instance files are exported to JSON first because
+        # `cue vet -d` validates data files only; CUE files would be unified
+        # into the schema instead of checked against it.
+        proj=$(mktemp -d "${TMPDIR:-/tmp}/project-vet.XXXXXX")
+        keyed=$(ls .fathom/*.cue 2>/dev/null | grep -v -e '/risk.cue$' -e '/learning.cue$')
+        if [ -n "$keyed" ]; then
+          echo "cue vet: .fathom/*.cue (#Project)"
+          cue export --out json $keyed > "$proj/project.json" && cue vet -d '#Project' schema/project/schema.cue "$proj/project.json" || { echo "cue vet FAILED: .fathom/*.cue as #Project"; rm -rf "$proj"; exit 1; }
+        fi
+        [ -e .fathom/risk.cue ] && { cue export --out json .fathom/risk.cue > "$proj/risk.json" && cue vet -d '#RiskTable' schema/risk/schema.cue "$proj/risk.json" || { echo "cue vet FAILED: .fathom/risk.cue"; rm -rf "$proj"; exit 1; }; }
+        [ -e .fathom/learning.cue ] && { cue export --out json .fathom/learning.cue > "$proj/learning.json" && cue vet -d '#Learning' schema/learning/schema.cue "$proj/learning.json" || { echo "cue vet FAILED: .fathom/learning.cue"; rm -rf "$proj"; exit 1; }; }
+        # The commented negatives in schema/project/testdata/invalid.cue:
+        # each must be rejected, so a #Project that went open would fail here.
+        for bad in '{"made_up_key": true}' '{"budgets": {"list": 0}}' '{"concerns": {"c": {"check": {"kind": "nope"}}}}'; do
+          echo "$bad" > "$proj/bad.json"
+          if cue vet -d '#Project' schema/project/schema.cue "$proj/bad.json" >/dev/null 2>&1; then echo "cue vet FAILED: #Project accepted $bad"; rm -rf "$proj"; exit 1; fi
+        done
+        rm -rf "$proj"
         [ "$found" = 0 ] && echo "no schema.cue files yet"; exit 0
 
   test:

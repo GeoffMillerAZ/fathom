@@ -172,7 +172,7 @@ func TestInstallSkillsRecordsWhatItWroteBeforeARefusal(t *testing.T) {
 	root := t.TempDir()
 	writeRepoFile(t, root, ".claude/skills/fathom-onboard/SKILL.md", "---\nname: fathom-onboard\n---\nmine.\n")
 	var out bytes.Buffer
-	if err := installSkills(root, "claude", &out); err == nil {
+	if err := installSkills(nil, root, "claude", &out); err == nil {
 		t.Fatal("expected the refusal")
 	}
 	ledger, err := wiring.LoadLedger(root)

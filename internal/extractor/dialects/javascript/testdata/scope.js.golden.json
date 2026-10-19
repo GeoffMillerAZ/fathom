@@ -8,16 +8,11 @@
       "end_line": 101,
       "calls": [
         "assemble",
-        "boot",
-        "check",
         "debugOnly",
-        "describe",
         "help",
         "hidden",
-        "it",
         "secret",
-        "trace",
-        "verify"
+        "trace"
       ],
       "tier": "verified"
     },
@@ -183,6 +178,19 @@
       "tier": "verified"
     },
     {
+      "name": "\"server\"",
+      "kind": "JSTest",
+      "package": "scope",
+      "line": 78,
+      "end_line": 89,
+      "signature": "describe('server', () =>",
+      "calls": [
+        "boot",
+        "describe"
+      ],
+      "tier": "verified"
+    },
+    {
       "name": "fixture",
       "kind": "JSFunc",
       "package": "scope",
@@ -191,6 +199,20 @@
       "signature": "function fixture()",
       "calls": [
         "load"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "\"server\" \"listens\"",
+      "kind": "JSTest",
+      "package": "scope",
+      "line": 83,
+      "end_line": 88,
+      "signature": "it('listens', function ()",
+      "calls": [
+        "check",
+        "it",
+        "verify"
       ],
       "tier": "verified"
     }

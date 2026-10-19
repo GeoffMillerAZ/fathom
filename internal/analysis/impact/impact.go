@@ -157,8 +157,10 @@ func blastRadiusOn(g *callgraph.Graph, nodes []core.SymbolNode, seed map[string]
 
 	// Build node name map for test detection.
 	nameOf := make(map[string]string, len(nodes))
+	sigOf := make(map[string]string, len(nodes))
 	for _, n := range nodes {
 		nameOf[n.Key()] = n.Name
+		sigOf[n.Key()] = n.Signature
 	}
 
 	// Collect results.
@@ -168,9 +170,9 @@ func blastRadiusOn(g *callgraph.Graph, nodes []core.SymbolNode, seed map[string]
 
 	for k := range visited {
 		syms = append(syms, k)
-		// A test is a Test-named function in a test file (repofacts,
-		// RF-2): a production TestImpact reached by the walk is not one.
-		if repofacts.IsTestEntry(nameOf[k], sf[k]) {
+		// A test is a test entry in a test file (repofacts, RF-2, TQ-27):
+		// a production TestImpact reached by the walk is not one.
+		if repofacts.IsTestEntry(nameOf[k], sf[k], sigOf[k]) {
 			tests = append(tests, k)
 		}
 		if fp, ok := sf[k]; ok {

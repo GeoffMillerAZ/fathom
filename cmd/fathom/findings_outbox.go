@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/statedir"
 )
 
@@ -105,7 +106,7 @@ func syncFindingsOutbox(url, projDir string) string {
 	// SEC-2: [findings] outbox is the repository's (a repo-relative path,
 	// confined by config.RepoPath); [daemon] store is the user's, so the
 	// user layer is read too and Load drops a repository's store.
-	loaded, cfgErr := config.Load(config.DefaultUserPath(), filepath.Join(projDir, ".fathom", "config.toml"))
+	loaded, cfgErr := config.Load(config.DefaultUserPath(), projectdir.Config.Path(projDir))
 	if cfgErr != nil || loaded.Config.Findings.Outbox == "" {
 		return ""
 	}

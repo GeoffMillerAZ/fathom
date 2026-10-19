@@ -125,9 +125,11 @@ func BlastRadiusBounded(g *callgraph.Graph, nodes []core.SymbolNode, changedFile
 
 	nameOf := make(map[string]string, len(nodes))
 	fileOf := make(map[string]string, len(nodes))
+	sigOf := make(map[string]string, len(nodes))
 	for _, n := range nodes {
 		nameOf[n.Key()] = n.Name
 		fileOf[n.Key()] = n.FilePath
+		sigOf[n.Key()] = n.Signature
 	}
 
 	keys := make([]string, 0, len(depth))
@@ -167,9 +169,9 @@ func BlastRadiusBounded(g *callgraph.Graph, nodes []core.SymbolNode, changedFile
 	tests := []string{}
 	fileSet := map[string]bool{}
 	for _, k := range syms {
-		// A test is a Test-named function in a test file (repofacts,
-		// RF-2): a production TestImpact reached by the walk is not one.
-		if repofacts.IsTestEntry(nameOf[k], fileOf[k]) {
+		// A test is a test entry in a test file (repofacts, RF-2, TQ-27):
+		// a production TestImpact reached by the walk is not one.
+		if repofacts.IsTestEntry(nameOf[k], fileOf[k], sigOf[k]) {
 			tests = append(tests, k)
 		}
 		if fp, ok := fileOf[k]; ok {

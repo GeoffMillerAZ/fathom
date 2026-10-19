@@ -21,6 +21,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
 )
 
@@ -113,9 +114,9 @@ func reviewRulesDigest(corpusRoot string) string {
 	}
 	paths := []string{
 		filepath.Join(corpusRoot, projectrules.RelPath),
-		filepath.Join(corpusRoot, ".fathom", "guard.cue"),
+		projectdir.Guard.Path(corpusRoot),
 	}
-	if matches, _ := filepath.Glob(filepath.Join(corpusRoot, ".fathom", "layers", "*", "layer.cue")); len(matches) > 0 {
+	if matches, _ := filepath.Glob(projectdir.Layers.Path(corpusRoot, "*", "layer.cue")); len(matches) > 0 {
 		paths = append(paths, matches...)
 	}
 	return digestExistingFiles(paths)

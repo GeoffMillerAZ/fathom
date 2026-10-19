@@ -218,6 +218,12 @@ type DialectKind struct {
 	Container       bool   `json:"container,omitempty"`
 	Callable        bool   `json:"callable,omitempty"`
 	QualifyAsTarget bool   `json:"qualify_as_target,omitempty"`
+	// Titled names a definition of this kind by its string title, quoted,
+	// and one inside a titled definition of the same kind by both titles
+	// (TQ-27: a jest test block inside a describe block is "sum" "adds", the
+	// runner's full name). The quotes keep a title ("sum", the function a
+	// describe block tests) from reading as a name a call resolves to.
+	Titled bool `json:"titled,omitempty"`
 }
 
 // DialectQualify is the containment-qualification rule. ChainContainers

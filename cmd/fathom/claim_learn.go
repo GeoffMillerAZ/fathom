@@ -26,10 +26,10 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
@@ -244,7 +244,7 @@ func learningThresholdsFor(root string) (semantic.LearningThresholds, string) {
 	if root == "" {
 		return semantic.DefaultLearningThresholds(), "the binary's defaults (no local root recorded for the service)"
 	}
-	path := filepath.Join(root, ".fathom", "learning.cue")
+	path := projectdir.Learning.Path(root)
 	if _, err := os.Stat(path); err != nil {
 		return semantic.DefaultLearningThresholds(), "the binary's defaults (no " + path + ")"
 	}

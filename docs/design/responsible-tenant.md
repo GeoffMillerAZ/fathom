@@ -606,7 +606,7 @@ by `pkg-map`), "a whole read on a service root" (replaced by the package-scoped
 cascade).
 
 Escape hatch: `//fathom:tenancy-allow <rule> <reason>` on the line. Every use is listed in
-`.fathom/tenancy-allow.txt`; `TestTenancyAllowlistOnlyShrinks` fails when the count rises
+`internal/lint/tenancy/allow.txt`; `TestTenancyAllowlistOnlyShrinks` fails when the count rises
 above the committed number. Wave C seeds it with today's violations and later waves burn it
 down; RT-137 closes it at zero or with each remaining entry justified.
 
@@ -626,7 +626,7 @@ refinements, each still decidable from one file:
   and passes. Map and struct literals are not environments.
 - *Excuses.* An excuse sits on the finding's line or in the run of excuse lines directly above
   it (one per rule when a site trips two). An excuse naming no reason, or a rule that does not
-  exist, is itself a finding (`allow-noreason`). `.fathom/tenancy-allow.txt` is generated
+  exist, is itself a finding (`allow-noreason`). `internal/lint/tenancy/allow.txt` is generated
   (`FATHOM_TENANCY_ALLOW_UPDATE=1 go test ./internal/lint/tenancy`), one
   `rule<TAB>path<TAB>reason` line per excused site with no line numbers, and the test fails when
   it drifts from the tree. `allowlistCeiling` is the committed count: the test fails above it,

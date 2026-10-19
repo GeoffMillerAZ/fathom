@@ -125,7 +125,7 @@ func TestCheckHooksNonClaudeReasons(t *testing.T) {
 
 func TestCheckSkillsInstalledAgentsShape(t *testing.T) {
 	dir := t.TempDir()
-	if err := installSkills(dir, "agents", &bytes.Buffer{}); err != nil {
+	if err := installSkills(nil, dir, "agents", &bytes.Buffer{}); err != nil {
 		t.Fatal(err)
 	}
 	c := checkSkillsInstalled(dir, "gemini-cli")

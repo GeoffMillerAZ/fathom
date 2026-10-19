@@ -28,6 +28,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/filter"
 	"github.com/geoffmilleraz/fathom/internal/pathglob"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 // EnforceViolation is one deterministic check's finding: enough for the
@@ -68,7 +69,7 @@ func EvaluateGuardEnforcement(g Guard, repoRelPath, newText, oldText string) []E
 		out = append(out, EnforceViolation{
 			CheckID: "forbidden_path",
 			RuleID:  guardRuleID(g),
-			Cite:    ".fathom/guard.cue",
+			Cite:    projectdir.Guard.Rel(),
 			Message: fmt.Sprintf("%s is a forbidden_paths entry — no write to it is allowed, whatever the content", repoRelPath),
 			Remedy:  firstNonEmpty(g.Note, "see the governing guard's note in .fathom/guard.cue"),
 		})
@@ -108,7 +109,7 @@ func EvaluateCommandEnforcement(g Guard) *EnforceViolation {
 	return &EnforceViolation{
 		CheckID: "command_match",
 		RuleID:  guardRuleID(g),
-		Cite:    ".fathom/guard.cue",
+		Cite:    projectdir.Guard.Rel(),
 		Message: "this command matches an enforced command guard",
 		Remedy:  firstNonEmpty(g.Note, "see the governing guard's note in .fathom/guard.cue"),
 	}

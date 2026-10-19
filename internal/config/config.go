@@ -25,7 +25,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
@@ -34,6 +33,7 @@ import (
 	"cuelang.org/go/cue/cuecontext"
 	cueerrors "cuelang.org/go/cue/errors"
 	"github.com/geoffmilleraz/fathom/internal/fathomhome"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	toml "github.com/pelletier/go-toml/v2"
 )
 
@@ -564,7 +564,7 @@ func DefaultProjectPath() string {
 	if err != nil || wd == "" {
 		return ""
 	}
-	return filepath.Join(wd, ".fathom", "config.toml")
+	return projectdir.Config.Path(wd)
 }
 
 // Loaded is the result of loading the user and project layers: the merged

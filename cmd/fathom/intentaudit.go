@@ -17,6 +17,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/guardspec"
 	"github.com/geoffmilleraz/fathom/internal/intent"
 	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/readcoverage"
 	"github.com/geoffmilleraz/fathom/internal/receipt"
 	"github.com/geoffmilleraz/fathom/internal/store"
@@ -601,7 +602,7 @@ func intentPopulation(root string) []string {
 		if _, err := os.Stat(filepath.Join(cand, "docs", "intent", "README.md")); err != nil {
 			continue
 		}
-		if _, err := os.Stat(filepath.Join(cand, ".fathom")); err != nil {
+		if _, err := os.Stat(projectdir.Under(cand)); err != nil {
 			continue
 		}
 		out = append(out, e.Name())
@@ -663,7 +664,7 @@ func planRowContracts(root string) ([]intent.PlanRow, string, readmanifest.Manif
 // NAMED absence, not an error: most repos have no guard.cue, and U13 says so
 // rather than reporting every sensitive surface as uncovered.
 func repoGuardNotes(root string) ([]string, func(string) []string, string) {
-	path := filepath.Join(root, ".fathom", "guard.cue")
+	path := projectdir.Guard.Path(root)
 	if _, err := os.Stat(path); err != nil {
 		return nil, nil, "this repo has no .fathom/guard.cue (`fathom intent export --guard` proposes one)"
 	}

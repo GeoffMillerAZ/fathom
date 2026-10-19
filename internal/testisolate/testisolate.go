@@ -22,6 +22,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 )
 
 // ModelCLINames are the harness/model CLI executables no test may run for
@@ -174,7 +176,7 @@ func IsolateAndRun(m Runner, o Options) int {
 		"FATHOM_STATE_DIR":  "",
 		"XDG_STATE_HOME":    dirs["XDG_STATE_HOME"],
 		"FATHOM_CALL_LOG":   "",
-		"FATHOM_THREADS":    filepath.Join(root, "home", ".fathom", "threads.jsonl"),
+		"FATHOM_THREADS":    fathomhome.At(filepath.Join(root, "home"), "threads.jsonl"),
 		"FATHOM_HTTP":       UnroutableURL,
 		"FATHOM_HOME":       "",
 		EnvTest:             "1",

@@ -10,13 +10,13 @@ package main
 
 import (
 	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/filter"
 	"github.com/geoffmilleraz/fathom/internal/guardspec"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 // loadGuardSet reads <root>/.fathom/guard.cue. ok is false when the file is
@@ -25,7 +25,7 @@ import (
 // open on a broken modules.cue; `fathom doctor` is the loud, non-hot-path
 // place a malformed file gets surfaced (design §2.4).
 func loadGuardSet(root string) (guardspec.GuardSet, bool) {
-	path := filepath.Join(root, ".fathom", "guard.cue")
+	path := projectdir.Guard.Path(root)
 	if _, err := os.Stat(path); err != nil {
 		return guardspec.GuardSet{}, false
 	}

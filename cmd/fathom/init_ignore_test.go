@@ -14,7 +14,7 @@ import (
 // and generated sources.
 func TestFathomIgnoreDefaults_BuildTrees(t *testing.T) {
 	root := t.TempDir()
-	if err := writeFathomIgnore(root, io.Discard); err != nil {
+	if err := writeFathomIgnore(nil, root, io.Discard); err != nil {
 		t.Fatalf("writeFathomIgnore: %v", err)
 	}
 	raw, err := os.ReadFile(filepath.Join(root, ".fathomignore"))

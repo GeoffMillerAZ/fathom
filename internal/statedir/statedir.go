@@ -33,6 +33,7 @@ import (
 	"path/filepath"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 // EnvOverride is the env var that names the state directory directly,
@@ -117,7 +118,7 @@ func xdgStateHome() string {
 // and never pays a config parse/CUE-validate at all.
 func Resolve(root string) string {
 	stateDirConfig := ""
-	projPath := filepath.Join(root, ".fathom", "config.toml")
+	projPath := projectdir.Config.Path(root)
 	if _, err := os.Stat(projPath); err == nil {
 		if loaded, lerr := config.Load("", projPath); lerr == nil {
 			stateDirConfig = loaded.Config.Daemon.StateDir

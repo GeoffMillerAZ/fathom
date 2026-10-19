@@ -128,7 +128,7 @@ func DefaultUserPath() string {
 // DefaultUserPath so tests (and any caller with an explicit home) never
 // depend on process state.
 func SuppressionsPathIn(home string) string {
-	return filepath.Join(home, ".fathom", SuppressionsFileName)
+	return fathomhome.At(home, SuppressionsFileName)
 }
 
 // ResolvePath is the CLI verbs' resolution (the FATHOM_SESSION_LEDGER

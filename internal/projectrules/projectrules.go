@@ -33,6 +33,7 @@ import (
 	"cuelang.org/go/cue/cuecontext"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/archconformance"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 // archconformanceSchema is byte-identical to
@@ -44,7 +45,7 @@ var archconformanceSchema []byte
 
 // RelPath is the fixed, repo-relative location of a service's own
 // architecture-conformance rule pack.
-const RelPath = ".fathom/rules/archconformance.cue"
+const RelPath = projectdir.Dir + "/" + string(projectdir.ArchConformance)
 
 // ErrRelativeCorpusRoot is returned by Load for a non-absolute corpusRoot.
 // A relative root would resolve against the ambient process CWD — for the

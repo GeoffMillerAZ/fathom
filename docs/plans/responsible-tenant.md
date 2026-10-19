@@ -235,7 +235,7 @@ bound memory here.
 
 ## F. Close — honesty debt paid
 
-- [x] The tenancy allowlist is empty, or every remaining entry carries its reason (no `rule<TAB>path` entry without a third, reason field) {id: RT-137, oracle: lexical, path: .fathom/tenancy-allow.txt, pattern: "^[a-z-]+\t[^\t\n]+\t?[ ]*$", eq: 0}
+- [x] The tenancy allowlist is empty, or every remaining entry carries its reason (no `rule<TAB>path` entry without a third, reason field) {id: RT-137, oracle: lexical, path: internal/lint/tenancy/allow.txt, pattern: "^[a-z-]+\t[^\t\n]+\t?[ ]*$", eq: 0}
 - [x] O108 and O112 are marked superseded by INC-23 in the observation log {id: RT-138, oracle: lexical, path: .fathom/observations.md, pattern: "superseded by INC-23"}
 - [x] CHANGELOG corrects "bounded at the peaks" and names INC-23 {id: RT-139, oracle: lexical, path: CHANGELOG.md, pattern: "INC-23"}
 - [x] fleet-index.md stops recommending heap_sys as a footprint and names phys_footprint and `fathom resources` {id: RT-140, oracle: lexical, path: docs/guides/fleet-index.md, pattern: "fathom resources"}

@@ -29,6 +29,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/docindex"
 	"github.com/geoffmilleraz/fathom/internal/gitro"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/verify"
@@ -68,7 +69,7 @@ func workRepoConfig(root string) (config.Config, error) {
 	return loaded.Config, nil
 }
 
-func workConfigPath(root string) string { return filepath.Join(root, ".fathom", "config.toml") }
+func workConfigPath(root string) string { return projectdir.Config.Path(root) }
 
 // workCIPath is a named CI summary's path, relative to the repository
 // root and confined to it (SEC-2: a repo-path field; an absolute value, a

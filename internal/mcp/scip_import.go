@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/scip"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
@@ -101,7 +102,7 @@ func (s *Server) importIndexers(ctx context.Context, backend QueryInterface, svc
 	out := make([]map[string]any, 0, len(names))
 	imported := false
 	for _, name := range names {
-		rel := filepath.ToSlash(filepath.Join(".fathom", "scip", name+".scip"))
+		rel := filepath.ToSlash(projectdir.SCIP.Path("", name+".scip"))
 		row := map[string]any{"indexer": name, "path": rel}
 		out = append(out, row)
 		if !canImport {

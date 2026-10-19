@@ -22,6 +22,7 @@
     "class_component": { "source_kind": "JSClassComponent", "canonical": "class",    "container": true },
     "hook":            { "source_kind": "JSHook",           "canonical": "function", "callable": true },
     "module":          { "source_kind": "JSModule",         "canonical": "module" },
+    "test":            { "source_kind": "JSTest",           "canonical": "function", "callable": true, "titled": true },
     "constant":        { "source_kind": "JSConst",          "canonical": "constant" },
     "field":           { "source_kind": "JSField",          "canonical": "field" }
   },

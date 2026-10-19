@@ -9,10 +9,10 @@ package main
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
@@ -137,7 +137,7 @@ func checkScratchDaemons(rep resourcesReport) doctorCheck {
 // override is disclosed. userPath is the user config (config.DefaultUserPath).
 func checkTenancyScope(root, userPath string, getenv func(string) string) doctorCheck {
 	const name = "tenancy_scope"
-	projPath := filepath.Join(root, ".fathom", "config.toml")
+	projPath := projectdir.Config.Path(root)
 	loaded, err := config.Load(userPath, projPath)
 	if err != nil {
 		return doctorCheck{Name: name, Status: doctorWarn, Reason: "config does not load: " + err.Error(), Remedy: "see config_valid"}

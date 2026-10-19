@@ -208,8 +208,10 @@ func moduleLeverWant(key func(pkg, name string) string) (keep, drop [][2]string)
 		{key("src/main", "run"), key("src/c", "c1")},
 		{key("src/main", "run"), key("src/d", "d1")},
 		{key("lib/main", "go"), key("lib/helper", "helper")},
-		{mod("src/a.test"), key("src/a", "f")}, // a test file's module calls, in describe/it callbacks
-		{mod("src/a.spec"), key("src/a", "f")},
+		// A test file's it block calls f in its callback (TQ-27: a describe or
+		// it block is a test symbol, named by its quoted titles).
+		{key("src/a.test", `"a" "returns one"`), key("src/a", "f")},
+		{key("src/a.spec", `"a" "returns one"`), key("src/a", "f")},
 	}
 	drop = [][2]string{
 		{mod("src/main"), mod("src/a")},   // import { f }: run -> f is already an edge into a.ts
@@ -224,7 +226,7 @@ func moduleLeverWant(key func(pkg, name string) string) (keep, drop [][2]string)
 // draws a symbol edge into that module's file stores no module-to-module
 // edge; a side-effect import, `import * as`, a barrel re-export, a CommonJS
 // require and an import that draws no symbol edge to its file keep theirs,
-// and a test file's module still draws its describe/it callbacks' calls.
+// and a test file's it block draws its callback's calls.
 func TestResolveFileEdges_TSJSModuleEdgeLever(t *testing.T) {
 	dir, rels := writeTSJSFixture(t, moduleLeverFiles)
 	srcs, symbols := loadFileResolveFixture(t, dir, "javascript", rels)
@@ -253,9 +255,9 @@ func TestResolveFileEdges_TSJSModuleEdgeLever(t *testing.T) {
 }
 
 // TestIngest_TSJSModuleEdgeLever (LB-F411): through ingest, the typed edges
-// stored are LB-F411's, and a test file's module symbol keeps the call rows
-// its describe/it callbacks write (the rows `fathom tests select` reaches a
-// TS test file through).
+// stored are LB-F411's, and a test file's describe and it blocks keep the
+// call rows their callbacks write (TQ-27: the rows a selection reaches a TS
+// test through).
 func TestIngest_TSJSModuleEdgeLever(t *testing.T) {
 	dir, _ := writeTSJSFixture(t, moduleLeverFiles)
 	st := store.NewMemoryStore()
@@ -292,17 +294,18 @@ func TestIngest_TSJSModuleEdgeLever(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	calls := map[string][]string{}
+	calls := map[[2]string][]string{}
 	for _, o := range obs {
-		if o.Symbol == core.ModuleSymbolName {
-			file, _, _ := strings.Cut(o.SourceRef, ":")
-			calls[file] = o.ToSymbolNode().Calls
-		}
+		file, _, _ := strings.Cut(o.SourceRef, ":")
+		calls[[2]string{file, o.Symbol}] = o.ToSymbolNode().Calls
 	}
 	for _, file := range []string{"src/a.test.ts", "src/a.spec.ts"} {
-		for _, want := range []string{"describe", "it", "expect"} {
-			if !slices.ContainsFunc(calls[file], func(c string) bool { return c == want || strings.HasSuffix(c, "."+want) }) {
-				t.Errorf("%s's module call rows %v lack %s", file, calls[file], want)
+		for block, wants := range map[string][]string{`"a"`: {"describe"}, `"a" "returns one"`: {"it", "expect"}} {
+			got := calls[[2]string{file, block}]
+			for _, want := range wants {
+				if !slices.ContainsFunc(got, func(c string) bool { return c == want || strings.HasSuffix(c, "."+want) }) {
+					t.Errorf("%s's %s block call rows %v lack %s", file, block, got, want)
+				}
 			}
 		}
 	}

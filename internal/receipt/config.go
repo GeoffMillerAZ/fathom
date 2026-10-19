@@ -7,9 +7,8 @@ package receipt
 // decision 11).
 
 import (
-	"path/filepath"
-
 	"github.com/geoffmilleraz/fathom/internal/config"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 // ConfiguredRepositoryURI is `[receipts] repository_uri` for the
@@ -17,7 +16,7 @@ import (
 // unset. A config that does not load names none (the SARIF still renders;
 // `fathom config` is where a broken config is reported).
 func ConfiguredRepositoryURI(root string) string {
-	loaded, err := config.Load(config.DefaultUserPath(), filepath.Join(root, ".fathom", "config.toml"))
+	loaded, err := config.Load(config.DefaultUserPath(), projectdir.Config.Path(root))
 	if err != nil {
 		return ""
 	}

@@ -48,6 +48,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/decide"
 	"github.com/geoffmilleraz/fathom/internal/hookguard"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 // statuslineTimeoutSec is the status line's budget in the hooks' terms:
@@ -161,7 +162,7 @@ func statuslineJudgment(dir string) (token, killSource string) {
 	userPath := config.DefaultUserPath()
 	projPath := ""
 	if dir != "" {
-		projPath = filepath.Join(dir, ".fathom", "config.toml")
+		projPath = projectdir.Config.Path(dir)
 	}
 	word := []byte("decide")
 	if !bytes.Contains(readConfigLayer(userPath), word) && !bytes.Contains(readConfigLayer(projPath), word) {

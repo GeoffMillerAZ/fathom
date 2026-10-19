@@ -31,6 +31,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/wiring"
 )
 
@@ -1157,7 +1158,7 @@ func parseCompileOutput(out string) *CompileCost {
 func InstrumentOwnedPaths(wt Worktree) (map[string]bool, error) {
 	// The ledger names what it records ownership of — never itself — but
 	// it is exactly as instrument-written as anything it lists.
-	owned := map[string]bool{".fathomignore": true, ".fathom/owned.json": true}
+	owned := map[string]bool{".fathomignore": true, projectdir.Owned.Rel(): true}
 	ledger, err := wiring.LoadLedger(wt.Path)
 	if err != nil {
 		return nil, fmt.Errorf("finding instrument-owned files: %w", err)

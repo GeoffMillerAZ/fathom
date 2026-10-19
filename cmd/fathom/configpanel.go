@@ -8,10 +8,13 @@ package main
 // dashboard. An unconfigured repo sees the install command, not a shrug.
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
+	"github.com/geoffmilleraz/fathom/internal/bindspec"
 	"github.com/geoffmilleraz/fathom/internal/guardspec"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/readcoverage"
 	readmanifest "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/read-manifest"
 )
@@ -44,7 +47,7 @@ func buildConfigPanel(path string, obligationServes int) obsConfigPanel {
 		return p
 	}
 
-	layersDir := filepath.Join(path, ".fathom", "layers")
+	layersDir := projectdir.Layers.Path(path)
 	if entries, err := os.ReadDir(layersDir); err == nil {
 		for _, e := range entries {
 			if !e.IsDir() {
@@ -66,12 +69,25 @@ func buildConfigPanel(path string, obligationServes int) obsConfigPanel {
 	p.GuardCount = guards.Count
 	p.GuardNote = guards.Note
 
-	if _, err := os.Stat(filepath.Join(path, ".fathom", "bindings.cue")); err == nil {
-		p.BindingNote = "bindings.cue present"
-	} else {
-		p.BindingNote = "no bindings file — no layers are BOUND (binding requires an evaled layer, D3)"
-	}
+	p.BindingNote = bindingNote(path)
 	return p
+}
+
+// bindingNote reads the platform-module bindings from modules.cue, the file
+// `fathom init` writes and modserve.Bind serves, through the same loader.
+func bindingNote(root string) string {
+	modules := projectdir.Modules.Path(root)
+	if _, err := os.Stat(modules); err != nil {
+		return "no bindings file — no layers are BOUND (binding requires an evaled layer, D3)"
+	}
+	set, err := bindspec.LoadBindings(modules)
+	switch {
+	case err != nil:
+		return "modules.cue is invalid: " + err.Error()
+	case len(set.Bindings) == 0:
+		return "modules.cue present, no bindings declared yet"
+	}
+	return fmt.Sprintf("%d binding(s) in modules.cue", len(set.Bindings))
 }
 
 type guardRuleDiagnostic struct {
@@ -84,7 +100,7 @@ type guardRuleDiagnostic struct {
 // reporting surface that counts repository guards. The manifest owns the
 // read; ParseGuards applies exactly LoadGuards' CUE semantics to those bytes.
 func inspectGuardRules(root string) guardRuleDiagnostic {
-	guardFile := filepath.Join(root, ".fathom", "guard.cue")
+	guardFile := projectdir.Guard.Path(root)
 	reads := readmanifest.NewSet()
 	reads.RelativeTo(root)
 	data, ok := reads.ReadFile(guardFile)
