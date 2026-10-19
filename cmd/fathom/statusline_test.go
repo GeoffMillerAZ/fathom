@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/decide"
 	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/hookguard"
 )
@@ -273,4 +274,79 @@ func TestStatuslineCPUTimeP95AtMost100ms(t *testing.T) {
 			t.Fatalf("a hung daemon held the status line %v, want it bounded by the %v deadline", elapsed, budget)
 		}
 	})
+}
+
+// TestStatuslineJudgedTokenNeverPassStyled is JG-4 (ADR-073 decision 6):
+// a configured decision port adds J:off, J:on(<n>) or J:killed after the
+// state, plain text with no colour escape and none of the states' glyphs,
+// so it never reads as a pass; --json keeps it out of state and line (the
+// evidence band's and the proof line's inputs) in decision_port, with the
+// kill source KS-6's gate names; with no [decide] block in either layer the
+// bytes are unchanged.
+func TestStatuslineJudgedTokenNeverPassStyled(t *testing.T) {
+	f := newStatuslineFake(t, http.StatusOK, statuslineAnswerJSON("0", "false"))
+	const plain = "fathom ● @abcdef1"
+	for _, tc := range []struct {
+		name, user, project, token, source string
+		setup                              func(t *testing.T, home string)
+	}{
+		{name: "no [decide] block", user: "[hooks]\npin_check = \"record\"\n", project: "[readouts]\n"},
+		{name: "provider none", project: "[decide]\nprovider = \"none\"\n", token: "J:off"},
+		{name: "open", user: "[decide]\nprovider = \"typesafe\"\napi_key_env = \"FATHOM_TEST_JG4_KEY\"\nsites = [\"route\", \"certify_suggest\"]\n", token: "J:on(2)"},
+		{name: "no open site", user: "[decide]\nprovider = \"typesafe\"\nsites = [\"route\"]\ndeny_sites = [\"route\"]\n", token: "J:off"},
+		{name: "killed by the file", user: "[decide]\nprovider = \"typesafe\"\n", token: "J:killed", source: decide.KillSourceFile,
+			setup: func(t *testing.T, home string) {
+				if err := os.WriteFile(filepath.Join(home, decide.KillFileName), nil, 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}},
+		{name: "killed by the environment", user: "[decide]\nprovider = \"typesafe\"\n", token: "J:killed", source: decide.KillSourceEnv,
+			setup: func(t *testing.T, _ string) { t.Setenv(decide.KillEnv, decide.KillValue) }},
+		{name: "killed by enabled", user: "[decide]\nprovider = \"typesafe\"\nenabled = false\n", token: "J:killed", source: decide.KillSourceEnabled},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			home := t.TempDir()
+			t.Setenv("FATHOM_HOME", home)
+			t.Setenv(decide.KillEnv, "")
+			repo := t.TempDir()
+			if tc.user != "" {
+				if err := os.WriteFile(fathomhome.Path("config.toml"), []byte(tc.user), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if tc.project != "" {
+				if err := os.MkdirAll(filepath.Join(repo, ".fathom"), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(repo, ".fathom", "config.toml"), []byte(tc.project), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if tc.setup != nil {
+				tc.setup(t, home)
+			}
+			stdin := `{"workspace":{"project_dir":"` + repo + `"}}`
+			got := runStatusline(t, stdin, "--url", f.srv.URL)
+			want := plain + "\n"
+			if tc.token != "" {
+				want = plain + " " + tc.token + "\n"
+			}
+			if got != want {
+				t.Fatalf("line = %q, want %q", got, want)
+			}
+			if strings.Contains(got, "\x1b[") || strings.Contains(got, "judged") {
+				t.Errorf("line %q carries a colour escape or a judged token", got)
+			}
+			if tok := strings.TrimPrefix(strings.TrimSuffix(got, "\n"), plain); strings.ContainsAny(tok, "●◐○·?") {
+				t.Errorf("the token %q borrows a state glyph", tok)
+			}
+			var st statuslineState
+			if err := json.Unmarshal([]byte(runStatusline(t, stdin, "--url", f.srv.URL, "--json")), &st); err != nil {
+				t.Fatal(err)
+			}
+			if st.State != statuslineStIndexed || st.Line != plain || st.DecisionPort != tc.token || st.KillSource != tc.source {
+				t.Errorf("--json = %+v, want state indexed, line %q, decision_port %q, kill_source %q", st, plain, tc.token, tc.source)
+			}
+		})
+	}
 }

@@ -85,6 +85,9 @@ type certifySuggestion struct {
 	Confidence  float64 `json:"confidence"`
 	Model       string  `json:"model"`
 	GeneratedAt string  `json:"generated_at"`
+	// DecidedBy (JG-2, ADR-073 decision 6) is the strength answer's badge
+	// (decide.DecidedBy): every written row was judged.
+	DecidedBy string `json:"decided_by,omitempty"`
 }
 
 func cmdCertifySuggest(args []string, stdout, stderr io.Writer) int {
@@ -198,6 +201,10 @@ func runCertifySuggest(args []string, ports *decide.Ports, now func() time.Time,
 
 	var written []certifySuggestion
 	var unsure, silent int
+	// missed is the decided_by of a chunk the port missed (JG-3): the
+	// summary names `not consulted (<class>)` even when the degrade line
+	// was already written for this session, site and class.
+	var missed string
 	for _, chunk := range chunks {
 		req := buildCertifySuggestRequest(chunk)
 		callStart := time.Now()
@@ -208,6 +215,7 @@ func runCertifySuggest(args []string, ports *decide.Ports, now func() time.Time,
 			if errors.As(derr, &degraded) {
 				// JF-6: the port wrote the one disclosed line; the
 				// deterministic path asks no further chunk.
+				missed = decide.DecidedBy(decide.Decision{Provider: ports.Decider.Name(), Tier: decide.DecidedComputed, Miss: decide.MissClass(derr)})
 				break
 			}
 			fmt.Fprintf(stderr, "warn: certify suggest: decide call failed for a %d-test chunk: %v\n", len(chunk), derr)
@@ -233,6 +241,7 @@ func runCertifySuggest(args []string, ports *decide.Ports, now func() time.Time,
 					Strength: strengthAns.Choice, AssertsNoul: assertsAns.Noul,
 					Confidence: strengthAns.Confidence, Model: resp.Model,
 					GeneratedAt: now().UTC().Format(time.RFC3339),
+					DecidedBy:   certifyDecidedBy(ports.Decider.Name(), resp, n.Name+":strength"),
 				})
 				writtenNames[n.Name] = true
 				continue
@@ -258,10 +267,28 @@ func runCertifySuggest(args []string, ports *decide.Ports, now func() time.Time,
 		return 1
 	}
 	for _, s := range written {
-		fmt.Fprintf(stdout, "suggested: %s may certify something (strength: %s, confidence %.2f, asserts %.2f)\n", s.Test, s.Strength, s.Confidence, s.AssertsNoul)
+		badge := ""
+		if s.DecidedBy != "" {
+			badge = " decided_by " + s.DecidedBy
+		}
+		fmt.Fprintf(stdout, "suggested: %s may certify something (strength: %s, confidence %.2f, asserts %.2f)%s\n", s.Test, s.Strength, s.Confidence, s.AssertsNoul, badge)
 	}
-	fmt.Fprintf(stdout, "certify suggest: %d candidate(s), %d suggestion(s), %d unsure, %d silent\n", len(candidates), len(written), unsure, silent)
+	if missed != "" {
+		missed = "; decided_by " + missed
+	}
+	fmt.Fprintf(stdout, "certify suggest: %d candidate(s), %d suggestion(s), %d unsure, %d silent%s\n", len(candidates), len(written), unsure, silent, missed)
 	return 0
+}
+
+// certifyDecidedBy is a written suggestion's decided_by: judged, from its
+// strength answer's own decision row.
+func certifyDecidedBy(provider string, resp decision.Response, id string) string {
+	for _, rec := range resp.Records(decide.SiteCertifySuggest) {
+		if rec.QuestionID == id {
+			return decide.DecidedBy(decide.Decision{Provider: provider, Tier: decide.DecidedJudged, Record: rec})
+		}
+	}
+	return ""
 }
 
 // certifySuggestItem pairs one candidate Test* symbol with its own

@@ -27,6 +27,7 @@ Release impact: minor
 
 ### Added
 
+- Answers shaped by a configured decision provider now say so: the obligations envelope, `POST /route` and `certify suggest` carry `decided_by` (`judged(<site> · <provider>/<model> · conf <x> · calibration <status> <n>/100)`, `computed`, or `computed · not consulted (<class>)` when the provider missed), the degrade line is written once per session, site and class, and `fathom statusline` adds `J:off`, `J:on(<n>)` or `J:killed`; provider `none` output is unchanged.
 - `fathom readout report --baseline` reports the share of the test-run hook's failing-run rows whose named file or test is touched by one of the next three calls, with a Wilson 95% interval, the rows it cannot place counted apart, and the window from the first row.
 - `fathom doctor` gains a `readouts` row: the `[readouts]` mode and roots, rules loaded and refused (naming the first failing fixture of each refused rule), the harnesses with no readout view, and another Bash output rewriter wired in the client's hook settings (named by its command's first word). It reads ok or warn, never fail.
 - `[readouts]` config section (`mode` off|observe|lean|rich, `rules.<id>.mode`, `roots`), every key user-only so a repository's config that sets one is dropped and named by doctor.
