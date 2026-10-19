@@ -111,3 +111,15 @@ Upstream's only call pattern is `(call_expression (identifier) @name)`, a plain 
 call_precision .3896 (scored beside the scalameta definitions, 2026-10-10). The scala reading grades L2 against the
 scalameta dump's call pairs instead (`calibration/oracles/scalameta`, tier B, which reads a member call), and records
 this run in its notes.
+
+R (LB-Q-r) runs the grammar's own upstream `queries/tags.scm` (r-lib/tree-sitter-r v1.3.0, `346d3707`, MIT, verbatim under a
+header as `r-tags.scm`) with py-tree-sitter 0.25.2 and tree-sitter-r 1.3.0 (not on PyPI: `pip install` of the pinned GitHub
+tarball, which builds the extension from the committed `src/parser.c`):
+
+    <tools>/pyts/bin/pip install tree-sitter==0.25.2 https://github.com/r-lib/tree-sitter-r/archive/refs/tags/v1.3.0.tar.gz
+    <tools>/pyts/bin/python -I tags_oracle.py --lang r --query r-tags.scm --ext .r <clone>/dplyr > out/r-dplyr-calls.json
+    # tidyverse/dplyr v1.2.1: 195 files / 4,534 pairs, r-lib/testthat v3.3.2: 266 / 3,335; 1 file with a parse error
+
+`--ext .r` also reads `.R` (the script lowercases an extension). The dialect's `tags.scm` descends from the same query, so the
+oracle is independent in runtime, not in query shape; the dialect also lists the calls inside an anonymous function and a pipe
+the same way upstream's patterns do, and does not read `obj$method(x)` (upstream does not either).

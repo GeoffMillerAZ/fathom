@@ -8,7 +8,6 @@ package connector
 // extension two queue entries name, or one claimed only by sniff or glob,
 // is never listed. A language leaves the table when its dialect registers.
 var unsupportedLangExtMap = map[string]string{
-	".R":           "r",
 	".S":           "assembly",
 	".abap":        "abap",
 	".asm":         "assembly",
@@ -65,7 +64,6 @@ var unsupportedLangExtMap = map[string]string{
 	".pas":         "pascal",
 	".pro":         "prolog",
 	".purs":        "purescript",
-	".r":           "r",
 	".rkt":         "scheme-racket",
 	".s":           "assembly",
 	".sass":        "sass",

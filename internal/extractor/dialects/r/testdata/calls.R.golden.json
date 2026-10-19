@@ -1,0 +1,32 @@
+{
+  "symbols": [
+    {
+      "name": "load_all",
+      "kind": "RFunction",
+      "package": "calls",
+      "line": 4,
+      "end_line": 9,
+      "signature": "load_all <- function(paths)",
+      "calls": [
+        "bind_rows",
+        "head",
+        "lapply",
+        "readLines"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "report",
+      "kind": "RFunction",
+      "package": "calls",
+      "line": 11,
+      "end_line": 15,
+      "signature": "report <- function(df)",
+      "calls": [
+        "load_all",
+        "sd"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

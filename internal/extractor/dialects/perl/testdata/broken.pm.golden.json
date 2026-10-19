@@ -1,0 +1,39 @@
+{
+  "symbols": [
+    {
+      "name": "Broken",
+      "kind": "PerlPackage",
+      "package": "broken",
+      "line": 1,
+      "end_line": 1,
+      "tier": "verified"
+    },
+    {
+      "name": "before",
+      "kind": "PerlSub",
+      "package": "broken",
+      "line": 3,
+      "end_line": 5,
+      "signature": "sub before",
+      "tier": "verified"
+    },
+    {
+      "name": "oops",
+      "kind": "PerlSub",
+      "package": "broken",
+      "line": 7,
+      "end_line": 10,
+      "signature": "sub oops",
+      "tier": "verified"
+    },
+    {
+      "name": "after",
+      "kind": "PerlSub",
+      "package": "broken",
+      "line": 12,
+      "end_line": 14,
+      "signature": "sub after",
+      "tier": "verified"
+    }
+  ]
+}
