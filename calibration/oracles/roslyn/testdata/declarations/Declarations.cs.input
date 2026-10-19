@@ -1,0 +1,37 @@
+// Regression fixture, not an authored-subject language-grade corpus.
+using System;
+namespace Fixture.Outer;
+public partial class Host<T> where T : class
+{
+    public float first,
+        second, third;
+    public event Action Ready,
+        Finished;
+    public int @event;
+    public string café;
+    public int /* 🚽 */ unicodeAfterEmoji;
+    [Obsolete]
+    public int Compute<U>(T value, U other) => 1;
+    public int this[int i] => i;
+    public Host() { }
+    ~Host() { }
+    public static Host<T> operator +(Host<T> left, Host<T> right) => left;
+    public static implicit operator bool(Host<T> value) => value != null;
+    public delegate void Sink<U>(U value);
+    public struct Nested { public int X; }
+#if FIXTURE_ACTIVE
+    public int Active;
+#else
+    public int Inactive;
+#endif
+    public void SignatureWithLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongName() { }
+}
+public abstract class AbstractHost
+{
+    [Obsolete]
+    public abstract
+        void Bodyless(int value);
+}
+public record RecordHost(int Value);
+public record struct RecordValue(int Value);
+public enum Mode { First, Second }

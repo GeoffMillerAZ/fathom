@@ -1,0 +1,6 @@
+namespace Fixture.Error;
+public class Broken
+{
+    public MissingType Invalid;
+    public void Incomplete() => ;
+}
