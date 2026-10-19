@@ -733,7 +733,12 @@ import (
 // tree-sitter dialects. Item ex (LB-Q-elixir): Elixir files (.ex, .exs) read through the new elixir
 // dialect, imports resolved by namespace-dir. Every such file fingerprinted before holds the old
 // extraction.
-const ExtractorEpoch = "67"
+// Epoch 68 (wave lang4, one bump for the wave, made by the integrator). Item star
+// (LB-Q-bazel, LB-Q-tiltfile): BUILD, WORKSPACE, MODULE.bazel, .bzl and Tiltfile files read through
+// the starlark tree-sitter dialects. Item jss (LB-Q-json-schema): a .json whose root $schema is a
+// json-schema.org URL, or whose name ends .schema.json, reads through the json-schema dialect.
+// Every such file fingerprinted before holds the old extraction.
+const ExtractorEpoch = "68"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
