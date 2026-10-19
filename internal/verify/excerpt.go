@@ -71,3 +71,9 @@ func excerptFingerprint(content []byte, start, end int) (string, bool) {
 func ExcerptSHA256(content []byte, start, end int) (string, bool) {
 	return excerptFingerprint(content, start, end)
 }
+
+// ExcerptBytes is excerptBytes for internal/receipt's BuildReceipt: the
+// bytes the digest covers, which an exported receipt carries bounded.
+func ExcerptBytes(content []byte, start, end int) ([]byte, bool) {
+	return excerptBytes(content, start, end)
+}

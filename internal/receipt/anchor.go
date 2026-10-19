@@ -150,14 +150,21 @@ func isObjectID(id, format string) bool {
 // does not hold, a path that is not a clean repo-relative file path, and a
 // path neither the commit nor the work tree holds are errors.
 func AnchorAt(ctx context.Context, c Commit, s Span, src Source) (Anchor, error) {
+	a, _, err := AnchorExcerpt(ctx, c, s, src)
+	return a, err
+}
+
+// AnchorExcerpt is AnchorAt with the bytes the excerpt digest covers, for
+// BuildReceipt to carry bounded (EVX-7); nil when the anchor has no digest.
+func AnchorExcerpt(ctx context.Context, c Commit, s Span, src Source) (Anchor, []byte, error) {
 	if err := checkSpan(s); err != nil {
-		return Anchor{}, err
+		return Anchor{}, nil, err
 	}
 	a := Anchor{Commit: c.ID, ObjectFormat: c.ObjectFormat, Path: s.Path, StartLine: s.StartLine, EndLine: s.EndLine}
 
 	read, haveRead, err := producerFingerprint(c, s.Path, src)
 	if err != nil {
-		return Anchor{}, err
+		return Anchor{}, nil, err
 	}
 
 	out, err := gitro.Output(ctx, c.Root, "rev-parse", "--verify", "--quiet", "--end-of-options", c.ID+":"+s.Path)
@@ -165,22 +172,22 @@ func AnchorAt(ctx context.Context, c Commit, s Span, src Source) (Anchor, error)
 		// The commit holds no such file: the producer read bytes it
 		// does not hold (a new or untracked file).
 		if !haveRead {
-			return Anchor{}, fmt.Errorf("receipt: %s is neither at %s nor in the work tree", s.Path, short(c.ID))
+			return Anchor{}, nil, fmt.Errorf("receipt: %s is neither at %s nor in the work tree", s.Path, short(c.ID))
 		}
 		a.State, a.Reason = StateUncommitted, "the commit holds no such file"
 		if src.Withheld != "" {
 			a.State, a.Reason = StateWithheld, src.Withheld
 		}
-		return a, nil
+		return a, nil, nil
 	}
 	blobID := strings.TrimSpace(string(out))
 	blob, err := gitro.Output(ctx, c.Root, "cat-file", "blob", blobID)
 	if err != nil {
-		return Anchor{}, fmt.Errorf("receipt: %s at %s is not a file", s.Path, short(c.ID))
+		return Anchor{}, nil, fmt.Errorf("receipt: %s at %s is not a file", s.Path, short(c.ID))
 	}
 	checkout, err := filteredBytes(ctx, c, s.Path)
 	if err != nil {
-		return Anchor{}, err
+		return Anchor{}, nil, err
 	}
 
 	filtered, why := !bytes.Equal(checkout, blob), "git's filters change the bytes between the blob and a checkout"
@@ -204,15 +211,15 @@ func AnchorAt(ctx context.Context, c Commit, s Span, src Source) (Anchor, error)
 	case src.Withheld != "":
 		a.State, a.Reason = StateWithheld, src.Withheld
 		a.BlobID, a.FathomFingerprint = "", ""
-		return a, nil
+		return a, nil, nil
 	case checkout == nil:
 		a.State, a.Reason = StateFiltered, why+"; the object is not in the work tree"
-		return a, nil
+		return a, nil, nil
 	case !a.Clean:
 		// The producer's lines count other bytes: no digest, and no range
 		// check against the commit's file.
 		a.State, a.Reason = StateUncommitted, "the producer read other bytes than the commit holds"
-		return a, nil
+		return a, nil, nil
 	case filtered:
 		a.State, a.Reason = StateFiltered, why
 	default:
@@ -220,10 +227,11 @@ func AnchorAt(ctx context.Context, c Commit, s Span, src Source) (Anchor, error)
 	}
 	digest, ok := verify.ExcerptSHA256(checkout, s.StartLine, s.EndLine)
 	if !ok {
-		return Anchor{}, fmt.Errorf("receipt: %s at %s holds no lines %d-%d", s.Path, short(c.ID), s.StartLine, s.EndLine)
+		return Anchor{}, nil, fmt.Errorf("receipt: %s at %s holds no lines %d-%d", s.Path, short(c.ID), s.StartLine, s.EndLine)
 	}
 	a.ExcerptSHA256 = digest
-	return a, nil
+	excerpt, _ := verify.ExcerptBytes(checkout, s.StartLine, s.EndLine)
+	return a, excerpt, nil
 }
 
 // checkSpan refuses a path that is not a clean, relative, slash-separated
