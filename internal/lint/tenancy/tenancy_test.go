@@ -19,7 +19,10 @@ func repoRoot(t *testing.T) string {
 	return root
 }
 
-const allowlistPath = ".fathom/tenancy-allow.txt"
+// allowlistPath is the allow list, beside this test (the package directory
+// is the working directory of go test): a development artifact, kept out of
+// the product directory .fathom/.
+const allowlistPath = "allow.txt"
 
 // rules returns the sorted "rule@line" hits (excused ones suffixed "!").
 func rules(t *testing.T, rel, src string) []string {
@@ -169,7 +172,7 @@ func f() { os.ReadFile("a") }`, ""},
 }
 
 // TestTenancyRules is the gate (RT-91): no finding in cmd/, internal/ or
-// pkg/ goes unexcused, and .fathom/tenancy-allow.txt lists exactly the
+// pkg/ goes unexcused, and allow.txt lists exactly the
 // excuses in the tree (regenerate with FATHOM_TENANCY_ALLOW_UPDATE=1).
 func TestTenancyRules(t *testing.T) {
 	root := repoRoot(t)
@@ -181,7 +184,7 @@ func TestTenancyRules(t *testing.T) {
 		t.Errorf("%s — fix it, or excuse it with `//fathom:tenancy-allow %s <reason>` (design §4.7)", v, v.Rule)
 	}
 	want := RenderAllowlist(fs)
-	path := filepath.Join(root, filepath.FromSlash(allowlistPath))
+	path := allowlistPath
 	if os.Getenv("FATHOM_TENANCY_ALLOW_UPDATE") == "1" {
 		if err := os.WriteFile(path, want, 0o644); err != nil {
 			t.Fatal(err)
@@ -200,8 +203,7 @@ func TestTenancyRules(t *testing.T) {
 // above allowlistCeiling, and when it falls the ceiling must follow it down
 // in the same change, so the ratchet never leaves slack to spend.
 func TestTenancyAllowlistOnlyShrinks(t *testing.T) {
-	root := repoRoot(t)
-	body, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(allowlistPath)))
+	body, err := os.ReadFile(allowlistPath)
 	if err != nil {
 		t.Fatal(err)
 	}
