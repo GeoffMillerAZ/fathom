@@ -9,6 +9,8 @@ import (
 
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/cuecontext"
+
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 // Budgets is one scope's `budgets` block: tool-class id → default answer
@@ -101,7 +103,29 @@ func LoadBudgets(path string, scope Scope) (Budgets, error) {
 	if v.Err() != nil {
 		return nil, &LoadError{Path: path, Scope: scope, Errs: []error{v.Err()}}
 	}
+	return decodeBudgets(path, scope, v)
+}
 
+// BudgetsFromProject reads the project scope's budgets key from a loaded
+// project value (docs/design/fathom-dir.md section 5) with no second parse:
+// the reading, value and error text, is LoadBudgets' on the file that sets
+// the key, or on .fathom/capabilities.cue when no file does.
+func BudgetsFromProject(p projectdir.Project) (Budgets, error) {
+	st := p.Source("budgets", projectdir.Capabilities)
+	if st.Absent() {
+		return nil, nil
+	}
+	if st.ReadErr != nil {
+		return nil, fmt.Errorf("capabilities: read %s: %w", st.Path, st.ReadErr)
+	}
+	if st.Value.Err() != nil {
+		return nil, &LoadError{Path: st.Path, Scope: ScopeProject, Errs: []error{st.Value.Err()}}
+	}
+	return decodeBudgets(st.Path, ScopeProject, st.Value)
+}
+
+// decodeBudgets decodes the budgets key of a compiled file.
+func decodeBudgets(path string, scope Scope, v cue.Value) (Budgets, error) {
 	// Find the block by iterating WITH optionals, so `budgets?:` is refused
 	// rather than read past as absent.
 	top, terr := v.Fields(cue.Optional(true))
