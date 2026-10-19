@@ -1,0 +1,34 @@
+{
+  "decode": "yaml",
+  "multi_document": false,
+  "detect": {
+    "globs": [
+      ".circleci/config.yml", ".circleci/config.yaml",
+      "**/.circleci/config.yml", "**/.circleci/config.yaml"
+    ]
+  },
+  "entities": [
+    { "select": "$.jobs.*", "where": { "is_map": true },
+      "kind": "job", "source_kind": "CircleCIJob", "name": "$key",
+      "signature": ".executor | .executor.name | .docker[*].image | .machine.image | .macos.xcode | .resource_class" },
+    { "select": "$.workflows.*", "where": { "is_map": true },
+      "kind": "target", "source_kind": "CircleCIWorkflow", "name": "$key" },
+    { "select": "$.commands.*", "where": { "is_map": true },
+      "kind": "mixin", "source_kind": "CircleCICommand", "name": "$key",
+      "signature": ".description" },
+    { "select": "$.executors.*", "where": { "is_map": true },
+      "kind": "resource", "source_kind": "CircleCIExecutor", "name": "$key",
+      "signature": ".docker[*].image | .machine.image | .macos.xcode | .resource_class" }
+  ],
+  "references": [
+    { "from": "target", "select": "$.jobs[*]", "value": "$", "to_kind": "job", "edge": "runs", "declared_only": true },
+    { "from": "target", "select": "$.jobs[*].*", "value": "$key", "to_kind": "job", "edge": "runs", "declared_only": true },
+    { "from": "target", "select": "$.jobs[*].*.requires[*]", "value": "$", "to_kind": "job", "edge": "requires", "declared_only": true },
+    { "from": "job", "select": "$.executor", "value": "$ | .name", "to_kind": "resource", "edge": "executor", "declared_only": true },
+    { "from": "job", "select": "$..steps[*]", "value": "$", "to_kind": "mixin", "edge": "steps", "declared_only": true },
+    { "from": "job", "select": "$..steps[*].*", "value": "$key", "to_kind": "mixin", "edge": "steps", "declared_only": true },
+    { "from": "mixin", "select": "$..steps[*]", "value": "$", "to_kind": "mixin", "edge": "steps", "declared_only": true },
+    { "from": "mixin", "select": "$..steps[*].*", "value": "$key", "to_kind": "mixin", "edge": "steps", "declared_only": true }
+  ],
+  "cross_file": []
+}

@@ -204,6 +204,10 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 		// there, not through the generic YAML extractor the extension names.
 		extExtractor, ok = p.toolExts[ToolGitLabCI]
 	}
+	if !ok && (ext == ".yml" || ext == ".yaml") && connector.ClassifyDialect(dialectRules(), relFile, content).Dialect == "circleci" {
+		// .circleci/config.yml, as ingest's classifier sends it (LB-Q-circleci).
+		extExtractor, ok = p.toolExts[ToolCircleCI]
+	}
 	if !ok && (ext == ".yml" || ext == ".yaml") && strings.Contains(filepath.ToSlash(relFile), ".github/workflows/") {
 		// A workflow is the github-actions dialect's, as ingest dispatches it (LB-F306).
 		extExtractor, ok = p.toolExts[ToolGHA]

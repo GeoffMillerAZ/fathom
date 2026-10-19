@@ -1,0 +1,8 @@
+{
+  "symbols": [
+    { "name": "build", "kind": "CircleCIJob", "package": "legacy", "line": 3, "end_line": 10, "signature": "circleci/golang:1.12", "tier": "verified" },
+    { "name": "test", "kind": "CircleCIJob", "package": "legacy", "line": 11, "end_line": 15, "tier": "verified" },
+    { "name": "build_and_test", "kind": "CircleCIWorkflow", "package": "legacy", "line": 18, "end_line": 23, "calls": ["build", "test"], "tier": "verified" }
+  ],
+  "cross_file": []
+}

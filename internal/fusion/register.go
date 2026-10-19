@@ -319,6 +319,16 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	}
 	p.toolExts[ToolGitLabCI] = gitlabCI
 
+	// CircleCI (LB-Q-circleci, language-breadth: new, a doc-engine tool format,
+	// no incumbent). A .circleci/config.yml reaches it through classifyYAML's
+	// path signal and toolExts, as GitLab CI does; ReingestFile makes the same
+	// path decision.
+	circleCI, err := extractor.NewDocDialectExtractor("circleci")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect circleci: %v", err))
+	}
+	p.toolExts[ToolCircleCI] = circleCI
+
 	// AWS CloudFormation / SAM (LB-Q-cloudformation, language-breadth: new, a
 	// doc-engine tool format, no incumbent). A template claims no name: a
 	// .yaml or .yml reaches it through classifyYAML's content signal, last of

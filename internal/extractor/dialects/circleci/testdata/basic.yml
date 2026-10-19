@@ -1,0 +1,97 @@
+version: 2.1
+
+orbs:
+  node: circleci/node@5.1.0
+
+parameters:
+  run-deploy:
+    type: boolean
+    default: false
+
+executors:
+  base:
+    docker:
+      - image: cimg/base:stable
+    resource_class: small
+  runner:
+    machine:
+      image: ubuntu-2204:current
+
+commands:
+  setup:
+    description: Install the toolchain
+    steps:
+      - checkout
+      - run: make deps
+  build-all:
+    steps:
+      - setup
+      - run: make build
+      - when:
+          condition: << pipeline.parameters.run-deploy >>
+          steps:
+            - notify
+  notify:
+    parameters:
+      channel:
+        type: string
+        default: ci
+    steps:
+      - run: echo << parameters.channel >>
+
+jobs:
+  build:
+    executor: base
+    steps:
+      - setup
+      - build-all
+      - node/install-packages
+  test:
+    executor:
+      name: runner
+    steps:
+      - checkout
+      - setup:
+          channel: dev
+      - run: make test
+  lint:
+    docker:
+      - image: cimg/go:1.22
+    steps:
+      - checkout
+      - run: make lint
+  deploy:
+    executor: base
+    steps:
+      - notify:
+          channel: prod
+
+workflows:
+  version: 2
+  main:
+    jobs:
+      - build
+      - lint
+      - test:
+          requires:
+            - build
+      - hold:
+          type: approval
+          requires: [test, lint]
+      - deploy:
+          requires:
+            - hold
+          filters:
+            branches:
+              only: main
+  nightly:
+    triggers:
+      - schedule:
+          cron: "0 0 * * *"
+          filters:
+            branches:
+              only: main
+    jobs:
+      - build
+      - node/test:
+          requires: [build]
