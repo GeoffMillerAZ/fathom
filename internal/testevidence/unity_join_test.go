@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
@@ -282,5 +283,56 @@ func TestUnityNUnitCurrentSymbolsRequiresIndexedSourceHash(t *testing.T) {
 	}
 	if got := UnityCurrentSymbols(e, methodRows); len(got) != 0 {
 		t.Fatal("changed raw source admitted")
+	}
+}
+
+// A runner filter may select just one passing parameterized case. Unity's
+// testcasecount then describes that selection, not the whole declared family.
+func TestUnityNUnitFilteredRunsStayUnjoined(t *testing.T) {
+	f := newUnityFixture(t)
+	symbol := addUnityTypedFixture(t, f)
+	raw := strings.ReplaceAll(nativeFixtureXML, `testcasecount="2"`, `testcasecount="1"`)
+	raw = strings.ReplaceAll(raw, `total="2" passed="2"`, `total="1" passed="1"`)
+	raw = strings.ReplaceAll(raw, `<test-case id="2" name="Fits(2)" fullname="Workshop.BowlTests.Fits(2)" classname="Workshop.BowlTests" methodname="Fits" result="Passed" duration="0.2"/>`, "")
+	if err := os.WriteFile(f.xml, []byte(raw), 0600); err != nil {
+		t.Fatal(err)
+	}
+	f.r.XML.SHA256 = unityDigest([]byte(raw))
+	f.r.Filter = "Workshop.BowlTests.Fits(1)"
+	f.r.Command = append(f.r.Command, "-testFilter", f.r.Filter)
+	f.envelope["cases"] = f.envelope["cases"].([]Case)[:1]
+	f.envelope["totals"] = Totals{Run: 1, Passed: 1}
+	f.envelope["artifacts"] = []ArtifactRef{{"unity-nunit-xml", "sha256:" + f.r.XML.SHA256}, {"unity-source-inputs", "sha256:" + f.r.Source.BeforeSHA256}}
+	f.saveEnvelope(t)
+	f.save(t)
+	e, err := f.load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if e.Native.Total != 1 || len(e.Native.Cohorts) != 1 || e.Native.Cohorts[0].Expected != 1 {
+		t.Fatal("fixture is not an actual one-case selected cohort")
+	}
+	joined, binding, err := UnityJoinCases(e, []core.SymbolNode{symbol})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(joined) != 1 || joined[0].TestSymbolKey != "" || len(binding.Cohorts) != 0 {
+		t.Fatalf("filtered passing leaf promoted to whole-method result: %+v %+v", joined, binding)
+	}
+	st := store.NewMemoryStore()
+	seedUnitySymbol(t, st, f, symbol)
+	run, err := UnityEvidenceRun(e, []core.SymbolNode{symbol})
+	if err != nil {
+		t.Fatal(err)
+	}
+	report, err := IngestRuns(context.Background(), st, "svc", "filtered", []Run{run})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.CasesJoined != 0 {
+		t.Fatal("filtered case joined on ingestion")
+	}
+	if got := nativeStatus(t, st, symbol.Key()); got.Status != "" {
+		t.Fatalf("filtered method runtime evidence %+v", got)
 	}
 }

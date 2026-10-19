@@ -40,7 +40,9 @@ func UnityJoinCases(e UnityEvidence, symbols []core.SymbolNode) ([]JoinedCase, U
 	for _, c := range e.Run.Cases {
 		joined = append(joined, JoinedCase{Case: c, SuiteName: e.Run.Suite.Name})
 	}
-	if e.Receipt.Symbols == nil {
+	// A selected native cohort count cannot prove the complete method family.
+	// Conservatively retain filtered execution as an unjoined observation.
+	if e.Receipt.Symbols == nil || e.Receipt.Filter != "" {
 		return joined, b, nil
 	}
 	raw, err := unityFileBytes(b.Root, UnityFile{e.Receipt.Symbols.SCIPPath, e.Receipt.Symbols.SCIPSHA256}, 256<<20)

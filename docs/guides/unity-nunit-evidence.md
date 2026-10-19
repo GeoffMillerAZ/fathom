@@ -36,6 +36,8 @@ Optional `symbols` references an actual SCIP artifact plus its source receipt, b
 
 Omitted/unusable symbols can still yield an explicitly unattested/unjoined parse, but cannot yield a native runtime PASS. It is acceptable for the producer to omit symbols when there is no current real index; do not repair an old index's source receipt to manufacture freshness. Parser-only fixtures must never enter test_runs.
 
+Any nonempty native testFilter stays unjoined/UNKNOWN: selected cohort counts do not prove the unfiltered method family, and this version does not interpret filter grammar. The full filtered observation may still be admitted.
+
 For a requested method, the newest complete matching native run is evaluated as a cohort: any failed variant => FAIL; all expected variants passed => PASS; skipped/inconclusive/explicit/missing variants or stale/absent/mixed receipt/source => UNKNOWN. Full raw outcomes/labels remain available. An older pass never overrides a newer unknown/incomplete result. Use a canonical symbol key or the full namespace/class/method for runtime lookup. A bare method is accepted only when unique; class-only suffixes and bare/namespace/overload ambiguity cannot select an arbitrary family. These observations do not invent framework dispatch/call edges, runtime coverage of reached functions, or human/game quality.
 
 ## CLI and storage
