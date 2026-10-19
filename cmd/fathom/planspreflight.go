@@ -293,6 +293,17 @@ var preflightOpenPorts = func(stderr io.Writer) *decide.Ports {
 	return openDecisionPorts(loaded, "", resolveCallLogPath(), "fathom plans context", stderr)
 }
 
+// preflightPortsAtSite is ports asking from the preflight site, so the
+// port's per-site cap and miss kill judge `--score` (KS-10, KS-12).
+func preflightPortsAtSite(ports *decide.Ports) *decide.Ports {
+	if ports == nil {
+		return nil
+	}
+	sited := *ports
+	sited.Decider = decide.AtSite(ports.Decider, decide.SitePreflight)
+	return &sited
+}
+
 // runPreflight prints the preflight of task to stdout. Direct mode only
 // (--store): the profile reads the index's call graph, obligations and
 // certifications, which the daemon path does not expose to the CLI.
@@ -325,7 +336,7 @@ func runPreflight(ctx context.Context, task verify.Task, planFile, service, stor
 	profile := console.DifficultyProfile(in)
 	sc := console.Value[console.ScoreReading]{}
 	if score {
-		sc = console.PreflightScoreFor(ctx, preflightOpenPorts(stderr), profile)
+		sc = console.PreflightScoreFor(ctx, preflightPortsAtSite(preflightOpenPorts(stderr)), profile)
 	}
 	outcomes, _ := console.PreflightOutcomes(ctx, preflightLedgerPath(), preflightLedgerTail)
 	fmt.Fprint(stdout, renderPreflightText(console.Preflight(in, sc, filterOutcomes(outcomes, service)), planFile, score))

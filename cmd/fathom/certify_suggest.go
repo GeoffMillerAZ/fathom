@@ -205,10 +205,13 @@ func runCertifySuggest(args []string, ports *decide.Ports, now func() time.Time,
 	// summary names `not consulted (<class>)` even when the degrade line
 	// was already written for this session, site and class.
 	var missed string
+	// The verb asks from its own site, so the port's per-site cap and miss
+	// kill judge it (KS-10, KS-12).
+	asker := decide.AtSite(ports.Decider, decide.SiteCertifySuggest)
 	for _, chunk := range chunks {
 		req := buildCertifySuggestRequest(chunk)
 		callStart := time.Now()
-		resp, derr := ports.Decider.Decide(ctx, req)
+		resp, derr := asker.Decide(ctx, req)
 		if derr != nil {
 			ports.Recorder.RecordError("certify_suggest", ports.Decider.Name(), "", len(req.Questions), time.Since(callStart), derr)
 			var degraded *decide.DegradedError
