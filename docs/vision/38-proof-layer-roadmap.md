@@ -329,6 +329,10 @@ the mods program, unless the owner reorders.
     (`docs/plans/responsible-tenant.md` §G), designed with RT-M13's retune because shed on host pressure is what
     evicts the graph; it ships before 2026-10-20 00:00Z so RT-M1's restarted window, 2026-10-20 to 2026-10-27,
     certifies the retuned ladder. RT-193 (the unmanaged default) waits for RT-M1 PASS.
+  - 2026-10-19 (owner-architect): ADR-061 accepted with amendments A1-A7. Accepting does not schedule: fathom-dir
+    (`docs/plans/fathom-dir.md`, G35) joins as a filler behind the mods program and the tenancy budget fix, wave 1
+    (FD-1 to FD-9) first, within the two-wave limit. FD-17 waits on RT-M1 PASS; FD-23, FD-24 and FD-M3 wait on an
+    app-kit release carrying the `pack:` header and fixtures.
 
 Mods phase 1 (Go and markdown) starts when readouts phase 0 lands (RO-3 to RO-18 verified, RO-M0 filed). RO-M1's 14
 days of observe need time, not a wave, so they run beside it: section 9.6's rule reads a readouts row that waits on
