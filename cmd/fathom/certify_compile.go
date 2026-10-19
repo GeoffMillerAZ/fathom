@@ -48,6 +48,18 @@ const (
 // the real system git binary (certify.ExecGit) — the same repo root the
 // caller is already ingesting from.
 func runCertifyCompile(ctx context.Context, st store.Store, service, watermark, repoDir string, stdout, stderr io.Writer, quiet bool) {
+	runCertifyCompileGated(ctx, st, service, watermark, repoDir, stdout, stderr, quiet, true)
+}
+
+// certifySweepFn is the sweep runCertifyCompileGated calls; a package var
+// so a test can count calls through the CLI ingest entry point.
+var certifySweepFn = certify.SweepCertifications
+
+// runCertifyCompileGated is runCertifyCompile with the sweep gate: sweep is
+// false for an ingest that read no file and picked up no new test run,
+// where nothing a sweep checks (a test or reached symbol moved or gone, a
+// new attested run) can have changed.
+func runCertifyCompileGated(ctx context.Context, st store.Store, service, watermark, repoDir string, stdout, stderr io.Writer, quiet, sweep bool) {
 	step, err := certifyNextStep(ctx, st, service, watermark)
 	if err != nil {
 		fmt.Fprintf(stderr, "warning: certify: hash-gate check: %v\n", err)
@@ -57,7 +69,13 @@ func runCertifyCompile(ctx context.Context, st store.Store, service, watermark, 
 	case certifyNothing:
 		return
 	case certifySweep:
-		report, err := certify.SweepCertifications(ctx, st, service, repoDir, certify.ExecGitContext(ctx))
+		if !sweep {
+			if !quiet {
+				fmt.Fprintln(stdout, "certify: sweep skipped (no file read, no new test run)")
+			}
+			return
+		}
+		report, err := certifySweepFn(ctx, st, service, repoDir, certify.ExecGitContext(ctx))
 		if err != nil {
 			fmt.Fprintf(stderr, "warning: certify: sweep: %v\n", err)
 			return

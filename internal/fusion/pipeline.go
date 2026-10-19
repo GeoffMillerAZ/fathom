@@ -80,6 +80,9 @@ type Report struct {
 	// StatSkipped is how many of Skipped were never read (RT-102): their
 	// (size, mtime, inode) and stored fingerprint matched the last ingest's.
 	StatSkipped int
+	// Deleted is how many stored source_refs this ingest found gone from
+	// the Discover set (deleted or newly ignored files).
+	Deleted int
 	// PeakInflightBytes is the most file content this ingest held at once
 	// (RT-103) — bounded by Config.InflightBytes whatever the corpus.
 	PeakInflightBytes int64

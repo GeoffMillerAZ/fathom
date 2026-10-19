@@ -8,9 +8,12 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -196,4 +199,60 @@ func TestRunCertifyCompile_NoDeclarationsNeverSweeps(t *testing.T) {
 			t.Errorf("edge reads = %d, want 1: the skipped compile must hand over to the sweep", cs.edgeReads)
 		}
 	})
+}
+
+// TestNoOpIngestSkipsTheCertificateSweep (O1270): a second ingest with
+// nothing changed (no file read, no new run) calls no sweep; a changed
+// file or a new run does.
+func TestNoOpIngestSkipsTheCertificateSweep(t *testing.T) {
+	repo, storePath, commit := setUpSweepFixture(t)
+
+	calls := 0
+	orig := certifySweepFn
+	certifySweepFn = func(ctx context.Context, st store.Store, service, repoDir string, git certify.GitRunner) (certify.Report, error) {
+		calls++
+		return orig(ctx, st, service, repoDir, git)
+	}
+	t.Cleanup(func() { certifySweepFn = orig })
+
+	ingest := func() string {
+		t.Helper()
+		code, stdout, stderr := runInDir(t, repo.root, []string{"ingest", "--service", "cart-svc", "--path", repo.root, "--store", storePath})
+		if code != 0 {
+			t.Fatalf("ingest exit = %d, stderr: %s", code, stderr)
+		}
+		return stdout
+	}
+
+	// Age every file past the stat gate's racy window so the second
+	// ingest reads nothing.
+	old := time.Now().Add(-time.Hour)
+	_ = filepath.WalkDir(repo.root, func(p string, d fs.DirEntry, err error) error {
+		if err == nil && !d.IsDir() && !strings.Contains(p, string(filepath.Separator)+".git"+string(filepath.Separator)) {
+			_ = os.Chtimes(p, old, old)
+		}
+		return nil
+	})
+	ingest() // reads every file once at the aged stats
+	calls = 0
+
+	out := ingest()
+	if calls != 0 {
+		t.Fatalf("no-op ingest called the sweep %d time(s), want 0", calls)
+	}
+	if !strings.Contains(out, "certify: sweep skipped") {
+		t.Errorf("no-op ingest does not say the sweep was skipped: %s", out)
+	}
+
+	repo.writePlan("results/run-2.json", sweepFixtureEnvelope("k2", commit, "2026-09-24T00:00:00Z", "fail", "TestRerun"))
+	ingest()
+	if calls != 1 {
+		t.Fatalf("ingest with a new run called the sweep %d time(s), want 1", calls)
+	}
+
+	repo.writePlan("rerun_test.go", sweepFixtureTest("TestRerun", "I3")+"\n// moved\n")
+	ingest()
+	if calls != 2 {
+		t.Fatalf("ingest with a changed file called the sweep %d time(s), want 2", calls)
+	}
 }
