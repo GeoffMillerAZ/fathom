@@ -538,7 +538,7 @@
       "package": "shapes",
       "line": 155,
       "end_line": 157,
-      "signature": "fn works()",
+      "signature": "#[test] fn works()",
       "calls": [
         "assert",
         "zero"

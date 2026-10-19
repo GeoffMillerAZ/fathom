@@ -261,6 +261,11 @@ import "struct"
 	// qualify_as_target: an extension/impl block qualifies its members
 	// under the type it extends, not under itself.
 	qualify_as_target?: bool
+	// titled: the definition is named by its string title, quoted, and one
+	// inside a titled definition of the same kind by both titles (a jest
+	// test block inside a describe block: "sum" "adds"); the quotes keep a
+	// title from reading as a name a call resolves to.
+	titled?: bool
 }
 
 #OracleName: "ctags" | "scip" | "tool" | "tags-cli"

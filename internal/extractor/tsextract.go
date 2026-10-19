@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"path"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -50,6 +51,7 @@ type tsDefKind struct {
 	Container bool
 	Callable  bool
 	Signed    bool // manifest signature.kinds: signed though no callable (LB-F290)
+	Titled    bool // manifest titled: named by its quoted title, under an enclosing titled definition of its kind (TQ-27)
 }
 
 // tsDialectRules is one dialect manifest compiled for the engine: its
@@ -283,7 +285,7 @@ func compileDialectRules(d Dialect) (*tsDialectRules, error) {
 	r.moduleKind = moduleKindOf(d)
 	r.injectionHost = d.InjectionHost
 	for key, k := range d.Kinds {
-		r.kinds[key] = tsDefKind{Kind: core.SourceKind(k.SourceKind), Container: k.Container, Callable: k.Callable}
+		r.kinds[key] = tsDefKind{Kind: core.SourceKind(k.SourceKind), Container: k.Container, Callable: k.Callable, Titled: k.Titled}
 	}
 	for _, key := range d.Signature.Kinds {
 		k, ok := r.kinds[key]
@@ -620,6 +622,7 @@ func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, 
 
 	defs, calls, attaches, typeRefs := splitTSMatchesWith(matches, rules.kinds, src, rules.nameNormalizer(), rules.qualifyCalls)
 	defs = oneDefPerNode(defs)
+	tsSignatureLeads(matches, defs)
 	e.typeRefs.Add(int64(typeRefs))
 	resolveTSParents(defs)
 	qualifyTSDefs(defs, rules)
@@ -791,6 +794,7 @@ type tsDef struct {
 	container  bool
 	callable   bool
 	signed     bool // a signature.kinds kind: signed like a callable (LB-F290)
+	titled     bool // the kind's titled (TQ-27): a quoted title, nested under an enclosing titled def of its kind
 	name       string
 	start, end uint32
 	line       int
@@ -805,11 +809,15 @@ type tsDef struct {
 	parent    int    // index into the defs slice, -1 if none
 	bodyStart uint32 // start of the @body capture, when hasBody
 	hasBody   bool
-	pkg       string // @scope.package's answer (LB-F5), "" for the file default
-	qualName  string
-	callSet   map[string]struct{}
-	calls     []string
-	pattern   uint16 // the query pattern that named it (oneDefPerNode)
+	// sigStart is where the signature starts when it does not start at the
+	// node: the first @signature.lead of the chain ending here (TQ-27).
+	sigStart    uint32
+	hasSigStart bool
+	pkg         string // @scope.package's answer (LB-F5), "" for the file default
+	qualName    string
+	callSet     map[string]struct{}
+	calls       []string
+	pattern     uint16 // the query pattern that named it (oneDefPerNode)
 }
 
 type tsCallSite struct {
@@ -1037,11 +1045,15 @@ func splitTSMatchesWith(matches []tsengine.Match, kinds map[string]tsDefKind, sr
 		if name == "" {
 			continue
 		}
+		if dk.Titled {
+			name = strconv.Quote(name)
+		}
 		d := &tsDef{
 			kind:      dk.Kind,
 			container: dk.Container,
 			callable:  dk.Callable,
 			signed:    dk.Signed,
+			titled:    dk.Titled,
 			name:      name,
 			start:     defNode.StartByte,
 			end:       defNode.EndByte,
@@ -1225,9 +1237,10 @@ func tsEndLine(src []byte, d *tsDef) int {
 }
 
 // tsSignature is a callable's signature (LB-F3, design §3.3): the
-// definition's source from its start to the start of its @body capture, or
-// its first line when the query captured no body; whitespace runs collapsed
-// to one space, trimmed, and capped at maxChars runes with a trailing "…".
+// definition's source from its start (or its first @signature.lead,
+// tsSignatureLeads) to the start of its @body capture, or to the end of its
+// first line when the query captured no body; whitespace runs collapsed to
+// one space, trimmed, and capped at maxChars runes with a trailing "…".
 func tsSignature(src []byte, d *tsDef, maxChars int) string {
 	end := d.end
 	if d.hasBody {
@@ -1238,7 +1251,11 @@ func tsSignature(src []byte, d *tsDef, maxChars int) string {
 	if end <= d.start || int(end) > len(src) {
 		return ""
 	}
-	sig := strings.Join(strings.Fields(string(src[d.start:end])), " ")
+	start := d.start
+	if d.hasSigStart && d.sigStart < start {
+		start = d.sigStart
+	}
+	sig := strings.Join(strings.Fields(string(src[start:end])), " ")
 	if maxChars <= 0 {
 		maxChars = 200
 	}
@@ -1295,6 +1312,8 @@ func qualifyTSDefs(defs []*tsDef, spec *tsDialectRules) {
 		d := defs[i]
 		var q string
 		switch {
+		case d.titled && d.parent >= 0 && defs[d.parent].titled && defs[d.parent].kind == d.kind:
+			q = resolve(d.parent) + " " + d.name
 		case d.container:
 			if spec.chainContainers && d.parent >= 0 && defs[d.parent].container {
 				q = resolve(d.parent) + spec.containerSep + d.name

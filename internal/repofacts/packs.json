@@ -1,5 +1,5 @@
 {
-  "comment": "Dialect-pack data (vision 42 D2, K15): each ecosystem's framework conventions for test files, read by repofacts' convention basis. Each pack names the dialect it belongs to and the file extensions its patterns apply to. test_suffixes, test_prefixes and test_infixes match the file's base name; test_dirs are directory segments under which every file of the pack is a test; fixture_names are base names of test-support files a runner loads but does not collect; support_dirs are directory segments under which a pack file that is not a test is test support (fixture); test_dir_prefixes are base-name prefixes that mark a test only under a test directory (Surefire's Test* include, which applies to the test source tree). Sources are each runner's own documented default collection: go test, pytest's python_files, jest's testMatch and vitest's include, PHPUnit's suffix, Maven Surefire's includes, RSpec's pattern, cargo's tests/ target directory.",
+  "comment": "Dialect-pack data (vision 42 D2, K15): each ecosystem's framework conventions for test files, read by repofacts' convention basis. Each pack names the dialect it belongs to and the file extensions its patterns apply to. test_suffixes, test_prefixes and test_infixes match the file's base name; test_dirs are directory segments under which every file of the pack is a test; fixture_names are base names of test-support files a runner loads but does not collect; support_dirs are directory segments under which a pack file that is not a test is test support (fixture); test_dir_prefixes are base-name prefixes that mark a test only under a test directory (Surefire's Test* include, which applies to the test source tree). Sources are each runner's own documented default collection: go test, pytest's python_files, jest's testMatch and vitest's include, PHPUnit's suffix, Maven Surefire's includes, RSpec's pattern, cargo's tests/ target directory. Test entries (the symbols a runner collects inside a test file, TQ-27): each adds to the core rule's Test prefix (go test's own, which also holds pytest's Test classes): entry_prefixes match the last segment of a symbol's name (pytest's test functions, PHPUnit's test methods); entry_attributes are the attribute or annotation names that lead a symbol's signature (JUnit's @Test, xUnit's [Fact] and [Theory], NUnit's [Test], MSTest's [TestMethod], PHPUnit's #[Test], Rust's #[test]); entry_calls are the calls a block-style runner registers a test with (jest, vitest and mocha: describe, it, test), read from the block's signature.",
   "packs": [
     {
       "dialect": "go",
@@ -23,6 +23,9 @@
       ],
       "fixture_names": [
         "conftest.py"
+      ],
+      "entry_prefixes": [
+        "test"
       ]
     },
     {
@@ -42,6 +45,11 @@
       ],
       "support_dirs": [
         "__mocks__"
+      ],
+      "entry_calls": [
+        "describe",
+        "it",
+        "test"
       ]
     },
     {
@@ -61,6 +69,11 @@
       ],
       "support_dirs": [
         "__mocks__"
+      ],
+      "entry_calls": [
+        "describe",
+        "it",
+        "test"
       ]
     },
     {
@@ -75,6 +88,9 @@
         "IT.java"
       ],
       "test_dir_prefixes": [
+        "Test"
+      ],
+      "entry_attributes": [
         "Test"
       ]
     },
@@ -109,6 +125,12 @@
       "test_suffixes": [
         "Test.cs",
         "Tests.cs"
+      ],
+      "entry_attributes": [
+        "Fact",
+        "Theory",
+        "Test",
+        "TestMethod"
       ]
     },
     {
@@ -118,6 +140,12 @@
       ],
       "test_suffixes": [
         "Test.php"
+      ],
+      "entry_prefixes": [
+        "test"
+      ],
+      "entry_attributes": [
+        "Test"
       ]
     },
     {
@@ -140,6 +168,9 @@
       ],
       "test_dirs": [
         "tests"
+      ],
+      "entry_attributes": [
+        "test"
       ]
     },
     {

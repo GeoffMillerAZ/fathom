@@ -7,15 +7,8 @@
       "line": 1,
       "end_line": 64,
       "calls": [
-        "build",
-        "check",
-        "describe",
-        "handle",
         "init",
-        "it",
-        "makeRequest",
-        "s.trim",
-        "verify"
+        "s.trim"
       ],
       "tier": "verified"
     },
@@ -149,6 +142,35 @@
       "calls": [
         "drop",
         "persist"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "\"handle\"",
+      "kind": "JSTest",
+      "package": "scope",
+      "line": 56,
+      "end_line": 64,
+      "signature": "describe('handle', () =>",
+      "calls": [
+        "build",
+        "describe"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "\"handle\" \"answers\"",
+      "kind": "JSTest",
+      "package": "scope",
+      "line": 58,
+      "end_line": 63,
+      "signature": "it('answers', async () =>",
+      "calls": [
+        "check",
+        "handle",
+        "it",
+        "makeRequest",
+        "verify"
       ],
       "tier": "verified"
     }

@@ -126,6 +126,14 @@
   name: (identifier) @name
   ";" @body) @definition.function
 
+; An outer attribute is the sibling of the item it annotates, not its child:
+; each one leads the attribute or function right after it, so the
+; function's signature starts at its first attribute (`#[test] fn adds()`,
+; how a test entry is read, TQ-27).
+((attribute_item) @signature.lead
+  .
+  [(attribute_item) (function_item) (function_signature_item)] @signature.of)
+
 ; Impl blocks are named by the type they implement, whether inherent (`impl Foo`)
 ; or a trait impl (`impl Trait for Foo`); generic arguments, a path prefix and a
 ; reference are dropped, the head type's own name kept (the incumbent kept the

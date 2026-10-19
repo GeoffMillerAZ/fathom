@@ -133,10 +133,9 @@ func ClassifyTests(ctx context.Context, st store.Store, service, corpusRoot stri
 		if _, ok := fileOf[k]; !ok {
 			fileOf[k] = n.FilePath
 		}
-		// A test entry: a Test-named function in a test file, the
-		// convention callgraph.TestImpact reads (repofacts, RF-2); a
+		// A test entry in a test file (repofacts, RF-2, TQ-27); a
 		// production TestHelper is not one.
-		if repofacts.IsTestEntry(n.Name, n.FilePath) {
+		if repofacts.IsTestEntry(n.Name, n.FilePath, n.Signature) {
 			if _, ok := testNode[k]; !ok {
 				testNode[k] = n
 			}
