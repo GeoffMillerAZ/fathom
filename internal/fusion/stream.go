@@ -14,19 +14,23 @@ package fusion
 // whole corpus's bytes at once (the audit's ingest-pass2-holds-whole-corpus
 // hazard) and every ingest read every file.
 //
-// The prior stats come from the store's file_stats when the storage lane's
-// source is wired (WithStatSource), else from this pipeline's record of its
-// own last successful ingest of the service; the live stats are handed to
-// WithStatSink at the final commit. A pipeline with neither (a one-shot CLI
-// ingest) reads every file, as before; so does Config.Rehash.
+// The prior stats come from the store's file_stats when a source is wired
+// (WithStatSource; WithStoreStats installs the file_stats reader, as
+// serve-http and the CLI ingest do, RT-180), else from this pipeline's record
+// of its own last successful ingest of the service. The final commit writes
+// the live stats to file_stats (ingestSummary) and hands them to
+// WithStatSink. A pipeline with neither source nor record reads every file;
+// so does Config.Rehash.
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
 // DefaultInflightBytes is the pass-2 window: content bytes read and not yet
@@ -62,11 +66,67 @@ type StatRecord struct {
 var racyWindow = 2 * time.Second
 
 // WithStatSource installs where pass 1's prior stats come from (the store's
-// file_stats once the storage lane lands it): a map by path, or ok=false
-// when the service has none (everything is read). nil restores the
-// pipeline's own record of its last ingest.
+// file_stats, WithStoreStats): a map by path, or ok=false when the service
+// has none (everything is read). nil restores the pipeline's own record of
+// its last ingest.
 func (p *Pipeline) WithStatSource(fn func(ctx context.Context, service string) (map[string]StatRecord, bool)) {
 	p.statSource = fn
+}
+
+// WithStoreStats makes the store's file_stats pass 1's prior stats (RT-180),
+// so a pipeline built fresh over a store (a daemon restart, a one-shot CLI
+// ingest) reads only the files whose stat moved since the last ingest the
+// store committed. The final commit already writes those rows: no second
+// write path, and nothing is held in memory between ingests.
+func (p *Pipeline) WithStoreStats() {
+	p.WithStatSource(p.storeStats)
+}
+
+// storeStats reads service's file_stats rows as stat records; only rows
+// written as vouching records (statRowHash) are kept. ok is false when the
+// service has none or the read fails: every file is read.
+func (p *Pipeline) storeStats(ctx context.Context, service string) (map[string]StatRecord, bool) {
+	files, ok, err := p.st.FileStats(ctx, service)
+	if err != nil || !ok {
+		return nil, false
+	}
+	m := make(map[string]StatRecord, len(files))
+	for _, f := range files {
+		if r, vouches := statRecordFromRow(f); vouches {
+			m[r.Path] = r
+		}
+	}
+	return m, len(m) > 0
+}
+
+// statRowHash is the file_stats content_hash a vouching record is written
+// with: "<epoch>:<flags>:<hash>", flags "s" when a sniff classified the
+// file. file_stats has no column for the ExtractorEpoch or the sniff
+// verdict, so the hash carries them; a bare hash (a racily clean file, a
+// row written before RT-180) or "" never vouches.
+func statRowHash(r StatRecord) string {
+	flags := ""
+	if r.Sniffed {
+		flags = "s"
+	}
+	return r.Epoch + ":" + flags + ":" + r.ContentHash
+}
+
+// statRecordFromRow is the stat record a file_stats row carries; vouches is
+// false unless the row was written by statRowHash.
+func statRecordFromRow(f store.FileStat) (StatRecord, bool) {
+	parts := strings.Split(f.ContentHash, ":")
+	if len(parts) != 3 || parts[0] == "" || parts[2] == "" || (parts[1] != "" && parts[1] != "s") {
+		return StatRecord{}, false
+	}
+	return StatRecord{
+		Path:        f.Path,
+		FileStat:    connector.FileStat{Size: f.Size, MtimeNS: f.MtimeNS, Ino: f.Ino},
+		ContentHash: parts[2],
+		Epoch:       parts[0],
+		Excluded:    f.Excluded,
+		Sniffed:     parts[1] == "s",
+	}, true
 }
 
 // WithStatSink installs the receiver of each successful ingest's live stats
@@ -141,12 +201,12 @@ func (p *Pipeline) statChangedFiles(ctx context.Context, serviceID string, refs 
 	return g
 }
 
-// rememberStats records a successful ingest's live stats for the next
-// ingest's pass 1 and hands them to the sink. Only files statted and hashed
-// this run are kept; an unreadable one is read again next time.
-func (p *Pipeline) rememberStats(ctx context.Context, service string, g statGate) {
+// records is the ingest's live stats the next ingest's pass 1 may vouch
+// from, stamped with ExtractorEpoch. Only files statted and hashed this run
+// are kept; an unreadable, unstatted or racily clean one is read again next
+// time.
+func (g statGate) records() []StatRecord {
 	recs := make([]StatRecord, 0, len(g.live))
-	m := make(map[string]StatRecord, len(g.live))
 	racyFrom := g.statAt.Add(-racyWindow).UnixNano()
 	for i, r := range g.live {
 		if !g.statted[i] || r.ContentHash == "" || r.MtimeNS >= racyFrom {
@@ -155,9 +215,19 @@ func (p *Pipeline) rememberStats(ctx context.Context, service string, g statGate
 		}
 		r.Epoch = ExtractorEpoch
 		recs = append(recs, r)
-		m[r.Path] = r
 	}
+	return recs
+}
+
+// rememberStats records a successful ingest's stat records (records(),
+// which the final commit wrote to file_stats) for the next ingest's pass 1
+// when no source is wired, and hands them to the sink.
+func (p *Pipeline) rememberStats(ctx context.Context, service string, recs []StatRecord) {
 	if p.statSource == nil {
+		m := make(map[string]StatRecord, len(recs))
+		for _, r := range recs {
+			m[r.Path] = r
+		}
 		p.mu.Lock()
 		p.storeStatMemoLocked(service, m)
 		p.mu.Unlock()

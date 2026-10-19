@@ -4,7 +4,10 @@ package fusion
 // ingest's final transaction writes to file_stats and service_summary.
 // Everything comes from the ingest itself — the discovered refs, the
 // sizes and hashes learned while fetching — plus one lstat per file for
-// mtime and inode; no file is read again.
+// mtime and inode; no file is read again. A file the stat gate may vouch
+// for next time (RT-180) is written with pass 1's own stat, taken before
+// its read, and its epoch-tagged hash (statRowHash), so a later pipeline
+// over this store compares exactly what this one would have remembered.
 
 import (
 	"os"
@@ -24,6 +27,10 @@ func ingestSummary(root string, run *ingestRun) (store.ServiceSummary, []store.F
 		return store.ServiceSummary{Bytes: -1}, nil
 	}
 	files := make([]store.FileStat, 0, len(run.refs))
+	vouch := make(map[string]StatRecord, len(run.stats))
+	for _, r := range run.stats {
+		vouch[r.Path] = r
+	}
 	excluded := map[string]int{}
 	if run.defaultIgnore > 0 {
 		excluded["default_ignored_dirs"] = run.defaultIgnore
@@ -47,7 +54,9 @@ func ingestSummary(root string, run *ingestRun) (store.ServiceSummary, []store.F
 				excluded[CountClassifiedBySniff]++
 			}
 		}
-		if root != "" && !filepath.IsAbs(ref.Path) {
+		if r, ok := vouch[ref.Path]; ok {
+			f.Size, f.MtimeNS, f.Ino, f.ContentHash = r.Size, r.MtimeNS, r.Ino, statRowHash(r)
+		} else if root != "" && !filepath.IsAbs(ref.Path) {
 			if fi, err := os.Lstat(filepath.Join(root, filepath.FromSlash(ref.Path))); err == nil {
 				f.MtimeNS = fi.ModTime().UnixNano()
 				f.Ino = inodeOf(fi)

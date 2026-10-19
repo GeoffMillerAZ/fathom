@@ -289,6 +289,9 @@ func (p *Pipeline) ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	if streamErr != nil {
 		return abandon(streamErr)
 	}
+	// RT-180: the records the next ingest's pass 1 vouches from — written
+	// to file_stats by the final commit, then remembered and sunk.
+	run.stats = gate.records()
 
 	// Read failures (IT-14): counted, named, sorted by path — never a silent
 	// zero and never fatal on their own. refs keeps every discovered file,
@@ -306,7 +309,7 @@ func (p *Pipeline) ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	finish := func(err error) (Report, error) {
 		if err == nil {
 			// RT-102: the next ingest's pass 1 compares against these.
-			p.rememberStats(ctx, svc.ID, gate)
+			p.rememberStats(ctx, svc.ID, run.stats)
 		}
 		if len(failures) == 0 {
 			return report, err

@@ -867,13 +867,17 @@ whole-service case.
 - (As built, RT-102/RT-103, `internal/fusion/stream.go`: pass 1 stats through the
   connector's optional `Stater` and reads a file only when its `(size, mtime_ns, ino)`
   moved, its stored fingerprint no longer equals the recorded hash, or the record was
-  written under another `ExtractorEpoch` (the `file_stats` row must carry the epoch, or an
+  written under another `ExtractorEpoch` (the `file_stats` row carries the epoch, or an
   epoch bump never reaches unchanged files — O9); a file whose mtime is within 2 s of its
   stat is racily clean and never vouched for by it (git's rule). The prior record is
-  `Pipeline.WithStatSource` when wired — the seam for the storage lane's `file_stats` —
-  else the pipeline's own record of its last successful ingest of the service (so the
-  long-lived daemon is stat-gated from its second ingest; a one-shot CLI ingest reads
-  everything until `file_stats` is wired, RT-180). That in-memory record holds at most
+  the store's `file_stats` (RT-180: serve-http and the CLI ingest call
+  `Pipeline.WithStoreStats`, which installs `WithStatSource`), so a restarted daemon or a
+  repeat one-shot ingest reads only the files whose stat moved. The final commit writes a
+  vouching row with pass 1's own stat, taken before the read, and its hash tagged
+  `<epoch>:<flags>:<hash>` (flags `s` for a sniffed file), since `file_stats` has no epoch
+  or sniff column under the table freeze; a bare hash (a racily clean file, a row from
+  before RT-180) never vouches. A pipeline with no source keeps its own record of its last
+  successful ingest of the service. That in-memory record holds at most
   250,000 files across the fleet (least recently ingested service evicted first), is
   forgotten on a remove or rename and dropped at refuse; losing it costs one full read,
   never a wrong answer. Each successful ingest hands its live records
