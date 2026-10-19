@@ -190,7 +190,41 @@ func hasFlag(args []string, name string) bool {
 	return false
 }
 
+// plistBody renders the launchd agent (schema 2, documented above hasFlag).
+// The program is the launcher beside bin (launcher.go), never bin itself:
+// macOS tracks the agent by its program's hash, and a deploy changes only
+// bin. WorkingDirectory is the fathom home that holds logDir: launchd
+// enters it and opens the logs there before the launcher runs, so the spawn
+// needs no other volume.
 func plistBody(label, bin, store, addr, logDir, callLog, pathEnv string, goEnv []string) string {
+	return renderPlist(label, launcherPathFor(bin), filepath.Dir(logDir), store, addr, logDir, callLog, pathEnv, goEnv)
+}
+
+// plistBodyDirect is `daemon install --direct`: the agent runs bin itself
+// and sets no WorkingDirectory, the shape before the launcher.
+func plistBodyDirect(label, bin, store, addr, logDir, callLog, pathEnv string, goEnv []string) string {
+	return renderPlist(label, bin, "", store, addr, logDir, callLog, pathEnv, goEnv)
+}
+
+// installPlistBody is the plist `daemon install` writes for exe: with the
+// launcher (written beside exe when absent or of another protocol), or
+// direct. launcher is "" for direct.
+func installPlistBody(direct bool, label, exe, store, addr, logDir, callLog, pathEnv string, goEnv []string) (body, launcher string, wrote bool, err error) {
+	if direct {
+		return plistBodyDirect(label, exe, store, addr, logDir, callLog, pathEnv, goEnv), "", false, nil
+	}
+	launcher, wrote, err = ensureLauncher(exe)
+	if err != nil {
+		return "", "", false, err
+	}
+	return plistBody(label, exe, store, addr, logDir, callLog, pathEnv, goEnv), launcher, wrote, nil
+}
+
+func renderPlist(label, program, workDir, store, addr, logDir, callLog, pathEnv string, goEnv []string) string {
+	workDirXML := ""
+	if workDir != "" {
+		workDirXML = "\n  <key>WorkingDirectory</key>" + plistStringXML(workDir)
+	}
 	var goEnvXML strings.Builder
 	for _, kv := range goEnv {
 		k, v, ok := strings.Cut(kv, "=")
@@ -225,7 +259,7 @@ func plistBody(label, bin, store, addr, logDir, callLog, pathEnv string, goEnv [
          command with "GOPATH entry is relative". Every daemon-side ingest of
          a Go service fell back to syntax-only edges (2026-09-12). Absolute
          values, written at install time from this shell's own go env. -->%s
-  </dict>
+  </dict>%s
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>
   <key>ThrottleInterval</key><integer>60</integer>
@@ -237,7 +271,7 @@ func plistBody(label, bin, store, addr, logDir, callLog, pathEnv string, goEnv [
   <key>StandardOutPath</key><string>%s/fathom-http.log</string>
   <key>StandardErrorPath</key><string>%s/fathom-http.err</string>
 </dict></plist>
-`, plistSchemaMarker, label, bin, store, addr, callLog, pathEnv, goEnvXML.String(), logDir, logDir)
+`, plistSchemaMarker, label, program, store, addr, callLog, pathEnv, goEnvXML.String(), workDirXML, logDir, logDir)
 }
 
 // daemonPathEnv builds the PATH launchd gives the daemon. launchd starts
@@ -305,6 +339,7 @@ func cmdDaemonInstall(args []string, stdout, stderr io.Writer) int {
 	addr := fs.String("addr", ":7575", "listen address")
 	binPath := fs.String("bin", "", "fathom binary to run (default: this executable, symlink-resolved)")
 	force := fs.Bool("force", false, "overwrite an existing agent with the same label")
+	direct := fs.Bool("direct", false, "run the binary itself as the agent's program instead of the fathomd launcher beside it (the earlier shape: on macOS every deploy then changes the program launchd tracks)")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -375,11 +410,24 @@ func cmdDaemonInstall(args []string, stdout, stderr io.Writer) int {
 
 	pathEnv := daemonPathEnv()
 	goEnv := daemonGoEnv()
-	if err := os.WriteFile(plistPath, []byte(plistBody(*label, exe, storePath, *addr, logDir, callLog, pathEnv, goEnv)), 0o644); err != nil {
+	body, launcher, wroteLauncher, err := installPlistBody(*direct, *label, exe, storePath, *addr, logDir, callLog, pathEnv, goEnv)
+	if err != nil {
+		fmt.Fprintf(stderr, "fathom daemon install: %v (or re-run with --direct to run the binary itself)\n", err)
+		return 1
+	}
+	if err := os.WriteFile(plistPath, []byte(body), 0o644); err != nil {
 		fmt.Fprintf(stderr, "error: writing %s: %v\n", plistPath, err)
 		return 1
 	}
-	fmt.Fprintf(stdout, "wrote %s\n  binary   %s\n  store    %s\n  addr     %s\n  call log %s\n  PATH     %s\n", plistPath, exe, storePath, *addr, callLog, pathEnv)
+	fmt.Fprintf(stdout, "wrote %s\n  binary   %s\n", plistPath, exe)
+	if launcher != "" {
+		state := "kept, current"
+		if wroteLauncher {
+			state = "written, a copy of the binary"
+		}
+		fmt.Fprintf(stdout, "  launcher %s (%s; deploys replace only the binary)\n", launcher, state)
+	}
+	fmt.Fprintf(stdout, "  store    %s\n  addr     %s\n  call log %s\n  PATH     %s\n", storePath, *addr, callLog, pathEnv)
 	for _, kv := range goEnv {
 		k, v, _ := strings.Cut(kv, "=")
 		fmt.Fprintf(stdout, "  %-8s %s\n", k, v)
@@ -427,7 +475,7 @@ func runDaemonStatus(args []string, stdout, stderr io.Writer, ops daemonOps) int
 	label, plistPath, post, postOK := installedPosture("")
 	var postureLine, postureFix string
 	if postOK {
-		if len(post.Drift) == 0 {
+		if len(postureDrift(post)) == 0 {
 			postureLine = fmt.Sprintf("schema %d (exit 0 stays down, 60 s throttle, Background)", post.Schema)
 		} else {
 			postureLine = postureReason(post)
@@ -455,7 +503,7 @@ func runDaemonStatus(args []string, stdout, stderr io.Writer, ops daemonOps) int
 		}
 		if postOK {
 			st.PlistSchema = post.Schema
-			st.PostureDrift = post.Drift
+			st.PostureDrift = postureDrift(post)
 			st.PostureRemedy = postureFix
 		}
 		st.Reachable, st.Detail = daemonHealthy(*url)

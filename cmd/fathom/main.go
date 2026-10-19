@@ -13,12 +13,18 @@ import (
 	"io"
 	"os"
 	"strings"
+	"syscall"
 
 	"github.com/geoffmilleraz/fathom/internal/scope"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
 func main() {
+	// The launchd agent's program is fathomd (launcher.go): before any other
+	// work, flag parsing included, it execs the fathom binary beside it.
+	if code, handled := runLauncher(os.Args, os.Environ(), launcherSys{Stat: os.Stat, Exec: syscall.Exec, Executable: os.Executable}, os.Stderr); handled {
+		os.Exit(code)
+	}
 	prepareProcess()
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
 }

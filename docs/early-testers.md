@@ -167,7 +167,12 @@ restarts itself when a new build is installed.
 3. **`~/.local/libexec/fathom/fathom daemon install`** writes
    `~/Library/LaunchAgents/dev.fathom.serve-http.plist` for that installed
    copy (store `~/.fathom/db/fathom.sqlite`) and starts it.
-   `fathom daemon status` must say reachable.
+   `fathom daemon status` must say reachable. The plist runs
+   `~/.local/libexec/fathom/fathomd`, a launcher copy of the binary that
+   immediately runs the `fathom` beside it. Deploys never rewrite it, so macOS
+   keeps allowing the agent to start however often you rebuild. An agent
+   installed before the launcher existed is moved to it by
+   `fathom daemon install --reconcile --label <label>`.
 4. **After every later rebuild, `task deploy`, never a raw `cp`.** `cp`
    truncates a running executable, and an unsigned copy loses the grant.
    `task deploy` ends by asserting the daemon serves the commit you built.
