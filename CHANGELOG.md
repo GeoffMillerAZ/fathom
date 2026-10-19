@@ -25,6 +25,7 @@ Release impact: minor
 - `scip-dotnet` typed imports require a source-bound sidecar; stale, incomplete or missing receipts refuse enrichment, invalidate that index's prior rows and evict served graph memos across client, CLI and daemon refresh paths. See `docs/guides/scip-source-receipts.md` for migration; legacy producers remain unchanged unless they opt in.
 
 ### Added
+- Native Unity NUnit XML admits only a matching producer-generated test-kit record and current source receipt; fresh typed C# method joins aggregate parameterized variants, while stale, skipped, incomplete and ambiguous results remain UNKNOWN and cannot become live certificates.
 - Unity assembly-definition discovery and capability reporting now share the `unity-asmdef` classification with the existing dialect, labelled syntax only; `.asmref` and `.meta` remain unsupported.
 - Unity `.asmdef` files expose declared assembly/reference facts without call edges; `indexbench lang-unity-asmdef` calibrates per-file-bound ownership, named references and a strict engine boundary against retained Editor receipts, with unsupported cases explicit.
 

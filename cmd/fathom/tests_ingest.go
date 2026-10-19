@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"path/filepath"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/certify"
@@ -31,12 +32,18 @@ func cmdTestsIngest(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("tests ingest", stderr)
 	manifestDir := fs.String("manifest", ".", "service repo root: tests/*.cue live under <dir>/tests/, and '// certifies:' markers are scanned under <dir>")
 	resultsPath := fs.String("results", "", "attested #TestResult envelope file, or a directory of *.json envelopes")
+	unityXML := fs.String("unity-nunit", "", "native Unity NUnit XML (requires --unity-receipt; mutually exclusive with --results)")
+	unityReceipt := fs.String("unity-receipt", "", "source-bound active native Unity receipt and mandatory test-kit envelope")
 	service := fs.String("service", "", "service ID (default: resolved from the repo directory name, the same guess the Claude Code hooks use)")
 	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db)")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
 
+	if (*unityXML != "" || *unityReceipt != "") && (*unityXML == "" || *unityReceipt == "" || *resultsPath != "") {
+		fmt.Fprintln(stderr, "error: native Unity ingestion requires --unity-nunit and --unity-receipt, mutually exclusive with --results")
+		return 1
+	}
 	svc := *service
 	if svc == "" {
 		svc = defaultTestsCoverageService()
@@ -74,6 +81,32 @@ func cmdTestsIngest(args []string, stdout, stderr io.Writer) int {
 		if err != nil {
 			fmt.Fprintf(stderr, "error: load envelopes from %s: %v\n", *resultsPath, err)
 			return 1
+		}
+	}
+	if *unityXML != "" {
+		root, rootErr := filepath.Abs(*manifestDir)
+		if rootErr != nil {
+			fmt.Fprintln(stderr, "error:", rootErr)
+			return 1
+		}
+		e, loadErr := testevidence.LoadUnityNUnitEvidence(ctx, root, *unityXML, *unityReceipt)
+		if loadErr != nil {
+			fmt.Fprintln(stderr, "error:", loadErr)
+			return 1
+		}
+		obs, queryErr := st.QueryObservations(ctx, svc, "")
+		if queryErr != nil {
+			fmt.Fprintln(stderr, "error:", queryErr)
+			return 1
+		}
+		run, joinErr := testevidence.UnityEvidenceRun(e, testevidence.UnityCurrentSymbols(e, obs))
+		if joinErr != nil {
+			fmt.Fprintln(stderr, "error:", joinErr)
+			return 1
+		}
+		runs = []testevidence.Run{run}
+		if e.Receipt.Symbols == nil {
+			fmt.Fprintln(stdout, "tests ingest: native run has no typed C# identity; all cases remain unjoined (runtime UNKNOWN)")
 		}
 	}
 	if len(runs) == 0 {

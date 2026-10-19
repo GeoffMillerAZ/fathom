@@ -41,6 +41,10 @@ func CertificateState(reached bool, runs []store.TestCaseRun) (state State, last
 		return StateUnproven, last, false
 	}
 
+	if last.NativeJSON != "" {
+		return StateUnproven, last, false
+	}
+
 	limit := len(runs)
 	if limit > 3 {
 		limit = 3
@@ -128,6 +132,12 @@ func CertificateStateAt(reached bool, runs []store.TestCaseRun, reachUnchangedSi
 	// newest run is broken outright, whether or not it was ever bound —
 	// a test that never passed has nothing for "was the pass trustworthy"
 	// to ask about yet.
+	// Native source-bound observations remain informational until the native
+	// live-certificate reading is adopted. Never promote them through this
+	// clean-commit ladder without runtime freshness/cohort validation.
+	if last.NativeJSON != "" {
+		return StateUnproven, last, flaky, "native runtime evidence is informational; not a live certificate", false, nil
+	}
 	if last.Status == "fail" {
 		return StateBroken, last, flaky, "", false, nil
 	}

@@ -105,6 +105,34 @@ func IngestRuns(ctx context.Context, st store.Store, service, watermark string, 
 	storeRuns := make([]store.TestRun, 0, len(runs))
 	for _, r := range runs {
 		joined, stats := JoinCasesToSymbols(r.Cases, r.Suite.Name, symbols)
+		nativeJSON, nativeID := "", ""
+		if r.Unity != nil {
+			e, err := LoadUnityNUnitEvidence(ctx, r.Unity.Root, r.Unity.XMLPath, r.Unity.ReceiptPath)
+			if err != nil {
+				return report, err
+			}
+			if e.ReceiptSHA256 != r.Unity.ReceiptSHA256 || e.Run.Digest != r.Digest || e.Receipt.RunID != r.Unity.RunID {
+				return report, unityError("native run changed before ingestion")
+			}
+			var binding UnityBinding
+			joined, binding, err = UnityJoinCases(e, UnityCurrentSymbols(e, obs))
+			if err != nil {
+				return report, unityError("join: %v", err)
+			}
+			b, err := json.Marshal(binding)
+			if err != nil {
+				return report, err
+			}
+			nativeJSON = string(b)
+			nativeID = binding.RunID
+			r = e.Run
+			stats.Joined = 0
+			for _, c := range joined {
+				if c.TestSymbolKey != "" {
+					stats.Joined++
+				}
+			}
+		}
 		report.CasesJoined += stats.Joined
 
 		totalsJSON, err := json.Marshal(r.Totals)
@@ -142,7 +170,7 @@ func IngestRuns(ctx context.Context, st store.Store, service, watermark string, 
 			ServiceID: service, RunDigest: r.Digest, Component: r.Suite.Component, Suite: r.Suite.Name,
 			StartedAt: r.StartedAt, Verdict: r.Verdict, TotalsJSON: string(totalsJSON), CoverageJSON: coverageJSON,
 			SignerTier: r.SignerTier, Watermark: watermark, Cases: cases,
-			Commit: r.Commit, Dirty: r.Dirty, Race: r.Race,
+			Commit: r.Commit, Dirty: r.Dirty, Race: r.Race, NativeRunID: nativeID, NativeJSON: nativeJSON,
 		})
 	}
 	if err := st.PutTestRuns(ctx, service, storeRuns); err != nil {

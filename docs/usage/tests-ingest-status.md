@@ -66,6 +66,8 @@ never stored, and each answer names the file it read.
 |---|---|---|
 | `--manifest` | `.` | service repo root: `tests/*.cue` live under `<dir>/tests/`, and `// certifies:` markers are scanned under `<dir>` |
 | `--results` | `""` | attested `#TestResult` envelope file, or a directory of `*.json` envelopes |
+| `--unity-nunit` | `""` | native Unity NUnit XML; requires `--unity-receipt`, mutually exclusive with `--results` |
+| `--unity-receipt` | `""` | active source-bound native receipt and its standard test-kit record; see [native Unity evidence](../guides/unity-nunit-evidence.md) |
 | `--service` | resolved from cwd | Service ID |
 | `--store` | `<repo>/workspace/db/fathom.sqlite` | store path |
 
@@ -74,3 +76,14 @@ never stored, and each answer names the file it read.
 | `--service` | resolved from cwd | Service ID |
 | `--store` | `<repo>/workspace/db/fathom.sqlite` | store path |
 | `--json` | `false` | Emit JSON instead of a table |
+
+
+Native Unity Test Framework XML is **NUnit3**, not JUnit. The explicit native
+adapter cross-checks a producer-generated standard `#TestResult` and active
+source receipt before ingestion. Its C# join needs a fresh SCIP definition and
+bound generated-project assembly membership; descriptive or parameterized test
+names alone never join. Runtime reads recheck the active receipt and input
+hashes, then aggregate every selected native variant. This is informational
+`runtime_pass` evidence, never framework dispatch, coverage, or a live
+certificate. XML-only historical results stay unattested. See the
+[bounded receipt/runner contract](../guides/unity-nunit-evidence.md).

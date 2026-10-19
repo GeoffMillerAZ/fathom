@@ -393,6 +393,9 @@ CREATE INDEX IF NOT EXISTS idx_observations_service_id
 		{"test_runs", "commit_sha", `ALTER TABLE test_runs ADD COLUMN commit_sha TEXT NOT NULL DEFAULT ''`},
 		{"test_runs", "dirty", `ALTER TABLE test_runs ADD COLUMN dirty INTEGER NOT NULL DEFAULT 0`},
 		{"test_runs", "race", `ALTER TABLE test_runs ADD COLUMN race INTEGER NOT NULL DEFAULT 0`},
+		{"test_runs", "native_run_id", `ALTER TABLE test_runs ADD COLUMN native_run_id TEXT NOT NULL DEFAULT ''`},
+		{"test_runs", "native_json", `ALTER TABLE test_runs ADD COLUMN native_json TEXT NOT NULL DEFAULT ''`},
+		{"test_cases", "native_symbol_key", `ALTER TABLE test_cases ADD COLUMN native_symbol_key TEXT NOT NULL DEFAULT ''`},
 		// GL-13 (docs/plans/governance-learning.md, design doc §6): a
 		// pre-existing store (including the live fleet store) predates the
 		// promotion/retirement lifecycle axis — PutClaims/ClaimsForService/

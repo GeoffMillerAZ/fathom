@@ -160,6 +160,8 @@ func ParseTestRun(output string) Run {
 	output = strings.ReplaceAll(output, "\r\n", "\n")
 	var r Run
 	switch {
+	case nativeNUnitDocument(output):
+		r = parseUnityNUnit(output)
 	case junitStart(output) >= 0:
 		r = parseJUnit(output[junitStart(output):])
 	case looksGoJSON(output):

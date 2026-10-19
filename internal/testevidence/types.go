@@ -91,6 +91,9 @@ type SuiteRef struct {
 
 // Run is one ingested #TestResult envelope, plus fathom-side provenance.
 type Run struct {
+	// Unity is populated only by the strict native adapter, never generic JSON decoding.
+	Unity *UnityBinding `json:"-"`
+
 	Suite     SuiteRef        `json:"suite"`
 	Key       string          `json:"key"`
 	Verdict   string          `json:"verdict"`

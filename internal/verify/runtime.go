@@ -23,6 +23,9 @@ const runtimeCriterion = "runtime_pass"
 // producer outside the index attested and fathom ingested, never a run
 // verify started.
 type AttestedRun struct {
+	// UnknownReason is a named native freshness/identity refusal, never a pass.
+	UnknownReason string
+
 	// Test is the test the run executed, as the evidence names it (a
 	// canonical key or a bare name).
 	Test string
@@ -139,6 +142,9 @@ func evalRuntimePass(tests []string, from string, ev Evidence) Criterion {
 	newest := newestRun(runs)
 	name := bareTestName(newest.Test)
 	where := runWhere(newest, re.Now())
+	if newest.UnknownReason != "" {
+		return Criterion{Name: runtimeCriterion, Status: Unknown, Detail: newest.UnknownReason}
+	}
 	switch newest.Status {
 	case "pass":
 		return Criterion{Name: runtimeCriterion, Status: Pass, Detail: fmt.Sprintf("%s passed in its newest attested run %s", name, where)}

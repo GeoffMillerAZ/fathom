@@ -57,6 +57,11 @@ func testRunVerdict(r Run, ev Evidence) Verdict {
 	if r.Runner == RunnerNone || r.Runner == "" || ev.Filtered {
 		return Unknown
 	}
+	// Native XML is a whole document. A successful shell must not turn a
+	// malformed, cut, empty or nonpassing native result into a pass.
+	if r.Runner == RunnerUnityNUnit && (!r.Complete || ev.Truncated || r.Summary == nil || r.Summary.Tests == 0 || r.Summary.Skipped > 0) {
+		return Unknown
+	}
 	if ev.ExitCode != nil && *ev.ExitCode == 0 {
 		return Pass
 	}
