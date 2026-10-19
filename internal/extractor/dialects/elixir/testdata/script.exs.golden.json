@@ -1,0 +1,43 @@
+{
+  "symbols": [
+    {
+      "name": "ScriptTest",
+      "kind": "ElixirModule",
+      "package": "ScriptTest",
+      "line": 3,
+      "end_line": 19,
+      "signature": "defmodule ScriptTest",
+      "calls": [
+        "Enum.sum",
+        "assert",
+        "describe",
+        "setup"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "adds",
+      "kind": "ElixirTest",
+      "package": "ScriptTest",
+      "line": 11,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "it works",
+      "kind": "ElixirTest",
+      "package": "ScriptTest",
+      "line": 16,
+      "end_line": 18,
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "ExUnit.Case",
+      "module": "ExUnit.Case",
+      "kind": "whole",
+      "line": 4
+    }
+  ]
+}

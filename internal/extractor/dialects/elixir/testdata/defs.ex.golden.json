@@ -1,0 +1,280 @@
+{
+  "symbols": [
+    {
+      "name": "Size",
+      "kind": "ElixirProtocol",
+      "package": "Size",
+      "line": 1,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "size",
+      "kind": "ElixirFunction",
+      "package": "Size",
+      "line": 3,
+      "end_line": 3,
+      "signature": "def size(data)",
+      "calls": [
+        "size"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Size",
+      "kind": "ElixirImplementation",
+      "package": "defs",
+      "line": 6,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "size",
+      "kind": "ElixirFunction",
+      "package": "defs",
+      "line": 7,
+      "end_line": 7,
+      "signature": "def size(s), do: byte_size(s)",
+      "calls": [
+        "byte_size",
+        "size"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "MyError",
+      "kind": "ElixirModule",
+      "package": "MyError",
+      "line": 10,
+      "end_line": 12,
+      "signature": "defmodule MyError",
+      "tier": "verified"
+    },
+    {
+      "name": "Shop.Cart",
+      "kind": "ElixirModule",
+      "package": "Shop.Cart",
+      "line": 14,
+      "end_line": 53,
+      "signature": "defmodule Shop.Cart",
+      "calls": [
+        "line",
+        "map"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "t",
+      "kind": "ElixirType",
+      "package": "Shop.Cart",
+      "line": 16,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
+      "name": "line",
+      "kind": "ElixirType",
+      "package": "Shop.Cart",
+      "line": 17,
+      "end_line": 17,
+      "tier": "verified"
+    },
+    {
+      "name": "secret",
+      "kind": "ElixirType",
+      "package": "Shop.Cart",
+      "line": 18,
+      "end_line": 18,
+      "tier": "verified"
+    },
+    {
+      "name": "total",
+      "kind": "ElixirCallback",
+      "package": "Shop.Cart",
+      "line": 19,
+      "end_line": 19,
+      "signature": "@callback total(t) :: integer()",
+      "calls": [
+        "total"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "wrap",
+      "kind": "ElixirCallback",
+      "package": "Shop.Cart",
+      "line": 20,
+      "end_line": 20,
+      "signature": "@macrocallback wrap(term) :: term()",
+      "calls": [
+        "wrap"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "version",
+      "kind": "ElixirCallback",
+      "package": "Shop.Cart",
+      "line": 21,
+      "end_line": 21,
+      "signature": "@callback version :: String.t()",
+      "calls": [
+        "String.t"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "is_empty",
+      "kind": "ElixirGuard",
+      "package": "Shop.Cart",
+      "line": 23,
+      "end_line": 23,
+      "signature": "defguard is_empty(c) when c == []",
+      "calls": [
+        "is_empty"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "is_full",
+      "kind": "ElixirGuard",
+      "package": "Shop.Cart",
+      "line": 24,
+      "end_line": 24,
+      "signature": "defguardp is_full(c) when length(c) > 9",
+      "calls": [
+        "is_full",
+        "length"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "unless_empty",
+      "kind": "ElixirMacro",
+      "package": "Shop.Cart",
+      "line": 25,
+      "end_line": 25,
+      "signature": "defmacro unless_empty(c, do: block), do: quote(do: unquote(block))",
+      "calls": [
+        "unless_empty"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "internal",
+      "kind": "ElixirMacro",
+      "package": "Shop.Cart",
+      "line": 26,
+      "end_line": 26,
+      "signature": "defmacrop internal(x), do: x",
+      "calls": [
+        "internal"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "count",
+      "kind": "ElixirDelegate",
+      "package": "Shop.Cart",
+      "line": 27,
+      "end_line": 27,
+      "signature": "defdelegate count(c), to: Enum",
+      "calls": [
+        "count"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "size",
+      "kind": "ElixirDelegate",
+      "package": "Shop.Cart",
+      "line": 28,
+      "end_line": 28,
+      "signature": "defdelegate size(c), to: Enum, as: :count",
+      "calls": [
+        "size"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "add",
+      "kind": "ElixirFunction",
+      "package": "Shop.Cart",
+      "line": 30,
+      "end_line": 32,
+      "signature": "def add(cart, item, qty \\\\ 1) when is_integer(qty)",
+      "calls": [
+        "add",
+        "is_integer",
+        "put"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "add",
+      "kind": "ElixirFunction",
+      "package": "Shop.Cart",
+      "line": 34,
+      "end_line": 34,
+      "signature": "def add(cart, _item, 0), do: cart",
+      "calls": [
+        "add"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "put",
+      "kind": "ElixirFunction",
+      "package": "Shop.Cart",
+      "line": 36,
+      "end_line": 36,
+      "signature": "defp put(cart, item, qty), do: [{item, qty} | cart]",
+      "calls": [
+        "put"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "zero",
+      "kind": "ElixirFunction",
+      "package": "Shop.Cart",
+      "line": 38,
+      "end_line": 38,
+      "signature": "def zero, do: 0",
+      "tier": "verified"
+    },
+    {
+      "name": "checkout",
+      "kind": "ElixirFunction",
+      "package": "Shop.Cart",
+      "line": 40,
+      "end_line": 46,
+      "signature": "def checkout( cart, user, opts \\\\ [] )",
+      "calls": [
+        "checkout"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Line",
+      "kind": "ElixirModule",
+      "package": "Shop.Cart.Line",
+      "line": 48,
+      "end_line": 52,
+      "signature": "defmodule Line",
+      "tier": "verified"
+    },
+    {
+      "name": "sku",
+      "kind": "ElixirFunction",
+      "package": "Shop.Cart.Line",
+      "line": 51,
+      "end_line": 51,
+      "signature": "def sku(%__MODULE__{sku: sku}), do: sku",
+      "calls": [
+        "sku"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

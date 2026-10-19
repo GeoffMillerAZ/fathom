@@ -1,0 +1,13 @@
+{
+  "symbols": [
+    {
+      "name": "fixture",
+      "kind": "PerlSub",
+      "package": "basic",
+      "line": 5,
+      "end_line": 7,
+      "signature": "sub fixture",
+      "tier": "verified"
+    }
+  ]
+}
