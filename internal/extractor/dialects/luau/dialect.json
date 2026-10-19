@@ -18,7 +18,7 @@
     "function": { "source_kind": "LuauFunction", "canonical": "function", "callable": true },
     "type":     { "source_kind": "LuauType",     "canonical": "type_alias" }
   },
-  "required_kinds": ["function", "type_alias"],
+  "required_kinds": ["function", "type"],
   "oracle_kinds": {
     "tool": { "function": "function", "type": "type_alias" }
   },
