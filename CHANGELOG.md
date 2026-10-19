@@ -31,6 +31,7 @@ Release impact: minor
 - Unity `.asmdef` files expose declared assembly/reference facts without call edges; `indexbench lang-unity-asmdef` calibrates per-file-bound ownership, named references and a strict engine boundary against retained Editor receipts, with unsupported cases explicit.
 
 ### Fixed
+- Native CUE typed enrichment explicitly refuses external registry operations and invalidates prior rows only for packages whose own native reload confirms denial; local-module imports and builtins remain available, ordinary compile-failure retention is unchanged, and an independent pass epoch rechecks pre-policy stores once.
 - Exact `envkit.gen.yml` Task includes and `Dockerfile.context` build inputs reach their existing dialects; arbitrary YAML and other Docker suffixes remain unclaimed, with no typed/runtime capability increase.
 - SCIP TypeScript/JavaScript object-literal property identities remain internally unmapped instead of becoming typed edges to a coincident same-line variable; their references remain counted as mapping misses.
 - Language parity refusals retain the original resource floors, throughput clock, file/byte denominator and extraction timings in JSON and human output, without changing the merge rule.

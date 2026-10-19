@@ -165,10 +165,17 @@ type cuePkgInfo struct {
 // the pipeline's own tests and by a caller operating on a self-contained
 // fixture module.
 //
-// The returned error is non-nil only when repoPath carries no loadable CUE
-// module at all; a per-package failure (inst.Err) is counted in the report,
-// never returned as an error, matching EnrichTypedEdges' contract.
+// A per-package loading failure is counted in the report. An error is returned
+// when the module cannot be loaded or policy-denied prior evidence cannot be
+// inspected/invalidated safely; such a pass must not acquire a completed stamp.
 func EnrichCUEEdges(ctx context.Context, st store.Store, serviceID, repoPath string, allowed map[string]bool) (TypedEdgeReport, error) {
+	return enrichCUEEdgesWithLoader(ctx, st, serviceID, repoPath, allowed, load.Instances)
+}
+
+// enrichCUEEdgesWithLoader keeps the native loading boundary explicit, without a
+// mutable package-global loader. Tests inspect the actual producer configuration
+// before invoking cue/load, including when characterizing the old unsafe config.
+func enrichCUEEdgesWithLoader(ctx context.Context, st store.Store, serviceID, repoPath string, allowed map[string]bool, loadInstances func([]string, *load.Config) []*build.Instance) (TypedEdgeReport, error) {
 	start := time.Now()
 	var report TypedEdgeReport
 
@@ -180,18 +187,20 @@ func EnrichCUEEdges(ctx context.Context, st store.Store, serviceID, repoPath str
 		return report, fmt.Errorf("fusion: CUE typed-edge load %q: no cue.mod/module.cue", repoPath)
 	}
 
-	cfg := &load.Config{
-		Dir:     repoPath,
-		Package: "*", // every package; files with no package clause -> "_"
-		// Hermetic: this pass never needs a registry lookup (first-party
-		// intra-module imports and stdlib-only builtin packages are
-		// resolved locally); an inline-empty registry keeps a broken or
-		// slow $CUE_REGISTRY in the caller's real environment from ever
-		// reaching this load, mirroring TypedEdgeEnv's GOWORK=off posture.
-		Env: []string{"CUE_REGISTRY=inline:{}"},
-	}
-	insts := load.Instances([]string{"./..."}, cfg)
+	registry := &cueLocalOnlyRegistry{}
+	insts := loadInstances([]string{"./..."}, cueLocalLoadConfig(repoPath, registry))
 	report.PackagesTotal = len(insts)
+	if registry.denied.Load() {
+		if err := invalidateCUEDeniedPackages(ctx, st, serviceID, repoPath, loadInstances); err != nil {
+			for _, inst := range insts {
+				if inst.Err != nil {
+					report.PackagesFailed++
+				}
+			}
+			report.Duration = time.Since(start)
+			return report, fmt.Errorf("%w; prior CUE rows may remain after incomplete policy inspection", err)
+		}
+	}
 	if len(insts) == 0 {
 		report.Duration = time.Since(start)
 		return report, nil
@@ -236,7 +245,13 @@ func EnrichCUEEdges(ctx context.Context, st store.Store, serviceID, repoPath str
 	for _, inst := range insts {
 		info := infos[inst.Dir]
 		if !info.allowedHere {
-			report.PackagesSkipped++
+			// A synthetic loader failure has no Files to prove exclusion.
+			// Do not turn missing metadata into a clean scope skip/stamp.
+			if inst.Err != nil && len(inst.Files) == 0 {
+				report.PackagesFailed++
+			} else {
+				report.PackagesSkipped++
+			}
 			continue
 		}
 		pkgKey := cuePackageKeyPrefix + cuePkgID(inst)
