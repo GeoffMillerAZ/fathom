@@ -107,7 +107,7 @@ func TestGroup_StampedeOneBuildCtxAwareWaiters(t *testing.T) {
 	case <-time.After(waitSafety):
 		t.Fatal("flight not cancelled when its last waiter left")
 	}
-	if st := g.stats(); st.Cancelled != 1 || st.Flights != 2 {
+	if st := g.stats(); st.Abandoned != 1 || st.Flights != 2 {
 		t.Fatalf("stats = %+v", st)
 	}
 

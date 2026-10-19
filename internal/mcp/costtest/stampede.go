@@ -30,7 +30,7 @@ func memoCounters() (flights, cancelled map[string]int64) {
 	flights, cancelled = map[string]int64{}, map[string]int64{}
 	for _, g := range memo.Stats() {
 		flights[g.Name] += g.Flights
-		cancelled[g.Name] += g.Cancelled
+		cancelled[g.Name] += g.Abandoned + g.RefuseCancelled
 	}
 	return flights, cancelled
 }

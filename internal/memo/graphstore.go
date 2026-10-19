@@ -21,6 +21,7 @@ package memo
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
@@ -450,7 +451,8 @@ func DropScope(sc Scope) {
 // the syntax graph), an empty graph for GraphResolved — and typedErr names
 // the failure; nothing built without the typed edges is cached, so the
 // next call reads them again. err is the snapshot's graph build failing or
-// the caller's ctx ending.
+// the caller's ctx ending, or ErrWouldNotFinish when the caller's deadline
+// cannot hold a build — never a typed-edge read failure.
 func GraphForTyped(ctx context.Context, snap *Snapshot, kind GraphKind, typed TypedLoader) (g *callgraph.Graph, edges []core.Edge, typedErr, err error) {
 	if kind == GraphSyntax {
 		g, err = GraphFor(ctx, snap, GraphSyntax, nil)
@@ -460,6 +462,9 @@ func GraphForTyped(ctx context.Context, snap *Snapshot, kind GraphKind, typed Ty
 	if terr != nil {
 		if ctx.Err() != nil {
 			return nil, nil, nil, ctx.Err()
+		}
+		if errors.Is(terr, ErrWouldNotFinish) {
+			return nil, nil, nil, terr
 		}
 		if kind == GraphResolved {
 			return EmptyGraph(), nil, terr, nil

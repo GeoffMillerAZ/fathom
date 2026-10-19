@@ -86,13 +86,20 @@ type Options struct {
 
 // GroupStats is one group's counters.
 type GroupStats struct {
-	Name      string
-	Entries   int
-	Bytes     int64
-	Hits      int64
-	Misses    int64
-	Flights   int64
-	Cancelled int64
+	Name    string
+	Entries int
+	Bytes   int64
+	Hits    int64
+	Misses  int64
+	Flights int64
+	// Abandoned counts flights cancelled because their last waiter left
+	// (a build nobody would read); RefuseCancelled counts flights a
+	// refuse drop ended — a floor refuse is not a doomed build.
+	Abandoned       int64
+	RefuseCancelled int64
+	// Declined counts Gets that started no flight because their deadline
+	// could not hold it (ErrWouldNotFinish).
+	Declined  int64
 	Uncached  int64 // builds not cached: empty watermark, oversize, or failed
 	Evictions map[DropReason]int64
 }
@@ -342,6 +349,16 @@ type Group[K comparable, V any] struct {
 	flights  map[K]*flight[V]
 	counters GroupStats
 	onEvict  func(K, V) // SetOnEvict; nil for heap-only values
+	// lastBuild is each service's last completed build (wouldAbandon): a
+	// measurement in place of ExpectedCost, not a cache — it holds no
+	// derived data and serves no reader.
+	lastBuild map[string]buildRecord
+}
+
+// buildRecord is one completed build's duration and size.
+type buildRecord struct {
+	took time.Duration
+	size int64
 }
 
 // SetOnEvict registers fn to be told of every value that leaves the cache
@@ -369,6 +386,9 @@ type flight[V any] struct {
 	waiters int
 	cancel  context.CancelFunc
 	started time.Time
+	// refused is set when a refuse drop cancelled the flight: a waiter
+	// leaving afterwards is not an abandonment.
+	refused bool
 	// stale is set when Update or Remove invalidated the key while this
 	// flight was building: its waiters get its value, but it is never
 	// cached — it may predate the refresh that invalidated the key.
@@ -383,12 +403,13 @@ func NewGroup[K comparable, V any](name string, opts Options) *Group[K, V] {
 // NewGroupIn registers a group in reg.
 func NewGroupIn[K comparable, V any](reg *Registry, name string, opts Options) *Group[K, V] {
 	g := &Group[K, V]{
-		reg:      reg,
-		nm:       name,
-		opts:     opts,
-		entries:  make(map[K]*entry[V]),
-		flights:  make(map[K]*flight[V]),
-		counters: GroupStats{Name: name, Evictions: map[DropReason]int64{}},
+		reg:       reg,
+		nm:        name,
+		opts:      opts,
+		entries:   make(map[K]*entry[V]),
+		flights:   make(map[K]*flight[V]),
+		counters:  GroupStats{Name: name, Evictions: map[DropReason]int64{}},
+		lastBuild: make(map[string]buildRecord),
 	}
 	reg.mu.Lock()
 	reg.groups = append(reg.groups, g)
@@ -453,6 +474,11 @@ func (g *Group[K, V]) scopeOf(key K) (service, mark string, ok bool) {
 // is simply not cached (counted as Uncached).
 var errNilBuild = errors.New("memo: nil build")
 
+// ErrWouldNotFinish is a Keep group's Get declining to start a build its
+// caller's deadline cannot hold (wouldAbandon): no flight started, no
+// rebuild token taken. The caller answers with a named partial (I38).
+var ErrWouldNotFinish = errors.New("the build would not finish inside the caller's deadline; no build was started")
+
 // Get returns the cached value for key, or joins (or starts) the one
 // build in flight for it. build returns the value and its estimated size
 // in bytes. A waiter whose ctx ends leaves at once with ctx.Err(); the
@@ -465,6 +491,12 @@ var errNilBuild = errors.New("memo: nil build")
 // from inside a build (a nested flight: GraphFor loading typed edges) is
 // part of that rebuild and never takes the token — its parent holds it —
 // so a rebuild cannot wait on itself. Joining a flight never needs it.
+//
+// On a Keep group a caller that would start a flight it cannot use — its
+// deadline too short for the build and the build not one that would be
+// kept for the next caller (wouldAbandon) — gets ErrWouldNotFinish at once
+// instead, before any rebuild token. A nested Get, or one with no
+// deadline, always starts.
 func (g *Group[K, V]) Get(ctx context.Context, key K, build func(context.Context) (V, int64, error)) (V, error) {
 	var zero V
 	if build == nil {
@@ -485,6 +517,8 @@ func (g *Group[K, V]) Get(ctx context.Context, key K, build func(context.Context
 		}
 	}()
 	var f *flight[V]
+	_, hasDeadline := ctx.Deadline()
+	mayDecline := g.opts.Keep && !nested && hasDeadline
 	for {
 		needToken := token == nil && !nested && g.reg.shed()
 		g.reg.mu.Lock()
@@ -499,11 +533,20 @@ func (g *Group[K, V]) Get(ctx context.Context, key K, build func(context.Context
 			g.reg.mu.Unlock()
 			return v, nil
 		}
+		var limit int64
+		if mayDecline {
+			limit = g.reg.limitLocked()
+		}
 		g.reg.mu.Unlock()
 		if cur, ok := g.flights[key]; ok {
 			g.counters.Hits++
 			f = cur
 			break
+		}
+		if mayDecline && g.wouldAbandon(ctx, service, limit) {
+			g.counters.Declined++
+			g.mu.Unlock()
+			return zero, ErrWouldNotFinish
 		}
 		if needToken {
 			g.mu.Unlock()
@@ -542,6 +585,32 @@ func (g *Group[K, V]) Get(ctx context.Context, key K, build func(context.Context
 // inBuildKey marks a build's context: a Get under it is a nested flight.
 type inBuildKey struct{}
 
+// wouldAbandon reports a flight its caller cannot use (§5 "No doomed
+// flights", O1014): ctx's deadline d is shorter than the last completed
+// build of service in this group (ExpectedCost when none is measured) and
+// the flight would not be kept for the next caller either — kept needs d
+// at least half ExpectedCost and the last build's size within limit, the
+// byte limit in force (0 = none; an unmeasured size fits). No deadline is
+// never declined. Group lock held.
+func (g *Group[K, V]) wouldAbandon(ctx context.Context, service string, limit int64) bool {
+	dl, ok := ctx.Deadline()
+	if !ok {
+		return false
+	}
+	d := dl.Sub(g.reg.now())
+	rec, known := g.lastBuild[service]
+	took := g.opts.ExpectedCost
+	if known {
+		took = rec.took
+	}
+	if d >= took {
+		return false
+	}
+	fits := !known || limit <= 0 || rec.size <= limit
+	kept := g.opts.ExpectedCost > 0 && d >= g.opts.ExpectedCost/2 && fits
+	return !kept
+}
+
 // leave drops one waiter; the last one out cancels the flight unless the
 // group keeps it.
 func (g *Group[K, V]) leave(key K, f *flight[V]) {
@@ -559,8 +628,11 @@ func (g *Group[K, V]) leave(key K, f *flight[V]) {
 	if g.opts.Keep && g.opts.ExpectedCost > 0 && g.reg.now().Sub(f.started) >= g.opts.ExpectedCost/2 {
 		return
 	}
+	if f.refused {
+		return // a refuse drop already ended it and counted it
+	}
 	f.cancel()
-	g.counters.Cancelled++
+	g.counters.Abandoned++
 	// A cancelled flight no longer serves new callers: they start their own.
 	if cur, ok := g.flights[key]; ok && cur == f {
 		delete(g.flights, key)
@@ -572,6 +644,7 @@ func (g *Group[K, V]) leave(key K, f *flight[V]) {
 func (g *Group[K, V]) run(ctx context.Context, key K, f *flight[V], build func(context.Context) (V, int64, error), service, mark string, cacheable bool, token func()) {
 	defer f.cancel()
 	val, size, err := build(ctx)
+	took := g.reg.now().Sub(f.started)
 	if token != nil {
 		token()
 	}
@@ -584,6 +657,9 @@ func (g *Group[K, V]) run(ctx context.Context, key K, f *flight[V], build func(c
 	g.mu.Lock()
 	if cur, ok := g.flights[key]; ok && cur == f {
 		delete(g.flights, key)
+	}
+	if err == nil {
+		g.lastBuild[service] = buildRecord{took: took, size: size}
 	}
 	stored := false
 	if err == nil && cacheable && !f.stale {
@@ -605,7 +681,8 @@ func (g *Group[K, V]) cancelFlightsLocked() {
 	defer g.mu.Unlock()
 	for k, f := range g.flights {
 		f.cancel()
-		g.counters.Cancelled++
+		f.refused = true
+		g.counters.RefuseCancelled++
 		delete(g.flights, k)
 	}
 }

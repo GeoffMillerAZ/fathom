@@ -66,6 +66,12 @@ func TestGraphFor_NestedFlightAtShedNeverWedges(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// svc2's graph build is measured (its syntax graph), so the 50 ms
+	// waiter below starts a flight its deadline holds rather than being
+	// declined (RT-191), and waits for the token.
+	if _, err := GraphFor(ctx, snap2, GraphSyntax, nil); err != nil {
+		t.Fatal(err)
+	}
 	gate := make(chan struct{})
 	typedDone := make(chan error, 1)
 	go func() {

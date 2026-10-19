@@ -18,6 +18,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/decide"
 	"github.com/geoffmilleraz/fathom/internal/dlog"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
+	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/internal/modulehost"
 	"github.com/geoffmilleraz/fathom/internal/refresh"
 	"github.com/geoffmilleraz/fathom/internal/store"
@@ -607,6 +608,9 @@ func newHTTPHandlerDeps(srv *mcp.Server, c *client.Client, selfAddr string, port
 		// released memory, oldest in-flight, abandoned and bytes read by
 		// tool, cache bytes, starts by reason and SQLite's memory.
 		writeTenancyMetrics(w, srv)
+		// fathom_cache_events_total{group,event}: the counters of every
+		// memo group, abandoned, refuse-cancelled and declined apart.
+		writeCacheEvents(w, memo.Stats())
 
 		// fathom_graph_memo_entries: the watermark-keyed call-graph memo
 		// (BP-28, I21, internal/analysis/callgraph/cache.go) — one entry
