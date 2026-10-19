@@ -113,6 +113,7 @@ an array of tables, and `tenancy.**` for every key under `[tenancy]`.
 | `decide.deny_sites` | user-only | the user's own consent to or kill of the decision port (ADR-073, I66): refuses a site whatever any list says |
 | `decide.enabled` | user-only | the user's own consent to or kill of the decision port (ADR-073, I66): false closes the port, a running daemon included |
 | `decide.endpoint` | behaviour | base_url's older name, under the same key-host rule |
+| `decide.max_asks_per_site_per_session` | behaviour | a cap, the minimum across layers: a repository may lower the user's and never raise it |
 | `decide.model` | behaviour | chooses a model |
 | `decide.profile` | behaviour | chooses a profile by name |
 | `decide.provider` | behaviour | chooses a provider; one only the repository names opens only with the user's allow_repo_provider (internal/decide, I66) |
@@ -652,8 +653,23 @@ route_confidence  = 0.9      # unchanged at this default (2026-09-24, ADR-042 am
 route_timeout_ms  = 3000     # POST /route's own decider budget, in ms (100-30000)
 rank_within_tier  = false    # obligations re-orders rules only inside their governing-scope tier
 rerank_timeout_ms = 1500     # obligations re-rank's own decider budget, in ms (100-60000)
+max_asks_per_site_per_session = 200  # asks one site may make in one session (1-100000); the minimum across layers
 sites = ["compile_prefilter", "obligations_rerank", "certify_suggest", "assess", "preflight"]  # the egress opt-in — this is the default (route is off: add "route" to turn it on)
 ```
+
+`max_asks_per_site_per_session` (ADR-073 decision 7) counts asks in process,
+per session (a `serve-http` caller; the process, for a CLI verb) and site. Past
+it the site answers on its deterministic path, each refused ask's row carries
+`kill_source: capped`, and one `capped` line is written per session and site.
+It is the minimum across layers: your `~/.fathom/config.toml` value (else 200)
+is a ceiling a repository's config may lower and never raise, and `fathom
+config` names the layer in effect. A site whose last 100 asks in
+`decisions.jsonl` hold more than 10% misses (a timeout, a 429 or 529, a
+refusal, an error) turns off for the process's lifetime with one `killed` line
+(`kill_source: misses`): it is judged at startup from the log's last MiB and
+then from the rows the process writes, and `fathom doctor`'s
+`decision_provider` row names it. It never reopens by itself: once the cause is
+fixed, move `decisions.jsonl` aside and restart.
 
 `rank_within_tier` defaults to **false** (amended 2026-09-23, ADR-042): the
 decision-port A/B measured the LLM re-rank net negative on governed edits once

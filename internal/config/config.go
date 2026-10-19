@@ -266,6 +266,18 @@ type Decide struct {
 	// DenySites refuses each site it names whatever any list says.
 	DenySites []string `toml:"deny_sites"`
 
+	// MaxAsksPerSitePerSession (KS-10, ADR-073 decision 7) caps how many
+	// times one site asks the decision port in one session (a serve-http
+	// caller; the process, for a CLI verb): past it the site answers on its
+	// deterministic path with one `capped` line. Behaviour class, and the
+	// minimum across layers: the user layer's value (else the default,
+	// DefaultMaxAsksPerSitePerSession) is a ceiling a repository's own may
+	// lower and never raise. MaxAsks reads it. MaxAsksSource is the layer
+	// whose value is in effect ("" for the default and for a Decide built
+	// in code); Load sets it (toml:"-").
+	MaxAsksPerSitePerSession int    `toml:"max_asks_per_site_per_session"`
+	MaxAsksSource            Source `toml:"-"`
+
 	// ProviderSource and TransportSource are the layers that set the
 	// effective Provider and Transport ("" when no layer did, and for a
 	// Decide built in code); UserProvider and UserTransport are the user
@@ -276,6 +288,20 @@ type Decide struct {
 	TransportSource Source `toml:"-"`
 	UserProvider    string `toml:"-"`
 	UserTransport   string `toml:"-"`
+}
+
+// DefaultMaxAsksPerSitePerSession is [decide] max_asks_per_site_per_session's
+// default (KS-10, ADR-073 decision 7).
+const DefaultMaxAsksPerSitePerSession = 200
+
+// MaxAsks is the per-site, per-session ask cap in effect: the configured
+// value, else the default (DefaultDecide and a Decide built in code set
+// none).
+func (d Decide) MaxAsks() int {
+	if d.MaxAsksPerSitePerSession <= 0 {
+		return DefaultMaxAsksPerSitePerSession
+	}
+	return d.MaxAsksPerSitePerSession
 }
 
 // SessionSites are the decision sites about the user's own sessions

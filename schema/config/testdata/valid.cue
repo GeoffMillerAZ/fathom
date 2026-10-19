@@ -102,6 +102,15 @@ exampleTypeSafeOverOpenRouter: #Config & {
 	}
 }
 
+// A repository lowering the per-site, per-session ask cap (KS-10): the
+// minimum across layers, so it can lower the user's and never raise it.
+exampleDecideCap: #Config & {
+	decide: {
+		provider:                      "typesafe"
+		max_asks_per_site_per_session: 50
+	}
+}
+
 // The user's own consent and kill fields (KS-3, ADR-073 decision 5), as
 // ~/.fathom/config.toml carries them: the port off until enabled flips
 // back, a repository's provider allowed, a session site opted in and a site

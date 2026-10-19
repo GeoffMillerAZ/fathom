@@ -93,6 +93,7 @@ func decisionProviderVerdict(loaded config.Loaded, build profileClientBuilder, c
 		c = closedProviderVerdict(dc, gate)
 	} else {
 		c = providerVerdict(loaded, build, callLogPath, opts)
+		c.Reason += killedSitesSuffix(dc, callLogPath, opts)
 	}
 	if gate.IgnoredEnv != "" {
 		c.Reason += fmt.Sprintf(" (%s=%q ignored: only \"%s\" closes the decision port)", decide.KillEnv, gate.IgnoredEnv, decide.KillValue)
@@ -105,6 +106,36 @@ func decisionProviderVerdict(loaded config.Loaded, build profileClientBuilder, c
 		c.Reason += fmt.Sprintf(" (session sites dropped from [decide] sites: %s; only [decide] session_sites in ~/.fathom/config.toml opts one in)", strings.Join(sites, ", "))
 	}
 	return c
+}
+
+// killedSitesSuffix names each site decisions.jsonl turns off by its
+// misses (KS-12), judged as a port judges at Open: from the log's last
+// decide.SeedTailBytes (seedDecisionRecorder), through decide.CheckSite's
+// one precedence, so a denied site is not named. "" for provider none, an
+// unknown provider, no log or no killed site, so the row is otherwise
+// unchanged (DP-35).
+func killedSitesSuffix(dc config.Decide, callLogPath string, opts []decide.Option) string {
+	switch dc.Provider {
+	case "llm", "typesafe", "openai":
+	default:
+		return ""
+	}
+	path := decide.DefaultRecorderPath(callLogPath)
+	if path == "" {
+		return ""
+	}
+	rec := decide.NewRecorder(nil, time.Now, "")
+	seedDecisionRecorder(rec, path)
+	var named []string
+	for _, site := range rec.KilledSites() {
+		if g := decide.CheckSite(dc, site, rec, opts...); g.Source == decide.KillSourceMisses {
+			named = append(named, g.Reason)
+		}
+	}
+	if len(named) == 0 {
+		return ""
+	}
+	return fmt.Sprintf(" (killed by misses: %s; a killed site never reopens by itself: once the cause is fixed, move decisions.jsonl aside and restart)", strings.Join(named, "; "))
 }
 
 // reopensRunning is how a live kill's remedy reaches a running daemon: a
