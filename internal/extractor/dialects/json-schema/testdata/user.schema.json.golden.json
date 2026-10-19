@@ -1,0 +1,134 @@
+{
+  "symbols": [
+    {
+      "name": "user.schema.json",
+      "kind": "JSONSchemaDocument",
+      "package": "user.schema",
+      "line": 1,
+      "end_line": 36,
+      "signature": "https://json-schema.org/draft/2020-12/schema",
+      "tier": "verified"
+    },
+    {
+      "name": "id",
+      "kind": "JSONSchemaProperty",
+      "package": "user.schema",
+      "line": 7,
+      "end_line": 7,
+      "signature": "string",
+      "tier": "verified"
+    },
+    {
+      "name": "address",
+      "kind": "JSONSchemaProperty",
+      "package": "user.schema",
+      "line": 8,
+      "end_line": 8,
+      "calls": [
+        "Address"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "tags",
+      "kind": "JSONSchemaProperty",
+      "package": "user.schema",
+      "line": 9,
+      "end_line": 12,
+      "signature": "array",
+      "calls": [
+        "Tag"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "manager",
+      "kind": "JSONSchemaProperty",
+      "package": "user.schema",
+      "line": 13,
+      "end_line": 13,
+      "calls": [
+        "address"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "note",
+      "kind": "JSONSchemaProperty",
+      "package": "user.schema",
+      "line": 14,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": "Address",
+      "kind": "JSONSchemaDef",
+      "package": "user.schema",
+      "line": 17,
+      "end_line": 23,
+      "signature": "object",
+      "calls": [
+        "Country"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Country",
+      "kind": "JSONSchemaDef",
+      "package": "user.schema",
+      "line": 24,
+      "end_line": 24,
+      "tier": "verified"
+    },
+    {
+      "name": "Tag",
+      "kind": "JSONSchemaDef",
+      "package": "user.schema",
+      "line": 25,
+      "end_line": 27,
+      "signature": "string",
+      "tier": "verified"
+    },
+    {
+      "name": "Node",
+      "kind": "JSONSchemaDef",
+      "package": "user.schema",
+      "line": 28,
+      "end_line": 31,
+      "signature": "object",
+      "calls": [
+        "Node"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "a/b",
+      "kind": "JSONSchemaDef",
+      "package": "user.schema",
+      "line": 32,
+      "end_line": 32,
+      "signature": "integer",
+      "tier": "verified"
+    },
+    {
+      "name": "UsesEscaped",
+      "kind": "JSONSchemaDef",
+      "package": "user.schema",
+      "line": 33,
+      "end_line": 33,
+      "calls": [
+        "a/b"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Missing",
+      "kind": "JSONSchemaDef",
+      "package": "user.schema",
+      "line": 34,
+      "end_line": 34,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

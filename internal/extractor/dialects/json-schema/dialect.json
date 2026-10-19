@@ -1,0 +1,29 @@
+{
+  "id": "json-schema",
+  "display": "JSON Schema documents",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "json-schema",
+  "match": {
+    "extensions": [],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "document":   { "source_kind": "JSONSchemaDocument", "canonical": "package" },
+    "definition": { "source_kind": "JSONSchemaDef",      "canonical": "type_alias" },
+    "property":   { "source_kind": "JSONSchemaProperty", "canonical": "field" }
+  },
+  "required_kinds": ["document", "definition", "property"],
+  "oracle_kinds": {
+    "tool": { "package": "package", "type_alias": "type_alias", "field": "field" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "json-schema"
+}

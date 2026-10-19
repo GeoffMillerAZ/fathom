@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "definitions": {
+    "positiveInt": {"type": "integer", "minimum": 1},
+    "size": {"$ref": "#/definitions/positiveInt"},
+    "shape": {
+      "oneOf": [
+        {"$ref": "#/definitions/size"},
+        {"$ref": "https://example.test/remote.json#/definitions/x"}
+      ]
+    }
+  },
+  "properties": {
+    "width": {"$ref": "#/definitions/size"},
+    "height": {"$ref": "#/definitions/size"}
+  },
+  "allOf": [{"$ref": "#/definitions/shape"}]
+}

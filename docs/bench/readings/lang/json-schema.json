@@ -1,0 +1,159 @@
+{
+  "dialect": "json-schema",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "excellent",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-19",
+  "fathom_commit": "02255415",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "SchemaStore/schemastore",
+      "sha": "bf7c6745505ccace5568dc0d7f4ae29647e9b41a",
+      "files": 978,
+      "bytes": 36427989,
+      "counts": {
+        "fathom_defs": 35958,
+        "kind_equal": 35958,
+        "matched": 35958,
+        "oracle_defs": 35958,
+        "ref_fathom": 40908,
+        "ref_fathom_in_truth": 40880,
+        "ref_truth": 40880,
+        "ref_truth_found": 40880
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A"
+      },
+      "kind_intersection": [
+        "field",
+        "package",
+        "type_alias"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 3748.8250000000016,
+        "extract_cpu_ms": 3099.3920000000026,
+        "max_file_ms": 226,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "json-schema-org/JSON-Schema-Test-Suite",
+      "sha": "55719286c33ae0d1823bfb65fea10338a19bc37c",
+      "files": 54,
+      "bytes": 21607,
+      "counts": {
+        "fathom_defs": 101,
+        "kind_equal": 101,
+        "matched": 101,
+        "oracle_defs": 101,
+        "ref_fathom": 3,
+        "ref_fathom_in_truth": 3,
+        "ref_truth": 3,
+        "ref_truth_found": 3,
+        "xref_fathom": 3,
+        "xref_fathom_in_truth": 3,
+        "xref_truth": 3,
+        "xref_truth_found": 3
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "field",
+        "package",
+        "type_alias"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 9.059,
+        "extract_cpu_ms": 11.402999999999995,
+        "max_file_ms": 3,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "@apidevtools/json-schema-ref-parser",
+      "version": "16.0.5"
+    },
+    {
+      "tier": "A",
+      "tool": "@apidevtools/json-schema-ref-parser ($refs.paths)",
+      "version": "16.0.5"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 0.9993,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": 1,
+    "xref_recall": 1
+  },
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A",
+    "xref_precision": "A",
+    "xref_recall": "A"
+  },
+  "required_kinds": [
+    "field",
+    "package",
+    "type_alias"
+  ],
+  "kind_intersection": [
+    "field",
+    "package",
+    "type_alias"
+  ],
+  "counts": {
+    "fathom_defs": 36059,
+    "kind_equal": 36059,
+    "matched": 36059,
+    "oracle_defs": 36059,
+    "ref_fathom": 40911,
+    "ref_fathom_in_truth": 40883,
+    "ref_truth": 40883,
+    "ref_truth_found": 40883,
+    "xref_fathom": 3,
+    "xref_fathom_in_truth": 3,
+    "xref_truth": 3,
+    "xref_truth_found": 3
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 11.72,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 9.7,
+    "max_file_ms": 226,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "SchemaStore/schemastore: 6 files skipped by ingest's gates (oversize)",
+    "SchemaStore/schemastore: 64151 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

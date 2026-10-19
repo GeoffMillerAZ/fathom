@@ -882,6 +882,9 @@ func (p *Pipeline) resolveExtractor(relPath string, content []byte, idx *sibling
 			e, toolKind, ok = appFrameworkDispatch(relPath, content) // an ARM template or parameters file, by content (LB-F146)
 		}
 		if !ok {
+			e, toolKind, ok = jsonSchemaDispatch(relPath, content) // a JSON Schema document, by its $schema or *.schema.json (LB-Q-json-schema)
+		}
+		if !ok {
 			e, ok = p.exts[ext]
 		}
 		if !ok {

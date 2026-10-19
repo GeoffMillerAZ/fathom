@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.test/schemas/user.json",
+  "title": "User",
+  "type": "object",
+  "properties": {
+    "id": {"type": "string"},
+    "address": {"$ref": "#/$defs/Address"},
+    "tags": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/Tag"}
+    },
+    "manager": {"$ref": "#/properties/address"},
+    "note": true
+  },
+  "$defs": {
+    "Address": {
+      "type": "object",
+      "properties": {
+        "street": {"type": "string"},
+        "country": {"$ref": "#/$defs/Country"}
+      }
+    },
+    "Country": {"enum": ["US", "CA"]},
+    "Tag": {
+      "type": "string"
+    },
+    "Node": {
+      "type": "object",
+      "properties": {"next": {"$ref": "#/$defs/Node"}}
+    },
+    "a/b": {"type": "integer"},
+    "UsesEscaped": {"$ref": "#/$defs/a~1b"},
+    "Missing": {"$ref": "#/$defs/DoesNotExist"}
+  }
+}

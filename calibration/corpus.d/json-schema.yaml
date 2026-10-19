@@ -1,0 +1,37 @@
+id: json-schema
+language: "JSON Schema documents"
+# Two read-only subjects, none vendored, each through section 13.3's licence gate (OSI
+# permissive: Apache-2.0, MIT). SchemaStore/schemastore's src/schemas/json is the largest
+# public set of real-world schemas: 1,001 documents of drafts 04 through 2020-12 written by
+# hand and generated, most named for the tool they describe (not *.schema.json), nearly all
+# carrying a json-schema.org `$schema`, a few hundred `$ref`ing their own `definitions`/`$defs`
+# and some another schema by relative file or by a schemastore.org URL. The JSON-Schema-Test-Suite's
+# `remotes/` directory is the specification test suite's own set of cross-file fixtures:
+# a schema per draft that `$ref`s another by relative path (baseUriChange*, draft*/ref
+# fixtures), the only subject where file references land on schemas. Its `tests/` are
+# arrays of test groups (no root mapping), not schemas, and are not sparse-checked-out.
+repos:
+  - name: SchemaStore/schemastore
+    url: https://github.com/SchemaStore/schemastore.git
+    ref: master
+    sha: bf7c6745505ccace5568dc0d7f4ae29647e9b41a
+    licence: Apache-2.0
+    sparse: ["src/schemas/json/**"]
+    idioms:
+      - "draft-04 and draft-07 schemas whose root holds `definitions` that `properties` `$ref` as
+        `#/definitions/<name>` (the dominant shape), and draft 2019-09 and 2020-12 ones with `$defs`"
+      - "a `$ref` to another schema by `https://json.schemastore.org/<name>.json` URL, which the
+        resolver leaves unfetched, and by `./<name>.json` relative file"
+      - "definition names with `/`, `~` and `%` escaped in the pointer, and boolean sub-schemas"
+      - "schemas with no `definitions` at all, only root `properties`"
+  - name: json-schema-org/JSON-Schema-Test-Suite
+    url: https://github.com/json-schema-org/JSON-Schema-Test-Suite.git
+    ref: main
+    sha: 55719286c33ae0d1823bfb65fea10338a19bc37c
+    licence: MIT
+    sparse: ["remotes/**"]
+    idioms:
+      - "remotes/draft2020-12/*.json: schemas that `$ref` each other by relative path and by `$id`"
+      - "remotes/baseUriChange*: a `$ref` resolved against a changed `$id`, so a relative file
+        part that names a file the resolver does or does not read"
+      - "subSchemas with `$defs` and a `$ref` to `#/$defs/<name>` from a root `properties`"
