@@ -156,8 +156,11 @@ type rerankOutcome struct {
 	// Timeout is the budget this call actually ran under — the timeout
 	// argument, or defaultRerankTimeout when the caller left it at zero —
 	// carried only so rerankTimeoutNote can name it without re-deriving
-	// the default. Zero only when matched was empty (this function's own
-	// early return, which never reaches the timeout logic at all).
+	// the default; on a path with a ceiling, obligationsCore passes the
+	// ceiling less its joins when that is shorter (KS-10). Zero only when
+	// matched was empty (this function's own early return, which never
+	// reaches the timeout logic at all) or the re-rank was refused before
+	// it asked (rerankRefused).
 	Timeout time.Duration
 }
 
@@ -352,6 +355,19 @@ func rerankWithinTiers(ctx context.Context, d decision.Decider, file, hunk strin
 		RankedCount:     len(eligible) - len(plan.Oversized),
 		TimedOut:        timedOut,
 		Timeout:         timeout,
+	}
+}
+
+// rerankRefused is the outcome of a re-rank refused before it asked (KS-10:
+// the joins spent the path's ceiling): matched unmoved, nothing asked, and
+// err, the refusal, as the one failure naming how many questions it kept.
+func rerankRefused(d decision.Decider, matched []scored, max int, err error) rerankOutcome {
+	return rerankOutcome{
+		Matched:         matched,
+		Failures:        []DecisionError{{Site: "obligations", Provider: d.Name(), Questions: len(rerankEligible(matched, max)), Err: err}},
+		ChunksTotal:     1,
+		ChunksFailed:    1,
+		CandidatesTotal: len(matched),
 	}
 }
 

@@ -340,7 +340,7 @@ func (g *liveGate) admit(ctx context.Context) Gate {
 	}
 	if ceiling, ok := ctx.Deadline(); ok {
 		if _, left := askDeadline(ceiling, g.now(), 0); !left {
-			return Gate{Closed: true, Source: KillSourceDeadline, Layer: "context", Reason: "the path's ceiling was spent before the ask"}
+			return ceilingGate("the path's ceiling was spent before the ask")
 		}
 	}
 	v := allowAsk(g.asks, scope, g.cfg)

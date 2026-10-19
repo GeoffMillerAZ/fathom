@@ -427,7 +427,7 @@ func cmdEditHookPreCommand(codec harness.Codec, command, cwd, sessionID, url str
 	if strings.Contains(command, "git") {
 		pfDir = hookCallRoot(command, "", cwd, projDir)
 	}
-	preflight := gatePreflightLine(pfDir, command, sessionID, url)
+	preflight := gatePreflightLine(pfDir, cwd, command, sessionID, url)
 
 	var note string
 	matched := false

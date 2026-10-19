@@ -10,15 +10,17 @@ package decide
 // spent is not made (askDeadline).
 //
 // Which sites ask on a hook path: the obligations re-rank alone, on the
-// PostToolUse edit hook's obligations RPC (a 2000 ms client timeout,
-// cmd/fathom/edithook.go), and only under rank_within_tier = true, which is
-// off by default (ADR-042's 2026-09-23 amendment). Its joins (the store
-// reads before the re-rank) are timed nowhere and its budget is the
-// constant rerank_timeout_ms from the re-rank's start, so no hook-path site
-// asks by default and the rule is proven on askDeadline alone; the port
-// applies it to every ask whose context carries the path's ceiling.
+// PostToolUse edit hook's obligations RPC, and only under rank_within_tier
+// = true, which is off by default (ADR-042's 2026-09-23 amendment). The
+// hook's client timeout (cmd/fathom/edithook.go) crosses the loopback as
+// X-Fathom-Deadline (internal/hookguard), serve-http's rpcContext makes it
+// the request context's deadline, and obligationsCore times its joins on
+// its injected clock and asks AskBudget for the re-rank's budget: the
+// ceiling less the joins, rerank_timeout_ms only below it. The port applies
+// the same rule to every ask whose context carries a ceiling (admit).
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -67,6 +69,37 @@ func askDeadline(ceiling, now time.Time, siteTimeout time.Duration) (time.Durati
 		return siteTimeout, true
 	}
 	return left, true
+}
+
+// AskBudget is how long a site on a path with a ceiling may ask once its
+// joins are done (KS-10): askDeadline from joinsDone against ctx's
+// deadline, the caller's ceiling, with siteTimeout only below it. A ctx with
+// no deadline (a CLI verb, a stdio MCP session) has no ceiling and keeps
+// siteTimeout. A ceiling the joins spent refuses the ask before it is made:
+// the error is CeilingSpent, naming the joins' measured time.
+func AskBudget(ctx context.Context, joinsStart, joinsDone time.Time, siteTimeout time.Duration) (time.Duration, error) {
+	ceiling, ok := ctx.Deadline()
+	if !ok {
+		return siteTimeout, nil
+	}
+	left, ok := askDeadline(ceiling, joinsDone, siteTimeout)
+	if !ok {
+		return 0, CeilingSpent(joinsDone.Sub(joinsStart))
+	}
+	return left, nil
+}
+
+// CeilingSpent is the refusal of an ask whose path's joins spent its
+// ceiling (KS-10): a *KilledError, kill_source deadline, that is
+// decision.ErrNoProvider, so the site answers on its deterministic path and
+// its decisions.jsonl row names the source.
+func CeilingSpent(joins time.Duration) error {
+	return &KilledError{Gate: ceilingGate(fmt.Sprintf("the path's joins took %dms and spent its ceiling before the ask", joins.Milliseconds()))}
+}
+
+// ceilingGate is the closed verdict of a spent ceiling.
+func ceilingGate(reason string) Gate {
+	return Gate{Closed: true, Source: KillSourceDeadline, Layer: "context", Reason: reason}
 }
 
 // closedVerb names what closed the port for its line and its error:

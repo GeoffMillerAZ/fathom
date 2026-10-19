@@ -72,7 +72,7 @@ func TestGatePreflightNamesARefusedClaimAndAMissingPassingRun(t *testing.T) {
 
 	// commit: the staged diff claims T-1, which verify refuses; no gate half.
 	preflightGit(t, dir, "add", "docs/plans/p.md")
-	line := gatePreflightLine(dir, `git add -A && git commit -m "claim T-1"`, session, refusing.URL)
+	line := gatePreflightLine(dir, "", `git add -A && git commit -m "claim T-1"`, session, refusing.URL)
 	for _, want := range []string{"fathom gate preflight", "verify: refused", "docs/plans/p.md [T-1] One", "not found in the index"} {
 		if !strings.Contains(line, want) {
 			t.Errorf("commit line %q lacks %q", line, want)
@@ -88,7 +88,7 @@ func TestGatePreflightNamesARefusedClaimAndAMissingPassingRun(t *testing.T) {
 	// push: the pushed range claims T-1, and no run passed at this tree.
 	preflightGit(t, dir, "commit", "-q", "-m", "claim T-1")
 	markSessionEdit(session)
-	line = gatePreflightLine(dir, "git push origin HEAD", session, refusing.URL)
+	line = gatePreflightLine(dir, "", "git push origin HEAD", session, refusing.URL)
 	if !strings.Contains(line, "verify: refused") || !strings.Contains(line, "[T-1]") || !strings.Contains(line, "gate: no passing run at this tree in this session") {
 		t.Errorf("push line = %q, want the refused row and the missing passing run", line)
 	}
@@ -101,7 +101,7 @@ func TestGatePreflightNamesARefusedClaimAndAMissingPassingRun(t *testing.T) {
 	}
 	passing := fakeClaimDaemon(t, svc, "pass", &calls)
 	defer passing.Close()
-	if line := gatePreflightLine(dir, "git push", session, passing.URL); line != "" {
+	if line := gatePreflightLine(dir, "", "git push", session, passing.URL); line != "" {
 		t.Errorf("both halves hold, yet the line = %q", line)
 	}
 
@@ -109,7 +109,7 @@ func TestGatePreflightNamesARefusedClaimAndAMissingPassingRun(t *testing.T) {
 	// mention is silent; a non-gated verb is no preflight at all.
 	n := len(preflightRows(t))
 	for _, cmd := range []string{`git commit -m "unterminated`, `echo "git push"`, "git status", "git log --oneline"} {
-		if got := gatePreflightLine(dir, cmd, session, refusing.URL); got != "" {
+		if got := gatePreflightLine(dir, "", cmd, session, refusing.URL); got != "" {
 			t.Errorf("%q gave %q, want silence", cmd, got)
 		}
 	}
@@ -127,7 +127,7 @@ func TestGatePreflightNamesARefusedClaimAndAMissingPassingRun(t *testing.T) {
 	gatePreflightVerifyCap = 50 * time.Millisecond
 	defer func() { gatePreflightVerifyCap = orig }()
 	preflightGit(t, dir, "reset", "-q", "--soft", "HEAD~1") // the claim is staged again
-	if line := gatePreflightLine(dir, "git commit -m x", session, slow.URL); !strings.Contains(line, "verify: not checked (deadline)") {
+	if line := gatePreflightLine(dir, "", "git commit -m x", session, slow.URL); !strings.Contains(line, "verify: not checked (deadline)") {
 		t.Errorf("slow verify line = %q, want verify: not checked (deadline)", line)
 	}
 
@@ -139,7 +139,7 @@ func TestGatePreflightNamesARefusedClaimAndAMissingPassingRun(t *testing.T) {
 	// Off by default: the same refused claim says nothing.
 	gatePreflightVerifyCap = orig
 	writeRepoFile(t, dir, ".fathom/config.toml", "[hooks]\ntest_run = true\n")
-	if line := gatePreflightLine(dir, "git commit -m x", session, refusing.URL); line != "" {
+	if line := gatePreflightLine(dir, "", "git commit -m x", session, refusing.URL); line != "" {
 		t.Errorf("gate_preflight off, yet the line = %q", line)
 	}
 }

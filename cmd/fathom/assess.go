@@ -559,7 +559,9 @@ func runAssess(run assessRun, opts assessOpts, stdout, stderr io.Writer) int {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), assessCallTimeout)
 	defer cancel()
-	resp, derr := ports.Decider.Decide(ctx, req)
+	// The verb asks from its own site, so the port's per-site cap and miss
+	// kill judge it (KS-10, KS-12).
+	resp, derr := decide.AtSite(ports.Decider, decide.SiteAssess).Decide(ctx, req)
 	row.LatencyMS = time.Since(started).Milliseconds()
 	if derr != nil {
 		ports.Recorder.RecordError(decide.SiteAssess, ports.Decider.Name(), "", len(req.Questions), time.Since(started), derr)

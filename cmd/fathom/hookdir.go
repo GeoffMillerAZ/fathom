@@ -54,6 +54,15 @@ func hookEffectiveDir(command, filePath, cwd string) (dir string, resolved bool)
 	return filepath.Clean(target), true
 }
 
+// hookGitDir is the directory a `git -C <at>` in command acts in: at as
+// written when absolute, else against the directory the command's leading
+// cd reached (hookEffectiveDir from cwd), the way the shell runs it, never
+// against the work tree's root.
+func hookGitDir(command, at, cwd string) string {
+	base, _ := hookEffectiveDir(command, "", cwd)
+	return resolveBashDir(base, at)
+}
+
 // leadingCdTarget is the literal operand of command's leading cd or pushd
 // (bash-path text), ok false when the command has none the lexer can read.
 func leadingCdTarget(command string) (string, bool) {

@@ -170,9 +170,14 @@ func TestDoctorDaemonPostureNamesReconcile(t *testing.T) {
 	if !strings.Contains(c.Remedy, want) || strings.Contains(c.Remedy, "--adopt") {
 		t.Fatalf("the remedy must be the exact reconcile command %q: %q", want, c.Remedy)
 	}
+	// Reconcile from the operator's own terminal reloads the agent itself
+	// (runDaemonReconcile); the launchctl lines are only what an agent
+	// shell prints instead, never a second step after reconcile.
 	reload := fmt.Sprintf("launchctl bootout gui/%d/com.example.mine && launchctl bootstrap gui/%d %s", os.Getuid(), os.Getuid(), plistPath)
-	if !strings.Contains(c.Remedy, reload) || strings.Index(c.Remedy, want) > strings.Index(c.Remedy, "launchctl") {
-		t.Fatalf("the remedy must name reconcile THEN the reload line %q: %q", reload, c.Remedy)
+	terminal := "from your own terminal: " + want + ", which reloads the agent"
+	agentShell := "from an agent shell it reloads nothing and prints the lines to run instead: " + reload
+	if !strings.Contains(c.Remedy, terminal) || !strings.Contains(c.Remedy, agentShell) || strings.Contains(c.Remedy, "then from your terminal") {
+		t.Fatalf("the remedy must name reconcile from the operator's terminal as the reload, and the launchctl lines only as an agent shell's: %q", c.Remedy)
 	}
 	if !strings.Contains(c.Reason, "KeepAlive: true") || !strings.Contains(c.Reason, "ThrottleInterval: absent") {
 		t.Fatalf("the reason must name the drifted keys: %q", c.Reason)
