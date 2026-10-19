@@ -1,0 +1,31 @@
+{
+  "id": "r",
+  "display": "R",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "r",
+  "match": {
+    "extensions": [".r", ".R"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": ["Rscript"],
+    "sniff": null
+  },
+  "grammar": { "blob": "r", "entry_point": "tree_sitter_r" },
+  "variants": [],
+  "queries": { "tags": "tags.scm" },
+  "kinds": {
+    "function": { "source_kind": "RFunction", "canonical": "function", "callable": true }
+  },
+  "name_match": "identity",
+  "required_kinds": ["function"],
+  "oracle_kinds": {
+    "ctags": { "function": "function" }
+  },
+  "ctags": { "languages": ["R"], "args": [] },
+  "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L2",
+  "queue_id": "r"
+}

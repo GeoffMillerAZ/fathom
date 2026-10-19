@@ -39,7 +39,7 @@ import tree_sitter
 
 LANGS = {"bash": ("tree_sitter_bash", "language"), "javascript": ("tree_sitter_javascript", "language"),
          "lua": ("tree_sitter_lua", "language"), "luau": ("tree_sitter_luau", "language"), "ruby": ("tree_sitter_ruby", "language"),
-         "scala": ("tree_sitter_scala", "language")}
+         "scala": ("tree_sitter_scala", "language"), "elixir": ("tree_sitter_elixir", "language"), "r": ("tree_sitter_r", "language")}
 
 
 def load_language(name):
@@ -106,6 +106,12 @@ def main():
     ap.add_argument("--basename", action="append", default=[], help="a file name (no extension) that is a candidate, e.g. Rakefile")
     ap.add_argument("--locals", help="the grammar's locals query (see the module doc)")
     ap.add_argument("--defs", action="store_true", help="emit definitions instead of calls")
+    ap.add_argument("--enclose-modules", action="store_true",
+                    help="a @definition.module also encloses calls (Elixir: a macro called in a defmodule body belongs to "
+                         "that module); the innermost enclosing function or module names the caller")
+    ap.add_argument("--honor-ignore", action="store_true",
+                    help="tree-sitter-tags' @ignore rule without a locals query: a tag whose name node lies inside a node "
+                         "an @ignore capture matched is dropped (Elixir's tags.scm names `def`, `alias`, an attribute's name... that way)")
     ap.add_argument("--module-caller", default="",
                     help="pair a call no definition encloses with this caller (K18: a script's top level is its "
                          "module symbol's code, core.ModuleSymbolName `<module>`) instead of skipping it")
@@ -155,6 +161,10 @@ def main():
         matches = list(cursor.matches(tree.root_node))
         ignored = {(n.start_byte, n.end_byte) for _, caps in matches for n in caps.get("ignore", [])}
         claimed = set(ignored)
+        ign_ranges = sorted(ignored) if a.honor_ignore else []
+
+        def ignored_name(n):
+            return any(s <= n.start_byte and n.end_byte <= e for s, e in ign_ranges)
         for pat, caps in matches:
             if locals_cursor is not None and "name" in caps:
                 key = (caps["name"][0].start_byte, caps["name"][0].end_byte)
@@ -166,15 +176,19 @@ def main():
             # aider's tags.scm names its captures @name.definition.function; a
             # grammar's own tags.scm (tree-sitter-lua) writes a plain @name and
             # tags a colon method as @definition.method, which encloses calls too.
-            for kind in ("definition.function", "definition.method"):
+            for kind in (("definition.function", "definition.method") + (("definition.module",) if a.enclose_modules else ())):
                 if kind in caps:
                     node = caps[kind][0]
                     nm = caps.get("name." + kind) or caps["name"]
+                    if ign_ranges and ignored_name(nm[0]):
+                        break
                     funcs.append((node, nm[0].text.decode("utf-8", "replace")))
                     break
             else:
                 if "reference.call" in caps:
-                    calls.append((caps.get("name.reference.call") or caps["name"])[0])
+                    cn = (caps.get("name.reference.call") or caps["name"])[0]
+                    if not (ign_ranges and ignored_name(cn)):
+                        calls.append(cn)
         for node, name in funcs:
             defs_out.append({"path": rel, "name": name, "line": node.start_point[0] + 1,
                              "end": node.end_point[0] + 1, "kind": "function"})

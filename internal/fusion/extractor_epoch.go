@@ -728,7 +728,12 @@ import (
 // Item ci (LB-Q-circleci, LB-Q-jupyter): CircleCI configs read through the circleci dialect and
 // notebooks through the native jupyter dialect (JSON over the notebook, the python dialect over its
 // code cells). Every such file fingerprinted before holds the old extraction.
-const ExtractorEpoch = "66"
+// Epoch 67 (wave lang3, one bump for the wave, made by the integrator). Item pr (LB-Q-r,
+// LB-Q-perl): R files (.R and .r) and Perl files (.pl, .pm, .t) read through the new r and perl
+// tree-sitter dialects. Item ex (LB-Q-elixir): Elixir files (.ex, .exs) read through the new elixir
+// dialect, imports resolved by namespace-dir. Every such file fingerprinted before holds the old
+// extraction.
+const ExtractorEpoch = "67"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares

@@ -1,0 +1,181 @@
+{
+  "dialect": "perl",
+  "kind": "language",
+  "target_level": "L2",
+  "level_met": "L2",
+  "grade": {
+    "L1": "good",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-10-19",
+  "fathom_commit": "d9c32d98",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "Perl-Critic",
+      "sha": "382d701fd1129822c98fdcdb08403a733a24dc08",
+      "files": 263,
+      "bytes": 1654903,
+      "counts": {
+        "call_fathom": 2759,
+        "call_fathom_in_truth": 2694,
+        "call_truth": 2696,
+        "call_truth_found": 2694,
+        "callables": 1614,
+        "callables_signed": 1614,
+        "fathom_defs": 1822,
+        "kind_equal": 1821,
+        "matched": 1821,
+        "oracle_defs": 1822
+      },
+      "families": {
+        "calls": "C",
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "function",
+        "package"
+      ],
+      "excluded_by_kind": {
+        "ctags:format": 1,
+        "ctags:label": 37
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 364.6029999999999,
+        "extract_cpu_ms": 372.7030000000002,
+        "max_file_ms": 15,
+        "peak_module_pages": 425,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "mojo",
+      "sha": "7b99f4adce82a45fd0965ef4dd56550b4f5ee89b",
+      "files": 280,
+      "bytes": 2458242,
+      "counts": {
+        "call_fathom": 4264,
+        "call_fathom_in_truth": 4204,
+        "call_truth": 4207,
+        "call_truth_found": 4204,
+        "callables": 1313,
+        "callables_signed": 1313,
+        "fathom_defs": 1530,
+        "kind_equal": 1525,
+        "matched": 1525,
+        "oracle_defs": 1525
+      },
+      "families": {
+        "calls": "C",
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "function",
+        "package"
+      ],
+      "excluded_by_kind": {
+        "ctags:constant": 38,
+        "ctags:format": 1,
+        "ctags:label": 1
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 4,
+        "extract_ms": 932.1250000000002,
+        "extract_cpu_ms": 937.5930000000006,
+        "max_file_ms": 74,
+        "peak_module_pages": 576,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "C",
+      "tool": "ppi-calls",
+      "version": "PPI 1.270"
+    },
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": 0.9822,
+    "call_recall": 0.9993,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": null,
+    "signature_coverage": 1,
+    "sym_precision": 0.9982,
+    "sym_recall": 0.9997,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "C",
+    "call_recall": "C",
+    "kind_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "not_measured": [
+    "range_agreement"
+  ],
+  "required_kinds": [
+    "function",
+    "package"
+  ],
+  "kind_intersection": [
+    "function",
+    "package"
+  ],
+  "counts": {
+    "call_fathom": 7023,
+    "call_fathom_in_truth": 6898,
+    "call_truth": 6903,
+    "call_truth_found": 6898,
+    "callables": 2927,
+    "callables_signed": 2927,
+    "fathom_defs": 3352,
+    "kind_equal": 3346,
+    "matched": 3346,
+    "oracle_defs": 3347
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 4,
+    "throughput_mb_s": 3.14,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 3.17,
+    "max_file_ms": 74,
+    "peak_module_pages": 576,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:constant": 38,
+    "ctags:format": 2,
+    "ctags:label": 38
+  },
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "range_agreement not measured: the L1 oracle reported no end line for any matched definition, so L1 can be met at most at good, never excellent (design \u00a71.2)",
+    "Subjects: mojolicious/mojo v9.50 (7b99f4ad, 280 files the harness reads: .pm, .t, .pl and extensionless perl scripts) and Perl-Critic/Perl-Critic v1.154 (382d701f, 263).",
+    "L1 oracle: universal-ctags 6.2.1 (tier B) with `--map-Perl=+.t` (it reads .pl .pm .ph .plx .perl and not .t): package and subroutine kinds; its constants (38), labels (38) and formats (2) are no dialect kind and are left out. Names are compared whole (manifest name_match identity): a package is `Mojo::Asset` to both, where the harness's bare rule would cut the dialect's to `Asset`. ctags writes no end line for a Perl definition, so range_agreement is not measured and L1 reads good, not excellent, whatever its recall and precision (.9997, .9982). Of the 6 dialect-only definitions, 5 are `async sub` subs in t/mojo/promise_async_await.t (Mojo::Base -async_await) that ctags misses and 1 is bin/perlcritic's `package main;` (line 3) that ctags does not tag; the 1 oracle-only definition is Perl::Critic's Capitalization.pm line 212, where ctags reads `subroutine` in a `qw< package subroutine ... >` list as a package. A `sub Pkg::name` is named `Pkg` by ctags and `Pkg::name` by the dialect (a name_match identity miss that neither subject has).",
+    "L2 oracle: PPI 1.270 (an independent Perl parser library, run by the machine's perl 5.34.1; calibration/oracles/ppi-calls, tier C): a call is a Word followed by a parenthesised list or directly by a term, or the Word after an arrow, paired with the named sub that encloses it, 4,207 pairs on mojo and 2,696 on Perl-Critic. A function named like a Perl builtin or keyword (perlfunc 5.34's list, with or without CORE::) is no call on either side; a method of that name is. The 125 dialect-only pairs (1.8%) are block and no-paren calls the oracle's term test does not see (`any { ... } @l`, `first { ... } @l`, `throw_policy_value policy => ...`, List::MoreUtils and Exception::Class helpers); the 5 oracle-only pairs are `return true() if ...` and `return false() if ...` in Mojo::JSON (real calls the dialect does not read) and the `STDOUT` filehandle word in Mojo::Server::CGI (a bareword PPI reads as a call) and the `_by_type` of `sort _by_type @{ $policies }` (a sort comparator's name) in PolicyListing.pm and ProfilePrototype.pm.",
+    "Known limits: a package statement is a one-line definition, so a sub of `package Foo;` is named `new` and not `Foo::new`; anonymous subs, typeglob assignments, `use constant`, variables and forward declarations are not definitions; the `use`/`require` graph is not read (L3 is not attempted). 4 files parse with an error under the pinned grammar (of 543).",
+    "Embedded grammar: perl.wasm.gz 2,443,271 bytes raw, 452,171 bytes gzip. The v2.0.0 tag ships no src/parser.c (29 MB generated), so the lock pins the release branch commit that adds it (4586b3f1)."
+  ],
+  "disposition": null
+}

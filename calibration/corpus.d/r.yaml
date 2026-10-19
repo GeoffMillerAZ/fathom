@@ -1,0 +1,26 @@
+id: r
+language: R
+# dplyr is a package of S3 generics and methods (R/, 195 .R files with tests/testthat beside them); testthat is the
+# test framework dplyr's tests run on, with S3 and R6 classes and many small helper functions.
+repos:
+  - name: tidyverse/dplyr
+    url: https://github.com/tidyverse/dplyr
+    ref: v1.2.1
+    sha: 95740975c465c29cdb2abdfa13effddb948444dc
+    licence: MIT
+    idioms:
+      - 'function assignments with <- at the top level of R/ files, and S3 methods named generic.class'
+      - 'nested helper functions assigned inside a function body'
+      - 'backslash-free anonymous functions passed to map-style helpers (function(x) ...)'
+      - 'namespaced calls (rlang::abort, vctrs::vec_slice) and plain calls'
+      - 'testthat test_that() blocks calling the package under test'
+  - name: r-lib/testthat
+    url: https://github.com/r-lib/testthat
+    ref: v3.3.2
+    sha: ace29c526f93b6ae1a402d93e6b1ccaf65de1e61
+    licence: MIT
+    idioms:
+      - 'R6 class generators and S3 reporters with methods held in lists'
+      - 'functions assigned with = and <<- and quoted or backtick-quoted names'
+      - 'internal helpers called across files of one package'
+      - 'expectations built from small closures'

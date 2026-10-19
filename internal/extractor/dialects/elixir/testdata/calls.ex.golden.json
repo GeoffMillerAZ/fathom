@@ -1,0 +1,96 @@
+{
+  "symbols": [
+    {
+      "name": "Calls",
+      "kind": "ElixirModule",
+      "package": "Calls",
+      "line": 1,
+      "end_line": 27,
+      "signature": "defmodule Calls",
+      "tier": "verified"
+    },
+    {
+      "name": "run",
+      "kind": "ElixirFunction",
+      "package": "Calls",
+      "line": 4,
+      "end_line": 21,
+      "signature": "def run(conn, items)",
+      "calls": [
+        ":erlang.hash",
+        "Calls.Util.helper",
+        "Enum.map",
+        "Map.get",
+        "Util.helper",
+        "Util.join",
+        "body",
+        "conn.assigns",
+        "fetch",
+        "finish",
+        "log",
+        "run",
+        "self",
+        "send"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "format",
+      "kind": "ElixirFunction",
+      "package": "Calls",
+      "line": 23,
+      "end_line": 23,
+      "signature": "defp format(i), do: to_string(i)",
+      "calls": [
+        "format",
+        "to_string"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "finish",
+      "kind": "ElixirFunction",
+      "package": "Calls",
+      "line": 24,
+      "end_line": 24,
+      "signature": "defp finish(x), do: x",
+      "calls": [
+        "finish"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "log",
+      "kind": "ElixirFunction",
+      "package": "Calls",
+      "line": 25,
+      "end_line": 25,
+      "signature": "defp log(x), do: IO.puts(x)",
+      "calls": [
+        "IO.puts",
+        "log"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "fetch",
+      "kind": "ElixirFunction",
+      "package": "Calls",
+      "line": 26,
+      "end_line": 26,
+      "signature": "defp fetch(x), do: x",
+      "calls": [
+        "fetch"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "Calls.Util",
+      "module": "Calls.Util",
+      "kind": "whole",
+      "line": 2
+    }
+  ]
+}

@@ -26,14 +26,12 @@ import (
 
 func TestUnsupportedLanguageForPath_KnownLanguages(t *testing.T) {
 	cases := map[string]string{
-		"lib.ex":       "elixir",
-		"lib_test.exs": "elixir",
-		"core.clj":     "clojure",
-		"core.cljs":    "clojure",
-		"core.cljc":    "clojure",
-		"Main.hs":      "haskell",
-		"lib.ml":       "ocaml",
-		"lib.mli":      "ocaml",
+		"core.clj":  "clojure",
+		"core.cljs": "clojure",
+		"core.cljc": "clojure",
+		"Main.hs":   "haskell",
+		"lib.ml":    "ocaml",
+		"lib.mli":   "ocaml",
 		// "Program.fs" is not listed since LB-F25: .fs is F# or a GLSL
 		// fragment shader by sniff (design §5), so it is never disclosed.
 		"script.fsx":   "fsharp",

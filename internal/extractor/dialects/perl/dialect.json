@@ -1,0 +1,38 @@
+{
+  "id": "perl",
+  "display": "Perl",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "perl",
+  "match": {
+    "extensions": [".pm"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": ["perl", "cperl"],
+    "sniff": {
+      "extensions": [".pl", ".t"],
+      "pattern": "^#!.*perl|\\buse\\s+(strict|warnings|v?5|Test::|Mojo)|\\bpackage\\s+\\w+|\\bsub\\s+\\w+",
+      "priority": 0
+    }
+  },
+  "grammar": { "blob": "perl", "entry_point": "tree_sitter_perl" },
+  "variants": [],
+  "queries": { "tags": "tags.scm" },
+  "kinds": {
+    "package":  { "source_kind": "PerlPackage", "canonical": "package", "container": true },
+    "class":    { "source_kind": "PerlClass",   "canonical": "class",    "container": true },
+    "function": { "source_kind": "PerlSub",     "canonical": "function", "callable": true },
+    "method":   { "source_kind": "PerlMethod",  "canonical": "method",   "callable": true }
+  },
+  "name_match": "identity",
+  "required_kinds": ["package", "function"],
+  "oracle_kinds": {
+    "ctags": { "package": "package", "subroutine": "function" }
+  },
+  "ctags": { "languages": ["Perl"], "args": ["--map-Perl=+.t", "--map-Perl=+.psgi"] },
+  "qualify": { "chain_containers": false, "container_sep": "::", "method_sep": "::" },
+  "package": { "strategy": "dir" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L2",
+  "queue_id": "perl"
+}
