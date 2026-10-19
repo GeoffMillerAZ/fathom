@@ -639,6 +639,14 @@ func verifyViaHTTP(hc *http.Client, baseURL, service, concern string, planMD []b
 	}, planMD, localPlan)
 }
 
+// verifyViaHTTPStop is verifyViaHTTP for the Stop hook, whose 5 s cap cannot
+// afford a follow-up that can only return the same partial (O1304).
+func verifyViaHTTPStop(hc *http.Client, baseURL, service, concern string, planMD []byte, localPlan verify.Plan, tree *goneev.PlanTree) (verify.Report, error) {
+	return verifyWithCallerOpts(func(md []byte) (httpVerifyResult, error) {
+		return callVerifyPlan(hc, baseURL, service, concern, md, tree)
+	}, planMD, localPlan, true)
+}
+
 // goneTreeFor is the plan tree verify_plan's gone: rows are held to
 // (plan_tree, O1068): root's HEAD and cleanliness, read only when the plan
 // carries a gone: row, since no other row asks. An unresolvable root reads
@@ -660,6 +668,13 @@ func goneTreeFor(root string, lp verify.Plan) *goneev.PlanTree {
 // verifyWithCaller is verifyViaHTTP over any one-call transport: HTTP, or
 // the daemon's own handler in process (verifyPlanInProcess).
 func verifyWithCaller(call func(planMD []byte) (httpVerifyResult, error), planMD []byte, localPlan verify.Plan) (verify.Report, error) {
+	return verifyWithCallerOpts(call, planMD, localPlan, false)
+}
+
+// verifyWithCallerOpts is verifyWithCaller; skipEmptyPartial ends the verify
+// after a first answer that is a stage partial verifying no task, instead of
+// sending elision follow-ups that can only return the same partial.
+func verifyWithCallerOpts(call func(planMD []byte) (httpVerifyResult, error), planMD []byte, localPlan verify.Plan, skipEmptyPartial bool) (verify.Report, error) {
 	hvr, err := call(planMD)
 	if err != nil {
 		return verify.Report{}, err
@@ -679,6 +694,9 @@ func verifyWithCaller(call func(planMD []byte) (httpVerifyResult, error), planMD
 	// shrink every later call (the follow-ups are capped).
 	batch, capped := len(tasks), false
 	cut := hvr.Elided != nil && hvr.Elided.Count > 0
+	if skipEmptyPartial && hvr.Partial != "" && len(tasks) == 0 {
+		cut = false
+	}
 	for i := 0; i < maxVerifyFollowUps && cut; i++ {
 		sub, sent := verifyFollowUpBatch(planMD, localPlan, got, batch)
 		if sent == 0 {
