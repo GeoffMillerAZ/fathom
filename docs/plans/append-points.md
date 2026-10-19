@@ -11,7 +11,7 @@ nobody shares. Kit rows land in agentic-kit first and arrive here by `task sync-
 
 ## Wave 0: the record
 
-- [ ] The decision record: an ADR (its id reserved at build) records D1 to D4, amends ADR-048 decision D2 (the integrator's one epoch bump), and F88 moves from `docs/intent/futures/f86-f91.md` to a scope goal {id: AP-1, oracle: lexical, path: ADR.md, pattern: "^## ADR-[0-9]+: Collision-free append points"}
+- [x] The decision record: an ADR (its id reserved at build) records D1 to D4, amends ADR-048 decision D2 (the integrator's one epoch bump), and F88 moves from `docs/intent/futures/f86-f91.md` to a scope goal {id: AP-1, oracle: lexical, path: ADR.md, pattern: "^## ADR-[0-9]+: Collision-free append points"}
 
 ## Wave 1: change-note fragments in the kit (section 3)
 
