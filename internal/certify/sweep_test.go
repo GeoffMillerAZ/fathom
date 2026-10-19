@@ -9,13 +9,14 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
-// TestSweepCertifications_MovedGoneAndNewRun exercises TC-8's three named
-// cases in one pass: a test symbol whose FILE moved (same key) -> stale;
-// a test symbol removed from the index entirely -> contradicted; and a
-// live certificate whose test gains a NEW attested run (a fresh fail
-// after the compile-time pass) -> the sweep's re-derived state reflects
-// it (still fresh, but no longer live).
-func TestSweepCertifications_MovedGoneAndNewRun(t *testing.T) {
+// TestSweepCertifications_DirectMovedGoneAndNewRun exercises the sweep's
+// three named cases in one direct call (the ingest-driven twin is
+// cmd/fathom's TestSweepCertifications_MovedGoneAndNewRun): a test symbol
+// whose FILE moved (same key) -> stale; a test symbol removed from the
+// index entirely -> contradicted; and a live certificate whose test gains
+// a NEW attested run (a fresh fail after the compile-time pass) -> the
+// sweep's re-derived state reflects it (still fresh, but no longer live).
+func TestSweepCertifications_DirectMovedGoneAndNewRun(t *testing.T) {
 	ctx, st := seedCompileFixture(t)
 	if _, err := CompileCertifications(ctx, st, compileSvc, "wm-1", time.Now(), "", noopGitRunner); err != nil {
 		t.Fatalf("CompileCertifications: %v", err)
