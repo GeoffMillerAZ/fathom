@@ -104,7 +104,7 @@ item's target; the last column also needs every level up to the target graded ex
 
 | Tier | Kind | Items | L1 | L2 | L3 | L4 | None | Refused | Tolerated | Unsupported | At target | At target, all excellent |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| T1 | language | 33 | 1 | 3 | 10 | 10 | 1 | 2 | 0 | 6 | 19 | 8 |
+| T1 | language | 33 | 1 | 2 | 11 | 10 | 1 | 2 | 0 | 6 | 20 | 8 |
 | T1 | tool format | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 |
 | T2 | tool format | 23 | 0 | 6 | 11 | 0 | 1 | 0 | 1 | 4 | 15 | 12 |
 | T3 | tool format | 16 | 1 | 4 | 11 | 0 | 0 | 0 | 0 | 0 | 15 | 5 |
@@ -114,7 +114,7 @@ item's target; the last column also needs every level up to the target graded ex
 | T6 | language | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | T6 | tool format | 4 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |
 | T7 | tool format | 4 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
-| **Total** | language | 37 | 1 | 4 | 11 | 10 | 1 | 3 | 0 | 7 | 20 | 8 |
+| **Total** | language | 37 | 1 | 3 | 12 | 10 | 1 | 3 | 0 | 7 | 21 | 8 |
 | **Total** | tool format | 63 | 1 | 15 | 34 | 0 | 1 | 0 | 1 | 11 | 46 | 25 |
 
 ### T1
@@ -139,7 +139,7 @@ item's target; the last column also needs every level up to the target graded ex
 | PHP (.php) | language | L4 | L4 (L1 excellent, L2 good, L3 excellent, L4 excellent) | L2 good: oracle tier B caps at good |
 | Rust (.rs) | language | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | excellent at target |
 | Kotlin (.kt .kts) | language | L4 | L3 (L1 excellent, L2 good, L3 good) | L4 not met: def_mapping not measured |
-| Lua (.lua) | language | L3 | L2 (L1 excellent, L2 good) | L3 not met: import_resolution not measured |
+| Lua (.lua) | language | L3 | L3 (L1 excellent, L2 good, L3 good) | L2 good: oracle tier C caps at good |
 | Ruby (.rb, Rakefile, Gemfile by basename) | language | L3 | L3 (L1 excellent, L2 good, L3 good) | L2 good: oracle tier C caps at good |
 | Dart (.dart) | language | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | excellent at target |
 | Swift (.swift) | language | L3 | refused | re-plan (LB-Q-swift-rest refused) |
@@ -263,8 +263,8 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 reached (languages at L1 30, L1 excellent 21, L2 25, L3 21, L4 10; tool formats at target 50)
-Milestone M2 progress: languages at L1 30/45, at L1 excellent 21/35, at L2 25/25, at L3 21/14, at L4 10/10; tool formats at target 50/30
+Milestone M1 reached (languages at L1 30, L1 excellent 21, L2 25, L3 22, L4 10; tool formats at target 50)
+Milestone M2 progress: languages at L1 30/45, at L1 excellent 21/35, at L2 25/25, at L3 22/14, at L4 10/10; tool formats at target 50/30
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -295,7 +295,7 @@ Milestone M2 progress: languages at L1 30/45, at L1 excellent 21/35, at L2 25/25
 | Rust (.rs) | language | tags | tree-sitter/tree-sitter-rust (MIT) | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | A rust-analyzer 0.0.0 (03fcb77246 2026-09-27) | scip:rust-analyzer | 2026-10-10 | at target (LB-Q-rust) |
 | Makefile / GNU make (Makefile, *.mk, GNUmakefile) | tool format | tags | tree-sitter-grammars/tree-sitter-make (MIT) | L2 | L2 (L1 excellent, L2 excellent) | A make -pn 4.4.1; B universal-ctags 6.2.1 | syntax | 2026-09-29 | at target (LB-Q-makefile) |
 | Kotlin (.kt .kts) | language | tags | fwcd/tree-sitter-kotlin (MIT) | L4 | L3 (L1 excellent, L2 good, L3 good) | B kotlin-psi 2.3.20 | scip:scip-java | 2026-10-10 | LB-Q-kotlin |
-| Lua (.lua) | language | tags | tree-sitter-grammars/tree-sitter-lua (MIT) | L3 | L2 (L1 excellent, L2 good) | B luaparse 0.3.1 (luaVersion LuaJIT); C tree-sitter-tags:lua-tags.scm py-tree-sitter 0.25.2, tree-sitter-lua 0.5.0 | syntax | 2026-09-29 | LB-Q-lua |
+| Lua (.lua) | language | tags | tree-sitter-grammars/tree-sitter-lua (MIT) | L3 | L3 (L1 excellent, L2 good, L3 good) | B lua-require luaparse 0.3.1 (luaVersion LuaJIT) statements; Lua 5.4.7 package.searchpath lookup; B luaparse 0.3.1 (luaVersion LuaJIT); C tree-sitter-tags:lua-tags.scm py-tree-sitter 0.25.2, tree-sitter-lua 0.5.0 | syntax | 2026-10-19 | at target (LB-Q-lua) |
 | GitLab CI (.gitlab-ci.yml, included files) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A gitlab-ci-local --list-json gitlab-ci-local 4.75.1; A gitlab-ci-local --preview ablation (each written needs, dependencies and extends, and each cross-file target's declaration, removed in a scratch copy) gitlab-ci-local 4.75.1 | — | 2026-10-02 | at target (LB-Q-gitlab-ci) |
 | Ruby (.rb, Rakefile, Gemfile by basename) | language | tags | tree-sitter/tree-sitter-ruby (MIT) | L3 | L3 (L1 excellent, L2 good, L3 good) | B ruby-require ruby 2.6.10; C tree-sitter-tags:ruby-tags.scm py-tree-sitter 0.25.2, tree-sitter-ruby 0.23.1; B universal-ctags 6.2.1 | scip:scip-ruby | 2026-10-03 | at target (LB-Q-ruby) |
 | Maven POMs (pom.xml) | tool format | doc | pure-go:encoding/xml (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A mvn help:effective-pom Maven 3.9.16; maven-help-plugin 3.5.1; A mvn help:effective-pom -Dverbose (input locations) + <module> ablation Maven 3.9.16; maven-help-plugin 3.5.1 | syntax | 2026-10-02 | at target (LB-Q-maven) |

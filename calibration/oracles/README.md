@@ -49,6 +49,7 @@ scores the pairs into `xref_precision`/`xref_recall` at the file's tier.
 | powershell-ast/ | B | PowerShell |
 | php-parser/ | B | PHP |
 | luaparse/ | B | Lua (definitions) |
+| lua-require/ | B | Lua (imports: `require` statements by luaparse, lookup by Lua's own package.searchpath) |
 | scalameta/ | B | Scala (definitions, calls) |
 | protoc-descriptors/ | A (definitions, references, imports) | Protocol Buffers |
 | opa-parse/ | A (definitions, calls, imports) | Rego |

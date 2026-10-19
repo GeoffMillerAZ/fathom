@@ -23,6 +23,8 @@ v0.5.0 `queries/tags.scm`, MIT, verbatim under a header), with py-tree-sitter 0.
     <tools>/pyts/bin/python tags_oracle.py --lang lua --query lua-tags.scm --ext .lua <clone>/kong > out/lua-kong-calls.json
     # Kong/kong 3.9.2 (kong/): 587 files / 10,996 pairs, nvim-telescope/telescope.nvim v0.2.2: 75 / 2,991; 0 parse errors
 
+Since wave lang1 (LB-Q-lua L3) the lua dialect mints a module symbol too (K18), so the lua run adds `--module-caller '<module>'` and a top-level call is paired with it (Kong `kong/`: 12,015 pairs, telescope.nvim: 3,319).
+
 That query's `@definition.function` and `@definition.method` both enclose calls, and its captures are a plain
 `@name` (aider's are `@name.definition.function`); the script reads either. Upstream marks the whole
 `table_constructor` as the definition of its function-valued fields, so a call written in a sibling field of a

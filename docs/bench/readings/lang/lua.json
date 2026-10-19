@@ -1,16 +1,16 @@
 {
   "dialect": "lua",
   "kind": "language",
-  "target_level": "L2",
-  "level_met": "L2",
+  "target_level": "L3",
+  "level_met": "L3",
   "grade": {
     "L1": "excellent",
     "L2": "good",
-    "L3": "not-attempted",
+    "L3": "good",
     "L4": "not-attempted"
   },
-  "measured_at": "2026-09-29",
-  "fathom_commit": "f4bed50a",
+  "measured_at": "2026-10-19",
+  "fathom_commit": "10a63138",
   "extractor": "dialect",
   "subjects": [
     {
@@ -19,13 +19,24 @@
       "files": 587,
       "bytes": 3203247,
       "counts": {
-        "call_fathom": 11173,
-        "call_fathom_in_truth": 10863,
-        "call_truth": 10996,
-        "call_truth_found": 10863,
+        "call_fathom": 12160,
+        "call_fathom_in_truth": 11844,
+        "call_truth": 12015,
+        "call_truth_found": 11844,
         "callables": 3324,
         "callables_signed": 3324,
         "fathom_defs": 3324,
+        "file_edges_agree": 1095,
+        "file_edges_fathom": 1095,
+        "file_edges_truth": 1095,
+        "import_edges_agree": 1116,
+        "import_edges_fathom": 1116,
+        "import_edges_truth": 1116,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "imports": 1704,
+        "imports_in_repo": 1116,
+        "imports_resolved_agree": 1116,
         "kind_equal": 3324,
         "matched": 3324,
         "oracle_defs": 3324,
@@ -34,17 +45,23 @@
       },
       "families": {
         "calls": "C",
+        "file_edges": "B",
+        "imports": "B",
         "l1": "B"
       },
       "kind_intersection": [
         "function"
       ],
+      "excluded_by_kind": {
+        "fathom:LuaModule": 587
+      },
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 877.5899999999995,
-        "extract_cpu_ms": 875.4360000000011,
-        "max_file_ms": 21,
+        "files_with_error": 0,
+        "extract_ms": 947.0639999999996,
+        "extract_cpu_ms": 893.7229999999996,
+        "max_file_ms": 20,
         "peak_module_pages": 311,
         "compiled_bytes": 0
       }
@@ -55,13 +72,24 @@
       "files": 75,
       "bytes": 703625,
       "counts": {
-        "call_fathom": 3054,
-        "call_fathom_in_truth": 2907,
-        "call_truth": 2991,
-        "call_truth_found": 2907,
+        "call_fathom": 3383,
+        "call_fathom_in_truth": 3235,
+        "call_truth": 3319,
+        "call_truth_found": 3235,
         "callables": 941,
         "callables_signed": 941,
         "fathom_defs": 941,
+        "file_edges_agree": 207,
+        "file_edges_fathom": 207,
+        "file_edges_truth": 207,
+        "import_edges_agree": 235,
+        "import_edges_fathom": 235,
+        "import_edges_truth": 235,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "imports": 286,
+        "imports_in_repo": 235,
+        "imports_resolved_agree": 235,
         "kind_equal": 941,
         "matched": 941,
         "oracle_defs": 941,
@@ -70,23 +98,34 @@
       },
       "families": {
         "calls": "C",
+        "file_edges": "B",
+        "imports": "B",
         "l1": "B"
       },
       "kind_intersection": [
         "function"
       ],
+      "excluded_by_kind": {
+        "fathom:LuaModule": 75
+      },
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 217.438,
-        "extract_cpu_ms": 215.83900000000003,
-        "max_file_ms": 19,
+        "files_with_error": 0,
+        "extract_ms": 186.73800000000006,
+        "extract_cpu_ms": 189.678,
+        "max_file_ms": 16,
         "peak_module_pages": 301,
         "compiled_bytes": 0
       }
     }
   ],
   "oracles": [
+    {
+      "tier": "B",
+      "tool": "lua-require",
+      "version": "luaparse 0.3.1 (luaVersion LuaJIT) statements; Lua 5.4.7 package.searchpath lookup"
+    },
     {
       "tier": "B",
       "tool": "luaparse",
@@ -99,12 +138,12 @@
     }
   ],
   "metrics": {
-    "call_precision": 0.9679,
-    "call_recall": 0.9845,
+    "call_precision": 0.9701,
+    "call_recall": 0.9834,
     "def_mapping": null,
-    "file_edge_precision": null,
-    "file_edge_recall": null,
-    "import_resolution": null,
+    "file_edge_precision": 1,
+    "file_edge_recall": 1,
+    "import_resolution": 1,
     "kind_agreement": 1,
     "range_agreement": 1,
     "signature_coverage": 1,
@@ -115,6 +154,9 @@
   "metric_tiers": {
     "call_precision": "C",
     "call_recall": "C",
+    "file_edge_precision": "B",
+    "file_edge_recall": "B",
+    "import_resolution": "B",
     "kind_agreement": "B",
     "range_agreement": "B",
     "signature_coverage": "B",
@@ -128,13 +170,24 @@
     "function"
   ],
   "counts": {
-    "call_fathom": 14227,
-    "call_fathom_in_truth": 13770,
-    "call_truth": 13987,
-    "call_truth_found": 13770,
+    "call_fathom": 15543,
+    "call_fathom_in_truth": 15079,
+    "call_truth": 15334,
+    "call_truth_found": 15079,
     "callables": 4265,
     "callables_signed": 4265,
     "fathom_defs": 4265,
+    "file_edges_agree": 1302,
+    "file_edges_fathom": 1302,
+    "file_edges_truth": 1302,
+    "import_edges_agree": 1351,
+    "import_edges_fathom": 1351,
+    "import_edges_truth": 1351,
+    "import_oracle_out_of_scope": 0,
+    "import_oracle_unpaired": 0,
+    "imports": 1990,
+    "imports_in_repo": 1351,
+    "imports_resolved_agree": 1351,
     "kind_equal": 4265,
     "matched": 4265,
     "oracle_defs": 4265,
@@ -144,23 +197,32 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 3.58,
+    "files_with_error": 0,
+    "throughput_mb_s": 3.61,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 3.57,
-    "max_file_ms": 21,
+    "wall_throughput_mb_s": 3.45,
+    "max_file_ms": 20,
     "peak_module_pages": 311,
     "compiled_bytes": 0
   },
-  "excluded_by_kind": {},
+  "excluded_by_kind": {
+    "fathom:LuaModule": 662
+  },
   "notes": [
-    "integration critic 2026-09-29 (kept, tier B): the claim flagged for review holds. universal-ctags is verified deficient for Lua (no end line for any tag, and 228 pieces of text tagged as functions by pattern), which is D2's condition, and D2 already puts an independent parser library's syntax dump at tier B (JavaParser); luaparse shares no code with tree-sitter. The definition scope (a function stored in a statically named slot) is the dialect author's rule, but ctags, reading by pattern, agrees on 4,191 of the dialect's 4,265 definitions, so the rule is not the dialect's alone. L1 excellent stands (design section 1.5, D2, PowerShell, PHP and Lua)",
-    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "Kong/kong: lua-require (tier B): 3656 require statements in 1257 files (1 luaparse rejected): 3580 name a string literal (6 as pcall(require, name)), of which 2384 resolve to a subject file under package.path \"./?.lua;./?/init.lua;./lua/?.lua;./lua/?/init.lua;./lib/?.lua;./lib/?/init.lua;./src/?.lua;./src/?/init.lua\" and 1196 name no subject file (an installed rock, a C module, a runtime-provided one); 76 are computed (0 literals with an escape sequence), counted and never resolved; the package.path is the operator's choice",
+    "Kong/kong: restricted to kong/** (-only; the files outside are a disclosed gap, not measured)",
     "L1 oracle: luaparse 0.3.1 (MIT), a Lua parser library independent of tree-sitter, run as calibration/oracles/luaparse/luaparse_dump.js (luaVersion LuaJIT, Node as a bench instrument only): every definition with a range, 4,265 on 662 files, 0 parse errors. Tier B on the D2 precedent (JavaParser, Roslyn, PSI, php-parser): an independent syntactic parser, so L1 can be excellent and L2 at most good. The tier is a claim for Opus review, not a harness fact. The parser is independent; the scope (a definition is a function stored in a statically named slot) is the dialect author's rule, written in the oracle's README, so sym_recall 1 and sym_precision 1 show the queries implement that rule over 4,265 real definitions, not that no other rule is reasonable.",
-    "L2 oracle: the grammar's own queries/tags.scm (tree-sitter-grammars/tree-sitter-lua v0.5.0, MIT) run by py-tree-sitter 0.25.2 with tree-sitter-lua 0.5.0, tier C (D5, calibration/oracles/ts-tags), so L2 is capped at good. Its call pairs and the dialect's differ in attribution: upstream marks the whole table_constructor as the definition of its function-valued fields (a call written in a sibling field of a callback table such as pickers.new(opts, { prompt_title = .., attach_mappings = function .. end }) is paired with the first function field, 40 pairs on telescope's attach_mappings alone), and it has no definition for a string-keyed function or a t[\"k\"] = function; the dialect pairs a call with the innermost function around it. call_recall .9845 (13,770 of 13,987 pairs), call_precision .9679 (13,770 of 14,227).",
-    "universal-ctags 6.2.1 (tier B) is an unscored cross-check, not the L1 oracle: it writes no end line for Lua (range_agreement unmeasurable, L1 capped at good) and reads by pattern, not by parse. Over the same 662 files it reads sym_recall .9197, sym_precision .9826, kind_agreement 1, signature_coverage 1 (4,191 of 4,557 definitions matched; the incumbent walker read .2625 on telescope.nvim in the wave-0 baseline, docs/bench/readings/lang/baseline/lua.json). Its 366 unmatched definitions: 228 are text tagged as a function (a variable assigned the result of a call whose argument is a function, `local ok, err = pcall(function() ... end)`; an immediately invoked function expression; a string or table value on a line containing the word function; `type(v) ~= \"function\"` tagged as `~`), 122 are bracketed slots ctags spells by their key expression (`decoder[TAG.INTEGER] = function` is `INTEGER]`, `[\"k\"] = function` is `[\"k\"]`), and 16 sit inside block comments.",
+    "L2 oracle: the grammar's own queries/tags.scm (tree-sitter-grammars/tree-sitter-lua v0.5.0, MIT) run by py-tree-sitter 0.25.2 with tree-sitter-lua 0.5.0, tier C (D5, calibration/oracles/ts-tags), so L2 is capped at good. Its call pairs and the dialect's differ in attribution: upstream marks the whole table_constructor as the definition of its function-valued fields (a call written in a sibling field of a callback table such as pickers.new(opts, { prompt_title = .., attach_mappings = function .. end }) is paired with the first function field, 40 pairs on telescope's attach_mappings alone), and it has no definition for a string-keyed function or a t[\"k\"] = function; the dialect pairs a call with the innermost function around it. Since the module symbol (K18) a call no function encloses is paired with the file's `<module>` symbol, and the oracle run pairs it the same way (tags_oracle.py --module-caller '<module>'): call_recall .9834 (15,079 of 15,334 pairs), call_precision .9701 (15,079 of 15,543).",
+    "L3 (LB-Q-lua, wave lang1): imports.scm reads `require` with a literal module name (`require(\"a.b\")`, `require \"a.b\"`, `require 'a.b'`, `require [[a.b]]`) and `pcall(require, \"a.b\")`; the manifest's file-symbol strategy reads the dots as directory separators and tries a/b.lua then a/b/init.lua under the repository root, lua/, lib/ and src/ (package.path as Lua, OpenResty and Neovim projects lay it out). The dialect mints a LuaModule symbol per file (module_symbol, K18) so a require at the top of a file is an edge from that file's `<module>` to the required file's. Oracle: calibration/oracles/lua-require (tier B): luaparse for the statements and Lua 5.4.7's own package.searchpath for the lookup over the same package.path, so the strategy and the oracle share a path list (the operator's choice, stated) and nothing else. Tier B caps L3 at good. A require of a rock, a C module or a runtime-provided one (Kong 1,196 and telescope 49 of the literal names) names no file of the subject and is outside both. file_edge_recall 1 is against statements, not references (LB-F57): a file required and never used is in the truth.",
+    "file_edge_precision and file_edge_recall measured against an import dump's (file, imported file) pairs, there being no SCIP index: the truth is what each file's import statements name, not the files its references reach as a SCIP index's cross-file edges are, so a file reached without an import of its own (a file another one required, an autoloaded constant) is outside the truth and a resolved edge to it counts against precision, while a file imported and never referenced is in it (LB-F57)",
     "grammar: tree-sitter-lua v0.5.0 (the tag the incumbent luaextract.go's binding pins, MIT, ABI 15, external scanner), lua.wasm.gz 64,669 bytes gzip (173,721 raw), 311 peak module pages, 0 faults, 3.58 MB/CPU-s. Kong/kong is measured as 3.9.2's kong/ tree (sparse checkout; its spec/ suite and fixtures are not read), telescope.nvim as v0.2.2; both subjects parse without an ERROR node.",
+    "import_resolution: 1351 of 1351 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent >= 0.95, good >= 0.85); import edges precision 1 (1351 of 1351) and recall 1 (1351 of 1351); 0 of 1990 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
+    "integration critic 2026-09-29 (kept, tier B): the claim flagged for review holds. universal-ctags is verified deficient for Lua (no end line for any tag, and 228 pieces of text tagged as functions by pattern), which is D2's condition, and D2 already puts an independent parser library's syntax dump at tier B (JavaParser); luaparse shares no code with tree-sitter. The definition scope (a function stored in a statically named slot) is the dialect author's rule, but ctags, reading by pattern, agrees on 4,191 of the dialect's 4,265 definitions, so the rule is not the dialect's alone. L1 excellent stands (design section 1.5, D2, PowerShell, PHP and Lua)",
     "lang-parity against luaextract (same subjects, luaparse for L1 and the tags oracle for calls): sym_recall .6642 -> 1, sym_precision 1 -> 1, kind_agreement 1 -> 1, range_agreement 1 -> 1, signature_coverage 0 -> 1, call_recall .7338 -> .9845, call_precision .9449 -> .9679, level none -> L2, no SourceKind lost (LuaFunction is the one kind); verdict MERGE (design section 11 step 2). The incumbent stopped at the first function_declaration (no nested function, no `x = function`, no table field) and recorded a callee's whole text (M.foo, self:bar); the dialect records the last identifier.",
-    "not extracted, on purpose: module tables and variables (`local M = {}`), table fields that do not hold a function, a function in a computed slot (`t[TAG.X] = function`, `{ [KEY] = function }`: 46 on Kong, 19 on telescope.nvim: no static name), the second and later variables of `local a, b = function.., function..` (the anchored pattern reads the first pair; none in the subjects), and the require graph (L3, a file-symbol strategy, not attempted)."
+    "not extracted, on purpose: module tables and variables (`local M = {}`), table fields that do not hold a function, a function in a computed slot (`t[TAG.X] = function`, `{ [KEY] = function }`: 46 on Kong, 19 on telescope.nvim: no static name), the second and later variables of `local a, b = function.., function..` (the anchored pattern reads the first pair; none in the subjects). The require graph is L3 (below).",
+    "nvim-telescope/telescope.nvim: lua-require (tier B): 290 require statements in 75 files (0 luaparse rejected): 286 name a string literal (4 as pcall(require, name)), of which 237 resolve to a subject file under package.path \"./?.lua;./?/init.lua;./lua/?.lua;./lua/?/init.lua;./lib/?.lua;./lib/?/init.lua;./src/?.lua;./src/?/init.lua\" and 49 name no subject file (an installed rock, a C module, a runtime-provided one); 4 are computed (0 literals with an escape sequence), counted and never resolved; the package.path is the operator's choice",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "universal-ctags 6.2.1 (tier B) is an unscored cross-check, not the L1 oracle: it writes no end line for Lua (range_agreement unmeasurable, L1 capped at good) and reads by pattern, not by parse. Over the same 662 files it reads sym_recall .9197, sym_precision .9826, kind_agreement 1, signature_coverage 1 (4,191 of 4,557 definitions matched; the incumbent walker read .2625 on telescope.nvim in the wave-0 baseline, docs/bench/readings/lang/baseline/lua.json). Its 366 unmatched definitions: 228 are text tagged as a function (a variable assigned the result of a call whose argument is a function, `local ok, err = pcall(function() ... end)`; an immediately invoked function expression; a string or table value on a line containing the word function; `type(v) ~= \"function\"` tagged as `~`), 122 are bracketed slots ctags spells by their key expression (`decoder[TAG.INTEGER] = function` is `INTEGER]`, `[\"k\"] = function` is `[\"k\"]`), and 16 sit inside block comments."
   ],
   "disposition": null
 }
