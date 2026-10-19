@@ -25,8 +25,9 @@ import (
 // (scripts/stranger-check.sh), from a prebuilt binary.
 //
 // Every step is a child process whose environment is rebuilt, never
-// inherited for the paths that matter: HOME, the XDG directories and every
-// FATHOM_ variable point inside the throwaway directory, the daemon URL
+// inherited for the paths that matter: HOME, TMPDIR (a child's os.TempDir
+// caches), the XDG directories and every FATHOM_ variable point inside the
+// throwaway directory, the daemon URL
 // points at a port nothing listens on, and model API keys are dropped. So
 // the real HOME, ~/.fathom and a running daemon are out of the children's
 // reach by construction, not by care.
@@ -83,9 +84,11 @@ func initDemo(ctx context.Context, d initDemoDeps, stdout, stderr io.Writer) int
 	defer os.RemoveAll(dir)
 	home := filepath.Join(dir, "home")
 	fleetDir := filepath.Join(dir, "fauxtown")
-	if err := os.MkdirAll(home, 0o755); err != nil {
-		fmt.Fprintf(stderr, "error: --demo: %v\n", err)
-		return 1
+	for _, d := range []string{home, filepath.Join(dir, "tmp")} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			fmt.Fprintf(stderr, "error: --demo: %v\n", err)
+			return 1
+		}
 	}
 	fleet, err := d.fleet()
 	if err != nil {
@@ -175,10 +178,11 @@ func copyDemoFleet(fleet fs.FS, dst string) (int, error) {
 	return services, err
 }
 
-// demoEnv rebuilds the environment for the demo's children: HOME, every
-// XDG_ and FATHOM_ variable, the Claude/Codex config homes and model API
-// keys are dropped from base, then HOME, the XDG directories, fathom's
-// home and state directories point inside dir and the daemon URL at
+// demoEnv rebuilds the environment for the demo's children: HOME, the temp
+// directory variables, every XDG_ and FATHOM_ variable, the Claude/Codex
+// config homes and model API keys are dropped from base, then HOME, TMPDIR,
+// the XDG directories, fathom's home and state directories point inside
+// dir and the daemon URL at
 // demoNoDaemon; extra goes last.
 func demoEnv(base []string, dir, home string, extra []string) []string {
 	env := make([]string, 0, len(base)+len(extra)+10)
@@ -186,6 +190,7 @@ func demoEnv(base []string, dir, home string, extra []string) []string {
 		name, _, _ := strings.Cut(kv, "=")
 		switch {
 		case name == "HOME", name == "CLAUDE_CONFIG_DIR", name == "CODEX_HOME",
+			name == "TMPDIR", name == "TMP", name == "TEMP",
 			strings.HasPrefix(name, "XDG_"), strings.HasPrefix(name, "FATHOM_"),
 			strings.HasSuffix(name, "_API_KEY"):
 			continue
@@ -194,6 +199,7 @@ func demoEnv(base []string, dir, home string, extra []string) []string {
 	}
 	env = append(env,
 		"HOME="+home,
+		"TMPDIR="+filepath.Join(dir, "tmp"),
 		"XDG_CONFIG_HOME="+filepath.Join(home, ".config"),
 		"XDG_CACHE_HOME="+filepath.Join(home, ".cache"),
 		"XDG_DATA_HOME="+filepath.Join(home, ".local", "share"),

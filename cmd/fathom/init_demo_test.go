@@ -42,6 +42,11 @@ func TestInitDemoWiresFauxtownAndReachesAFirstProvenAnswer(t *testing.T) {
 	t.Setenv("XDG_STATE_HOME", filepath.Join(realHome, ".local", "state"))
 	t.Setenv("FATHOM_HOME", filepath.Join(realHome, ".fathom"))
 	before := snapshotTree(t, realHome)
+	// The operator's temp directory: a child's os.TempDir caches (the git
+	// toplevel cache, the breaker files) must land in the throwaway
+	// directory, never here, or they outlive the demo.
+	osTmp := t.TempDir()
+	t.Setenv("TMPDIR", osTmp)
 
 	exe, err := filepath.Abs(os.Args[0])
 	if err != nil {
@@ -107,6 +112,9 @@ func TestInitDemoWiresFauxtownAndReachesAFirstProvenAnswer(t *testing.T) {
 	}
 	if left, _ := os.ReadDir(tmpRoot); len(left) != 0 {
 		t.Errorf("the throwaway directory was left behind: %d entries in %s", len(left), tmpRoot)
+	}
+	if left, _ := os.ReadDir(osTmp); len(left) != 0 {
+		t.Errorf("the demo's children wrote into the operator's TMPDIR: %v", left)
 	}
 }
 
