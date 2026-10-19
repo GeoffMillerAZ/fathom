@@ -377,6 +377,17 @@ DMP-6) wait on the owner. The two-wave limit and the swap-volume rule of section
 on 2026-10-17 (`docs/bench/readings/decide/exp-stage-gate.md`, US$0.0272 spent): stages 1 and 2 stopped, and the
 spine keeps its place in the order above under its own kill.
 
+### 9.10 Amended 2026-10-19 (owner-architect decisions): five owner ideas recorded, no program added
+
+Proof-triggered work already ships as `plans next --eligible-only`, which counts a dependency only when it is verified,
+so fathom stays the oracle and never the loop: F28 records that evidence, the in-bounds `/events` extension (built only
+for a named consumer) and the integration recipe, which waits on Claude Code agent teams leaving experimental or the
+owner running it. File locks stay rejected for now (F82), and the F82 overlap replay runs now as a $0 filler reading.
+F88 (collision-free append points) and F89 (responsibility clusters) wait on their promote conditions. F90 (duplicate
+at birth) gets its design, an ADR with a `## Decision models` section, after RT-M1 reads on 2026-10-27, in section
+9.9's decision-model order. A repo-wide clone audit and a general best-practice linter are rejected (F90), and token
+savings get no new record: RO-M0's CUT stands. The two-wave limit and the swap-volume rule of section 9.4 still apply.
+
 ## 10. Corrections to the memo (the tree or the memo itself disagreed)
 
 1. **`tests:` is taken.** Plan grammar v2 already has `tests:` (a `gone: callers` modifier,

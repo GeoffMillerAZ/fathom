@@ -1,0 +1,27 @@
+id: perl
+language: Perl
+# Mojolicious is a web framework of one package per .pm file (lib/), with prototyped and signatured subs
+# (use Mojo::Base -signatures), its tests in t/ (.t) and scripts in examples/ (.pl). Perl::Critic is a
+# classic CPAN distribution: packages declared with `package NAME;`, many subs per file, .t tests and a
+# script in bin/.
+repos:
+  - name: mojolicious/mojo
+    url: https://github.com/mojolicious/mojo
+    ref: v9.50
+    sha: 7b99f4adce82a45fd0965ef4dd56550b4f5ee89b
+    licence: Artistic-2.0
+    idioms:
+      - 'sub with a signature (sub name ($self, $x) { ... }) and the classic my ($self) = @_ form'
+      - 'package NAME; at the top of a .pm file, and package NAME { ... } blocks'
+      - 'method chains ($self->app->log->info(...))'
+      - 'Test::More tests in t/ calling the library, and .pl scripts with a #! line'
+  - name: Perl-Critic/Perl-Critic
+    url: https://github.com/Perl-Critic/Perl-Critic
+    ref: v1.154
+    sha: 382d701fd1129822c98fdcdb08403a733a24dc08
+    licence: Artistic-1.0-Perl OR GPL-1.0-or-later
+    idioms:
+      - 'several packages in one file, subs named with their package (sub Pkg::name)'
+      - 'subs with prototypes and attributes'
+      - 'calls to imported functions without parentheses (helper $x;)'
+      - 'Policy classes whose methods override a base class'

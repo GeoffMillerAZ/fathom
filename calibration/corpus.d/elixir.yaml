@@ -1,0 +1,27 @@
+id: elixir
+language: Elixir
+# Phoenix is a web framework (lib/, installer/ and a large test suite, every file .ex or .exs): modules nested in
+# modules, macros that inject imports (use Phoenix.Controller), behaviours and callbacks, ExUnit tests. Ecto is a
+# data library with the same shape plus typespecs on nearly every function and a query DSL built on macros.
+repos:
+  - name: phoenixframework/phoenix
+    url: https://github.com/phoenixframework/phoenix
+    ref: v1.8.9
+    sha: 734c8d1c32253627e234c8a1cb831367191ff5dd
+    licence: MIT
+    idioms:
+      - 'defmodule nesting and many modules per file (lib/phoenix/router.ex, test support modules)'
+      - 'def/defp with guards, default arguments and multi-clause functions; defmacro and defmacrop'
+      - '@callback / @type / @spec declarations beside the functions that implement them'
+      - 'alias Foo.{A, B}, import ... only:, require, and use Phoenix.Controller (macro-injected imports)'
+      - 'ExUnit test "name" do ... end inside describe blocks in .exs files'
+  - name: elixir-ecto/ecto
+    url: https://github.com/elixir-ecto/ecto
+    ref: v3.14.2
+    sha: f6eb492964dbd32bc6924d5330d1cc05b41e89a1
+    licence: Apache-2.0
+    idioms:
+      - 'defprotocol and defimpl (Ecto.Queryable, Ecto.Type) and their per-type implementations'
+      - 'defdelegate and defguard in the public API modules (Ecto.Changeset, Ecto.Query)'
+      - 'macros that build a DSL (defmacro from/2, schema/2) and quote/unquote bodies'
+      - 'modules under lib/ecto/ named by the lib/ecto/foo/bar.ex convention the import resolver relies on'

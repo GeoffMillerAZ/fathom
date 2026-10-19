@@ -345,7 +345,7 @@ func stopHookVerify(projDir string, hc *http.Client, baseURL string) (string, bo
 	for _, c := range claims {
 		rel, newMD, newly := c.rel, c.md, c.newly
 		localPlan := verify.ParseMarkdownPlan(service, newMD)
-		rep, err := verifyViaHTTP(hc, baseURL, service, "", newMD, localPlan, goneTreeFor(projDir, localPlan))
+		rep, err := verifyViaHTTPStop(hc, baseURL, service, "", newMD, localPlan, goneTreeFor(projDir, localPlan))
 		if err != nil {
 			if isTimeoutErr(err) {
 				// B3-1: a slow verify degrades to a warning for THIS plan —

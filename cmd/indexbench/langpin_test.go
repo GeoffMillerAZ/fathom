@@ -61,7 +61,7 @@ func pinRoot(t *testing.T) (root, catalogue string) {
 	defs := `{
   "scss":  {"repo": "https://github.com/tree-sitter-grammars/tree-sitter-scss", "rev": "` + strings.Repeat("1", 40) + `"},
   "less":  {"repo": "https://github.com/rhino1998/tree-sitter-less", "rev": "` + strings.Repeat("2", 40) + `", "generate": true},
-  "r":     {"repo": "https://github.com/r-lib/tree-sitter-r", "rev": "` + strings.Repeat("3", 40) + `"},
+  "d":     {"repo": "https://github.com/gdamore/tree-sitter-d", "rev": "` + strings.Repeat("3", 40) + `"},
   "vba": {"repo": "https://github.com/harumiWeb/tree-sitter-vba", "rev": "` + strings.Repeat("4", 40) + `"},
   "prolog": {"repo": "https://github.com/Rukiza/tree-sitter-prolog", "rev": "` + strings.Repeat("5", 40) + `"},
   "objc":  {"repo": "https://github.com/tree-sitter-grammars/tree-sitter-objc", "rev": "` + strings.Repeat("6", 40) + `"},
@@ -70,7 +70,7 @@ func pinRoot(t *testing.T) (root, catalogue string) {
 	lic := `{
   "tree-sitter-grammars/tree-sitter-scss": "MIT",
   "rhino1998/tree-sitter-less": "MIT",
-  "r-lib/tree-sitter-r": "AGPL-3.0",
+  "gdamore/tree-sitter-d": "AGPL-3.0",
   "Rukiza/tree-sitter-prolog": "ISC",
   "tree-sitter-grammars/tree-sitter-objc": "MIT",
   "ionide/tree-sitter-fsharp": "MIT"
@@ -182,7 +182,7 @@ func TestCmdLangPin(t *testing.T) {
 	}
 
 	// Refused (AGPL in the catalogue), unlicensed (no licence on record).
-	for id, why := range map[string]string{"r": "refused", "vba": "unlicensed"} {
+	for id, why := range map[string]string{"d": "refused", "vba": "unlicensed"} {
 		code, out, errs = runPin("-root", root, "-id", id)
 		if code != 1 || strings.Contains(out, `"blob"`) || !strings.Contains(errs, why) {
 			t.Errorf("-id %s: exit %d, want 1 with %q and no row\nstdout %s\nstderr %s", id, code, why, out, errs)
