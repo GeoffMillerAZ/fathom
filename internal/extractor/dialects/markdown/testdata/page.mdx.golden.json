@@ -1,0 +1,11 @@
+{
+  "path": "docs/page.mdx",
+  "roots": ["Page {#custom-id}"],
+  "symbols": [
+    { "name": "Page {#custom-id}", "kind": "DocChunk", "package": "page", "line": 3, "end_line": 11, "signature": "h1", "tier": "doc-claimed" }
+  ],
+  "cross_file": [
+    { "from": "Page {#custom-id}", "edge": "link", "raw": "./basic.md#install-steps", "target": "docs/basic.md", "strategy": "repo-path", "line": 8 },
+    { "from": "Page {#custom-id}", "edge": "link_anchor", "raw": "install-steps", "target": "docs/basic.md", "strategy": "md-anchor", "line": 8 }
+  ]
+}

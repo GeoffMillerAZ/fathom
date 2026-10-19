@@ -554,7 +554,7 @@ var routeCandidateRules = sync.OnceValue(func() []connector.DialectRule {
 	}
 	var rules []connector.DialectRule
 	for _, d := range ds {
-		if d.Engine == "tags" {
+		if d.Engine == "tags" || d.ID == "markdown" { // a Markdown file carries no routes (LB-Q-markdown)
 			continue
 		}
 		r := connector.DialectRule{ID: d.ID, Basenames: d.Match.Basenames, Globs: d.Match.Globs}

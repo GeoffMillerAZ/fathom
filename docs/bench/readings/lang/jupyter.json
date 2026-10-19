@@ -1,0 +1,182 @@
+{
+  "dialect": "jupyter",
+  "kind": "tooling",
+  "target_level": "L2",
+  "level_met": "L2",
+  "grade": {
+    "L1": "excellent",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-19",
+  "fathom_commit": "4d085ed7",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "ML-For-Beginners",
+      "sha": "de2d4e12236445198213a0711855e348e7253cd4",
+      "files": 35,
+      "bytes": 4074263,
+      "counts": {
+        "callables": 12,
+        "callables_signed": 12,
+        "fathom_defs": 484,
+        "kind_equal": 484,
+        "matched": 484,
+        "oracle_defs": 484,
+        "range_eligible": 12,
+        "range_ok": 12,
+        "ref_fathom": 621,
+        "ref_fathom_in_truth": 615,
+        "ref_truth": 615,
+        "ref_truth_found": 615
+      },
+      "families": {
+        "l1": "B",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "class",
+        "function",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "fathom:JupyterModule": 29,
+        "tool:namespace": 68
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 77.40199999999999,
+        "extract_cpu_ms": 80.701,
+        "max_file_ms": 9,
+        "peak_module_pages": 305,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "PythonDataScienceHandbook",
+      "sha": "d66231454ef753818dc9213c9b5942e067266966",
+      "files": 123,
+      "bytes": 22982405,
+      "counts": {
+        "callables": 143,
+        "callables_signed": 143,
+        "fathom_defs": 2131,
+        "kind_equal": 2129,
+        "matched": 2131,
+        "oracle_defs": 2132,
+        "range_eligible": 155,
+        "range_ok": 155,
+        "ref_fathom": 3207,
+        "ref_fathom_in_truth": 3144,
+        "ref_truth": 3166,
+        "ref_truth_found": 3144
+      },
+      "families": {
+        "l1": "B",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "class",
+        "function",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "fathom:JupyterField": 32,
+        "fathom:JupyterModule": 94,
+        "tool:namespace": 225,
+        "tool:unknown": 2
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 1242.795,
+        "extract_cpu_ms": 419.4700000000001,
+        "max_file_ms": 45,
+        "peak_module_pages": 315,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "ctags on the exported cells, nbformat 5.11.1",
+      "version": "Universal Ctags 6.2.1, Copyright (C) 2015-2025 Universal Ctags Team"
+    },
+    {
+      "tier": "C",
+      "tool": "python ast on the exported cells, nbformat 5.11.1",
+      "version": "python 3.13.5"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 0.982,
+    "ref_recall": 0.9942,
+    "sym_precision": 1,
+    "sym_recall": 0.9996,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "ref_precision": "C",
+    "ref_recall": "C",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "class",
+    "function"
+  ],
+  "kind_intersection": [
+    "class",
+    "function",
+    "variable"
+  ],
+  "counts": {
+    "callables": 155,
+    "callables_signed": 155,
+    "fathom_defs": 2615,
+    "kind_equal": 2613,
+    "matched": 2615,
+    "oracle_defs": 2616,
+    "range_eligible": 167,
+    "range_ok": 167,
+    "ref_fathom": 3828,
+    "ref_fathom_in_truth": 3759,
+    "ref_truth": 3781,
+    "ref_truth_found": 3759
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 54.09,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 20.49,
+    "max_file_ms": 45,
+    "peak_module_pages": 315,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:JupyterField": 32,
+    "fathom:JupyterModule": 123,
+    "tool:namespace": 293,
+    "tool:unknown": 2
+  },
+  "notes": [
+    "ML-For-Beginners: 3 files skipped by ingest's gates (generated)",
+    "ML-For-Beginners: 66 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "ML-For-Beginners: 97 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "ML-For-Beginners: restricted to PyTorch_Fundamentals.ipynb, 2-Regression/1-Tools/solution/notebook.ipynb, 2-Regression/2-Data/notebook.ipynb, 2-Regression/2-Data/solution/notebook.ipynb, 2-Regression/3-Linear/notebook.ipynb, 2-Regression/3-Linear/solution/notebook.ipynb, 2-Regression/4-Logistic/notebook.ipynb, 2-Regression/4-Logistic/solution/notebook.ipynb, 3-Web-App/1-Web-App/solution/notebook.ipynb, 4-Classification/1-Introduction/notebook.ipynb, 4-Classification/1-Introduction/solution/notebook.ipynb, 4-Classification/2-Classifiers-1/notebook.ipynb, 4-Classification/2-Classifiers-1/solution/notebook.ipynb, 4-Classification/3-Classifiers-2/notebook.ipynb, 4-Classification/3-Classifiers-2/solution/notebook.ipynb, 4-Classification/4-Applied/notebook.ipynb, 4-Classification/4-Applied/solution/notebook.ipynb, 5-Clustering/1-Visualize/notebook.ipynb, 5-Clustering/1-Visualize/solution/notebook.ipynb, 5-Clustering/2-K-Means/notebook.ipynb, 5-Clustering/2-K-Means/solution/notebook.ipynb, 5-Clustering/2-K-Means/solution/tester.ipynb, 6-NLP/3-Translation-Sentiment/solution/notebook.ipynb, 6-NLP/4-Hotel-Reviews-1/solution/notebook.ipynb, 6-NLP/5-Hotel-Reviews-2/solution/1-notebook.ipynb, 6-NLP/5-Hotel-Reviews-2/solution/2-notebook.ipynb, 6-NLP/5-Hotel-Reviews-2/solution/3-notebook.ipynb, 7-TimeSeries/1-Introduction/solution/notebook.ipynb, 7-TimeSeries/1-Introduction/working/notebook.ipynb, 7-TimeSeries/2-ARIMA/solution/notebook.ipynb, 7-TimeSeries/2-ARIMA/working/notebook.ipynb, 7-TimeSeries/3-SVR/solution/notebook.ipynb, 7-TimeSeries/3-SVR/working/notebook.ipynb, 8-Reinforcement/1-QLearning/notebook.ipynb, 8-Reinforcement/1-QLearning/solution/assignment-solution.ipynb, 8-Reinforcement/1-QLearning/solution/notebook.ipynb, 8-Reinforcement/2-Gym/notebook.ipynb, 8-Reinforcement/2-Gym/solution/notebook.ipynb (-only; the files outside are a disclosed gap, not measured)",
+    "PythonDataScienceHandbook: 11 files skipped by ingest's gates (generated)",
+    "PythonDataScienceHandbook: 2 files skipped by ingest's gates (oversize)",
+    "PythonDataScienceHandbook: 376 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "PythonDataScienceHandbook: 581 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "PythonDataScienceHandbook: restricted to notebooks/00.00-Preface.ipynb, notebooks/01.00-IPython-Beyond-Normal-Python.ipynb, notebooks/01.01-Help-And-Documentation.ipynb, notebooks/01.02-Shell-Keyboard-Shortcuts.ipynb, notebooks/01.03-Magic-Commands.ipynb, notebooks/01.04-Input-Output-History.ipynb, notebooks/01.05-IPython-And-Shell-Commands.ipynb, notebooks/01.06-Errors-and-Debugging.ipynb, notebooks/01.07-Timing-and-Profiling.ipynb, notebooks/01.08-More-IPython-Resources.ipynb, notebooks/02.00-Introduction-to-NumPy.ipynb, notebooks/02.01-Understanding-Data-Types.ipynb, notebooks/02.02-The-Basics-Of-NumPy-Arrays.ipynb, notebooks/02.03-Computation-on-arrays-ufuncs.ipynb, notebooks/02.04-Computation-on-arrays-aggregates.ipynb, notebooks/02.05-Computation-on-arrays-broadcasting.ipynb, notebooks/02.06-Boolean-Arrays-and-Masks.ipynb, notebooks/02.07-Fancy-Indexing.ipynb, notebooks/02.08-Sorting.ipynb, notebooks/02.09-Structured-Data-NumPy.ipynb, notebooks/03.00-Introduction-to-Pandas.ipynb, notebooks/03.01-Introducing-Pandas-Objects.ipynb, notebooks/03.02-Data-Indexing-and-Selection.ipynb, notebooks/03.03-Operations-in-Pandas.ipynb, notebooks/03.04-Missing-Values.ipynb, notebooks/03.05-Hierarchical-Indexing.ipynb, notebooks/03.06-Concat-And-Append.ipynb, notebooks/03.07-Merge-and-Join.ipynb, notebooks/03.08-Aggregation-and-Grouping.ipynb, notebooks/03.09-Pivot-Tables.ipynb, notebooks/03.10-Working-With-Strings.ipynb, notebooks/03.11-Working-with-Time-Series.ipynb, notebooks/03.12-Performance-Eval-and-Query.ipynb, notebooks/03.13-Further-Resources.ipynb, notebooks/04.00-Introduction-To-Matplotlib.ipynb, notebooks/04.01-Simple-Line-Plots.ipynb, notebooks/04.02-Simple-Scatter-Plots.ipynb, notebooks/04.03-Errorbars.ipynb, notebooks/04.04-Density-and-Contour-Plots.ipynb, notebooks/04.05-Histograms-and-Binnings.ipynb, notebooks/04.06-Customizing-Legends.ipynb, notebooks/04.07-Customizing-Colorbars.ipynb, notebooks/04.08-Multiple-Subplots.ipynb, notebooks/04.09-Text-and-Annotation.ipynb, notebooks/04.10-Customizing-Ticks.ipynb, notebooks/04.11-Settings-and-Stylesheets.ipynb, notebooks/04.12-Three-Dimensional-Plotting.ipynb, notebooks/04.14-Visualization-With-Seaborn.ipynb, notebooks/04.15-Further-Resources.ipynb, notebooks/05.00-Machine-Learning.ipynb, notebooks/05.01-What-Is-Machine-Learning.ipynb, notebooks/05.02-Introducing-Scikit-Learn.ipynb, notebooks/05.03-Hyperparameters-and-Model-Validation.ipynb, notebooks/05.04-Feature-Engineering.ipynb, notebooks/05.05-Naive-Bayes.ipynb, notebooks/05.06-Linear-Regression.ipynb, notebooks/05.07-Support-Vector-Machines.ipynb, notebooks/05.08-Random-Forests.ipynb, notebooks/05.09-Principal-Component-Analysis.ipynb, notebooks/05.10-Manifold-Learning.ipynb, notebooks/05.11-K-Means.ipynb, notebooks/05.12-Gaussian-Mixtures.ipynb, notebooks/05.13-Kernel-Density-Estimation.ipynb, notebooks/05.14-Image-Features.ipynb, notebooks/05.15-Learning-More.ipynb, notebooks/06.00-Figure-Code.ipynb, notebooks/Untitled.ipynb, notebooks_v1/00.00-Preface.ipynb, notebooks_v1/01.00-IPython-Beyond-Normal-Python.ipynb, notebooks_v1/01.01-Help-And-Documentation.ipynb, notebooks_v1/01.02-Shell-Keyboard-Shortcuts.ipynb, notebooks_v1/01.03-Magic-Commands.ipynb, notebooks_v1/01.04-Input-Output-History.ipynb, notebooks_v1/01.05-IPython-And-Shell-Commands.ipynb, notebooks_v1/01.06-Errors-and-Debugging.ipynb, notebooks_v1/01.07-Timing-and-Profiling.ipynb, notebooks_v1/01.08-More-IPython-Resources.ipynb, notebooks_v1/02.00-Introduction-to-NumPy.ipynb, notebooks_v1/02.01-Understanding-Data-Types.ipynb, notebooks_v1/02.02-The-Basics-Of-NumPy-Arrays.ipynb, notebooks_v1/02.03-Computation-on-arrays-ufuncs.ipynb, notebooks_v1/02.04-Computation-on-arrays-aggregates.ipynb, notebooks_v1/02.05-Computation-on-arrays-broadcasting.ipynb, notebooks_v1/02.06-Boolean-Arrays-and-Masks.ipynb, notebooks_v1/02.07-Fancy-Indexing.ipynb, notebooks_v1/02.08-Sorting.ipynb, notebooks_v1/02.09-Structured-Data-NumPy.ipynb, notebooks_v1/03.00-Introduction-to-Pandas.ipynb, notebooks_v1/03.01-Introducing-Pandas-Objects.ipynb, notebooks_v1/03.02-Data-Indexing-and-Selection.ipynb, notebooks_v1/03.03-Operations-in-Pandas.ipynb, notebooks_v1/03.04-Missing-Values.ipynb, notebooks_v1/03.05-Hierarchical-Indexing.ipynb, notebooks_v1/03.06-Concat-And-Append.ipynb, notebooks_v1/03.07-Merge-and-Join.ipynb, notebooks_v1/03.08-Aggregation-and-Grouping.ipynb, notebooks_v1/03.09-Pivot-Tables.ipynb, notebooks_v1/03.10-Working-With-Strings.ipynb, notebooks_v1/03.11-Working-with-Time-Series.ipynb, notebooks_v1/03.12-Performance-Eval-and-Query.ipynb, notebooks_v1/03.13-Further-Resources.ipynb, notebooks_v1/04.00-Introduction-To-Matplotlib.ipynb, notebooks_v1/04.01-Simple-Line-Plots.ipynb, notebooks_v1/04.02-Simple-Scatter-Plots.ipynb, notebooks_v1/04.03-Errorbars.ipynb, notebooks_v1/04.04-Density-and-Contour-Plots.ipynb, notebooks_v1/04.05-Histograms-and-Binnings.ipynb, notebooks_v1/04.06-Customizing-Legends.ipynb, notebooks_v1/04.07-Customizing-Colorbars.ipynb, notebooks_v1/04.08-Multiple-Subplots.ipynb, notebooks_v1/04.09-Text-and-Annotation.ipynb, notebooks_v1/04.10-Customizing-Ticks.ipynb, notebooks_v1/04.11-Settings-and-Stylesheets.ipynb, notebooks_v1/04.12-Three-Dimensional-Plotting.ipynb, notebooks_v1/04.13-Geographic-Data-With-Basemap.ipynb, notebooks_v1/04.14-Visualization-With-Seaborn.ipynb, notebooks_v1/04.15-Further-Resources.ipynb, notebooks_v1/05.00-Machine-Learning.ipynb, notebooks_v1/05.01-What-Is-Machine-Learning.ipynb, notebooks_v1/05.02-Introducing-Scikit-Learn.ipynb, notebooks_v1/05.03-Hyperparameters-and-Model-Validation.ipynb, notebooks_v1/05.04-Feature-Engineering.ipynb, notebooks_v1/05.05-Naive-Bayes.ipynb, notebooks_v1/05.06-Linear-Regression.ipynb, notebooks_v1/05.07-Support-Vector-Machines.ipynb, notebooks_v1/05.08-Random-Forests.ipynb, notebooks_v1/05.09-Principal-Component-Analysis.ipynb, notebooks_v1/05.10-Manifold-Learning.ipynb, notebooks_v1/05.11-K-Means.ipynb, notebooks_v1/05.12-Gaussian-Mixtures.ipynb, notebooks_v1/05.13-Kernel-Density-Estimation.ipynb, notebooks_v1/05.14-Image-Features.ipynb, notebooks_v1/05.15-Learning-More.ipynb, notebooks_v1/06.00-Figure-Code.ipynb, notebooks_v1/Index.ipynb, notebooks_v1/Untitled.ipynb (-only; the files outside are a disclosed gap, not measured)",
+    "a file whose extraction instantiated a grammar module after the warm-up (an injected language) is timed on a second, warm extraction",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

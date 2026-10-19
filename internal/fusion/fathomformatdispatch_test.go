@@ -39,8 +39,10 @@ func TestFathomFormatDispatch(t *testing.T) {
 			t.Errorf("%s: dispatch = %v, %q, %v; want %q", tc.path, e != nil, tk, ok, tc.want)
 		}
 	}
-	if isDocCandidate("docs/plans/x.md") != true || isDocCandidate("docs/x.md") || isDocCandidate("README.md") {
-		t.Error("isDocCandidate: a docs/plans/*.md path only, never a blanket .md")
+	// LB-Q-markdown: every Markdown file is a doc candidate now (the native markdown
+	// dialect reads its links); the plan dialect still claims docs/plans/*.md first.
+	if !isDocCandidate("docs/plans/x.md") || !isDocCandidate("docs/x.md") || !isDocCandidate("README.md") || !isDocCandidate("site/p.mdx") || isDocCandidate("docs/x.txt") {
+		t.Error("isDocCandidate: .md and .mdx are candidates, other text is not")
 	}
 }
 

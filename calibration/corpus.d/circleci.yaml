@@ -1,0 +1,57 @@
+id: circleci
+language: "CircleCI (.circleci/config.yml)"
+# The queue entry names CircleCI-Public/circleci-cli and CircleCI-Public/cimg-base (both
+# MIT, read only, never vendored). Each holds one config, so together they are two files
+# and a dozen jobs. Three more subjects are added for the multi-job, multi-workflow shape
+# the two lack: hasura/graphql-engine (Apache-2.0, 26 jobs in one config, no orbs),
+# cypress-io/cypress (MIT, a dynamic-config setup file with orbs) and
+# OpenAPITools/openapi-generator (Apache-2.0, generated node jobs). All five are pinned
+# by commit on their default branch (the tool's own pins are not tags a CircleCI repository
+# releases against), sparse to .circleci. storybookjs/storybook was tried and left out:
+# its config is a continuation setup that defines no job.
+repos:
+  - name: CircleCI-Public/circleci-cli
+    url: https://github.com/CircleCI-Public/circleci-cli.git
+    ref: main
+    sha: 2053bcbdd62e744f05b76b1e263c54febea34804
+    licence: MIT
+    sparse: [".circleci/**"]
+    idioms:
+      - "a job set built from commands (setup, install-go) and executors (linux, macos,
+        windows) in one config, one workflow with approval jobs and requires"
+      - "an orb-free 2.1 config the compiler accepts offline"
+  - name: CircleCI-Public/cimg-base
+    url: https://github.com/CircleCI-Public/cimg-base.git
+    ref: main
+    sha: 0ff85f18597d595f9440eca8387789a26a39fc30
+    licence: MIT
+    sparse: [".circleci/**"]
+    idioms:
+      - "two workflows (a push and a manual-monthly one), one of them gated by a pipeline
+        parameter the compiler may drop"
+      - "an orb (circleci/cimg) the compiler fetches from the registry"
+  - name: hasura/graphql-engine
+    url: https://github.com/hasura/graphql-engine.git
+    ref: master
+    sha: 037916c890f776dc71375f0adf61a51e0d4b57b1
+    licence: Apache-2.0
+    sparse: [".circleci/**"]
+    idioms:
+      - "26 jobs in one version 2 config with workflows, requires, filters and
+        approval gates"
+  - name: cypress-io/cypress
+    url: https://github.com/cypress-io/cypress.git
+    ref: develop
+    sha: 30a4d03221676dc8ede0aa55e63560f38fa78a93
+    licence: MIT
+    sparse: [".circleci/**"]
+    idioms:
+      - "a setup config with the continuation orb, commands and one workflow"
+  - name: OpenAPITools/openapi-generator
+    url: https://github.com/OpenAPITools/openapi-generator.git
+    ref: master
+    sha: c5e769be1e428f794ff51237bae5a50de47bc1ce
+    licence: Apache-2.0
+    sparse: [".circleci/**"]
+    idioms:
+      - "generated node jobs on machine executors and one workflow listing them"

@@ -1,0 +1,12 @@
+{
+  "symbols": [
+    { "name": "mac", "kind": "CircleCIExecutor", "package": "params", "line": 5, "end_line": 7, "signature": "15.2", "tier": "verified" },
+    { "name": "greet", "kind": "CircleCICommand", "package": "params", "line": 10, "end_line": 14, "tier": "verified" },
+    { "name": "unit", "kind": "CircleCIJob", "package": "params", "line": 17, "end_line": 28, "signature": "mac", "calls": ["greet", "mac"], "tier": "verified" },
+    { "name": "package", "kind": "CircleCIJob", "package": "params", "line": 29, "end_line": 32, "signature": "mac", "calls": ["greet", "mac"], "tier": "verified" },
+    { "name": "smoke", "kind": "CircleCIJob", "package": "params", "line": 33, "end_line": 37, "signature": "missing", "tier": "verified" },
+    { "name": "matrix", "kind": "CircleCIWorkflow", "package": "params", "line": 40, "end_line": 52, "calls": ["package", "smoke", "unit"], "tier": "verified" },
+    { "name": "conditional", "kind": "CircleCIWorkflow", "package": "params", "line": 53, "end_line": 58, "calls": ["smoke"], "tier": "verified" }
+  ],
+  "cross_file": []
+}
