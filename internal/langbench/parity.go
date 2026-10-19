@@ -19,6 +19,34 @@ type MetricDelta struct {
 	Gated bool `json:"gated"`
 }
 
+// ParityFloor retains a reading's measured resource inputs for diagnosing a
+// refusal. It does not recompute the floors or change the parity decision.
+type ParityFloor struct {
+	Tenancy      Tenancy `json:"tenancy"`
+	Files        int     `json:"files"`
+	Bytes        int64   `json:"bytes"`
+	ExtractMS    float64 `json:"extract_ms"`
+	ExtractCPUMS float64 `json:"extract_cpu_ms"`
+}
+
+func parityFloor(r Reading) *ParityFloor {
+	f := &ParityFloor{Tenancy: r.Tenancy}
+	f.Tenancy.FaultingFiles = slices.Clone(r.Tenancy.FaultingFiles)
+	if r.Tenancy.FilesWithError != nil {
+		v := *r.Tenancy.FilesWithError
+		f.Tenancy.FilesWithError = &v
+	}
+	for _, s := range r.Subjects {
+		f.Files += s.Files
+		f.Bytes += s.Bytes
+		if s.Tenancy != nil {
+			f.ExtractMS += s.Tenancy.ExtractMS
+			f.ExtractCPUMS += s.Tenancy.ExtractCPUMS
+		}
+	}
+	return f
+}
+
 // Parity is the §11 step-2 comparison of a dialect against the incumbent
 // it retires, measured on the same subjects against the same oracles.
 type Parity struct {
@@ -30,6 +58,8 @@ type Parity struct {
 	IncumbentGrade Grade         `json:"incumbent_grade"`
 	DialectGrade   Grade         `json:"dialect_grade"`
 	Metrics        []MetricDelta `json:"metrics"`
+	IncumbentFloor *ParityFloor  `json:"incumbent_floor,omitempty"`
+	DialectFloor   *ParityFloor  `json:"dialect_floor,omitempty"`
 	// KindsLost are SourceKinds the incumbent emitted and the dialect does
 	// not: a regression unless a reason names why (§11 step 3); the reasons
 	// given are KindsExplained.
@@ -59,6 +89,7 @@ func levelRank(l string) int {
 func ComparePortParity(inc, dial Reading, incumbent, target string, incKinds, dialKinds map[string]int, explained map[string]string) Parity {
 	p := Parity{Dialect: dial.Dialect, Incumbent: incumbent, Target: target,
 		IncumbentLevel: inc.LevelMet, DialectLevel: dial.LevelMet, IncumbentGrade: inc.Grade, DialectGrade: dial.Grade,
+		IncumbentFloor: parityFloor(inc), DialectFloor: parityFloor(dial),
 		KindsLost: []string{}, KindsGained: []string{}, Reasons: []string{}}
 	met := levelRank(dial.LevelMet)
 	gated := map[string]bool{}

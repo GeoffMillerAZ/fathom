@@ -299,6 +299,20 @@ func writeParity(w io.Writer, p langbench.Parity) {
 		fmt.Fprintf(w, "verdict: MERGE (every metric up to the dialect's level_met %s >= the incumbent's; no SourceKind lost without a reason; target %s reported, not gated, ADR-048 D1)\n", p.DialectLevel, p.Target)
 		return
 	}
+	for _, side := range []struct {
+		name  string
+		floor *langbench.ParityFloor
+	}{{"incumbent", p.IncumbentFloor}, {"dialect", p.DialectFloor}} {
+		if side.floor == nil {
+			continue
+		}
+		data, err := json.Marshal(side.floor)
+		if err != nil {
+			fmt.Fprintf(w, "%s floor: unavailable (%v)\n", side.name, err)
+			continue
+		}
+		fmt.Fprintf(w, "%s floor: %s\n", side.name, data)
+	}
 	reasons := append([]string(nil), p.Reasons...)
 	sort.Strings(reasons)
 	fmt.Fprintf(w, "verdict: REFUSED — %s\n", strings.Join(reasons, "; "))
