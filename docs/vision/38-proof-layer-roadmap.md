@@ -323,6 +323,12 @@ the mods program, unless the owner reorders.
     remove 0.53% of Bash bytes against the 4% bar). Readouts phase 0 has landed (RO-3 to RO-18 verified, RO-M0 filed),
     so mods phase 1 starts and the mods program is the main line. The readouts rows that stay runnable (RO-21 and the
     seam rows) fill the second wave slot, and RO-M1's observe window runs beside them.
+  - 2026-10-19 (owner-architect): RT-M1 read FAIL on availability, not on fathom's consumption
+    (`docs/bench/readings/tenancy/rt-m1-2026-10-19.md`: 216 host-starved refuse minutes on 2026-10-13, every tenant
+    clause held). The table freeze stays. The tenancy budget fix is the next wave as RT-188 to RT-192
+    (`docs/plans/responsible-tenant.md` §G), designed with RT-M13's retune because shed on host pressure is what
+    evicts the graph; it ships before 2026-10-20 00:00Z so RT-M1's restarted window, 2026-10-20 to 2026-10-27,
+    certifies the retuned ladder. RT-193 (the unmanaged default) waits for RT-M1 PASS.
 
 Mods phase 1 (Go and markdown) starts when readouts phase 0 lands (RO-3 to RO-18 verified, RO-M0 filed). RO-M1's 14
 days of observe need time, not a wave, so they run beside it: section 9.6's rule reads a readouts row that waits on

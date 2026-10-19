@@ -242,6 +242,34 @@ bound memory here.
 - [x] configuration.md documents `[tenancy]` and states that `memory_limit` is a GC hint, not protection {id: RT-141, oracle: lexical, path: docs/configuration.md, pattern: "\[tenancy\]"}
 - [x] domain.md records the platform facts (HeapSys never falls, RSS vs phys_footprint, jetsam, swap and SQLITE_FULL, on-demand swap files make the used fraction meaningless, KeepAlive semantics, advisory ResidentSetSize, inherited Background QoS, .gitignore as cache authority) {id: RT-142, oracle: lexical, path: docs/intent/domain/platform-facts.md, pattern: "phys_footprint"}
 
+## G. Proportional host and no doomed flights (2026-10-19, after RT-M1 read FAIL)
+
+Design §2.1 and §5 amended 2026-10-19, §11.1 appended; ADR-047 amended the same day (its added Revisit fired:
+30% of 2026-10-12..2026-10-18 in shed, almost all at pressure `warn` with fathom far under its marks). The tenancy
+budget fix the roadmap names (O1073, O1014), measured before it was designed: at the managed 4 GiB budget one
+`blast_radius` on fathom's own index holds 284.5 MB of graphs plus 42.6 MB of typed edges and the second call
+answers in 26 ms; at 1 GiB and 512 MiB, or at 4 GiB while shed trims to half, every call rebuilds for about 8 s.
+RT-188, RT-189, RT-190 and RT-191 change no ladder, mark, host trigger or cache budget, so their deploy does not
+restart RT-M1's window; RT-192 changes a host trigger and restarts it at the next 00:00Z. RT-193 waits for RT-M1.
+
+- [ ] Every memo group's counters reach /metrics as fathom_cache_events_total{group,event} (hits, misses, flights, uncached, abandoned when the last waiter left, refuse_cancelled when a refuse drop ended it, declined, evictions by reason); GroupStats.Cancelled splits into Abandoned and RefuseCancelled so a floor refuse never reads as a doomed build (§5, §13.3) {id: RT-188, symbol: writeCacheEvents, package: cmd/fathom, reachable_from: TestMetricsCarryCacheEventsByGroup}
+- [ ] `fathom resources --days` prints an RT-M13 verdict over the last seven complete UTC days (shed + refuse minutes ≤ 201.6, zero host-trigger rung entries at normal pressure); each day row gains rung entries by trigger (own mark, pressure, swap growth, swap-volume floor) with the pressure at entry, rolled on the existing sampler tick into resources.days as additive fields, no goroutine, no table; --json adds rtm13; JudgeRTM1 and RT-M1's reading are unchanged (§2.1, §13.1) {id: RT-189, symbol: JudgeRTM13, package: internal/tenancy, reachable_from: TestResourcesDaysPrintsRTM13Verdict, needs: RT-185}
+- [ ] A hook RPC's X-Fathom-Deadline is the shorter of the hook's remaining deadline and the request context's own deadline (http.Client.Timeout sets it), so the daemon sees the stop hook's 5 s verify_plan cap and the pre-edit 500 ms blast_radius cap, not the hook's remainder (§11.1, I53, EW-76) {id: RT-190, symbol: rpcDeadlineHeader, package: internal/hookguard, reachable_from: TestDeadlineHeaderIsTheShorterOfHookAndCallCap}
+- [ ] A Get on a Keep group starts no flight its caller cannot use: with ctx deadline d it starts only when d ≥ the last completed build of that (group, service) (unknown: ExpectedCost), or d ≥ ExpectedCost/2 with that build's size within the limit in force (kept for the next caller); otherwise it returns ErrWouldNotFinish at once, takes no rebuild token and counts Declined; no deadline, or a nested build, always starts; navLoadNote names it and verify_plan answers it as its stage-building partial (§5, I38, O1014) {id: RT-191, symbol: wouldAbandon, package: internal/memo, reachable_from: TestGetDeclinesAFlightItsCallerCannotUse, needs: RT-188}
+- [ ] Host pressure at or above shed_on_pressure moves the ladder only while footprint + children ≥ the host allowance ([tenancy.host] allowance × budget, default 0.45 = 0.6 × shed_at, 0 = today's ladder), as swap growth already requires the shed mark; a pressure-entered rung steps down when pressure clears or combined < 0.6 × allowance for 60 s; pressure critical and the swap-volume floor are unchanged; the key resolves with a derivation note and a #Tenancy valid/invalid CUE pair, and fathom resources names it in host_triggers (§2.1 amended 2026-10-19, ADR-047) {id: RT-192, symbol: hostPressureApplies, package: internal/tenancy, reachable_from: TestLadder_PressureBelowAllowanceStaysNormal, needs: RT-154}
+- [ ] The unmanaged default budget is min(3 GiB, clamp(RAM/8, 1 GiB, 4 GiB)), named in the budget note; §10.1 and §5's compact-before-raise clause are amended in the same commit with docs/early-testers.md and CHANGELOG; before the claim, the O1073 repro (plans status --url on an unmanaged default daemon over a fresh scratch ingest of fathom) exits 0 with no refuse rung {id: RT-193, symbol: unmanagedDefaultBudget, package: internal/tenancy, reachable_from: TestUnmanagedDefaultIsThreeGiBCappedByAuto, needs: RT-M1}
+
+Kill criteria, pre-registered with the rows: (K1) graphstore `abandoned` rises during RT-M14's harness run: RT-191's
+rule admitted a doomed build; fix the rule, never the bar. (K2) the answered share is under 50%: read
+`evictions{reason}`; budget or shed dominant, build the syntax graph lazily and then let `Options.Priority` protect
+the most recently used service; watermark dominant, commit cadence is the cause, file an observation and stop.
+(K3) any of the three EW-76 abandonment rates is at or over 5%: FAIL, and readouts wave ro2 stays blocked. (K4) a
+`warn` episode below the allowance in which combined grew by 512 MiB or more and that ended at pressure `critical`
+or a floor refuse: set the allowance default to 0 and file an incident. (K5) RT-M13 FAILs with half or more of its
+shed minutes entered at combined ≥ allowance: the trigger is not the lever, fathom's own footprint during `warn` is.
+The swap-volume floor is unchanged this wave (it refuses at normal pressure too); a second RT-M1 FAIL on the floor
+is the trigger to make it refuse only at pressure `warn` or above, its minutes still counted on the host-starved bar.
+
 ## Measurements (op)
 
 Pre-registered in vision 36 §6. Each closes with its committed reading as the contract.
@@ -261,6 +289,7 @@ Every harness run is gated on the operator's go-ahead and runs on a quiet machin
 - [ ] (op) RT-M11: `fathom ingest --dry-run --stats` over every registered service with and without `.gitignore` discovery; no service loses more than 1% of its observations outside gitignored directories, or the default does not flip for it {id: RT-M11, needs: RT-70}
 - [ ] (op) RT-M12: seven days, disk bytes written by the managed daemon ≤ 2 GiB/day outside explicit ingest {id: RT-M12, needs: RT-162}
 - [ ] (op) RT-M13: seven days, time in shed or above ≤ 2% with no host-trigger rung entry while pressure is normal; otherwise retune the host triggers {id: RT-M13, needs: RT-154}
+- [ ] (op) RT-M14: after RT-188, RT-190, RT-191 and RT-192 deploy, the EW-76 re-reading with hook-path-harness.py on the managed daemon puts blast_radius, verify_plan and obligations abandonment each < 5%, graphstore abandoned does not rise during the run, and ≥ 50% of hook graph calls return an answer (neither declined nor building), all shares disclosed; over the same seven complete UTC days the operator call log shows agent-origin graph-backed calls on the largest service at p50 ≤ 1 s {id: RT-M14, needs: "RT-188,RT-190,RT-191,RT-192"}
 
 RT-M1 read FAIL on 2026-10-19 (`docs/bench/readings/tenancy/rt-m1-2026-10-19.md`): the availability bar, 216
 host-starved refuse minutes on 2026-10-13 (136 on 10-14, 547 on 10-15), every window entered on the swap-volume floor
@@ -359,7 +388,7 @@ appears in two classes and once here).
 | abandoned-work-runs-on-uncounted | RT-58, RT-64 |
 | in-process-registry-bypasses-instruments | RT-61 |
 | no-admission-control-or-overload-signal | RT-53, RT-55, RT-56, RT-152 |
-| blind-to-host-pressure | RT-32, RT-33, RT-154, RT-M13 |
+| blind-to-host-pressure | RT-32, RT-33, RT-154, RT-189, RT-192, RT-M13 |
 | launchd-posture-foreground-and-unconditional-keepalive | RT-13, RT-38, RT-157 |
 | exits-and-restart-loops-unrecorded | RT-37, RT-44, RT-156 |
 | no-automatic-diagnostic-capture | RT-122 |

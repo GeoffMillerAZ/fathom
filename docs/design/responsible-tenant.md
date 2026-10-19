@@ -183,6 +183,21 @@ the host, not the tenant. Pre-registered before its first window, 2026-10-12 00:
 `fathom resources --days` verdict code follows. The 2026-10-04..2026-10-11 window FAILed as
 written (27 host-floor refuse minutes on 2026-10-09) and is not re-read.
 
+**Host pressure is proportional (amended 2026-10-19; ADR-047's added Revisit fired).** From
+2026-10-12 to 2026-10-18 the daemon spent 30% of the week in shed, almost all of it entered
+at pressure `warn` while fathom held about 70 MB to 3.4 GB under a 3 GiB shed mark
+(`docs/bench/readings/tenancy/rt-m1-2026-10-19.md`). Trimming a small cache and deferring
+refresh gave the host nothing back, and the trim evicted the call graph each later call
+rebuilt for 8 s. Pressure at or above `shed_on_pressure` now counts as a shed trigger only
+while footprint + children is at or above `[tenancy.host] allowance` × budget (default 0.45,
+0.6 × `shed_at`; 0 restores the old rule): the swap-growth trigger's precondition applied to
+`warn`. A rung entered on pressure steps down when pressure clears or combined stays under
+0.6 × the allowance for 60 s. A refresh that grows fathom past the allowance while the host
+is at `warn` re-enters shed within two samples. Pressure `critical` and the swap-volume floor
+are unchanged, and their refuse minutes still count on RT-M1's host-starved bar. There is no
+hold flag: a level that pauses work is shed and is counted as shed. RT-M13 reads from
+`fathom resources --days` (RT-189).
+
 **The producer governor.** The ladder publishes its level in one atomic. Every byte
 producer reads it before each unit of work — `LocalConnector.Fetch` and `Sources` before
 each file, `corpus` reads and scans before each file, store row decoding every 1,000 rows,
@@ -702,6 +717,15 @@ func Stats() []GroupStats                      // entries, bytes, hits, misses, 
   disclosure); only `refuse` drops everything. `TestShedTrimToHalfSingleRebuildHysteresis`
   drives a shed → rebuild → shed cycle and asserts it settles under the hysteresis.
 - Idle: after 30 min without tickets, `Drop(Idle)` then `debug.FreeOSMemory()`.
+- **No doomed flights (amended 2026-10-19, O1014).** A `Get` whose context deadline is shorter
+  than the last measured build of its (group, service) starts no flight unless the flight
+  would be kept (deadline at least half the expected cost and the build's size within the
+  limit in force); otherwise it returns `ErrWouldNotFinish` at once, named per I38 and
+  counted `declined`, and takes no rebuild token. No deadline, or a nested build, always
+  starts. The per-(group, service) duration and size record replaces the `ExpectedCost`
+  constant with a measurement, like the gate's `P50Tool`; it holds no derived data and
+  serves no reader, so it is not a cache under the table freeze. `Cancelled` splits into
+  abandoned (the last waiter left) and refuse-cancelled (a refuse drop ended it).
 - I21's clause "result caching of whole tool answers is still absent" stands for MCP tool
   answers: no memo group caches a tool's response. `obsModel` and `operate` cache console
   page projections, which are not tool answers; I51 governs them.
@@ -1113,6 +1137,16 @@ naming `fathom prime`), `doctor --brief`'s remaining checks (counted in one `hoo
 row the brief always shows) — so a hook stuck on a hung daemon exits at its budget even at
 background priority on a loaded machine. Bounding local work before the deadline on large
 repos is §11.3's.
+
+The header's value is the shorter of the hook's remaining deadline and the RPC's own context
+deadline (amended 2026-10-19), so the daemon sizes its partial to the caller's cap (the stop
+hook's 5 s verify_plan, the pre-edit hook's 500 ms blast_radius), not the hook's remainder.
+
+**Decision models (2026-10-19 amendment).** None applies. Each rule is integer arithmetic on
+the 2 s sampler tick or the request path, cheaper than any port call, and the port is closed
+at refuse. The deterministic fallback is the rule itself; the opt-outs are `[tenancy.host]
+allowance = 0` and `FATHOM_TENANCY_BUDGET`; the measurements are RT-M13 (read by RT-189) and
+RT-M14.
 
 ### 11.2 Shared breaker
 
