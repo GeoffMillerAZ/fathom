@@ -164,7 +164,7 @@ func TestMarkdownLinkTarget(t *testing.T) {
 		{"docs/a.md", "../../b.md", "", "", false},
 		{"docs/a.md", "http://x/b.md", "", "", false},
 		{"docs/a.md", "//x/b.md", "", "", false},
-		{"docs/a.md", "mailto:a@b.md", "", "", false},
+		{"docs/a.md", "mailto:notes.md", "", "", false},
 		{"docs/a.md", "b.png", "", "", false},
 		{"docs/a.md", "sub/", "", "", false},
 		{"docs/a.md", "", "", "", false},
