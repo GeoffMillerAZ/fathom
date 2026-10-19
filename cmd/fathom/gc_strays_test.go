@@ -26,6 +26,9 @@ func TestGCStraysReportOnlyNeverApplied(t *testing.T) {
 		t.Fatal(err)
 	}
 	linesGit(t, repo, "init", "-q")
+	// The mutation oracle snapshots Git internals too; a detached maintenance
+	// process from the fixture commit must not remove its lock mid-snapshot.
+	linesGit(t, repo, "config", "maintenance.auto", "false")
 	linesWrite(t, repo, ".gitignore", "/build/\n")
 	linesWrite(t, repo, "main.go", "package main\n")
 	linesWrite(t, repo, "run.sh", "#!/bin/sh\necho hi\n")
