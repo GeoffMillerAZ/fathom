@@ -67,13 +67,9 @@ Release impact: minor
 - The test-run hook's saved outputs under `workspace/tmp/test-run` are bounded at 50 files and 8 MiB, oldest removed first and only its own `<16 hex>.log` files (RO-36).
 - On macOS the managed daemon stopped starting after many deploys: Background Task Management tracks the launchd agent by its program's hash, and every deploy changed it. `fathom daemon install` now writes a `fathomd` launcher beside the binary that execs the sibling `fathom` and that deploys never rewrite, sets `WorkingDirectory` to `~/.fathom`, and `fathom doctor` and `fathom daemon status` report a plist that still runs the binary itself; `fathom daemon install --reconcile` migrates it and `--direct` keeps the old shape (O1233).
 - `fathom verify`'s wired criterion counts a method that only a standard-library interface calls, such as an `http.RoundTripper`'s `RoundTrip` that net/http runs, when reached code converts its type to that interface (O1237). The next ingest of each Go service re-runs its typed pass.
-<<<<<<< HEAD
 - A `fathom ingest` that finds the certifications layer already compiled at the current commit re-checks every certificate: one whose test moved to another file goes `stale`, one whose test is gone goes `contradicted`, and a new attested run picked up from `[tests] results_dir` at the same commit updates its state (O1270).
-||||||| 10a63138
-=======
 - With `CLAUDE_CONFIG_DIR` set, `fathom config audit` reads Claude Code's auto-memory, and doctor, init, reconcile and the fleet report read the user settings, `CLAUDE.md` and `.claude.json`, from that directory instead of `~/.claude` (O1194).
 - The prompt hook's line for a pasted stack trace, failing test or error names `localize` only when the session's fathom registration serves it (`/rpc/extended`, `/rpc/companion`); a session on the default `/rpc/agent` surface is told to `search` the most distinctive frame or error text, then `symbol_context` the top in-repo symbol (O615).
->>>>>>> 640b075a0d49eeb0cbde6b20ff7ee261ce8273d6
 
 ### Security
 - Requests to a configured decision provider now carry only the fields each site declares, redact secret-shaped strings (counted as the decision row's `redactions`), honour the new `[decide] exclude` path globs (every layer's union), refuse a question that names a security property, and can be printed without sending (`FATHOM_DECIDE_PLAN_ONLY=1`); provider `none` is unchanged.
