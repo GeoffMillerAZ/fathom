@@ -103,13 +103,14 @@ package semantic
 	// distinguishes these two cases mechanically — see
 	// internal/semantic/packs.go's loadUnion). Defaults "concern": an
 	// un-annotated pack (embedded or a project pack that doesn't set this)
-	// is presumed fathom-shaped until declared otherwise. "dialect" and
-	// "provider" are recorded strata (docs/design/pack-taxonomy.md) with no
-	// #Layer instance today — dialects are code, not packs; provider packs
-	// are a parked pack type (TX-3, docs/plans/pack-taxonomy-adoption.md) —
-	// so this enum admits only the two strata a #Layer instance can
-	// actually be.
-	stratum: "concern" | "platform" | *"concern"
+	// is presumed fathom-shaped until declared otherwise. "tech" is a
+	// layer a tech pack ships in its fathom-pack/layers/, read from the
+	// repository's own pins (docs/design/fathom-dir.md section 7; the
+	// recorded "provider" stratum, renamed). "dialect" is a recorded
+	// stratum (docs/design/pack-taxonomy.md) with no #Layer instance —
+	// dialects are code, not packs — so this enum admits only the three
+	// strata a #Layer instance can actually be.
+	stratum: "concern" | "platform" | "tech" | *"concern"
 
 	// evaled declares whether this pack has a PASSING eval/RESULTS.md on
 	// record (docs/layers.md "The gate": precision >= 0.90, recall >= 0.75,

@@ -18,5 +18,10 @@ composed: #Project & {
 	}]
 }
 
+// The project pack declares a generated output the same way a tech pack does.
+generatedPair: #Project & {
+	generated: [{output: "ui/app.css", source: ["ui/input.css"], regenerate: "task ui:css"}]
+}
+
 // The empty project is valid: every key is optional.
 empty: #Project & {}

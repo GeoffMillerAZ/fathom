@@ -96,6 +96,7 @@ func (integrityPlane) Check(ctx context.Context, in Input) (findings []Finding, 
 	}
 
 	genFindings, genMissing := integrity.GeneratedHandEdits(integrity.GeneratedInput{
+		Root:         in.Root,
 		ChangedFiles: in.ChangedFiles,
 		BaseFile:     in.BaseFile,
 		HeadFile:     in.HeadFile,

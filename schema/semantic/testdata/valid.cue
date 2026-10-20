@@ -15,6 +15,22 @@ failureMode: #Layer & {
 	}
 }
 
+// A layer a tech pack ships declares the tech stratum (docs/design/fathom-dir.md
+// section 7).
+techLayer: #Layer & {
+	name:           "kit-standards"
+	version:        "v1"
+	kind:           "kit-standards"
+	corpus: include: ["docs/**"]
+	prompt_version: "kit-standards/v1"
+	tier:           "doc-claimed"
+	stratum:        "tech"
+	budgets: {
+		max_tokens_per_run: 1000
+		max_usd_per_run:    0.1
+	}
+}
+
 // Every #FindingClass value validates (docs/design/findings-as-evidence.md
 // §3.2, §6 item 2) — a positive instance per vocabulary member, kept in
 // findingclass.cue's own declared order.

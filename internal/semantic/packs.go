@@ -29,10 +29,12 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/cuecontext"
 
 	"github.com/geoffmilleraz/fathom/internal/fsfault"
 	"github.com/geoffmilleraz/fathom/internal/projectdir"
+	"github.com/geoffmilleraz/fathom/internal/techpack"
 )
 
 // LayerSource identifies where a resolved layer definition came from.
@@ -40,7 +42,10 @@ type LayerSource string
 
 const (
 	SourceEmbedded LayerSource = "embedded"
-	SourceProject  LayerSource = "project"
+	// SourceTech is a tech pack's layers/ (FD-18): a fathom-pack/ the
+	// repository's own pins put on disk (techpack.Discover).
+	SourceTech    LayerSource = "tech"
+	SourceProject LayerSource = "project"
 )
 
 // LayerInfo is one resolved layer with union provenance — the data source
@@ -48,11 +53,14 @@ const (
 type LayerInfo struct {
 	LayerDef
 	Source LayerSource
-	// Overrides is true when Source is project and an embedded pack of the
-	// same name also exists: the project pack wins the union (presence =
-	// enabled, project-over-embedded — no other precedence rule, no
-	// enabled/disabled bit to set).
+	// Overrides is true when an earlier stratum also defines this name: the
+	// union's precedence is embedded, then tech pack, then project, a later
+	// stratum winning by layer id (presence = enabled — no other precedence
+	// rule, no enabled/disabled bit to set).
 	Overrides bool
+	// TechPack is the `name@version` of the tech pack a SourceTech layer
+	// came from, "" otherwise.
+	TechPack string
 	// LoadError is non-empty when a project pack directory of this name
 	// exists but failed to load/validate. When an embedded pack of the same
 	// name also exists, the embedded definition stays live (Source stays
@@ -68,8 +76,10 @@ type LayerInfo struct {
 // "<root>/.fathom/layers/<name>/{layer.cue,prompt.md,eval/,KILL.md}".
 const ProjectLayersDir = projectdir.Dir + "/" + string(projectdir.Layers)
 
-// LoadLayerIn resolves the named layer from the union of embedded packs and
-// root's project-local .fathom/layers/ (LC-3). root == "" (or a root with no
+// LoadLayerIn resolves the named layer from the union of embedded packs, the
+// layers/ of the tech packs root's pins put on disk (FD-18,
+// techpack.Discover), and root's project-local .fathom/layers/ (LC-3), in
+// that precedence order. root == "" (or a root with no
 // .fathom/layers/ directory at all) is exactly LoadLayer's embedded-only
 // result. A project pack overrides an embedded pack of the same name. A
 // BROKEN project pack (see LayerInfo.LoadError) never breaks other layers'
@@ -156,7 +166,8 @@ func warnBrokenPackOnce(key, format string, args ...any) {
 // and must be treated as read-only (every caller in this package copies
 // out of it).
 func loadUnion(root string) (map[string]LayerInfo, error) {
-	digest := unionDigest(root)
+	packs := discoverTechPacks(root)
+	digest := unionDigest(root) + techPackDigest(packs)
 
 	unionMemo.mu.Lock()
 	if e, ok := unionMemo.entries[root]; ok && e.digest == digest {
@@ -173,7 +184,7 @@ func loadUnion(root string) (map[string]LayerInfo, error) {
 	unionMemo.flight[flightKey] = call
 	unionMemo.mu.Unlock()
 
-	call.infos, call.err = buildUnion(root)
+	call.infos, call.err = buildUnion(root, packs)
 
 	unionMemo.mu.Lock()
 	delete(unionMemo.flight, flightKey)
@@ -256,6 +267,31 @@ func unionDigest(root string) string {
 	return b.String()
 }
 
+// discoverTechPacks is the tech packs root's own pins put on disk. A
+// discovery error is warned about once and resolves to none: the embedded
+// and project strata keep serving (the resilience contract above).
+func discoverTechPacks(root string) []techpack.Pack {
+	if root == "" {
+		return nil
+	}
+	d, err := techpack.Discover(root)
+	if err != nil {
+		warnBrokenPackOnce(root+"#techpacks", "tech packs under %s could not be discovered and are being ignored (other layers still serve): %v", root, err)
+		return nil
+	}
+	return d.Packs
+}
+
+// techPackDigest is the memo key's tech pack half: each pack's directory
+// and content hash, so editing, adding or removing a pack file moves it.
+func techPackDigest(packs []techpack.Pack) string {
+	var b strings.Builder
+	for _, p := range packs {
+		fmt.Fprintf(&b, "#tech\x00%s\x00%s\n", p.Dir, p.Hash)
+	}
+	return b.String()
+}
+
 // unionBuilds counts real union compiles (buildUnion runs) — the RT-83
 // test's observable.
 var unionBuilds atomic.Int64
@@ -269,7 +305,7 @@ func resetUnionMemoForTest() {
 }
 
 // buildUnion is the uncached union compile loadUnion memoizes.
-func buildUnion(root string) (map[string]LayerInfo, error) {
+func buildUnion(root string, packs []techpack.Pack) (map[string]LayerInfo, error) {
 	unionBuilds.Add(1)
 	cctx := cuecontext.New()
 	layerSchema, err := compileLayerSchema(cctx)
@@ -288,6 +324,10 @@ func buildUnion(root string) (map[string]LayerInfo, error) {
 			return nil, err
 		}
 		infos[name] = LayerInfo{LayerDef: def, Source: SourceEmbedded}
+	}
+
+	for _, p := range packs {
+		addTechPackLayers(cctx, layerSchema, infos, p)
 	}
 
 	if root == "" {
@@ -343,6 +383,52 @@ func buildUnion(root string) (map[string]LayerInfo, error) {
 		infos[name] = LayerInfo{LayerDef: def, Source: SourceProject, Overrides: overrides}
 	}
 	return infos, nil
+}
+
+// addTechPackLayers decodes one tech pack's layers/<name>/layer.cue entries
+// into infos, each overriding an earlier stratum's layer of the same name.
+// A pack without layers/ adds nothing. A broken layer is skipped and
+// recorded exactly as a broken project pack is (LoadError, warned once),
+// and a declared `evaled: true` with no readable eval/RESULTS.md beside it
+// is overridden to false: a tech pack's eval/ is on disk, as a project's.
+func addTechPackLayers(cctx *cue.Context, layerSchema cue.Value, infos map[string]LayerInfo, p techpack.Pack) {
+	dir := filepath.Join(p.Dir, "layers")
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			warnBrokenPackOnce(dir, "tech pack %s layer directory %s is unreadable and is being ignored (other layers still serve): %v", p.Tag(), dir, err)
+		}
+		return
+	}
+	packFS := os.DirFS(dir)
+	var names []string
+	for _, e := range entries {
+		if e.IsDir() && !strings.HasPrefix(e.Name(), ".") {
+			names = append(names, e.Name())
+		}
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		def, err := decodePack(cctx, layerSchema, packFS, name+"/layer.cue", name)
+		if err != nil {
+			warnBrokenPackOnce(dir+"/"+name, "tech pack %s layer %q at %s failed to load and is being ignored (other packs still serve): %v", p.Tag(), name, dir, err)
+			if prev, shadowed := infos[name]; shadowed {
+				prev.LoadError = err.Error()
+				infos[name] = prev
+			} else {
+				infos[name] = LayerInfo{LayerDef: LayerDef{Name: name}, Source: SourceTech, TechPack: p.Tag(), LoadError: err.Error()}
+			}
+			continue
+		}
+		if def.Evaled {
+			if _, rerr := fs.ReadFile(packFS, name+"/eval/RESULTS.md"); rerr != nil {
+				warnBrokenPackOnce(dir+"/"+name+"#evaled", "tech pack %s layer %q declares evaled: true but has no readable eval/RESULTS.md — treating it as NOT evaled", p.Tag(), name)
+				def.Evaled = false
+			}
+		}
+		_, overrides := infos[name]
+		infos[name] = LayerInfo{LayerDef: def, Source: SourceTech, Overrides: overrides, TechPack: p.Tag()}
+	}
 }
 
 // ValidatePack validates a candidate pack directory on disk against #Layer

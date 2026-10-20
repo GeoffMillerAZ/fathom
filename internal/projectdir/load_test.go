@@ -133,7 +133,7 @@ func TestProjectLoadIsolatesAFailingKey(t *testing.T) {
 	if got := strings.Join(names, " "); got != want {
 		t.Errorf("Keys() = %q, want %q", got, want)
 	}
-	wantKnown := "bindings budgets capabilities concerns guards layer_rules learning orientation packs risk"
+	wantKnown := "bindings budgets capabilities concerns generated guards layer_rules learning orientation packs risk"
 	if got := strings.Join(p.KnownKeys(), " "); got != wantKnown {
 		t.Errorf("KnownKeys() = %q, want %q", got, wantKnown)
 	}
