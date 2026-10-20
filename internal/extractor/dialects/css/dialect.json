@@ -12,13 +12,26 @@
     "sniff": null
   },
   "grammar": { "blob": "css", "entry_point": "tree_sitter_css" },
-  "variants": [],
+  "variants": [
+    {
+      "id": "tailwind",
+      "entry_point": "tree_sitter_css",
+      "extensions": [],
+      "sniff": "(?:^|[;{}\\s])@(?:theme|utility|custom-variant|variant|apply|source|plugin|config|reference)\\b",
+      "preprocess": "tailwind-at-rules",
+      "call_names": "tailwind-candidate",
+      "queries": { "tags": "tailwind.scm" }
+    }
+  ],
   "queries": { "tags": "tags.scm", "imports": "imports.scm" },
   "kinds": {
     "selector":         { "source_kind": "CSSSelector", "canonical": "selector" },
     "keyframes":         { "source_kind": "CSSKeyframes", "canonical": "rule", "container": true },
     "custom_property":  { "source_kind": "CSSCustomProperty", "canonical": "variable" },
-    "module":           { "source_kind": "CSSModule", "canonical": "module" }
+    "module":           { "source_kind": "CSSModule", "canonical": "module" },
+    "tw_theme":         { "source_kind": "TailwindTheme", "canonical": "variable" },
+    "tw_utility":       { "source_kind": "TailwindUtility", "canonical": "mixin" },
+    "tw_variant":       { "source_kind": "TailwindVariant", "canonical": "macro" }
   },
   "required_kinds": ["selector"],
   "oracle_kinds": {

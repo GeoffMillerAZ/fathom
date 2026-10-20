@@ -1355,10 +1355,10 @@
     "grammar_source": "tree-sitter/tree-sitter-css (the css dialect's grammar)",
     "licence": "MIT",
     "oracle": [
-      "@tailwindcss/oxide candidate scanner and the tailwindcss compiler (A)"
+      "the tailwindcss v4 compiler's design system (A); the @tailwindcss/oxide scanner's template candidates are out of scope (O1480)"
     ],
     "calibration_subjects": [
-      "two public Tailwind v4 applications, pinned at row start"
+      "nine public Tailwind v4 projects (heroui styles, tailwindcss's own sheets, TailAdmin, flowbite, thom-chat, icons, tiptap-block-editor, originui-svelte, shadcn/ui apps/v4), pinned; holdout: a dashboard starter, shadcn-svelte, kibo and motion-primitives (calibration/corpus.d/tailwind*.yaml)"
     ],
     "depends_on": [
       "LB-Q-css"
@@ -1367,7 +1367,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-tailwind",
     "worker_model": "sonnet",
-    "notes": "@theme tokens, @utility and @custom-variant as CSS kinds (L1), usage edges for custom utilities and tokens only, never for core utilities (store cost, K26), config-file theme keys are the O747 object-literal class"
+    "notes": "@theme tokens, @utility and @custom-variant as CSS kinds (L1), usage edges for custom utilities and tokens only, never for core utilities (store cost, K26), config-file theme keys are the O747 object-literal class. Built as a content-selected variant of the css dialect (wave lang8): TailwindTheme, TailwindUtility and TailwindVariant symbols and @apply calls in a .css file that carries a v4 at-rule, scored by calibration/oracles/tailwind (the compiler's design system); a plain stylesheet keeps the css reading byte for byte (O1478, O1479)"
   },
   {
     "id": "less",

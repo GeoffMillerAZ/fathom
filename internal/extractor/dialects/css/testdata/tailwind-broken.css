@@ -1,0 +1,12 @@
+@theme {
+  --color-ok: red;
+  --color-bad: ;;; {{
+}
+
+@utility fine {
+  @apply
+}
+
+@custom-variant dark (&:where(.dark
+@utility after-error { color: red; }
+.rest { @apply fine; }

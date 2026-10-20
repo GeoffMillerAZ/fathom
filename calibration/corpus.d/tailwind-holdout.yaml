@@ -1,0 +1,24 @@
+id: tailwind-holdout
+language: Tailwind CSS v4 at-rules and custom utilities (.css)
+# SPENT. The first holdout for LB-Q-tailwind (wave lang8): chosen and pinned in the commit that
+# adds the dialect's Tailwind variant, before the oracle or the harness ran on it and before any
+# file of it was read, and read once into docs/bench/readings/lang/holdout/tailwind-shadcn.json:
+# 11 of its 12 files held an ERROR node the variant's rewrite did not mend (child variants such
+# as `**:data-[slot=kbd]:`, an arbitrary variant such as `[&_img]:`, a last @apply without its
+# semicolon), level_met none by the tenancy floor. The variant was fixed for those classes and
+# the repository is now a calibration subject (tailwind.yaml); the holdout is tailwind-holdout-2.yaml.
+# Criteria it was chosen by, Criteria,
+# each checked at the pin: an OSI licence read at the tag; a Tailwind CSS v4 project (the
+# shadcn/ui registry targets Tailwind v4 in apps/v4); absent from tailwind.yaml, every committed
+# reading and every other corpus shard. Never a calibration subject of tailwind.yaml and never
+# tuned against: a later rule change needs a new holdout, not a re-read of this one.
+repos:
+  - name: shadcn-ui/ui
+    url: https://github.com/shadcn-ui/ui
+    ref: "shadcn@4.22.1"
+    sha: daaf156ee00ed91cc7e6bdd937c1b4973152d141
+    licence: MIT
+    subpath: apps/v4
+    idioms:
+      - "unread at the pin: the app and registry stylesheets of the v4 site (`app/`, `registry/`,
+        `styles/`), by directory only"

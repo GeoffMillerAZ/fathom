@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -33,6 +34,10 @@ type tsVariant struct {
 	// read on the parser of the extractor that reads its dialect's own files
 	// (hostedLease, LB-F550). "" leases under the extractor's owner.
 	leaseOwner string
+	// id names a content-selected variant (DialectVar.Sniff): two variants
+	// of one grammar entry point (the css dialect's own and its Tailwind
+	// reading) compile different queries, so each needs its own Parser.
+	id string
 }
 
 // tsDefKind maps one query capture suffix (the text after "definition.", as
@@ -98,6 +103,19 @@ type tsDialectRules struct {
 	// preprocess is the manifest's pre-parse step (tsPreprocessors), nil
 	// when it names none.
 	preprocess func(src []byte) [][]byte
+	// preprocessLenient takes a rewrite that leaves fewer parse errors than
+	// the file as written, not only one that parses clean: a variant's
+	// preprocess (the Tailwind reading of a .css file) removes the syntax it
+	// knows breaks the grammar, and a file with another, contained error
+	// still gains from it.
+	preprocessLenient bool
+	// preprocessSameLength says the rewrite keeps every byte offset: the tree is
+	// the rewritten text's, and every name, signature and line is cut from the
+	// file as written.
+	preprocessSameLength bool
+	// callName rewrites every call site's callee after the match is split (a
+	// variant's call_names): Tailwind's `@apply hover:btn!` calls `btn`.
+	callName func(string) string
 }
 
 // tsPreprocessors are the pre-parse steps a manifest's preprocess names:
@@ -107,6 +125,12 @@ var tsPreprocessors = map[string]func(src []byte) [][]byte{
 	"csharp-conditionals": csharpConditionalTexts,
 	"cpp-macros":          cppMacroTexts,  // tsextract_cppmacros.go (O455)
 	"objc-macros":         objcMacroTexts, // tsextract_objcmacros.go (LB-Q-objective-c)
+	"tailwind-at-rules":   tailwindTexts,  // tsextract_tailwind.go (LB-Q-tailwind)
+}
+
+// tsCallNamers are the callee rewrites a manifest variant's call_names names.
+var tsCallNamers = map[string]func(string) string{
+	"tailwind-candidate": tailwindCandidateRoot, // tsextract_tailwind.go
 }
 
 // tsErrorQuery captures every node a tree-sitter parse could not fit to
@@ -123,7 +147,20 @@ type tsLangSpec struct {
 	// back to defaultVariant.
 	variantForExt  map[string]tsVariant
 	defaultVariant tsVariant
+	// sniffVariants are the variants a file's content selects (DialectVar.
+	// Sniff), tried in manifest order for a file no extension-keyed variant
+	// claims.
+	sniffVariants []tsSniffVariant
 }
+
+// tsSniffVariant is one content-selected variant.
+type tsSniffVariant struct {
+	re      *regexp.Regexp
+	variant tsVariant
+}
+
+// tsSniffWindow is how much of a file a variant's sniff reads.
+const tsSniffWindow = 64 << 10
 
 // tsExtractorGroups are extractor names that span more than one dialect.
 // fusion registers one "javascript" extractor for .js/.jsx/.mjs/.cjs AND
@@ -180,6 +217,14 @@ func buildTSRegistry() (map[string]*tsLangSpec, map[string]*tsLangSpec, error) {
 			for _, e := range v.Extensions {
 				spec.variantForExt[strings.ToLower(e)] = vv
 			}
+			if v.Sniff != "" {
+				re, err := regexp.Compile("(?m)" + v.Sniff)
+				if err != nil {
+					return nil, nil, fmt.Errorf("dialect %s: variant %s: sniff: %w", d.ID, v.ID, err)
+				}
+				vv.id = v.ID
+				spec.sniffVariants = append(spec.sniffVariants, tsSniffVariant{re: re, variant: vv})
+			}
 		}
 		all[d.ID] = spec
 		single[d.ID] = spec
@@ -223,6 +268,14 @@ func variantRules(d Dialect, v DialectVar, rules *tsDialectRules) (*tsDialectRul
 		return nil, fmt.Errorf("dialect %s: variant %s: %w", d.ID, v.ID, err)
 	}
 	r := *rules
+	if v.Preprocess != "" {
+		r.preprocess = tsPreprocessors[v.Preprocess]
+		r.preprocessLenient = true
+		r.preprocessSameLength = true
+	}
+	if v.CallNames != "" {
+		r.callName = tsCallNamers[v.CallNames]
+	}
 	r.query = string(b) + "\n" + rules.query
 	r.queryFile = "dialects/" + d.ID + "/" + v.Queries.Tags + " + " + d.Queries.Tags
 	r.marksMembers = strings.Contains(r.query, "@"+tsMemberCapture)
@@ -422,7 +475,13 @@ func newTSExtractorFromSpec(spec *tsLangSpec) *TSExtractor {
 // tree_sitter_tsx) need their own Parser, since a Parser is bound to one
 // TSLanguage at creation, and two dialects on one grammar compile different
 // queries.
-func (v tsVariant) key() string { return v.rules.id + "|" + v.blob + "|" + v.entryPoint }
+func (v tsVariant) key() string {
+	k := v.rules.id + "|" + v.blob + "|" + v.entryPoint
+	if v.id != "" {
+		k += "|" + v.id
+	}
+	return k
+}
 
 // NewTSExtractor returns a TSExtractor for a tags-engine dialect id (every
 // embedded dialects/<id>/dialect.json with engine "tags") or an extractor
@@ -480,11 +539,26 @@ func extOf(relPath string) string {
 	return ""
 }
 
-func (e *TSExtractor) variantFor(relPath string) tsVariant {
-	if v, ok := e.spec.variantForExt[extOf(relPath)]; ok {
-		return v
+// variantFor is the variant that reads relPath: the one its extension keys,
+// else, when the dialect has content-selected variants, the first whose sniff
+// matches the head of src, else the default.
+func (e *TSExtractor) variantFor(relPath string, src []byte) tsVariant {
+	v, ok := e.spec.variantForExt[extOf(relPath)]
+	if !ok {
+		v = e.spec.defaultVariant
 	}
-	return e.spec.defaultVariant
+	if len(e.spec.sniffVariants) > 0 && ok && v.rules == e.spec.defaultVariant.rules {
+		head := src
+		if len(head) > tsSniffWindow {
+			head = head[:tsSniffWindow]
+		}
+		for _, sv := range e.spec.sniffVariants {
+			if sv.re.Match(head) {
+				return sv.variant
+			}
+		}
+	}
+	return v
 }
 
 // Extract parses src with this language's tree-sitter grammar, runs its
@@ -494,7 +568,7 @@ func (e *TSExtractor) variantFor(relPath string) tsVariant {
 // capture kinds are marked Container/Callable in tsRegistry. Output is
 // sorted by Line then Name for determinism, matching every other extractor.
 func (e *TSExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
-	variant := e.variantFor(relPath)
+	variant := e.variantFor(relPath, src)
 
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -510,7 +584,7 @@ func (e *TSExtractor) Extract(service, relPath string, src []byte) ([]core.Symbo
 // preprocessing step swapped the tree, or the references query faulted); the
 // caller then asks ExtractFileSpecs, which reproduces the answer or the fault.
 func (e *TSExtractor) ExtractWithFileSpecs(service, relPath string, src []byte) (nodes []core.SymbolNode, specs FileSpecs, ok bool, err error) {
-	variant := e.variantFor(relPath)
+	variant := e.variantFor(relPath, src)
 
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -587,14 +661,17 @@ func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, 
 	rules := variant.rules
 	swapped := false
 	if rules.preprocess != nil {
-		raw := tree
-		if tree, src, err = tsPreprocessed(p, tree, src, rules.preprocess); err != nil {
+		raw, written := tree, src
+		if tree, src, err = tsPreprocessed(p, tree, src, rules.preprocess, rules.preprocessLenient); err != nil {
 			e.noteFault(l)
 			return nil, nil, fmt.Errorf("tsextract[%s] %s: preprocess: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
 		}
 		swapped = tree != raw
 		if swapped {
 			e.countParse()
+			if rules.preprocessSameLength && len(src) == len(written) {
+				src = written
+			}
 		}
 	}
 
@@ -624,6 +701,11 @@ func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, 
 	}
 
 	defs, calls, attaches, typeRefs := splitTSMatchesWith(matches, rules.kinds, src, rules.nameNormalizer(), rules.qualifyCalls)
+	if rules.callName != nil {
+		for i := range calls {
+			calls[i].text = rules.callName(calls[i].text)
+		}
+	}
 	defs = oneDefPerNode(defs)
 	tsSignatureLeads(matches, defs)
 	e.typeRefs.Add(int64(typeRefs))
@@ -678,9 +760,9 @@ func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, 
 // syntax error, each text pre gives is parsed in turn, and the first tree
 // with none replaces tree, its text src. A file that parses as written is
 // read as written. Every tree not returned is closed.
-func tsPreprocessed(p *tsengine.Parser, tree *tsengine.Tree, src []byte, pre func([]byte) [][]byte) (*tsengine.Tree, []byte, error) {
-	bad, err := tsHasError(p, tree)
-	if err != nil || !bad {
+func tsPreprocessed(p *tsengine.Parser, tree *tsengine.Tree, src []byte, pre func([]byte) [][]byte, lenient bool) (*tsengine.Tree, []byte, error) {
+	raw, err := tsErrorCount(p, tree)
+	if err != nil || raw == 0 {
 		return tree, src, err
 	}
 	for _, text := range pre(src) {
@@ -688,11 +770,13 @@ func tsPreprocessed(p *tsengine.Parser, tree *tsengine.Tree, src []byte, pre fun
 		if err != nil {
 			return tree, src, err
 		}
-		if bad, err = tsHasError(p, t2); err != nil || bad {
+		n, err := tsErrorCount(p, t2)
+		if err != nil {
 			t2.Close()
-			if err != nil {
-				return tree, src, err
-			}
+			return tree, src, err
+		}
+		if n > 0 && !(lenient && n < raw) {
+			t2.Close()
 			continue
 		}
 		tree.Close()
@@ -701,19 +785,18 @@ func tsPreprocessed(p *tsengine.Parser, tree *tsengine.Tree, src []byte, pre fun
 	return tree, src, nil
 }
 
-// tsHasError reports whether tree holds an ERROR or MISSING node (the
-// query is compiled once per Parser and cached on it).
-func tsHasError(p *tsengine.Parser, tree *tsengine.Tree) (bool, error) {
+// tsErrorCount is the number of ERROR and MISSING nodes in tree.
+func tsErrorCount(p *tsengine.Parser, tree *tsengine.Tree) (int, error) {
 	q, ok := p.Cached("errors").(*tsengine.Query)
 	if !ok {
 		var err error
 		if q, err = p.CompileQuery(tsErrorQuery); err != nil {
-			return false, err
+			return 0, err
 		}
 		p.SetCached("errors", q)
 	}
 	ms, err := q.Run(tree)
-	return len(ms) > 0, err
+	return len(ms), err
 }
 
 // injectionRanges runs variant's injections query over tree: every

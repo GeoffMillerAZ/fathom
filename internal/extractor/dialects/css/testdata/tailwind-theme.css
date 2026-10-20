@@ -1,0 +1,14 @@
+/* The theme sheet tailwind.css imports. */
+@theme {
+  --spacing-base: 0.25rem;
+  --breakpoint-3xl: 120rem;
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+}
+
+.panel {
+  @apply no-scrollbar;
+  padding: var(--spacing-base);
+}

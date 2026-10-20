@@ -45,7 +45,11 @@ func filesWithError(ctx context.Context, dialect, root string, files []string) (
 		}
 	}()
 	for _, rel := range files {
-		target, err := extractor.ProbeTargetFor(dialect, rel)
+		src, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
+		if err != nil {
+			return 0, 0, 0, err
+		}
+		target, err := extractor.ProbeTargetForSource(dialect, rel, src)
 		if err != nil {
 			return 0, 0, 0, err
 		}
@@ -63,10 +67,6 @@ func filesWithError(ctx context.Context, dialect, root string, files []string) (
 			}
 			g = grammar{p, q}
 			parsers[key] = g
-		}
-		src, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
-		if err != nil {
-			return 0, 0, 0, err
 		}
 		tree, err := g.p.Parse(src)
 		if err != nil {

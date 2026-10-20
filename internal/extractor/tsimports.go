@@ -67,7 +67,7 @@ type ImportSpec struct {
 // ExtractImports parses relPath's import statements using the SAME cached
 // (parser, query) pair Extract uses for this variant — see the package doc.
 func (e *TSExtractor) ExtractImports(relPath string, src []byte) ([]ImportSpec, error) {
-	variant := e.variantFor(relPath)
+	variant := e.variantFor(relPath, src)
 
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -117,7 +117,7 @@ type ImportSpan struct {
 // same specs in the same order, each spanning the lines of the match that
 // bound it (its statement capture, else its module and name captures).
 func (e *TSExtractor) ExtractImportSpans(relPath string, src []byte) ([]ImportSpan, error) {
-	variant := e.variantFor(relPath)
+	variant := e.variantFor(relPath, src)
 
 	e.mu.Lock()
 	defer e.mu.Unlock()

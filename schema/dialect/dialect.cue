@@ -101,7 +101,7 @@ import "struct"
 	// length, then also blanks the conditional directive lines (O455).
 	// "objc-macros" reads `typedef NS_ENUM(T, Name)` and its siblings as
 	// `enum Name`, at equal byte length (LB-Q-objective-c).
-	preprocess?: "csharp-conditionals" | "cpp-macros" | "objc-macros"
+	preprocess?: "csharp-conditionals" | "cpp-macros" | "objc-macros" | "tailwind-at-rules"
 
 	// imports.strategy is from §6's closed set; the parameters are the
 	// closed set extractor.ImportParams decodes (LB-F11) — each strategy
@@ -261,10 +261,21 @@ import "struct"
 // query of the variant's own, compiled before the dialect's for the
 // variant's extensions alone: the patterns only its grammar can satisfy
 // (tsx's JSX), which the dialect's other extensions never run.
+//
+// A variant with no extensions is chosen by content: sniff is a regex over the
+// file's first 64 KiB, tried for a file of the dialect's own extensions (the
+// css dialect's Tailwind CSS v4 reading, LB-Q-tailwind), and preprocess is the
+// variant's own pre-parse step.
 #Variant: {
 	id:          #ID
 	entry_point: =~"^tree_sitter_[a-z0-9_]+$"
-	extensions: [...=~"^\\.[A-Za-z0-9._+-]+$"] & [_, ...]
+	extensions: [...=~"^\\.[A-Za-z0-9._+-]+$"]
+	sniff?:      string & !=""
+	if len(extensions) == 0 {
+		sniff: string
+	}
+	preprocess?:  "tailwind-at-rules"
+	call_names?: "tailwind-candidate"
 	queries?: {
 		tags?: =~"\\.scm$"
 	}

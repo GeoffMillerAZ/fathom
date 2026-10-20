@@ -1,0 +1,111 @@
+id: tailwind
+language: Tailwind CSS v4 at-rules and custom utilities (.css)
+# Subjects for LB-Q-tailwind (wave lang8). The css dialect's Tailwind variant is measured by
+# `indexbench lang-oracle -dialect tailwind` against calibration/oracles/tailwind (the tailwindcss
+# v4 compiler's design system, tier A for what it attests: a theme variable, a custom utility, a
+# custom variant, and the custom utility an @apply candidate resolves to). Every subject is read
+# only, never vendored. Utility classes used in templates (the oxide scanner's candidates in
+# markup) are out of scope for this row: the reading says so.
+repos:
+  - name: heroui-inc/heroui
+    url: https://github.com/heroui-inc/heroui
+    ref: "@heroui/styles@3.0.1"
+    sha: 9b6fadd42941c581c1cea781eb1b018730746856
+    licence: MIT
+    subpath: packages/styles
+    idioms:
+      - "a component stylesheet tree (`components/*.css`, about 85 files) joined by `@import` from
+        an index sheet, where `@apply` lists custom utilities (`no-highlight`, `status-focused`)
+        beside core ones, inside nested `&:` rules"
+      - "`@utility` blocks in `utilities/index.css` and `@custom-variant` in `variants/`, `@theme`
+        in `base/`"
+  - name: tailwindlabs/tailwindcss
+    url: https://github.com/tailwindlabs/tailwindcss
+    ref: v4.3.2
+    sha: 056a1550721d4bf79ff732d5ab9414fa83f7064f
+    licence: MIT
+    subpath: packages/tailwindcss
+    idioms:
+      - "`theme.css`: the default theme as one `@theme default` block of about 450 variables,
+        some defined by `var()` of another (`--default-font-family`)"
+      - "`index.css` joining `theme.css`, `preflight.css` and `utilities.css` by `@import ... layer(...)`,
+        the file `@import \"tailwindcss\"` resolves to"
+    notes: >
+      the compiler under measurement is this repository's own package at the same tag; the oracle
+      reads these sheets with it, so this subject is the tool grading its own source.
+  - name: TailAdmin/free-react-tailwind-admin-dashboard
+    url: https://github.com/TailAdmin/free-react-tailwind-admin-dashboard
+    ref: master
+    sha: e888dd1716b9803b535c7c2fa4f2c6b7d39b3da9
+    licence: MIT
+    idioms:
+      - "one `src/index.css`: `@theme` with design tokens, about 30 `@utility` blocks of component
+        styles, `@custom-variant dark`, and `@apply` lists in `@layer base` and `@layer components`
+        rules naming those utilities"
+    notes: >
+      no release tag exists; pinned by commit.
+  - name: themesberg/flowbite
+    url: https://github.com/themesberg/flowbite
+    ref: master
+    sha: 232ebdb33a9e37b31b293b9988d89b862ee121e5
+    licence: MIT
+    subpath: src
+    idioms:
+      - "theme sheets (`themes/*.css`) with `@theme`, `@custom-variant` and `@plugin` of packages
+        the checkout does not install (the oracle stubs a plugin it cannot resolve and counts it)"
+    notes: >
+      no release tag is used: the checkout is pinned by commit.
+  - name: TGlide/thom-chat
+    url: https://github.com/TGlide/thom-chat
+    ref: main
+    sha: 062193d792303007b500e35c0c50ea4ceefeff2d
+    licence: MIT
+    idioms:
+      - "an application's `src/app.css` (about 600 lines): `@theme` tokens, `@utility` blocks, a
+        `@custom-variant dark`, `@apply` lists in `@layer base`, and `var(--color-*)` reads of its
+        own tokens in plain rules"
+    notes: >
+      no release tag exists; pinned by commit.
+  - name: jis3r/icons
+    url: https://github.com/jis3r/icons
+    ref: main
+    sha: 09634b4707e1a6bd38fd5715c39fba52770ab00a
+    licence: MIT
+    idioms:
+      - "one `src/app.css` of a small Svelte application: `@theme`, one `@utility`, one `@custom-variant`"
+    notes: >
+      no release tag exists; pinned by commit.
+  - name: phyohtetarkar/tiptap-block-editor
+    url: https://github.com/phyohtetarkar/tiptap-block-editor
+    ref: main
+    sha: 0a999643ceb049250fa8be7392eb10a6c703aa38
+    licence: MIT
+    idioms:
+      - "two `src/*.css` sheets of an editor application: `@theme`, `@utility`, `@custom-variant`"
+    notes: >
+      no release tag exists; pinned by commit.
+  - name: max-got/originui-svelte
+    url: https://github.com/max-got/originui-svelte
+    ref: main
+    sha: 0499ba8041b526cf4a6cc677faeacc90c8ce4ce8
+    licence: MIT
+    idioms:
+      - "one `src/app.css` of a component library port: `@theme` tokens with `var()` reads, one
+        `@utility`, `@custom-variant dark`"
+    notes: >
+      no release tag exists; pinned by commit.
+  - name: shadcn-ui/ui
+    url: https://github.com/shadcn-ui/ui
+    ref: "shadcn@4.22.1"
+    sha: daaf156ee00ed91cc7e6bdd937c1b4973152d141
+    licence: MIT
+    subpath: apps/v4
+    idioms:
+      - "the registry's `style-*.css` (eight files of about 1,800 lines): every `.cn-*` rule one `@apply`
+        list of 20 to 60 candidates with named groups (`group-has-[:focus-visible]/field-label:`),
+        arbitrary variants (`[&_img]:`, `[&>svg:not([class*='size-'])]:`), child variants (`**:`, `*:`)
+        and the `!` importance flag"
+    notes: >
+      the first holdout of this shard, read once (docs/bench/readings/lang/holdout/tailwind-shadcn.json:
+      11 of 12 files in error, level none) and spent: the variant was fixed for what that read found, so
+      from here it is calibration, and tailwind-holdout-2.yaml holds the holdout.

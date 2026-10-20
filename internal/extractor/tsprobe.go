@@ -2,6 +2,7 @@ package extractor
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
 )
 
@@ -37,6 +38,12 @@ func TagsDialects() []string {
 // engine would parse that file with, and that variant's query source (the
 // tags query, then the imports query).
 func ProbeTargetFor(dialect, relPath string) (ProbeTarget, error) {
+	return ProbeTargetForSource(dialect, relPath, nil)
+}
+
+// ProbeTargetForSource is ProbeTargetFor for a file whose content may select
+// the variant (the css dialect's Tailwind reading, DialectVar.Sniff).
+func ProbeTargetForSource(dialect, relPath string, src []byte) (ProbeTarget, error) {
 	if _, err := tsRegistry(); err != nil {
 		return ProbeTarget{}, err
 	}
@@ -44,9 +51,34 @@ func ProbeTargetFor(dialect, relPath string) (ProbeTarget, error) {
 	if !ok {
 		return ProbeTarget{}, fmt.Errorf("unknown tags dialect %q (known: %v)", dialect, TagsDialects())
 	}
-	v := spec.defaultVariant
-	if ev, ok := spec.variantForExt[extOf(relPath)]; ok {
-		v = ev
-	}
+	v := (&TSExtractor{spec: spec}).variantFor(relPath, src)
 	return ProbeTarget{Dialect: dialect, Blob: v.blob, EntryPoint: v.entryPoint, QueryFile: v.rules.queryFile, Query: v.rules.query, Preprocess: v.rules.preprocess}, nil
 }
+
+// VariantSniff is the content sniff of the dialect's variant id (DialectVar.
+// Sniff), compiled as the extractor compiles it: the test the harness uses to
+// measure exactly the files the variant reads.
+func VariantSniff(dialect, variant string) (*regexp.Regexp, bool) {
+	if _, err := tsRegistry(); err != nil {
+		return nil, false
+	}
+	ds, err := LoadDialects()
+	if err != nil {
+		return nil, false
+	}
+	for _, d := range ds {
+		if d.ID != dialect {
+			continue
+		}
+		for _, v := range d.Variants {
+			if v.ID == variant && v.Sniff != "" {
+				re, err := regexp.Compile("(?m)" + v.Sniff)
+				return re, err == nil
+			}
+		}
+	}
+	return nil, false
+}
+
+// VariantSniffWindow is how much of a file the variant sniffs read.
+const VariantSniffWindow = tsSniffWindow

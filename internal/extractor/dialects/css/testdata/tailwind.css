@@ -1,0 +1,81 @@
+@import "tailwindcss" theme(static);
+@import "./tailwind-theme.css" layer(theme);
+@source "../src";
+@plugin "@tailwindcss/typography";
+@config "./tailwind.config.js";
+@reference "./other.css";
+
+@theme default inline reference {
+  --color-*: initial;
+  --color-brand: oklch(0.7 0.1 200);
+  --font-display: "Satoshi", sans-serif;
+  --spacing-gutter: calc(var(--spacing-base) * 2);
+  --animate-wiggle: wiggle 1s ease-in-out infinite;
+
+  @keyframes wiggle {
+    0%, 100% { transform: rotate(-3deg); }
+    50% { transform: rotate(3deg); }
+  }
+}
+
+@utility tab-4 {
+  tab-size: 4;
+}
+
+@utility tab-* {
+  tab-size: --value(integer);
+}
+
+@utility card {
+  @apply tab-4 rounded-lg;
+  background: var(--color-brand);
+}
+
+@custom-variant dark (&:where(.dark, .dark *));
+@custom-variant hocus {
+  &:hover,
+  &:focus {
+    @slot;
+  }
+}
+@variant theme-midnight (&:where([data-theme="midnight"] *));
+
+.btn {
+  @apply card;
+  @apply card hover:tab-4 !important;
+  color: var(--color-brand);
+  font-family: var(--font-display);
+
+  @variant dark {
+    color: white;
+  }
+}
+
+.after {
+  color: red;
+}
+
+@media (width >= 48rem) {
+  .wide {
+    @apply tab-4! dark:card! !card;
+    background: url(@fonts/pkg/bg.png);
+  }
+}
+
+.field {
+  @apply card h-[calc(100%-1rem)] has-[:checked]:tab-4 bg-(--color-brand) *:p-2;
+
+  .group:hover &,
+  [data-invalid="true"] & {
+    @apply tab-4;
+    color: var(--color-brand);
+  }
+
+  .plain > & {
+    color: red;
+  }
+}
+
+.cell {
+  @apply [&_img]:object-cover **:data-[slot=kbd]:isolate *:p-2 card
+}

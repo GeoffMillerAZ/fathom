@@ -1,0 +1,586 @@
+{
+  "dialect": "tailwind",
+  "kind": "language",
+  "target_level": "L2",
+  "level_met": "L3",
+  "grade": {
+    "L1": "good",
+    "L2": "excellent",
+    "L3": "excellent",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-10-20",
+  "fathom_commit": "0289c50ea",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "TGlide/thom-chat",
+      "sha": "062193d792303007b500e35c0c50ea4ceefeff2d",
+      "files": 2,
+      "bytes": 20980,
+      "counts": {
+        "call_fathom": 10,
+        "call_fathom_in_truth": 10,
+        "call_truth": 10,
+        "call_truth_found": 10,
+        "css_w2_fathom_outside_closure": 277,
+        "css_w2_oracle_outside_closure": 7,
+        "fathom_defs": 99,
+        "import_edges_fathom": 0,
+        "import_edges_truth": 0,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "imports": 7,
+        "kind_equal": 99,
+        "matched": 99,
+        "oracle_defs": 99
+      },
+      "families": {
+        "calls": "A",
+        "imports": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "macro",
+        "mixin",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "fathom:CSSCustomProperty": 115,
+        "fathom:CSSKeyframes": 2,
+        "fathom:CSSModule": 2,
+        "fathom:CSSSelector": 104
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 14.109,
+        "extract_cpu_ms": 15.103,
+        "max_file_ms": 12,
+        "peak_module_pages": 286,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "TailAdmin/free-react-tailwind-admin-dashboard",
+      "sha": "e888dd1716b9803b535c7c2fa4f2c6b7d39b3da9",
+      "files": 1,
+      "bytes": 31105,
+      "counts": {
+        "call_fathom": 2,
+        "call_fathom_in_truth": 2,
+        "call_truth": 2,
+        "call_truth_found": 2,
+        "css_w2_fathom_outside_closure": 357,
+        "fathom_defs": 166,
+        "import_edges_fathom": 0,
+        "import_edges_truth": 0,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "imports": 2,
+        "kind_equal": 166,
+        "matched": 166,
+        "oracle_defs": 166
+      },
+      "families": {
+        "calls": "A",
+        "imports": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "macro",
+        "mixin",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "fathom:CSSCustomProperty": 1,
+        "fathom:CSSModule": 1,
+        "fathom:CSSSelector": 277
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 21.237,
+        "extract_cpu_ms": 22.291,
+        "max_file_ms": 22,
+        "peak_module_pages": 294,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "heroui-inc/heroui",
+      "sha": "9b6fadd42941c581c1cea781eb1b018730746856",
+      "files": 85,
+      "bytes": 234240,
+      "counts": {
+        "call_fathom": 3,
+        "call_fathom_in_truth": 3,
+        "call_truth": 3,
+        "call_truth_found": 3,
+        "css_w2_fathom_outside_closure": 2856,
+        "css_w2_oracle_outside_closure": 75,
+        "fathom_defs": 110,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "kind_equal": 110,
+        "matched": 110,
+        "oracle_defs": 110
+      },
+      "families": {
+        "calls": "A",
+        "imports": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "macro",
+        "mixin",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "fathom:CSSCustomProperty": 173,
+        "fathom:CSSKeyframes": 9,
+        "fathom:CSSModule": 85,
+        "fathom:CSSSelector": 1847
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 89.597,
+        "extract_cpu_ms": 93.885,
+        "max_file_ms": 3,
+        "peak_module_pages": 275,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "jis3r/icons",
+      "sha": "09634b4707e1a6bd38fd5715c39fba52770ab00a",
+      "files": 1,
+      "bytes": 4894,
+      "counts": {
+        "call_fathom": 0,
+        "call_truth": 0,
+        "css_w2_fathom_outside_closure": 41,
+        "css_w2_oracle_outside_closure": 4,
+        "fathom_defs": 38,
+        "import_edges_fathom": 0,
+        "import_edges_truth": 0,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "imports": 2,
+        "kind_equal": 38,
+        "matched": 38,
+        "oracle_defs": 38
+      },
+      "families": {
+        "calls": "A",
+        "imports": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "macro",
+        "mixin",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "fathom:CSSCustomProperty": 63,
+        "fathom:CSSModule": 1,
+        "fathom:CSSSelector": 4
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 3.381,
+        "extract_cpu_ms": 3.419,
+        "max_file_ms": 3,
+        "peak_module_pages": 275,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "max-got/originui-svelte",
+      "sha": "0499ba8041b526cf4a6cc677faeacc90c8ce4ce8",
+      "files": 1,
+      "bytes": 8488,
+      "counts": {
+        "call_fathom": 2,
+        "call_fathom_in_truth": 2,
+        "call_truth": 2,
+        "call_truth_found": 2,
+        "css_w2_fathom_outside_closure": 32,
+        "css_w2_oracle_outside_closure": 4,
+        "fathom_defs": 42,
+        "import_edges_fathom": 0,
+        "import_edges_truth": 0,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "imports": 2,
+        "kind_equal": 42,
+        "matched": 42,
+        "oracle_defs": 42
+      },
+      "families": {
+        "calls": "A",
+        "imports": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "macro",
+        "mixin",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "fathom:CSSCustomProperty": 41,
+        "fathom:CSSKeyframes": 11,
+        "fathom:CSSModule": 1,
+        "fathom:CSSSelector": 11
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 5.689,
+        "extract_cpu_ms": 6.21,
+        "max_file_ms": 6,
+        "peak_module_pages": 276,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "phyohtetarkar/tiptap-block-editor",
+      "sha": "0a999643ceb049250fa8be7392eb10a6c703aa38",
+      "files": 1,
+      "bytes": 4990,
+      "counts": {
+        "call_fathom": 0,
+        "call_truth": 0,
+        "css_w2_fathom_outside_closure": 42,
+        "css_w2_oracle_outside_closure": 4,
+        "fathom_defs": 41,
+        "import_edges_fathom": 0,
+        "import_edges_truth": 0,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "imports": 3,
+        "kind_equal": 41,
+        "matched": 41,
+        "oracle_defs": 41
+      },
+      "families": {
+        "calls": "A",
+        "imports": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "macro",
+        "mixin",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "fathom:CSSCustomProperty": 68,
+        "fathom:CSSModule": 1,
+        "fathom:CSSSelector": 5
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 3.376,
+        "extract_cpu_ms": 3.419,
+        "max_file_ms": 3,
+        "peak_module_pages": 275,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "shadcn-ui/ui",
+      "sha": "daaf156ee00ed91cc7e6bdd937c1b4973152d141",
+      "files": 12,
+      "bytes": 682048,
+      "counts": {
+        "call_fathom": 14,
+        "call_fathom_in_truth": 14,
+        "call_truth": 14,
+        "call_truth_found": 14,
+        "css_w2_fathom_outside_closure": 305,
+        "css_w2_oracle_outside_closure": 179,
+        "fathom_defs": 72,
+        "file_edges_agree": 9,
+        "file_edges_fathom": 9,
+        "file_edges_truth": 9,
+        "import_edges_agree": 9,
+        "import_edges_fathom": 9,
+        "import_edges_truth": 9,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "imports": 12,
+        "imports_in_repo": 9,
+        "imports_resolved_agree": 9,
+        "kind_equal": 72,
+        "matched": 72,
+        "oracle_defs": 72
+      },
+      "families": {
+        "calls": "A",
+        "file_edges": "A",
+        "imports": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "macro",
+        "mixin",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "fathom:CSSCustomProperty": 963,
+        "fathom:CSSModule": 12,
+        "fathom:CSSSelector": 3653
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 585.529,
+        "extract_cpu_ms": 588.566,
+        "max_file_ms": 80,
+        "peak_module_pages": 479,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "tailwindlabs/tailwindcss",
+      "sha": "056a1550721d4bf79ff732d5ab9414fa83f7064f",
+      "files": 1,
+      "bytes": 19480,
+      "counts": {
+        "fathom_defs": 419,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "kind_equal": 419,
+        "matched": 419,
+        "oracle_defs": 419
+      },
+      "families": {
+        "imports": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "macro",
+        "mixin",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "fathom:CSSKeyframes": 4,
+        "fathom:CSSModule": 1
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 13.102,
+        "extract_cpu_ms": 14.211,
+        "max_file_ms": 14,
+        "peak_module_pages": 291,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "themesberg/flowbite",
+      "sha": "232ebdb33a9e37b31b293b9988d89b862ee121e5",
+      "files": 13,
+      "bytes": 105590,
+      "counts": {
+        "call_fathom": 1,
+        "call_fathom_in_truth": 1,
+        "call_truth": 1,
+        "call_truth_found": 1,
+        "css_w2_fathom_outside_closure": 1250,
+        "css_w2_oracle_outside_closure": 1250,
+        "fathom_defs": 641,
+        "file_edges_agree": 10,
+        "file_edges_fathom": 10,
+        "file_edges_truth": 10,
+        "import_edges_agree": 10,
+        "import_edges_fathom": 10,
+        "import_edges_truth": 10,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "imports": 24,
+        "imports_in_repo": 10,
+        "imports_resolved_agree": 10,
+        "kind_equal": 641,
+        "matched": 641,
+        "oracle_defs": 641
+      },
+      "families": {
+        "calls": "A",
+        "file_edges": "A",
+        "imports": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "macro",
+        "mixin",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "fathom:CSSCustomProperty": 1253,
+        "fathom:CSSModule": 13,
+        "fathom:CSSSelector": 113
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 33.322,
+        "extract_cpu_ms": 36.217999999999996,
+        "max_file_ms": 13,
+        "peak_module_pages": 284,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "tailwindcss",
+      "version": "4.3.2",
+      "licence": "MIT"
+    }
+  ],
+  "metrics": {
+    "call_precision": 1,
+    "call_recall": 1,
+    "def_mapping": null,
+    "file_edge_precision": 1,
+    "file_edge_recall": 1,
+    "import_resolution": 1,
+    "kind_agreement": 1,
+    "range_agreement": null,
+    "signature_coverage": null,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "A",
+    "call_recall": "A",
+    "file_edge_precision": "A",
+    "file_edge_recall": "A",
+    "import_resolution": "A",
+    "kind_agreement": "A",
+    "sym_precision": "A",
+    "sym_recall": "A"
+  },
+  "not_applicable": [
+    "signature_coverage"
+  ],
+  "not_measured": [
+    "range_agreement"
+  ],
+  "required_kinds": [
+    "macro",
+    "mixin",
+    "variable"
+  ],
+  "kind_intersection": [
+    "macro",
+    "mixin",
+    "variable"
+  ],
+  "counts": {
+    "call_fathom": 32,
+    "call_fathom_in_truth": 32,
+    "call_truth": 32,
+    "call_truth_found": 32,
+    "css_w2_fathom_outside_closure": 5160,
+    "css_w2_oracle_outside_closure": 1523,
+    "fathom_defs": 1628,
+    "file_edges_agree": 19,
+    "file_edges_fathom": 19,
+    "file_edges_truth": 19,
+    "import_edges_agree": 19,
+    "import_edges_fathom": 19,
+    "import_edges_truth": 19,
+    "import_oracle_out_of_scope": 0,
+    "import_oracle_unpaired": 0,
+    "imports": 52,
+    "imports_in_repo": 19,
+    "imports_resolved_agree": 19,
+    "kind_equal": 1628,
+    "matched": 1628,
+    "oracle_defs": 1628
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 0,
+    "throughput_mb_s": 1.42,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 1.45,
+    "max_file_ms": 80,
+    "peak_module_pages": 479,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:CSSCustomProperty": 2677,
+    "fathom:CSSKeyframes": 26,
+    "fathom:CSSModule": 117,
+    "fathom:CSSSelector": 6014
+  },
+  "notes": [
+    "L2 unit. A pair is (owner, name): an @apply candidate to the @utility it resolves to (a variant prefix and the importance flag stripped on both sides), and a var(--name) to the @theme variable it reads, graded by the W2 rule (design 1.8) within the file's @import closure, as CSS's are. An @apply of a core utility and a var() of a variable the default theme or a package defines have no definition in the closure and are out of both sides, counted. A use of a functional utility (`@utility name-*` is named `name-`, `@apply name-4` names `name-4`) is a truth pair fathom cannot match, a recall miss wherever one occurs; the subjects' counts of them are in their disclosures. Utility classes used in templates (markup, JSX) are out of scope for this reading: the oxide scanner's candidates are not measured here.",
+    "Offline. An @import or @plugin the oracle cannot resolve without the network is read as an empty sheet or a plugin that does nothing, and counted in the subject's disclosures; a stylesheet a project compiles inside an entry sheet that imports Tailwind is compiled with `@import \"tailwindcss\"` prepended.",
+    "Oracle. The tailwindcss v4 compiler's design system (tier A for what it attests): a definition or a pair is graded only when the compiler registered it, and an @apply candidate resolves to a custom utility only when the compiler parses it to that utility's root (variants and the importance flag allowed). Names and lines are the source's, as the lightningcss reading's are (the package exports no parser). No end line is measured, so range_agreement is not measured and L1 is capped at good.",
+    "Scope. This reading measures the Tailwind CSS v4 layer of the css dialect: a .css file the dialect's Tailwind variant reads (one that carries @theme, @utility, @custom-variant, @variant, @apply, @source, @plugin or @config). Its kinds are TailwindTheme (each --name of an @theme block), TailwindUtility (@utility name, or name- for @utility name-*) and TailwindVariant (@custom-variant name, and the v4.0 `@variant name (selector);` spelling); every other definition of those files is the css reading's and out of this one (excluded_by_kind).",
+    "TGlide/thom-chat: 2 of 2 measured files hold an ERROR or MISSING node as written; the dialect's pre-parse step reads 2 of them clean, and files_with_error counts the 0 it cannot mend, the files the extractor reads with an error",
+    "TGlide/thom-chat: 7 oracle and 277 fathom name pairs name nothing defined in their file's @import closure (W2), out of both",
+    "TGlide/thom-chat: tailwindcss resolves none of fathom's imports to a file of the subject, so import_resolution has no denominator here",
+    "TGlide/thom-chat: the compiler (tailwindcss 4.3.2) could not load 10 @import and 0 @plugin or @config offline and read each as empty; oracle counts: apply_candidates_core 230, files 2, files_compiled 2, imports_stubbed 10, var_not_theme 97",
+    "TailAdmin/free-react-tailwind-admin-dashboard: 0 oracle and 357 fathom name pairs name nothing defined in their file's @import closure (W2), out of both",
+    "TailAdmin/free-react-tailwind-admin-dashboard: 1 of 1 measured files hold an ERROR or MISSING node as written; the dialect's pre-parse step reads 1 of them clean, and files_with_error counts the 0 it cannot mend, the files the extractor reads with an error",
+    "TailAdmin/free-react-tailwind-admin-dashboard: tailwindcss resolves none of fathom's imports to a file of the subject, so import_resolution has no denominator here",
+    "TailAdmin/free-react-tailwind-admin-dashboard: the compiler (tailwindcss 4.3.2) could not load 0 @import and 0 @plugin or @config offline and read each as empty; oracle counts: apply_candidates_core 386, files 1, files_compiled 1, theme_namespace_resets 2",
+    "W2 (design 1.8): tailwindcss attests no cascade, so a var() or @apply pair is graded as a name reference: kept when its name is a custom property, @keyframes rule or @utility defined in the file or its @import closure, every other pair out of both sides, counted",
+    "file_edge_precision and file_edge_recall measured against an import dump's (file, imported file) pairs, there being no SCIP index: the truth is what each file's import statements name, not the files its references reach as a SCIP index's cross-file edges are, so a file reached without an import of its own (a file another one required, an autoloaded constant) is outside the truth and a resolved edge to it counts against precision, while a file imported and never referenced is in it (LB-F57)",
+    "heroui-inc/heroui: 1 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "heroui-inc/heroui: 20 of 85 measured files hold an ERROR or MISSING node as written; the dialect's pre-parse step reads 20 of them clean, and files_with_error counts the 0 it cannot mend, the files the extractor reads with an error",
+    "heroui-inc/heroui: 75 oracle and 2856 fathom name pairs name nothing defined in their file's @import closure (W2), out of both",
+    "heroui-inc/heroui: restricted to packages/styles/** (-only; the files outside are a disclosed gap, not measured)",
+    "heroui-inc/heroui: tailwindcss resolves none of fathom's imports to a file of the subject, so import_resolution has no denominator here",
+    "heroui-inc/heroui: the compiler (tailwindcss 4.3.2) could not load 0 @import and 0 @plugin or @config offline and read each as empty; oracle counts: apply_candidates_core 2431, apply_candidates_rejected 681, core_import_prepended 87, files 91, files_compiled 87, var_not_theme 592",
+    "import_resolution: 19 of 19 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 1 (19 of 19) and recall 1 (19 of 19); 0 of 52 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
+    "jis3r/icons: 1 of 1 measured files hold an ERROR or MISSING node as written; the dialect's pre-parse step reads 1 of them clean, and files_with_error counts the 0 it cannot mend, the files the extractor reads with an error",
+    "jis3r/icons: 4 oracle and 41 fathom name pairs name nothing defined in their file's @import closure (W2), out of both",
+    "jis3r/icons: tailwindcss resolves none of fathom's imports to a file of the subject, so import_resolution has no denominator here",
+    "jis3r/icons: the compiler (tailwindcss 4.3.2) could not load 1 @import and 0 @plugin or @config offline and read each as empty; oracle counts: apply_candidates_core 4, files 1, files_compiled 1, imports_stubbed 1, var_not_theme 33",
+    "max-got/originui-svelte: 1 of 1 measured files hold an ERROR or MISSING node as written; the dialect's pre-parse step reads 1 of them clean, and files_with_error counts the 0 it cannot mend, the files the extractor reads with an error",
+    "max-got/originui-svelte: 4 oracle and 32 fathom name pairs name nothing defined in their file's @import closure (W2), out of both",
+    "max-got/originui-svelte: tailwindcss resolves none of fathom's imports to a file of the subject, so import_resolution has no denominator here",
+    "max-got/originui-svelte: the compiler (tailwindcss 4.3.2) could not load 1 @import and 0 @plugin or @config offline and read each as empty; oracle counts: apply_candidates_core 8, files 1, files_compiled 1, imports_stubbed 1, var_not_theme 24",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "phyohtetarkar/tiptap-block-editor: 1 of 1 measured files hold an ERROR or MISSING node as written; the dialect's pre-parse step reads 1 of them clean, and files_with_error counts the 0 it cannot mend, the files the extractor reads with an error",
+    "phyohtetarkar/tiptap-block-editor: 4 oracle and 42 fathom name pairs name nothing defined in their file's @import closure (W2), out of both",
+    "phyohtetarkar/tiptap-block-editor: tailwindcss resolves none of fathom's imports to a file of the subject, so import_resolution has no denominator here",
+    "phyohtetarkar/tiptap-block-editor: the compiler (tailwindcss 4.3.2) could not load 2 @import and 1 @plugin or @config offline and read each as empty; oracle counts: apply_candidates_core 5, core_import_prepended 1, files 2, files_compiled 2, imports_stubbed 2, modules_stubbed 1, var_not_theme 38",
+    "range_agreement not measured: the L1 oracle reported no end line for any matched definition, so L1 can be met at most at good, never excellent (design §1.2)",
+    "shadcn-ui/ui: 11 of 12 measured files hold an ERROR or MISSING node as written; the dialect's pre-parse step reads 11 of them clean, and files_with_error counts the 0 it cannot mend, the files the extractor reads with an error",
+    "shadcn-ui/ui: 179 oracle and 305 fathom name pairs name nothing defined in their file's @import closure (W2), out of both",
+    "shadcn-ui/ui: 5 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "shadcn-ui/ui: restricted to apps/v4/** (-only; the files outside are a disclosed gap, not measured)",
+    "shadcn-ui/ui: the compiler (tailwindcss 4.3.2) could not load 2 @import and 0 @plugin or @config offline and read each as empty; oracle counts: apply_candidates_core 14122, apply_candidates_rejected 7285, core_import_prepended 11, files 14, files_compiled 12, imports_stubbed 2, var_not_theme 113",
+    "tailwindlabs/tailwindcss: 1 of 1 measured files hold an ERROR or MISSING node as written; the dialect's pre-parse step reads 1 of them clean, and files_with_error counts the 0 it cannot mend, the files the extractor reads with an error",
+    "tailwindlabs/tailwindcss: restricted to packages/tailwindcss/** (-only; the files outside are a disclosed gap, not measured)",
+    "tailwindlabs/tailwindcss: tailwindcss resolves none of fathom's imports to a file of the subject, so import_resolution has no denominator here",
+    "tailwindlabs/tailwindcss: the compiler (tailwindcss 4.3.2) could not load 0 @import and 0 @plugin or @config offline and read each as empty; oracle counts: core_import_prepended 1, files 4, files_compiled 1",
+    "themesberg/flowbite: 1250 oracle and 1250 fathom name pairs name nothing defined in their file's @import closure (W2), out of both",
+    "themesberg/flowbite: 6 of 13 measured files hold an ERROR or MISSING node as written; the dialect's pre-parse step reads 6 of them clean, and files_with_error counts the 0 it cannot mend, the files the extractor reads with an error",
+    "themesberg/flowbite: restricted to src/** (-only; the files outside are a disclosed gap, not measured)",
+    "themesberg/flowbite: the compiler (tailwindcss 4.3.2) could not load 0 @import and 12 @plugin or @config offline and read each as empty; oracle counts: apply_candidates_core 160, apply_candidates_rejected 62, core_import_prepended 7, files 13, files_compiled 13, modules_stubbed 12, var_not_theme 4"
+  ],
+  "disposition": null
+}

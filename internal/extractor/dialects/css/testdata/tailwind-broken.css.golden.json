@@ -1,0 +1,55 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "CSSModule",
+      "package": "tailwind-broken",
+      "line": 1,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "--color-ok",
+      "kind": "TailwindTheme",
+      "package": "tailwind-broken",
+      "line": 2,
+      "end_line": 2,
+      "tier": "verified"
+    },
+    {
+      "name": "--color-bad",
+      "kind": "CSSSelector",
+      "package": "tailwind-broken",
+      "line": 3,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "fine",
+      "kind": "TailwindUtility",
+      "package": "tailwind-broken",
+      "line": 6,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "after-error",
+      "kind": "TailwindUtility",
+      "package": "tailwind-broken",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": ".rest",
+      "kind": "CSSSelector",
+      "package": "tailwind-broken",
+      "line": 12,
+      "end_line": 12,
+      "calls": [
+        "fine"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

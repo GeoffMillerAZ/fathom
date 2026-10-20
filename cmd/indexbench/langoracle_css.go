@@ -39,13 +39,14 @@ const (
 	cntCSSFathomOutsideClosure = "css_w2_fathom_outside_closure"
 )
 
-// cssClosureNames is, for each file of the oracle, the custom property and
-// @keyframes names defined in it or in a file its @import closure reaches.
+// cssClosureNames is, for each file of the oracle, the custom property,
+// @keyframes and (Tailwind CSS v4, LB-Q-tailwind) @utility names defined in it
+// or in a file its @import closure reaches.
 func cssClosureNames(m langbench.Manifest, tf *toolOracleFile) map[string]map[string]bool {
 	defined := map[string]map[string]bool{}
 	for _, d := range tf.Definitions {
 		c, ok := m.OracleCanonical("tool", d.Kind, false)
-		if !ok || (c != "variable" && c != "rule") {
+		if !ok || (c != "variable" && c != "rule" && c != "mixin") {
 			continue
 		}
 		if defined[d.Path] == nil {
@@ -106,9 +107,12 @@ func cssNameScope(m langbench.Manifest, tf *toolOracleFile, truth, found map[lan
 
 // cssNameScopeNotes discloses W2 for one subject (design 1.8): what the scope
 // left out of both sides.
-func cssNameScopeNotes(subject string, counts map[string]int) []string {
+func cssNameScopeNotes(subject, oracle string, counts map[string]int) []string {
 	o, f := counts[cntCSSOracleOutsideClosure], counts[cntCSSFathomOutsideClosure]
 	notes := []string{"W2 (design 1.8): lightningcss attests no cascade, so a var() or animation-name pair is graded as a name reference: kept when its name is a custom property or @keyframes rule defined in the file or its @import closure, every other pair out of both sides, counted"}
+	if oracle != "" && oracle != "lightningcss" {
+		notes = []string{"W2 (design 1.8): " + oracle + " attests no cascade, so a var() or @apply pair is graded as a name reference: kept when its name is a custom property, @keyframes rule or @utility defined in the file or its @import closure, every other pair out of both sides, counted"}
+	}
 	if o+f > 0 {
 		notes = append(notes, fmt.Sprintf("%s: %d oracle and %d fathom name pairs name nothing defined in their file's @import closure (W2), out of both", subject, o, f))
 	}

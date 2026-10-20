@@ -1,0 +1,334 @@
+{
+  "dialect": "tailwind",
+  "kind": "language",
+  "target_level": "L2",
+  "level_met": "L3",
+  "grade": {
+    "L1": "good",
+    "L2": "excellent",
+    "L3": "excellent",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-10-20",
+  "fathom_commit": "0289c50ea",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "Kiranism/next-shadcn-dashboard-starter",
+      "sha": "7705dfc0d13889e45c26a55ad5908da6a7a9a605",
+      "files": 11,
+      "bytes": 80380,
+      "counts": {
+        "call_fathom": 125,
+        "call_fathom_in_truth": 125,
+        "call_truth": 125,
+        "call_truth_found": 125,
+        "css_w2_fathom_outside_closure": 438,
+        "css_w2_oracle_outside_closure": 60,
+        "fathom_defs": 473,
+        "file_edges_agree": 10,
+        "file_edges_fathom": 10,
+        "file_edges_truth": 10,
+        "import_edges_agree": 10,
+        "import_edges_fathom": 10,
+        "import_edges_truth": 10,
+        "import_oracle_out_of_scope": 1,
+        "import_oracle_unpaired": 0,
+        "imports": 13,
+        "imports_in_repo": 10,
+        "imports_resolved_agree": 10,
+        "kind_equal": 473,
+        "matched": 473,
+        "oracle_defs": 473
+      },
+      "families": {
+        "calls": "A",
+        "file_edges": "A",
+        "imports": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "macro",
+        "mixin",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "fathom:CSSCustomProperty": 991,
+        "fathom:CSSKeyframes": 8,
+        "fathom:CSSModule": 11,
+        "fathom:CSSSelector": 48
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 39.208,
+        "extract_cpu_ms": 40.23500000000001,
+        "max_file_ms": 11,
+        "peak_module_pages": 284,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "haydenbleasel/kibo",
+      "sha": "3d63cdb15b79d972e3dc38a10997987672f9b263",
+      "files": 1,
+      "bytes": 6030,
+      "counts": {
+        "call_fathom": 0,
+        "call_truth": 0,
+        "css_w2_fathom_outside_closure": 63,
+        "css_w2_oracle_outside_closure": 5,
+        "fathom_defs": 39,
+        "import_edges_fathom": 0,
+        "import_edges_truth": 0,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "imports": 4,
+        "kind_equal": 39,
+        "matched": 39,
+        "oracle_defs": 39
+      },
+      "families": {
+        "calls": "A",
+        "imports": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "macro",
+        "mixin",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "fathom:CSSCustomProperty": 86,
+        "fathom:CSSKeyframes": 2,
+        "fathom:CSSModule": 1,
+        "fathom:CSSSelector": 12
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 1,
+        "extract_ms": 4.099,
+        "extract_cpu_ms": 4.147,
+        "max_file_ms": 4,
+        "peak_module_pages": 276,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "huntabyte/shadcn-svelte",
+      "sha": "33cd03e99e0066c446cb132c0a2294a1f553ba06",
+      "files": 5,
+      "bytes": 39480,
+      "counts": {
+        "call_fathom": 22,
+        "call_fathom_in_truth": 22,
+        "call_truth": 22,
+        "call_truth_found": 22,
+        "css_w2_fathom_outside_closure": 306,
+        "css_w2_oracle_outside_closure": 48,
+        "fathom_defs": 196,
+        "import_edges_fathom": 0,
+        "import_edges_truth": 0,
+        "import_oracle_out_of_scope": 8,
+        "import_oracle_unpaired": 0,
+        "imports": 42,
+        "kind_equal": 196,
+        "matched": 196,
+        "oracle_defs": 196
+      },
+      "families": {
+        "calls": "A",
+        "imports": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "macro",
+        "mixin",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "fathom:CSSCustomProperty": 275,
+        "fathom:CSSKeyframes": 7,
+        "fathom:CSSModule": 5,
+        "fathom:CSSSelector": 96
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 32.154,
+        "extract_cpu_ms": 33.518,
+        "max_file_ms": 15,
+        "peak_module_pages": 282,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "ibelick/motion-primitives",
+      "sha": "120f64f6ca60348e251f929e9c81f11ccbe45eda",
+      "files": 1,
+      "bytes": 5564,
+      "counts": {
+        "call_fathom": 2,
+        "call_fathom_in_truth": 2,
+        "call_truth": 2,
+        "call_truth_found": 2,
+        "css_w2_fathom_outside_closure": 54,
+        "css_w2_oracle_outside_closure": 5,
+        "fathom_defs": 34,
+        "import_edges_fathom": 0,
+        "import_edges_truth": 0,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "imports": 1,
+        "kind_equal": 34,
+        "matched": 34,
+        "oracle_defs": 34
+      },
+      "families": {
+        "calls": "A",
+        "imports": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "macro",
+        "mixin",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "fathom:CSSCustomProperty": 63,
+        "fathom:CSSModule": 1,
+        "fathom:CSSSelector": 15
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 3.575,
+        "extract_cpu_ms": 3.601,
+        "max_file_ms": 3,
+        "peak_module_pages": 275,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "tailwindcss",
+      "version": "4.3.2",
+      "licence": "MIT"
+    }
+  ],
+  "metrics": {
+    "call_precision": 1,
+    "call_recall": 1,
+    "def_mapping": null,
+    "file_edge_precision": 1,
+    "file_edge_recall": 1,
+    "import_resolution": 1,
+    "kind_agreement": 1,
+    "range_agreement": null,
+    "signature_coverage": null,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "A",
+    "call_recall": "A",
+    "file_edge_precision": "A",
+    "file_edge_recall": "A",
+    "import_resolution": "A",
+    "kind_agreement": "A",
+    "sym_precision": "A",
+    "sym_recall": "A"
+  },
+  "not_applicable": [
+    "signature_coverage"
+  ],
+  "not_measured": [
+    "range_agreement"
+  ],
+  "required_kinds": [
+    "macro",
+    "mixin",
+    "variable"
+  ],
+  "kind_intersection": [
+    "macro",
+    "mixin",
+    "variable"
+  ],
+  "counts": {
+    "call_fathom": 149,
+    "call_fathom_in_truth": 149,
+    "call_truth": 149,
+    "call_truth_found": 149,
+    "css_w2_fathom_outside_closure": 861,
+    "css_w2_oracle_outside_closure": 118,
+    "fathom_defs": 742,
+    "file_edges_agree": 10,
+    "file_edges_fathom": 10,
+    "file_edges_truth": 10,
+    "import_edges_agree": 10,
+    "import_edges_fathom": 10,
+    "import_edges_truth": 10,
+    "import_oracle_out_of_scope": 9,
+    "import_oracle_unpaired": 0,
+    "imports": 60,
+    "imports_in_repo": 10,
+    "imports_resolved_agree": 10,
+    "kind_equal": 742,
+    "matched": 742,
+    "oracle_defs": 742
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 1,
+    "throughput_mb_s": 1.61,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 1.66,
+    "max_file_ms": 15,
+    "peak_module_pages": 284,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:CSSCustomProperty": 1415,
+    "fathom:CSSKeyframes": 17,
+    "fathom:CSSModule": 18,
+    "fathom:CSSSelector": 171
+  },
+  "notes": [
+    "Kiranism/next-shadcn-dashboard-starter: 1 of 11 measured files hold an ERROR or MISSING node as written; the dialect's pre-parse step reads 1 of them clean, and files_with_error counts the 0 it cannot mend, the files the extractor reads with an error",
+    "Kiranism/next-shadcn-dashboard-starter: 60 oracle and 438 fathom name pairs name nothing defined in their file's @import closure (W2), out of both",
+    "Kiranism/next-shadcn-dashboard-starter: restricted to src/styles/** (-only; the files outside are a disclosed gap, not measured)",
+    "Kiranism/next-shadcn-dashboard-starter: the compiler (tailwindcss 4.3.2) could not load 1 @import and 0 @plugin or @config offline and read each as empty; oracle counts: apply_candidates_core 5, core_import_prepended 11, files 12, files_compiled 12, imports_stubbed 1, var_not_theme 433",
+    "L2 unit. A pair is (owner, name): an @apply candidate to the @utility it resolves to (a variant prefix and the importance flag stripped on both sides), and a var(--name) to the @theme variable it reads, graded by the W2 rule (design 1.8) within the file's @import closure, as CSS's are. An @apply of a core utility and a var() of a variable the default theme or a package defines have no definition in the closure and are out of both sides, counted. A use of a functional utility (`@utility name-*` is named `name-`, `@apply name-4` names `name-4`) is a truth pair fathom cannot match, a recall miss wherever one occurs; the subjects' counts of them are in their disclosures. Utility classes used in templates (markup, JSX) are out of scope for this reading: the oxide scanner's candidates are not measured here.",
+    "Offline. An @import or @plugin the oracle cannot resolve without the network is read as an empty sheet or a plugin that does nothing, and counted in the subject's disclosures; a stylesheet a project compiles inside an entry sheet that imports Tailwind is compiled with `@import \"tailwindcss\"` prepended.",
+    "Oracle. The tailwindcss v4 compiler's design system (tier A for what it attests): a definition or a pair is graded only when the compiler registered it, and an @apply candidate resolves to a custom utility only when the compiler parses it to that utility's root (variants and the importance flag allowed). Names and lines are the source's, as the lightningcss reading's are (the package exports no parser). No end line is measured, so range_agreement is not measured and L1 is capped at good.",
+    "Scope. This reading measures the Tailwind CSS v4 layer of the css dialect: a .css file the dialect's Tailwind variant reads (one that carries @theme, @utility, @custom-variant, @variant, @apply, @source, @plugin or @config). Its kinds are TailwindTheme (each --name of an @theme block), TailwindUtility (@utility name, or name- for @utility name-*) and TailwindVariant (@custom-variant name, and the v4.0 `@variant name (selector);` spelling); every other definition of those files is the css reading's and out of this one (excluded_by_kind).",
+    "W2 (design 1.8): tailwindcss attests no cascade, so a var() or @apply pair is graded as a name reference: kept when its name is a custom property, @keyframes rule or @utility defined in the file or its @import closure, every other pair out of both sides, counted",
+    "file_edge_precision and file_edge_recall measured against an import dump's (file, imported file) pairs, there being no SCIP index: the truth is what each file's import statements name, not the files its references reach as a SCIP index's cross-file edges are, so a file reached without an import of its own (a file another one required, an autoloaded constant) is outside the truth and a resolved edge to it counts against precision, while a file imported and never referenced is in it (LB-F57)",
+    "haydenbleasel/kibo: 5 oracle and 63 fathom name pairs name nothing defined in their file's @import closure (W2), out of both",
+    "haydenbleasel/kibo: 68 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "haydenbleasel/kibo: tailwindcss resolves none of fathom's imports to a file of the subject, so import_resolution has no denominator here",
+    "haydenbleasel/kibo: the compiler (tailwindcss 4.3.2) could not load 3 @import and 0 @plugin or @config offline and read each as empty; oracle counts: apply_candidates_core 7, core_import_prepended 1, files 2, files_compiled 2, imports_stubbed 3, var_not_theme 66",
+    "huntabyte/shadcn-svelte: 48 oracle and 306 fathom name pairs name nothing defined in their file's @import closure (W2), out of both",
+    "huntabyte/shadcn-svelte: 5 of 5 measured files hold an ERROR or MISSING node as written; the dialect's pre-parse step reads 5 of them clean, and files_with_error counts the 0 it cannot mend, the files the extractor reads with an error",
+    "huntabyte/shadcn-svelte: restricted to docs/src/app.css, docs/src/styles-registry.css, packages/cli/src/tailwind.css, repro/**, sv-addons/** (-only; the files outside are a disclosed gap, not measured)",
+    "huntabyte/shadcn-svelte: tailwindcss resolves none of fathom's imports to a file of the subject, so import_resolution has no denominator here",
+    "huntabyte/shadcn-svelte: the compiler (tailwindcss 4.3.2) could not load 7 @import and 0 @plugin or @config offline and read each as empty; oracle counts: apply_candidates_core 74, core_import_prepended 2, files 6, files_compiled 5, imports_stubbed 7, var_not_theme 247",
+    "ibelick/motion-primitives: 1 of 1 measured files hold an ERROR or MISSING node as written; the dialect's pre-parse step reads 1 of them clean, and files_with_error counts the 0 it cannot mend, the files the extractor reads with an error",
+    "ibelick/motion-primitives: 5 oracle and 54 fathom name pairs name nothing defined in their file's @import closure (W2), out of both",
+    "ibelick/motion-primitives: tailwindcss resolves none of fathom's imports to a file of the subject, so import_resolution has no denominator here",
+    "ibelick/motion-primitives: the compiler (tailwindcss 4.3.2) could not load 0 @import and 2 @plugin or @config offline and read each as empty; oracle counts: apply_candidates_core 23, files 1, files_compiled 1, modules_stubbed 2, var_not_theme 26",
+    "import_resolution: 10 of 10 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 1 (10 of 10) and recall 1 (10 of 10); 0 of 60 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 9 oracle import targets outside the files measured",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "range_agreement not measured: the L1 oracle reported no end line for any matched definition, so L1 can be met at most at good, never excellent (design §1.2)"
+  ],
+  "disposition": null
+}
