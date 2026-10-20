@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"path"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -134,17 +135,22 @@ func testsRanAtTree(ctx context.Context, root, sessionID string, testRunOn bool,
 	if !runs.Read {
 		return lead + "not checked (log)"
 	}
-	var cur testRunRecord
-	fillTestRunRowKeys(ctx, &cur, root, sessionID, "", "")
-	if cur.Head == "" || cur.Tree == "" {
-		return lead + "not checked (deadline)"
-	}
 	ran, unsure, failed := 0, false, false
+	keyed := slices.ContainsFunc(runs.Rows, func(r sessionRunRow) bool { return r.Head != "" && r.Tree != "" })
+	var cur testRunRecord
+	if keyed {
+		// Only a row that carries a tree can match one: with none, the
+		// session's git state is never read.
+		fillTestRunRowKeys(ctx, &cur, root, sessionID, "", "")
+		if cur.Head == "" || cur.Tree == "" {
+			return lead + "not checked (deadline)"
+		}
+	}
 	for _, t := range shown {
 		var last *sessionRunRow
 		for i := range runs.Rows {
 			r := &runs.Rows[i]
-			if r.Head != cur.Head || r.Tree != cur.Tree {
+			if r.Head == "" || r.Tree == "" || r.Head != cur.Head || r.Tree != cur.Tree {
 				continue
 			}
 			admits, ok := readout.ScopeAdmits(r.Scope, t.dir, t.name)
