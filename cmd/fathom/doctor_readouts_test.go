@@ -139,3 +139,41 @@ func TestDoctorReadoutsNamesAnUntrustedRepoRuleFile(t *testing.T) {
 		t.Errorf("an edited file is named at its new hash %s:\n%s", sha2, got.Reason)
 	}
 }
+
+// TestDoctorReadoutsNamesEachPacksServedAndWithheldRules pins RO-34's doctor
+// line: a pinned tech pack's readout rules are named as served, and an
+// unfixtured one as withheld.
+func TestDoctorReadoutsNamesEachPacksServedAndWithheldRules(t *testing.T) {
+	readoutHookEnv(t, "[readouts]\nmode = \"rich\"\n")
+	base := t.TempDir()
+	t.Setenv("GOMODCACHE", filepath.Join(base, "gomodcache"))
+	t.Setenv("GOPROXY", "off")
+	t.Setenv("PATH", filepath.Join(base, "empty-bin"))
+	root := filepath.Join(base, "repo")
+	rule := func(id, tests string) string {
+		return "{id: \"" + id + "\", version: 1, about: \"buildtool: count\", match: argv0: [\"buildtool\"], stage: [{kind: \"extract\", pattern: \"^cc \", record: \"compile\", template: \"{count} compiled\"}]" + tests + "}"
+	}
+	fixture := ", test: [{input: \"cc a\\n\", expect: \"cc a\\n[readout ok-rule@1 observe: 1→1 lines; nothing dropped; 1 compiled, 0 dropped]\\n\"}]"
+	files := map[string]string{
+		filepath.Join(root, "go.mod"):                         "module example.test/app\n\ngo 1.22\n\nrequire example.test/kit v1.0.0\n\nreplace example.test/kit => ../kit\n",
+		filepath.Join(base, "kit", "go.mod"):                  "module example.test/kit\n\ngo 1.22\n",
+		filepath.Join(base, "kit", "fathom-pack", "pack.cue"): "pack: {name: \"buildkit\", version: 2, about: \"kit\"}\nreadouts: [" + rule("ok-rule", fixture) + ", " + rule("bare-rule", "") + "]\n",
+	}
+	for p, body := range files {
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got := checkReadouts(root)
+	for _, want := range []string{"pack buildkit@2 readouts served ok-rule", "withheld bare-rule"} {
+		if !strings.Contains(got.Reason, want) {
+			t.Errorf("reason lacks %q:\n%s", want, got.Reason)
+		}
+	}
+	if got.Status != doctorWarn {
+		t.Errorf("a withheld rule is advisory, got %s", got.Status)
+	}
+}

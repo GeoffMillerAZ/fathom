@@ -91,6 +91,9 @@ type Pack struct {
 	Generated []Generated
 	// Guards is the pack's `guards` entries, in file order.
 	Guards []Guard
+	// Readouts is the pack's `readouts` rules as decoded data, in file
+	// order; internal/readout loads and gates them.
+	Readouts []map[string]any
 }
 
 // Tag is the pack's served identity, `name@version`.
@@ -360,6 +363,16 @@ func cuePins(root string, getenv func(string) string) ([]pin, error) {
 // file is absent or the file carries no `pack` header (a fathom-pack/
 // without a header is not a tech pack). A header that fails #Pack is an
 // error.
+// ReadPack reads the tech pack in dir (its pack.cue) as Discover does; a dir
+// with no pack is an error.
+func ReadPack(dir string) (Pack, error) {
+	p, found, err := readPack(dir)
+	if err == nil && !found {
+		err = fmt.Errorf("%s: no pack", filepath.Join(dir, PackFile))
+	}
+	return p, err
+}
+
 func readPack(dir string) (Pack, bool, error) {
 	file := filepath.Join(dir, PackFile)
 	data, err := os.ReadFile(file)
@@ -385,8 +398,9 @@ func readPack(dir string) (Pack, bool, error) {
 			Version int    `json:"version"`
 			About   string `json:"about"`
 		} `json:"pack"`
-		Generated []Generated `json:"generated"`
-		Guards    []Guard     `json:"guards"`
+		Generated []Generated      `json:"generated"`
+		Guards    []Guard          `json:"guards"`
+		Readouts  []map[string]any `json:"readouts"`
 	}
 	if derr := v.Decode(&doc); derr != nil {
 		return Pack{}, false, derr
@@ -398,6 +412,7 @@ func readPack(dir string) (Pack, bool, error) {
 	return Pack{
 		Name: doc.Pack.Name, Version: doc.Pack.Version, About: doc.Pack.About,
 		Dir: dir, Hash: hash, Generated: doc.Generated, Guards: doc.Guards,
+		Readouts: doc.Readouts,
 	}, true, nil
 }
 

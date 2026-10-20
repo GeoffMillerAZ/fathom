@@ -277,7 +277,7 @@ func compileSchemas(ctx *cue.Context) (map[string]cue.Value, error) {
 	overlay := map[string]load.Source{
 		filepath.Join(base, "cue.mod", "module.cue"): load.FromString("module: \"github.com/geoffmilleraz/fathom\"\nlanguage: version: \"v0.16.1\"\n"),
 	}
-	pkgs := []string{"project", "guard", "binding", "techpack", "risk", "learning"}
+	pkgs := []string{"project", "guard", "binding", "techpack", "risk", "learning", "readouts"}
 	for _, name := range pkgs {
 		data, err := schemaFS.ReadFile("schemas/" + name + "/" + name + ".cue")
 		if err != nil {

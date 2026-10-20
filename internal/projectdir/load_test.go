@@ -173,7 +173,7 @@ func TestProjectLoadAbsentAndUnreadable(t *testing.T) {
 
 // The embedded schemas are verbatim copies of schema/<name>/schema.cue.
 func TestEmbeddedSchemasMatchSource(t *testing.T) {
-	for _, name := range []string{"project", "guard", "binding", "techpack", "risk", "learning"} {
+	for _, name := range []string{"project", "guard", "binding", "techpack", "risk", "learning", "readouts"} {
 		src, err := os.ReadFile(filepath.Join("..", "..", "schema", name, "schema.cue"))
 		if err != nil {
 			t.Fatal(err)

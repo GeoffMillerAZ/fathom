@@ -14,6 +14,14 @@ kit: #Pack & {
 		regenerate: "templ generate"
 	}]
 	formats: [{dialect: "templ", globs: ["**/*.templ"]}]
+	readouts: [{
+		id:      "templ-generate"
+		version: 1
+		about:   "templ generate: the generated files as a record"
+		match: {argv0: ["templ"], sub: ["generate"]}
+		stage: [{kind: "extract", pattern: "^Generated (?P<file>\\S+)", captures: ["file"], record: "generated_file"}]
+		test: [{input: "Generated a_templ.go\n", expect: "Generated a_templ.go\n"}]
+	}]
 	concerns: stanza: {
 		want:  "AGENTS.md carries the stanza"
 		why:   "a stanza that was never wired routes nothing"
