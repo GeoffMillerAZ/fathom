@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 // definitionsDaemon answers find_symbol from defs (name -> count, one
@@ -48,6 +49,11 @@ func runPromptDefinitions(t *testing.T, on bool, defs map[string]int, prompt str
 	if on {
 		writeRepoFile(t, dir, ".fathom/config.toml", "[hooks]\nprompt_definitions = true\n")
 	}
+	// The production budget is 8 s; a loaded one-CPU race run must not
+	// overrun it on a success path.
+	origBudget := promptHookDeadlineBudget
+	promptHookDeadlineBudget = time.Minute
+	defer func() { promptHookDeadlineBudget = origBudget }()
 	var calls atomic.Int64
 	srv := definitionsDaemon(t, defs, &calls)
 	defer srv.Close()

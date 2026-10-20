@@ -143,7 +143,7 @@ list with the same zero-use evidence (0 calls in `calls.json`), so it goes with 
 | SR-45 | F-26 obligations | checkable rules compile to `enforce: true` guards and a lint output; the obligations answer marks which served rules are checkable | a test that a checkable layer rule yields a guard |
 | SR-46 | F-28 prompt hook | `fathom init` wires it by default; first-edit violations measured with and without | init test + a measurement row |
 | SR-47 | F-29 guards | more mechanically checkable rules per pack, and SARIF output of guard verdicts | SARIF golden test |
-| SR-48 | F-31 claim triage | when a served rule is ignored (violated after serving), the next edit-hook turn asks for a one-key verdict; the answer is written as refute/corroborate | edit-hook test of the ask and the write |
+| SR-48 | F-31 claim triage | when a served rule that has a claim id is served again (no violation alleged: serving twice is not evidence of one), the next edit-hook turn asks for a one-key verdict; the answer is written as refute/corroborate | edit-hook test of the ask and the write |
 | SR-49 | F-34 review | `review_diff` becomes the change risk receipt (U7): blast radius, certificates, conservation, rules touched, reviewers from ownership, as SARIF and a GitHub check payload | receipt golden test |
 | SR-50 | F-15 tests select | rebuilt as certifying-first selection (T4) scored against a coverage oracle | selection test over a fixture with certificates |
 | SR-51 | F-21 cross-repo callers | regex detectors replaced by framework route extractors and contract files (N6 system graph) | owned by the system-graph plan; this row closes when `cross_repo_callers` reads links from it |

@@ -1,12 +1,13 @@
 package main
 
 // askruleverdict.go — SR-48 (docs/plans/surface-reckoning.md, design doc §5
-// row SR-48, F-31): when a served governing rule is violated (still tops
-// the same file's obligations two turns running — the edit that followed
-// serving it did not address it), the NEXT edit-hook turn asks for a
-// one-key verdict instead of silently re-serving the same advice forever:
-// corroborate (the rule is right, the violation is real) or refute (the
-// rule is wrong, or does not apply here) — printed with the exact `fathom
+// row SR-48, F-31): when a served governing rule that has a claim id still
+// tops the same file's obligations two turns running, the NEXT edit-hook
+// turn asks for a one-key verdict instead of silently re-serving the same
+// advice forever: corroborate (the rule is right and applies here) or
+// refute (the rule is wrong, or does not apply here). Being served again
+// is not evidence the rule was ignored, so the ask alleges no violation
+// (O1434) — printed with the exact `fathom
 // claim corroborate|refute` invocation (cmd/fathom/claim.go's
 // cmdClaimVerdict) that records it, so answering is one command away.
 //
@@ -32,7 +33,7 @@ package main
 // hook tradeoff guardstamp.go already accepts for its own stamps.
 //
 // SR-48w (F-31): the ask names the served rule's claim id and is answered
-// in one key. When the ask fires for a rule with a claim id, the session's
+// in one key. When the ask fires (only ever for a rule with a claim id), the session's
 // pending-ask memo (pendingVerdictAsk, same directory, same hardening)
 // records it; the UserPromptSubmit hook (prompthook.go) records the user's
 // reply only when the whole prompt is exactly `c` or `r`, optionally with
@@ -176,25 +177,27 @@ func deleteRuleVerdictMemo(sessionID, service, repoRelFile string) {
 // actually serves as the file's top governing rule ("" when nothing
 // governs it right now — the rule resolved). Returns the one-key verdict
 // prompt when the SAME rule (Rule text + Src citation, exactly) is being
-// served again — the edit that followed serving it did not address it —
-// or "" when there is nothing to ask.
+// served again and has a claim id, or "" when there is nothing to ask.
+//
+// O1434: serving a rule twice is not evidence it was ignored — a rule that
+// governs a file governs it on every edit — so the line says only that the
+// rule was served again, never that it was ignored or violated (no caller
+// has a deterministic check that found a violation). A rule with no claim
+// id (a raw document heading or paragraph, Tier "raw", which has no claim
+// behind it) is never asked about: nothing can corroborate or refute it.
 func askRuleVerdict(prior *ruleVerdictMemo, rule, src, claimID string) string {
-	if prior == nil || rule == "" || prior.Rule != rule || prior.Src != src {
+	if prior == nil || rule == "" || claimID == "" || prior.Rule != rule || prior.Src != src {
 		return ""
 	}
-	if claimID == "" {
-		return fmt.Sprintf(
-			"🔁 served rule ignored — still applies after this edit: %s (%s)\n"+
-				"  answer with one key: [c]orroborate — the rule is right, the violation is real — or [r]efute — this rule is wrong or does not apply here.\n"+
-				"  `fathom claim corroborate|refute --claim <id> --note \"...\"` records it (`fathom claim list` finds <id> by this rule's text/citation).",
-			rule, src)
-	}
 	return fmt.Sprintf(
-		"🔁 served rule ignored — still applies after this edit: %s (%s) [claim %s]\n"+
-			"  ask the user for a one-key verdict as their next prompt: c — corroborate (the rule is right, the violation is real) — or r — refute (this rule is wrong or does not apply here); a note may follow the key after a colon (\"r: superseded by ADR-060\"). The next edit records it against claim %s.\n"+
+		"%s: %s (%s) [claim %s]\n"+
+			"  ask the user for a one-key verdict as their next prompt: c — corroborate (the rule is right and applies here) — or r — refute (this rule is wrong or does not apply here); a note may follow the key after a colon (\"r: superseded by ADR-060\"). The next edit records it against claim %s.\n"+
 			"  by hand: `fathom claim corroborate|refute --claim %s --note \"...\"`.",
-		rule, src, claimID, claimID, claimID)
+		ruleVerdictAskMarker, rule, src, claimID, claimID, claimID)
 }
+
+// ruleVerdictAskMarker opens askRuleVerdict's line; tests match on it.
+const ruleVerdictAskMarker = "🔁 served again after this edit"
 
 // withRuleVerdictAsk composes askRuleVerdict's prompt onto the edit hook's
 // existing payload — mirrors withClaimMoment's own composition exactly:
