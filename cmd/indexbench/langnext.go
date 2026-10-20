@@ -46,12 +46,10 @@ func cmdLangNext(args []string, stdout, stderr io.Writer) int {
 }
 
 // langNextLines renders lang-next: every queue item whose own row is open,
-// in queue order. An item is "eligible" when its needs are met and no deferred
-// -rest row holds it: one with no reading, a reading at level none, or a
-// partial level and no -rest row (that one adds where it stands). An item
-// whose deferred -rest row holds it, with a partial reading, "waits" and
-// prints only with all, which also adds the items held by a dependency,
-// re-planning first.
+// in queue order. An item is "eligible" when its needs are met and it has no
+// deferred -rest row (a partial reading adds where it stands). An item with a
+// deferred -rest row "waits", whatever its reading, and prints only with all,
+// which also adds the items held by a dependency, re-planning first.
 func langNextLines(q []langbench.QueueEntry, plan verify.Plan, level func(string) (string, bool), blocks map[string]langbench.QueueBlock, all bool) []string {
 	rows := map[string]verify.Task{}
 	for _, t := range plan.Tasks {
@@ -87,11 +85,14 @@ func langNextLines(q []langbench.QueueEntry, plan verify.Plan, level func(string
 }
 
 // langNextEligible is the status text of an item whose needs are met, and
-// whether a deferred -rest row holds it instead.
+// whether a deferred -rest row holds it instead. A deferred -rest row holds
+// the item whatever its reading (none, absent, partial or at target): its
+// trigger, not the queue, says when the item is next startable (O1394).
 func langNextEligible(e langbench.QueueEntry, rows map[string]verify.Task, lvl func(string) (string, bool)) (string, bool) {
 	met, has := lvl(e.ID)
-	if !has || !slices.Contains(langbench.Levels, met) || slices.Index(langbench.Levels, met) >= slices.Index(langbench.Levels, e.TargetLevel) {
-		return "eligible", false
+	partial := has && slices.Contains(langbench.Levels, met)
+	if !partial {
+		met = "none"
 	}
 	rest, ok := rows[e.PlanRow+"-rest"]
 	if ok && rest.Skipped && (rest.Disposition == "" || rest.Disposition == "deferred") {
@@ -100,6 +101,9 @@ func langNextEligible(e langbench.QueueEntry, rows map[string]verify.Task, lvl f
 			trigger = trigger[:120]
 		}
 		return fmt.Sprintf("waits: %s (at %s of %s): %s", rest.ID, met, e.TargetLevel, string(trigger)), true
+	}
+	if !partial || slices.Index(langbench.Levels, met) >= slices.Index(langbench.Levels, e.TargetLevel) {
+		return "eligible", false
 	}
 	return fmt.Sprintf("eligible (at %s of %s)", met, e.TargetLevel), false
 }

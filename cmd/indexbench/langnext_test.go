@@ -74,10 +74,12 @@ func TestLangNextLinesDeferredIsNotDone(t *testing.T) {
 	}
 }
 
-// TestLangNextSeparatesStartableFromWaiting: an item with a deferred -rest
-// row and a partial reading waits (printed with -all only); an unstarted item
-// is eligible; a partial item with no -rest row is eligible and says where it
-// stands; order is queue order.
+// TestLangNextSeparatesStartableFromWaiting: an item a deferred -rest row
+// holds waits (printed with -all only) whatever its reading: partial, none,
+// absent or at its target (O1394: sass, cmake, svelte and sentinel printed
+// eligible with no reading or level none); an unstarted item with no -rest
+// row is eligible; a partial item with no -rest row is eligible and says
+// where it stands; order is queue order.
 func TestLangNextSeparatesStartableFromWaiting(t *testing.T) {
 	q := []langbench.QueueEntry{
 		{ID: "go", PlanRow: "LB-Q-go", TargetLevel: "L4"},
@@ -85,6 +87,8 @@ func TestLangNextSeparatesStartableFromWaiting(t *testing.T) {
 		{ID: "part", PlanRow: "LB-Q-part", TargetLevel: "L4"},
 		{ID: "zero", PlanRow: "LB-Q-zero", TargetLevel: "L3"},
 		{ID: "held", PlanRow: "LB-Q-held", TargetLevel: "L3"},
+		{ID: "unread", PlanRow: "LB-Q-unread", TargetLevel: "L3"},
+		{ID: "atgoal", PlanRow: "LB-Q-atgoal", TargetLevel: "L2"},
 	}
 	long := strings.Repeat("é", 200)
 	plan := lnPlan("- [ ] go {id: LB-Q-go}\n" +
@@ -94,10 +98,14 @@ func TestLangNextSeparatesStartableFromWaiting(t *testing.T) {
 		"- [ ] zero {id: LB-Q-zero}\n" +
 		"- [-] zero rest {id: LB-Q-zero-rest, disposition: deferred, reason: \"r\", trigger: \"t\"}\n" +
 		"- [ ] held {id: LB-Q-held}\n" +
-		"- [-] held rest {id: LB-Q-held-rest, disposition: deferred, reason: \"r\", trigger: \"" + long + "\"}\n")
-	level := lnLevels(map[string]string{"go": "L3", "part": "L2", "zero": "none", "held": "L1"})
-	blocks := map[string]langbench.QueueBlock{"go": {}, "fresh": {}, "part": {}, "zero": {}, "held": {}}
-	wantEligible := []string{"fresh\teligible", "part\teligible (at L2 of L4)", "zero\teligible"}
+		"- [-] held rest {id: LB-Q-held-rest, disposition: deferred, reason: \"r\", trigger: \"" + long + "\"}\n" +
+		"- [ ] unread {id: LB-Q-unread}\n" +
+		"- [-] unread rest {id: LB-Q-unread-rest, disposition: deferred, reason: \"r\", trigger: \"a grammar is pinned\"}\n" +
+		"- [ ] atgoal {id: LB-Q-atgoal}\n" +
+		"- [-] atgoal rest {id: LB-Q-atgoal-rest, disposition: deferred, reason: \"r\", trigger: \"the other files\"}\n")
+	level := lnLevels(map[string]string{"go": "L3", "part": "L2", "zero": "none", "held": "L1", "atgoal": "L2"})
+	blocks := map[string]langbench.QueueBlock{"go": {}, "fresh": {}, "part": {}, "zero": {}, "held": {}, "unread": {}, "atgoal": {}}
+	wantEligible := []string{"fresh\teligible", "part\teligible (at L2 of L4)"}
 	if got := langNextLines(q, plan, level, blocks, false); !reflect.DeepEqual(got, wantEligible) {
 		t.Errorf("without -all = %q, want %q", got, wantEligible)
 	}
@@ -105,8 +113,10 @@ func TestLangNextSeparatesStartableFromWaiting(t *testing.T) {
 		"go\twaits: LB-Q-go-rest (at L3 of L4): a type-resolving oracle lands",
 		"fresh\teligible",
 		"part\teligible (at L2 of L4)",
-		"zero\teligible",
+		"zero\twaits: LB-Q-zero-rest (at none of L3): t",
 		"held\twaits: LB-Q-held-rest (at L1 of L3): " + strings.Repeat("é", 120),
+		"unread\twaits: LB-Q-unread-rest (at none of L3): a grammar is pinned",
+		"atgoal\twaits: LB-Q-atgoal-rest (at L2 of L2): the other files",
 	}
 	got := langNextLines(q, plan, level, blocks, true)
 	if !reflect.DeepEqual(got, wantAll) {

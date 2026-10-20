@@ -1842,7 +1842,7 @@ worktree and your scratch directory.
    better, even while its own row stays open for a higher target (D6, §1.5).
    `go run ./cmd/indexbench lang-next -all` prints exactly this. If blocked, stop and
    report `blocked: <ids>`.
-   An item a deferred `-rest` row holds (a reading at a partial level) prints `waits:`, with `-all` only;
+   An item with a deferred `-rest` row prints `waits:` whatever its reading, with `-all` only;
    `eligible` means startable, and `eligible (at L2 of L4)` a partial reading with no `-rest` row.
    A wave's new foundation rows live in `docs/plans/language-breadth.<wave>.md`, an ordinary
    plan (no F.NN number) that `fathom verify` walks, `fathom plans archive` archives once
