@@ -111,8 +111,31 @@ pre-push:
         store="workspace/tmp/gate-verify.sqlite"
         rm -f "$store" "$store-wal" "$store-shm"
         ingest_log=workspace/tmp/gate-verify-ingest.log
-        $lease bin/fathom ingest --store "$store" --service fathom --path . >"$ingest_log" 2>&1
+        # Memory canary (O1366): this is the one ingest of the whole tree, so it
+        # runs with the managed daemon's 4 GiB budget in force and its peak RSS
+        # is read back below (the stranger check wires only a fixture fleet since
+        # O1339). /usr/bin/time wraps fathom itself, inside the lease.
+        rss_log=workspace/tmp/gate-verify-rss.txt
+        rm -f "$rss_log"
+        timer=""
+        if [ -x /usr/bin/time ]; then
+          case "$(uname -s)" in
+            Darwin) timer="/usr/bin/time -l -o $rss_log" ;;
+            Linux) timer="/usr/bin/time -v -o $rss_log" ;;
+          esac
+        fi
+        # shellcheck disable=SC2086
+        FATHOM_TENANCY_BUDGET=4GiB $lease $timer bin/fathom ingest --store "$store" --service fathom --path . >"$ingest_log" 2>&1
         ingest_rc=$?
+        peak_bytes=$(awk '/maximum resident set size/ {print $1; exit} /Maximum resident set size/ {print $NF * 1024; exit}' "$rss_log" 2>/dev/null)
+        if [ -n "$peak_bytes" ]; then
+          peak_mib=$((peak_bytes / 1048576))
+          echo "fathom verify: scratch ingest of HEAD peaked at ${peak_mib} MiB resident under the 4 GiB budget"
+          if [ "$peak_mib" -gt 4096 ]; then
+            echo "fathom verify: FAIL scratch ingest of HEAD peaked at ${peak_mib} MiB resident, over the 4096 MiB managed budget (memory regression; see $rss_log)"
+            exit 1
+          fi
+        fi
         if [ "$ingest_rc" -ne 0 ]; then
           # EW-65 (O780): exit 1 with the store written and an "ingest degraded"
           # line is a usable index with a disclosed gap: name it, verify on it.

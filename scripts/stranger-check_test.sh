@@ -157,6 +157,7 @@ cat >"${S}/go" <<'STUB'
 # stamps the HEAD of the tree it was run in, as -buildvcs does.
 set -euo pipefail
 if [ "$1" = "build" ]; then
+  echo "$*" >"${STUB_STATE}/build.args"
   out=""; while [ $# -gt 0 ]; do [ "$1" = "-o" ] && out="$2"; shift; done
   mkdir -p "$(dirname "${out}")"
   cp "${STUB_DIR}/fathom-stub" "${out}"
@@ -181,6 +182,9 @@ run_check() {
 # --- the check passes, wiring a stranger's repository ------------------------
 run_check || { cat "${TMP}/out.log" >&2; fail "stranger-check failed against a repository whose whole tree outlasts one first index (init wired $(cat "${STATE}/init.files" 2>/dev/null || echo '?') tracked files)"; }
 ok "the check passes when the whole tree is more work than a first index may take"
+
+grep -qw -- '-trimpath' "${STATE}/build.args" || fail "the copy was built without -trimpath: $(cat "${STATE}/build.args")"
+ok "the copy is built with -trimpath (machine-independent output and recorded paths)"
 
 init_path=$(cat "${STATE}/init.path")
 [ "$(cat "${STATE}/init.files")" = "${fleet_files}" ] ||
