@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/store"
@@ -65,4 +66,37 @@ func snippetFileChanged(ctx context.Context, backend QueryInterface, service, fi
 		return true
 	}
 	return fusion.FingerprintHash(data) != parts[2]
+}
+
+// serveDefinitionSnippet sets result["snippet"] to def's source lines, or
+// result["snippet_withheld"] when def's file changed since the index
+// (O1450). symbol_context's warm answer and its cold answer (O1446) both
+// call it, so a check added here reaches both (O1466). The caller has
+// already applied its own withholding (snippetWithheld).
+func serveDefinitionSnippet(ctx context.Context, backend QueryInterface, service string, def core.SymbolNode, result map[string]any) {
+	if def.FilePath == "" || def.Line <= 0 {
+		return
+	}
+	if snippetFileChanged(ctx, backend, service, def.FilePath) {
+		// The definition is the index's, the text would be the working
+		// tree's; never pair them.
+		why := "file changed since the index"
+		if ic, _ := result["index_commit"].(string); ic != "" {
+			why += " (" + ic + ")"
+		}
+		result["snippet_withheld"] = why + "; read_source serves the current text"
+		return
+	}
+	rng, err := readSourceRange(ctx, backend, service, def.FilePath, def.Line, 0, symbolContextSnippetMaxLines, sourceReadMaxBytes)
+	if err != nil || len(rng.Lines) == 0 {
+		return
+	}
+	snippet := make([]any, len(rng.Lines))
+	for i, ln := range rng.Lines {
+		snippet[i] = map[string]any{"line": ln.Line, "text": ln.Text}
+	}
+	result["snippet"] = snippet
+	if rng.Note != "" {
+		result["snippet_truncated"] = true
+	}
 }

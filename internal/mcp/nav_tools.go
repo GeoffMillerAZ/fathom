@@ -308,27 +308,10 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 			wantSnippet = false
 			result["snippet_withheld"] = why
 		}
-		if wantSnippet && sctx.Def.FilePath != "" && sctx.Def.Line > 0 && snippetFileChanged(ctx, backend, p.Service, sctx.Def.FilePath) {
-			// O1450: the definition is the index's, the text would be the
-			// working tree's; never pair them.
-			wantSnippet = false
-			why := "file changed since the index"
-			if ic, _ := result["index_commit"].(string); ic != "" {
-				why += " (" + ic + ")"
-			}
-			result["snippet_withheld"] = why + "; read_source serves the current text"
-		}
-		if wantSnippet && sctx.Def.Name != "" && sctx.Def.FilePath != "" && sctx.Def.Line > 0 {
-			if rng, snErr := readSourceRange(ctx, backend, p.Service, sctx.Def.FilePath, sctx.Def.Line, 0, symbolContextSnippetMaxLines, sourceReadMaxBytes); snErr == nil && len(rng.Lines) > 0 {
-				snippet := make([]any, len(rng.Lines))
-				for i, ln := range rng.Lines {
-					snippet[i] = map[string]any{"line": ln.Line, "text": ln.Text}
-				}
-				result["snippet"] = snippet
-				if rng.Note != "" {
-					result["snippet_truncated"] = true
-				}
-			}
+		if wantSnippet && sctx.Def.Name != "" {
+			// O1450, O1466: the changed-file check and the read, shared
+			// with the cold answer.
+			serveDefinitionSnippet(ctx, backend, p.Service, sctx.Def, result)
 		}
 
 		// Typed Go call edges (ADR-021 §3): kind-labeled callers/callees,

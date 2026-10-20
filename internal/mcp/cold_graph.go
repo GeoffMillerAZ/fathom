@@ -224,18 +224,8 @@ func symbolContextColdAnswer(ctx context.Context, backend QueryInterface, servic
 		result["snippet_withheld"] = why
 		return result, nil
 	}
-	if def.FilePath != "" && def.Line > 0 {
-		if rng, err := readSourceRange(ctx, backend, service, def.FilePath, def.Line, 0, symbolContextSnippetMaxLines, sourceReadMaxBytes); err == nil && len(rng.Lines) > 0 {
-			snippet := make([]any, len(rng.Lines))
-			for i, ln := range rng.Lines {
-				snippet[i] = map[string]any{"line": ln.Line, "text": ln.Text}
-			}
-			result["snippet"] = snippet
-			if rng.Note != "" {
-				result["snippet_truncated"] = true
-			}
-		}
-	}
+	// O1466: the warm answer's changed-file check (O1450) and read.
+	serveDefinitionSnippet(ctx, backend, service, def, result)
 	return result, nil
 }
 
