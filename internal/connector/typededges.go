@@ -97,6 +97,7 @@ var typedEdgeProducers = map[string]string{
 	"cmake":      "syntax",
 	"proto":      "syntax",
 	"graphql":    "syntax",
+	"prisma":     "syntax",
 	"toml":       "syntax",
 	"json":       "syntax",
 	"templ":      "syntax",

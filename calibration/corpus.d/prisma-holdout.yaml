@@ -1,11 +1,13 @@
 id: prisma-holdout
 language: "Prisma schema"
-# The holdout for the prisma dialect (LB-Q-prisma, wave lang6), pinned in the commit of the dialect and its
-# oracle, before any reading of this subject, and read ONCE into docs/bench/readings/lang/holdout/prisma.json;
-# never tuned against (a later rule change needs a new holdout). Not calcom/cal.com or hiroppy/web-app-template
-# (the tuning subjects). prisma/prisma-examples is Prisma's own example collection: dozens of independent
-# schema.prisma files in sibling directories, so a model name repeats across schemas (User, Post) and no file
-# reference is unambiguous. Licence read at the pin.
+# The holdout for the prisma dialect's L3 rule (LB-Q-prisma, wave lang6), pinned in the commit of the dialect
+# and its oracle, before any reading of this subject. It is NOT read yet: the dialect stops at L2 (no import
+# strategy, O1419, LB-Q-prisma-rest), so there is no L3 rule to hold out against, and a reading now would spend
+# it. It is read ONCE into docs/bench/readings/lang/holdout/prisma.json when the global-name rule (LB-F580)
+# lands and the rule is fixed; never tuned against (a later rule change needs a new holdout). Not
+# calcom/cal.com or hiroppy/web-app-template (the tuning subjects). prisma/prisma-examples is Prisma's own
+# example collection: dozens of independent schema.prisma files in sibling directories, so a model name repeats
+# across schemas (User, Post) and nothing links the files. Licence read at the pin.
 repos:
   - name: prisma/prisma-examples
     url: https://github.com/prisma/prisma-examples
