@@ -83,6 +83,15 @@ func (r *serveRun) configure() (int, bool) {
 	// §10.1: managed or unmanaged decides every tenancy default below.
 	managed, managedLabel := detectManaged(r.managedFlag, os.Getenv, installedAgentLabels)
 	r.managed, r.managedLabel = managed, managedLabel
+	// §8.4 step 5 (O1363): a managed start records whether its supervisor
+	// runs it; a hand start is named, not refused (other supervisors exist).
+	if managed {
+		sup := detectSupervised(runtime.GOOS, managedLabel, os.Getenv, r.startPPID)
+		r.supervised = &sup
+		if !sup {
+			flog.Warn(unsupervisedStartLine(runtime.GOOS, managedLabel, r.startPPID))
+		}
+	}
 	// RT-6: the managed daemon re-reads paused.json every 2 s and moves to
 	// and from safe mode. XPC_SERVICE_NAME covers a schema-1 plist that
 	// predates --managed.

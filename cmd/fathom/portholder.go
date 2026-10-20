@@ -6,6 +6,9 @@ package main
 // serves it — log it and exit 0 (launchd stays down under schema 2). Any
 // other holder exits 75 (counted by the breaker as port_held) and is named
 // — pid and command — for `fathom resources`, doctor and `daemon reap`.
+// A same-label holder whose record says no supervisor runs it (a hand
+// start, O1363) exits 75 under port_held_unsupervised, which the breaker
+// does not count, so the supervisor takes the port over once it is free.
 
 import (
 	"context"
@@ -29,11 +32,20 @@ type portHolderFacts struct {
 }
 
 // resolvePortHolder decides a held port: (0, port_held, "already served by
-// pid N …") for a managed fathom of self's label that answers; else (75,
-// port_held, the holder named).
+// pid N …") for a managed fathom of self's label that answers; (75,
+// port_held_unsupervised) when that holder's record says no supervisor
+// runs it; else (75, port_held, the holder named).
 func resolvePortHolder(selfManaged bool, selfLabel string, f portHolderFacts) (code int, reason, detail string) {
 	if selfManaged && selfLabel != "" && f.Record != nil && f.Record.Managed && f.Record.ID == selfLabel &&
 		f.Record.PID > 0 && (f.ListenerPID == 0 || f.ListenerPID == f.Record.PID) && f.Responds {
+		// O1363: a holder recorded unsupervised (a hand start) is not the
+		// supervised daemon; exit non-zero so the supervisor relaunches this
+		// job every throttle interval and takes the port over once the hand
+		// start exits. A record without the field keeps exit 0, so a
+		// mixed-version relaunch never loops.
+		if f.Record.Supervised != nil && !*f.Record.Supervised {
+			return tenancy.ExitRetryLater, tenancy.ExitPortHeldUnsupervised, fmt.Sprintf("port held by pid %d, a managed fathom of label %s that no supervisor runs (started by hand) — exiting %d so the supervisor relaunches this job and takes the port over once it exits", f.Record.PID, selfLabel, tenancy.ExitRetryLater)
+		}
 		return tenancy.ExitStayDown, tenancy.ExitPortHeld, fmt.Sprintf("already served by pid %d (label %s) — exiting 0", f.Record.PID, selfLabel)
 	}
 	holder := "an unknown process (lsof found no listener)"

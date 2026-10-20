@@ -41,8 +41,8 @@ const (
 // port_held exit with a non-zero code (a foreign holder) and a
 // start_failed exit with a non-zero code (a store that opens and is wrong,
 // a module that does not mount — launchd relaunches it every throttle
-// interval); every other reason — and an already-served port_held, code 0
-// — is not counted.
+// interval); every other reason — an already-served port_held, code 0, and
+// a port_held_unsupervised exit included — is not counted.
 const (
 	ExitOverBudget = "over_budget"
 	ExitDrain      = "drain"
@@ -54,7 +54,14 @@ const (
 	ExitTTL        = "ttl"
 	ExitUnlinked   = "unlinked"
 	ExitPortHeld   = "port_held"
-	ExitSignal     = "signal" // an unmanaged daemon's SIGTERM/SIGINT/SIGHUP
+	// ExitPortHeldUnsupervised is a managed start that found its port
+	// held by an answering managed fathom of its own label whose record
+	// says no supervisor runs it (a hand start). It exits non-zero so the
+	// supervisor relaunches it every throttle interval and takes the port
+	// over once the hand start exits; the breaker never counts it (design
+	// §8.4 step 5).
+	ExitPortHeldUnsupervised = "port_held_unsupervised"
+	ExitSignal               = "signal" // an unmanaged daemon's SIGTERM/SIGINT/SIGHUP
 	// ExitStartFailed is a start that ended before serving: a store that
 	// opened and is wrong, a module that did not mount, a bind error that
 	// is not a held port.
@@ -81,8 +88,12 @@ type LifecycleRow struct {
 	BinaryCommit string `json:"binary_commit,omitempty"`
 	Managed      bool   `json:"managed,omitempty"`
 	PlistSchema  int    `json:"plist_schema,omitempty"`
-	Mode         string `json:"mode,omitempty"`
-	LedgerID     string `json:"id,omitempty"`
+	// Supervised is a managed start's supervision (launchd/systemd, or
+	// init as the parent); false is a hand start. nil: unmanaged, or a
+	// writer that predates the field.
+	Supervised *bool  `json:"supervised,omitempty"`
+	Mode       string `json:"mode,omitempty"`
+	LedgerID   string `json:"id,omitempty"`
 
 	// exit
 	Code        *int     `json:"code,omitempty"`

@@ -131,7 +131,7 @@ rm -f "${work}/.tracked"
 }
 
 # 2. Build standalone.
-if ! (cd "${tree}" && GOWORK=off go build -o bin/fathom ./cmd/fathom >"${work}/build.log" 2>&1); then
+if ! (cd "${tree}" && GOWORK=off go build -trimpath -o bin/fathom ./cmd/fathom >"${work}/build.log" 2>&1); then
   echo "stranger-check: FAIL the tracked tree does not build standalone:" >&2
   head -20 "${work}/build.log" >&2
   exit 1

@@ -36,6 +36,9 @@ type daemonMeta struct {
 	// LifecycleID is --lifecycle-id: where the ledger lives when it is not
 	// the record's own directory (RT-158).
 	LifecycleID string
+	// Supervised is a managed start's supervision (detectSupervised);
+	// nil when unmanaged.
+	Supervised *bool
 }
 
 // daemonID names the record directory: the label when managed, else
@@ -99,6 +102,7 @@ func recordServingDaemonAs(meta daemonMeta, addr, callLog, storePath, commit str
 	rec.Managed = meta.Managed
 	rec.PPID = meta.PPID
 	rec.LifecycleID = meta.LifecycleID
+	rec.Supervised = meta.Supervised
 	if exe, err := os.Executable(); err == nil {
 		rec.Exe = exe
 		rec.ExeInode = exeInode(exe)
