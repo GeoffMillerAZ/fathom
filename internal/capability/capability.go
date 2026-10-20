@@ -108,7 +108,10 @@ type Probe struct {
 	GuardRules     int
 	GuardProblem   string // invalid or unreadable input; never an absence
 	ModuleBindings int
-	LayerPacks     []string
+	// TechPacks is how many tech packs the repository's pins put on disk
+	// (techpack.Discover, before any exclusion).
+	TechPacks  int
+	LayerPacks []string
 	// ObligationsCompiled is whether the obligations layer has a recorded
 	// compile for this service. Authored-but-uncompiled and
 	// compiled-but-undelivered are DIFFERENT states with different

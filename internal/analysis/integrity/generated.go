@@ -169,7 +169,7 @@ func generatedDeclarations(root string) (decls []declaration, missing []string) 
 	} else if !errors.Is(err, fs.ErrNotExist) {
 		missing = append(missing, fmt.Sprintf("project generated declarations could not be read: %v", err))
 	}
-	d, err := techpack.Discover(root)
+	d, err := techpack.Served(root)
 	if err != nil {
 		missing = append(missing, fmt.Sprintf("tech packs could not be discovered for generated declarations: %v", err))
 	}

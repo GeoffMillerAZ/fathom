@@ -232,7 +232,7 @@ func pluralValue(v console.Value[int], noun string) string {
 // sourceBadge names where a pack comes from, in words, as the kit's badge
 // (callout.Badge): neutral, except a pack that could not be looked up.
 func sourceBadge(source string) string {
-	label := map[string]string{console.PackEmbedded: "embedded", console.PackProject: "project pack", console.PackKit: "kit pack", console.PackOrphan: "no pack", console.PackUnknown: "pack unknown"}[source]
+	label := map[string]string{console.PackEmbedded: "embedded", console.PackProject: "project pack", console.PackKit: "kit pack", console.PackTech: "tech pack", console.PackOrphan: "no pack", console.PackUnknown: "pack unknown"}[source]
 	if label == "" {
 		label = source
 	}
@@ -313,11 +313,11 @@ func renderLayersPage(s console.StrataView, cov console.CoverageMatrix) string {
 	return b.String()
 }
 
-// renderStrataBands draws the four bands: a stratum label beside its
+// renderStrataBands draws the bands (four, plus tech when a tech pack ships a layer): a stratum label beside its
 // blocks, stacking below md.
 func renderStrataBands(s console.StrataView) string {
 	var b strings.Builder
-	b.WriteString(`<ol class="flex flex-col divide-y divide-line rounded-md border border-line" aria-label="the four strata, dialect first">`)
+	b.WriteString(`<ol class="flex flex-col divide-y divide-line rounded-md border border-line" aria-label="the strata, dialect first">`)
 	for _, band := range s.Bands {
 		b.WriteString(`<li class="grid gap-3 p-3 md:grid-cols-[12rem_1fr]" data-stratum="` + html.EscapeString(band.Stratum) + `">`)
 		b.WriteString(`<div class="min-w-0"><h3 class="text-sm font-semibold text-ink">` + html.EscapeString(band.Title) + `</h3>`)

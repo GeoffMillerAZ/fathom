@@ -179,7 +179,13 @@ func readPacks(src KnowledgeSource, svcs []serviceKnowledge) (map[string]*packIn
 		fi, serr := os.Stat(dir)
 		switch {
 		case errors.Is(serr, fs.ErrNotExist):
-			continue // no .fathom/layers: embedded packs only, by design
+			// No .fathom/layers: embedded packs only, by design, and
+			// whatever a pinned tech pack ships (FD-18). An unreadable
+			// catalog here is not a project pack's breakage.
+			if infos, lerr := src.layers(s.Root); lerr == nil {
+				addPacks(packs, s.Service, infos)
+			}
+			continue
 		case serr != nil:
 			errs = append(errs, s.Service+": "+dir+" could not be read ("+serr.Error()+"); its project packs are not listed")
 			unreadable[s.Service] = true
@@ -198,20 +204,7 @@ func readPacks(src KnowledgeSource, svcs []serviceKnowledge) (map[string]*packIn
 			unreadable[s.Service] = true
 			continue
 		}
-		for _, li := range infos {
-			if li.Source != semantic.SourceProject {
-				continue
-			}
-			// The first root (by service name) that carries a project pack
-			// defines it; an embedded pack stays the fleet's definition, and
-			// the roots overriding it are named in InstalledIn.
-			p := packs[li.Name]
-			if p == nil {
-				p = &packInfo{LayerInfo: li}
-				packs[li.Name] = p
-			}
-			p.InstalledIn = append(p.InstalledIn, s.Service)
-		}
+		addPacks(packs, s.Service, infos)
 	}
 	return packs, errs, unreadable
 }
@@ -221,6 +214,7 @@ const (
 	PackEmbedded = "embedded" // fathom's own catalog
 	PackProject  = "project"  // a repository's .fathom/layers
 	PackKit      = "kit"      // a project pack installed from a kit's fathom-pack
+	PackTech     = "tech"     // a layer a pinned tech pack ships (FD-18)
 	PackOrphan   = "orphan"   // claims in the store, no pack defines the layer
 	// PackUnknown is a layer with claims or runs in the store whose pack
 	// could not be looked up: the catalog of a project holding it was
@@ -282,6 +276,9 @@ func packSourceOf(p *packInfo) (source, origin string) {
 	}
 	if p.Source == semantic.SourceEmbedded {
 		return PackEmbedded, "fathom's embedded catalog"
+	}
+	if p.Source == semantic.SourceTech {
+		return PackTech, "shipped by tech pack " + p.TechPack + ", pinned by the repository"
 	}
 	if strings.HasPrefix(p.PromptFile, "fathom-pack/") {
 		return PackKit, "installed from a kit's fathom-pack (" + p.PromptFile + ")"
@@ -453,4 +450,22 @@ func shellQuote(s string) string {
 		return s
 	}
 	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
+// addPacks records the project and tech layers of one service's catalog. The
+// first root (by service name) that carries a pack defines it; an embedded
+// pack stays the fleet's definition, and the roots overriding it are named
+// in InstalledIn.
+func addPacks(packs map[string]*packInfo, service string, infos []semantic.LayerInfo) {
+	for _, li := range infos {
+		if li.Source != semantic.SourceProject && li.Source != semantic.SourceTech {
+			continue
+		}
+		p := packs[li.Name]
+		if p == nil {
+			p = &packInfo{LayerInfo: li}
+			packs[li.Name] = p
+		}
+		p.InstalledIn = append(p.InstalledIn, service)
+	}
 }

@@ -23,5 +23,10 @@ generatedPair: #Project & {
 	generated: [{output: "ui/app.css", source: ["ui/input.css"], regenerate: "task ui:css"}]
 }
 
+// A repository drops tech packs by name; modules.cue is the home of the list.
+excludedPacks: #Project & {
+	exclude_packs: ["app-kit", "other-pack"]
+}
+
 // The empty project is valid: every key is optional.
 empty: #Project & {}
