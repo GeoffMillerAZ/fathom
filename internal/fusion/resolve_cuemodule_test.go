@@ -7,6 +7,7 @@ package fusion
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -284,5 +285,43 @@ func TestCUEExtractorIsFileSpecExtractor(t *testing.T) {
 	}
 	if !found {
 		t.Error("the file resolver does not serve cue by the cue-module strategy")
+	}
+}
+
+// TestResolveFileEdges_CUEWidePackage: every file of a package re-exports
+// the package, so a lookup through an import reads each file's own
+// definitions once (a flat re-export), never the re-exports of re-exports: a
+// package of forty files resolves at once (it walked up to 40^8 paths
+// before, past any test deadline).
+func TestResolveFileEdges_CUEWidePackage(t *testing.T) {
+	const n = 40
+	files := []core.SourceFile{
+		{Path: "cue.mod/module.cue", Content: []byte("module: \"example.org/w@v0\"\nlanguage: version: \"v0.9.0\"\n")},
+		{Path: "app/app.cue", Content: []byte("package app\n\nimport \"example.org/w/wide\"\n\nx: wide.#D39\ny: wide.#Missing\n")},
+	}
+	for i := 0; i < n; i++ {
+		files = append(files, core.SourceFile{Path: fmt.Sprintf("wide/f%02d.cue", i), Content: []byte(fmt.Sprintf("package wide\n\n#D%d: %d\n", i, i))})
+	}
+	x := extractor.NewCUEExtractor()
+	var syms []core.SymbolNode
+	for _, f := range files {
+		nodes, err := x.Extract("svc", f.Path, f.Content)
+		if err != nil {
+			t.Fatal(err)
+		}
+		syms = append(syms, nodes...)
+	}
+	edges, _ := ResolveFileEdges(context.Background(), "cue", "", files, syms) // exponential before: the test's deadline
+	found := false
+	for _, e := range edges {
+		if e.ToSymbol == "svc::wide/wide.#D39" {
+			found = true
+		}
+		if strings.Contains(e.ToSymbol, "#Missing") {
+			t.Errorf("an undefined name bound: %+v", e)
+		}
+	}
+	if !found {
+		t.Error("x: wide.#D39 bound no edge to the file defining it")
 	}
 }
