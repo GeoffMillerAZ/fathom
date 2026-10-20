@@ -253,6 +253,9 @@ func hookLatencyLine(read func(since time.Time) []hookLatencyRow, now time.Time)
 const lifecycleNotRecorded = "starts and unclean exits not recorded (the ledger has no start rows: the build that wrote it predates start rows) — crash-loop detection sees over-budget exits only"
 
 // countedExitReasons are the exits the breaker counts (§2.3).
+// port_held_unsupervised (a relaunch that found a hand-started holder,
+// O1363) is absent on purpose: like the breaker, a crash-loop count and
+// RT-M1's day merge never count it.
 //
 //fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var countedExitReasons = map[string]bool{"over_budget": true, "unclean": true, "port_held": true, "panic": true}

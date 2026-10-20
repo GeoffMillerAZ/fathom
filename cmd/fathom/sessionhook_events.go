@@ -144,7 +144,7 @@ func toolFailureAdvice(baseURL, projDir, toolName, toolErr string) string {
 	hc := &http.Client{Timeout: 2 * time.Second}
 	if !daemonAnswering(hc, baseURL) {
 		return fmt.Sprintf("%s — the fathom daemon (%s) is not responding, so every fathom tool will fail this session; Grep/Read discovery is the expected fallback. Restart it with: %s",
-			lead, baseURL, daemonRestartHint(""))
+			lead, baseURL, daemonDownHint())
 	}
 	name, info, ok := indexedServiceFor(hc, baseURL, projDir)
 	if !ok {
