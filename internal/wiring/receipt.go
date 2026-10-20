@@ -295,7 +295,7 @@ func Undo(root, id string, opt ApplyOptions) (UndoResult, error) {
 	}
 
 	for _, f := range r.Files {
-		path := filepath.Join(root, filepath.FromSlash(f.Path))
+		path := receiptTarget(root, f.Path)
 		isLink, target := LinkState(root, f.Path)
 		var current string
 		var exists bool
@@ -458,4 +458,14 @@ func ternary(cond bool, a, b string) string {
 		return a
 	}
 	return b
+}
+
+// receiptTarget is the on-disk path a receipt entry names. The ledger's
+// entry keeps its .fathom/owned.json spelling as an identifier but lives in
+// the state directory.
+func receiptTarget(root, rel string) string {
+	if rel == ledgerRelPath {
+		return ledgerPath(root)
+	}
+	return filepath.Join(root, filepath.FromSlash(rel))
 }

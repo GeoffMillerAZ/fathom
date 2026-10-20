@@ -1,6 +1,6 @@
 package wiring
 
-// ledger.go — .fathom/owned.json, tier 3's ownership map (design §3).
+// ledger.go — owned.json (state directory; legacy .fathom/owned.json read), tier 3's ownership map (design §3).
 //
 // There is nowhere to put a comment marker in JSON, and a YAML comment is
 // too fragile to trust with someone's CI configuration. So for structured
@@ -21,6 +21,7 @@ import (
 	"sort"
 
 	"github.com/geoffmilleraz/fathom/internal/projectdir"
+	"github.com/geoffmilleraz/fathom/internal/statedir"
 )
 
 const (
@@ -118,15 +119,40 @@ func (l *Ledger) Forget(file, id string) {
 	l.Files[file] = keys
 }
 
-// LoadLedger reads <root>/.fathom/owned.json. An absent file is normal and
-// yields an empty ledger with no error. An UNREADABLE or unparsable one
+// ledgerPath is where the ledger is written: owned.json in the state
+// directory (docs/design/fathom-dir.md M4).
+func ledgerPath(root string) string {
+	return filepath.Join(statedir.Resolve(root), string(projectdir.Owned))
+}
+
+// legacyLedgerPath is the pre-M4 home, <root>/.fathom/owned.json. It is read
+// while the state-directory copy is absent and never written or deleted
+// (I63).
+func legacyLedgerPath(root string) string { return projectdir.Owned.Path(root) }
+
+// LedgerLegacyStale reports whether a legacy <root>/.fathom/owned.json sits
+// beside a state-directory copy that now supersedes it, for doctor to name.
+// fathom deletes neither.
+func LedgerLegacyStale(root string) bool {
+	if _, err := os.Stat(legacyLedgerPath(root)); err != nil {
+		return false
+	}
+	_, err := os.Stat(ledgerPath(root))
+	return err == nil
+}
+
+// LoadLedger reads owned.json from the state directory, falling back to the
+// legacy <root>/.fathom/owned.json only when the new path is absent. An
+// absent file is normal and yields an empty ledger with no error. An UNREADABLE or unparsable one
 // yields an empty ledger AND an error: the caller must name the reason
 // rather than silently proceeding as though fathom owned nothing, because
 // "fathom owns nothing" and "fathom cannot tell what it owns" license the
 // same conservative behaviour but deserve different words (law 3).
 func LoadLedger(root string) (Ledger, error) {
-	p := filepath.Join(root, filepath.FromSlash(ledgerRelPath))
-	data, err := os.ReadFile(p)
+	data, err := os.ReadFile(ledgerPath(root))
+	if os.IsNotExist(err) {
+		data, err = os.ReadFile(legacyLedgerPath(root))
+	}
 	if err != nil {
 		if os.IsNotExist(err) {
 			return NewLedger(), nil
@@ -162,7 +188,7 @@ func SaveLedger(root string, l Ledger) error {
 	if err != nil {
 		return err
 	}
-	p := filepath.Join(root, filepath.FromSlash(ledgerRelPath))
+	p := ledgerPath(root)
 	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 		return err
 	}
