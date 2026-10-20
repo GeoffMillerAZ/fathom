@@ -895,7 +895,7 @@ func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[stri
 		if keys := distinctKeys(matches); len(keys) == 1 && (e.Package != "" || len(matches) < len(raw)) {
 			querySym = keys[0]
 		}
-		if keys := distinctKeys(matches); e.Package == "" && len(keys) > 1 {
+		if keys := distinctKeys(matches); e.Package == "" && len(keys) > 1 && bareAnchorUnproven(e, ev, proofCertified) {
 			// O1453: a bare anchor two packages define names neither: the
 			// row asks for `package:` instead of passing on the first match
 			// and then failing reach as a missing test.
@@ -1258,6 +1258,28 @@ func underDir(nodes []core.SymbolNode, dir string) []core.SymbolNode {
 		}
 	}
 	return out
+}
+
+// bareAnchorUnproven reports whether a bare anchor that several definitions
+// match gets no reach proof from the call graph by its bare name (O1453):
+// the row's test_reaches, or its edge_wired, would fail today. A bare name
+// the graph does resolve (a row passing today) is left as it is, and so is
+// a row whose contract is not the ordinary test_reaches check (skip_test,
+// certified_by, a plan-level certified header).
+func bareAnchorUnproven(e Expect, ev Evidence, proofCertified bool) bool {
+	if e.SkipTest || len(e.CertifiedBy) > 0 || proofCertified {
+		return false
+	}
+	reached := false
+	if de, ok := ev.(DetailedEvidence); ok {
+		reached = len(de.TestReachesDetail(e.Symbol)) > 0
+	} else {
+		reached = len(ev.TestReaches(e.Symbol)) > 0
+	}
+	if !reached {
+		return true
+	}
+	return e.ReachableFrom != "" && !ev.Reachable(e.ReachableFrom, e.Symbol)
 }
 
 // distinctKeys returns the distinct canonical keys of nodes, in first-seen

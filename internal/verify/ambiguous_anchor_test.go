@@ -29,3 +29,16 @@ func TestBareAnchorDefinedTwiceIsAmbiguous(t *testing.T) {
 		}
 	}
 }
+
+// A bare name two packages define that the call graph still resolves by its
+// bare name keeps passing: the row is not made to fail by this check.
+func TestBareAnchorDefinedTwiceStillPassesWhenGraphResolvesIt(t *testing.T) {
+	ev := ambiguousRunEvidence()
+	ev.tests["Run"] = []string{"svc::foundations/ladder/ladder_test.TestRun"}
+	rep := verify.VerifyPlan(verify.Plan{Tasks: []verify.Task{
+		{ID: "T-1", Expect: verify.Expect{Symbol: "Run"}},
+	}}, ev)
+	if v := rep.Tasks[0]; v.Status != verify.Pass {
+		t.Fatalf("got %s/%s, want pass; criteria=%+v", v.Status, v.Label, v.Criteria)
+	}
+}
