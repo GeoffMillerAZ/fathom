@@ -196,7 +196,7 @@ Would fathom help? Partly, and the part it helps with is the part the owner's ca
   reduction is recorded.
 - *The boundary: default deny.* Licensed sources (Tailwind Plus and Catalyst are the cases) never ship in a public
   repository, which is app-kit's own delivery rule ("Licensed derivative: keep this directory and generated outputs
-  private", `internal/designadapt/*_delivery.go`). A `.fathom/licensed.cue` declaration names the licensed paths, their
+  private", `internal/designadapt/*_delivery.go`). A `licensed` key of `#Project` (by convention `.fathom/licensed.cue`), read through the one loader (ADR-061 decision 2), names the licensed paths, their
   licence and the owner's explicit allows; a new conservation plane blocks a push whose tree holds a declared path
   with no allow, and lists reached and allowed licensed units as a fact (SV-8). An explicit owner allow per path is
   the only exception, and fathom never grants one. The declaration is committed by the repository that ships

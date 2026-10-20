@@ -1,6 +1,6 @@
 # Incident maps: committed declarations that pre-shape the first five minutes, reaching outside systems by link and parameter, never by fathom
 
-Status: accepted as a direction 2026-09-29 (ADR-058); the build is deferred behind the stages in section 13. Plan:
+Status: accepted as a direction 2026-09-29 (ADR-058); the build is deferred behind the stages in section 13. The declaration is the `incidents` key of `#Project`, read through the one loader (ADR-061 decision 2); `.fathom/incidents.cue` is only the file that conventionally holds it. Plan:
 `docs/plans/incident-maps.md` (IM-). Futures F56 (incident maps) and F57 (probes and next queries). Amends section
 3c of `docs/design/exploration-maps.md` on two points, the kind and the gate, and moves its incident rows XM-26 to
 XM-30, XM-M6 and XM-M7 here. Vision: `docs/vision/40-judgment-and-exploration-maps.md` section 13.
@@ -21,7 +21,7 @@ grepped code; I ran no tests and no builds. Section 15 lists what was verified a
 
 | The owner's wish | Decision |
 |---|---|
-| Pre-shape incident knowledge before the incident | **Yes.** A team commits `.fathom/incidents.cue` beside `.fathom/guard.cue`: symptoms, footprint, window, runbook, links, blind spots. Reviewed in a PR, readable when fathom is down. |
+| Pre-shape incident knowledge before the incident | **Yes.** A team commits the `incidents` key (by convention `.fathom/incidents.cue`, beside `.fathom/guard.cue`): symptoms, footprint, window, runbook, links, blind spots. Reviewed in a PR, readable when fathom is down. |
 | A type separate from live maps | **Yes, separate, and not a member of the map family either.** The user-facing name "incident map" stays. The artifact is a declaration served through `localize`, the prompt hook and one CLI verb. It may later name a live map as its `scope` (the pattern section 3c already uses for concern packs). |
 | Connect to other data sources | **v1: by link and by typed parameter.** Deep links scoped to the incident window (a human clicks, fathom never fetches). A `--deployed <sha>` parameter the agent or human fills from their own deploy tool, which turns the suspect list into the deployed range. A `since_tag` window for release trains. |
 | Connect to CLI commands | **Deferred.** Command templates (probes) and MCP next queries are a command runner in effect in the default setup, have no meter, and duplicate runbooks. They wait for an instrument that can see a probe run, a consumer, and the safety contract in section 6.4. |
@@ -116,7 +116,7 @@ the server at call time and cannot be verified from a committed template; that s
 | Property | Live map (F50, XM-D1) | Incident declaration |
 |---|---|---|
 | Author | Agents and planners, as a working set | A team, ahead of time, reviewed in a PR |
-| Home | Thread fields and the memo registry on one machine | `.fathom/incidents.cue`, committed; survives loss of the store |
+| Home | Thread fields and the memo registry on one machine | the `incidents` key of `#Project` (by convention `.fathom/incidents.cue`), committed; survives loss of the store |
 | Addressed by | Id, purpose, footprint overlap | Symptom (alert name, error literal) and footprint |
 | Liveness | Named and used; F50 drops the feature if no map is mounted in 3 runs in 180 days | Rare use is the success state (P8); liveness is readiness (section 9); the feature-level kill counts incidents, not days |
 | Latency | No contract | Must answer under pressure (section 8.3) |
@@ -430,7 +430,7 @@ A doctor row and `fathom incident --readiness`, not a verb of its own. Review Ki
 (XM-30's split stands). Facts per declaration:
 
 - **Anchors resolve.** Every symbol key exists, every glob matches at least one file, every contract key exists.
-- **An owner is present** through a non-wildcard CODEOWNERS rule, and `.fathom/incidents.cue` itself has a
+- **An owner is present** through a non-wildcard CODEOWNERS rule, and the `incidents` key itself has a
   non-wildcard owner (tamper review).
 - **Runbook age against churn.** "`docs/runbooks/checkout.md` last touched 400 days ago; the footprint took 212
   commits since." This is the computable proxy for rot, and the best idea in the analysis.
@@ -545,7 +545,7 @@ and can be fixed whenever the owner chooses.
 
 | # | Part | Disposition | Reason | Trigger or kill |
 |---|---|---|---|---|
-| 1 | Committed declaration `.fathom/incidents.cue`, named "incident map" for users; not a map kind | Accepted direction, deferred | Different author, home, addressing, liveness and latency from live maps; uses none of the map machinery (5.1, 5.2) | Stage 2 |
+| 1 | Committed declaration, the `incidents` key of `#Project`, named "incident map" for users; not a map kind | Accepted direction, deferred | Different author, home, addressing, liveness and latency from live maps; uses none of the map machinery (5.1, 5.2) | Stage 2 |
 | 2 | Suspect list from a bounded request-time git read; no new table | Accepted direction, deferred | The stored 500-commit, author-date horizon is wrong; a table collides with RT-M1 (7.1) | IM-M0 BUILD |
 | 3 | `localize` recency hop filled from row 2 | Accepted direction, deferred | The hop is a zero-yield stub today (VB-26) | With row 2 |
 | 4 | Prompt-hook line, stage 1 then stage 2 | Accepted direction, deferred | The forced channel (P16) | IM-M2 under 10 percent cuts it |
