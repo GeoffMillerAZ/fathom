@@ -1,3 +1,0 @@
-### Added
-- Rich readouts choose raw or enriched through one deterministic policy table: a failure, or a success with protected diagnostic lines, gets its injected line only when a record names a file the session edited (or a definition the working tree changed) or a test the last run failed; every other call stays raw, and the hook row names the answer with `decided_by: table`.
-- `fathom readout fit` fits the policy table's byte floor and long-read cut offline on a seeded half of the outcomes the readout report replays and scores both halves with Wilson bounds; `--write` saves them to `~/.fathom/readouts/policy.toml`, which rich mode then reads in place of the built-in cut points, and doctor names that file or an invalid one.

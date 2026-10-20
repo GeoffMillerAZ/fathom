@@ -1,2 +1,0 @@
-### Added
-- Nix (`.nix`, `flake.nix`) extraction at L3 (good, tier C), measured against `nix-instantiate --parse` on home-manager and nixos-config (two further holdouts also read L3 good): definitions are a file's root-expression names (let bindings, attribute-set keys at depth one, function parameters), and a path that names a Nix file is an import that binds names only where Nix does (`u = import ./u.nix`, `inherit (import ./u.nix) f`).

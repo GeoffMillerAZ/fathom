@@ -1,4 +1,0 @@
-### Fixed
-- `symbol_context` on a large service right after an ingest or a daemon start was abandoned at the 60 s deadline with nothing. It now answers the definition and signature within the deadline, marked `partial: call graph not built (cold)`, with callers, callees and tests named `not computed (cold graph)`, and the build keeps running for the next call.
-- A `search` with a `service` waited for the whole symbol index before it showed any hit, 11 to 31 s on a large service after an ingest or a restart. It now serves the hits at once, without `sym`/`kind` while the index loads, and `receipts_omitted` says so.
-- `symbol_context` answered a name it could not resolve with `def: null` and empty lists, which read as "exists, nobody calls it", and it missed the `dir/file.Name` key its own candidate list hands out. It now answers `not_found: true` with the nearest names as candidates, and that key resolves within the call's service.
