@@ -24,6 +24,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/scip"
+	"github.com/geoffmilleraz/fathom/internal/statedir"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
@@ -113,7 +114,7 @@ func (s *Server) importIndexers(ctx context.Context, backend QueryInterface, svc
 			row["error"] = "the service has no recorded root to find " + rel + " under"
 			continue
 		}
-		abs := filepath.Join(root, filepath.FromSlash(rel))
+		abs := statedir.ReadPath(root, projectdir.SCIP, name+".scip")
 		fi, err := os.Lstat(abs)
 		if err != nil || !fi.Mode().IsRegular() {
 			row["error"] = "no " + rel + " under the service root — run " + name + " there (fathom init does when the toolchain is installed)"

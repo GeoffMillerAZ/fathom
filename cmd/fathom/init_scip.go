@@ -34,6 +34,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/projectdir"
+	"github.com/geoffmilleraz/fathom/internal/statedir"
 )
 
 // initSCIPTimeout bounds one producer: it type-checks the whole repository.
@@ -138,7 +139,7 @@ func repoHasAny(root string, markers []string) bool {
 // its .gitignore each producer would leave, and runs no producer.
 func initRunSCIP(ctx context.Context, w *initWrites, root, svc string, stdout io.Writer, d scipInitDeps) []string {
 	var produced []string
-	outDir := projectdir.SCIP.Path(root)
+	outDir := statedir.LocalPath(root, projectdir.SCIP)
 	prepared := false
 	for _, p := range scipProducers {
 		if !repoHasAny(root, p.markers) {
@@ -182,7 +183,7 @@ func initRunSCIP(ctx context.Context, w *initWrites, root, svc string, stdout io
 			fmt.Fprintf(stdout, "warning: %s exited cleanly but wrote no index at %s (init continues)\n", p.name, out)
 			continue
 		}
-		fmt.Fprintf(stdout, "ok %s (index written to .fathom/scip/%s.scip)\n", p.name, p.name)
+		fmt.Fprintf(stdout, "ok %s (index written to %s)\n", p.name, filepath.Join(outDir, p.name+".scip"))
 		produced = append(produced, p.name)
 	}
 	return produced

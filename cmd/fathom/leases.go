@@ -1,6 +1,7 @@
 // leases.go — WF-5/WF-7 (docs/vision/24-work-frontier.md §4): declared
 // intent, derived state. A lease is one JSON row appended to
-// .fathom/leases.jsonl; "leased" is never a stored status — it is always
+// leases.jsonl in the state directory (a legacy .fathom/leases.jsonl is read
+// until the new file exists); "leased" is never a stored status — it is always
 // recomputed from the rows at read time (row exists ∧ now < expires ∧
 // !released). Multiple holders can file fresh leases on the same row
 // simultaneously and BOTH stay visible — that coexistence is deliberate:
@@ -22,6 +23,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/projectdir"
+	"github.com/geoffmilleraz/fathom/internal/statedir"
 )
 
 // leaseRow is one JSONL row: a filed lease, or a release of one. released
@@ -40,7 +42,33 @@ type leaseRow struct {
 // leasesPath is where a repo's leases live — never inside docs/plans/
 // (leases are not plan content) and never store/verify state.
 func leasesPath(root string) string {
-	return projectdir.Leases.Path(root)
+	return statedir.LocalPath(root, projectdir.Leases)
+}
+
+// leasesReadPath is the leases file to read: the state-directory copy, else
+// the legacy .fathom/leases.jsonl an older fathom wrote (never deleted).
+func leasesReadPath(root string) string {
+	return statedir.ReadPath(root, projectdir.Leases)
+}
+
+// seedLeasesFromLegacy copies the legacy lease rows into the state-directory
+// file the first time it is about to be written, so moving the file does not
+// forget a live lease. The legacy copy stays where it is.
+func seedLeasesFromLegacy(root string) {
+	dst := leasesPath(root)
+	if _, err := os.Lstat(dst); err == nil {
+		return
+	}
+	data, err := os.ReadFile(projectdir.Leases.Path(root))
+	if err != nil || len(data) == 0 {
+		return
+	}
+	f, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	_, _ = f.Write(data)
 }
 
 // appendLease appends one row to .fathom/leases.jsonl under a cross-process
@@ -55,6 +83,7 @@ func appendLease(root string, row leaseRow) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return fmt.Errorf("creating %s: %w", filepath.Dir(path), err)
 	}
+	seedLeasesFromLegacy(root)
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		return fmt.Errorf("opening %s: %w", path, err)
@@ -81,12 +110,13 @@ func appendLease(root string, row leaseRow) error {
 // this is a best-effort derived-state instrument, never a gate, so one bad
 // line must never hide every other row.
 func readLeases(root string) ([]leaseRow, error) {
-	data, err := os.ReadFile(leasesPath(root))
+	rp := leasesReadPath(root)
+	data, err := os.ReadFile(rp)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("reading %s: %w", leasesPath(root), err)
+		return nil, fmt.Errorf("reading %s: %w", rp, err)
 	}
 	var rows []leaseRow
 	for _, line := range strings.Split(string(data), "\n") {
