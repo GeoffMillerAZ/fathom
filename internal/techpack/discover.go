@@ -81,6 +81,9 @@ type Pack struct {
 	Hash string
 	// Generated is the pack's `generated` declarations, in file order.
 	Generated []Generated
+	// Readouts is the pack's `readouts` rules as decoded data, in file
+	// order; internal/readout loads and gates them.
+	Readouts []map[string]any
 }
 
 // Tag is the pack's served identity, `name@version`.
@@ -375,7 +378,8 @@ func readPack(dir string) (Pack, bool, error) {
 			Version int    `json:"version"`
 			About   string `json:"about"`
 		} `json:"pack"`
-		Generated []Generated `json:"generated"`
+		Generated []Generated      `json:"generated"`
+		Readouts  []map[string]any `json:"readouts"`
 	}
 	if derr := v.Decode(&doc); derr != nil {
 		return Pack{}, false, derr
@@ -386,7 +390,7 @@ func readPack(dir string) (Pack, bool, error) {
 	}
 	return Pack{
 		Name: doc.Pack.Name, Version: doc.Pack.Version, About: doc.Pack.About,
-		Dir: dir, Hash: hash, Generated: doc.Generated,
+		Dir: dir, Hash: hash, Generated: doc.Generated, Readouts: doc.Readouts,
 	}, true, nil
 }
 

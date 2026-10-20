@@ -58,18 +58,27 @@ func loadRepoRules(rs *RuleSet, root string, trust []string) {
 		rs.Refused = append(rs.Refused, Refusal{Source: p, Reason: err.Error()})
 		return
 	}
+	rs.Rules = append(admitAddOnly(rs, rules, p, os.DirFS(filepath.Dir(p)), !trusted), rs.Rules...)
+}
+
+// admitAddOnly is the one refusal path for rules that rank below every rule
+// already in rs (a repository file's, RO-33, and a tech pack's, RO-34). A
+// rule is refused and named for a duplicate id, an id a higher scope holds, a
+// stage that is not extract or join, or a failed prepare (its fixtures
+// included); the rest still load. It returns the admitted rules, which the
+// caller places below rs.Rules.
+func admitAddOnly(rs *RuleSet, rules []Rule, source string, dir fs.FS, untrusted bool) []*Rule {
 	held := map[string]bool{}
 	for _, r := range rs.Rules {
 		held[r.ID] = true
 	}
-	dir := os.DirFS(filepath.Dir(p))
 	seen := map[string]bool{}
 	var added []*Rule
 	for i := range rules {
 		r := &rules[i]
-		r.Source = p
+		r.Source = source
 		refuse := func(reason string) {
-			rs.Refused = append(rs.Refused, Refusal{Source: p, ID: r.ID, Reason: reason})
+			rs.Refused = append(rs.Refused, Refusal{Source: source, ID: r.ID, Reason: reason})
 		}
 		switch {
 		case seen[r.ID]:
@@ -88,10 +97,10 @@ func loadRepoRules(rs *RuleSet, root string, trust []string) {
 			refuse(err.Error())
 			continue
 		}
-		r.untrusted = !trusted
+		r.untrusted = untrusted
 		added = append(added, r)
 	}
-	rs.Rules = append(added, rs.Rules...)
+	return added
 }
 
 // firstNonAdditive is the first stage kind that is not extract or join, the

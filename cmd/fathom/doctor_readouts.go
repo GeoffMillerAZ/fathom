@@ -48,6 +48,7 @@ func checkReadouts(root string) doctorCheck {
 		status = doctorWarn
 	} else {
 		readout.LoadRepoRules(rs, root, cfg.Trust)
+		readout.LoadPackRules(rs, root)
 		parts = append(parts, fmt.Sprintf("%d rules loaded, %d refused", len(rs.Rules), len(rs.Refused)))
 		for _, rf := range rs.Refused {
 			id := rf.ID
@@ -59,6 +60,29 @@ func checkReadouts(root string) doctorCheck {
 		if len(rs.Refused) > 0 {
 			status = doctorWarn
 			remedy = "fathom readout test <rule file>"
+		}
+		for _, pk := range rs.Packs {
+			served := "none"
+			if len(pk.Served) > 0 {
+				served = strings.Join(pk.Served, ", ")
+			}
+			part := fmt.Sprintf("pack %s readouts served %s", pk.Pack, served)
+			if len(pk.Withheld) > 0 {
+				var w []string
+				for _, f := range pk.Withheld {
+					id := f.ID
+					if id == "" {
+						id = "(pack)"
+					}
+					w = append(w, id+": "+firstFailure(f.Reason))
+				}
+				part += "; withheld " + strings.Join(w, ", ")
+				status = doctorWarn
+				if remedy == "" {
+					remedy = "fix the pack's readout fixtures (fathom readout test) or its pin"
+				}
+			}
+			parts = append(parts, part)
 		}
 		if rf := rs.Repo; rf != nil && !rf.Trusted {
 			parts = append(parts, fmt.Sprintf("%s sha256 %s not trusted", rf.Path, rf.SHA))
