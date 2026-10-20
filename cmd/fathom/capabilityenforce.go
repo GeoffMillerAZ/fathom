@@ -14,6 +14,7 @@ package main
 // flipping the setting changes observed behaviour.
 
 import (
+	"bytes"
 	"path/filepath"
 
 	"github.com/geoffmilleraz/fathom/internal/capability"
@@ -49,6 +50,27 @@ func capabilityOffAt(root, id string) bool {
 	return !res.For(c).On
 }
 
+// capabilityOnAt is the effective value of a switchable capability for root,
+// capabilities.cue over the config.toml switch over the built-in default
+// (FD-34). A config that does not load keeps fallback, the value the
+// caller's own config read produced, so a broken file neither opens an
+// opt-in hook nor closes a default-on one.
+func capabilityOnAt(root, id string, fallback bool) bool {
+	if root == "" {
+		return fallback
+	}
+	reg := capability.Default()
+	c, ok := reg.Get(id)
+	if !ok || !c.Switchable {
+		return fallback
+	}
+	res, errs := loadCapabilityConfig(reg, root)
+	if len(errs) > 0 {
+		return fallback
+	}
+	return res.For(c).On
+}
+
 // capabilityOffForFile is the hook-path convenience: resolve the governing
 // repository root for a file, then ask. Hooks know a file path, not a
 // repository.
@@ -63,4 +85,13 @@ func capabilityOffForFile(projDir, filePath, id string) bool {
 		}
 	}
 	return capabilityOffAt(filepath.Clean(root), id)
+}
+
+// capabilityCueNames reports whether a capabilities.cue layer (the user's or
+// root's) mentions id: the cheap pre-gate a hot hook runs before it pays
+// for a full resolution.
+func capabilityCueNames(root, id string) bool {
+	word := []byte(id)
+	return bytes.Contains(readConfigLayer(capability.DefaultUserPath()), word) ||
+		bytes.Contains(readConfigLayer(capability.ProjectPath(root)), word)
 }

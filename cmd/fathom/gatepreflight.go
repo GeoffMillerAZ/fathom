@@ -157,7 +157,7 @@ func gatePreflightLine(projDir, cwd, command, sessionID, baseURL string) string 
 		parts = append(parts, "verify: not checked (deadline)")
 	}
 	if push {
-		gate := gatePreflightPassingRun(ctx, root, sessionID, cfg.Hooks.TestRun)
+		gate := gatePreflightPassingRun(ctx, root, sessionID, capabilityOnAt(root, "test-run-hook", cfg.Hooks.TestRun))
 		meta["gate"] = gate
 		if gate == "missing" {
 			parts = append(parts, "gate: no passing run at this tree in this session")

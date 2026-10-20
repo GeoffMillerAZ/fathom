@@ -35,6 +35,9 @@ func TestEverySwitchableCapabilityHasAnEnforcementCase(t *testing.T) {
 		"verify-gate":   true, // TestSwitchOffSkipsVerifyButKeepsLedger
 		"intent-corpus": true, // TestSwitchOffSilencesIntentRowsNotTheVerb
 		"assess":        true, // TestSwitchOffAssessRefusesAndFailsClosed
+		"test-run-hook": true, // TestSwitchOffStopsConfigSwitchHooks
+		"pin-check":     true, // TestSwitchOffStopsConfigSwitchHooks
+		"guard-enforce": true, // TestSwitchOffStopsConfigSwitchHooks
 	}
 	for _, c := range capability.Default().All() {
 		if c.Switchable && !covered[c.ID] {
@@ -323,5 +326,43 @@ func TestSwitchOffSilencesIntentRowsNotTheVerb(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "visions:") {
 		t.Errorf("the doctrine verb must still answer on demand:\n%s", out.String())
+	}
+}
+
+// TestSwitchOffStopsConfigSwitchHooks (FD-34): capabilities.cue turns the
+// three config.toml switches off, or on over a config that says the
+// opposite, at the read each hook makes.
+func TestSwitchOffStopsConfigSwitchHooks(t *testing.T) {
+	t.Setenv("FATHOM_HOME", t.TempDir())
+	t.Setenv("FATHOM_ENFORCE", "")
+
+	off := t.TempDir()
+	writeFathomFile(t, off, "config.toml", "[hooks]\ntest_run = true\npin_check = \"feedback\"\n")
+	writeFathomFile(t, off, "capabilities.cue", "capabilities: {\n\t\"test-run-hook\": on: false\n\t\"pin-check\": on: false\n\t\"guard-enforce\": on: false\n}\n")
+	if capabilityOnAt(off, "test-run-hook", true) {
+		t.Error("test-run-hook: capabilities.cue off must beat config test_run = true")
+	}
+	if got := pinCheckMode(off); got != "off" {
+		t.Errorf("pin-check off: mode %q, want off", got)
+	}
+	if enforceEnabled(off) {
+		t.Error("guard-enforce off: enforcement must be advisory")
+	}
+
+	on := t.TempDir()
+	writeFathomFile(t, on, "config.toml", "[hooks]\npin_check = \"off\"\n[guards]\nenforce = false\n")
+	writeFathomFile(t, on, "capabilities.cue", "capabilities: {\n\t\"pin-check\": on: true\n\t\"guard-enforce\": on: true\n}\n")
+	if got := pinCheckMode(on); got != "record" {
+		t.Errorf("pin-check on over config off: mode %q, want record", got)
+	}
+	if !enforceEnabled(on) {
+		t.Error("guard-enforce on over config enforce=false: enforcement must hold")
+	}
+
+	// A config that does not load keeps the caller's own value.
+	broken := t.TempDir()
+	writeFathomFile(t, broken, "capabilities.cue", "capabilities: {{{ not cue\n")
+	if !capabilityOnAt(broken, "test-run-hook", true) || capabilityOnAt(broken, "test-run-hook", false) {
+		t.Error("a broken capabilities.cue must leave the fallback untouched")
 	}
 }

@@ -323,6 +323,61 @@ func Default() Registry {
 				}
 			},
 		},
+		{
+			// FD-34: the three config.toml switches that are not user-only.
+			// Their value is the [hooks] test_run / pin_check / [guards]
+			// enforce boolean (cmd/fathom configSwitchSettings); Default is
+			// what the file means when it says nothing.
+			ID:         "test-run-hook",
+			Switchable: true,
+			Seam:       SeamCore,
+			Summary:    "After a command that runs a declared test command, one line names the failing tests and the changed symbols they reach.",
+			Default:    false,
+			Scopes:     ScopeAny,
+			Cost:       "one hook line after a matching test command; it runs nothing itself",
+			Detect: func(p Probe) State {
+				if !p.HooksReferenced {
+					return State{Reason: "no hook is wired to run it"}
+				}
+				return State{Operating: true, Detail: "hooks wired"}
+			},
+			Remedy: func(Probe) Remedy { return Remedy{Cmd: "fathom init --hooks"} },
+		},
+		{
+			ID:         "pin-check",
+			Switchable: true,
+			Seam:       SeamCore,
+			Summary:    "On a commit, fathom checks that the plan-row pins the change names still resolve, and records the result.",
+			Default:    true,
+			Scopes:     ScopeAny,
+			Cost:       "one index probe per commit",
+			Detect: func(p Probe) State {
+				if !p.HooksReferenced {
+					return State{Reason: "no hook is wired to run it"}
+				}
+				return State{Operating: true, Detail: "hooks wired"}
+			},
+			Remedy: func(Probe) Remedy { return Remedy{Cmd: "fathom init --hooks"} },
+		},
+		{
+			ID:         "guard-enforce",
+			Switchable: true,
+			Seam:       SeamGuards,
+			Summary:    "A guard or layer rule marked enforce denies a violating edit before it is written, instead of only advising after.",
+			Default:    true,
+			Scopes:     ScopeAny,
+			Cost:       "shares the obligations hook round-trip; no additional call",
+			Detect: func(p Probe) State {
+				switch {
+				case p.GuardRules == 0:
+					return State{Reason: "no guard rules are defined for this repository"}
+				case !p.HooksReferenced:
+					return State{Reason: "no edit hook is wired to deny with"}
+				}
+				return State{Operating: true, Detail: count(p.GuardRules, "guard rule") + " can deny"}
+			},
+			Remedy: func(Probe) Remedy { return Remedy{Cmd: "fathom init --guards"} },
+		},
 	}
 
 	byID := make(map[string]Capability, len(caps))

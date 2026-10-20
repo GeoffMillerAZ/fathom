@@ -91,7 +91,7 @@ func checkStopClaims(in claimCheckInput) string {
 	switch {
 	case in.ReEntrant:
 		c.unchecked("repeat")
-	case !cfg.Hooks.TestRun:
+	case !capabilityOnAt(in.Root, "test-run-hook", cfg.Hooks.TestRun):
 		c.unchecked("test_run off") // no rows are written, so none can back or refute a claim
 	case in.Subagent && in.AgentID == "":
 		c.unchecked("agent rows")
