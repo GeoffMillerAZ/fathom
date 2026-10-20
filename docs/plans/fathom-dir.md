@@ -45,12 +45,12 @@ claimed.
 
 ## Wave 3: merges with legacy reads (section 6, H2)
 
-- [ ] `layer_rules` gains kind `call_direction` (from and to package globs over call edges, `allow`), checked by the code review and `arch_conformance` run today; `rules/archconformance.cue` is still read, and doctor prints its equivalent `layer_rules` entries once {id: FD-30, symbol: LoadLayerRules, package: internal/guardspec, reachable_from: TestCallDirectionMatchesArchconformanceOnFixture, needs: "FD-4"}
+- [x] `layer_rules` gains kind `call_direction` (from and to package globs over call edges, `allow`), checked by the code review and `arch_conformance` run today; `rules/archconformance.cue` is still read, and doctor prints its equivalent `layer_rules` entries once {id: FD-30, symbol: LoadLayerRules, package: internal/guardspec, reachable_from: TestCallDirectionMatchesArchconformanceOnFixture, needs: "FD-4"}
 - [ ] `config.toml` gains `[risk]` and `[learning]` with user defaults and `config --explain` provenance, each new field named in `config.ScopeOf` with a class (`TestEveryConfigFieldHasAScopeClass`, A5); a section wins over the legacy `risk.cue` or `learning.cue`, which doctor names {id: FD-31, symbol: Load, package: internal/config, reachable_from: TestConfigRiskLearningSectionsWinOverLegacyFiles}
 - [ ] `owned.json` moves to the state directory: read from `.fathom/` only when the new path is absent, written only to the new path; doctor names a stale old copy; fathom deletes neither (I63) {id: FD-32, symbol: LoadLedger, package: internal/wiring, reachable_from: TestLedgerReadsLegacyWritesStateDir, needs: "FD-1"}
 - [ ] `leases.jsonl` and `scip/` move the same way {id: FD-33, symbol: leasesPath, package: cmd/fathom, reachable_from: TestLeasesReadLegacyWriteStateDir, needs: "FD-32"}
-- [ ] The `config.toml` switches whose field is not `ScopeUserOnly` surface as capability ids (`test-run-hook`, `pin-check`, `guard-enforce`) sourced from the same booleans; `auto-refresh` stays user-only (`daemon.auto_refresh`, I64, SEC-2) and is not surfaced (A2); `capabilities.cue` wins on conflict and doctor names the conflict {id: FD-34, symbol: Default, package: internal/capability, reachable_from: TestCapabilitiesSurfaceConfigSwitches}
-- [ ] The incident-maps, feature-map and stewardship designs name their files as `#Project` keys read through the one loader (ADR-061 decision 2) {id: FD-35, oracle: lexical, path: docs/design/incident-maps.md, pattern: "ADR-061"}
+- [x] The `config.toml` switches whose field is not `ScopeUserOnly` surface as capability ids (`test-run-hook`, `pin-check`, `guard-enforce`) sourced from the same booleans; `auto-refresh` stays user-only (`daemon.auto_refresh`, I64, SEC-2) and is not surfaced (A2); `capabilities.cue` wins on conflict and doctor names the conflict {id: FD-34, symbol: Default, package: internal/capability, reachable_from: TestCapabilitiesSurfaceConfigSwitches}
+- [x] The incident-maps, feature-map and stewardship designs name their files as `#Project` keys read through the one loader (ADR-061 decision 2) {id: FD-35, oracle: lexical, path: docs/design/incident-maps.md, pattern: "ADR-061"}
 
 ## Readings ($0)
 
