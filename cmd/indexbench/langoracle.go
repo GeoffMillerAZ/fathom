@@ -739,12 +739,15 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 	if n, ok := nativeFilesWithError(spec.Manifest.ID, srcFiles); ok {
 		sub.Tenancy.FilesWithError = &n
 	} else if spec.Manifest.Engine == "tags" {
-		n, unparsed, err := filesWithError(ctx, spec.Manifest.ID, root, files)
+		n, unparsed, asWritten, err := filesWithError(ctx, spec.Manifest.ID, root, files)
 		switch {
 		case err != nil:
 			res.notes = append(res.notes, fmt.Sprintf("%s: files_with_error not measured: %v", name, err))
 		default:
 			sub.Tenancy.FilesWithError = &n
+			if asWritten > n {
+				res.notes = append(res.notes, fmt.Sprintf("%s: %d of %d measured files hold an ERROR or MISSING node as written; the dialect's pre-parse step reads %d of them clean, and files_with_error counts the %d it cannot mend, the files the extractor reads with an error", name, asWritten, len(files), asWritten-n, n))
+			}
 			if unparsed > 0 {
 				res.notes = append(res.notes, fmt.Sprintf("%s: %d files the parser failed on are not counted in files_with_error", name, unparsed))
 			}
