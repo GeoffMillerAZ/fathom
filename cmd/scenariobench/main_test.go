@@ -2412,11 +2412,11 @@ func TestCaptureAgentDiff_ExcludesLedgerOwnedFiles(t *testing.T) {
 	if diffPath == "" {
 		t.Fatal("expected a non-empty diff path")
 	}
-	// The ledger file itself is also instrument-written, so both it and
-	// .claude/settings.json's section are dropped — a one-file (real.go)
-	// diff.
-	if excluded != 2 {
-		t.Errorf("instrumentFilesExcluded = %d, want 2 (.claude/settings.json, .fathom/owned.json)", excluded)
+	// The ledger now lives in the state directory (FD-31), outside the
+	// worktree, so only .claude/settings.json's section is dropped — a
+	// one-file (real.go) diff.
+	if excluded != 1 {
+		t.Errorf("instrumentFilesExcluded = %d, want 1 (.claude/settings.json)", excluded)
 	}
 	raw, err := os.ReadFile(diffPath)
 	if err != nil {

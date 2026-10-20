@@ -308,7 +308,7 @@ func installSkillsReport(iw *initWrites, root, mode string, stdout io.Writer) (w
 		if iw.isDry() {
 			for _, sw := range writes {
 				if sw.Action == "created" || sw.Action == "updated" {
-					lp := filepath.Join(root, filepath.FromSlash(initLedgerFile))
+					lp := wiring.LedgerPath(root)
 					iw.record(lp, writeAction(lp))
 					break
 				}

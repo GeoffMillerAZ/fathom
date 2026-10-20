@@ -18,6 +18,7 @@ package main
 // state here that deserves a red mark.
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -83,6 +84,18 @@ func checkCapabilities(baseURL, root, explicitSvc string) doctorCheck {
 			ids = append(ids, r.Capability.ID)
 		}
 		reason += "; off by choice or absence: " + strings.Join(ids, ", ")
+	}
+	if conflicts := res.Conflicts(); len(conflicts) > 0 {
+		parts := make([]string, 0, len(conflicts))
+		for _, c := range conflicts {
+			parts = append(parts, fmt.Sprintf("%s (capabilities.cue %s, config.toml %s)", c.ID, onOff(c.Cue), onOff(c.Config)))
+		}
+		return doctorCheck{
+			Name:   name,
+			Status: doctorWarn,
+			Reason: reason + "; capabilities.cue wins over config.toml for " + strings.Join(parts, ", "),
+			Remedy: "set each of those once: remove the capabilities.cue entry or the config.toml key",
+		}
 	}
 	return doctorCheck{
 		Name:   name,

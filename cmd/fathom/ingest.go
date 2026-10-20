@@ -14,7 +14,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/hookcache"
-	"github.com/geoffmilleraz/fathom/internal/projectdir"
+	"github.com/geoffmilleraz/fathom/internal/statedir"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/testevidence"
 	"github.com/geoffmilleraz/fathom/pkg/client"
@@ -579,7 +579,7 @@ type scipImportResult struct {
 // resolveSCIPPaths returns the SCIP index files this ingest should import
 // (ADR-041 decision 5, SU-9): explicit --scip values verbatim when any were
 // given, else auto-detection — index.scip at the service root, plus every
-// *.scip under .fathom/scip/ — the two locations docs/usage.md documents.
+// *.scip under the state directory's scip/ (or a legacy .fathom/scip/) — the two locations docs/usage.md documents.
 // Auto-detection is silent about finding nothing: most ingests are not of
 // a language with a SCIP producer at all.
 func resolveSCIPPaths(root string, explicit []string) []string {
@@ -590,11 +590,7 @@ func resolveSCIPPaths(root string, explicit []string) []string {
 	if p := filepath.Join(root, "index.scip"); fileExists(p) {
 		out = append(out, p)
 	}
-	if matches, err := filepath.Glob(projectdir.SCIP.Path(root, "*.scip")); err == nil {
-		sort.Strings(matches)
-		out = append(out, matches...)
-	}
-	return out
+	return append(out, statedir.SCIPIndexes(root)...)
 }
 
 // defaultIgnoredShown caps how many default-ignored directories the ingest

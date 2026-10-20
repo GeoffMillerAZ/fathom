@@ -1815,8 +1815,8 @@ with `test_impact` and `localize` moved to the `extended` opt-in surface.
 
 ## ADR-036: Prompt-scoped obligations before the first edit — supersedes vision 21's hold on UserPromptSubmit in one narrow case (2026-09-14)
 
-**Status.** Accepted. Vision: `docs/vision/21-continuity-threads.md` (supersedes its held
-UserPromptSubmit paragraph); `docs/vision/27-strengths-bench.md` (guards-pilot).
+**Status.** Accepted, amended 2026-10-19 by ADR-076. Vision: `docs/vision/21-continuity-threads.md`
+(supersedes its held UserPromptSubmit paragraph); `docs/vision/27-strengths-bench.md` (guards-pilot).
 
 **Context.** guards-pilot-5's second reading (O57) found the served obligation never named
 the governing rule before the relevant edit in any wired trial, and six wired trials made no
@@ -1834,6 +1834,10 @@ case is priced by the cap and measured by the M1 rerun on the repaired instrumen
 
 **Revisit when.** The measured injection cost per prompt exceeds the edit hook's, or
 guards-pilot-6 shows no change in rule_reached_agent.
+
+**Amended 2026-10-19 (ADR-076): one more line, the definitions of the names the prompt resolved,
+behind `[hooks] prompt_definitions`.** "Only the rules governing" stands for the default; the
+flag adds the one definitions line ADR-076 records.
 
 ## ADR-037: `obligations` degrades to raw guide sections, never to silence (2026-09-16)
 
@@ -5808,3 +5812,21 @@ committed the region deletes the file and drops the gate step. The CUE non-goal 
 - *Per-dialect registration in place of the connector's shared maps (AP-D4):* 7 of 247 merges. Wins if: the per-language map files conflict in 8 merges a month.
 
 **Revisit when** AP-M1 misses its bar (more than 61 append-point conflicted merges in the 30 days after the last build row, or the per-100-merges rate fails to fall from 247 of 523); any AP-D1 to AP-D4 trigger above fires; or a fragment-roll or digest defect re-extracts or drops a release note in a shipped build.
+
+## ADR-076: The prompt hook's definitions line: one opt-in line naming where each resolved identifier is defined, amending ADR-036 (2026-10-19)
+
+**Status.** Accepted. Amends ADR-036. Design: `docs/design/readouts.md` (seam H10); plan `docs/plans/readouts.md` RO-46, RO-M18.
+
+**Context.** ADR-036 has the prompt hook serve "only the rules governing" what a prompt names, "never a per-prompt digest". The hook already resolves each named identifier through `find_symbol` (`resolvePromptCandidates`) to find the file whose rules to fetch, then discards the answer's line and kind. An agent told to change `Foo` then spends its first search finding where `Foo` is defined, a question the hook has already answered at no cost.
+
+**Decision.** With `[hooks] prompt_definitions = true` (default false), the prompt hook adds one line to its output: for each identifier it resolved, its definition `file:line` and kind. (1) At most 5 names, in the order the prompt names them. (2) The line shares the obligations cap (`CodexAdditionalContextCap`) and yields to it when it does not fit, and it draws on the hook's existing 8 s deadline. (3) It makes no daemon call of its own: it prints the `find_symbol` answers the resolve step already fetched, and makes no route call. (4) A name with several definitions reads `N definitions`; the hook never chooses one. (5) Silent when nothing resolves. A symbol lookup the deadline skipped reads `definitions not computed (deadline)`, never as nothing found. (6) Any error leaves the rest of the hook's output unchanged and exits 0. Only the exact `find_symbol` tier counts, as for the file resolution (O1114). The rules output is unchanged with the flag off.
+
+**Consequences.** The agent's first search for a named identifier is answered before it runs. The measured added p95 with the flag on, against a local fake daemon, is under 1 ms (O1377); against a real daemon the cost is the config read, since no call is added. A wrong line is possible when the index trails the tree, so the line reads from the same index the rules do and inherits its staleness caveat.
+
+**Decision models.** None applies: a definition lookup is computable from the index, so the provider-`none` path is the only path (ADR-073). Opt-out: leave the flag off, or set the usual kill switch.
+
+**Alternatives rejected.**
+- *Always on:* no measurement of whether the names are used. Wins if: RO-M18 reads PASS in an adopter.
+- *A line per resolved file instead of per identifier:* names rules, not definitions; ADR-036 already does that.
+
+**Revisit when** the flag stays off in every adopter for 60 days, the line's names are ignored once RO-M18 (the readouts seam reading) runs, or a named `file:line` is found not to be the definition at HEAD in a rechecked sample.

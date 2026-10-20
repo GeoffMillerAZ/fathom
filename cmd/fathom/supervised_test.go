@@ -122,6 +122,7 @@ func TestManagedHandStartRecordsUnsupervised(t *testing.T) {
 
 	// The record carries the field.
 	withIsolatedConfigHome(t)
+	resetServingCallLogForTest(t) // the record sets the process-global serving call log
 	no := false
 	rec, p, err := recordServingDaemonAs(daemonMeta{Managed: true, Label: label, Supervised: &no}, "127.0.0.1:0", "", filepath.Join(t.TempDir(), "s.sqlite"), "abc", time.Now())
 	if err != nil {

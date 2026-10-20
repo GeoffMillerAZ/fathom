@@ -15,6 +15,10 @@ const (
 	ScopeBuiltIn Scope = "built-in"
 	ScopeUser    Scope = "user"
 	ScopeProject Scope = "project"
+	// ScopeConfig is a config.toml switch (FD-34): a capability whose
+	// value is the same boolean a [hooks] or [guards] key already holds.
+	// It sits between the user's capabilities.cue and the built-in default.
+	ScopeConfig Scope = "config"
 )
 
 func (s Scope) describe() string {
@@ -23,6 +27,8 @@ func (s Scope) describe() string {
 		return "your user default (~/.fathom/capabilities.cue)"
 	case ScopeProject:
 		return "this repository (.fathom/capabilities.cue)"
+	case ScopeConfig:
+		return "a config.toml switch"
 	default:
 		return "fathom's built-in default"
 	}
@@ -43,6 +49,38 @@ type Settings map[string]bool
 type Resolution struct {
 	User    Settings
 	Project Settings
+	// Config holds the config.toml switches that name a capability (FD-34),
+	// only those the file sets. capabilities.cue wins over them.
+	Config Settings
+}
+
+// Conflict is a capability that capabilities.cue and config.toml both set,
+// to different values. capabilities.cue wins; doctor names the conflict.
+type Conflict struct {
+	ID     string
+	Config bool
+	Cue    bool
+}
+
+// Conflicts lists, sorted by id, every capability set in config.toml and in
+// capabilities.cue (project first, then user) to different values.
+func (r Resolution) Conflicts() []Conflict {
+	ids := make([]string, 0, len(r.Config))
+	for id := range r.Config {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	var out []Conflict
+	for _, id := range ids {
+		cue, ok := r.Project[id]
+		if !ok {
+			cue, ok = r.User[id]
+		}
+		if ok && cue != r.Config[id] {
+			out = append(out, Conflict{ID: id, Config: r.Config[id], Cue: cue})
+		}
+	}
+	return out
 }
 
 // For resolves one capability: project wins over user, user over the
@@ -57,6 +95,9 @@ func (r Resolution) For(c Capability) Setting {
 	}
 	if v, ok := r.User[c.ID]; ok && c.Scopes != ScopeProjectOnly {
 		return Setting{On: v, Scope: ScopeUser}
+	}
+	if v, ok := r.Config[c.ID]; ok {
+		return Setting{On: v, Scope: ScopeConfig}
 	}
 	return Setting{On: c.Default, Scope: ScopeBuiltIn}
 }

@@ -894,7 +894,7 @@ func cmdPlansNext(args []string, stdout, stderr io.Writer) int {
 	service := fs.String("service", "", "service ID (required)")
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL (HTTP mode)")
 	storePath := fs.String("store", "", "store path, .sqlite/.db (direct mode; bypasses daemon)")
-	root := fs.String("root", ".", "project root — .fathom/leases.jsonl lives under here")
+	root := fs.String("root", ".", "project root; its plan-row leases live in its state directory")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a human list")
 	eligibleOnly := fs.Bool("eligible-only", false, "hide rows blocked on an unmet needs: target")
 	free := fs.Bool("free", false, "hide rows holding a fresh lease")

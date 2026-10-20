@@ -133,7 +133,7 @@ func TestProjectLoadIsolatesAFailingKey(t *testing.T) {
 	if got := strings.Join(names, " "); got != want {
 		t.Errorf("Keys() = %q, want %q", got, want)
 	}
-	wantKnown := "bindings budgets capabilities concerns guards layer_rules learning packs risk"
+	wantKnown := "bindings budgets capabilities concerns guards layer_rules learning orientation packs risk"
 	if got := strings.Join(p.KnownKeys(), " "); got != wantKnown {
 		t.Errorf("KnownKeys() = %q, want %q", got, wantKnown)
 	}
@@ -173,7 +173,7 @@ func TestProjectLoadAbsentAndUnreadable(t *testing.T) {
 
 // The embedded schemas are verbatim copies of schema/<name>/schema.cue.
 func TestEmbeddedSchemasMatchSource(t *testing.T) {
-	for _, name := range []string{"project", "guard", "binding", "risk", "learning"} {
+	for _, name := range []string{"project", "guard", "binding", "techpack", "risk", "learning"} {
 		src, err := os.ReadFile(filepath.Join("..", "..", "schema", name, "schema.cue"))
 		if err != nil {
 			t.Fatal(err)

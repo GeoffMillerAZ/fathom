@@ -28,6 +28,8 @@ import (
 	"strings"
 
 	"cuelang.org/go/cue"
+
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 //go:embed packs/*.cue
@@ -86,7 +88,22 @@ func LoadPack(name string) (Pack, error) {
 	if err != nil {
 		return Pack{}, fmt.Errorf("pack %s: %w", name, err)
 	}
-	doc, errs := parseDocument(data, file, ScopePack, true)
+	return loadPackData(name, file, data)
+}
+
+// loadPackData parses one pack file's source. The file must first be a valid
+// tech pack (schema/techpack's #Pack, docs/design/fathom-dir.md section 7.1:
+// the custodian's packs are fathom's built-in tech packs, K10), then reads
+// through the concerns grammar exactly as it always has.
+func loadPackData(name, file string, data []byte) (Pack, error) {
+	var errs []error
+	if verr := projectdir.ValidatePack(data, file); verr != nil {
+		errs = append(errs, verr)
+	}
+	var doc parsedDocument
+	if len(errs) == 0 {
+		doc, errs = parseDocument(data, file, ScopePack, true)
+	}
 	if len(errs) == 0 {
 		switch {
 		case !doc.sawMeta:

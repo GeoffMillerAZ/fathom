@@ -108,6 +108,14 @@ func mergeLayer(cfg *Config, prov Provenance, raw map[string]any, source Source,
 			cfg.Hooks.ReadOutlineHint = b
 			prov["hooks.read_outline_hint"] = SourceInfo{source, path}
 		}
+		if b, ok := hm["tests_to_run"].(bool); ok {
+			cfg.Hooks.TestsToRun = b
+			prov["hooks.tests_to_run"] = SourceInfo{source, path}
+		}
+		if b, ok := hm["prompt_definitions"].(bool); ok {
+			cfg.Hooks.PromptDefinitions = b
+			prov["hooks.prompt_definitions"] = SourceInfo{source, path}
+		}
 	}
 
 	if rm, ok := raw["readouts"].(map[string]any); ok {
@@ -147,6 +155,35 @@ func mergeLayer(cfg *Config, prov Provenance, raw map[string]any, source Source,
 		if v, ok := numberField(cm, "conserve_max_files"); ok {
 			cfg.Console.ConserveMaxFiles = int(v)
 			prov["console.conserve_max_files"] = SourceInfo{source, path}
+		}
+	}
+
+	if rm, ok := raw["risk"].(map[string]any); ok {
+		if v, ok := numberField(rm, "blast_radius_high_callers"); ok {
+			cfg.Risk.BlastRadiusHighCallers = int(v)
+			prov["risk.blast_radius_high_callers"] = SourceInfo{source, path}
+		}
+		if v, ok := numberField(rm, "zone_interest_medium_rate"); ok {
+			cfg.Risk.ZoneInterestMediumRate = v
+			prov["risk.zone_interest_medium_rate"] = SourceInfo{source, path}
+		}
+	}
+
+	if lm, ok := raw["learning"].(map[string]any); ok {
+		for _, f := range []struct {
+			key string
+			dst *int
+		}{
+			{"promote_corroborations", &cfg.Learning.PromoteCorroborations},
+			{"promote_min_sessions", &cfg.Learning.PromoteMinSessions},
+			{"promote_window_days", &cfg.Learning.PromoteWindowDays},
+			{"retire_refutes", &cfg.Learning.RetireRefutes},
+			{"retire_never_triggered_days", &cfg.Learning.RetireNeverTriggeredDays},
+		} {
+			if v, ok := numberField(lm, f.key); ok {
+				*f.dst = int(v)
+				prov["learning."+f.key] = SourceInfo{source, path}
+			}
 		}
 	}
 

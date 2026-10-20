@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/pathglob"
 )
 
 // Rule expresses one layering constraint.
@@ -35,6 +36,12 @@ type Rule struct {
 	ToPkg string
 	// Allow, when true, permits the edge; when false, forbids it.
 	Allow bool
+	// FromGlobs, when non-empty, replace FromPkg: the rule covers a source
+	// package whose name matches any glob (pathglob). ToGlobs likewise
+	// replace ToPkg. This is the form a `call_direction` layer rule
+	// (internal/guardspec) compiles to, so both forms share one check.
+	FromGlobs []string
+	ToGlobs   []string
 }
 
 // Violation describes a single edge that breaks the declared architecture.
@@ -73,9 +80,14 @@ func pkgOf(symbol string) string {
 
 // matches reports whether the rule's (FromPkg, ToPkg) pattern covers (from, to).
 func (r Rule) matches(from, to string) bool {
-	fromOK := r.FromPkg == "*" || r.FromPkg == from
-	toOK := r.ToPkg == "*" || r.ToPkg == to
-	return fromOK && toOK
+	return matchSide(r.FromPkg, r.FromGlobs, from) && matchSide(r.ToPkg, r.ToGlobs, to)
+}
+
+func matchSide(pkg string, globs []string, got string) bool {
+	if len(globs) > 0 {
+		return pathglob.MatchAny(globs, got)
+	}
+	return pkg == "*" || pkg == got
 }
 
 // Check evaluates edges against rules and returns all Violations.
@@ -147,7 +159,16 @@ func Check(edges []core.Edge, rules []Rule, opts ...Option) []Violation {
 const DenyByDefaultRule = "(deny by default)"
 
 // RuleKey names a rule the way a violation-count reading keys it.
-func RuleKey(r Rule) string { return r.FromPkg + " -> " + r.ToPkg }
+func RuleKey(r Rule) string {
+	from, to := r.FromPkg, r.ToPkg
+	if len(r.FromGlobs) > 0 {
+		from = strings.Join(r.FromGlobs, ",")
+	}
+	if len(r.ToGlobs) > 0 {
+		to = strings.Join(r.ToGlobs, ",")
+	}
+	return from + " -> " + to
+}
 
 // RuleCount is one deny rule's violation count over an edge set.
 type RuleCount struct {

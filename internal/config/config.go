@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
@@ -420,6 +421,15 @@ type Hooks struct {
 	// and the PreToolUse(Read) hook entry that serves it. Default false;
 	// the read always runs unchanged.
 	ReadOutlineHint bool
+	// TestsToRun (RO-43, H4) turns on the tests-to-run line: after an Edit,
+	// Write or MultiEdit of a Go file, one line naming at most 5 tests that
+	// reach the edited file, the `go test -run` recipe as text fathom never
+	// runs, and whether the session ran them at this tree. Default false.
+	TestsToRun bool
+	// PromptDefinitions (H10) adds one line to the prompt hook naming, for
+	// each identifier the hook already resolved, its definition file:line
+	// and kind (at most 5). Default false (ADR-076).
+	PromptDefinitions bool
 }
 
 // The [hooks] pin_check values (schema.cue #Hooks).
@@ -436,6 +446,24 @@ const (
 // name and left to the CLI verb.
 type Console struct {
 	ConserveMaxFiles int `toml:"conserve_max_files"`
+}
+
+// Risk is `[risk]` (schema.cue #Risk): the review risk thresholds the legacy
+// risk.cue carried. Zero is unset, the binary's default.
+type Risk struct {
+	BlastRadiusHighCallers int
+	ZoneInterestMediumRate float64
+}
+
+// Learning is `[learning]` (schema.cue #Learning): the learned-rule
+// thresholds the legacy learning.cue carried. Zero is unset, the binary's
+// default.
+type Learning struct {
+	PromoteCorroborations    int
+	PromoteMinSessions       int
+	PromoteWindowDays        int
+	RetireRefutes            int
+	RetireNeverTriggeredDays int
 }
 
 // Work configures the work-intelligence pages (schema.cue #Work; WI-2w,
@@ -524,6 +552,8 @@ type Config struct {
 	Surface        Surface
 	Console        Console
 	Work           Work
+	Risk           Risk
+	Learning       Learning
 	// Zones is `[zones]` (WI-1): zone name to its repo-relative path
 	// globs. A layer that sets it replaces the whole table.
 	Zones map[string][]string
@@ -601,6 +631,12 @@ type Loaded struct {
 	// ADR-073): Field is "decide.sites[<site>]", in layer order (user,
 	// then project) and list order.
 	DroppedSessionSites []IgnoredKeySource
+
+	// ShadowedLegacy lists each legacy file (risk.cue, learning.cue) that
+	// sits beside the project config.toml while that file carries the
+	// section replacing it ([risk], [learning]). The section wins; the
+	// file is still on disk, never deleted, and doctor names it. Sorted.
+	ShadowedLegacy []string
 }
 
 // IgnoredKeySource names one user-only field a repository's config set
@@ -769,6 +805,7 @@ func Load(userPath, projectPath string) (Loaded, error) {
 			out.IgnoredKeySources = dropRepoKeySources(raw, projectPath)
 			out.DroppedSessionSites = append(out.DroppedSessionSites, dropSessionSites(raw, projectPath)...)
 			mergeLayer(&out.Config, out.Provenance, raw, SourceProject, projectPath)
+			out.ShadowedLegacy = shadowedLegacyFiles(raw, projectPath)
 		}
 	}
 
@@ -887,4 +924,27 @@ func sameFile(a, b string) bool {
 		return false
 	}
 	return os.SameFile(fa, fb)
+}
+
+// legacySections pairs each config.toml section with the legacy project file
+// it replaced.
+var legacySections = []struct{ section, file string }{
+	{"learning", string(projectdir.Learning)},
+	{"risk", string(projectdir.Risk)},
+}
+
+// shadowedLegacyFiles returns the legacy files beside projectPath whose
+// replacing section raw sets, sorted.
+func shadowedLegacyFiles(raw map[string]any, projectPath string) []string {
+	var out []string
+	for _, ls := range legacySections {
+		if _, ok := raw[ls.section].(map[string]any); !ok {
+			continue
+		}
+		p := filepath.Join(filepath.Dir(projectPath), ls.file)
+		if _, err := os.Stat(p); err == nil {
+			out = append(out, p)
+		}
+	}
+	return out
 }

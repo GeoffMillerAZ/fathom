@@ -357,14 +357,20 @@ package config
 // check and its SubagentStop hook entry; gate_preflight (RO-40) turns on
 // the advisory line before a Bash `git commit` or `git push`;
 // read_outline_hint (H8) turns on the outline line before a whole Read of a
-// long source file and its PreToolUse(Read) hook entry. Unset means off for
-// all three.
+// long source file and its PreToolUse(Read) hook entry; tests_to_run (RO-43,
+// H4) turns on the line after an edit of a Go file naming the tests that
+// reach it and their go test recipe. Unset means off for all four.
+// long source file and its PreToolUse(Read) hook entry; prompt_definitions
+// (H10) adds one line to the prompt hook naming each identifier it resolved
+// with its definition file:line. Unset means off for all four.
 #Hooks: {
-	test_run?:          bool
-	pin_check?:         "off" | "record" | "feedback"
-	claim_check?:       bool
-	gate_preflight?:    bool
-	read_outline_hint?: bool
+	test_run?:           bool
+	pin_check?:          "off" | "record" | "feedback"
+	claim_check?:        bool
+	gate_preflight?:     bool
+	read_outline_hint?:  bool
+	tests_to_run?:       bool
+	prompt_definitions?: bool
 }
 
 // #Readouts configures the readout hook's modes (RO-15, ADR-071, docs/
@@ -544,6 +550,8 @@ package config
 	readouts?:  #Readouts
 	console?:   #Console
 	work?:      #Work
+	risk?:      #Risk
+	learning?:  #Learning
 
 	// zones (WI-1, docs/design/work-intelligence.md §2) names coarser
 	// work-intelligence zones by repo-relative path globs (internal/
@@ -551,6 +559,26 @@ package config
 	// Unset, a zone is a Go package's directory or, for other languages,
 	// the deepest directory holding indexed symbols.
 	zones?: [string]: [...string] & [_, ...]
+}
+
+// #Risk is `[risk]`: the review risk thresholds `.fathom/risk.cue` carried
+// (schema/risk). Every field is optional; unset keeps the binary's default.
+// A repository's [risk] section wins over a risk.cue beside it, which doctor
+// names.
+#Risk: {
+	blast_radius_high_callers?: int & >0
+	zone_interest_medium_rate?: number & >0
+}
+
+// #Learning is `[learning]`: the learned-rule thresholds
+// `.fathom/learning.cue` carried (schema/learning). Every field is optional;
+// unset keeps the binary's default.
+#Learning: {
+	promote_corroborations?:      int & >0
+	promote_min_sessions?:        int & >0
+	promote_window_days?:         int & >0
+	retire_refutes?:              int & >0
+	retire_never_triggered_days?: int & >0
 }
 
 // #Work configures the work-intelligence pages (WI-2w, docs/design/

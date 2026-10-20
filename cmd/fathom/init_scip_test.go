@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/geoffmilleraz/fathom/internal/statedir"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -95,12 +96,12 @@ func TestInitRunsSCIPWhenInstalled(t *testing.T) {
 		t.Fatalf("runs = %+v, want one per producer", *runs)
 	}
 	ts := (*runs)[0]
-	wantTS := filepath.Join(root, ".fathom", "scip", "scip-typescript.scip")
+	wantTS := filepath.Join(statedir.Resolve(root), "scip", "scip-typescript.scip")
 	if ts.bin != "scip-typescript" || ts.dir != root || strings.Join(ts.args, " ") != "index --output "+wantTS {
 		t.Errorf("scip-typescript ran as %s %v in %s, want `index --output %s` in the repo root", ts.bin, ts.args, ts.dir, wantTS)
 	}
 	py := (*runs)[1]
-	wantPy := filepath.Join(root, ".fathom", "scip", "scip-python.scip")
+	wantPy := filepath.Join(statedir.Resolve(root), "scip", "scip-python.scip")
 	if py.bin != "scip-python" || strings.Join(py.args, " ") != "index . --project-name widgets --output "+wantPy {
 		t.Errorf("scip-python ran as %s %v, want `index . --project-name widgets --output %s`", py.bin, py.args, wantPy)
 	}
@@ -110,8 +111,8 @@ func TestInitRunsSCIPWhenInstalled(t *testing.T) {
 		}
 	}
 	// The index directory ignores itself: a binary index is never committed.
-	if b, err := os.ReadFile(filepath.Join(root, ".fathom", "scip", ".gitignore")); err != nil || !strings.Contains(string(b), "*") {
-		t.Errorf(".fathom/scip/.gitignore = %q, %v; want it to ignore everything in the directory", b, err)
+	if b, err := os.ReadFile(filepath.Join(statedir.Resolve(root), "scip", ".gitignore")); err != nil || !strings.Contains(string(b), "*") {
+		t.Errorf("scip/.gitignore = %q, %v; want it to ignore everything in the directory", b, err)
 	}
 	if !strings.Contains(out.String(), "ok scip-typescript") || !strings.Contains(out.String(), "ok scip-python") {
 		t.Errorf("init output does not say what ran:\n%s", out.String())
@@ -179,7 +180,7 @@ func TestInitSCIPFailureIsAWarningNotAnAbortAndLeavesNoPartialIndex(t *testing.T
 	if !strings.Contains(out.String(), "warning: scip-typescript failed") || !strings.Contains(out.String(), "cannot find module") {
 		t.Errorf("the failure is not named:\n%s", out.String())
 	}
-	if _, err := os.Stat(filepath.Join(root, ".fathom", "scip", "scip-typescript.scip")); err == nil {
+	if _, err := os.Stat(filepath.Join(statedir.Resolve(root), "scip", "scip-typescript.scip")); err == nil {
 		t.Error("a failed producer's half-written index was left where the daemon would import it")
 	}
 }

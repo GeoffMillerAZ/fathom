@@ -240,7 +240,7 @@ func computeViolations(ctx context.Context, repoRoot, sha string, rules []guards
 // git history), plus the rule values actually passed to EvaluateLayerRule.
 func splitRules(rules []guardspec.LayerRule) (ids, skipped []string, evalRules []guardspec.LayerRule) {
 	for _, r := range rules {
-		if r.Kind == guardspec.CrossServiceDirection {
+		if r.Kind == guardspec.CrossServiceDirection || r.Kind == guardspec.CallDirection {
 			skipped = append(skipped, r.ID)
 			continue
 		}

@@ -62,7 +62,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
-	"github.com/geoffmilleraz/fathom/internal/projectdir"
+	"github.com/geoffmilleraz/fathom/internal/statedir"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
@@ -123,16 +123,7 @@ func hasScipIndex(repoPath string) bool {
 	if _, err := os.Stat(filepath.Join(repoPath, "index.scip")); err == nil {
 		return true
 	}
-	entries, err := os.ReadDir(projectdir.SCIP.Path(repoPath))
-	if err != nil {
-		return false
-	}
-	for _, e := range entries {
-		if !e.IsDir() && strings.HasSuffix(e.Name(), ".scip") {
-			return true
-		}
-	}
-	return false
+	return len(statedir.SCIPIndexes(repoPath)) > 0
 }
 
 // ResolveFileEdges is the per-file resolver described in the package doc.

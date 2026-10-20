@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/wiring"
 )
 
 // TestReconcileSkills pins FR-3 (docs/plans/exploration-ledger.md): a repo
@@ -96,7 +98,7 @@ func TestReconcileSkills(t *testing.T) {
 	}
 	// Before FA-23 installSkills recorded no baseline: drop the ledger it
 	// now writes to stand in for a render of that era.
-	if err := os.Remove(filepath.Join(root2, ".fathom", "owned.json")); err != nil {
+	if err := os.Remove(wiring.LedgerPath(root2)); err != nil {
 		t.Fatal(err)
 	}
 	stalePath := filepath.Join(root2, ".claude", "skills", "fathom-impact", "SKILL.md")

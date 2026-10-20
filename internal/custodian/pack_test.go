@@ -1,10 +1,13 @@
 package custodian
 
 import (
+	"errors"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 // TestPacksAreCuratedData holds every shipped pack to vision 22 §7's
@@ -151,5 +154,47 @@ func TestPackConcernLookup(t *testing.T) {
 	}
 	if _, err := PackConcern("lefthook", "nope"); err == nil {
 		t.Fatal("a missing entry must be an error")
+	}
+}
+
+// The shipped packs are the built-in tech packs (K10): each validates against
+// schema/techpack's #Pack and reads to exactly what the concerns grammar
+// alone reads from the same bytes, so `fathom config audit` cannot move.
+func TestBuiltInPacksValidateAsTechPacksByteIdentical(t *testing.T) {
+	for _, name := range KnownPacks() {
+		file := "packs/" + name + ".cue"
+		data, err := packFS.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if verr := projectdir.ValidatePack(data, file); verr != nil {
+			t.Errorf("%s is not a valid tech pack: %v", name, verr)
+		}
+		got, err := LoadPack(name)
+		if err != nil {
+			t.Fatalf("LoadPack(%s): %v", name, err)
+		}
+		doc, errs := parseDocument(data, file, ScopePack, true)
+		if len(errs) > 0 {
+			t.Fatalf("%s: legacy grammar: %v", name, errs)
+		}
+		for i := range doc.concerns {
+			doc.concerns[i].Pack = name
+		}
+		want := Pack{Name: name, Version: doc.meta.version, About: doc.meta.about, Concerns: doc.concerns}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("%s: LoadPack drifted from the concerns grammar's reading", name)
+		}
+	}
+	// A pack that is not a tech pack is refused by name, never read leniently.
+	for label, src := range map[string]string{
+		"layer_rules": "pack: {name: \"codex\", version: 1, about: \"a\"}\nlayer_rules: []\nconcerns: {}\n",
+		"orientation": "pack: {name: \"codex\", version: 1, about: \"a\"}\norientation: [{anchor: \"a\", why: \"b\"}]\nconcerns: {}\n",
+	} {
+		_, err := loadPackData("codex", "packs/codex.cue", []byte(src))
+		var le *LoadError
+		if !errors.As(err, &le) {
+			t.Errorf("%s: want *LoadError, got %v", label, err)
+		}
 	}
 }

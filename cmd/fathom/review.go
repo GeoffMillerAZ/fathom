@@ -17,7 +17,6 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
-	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
 	"github.com/geoffmilleraz/fathom/internal/receipt"
 	riskreview "github.com/geoffmilleraz/fathom/internal/review"
@@ -433,12 +432,7 @@ func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, s
 	// flag validation already refused any --format but sarif/check when
 	// receiptV is true.
 	if receiptV {
-		table := riskreview.DefaultRiskTable()
-		if corpusRoot != "" {
-			if t, terr := riskreview.LoadRiskTable(projectdir.Risk.Path(corpusRoot)); terr == nil {
-				table = t
-			}
-		}
+		table := riskreview.RiskTableFor(corpusRoot)
 		receiptOut := buildCLIRiskReceipt(in, v, table)
 		// EVX-3: the SARIF run's provenance — the indexed commit, the
 		// store's fingerprints and the service's definitions (ADR-065).

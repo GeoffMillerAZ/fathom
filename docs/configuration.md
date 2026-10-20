@@ -74,17 +74,18 @@ Project scope, `<repo>/.fathom/` and the root:
 | `trace/<standard>.cue` | Z2 | repository | yes |
 | `observations/O<n>.md`, `observations.md` (legacy single file) | Z2 | repository, written by `fathom observe` | yes |
 | `rules/archconformance.cue` (legacy, read) | Z2 | repository | yes |
-| `risk.cue`, `learning.cue` (legacy, read) | Z1 | repository | yes |
-| `owned.json` | Z3 | fathom | no |
-| `leases.jsonl` | Z3 | fathom | no |
-| `scip/*.scip` | Z3 | fathom | no |
+| `risk.cue`, `learning.cue` (legacy, read until `config.toml` carries `[risk]` or `[learning]`) | Z1 | repository | yes |
+| `owned.json`, `leases.jsonl`, `scip/*.scip` (legacy copies, read only while the state directory holds none, never written) | Z3 | fathom | no |
 | `receipts.jsonl` (legacy, receipts moved to the state directory) | Z3 | fathom | no |
 | `memories.jsonl` (retired) | Z3 | fathom | no |
 | `tenancy-allow.txt` (this repository's own lint excuses, moved to `internal/lint/tenancy/allow.txt`) | development artifact | fathom's maintainers | yes |
 
 Outside the tree, per checkout (Z3):
-`$XDG_STATE_HOME/fathom/<repo-id>/` holds receipts, session and discovery
-logs, and narrate and retro artifacts. `FATHOM_STATE_DIR` names it directly.
+`$XDG_STATE_HOME/fathom/<repo-id>/` holds receipts, `owned.json`,
+`leases.jsonl`, `scip/`, session and discovery logs, and narrate and retro
+artifacts. A copy an older fathom left under `.fathom/` is read until the
+state directory holds one, then ignored. `fathom doctor` names the old copy
+(`legacy_files`) and fathom never deletes it. `FATHOM_STATE_DIR` names it directly.
 Not committed, owned by fathom.
 
 User scope, `~/.fathom/` (Z4, `FATHOM_HOME` relocates all of it). Never
@@ -189,8 +190,15 @@ an array of tables, and `tenancy.**` for every key under `[tenancy]`.
 | `hooks.claim_check` | behaviour | the claim check runs nothing: it reads the final message and the hook log's test-run rows (claimcheck.go) |
 | `hooks.gate_preflight` | behaviour | the gate preflight runs nothing: it lexes the command, reads git and the hook log, and asks the claim-moment verify path (gatepreflight.go) |
 | `hooks.pin_check` | behaviour | the commit pin line's output mode; the check itself is on by default |
+| `hooks.prompt_definitions` | behaviour | the definitions line runs nothing: it names find_symbol answers the prompt hook already fetched (prompthook.go) |
 | `hooks.read_outline_hint` | behaviour | the Read outline hint runs nothing: it reads the file the Read names and runs fathom's own extractors over it in process (readouthint.go) |
 | `hooks.test_run` | behaviour | the test-run hook runs nothing: it reads the output of a command the harness ran (TR-X2, testrunhook.go) |
+| `hooks.tests_to_run` | behaviour | the tests-to-run line runs nothing: it asks the daemon which tests reach the edited file and prints the go test recipe as text (edithook_teststorun.go) |
+| `learning.promote_corroborations` | behaviour | a threshold (the learned-rule promotion bar) |
+| `learning.promote_min_sessions` | behaviour | a threshold (the learned-rule promotion bar) |
+| `learning.promote_window_days` | behaviour | a threshold (the learned-rule promotion window) |
+| `learning.retire_never_triggered_days` | behaviour | a threshold (the learned-rule retirement age) |
+| `learning.retire_refutes` | behaviour | a threshold (the learned-rule retirement bar) |
 | `profiles.*.api_key_cmd` | user-only | names a credential or the command that prints one |
 | `profiles.*.api_key_env` | user-only | names a credential or the command that prints one |
 | `profiles.*.api_version` | behaviour | an Azure API version |
@@ -205,6 +213,8 @@ an array of tables, and `tenancy.**` for every key under `[tenancy]`.
 | `readouts.roots` | user-only | the user's own switch for rewriting what a tool result shows the agent; a cloned repository must not turn it on: the directory prefixes the modes apply under |
 | `readouts.rules.*.mode` | user-only | the user's own switch for rewriting what a tool result shows the agent; a cloned repository must not turn it on: one rule's mode |
 | `receipts.repository_uri` | behaviour | a URI SARIF's versionControlProvenance names; fathom never derives one from a git remote (ADR-011) |
+| `risk.blast_radius_high_callers` | behaviour | a threshold (the review risk table) |
+| `risk.zone_interest_medium_rate` | behaviour | a threshold (the review risk table) |
 | `surface.pattern[].glob` | behaviour | a glob over the repository's files |
 | `surface.pattern[].kind` | behaviour | a label |
 | `surface.pattern[].regex` | behaviour | an RE2 pattern over the repository's files |
@@ -1369,6 +1379,79 @@ symbol count, the language, the join's and the call's ms, whether the line
 was emitted and `missed` on a deadline miss, plus the `file` and session
 keys the edit hook's rows carry; never file text.
 
+## The tests-to-run line: `[hooks] tests_to_run`
+
+The tests-to-run line (`docs/design/readouts.md` section 20, seam H4) rides
+the `PostToolUse(Edit|Write|MultiEdit)` edit hook. It is **off by
+default**:
+
+```toml
+# .fathom/config.toml (or ~/.fathom/config.toml)
+[hooks]
+tests_to_run = true   # default false
+```
+
+Once on, an edit of a Go file adds one line after the obligations payload:
+
+```text
+tests to run: TestFloor, TestRound, TestA and 2 more; recipe: go test -run '^(TestFloor|TestRound|TestA)$' ./cart ./money; at this tree: not run
+```
+
+- **The tests** are the ones that reach the edited file, from the daemon's
+  `blast_radius` (the same reach the pre-edit `N callers, M tests reach
+  this` trailer counts). The reach is file-scoped: every symbol in the file,
+  not only the lines the edit changed. At most 5 are named, the edited
+  file's own package first, then `and N more`; a benchmark is left out
+  (`-run` does not run one).
+- **The recipe** is the runner's own filter as text. fathom never runs it.
+- **`at this tree`** says whether a test-run row of this session (the
+  test-run hook's rows, so it needs `[hooks] test_run`) ran the named tests
+  at the current HEAD and working tree: `ran, passed`, `ran, not all
+  passed`, `2 of 5 ran` or `not run`. A row's package patterns are read
+  against the repository root. When it cannot tell, it says `not checked`
+  and why: `test_run off`, `log`, `deadline`, `scope` or `window` (the log
+  tail does not reach the session's last edit).
+
+No reaching test, or a file that is not Go, says nothing. The line has its
+own 300 ms deadline inside the edit hook's; a daemon that does not answer
+in time (a cold one building its call graph) reads `tests: not computed
+(deadline)`, an unreachable one `tests: not computed (daemon)` and a file
+the index does not hold `tests: not computed (not indexed)`, never an empty
+answer. The line is advisory and drops first when the payload would pass the
+320-token ceiling (I35). Each computed call logs one row (channel
+`tests-to-run`): the reaching and named counts, the named tests, the tree
+verdict, `missed`, `emitted` and the ms; never file text.
+
+The readout hook's rich mode (`[readouts] mode = "rich"`) names the same
+tests after a failing `go build` or `go vet`, on its own line under the
+compile line, with no tree clause. It asks the daemon under its own deadline
+inside the hook's 1 s ceiling, and also places an identifier root that the
+working tree did not change at the index's definition; a join that misses
+ends the compile line with `index: not consulted (deadline)`.
+
+
+## The prompt definitions line: `[hooks] prompt_definitions`
+
+The prompt hook (`UserPromptSubmit`) serves the rules governing what a
+prompt names (ADR-036). With `prompt_definitions` on it adds one more line
+(ADR-076). It is **off by default**:
+
+```toml
+# .fathom/config.toml (or ~/.fathom/config.toml)
+[hooks]
+prompt_definitions = true   # default false
+```
+
+The line names, for each identifier the hook already resolved through
+`find_symbol`, its definition `file:line` and kind, at most 5 names, as
+`defined: Name kind path:line`. A name with several definitions reads
+`Name (N definitions)` and no one is chosen. It rides the hook's existing
+8 s deadline and obligations cap and makes no extra daemon call and no
+route call. When no identifier resolves, or the deadline has passed, the
+line is absent or says `definitions not computed (deadline)` and never
+reads as "nothing found". Any error leaves the hook's other output
+unchanged.
+
 ## The console: `[console]`
 
 The Observatory console bounds its own background work
@@ -1388,6 +1471,28 @@ conserve_max_files = 500   # default; an integer ≥ 1
   files, over [console] conserve_max_files = …") with the verb that still
   computes it — `fathom conserve --since <ref> --service <svc>` — never a
   partial report. Read by `serve-http` at start (restart to apply).
+
+## Review risk and learned-rule thresholds: `[risk]`, `[learning]`
+
+These two tables carry the numbers `.fathom/risk.cue` and `.fathom/learning.cue`
+carried. Every key is optional; unset keeps the binary's default. A repository
+value wins over the user's default (`fathom config --explain` names the layer
+that set each key). Once a repository's `config.toml` has a section, the legacy
+file beside it is ignored and `fathom doctor` (`legacy_files`) names it. Until
+then a legacy file is read whole.
+
+```toml
+[risk]
+blast_radius_high_callers = 50    # integer > 0
+zone_interest_medium_rate = 2.0   # number > 0
+
+[learning]
+promote_corroborations = 3        # integers > 0
+promote_min_sessions = 2
+promote_window_days = 30
+retire_refutes = 3
+retire_never_triggered_days = 180
+```
 
 ## Readouts: `[readouts]` (user scope only)
 

@@ -182,7 +182,7 @@ func cmdReadoutHook(args []string, stdin io.Reader, stdout, stderr io.Writer) (c
 		// ceiling: past the ceiling nothing is added.
 		readoutStep("rich")
 		ctx, cancel := context.WithTimeout(context.Background(), readoutJoinBudget)
-		rich = readoutRichLines(ctx, in, dir, &cmd)
+		rich = readoutRichLines(ctx, in, dir, &cmd, start)
 		cancel()
 		if len(rich.lines) > 0 && readoutHookClock().Sub(start) > readoutHookCeiling {
 			rich.lines, rich.kinds, rich.missed = nil, nil, append(rich.missed, "ceiling")

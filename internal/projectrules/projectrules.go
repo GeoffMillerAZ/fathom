@@ -28,11 +28,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/cuecontext"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/archconformance"
+	"github.com/geoffmilleraz/fathom/internal/guardspec"
 	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
@@ -105,6 +107,62 @@ type Result struct {
 // returns a non-nil error naming corpusRoot's rule-pack path; Result is the
 // zero value in every error case and must not be used.
 func Load(corpusRoot string) (Result, error) {
+	res, err := loadArchconformance(corpusRoot)
+	if err != nil {
+		return Result{}, err
+	}
+	// FD-30: the call_direction layer_rules of .fathom/guard.cue join the
+	// legacy pack, so review and arch_conformance read either form.
+	guard := filepath.Join(corpusRoot, projectdir.Dir, string(projectdir.Guard))
+	if _, statErr := os.Stat(guard); statErr != nil {
+		return res, nil
+	}
+	set, err := guardspec.LoadLayerRules(guard)
+	if err != nil {
+		return Result{}, fmt.Errorf("projectrules: %w", err)
+	}
+	if layer := guardspec.CallDirectionRules(set); len(layer) > 0 {
+		res.Rules = append(res.Rules, layer...)
+		res.Found = true
+		res.Source = SourceProject
+	}
+	return res, nil
+}
+
+// EquivalentLayerRules renders rules as the `layer_rules` entries that say
+// the same thing as a rules/archconformance.cue pack: one call_direction
+// entry per (to, allow), listing every from, in first-seen order. Doctor
+// prints it once so a pack can be moved by copying.
+func EquivalentLayerRules(rules []archconformance.Rule) []string {
+	type key struct {
+		to    string
+		allow bool
+	}
+	var order []key
+	froms := map[key][]string{}
+	for _, r := range rules {
+		k := key{r.ToPkg, r.Allow}
+		if _, ok := froms[k]; !ok {
+			order = append(order, k)
+		}
+		froms[k] = append(froms[k], r.FromPkg)
+	}
+	out := make([]string, 0, len(order))
+	for _, k := range order {
+		out = append(out, fmt.Sprintf("{kind: %q, from: %s, to: [%q], allow: %t}", "call_direction", quoteList(froms[k]), k.to, k.allow))
+	}
+	return out
+}
+
+func quoteList(items []string) string {
+	q := make([]string, len(items))
+	for i, it := range items {
+		q[i] = fmt.Sprintf("%q", it)
+	}
+	return "[" + strings.Join(q, ", ") + "]"
+}
+
+func loadArchconformance(corpusRoot string) (Result, error) {
 	if !filepath.IsAbs(corpusRoot) {
 		return Result{}, fmt.Errorf("%w: %q (re-ingest the service so ServiceMeta records an absolute corpus root)", ErrRelativeCorpusRoot, corpusRoot)
 	}

@@ -41,7 +41,7 @@ package guard
 	id: string & =~"^[a-z][a-z0-9-]*$"
 
 	// kind selects which structural check this rule performs.
-	kind: "import_direction" | "no_cycles" | "boundary" | "cross_service_direction"
+	kind: "import_direction" | "no_cycles" | "boundary" | "cross_service_direction" | "call_direction"
 
 	// sentence is the human-readable governing rule, served verbatim.
 	sentence: string
@@ -74,7 +74,11 @@ package guard
 
 	// boundary: only a package matching an `allow` glob may import a
 	// package matching a `guarded` glob.
-	allow?: [...string] & [_, ...]
+	//
+	// call_direction: `from`/`to` are package-name globs over call edges
+	// and `allow` is a bool (false forbids, true permits and overrides a
+	// forbidding rule).
+	allow?: ([...string] & [_, ...]) | bool
 	guarded?: [...string] & [_, ...]
 
 	// cross_service_direction: from_service must never depend on

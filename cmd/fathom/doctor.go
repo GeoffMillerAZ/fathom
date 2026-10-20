@@ -297,6 +297,7 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		func() doctorCheck { return checkBindingFile(root) },
 		func() doctorCheck { return checkGuardFile(root) },
 		func() doctorCheck { return checkProjectKeys(root) }, // every .fathom/*.cue key: file, status, entries (doctor_project.go)
+		func() doctorCheck { return checkLegacyFiles(root) }, // old copies of moved or shadowed files (doctor_legacy.go)
 		func() doctorCheck { return checkBindingModulesMounted(hc, baseURL, root, daemonUp) },
 		func() doctorCheck { return checkBindingModuleReadiness(hc, baseURL, root, daemonUp) },
 		func() doctorCheck { return checkGuardDeadScopes(hc, baseURL, root, explicitSvc, daemonUp) },
