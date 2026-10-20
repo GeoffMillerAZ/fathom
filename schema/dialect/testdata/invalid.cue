@@ -43,7 +43,7 @@ package dialect
 // 16n. module_symbol off the file's own name: package: {strategy: "none"}, module_symbol: "module"
 //      (16m, 16n asserted by internal/langbench/dialectschema_filepackage_test.go, TestDialectPackageFileSchema;
 //      "file", the base name with its extension, validates beside "dir", LB-F519)
-// 16j. calls.owner "module" with no module_symbol: calls: {owner: "module"}
+// 16j. calls.owner "module" or "scope" with no module_symbol: calls: {owner: "module"}, calls: {owner: "scope"}
 // 16k. calls.owner off the list:     calls: {owner: "file"}, module_symbol: "module"
 // 16l. calls.split off the list:     calls: {split: "comma"}
 //      (16j..16l asserted by internal/langbench/dialectschema_calls_test.go, TestDialectCallsOwnerSchema;

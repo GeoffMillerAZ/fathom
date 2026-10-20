@@ -114,7 +114,11 @@ type DialectCalls struct {
 	// every call site the tags query captures is the file's module symbol's,
 	// whatever definition encloses it. A markup document's ID reference is
 	// resolved against the document, never an ancestor element, so the
-	// document is what makes it. It needs module_symbol (checkCalls).
+	// document is what makes it. Owner "scope" (LB-Q-scss-rest, W5): a call
+	// site is the smallest enclosing callable's, else the module symbol's, a
+	// definition that is no callable (a variable, a selector) owning none, so
+	// a reference inside `$z: f($a)` or `.x-#{$k}` is the enclosing @mixin's
+	// or the file's. Both need module_symbol (checkCalls).
 	Owner string `json:"owner,omitempty"`
 	// Split "whitespace" (wave lf5): a call site's text is split on ASCII
 	// whitespace into one callee per token, an attribute that holds a set
@@ -123,7 +127,7 @@ type DialectCalls struct {
 }
 
 // checkCalls holds a manifest's calls block to the schema's rules: owner is
-// "module" or absent, and "module" needs the module symbol it names; split
+// "module", "scope" or absent, and either needs the module symbol it names; split
 // is "whitespace" or absent.
 func checkCalls(d Dialect) error {
 	if d.Calls == nil {
@@ -131,12 +135,12 @@ func checkCalls(d Dialect) error {
 	}
 	switch d.Calls.Owner {
 	case "":
-	case "module":
+	case "module", "scope":
 		if d.ModuleSymbol == "" {
-			return fmt.Errorf("calls.owner \"module\" needs module_symbol: the file's module symbol owns the calls")
+			return fmt.Errorf("calls.owner %q needs module_symbol: the file's module symbol owns the calls", d.Calls.Owner)
 		}
 	default:
-		return fmt.Errorf("calls.owner %q is not \"module\"", d.Calls.Owner)
+		return fmt.Errorf("calls.owner %q is not \"module\" or \"scope\"", d.Calls.Owner)
 	}
 	if d.Calls.Split != "" && d.Calls.Split != "whitespace" {
 		return fmt.Errorf("calls.split %q is not \"whitespace\"", d.Calls.Split)

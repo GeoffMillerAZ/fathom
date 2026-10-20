@@ -59,7 +59,7 @@ func mintTSModule(defs []*tsDef, calls []tsCallSite, attaches []tsCallAttach, sr
 		defLine:  1,
 		parent:   -1,
 	}
-	owned := tsOwnedSpans(defs, attaches)
+	owned := tsOwnedSpans(defs, attaches, rules.callsToScope)
 	if rules.callsToModule {
 		owned = tsSpans{} // calls.owner "module" (wave lf5): no definition owns a call, the document does
 	}
@@ -86,11 +86,18 @@ type tsSpans struct {
 // module: every definition's node, and every call attachment's from-range
 // whose to-range is a definition's node (attachTSCalls' rule for a call no
 // callable encloses).
-func tsOwnedSpans(defs []*tsDef, attaches []tsCallAttach) tsSpans {
+//
+// callableOnly (calls.owner "scope", LB-Q-scss-rest) keeps only the callables'
+// nodes: a variable or a selector owns no call, so a call inside one is the
+// enclosing callable's (attachTSCalls) or the module's.
+func tsOwnedSpans(defs []*tsDef, attaches []tsCallAttach, callableOnly bool) tsSpans {
 	type span struct{ start, end uint32 }
 	at := make(map[span]bool, len(defs))
 	spans := make([]span, 0, len(defs)+len(attaches))
 	for _, d := range defs {
+		if callableOnly && !d.callable {
+			continue
+		}
 		at[span{d.start, d.end}] = true
 		spans = append(spans, span{d.start, d.end})
 	}

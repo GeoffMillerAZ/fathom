@@ -153,11 +153,13 @@ import "struct"
 	// owner "module" (wave lf5, design §1.8 W1): every call site is the
 	// file's module symbol's, whatever definition encloses it (a markup
 	// document's ID reference resolves against the document), so it needs
-	// module_symbol. split "whitespace": a call site's text is split on ASCII
+	// module_symbol. owner "scope" (LB-Q-scss-rest, W5): a call site is the
+	// smallest enclosing callable's, else the module symbol's, so it needs
+	// module_symbol too. split "whitespace": a call site's text is split on ASCII
 	// whitespace, one callee per token (an attribute holding a set of IDs).
 	calls?: {
 		qualify?: bool
-		owner?:   "module"
+		owner?:   "module" | "scope"
 		split?:   "whitespace"
 	}
 	if calls != _|_ if calls.owner != _|_ {

@@ -123,3 +123,35 @@
 
 (call_expression
   name: (function_name) @name) @reference.call
+
+; W5 (design 1.8, LB-Q-scss-rest): the name references of Sass's module system.
+; A `$name` read is a variable_name in a value position. Every parent that
+; writes one as an operand or argument is listed, never a declaring position
+; (a variable_declaration's or parameter's name, a loop variable, a keyword
+; argument's name), so a declaration is no read of itself. A repeated `value:`
+; field matches its first child only, so a parent whose operands are several
+; children is matched by its children, not its field. `ns.$name` is a
+; member_expression; `@include ns.m` and `ns.f()` carry a `module:` and the
+; callee is the member's name, the namespace resolving at the oracle's walk.
+(interpolation (variable_name) @name @reference.call)
+(property_declaration (variable_name) @name @reference.call)
+(variable_declaration name: (variable_name) (variable_name) @name @reference.call)
+(parameter value: (variable_name) @name @reference.call)
+(arguments (variable_name) @name @reference.call)
+(argument (variable_name) @name @reference.call)
+(named_argument name: (variable_name) (variable_name) @name @reference.call)
+(map_entry (variable_name) @name @reference.call)
+(list (variable_name) @name @reference.call)
+(conditional (variable_name) @name @reference.call)
+(value_statement (variable_name) @name @reference.call)
+(if_statement (variable_name) @name @reference.call)
+(else_clause (variable_name) @name @reference.call)
+(feature_query (variable_name) @name @reference.call)
+(query_group (variable_name) @name @reference.call)
+(member_expression name: (variable_name) @name @reference.call)
+(each_statement "in" . (variable_name) @name @reference.call)
+(for_statement . (variable_name) (variable_name) @name @reference.call)
+
+; @extend %p names the placeholder.
+(extend_statement
+  (selectors (placeholder_selector) @name @reference.call))

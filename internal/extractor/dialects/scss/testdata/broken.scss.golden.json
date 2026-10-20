@@ -31,6 +31,9 @@
       "line": 10,
       "end_line": 12,
       "signature": "@mixin ok-after($x)",
+      "calls": [
+        "x"
+      ],
       "tier": "verified"
     }
   ]

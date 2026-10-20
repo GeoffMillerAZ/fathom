@@ -24,6 +24,10 @@
 // language's own implementation); end lines are not written (a rule's end is not on sass-parser's nodes), so
 // range_agreement is not measured.
 //
+//   calls        design 1.8 W5 (w5_refs.cjs): the name references of the module graph, walked from the same trees
+//                (@include, user function calls, $variable reads, @extend %placeholder), with call_exclusions for the
+//                names a file's reads never resolve; graded as L2's call pairs.
+//
 // Bench-only, MIT, installed into scratch:
 //     npm install --prefix <scratch>/npm sass-parser@0.4.57 sass@1.105.1
 //     NODE_PATH=<scratch>/npm/node_modules node calibration/oracles/dart-sass/sass_oracle.cjs <subject> <files.txt> \
@@ -47,6 +51,8 @@ const stats = { files: files.length, parse_failures: [], compiled_ok: 0, compile
   unattested_file: 0, no_loaded_target: 0, ambiguous: 0, builtin: 0, plain_css: 0, definitions: {} };
 const statements = []; // {path, line, url, kind}
 const parsed = [];
+const parsedTrees = new Map(); // rel -> {src, tree}, W5's walk
+const w5 = require('./w5_refs.cjs');
 
 // asWritten is a member's name as the source writes it at the node's own offset: Dart Sass's parser hands it
 // back normalized (`_` read as `-`, which Sass treats as one identifier), never as written.
@@ -88,6 +94,7 @@ for (const rel of files) {
     continue;
   }
   parsed.push(rel);
+  parsedTrees.set(rel, { src, tree });
   tree.walk((n) => {
     switch (n.sassType) {
       case 'mixin-rule': def(rel, 'mixin', asWritten(src, n, /^@mixin\s+([\w-]+)/, n.mixinName), n); break;
@@ -174,6 +181,17 @@ for (const st of statements) {
   out.imports.push(entry);
 }
 
+// W5 (design 1.8): the name references of the module graph, graded as L2's call pairs.
+{
+  const exists = new Set(files);
+  const r = w5.analyze(parsedTrees, exists, candidates);
+  out.calls = r.calls;
+  out.call_exclusions = r.call_exclusions;
+  stats.w5 = r.stats;
+  out.disclose = [
+    'W5 (design 1.8): L2 is name references over the @use/@forward/@import closure, walked from sass-parser\'s tree (tier A for the tree, the binding the harness\'s own walk): ' + r.stats.reads + ' references read, ' + r.stats.resolved + ' resolve to a definition in the referring file\'s closure, ' + r.stats.builtin + ' name a sass: built-in module member, ' + r.stats.package + ' name a package outside the subject, ' + r.stats.param + ' read a parameter (no definition), ' + r.stats.unresolved + ' name nothing the closure defines; every name no read of a file resolves leaves both sides, counted',
+  ];
+}
 out.version = 'sass ' + sass.info.split('\n')[0].split('\t')[1] + ', sass-parser ' + pkgVersion('sass-parser');
 const byPath = (a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 out.definitions.sort((a, b) => byPath(a, b) || a.line - b.line || (a.kind + a.name < b.kind + b.name ? -1 : 1));

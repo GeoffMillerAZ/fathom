@@ -1,0 +1,224 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "SCSSModule",
+      "package": "refs",
+      "line": 1,
+      "end_line": 75,
+      "calls": [
+        "bp",
+        "calc",
+        "card",
+        "cond",
+        "div",
+        "first",
+        "gap",
+        "i",
+        "last",
+        "list",
+        "name",
+        "other",
+        "panel",
+        "prop",
+        "rotate",
+        "scale",
+        "size",
+        "turn",
+        "wide",
+        "width"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "gap",
+      "kind": "SCSSVariable",
+      "package": "refs",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "wide",
+      "kind": "SCSSVariable",
+      "package": "refs",
+      "line": 7,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "list",
+      "kind": "SCSSVariable",
+      "package": "refs",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "pick",
+      "kind": "SCSSVariable",
+      "package": "refs",
+      "line": 9,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "panel",
+      "kind": "SCSSPlaceholder",
+      "package": "refs",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "card",
+      "kind": "SCSSMixin",
+      "package": "refs",
+      "line": 15,
+      "end_line": 24,
+      "signature": "@mixin card($pad, $theme: $default-theme)",
+      "calls": [
+        "default-theme",
+        "gap",
+        "inner",
+        "pad",
+        "panel",
+        "shadow",
+        "theme"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "inner",
+      "kind": "SCSSVariable",
+      "package": "refs",
+      "line": 16,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
+      "name": "scale",
+      "kind": "SCSSFunction",
+      "package": "refs",
+      "line": 26,
+      "end_line": 28,
+      "signature": "@function scale($x)",
+      "calls": [
+        "factor",
+        "fn",
+        "x"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "box-#{$gap}",
+      "kind": "SCSSClass",
+      "package": "refs",
+      "line": 30,
+      "end_line": 30,
+      "tier": "verified"
+    },
+    {
+      "name": "name",
+      "kind": "SCSSVariable",
+      "package": "refs",
+      "line": 40,
+      "end_line": 40,
+      "tier": "verified"
+    },
+    {
+      "name": "width",
+      "kind": "SCSSVariable",
+      "package": "refs",
+      "line": 40,
+      "end_line": 40,
+      "tier": "verified"
+    },
+    {
+      "name": "col-#{$name}",
+      "kind": "SCSSClass",
+      "package": "refs",
+      "line": 41,
+      "end_line": 41,
+      "tier": "verified"
+    },
+    {
+      "name": "i",
+      "kind": "SCSSVariable",
+      "package": "refs",
+      "line": 46,
+      "end_line": 46,
+      "tier": "verified"
+    },
+    {
+      "name": "m-#{$i}",
+      "kind": "SCSSClass",
+      "package": "refs",
+      "line": 47,
+      "end_line": 47,
+      "tier": "verified"
+    },
+    {
+      "name": "one",
+      "kind": "SCSSClass",
+      "package": "refs",
+      "line": 53,
+      "end_line": 53,
+      "tier": "verified"
+    },
+    {
+      "name": "local",
+      "kind": "SCSSVariable",
+      "package": "refs",
+      "line": 57,
+      "end_line": 57,
+      "tier": "verified"
+    },
+    {
+      "name": "m",
+      "kind": "SCSSClass",
+      "package": "refs",
+      "line": 61,
+      "end_line": 61,
+      "tier": "verified"
+    },
+    {
+      "name": "spin-#{$gap}",
+      "kind": "SCSSKeyframes",
+      "package": "refs",
+      "line": 66,
+      "end_line": 70,
+      "tier": "verified"
+    },
+    {
+      "name": "--gap",
+      "kind": "SCSSCustomProperty",
+      "package": "refs",
+      "line": 73,
+      "end_line": 73,
+      "tier": "verified"
+    },
+    {
+      "name": "--x",
+      "kind": "SCSSCustomProperty",
+      "package": "refs",
+      "line": 74,
+      "end_line": 74,
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "t",
+      "module": "../core/tokens",
+      "kind": "whole",
+      "line": 3
+    },
+    {
+      "local": "cfg",
+      "module": "cfg",
+      "kind": "whole",
+      "line": 4
+    }
+  ]
+}

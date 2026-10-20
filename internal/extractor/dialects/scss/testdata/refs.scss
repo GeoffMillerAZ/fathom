@@ -1,0 +1,75 @@
+// Every name reference shape the scss dialect reads (LB-Q-scss-rest, W5).
+@use "sass:math";
+@use "../core/tokens" as t;
+@use "cfg" as *;
+
+$gap: t.$size !default;
+$wide: math.div($gap, 2) + scale($gap);
+$list: (a: $gap, b: $wide);
+$pick: if($cond, $gap, 2);
+
+%panel {
+  margin: $gap;
+}
+
+@mixin card($pad, $theme: $default-theme) {
+  $inner: $pad + $gap;
+  padding: $inner;
+  @include t.shadow($inner) {
+    color: $theme;
+  }
+  &-#{$theme} {
+    @extend %panel;
+  }
+}
+
+@function scale($x) {
+  @return t.fn($x) * $factor;
+}
+
+.box-#{$gap} {
+  @extend %panel;
+  width: calc(#{$wide} + 1px);
+  #{$prop}: $gap;
+  @include card(2px);
+  &:hover {
+    margin: scale(1) $gap;
+  }
+}
+
+@each $name, $width in $list {
+  .col-#{$name} {
+    width: $width;
+  }
+}
+
+@for $i from $first through $last {
+  .m-#{$i} {
+    margin: $i;
+  }
+}
+
+@if $gap == 1 {
+  .one {
+    z: $gap;
+  }
+} @else if $other {
+  $local: 1;
+}
+
+@media (min-width: $bp) {
+  .m {
+    a: b;
+  }
+}
+
+@keyframes spin-#{$gap} {
+  to {
+    transform: rotate($turn);
+  }
+}
+
+:root {
+  --gap: #{$gap};
+  --x: $plain;
+}
