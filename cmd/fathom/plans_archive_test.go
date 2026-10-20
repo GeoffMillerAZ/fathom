@@ -487,3 +487,49 @@ func gitHistoryCorpus(root, relPlan string) (string, error) {
 	c := &absorptionCorpus{root: root, commits: loadCorpusCommits(root)}
 	return strings.TrimPrefix(c.text(relPlan), "\n"), nil
 }
+
+// A row id named only in a change-note fragment is absorbed; the corpus is
+// sorted; a repo without the directory reads as before.
+func TestReadAbsorptionFilesReadsChangeFragments(t *testing.T) {
+	root := t.TempDir()
+	write := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(root, rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("CHANGELOG.md", "# Changelog\n")
+	write("docs/changelog/0.1.0.md", "narrative\n")
+
+	before, err := readAbsorptionFiles(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(before, "ZZ-1") {
+		t.Fatalf("id present before any fragment: %q", before)
+	}
+
+	write("docs/changelog/unreleased/b-branch.md", "### Changed\n- ZZ-2 landed\n")
+	write("docs/changelog/unreleased/a-branch.md", "### Added\n- ZZ-1 landed\n")
+	got, err := readAbsorptionFiles(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, "ZZ-1") || !strings.Contains(got, "ZZ-2") {
+		t.Errorf("fragment ids not absorbed: %q", got)
+	}
+	if strings.Contains(got, "ZZ-3") {
+		t.Errorf("an id named nowhere must not be absorbed")
+	}
+	if strings.Index(got, "ZZ-1") > strings.Index(got, "ZZ-2") {
+		t.Errorf("fragments not read in sorted order: %q", got)
+	}
+	again, _ := readAbsorptionFiles(root)
+	if again != got {
+		t.Errorf("not deterministic")
+	}
+}

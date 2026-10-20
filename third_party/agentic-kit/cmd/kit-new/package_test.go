@@ -533,3 +533,72 @@ func TestPackageScaffoldIntegrationGoTest(t *testing.T) {
 		}
 	}
 }
+
+// fragmentsPointer is the static line a fragments repo keeps in [Unreleased].
+const fragmentsPointer = "Unreleased changes wait as fragments under docs/changelog/unreleased/; the release ritual folds them here.\n"
+
+// TestPackageApplyWritesChangeNoteFragment: in a fragments repo kit-new -apply
+// writes a change-note fragment and leaves CHANGELOG.md alone; a second apply
+// reports it already present.
+func TestPackageApplyWritesChangeNoteFragment(t *testing.T) {
+	repo := copyFixtureRepo(t)
+	cl := "# Changelog\n\n## [Unreleased]\n\n" + fragmentsPointer + "\n## [0.1.0] — earlier\n\n### Added\n\n- old.\n"
+	if err := os.WriteFile(filepath.Join(repo, "CHANGELOG.md"), []byte(cl), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if code, _, stderr := runNew(t, scaffoldArgs(repo, "-apply")...); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	frag, err := os.ReadFile(filepath.Join(repo, "docs", "changelog", "unreleased", "kit-new-widget-gizmo.md"))
+	if err != nil {
+		t.Fatalf("no fragment written: %v", err)
+	}
+	if !strings.HasPrefix(string(frag), "### Added\n\n- **`foundations/alpha/widget-gizmo`**") || strings.Count(string(frag), "###") != 1 {
+		t.Errorf("fragment shape wrong:\n%s", frag)
+	}
+	if got, _ := os.ReadFile(filepath.Join(repo, "CHANGELOG.md")); string(got) != cl {
+		t.Errorf("CHANGELOG.md was edited in a fragments repo:\n%s", got)
+	}
+	if err := os.RemoveAll(filepath.Join(repo, "foundations")); err != nil {
+		t.Fatal(err)
+	}
+	_, stdout, _ := runNew(t, scaffoldArgs(repo, "-apply")...)
+	if n := strings.Count(stdout, "[already present]"); n != 4 {
+		t.Errorf("second apply: %d already present, want 4:\n%s", n, stdout)
+	}
+}
+
+// TestPackageApplyPlainRepoKeepsUnreleasedLine: no pointer line, no fragment.
+func TestPackageApplyPlainRepoKeepsUnreleasedLine(t *testing.T) {
+	repo := copyFixtureRepo(t)
+	if code, _, stderr := runNew(t, scaffoldArgs(repo, "-apply")...); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(repo, "docs", "changelog")); err == nil {
+		t.Error("a plain repo got a fragments directory")
+	}
+	got, _ := os.ReadFile(filepath.Join(repo, "CHANGELOG.md"))
+	if !strings.Contains(string(got), "### Added\n\n- **`foundations/alpha/widget-gizmo`**") {
+		t.Errorf("plain repo lost the [Unreleased] > Added line:\n%s", got)
+	}
+}
+
+// TestFragmentsDirMatchesReleaseNotes: kit-new reads the pointer line the way
+// release-notes does, so a dotted directory name is kept whole.
+func TestFragmentsDirMatchesReleaseNotes(t *testing.T) {
+	for pointer, want := range map[string]string{
+		fragmentsPointer: "docs/changelog/unreleased",
+		"Unreleased changes wait as fragments under docs/v1.2/unreleased/; the release ritual folds them here.\n": "docs/v1.2/unreleased",
+		"Unreleased changes wait as fragments under changes\n":                                                    "changes",
+		"Unreleased changes wait in CHANGELOG lines.\n":                                                           "",
+	} {
+		repo := t.TempDir()
+		cl := "# Changelog\n\n## [Unreleased]\n\n" + pointer + "\n## [0.1.0] — earlier\n"
+		if err := os.WriteFile(filepath.Join(repo, "CHANGELOG.md"), []byte(cl), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if got := fragmentsDir(repo); got != want {
+			t.Errorf("pointer %q: fragmentsDir = %q, want %q", pointer, got, want)
+		}
+	}
+}

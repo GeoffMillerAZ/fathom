@@ -303,6 +303,9 @@ func scaffoldPackage(sc packageScaffold) (*packageResult, error) {
 	// Then the ledgers.
 	if sc.apply {
 		for _, e := range edits {
+			if err := os.MkdirAll(filepath.Dir(e.abs), 0o755); err != nil {
+				return nil, fmt.Errorf("create %s: %w", filepath.Dir(e.rel), err)
+			}
 			if err := os.WriteFile(e.abs, []byte(e.content), 0o644); err != nil {
 				return nil, fmt.Errorf("write %s: %w", e.rel, err)
 			}
@@ -422,6 +425,18 @@ func ledgerLines(sc packageScaffold, d packageData) (tracking, compat, changelog
 	return tracking, compat, changelog, practices
 }
 
+// ledgerPlan is one ledger anchor and how to insert the package's line.
+type ledgerPlan struct {
+	file  string
+	where string
+	line  string
+	// insert computes the rewritten lines, or ok=false when the anchor
+	// is missing. present reports the line already there.
+	insert func(lines []string) (out []string, where string, present, ok bool)
+	// create marks a file that may not exist yet (a change-note fragment).
+	create bool
+}
+
 // planLedgers resolves every ledger anchor, fills res.Ledgers with the lines
 // and their statuses, and returns the rewritten files for -apply. In print
 // mode a missing anchor is reported, not fatal; in -apply mode it is an
@@ -430,15 +445,7 @@ func planLedgers(sc packageScaffold, d packageData, res *packageResult) ([]ledge
 	trackingLine, compatLine, changelogLine, practicesLine := ledgerLines(sc, d)
 	marker := "`" + d.Path + "`"
 
-	type plan struct {
-		file  string
-		where string
-		line  string
-		// insert computes the rewritten lines, or ok=false when the anchor
-		// is missing. present reports the line already there.
-		insert func(lines []string) (out []string, where string, present, ok bool)
-	}
-	plans := []plan{
+	plans := []ledgerPlan{
 		{
 			file: "TRACKING.md", line: trackingLine,
 			insert: func(lines []string) ([]string, string, bool, bool) {
@@ -492,33 +499,11 @@ func planLedgers(sc packageScaffold, d packageData, res *packageResult) ([]ledge
 				return insertLines(lines, at, compatLine, false), "Classification table, sorted by path", false, true
 			},
 		},
-		{
-			file: "CHANGELOG.md", line: changelogLine,
-			insert: func(lines []string) ([]string, string, bool, bool) {
-				start, end, ok := markdownSection(lines, "## [Unreleased]", "## ")
-				if !ok {
-					return nil, "", false, false
-				}
-				if containsMarker(lines[start:end], marker) {
-					return lines, "[Unreleased] › Added", true, true
-				}
-				for i := start + 1; i < end; i++ {
-					if strings.TrimSpace(lines[i]) != "### Added" {
-						continue
-					}
-					at := i + 1
-					if at < end && lines[at] == "" {
-						at++
-					}
-					return insertLines(lines, at, changelogLine, true), "[Unreleased] › Added", false, true
-				}
-				return nil, "", false, false
-			},
-		},
+		changelogPlan(sc, d, changelogLine, marker),
 	}
 	if sc.practice > 0 {
 		header := fmt.Sprintf("## %d. ", sc.practice)
-		plans = append(plans, plan{
+		plans = append(plans, ledgerPlan{
 			file: "docs/practices.md", line: practicesLine,
 			insert: func(lines []string) ([]string, string, bool, bool) {
 				start, end, ok := markdownSection(lines, header, "## ")
@@ -550,6 +535,9 @@ func planLedgers(sc packageScaffold, d packageData, res *packageResult) ([]ledge
 		abs := filepath.Join(sc.repo, filepath.FromSlash(p.file))
 		entry := ledgerLine{File: p.file, Line: p.line, Status: "print"}
 		data, err := os.ReadFile(abs)
+		if err != nil && p.create && os.IsNotExist(err) {
+			data, err = nil, nil
+		}
 		if err != nil {
 			entry.Status = "anchor not found"
 			entry.Where = p.file + " not found under -repo"
@@ -567,7 +555,7 @@ func planLedgers(sc packageScaffold, d packageData, res *packageResult) ([]ledge
 				entry.Where = where
 				if sc.apply {
 					entry.Status = "applied"
-					edits = append(edits, ledgerEdit{abs: abs, rel: p.file, content: joinLines(out, strings.HasSuffix(string(data), "\n"))})
+					edits = append(edits, ledgerEdit{abs: abs, rel: p.file, content: joinLines(out, len(data) == 0 || strings.HasSuffix(string(data), "\n"))})
 				}
 			}
 		}
@@ -769,3 +757,67 @@ func printPackageResult(w io.Writer, sc packageScaffold, res *packageResult) {
 // errPackageMode is returned by run when -package is combined with a
 // consumer-mode flag; kept as a sentinel so the usage test can name it.
 var errPackageMode = errors.New("-package is exclusive with -name, -dir, -module and -minimal")
+
+// fragmentsPointerRe finds the static pointer line a fragments repo keeps in
+// [Unreleased]: "Unreleased changes wait as fragments under <dir>/; ...".
+// It parses the line exactly as cmd/release-notes does.
+var fragmentsPointerRe = regexp.MustCompile(`(?m)^Unreleased changes wait as fragments under ([^\s;]+)`)
+
+// fragmentsDir returns the repo-relative change-note fragments directory the
+// repo's CHANGELOG.md names in its [Unreleased] pointer line, or "" for a
+// repo without fragments (today's behaviour: a line under [Unreleased]).
+func fragmentsDir(repo string) string {
+	data, err := os.ReadFile(filepath.Join(repo, "CHANGELOG.md"))
+	if err != nil {
+		return ""
+	}
+	start, end, ok := markdownSection(splitLines(string(data)), "## [Unreleased]", "## ")
+	if !ok {
+		return ""
+	}
+	block := strings.Join(splitLines(string(data))[start:end], "\n")
+	if m := fragmentsPointerRe.FindStringSubmatch(block); m != nil {
+		return strings.TrimRight(m[1], "/.")
+	}
+	return ""
+}
+
+// changelogPlan is the CHANGELOG ledger: a line under [Unreleased] > Added,
+// or, in a fragments repo, a new fragment file named for the package.
+func changelogPlan(sc packageScaffold, d packageData, line, marker string) ledgerPlan {
+	if dir := fragmentsDir(sc.repo); dir != "" {
+		where := "change-note fragment"
+		return ledgerPlan{
+			file: dir + "/kit-new-" + d.Name + ".md", line: line, create: true,
+			insert: func(lines []string) ([]string, string, bool, bool) {
+				if containsMarker(lines, marker) {
+					return lines, where, true, true
+				}
+				return []string{"### Added", "", line}, where, false, true
+			},
+		}
+	}
+	return ledgerPlan{
+		file: "CHANGELOG.md", line: line,
+		insert: func(lines []string) ([]string, string, bool, bool) {
+			start, end, ok := markdownSection(lines, "## [Unreleased]", "## ")
+			if !ok {
+				return nil, "", false, false
+			}
+			if containsMarker(lines[start:end], marker) {
+				return lines, "[Unreleased] › Added", true, true
+			}
+			for i := start + 1; i < end; i++ {
+				if strings.TrimSpace(lines[i]) != "### Added" {
+					continue
+				}
+				at := i + 1
+				if at < end && lines[at] == "" {
+					at++
+				}
+				return insertLines(lines, at, line, true), "[Unreleased] › Added", false, true
+			}
+			return nil, "", false, false
+		},
+	}
+}

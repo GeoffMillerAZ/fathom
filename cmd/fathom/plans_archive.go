@@ -283,7 +283,8 @@ func isWordByte(c byte) bool {
 
 // readAbsorptionFiles concatenates CHANGELOG.md, ADR.md, and every
 // docs/changelog/*.md (the per-release narrative record the 2026-08-24
-// condensation moved row ids into). Missing files are tolerated as empty; the
+// condensation moved row ids into) and every change-note fragment under
+// docs/changelog/unreleased/. Missing files are tolerated as empty; the
 // narrative files are read in sorted order so the corpus is deterministic.
 func readAbsorptionFiles(root string) (string, error) {
 	names := []string{"CHANGELOG.md", "ADR.md"}
@@ -291,6 +292,11 @@ func readAbsorptionFiles(root string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	fragments, err := filepath.Glob(filepath.Join(root, "docs", "changelog", "unreleased", "*.md"))
+	if err != nil {
+		return "", err
+	}
+	narrative = append(narrative, fragments...)
 	sort.Strings(narrative)
 	for _, p := range narrative {
 		names = append(names, filepath.ToSlash(mustRel(root, p)))

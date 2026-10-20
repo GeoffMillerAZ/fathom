@@ -17,6 +17,10 @@
 // CHANGELOG.md (mirrors cmd/constitution-lint and cmd/kit-catalog's -root
 // convention).
 //
+// With -roll x.y.z -date D it folds the change-note fragments (fragments.go)
+// into CHANGELOG.md; with -check it lints them. A repository opts in through the
+// pointer line in its [Unreleased] section; without it nothing changes.
+//
 // Exit codes: 0 success, 1 CHANGELOG.md unreadable or version not found, 2
 // usage error (bad flag or missing/extra positional argument).
 //
@@ -90,21 +94,94 @@ func run(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("release-notes", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	root := fs.String("root", ".", "directory containing CHANGELOG.md")
+	roll := fs.String("roll", "", "fold the change-note fragments into a released block for this version (needs -date)")
+	date := fs.String("date", "", "release date YYYY-MM-DD for -roll")
+	check := fs.Bool("check", false, "lint the change-note fragments and the [Unreleased] pointer")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
 
 	rest := fs.Args()
-	if len(rest) != 1 {
-		fmt.Fprintln(stderr, "usage: release-notes [-root .] <version>")
+	modal := *roll != "" || *check
+	if (modal && len(rest) != 0) || (!modal && len(rest) != 1) || (*roll != "" && *check) ||
+		(*roll != "" && !dateRe.MatchString(*date)) || (*roll == "" && *date != "") {
+		fmt.Fprintln(stderr, "usage: release-notes [-root .] <version> | -roll x.y.z -date YYYY-MM-DD | -check")
 		return 2
 	}
-	version := rest[0]
 
-	data, err := os.ReadFile(filepath.Join(*root, "CHANGELOG.md"))
+	clPath := filepath.Join(*root, "CHANGELOG.md")
+	data, err := os.ReadFile(clPath)
 	if err != nil {
 		fmt.Fprintf(stderr, "release-notes: %v\n", err)
 		return 1
+	}
+
+	dir := fragmentsDir(string(data))
+	if modal && dir == "" {
+		if *check {
+			return 0 // no fragments directory configured: nothing to lint
+		}
+		fmt.Fprintln(stderr, "release-notes: CHANGELOG.md [Unreleased] has no fragments pointer line")
+		return 1
+	}
+	if *check {
+		msgs := checkFragments(string(data), filepath.Join(*root, dir))
+		for _, m := range msgs {
+			fmt.Fprintf(stderr, "release-notes: %s\n", m)
+		}
+		if len(msgs) > 0 {
+			return 1
+		}
+		return 0
+	}
+	if *roll != "" {
+		version := strings.TrimPrefix(*roll, "v")
+		if _, err := ExtractSection(string(data), version); err == nil {
+			fmt.Fprintf(stderr, "release-notes: CHANGELOG.md already has a [%s] block\n", version)
+			return 1
+		}
+		if msgs := checkFragments(string(data), filepath.Join(*root, dir)); len(msgs) > 0 {
+			for _, m := range msgs {
+				fmt.Fprintf(stderr, "release-notes: %s\n", m)
+			}
+			return 1
+		}
+		frags, _ := readFragments(filepath.Join(*root, dir))
+		if len(frags) == 0 {
+			fmt.Fprintln(stderr, "release-notes: no fragments to roll")
+			return 1
+		}
+		block := foldFragments(frags, "## ["+version+"] — "+*date, preOneZero(version))
+		out, err := rollChangelog(string(data), block)
+		if err != nil {
+			fmt.Fprintf(stderr, "release-notes: %v\n", err)
+			return 1
+		}
+		if err := os.WriteFile(clPath, []byte(out), 0o644); err != nil {
+			fmt.Fprintf(stderr, "release-notes: %v\n", err)
+			return 1
+		}
+		for _, f := range frags {
+			if err := os.Remove(filepath.Join(*root, dir, f.name)); err != nil {
+				fmt.Fprintf(stderr, "release-notes: %v\n", err)
+				return 1
+			}
+		}
+		return 0
+	}
+	version := rest[0]
+	if dir != "" && strings.TrimPrefix(version, "v") == "Unreleased" {
+		frags, errs := readFragments(filepath.Join(*root, dir))
+		if len(errs) > 0 {
+			for _, e := range errs {
+				fmt.Fprintf(stderr, "release-notes: %v\n", e)
+			}
+			return 1
+		}
+		if len(frags) > 0 {
+			fmt.Fprint(stdout, foldFragments(frags, "## [Unreleased]", preOneZero(latestReleased(string(data)))))
+			return 0
+		}
 	}
 
 	section, err := ExtractSection(string(data), version)

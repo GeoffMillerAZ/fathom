@@ -124,3 +124,39 @@ func TestADRReferencesNamesUnreadableCitingFiles(t *testing.T) {
 		t.Fatalf("the unreadable file must be named: %s", f.Detail)
 	}
 }
+
+// A change-note fragment under docs/changelog/unreleased/ is a citing file
+// like CHANGELOG.md: a phantom ADR there is a violation; a repo without the
+// directory behaves as before.
+func TestADRCitingFilesIncludeChangeFragments(t *testing.T) {
+	concern := custodian.Concern{
+		ID:    "adr_references_resolve",
+		Want:  "every ADR citation resolves to a record that exists",
+		Check: custodian.Check{Kind: custodian.KindADRReferencesResolve},
+	}
+
+	root := t.TempDir()
+	writeADRFixture(t, root, "## ADR-001 — Real\n")
+	mustWrite(t, filepath.Join(root, "docs", "changelog", "unreleased", "b-branch.md"),
+		"### Changed\n- cites ADR-001 and ADR-026\n")
+	f := custodian.Audit(root, []custodian.Concern{concern})[0]
+	if f.Status != custodian.StatusViolated {
+		t.Fatalf("status = %q, want violated; detail=%s", f.Status, f.Detail)
+	}
+	if len(f.Evidence) != 1 || !strings.Contains(f.Evidence[0], "docs/changelog/unreleased/b-branch.md:2") {
+		t.Errorf("evidence must name the fragment line: %v", f.Evidence)
+	}
+
+	clean := t.TempDir()
+	writeADRFixture(t, clean, "## ADR-001 — Real\n")
+	mustWrite(t, filepath.Join(clean, "docs", "changelog", "unreleased", "a.md"), "- cites ADR-001\n")
+	if f := custodian.Audit(clean, []custodian.Concern{concern})[0]; f.Status != custodian.StatusHolds {
+		t.Errorf("real citation in a fragment: status = %q, want holds; %s", f.Status, f.Detail)
+	}
+
+	none := t.TempDir()
+	writeADRFixture(t, none, "## ADR-001 — Real\n")
+	if f := custodian.Audit(none, []custodian.Concern{concern})[0]; f.Status != custodian.StatusHolds {
+		t.Errorf("no fragments directory: status = %q, want holds; %s", f.Status, f.Detail)
+	}
+}

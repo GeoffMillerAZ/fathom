@@ -253,3 +253,148 @@ func TestRunUsageErrors(t *testing.T) {
 		})
 	}
 }
+
+// fragRepo builds a fragments repo in a temp dir and returns its root.
+func fragRepo(t *testing.T, frags map[string]string, unreleased string) string {
+	t.Helper()
+	root := t.TempDir()
+	cl := "# Changelog\n\n## [Unreleased]\n\n" + unreleased + "\n## [0.2.0] — 2026-01-01\n\nRelease impact: patch\n\n### Fixed\n\n- Old line.\n"
+	if err := os.WriteFile(filepath.Join(root, "CHANGELOG.md"), []byte(cl), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	dir := filepath.Join(root, "docs", "changelog", "unreleased")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for n, c := range frags {
+		if err := os.WriteFile(filepath.Join(dir, n), []byte(c), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return root
+}
+
+const testPointer = "Unreleased changes wait as fragments under docs/changelog/unreleased/; the release ritual folds them here.\n"
+
+func snapshot(t *testing.T, root string) map[string]string {
+	t.Helper()
+	m := map[string]string{}
+	filepath.Walk(root, func(p string, i os.FileInfo, err error) error {
+		if err == nil && !i.IsDir() {
+			b, _ := os.ReadFile(p)
+			m[p] = string(b)
+		}
+		return nil
+	})
+	return m
+}
+
+func TestFoldFragmentsSortedBreakingFirst(t *testing.T) {
+	frags := map[string]string{ // created in non-sorted order by map iteration
+		"zeta-break.md": "### Breaking\n\n- Z breaks it.\n",
+		"beta-add.md":   "### Added\n\n- B1 added.\n- B2 added.\n",
+		"alpha-add.md":  "### Added\n\n- A1 added.\n",
+		"mid-fix.md":    "### Fixed\n\n- M fixed.\n",
+	}
+	root := fragRepo(t, frags, testPointer)
+	before := snapshot(t, root)
+
+	var out, errb bytes.Buffer
+	if code := run([]string{"-root", root, "Unreleased"}, &out, &errb); code != 0 {
+		t.Fatalf("Unreleased exit %d: %s", code, errb.String())
+	}
+	want := "## [Unreleased]\n\nRelease impact: major (pre-1.0: breaking bumps minor)\n\n" +
+		"### Breaking\n\n- Z breaks it.\n\n" +
+		"### Added\n\n- A1 added.\n- B1 added.\n- B2 added.\n\n" +
+		"### Fixed\n\n- M fixed.\n"
+	if out.String() != want {
+		t.Fatalf("Unreleased fold:\n%s\nwant:\n%s", out.String(), want)
+	}
+	after := snapshot(t, root)
+	if len(after) != len(before) {
+		t.Fatalf("Unreleased changed the file set")
+	}
+	for p, c := range before {
+		if after[p] != c {
+			t.Fatalf("Unreleased modified %s", p)
+		}
+	}
+
+	out.Reset()
+	if code := run([]string{"-root", root, "-roll", "0.3.0", "-date", "2026-02-03"}, &out, &errb); code != 0 {
+		t.Fatalf("roll exit %d: %s", code, errb.String())
+	}
+	got, _ := os.ReadFile(filepath.Join(root, "CHANGELOG.md"))
+	block := strings.Replace(want, "## [Unreleased]", "## [0.3.0] — 2026-02-03", 1)
+	wantCL := "# Changelog\n\n## [Unreleased]\n\n" + testPointer + "\n" + block + "\n## [0.2.0] — 2026-01-01\n\nRelease impact: patch\n\n### Fixed\n\n- Old line.\n"
+	if string(got) != wantCL {
+		t.Fatalf("rolled changelog:\n%s\nwant:\n%s", got, wantCL)
+	}
+	left, _ := os.ReadDir(filepath.Join(root, "docs", "changelog", "unreleased"))
+	if len(left) != 0 {
+		t.Fatalf("fragments not deleted: %d left", len(left))
+	}
+}
+
+func TestCheckFragmentsRefusesBadHeadingsAndStrayUnreleasedLines(t *testing.T) {
+	cases := []struct {
+		name       string
+		frags      map[string]string
+		unreleased string
+		want       string // substring of stderr; "" means clean pass
+	}{
+		{"clean", map[string]string{"ok.md": "### Added\n\n- New thing.\n"}, testPointer, ""},
+		{"no heading", map[string]string{"nohead.md": "- A line.\n"}, testPointer, "nohead.md: no heading"},
+		{"two headings", map[string]string{"two.md": "### Added\n\n- A.\n\n### Fixed\n\n- B.\n"}, testPointer, "two.md: more than one heading"},
+		{"unknown heading", map[string]string{"unk.md": "### Misc\n\n- A.\n"}, testPointer, "unk.md: unknown heading"},
+		{"no line", map[string]string{"empty.md": "### Added\n"}, testPointer, "empty.md: no \"- \" line"},
+		{"stray unreleased", map[string]string{"ok.md": "### Added\n\n- New thing.\n"}, testPointer + "\n- Appended habit.\n", "[Unreleased] holds"},
+		{"already released", map[string]string{"dup.md": "### Fixed\n\n- Old line.\n"}, testPointer, "dup.md: line already in a released block"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := fragRepo(t, tc.frags, tc.unreleased)
+			var out, errb bytes.Buffer
+			code := run([]string{"-root", root, "-check"}, &out, &errb)
+			if tc.want == "" {
+				if code != 0 {
+					t.Fatalf("clean case exit %d: %s", code, errb.String())
+				}
+				return
+			}
+			if code == 0 || !strings.Contains(errb.String(), tc.want) {
+				t.Fatalf("exit %d, stderr %q, want substring %q", code, errb.String(), tc.want)
+			}
+		})
+	}
+}
+
+func TestNoFragmentsPointerKeepsLegacyBehaviour(t *testing.T) {
+	root := t.TempDir()
+	os.WriteFile(filepath.Join(root, "CHANGELOG.md"), []byte(readTestdata(t, "changelog-basic.md")), 0o644)
+	var out, errb bytes.Buffer
+	if code := run([]string{"-root", root, "-check"}, &out, &errb); code != 0 {
+		t.Fatalf("check without pointer exit %d", code)
+	}
+	if code := run([]string{"-root", root, "-roll", "1.3.0", "-date", "2026-01-01"}, &out, &errb); code != 1 {
+		t.Fatalf("roll without pointer exit %d, want 1", code)
+	}
+}
+
+// TestRollRefusesAnExistingVersion: rolling a version the changelog already
+// releases (or "Unreleased") would write a second heading for it.
+func TestRollRefusesAnExistingVersion(t *testing.T) {
+	for _, v := range []string{"0.2.0", "v0.2.0", "Unreleased"} {
+		root := fragRepo(t, map[string]string{"ok.md": "### Added\n\n- New thing.\n"}, testPointer)
+		before := snapshot(t, root)
+		var out, errb bytes.Buffer
+		if code := run([]string{"-root", root, "-roll", v, "-date", "2026-02-03"}, &out, &errb); code != 1 || !strings.Contains(errb.String(), "already has") {
+			t.Fatalf("roll %s: exit %d, stderr %q, want 1 and \"already has\"", v, code, errb.String())
+		}
+		for p, c := range snapshot(t, root) {
+			if before[p] != c {
+				t.Fatalf("roll %s modified %s", v, p)
+			}
+		}
+	}
+}

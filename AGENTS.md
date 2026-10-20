@@ -20,9 +20,9 @@ Router `docs/intent/README.md` (consult it before material product, design, doma
 it routes you to); vision `docs/design/product-vision.md`; decisions `ADR.md`, indexed at `docs/intent/decisions/README.md`.
 
 Change records: conventional commit with a `Verified:` line, one commit per reviewable
-unit, no WIP on main. A `CHANGELOG.md` line in the same change only for observable
-behavior (compatibility surface: `docs/intent/scope.md`); `### Breaking` first; collapse
-`[Unreleased]` to the delta, never the journey. Rules: `third_party/agentic-kit/docs/project-intent/changes.md`.
+unit, no WIP on main. A change note (one fragment file in `docs/changelog/unreleased/`, never a `CHANGELOG.md` line) in the same change only for
+observable behavior (compatibility surface: `docs/intent/scope.md`); `### Breaking` first at release; the
+delta, never the journey. Rules: `third_party/agentic-kit/docs/project-intent/changes.md`.
 
 Autonomy (`docs/intent/autonomy.md`): commit and push to `main` freely (the integration
 branch from v0.5.0), and roll the changelog and tag after a green wave; ask before deleting,
