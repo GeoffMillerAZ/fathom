@@ -12,7 +12,8 @@
     "sniff": {
       "extensions": [".m"],
       "pattern": "^\\s*(@(interface|protocol|implementation|class|import)\\b|#import\\b)",
-      "priority": 0
+      "priority": 0,
+      "scan_bytes": 16384
     }
   },
   "grammar": { "blob": "objective-c", "entry_point": "tree_sitter_objc" },
@@ -21,7 +22,7 @@
   "kinds": {
     "interface":      { "source_kind": "ObjCInterface",      "canonical": "class",      "container": true },
     "implementation": { "source_kind": "ObjCImplementation", "canonical": "class",      "container": true },
-    "category":       { "source_kind": "ObjCCategory",       "canonical": "class" },
+    "category":       { "source_kind": "ObjCCategory",       "canonical": "mixin",      "container": true },
     "protocol":       { "source_kind": "ObjCProtocol",       "canonical": "interface",  "container": true },
     "method":         { "source_kind": "ObjCMethod",         "canonical": "method",     "callable": true },
     "class_method":   { "source_kind": "ObjCClassMethod",    "canonical": "method",     "callable": true },
@@ -44,6 +45,7 @@
                "enum": "enum", "typedef": "type_alias", "macro": "macro" }
   },
   "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
+  "ctags": { "languages": ["ObjectiveC"] },
   "name_match": "selector",
   "preprocess": "objc-macros",
   "package": { "strategy": "file" },

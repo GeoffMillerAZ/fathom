@@ -16,13 +16,22 @@
   and a selector of more than eight keywords are not matched.
 - `imports.scm`, `references.scm`: written in this repository (the grammar ships no import or reference query).
   `#import` and `#include` are one `preproc_include` node; the manifest's `include-path` strategy resolves the quoted
-  form relative to the importer, then the source roots. `@import Module;` is not captured: a module names a framework,
-  not a file of the service.
+  form relative to the importer, then the source roots (and the `-I` roots of a `compile_commands.json`). `@import
+  Module;` is not captured: a module names a framework, not a file of the service. `references.scm` names the types,
+  the classes a message is sent to (an upper-case receiver), the superclass, the conformed protocols, the class a
+  category extends and the all-capitals words of an expression; a word inside a preprocessor condition is no
+  reference (`@export.stmt` on the condition), because a test uses no macro.
 - Pre-parse step `objc-macros` (`internal/extractor/tsextract_objcmacros.go`): `typedef NS_ENUM(T, Name)` and its
   siblings read as `enum Name`, availability and export macros are blanked where they decorate a declaration, at
   equal byte length, taken only when the file then parses with no error.
-- Kinds: `ObjCInterface` (an `@interface` or class extension), `ObjCImplementation`, `ObjCCategory` (spans its own
-  name only, so its methods qualify under the class), `ObjCProtocol`, `ObjCMethod`, `ObjCClassMethod`,
+- Categories: `@interface Foo (Cat)` is a container `ObjCCategory` named `Cat` (canonical kind `mixin`; its methods
+  qualify as `Cat.method`) and, nested in it, the head `Foo` as an `ObjCInterface` member named `Cat.Foo`. The head is
+  there for ctags, which tags the extended class too, and is dotted so no reference to `Foo` binds to the category's
+  header: a category on `NSData` would otherwise be taken for the definition of `NSData` by every file that names it
+  (SDWebImage: 22 false file edges). `@implementation Foo (Cat)` is the same with `ObjCImplementation`. A class
+  extension `@interface Foo ()` is an ordinary `ObjCInterface`.
+- Kinds: `ObjCInterface` (an `@interface`, a class extension, or a category's head), `ObjCImplementation`,
+  `ObjCCategory`, `ObjCProtocol`, `ObjCMethod`, `ObjCClassMethod`,
   `ObjCProperty`, `ObjCIvar`, and the C kinds `ObjCFunc`, `ObjCStruct`, `ObjCUnion`, `ObjCEnum`, `ObjCTypedef`,
   `ObjCMacro`, `ObjCField`, `ObjCEnumerator`, `ObjCVariable`.
 - `package.strategy: file`: an `@interface` in `Shape.h` and its `@implementation` in `Shape.m` are one class named
@@ -32,5 +41,6 @@
 - `name_match: selector`: the harness compares the part of a name after the owner's `.`, whole, because a selector
   ends in `:`.
 - Dispatch: `.mm` by extension; `.m` (MATLAB's too) by the manifest's `match.sniff`
-  (`^\s*(@(interface|protocol|implementation|class|import)\b|#import\b)`, priority 0, before MATLAB's 50); `.h` by the
+  (`^\s*(@(interface|protocol|implementation|class|import)\b|#import\b)`, priority 0, before MATLAB's 50, over the
+  first 16 KiB through `scan_bytes` because a licence header can pass the default 1 KiB, O1415); `.h` by the
   header router (`extractor.HeaderDialect`, `cheaderextract.go`), never a second classifier.

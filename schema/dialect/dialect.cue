@@ -235,10 +235,13 @@ import "struct"
 
 // #Sniff splits an extension more than one dialect claims (§5): a regex
 // over the first 1 KiB, evaluated in ascending priority across dialects.
+// scan_bytes widens that window for one dialect (up to 64 KiB), for a language
+// whose files open with a licence header longer than 1 KiB (Objective-C).
 #Sniff: {
 	extensions: [...=~"^\\.[A-Za-z0-9._+-]+$"] & [_, ...]
 	pattern:  string & !=""
 	priority: int & >=0
+	scan_bytes?: int & >=1024 & <=65536
 }
 
 #Grammar: {

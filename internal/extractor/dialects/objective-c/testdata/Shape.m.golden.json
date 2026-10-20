@@ -89,19 +89,19 @@
       "kind": "ObjCCategory",
       "package": "Shape.m",
       "line": 39,
-      "end_line": 39,
-      "tier": "verified"
-    },
-    {
-      "name": "Shape",
-      "kind": "ObjCImplementation",
-      "package": "Shape.m",
-      "line": 39,
       "end_line": 43,
       "tier": "verified"
     },
     {
-      "name": "Shape.debugDescription",
+      "name": "Debug.Shape",
+      "kind": "ObjCImplementation",
+      "package": "Shape.m",
+      "line": 39,
+      "end_line": 39,
+      "tier": "verified"
+    },
+    {
+      "name": "Debug.debugDescription",
       "kind": "ObjCMethod",
       "package": "Shape.m",
       "line": 40,

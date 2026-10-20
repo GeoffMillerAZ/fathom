@@ -46,7 +46,7 @@ var objcEnumMacros = map[string]bool{
 var objcQualifierWords = map[string]bool{
 	"__nullable": true, "__nonnull": true, "_Nullable": true, "_Nonnull": true,
 	"_Null_unspecified": true, "__null_unspecified": true, "__kindof": true,
-	"__unsafe_unretained": true,
+	"__unsafe_unretained": true, "__unused": true,
 }
 
 // objcNotMacroPrev are words after which a trailing all-capitals word is an
@@ -198,7 +198,7 @@ func objcBlankMacros(src []byte, toks []cppTok) ([]byte, bool) {
 				continue
 			}
 			// a decoration before a method body (`- (void)f:(int)a API_AVAILABLE(ios(10)) {`)
-			if braces == 0 && punct(next, '{') && punct(i-1, ')') && end > i {
+			if punct(next, '{') && end > i && (punct(i-1, ')') || (word(i-1) != "" && !objcNotMacroPrev[word(i-1)])) {
 				blank(t.start, toks[end].end)
 				i = end
 				continue

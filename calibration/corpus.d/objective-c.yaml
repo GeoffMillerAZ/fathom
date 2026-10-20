@@ -1,10 +1,14 @@
 id: objective-c
 language: Objective-C
-# Measurement conventions (docs/bench/readings/lang/objective-c.json): both subjects are measured whole, their .m and
-# .mm files and the .h headers the header router sends to Objective-C (a header with an @interface, @protocol,
-# @implementation or #import, and no C++ signal word ahead of it; the router is cheaderextract.go, never a second
-# classifier). The oracles are universal-ctags 6.2.1 (tier B, ObjectiveC parser) and scip-clang 0.4.0 where it
-# indexes the subject (tier A); the reading records which.
+# Measurement conventions (docs/bench/readings/lang/objective-c.json): each subject is measured in a scratch copy
+# (git clone --local) holding a compile_commands.json at build/ that calibration/oracles/clang-objc wrote (the subjects
+# ship none: AFNetworking builds with CocoaPods and Carthage, SDWebImage with Xcode and SwiftPM), on the files that
+# oracle's compiler front end parses without error (`-only` its --list): their .m and .mm files and the .h headers the
+# header router sends to Objective-C (an @interface, @protocol or @implementation, or an #import and no C++ signal; the
+# router is cheaderextract.go, never a second classifier). The files it cannot parse on this host (an XCTest or
+# WatchKit import, which the Command Line Tools lack) are named in the reading. Oracles: universal-ctags 6.2.1 (tier B,
+# the ObjectiveC parser, L1) and libclang through clang-objc (tier B, the include roots being the run's: calls,
+# imports, cross-file references, definition ranges). scip-clang 0.4.0 indexes C and C++ only (O1413).
 repos:
   - name: AFNetworking
     url: https://github.com/AFNetworking/AFNetworking

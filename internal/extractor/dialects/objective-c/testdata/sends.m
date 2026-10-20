@@ -53,6 +53,12 @@
     [self.queue removeAllObjects];
 }
 
+- (void)casts:(int)n {
+    Protocol *p = @protocol(Greeter);
+    NSMutableArray *a = [NSMutableArray arrayWithCapacity:(NSUInteger)n];
+    [a addObject:p];
+}
+
 + (instancetype)sharedSender {
     static Sender *shared;
     shared = [[self alloc] init];

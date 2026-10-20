@@ -44,3 +44,17 @@
 
 ((identifier) @ref.name
   (#match? @ref.name "^[A-Z][A-Z0-9_]*$"))
+
+; A preprocessor condition tests a macro, it uses none: a word inside `#if SD_UIKIT || SD_MAC`,
+; `#ifdef FOO` or a header guard is no reference (the compiler binds none either).
+(preproc_if
+  condition: (_) @export.stmt)
+
+(preproc_elif
+  condition: (_) @export.stmt)
+
+(preproc_ifdef
+  name: (_) @export.stmt)
+
+(preproc_elifdef
+  name: (_) @export.stmt)

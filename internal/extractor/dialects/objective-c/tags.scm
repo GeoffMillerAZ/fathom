@@ -22,16 +22,22 @@
 ; symbols: a declaration has no body, so it carries no calls.
 
 ; --- classes, categories, extensions, protocols --------------------------
-; @interface Foo : Super   and   @interface Foo ()   -> interface Foo
-; @interface Foo (Cat)     -> interface Foo and category Cat (the category
-; is no container and spans only its own name, so its methods qualify under Foo).
-(class_interface . (identifier) @name) @definition.interface
+; @interface Foo : Super   and   @interface Foo ()   -> interface Foo (container)
+; @interface Foo (Cat)  -> category Cat (container: its methods qualify as Cat.method)
+;   and, nested in it as a member named for its owner (Cat.Foo, so no reference to Foo
+;   binds to the category's header: the class Foo is defined elsewhere), the interface
+;   head Foo, which ctags tags too.
+(class_interface !category . (identifier) @name) @definition.interface
 
-(class_interface . (identifier) category: (identifier) @name @definition.category)
+(class_interface . (identifier) category: (identifier) @name) @definition.category
 
-(class_implementation . (identifier) @name) @definition.implementation
+(class_interface . (identifier) @name @definition.interface @member.strict category: (identifier))
 
-(class_implementation . (identifier) category: (identifier) @name @definition.category)
+(class_implementation !category . (identifier) @name) @definition.implementation
+
+(class_implementation . (identifier) category: (identifier) @name) @definition.category
+
+(class_implementation . (identifier) @name @definition.implementation @member.strict category: (identifier))
 
 (protocol_declaration . (identifier) @name) @definition.protocol
 
@@ -325,14 +331,18 @@
   ]) @definition.variable @member)
 
 ; --- C: calls ------------------------------------------------------------------
+; `@protocol(Name)` is an at_expression around a call_expression of the word `protocol`: no call.
 (call_expression
-  function: (_) @reference.call)
+  function: (_) @reference.call
+  (#not-match? @reference.call "^protocol$"))
 
 ; @body (LB-F3): a function's signature runs to the start of this capture.
 
 ; --- message sends -----------------------------------------------------------
 ; [recv sel] and [recv a:x b:y]: the selector joined as in methods above.
-(message_expression method: (identifier) @name .) @reference.call
+; A selector with no argument is the receiver and one method identifier and nothing else: the grammar reads
+; `[A b:(T)c]` as a send of b: followed by a second method identifier c, which is no send of c.
+(message_expression receiver: (_) . method: (identifier) @name .) @reference.call
 
 (message_expression method: (identifier) @name.part . (_)) @reference.call
 

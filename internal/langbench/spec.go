@@ -63,6 +63,7 @@ type ManifestSniff struct {
 	Extensions []string `json:"extensions"`
 	Pattern    string   `json:"pattern"`
 	Priority   int      `json:"priority"`
+	ScanBytes  int      `json:"scan_bytes,omitempty"`
 }
 
 // KindSpec maps one of a dialect's kinds to a SourceKind and a canonical

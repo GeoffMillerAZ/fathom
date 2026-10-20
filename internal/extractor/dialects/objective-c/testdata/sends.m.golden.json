@@ -64,19 +64,19 @@
       "kind": "ObjCCategory",
       "package": "sends.m",
       "line": 21,
-      "end_line": 21,
-      "tier": "verified"
-    },
-    {
-      "name": "Sender",
-      "kind": "ObjCInterface",
-      "package": "sends.m",
-      "line": 21,
       "end_line": 23,
       "tier": "verified"
     },
     {
-      "name": "Sender.logMessage:level:",
+      "name": "Logging.Sender",
+      "kind": "ObjCInterface",
+      "package": "sends.m",
+      "line": 21,
+      "end_line": 21,
+      "tier": "verified"
+    },
+    {
+      "name": "Logging.logMessage:level:",
       "kind": "ObjCMethod",
       "package": "sends.m",
       "line": 22,
@@ -89,7 +89,7 @@
       "kind": "ObjCImplementation",
       "package": "sends.m",
       "line": 25,
-      "end_line": 62,
+      "end_line": 68,
       "tier": "verified"
     },
     {
@@ -148,11 +148,24 @@
       "tier": "verified"
     },
     {
-      "name": "Sender.sharedSender",
-      "kind": "ObjCClassMethod",
+      "name": "Sender.casts:",
+      "kind": "ObjCMethod",
       "package": "sends.m",
       "line": 56,
       "end_line": 60,
+      "signature": "- (void)casts:(int)n",
+      "calls": [
+        "addObject:",
+        "arrayWithCapacity:"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Sender.sharedSender",
+      "kind": "ObjCClassMethod",
+      "package": "sends.m",
+      "line": 62,
+      "end_line": 66,
       "signature": "+ (instancetype)sharedSender",
       "calls": [
         "alloc",
@@ -164,24 +177,24 @@
       "name": "Logging",
       "kind": "ObjCCategory",
       "package": "sends.m",
-      "line": 64,
-      "end_line": 64,
+      "line": 70,
+      "end_line": 76,
       "tier": "verified"
     },
     {
-      "name": "Sender",
+      "name": "Logging.Sender",
       "kind": "ObjCImplementation",
       "package": "sends.m",
-      "line": 64,
+      "line": 70,
       "end_line": 70,
       "tier": "verified"
     },
     {
-      "name": "Sender.logMessage:level:",
+      "name": "Logging.logMessage:level:",
       "kind": "ObjCMethod",
       "package": "sends.m",
-      "line": 66,
-      "end_line": 68,
+      "line": 72,
+      "end_line": 74,
       "signature": "- (void)logMessage:(NSString *)message level:(NSInteger)level",
       "calls": [
         "NSLog"
