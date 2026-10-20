@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path"
 	"sort"
 	"strings"
 	"time"
@@ -308,6 +309,15 @@ type rawFallbackBackend interface {
 	RawFallbackObligations(ctx context.Context, service, file string, max int, withheld ...string) (rows []semantic.Obligation, why string, ok bool, err error)
 }
 
+// rootRawFallbackBackend is rawFallbackBackend's root-scope sibling (O1452):
+// while the repository root's own guide (AGENTS.md, CLAUDE.md) is
+// uncompiled, the root call serves that guide's current sections as raw
+// rows ahead of compiled rules from other documents. Optional, like its
+// sibling: a backend without it degrades to the compiled rules alone.
+type rootRawFallbackBackend interface {
+	RootRawFallbackObligations(ctx context.Context, service string, max int) (rows []semantic.Obligation, why string, ok bool, err error)
+}
+
 // rootObligationsProbe is the FALLBACK-only bait path for rootObligations,
 // used solely when the backend does not implement rootObligationsBackend:
 // never read for content, only fed to obligationsBackend.Obligations' glob
@@ -569,6 +579,23 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 	// stale above are named, so each one's changed sections are ranked from
 	// that layer's own corpus (O1125: a docs/design section is in the
 	// adr-rules corpus only), within the same RawFallbackReserve.
+	// O1452: the root call's own raw fallback. A root guide the layer
+	// reports uncompiled is served as its current sections, ahead of the
+	// compiled rules of non-guide documents (design docs, ADRs) that are
+	// the only thing the compiled layer can offer for the root meanwhile.
+	if rootScope && obl.AsOf == "" && servedLayer != string(semantic.ObligationLayerClaims) {
+		if rrb, ok := backend.(rootRawFallbackBackend); ok {
+			rows, _, rok, rerr := rrb.RootRawFallbackObligations(ctx, service, semantic.RawFallbackReserve)
+			switch {
+			case errors.Is(rerr, core.ErrSourcesBusy):
+				coverageSkipped = core.ErrSourcesBusy.Error()
+			case errors.Is(rerr, tenancy.ErrOverBudget):
+				coverageSkipped = rerr.Error()
+			case rerr == nil && rok && len(rows) > 0:
+				obl.Rules = append(rows, obl.Rules...)
+			}
+		}
+	}
 	if !rootScope && obl.File != "" && obl.AsOf == "" && servedLayer != string(semantic.ObligationLayerClaims) {
 		if rfb, ok := backend.(rawFallbackBackend); ok {
 			rows, _, rok, rerr := rfb.RawFallbackObligations(ctx, service, obl.File, semantic.RawFallbackReserve, withheld.StaleLayers...)
@@ -782,6 +809,13 @@ func obligationsSummary(obl semantic.Obligations, rootScope bool) string {
 	subject := "governing rule for " + obl.File
 	if rootScope {
 		subject = "root-scope governing rule"
+		if len(obl.Rules) > 0 {
+			// O1452: only a root guide's rule is root guidance. Another
+			// document's rule is named by that document's kind.
+			if kind := citedDocKind(obl.Rules[0].Src); kind != "" {
+				subject = kind + " rule"
+			}
+		}
 	}
 	if len(obl.Rules) == 0 {
 		if rootScope {
@@ -797,6 +831,35 @@ func obligationsSummary(obl semantic.Obligations, rootScope bool) string {
 		head = strings.TrimRight(string(runes[:headMaxChars]), " ") + "…"
 	}
 	return capSummary(fmt.Sprintf("%s: %s (%s, %s)", subject, head, r.Tier, r.Src))
+}
+
+// citedDocKind names the kind of the document a rule's citation points at,
+// or "" for a repository-root guide (AGENTS.md, CLAUDE.md and kin), whose
+// rules are root guidance. A nested guide governs its subtree, a design
+// document, plan or decision record is that document's rule, never the
+// root's.
+func citedDocKind(src string) string {
+	doc, _, _ := strings.Cut(src, "#")
+	doc = path.Clean(doc)
+	base := path.Base(doc)
+	switch {
+	case doc == ".claude/CLAUDE.md" || doc == ".claude/AGENTS.md":
+		return ""
+	case base == "CLAUDE.md" || base == "AGENTS.md" || base == "GEMINI.md" || base == "BUGBOT.md":
+		if path.Dir(doc) == "." {
+			return ""
+		}
+		return "nested guide"
+	case base == "ADR.md" || strings.HasPrefix(doc, "docs/adr/"):
+		return "decision record"
+	case strings.HasPrefix(doc, "docs/design/"):
+		return "design document"
+	case strings.HasPrefix(doc, "docs/plans/"):
+		return "plan"
+	case doc == "." || doc == "":
+		return ""
+	}
+	return "document"
 }
 
 // ─── registerSemanticTools ───────────────────────────────────────────────────

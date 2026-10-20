@@ -964,6 +964,17 @@ func (a *autoRefreshBackend) RawFallbackObligations(ctx context.Context, service
 	return rfb.RawFallbackObligations(ctx, service, file, max, withheld...)
 }
 
+// RootRawFallbackObligations forwards the root-scope raw fallback (O1452),
+// same O7 forwarding class as RawFallbackObligations above.
+func (a *autoRefreshBackend) RootRawFallbackObligations(ctx context.Context, service string, max int) ([]semantic.Obligation, string, bool, error) {
+	a.ensure(ctx, service)
+	rrb, ok := a.QueryInterface.(rootRawFallbackBackend)
+	if !ok {
+		return nil, "", false, nil
+	}
+	return rrb.RootRawFallbackObligations(ctx, service, max)
+}
+
 // StoreWatermark forwards the optional storeWatermarker capability
 // (resolved_nav.go) — same O7 forwarding class as IngestStats/TypedEdgeStatus
 // above. Without it, serve-http's default configuration (auto-refresh ON,

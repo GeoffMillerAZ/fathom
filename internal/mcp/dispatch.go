@@ -443,6 +443,12 @@ func (s *Server) handleToolsCallMeta(ctx context.Context, params json.RawMessage
 	if err != nil {
 		return nil, &rpcError{Code: ErrCodeInternal, Message: "marshal result: " + err.Error()}, meta
 	}
+	// O1449: the refresh disclosure also rides inside the result object,
+	// where the text block and structuredContent a client shows the model
+	// carry it. The envelope's own "refresh" key below stays (an added
+	// field only).
+	refreshNote := refreshed.render()
+	b = withFreshness(b, refreshNote)
 	envelope := map[string]any{
 		"content": []any{
 			map[string]any{"type": "text", "text": string(b)},
@@ -459,8 +465,8 @@ func (s *Server) handleToolsCallMeta(ctx context.Context, params json.RawMessage
 	if suppressed := collector.Render(); suppressed != nil {
 		envelope["suppressed"] = suppressed
 	}
-	if r := refreshed.render(); r != nil {
-		envelope["refresh"] = r
+	if refreshNote != nil {
+		envelope["refresh"] = refreshNote
 	}
 	if partial != nil {
 		envelope["budget"] = partial

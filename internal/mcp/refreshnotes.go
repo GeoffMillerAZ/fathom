@@ -9,6 +9,7 @@ package mcp
 
 import (
 	"context"
+	"encoding/json"
 	"sort"
 	"sync"
 
@@ -76,4 +77,33 @@ func noteRefreshQueued(ctx context.Context, service string, state refresh.State,
 		verb = "refreshing"
 	}
 	noteRefreshDeferred(ctx, service, verb+" (index_stale) — served from the index at "+shortSHA(indexed)+"; HEAD is "+shortSHA(head)+"; the refresh runs in the background")
+}
+
+// withFreshness returns the JSON object b with a "freshness" member holding
+// notes (service -> disclosure) appended. b is returned unchanged when notes
+// is empty, b is not an object, or b already has a "freshness" member of its
+// own. Deterministic: render sorts the services and json.Marshal sorts map keys.
+func withFreshness(b []byte, notes map[string]string) []byte {
+	if len(notes) == 0 || len(b) < 2 || b[0] != '{' || b[len(b)-1] != '}' {
+		return b
+	}
+	var members map[string]json.RawMessage
+	if json.Unmarshal(b, &members) != nil {
+		return b
+	}
+	if _, taken := members["freshness"]; taken {
+		return b
+	}
+	nb, err := json.Marshal(notes)
+	if err != nil {
+		return b
+	}
+	out := make([]byte, 0, len(b)+len(nb)+14)
+	out = append(out, b[:len(b)-1]...)
+	if len(members) > 0 {
+		out = append(out, ',')
+	}
+	out = append(out, `"freshness":`...)
+	out = append(out, nb...)
+	return append(out, '}')
 }
