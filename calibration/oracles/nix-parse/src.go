@@ -178,9 +178,9 @@ func letEnd(toks []token, i int) int {
 }
 
 // stmtEnd returns the index of the `;` ending the statement that starts at i (nested brackets, lets, withs and
-// asserts skipped).
+// asserts skipped). A `with e;` or `assert c;` owns the `;` that follows its head, at the let level it opens in.
 func stmtEnd(toks []token, i int) int {
-	lets, pend := 0, 0
+	pend := []int{0} // one counter per open let
 	for j := i; j < len(toks); j++ {
 		t := toks[j]
 		switch {
@@ -191,17 +191,19 @@ func stmtEnd(toks []token, i int) int {
 				return -1
 			}
 		case isK(t, "let"):
-			lets++
+			pend = append(pend, 0)
 		case isK(t, "in"):
-			lets--
+			if len(pend) > 1 {
+				pend = pend[:len(pend)-1]
+			}
 		case isK(t, "with") || isK(t, "assert"):
-			pend++
+			pend[len(pend)-1]++
 		case isP(t, ";"):
-			if lets > 0 {
+			if pend[len(pend)-1] > 0 {
+				pend[len(pend)-1]--
 				continue
 			}
-			if pend > 0 {
-				pend--
+			if len(pend) > 1 {
 				continue
 			}
 			return j

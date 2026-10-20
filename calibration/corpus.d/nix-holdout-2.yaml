@@ -1,0 +1,26 @@
+id: nix-holdout-2
+language: Nix
+# The second holdout for the nix dialect (LB-Q-nix, wave lang8), pinned in its own commit, before the dialect ran on
+# either repository, and read ONCE into docs/bench/readings/lang/holdout/nix-2.json; never tuned against.
+# nix-holdout.yaml (disko) stays as it is: read first, it holds out the root-expression rule (L1, L2 good) but
+# neither the oracle nor the dialect drew one cross-file reference there (the import-and-select shape is rare in
+# Nix: scouting eight MIT repositories with the oracle alone, which reads no dialect output, found it in two). These two
+# were chosen for that shape: flake-parts (2 oracle pairs) and nixvim (3). Criteria, each checked at the pin: not
+# home-manager, nixos-config or disko; an MIT licence read at the commit; absent from every committed reading.
+repos:
+  - name: hercules-ci/flake-parts
+    url: https://github.com/hercules-ci/flake-parts
+    ref: latest
+    sha: 024633cd702b10285db5cb19b40ad48d2399ba60
+    licence: MIT
+    idioms:
+      - 'a flake whose modules are files imported by path (imports = [ ./modules/x.nix ];)'
+      - 'lib helpers imported once and selected (lib = import ./lib.nix { inherit ...; }; lib.mkFlake)'
+  - name: nix-community/nixvim
+    url: https://github.com/nix-community/nixvim
+    ref: latest
+    sha: 453dc9c5037e6d1bec81d2a51ddacd58a2f44e9c
+    licence: MIT
+    idioms:
+      - 'a plugin catalogue: over a thousand one-module files in the { lib, config, ... }: shape'
+      - 'helper libraries imported and selected across directories (lib/, plugins/utils/)'

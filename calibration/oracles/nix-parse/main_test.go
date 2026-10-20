@@ -190,3 +190,12 @@ func TestAgainstNixInstantiate(t *testing.T) {
 		t.Errorf("calls %v, want %v", calls, want)
 	}
 }
+
+// TestStmtEndWithInsideLet: a `with e;` in a nested let's binding owns its own `;`, not the statement's.
+func TestStmtEndWithInsideLet(t *testing.T) {
+	got := siteNames("{ a = let b = with x; y; in b; c = assert d; e; f = 1; }")
+	want := []string{"attr:a", "attr:c", "attr:f"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got %v want %v", got, want)
+	}
+}
