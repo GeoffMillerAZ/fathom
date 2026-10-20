@@ -107,9 +107,16 @@ func ParseGrammarLock(b []byte) (GrammarLock, error) {
 	return l, nil
 }
 
+// GrammarLockBytes is the grammars.lock.json embedded in this binary, as committed. The
+// extractor epoch's data digest hashes it (ADR-075 D4); the lock pins every blob's sha256, so
+// no blob is hashed.
+func GrammarLockBytes() ([]byte, error) {
+	return grammarFS.ReadFile("grammars/grammars.lock.json")
+}
+
 // LoadGrammarLock returns the lock embedded in this binary.
 func LoadGrammarLock() (GrammarLock, error) {
-	b, err := grammarFS.ReadFile("grammars/grammars.lock.json")
+	b, err := GrammarLockBytes()
 	if err != nil {
 		return GrammarLock{}, fmt.Errorf("tsengine: read embedded lock: %w", err)
 	}
