@@ -76,10 +76,8 @@ func enforceEnabled(root string) bool {
 	if err != nil {
 		return true // fail open; see the doc comment
 	}
-	if loaded.Config.Guards.Enforce != nil && !*loaded.Config.Guards.Enforce {
-		return false
-	}
-	return true
+	cfgOn := loaded.Config.Guards.Enforce == nil || *loaded.Config.Guards.Enforce
+	return capabilityOnAt(root, "guard-enforce", cfgOn)
 }
 
 // evaluateEnforcedFile runs every enforce:true guard and layer rule

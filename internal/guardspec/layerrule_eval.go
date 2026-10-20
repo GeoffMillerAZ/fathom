@@ -59,6 +59,9 @@ type LayerRuleIndex struct {
 	PackageEdges *depgraph.Graph
 	// CrossService are the fleet's service-level typed edges.
 	CrossService []CrossServiceEdge
+	// CallEdges are the index's package-normalized call edges, what
+	// call_direction checks. Nil is treated as empty.
+	CallEdges []core.Edge
 }
 
 // EvaluateLayerRule checks rule against idx and returns every violation,
@@ -74,6 +77,8 @@ func EvaluateLayerRule(rule LayerRule, idx LayerRuleIndex) []Violation {
 		out = evalBoundary(rule, idx)
 	case CrossServiceDirection:
 		out = evalCrossServiceDirection(rule, idx)
+	case CallDirection:
+		out = evalCallDirection(rule, idx)
 	}
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].From != out[j].From {
@@ -156,6 +161,43 @@ func evalNoCycles(rule LayerRule, idx LayerRuleIndex) []Violation {
 	return out
 }
 
+// evalCallDirection reports every call edge a forbidding call_direction
+// rule matches. An allowing rule reports nothing. Cross-rule precedence
+// (an allow overriding a deny) is applied where the whole set is checked,
+// CallDirectionRules.
+func evalCallDirection(rule LayerRule, idx LayerRuleIndex) []Violation {
+	if rule.AllowCall {
+		return nil
+	}
+	var out []Violation
+	for _, e := range idx.CallEdges {
+		from, to := pkgOf(e.FromSymbol), pkgOf(e.ToSymbol)
+		if !pathglob.MatchAny(rule.From, from) || !pathglob.MatchAny(rule.To, to) {
+			continue
+		}
+		out = append(out, Violation{
+			RuleID: rule.ID, Kind: rule.Kind, Severity: rule.Severity,
+			From: e.FromSymbol, To: e.ToSymbol,
+			Message: e.FromSymbol + " calls " + e.ToSymbol + ": " + rule.Sentence,
+		})
+	}
+	return out
+}
+
+// CallDirectionRules compiles the call_direction rules of set into
+// archconformance rules, in file order, so review and arch_conformance
+// check them with the one engine the rules/archconformance.cue form uses.
+func CallDirectionRules(set LayerRuleSet) []archconformance.Rule {
+	var out []archconformance.Rule
+	for _, r := range set.Rules {
+		if r.Kind != CallDirection {
+			continue
+		}
+		out = append(out, archconformance.Rule{FromGlobs: r.From, ToGlobs: r.To, Allow: r.AllowCall})
+	}
+	return out
+}
+
 func evalCrossServiceDirection(rule LayerRule, idx LayerRuleIndex) []Violation {
 	var out []Violation
 	for _, e := range idx.CrossService {
@@ -178,7 +220,8 @@ func evalCrossServiceDirection(rule LayerRule, idx LayerRuleIndex) []Violation {
 func BuildIndexFromSymbols(nodes []core.SymbolNode, cross []CrossServiceEdge) LayerRuleIndex {
 	dirs := packageDirs(nodes)
 	g := depgraph.NewGraph()
-	for _, e := range archconformance.EdgesFromNodes(nodes) {
+	callEdges := archconformance.EdgesFromNodes(nodes)
+	for _, e := range callEdges {
 		fromPkg := pkgOf(e.FromSymbol)
 		toPkg := pkgOf(e.ToSymbol)
 		fromDir, ok := dirs[fromPkg]
@@ -191,7 +234,7 @@ func BuildIndexFromSymbols(nodes []core.SymbolNode, cross []CrossServiceEdge) La
 		}
 		g.AddEdge(fromDir, toDir)
 	}
-	return LayerRuleIndex{PackageEdges: g, CrossService: cross}
+	return LayerRuleIndex{PackageEdges: g, CrossService: cross, CallEdges: callEdges}
 }
 
 // packageDirs maps a Go file's DECLARED package name to its source

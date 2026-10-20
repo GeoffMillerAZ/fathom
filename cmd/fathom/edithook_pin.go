@@ -250,6 +250,19 @@ func firstN(s []string, n int) []string {
 // only a layer that does costs a config.Load. A config that does not load
 // leaves the default, record.
 func pinCheckMode(root string) string {
+	mode := pinCheckConfigMode(root)
+	// FD-34: the pin-check capability (capabilities.cue over the config.toml
+	// switch) can turn the check off, or on over a config that says off.
+	switch on := capabilityOnAt(root, "pin-check", mode != config.PinCheckOff); {
+	case !on:
+		return config.PinCheckOff
+	case mode == config.PinCheckOff:
+		return config.PinCheckRecord
+	}
+	return mode
+}
+
+func pinCheckConfigMode(root string) string {
 	userPath, projPath := config.DefaultUserPath(), projectdir.Config.Path(root)
 	if !bytes.Contains(readConfigLayer(userPath), []byte("pin_check")) && !bytes.Contains(readConfigLayer(projPath), []byte("pin_check")) {
 		return config.PinCheckRecord

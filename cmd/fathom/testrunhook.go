@@ -112,7 +112,7 @@ func cmdTestRunHook(codec harness.Codec, ev harness.Event, event, baseURL, dirOv
 	names := func(key, word string) bool {
 		return bytes.Contains(userRaw, []byte(word)) || (config.RepoMaySet(key) && bytes.Contains(projRaw, []byte(word)))
 	}
-	if !names("hooks.test_run", "test_run") {
+	if !names("hooks.test_run", "test_run") && !capabilityCueNames(root, "test-run-hook") {
 		return 0
 	}
 	m, matched := matchDeclaredTestCommand(root, in.Command, nil)
@@ -133,7 +133,7 @@ func cmdTestRunHook(codec harness.Codec, ev harness.Event, event, baseURL, dirOv
 		}
 		loaded = &l
 	}
-	if !loaded.Config.Hooks.TestRun {
+	if !capabilityOnAt(root, "test-run-hook", loaded.Config.Hooks.TestRun) {
 		return 0
 	}
 	rpcOrigin = testRunChannel

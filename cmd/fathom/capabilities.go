@@ -372,6 +372,7 @@ func loadCapabilityConfig(reg capability.Registry, root string) (capability.Reso
 	} else {
 		res.Project = s
 	}
+	res.Config = configSwitchSettings(root)
 	return res, errs
 }
 

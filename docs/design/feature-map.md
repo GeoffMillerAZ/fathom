@@ -135,7 +135,7 @@ same file is FM-M1's hand-built oracle (section 12).
 What counts as value, the health table's exact weights and thresholds, and any extra
 consideration beyond this design's defaults — that is a Standard, authored as a
 `product-portfolio` catalog, and authoring Standards is explicitly Review Kit's job (D3).
-Fathom ships a small `.fathom/features.cue` local fallback, the same shape as `.fathom/risk.cue`,
+Fathom ships a small `features` key of `#Project` (by convention `.fathom/features.cue`), read through the one loader (ADR-061 decision 2), as the local fallback, the same shape as `.fathom/risk.cue`,
 with defaults compiled into the binary so a repo with no Review Kit installed still gets a
 working feature map. `docs/features.md` itself — the authored rows and their citations — stays
 canonical either way; a Standard can change how a feature is scored, never which features
