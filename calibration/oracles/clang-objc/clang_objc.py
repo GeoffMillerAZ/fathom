@@ -30,7 +30,8 @@ import os
 import subprocess
 import sys
 
-sys.path.insert(0, os.environ.get("CLANG_PYBIND", "/Volumes/m2ext/tmp/fathom-build/toolcache/pyclang"))
+if os.environ.get("CLANG_PYBIND"):  # the bindings' --target dir, when they are not on the default path
+    sys.path.insert(0, os.environ["CLANG_PYBIND"])
 import clang.cindex as ci  # noqa: E402
 
 SAME_PACKAGE_NOTE = (

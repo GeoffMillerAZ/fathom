@@ -20,7 +20,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 TESTDATA = os.path.join(REPO, "internal", "extractor", "dialects", "objective-c", "testdata")
 LIBCLANG = os.environ.get("LIBCLANG", "/Library/Developer/CommandLineTools/usr/lib/libclang.dylib")
-BIND = os.environ.get("CLANG_PYBIND", "/Volumes/m2ext/tmp/fathom-build/toolcache/pyclang")
+BIND = os.environ.get("CLANG_PYBIND", "")
 
 
 @unittest.skipUnless(os.path.exists(LIBCLANG) and os.path.isdir(BIND), "libclang or its Python bindings are absent")

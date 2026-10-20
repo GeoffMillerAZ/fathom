@@ -1,7 +1,10 @@
 id: solidity-holdout
 language: Solidity
-# The holdout for LB-Q-solidity (K19), pinned in the commit of the dialect's tags.scm and its solc oracle, before any reading
-# under it, and read ONCE with the dialect unchanged into docs/bench/readings/lang/holdout/solidity.json; solidity.json stays the
+# The holdout for LB-Q-solidity (K19), pinned with the solc oracle before any tuning or reading under it (a worker commit at
+# 2026-10-19 22:28; the tags.scm tuning followed at 22:30 and the one holdout reading at 22:32, the dialect unchanged after it;
+# the branch was squashed into one commit, so main shows the pin and the reading together, and the readings' fathom_commit
+# values, 1cd3b320c and af95b57ed, name those pre-squash worker commits), and read ONCE with the dialect
+# unchanged into docs/bench/readings/lang/holdout/solidity.json; solidity.json stays the
 # contract's reading over solidity.yaml's repos. Criterion (pre-registered): the holdout reading's level_met is L2 (any grade; L1 and
 # L2 met against the same tier-A oracle), and LB-Q-solidity flips [x] only when it does and solidity.json reads L2 too; a miss
 # writes a note beginning `L2 ceiling: ` in solidity.json and LB-Q-solidity stays open, nothing tuned after the holdout reading.

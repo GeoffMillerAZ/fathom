@@ -9,7 +9,7 @@ This script asks the compiler front end for the rest: libclang, the Command Line
 Python bindings (their cursor-kind table is older than the library, so an unknown kind is skipped).
 
     uv pip install --target <tools>/pyclang libclang==18.1.1
-    CLANG_MODULE_CACHE=<scratch>/modcache python3 clang_objc.py --subject <scratch copy of the checkout> --out <oracle.json> \
+    CLANG_PYBIND=<tools>/pyclang CLANG_MODULE_CACHE=<scratch>/modcache python3 clang_objc.py --subject <scratch copy of the checkout> --out <oracle.json> \
         --all-header-dirs --compdb <subject>/build/compile_commands.json --list <files.txt>
 
 It parses every `.m`, `.mm` and Objective-C `.h` (a header as its own `objective-c-header` unit) with `-fobjc-arc`,
