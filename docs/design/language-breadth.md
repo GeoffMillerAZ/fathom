@@ -1981,8 +1981,8 @@ worktree and your scratch directory.
     reached less than the target, see §14.2 — do not change the pattern.
 24. CHANGELOG: one line under `[Unreleased]` → `### Added` (new language) or `### Changed`
     (a port): "`<Name>` extraction at <level> (<grade>), measured against <oracle> on
-    <subjects>". A port that changes output for already-indexed files also bumps
-    `fusion.ExtractorEpoch` in the same commit.
+    <subjects>". A port that changes output for already-indexed files also adds the wave's bump
+    file `internal/fusion/epochs/<wave>.md` (what changed, why stored observations are stale).
 25. Delete your clones unless the next queued item shares a subject
     (`task calibrate-clean -- <id>`); delete your scratch dir.
 
