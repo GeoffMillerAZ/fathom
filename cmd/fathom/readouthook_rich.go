@@ -12,8 +12,11 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"path"
 	"path/filepath"
 	"slices"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -27,11 +30,26 @@ import (
 // 320-token whole-payload ceiling, as the test-run line's cap is.
 const readoutRichLineBudget = testRunLineBudget
 
-// readoutRich is one run's rich lines and what its row records.
+// readoutRich is one run's rich lines and what its row records. The lines
+// the compile records feed (the compile line and its tests line) lead, the
+// first enrich of them, and the policy table decides whether they are
+// served; the guard line after them is the command's own advisory and
+// stands apart from the table.
 type readoutRich struct {
 	lines  []string
 	kinds  []string
 	missed []string
+	enrich int
+	// records counts the enrichment records by kind; overlap counts those
+	// naming the session's edits, failing those naming a test in the last
+	// run's failing set (the table's EditedOverlap and FailingOverlap).
+	records          map[string]int
+	overlap, failing int
+	// choice is the table's answer (chose once asked), withheld the kinds
+	// it held back.
+	choice   readout.Choice
+	chose    bool
+	withheld []string
 }
 
 // readoutRichCodec is the hook's codec that also keeps the context the
@@ -86,16 +104,23 @@ func (o *readoutRichOutput) flush(stdout io.Writer, lines []string) bool {
 // daemon joins take their own deadline inside the hook's ceiling, counted
 // from start (RO-30).
 func readoutRichLines(ctx context.Context, in harness.HookInput, dir string, c *shellcmd.Command, start time.Time) readoutRich {
-	line, tests, missed := readoutCompileLine(ctx, in, dir, c, start)
-	r := readoutRich{missed: missed}
-	if line != "" {
-		r.lines = append(r.lines, line)
+	cl := readoutCompileLine(ctx, in, dir, c, start)
+	r := readoutRich{missed: cl.missed, overlap: cl.overlap}
+	if cl.line != "" {
+		r.lines = append(r.lines, cl.line)
 		r.kinds = append(r.kinds, readout.RecordCompileError)
+		r.records = map[string]int{readout.RecordCompileError: cl.records}
 	}
-	if tests != "" {
-		r.lines = append(r.lines, tests)
+	if cl.tests != "" {
+		r.lines = append(r.lines, cl.tests)
 		r.kinds = append(r.kinds, readoutRichTestsKind)
+		if r.records == nil {
+			r.records = map[string]int{}
+		}
+		r.records[readoutRichTestsKind] = len(cl.shown)
+		r.failing = readoutFailingOverlap(in, cl.shown)
 	}
+	r.enrich = len(r.lines)
 	if ctx.Err() != nil {
 		return r
 	}
@@ -126,6 +151,18 @@ func goCompileTool(c *shellcmd.Command) string {
 // readoutRichTestsKind is the rich kind of the tests line RO-30's join adds.
 const readoutRichTestsKind = "tests_to_run"
 
+// readoutCompile is readoutCompileLine's answer: the line and the tests
+// line, the joins that missed, and what the policy table reads of them.
+type readoutCompile struct {
+	line, tests string
+	missed      []string
+	// records is the compile_error records' count; overlap the groups that
+	// name the session's edits (readout.CompileOverlap); shown the tests
+	// the tests line names.
+	records, overlap int
+	shown            []testRef
+}
+
 // readoutCompileLine is RO-24's line for a go build or go vet run: its
 // errors as compile_error records grouped by root, the root a symbol the
 // working tree changed placed at its definition, and the group touching a
@@ -134,10 +171,10 @@ const readoutRichTestsKind = "tests_to_run"
 // the tests that reach the changed files (tests, its own line); a missed
 // join reads "index: not consulted (<reason>)" at the line's end. missed
 // names a join that did not answer.
-func readoutCompileLine(ctx context.Context, in harness.HookInput, dir string, c *shellcmd.Command, start time.Time) (line, tests string, missed []string) {
+func readoutCompileLine(ctx context.Context, in harness.HookInput, dir string, c *shellcmd.Command, start time.Time) (cl readoutCompile) {
 	tool := goCompileTool(c)
 	if tool == "" {
-		return "", "", nil
+		return cl
 	}
 	text := in.Shell.Stdout
 	if in.Shell.Stderr != "" {
@@ -158,8 +195,9 @@ func readoutCompileLine(ctx context.Context, in harness.HookInput, dir string, c
 	}
 	recs := readout.CompileErrors(text, norm)
 	if len(recs) == 0 {
-		return "", "", nil
+		return cl
 	}
+	cl.records = len(recs)
 	var defs []readout.CompileDef
 	var files []string
 	if root != "" {
@@ -171,18 +209,19 @@ func readoutCompileLine(ctx context.Context, in harness.HookInput, dir string, c
 				}
 			}
 		} else {
-			missed = append(missed, "changed_symbols")
+			cl.missed = append(cl.missed, "changed_symbols")
 		}
 	}
+	changed := slices.Clone(defs)
 	suffix := ""
 	if root != "" {
 		idx, reached, miss := readoutDaemonJoins(readoutHookClock().Sub(start), root, readout.UnplacedIdents(recs, defs), files)
 		defs = append(defs, idx...)
 		if miss != "" {
 			suffix = "; " + daemonJoinMissLine(miss)
-			missed = append(missed, "index")
+			cl.missed = append(cl.missed, "index")
 		} else if shown, more := pickTestsToRun(reached, ""); len(shown) > 0 {
-			tests = testsToRunText(shown, more, "")
+			cl.tests, cl.shown = testsToRunText(shown, more, ""), shown
 		}
 	}
 	now := readoutHookClock()
@@ -198,5 +237,105 @@ func readoutCompileLine(ctx context.Context, in harness.HookInput, dir string, c
 		}
 		return fileInEditSet(abs, in.Cwd, in.SessionID)
 	}
-	return readout.CompileErrorLine(tool, recs, defs, edited, readoutRichLineBudget-len(suffix)) + suffix, tests, missed
+	cl.overlap = readout.CompileOverlap(recs, changed, edited)
+	cl.line = readout.CompileErrorLine(tool, recs, defs, edited, readoutRichLineBudget-len(suffix)) + suffix
+	return cl
+}
+
+// readoutFailingOverlap counts the tests the tests line names that the
+// session's latest test-run row logged failing (the agent's own run, never
+// a sub-agent's when the call is the main agent's): the table's
+// FailingOverlap. An unreadable log counts none.
+func readoutFailingOverlap(in harness.HookInput, shown []testRef) int {
+	rows, ok := sessionTestRunRows(beatLogPath(), in.SessionID, in.AgentID)
+	if !ok || len(rows) == 0 {
+		return 0
+	}
+	failing := rows[len(rows)-1].Failing
+	n := 0
+	for _, t := range shown {
+		for _, f := range failing {
+			if f == t.name || strings.HasSuffix(f, "."+t.name) || strings.HasPrefix(path.Base(f), t.name+"/") || strings.Contains(f, "."+t.name+"/") {
+				n++
+				break
+			}
+		}
+	}
+	return n
+}
+
+// readoutRichChoose asks the policy table whether this call's enrichment
+// lines are served, from the call's counts and flags only (never its text,
+// I61), and holds them back unless it answers enriched. The table answers
+// with its built-in cut points; lean is never served here (no rule is
+// promoted). The guard line is not the table's to withhold.
+func readoutRichChoose(ctx context.Context, r *readoutRich, ev harness.Event, in harness.HookInput, dir string, c *shellcmd.Command, rin readout.Input, ro readout.Readout, rule *readout.Rule, joins readoutJoinRun, quiet []string) {
+	f := readout.Features{
+		Event: readout.EventSuccess, Bytes: ro.BytesIn, Lines: ro.LinesIn, Records: r.records,
+		EditedOverlap: r.overlap, FailingOverlap: r.failing, Recovery: -1, SubAgent: in.AgentID != "",
+	}
+	if ev == harness.EventToolFailure || in.Shell.Interrupted {
+		f.Event = readout.EventFailure
+	}
+	f.Class = ro.Stream
+	if f.Class == "" {
+		f.Class = readout.StreamOf(c, quiet)
+	}
+	if f.Class == readout.StreamDiagnostic {
+		f.Protected = readout.ProtectedLines(in.Shell.Stdout)
+	}
+	f.Protected += readout.ProtectedLines(in.Shell.Stderr)
+	if rule != nil {
+		f.RuleFloor = rule.When.BytesGT
+	}
+	if p, ok := readout.WholeFileRead(c); ok {
+		f.WholeRead = true
+		if slices.Contains(joins.ran, readoutJoinEdited) {
+			f.ReadEdited = rin.Edited
+		} else if ctx.Err() == nil {
+			f.ReadEdited, _ = readoutFileEdited(ctx, in, dir, p)
+		}
+	}
+	r.choice, r.chose = readout.Choose(f, readout.BuiltinPolicy()), true
+	if r.choice.Mode != readout.ChoiceEnriched && r.enrich > 0 {
+		r.withheld = append(r.withheld, r.kinds[:r.enrich]...)
+		r.lines, r.kinds = slices.Clone(r.lines[r.enrich:]), slices.Clone(r.kinds[r.enrich:])
+		r.enrich = 0
+	}
+}
+
+// readoutPolicyMeta records the table's answer on the row, the receipt a
+// raw result carries since it carries no fathom text: the choice, the rule
+// that answered, decided_by table, the contested band, the kinds held back,
+// and the features an offline fit reads back
+// (the overlaps and the records by kind; counts only, never text).
+func readoutPolicyMeta(meta map[string]string, r readoutRich) {
+	meta["policy"] = r.choice.Mode
+	meta["policy_rule"] = strconv.Itoa(r.choice.Rule)
+	meta["decided_by"] = r.choice.DecidedBy
+	if r.choice.Contested {
+		meta["contested"] = "true"
+	}
+	meta["edited_overlap"] = strconv.Itoa(r.overlap)
+	meta["failing_overlap"] = strconv.Itoa(r.failing)
+	if len(r.records) > 0 {
+		meta["records"] = readoutKindCounts(r.records)
+	}
+	if len(r.withheld) > 0 {
+		meta["rich_withheld"] = strings.Join(r.withheld, ",")
+	}
+}
+
+// readoutKindCounts is counts by kind as sorted "kind:n" pairs.
+func readoutKindCounts(m map[string]int) string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	parts := make([]string, len(keys))
+	for i, k := range keys {
+		parts[i] = k + ":" + strconv.Itoa(m[k])
+	}
+	return strings.Join(parts, ",")
 }

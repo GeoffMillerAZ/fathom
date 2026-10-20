@@ -179,7 +179,7 @@ func Render(rs *RuleSet, in Input) Readout {
 	if (rule.When.BytesGT > 0 && len(in.Stdout) <= rule.When.BytesGT) || (rule.When.LinesGT > 0 && len(ls) <= rule.When.LinesGT) {
 		return raw(ReasonBelowFloor, "")
 	}
-	if rule.Match.WholeRead && in.Edited {
+	if editedWholeRead(rule.Match.WholeRead, in.Edited) { // the policy table's rule 4
 		return raw(ReasonEdited, "")
 	}
 	capChars := in.Cap
