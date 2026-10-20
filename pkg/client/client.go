@@ -945,6 +945,12 @@ func (c *Client) ServiceMeta(ctx context.Context, serviceID string) (path, index
 	return meta.Path, meta.IndexedCommit, true, nil
 }
 
+// FileStats returns the service's indexed file_stats rows (path, size,
+// mtime, fingerprint): what a reader compares a working-tree file with.
+func (c *Client) FileStats(ctx context.Context, serviceID string) ([]store.FileStat, bool, error) {
+	return c.st.FileStats(ctx, serviceID)
+}
+
 // ListCommits returns commit history for serviceID, newest-first, as CommitInfo
 // presentation records (Date is RFC3339, FilesTouchedCount is len(Files)).
 func (c *Client) ListCommits(ctx context.Context, serviceID string) ([]store.CommitInfo, error) {

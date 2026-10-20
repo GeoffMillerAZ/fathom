@@ -75,6 +75,7 @@ from the doc index (stored text) and is not exempt. `TestSecretSurface_NoReadToo
 asks every tool on `/rpc/extended` about the secret-bearing files and entities and finds the sentinel
 (in the clear or base64-encoded) in no answer; a tool added to that surface without an entry fails
 `TestSecretSurface_EveryToolHasAnEntry`.
+<<<<<<< HEAD
 
 ## Cold and unresolved answers (O1446, O1447, O1451)
 
@@ -92,3 +93,8 @@ needs them rebuilds them: seconds on a small service, a minute on a large one.
   `candidates` (`symbol_key`, `file`, `line`; case-insensitive, then substring, then edit distance)
   and a `hint`, and no `def`, `callers`, `callees` or `related_tests`. A repository-relative key
   (`dir/file.Name`, a candidate key without its `service::` prefix) resolves within the call's service.
+||||||| db202264d
+=======
+
+`search`'s `path` is a directory, or a glob under one. The leading literal directory is the search root, so `.gitignore` and `.fathomignore` still apply under it; the rest of a glob filters the returned paths.
+>>>>>>> fix6-search
