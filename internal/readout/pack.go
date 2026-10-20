@@ -38,10 +38,10 @@ func LoadPackRules(rs *RuleSet, root string) {
 	if err != nil {
 		return // pins that cannot be read: nothing to serve, and doctor's pack rows name it
 	}
-	loadPackRules(rs, d.Packs)
+	packReadoutRules(rs, d.Packs)
 }
 
-func loadPackRules(rs *RuleSet, packs []techpack.Pack) {
+func packReadoutRules(rs *RuleSet, packs []techpack.Pack) {
 	for _, p := range packs {
 		if len(p.Readouts) == 0 {
 			continue
