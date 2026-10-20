@@ -1,5 +1,3 @@
-// Package techpack reads a tech pack directory (docs/design/fathom-dir.md
-// section 7): its fixtures as pure data.
 package techpack
 
 import (
