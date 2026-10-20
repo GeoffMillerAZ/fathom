@@ -25,8 +25,8 @@ nobody shares. Kit rows land in agentic-kit first and arrive here by `task sync-
 
 - [x] Today's `[Unreleased]` lines move to `docs/changelog/unreleased/`, one fragment per category, between waves; `CHANGELOG.md`'s `[Unreleased]` keeps only the pointer line {id: AP-7, oracle: lexical, path: CHANGELOG.md, pattern: "^Unreleased changes wait as fragments under docs/changelog/unreleased/", needs: "AP-2"}
 - [x] `task validate` runs the fragment check {id: AP-8, oracle: lexical, path: Taskfile.yml, pattern: "release-notes -check", needs: "AP-4,AP-7"}
-- [ ] `fathom plans archive` counts a row id named in a fragment as absorbed {id: AP-9, symbol: readAbsorptionFiles, package: cmd/fathom, reachable_from: TestReadAbsorptionFilesReadsChangeFragments, needs: "AP-7"}
-- [ ] The custodian ADR-reference concern resolves citations in fragments {id: AP-10, symbol: adrCitingFiles, package: internal/custodian, reachable_from: TestADRCitingFilesIncludeChangeFragments, needs: "AP-7"}
+- [x] `fathom plans archive` counts a row id named in a fragment as absorbed {id: AP-9, symbol: readAbsorptionFiles, package: cmd/fathom, reachable_from: TestReadAbsorptionFilesReadsChangeFragments, needs: "AP-7"}
+- [x] The custodian ADR-reference concern resolves citations in fragments {id: AP-10, symbol: adrCitingFiles, package: internal/custodian, reachable_from: TestADRCitingFilesIncludeChangeFragments, needs: "AP-7"}
 - [x] The `AGENTS.md` change-records stanza, `CHANGELOG.md`'s header and the router's "what changed" row name the fragments directory {id: AP-11, oracle: lexical, path: AGENTS.md, pattern: "docs/changelog/unreleased/", needs: "AP-7"}
 
 ## Wave 3: generated files merge by regeneration (section 4)
