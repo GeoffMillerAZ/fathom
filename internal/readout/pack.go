@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 
 	toml "github.com/pelletier/go-toml/v2"
 
@@ -106,6 +108,47 @@ func packReadoutRules(rs *RuleSet, packs []techpack.Pack) {
 		rs.Rules = append(added, rs.Rules...)
 		rs.Packs = append(rs.Packs, pr)
 	}
+}
+
+// RunPackFixtures is techpack.RunFixtures with the readouts section run
+// through the loader's own path (each rule's fixtures and the add-only
+// limit), so `fathom rules fixtures`, the harness a kit runs in its own CI,
+// reads what an adopter's loader serves. The section counts rules, not
+// fixtures: a withheld rule is a failure named with its first reason.
+func RunPackFixtures(dir string) (techpack.Reading, error) {
+	r, err := techpack.RunFixtures(dir)
+	if err != nil {
+		return r, err
+	}
+	for i, s := range r.Sections {
+		if s.Section != techpack.SectionReadouts || s.NoFixtures {
+			continue
+		}
+		p, err := techpack.ReadPack(dir)
+		if err != nil {
+			return techpack.Reading{}, err
+		}
+		rs := &RuleSet{}
+		packReadoutRules(rs, []techpack.Pack{p})
+		sec := techpack.SectionReading{Section: techpack.SectionReadouts}
+		for _, pr := range rs.Packs {
+			sec.Passed += len(pr.Served)
+			for _, f := range pr.Withheld {
+				id := f.ID
+				if id == "" {
+					id = "(pack)"
+				}
+				first, _, _ := strings.Cut(f.Reason, "\n")
+				sec.Failures = append(sec.Failures, id+": "+first)
+			}
+		}
+		sort.Strings(sec.Failures)
+		sec.Failed = len(sec.Failures)
+		sec.Run = sec.Passed + sec.Failed
+		sec.Withheld = sec.Failed > 0
+		r.Sections[i] = sec
+	}
+	return r, nil
 }
 
 // tomlSafe turns the whole-number floats a decoded pack carries back into

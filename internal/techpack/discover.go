@@ -353,6 +353,16 @@ func cuePins(root string, getenv func(string) string) ([]pin, error) {
 // file is absent or the file carries no `pack` header (a fathom-pack/
 // without a header is not a tech pack). A header that fails #Pack is an
 // error.
+// ReadPack reads the tech pack in dir (its pack.cue) as Discover does; a dir
+// with no pack is an error.
+func ReadPack(dir string) (Pack, error) {
+	p, found, err := readPack(dir)
+	if err == nil && !found {
+		err = fmt.Errorf("%s: no pack", filepath.Join(dir, PackFile))
+	}
+	return p, err
+}
+
 func readPack(dir string) (Pack, bool, error) {
 	file := filepath.Join(dir, PackFile)
 	data, err := os.ReadFile(file)

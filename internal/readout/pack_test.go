@@ -170,3 +170,29 @@ func TestPackReadoutRulesAreAddOnly(t *testing.T) {
 		}
 	})
 }
+
+// A kit's own CI runs `fathom rules fixtures` (fathom-dir design section
+// 7.2): its readouts section must read what an adopter's loader serves, so a
+// failing fixture or a drop rule is withheld there too, never counted passed.
+func TestRunPackFixturesRunsTheReadoutRules(t *testing.T) {
+	read := func(body string) (string, bool) {
+		t.Helper()
+		dir := t.TempDir()
+		writeFiles(t, dir, map[string]string{"pack.cue": body})
+		r, err := RunPackFixtures(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return strings.Join(r.Lines(), "\n"), r.OK()
+	}
+	if got, ok := read(packHeader + packAddRule + "]\n"); !ok || !strings.Contains(got, "served: readouts (1 of 1 passed)") {
+		t.Errorf("a passing rule reads served:\n%s", got)
+	}
+	bad := strings.Replace(packAddRule, "nothing dropped", "something else", 1)
+	if got, ok := read(packHeader + bad + "]\n"); ok || !strings.Contains(got, "failing: pack-build: fixture 1") {
+		t.Errorf("a failing fixture reads withheld and names the rule:\n%s", got)
+	}
+	if got, ok := read(packHeader + packAddRule + packDropRule + "]\n"); ok || !strings.Contains(got, "failing: pack-drop: a repository rule may only add") {
+		t.Errorf("a drop rule reads withheld and names the rule:\n%s", got)
+	}
+}

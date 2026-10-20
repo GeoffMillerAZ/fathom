@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/geoffmilleraz/fathom/internal/techpack"
+	"github.com/geoffmilleraz/fathom/internal/readout"
 )
 
 // cmdRulesFixtures prints the fixture reading of a tech pack directory, the
@@ -27,7 +27,7 @@ func cmdRulesFixtures(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "error: usage: fathom rules fixtures <pack dir> [--json]")
 		return 2
 	}
-	r, err := techpack.RunFixtures(rest[0])
+	r, err := readout.RunPackFixtures(rest[0])
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 2
