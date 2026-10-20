@@ -101,19 +101,3 @@ func PlanRowMarks(root string, names ...string) (map[string]RowMark, error) {
 	}
 	return out, nil
 }
-
-// PlanRowDuplicates names each sibling row whose id an earlier plan already
-// holds, as "<id> (<sibling file>)", sorted.
-func PlanRowDuplicates(root string, names ...string) ([]string, error) {
-	seen := map[string]string{}
-	var dups []string
-	err := readPlanMarks(root, names, func(file, id string, _ RowMark) {
-		if f, ok := seen[id]; ok && f != file {
-			dups = append(dups, id+" ("+file+")")
-			return
-		}
-		seen[id] = file
-	})
-	sort.Strings(dups)
-	return dups, err
-}

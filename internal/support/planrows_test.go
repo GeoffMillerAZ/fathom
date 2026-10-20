@@ -65,13 +65,6 @@ func TestPlanRowMarksReadsLanguageBreadthSiblings(t *testing.T) {
 			t.Errorf("%s = %q, want %q", id, got[id], m)
 		}
 	}
-	dups, err := PlanRowDuplicates(root, "language-breadth.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(dups) != 1 || dups[0] != "LB-DUP (language-breadth.b.md)" {
-		t.Errorf("dups = %v", dups)
-	}
 	// No sibling: byte-identical to the main plan alone.
 	if err := os.Remove(filepath.Join(dir, "language-breadth.a.md")); err != nil {
 		t.Fatal(err)
