@@ -1,0 +1,22 @@
+id: scss-holdout
+language: SCSS
+# The holdout for the W5 rule (design 1.8, LB-Q-scss-rest, O851): chosen and pinned in the
+# commit that adds the rule, before the rule ran on any subject, and read once into
+# docs/bench/readings/lang/holdout/scss.json. Never a calibration subject of scss.yaml, and
+# never tuned against: a later rule change needs a new holdout, not a re-read of this one.
+repos:
+  - name: angular/components
+    url: https://github.com/angular/components
+    ref: 21.0.2
+    sha: 49f1bc887b59154635894832a802e46bf0178eb4
+    licence: MIT
+    idioms:
+      - "Angular Material's design system: a module graph of `@use` (275 of the
+        434 `.scss` files), each module under a namespace (`@use '../core/tokens'
+        as tokens`, `@use 'sass:map'`)"
+      - "`@forward` barrels with `show` and `hide` and prefixes (`as token-*`)"
+      - "namespaced mixin includes (`@include tokens.m3-...`), user functions
+        called through a namespace, and `ns.$variable` reads"
+      - "`@mixin` and `@function` libraries taking maps and `$config` arguments,
+        `sass:map`, `sass:list` and `sass:meta` built-ins (excluded and counted)"
+      - "component partials, theming mixins and `%placeholder` with `@extend`"

@@ -588,6 +588,7 @@ The web rulings are named W, so they cannot be read as ADR-056's program rules R
   attests: `@vue/compiler-sfc`, `svelte/compiler` `parse`, `@astrojs/compiler`, `@angular/compiler`
   `parseTemplate`, and the Jenkins declarative linter (run against a local controller in the measuring harness
   only, never by fathom). A tags query is tier C for these formats and caps them at good.
+- **W5** (owner, 2026-10-20, O851, LB-Q-scss-rest's trigger): SCSS's L2 is name references, W2's rule carried to Sass's module system. A pair runs from the referring definition (the file's module symbol at top level) to the definition a reference names, resolved within the referring file's `@use`/`@forward`/`@import` closure: `@include m` to `@mixin m`, a call of a user-defined `@function f`, a `$v` read to the `$v` definition Sass's scoping selects (the innermost enclosing block, then the module; a namespaced `ns.m`, `ns.f()` or `ns.$v` through the `@use ... as ns` that names it, honouring `@forward` prefixes and `show`/`hide`), and `@extend %p` to the placeholder. Built-ins (the `sass:` modules and plain CSS functions) and names the closure does not define are excluded and counted, never scored. Oracle: sass-parser's tree at the version the L1 reading pins, walked by the harness under these scope rules: tier A for the tree it attests, the binding the harness's own walk, and the reading says so.
 
 **W1's pair key and scope (K19, wave lf5, LB-F441; committed with the holdout
 `calibration/corpus.d/html-holdout.yaml` before any reading under it).** A W1 pair is keyed by the
