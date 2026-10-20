@@ -1,0 +1,176 @@
+{
+  "dialect": "tailwind",
+  "kind": "language",
+  "target_level": "L2",
+  "level_met": "none",
+  "grade": {
+    "L1": "good",
+    "L2": "excellent",
+    "L3": "excellent",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-10-20",
+  "fathom_commit": "64b9df824",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "shadcn-ui/ui",
+      "sha": "daaf156ee00ed91cc7e6bdd937c1b4973152d141",
+      "files": 12,
+      "bytes": 682048,
+      "counts": {
+        "call_fathom": 14,
+        "call_fathom_in_truth": 14,
+        "call_truth": 14,
+        "call_truth_found": 14,
+        "css_w2_fathom_outside_closure": 305,
+        "css_w2_oracle_outside_closure": 179,
+        "fathom_defs": 72,
+        "file_edges_agree": 9,
+        "file_edges_fathom": 9,
+        "file_edges_truth": 9,
+        "import_edges_agree": 9,
+        "import_edges_fathom": 9,
+        "import_edges_truth": 9,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "imports": 12,
+        "imports_in_repo": 9,
+        "imports_resolved_agree": 9,
+        "kind_equal": 72,
+        "matched": 72,
+        "oracle_defs": 72
+      },
+      "families": {
+        "calls": "A",
+        "file_edges": "A",
+        "imports": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "macro",
+        "mixin",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "fathom:CSSCustomProperty": 963,
+        "fathom:CSSModule": 12,
+        "fathom:CSSSelector": 2941
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 8,
+        "extract_ms": 791.4630000000001,
+        "extract_cpu_ms": 786.5470000000001,
+        "max_file_ms": 125,
+        "peak_module_pages": 494,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "tailwindcss",
+      "version": "4.3.2",
+      "licence": "MIT"
+    }
+  ],
+  "metrics": {
+    "call_precision": 1,
+    "call_recall": 1,
+    "def_mapping": null,
+    "file_edge_precision": 1,
+    "file_edge_recall": 1,
+    "import_resolution": 1,
+    "kind_agreement": 1,
+    "range_agreement": null,
+    "signature_coverage": null,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "A",
+    "call_recall": "A",
+    "file_edge_precision": "A",
+    "file_edge_recall": "A",
+    "import_resolution": "A",
+    "kind_agreement": "A",
+    "sym_precision": "A",
+    "sym_recall": "A"
+  },
+  "not_applicable": [
+    "signature_coverage"
+  ],
+  "not_measured": [
+    "range_agreement"
+  ],
+  "required_kinds": [
+    "macro",
+    "mixin",
+    "variable"
+  ],
+  "kind_intersection": [
+    "macro",
+    "mixin",
+    "variable"
+  ],
+  "counts": {
+    "call_fathom": 14,
+    "call_fathom_in_truth": 14,
+    "call_truth": 14,
+    "call_truth_found": 14,
+    "css_w2_fathom_outside_closure": 305,
+    "css_w2_oracle_outside_closure": 179,
+    "fathom_defs": 72,
+    "file_edges_agree": 9,
+    "file_edges_fathom": 9,
+    "file_edges_truth": 9,
+    "import_edges_agree": 9,
+    "import_edges_fathom": 9,
+    "import_edges_truth": 9,
+    "import_oracle_out_of_scope": 0,
+    "import_oracle_unpaired": 0,
+    "imports": 12,
+    "imports_in_repo": 9,
+    "imports_resolved_agree": 9,
+    "kind_equal": 72,
+    "matched": 72,
+    "oracle_defs": 72
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 8,
+    "throughput_mb_s": 0.87,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 0.86,
+    "max_file_ms": 125,
+    "peak_module_pages": 494,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:CSSCustomProperty": 963,
+    "fathom:CSSModule": 12,
+    "fathom:CSSSelector": 2941
+  },
+  "notes": [
+    "L2 unit. A pair is (owner, name): an @apply candidate to the @utility it resolves to (a variant prefix and the importance flag stripped on both sides), and a var(--name) to the @theme variable it reads, graded by the W2 rule (design 1.8) within the file's @import closure, as CSS's are. An @apply of a core utility and a var() of a variable the default theme or a package defines have no definition in the closure and are out of both sides, counted. A use of a functional utility (`@utility name-*` is named `name-`, `@apply name-4` names `name-4`) is a truth pair fathom cannot match, a recall miss wherever one occurs; the subjects' counts of them are in their disclosures. Utility classes used in templates (markup, JSX) are out of scope for this reading: the oxide scanner's candidates are not measured here.",
+    "Offline. An @import or @plugin the oracle cannot resolve without the network is read as an empty sheet or a plugin that does nothing, and counted in the subject's disclosures; a stylesheet a project compiles inside an entry sheet that imports Tailwind is compiled with `@import \"tailwindcss\"` prepended.",
+    "Oracle. The tailwindcss v4 compiler's design system (tier A for what it attests): a definition or a pair is graded only when the compiler registered it, and an @apply candidate resolves to a custom utility only when the compiler parses it to that utility's root (variants and the importance flag allowed). Names and lines are the source's, as the lightningcss reading's are (the package exports no parser). No end line is measured, so range_agreement is not measured and L1 is capped at good.",
+    "Scope. This reading measures the Tailwind CSS v4 layer of the css dialect: a .css file the dialect's Tailwind variant reads (one that carries @theme, @utility, @custom-variant, @variant, @apply, @source, @plugin or @config). Its kinds are TailwindTheme (each --name of an @theme block), TailwindUtility (@utility name, or name- for @utility name-*) and TailwindVariant (@custom-variant name, and the v4.0 `@variant name (selector);` spelling); every other definition of those files is the css reading's and out of this one (excluded_by_kind).",
+    "W2 (design 1.8): tailwindcss attests no cascade, so a var() or @apply pair is graded as a name reference: kept when its name is a custom property, @keyframes rule or @utility defined in the file or its @import closure, every other pair out of both sides, counted",
+    "file_edge_precision and file_edge_recall measured against an import dump's (file, imported file) pairs, there being no SCIP index: the truth is what each file's import statements name, not the files its references reach as a SCIP index's cross-file edges are, so a file reached without an import of its own (a file another one required, an autoloaded constant) is outside the truth and a resolved edge to it counts against precision, while a file imported and never referenced is in it (LB-F57)",
+    "import_resolution: 9 of 9 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 1 (9 of 9) and recall 1 (9 of 9); 0 of 12 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "range_agreement not measured: the L1 oracle reported no end line for any matched definition, so L1 can be met at most at good, never excellent (design §1.2)",
+    "shadcn-ui/ui: 11 of 12 measured files hold an ERROR or MISSING node as written; the dialect's pre-parse step reads 3 of them clean, and files_with_error counts the 8 it cannot mend, the files the extractor reads with an error",
+    "shadcn-ui/ui: 179 oracle and 305 fathom name pairs name nothing defined in their file's @import closure (W2), out of both",
+    "shadcn-ui/ui: 5 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "shadcn-ui/ui: restricted to apps/v4/** (-only; the files outside are a disclosed gap, not measured)",
+    "shadcn-ui/ui: the compiler (tailwindcss 4.3.2) could not load 2 @import and 0 @plugin or @config offline and read each as empty; oracle counts: apply_candidates_core 14122, apply_candidates_rejected 7285, core_import_prepended 11, files 14, files_compiled 12, imports_stubbed 2, var_not_theme 113"
+  ],
+  "disposition": null
+}

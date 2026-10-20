@@ -1,0 +1,49 @@
+id: tailwind-holdout-2
+language: Tailwind CSS v4 at-rules and custom utilities (.css)
+# The holdout for LB-Q-tailwind after the first one was spent (tailwind-holdout.yaml): chosen and pinned in
+# the commit that spends it, before the fixed variant ran on any of these repositories and before any file of
+# them was read (only their file names and licences were), and read once into
+# docs/bench/readings/lang/holdout/tailwind.json. Criteria, each checked at the pin: an OSI licence read at
+# the tag or commit; Tailwind CSS v4 projects (their sheets are named in the listings by path only); absent from
+# tailwind.yaml, every committed reading and every other corpus shard; not a registry port of a calibration
+# subject (shadcn-svelte's `docs/src/lib/registry/styles/` copies shadcn/ui's, so its `-only` set leaves them
+# out). Vetted and not taken: animate-ui (MIT + Commons Clause, not an OSI licence). Never a calibration
+# subject of tailwind.yaml and never tuned against: a later rule change needs a new holdout, not a re-read.
+repos:
+  - name: Kiranism/next-shadcn-dashboard-starter
+    url: https://github.com/Kiranism/next-shadcn-dashboard-starter
+    ref: main
+    sha: 7705dfc0d13889e45c26a55ad5908da6a7a9a605
+    licence: MIT
+    subpath: src/styles
+    idioms:
+      - "unread at the pin: `src/styles/` holds `globals.css`, `theme.css` and ten sheets under `themes/`"
+    notes: >
+      no release tag exists; pinned by commit.
+  - name: huntabyte/shadcn-svelte
+    url: https://github.com/huntabyte/shadcn-svelte
+    ref: "shadcn-svelte@1.7.0"
+    sha: 33cd03e99e0066c446cb132c0a2294a1f553ba06
+    licence: MIT
+    idioms:
+      - "unread at the pin: `docs/src/app.css`, `docs/src/styles-registry.css`, `packages/cli/src/tailwind.css`,
+        `repro/src/app.css`, `sv-addons/registry/template/src/app.css` and its block sheet; the registry
+        `style-*.css` sheets are outside the measured set"
+  - name: haydenbleasel/kibo
+    url: https://github.com/haydenbleasel/kibo
+    ref: main
+    sha: 3d63cdb15b79d972e3dc38a10997987672f9b263
+    licence: MIT
+    idioms:
+      - "unread at the pin: `packages/typography/styles.css` and `apps/docs/app/`'s sheet"
+    notes: >
+      no release tag is used: pinned by commit.
+  - name: ibelick/motion-primitives
+    url: https://github.com/ibelick/motion-primitives
+    ref: main
+    sha: 120f64f6ca60348e251f929e9c81f11ccbe45eda
+    licence: MIT
+    idioms:
+      - "unread at the pin: `app/globals.css`"
+    notes: >
+      no release tag exists; pinned by commit.

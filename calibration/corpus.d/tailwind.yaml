@@ -94,3 +94,18 @@ repos:
         `@utility`, `@custom-variant dark`"
     notes: >
       no release tag exists; pinned by commit.
+  - name: shadcn-ui/ui
+    url: https://github.com/shadcn-ui/ui
+    ref: "shadcn@4.22.1"
+    sha: daaf156ee00ed91cc7e6bdd937c1b4973152d141
+    licence: MIT
+    subpath: apps/v4
+    idioms:
+      - "the registry's `style-*.css` (eight files of about 1,800 lines): every `.cn-*` rule one `@apply`
+        list of 20 to 60 candidates with named groups (`group-has-[:focus-visible]/field-label:`),
+        arbitrary variants (`[&_img]:`, `[&>svg:not([class*='size-'])]:`), child variants (`**:`, `*:`)
+        and the `!` importance flag"
+    notes: >
+      the first holdout of this shard, read once (docs/bench/readings/lang/holdout/tailwind-shadcn.json:
+      11 of 12 files in error, level none) and spent: the variant was fixed for what that read found, so
+      from here it is calibration, and tailwind-holdout-2.yaml holds the holdout.
