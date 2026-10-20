@@ -115,7 +115,7 @@ item's target; the last column also needs every level up to the target graded ex
 
 | Tier | Kind | Items | L1 | L2 | L3 | L4 | None | Refused | Tolerated | Unsupported | At target | At target, all excellent |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| T1 | language | 33 | 0 | 3 | 12 | 10 | 1 | 3 | 0 | 4 | 22 | 8 |
+| T1 | language | 33 | 0 | 3 | 13 | 10 | 1 | 3 | 0 | 3 | 23 | 8 |
 | T1 | tool format | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |
 | T2 | tool format | 23 | 0 | 7 | 14 | 0 | 1 | 0 | 0 | 1 | 19 | 14 |
 | T3 | tool format | 16 | 1 | 4 | 11 | 0 | 0 | 0 | 0 | 0 | 15 | 5 |
@@ -125,7 +125,7 @@ item's target; the last column also needs every level up to the target graded ex
 | T6 | language | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | T6 | tool format | 4 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |
 | T7 | tool format | 4 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
-| **Total** | language | 37 | 0 | 3 | 14 | 10 | 1 | 4 | 0 | 5 | 23 | 8 |
+| **Total** | language | 37 | 0 | 3 | 15 | 10 | 1 | 4 | 0 | 4 | 24 | 8 |
 | **Total** | tool format | 63 | 1 | 17 | 37 | 0 | 1 | 0 | 0 | 7 | 51 | 27 |
 
 ### T1
@@ -156,7 +156,7 @@ item's target; the last column also needs every level up to the target graded ex
 | Swift (.swift) | language | L3 | refused | re-plan (LB-Q-swift-rest refused) |
 | SCSS (.scss) | language | L3 | L3 (L1 good, L2 excellent, L3 excellent) | L1 good: range_agreement not measured |
 | Sass (indented syntax) (.sass) | language | L3 | unsupported | no dialect (LB-Q-sass) |
-| Tailwind CSS v4 at-rules and custom utilities (.css) | language | L2 | unsupported | no dialect (LB-Q-tailwind) |
+| Tailwind CSS v4 at-rules and custom utilities (.css) | language | L2 | L3 (L1 good, L2 excellent, L3 excellent) | L1 good: range_agreement not measured |
 | Less (.less) | language | L3 | refused | re-plan (LB-Q-less-rest refused) |
 | Perl (.pl .pm .t by sniff) | language | L2 | L2 (L1 good, L2 good) | L1 good: range_agreement not measured |
 | Scala (.scala .sc) | language | L4 | L2 (L1 good, L2 good) | L3 not met: file_edge_recall 0.0112 < 0.25 |
@@ -274,8 +274,8 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 reached (languages at L1 36, L1 excellent 25, L2 32, L3 26, L4 10; tool formats at target 60)
-Milestone M2 progress: languages at L1 36/45, at L1 excellent 25/35, at L2 32/25, at L3 26/14, at L4 10/10; tool formats at target 60/30
+Milestone M1 reached (languages at L1 37, L1 excellent 25, L2 33, L3 27, L4 10; tool formats at target 60)
+Milestone M2 progress: languages at L1 37/45, at L1 excellent 25/35, at L2 33/25, at L3 27/14, at L4 10/10; tool formats at target 60/30
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -316,7 +316,7 @@ Milestone M2 progress: languages at L1 36/45, at L1 excellent 25/35, at L2 32/25
 | Go modules (go.mod, go.work) | tool format | native | native:golang.org/x/mod (BSD-3-Clause) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A go mod edit -json, go work edit -json, go list -e -m -json all go1.26.3 darwin/arm64 | syntax | 2026-09-29 | at target (LB-Q-go-mod) |
 | SCSS (.scss) | language | tags | tree-sitter-grammars/tree-sitter-scss (MIT (verify at pin)) | L3 | L3 (L1 good, L2 excellent, L3 excellent) | A dart-sass sass 1.105.1, sass-parser 0.4.57 | file | 2026-10-20 | at target (LB-Q-scss) |
 | Sass (indented syntax) (.sass) | language | tags | none pinned: no tree-sitter grammar parses the indented syntax (O853) (n/a (no grammar pinned)) | L3 | unsupported (disclosed) | — | — | — | LB-Q-sass |
-| Tailwind CSS v4 at-rules and custom utilities (.css) | language | tags | tree-sitter/tree-sitter-css (the css dialect's grammar) (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-tailwind |
+| Tailwind CSS v4 at-rules and custom utilities (.css) | language | tags | tree-sitter/tree-sitter-css (the css dialect's grammar) (MIT) | L2 | L3 (L1 good, L2 excellent, L3 excellent) | A tailwindcss 4.3.2 | — | 2026-10-20 | at target (LB-Q-tailwind) |
 | Less (.less) | language | tags | jimliang/tree-sitter-less (verify at pin) | L3 | refused | — | — | — | re-plan (LB-Q-less-rest refused) |
 | MSBuild projects (.csproj .fsproj .vbproj .props .targets, .sln) | tool format | doc | pure-go:encoding/xml (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A dotnet msbuild (-getItem, -getProperty and -preprocess) MSBuild 18.9.11.42413; .NET SDK 10.0.401 | syntax | 2026-09-29 | at target (LB-Q-msbuild) |
 | Kustomize (kustomization.yaml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A kustomize (kubectl-embedded) v5.8.1 | syntax | 2026-09-29 | at target (LB-Q-kustomize) |
