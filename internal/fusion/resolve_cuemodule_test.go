@@ -42,10 +42,14 @@ func cueModuleCorpus() map[string]string {
 		"cue.mod/pkg/example.org/vend/vend.cue":    "package vend\n\nimport \"example.org/app/base\"\n\n#V: base.#A\n",
 		"cue.mod/gen/k8s.io/api/core/v1/types.cue": "package v1\n\n#Pod: {}\n",
 		"cue.mod/usr/k8s.io/api/core/v1/extra.cue": "package v1\n\n#Pod: {spec: {}}\n",
-		"nested/cue.mod/module.cue":                "module: \"example.org/nested\"\n",
-		"nested/n/n.cue":                           "package n\n\n#N: 1\n",
-		"nested/main.cue":                          "package main\n\nimport \"example.org/nested/n\"\n\nx: n.#N\n",
-		"outside/cue.cue":                          "package outside\n",
+		// decoys: a standard-library path is the cue binary's builtin and is
+		// never looked up in cue.mod, so these bind nothing
+		"cue.mod/pkg/strings/strings.cue":    "package strings\n\nToUpper: _\n",
+		"cue.mod/gen/encoding/json/json.cue": "package json\n\n#J: 1\n",
+		"nested/cue.mod/module.cue":          "module: \"example.org/nested\"\n",
+		"nested/n/n.cue":                     "package n\n\n#N: 1\n",
+		"nested/main.cue":                    "package main\n\nimport \"example.org/nested/n\"\n\nx: n.#N\n",
+		"outside/cue.cue":                    "package outside\n",
 	}
 }
 
