@@ -1,0 +1,154 @@
+{
+  "symbols": [
+    {
+      "name": "IPool",
+      "kind": "SolidityInterface",
+      "package": "calls",
+      "line": 4,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "IPool.swap",
+      "kind": "SolidityMethod",
+      "package": "calls",
+      "line": 5,
+      "end_line": 5,
+      "signature": "function swap(uint256 amount) external returns (uint256);",
+      "tier": "verified"
+    },
+    {
+      "name": "Safe",
+      "kind": "SolidityLibrary",
+      "package": "calls",
+      "line": 8,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "Safe.inc",
+      "kind": "SolidityMethod",
+      "package": "calls",
+      "line": 9,
+      "end_line": 11,
+      "signature": "function inc(uint256 x) internal pure returns (uint256)",
+      "tier": "verified"
+    },
+    {
+      "name": "Parent",
+      "kind": "SolidityContract",
+      "package": "calls",
+      "line": 14,
+      "end_line": 26,
+      "tier": "verified"
+    },
+    {
+      "name": "Parent.Moved",
+      "kind": "SolidityEvent",
+      "package": "calls",
+      "line": 15,
+      "end_line": 15,
+      "signature": "event Moved(uint256 amount);",
+      "tier": "verified"
+    },
+    {
+      "name": "Parent.Empty",
+      "kind": "SolidityError",
+      "package": "calls",
+      "line": 16,
+      "end_line": 16,
+      "signature": "error Empty();",
+      "tier": "verified"
+    },
+    {
+      "name": "Parent.nonZero",
+      "kind": "SolidityModifier",
+      "package": "calls",
+      "line": 18,
+      "end_line": 21,
+      "signature": "modifier nonZero(uint256 v)",
+      "calls": [
+        "Empty"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Parent.hook",
+      "kind": "SolidityMethod",
+      "package": "calls",
+      "line": 23,
+      "end_line": 25,
+      "signature": "function hook(uint256 v) internal virtual returns (uint256)",
+      "tier": "verified"
+    },
+    {
+      "name": "Router",
+      "kind": "SolidityContract",
+      "package": "calls",
+      "line": 28,
+      "end_line": 56,
+      "tier": "verified"
+    },
+    {
+      "name": "pool",
+      "kind": "SolidityStateVariable",
+      "package": "calls",
+      "line": 31,
+      "end_line": 31,
+      "tier": "verified"
+    },
+    {
+      "name": "Router.route",
+      "kind": "SolidityMethod",
+      "package": "calls",
+      "line": 33,
+      "end_line": 38,
+      "signature": "function route(uint256 amount) external nonZero(amount) returns (uint256)",
+      "calls": [
+        "Moved",
+        "helper",
+        "inc",
+        "nonZero",
+        "swap"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Router.helper",
+      "kind": "SolidityMethod",
+      "package": "calls",
+      "line": 40,
+      "end_line": 44,
+      "signature": "function helper(uint256 v) internal returns (uint256)",
+      "calls": [
+        "hook",
+        "inc"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Router.guarded",
+      "kind": "SolidityMethod",
+      "package": "calls",
+      "line": 46,
+      "end_line": 50,
+      "signature": "function guarded(uint256 v) external pure",
+      "calls": [
+        "Empty"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Router.checked",
+      "kind": "SolidityMethod",
+      "package": "calls",
+      "line": 52,
+      "end_line": 55,
+      "signature": "function checked(uint256 v, uint256[] storage list) internal",
+      "calls": [
+        "Empty"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

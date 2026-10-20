@@ -1,0 +1,250 @@
+{
+  "dialect": "solidity",
+  "kind": "language",
+  "target_level": "L2",
+  "level_met": "L2",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-10-20",
+  "fathom_commit": "1cd3b320c",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "OpenZeppelin/openzeppelin-contracts",
+      "sha": "5fd1781b1454fd1ef8e722282f86f9293cacf256",
+      "files": 337,
+      "bytes": 1533967,
+      "counts": {
+        "call_fathom": 2820,
+        "call_fathom_in_truth": 2807,
+        "call_truth": 2820,
+        "call_truth_found": 2807,
+        "callables": 2970,
+        "callables_signed": 2970,
+        "fathom_defs": 3806,
+        "kind_equal": 3806,
+        "matched": 3806,
+        "oracle_defs": 3806,
+        "range_eligible": 3806,
+        "range_ok": 3806
+      },
+      "families": {
+        "calls": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "class",
+        "constant",
+        "constructor",
+        "enum",
+        "field",
+        "function",
+        "interface",
+        "method",
+        "module",
+        "struct",
+        "type_alias"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 3,
+        "extract_ms": 281.99999999999994,
+        "extract_cpu_ms": 279.2609999999998,
+        "max_file_ms": 18,
+        "peak_module_pages": 317,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "foundry-rs/forge-std",
+      "sha": "f3dae6e6ee381f25eb6a246f7da9b85c91a68219",
+      "files": 31,
+      "bytes": 811401,
+      "counts": {
+        "call_fathom": 582,
+        "call_fathom_in_truth": 577,
+        "call_truth": 577,
+        "call_truth_found": 577,
+        "callables": 1484,
+        "callables_signed": 1484,
+        "fathom_defs": 1656,
+        "kind_equal": 1656,
+        "matched": 1656,
+        "oracle_defs": 1656,
+        "range_eligible": 1656,
+        "range_ok": 1656
+      },
+      "families": {
+        "calls": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "class",
+        "constant",
+        "constructor",
+        "enum",
+        "field",
+        "function",
+        "interface",
+        "method",
+        "module",
+        "struct",
+        "type_alias"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 1,
+        "extract_ms": 230.08700000000002,
+        "extract_cpu_ms": 219.68300000000002,
+        "max_file_ms": 109,
+        "peak_module_pages": 477,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "transmissions11/solmate",
+      "sha": "a9e3ea26a2dc73bfa87f0cb189687d029028e0c5",
+      "files": 24,
+      "bytes": 61845,
+      "counts": {
+        "call_fathom": 75,
+        "call_fathom_in_truth": 75,
+        "call_truth": 76,
+        "call_truth_found": 75,
+        "callables": 136,
+        "callables_signed": 136,
+        "fathom_defs": 201,
+        "kind_equal": 201,
+        "matched": 201,
+        "oracle_defs": 201,
+        "range_eligible": 201,
+        "range_ok": 201
+      },
+      "families": {
+        "calls": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "class",
+        "constant",
+        "constructor",
+        "enum",
+        "field",
+        "function",
+        "interface",
+        "method",
+        "module",
+        "struct",
+        "type_alias"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 13.129999999999997,
+        "extract_cpu_ms": 13.369000000000002,
+        "max_file_ms": 2,
+        "peak_module_pages": 283,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "solc",
+      "version": "0.8.37+commit.f401782d.Darwin.appleclang"
+    }
+  ],
+  "metrics": {
+    "call_precision": 0.9948,
+    "call_recall": 0.996,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": 1,
+    "signature_coverage": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "A",
+    "call_recall": "A",
+    "kind_agreement": "A",
+    "range_agreement": "A",
+    "signature_coverage": "A",
+    "sym_precision": "A",
+    "sym_recall": "A"
+  },
+  "required_kinds": [
+    "class",
+    "constant",
+    "constructor",
+    "enum",
+    "field",
+    "function",
+    "interface",
+    "method",
+    "module",
+    "struct",
+    "type_alias"
+  ],
+  "kind_intersection": [
+    "class",
+    "constant",
+    "constructor",
+    "enum",
+    "field",
+    "function",
+    "interface",
+    "method",
+    "module",
+    "struct",
+    "type_alias"
+  ],
+  "counts": {
+    "call_fathom": 3477,
+    "call_fathom_in_truth": 3459,
+    "call_truth": 3473,
+    "call_truth_found": 3459,
+    "callables": 4590,
+    "callables_signed": 4590,
+    "fathom_defs": 5663,
+    "kind_equal": 5663,
+    "matched": 5663,
+    "oracle_defs": 5663,
+    "range_eligible": 5663,
+    "range_ok": 5663
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 4,
+    "throughput_mb_s": 4.7,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 4.58,
+    "max_file_ms": 109,
+    "peak_module_pages": 477,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "L1 and L2 oracle: solc --standard-json (ast) 0.8.37+commit.f401782d, tier A, run per file with its import closure by calibration/oracles/solc-ast/solc_ast_dump.js: definitions are the declarations the dialect names (contracts, interfaces, libraries, structs, enums, user-defined value types, events, errors, modifiers, functions, constructor/receive/fallback, state variables, file-level constants); a call pair is a FunctionCall (function call, emit of an event, revert of a custom error) or a ModifierInvocation whose referencedDeclaration is a function, modifier, event or error of the file's closure, owned by the enclosing function or modifier. The queue's tree-sitter-tags oracle (tier C) is not run: solc is the stronger independent truth for both levels. Excluded files are named in the notes below (solc's version pragma, O1417).",
+    "OpenZeppelin/openzeppelin-contracts: 21 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "foundry-rs/forge-std: 1 files skipped by ingest's gates (generated)",
+    "foundry-rs/forge-std: 632 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "transmissions11/solmate: restricted to auth/Auth.sol, auth/authorities/RolesAuthority.sol, test/utils/DSInvariantTest.sol, test/utils/Hevm.sol, test/utils/mocks/MockAuthChild.sol, test/utils/mocks/MockAuthority.sol, test/utils/mocks/MockERC1155.sol, test/utils/mocks/MockERC20.sol, test/utils/mocks/MockERC721.sol, test/utils/users/ERC1155User.sol, test/utils/users/ERC20User.sol, test/utils/users/ERC721User.sol, test/utils/users/GenericUser.sol, tokens/ERC1155.sol, tokens/ERC20.sol, tokens/ERC721.sol, tokens/WETH.sol, utils/Bytes32AddressLib.sol, utils/CREATE3.sol, utils/FixedPointMathLib.sol, utils/ReentrancyGuard.sol, utils/SafeCastLib.sol, utils/SafeTransferLib.sol, utils/SSTORE2.sol (-only; the files outside are a disclosed gap, not measured)",
+    "Calls are read by syntax (O1418): a capitalised callee is a type conversion or struct constructor, push/pop/concat/call/staticcall/delegatecall/send/wrap/unwrap members and abi.* are builtins; require(cond, CustomError()) and a lower-case modifier on a constructor are read; a function-pointer variable call is dialect-only."
+  ],
+  "disposition": null
+}

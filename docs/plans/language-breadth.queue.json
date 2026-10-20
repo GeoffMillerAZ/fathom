@@ -2264,8 +2264,8 @@
     "grammar_source": "tree-sitter-grammars/tree-sitter-objc",
     "licence": "MIT",
     "oracle": [
-      "ctags",
-      "scip-clang"
+      "universal-ctags 6.2.1 ObjectiveC parser (tier B; L1)",
+      "clang-objc: libclang through the Command Line Tools (tier B, the include roots being the run's; calibration/oracles/clang-objc): calls, imports, cross-file references, definition ranges; scip-clang 0.4.0 indexes C and C++ only (O1413)"
     ],
     "calibration_subjects": [
       "AFNetworking/AFNetworking",
@@ -2294,7 +2294,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-objective-c",
     "worker_model": "sonnet",
-    "notes": "new; @interface/@implementation/@protocol, methods by selector; include-path strategy"
+    "notes": "new; @interface/@implementation/@protocol, methods by selector; include-path strategy; the .h goes through the header router (extractor.HeaderDialect), the .m through match.sniff with scan_bytes"
   },
   {
     "id": "jupyter",

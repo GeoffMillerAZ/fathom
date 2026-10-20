@@ -29,6 +29,9 @@ type DialectSniffRule struct {
 	Extensions []string
 	Pattern    string
 	Priority   int
+	// ScanBytes, when larger than the default 1 KiB, is how much of the file
+	// this rule's pattern sees (a manifest's match.sniff.scan_bytes).
+	ScanBytes int
 }
 
 // How a DialectVerdict was reached (§5's order).
@@ -132,11 +135,8 @@ func containsFold(list []string, ext string) bool {
 }
 
 // sniff evaluates the claimants' patterns in (priority, id) order over the
-// first 1 KiB.
+// first 1 KiB, or the rule's own wider window (DialectSniffRule.ScanBytes).
 func sniff(sniffers []DialectRule, head []byte) (string, bool) {
-	if len(head) > sniffScanBytes {
-		head = head[:sniffScanBytes]
-	}
 	sort.SliceStable(sniffers, func(i, j int) bool {
 		if sniffers[i].Sniff.Priority != sniffers[j].Sniff.Priority {
 			return sniffers[i].Sniff.Priority < sniffers[j].Sniff.Priority
@@ -144,7 +144,11 @@ func sniff(sniffers []DialectRule, head []byte) (string, bool) {
 		return sniffers[i].ID < sniffers[j].ID
 	})
 	for _, r := range sniffers {
-		if re := sniffRegexp(r.Sniff.Pattern); re != nil && re.Match(head) {
+		window := head
+		if limit := max(sniffScanBytes, r.Sniff.ScanBytes); len(window) > limit {
+			window = window[:limit]
+		}
+		if re := sniffRegexp(r.Sniff.Pattern); re != nil && re.Match(window) {
 			return r.ID, true
 		}
 	}

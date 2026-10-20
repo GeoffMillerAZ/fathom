@@ -54,8 +54,11 @@ import "struct"
 	// oracle's (§1.4): "bare" (the default) keeps the qualified name's last
 	// segment; "identity" compares the whole name, for dialects whose
 	// identifiers carry punctuation (CSS `.a` `#b` `:hover`, npm
-	// `@babel/core`, script `codesandbox:build`, export `./utils`).
-	name_match: *"bare" | "identity"
+	// `@babel/core`, script `codesandbox:build`, export `./utils`);
+	// "selector" keeps what follows the last "." and compares it whole, for a
+	// dialect whose methods are named by an Objective-C selector
+	// (`Shape.initWithFrame:style:` is `initWithFrame:style:`).
+	name_match: *"bare" | "identity" | "selector"
 
 	qualify: {
 		chain_containers: bool | *true
@@ -96,7 +99,9 @@ import "struct"
 	// (O148). "cpp-macros" blanks C++ decorator macros by where they are
 	// written and reads try and catch macros as the keywords, at equal byte
 	// length, then also blanks the conditional directive lines (O455).
-	preprocess?: "csharp-conditionals" | "cpp-macros"
+	// "objc-macros" reads `typedef NS_ENUM(T, Name)` and its siblings as
+	// `enum Name`, at equal byte length (LB-Q-objective-c).
+	preprocess?: "csharp-conditionals" | "cpp-macros" | "objc-macros"
 
 	// imports.strategy is from §6's closed set; the parameters are the
 	// closed set extractor.ImportParams decodes (LB-F11) — each strategy
@@ -230,10 +235,13 @@ import "struct"
 
 // #Sniff splits an extension more than one dialect claims (§5): a regex
 // over the first 1 KiB, evaluated in ascending priority across dialects.
+// scan_bytes widens that window for one dialect (up to 64 KiB), for a language
+// whose files open with a licence header longer than 1 KiB (Objective-C).
 #Sniff: {
 	extensions: [...=~"^\\.[A-Za-z0-9._+-]+$"] & [_, ...]
 	pattern:  string & !=""
 	priority: int & >=0
+	scan_bytes?: int & >=1024 & <=65536
 }
 
 #Grammar: {

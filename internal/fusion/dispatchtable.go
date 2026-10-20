@@ -19,8 +19,9 @@ import (
 //
 // The label is one of: tags dialect `id`; doc dialect `id`; native Go; native
 // CUE; Go walker `Type`; "<label> (by content sniff)" for a sniff-only
-// extension; "<label> or <label> (by content sniff)" for the .h router, which
-// picks between two extractors per file; "refused (no extractor)" for a
+// extension (an extension two dialects share, MATLAB's and Objective-C's .m,
+// names both); "<label> or <label> (by content sniff)" for the .h router, which
+// picks between two extractors per file, three with Objective-C; "refused (no extractor)" for a
 // refused dialect's keys.
 func DispatchTable() map[string]string {
 	p := New(nil, nil, Config{})
@@ -34,6 +35,7 @@ func DispatchTable() map[string]string {
 	if err != nil {
 		return out
 	}
+	sniffers := map[string][]string{} // a sniff-only extension -> the dialects that claim it
 	for _, d := range dialects {
 		keys := append([]string(nil), d.Match.Extensions...)
 		keys = append(keys, d.Match.Basenames...)
@@ -51,10 +53,19 @@ func DispatchTable() map[string]string {
 		if d.Engine == "tags" && d.Match.Sniff != nil {
 			for _, x := range d.Match.Sniff.Extensions {
 				if _, claimed := p.exts[x]; !claimed {
-					out[x] = fmt.Sprintf("tags dialect `%s` (by content sniff)", d.ID)
+					sniffers[x] = append(sniffers[x], d.ID)
 				}
 			}
 		}
+	}
+	for x, ids := range sniffers {
+		sort.Strings(ids)
+		if len(ids) == 1 {
+			out[x] = fmt.Sprintf("tags dialect `%s` (by content sniff)", ids[0])
+			continue
+		}
+		// MATLAB and Objective-C share .m: the classifier picks per file.
+		out[x] = fmt.Sprintf("tags dialects `%s` (by content sniff)", strings.Join(ids, "` or `"))
 	}
 	return out
 }
@@ -104,6 +115,13 @@ func dispatchLabel(key string, e extractor.Extractor, docKeys map[string][]strin
 			if t, ok := cpp.(*extractor.TSExtractor); ok {
 				lcpp = fmt.Sprintf("`%s`", t.Name())
 			}
+		}
+		if objc := x.ObjC(); objc != nil {
+			lobjc := dispatchLabel(key, objc, docKeys)
+			if t, ok := objc.(*extractor.TSExtractor); ok {
+				lobjc = fmt.Sprintf("`%s`", t.Name())
+			}
+			return fmt.Sprintf("%s, %s or %s (by content sniff)", lc, lcpp, lobjc)
 		}
 		return fmt.Sprintf("%s or %s (by content sniff)", lc, lcpp)
 	case *extractor.DocExtractor, *extractor.TagsDocExtractor:

@@ -587,11 +587,13 @@ func ownedSourceRefs(m langbench.Manifest, root string, refs []core.SourceRef, o
 			}
 			continue
 		}
-		if (m.ID == "cpp" || m.ID == "c") && strings.EqualFold(filepath.Ext(ref.Path), ".h") {
-			// The router sends a .h to C++ on a C++-only signal and to C
-			// otherwise (LB-F80: a C include's target is a header, so without
-			// them C's import_resolution and file edges have no denominator).
-			if b, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(ref.Path))); err == nil && extractor.LooksLikeCppHeader(b) == (m.ID == "cpp") {
+		if (m.ID == "cpp" || m.ID == "c" || m.ID == "objective-c") && strings.EqualFold(filepath.Ext(ref.Path), ".h") {
+			// The router sends a .h to Objective-C on an @interface,
+			// @protocol, @implementation or #import, to C++ on a C++-only
+			// signal and to C otherwise (LB-F80: a C include's target is a
+			// header, so without them C's import_resolution and file edges
+			// have no denominator).
+			if b, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(ref.Path))); err == nil && extractor.HeaderDialect(b) == m.ID {
 				out = append(out, ref)
 			}
 		}
@@ -737,12 +739,15 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 	if n, ok := nativeFilesWithError(spec.Manifest.ID, srcFiles); ok {
 		sub.Tenancy.FilesWithError = &n
 	} else if spec.Manifest.Engine == "tags" {
-		n, unparsed, err := filesWithError(ctx, spec.Manifest.ID, root, files)
+		n, unparsed, asWritten, err := filesWithError(ctx, spec.Manifest.ID, root, files)
 		switch {
 		case err != nil:
 			res.notes = append(res.notes, fmt.Sprintf("%s: files_with_error not measured: %v", name, err))
 		default:
 			sub.Tenancy.FilesWithError = &n
+			if asWritten > n {
+				res.notes = append(res.notes, fmt.Sprintf("%s: %d of %d measured files hold an ERROR or MISSING node as written; the dialect's pre-parse step reads %d of them clean, and files_with_error counts the %d it cannot mend, the files the extractor reads with an error", name, asWritten, len(files), asWritten-n, n))
+			}
 			if unparsed > 0 {
 				res.notes = append(res.notes, fmt.Sprintf("%s: %d files the parser failed on are not counted in files_with_error", name, unparsed))
 			}

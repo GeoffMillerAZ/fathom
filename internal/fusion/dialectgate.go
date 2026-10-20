@@ -50,7 +50,7 @@ func dialectRules() []connector.DialectRule {
 				r.Extensions = append(r.Extensions, v.Extensions...)
 			}
 			if s := d.Match.Sniff; s != nil {
-				r.Sniff = &connector.DialectSniffRule{Extensions: s.Extensions, Pattern: s.Pattern, Priority: s.Priority}
+				r.Sniff = &connector.DialectSniffRule{Extensions: s.Extensions, Pattern: s.Pattern, Priority: s.Priority, ScanBytes: s.ScanBytes}
 			}
 			dialectRulesAll = append(dialectRulesAll, r)
 		}

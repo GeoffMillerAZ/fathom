@@ -1,0 +1,154 @@
+{
+  "dialect": "solidity",
+  "kind": "language",
+  "target_level": "L2",
+  "level_met": "L2",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-10-20",
+  "fathom_commit": "af95b57ed",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "Vectorized/solady",
+      "sha": "acd959aa4bd04720d640bf4e6a5c71037510cc4b",
+      "files": 107,
+      "bytes": 2176932,
+      "counts": {
+        "call_fathom": 1707,
+        "call_fathom_in_truth": 1707,
+        "call_truth": 1734,
+        "call_truth_found": 1707,
+        "callables": 2882,
+        "callables_signed": 2882,
+        "fathom_defs": 3667,
+        "kind_equal": 3667,
+        "matched": 3667,
+        "oracle_defs": 3763,
+        "range_eligible": 3667,
+        "range_ok": 3667
+      },
+      "families": {
+        "calls": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "class",
+        "constant",
+        "constructor",
+        "enum",
+        "field",
+        "function",
+        "interface",
+        "method",
+        "module",
+        "struct",
+        "type_alias"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 16,
+        "extract_ms": 623.0540000000001,
+        "extract_cpu_ms": 400.62,
+        "max_file_ms": 18,
+        "peak_module_pages": 316,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "solc",
+      "version": "0.8.37+commit.f401782d.Darwin.appleclang"
+    }
+  ],
+  "metrics": {
+    "call_precision": 1,
+    "call_recall": 0.9844,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": 1,
+    "signature_coverage": 1,
+    "sym_precision": 1,
+    "sym_recall": 0.9745,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "A",
+    "call_recall": "A",
+    "kind_agreement": "A",
+    "range_agreement": "A",
+    "signature_coverage": "A",
+    "sym_precision": "A",
+    "sym_recall": "A"
+  },
+  "required_kinds": [
+    "class",
+    "constant",
+    "constructor",
+    "enum",
+    "field",
+    "function",
+    "interface",
+    "method",
+    "module",
+    "struct",
+    "type_alias"
+  ],
+  "kind_intersection": [
+    "class",
+    "constant",
+    "constructor",
+    "enum",
+    "field",
+    "function",
+    "interface",
+    "method",
+    "module",
+    "struct",
+    "type_alias"
+  ],
+  "counts": {
+    "call_fathom": 1707,
+    "call_fathom_in_truth": 1707,
+    "call_truth": 1734,
+    "call_truth_found": 1707,
+    "callables": 2882,
+    "callables_signed": 2882,
+    "fathom_defs": 3667,
+    "kind_equal": 3667,
+    "matched": 3667,
+    "oracle_defs": 3763,
+    "range_eligible": 3667,
+    "range_ok": 3667
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 16,
+    "throughput_mb_s": 5.43,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 3.49,
+    "max_file_ms": 18,
+    "peak_module_pages": 316,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "L1 and L2 oracle: solc --standard-json (ast) 0.8.37+commit.f401782d, tier A, run per file with its import closure by calibration/oracles/solc-ast/solc_ast_dump.js: definitions are the declarations the dialect names (contracts, interfaces, libraries, structs, enums, user-defined value types, events, errors, modifiers, functions, constructor/receive/fallback, state variables, file-level constants); a call pair is a FunctionCall (function call, emit of an event, revert of a custom error) or a ModifierInvocation whose referencedDeclaration is a function, modifier, event or error of the file's closure, owned by the enclosing function or modifier. The queue's tree-sitter-tags oracle (tier C) is not run: solc is the stronger independent truth for both levels. Excluded files are named in the notes below (solc's version pragma, O1417).",
+    "Vectorized/solady: restricted to accounts/EIP7702Proxy.sol, accounts/ERC1271.sol, accounts/ERC4337.sol, accounts/ERC4337Factory.sol, accounts/ERC6551.sol, accounts/ERC6551Proxy.sol, accounts/ERC7821.sol, accounts/LibEIP7702.sol, accounts/LibERC6551.sol, accounts/LibERC7579.sol, accounts/Receiver.sol, accounts/Timelock.sol, auth/EnumerableRoles.sol, auth/Ownable.sol, auth/OwnableRoles.sol, auth/TimedRoles.sol, Milady.sol, tokens/ERC1155.sol, tokens/ERC20.sol, tokens/ERC20Votes.sol, tokens/ERC2981.sol, tokens/ERC4626.sol, tokens/ERC6909.sol, tokens/ERC721.sol, tokens/ext/zksync/ERC1155.sol, tokens/ext/zksync/ERC721.sol, tokens/WETH.sol, utils/Base58.sol, utils/Base64.sol, utils/BlockHashLib.sol, utils/CallContextChecker.sol, utils/CREATE3.sol, utils/DateTimeLib.sol, utils/DeploylessPredeployQueryer.sol, utils/DynamicArrayLib.sol, utils/DynamicBufferLib.sol, utils/ECDSA.sol, utils/EfficientHashLib.sol, utils/EIP712.sol, utils/EnumerableMapLib.sol, utils/EnumerableSetLib.sol, utils/ERC1967Factory.sol, utils/ERC1967FactoryConstants.sol, utils/ext/delegatexyz/DelegateCheckerLib.sol, utils/ext/ithaca/BLS.sol, utils/ext/zksync/delegatexyz/DelegateCheckerLib.sol, utils/ext/zksync/ERC1967BeaconProxy.sol, utils/ext/zksync/ERC1967Factory.sol, utils/ext/zksync/ERC1967FactoryConstants.sol, utils/ext/zksync/ERC1967Proxy.sol, utils/ext/zksync/SafeTransferLib.sol, utils/ext/zksync/SignatureCheckerLib.sol, utils/ext/zksync/SingleUseETHVault.sol, utils/ext/zksync/UpgradeableBeacon.sol, utils/FixedPointMathLib.sol, utils/g/DynamicArrayLib.sol, utils/g/DynamicBufferLib.sol, utils/g/EnumerableMapLib.sol, utils/g/EnumerableSetLib.sol, utils/g/JSONParserLib.sol, utils/g/LibBitmap.sol, utils/g/LibBytes.sol, utils/g/LibMap.sol, utils/g/LibPRNG.sol, utils/g/LibRLP.sol, utils/g/LibStorage.sol, utils/g/LibString.sol, utils/g/LibTransient.sol, utils/g/MinHeapLib.sol, utils/g/RedBlackTreeLib.sol, utils/g/WebAuthn.sol, utils/GasBurnerLib.sol, utils/Initializable.sol, utils/JSONParserLib.sol, utils/legacy/CWIA.sol, utils/legacy/LibCWIA.sol, utils/LibBit.sol, utils/LibBitmap.sol, utils/LibBytes.sol, utils/LibCall.sol, utils/LibClone.sol, utils/LibMap.sol, utils/LibPRNG.sol, utils/LibRLP.sol, utils/LibSort.sol, utils/LibStorage.sol, utils/LibString.sol, utils/LibTransient.sol, utils/LibZip.sol, utils/Lifebuoy.sol, utils/MerkleProofLib.sol, utils/MerkleTreeLib.sol, utils/MetadataReaderLib.sol, utils/MinHeapLib.sol, utils/Multicallable.sol, utils/P256.sol, utils/RedBlackTreeLib.sol, utils/ReentrancyGuard.sol, utils/ReentrancyGuardTransient.sol, utils/SafeCastLib.sol, utils/SafeTransferLib.sol, utils/SemVerLib.sol, utils/SignatureCheckerLib.sol, utils/SSTORE2.sol, utils/UpgradeableBeacon.sol, utils/UUPSUpgradeable.sol, utils/WebAuthn.sol (-only; the files outside are a disclosed gap, not measured)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "Calls are read by syntax (O1418): a capitalised callee is a type conversion or struct constructor, push/pop/concat/call/staticcall/delegatecall/send/wrap/unwrap members and abi.* are builtins; require(cond, CustomError()) and a lower-case modifier on a constructor are read; a function-pointer variable call is dialect-only.",
+    "Holdout (calibration/corpus.d/solidity-holdout.yaml, pinned before this reading; criterion L2 met): read once, the dialect unchanged since the tuning subjects. The one definition loss is utils/g/LibTransient.sol, a grammar gap (O1416)."
+  ],
+  "disposition": null
+}

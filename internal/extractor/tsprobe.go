@@ -14,6 +14,9 @@ type ProbeTarget struct {
 	EntryPoint string
 	QueryFile  string
 	Query      string
+	// Preprocess is the dialect's pre-parse step (the manifest's preprocess), nil
+	// when it names none: the texts a file that does not parse as written is read as.
+	Preprocess func(src []byte) [][]byte
 }
 
 // TagsDialects returns the sorted ids of every dialect on the tags engine —
@@ -45,5 +48,5 @@ func ProbeTargetFor(dialect, relPath string) (ProbeTarget, error) {
 	if ev, ok := spec.variantForExt[extOf(relPath)]; ok {
 		v = ev
 	}
-	return ProbeTarget{Dialect: dialect, Blob: v.blob, EntryPoint: v.entryPoint, QueryFile: v.rules.queryFile, Query: v.rules.query}, nil
+	return ProbeTarget{Dialect: dialect, Blob: v.blob, EntryPoint: v.entryPoint, QueryFile: v.rules.queryFile, Query: v.rules.query, Preprocess: v.rules.preprocess}, nil
 }

@@ -1,0 +1,41 @@
+{
+  "symbols": [
+    {
+      "name": "Broken",
+      "kind": "ObjCImplementation",
+      "package": "broken.m",
+      "line": 5,
+      "end_line": 18,
+      "tier": "verified"
+    },
+    {
+      "name": "Broken.before",
+      "kind": "ObjCMethod",
+      "package": "broken.m",
+      "line": 7,
+      "end_line": 9,
+      "signature": "- (void)before",
+      "calls": [
+        "after"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Broken.after",
+      "kind": "ObjCMethod",
+      "package": "broken.m",
+      "line": 15,
+      "end_line": 16,
+      "signature": "- (void)after",
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "Shape.h",
+      "module": "Shape.h",
+      "kind": "whole",
+      "line": 3
+    }
+  ]
+}

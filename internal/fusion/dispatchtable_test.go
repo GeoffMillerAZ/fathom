@@ -20,11 +20,12 @@ func TestDispatchTable(t *testing.T) {
 		".cue":                  "native CUE (`cue/load`)",
 		".rs":                   "tags dialect `rust`",
 		".sh":                   "tags dialect `bash`",
-		".h":                    "tags dialect `c` or `cpp` (by content sniff)",
+		".h":                    "tags dialect `c`, `cpp` or `objective-c` (by content sniff)",
 		"compile_commands.json": "doc dialect `compile-commands`",
 		"docker-compose.yml":    "doc dialect `docker-compose`",
 		".swift":                "refused (no extractor)",
-		".m":                    "tags dialect `matlab` (by content sniff)",
+		".m":                    "tags dialects `matlab` or `objective-c` (by content sniff)",
+		".mm":                   "tags dialect `objective-c`",
 	} {
 		if got := tab[key]; got != want {
 			t.Errorf("DispatchTable[%q] = %q, want %q", key, got, want)

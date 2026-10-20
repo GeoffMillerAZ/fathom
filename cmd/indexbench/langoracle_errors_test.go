@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -53,4 +54,28 @@ func TestCmdLangOracleFilesWithError(t *testing.T) {
 		t.Errorf("lang-probe now shows the missing node; the S-expression could count it:\n%s", s)
 	}
 	_ = os.Remove(out)
+}
+
+// TestFilesWithErrorCountsAfterThePreParseStep pins the count as the extractor
+// reads the files: an Objective-C header that parses as written is none, one
+// that holds an NS_ENUM the objc-macros step mends is none either, and one the
+// step cannot mend is one; asWritten counts both of the last two.
+func TestFilesWithErrorCountsAfterThePreParseStep(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name, body string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("clean.m", "#import \"x.h\"\n@implementation A\n- (void)f {}\n@end\n")
+	write("mended.h", "#import <Foundation/Foundation.h>\ntypedef NS_ENUM(NSInteger, Mode) {\n    ModeA,\n    ModeB,\n};\n@interface B : NSObject\n@end\n")
+	write("broken.m", "@implementation C\n- (void)f:(int {\n    [self\n@end\n")
+	n, unparsed, asWritten, err := filesWithError(context.Background(), "objective-c", dir, []string{"clean.m", "mended.h", "broken.m"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 || asWritten != 2 || unparsed != 0 {
+		t.Errorf("filesWithError = (%d with an error, %d unparsed, %d as written), want (1, 0, 2)", n, unparsed, asWritten)
+	}
 }

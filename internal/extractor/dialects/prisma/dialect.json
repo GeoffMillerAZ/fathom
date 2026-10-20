@@ -1,0 +1,37 @@
+{
+  "id": "prisma",
+  "display": "Prisma schema",
+  "kind": "tooling",
+  "engine": "tags",
+  "lang_tag": "prisma",
+  "match": {
+    "extensions": [".prisma"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "prisma", "entry_point": "tree_sitter_prisma" },
+  "variants": [],
+  "queries": { "tags": "tags.scm" },
+  "kinds": {
+    "model":      { "source_kind": "PrismaModel",      "canonical": "class",       "container": true, "callable": true },
+    "view":       { "source_kind": "PrismaView",       "canonical": "class",       "container": true, "callable": true },
+    "type":       { "source_kind": "PrismaType",       "canonical": "type_alias",  "container": true, "callable": true },
+    "enum":       { "source_kind": "PrismaEnum",       "canonical": "enum",        "container": true, "callable": true },
+    "datasource": { "source_kind": "PrismaDatasource", "canonical": "key",         "container": true, "callable": true },
+    "generator":  { "source_kind": "PrismaGenerator",  "canonical": "key",         "container": true, "callable": true },
+    "field":      { "source_kind": "PrismaField",      "canonical": "field",       "callable": true },
+    "enum_value": { "source_kind": "PrismaEnumValue",  "canonical": "enum_member", "callable": true }
+  },
+  "required_kinds": ["model", "view", "type", "enum", "datasource", "generator", "field", "enum_value"],
+  "oracle_kinds": {
+    "tool": { "model": "class", "view": "class", "type": "type_alias", "enum": "enum", "datasource": "key",
+              "generator": "key", "field": "field", "enum_value": "enum_member" }
+  },
+  "qualify": { "chain_containers": true, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "prisma"
+}

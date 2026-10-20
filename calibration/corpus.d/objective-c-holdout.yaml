@@ -1,0 +1,26 @@
+id: objective-c-holdout
+language: Objective-C
+# The holdout for Objective-C's L3 rule (K19, LB-Q-objective-c, wave lang6 item objc), pinned in the commit that holds
+# the dialect, its rule and its oracle harness, before any reading of this subject, and read ONCE into
+# docs/bench/readings/lang/holdout/objective-c.json; never tuned against (a later rule change needs a new holdout).
+# The rule: dialects/objective-c/imports.scm (#import and #include of a quoted or angle path, @import of a module),
+# the manifest's include-path strategy, and tags.scm's message sends paired to the method whose selector matches.
+# Not AFNetworking or SDWebImage (the tuning subjects), and ReactiveObjC appears in no docs/bench/readings/** or
+# calibration/** file (grep at the pin). Licence read at the pin.
+#
+# Criterion (deciding LB-Q-objective-c): the holdout reading meets the same level as the tuning readings (level_met
+# L3, any grade), under the same oracles and the same measurement conventions. A miss writes a note beginning
+# `L3 ceiling: ` in the objective-c reading with its measurement and the row stays open; nothing is tuned after the
+# holdout reading.
+repos:
+  - name: ReactiveObjC
+    url: https://github.com/ReactiveCocoa/ReactiveObjC
+    ref: 3.1.1
+    sha: 27a7254837bb01122b51aac7c4c3961973351ca0
+    licence: MIT
+    idioms:
+      - "signal and sequence class clusters with category extensions and private class extensions (@interface Foo ())"
+      - "block-heavy APIs and macro-built declarations (@weakify, @strongify, RACObserve)"
+      - "umbrella and per-class headers imported with quoted relative paths"
+    notes: >
+      LICENSE at the tag: MIT (Copyright (c) GitHub, Inc.).

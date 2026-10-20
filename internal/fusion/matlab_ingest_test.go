@@ -124,32 +124,46 @@ func TestIngest_MatlabReachesTheMatlabDialect(t *testing.T) {
 		}
 	}
 	for key := range got {
-		if strings.HasPrefix(key, "ios/") || strings.HasPrefix(key, "lab/bare.m") || strings.HasPrefix(key, "lab/demo.m") {
+		if strings.HasPrefix(key, "lab/bare.m") || strings.HasPrefix(key, "lab/demo.m") {
 			t.Errorf("unexpected observation %q: a file no MATLAB definition lives in, or one the sniff must not claim", key)
 		}
+		if o := got[key]; strings.HasPrefix(key, "ios/") && strings.HasPrefix(string(o.SourceKind), "Matlab") {
+			t.Errorf("%s: the Objective-C file yielded the MATLAB kind %q", key, o.SourceKind)
+		}
 	}
-	// Three files carry a MATLAB claim (function first, comment first twice); the Objective-C file and the
-	// script that opens with code are the two the sniff leaves unclassified.
-	if rep.ClassifiedBySniff != 3 {
-		t.Errorf("ClassifiedBySniff = %d, want 3", rep.ClassifiedBySniff)
+	// Three files carry a MATLAB claim (function first, comment first twice) and the Objective-C file the
+	// Objective-C dialect's (LB-Q-objective-c): four sniff verdicts. The script that opens with code is the one
+	// file the sniffs leave unclassified.
+	if rep.ClassifiedBySniff != 4 {
+		t.Errorf("ClassifiedBySniff = %d, want 4", rep.ClassifiedBySniff)
 	}
-	if rep.AmbiguousUnclassified != 2 {
-		t.Errorf("AmbiguousUnclassified = %d, want 2 (ios/AppDelegate.m and lab/bare.m)", rep.AmbiguousUnclassified)
+	if rep.AmbiguousUnclassified != 1 {
+		t.Errorf("AmbiguousUnclassified = %d, want 1 (lab/bare.m)", rep.AmbiguousUnclassified)
 	}
 }
 
 // TestIngest_MatlabSniffLeavesObjectiveCUnclaimed is the classification test the sniff owes Objective-C: an
 // Objective-C `.m` (#import, @interface, @implementation) is not claimed by the matlab dialect, so no MATLAB
-// symbol is ever read out of it and it is counted, not guessed.
+// symbol is ever read out of it; the Objective-C dialect reads it (LB-Q-objective-c).
 func TestIngest_MatlabSniffLeavesObjectiveCUnclaimed(t *testing.T) {
 	got, rep, st, _, svc := ingestMatlab(t)
-	for key := range got {
-		if strings.HasPrefix(key, "ios/AppDelegate.m") {
-			t.Fatalf("Objective-C file yielded %q", key)
+	objc := 0
+	for key, o := range got {
+		if !strings.HasPrefix(key, "ios/AppDelegate.m") {
+			continue
+		}
+		if strings.HasPrefix(string(o.SourceKind), "Matlab") {
+			t.Fatalf("Objective-C file yielded the MATLAB kind: %q %q", key, o.SourceKind)
+		}
+		if strings.HasPrefix(string(o.SourceKind), "ObjC") {
+			objc++
 		}
 	}
+	if objc == 0 {
+		t.Fatalf("the Objective-C dialect read nothing out of ios/AppDelegate.m: %v", sortedKeys(got))
+	}
 	if rep.AmbiguousUnclassified < 1 {
-		t.Fatalf("the Objective-C file was not counted as ambiguous_unclassified: %+v", rep)
+		t.Fatalf("lab/bare.m was not counted as ambiguous_unclassified: %+v", rep)
 	}
 	// Fingerprinted, so it is not re-sniffed on every ingest.
 	if _, found, err := st.Fingerprint(context.Background(), svc.ID, "ios/AppDelegate.m"); err != nil || !found {
