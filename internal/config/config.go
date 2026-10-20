@@ -421,6 +421,15 @@ type Hooks struct {
 	// and the PreToolUse(Read) hook entry that serves it. Default false;
 	// the read always runs unchanged.
 	ReadOutlineHint bool
+	// TestsToRun (RO-43, H4) turns on the tests-to-run line: after an Edit,
+	// Write or MultiEdit of a Go file, one line naming at most 5 tests that
+	// reach the edited file, the `go test -run` recipe as text fathom never
+	// runs, and whether the session ran them at this tree. Default false.
+	TestsToRun bool
+	// PromptDefinitions (H10) adds one line to the prompt hook naming, for
+	// each identifier the hook already resolved, its definition file:line
+	// and kind (at most 5). Default false (ADR-076).
+	PromptDefinitions bool
 }
 
 // The [hooks] pin_check values (schema.cue #Hooks).

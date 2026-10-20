@@ -137,9 +137,19 @@ package config
 // 	hooks: gate_preflight: 1
 // }
 //
+// [hooks] prompt_definitions is a bool (H10):
+// badPromptDefinitions: #Config & {
+// 	hooks: prompt_definitions: "yes"
+// }
+//
 // [hooks] read_outline_hint is a bool (H8):
 // badReadOutlineHint: #Config & {
 // 	hooks: read_outline_hint: "yes"
+// }
+//
+// [hooks] tests_to_run is a bool (RO-43):
+// badTestsToRun: #Config & {
+// 	hooks: tests_to_run: "on"
 // }
 
 // [[work.ci_summaries]] needs a path, and a commit is a hex object name

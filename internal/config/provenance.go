@@ -108,6 +108,14 @@ func mergeLayer(cfg *Config, prov Provenance, raw map[string]any, source Source,
 			cfg.Hooks.ReadOutlineHint = b
 			prov["hooks.read_outline_hint"] = SourceInfo{source, path}
 		}
+		if b, ok := hm["tests_to_run"].(bool); ok {
+			cfg.Hooks.TestsToRun = b
+			prov["hooks.tests_to_run"] = SourceInfo{source, path}
+		}
+		if b, ok := hm["prompt_definitions"].(bool); ok {
+			cfg.Hooks.PromptDefinitions = b
+			prov["hooks.prompt_definitions"] = SourceInfo{source, path}
+		}
 	}
 
 	if rm, ok := raw["readouts"].(map[string]any); ok {

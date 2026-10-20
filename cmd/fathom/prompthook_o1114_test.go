@@ -58,7 +58,8 @@ func TestFetchSymbolFile_OnlyExactOrMarkedCaseFold(t *testing.T) {
 	}
 	for _, c := range cases {
 		via = c.via
-		fp, ok := fetchSymbolFile(hc, srv.URL, "svc", "ADRs", c.marked)
+		d, ok := fetchSymbolDef(hc, srv.URL, "svc", "ADRs", c.marked)
+		fp := d.File
 		if ok != c.want || (ok && !strings.HasSuffix(fp, "adrrules.go")) {
 			t.Errorf("via=%q marked=%v: ok=%v fp=%q, want ok=%v", c.via, c.marked, ok, fp, c.want)
 		}

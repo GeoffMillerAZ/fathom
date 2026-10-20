@@ -23,6 +23,7 @@ type sessionRunRow struct {
 	Result     string // pass | fail | unknown
 	Failing    string // the logged failing ids, comma-joined (at most 10)
 	Head, Tree string // RO-35's keys; "" when the row carries none
+	Scope      string // RO-35's lexed scope; "" when the row carries none
 	AgentID    string // the subagent that ran it; "" for the main agent
 }
 
@@ -57,7 +58,7 @@ func readSessionRuns(path, session string) sessionRuns {
 		case b.Channel == testRunChannel:
 			out.Rows = append(out.Rows, sessionRunRow{
 				At: b.At, Invocation: b.Meta["invocation"], Result: b.Meta["result"], Failing: b.Meta["failing"],
-				Head: b.Meta["head"], Tree: b.Meta["tree"], AgentID: b.Meta["agent_id"],
+				Head: b.Meta["head"], Tree: b.Meta["tree"], Scope: b.Meta["scope"], AgentID: b.Meta["agent_id"],
 			})
 		case b.Channel == "edit-hook" && b.Kind == "seen" && b.Meta["phase"] == "post":
 			if b.At.After(out.LastEdit) {
