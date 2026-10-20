@@ -86,6 +86,14 @@ bad7: #Guards & {
 	guards: []
 	layer_rules: [{id: "Not Valid", kind: "no_cycles", sentence: "s"}]
 }`, "layer_rules"},
+		{"empty requires list", `
+bad8: #Guards & {
+	guards: [{command_scopes: ["go test *"], requires: []}]
+}`, "requires"},
+		{"empty requires token", `
+bad9: #Guards & {
+	guards: [{command_scopes: ["go test *"], requires: [""]}]
+}`, "requires"},
 	}
 	cctx := cuecontext.New()
 	if v := cctx.CompileString(schema); v.Err() != nil || v.Validate() != nil {

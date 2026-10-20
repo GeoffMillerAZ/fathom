@@ -23,6 +23,7 @@ import (
 
 	"golang.org/x/sync/singleflight"
 
+	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -34,6 +35,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/scip"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
+	"github.com/geoffmilleraz/fathom/internal/testevidence"
 	"github.com/geoffmilleraz/fathom/internal/worktree"
 	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
 	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
@@ -671,6 +673,7 @@ func (c *Client) ReadSourceFiles(ctx context.Context, service string, paths []st
 // ADR-016 post-ingest sweep: after a successful ingest, if the service has any
 // compiled claims, SweepClaims is run best-effort (error ignored). This is the
 // $0-token citation-freshness pass — status flips happen without any LLM call.
+// The certifications pass the CLI ingest runs follows it (refreshCertifications).
 func (c *Client) IngestService(ctx context.Context, service string) error {
 	// RT-153/RT-173: an ingest is ingest-class work the producer governor
 	// halts at refuse and the exit rung can halt and quarantine.
@@ -680,13 +683,15 @@ func (c *Client) IngestService(ctx context.Context, service string) error {
 	if p := c.corpusPath(ctx, service); p != "" {
 		ref.Path = p
 	}
-	if _, err := c.pipe.Ingest(ctx, ref); err != nil {
+	report, err := c.pipe.Ingest(ctx, ref)
+	if err != nil {
 		return err
 	}
 	// Best-effort post-ingest sweep: run only when claims exist.
 	if claims, err := c.st.ClaimsForService(ctx, service, ""); err == nil && len(claims) > 0 {
 		_, _ = c.SweepClaims(ctx, service)
 	}
+	c.refreshCertifications(ctx, service, ref.Path, report)
 	return nil
 }
 
@@ -712,13 +717,44 @@ func (c *Client) IngestServiceAt(ctx context.Context, service, path string) erro
 	}
 	ctx, done := tenancy.BeginIngest(ctx, service) // RT-153/RT-173
 	defer done()
-	if _, err := c.pipe.Ingest(ctx, ServiceRef{ID: service, Path: path}); err != nil {
+	report, err := c.pipe.Ingest(ctx, ServiceRef{ID: service, Path: path})
+	if err != nil {
 		return err
 	}
 	if claims, err := c.st.ClaimsForService(ctx, service, ""); err == nil && len(claims) > 0 {
 		_, _ = c.SweepClaims(ctx, service)
 	}
+	c.refreshCertifications(ctx, service, path, report)
 	return nil
+}
+
+// refreshCertifications is the daemon's post-ingest certifications pass
+// (O1271): the same `// certifies:` marker scan and the same step
+// (certify.AfterIngest: nothing, a compile, a sweep, or a skipped sweep)
+// the CLI's plain `fathom ingest` runs, so a certificate in the daemon's
+// store moves when the daemon re-ingests. It runs inside the ingest's own
+// context. A service with no declaration stored stops at that one read,
+// so only a service that declared a certificate pays the marker scan's
+// walk. Best-effort like the claims sweep above: a failure leaves the
+// ingest's own result alone.
+func (c *Client) refreshCertifications(ctx context.Context, service, root string, report Report) {
+	if decls, err := c.st.CertifyDeclarationsForService(ctx, service); err != nil || len(decls) == 0 {
+		return
+	}
+	now := time.Now()
+	watermark := fmt.Sprintf("tests-ingest:%d", now.UnixNano())
+	if meta, found, err := c.st.GetServiceMeta(ctx, service); err == nil && found && meta.IndexedCommit != "" {
+		watermark = meta.IndexedCommit
+	}
+	marks, err := testevidence.IngestCertifyMarkers(ctx, c.st, service, watermark, root)
+	if err != nil || marks.Declared == 0 {
+		return
+	}
+	// O1270: the sweep re-checks files and runs; an ingest that read no
+	// file and deleted none changed nothing it checks (the daemon picks up
+	// no test run).
+	sweep := report.Extracted+report.Skipped-report.StatSkipped > 0 || report.Deleted > 0
+	_, _ = certify.AfterIngest(ctx, c.st, service, watermark, root, now, sweep)
 }
 
 // RemoveService deletes every stored row for serviceID — registry surgery

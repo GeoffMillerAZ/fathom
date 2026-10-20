@@ -269,6 +269,12 @@ for pid in $pids; do
 done
 t_tools=$(( $(date +%s) - t_tools0 ))
 
+# Generated files merge by regeneration: set the repo-local merge driver
+# .gitattributes names. Best effort, a missing task never fails setup.
+if PATH="${bin_dir}:${PATH}" command -v task >/dev/null 2>&1; then
+  (cd "$repo" && PATH="${bin_dir}:${PATH}" task merge-drivers) >>"$log" 2>&1 || true
+fi
+
 # ─── record what the session side reads ─────────────────────────────────────
 {
   echo "FATHOM_CLOUD_HOME=${cloud_home}"

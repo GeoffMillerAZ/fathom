@@ -88,6 +88,13 @@ func readoutRichLines(ctx context.Context, in harness.HookInput, dir string, c *
 		r.lines = append(r.lines, line)
 		r.kinds = append(r.kinds, readout.RecordCompileError)
 	}
+	if ctx.Err() != nil {
+		return r
+	}
+	if line := readoutGuardLine(dir, c); line != "" {
+		r.lines = append(r.lines, line)
+		r.kinds = append(r.kinds, readoutRichGuardKind)
+	}
 	return r
 }
 
