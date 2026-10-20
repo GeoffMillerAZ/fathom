@@ -62,6 +62,14 @@ type Generated struct {
 	Regenerate string   `json:"regenerate"`
 }
 
+// Guard is one `guards` entry of a pack: the scopes it covers, the note it
+// serves and its own rule cap (the #Guard shape).
+type Guard struct {
+	Scopes   []string `json:"scopes"`
+	Note     string   `json:"note"`
+	MaxRules int      `json:"max_rules"`
+}
+
 // Pack is one discovered tech pack.
 type Pack struct {
 	// Name, Version and About are the pack header's.
@@ -81,6 +89,8 @@ type Pack struct {
 	Hash string
 	// Generated is the pack's `generated` declarations, in file order.
 	Generated []Generated
+	// Guards is the pack's `guards` entries, in file order.
+	Guards []Guard
 }
 
 // Tag is the pack's served identity, `name@version`.
@@ -376,6 +386,7 @@ func readPack(dir string) (Pack, bool, error) {
 			About   string `json:"about"`
 		} `json:"pack"`
 		Generated []Generated `json:"generated"`
+		Guards    []Guard     `json:"guards"`
 	}
 	if derr := v.Decode(&doc); derr != nil {
 		return Pack{}, false, derr
@@ -386,7 +397,7 @@ func readPack(dir string) (Pack, bool, error) {
 	}
 	return Pack{
 		Name: doc.Pack.Name, Version: doc.Pack.Version, About: doc.Pack.About,
-		Dir: dir, Hash: hash, Generated: doc.Generated,
+		Dir: dir, Hash: hash, Generated: doc.Generated, Guards: doc.Guards,
 	}, true, nil
 }
 

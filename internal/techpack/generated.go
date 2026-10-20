@@ -108,3 +108,33 @@ func compileGlob(pattern string, placeholders bool) (*regexp.Regexp, []string) {
 	}
 	return re, names
 }
+
+// GeneratedLineFor is the one line served before an edit to a declared
+// generated output (docs/design/fathom-dir.md section 7.4): the first
+// declaration whose output matches the repository-relative slash path p
+// (the same matcher GeneratedHandEdits uses, Generated.Match) names its
+// sources and its regenerate command. The command is rendered text and is
+// never run: nothing on this path executes anything, and a command with
+// shell metacharacters stays inert text. sources are the declaration's
+// filled sources.
+func GeneratedLineFor(decls []Generated, p string) (line string, sources []string, ok bool) {
+	for _, g := range decls {
+		srcs, matched := g.Match(p)
+		if !matched || len(srcs) == 0 {
+			continue
+		}
+		quoted := make([]string, len(srcs))
+		for i, s := range srcs {
+			quoted[i] = "`" + inertText(s) + "`"
+		}
+		return "`" + inertText(p) + "` is generated from " + strings.Join(quoted, ", ") +
+			" by `" + inertText(g.Regenerate) + "`: edit the source", srcs, true
+	}
+	return "", nil, false
+}
+
+// inertText flattens line breaks and control characters to single spaces so
+// a declared string cannot change the shape of the served line.
+func inertText(s string) string {
+	return strings.Join(strings.FieldsFunc(s, func(r rune) bool { return r < 0x20 || r == 0x7f }), " ")
+}
