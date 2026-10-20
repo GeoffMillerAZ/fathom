@@ -20,7 +20,7 @@ design work, then `intent-decide`, `intent-doctor`, `intent-audit`, `intent-prun
 | What an agent may do unasked, must ask first, never does | `autonomy.md` |
 | What broke, what would have caught it, what it produced | `incidents.md`; catalogs: `../dogfood-observations.md`, `../../.fathom/observations.md` |
 | What we do not know yet | `questions.md` |
-| What changed for users since the last release | `../../CHANGELOG.md` (narrative per release: `../changelog/`) |
+| What changed for users since the last release | `../../CHANGELOG.md` (released) and `../changelog/unreleased/` (fragments); narrative per release: `../changelog/` |
 | How to cross a breaking change | `../rename-migration.md` (precedent); new notes: `../upgrades/<version>-<slug>.md` |
 | Work orders and their proof | `../plans/` (grammar: `../plans/README.md`; progress: `fathom plans status`) |
 | Design records and the vision series | `../design/`, `../vision/README.md` (status per doc) |
