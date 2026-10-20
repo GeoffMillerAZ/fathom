@@ -2,6 +2,8 @@ package langbench
 
 import (
 	"os"
+	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -25,11 +27,10 @@ func TestLanguageQueueMatchesPlan(t *testing.T) {
 	if len(q) == 0 {
 		t.Fatal("queue is empty")
 	}
-	md, err := os.ReadFile(planPath)
+	plan, err := LoadBreadthPlan("../..")
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan := verify.ParseMarkdownPlan("fathom", md)
 	if errs := CheckQueueAgainstPlan(q, plan); len(errs) > 0 {
 		for _, e := range errs {
 			t.Error(e)
@@ -92,6 +93,91 @@ func TestCheckQueueAgainstPlanCatchesDrift(t *testing.T) {
 	for _, want := range []string{"order", "LB-F9"} {
 		if !strings.Contains(joined, want) {
 			t.Errorf("drift report lacks %q:\n%s", want, joined)
+		}
+	}
+}
+
+// TestQueueReadsSiblingPlans: LoadBreadthPlan reads language-breadth.md then its
+// sorted language-breadth.<wave>.md siblings, rows keeping their source file. A
+// queue depends_on and a row's needs may name <sibling>.md#<id>: a claimed
+// sibling row satisfies it, an open or deferred one blocks with the qualified
+// name, a name no file defines is an error, and a sibling -rest refusal makes
+// the item need re-planning as one in the main plan does.
+func TestQueueReadsSiblingPlans(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "docs", "plans")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	write := func(name, body string) {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	const (
+		w1 = "language-breadth.w1.md"
+		w2 = "language-breadth.w2.md"
+	)
+	write("language-breadth.md", "- [ ] a {id: LB-Q-a, oracle: lexical, path: x, pattern: y, needs: \""+w1+"#LB-F900\"}\n"+
+		"- [ ] b {id: LB-Q-b, oracle: lexical, path: x, pattern: y, needs: \""+w1+"#LB-F901\"}\n"+
+		"- [ ] c {id: LB-Q-c, oracle: lexical, path: x, pattern: y, needs: \""+w1+"#LB-F902\"}\n"+
+		"- [ ] r {id: LB-Q-r, oracle: lexical, path: x, pattern: y}\n")
+	write(w2, "- [x] later {id: LB-F903, oracle: lexical, path: x, pattern: y}\n")
+	write(w1, "- [x] done {id: LB-F900, oracle: lexical, path: x, pattern: y}\n"+
+		"- [ ] open {id: LB-F901, oracle: lexical, path: x, pattern: y}\n"+
+		"- [-] later {id: LB-F902, disposition: deferred, reason: \"r\", trigger: \"t\"}\n"+
+		"- [-] r rest {id: LB-Q-r-rest, disposition: refused, reason: \"no\"}\n")
+	write("language-breadth.queue.json", "[]") // not a plan
+
+	plan, err := LoadBreadthPlan(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var order, src []string
+	for _, tk := range plan.Tasks {
+		order = append(order, tk.ID)
+		src = append(src, tk.Source)
+	}
+	if want := []string{"LB-Q-a", "LB-Q-b", "LB-Q-c", "LB-Q-r", "LB-F900", "LB-F901", "LB-F902", "LB-Q-r-rest", "LB-F903"}; !slices.Equal(order, want) {
+		t.Fatalf("row order %v, want %v", order, want)
+	}
+	if src[0] != "language-breadth.md" || src[4] != w1 || src[8] != w2 {
+		t.Errorf("rows lost their source file: %v", src)
+	}
+
+	q := []QueueEntry{
+		{ID: "a", PlanRow: "LB-Q-a", DependsOn: []string{w1 + "#LB-F900"}},
+		{ID: "b", PlanRow: "LB-Q-b", DependsOn: []string{w1 + "#LB-F901"}},
+		{ID: "c", PlanRow: "LB-Q-c", DependsOn: []string{w1 + "#LB-F902"}},
+		{ID: "r", PlanRow: "LB-Q-r"},
+	}
+	if errs := CheckQueueAgainstPlan(q, plan); len(errs) > 0 {
+		t.Errorf("qualified needs rejected: %v", errs)
+	}
+	blocks := QueueEligibility(q, plan, func(string) (string, bool) { return "", false })
+	if !blocks["a"].Eligible() {
+		t.Errorf("a: a claimed sibling row should satisfy the need, got %+v", blocks["a"])
+	}
+	if got := blocks["b"].Blocked; !slices.Equal(got, []string{w1 + "#LB-F901"}) {
+		t.Errorf("b blocked %v, want the qualified open row", got)
+	}
+	if got := blocks["c"].Blocked; !slices.Equal(got, []string{w1 + "#LB-F902"}) {
+		t.Errorf("c blocked %v, want the qualified deferred row", got)
+	}
+	if got := blocks["r"].Replan; !slices.Equal(got, []string{"LB-Q-r-rest"}) {
+		t.Errorf("r replan %v, want the sibling -rest refusal", got)
+	}
+
+	// A name no file defines, or a row in the wrong file, is an error.
+	for _, bad := range []string{w1 + "#LB-F999", w2 + "#LB-F900", "language-breadth.w3.md#LB-F900"} {
+		q2 := []QueueEntry{{ID: "a", PlanRow: "LB-Q-a", DependsOn: []string{bad}}}
+		errs := CheckQueueAgainstPlan(q2, plan)
+		found := false
+		for _, e := range errs {
+			found = found || strings.Contains(e, bad+", which is no plan row")
+		}
+		if !found {
+			t.Errorf("%s accepted: %v", bad, errs)
 		}
 	}
 }

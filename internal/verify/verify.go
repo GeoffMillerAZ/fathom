@@ -114,6 +114,11 @@ type Task struct {
 	// checks its shape only; resolveCrossPlanNeed reads the sibling.
 	Needs []string
 
+	// Source is the plan file (base name) a row was read from, set only by
+	// loaders that merge several plan files into one Plan (langbench's
+	// LoadBreadthPlan); the Markdown parser leaves it empty.
+	Source string `json:"-"`
+
 	// Line is the 1-based line of the checkbox row in the plan file — the
 	// location a SARIF result points at (PC-21). 0 when the plan did not
 	// come from Markdown.
