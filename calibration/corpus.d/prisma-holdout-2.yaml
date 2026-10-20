@@ -1,0 +1,21 @@
+id: prisma-holdout-2
+language: "Prisma schema"
+# The second holdout for the prisma dialect's L3 rule (LB-Q-prisma, wave lang7: the global-name strategy scoped to a
+# schema folder, LB-F580), pinned in the commit that adds the rule, before the rule or the prisma-dmmf oracle ran on it,
+# and read ONCE into docs/bench/readings/lang/holdout/prisma-papermark.json; never tuned against. prisma-holdout.yaml
+# (prisma/prisma-examples) stays as it is: 81 single-file schemas, so it holds out the folder scope (no edge between
+# independent schemas) but has no cross-file truth. Criteria, each checked at the pin: not cal.com,
+# web-app-template or dub (the tuning subjects); an OSI licence read at the commit (AGPLv3 by its LICENSE, outside ee/ and app/(ee),
+# which hold no .prisma file); a prismaSchemaFolder, so a field's type crosses files; absent from every committed
+# reading and corpus shard.
+repos:
+  - name: mfts/papermark
+    url: https://github.com/mfts/papermark
+    ref: main
+    sha: ed19717ec02a1ac79aecf5569159aa9d2d869312
+    licence: AGPL-3.0-only
+    sparse: ["**/*.prisma"]
+    idioms:
+      - 'a 15-file prismaSchemaFolder (prisma/schema), the datasource and generator in schema.prisma'
+      - 'models relating to a model another file defines (Team, User, Document), on both sides'
+      - 'enum-typed fields whose enum another file defines'

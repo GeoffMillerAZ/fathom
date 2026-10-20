@@ -671,6 +671,21 @@
       "gz_bytes": 74046
     },
     {
+      "blob": "thrift",
+      "repo": "duskmoon314/tree-sitter-thrift",
+      "tag": "v0.5.0",
+      "commit": "82cd6a45626ac2dd4c8c1705170aa58b81212782",
+      "tarball_sha256": "fb10b0901c0be74768ec5af75d436380fa52f9fe6e641f5485aa2639bc4cd19c",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_thrift"],
+      "scanner": false,
+      "generate": false,
+      "abi": 14,
+      "blob_sha256": "568680fb22d4d3c2dfd3d582326f9b1ac86ba7b24e64409a2587e514c91e9e6a",
+      "blob_bytes": 231129,
+      "gz_bytes": 78324
+    },
+    {
       "blob": "typescript",
       "repo": "tree-sitter/tree-sitter-typescript",
       "tag": "v0.23.2",

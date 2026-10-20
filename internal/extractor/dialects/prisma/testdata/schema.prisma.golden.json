@@ -298,5 +298,42 @@
       ],
       "tier": "verified"
     }
+  ],
+  "imports": [
+    {
+      "local": "Role",
+      "exported": "Role",
+      "module": "Role",
+      "kind": "named",
+      "line": 20
+    },
+    {
+      "local": "Post",
+      "exported": "Post",
+      "module": "Post",
+      "kind": "named",
+      "line": 21
+    },
+    {
+      "local": "Profile",
+      "exported": "Profile",
+      "module": "Profile",
+      "kind": "named",
+      "line": 22
+    },
+    {
+      "local": "User",
+      "exported": "User",
+      "module": "User",
+      "kind": "named",
+      "line": 30
+    },
+    {
+      "local": "Tag",
+      "exported": "Tag",
+      "module": "Tag",
+      "kind": "named",
+      "line": 32
+    }
   ]
 }

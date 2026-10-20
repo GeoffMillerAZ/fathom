@@ -13,7 +13,7 @@
   },
   "grammar": { "blob": "prisma", "entry_point": "tree_sitter_prisma" },
   "variants": [],
-  "queries": { "tags": "tags.scm" },
+  "queries": { "tags": "tags.scm", "imports": "imports.scm" },
   "kinds": {
     "model":      { "source_kind": "PrismaModel",      "canonical": "class",       "container": true, "callable": true },
     "view":       { "source_kind": "PrismaView",       "canonical": "class",       "container": true, "callable": true },
@@ -31,6 +31,7 @@
   },
   "qualify": { "chain_containers": true, "container_sep": ".", "method_sep": "." },
   "package": { "strategy": "dir" },
+  "imports": { "strategy": "global-name", "scope": "folder", "defines": ["model", "view", "type", "enum"] },
   "signature": { "max_chars": 200 },
   "target_level": "L3",
   "queue_id": "prisma"

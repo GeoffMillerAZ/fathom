@@ -110,5 +110,28 @@
       "signature": "CLOSED",
       "tier": "verified"
     }
+  ],
+  "imports": [
+    {
+      "local": "Customer",
+      "exported": "Customer",
+      "module": "Customer",
+      "kind": "named",
+      "line": 3
+    },
+    {
+      "local": "Status",
+      "exported": "Status",
+      "module": "Status",
+      "kind": "named",
+      "line": 5
+    },
+    {
+      "local": "Order",
+      "exported": "Order",
+      "module": "Order",
+      "kind": "named",
+      "line": 10
+    }
   ]
 }

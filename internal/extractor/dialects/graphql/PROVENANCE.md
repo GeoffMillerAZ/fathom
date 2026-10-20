@@ -21,9 +21,14 @@
   `Signature` starts at the description (`"""A book on a shelf.""" type Book implements Node`), and an undescribed one
   at its keyword or name; (2) a field's `Signature` is its first line, so a field whose arguments span lines reads
   `author(`; (3) graphqlextract.go's Signature (the lowercased kind, `object`; a field's type string) is not a source span
-  and is not kept (`TestGraphQLDialectSignatureContract`); (4) no `imports.scm`: a GraphQL schema is the union of its
-  files with no import statement, and the `#import "./a.graphql"` comment convention is a comment node whose text the
-  engine's `@import.module` takes whole, so no cross-file reference is resolved and L3 is not attempted (`LB-Q-graphql-rest`).
+  and is not kept (`TestGraphQLDialectSignatureContract`); (4) a fragment spread binds no fragment another file defines: the `#import "./a.graphql"`
+  comment convention is a comment node whose text the engine's `@import.module` takes whole (`LB-Q-graphql-rest`).
+- `imports.scm` (wave lang7, LB-F580): written in this repository. A GraphQL schema is the union of its files with no
+  import statement, so every named type a definition writes (the built-in scalars aside) is a spec whose name is its module
+  (`@import.name` and `@import.module` on one node), kept once per name per file; `imports.strategy: global-name` with
+  `scope: service` and `defines: ["type"]` binds it to the one file of the service defining a type of that name (an
+  extension is no definition), two or more definers bind nothing, and a file draws no edge to its own definitions.
+  `internal/fusion/globalname_dialects_test.go` resolves six fixture files through it.
 - `testdata/`: fixtures written in this repository, each golden written by hand from reading the fixture and then
   compared with the engine's output: `schema.graphql` (every type kind, a described type, a multi-line field, a directive
   definition, an enum with a deprecated value), `ops.graphql` (a query with variables, a spread and an inline fragment, a

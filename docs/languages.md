@@ -57,6 +57,7 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 | Astro (`.astro`) | tags dialect `astro` | yes (virchau13/tree-sitter-astro 213f6e69) | withastro/docs, withastro/astro (examples) | **file** — a component is its file's module symbol and the component tags its markup writes are its calls; its frontmatter and JavaScript scripts are TypeScript it hosts (F2), whose relative imports resolve via the relative-path strategy, an import of another component an edge between the files' module symbols; no SCIP producer reads `.astro` | an import of a TypeScript or JavaScript module draws no edge (the file resolver's universe is one language's files); a tsconfig `paths` alias is not resolved for an `.astro` importer; the JavaScript of a markup expression (`{...}`) is not read; a destructured prop with a default is no definition (O985, O986, O989) |
 | Angular component views (`.html` a component's decorator names) | tags dialect `html`; refused for an Angular dialect (LB-Q-angular-rest, design §14.2): the only maintained licensed Angular grammar, dlvandenberg/tree-sitter-angular v0.9.2, leaves 13 of the 72 calibration views (18.1%) in error, over the 5% line | no (measured, not pinned) | angular-realworld-example-app, angular/components (`src/material`) | **none** for a view (a selector's use and a pipe are not extracted); the component class is TypeScript's | a tree-sitter-angular release under 5% on both subjects, then the view dialect |
 | Meson (`meson.build`, `meson.options`, `meson_options.txt`) | tags dialect `meson` | yes (tree-sitter-meson v1.3.0) | mesonbuild/meson (parse only), harfbuzz, libxml2 | **file** — `subdir('dir')` is a relative-path import (a name resolves from a file to the directory it imports), and ingest's file-resolve pass keys `meson.build` by its basename (O379), so the edge is stored; but Meson's variables are one namespace across every file, so a link to a sibling or an ancestor has no import to bind it (LB-F128, O375) | a build-namespace strategy (L3); arithmetic and ternary expressions the grammar does not read (O378) |
+| Apache Thrift IDL | tags dialect `thrift` | yes (duskmoon314/tree-sitter-thrift v0.5.0) | apache/thrift (tests, tutorial), jaegertracing/jaeger-idl; holdout apache/impala | **file** — `include "x.thrift"` resolves beside the including file, then under the repository root (the file-symbol strategy), and a qualified type (`shared.Money`) binds to the type that file defines; two included files that define one name leave it unbound (O1443) | binding a qualified type through the included file's stem (O1443); `uuid` read by the grammar (v0.5.0 predates it) |
 | Bazel / Starlark (`BUILD`, `BUILD.bazel`, `*.bzl`, `WORKSPACE`, `WORKSPACE.bazel`, `WORKSPACE.bzlmod`, `MODULE.bazel`) | tags dialect `bazel` | yes (tree-sitter-starlark v1.3.0) | bazelbuild/examples (rules, configurations), grpc/grpc | **file** — a `load()` binds the macros and rules it names to the `.bzl` file defining them (the file-symbol strategy reads `//pkg:f.bzl` and `:f.bzl` labels), and ingest's file-resolve pass keys `BUILD`, `WORKSPACE` and `MODULE.bazel` by their basenames (O379), so their loads are stored as a `.bzl` file's are | a label strategy for `//pkg:target` deps between BUILD files (the oracle's `rule_input` edges, not scored); `grpc_package(name = ...)`-style macros that create no target read as targets |
 | Tiltfile (`Tiltfile`) | tags dialect `tiltfile` | yes (tree-sitter-starlark v1.3.0, the grammar Bazel reads) | tilt-dev/tilt-extensions, tilt-dev/tilt-example-go | **syntax** — call names by syntax only; a Tiltfile's `docker_build`, `local_resource`, `k8s_resource`, `k8s_yaml` and `config.define_*` calls are entities named by their literal string, and `load()` and `include()` are not read as imports (no L3 oracle) | an import strategy for `load("./file", "sym")` and `include()`; names built from a variable or a concatenation are no entity |
 | Clang compilation database (`compile_commands.json`) | doc dialect `compile-commands`; JSON plus each entry's flags (`decode: compile-commands`) | n/a | fmt, libuv (cmake-generated databases at the checkout root) | **syntax** — a translation unit's include directories, macros and output are its own references; no cross-file selector is declared | joined `-isystem`/`-iquote`/`-idirafter` flags (O376) |
@@ -115,7 +116,7 @@ item's target; the last column also needs every level up to the target graded ex
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | T1 | language | 33 | 0 | 3 | 12 | 10 | 1 | 3 | 0 | 4 | 22 | 8 |
 | T1 | tool format | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |
-| T2 | tool format | 23 | 0 | 8 | 13 | 0 | 1 | 0 | 0 | 1 | 18 | 13 |
+| T2 | tool format | 23 | 0 | 7 | 14 | 0 | 1 | 0 | 0 | 1 | 19 | 14 |
 | T3 | tool format | 16 | 1 | 4 | 11 | 0 | 0 | 0 | 0 | 0 | 15 | 5 |
 | T4 | language | 3 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 1 | 1 | 0 |
 | T4 | tool format | 7 | 0 | 3 | 2 | 0 | 0 | 0 | 0 | 2 | 5 | 4 |
@@ -124,7 +125,7 @@ item's target; the last column also needs every level up to the target graded ex
 | T6 | tool format | 4 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |
 | T7 | tool format | 4 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
 | **Total** | language | 37 | 0 | 4 | 13 | 10 | 1 | 4 | 0 | 5 | 23 | 8 |
-| **Total** | tool format | 63 | 1 | 18 | 36 | 0 | 1 | 0 | 0 | 7 | 50 | 26 |
+| **Total** | tool format | 63 | 1 | 17 | 37 | 0 | 1 | 0 | 0 | 7 | 51 | 27 |
 
 ### T1
 
@@ -182,7 +183,7 @@ item's target; the last column also needs every level up to the target graded ex
 | Bazel / Starlark (BUILD, BUILD.bazel, *.bzl, WORKSPACE, MODULE.bazel) | tool format | L3 | L3 (L1 good, L2 excellent, L3 good) | L1 good: sym_precision 0.9554 < 0.98 |
 | CMake (CMakeLists.txt, *.cmake) | tool format | L3 | none (measured) | L1 not met: tenancy floor |
 | Protocol Buffers (.proto) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
-| GraphQL schemas and operations (.graphql .gql) | tool format | L3 | L2 (L1 excellent, L2 excellent) | L3 not met: xref_precision not measured |
+| GraphQL schemas and operations (.graphql .gql) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | JSON Schema documents | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | Taskfile (go-task: Taskfile.yml) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | Jenkins pipelines (Jenkinsfile, *.jenkinsfile) | tool format | L3 | L3 (L1 good, L2 good, L3 good) | L1 good: oracle tier C caps at good |
@@ -272,8 +273,8 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 reached (languages at L1 36, L1 excellent 25, L2 32, L3 25, L4 10; tool formats at target 56)
-Milestone M2 progress: languages at L1 36/45, at L1 excellent 25/35, at L2 32/25, at L3 25/14, at L4 10/10; tool formats at target 56/30
+Milestone M1 reached (languages at L1 36, L1 excellent 25, L2 32, L3 25, L4 10; tool formats at target 59)
+Milestone M2 progress: languages at L1 36/45, at L1 excellent 25/35, at L2 32/25, at L3 25/14, at L4 10/10; tool formats at target 59/30
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -331,7 +332,7 @@ Milestone M2 progress: languages at L1 36/45, at L1 excellent 25/35, at L2 32/25
 | Perl (.pl .pm .t by sniff) | language | tags | tree-sitter-perl/tree-sitter-perl (MIT) | L2 | L2 (L1 good, L2 good) | C ppi-calls PPI 1.270; B universal-ctags 6.2.1 | syntax | 2026-10-19 | at target (LB-Q-perl) |
 | Protocol Buffers (.proto) | tool format | tags | coder3101/tree-sitter-proto (MIT (verify at pin)) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A protoc 34.1 | syntax | 2026-10-01 | at target (LB-Q-protobuf) |
 | GDScript (.gd) | language | tags | PrestonKnopp/tree-sitter-gdscript (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-gdscript |
-| GraphQL schemas and operations (.graphql .gql) | tool format | tags | bkegley/tree-sitter-graphql (MIT (verify at pin)) | L3 | L2 (L1 excellent, L2 excellent) | A graphql-js 16.14.2 | syntax | 2026-10-19 | LB-Q-graphql |
+| GraphQL schemas and operations (.graphql .gql) | tool format | tags | bkegley/tree-sitter-graphql (MIT (verify at pin)) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A graphql-js 16.14.2 | syntax | 2026-10-20 | at target (LB-Q-graphql) |
 | Elixir (.ex .exs) | language | tags | elixir-lang/tree-sitter-elixir (Apache-2.0) | L3 | L3 (L1 excellent, L2 good, L3 good) | B elixir-ast Elixir 1.19.6 Code.string_to_quoted/2 (OTP 29); C tree-sitter-tags:elixir-tags.scm py-tree-sitter 0.25.2, tree-sitter-elixir 0.3.5 | syntax | 2026-10-19 | at target (LB-Q-elixir) |
 | OpenAPI / Swagger documents | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A @apidevtools/swagger-parser 13.1.0; A @apidevtools/swagger-parser ($refs.paths) 13.1.0 | — | 2026-10-01 | at target (LB-Q-openapi) |
 | Prometheus rules, configuration and promtool tests | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A promtool 3.15.0 (5241a27f); A promtool+routes 3.15.0 (5241a27f) | — | 2026-10-10 | at target (LB-Q-prometheus) |
@@ -412,13 +413,13 @@ Milestone M2 progress: languages at L1 36/45, at L1 excellent 25/35, at L2 32/25
 | KCL (.k) | tool format | tags | kcl-lang/tree-sitter-kcl (Apache-2.0) | L2 | unsupported (disclosed) | — | — | — | LB-Q-kcl |
 | Dhall (.dhall) | tool format | tags | jbellerb/tree-sitter-dhall (MIT (verify at pin)) | L1 | unsupported (disclosed) | — | — | — | LB-Q-dhall |
 | Nushell (.nu) | language | tags | nushell/tree-sitter-nu (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-nushell |
-| Apache Thrift IDL (.thrift) | tool format | tags | duskmoon314/tree-sitter-thrift (MIT (verify at pin)) | L3 | unsupported (disclosed) | — | — | — | LB-Q-thrift |
+| Apache Thrift IDL (.thrift) | tool format | tags | duskmoon314/tree-sitter-thrift (MIT (verify at pin)) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A thrift 0.24.0 | file | 2026-10-20 | at target (LB-Q-thrift) |
 | PureScript (.purs) | language | tags | postsolar/tree-sitter-purescript (MIT (verify at pin)) | L2 | unsupported (disclosed) | — | — | — | LB-Q-purescript |
 | Avro schemas (.avsc) and IDL (.avdl) | tool format | doc | pure-go:encoding/json (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-avro |
 | Emacs Lisp (.el) | language | tags | Wilfred/tree-sitter-elisp (MIT) | L1 | L1 (L1 good) | B universal-ctags 6.2.1 | syntax | 2026-09-29 | at target (LB-Q-emacs-lisp) |
 | AsyncAPI documents | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-asyncapi |
 | Vim script (.vim, vimrc) | language | tags | tree-sitter-grammars/tree-sitter-vim (MIT) | L1 | refused; measured L1 (L1 excellent) | B universal-ctags 6.2.1 | — | 2026-09-29 | re-plan (LB-Q-vimscript-rest refused) |
-| Prisma schema (schema.prisma) | tool format | tags | victorhqc/tree-sitter-prisma (MIT (verify at pin)) | L3 | L2 (L1 excellent, L2 excellent) | A prisma-schema-wasm 6.19.0-26.2ba551f319ab1df4bc874a89965d8b3641056773 | syntax | 2026-10-20 | LB-Q-prisma |
+| Prisma schema (schema.prisma) | tool format | tags | victorhqc/tree-sitter-prisma (MIT (verify at pin)) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A prisma-schema-wasm 6.19.0-26.2ba551f319ab1df4bc874a89965d8b3641056773 | syntax | 2026-10-20 | at target (LB-Q-prisma) |
 | Tcl (.tcl) | language | tags | tree-sitter-grammars/tree-sitter-tcl (MIT) | L1 | refused; measured none (measured) | B universal-ctags 6.2.1 | — | 2026-09-29 | re-plan (LB-Q-tcl-rest refused) |
 | dbt projects (dbt_project.yml, models/*.sql with ref(), schema.yml) | tool format | tags+doc | DerekStride/tree-sitter-sql + pure-go:gopkg.in/yaml.v3 (MIT) | L3 | unsupported (disclosed) | — | — | — | LB-Q-dbt |
 | Migration changelogs (Flyway V__*.sql naming, Liquibase changelogs) | tool format | doc | pure-go:gopkg.in/yaml.v3 + encoding/xml (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-sql-migrations |

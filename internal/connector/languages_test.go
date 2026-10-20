@@ -93,6 +93,7 @@ var langRowHint = map[string]string{
 	"proto":            "proto",
 	"graphql":          "GraphQL",
 	"prisma":           "Prisma schema",
+	"thrift":           "Apache Thrift",
 	"toml":             "TOML",
 	"json":             "JSON",
 	"package-json":     "package.json",

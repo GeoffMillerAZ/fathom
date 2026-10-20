@@ -95,7 +95,11 @@ func (e *TSExtractor) ExtractImports(relPath string, src []byte) ([]ImportSpec, 
 		return nil, fmt.Errorf("tsextract[%s] %s: query: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
 	}
 
-	return importSpecsFromCaptures(matches, src), nil
+	specs := importSpecsFromCaptures(matches, src)
+	if variant.rules.importStrategy == "global-name" {
+		specs = distinctNamedImports(specs, importSpecOf)
+	}
+	return specs, nil
 }
 
 // ImportSpan is one ImportSpec with the line span (1-based, inclusive) of
@@ -142,6 +146,9 @@ func (e *TSExtractor) ExtractImportSpans(relPath string, src []byte) ([]ImportSp
 			lo = sp
 		}
 		out[i] = ImportSpan{ImportSpec: s, StartLine: lo, EndLine: max(spans[i][1], s.Line)}
+	}
+	if variant.rules.importStrategy == "global-name" {
+		out = distinctNamedImports(out, func(s ImportSpan) ImportSpec { return s.ImportSpec })
 	}
 	if variant.rules.injectionHost {
 		hosted, err := e.hostedImportSpansLocked(variant, l, tree, src) // F2: its injected ranges' imports are the file's (tsextract_host.go)

@@ -35,5 +35,28 @@
       "signature": "mutation Rename($id: ID!)",
       "tier": "verified"
     }
+  ],
+  "imports": [
+    {
+      "local": "AuthorFilter",
+      "exported": "AuthorFilter",
+      "module": "AuthorFilter",
+      "kind": "named",
+      "line": 1
+    },
+    {
+      "local": "Novel",
+      "exported": "Novel",
+      "module": "Novel",
+      "kind": "named",
+      "line": 4
+    },
+    {
+      "local": "Book",
+      "exported": "Book",
+      "module": "Book",
+      "kind": "named",
+      "line": 10
+    }
   ]
 }

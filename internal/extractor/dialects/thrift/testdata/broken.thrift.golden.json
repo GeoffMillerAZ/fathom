@@ -1,0 +1,55 @@
+{
+  "symbols": [
+    {
+      "name": "Before",
+      "kind": "ThriftStruct",
+      "package": "broken",
+      "line": 1,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "Before.a",
+      "kind": "ThriftField",
+      "package": "broken",
+      "line": 2,
+      "end_line": 2,
+      "signature": "1: i32 a",
+      "tier": "verified"
+    },
+    {
+      "name": "Bad",
+      "kind": "ThriftStruct",
+      "package": "broken",
+      "line": 5,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "Bad.ok",
+      "kind": "ThriftField",
+      "package": "broken",
+      "line": 7,
+      "end_line": 7,
+      "signature": "2: i32 ok",
+      "tier": "verified"
+    },
+    {
+      "name": "After",
+      "kind": "ThriftEnum",
+      "package": "broken",
+      "line": 10,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "After.X",
+      "kind": "ThriftEnumValue",
+      "package": "broken",
+      "line": 11,
+      "end_line": 11,
+      "signature": "X",
+      "tier": "verified"
+    }
+  ]
+}

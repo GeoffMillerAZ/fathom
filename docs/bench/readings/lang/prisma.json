@@ -1,76 +1,22 @@
 {
-  "counts": {
-    "callables": 1962,
-    "callables_signed": 1962,
-    "fathom_defs": 1962,
-    "kind_equal": 1962,
-    "matched": 1962,
-    "oracle_defs": 1962,
-    "range_eligible": 1962,
-    "range_ok": 1962,
-    "ref_fathom": 403,
-    "ref_fathom_in_truth": 403,
-    "ref_truth": 403,
-    "ref_truth_found": 403
-  },
   "dialect": "prisma",
-  "disposition": "partial: target L3, met L2 excellent (wave lang6, fathom 19ca25d6) on calcom/cal.com v5.9.9 (2 files) and hiroppy/web-app-template main (3 files) against the Prisma schema engine (prisma-schema-wasm 6.19.0, getDMMF, tier A for names, fields and @relation lists; positions by the harness's line scan, cross-checked both ways): L1 excellent (sym_recall 1, sym_precision 1, 1,962 definitions), L2 excellent (ref_recall 1, ref_precision 1, 403 pairs). L3 is not attempted: a Prisma schema is the union of the .prisma files of one folder with no import statement, so no existing import strategy fits and the manifest names none (the oracle writes 2 cross-file type pairs, both in web-app-template; O1419, LB-Q-prisma-rest).",
-  "excluded_by_kind": {},
-  "extractor": "dialect",
-  "fathom_commit": "19ca25d63",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L3",
   "grade": {
     "L1": "excellent",
     "L2": "excellent",
-    "L3": "not-attempted",
+    "L3": "excellent",
     "L4": "not-applicable"
   },
-  "kind": "tooling",
-  "kind_intersection": [
-    "class",
-    "enum",
-    "enum_member",
-    "field",
-    "key",
-    "type_alias"
-  ],
-  "level_met": "L2",
   "measured_at": "2026-10-20",
-  "metric_tiers": {
-    "ref_precision": "A",
-    "ref_recall": "A",
-    "sym_precision": "A",
-    "sym_recall": "A"
-  },
-  "metrics": {
-    "ref_precision": 1,
-    "ref_recall": 1,
-    "sym_precision": 1,
-    "sym_recall": 1,
-    "xref_precision": null,
-    "xref_recall": null
-  },
-  "notes": [
-    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "xref not measured: the dialect is no doc engine and names no import strategy, so no cross-file reference is resolved (design §6)",
-    "positions come from the harness's bracket-depth line scan (getDMMF carries none), cross-checked against the engine both ways: 0 disagreements on both subjects"
-  ],
-  "oracles": [
-    {
-      "tier": "A",
-      "tool": "prisma-schema-wasm",
-      "version": "6.19.0-26.2ba551f319ab1df4bc874a89965d8b3641056773"
-    }
-  ],
-  "required_kinds": [
-    "class",
-    "enum",
-    "enum_member",
-    "field",
-    "key",
-    "type_alias"
-  ],
+  "fathom_commit": "999d94bca",
+  "extractor": "dialect",
   "subjects": [
     {
+      "name": "cal.com",
+      "sha": "46b88a3c81198b99c21abaa7888fefac0eec6c69",
+      "files": 2,
       "bytes": 107828,
       "counts": {
         "callables": 1912,
@@ -84,13 +30,15 @@
         "ref_fathom": 393,
         "ref_fathom_in_truth": 393,
         "ref_truth": 393,
-        "ref_truth_found": 393
+        "ref_truth_found": 393,
+        "xref_fathom": 0,
+        "xref_truth": 0
       },
       "families": {
         "l1": "A",
-        "refs": "A"
+        "refs": "A",
+        "xref": "A"
       },
-      "files": 2,
       "kind_intersection": [
         "class",
         "enum",
@@ -99,20 +47,68 @@
         "key",
         "type_alias"
       ],
-      "name": "cal.com",
-      "sha": "46b88a3c81198b99c21abaa7888fefac0eec6c69",
       "tenancy": {
-        "compiled_bytes": 0,
-        "extract_cpu_ms": 28.412,
-        "extract_ms": 27.063,
-        "faulting_files": [],
         "faults": 0,
+        "faulting_files": [],
         "files_with_error": 0,
-        "max_file_ms": 28,
-        "peak_module_pages": 293
+        "extract_ms": 19.097,
+        "extract_cpu_ms": 21.698,
+        "max_file_ms": 21,
+        "peak_module_pages": 294,
+        "compiled_bytes": 0
       }
     },
     {
+      "name": "dub",
+      "sha": "33ede443270a11381ed53ee03312208e1370195b",
+      "files": 37,
+      "bytes": 89927,
+      "counts": {
+        "callables": 1808,
+        "callables_signed": 1808,
+        "fathom_defs": 1808,
+        "kind_equal": 1808,
+        "matched": 1808,
+        "oracle_defs": 1808,
+        "range_eligible": 1808,
+        "range_ok": 1808,
+        "ref_fathom": 743,
+        "ref_fathom_in_truth": 743,
+        "ref_truth": 743,
+        "ref_truth_found": 743,
+        "xref_fathom": 301,
+        "xref_fathom_in_truth": 301,
+        "xref_truth": 301,
+        "xref_truth_found": 301
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "class",
+        "enum",
+        "enum_member",
+        "field",
+        "key",
+        "type_alias"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 1,
+        "extract_ms": 17.934,
+        "extract_cpu_ms": 18.29,
+        "max_file_ms": 1,
+        "peak_module_pages": 271,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "web-app-template",
+      "sha": "caf1994b6681aad3447eb59ee21c6109ed8f46ed",
+      "files": 3,
       "bytes": 2648,
       "counts": {
         "callables": 50,
@@ -126,13 +122,17 @@
         "ref_fathom": 10,
         "ref_fathom_in_truth": 10,
         "ref_truth": 10,
-        "ref_truth_found": 10
+        "ref_truth_found": 10,
+        "xref_fathom": 2,
+        "xref_fathom_in_truth": 2,
+        "xref_truth": 2,
+        "xref_truth_found": 2
       },
       "families": {
         "l1": "A",
-        "refs": "A"
+        "refs": "A",
+        "xref": "A"
       },
-      "files": 3,
       "kind_intersection": [
         "class",
         "enum",
@@ -141,30 +141,94 @@
         "key",
         "type_alias"
       ],
-      "name": "web-app-template",
-      "sha": "caf1994b6681aad3447eb59ee21c6109ed8f46ed",
       "tenancy": {
-        "compiled_bytes": 0,
-        "extract_cpu_ms": 0.8260000000000001,
-        "extract_ms": 0.779,
-        "faulting_files": [],
         "faults": 0,
+        "faulting_files": [],
         "files_with_error": 0,
+        "extract_ms": 0.76,
+        "extract_cpu_ms": 0.782,
         "max_file_ms": 0,
-        "peak_module_pages": 266
+        "peak_module_pages": 267,
+        "compiled_bytes": 0
       }
     }
   ],
-  "target_level": "L3",
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "prisma-schema-wasm",
+      "version": "6.19.0-26.2ba551f319ab1df4bc874a89965d8b3641056773"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": 1,
+    "xref_recall": 1
+  },
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A",
+    "xref_precision": "A",
+    "xref_recall": "A"
+  },
+  "required_kinds": [
+    "class",
+    "enum",
+    "enum_member",
+    "field",
+    "key",
+    "type_alias"
+  ],
+  "kind_intersection": [
+    "class",
+    "enum",
+    "enum_member",
+    "field",
+    "key",
+    "type_alias"
+  ],
+  "counts": {
+    "callables": 3770,
+    "callables_signed": 3770,
+    "fathom_defs": 3770,
+    "kind_equal": 3770,
+    "matched": 3770,
+    "oracle_defs": 3770,
+    "range_eligible": 3770,
+    "range_ok": 3770,
+    "ref_fathom": 1146,
+    "ref_fathom_in_truth": 1146,
+    "ref_truth": 1146,
+    "ref_truth_found": 1146,
+    "xref_fathom": 303,
+    "xref_fathom_in_truth": 303,
+    "xref_truth": 303,
+    "xref_truth_found": 303
+  },
   "tenancy": {
-    "compiled_bytes": 0,
-    "faulting_files": [],
     "faults": 0,
-    "files_with_error": 0,
-    "max_file_ms": 28,
-    "peak_module_pages": 293,
+    "faulting_files": [],
+    "files_with_error": 1,
+    "throughput_mb_s": 4.92,
     "throughput_basis": "cpu",
-    "throughput_mb_s": 3.78,
-    "wall_throughput_mb_s": 3.97
-  }
+    "wall_throughput_mb_s": 5.3,
+    "max_file_ms": 21,
+    "peak_module_pages": 294,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "xref_precision and xref_recall of a tags-engine tool format score the file resolver's file-resolved edges (fusion.ResolveFileEdges over the dialect's import strategy, the edges ingest stores) against the oracle's cross_references at file granularity: (file, referring definition, referenced file), the referenced definition's name not compared (LB-F56)",
+    "L3 (LB-F580, wave lang7): every field type identifier that is no built-in scalar is an import spec of imports.scm, kept once per name per file; the global-name strategy (scope folder, defines model, view, type, enum) binds it to the one file of the importer's directory defining a block of that name (prismaSchemaFolder's merge); a model of another folder (another schema) is neither a target nor an ambiguity, and a file draws no edge to its own definitions",
+    "the oracle's cross_references now count an enum-typed field as the engine's kind says (LB-F580; before, object fields only): web-app-template's 2 are unchanged, dub's 330 include its cross-file enums",
+    "at ingest (fathom ingest into scratch stores at 999d94bc, typed_edges kind file-resolved joined to observations): web-app-template 2 of 2 and dub 330 of 330 (path, referring definition, referenced file) triples of the oracle stored, no stored cross-file pair outside it; cal.com stores none (two one-file schemas)",
+    "ingest cost gate (K26, K28; median of 5 scratch ingests of each subject alternating with origin/main's binary at 441b225e, one at a time): store +0.6% cal.com, +6.6% dub; wall +9.0%, +6.6% (sub-second ingests, noise-dominated); web-app-template (3 files) not gated"
+  ],
+  "disposition": "met: target L3, met L3 excellent (wave lang7, fathom 999d94bc: the global-name strategy scoped to a schema folder, LB-F580) on calcom/cal.com v5.9.9 (2 files), hiroppy/web-app-template main (3 files) and dubinc/dub main (37 files) against the Prisma schema engine (prisma-schema-wasm 6.19.0, getDMMF, tier A for names, fields and @relation lists; positions by the harness's line scan, cross-checked both ways): L1 excellent (sym_recall 1, sym_precision 1, 3,770 definitions), L2 excellent (ref_recall 1, ref_precision 1, 1,146 pairs), L3 excellent (xref_recall 1, xref_precision 1, 303 of 303; was not attempted). Holdouts, read once: mfts/papermark (holdout/prisma-papermark.json) L3 excellent (162 of 162); prisma/prisma-examples (holdout/prisma.json) has no cross-file truth (81 one-file schemas) and fathom draws no cross-file edge there. At ingest (scratch stores, fathom 999d94bc): 332 of 332 stored cross-file pairs on web-app-template and dub are in the oracle's truth, none missed. Left to LB-Q-prisma-rest: a /** */ comment inside a block is an error to the pinned grammar (O1439)."
 }

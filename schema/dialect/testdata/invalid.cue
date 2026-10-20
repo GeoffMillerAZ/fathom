@@ -61,6 +61,10 @@ package dialect
 //      (asserted by internal/langbench/dialectschema_scss_test.go, TestDialectPartialPrefixSchema)
 // 16o. A dir_vars entry that is no variable: imports: {strategy: "file-symbol", dir_vars: ["PSScriptRoot"]}
 //      (asserted by internal/langbench/dialectschema_powershell_test.go, TestDialectDirVarsSchema)
+// 16p. A global-name scope off the list: imports: {strategy: "global-name", scope: "repo"}
+// 16q. A defines entry naming no kind:   imports: {strategy: "global-name", defines: ["class"]}
+//      (16p, 16q asserted by internal/langbench/dialectschema_globalname_test.go, TestDialectGlobalNameSchema;
+//      the same rules are refused at load by internal/extractor checkGlobalName)
 //
 // #Doc negatives (internal/langbench/docschema_test.go asserts each fails when
 // unified with #Doc), each the minimal doc spec below with one defect.

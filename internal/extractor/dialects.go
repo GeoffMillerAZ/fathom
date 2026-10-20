@@ -343,15 +343,25 @@ type ImportParams struct {
 	// with this prefix, after the name itself and before a directory's
 	// index files (Sass's partials: `@use "x"` loads `_x.scss`, LB-F465).
 	PartialPrefix string `json:"partial_prefix,omitempty"`
+	// Scope names, under global-name, the files a type name is looked up
+	// among: "service" every file of the dialect (a GraphQL schema spans the
+	// service), "folder" the files of the importer's own directory (a Prisma
+	// schema folder); "service" when empty (LB-F580).
+	Scope string `json:"scope,omitempty"`
+	// Defines are, under global-name, the keys of kinds whose top-level
+	// definitions a name binds to (a GraphQL type, never an extension of
+	// one); every top-level definition when empty.
+	Defines []string `json:"defines,omitempty"`
 }
 
 // importStrategies is design §6's closed set; go-package names Go's native
 // resolution and resolves nothing here. rego-package maps a Rego import path
-// to the files declaring its package (LB-F132).
+// to the files declaring its package (LB-F132); global-name binds a type name
+// to the one file of its scope defining it (LB-F580).
 var importStrategies = map[string]bool{
 	"relative-path": true, "dotted-module": true, "namespace-dir": true, "include-path": true,
 	"crate-mod": true, "swift-module": true, "file-symbol": true, "go-package": true,
-	"rego-package": true,
+	"rego-package": true, "global-name": true,
 }
 
 // DialectSignature caps Signature (§3.3).
@@ -614,6 +624,9 @@ func checkDialect(fsys fs.FS, dir string, d Dialect) error {
 		if v := im.Params.TypePaths; v != "" && v != "package-dir" {
 			return fmt.Errorf("imports.type_paths %q: only \"package-dir\"", v)
 		}
+		if err := checkGlobalName(d, im); err != nil {
+			return err
+		}
 	}
 	if s := d.Match.Sniff; s != nil {
 		// connector.ClassifyDialect compiles it multi-line; one that does
@@ -666,6 +679,24 @@ func checkDialect(fsys fs.FS, dir string, d Dialect) error {
 		if _, err := loadDocExtractor(fsys, d); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// checkGlobalName holds the global-name parameters to the schema's rules
+// (LB-F580): scope is "service" or "folder", each defines entry is a key of
+// the manifest's kinds, and neither is read by any other strategy.
+func checkGlobalName(d Dialect, im *DialectImports) error {
+	if v := im.Params.Scope; v != "" && v != "service" && v != "folder" {
+		return fmt.Errorf("imports.scope %q: only \"service\" or \"folder\"", v)
+	}
+	for _, k := range im.Params.Defines {
+		if _, ok := d.Kinds[k]; !ok {
+			return fmt.Errorf("imports.defines %q is not a declared kind", k)
+		}
+	}
+	if im.Strategy != "global-name" && (im.Params.Scope != "" || len(im.Params.Defines) > 0) {
+		return fmt.Errorf("imports.scope and imports.defines are global-name's parameters, not %s's", im.Strategy)
 	}
 	return nil
 }
