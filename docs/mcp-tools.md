@@ -99,5 +99,4 @@ needs them rebuilds them: seconds on a small service, a minute on a large one.
   and a `hint`, and no `def`, `callers`, `callees` or `related_tests`. A repository-relative key
   (`dir/file.Name`, a candidate key without its `service::` prefix) resolves within the call's service.
 
-
 `search`'s `path` is a directory, or a glob under one. The leading literal directory is the search root, so `.gitignore` and `.fathomignore` still apply under it; the rest of a glob filters the returned paths.
