@@ -191,3 +191,39 @@ func TestDaemonJoinMissNamesTheDeadline(t *testing.T) {
 		}
 	})
 }
+
+// TestDaemonJoinPlacesNoneOfSeveralDefinitions pins indexDefinition's
+// "never a guessed root": a name the index defines more than once places
+// nothing, bare or under its qualifier; one hit under the qualifier places.
+func TestDaemonJoinPlacesNoneOfSeveralDefinitions(t *testing.T) {
+	sym := func(file string, line int) map[string]any {
+		return map[string]any{"name": "x", "file_path": file, "line": line}
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Params struct {
+				Arguments map[string]any `json:"arguments"`
+			} `json:"params"`
+		}
+		body, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(body, &req)
+		switch req.Params.Arguments["name"] {
+		case "Round":
+			joinRPCText(w, map[string]any{"matched_via": "exact", "symbols": []any{sym("money/round.go", 3), sym("geo/round.go", 7)}})
+		case "Floor":
+			joinRPCText(w, map[string]any{"matched_via": "exact", "symbols": []any{sym("money/floor.go", 4), sym("money/floor_v2.go", 9)}})
+		default:
+			joinRPCText(w, map[string]any{"matched_via": "none", "symbols": []any{}})
+		}
+	}))
+	t.Cleanup(srv.Close)
+	ctx := context.Background()
+	for _, ident := range []string{"Round", "money.Floor", "cart.Round"} {
+		if d, ok, err := indexDefinition(ctx, srv.URL, "svc", ident); err != nil || ok {
+			t.Errorf("%s placed %+v (ok %v, err %v); want none of several chosen", ident, d, ok, err)
+		}
+	}
+	if d, ok, err := indexDefinition(ctx, srv.URL, "svc", "money.Round"); err != nil || !ok || d.File != "money/round.go" || d.Line != 3 {
+		t.Errorf("money.Round = %+v (ok %v, err %v); want the one hit under money/", d, ok, err)
+	}
+}

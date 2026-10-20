@@ -328,10 +328,9 @@ type promptResolved struct {
 // RPC each, capped at maxPromptSymbolLookups AND stopped early once
 // deadline arrives — every RPC here draws against the SAME shared budget
 // the caller's later per-file obligations calls also draw against.
-// resolvePromptCandidates also returns
-// the definitions its find_symbol answers carried (H10, ADR-076), in
-// candidate order, and whether a symbol lookup was skipped or failed
-// because the shared deadline had passed. It makes no call of its own.
+// It also returns the definitions those find_symbol answers carried (H10,
+// ADR-076), in candidate order, and whether a symbol lookup was skipped or
+// failed because the shared deadline had passed; the definitions add no call.
 func resolvePromptCandidates(hc *http.Client, url, projDir string, candidates []promptCandidate, deadline time.Time) ([]promptResolved, []promptDefinition, bool) {
 	cands := candidatesWithDaemon(hc, url, projDir)
 	if len(cands) == 0 {
@@ -426,12 +425,13 @@ func promptDefinitionsLine(defs []promptDefinition, missed bool) string {
 	return line
 }
 
-// fetchSymbolFile resolves a bare symbol name to its defining file via the
+// fetchSymbolDef resolves a bare symbol name to its definition via the
 // find_symbol MCP tool — ok=false on any error, no match, or an ambiguous
 // name the tool declines to pick for (did_you_mean without an exact hit).
 // marked is true when the prompt wrote name as code (backticked or called).
-// fetchSymbolDef carries the first match's file, line and kind and the
-// number of definitions the exact tier returned.
+// It carries the first match's file, line and kind and the number of
+// definitions the exact tier returned (H10 names a count over one, never
+// the first; obligations still reads the first file, O1378).
 func fetchSymbolDef(hc *http.Client, baseURL, service, name string, marked bool) (promptDefinition, bool) {
 	reqBody, err := json.Marshal(map[string]any{
 		"jsonrpc": "2.0", "id": 1, "method": "tools/call",

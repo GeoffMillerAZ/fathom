@@ -1815,8 +1815,8 @@ with `test_impact` and `localize` moved to the `extended` opt-in surface.
 
 ## ADR-036: Prompt-scoped obligations before the first edit — supersedes vision 21's hold on UserPromptSubmit in one narrow case (2026-09-14)
 
-**Status.** Accepted. Vision: `docs/vision/21-continuity-threads.md` (supersedes its held
-UserPromptSubmit paragraph); `docs/vision/27-strengths-bench.md` (guards-pilot).
+**Status.** Accepted, amended 2026-10-19 by ADR-076. Vision: `docs/vision/21-continuity-threads.md`
+(supersedes its held UserPromptSubmit paragraph); `docs/vision/27-strengths-bench.md` (guards-pilot).
 
 **Context.** guards-pilot-5's second reading (O57) found the served obligation never named
 the governing rule before the relevant edit in any wired trial, and six wired trials made no
