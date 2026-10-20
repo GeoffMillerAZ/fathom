@@ -95,3 +95,25 @@ func TestRunFixturesDeterministic(t *testing.T) {
 		t.Error("nondeterministic")
 	}
 }
+
+func TestRunFixturesReadsReadoutsSection(t *testing.T) {
+	rule := func(id, tests string) string {
+		return `{id: "` + id + `", version: 1, about: "a", match: argv0: ["x"], stage: [{kind: "extract", pattern: "^a", record: "r"}]` + tests + `}`
+	}
+	fx := `, test: [{input: "a\n", expect: "a\n"}]`
+	r, err := RunFixtures(writePack(t, "pack: {name: \"d\", version: 1, about: \"a\"}\nreadouts: ["+rule("one", fx)+"]\n", ""))
+	if err != nil || !r.OK() {
+		t.Fatalf("fixtured readouts: err %v reading %+v", err, r)
+	}
+	r, err = RunFixtures(writePack(t, "pack: {name: \"d\", version: 1, about: \"a\"}\nreadouts: ["+rule("one", fx)+", "+rule("two", "")+"]\n", ""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(r.Lines(), "\n"); r.OK() || !strings.Contains(got, "readouts two: no fixture") {
+		t.Errorf("an unfixtured rule is named and the section withheld:\n%s", got)
+	}
+	r, _ = RunFixtures(writePack(t, "pack: {name: \"d\", version: 1, about: \"a\"}\nreadouts: ["+rule("two", "")+"]\n", ""))
+	if got := strings.Join(r.Lines(), "\n"); !strings.Contains(got, "withheld: readouts (no fixtures)") {
+		t.Errorf("all-unfixtured section reads no fixtures:\n%s", got)
+	}
+}

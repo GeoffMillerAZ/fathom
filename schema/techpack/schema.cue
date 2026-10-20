@@ -9,7 +9,10 @@
 // closed, so each of those is invalid by absence from the schema.
 package techpack
 
-import "github.com/geoffmilleraz/fathom/schema/guard"
+import (
+	"github.com/geoffmilleraz/fathom/schema/guard"
+	"github.com/geoffmilleraz/fathom/schema/readouts"
+)
 
 // #Pack is a tech pack: a kit's fathom-pack/pack.cue or one of the
 // custodian's built-in packs.
@@ -21,6 +24,11 @@ import "github.com/geoffmilleraz/fathom/schema/guard"
 	generated?: [...#Generated]
 	formats?: [...#Format]
 
+	// readouts are readout rules in the rules file's own shape. They load at
+	// repository scope and may only add (extract and join stages); a rule
+	// with no test fixture, or a failing one, is withheld and named.
+	readouts?: [...#Readout]
+
 	// concerns are the custodian's contracts about a technology's own
 	// config files. They gate only when the repository names the pack in
 	// concerns.cue's `packs:`.
@@ -29,6 +37,20 @@ import "github.com/geoffmilleraz/fathom/schema/guard"
 	// orientation is the project pack's alone (K9, section 7.6): a pack
 	// carrying it is invalid.
 	orientation?: _|_
+}
+
+// #Readout is readouts.#Rule with `test` optional, so a rule without a
+// fixture is a withheld rule rather than an invalid pack.
+#Readout: {
+	id:        readouts.#ID
+	version:   int & >=1
+	about:     readouts.#Text
+	match:     readouts.#Match
+	when?:     readouts.#When
+	mode?:     "off" | "observe" | "lean" | "rich"
+	recovery?: "repeat" | "span" | "persisted" | "saved"
+	stage: [readouts.#Stage, ...readouts.#Stage]
+	test?: [...readouts.#Test]
 }
 
 // #Header is the `pack: {name, version, about}` block.

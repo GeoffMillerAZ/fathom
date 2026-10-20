@@ -45,6 +45,9 @@ type RuleSet struct {
 	// Repo is the repository's .fathom/readouts.toml, when LoadRepoRules
 	// found one (RO-33); nil otherwise.
 	Repo *RepoFile
+	// Packs is each tech pack that carries readout rules, when
+	// LoadPackRules found any (RO-34), in discovery order.
+	Packs []PackReadouts
 }
 
 // Refusal is a rule, or a whole file, that is not served, and why.

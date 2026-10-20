@@ -1,6 +1,7 @@
 package techpack
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -21,6 +22,7 @@ const (
 	SectionGuards    = "guards"
 	SectionGenerated = "generated"
 	SectionFormats   = "formats"
+	SectionReadouts  = "readouts"
 )
 
 // SectionReading is the harness reading of one pack section.
@@ -86,6 +88,10 @@ type packData struct {
 		Output string   `json:"output"`
 		Source []string `json:"source"`
 	} `json:"generated"`
+	Readouts []struct {
+		ID   string            `json:"id"`
+		Test []json.RawMessage `json:"test"`
+	} `json:"readouts"`
 	Formats []struct {
 		Dialect string   `json:"dialect"`
 		Globs   []string `json:"globs"`
@@ -228,6 +234,21 @@ func RunFixtures(dir string) (Reading, error) {
 			if !seen[f.Dialect] {
 				s.fail(fmt.Sprintf("formats[%d] %s: no fixture", i, f.Dialect))
 			}
+		}
+		r.add(s)
+	}
+
+	if len(pd.Readouts) > 0 {
+		// The fixtures are the rules' own `test` entries; internal/readout
+		// runs them. This section only holds each rule to carrying one.
+		s := SectionReading{Section: SectionReadouts}
+		for _, ro := range pd.Readouts {
+			if len(ro.Test) == 0 {
+				s.fail("readouts " + ro.ID + ": no fixture")
+				continue
+			}
+			s.Run += len(ro.Test)
+			s.Passed += len(ro.Test)
 		}
 		r.add(s)
 	}

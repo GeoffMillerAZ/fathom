@@ -26,3 +26,6 @@ package techpack
 //
 // 8. A header with version 0:
 // bad8: #Pack & {pack: {name: "k", version: 0, about: "a"}}
+//
+// 9. A readouts entry with an unknown key (the rule shape is closed):
+// bad9: #Pack & {pack: {name: "k", version: 1, about: "a"}, readouts: [{id: "x", version: 1, about: "a", match: argv0: ["x"], stage: [{kind: "extract"}], exec: "sh"}]}

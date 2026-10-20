@@ -142,6 +142,9 @@ func cmdReadoutHook(args []string, stdin io.Reader, stdout, stderr io.Writer) (c
 		return 0
 	}
 	readout.LoadRepoRules(rs, eventProjectDir(codec, in), cfg.Trust)
+	if cfg.Mode == config.ReadoutsRich { // pack rules (RO-34) ship off: reachable only under rich
+		readout.LoadPackRules(rs, eventProjectDir(codec, in))
+	}
 	readoutStep("rules")
 	rs = readoutRulesFor(rs, cfg.Rules)
 	cmd := shellcmd.ParseCommand(in.Command)
