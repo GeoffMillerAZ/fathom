@@ -11,9 +11,9 @@
   the Objective-C shapes are written against the grammar's node types with `indexbench lang-probe`. A method is named
   by its selector: the keyword identifiers of a `method_declaration`, `method_definition` or `message_expression` are
   separate children split by their arguments, so a selector of n keywords is a pattern of n `@name.part` captures
-  (one pattern per arity, 1 to 8) that the engine joins, each followed by `:` (`tsNameParts`,
+  (one pattern per arity, 1 to 12) that the engine joins, each followed by `:` (`tsNameParts`,
   `internal/extractor/tsextract.go`); a zero-argument selector is a plain `@name`. A method with no `(return type)`
-  and a selector of more than eight keywords are not matched.
+  and a selector of more than twelve keywords are not matched.
 - `imports.scm`, `references.scm`: written in this repository (the grammar ships no import or reference query).
   `#import` and `#include` are one `preproc_include` node; the manifest's `include-path` strategy resolves the quoted
   form relative to the importer, then the source roots (and the `-I` roots of a `compile_commands.json`). `@import

@@ -92,7 +92,7 @@ func TestObjCSelectorNames(t *testing.T) {
 	}
 	t.Cleanup(e.Close)
 	src := `@implementation A
-- (void)a { [self b:1 c:2 d:3]; [B zero]; [x e:1]; }
+- (void)a { [self b:1 c:2 d:3]; [B zero]; [x e:1]; [y k1:1 k2:2 k3:3 k4:4 k5:5 k6:6 k7:7 k8:8 k9:9 k10:10]; }
 + (instancetype)make:(int)one
                and:(int)two
               then:(int)three
@@ -127,8 +127,8 @@ func TestObjCSelectorNames(t *testing.T) {
 	if len(want) != 0 {
 		t.Errorf("missing symbols %v", want)
 	}
-	if strings.Join(calls, ",") != "b:c:d:,e:,zero" {
-		t.Errorf("calls = %v, want the selectors b:c:d:, e: and zero", calls)
+	if strings.Join(calls, ",") != "b:c:d:,e:,k1:k2:k3:k4:k5:k6:k7:k8:k9:k10:,zero" {
+		t.Errorf("calls = %v, want the selectors b:c:d:, e:, a ten-keyword one and zero", calls)
 	}
 }
 

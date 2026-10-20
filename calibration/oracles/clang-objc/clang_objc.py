@@ -33,6 +33,11 @@ import sys
 sys.path.insert(0, os.environ.get("CLANG_PYBIND", "/Volumes/m2ext/tmp/fathom-build/toolcache/pyclang"))
 import clang.cindex as ci  # noqa: E402
 
+SAME_PACKAGE_NOTE = (
+    "the imports entries marked same_package are the compiler's cross-file reference edges (a type, class, protocol, "
+    "function, constant, field, method or macro a file names that a subject file it does not import directly declares "
+    "or defines, and the file a called function links to): file-edge truth only, not an own-package reach as the note "
+    "above reads that field")
 LIBCLANG = os.environ.get("LIBCLANG", "/Library/Developer/CommandLineTools/usr/lib/libclang.dylib")
 ci.Config.set_library_file(LIBCLANG)
 CK = ci.CursorKind
@@ -403,6 +408,7 @@ def main():
             "%d translation units parsed, %d without a compile error (%s)" % (
                 units, len(trusted_files), ", ".join("%s %d" % kv for kv in sorted(collections.Counter(c for cs in config_of.values() for c in cs).items()))),
             "%d units stopped on an error and are left out of calls and imports" % len(errored),
+            SAME_PACKAGE_NOTE,
         ],
     }
     with open(a.out, "w") as f:

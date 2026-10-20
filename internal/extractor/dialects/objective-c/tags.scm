@@ -13,7 +13,7 @@
 ; separate children split by their arguments, so a selector of n keywords is one
 ; pattern of n @name.part captures (the engine joins them, each followed by ':',
 ; tsNameParts) and a zero-argument selector is a plain @name. One pattern per
-; arity, 1..8; the engine keeps only the longest match over one node, so a
+; arity, 1..12; the engine keeps only the longest match over one node, so a
 ; pattern for a shorter selector matching a longer selector's leading keywords is
 ; harmless. Instance methods ("-") are kind `method`, class methods ("+") kind
 ; `class_method`. A method with no (return type) is not matched.
@@ -61,6 +61,14 @@
 
 (method_declaration "-" (method_type) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter)) @definition.method
 
+(method_declaration "-" (method_type) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter)) @definition.method
+
+(method_declaration "-" (method_type) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter)) @definition.method
+
+(method_declaration "-" (method_type) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter)) @definition.method
+
+(method_declaration "-" (method_type) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter)) @definition.method
+
 ; method_declaration +
 (method_declaration "+" (method_type) . (identifier) @name .) @definition.class_method
 
@@ -79,6 +87,14 @@
 (method_declaration "+" (method_type) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter)) @definition.class_method
 
 (method_declaration "+" (method_type) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter)) @definition.class_method
+
+(method_declaration "+" (method_type) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter)) @definition.class_method
+
+(method_declaration "+" (method_type) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter)) @definition.class_method
+
+(method_declaration "+" (method_type) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter)) @definition.class_method
+
+(method_declaration "+" (method_type) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter)) @definition.class_method
 
 ; method_definition -
 (method_definition "-" (method_type) . (identifier) @name . (compound_statement) @body) @definition.method
@@ -99,6 +115,14 @@
 
 (method_definition "-" (method_type) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) (compound_statement) @body) @definition.method
 
+(method_definition "-" (method_type) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) (compound_statement) @body) @definition.method
+
+(method_definition "-" (method_type) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) (compound_statement) @body) @definition.method
+
+(method_definition "-" (method_type) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) (compound_statement) @body) @definition.method
+
+(method_definition "-" (method_type) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) (compound_statement) @body) @definition.method
+
 ; method_definition +
 (method_definition "+" (method_type) . (identifier) @name . (compound_statement) @body) @definition.class_method
 
@@ -117,6 +141,14 @@
 (method_definition "+" (method_type) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) (compound_statement) @body) @definition.class_method
 
 (method_definition "+" (method_type) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) (compound_statement) @body) @definition.class_method
+
+(method_definition "+" (method_type) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) (compound_statement) @body) @definition.class_method
+
+(method_definition "+" (method_type) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) (compound_statement) @body) @definition.class_method
+
+(method_definition "+" (method_type) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) (compound_statement) @body) @definition.class_method
+
+(method_definition "+" (method_type) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) . (identifier) @name.part . (method_parameter) (compound_statement) @body) @definition.class_method
 
 ; --- properties and instance variables -----------------------------------
 (property_declaration
@@ -359,3 +391,11 @@
 (message_expression method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_)) @reference.call
 
 (message_expression method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_)) @reference.call
+
+(message_expression method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_)) @reference.call
+
+(message_expression method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_)) @reference.call
+
+(message_expression method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_)) @reference.call
+
+(message_expression method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_) . method: (identifier) @name.part . (_)) @reference.call
