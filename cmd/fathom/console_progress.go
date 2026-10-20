@@ -48,23 +48,26 @@ func init() {
 
 // progressPageModel is /progress's JSON model.
 type progressPageModel struct {
-	Filter      console.HistoryFilter     `json:"filter"`
-	History     console.SourceRead        `json:"history_read"`
-	Weighted    weightedScope             `json:"weighted"`
-	Pending     []string                  `json:"pending_plans,omitempty"`
-	Board       []console.ProgressColumn  `json:"board"`
-	BurnUp      console.BurnUpModel       `json:"burn_up"`
-	Frontier    []progressFrontierRow     `json:"frontier"`
-	Regressions []console.Regression      `json:"regressions"`
-	TimeToProof console.TimeToProofModel  `json:"time_to_proof"`
-	Honesty     console.ClaimHonestyModel `json:"claim_honesty"`
-	Heatmap     console.HeatmapModel      `json:"heatmap"`
-	Goals       []console.GoalGauge       `json:"goals"`
-	GoalsNote   string                    `json:"goals_note,omitempty"`
-	Waves       []string                  `json:"waves"`
-	Rows        int                       `json:"history_rows"`
-	Readings    int                       `json:"history_readings"`
-	Economics   progressEconomics         `json:"economics"`
+	Filter      console.HistoryFilter    `json:"filter"`
+	History     console.SourceRead       `json:"history_read"`
+	Weighted    weightedScope            `json:"weighted"`
+	Pending     []string                 `json:"pending_plans,omitempty"`
+	Board       []console.ProgressColumn `json:"board"`
+	BurnUp      console.BurnUpModel      `json:"burn_up"`
+	Frontier    []progressFrontierRow    `json:"frontier"`
+	Regressions []console.Regression     `json:"regressions"`
+	// RegressionsChecked names what the regressions list looked at, so an
+	// empty list says what was checked.
+	RegressionsChecked regressionsChecked        `json:"regressions_checked"`
+	TimeToProof        console.TimeToProofModel  `json:"time_to_proof"`
+	Honesty            console.ClaimHonestyModel `json:"claim_honesty"`
+	Heatmap            console.HeatmapModel      `json:"heatmap"`
+	Goals              []console.GoalGauge       `json:"goals"`
+	GoalsNote          string                    `json:"goals_note,omitempty"`
+	Waves              []string                  `json:"waves"`
+	Rows               int                       `json:"history_rows"`
+	Readings           int                       `json:"history_readings"`
+	Economics          progressEconomics         `json:"economics"`
 }
 
 // progressEconomics is /progress's outcome economics (PE-16w): each
@@ -492,7 +495,10 @@ func buildProgressPage(cr *consoleRequest) (consoleOut, error) {
 	model.History, model.Rows, model.Readings = read, len(h.Rows), len(h.Readings)
 	model.Board = console.DerivedBoard(h, f)
 	model.BurnUp = console.BurnUp(h, f, cr.now)
-	model.Regressions = console.ProofRegressions(h, f)
+	certs, checked := progressCertHistories(cr, roots)
+	model.RegressionsChecked = checked
+	model.RegressionsChecked.PlanRows = len(h.Rows)
+	model.Regressions = console.AllProofRegressions(h, f, certs, nil)
 	if model.Regressions == nil {
 		model.Regressions = []console.Regression{}
 	}
@@ -619,9 +625,9 @@ func renderProgressPage(m progressPageModel) string {
 		Source:   src, Denominator: plural(len(m.BurnUp.Points), "day"), State: histState, Reason: histReason,
 		Body: renderProgressBurnUp(m.BurnUp)})
 	panel(consolePanel{ID: "regressions", Title: "Proof regressions", SourceKey: progressLive,
-		Question: "Which rows were once proven and now read otherwise — and at which commit did that change?",
+		Question: "Which rows, certificates and invariant enforcements were once proven and now read otherwise — and at which commit did that change?",
 		Source:   src, Denominator: plural(len(m.Regressions), "row"), State: histState, Reason: histReason,
-		Body: renderRegressions(m.Regressions)})
+		Body: renderRegressions(m.Regressions, m.RegressionsChecked)})
 	panel(consolePanel{ID: "time-to-proof", Title: "Time to proof", SourceKey: progressLive,
 		Question: "From a row's first appearance to its first proven reading, how long did proof take?",
 		Source:   src, Denominator: plural(len(m.TimeToProof.Rows), "row"), State: histState, Reason: histReason,
@@ -817,19 +823,85 @@ func renderProgressBurnUp(b console.BurnUpModel) string {
 	return out.String()
 }
 
-func renderRegressions(regs []console.Regression) string {
+// regressionsChecked is what the regressions list read: plan rows in the
+// proof history, certificates and invariant enforcements replayed from the
+// store, and the projects whose certificates could not be read.
+type regressionsChecked struct {
+	PlanRows     int      `json:"plan_rows"`
+	Certificates int      `json:"certificates"`
+	Invariants   int      `json:"invariants"`
+	Unread       []string `json:"unread,omitempty"`
+}
+
+// progressCertHistories replays the certificate and invariant-enforcement
+// history of every project in view from the daemon's store. A project whose
+// history cannot be read is named in Unread, never counted as clean.
+func progressCertHistories(cr *consoleRequest, roots []serviceRoot) ([]console.CertHistory, regressionsChecked) {
+	var checked regressionsChecked
+	st, read, _ := daemonStore(cr.deps)
+	if st == nil {
+		checked.Unread = []string{"store: " + read.Reason}
+		return nil, checked
+	}
+	var certs []console.CertHistory
+	for _, r := range roots {
+		hs, err := console.CertHistoriesFromStore(cr.r.Context(), st, r.Service)
+		if err != nil {
+			checked.Unread = append(checked.Unread, r.Service+": "+err.Error())
+			continue
+		}
+		certs = append(certs, hs...)
+	}
+	for _, c := range certs {
+		if c.Kind == "invariant" {
+			checked.Invariants++
+		} else {
+			checked.Certificates++
+		}
+	}
+	sort.Strings(checked.Unread)
+	return certs, checked
+}
+
+// regressionHref is where a regression's evidence lives: the plan row for a
+// plan regression, the certifications page for a certificate or invariant,
+// the progress page for a conservation plane.
+func regressionHref(r console.Regression) string {
+	switch r.Kind {
+	case "certificate", "invariant":
+		return "/certifications?svc=" + url.QueryEscape(r.Service)
+	case "conservation":
+		return "/progress?svc=" + url.QueryEscape(r.Service)
+	}
+	return planRowHref(r.Service, console.PlanSlug(r.Plan), r.ID)
+}
+
+func renderRegressions(regs []console.Regression, checked regressionsChecked) string {
 	if len(regs) == 0 {
-		return `<p class="text-ink-muted" data-regressions-empty>No row once proven reads otherwise in this selection.</p>`
+		msg := fmt.Sprintf("Nothing once proven reads otherwise. Checked %s, %s, %s; conservation planes are not recorded between runs, so none were read.",
+			plural(checked.PlanRows, "plan row"), plural(checked.Certificates, "certificate"), plural(checked.Invariants, "invariant enforcement"))
+		if len(checked.Unread) > 0 {
+			msg += " Not read: " + strings.Join(checked.Unread, "; ") + "."
+		}
+		return `<p class="text-ink-muted" data-regressions-empty>` + html.EscapeString(msg) + `</p>`
 	}
 	rows := make([]table.Row, 0, len(regs))
 	for _, r := range regs {
-		link := `<a class="inline-flex min-h-11 items-center font-mono text-xs text-accent hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus" href="` + html.EscapeString(planRowHref(r.Service, console.PlanSlug(r.Plan), r.ID)) + `">` + html.EscapeString(r.ID) + `</a>`
-		rows = append(rows, table.Row{ID: "r-" + r.Service + "-" + r.ID,
-			Cells:     []string{r.ID, shortPlanName(r.Plan), r.ProvenAt + " @ " + orDash(r.ProvenCommit), r.ChangedAt + " @ " + orDash(r.ChangedCommit), r.State, r.Criterion},
+		kind := r.Kind
+		if kind == "" {
+			kind = "plan"
+		}
+		name := r.ID
+		if r.Test != "" {
+			name += " (" + r.Test + ")"
+		}
+		link := `<a class="inline-flex min-h-11 items-center font-mono text-xs text-accent hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus" href="` + html.EscapeString(regressionHref(r)) + `">` + html.EscapeString(name) + `</a>`
+		rows = append(rows, table.Row{ID: "r-" + kind + "-" + r.Service + "-" + r.ID + "-" + r.Test,
+			Cells:     []string{name, kind, shortPlanName(r.Plan), r.ProvenAt + " @ " + orDash(r.ProvenCommit), r.ChangedAt + " @ " + orDash(r.ChangedCommit), r.State, r.Criterion},
 			HTMLCells: []templ.Component{templ.Raw(link)}})
 	}
-	return renderKitTable(table.TableParams{TableID: "progress-regressions", Caption: "Newest change first: when the row was proven, and the first reading that changed",
-		Columns: []table.Column{{Key: "id", Label: "Row"}, {Key: "plan", Label: "Plan"}, {Key: "proven", Label: "Proven at"}, {Key: "changed", Label: "First changed at"}, {Key: "state", Label: "Now"}, {Key: "crit", Label: "Criterion"}},
+	return renderKitTable(table.TableParams{TableID: "progress-regressions", Caption: "Newest change first: when it was proven, and the first reading that changed",
+		Columns: []table.Column{{Key: "id", Label: "Item"}, {Key: "kind", Label: "Kind"}, {Key: "plan", Label: "Plan"}, {Key: "proven", Label: "Proven at"}, {Key: "changed", Label: "First changed at"}, {Key: "state", Label: "Now"}, {Key: "crit", Label: "Criterion"}},
 		Rows:    rows})
 }
 

@@ -4,6 +4,9 @@ import (
 	"path"
 	"sort"
 	"strings"
+
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/repofacts"
 )
 
 // RankedTest is one test RankedTestImpact returns: its key, the hops of the
@@ -38,7 +41,7 @@ func RankedTestImpact(g *Graph, symbol string) []RankedTest {
 				continue
 			}
 			hops[caller] = hops[cur] + 1
-			if n := g.nodes[caller]; strings.HasPrefix(n.Name, "Test") {
+			if n := g.nodes[caller]; IsTestNode(n) {
 				out = append(out, RankedTest{Key: caller, Hops: hops[caller], DirDist: dirDistance(from, path.Dir(n.FilePath))})
 			}
 			queue = append(queue, caller)
@@ -71,4 +74,20 @@ func dirDistance(a, b string) int {
 		common++
 	}
 	return len(as) - common + len(bs) - common
+}
+
+// IsTestNode reports whether n is a test entry the test-reach walks name:
+// a symbol whose name starts with "Test" (Go's convention, unchanged), or
+// a non-Go test entry in a test file (repofacts.IsTestEntry, TQ-27/TQ-28:
+// pytest functions, jest blocks, JUnit @Test, and so on). A Go symbol keeps
+// Go's rule alone: a fake's method named TestReaches in a _test.go file is
+// not a test entry, so Go reach is unchanged by TQ-28.
+func IsTestNode(n core.SymbolNode) bool {
+	if strings.HasPrefix(n.Name, "Test") {
+		return true
+	}
+	if n.Kind == core.KindGoFunc || n.Kind == core.KindGoMethod || strings.HasSuffix(n.FilePath, ".go") {
+		return false
+	}
+	return repofacts.IsTestEntry(n.Name, n.FilePath, n.Signature)
 }

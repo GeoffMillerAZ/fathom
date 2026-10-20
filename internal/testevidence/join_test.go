@@ -210,3 +210,54 @@ func TestJoinCasesToSymbols_DisambiguatesByPackage(t *testing.T) {
 		t.Errorf("id-with-no-package case joined to %q, want unjoined", joined[4].TestSymbolKey)
 	}
 }
+
+// TestJoinCasesToSymbolsNonGoTestEntries (TQ-28): the one join reaches the
+// non-Go test entries repofacts.IsTestEntry names, by file and name. A
+// case that matches no entry is counted and named, never dropped, and a
+// Go-only symbol set joins exactly as before.
+func TestJoinCasesToSymbolsNonGoTestEntries(t *testing.T) {
+	symbols := []core.SymbolNode{
+		{Service: "svc", Package: "src", Name: `"calc" "adds two numbers"`, Kind: "JSTest", FilePath: "src/calc.test.ts", Line: 3, Signature: `it("adds two numbers")`},
+		{Service: "svc", Package: "src", Name: `"top level"`, Kind: "JSTest", FilePath: "src/calc.test.ts", Line: 7, Signature: `test("top level")`},
+		{Service: "svc", Package: "src", Name: `"top level"`, Kind: "JSTest", FilePath: "src/other.test.ts", Line: 2, Signature: `test("top level")`},
+		{Service: "svc", Package: "src", Name: "add", Kind: "JSFunc", FilePath: "src/calc.ts", Line: 1},
+		{Service: "svc", Package: "tests", Name: "test_add", Kind: "PythonFunc", FilePath: "tests/test_calc.py", Line: 2, Signature: "def test_add()"},
+		{Service: "svc", Package: "tests", Name: "TestCalc.test_zero", Kind: "PythonFunc", FilePath: "tests/test_calc.py", Line: 5, Signature: "def test_zero(self)"},
+		{Service: "svc", Package: "tests", Name: "test_add", Kind: "PythonFunc", FilePath: "tests/test_other.py", Line: 2, Signature: "def test_add()"},
+		{Service: "svc", Package: "com.acme", Name: "FooTest.testBar", Kind: "JavaMethod", FilePath: "src/test/java/com/acme/FooTest.java", Line: 9, Signature: "@Test public void testBar()"},
+	}
+	key := func(i int) string { return symbols[i].Key() }
+
+	cases := []Case{
+		{ID: "src/calc.test.ts > calc > adds two numbers", Name: "calc adds two numbers", Status: "pass"},
+		{ID: "src/calc.test.ts::top level", Name: "top level", Status: "pass"},
+		{ID: "tests/test_calc.py::test_add", Name: "test_add", Status: "pass"},
+		{ID: "tests/test_calc.py::TestCalc::test_zero", Name: "TestCalc::test_zero", Status: "fail"},
+		{ID: "tests/test_calc.py::test_add[1-2]", Name: "test_add[1-2]", Status: "pass"},
+		{ID: "com.acme.FooTest.testBar", Name: "testBar", Status: "pass"},
+		{ID: "src/calc.test.ts::never declared", Name: "never declared", Status: "skip"},
+		{ID: "test_add", Name: "test_add", Status: "pass"}, // no file: ambiguous, never guessed
+	}
+	joined, stats := JoinCasesToSymbols(cases, "unit", symbols)
+
+	want := []string{key(0), key(1), key(4), key(5), key(4), key(7), "", ""}
+	for i, w := range want {
+		if joined[i].TestSymbolKey != w {
+			t.Errorf("case %q joined to %q, want %q", cases[i].ID, joined[i].TestSymbolKey, w)
+		}
+	}
+	if stats.Total != 8 || stats.Joined != 6 {
+		t.Fatalf("stats = %+v, want Total 8 Joined 6", stats)
+	}
+	wantUn := []string{"src/calc.test.ts::never declared", "test_add"}
+	if len(stats.Unmatched) != 2 || stats.Unmatched[0] != wantUn[0] || stats.Unmatched[1] != wantUn[1] {
+		t.Fatalf("Unmatched = %v, want %v", stats.Unmatched, wantUn)
+	}
+
+	// Go-only symbols and cases: the join is what it was.
+	goSyms := []core.SymbolNode{{Service: "svc", Package: "cart", Name: "TestAdd", Kind: core.KindGoFunc, FilePath: "cart/cart_test.go"}}
+	gj, gs := JoinCasesToSymbols([]Case{{ID: "TestAdd", Name: "TestAdd/sub"}, {ID: "TestNope", Name: "TestNope"}}, "unit", goSyms)
+	if gs.Joined != 1 || gj[0].TestSymbolKey != goSyms[0].Key() || gj[1].TestSymbolKey != "" {
+		t.Fatalf("go join changed: %+v %+v", gj, gs)
+	}
+}

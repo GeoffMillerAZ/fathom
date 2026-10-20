@@ -26,6 +26,9 @@ type Report struct {
 	RunsWritten   int
 	CasesWritten  int
 	CasesJoined   int
+	// CasesUnmatched names (case ids, sorted) every case that joined no
+	// test symbol, so a join miss is shown, never silent (TQ-28).
+	CasesUnmatched []string
 }
 
 // IngestTestEvidence writes manifests (as declared test_suites rows,
@@ -73,6 +76,7 @@ func IngestTestEvidence(ctx context.Context, st store.Store, service, watermark 
 	report.RunsWritten = runReport.RunsWritten
 	report.CasesWritten = runReport.CasesWritten
 	report.CasesJoined = runReport.CasesJoined
+	report.CasesUnmatched = runReport.CasesUnmatched
 	return report, nil
 }
 
@@ -106,6 +110,7 @@ func IngestRuns(ctx context.Context, st store.Store, service, watermark string, 
 	for _, r := range runs {
 		joined, stats := JoinCasesToSymbols(r.Cases, r.Suite.Name, symbols)
 		report.CasesJoined += stats.Joined
+		report.CasesUnmatched = append(report.CasesUnmatched, stats.Unmatched...)
 
 		totalsJSON, err := json.Marshal(r.Totals)
 		if err != nil {

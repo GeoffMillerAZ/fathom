@@ -22,6 +22,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
+
 	"github.com/geoffmilleraz/fathom/internal/analysis/impact"
 	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -56,7 +58,7 @@ func selectCertifyingFirstOn(nodes []core.SymbolNode, claims []core.SemanticClai
 	symbolsByFile := map[string][]string{} // non-test symbol keys defined in a file
 	testKeysByName := map[string][]string{}
 	for _, n := range nodes {
-		if strings.HasPrefix(n.Name, "Test") {
+		if callgraph.IsTestNode(n) {
 			testKeysByName[n.Name] = append(testKeysByName[n.Name], n.Key())
 			continue
 		}
@@ -230,11 +232,11 @@ func buildCertifyingSelectionView(ctx context.Context, st store.Store, service s
 	}
 	rows := make([]rankedTest, 0, len(sel.Tests))
 	for _, k := range sel.Tests {
-		pkg := "."
+		pkg, file := ".", ""
 		if n, ok := byKey[k]; ok {
-			pkg = path.Dir(n.FilePath)
+			pkg, file = path.Dir(n.FilePath), n.FilePath
 		}
-		rows = append(rows, rankedTest{Test: k, Package: pkg})
+		rows = append(rows, rankedTest{Test: k, Package: pkg, File: file})
 	}
 	v.Invocations = groupTestInvocations(nodes, rows)
 

@@ -2,7 +2,6 @@ package impact
 
 import (
 	"sort"
-	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -83,7 +82,7 @@ func TestGapSeedsOn(g *callgraph.Graph, nodes []core.SymbolNode, changedFiles, e
 	for _, n := range nodes {
 		k := n.Key()
 		byKey[k] = n
-		if (changed[n.FilePath] || extraKey[k]) && !strings.HasPrefix(n.Name, "Test") {
+		if (changed[n.FilePath] || extraKey[k]) && !callgraph.IsTestNode(n) {
 			seeds = append(seeds, k)
 		}
 	}
