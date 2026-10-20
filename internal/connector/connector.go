@@ -249,6 +249,9 @@ var extClassMap = map[string]classification{
 	// Prisma schema (LB-Q-prisma, language-breadth: new -- a tags-engine tool format, no incumbent).
 	".prisma": {core.SourceKind("PrismaModel"), "prisma"},
 
+	// Apache Thrift IDL (LB-Q-thrift, language-breadth: new -- a tags-engine tool format, no incumbent).
+	".thrift": {core.SourceKind("ThriftStruct"), "thrift"},
+
 	// TOML
 	".toml": {core.KindTOMLTable, "toml"},
 
