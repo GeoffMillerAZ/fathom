@@ -634,6 +634,9 @@ func memberImportParent(r *importResolver, spec extractor.ImportSpec) string {
 func (idx *resolveIndex) callEdges(r *importResolver, sc fileScope, path string, syms []core.SymbolNode) []core.Edge {
 	var edges []core.Edge
 	localTop := idx.topLevel[path]
+	if r.strategy == "global-name" {
+		localTop = nil // LB-F580: the importer never edges to itself; a schema's cross-file links are the edges
+	}
 	for _, s := range syms {
 		if len(s.Calls) == 0 {
 			continue

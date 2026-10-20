@@ -46,7 +46,8 @@ func globalNameUniverse(defs []globalNameDef) ([]string, []core.SymbolNode, map[
 // files define binds nothing and is counted ambiguous; a built-in, an
 // undefined name and a name the importer defines bind nothing and are no
 // miss; an extension is no definition; the folder scope stops at the
-// importer's directory; the edges come out sorted.
+// importer's directory; no edge stays within its file; the edges come out
+// sorted.
 func TestResolveGlobalNameBindsUniqueDefinitionsOnly(t *testing.T) {
 	gql := map[string]bool{"GraphQLType": true}
 	paths, syms, specs := globalNameUniverse([]globalNameDef{
@@ -93,7 +94,6 @@ func TestResolveGlobalNameBindsUniqueDefinitionsOnly(t *testing.T) {
 		"ops/q.graphql svc::ops/ops.GetMe -> svc::schema/schema.Query",
 		"ops/q.graphql svc::ops/ops.GetMe -> svc::schema/schema.User",
 		"schema/post.graphql svc::schema/schema.Post.author -> svc::schema/schema.User",
-		"schema/post.graphql svc::schema/schema.Post.next -> svc::schema/schema.Post",
 		"schema/query.graphql svc::schema/schema.Query.me -> svc::schema/schema.User",
 		"schema/user.graphql svc::schema/schema.User.posts -> svc::schema/schema.Post",
 	}
