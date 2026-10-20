@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/harness"
 	"github.com/geoffmilleraz/fathom/internal/readout"
 	"github.com/geoffmilleraz/fathom/internal/shellcmd"
@@ -45,10 +46,11 @@ type readoutRich struct {
 	// run's failing set (the table's EditedOverlap and FailingOverlap).
 	records          map[string]int
 	overlap, failing int
-	// choice is the table's answer (chose once asked), withheld the kinds
-	// it held back.
+	// choice is the table's answer (chose once asked), fitted whether the
+	// user's fitted cut points answered, withheld the kinds it held back.
 	choice   readout.Choice
 	chose    bool
+	fitted   bool
 	withheld []string
 }
 
@@ -267,8 +269,9 @@ func readoutFailingOverlap(in harness.HookInput, shown []testRef) int {
 // readoutRichChoose asks the policy table whether this call's enrichment
 // lines are served, from the call's counts and flags only (never its text,
 // I61), and holds them back unless it answers enriched. The table answers
-// with its built-in cut points; lean is never served here (no rule is
-// promoted). The guard line is not the table's to withhold.
+// with the user's fitted cut points when that file loads, else the
+// built-ins; lean is never served here (no rule is promoted). The guard
+// line is not the table's to withhold.
 func readoutRichChoose(ctx context.Context, r *readoutRich, ev harness.Event, in harness.HookInput, dir string, c *shellcmd.Command, rin readout.Input, ro readout.Readout, rule *readout.Rule, joins readoutJoinRun, quiet []string) {
 	f := readout.Features{
 		Event: readout.EventSuccess, Bytes: ro.BytesIn, Lines: ro.LinesIn, Records: r.records,
@@ -296,7 +299,9 @@ func readoutRichChoose(ctx context.Context, r *readoutRich, ev harness.Event, in
 			f.ReadEdited, _ = readoutFileEdited(ctx, in, dir, p)
 		}
 	}
-	r.choice, r.chose = readout.Choose(f, readout.BuiltinPolicy()), true
+	p, fitted, _ := readout.LoadPolicyFile(fathomhome.FathomHome())
+	r.fitted = fitted
+	r.choice, r.chose = readout.Choose(f, p), true
 	if r.choice.Mode != readout.ChoiceEnriched && r.enrich > 0 {
 		r.withheld = append(r.withheld, r.kinds[:r.enrich]...)
 		r.lines, r.kinds = slices.Clone(r.lines[r.enrich:]), slices.Clone(r.kinds[r.enrich:])
@@ -306,8 +311,8 @@ func readoutRichChoose(ctx context.Context, r *readoutRich, ev harness.Event, in
 
 // readoutPolicyMeta records the table's answer on the row, the receipt a
 // raw result carries since it carries no fathom text: the choice, the rule
-// that answered, decided_by table, the contested band, the kinds held back,
-// and the features an offline fit reads back
+// that answered, decided_by table, the contested band, whether fitted cut
+// points answered, the kinds held back, and the features the fit reads back
 // (the overlaps and the records by kind; counts only, never text).
 func readoutPolicyMeta(meta map[string]string, r readoutRich) {
 	meta["policy"] = r.choice.Mode
@@ -315,6 +320,9 @@ func readoutPolicyMeta(meta map[string]string, r readoutRich) {
 	meta["decided_by"] = r.choice.DecidedBy
 	if r.choice.Contested {
 		meta["contested"] = "true"
+	}
+	if r.fitted {
+		meta["policy_cuts"] = "fitted"
 	}
 	meta["edited_overlap"] = strconv.Itoa(r.overlap)
 	meta["failing_overlap"] = strconv.Itoa(r.failing)

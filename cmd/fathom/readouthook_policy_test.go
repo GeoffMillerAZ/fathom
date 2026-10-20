@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -14,7 +15,7 @@ import (
 // name nothing the session edited or the working tree changed is raw (rule
 // 1, contested) and its compile line is held back; one naming an edited
 // file is enriched. Each row names the table's answer with decided_by
-// table.
+// table, and a fitted policy file is named on the row when it answers.
 func TestReadoutRichServesThroughThePolicyTable(t *testing.T) {
 	repo := t.TempDir()
 	readoutGitRepo(t, repo, map[string]string{
@@ -45,10 +46,16 @@ func TestReadoutRichServesThroughThePolicyTable(t *testing.T) {
 				t.Errorf("row %s = %q, want %q (meta %v)", k, m[k], want, m)
 			}
 		}
+		if m["policy_cuts"] != "" {
+			t.Errorf("no policy file, yet the row says %q", m["policy_cuts"])
+		}
 	})
 
-	t.Run("an edited file named: enriched", func(t *testing.T) {
+	t.Run("an edited file named: enriched, the fitted cut points named", func(t *testing.T) {
 		readoutHookEnv(t, "[readouts]\nmode = \"rich\"\n")
+		if err := readout.WritePolicy(os.Getenv("FATHOM_HOME"), readout.FitResult{Seed: 3, Policy: readout.Policy{LeanFloorBytes: 5000, LongReadLines: 300}}); err != nil {
+			t.Fatal(err)
+		}
 		markFileEdited("s-1", "cart/cart.go", time.Now())
 		code, out, _, _ := runReadoutHook(t, []string{"--event", "tool-failure"}, payload)
 		if code != 0 || !strings.Contains(out, "go build: 8 errors") {
@@ -56,7 +63,7 @@ func TestReadoutRichServesThroughThePolicyTable(t *testing.T) {
 		}
 		m := readoutRows(t)[0].Meta
 		for k, want := range map[string]string{
-			"policy": readout.ChoiceEnriched, "policy_rule": "1", "decided_by": "table",
+			"policy": readout.ChoiceEnriched, "policy_rule": "1", "decided_by": "table", "policy_cuts": "fitted",
 			"edited_overlap": "1", "rich": "compile_error",
 		} {
 			if m[k] != want {

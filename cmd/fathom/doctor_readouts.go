@@ -69,6 +69,16 @@ func checkReadouts(root string) doctorCheck {
 		}
 	}
 
+	if _, fitted, err := readout.LoadPolicyFile(fathomhome.FathomHome()); err != nil {
+		parts = append(parts, "policy file invalid, the built-in cut points stand: "+oneLine(err.Error()))
+		status = doctorWarn
+		if remedy == "" {
+			remedy = "fathom readout fit --write (or delete the policy file)"
+		}
+	} else if fitted {
+		parts = append(parts, "policy: fitted cut points from "+readout.PolicyPath(fathomhome.FathomHome()))
+	}
+
 	var has, none []string
 	for _, d := range harness.All() {
 		if v, ok := d.Vehicles[harness.CapReadout]; !ok || v == harness.VehicleAbsent {

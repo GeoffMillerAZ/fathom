@@ -34,13 +34,13 @@ func (readoutRunner) execVerb(args []string, stdin io.Reader, stdout, stderr io.
 
 func init() {
 	declareVerb(verb{Name: "readout", Group: "operate", Order: 75, Run: readoutRunner{},
-		Summary: "Readout rules, offline: replay [--days N] [--projects GLOB] [--rules FILE] [--json] aggregates them over local transcripts | explain [--rules FILE] '<command>' < output shows what a readout would drop and why | test [file...] runs rule fixtures and the contract | report [--since DURATION] [--json] totals served readouts"})
+		Summary: "Readout rules, offline: replay [--days N] [--projects GLOB] [--rules FILE] [--json] aggregates them over local transcripts | explain [--rules FILE] '<command>' < output shows what a readout would drop and why | test [file...] runs rule fixtures and the contract | report [--since DURATION] [--json] totals served readouts | fit [--seed N] [--since DURATION] [--write] [--json] fits rich mode's policy cut points on half the replayed outcomes and scores the other half"})
 }
 
 // cmdReadout dispatches the readout subverbs.
 func cmdReadout(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "error: readout requires a subcommand: replay, explain, test, report")
+		fmt.Fprintln(stderr, "error: readout requires a subcommand: replay, explain, test, report, fit")
 		return 1
 	}
 	switch args[0] {
@@ -52,8 +52,10 @@ func cmdReadout(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return cmdReadoutTest(args[1:], stdout, stderr)
 	case "report":
 		return cmdReadoutReport(args[1:], stdout, stderr)
+	case "fit":
+		return cmdReadoutFit(args[1:], stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "error: unknown readout subcommand %q (want replay, explain, test, report)\n", args[0])
+		fmt.Fprintf(stderr, "error: unknown readout subcommand %q (want replay, explain, test, report, fit)\n", args[0])
 		return 1
 	}
 }
