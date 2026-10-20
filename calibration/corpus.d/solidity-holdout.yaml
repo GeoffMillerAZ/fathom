@@ -1,0 +1,22 @@
+id: solidity-holdout
+language: Solidity
+# The holdout for LB-Q-solidity (K19), pinned in the commit of the dialect's tags.scm and its solc oracle, before any reading
+# under it, and read ONCE with the dialect unchanged into docs/bench/readings/lang/holdout/solidity.json; solidity.json stays the
+# contract's reading over solidity.yaml's repos. Criterion (pre-registered): the holdout reading's level_met is L2 (any grade; L1 and
+# L2 met against the same tier-A oracle), and LB-Q-solidity flips [x] only when it does and solidity.json reads L2 too; a miss
+# writes a note beginning `L2 ceiling: ` in solidity.json and LB-Q-solidity stays open, nothing tuned after the holdout reading.
+# Vectorized/solady is not OpenZeppelin, forge-std or solmate (the tuning subjects), and appears in no docs/bench/readings/** or
+# calibration/** file (grep at 801476adf). It is heavy in inline assembly, packed bytes and free functions, which the tuning
+# subjects hold less of. Licence read at the pin: LICENSE.txt, the MIT licence.
+repos:
+  - name: Vectorized/solady
+    url: https://github.com/Vectorized/solady
+    ref: v0.1.26
+    sha: acd959aa4bd04720d640bf4e6a5c71037510cc4b
+    licence: MIT
+    subpath: src
+    idioms:
+      - 'gas-golfed libraries (LibString, LibBit, FixedPointMathLib, SafeTransferLib) written mostly in inline assembly'
+      - 'tokens (ERC20, ERC721, ERC1155, ERC6909) with virtual hooks and custom-error reverts'
+      - 'minimal proxies and CREATE2 factories (LibClone, CREATE3) and a utils/ tree of free functions and file-level constants'
+      - 'a single-file contract style where a library is imported by relative path and called as Lib.fn(...)'

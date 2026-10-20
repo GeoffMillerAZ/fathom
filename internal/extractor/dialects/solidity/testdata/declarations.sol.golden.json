@@ -1,0 +1,260 @@
+{
+  "symbols": [
+    {
+      "name": "Price",
+      "kind": "SolidityValueType",
+      "package": "declarations",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "MAX_SUPPLY",
+      "kind": "SolidityConstant",
+      "package": "declarations",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "Unauthorized",
+      "kind": "SolidityError",
+      "package": "declarations",
+      "line": 8,
+      "end_line": 8,
+      "signature": "error Unauthorized(address caller);",
+      "tier": "verified"
+    },
+    {
+      "name": "Created",
+      "kind": "SolidityEvent",
+      "package": "declarations",
+      "line": 10,
+      "end_line": 10,
+      "signature": "event Created(address indexed owner, uint256 id);",
+      "tier": "verified"
+    },
+    {
+      "name": "Config",
+      "kind": "SolidityStruct",
+      "package": "declarations",
+      "line": 12,
+      "end_line": 15,
+      "tier": "verified"
+    },
+    {
+      "name": "Status",
+      "kind": "SolidityEnum",
+      "package": "declarations",
+      "line": 17,
+      "end_line": 20,
+      "tier": "verified"
+    },
+    {
+      "name": "clamp",
+      "kind": "SolidityFunction",
+      "package": "declarations",
+      "line": 22,
+      "end_line": 24,
+      "signature": "function clamp(uint256 x, uint256 hi) pure returns (uint256)",
+      "tier": "verified"
+    },
+    {
+      "name": "IToken",
+      "kind": "SolidityInterface",
+      "package": "declarations",
+      "line": 26,
+      "end_line": 31,
+      "tier": "verified"
+    },
+    {
+      "name": "IToken.Transfer",
+      "kind": "SolidityEvent",
+      "package": "declarations",
+      "line": 27,
+      "end_line": 27,
+      "signature": "event Transfer(address indexed from, address indexed to, uint256 value);",
+      "tier": "verified"
+    },
+    {
+      "name": "IToken.Insufficient",
+      "kind": "SolidityError",
+      "package": "declarations",
+      "line": 28,
+      "end_line": 28,
+      "signature": "error Insufficient(uint256 have, uint256 want);",
+      "tier": "verified"
+    },
+    {
+      "name": "IToken.balanceOf",
+      "kind": "SolidityMethod",
+      "package": "declarations",
+      "line": 30,
+      "end_line": 30,
+      "signature": "function balanceOf(address who) external view returns (uint256);",
+      "tier": "verified"
+    },
+    {
+      "name": "MathLib",
+      "kind": "SolidityLibrary",
+      "package": "declarations",
+      "line": 33,
+      "end_line": 42,
+      "tier": "verified"
+    },
+    {
+      "name": "Pair",
+      "kind": "SolidityStruct",
+      "package": "declarations",
+      "line": 34,
+      "end_line": 37,
+      "tier": "verified"
+    },
+    {
+      "name": "MathLib.add",
+      "kind": "SolidityMethod",
+      "package": "declarations",
+      "line": 39,
+      "end_line": 41,
+      "signature": "function add(uint256 a, uint256 b) internal pure returns (uint256)",
+      "tier": "verified"
+    },
+    {
+      "name": "Base",
+      "kind": "SolidityContract",
+      "package": "declarations",
+      "line": 44,
+      "end_line": 60,
+      "tier": "verified"
+    },
+    {
+      "name": "owner",
+      "kind": "SolidityStateVariable",
+      "package": "declarations",
+      "line": 45,
+      "end_line": 45,
+      "tier": "verified"
+    },
+    {
+      "name": "LIMIT",
+      "kind": "SolidityStateVariable",
+      "package": "declarations",
+      "line": 46,
+      "end_line": 46,
+      "tier": "verified"
+    },
+    {
+      "name": "Base.onlyOwner",
+      "kind": "SolidityModifier",
+      "package": "declarations",
+      "line": 48,
+      "end_line": 51,
+      "signature": "modifier onlyOwner()",
+      "calls": [
+        "Unauthorized"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Base.constructor",
+      "kind": "SolidityConstructor",
+      "package": "declarations",
+      "line": 53,
+      "end_line": 55,
+      "signature": "constructor(address first)",
+      "tier": "verified"
+    },
+    {
+      "name": "Base.setOwner",
+      "kind": "SolidityMethod",
+      "package": "declarations",
+      "line": 57,
+      "end_line": 59,
+      "signature": "function setOwner(address next) public virtual onlyOwner",
+      "calls": [
+        "onlyOwner"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Vault",
+      "kind": "SolidityContract",
+      "package": "declarations",
+      "line": 62,
+      "end_line": 85,
+      "tier": "verified"
+    },
+    {
+      "name": "Mode",
+      "kind": "SolidityEnum",
+      "package": "declarations",
+      "line": 63,
+      "end_line": 63,
+      "tier": "verified"
+    },
+    {
+      "name": "balances",
+      "kind": "SolidityStateVariable",
+      "package": "declarations",
+      "line": 65,
+      "end_line": 65,
+      "tier": "verified"
+    },
+    {
+      "name": "mode",
+      "kind": "SolidityStateVariable",
+      "package": "declarations",
+      "line": 66,
+      "end_line": 66,
+      "tier": "verified"
+    },
+    {
+      "name": "Vault.Deposited",
+      "kind": "SolidityEvent",
+      "package": "declarations",
+      "line": 68,
+      "end_line": 68,
+      "signature": "event Deposited(address indexed from, uint256 amount);",
+      "tier": "verified"
+    },
+    {
+      "name": "Vault.Closed",
+      "kind": "SolidityError",
+      "package": "declarations",
+      "line": 69,
+      "end_line": 69,
+      "signature": "error Closed();",
+      "tier": "verified"
+    },
+    {
+      "name": "Vault.deposit",
+      "kind": "SolidityMethod",
+      "package": "declarations",
+      "line": 71,
+      "end_line": 78,
+      "signature": "function deposit( uint256 amount, address from ) external payable returns (bool ok)",
+      "calls": [
+        "Deposited"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Vault.balanceOf",
+      "kind": "SolidityMethod",
+      "package": "declarations",
+      "line": 80,
+      "end_line": 82,
+      "signature": "function balanceOf(address who) external view override returns (uint256)",
+      "tier": "verified"
+    },
+    {
+      "name": "Vault.receive",
+      "kind": "SolidityConstructor",
+      "package": "declarations",
+      "line": 84,
+      "end_line": 84,
+      "signature": "receive() external payable",
+      "tier": "verified"
+    }
+  ]
+}

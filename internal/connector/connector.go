@@ -433,6 +433,9 @@ var extClassMap = map[string]classification{
 	".ex":  {core.SourceKind("ElixirModule"), "elixir"},
 	".exs": {core.SourceKind("ElixirModule"), "elixir"},
 
+	// Solidity (LB-Q-solidity, wave lang6): a new tree-sitter dialect, no incumbent.
+	".sol": {core.SourceKind("SolidityContract"), "solidity"},
+
 	// Dart (LB-Q-dart: a new tree-sitter dialect, no incumbent).
 	".dart": {core.KindDartClass, "dart"},
 
