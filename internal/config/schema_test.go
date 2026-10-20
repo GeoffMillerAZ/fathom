@@ -221,6 +221,10 @@ badClaimCheck: #Config & {
 badGatePreflight: #Config & {
 	hooks: gate_preflight: 1
 }`},
+		{"[hooks] prompt_definitions is not a bool", `
+badPromptDefinitions: #Config & {
+	hooks: prompt_definitions: "yes"
+}`},
 		{"[hooks] read_outline_hint is not a bool", `
 badReadOutlineHint: #Config & {
 	hooks: read_outline_hint: "yes"

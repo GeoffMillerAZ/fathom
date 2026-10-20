@@ -189,6 +189,7 @@ an array of tables, and `tenancy.**` for every key under `[tenancy]`.
 | `hooks.claim_check` | behaviour | the claim check runs nothing: it reads the final message and the hook log's test-run rows (claimcheck.go) |
 | `hooks.gate_preflight` | behaviour | the gate preflight runs nothing: it lexes the command, reads git and the hook log, and asks the claim-moment verify path (gatepreflight.go) |
 | `hooks.pin_check` | behaviour | the commit pin line's output mode; the check itself is on by default |
+| `hooks.prompt_definitions` | behaviour | the definitions line runs nothing: it names find_symbol answers the prompt hook already fetched (prompthook.go) |
 | `hooks.read_outline_hint` | behaviour | the Read outline hint runs nothing: it reads the file the Read names and runs fathom's own extractors over it in process (readouthint.go) |
 | `hooks.test_run` | behaviour | the test-run hook runs nothing: it reads the output of a command the harness ran (TR-X2, testrunhook.go) |
 | `hooks.tests_to_run` | behaviour | the tests-to-run line runs nothing: it asks the daemon which tests reach the edited file and prints the go test recipe as text (edithook_teststorun.go) |
@@ -1419,6 +1420,29 @@ compile line, with no tree clause. It asks the daemon under its own deadline
 inside the hook's 1 s ceiling, and also places an identifier root that the
 working tree did not change at the index's definition; a join that misses
 ends the compile line with `index: not consulted (deadline)`.
+
+
+## The prompt definitions line: `[hooks] prompt_definitions`
+
+The prompt hook (`UserPromptSubmit`) serves the rules governing what a
+prompt names (ADR-036). With `prompt_definitions` on it adds one more line
+(ADR-076). It is **off by default**:
+
+```toml
+# .fathom/config.toml (or ~/.fathom/config.toml)
+[hooks]
+prompt_definitions = true   # default false
+```
+
+The line names, for each identifier the hook already resolved through
+`find_symbol`, its definition `file:line` and kind, at most 5 names, as
+`defined: Name kind path:line`. A name with several definitions reads
+`Name (N definitions)` and no one is chosen. It rides the hook's existing
+8 s deadline and obligations cap and makes no extra daemon call and no
+route call. When no identifier resolves, or the deadline has passed, the
+line is absent or says `definitions not computed (deadline)` and never
+reads as "nothing found". Any error leaves the hook's other output
+unchanged.
 
 ## The console: `[console]`
 

@@ -425,6 +425,10 @@ type Hooks struct {
 	// reach the edited file, the `go test -run` recipe as text fathom never
 	// runs, and whether the session ran them at this tree. Default false.
 	TestsToRun bool
+	// PromptDefinitions (H10) adds one line to the prompt hook naming, for
+	// each identifier the hook already resolved, its definition file:line
+	// and kind (at most 5). Default false (ADR-076).
+	PromptDefinitions bool
 }
 
 // The [hooks] pin_check values (schema.cue #Hooks).

@@ -228,6 +228,11 @@ exampleClaimCheckAndPreflight: #Config & {
 	}
 }
 
+// The prompt hook's definitions line (H10), opt-in.
+examplePromptDefinitions: #Config & {
+	hooks: prompt_definitions: true
+}
+
 // The Read outline hint (H8), opt-in.
 exampleReadOutlineHint: #Config & {
 	hooks: read_outline_hint: true

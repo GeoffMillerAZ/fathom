@@ -142,6 +142,13 @@ func cmdPromptHook(args []string, stdout, stderr io.Writer) int {
 	deadline := time.Now().Add(promptHookDeadlineBudget)
 	text, meta, ok := renderPromptObligations(url, projDir, prompt, sessionID, deadline)
 
+	// H10 (ADR-076): behind [hooks] prompt_definitions, one line naming the
+	// definitions of the identifiers resolved above. It adds no call, shares
+	// the obligations cap, and yields to it when it does not fit.
+	if promptDefinitionsOn(projDir) {
+		text, ok = combineWithRouteLine(text, ok, promptDefinitionsLine(meta.defs, meta.defsMissed))
+	}
+
 	// DP-10 (ADR-042, docs/vision/32-decision-port.md §2 item 3): routing
 	// draws on the SAME shared deadline as the obligations work above, and
 	// asks AFTER it — obligations always gets first claim on the budget; a
@@ -209,6 +216,10 @@ type promptObligationsMeta struct {
 	files      int // distinct files obligations were attempted for
 	displaced  int
 	resolved   int // of files, how many got a definite answer before the deadline
+	// defs and defsMissed carry H10's definitions out of the resolve step
+	// (ADR-076); empty unless a symbol candidate resolved.
+	defs       []promptDefinition
+	defsMissed bool
 	// silence (GL-26) is why renderPromptObligations said nothing, set on
 	// every ok=false return.
 	silence silenceReason
@@ -229,9 +240,9 @@ func renderPromptObligations(url, projDir, prompt, sessionID string, deadline ti
 		return "", promptObligationsMeta{silence: silenceNoCandidate}, false
 	}
 	hc := &http.Client{Timeout: deadlineRemaining(deadline)}
-	resolved := resolvePromptCandidates(hc, url, projDir, candidates, deadline)
+	resolved, defs, defsMissed := resolvePromptCandidates(hc, url, projDir, candidates, deadline)
 	if len(resolved) == 0 {
-		return "", promptObligationsMeta{candidates: len(candidates), silence: silenceNoCandidate}, false
+		return "", promptObligationsMeta{candidates: len(candidates), defsMissed: defsMissed, silence: silenceNoCandidate}, false
 	}
 	svc := resolved[0].service // resolvePromptCandidates resolves ONE service per call
 	files := make([]string, len(resolved))
@@ -244,7 +255,7 @@ func renderPromptObligations(url, projDir, prompt, sessionID string, deadline ti
 	if len(m.rules) == 0 {
 		// The caller writes the one answered beat (a route line may still
 		// speak); every failed fetch already has its error beat.
-		meta := promptObligationsMeta{candidates: len(candidates), files: m.total, resolved: m.resolved, silence: silenceNoRules}
+		meta := promptObligationsMeta{candidates: len(candidates), files: m.total, resolved: m.resolved, defs: defs, defsMissed: defsMissed, silence: silenceNoRules}
 		if m.resolved == 0 && m.total > 0 {
 			meta.silence = silenceDaemonError
 		}
@@ -273,7 +284,7 @@ func renderPromptObligations(url, projDir, prompt, sessionID string, deadline ti
 	if n, ok := countFindingsAcrossFiles(url, svc, files, deadline); ok && n > 0 {
 		fmt.Fprintf(&sb, "\nopen findings: %d across the files this prompt names", n)
 	}
-	return sb.String(), promptObligationsMeta{candidates: len(candidates), files: m.total, displaced: m.displaced, resolved: m.resolved}, true
+	return sb.String(), promptObligationsMeta{candidates: len(candidates), files: m.total, displaced: m.displaced, resolved: m.resolved, defs: defs, defsMissed: defsMissed}, true
 }
 
 // deadlineRemaining is deadline's remaining wall-clock time, floored at
@@ -317,11 +328,17 @@ type promptResolved struct {
 // RPC each, capped at maxPromptSymbolLookups AND stopped early once
 // deadline arrives — every RPC here draws against the SAME shared budget
 // the caller's later per-file obligations calls also draw against.
-func resolvePromptCandidates(hc *http.Client, url, projDir string, candidates []promptCandidate, deadline time.Time) []promptResolved {
+// resolvePromptCandidates also returns
+// the definitions its find_symbol answers carried (H10, ADR-076), in
+// candidate order, and whether a symbol lookup was skipped or failed
+// because the shared deadline had passed. It makes no call of its own.
+func resolvePromptCandidates(hc *http.Client, url, projDir string, candidates []promptCandidate, deadline time.Time) ([]promptResolved, []promptDefinition, bool) {
 	cands := candidatesWithDaemon(hc, url, projDir)
 	if len(cands) == 0 {
-		return nil
+		return nil, nil, false
 	}
+	var defs []promptDefinition
+	missed := false
 	svc := strings.ToLower(cands[0].name)
 	seen := map[string]bool{}
 	var out []promptResolved
@@ -346,24 +363,76 @@ func resolvePromptCandidates(hc *http.Client, url, projDir string, candidates []
 			// semantic.ObligationsFor.
 			add(strings.TrimSuffix(c.text, "/") + "/__prompt__.go")
 		case candidateSymbol:
-			if symbolLookups >= maxPromptSymbolLookups || !time.Now().Before(deadline) {
-				continue // cap reached, or nothing left in the shared budget to spend on a lookup
+			if symbolLookups >= maxPromptSymbolLookups {
+				continue // cap reached
+			}
+			if !time.Now().Before(deadline) {
+				missed = true // nothing left in the shared budget to spend on a lookup
+				continue
 			}
 			symbolLookups++
 			symHC := &http.Client{Timeout: deadlineRemaining(deadline)}
-			if fp, ok := fetchSymbolFile(symHC, url, svc, c.text, c.marked); ok {
-				add(fp)
+			if d, ok := fetchSymbolDef(symHC, url, svc, c.text, c.marked); ok {
+				add(d.File)
+				defs = append(defs, d)
+			} else if !time.Now().Before(deadline) {
+				missed = true
 			}
 		}
 	}
-	return out
+	return out, defs, missed
+}
+
+// promptDefinition is one resolved identifier's definition as find_symbol
+// answered it (H10): Count is how many definitions the exact tier returned.
+type promptDefinition struct {
+	Name, Kind, File string
+	Line, Count      int
+}
+
+// maxPromptDefinitionNames bounds the definitions line (ADR-076).
+const maxPromptDefinitionNames = 5
+
+// promptDefinitionsLine renders the H10 line: for each resolved identifier
+// its definition file:line and kind, at most maxPromptDefinitionNames; a
+// name with several definitions reads "N definitions" and none is chosen.
+// Empty when nothing resolved. missed names a deadline miss instead of
+// reading as nothing found.
+func promptDefinitionsLine(defs []promptDefinition, missed bool) string {
+	if len(defs) == 0 {
+		if missed {
+			return "definitions not computed (deadline)"
+		}
+		return ""
+	}
+	var parts []string
+	for _, d := range defs {
+		if len(parts) == maxPromptDefinitionNames {
+			break
+		}
+		switch {
+		case d.Count > 1:
+			parts = append(parts, fmt.Sprintf("%s (%d definitions)", d.Name, d.Count))
+		case d.Line > 0:
+			parts = append(parts, fmt.Sprintf("%s %s %s:%d", d.Name, d.Kind, d.File, d.Line))
+		default:
+			parts = append(parts, fmt.Sprintf("%s %s %s", d.Name, d.Kind, d.File))
+		}
+	}
+	line := "defined: " + strings.Join(parts, ", ")
+	if missed {
+		line += " (more not computed (deadline))"
+	}
+	return line
 }
 
 // fetchSymbolFile resolves a bare symbol name to its defining file via the
 // find_symbol MCP tool — ok=false on any error, no match, or an ambiguous
 // name the tool declines to pick for (did_you_mean without an exact hit).
 // marked is true when the prompt wrote name as code (backticked or called).
-func fetchSymbolFile(hc *http.Client, baseURL, service, name string, marked bool) (string, bool) {
+// fetchSymbolDef carries the first match's file, line and kind and the
+// number of definitions the exact tier returned.
+func fetchSymbolDef(hc *http.Client, baseURL, service, name string, marked bool) (promptDefinition, bool) {
 	reqBody, err := json.Marshal(map[string]any{
 		"jsonrpc": "2.0", "id": 1, "method": "tools/call",
 		"params": map[string]any{
@@ -372,33 +441,35 @@ func fetchSymbolFile(hc *http.Client, baseURL, service, name string, marked bool
 		},
 	})
 	if err != nil {
-		return "", false
+		return promptDefinition{}, false
 	}
 	req, err := originHeader(baseURL, bytes.NewReader(reqBody))
 	if err != nil {
-		return "", false
+		return promptDefinition{}, false
 	}
 	resp, err := hc.Do(req)
 	if err != nil {
-		return "", false
+		return promptDefinition{}, false
 	}
 	defer resp.Body.Close()
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
-		return "", false
+		return promptDefinition{}, false
 	}
 	inner, err := unwrapRPCResult(raw)
 	if err != nil {
-		return "", false
+		return promptDefinition{}, false
 	}
 	var payload struct {
 		Symbols []struct {
 			FilePath string `json:"file_path"`
+			Kind     string `json:"kind"`
+			Line     int    `json:"line"`
 		} `json:"symbols"`
 		MatchedVia string `json:"matched_via"`
 	}
 	if err := json.Unmarshal(inner, &payload); err != nil || len(payload.Symbols) == 0 {
-		return "", false
+		return promptDefinition{}, false
 	}
 	// O1114: only the exact tier names what the prompt said. A
 	// case-insensitive hit counts when the prompt wrote the token as code
@@ -408,15 +479,16 @@ func fetchSymbolFile(hc *http.Client, baseURL, service, name string, marked bool
 	case "exact":
 	case "case_insensitive":
 		if !marked {
-			return "", false
+			return promptDefinition{}, false
 		}
 	default:
-		return "", false
+		return promptDefinition{}, false
 	}
 	if payload.Symbols[0].FilePath == "" {
-		return "", false
+		return promptDefinition{}, false
 	}
-	return payload.Symbols[0].FilePath, true
+	s0 := payload.Symbols[0]
+	return promptDefinition{Name: name, Kind: s0.Kind, File: s0.FilePath, Line: s0.Line, Count: len(payload.Symbols)}, true
 }
 
 // combineWithRouteLine folds route (DP-10's rendered line, possibly "")
@@ -687,4 +759,11 @@ func (promptHookRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.W
 func init() {
 	declareVerb(verb{Name: "prompt-hook", Group: "hooks", Order: 50, Run: promptHookRunner{},
 		Summary: "UserPromptSubmit hook: resolve the paths/packages/symbols the prompt names through the index and inject the rules that govern them, before the first edit"})
+}
+
+// promptDefinitionsOn reports whether [hooks] prompt_definitions is on for
+// projDir. Off by default; any load error reads off (the hook fails open).
+func promptDefinitionsOn(projDir string) bool {
+	cfg, ok := hooksConfigAt(projDir, hookOptInPromptDefinitions)
+	return ok && cfg.Hooks.PromptDefinitions
 }

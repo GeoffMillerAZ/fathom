@@ -360,13 +360,17 @@ package config
 // long source file and its PreToolUse(Read) hook entry; tests_to_run (RO-43,
 // H4) turns on the line after an edit of a Go file naming the tests that
 // reach it and their go test recipe. Unset means off for all four.
+// long source file and its PreToolUse(Read) hook entry; prompt_definitions
+// (H10) adds one line to the prompt hook naming each identifier it resolved
+// with its definition file:line. Unset means off for all four.
 #Hooks: {
-	test_run?:          bool
-	pin_check?:         "off" | "record" | "feedback"
-	claim_check?:       bool
-	gate_preflight?:    bool
-	read_outline_hint?: bool
-	tests_to_run?:      bool
+	test_run?:           bool
+	pin_check?:          "off" | "record" | "feedback"
+	claim_check?:        bool
+	gate_preflight?:     bool
+	read_outline_hint?:  bool
+	tests_to_run?:       bool
+	prompt_definitions?: bool
 }
 
 // #Readouts configures the readout hook's modes (RO-15, ADR-071, docs/
