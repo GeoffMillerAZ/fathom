@@ -94,7 +94,10 @@ abandoned `.claude/worktrees/agent-*` checkouts with no owner.
    an agent's own `git push` to the integration branch.
 4. **Shared files are contract files** (`CHANGELOG.md`, the decisions index, the
    router). Agents append rows; the orchestrator resolves order. Nobody rewrites a
-   sibling's row.
+   sibling's row. A parallel line adds a file and never appends to a shared one where
+   a per-line file will do (change-note fragments, `changes.md` §4). A generated file
+   merges by regeneration, never by hand: the integrator reruns the generator after a
+   merge and commits what changed.
 5. **Clean up on completion.** `git worktree remove` and delete the branch once
    integrated; `git worktree prune` at the end of every orchestrated session. A
    worktree older than the session that made it is an incident (`gate-bypassed`).

@@ -7,7 +7,12 @@ Every release ships with the full gate green: `task validate` =
 
 ## [Unreleased]
 
-Release impact: patch
+Release impact: minor
+
+### Added
+
+- `release-notes -roll x.y.z -date D` folds change-note fragments into a released block (Breaking first, `Release impact:` computed, fragments deleted, a version the changelog already has refused), `release-notes Unreleased` prints the same fold, and `-check` lints fragments; a repo opts in by the fragments pointer line in `[Unreleased]`, and every other changelog behaves as before.
+- Change-note fragments: `changes.md` §4, `operating.md` §4 and the `intent-release`, `intent-doctor` and `intent-prune` skills describe an optional fragments directory, and `kit-new -package -apply` writes a fragment instead of an `[Unreleased]` line when the changelog's pointer line names one. A repo without fragments is unchanged.
 
 ## [0.8.1] — 2026-10-17
 
