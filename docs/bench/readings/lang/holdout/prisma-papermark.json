@@ -1,0 +1,138 @@
+{
+  "dialect": "prisma",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "excellent",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-20",
+  "fathom_commit": "b54ccdae0",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "papermark",
+      "sha": "ed19717ec02a1ac79aecf5569159aa9d2d869312",
+      "files": 15,
+      "bytes": 89354,
+      "counts": {
+        "callables": 1384,
+        "callables_signed": 1384,
+        "fathom_defs": 1384,
+        "kind_equal": 1384,
+        "matched": 1384,
+        "oracle_defs": 1388,
+        "range_eligible": 1384,
+        "range_ok": 1383,
+        "ref_fathom": 464,
+        "ref_fathom_in_truth": 464,
+        "ref_truth": 466,
+        "ref_truth_found": 464,
+        "xref_fathom": 162,
+        "xref_fathom_in_truth": 162,
+        "xref_truth": 162,
+        "xref_truth_found": 162
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "class",
+        "enum",
+        "enum_member",
+        "field",
+        "key",
+        "type_alias"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 1,
+        "extract_ms": 15.908000000000003,
+        "extract_cpu_ms": 17.057,
+        "max_file_ms": 3,
+        "peak_module_pages": 275,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "prisma-schema-wasm",
+      "version": "6.19.0-26.2ba551f319ab1df4bc874a89965d8b3641056773"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 0.9957,
+    "sym_precision": 1,
+    "sym_recall": 0.9971,
+    "xref_precision": 1,
+    "xref_recall": 1
+  },
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A",
+    "xref_precision": "A",
+    "xref_recall": "A"
+  },
+  "required_kinds": [
+    "class",
+    "enum",
+    "enum_member",
+    "field",
+    "key",
+    "type_alias"
+  ],
+  "kind_intersection": [
+    "class",
+    "enum",
+    "enum_member",
+    "field",
+    "key",
+    "type_alias"
+  ],
+  "counts": {
+    "callables": 1384,
+    "callables_signed": 1384,
+    "fathom_defs": 1384,
+    "kind_equal": 1384,
+    "matched": 1384,
+    "oracle_defs": 1388,
+    "range_eligible": 1384,
+    "range_ok": 1383,
+    "ref_fathom": 464,
+    "ref_fathom_in_truth": 464,
+    "ref_truth": 466,
+    "ref_truth_found": 464,
+    "xref_fathom": 162,
+    "xref_fathom_in_truth": 162,
+    "xref_truth": 162,
+    "xref_truth_found": 162
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 1,
+    "throughput_mb_s": 5.24,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 5.62,
+    "max_file_ms": 3,
+    "peak_module_pages": 275,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "xref_precision and xref_recall of a tags-engine tool format score the file resolver's file-resolved edges (fusion.ResolveFileEdges over the dialect's import strategy, the edges ingest stores) against the oracle's cross_references at file granularity: (file, referring definition, referenced file), the referenced definition's name not compared (LB-F56)"
+  ],
+  "disposition": "holdout (K19, calibration/corpus.d/prisma-holdout-2.yaml, pinned at b54ccdae0 with the global-name rule, before any reading under it), read once at b54ccdae0: mfts/papermark main (15 files, one prismaSchemaFolder) against the Prisma schema engine (tier A): L3 excellent (xref_recall 1, xref_precision 1, 162 of 162); L1 excellent (sym_recall .9971, 1,384 of 1,388) and L2 excellent (ref_recall .9957, 464 of 466): referral.prisma's /** ... */ comment inside model ReferralInvite is an error to the pinned grammar, which loses the 4 fields after it (O1439). 999d94bc, the shipped rule, drops only same-file edges, which this file-granularity score never counts."
+}

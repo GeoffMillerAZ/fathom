@@ -1,0 +1,23 @@
+id: graphql-holdout
+language: "GraphQL schemas and operations"
+# The holdout for the graphql dialect's L3 rule (LB-Q-graphql, wave lang7: the global-name strategy, LB-F580), pinned
+# in the commit that adds the rule, before the rule or the graphql-js oracle ran on it, and read ONCE into
+# docs/bench/readings/lang/holdout/graphql.json; never tuned against (a later rule change needs a new holdout).
+# Criteria, each checked at the pin: not octokit/graphql-schema, 99designs/gqlgen or vendure-ecommerce/vendure (the
+# tuning subjects); an OSI licence read at the tag; a schema split across files with no import statement, so a type
+# reference crosses files and L3 has truth; absent from every committed reading and corpus shard.
+# reactioncommerce/reaction (Open Commerce) keeps one schema per API plugin (packages/api-plugin-*/src/schemas/*.graphql),
+# each extending Query and Mutation and naming types another plugin defines (Shop, Money, ConnectionCursor), and
+# integration-test operations (apps/reaction/tests/) against the merged schema.
+repos:
+  - name: reactioncommerce/reaction
+    url: https://github.com/reactioncommerce/reaction
+    ref: v5.0.0
+    sha: 8aaf479103a27c089ec95f35a8e207e9a2a938cd
+    licence: GPL-3.0
+    sparse: ["**/*.graphql", "**/*.gql"]
+    idioms:
+      - 'one schema per plugin directory, merged at startup with no import statement'
+      - 'extend type Query / Mutation in every plugin, input and payload types beside them'
+      - 'a type one plugin defines named by another plugin's fields and arguments'
+      - 'test operations with variables, fragments and inline fragments naming schema types'

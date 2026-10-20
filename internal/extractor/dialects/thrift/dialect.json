@@ -1,0 +1,44 @@
+{
+  "id": "thrift",
+  "display": "Apache Thrift IDL",
+  "kind": "tooling",
+  "engine": "tags",
+  "lang_tag": "thrift",
+  "match": {
+    "extensions": [".thrift"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "thrift", "entry_point": "tree_sitter_thrift" },
+  "variants": [],
+  "queries": { "tags": "tags.scm", "imports": "imports.scm", "references": "references.scm" },
+  "kinds": {
+    "namespace":  { "source_kind": "ThriftNamespace", "canonical": "namespace" },
+    "typedef":    { "source_kind": "ThriftTypedef",   "canonical": "type_alias", "callable": true },
+    "const":      { "source_kind": "ThriftConst",     "canonical": "constant", "callable": true },
+    "enum":       { "source_kind": "ThriftEnum",      "canonical": "enum", "container": true },
+    "enum_value": { "source_kind": "ThriftEnumValue", "canonical": "enum_member", "callable": true },
+    "struct":     { "source_kind": "ThriftStruct",    "canonical": "struct", "container": true },
+    "union":      { "source_kind": "ThriftUnion",     "canonical": "union", "container": true },
+    "exception":  { "source_kind": "ThriftException", "canonical": "class", "container": true },
+    "field":      { "source_kind": "ThriftField",     "canonical": "field", "callable": true },
+    "service":    { "source_kind": "ThriftService",   "canonical": "service", "container": true, "callable": true },
+    "function":   { "source_kind": "ThriftFunction",  "canonical": "rpc", "callable": true }
+  },
+  "required_kinds": ["namespace", "typedef", "const", "enum", "enum_value", "struct", "union", "exception", "field", "service", "function"],
+  "oracle_kinds": {
+    "tool":  { "namespace": "namespace", "typedef": "type_alias", "const": "constant", "enum": "enum", "enum_value": "enum_member",
+               "struct": "struct", "union": "union", "exception": "class", "field": "field", "service": "service", "function": "rpc" },
+    "ctags": { "namespace": "namespace", "typedef": "type_alias", "constant": "constant", "enum": "enum", "enumerator": "enum_member", "struct": "struct",
+               "union": "union", "exception": "class", "member": "field", "service": "service", "function": "rpc" }
+  },
+  "qualify": { "chain_containers": true, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "imports": { "strategy": "file-symbol", "relative": true },
+  "signature": { "max_chars": 200 },
+  "ctags": { "languages": ["Thrift"] },
+  "target_level": "L3",
+  "queue_id": "thrift"
+}

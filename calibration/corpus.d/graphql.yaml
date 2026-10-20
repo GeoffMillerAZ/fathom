@@ -5,7 +5,10 @@ language: "GraphQL schemas and operations"
 # read cap) with descriptions on every definition. 99designs/gqlgen is a code generator whose repository holds
 # many small, independent schemas (examples, codegen test servers, integration queries): schemas that extend
 # each other across files, operations with fragments and variables, directives and unions. testdata/ and
-# generated/ directories are never read by ingest, so neither side measures them.
+# generated/ directories are never read by ingest, so neither side measures them. vendure-ecommerce/vendure (wave
+# lang7, LB-Q-graphql's L3) keeps one schema split across many files with no import statement (common/ types,
+# admin-api/ and shop-api/ extensions of Query and Mutation) and load-testing operations against it, so a type
+# reference crosses files; reactioncommerce/reaction is the holdout (graphql-holdout.yaml), not a subject.
 repos:
   - name: octokit/graphql-schema
     url: https://github.com/octokit/graphql-schema
@@ -31,3 +34,14 @@ repos:
       - 'directive definitions and their applications, custom scalars'
       - 'unions, interfaces and enums with deprecated values'
       - 'the same type names defined by independent schemas in sibling directories'
+  - name: vendure-ecommerce/vendure
+    url: https://github.com/vendure-ecommerce/vendure
+    ref: v3.8.0
+    sha: e53fb43e1ca45dc869ec8d4893738e17f14774d7
+    licence: GPL-3.0-or-later
+    sparse: ["**/*.graphql", "**/*.gql"]
+    idioms:
+      - 'one schema in many files: a type defined in common/ named by fields, arguments and inputs of admin-api/ files'
+      - 'extend type Query / Mutation in every admin-api file, input types beside them'
+      - 'interfaces (Node, PaginatedList) implemented across files, unions of result types'
+      - 'operations and fragments (load-testing) naming the schema types in variables and type conditions'

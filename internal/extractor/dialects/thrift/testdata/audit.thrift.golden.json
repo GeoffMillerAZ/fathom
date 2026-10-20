@@ -1,0 +1,70 @@
+{
+  "symbols": [
+    {
+      "name": "go",
+      "kind": "ThriftNamespace",
+      "package": "audit",
+      "line": 1,
+      "end_line": 1,
+      "tier": "verified"
+    },
+    {
+      "name": "Stamp",
+      "kind": "ThriftStruct",
+      "package": "audit",
+      "line": 5,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "Stamp.at",
+      "kind": "ThriftField",
+      "package": "audit",
+      "line": 6,
+      "end_line": 6,
+      "signature": "1: shared.Timestamp at,",
+      "calls": [
+        "shared.Timestamp"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Stamp.by",
+      "kind": "ThriftField",
+      "package": "audit",
+      "line": 7,
+      "end_line": 7,
+      "signature": "2: string by",
+      "tier": "verified"
+    },
+    {
+      "name": "Audited",
+      "kind": "ThriftService",
+      "package": "audit",
+      "line": 10,
+      "end_line": 12,
+      "signature": "service Audited {",
+      "tier": "verified"
+    },
+    {
+      "name": "Audited.last",
+      "kind": "ThriftFunction",
+      "package": "audit",
+      "line": 11,
+      "end_line": 11,
+      "signature": "Stamp last()",
+      "calls": [
+        "Stamp"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "shared.thrift",
+      "module": "shared.thrift",
+      "kind": "whole",
+      "line": 3
+    }
+  ]
+}

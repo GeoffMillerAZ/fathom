@@ -1,0 +1,154 @@
+{
+  "dialect": "thrift",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "excellent",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-20",
+  "fathom_commit": "9c3cf0ef2",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "apache/impala",
+      "sha": "078470bb0471336fa7715cf9b72a5d713fd2751d",
+      "files": 25,
+      "bytes": 244059,
+      "counts": {
+        "callables": 1953,
+        "callables_signed": 1953,
+        "fathom_defs": 2374,
+        "kind_equal": 2374,
+        "matched": 2374,
+        "oracle_defs": 2374,
+        "range_eligible": 2374,
+        "range_ok": 2374,
+        "ref_fathom": 507,
+        "ref_fathom_in_truth": 507,
+        "ref_truth": 507,
+        "ref_truth_found": 507,
+        "xref_fathom": 124,
+        "xref_fathom_in_truth": 122,
+        "xref_truth": 124,
+        "xref_truth_found": 122
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "class",
+        "constant",
+        "enum",
+        "enum_member",
+        "field",
+        "namespace",
+        "rpc",
+        "service",
+        "struct",
+        "type_alias",
+        "union"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 21.253000000000004,
+        "extract_cpu_ms": 23.805999999999997,
+        "max_file_ms": 3,
+        "peak_module_pages": 282,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "thrift",
+      "version": "0.24.0"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": 0.9839,
+    "xref_recall": 0.9839
+  },
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A",
+    "xref_precision": "A",
+    "xref_recall": "A"
+  },
+  "required_kinds": [
+    "class",
+    "constant",
+    "enum",
+    "enum_member",
+    "field",
+    "namespace",
+    "rpc",
+    "service",
+    "struct",
+    "type_alias",
+    "union"
+  ],
+  "kind_intersection": [
+    "class",
+    "constant",
+    "enum",
+    "enum_member",
+    "field",
+    "namespace",
+    "rpc",
+    "service",
+    "struct",
+    "type_alias",
+    "union"
+  ],
+  "counts": {
+    "callables": 1953,
+    "callables_signed": 1953,
+    "fathom_defs": 2374,
+    "kind_equal": 2374,
+    "matched": 2374,
+    "oracle_defs": 2374,
+    "range_eligible": 2374,
+    "range_ok": 2374,
+    "ref_fathom": 507,
+    "ref_fathom_in_truth": 507,
+    "ref_truth": 507,
+    "ref_truth_found": 507,
+    "xref_fathom": 124,
+    "xref_fathom_in_truth": 122,
+    "xref_truth": 124,
+    "xref_truth_found": 122
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 0,
+    "throughput_mb_s": 10.25,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 11.48,
+    "max_file_ms": 3,
+    "peak_module_pages": 282,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "apache/impala: restricted to common/thrift/BackendGflags.thrift, common/thrift/CatalogInternalService.thrift, common/thrift/Data.thrift, common/thrift/DataSinks.thrift, common/thrift/Descriptors.thrift, common/thrift/ExecStats.thrift, common/thrift/Exprs.thrift, common/thrift/ExternalDataSource.thrift, common/thrift/LineageGraph.thrift, common/thrift/Logging.thrift, common/thrift/Metrics.thrift, common/thrift/NetworkTest.thrift, common/thrift/Partitions.thrift, common/thrift/PlanNodes.thrift, common/thrift/Planner.thrift, common/thrift/Query.thrift, common/thrift/ResourceProfile.thrift, common/thrift/Results.thrift, common/thrift/RuntimeProfile.thrift, common/thrift/StatestoreService.thrift, common/thrift/SystemTables.thrift, common/thrift/Types.thrift, common/thrift/Zip.thrift, common/thrift/hive-1-api/TCLIService.thrift, common/thrift/parquet.thrift (-only; the files outside are a disclosed gap, not measured)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "xref_precision and xref_recall of a tags-engine tool format score the file resolver's file-resolved edges (fusion.ResolveFileEdges over the dialect's import strategy, the edges ingest stores) against the oracle's cross_references at file granularity: (file, referring definition, referenced file), the referenced definition's name not compared (LB-F56)"
+  ],
+  "disposition": "holdout, read once (wave lang7, fathom 9c3cf0ef2), pinned in the dialect's commit before any reading of it: apache/impala 4.5.2 (25 of 34 common/thrift files: the other 9 include files the repository does not hold), L1 excellent (2,374 definitions), L2 excellent (507 pairs), L3 excellent (xref_precision .9839, xref_recall .9839, 122 of 124 cross-file references) against the Apache Thrift compiler 0.24.0. The 2 misses are a field whose name sits on the line after its type (Query.thrift TPlanExecInfo.per_node_scan_ranges): the engine gives a symbol its name's line, so the resolver attributes the two references on the type's line to the struct. Not tuned against."
+}
