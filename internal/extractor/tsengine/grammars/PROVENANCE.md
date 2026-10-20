@@ -57,6 +57,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `perl` | tree-sitter-perl/tree-sitter-perl | 4586b3f1fc6f8b80cca6ceb23ba863ae986eeae8 | `4586b3f1fc6f8b80cca6ceb23ba863ae986eeae8` | MIT | `tree_sitter_perl` | `a0b339650a78a7eb2b6c3f3223b6518943ed66f3a66bc52a626f5c8e688d91e3` |
 | `php` | tree-sitter/tree-sitter-php | v0.24.2 | `5b5627faaa290d89eb3d01b9bf47c3bb9e797dea` | MIT | `tree_sitter_php` | `0e73ad63dda67ac12c0e012726a4e1a9811c26b020a0a2dea3e889f8246d9cf4` |
 | `powershell` | airbus-cert/tree-sitter-powershell | v0.26.5 | `d398441825243b00e317e87e1829b9d6a3e54ce0` | MIT | `tree_sitter_powershell` | `a949ac2bccd74b94b6199702c8b119cb353785e8a8828150a763b202ae8d4534` |
+| `prisma` | victorhqc/tree-sitter-prisma | 3556b2c1f20ec9ac91e92d32c43d9d2a0ca3cc49 | `3556b2c1f20ec9ac91e92d32c43d9d2a0ca3cc49` | MIT | `tree_sitter_prisma` | `9f89b34dffa3fcceb981b298927b0676596579a42a6a4919f7c3cbe4cfe074a8` |
 | `protobuf` | coder3101/tree-sitter-proto | 0.6.0 | `6c878d18628ebbff3474479d2fdd6d8ba1954c3e` | MIT | `tree_sitter_proto` | `5a6931ce9b0a40470ba642efd775a832f2edf5b1f4d274d3b68f3182c1c920ca` |
 | `python` | tree-sitter/tree-sitter-python | v0.25.0 | `293fdc02038ee2bf0e2e206711b69c90ac0d413f` | MIT | `tree_sitter_python` | `4609a3665a620e117acf795ff01b9e965880f81745f287a16336f4ca86cf270c` |
 | `r` | r-lib/tree-sitter-r | v1.3.0 | `346d3707b8c9301f1051e8f6e32666e67529f7d2` | MIT | `tree_sitter_r` | `35dde81835046514f01c07e66d058c943bb44dd10823c04f7028374080b151dc` |
@@ -64,6 +65,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `rust` | tree-sitter/tree-sitter-rust | v0.24.2 | `77a3747266f4d621d0757825e6b11edcbf991ca5` | MIT | `tree_sitter_rust` | `061e90a539a55a6aa65dceb0ad6425c50ab1a6e3e6d4ba430e2795ed4550f10e` |
 | `scala` | tree-sitter/tree-sitter-scala | v0.26.2 | `b931fcc338390925eb893d70ad070033f5856ccf` | MIT | `tree_sitter_scala` | `347ea9f62880b1a32a12bf58ae040f35c866996e80aff5bf28797fa9a40e034c` |
 | `scss` | P233/tree-sitter-scss | v1.0.1 | `ee500b9cae6e9a961fa41229ede4fb9fe56e5da3` | MIT | `tree_sitter_scss` | `387a4bbf7250521758ad51d51b8f7caf4edca409a0b8108bf1ba6d7b5fe9b34a` |
+| `solidity` | JoranHonig/tree-sitter-solidity | v1.2.9 | `bf268722bc6406429776f71f012e6d1a88801931` | MIT | `tree_sitter_solidity` | `b80c5822e79040b35002cc9afd6ac1d407ef6950afc29610ccf1dac0d077a45b` |
 | `sql` | DerekStride/tree-sitter-sql | v0.3.11 | `7b51ecda191d36b92f5a90a8d1bc3faef1c7b8b8` | MIT | `tree_sitter_sql` | `1fe13cb1e50dd9da9f22aed3cb9430fc9dae05a734a6049926fc12f6d8ecd3ae` |
 | `starlark` | tree-sitter-grammars/tree-sitter-starlark | v1.3.0 | `a453dbf3ba433db0e5ec621a38a7e59d72e4dc69` | MIT | `tree_sitter_starlark` | `31c58a540d738a17b366f2046da298b66dfa0695bcbfa207f61fa63cfe5c03ed` |
 | `svelte` | tree-sitter-grammars/tree-sitter-svelte | v1.0.2 | `774a65aea563accc35f5d45fafa4d96ec5761f57` | MIT | `tree_sitter_svelte` | `5fbca1c9857ea9af125ab43ea417b33e81b8268ef8003286bbd4fa9519bd4f23` |
@@ -108,6 +110,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `perl` | (root) | yes | 15 | 2,443,271 | 452,171 | `17bd1fc35b4f62cdaae9547a8bebcf15da3df00b0a72a49565028c2be38f1568` |
 | `php` | php | yes | 15 | 811,496 | 191,343 | `e74d8a8385c252d7d3ce19e47247e48cbee4af9f30e39a6cffe0abe583a55881` |
 | `powershell` | (root) | yes | 15 | 841,031 | 165,241 | `290c26ac0058dbc4eed6b79ef91031018fb5a892aa88b5a5b7e95beb9de01b46` |
+| `prisma` | (root) | no | 15 | 158,815 | 61,507 | `f872159aa5fab21950695da3f2fd87249244b749fb11fd7d9811fb909ff50009` |
 | `protobuf` | (root) | no | 15 | 204,748 | 68,444 | `4211503d39d2cf30cbace8441e7bcced6421eb98617db0be18cbf992c3f92999` |
 | `python` | (root) | yes | 15 | 539,848 | 123,581 | `ef1216ec19691690d3d237759d5ab8c3521e362423eef44f5e5234f7cb507ffc` |
 | `r` | (root) | yes | 14 | 573,742 | 107,258 | `7d41dc36c218d3e87d5a2c932a68fcabbd8dc4122ba480fc6172dda48c978dbb` |
@@ -115,6 +118,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `rust` | (root) | yes | 15 | 841,090 | 204,421 | `cf86df357ff237e6c95d24a5f5609e4f4cd45f1700d065ddae5d22099a99ee1c` |
 | `scala` | (root) | yes | 15 | 3,125,460 | 633,687 | `11e9d547bad1ccbb22ff7bcaa49097d83ad5a576090d29de018ad9e29fdbd298` |
 | `scss` | (root) | yes | 14 | 646,018 | 168,288 | `79723ff09561714719acd29ae3a833c5e620b54eaab15fb4a82b53a1d8b3fb7d` |
+| `solidity` | (root) | no | 14 | 353,063 | 104,112 | `f104916b6ca7e691568f47beec8227a40d2f1339e66bde42956000621f508ba7` |
 | `sql` | (root) | yes | 15 | 2,102,436 | 380,125 | `71d65822fb9af6262dcd4c3f9b54fd24d1b834609ecafd4d75e19ef8be71d4fc` |
 | `starlark` | (root) | yes | 14 | 433,933 | 107,943 | `41a5164b77fcaeb8a3ad61516f497d24ec8ce66bc6d1a67d88691a1cdb102c65` |
 | `svelte` | (root) | yes | 14 | 171,044 | 67,457 | `b3180077835cf81f8570e938c853ce6e41dae0e33892626bc9e7f47579de99b9` |
