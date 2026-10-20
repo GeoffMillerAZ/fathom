@@ -1841,6 +1841,11 @@ worktree and your scratch directory.
    better, even while its own row stays open for a higher target (D6, §1.5).
    `go run ./cmd/indexbench lang-next -all` prints exactly this. If blocked, stop and
    report `blocked: <ids>`.
+   A wave's new foundation rows live in `docs/plans/language-breadth.<wave>.md`, an ordinary
+   plan (no F.NN number) that `fathom verify` walks, `fathom plans archive` archives once
+   proven, and the support console reads with the main plan. A queue row's `depends_on` on
+   such a row uses the cross-plan form `language-breadth.<wave>.md#LB-F<n>`; F.1..F.73 stay
+   in `docs/plans/language-breadth.md`.
    *Amended 2026-09-29 (G2-6, `docs/plans/sdd-reconciler-v0.md`): deferred is not done.
    A `depends_on` row is met only when it is `[x]`; a `[-]` row no longer is. A deferred
    one (or one with no disposition) keeps the item blocked until it revives; a refused
