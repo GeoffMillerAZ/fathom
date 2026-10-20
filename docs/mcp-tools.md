@@ -91,7 +91,12 @@ needs them rebuilds them: seconds on a small service, a minute on a large one.
   `def` (with its signature) and `index_commit` from the symbol index, `partial` starting
   `call graph not built (cold)`, and `callers`, `callees` and `related_tests` as the string
   `not computed (cold graph)`, never an empty list. The build keeps running, so a later call answers
-  the full neighbourhood.
+  the full neighbourhood. A service with no build finished since the server started has an unknown
+  build time, taken as longer than the deadline, and its `partial` says so.
+- `symbol_context` resolves the name before it waits on a cold call graph, against the resident symbol
+  index or the store lookup `find_symbol` uses: a name with more than one definition answers its
+  candidates and a name with none answers `not_found` at once. Only a unique name waits for the graph.
+  While the symbol index is still loading, `not_found` carries no nearest names and its `hint` says so.
 - `search` with a `service` never waits for the symbol index: while it loads, the hits carry no
   `sym`/`kind` and `receipts_omitted` says why. A resident index is read in place.
 - `symbol_context` on a name nothing resolves answers `not_found: true` with the nearest names in
