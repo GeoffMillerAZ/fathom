@@ -110,6 +110,9 @@ const jgKeyVar = "FATHOM_TEST_JG_KEY"
 func jgOpen(t *testing.T, loaded config.Loaded, tr http.RoundTripper, disclose io.Writer) *decide.Ports {
 	t.Helper()
 	t.Setenv(jgKeyVar, "test-key-jg-not-a-real-key") // the adapter reads its key at ask time
+	// SR-58: every site may rule, so the badges below are the judged ones
+	// (the tests set FATHOM_HOME, whose calibration/ the port reads).
+	calibrateSites(t, decide.ReadingsDir(), "typesafe", "jev-test", decide.AllSites...)
 	ports, err := decide.Open(loaded.Config.Decide, nil, "", decide.NewRecorder(io.Discard, func() time.Time { return time.Unix(0, 0).UTC() }, "test"),
 		decide.WithHTTPClient(&http.Client{Transport: tr}), decide.WithDisclose(disclose), decide.WithUserConfig(loaded.UserPath),
 		decide.WithKeyIO(config.KeyIO{

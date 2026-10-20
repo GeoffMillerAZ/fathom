@@ -74,6 +74,8 @@ func askOutcome(errText, killSource string) (counted, miss bool) {
 		return true, false
 	case strings.Contains(errText, decision.ErrNoProvider.Error()):
 		return false, false
+	case strings.HasPrefix(errText, notCalibratedText):
+		return false, false // the calibration gate refused: the provider never saw it (SR-58)
 	}
 	return true, true
 }

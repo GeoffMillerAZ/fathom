@@ -79,6 +79,11 @@ type decisionRow struct {
 	// secret-shaped strings the request plan redacted from the request
 	// this row's question went out in. Omitted when none.
 	Redactions int `json:"redactions,omitempty"`
+	// DecidedBy (SR-58, additive, so no schema_version bump) is the
+	// deterministic tier that answered when the calibration gate refused
+	// the ask (a RecordError row whose error is a *NotCalibratedError):
+	// DeterministicToken(site). Omitted otherwise.
+	DecidedBy string `json:"decided_by,omitempty"`
 }
 
 // Recorder appends one JSONL row per answered decision.Question to an
@@ -367,6 +372,10 @@ func (r *Recorder) RecordError(site, provider, model string, questions int, late
 	defer r.mu.Unlock()
 
 	r.observeLocked(site, err.Error(), killSourceOf(err))
+	decidedBy := ""
+	if isNotCalibrated(err) {
+		decidedBy = DeterministicToken(site)
+	}
 	r.writeJSONLine(decisionRow{
 		SchemaVersion: decisionRecordSchemaVersion,
 		FathomVersion: r.fathomVersion,
@@ -380,6 +389,7 @@ func (r *Recorder) RecordError(site, provider, model string, questions int, late
 		Applied:       false,
 		KillSource:    killSourceOf(err),
 		ConsentLayer:  r.consentLayer,
+		DecidedBy:     decidedBy,
 	})
 }
 

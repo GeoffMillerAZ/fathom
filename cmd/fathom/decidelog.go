@@ -146,7 +146,11 @@ func cmdDecide(args []string, stdout, stderr io.Writer) int {
 	if len(args) > 0 && args[0] == "log" {
 		return cmdDecideLog(args[1:], stdout, stderr)
 	}
+	if len(args) > 0 && args[0] == "calibrate" {
+		return cmdDecideCalibrate(args[1:], stdout, stderr)
+	}
 	fmt.Fprintln(stderr, "usage: fathom decide log [--site S] [--page N] [--per-page N] [--readings DIR] [--call-log PATH] [--url U] [--json]")
+	fmt.Fprintln(stderr, "       fathom decide calibrate --provider none|llm|typesafe|openai [--sets DIR] [--out DIR]")
 	return 1
 }
 
@@ -208,5 +212,5 @@ func (decideRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Write
 
 func init() {
 	declareVerb(verb{Name: "decide", Group: "govern", Order: 130, Run: decideRunner{},
-		Summary: "The decision port: log [--site S] [--json] — the provider, its sites, the ruling log beside the call log and the latest calibration reading's table"})
+		Summary: "The decision port: log [--site S] [--json] — the provider, its sites, the ruling log beside the call log and the latest calibration reading's table; calibrate --provider X — re-grade every site against its calibration set and write one reading per site"})
 }

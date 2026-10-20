@@ -80,7 +80,7 @@ falsely.
 - [x] F-57: reconcile is triggered from the console fleet page (user-triggered, never scheduled) and drift renders there {id: SR-55, symbol: consoleReconcileAction, package: cmd/fathom, reachable_from: TestConsoleFleetReconcileTrigger}
 - [ ] (op) F-58: the stranger check is read on a clean machine and the plugin is published (the owner's Q4 call) {id: SR-56, oracle: lexical, path: docs/bench/readings/stranger-check.md, pattern: "^First proven answer in [0-5]:[0-5][0-9]"}
 - [ ] F-61: RT-99 and RT-107 land and RT-M1's seven days are read (owned by the responsible-tenant plan) {id: SR-57, oracle: lexical, path: docs/plans/responsible-tenant.md, pattern: "^- \[x\].*id: RT-107,", needs: "responsible-tenant.md#RT-107"}
-- [ ] F-69: every decision-port site outside certify is a proposal gated by a passing calibration and an A/B against the deterministic baseline; a site without both refuses to rule {id: SR-58, symbol: requireCalibratedSite, package: internal/decide, reachable_from: TestUncalibratedSiteRefusesToRule}
+- [x] F-69: every decision-port site outside certify is a proposal gated by a passing calibration and an A/B against the deterministic baseline; a site without both refuses to rule {id: SR-58, symbol: requireCalibratedSite, package: internal/decide, reachable_from: TestUncalibratedSiteRefusesToRule}
 
 ## Wave 4 — underused delivery (design §6)
 

@@ -41,7 +41,8 @@ func planPort(t *testing.T, user, project string, disclose, log io.Writer, fake 
 	rec := decide.NewRecorder(log, func() time.Time { return time.Unix(0, 0).UTC() }, "test")
 	ports, err := decide.Open(cfg, nil, "", rec,
 		decide.WithKeyIO(newKeyCounter(map[string]string{"FATHOM_TEST_JF21_KEY": testKey}).io()),
-		decide.WithHTTPClient(&http.Client{Transport: refuseTransport{}}), decide.WithDisclose(disclose), decide.WithUserConfig(""))
+		decide.WithHTTPClient(&http.Client{Transport: refuseTransport{}}), decide.WithDisclose(disclose), decide.WithUserConfig(""),
+		decide.CalibratedFor(t, "typesafe", "jev-test", append([]string{site}, decide.AllSites...)...))
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -145,7 +146,8 @@ func TestRequestPlanCarriesOnlyDeclaredSpansRedacted(t *testing.T) {
 		rec := decide.NewRecorder(&log, func() time.Time { return time.Unix(0, 0).UTC() }, "test")
 		ports, err := decide.Open(cfg, nil, "", rec,
 			decide.WithKeyIO(newKeyCounter(map[string]string{"FATHOM_TEST_JF21_KEY": testKey}).io()),
-			decide.WithHTTPClient(&http.Client{Transport: refuseTransport{}}), decide.WithDisclose(&disclose), decide.WithUserConfig(""))
+			decide.WithHTTPClient(&http.Client{Transport: refuseTransport{}}), decide.WithDisclose(&disclose), decide.WithUserConfig(""),
+			decide.CalibratedFor(t, "typesafe", "jev-test", decide.AllSites...))
 		if err != nil {
 			t.Fatalf("Open: %v", err)
 		}

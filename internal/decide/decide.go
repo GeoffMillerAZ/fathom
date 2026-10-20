@@ -52,6 +52,26 @@ type Ports struct {
 	// plan is the request plan every composed port asks through (I61);
 	// nil for provider none.
 	plan *requestPlanner
+	// readingsDir is where the calibration gate reads (SR-58,
+	// calibrated.go); grader is the open port without that gate, what
+	// `fathom decide calibrate` grades through (Grader).
+	readingsDir string
+	grader      decision.Decider
+}
+
+// Grader is the port without the calibration gate: what `fathom decide
+// calibrate` grades a site's calibration set through, never what a site
+// asks (a site asks Decider, which rules only when calibrated). It is
+// Decider for a port Open did not compose (provider none, a closed or
+// reopening port, a Ports built in code).
+func (p *Ports) Grader() decision.Decider {
+	if p == nil {
+		return nil
+	}
+	if p.grader != nil {
+		return p.grader
+	}
+	return p.Decider
 }
 
 // Site name constants for [decide] sites (ADR-044 decision 8, design doc
@@ -275,7 +295,10 @@ func Open(cfg config.Decide, lane func(profile string) (llmclient.LLMClient, err
 	rec.setConsentLayer(gate.ConsentLayer)
 	rec.judgeSites() // KS-12: the seeded rows' verdicts, at Open
 	live := newLiveGate(cfg, env, o, rec)
-	return &Ports{Decider: killable{inner: d, gate: live}, Cfg: cfg, Recorder: rec, Adapter: adapter, Gate: gate, degrade: obs, live: live, plan: plan}, nil
+	// SR-58: every site but certify asks through the calibration gate
+	// (calibrated.go); calibrate grades through the port without it.
+	return &Ports{Decider: killable{inner: propose(d, obs, o.readingsDir), gate: live}, Cfg: cfg, Recorder: rec, Adapter: adapter, Gate: gate, degrade: obs, live: live, plan: plan,
+		readingsDir: o.readingsDir, grader: killable{inner: d, gate: live}}, nil
 }
 
 // buildAdapter builds cfg's provider adapter: the llm lane (its model from

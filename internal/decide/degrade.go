@@ -41,6 +41,10 @@ type openOptions struct {
 	killFile   string
 	stat       func(string) (fs.FileInfo, error)
 	laneModel  func() string
+	// readingsDir is where the calibration gate reads its readings
+	// (calibrated.go): ReadingsDir() unless a test named another.
+	readingsDir string
+	readingsSet bool
 }
 
 // WithDisclose names where the degrade line goes (the process's stderr: the
@@ -93,6 +97,9 @@ func resolveOptions(opts []Option) openOptions {
 	}
 	if !o.userSet {
 		o.userConfig = config.DefaultUserPath()
+	}
+	if !o.readingsSet {
+		o.readingsDir = ReadingsDir()
 	}
 	o.killFile = KillFilePath()
 	return o
@@ -173,6 +180,8 @@ func degradeClass(err error) string {
 	var oae *openai.OpenAIError
 	var pre *planRefusedError
 	switch {
+	case isNotCalibrated(err):
+		return NotCalibratedClass // the calibration gate refused to ask (calibrated.go)
 	case errors.As(err, &pre):
 		return pre.class // the request plan sent nothing (requestplan.go)
 	case errors.Is(err, decision.ErrDeclined):
@@ -302,6 +311,7 @@ func (p *Ports) Gated(gate func(decision.Decider) decision.Decider) decision.Dec
 		p.degrade.mu.Unlock()
 		return decision.None{}
 	}
+	d = propose(d, p.degrade, p.readingsDir)
 	if p.live != nil {
 		// KS-2: every composed port re-checks the user's kill before each
 		// ask, the one serve-http gates at startup included.

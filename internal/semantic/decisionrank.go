@@ -66,6 +66,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/decide"
 	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
 )
 
@@ -304,7 +305,7 @@ func rerankWithinTiers(ctx context.Context, d decision.Decider, file, hunk strin
 				})
 			}
 			start := time.Now()
-			resp, err := d.Decide(rctx, req)
+			resp, err := d.Decide(decide.WithSite(rctx, decide.SiteObligationsRerank), req)
 			results[i] = rerankChunkResult{chunk: chunk, resp: resp, err: err, lat: time.Since(start)}
 		}(i, chunk)
 	}

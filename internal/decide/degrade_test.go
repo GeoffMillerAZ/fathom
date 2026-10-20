@@ -59,7 +59,8 @@ func TestDegradeLineOncePerSessionSiteAndClass(t *testing.T) {
 	cfg := config.Decide{Provider: "typesafe", APIKeyEnv: "FATHOM_TEST_JG3_KEY"}
 	ports, err := decide.Open(cfg, nil, "", nil,
 		decide.WithKeyIO(newKeyCounter(map[string]string{"FATHOM_TEST_JG3_KEY": testKey}).io()),
-		decide.WithHTTPClient(&http.Client{Transport: tr}), decide.WithDisclose(&disclose), decide.WithUserConfig(""))
+		decide.WithHTTPClient(&http.Client{Transport: tr}), decide.WithDisclose(&disclose), decide.WithUserConfig(""),
+		decide.CalibratedFor(t, "typesafe", "jev-latest", decide.AllSites...))
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}

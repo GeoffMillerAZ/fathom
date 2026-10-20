@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/decide"
 	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
 )
 
@@ -159,7 +160,7 @@ func PrefilterSections(ctx context.Context, d decision.Decider, threshold float6
 		}
 
 		callStart := time.Now()
-		resp, derr := d.Decide(ctx, buildPrefilterRequest(chunk))
+		resp, derr := d.Decide(decide.WithSite(ctx, decide.SiteCompilePrefilter), buildPrefilterRequest(chunk))
 		if derr != nil {
 			if errors.Is(derr, decision.ErrNoProvider) {
 				// "No provider configured" describes the Decider, not this
