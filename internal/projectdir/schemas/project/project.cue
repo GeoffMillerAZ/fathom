@@ -9,7 +9,7 @@
 //   packs, concerns         .fathom/concerns.cue
 //   bindings                .fathom/modules.cue    (schema/binding)
 //   guards, layer_rules     .fathom/guard.cue      (schema/guard)
-//   orientation             .fathom/pack.cue       (schema/techpack)
+//   orientation, generated  .fathom/pack.cue       (schema/techpack)
 //
 // Mapped by FILE NAME, not by key (flat content, retired by a later merge):
 // `.fathom/risk.cue` is a schema/risk #RiskTable and `.fathom/learning.cue`
@@ -19,7 +19,7 @@
 // internal/capability/capability_schema.cue and
 // internal/custodian/custodian_schema.cue (those files carry no package
 // and cannot be imported); the Go loaders there remain the stricter gate.
-// Keys the design adds later (exclude_packs, generated, formats) are added here with the change that defines their schema.
+// Keys the design adds later (exclude_packs, formats) are added here with the change that defines their schema.
 package project
 
 import (
@@ -44,6 +44,9 @@ import (
 	// with the project (schema/techpack). Orientation is the project's
 	// alone; a kit pack may not carry it.
 	orientation?: [...techpack.#Orientation]
+	// generated declares outputs produced from sources (the tech pack
+	// shape): integrity reads it before its same-directory heuristic.
+	generated?: [...techpack.#Generated]
 }
 
 #Budgets: {

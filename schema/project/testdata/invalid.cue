@@ -17,3 +17,8 @@ package project
 // bad3: #Project & {
 // 	concerns: c: check: kind: "nope"
 // }
+//
+// 4. A generated declaration with no source (the tech pack shape needs one):
+// bad4: #Project & {
+// 	generated: [{output: "ui/app.css", source: [], regenerate: "task ui:css"}]
+// }
