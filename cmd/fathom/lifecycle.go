@@ -198,6 +198,7 @@ type lifecycleStart struct {
 	ledger      string // "" = no ledger (HOME unresolvable): nothing recorded, breaker off
 	id          string
 	managed     bool
+	supervised  *bool // managed only: whether launchd/systemd runs it (O1363)
 	addr        string
 	pid         int
 	commit      string
@@ -305,6 +306,7 @@ func beginLifecycle(in lifecycleStart) lifecycleOutcome {
 	}
 	st := tenancy.NewLifecycleRow(tenancy.RowStart, in.now, in.pid, in.version)
 	st.BinaryCommit, st.Managed, st.PlistSchema, st.LedgerID = in.commit, in.managed, in.plistSchema, in.id
+	st.Supervised = in.supervised
 	st.Mode = tenancy.ModeNormal
 	if out.safe != nil {
 		st.Mode = tenancy.ModeSafe
