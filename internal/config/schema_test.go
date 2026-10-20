@@ -177,6 +177,14 @@ bad40: #Config & {
 bad41: #Config & {
 	readouts: rules: "ls-long": trust: true
 }`},
+		{"[readouts] quiet_prefixes with an empty entry (RO-28)", `
+bad43: #Config & {
+	readouts: quiet_prefixes: [""]
+}`},
+		{"[readouts] quiet_prefixes that is not a list of strings", `
+bad44: #Config & {
+	readouts: quiet_prefixes: "nvm"
+}`},
 		{"[decide] enabled is not a bool (KS-3)", `
 bad33: #Config & {
 	decide: enabled: "no"

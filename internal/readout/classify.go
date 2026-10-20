@@ -2,6 +2,7 @@ package readout
 
 import (
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -30,37 +31,176 @@ type shape struct {
 	// declared: the caller's test-run matcher (TR-1) says the command runs
 	// a declared test command (Input.DeclaredTest).
 	declared bool
+	// quiet are the leading `&&`-joined quiet segments read past before the
+	// command was shaped (stripQuietPrefix, RO-28); their own output lines
+	// lead stdout and are kept verbatim (quietOutput).
+	quiet []shellcmd.Pipeline
 }
 
-// quietPrefixes are the commands an after_quiet producer may follow.
+// QuietHeads is the quiet list as a reading names it, in the order isQuiet
+// tests it; the user's [readouts] quiet_prefixes follow it.
+func QuietHeads() []string {
+	return []string{"cd", "export", "mkdir -p", "sleep N", "(assignment)", "set", "source", ".", "tccutil reset"}
+}
+
+// IsQuiet reports whether a unit is a quiet segment's command (QuietHeads,
+// then extra): a simple command with no redirect and no wrapper that prints
+// nothing on success but what quietOutput recognizes. extra are the user's
+// [readouts] quiet_prefixes, each a command name or its leading words.
+func IsQuiet(u *shellcmd.Unit, extra []string) bool {
+	return isQuiet(u, extra)
+}
+
 func isQuiet(u *shellcmd.Unit, extra []string) bool {
 	if u.Kind != shellcmd.KindSimple || len(u.Redirects) > 0 || len(u.Wrappers) > 0 {
 		return false
 	}
+	if len(u.Words) == 0 {
+		return len(u.Env) > 0 // an assignment alone
+	}
 	args := u.Args()
 	switch u.Name() {
-	case "cd", "export":
+	case "cd", "export", "source", ".":
 		return true
 	case "mkdir":
-		for _, a := range args[1:] {
-			if a == "-p" {
-				return true
-			}
-		}
-		return false
+		return hasOption(args[1:], 'p', "--parents")
 	case "sleep":
 		if len(args) != 2 {
 			return false
 		}
 		_, err := strconv.ParseFloat(args[1], 64)
 		return err == nil
+	case "set":
+		// set alone prints every variable; with an option it prints nothing.
+		return len(args) > 1 && (strings.HasPrefix(args[1], "-") || strings.HasPrefix(args[1], "+"))
+	case "tccutil":
+		return len(args) > 1 && args[1] == "reset"
 	}
 	for _, q := range extra {
-		if u.Name() == q {
+		ws := strings.Fields(q)
+		if len(ws) == 0 || len(ws) > len(args) || u.Name() != ws[0] {
+			continue
+		}
+		if slices.Equal(args[1:len(ws)], ws[1:]) {
 			return true
 		}
 	}
 	return false
+}
+
+// hasOption reports whether args carry the short option ch, alone or in a
+// cluster, or the long one ("" for none), before `--`.
+func hasOption(args []string, ch rune, long string) bool {
+	for _, a := range args {
+		switch {
+		case a == "--":
+			return false
+		case long != "" && a == long:
+			return true
+		case len(a) > 1 && a[0] == '-' && a[1] != '-' && strings.ContainsRune(a[1:], ch):
+			return true
+		}
+	}
+	return false
+}
+
+// stripQuietPrefix splits a readable command at its leading quiet segments
+// (RO-28): each one quiet unit (isQuiet), not negated, joined to the next by
+// `&&`; the last segment is never stripped. A `;`, `||` or newline, a
+// non-quiet segment, a redirect or a wrapper ends the prefix. quiet is nil
+// when nothing is stripped; rest is the command read from there on.
+func stripQuietPrefix(c *shellcmd.Command, extra []string) (quiet, rest []shellcmd.Pipeline) {
+	ps := c.Pipelines
+	if c.Unreadable {
+		return nil, ps
+	}
+	n := 0
+	for n < len(ps)-1 {
+		p := &ps[n]
+		if len(p.Units) != 1 || p.Bang || p.Sep != "&&" || !isQuiet(&p.Units[0], extra) {
+			break
+		}
+		n++
+	}
+	if n == 0 {
+		return nil, ps
+	}
+	return ps[:n], ps[n:]
+}
+
+// xtraceLine is a set -x trace: one or more `+`, then a space.
+var xtraceLine = regexp.MustCompile(`^\++ `)
+
+// quietOutput splits stdout after the quiet segments' own lines: the
+// leading run of lines one of them prints on success. A quiet head prints
+// nothing but these: an xtrace line once a `set` turns on -x (in stdout
+// only when stderr joins it), a directory `mkdir -v` created (the GNU and
+// BSD forms), the directory `cd -` or a CDPATH hit echoes, and tccutil
+// reset's line. Every other line is the producer's.
+func quietOutput(quiet []shellcmd.Pipeline, stdout string) (head, rest string) {
+	if len(quiet) == 0 {
+		return "", stdout
+	}
+	xtrace, tcc := false, false
+	var mkdirs, cds []string
+	for i := range quiet {
+		u := &quiet[i].Units[0]
+		args := u.Args()
+		switch u.Name() {
+		case "set":
+			for j, a := range args[1:] {
+				if hasOption([]string{a}, 'x', "") || (a == "-o" && j+2 < len(args) && args[j+2] == "xtrace") {
+					xtrace = true
+				}
+			}
+		case "mkdir":
+			if hasOption(args[1:], 'v', "--verbose") {
+				for _, a := range args[1:] {
+					if !strings.HasPrefix(a, "-") {
+						mkdirs = append(mkdirs, strings.TrimSuffix(a, "/"))
+					}
+				}
+			}
+		case "cd":
+			if len(args) > 1 {
+				cds = append(cds, strings.TrimSuffix(args[len(args)-1], "/"))
+			}
+		case "tccutil":
+			tcc = true
+		}
+	}
+	quietLine := func(l string) bool {
+		if xtrace && xtraceLine.MatchString(l) {
+			return true
+		}
+		if tcc && strings.HasPrefix(l, "Successfully reset") {
+			return true
+		}
+		for _, d := range cds {
+			// cd - echoes the directory; a CDPATH hit echoes where it went.
+			if strings.HasPrefix(l, "/") && (d == "-" || (!strings.HasPrefix(d, "/") && !strings.HasPrefix(d, ".") && strings.HasSuffix(l, "/"+d))) {
+				return true
+			}
+		}
+		for _, d := range mkdirs {
+			if strings.HasPrefix(l, "mkdir: created directory ") || l == d || strings.HasPrefix(d, l+"/") {
+				return true
+			}
+		}
+		return false
+	}
+	at := 0
+	for at < len(stdout) {
+		line, next := stdout[at:], len(stdout)
+		if end := strings.IndexByte(line, '\n'); end >= 0 {
+			line, next = line[:end], at+end+1
+		}
+		if !quietLine(line) {
+			break
+		}
+		at = next
+	}
+	return stdout[:at], stdout[at:]
 }
 
 // displayOnly reports whether a piped-into unit only shows its input: head,
@@ -136,7 +276,8 @@ func hasMachineFlag(u *shellcmd.Unit) string {
 	return ""
 }
 
-// classifyCommand reads the shape of a lexed command.
+// classifyCommand reads the shape of a lexed command: past its leading
+// `&&`-joined quiet segments (stripQuietPrefix, RO-28), by what remains.
 func classifyCommand(c *shellcmd.Command, quiet []string) shape {
 	ps := c.Pipelines
 	if len(ps) == 0 {
@@ -147,8 +288,9 @@ func classifyCommand(c *shellcmd.Command, quiet []string) shape {
 			return shape{machine: "background job"}
 		}
 	}
+	pre, ps := stripQuietPrefix(c, quiet)
 	last := len(ps) - 1
-	sh := shape{compound: CompoundSimple}
+	sh := shape{compound: CompoundSimple, quiet: pre}
 	if last > 0 {
 		sh.compound = CompoundAfterQuiet
 		for _, p := range ps[:last] {

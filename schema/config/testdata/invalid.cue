@@ -275,3 +275,9 @@ package config
 // bad41: #Config & {
 // 	readouts: rules: "ls-long": trust: true
 // }
+// bad43: #Config & {
+// 	readouts: quiet_prefixes: [""]
+// }
+// bad44: #Config & {
+// 	readouts: quiet_prefixes: "nvm"
+// }

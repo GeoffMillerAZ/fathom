@@ -153,6 +153,7 @@ func cmdReadoutHook(args []string, stdin io.Reader, stdout, stderr io.Writer) (c
 		Interrupted: in.Shell.Interrupted,
 		Persisted:   in.Shell.Persisted,
 		Mode:        readout.ModeObserve,
+		Quiet:       cfg.QuietPrefixes,
 	}
 	if readoutMayMatch(&cmd, in) {
 		rin.DeclaredTest = readoutDeclaredTest(eventProjectDir(codec, in), in.Command)

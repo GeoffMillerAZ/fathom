@@ -14,7 +14,7 @@ import (
 // TestCmdReadoutReplayFillsDeclaredTestAndTheOutlineJoin: replay fills what
 // the built-ins read: TR-1's declared-test answer from the call's cwd when it
 // exists (else the built-in runner list alone), so `go test ./...` hits
-// go-test as matched and, after `cd <dir> &&`, as projected, and a declared
+// go-test as matched and projected, after `cd <dir> &&` too (RO-28), and a declared
 // `task test` hits it as matched; the persisted text (a miss counted); HEAD's
 // stamp, always missed for a past call; and the outline, computed for a
 // whole-file read and left raw for a file the session edited earlier.
@@ -77,8 +77,8 @@ func TestCmdReadoutReplayFillsDeclaredTestAndTheOutlineJoin(t *testing.T) {
 	for _, r := range rep.Rules {
 		byRule[r.Rule] = r
 	}
-	if g := byRule["go-test@1"]; g.AsMatched.Hits != 3 || g.Projected.Hits != 4 {
-		t.Errorf("go-test hits as matched %d, projected %d; want 3 (plain, declared, built-in runner) and 4 (after cd too)", g.AsMatched.Hits, g.Projected.Hits)
+	if g := byRule["go-test@1"]; g.AsMatched.Hits != 4 || g.Projected.Hits != 4 {
+		t.Errorf("go-test hits as matched %d, projected %d; want 4 in both (plain, declared, built-in runner, after cd)", g.AsMatched.Hits, g.Projected.Hits)
 	}
 	ro := byRule["read-outline@1"].AsMatched
 	if ro.Hits != 2 || ro.Served != 1 || ro.Raw["edited"] != 1 || ro.WouldRemove <= 0 {

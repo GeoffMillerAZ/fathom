@@ -230,11 +230,12 @@ func TestCmdReadoutReplayPrintsAggregatesOnly(t *testing.T) {
 	for _, r := range rep.Rules {
 		byRule[r.Rule] = r
 	}
+	// The grep after tccutil reset is read in both views (RO-28): one
+	// served hit is referenced by the next call.
 	g := byRule["grep-skip-tests@1"].AsMatched
-	if g.Hits != 1 || g.Served != 1 || g.WouldRemove <= 0 || g.Reference.Of != 1 || g.Reference.Referenced != 1 || g.UnscopedTrips != 1 || g.Trips.Content != 0 {
-		t.Errorf("grep rule as matched = %+v, want 1 served hit referenced by the next call and 1 unscoped trip", g)
+	if g.Hits != 2 || g.Served != 2 || g.WouldRemove <= 0 || g.Reference.Of != 2 || g.Reference.Referenced != 1 || g.UnscopedTrips != 2 || g.Trips.Content != 0 {
+		t.Errorf("grep rule as matched = %+v, want 2 served hits, 1 referenced, 2 unscoped trips", g)
 	}
-	// Projected, the grep after tccutil reset is read too.
 	if gp := byRule["grep-skip-tests@1"].Projected; gp.Hits != 2 || gp.Served != 2 || gp.Reference.Of != 2 || gp.Reference.Referenced != 1 || gp.UnscopedTrips != 2 {
 		t.Errorf("grep rule projected = %+v, want 2 served hits, 1 referenced, 2 unscoped trips", gp)
 	}
@@ -475,8 +476,8 @@ func TestCmdReadoutReplayProjectsQuietPrefixes(t *testing.T) {
 		byRule[r.Rule] = r
 	}
 	g := byRule["grep-skip-tests@1"]
-	if g.AsMatched.Hits != 0 || g.AsMatched.Served != 0 || g.AsMatched.WouldRemove != 0 || g.AsMatched.Share != 0 {
-		t.Errorf("grep as matched = %+v, want no hit (tccutil reset is not a quiet prefix to the engine)", g.AsMatched)
+	if g.AsMatched.Hits != 1 || g.AsMatched.Served != 1 || g.AsMatched.WouldRemove != g.Projected.WouldRemove {
+		t.Errorf("grep as matched = %+v, want the projected hit (tccutil reset && is a quiet prefix to the engine, RO-28)", g.AsMatched)
 	}
 	if gp := g.Projected; gp.Hits != 1 || gp.Served != 1 || gp.BytesIn != int64(grepOut.Len()) || gp.WouldRemove <= 0 || gp.Share <= 0 || gp.Reference.Of != 1 || gp.UnscopedTrips != 1 {
 		t.Errorf("grep projected = %+v, want the one served hit after tccutil reset", gp)
