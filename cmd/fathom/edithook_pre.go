@@ -98,6 +98,10 @@ func cmdEditHookPreFile(codec harness.Codec, filePath, cwd, sessionID, newConten
 		}
 	}
 
+	// FD-22: the session's previous generated line is read against this edit
+	// before a new one can be served.
+	resolveGeneratedNextEdit(sessionID, projDir, filePath)
+
 	// decode → payload → encode (HP-6): the guard payload is harness-free
 	// text; only the envelope around it belongs to the codec.
 	res, ok := renderPreEdit(url, projDir, filePath, sessionID)
@@ -119,6 +123,7 @@ func cmdEditHookPreFile(codec harness.Codec, filePath, cwd, sessionID, newConten
 		return 0 // a codec that cannot answer is silence (§5.3)
 	}
 	emitBeat("edit-hook", "answered", firingMeta(withDestination(map[string]string{"emitted": "true", "phase": "pre", "target": "file"}, projDir, filePath), sessionID, filePath))
+	recordGeneratedServed(sessionID, res.repoRelFile, res.generated)
 	fmt.Fprintln(stdout, string(out))
 	return 0
 }
@@ -131,6 +136,8 @@ type preEditResult struct {
 	svcName     string
 	repoRelFile string
 	indexStale  bool
+	// generated is the generated-file line served, when one was (FD-22).
+	generated *generatedServe
 }
 
 // renderPreEdit builds the PreToolUse guard payload for one file as
@@ -149,6 +156,11 @@ func renderPreEdit(url, projDir, filePath, sessionID string) (preEditResult, boo
 		emitBeat("edit-hook", "answered", firingMeta(withDestination(silentAnswerMeta(map[string]string{"phase": "pre", "target": "file"}, silenceCapabilityOff), projDir, filePath), sessionID, filePath))
 		return preEditResult{}, false
 	}
+
+	// FD-14/FD-15: discovered tech packs' lines and a generated-file line,
+	// served below the repository's own rules. Empty for a repository with
+	// no pack and no declaration.
+	packRel, packGroups, packGen := packExtras(projDir, filePath)
 
 	// LOCAL fast path — no daemon call yet. serviceCandidates is pure
 	// path math; loadGuardSet reads one local file per candidate.
@@ -189,6 +201,20 @@ func renderPreEdit(url, projDir, filePath, sessionID string) (preEditResult, boo
 	ruleCap := guard.MaxRules
 	if len(intentLines) > 0 {
 		ruleCap = intentRuleCap(guard.MaxRules, len(intentLines))
+	}
+	if !matched && len(packGroups) > 0 {
+		// Only packs (or a generated declaration) speak: no repository guard
+		// names the file, so there is no daemon call either.
+		bullets, displaced := fitPackLines(packGroups, packSlotsLeft(0, 0))
+		var sb strings.Builder
+		fmt.Fprintf(&sb, "⚖️ fathom guard — %s:", packRel)
+		for _, b := range bullets {
+			sb.WriteString("\n" + b)
+		}
+		if len(displaced) > 0 {
+			sb.WriteString("\n⚠️ " + displacedLine(0, displaced))
+		}
+		return preEditResult{text: sb.String(), repoRelFile: packRel, generated: packGen}, true
 	}
 	if !matched {
 		// EW-55 / R-b: the gitignore skip applies only when no guard names
@@ -329,6 +355,13 @@ func renderPreEdit(url, projDir, filePath, sessionID string) (preEditResult, boo
 		writeHeaderIfNeeded()
 		writeStaleRulesBlock(&sb, stale, svcName)
 	}
+	// FD-14: tech pack lines come last of the rules, inside the slots I35
+	// leaves, and never gate.
+	packBullets, packDisplaced := fitPackLines(packGroups, packSlotsLeft(len(intentLines), len(displayed)))
+	for _, b := range packBullets {
+		writeHeaderIfNeeded()
+		sb.WriteString("\n" + b)
+	}
 	// Critic finding 7 (phase-O merge): include_modules:false was the
 	// design's one SILENT suppression — module rules are fetched
 	// (consuming the shared server-side budget) then dropped with no
@@ -338,9 +371,9 @@ func renderPreEdit(url, projDir, filePath, sessionID string) (preEditResult, boo
 		writeHeaderIfNeeded()
 		fmt.Fprintf(&sb, "\n⚠️ %d module rule(s) hidden (include_modules:false)", hiddenModuleRules)
 	}
-	if obl.Displaced > 0 {
+	if obl.Displaced > 0 || len(packDisplaced) > 0 {
 		writeHeaderIfNeeded()
-		fmt.Fprintf(&sb, "\n⚠️ %d more eligible rule(s) not shown (cap)", obl.Displaced)
+		sb.WriteString("\n⚠️ " + displacedLine(obl.Displaced, packDisplaced))
 	}
 	if staleLine != "" {
 		writeHeaderIfNeeded()
@@ -390,6 +423,7 @@ func renderPreEdit(url, projDir, filePath, sessionID string) (preEditResult, boo
 		svcName:     svcName,
 		repoRelFile: repoRelFile,
 		indexStale:  indexStale,
+		generated:   servedGenerated(packBullets, packGen),
 	}, true
 }
 

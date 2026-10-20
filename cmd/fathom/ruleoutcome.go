@@ -111,6 +111,12 @@ type ruleOutcomeEvent struct {
 	// neither (e.g. a claim verdict recorded outside any live edit).
 	Session string `json:"session,omitempty"`
 	File    string `json:"file,omitempty"`
+	// Output and Sources are additive (FD-22): a served generated line
+	// names the output it was served for and the sources it pointed at, so
+	// the session's next edit can be read against them. Absent on every
+	// other row.
+	Output  string   `json:"output,omitempty"`
+	Sources []string `json:"sources,omitempty"`
 }
 
 // recordRuleOutcome appends one signal-log row for ruleID's event. Both
@@ -124,6 +130,12 @@ type ruleOutcomeEvent struct {
 // silent-failure discipline emitBeat already established
 // (cmd/fathom/beats.go).
 func recordRuleOutcome(ruleID, event, session, file string) {
+	appendRuleOutcome(ruleOutcomeEvent{RuleID: ruleID, Event: event, Session: session, File: file})
+}
+
+// appendRuleOutcome stamps and appends one row; recordRuleOutcome's body.
+func appendRuleOutcome(entry ruleOutcomeEvent) {
+	ruleID, event := entry.RuleID, entry.Event
 	if ruleID == "" || event == "" {
 		return
 	}
@@ -140,15 +152,9 @@ func recordRuleOutcome(ruleID, event, session, file string) {
 		return
 	}
 	defer f.Close()
-	entry := ruleOutcomeEvent{
-		SchemaVersion: ruleOutcomeSchemaVersion,
-		FathomVersion: buildinfo.Version(),
-		TS:            ruleOutcomeNow().UTC().Format(time.RFC3339Nano),
-		RuleID:        ruleID,
-		Event:         event,
-		Session:       session,
-		File:          file,
-	}
+	entry.SchemaVersion = ruleOutcomeSchemaVersion
+	entry.FathomVersion = buildinfo.Version()
+	entry.TS = ruleOutcomeNow().UTC().Format(time.RFC3339Nano)
 	b, err := json.Marshal(entry)
 	if err != nil {
 		return
