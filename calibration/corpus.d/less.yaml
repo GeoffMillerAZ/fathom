@@ -1,0 +1,30 @@
+id: less
+language: Less
+# The queue's two subjects, pinned for the parse-error gate (§14.2) that refused the item in wave lang5
+# (O1388, LB-Q-less-rest): every .less file of each checkout, as cloned (98 and 48 files). Semantic UI's
+# theme layer writes `.variables` and `.overrides` files, which no extension rule here classifies, so
+# the 48 `.less` files are its definitions.
+repos:
+  - name: twbs/bootstrap
+    url: https://github.com/twbs/bootstrap
+    ref: v3.4.1
+    sha: 68b0d231a13201eb14acd3dc84e51543d16e5f7e
+    licence: MIT
+    idioms:
+      - "`less/mixins/*.less` libraries (`.clearfix()`, `.button-variant()`, `.make-grid-columns()`) called
+        as `.mixin(args);` statements"
+      - "`@variable: value;` configuration in `variables.less` and `@{var}` interpolation in selectors
+        and property names"
+      - "parametric mixins with guards (`when (iscolor(@c))`), `;`-separated parameters and `@arguments`"
+      - "`@import \"mixins/foo.less\";` joining the partials into `bootstrap.less`"
+  - name: Semantic-Org/Semantic-UI
+    url: https://github.com/Semantic-Org/Semantic-UI
+    ref: master
+    sha: 597843ab84d565cccfd8fd7719416350ae73e734
+    licence: MIT
+    idioms:
+      - "one component per `src/definitions/<group>/<name>.less`, each importing `../../theme.config` with
+        `@import (multiple)` and closing with a bare `.loadUIOverrides();` mixin call"
+      - "`@variable : value;` declarations (a space before the colon) and `@{variable}` interpolation"
+      - "`.loadFonts()`-style mixins from the theme loader and detached-ruleset arguments"
+      - "`e(%(\"%d\", @n))` and `~\"...\"` escapes in values"
