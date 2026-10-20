@@ -271,5 +271,6 @@ exampleReadouts: #Config & {
 		roots: ["/work/waves"]
 		quiet_prefixes: ["nvm", "direnv exec"]
 		rules: "ls-long": mode: "lean"
+		trust: ["0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"]
 	}
 }

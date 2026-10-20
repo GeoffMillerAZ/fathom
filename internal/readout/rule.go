@@ -22,6 +22,9 @@ type Rule struct {
 	Source string `toml:"-"`
 	// loss is Lossiness(Stages), computed at load.
 	loss LossClass
+	// untrusted marks a repository rule whose file the user has not trusted
+	// (RO-33): Render serves it in observe whatever the mode.
+	untrusted bool
 }
 
 // Ref is the rule's `id@version`, as the receipt and the hook row carry it.

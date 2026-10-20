@@ -185,6 +185,14 @@ bad43: #Config & {
 bad44: #Config & {
 	readouts: quiet_prefixes: "nvm"
 }`},
+		{"[readouts] trust entry is not a sha256 (RO-33)", `
+bad45: #Config & {
+	readouts: trust: ["not-a-hash"]
+}`},
+		{"[readouts] trust entry is not a string (RO-33)", `
+bad46: #Config & {
+	readouts: trust: [true]
+}`},
 		{"[decide] enabled is not a bool (KS-3)", `
 bad33: #Config & {
 	decide: enabled: "no"

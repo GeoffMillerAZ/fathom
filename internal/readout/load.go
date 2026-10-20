@@ -42,6 +42,9 @@ const (
 type RuleSet struct {
 	Rules   []*Rule
 	Refused []Refusal
+	// Repo is the repository's .fathom/readouts.toml, when LoadRepoRules
+	// found one (RO-33); nil otherwise.
+	Repo *RepoFile
 }
 
 // Refusal is a rule, or a whole file, that is not served, and why.

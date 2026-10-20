@@ -213,6 +213,7 @@ an array of tables, and `tenancy.**` for every key under `[tenancy]`.
 | `readouts.quiet_prefixes` | user-only | the user's own switch for rewriting what a tool result shows the agent; a cloned repository must not turn it on: the extra commands a readout reads a command past |
 | `readouts.roots` | user-only | the user's own switch for rewriting what a tool result shows the agent; a cloned repository must not turn it on: the directory prefixes the modes apply under |
 | `readouts.rules.*.mode` | user-only | the user's own switch for rewriting what a tool result shows the agent; a cloned repository must not turn it on: one rule's mode |
+| `readouts.trust` | user-only | the user's own switch for rewriting what a tool result shows the agent; a cloned repository must not turn it on: the sha256 of each repository readout-rule file the user trusts (RO-33) |
 | `receipts.repository_uri` | behaviour | a URI SARIF's versionControlProvenance names; fathom never derives one from a git remote (ADR-011) |
 | `risk.blast_radius_high_callers` | behaviour | a threshold (the review risk table) |
 | `risk.zone_interest_medium_rate` | behaviour | a threshold (the review risk table) |
@@ -1505,6 +1506,7 @@ The keys of ADR-071's readout hook (`docs/design/readouts.md`); unset, the mode 
 mode  = "observe"              # off (default) | observe | lean | rich
 roots = ["/work/waves"]        # directory prefixes the modes apply under; every root when unset
 quiet_prefixes = ["nvm"]       # extra commands a readout reads a command past, beside cd, export, mkdir -p and the rest
+trust = []                     # sha256 of each repository .fathom/readouts.toml you trust (see Repository rules)
 
 [readouts.rules.ls-long]
 mode = "lean"                  # one rule's mode
@@ -1537,6 +1539,13 @@ What the hook does today, once `mode` is set and not `off`:
   wrapper, the rules read the last segment, and the lines those steps print (a `set -x` trace, `mkdir -v`'s
   directories, `cd -`'s echo) stay verbatim ahead of the rule's view. A `;`, `||` or newline, or any other leading
   command, leaves the command read whole.
+- **Repository rules.** A repository's `.fathom/readouts.toml` (the same format as the user file) loads after the user
+  scope and under it: a user or built-in rule wins every conflict, and a repository rule never takes an id they hold.
+  It may extract records and add lines (`extract` and `join` stages) and nothing else; a rule with any other stage
+  (`drop`, `group`, `keep`, `cap` and the rest) is refused at load and named by doctor, and the rest of the file still
+  loads. Its rules run in observe (logged, emit nothing) until the user lists the file's sha256 in `[readouts] trust`
+  (user-only; get it with `shasum -a 256 .fathom/readouts.toml`). Editing the file changes the hash, so it falls back
+  to observe and doctor names it: path, current sha256, `not trusted`. No file is silent.
 - Any error (an unparseable envelope, a config that does not load, a panic) exits 0 with nothing emitted and no row;
   `FATHOM_CHANNELS=off` silences it like every hook. A run past the 1 s internal ceiling says `ceiling` in its row.
 

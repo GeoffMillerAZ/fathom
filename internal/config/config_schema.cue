@@ -392,6 +392,9 @@ package config
 	rules?: [string]: {
 		mode?: #ReadoutMode
 	}
+	// trust: the sha256 (lowercase hex) of each repository
+	// `.fathom/readouts.toml` the user trusts (RO-33). User-only.
+	trust?: [...(string & =~"^[0-9a-f]{64}$")]
 }
 
 #ReadoutMode: "off" | "observe" | "lean" | "rich"

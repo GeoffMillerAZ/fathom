@@ -28,6 +28,10 @@ type File string
 const (
 	// Config holds the repository's parameters (TOML).
 	Config File = "config.toml"
+	// Readouts holds the repository's add-only readout rules (TOML, the
+	// user readouts.toml format; RO-33, docs/design/readouts.md section 11):
+	// read by internal/readout, inert until the user trusts its sha256.
+	Readouts File = "readouts.toml"
 	// Capabilities is the capability switchboard.
 	Capabilities File = "capabilities.cue"
 	// Modules holds the platform-module bindings.

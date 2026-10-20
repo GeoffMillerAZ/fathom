@@ -123,6 +123,7 @@ var fieldScopes = []FieldScope{
 	{"readouts.quiet_prefixes", ScopeUserOnly, whyReadouts + ": the extra commands a readout reads a command past"},
 	{"readouts.roots", ScopeUserOnly, whyReadouts + ": the directory prefixes the modes apply under"},
 	{"readouts.rules.*.mode", ScopeUserOnly, whyReadouts + ": one rule's mode"},
+	{"readouts.trust", ScopeUserOnly, whyReadouts + ": the sha256 of each repository readout-rule file the user trusts (RO-33)"},
 	{"receipts.repository_uri", ScopeBehaviour, "a URI SARIF's versionControlProvenance names; fathom never derives one from a git remote (ADR-011)"},
 	{"risk.blast_radius_high_callers", ScopeBehaviour, "a threshold (the review risk table)"},
 	{"risk.zone_interest_medium_rate", ScopeBehaviour, "a threshold (the review risk table)"},

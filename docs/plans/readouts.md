@@ -128,7 +128,7 @@ provider answers. Kill: RJ-M1 TABLE defers RO-32 and NO-BAND refuses it in the s
 Start: the owner accepts ADR-061 and FD-1 to FD-6 are proven (`docs/plans/fathom-dir.md`). Kill: a repository rule
 that drops or replaces a line is a defect that blocks the scope.
 
-- [ ] A repository's `.fathom/readouts.toml` loads after user scope, may extract records and add lines but never drop or replace one, and runs in observe until the user lists its sha256 under `[readouts] trust` (a user-only sha256 list added in this row); a changed file falls back to observe and doctor names it {id: RO-33, symbol: loadRepoRules, package: internal/readout, reachable_from: TestRepoRuleCannotDropAndStaysObserveUntilTrusted}
+- [x] A repository's `.fathom/readouts.toml` loads after user scope, may extract records and add lines but never drop or replace one, and runs in observe until the user lists its sha256 under `[readouts] trust` (a user-only sha256 list added in this row); a changed file falls back to observe and doctor names it {id: RO-33, symbol: loadRepoRules, package: internal/readout, reachable_from: TestRepoRuleCannotDropAndStaysObserveUntilTrusted}
 - [ ] A tech pack's `readouts` key (a new `#Pack` key, no format version, F62's rule) loads as repository scope with the same add-only limit and the pack's own fixtures {id: RO-34, symbol: packReadoutRules, package: internal/readout, reachable_from: TestPackReadoutRulesAreAddOnly, needs: "RO-33"}
 
 ## Interception seams (design §20)
