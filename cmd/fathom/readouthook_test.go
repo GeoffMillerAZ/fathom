@@ -49,6 +49,15 @@ func readoutHookEnv(t *testing.T, cfg string) string {
 	origBudget := readoutJoinBudget
 	readoutJoinBudget = time.Minute
 	t.Cleanup(func() { readoutJoinBudget = origBudget })
+	// The hook's 1 s ceiling is wall clock too: a race build on a contended
+	// runner spends it loading the rules alone and rich mode adds no line
+	// (Linux CI, and the same tests at a commit CI passed, under local
+	// contention). These tests pin what the hook says on a frozen clock;
+	// TestReadoutRichPastTheCeilingAddsNothing drives the ceiling itself.
+	origClock := readoutHookClock
+	frozen := time.Now()
+	readoutHookClock = func() time.Time { return frozen }
+	t.Cleanup(func() { readoutHookClock = origClock })
 	home := t.TempDir()
 	fh := filepath.Join(home, ".fathom")
 	if err := os.MkdirAll(fh, 0o755); err != nil {

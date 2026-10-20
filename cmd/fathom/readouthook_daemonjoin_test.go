@@ -30,14 +30,15 @@ func joinRPCText(w http.ResponseWriter, payload any) {
 // joinDaemon resolves repo to its service over GET /identity and answers
 // find_symbol (Bar is defined at lib/bar.go:12) and blast_radius (three
 // tests, one a benchmark). A slow daemon holds every /rpc call until the
-// caller gives up.
-func joinDaemon(t *testing.T, repo string, slow bool) *httptest.Server {
+// caller gives up and sends how long it held it on held.
+func joinDaemon(t *testing.T, repo string, slow bool) (srv *httptest.Server, held <-chan time.Duration) {
 	t.Helper()
 	name := strings.ToLower(filepath.Base(repo))
 	ident := handleIdentity(func(*http.Request) (map[string]svcInfo, error) {
 		return map[string]svcInfo{name: {symbols: 42, langs: "go", path: repo}}, nil
 	})
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	heldc := make(chan time.Duration, 8)
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/identity" {
 			ident.ServeHTTP(w, r)
 			return
@@ -45,9 +46,14 @@ func joinDaemon(t *testing.T, repo string, slow bool) *httptest.Server {
 		if slow {
 			// The server sees the client leave only once the body is read.
 			_, _ = io.Copy(io.Discard, r.Body)
+			began := time.Now()
 			select {
 			case <-r.Context().Done():
 			case <-time.After(10 * time.Second):
+			}
+			select {
+			case heldc <- time.Since(began):
+			default:
 			}
 			return
 		}
@@ -75,17 +81,15 @@ func joinDaemon(t *testing.T, repo string, slow bool) *httptest.Server {
 		}
 	}))
 	t.Cleanup(srv.Close)
-	return srv
+	return srv, heldc
 }
 
 // joinRichLines runs the readout hook in rich mode over a failing go build
-// in repo and returns its injected lines and how long it took.
-func joinRichLines(t *testing.T, repo string) ([]string, time.Duration) {
+// in repo and returns its injected lines.
+func joinRichLines(t *testing.T, repo string) []string {
 	t.Helper()
 	payload := compileFailureEnvelope(t, t.TempDir(), "cd "+repo+" && go build ./...", compileErrorsOutput)
-	began := time.Now()
 	code, out, _, _ := runReadoutHook(t, []string{"--event", "tool-failure"}, payload)
-	took := time.Since(began)
 	if code != 0 || out == "" {
 		t.Fatalf("exit %d, stdout %q; want 0 and one JSON line", code, out)
 	}
@@ -97,7 +101,7 @@ func joinRichLines(t *testing.T, repo string) ([]string, time.Duration) {
 	if err := json.Unmarshal([]byte(out), &doc); err != nil {
 		t.Fatalf("stdout is not one JSON document: %v\n%s", err, out)
 	}
-	return strings.Split(doc.Spec.Context, "\n"), took
+	return strings.Split(doc.Spec.Context, "\n")
 }
 
 func TestDaemonJoinMissNamesTheDeadline(t *testing.T) {
@@ -112,16 +116,15 @@ func TestDaemonJoinMissNamesTheDeadline(t *testing.T) {
 
 	t.Run("a fast daemon places the symbol and names the tests", func(t *testing.T) {
 		readoutHookEnv(t, "[readouts]\nmode = \"rich\"\n")
-		t.Setenv("FATHOM_HTTP", joinDaemon(t, repo, false).URL)
-		// A frozen clock and a long cap: a loaded gate's git reads never
-		// spend the join's share of the ceiling.
-		origClock, origCap := readoutHookClock, daemonJoinCap
-		fixed := time.Now()
-		readoutHookClock = func() time.Time { return fixed }
+		srv, _ := joinDaemon(t, repo, false)
+		t.Setenv("FATHOM_HTTP", srv.URL)
+		// A long cap (the clock is readoutHookEnv's frozen one): a loaded
+		// gate's daemon round trips never spend the join's deadline.
+		origCap := daemonJoinCap
 		daemonJoinCap = time.Minute
-		t.Cleanup(func() { readoutHookClock, daemonJoinCap = origClock, origCap })
+		t.Cleanup(func() { daemonJoinCap = origCap })
 
-		lines, _ := joinRichLines(t, repo)
+		lines := joinRichLines(t, repo)
 		if len(lines) != 2 {
 			t.Fatalf("lines = %q, want the compile line and the tests line", lines)
 		}
@@ -147,10 +150,20 @@ func TestDaemonJoinMissNamesTheDeadline(t *testing.T) {
 
 	t.Run("a slow daemon is the named miss inside the ceiling", func(t *testing.T) {
 		readoutHookEnv(t, "[readouts]\nmode = \"rich\"\n")
-		t.Setenv("FATHOM_HTTP", joinDaemon(t, repo, true).URL)
-		lines, took := joinRichLines(t, repo)
-		if took >= readoutHookCeiling {
-			t.Errorf("the hook took %v, want it inside its %v ceiling", took, readoutHookCeiling)
+		srv, held := joinDaemon(t, repo, true)
+		t.Setenv("FATHOM_HTTP", srv.URL)
+		lines := joinRichLines(t, repo)
+		// The join's own wait, timed where the daemon holds the call: the
+		// rest of the hook is CPU a contended race runner stretches past
+		// any wall-clock bound, and the ceiling over it is
+		// TestReadoutRichPastTheCeilingAddsNothing's.
+		select {
+		case h := <-held:
+			if h >= readoutHookCeiling {
+				t.Errorf("the daemon held the join %v, want it given up inside the hook's %v ceiling", h, readoutHookCeiling)
+			}
+		case <-time.After(10 * time.Second):
+			t.Fatal("the slow daemon never saw the join give up")
 		}
 		if len(lines) != 1 || !strings.HasSuffix(lines[0], "; index: not consulted (deadline)") {
 			t.Fatalf("lines = %q, want the compile line ending in the named miss", lines)

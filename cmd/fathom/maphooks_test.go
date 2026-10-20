@@ -529,14 +529,18 @@ func TestMapPointerCostsNothingWithoutMapsAndBoundedCPUWith(t *testing.T) {
 	if threadsHoldMaps() {
 		t.Fatal("no map row filed yet")
 	}
-	if d := cpu(func() {
-		for i := 0; i < 20; i++ {
-			if got := mapPointerLine(repo, fmt.Sprintf("s%d", i), mapTouch{Files: []string{"a.go"}}, now); got != "" {
-				t.Fatalf("no maps, got %q", got)
-			}
+	// Counted in allocations, not CPU time: process CPU also bills a race
+	// shard's GC and leftover goroutines (Linux CI read 256.84ms against a
+	// 250ms bound for this unchanged path). Measured 7 a firing; one parse
+	// of this log is 66,054.
+	firing := 0
+	if n := testing.AllocsPerRun(20, func() {
+		firing++
+		if got := mapPointerLine(repo, fmt.Sprintf("s%d", firing), mapTouch{Files: []string{"a.go"}}, now); got != "" {
+			t.Fatalf("no maps, got %q", got)
 		}
-	}); d > 250*time.Millisecond {
-		t.Errorf("20 firings against a %d-row log with no maps used %s of CPU, want a bare file read each", 3000, d)
+	}); n > 1000 {
+		t.Errorf("a firing against a %d-row log with no maps made %.0f allocations, want a bare file read each", 3000, n)
 	}
 
 	for i := 0; i < 3; i++ {
