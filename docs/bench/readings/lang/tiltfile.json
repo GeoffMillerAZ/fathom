@@ -1,0 +1,167 @@
+{
+  "dialect": "tiltfile",
+  "kind": "tooling",
+  "target_level": "L2",
+  "level_met": "L2",
+  "grade": {
+    "L1": "good",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-19",
+  "fathom_commit": "02255415",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "tilt-dev/tilt-example-go",
+      "sha": "ec079fd2a4df431064579687bd49e03dcaa3de69",
+      "files": 6,
+      "bytes": 11512,
+      "counts": {
+        "callables": 3,
+        "callables_signed": 3,
+        "fathom_defs": 3,
+        "kind_equal": 3,
+        "matched": 3,
+        "oracle_defs": 3,
+        "range_eligible": 3,
+        "range_ok": 3,
+        "ref_fathom": 44,
+        "ref_fathom_in_truth": 44,
+        "ref_truth": 44,
+        "ref_truth_found": 44
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "function"
+      ],
+      "excluded_by_kind": {
+        "fathom:TiltImage": 5,
+        "fathom:TiltManifest": 5,
+        "fathom:TiltModule": 6,
+        "fathom:TiltResource": 12
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 2.4219999999999997,
+        "extract_cpu_ms": 2.3810000000000002,
+        "max_file_ms": 1,
+        "peak_module_pages": 304,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "tilt-dev/tilt-extensions",
+      "sha": "7f9f376076bbe18cb76474d7cdda16894d139b81",
+      "files": 104,
+      "bytes": 194062,
+      "counts": {
+        "callables": 200,
+        "callables_signed": 200,
+        "fathom_defs": 200,
+        "kind_equal": 200,
+        "matched": 200,
+        "oracle_defs": 200,
+        "range_eligible": 200,
+        "range_ok": 200,
+        "ref_fathom": 1043,
+        "ref_fathom_in_truth": 1043,
+        "ref_truth": 1043,
+        "ref_truth_found": 1043
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "function"
+      ],
+      "excluded_by_kind": {
+        "fathom:TiltImage": 10,
+        "fathom:TiltManifest": 22,
+        "fathom:TiltModule": 104,
+        "fathom:TiltResource": 51,
+        "fathom:TiltSetting": 9
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 101.266,
+        "extract_cpu_ms": 84.77899999999998,
+        "max_file_ms": 5,
+        "peak_module_pages": 308,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "C",
+      "tool": "tree-sitter-tags:starlark-tags.scm",
+      "version": "py-tree-sitter 0.25.2, tree-sitter-starlark 1.3.0"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "ref_precision": "C",
+    "ref_recall": "C",
+    "sym_precision": "C",
+    "sym_recall": "C"
+  },
+  "required_kinds": [
+    "function"
+  ],
+  "kind_intersection": [
+    "function"
+  ],
+  "counts": {
+    "callables": 203,
+    "callables_signed": 203,
+    "fathom_defs": 203,
+    "kind_equal": 203,
+    "matched": 203,
+    "oracle_defs": 203,
+    "range_eligible": 203,
+    "range_ok": 203,
+    "ref_fathom": 1087,
+    "ref_fathom_in_truth": 1087,
+    "ref_truth": 1087,
+    "ref_truth_found": 1087
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 0,
+    "throughput_mb_s": 2.36,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 1.98,
+    "max_file_ms": 5,
+    "peak_module_pages": 308,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:TiltImage": 15,
+    "fathom:TiltManifest": 27,
+    "fathom:TiltModule": 110,
+    "fathom:TiltResource": 63,
+    "fathom:TiltSetting": 9
+  },
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

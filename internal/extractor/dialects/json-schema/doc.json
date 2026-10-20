@@ -1,0 +1,21 @@
+{
+  "decode": "json",
+  "detect": {"content_sniff": "\"\\$schema\"\\s*:\\s*\"https?://json-schema\\.org/"},
+  "entities": [
+    {"select": "$", "where": {"is_map": true}, "kind": "package", "source_kind": "JSONSchemaDocument", "name": "$file", "signature": ".$schema"},
+    {"select": "$.$defs.*", "include_null": true, "kind": "type_alias", "source_kind": "JSONSchemaDef", "name": "$key", "signature": ".type"},
+    {"select": "$.definitions.*", "include_null": true, "kind": "type_alias", "source_kind": "JSONSchemaDef", "name": "$key", "signature": ".type"},
+    {"select": "$.properties.*", "include_null": true, "kind": "field", "source_kind": "JSONSchemaProperty", "name": "$key", "signature": ".type"}
+  ],
+  "references": [
+    {"from": "JSONSchemaDef|JSONSchemaProperty", "select": "$..$ref", "value": "$", "edge": "ref", "declared_only": true,
+     "pointer": [
+      {"prefix": "#/$defs/", "to_kind": "JSONSchemaDef"},
+      {"prefix": "#/definitions/", "to_kind": "JSONSchemaDef"},
+      {"prefix": "#/properties/", "to_kind": "JSONSchemaProperty"}
+     ]}
+  ],
+  "cross_file": [
+    {"select": "$..$ref", "value": "$ @file", "resolve": "repo-path", "edge": "ref"}
+  ]
+}

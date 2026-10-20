@@ -1706,7 +1706,7 @@
     "grammar_source": "tree-sitter-grammars/tree-sitter-starlark",
     "licence": "MIT",
     "oracle": [
-      "bazel query --output=streamed_jsonproto (tier A, offline)"
+      "bazel query --output=streamed_jsonproto (tier A; the module fetch needs the network, the query does not: O1347)"
     ],
     "calibration_subjects": [
       "bazelbuild/examples",

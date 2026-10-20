@@ -134,3 +134,13 @@ enclose calls, so a macro called in a `defmodule` body is paired with that modul
     <tools>/pyts/bin/pip install tree-sitter==0.25.2 tree-sitter-elixir==0.3.5
     <tools>/pyts/bin/python -I tags_oracle.py --lang elixir --query elixir-tags.scm --ext .ex --ext .exs --honor-ignore --enclose-modules <clone> > out/elixir-phoenix-calls.json
     # phoenixframework/phoenix v1.8.9: 177 files / 8,037 pairs, elixir-ecto/ecto v3.14.2: 126 / 8,335; 0 parse errors
+
+Starlark (LB-Q-tiltfile) runs `starlark-tags.scm`, tree-sitter-python's `queries/tags.scm` (v0.25.0, `293fdc02`, MIT) less its
+`class_definition` pattern (the Starlark grammar has no such node), with py-tree-sitter 0.25.2 and tree-sitter-starlark 1.3.0.
+A tool format's L2 is graded on `references`, so the pairs are written with `--as-references` (O1349); a top-level call is paired
+with the file's module symbol:
+
+    <tools>/pyts-starlark/bin/pip install tree-sitter==0.25.2 tree-sitter-starlark==1.3.0
+    <tools>/pyts-starlark/bin/python tags_oracle.py --lang starlark --query starlark-tags.scm --basename Tiltfile --module-caller '<module>' --as-references <clone> > out/tiltfile-calls.json
+    <tools>/pyts-starlark/bin/python tags_oracle.py --lang starlark --query starlark-tags.scm --basename Tiltfile --defs <clone> > out/tiltfile-defs.json
+    # tilt-dev/tilt-extensions @ 7f9f3760: 104 Tiltfiles / 1,043 pairs / 200 functions, tilt-dev/tilt-example-go @ ec079fd2: 6 / 44 / 3; 0 parse errors

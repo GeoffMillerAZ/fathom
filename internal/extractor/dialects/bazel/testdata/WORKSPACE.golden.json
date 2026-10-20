@@ -1,0 +1,20 @@
+{
+  "symbols": [
+    {
+      "name": "demo",
+      "kind": "BazelDependency",
+      "package": "WORKSPACE",
+      "line": 1,
+      "end_line": 1,
+      "tier": "verified"
+    },
+    {
+      "name": "com_example_lib",
+      "kind": "BazelDependency",
+      "package": "WORKSPACE",
+      "line": 4,
+      "end_line": 6,
+      "tier": "verified"
+    }
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "symbols": [
+    {
+      "name": "order.schema.json",
+      "kind": "JSONSchemaDocument",
+      "package": "order.schema",
+      "line": 1,
+      "end_line": 15,
+      "signature": "https://json-schema.org/draft/2020-12/schema",
+      "tier": "verified"
+    },
+    {
+      "name": "total",
+      "kind": "JSONSchemaProperty",
+      "package": "order.schema",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "buyer",
+      "kind": "JSONSchemaProperty",
+      "package": "order.schema",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "lines",
+      "kind": "JSONSchemaProperty",
+      "package": "order.schema",
+      "line": 7,
+      "end_line": 7,
+      "signature": "array",
+      "calls": [
+        "Line"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Line",
+      "kind": "JSONSchemaDef",
+      "package": "order.schema",
+      "line": 10,
+      "end_line": 13,
+      "signature": "object",
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "",
+      "edge": "ref",
+      "raw": "shared/common.schema.json",
+      "target": "schemas/shared/common.schema.json",
+      "strategy": "repo-path",
+      "line": 5
+    },
+    {
+      "from": "",
+      "edge": "ref",
+      "raw": "./user.schema.json",
+      "target": "schemas/user.schema.json",
+      "strategy": "repo-path",
+      "line": 6
+    },
+    {
+      "from": "",
+      "edge": "ref",
+      "raw": "shared/common.schema.json",
+      "target": "schemas/shared/common.schema.json",
+      "strategy": "repo-path",
+      "line": 12
+    }
+  ]
+}

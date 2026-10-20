@@ -56,7 +56,7 @@ func TestCloudFormationRoutingLeavesOthersUnchanged(t *testing.T) {
 		{".gitlab/ci/deploy.yml", "deploy:\n  script: [make]\n", p.toolExts[ToolGitLabCI], ToolGitLabCI},
 		{"api/openapi.yaml", "openapi: 3.0.0\npaths: {}\n", p.toolExts[ToolOpenAPI], ToolOpenAPI},
 		{"data/data.json", "{\"a\": 1}\n", p.exts[".json"], ""},
-		{"schema/cfn.schema.json", "{\"properties\": {\"AWSTemplateFormatVersion\": {\"type\": \"string\"}}}\n", p.exts[".json"], ""},
+		{"schema/cfn-schema.json", "{\"properties\": {\"AWSTemplateFormatVersion\": {\"type\": \"string\"}}}\n", p.exts[".json"], ""},
 		{"package.json", "{\"name\": \"x\", \"AWSTemplateFormatVersion\": \"2010-09-09\", \"Resources\": {}}\n", p.exts["package.json"], ""},
 	} {
 		e, tool, ok, unclassified := p.resolveExtractor(c.rel, []byte(c.src), idx)

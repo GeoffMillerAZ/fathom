@@ -1,0 +1,120 @@
+{
+  "symbols": [
+    {
+      "name": "core",
+      "kind": "BazelTarget",
+      "package": "BUILD",
+      "line": 8,
+      "end_line": 14,
+      "signature": "cc_library(",
+      "calls": [
+        "cc_library",
+        "util"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "util",
+      "kind": "BazelTarget",
+      "package": "BUILD",
+      "line": 17,
+      "end_line": 20,
+      "signature": "cc_library(",
+      "calls": [
+        "cc_library"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "gen",
+      "kind": "BazelTarget",
+      "package": "BUILD",
+      "line": 23,
+      "end_line": 25,
+      "signature": "my_macro(",
+      "calls": [
+        "core",
+        "my_macro",
+        "util"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "aliased",
+      "kind": "BazelTarget",
+      "package": "BUILD",
+      "line": 27,
+      "end_line": 29,
+      "signature": "renamed(name = \"aliased\", data = select({",
+      "calls": [
+        "gen",
+        "renamed"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "plain",
+      "kind": "BazelTarget",
+      "package": "BUILD",
+      "line": 31,
+      "end_line": 31,
+      "signature": "local_rule(name = \"plain\", src = \":core\")",
+      "calls": [
+        "core",
+        "local_rule"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "friends",
+      "kind": "BazelPackageGroup",
+      "package": "BUILD",
+      "line": 33,
+      "end_line": 33,
+      "tier": "verified"
+    },
+    {
+      "name": "both",
+      "kind": "BazelTarget",
+      "package": "BUILD",
+      "line": 36,
+      "end_line": 38,
+      "signature": "selects.config_setting_group(",
+      "calls": [
+        "config_setting_group",
+        "plain"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "my_macro",
+      "exported": "my_macro",
+      "module": "//tools:defs.bzl",
+      "kind": "named",
+      "line": 1
+    },
+    {
+      "local": "renamed",
+      "exported": "other_macro",
+      "module": "//tools:defs.bzl",
+      "kind": "named",
+      "line": 1
+    },
+    {
+      "local": "local_rule",
+      "exported": "local_rule",
+      "module": ":local.bzl",
+      "kind": "named",
+      "line": 2
+    },
+    {
+      "local": "cc_library",
+      "exported": "cc_library",
+      "module": "@rules_cc//cc:defs.bzl",
+      "kind": "named",
+      "line": 3
+    }
+  ]
+}

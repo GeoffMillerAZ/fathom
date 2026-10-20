@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "total": {"$ref": "shared/common.schema.json#/$defs/Money"},
+    "buyer": {"$ref": "./user.schema.json"},
+    "lines": {"type": "array", "items": {"$ref": "#/$defs/Line"}}
+  },
+  "$defs": {
+    "Line": {
+      "type": "object",
+      "properties": {"price": {"$ref": "shared/common.schema.json#/$defs/Money"}}
+    }
+  }
+}

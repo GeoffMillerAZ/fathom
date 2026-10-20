@@ -93,3 +93,35 @@ func TestIngest_MesonDialectIsDispatched(t *testing.T) {
 		t.Errorf("observations:\n  %s\nwant:\n  %s", strings.Join(got, "\n  "), strings.Join(want, "\n  "))
 	}
 }
+
+// TestIngest_MesonSubdirsAreStored: ingest stores the edge a subdir() import draws from meson.build, as
+// ResolveFileEdges does on the same files (O379: the pass keyed a path by extension, and meson.build has none).
+func TestIngest_MesonSubdirsAreStored(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.CopyFS(dir, os.DirFS(filepath.Join("testdata", "mesonfixture"))); err != nil {
+		t.Fatal(err)
+	}
+	st := store.NewMemoryStore()
+	svc := core.ServiceRef{ID: "mz", Path: dir}
+	p := fusion.New(connector.NewLocalConnector(), st, defaultCfg())
+	t.Cleanup(p.Close)
+	ctx := context.Background()
+	if _, err := p.Ingest(ctx, svc); err != nil {
+		t.Fatalf("Ingest: %v", err)
+	}
+	all, err := st.TypedEdges(ctx, svc.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, e := range all {
+		if e.Kind == core.EdgeFileResolved && e.FromFile == "meson.build" {
+			got = append(got, e.FromSymbol+" -> "+e.ToSymbol)
+		}
+	}
+	slices.Sort(got)
+	want := []string{"mz::meson.app -> mz::src/meson.core", "mz::meson.app -> mz::src/meson.thr"}
+	if strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Errorf("meson.build file-resolved edges:\n  %s\nwant:\n  %s", strings.Join(got, "\n  "), strings.Join(want, "\n  "))
+	}
+}
