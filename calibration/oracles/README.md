@@ -424,3 +424,10 @@ instantiation and definition stacks (tier A): the BUILD calls that created rules
 file behind each macro or rule they call. Usage, what it leaves out and `-scope-globs`: `bazel-query/README.md`. The
 Tiltfile (LB-Q-tiltfile) has no tool of its own: `ts-tags` with `starlark-tags.scm`, tree-sitter-python's tags query
 less its class pattern, written with `--as-references` (tier C, the cap is good; O1349).
+
+## prisma
+
+`prisma-dmmf/prisma_oracle.mjs` (item prisma, LB-Q-prisma) reads each schema folder with Prisma's schema engine
+(`@prisma/prisma-schema-wasm` 6.19, the module behind `getDMMF`, offline, tier A for names, fields and `@relation`
+lists) and a bracket-depth line scan for positions, cross-checked both ways. Usage and what it leaves out:
+`prisma-dmmf/README.md`.

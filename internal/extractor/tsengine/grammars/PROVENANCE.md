@@ -56,6 +56,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `perl` | tree-sitter-perl/tree-sitter-perl | 4586b3f1fc6f8b80cca6ceb23ba863ae986eeae8 | `4586b3f1fc6f8b80cca6ceb23ba863ae986eeae8` | MIT | `tree_sitter_perl` | `a0b339650a78a7eb2b6c3f3223b6518943ed66f3a66bc52a626f5c8e688d91e3` |
 | `php` | tree-sitter/tree-sitter-php | v0.24.2 | `5b5627faaa290d89eb3d01b9bf47c3bb9e797dea` | MIT | `tree_sitter_php` | `0e73ad63dda67ac12c0e012726a4e1a9811c26b020a0a2dea3e889f8246d9cf4` |
 | `powershell` | airbus-cert/tree-sitter-powershell | v0.26.5 | `d398441825243b00e317e87e1829b9d6a3e54ce0` | MIT | `tree_sitter_powershell` | `a949ac2bccd74b94b6199702c8b119cb353785e8a8828150a763b202ae8d4534` |
+| `prisma` | victorhqc/tree-sitter-prisma | 3556b2c1f20ec9ac91e92d32c43d9d2a0ca3cc49 | `3556b2c1f20ec9ac91e92d32c43d9d2a0ca3cc49` | MIT | `tree_sitter_prisma` | `9f89b34dffa3fcceb981b298927b0676596579a42a6a4919f7c3cbe4cfe074a8` |
 | `protobuf` | coder3101/tree-sitter-proto | 0.6.0 | `6c878d18628ebbff3474479d2fdd6d8ba1954c3e` | MIT | `tree_sitter_proto` | `5a6931ce9b0a40470ba642efd775a832f2edf5b1f4d274d3b68f3182c1c920ca` |
 | `python` | tree-sitter/tree-sitter-python | v0.25.0 | `293fdc02038ee2bf0e2e206711b69c90ac0d413f` | MIT | `tree_sitter_python` | `4609a3665a620e117acf795ff01b9e965880f81745f287a16336f4ca86cf270c` |
 | `r` | r-lib/tree-sitter-r | v1.3.0 | `346d3707b8c9301f1051e8f6e32666e67529f7d2` | MIT | `tree_sitter_r` | `35dde81835046514f01c07e66d058c943bb44dd10823c04f7028374080b151dc` |
@@ -106,6 +107,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `perl` | (root) | yes | 15 | 2,443,271 | 452,171 | `17bd1fc35b4f62cdaae9547a8bebcf15da3df00b0a72a49565028c2be38f1568` |
 | `php` | php | yes | 15 | 811,496 | 191,343 | `e74d8a8385c252d7d3ce19e47247e48cbee4af9f30e39a6cffe0abe583a55881` |
 | `powershell` | (root) | yes | 15 | 841,031 | 165,241 | `290c26ac0058dbc4eed6b79ef91031018fb5a892aa88b5a5b7e95beb9de01b46` |
+| `prisma` | (root) | no | 15 | 158,815 | 61,507 | `f872159aa5fab21950695da3f2fd87249244b749fb11fd7d9811fb909ff50009` |
 | `protobuf` | (root) | no | 15 | 204,748 | 68,444 | `4211503d39d2cf30cbace8441e7bcced6421eb98617db0be18cbf992c3f92999` |
 | `python` | (root) | yes | 15 | 539,848 | 123,581 | `ef1216ec19691690d3d237759d5ab8c3521e362423eef44f5e5234f7cb507ffc` |
 | `r` | (root) | yes | 14 | 573,742 | 107,258 | `7d41dc36c218d3e87d5a2c932a68fcabbd8dc4122ba480fc6172dda48c978dbb` |

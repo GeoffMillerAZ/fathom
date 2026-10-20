@@ -1,0 +1,302 @@
+{
+  "symbols": [
+    {
+      "name": "db",
+      "kind": "PrismaDatasource",
+      "package": "schema",
+      "line": 1,
+      "end_line": 4,
+      "signature": "datasource db",
+      "tier": "verified"
+    },
+    {
+      "name": "client",
+      "kind": "PrismaGenerator",
+      "package": "schema",
+      "line": 6,
+      "end_line": 9,
+      "signature": "generator client",
+      "tier": "verified"
+    },
+    {
+      "name": "Role",
+      "kind": "PrismaEnum",
+      "package": "schema",
+      "line": 11,
+      "end_line": 14,
+      "signature": "enum Role",
+      "tier": "verified"
+    },
+    {
+      "name": "Role.USER",
+      "kind": "PrismaEnumValue",
+      "package": "schema",
+      "line": 12,
+      "end_line": 12,
+      "signature": "USER",
+      "tier": "verified"
+    },
+    {
+      "name": "Role.ADMIN",
+      "kind": "PrismaEnumValue",
+      "package": "schema",
+      "line": 13,
+      "end_line": 13,
+      "signature": "ADMIN @map(\"admin\")",
+      "tier": "verified"
+    },
+    {
+      "name": "User",
+      "kind": "PrismaModel",
+      "package": "schema",
+      "line": 17,
+      "end_line": 25,
+      "signature": "model User",
+      "tier": "verified"
+    },
+    {
+      "name": "User.id",
+      "kind": "PrismaField",
+      "package": "schema",
+      "line": 18,
+      "end_line": 18,
+      "signature": "id Int @id @default(autoincrement())",
+      "tier": "verified"
+    },
+    {
+      "name": "User.email",
+      "kind": "PrismaField",
+      "package": "schema",
+      "line": 19,
+      "end_line": 19,
+      "signature": "email String @unique",
+      "tier": "verified"
+    },
+    {
+      "name": "User.role",
+      "kind": "PrismaField",
+      "package": "schema",
+      "line": 20,
+      "end_line": 20,
+      "signature": "role Role @default(USER)",
+      "calls": [
+        "Role"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "User.posts",
+      "kind": "PrismaField",
+      "package": "schema",
+      "line": 21,
+      "end_line": 21,
+      "signature": "posts Post[]",
+      "calls": [
+        "Post"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "User.profile",
+      "kind": "PrismaField",
+      "package": "schema",
+      "line": 22,
+      "end_line": 22,
+      "signature": "profile Profile?",
+      "calls": [
+        "Profile"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Post",
+      "kind": "PrismaModel",
+      "package": "schema",
+      "line": 27,
+      "end_line": 36,
+      "signature": "model Post",
+      "tier": "verified"
+    },
+    {
+      "name": "Post.id",
+      "kind": "PrismaField",
+      "package": "schema",
+      "line": 28,
+      "end_line": 28,
+      "signature": "id Int @id",
+      "tier": "verified"
+    },
+    {
+      "name": "Post.title",
+      "kind": "PrismaField",
+      "package": "schema",
+      "line": 29,
+      "end_line": 29,
+      "signature": "title String",
+      "tier": "verified"
+    },
+    {
+      "name": "Post.author",
+      "kind": "PrismaField",
+      "package": "schema",
+      "line": 30,
+      "end_line": 30,
+      "signature": "author User @relation(fields: [authorId], references: [id], onDelete: Cascade)",
+      "calls": [
+        "User",
+        "authorId",
+        "id"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Post.authorId",
+      "kind": "PrismaField",
+      "package": "schema",
+      "line": 31,
+      "end_line": 31,
+      "signature": "authorId Int",
+      "tier": "verified"
+    },
+    {
+      "name": "Post.tags",
+      "kind": "PrismaField",
+      "package": "schema",
+      "line": 32,
+      "end_line": 32,
+      "signature": "tags Tag[]",
+      "calls": [
+        "Tag"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Post.geo",
+      "kind": "PrismaField",
+      "package": "schema",
+      "line": 33,
+      "end_line": 33,
+      "signature": "geo Unsupported(\"point\")?",
+      "tier": "verified"
+    },
+    {
+      "name": "Profile",
+      "kind": "PrismaModel",
+      "package": "schema",
+      "line": 38,
+      "end_line": 42,
+      "signature": "model Profile",
+      "tier": "verified"
+    },
+    {
+      "name": "Profile.id",
+      "kind": "PrismaField",
+      "package": "schema",
+      "line": 39,
+      "end_line": 39,
+      "signature": "id Int @id",
+      "tier": "verified"
+    },
+    {
+      "name": "Profile.user",
+      "kind": "PrismaField",
+      "package": "schema",
+      "line": 40,
+      "end_line": 40,
+      "signature": "user User @relation(fields: [userId], references: [id])",
+      "calls": [
+        "User",
+        "id",
+        "userId"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Profile.userId",
+      "kind": "PrismaField",
+      "package": "schema",
+      "line": 41,
+      "end_line": 41,
+      "signature": "userId Int @unique",
+      "tier": "verified"
+    },
+    {
+      "name": "Tag",
+      "kind": "PrismaModel",
+      "package": "schema",
+      "line": 44,
+      "end_line": 48,
+      "signature": "model Tag",
+      "tier": "verified"
+    },
+    {
+      "name": "Tag.id",
+      "kind": "PrismaField",
+      "package": "schema",
+      "line": 45,
+      "end_line": 45,
+      "signature": "id Int @id",
+      "tier": "verified"
+    },
+    {
+      "name": "Tag.name",
+      "kind": "PrismaField",
+      "package": "schema",
+      "line": 46,
+      "end_line": 46,
+      "signature": "name String",
+      "tier": "verified"
+    },
+    {
+      "name": "Tag.posts",
+      "kind": "PrismaField",
+      "package": "schema",
+      "line": 47,
+      "end_line": 47,
+      "signature": "posts Post[]",
+      "calls": [
+        "Post"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "UserInfo",
+      "kind": "PrismaView",
+      "package": "schema",
+      "line": 50,
+      "end_line": 54,
+      "signature": "view UserInfo",
+      "tier": "verified"
+    },
+    {
+      "name": "UserInfo.id",
+      "kind": "PrismaField",
+      "package": "schema",
+      "line": 51,
+      "end_line": 51,
+      "signature": "id Int",
+      "tier": "verified"
+    },
+    {
+      "name": "UserInfo.email",
+      "kind": "PrismaField",
+      "package": "schema",
+      "line": 52,
+      "end_line": 52,
+      "signature": "email String",
+      "tier": "verified"
+    },
+    {
+      "name": "UserInfo.role",
+      "kind": "PrismaField",
+      "package": "schema",
+      "line": 53,
+      "end_line": 53,
+      "signature": "role Role",
+      "calls": [
+        "Role"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

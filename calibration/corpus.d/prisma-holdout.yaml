@@ -1,0 +1,19 @@
+id: prisma-holdout
+language: "Prisma schema"
+# The holdout for the prisma dialect (LB-Q-prisma, wave lang6), pinned in the commit of the dialect and its
+# oracle, before any reading of this subject, and read ONCE into docs/bench/readings/lang/holdout/prisma.json;
+# never tuned against (a later rule change needs a new holdout). Not calcom/cal.com or hiroppy/web-app-template
+# (the tuning subjects). prisma/prisma-examples is Prisma's own example collection: dozens of independent
+# schema.prisma files in sibling directories, so a model name repeats across schemas (User, Post) and no file
+# reference is unambiguous. Licence read at the pin.
+repos:
+  - name: prisma/prisma-examples
+    url: https://github.com/prisma/prisma-examples
+    ref: latest
+    sha: 51b3202cae5418b54314a2bb53f70b27c6558573
+    licence: Apache-2.0
+    sparse: ["**/*.prisma"]
+    idioms:
+      - 'many independent schema.prisma files, each with its own datasource and generator'
+      - 'the same model names (User, Post) defined by several schemas in sibling directories'
+      - 'implicit and explicit many-to-many relations, enums, optional and list fields'

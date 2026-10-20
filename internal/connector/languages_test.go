@@ -90,6 +90,7 @@ var langRowHint = map[string]string{
 	"cmake":            "CMake",
 	"proto":            "proto",
 	"graphql":          "GraphQL",
+	"prisma":           "Prisma schema",
 	"toml":             "TOML",
 	"json":             "JSON",
 	"package-json":     "package.json",

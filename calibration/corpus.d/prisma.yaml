@@ -1,0 +1,29 @@
+id: prisma
+language: "Prisma schema"
+# Both subjects are cloned sparse to their .prisma files: the oracle (getDMMF) and the dialect read nothing else.
+# calcom/cal.com keeps one large production schema (packages/prisma/schema.prisma, with generators, enums, views-free
+# relations and many composite keys). hiroppy/web-app-template keeps a prismaSchemaFolder layout (prisma/schema/*.prisma,
+# one model group per file, a datasource in a base file), so a type reference crosses files with no import statement.
+# prisma/prisma-examples is the holdout (prisma-holdout.yaml), not a subject.
+repos:
+  - name: calcom/cal.com
+    url: https://github.com/calcom/cal.com
+    ref: v5.9.9
+    sha: 46b88a3c81198b99c21abaa7888fefac0eec6c69
+    licence: MIT
+    sparse: ["**/*.prisma"]
+    idioms:
+      - 'one large schema.prisma: dozens of models, enums, explicit many-to-many join models'
+      - '@relation(fields: [...], references: [...], onDelete: Cascade) and named relations on both sides'
+      - 'composite @@id/@@unique/@@index lists naming fields, enum-typed fields with @default(ENUM_VALUE)'
+      - 'Unsupported() columns and native types (@db.VarChar(255))'
+  - name: hiroppy/web-app-template
+    url: https://github.com/hiroppy/web-app-template
+    ref: main
+    sha: caf1994b6681aad3447eb59ee21c6109ed8f46ed
+    licence: MIT
+    sparse: ["**/*.prisma"]
+    idioms:
+      - 'prismaSchemaFolder layout: several *.prisma files under prisma/schema, one datasource and generator in a base file'
+      - 'a model in one file naming a model or enum another file defines (no import statement)'
+      - 'one-to-many and many-to-one relations with @relation(fields, references)'

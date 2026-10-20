@@ -1,0 +1,16 @@
+model Order {
+  id       Int      @id
+  customer Customer @relation(fields: [customerId], references: [id])
+  customerId Int
+  status   Status   @default(OPEN)
+}
+
+model Customer {
+  id     Int     @id
+  orders Order[]
+}
+
+enum Status {
+  OPEN
+  CLOSED
+}
