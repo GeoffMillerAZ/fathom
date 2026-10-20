@@ -13,7 +13,9 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"slices"
 	"strings"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/harness"
 	"github.com/geoffmilleraz/fathom/internal/readout"
@@ -80,13 +82,19 @@ func (o *readoutRichOutput) flush(stdout io.Writer, lines []string) bool {
 	return false
 }
 
-// readoutRichLines computes rich mode's lines for one call inside ctx.
-func readoutRichLines(ctx context.Context, in harness.HookInput, dir string, c *shellcmd.Command) readoutRich {
-	line, missed := readoutCompileLine(ctx, in, dir, c)
+// readoutRichLines computes rich mode's lines for one call inside ctx; the
+// daemon joins take their own deadline inside the hook's ceiling, counted
+// from start (RO-30).
+func readoutRichLines(ctx context.Context, in harness.HookInput, dir string, c *shellcmd.Command, start time.Time) readoutRich {
+	line, tests, missed := readoutCompileLine(ctx, in, dir, c, start)
 	r := readoutRich{missed: missed}
 	if line != "" {
 		r.lines = append(r.lines, line)
 		r.kinds = append(r.kinds, readout.RecordCompileError)
+	}
+	if tests != "" {
+		r.lines = append(r.lines, tests)
+		r.kinds = append(r.kinds, readoutRichTestsKind)
 	}
 	if ctx.Err() != nil {
 		return r
@@ -115,14 +123,21 @@ func goCompileTool(c *shellcmd.Command) string {
 	return ""
 }
 
+// readoutRichTestsKind is the rich kind of the tests line RO-30's join adds.
+const readoutRichTestsKind = "tests_to_run"
+
 // readoutCompileLine is RO-24's line for a go build or go vet run: its
 // errors as compile_error records grouped by root, the root a symbol the
 // working tree changed placed at its definition, and the group touching a
-// file this session edited first. missed names a join that did not answer.
-func readoutCompileLine(ctx context.Context, in harness.HookInput, dir string, c *shellcmd.Command) (string, []string) {
+// file this session edited first. RO-30's daemon joins place an identifier
+// root the working tree did not change at the index's definition and name
+// the tests that reach the changed files (tests, its own line); a missed
+// join reads "index: not consulted (<reason>)" at the line's end. missed
+// names a join that did not answer.
+func readoutCompileLine(ctx context.Context, in harness.HookInput, dir string, c *shellcmd.Command, start time.Time) (line, tests string, missed []string) {
 	tool := goCompileTool(c)
 	if tool == "" {
-		return "", nil
+		return "", "", nil
 	}
 	text := in.Shell.Stdout
 	if in.Shell.Stderr != "" {
@@ -143,17 +158,31 @@ func readoutCompileLine(ctx context.Context, in harness.HookInput, dir string, c
 	}
 	recs := readout.CompileErrors(text, norm)
 	if len(recs) == 0 {
-		return "", nil
+		return "", "", nil
 	}
 	var defs []readout.CompileDef
-	var missed []string
+	var files []string
 	if root != "" {
 		if diff, ok := workingTreeDiffErr(ctx, root); ok {
 			for _, s := range testrun.ChangedGoSymbols(root, diff) {
 				defs = append(defs, readout.CompileDef{Name: s.Name, File: s.File, Line: s.Line})
+				if !slices.Contains(files, s.File) {
+					files = append(files, s.File)
+				}
 			}
 		} else {
 			missed = append(missed, "changed_symbols")
+		}
+	}
+	suffix := ""
+	if root != "" {
+		idx, reached, miss := readoutDaemonJoins(readoutHookClock().Sub(start), root, readout.UnplacedIdents(recs, defs), files)
+		defs = append(defs, idx...)
+		if miss != "" {
+			suffix = "; " + daemonJoinMissLine(miss)
+			missed = append(missed, "index")
+		} else if shown, more := pickTestsToRun(reached, ""); len(shown) > 0 {
+			tests = testsToRunText(shown, more, "")
 		}
 	}
 	now := readoutHookClock()
@@ -169,5 +198,5 @@ func readoutCompileLine(ctx context.Context, in harness.HookInput, dir string, c
 		}
 		return fileInEditSet(abs, in.Cwd, in.SessionID)
 	}
-	return readout.CompileErrorLine(tool, recs, defs, edited, readoutRichLineBudget), missed
+	return readout.CompileErrorLine(tool, recs, defs, edited, readoutRichLineBudget-len(suffix)) + suffix, tests, missed
 }
