@@ -34,7 +34,7 @@ nobody shares. Kit rows land in agentic-kit first and arrive here by `task sync-
 - [ ] PROVENANCE.md's tables carry no `**total**` row {id: AP-12, symbol: RenderProvenanceTables, package: internal/extractor/tsengine, reachable_from: TestProvenanceTablesCarryNoTotalRow}
 - [x] `.gitattributes` names `docs/languages.md` and `internal/extractor/tsengine/grammars/PROVENANCE.md` with `merge=fathom-regen` {id: AP-13, oracle: lexical, path: .gitattributes, pattern: "^docs/languages\.md merge=fathom-regen$"}
 - [x] `task merge-drivers` sets the driver (`true`, keep the current side) and `task regen` runs every generator in a fixed order; `scripts/cloud-setup.sh` runs `task merge-drivers` {id: AP-14, oracle: lexical, path: Taskfile.yml, pattern: "^  merge-drivers:", needs: "AP-13"}
-- [ ] The waves guide's integrator steps: `task merge-drivers` at clone, `task regen` after a merge, and a bump file per wave instead of the integrator's epoch bump {id: AP-15, oracle: lexical, path: docs/guides/agent-waves.md, pattern: "task regen", needs: "AP-14,AP-19"}
+- [x] The waves guide's integrator steps: `task merge-drivers` at clone, `task regen` after a merge, and a bump file per wave instead of the integrator's epoch bump {id: AP-15, oracle: lexical, path: docs/guides/agent-waves.md, pattern: "task regen", needs: "AP-14,AP-19"}
 
 ## Wave 4: sibling plan files for language waves (section 5)
 
@@ -43,9 +43,9 @@ nobody shares. Kit rows land in agentic-kit first and arrive here by `task sync-
 
 ## Wave 5: the derived extractor epoch (section 6)
 
-- [ ] The data digest: sha256 over the sorted paths and bytes of the embedded dialect manifests and queries and `grammars.lock.json` {id: AP-18, symbol: EmbeddedDataDigest, package: internal/extractor, reachable_from: TestEmbeddedDataDigestCoversManifestsQueriesAndLock}
-- [ ] The epoch is the base 67 plus the number of `internal/fusion/epochs/*.md` bump files, then 12 hex of sha256 over the sorted bump files and the data digest; a new bump file or one data byte changes it {id: AP-19, symbol: epochOf, package: internal/fusion, reachable_from: TestEpochOfChangesWithABumpFileOrADataByte, needs: "AP-18"}
-- [ ] `FingerprintHash` keeps its formula and salts with the derived epoch, so an ingest after either change re-extracts every file {id: AP-20, symbol: FingerprintHash, package: internal/fusion, reachable_from: TestFingerprintHashSaltsWithTheDerivedEpoch, needs: "AP-19"}
+- [x] The data digest: sha256 over the sorted paths and bytes of the embedded dialect manifests and queries and `grammars.lock.json` {id: AP-18, symbol: EmbeddedDataDigest, package: internal/extractor, reachable_from: TestEmbeddedDataDigestCoversManifestsQueriesAndLock}
+- [x] The epoch is the base 67 plus the number of `internal/fusion/epochs/*.md` bump files, then 12 hex of sha256 over the sorted bump files and the data digest; a new bump file or one data byte changes it {id: AP-19, symbol: epochOf, package: internal/fusion, reachable_from: TestEpochOfChangesWithABumpFileOrADataByte, needs: "AP-18"}
+- [x] `FingerprintHash` keeps its formula and salts with the derived epoch, so an ingest after either change re-extracts every file {id: AP-20, symbol: FingerprintHash, package: internal/fusion, reachable_from: TestFingerprintHashSaltsWithTheDerivedEpoch, needs: "AP-19"}
 
 ## Measurement (section 8)
 
