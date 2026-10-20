@@ -15,13 +15,17 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/geoffmilleraz/fathom/internal/analysis/archconformance"
 	"github.com/geoffmilleraz/fathom/internal/bindspec"
 	"github.com/geoffmilleraz/fathom/internal/capability"
 	"github.com/geoffmilleraz/fathom/internal/custodian"
 	"github.com/geoffmilleraz/fathom/internal/guardspec"
 	"github.com/geoffmilleraz/fathom/internal/projectdir"
+	"github.com/geoffmilleraz/fathom/internal/projectrules"
 )
 
 func checkProjectKeys(root string) doctorCheck {
@@ -76,6 +80,7 @@ func checkProjectKeys(root string) doctorCheck {
 	}
 
 	reason := fmt.Sprintf("%d of %d keys set: %s", set, len(known), strings.Join(parts, "; "))
+	reason += archLayerRulesNote(root)
 	switch {
 	case len(failures) > 0:
 		return doctorCheck{
@@ -113,4 +118,37 @@ func firstOfN(problems []string) string {
 		return problems[0]
 	}
 	return fmt.Sprintf("%s (and %d more)", problems[0], len(problems)-1)
+}
+
+// archLayerRulesNote prints, once, the layer_rules entries equivalent to
+// the legacy rules/archconformance.cue pack ("" when the pack is absent or
+// does not load). The pack is still read; the entries say how to move it.
+func archLayerRulesNote(root string) string {
+	abs, err := filepath.Abs(root)
+	if err != nil {
+		return ""
+	}
+	res, err := projectrules.Load(abs)
+	if err != nil || !res.Found {
+		return ""
+	}
+	if _, serr := os.Stat(res.Path); serr != nil {
+		return ""
+	}
+	var legacy []archconformance.Rule
+	for _, r := range res.Rules {
+		if len(r.FromGlobs) == 0 && len(r.ToGlobs) == 0 {
+			legacy = append(legacy, r)
+		}
+	}
+	entries := projectrules.EquivalentLayerRules(legacy)
+	if len(entries) == 0 {
+		return ""
+	}
+	for i, e := range entries {
+		if len(e) > 160 {
+			entries[i] = e[:160] + "..."
+		}
+	}
+	return "; rules/archconformance.cue as layer_rules: " + strings.Join(entries, " ")
 }

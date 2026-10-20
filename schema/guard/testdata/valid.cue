@@ -67,5 +67,13 @@ layerRules: #Guards & {
 			from_service: "payment-service"
 			to_service:   "ledger-service"
 		},
+		{
+			id:       "ledger-not-calling-payment"
+			kind:     "call_direction"
+			sentence: "ledger code never calls payment code."
+			from: ["ledger"]
+			to: ["payment"]
+			allow: false
+		},
 	]
 }

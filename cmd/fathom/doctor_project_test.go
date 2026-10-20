@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -85,5 +86,21 @@ func TestDoctorProjectRowNamesEveryKey(t *testing.T) {
 	// No .fathom: a passing row that names the absence.
 	if c := checkProjectKeys(t.TempDir()); c.Status != doctorPass {
 		t.Errorf("absent project: status %s (%s)", c.Status, c.Reason)
+	}
+}
+
+func TestProjectRowPrintsArchconformanceAsLayerRulesOnce(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, ".fathom", "rules")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "archconformance.cue"), []byte(`rules: [{from_pkg: "a", to_pkg: "b", allow: false}]`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got := checkProjectKeys(root).Reason
+	want := `{kind: "call_direction", from: ["a"], to: ["b"], allow: false}`
+	if strings.Count(got, want) != 1 {
+		t.Fatalf("reason %q should carry %s exactly once", got, want)
 	}
 }

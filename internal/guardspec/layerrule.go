@@ -38,6 +38,13 @@ const (
 	// CrossServiceDirection: FromService must never depend on ToService,
 	// over the fleet's typed cross-service edges.
 	CrossServiceDirection LayerRuleKind = "cross_service_direction"
+	// CallDirection: over the index's call edges, a call from a package
+	// matching any `From` glob to a package matching any `To` glob is
+	// forbidden (`allow: false`, the default) or explicitly permitted
+	// (`allow: true`, which overrides a forbidding rule). The same check
+	// `rules/archconformance.cue` declares; globs match the package name
+	// an edge carries ("connector", not "internal/connector").
+	CallDirection LayerRuleKind = "call_direction"
 )
 
 // Severity controls whether a violated rule fails the generated test
@@ -76,6 +83,10 @@ type LayerRule struct {
 	// cross_service_direction
 	FromService string
 	ToService   string
+
+	// call_direction: AllowCall is the rule's boolean `allow` (the key is
+	// a glob list for boundary, a bool here).
+	AllowCall bool
 }
 
 // LayerRuleSet is the decoded runtime form of a `.fathom/guard.cue` file's
@@ -140,6 +151,9 @@ func decodeLayerRules(path string, v cue.Value) (LayerRuleSet, error) {
 			FromService: lookupString(rv, "from_service"),
 			ToService:   lookupString(rv, "to_service"),
 		}
+		if r.Kind == CallDirection {
+			r.AllowCall = lookupBoolDefault(rv, "allow", false)
+		}
 
 		if r.ID == "" {
 			errs = append(errs, fieldErr(path, prefix+".id", fmt.Errorf("required")))
@@ -171,6 +185,10 @@ func decodeLayerRules(path string, v cue.Value) (LayerRuleSet, error) {
 		case CrossServiceDirection:
 			if r.FromService == "" || r.ToService == "" {
 				errs = append(errs, fieldErr(path, prefix, fmt.Errorf("kind %q requires from_service and to_service", r.Kind)))
+			}
+		case CallDirection:
+			if len(r.From) == 0 || len(r.To) == 0 {
+				errs = append(errs, fieldErr(path, prefix, fmt.Errorf("kind %q requires non-empty from and to", r.Kind)))
 			}
 		default:
 			errs = append(errs, fieldErr(path, prefix+".kind", fmt.Errorf("unknown kind %q", r.Kind)))

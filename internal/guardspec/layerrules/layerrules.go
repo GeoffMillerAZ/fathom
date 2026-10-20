@@ -117,7 +117,7 @@ func Check(root, ruleFile string) (violations []guardspec.Violation, ruleIDsSkip
 		return nil, nil, err
 	}
 	for _, r := range rules.Rules {
-		if r.Kind == guardspec.CrossServiceDirection {
+		if r.Kind == guardspec.CrossServiceDirection || r.Kind == guardspec.CallDirection {
 			ruleIDsSkipped = append(ruleIDsSkipped, r.ID)
 			continue
 		}
