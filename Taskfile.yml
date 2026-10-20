@@ -335,7 +335,7 @@ tasks:
     # scenariobench is not a dep: `task test` already runs
     # ./internal/scenariobench (race, under the test task's CGO_ENABLED=1), and
     # the dep ran it a second time (77–102 s each, measured 2026-09-30).
-    deps: [fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, intent-index-check, intent-guard-check, bench-l0-gate, tenancy-lint, perfgate]
+    deps: [fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, intent-index-check, intent-guard-check, bench-l0-gate, tenancy-lint, changelog-check, perfgate]
     cmds: [{ task: test }]
 
   push:
@@ -355,6 +355,11 @@ tasks:
   tenancy-lint:
     desc: "Free, every commit (design §4.7, RT-91/RT-92): the tenancy lint's syntactic rules over cmd/, internal/ and pkg/ (whole reads and walks in handler packages, whole-table loads, uncontexted exec, Background contexts in request-path files, bare goroutines, package-level maps, raw http.Serve, :7575 in tests, a test cmd.Env without os.Environ()), the allowlist in step with the tree's //fathom:tenancy-allow excuses, and the allowlist ratchet. Named as its own validate dependency, like bench-l0-gate, rather than left to the package-wide go test ./..."
     cmds: ["{{.GO}} test -count=1 ./internal/lint/tenancy/..."]
+
+  changelog-check:
+    desc: Change-note fragments lint - every file under docs/changelog/unreleased/ holds one known heading and at least one line, and CHANGELOG.md's [Unreleased] holds only the pointer line
+    cmds:
+      - "{{.GO}} run ./third_party/agentic-kit/cmd/release-notes -check"
 
   config-audit:
     desc: Custodian gate (invariants I16/I34/I37, PC-14) — this repo's own agent config holds every concern in .fathom/concerns.cue; a down daemon reads unable-to-check, never a violation

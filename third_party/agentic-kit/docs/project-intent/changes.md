@@ -85,6 +85,21 @@ extension rewrites the line. A removal deletes the line. Released blocks are fro
 `pre-1.0: breaking bumps minor` on the same line. The agent that adds a line updates it.
 This is the semver advisement; it costs one edit.
 
+**Change-note fragments (optional, for repos with parallel lines of work).** A repo
+that merges many branches at once makes `[Unreleased]` an append point and conflicts on
+it. It may name a fragments directory instead (fathom: `docs/changelog/unreleased/`).
+Each change with an observable effect adds one file there, named for its line of work
+(`<branch>[-<topic>].md`), holding exactly one Keep a Changelog heading and its `- `
+lines, each held to the line rule above. A change in two categories writes two files.
+Collapse while unreleased still holds: a fix to an unreleased addition edits that
+fragment, a removal deletes it. `## [Unreleased]` keeps one static pointer line,
+`Unreleased changes wait as fragments under <dir>/; the release ritual folds them
+here.`, edited by nobody between releases and carrying no `Release impact:` line (the
+roll computes it). `release-notes -roll x.y.z -date YYYY-MM-DD` folds the fragments in
+filename order, `### Breaking` first, and deletes them; `release-notes Unreleased`
+prints the fold; `release-notes -check` lints the fragments. A repo with no fragments
+directory keeps everything above unchanged.
+
 ## 5. Breaking changes and migration (L3)
 
 Breaking means any change to the **compatibility surface**, which the repo names in
@@ -111,6 +126,10 @@ change without ceremony.
 4. Tag. The block moves first, then the tag, never the reverse.
 5. Run the intent `refresh` walk: goals with `Done when` met, futures with `Promote when` met.
 
+In a fragments repo, steps 1 to 3 run on the fragments: check the impact the fold
+computes, then `release-notes -roll x.y.z -date YYYY-MM-DD` writes the block under the
+pointer line and deletes the fragments in the same commit.
+
 ## 7. The owner catching up
 
 Not a file. The owner who did not write the code reads three things:
@@ -129,6 +148,9 @@ unit. A `CHANGELOG.md` line in the same change only for observable behavior (com
 surface: `docs/intent/scope.md`); `### Breaking` first; collapse `[Unreleased]` to the
 delta, never the journey. Rules: `agentic-kit/docs/project-intent/changes.md`.
 ```
+
+A fragments repo says "add a change-note fragment under `<dir>/`" in place of the
+`CHANGELOG.md` line.
 
 Plus `CHANGELOG.md` from `templates/CHANGELOG.md` and a **Compatibility surface** section
 in `scope.md` (the template has it).
@@ -188,6 +210,10 @@ only under a temporary directory. The workflow side is in
   already exists.
 - **A separate "concerns" log.** Concerns without a consumer are L0; concerns with a
   structural cause are decisions. A third file would collect the ones nobody acts on.
+- **Fragments as a generated changelog or a second log.** A fragment is the same
+  hand-written L2 line, filed where parallel branches cannot collide. It adds no layer:
+  the release folds it into `CHANGELOG.md` and deletes it, and no committed
+  `[Unreleased]` view is rendered (that view would be the append point back).
 - **Generated changelogs (git-cliff, conventional-changelog).** The agent writes the L2
   line in the same change, so generation solves a problem this workflow does not have.
   Adopt when lines are being missed, not when volume feels high.

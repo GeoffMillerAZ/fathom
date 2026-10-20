@@ -32,7 +32,9 @@ proceed without asking (it usually may: everything removed is in git).
 5. **Changelog** (`CHANGELOG.md`, `[Unreleased]` only). Collapse to the delta: a fix to an
    unreleased addition folds into the addition; an extension rewrites the line; a
    removal deletes the line; a line over two sentences loses its explanation (link the
-   record instead). Recompute `Release impact:`.
+   record instead). Recompute `Release impact:`. In a fragments repo (pointer line in
+   `[Unreleased]`) apply the same collapse to the fragment files, deleting a fragment
+   left empty; `Release impact:` is computed by the roll.
 6. **Budgets.** Any living doc over budget: first remove restatement (point instead),
    then move detail to the doc that owns it (a domain fact into `domain.md`, a rule
    into `invariants.md`), then split only if the doc genuinely holds two subjects.

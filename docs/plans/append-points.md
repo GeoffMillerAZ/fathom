@@ -15,19 +15,19 @@ nobody shares. Kit rows land in agentic-kit first and arrive here by `task sync-
 
 ## Wave 1: change-note fragments in the kit (section 3)
 
-- [ ] `changes.md` sections 4, 6, 8 and 11: one change-note fragment per change under a directory the repo names, one heading and its lines, folded at release with `### Breaking` first, no committed `[Unreleased]` view, and why fragments are neither a generated changelog nor a second log {id: AP-2, oracle: lexical, path: third_party/agentic-kit/docs/project-intent/changes.md, pattern: "change-note fragment"}
+- [x] `changes.md` sections 4, 6, 8 and 11: one change-note fragment per change under a directory the repo names, one heading and its lines, folded at release with `### Breaking` first, no committed `[Unreleased]` view, and why fragments are neither a generated changelog nor a second log {id: AP-2, oracle: lexical, path: third_party/agentic-kit/docs/project-intent/changes.md, pattern: "change-note fragment"}
 - [ ] `release-notes -roll x.y.z -date D` folds the fragments in bytewise filename order under the pointer, computes `Release impact:`, orders the categories with Breaking first and deletes the fragments; `release-notes Unreleased` prints the same fold and writes nothing {id: AP-3, symbol: foldFragments, package: third_party/agentic-kit/cmd/release-notes, reachable_from: TestFoldFragmentsSortedBreakingFirst}
 - [ ] `release-notes -check` refuses a fragment with no heading, two headings, an unknown heading or no line, an `[Unreleased]` section holding more than the pointer, and a fragment line already in a released block {id: AP-4, symbol: checkFragments, package: third_party/agentic-kit/cmd/release-notes, reachable_from: TestCheckFragmentsRefusesBadHeadingsAndStrayUnreleasedLines}
-- [ ] `intent-release` folds fragments at steps 1 to 5, `intent-doctor` rows 11 and 12 accept the pointer layout and count fragment lines, `intent-prune` pass 5 collapses fragments, and `kit-new` writes a fragment in a fragments repo {id: AP-5, oracle: lexical, path: third_party/agentic-kit/.claude/skills/intent-release/SKILL.md, pattern: "fragment", needs: "AP-3"}
-- [ ] `operating.md` section 4 (parallel agents): a parallel line adds a file and never appends to a shared one, and a generated file merges by regeneration, never by hand {id: AP-6, oracle: lexical, path: third_party/agentic-kit/docs/project-intent/operating.md, pattern: "merges by regeneration"}
+- [x] `intent-release` folds fragments at steps 1 to 5, `intent-doctor` rows 11 and 12 accept the pointer layout and count fragment lines, `intent-prune` pass 5 collapses fragments, and `kit-new` writes a fragment in a fragments repo {id: AP-5, oracle: lexical, path: third_party/agentic-kit/.claude/skills/intent-release/SKILL.md, pattern: "fragment", needs: "AP-3"}
+- [x] `operating.md` section 4 (parallel agents): a parallel line adds a file and never appends to a shared one, and a generated file merges by regeneration, never by hand {id: AP-6, oracle: lexical, path: third_party/agentic-kit/docs/project-intent/operating.md, pattern: "merges by regeneration"}
 
 ## Wave 2: fathom adopts the fragments (section 3)
 
-- [ ] Today's `[Unreleased]` lines move to `docs/changelog/unreleased/`, one fragment per category, between waves; `CHANGELOG.md`'s `[Unreleased]` keeps only the pointer line {id: AP-7, oracle: lexical, path: CHANGELOG.md, pattern: "^Unreleased changes wait as fragments under docs/changelog/unreleased/", needs: "AP-2"}
-- [ ] `task validate` runs the fragment check {id: AP-8, oracle: lexical, path: Taskfile.yml, pattern: "release-notes -check", needs: "AP-4,AP-7"}
+- [x] Today's `[Unreleased]` lines move to `docs/changelog/unreleased/`, one fragment per category, between waves; `CHANGELOG.md`'s `[Unreleased]` keeps only the pointer line {id: AP-7, oracle: lexical, path: CHANGELOG.md, pattern: "^Unreleased changes wait as fragments under docs/changelog/unreleased/", needs: "AP-2"}
+- [x] `task validate` runs the fragment check {id: AP-8, oracle: lexical, path: Taskfile.yml, pattern: "release-notes -check", needs: "AP-4,AP-7"}
 - [ ] `fathom plans archive` counts a row id named in a fragment as absorbed {id: AP-9, symbol: readAbsorptionFiles, package: cmd/fathom, reachable_from: TestReadAbsorptionFilesReadsChangeFragments, needs: "AP-7"}
 - [ ] The custodian ADR-reference concern resolves citations in fragments {id: AP-10, symbol: adrCitingFiles, package: internal/custodian, reachable_from: TestADRCitingFilesIncludeChangeFragments, needs: "AP-7"}
-- [ ] The `AGENTS.md` change-records stanza, `CHANGELOG.md`'s header and the router's "what changed" row name the fragments directory {id: AP-11, oracle: lexical, path: AGENTS.md, pattern: "docs/changelog/unreleased/", needs: "AP-7"}
+- [x] The `AGENTS.md` change-records stanza, `CHANGELOG.md`'s header and the router's "what changed" row name the fragments directory {id: AP-11, oracle: lexical, path: AGENTS.md, pattern: "docs/changelog/unreleased/", needs: "AP-7"}
 
 ## Wave 3: generated files merge by regeneration (section 4)
 
