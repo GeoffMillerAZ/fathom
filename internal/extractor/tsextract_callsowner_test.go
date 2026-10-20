@@ -34,6 +34,10 @@ func TestCheckCallsRules(t *testing.T) {
 	if err := checkCalls(ok); err != nil {
 		t.Fatalf("a module owner with module_symbol must load: %v", err)
 	}
+	scope := Dialect{ModuleSymbol: "module", Calls: &DialectCalls{Owner: "scope"}}
+	if err := checkCalls(scope); err != nil {
+		t.Fatalf("a scope owner with module_symbol must load: %v", err)
+	}
 	if err := checkCalls(Dialect{}); err != nil {
 		t.Fatalf("no calls block: %v", err)
 	}
@@ -42,7 +46,8 @@ func TestCheckCallsRules(t *testing.T) {
 		want string
 	}{
 		"owner without module_symbol": {Dialect{Calls: &DialectCalls{Owner: "module"}}, "needs module_symbol"},
-		"owner off the set":           {Dialect{ModuleSymbol: "document", Calls: &DialectCalls{Owner: "file"}}, "is not \"module\""},
+		"scope without module_symbol": {Dialect{Calls: &DialectCalls{Owner: "scope"}}, "needs module_symbol"},
+		"owner off the set":           {Dialect{ModuleSymbol: "document", Calls: &DialectCalls{Owner: "file"}}, "is not \"module\" or \"scope\""},
 		"split off the set":           {Dialect{Calls: &DialectCalls{Split: "comma"}}, "is not \"whitespace\""},
 	} {
 		err := checkCalls(tc.d)
@@ -53,7 +58,8 @@ func TestCheckCallsRules(t *testing.T) {
 }
 
 // TestCallsOwnerOnlyWhereTheManifestNamesIt (wave lf5): the html dialect
-// names calls.owner and calls.split, and astro calls.owner (wave lf7, LB-F544:
+// names calls.owner and calls.split, scss calls.owner "scope" (LB-Q-scss-rest: a reference is its
+// enclosing @mixin or @function's, else the module's), and astro calls.owner (wave lf7, LB-F544:
 // a component tag is its template's module symbol's call), so every other
 // dialect's calls are attached as before.
 func TestCallsOwnerOnlyWhereTheManifestNamesIt(t *testing.T) {
@@ -67,7 +73,7 @@ func TestCallsOwnerOnlyWhereTheManifestNamesIt(t *testing.T) {
 			named = append(named, d.ID)
 		}
 	}
-	if !reflect.DeepEqual(named, []string{"astro", "html"}) {
-		t.Fatalf("dialects naming calls.owner or calls.split = %q, want [astro html]", named)
+	if !reflect.DeepEqual(named, []string{"astro", "html", "scss"}) {
+		t.Fatalf("dialects naming calls.owner or calls.split = %q, want [astro html scss]", named)
 	}
 }

@@ -70,6 +70,7 @@ type tsDialectRules struct {
 	scopeSep        string   // manifest qualify.scope_sep: the language's own scope operator ("::"), "" when none
 	qualifyCalls    bool     // manifest calls.qualify (LB-F65): qualifiedCallee
 	callsToModule   bool     // manifest calls.owner "module" (wave lf5): every call is the module symbol's
+	callsToScope    bool     // manifest calls.owner "scope" (LB-Q-scss-rest): a call is its smallest enclosing callable's, else the module symbol's
 	splitCalls      bool     // manifest calls.split "whitespace" (wave lf5): splitTSCallSites
 	trimQuotes      bool     // manifest names.trim_quotes
 	stripPrefix     []string // manifest names.strip_prefix
@@ -251,6 +252,7 @@ func compileDialectRules(d Dialect) (*tsDialectRules, error) {
 	if d.Calls != nil {
 		r.qualifyCalls = d.Calls.Qualify
 		r.callsToModule = d.Calls.Owner == "module"
+		r.callsToScope = d.Calls.Owner == "scope"
 		r.splitCalls = d.Calls.Split == "whitespace"
 	}
 	if d.Names != nil {

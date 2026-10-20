@@ -23,6 +23,16 @@ writes the neutral oracle file `indexbench lang-oracle -tool-oracle` reads:
   empty stylesheet by a stub importer so the in-repo loads around it are still evaluated, and is no
   file of the subject (`to_path` empty); a `sass:` built-in names no file.
 
+- `calls` and `call_exclusions` (design 1.8 W5, `w5_refs.cjs`): SCSS's L2 is name references over the
+  `@use`/`@forward`/`@import` closure, walked from the same sass-parser tree (tier A for the tree, the binding
+  the harness's own walk). A pair runs from the innermost `@mixin` or `@function` (`<module>` at top level) to
+  the name a reference writes: `@include m` and `@include ns.m`, a call of a user-defined `@function`, a `$v` or
+  `ns.$v` read (the innermost enclosing block first, a parameter binding with no definition, then the module),
+  and `@extend %p`. A namespaced member resolves through the `@use ... as ns` that names it and its `@forward`
+  chain (`as prefix-*`, `show`, `hide`; private `-x`/`_x` members stay private). Built-ins, packages outside the
+  subject and names the closure does not define are counted in `disclose`, and every name no read of a file
+  resolves is a `call_exclusion` that leaves both sides of that file's pairs.
+
 Scope (`-files-out`, the reading's `-only`): a file sass-parser cannot parse (0.4.57 rejects a
 keyframe selector written as a percentage, `0% { }`, which Dart Sass compiles) has no definition
 truth, and a file whose loads no successful compile evaluated (a test file needing sass-true's

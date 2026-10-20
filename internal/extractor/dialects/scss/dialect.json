@@ -33,6 +33,7 @@
   "name_match": "identity",
   "names": { "strip_prefix": ["$", ".", "#", "%"] },
   "module_symbol": "module",
+  "calls": { "owner": "scope" },
   "ctags": { "languages": ["SCSS"] },
   "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
   "package": { "strategy": "dir" },

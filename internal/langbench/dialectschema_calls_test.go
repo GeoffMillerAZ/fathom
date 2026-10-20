@@ -22,6 +22,7 @@ func TestDialectCallsOwnerSchema(t *testing.T) {
 	}
 	for name, m := range map[string]string{
 		"owner and split": base(`, module_symbol: "document", calls: {owner: "module", split: "whitespace"}`),
+		"scope owner":     base(`, module_symbol: "document", calls: {owner: "scope"}`),
 		"split alone":     base(`, calls: {split: "whitespace"}`),
 		"no calls":        base(``),
 	} {
@@ -31,9 +32,10 @@ func TestDialectCallsOwnerSchema(t *testing.T) {
 		}
 	}
 	for name, m := range map[string]string{
-		"16j owner without module_symbol": base(`, calls: {owner: "module"}`),
-		"16k owner off the list":          base(`, module_symbol: "document", calls: {owner: "file"}`),
-		"16l split off the list":          base(`, calls: {split: "comma"}`),
+		"16j owner without module_symbol":  base(`, calls: {owner: "module"}`),
+		"16j2 scope without module_symbol": base(`, calls: {owner: "scope"}`),
+		"16k owner off the list":           base(`, module_symbol: "document", calls: {owner: "file"}`),
+		"16l split off the list":           base(`, calls: {split: "comma"}`),
 	} {
 		bad := cctx.CompileString(schema + "\nbad: #Dialect & " + m)
 		if bad.Err() == nil && bad.Validate(cue.Concrete(true)) == nil {

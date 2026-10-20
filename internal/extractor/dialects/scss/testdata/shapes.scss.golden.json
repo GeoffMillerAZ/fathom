@@ -7,8 +7,16 @@
       "line": 1,
       "end_line": 60,
       "calls": [
+        "breakpoints",
+        "color",
         "div",
-        "tint"
+        "i",
+        "name",
+        "red",
+        "rotate",
+        "tint",
+        "visually-hidden",
+        "width"
       ],
       "tier": "verified"
     },
@@ -44,7 +52,11 @@
       "end_line": 20,
       "signature": "@mixin button-variant($background, $args...)",
       "calls": [
+        "args",
+        "background",
         "darken",
+        "prefix",
+        "text",
         "transition"
       ],
       "tier": "verified"
@@ -73,7 +85,9 @@
       "end_line": 24,
       "signature": "@function tint($color, $weight: 10%)",
       "calls": [
-        "mix"
+        "color",
+        "mix",
+        "weight"
       ],
       "tier": "verified"
     },
