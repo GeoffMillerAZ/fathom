@@ -55,7 +55,7 @@ func packExtras(projDir, filePath string) (rel string, groups []packGroup, gen *
 			gen = &generatedServe{output: rel, sources: srcs}
 		}
 	}
-	d, err := techpack.Discover(root)
+	d, err := techpack.Served(root)
 	if err != nil {
 		return rel, groups, gen
 	}

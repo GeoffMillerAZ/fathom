@@ -297,3 +297,35 @@ func TestRuleOutcomeNextEditAfterGeneratedLine(t *testing.T) {
 		t.Fatalf("rows:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
 	}
 }
+
+// FD-20: the hook reads packs through techpack.Served, so exclude_packs and
+// the tech-packs capability reach the edit hook.
+func TestEditHookPreHonoursExcludePacksAndCapability(t *testing.T) {
+	guardStampsIsolated(t)
+	t.Setenv("HOME", t.TempDir())
+	root := packRepo(t, map[string][2]string{
+		"alpha": guardsPack("alpha", "Alpha one."),
+		"beta":  guardsPack("beta", "Beta one."),
+	})
+	writeGuardCue(t, root, `guards: [{scopes: ["internal/**"], note: "hand note", max_rules: 1}]`)
+	packWrite(t, root, "internal/a.go", "package internal\n")
+	file := filepath.Join(root, "internal", "a.go")
+	srv := obligationsServer(t)
+
+	res, ok := renderPreEdit(srv, root, file, "s-fd20a")
+	if !ok || !strings.Contains(res.text, "[alpha@1] Alpha one.") || !strings.Contains(res.text, "[beta@1] Beta one.") {
+		t.Fatalf("both packs served by default:\n%s", res.text)
+	}
+
+	packWrite(t, root, ".fathom/modules.cue", "bindings: []\nexclude_packs: [\"alpha\"]\n")
+	res, ok = renderPreEdit(srv, root, file, "s-fd20b")
+	if !ok || strings.Contains(res.text, "Alpha one.") || !strings.Contains(res.text, "[beta@1] Beta one.") {
+		t.Fatalf("exclude_packs must drop alpha only:\n%s", res.text)
+	}
+
+	packWrite(t, root, ".fathom/capabilities.cue", "capabilities: \"tech-packs\": on: false\n")
+	res, ok = renderPreEdit(srv, root, file, "s-fd20c")
+	if !ok || strings.Contains(res.text, "Alpha one.") || strings.Contains(res.text, "Beta one.") {
+		t.Fatalf("tech-packs off must serve no pack line:\n%s", res.text)
+	}
+}
