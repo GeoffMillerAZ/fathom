@@ -185,6 +185,8 @@ func cmdReadoutHook(args []string, stdin io.Reader, stdout, stderr io.Writer) (c
 		readoutStep("rich")
 		ctx, cancel := context.WithTimeout(context.Background(), readoutJoinBudget)
 		rich = readoutRichLines(ctx, in, dir, &cmd, start)
+		readoutStep("policy")
+		readoutRichChoose(ctx, &rich, ev, in, dir, &cmd, rin, ro, rule, joins, cfg.QuietPrefixes)
 		cancel()
 		if len(rich.lines) > 0 && readoutHookClock().Sub(start) > readoutHookCeiling {
 			rich.lines, rich.kinds, rich.missed = nil, nil, append(rich.missed, "ceiling")
@@ -371,6 +373,9 @@ func readoutRowMeta(r readoutRow) map[string]string {
 	}
 	if len(r.rich.missed) > 0 {
 		meta["rich_missed"] = strings.Join(r.rich.missed, ",")
+	}
+	if r.rich.chose {
+		readoutPolicyMeta(meta, r.rich)
 	}
 	if ro.Reason != "" {
 		meta["reason"] = ro.Reason
