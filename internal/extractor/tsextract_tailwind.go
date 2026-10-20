@@ -155,27 +155,38 @@ func tailwindAtRule(src []byte, name string, j int, blank func(from, to int), fi
 		return k
 	case "apply":
 		// A candidate's arbitrary value or variant (`h-[calc(100%-1rem)]`,
-		// `has-[:checked]:p-2`, `bg-(--brand)`) is outside the grammar's
-		// value syntax: its bracketed or parenthesised part reads as `_`,
-		// the candidate keeping its length and the name before the bracket.
+		// `has-[:checked]:p-2`, `[&_img]:size-4`, `bg-(--brand)`), a child
+		// variant (`*:p-2`, `**:p-2`) and the importance flag (`p-4!`) are outside
+		// the grammar's value syntax: each reads as the letter `x`, a candidate
+		// keeping its length and the name before the first of them.
 		depth := 0
 		k := j
 		for k < n && (depth > 0 || (src[k] != ';' && src[k] != '}' && src[k] != '{')) {
 			switch src[k] {
 			case '[', '(':
 				depth++
-				fill(k, k+1, '_')
+				fill(k, k+1, 'x')
 			case ']', ')':
-				fill(k, k+1, '_')
+				fill(k, k+1, 'x')
 				depth--
-			case '!':
-				fill(k, k+1, '_') // `p-4!` and `!important`: the importance flag
+			case '!', '*':
+				fill(k, k+1, 'x')
 			default:
 				if depth > 0 {
-					fill(k, k+1, '_')
+					fill(k, k+1, 'x')
 				}
 			}
 			k++
+		}
+		if k < n && src[k] == '}' {
+			// The last statement of a block may omit its `;` (CSS allows it, the
+			// grammar inserts a MISSING one): the blank before `}` reads as `;`.
+			for m := k - 1; m >= 0 && (src[m] == ' ' || src[m] == '\t' || src[m] == '\n'); m-- {
+				if src[m] != '\n' {
+					fill(m, m+1, ';')
+					break
+				}
+			}
 		}
 		return k
 	case "theme":

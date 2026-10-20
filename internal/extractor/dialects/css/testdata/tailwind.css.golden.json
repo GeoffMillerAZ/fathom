@@ -5,7 +5,7 @@
       "kind": "CSSModule",
       "package": "tailwind",
       "line": 1,
-      "end_line": 77,
+      "end_line": 81,
       "tier": "verified"
     },
     {
@@ -162,8 +162,10 @@
       "line": 65,
       "end_line": 77,
       "calls": [
+        "bg-(--color-brand)",
         "card",
         "h-[calc(100%-1rem)]",
+        "p-2",
         "tab-4"
       ],
       "tier": "verified"
@@ -194,6 +196,20 @@
       "package": "tailwind",
       "line": 74,
       "end_line": 76,
+      "tier": "verified"
+    },
+    {
+      "name": ".cell",
+      "kind": "CSSSelector",
+      "package": "tailwind",
+      "line": 79,
+      "end_line": 81,
+      "calls": [
+        "card",
+        "isolate",
+        "object-cover",
+        "p-2"
+      ],
       "tier": "verified"
     }
   ],

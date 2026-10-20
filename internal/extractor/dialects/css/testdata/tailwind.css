@@ -75,3 +75,7 @@
     color: red;
   }
 }
+
+.cell {
+  @apply [&_img]:object-cover **:data-[slot=kbd]:isolate *:p-2 card
+}
