@@ -49,7 +49,7 @@ func TestDetectNeverReturnsBareBoolean(t *testing.T) {
 	full := Probe{
 		Service: "svc", IndexedSymbols: 120, IndexFresh: true,
 		HooksReferenced: true, StanzaPresent: true, VerifyInLefthook: true,
-		GuardRules: 2, ModuleBindings: 1, LayerPacks: []string{"ui-appkit"},
+		GuardRules: 2, ModuleBindings: 1, TechPacks: 1, LayerPacks: []string{"ui-appkit"},
 		ObligationRules: 6, ObligationsCompiled: true, LedgerSessions: 4,
 		AgentSurfaceTools: 17, AgentSchemaBytes: 11839,
 		IntentRouterPresent: true, IntentDecisionsHome: "ADR.md", IntentConditions: 67,

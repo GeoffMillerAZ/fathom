@@ -20,6 +20,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/custodian"
 	"github.com/geoffmilleraz/fathom/internal/intent"
 	"github.com/geoffmilleraz/fathom/internal/projectdir"
+	"github.com/geoffmilleraz/fathom/internal/techpack"
 )
 
 // buildCapabilityProbe gathers every observable fact the registry reads.
@@ -32,6 +33,12 @@ func buildCapabilityProbe(baseURL, root, svc string, now time.Time) capability.P
 		p.IntentRouterPresent = c.RouterPath != ""
 		p.IntentDecisionsHome = c.DecisionsHome
 		p.IntentConditions = len(c.Conditions)
+	}
+
+	// Tech packs are counted before any exclusion: the capability reports
+	// what the pins carry, the switch decides whether it is served.
+	if d, err := techpack.Discover(root); err == nil {
+		p.TechPacks = len(d.Packs)
 	}
 
 	m := cachedObservatoryModel(baseURL, now)

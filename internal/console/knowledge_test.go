@@ -901,3 +901,46 @@ func TestListClaims_CountsDrillDownToRows(t *testing.T) {
 		t.Errorf("an unreadable project = %+v", l.Total)
 	}
 }
+
+// TestStrata_TechBandAppearsOnlyWithATechLayer pins FD-21's strata half: a
+// layer a pinned tech pack ships sits in its own tech band, between platform
+// and concern, sourced as a tech pack; with no such layer the four bands are
+// exactly what they were.
+func TestStrata_TechBandAppearsOnlyWithATechLayer(t *testing.T) {
+	f := newKnowledgeFixture(t)
+	base, err := Strata(context.Background(), f.src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, b := range base.Bands {
+		if b.Stratum == StratumTech {
+			t.Fatalf("a repository with no tech pack grew a tech band: %+v", b)
+		}
+	}
+
+	with := f.src
+	inner := f.src.Layers
+	with.Layers = func(root string) ([]semantic.LayerInfo, error) {
+		out, err := inner(root)
+		if root == f.alphaRoot {
+			out = append(out, semantic.LayerInfo{LayerDef: semantic.LayerDef{Name: "kit-notes", Kind: "adr-rule", Role: semantic.RoleGoverns, Stratum: StratumTech},
+				Source: semantic.SourceTech, TechPack: "kit-pack@1"})
+		}
+		return out, err
+	}
+	s, err := Strata(context.Background(), with)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var order []string
+	for _, b := range s.Bands {
+		order = append(order, b.Stratum)
+	}
+	if strings.Join(order, ",") != "dialect,provider,platform,tech,concern" {
+		t.Fatalf("bands = %v", order)
+	}
+	l := blockOf(t, bandOf(t, s, StratumTech), "kit-notes")
+	if l.Source != PackTech || !strings.Contains(l.Origin, "kit-pack@1") {
+		t.Errorf("tech layer = %+v, want source tech naming its pack", l)
+	}
+}

@@ -38,6 +38,7 @@ func TestEverySwitchableCapabilityHasAnEnforcementCase(t *testing.T) {
 		"test-run-hook": true, // TestSwitchOffStopsConfigSwitchHooks
 		"pin-check":     true, // TestSwitchOffStopsConfigSwitchHooks
 		"guard-enforce": true, // TestSwitchOffStopsConfigSwitchHooks
+		"tech-packs":    true, // TestCapabilityTechPacksAndExcludePacks (internal/techpack)
 	}
 	for _, c := range capability.Default().All() {
 		if c.Switchable && !covered[c.ID] {

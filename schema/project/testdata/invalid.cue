@@ -22,3 +22,13 @@ package project
 // bad4: #Project & {
 // 	generated: [{output: "ui/app.css", source: [], regenerate: "task ui:css"}]
 // }
+//
+// 5. An exclude_packs entry that is not a pack name (empty string):
+// bad5: #Project & {
+// 	exclude_packs: [""]
+// }
+//
+// 6. exclude_packs holding a non-list:
+// bad6: #Project & {
+// 	exclude_packs: "app-kit"
+// }

@@ -27,6 +27,11 @@ package binding
 // valid. Only a malformed entry is an error.
 #Bindings: {
 	bindings: [...#Binding]
+
+	// exclude_packs names tech packs (by pack name) that no consumer serves
+	// (docs/design/fathom-dir.md section 7.2): the committed opt-out beside
+	// the opt-in bindings. The reader is internal/techpack.
+	exclude_packs?: [...(string & !="")]
 }
 
 // #Binding is one repo's opt-in to one mounted platform module.

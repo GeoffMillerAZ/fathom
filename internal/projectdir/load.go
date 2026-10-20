@@ -142,7 +142,7 @@ func keyHome(name string) File {
 		return Capabilities
 	case "packs", "concerns":
 		return Concerns
-	case "bindings":
+	case "bindings", "exclude_packs":
 		return Modules
 	case "guards", "layer_rules":
 		return Guard

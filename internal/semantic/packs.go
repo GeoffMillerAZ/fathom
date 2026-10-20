@@ -274,7 +274,7 @@ func discoverTechPacks(root string) []techpack.Pack {
 	if root == "" {
 		return nil
 	}
-	d, err := techpack.Discover(root)
+	d, err := techpack.Served(root)
 	if err != nil {
 		warnBrokenPackOnce(root+"#techpacks", "tech packs under %s could not be discovered and are being ignored (other layers still serve): %v", root, err)
 		return nil

@@ -18,11 +18,15 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
 
-// The four strata (ADR-024, docs/design/pack-taxonomy.md), in band order.
+// The four strata (ADR-024, docs/design/pack-taxonomy.md), in band order,
+// and the tech stratum (FD-21): layers a pinned tech pack ships. Its band
+// appears between platform and concern only when some layer sits in it, so
+// a repository with no tech pack renders exactly the four bands.
 const (
 	StratumDialect  = "dialect"
 	StratumProvider = "provider"
 	StratumPlatform = "platform"
+	StratumTech     = "tech"
 	StratumConcern  = "concern"
 )
 
@@ -145,6 +149,7 @@ func strataFrom(k knowledge) StrataView {
 		{Stratum: StratumDialect, Title: "Dialect", Summary: "How code becomes an index: one extractor per language, typed edges where a checker or a SCIP index provides them.", Dialects: dialectLevels()},
 		{Stratum: StratumProvider, Title: "Provider", Summary: "What an external technology means. Parked until a named consumer needs it.", Parked: true, Reason: "no provider packs — parked pack type (TX-3, docs/design/pack-taxonomy.md)"},
 		{Stratum: StratumPlatform, Title: "Platform", Summary: "Rules an organization or a kit ships for its adopters, installed under .fathom/layers."},
+		{Stratum: StratumTech, Title: "Tech", Summary: "Layers a tech pack ships, found through the repository's own dependency pins; advisory, never a repository rule."},
 		{Stratum: StratumConcern, Title: "Concern", Summary: "What rules, decisions and specs say, compiled by a model from each repository's own documents; every claim cites its lines."},
 	}}
 	for _, p := range k.PackErr {
@@ -182,8 +187,11 @@ func strataFrom(k knowledge) StrataView {
 			continue
 		}
 		band := StratumConcern
-		if p != nil && p.Stratum == StratumPlatform {
+		switch {
+		case p != nil && p.Stratum == StratumPlatform:
 			band = StratumPlatform
+		case p != nil && (p.Source == semantic.SourceTech || p.Stratum == StratumTech):
+			band = StratumTech
 		}
 		for i := range out.Bands {
 			if out.Bands[i].Stratum == band {
@@ -192,6 +200,12 @@ func strataFrom(k knowledge) StrataView {
 		}
 	}
 	out.Totals.Layers = layerCount(k, layers)
+	for i := range out.Bands {
+		if out.Bands[i].Stratum == StratumTech && len(out.Bands[i].Layers) == 0 {
+			out.Bands = append(out.Bands[:i], out.Bands[i+1:]...)
+			break
+		}
+	}
 	for i := range out.Bands {
 		if out.Bands[i].Stratum == StratumPlatform && len(out.Bands[i].Layers) == 0 {
 			out.Bands[i].Reason = "no platform packs installed in any indexed repository"

@@ -378,6 +378,29 @@ func Default() Registry {
 			},
 			Remedy: func(Probe) Remedy { return Remedy{Cmd: "fathom init --guards"} },
 		},
+		{
+			// FD-20: the tech packs a repository's own dependency pins put
+			// on disk (docs/design/fathom-dir.md section 7.2). On by
+			// default when discovered (section 13 question 1: adoption is
+			// the binding, no judgment is made); off serves none of them
+			// anywhere. exclude_packs in modules.cue drops one pack.
+			ID:         "tech-packs",
+			Switchable: true,
+			Seam:       SeamGuards,
+			Summary:    "Packs that a pinned dependency ships (a fathom-pack/ directory) add advisory lines about generated files and their sources to what fathom says before an edit.",
+			Default:    true,
+			Scopes:     ScopeAny,
+			Cost:       "one offline read of the pinned modules per session; no network, and fathom never runs a pack's commands",
+			Detect: func(p Probe) State {
+				if p.TechPacks == 0 {
+					return State{Reason: "no pinned dependency in this repository ships a tech pack"}
+				}
+				return State{Operating: true, Detail: count(p.TechPacks, "tech pack") + " discovered"}
+			},
+			Remedy: func(Probe) Remedy {
+				return Remedy{Note: "a pack arrives with the dependency pin that carries it; `exclude_packs: [\"<name>\"]` in .fathom/modules.cue drops one"}
+			},
+		},
 	}
 
 	byID := make(map[string]Capability, len(caps))
