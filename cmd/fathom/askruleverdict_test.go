@@ -15,11 +15,11 @@ import (
 
 // TestEditHookAsksVerdictOnIgnoredRule is SR-48's anchor test (docs/plans/
 // surface-reckoning.md, design §5 row SR-48, F-31): when the SAME served
-// governing rule (Rule text + Src citation) tops a file's obligations two
-// turns running, the edit hook's second turn asks for a one-key verdict —
-// the edit that followed serving it the first time did not address it. A
-// different rule, a resolved file (no rule now), or no prior memo all earn
-// silence instead.
+// governing rule (Rule text + Src citation) with a claim id tops a file's
+// obligations two turns running, the edit hook's second turn asks for a
+// one-key verdict. A different rule, a resolved file (no rule now), or no
+// prior memo all earn silence instead (a claimless rule is never asked
+// about: TestRuleVerdictAskNeedsAClaimAndAllegesNoViolation).
 func TestEditHookAsksVerdictOnIgnoredRule(t *testing.T) {
 	dir := t.TempDir()
 	orig := ruleVerdictMemoDir
@@ -31,26 +31,26 @@ func TestEditHookAsksVerdictOnIgnoredRule(t *testing.T) {
 	const file = "internal/widget/widget.go"
 	const rule = "never write to hardcoded workspace paths"
 	const src = "internal/CLAUDE.md#L10-L12"
+	const claimID = "cl-ignored-1"
 
 	now := time.Now()
 
 	// Turn 1: no prior memo exists yet — the rule is served for the first
 	// time. Nothing to ask; the memo is written for next turn.
-	text, ok := withRuleVerdictAskAt(sessionID, service, file, rule, src, "", "obligations text", true, now, nil)
-	if strings.Contains(text, "served rule ignored") {
+	text, ok := withRuleVerdictAskAt(sessionID, service, file, rule, src, claimID, "obligations text", true, now, nil)
+	if strings.Contains(text, ruleVerdictAskMarker) {
 		t.Fatalf("turn 1 (first serving, no prior memo) asked a verdict; text = %q", text)
 	}
 	if !ok {
 		t.Fatalf("turn 1: ok = false, want true (existing text passes through unchanged)")
 	}
 
-	// Turn 2: the SAME rule still tops the file — the edit ignored it.
-	// This turn must ask.
-	text2, ok2 := withRuleVerdictAskAt(sessionID, service, file, rule, src, "", "obligations text", true, now.Add(time.Minute), nil)
+	// Turn 2: the SAME rule still tops the file. This turn must ask.
+	text2, ok2 := withRuleVerdictAskAt(sessionID, service, file, rule, src, claimID, "obligations text", true, now.Add(time.Minute), nil)
 	if !ok2 {
 		t.Fatalf("turn 2: ok = false, want true")
 	}
-	if !strings.Contains(text2, "served rule ignored") {
+	if !strings.Contains(text2, ruleVerdictAskMarker) {
 		t.Fatalf("turn 2 (same rule served twice running) did not ask a verdict; text = %q", text2)
 	}
 	if !strings.Contains(text2, rule) || !strings.Contains(text2, src) {
@@ -62,15 +62,15 @@ func TestEditHookAsksVerdictOnIgnoredRule(t *testing.T) {
 
 	// Turn 3: a DIFFERENT rule now tops the file (the first was addressed;
 	// this is the first time the second one is seen) — no ask.
-	text3, ok3 := withRuleVerdictAskAt(sessionID, service, file, "a different rule entirely", "internal/CLAUDE.md#L20-L22", "", "obligations text", true, now.Add(2*time.Minute), nil)
-	if !ok3 || strings.Contains(text3, "served rule ignored") {
+	text3, ok3 := withRuleVerdictAskAt(sessionID, service, file, "a different rule entirely", "internal/CLAUDE.md#L20-L22", "cl-ignored-2", "obligations text", true, now.Add(2*time.Minute), nil)
+	if !ok3 || strings.Contains(text3, ruleVerdictAskMarker) {
 		t.Fatalf("turn 3 (a different rule now tops the file) should not ask; text = %q, ok = %v", text3, ok3)
 	}
 
 	// Turn 4: the file is now clean (rule == "", nothing governs it any
 	// more) — no ask, whatever the memo says.
 	text4, ok4 := withRuleVerdictAskAt(sessionID, service, file, "", "", "", "", false, now.Add(3*time.Minute), nil)
-	if strings.Contains(text4, "served rule ignored") {
+	if strings.Contains(text4, ruleVerdictAskMarker) {
 		t.Fatalf("turn 4 (file now clean) should not ask; text = %q", text4)
 	}
 	if ok4 {
@@ -80,7 +80,7 @@ func TestEditHookAsksVerdictOnIgnoredRule(t *testing.T) {
 	// No session id: askRuleVerdict's memo is never consulted or written
 	// (the same leakage bound guardstamp.go's stamps use) — always silent
 	// pass-through.
-	if text, ok := withRuleVerdictAskAt("", service, file, rule, src, "", "obligations text", true, now, nil); text != "obligations text" || !ok {
+	if text, ok := withRuleVerdictAskAt("", service, file, rule, src, claimID, "obligations text", true, now, nil); text != "obligations text" || !ok {
 		t.Errorf("with no session id, withRuleVerdictAskAt = (%q, %v), want the input text unchanged", text, ok)
 	}
 }
@@ -88,22 +88,25 @@ func TestEditHookAsksVerdictOnIgnoredRule(t *testing.T) {
 // TestAskRuleVerdict is askRuleVerdict's own unit test — the pure decision
 // function, isolated from memo file I/O.
 func TestAskRuleVerdict(t *testing.T) {
-	rule, src := "no bare goroutines", "internal/CLAUDE.md#L10-L12"
+	rule, src, claimID := "no bare goroutines", "internal/CLAUDE.md#L10-L12", "cl-goroutines"
 
-	if got := askRuleVerdict(nil, rule, src, ""); got != "" {
+	if got := askRuleVerdict(nil, rule, src, claimID); got != "" {
 		t.Errorf("no prior memo: askRuleVerdict = %q, want \"\"", got)
 	}
-	prior := &ruleVerdictMemo{Rule: rule, Src: src}
+	prior := &ruleVerdictMemo{Rule: rule, Src: src, ClaimID: claimID}
 	if got := askRuleVerdict(prior, "", "", ""); got != "" {
 		t.Errorf("current rule resolved (\"\"): askRuleVerdict = %q, want \"\"", got)
 	}
-	if got := askRuleVerdict(prior, "a different rule", src, ""); got != "" {
+	if got := askRuleVerdict(prior, "a different rule", src, claimID); got != "" {
 		t.Errorf("different rule text: askRuleVerdict = %q, want \"\"", got)
 	}
-	if got := askRuleVerdict(prior, rule, "a different src", ""); got != "" {
+	if got := askRuleVerdict(prior, rule, "a different src", claimID); got != "" {
 		t.Errorf("different src: askRuleVerdict = %q, want \"\"", got)
 	}
-	got := askRuleVerdict(prior, rule, src, "")
+	if got := askRuleVerdict(prior, rule, src, ""); got != "" {
+		t.Errorf("no claim id: askRuleVerdict = %q, want \"\"", got)
+	}
+	got := askRuleVerdict(prior, rule, src, claimID)
 	if got == "" {
 		t.Fatal("same rule+src as prior: askRuleVerdict = \"\", want a verdict ask")
 	}
@@ -148,11 +151,11 @@ func TestEditHookRecordsVerdictAnswer(t *testing.T) {
 	now := time.Date(2026, 9, 29, 12, 0, 0, 0, time.UTC)
 
 	// Turns 1 and 2: the same rule tops the file twice; the ask names the claim.
-	if text, _ := withRuleVerdictAskAt(sessionID, service, file, rule, src, claimID, "obligations text", true, now, record); strings.Contains(text, "served rule ignored") {
+	if text, _ := withRuleVerdictAskAt(sessionID, service, file, rule, src, claimID, "obligations text", true, now, record); strings.Contains(text, ruleVerdictAskMarker) {
 		t.Fatalf("turn 1 asked: %q", text)
 	}
 	ask, _ := withRuleVerdictAskAt(sessionID, service, file, rule, src, claimID, "obligations text", true, now.Add(time.Minute), record)
-	if !strings.Contains(ask, "served rule ignored") || !strings.Contains(ask, "claim "+claimID) {
+	if !strings.Contains(ask, ruleVerdictAskMarker) || !strings.Contains(ask, "claim "+claimID) {
 		t.Fatalf("turn 2 ask does not name the claim id %s: %q", claimID, ask)
 	}
 	if !strings.Contains(ask, "c — corroborate") || !strings.Contains(ask, "r — refute") {

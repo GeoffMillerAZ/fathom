@@ -185,7 +185,8 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 			// (whether or not a rule currently governs it) — compare its top
 			// served governing rule against the memo from the file's PRIOR
 			// resolved turn and ask a one-key verdict when the SAME rule is
-			// still being served (askruleverdict.go). Skipped when this call
+			// still being served and has a claim id: a raw heading row has
+			// none and is never asked about (askruleverdict.go, O1434). Skipped when this call
 			// just consulted a guard stamp: that is the SAME edit's own
 			// --pre/--post pair, not a separate later turn (postEditMeta's own
 			// doc comment on skipRuleVerdict).
@@ -282,10 +283,10 @@ type postEditMeta struct {
 	// stamp (stampConsulted, above) — the second half of a --pre/--post
 	// pair for the SAME edit, moments apart, never a genuinely separate
 	// later turn. Without this gate, an edit governed by a --pre-wired
-	// guard would trip the "served rule ignored" ask on every single
+	// guard would trip the "served again" verdict ask on every single
 	// edit's own post-hook confirmation (the pre-hook's serving and the
 	// post-hook's echo of the SAME rule for the SAME edit would look
-	// identical to "served twice running, ignored"). The prior turn's
+	// identical to "served twice running"). The prior turn's
 	// memo is left untouched when this is true — neither consulted nor
 	// overwritten — so a LATER, genuinely separate turn still compares
 	// against whatever a real prior turn actually served.
