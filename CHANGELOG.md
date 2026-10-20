@@ -69,6 +69,7 @@ Release impact: minor
 
 ### Changed
 
+- The extractor epoch is derived from per-wave bump files (`internal/fusion/epochs/<wave>.md`) and a digest of the embedded dialect manifests, queries and grammar lock, so a dialect data change re-extracts without a hand bump; `extractor_epoch` in `fathom version --json` and SARIF run properties changes form from `68` to `<number>.<12 hex>`, and the first ingest after upgrading re-extracts every file once.
 - `PROVENANCE.md` drops its `**total**` row, and generated files merge by regeneration: `task merge-drivers` sets the `fathom-regen` driver `.gitattributes` names, `task regen` rebuilds them after a merge.
 - With `[readouts] mode` on and `[hooks] test_run` on, `fathom init` writes one PostToolUse(Bash) and one PostToolUseFailure(Bash) entry, `fathom readout-hook`, which runs the test-run hook in its own process (same line, same row); the old `session-hook --event test-run` and `--event failed-test-run` entries stay accepted and stay silent while the readout mode is on, so the tier runs once (RO-21).
 - The test-run log row gains additive `head`, `tree` and `scope` keys on every matched run, passing or failing; a key that could not be computed in the hook's deadline is absent (RO-35).

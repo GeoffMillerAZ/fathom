@@ -1,17 +1,30 @@
 package fusion
 
 // extractor_epoch.go — ExtractorEpoch, the fingerprint salt every extraction change bumps,
-// with its per-epoch history, and FingerprintHash, the pass-3 hash gate. Split out of
-// pipeline.go unchanged, so the file every language wave edits holds only this.
+// with its per-epoch history up to the frozen base, and FingerprintHash, the pass-3 hash gate.
+// A bump since the base is a file of its own under epochs/ (ADR-075 D4); no wave edits this file
+// to bump.
 
 import (
 	"crypto/sha256"
+	"embed"
+	"encoding/binary"
 	"encoding/hex"
+	"fmt"
+	"io/fs"
+	"maps"
+	"path"
+	"slices"
+	"strconv"
+
+	"github.com/geoffmilleraz/fathom/internal/extractor"
 )
 
 // ExtractorEpoch salts every file fingerprint (the pass-3 hash-gate). Bump it
 // in any commit that changes EXTRACTION SEMANTICS (new call-edge forms,
-// symbol naming, kind mappings …): the salt change invalidates all stored
+// symbol naming, kind mappings …) by adding epochs/<wave>.md, one per wave
+// (ADR-075 D4; until epoch 67, a renumbered literal and a paragraph here):
+// the salt change invalidates all stored
 // fingerprints, so the next ingest of every service re-extracts every file.
 // Without it, hash-gated files keep observations produced by the OLD
 // extractor forever — the stale-observation class dogfood O9 caught (the H1
@@ -733,19 +746,69 @@ import (
 // tree-sitter dialects. Item ex (LB-Q-elixir): Elixir files (.ex, .exs) read through the new elixir
 // dialect, imports resolved by namespace-dir. Every such file fingerprinted before holds the old
 // extraction.
-// Epoch 68 (wave lang4, one bump for the wave, made by the integrator). Item star
-// (LB-Q-bazel, LB-Q-tiltfile): BUILD, WORKSPACE, MODULE.bazel, .bzl and Tiltfile files read through
-// the starlark tree-sitter dialects. Item jss (LB-Q-json-schema): a .json whose root $schema is a
-// json-schema.org URL, or whose name ends .schema.json, reads through the json-schema dialect.
-// Critic (O379): the file-resolve pass keys a file a dialect claims by basename (BUILD, meson.build,
-// CMakeLists.txt) as well as by extension. Every such file fingerprinted before holds the old extraction.
-const ExtractorEpoch = "68"
+// The history above is frozen at epoch 67 (ADR-075 D4). From epoch 68 each bump is a file of its
+// own, epochs/<wave>.md, holding that bump's history paragraph (wave lang4's, epoch 68, is the
+// first), so two waves that both change extraction never edit one line.
+
+// epochFS embeds every bump file: one per wave whose extraction changed since the frozen base.
+//
+//go:embed epochs/*.md
+var epochFS embed.FS
+
+// epochBase is the last hand-numbered epoch, wave lang3's 67, where the history comment freezes.
+const epochBase = 67
+
+// ExtractorEpoch salts every file fingerprint (FingerprintHash), computed once per process from
+// what the binary embeds: "<67 + number of bump files>.<first 12 hex of sha256 over the sorted bump
+// files' names and bytes and the data digest>" (epochOf). A new bump file or any changed byte of
+// a dialect manifest, query or the grammar lock changes it, so the next ingest of every service
+// re-extracts every file. Two waves' bump files merged give a value distinct from each wave's. It
+// never holds ':' (statRowHash keeps it before a file_stats row's first ':').
+var ExtractorEpoch = epochOf(embeddedBumps(), extractor.EmbeddedDataDigest())
+
+// embeddedBumps is every embedded bump file by name. The files are embedded in the binary, so a
+// read error is a broken build.
+func embeddedBumps() map[string][]byte {
+	names, err := fs.Glob(epochFS, "epochs/*.md")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: embedded epoch bump files unreadable: %v", err))
+	}
+	bumps := make(map[string][]byte, len(names))
+	for _, n := range names {
+		b, err := epochFS.ReadFile(n)
+		if err != nil {
+			panic(fmt.Sprintf("fusion: embedded epoch bump file %s unreadable: %v", n, err))
+		}
+		bumps[path.Base(n)] = b
+	}
+	return bumps
+}
+
+// epochOf is the extractor epoch over bump files (name to bytes) and the data digest: the base
+// plus the bump count, a dot, and the first 12 hex of sha256 over each bump file in name order
+// (its name, a NUL, its length, its bytes) and then the digest.
+func epochOf(bumps map[string][]byte, dataDigest string) string {
+	names := slices.Sorted(maps.Keys(bumps))
+	h := sha256.New()
+	var n [8]byte
+	for _, name := range names {
+		h.Write([]byte("bump\x00" + name + "\x00"))
+		binary.BigEndian.PutUint64(n[:], uint64(len(bumps[name])))
+		h.Write(n[:])
+		h.Write(bumps[name])
+	}
+	h.Write([]byte("data\x00" + dataDigest))
+	return strconv.Itoa(epochBase+len(names)) + "." + hex.EncodeToString(h.Sum(nil))[:12]
+}
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
 // against stored fingerprints (e.g. Client.ObligationsIndexStale) MUST use
 // this function — a plain content hash never matches a stored fingerprint.
-func FingerprintHash(content []byte) string {
-	sum := sha256.Sum256(append(content, []byte("\x00fathom-extractor-epoch:"+ExtractorEpoch)...))
+func FingerprintHash(content []byte) string { return saltedFingerprint(content, ExtractorEpoch) }
+
+// saltedFingerprint is FingerprintHash's formula under a given epoch.
+func saltedFingerprint(content []byte, epoch string) string {
+	sum := sha256.Sum256(append(content, []byte("\x00fathom-extractor-epoch:"+epoch)...))
 	return hex.EncodeToString(sum[:])
 }
