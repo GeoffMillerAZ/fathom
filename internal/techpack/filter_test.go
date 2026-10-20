@@ -145,3 +145,22 @@ func TestEveryDiscoverCallRoutesThroughServed(t *testing.T) {
 		}
 	}
 }
+
+// TestPolicyForLoadsProjectOnlyWhenExcludePacksIsWritten pins the policy's
+// cost on the obligations path (semantic's discoverTechPacks runs it per
+// call; pkg/client's 2 MiB per-call allocation target): a `.fathom/` that
+// never writes `exclude_packs` is not evaluated as CUE, while a file that
+// does still yields the list.
+func TestPolicyForLoadsProjectOnlyWhenExcludePacksIsWritten(t *testing.T) {
+	repo := pinnedRepo(t)
+	writeFile(t, repo, ".fathom/guard.cue", `guards: [{scopes: ["**"], note: "n", max_rules: 1}]`+"\n")
+	PolicyFor(repo) // warm package-level state
+	allocs := testing.AllocsPerRun(5, func() { PolicyFor(repo) })
+	if allocs > 500 {
+		t.Fatalf("PolicyFor without exclude_packs allocated %.0f times per call, want the project left unevaluated", allocs)
+	}
+	writeFile(t, repo, ".fathom/modules.cue", `exclude_packs: ["pack-a"]`+"\n")
+	if pol := PolicyFor(repo); pol.Err != nil || !reflect.DeepEqual(pol.Exclude, []string{"pack-a"}) {
+		t.Fatalf("policy = %+v, want exclude [pack-a]", pol)
+	}
+}

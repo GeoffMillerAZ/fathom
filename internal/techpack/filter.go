@@ -6,7 +6,12 @@ package techpack
 // (default on) and `exclude_packs` in .fathom/modules.cue.
 
 import (
+	"errors"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/capability"
 	"github.com/geoffmilleraz/fathom/internal/projectdir"
@@ -65,6 +70,9 @@ func PolicyFor(root string) Policy {
 	set := res.For(c)
 	pol.Enabled, pol.Scope = set.On, set.Scope
 
+	if !mayWriteExcludePacks(root) {
+		return pol
+	}
 	proj, err := projectdir.Load(root)
 	if err != nil {
 		pol.Err = err
@@ -83,6 +91,30 @@ func PolicyFor(root string) Policy {
 		}
 	}
 	return pol
+}
+
+// mayWriteExcludePacks is the text check before the CUE evaluation: the
+// obligations path runs PolicyFor on every call, and projectdir.Load
+// compiles every schema each time (megabytes per call). Only a `.fathom/`
+// file whose text names `exclude_packs` can set the key, so any other
+// project is left unevaluated. A directory or file that cannot be read
+// answers true, so the load runs and names the error (I38).
+func mayWriteExcludePacks(root string) bool {
+	dir := projectdir.Under(root)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return !errors.Is(err, fs.ErrNotExist)
+	}
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".cue") {
+			continue
+		}
+		data, rerr := os.ReadFile(filepath.Join(dir, e.Name()))
+		if rerr != nil || strings.Contains(string(data), "exclude_packs") {
+			return true
+		}
+	}
+	return false
 }
 
 func normalize(names []string) []string {
