@@ -1,0 +1,137 @@
+{
+  "dialect": "graphql",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "excellent",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-20",
+  "fathom_commit": "b54ccdae0",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "reaction",
+      "sha": "8aaf479103a27c089ec95f35a8e207e9a2a938cd",
+      "files": 194,
+      "bytes": 419741,
+      "counts": {
+        "callables": 3410,
+        "callables_signed": 3410,
+        "fathom_defs": 3410,
+        "kind_equal": 3410,
+        "matched": 3410,
+        "oracle_defs": 3410,
+        "range_eligible": 3410,
+        "range_ok": 3410,
+        "ref_fathom": 1195,
+        "ref_fathom_in_truth": 1195,
+        "ref_truth": 1195,
+        "ref_truth_found": 1195,
+        "xref_fathom": 113,
+        "xref_fathom_in_truth": 113,
+        "xref_truth": 114,
+        "xref_truth_found": 113
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "enum_member",
+        "field",
+        "function",
+        "macro",
+        "type_alias"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 57.86000000000001,
+        "extract_cpu_ms": 60.29,
+        "max_file_ms": 3,
+        "peak_module_pages": 277,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "graphql-js",
+      "version": "16.14.2"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": 1,
+    "xref_recall": 0.9912
+  },
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A",
+    "xref_precision": "A",
+    "xref_recall": "A"
+  },
+  "required_kinds": [
+    "enum_member",
+    "field",
+    "function",
+    "macro",
+    "type_alias"
+  ],
+  "kind_intersection": [
+    "enum_member",
+    "field",
+    "function",
+    "macro",
+    "type_alias"
+  ],
+  "counts": {
+    "callables": 3410,
+    "callables_signed": 3410,
+    "fathom_defs": 3410,
+    "kind_equal": 3410,
+    "matched": 3410,
+    "oracle_defs": 3410,
+    "range_eligible": 3410,
+    "range_ok": 3410,
+    "ref_fathom": 1195,
+    "ref_fathom_in_truth": 1195,
+    "ref_truth": 1195,
+    "ref_truth_found": 1195,
+    "xref_fathom": 113,
+    "xref_fathom_in_truth": 113,
+    "xref_truth": 114,
+    "xref_truth_found": 113
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 0,
+    "throughput_mb_s": 6.96,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 7.25,
+    "max_file_ms": 3,
+    "peak_module_pages": 277,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "xref_precision and xref_recall of a tags-engine tool format score the file resolver's file-resolved edges (fusion.ResolveFileEdges over the dialect's import strategy, the edges ingest stores) against the oracle's cross_references at file granularity: (file, referring definition, referenced file), the referenced definition's name not compared (LB-F56)",
+    "the global-name rule held out: a named type binds the one file of the service defining a type of that name; the oracle counts 720 references to a name two or more files define (ambiguous, bound by neither side)",
+    "graphql-js merged-SDL cross-check: all 136 oracle cross references resolve to a definition parsed from their attributed file"
+  ],
+  "disposition": "holdout (K19, calibration/corpus.d/graphql-holdout.yaml, pinned at b54ccdae0 with the global-name rule, before any reading under it), read once at b54ccdae0: reactioncommerce/reaction v5.0.0 (194 files) against graphql-js 16.14.2 (tier A): L1 excellent (3,410 of 3,410 definitions), L2 excellent (1,195 of 1,195 pairs), L3 excellent (xref_precision 1, 113 of 113; xref_recall .9912, 113 of 114). The one miss is the oracle's: NavigationTreeById spreads ...NavigationTreeItem, a fragment of its own file whose name a type of packages/api-plugin-navigation also has, and the oracle reads the spread as that type (O1440). 999d94bc, the shipped rule, drops only same-file edges, which this file-granularity score never counts."
+}
