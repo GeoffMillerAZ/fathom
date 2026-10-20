@@ -62,7 +62,7 @@ bad: #Layer & {
 	tier: "ai-derived"
 	budgets: {max_tokens_per_run: 1, max_usd_per_run: 0}
 }`},
-		{"stratum outside the two admitted pack-taxonomy values (ADR-024: dialect/provider have no #Layer instance)", `
+		{"stratum outside the three admitted values (ADR-024: dialect has no #Layer instance; provider was renamed tech)", `
 bad: #Layer & {
 	name: "x", version: "v1", kind: "x"
 	corpus: include: ["docs/**"]
@@ -164,6 +164,23 @@ platformLayer: #Layer & {
 	}
 	if err := v2.Validate(); err != nil {
 		t.Fatalf("stratum \"platform\" should validate: %v", err)
+	}
+
+	tech := `
+techLayer: #Layer & {
+	name: "x", version: "v1", kind: "x"
+	corpus: include: ["docs/**"]
+	prompt_version: "x/v1"
+	tier: "doc-claimed"
+	stratum: "tech"
+	budgets: {max_tokens_per_run: 1, max_usd_per_run: 0}
+}`
+	v3 := cctx.CompileString(schema + "\n" + tech)
+	if v3.Err() != nil {
+		t.Fatalf("compile: %v", v3.Err())
+	}
+	if err := v3.Validate(); err != nil {
+		t.Fatalf("stratum \"tech\" (a tech pack's layer, FD-18) should validate: %v", err)
 	}
 }
 

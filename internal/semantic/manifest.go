@@ -95,8 +95,9 @@ type LayerDef struct {
 	// Stratum names this pack instance's place in the four-stratum pack
 	// taxonomy (ADR-024, docs/design/pack-taxonomy.md): "concern" (a
 	// fathom-authored, eval-gated-embedded pack — every pack this repo
-	// ships) or "platform" (an org's own pack, authored and eval-gated
-	// on-disk under a project's .fathom/layers/, the D3 trust seam).
+	// ships), "platform" (an org's own pack, authored and eval-gated
+	// on-disk under a project's .fathom/layers/, the D3 trust seam) or
+	// "tech" (a layer a pinned tech pack ships, FD-18).
 	// Vocabulary only — it never changes resolution order or the eval
 	// gate; see schema.cue's #Layer.stratum doc comment.
 	Stratum string

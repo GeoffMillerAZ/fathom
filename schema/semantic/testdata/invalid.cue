@@ -35,10 +35,10 @@ package semantic
 // 	budgets: {max_tokens_per_run: 1, max_usd_per_run: 0}
 // }
 //
-// 4. A stratum outside the two values a #Layer instance can carry (ADR-024,
-//    docs/design/pack-taxonomy.md): "dialect" and "provider" are recorded
-//    strata with no #Layer instance — dialects are code, provider packs are
-//    parked (TX-3) — so only "concern"/"platform" are admitted here.
+// 4. A stratum outside the three values a #Layer instance can carry (ADR-024,
+//    docs/design/pack-taxonomy.md, docs/design/fathom-dir.md section 7):
+//    "dialect" has no #Layer instance (dialects are code) and "provider" was
+//    renamed "tech", so only "concern"/"platform"/"tech" are admitted here.
 // bad4: #Layer & {
 // 	name: "x", version: "v1", kind: "x"
 // 	corpus: include: ["docs/**"]
