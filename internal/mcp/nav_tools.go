@@ -130,7 +130,7 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 		// one load and build per (service, watermark), shared by concurrent
 		// callers. Building them per call cost 2.45–9.78 GB of allocation and
 		// ~6 GiB of footprint under a 20-call burst (wave-A incident replay).
-		ng, lerr := loadNavGraphsErr(ctx, backend, p.Service)
+		ng, lerr := loadCombinedNavGraphErr(ctx, backend, p.Service)
 		if lerr != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: lerr.Error()}
 		}

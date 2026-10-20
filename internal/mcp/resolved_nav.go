@@ -192,6 +192,32 @@ func typedLoader(backend QueryInterface, service string) memo.TypedLoader {
 	}
 }
 
+// combinedNavGraph contains only what readers of the served, syntax-plus-typed
+// graph need. Keeping it separate prevents such readers from accidentally
+// treating an unbuilt resolved graph as an empty typed result.
+type combinedNavGraph struct {
+	Nodes    []core.SymbolNode
+	Both     *callgraph.Graph
+	Typed    []core.Edge
+	TypedErr error
+}
+
+// loadCombinedNavGraphErr shares the same snapshot, graph key, typed-read
+// failure fallback and invalidation as the full navigation loader, but never
+// builds graph kinds the caller does not read. GraphForTyped names a failed
+// typed read and serves syntax for that call without caching the failure.
+func loadCombinedNavGraphErr(ctx context.Context, backend QueryInterface, service string) (*combinedNavGraph, error) {
+	snap, err := serviceSnapshot(ctx, backend, service)
+	if err != nil {
+		return nil, err
+	}
+	g, typed, typedErr, err := memo.GraphForTyped(ctx, snap, memo.GraphBoth, typedLoader(backend, service))
+	if err != nil {
+		return nil, err
+	}
+	return &combinedNavGraph{Nodes: snap.Nodes, Both: g, Typed: typed, TypedErr: typedErr}, nil
+}
+
 // loadNavGraphsErr returns service's snapshot and its three graphs, each
 // from the graph store (RT-74): one build per (store, service, watermark,
 // kind), shared by every tool and the console, single-flighted with

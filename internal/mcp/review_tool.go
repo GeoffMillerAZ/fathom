@@ -198,7 +198,7 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 		// Governance dimensions (obligations, arch_conformance, spec
 		// coverage, test coverage) are not edge-derived and are outside
 		// this tally.
-		ng, gerr := loadNavGraphsErr(ctx, backend, p.Service)
+		ng, gerr := loadCombinedNavGraphErr(ctx, backend, p.Service)
 		if gerr == nil {
 			payload["resolution"] = resolutionFromBlastBuckets(blastRadiusByDepth(ng.Both, ng.Nodes, in.ChangedFiles))
 		}
