@@ -31,7 +31,7 @@ import (
 // cmdRules dispatches to the rules verb named by args[0].
 func cmdRules(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "error: rules requires a verb: gen-test, replay")
+		fmt.Fprintln(stderr, "error: rules requires a verb: gen-test, replay, fixtures")
 		return 1
 	}
 	switch args[0] {
@@ -39,8 +39,10 @@ func cmdRules(args []string, stdout, stderr io.Writer) int {
 		return cmdRulesGenTest(args[1:], stdout, stderr)
 	case "replay":
 		return cmdRulesReplay(args[1:], stdout, stderr)
+	case "fixtures":
+		return cmdRulesFixtures(args[1:], stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "error: unknown rules verb %q (want gen-test, replay)\n", args[0])
+		fmt.Fprintf(stderr, "error: unknown rules verb %q (want gen-test, replay, fixtures)\n", args[0])
 		return 1
 	}
 }
@@ -304,5 +306,5 @@ func (rulesRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer
 
 func init() {
 	declareVerb(verb{Name: "rules", Group: "govern", Order: 60, Run: rulesRunner{},
-		Summary: "Compiled governance: gen-test [--root DIR] [--out DIR] emits a Go test from .fathom/guard.cue's layer_rules | replay --since <ref|N> [--rules FILE] [--json]: evaluate today's rules against past commits"})
+		Summary: "Compiled governance: gen-test [--root DIR] [--out DIR] emits a Go test from .fathom/guard.cue's layer_rules | replay --since <ref|N> [--rules FILE] [--json]: evaluate today's rules against past commits | fixtures <pack dir> [--json]: check a tech pack's fixtures"})
 }
