@@ -224,7 +224,7 @@ func SymbolContext(nodes []core.SymbolNode, g *callgraph.Graph, symbol string) C
 	// Related tests: Test* callers.
 	for _, n := range nodes {
 		nk := n.Key()
-		if strings.HasPrefix(n.Name, "Test") {
+		if callgraph.IsTestNode(n) {
 			for _, callee := range idx[nk] {
 				if callee == key {
 					ctx.RelatedTests = append(ctx.RelatedTests, nk)

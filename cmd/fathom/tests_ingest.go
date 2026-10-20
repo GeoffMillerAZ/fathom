@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/certify"
@@ -97,6 +98,13 @@ func cmdTestsIngest(args []string, stdout, stderr io.Writer) int {
 
 	fmt.Fprintf(stdout, "tests ingest: %d suite(s), %d run(s), %d case(s) (%d joined), %d declared certification(s)\n",
 		report.SuitesWritten, report.RunsWritten, report.CasesWritten, report.CasesJoined, markerReport.Declared)
+	if n := len(report.CasesUnmatched); n > 0 {
+		shown := report.CasesUnmatched
+		if len(shown) > 10 {
+			shown = shown[:10]
+		}
+		fmt.Fprintf(stdout, "tests ingest: %d case(s) matched no test symbol: %s\n", n, strings.Join(shown, ", "))
+	}
 
 	// The certifications layer recompiles unconditionally at the end of
 	// `tests ingest` (vision 33 / ADR-043 stage 1, TC-6's own wiring

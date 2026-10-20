@@ -513,6 +513,11 @@ func groupTestInvocations(nodes []core.SymbolNode, ranked []rankedTest) []testIn
 	byPkg := make(map[string][]string)
 	var pkgs []string
 	for _, rt := range ranked {
+		// A `go test` line names Go tests only: a non-Go test is ranked
+		// and selected, and its runner invokes it (TQ-28).
+		if rt.File != "" && !strings.HasSuffix(rt.File, ".go") {
+			continue
+		}
 		name := rt.Test
 		if n, ok := byKey[rt.Test]; ok {
 			name = n.Name
