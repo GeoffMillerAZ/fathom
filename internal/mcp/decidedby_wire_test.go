@@ -86,6 +86,25 @@ func jg2DecidedBy(t *testing.T, text string) (string, bool) {
 // <model> · conf <x> · calibration uncalibrated 0/100) from the weakest
 // answer it acted on; a provider that misses names `computed · not
 // consulted (<class>)`.
+// calibrateRerank writes, under the per-user fathom directory, a reading
+// that lets the obligations re-rank ask provider typesafe (SR-58's gate):
+// the miss below must reach the provider to be one.
+func calibrateRerank(t *testing.T) {
+	t.Helper()
+	samples := make([]decision.LabeledSample, 100)
+	for i := range samples {
+		samples[i] = decision.LabeledSample{Confidence: 0.95, Correct: true, Provenance: decision.ProvenanceComputed}
+	}
+	site := decide.SiteObligationsRerank
+	r, err := decision.NewReading(decision.ReadingKey{Site: site, TemplateVersion: decide.TemplateVersion(site), Provider: "typesafe"}, samples)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := decide.WriteReadingJSON(decide.ReadingsDir(), "2026-10-20", decide.CalibrationReading{Taken: "2026-10-20T00:00:00Z", Reading: r, Baseline: &decide.ABReading{N: 100, Correct: 50}}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestObligationsWire_DecidedByOnlyWhenConfigured(t *testing.T) {
 	golden, err := os.ReadFile(i42ObligationsGolden)
 	if err != nil {
@@ -146,6 +165,7 @@ func TestObligationsWire_DecidedByOnlyWhenConfigured(t *testing.T) {
 		t.Setenv("FATHOM_HOME", t.TempDir())
 		t.Setenv(decide.KillEnv, "")
 		t.Setenv("FATHOM_TEST_JG2_KEY", "test-key-jg2-not-a-real-key")
+		calibrateRerank(t)
 		var disclose bytes.Buffer
 		cfg := config.Decide{Provider: "typesafe", APIKeyEnv: "FATHOM_TEST_JG2_KEY", RankWithinTier: true, CompileThreshold: 0.5,
 			RerankTimeoutMS: int((2 * time.Second).Milliseconds()), Sites: []string{decide.SiteObligationsRerank}}

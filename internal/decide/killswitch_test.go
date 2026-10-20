@@ -825,7 +825,8 @@ func TestKilledLineOncePerSessionAndSite(t *testing.T) {
 			}
 			dials := &dialCounter{reply: ksNoulReply}
 			var disclose bytes.Buffer
-			ports, err := decide.Open(cfg, nil, "", nil, decide.WithKeyIO(newKeyCounter(fakeEnv).io()), decide.WithHTTPClient(dials.client()), decide.WithDisclose(&disclose), decide.WithUserConfig(""))
+			ports, err := decide.Open(cfg, nil, "", nil, decide.WithKeyIO(newKeyCounter(fakeEnv).io()), decide.WithHTTPClient(dials.client()), decide.WithDisclose(&disclose), decide.WithUserConfig(""),
+				decide.CalibratedFor(t, "typesafe", "jev-latest", decide.AllSites...))
 			if err != nil {
 				t.Fatalf("Open: %v", err)
 			}

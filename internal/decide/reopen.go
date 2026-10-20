@@ -116,8 +116,8 @@ func (v *reopening) decider() (decision.Decider, error) {
 	if err != nil {
 		return nil, &notOpenedError{err: fmt.Errorf("composing the degrade fallback: %w", err)}
 	}
-	v.d = d
-	return d, nil
+	v.d = propose(d, deg, v.r.o.readingsDir) // SR-58: the reopened port is gated too
+	return v.d, nil
 }
 
 // Capabilities declares what the composed provider declares once the port

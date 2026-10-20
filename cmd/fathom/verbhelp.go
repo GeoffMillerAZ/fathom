@@ -76,7 +76,7 @@ func verbSubverbs() map[string][]string {
 		"config":       {"audit", "propose"},
 		"coverage":     {"ingest"},
 		"daemon":       {"install", "status", "uninstall", "stop", "start", "pause", "resume", "ps", "reap", "deploy-intent"},
-		"decide":       {"log"},
+		"decide":       {"log", "calibrate"},
 		"export":       {"scip", "receipt"},
 		"findings":     {"near", "status", "import", "candidates"},
 		"fleet":        {"report", "reconcile", "realization", "receipts", "undo", "remedy"},

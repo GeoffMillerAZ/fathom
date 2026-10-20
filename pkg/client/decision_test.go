@@ -306,6 +306,24 @@ func typesafeSystemOneFake(t *testing.T) *httptest.Server {
 // not just constructible but actually reachable end to end through the
 // same Client.Obligations path TestClient_WithDecision_RankedBy already
 // pins for "llm"/mock.
+// calibrateSite writes, under the per-user fathom directory, a reading that
+// lets site rule on provider under model (SR-58's gate): 100 of 100 right
+// in the proceed band, the deterministic answer 50 of 100.
+func calibrateSite(t *testing.T, provider, model, site string) {
+	t.Helper()
+	samples := make([]decision.LabeledSample, 100)
+	for i := range samples {
+		samples[i] = decision.LabeledSample{Confidence: 0.95, Correct: true, Provenance: decision.ProvenanceComputed}
+	}
+	r, err := decision.NewReading(decision.ReadingKey{Site: site, TemplateVersion: decide.TemplateVersion(site), Provider: provider, ResolvedModel: model}, samples)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := decide.WriteReadingJSON(decide.ReadingsDir(), "2026-10-20", decide.CalibrationReading{Taken: "2026-10-20T00:00:00Z", Reading: r, Baseline: &decide.ABReading{N: 100, Correct: 50}}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestWithDecision_TypeSafeFake(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
@@ -348,6 +366,7 @@ func TestWithDecision_TypeSafeFake(t *testing.T) {
 	// imports a provider adapter package (KS-9, ADR-073 decision 2).
 	t.Setenv("FATHOM_HOME", t.TempDir()) // no kill file from the machine running the test
 	t.Setenv(decide.KillEnv, "")
+	calibrateSite(t, "typesafe", "jev-1.13.0", decide.SiteObligationsRerank)
 	keyFile := filepath.Join(t.TempDir(), "typesafe.key")
 	if err := os.WriteFile(keyFile, []byte("test-key"), 0o600); err != nil {
 		t.Fatal(err)

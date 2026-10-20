@@ -1,0 +1,3 @@
+### Added
+
+- `fathom decide calibrate --provider X` grades every decision-port site against its calibration set (`<site>.jsonl` under `calibration/sets` in the per-user fathom directory, or `--sets`) and writes one calibration reading per site: n, accuracy by confidence band, Wilson bounds, Brier score, AUROC, the label provenance mix and an A/B against the site's deterministic answer, as a JSON reading and a Markdown reading `fathom decide log --readings` shows. `--provider none` grades the deterministic answer, and a provider that cannot open is refused with its disclosed line. A site with no calibration set is named.

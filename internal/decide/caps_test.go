@@ -61,7 +61,8 @@ func TestAskCapIsTheMinimumAcrossLayersAndDisclosedOnce(t *testing.T) {
 	var disclose bytes.Buffer
 	var log bytes.Buffer
 	rec := decide.NewRecorder(&log, func() time.Time { return time.Unix(0, 0).UTC() }, "test")
-	ports, err := decide.Open(cfg, nil, "", rec, decide.WithKeyIO(newKeyCounter(fakeEnv).io()), decide.WithHTTPClient(dials.client()), decide.WithDisclose(&disclose), decide.WithUserConfig(""))
+	ports, err := decide.Open(cfg, nil, "", rec, decide.WithKeyIO(newKeyCounter(fakeEnv).io()), decide.WithHTTPClient(dials.client()), decide.WithDisclose(&disclose), decide.WithUserConfig(""),
+		decide.CalibratedFor(t, "typesafe", "jev-latest", decide.AllSites...))
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
