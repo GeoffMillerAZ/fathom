@@ -400,6 +400,21 @@
       "gz_bytes": 78038
     },
     {
+      "blob": "objective-c",
+      "repo": "tree-sitter-grammars/tree-sitter-objc",
+      "tag": "181a81b8f23a2d593e7ab4259981f50122909fda",
+      "commit": "181a81b8f23a2d593e7ab4259981f50122909fda",
+      "tarball_sha256": "97789350d6353520fd8569c12abd2e99b95bcb65d5f418dd797dbcfef1995cec",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_objc"],
+      "scanner": false,
+      "generate": false,
+      "abi": 14,
+      "blob_sha256": "2b73a50672e956e9d1dc9873c34d18b7f0aa74ba7b4a51e16777e54618903f3b",
+      "blob_bytes": 2361937,
+      "gz_bytes": 491144
+    },
+    {
       "blob": "perl",
       "repo": "tree-sitter-perl/tree-sitter-perl",
       "tag": "4586b3f1fc6f8b80cca6ceb23ba863ae986eeae8",

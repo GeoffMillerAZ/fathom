@@ -105,7 +105,8 @@ type tsDialectRules struct {
 // parse as written (none when a rewrite would change nothing).
 var tsPreprocessors = map[string]func(src []byte) [][]byte{
 	"csharp-conditionals": csharpConditionalTexts,
-	"cpp-macros":          cppMacroTexts, // tsextract_cppmacros.go (O455)
+	"cpp-macros":          cppMacroTexts,  // tsextract_cppmacros.go (O455)
+	"objc-macros":         objcMacroTexts, // tsextract_objcmacros.go (LB-Q-objective-c)
 }
 
 // tsErrorQuery captures every node a tree-sitter parse could not fit to
@@ -820,11 +821,13 @@ type tsDef struct {
 	callSet     map[string]struct{}
 	calls       []string
 	pattern     uint16 // the query pattern that named it (oneDefPerNode)
+	parts       int    // name.part captures the name was joined from (tsNameParts), 0 for a plain @name
 }
 
 type tsCallSite struct {
 	text       string
 	start, end uint32
+	parts      int // name.part captures the callee was joined from (tsNameParts), 0 for a plain @name
 }
 
 // tsCallAttach gives the calls inside from (a decorator, a module-level
@@ -864,7 +867,73 @@ func tsCalleeName(m tsengine.Match, src []byte) (callee string, site tsengine.No
 	if name != nil && name.StartByte >= site.StartByte && name.EndByte <= site.EndByte {
 		return name.Text(src), site, true
 	}
+	if sel, n := tsNameParts(m, src, &site); n > 0 {
+		return sel, site, true
+	}
 	return site.Text(src), site, true
+}
+
+// tsNameParts joins a match's @name.part captures into one name, each part
+// followed by ':' (an Objective-C selector `initWithFrame:style:` is a run of
+// keyword identifiers split by their arguments, so no single node holds it):
+// the parts are taken in document order, n is how many there were, and a match
+// with none answers ("", 0). A query writes one pattern per arity, and a
+// pattern for a shorter selector also matches a longer one's leading keywords,
+// so dropShorterParts keeps only the longest per definition or call site.
+func tsNameParts(m tsengine.Match, src []byte, within *tsengine.Node) (string, int) {
+	var b strings.Builder
+	n := 0
+	for i := range m.Captures {
+		c := &m.Captures[i]
+		if c.Name != "name.part" {
+			continue
+		}
+		if within != nil && (c.Node.StartByte < within.StartByte || c.Node.EndByte > within.EndByte) {
+			continue
+		}
+		b.WriteString(c.Node.Text(src))
+		b.WriteByte(':')
+		n++
+	}
+	return b.String(), n
+}
+
+// dropShorterParts removes every definition and call site that a longer
+// name.part match over the same span supersedes (see tsNameParts).
+func dropShorterParts(defs []*tsDef, calls []tsCallSite) ([]*tsDef, []tsCallSite) {
+	type span struct{ start, end uint32 }
+	longestDef := map[span]int{}
+	for _, d := range defs {
+		if d.parts > 0 {
+			k := span{d.start, d.end}
+			longestDef[k] = max(longestDef[k], d.parts)
+		}
+	}
+	longestCall := map[span]int{}
+	for _, c := range calls {
+		if c.parts > 0 {
+			k := span{c.start, c.end}
+			longestCall[k] = max(longestCall[k], c.parts)
+		}
+	}
+	if len(longestDef) == 0 && len(longestCall) == 0 {
+		return defs, calls
+	}
+	keepDefs := defs[:0:0]
+	for _, d := range defs {
+		if d.parts > 0 && d.parts < longestDef[span{d.start, d.end}] {
+			continue
+		}
+		keepDefs = append(keepDefs, d)
+	}
+	keepCalls := calls[:0:0]
+	for _, c := range calls {
+		if c.parts > 0 && c.parts < longestCall[span{c.start, c.end}] {
+			continue
+		}
+		keepCalls = append(keepCalls, c)
+	}
+	return keepDefs, keepCalls
 }
 
 // qualifiedCallee is a call site's callee under the manifest's
@@ -1000,7 +1069,8 @@ func splitTSMatchesWith(matches []tsengine.Match, kinds map[string]tsDefKind, sr
 				callee = norm(callee)
 			}
 			if callee != "" {
-				calls = append(calls, tsCallSite{text: callee, start: site.StartByte, end: site.EndByte})
+				_, parts := tsNameParts(m, src, &site)
+				calls = append(calls, tsCallSite{text: callee, start: site.StartByte, end: site.EndByte, parts: parts})
 			}
 			continue
 		}
@@ -1033,14 +1103,29 @@ func splitTSMatchesWith(matches []tsengine.Match, kinds map[string]tsDefKind, sr
 				defSuffix = strings.TrimPrefix(c.Name, "definition.")
 			}
 		}
-		if defNode == nil || nameNode == nil {
+		partName, parts := tsNameParts(m, src, nil)
+		if defNode == nil || (nameNode == nil && parts == 0) {
 			continue
 		}
 		dk, ok := kinds[defSuffix]
 		if !ok {
 			continue
 		}
-		name := nameNode.Text(src)
+		var name string
+		if nameNode != nil {
+			name = nameNode.Text(src)
+		} else {
+			// A selector: the first keyword names the definition's row
+			// (a name.part capture is a name, tsNameParts).
+			name = partName
+			for i := range m.Captures {
+				if m.Captures[i].Name == "name.part" {
+					n := m.Captures[i].Node
+					nameNode = &n
+					break
+				}
+			}
+		}
 		if norm != nil {
 			name = norm(name)
 		}
@@ -1077,6 +1162,7 @@ func splitTSMatchesWith(matches []tsengine.Match, kinds map[string]tsDefKind, sr
 			defLine: defNode.Line(),
 			parent:  -1,
 			pattern: m.PatternIndex,
+			parts:   parts,
 		}
 		// @end: a grammar that puts a callable's body in a sibling of its
 		// signature (tree-sitter-dart) has no node spanning both, so the match
@@ -1096,6 +1182,7 @@ func splitTSMatchesWith(matches []tsengine.Match, kinds map[string]tsDefKind, sr
 			attaches = append(attaches, tsCallAttach{toStart: d.start, toEnd: d.end, fromStart: fromNode.StartByte, fromEnd: fromNode.EndByte})
 		}
 	}
+	defs, calls = dropShorterParts(defs, calls)
 	return defs, calls, attaches, typeRefs
 }
 

@@ -1,0 +1,73 @@
+{
+  "symbols": [
+    {
+      "name": "Importer",
+      "kind": "ObjCInterface",
+      "package": "imports.m",
+      "line": 9,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "Importer.run",
+      "kind": "ObjCMethod",
+      "package": "imports.m",
+      "line": 10,
+      "end_line": 10,
+      "signature": "- (void)run;",
+      "tier": "verified"
+    },
+    {
+      "name": "Importer",
+      "kind": "ObjCImplementation",
+      "package": "imports.m",
+      "line": 13,
+      "end_line": 28,
+      "tier": "verified"
+    },
+    {
+      "name": "Importer.local_count",
+      "kind": "ObjCFunc",
+      "package": "imports.m",
+      "line": 15,
+      "end_line": 17,
+      "signature": "static int local_count(int n)",
+      "tier": "verified"
+    },
+    {
+      "name": "Importer.run",
+      "kind": "ObjCMethod",
+      "package": "imports.m",
+      "line": 19,
+      "end_line": 26,
+      "signature": "- (void)run",
+      "calls": [
+        "draw",
+        "local_count",
+        "shapeWithName:",
+        "util_ping"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "Shape.h",
+      "module": "Shape.h",
+      "kind": "whole",
+      "line": 3
+    },
+    {
+      "local": "<Foundation/Foundation.h>",
+      "module": "<Foundation/Foundation.h>",
+      "kind": "whole",
+      "line": 4
+    },
+    {
+      "local": "imports_util.h",
+      "module": "imports_util.h",
+      "kind": "whole",
+      "line": 5
+    }
+  ]
+}

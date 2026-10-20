@@ -62,6 +62,7 @@ scores the pairs into `xref_precision`/`xref_recall` at the file's tier.
 | make/ | A (references), B (definitions) | Makefile |
 | ruby-require/ | B (imports) | Ruby |
 | clang-includes/ | B (imports) | C, C++ |
+| clang-objc/ | B (calls, imports, cross-file references, definition ranges; the include roots are the run's) | Objective-C |
 | parse5/ | A (definitions with ends, W1 ID references as calls, ruling W1) | HTML |
 | lychee/ | A (imports: local link targets it attests) | HTML |
 | lightningcss/ | A for what it attests (W2, design 1.8): definitions (selectors, @keyframes, custom properties; no end line), var() and animation-name pairs graded within each file's @import closure, the @import graph by its own bundler | CSS |

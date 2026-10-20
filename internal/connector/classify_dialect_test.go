@@ -122,3 +122,33 @@ func TestGlobMatchBaseFirstEqualsSplitFirst(t *testing.T) {
 		}
 	}
 }
+
+// TestClassifyDialectSniffWindow pins match.sniff.scan_bytes (LB-Q-objective-c):
+// an Objective-C .m that opens with a licence header longer than 1 KiB has its
+// first @interface or #import past the default window, so only a rule that
+// widens its own window claims it; MATLAB's default window is unchanged, and an
+// Objective-C marker beyond even the wide window stays ambiguous.
+func TestClassifyDialectSniffWindow(t *testing.T) {
+	header := "/*\n" + strings.Repeat(" * a long licence line, as a project's header repeats it\n", 40) + " */\n"
+	src := []byte(header + "#import \"Foo.h\"\n@implementation Foo\n@end\n")
+	if len(src) < 2048 {
+		t.Fatalf("fixture is %d bytes, want a header past the default window", len(src))
+	}
+	narrow := sniffRules() // objective-c with the default 1 KiB window
+	if v := ClassifyDialect(narrow, "A.m", src); v.Dialect != "" || v.By != ClassifiedAmbiguous {
+		t.Errorf("default window: %+v, want ambiguous", v)
+	}
+	wide := sniffRules()
+	wide[0].Sniff.ScanBytes = 16 << 10
+	if v := ClassifyDialect(wide, "A.m", src); v.Dialect != "objective-c" || v.By != ClassifiedBySniff {
+		t.Errorf("wide window: %+v, want objective-c by sniff", v)
+	}
+	matlab := []byte("% " + strings.Repeat("x", 1100) + "\nfunction y = f(x)\n  y = x;\nend\n")
+	if v := ClassifyDialect(wide, "m.m", matlab); v.Dialect != "matlab" {
+		t.Errorf("a MATLAB file under a widened Objective-C rule: %+v, want matlab", v)
+	}
+	far := []byte(header + strings.Repeat("// pad\n", 4000) + "@implementation Foo\n@end\n")
+	if v := ClassifyDialect(wide, "far.m", far); v.Dialect == "objective-c" {
+		t.Errorf("a marker past the wide window was found: %+v", v)
+	}
+}

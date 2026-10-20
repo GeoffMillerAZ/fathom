@@ -1052,38 +1052,58 @@ func (p *Pipeline) enrichFileResolvedEdges(ctx context.Context, svc core.Service
 	}
 
 	langFiles := map[string][]core.SourceRef{}
-	var headers []core.SourceRef // .h files: the language is a sniff of the text (CT-3)
-	var scripts []core.SourceRef // extensionless files: the language is the shebang's (O793)
+	var headers []core.SourceRef     // .h files: the language is a sniff of the text (CT-3)
+	var scripts []core.SourceRef     // extensionless files: the language is the shebang's (O793)
+	var objcSources []core.SourceRef // .m files: Objective-C when the dialect's sniff says so (MATLAB's extension too)
 	for _, r := range refs {
 		if lang := fileResolveLangFor(r.Path); lang != "" {
 			langFiles[lang] = append(langFiles[lang], r)
 		} else if isHeaderPath(r.Path) {
 			headers = append(headers, r)
+		} else if isObjCSourcePath(r.Path) {
+			objcSources = append(objcSources, r)
 		} else if shebangScriptPath(r.Path) {
 			scripts = append(scripts, r)
 		}
 	}
 	// LB-Q-c-rest (step 4): a .h goes to the language the header router
-	// sends it to — the C++ sniff says yes: C++; no: C — so the file
-	// resolver reads the files the extractor did, as the measurement
-	// harness does. A header the router sent to the other language is still
-	// read by an include-path language for its includes and prototypes.
+	// sends it to (extractor.HeaderDialect: an Objective-C header, else the
+	// C++ sniff says yes: C++, no: C), so the file resolver reads the files
+	// the extractor did, as the measurement harness does. A header the router
+	// sent to another language is still read by an include-path language for
+	// its includes and prototypes.
 	foreign := map[string][]core.SourceRef{}
-	if cLang, cppLang := headerLangs(); cLang != "" || cppLang != "" {
+	cLang, cppLang, objcLang := headerLangs()
+	if cLang != "" || cppLang != "" || objcLang != "" {
+		langOf := map[string]string{"c": cLang, "cpp": cppLang, "objective-c": objcLang}
 		for _, r := range headers {
 			b, err := p.conn.Fetch(ctx, r)
 			if err != nil || len(b) > MaxExtractSize || connector.IsBinary(b) {
 				continue
 			}
-			to, other := cLang, cppLang
-			if extractor.LooksLikeCppHeader(b) {
-				to, other = cppLang, cLang
+			routed := extractor.HeaderDialect(b)
+			for id, lang := range langOf {
+				switch {
+				case lang == "":
+				case id == routed:
+					langFiles[lang] = append(langFiles[lang], r)
+				default:
+					foreign[lang] = append(foreign[lang], r)
+				}
 			}
-			if to != "" {
-				langFiles[to] = append(langFiles[to], r)
+		}
+	}
+	// An Objective-C .m is the dialect's only through match.sniff (the
+	// extension is MATLAB's too): the classifier decides per file, as ingest's
+	// dispatch does (sniffedExtractor).
+	if objcLang != "" {
+		for _, r := range objcSources {
+			b, err := p.conn.Fetch(ctx, r)
+			if err != nil || len(b) > MaxExtractSize || connector.IsBinary(b) {
+				continue
 			}
-			if other != "" {
-				foreign[other] = append(foreign[other], r)
+			if connector.ClassifyDialect(dialectRules(), r.Path, b).Dialect == "objective-c" {
+				langFiles[objcLang] = append(langFiles[objcLang], r)
 			}
 		}
 	}
@@ -1361,12 +1381,16 @@ func fileResolveLangFor(relPath string) string {
 // claims (the router sniffs it, CT-3).
 func isHeaderPath(relPath string) bool { return strings.EqualFold(path.Ext(relPath), ".h") }
 
-// headerLangs is the file-resolve languages a .h can be routed to: "c" and
-// "cpp", each "" when no dialect of that name resolves files.
-func headerLangs() (c, cpp string) {
+// isObjCSourcePath reports whether relPath is a .m, the extension the
+// Objective-C dialect claims only through match.sniff (MATLAB's too).
+func isObjCSourcePath(relPath string) bool { return strings.EqualFold(path.Ext(relPath), ".m") }
+
+// headerLangs is the file-resolve languages a .h can be routed to: "c", "cpp"
+// and "objective-c", each "" when no dialect of that name resolves files.
+func headerLangs() (c, cpp, objc string) {
 	langs, err := extractor.FileResolveLangs()
 	if err != nil {
-		return "", ""
+		return "", "", ""
 	}
 	for _, l := range langs {
 		switch l.Lang {
@@ -1374,9 +1398,11 @@ func headerLangs() (c, cpp string) {
 			c = "c"
 		case "cpp":
 			cpp = "cpp"
+		case "objective-c":
+			objc = "objective-c"
 		}
 	}
-	return c, cpp
+	return c, cpp, objc
 }
 
 // fileResolveInput reports whether path is an input of the file resolver: a
@@ -1388,8 +1414,12 @@ func fileResolveInput(path string) bool {
 		return true
 	}
 	if isHeaderPath(path) {
-		c, cpp := headerLangs()
-		return c != "" || cpp != ""
+		c, cpp, objc := headerLangs()
+		return c != "" || cpp != "" || objc != ""
+	}
+	if isObjCSourcePath(path) {
+		_, _, objc := headerLangs()
+		return objc != ""
 	}
 	return false
 }
