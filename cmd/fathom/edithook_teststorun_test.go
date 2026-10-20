@@ -69,6 +69,12 @@ func TestTestsToRunLineNamesReachingTestsAndARecipe(t *testing.T) {
 	writeRepoFile(t, repo, "cart/cart.go", "package cart\n\nfunc Total(n int) int { return n }\n")
 	commitAll(t, repo)
 	edited := filepath.Join(repo, "money", "money.go")
+	// Success paths run real git work in a temp repo: a generous budget, so
+	// machine load never reads as a deadline miss. Only the deadline case
+	// below shrinks it, against a daemon that blocks.
+	origWait := testsToRunWait
+	testsToRunWait = time.Minute
+	defer func() { testsToRunWait = origWait }()
 	markSessionEdit(session) // the tail reaches the session's last edit, so "not run" is a fact
 
 	tests := []string{
@@ -117,9 +123,8 @@ func TestTestsToRunLineNamesReachingTestsAndARecipe(t *testing.T) {
 
 	t.Run("a daemon past the deadline is the named miss", func(t *testing.T) {
 		slow := reachDaemon(t, repo, &tests, true)
-		orig := testsToRunWait
 		testsToRunWait = 50 * time.Millisecond
-		defer func() { testsToRunWait = orig }()
+		defer func() { testsToRunWait = time.Minute }()
 		line, row := testsToRunLine(slow.URL, edited, session)
 		if line != "tests: not computed (deadline)" || row["kind"] != "missed" || row["missed"] != "deadline" {
 			t.Errorf("line %q, row %v; want the deadline miss", line, row)
