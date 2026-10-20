@@ -25,13 +25,13 @@ nobody shares. Kit rows land in agentic-kit first and arrive here by `task sync-
 
 - [ ] Today's `[Unreleased]` lines move to `docs/changelog/unreleased/`, one fragment per category, between waves; `CHANGELOG.md`'s `[Unreleased]` keeps only the pointer line {id: AP-7, oracle: lexical, path: CHANGELOG.md, pattern: "^Unreleased changes wait as fragments under docs/changelog/unreleased/", needs: "AP-2"}
 - [ ] `task validate` runs the fragment check {id: AP-8, oracle: lexical, path: Taskfile.yml, pattern: "release-notes -check", needs: "AP-4,AP-7"}
-- [ ] `fathom plans archive` counts a row id named in a fragment as absorbed {id: AP-9, symbol: readAbsorptionFiles, package: cmd/fathom, reachable_from: TestReadAbsorptionFilesReadsChangeFragments, needs: "AP-7"}
-- [ ] The custodian ADR-reference concern resolves citations in fragments {id: AP-10, symbol: adrCitingFiles, package: internal/custodian, reachable_from: TestADRCitingFilesIncludeChangeFragments, needs: "AP-7"}
+- [x] `fathom plans archive` counts a row id named in a fragment as absorbed {id: AP-9, symbol: readAbsorptionFiles, package: cmd/fathom, reachable_from: TestReadAbsorptionFilesReadsChangeFragments, needs: "AP-7"}
+- [x] The custodian ADR-reference concern resolves citations in fragments {id: AP-10, symbol: adrCitingFiles, package: internal/custodian, reachable_from: TestADRCitingFilesIncludeChangeFragments, needs: "AP-7"}
 - [ ] The `AGENTS.md` change-records stanza, `CHANGELOG.md`'s header and the router's "what changed" row name the fragments directory {id: AP-11, oracle: lexical, path: AGENTS.md, pattern: "docs/changelog/unreleased/", needs: "AP-7"}
 
 ## Wave 3: generated files merge by regeneration (section 4)
 
-- [ ] PROVENANCE.md's tables carry no `**total**` row {id: AP-12, symbol: RenderProvenanceTables, package: internal/extractor/tsengine, reachable_from: TestProvenanceTablesCarryNoTotalRow}
+- [x] PROVENANCE.md's tables carry no `**total**` row {id: AP-12, symbol: RenderProvenanceTables, package: internal/extractor/tsengine, reachable_from: TestProvenanceTablesCarryNoTotalRow}
 - [x] `.gitattributes` names `docs/languages.md` and `internal/extractor/tsengine/grammars/PROVENANCE.md` with `merge=fathom-regen` {id: AP-13, oracle: lexical, path: .gitattributes, pattern: "^docs/languages\.md merge=fathom-regen$"}
 - [x] `task merge-drivers` sets the driver (`true`, keep the current side) and `task regen` runs every generator in a fixed order; `scripts/cloud-setup.sh` runs `task merge-drivers` {id: AP-14, oracle: lexical, path: Taskfile.yml, pattern: "^  merge-drivers:", needs: "AP-13"}
 - [ ] The waves guide's integrator steps: `task merge-drivers` at clone, `task regen` after a merge, and a bump file per wave instead of the integrator's epoch bump {id: AP-15, oracle: lexical, path: docs/guides/agent-waves.md, pattern: "task regen", needs: "AP-14,AP-19"}
