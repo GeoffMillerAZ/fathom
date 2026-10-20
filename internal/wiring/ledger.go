@@ -125,6 +125,10 @@ func ledgerPath(root string) string {
 	return filepath.Join(statedir.Resolve(root), string(projectdir.Owned))
 }
 
+// LedgerPath is where the ledger is written, for a caller that lists the
+// files an apply touches.
+func LedgerPath(root string) string { return ledgerPath(root) }
+
 // legacyLedgerPath is the pre-M4 home, <root>/.fathom/owned.json. It is read
 // while the state-directory copy is absent and never written or deleted
 // (I63).

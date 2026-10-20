@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/wiring"
 )
 
@@ -36,11 +35,6 @@ type initTouch struct {
 	Path   string // absolute
 	Action string // create | update | link | remove
 }
-
-// initLedgerFile is the wiring engine's ownership ledger, repo-relative
-// (internal/wiring's ledgerRelPath): an apply that writes an owned key,
-// file or link records it there.
-const initLedgerFile = projectdir.Dir + "/" + string(projectdir.Owned)
 
 func (w *initWrites) isDry() bool { return w != nil && w.dry }
 
@@ -146,7 +140,7 @@ func (w *initWrites) applyWiring(root string, spec wiring.Spec) (wiring.Result, 
 	}
 	if len(todo) > 0 {
 		if owned {
-			lp := filepath.Join(root, filepath.FromSlash(initLedgerFile))
+			lp := wiring.LedgerPath(root)
 			w.record(lp, writeAction(lp))
 		}
 		rp := wiring.ReceiptsPath(root)

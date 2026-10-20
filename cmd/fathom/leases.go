@@ -184,7 +184,7 @@ func cmdPlansLease(args []string, stdout, stderr io.Writer) int {
 	ttl := fs.Duration("ttl", 2*time.Hour, "lease time-to-live")
 	release := fs.Bool("release", false, "release this row's lease instead of filing one")
 	holder := fs.String("holder", "", "lease holder (defaults to $CLAUDE_SESSION_ID; required otherwise)")
-	root := fs.String("root", ".", "project root — .fathom/leases.jsonl lives under here")
+	root := fs.String("root", ".", "project root; its plan-row leases live in its state directory")
 	if err := fs.Parse(args[1:]); err != nil {
 		return 1
 	}
@@ -246,7 +246,7 @@ type leaseView struct {
 
 func cmdPlansLeases(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("plans leases", stderr)
-	root := fs.String("root", ".", "project root — .fathom/leases.jsonl lives under here")
+	root := fs.String("root", ".", "project root; its plan-row leases live in its state directory")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a human table")
 	if err := fs.Parse(args); err != nil {
 		return 1

@@ -74,17 +74,18 @@ Project scope, `<repo>/.fathom/` and the root:
 | `trace/<standard>.cue` | Z2 | repository | yes |
 | `observations/O<n>.md`, `observations.md` (legacy single file) | Z2 | repository, written by `fathom observe` | yes |
 | `rules/archconformance.cue` (legacy, read) | Z2 | repository | yes |
-| `risk.cue`, `learning.cue` (legacy, read) | Z1 | repository | yes |
-| `owned.json` | Z3 | fathom | no |
-| `leases.jsonl` | Z3 | fathom | no |
-| `scip/*.scip` | Z3 | fathom | no |
+| `risk.cue`, `learning.cue` (legacy, read until `config.toml` carries `[risk]` or `[learning]`) | Z1 | repository | yes |
+| `owned.json`, `leases.jsonl`, `scip/*.scip` (legacy copies, read only while the state directory holds none, never written) | Z3 | fathom | no |
 | `receipts.jsonl` (legacy, receipts moved to the state directory) | Z3 | fathom | no |
 | `memories.jsonl` (retired) | Z3 | fathom | no |
 | `tenancy-allow.txt` (this repository's own lint excuses, moved to `internal/lint/tenancy/allow.txt`) | development artifact | fathom's maintainers | yes |
 
 Outside the tree, per checkout (Z3):
-`$XDG_STATE_HOME/fathom/<repo-id>/` holds receipts, session and discovery
-logs, and narrate and retro artifacts. `FATHOM_STATE_DIR` names it directly.
+`$XDG_STATE_HOME/fathom/<repo-id>/` holds receipts, `owned.json`,
+`leases.jsonl`, `scip/`, session and discovery logs, and narrate and retro
+artifacts. A copy an older fathom left under `.fathom/` is read until the
+state directory holds one, then ignored. `fathom doctor` names the old copy
+(`legacy_files`) and fathom never deletes it. `FATHOM_STATE_DIR` names it directly.
 Not committed, owned by fathom.
 
 User scope, `~/.fathom/` (Z4, `FATHOM_HOME` relocates all of it). Never
@@ -191,6 +192,11 @@ an array of tables, and `tenancy.**` for every key under `[tenancy]`.
 | `hooks.pin_check` | behaviour | the commit pin line's output mode; the check itself is on by default |
 | `hooks.read_outline_hint` | behaviour | the Read outline hint runs nothing: it reads the file the Read names and runs fathom's own extractors over it in process (readouthint.go) |
 | `hooks.test_run` | behaviour | the test-run hook runs nothing: it reads the output of a command the harness ran (TR-X2, testrunhook.go) |
+| `learning.promote_corroborations` | behaviour | a threshold (the learned-rule promotion bar) |
+| `learning.promote_min_sessions` | behaviour | a threshold (the learned-rule promotion bar) |
+| `learning.promote_window_days` | behaviour | a threshold (the learned-rule promotion window) |
+| `learning.retire_never_triggered_days` | behaviour | a threshold (the learned-rule retirement age) |
+| `learning.retire_refutes` | behaviour | a threshold (the learned-rule retirement bar) |
 | `profiles.*.api_key_cmd` | user-only | names a credential or the command that prints one |
 | `profiles.*.api_key_env` | user-only | names a credential or the command that prints one |
 | `profiles.*.api_version` | behaviour | an Azure API version |
@@ -205,6 +211,8 @@ an array of tables, and `tenancy.**` for every key under `[tenancy]`.
 | `readouts.roots` | user-only | the user's own switch for rewriting what a tool result shows the agent; a cloned repository must not turn it on: the directory prefixes the modes apply under |
 | `readouts.rules.*.mode` | user-only | the user's own switch for rewriting what a tool result shows the agent; a cloned repository must not turn it on: one rule's mode |
 | `receipts.repository_uri` | behaviour | a URI SARIF's versionControlProvenance names; fathom never derives one from a git remote (ADR-011) |
+| `risk.blast_radius_high_callers` | behaviour | a threshold (the review risk table) |
+| `risk.zone_interest_medium_rate` | behaviour | a threshold (the review risk table) |
 | `surface.pattern[].glob` | behaviour | a glob over the repository's files |
 | `surface.pattern[].kind` | behaviour | a label |
 | `surface.pattern[].regex` | behaviour | an RE2 pattern over the repository's files |
@@ -1388,6 +1396,28 @@ conserve_max_files = 500   # default; an integer ≥ 1
   files, over [console] conserve_max_files = …") with the verb that still
   computes it — `fathom conserve --since <ref> --service <svc>` — never a
   partial report. Read by `serve-http` at start (restart to apply).
+
+## Review risk and learned-rule thresholds: `[risk]`, `[learning]`
+
+These two tables carry the numbers `.fathom/risk.cue` and `.fathom/learning.cue`
+carried. Every key is optional; unset keeps the binary's default. A repository
+value wins over the user's default (`fathom config --explain` names the layer
+that set each key). Once a repository's `config.toml` has a section, the legacy
+file beside it is ignored and `fathom doctor` (`legacy_files`) names it. Until
+then a legacy file is read whole.
+
+```toml
+[risk]
+blast_radius_high_callers = 50    # integer > 0
+zone_interest_medium_rate = 2.0   # number > 0
+
+[learning]
+promote_corroborations = 3        # integers > 0
+promote_min_sessions = 2
+promote_window_days = 30
+retire_refutes = 3
+retire_never_triggered_days = 180
+```
 
 ## Readouts: `[readouts]` (user scope only)
 
