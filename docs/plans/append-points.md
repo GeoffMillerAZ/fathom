@@ -38,8 +38,8 @@ nobody shares. Kit rows land in agentic-kit first and arrive here by `task sync-
 
 ## Wave 4: sibling plan files for language waves (section 5)
 
-- [ ] The support console reads row marks from `language-breadth.<wave>.md` siblings as well as `language-breadth.md` {id: AP-16, symbol: PlanRowMarks, package: internal/support, reachable_from: TestPlanRowMarksReadsLanguageBreadthSiblings}
-- [ ] The worker recipe (design `language-breadth.md` section 13) puts a wave's new foundation rows in `docs/plans/language-breadth.<wave>.md`, with no F.NN number, and queue needs in the cross-plan form {id: AP-17, oracle: lexical, path: docs/design/language-breadth.md, pattern: "docs/plans/language-breadth\.<wave>\.md", needs: "AP-16"}
+- [x] The support console reads row marks from `language-breadth.<wave>.md` siblings as well as `language-breadth.md` {id: AP-16, symbol: PlanRowMarks, package: internal/support, reachable_from: TestPlanRowMarksReadsLanguageBreadthSiblings}
+- [x] The worker recipe (design `language-breadth.md` section 13) puts a wave's new foundation rows in `docs/plans/language-breadth.<wave>.md`, with no F.NN number, and queue needs in the cross-plan form {id: AP-17, oracle: lexical, path: docs/design/language-breadth.md, pattern: "docs/plans/language-breadth\.<wave>\.md", needs: "AP-16"}
 
 ## Wave 5: the derived extractor epoch (section 6)
 
