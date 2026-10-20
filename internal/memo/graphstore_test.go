@@ -231,3 +231,46 @@ func TestNavBuildCostPeeksWithoutBuilding(t *testing.T) {
 		t.Fatalf("snapshot loaded %d times, want once", loads.Load())
 	}
 }
+
+// TestNavBuildMeasuredSurvivesANewWatermark pins O1446's restart signal:
+// before any build of a service NavBuildMeasured is false (NavBuildCost is
+// ExpectedCost); once its snapshot, typed edges and three graphs were built,
+// it stays true at the next watermark (an ingest evicts the entries, not the
+// measurement), and another store's service is still unmeasured.
+func TestNavBuildMeasuredSurvivesANewWatermark(t *testing.T) {
+	isolateGraphStore(t)
+	ctx := context.Background()
+	sc := Scope{Store: "navmeasured-test", Service: "svc", Watermark: "w1"}
+	if NavBuildMeasured(sc) {
+		t.Fatal("NavBuildMeasured is true before any build")
+	}
+	snap, err := SnapshotFor(ctx, sc, func(context.Context) ([]core.SymbolNode, error) { return fixtureNodes(), nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if NavBuildMeasured(sc) {
+		t.Fatal("NavBuildMeasured is true with only the snapshot built: the graphs' cost is still ExpectedCost")
+	}
+	typed := func(context.Context) ([]core.Edge, error) { return nil, nil }
+	for _, k := range []GraphKind{GraphSyntax, GraphBoth, GraphResolved} {
+		if _, err := GraphFor(ctx, snap, k, typed); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if !NavBuildMeasured(sc) {
+		t.Fatal("NavBuildMeasured is false with everything built")
+	}
+	next := sc
+	next.Watermark = "w2"
+	if _, resident := NavBuildCost(next); resident {
+		t.Fatal("a new watermark's set is resident before any build")
+	}
+	if !NavBuildMeasured(next) {
+		t.Fatal("a new watermark lost the service's measured build: an ingest evicts entries, not measurements")
+	}
+	other := next
+	other.Store = "navmeasured-other"
+	if NavBuildMeasured(other) {
+		t.Fatal("another store's service reads as measured")
+	}
+}

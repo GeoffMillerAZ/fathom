@@ -107,6 +107,9 @@ type searchOpts struct {
 	// ignore/ignorePatterns: the service-scoped .fathomignore (see searchRun).
 	ignore         *filter.Matcher
 	ignorePatterns []string
+	// sortPaths runs rg with --sort path: searchRipgrep's repeat of a run
+	// stopped at the output cap (O1447), never a caller's choice.
+	sortPaths bool
 }
 
 // searchExtraSkipDirs are directory names search always prunes beyond
@@ -699,8 +702,14 @@ func ignorePatternToRipgrepGlob(line string) string {
 // hits read so far (whole lines only) are the answer, capped named.
 func searchRipgrep(ctx context.Context, root string, o searchOpts) ([]searchRawHit, string, error) {
 	pattern, pathGlob, caseSensitive, contextN := o.pattern, o.pathGlob, o.caseSensitive, min(o.contextN, searchContextMax)
+	// O1447: no --sort path on the first run. It makes rg read one file
+	// at a time, about five times slower on a cold page cache (a daemon
+	// host under memory pressure: every search reads cold); the hits are
+	// ordered below instead. Only a run stopped at the output cap is
+	// repeated in path order, so a capped answer does not depend on which
+	// files a parallel run reached first.
 	args := []string{
-		"--line-number", "--no-heading", "--with-filename", "--color=never", "--sort", "path",
+		"--line-number", "--no-heading", "--with-filename", "--color=never",
 		"--max-columns=" + strconv.Itoa(searchRgMaxColumns), "--max-columns-preview",
 		"--max-filesize=2M",
 		"-g", "!vendor/**", "-g", "!node_modules/**", "-g", "!workspace/**",
@@ -727,6 +736,9 @@ func searchRipgrep(ctx context.Context, root string, o searchOpts) ([]searchRawH
 	}
 	if contextN > 0 {
 		args = append(args, "-C", strconv.Itoa(contextN))
+	}
+	if o.sortPaths {
+		args = append(args, "--sort", "path")
 	}
 	// O1448: the literal leading directory is the search root, so ignore
 	// files keep applying under it; the rest of a glob is applied to the
@@ -763,6 +775,10 @@ func searchRipgrep(ctx context.Context, root string, o searchOpts) ([]searchRawH
 		capped = fmt.Sprintf("ripgrep output reached %s and was stopped", "1 MiB")
 	}
 	waitErr := cmd.Wait()
+	if capped != "" && !o.sortPaths {
+		o.sortPaths = true
+		return searchRipgrep(ctx, root, o)
+	}
 	if capped == "" {
 		if readErr != nil {
 			return nil, "", fmt.Errorf("ripgrep: read: %v", readErr)
@@ -775,6 +791,12 @@ func searchRipgrep(ctx context.Context, root string, o searchOpts) ([]searchRawH
 		}
 	}
 	hits := parseRipgrepOutput(string(out), contextN)
+	sort.SliceStable(hits, func(i, j int) bool {
+		if hits[i].File != hits[j].File {
+			return hits[i].File < hits[j].File
+		}
+		return hits[i].Line < hits[j].Line
+	})
 	if pathPattern != "" {
 		gm := filter.New([]string{pathPattern})
 		kept := hits[:0]
