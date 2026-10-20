@@ -53,6 +53,7 @@ type resolveEnv struct {
 	bufRoots  []string // module_roots "buf": the roots buf.yaml and buf.work.yaml name
 	bufDone   bool
 	regoPkgs  *regoPackageIndex // rego-package: the universe's packages (resolve_regopkg.go)
+	globals   *globalNameIndex  // global-name: the universe's definitions by name (resolve_globalname.go)
 	ts        *tsEnv            // relative-path's TS/JS rule: configs, package.json files, workspaces (tsresolve.go)
 	// listed is every repo file the caller listed (an ingest's discovered
 	// files), for the manifests no universe file sits below; walkRoot lets a
@@ -192,6 +193,8 @@ func resolveByStrategy(strategy string, params extractor.ImportParams, env *reso
 		out = resolveFileSymbol(params, env, importer, module)
 	case "rego-package":
 		out = resolveRegoPackage(env, module)
+	case "global-name":
+		out = resolveGlobalName(params, env, importer, module)
 	}
 	if len(out) == 0 {
 		return nil

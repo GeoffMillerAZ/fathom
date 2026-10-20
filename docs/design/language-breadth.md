@@ -1441,11 +1441,13 @@ repo file set) → target files:
 | `go-package` | Go (reference only; Go is native L4) | — |
 | `swift-module` | Swift | `import M` → a SwiftPM target named M (`Package.swift` targets' `path` or `Sources/M`) |
 | `file-symbol` | Ruby (`require_relative`), Lua (`require`), Bash (`source`), R (`source`), Perl (`use`/`require`), Nix, Jsonnet, Starlark (`load`) | path or dotted module → file, per-language suffix rules in the manifest |
+| `global-name` | GraphQL, Prisma | a schema that is the union of its files, no import statement (LB-F580): a captured type name binds the one file of its `scope` (`service`: every file of the dialect; `folder`: the importer's directory, Prisma's `prismaSchemaFolder`) defining it with a `defines` kind (a GraphQL type, never an extension of one); two or more definers bind nothing, counted in `FileResolveReport`; none (a built-in scalar) or the importer itself bind nothing and are no miss |
 
 A manifest names its strategy and its parameters — the closed set `extractor.ImportParams`
 decodes: `source_roots`, `suffixes`, `index_files`, `separator`, `relative` (a bare spec is
-relative to the importer first), `case: "snake"`, `labels: "bazel"` and `type_wildcard:
-"members"` (a wildcard naming a type brings its members into scope: C#'s `using static`); an
+relative to the importer first), `case: "snake"`, `labels: "bazel"`, `type_wildcard:
+"members"` (a wildcard naming a type brings its members into scope: C#'s `using static`) and
+global-name's `scope` and `defines` (the kinds whose top-level definitions a name binds); an
 omitted one takes the strategy's default, which for `dotted-module` is the pre-LB-F11 Python
 rule and for `relative-path` the TS/JS rule: Node's resolution of a relative spec (`.` and
 `..` and a trailing `/` name a directory, whose package.json `main` — for a TypeScript

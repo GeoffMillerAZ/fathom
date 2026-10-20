@@ -117,5 +117,21 @@
       ],
       "tier": "verified"
     }
+  ],
+  "imports": [
+    {
+      "local": "Geo",
+      "exported": "Geo",
+      "module": "Geo",
+      "kind": "named",
+      "line": 13
+    },
+    {
+      "local": "Address",
+      "exported": "Address",
+      "module": "Address",
+      "kind": "named",
+      "line": 19
+    }
   ]
 }

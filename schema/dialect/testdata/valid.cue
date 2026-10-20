@@ -434,3 +434,26 @@ fileModules: #Dialect & {
 	target_level: "L3"
 	queue_id:     "psfixture"
 }
+
+// A schema that is the union of its files (LB-F580): a type reference binds
+// the one file of the service defining a type of that name (never an
+// extension of one) by the global-name strategy.
+globalName: #Dialect & {
+	id:       "gqlfixture"
+	display:  "GraphQL fixture"
+	kind:     "tooling"
+	engine:   "tags"
+	lang_tag: "graphql"
+	match: {extensions: [".graphql"]}
+	grammar: {blob: "graphql", entry_point: "tree_sitter_graphql"}
+	queries: {tags: "tags.scm", imports: "imports.scm"}
+	kinds: {
+		type: {source_kind: "GQLFixtureType", canonical: "type_alias", container: true}
+		extension: {source_kind: "GQLFixtureExtension", canonical: "type_alias", container: true}
+	}
+	required_kinds: ["type", "extension"]
+	oracle_kinds: {tool: {type: "type_alias", extension: "type_alias"}}
+	imports: {strategy: "global-name", scope: "service", defines: ["type"]}
+	target_level: "L3"
+	queue_id:     "gqlfixture"
+}

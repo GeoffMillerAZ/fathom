@@ -87,5 +87,21 @@
       "signature": "extend scalar DateTime @specifiedBy(url: \"x\")",
       "tier": "verified"
     }
+  ],
+  "imports": [
+    {
+      "local": "Author",
+      "exported": "Author",
+      "module": "Author",
+      "kind": "named",
+      "line": 2
+    },
+    {
+      "local": "Review",
+      "exported": "Review",
+      "module": "Review",
+      "kind": "named",
+      "line": 7
+    }
   ]
 }

@@ -132,6 +132,9 @@ func (e *TSExtractor) ExtractFileSpecs(relPath string, src []byte) (FileSpecs, e
 // Caller holds e.mu and l.
 func (e *TSExtractor) fileSpecsLocked(l *tsengine.Lease, tree *tsengine.Tree, rules *tsDialectRules, relPath string, src []byte, matches []tsengine.Match) (FileSpecs, error) {
 	out := FileSpecs{Imports: importSpecsFromCaptures(matches, src)}
+	if rules.importStrategy == "global-name" {
+		out.Imports = distinctNamedImports(out.Imports, importSpecOf)
+	}
 	if rules.refsQuery == "" {
 		return out, nil
 	}
@@ -155,6 +158,34 @@ func (e *TSExtractor) fileSpecsLocked(l *tsengine.Lease, tree *tsengine.Tree, ru
 	out.Exports = exportSpecsFromCaptures(rmatches, src)
 	return out, nil
 }
+
+// distinctNamedImports keeps the first spec of each (kind, local name,
+// exported name, module): under global-name every type reference is a spec
+// whose name is its module, and a schema names one type many times; the
+// strategy reads the name only, so the file's row keeps it once (LB-F580).
+func distinctNamedImports[T any](xs []T, spec func(T) ImportSpec) []T {
+	if len(xs) < 2 {
+		return xs
+	}
+	type k struct {
+		kind                  ImportKind
+		local, exported, from string
+	}
+	seen := make(map[k]bool, len(xs))
+	out := xs[:0]
+	for _, x := range xs {
+		s := spec(x)
+		key := k{s.Kind, s.LocalName, s.ExportedName, s.Module}
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, x)
+	}
+	return out
+}
+
+func importSpecOf(s ImportSpec) ImportSpec { return s }
 
 // definitionNames is the byte range of every definition's own @name among
 // the tags query's matches: a name written there declares, never references.

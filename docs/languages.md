@@ -115,7 +115,7 @@ item's target; the last column also needs every level up to the target graded ex
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | T1 | language | 33 | 0 | 3 | 12 | 10 | 1 | 3 | 0 | 4 | 22 | 8 |
 | T1 | tool format | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |
-| T2 | tool format | 23 | 0 | 8 | 13 | 0 | 1 | 0 | 0 | 1 | 18 | 13 |
+| T2 | tool format | 23 | 0 | 7 | 14 | 0 | 1 | 0 | 0 | 1 | 19 | 14 |
 | T3 | tool format | 16 | 1 | 4 | 11 | 0 | 0 | 0 | 0 | 0 | 15 | 5 |
 | T4 | language | 3 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 1 | 1 | 0 |
 | T4 | tool format | 7 | 0 | 3 | 2 | 0 | 0 | 0 | 0 | 2 | 5 | 4 |
@@ -124,7 +124,7 @@ item's target; the last column also needs every level up to the target graded ex
 | T6 | tool format | 4 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |
 | T7 | tool format | 4 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
 | **Total** | language | 37 | 0 | 4 | 13 | 10 | 1 | 4 | 0 | 5 | 23 | 8 |
-| **Total** | tool format | 63 | 1 | 18 | 36 | 0 | 1 | 0 | 0 | 7 | 50 | 26 |
+| **Total** | tool format | 63 | 1 | 17 | 37 | 0 | 1 | 0 | 0 | 7 | 51 | 27 |
 
 ### T1
 
@@ -182,7 +182,7 @@ item's target; the last column also needs every level up to the target graded ex
 | Bazel / Starlark (BUILD, BUILD.bazel, *.bzl, WORKSPACE, MODULE.bazel) | tool format | L3 | L3 (L1 good, L2 excellent, L3 good) | L1 good: sym_precision 0.9554 < 0.98 |
 | CMake (CMakeLists.txt, *.cmake) | tool format | L3 | none (measured) | L1 not met: tenancy floor |
 | Protocol Buffers (.proto) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
-| GraphQL schemas and operations (.graphql .gql) | tool format | L3 | L2 (L1 excellent, L2 excellent) | L3 not met: xref_precision not measured |
+| GraphQL schemas and operations (.graphql .gql) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | JSON Schema documents | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | Taskfile (go-task: Taskfile.yml) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | Jenkins pipelines (Jenkinsfile, *.jenkinsfile) | tool format | L3 | L3 (L1 good, L2 good, L3 good) | L1 good: oracle tier C caps at good |
@@ -272,8 +272,8 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 reached (languages at L1 36, L1 excellent 25, L2 32, L3 25, L4 10; tool formats at target 56)
-Milestone M2 progress: languages at L1 36/45, at L1 excellent 25/35, at L2 32/25, at L3 25/14, at L4 10/10; tool formats at target 56/30
+Milestone M1 reached (languages at L1 36, L1 excellent 25, L2 32, L3 25, L4 10; tool formats at target 58)
+Milestone M2 progress: languages at L1 36/45, at L1 excellent 25/35, at L2 32/25, at L3 25/14, at L4 10/10; tool formats at target 58/30
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -331,7 +331,7 @@ Milestone M2 progress: languages at L1 36/45, at L1 excellent 25/35, at L2 32/25
 | Perl (.pl .pm .t by sniff) | language | tags | tree-sitter-perl/tree-sitter-perl (MIT) | L2 | L2 (L1 good, L2 good) | C ppi-calls PPI 1.270; B universal-ctags 6.2.1 | syntax | 2026-10-19 | at target (LB-Q-perl) |
 | Protocol Buffers (.proto) | tool format | tags | coder3101/tree-sitter-proto (MIT (verify at pin)) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A protoc 34.1 | syntax | 2026-10-01 | at target (LB-Q-protobuf) |
 | GDScript (.gd) | language | tags | PrestonKnopp/tree-sitter-gdscript (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-gdscript |
-| GraphQL schemas and operations (.graphql .gql) | tool format | tags | bkegley/tree-sitter-graphql (MIT (verify at pin)) | L3 | L2 (L1 excellent, L2 excellent) | A graphql-js 16.14.2 | syntax | 2026-10-19 | LB-Q-graphql |
+| GraphQL schemas and operations (.graphql .gql) | tool format | tags | bkegley/tree-sitter-graphql (MIT (verify at pin)) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A graphql-js 16.14.2 | syntax | 2026-10-20 | at target (LB-Q-graphql) |
 | Elixir (.ex .exs) | language | tags | elixir-lang/tree-sitter-elixir (Apache-2.0) | L3 | L3 (L1 excellent, L2 good, L3 good) | B elixir-ast Elixir 1.19.6 Code.string_to_quoted/2 (OTP 29); C tree-sitter-tags:elixir-tags.scm py-tree-sitter 0.25.2, tree-sitter-elixir 0.3.5 | syntax | 2026-10-19 | at target (LB-Q-elixir) |
 | OpenAPI / Swagger documents | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A @apidevtools/swagger-parser 13.1.0; A @apidevtools/swagger-parser ($refs.paths) 13.1.0 | — | 2026-10-01 | at target (LB-Q-openapi) |
 | Prometheus rules, configuration and promtool tests | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A promtool 3.15.0 (5241a27f); A promtool+routes 3.15.0 (5241a27f) | — | 2026-10-10 | at target (LB-Q-prometheus) |
@@ -418,7 +418,7 @@ Milestone M2 progress: languages at L1 36/45, at L1 excellent 25/35, at L2 32/25
 | Emacs Lisp (.el) | language | tags | Wilfred/tree-sitter-elisp (MIT) | L1 | L1 (L1 good) | B universal-ctags 6.2.1 | syntax | 2026-09-29 | at target (LB-Q-emacs-lisp) |
 | AsyncAPI documents | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-asyncapi |
 | Vim script (.vim, vimrc) | language | tags | tree-sitter-grammars/tree-sitter-vim (MIT) | L1 | refused; measured L1 (L1 excellent) | B universal-ctags 6.2.1 | — | 2026-09-29 | re-plan (LB-Q-vimscript-rest refused) |
-| Prisma schema (schema.prisma) | tool format | tags | victorhqc/tree-sitter-prisma (MIT (verify at pin)) | L3 | L2 (L1 excellent, L2 excellent) | A prisma-schema-wasm 6.19.0-26.2ba551f319ab1df4bc874a89965d8b3641056773 | syntax | 2026-10-20 | LB-Q-prisma |
+| Prisma schema (schema.prisma) | tool format | tags | victorhqc/tree-sitter-prisma (MIT (verify at pin)) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A prisma-schema-wasm 6.19.0-26.2ba551f319ab1df4bc874a89965d8b3641056773 | syntax | 2026-10-20 | at target (LB-Q-prisma) |
 | Tcl (.tcl) | language | tags | tree-sitter-grammars/tree-sitter-tcl (MIT) | L1 | refused; measured none (measured) | B universal-ctags 6.2.1 | — | 2026-09-29 | re-plan (LB-Q-tcl-rest refused) |
 | dbt projects (dbt_project.yml, models/*.sql with ref(), schema.yml) | tool format | tags+doc | DerekStride/tree-sitter-sql + pure-go:gopkg.in/yaml.v3 (MIT) | L3 | unsupported (disclosed) | — | — | — | LB-Q-dbt |
 | Migration changelogs (Flyway V__*.sql naming, Liquibase changelogs) | tool format | doc | pure-go:gopkg.in/yaml.v3 + encoding/xml (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-sql-migrations |

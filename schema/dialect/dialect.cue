@@ -138,6 +138,13 @@ import "struct"
 		// qualified, its package naming the defining file's directory
 		// (protobuf, LB-F77).
 		type_paths?: "package-dir"
+		// scope and defines are global-name's (LB-F580): a type name binds
+		// the one file defining it among every file of the dialect
+		// ("service", a GraphQL schema) or of the importer's directory
+		// ("folder", a Prisma schema folder), a definition of one of the
+		// defines kinds (every top-level one when omitted).
+		scope?: "service" | "folder"
+		defines?: [...or(_kindKeys)]
 	}
 
 	signature: {
@@ -281,7 +288,8 @@ import "struct"
 #OracleName: "ctags" | "scip" | "tool" | "tags-cli"
 
 #ImportStrategy: "relative-path" | "dotted-module" | "namespace-dir" | "include-path" |
-	"crate-mod" | "swift-module" | "file-symbol" | "go-package" | "rego-package"
+	"crate-mod" | "swift-module" | "file-symbol" | "go-package" | "rego-package" |
+	"global-name"
 
 // #Canonical is §2.3's closed list: language kinds, then tool-format kinds.
 #Canonical: #LanguageCanonical | #ToolCanonical

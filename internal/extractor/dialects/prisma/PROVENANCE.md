@@ -12,6 +12,14 @@
   (`Model.field`) and `PrismaEnumValue` (`Role.ADMIN`).
 - References (`@reference.call`): every non-scalar type a field writes (owned by the field) and each name in an
   `@relation(fields: [...], references: [...])` list (a bare field name: the engine cannot qualify it).
+- `imports.scm` (wave lang7, LB-F580): written in this repository. A Prisma schema is the union of the `.prisma` files of
+  one folder (`prismaSchemaFolder`) with no import statement, so a field's type identifier (the nine built-in scalars
+  aside) is a spec whose name is its module, kept once per name per file; `imports.strategy: global-name` with
+  `scope: folder` and `defines: ["model", "view", "type", "enum"]` binds it to the one file of the importer's directory
+  defining a block of that name, and a file draws no edge to its own definitions.
+  `internal/fusion/globalname_dialects_test.go` resolves four fixture files in two folders through it.
+- Ceiling, disclosed: a `/** ... */` comment inside a model, view or type block is an error to this grammar, which loses
+  the members after it (mfts/papermark's `referral.prisma`: 4 fields; O1439, `LB-Q-prisma-rest`).
 - `testdata/`: fixtures written in this repository, each golden compared line by line with the fixture after the
   engine wrote it (`-update`): `schema.prisma` (datasource, generator, enum, models, a view, an `@relation`, an
   `Unsupported()` column), `composite.prisma` (a mongodb schema with composite types), `models.prisma` (models naming

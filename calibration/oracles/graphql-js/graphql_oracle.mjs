@@ -28,7 +28,10 @@
 //     schema definition's root types) has no source and is not in the truth.
 //   - cross_references (file granularity): a reference whose type is defined (not extended) by exactly
 //     one file of the subject, a different one. A name two files define (independent schemas under one
-//     repository) is ambiguous and is counted, not written.
+//     repository) is ambiguous and is counted, not written. Cross-check (LB-F580): every file's type-system
+//     definitions are merged into one SDL document (each parsed under its file's name) and built with
+//     `buildASTSchema(merged, {assumeValidSDL: true})`; the type graphql-js resolves each cross reference's
+//     name to must come from the file the reference is attributed to (`merged_sdl` in the summary).
 // Directories the connector never reads (testdata, vendor, node_modules, generated, .git and the
 // editor directories) are not walked. Bench-only; never a product dependency.
 
@@ -111,6 +114,7 @@ function walkSelections(file, from, set) {
 
 const files = findFiles(subject);
 const unparsed = [];
+const mergedDefs = []; // every file's type-system definitions, for the merged-SDL cross-check
 const typeDefinedIn = new Map(); // name -> Set(files) of non-extension type definitions
 let built = 0, buildAgree = 0, buildIncomplete = 0;
 const buildDisagree = [];
@@ -119,7 +123,7 @@ for (const file of files) {
   const src = fs.readFileSync(path.join(subject, file), "utf8");
   let doc;
   try {
-    doc = gql.parse(src);
+    doc = gql.parse(new gql.Source(src, file));
   } catch (e) {
     unparsed.push({ path: file, error: String(e.message).split("\n")[0] });
     continue;
@@ -170,6 +174,9 @@ for (const file of files) {
       walkSelections(file, t, d.selectionSet);
     }
   }
+  for (const d of doc.definitions) {
+    if (TYPE_DEFS.has(d.kind) || TYPE_EXTS.has(d.kind) || d.kind === K.DIRECTIVE_DEFINITION) mergedDefs.push(d);
+  }
   if (hasTypeSystem && !hasOp) {
     try {
       const schema = gql.buildSchema(src, { assumeValidSDL: true });
@@ -211,6 +218,22 @@ for (const r of refs) {
   cross.push({ path: r.path, from: r.from, to_path: to, to: r.to });
 }
 
+// merged-SDL cross-check: the schema graphql-js builds from every file's type-system definitions resolves each
+// cross reference's type to a definition parsed from the file the reference is attributed to.
+const merged = { types: 0, agree: 0, disagree: [], error: "" };
+try {
+  const schema = gql.buildASTSchema({ kind: K.DOCUMENT, definitions: mergedDefs }, { assumeValidSDL: true });
+  merged.types = Object.keys(schema.getTypeMap()).filter((n) => !n.startsWith("__") && !BUILTIN.has(n)).length;
+  for (const c of cross) {
+    const t = schema.getType(c.to);
+    const from = t && t.astNode && t.astNode.loc ? t.astNode.loc.source.name : "";
+    if (from === c.to_path) merged.agree++;
+    else merged.disagree.push({ path: c.path, from: c.from, to: c.to, to_path: c.to_path, built_from: from });
+  }
+} catch (e) {
+  merged.error = String(e.message).split("\n")[0];
+}
+
 const byKey = (a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : (a.line || 0) - (b.line || 0) || (a.name || a.from || "").localeCompare(b.name || b.from || ""));
 const out = {
   tool: "graphql-js",
@@ -230,6 +253,7 @@ const summary = {
   cross_references: cross.length,
   ambiguous_cross_references: ambiguous,
   build_schema: { built, agree: buildAgree, incomplete: buildIncomplete, disagree: buildDisagree },
+  merged_sdl: merged,
 };
 if (summaryOut) fs.writeFileSync(summaryOut, JSON.stringify(summary, null, 1) + "\n");
-console.error(JSON.stringify({ ...summary, unparsed: unparsed.length, build_schema: { built, agree: buildAgree, incomplete: buildIncomplete, disagree: buildDisagree.length } }));
+console.error(JSON.stringify({ ...summary, unparsed: unparsed.length, build_schema: { built, agree: buildAgree, incomplete: buildIncomplete, disagree: buildDisagree.length }, merged_sdl: { ...merged, disagree: merged.disagree.length } }));
