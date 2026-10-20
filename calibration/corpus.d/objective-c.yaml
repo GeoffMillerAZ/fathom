@@ -1,0 +1,33 @@
+id: objective-c
+language: Objective-C
+# Measurement conventions (docs/bench/readings/lang/objective-c.json): both subjects are measured whole, their .m and
+# .mm files and the .h headers the header router sends to Objective-C (a header with an @interface, @protocol,
+# @implementation or #import, and no C++ signal word ahead of it; the router is cheaderextract.go, never a second
+# classifier). The oracles are universal-ctags 6.2.1 (tier B, ObjectiveC parser) and scip-clang 0.4.0 where it
+# indexes the subject (tier A); the reading records which.
+repos:
+  - name: AFNetworking
+    url: https://github.com/AFNetworking/AFNetworking
+    ref: 4.0.1
+    sha: ffae2391ab0c29dc88eb0a58d2f5b2c2c27cadbf
+    licence: MIT
+    idioms:
+      - "class clusters and categories on UIKit and Foundation types (UIImageView+AFNetworking)"
+      - "block-based completion handlers and delegate protocols with @optional members"
+      - "NS_ASSUME_NONNULL_BEGIN and nullability annotations on every declaration"
+      - "designated initializers marked NS_DESIGNATED_INITIALIZER, unavailable initializers marked NS_UNAVAILABLE"
+      - "#import of sibling headers and framework umbrella headers, guarded by #if TARGET_OS_IOS"
+    notes: >
+      LICENSE at the tag: MIT (Copyright (c) 2011-2020 Alamofire Software Foundation).
+  - name: SDWebImage
+    url: https://github.com/SDWebImage/SDWebImage
+    ref: 5.21.7
+    sha: 2de3a496eaf6df9a1312862adcfd54acd73c39c0
+    licence: MIT
+    idioms:
+      - "NS_ENUM and NS_OPTIONS typedefs for options and cache types"
+      - "protocols implemented by many classes (SDImageCoder, SDWebImageOperation) and categories per UIKit view"
+      - "Objective-C++ sources (.mm) beside .m, and C helper functions in .m files"
+      - "macro-built declarations (SD_LOCK, dispatch_main_async_safe) and FOUNDATION_EXPORT constants"
+    notes: >
+      LICENSE at the tag: MIT (Copyright (c) 2009-2020 Olivier Poitrey rs@dailymotion.com).

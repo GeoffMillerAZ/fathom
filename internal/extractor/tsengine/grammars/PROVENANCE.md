@@ -53,6 +53,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `makefile` | tree-sitter-grammars/tree-sitter-make | 70613f3d812cbabbd7f38d104d60a409c4008b43 | `70613f3d812cbabbd7f38d104d60a409c4008b43` | MIT | `tree_sitter_make` | `bd60f6d2950086ba5d1d81e0890fc3e4e71e4d276b58b8cc1e1e95c9609ce331` |
 | `matlab` | acristoffers/tree-sitter-matlab | v1.3.1 | `f03d0347acd8bb05d4edd8c845ac1718729e1fad` | MIT | `tree_sitter_matlab` | `7d8e0f1131a17e21f576839a4f7a9a16c864d89cbc1536a774445d590e6be470` |
 | `meson` | tree-sitter-grammars/tree-sitter-meson | v1.3.0 | `12edaf0dfef0a43bc74336a4432b2db1c65788d6` | MIT | `tree_sitter_meson` | `fe9923e14405edfc41d76a1ffa82c8a03d8cf42e8651459a57882a55c00c83ea` |
+| `objective-c` | tree-sitter-grammars/tree-sitter-objc | 181a81b8f23a2d593e7ab4259981f50122909fda | `181a81b8f23a2d593e7ab4259981f50122909fda` | MIT | `tree_sitter_objc` | `97789350d6353520fd8569c12abd2e99b95bcb65d5f418dd797dbcfef1995cec` |
 | `perl` | tree-sitter-perl/tree-sitter-perl | 4586b3f1fc6f8b80cca6ceb23ba863ae986eeae8 | `4586b3f1fc6f8b80cca6ceb23ba863ae986eeae8` | MIT | `tree_sitter_perl` | `a0b339650a78a7eb2b6c3f3223b6518943ed66f3a66bc52a626f5c8e688d91e3` |
 | `php` | tree-sitter/tree-sitter-php | v0.24.2 | `5b5627faaa290d89eb3d01b9bf47c3bb9e797dea` | MIT | `tree_sitter_php` | `0e73ad63dda67ac12c0e012726a4e1a9811c26b020a0a2dea3e889f8246d9cf4` |
 | `powershell` | airbus-cert/tree-sitter-powershell | v0.26.5 | `d398441825243b00e317e87e1829b9d6a3e54ce0` | MIT | `tree_sitter_powershell` | `a949ac2bccd74b94b6199702c8b119cb353785e8a8828150a763b202ae8d4534` |
@@ -103,6 +104,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `makefile` | (root) | no | 15 | 265,371 | 86,559 | `7d6266397d5544d992ad80a03f4333c0680162ed4a37877f84fca8aa11c6dbce` |
 | `matlab` | (root) | yes | 15 | 482,912 | 121,531 | `64f6964fff221ee76611150b791dcaf04b8f7d8a5d77b5c4158646b9423a3c34` |
 | `meson` | (root) | no | 14 | 233,708 | 78,038 | `e17a6126f64f1a172421dc7214e5c8b034e8988b5fe3a1707956399aec324722` |
+| `objective-c` | (root) | no | 14 | 2,361,937 | 491,144 | `2b73a50672e956e9d1dc9873c34d18b7f0aa74ba7b4a51e16777e54618903f3b` |
 | `perl` | (root) | yes | 15 | 2,443,271 | 452,171 | `17bd1fc35b4f62cdaae9547a8bebcf15da3df00b0a72a49565028c2be38f1568` |
 | `php` | php | yes | 15 | 811,496 | 191,343 | `e74d8a8385c252d7d3ce19e47247e48cbee4af9f30e39a6cffe0abe583a55881` |
 | `powershell` | (root) | yes | 15 | 841,031 | 165,241 | `290c26ac0058dbc4eed6b79ef91031018fb5a892aa88b5a5b7e95beb9de01b46` |
