@@ -36,10 +36,7 @@ func (b QueueBlock) Eligible() bool { return len(b.Blocked) == 0 && len(b.Replan
 // needsReplan), read from the authored checkboxes: this function recomputes no
 // verdict.
 func QueueEligibility(q []QueueEntry, plan verify.Plan, level func(id string) (string, bool)) map[string]QueueBlock {
-	rows := map[string]verify.Task{}
-	for _, t := range plan.Tasks {
-		rows[t.ID] = t
-	}
+	rows := planRows(plan)
 	queued := map[string]bool{}
 	for _, e := range q {
 		queued[e.ID] = true

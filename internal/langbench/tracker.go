@@ -69,10 +69,7 @@ func (in TrackerInput) Dispatched() map[string]Registration {
 // an item is refused when its own row or its LB-Q-<id>-rest sibling is [-]
 // with disposition refused. The value names the row and its reason.
 func RefusedItems(q []QueueEntry, plan verify.Plan) map[string]string {
-	rows := map[string]verify.Task{}
-	for _, t := range plan.Tasks {
-		rows[t.ID] = t
-	}
+	rows := planRows(plan)
 	out := map[string]string{}
 	for _, e := range q {
 		for _, id := range []string{e.PlanRow, e.PlanRow + "-rest"} {
@@ -107,12 +104,12 @@ func TrackerInputFromRepo(root string) (TrackerInput, error) {
 	}
 	// The plan carries the refusals (§14.2); a checkout without it (a
 	// fixture) has none to report.
-	md, err := os.ReadFile(filepath.Join(root, "docs", "plans", "language-breadth.md"))
-	if err != nil && !os.IsNotExist(err) {
+	plan, err := LoadBreadthPlan(root)
+	if err != nil {
 		return TrackerInput{}, err
 	}
 	in := TrackerInput{Template: trackerTemplate, Queue: q, Readings: map[string]Reading{},
-		Registered: map[string]Registration{}, Refused: RefusedItems(q, verify.ParseMarkdownPlan("", md)),
+		Registered: map[string]Registration{}, Refused: RefusedItems(q, plan),
 		TypedEdges: connector.TypedEdgeProducer, Dispatch: fusion.DispatchTable()}
 	for id, reg := range registeredFormats {
 		in.Registered[id] = reg

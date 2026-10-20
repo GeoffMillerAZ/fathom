@@ -26,17 +26,17 @@ const (
 	RowMarkRefused       RowMark = "refused"       // [-] with any disposition but deferred (G2-6)
 )
 
-// breadthPlan is the one plan whose waves add sibling plans
+// BreadthPlan is the one plan whose waves add sibling plans
 // (language-breadth.<wave>.md, design language-breadth.md section 13).
-const breadthPlan = "language-breadth.md"
+const BreadthPlan = "language-breadth.md"
 
-// planFiles expands names: breadthPlan is followed by its sorted
+// PlanFiles expands names: BreadthPlan is followed by its sorted
 // language-breadth.<wave>.md siblings (the queue .json is not a plan).
-func planFiles(root string, names []string) ([]string, error) {
+func PlanFiles(root string, names []string) ([]string, error) {
 	var out []string
 	for _, name := range names {
 		out = append(out, name)
-		if name != breadthPlan {
+		if name != BreadthPlan {
 			continue
 		}
 		hits, err := filepath.Glob(filepath.Join(root, "docs", "plans", "language-breadth.*.md"))
@@ -53,7 +53,7 @@ func planFiles(root string, names []string) ([]string, error) {
 
 // readPlanMarks calls fn for every row of every plan file that exists.
 func readPlanMarks(root string, names []string, fn func(file, id string, m RowMark)) error {
-	files, err := planFiles(root, names)
+	files, err := PlanFiles(root, names)
 	if err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func PlanRowMarks(root string, names ...string) (map[string]RowMark, error) {
 	out := map[string]RowMark{}
 	seen := map[string]string{}
 	err := readPlanMarks(root, names, func(file, id string, m RowMark) {
-		if f, ok := seen[id]; ok && f != file && strings.HasPrefix(file, "language-breadth.") && file != breadthPlan {
+		if f, ok := seen[id]; ok && f != file && strings.HasPrefix(file, "language-breadth.") && file != BreadthPlan {
 			return
 		}
 		seen[id] = file

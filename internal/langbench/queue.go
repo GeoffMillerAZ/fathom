@@ -134,10 +134,9 @@ func CheckQueueAgainstPlan(q []QueueEntry, plan verify.Plan) []string {
 	for _, e := range q {
 		queueIDs[e.ID] = true
 	}
-	rows := map[string]verify.Task{}
+	rows := planRows(plan)
 	var planOrder []string
 	for _, t := range plan.Tasks {
-		rows[t.ID] = t
 		if isQueueRow(t.ID, queueIDs) {
 			planOrder = append(planOrder, t.ID)
 		}
