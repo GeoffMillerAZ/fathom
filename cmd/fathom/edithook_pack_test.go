@@ -115,11 +115,21 @@ func TestEditHookPreServesPackGuardsBelowRepoRules(t *testing.T) {
 	file := filepath.Join(root, "internal", "a.go")
 	packWrite(t, root, "internal/a.go", "package internal\n")
 
-	res, ok := renderPreEdit(obligationsServer(t), root, file, "s-pack")
-	if !ok {
-		t.Fatal("expected a served payload")
+	// Through the hook itself: the served context is the payload.
+	hookStdin(t, fmt.Sprintf(`{"tool_name":"Edit","tool_input":{"file_path":%q},"cwd":%q,"session_id":"s-pack"}`, file, root))
+	var out, errBuf strings.Builder
+	if code := runWithStdin([]string{"edit-hook", "--pre", "--url=" + obligationsServer(t)}, nil, &out, &errBuf); code != 0 {
+		t.Fatalf("exit %d: %s", code, errBuf.String())
 	}
-	text := res.text
+	var env struct {
+		Hook struct {
+			Context string `json:"additionalContext"`
+		} `json:"hookSpecificOutput"`
+	}
+	if err := json.Unmarshal([]byte(out.String()), &env); err != nil || env.Hook.Context == "" {
+		t.Fatalf("no served context (%v): %q", err, out.String())
+	}
+	text := env.Hook.Context
 	idx := func(s string) int { return strings.Index(text, s) }
 	for _, want := range []string{"Repo rule 1.", "Module rule 4.", "[alpha@1] Alpha one.", "[alpha@1] Alpha two."} {
 		if idx(want) < 0 {
