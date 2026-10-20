@@ -17,5 +17,5 @@ orientation: [
 	{anchor: "internal/verify/markdown.go#ParseMarkdownPlan", why: "The plan parser to read first for any verify question."},
 	{anchor: "internal/extractor/tsextract.go#tsRegistry", why: "The language dialect registry that tags-engine extractors are built from."},
 	{anchor: "docs/design/language-breadth.md", why: "The worker recipe (section 13) for adding a language or tool format."},
-	{anchor: "internal/lint/tenancy/tenancy.go", why: "The tenancy lint that keeps one service's data out of another's."},
+	{anchor: "internal/lint/tenancy/tenancy.go", why: "The tenancy lint: request-path cost never follows repository size, and tests never reach the operator's daemon."},
 ]
