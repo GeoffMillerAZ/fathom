@@ -1,0 +1,152 @@
+{
+  "symbols": [
+    {
+      "name": "u",
+      "kind": "NixVariable",
+      "package": "scope",
+      "line": 2,
+      "end_line": 2,
+      "signature": "u =",
+      "calls": [
+        "import"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "v",
+      "kind": "NixVariable",
+      "package": "scope",
+      "line": 3,
+      "end_line": 3,
+      "signature": "v =",
+      "calls": [
+        "import"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "a",
+      "kind": "NixAttribute",
+      "package": "scope",
+      "line": 8,
+      "end_line": 8,
+      "signature": "a =",
+      "calls": [
+        "u.double"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "b",
+      "kind": "NixAttribute",
+      "package": "scope",
+      "line": 9,
+      "end_line": 9,
+      "signature": "b =",
+      "calls": [
+        "v.quad"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "c",
+      "kind": "NixAttribute",
+      "package": "scope",
+      "line": 10,
+      "end_line": 10,
+      "signature": "c =",
+      "calls": [
+        "double"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "d",
+      "kind": "NixAttribute",
+      "package": "scope",
+      "line": 11,
+      "end_line": 11,
+      "signature": "d =",
+      "calls": [
+        "quad"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "e",
+      "kind": "NixAttribute",
+      "package": "scope",
+      "line": 12,
+      "end_line": 12,
+      "signature": "e =",
+      "tier": "verified"
+    },
+    {
+      "name": "f",
+      "kind": "NixAttribute",
+      "package": "scope",
+      "line": 13,
+      "end_line": 13,
+      "signature": "f =",
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "u",
+      "module": "./lib.nix",
+      "kind": "whole",
+      "line": 2
+    },
+    {
+      "local": "./lib.nix",
+      "module": "./lib.nix",
+      "kind": "whole",
+      "line": 2
+    },
+    {
+      "local": "v",
+      "module": "./lib.nix",
+      "kind": "whole",
+      "line": 3
+    },
+    {
+      "local": "./lib.nix",
+      "module": "./lib.nix",
+      "kind": "whole",
+      "line": 3
+    },
+    {
+      "local": "./lib.nix",
+      "module": "./lib.nix",
+      "kind": "whole",
+      "line": 4
+    },
+    {
+      "local": "double",
+      "exported": "double",
+      "module": "./lib.nix",
+      "kind": "named",
+      "line": 4
+    },
+    {
+      "local": "./lib.nix",
+      "module": "./lib.nix",
+      "kind": "whole",
+      "line": 5
+    },
+    {
+      "local": "quad",
+      "exported": "quad",
+      "module": "./lib.nix",
+      "kind": "named",
+      "line": 5
+    },
+    {
+      "local": "./nested/dir",
+      "module": "./nested/dir",
+      "kind": "whole",
+      "line": 13
+    }
+  ]
+}

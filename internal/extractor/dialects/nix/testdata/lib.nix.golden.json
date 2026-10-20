@@ -1,0 +1,43 @@
+{
+  "symbols": [
+    {
+      "name": "double",
+      "kind": "NixFunction",
+      "package": "lib",
+      "line": 2,
+      "end_line": 2,
+      "signature": "double = x:",
+      "tier": "verified"
+    },
+    {
+      "name": "quad",
+      "kind": "NixFunction",
+      "package": "lib",
+      "line": 3,
+      "end_line": 3,
+      "signature": "quad = x:",
+      "calls": [
+        "double"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "names",
+      "kind": "NixAttribute",
+      "package": "lib",
+      "line": 4,
+      "end_line": 4,
+      "signature": "names =",
+      "tier": "verified"
+    },
+    {
+      "name": "nested",
+      "kind": "NixAttribute",
+      "package": "lib",
+      "line": 5,
+      "end_line": 5,
+      "signature": "nested =",
+      "tier": "verified"
+    }
+  ]
+}

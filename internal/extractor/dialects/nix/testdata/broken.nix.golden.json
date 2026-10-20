@@ -1,0 +1,54 @@
+{
+  "symbols": [
+    {
+      "name": "lib",
+      "kind": "NixParam",
+      "package": "broken",
+      "line": 1,
+      "end_line": 1,
+      "tier": "verified"
+    },
+    {
+      "name": "before",
+      "kind": "NixFunction",
+      "package": "broken",
+      "line": 3,
+      "end_line": 3,
+      "signature": "before = x:",
+      "tier": "verified"
+    },
+    {
+      "name": "broken",
+      "kind": "NixFunction",
+      "package": "broken",
+      "line": 4,
+      "end_line": 5,
+      "signature": "broken = (1 + ; after = y:",
+      "tier": "verified"
+    },
+    {
+      "name": "kept",
+      "kind": "NixAttribute",
+      "package": "broken",
+      "line": 8,
+      "end_line": 8,
+      "signature": "kept =",
+      "calls": [
+        "before"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "last",
+      "kind": "NixAttribute",
+      "package": "broken",
+      "line": 9,
+      "end_line": 9,
+      "signature": "last =",
+      "calls": [
+        "after"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

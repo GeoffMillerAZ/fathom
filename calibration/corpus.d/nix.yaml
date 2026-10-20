@@ -1,0 +1,34 @@
+id: nix
+language: Nix
+# Measurement conventions (docs/bench/readings/lang/nix.json): each subject is a shallow clone read whole with the
+# tier-C oracle calibration/oracles/nix-parse (the reference parser `nix-instantiate --parse` for names, kinds,
+# application heads and path literals; the source locator for lines; a scoped reading of `import` for the
+# cross-file references):
+#   nix-parse -subject <checkout> -files-out <files.txt> > workspace/tmp/oracle/nix-<subject>.json
+#   indexbench lang-oracle -dialect nix -subject <checkout> -ctags /nonexistent -tool-oracle <that json> -out docs/bench/readings/lang/nix.json
+# The queue named NixOS/nixpkgs (pkgs/development/tools). Two repositories that are the kind a fleet holds replace
+# it: a module library (home-manager: modules in the `{ config, lib, pkgs, ... }:` shape, a lib/ of helpers, a tests/
+# tree) and a flake-based machine configuration. Neither has a release tag the lock can name, so each is pinned by
+# the commit of a branch tip (home-manager's release-26.05) or of the default branch.
+repos:
+  - name: nix-community/home-manager
+    url: https://github.com/nix-community/home-manager
+    ref: release-26.05
+    sha: 24f8f8e786f87d6a818e1746cb2389bf922afdab
+    licence: MIT
+    idioms:
+      - 'modules of the shape { config, lib, pkgs, ... }: with lib; let cfg = ... in { options.programs.x = ...; config = mkIf cfg.enable { ... }; }'
+      - 'dotted option and config keys (options.programs.x.enable, home.packages) and mkOption / mkEnableOption values'
+      - 'lib/ helpers imported by name: let gvariant = import ./gvariant.nix { inherit lib; } in ... gvariant.mkTuple'
+      - '`inherit (import ./x.nix { ... }) f;` and parenthesised imports'
+      - 'a flake.nix whose outputs is a function, and default.nix files that import a directory'
+      - 'tests/ trees of one-line files that name a path (aria2-settings = ./settings.nix;)'
+  - name: mitchellh/nixos-config
+    url: https://github.com/mitchellh/nixos-config
+    ref: latest
+    sha: 40d483d74cf48d64379fc9a857237ee18c519ff4
+    licence: MIT
+    idioms:
+      - 'a flake.nix with inputs and an outputs function that calls a local mkSystem'
+      - 'machine configurations and a lib/ that pass { inherit nixpkgs inputs; } between files'
+      - 'imports = [ ../modules/x.nix ] lists and overlays loaded by path'

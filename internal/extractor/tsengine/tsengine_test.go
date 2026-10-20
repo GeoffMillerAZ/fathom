@@ -391,6 +391,7 @@ func TestGrammars(t *testing.T) {
 	want["bicep"] = true // LB-Q-bicep (wave iac)
 	want["scala"] = true // LB-Q-scala (wave lf3)
 	want["scss"] = true  // LB-Q-scss (wave lf5, P233/tree-sitter-scss)
+	want["nix"] = true   // LB-Q-nix (wave lang8, nix-community/tree-sitter-nix)
 
 	// LB-Q-vue, LB-Q-svelte (wave lf7, tree-sitter-grammars).
 	want["vue"], want["svelte"] = true, true

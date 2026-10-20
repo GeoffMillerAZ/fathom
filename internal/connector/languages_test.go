@@ -116,6 +116,7 @@ var langRowHint = map[string]string{
 	"jupyter":          "| Jupyter notebooks ",
 	"git-hooks-config": "lefthook.yml, .pre-commit-config.yaml, CloudFormation",
 	"meson":            "Meson",
+	"nix":              "Nix",
 	"bazel":            "Bazel / Starlark",
 	"tiltfile":         "Tiltfile",
 	"compile-commands": "compile_commands.json",
