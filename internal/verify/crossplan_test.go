@@ -62,3 +62,15 @@ func TestResolveCrossPlanNeed(t *testing.T) {
 		t.Error("a bare id is not a cross-plan target")
 	}
 }
+
+func TestResolveCrossPlanNeedWaveSibling(t *testing.T) {
+	dir := t.TempDir()
+	sib := "# LB wave\n- [x] Row {id: LB-F90, oracle: lexical, path: x, pattern: y}\n"
+	if err := os.WriteFile(filepath.Join(dir, "language-breadth.ap3.md"), []byte(sib), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	row, err := ResolveCrossPlanNeed(dir, "language-breadth.ap3.md#LB-F90")
+	if err != nil || !row.Claimed {
+		t.Fatalf("wave sibling need must resolve claimed: %+v, %v", row, err)
+	}
+}

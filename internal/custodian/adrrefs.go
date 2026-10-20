@@ -160,6 +160,7 @@ func adrCitingFiles(root string) []string {
 	add(filepath.Join("docs", "intent", "*", "*.md"))
 	add(filepath.Join("docs", "plans", "*.md"))
 	add("CHANGELOG.md")
+	add(filepath.Join("docs", "changelog", "unreleased", "*.md"))
 	sort.Strings(out)
 	return out
 }

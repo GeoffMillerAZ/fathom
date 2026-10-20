@@ -41,8 +41,8 @@ their files. The first paragraph may link to root after the title.
 | 8 | Every goal has `Done when`; every future has `Promote when` and `Drop if` and a confidence and horizon | grep in `scope.md`, `futures.md` | all |
 | 9 | Compatibility surface | `## Compatibility surface` in `scope.md` with ≥ 1 item | present |
 | 10 | Sensitive surfaces carry evidence | router or explicitly linked surface table has a "Done needs" column | no empty evidence cells |
-| 11 | CHANGELOG shape | `CHANGELOG.md` exists, has `## [Unreleased]` and `Release impact:` as its first line | present |
-| 12 | Unreleased budget | lines in `[Unreleased]` block | ≤ 60 (else `intent-prune`) |
+| 11 | CHANGELOG shape | `CHANGELOG.md` exists, has `## [Unreleased]` and `Release impact:` as its first line | present; with a fragments pointer line (`Unreleased changes wait as fragments under <dir>/`) the pointer replaces `Release impact:` |
+| 12 | Unreleased budget | lines in `[Unreleased]` block; in a fragments repo, `- ` lines across the fragment files | ≤ 60 (else `intent-prune`) |
 | 13 | Autonomy policy | `autonomy.md` has the three tiers and a branch model | present |
 | 14 | Incidents | `incidents.md` present; every open incident has an `Outcome:` line or is under 30 days old | ok |
 | 15 | Stanza in one file | the `## Project intent` block (routing, change records, autonomy paragraphs) is in `AGENTS.md`; no `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md` exists, or each carries `@AGENTS.md` (`@../AGENTS.md` from `.claude/`) and no second copy of the block | one copy, reachable |

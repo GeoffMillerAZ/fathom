@@ -5,6 +5,7 @@ Grammar v2 (`docs/plans/README.md`). A row flips to `[x]` only when
 Design: `docs/design/language-breadth.md` (section numbers below are its; §13 is the worker
 recipe). Queue: `docs/plans/language-breadth.queue.json` — one `LB-Q-<id>` row per entry,
 in the same order (`TestLanguageQueueMatchesPlan`, LB-F22, holds the two together).
+A wave's new foundation rows go in a sibling plan `language-breadth.<wave>.md` (design §13); F.1..F.73 stay here.
 Invariants I54 and I55 rise from `stated` as LB-F12, LB-F14, LB-F16 and LB-F17 land.
 
 Rows name the contract they will be proven by: the function that will carry the behaviour

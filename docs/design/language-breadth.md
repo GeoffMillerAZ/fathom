@@ -1841,6 +1841,11 @@ worktree and your scratch directory.
    better, even while its own row stays open for a higher target (D6, §1.5).
    `go run ./cmd/indexbench lang-next -all` prints exactly this. If blocked, stop and
    report `blocked: <ids>`.
+   A wave's new foundation rows live in `docs/plans/language-breadth.<wave>.md`, an ordinary
+   plan (no F.NN number) that `fathom verify` walks, `fathom plans archive` archives once
+   proven, and the support console reads with the main plan. A queue row's `depends_on` on
+   such a row uses the cross-plan form `language-breadth.<wave>.md#LB-F<n>`; F.1..F.73 stay
+   in `docs/plans/language-breadth.md`.
    *Amended 2026-09-29 (G2-6, `docs/plans/sdd-reconciler-v0.md`): deferred is not done.
    A `depends_on` row is met only when it is `[x]`; a `[-]` row no longer is. A deferred
    one (or one with no disposition) keeps the item blocked until it revives; a refused
@@ -1981,8 +1986,8 @@ worktree and your scratch directory.
     reached less than the target, see §14.2 — do not change the pattern.
 24. CHANGELOG: one line under `[Unreleased]` → `### Added` (new language) or `### Changed`
     (a port): "`<Name>` extraction at <level> (<grade>), measured against <oracle> on
-    <subjects>". A port that changes output for already-indexed files also bumps
-    `fusion.ExtractorEpoch` in the same commit.
+    <subjects>". A port that changes output for already-indexed files also adds the wave's bump
+    file `internal/fusion/epochs/<wave>.md` (what changed, why stored observations are stale).
 25. Delete your clones unless the next queued item shares a subject
     (`task calibrate-clean -- <id>`); delete your scratch dir.
 

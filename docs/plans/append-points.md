@@ -15,37 +15,37 @@ nobody shares. Kit rows land in agentic-kit first and arrive here by `task sync-
 
 ## Wave 1: change-note fragments in the kit (section 3)
 
-- [ ] `changes.md` sections 4, 6, 8 and 11: one change-note fragment per change under a directory the repo names, one heading and its lines, folded at release with `### Breaking` first, no committed `[Unreleased]` view, and why fragments are neither a generated changelog nor a second log {id: AP-2, oracle: lexical, path: third_party/agentic-kit/docs/project-intent/changes.md, pattern: "change-note fragment"}
+- [x] `changes.md` sections 4, 6, 8 and 11: one change-note fragment per change under a directory the repo names, one heading and its lines, folded at release with `### Breaking` first, no committed `[Unreleased]` view, and why fragments are neither a generated changelog nor a second log {id: AP-2, oracle: lexical, path: third_party/agentic-kit/docs/project-intent/changes.md, pattern: "change-note fragment"}
 - [ ] `release-notes -roll x.y.z -date D` folds the fragments in bytewise filename order under the pointer, computes `Release impact:`, orders the categories with Breaking first and deletes the fragments; `release-notes Unreleased` prints the same fold and writes nothing {id: AP-3, symbol: foldFragments, package: third_party/agentic-kit/cmd/release-notes, reachable_from: TestFoldFragmentsSortedBreakingFirst}
 - [ ] `release-notes -check` refuses a fragment with no heading, two headings, an unknown heading or no line, an `[Unreleased]` section holding more than the pointer, and a fragment line already in a released block {id: AP-4, symbol: checkFragments, package: third_party/agentic-kit/cmd/release-notes, reachable_from: TestCheckFragmentsRefusesBadHeadingsAndStrayUnreleasedLines}
-- [ ] `intent-release` folds fragments at steps 1 to 5, `intent-doctor` rows 11 and 12 accept the pointer layout and count fragment lines, `intent-prune` pass 5 collapses fragments, and `kit-new` writes a fragment in a fragments repo {id: AP-5, oracle: lexical, path: third_party/agentic-kit/.claude/skills/intent-release/SKILL.md, pattern: "fragment", needs: "AP-3"}
-- [ ] `operating.md` section 4 (parallel agents): a parallel line adds a file and never appends to a shared one, and a generated file merges by regeneration, never by hand {id: AP-6, oracle: lexical, path: third_party/agentic-kit/docs/project-intent/operating.md, pattern: "merges by regeneration"}
+- [x] `intent-release` folds fragments at steps 1 to 5, `intent-doctor` rows 11 and 12 accept the pointer layout and count fragment lines, `intent-prune` pass 5 collapses fragments, and `kit-new` writes a fragment in a fragments repo {id: AP-5, oracle: lexical, path: third_party/agentic-kit/.claude/skills/intent-release/SKILL.md, pattern: "fragment", needs: "AP-3"}
+- [x] `operating.md` section 4 (parallel agents): a parallel line adds a file and never appends to a shared one, and a generated file merges by regeneration, never by hand {id: AP-6, oracle: lexical, path: third_party/agentic-kit/docs/project-intent/operating.md, pattern: "merges by regeneration"}
 
 ## Wave 2: fathom adopts the fragments (section 3)
 
-- [ ] Today's `[Unreleased]` lines move to `docs/changelog/unreleased/`, one fragment per category, between waves; `CHANGELOG.md`'s `[Unreleased]` keeps only the pointer line {id: AP-7, oracle: lexical, path: CHANGELOG.md, pattern: "^Unreleased changes wait as fragments under docs/changelog/unreleased/", needs: "AP-2"}
-- [ ] `task validate` runs the fragment check {id: AP-8, oracle: lexical, path: Taskfile.yml, pattern: "release-notes -check", needs: "AP-4,AP-7"}
-- [ ] `fathom plans archive` counts a row id named in a fragment as absorbed {id: AP-9, symbol: readAbsorptionFiles, package: cmd/fathom, reachable_from: TestReadAbsorptionFilesReadsChangeFragments, needs: "AP-7"}
-- [ ] The custodian ADR-reference concern resolves citations in fragments {id: AP-10, symbol: adrCitingFiles, package: internal/custodian, reachable_from: TestADRCitingFilesIncludeChangeFragments, needs: "AP-7"}
-- [ ] The `AGENTS.md` change-records stanza, `CHANGELOG.md`'s header and the router's "what changed" row name the fragments directory {id: AP-11, oracle: lexical, path: AGENTS.md, pattern: "docs/changelog/unreleased/", needs: "AP-7"}
+- [x] Today's `[Unreleased]` lines move to `docs/changelog/unreleased/`, one fragment per category, between waves; `CHANGELOG.md`'s `[Unreleased]` keeps only the pointer line {id: AP-7, oracle: lexical, path: CHANGELOG.md, pattern: "^Unreleased changes wait as fragments under docs/changelog/unreleased/", needs: "AP-2"}
+- [x] `task validate` runs the fragment check {id: AP-8, oracle: lexical, path: Taskfile.yml, pattern: "release-notes -check", needs: "AP-4,AP-7"}
+- [x] `fathom plans archive` counts a row id named in a fragment as absorbed {id: AP-9, symbol: readAbsorptionFiles, package: cmd/fathom, reachable_from: TestReadAbsorptionFilesReadsChangeFragments, needs: "AP-7"}
+- [x] The custodian ADR-reference concern resolves citations in fragments {id: AP-10, symbol: adrCitingFiles, package: internal/custodian, reachable_from: TestADRCitingFilesIncludeChangeFragments, needs: "AP-7"}
+- [x] The `AGENTS.md` change-records stanza, `CHANGELOG.md`'s header and the router's "what changed" row name the fragments directory {id: AP-11, oracle: lexical, path: AGENTS.md, pattern: "docs/changelog/unreleased/", needs: "AP-7"}
 
 ## Wave 3: generated files merge by regeneration (section 4)
 
-- [ ] PROVENANCE.md's tables carry no `**total**` row {id: AP-12, symbol: RenderProvenanceTables, package: internal/extractor/tsengine, reachable_from: TestProvenanceTablesCarryNoTotalRow}
+- [x] PROVENANCE.md's tables carry no `**total**` row {id: AP-12, symbol: RenderProvenanceTables, package: internal/extractor/tsengine, reachable_from: TestProvenanceTablesCarryNoTotalRow}
 - [x] `.gitattributes` names `docs/languages.md` and `internal/extractor/tsengine/grammars/PROVENANCE.md` with `merge=fathom-regen` {id: AP-13, oracle: lexical, path: .gitattributes, pattern: "^docs/languages\.md merge=fathom-regen$"}
 - [x] `task merge-drivers` sets the driver (`true`, keep the current side) and `task regen` runs every generator in a fixed order; `scripts/cloud-setup.sh` runs `task merge-drivers` {id: AP-14, oracle: lexical, path: Taskfile.yml, pattern: "^  merge-drivers:", needs: "AP-13"}
-- [ ] The waves guide's integrator steps: `task merge-drivers` at clone, `task regen` after a merge, and a bump file per wave instead of the integrator's epoch bump {id: AP-15, oracle: lexical, path: docs/guides/agent-waves.md, pattern: "task regen", needs: "AP-14,AP-19"}
+- [x] The waves guide's integrator steps: `task merge-drivers` at clone, `task regen` after a merge, and a bump file per wave instead of the integrator's epoch bump {id: AP-15, oracle: lexical, path: docs/guides/agent-waves.md, pattern: "task regen", needs: "AP-14,AP-19"}
 
 ## Wave 4: sibling plan files for language waves (section 5)
 
-- [ ] The support console reads row marks from `language-breadth.<wave>.md` siblings as well as `language-breadth.md` {id: AP-16, symbol: PlanRowMarks, package: internal/support, reachable_from: TestPlanRowMarksReadsLanguageBreadthSiblings}
-- [ ] The worker recipe (design `language-breadth.md` section 13) puts a wave's new foundation rows in `docs/plans/language-breadth.<wave>.md`, with no F.NN number, and queue needs in the cross-plan form {id: AP-17, oracle: lexical, path: docs/design/language-breadth.md, pattern: "docs/plans/language-breadth\.<wave>\.md", needs: "AP-16"}
+- [x] The support console reads row marks from `language-breadth.<wave>.md` siblings as well as `language-breadth.md` {id: AP-16, symbol: PlanRowMarks, package: internal/support, reachable_from: TestPlanRowMarksReadsLanguageBreadthSiblings}
+- [x] The worker recipe (design `language-breadth.md` section 13) puts a wave's new foundation rows in `docs/plans/language-breadth.<wave>.md`, with no F.NN number, and queue needs in the cross-plan form {id: AP-17, oracle: lexical, path: docs/design/language-breadth.md, pattern: "docs/plans/language-breadth\.<wave>\.md", needs: "AP-16"}
 
 ## Wave 5: the derived extractor epoch (section 6)
 
-- [ ] The data digest: sha256 over the sorted paths and bytes of the embedded dialect manifests and queries and `grammars.lock.json` {id: AP-18, symbol: EmbeddedDataDigest, package: internal/extractor, reachable_from: TestEmbeddedDataDigestCoversManifestsQueriesAndLock}
-- [ ] The epoch is the base 67 plus the number of `internal/fusion/epochs/*.md` bump files, then 12 hex of sha256 over the sorted bump files and the data digest; a new bump file or one data byte changes it {id: AP-19, symbol: epochOf, package: internal/fusion, reachable_from: TestEpochOfChangesWithABumpFileOrADataByte, needs: "AP-18"}
-- [ ] `FingerprintHash` keeps its formula and salts with the derived epoch, so an ingest after either change re-extracts every file {id: AP-20, symbol: FingerprintHash, package: internal/fusion, reachable_from: TestFingerprintHashSaltsWithTheDerivedEpoch, needs: "AP-19"}
+- [x] The data digest: sha256 over the sorted paths and bytes of the embedded dialect manifests and queries and `grammars.lock.json` {id: AP-18, symbol: EmbeddedDataDigest, package: internal/extractor, reachable_from: TestEmbeddedDataDigestCoversManifestsQueriesAndLock}
+- [x] The epoch is the base 67 plus the number of `internal/fusion/epochs/*.md` bump files, then 12 hex of sha256 over the sorted bump files and the data digest; a new bump file or one data byte changes it {id: AP-19, symbol: epochOf, package: internal/fusion, reachable_from: TestEpochOfChangesWithABumpFileOrADataByte, needs: "AP-18"}
+- [x] `FingerprintHash` keeps its formula and salts with the derived epoch, so an ingest after either change re-extracts every file {id: AP-20, symbol: FingerprintHash, package: internal/fusion, reachable_from: TestFingerprintHashSaltsWithTheDerivedEpoch, needs: "AP-19"}
 
 ## Measurement (section 8)
 

@@ -75,6 +75,14 @@ reaches a changed symbol (one that reaches it only through `error.Error`, `fmt.S
 
 ## The gate and the push
 
+- The integrator runs `task merge-drivers` right after cloning, so a generated file
+  (`docs/languages.md`, the grammar `PROVENANCE.md`) keeps the current side on merge instead of
+  conflicting, then `task regen` after every merge and commits what it rewrites.
+- A wave whose extraction changed carries one bump file, `internal/fusion/epochs/<wave>.md`: that
+  bump's history paragraph (what changed, why stored observations are stale). It replaces the
+  integrator's single epoch bump (ADR-048 decision D2 as amended by ADR-075): the extractor epoch
+  is derived from the bump files and the embedded dialect data, so nobody renumbers it and two
+  waves' bump files merge clean into a value distinct from each.
 - The integrator merges the workers' branches, builds `bin/fathom` from the merged tree, ingests
   the committed HEAD into a fresh scratch store and runs `fathom verify --strict --since
   origin/main` over every plan with that binary. Its wired check refuses a row that no product
