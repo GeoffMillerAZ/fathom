@@ -40,6 +40,7 @@ var assertedInterfaces = map[string]reflect.Type{
 	"docsSearchBackend":                          ifaceOf[docsSearchBackend](),
 	"exclusionsBackend":                          ifaceOf[exclusionsBackend](),
 	"findingsBackend":                            ifaceOf[findingsBackend](),
+	"fileStatBackend":                            ifaceOf[fileStatBackend](),
 	"fleetCallIndex":                             ifaceOf[fleetCallIndex](),
 	"fleetCtxBackend":                            ifaceOf[fleetCtxBackend](),
 	"fleetNameLookup":                            ifaceOf[fleetNameLookup](),

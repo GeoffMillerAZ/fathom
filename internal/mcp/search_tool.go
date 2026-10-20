@@ -200,7 +200,7 @@ func registerSearch(s *Server, backend QueryInterface) {
 				},
 				"path": map[string]any{
 					"type":        "string",
-					"description": "Glob narrowing which files are searched",
+					"description": "Directory, or a glob under it",
 				},
 				"case": map[string]any{
 					"type":        "boolean",
@@ -723,10 +723,15 @@ func searchRipgrep(ctx context.Context, root string, o searchOpts) ([]searchRawH
 	if contextN > 0 {
 		args = append(args, "-C", strconv.Itoa(contextN))
 	}
-	if pathGlob != "" {
-		args = append(args, "-g", pathGlob)
+	// O1448: the literal leading directory is the search root, so ignore
+	// files keep applying under it; the rest of a glob is applied to the
+	// returned paths below (an -g glob would override every ignore rule).
+	searchDir, pathPattern := splitSearchPath(pathGlob)
+	target := "."
+	if searchDir != "" {
+		target = searchDir
 	}
-	args = append(args, "--", pattern, ".")
+	args = append(args, "--", pattern, target)
 	rgCtx, kill := context.WithCancel(ctx)
 	defer kill()
 	cmd := exec.CommandContext(rgCtx, "rg", args...)
@@ -765,6 +770,16 @@ func searchRipgrep(ctx context.Context, root string, o searchOpts) ([]searchRawH
 		}
 	}
 	hits := parseRipgrepOutput(string(out), contextN)
+	if pathPattern != "" {
+		gm := filter.New([]string{pathPattern})
+		kept := hits[:0]
+		for _, h := range hits {
+			if gm.Match(h.File) {
+				kept = append(kept, h)
+			}
+		}
+		hits = kept
+	}
 	if perFile > 0 {
 		per := map[string]int{}
 		kept := hits[:0]
@@ -897,12 +912,17 @@ func searchWalk(ctx context.Context, root string, o searchOpts) ([]searchRawHit,
 	}
 	contextN := min(o.contextN, searchContextMax)
 	var glob *filter.Matcher
-	if o.pathGlob != "" {
-		glob = filter.New([]string{o.pathGlob})
+	walkDir, walkPattern := splitSearchPath(o.pathGlob)
+	if walkPattern != "" {
+		glob = filter.New([]string{walkPattern})
+	}
+	walkStart := root
+	if walkDir != "" {
+		walkStart = filepath.Join(root, filepath.FromSlash(walkDir))
 	}
 	var paths []string
 	//fathom:tenancy-allow whole-read the no-ripgrep fallback lists paths only; every byte is read through corpus.ScanBudgeted with the byte, wall and file caps
-	walkErr := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
+	walkErr := filepath.WalkDir(walkStart, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil // best-effort: skip unreadable entries
 		}
@@ -989,6 +1009,40 @@ func searchWalk(ctx context.Context, root string, o searchOpts) ([]searchRawHit,
 		capped = cov.String()
 	}
 	return hits, capped, nil
+}
+
+// splitSearchPath splits a caller's path into its literal leading
+// directory (the search root, slash form, "" for the service root) and the
+// full glob to apply to returned paths ("" when the path is all literal).
+// A path that is absolute or climbs out of the root yields no directory and
+// itself as the pattern, which matches nothing.
+func splitSearchPath(p string) (dir, pattern string) {
+	p = strings.TrimSpace(filepath.ToSlash(p))
+	if p == "" {
+		return "", ""
+	}
+	if strings.HasPrefix(p, "/") || p == ".." || strings.HasPrefix(p, "../") || strings.Contains(p, "/../") {
+		return "", p
+	}
+	p = strings.TrimPrefix(p, "./")
+	segs := strings.Split(strings.Trim(p, "/"), "/")
+	var lit []string
+	glob := false
+	for _, sg := range segs {
+		if strings.ContainsAny(sg, "*?[{") {
+			glob = true
+			break
+		}
+		lit = append(lit, sg)
+	}
+	dir = strings.Join(lit, "/")
+	if dir == "." {
+		dir = ""
+	}
+	if !glob {
+		return dir, ""
+	}
+	return dir, p
 }
 
 // isEnvPatternFile reports whether base looks like a .env-pattern secrets

@@ -74,3 +74,5 @@ from the doc index (stored text) and is not exempt. `TestSecretSurface_NoReadToo
 asks every tool on `/rpc/extended` about the secret-bearing files and entities and finds the sentinel
 (in the clear or base64-encoded) in no answer; a tool added to that surface without an entry fails
 `TestSecretSurface_EveryToolHasAnEntry`.
+
+`search`'s `path` is a directory, or a glob under one. The leading literal directory is the search root, so `.gitignore` and `.fathomignore` still apply under it; the rest of a glob filters the returned paths.

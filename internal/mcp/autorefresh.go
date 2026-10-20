@@ -558,6 +558,15 @@ func (a *autoRefreshBackend) IngestServiceAt(ctx context.Context, service, path 
 	return ia.IngestServiceAt(ctx, service, path)
 }
 
+// FileStats forwards the indexed file_stats rows (snippet freshness).
+func (a *autoRefreshBackend) FileStats(ctx context.Context, serviceID string) ([]store.FileStat, bool, error) {
+	fb, ok := a.QueryInterface.(fileStatBackend)
+	if !ok {
+		return nil, false, nil
+	}
+	return fb.FileStats(ctx, serviceID)
+}
+
 func (a *autoRefreshBackend) ImportSCIP(ctx context.Context, serviceID, path string) (scip.Import, error) {
 	sb, ok := a.QueryInterface.(scipImportBackend)
 	if !ok {

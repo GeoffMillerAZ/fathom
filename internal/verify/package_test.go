@@ -130,19 +130,19 @@ func TestVerifyPlan_PackageIsOneDirectory(t *testing.T) {
 	}
 }
 
-// TestVerifyPlan_AmbiguousBareWithoutPackage: with no `package:` annotation,
-// behavior is unchanged — the bare name is queried as-is and an ambiguous
-// name still resolves to nothing.
+// TestVerifyPlan_AmbiguousBareWithoutPackage: with no `package:` annotation
+// an ambiguous bare name fails symbol_present as ambiguous (O1453, the full
+// contract is TestBareAnchorDefinedTwiceIsAmbiguous).
 func TestVerifyPlan_AmbiguousBareWithoutPackage(t *testing.T) {
 	rep := verify.VerifyPlan(verify.Plan{Tasks: []verify.Task{
 		{ID: "T-1", Expect: verify.Expect{Symbol: "Run"}},
 	}}, ambiguousRunEvidence())
 	v := rep.Tasks[0]
-	if c, _ := findCrit(v, "symbol_present"); c.Status != verify.Pass {
-		t.Fatalf("symbol_present should still pass on a bare ambiguous name, got %+v", c)
+	if c, _ := findCrit(v, "symbol_present"); c.Status != verify.Fail {
+		t.Fatalf("symbol_present should fail on a bare ambiguous name, got %+v", c)
 	}
-	if v.Status != verify.Fail || v.Label != "present-but-untested" {
-		t.Fatalf("got %s/%s, want fail/present-but-untested (unchanged)", v.Status, v.Label)
+	if v.Status != verify.Fail || v.Label != "ambiguous-anchor" {
+		t.Fatalf("got %s/%s, want fail/ambiguous-anchor", v.Status, v.Label)
 	}
 }
 

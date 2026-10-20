@@ -873,6 +873,7 @@ func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[stri
 	// nothing downstream, never first-match-wins.
 	querySym := e.Symbol
 	var matches []core.SymbolNode
+	ambiguous := false // O1453: a bare anchor that more than one distinct definition matches
 	// reaching is the tests test_reaches found: runtime_pass's certifying
 	// tests when the row names none (runtimeTests).
 	var reaching []string
@@ -894,7 +895,23 @@ func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[stri
 		if keys := distinctKeys(matches); len(keys) == 1 && (e.Package != "" || len(matches) < len(raw)) {
 			querySym = keys[0]
 		}
-		if len(matches) == 0 {
+		if keys := distinctKeys(matches); e.Package == "" && len(keys) > 1 {
+			// O1453: a bare anchor two packages define names neither: the
+			// row asks for `package:` instead of passing on the first match
+			// and then failing reach as a missing test.
+			ambiguous = true
+			pkgs := make([]string, 0, len(keys))
+			seen := map[string]bool{}
+			for _, n := range matches {
+				d := path.Dir(n.FilePath)
+				if !seen[d] {
+					seen[d] = true
+					pkgs = append(pkgs, d)
+				}
+			}
+			sort.Strings(pkgs)
+			fail("symbol_present", fmt.Sprintf("ambiguous: %d definitions (%s); add package:", len(keys), strings.Join(pkgs, ", ")), "ambiguous-anchor")
+		} else if len(matches) == 0 {
 			detail := fmt.Sprintf("%q not found in the index", e.Symbol)
 			if e.Package != "" {
 				detail = fmt.Sprintf("%q not found under %q in the index", e.Symbol, e.Package)
@@ -907,7 +924,9 @@ func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[stri
 		}
 
 		// tier
-		if len(matches) == 0 {
+		if ambiguous {
+			na("tier", "ambiguous anchor")
+		} else if len(matches) == 0 {
 			na("tier", "symbol absent")
 		} else {
 			minTier := e.MinTier
@@ -954,6 +973,8 @@ func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[stri
 			), "self-skipped")
 		case e.SkipTest:
 			pass("skip_test", fmt.Sprintf("test-reach requirement waived: %s", e.SkipReason))
+		case ambiguous:
+			na("test_reaches", "ambiguous anchor")
 		case len(matches) == 0:
 			na("test_reaches", "symbol absent")
 		case len(e.CertifiedBy) > 0:
@@ -1007,7 +1028,10 @@ func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[stri
 	}
 
 	// --- edge wiring (requires both endpoints) ---
-	if e.ReachableFrom != "" && e.Symbol != "" {
+	if e.ReachableFrom != "" && e.Symbol != "" && ambiguous {
+		checked = true
+		na("edge_wired", "ambiguous anchor")
+	} else if e.ReachableFrom != "" && e.Symbol != "" {
 		checked = true
 		if ev.Reachable(e.ReachableFrom, querySym) {
 			pass("edge_wired", fmt.Sprintf("%s reaches %s", e.ReachableFrom, querySym))
@@ -1033,7 +1057,7 @@ func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[stri
 	// product entry point does is library-only — Unknown, so the default
 	// gate reports it and --strict (the pre-push gate) refuses it. It never
 	// overrides an earlier failure's label.
-	if pe, ok := ev.(ProductEvidence); ok && len(matches) > 0 {
+	if pe, ok := ev.(ProductEvidence); ok && len(matches) > 0 && !ambiguous {
 		c, label := evalWired(t, pe, querySym, matches)
 		if cause := GraphFallbackCause(ev); cause != "" && c.Status == Unknown && !t.Expect.Library {
 			c.Detail, label = graphFallbackDetail(c.Detail, cause), GraphFallbackLabel
