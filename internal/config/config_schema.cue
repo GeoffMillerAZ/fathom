@@ -544,6 +544,8 @@ package config
 	readouts?:  #Readouts
 	console?:   #Console
 	work?:      #Work
+	risk?:      #Risk
+	learning?:  #Learning
 
 	// zones (WI-1, docs/design/work-intelligence.md §2) names coarser
 	// work-intelligence zones by repo-relative path globs (internal/
@@ -551,6 +553,26 @@ package config
 	// Unset, a zone is a Go package's directory or, for other languages,
 	// the deepest directory holding indexed symbols.
 	zones?: [string]: [...string] & [_, ...]
+}
+
+// #Risk is `[risk]`: the review risk thresholds `.fathom/risk.cue` carried
+// (schema/risk). Every field is optional; unset keeps the binary's default.
+// A repository's [risk] section wins over a risk.cue beside it, which doctor
+// names.
+#Risk: {
+	blast_radius_high_callers?: int & >0
+	zone_interest_medium_rate?: number & >0
+}
+
+// #Learning is `[learning]`: the learned-rule thresholds
+// `.fathom/learning.cue` carried (schema/learning). Every field is optional;
+// unset keeps the binary's default.
+#Learning: {
+	promote_corroborations?:      int & >0
+	promote_min_sessions?:        int & >0
+	promote_window_days?:         int & >0
+	retire_refutes?:              int & >0
+	retire_never_triggered_days?: int & >0
 }
 
 // #Work configures the work-intelligence pages (WI-2w, docs/design/

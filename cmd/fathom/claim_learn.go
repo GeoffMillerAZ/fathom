@@ -26,8 +26,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
@@ -237,22 +239,48 @@ func learnService(ctx context.Context, st store.Store, svc string, log ruleOutco
 	return res, nil
 }
 
-// learningThresholdsFor loads <root>/.fathom/learning.cue over the
-// binary's defaults (GL-12) and names where the numbers came from. A
-// malformed file is named and the defaults stand — never a silent guess.
+// learningThresholdsFor resolves root's learned-rule thresholds (GL-12) and
+// names where the numbers came from: the [learning] section of the layered
+// config.toml over the binary's defaults, or a legacy .fathom/learning.cue,
+// read whole, until the repository's config.toml carries a [learning] section.
+// A malformed file is named and the defaults stand, never a silent guess.
 func learningThresholdsFor(root string) (semantic.LearningThresholds, string) {
 	if root == "" {
 		return semantic.DefaultLearningThresholds(), "the binary's defaults (no local root recorded for the service)"
 	}
+	loaded, cerr := config.Load(config.DefaultUserPath(), projectdir.Config.Path(root))
 	path := projectdir.Learning.Path(root)
-	if _, err := os.Stat(path); err != nil {
-		return semantic.DefaultLearningThresholds(), "the binary's defaults (no " + path + ")"
+	if _, err := os.Stat(path); err == nil && !slices.Contains(loaded.ShadowedLegacy, path) {
+		t, err := semantic.LoadLearningThresholds(path)
+		if err != nil {
+			return semantic.DefaultLearningThresholds(), "the binary's defaults (" + path + " is not read: " + err.Error() + ")"
+		}
+		return t, path
 	}
-	t, err := semantic.LoadLearningThresholds(path)
-	if err != nil {
-		return semantic.DefaultLearningThresholds(), "the binary's defaults (" + path + " is not read: " + err.Error() + ")"
+	if cerr != nil {
+		return semantic.DefaultLearningThresholds(), "the binary's defaults (" + cerr.Error() + ")"
 	}
-	return t, path
+	t, from := semantic.DefaultLearningThresholds(), "the binary's defaults (no [learning] section, no "+path+")"
+	l := loaded.Config.Learning
+	set := false
+	for _, f := range []struct {
+		v   int
+		dst *int
+	}{
+		{l.PromoteCorroborations, &t.PromoteCorroborations},
+		{l.PromoteMinSessions, &t.PromoteMinSessions},
+		{l.PromoteWindowDays, &t.PromoteWindowDays},
+		{l.RetireRefutes, &t.RetireRefutes},
+		{l.RetireNeverTriggeredDays, &t.RetireNeverTriggeredDays},
+	} {
+		if f.v > 0 {
+			*f.dst, set = f.v, true
+		}
+	}
+	if set {
+		from = "[learning] in config.toml"
+	}
+	return t, from
 }
 
 // printClaimLearn is the text answer.

@@ -150,6 +150,35 @@ func mergeLayer(cfg *Config, prov Provenance, raw map[string]any, source Source,
 		}
 	}
 
+	if rm, ok := raw["risk"].(map[string]any); ok {
+		if v, ok := numberField(rm, "blast_radius_high_callers"); ok {
+			cfg.Risk.BlastRadiusHighCallers = int(v)
+			prov["risk.blast_radius_high_callers"] = SourceInfo{source, path}
+		}
+		if v, ok := numberField(rm, "zone_interest_medium_rate"); ok {
+			cfg.Risk.ZoneInterestMediumRate = v
+			prov["risk.zone_interest_medium_rate"] = SourceInfo{source, path}
+		}
+	}
+
+	if lm, ok := raw["learning"].(map[string]any); ok {
+		for _, f := range []struct {
+			key string
+			dst *int
+		}{
+			{"promote_corroborations", &cfg.Learning.PromoteCorroborations},
+			{"promote_min_sessions", &cfg.Learning.PromoteMinSessions},
+			{"promote_window_days", &cfg.Learning.PromoteWindowDays},
+			{"retire_refutes", &cfg.Learning.RetireRefutes},
+			{"retire_never_triggered_days", &cfg.Learning.RetireNeverTriggeredDays},
+		} {
+			if v, ok := numberField(lm, f.key); ok {
+				*f.dst = int(v)
+				prov["learning."+f.key] = SourceInfo{source, path}
+			}
+		}
+	}
+
 	// [work] ci_summaries (WI-2w): an array of tables, so the layer that
 	// sets it wins outright, like every other slice-valued field.
 	if wm, ok := raw["work"].(map[string]any); ok {
