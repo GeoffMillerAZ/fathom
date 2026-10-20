@@ -2,8 +2,9 @@ package readout
 
 // pack.go — RO-34 (docs/design/readouts.md section 11, fathom-dir design
 // section 7.2): a tech pack's `readouts` key loads as repository scope with
-// RO-33's add-only limit. Packs come from techpack.Discover (the
-// repository's own pins, offline). A pack's rules rank below the
+// RO-33's add-only limit. Packs come from techpack.Served (the
+// repository's own pins, offline, less `exclude_packs` and none when the
+// `tech-packs` capability is off). A pack's rules rank below the
 // repository's own file, which ranks below user scope. The pin is the trust,
 // so a pack rule needs no sha256 entry, but a rule with no fixture, or a
 // failing one, is withheld and named, never served.
@@ -36,7 +37,7 @@ func LoadPackRules(rs *RuleSet, root string) {
 	if rs == nil || root == "" {
 		return
 	}
-	d, err := techpack.Discover(root)
+	d, err := techpack.Served(root)
 	if err != nil {
 		return // pins that cannot be read: nothing to serve, and doctor's pack rows name it
 	}
