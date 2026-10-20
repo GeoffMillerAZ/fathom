@@ -274,8 +274,8 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 reached (languages at L1 36, L1 excellent 25, L2 32, L3 25, L4 10; tool formats at target 59)
-Milestone M2 progress: languages at L1 36/45, at L1 excellent 25/35, at L2 32/25, at L3 25/14, at L4 10/10; tool formats at target 59/30
+Milestone M1 reached (languages at L1 36, L1 excellent 25, L2 32, L3 25, L4 10; tool formats at target 60)
+Milestone M2 progress: languages at L1 36/45, at L1 excellent 25/35, at L2 32/25, at L3 25/14, at L4 10/10; tool formats at target 60/30
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -341,7 +341,7 @@ Milestone M2 progress: languages at L1 36/45, at L1 excellent 25/35, at L2 32/25
 | Grafana dashboards and provisioning (dashboard JSON, v2 resources, providers, datasources, alerting) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 good, L2 good, L3 good) | C grafana-model-walk 1 (prometheus/promql/parser v0.315.0 ExtractSelectors) | — | 2026-10-10 | at target (LB-Q-grafana-dashboard) |
 | JSON Schema documents | tool format | doc | pure-go:encoding/json (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A @apidevtools/json-schema-ref-parser 16.0.5; A @apidevtools/json-schema-ref-parser ($refs.paths) 16.0.5 | — | 2026-10-19 | at target (LB-Q-json-schema) |
 | Scala (.scala .sc) | language | tags | tree-sitter/tree-sitter-scala (MIT) | L4 | L2 (L1 good, L2 good) | B scalameta 4.17.4 | scip:scip-java | 2026-10-10 | LB-Q-scala |
-| Nix (.nix, flake.nix) | tool format | tags | nix-community/tree-sitter-nix (MIT) | L3 | tolerated | — | file | — | LB-Q-nix |
+| Nix (.nix, flake.nix) | tool format | tags | nix-community/tree-sitter-nix (MIT) | L3 | L3 (L1 good, L2 good, L3 good) | C nix-instantiate --parse + source locator nix-instantiate (Nix) 2.34.7+1 | file | 2026-10-20 | at target (LB-Q-nix) |
 | Objective-C (.m .mm, .h by sniff) | language | tags | tree-sitter-grammars/tree-sitter-objc (MIT) | L3 | L3 (L1 good, L2 good, L3 good) | B clang-objc libclang (Command Line Tools) via libclang==18.1.1 bindings; Apple clang version 21.0.0 (clang-2100.3.34.2); B universal-ctags 6.2.1 | — | 2026-10-20 | at target (LB-Q-objective-c) |
 | Jupyter notebooks (.ipynb) | tool format | native | pure-go:encoding/json + python dialect (n/a) | L2 | L2 (L1 excellent, L2 good) | B ctags on the exported cells, nbformat 5.11.1 Universal Ctags 6.2.1, Copyright (C) 2015-2025 Universal Ctags Team; C python ast on the exported cells, nbformat 5.11.1 python 3.13.5 | syntax | 2026-10-19 | at target (LB-Q-jupyter) |
 | Luau (.luau) | language | tags | tree-sitter-grammars/tree-sitter-luau (MIT) | L2 | L2 (L1 excellent, L2 good) | B luau-ast luau-ast (luau-lang/luau 0.743); C tree-sitter-tags:lua-tags.scm py-tree-sitter 0.25.2, tree-sitter-luau 1.2.0 | syntax | 2026-10-19 | at target (LB-Q-luau) |

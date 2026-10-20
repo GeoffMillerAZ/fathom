@@ -36,5 +36,14 @@ file (`default.nix`, `flake.nix`, `shell.nix` and modules alike) was unclassifie
 - `testdata/`: fixtures written in this repository (`module`, `lib`, `pkg`, `flake`, `default`, `scope`, `broken`),
   each golden written from reading the fixture; `broken.nix` is a syntax error the grammar recovers from, and the
   binding after the error is lost with it (the grammar reads `(1 + ;` into the next binding).
-- Oracle: `calibration/oracles/nix-parse` (tier C, the reference parser). **Measurement (docs/bench/readings/lang/nix.json,
-  calibration/corpus.d/nix.yaml):** see the reading's `disposition`.
+- Oracle: `calibration/oracles/nix-parse` (tier C, the reference parser; the parse prints no positions, so the lines are
+  the oracle's lexer's and the parse attests the names, O1475; excellent is out of reach for that reason).
+- **Measurement** (`docs/bench/readings/lang/nix.json`, `calibration/corpus.d/nix.yaml`): level_met L3, good at L1, L2
+  and L3, over home-manager (3,254 files) and mitchellh/nixos-config (19). sym_recall 1, sym_precision 1,
+  ref_recall 1, ref_precision .9988, xref_precision 1 and xref_recall 1 over 38 import-and-select pairs (all home-manager;
+  nixos-config has none), kind agreement 15,357 of 15,361, 3.21 MB/s CPU, max file 18 ms, peak 319 module pages, no
+  faults. Holdouts, each read once with the rule fixed: disko (`holdout/nix.json`, L2 good: no cross-file pair on either
+  side) and flake-parts with nixvim (`holdout/nix-2.json`, L3 good, 5 of 5 pairs, sym_precision .9975: a file the
+  parser refuses is read by the dialect). `nix flake show --json --offline` ran on every subject's root flake (the
+  inputs sit in the store at the lock's hash) and its top-level outputs are disclosed in the reading. The
+  cross-reference truth is narrow (Nix files link by `imports` and `callPackage`, which bind no name), O1477.

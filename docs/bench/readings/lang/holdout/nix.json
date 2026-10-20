@@ -1,0 +1,131 @@
+{
+  "dialect": "nix",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L2",
+  "grade": {
+    "L1": "good",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-20",
+  "fathom_commit": "11b97be0d",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "nix-community/disko",
+      "sha": "ab58501b2341bc5e0fc88f2f5983a679b075ddf5",
+      "files": 106,
+      "bytes": 218394,
+      "counts": {
+        "callables": 172,
+        "callables_signed": 172,
+        "fathom_defs": 411,
+        "kind_equal": 411,
+        "matched": 411,
+        "oracle_defs": 411,
+        "range_eligible": 411,
+        "range_ok": 411,
+        "ref_fathom": 576,
+        "ref_fathom_in_truth": 575,
+        "ref_truth": 575,
+        "ref_truth_found": 575,
+        "xref_fathom": 0,
+        "xref_truth": 0
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "function",
+        "key",
+        "target",
+        "variable",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 67.84700000000004,
+        "extract_cpu_ms": 68.784,
+        "max_file_ms": 7,
+        "peak_module_pages": 292,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "C",
+      "tool": "nix-instantiate --parse + source locator",
+      "version": "nix-instantiate (Nix) 2.34.7+1"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 0.9983,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "ref_precision": "C",
+    "ref_recall": "C",
+    "sym_precision": "C",
+    "sym_recall": "C"
+  },
+  "required_kinds": [
+    "function",
+    "key",
+    "target",
+    "variable",
+    "variable_decl"
+  ],
+  "kind_intersection": [
+    "function",
+    "key",
+    "target",
+    "variable",
+    "variable_decl"
+  ],
+  "counts": {
+    "callables": 172,
+    "callables_signed": 172,
+    "fathom_defs": 411,
+    "kind_equal": 411,
+    "matched": 411,
+    "oracle_defs": 411,
+    "range_eligible": 411,
+    "range_ok": 411,
+    "ref_fathom": 576,
+    "ref_fathom_in_truth": 575,
+    "ref_truth": 575,
+    "ref_truth_found": 575,
+    "xref_fathom": 0,
+    "xref_truth": 0
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 0,
+    "throughput_mb_s": 3.18,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 3.22,
+    "max_file_ms": 7,
+    "peak_module_pages": 292,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "nix-community/disko: nix flake show --json --offline: ran; top-level outputs checks, formatter, lib, nixosConfigurations, nixosModules, packages",
+    "nix-community/disko: nix-parse: accepted=106 cross_references=0 files=106",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "xref_precision and xref_recall of a tags-engine tool format score the file resolver's file-resolved edges (fusion.ResolveFileEdges over the dialect's import strategy, the edges ingest stores) against the oracle's cross_references at file granularity: (file, referring definition, referenced file), the referenced definition's name not compared (LB-F56)"
+  ],
+  "disposition": null
+}
