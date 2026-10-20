@@ -11,6 +11,7 @@ import (
 	"text/scanner"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/extractor"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	scippb "github.com/geoffmilleraz/fathom/third_party/scip"
 	"google.golang.org/protobuf/proto"
@@ -94,6 +95,10 @@ func UnityJoinCases(e UnityEvidence, symbols []core.SymbolNode) ([]JoinedCase, U
 		byMethod[qualified] = append(byMethod[qualified], s)
 	}
 	cohortKeys := map[string]string{}
+	// A display ellipsis cannot establish the end of an attribute list (in
+	// particular a Retry/Repeat policy). Re-read bound source only for clipped
+	// signatures, at most once per source in this join; no persistent cache.
+	headers := map[string][]core.SymbolNode{}
 	for _, g := range e.Native.Cohorts {
 		// This version refuses nested/generic classes and method overloads. The
 		// runtime XML does not carry a source position for disambiguating them.
@@ -105,6 +110,39 @@ func UnityJoinCases(e UnityEvidence, symbols []core.SymbolNode) ([]JoinedCase, U
 			continue
 		}
 		s := candidates[0]
+		if strings.HasSuffix(s.Signature, "…") {
+			if _, checked := headers[s.FilePath]; !checked {
+				headers[s.FilePath] = nil
+				path, pathErr := unityPath(b.Root, s.FilePath, false)
+				if pathErr != nil {
+					continue
+				}
+				for _, input := range e.Receipt.Source.Inputs {
+					bound, inputErr := unityPath(b.Root, input.Path, true)
+					if inputErr != nil || bound != path {
+						continue
+					}
+					source, readErr := unityFileBytes(b.Root, input, 16<<20)
+					if readErr != nil {
+						return nil, b, readErr
+					}
+					// Parse/header failures leave this method unjoined. Native
+					// assembly/SCIP/fingerprint/uniqueness checks still apply.
+					headers[s.FilePath], _ = extractor.CSharpMethodHeaders(s.Service, s.FilePath, source)
+					break
+				}
+			}
+			matches := 0
+			for _, h := range headers[s.FilePath] {
+				if h.Name == s.Name && h.Package == s.Package && h.FilePath == s.FilePath && h.Line == s.Line && h.EndLine == s.EndLine {
+					s.Signature = h.Signature
+					matches++
+				}
+			}
+			if matches != 1 {
+				continue
+			}
+		}
 		if !s.IsTest() || unityRetryAttribute(s.Signature) {
 			continue
 		}

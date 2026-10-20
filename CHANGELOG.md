@@ -36,6 +36,7 @@ Release impact: minor
 - Unity `.asmdef` files expose declared assembly/reference facts without call edges; `indexbench lang-unity-asmdef` calibrates per-file-bound ownership, named references and a strict engine boundary against retained Editor receipts, with unsupported cases explicit.
 
 ### Fixed
+- Native Unity NUnit joins re-read bounded, exact source method headers when indexed display signatures are clipped, preserving complete parameterized cohorts without hiding Retry/Repeat policies or weakening typed, source, assembly and ambiguity guards.
 - Call-graph name indexes reuse each node's canonical key within a build, avoiding repeated key allocations without changing resolution or resource limits.
 - Native CUE typed enrichment explicitly refuses external registry operations and invalidates prior rows only for packages whose own native reload confirms denial; local-module imports and builtins remain available, ordinary compile-failure retention is unchanged, and an independent pass epoch rechecks pre-policy stores once.
 - Exact `envkit.gen.yml` Task includes and `Dockerfile.context` build inputs reach their existing dialects; arbitrary YAML and other Docker suffixes remain unclaimed, with no typed/runtime capability increase.
