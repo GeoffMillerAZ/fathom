@@ -45,12 +45,12 @@ type coldGraph struct {
 
 // navGraphsWithin is loadNavGraphsErr bounded by ctx's deadline (O1446).
 // With no deadline, an uncacheable scope (I21) or everything resident it
-// is loadNavGraphsErr. Otherwise it waits until the deadline less a reserve
-// for the answer (verify_plan's stage reserve) when the measured build
-// (memo.NavBuildCost) fits in that, and only memo.NavKeepAfter when it
-// does not: long enough that the flight it starts or joins is kept, so the
-// build is not cancelled with it. A cold result means the graphs are not
-// ready and the caller answers its partial; an error is the load's own.
+// is loadNavGraphsErr. When the measured build (memo.NavBuildCost) fits in
+// the deadline less a reserve for the answer (verify_plan's stage reserve)
+// it waits up to that; when it does not, it warms the build stage by stage
+// (warmNavStages) and stops at the first stage still building. A cold
+// result means the graphs are not ready and the caller answers its
+// partial; an error is the load's own.
 func navGraphsWithin(ctx context.Context, backend QueryInterface, service string) (*navGraphs, *coldGraph, error) {
 	sc := navScope(ctx, backend, service)
 	dl, hasDeadline := ctx.Deadline()
@@ -61,28 +61,94 @@ func navGraphsWithin(ctx context.Context, backend QueryInterface, service string
 	}
 	remaining := time.Until(dl)
 	wait := remaining - min(max(remaining/verifyStageReserveShare, verifyStageReserveMin), verifyStageReserveMax)
-	if cost > wait {
-		wait = min(wait, memo.NavKeepAfter()+coldKeepMargin)
-	}
-	cold := &coldGraph{scope: sc, kept: wait >= memo.NavKeepAfter()}
+	cold := &coldGraph{scope: sc}
 	if wait <= 0 {
 		return nil, cold, nil
 	}
-	wctx, cancel := context.WithTimeout(ctx, wait)
-	defer cancel()
-	ng, err := loadNavGraphsAt(wctx, backend, service, sc)
-	switch {
-	case err == nil:
-		return ng, nil, nil
-	case ctx.Err() != nil:
+	if cost <= wait {
+		wctx, cancel := context.WithTimeout(ctx, wait)
+		defer cancel()
+		ng, err := loadNavGraphsAt(wctx, backend, service, sc)
+		switch {
+		case err == nil:
+			return ng, nil, nil
+		case ctx.Err() != nil:
+			return nil, nil, err
+		case errors.Is(err, memo.ErrWouldNotFinish):
+			return nil, cold, nil
+		case wctx.Err() != nil:
+			cold.kept = wait >= memo.NavKeepAfter()
+			return nil, cold, nil
+		}
 		return nil, nil, err
-	case errors.Is(err, memo.ErrWouldNotFinish):
-		cold.kept = false
-		return nil, cold, nil
-	case wctx.Err() != nil:
+	}
+	done, kept, err := warmNavStages(ctx, backend, service, sc, time.Now().Add(wait))
+	if err != nil {
+		return nil, nil, err
+	}
+	if !done {
+		cold.kept = kept
 		return nil, cold, nil
 	}
-	return nil, nil, err
+	ng, err := loadNavGraphsAt(ctx, backend, service, sc)
+	return ng, nil, err
+}
+
+// warmNavStages builds sc's snapshot, typed edges and three graphs one
+// stage at a time until end, each stage held only memo.NavKeepAfter (plus
+// a margin): long enough that a flight it starts or joins is kept for the
+// next caller (Group.leave), never cancelled with this one, and short
+// enough that the call answers well inside its deadline. A stage that
+// finishes inside its hold hands the rest of the hold to the next, so a
+// fast snapshot does not spend the graph's keep window. done is true when
+// every stage is built; kept when the stage it stopped at keeps building;
+// err is a failure that is not the hold ending (a typed-edge read failure
+// is left to loadNavGraphsAt, which degrades it).
+func warmNavStages(ctx context.Context, backend QueryInterface, service string, sc memo.Scope, end time.Time) (done, kept bool, err error) {
+	hold := memo.NavKeepAfter() + coldKeepMargin
+	typed := typedLoader(backend, service)
+	var snap *memo.Snapshot
+	stages := []func(context.Context) error{
+		func(c context.Context) (e error) { snap, e = serviceSnapshotAt(c, backend, service, sc); return e },
+		func(c context.Context) error { _, e := memo.GraphFor(c, snap, memo.GraphSyntax, nil); return e },
+		func(c context.Context) error {
+			_, e := memo.TypedFor(c, sc, typed)
+			if e != nil && c.Err() == nil && !errors.Is(e, memo.ErrWouldNotFinish) {
+				return nil // a read failure, degraded by loadNavGraphsAt (I38)
+			}
+			return e
+		},
+		func(c context.Context) error {
+			_, _, _, e := memo.GraphForTyped(c, snap, memo.GraphBoth, typed)
+			return e
+		},
+		func(c context.Context) error {
+			_, _, _, e := memo.GraphForTyped(c, snap, memo.GraphResolved, typed)
+			return e
+		},
+	}
+	for _, stage := range stages {
+		if time.Until(end) < hold {
+			return false, false, nil // no time to keep a stage it would start
+		}
+		sctx, cancel := context.WithTimeout(ctx, hold)
+		e := stage(sctx)
+		held := sctx.Err() != nil
+		cancel()
+		switch {
+		case e == nil:
+			continue
+		case ctx.Err() != nil:
+			return false, false, e
+		case errors.Is(e, memo.ErrWouldNotFinish):
+			return false, false, nil
+		case held:
+			return false, true, nil
+		default:
+			return false, false, e
+		}
+	}
+	return true, false, nil
 }
 
 // coldGraphNote is a cold symbol_context answer's partial field.
