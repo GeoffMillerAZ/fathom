@@ -76,7 +76,7 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 	subjectName := fs.String("subject-name", "", "subject name recorded in the reading (default: the directory name)")
 	ctagsPath := fs.String("ctags", "", "universal-ctags binary (default: workspace/tools/ctags, then ctags on PATH; a non-universal ctags is reported unavailable)")
 	scipPath := fs.String("scip", "", "SCIP index of the subject (tier A; optional)")
-	scipDefs := fs.Bool("scip-defs", false, "score L1 against the -scip index's definitions (tier A) instead of universal-ctags (owner decision D2: a stronger oracle where ctags is deficient)")
+	scipDefs := fs.Bool("scip-defs", false, "score L1 against the -scip index's definitions (tier A) instead of universal-ctags; requires scoreable oracle_kinds.scip in the manifest (owner decision D2)")
 	var toolOracles multiFlag
 	fs.Var(&toolOracles, "tool-oracle", "oracle JSON in the neutral shape (definitions, calls, references; tier A unless it says otherwise; repeatable)")
 	callsFrom := fs.String("calls-from", "scip", "which oracle grades L2 beside -scip: scip (the index's call sites, tier A) or tool (the -tool-oracle files' calls at their own tier, the index still grading definitions, typed edges and imports; LB-F204, O264)")
@@ -100,6 +100,18 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		fmt.Fprintln(stderr, "lang-oracle:", err)
 		return 2
+	}
+	// An explicitly requested L1 family needs scoreable manifest kinds.
+	// Refuse before extractor creation or subject/index/oracle/output work.
+	if *scipDefs {
+		if *scipPath == "" {
+			fmt.Fprintln(stderr, "lang-oracle: -scip-defs needs -scip")
+			return 2
+		}
+		if len(spec.Manifest.Intersection("scip")) == 0 {
+			fmt.Fprintf(stderr, "lang-oracle: -scip-defs is unsupported for dialect %q: manifest oracle_kinds.scip has no scoreable definition kinds; omit -scip-defs and use -tool-oracle with native definitions; keep -scip for calls, typed references and dependencies, and select -imports-from tool for a native imports file\n", spec.Manifest.ID)
+			return 2
+		}
 	}
 	target := spec.Manifest.TargetLevel
 	if q, qerr := langbench.LoadQueue(*queuePath); qerr == nil {
@@ -177,10 +189,6 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
-	if *scipDefs && *scipPath == "" {
-		fmt.Fprintln(stderr, "lang-oracle: -scip-defs needs -scip")
-		return 2
-	}
 	if *callsFrom != "scip" && *callsFrom != "tool" {
 		fmt.Fprintln(stderr, "lang-oracle: -calls-from is scip or tool")
 		return 2
