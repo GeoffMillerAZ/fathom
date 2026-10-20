@@ -15,8 +15,9 @@ and are not repeated here. WI-16 to WI-19 stay open and are what WS-8 and WS-12 
 
 - [x] Certificate regressions: live to flaky, broken or unproven, with the reading and commit {id: WI-20, symbol: certificateRegressions, package: internal/console, reachable_from: TestCertificateRegressionsWithCommit}
 - [x] Conservation and invariant-enforcement regressions: a plane once `conserved`, an enforcing test that stopped reaching {id: WI-21, symbol: conservationRegressions, package: internal/console, reachable_from: TestConservationAndInvariantRegressions}
+  <!-- Wave tq1 (2026-10-20): /progress feeds the invariant half from the store; the plane half has no input until a per-push conservation reading is stored (O1483, after RT-M1). -->
 - [ ] One regressions list, newest first, rows plus certificates plus conservation plus invariants, each linking the breaking diff {id: WI-22, symbol: AllProofRegressions, package: internal/console, reachable_from: TestAllProofRegressionsMerged, needs: "WI-20,WI-21,progress-and-economics.md#PE-8"}
-  <!-- product wiring open (fathom verify --strict reads it library-only, 2026-09-28): AllProofRegressions has no production caller: no page renders the merged regressions list. -->
+  <!-- AllProofRegressions renders on /progress since wave tq1 (2026-10-20). Open: conservation-plane input (O1483) and a link per regression to its breaking diff (today it links the plan row or /certifications). -->
 
 ## Wave 3: zones, U1, U2, U3, U5, U13
 

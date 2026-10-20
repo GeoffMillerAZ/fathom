@@ -26,3 +26,21 @@ func TestTestReachNamesNonGoTestEntries(t *testing.T) {
 		t.Fatalf("IsTestNode: pytest function must be a test, helper and production must not be")
 	}
 }
+
+// TestIsTestNodeKeepsGoRule (TQ-28): a Go symbol keeps Go's own rule, the
+// Test prefix on its name. A fake's method named TestReaches in a _test.go
+// file is not a test entry, so Go reach is what it was before TQ-28.
+func TestIsTestNodeKeepsGoRule(t *testing.T) {
+	nodes := []core.SymbolNode{
+		{Service: "s", Package: "v", Name: "Check", Kind: core.KindGoFunc, FilePath: "v/check.go"},
+		{Service: "s", Package: "v", Name: "fakeEvidence.TestReaches", Kind: core.KindGoMethod, FilePath: "v/check_test.go", Signature: "func TestReaches(symbol string) []string", Calls: []string{"Check"}},
+		{Service: "s", Package: "v", Name: "TestCheck", Kind: core.KindGoFunc, FilePath: "v/check_test.go", Calls: []string{"fakeEvidence.TestReaches"}},
+	}
+	if IsTestNode(nodes[1]) {
+		t.Fatalf("Go method %q in a _test.go file read as a test entry", nodes[1].Name)
+	}
+	g := Build(nodes)
+	if got := TestImpact(g, nodes[0].Key()); len(got) != 1 || got[0] != nodes[2].Key() {
+		t.Fatalf("Go reach = %v, want only TestCheck", got)
+	}
+}

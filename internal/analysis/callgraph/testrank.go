@@ -79,7 +79,15 @@ func dirDistance(a, b string) int {
 // IsTestNode reports whether n is a test entry the test-reach walks name:
 // a symbol whose name starts with "Test" (Go's convention, unchanged), or
 // a non-Go test entry in a test file (repofacts.IsTestEntry, TQ-27/TQ-28:
-// pytest functions, jest blocks, JUnit @Test, and so on).
+// pytest functions, jest blocks, JUnit @Test, and so on). A Go symbol keeps
+// Go's rule alone: a fake's method named TestReaches in a _test.go file is
+// not a test entry, so Go reach is unchanged by TQ-28.
 func IsTestNode(n core.SymbolNode) bool {
-	return strings.HasPrefix(n.Name, "Test") || repofacts.IsTestEntry(n.Name, n.FilePath, n.Signature)
+	if strings.HasPrefix(n.Name, "Test") {
+		return true
+	}
+	if n.Kind == core.KindGoFunc || n.Kind == core.KindGoMethod || strings.HasSuffix(n.FilePath, ".go") {
+		return false
+	}
+	return repofacts.IsTestEntry(n.Name, n.FilePath, n.Signature)
 }
