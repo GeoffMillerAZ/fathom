@@ -92,7 +92,14 @@ func cmdConfigAudit(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "config: %v\n", e)
 	}
 
-	if len(concerns) == 0 && len(loadErrs) == 0 {
+	// The project pack's orientation set is verified here too; an absent set
+	// adds nothing, so a repository without one reads exactly as before.
+	var orientation []custodian.Finding
+	if proj, perr := projectdir.Load(root); perr == nil {
+		orientation = custodian.OrientationFindings(root, proj)
+	}
+
+	if len(concerns) == 0 && len(loadErrs) == 0 && len(orientation) == 0 {
 		fmt.Fprintf(stdout, "no concerns registered — the custodian has nothing to hold this repo to.\n")
 		fmt.Fprintf(stdout, "Write ~/.fathom/concerns.cue (user default) or %s (this repo governs);\n", projectdir.Concerns.Path(""))
 		fmt.Fprintf(stdout, "see docs/design/config-custodian.md for the concern model.\n")
@@ -100,6 +107,7 @@ func cmdConfigAudit(args []string, stdout, stderr io.Writer) int {
 	}
 
 	findings := custodian.Audit(root, concerns, custodian.WithWiringDrift(wiringCurrentEvaluator))
+	findings = append(findings, orientation...)
 	violatedForBeat := 0
 	for _, f := range findings {
 		if f.Status == custodian.StatusViolated {

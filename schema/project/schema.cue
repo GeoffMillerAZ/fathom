@@ -9,6 +9,7 @@
 //   packs, concerns         .fathom/concerns.cue
 //   bindings                .fathom/modules.cue    (schema/binding)
 //   guards, layer_rules     .fathom/guard.cue      (schema/guard)
+//   orientation             .fathom/pack.cue       (schema/techpack)
 //
 // Mapped by FILE NAME, not by key (flat content, retired by a later merge):
 // `.fathom/risk.cue` is a schema/risk #RiskTable and `.fathom/learning.cue`
@@ -18,13 +19,13 @@
 // internal/capability/capability_schema.cue and
 // internal/custodian/custodian_schema.cue (those files carry no package
 // and cannot be imported); the Go loaders there remain the stricter gate.
-// Keys the design adds later (exclude_packs, generated, formats,
-// orientation) are added here with the change that defines their schema.
+// Keys the design adds later (exclude_packs, generated, formats) are added here with the change that defines their schema.
 package project
 
 import (
 	"github.com/geoffmilleraz/fathom/schema/binding"
 	"github.com/geoffmilleraz/fathom/schema/guard"
+	"github.com/geoffmilleraz/fathom/schema/techpack"
 )
 
 #Project: {
@@ -38,6 +39,11 @@ import (
 
 	guards?:       [...guard.#Guard]
 	layer_rules?: [...guard.#LayerRule]
+
+	// The project pack (.fathom/pack.cue): the keys a tech pack shares
+	// with the project (schema/techpack). Orientation is the project's
+	// alone; a kit pack may not carry it.
+	orientation?: [...techpack.#Orientation]
 }
 
 #Budgets: {
@@ -48,23 +54,7 @@ import (
 
 #PackName: "claude-code" | "codex" | "lefthook" | "taskfile"
 
-#Concern: {
-	want?:  string
-	why?:   string
-	off?:   bool
-	check?: #Check
-}
-
-#Check: {
-	kind:         "forbidden_pattern" | "required_pattern" | "command_documented_and_exists" | "commands_resolve" | "max_lines" | "max_bytes" | "pointers_resolve" | "stanza_present" | "stanza_tools_served" | "handoff_cites_instruments" | "adr_references_resolve" | "wiring_current" | "agents_md_reaches_claude"
-	pattern?:      string
-	where?:        "agent-config" | "lefthook" | "taskfile" | "ci"
-	under?:        string
-	command?:      string
-	file?:         string
-	lines?:        int & >0
-	bytes?:        int & >0
-	days?:         int & >0
-	allow_import?: bool
-	import_only?:  bool
-}
+// #Concern and #Check are schema/techpack's: the custodian's contracts are
+// one shape whether a project or a tech pack carries them.
+#Concern: techpack.#Concern
+#Check:   techpack.#Check

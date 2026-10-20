@@ -36,6 +36,9 @@ const (
 	Guard File = "guard.cue"
 	// Concerns holds the agent-configuration contracts.
 	Concerns File = "concerns.cue"
+	// Pack is the project's own pack: the keys a tech pack shares with the
+	// project (orientation today).
+	Pack File = "pack.cue"
 	// Risk is the review risk table.
 	Risk File = "risk.cue"
 	// Learning is the learned-rule table.

@@ -15,7 +15,7 @@ import (
 	"cuelang.org/go/cue/load"
 )
 
-// schemaFS holds verbatim copies of schema/{project,guard,binding,risk,
+// schemaFS holds verbatim copies of schema/{project,guard,binding,techpack,risk,
 // learning}/schema.cue (TestEmbeddedSchemasMatchSource keeps them in sync):
 // Go embeds only files under this package's directory.
 //
@@ -117,7 +117,7 @@ func (p Project) KnownKeys() []string { return append([]string(nil), p.known...)
 
 // knownFiles are the project files a reader reads by name; Load reports
 // each one, absent or not.
-var knownFiles = [...]File{Capabilities, Concerns, Guard, Learning, Modules, Risk}
+var knownFiles = [...]File{Capabilities, Concerns, Guard, Learning, Modules, Pack, Risk}
 
 // fileMapped reports the schema definition a whole file validates against
 // when it is mapped by file name (flat content), else "".
@@ -146,6 +146,8 @@ func keyHome(name string) File {
 		return Modules
 	case "guards", "layer_rules":
 		return Guard
+	case "orientation":
+		return Pack
 	case "risk":
 		return Risk
 	case "learning":
@@ -275,7 +277,7 @@ func compileSchemas(ctx *cue.Context) (map[string]cue.Value, error) {
 	overlay := map[string]load.Source{
 		filepath.Join(base, "cue.mod", "module.cue"): load.FromString("module: \"github.com/geoffmilleraz/fathom\"\nlanguage: version: \"v0.16.1\"\n"),
 	}
-	pkgs := []string{"project", "guard", "binding", "risk", "learning"}
+	pkgs := []string{"project", "guard", "binding", "techpack", "risk", "learning"}
 	for _, name := range pkgs {
 		data, err := schemaFS.ReadFile("schemas/" + name + "/" + name + ".cue")
 		if err != nil {
@@ -283,7 +285,7 @@ func compileSchemas(ctx *cue.Context) (map[string]cue.Value, error) {
 		}
 		overlay[filepath.Join(base, "schema", name, "schema.cue")] = load.FromBytes(data)
 	}
-	insts := load.Instances([]string{"./schema/project", "./schema/risk", "./schema/learning"}, &load.Config{Dir: base, ModuleRoot: base, Overlay: overlay})
+	insts := load.Instances([]string{"./schema/project", "./schema/techpack", "./schema/risk", "./schema/learning"}, &load.Config{Dir: base, ModuleRoot: base, Overlay: overlay})
 	out := map[string]cue.Value{}
 	for _, inst := range insts {
 		if inst.Err != nil {
