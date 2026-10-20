@@ -357,14 +357,16 @@ package config
 // check and its SubagentStop hook entry; gate_preflight (RO-40) turns on
 // the advisory line before a Bash `git commit` or `git push`;
 // read_outline_hint (H8) turns on the outline line before a whole Read of a
-// long source file and its PreToolUse(Read) hook entry. Unset means off for
-// all three.
+// long source file and its PreToolUse(Read) hook entry; prompt_definitions
+// (H10) adds one line to the prompt hook naming each identifier it resolved
+// with its definition file:line. Unset means off for all four.
 #Hooks: {
 	test_run?:          bool
 	pin_check?:         "off" | "record" | "feedback"
 	claim_check?:       bool
 	gate_preflight?:    bool
 	read_outline_hint?: bool
+	prompt_definitions?: bool
 }
 
 // #Readouts configures the readout hook's modes (RO-15, ADR-071, docs/

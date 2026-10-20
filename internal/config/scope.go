@@ -100,6 +100,7 @@ var fieldScopes = []FieldScope{
 	{"hooks.claim_check", ScopeBehaviour, "the claim check runs nothing: it reads the final message and the hook log's test-run rows (claimcheck.go)"},
 	{"hooks.gate_preflight", ScopeBehaviour, "the gate preflight runs nothing: it lexes the command, reads git and the hook log, and asks the claim-moment verify path (gatepreflight.go)"},
 	{"hooks.pin_check", ScopeBehaviour, "the commit pin line's output mode; the check itself is on by default"},
+	{"hooks.prompt_definitions", ScopeBehaviour, "the definitions line runs nothing: it names find_symbol answers the prompt hook already fetched (prompthook.go)"},
 	{"hooks.read_outline_hint", ScopeBehaviour, "the Read outline hint runs nothing: it reads the file the Read names and runs fathom's own extractors over it in process (readouthint.go)"},
 	{"hooks.test_run", ScopeBehaviour, "the test-run hook runs nothing: it reads the output of a command the harness ran (TR-X2, testrunhook.go)"},
 	{"profiles.*.api_key_cmd", ScopeUserOnly, whyCredential},

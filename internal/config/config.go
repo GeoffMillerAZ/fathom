@@ -420,6 +420,10 @@ type Hooks struct {
 	// and the PreToolUse(Read) hook entry that serves it. Default false;
 	// the read always runs unchanged.
 	ReadOutlineHint bool
+	// PromptDefinitions (H10) adds one line to the prompt hook naming, for
+	// each identifier the hook already resolved, its definition file:line
+	// and kind (at most 5). Default false (ADR-076).
+	PromptDefinitions bool
 }
 
 // The [hooks] pin_check values (schema.cue #Hooks).
