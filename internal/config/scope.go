@@ -120,6 +120,7 @@ var fieldScopes = []FieldScope{
 	{"profiles.*.region", ScopeBehaviour, "an AWS region"},
 	{"profiles.*.timeout", ScopeBehaviour, "a bound on one model call"},
 	{"readouts.mode", ScopeUserOnly, whyReadouts + ": the readout hook's default mode (RO-15, ADR-071)"},
+	{"readouts.quiet_prefixes", ScopeUserOnly, whyReadouts + ": the extra commands a readout reads a command past"},
 	{"readouts.roots", ScopeUserOnly, whyReadouts + ": the directory prefixes the modes apply under"},
 	{"readouts.rules.*.mode", ScopeUserOnly, whyReadouts + ": one rule's mode"},
 	{"receipts.repository_uri", ScopeBehaviour, "a URI SARIF's versionControlProvenance names; fathom never derives one from a git remote (ADR-011)"},

@@ -384,6 +384,10 @@ package config
 	// roots: the directory prefixes under which observe, lean and rich
 	// apply; every root when unset.
 	roots?: [...(string & !="")]
+	// quiet_prefixes: extra quiet heads (RO-28), each a command name or its
+	// leading words; a command's leading `&&`-joined segments that run one
+	// are read past, like `cd` and `export`.
+	quiet_prefixes?: [...(string & !="")]
 	// rules.<id>.mode overrides mode for one rule.
 	rules?: [string]: {
 		mode?: #ReadoutMode

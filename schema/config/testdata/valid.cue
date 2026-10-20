@@ -269,6 +269,7 @@ exampleReadouts: #Config & {
 	readouts: {
 		mode:  "observe"
 		roots: ["/work/waves"]
+		quiet_prefixes: ["nvm", "direnv exec"]
 		rules: "ls-long": mode: "lean"
 	}
 }

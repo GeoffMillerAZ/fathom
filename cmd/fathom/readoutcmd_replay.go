@@ -28,7 +28,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -94,12 +93,6 @@ type replayReport struct {
 type replayProjection struct {
 	Quiet []string `json:"quiet"`
 	Note  string   `json:"note"`
-}
-
-// replayQuietHeads is the projection's quiet list, in the order the
-// reading names it.
-func replayQuietHeads() []string {
-	return []string{"cd", "export", "mkdir -p", "sleep N", "(assignment)", "set", "source", ".", "tccutil reset"}
 }
 
 const replayProjectionNote = "projected figures read each call as its last segment after its leading quiet segments, " +
@@ -273,6 +266,11 @@ func cmdReadoutReplay(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	a := newReplayAgg(rs, *days, readoutNow().Add(-time.Duration(*days)*24*time.Hour))
+	if cfg, ok := readoutsUserConfig(); ok && len(cfg.QuietPrefixes) > 0 {
+		// The hook reads the user's quiet heads; so does its replay.
+		a.quiet = cfg.QuietPrefixes
+		a.rep.Projection.Quiet = append(a.rep.Projection.Quiet, cfg.QuietPrefixes...)
+	}
 	if err := a.walk(root, *projects); err != nil {
 		fmt.Fprintf(stderr, "error: readout replay: reading the transcripts: %v\n", err)
 		return 2
@@ -308,6 +306,8 @@ type replayAgg struct {
 	runners []declaredTestCommand
 	edited  map[string]map[string]struct{}
 	sizing  *replaySizing // the dedupe, spawns and compactions sections (readoutcmd_sizing.go)
+	// quiet are the user's [readouts] quiet_prefixes, read as the hook reads them.
+	quiet []string
 }
 
 // replayRoot is one cwd's declared test commands, read once.
@@ -326,7 +326,7 @@ func newReplayAgg(rs *readout.RuleSet, days int, cutoff time.Time) *replayAgg {
 	}
 	a.rep.Joins.Note = replayJoinsNote
 	a.rep.Window.Days = days
-	a.rep.Projection = replayProjection{Quiet: replayQuietHeads(), Note: replayProjectionNote}
+	a.rep.Projection = replayProjection{Quiet: readout.QuietHeads(), Note: replayProjectionNote}
 	a.rep.Unmatched.ByReason = map[string]int{}
 	for _, r := range rs.Rules {
 		a.rules[r.Ref()] = newReplayRule(r.Ref(), readout.Lossiness(r.Stages).String())
@@ -723,7 +723,7 @@ func (a *replayAgg) result(st *replayFile, l *replayTranscriptLine, b *replayBlo
 		}
 	}
 	in := readout.Input{Command: &c, Stdout: stdout, Stderr: stderr, Interrupted: tr.Interrupted,
-		Persisted: tr.PersistedOutputPath, PersistedText: persistedText, Mode: readout.ModeObserve}
+		Persisted: tr.PersistedOutputPath, PersistedText: persistedText, Mode: readout.ModeObserve, Quiet: a.quiet}
 	if declared, byRoot := a.declaredTest(pd.cwd, pd.command); declared {
 		in.DeclaredTest = true
 		if byRoot {
@@ -743,7 +743,7 @@ func (a *replayAgg) result(st *replayFile, l *replayTranscriptLine, b *replayBlo
 		s.watches = append(s.watches, w)
 	}
 	pro := ro
-	if in.Command = replayProjected(&c); in.Command != &c {
+	if in.Command = replayProjected(&c, a.quiet); in.Command != &c {
 		pro = a.render(in, call)
 	}
 	call.count(a, ro, pro)
@@ -977,7 +977,7 @@ func droppedProtectable(cs []readout.ClassCount) bool {
 func (a *replayAgg) shape(c *shellcmd.Command, n int64) {
 	head, kind := replayShape(c)
 	countShape(a.shapes, head, kind, n)
-	countShape(a.effective, replayEffectiveShape(c), replayEffectiveKind(c), n)
+	countShape(a.effective, replayEffectiveShape(c, a.quiet), replayEffectiveKind(c, a.quiet), n)
 	if c.Unreadable {
 		return
 	}
@@ -1012,56 +1012,33 @@ func countShape(m map[string]*replayShapeRow, head, kind string, n int64) {
 
 // replayStrip is a readable command's segments past its leading quiet ones,
 // never stripping the last; nil when the command is unreadable or empty.
-func replayStrip(c *shellcmd.Command) []shellcmd.Pipeline {
+func replayStrip(c *shellcmd.Command, extra []string) []shellcmd.Pipeline {
 	if c.Unreadable || len(c.Pipelines) == 0 || len(c.Pipelines[len(c.Pipelines)-1].Units) == 0 {
 		return nil
 	}
 	ps := c.Pipelines
-	for len(ps) > 1 && replayQuiet(&ps[0]) {
+	for len(ps) > 1 && replayQuiet(&ps[0], extra) {
 		ps = ps[1:]
 	}
 	return ps
 }
 
 // replayQuiet: a segment the projection strips from a call's front, one
-// head from replayQuietHeads joined by `&&`, `;` or a newline, with no
-// redirect or wrapper (the engine's after_quiet test, widened).
-func replayQuiet(p *shellcmd.Pipeline) bool {
+// quiet unit (readout.IsQuiet, the engine's one quiet list, then extra)
+// joined by `&&`, `;` or a newline. The engine reads past `&&` alone
+// (stripQuietPrefix in internal/readout, RO-28); the projection's wider join is what
+// RO-M0 read, so the readings stay comparable and the gap shows.
+func replayQuiet(p *shellcmd.Pipeline, extra []string) bool {
 	if len(p.Units) != 1 || p.Bang || !(p.Sep == "&&" || p.Sep == ";" || p.Sep == "\n") {
 		return false
 	}
-	u := &p.Units[0]
-	if u.Kind != shellcmd.KindSimple || len(u.Redirects) > 0 || len(u.Wrappers) > 0 {
-		return false
-	}
-	if len(u.Words) == 0 {
-		return len(u.Env) > 0
-	}
-	args := u.Args()
-	switch u.Name() {
-	case "cd", "export", "set", "source", ".":
-		return true
-	case "mkdir":
-		for _, a := range args[1:] {
-			if a == "-p" {
-				return true
-			}
-		}
-	case "sleep":
-		if len(args) == 2 {
-			_, err := strconv.ParseFloat(args[1], 64)
-			return err == nil
-		}
-	case "tccutil":
-		return replaySub(u) == "reset"
-	}
-	return false
+	return readout.IsQuiet(&p.Units[0], extra)
 }
 
 // replayEffectiveShape is a call's effective head: its last segment after
 // the leading quiet ones, read by its first unit (the producer).
-func replayEffectiveShape(c *shellcmd.Command) string {
-	ps := replayStrip(c)
+func replayEffectiveShape(c *shellcmd.Command, extra []string) string {
+	ps := replayStrip(c, extra)
 	if ps == nil {
 		return "(unreadable)"
 	}
@@ -1070,8 +1047,8 @@ func replayEffectiveShape(c *shellcmd.Command) string {
 
 // replayEffectiveKind is what remains once the quiet segments are
 // stripped: a list when more than one segment does, else piped or simple.
-func replayEffectiveKind(c *shellcmd.Command) string {
-	ps := replayStrip(c)
+func replayEffectiveKind(c *shellcmd.Command, extra []string) string {
+	ps := replayStrip(c, extra)
 	switch {
 	case len(ps) > 1:
 		return "list"
@@ -1085,8 +1062,8 @@ func replayEffectiveKind(c *shellcmd.Command) string {
 // producer of the last segment after the quiet ones, alone. An unreadable
 // command, one already a lone unit, and one carrying an rtk wrapper or a
 // FATHOM_READOUT prefix (which the projection would lose) stay as they are.
-func replayProjected(c *shellcmd.Command) *shellcmd.Command {
-	ps := replayStrip(c)
+func replayProjected(c *shellcmd.Command, extra []string) *shellcmd.Command {
+	ps := replayStrip(c, extra)
 	if ps == nil || c.Rtk() || c.ReadoutPrefix() != "" || (len(c.Pipelines) == 1 && len(c.Pipelines[0].Units) == 1) {
 		return c
 	}

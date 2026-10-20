@@ -41,7 +41,8 @@ type Input struct {
 	Mode string
 	// Joins are the built-in joins' lines, by name, computed by the caller.
 	Joins map[string][]string
-	// Quiet names extra after_quiet prefixes ([readouts] quiet_prefixes).
+	// Quiet names extra quiet heads ([readouts] quiet_prefixes): a leading
+	// `&&`-joined segment one names is read past like the built-in ones.
 	Quiet []string
 	// Edited is the caller's answer for a whole-file read (match.whole_read):
 	// the file it prints was edited this session or differs from HEAD, so
@@ -195,8 +196,13 @@ func Render(rs *RuleSet, in Input) Readout {
 	if files, off, ok := readOperands(sh.unit); ok && len(files) == 1 && files[0].Literal() {
 		env.file, env.offset = files[0].Text, off
 	}
-	res := run(rule, in.Stdout, out.Stream, env)
-	out.BaseBytes = len(res.baseText())
+	// The quiet segments' own lines lead stdout and stay verbatim ahead of
+	// the rule's view; the rule reads the producer's part (RO-28).
+	head, body := quietOutput(sh.quiet, in.Stdout)
+	shift := strings.Count(head, "\n")
+	res := run(rule, body, out.Stream, env)
+	res.shift(shift)
+	out.BaseBytes = len(head) + len(res.baseText())
 	out.Records, out.Trips, out.JoinsMissed = res.records, res.trips, res.missed
 	out.Dropped, out.Columns, out.Summarized = res.droppedCounts(), res.columns, res.summarized
 	if res.truncated {
@@ -215,14 +221,28 @@ func Render(rs *RuleSet, in Input) Readout {
 		return raw(ReasonNoRecovery, rule.Recovery)
 	}
 	out.Receipt = receipt(rule, out.Mode, res, env)
-	view := res.body() + out.Receipt + "\n"
+	view := head + res.body() + out.Receipt + "\n"
 	if out.Mode != ModeRich && len(view) >= out.BaseBytes {
 		return raw(ReasonNeverWorse, "")
 	}
 	out.Raw = false
 	out.Stdout = view
-	out.BytesOut, out.LinesOut = len(view), len(res.lines)
+	out.BytesOut, out.LinesOut = len(view), shift+len(res.lines)
 	return out
+}
+
+// shift moves a run's input line numbers (trips, records) down n lines:
+// the quiet segments' lines that led the output it read.
+func (r *result) shift(n int) {
+	if n == 0 {
+		return
+	}
+	for i := range r.trips {
+		r.trips[i].Line += n
+	}
+	for i := range r.records {
+		r.records[i].Line += n
+	}
 }
 
 func newlineIfNeeded(s string) string {

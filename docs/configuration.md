@@ -210,6 +210,7 @@ an array of tables, and `tenancy.**` for every key under `[tenancy]`.
 | `profiles.*.region` | behaviour | an AWS region |
 | `profiles.*.timeout` | behaviour | a bound on one model call |
 | `readouts.mode` | user-only | the user's own switch for rewriting what a tool result shows the agent; a cloned repository must not turn it on: the readout hook's default mode (RO-15, ADR-071) |
+| `readouts.quiet_prefixes` | user-only | the user's own switch for rewriting what a tool result shows the agent; a cloned repository must not turn it on: the extra commands a readout reads a command past |
 | `readouts.roots` | user-only | the user's own switch for rewriting what a tool result shows the agent; a cloned repository must not turn it on: the directory prefixes the modes apply under |
 | `readouts.rules.*.mode` | user-only | the user's own switch for rewriting what a tool result shows the agent; a cloned repository must not turn it on: one rule's mode |
 | `receipts.repository_uri` | behaviour | a URI SARIF's versionControlProvenance names; fathom never derives one from a git remote (ADR-011) |
@@ -1503,6 +1504,7 @@ The keys of ADR-071's readout hook (`docs/design/readouts.md`); unset, the mode 
 [readouts]
 mode  = "observe"              # off (default) | observe | lean | rich
 roots = ["/work/waves"]        # directory prefixes the modes apply under; every root when unset
+quiet_prefixes = ["nvm"]       # extra commands a readout reads a command past, beside cd, export, mkdir -p and the rest
 
 [readouts.rules.ls-long]
 mode = "lean"                  # one rule's mode
@@ -1529,6 +1531,12 @@ What the hook does today, once `mode` is set and not `off`:
   envelope's `cwd`, else the project directory; see "Which directory a hook reads" above), on a path boundary;
   outside every root the hook acts as mode off. `[readouts.rules.<id>] mode = "off"` drops that
   rule; any other per-rule mode observes too.
+- A command is read past its leading quiet steps: when every segment before the last is `cd`, `export`, `mkdir -p`,
+  `sleep N`, an assignment alone, `set` with an option, `source`, `.`, `tccutil reset` or a command named in
+  `quiet_prefixes` (a name, or its leading words such as `"direnv exec"`), joined by `&&` with no redirect or
+  wrapper, the rules read the last segment, and the lines those steps print (a `set -x` trace, `mkdir -v`'s
+  directories, `cd -`'s echo) stay verbatim ahead of the rule's view. A `;`, `||` or newline, or any other leading
+  command, leaves the command read whole.
 - Any error (an unparseable envelope, a config that does not load, a panic) exits 0 with nothing emitted and no row;
   `FATHOM_CHANNELS=off` silences it like every hook. A run past the 1 s internal ceiling says `ceiling` in its row.
 

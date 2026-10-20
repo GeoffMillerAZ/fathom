@@ -378,11 +378,14 @@ const (
 
 // Readouts is `[readouts]` (RO-15, ADR-071): user-only keys the readout
 // hook will read (RO-16). Mode is ReadoutsOff unless the user's layer sets
-// it; Roots empty means every root; Rules holds per-rule mode overrides.
+// it; Roots empty means every root; QuietPrefixes are extra quiet heads a
+// command is read past (RO-28), each a command name or its leading words;
+// Rules holds per-rule mode overrides.
 type Readouts struct {
-	Mode  string
-	Roots []string
-	Rules map[string]ReadoutRule
+	Mode          string
+	Roots         []string
+	QuietPrefixes []string
+	Rules         map[string]ReadoutRule
 }
 
 // ReadoutRule is one `[readouts.rules.<id>]` table.
