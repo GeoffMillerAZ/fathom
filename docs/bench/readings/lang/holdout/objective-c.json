@@ -1,0 +1,207 @@
+{
+  "dialect": "objective-c",
+  "kind": "language",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "good",
+    "L2": "good",
+    "L3": "good",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-10-20",
+  "fathom_commit": "486ff36e8",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "ReactiveObjC",
+      "sha": "27a7254837bb01122b51aac7c4c3961973351ca0",
+      "files": 161,
+      "bytes": 385738,
+      "counts": {
+        "call_fathom": 1378,
+        "call_fathom_in_truth": 1342,
+        "call_pairs_excluded_fathom": 17,
+        "call_pairs_excluded_truth": 17,
+        "call_truth": 1356,
+        "call_truth_found": 1342,
+        "callables": 713,
+        "callables_signed": 713,
+        "fathom_defs": 1099,
+        "file_edges_agree": 162,
+        "file_edges_fathom": 162,
+        "file_edges_truth": 360,
+        "import_edges_agree": 258,
+        "import_edges_fathom": 258,
+        "import_edges_truth": 258,
+        "import_oracle_out_of_scope": 5,
+        "import_oracle_unpaired": 0,
+        "imports": 359,
+        "imports_in_repo": 258,
+        "imports_resolved_agree": 258,
+        "kind_equal": 1014,
+        "matched": 1014,
+        "oracle_defs": 1107,
+        "range_eligible": 911,
+        "range_ok": 911
+      },
+      "families": {
+        "calls": "B",
+        "file_edges": "B",
+        "imports": "B",
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "class",
+        "enum",
+        "function",
+        "interface",
+        "macro",
+        "method",
+        "property",
+        "struct",
+        "type_alias"
+      ],
+      "excluded_by_kind": {
+        "ctags:category": 139,
+        "ctags:field": 13,
+        "fathom:ObjCCategory": 86,
+        "fathom:ObjCEnumerator": 14,
+        "fathom:ObjCField": 13,
+        "fathom:ObjCIvar": 10,
+        "fathom:ObjCVariable": 23
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 2,
+        "extract_ms": 335.18300000000033,
+        "extract_cpu_ms": 315.3279999999997,
+        "max_file_ms": 38,
+        "peak_module_pages": 454,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "clang-objc",
+      "version": "libclang (Command Line Tools) via libclang==18.1.1 bindings; Apple clang version 21.0.0 (clang-2100.3.34.2)"
+    },
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": 0.9739,
+    "call_recall": 0.9897,
+    "def_mapping": null,
+    "file_edge_precision": 1,
+    "file_edge_recall": 0.45,
+    "import_resolution": 1,
+    "kind_agreement": 1,
+    "range_agreement": 1,
+    "signature_coverage": 1,
+    "sym_precision": 0.9227,
+    "sym_recall": 0.916,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "B",
+    "call_recall": "B",
+    "file_edge_precision": "B",
+    "file_edge_recall": "B",
+    "import_resolution": "B",
+    "kind_agreement": "B",
+    "range_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "class",
+    "enum",
+    "function",
+    "interface",
+    "macro",
+    "method",
+    "property",
+    "struct",
+    "type_alias"
+  ],
+  "kind_intersection": [
+    "class",
+    "enum",
+    "function",
+    "interface",
+    "macro",
+    "method",
+    "property",
+    "struct",
+    "type_alias"
+  ],
+  "counts": {
+    "call_fathom": 1378,
+    "call_fathom_in_truth": 1342,
+    "call_pairs_excluded_fathom": 17,
+    "call_pairs_excluded_truth": 17,
+    "call_truth": 1356,
+    "call_truth_found": 1342,
+    "callables": 713,
+    "callables_signed": 713,
+    "fathom_defs": 1099,
+    "file_edges_agree": 162,
+    "file_edges_fathom": 162,
+    "file_edges_truth": 360,
+    "import_edges_agree": 258,
+    "import_edges_fathom": 258,
+    "import_edges_truth": 258,
+    "import_oracle_out_of_scope": 5,
+    "import_oracle_unpaired": 0,
+    "imports": 359,
+    "imports_in_repo": 258,
+    "imports_resolved_agree": 258,
+    "kind_equal": 1014,
+    "matched": 1014,
+    "oracle_defs": 1107,
+    "range_eligible": 911,
+    "range_ok": 911
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 2,
+    "throughput_mb_s": 1.22,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 1.15,
+    "max_file_ms": 38,
+    "peak_module_pages": 454,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:category": 139,
+    "ctags:field": 13,
+    "fathom:ObjCCategory": 86,
+    "fathom:ObjCEnumerator": 14,
+    "fathom:ObjCField": 13,
+    "fathom:ObjCIvar": 10,
+    "fathom:ObjCVariable": 23
+  },
+  "notes": [
+    "ReactiveObjC: 102 of the 360 file-edge truth pairs are same-package references no import statement writes (the dump's same_package entries: a file reaching a top-level name of its own package, which the language lets it do with no import; LB-F433, O519); they score file_edge_precision and file_edge_recall and never import_resolution",
+    "ReactiveObjC: 246 translation units parsed, 161 without a compile error (catalyst 161, mac 131)",
+    "ReactiveObjC: 69 of 161 measured files hold an ERROR or MISSING node as written; the dialect's pre-parse step reads 67 of them clean, and files_with_error counts the 2 it cannot mend, the files the extractor reads with an error",
+    "ReactiveObjC: 85 units stopped on an error and are left out of calls and imports",
+    "ReactiveObjC: include-path resolution read 1 compile database(s); 0 quoted include(s) resolved only rooted at an ancestor directory of the includer; header-prototype binding bound 11 call(s) (caller file and name) to the one file defining the function (0 of them chosen among definers by the files the build compiles), left 0 unbound for two or more definers, 0 for no definer among the files read and 0 for definers the build does not compile",
+    "ReactiveObjC: range_agreement measured against clang-objc (tier B, libclang (Command Line Tools) via libclang==18.1.1 bindings; Apple clang version 21.0.0 (clang-2100.3.34.2): 246 files, 85 it could not parse): the first and last line of every definition the compiler names in a file whose unit parsed without error (an @interface or @implementation, a protocol, a category, a method, a function with a body, a struct, union or enum with a body, a typedef, a macro, a property), 911 of fathom's definitions paired (L1's own pairing: same file and name, |Δline| \u003c= 2); only the range counts are taken, so the L1 oracle is unchanged",
+    "ReactiveObjC: restricted to ReactiveObjC/MKAnnotationView+RACSignalSupport.h, ReactiveObjC/MKAnnotationView+RACSignalSupport.m, ReactiveObjC/NSArray+RACSequenceAdditions.h, ReactiveObjC/NSArray+RACSequenceAdditions.m, ReactiveObjC/NSControl+RACCommandSupport.h, ReactiveObjC/NSControl+RACCommandSupport.m, ReactiveObjC/NSControl+RACTextSignalSupport.h, ReactiveObjC/NSData+RACSupport.h, ReactiveObjC/NSData+RACSupport.m, ReactiveObjC/NSDictionary+RACSequenceAdditions.h, ReactiveObjC/NSDictionary+RACSequenceAdditions.m, ReactiveObjC/NSEnumerator+RACSequenceAdditions.h, ReactiveObjC/NSEnumerator+RACSequenceAdditions.m, ReactiveObjC/NSFileHandle+RACSupport.h, ReactiveObjC/NSFileHandle+RACSupport.m, ReactiveObjC/NSIndexSet+RACSequenceAdditions.h, ReactiveObjC/NSIndexSet+RACSequenceAdditions.m, ReactiveObjC/NSInvocation+RACTypeParsing.h, ReactiveObjC/NSInvocation+RACTypeParsing.m, ReactiveObjC/NSNotificationCenter+RACSupport.h, ReactiveObjC/NSObject+RACAppKitBindings.h, ReactiveObjC/NSObject+RACDeallocating.h, ReactiveObjC/NSObject+RACDeallocating.m, ReactiveObjC/NSObject+RACDescription.h, ReactiveObjC/NSObject+RACDescription.m, ReactiveObjC/NSObject+RACKVOWrapper.h, ReactiveObjC/NSObject+RACLifting.h, ReactiveObjC/NSObject+RACSelectorSignal.h, ReactiveObjC/NSOrderedSet+RACSequenceAdditions.h, ReactiveObjC/NSOrderedSet+RACSequenceAdditions.m, ReactiveObjC/NSSet+RACSequenceAdditions.h, ReactiveObjC/NSSet+RACSequenceAdditions.m, ReactiveObjC/NSString+RACKeyPathUtilities.h, ReactiveObjC/NSString+RACKeyPathUtilities.m, ReactiveObjC/NSString+RACSequenceAdditions.h, ReactiveObjC/NSString+RACSequenceAdditions.m, ReactiveObjC/NSString+RACSupport.h, ReactiveObjC/NSString+RACSupport.m, ReactiveObjC/NSText+RACSignalSupport.h, ReactiveObjC/NSURLConnection+RACSupport.h, ReactiveObjC/NSURLConnection+RACSupport.m, ReactiveObjC/NSUserDefaults+RACSupport.h, ReactiveObjC/RACArraySequence.h, ReactiveObjC/RACArraySequence.m, ReactiveObjC/RACBehaviorSubject.h, ReactiveObjC/RACBehaviorSubject.m, ReactiveObjC/RACBlockTrampoline.h, ReactiveObjC/RACBlockTrampoline.m, ReactiveObjC/RACChannel.h, ReactiveObjC/RACChannel.m, ReactiveObjC/RACCommand.h, ReactiveObjC/RACCompoundDisposable.h, ReactiveObjC/RACDelegateProxy.h, ReactiveObjC/RACDelegateProxy.m, ReactiveObjC/RACDisposable.h, ReactiveObjC/RACDisposable.m, ReactiveObjC/RACDynamicSequence.h, ReactiveObjC/RACDynamicSequence.m, ReactiveObjC/RACDynamicSignal.h, ReactiveObjC/RACEagerSequence.h, ReactiveObjC/RACEagerSequence.m, ReactiveObjC/RACEmptySequence.h, ReactiveObjC/RACEmptySequence.m, ReactiveObjC/RACEmptySignal.h, ReactiveObjC/RACEmptySignal.m, ReactiveObjC/RACErrorSignal.h, ReactiveObjC/RACErrorSignal.m, ReactiveObjC/RACEvent.h, ReactiveObjC/RACEvent.m, ReactiveObjC/RACGroupedSignal.h, ReactiveObjC/RACGroupedSignal.m, ReactiveObjC/RACImmediateScheduler.h, ReactiveObjC/RACImmediateScheduler.m, ReactiveObjC/RACIndexSetSequence.h, ReactiveObjC/RACIndexSetSequence.m, ReactiveObjC/RACKVOProxy.h, ReactiveObjC/RACKVOProxy.m, ReactiveObjC/RACKVOTrampoline.h, ReactiveObjC/RACKVOTrampoline.m, ReactiveObjC/RACMulticastConnection+Private.h, ReactiveObjC/RACMulticastConnection.h, ReactiveObjC/RACMulticastConnection.m, ReactiveObjC/RACPassthroughSubscriber.h, ReactiveObjC/RACQueueScheduler+Subclass.h, ReactiveObjC/RACQueueScheduler.h, ReactiveObjC/RACQueueScheduler.m, ReactiveObjC/RACReplaySubject.h, ReactiveObjC/RACReplaySubject.m, ReactiveObjC/RACReturnSignal.h, ReactiveObjC/RACReturnSignal.m, ReactiveObjC/RACScheduler+Private.h, ReactiveObjC/RACScheduler+Subclass.h, ReactiveObjC/RACScheduler.h, ReactiveObjC/RACScheduler.m, ReactiveObjC/RACScopedDisposable.h, ReactiveObjC/RACScopedDisposable.m, ReactiveObjC/RACSequence.h, ReactiveObjC/RACSequence.m, ReactiveObjC/RACSerialDisposable.h, ReactiveObjC/RACSerialDisposable.m, ReactiveObjC/RACSignal+Operations.h, ReactiveObjC/RACSignal+Operations.m, ReactiveObjC/RACSignal.h, ReactiveObjC/RACSignal.m, ReactiveObjC/RACSignalSequence.h, ReactiveObjC/RACSignalSequence.m, ReactiveObjC/RACStream+Private.h, ReactiveObjC/RACStream.h, ReactiveObjC/RACStream.m, ReactiveObjC/RACStringSequence.h, ReactiveObjC/RACStringSequence.m, ReactiveObjC/RACSubject.h, ReactiveObjC/RACSubscriber+Private.h, ReactiveObjC/RACSubscriber.h, ReactiveObjC/RACSubscriptionScheduler.h, ReactiveObjC/RACSubscriptionScheduler.m, ReactiveObjC/RACTargetQueueScheduler.h, ReactiveObjC/RACTargetQueueScheduler.m, ReactiveObjC/RACTestScheduler.h, ReactiveObjC/RACTuple.h, ReactiveObjC/RACTupleSequence.h, ReactiveObjC/RACTupleSequence.m, ReactiveObjC/RACUnarySequence.h, ReactiveObjC/RACUnit.h, ReactiveObjC/RACUnit.m, ReactiveObjC/RACValueTransformer.h, ReactiveObjC/RACValueTransformer.m, ReactiveObjC/UIActionSheet+RACSignalSupport.h, ReactiveObjC/UIActionSheet+RACSignalSupport.m, ReactiveObjC/UIAlertView+RACSignalSupport.h, ReactiveObjC/UIAlertView+RACSignalSupport.m, ReactiveObjC/UIBarButtonItem+RACCommandSupport.h, ReactiveObjC/UIButton+RACCommandSupport.h, ReactiveObjC/UICollectionReusableView+RACSignalSupport.h, ReactiveObjC/UICollectionReusableView+RACSignalSupport.m, ReactiveObjC/UIControl+RACSignalSupport.h, ReactiveObjC/UIControl+RACSignalSupportPrivate.h, ReactiveObjC/UIControl+RACSignalSupportPrivate.m, ReactiveObjC/UIDatePicker+RACSignalSupport.h, ReactiveObjC/UIGestureRecognizer+RACSignalSupport.h, ReactiveObjC/UIImagePickerController+RACSignalSupport.h, ReactiveObjC/UIImagePickerController+RACSignalSupport.m, ReactiveObjC/UIRefreshControl+RACCommandSupport.h, ReactiveObjC/UISegmentedControl+RACSignalSupport.h, ReactiveObjC/UISlider+RACSignalSupport.h, ReactiveObjC/UIStepper+RACSignalSupport.h, ReactiveObjC/UISwitch+RACSignalSupport.h, ReactiveObjC/UITableViewCell+RACSignalSupport.h, ReactiveObjC/UITableViewCell+RACSignalSupport.m, ReactiveObjC/UITableViewHeaderFooterView+RACSignalSupport.h, ReactiveObjC/UITableViewHeaderFooterView+RACSignalSupport.m, ReactiveObjC/UITextField+RACSignalSupport.h, ReactiveObjC/UITextView+RACSignalSupport.h, ReactiveObjC/extobjc/EXTKeyPathCoding.h, ReactiveObjC/extobjc/EXTRuntimeExtensions.h, ReactiveObjC/extobjc/EXTRuntimeExtensions.m, ReactiveObjC/extobjc/EXTScope.h, ReactiveObjCTests/RACTestObject.h, ReactiveObjCTests/RACTestObject.m, ReactiveObjCTests/RACTestUIButton.h, ReactiveObjCTests/RACTestUIButton.m (-only; the files outside are a disclosed gap, not measured)",
+    "ReactiveObjC: the imports entries marked same_package are the compiler's cross-file reference edges (a type, class, protocol, function, constant, field, method or macro a file names that a subject file it does not import directly declares or defines, and the file a called function links to): file-edge truth only, not an own-package reach as the note above reads that field",
+    "file_edge_precision and file_edge_recall measured against an import dump's (file, imported file) pairs, there being no SCIP index: the truth is what each file's import statements name, not the files its references reach as a SCIP index's cross-file edges are, so a file reached without an import of its own (a file another one required, an autoloaded constant) is outside the truth and a resolved edge to it counts against precision, while a file imported and never referenced is in it (LB-F57)",
+    "import_resolution: 258 of 258 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 1 (258 of 258) and recall 1 (258 of 258); 0 of 359 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 5 oracle import targets outside the files measured",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}
