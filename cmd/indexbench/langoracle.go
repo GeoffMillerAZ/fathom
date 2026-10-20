@@ -151,7 +151,7 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 			defer td.Close()
 			with = td
 		case "tags":
-			ts, tserr := extractor.NewTSExtractor(*dialect)
+			ts, tserr := extractor.NewTSExtractor(spec.Manifest.HostID())
 			if tserr != nil {
 				fmt.Fprintln(stderr, "lang-oracle:", tserr)
 				return 1
@@ -260,7 +260,7 @@ func resolveBenchSpec(id, manifestPath string) (langbench.BenchSpec, string, err
 		if m.ID != id {
 			return langbench.BenchSpec{}, "", fmt.Errorf("%s: id %q, want %q", manifestPath, m.ID, id)
 		}
-		spec := langbench.BenchSpec{Manifest: m}
+		spec := langbench.BenchSpec{Manifest: m, Notes: m.Notes}
 		switch {
 		case m.Ctags != nil:
 			// The manifest names its own tier-B invocation (design §13.4
@@ -563,12 +563,28 @@ func onlyMatch(globs []string, rel string) bool {
 // contentDialect), so bats-core's bin/bats counts for bash.
 func ownedSourceRefs(m langbench.Manifest, root string, refs []core.SourceRef, only []string, contentDialect func(rel string, content []byte) string) []core.SourceRef {
 	byContent := contentDialect != nil && m.Engine == "doc" && m.Match.Sniff == nil
+	var variantSniff *regexp.Regexp // a reading of the host's content-selected variant (Tailwind CSS v4 in css)
+	if m.HostVariant != "" {
+		variantSniff, _ = extractor.VariantSniff(m.HostID(), m.HostVariant)
+	}
 	var out []core.SourceRef
 	for _, ref := range refs {
 		if !onlyMatch(only, ref.Path) {
 			continue
 		}
 		if m.Owns(ref.Path) {
+			if variantSniff != nil {
+				b, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(ref.Path)))
+				if err != nil {
+					continue
+				}
+				if len(b) > extractor.VariantSniffWindow {
+					b = b[:extractor.VariantSniffWindow]
+				}
+				if !variantSniff.Match(b) {
+					continue
+				}
+			}
 			out = append(out, ref)
 			continue
 		}
@@ -739,7 +755,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 	if n, ok := nativeFilesWithError(spec.Manifest.ID, srcFiles); ok {
 		sub.Tenancy.FilesWithError = &n
 	} else if spec.Manifest.Engine == "tags" {
-		n, unparsed, asWritten, err := filesWithError(ctx, spec.Manifest.ID, root, files)
+		n, unparsed, asWritten, err := filesWithError(ctx, spec.Manifest.HostID(), root, files)
 		switch {
 		case err != nil:
 			res.notes = append(res.notes, fmt.Sprintf("%s: files_with_error not measured: %v", name, err))
@@ -803,7 +819,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 	// SCIP index or a neutral file's imports (langoracle_imports.go).
 	var imps *subjectImports
 	if spec.Manifest.Kind != "tooling" {
-		imps = &subjectImports{ctx: ctx, dialect: spec.Manifest.ID, root: root, name: name, files: srcFiles, nodes: nodes, inScope: inScope}
+		imps = &subjectImports{ctx: ctx, dialect: spec.Manifest.HostID(), root: root, name: name, files: srcFiles, nodes: nodes, inScope: inScope}
 	}
 
 	if opts.scip != "" {
@@ -970,7 +986,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 		}
 		sub.Families[langbench.FamilyDefMap] = "A"
 		sub.Families[langbench.FamilyTyped] = "A"
-		if lang, ok := fileResolveLang[spec.Manifest.ID]; ok {
+		if lang, ok := fileResolveLang[spec.Manifest.HostID()]; ok {
 			edges, rep := fusion.ResolveFileEdges(ctx, lang, root, srcFiles, nodes)
 			if rep.Skipped {
 				res.notes = append(res.notes, name+": file-resolved edges not measured: "+rep.SkipReason)
@@ -1071,7 +1087,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			}
 		}
 		// LB-F57: no SCIP index, so a dump's imports are the file-edge truth.
-		if lang, ok := fileResolveLang[spec.Manifest.ID]; ok && opts.scip == "" && spec.Manifest.Kind != "tooling" {
+		if lang, ok := fileResolveLang[spec.Manifest.HostID()]; ok && opts.scip == "" && spec.Manifest.Kind != "tooling" {
 			notes, diff, err := scoreImportFileEdges(ctx, toolOracle, lang, root, name, srcFiles, nodes, &sub, inScope)
 			if err != nil {
 				return res, err

@@ -55,3 +55,42 @@ repos:
         the checkout does not install (the oracle stubs a plugin it cannot resolve and counts it)"
     notes: >
       no release tag is used: the checkout is pinned by commit.
+  - name: TGlide/thom-chat
+    url: https://github.com/TGlide/thom-chat
+    ref: main
+    sha: 062193d792303007b500e35c0c50ea4ceefeff2d
+    licence: MIT
+    idioms:
+      - "an application's `src/app.css` (about 600 lines): `@theme` tokens, `@utility` blocks, a
+        `@custom-variant dark`, `@apply` lists in `@layer base`, and `var(--color-*)` reads of its
+        own tokens in plain rules"
+    notes: >
+      no release tag exists; pinned by commit.
+  - name: jis3r/icons
+    url: https://github.com/jis3r/icons
+    ref: main
+    sha: 09634b4707e1a6bd38fd5715c39fba52770ab00a
+    licence: MIT
+    idioms:
+      - "one `src/app.css` of a small Svelte application: `@theme`, one `@utility`, one `@custom-variant`"
+    notes: >
+      no release tag exists; pinned by commit.
+  - name: phyohtetarkar/tiptap-block-editor
+    url: https://github.com/phyohtetarkar/tiptap-block-editor
+    ref: main
+    sha: 0a999643ceb049250fa8be7392eb10a6c703aa38
+    licence: MIT
+    idioms:
+      - "two `src/*.css` sheets of an editor application: `@theme`, `@utility`, `@custom-variant`"
+    notes: >
+      no release tag exists; pinned by commit.
+  - name: max-got/originui-svelte
+    url: https://github.com/max-got/originui-svelte
+    ref: main
+    sha: 0499ba8041b526cf4a6cc677faeacc90c8ce4ce8
+    licence: MIT
+    idioms:
+      - "one `src/app.css` of a component library port: `@theme` tokens with `var()` reads, one
+        `@utility`, `@custom-variant dark`"
+    notes: >
+      no release tag exists; pinned by commit.

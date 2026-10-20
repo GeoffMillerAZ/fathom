@@ -39,13 +39,14 @@ const (
 	cntCSSFathomOutsideClosure = "css_w2_fathom_outside_closure"
 )
 
-// cssClosureNames is, for each file of the oracle, the custom property and
-// @keyframes names defined in it or in a file its @import closure reaches.
+// cssClosureNames is, for each file of the oracle, the custom property,
+// @keyframes and (Tailwind CSS v4, LB-Q-tailwind) @utility names defined in it
+// or in a file its @import closure reaches.
 func cssClosureNames(m langbench.Manifest, tf *toolOracleFile) map[string]map[string]bool {
 	defined := map[string]map[string]bool{}
 	for _, d := range tf.Definitions {
 		c, ok := m.OracleCanonical("tool", d.Kind, false)
-		if !ok || (c != "variable" && c != "rule") {
+		if !ok || (c != "variable" && c != "rule" && c != "mixin") {
 			continue
 		}
 		if defined[d.Path] == nil {

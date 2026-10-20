@@ -97,7 +97,7 @@ const (
 // ExtractImports returns), its references and its re-exports (the dialect's
 // references query; none when the manifest names no such query).
 func (e *TSExtractor) ExtractFileSpecs(relPath string, src []byte) (FileSpecs, error) {
-	variant := e.variantFor(relPath)
+	variant := e.variantFor(relPath, src)
 
 	e.mu.Lock()
 	defer e.mu.Unlock()

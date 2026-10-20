@@ -1,0 +1,53 @@
+{
+  "id": "tailwind",
+  "display": "Tailwind CSS v4 at-rules and custom utilities (.css)",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "css",
+  "host": "css",
+  "host_variant": "tailwind",
+  "match": {
+    "extensions": [
+      ".css"
+    ],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "kinds": {
+    "tw_theme": {
+      "source_kind": "TailwindTheme",
+      "canonical": "variable"
+    },
+    "tw_utility": {
+      "source_kind": "TailwindUtility",
+      "canonical": "mixin"
+    },
+    "tw_variant": {
+      "source_kind": "TailwindVariant",
+      "canonical": "macro"
+    }
+  },
+  "required_kinds": [
+    "tw_theme",
+    "tw_utility",
+    "tw_variant"
+  ],
+  "oracle_kinds": {
+    "tool": {
+      "theme": "variable",
+      "utility": "mixin",
+      "variant": "macro"
+    }
+  },
+  "name_match": "identity",
+  "target_level": "L2",
+  "queue_id": "tailwind",
+  "notes": [
+    "Scope. This reading measures the Tailwind CSS v4 layer of the css dialect: a .css file the dialect's Tailwind variant reads (one that carries @theme, @utility, @custom-variant, @variant, @apply, @source, @plugin or @config). Its kinds are TailwindTheme (each --name of an @theme block), TailwindUtility (@utility name, or name- for @utility name-*) and TailwindVariant (@custom-variant name, and the v4.0 `@variant name (selector);` spelling); every other definition of those files is the css reading's and out of this one (excluded_by_kind).",
+    "Oracle. The tailwindcss v4 compiler's design system (tier A for what it attests): a definition or a pair is graded only when the compiler registered it, and an @apply candidate resolves to a custom utility only when the compiler parses it to that utility's root (variants and the importance flag allowed). Names and lines are the source's, as the lightningcss reading's are (the package exports no parser). No end line is measured, so range_agreement is not measured and L1 is capped at good.",
+    "L2 unit. A pair is (owner, name): an @apply candidate to the @utility it resolves to, and a var(--name) to the @theme variable it reads, graded by the W2 rule (design 1.8) within the file's @import closure, as CSS's are. An @apply of a core utility, a var() of a variable the default theme or a package defines, and a candidate of a functional utility (@utility name-* is named name-, its use name-4 names nothing) are out of fathom's pairs by construction. Utility classes used in templates (markup, JSX) are out of scope for this reading: the oxide scanner's candidates are not measured here.",
+    "Offline. An @import or @plugin the oracle cannot resolve without the network is read as an empty sheet or a plugin that does nothing, and counted in the subject's disclosures; a stylesheet a project compiles inside an entry sheet that imports Tailwind is compiled with `@import \"tailwindcss\"` prepended."
+  ]
+}

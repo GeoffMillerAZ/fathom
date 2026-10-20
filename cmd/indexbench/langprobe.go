@@ -36,12 +36,12 @@ func cmdLangProbe(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	path := fs.Arg(0)
-	target, err := extractor.ProbeTargetFor(*dialect, path)
+	src, err := os.ReadFile(path)
 	if err != nil {
 		fmt.Fprintln(stderr, "lang-probe:", err)
 		return 2
 	}
-	src, err := os.ReadFile(path)
+	target, err := extractor.ProbeTargetForSource(*dialect, path, src)
 	if err != nil {
 		fmt.Fprintln(stderr, "lang-probe:", err)
 		return 2
@@ -67,6 +67,12 @@ func probeLines(target extractor.ProbeTarget, src []byte) ([]string, error) {
 		return nil, fmt.Errorf("%s: %w", target.QueryFile, err)
 	}
 	defer q.Close()
+	var note string
+	if target.Preprocess != nil {
+		if texts := target.Preprocess(src); len(texts) > 0 {
+			src, note = texts[0], "; preprocess: the dialect's pre-parse step rewrote the file (blanked spans, same lines)"
+		}
+	}
 	tree, err := p.Parse(src)
 	if err != nil {
 		return nil, err
@@ -79,6 +85,9 @@ func probeLines(target extractor.ProbeTarget, src []byte) ([]string, error) {
 
 	out := []string{fmt.Sprintf("; lang-probe dialect=%s grammar=%s entry=%s query=%s",
 		target.Dialect, target.Blob, target.EntryPoint, target.QueryFile)}
+	if note != "" {
+		out = append(out, note)
+	}
 	var caps []string
 	for _, m := range matches {
 		for _, c := range m.Captures {

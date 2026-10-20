@@ -1,0 +1,201 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "CSSModule",
+      "package": "tailwind",
+      "line": 1,
+      "end_line": 69,
+      "tier": "verified"
+    },
+    {
+      "name": "--color-brand",
+      "kind": "TailwindTheme",
+      "package": "tailwind",
+      "line": 9,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "--font-display",
+      "kind": "TailwindTheme",
+      "package": "tailwind",
+      "line": 10,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "--spacing-gutter",
+      "kind": "TailwindTheme",
+      "package": "tailwind",
+      "line": 11,
+      "end_line": 11,
+      "calls": [
+        "--spacing-base"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "--animate-wiggle",
+      "kind": "TailwindTheme",
+      "package": "tailwind",
+      "line": 12,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "wiggle",
+      "kind": "CSSKeyframes",
+      "package": "tailwind",
+      "line": 14,
+      "end_line": 17,
+      "tier": "verified"
+    },
+    {
+      "name": "tab-4",
+      "kind": "TailwindUtility",
+      "package": "tailwind",
+      "line": 20,
+      "end_line": 22,
+      "tier": "verified"
+    },
+    {
+      "name": "tab-",
+      "kind": "TailwindUtility",
+      "package": "tailwind",
+      "line": 24,
+      "end_line": 26,
+      "tier": "verified"
+    },
+    {
+      "name": "card",
+      "kind": "TailwindUtility",
+      "package": "tailwind",
+      "line": 28,
+      "end_line": 31,
+      "calls": [
+        "--color-brand",
+        "rounded-lg",
+        "tab-4"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "dark",
+      "kind": "TailwindVariant",
+      "package": "tailwind",
+      "line": 33,
+      "end_line": 33,
+      "tier": "verified"
+    },
+    {
+      "name": "hocus",
+      "kind": "TailwindVariant",
+      "package": "tailwind",
+      "line": 34,
+      "end_line": 39,
+      "tier": "verified"
+    },
+    {
+      "name": "&:hover",
+      "kind": "CSSSelector",
+      "package": "tailwind",
+      "line": 35,
+      "end_line": 38,
+      "tier": "verified"
+    },
+    {
+      "name": "&:focus",
+      "kind": "CSSSelector",
+      "package": "tailwind",
+      "line": 36,
+      "end_line": 38,
+      "tier": "verified"
+    },
+    {
+      "name": "theme-midnight",
+      "kind": "TailwindVariant",
+      "package": "tailwind",
+      "line": 40,
+      "end_line": 40,
+      "tier": "verified"
+    },
+    {
+      "name": ".btn",
+      "kind": "CSSSelector",
+      "package": "tailwind",
+      "line": 42,
+      "end_line": 51,
+      "calls": [
+        "--color-brand",
+        "--font-display",
+        "card",
+        "tab-4"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": ".after",
+      "kind": "CSSSelector",
+      "package": "tailwind",
+      "line": 53,
+      "end_line": 55,
+      "tier": "verified"
+    },
+    {
+      "name": ".field",
+      "kind": "CSSSelector",
+      "package": "tailwind",
+      "line": 57,
+      "end_line": 69,
+      "calls": [
+        "card",
+        "h-[calc(100%-1rem)]",
+        "tab-4"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": ".group:hover &",
+      "kind": "CSSSelector",
+      "package": "tailwind",
+      "line": 60,
+      "end_line": 64,
+      "calls": [
+        "--color-brand",
+        "tab-4"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "[data-invalid=\"true\"] &",
+      "kind": "CSSSelector",
+      "package": "tailwind",
+      "line": 61,
+      "end_line": 64,
+      "tier": "verified"
+    },
+    {
+      "name": ".plain > &",
+      "kind": "CSSSelector",
+      "package": "tailwind",
+      "line": 66,
+      "end_line": 68,
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "*",
+      "module": "tailwindcss",
+      "kind": "wildcard",
+      "line": 1
+    },
+    {
+      "local": "*",
+      "module": "./tailwind-theme.css",
+      "kind": "wildcard",
+      "line": 2
+    }
+  ]
+}

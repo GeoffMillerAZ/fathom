@@ -192,6 +192,22 @@ type DialectVar struct {
 	// is compiled before the dialect's, for the variant's extensions alone —
 	// the patterns only its grammar can satisfy (TypeScript's tsx: JSX).
 	Queries *DialectVarQueries `json:"queries,omitempty"`
+	// Sniff, when set, selects the variant by content instead of by
+	// extension: a regex (compiled multi-line) over the file's first 64 KiB,
+	// run for a file of the dialect's own extensions that no extension-keyed
+	// variant claims (Tailwind CSS v4 inside the css dialect: a .css file
+	// carrying a v4 at-rule). A plain file of the dialect never matches, so
+	// its reading is the dialect's own, byte for byte. Extensions may then be
+	// empty.
+	Sniff string `json:"sniff,omitempty"`
+	// Preprocess is the variant's own pre-parse step (tsPreprocessors), the
+	// dialect-level preprocess key's variant twin.
+	Preprocess string `json:"preprocess,omitempty"`
+	// CallNames rewrites every callee the variant's queries capture
+	// (tsCallNamers): the Tailwind variant reads `@apply hover:btn!` as a call
+	// of `btn`, the utility a candidate with its variants and importance
+	// flag stripped names.
+	CallNames string `json:"call_names,omitempty"`
 }
 
 // DialectVarQueries names a variant's query files, relative to the
@@ -668,6 +684,24 @@ func checkDialect(fsys fs.FS, dir string, d Dialect) error {
 		}
 	}
 	for _, v := range d.Variants {
+		if len(v.Extensions) == 0 && v.Sniff == "" {
+			return fmt.Errorf("variant %s: neither extensions nor a sniff", v.ID)
+		}
+		if v.Sniff != "" {
+			if _, err := regexp.Compile("(?m)" + v.Sniff); err != nil {
+				return fmt.Errorf("variant %s: sniff: %w", v.ID, err)
+			}
+		}
+		if v.Preprocess != "" {
+			if _, ok := tsPreprocessors[v.Preprocess]; !ok {
+				return fmt.Errorf("variant %s: unknown preprocess %q", v.ID, v.Preprocess)
+			}
+		}
+		if v.CallNames != "" {
+			if _, ok := tsCallNamers[v.CallNames]; !ok {
+				return fmt.Errorf("variant %s: unknown call_names %q", v.ID, v.CallNames)
+			}
+		}
 		if v.Queries == nil || v.Queries.Tags == "" {
 			continue
 		}

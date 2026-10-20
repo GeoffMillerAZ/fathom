@@ -37,6 +37,28 @@ type Manifest struct {
 	// the dialect's own files read with another entry point of its grammar
 	// (TypeScript's .tsx, tree_sitter_tsx). Owns reads their extensions.
 	Variants []ManifestVariant `json:"variants,omitempty"`
+	// Host is the tags dialect whose extractor reads this reading's files when
+	// the reading scores a layer of that dialect's output instead of a dialect
+	// of its own (Tailwind CSS v4 is the css dialect's variant: LB-Q-tailwind).
+	// The harness runs the host's grammar checks, import resolution and file
+	// resolver; every score is still the manifest's.
+	Host string `json:"host,omitempty"`
+	// HostVariant, with Host, is the host dialect's content-selected variant
+	// this reading scores: the files measured are those the variant's sniff
+	// accepts, the files the host reads with it.
+	HostVariant string `json:"host_variant,omitempty"`
+	// Notes are scope statements the manifest's readings carry (a reading of a
+	// layer says what it does not measure).
+	Notes []string `json:"notes,omitempty"`
+}
+
+// HostID is the dialect id the harness dispatches this manifest's files by:
+// Host when the manifest names one, else its own id.
+func (m Manifest) HostID() string {
+	if m.Host != "" {
+		return m.Host
+	}
+	return m.ID
 }
 
 // ManifestVariant is one of a manifest's variants, as the harness reads it.
