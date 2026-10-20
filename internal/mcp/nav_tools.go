@@ -131,9 +131,16 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 		// one load and build per (service, watermark), shared by concurrent
 		// callers. Building them per call cost 2.45–9.78 GB of allocation and
 		// ~6 GiB of footprint under a 20-call burst (wave-A incident replay).
-		ng, lerr := loadNavGraphsErr(ctx, backend, p.Service)
+		// O1446: a call graph that is not resident and cannot be built
+		// inside this call's deadline is not waited for to the end: the
+		// call answers the definition from the symbol index, named
+		// partial, and the build keeps running for the next caller.
+		ng, cold, lerr := navGraphsWithin(ctx, backend, p.Service)
 		if lerr != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: lerr.Error()}
+		}
+		if cold != nil {
+			return symbolContextColdAnswer(ctx, backend, p.Service, p.Symbol, p.Snippet == nil || *p.Snippet, cold)
 		}
 		// The served graph (callgraph.BuildBoth: the syntax edges plus the
 		// typed pass's, the syntax graph itself when a service has no typed
@@ -150,13 +157,21 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 		// instead of collapsing ambiguity to a silent empty answer — and
 		// lets a uniquely-resolved but huge-fan-in symbol (a "hub") be
 		// caught before its caller list is ever computed for output.
-		if key, candidates, ok := symbolnav.ResolveTiered(nodes, p.Symbol); len(candidates) > 1 {
+		//
+		// O1451: a name no tier resolves answers not_found with the nearest
+		// candidates, never a null def beside empty lists; a repo-relative
+		// key (`dir/file.Name`) resolves within the call's service.
+		key, candidates, ok, resolved := resolveSymbolContextName(nodes, p.Service, p.Symbol)
+		switch {
+		case len(candidates) > 1:
 			return ambiguousSymbolContextResult(candidates, len(candidates), false), nil
-		} else if ok {
-			if callers := callgraph.RenameImpact(g, key); len(callers) > symbolContextHubCallerCap {
-				return ambiguousSymbolContextResult(candidates, len(callers), true), nil
-			}
+		case !ok:
+			return symbolContextNotFound(nodes, p.Service, p.Symbol), nil
 		}
+		if callers := callgraph.RenameImpact(g, key); len(callers) > symbolContextHubCallerCap {
+			return ambiguousSymbolContextResult(candidates, len(callers), true), nil
+		}
+		p.Symbol = resolved
 
 		sctx := symbolnav.SymbolContext(nodes, g, p.Symbol)
 		// A reference to a Go type is not a call (wave lg, LB-F200):

@@ -748,6 +748,29 @@ func (g *Group[K, V]) evictOldestOwnLocked(keep *entryRef) {
 	}
 }
 
+// pendingCost is what key still costs to build in this group (O1446), read
+// without building, counting or touching the LRU: resident is true and cost
+// zero when the entry is cached; otherwise cost is the service's last
+// completed build (O1236's per-service record), ExpectedCost when none is
+// measured, less what a flight in progress has already run (never below
+// zero).
+func (g *Group[K, V]) pendingCost(key K) (cost time.Duration, resident bool) {
+	service, _, _ := g.scopeOf(key)
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if _, ok := g.entries[key]; ok {
+		return 0, true
+	}
+	cost = g.opts.ExpectedCost
+	if rec, ok := g.lastBuild[service]; ok {
+		cost = rec.took
+	}
+	if f, ok := g.flights[key]; ok {
+		cost -= g.reg.now().Sub(f.started)
+	}
+	return max(cost, 0), false
+}
+
 // Peek returns the cached value without building (no hit or miss counted).
 func (g *Group[K, V]) Peek(key K) (V, bool) {
 	g.mu.Lock()

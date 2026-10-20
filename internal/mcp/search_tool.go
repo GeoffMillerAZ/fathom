@@ -158,6 +158,10 @@ type searchResult struct {
 	// Partial (RT-88, I38) names an engine bound that stopped the search —
 	// its total is then a lower bound.
 	Partial string `json:"partial,omitempty"`
+	// ReceiptsOmitted (O1447) says why no hit carries sym/kind: the
+	// service's symbol index was still loading, so the hits were served
+	// without waiting for it. Absent when receipts were rendered.
+	ReceiptsOmitted string `json:"receipts_omitted,omitempty"`
 	// Pkg, Status and Reason are set only by a `kind: docs` search scoped to
 	// a `pkg:` key (KR-12). Pkg is the exact package version answered from;
 	// Status ("not_indexed", "unpinned") and Reason are set only when that
@@ -285,7 +289,7 @@ func registerSearch(s *Server, backend QueryInterface) {
 		}
 
 		root := p.Root
-		var byFile map[string][]core.SymbolNode
+		var receipts *searchReceipts
 		var ignore *filter.Matcher
 		var ignorePatterns []string
 		if p.Service != "" {
@@ -297,9 +301,7 @@ func registerSearch(s *Server, backend QueryInterface) {
 				return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 			}
 			root = r
-			if nodes, err := serviceSymbols(ctx, backend, p.Service); err == nil {
-				byFile = groupSymbolsByFile(nodes)
-			}
+			receipts = beginSearchReceipts(ctx, backend, p.Service)
 			// CRITICAL (V-review): a `service` search must mirror the
 			// INDEXED corpus exactly as read_source does — the same
 			// scoped .fathomignore loader, the same fail-closed posture
@@ -352,6 +354,11 @@ func registerSearch(s *Server, backend QueryInterface) {
 		if len(limited) > limit {
 			limited = limited[:limit]
 		}
+		var byFile map[string][]core.SymbolNode
+		omitted := ""
+		if receipts != nil {
+			byFile, omitted = receipts.finish(ctx)
+		}
 		flagsCache := map[string][]string{}
 		linesCache := map[string][]string{}
 		hits := make([]searchHit, 0, len(limited))
@@ -367,7 +374,7 @@ func registerSearch(s *Server, backend QueryInterface) {
 		if capped != "" {
 			partial = fmt.Sprintf("≥ %d hits (%s)", total, capped)
 		}
-		return searchResult{Summary: searchSummary(kept), Hits: kept, Engine: engine, Elided: el, Partial: partial}, nil
+		return searchResult{Summary: searchSummary(kept), Hits: kept, Engine: engine, Elided: el, Partial: partial, ReceiptsOmitted: omitted}, nil
 	})
 }
 
@@ -389,10 +396,7 @@ func searchByService(ctx context.Context, backend QueryInterface, service, patte
 	if err != nil {
 		return searchResult{}, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 	}
-	var byFile map[string][]core.SymbolNode
-	if nodes, err := serviceSymbols(ctx, backend, service); err == nil {
-		byFile = groupSymbolsByFile(nodes)
-	}
+	receipts := beginSearchReceipts(ctx, backend, service)
 	// Same fail-closed exclusions discipline as registerSearch's own
 	// service path (V-review): an exclusion load error refuses rather
 	// than searching unfiltered.
@@ -420,6 +424,7 @@ func searchByService(ctx context.Context, backend QueryInterface, service, patte
 	if len(limited) > limit {
 		limited = limited[:limit]
 	}
+	byFile, omitted := receipts.finish(ctx)
 	flagsCache := map[string][]string{}
 	linesCache := map[string][]string{}
 	hits := make([]searchHit, 0, len(limited))
@@ -435,7 +440,7 @@ func searchByService(ctx context.Context, backend QueryInterface, service, patte
 	if capped != "" {
 		partial = fmt.Sprintf("≥ %d hits (%s)", total, capped)
 	}
-	return searchResult{Summary: searchSummary(kept), Hits: kept, Engine: engine, Elided: el, Partial: partial}, nil
+	return searchResult{Summary: searchSummary(kept), Hits: kept, Engine: engine, Elided: el, Partial: partial, ReceiptsOmitted: omitted}, nil
 }
 
 // docsSearchBackend is the optional backend capability `search kind: docs`
