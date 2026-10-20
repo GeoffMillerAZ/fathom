@@ -366,6 +366,41 @@ func ProductReachFor(ctx context.Context, snap *Snapshot, kind GraphKind, typed 
 	})
 }
 
+// PeekSnapshot returns sc's snapshot when it is resident, never loading it
+// (O1447: a search renders its hits without waiting for one).
+func PeekSnapshot(sc Scope) (*Snapshot, bool) {
+	return snapshotGroup.Peek(snapKey{sc})
+}
+
+// NavBuildCost is what sc's snapshot and its three call graphs (syntax,
+// both, resolved: the navigation tools' set) still cost to build (O1446):
+// for each one not resident, its group's last completed build of the
+// service (O1236's per-service record), ExpectedCost when none is
+// measured, less what a flight in progress has already run; the typed
+// edges count too while a graph that reads them is missing. resident is
+// true when all four are cached. Nothing is built, counted or moved in the
+// LRU.
+func NavBuildCost(sc Scope) (cost time.Duration, resident bool) {
+	cost, resident = snapshotGroup.pendingCost(snapKey{sc})
+	typedNeeded := false
+	for _, k := range []GraphKind{GraphSyntax, GraphBoth, GraphResolved} {
+		d, ok := graphGroup.pendingCost(graphKey{sc, k})
+		cost += d
+		resident = resident && ok
+		typedNeeded = typedNeeded || (!ok && k != GraphSyntax)
+	}
+	if typedNeeded {
+		d, _ := typedGroup.pendingCost(typedKey{sc})
+		cost += d
+	}
+	return cost, resident
+}
+
+// NavKeepAfter is how long a caller must stay on a snapshot or graph flight
+// it started before leaving keeps it for the next caller instead of
+// cancelling it (Group.leave: half the group's ExpectedCost).
+func NavKeepAfter() time.Duration { return max(snapshotCost, graphCost) / 2 }
+
 // HasGraphs reports whether anything a refresh must patch is cached for
 // sc — the snapshot (the iterating tools read it) or any graph — so a
 // refresh asks before paying to list a package's nodes.

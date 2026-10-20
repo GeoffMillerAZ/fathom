@@ -62,7 +62,8 @@ dialect declares sensitive (every Alertmanager and Grafana provisioning entity, 
 Kubernetes object or not), or a core Kubernetes Secret (`Secret/<name>`, apiVersion `v1`).
 
 - `symbol_context` serves no `snippet` for a definition in such a file, its own kind sensitive or not
-  (the Secret or ConfigMap that embeds the configuration too); `snippet_withheld` says why.
+  (the Secret or ConfigMap that embeds the configuration too); `snippet_withheld` says why. While the
+  service's symbol index loads it serves none either: the file cannot be checked yet.
 - `references` serves an occurrence in such a file with an empty `text`; `text_withheld` says why.
   Its location stays.
 
@@ -74,3 +75,20 @@ from the doc index (stored text) and is not exempt. `TestSecretSurface_NoReadToo
 asks every tool on `/rpc/extended` about the secret-bearing files and entities and finds the sentinel
 (in the clear or base64-encoded) in no answer; a tool added to that surface without an entry fails
 `TestSecretSurface_EveryToolHasAnEntry`.
+
+## Cold and unresolved answers (O1446, O1447, O1451)
+
+Every ingest and daemon start drops a service's symbol index and call graph, and the next call that
+needs them rebuilds them: seconds on a small service, a minute on a large one.
+
+- `symbol_context` on a cold call graph that its deadline cannot hold answers within the deadline:
+  `def` (with its signature) and `index_commit` from the symbol index, `partial` starting
+  `call graph not built (cold)`, and `callers`, `callees` and `related_tests` as the string
+  `not computed (cold graph)`, never an empty list. The build keeps running, so a later call answers
+  the full neighbourhood.
+- `search` with a `service` never waits for the symbol index: while it loads, the hits carry no
+  `sym`/`kind` and `receipts_omitted` says why. A resident index is read in place.
+- `symbol_context` on a name nothing resolves answers `not_found: true` with the nearest names in
+  `candidates` (`symbol_key`, `file`, `line`; case-insensitive, then substring, then edit distance)
+  and a `hint`, and no `def`, `callers`, `callees` or `related_tests`. A repository-relative key
+  (`dir/file.Name`, a candidate key without its `service::` prefix) resolves within the call's service.

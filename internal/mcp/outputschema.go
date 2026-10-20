@@ -305,10 +305,20 @@ type stalenessReportResult struct {
 }
 
 type symbolContextResult struct {
-	Def          symbolNodeDTO `json:"def"`
-	Callers      []string      `json:"callers"`
-	Callees      []string      `json:"callees"`
-	RelatedTests []string      `json:"related_tests"`
+	// Def is absent on an ambiguous, hub or not_found answer.
+	Def *symbolNodeDTO `json:"def,omitempty"`
+	// Callers/Callees/RelatedTests are lists of symbol keys, or the string
+	// "not computed (cold graph)" on a partial answer (O1446); absent on an
+	// ambiguous, hub or not_found answer.
+	Callers      any `json:"callers,omitempty"`
+	Callees      any `json:"callees,omitempty"`
+	RelatedTests any `json:"related_tests,omitempty"`
+	// Partial (O1446): present only when the call graph was cold and the
+	// answer holds what the symbol index alone could give.
+	Partial string `json:"partial,omitempty"`
+	// NotFound (O1451): no symbol resolved from the name; Candidates then
+	// lists the nearest names and Hint how to narrow.
+	NotFound bool `json:"not_found,omitempty"`
 	// ReferencedBy/References (wave lg, LB-F200): a Go type's consumers
 	// (a syntax-only edge to the type, not a call) and the types the
 	// symbol references; present only when non-empty.
@@ -327,8 +337,9 @@ type symbolContextResult struct {
 	Elision string `json:"elision,omitempty"`
 	// Resolution/IndexCommit (VB-19): the typed/heuristic mix behind
 	// callers+callees (post-elision), and the daemon's watermark.
-	Resolution  resolutionMix `json:"resolution"`
-	IndexCommit string        `json:"index_commit,omitempty"`
+	// Absent on a partial, ambiguous, hub or not_found answer.
+	Resolution  *resolutionMix `json:"resolution,omitempty"`
+	IndexCommit string         `json:"index_commit,omitempty"`
 	// Ambiguous/ScopeRequired/Candidates/Count/Hint (J3(a), app-kit O12):
 	// present INSTEAD OF every field above (no def/callers/callees/
 	// snippet/resolution) when the bare symbol resolves to more than one

@@ -191,3 +191,43 @@ func TestSnapshot_NameIndexSharedByReaders(t *testing.T) {
 		t.Fatalf("snapshot bytes not accounted: %+v", st)
 	}
 }
+
+// TestNavBuildCostPeeksWithoutBuilding pins the O1446 accessors: before any
+// build NavBuildCost is the expected costs summed and nothing resident;
+// it builds nothing and PeekSnapshot loads nothing; once the snapshot and
+// the three graphs are built it is zero and resident.
+func TestNavBuildCostPeeksWithoutBuilding(t *testing.T) {
+	isolateGraphStore(t)
+	ctx := context.Background()
+	sc := Scope{Store: "navcost-test", Service: "svc", Watermark: "w1"}
+	cost, resident := NavBuildCost(sc)
+	if resident || cost != snapshotCost+3*graphCost+typedCost {
+		t.Fatalf("cold NavBuildCost = %v, %v; want %v, false", cost, resident, snapshotCost+3*graphCost+typedCost)
+	}
+	if _, ok := PeekSnapshot(sc); ok {
+		t.Fatal("PeekSnapshot found a snapshot nothing built")
+	}
+	var loads atomic.Int32
+	snap, err := SnapshotFor(ctx, sc, func(context.Context) ([]core.SymbolNode, error) { loads.Add(1); return fixtureNodes(), nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, ok := PeekSnapshot(sc); !ok || got != snap {
+		t.Fatal("PeekSnapshot misses the resident snapshot")
+	}
+	if cost, resident := NavBuildCost(sc); resident || cost >= snapshotCost+3*graphCost+typedCost {
+		t.Fatalf("NavBuildCost with the snapshot resident = %v, %v; want less than cold and not resident", cost, resident)
+	}
+	typed := func(context.Context) ([]core.Edge, error) { return nil, nil }
+	for _, k := range []GraphKind{GraphSyntax, GraphBoth, GraphResolved} {
+		if _, err := GraphFor(ctx, snap, k, typed); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if cost, resident := NavBuildCost(sc); !resident || cost != 0 {
+		t.Fatalf("warm NavBuildCost = %v, %v; want 0, true", cost, resident)
+	}
+	if loads.Load() != 1 {
+		t.Fatalf("snapshot loaded %d times, want once", loads.Load())
+	}
+}

@@ -153,7 +153,11 @@ type suppressionTokener interface {
 // per (store, service, watermark), shared by every iterating tool, the
 // navigation graphs and the console.
 func serviceSnapshot(ctx context.Context, backend QueryInterface, service string) (*memo.Snapshot, error) {
-	sc := navScope(ctx, backend, service)
+	return serviceSnapshotAt(ctx, backend, service, navScope(ctx, backend, service))
+}
+
+// serviceSnapshotAt is serviceSnapshot at a scope the caller already took.
+func serviceSnapshotAt(ctx context.Context, backend QueryInterface, service string, sc memo.Scope) (*memo.Snapshot, error) {
 	snap, err := memo.SnapshotForExtra(ctx, sc, func(lctx context.Context) ([]core.SymbolNode, any, error) {
 		// The load's suppression disclosure is kept on the snapshot and
 		// replayed to every reader below: a cached snapshot still says
@@ -166,10 +170,16 @@ func serviceSnapshot(ctx context.Context, backend QueryInterface, service string
 	if err != nil {
 		return nil, err
 	}
+	recordSnapshotDisclosure(ctx, service, snap)
+	return snap, nil
+}
+
+// recordSnapshotDisclosure replays the snapshot load's suppression
+// disclosure to this reader (SP-3), a resident snapshot read in place too.
+func recordSnapshotDisclosure(ctx context.Context, service string, snap *memo.Snapshot) {
 	if d, ok := snap.Extra.(*scope.Disclosure); ok {
 		scope.Record(ctx, service, d)
 	}
-	return snap, nil
 }
 
 // serviceSymbols is the service's symbols as a slice the caller may sort
@@ -201,7 +211,12 @@ func typedLoader(backend QueryInterface, service string) memo.TypedLoader {
 // reads as an empty index (EW-78, O1013, I38); an index with no symbols
 // yields empty graphs.
 func loadNavGraphsErr(ctx context.Context, backend QueryInterface, service string) (*navGraphs, error) {
-	snap, err := serviceSnapshot(ctx, backend, service)
+	return loadNavGraphsAt(ctx, backend, service, navScope(ctx, backend, service))
+}
+
+// loadNavGraphsAt is loadNavGraphsErr at a scope the caller already took.
+func loadNavGraphsAt(ctx context.Context, backend QueryInterface, service string, sc memo.Scope) (*navGraphs, error) {
+	snap, err := serviceSnapshotAt(ctx, backend, service, sc)
 	if err != nil {
 		return nil, err
 	}
