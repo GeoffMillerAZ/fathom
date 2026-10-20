@@ -374,7 +374,7 @@ func TestPreServedRuleStillRecordsServed(t *testing.T) {
 		if !strings.Contains(out, "already served pre-edit") {
 			t.Errorf("post call %d did not consult the guard stamp: %q", i+1, out)
 		}
-		if strings.Contains(out, "served rule ignored") {
+		if strings.Contains(out, ruleVerdictAskMarker) {
 			t.Errorf("post call %d asked the SR-48 verdict on its own guarded pair: %q", i+1, out)
 		}
 	}
