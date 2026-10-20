@@ -95,7 +95,7 @@ func verbSubverbs() map[string][]string {
 		"report":       {"evidence", "packs", "used"},
 		"module":       {"init", "sources", "map", "compile", "eval", "doctor", "pack", "runs"},
 		"research":     {"report", "bundle"},
-		"rules":        {"gen-test", "replay"},
+		"rules":        {"gen-test", "replay", "fixtures"},
 		"tests":        {"coverage", "select", "ingest", "status"},
 		"thread":       {"brief", "note", "point", "list", "close", "promote", "handoff"},
 		"trace":        {"export", "verify"},
