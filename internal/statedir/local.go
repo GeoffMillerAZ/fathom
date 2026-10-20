@@ -38,6 +38,25 @@ func exists(p string) bool {
 	return err == nil
 }
 
+// ShadowedSCIP lists, sorted, the legacy <root>/.fathom/scip index files
+// whose name the state directory also holds: the ones SCIPIndexes no longer
+// reads. A legacy index with no state-directory twin is still read, so it is
+// not listed. fathom deletes none (I63).
+func ShadowedSCIP(root string) []string {
+	matches, err := filepath.Glob(filepath.Join(projectdir.SCIP.Path(root), "*.scip"))
+	if err != nil {
+		return nil
+	}
+	var out []string
+	for _, m := range matches {
+		if exists(LocalPath(root, projectdir.SCIP, filepath.Base(m))) {
+			out = append(out, m)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
 // SCIPIndexes lists the imported SCIP index files (*.scip) for root, sorted
 // by name. The state-directory copy of a name wins; a legacy
 // <root>/.fathom/scip file is listed only for a name the state directory

@@ -46,3 +46,31 @@ func TestDoctorLegacyFilesNamesSupersededCopies(t *testing.T) {
 		}
 	}
 }
+
+// TestDoctorLegacyFilesNamesOnlyShadowedSCIP: scip/ is merged per index name
+// (statedir.SCIPIndexes), so a legacy .fathom/scip file the state directory
+// does not hold is still read and must not be called superseded; one the
+// state directory also holds is named by its own path.
+func TestDoctorLegacyFilesNamesOnlyShadowedSCIP(t *testing.T) {
+	root := t.TempDir()
+	state := filepath.Join(t.TempDir(), "state")
+	t.Setenv("FATHOM_STATE_DIR", state)
+	put := func(p string) {
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	put(filepath.Join(root, ".fathom", "scip", "go.scip"))
+	put(filepath.Join(state, "scip", "ts.scip"))
+	if c := checkLegacyFiles(root); c.Status != doctorPass {
+		t.Fatalf("a legacy index the state directory lacks is still read, not stale: %+v", c)
+	}
+	put(filepath.Join(state, "scip", "go.scip"))
+	c := checkLegacyFiles(root)
+	if c.Status != doctorWarn || !strings.Contains(c.Reason, ".fathom/scip/go.scip") {
+		t.Fatalf("shadowed legacy index not named by its path: %+v", c)
+	}
+}

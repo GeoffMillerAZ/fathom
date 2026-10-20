@@ -8,6 +8,7 @@ package main
 // warns.
 
 import (
+	"path/filepath"
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
@@ -22,10 +23,13 @@ func checkLegacyFiles(root string) doctorCheck {
 	if wiring.LedgerLegacyStale(root) {
 		stale = append(stale, projectdir.Owned.Rel()+" (superseded by the copy in the state directory)")
 	}
-	for _, f := range []projectdir.File{projectdir.Leases, projectdir.SCIP} {
-		if statedir.LegacyStale(root, f) {
-			stale = append(stale, f.Rel()+" (superseded by the copy in the state directory)")
-		}
+	if statedir.LegacyStale(root, projectdir.Leases) {
+		stale = append(stale, projectdir.Leases.Rel()+" (superseded by the copy in the state directory)")
+	}
+	// scip/ is merged per index name, so only a legacy index the state
+	// directory also holds is superseded; the rest are still read.
+	for _, p := range statedir.ShadowedSCIP(root) {
+		stale = append(stale, projectdir.SCIP.Rel(filepath.Base(p))+" (superseded by the copy in the state directory)")
 	}
 	if l, err := config.Load("", projectdir.Config.Path(root)); err == nil {
 		for _, p := range l.ShadowedLegacy {
