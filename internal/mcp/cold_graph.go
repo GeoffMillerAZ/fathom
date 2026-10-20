@@ -41,18 +41,24 @@ type coldGraph struct {
 	// call stayed on its flights past memo.NavKeepAfter. False when no
 	// build was started (the deadline left no time, or the memo declined).
 	kept bool
+	// unmeasured is true when no build of the service has completed since
+	// the process started, so its cost is unknown and taken as longer than
+	// the deadline (memo.NavBuildMeasured).
+	unmeasured bool
 }
 
-// navGraphsWithin is loadNavGraphsErr bounded by ctx's deadline (O1446).
-// With no deadline, an uncacheable scope (I21) or everything resident it
-// is loadNavGraphsErr. When the measured build (memo.NavBuildCost) fits in
-// the deadline less a reserve for the answer (verify_plan's stage reserve)
-// it waits up to that; when it does not, it warms the build stage by stage
-// (warmNavStages) and stops at the first stage still building. A cold
-// result means the graphs are not ready and the caller answers its
+// navGraphsWithin is loadNavGraphsErr at sc bounded by ctx's deadline
+// (O1446). With no deadline, an uncacheable scope (I21) or everything
+// resident it is loadNavGraphsAt. When the measured build
+// (memo.NavBuildCost) fits in the deadline less a reserve for the answer
+// (verify_plan's stage reserve) it waits up to that; when it does not, or
+// no build of the service is measured since the process started
+// (memo.NavBuildMeasured: ExpectedCost says nothing about a large service,
+// whose cold build ran past the deadline), it warms the build stage by
+// stage (warmNavStages) and stops at the first stage still building. A
+// cold result means the graphs are not ready and the caller answers its
 // partial; an error is the load's own.
-func navGraphsWithin(ctx context.Context, backend QueryInterface, service string) (*navGraphs, *coldGraph, error) {
-	sc := navScope(ctx, backend, service)
+func navGraphsWithin(ctx context.Context, backend QueryInterface, service string, sc memo.Scope) (*navGraphs, *coldGraph, error) {
 	dl, hasDeadline := ctx.Deadline()
 	cost, resident := memo.NavBuildCost(sc)
 	if !hasDeadline || resident || sc.Watermark == "" {
@@ -65,7 +71,7 @@ func navGraphsWithin(ctx context.Context, backend QueryInterface, service string
 	if wait <= 0 {
 		return nil, cold, nil
 	}
-	if cost <= wait {
+	if cost <= wait && memo.NavBuildMeasured(sc) {
 		wctx, cancel := context.WithTimeout(ctx, wait)
 		defer cancel()
 		ng, err := loadNavGraphsAt(wctx, backend, service, sc)
@@ -82,6 +88,7 @@ func navGraphsWithin(ctx context.Context, backend QueryInterface, service string
 		}
 		return nil, nil, err
 	}
+	cold.unmeasured = cost <= wait
 	done, kept, err := warmNavStages(ctx, backend, service, sc, time.Now().Add(wait))
 	if err != nil {
 		return nil, nil, err
@@ -153,8 +160,12 @@ func warmNavStages(ctx context.Context, backend QueryInterface, service string, 
 
 // coldGraphNote is a cold symbol_context answer's partial field.
 func coldGraphNote(service string, c *coldGraph) string {
+	why := "building it takes longer than this call's deadline leaves"
+	if c.unmeasured {
+		why = "no build of it has finished since this server started, so its build time is unknown and taken as longer than this call's deadline leaves"
+	}
 	msg := "call graph not built (cold): the call graph for service " + service +
-		" is not built and building it takes longer than this call's deadline leaves; callers, callees and related tests are not computed, and the definition comes from the symbol index"
+		" is not built and " + why + "; callers, callees and related tests are not computed, and the definition comes from the symbol index"
 	if c.kept {
 		msg += "; the build keeps running, so a later call answers them"
 	} else {
@@ -196,7 +207,7 @@ func symbolContextColdAnswer(ctx context.Context, backend QueryInterface, servic
 		if resident {
 			r = symbolContextNotFound(nodes, service, symbol)
 		} else {
-			r = map[string]any{"not_found": true, "hint": fmt.Sprintf("no symbol in service %s's index matches %q exactly; the nearest names are listed once its symbol index has loaded", service, symbol)}
+			r = storeNotFound(service, symbol)
 		}
 		r["partial"] = note
 		return r, nil
@@ -227,6 +238,84 @@ func symbolContextColdAnswer(ctx context.Context, backend QueryInterface, servic
 	// O1466: the warm answer's changed-file check (O1450) and read.
 	serveDefinitionSnippet(ctx, backend, service, def, result)
 	return result, nil
+}
+
+// symbolContextResolveFirst resolves symbol before any wait on the call
+// graph (O1446): against the resident snapshot or, when that is not
+// resident, the store lookup find_symbol's exact tier uses. A name with
+// more than one definition answers the ambiguity and a name with none
+// answers not_found, neither of which reads the graph; nil means the
+// caller goes on to the graph: a unique name (the only one that waits for
+// it), a resident set (the graph path resolves without waiting), an
+// uncacheable scope (the call builds its own) or a failed lookup.
+//
+// A name the store lookup misses is checked against the snapshot, which
+// lists the nearest names: the call starts or joins its load and stays on
+// it only memo.NavKeepAfter (snapshotWithinHold), so a load it starts is
+// kept for the next caller. When it is still loading the answer is
+// not_found without the nearest names, saying so.
+func symbolContextResolveFirst(ctx context.Context, backend QueryInterface, service, symbol string, sc memo.Scope) map[string]any {
+	if sc.Watermark == "" {
+		return nil
+	}
+	if _, resident := memo.NavBuildCost(sc); resident {
+		return nil
+	}
+	snap, resident := memo.PeekSnapshot(sc)
+	if !resident {
+		found, err := backend.FindSymbol(ctx, service, symbolLookupName(symbol))
+		if err != nil {
+			return nil
+		}
+		_, cands, ok, _ := resolveSymbolContextName(found, service, symbol)
+		switch {
+		case len(cands) > 1:
+			return ambiguousSymbolContextResult(cands, len(cands), false)
+		case ok:
+			return nil
+		}
+		if snap = snapshotWithinHold(ctx, backend, service, sc); snap == nil {
+			return storeNotFound(service, symbol)
+		}
+	}
+	recordSnapshotDisclosure(ctx, service, snap)
+	_, cands, ok, _ := resolveSymbolContextName(snap.Nodes, service, symbol)
+	switch {
+	case len(cands) > 1:
+		return ambiguousSymbolContextResult(cands, len(cands), false)
+	case !ok:
+		return symbolContextNotFound(snap.Nodes, service, symbol)
+	}
+	return nil
+}
+
+// storeNotFound is symbol_context's not_found while the service's symbol
+// snapshot is not resident: the store lookup holds no exact match, and the
+// nearest names (symbolContextNotFound) need the snapshot.
+func storeNotFound(service, symbol string) map[string]any {
+	return map[string]any{"not_found": true, "hint": fmt.Sprintf("no symbol in service %s's index matches %q exactly; the nearest names are listed once its symbol index has loaded", service, symbol)}
+}
+
+// snapshotWithinHold starts or joins sc's snapshot load and stays on it
+// only memo.NavKeepAfter plus a margin: past that, Group.leave keeps a load
+// it started for the next caller, and the call never waits out a long one.
+// nil when the load did not finish inside the hold or failed, or the
+// deadline is too short to keep a load it would start.
+func snapshotWithinHold(ctx context.Context, backend QueryInterface, service string, sc memo.Scope) *memo.Snapshot {
+	hold := memo.NavKeepAfter() + coldKeepMargin
+	if dl, ok := ctx.Deadline(); ok {
+		remaining := time.Until(dl)
+		if remaining-min(max(remaining/verifyStageReserveShare, verifyStageReserveMin), verifyStageReserveMax) < hold {
+			return nil
+		}
+	}
+	hctx, cancel := context.WithTimeout(ctx, hold)
+	defer cancel()
+	snap, err := serviceSnapshotAt(hctx, backend, service, sc)
+	if err != nil {
+		return nil
+	}
+	return snap
 }
 
 // resolveSymbolContextName is symbolnav.ResolveTiered with O1451's second
@@ -321,16 +410,7 @@ func beginSearchReceipts(ctx context.Context, backend QueryInterface, service st
 	if r.peek(ctx) {
 		return r
 	}
-	hold := memo.NavKeepAfter() + coldKeepMargin
-	if dl, ok := ctx.Deadline(); ok {
-		remaining := time.Until(dl)
-		if remaining-min(max(remaining/verifyStageReserveShare, verifyStageReserveMin), verifyStageReserveMax) < hold {
-			return r // too short to keep a load it started: leave it to a longer call
-		}
-	}
-	hctx, cancel := context.WithTimeout(ctx, hold)
-	defer cancel()
-	if snap, err := serviceSnapshotAt(hctx, backend, service, sc); err == nil {
+	if snap := snapshotWithinHold(ctx, backend, service, sc); snap != nil {
 		r.byFile = groupSymbolsByFile(snap.Nodes)
 	}
 	return r

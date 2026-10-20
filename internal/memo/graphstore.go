@@ -396,6 +396,28 @@ func NavBuildCost(sc Scope) (cost time.Duration, resident bool) {
 	return cost, resident
 }
 
+// NavBuildMeasured reports whether every part of sc's navigation set that
+// is not resident (the snapshot, the three graphs, the typed edges while a
+// graph that reads them is missing) has a completed build of the service
+// recorded since the process started, so NavBuildCost is a measurement and
+// not ExpectedCost (O1446). Nothing is built, counted or moved in the LRU.
+func NavBuildMeasured(sc Scope) bool {
+	if !snapshotGroup.measured(snapKey{sc}) {
+		return false
+	}
+	typedNeeded := false
+	for _, k := range []GraphKind{GraphSyntax, GraphBoth, GraphResolved} {
+		key := graphKey{sc, k}
+		if !graphGroup.measured(key) {
+			return false
+		}
+		if _, ok := graphGroup.Peek(key); !ok && k != GraphSyntax {
+			typedNeeded = true
+		}
+	}
+	return !typedNeeded || typedGroup.measured(typedKey{sc})
+}
+
 // NavKeepAfter is how long a caller must stay on a snapshot or graph flight
 // it started before leaving keeps it for the next caller instead of
 // cancelling it (Group.leave: half the group's ExpectedCost).

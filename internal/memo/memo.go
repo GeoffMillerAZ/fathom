@@ -771,6 +771,20 @@ func (g *Group[K, V]) pendingCost(key K) (cost time.Duration, resident bool) {
 	return max(cost, 0), false
 }
 
+// measured reports whether key is resident or its service has a completed
+// build recorded in this group (pendingCost then reads a measurement, not
+// ExpectedCost), read without building, counting or touching the LRU.
+func (g *Group[K, V]) measured(key K) bool {
+	service, _, _ := g.scopeOf(key)
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if _, ok := g.entries[key]; ok {
+		return true
+	}
+	_, ok := g.lastBuild[service]
+	return ok
+}
+
 // Peek returns the cached value without building (no hit or miss counted).
 func (g *Group[K, V]) Peek(key K) (V, bool) {
 	g.mu.Lock()

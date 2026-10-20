@@ -135,7 +135,14 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 		// inside this call's deadline is not waited for to the end: the
 		// call answers the definition from the symbol index, named
 		// partial, and the build keeps running for the next caller.
-		ng, cold, lerr := navGraphsWithin(ctx, backend, p.Service)
+		// The name resolves first, against the resident snapshot or the
+		// store lookup find_symbol uses: an ambiguous or unknown name
+		// answers at once, and only a unique one waits for the graph.
+		sc := navScope(ctx, backend, p.Service)
+		if early := symbolContextResolveFirst(ctx, backend, p.Service, p.Symbol, sc); early != nil {
+			return early, nil
+		}
+		ng, cold, lerr := navGraphsWithin(ctx, backend, p.Service, sc)
 		if lerr != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: lerr.Error()}
 		}
