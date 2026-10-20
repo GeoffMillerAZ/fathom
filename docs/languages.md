@@ -111,7 +111,7 @@ item's target; the last column also needs every level up to the target graded ex
 
 | Tier | Kind | Items | L1 | L2 | L3 | L4 | None | Refused | Tolerated | Unsupported | At target | At target, all excellent |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| T1 | language | 33 | 1 | 3 | 11 | 10 | 1 | 2 | 0 | 5 | 21 | 8 |
+| T1 | language | 33 | 1 | 3 | 11 | 10 | 1 | 3 | 0 | 4 | 21 | 8 |
 | T1 | tool format | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |
 | T2 | tool format | 23 | 0 | 8 | 13 | 0 | 1 | 0 | 0 | 1 | 18 | 13 |
 | T3 | tool format | 16 | 1 | 4 | 11 | 0 | 0 | 0 | 0 | 0 | 15 | 5 |
@@ -121,7 +121,7 @@ item's target; the last column also needs every level up to the target graded ex
 | T6 | language | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | T6 | tool format | 4 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |
 | T7 | tool format | 4 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
-| **Total** | language | 37 | 1 | 4 | 12 | 10 | 1 | 3 | 0 | 6 | 22 | 8 |
+| **Total** | language | 37 | 1 | 4 | 12 | 10 | 1 | 4 | 0 | 5 | 22 | 8 |
 | **Total** | tool format | 63 | 1 | 18 | 36 | 0 | 1 | 0 | 0 | 7 | 50 | 26 |
 
 ### T1
@@ -153,7 +153,7 @@ item's target; the last column also needs every level up to the target graded ex
 | SCSS (.scss) | language | L3 | L1 (L1 good) | L2 not met: call_recall not measured |
 | Sass (indented syntax) (.sass) | language | L3 | unsupported | no dialect (LB-Q-sass) |
 | Tailwind CSS v4 at-rules and custom utilities (.css) | language | L2 | unsupported | no dialect (LB-Q-tailwind) |
-| Less (.less) | language | L3 | unsupported | no dialect (LB-Q-less) |
+| Less (.less) | language | L3 | refused | re-plan (LB-Q-less-rest refused) |
 | Perl (.pl .pm .t by sniff) | language | L2 | L2 (L1 good, L2 good) | L1 good: range_agreement not measured |
 | Scala (.scala .sc) | language | L4 | L2 (L1 good, L2 good) | L3 not met: file_edge_recall 0.0112 < 0.25 |
 | Jupyter notebooks (.ipynb) | tool format | L2 | L2 (L1 excellent, L2 good) | L2 good: oracle tier C caps at good |
@@ -313,7 +313,7 @@ Milestone M2 progress: languages at L1 34/45, at L1 excellent 24/35, at L2 29/25
 | SCSS (.scss) | language | tags | tree-sitter-grammars/tree-sitter-scss (MIT (verify at pin)) | L3 | L1 (L1 good) | A dart-sass sass 1.105.1, sass-parser 0.4.57 | file | 2026-10-10 | LB-Q-scss |
 | Sass (indented syntax) (.sass) | language | tags | none pinned: no tree-sitter grammar parses the indented syntax (O853) (n/a (no grammar pinned)) | L3 | unsupported (disclosed) | — | — | — | LB-Q-sass |
 | Tailwind CSS v4 at-rules and custom utilities (.css) | language | tags | tree-sitter/tree-sitter-css (the css dialect's grammar) (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-tailwind |
-| Less (.less) | language | tags | jimliang/tree-sitter-less (verify at pin) | L3 | unsupported (disclosed) | — | — | — | LB-Q-less |
+| Less (.less) | language | tags | jimliang/tree-sitter-less (verify at pin) | L3 | refused | — | — | — | re-plan (LB-Q-less-rest refused) |
 | MSBuild projects (.csproj .fsproj .vbproj .props .targets, .sln) | tool format | doc | pure-go:encoding/xml (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A dotnet msbuild (-getItem, -getProperty and -preprocess) MSBuild 18.9.11.42413; .NET SDK 10.0.401 | syntax | 2026-09-29 | at target (LB-Q-msbuild) |
 | Kustomize (kustomization.yaml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A kustomize (kubectl-embedded) v5.8.1 | syntax | 2026-09-29 | at target (LB-Q-kustomize) |
 | Assembly (.s .S .asm) | language | tags | RubixDev/tree-sitter-asm (MIT) | L1 | refused | — | — | — | re-plan (LB-Q-assembly-rest refused) |
