@@ -81,6 +81,7 @@ var typedEdgeProducers = map[string]string{
 	"gradle":      "syntax",
 	"lua":         "syntax",
 	"luau":        "syntax",
+	"prisma":      "syntax",
 	"solidity":    "syntax",
 	"r":           "syntax",
 	"perl":        "syntax",

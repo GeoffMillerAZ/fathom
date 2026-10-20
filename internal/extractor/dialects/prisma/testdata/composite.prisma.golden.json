@@ -1,0 +1,121 @@
+{
+  "symbols": [
+    {
+      "name": "db",
+      "kind": "PrismaDatasource",
+      "package": "composite",
+      "line": 1,
+      "end_line": 4,
+      "signature": "datasource db",
+      "tier": "verified"
+    },
+    {
+      "name": "Geo",
+      "kind": "PrismaType",
+      "package": "composite",
+      "line": 6,
+      "end_line": 9,
+      "signature": "type Geo",
+      "tier": "verified"
+    },
+    {
+      "name": "Geo.lat",
+      "kind": "PrismaField",
+      "package": "composite",
+      "line": 7,
+      "end_line": 7,
+      "signature": "lat Float",
+      "tier": "verified"
+    },
+    {
+      "name": "Geo.lng",
+      "kind": "PrismaField",
+      "package": "composite",
+      "line": 8,
+      "end_line": 8,
+      "signature": "lng Float",
+      "tier": "verified"
+    },
+    {
+      "name": "Address",
+      "kind": "PrismaType",
+      "package": "composite",
+      "line": 11,
+      "end_line": 14,
+      "signature": "type Address",
+      "tier": "verified"
+    },
+    {
+      "name": "Address.street",
+      "kind": "PrismaField",
+      "package": "composite",
+      "line": 12,
+      "end_line": 12,
+      "signature": "street String",
+      "tier": "verified"
+    },
+    {
+      "name": "Address.geo",
+      "kind": "PrismaField",
+      "package": "composite",
+      "line": 13,
+      "end_line": 13,
+      "signature": "geo Geo?",
+      "calls": [
+        "Geo"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Shop",
+      "kind": "PrismaModel",
+      "package": "composite",
+      "line": 16,
+      "end_line": 21,
+      "signature": "model Shop",
+      "tier": "verified"
+    },
+    {
+      "name": "Shop.id",
+      "kind": "PrismaField",
+      "package": "composite",
+      "line": 17,
+      "end_line": 17,
+      "signature": "id String @id @default(auto()) @map(\"_id\") @db.ObjectId",
+      "tier": "verified"
+    },
+    {
+      "name": "Shop.name",
+      "kind": "PrismaField",
+      "package": "composite",
+      "line": 18,
+      "end_line": 18,
+      "signature": "name String",
+      "tier": "verified"
+    },
+    {
+      "name": "Shop.address",
+      "kind": "PrismaField",
+      "package": "composite",
+      "line": 19,
+      "end_line": 19,
+      "signature": "address Address",
+      "calls": [
+        "Address"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Shop.branches",
+      "kind": "PrismaField",
+      "package": "composite",
+      "line": 20,
+      "end_line": 20,
+      "signature": "branches Address[]",
+      "calls": [
+        "Address"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

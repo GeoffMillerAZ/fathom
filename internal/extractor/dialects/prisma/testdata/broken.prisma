@@ -1,0 +1,14 @@
+model Before {
+  id Int @id
+}
+
+model Broken {
+  id Int @id
+  bad String[
+  next Before
+}
+
+model After {
+  id Int @id
+  before Before
+}

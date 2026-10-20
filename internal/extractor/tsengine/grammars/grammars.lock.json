@@ -461,6 +461,21 @@
       "gz_bytes": 165241
     },
     {
+      "blob": "prisma",
+      "repo": "victorhqc/tree-sitter-prisma",
+      "tag": "3556b2c1f20ec9ac91e92d32c43d9d2a0ca3cc49",
+      "commit": "3556b2c1f20ec9ac91e92d32c43d9d2a0ca3cc49",
+      "tarball_sha256": "9f89b34dffa3fcceb981b298927b0676596579a42a6a4919f7c3cbe4cfe074a8",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_prisma"],
+      "scanner": false,
+      "generate": false,
+      "abi": 15,
+      "blob_sha256": "f872159aa5fab21950695da3f2fd87249244b749fb11fd7d9811fb909ff50009",
+      "blob_bytes": 158815,
+      "gz_bytes": 61507
+    },
+    {
       "blob": "protobuf",
       "repo": "coder3101/tree-sitter-proto",
       "tag": "0.6.0",

@@ -1,0 +1,114 @@
+{
+  "symbols": [
+    {
+      "name": "Order",
+      "kind": "PrismaModel",
+      "package": "models",
+      "line": 1,
+      "end_line": 6,
+      "signature": "model Order",
+      "tier": "verified"
+    },
+    {
+      "name": "Order.id",
+      "kind": "PrismaField",
+      "package": "models",
+      "line": 2,
+      "end_line": 2,
+      "signature": "id Int @id",
+      "tier": "verified"
+    },
+    {
+      "name": "Order.customer",
+      "kind": "PrismaField",
+      "package": "models",
+      "line": 3,
+      "end_line": 3,
+      "signature": "customer Customer @relation(fields: [customerId], references: [id])",
+      "calls": [
+        "Customer",
+        "customerId",
+        "id"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Order.customerId",
+      "kind": "PrismaField",
+      "package": "models",
+      "line": 4,
+      "end_line": 4,
+      "signature": "customerId Int",
+      "tier": "verified"
+    },
+    {
+      "name": "Order.status",
+      "kind": "PrismaField",
+      "package": "models",
+      "line": 5,
+      "end_line": 5,
+      "signature": "status Status @default(OPEN)",
+      "calls": [
+        "Status"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Customer",
+      "kind": "PrismaModel",
+      "package": "models",
+      "line": 8,
+      "end_line": 11,
+      "signature": "model Customer",
+      "tier": "verified"
+    },
+    {
+      "name": "Customer.id",
+      "kind": "PrismaField",
+      "package": "models",
+      "line": 9,
+      "end_line": 9,
+      "signature": "id Int @id",
+      "tier": "verified"
+    },
+    {
+      "name": "Customer.orders",
+      "kind": "PrismaField",
+      "package": "models",
+      "line": 10,
+      "end_line": 10,
+      "signature": "orders Order[]",
+      "calls": [
+        "Order"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Status",
+      "kind": "PrismaEnum",
+      "package": "models",
+      "line": 13,
+      "end_line": 16,
+      "signature": "enum Status",
+      "tier": "verified"
+    },
+    {
+      "name": "Status.OPEN",
+      "kind": "PrismaEnumValue",
+      "package": "models",
+      "line": 14,
+      "end_line": 14,
+      "signature": "OPEN",
+      "tier": "verified"
+    },
+    {
+      "name": "Status.CLOSED",
+      "kind": "PrismaEnumValue",
+      "package": "models",
+      "line": 15,
+      "end_line": 15,
+      "signature": "CLOSED",
+      "tier": "verified"
+    }
+  ]
+}

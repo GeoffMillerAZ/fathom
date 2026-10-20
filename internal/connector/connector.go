@@ -246,6 +246,9 @@ var extClassMap = map[string]classification{
 	".graphql": {core.KindGraphQLType, "graphql"},
 	".gql":     {core.KindGraphQLType, "graphql"},
 
+	// Prisma schema (LB-Q-prisma, language-breadth: new -- a tags-engine tool format, no incumbent).
+	".prisma": {core.SourceKind("PrismaModel"), "prisma"},
+
 	// TOML
 	".toml": {core.KindTOMLTable, "toml"},
 
