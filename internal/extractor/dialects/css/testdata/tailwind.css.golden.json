@@ -5,19 +5,11 @@
       "kind": "CSSModule",
       "package": "tailwind",
       "line": 1,
-      "end_line": 69,
+      "end_line": 77,
       "tier": "verified"
     },
     {
       "name": "--color-brand",
-      "kind": "TailwindTheme",
-      "package": "tailwind",
-      "line": 9,
-      "end_line": 9,
-      "tier": "verified"
-    },
-    {
-      "name": "--font-display",
       "kind": "TailwindTheme",
       "package": "tailwind",
       "line": 10,
@@ -25,11 +17,19 @@
       "tier": "verified"
     },
     {
-      "name": "--spacing-gutter",
+      "name": "--font-display",
       "kind": "TailwindTheme",
       "package": "tailwind",
       "line": 11,
       "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "--spacing-gutter",
+      "kind": "TailwindTheme",
+      "package": "tailwind",
+      "line": 12,
+      "end_line": 12,
       "calls": [
         "--spacing-base"
       ],
@@ -39,40 +39,40 @@
       "name": "--animate-wiggle",
       "kind": "TailwindTheme",
       "package": "tailwind",
-      "line": 12,
-      "end_line": 12,
+      "line": 13,
+      "end_line": 13,
       "tier": "verified"
     },
     {
       "name": "wiggle",
       "kind": "CSSKeyframes",
       "package": "tailwind",
-      "line": 14,
-      "end_line": 17,
+      "line": 15,
+      "end_line": 18,
       "tier": "verified"
     },
     {
       "name": "tab-4",
       "kind": "TailwindUtility",
       "package": "tailwind",
-      "line": 20,
-      "end_line": 22,
+      "line": 21,
+      "end_line": 23,
       "tier": "verified"
     },
     {
       "name": "tab-",
       "kind": "TailwindUtility",
       "package": "tailwind",
-      "line": 24,
-      "end_line": 26,
+      "line": 25,
+      "end_line": 27,
       "tier": "verified"
     },
     {
       "name": "card",
       "kind": "TailwindUtility",
       "package": "tailwind",
-      "line": 28,
-      "end_line": 31,
+      "line": 29,
+      "end_line": 32,
       "calls": [
         "--color-brand",
         "rounded-lg",
@@ -84,52 +84,53 @@
       "name": "dark",
       "kind": "TailwindVariant",
       "package": "tailwind",
-      "line": 33,
-      "end_line": 33,
+      "line": 34,
+      "end_line": 34,
       "tier": "verified"
     },
     {
       "name": "hocus",
       "kind": "TailwindVariant",
       "package": "tailwind",
-      "line": 34,
-      "end_line": 39,
+      "line": 35,
+      "end_line": 40,
       "tier": "verified"
     },
     {
       "name": "&:hover",
       "kind": "CSSSelector",
       "package": "tailwind",
-      "line": 35,
-      "end_line": 38,
+      "line": 36,
+      "end_line": 39,
       "tier": "verified"
     },
     {
       "name": "&:focus",
       "kind": "CSSSelector",
       "package": "tailwind",
-      "line": 36,
-      "end_line": 38,
+      "line": 37,
+      "end_line": 39,
       "tier": "verified"
     },
     {
       "name": "theme-midnight",
       "kind": "TailwindVariant",
       "package": "tailwind",
-      "line": 40,
-      "end_line": 40,
+      "line": 41,
+      "end_line": 41,
       "tier": "verified"
     },
     {
       "name": ".btn",
       "kind": "CSSSelector",
       "package": "tailwind",
-      "line": 42,
-      "end_line": 51,
+      "line": 43,
+      "end_line": 52,
       "calls": [
         "--color-brand",
         "--font-display",
         "card",
+        "important",
         "tab-4"
       ],
       "tier": "verified"
@@ -138,16 +139,28 @@
       "name": ".after",
       "kind": "CSSSelector",
       "package": "tailwind",
-      "line": 53,
-      "end_line": 55,
+      "line": 54,
+      "end_line": 56,
+      "tier": "verified"
+    },
+    {
+      "name": ".wide",
+      "kind": "CSSSelector",
+      "package": "tailwind",
+      "line": 59,
+      "end_line": 62,
+      "calls": [
+        "card",
+        "tab-4"
+      ],
       "tier": "verified"
     },
     {
       "name": ".field",
       "kind": "CSSSelector",
       "package": "tailwind",
-      "line": 57,
-      "end_line": 69,
+      "line": 65,
+      "end_line": 77,
       "calls": [
         "card",
         "h-[calc(100%-1rem)]",
@@ -159,8 +172,8 @@
       "name": ".group:hover &",
       "kind": "CSSSelector",
       "package": "tailwind",
-      "line": 60,
-      "end_line": 64,
+      "line": 68,
+      "end_line": 72,
       "calls": [
         "--color-brand",
         "tab-4"
@@ -171,16 +184,16 @@
       "name": "[data-invalid=\"true\"] &",
       "kind": "CSSSelector",
       "package": "tailwind",
-      "line": 61,
-      "end_line": 64,
+      "line": 69,
+      "end_line": 72,
       "tier": "verified"
     },
     {
       "name": ".plain > &",
       "kind": "CSSSelector",
       "package": "tailwind",
-      "line": 66,
-      "end_line": 68,
+      "line": 74,
+      "end_line": 76,
       "tier": "verified"
     }
   ],

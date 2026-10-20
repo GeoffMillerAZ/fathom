@@ -3,8 +3,9 @@
 @source "../src";
 @plugin "@tailwindcss/typography";
 @config "./tailwind.config.js";
+@reference "./other.css";
 
-@theme inline {
+@theme default inline reference {
   --color-*: initial;
   --color-brand: oklch(0.7 0.1 200);
   --font-display: "Satoshi", sans-serif;
@@ -52,6 +53,13 @@
 
 .after {
   color: red;
+}
+
+@media (width >= 48rem) {
+  .wide {
+    @apply tab-4! dark:card! !card;
+    background: url(@fonts/pkg/bg.png);
+  }
 }
 
 .field {

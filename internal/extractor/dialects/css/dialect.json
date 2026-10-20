@@ -17,7 +17,7 @@
       "id": "tailwind",
       "entry_point": "tree_sitter_css",
       "extensions": [],
-      "sniff": "(?:^|[;{}\\s])@(?:theme|utility|custom-variant|variant|apply|source|plugin|config)\\b",
+      "sniff": "(?:^|[;{}\\s])@(?:theme|utility|custom-variant|variant|apply|source|plugin|config|reference)\\b",
       "preprocess": "tailwind-at-rules",
       "call_names": "tailwind-candidate",
       "queries": { "tags": "tailwind.scm" }

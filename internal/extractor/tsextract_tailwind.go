@@ -4,19 +4,22 @@ import "strings"
 
 // tsextract_tailwind.go — the css dialect's Tailwind CSS v4 variant's
 // preprocess key "tailwind-at-rules" (LB-Q-tailwind). tree-sitter-css reads a
-// v4 stylesheet nearly whole, but five v4 spellings are outside its grammar and
-// one of them drags the statements after it into an ERROR node: a
+// v4 stylesheet nearly whole, but some v4 spellings are outside its grammar, and
+// the first of them drags the statements after it into an ERROR node: a
 // parenthesised selector after `@custom-variant name` (the shorthand
 // definition), a `*` in `@utility name-*`, a `--ns-*: initial;` namespace
-// reset, an unquoted-prelude `@source`, `@plugin` or `@config` with a string
-// argument, and the options after an `@import "x"` (`theme(static)`,
-// `layer(base)`, `source(none)`). The rewrite blanks each of those with
-// spaces, so every other byte keeps its offset and its line, and parses the
-// result. It adds nothing and moves nothing: a name it leaves behind is the
-// source's own (`@utility tab-*` reads `tab-`). A rewrite never changes a
-// byte count or a line, so the extractor cuts every name from the file as
-// written (tsDialectRules.preprocessSameLength): the descendant combinator of
-// `.parent &`, which the parse needs as `>`, still reads ` `.
+// reset, `@source`, `@plugin`, `@config` or `@reference` with a string argument,
+// the options after an `@import "x"` (`theme(static)`, `layer(base)`,
+// `source(none)`), the options after `@theme` (`default inline reference`), the
+// importance flag and arbitrary values of an `@apply` candidate, the range
+// syntax of a media query, an unquoted `url(@scope/file)`, and the descendant
+// combinator before a nesting `&`. The rewrite replaces each with spaces (or `_`,
+// `:`, `>` where the grammar needs a token there), so every other byte keeps its
+// offset and its line, and parses the result. It adds nothing and moves
+// nothing, and the extractor cuts every name from the file as written
+// (tsDialectRules.preprocessSameLength): the descendant combinator of
+// `.parent &`, which the parse reads as `>`, still reads as a space, and
+// `@utility tab-*` reads `tab-` because the symbol ends where the star starts.
 
 // tailwindTexts returns the file with the unparsable v4 spellings blanked, or
 // nothing when it holds none.
@@ -55,6 +58,17 @@ func tailwindTexts(src []byte) [][]byte {
 			if name == "utility" {
 				prev = '{'
 			}
+		case c == 'u' && i+4 < n && src[i+1] == 'r' && src[i+2] == 'l' && src[i+3] == '(' && src[i+4] != '"' && src[i+4] != '\'' && (i == 0 || !tailwindIdent(src[i-1])):
+			// An unquoted url(@scope/pkg/file.woff2): the `@` reads as an at-keyword.
+			k := i + 4
+			for k < n && src[k] != ')' && src[k] != '\n' {
+				if src[k] == '@' {
+					fill(k, k+1, '_')
+				}
+				k++
+			}
+			i = k
+			prev = ')'
 		case c == '&' && i > 0 && (src[i-1] == ' ' || src[i-1] == '\t' || src[i-1] == '\n') && prev != 0 && !strings.ContainsRune(">+~,({;}", rune(prev)):
 			// `.parent &` (a descendant combinator before the nesting selector):
 			// the grammar drops the combinator and the `&` into an ERROR node.
@@ -154,6 +168,8 @@ func tailwindAtRule(src []byte, name string, j int, blank func(from, to int), fi
 			case ']', ')':
 				fill(k, k+1, '_')
 				depth--
+			case '!':
+				fill(k, k+1, '_') // `p-4!` and `!important`: the importance flag
 			default:
 				if depth > 0 {
 					fill(k, k+1, '_')
@@ -162,7 +178,37 @@ func tailwindAtRule(src []byte, name string, j int, blank func(from, to int), fi
 			k++
 		}
 		return k
-	case "source", "plugin", "config":
+	case "theme":
+		// `@theme default inline reference {`: the options are no definition.
+		k := j
+		for k < n && src[k] != '{' && src[k] != ';' && src[k] != '}' {
+			k++
+		}
+		blank(j, k)
+		return k
+	case "media", "container":
+		// Media Queries 4 range syntax, `(width >= 48rem)`, reads as `(width : 48rem)`.
+		depth := 0
+		k := j
+		for k < n && src[k] != '{' && src[k] != ';' && src[k] != '}' {
+			switch c := src[k]; {
+			case c == '(':
+				depth++
+			case c == ')':
+				depth--
+			case (c == '>' || c == '<') && depth > 0:
+				if k+1 < n && src[k+1] == '=' {
+					fill(k, k+1, ':')
+					fill(k+1, k+2, ' ')
+					k++
+				} else {
+					fill(k, k+1, ':')
+				}
+			}
+			k++
+		}
+		return k
+	case "source", "plugin", "config", "reference":
 		k := j
 		for k < n && src[k] != ';' && src[k] != '{' {
 			k++
