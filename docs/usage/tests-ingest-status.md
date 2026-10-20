@@ -14,7 +14,7 @@ directory of `*.json` files, plain JSON, NDJSON, or a DSSE/in-toto-wrapped
 envelope — the payload is decoded and its digest recorded as the run's
 identity; fathom never verifies signatures itself) into the additive
 `test_suites`/`test_runs`/`test_cases` store tables, joining each case to a
-`Test*` symbol by exact name (`TestX/sub` joins to `TestX`). It also scans
+`Test*` symbol by exact name (`TestX/sub` joins to `TestX`) or to a non-Go test entry (pytest, jest, JUnit and the like) by file and name, from the case id (`path::name`, `path > name` or a JUnit class name). A case that matches no test symbol is counted and named on a `tests ingest` line. It also scans
 `--manifest`'s whole tree for `// certifies: <kind> <id> [(<strength>)]`
 markers above `Test*` functions, writing one declared fact per entry into
 `certify_declarations` (a malformed marker is a warning naming its

@@ -22,6 +22,7 @@ package testevidence
 // directory, from a duplicate/stale index row) stays unjoined exactly as
 // before.
 import (
+	"sort"
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -40,6 +41,9 @@ type JoinedCase struct {
 type JoinStats struct {
 	Joined int
 	Total  int
+	// Unmatched names (case ids, sorted) every case that joined nowhere:
+	// counted in Total, never dropped (TQ-28).
+	Unmatched []string
 }
 
 // symbolCandidate is one Test* symbol sharing a bare name with at least
@@ -68,6 +72,8 @@ func JoinCasesToSymbols(cases []Case, suiteName string, symbols []core.SymbolNod
 		byName[s.Name] = append(byName[s.Name], symbolCandidate{key: s.Key(), dir: dirOf(s.FilePath)})
 	}
 
+	entries := nonGoEntries(symbols)
+
 	out := make([]JoinedCase, 0, len(cases))
 	stats := JoinStats{Total: len(cases)}
 	for _, c := range cases {
@@ -81,11 +87,19 @@ func JoinCasesToSymbols(cases []Case, suiteName string, symbols []core.SymbolNod
 		default:
 			key = disambiguateByPackage(c.ID, c.Name, candidates)
 		}
+		if key == "" && len(candidates) == 0 {
+			// No Go Test* function has this name: one more pass over the
+			// non-Go test entries, by file and name (TQ-28).
+			key = joinNonGo(c, entries)
+		}
 		if key != "" {
 			stats.Joined++
+		} else {
+			stats.Unmatched = append(stats.Unmatched, c.ID)
 		}
 		out = append(out, JoinedCase{Case: c, SuiteName: suiteName, TestSymbolKey: key})
 	}
+	sort.Strings(stats.Unmatched)
 	return out, stats
 }
 

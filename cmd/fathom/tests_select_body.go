@@ -32,6 +32,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
+
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/gitro"
 )
@@ -62,7 +64,7 @@ func bodyChangedSymbols(ctx context.Context, root, rev string, nodes []core.Symb
 	}
 	byFile := map[string][]core.SymbolNode{}
 	for _, n := range nodes {
-		if changed[n.FilePath] && !strings.HasPrefix(n.Name, "Test") {
+		if changed[n.FilePath] && !callgraph.IsTestNode(n) {
 			byFile[n.FilePath] = append(byFile[n.FilePath], n)
 		}
 	}

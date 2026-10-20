@@ -47,10 +47,10 @@ function that reads it, so the tests reaching those functions are selected (TQ-2
 and skipped test's last attested run duration, and appends it to
 `workspace/artifacts/tests-select/time-saved.jsonl` (one line a run; an estimate with no
 attested duration behind it prints `time saved: unknown` and records nothing). Selection is
-advice to CI and never makes a certificate live (I43). Below it, VB-33 ranks `Test*` functions for a diff by
+advice to CI and never makes a certificate live (I43). Below it, VB-33 ranks `Test*` functions and non-Go test entries for a diff by
 typed-edge reachability, corroborating statement coverage (when `--profile`
 is given), and test layer (unit before integration before e2e), then emits
-a `go test ./<pkg> -run '^(TestA|TestB)$'` invocation per package plus the
+a `go test ./<pkg> -run '^(TestA|TestB)$'` invocation per package (Go tests only: a non-Go test is ranked and selected, its own runner runs it) plus the
 changed symbols no test reaches. A test that already certifies a target
 whose scope intersects this diff (TC-23, vision 33 / ADR-043 stage 3) ranks
 first, ahead of that reach ranking — advisory only, it never changes which

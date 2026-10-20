@@ -637,7 +637,7 @@ func TestImpact(g *Graph, symbol string) []string {
 			}
 			visited[caller] = true
 			node := g.nodes[caller]
-			if strings.HasPrefix(node.Name, "Test") {
+			if IsTestNode(node) {
 				tests = append(tests, caller)
 			}
 			queue = append(queue, caller)
@@ -1000,7 +1000,7 @@ func TestImpactDetail(g *Graph, symbol string) []ReachDetail {
 			viaDispatch[caller] = crosses
 			implementers[caller] = n
 
-			if node := g.nodes[caller]; strings.HasPrefix(node.Name, "Test") {
+			if node := g.nodes[caller]; IsTestNode(node) {
 				results = append(results, ReachDetail{Key: caller, ViaDispatch: crosses, Implementers: n})
 			}
 			queue = append(queue, caller)
