@@ -14,10 +14,7 @@ package main
 // fetch does.
 
 import (
-	"bytes"
-	"encoding/json"
-	"io"
-	"net/http"
+	"context"
 	"time"
 )
 
@@ -45,58 +42,20 @@ func editHookBlastLine(callers, tests int) string {
 
 // fetchBlastRadius calls blast_radius (kind:"change", the default) scoped
 // to file's own directory-relative path, returning the transitive symbol
-// count (total_symbols) and the test count it reaches (len(tests)).
+// count (total_symbols) and the test count it reaches (len(tests)) through
+// the one shared reach (fetchBlastReach, reach.go) the tests-to-run line
+// and the readout hook's daemon join name tests by.
 // ok=false on any error, non-200 or malformed response — the pre-edit
 // hook degrades to silence on a failed or slow lookup rather than block
 // or error the guard payload (the fetchMemories precedent, edithook.go).
 func fetchBlastRadius(baseURL, service, file string, timeout time.Duration) (callers, tests int, ok bool) {
-	reqBody, err := json.Marshal(map[string]any{
-		"jsonrpc": "2.0",
-		"id":      1,
-		"method":  "tools/call",
-		"params": map[string]any{
-			"name": "blast_radius",
-			"arguments": map[string]any{
-				"service":       service,
-				"changed_files": []string{file},
-			},
-		},
-	})
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	r, err := fetchBlastReach(ctx, baseURL, service, []string{file})
 	if err != nil {
 		return 0, 0, false
 	}
-
-	hc := &http.Client{Timeout: timeout}
-	req, err := originHeader(baseURL, bytes.NewReader(reqBody))
-	if err != nil {
-		return 0, 0, false
-	}
-	resp, err := hc.Do(req)
-	if err != nil {
-		return 0, 0, false
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return 0, 0, false
-	}
-	raw, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	if err != nil {
-		return 0, 0, false
-	}
-
-	inner, err := unwrapRPCResult(raw)
-	if err != nil {
-		return 0, 0, false
-	}
-
-	var payload struct {
-		TotalSymbols int      `json:"total_symbols"`
-		Tests        []string `json:"tests"`
-	}
-	if err := json.Unmarshal(inner, &payload); err != nil {
-		return 0, 0, false
-	}
-	return payload.TotalSymbols, len(payload.Tests), true
+	return r.Callers, len(r.Tests), true
 }
 
 // blastLineFor is renderPreEdit's own call: fetch, then format. Isolated

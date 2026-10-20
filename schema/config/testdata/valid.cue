@@ -233,6 +233,11 @@ exampleReadOutlineHint: #Config & {
 	hooks: read_outline_hint: true
 }
 
+// The tests-to-run line after an edit (RO-43, H4), opt-in.
+exampleTestsToRun: #Config & {
+	hooks: tests_to_run: true
+}
+
 // The commit pin line's mode (PR-6, ADR-057 decision 4): off, record (the
 // default when unset) or feedback.
 examplePinCheck: #Config & {

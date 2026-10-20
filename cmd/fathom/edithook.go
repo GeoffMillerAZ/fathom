@@ -208,6 +208,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	text, ok = withClaimMoment(url, projDir, filePath, sessionID, text, ok) // PC-22: a newly checked [x] on a depth-1 plan verifies now (edithook_claim.go)
 	text, ok = withSkipGainedNote(projDir, filePath, text, ok)              // O56 fix item 3: note a row gaining skip_test, daemon-free (edithook_skipnote.go)
 	text, ok = withMapPointer(projDir, filePath, sessionID, text, ok)       // XM-11: one line naming an exploration map whose footprint holds this file, once per session, daemon-free (maphooks.go)
+	text, ok = withTestsToRun(url, filePath, sessionID, text, ok)           // RO-43: the tests that reach the edited file and their recipe, off by default (edithook_teststorun.go)
 	if !ok {
 		return 0 // renderPostEdit already emitted the beat that names the silence
 	}

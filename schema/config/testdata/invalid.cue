@@ -141,6 +141,11 @@ package config
 // badReadOutlineHint: #Config & {
 // 	hooks: read_outline_hint: "yes"
 // }
+//
+// [hooks] tests_to_run is a bool (RO-43):
+// badTestsToRun: #Config & {
+// 	hooks: tests_to_run: "on"
+// }
 
 // [[work.ci_summaries]] needs a path, and a commit is a hex object name
 // (WI-2w):
