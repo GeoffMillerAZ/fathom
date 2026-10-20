@@ -141,6 +141,7 @@ func cmdReadoutHook(args []string, stdin io.Reader, stdout, stderr io.Writer) (c
 	if err != nil {
 		return 0
 	}
+	readout.LoadRepoRules(rs, eventProjectDir(codec, in), cfg.Trust)
 	readoutStep("rules")
 	rs = readoutRulesFor(rs, cfg.Rules)
 	cmd := shellcmd.ParseCommand(in.Command)
@@ -291,7 +292,7 @@ func readoutRulesFor(rs *readout.RuleSet, overrides map[string]config.ReadoutRul
 	if len(overrides) == 0 {
 		return rs
 	}
-	out := &readout.RuleSet{Refused: rs.Refused}
+	out := &readout.RuleSet{Refused: rs.Refused, Repo: rs.Repo}
 	for _, r := range rs.Rules {
 		if o, ok := overrides[r.ID]; ok && o.Mode == config.ReadoutsOff {
 			continue

@@ -383,6 +383,11 @@ type Readouts struct {
 	Mode  string
 	Roots []string
 	Rules map[string]ReadoutRule
+	// Trust lists the sha256 (lowercase hex) of each repository
+	// `.fathom/readouts.toml` the user trusts (RO-33): a listed file's
+	// rules run in the configured mode, an unlisted or changed one stays
+	// in observe. User-only.
+	Trust []string
 }
 
 // ReadoutRule is one `[readouts.rules.<id>]` table.

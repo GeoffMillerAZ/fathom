@@ -8,6 +8,7 @@ package config
 import (
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -73,6 +74,26 @@ func TestReadoutsFieldsAreUserOnly(t *testing.T) {
 		}
 		if loaded.Config.Readouts.Mode != ReadoutsOff || len(loaded.IgnoredKeySources) != 1 {
 			t.Errorf("Readouts = %+v, ignored = %+v", loaded.Config.Readouts, loaded.IgnoredKeySources)
+		}
+	})
+
+	t.Run("trust is user-only", func(t *testing.T) {
+		h := strings.Repeat("ab", 32)
+		writeTOML(t, user, "[readouts]\ntrust = [\""+h+"\"]\n")
+		writeTOML(t, proj, "[readouts]\ntrust = [\""+strings.Repeat("cd", 32)+"\"]\n")
+		loaded, err := Load(user, proj)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(loaded.Config.Readouts.Trust, []string{h}) {
+			t.Errorf("Trust = %v, want the user's alone", loaded.Config.Readouts.Trust)
+		}
+		var fields []string
+		for _, ig := range loaded.IgnoredKeySources {
+			fields = append(fields, ig.Field)
+		}
+		if !reflect.DeepEqual(fields, []string{"readouts.trust"}) {
+			t.Errorf("IgnoredKeySources fields = %v, want [readouts.trust]", fields)
 		}
 	})
 }

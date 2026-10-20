@@ -566,6 +566,12 @@ func mergeReadoutsFields(r *Readouts, raw map[string]any, source Source, path st
 			prov["readouts.roots"] = SourceInfo{source, path}
 		}
 	}
+	if v, ok := raw["trust"]; ok {
+		if list, ok := stringSlice(v); ok {
+			r.Trust = list
+			prov["readouts.trust"] = SourceInfo{source, path}
+		}
+	}
 	if rules, ok := raw["rules"].(map[string]any); ok {
 		ids := make([]string, 0, len(rules))
 		for id := range rules {

@@ -275,3 +275,10 @@ package config
 // bad41: #Config & {
 // 	readouts: rules: "ls-long": trust: true
 // }
+// The trust list (RO-33) holds sha256 hex strings only:
+// bad43: #Config & {
+// 	readouts: trust: ["not-a-hash"]
+// }
+// bad44: #Config & {
+// 	readouts: trust: [true]
+// }

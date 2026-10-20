@@ -177,6 +177,14 @@ bad40: #Config & {
 bad41: #Config & {
 	readouts: rules: "ls-long": trust: true
 }`},
+		{"[readouts] trust entry is not a sha256 (RO-33)", `
+bad43: #Config & {
+	readouts: trust: ["not-a-hash"]
+}`},
+		{"[readouts] trust entry is not a string (RO-33)", `
+bad44: #Config & {
+	readouts: trust: [true]
+}`},
 		{"[decide] enabled is not a bool (KS-3)", `
 bad33: #Config & {
 	decide: enabled: "no"

@@ -155,6 +155,7 @@ prompt path.
     .gitignore                   Z3  written by init (wiring-owned region): the local names below
     config.toml                  Z1  parameters (TOML); gains [risk] and [learning] (H2)
     capabilities.cue             Z1  the one switchboard
+    readouts.toml                Z1  add-only readout rules (TOML, the user format); inert until the user trusts its sha256 (RO-33)
     modules.cue                  Z1  bindings: platform modules, plus exclude_packs for tech packs
     guard.cue                    Z2  guards + layer_rules (layer_rules gains call_direction, H2)
     pack.cue                     Z2  generated + formats + orientation (new keys; the file name is convention)

@@ -170,6 +170,9 @@ func Render(rs *RuleSet, in Input) Readout {
 	}
 	out.Rule = rule.Ref()
 	out.Mode = effectiveMode(rule, in.Mode, prefix)
+	if rule.untrusted {
+		out.Mode = ModeObserve
+	}
 	out.Stream = streamOf(sh)
 	out.Lossiness = rule.loss
 	if (rule.When.BytesGT > 0 && len(in.Stdout) <= rule.When.BytesGT) || (rule.When.LinesGT > 0 && len(ls) <= rule.When.LinesGT) {

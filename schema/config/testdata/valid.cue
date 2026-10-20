@@ -270,5 +270,6 @@ exampleReadouts: #Config & {
 		mode:  "observe"
 		roots: ["/work/waves"]
 		rules: "ls-long": mode: "lean"
+		trust: ["0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"]
 	}
 }
