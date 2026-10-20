@@ -1079,7 +1079,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 		}
 		res.oracles = append(res.oracles, run)
 		if spec.Manifest.LangTag == "css" && cd != nil {
-			res.notes = append(res.notes, cssNameScopeNotes(name, sub.Counts)...) // design 1.8 W2 (LB-F460)
+			res.notes = append(res.notes, cssNameScopeNotes(name, run.Tool, sub.Counts)...) // design 1.8 W2 (LB-F460)
 		}
 		if imps != nil {
 			if err := scoreImportsOracle(toolOracle, imps, &sub); err != nil {

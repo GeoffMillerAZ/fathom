@@ -353,7 +353,7 @@ async function main() {
       let hit = '';
       for (const c of ds.parseCandidate(a.tok)) {
         if (c.kind === 'static' && custom.has('s:' + c.root)) hit = custom.get('s:' + c.root);
-        else if (c.kind === 'functional' && custom.has('f:' + c.root)) hit = custom.get('f:' + c.root);
+        else if (c.kind === 'functional' && custom.has('f:' + c.root)) { hit = custom.get('f:' + c.root); bump('apply_pairs_functional_utility'); }
         if (hit) break;
       }
       if (hit) pairs.add(JSON.stringify({ path: rel, from: a.owner, to: hit }));

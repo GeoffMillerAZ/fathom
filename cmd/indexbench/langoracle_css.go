@@ -107,9 +107,12 @@ func cssNameScope(m langbench.Manifest, tf *toolOracleFile, truth, found map[lan
 
 // cssNameScopeNotes discloses W2 for one subject (design 1.8): what the scope
 // left out of both sides.
-func cssNameScopeNotes(subject string, counts map[string]int) []string {
+func cssNameScopeNotes(subject, oracle string, counts map[string]int) []string {
 	o, f := counts[cntCSSOracleOutsideClosure], counts[cntCSSFathomOutsideClosure]
 	notes := []string{"W2 (design 1.8): lightningcss attests no cascade, so a var() or animation-name pair is graded as a name reference: kept when its name is a custom property or @keyframes rule defined in the file or its @import closure, every other pair out of both sides, counted"}
+	if oracle != "" && oracle != "lightningcss" {
+		notes = []string{"W2 (design 1.8): " + oracle + " attests no cascade, so a var() or @apply pair is graded as a name reference: kept when its name is a custom property, @keyframes rule or @utility defined in the file or its @import closure, every other pair out of both sides, counted"}
+	}
 	if o+f > 0 {
 		notes = append(notes, fmt.Sprintf("%s: %d oracle and %d fathom name pairs name nothing defined in their file's @import closure (W2), out of both", subject, o, f))
 	}
