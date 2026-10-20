@@ -660,6 +660,17 @@ func TestPortKilledAtOpenReopensOnTheNextAskAfterTheKillLifts(t *testing.T) {
 			if dials.count() != 2 || keys.total() == 0 || gates != 1 {
 				t.Errorf("after the kill lifted: dials %d, key touches %d, gates applied %d, want 2 requests, the key read, the gate applied once", dials.count(), keys.total(), gates)
 			}
+			// SR-58: the reopened port is behind the calibration gate too,
+			// so a site with no reading is refused and nothing is dialed.
+			for _, d := range []decision.Decider{gated, ports.Decider} {
+				var nce *decide.NotCalibratedError
+				if _, err := d.Decide(decide.WithSite(context.Background(), decide.SiteRoute), predicateRequest("q1")); !errors.As(err, &nce) {
+					t.Errorf("a reopened port's uncalibrated site ask: err %v, want a *NotCalibratedError", err)
+				}
+			}
+			if dials.count() != 2 {
+				t.Errorf("a reopened port's uncalibrated site dialed %d more times, want 0", dials.count()-2)
+			}
 
 			if err := os.WriteFile(killFile, nil, 0o600); err != nil {
 				t.Fatal(err)
