@@ -1,0 +1,225 @@
+{
+  "symbols": [
+    {
+      "name": "Completion",
+      "kind": "ObjCTypedef",
+      "package": "props.h",
+      "line": 2,
+      "end_line": 2,
+      "tier": "verified"
+    },
+    {
+      "name": "Mode",
+      "kind": "ObjCEnum",
+      "package": "props.h",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "ModeA",
+      "kind": "ObjCEnumerator",
+      "package": "props.h",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "ModeB",
+      "kind": "ObjCEnumerator",
+      "package": "props.h",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "FlagA",
+      "kind": "ObjCEnumerator",
+      "package": "props.h",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "FlagB",
+      "kind": "ObjCEnumerator",
+      "package": "props.h",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "Flags",
+      "kind": "ObjCEnum",
+      "package": "props.h",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "Color",
+      "kind": "ObjCTypedef",
+      "package": "props.h",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "ColorBlue",
+      "kind": "ObjCEnumerator",
+      "package": "props.h",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "ColorRed",
+      "kind": "ObjCEnumerator",
+      "package": "props.h",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "Plain",
+      "kind": "ObjCEnum",
+      "package": "props.h",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "PlainA",
+      "kind": "ObjCEnumerator",
+      "package": "props.h",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "PlainB",
+      "kind": "ObjCEnumerator",
+      "package": "props.h",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "kName",
+      "kind": "ObjCVariable",
+      "package": "props.h",
+      "line": 7,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "kOther",
+      "kind": "ObjCVariable",
+      "package": "props.h",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "Foo",
+      "kind": "ObjCInterface",
+      "package": "props.h",
+      "line": 10,
+      "end_line": 21,
+      "tier": "verified"
+    },
+    {
+      "name": "Foo.completion",
+      "kind": "ObjCProperty",
+      "package": "props.h",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "Foo.handler",
+      "kind": "ObjCProperty",
+      "package": "props.h",
+      "line": 12,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "Foo.names",
+      "kind": "ObjCProperty",
+      "package": "props.h",
+      "line": 13,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "Foo.shared",
+      "kind": "ObjCProperty",
+      "package": "props.h",
+      "line": 14,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": "Foo.delegate",
+      "kind": "ObjCProperty",
+      "package": "props.h",
+      "line": 15,
+      "end_line": 15,
+      "tier": "verified"
+    },
+    {
+      "name": "Foo.run:",
+      "kind": "ObjCMethod",
+      "package": "props.h",
+      "line": 16,
+      "end_line": 16,
+      "signature": "- (void)run:(int)a;",
+      "tier": "verified"
+    },
+    {
+      "name": "Foo.objectAtIndexedSubscript:",
+      "kind": "ObjCMethod",
+      "package": "props.h",
+      "line": 17,
+      "end_line": 17,
+      "signature": "- (id)objectAtIndexedSubscript:(NSUInteger)idx;",
+      "tier": "verified"
+    },
+    {
+      "name": "Foo.variadic:",
+      "kind": "ObjCMethod",
+      "package": "props.h",
+      "line": 18,
+      "end_line": 18,
+      "signature": "- (void)variadic:(NSString *)fmt, ...;",
+      "tier": "verified"
+    },
+    {
+      "name": "Foo.handle:",
+      "kind": "ObjCMethod",
+      "package": "props.h",
+      "line": 19,
+      "end_line": 19,
+      "signature": "- (void)handle:(Completion)block ;",
+      "tier": "verified"
+    },
+    {
+      "name": "Foo.load",
+      "kind": "ObjCClassMethod",
+      "package": "props.h",
+      "line": 20,
+      "end_line": 20,
+      "signature": "+ (void)load;",
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "<Foundation/Foundation.h>",
+      "module": "<Foundation/Foundation.h>",
+      "kind": "whole",
+      "line": 1
+    }
+  ]
+}

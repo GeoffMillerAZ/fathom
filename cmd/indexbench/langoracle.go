@@ -587,11 +587,13 @@ func ownedSourceRefs(m langbench.Manifest, root string, refs []core.SourceRef, o
 			}
 			continue
 		}
-		if (m.ID == "cpp" || m.ID == "c") && strings.EqualFold(filepath.Ext(ref.Path), ".h") {
-			// The router sends a .h to C++ on a C++-only signal and to C
-			// otherwise (LB-F80: a C include's target is a header, so without
-			// them C's import_resolution and file edges have no denominator).
-			if b, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(ref.Path))); err == nil && extractor.LooksLikeCppHeader(b) == (m.ID == "cpp") {
+		if (m.ID == "cpp" || m.ID == "c" || m.ID == "objective-c") && strings.EqualFold(filepath.Ext(ref.Path), ".h") {
+			// The router sends a .h to Objective-C on an @interface,
+			// @protocol, @implementation or #import, to C++ on a C++-only
+			// signal and to C otherwise (LB-F80: a C include's target is a
+			// header, so without them C's import_resolution and file edges
+			// have no denominator).
+			if b, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(ref.Path))); err == nil && extractor.HeaderDialect(b) == m.ID {
 				out = append(out, ref)
 			}
 		}

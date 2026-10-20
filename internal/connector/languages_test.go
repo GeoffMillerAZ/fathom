@@ -78,6 +78,7 @@ var langRowHint = map[string]string{
 	"perl":             "| Perl ",
 	"dart":             "| Dart ",
 	"elixir":           "| Elixir ",
+	"objective-c":      "| Objective-C ",
 	"emacs-lisp":       "| Emacs Lisp ",
 	"commonlisp":       "| Common Lisp ",
 	"ada":              "| Ada ",

@@ -1,0 +1,124 @@
+{
+  "symbols": [
+    {
+      "name": "counter",
+      "kind": "ObjCVariable",
+      "package": "Shape.m",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "helper",
+      "kind": "ObjCFunc",
+      "package": "Shape.m",
+      "line": 5,
+      "end_line": 7,
+      "signature": "int helper(int a)",
+      "tier": "verified"
+    },
+    {
+      "name": "Shape",
+      "kind": "ObjCImplementation",
+      "package": "Shape.m",
+      "line": 9,
+      "end_line": 37,
+      "tier": "verified"
+    },
+    {
+      "name": "Shape.initWithFrame:style:",
+      "kind": "ObjCMethod",
+      "package": "Shape.m",
+      "line": 11,
+      "end_line": 18,
+      "signature": "- (instancetype)initWithFrame:(CGRect)frame style:(int)style",
+      "calls": [
+        "helper",
+        "init",
+        "reset"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Shape.shapeWithName:",
+      "kind": "ObjCClassMethod",
+      "package": "Shape.m",
+      "line": 20,
+      "end_line": 24,
+      "signature": "+ (Shape *)shapeWithName:(NSString *)name",
+      "calls": [
+        "alloc",
+        "initWithFrame:style:"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Shape.draw",
+      "kind": "ObjCMethod",
+      "package": "Shape.m",
+      "line": 26,
+      "end_line": 29,
+      "signature": "- (void)draw",
+      "calls": [
+        "defaultCenter",
+        "drawInRect:",
+        "postNotificationName:object:"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Shape.drawInRect:",
+      "kind": "ObjCMethod",
+      "package": "Shape.m",
+      "line": 31,
+      "end_line": 32,
+      "signature": "- (void)drawInRect:(CGRect)rect",
+      "tier": "verified"
+    },
+    {
+      "name": "Shape.reset",
+      "kind": "ObjCMethod",
+      "package": "Shape.m",
+      "line": 34,
+      "end_line": 35,
+      "signature": "- (void)reset",
+      "tier": "verified"
+    },
+    {
+      "name": "Debug",
+      "kind": "ObjCCategory",
+      "package": "Shape.m",
+      "line": 39,
+      "end_line": 39,
+      "tier": "verified"
+    },
+    {
+      "name": "Shape",
+      "kind": "ObjCImplementation",
+      "package": "Shape.m",
+      "line": 39,
+      "end_line": 43,
+      "tier": "verified"
+    },
+    {
+      "name": "Shape.debugDescription",
+      "kind": "ObjCMethod",
+      "package": "Shape.m",
+      "line": 40,
+      "end_line": 42,
+      "signature": "- (NSString *)debugDescription",
+      "calls": [
+        "description"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "Shape.h",
+      "module": "Shape.h",
+      "kind": "whole",
+      "line": 1
+    }
+  ]
+}

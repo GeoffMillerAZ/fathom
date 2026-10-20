@@ -1,0 +1,74 @@
+{
+  "symbols": [
+    {
+      "name": "Foo",
+      "kind": "ObjCImplementation",
+      "package": "props.m",
+      "line": 2,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "Foo._x",
+      "kind": "ObjCIvar",
+      "package": "props.m",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "Foo.run:",
+      "kind": "ObjCMethod",
+      "package": "props.m",
+      "line": 6,
+      "end_line": 6,
+      "signature": "- (void)run:(int)a",
+      "calls": [
+        "b",
+        "run:"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Foo.objectAtIndexedSubscript:",
+      "kind": "ObjCMethod",
+      "package": "props.m",
+      "line": 7,
+      "end_line": 7,
+      "signature": "- (id)objectAtIndexedSubscript:(NSUInteger)idx",
+      "tier": "verified"
+    },
+    {
+      "name": "Foo.variadic:",
+      "kind": "ObjCMethod",
+      "package": "props.m",
+      "line": 9,
+      "end_line": 9,
+      "signature": "- (void)variadic:(NSString *)fmt, ...",
+      "calls": [
+        "NSLog"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Foo.load",
+      "kind": "ObjCClassMethod",
+      "package": "props.m",
+      "line": 10,
+      "end_line": 10,
+      "signature": "+ (void)load",
+      "calls": [
+        "new"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "props.h",
+      "module": "props.h",
+      "kind": "whole",
+      "line": 1
+    }
+  ]
+}

@@ -1,0 +1,217 @@
+{
+  "symbols": [
+    {
+      "name": "Drawable",
+      "kind": "ObjCProtocol",
+      "package": "Shape.h",
+      "line": 4,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "Drawable.drawInRect:",
+      "kind": "ObjCMethod",
+      "package": "Shape.h",
+      "line": 5,
+      "end_line": 5,
+      "signature": "- (void)drawInRect:(CGRect)rect;",
+      "tier": "verified"
+    },
+    {
+      "name": "Drawable.shared",
+      "kind": "ObjCClassMethod",
+      "package": "Shape.h",
+      "line": 7,
+      "end_line": 7,
+      "signature": "+ (instancetype)shared;",
+      "tier": "verified"
+    },
+    {
+      "name": "Size2D.width",
+      "kind": "ObjCField",
+      "package": "Shape.h",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "Size2D.height",
+      "kind": "ObjCField",
+      "package": "Shape.h",
+      "line": 12,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "Size2D",
+      "kind": "ObjCTypedef",
+      "package": "Shape.h",
+      "line": 13,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "ShapeKind",
+      "kind": "ObjCEnum",
+      "package": "Shape.h",
+      "line": 15,
+      "end_line": 18,
+      "tier": "verified"
+    },
+    {
+      "name": "ShapeKindCircle",
+      "kind": "ObjCEnumerator",
+      "package": "Shape.h",
+      "line": 16,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
+      "name": "ShapeKindSquare",
+      "kind": "ObjCEnumerator",
+      "package": "Shape.h",
+      "line": 17,
+      "end_line": 17,
+      "tier": "verified"
+    },
+    {
+      "name": "SHAPE_MAX",
+      "kind": "ObjCMacro",
+      "package": "Shape.h",
+      "line": 20,
+      "end_line": 20,
+      "tier": "verified"
+    },
+    {
+      "name": "Shape",
+      "kind": "ObjCInterface",
+      "package": "Shape.h",
+      "line": 22,
+      "end_line": 34,
+      "tier": "verified"
+    },
+    {
+      "name": "Shape._label",
+      "kind": "ObjCIvar",
+      "package": "Shape.h",
+      "line": 23,
+      "end_line": 23,
+      "tier": "verified"
+    },
+    {
+      "name": "Shape._sides",
+      "kind": "ObjCIvar",
+      "package": "Shape.h",
+      "line": 24,
+      "end_line": 24,
+      "tier": "verified"
+    },
+    {
+      "name": "Shape.name",
+      "kind": "ObjCProperty",
+      "package": "Shape.h",
+      "line": 27,
+      "end_line": 27,
+      "tier": "verified"
+    },
+    {
+      "name": "Shape.sides",
+      "kind": "ObjCProperty",
+      "package": "Shape.h",
+      "line": 28,
+      "end_line": 28,
+      "tier": "verified"
+    },
+    {
+      "name": "Shape.initWithFrame:style:",
+      "kind": "ObjCMethod",
+      "package": "Shape.h",
+      "line": 30,
+      "end_line": 30,
+      "signature": "- (instancetype)initWithFrame:(CGRect)frame style:(int)style;",
+      "tier": "verified"
+    },
+    {
+      "name": "Shape.shapeWithName:",
+      "kind": "ObjCClassMethod",
+      "package": "Shape.h",
+      "line": 31,
+      "end_line": 31,
+      "signature": "+ (Shape *)shapeWithName:(NSString *)name;",
+      "tier": "verified"
+    },
+    {
+      "name": "Shape.draw",
+      "kind": "ObjCMethod",
+      "package": "Shape.h",
+      "line": 32,
+      "end_line": 32,
+      "signature": "- (void)draw;",
+      "tier": "verified"
+    },
+    {
+      "name": "Debug",
+      "kind": "ObjCCategory",
+      "package": "Shape.h",
+      "line": 36,
+      "end_line": 36,
+      "tier": "verified"
+    },
+    {
+      "name": "Shape",
+      "kind": "ObjCInterface",
+      "package": "Shape.h",
+      "line": 36,
+      "end_line": 38,
+      "tier": "verified"
+    },
+    {
+      "name": "Shape.debugDescription",
+      "kind": "ObjCMethod",
+      "package": "Shape.h",
+      "line": 37,
+      "end_line": 37,
+      "signature": "- (NSString *)debugDescription;",
+      "tier": "verified"
+    },
+    {
+      "name": "Shape",
+      "kind": "ObjCInterface",
+      "package": "Shape.h",
+      "line": 40,
+      "end_line": 43,
+      "tier": "verified"
+    },
+    {
+      "name": "Shape.items",
+      "kind": "ObjCProperty",
+      "package": "Shape.h",
+      "line": 41,
+      "end_line": 41,
+      "tier": "verified"
+    },
+    {
+      "name": "Shape.reset",
+      "kind": "ObjCMethod",
+      "package": "Shape.h",
+      "line": 42,
+      "end_line": 42,
+      "signature": "- (void)reset;",
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "<Foundation/Foundation.h>",
+      "module": "<Foundation/Foundation.h>",
+      "kind": "whole",
+      "line": 1
+    },
+    {
+      "local": "Util.h",
+      "module": "Util.h",
+      "kind": "whole",
+      "line": 2
+    }
+  ]
+}

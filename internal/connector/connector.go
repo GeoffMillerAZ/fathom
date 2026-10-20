@@ -433,6 +433,10 @@ var extClassMap = map[string]classification{
 	".ex":  {core.SourceKind("ElixirModule"), "elixir"},
 	".exs": {core.SourceKind("ElixirModule"), "elixir"},
 
+	// Objective-C (LB-Q-objective-c, wave lang6): .mm by extension; .m (MATLAB's
+	// too) and .h are the dialect's through match.sniff and the header router.
+	".mm": {core.SourceKind("ObjCInterface"), "objective-c"},
+
 	// Dart (LB-Q-dart: a new tree-sitter dialect, no incumbent).
 	".dart": {core.KindDartClass, "dart"},
 

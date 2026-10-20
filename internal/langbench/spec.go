@@ -130,8 +130,8 @@ func ParseManifest(b []byte) (Manifest, error) {
 	if !QueueIDPattern.MatchString(m.ID) {
 		return Manifest{}, fmt.Errorf("manifest id %q must match %s", m.ID, QueueIDPattern)
 	}
-	if m.NameMatch != "" && m.NameMatch != NameMatchBare && m.NameMatch != NameMatchIdentity {
-		return Manifest{}, fmt.Errorf("manifest %s: name_match %q is not %q or %q", m.ID, m.NameMatch, NameMatchBare, NameMatchIdentity)
+	if m.NameMatch != "" && m.NameMatch != NameMatchBare && m.NameMatch != NameMatchIdentity && m.NameMatch != NameMatchSelector {
+		return Manifest{}, fmt.Errorf("manifest %s: name_match %q is not %q, %q or %q", m.ID, m.NameMatch, NameMatchBare, NameMatchIdentity, NameMatchSelector)
 	}
 	return m, nil
 }
@@ -140,14 +140,20 @@ func ParseManifest(b []byte) (Manifest, error) {
 const (
 	NameMatchBare     = "bare"
 	NameMatchIdentity = "identity"
+	NameMatchSelector = "selector"
 )
 
 // MatchName is the form of a fathom name the harness compares with an
 // oracle's: the whole name for an identity dialect, else its last segment
 // (BareName).
 func (m Manifest) MatchName(q string) string {
-	if m.NameMatch == NameMatchIdentity {
+	switch m.NameMatch {
+	case NameMatchIdentity:
 		return q
+	case NameMatchSelector:
+		// A selector carries ':' (`initWithFrame:style:`), which BareName cuts at:
+		// the owner qualifies with '.', so the selector is what follows the last one.
+		return q[strings.LastIndexByte(q, '.')+1:]
 	}
 	return BareName(q)
 }

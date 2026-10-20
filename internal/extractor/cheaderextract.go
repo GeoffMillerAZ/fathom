@@ -18,9 +18,14 @@ import (
 // extract, under Cpp kinds), false negatives degrade to C extraction, which
 // still yields functions/structs/enums. Both failure modes lose precision,
 // never symbols.
+//
+// A header that is Objective-C (looksLikeObjC) goes to the Objective-C
+// extractor first, when the router holds one (WithObjC): the same router,
+// never a second classifier (LB-Q-objective-c).
 type CHeaderExtractor struct {
-	c   Extractor
-	cpp Extractor
+	c    Extractor
+	cpp  Extractor
+	objc Extractor
 }
 
 // NewCHeaderRouter returns the header router over the given C and C++
@@ -34,6 +39,17 @@ func NewCHeaderRouter(c, cpp Extractor) *CHeaderExtractor {
 	return &CHeaderExtractor{c: c, cpp: cpp}
 }
 
+// WithObjC gives the router its Objective-C extractor: a header with an
+// @interface, @protocol or @implementation, or an #import and no C++ signal,
+// is read by it instead of by C or C++. It returns the router.
+func (h *CHeaderExtractor) WithObjC(objc Extractor) *CHeaderExtractor {
+	h.objc = objc
+	return h
+}
+
+// ObjC is the router's Objective-C extractor, nil when it holds none.
+func (h *CHeaderExtractor) ObjC() Extractor { return h.objc }
+
 // Routes is the router's two extractors, the C one and the C++ one, for a
 // caller that names what a .h dispatches to (fusion.DispatchTable).
 func (h *CHeaderExtractor) Routes() (c, cpp Extractor) { return h.c, h.cpp }
@@ -41,6 +57,9 @@ func (h *CHeaderExtractor) Routes() (c, cpp Extractor) { return h.c, h.cpp }
 // Route is the extractor Extract would delegate src to (the one-parse stage
 // asks whether it is a tags extractor).
 func (h *CHeaderExtractor) Route(src []byte) Extractor {
+	if h.objc != nil && looksLikeObjC(src) {
+		return h.objc
+	}
 	if looksLikeCpp(src) {
 		return h.cpp
 	}
@@ -49,10 +68,7 @@ func (h *CHeaderExtractor) Route(src []byte) Extractor {
 
 // Extract sniffs src and delegates to the matching grammar.
 func (h *CHeaderExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
-	if looksLikeCpp(src) {
-		return h.cpp.Extract(service, relPath, src)
-	}
-	return h.c.Extract(service, relPath, src)
+	return h.Route(src).Extract(service, relPath, src)
 }
 
 // cppSignalWords are keywords that never appear in C source as keywords.
@@ -63,10 +79,56 @@ var cppSignalWords = []string{
 	"public:", "private:", "protected:", "constexpr",
 }
 
-// LooksLikeCppHeader is the header router's verdict (looksLikeCpp), exported
-// for the measurement harness: indexbench lang-oracle measures the C++
-// dialect on the .h files this sniff sends to C++ (no dialect claims .h).
-func LooksLikeCppHeader(src []byte) bool { return looksLikeCpp(src) }
+// HeaderDialect is the dialect the header router reads a .h with: "objective-c"
+// when looksLikeObjC says so, else "cpp" on a C++ signal, else "c". It is the
+// one verdict the router, the file resolver and the measurement harness share.
+func HeaderDialect(src []byte) string {
+	switch {
+	case looksLikeObjC(src):
+		return "objective-c"
+	case looksLikeCpp(src):
+		return "cpp"
+	}
+	return "c"
+}
+
+// looksLikeObjC reports whether a header is Objective-C: its code (comments,
+// strings and #error lines blanked) carries an @interface, @protocol or
+// @implementation, or an #import directive and no C++ signal (an MSVC
+// `#import <comdef.h>` header is C++; a header of C declarations that
+// #imports Foundation is Objective-C).
+func looksLikeObjC(src []byte) bool {
+	s := codeOnly(src)
+	for _, kw := range []string{"@interface", "@protocol", "@implementation"} {
+		for from := 0; ; {
+			i := indexFrom(s, kw, from)
+			if i < 0 {
+				break
+			}
+			if end := i + len(kw); end >= len(s) || !identByte(s[end]) {
+				return true
+			}
+			from = i + 1
+		}
+	}
+	return hasImportDirective(s) && !looksLikeCpp(src)
+}
+
+// hasImportDirective reports whether s has a line whose first token is
+// #import (whitespace allowed around the #).
+func hasImportDirective(s string) bool {
+	for _, line := range strings.Split(s, "\n") {
+		t := strings.TrimLeft(line, " \t")
+		if !strings.HasPrefix(t, "#") {
+			continue
+		}
+		t = strings.TrimLeft(t[1:], " \t")
+		if strings.HasPrefix(t, "import") && (len(t) == len("import") || !identByte(t[len("import")])) {
+			return true
+		}
+	}
+	return false
+}
 
 // looksLikeCpp reports whether src contains a C++-only signal: a signal
 // keyword at a word boundary, or the scope operator "::".

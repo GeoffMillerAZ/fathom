@@ -77,6 +77,27 @@ objcSniff: #Dialect & {
 	queue_id:     "objc"
 }
 
+// An Objective-C dialect (LB-Q-objective-c): methods named by their selector, compared
+// whole after the owner's ".", and the pre-parse step that reads NS_ENUM as an enum.
+objcSelector: #Dialect & {
+	id:       "objective-c"
+	display:  "Objective-C"
+	kind:     "language"
+	engine:   "tags"
+	lang_tag: "objc"
+	match: {
+		extensions: [".mm"]
+		sniff: {extensions: [".m"], pattern: "@interface|@implementation|#import", priority: 0}
+	}
+	grammar: {blob: "objective-c", entry_point: "tree_sitter_objc"}
+	kinds: {method: {source_kind: "ObjCMethod", canonical: "method", callable: true}}
+	required_kinds: ["method"]
+	name_match:     "selector"
+	preprocess:     "objc-macros"
+	target_level:   "L3"
+	queue_id:       "objective-c"
+}
+
 goNative: #Dialect & {
 	id:       "go"
 	display:  "Go"
