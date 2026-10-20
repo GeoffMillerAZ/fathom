@@ -1,0 +1,57 @@
+id: tailwind
+language: Tailwind CSS v4 at-rules and custom utilities (.css)
+# Subjects for LB-Q-tailwind (wave lang8). The css dialect's Tailwind variant is measured by
+# `indexbench lang-oracle -dialect tailwind` against calibration/oracles/tailwind (the tailwindcss
+# v4 compiler's design system, tier A for what it attests: a theme variable, a custom utility, a
+# custom variant, and the custom utility an @apply candidate resolves to). Every subject is read
+# only, never vendored. Utility classes used in templates (the oxide scanner's candidates in
+# markup) are out of scope for this row: the reading says so.
+repos:
+  - name: heroui-inc/heroui
+    url: https://github.com/heroui-inc/heroui
+    ref: "@heroui/styles@3.0.1"
+    sha: 9b6fadd42941c581c1cea781eb1b018730746856
+    licence: MIT
+    subpath: packages/styles
+    idioms:
+      - "a component stylesheet tree (`components/*.css`, about 85 files) joined by `@import` from
+        an index sheet, where `@apply` lists custom utilities (`no-highlight`, `status-focused`)
+        beside core ones, inside nested `&:` rules"
+      - "`@utility` blocks in `utilities/index.css` and `@custom-variant` in `variants/`, `@theme`
+        in `base/`"
+  - name: tailwindlabs/tailwindcss
+    url: https://github.com/tailwindlabs/tailwindcss
+    ref: v4.3.2
+    sha: 056a1550721d4bf79ff732d5ab9414fa83f7064f
+    licence: MIT
+    subpath: packages/tailwindcss
+    idioms:
+      - "`theme.css`: the default theme as one `@theme default` block of about 450 variables,
+        some defined by `var()` of another (`--default-font-family`)"
+      - "`index.css` joining `theme.css`, `preflight.css` and `utilities.css` by `@import ... layer(...)`,
+        the file `@import \"tailwindcss\"` resolves to"
+    notes: >
+      the compiler under measurement is this repository's own package at the same tag; the oracle
+      reads these sheets with it, so this subject is the tool grading its own source.
+  - name: TailAdmin/free-react-tailwind-admin-dashboard
+    url: https://github.com/TailAdmin/free-react-tailwind-admin-dashboard
+    ref: master
+    sha: e888dd1716b9803b535c7c2fa4f2c6b7d39b3da9
+    licence: MIT
+    idioms:
+      - "one `src/index.css`: `@theme` with design tokens, about 30 `@utility` blocks of component
+        styles, `@custom-variant dark`, and `@apply` lists in `@layer base` and `@layer components`
+        rules naming those utilities"
+    notes: >
+      no release tag exists; pinned by commit.
+  - name: themesberg/flowbite
+    url: https://github.com/themesberg/flowbite
+    ref: master
+    sha: 232ebdb33a9e37b31b293b9988d89b862ee121e5
+    licence: MIT
+    subpath: src
+    idioms:
+      - "theme sheets (`themes/*.css`) with `@theme`, `@custom-variant` and `@plugin` of packages
+        the checkout does not install (the oracle stubs a plugin it cannot resolve and counts it)"
+    notes: >
+      no release tag is used: the checkout is pinned by commit.
