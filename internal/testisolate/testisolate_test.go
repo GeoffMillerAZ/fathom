@@ -17,11 +17,12 @@ type runnerFunc func() int
 
 func (f runnerFunc) Run() int { return f() }
 
-// isolatedVars are restored by t.Setenv after each case, since
-// IsolateAndRun mutates the process environment the way TestMain does.
+// isolatedVars and the pinned Go caches are restored by t.Setenv after
+// each case, since IsolateAndRun mutates the process environment the way
+// TestMain does.
 func saveEnv(t *testing.T) {
 	t.Helper()
-	for _, k := range IsolatedVars {
+	for _, k := range append(append([]string{}, IsolatedVars...), GoCacheVars...) {
 		t.Setenv(k, os.Getenv(k))
 	}
 }

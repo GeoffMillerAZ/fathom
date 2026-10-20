@@ -6,7 +6,9 @@
 // FATHOM_TEST=1 — or it does not run at all (exit 2). Before this, each
 // package's TestMain made its own temp HOME and silently kept the real one
 // when MkdirTemp failed, and cmd/fathom's tests appended rows to the
-// operator's call log through the live daemon (INC-23).
+// operator's call log through the live daemon (INC-23). The Go toolchain's
+// shared caches stay where they were (GoCacheVars): only fathom's own
+// per-user state moves.
 //
 // A package opts in with a testmain_test.go:
 //
@@ -120,6 +122,10 @@ type Options struct {
 	Setup func(root string) error
 	// Stderr receives the refusal (default os.Stderr).
 	Stderr io.Writer
+	// GoEnv answers `go env` for the unset GoCacheVars before HOME moves
+	// (default goEnv). An error pins nothing and refuses nothing: a suite
+	// that never runs go does not need the caches.
+	GoEnv func(keys []string) (map[string]string, error)
 }
 
 // Main isolates, runs the suite and exits with its code — or 2 when it
@@ -191,6 +197,14 @@ func IsolateAndRun(m Runner, o Options) int {
 		return refuse(err)
 	}
 	values["PATH"] = binDir + string(os.PathListSeparator) + os.Getenv("PATH")
+	if o.GoEnv == nil {
+		o.GoEnv = goEnv
+	}
+	for k, v := range resolveGoCaches(o.GoEnv) {
+		if err := os.Setenv(k, v); err != nil {
+			return refuse(fmt.Errorf("setting %s: %w", k, err))
+		}
+	}
 	for _, k := range IsolatedVars {
 		if values[k] == "" {
 			if err := os.Unsetenv(k); err != nil {
