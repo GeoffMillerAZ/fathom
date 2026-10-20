@@ -59,6 +59,7 @@ var assertedInterfaces = map[string]reflect.Type{
 	"perLayerCoverageBackend":                    ifaceOf[perLayerCoverageBackend](),
 	"pkgDocsSearchBackend":                       ifaceOf[pkgDocsSearchBackend](),
 	"rawFallbackBackend":                         ifaceOf[rawFallbackBackend](),
+	"rootRawFallbackBackend":                     ifaceOf[rootRawFallbackBackend](),
 	"registrySurgeryBackend":                     ifaceOf[registrySurgeryBackend](),
 	"reviewClaimsBackend":                        ifaceOf[reviewClaimsBackend](),
 	"reviewObligationsBackend":                   ifaceOf[reviewObligationsBackend](),

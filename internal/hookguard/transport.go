@@ -107,6 +107,9 @@ func (g *Guard) roundTrip(base http.RoundTripper, req *http.Request) (*http.Resp
 	if g.Deadline.Spent() {
 		return nil, g.skip(VerdictDeadline, Decision{})
 	}
+	if req.URL.Path == QueuedRefreshPath {
+		return g.queuedRoundTrip(base, req, target)
+	}
 	d := BreakerAllows(g, target)
 	switch d.Verdict {
 	case Allow:
@@ -144,6 +147,33 @@ func (g *Guard) roundTrip(base http.RoundTripper, req *http.Request) (*http.Resp
 		g.RecordFailure(target, fmt.Errorf("HTTP %d", resp.StatusCode))
 	default:
 		g.RecordSuccessSince(target, started)
+	}
+	resp.Body = &cancelBody{ReadCloser: resp.Body, cancel: cancel}
+	return resp, nil
+}
+
+// QueuedRefreshPath is the daemon route the post-commit hook posts to. The
+// daemon queues the refresh (202) and nothing waits on it, so it is exempt
+// from the breaker the edit-time refresh opens (O1449).
+const QueuedRefreshPath = "/refresh-request"
+
+// queuedRoundTrip sends a queued-refresh request past an open or busy
+// breaker. The kill switch (disabled.json, paused.json) still applies. Its
+// outcome is not recorded: a success must not close a breaker the edit-time
+// calls opened, and a failure must not deepen one.
+func (g *Guard) queuedRoundTrip(base http.RoundTripper, req *http.Request, target string) (*http.Response, error) {
+	if v, reason, ok := g.killSwitch(target); ok {
+		return nil, g.skip(v, Decision{Verdict: v, Reason: reason})
+	}
+	ctx, cancel := g.Deadline.Context(req.Context())
+	out := req.Clone(ctx)
+	if v := rpcDeadlineHeader(req.Context(), g.Deadline); v != "" {
+		out.Header.Set(DeadlineHeader, v)
+	}
+	resp, err := base.RoundTrip(out)
+	if err != nil {
+		cancel()
+		return nil, err
 	}
 	resp.Body = &cancelBody{ReadCloser: resp.Body, cancel: cancel}
 	return resp, nil

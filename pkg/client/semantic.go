@@ -522,6 +522,45 @@ func (c *Client) RawFallbackObligations(ctx context.Context, service, file strin
 	return rows, why, true, nil
 }
 
+// RootRawFallbackObligations is the root-scope sibling of
+// RawFallbackObligations (O1452): when the obligations layer reports a
+// repository-root guide (AGENTS.md, CLAUDE.md) uncompiled, it serves that
+// guide's uncompiled and stale sections as raw rows with the root as their
+// scope. ok is false (and rows nil) when the root guide is fully compiled,
+// the layer has no coverage to judge, or nothing qualifies.
+func (c *Client) RootRawFallbackObligations(ctx context.Context, service string, max int) ([]semantic.Obligation, string, bool, error) {
+	if max <= 0 {
+		return nil, "", false, nil
+	}
+	root := c.serviceRoot(ctx, service)
+	layerDef, err := semantic.LoadLayerIn(root, semantic.LayerObligations)
+	if err != nil {
+		return nil, "", false, nil
+	}
+	corpus, unread, err := c.layerCorpus(ctx, service, layerDef)
+	if errors.Is(err, tenancy.ErrOverBudget) {
+		return nil, "", false, err
+	}
+	if err != nil {
+		return nil, "", false, nil
+	}
+	claims, err := c.st.ClaimsForService(ctx, service, layerDef.Name)
+	if err != nil {
+		return nil, "", false, nil
+	}
+	cov, found, cerr := semantic.LiveLayerCoverage(ctx, c.st, service, layerDef, corpus)
+	if cerr != nil || !found || !semantic.UncompiledRootGuide(cov) {
+		return nil, "", false, nil
+	}
+	why := "compiled layer incomplete: root guide uncompiled; its current sections served raw"
+	why += unreadNote(unread)
+	rows, rerr := semantic.RootRawFallbackRules(claims, layerDef, corpus, max, why)
+	if rerr != nil || len(rows) == 0 {
+		return nil, "", false, nil
+	}
+	return rows, why, true, nil
+}
+
 // staleRawLayers is withheld sorted and deduplicated, without the
 // obligations layer: its stale sections are the obligations rows' own
 // stale-only branch.

@@ -50,6 +50,12 @@ file below, in this order.
 | [prompts](mcp-tools/prompts.md) | Prompts |
 | [resources](mcp-tools/resources.md) | Resources |
 
+## The result envelope
+
+A tool result is `content` (one text block holding the JSON result) and, for an object-shaped result, `structuredContent` (the same object). Beside them the daemon may add `suppressed`, `refresh` and `budget`, which a client does not show the model. Fields are only ever added.
+
+When a read was answered from an index that may be behind the working tree (a refresh deferred under load, or queued and not yet run), the result object itself carries `freshness`: service id to a one-line disclosure, for example `deferred (shed) -- served from the index as it stands; freshness not checked`. It is in the text block and in `structuredContent`, so the agent reads it with the answer. The envelope's `refresh` key still carries the same map. A result with no refresh note has no `freshness` member. A tool that already returns its own `freshness` member keeps it, and the envelope adds nothing.
+
 ---
 
 ## Secrets: what a read tool serves (SR-76)

@@ -188,6 +188,77 @@ func RawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []c
 	return out, nil
 }
 
+// RootRawFallbackRules is RawFallbackRules' root-scope sibling (O1452): the
+// obligations call with no file asks what governs the repository, and while
+// the repository root's own guide (AGENTS.md, CLAUDE.md) is uncompiled or
+// stale the compiled layer can only answer with other documents' old rules.
+// This serves up to max of that guide's sections whose compiled claim is
+// missing or no longer matches the section's text, as Tier "raw" rows with
+// the root as their implied scope, in document order (path, then line).
+// Only the root-level instruction files qualify: a nested guide governs its
+// own subtree, not the root, and ADR.md and docs/design/*.md are not guides.
+// Deterministic; returns (nil, nil) when nothing qualifies. A non-nil error
+// only when layerDef's prompt identity cannot be resolved.
+func RootRawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []core.SourceFile, max int, why string) ([]Obligation, error) {
+	if max <= 0 || len(corpus) == 0 {
+		return nil, nil
+	}
+	_, promptVersion, err := promptForLayer(layerDef)
+	if err != nil {
+		return nil, err
+	}
+	bySubject := map[string][]core.SemanticClaim{}
+	for _, cl := range claims {
+		if cl.Layer != layerDef.Name || cl.Status == core.ClaimSuperseded || cl.Status == core.ClaimRefuted {
+			continue
+		}
+		bySubject[cl.Subject] = append(bySubject[cl.Subject], cl)
+	}
+	var cands []Section
+	for _, ds := range corpusSections(corpus) {
+		for _, sec := range ds.sections {
+			if !isRootGuidePath(sec.Path) {
+				continue
+			}
+			if prior, seen := bySubject[sec.Subject]; seen && allDigestsMatch(prior, sec.Digest, promptVersion) {
+				continue
+			}
+			cands = append(cands, sec)
+		}
+	}
+	sort.SliceStable(cands, func(i, j int) bool {
+		if cands[i].Path != cands[j].Path {
+			return cands[i].Path < cands[j].Path
+		}
+		return cands[i].StartLine < cands[j].StartLine
+	})
+	if len(cands) > max {
+		cands = cands[:max]
+	}
+	out := make([]Obligation, 0, len(cands))
+	for _, sec := range cands {
+		out = append(out, Obligation{
+			Rule:  rawRuleText(sec),
+			Src:   fmt.Sprintf("%s#L%d-L%d", sec.Path, sec.StartLine, sec.EndLine),
+			Tier:  "raw",
+			Layer: layerDef.Name,
+			Why:   why,
+		})
+	}
+	return out, nil
+}
+
+// UncompiledRootGuide reports whether cov names a repository-root guide
+// among its uncompiled scopes (O1452's trigger for the root raw fallback).
+func UncompiledRootGuide(cov LayerCoverage) bool {
+	for _, doc := range cov.UncompiledScopes {
+		if isRootGuidePath(doc) {
+			return true
+		}
+	}
+	return false
+}
+
 // rawSnippetWindowLines bounds how many lines a long raw section's citation
 // narrows to around its first lexical-relevance hit (wave O2, item 4): the
 // MCP obligations tool's snippet renderer (internal/mcp/obligationsnippet.go,
