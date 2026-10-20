@@ -28,7 +28,7 @@ func TestLeaseAppendsDerivedStateOnly(t *testing.T) {
 		t.Fatalf("plans lease exit = %d, stderr: %s", code, errBuf.String())
 	}
 
-	path := filepath.Join(root, ".fathom", "leases.jsonl")
+	path := leasesPath(root)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("reading %s: %v", path, err)
@@ -134,5 +134,50 @@ func TestLeaseRequiresHolderWithoutSession(t *testing.T) {
 	code := run([]string{"plans", "lease", "A-1", "--plan", "docs/plans/foo.md", "--root", root}, &out, &errBuf)
 	if code == 0 {
 		t.Fatal("want non-zero exit when neither --holder nor $CLAUDE_SESSION_ID is set")
+	}
+}
+
+// TestLeasesReadLegacyWriteStateDir (FD-33): leases.jsonl lives in the state
+// directory. A legacy .fathom/leases.jsonl is read while the new file is
+// absent, the first write seeds the new file from it, every write lands only
+// in the new file, and the legacy copy is never touched (I63).
+func TestLeasesReadLegacyWriteStateDir(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("FATHOM_STATE_DIR", filepath.Join(t.TempDir(), "state"))
+
+	legacy := filepath.Join(root, ".fathom", "leases.jsonl")
+	if err := os.MkdirAll(filepath.Dir(legacy), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, 10, 19, 12, 0, 0, 0, time.UTC)
+	old := leaseRow{Plan: "docs/plans/p.md", RowID: "A-1", Holder: "old", Harness: "cli", Filed: now, Expires: now.Add(time.Hour)}
+	line, _ := json.Marshal(old)
+	legacyBytes := append(line, '\n')
+	if err := os.WriteFile(legacy, legacyBytes, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if leasesPath(root) == legacy {
+		t.Fatal("leasesPath still names the legacy file")
+	}
+	rows, err := readLeases(root)
+	if err != nil || len(rows) != 1 || rows[0].Holder != "old" {
+		t.Fatalf("legacy rows not read: %v %+v", err, rows)
+	}
+
+	nw := leaseRow{Plan: "docs/plans/p.md", RowID: "A-2", Holder: "new", Harness: "cli", Filed: now, Expires: now.Add(time.Hour)}
+	if err := appendLease(root, nw); err != nil {
+		t.Fatal(err)
+	}
+	rows, err = readLeases(root)
+	if err != nil || len(rows) != 2 {
+		t.Fatalf("after append want legacy row kept and new row added: %v %+v", err, rows)
+	}
+	if _, err := os.Stat(leasesPath(root)); err != nil {
+		t.Fatalf("write did not land in the state directory: %v", err)
+	}
+	after, err := os.ReadFile(legacy)
+	if err != nil || string(after) != string(legacyBytes) {
+		t.Fatalf("legacy copy changed or deleted: %v", err)
 	}
 }

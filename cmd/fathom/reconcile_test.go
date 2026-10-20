@@ -255,7 +255,7 @@ func TestReconcileHookDriftListedAndRebaselined(t *testing.T) {
 		t.Fatalf("fixture did not settle to a clean baseline: drift=%v unrecorded=%v", d.WiringDrift, d.WiringUnrecorded)
 	}
 	settings := filepath.Join(root, ".claude", "settings.json")
-	ledgerPath := filepath.Join(root, ".fathom", "owned.json")
+	ledgerPath := wiring.LedgerPath(root)
 	before, err := os.ReadFile(settings)
 	if err != nil {
 		t.Fatal(err)

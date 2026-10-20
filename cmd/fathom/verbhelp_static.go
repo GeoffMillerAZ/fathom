@@ -84,7 +84,7 @@ func verbHelpStatic() map[string][]helpFlag {
 			{"holder", "string", "", "lease holder (defaults to $CLAUDE_SESSION_ID; required otherwise)"},
 			{"plan", "string", "", "plan file this row belongs to (required)"},
 			{"release", "bool", "", "release this row's lease instead of filing one"},
-			{"root", "string", ".", "project root — .fathom/leases.jsonl lives under here"},
+			{"root", "string", ".", "project root; its plan-row leases live in its state directory"},
 			{"ttl", "duration", (2 * time.Hour).String(), "lease time-to-live"},
 		},
 		"plans outcome": {

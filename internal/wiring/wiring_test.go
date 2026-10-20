@@ -467,7 +467,7 @@ func TestApplyIsIdempotent(t *testing.T) {
 				".claude/settings.json": read(t, root, ".claude/settings.json"),
 			}
 			if tc.loseLedger {
-				if err := os.Remove(filepath.Join(root, ".fathom", "owned.json")); err != nil {
+				if err := os.Remove(ledgerPath(root)); err != nil {
 					t.Fatalf("removing the ledger: %v", err)
 				}
 			}

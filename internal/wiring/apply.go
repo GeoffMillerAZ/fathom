@@ -277,7 +277,7 @@ func ApplyWiring(root string, spec Spec, opt ApplyOptions) (res Result, err erro
 // are no longer there would leave the repository reading as DRIFTED — a
 // false stop manufactured by the undo itself.
 func flushLedger(root string, ledger Ledger, receipt *Receipt) error {
-	lp := filepath.Join(root, filepath.FromSlash(ledgerRelPath))
+	lp := ledgerPath(root)
 	lBefore, lExisted, err := readFileIfPresent(lp)
 	if err != nil {
 		return err

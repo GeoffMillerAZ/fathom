@@ -23,7 +23,6 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/memo"
-	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
 	"github.com/geoffmilleraz/fathom/internal/receipt"
 	riskreview "github.com/geoffmilleraz/fathom/internal/review"
@@ -227,12 +226,7 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 			// own resolved corpus root; "" skips the read, the same
 			// corpusRoot-gated discipline every other read in this file
 			// already keeps).
-			table := riskreview.DefaultRiskTable()
-			if in.Root != "" {
-				if t, terr := riskreview.LoadRiskTable(projectdir.Risk.Path(in.Root)); terr == nil {
-					table = t
-				}
-			}
+			table := riskreview.RiskTableFor(in.Root)
 			risk := reviewDiffReceipt(ng.Both, ng.Nodes, in, v, hops, table)
 			payload["receipt"] = riskReceiptPayload(risk)
 			// SR-49 (docs/plans/surface-reckoning.md): the SAME receipt,
