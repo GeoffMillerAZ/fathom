@@ -170,3 +170,24 @@ func taskNeeds(id, needs string) verify.Task {
 	}
 	return t
 }
+
+// WI-20/WI-21: certificate and invariant regressions render with their
+// commit and an evidence link; an empty list says what was checked.
+func TestConsoleRegressionsRenderCertificatesAndInvariants(t *testing.T) {
+	regs := []console.Regression{
+		{Service: "svc", Kind: "certificate", ID: "spec:S1", Test: "TestS", ProvenAt: "2026-09-01", ProvenCommit: "c1", ChangedAt: "2026-09-02", ChangedCommit: "c2", State: "broken"},
+		{Service: "svc", Kind: "invariant", ID: "I1", Test: "TestI", ProvenAt: "2026-09-01", ProvenCommit: "c1", ChangedAt: "2026-09-02", ChangedCommit: "c3", State: "unproven"},
+	}
+	out := renderRegressions(regs, regressionsChecked{})
+	for _, want := range []string{"spec:S1 (TestS)", "c2", "c3", "certificate", "invariant", `href="/certifications?svc=svc"`} {
+		if !strings.Contains(out, want) {
+			t.Errorf("regressions table missing %q", want)
+		}
+	}
+	empty := renderRegressions(nil, regressionsChecked{PlanRows: 4, Certificates: 3, Invariants: 2, Unread: []string{"svc: boom"}})
+	for _, want := range []string{"data-regressions-empty", "4 plan rows", "3 certificates", "2 invariant enforcements", "conservation planes", "svc: boom"} {
+		if !strings.Contains(empty, want) {
+			t.Errorf("empty regressions missing %q: %s", want, empty)
+		}
+	}
+}
