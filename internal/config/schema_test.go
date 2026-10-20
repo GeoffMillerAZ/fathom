@@ -225,6 +225,10 @@ badGatePreflight: #Config & {
 badReadOutlineHint: #Config & {
 	hooks: read_outline_hint: "yes"
 }`},
+		{"[hooks] tests_to_run is not a bool", `
+badTestsToRun: #Config & {
+	hooks: tests_to_run: "on"
+}`},
 		{"[hooks] test_run is not a bool", `
 bad18: #Config & {
 	hooks: test_run: "yes"
