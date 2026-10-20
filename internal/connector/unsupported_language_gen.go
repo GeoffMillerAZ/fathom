@@ -66,7 +66,6 @@ var unsupportedLangExtMap = map[string]string{
 	".sass":        "sass",
 	".scm":         "scheme-racket",
 	".sentinel":    "sentinel",
-	".sol":         "solidity",
 	".ss":          "scheme-racket",
 	".sv":          "verilog",
 	".svh":         "verilog",

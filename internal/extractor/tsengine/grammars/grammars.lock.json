@@ -566,6 +566,21 @@
       "gz_bytes": 168288
     },
     {
+      "blob": "solidity",
+      "repo": "JoranHonig/tree-sitter-solidity",
+      "tag": "v1.2.9",
+      "commit": "bf268722bc6406429776f71f012e6d1a88801931",
+      "tarball_sha256": "b80c5822e79040b35002cc9afd6ac1d407ef6950afc29610ccf1dac0d077a45b",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_solidity"],
+      "scanner": false,
+      "generate": false,
+      "abi": 14,
+      "blob_sha256": "f104916b6ca7e691568f47beec8227a40d2f1339e66bde42956000621f508ba7",
+      "blob_bytes": 353063,
+      "gz_bytes": 104112
+    },
+    {
       "blob": "sql",
       "repo": "DerekStride/tree-sitter-sql",
       "tag": "v0.3.11",

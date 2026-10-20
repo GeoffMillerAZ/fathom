@@ -1,0 +1,44 @@
+{
+  "id": "solidity",
+  "display": "Solidity",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "solidity",
+  "match": {
+    "extensions": [".sol"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "solidity", "entry_point": "tree_sitter_solidity" },
+  "variants": [],
+  "queries": { "tags": "tags.scm" },
+  "kinds": {
+    "contract":       { "source_kind": "SolidityContract",      "canonical": "class",     "container": true },
+    "interface":      { "source_kind": "SolidityInterface",     "canonical": "interface", "container": true },
+    "library":        { "source_kind": "SolidityLibrary",       "canonical": "module",    "container": true },
+    "struct":         { "source_kind": "SolidityStruct",        "canonical": "struct" },
+    "enum":           { "source_kind": "SolidityEnum",          "canonical": "enum" },
+    "type":           { "source_kind": "SolidityValueType",     "canonical": "type_alias" },
+    "function":       { "source_kind": "SolidityFunction",      "canonical": "function",  "callable": true },
+    "method":         { "source_kind": "SolidityMethod",        "canonical": "method",    "callable": true },
+    "modifier":       { "source_kind": "SolidityModifier",      "canonical": "method",    "callable": true },
+    "event":          { "source_kind": "SolidityEvent",         "canonical": "function",  "callable": true },
+    "error":          { "source_kind": "SolidityError",         "canonical": "function",  "callable": true },
+    "constructor":    { "source_kind": "SolidityConstructor",   "canonical": "constructor", "callable": true },
+    "variable":       { "source_kind": "SolidityStateVariable", "canonical": "field" },
+    "constant":       { "source_kind": "SolidityConstant",      "canonical": "constant" }
+  },
+  "required_kinds": ["contract", "interface", "library", "struct", "enum", "type", "function", "method", "modifier", "constructor", "event", "error", "variable", "constant"],
+  "oracle_kinds": {
+    "tool": { "contract": "class", "interface": "interface", "library": "module", "struct": "struct", "enum": "enum",
+              "type": "type_alias", "function": "function", "method": "method", "modifier": "method", "constructor": "constructor",
+              "event": "function", "error": "function", "variable": "field", "constant": "constant" }
+  },
+  "qualify": { "chain_containers": true, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L2",
+  "queue_id": "solidity"
+}

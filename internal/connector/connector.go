@@ -437,6 +437,9 @@ var extClassMap = map[string]classification{
 	// too) and .h are the dialect's through match.sniff and the header router.
 	".mm": {core.SourceKind("ObjCInterface"), "objective-c"},
 
+	// Solidity (LB-Q-solidity, wave lang6): a new tree-sitter dialect, no incumbent.
+	".sol": {core.SourceKind("SolidityContract"), "solidity"},
+
 	// Dart (LB-Q-dart: a new tree-sitter dialect, no incumbent).
 	".dart": {core.KindDartClass, "dart"},
 

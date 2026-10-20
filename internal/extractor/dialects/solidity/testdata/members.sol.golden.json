@@ -1,0 +1,122 @@
+{
+  "symbols": [
+    {
+      "name": "Ownable",
+      "kind": "SolidityContract",
+      "package": "members",
+      "line": 6,
+      "end_line": 19,
+      "tier": "verified"
+    },
+    {
+      "name": "owner",
+      "kind": "SolidityStateVariable",
+      "package": "members",
+      "line": 7,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "ready",
+      "kind": "SolidityStateVariable",
+      "package": "members",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "Ownable.once",
+      "kind": "SolidityModifier",
+      "package": "members",
+      "line": 10,
+      "end_line": 14,
+      "signature": "modifier once()",
+      "tier": "verified"
+    },
+    {
+      "name": "Ownable.constructor",
+      "kind": "SolidityConstructor",
+      "package": "members",
+      "line": 16,
+      "end_line": 18,
+      "signature": "constructor(address first) once",
+      "calls": [
+        "once"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Treasury",
+      "kind": "SolidityContract",
+      "package": "members",
+      "line": 21,
+      "end_line": 42,
+      "tier": "verified"
+    },
+    {
+      "name": "pool",
+      "kind": "SolidityStateVariable",
+      "package": "members",
+      "line": 22,
+      "end_line": 22,
+      "tier": "verified"
+    },
+    {
+      "name": "Treasury.constructor",
+      "kind": "SolidityConstructor",
+      "package": "members",
+      "line": 24,
+      "end_line": 27,
+      "signature": "constructor(address p, address first) Ownable(first)",
+      "calls": [
+        "setup"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Treasury.receive",
+      "kind": "SolidityConstructor",
+      "package": "members",
+      "line": 29,
+      "end_line": 31,
+      "signature": "receive() external payable",
+      "calls": [
+        "log"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Treasury.fallback",
+      "kind": "SolidityConstructor",
+      "package": "members",
+      "line": 33,
+      "end_line": 35,
+      "signature": "fallback() external payable",
+      "calls": [
+        "transfer"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Treasury.setup",
+      "kind": "SolidityMethod",
+      "package": "members",
+      "line": 37,
+      "end_line": 39,
+      "signature": "function setup(address p) private",
+      "calls": [
+        "swap"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Treasury.log",
+      "kind": "SolidityMethod",
+      "package": "members",
+      "line": 41,
+      "end_line": 41,
+      "signature": "function log(uint256 v) internal pure",
+      "tier": "verified"
+    }
+  ]
+}
