@@ -246,6 +246,9 @@ var extClassMap = map[string]classification{
 	".graphql": {core.KindGraphQLType, "graphql"},
 	".gql":     {core.KindGraphQLType, "graphql"},
 
+	// Prisma schema (LB-Q-prisma, language-breadth: new -- a tags-engine tool format, no incumbent).
+	".prisma": {core.SourceKind("PrismaModel"), "prisma"},
+
 	// TOML
 	".toml": {core.KindTOMLTable, "toml"},
 
@@ -432,6 +435,13 @@ var extClassMap = map[string]classification{
 	// Elixir (LB-Q-elixir, wave lang3): a new tree-sitter dialect, no incumbent.
 	".ex":  {core.SourceKind("ElixirModule"), "elixir"},
 	".exs": {core.SourceKind("ElixirModule"), "elixir"},
+
+	// Objective-C (LB-Q-objective-c, wave lang6): .mm by extension; .m (MATLAB's
+	// too) and .h are the dialect's through match.sniff and the header router.
+	".mm": {core.SourceKind("ObjCInterface"), "objective-c"},
+
+	// Solidity (LB-Q-solidity, wave lang6): a new tree-sitter dialect, no incumbent.
+	".sol": {core.SourceKind("SolidityContract"), "solidity"},
 
 	// Dart (LB-Q-dart: a new tree-sitter dialect, no incumbent).
 	".dart": {core.KindDartClass, "dart"},

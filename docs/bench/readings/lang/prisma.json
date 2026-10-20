@@ -1,0 +1,170 @@
+{
+  "counts": {
+    "callables": 1962,
+    "callables_signed": 1962,
+    "fathom_defs": 1962,
+    "kind_equal": 1962,
+    "matched": 1962,
+    "oracle_defs": 1962,
+    "range_eligible": 1962,
+    "range_ok": 1962,
+    "ref_fathom": 403,
+    "ref_fathom_in_truth": 403,
+    "ref_truth": 403,
+    "ref_truth_found": 403
+  },
+  "dialect": "prisma",
+  "disposition": "partial: target L3, met L2 excellent (wave lang6, fathom 19ca25d6) on calcom/cal.com v5.9.9 (2 files) and hiroppy/web-app-template main (3 files) against the Prisma schema engine (prisma-schema-wasm 6.19.0, getDMMF, tier A for names, fields and @relation lists; positions by the harness's line scan, cross-checked both ways): L1 excellent (sym_recall 1, sym_precision 1, 1,962 definitions), L2 excellent (ref_recall 1, ref_precision 1, 403 pairs). L3 is not attempted: a Prisma schema is the union of the .prisma files of one folder with no import statement, so no existing import strategy fits and the manifest names none (the oracle writes 2 cross-file type pairs, both in web-app-template; O1419, LB-Q-prisma-rest).",
+  "excluded_by_kind": {},
+  "extractor": "dialect",
+  "fathom_commit": "19ca25d63",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "kind": "tooling",
+  "kind_intersection": [
+    "class",
+    "enum",
+    "enum_member",
+    "field",
+    "key",
+    "type_alias"
+  ],
+  "level_met": "L2",
+  "measured_at": "2026-10-20",
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A"
+  },
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "xref not measured: the dialect is no doc engine and names no import strategy, so no cross-file reference is resolved (design §6)",
+    "positions come from the harness's bracket-depth line scan (getDMMF carries none), cross-checked against the engine both ways: 0 disagreements on both subjects"
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "prisma-schema-wasm",
+      "version": "6.19.0-26.2ba551f319ab1df4bc874a89965d8b3641056773"
+    }
+  ],
+  "required_kinds": [
+    "class",
+    "enum",
+    "enum_member",
+    "field",
+    "key",
+    "type_alias"
+  ],
+  "subjects": [
+    {
+      "bytes": 107828,
+      "counts": {
+        "callables": 1912,
+        "callables_signed": 1912,
+        "fathom_defs": 1912,
+        "kind_equal": 1912,
+        "matched": 1912,
+        "oracle_defs": 1912,
+        "range_eligible": 1912,
+        "range_ok": 1912,
+        "ref_fathom": 393,
+        "ref_fathom_in_truth": 393,
+        "ref_truth": 393,
+        "ref_truth_found": 393
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A"
+      },
+      "files": 2,
+      "kind_intersection": [
+        "class",
+        "enum",
+        "enum_member",
+        "field",
+        "key",
+        "type_alias"
+      ],
+      "name": "cal.com",
+      "sha": "46b88a3c81198b99c21abaa7888fefac0eec6c69",
+      "tenancy": {
+        "compiled_bytes": 0,
+        "extract_cpu_ms": 28.412,
+        "extract_ms": 27.063,
+        "faulting_files": [],
+        "faults": 0,
+        "files_with_error": 0,
+        "max_file_ms": 28,
+        "peak_module_pages": 293
+      }
+    },
+    {
+      "bytes": 2648,
+      "counts": {
+        "callables": 50,
+        "callables_signed": 50,
+        "fathom_defs": 50,
+        "kind_equal": 50,
+        "matched": 50,
+        "oracle_defs": 50,
+        "range_eligible": 50,
+        "range_ok": 50,
+        "ref_fathom": 10,
+        "ref_fathom_in_truth": 10,
+        "ref_truth": 10,
+        "ref_truth_found": 10
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A"
+      },
+      "files": 3,
+      "kind_intersection": [
+        "class",
+        "enum",
+        "enum_member",
+        "field",
+        "key",
+        "type_alias"
+      ],
+      "name": "web-app-template",
+      "sha": "caf1994b6681aad3447eb59ee21c6109ed8f46ed",
+      "tenancy": {
+        "compiled_bytes": 0,
+        "extract_cpu_ms": 0.8260000000000001,
+        "extract_ms": 0.779,
+        "faulting_files": [],
+        "faults": 0,
+        "files_with_error": 0,
+        "max_file_ms": 0,
+        "peak_module_pages": 266
+      }
+    }
+  ],
+  "target_level": "L3",
+  "tenancy": {
+    "compiled_bytes": 0,
+    "faulting_files": [],
+    "faults": 0,
+    "files_with_error": 0,
+    "max_file_ms": 28,
+    "peak_module_pages": 293,
+    "throughput_basis": "cpu",
+    "throughput_mb_s": 3.78,
+    "wall_throughput_mb_s": 3.97
+  }
+}

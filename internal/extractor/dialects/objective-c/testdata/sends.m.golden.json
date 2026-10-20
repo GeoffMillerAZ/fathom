@@ -1,0 +1,213 @@
+{
+  "symbols": [
+    {
+      "name": "Greeter",
+      "kind": "ObjCProtocol",
+      "package": "sends.m",
+      "line": 6,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "Greeter.greetingForName:",
+      "kind": "ObjCMethod",
+      "package": "sends.m",
+      "line": 8,
+      "end_line": 8,
+      "signature": "- (NSString *)greetingForName:(NSString *)name;",
+      "tier": "verified"
+    },
+    {
+      "name": "Greeter.didGreet",
+      "kind": "ObjCMethod",
+      "package": "sends.m",
+      "line": 10,
+      "end_line": 10,
+      "signature": "- (void)didGreet;",
+      "tier": "verified"
+    },
+    {
+      "name": "Sender",
+      "kind": "ObjCInterface",
+      "package": "sends.m",
+      "line": 13,
+      "end_line": 15,
+      "tier": "verified"
+    },
+    {
+      "name": "Sender.queue",
+      "kind": "ObjCProperty",
+      "package": "sends.m",
+      "line": 14,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": "Sender",
+      "kind": "ObjCInterface",
+      "package": "sends.m",
+      "line": 17,
+      "end_line": 19,
+      "tier": "verified"
+    },
+    {
+      "name": "Sender.flush",
+      "kind": "ObjCMethod",
+      "package": "sends.m",
+      "line": 18,
+      "end_line": 18,
+      "signature": "- (void)flush;",
+      "tier": "verified"
+    },
+    {
+      "name": "Logging",
+      "kind": "ObjCCategory",
+      "package": "sends.m",
+      "line": 21,
+      "end_line": 23,
+      "tier": "verified"
+    },
+    {
+      "name": "Logging.Sender",
+      "kind": "ObjCInterface",
+      "package": "sends.m",
+      "line": 21,
+      "end_line": 21,
+      "tier": "verified"
+    },
+    {
+      "name": "Logging.logMessage:level:",
+      "kind": "ObjCMethod",
+      "package": "sends.m",
+      "line": 22,
+      "end_line": 22,
+      "signature": "- (void)logMessage:(NSString *)message level:(NSInteger)level;",
+      "tier": "verified"
+    },
+    {
+      "name": "Sender",
+      "kind": "ObjCImplementation",
+      "package": "sends.m",
+      "line": 25,
+      "end_line": 68,
+      "tier": "verified"
+    },
+    {
+      "name": "Sender.init",
+      "kind": "ObjCMethod",
+      "package": "sends.m",
+      "line": 27,
+      "end_line": 33,
+      "signature": "- (instancetype)init",
+      "calls": [
+        "array",
+        "init"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Sender.greetingForName:",
+      "kind": "ObjCMethod",
+      "package": "sends.m",
+      "line": 35,
+      "end_line": 37,
+      "signature": "- (NSString *)greetingForName:(NSString *)name",
+      "calls": [
+        "stringWithFormat:"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Sender.sendMessage:to:priority:completion:",
+      "kind": "ObjCMethod",
+      "package": "sends.m",
+      "line": 39,
+      "end_line": 50,
+      "signature": "- (void)sendMessage:(NSString *)message to:(NSString *)recipient priority:(NSInteger)priority completion:(void (^)(BOOL ok))completion",
+      "calls": [
+        "addObject:",
+        "completion",
+        "flush",
+        "greetingForName:",
+        "logMessage:level:",
+        "performSelector:",
+        "uppercaseString"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Sender.flush",
+      "kind": "ObjCMethod",
+      "package": "sends.m",
+      "line": 52,
+      "end_line": 54,
+      "signature": "- (void)flush",
+      "calls": [
+        "removeAllObjects"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Sender.casts:",
+      "kind": "ObjCMethod",
+      "package": "sends.m",
+      "line": 56,
+      "end_line": 60,
+      "signature": "- (void)casts:(int)n",
+      "calls": [
+        "addObject:",
+        "arrayWithCapacity:"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Sender.sharedSender",
+      "kind": "ObjCClassMethod",
+      "package": "sends.m",
+      "line": 62,
+      "end_line": 66,
+      "signature": "+ (instancetype)sharedSender",
+      "calls": [
+        "alloc",
+        "init"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Logging",
+      "kind": "ObjCCategory",
+      "package": "sends.m",
+      "line": 70,
+      "end_line": 76,
+      "tier": "verified"
+    },
+    {
+      "name": "Logging.Sender",
+      "kind": "ObjCImplementation",
+      "package": "sends.m",
+      "line": 70,
+      "end_line": 70,
+      "tier": "verified"
+    },
+    {
+      "name": "Logging.logMessage:level:",
+      "kind": "ObjCMethod",
+      "package": "sends.m",
+      "line": 72,
+      "end_line": 74,
+      "signature": "- (void)logMessage:(NSString *)message level:(NSInteger)level",
+      "calls": [
+        "NSLog"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "<Foundation/Foundation.h>",
+      "module": "<Foundation/Foundation.h>",
+      "kind": "whole",
+      "line": 4
+    }
+  ]
+}

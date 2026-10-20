@@ -1,0 +1,79 @@
+{
+  "symbols": [
+    {
+      "name": "Before",
+      "kind": "PrismaModel",
+      "package": "broken",
+      "line": 1,
+      "end_line": 3,
+      "signature": "model Before",
+      "tier": "verified"
+    },
+    {
+      "name": "Before.id",
+      "kind": "PrismaField",
+      "package": "broken",
+      "line": 2,
+      "end_line": 2,
+      "signature": "id Int @id",
+      "tier": "verified"
+    },
+    {
+      "name": "Broken",
+      "kind": "PrismaModel",
+      "package": "broken",
+      "line": 5,
+      "end_line": 9,
+      "signature": "model Broken",
+      "tier": "verified"
+    },
+    {
+      "name": "Broken.id",
+      "kind": "PrismaField",
+      "package": "broken",
+      "line": 6,
+      "end_line": 6,
+      "signature": "id Int @id",
+      "tier": "verified"
+    },
+    {
+      "name": "Broken.bad",
+      "kind": "PrismaField",
+      "package": "broken",
+      "line": 7,
+      "end_line": 7,
+      "signature": "bad String",
+      "tier": "verified"
+    },
+    {
+      "name": "After",
+      "kind": "PrismaModel",
+      "package": "broken",
+      "line": 11,
+      "end_line": 14,
+      "signature": "model After",
+      "tier": "verified"
+    },
+    {
+      "name": "After.id",
+      "kind": "PrismaField",
+      "package": "broken",
+      "line": 12,
+      "end_line": 12,
+      "signature": "id Int @id",
+      "tier": "verified"
+    },
+    {
+      "name": "After.before",
+      "kind": "PrismaField",
+      "package": "broken",
+      "line": 13,
+      "end_line": 13,
+      "signature": "before Before",
+      "calls": [
+        "Before"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

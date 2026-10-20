@@ -660,6 +660,16 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 		registerHCLDialects(p, ds)
 	}
 
+	// The header router reads an Objective-C header (an @interface, @protocol or
+	// @implementation, or an #import with no C++ signal) with the Objective-C
+	// dialect the manifest loop registered (LB-Q-objective-c): one router, one
+	// verdict (extractor.HeaderDialect).
+	if r, ok := p.exts[".h"].(*extractor.CHeaderExtractor); ok {
+		if objc := p.sniffExts["objective-c"]; objc != nil {
+			r.WithObjC(objc)
+		}
+	}
+
 	p.linkHostedParsers()
 	return p
 }

@@ -1,0 +1,42 @@
+{
+  "symbols": [
+    {
+      "name": "Survives",
+      "kind": "SolidityContract",
+      "package": "broken",
+      "line": 4,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
+      "name": "Survives.ok",
+      "kind": "SolidityMethod",
+      "package": "broken",
+      "line": 5,
+      "end_line": 7,
+      "signature": "function ok(uint256 x) public pure returns (uint256)",
+      "tier": "verified"
+    },
+    {
+      "name": "Survives.broken",
+      "kind": "SolidityMethod",
+      "package": "broken",
+      "line": 9,
+      "end_line": 11,
+      "signature": "function broken(",
+      "tier": "verified"
+    },
+    {
+      "name": "Survives.after_",
+      "kind": "SolidityMethod",
+      "package": "broken",
+      "line": 13,
+      "end_line": 15,
+      "signature": "function after_(uint256 z) public pure returns (uint256)",
+      "calls": [
+        "ok"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

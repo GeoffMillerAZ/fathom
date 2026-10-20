@@ -400,6 +400,21 @@
       "gz_bytes": 78038
     },
     {
+      "blob": "objective-c",
+      "repo": "tree-sitter-grammars/tree-sitter-objc",
+      "tag": "181a81b8f23a2d593e7ab4259981f50122909fda",
+      "commit": "181a81b8f23a2d593e7ab4259981f50122909fda",
+      "tarball_sha256": "97789350d6353520fd8569c12abd2e99b95bcb65d5f418dd797dbcfef1995cec",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_objc"],
+      "scanner": false,
+      "generate": false,
+      "abi": 14,
+      "blob_sha256": "2b73a50672e956e9d1dc9873c34d18b7f0aa74ba7b4a51e16777e54618903f3b",
+      "blob_bytes": 2361937,
+      "gz_bytes": 491144
+    },
+    {
       "blob": "perl",
       "repo": "tree-sitter-perl/tree-sitter-perl",
       "tag": "4586b3f1fc6f8b80cca6ceb23ba863ae986eeae8",
@@ -444,6 +459,21 @@
       "blob_sha256": "290c26ac0058dbc4eed6b79ef91031018fb5a892aa88b5a5b7e95beb9de01b46",
       "blob_bytes": 841031,
       "gz_bytes": 165241
+    },
+    {
+      "blob": "prisma",
+      "repo": "victorhqc/tree-sitter-prisma",
+      "tag": "3556b2c1f20ec9ac91e92d32c43d9d2a0ca3cc49",
+      "commit": "3556b2c1f20ec9ac91e92d32c43d9d2a0ca3cc49",
+      "tarball_sha256": "9f89b34dffa3fcceb981b298927b0676596579a42a6a4919f7c3cbe4cfe074a8",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_prisma"],
+      "scanner": false,
+      "generate": false,
+      "abi": 15,
+      "blob_sha256": "f872159aa5fab21950695da3f2fd87249244b749fb11fd7d9811fb909ff50009",
+      "blob_bytes": 158815,
+      "gz_bytes": 61507
     },
     {
       "blob": "protobuf",
@@ -549,6 +579,21 @@
       "blob_sha256": "79723ff09561714719acd29ae3a833c5e620b54eaab15fb4a82b53a1d8b3fb7d",
       "blob_bytes": 646018,
       "gz_bytes": 168288
+    },
+    {
+      "blob": "solidity",
+      "repo": "JoranHonig/tree-sitter-solidity",
+      "tag": "v1.2.9",
+      "commit": "bf268722bc6406429776f71f012e6d1a88801931",
+      "tarball_sha256": "b80c5822e79040b35002cc9afd6ac1d407ef6950afc29610ccf1dac0d077a45b",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_solidity"],
+      "scanner": false,
+      "generate": false,
+      "abi": 14,
+      "blob_sha256": "f104916b6ca7e691568f47beec8227a40d2f1339e66bde42956000621f508ba7",
+      "blob_bytes": 353063,
+      "gz_bytes": 104112
     },
     {
       "blob": "sql",

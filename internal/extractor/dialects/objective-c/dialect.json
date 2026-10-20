@@ -1,0 +1,56 @@
+{
+  "id": "objective-c",
+  "display": "Objective-C (.m .mm, .h by sniff)",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "objc",
+  "match": {
+    "extensions": [".mm"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": {
+      "extensions": [".m"],
+      "pattern": "^\\s*(@(interface|protocol|implementation|class|import)\\b|#import\\b)",
+      "priority": 0,
+      "scan_bytes": 16384
+    }
+  },
+  "grammar": { "blob": "objective-c", "entry_point": "tree_sitter_objc" },
+  "variants": [],
+  "queries": { "tags": "tags.scm", "imports": "imports.scm", "references": "references.scm" },
+  "kinds": {
+    "interface":      { "source_kind": "ObjCInterface",      "canonical": "class",      "container": true },
+    "implementation": { "source_kind": "ObjCImplementation", "canonical": "class",      "container": true },
+    "category":       { "source_kind": "ObjCCategory",       "canonical": "mixin",      "container": true },
+    "protocol":       { "source_kind": "ObjCProtocol",       "canonical": "interface",  "container": true },
+    "method":         { "source_kind": "ObjCMethod",         "canonical": "method",     "callable": true },
+    "class_method":   { "source_kind": "ObjCClassMethod",    "canonical": "method",     "callable": true },
+    "property":       { "source_kind": "ObjCProperty",       "canonical": "property" },
+    "ivar":           { "source_kind": "ObjCIvar",           "canonical": "field" },
+    "function":       { "source_kind": "ObjCFunc",           "canonical": "function",   "callable": true },
+    "struct":         { "source_kind": "ObjCStruct",         "canonical": "struct",     "container": true },
+    "union":          { "source_kind": "ObjCUnion",          "canonical": "union",      "container": true },
+    "enum":           { "source_kind": "ObjCEnum",           "canonical": "enum" },
+    "typedef":        { "source_kind": "ObjCTypedef",        "canonical": "type_alias", "container": true },
+    "macro":          { "source_kind": "ObjCMacro",          "canonical": "macro" },
+    "field":          { "source_kind": "ObjCField",          "canonical": "field" },
+    "enumerator":     { "source_kind": "ObjCEnumerator",     "canonical": "enum_member" },
+    "variable":       { "source_kind": "ObjCVariable",       "canonical": "variable" }
+  },
+  "required_kinds": ["interface", "implementation", "protocol", "method", "class_method", "property", "function", "struct", "enum", "typedef", "macro"],
+  "oracle_kinds": {
+    "ctags": { "interface": "class", "implementation": "class", "protocol": "interface", "method": "method",
+               "class": "method", "property": "property", "function": "function", "struct": "struct",
+               "enum": "enum", "typedef": "type_alias", "macro": "macro" }
+  },
+  "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
+  "ctags": { "languages": ["ObjectiveC"] },
+  "name_match": "selector",
+  "preprocess": "objc-macros",
+  "package": { "strategy": "file" },
+  "imports": { "strategy": "include-path" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "objective-c"
+}

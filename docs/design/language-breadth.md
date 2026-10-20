@@ -1369,14 +1369,15 @@ are not read.
 
 `connector.classify` consults the manifests in this order (LB-F9): exact basename, path
 glob, extension, shebang (first line, for extensionless scripts), then — only for an
-extension more than one dialect claims — `match.sniff` (a regex over the first 1 KiB,
-evaluated in manifest `sniff.priority` order). The ambiguous extensions this program
+extension more than one dialect claims — `match.sniff` (a regex over the first 1 KiB, or the
+rule's own `scan_bytes` window up to 64 KiB for a language whose files open with a long licence
+header, evaluated in manifest `sniff.priority` order). The ambiguous extensions this program
 must settle, and their sniffs:
 
 | Extension | Candidates | Sniff rule, in order |
 |---|---|---|
-| `.m` | Objective-C, MATLAB | `@interface\|@implementation\|#import` → objc; `^\s*function\b\|^\s*%` → matlab; else objc when a sibling `.h` exists, else unclassified |
-| `.h` | C, C++, Objective-C | existing CT-3 router, extended with `@interface` → objc |
+| `.m` | Objective-C, MATLAB | `^\s*(@(interface\|protocol\|implementation\|class\|import)\b\|#import\b)` over the first 16 KiB (`scan_bytes`, AFNetworking's licence headers pass 1 KiB, O1415) → objc; `^\s*function\b\|^\s*%` → matlab; else unclassified (shipped: no sibling-`.h` guess) |
+| `.h` | C, C++, Objective-C | existing CT-3 router (`extractor.HeaderDialect`), objc first: `@interface`, `@protocol` or `@implementation` in the code, or an `#import` with no C++ signal; else C++ on a C++ signal, else C |
 | `.v` | Verilog, Coq, V | `\bmodule\b.*;` → verilog; `\b(Theorem\|Lemma\|Proof)\b` → coq (not queued, unclassified); `\bfn\s+\w+\(` → unclassified |
 | `.pl` | Perl, Prolog | `^#!.*perl\|\buse\s+(strict\|warnings)\b\|\bsub\s+\w+` → perl; `:-` → prolog |
 | `.fs` | F#, GLSL fragment | `\b(let\|module\|open)\b` → fsharp; `#version\|gl_FragColor` → glsl |

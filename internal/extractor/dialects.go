@@ -171,6 +171,10 @@ type DialectSniff struct {
 	Extensions []string `json:"extensions"`
 	Pattern    string   `json:"pattern"`
 	Priority   int      `json:"priority"`
+	// ScanBytes widens the window the pattern sees past the default 1 KiB,
+	// for a language whose files open with a long licence header
+	// (Objective-C); 0 is the default.
+	ScanBytes int `json:"scan_bytes,omitempty"`
 }
 
 // DialectGrammar names the tsengine blob and its default entry point.
@@ -571,8 +575,8 @@ func checkDialect(fsys fs.FS, dir string, d Dialect) error {
 			return fmt.Errorf("kind %q: empty source_kind", key)
 		}
 	}
-	if d.NameMatch != "" && d.NameMatch != "bare" && d.NameMatch != "identity" {
-		return fmt.Errorf("name_match %q is not bare or identity", d.NameMatch)
+	if d.NameMatch != "" && d.NameMatch != "bare" && d.NameMatch != "identity" && d.NameMatch != "selector" {
+		return fmt.Errorf("name_match %q is not bare, identity or selector", d.NameMatch)
 	}
 	for _, rk := range d.RequiredKinds {
 		found := false

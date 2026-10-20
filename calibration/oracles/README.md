@@ -56,12 +56,14 @@ scores the pairs into `xref_precision`/`xref_recall` at the file's tier.
 | graphql-js/ | A (definitions, references, cross_references) | GraphQL |
 | opa-parse/ | A (definitions, calls, imports) | Rego |
 | cedar/ | A (definitions, schema references, the governed scope as cross_references; lines located by the writer) | Cedar |
+| solc-ast/ | A (definitions and calls: the compiler's AST and `referencedDeclaration`) | Solidity |
 | ts-tags/ | C | Bash, Lua, Luau, R and Ruby (calls); Scala (a calls cross-check) |
 | ppi-calls/ | C | Perl (calls, by PPI) |
 | sqlglot/ | C | SQL (foreign-key calls) |
 | make/ | A (references), B (definitions) | Makefile |
 | ruby-require/ | B (imports) | Ruby |
 | clang-includes/ | B (imports) | C, C++ |
+| clang-objc/ | B (calls, imports, cross-file references, definition ranges; the include roots are the run's) | Objective-C |
 | parse5/ | A (definitions with ends, W1 ID references as calls, ruling W1) | HTML |
 | lychee/ | A (imports: local link targets it attests) | HTML |
 | lightningcss/ | A for what it attests (W2, design 1.8): definitions (selectors, @keyframes, custom properties; no end line), var() and animation-name pairs graded within each file's @import closure, the @import graph by its own bundler | CSS |
@@ -424,3 +426,10 @@ instantiation and definition stacks (tier A): the BUILD calls that created rules
 file behind each macro or rule they call. Usage, what it leaves out and `-scope-globs`: `bazel-query/README.md`. The
 Tiltfile (LB-Q-tiltfile) has no tool of its own: `ts-tags` with `starlark-tags.scm`, tree-sitter-python's tags query
 less its class pattern, written with `--as-references` (tier C, the cap is good; O1349).
+
+## prisma
+
+`prisma-dmmf/prisma_oracle.mjs` (item prisma, LB-Q-prisma) reads each schema folder with Prisma's schema engine
+(`@prisma/prisma-schema-wasm` 6.19, the module behind `getDMMF`, offline, tier A for names, fields and `@relation`
+lists) and a bracket-depth line scan for positions, cross-checked both ways. Usage and what it leaves out:
+`prisma-dmmf/README.md`.

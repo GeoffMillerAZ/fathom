@@ -1,0 +1,21 @@
+datasource db {
+  provider = "mongodb"
+  url      = env("MONGO_URL")
+}
+
+type Geo {
+  lat Float
+  lng Float
+}
+
+type Address {
+  street String
+  geo    Geo?
+}
+
+model Shop {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  address   Address
+  branches  Address[]
+}
