@@ -87,6 +87,10 @@ func resolveRegoPackage(env *resolveEnv, module string) []string {
 	return out
 }
 
-// wholeIsPackage: under rego-package a whole-module import names a package
-// that may span files, and binds its first file (see the file comment).
-func (r *importResolver) wholeIsPackage() bool { return r.strategy == "rego-package" }
+// wholeIsPackage: under rego-package and cue-module a whole-module import
+// names a package that may span files, and binds one of them (its first; under
+// cue-module one of its own directory's, wholeFile), whose re-export of its
+// package reaches the rest (see the file comment, and resolve_cuemodule.go's).
+func (r *importResolver) wholeIsPackage() bool {
+	return r.strategy == "rego-package" || r.strategy == "cue-module"
+}

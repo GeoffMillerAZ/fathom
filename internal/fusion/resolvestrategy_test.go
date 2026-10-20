@@ -300,6 +300,7 @@ func TestFileResolveLangsFromManifests(t *testing.T) {
 	want["cmake"], want["meson"] = "relative-path", "relative-path" // LB-Q-cmake, LB-Q-meson (wave cx): a line of its own, so the wave merges stay additive
 	// LB-F132 (wave pc): Rego data imports resolve by package.
 	want["rego"] = "rego-package"
+	want["cue"] = "cue-module"      // LB-F583 (wave lang8): a CUE import path to its package's files
 	want["bicep"] = "relative-path" // LB-Q-bicep (wave iac): a module path and an import resolve to the file
 	want["scala"] = "namespace-dir" // LB-F438 (wave lf4): Scala's imports.scm, "." between segments
 	want["scss"] = "relative-path"  // LB-F465 (wave lf5): @use, @forward and @import, with Sass's partial rule

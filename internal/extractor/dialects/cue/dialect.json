@@ -24,6 +24,7 @@
   },
   "name_match": "bare",
   "package": { "strategy": "capture" },
+  "imports": { "strategy": "cue-module" },
   "signature": { "max_chars": 200 },
   "target_level": "L4",
   "queue_id": "cue"

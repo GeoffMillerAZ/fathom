@@ -53,8 +53,10 @@ type xrefOracleEntry struct {
 // (fusion.ResolveIdentityXrefs) and each Lambda function's handler symbol
 // (fusion.ResolveLambdaHandlers over code, the subject's files read and
 // extracted as ingest dispatches them); a handler's own counts are returned
-// as a note.
-func scoreXrefOracle(path string, doc extractor.DocResulter, service string, files []core.SourceFile, code fusion.LambdaCode, sub *langbench.Subject, inScope map[string]bool) (int, string, error) {
+// as a note. resolved, when the file resolver also serves the dialect (CUE,
+// LB-F583), is that pass's edges as references: scored beside the doc-xref
+// pass's into a note (fileResolvedXrefNote), never into the metrics.
+func scoreXrefOracle(path string, doc extractor.DocResulter, service string, files []core.SourceFile, code fusion.LambdaCode, resolved []langbench.XrefPair, sub *langbench.Subject, inScope map[string]bool) (int, string, error) {
 	entries, tier, err := readXrefOracle(path)
 	if err != nil || entries == nil {
 		return 0, "", err
@@ -94,10 +96,16 @@ func scoreXrefOracle(path string, doc extractor.DocResulter, service string, fil
 	langbench.ScoreXrefs(truth, found, sub.Counts)
 	sub.Families[langbench.FamilyXref] = tier
 	note := ""
+	if resolved != nil {
+		note = fileResolvedXrefNote(truth, found, resolved)
+	}
 	if len(handlerTruth) > 0 || st.Functions > 0 {
 		hc := map[string]int{}
 		langbench.ScoreXrefs(handlerTruth, handlerFound, hc)
-		note = fmt.Sprintf("Lambda handler bindings (LB-F370, in xref): %d functions declared, %d bound, unbound by reason %v; against the oracle's %d handler references, %d found (recall %s), %d of fathom's %d in the truth (precision %s)",
+		if note != "" {
+			note += "; "
+		}
+		note += fmt.Sprintf("Lambda handler bindings (LB-F370, in xref): %d functions declared, %d bound, unbound by reason %v; against the oracle's %d handler references, %d found (recall %s), %d of fathom's %d in the truth (precision %s)",
 			st.Functions, st.Bound, st.Unbound, hc[langbench.CntXrefTruth], hc[langbench.CntXrefTruthFound], ratioText(hc[langbench.CntXrefTruthFound], hc[langbench.CntXrefTruth]),
 			hc[langbench.CntXrefFathomInTrue], hc[langbench.CntXrefFathom], ratioText(hc[langbench.CntXrefFathomInTrue], hc[langbench.CntXrefFathom]))
 	}
@@ -305,4 +313,68 @@ func scoreFileXrefOracle(path string, fx *fileXrefs, sub *langbench.Subject, inS
 	langbench.ScoreXrefs(truth, fx.found, sub.Counts)
 	sub.Families[langbench.FamilyXref] = tier
 	return dropped, nil
+}
+
+// fileResolvedXrefPairs is the file resolver's edges over the subject (the
+// pass ingest stores file-resolved edges from) as entity-grain references:
+// each edge reaches every file declaring its target's key, as the store
+// resolves an edge to the symbols bearing its key (a CUE package clause is
+// one key for every file of the package in a directory). Nil when the pass
+// does not run.
+func fileResolvedXrefPairs(ctx context.Context, lang, root string, files []core.SourceFile, nodes []core.SymbolNode) []langbench.XrefPair {
+	edges, rep := fusion.ResolveFileEdges(ctx, lang, root, files, nodes)
+	if rep.Skipped {
+		return nil
+	}
+	byKey := make(map[string][]core.SymbolNode, len(nodes))
+	for _, n := range nodes {
+		byKey[n.Key()] = append(byKey[n.Key()], n)
+	}
+	out := []langbench.XrefPair{}
+	for _, e := range edges {
+		froms := byKey[e.FromSymbol]
+		var from string
+		for _, f := range froms {
+			if f.FilePath == e.FromFile {
+				from = f.Name
+			}
+		}
+		if from == "" {
+			continue
+		}
+		for _, to := range byKey[e.ToSymbol] {
+			if to.FilePath != e.FromFile {
+				out = append(out, langbench.XrefPair{Path: e.FromFile, From: from, ToPath: to.FilePath, To: to.Name})
+			}
+		}
+	}
+	return out
+}
+
+// fileResolvedXrefNote compares the file resolver's references with the
+// doc-xref pass's against one truth (LB-F583: ingest stores both passes'
+// edges): each pass's recall and precision, their union's recall, and how
+// many true references only the file resolver finds.
+func fileResolvedXrefNote(truth, docFound, resolved []langbench.XrefPair) string {
+	alone, union := map[string]int{}, map[string]int{}
+	langbench.ScoreXrefs(truth, resolved, alone)
+	langbench.ScoreXrefs(truth, append(append([]langbench.XrefPair(nil), docFound...), resolved...), union)
+	inTruth := map[langbench.XrefPair]bool{}
+	for _, p := range truth {
+		inTruth[p] = true
+	}
+	doc := map[langbench.XrefPair]bool{}
+	for _, p := range docFound {
+		doc[p] = true
+	}
+	only := map[langbench.XrefPair]bool{}
+	for _, p := range resolved {
+		if inTruth[p] && !doc[p] {
+			only[p] = true
+		}
+	}
+	return fmt.Sprintf("the file resolver's edges (the import strategy's pass, each edge reaching every file declaring its target key) against the same cross_references: %d of %d found (recall %s), %d of its %d in the truth (precision %s), %d true references the doc-xref pass does not find; both passes' union: recall %s",
+		alone[langbench.CntXrefTruthFound], alone[langbench.CntXrefTruth], ratioText(alone[langbench.CntXrefTruthFound], alone[langbench.CntXrefTruth]),
+		alone[langbench.CntXrefFathomInTrue], alone[langbench.CntXrefFathom], ratioText(alone[langbench.CntXrefFathomInTrue], alone[langbench.CntXrefFathom]),
+		len(only), ratioText(union[langbench.CntXrefTruthFound], union[langbench.CntXrefTruth]))
 }

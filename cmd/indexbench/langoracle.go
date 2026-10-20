@@ -51,10 +51,11 @@ const oracleTimeout = 20 * time.Minute
 //
 // C# and Java resolve through their namespace-dir manifests (LB-F64); C joins
 // C++ on the include-path strategy (LB-F80). Rego, native, resolves through
-// its own reader's import specs and the rego-package strategy (LB-F131).
+// its own reader's import specs and the rego-package strategy (LB-F131), CUE
+// through its own reader's and the cue-module strategy (LB-F583).
 // Kotlin joins them on namespace-dir (O474): its file edges are read from the
 // PSI dump's imports, tier B.
-var fileResolveLang = map[string]string{"typescript": "javascript", "javascript": "javascript", "python": "python", "c": "c", "cpp": "cpp", "php": "php", "rust": "rust", "ruby": "ruby", "dart": "dart", "csharp": "csharp", "java": "java", "kotlin": "kotlin", "rego": "rego", "scala": "scala", "css": "css", "scss": "scss"}
+var fileResolveLang = map[string]string{"typescript": "javascript", "javascript": "javascript", "python": "python", "c": "c", "cpp": "cpp", "php": "php", "rust": "rust", "ruby": "ruby", "dart": "dart", "csharp": "csharp", "java": "java", "kotlin": "kotlin", "rego": "rego", "scala": "scala", "css": "css", "scss": "scss", "cue": "cue"}
 
 // cmdLangOracle is `indexbench lang-oracle` (LB-F23, design §10): one
 // subject's measurement of one dialect, merged into the dialect's reading.
@@ -1083,7 +1084,11 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 		}
 		// ── LB-F30: cross-file references (langoracle_xref.go) ──
 		if doc, ok := with.(extractor.DocResulter); ok {
-			n, note, err := scoreXrefOracle(toolOracle, doc, service, srcFiles, lambdaCode(pipe, service, root, refs), &sub, inScope)
+			var resolved []langbench.XrefPair // LB-F583: a native doc dialect the file resolver also serves
+			if lang, ok := fileResolveLang[spec.Manifest.ID]; ok && spec.Manifest.Engine == "native" {
+				resolved = fileResolvedXrefPairs(ctx, lang, root, srcFiles, nodes)
+			}
+			n, note, err := scoreXrefOracle(toolOracle, doc, service, srcFiles, lambdaCode(pipe, service, root, refs), resolved, &sub, inScope)
 			if err != nil {
 				return res, err
 			}

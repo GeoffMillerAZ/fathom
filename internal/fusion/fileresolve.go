@@ -416,6 +416,9 @@ func newResolveIndex(r *importResolver, symbols []core.SymbolNode, fileSet map[s
 	if r.strategy == "global-name" && r.env != nil {
 		r.env.indexGlobalNames(symbols, r.defines) // the pass's definitions by name, once per pass
 	}
+	if r.strategy == "cue-module" && r.env != nil {
+		r.env.indexCUEPackages(symbols) // the pass's CUE packages, once per pass (LB-F583)
+	}
 	idx := &resolveIndex{
 		topLevel:  map[string]map[string]string{},
 		qualified: map[string]map[string]string{},
@@ -522,7 +525,7 @@ func (idx *resolveIndex) scopeOf(r *importResolver, x *exportIndex, path string,
 			} else if keys := r.aliasedType(idx.types, spec); len(keys) > 0 {
 				sc.typeAlias[spec.LocalName] = keys
 			} else if targets := r.wholeTargets(path, spec.Module, idx.declared); len(targets) == 1 || len(targets) > 1 && r.wholeIsPackage() {
-				sc.whole[spec.LocalName] = targets[0]
+				sc.whole[spec.LocalName] = r.wholeFile(targets)
 			}
 		case extractor.ImportWildcard:
 			if fs := r.declaredFiles(idx.declared, spec.Module); len(fs) > 0 {
@@ -1457,6 +1460,9 @@ func fileResolveIndex() {
 			return // the dialect registry failed to load: nothing resolves
 		}
 		for _, l := range langs {
+			if docXrefSupersedes(l.Lang) {
+				continue // its doc-xref pass stores every edge this pass would (LB-F583)
+			}
 			for _, e := range l.Extensions {
 				fileResolveByExt[e] = l.Lang
 			}

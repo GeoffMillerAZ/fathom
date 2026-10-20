@@ -49,6 +49,10 @@ func (idx *resolveIndex) moduleImportEdges(r *importResolver, path string, syms 
 			}
 			targets = slices.DeleteFunc(targets, func(f string) bool { return reached[f] })
 		}
+		if r.strategy == "cue-module" {
+			edges = idx.appendPackageEdges(edges, path, from, targets) // LB-F583: to each loaded file's package clause
+			continue
+		}
 		edges = idx.appendModuleEdges(edges, path, from, targets)
 	}
 	// A re-export of a module (`export * from "./a"`, `export { B } from

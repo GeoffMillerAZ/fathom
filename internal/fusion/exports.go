@@ -16,6 +16,7 @@ package fusion
 
 import (
 	"sort"
+	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
@@ -30,6 +31,11 @@ type exportEdge struct {
 	name    string   // the name in targets; "" for every name
 	as      string   // the name it is visible under ("" = name)
 	hide    map[string]bool
+	// flat: a package's own re-export (cue-module's ".:name", LB-F583) names
+	// its targets' top-level definitions only, never what they re-export:
+	// every file of the package re-exports the same files, so following them
+	// would walk the package once per path through it.
+	flat bool
 }
 
 // exportIndex is every file's re-exports, resolved lazily.
@@ -89,7 +95,7 @@ func (x *exportIndex) of(file string) []exportEdge {
 		} else if targets = x.r.resolveUse(file, s.Module); len(targets) == 0 {
 			continue
 		}
-		e := exportEdge{targets: targets, name: s.Name, as: s.As}
+		e := exportEdge{targets: targets, name: s.Name, as: s.As, flat: x.r.strategy == "cue-module" && strings.HasPrefix(s.Module, ".:")}
 		if len(s.Hide) > 0 {
 			e.hide = map[string]bool{}
 			for _, h := range s.Hide {
@@ -155,7 +161,15 @@ func (x *exportIndex) lookupIn(file, name string, depth int, seen map[string]boo
 				}
 				continue
 			}
-			h, ok := x.lookupIn(t, inner, depth-1, seen)
+			var h exportHit
+			var ok bool
+			if e.flat {
+				var key string
+				key, ok = x.topLevel[t][inner]
+				h = exportHit{key, t}
+			} else {
+				h, ok = x.lookupIn(t, inner, depth-1, seen)
+			}
 			if !ok {
 				continue
 			}
