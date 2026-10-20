@@ -378,11 +378,19 @@ const (
 
 // Readouts is `[readouts]` (RO-15, ADR-071): user-only keys the readout
 // hook will read (RO-16). Mode is ReadoutsOff unless the user's layer sets
-// it; Roots empty means every root; Rules holds per-rule mode overrides.
+// it; Roots empty means every root; QuietPrefixes are extra quiet heads a
+// command is read past (RO-28), each a command name or its leading words;
+// Rules holds per-rule mode overrides.
 type Readouts struct {
-	Mode  string
-	Roots []string
-	Rules map[string]ReadoutRule
+	Mode          string
+	Roots         []string
+	QuietPrefixes []string
+	Rules         map[string]ReadoutRule
+	// Trust lists the sha256 (lowercase hex) of each repository
+	// `.fathom/readouts.toml` the user trusts (RO-33): a listed file's
+	// rules run in the configured mode, an unlisted or changed one stays
+	// in observe. User-only.
+	Trust []string
 }
 
 // ReadoutRule is one `[readouts.rules.<id>]` table.

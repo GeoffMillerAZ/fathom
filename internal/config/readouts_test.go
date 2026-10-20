@@ -8,6 +8,7 @@ package config
 import (
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -27,12 +28,12 @@ func TestReadoutsFieldsAreUserOnly(t *testing.T) {
 	})
 
 	t.Run("user layer sets them", func(t *testing.T) {
-		writeTOML(t, user, "[readouts]\nmode = \"lean\"\nroots = [\"/w/a\", \"/w/b\"]\n[readouts.rules.ls-long]\nmode = \"observe\"\n")
+		writeTOML(t, user, "[readouts]\nmode = \"lean\"\nroots = [\"/w/a\", \"/w/b\"]\nquiet_prefixes = [\"nvm\", \"direnv exec\"]\n[readouts.rules.ls-long]\nmode = \"observe\"\n")
 		loaded, err := Load(user, "")
 		if err != nil {
 			t.Fatal(err)
 		}
-		want := Readouts{Mode: "lean", Roots: []string{"/w/a", "/w/b"}, Rules: map[string]ReadoutRule{"ls-long": {Mode: "observe"}}}
+		want := Readouts{Mode: "lean", Roots: []string{"/w/a", "/w/b"}, QuietPrefixes: []string{"nvm", "direnv exec"}, Rules: map[string]ReadoutRule{"ls-long": {Mode: "observe"}}}
 		if !reflect.DeepEqual(loaded.Config.Readouts, want) {
 			t.Errorf("Readouts = %+v, want %+v", loaded.Config.Readouts, want)
 		}
@@ -43,7 +44,7 @@ func TestReadoutsFieldsAreUserOnly(t *testing.T) {
 
 	t.Run("repository layer is dropped and named", func(t *testing.T) {
 		writeTOML(t, user, "[readouts]\nmode = \"observe\"\n[readouts.rules.ls-long]\nmode = \"lean\"\n")
-		writeTOML(t, proj, "[readouts]\nmode = \"rich\"\nroots = [\"/x\"]\n[readouts.rules.ls-long]\nmode = \"rich\"\n[readouts.rules.other]\nmode = \"lean\"\n[decide]\nmodel = \"m\"\n")
+		writeTOML(t, proj, "[readouts]\nmode = \"rich\"\nroots = [\"/x\"]\nquiet_prefixes = [\"make\"]\n[readouts.rules.ls-long]\nmode = \"rich\"\n[readouts.rules.other]\nmode = \"lean\"\n[decide]\nmodel = \"m\"\n")
 		loaded, err := Load(user, proj)
 		if err != nil {
 			t.Fatal(err)
@@ -56,7 +57,7 @@ func TestReadoutsFieldsAreUserOnly(t *testing.T) {
 		for _, ig := range loaded.IgnoredKeySources {
 			fields = append(fields, ig.Field)
 		}
-		wantFields := []string{"readouts.mode", "readouts.roots", "readouts.rules.ls-long.mode", "readouts.rules.other.mode"}
+		wantFields := []string{"readouts.mode", "readouts.quiet_prefixes", "readouts.roots", "readouts.rules.ls-long.mode", "readouts.rules.other.mode"}
 		if !reflect.DeepEqual(fields, wantFields) {
 			t.Errorf("IgnoredKeySources fields = %v, want %v", fields, wantFields)
 		}
@@ -73,6 +74,26 @@ func TestReadoutsFieldsAreUserOnly(t *testing.T) {
 		}
 		if loaded.Config.Readouts.Mode != ReadoutsOff || len(loaded.IgnoredKeySources) != 1 {
 			t.Errorf("Readouts = %+v, ignored = %+v", loaded.Config.Readouts, loaded.IgnoredKeySources)
+		}
+	})
+
+	t.Run("trust is user-only", func(t *testing.T) {
+		h := strings.Repeat("ab", 32)
+		writeTOML(t, user, "[readouts]\ntrust = [\""+h+"\"]\n")
+		writeTOML(t, proj, "[readouts]\ntrust = [\""+strings.Repeat("cd", 32)+"\"]\n")
+		loaded, err := Load(user, proj)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(loaded.Config.Readouts.Trust, []string{h}) {
+			t.Errorf("Trust = %v, want the user's alone", loaded.Config.Readouts.Trust)
+		}
+		var fields []string
+		for _, ig := range loaded.IgnoredKeySources {
+			fields = append(fields, ig.Field)
+		}
+		if !reflect.DeepEqual(fields, []string{"readouts.trust"}) {
+			t.Errorf("IgnoredKeySources fields = %v, want [readouts.trust]", fields)
 		}
 	})
 }

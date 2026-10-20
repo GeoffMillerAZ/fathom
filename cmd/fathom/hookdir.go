@@ -24,8 +24,9 @@ import (
 // hookEffectiveDir is the directory one tool call acts in. A file tool's
 // call (filePath set) acts in the file's directory; a shell command acts in
 // the target of its first `cd <dir>` or `pushd <dir>` when that is the
-// first segment after RO-28's quiet prefixes (replayQuiet: an assignment
-// alone, export, set, source, ., tccutil reset, sleep N, mkdir -p);
+// first segment after RO-28's quiet prefixes (replayQuiet over readout.IsQuiet:
+// cd, export, mkdir -p, sleep N, an assignment alone, set, source, ., tccutil
+// reset);
 // anything else acts in cwd. A relative target resolves against cwd
 // through resolveBashDir. An unreadable command, a target the shell would
 // compute (a variable, a command substitution), a cd the parser cannot
@@ -75,7 +76,7 @@ func leadingCdTarget(command string) (string, bool) {
 		if t, isCd, ok := cdSegmentTarget(p); isCd {
 			return t, ok
 		}
-		if !replayQuiet(p) {
+		if !replayQuiet(p, nil) {
 			return "", false
 		}
 	}

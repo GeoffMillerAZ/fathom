@@ -47,6 +47,7 @@ func checkReadouts(root string) doctorCheck {
 		parts = append(parts, "rules did not load: "+oneLine(err.Error()))
 		status = doctorWarn
 	} else {
+		readout.LoadRepoRules(rs, root, cfg.Trust)
 		parts = append(parts, fmt.Sprintf("%d rules loaded, %d refused", len(rs.Rules), len(rs.Refused)))
 		for _, rf := range rs.Refused {
 			id := rf.ID
@@ -58,6 +59,13 @@ func checkReadouts(root string) doctorCheck {
 		if len(rs.Refused) > 0 {
 			status = doctorWarn
 			remedy = "fathom readout test <rule file>"
+		}
+		if rf := rs.Repo; rf != nil && !rf.Trusted {
+			parts = append(parts, fmt.Sprintf("%s sha256 %s not trusted", rf.Path, rf.SHA))
+			status = doctorWarn
+			if remedy == "" {
+				remedy = "list the sha256 under [readouts] trust in ~/.fathom/config.toml to run the file's rules"
+			}
 		}
 	}
 

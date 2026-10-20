@@ -384,10 +384,17 @@ package config
 	// roots: the directory prefixes under which observe, lean and rich
 	// apply; every root when unset.
 	roots?: [...(string & !="")]
+	// quiet_prefixes: extra quiet heads (RO-28), each a command name or its
+	// leading words; a command's leading `&&`-joined segments that run one
+	// are read past, like `cd` and `export`.
+	quiet_prefixes?: [...(string & !="")]
 	// rules.<id>.mode overrides mode for one rule.
 	rules?: [string]: {
 		mode?: #ReadoutMode
 	}
+	// trust: the sha256 (lowercase hex) of each repository
+	// `.fathom/readouts.toml` the user trusts (RO-33). User-only.
+	trust?: [...(string & =~"^[0-9a-f]{64}$")]
 }
 
 #ReadoutMode: "off" | "observe" | "lean" | "rich"
