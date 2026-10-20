@@ -35,3 +35,13 @@
   qualified types in fields, arguments, throws and returns, a multi-line function signature, a `oneway` function, services
   extending a qualified and an unqualified service, an empty service) and `broken.thrift` (a field with no name: the
   declarations on both sides of it still extract). `internal/fusion/testdata/thriftfixture` pins the L3 contract.
+- **Measurement (docs/bench/readings/lang/thrift.json, calibration/corpus.d/thrift.yaml):** the Apache Thrift compiler 0.24.0
+  (tier A for the definition and reference sets, `calibration/oracles/thrift-json`; positions and typedef-name references are
+  its scanner's, held to the compiler file by file) on apache/thrift v0.24.0 (187 of 195 files: the compiler rejects 8) and
+  jaegertracing/jaeger-idl v0.14.0 (4 files): `level_met` L3, L1, L2 and L3 excellent (sym_recall and sym_precision 1 over
+  6,832 definitions, ref_recall and ref_precision 1 over 2,242 pairs, xref_precision 1 and xref_recall .9574, 45 of 47
+  cross-file references). The two misses: a name two included files both define (O1443) and a lower-case type name.
+  universal-ctags 6.2.1 (tier B, unscored) matches 6,254 of the dialect's 6,796 definitions over all 195 apache/thrift
+  files; the rest are namespaces (ctags names one by its value, the dialect by its scope), consts and fields ctags does
+  not tag. Holdout apache/impala 4.5.2 (pinned in the dialect's commit, read once): L3 excellent, xref .9839 over 124.
+- Dispatch: `connector.extClassMap` classifies `.thrift` as `thrift` (new, no incumbent).

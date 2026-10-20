@@ -1,0 +1,209 @@
+{
+  "dialect": "thrift",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "excellent",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-20",
+  "fathom_commit": "9c3cf0ef2",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "apache/thrift",
+      "sha": "6d2ec95f450b4ce404afb8929ff479e68770141a",
+      "files": 187,
+      "bytes": 501824,
+      "counts": {
+        "callables": 5418,
+        "callables_signed": 5418,
+        "fathom_defs": 6680,
+        "kind_equal": 6680,
+        "matched": 6680,
+        "oracle_defs": 6680,
+        "range_eligible": 6680,
+        "range_ok": 6680,
+        "ref_fathom": 2217,
+        "ref_fathom_in_truth": 2217,
+        "ref_truth": 2217,
+        "ref_truth_found": 2217,
+        "xref_fathom": 44,
+        "xref_fathom_in_truth": 44,
+        "xref_truth": 45,
+        "xref_truth_found": 44
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "class",
+        "constant",
+        "enum",
+        "enum_member",
+        "field",
+        "namespace",
+        "rpc",
+        "service",
+        "struct",
+        "type_alias",
+        "union"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 83.28799999999995,
+        "extract_cpu_ms": 86.672,
+        "max_file_ms": 3,
+        "peak_module_pages": 282,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "jaegertracing/jaeger-idl",
+      "sha": "4f6fc86c5b9e20e15f82a8f9c0033563c20ec445",
+      "files": 4,
+      "bytes": 21677,
+      "counts": {
+        "callables": 109,
+        "callables_signed": 109,
+        "fathom_defs": 152,
+        "kind_equal": 152,
+        "matched": 152,
+        "oracle_defs": 152,
+        "range_eligible": 152,
+        "range_ok": 152,
+        "ref_fathom": 25,
+        "ref_fathom_in_truth": 25,
+        "ref_truth": 25,
+        "ref_truth_found": 25,
+        "xref_fathom": 1,
+        "xref_fathom_in_truth": 1,
+        "xref_truth": 2,
+        "xref_truth_found": 1
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "class",
+        "constant",
+        "enum",
+        "enum_member",
+        "field",
+        "namespace",
+        "rpc",
+        "service",
+        "struct",
+        "type_alias",
+        "union"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 1.6759999999999997,
+        "extract_cpu_ms": 1.703,
+        "max_file_ms": 0,
+        "peak_module_pages": 277,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "thrift",
+      "version": "0.24.0"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": 1,
+    "xref_recall": 0.9574
+  },
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A",
+    "xref_precision": "A",
+    "xref_recall": "A"
+  },
+  "required_kinds": [
+    "class",
+    "constant",
+    "enum",
+    "enum_member",
+    "field",
+    "namespace",
+    "rpc",
+    "service",
+    "struct",
+    "type_alias",
+    "union"
+  ],
+  "kind_intersection": [
+    "class",
+    "constant",
+    "enum",
+    "enum_member",
+    "field",
+    "namespace",
+    "rpc",
+    "service",
+    "struct",
+    "type_alias",
+    "union"
+  ],
+  "counts": {
+    "callables": 5527,
+    "callables_signed": 5527,
+    "fathom_defs": 6832,
+    "kind_equal": 6832,
+    "matched": 6832,
+    "oracle_defs": 6832,
+    "range_eligible": 6832,
+    "range_ok": 6832,
+    "ref_fathom": 2242,
+    "ref_fathom_in_truth": 2242,
+    "ref_truth": 2242,
+    "ref_truth_found": 2242,
+    "xref_fathom": 45,
+    "xref_fathom_in_truth": 45,
+    "xref_truth": 47,
+    "xref_truth_found": 45
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 0,
+    "throughput_mb_s": 5.92,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 6.16,
+    "max_file_ms": 3,
+    "peak_module_pages": 282,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "apache/thrift: restricted to contrib/Rebus/sample.thrift, contrib/async-test/aggr.thrift, contrib/fb303/if/fb303.thrift, contrib/thrift-maven-plugin/src/test/resources/idl/shared.thrift, contrib/thrift-maven-plugin/src/test/resources/idl/tutorial.thrift, contrib/transport-sample/Sample.thrift, contrib/zeromq/storage.thrift, lib/c_glib/test/ContainerTest.thrift, lib/cpp/test/OneWayTest.thrift, lib/cpp/test/Thrift5272.thrift, lib/cpp/test/processor/proc.thrift, lib/delphi/test/keywords/ReservedIncluded.thrift, lib/delphi/test/keywords/ReservedKeywords.thrift, lib/delphi/test/serializer/SimpleException.thrift, lib/delphi/test/skip/idl/skiptest_version_1.thrift, lib/delphi/test/skip/idl/skiptest_version_2.thrift, lib/erl/test/Thrift1151.thrift, lib/erl/test/Thrift1475.thrift, lib/erl/test/Thrift_omit_with.thrift, lib/erl/test/flags/LegacyNames.thrift, lib/erl/test/flags/Thrift3214.thrift, lib/erl/test/multiplexing.thrift, lib/go/test/BinaryKeyTest.thrift, lib/go/test/ClientMiddlewareExceptionTest.thrift, lib/go/test/ConflictArgNamesTest.thrift, lib/go/test/ConflictNamespaceServiceTest.thrift, lib/go/test/ConflictNamespaceTestA.thrift, lib/go/test/ConflictNamespaceTestB.thrift, lib/go/test/ConflictNamespaceTestC.thrift, lib/go/test/ConflictNamespaceTestD.thrift, lib/go/test/ConflictNamespaceTestE.thrift, lib/go/test/ConflictNamespaceTestF.thrift, lib/go/test/ConflictNamespaceTestSuperThing.thrift, lib/go/test/ConstOptionalField.thrift, lib/go/test/ConstOptionalFieldImport.thrift, lib/go/test/DontExportRWTest.thrift, lib/go/test/DuplicateImportsTest.thrift, lib/go/test/EqualsTest.thrift, lib/go/test/ErrorTest.thrift, lib/go/test/ForwardType.thrift, lib/go/test/GoTagTest.thrift, lib/go/test/IgnoreInitialismsTest.thrift, lib/go/test/InitialismsTest.thrift, lib/go/test/MultiplexedProtocolTest.thrift, lib/go/test/NamesTest.thrift, lib/go/test/OnewayTest.thrift, lib/go/test/OptionalFieldsTest.thrift, lib/go/test/ProcessorMiddlewareTest.thrift, lib/go/test/RefAnnotationFieldsTest.thrift, lib/go/test/RequiredFieldTest.thrift, lib/go/test/ServicesTest.thrift, lib/go/test/StringParseAllocationTest.thrift, lib/go/test/TypedefFieldTest.thrift, lib/go/test/UnionBinaryTest.thrift, lib/go/test/UnionDefaultValueTest.thrift, lib/go/test/ValidateTest.thrift, lib/go/test/common/a.thrift, lib/go/test/common/b.thrift, lib/java/src/test/resources/JavaAnnotationTest.thrift, lib/java/src/test/resources/JavaBeansTest.thrift, lib/java/src/test/resources/JavaBinaryDefault.thrift, lib/java/src/test/resources/JavaDeepCopyTest.thrift, lib/java/src/test/resources/JavaDefinitionOrderA.thrift, lib/java/src/test/resources/JavaDefinitionOrderB.thrift, lib/java/src/test/resources/JavaOptionTypeJdk8Test.thrift, lib/java/src/test/resources/JavaTypes.thrift, lib/javame/test/RecursionDepth.thrift, lib/kotlin/src/test/resources/AnnotationTest.thrift, lib/kotlin/src/test/resources/RecursionDepthTest.thrift, lib/lua/test/RecursionDepth.thrift, lib/netstd/Tests/Thrift.Compile.Tests/CassandraTest.thrift, lib/netstd/Tests/Thrift.Compile.Tests/Thrift5253.thrift, lib/netstd/Tests/Thrift.Compile.Tests/Thrift5320.enum.thrift, lib/netstd/Tests/Thrift.Compile.Tests/Thrift5320.exception.thrift, lib/netstd/Tests/Thrift.Compile.Tests/Thrift5320.struct.thrift, lib/netstd/Tests/Thrift.Compile.Tests/Thrift5320.thrift, lib/netstd/Tests/Thrift.Compile.Tests/Thrift5382.objs.thrift, lib/netstd/Tests/Thrift.Compile.Tests/Thrift5382.thrift, lib/netstd/Tests/Thrift.Compile.Tests/Thrift5794.thrift, lib/netstd/Tests/Thrift.Compile.Tests/Thrift5795.thrift, lib/netstd/Tests/Thrift.Compile.Tests/name_conflicts.enum.thrift, lib/netstd/Tests/Thrift.Compile.Tests/name_conflicts.thrift, lib/netstd/Tests/Thrift.Compile.Tests/optional_required_default.thrift, lib/nodejs/examples/hello.thrift, lib/nodejs/examples/user.thrift, lib/perl/t/RecursionDepth.thrift, lib/php/test/Resources/RecursionDepth.thrift, lib/php/test/Resources/ThriftTest.thrift, lib/py/test/test_compiler/Thrift5927.thrift, lib/py/test/test_thrift_file/TestServer.thrift, lib/rb/benchmark/Benchmark.thrift, lib/rb/spec/BaseService.thrift, lib/rb/spec/ExtendedService.thrift, lib/rb/spec/Referenced.thrift, lib/rb/spec/ThriftNamespacedSpec.thrift, lib/rb/spec/ThriftSpec.thrift, lib/rs/test/thrifts/Base_One.thrift, lib/rs/test/thrifts/Base_Two.thrift, lib/rs/test/thrifts/Midlayer.thrift, lib/rs/test/thrifts/Ultimate.thrift, lib/rs/test_recursive/src/Vehicles.thrift, lib/rs/test_recursive/src/transit/Trains.thrift, lib/rs/test_recursive/src/transit/services/CityServices.thrift, lib/st/test/RecursionDepthTest.thrift, test/AnnotationTest.thrift, test/ConstantsDemo.thrift, test/DebugProtoTest.thrift, test/DenseLinkingTest.thrift, test/DocTest.thrift, test/DoubleConstantsTest.thrift, test/EnumContainersTest.thrift, test/EnumTest.thrift, test/ExceptionStruct.thrift, test/FullCamelTest.thrift, test/FuzzTest.thrift, test/Identifiers.thrift, test/Include.thrift, test/Int64Test.thrift, test/JsDeepConstructorTest.thrift, test/JsRecursionDepthTest.thrift, test/ManyOptionals.thrift, test/ManyTypedefs.thrift, test/NameConflictTest.thrift, test/OptionalRequiredTest.thrift, test/Recursive.thrift, test/ReuseObjects.thrift, test/Service.thrift, test/SmallTest.thrift, test/SpecificNameTest.thrift, test/StressTest.thrift, test/ThriftTest.thrift, test/TypedefTest.thrift, test/Types.thrift, test/UnsafeTypes.thrift, test/VoidMethExceptionsTest.thrift, test/audit/break1.thrift, test/audit/break10.thrift, test/audit/break11.thrift, test/audit/break12.thrift, test/audit/break13.thrift, test/audit/break14.thrift, test/audit/break15.thrift, test/audit/break16.thrift, test/audit/break17.thrift, test/audit/break18.thrift, test/audit/break19.thrift, test/audit/break2.thrift, test/audit/break20.thrift, test/audit/break21.thrift, test/audit/break22.thrift, test/audit/break23.thrift, test/audit/break24.thrift, test/audit/break25.thrift, test/audit/break26.thrift, test/audit/break27.thrift, test/audit/break28.thrift, test/audit/break29.thrift, test/audit/break3.thrift, test/audit/break30.thrift, test/audit/break31.thrift, test/audit/break32.thrift, test/audit/break33.thrift, test/audit/break34.thrift, test/audit/break4.thrift, test/audit/break5.thrift, test/audit/break6.thrift, test/audit/break7.thrift, test/audit/break8.thrift, test/audit/break9.thrift, test/audit/test.thrift, test/audit/warning.thrift, test/delphi/UuidV8Test.thrift, test/partial/thrift_test_schema.thrift, test/py/explicit_module/shared_types.thrift, test/py/explicit_module/test1.thrift, test/py/explicit_module/test2.thrift, test/py/explicit_module/test3.thrift, test/py/explicit_module/test4.thrift, test/py/explicit_module/test5.thrift, test/threads/ThreadsTest.thrift, test/v0.16/ConstantsDemo.thrift, test/v0.16/DebugProtoTest.thrift, test/v0.16/FuzzTestNoUuid.thrift, test/v0.16/NameConflictTest.thrift, test/v0.16/ThriftTest.thrift, tutorial/shared.thrift, tutorial/tutorial.thrift (-only; the files outside are a disclosed gap, not measured)",
+    "jaegertracing/jaeger-idl: restricted to thrift/agent.thrift, thrift/jaeger.thrift, thrift/sampling.thrift, thrift/zipkincore.thrift (-only; the files outside are a disclosed gap, not measured)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "xref_precision and xref_recall of a tags-engine tool format score the file resolver's file-resolved edges (fusion.ResolveFileEdges over the dialect's import strategy, the edges ingest stores) against the oracle's cross_references at file granularity: (file, referring definition, referenced file), the referenced definition's name not compared (LB-F56)",
+    "universal-ctags 6.2.1 (tier B, unscored second oracle) over all 195 apache/thrift files: 6,254 of the dialect's 6,796 definitions match at equal kind and within two lines (ctags reports 6,480). The dialect-only 542 are 234 namespaces (ctags names a namespace by its value, the dialect by its scope), 225 consts and 68 fields ctags does not tag, 15 others; the ctags-only 226 are 223 namespaces and 3 enum values ctags mis-tokenizes (hex-style names).",
+    "thrift --gen json carries no source positions and writes a typedef's target where a member names the typedef: calibration/oracles/thrift-json places declarations and type names with its own scanner and refuses a file unless the scanner equals the compiler's definitions and non-typedef references (see its README). apache/thrift: 8 files the compiler rejects (include no root holds, BrokenConstants.thrift, a Rust test's missing includes) contribute nothing."
+  ],
+  "disposition": "met: target L3, met L3 excellent (wave lang7, fathom 9c3cf0ef2) on apache/thrift v0.24.0 (187 of 195 files: the compiler rejects 8) and jaegertracing/jaeger-idl v0.14.0 (4 files): L1 excellent (sym_recall 1, sym_precision 1, 6,832 definitions, 6,832 of 6,832 ranges), L2 excellent (ref_recall 1, ref_precision 1, 2,242 pairs), L3 excellent (xref_precision 1, xref_recall .9574, 45 of 47 cross-file references) against the Apache Thrift compiler 0.24.0 (tier A for the definition and reference sets; positions and typedef-name references are the harness scanner's, held to the compiler file by file). The 2 missed cross-file references: a name two included files both define (jaeger-idl's agent.thrift includes jaeger.thrift and zipkincore.thrift, which each define Span: the file resolver binds a qualified type through the names the includes bring into scope and no file-symbol parameter reads the qualifier, so an ambiguous name binds nothing, never the wrong file, O1443) and a type whose name starts in lower case (apache/thrift's test/py/explicit_module/test2.thrift names test1.astruct: the resolver keeps a wildcard-bound name only when it starts upper case). Holdout (apache/impala 4.5.2, pinned before any reading, read once): docs/bench/readings/lang/holdout/thrift.json."
+}

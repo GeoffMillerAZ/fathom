@@ -68,6 +68,11 @@ var typedEdgeProducers = map[string]string{
 	// as a .bzl file's are (TestIngest_BazelLoadsAreStored).
 	"bazel": "file",
 
+	// thrift (LB-Q-thrift): an include resolves to the file that defines it (the file-symbol strategy, beside the
+	// including file first) and a qualified type (shared.Money) binds to the type that file defines, at file granularity
+	// (TestResolveFileEdges_ThriftIncludes).
+	"thrift": "file",
+
 	// tiltfile (LB-Q-tiltfile): call names by syntax only; no import is read (L2).
 	"tiltfile": "syntax",
 
