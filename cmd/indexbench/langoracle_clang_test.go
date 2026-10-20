@@ -51,13 +51,16 @@ func TestCmdLangOracleClangCallSites(t *testing.T) {
 	out := filepath.Join(t.TempDir(), "cpp.json")
 	unm := filepath.Join(t.TempDir(), "unmatched.json")
 	args := []string{"-dialect", "cpp", "-manifest", filepath.Join("..", "..", "internal", "extractor", "dialects", "cpp", "dialect.json"), "-subject", subject,
-		"-ctags", filepath.Join(t.TempDir(), "none"), "-scip", scip, "-scip-defs", "-tool-oracle", sites, "-unmatched", unm,
+		"-ctags", filepath.Join(t.TempDir(), "none"), "-scip", scip, "-tool-oracle", sites, "-unmatched", unm,
 		"-out", out, "-queue", filepath.Join("..", "..", "docs", "plans", "language-breadth.queue.json")}
 	var stdout, stderr bytes.Buffer
 	if code := cmdLangOracle(args, &stdout, &stderr); code != 0 {
 		t.Fatalf("exit %d: %s", code, stderr.String())
 	}
 	r, rawOut := readValidReading(t, out)
+	if r.Metrics[langbench.MSymRecall] != nil || r.Metrics[langbench.MSymPrecision] != nil {
+		t.Fatal("call-site-only fixture must not claim L1 definition measurement")
+	}
 	if r.Counts[langbench.CntCallFathom] != 1 || r.Counts[langbench.CntCallFathomInTrue] != 1 || r.Counts[langbench.CntClangCallsDependent] != 1 {
 		t.Errorf("call_fathom %d in truth %d dependent %d, want 1, 1, 1\n%s", r.Counts[langbench.CntCallFathom], r.Counts[langbench.CntCallFathomInTrue], r.Counts[langbench.CntClangCallsDependent], rawOut)
 	}
