@@ -1,0 +1,29 @@
+id: thrift
+language: Apache Thrift IDL
+# Both subjects are cloned sparse to their .thrift files: the Thrift compiler and the dialect read nothing else.
+# facebook/fbthrift (the queue's second proposal) is not a subject: its IDL carries fbthrift-only syntax
+# (interactions, @hack and @cpp annotations as statements) that the Apache compiler, the tier-A oracle, rejects.
+repos:
+  - name: apache/thrift
+    url: https://github.com/apache/thrift
+    ref: v0.24.0
+    sha: 6d2ec95f450b4ce404afb8929ff479e68770141a
+    licence: Apache-2.0
+    sparse: ["test/**/*.thrift", "tutorial/*.thrift", "contrib/**/*.thrift", "lib/**/*.thrift"]
+    idioms:
+      - 'every declaration kind: namespaces per language, typedefs, consts with container literals, enums, structs, unions, exceptions, services'
+      - 'a service extending another across an include (service Calculator extends shared.SharedService)'
+      - 'fields with default values, required and optional modifiers, and annotations ((cpp.type = "..."))'
+      - 'oneway functions, throws lists and multi-line function signatures'
+      - 'include "x.thrift" beside the including file, qualified types (shared.SharedStruct)'
+  - name: jaegertracing/jaeger-idl
+    url: https://github.com/jaegertracing/jaeger-idl
+    ref: v0.14.0
+    sha: 4f6fc86c5b9e20e15f82a8f9c0033563c20ec445
+    licence: Apache-2.0
+    sparse: ["**/*.thrift"]
+    idioms:
+      - 'a production IDL set: agent, collector, sampling, zipkincore and jaeger.thrift'
+      - 'namespaces for go, java, js and lua beside one another'
+      - 'services over structs from included files (agent.thrift includes jaeger.thrift and zipkincore.thrift)'
+      - 'structs with optional fields and list-typed fields of included structs'

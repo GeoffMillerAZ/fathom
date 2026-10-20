@@ -317,6 +317,7 @@ func TestFileResolveLangsFromManifests(t *testing.T) {
 	want["objective-c"] = "include-path" // LB-Q-objective-c (wave lang6): #import and #include
 	// LB-F580 (wave lang7): a type name binds the one file of its scope defining it.
 	want["graphql"], want["prisma"] = "global-name", "global-name"
+	want["thrift"] = "file-symbol"       // LB-Q-thrift (wave lang7): include "x.thrift", beside the including file first
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("FileResolveLangs = %v, want %v", got, want)
 	}

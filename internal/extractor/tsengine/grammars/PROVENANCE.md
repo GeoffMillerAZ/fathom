@@ -71,6 +71,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `svelte` | tree-sitter-grammars/tree-sitter-svelte | v1.0.2 | `774a65aea563accc35f5d45fafa4d96ec5761f57` | MIT | `tree_sitter_svelte` | `5fbca1c9857ea9af125ab43ea417b33e81b8268ef8003286bbd4fa9519bd4f23` |
 | `swift` | alex-pinkus/tree-sitter-swift | 35245fbfee2fccf16273c6f4299438fb76875970 | `35245fbfee2fccf16273c6f4299438fb76875970` | MIT | `tree_sitter_swift` | `aa4f76cd4c8287ede397993ee369c51c75d419c51fb785d84fbee9d4ddfc3aa8` |
 | `tcl` | tree-sitter-grammars/tree-sitter-tcl | 850a72ab6436e06645b33b11cfa60cbdb04b1f01 | `850a72ab6436e06645b33b11cfa60cbdb04b1f01` | MIT | `tree_sitter_tcl` | `4d3bbc7db5fd3398af714afc3dd4a0b4aba0b372bf30192bc4cff00d5acf54fa` |
+| `thrift` | duskmoon314/tree-sitter-thrift | v0.5.0 | `82cd6a45626ac2dd4c8c1705170aa58b81212782` | MIT | `tree_sitter_thrift` | `fb10b0901c0be74768ec5af75d436380fa52f9fe6e641f5485aa2639bc4cd19c` |
 | `typescript` | tree-sitter/tree-sitter-typescript | v0.23.2 | `f975a621f4e7f532fe322e13c4f79495e0a7b2e7` | MIT | `tree_sitter_typescript`, `tree_sitter_tsx` | `2c4ce711ae8d1218a3b2f899189298159d672870b5b34dff5d937bed2f3e8983` |
 | `vhdl` | jpt13653903/tree-sitter-vhdl | v2.0.3 | `a7cf493d07dbcf52ca287596451ae3fb8b12099f` | MIT | `tree_sitter_vhdl` | `0afd50c99d2ee6277c9b183a6fb160173cf8635b3e14900a8dfc3dbbd6e93378` |
 | `vim` | tree-sitter-grammars/tree-sitter-vim | v0.8.1 | `3092fcd99eb87bbd0fc434aa03650ba58bd5b43b` | MIT | `tree_sitter_vim` | `93cafb9a0269420362454ace725a118ff1c3e08dcdfdc228aa86334b54d53c2a` |
@@ -124,6 +125,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `svelte` | (root) | yes | 14 | 171,044 | 67,457 | `b3180077835cf81f8570e938c853ce6e41dae0e33892626bc9e7f47579de99b9` |
 | `swift` | (root) | yes | 15 | 2,435,516 | 475,154 | `4e464eadd1f93f6a619ea2d5e1c26573a777cc7a37e7aa146495a82d3c3b04b4` |
 | `tcl` | (root) | yes | 15 | 203,872 | 74,046 | `546a4170f4042ad33928b7b8b5cf5f3a2f76578627f763991bdce5063bcda183` |
+| `thrift` | (root) | no | 14 | 231,129 | 78,324 | `568680fb22d4d3c2dfd3d582326f9b1ac86ba7b24e64409a2587e514c91e9e6a` |
 | `typescript` | typescript, tsx | yes | 14 | 2,037,040 | 422,906 | `30080208c90581bf3b29b412e9ee2e9a11c89b36153b6a94cc07da7b5000afcb` |
 | `vhdl` | (root) | yes | 15 | 1,314,192 | 240,100 | `3ec7500d69a8177a073f8c42e01fc4b40b4ac7c0259654e781375b3223189a1c` |
 | `vim` | (root) | yes | 15 | 1,177,166 | 212,656 | `fa067ead3ba63fb2610653385665a94ace0a5d56b4cdafcdb8fa68080a7bf3b2` |

@@ -1,0 +1,140 @@
+{
+  "symbols": [
+    {
+      "name": "java",
+      "kind": "ThriftNamespace",
+      "package": "shared",
+      "line": 2,
+      "end_line": 2,
+      "tier": "verified"
+    },
+    {
+      "name": "py",
+      "kind": "ThriftNamespace",
+      "package": "shared",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "Timestamp",
+      "kind": "ThriftTypedef",
+      "package": "shared",
+      "line": 5,
+      "end_line": 5,
+      "signature": "typedef i64 Timestamp",
+      "tier": "verified"
+    },
+    {
+      "name": "Ledger",
+      "kind": "ThriftTypedef",
+      "package": "shared",
+      "line": 6,
+      "end_line": 6,
+      "signature": "typedef map<string, list<Money>> Ledger (cpp.type = \"std::map\")",
+      "calls": [
+        "Money"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "MAX_ITEMS",
+      "kind": "ThriftConst",
+      "package": "shared",
+      "line": 8,
+      "end_line": 8,
+      "signature": "const i32 MAX_ITEMS = 100",
+      "tier": "verified"
+    },
+    {
+      "name": "DEFAULT_CURRENCY",
+      "kind": "ThriftConst",
+      "package": "shared",
+      "line": 9,
+      "end_line": 9,
+      "signature": "const string DEFAULT_CURRENCY = \"USD\"",
+      "tier": "verified"
+    },
+    {
+      "name": "Currency",
+      "kind": "ThriftEnum",
+      "package": "shared",
+      "line": 11,
+      "end_line": 15,
+      "tier": "verified"
+    },
+    {
+      "name": "Currency.USD",
+      "kind": "ThriftEnumValue",
+      "package": "shared",
+      "line": 12,
+      "end_line": 12,
+      "signature": "USD",
+      "tier": "verified"
+    },
+    {
+      "name": "Currency.EUR",
+      "kind": "ThriftEnumValue",
+      "package": "shared",
+      "line": 13,
+      "end_line": 13,
+      "signature": "EUR",
+      "tier": "verified"
+    },
+    {
+      "name": "Currency.GBP",
+      "kind": "ThriftEnumValue",
+      "package": "shared",
+      "line": 14,
+      "end_line": 14,
+      "signature": "GBP",
+      "tier": "verified"
+    },
+    {
+      "name": "Money",
+      "kind": "ThriftStruct",
+      "package": "shared",
+      "line": 17,
+      "end_line": 20,
+      "tier": "verified"
+    },
+    {
+      "name": "Money.units",
+      "kind": "ThriftField",
+      "package": "shared",
+      "line": 18,
+      "end_line": 18,
+      "signature": "1: required i64 units,",
+      "tier": "verified"
+    },
+    {
+      "name": "Money.currency",
+      "kind": "ThriftField",
+      "package": "shared",
+      "line": 19,
+      "end_line": 19,
+      "signature": "2: optional Currency currency = Currency.USD",
+      "calls": [
+        "Currency"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "NotFound",
+      "kind": "ThriftException",
+      "package": "shared",
+      "line": 22,
+      "end_line": 24,
+      "tier": "verified"
+    },
+    {
+      "name": "NotFound.message",
+      "kind": "ThriftField",
+      "package": "shared",
+      "line": 23,
+      "end_line": 23,
+      "signature": "1: string message",
+      "tier": "verified"
+    }
+  ]
+}

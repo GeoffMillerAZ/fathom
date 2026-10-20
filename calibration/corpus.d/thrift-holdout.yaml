@@ -1,0 +1,21 @@
+id: thrift-holdout
+language: Apache Thrift IDL
+# The holdout for the thrift dialect's L3 rule (LB-Q-thrift, wave lang7), pinned in the commit of the dialect and
+# its oracle, before any reading of this subject. It is read ONCE into docs/bench/readings/lang/holdout/thrift.json
+# after the include rule is fixed, never tuned against (a later rule change needs a new holdout). Not
+# apache/thrift or jaegertracing/jaeger-idl (the tuning subjects). apache/impala is a large production IDL set
+# whose files include one another across one directory (Types.thrift, Status.thrift, ...), reference
+# `Types.TNetworkAddress`-style qualified types throughout, and define services that extend others. Licence read at
+# the pin.
+repos:
+  - name: apache/impala
+    url: https://github.com/apache/impala
+    ref: 4.5.2
+    sha: 078470bb0471336fa7715cf9b72a5d713fd2751d
+    licence: Apache-2.0
+    sparse: ["common/thrift/**/*.thrift"]
+    idioms:
+      - 'dozens of .thrift files in one directory that include one another (include "Types.thrift")'
+      - 'qualified references to included types (Types.TUniqueId, Status.TStatus)'
+      - 'services extending others (ImpalaInternalService, ImpalaHiveServer2Service extends TCLIService)'
+      - 'large structs of optional fields and enums with explicit values'
