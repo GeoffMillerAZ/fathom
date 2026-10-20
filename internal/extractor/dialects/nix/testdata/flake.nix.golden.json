@@ -1,0 +1,61 @@
+{
+  "symbols": [
+    {
+      "name": "description",
+      "kind": "NixAttribute",
+      "package": "flake",
+      "line": 2,
+      "end_line": 2,
+      "signature": "description =",
+      "tier": "verified"
+    },
+    {
+      "name": "inputs",
+      "kind": "NixAttribute",
+      "package": "flake",
+      "line": 4,
+      "end_line": 7,
+      "signature": "inputs =",
+      "tier": "verified"
+    },
+    {
+      "name": "outputs",
+      "kind": "NixFunction",
+      "package": "flake",
+      "line": 9,
+      "end_line": 17,
+      "signature": "outputs = { self, nixpkgs, local }:",
+      "calls": [
+        "import",
+        "pkgs.callPackage"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "./sub",
+      "module": "./sub",
+      "kind": "whole",
+      "line": 6
+    },
+    {
+      "local": "./pkg.nix",
+      "module": "./pkg.nix",
+      "kind": "whole",
+      "line": 15
+    },
+    {
+      "local": "lib",
+      "module": "./lib.nix",
+      "kind": "whole",
+      "line": 16
+    },
+    {
+      "local": "./lib.nix",
+      "module": "./lib.nix",
+      "kind": "whole",
+      "line": 16
+    }
+  ]
+}

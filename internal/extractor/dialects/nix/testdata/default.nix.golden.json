@@ -1,0 +1,68 @@
+{
+  "symbols": [
+    {
+      "name": "pkgs",
+      "kind": "NixParam",
+      "package": "default",
+      "line": 1,
+      "end_line": 1,
+      "tier": "verified"
+    },
+    {
+      "name": "mod",
+      "kind": "NixVariable",
+      "package": "default",
+      "line": 3,
+      "end_line": 3,
+      "signature": "mod =",
+      "calls": [
+        "import"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "dir",
+      "kind": "NixVariable",
+      "package": "default",
+      "line": 4,
+      "end_line": 4,
+      "signature": "dir =",
+      "calls": [
+        "import"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "mod",
+      "module": "./module.nix",
+      "kind": "whole",
+      "line": 3
+    },
+    {
+      "local": "./module.nix",
+      "module": "./module.nix",
+      "kind": "whole",
+      "line": 3
+    },
+    {
+      "local": "dir",
+      "module": "./sub",
+      "kind": "whole",
+      "line": 4
+    },
+    {
+      "local": "./sub",
+      "module": "./sub",
+      "kind": "whole",
+      "line": 4
+    },
+    {
+      "local": "./pkg.nix",
+      "module": "./pkg.nix",
+      "kind": "whole",
+      "line": 6
+    }
+  ]
+}

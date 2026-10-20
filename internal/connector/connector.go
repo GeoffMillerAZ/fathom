@@ -249,6 +249,10 @@ var extClassMap = map[string]classification{
 	// Prisma schema (LB-Q-prisma, language-breadth: new -- a tags-engine tool format, no incumbent).
 	".prisma": {core.SourceKind("PrismaModel"), "prisma"},
 
+	// Nix (LB-Q-nix, language-breadth: new -- a tags-engine tool format, no incumbent). Every .nix file,
+	// flake.nix and default.nix included.
+	".nix": {core.SourceKind("NixAttribute"), "nix"},
+
 	// Apache Thrift IDL (LB-Q-thrift, language-breadth: new -- a tags-engine tool format, no incumbent).
 	".thrift": {core.SourceKind("ThriftStruct"), "thrift"},
 

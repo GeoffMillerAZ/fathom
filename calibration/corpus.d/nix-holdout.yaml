@@ -1,0 +1,18 @@
+id: nix-holdout
+language: Nix
+# The holdout for the nix dialect (LB-Q-nix, wave lang8), pinned in the commit of the dialect and its oracle,
+# before any reading of this subject: the dialect, its root-expression rule and its scoped-import rule were
+# tuned on nix.yaml's subjects only. It is read ONCE into docs/bench/readings/lang/holdout/nix.json with the
+# rule fixed; never tuned against (a later rule change needs a new holdout). disko is a library of NixOS
+# modules and a flake: `diskoLib = import ./lib { ... }` then diskoLib.* applied across files, a tests tree, and
+# example configurations that import the repository root (`import ../../. { }`).
+repos:
+  - name: nix-community/disko
+    url: https://github.com/nix-community/disko
+    ref: v1.9.0
+    sha: ab58501b2341bc5e0fc88f2f5983a679b075ddf5
+    licence: MIT
+    idioms:
+      - 'diskoLib = import ./lib { inherit lib; }; with diskoLib.* applied in modules and tests'
+      - 'default.nix files that import a directory or the repository root (import ../../. { })'
+      - 'a flake.nix whose outputs calls lib functions and exposes nixosModules and packages'

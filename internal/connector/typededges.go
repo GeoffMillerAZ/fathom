@@ -237,6 +237,10 @@ var typedEdgeProducers = map[string]string{
 	// the file through the file resolver: "file", as CSS and HTML above.
 	"bicep": "file",
 
+	// Nix (LB-Q-nix): an `import ./x.nix`, a `callPackage ./x.nix`, a path in an imports list and a flake
+	// input that is a local path resolve to the file through the file resolver (file-symbol): "file".
+	"nix": "file",
+
 	// Serverless Framework, Pulumi YAML and AWS CDK (LB-Q-serverless,
 	// LB-Q-pulumi-yaml, LB-Q-aws-cdk): doc-engine tool formats whose
 	// references stay within the file; a `${file()}` include is a file-tier
