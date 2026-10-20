@@ -357,11 +357,12 @@ type ImportParams struct {
 // importStrategies is design §6's closed set; go-package names Go's native
 // resolution and resolves nothing here. rego-package maps a Rego import path
 // to the files declaring its package (LB-F132); global-name binds a type name
-// to the one file of its scope defining it (LB-F580).
+// to the one file of its scope defining it (LB-F580); cue-module maps a CUE
+// import path to the files of the package the cue binary loads (LB-F583).
 var importStrategies = map[string]bool{
 	"relative-path": true, "dotted-module": true, "namespace-dir": true, "include-path": true,
 	"crate-mod": true, "swift-module": true, "file-symbol": true, "go-package": true,
-	"rego-package": true, "global-name": true,
+	"rego-package": true, "global-name": true, "cue-module": true,
 }
 
 // DialectSignature caps Signature (§3.3).

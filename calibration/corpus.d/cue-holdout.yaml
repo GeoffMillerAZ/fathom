@@ -1,0 +1,24 @@
+id: cue-holdout
+language: CUE
+# The holdout for the cue dialect's L3 rule (LB-Q-cue, wave lang8: the cue-module import strategy, LB-F583), pinned in
+# the commit that adds the rule, before any fathom reading of it, and read ONCE into
+# docs/bench/readings/lang/holdout/cue.json; never tuned against (a later rule change needs a new holdout). At selection
+# the oracle (calibration/oracles/cue) ran on it once, to confirm the cue binary loads its packages; no fathom reading
+# was taken. Criteria, each checked at the pin: not cue-lang/cue, monogon/NetMeta or this repository (the tuning
+# subjects); an OSI licence read at the tag; a CUE module of the v0.9+ form (language.version) whose packages import
+# one another by module path, so L3 has truth; absent from every committed reading and corpus shard.
+# hofstadter-io/hof keeps its schemas, catalogs and CI configuration as packages of one module
+# (github.com/hofstadter-io/hof) that import each other, with registry dependencies (hofmod-cli, schemas) the oracle
+# fetches into its cache and fathom resolves to no file, and nested modules of the legacy form the binary rejects.
+repos:
+  - name: hofstadter-io/hof
+    url: https://github.com/hofstadter-io/hof
+    ref: v0.7.0-alpha.2
+    sha: 8cbf488cdccafa5fe6b16a473b33ff408c9bf6e3
+    licence: Apache-2.0
+    sparse: ["**/*.cue"]
+    idioms:
+      - 'packages of one module importing each other by module path (schemas/env, catalogs/env/utils, schema/dm/sql)'
+      - 'registry dependencies in module.cue deps (github.com/hofstadter-io/hofmod-cli@v0), outside the repository'
+      - 'nested modules (test/, docs/) whose module.cue declares no language version'
+      - 'a package spread over several files of one directory, its definitions referenced through the import'

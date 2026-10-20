@@ -1,7 +1,6 @@
 package extractor
 
 import (
-	cuepath "path"
 	"sort"
 	"strings"
 
@@ -224,18 +223,9 @@ func (w *cueWalk) importDecls(f *ast.File, res *DocResult) {
 		// an all-'#' value) PANICS with index-out-of-range. Nothing in
 		// fusion/mcp/cmd recovers, so without these guards one bad .cue file
 		// crashes `fathom ingest` and the stdio server outright.
-		if imp.Path == nil || imp.Path.Value == "" {
-			continue
-		}
-		// an import path is a string literal; anything else (`import 42`) is
-		// no import, and the partial tree gives it no position either
-		p := imp.Path.Value
-		trimmed := strings.TrimLeft(p, "#")
-		if len(trimmed) == 0 || (trimmed[0] != '"' && trimmed[0] != '\'') {
-			continue
-		}
-		p, err := literal.Unquote(p)
-		if err != nil || p == "" {
+		// cueImportPathOf guards both (cuefilespecs.go).
+		p, ok := cueImportPathOf(imp)
+		if !ok {
 			continue
 		}
 		w.nodes = append(w.nodes, core.SymbolNode{
@@ -243,12 +233,9 @@ func (w *cueWalk) importDecls(f *ast.File, res *DocResult) {
 			Line: imp.Pos().Line(), EndLine: imp.End().Line(), Tier: core.TierVerified,
 		})
 		// the package's identifier: a `path:pkg` qualifier's name, else the
-		// path's last element
-		bare, qual, _ := strings.Cut(p, ":")
-		seg := cuepath.Base(bare)
-		if qual != "" {
-			seg = qual
-		}
+		// path's last element less a major version (LB-F583)
+		bare, _, _ := strings.Cut(p, ":")
+		seg := cueImportIdent(p)
 		ci := cueImport{path: p, seg: seg, std: !strings.Contains(strings.SplitN(bare, "/", 2)[0], ".")}
 		w.imports[imp] = ci
 		if !ci.std {
