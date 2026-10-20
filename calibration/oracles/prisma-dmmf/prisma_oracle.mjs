@@ -25,8 +25,10 @@
 //   - references: (Model.field, type) for a field whose kind is object (a model, a view or a composite type) or
 //     enum, and (Model.field, field name) for each name in its @relation fields: and references: lists. The
 //     built-in scalars and Unsupported() are none.
-//   - cross_references (file granularity): a type reference whose type exactly one other file of the same schema
-//     defines. A name two files of one schema define does not validate, so none is ambiguous inside a schema.
+//   - cross_references (file granularity): a type reference (an object or enum field: a model, view, composite
+//     type or enum) whose type exactly one other file of the same schema defines, attributed to that file by the
+//     scan (LB-F580: an enum field counts, as the engine's own kind says). A name two files of one schema define
+//     does not validate, so none is ambiguous inside a schema.
 // Directories the connector never reads (testdata, vendor, node_modules, generated, .git and the editor
 // directories) are not walked. Bench-only; never a product dependency.
 
@@ -198,7 +200,7 @@ for (const [dir, group] of [...groups.entries()].sort()) {
         if ((f.kind === "object" || f.kind === "enum") && f.type) addRef(b.file, q, f.type);
         for (const n of f.relationFromFields || []) addRef(b.file, q, n);
         for (const n of f.relationToFields || []) addRef(b.file, q, n);
-        if (f.kind === "object" && typeFile.has(f.type) && typeFile.get(f.type) !== b.file) addCross(b.file, q, typeFile.get(f.type), f.type);
+        if ((f.kind === "object" || f.kind === "enum") && typeFile.has(f.type) && typeFile.get(f.type) !== b.file) addCross(b.file, q, typeFile.get(f.type), f.type);
       } else {
         // tier C fallback (the engine rejected the schema): the field's type token and its @relation lists, by text.
         const joined = m.text.join(" ");

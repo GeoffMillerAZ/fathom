@@ -13,7 +13,7 @@
   },
   "grammar": { "blob": "graphql", "entry_point": "tree_sitter_graphql" },
   "variants": [],
-  "queries": { "tags": "tags.scm" },
+  "queries": { "tags": "tags.scm", "imports": "imports.scm" },
   "kinds": {
     "type":       { "source_kind": "GraphQLType",      "canonical": "type_alias",  "container": true, "callable": true },
     "extension":  { "source_kind": "GraphQLExtension", "canonical": "type_alias",  "container": true, "callable": true },
@@ -30,6 +30,7 @@
   },
   "qualify": { "chain_containers": true, "container_sep": ".", "method_sep": "." },
   "package": { "strategy": "dir" },
+  "imports": { "strategy": "global-name", "scope": "service", "defines": ["type"] },
   "signature": { "max_chars": 200 },
   "target_level": "L3",
   "queue_id": "graphql"

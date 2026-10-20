@@ -4,7 +4,9 @@ language: "Prisma schema"
 # calcom/cal.com keeps one large production schema (packages/prisma/schema.prisma, with generators, enums, views-free
 # relations and many composite keys). hiroppy/web-app-template keeps a prismaSchemaFolder layout (prisma/schema/*.prisma,
 # one model group per file, a datasource in a base file), so a type reference crosses files with no import statement.
-# prisma/prisma-examples is the holdout (prisma-holdout.yaml), not a subject.
+# prisma/prisma-examples is the holdout (prisma-holdout.yaml), not a subject. dubinc/dub (wave lang7, LB-Q-prisma's
+# L3) keeps a 37-file prismaSchemaFolder (apps/web/prisma/schema), one model group per file, relations and enums
+# across files; mfts/papermark is the second holdout (prisma-holdout-2.yaml), not a subject.
 repos:
   - name: calcom/cal.com
     url: https://github.com/calcom/cal.com
@@ -27,3 +29,13 @@ repos:
       - 'prismaSchemaFolder layout: several *.prisma files under prisma/schema, one datasource and generator in a base file'
       - 'a model in one file naming a model or enum another file defines (no import statement)'
       - 'one-to-many and many-to-one relations with @relation(fields, references)'
+  - name: dubinc/dub
+    url: https://github.com/dubinc/dub
+    ref: main
+    sha: 33ede443270a11381ed53ee03312208e1370195b
+    licence: AGPL-3.0-or-later
+    sparse: ["**/*.prisma"]
+    idioms:
+      - 'a 37-file prismaSchemaFolder: one model group per file, the datasource and generator in schema.prisma'
+      - 'relations naming a model another file of the folder defines, on both sides, with @relation(fields, references)'
+      - 'enum-typed fields whose enum another file defines, with @default(ENUM_VALUE)'

@@ -106,6 +106,12 @@ type FileResolveReport struct {
 	ProtoNoDefiner     int
 	ProtoNotBuilt      int
 	ProtoBuildFiltered int
+	// global-name (LB-F580): GlobalNameBound is the distinct (file, type
+	// name) references bound to the one file of their scope defining the
+	// name; GlobalNameAmbiguous those left unbound because two or more
+	// files of the scope define it.
+	GlobalNameBound     int
+	GlobalNameAmbiguous int
 }
 
 // hasScipIndex reports whether repoPath already carries a SCIP index this
@@ -191,7 +197,7 @@ func newImportResolver(lang, root string, paths []string, read func(string) ([]b
 // newLangResolver is the resolver one file-resolve language's manifest
 // selects, without its universe (env).
 func newLangResolver(l extractor.FileResolveLang) *importResolver {
-	return &importResolver{strategy: l.Strategy, params: l.Params, pkgScope: l.Strategy == "namespace-dir" && extractor.PackageScoped(l.Lang), javaShadow: l.Lang == "java"}
+	return &importResolver{strategy: l.Strategy, params: l.Params, defines: globalNameDefines(l.Defines), pkgScope: l.Strategy == "namespace-dir" && extractor.PackageScoped(l.Lang), javaShadow: l.Lang == "java"}
 }
 
 // importResolver resolves one language's module specs by its strategy.
@@ -199,6 +205,9 @@ type importResolver struct {
 	strategy string
 	params   extractor.ImportParams
 	env      *resolveEnv
+	// defines: under global-name, the source kinds a type name binds to
+	// (nil: every top-level definition; LB-F580).
+	defines map[string]bool
 	// pkgScope: the language's code sees its own package's (C#: and every
 	// enclosing namespace's) names unqualified (LB-F74).
 	pkgScope bool
@@ -338,6 +347,7 @@ func resolveImports(r *importResolver, paths []string, specs map[string]extracto
 	report.ProtoNoDefiner = len(idx.proto.noDefiner)
 	report.ProtoNotBuilt = len(idx.proto.notBuilt)
 	report.ProtoBuildFiltered = len(idx.proto.buildFiltered)
+	report.GlobalNameBound, report.GlobalNameAmbiguous = r.env.globalNameCounts()
 	return edges, report
 }
 
@@ -402,6 +412,9 @@ func newResolveIndex(r *importResolver, symbols []core.SymbolNode, fileSet map[s
 				nameable = append(nameable, s)
 			}
 		}
+	}
+	if r.strategy == "global-name" && r.env != nil {
+		r.env.indexGlobalNames(symbols, r.defines) // the pass's definitions by name, once per pass
 	}
 	idx := &resolveIndex{
 		topLevel:  map[string]map[string]string{},
@@ -1179,6 +1192,8 @@ func (p *Pipeline) enrichFileResolvedEdges(ctx context.Context, svc core.Service
 		total.AncestorIncludes += rep.AncestorIncludes
 		total.ProtoBound += rep.ProtoBound
 		total.ProtoAmbiguous += rep.ProtoAmbiguous
+		total.GlobalNameBound += rep.GlobalNameBound
+		total.GlobalNameAmbiguous += rep.GlobalNameAmbiguous
 		total.ProtoNoDefiner += rep.ProtoNoDefiner
 		total.ProtoNotBuilt += rep.ProtoNotBuilt
 		total.ProtoBuildFiltered += rep.ProtoBuildFiltered

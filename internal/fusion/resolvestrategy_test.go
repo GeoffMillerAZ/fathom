@@ -315,6 +315,8 @@ func TestFileResolveLangsFromManifests(t *testing.T) {
 	want["astro"] = "relative-path"      // LB-F545 (wave lf7): an injection host's ranges' imports, with no imports query of its own
 	want["bazel"] = "file-symbol"        // LB-Q-bazel (wave lang4): load() labels, //pkg:file.bzl and :file.bzl
 	want["objective-c"] = "include-path" // LB-Q-objective-c (wave lang6): #import and #include
+	// LB-F580 (wave lang7): a type name binds the one file of its scope defining it.
+	want["graphql"], want["prisma"] = "global-name", "global-name"
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("FileResolveLangs = %v, want %v", got, want)
 	}

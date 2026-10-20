@@ -17,6 +17,9 @@ type FileResolveLang struct {
 	Basenames  []string // the manifest's match.basenames, exact, sorted (O379: BUILD, meson.build)
 	Strategy   string
 	Params     ImportParams
+	// Defines is, under global-name, the source kinds of Params.Defines'
+	// kind keys (sorted): the definitions a type name binds to (LB-F580).
+	Defines []string
 }
 
 // FileSpecExtractor is what the file resolver (fusion's file-resolved pass
@@ -85,6 +88,10 @@ func FileResolveLangs() ([]FileResolveLang, error) {
 		fl, ok := byLang[lang]
 		if !ok {
 			fl = &FileResolveLang{Lang: lang, Strategy: d.Imports.Strategy, Params: d.Imports.Params}
+			for _, k := range d.Imports.Params.Defines {
+				fl.Defines = append(fl.Defines, d.Kinds[k].SourceKind)
+			}
+			sort.Strings(fl.Defines)
 			byLang[lang] = fl
 		} else if fl.Strategy != d.Imports.Strategy || !reflect.DeepEqual(fl.Params, d.Imports.Params) {
 			return nil, fmt.Errorf("extractor group %q: dialect %q's imports differ from its group's", lang, d.ID)
