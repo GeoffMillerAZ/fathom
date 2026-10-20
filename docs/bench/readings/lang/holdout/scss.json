@@ -1,0 +1,167 @@
+{
+  "dialect": "scss",
+  "kind": "language",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "good",
+    "L2": "excellent",
+    "L3": "excellent",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-10-20",
+  "fathom_commit": "a143e02c",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "angular/components",
+      "sha": "49f1bc887b59154635894832a802e46bf0178eb4",
+      "files": 379,
+      "bytes": 839783,
+      "counts": {
+        "call_fathom": 2929,
+        "call_fathom_in_truth": 2817,
+        "call_pairs_excluded_fathom": 1521,
+        "call_truth": 2817,
+        "call_truth_found": 2817,
+        "callables": 697,
+        "callables_signed": 697,
+        "fathom_defs": 3937,
+        "file_edges_agree": 859,
+        "file_edges_fathom": 859,
+        "file_edges_truth": 859,
+        "import_edges_agree": 861,
+        "import_edges_fathom": 861,
+        "import_edges_truth": 861,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "imports": 871,
+        "imports_in_repo": 861,
+        "imports_resolved_agree": 861,
+        "kind_equal": 3937,
+        "matched": 3937,
+        "oracle_defs": 3937
+      },
+      "families": {
+        "calls": "A",
+        "file_edges": "A",
+        "imports": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "function",
+        "rule",
+        "selector",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "fathom:SCSSModule": 379
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 224.53899999999987,
+        "extract_cpu_ms": 230.76100000000002,
+        "max_file_ms": 6,
+        "peak_module_pages": 323,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "dart-sass",
+      "version": "sass 1.105.1, sass-parser 0.4.57"
+    }
+  ],
+  "metrics": {
+    "call_precision": 0.9618,
+    "call_recall": 1,
+    "def_mapping": null,
+    "file_edge_precision": 1,
+    "file_edge_recall": 1,
+    "import_resolution": 1,
+    "kind_agreement": 1,
+    "range_agreement": null,
+    "signature_coverage": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "A",
+    "call_recall": "A",
+    "file_edge_precision": "A",
+    "file_edge_recall": "A",
+    "import_resolution": "A",
+    "kind_agreement": "A",
+    "signature_coverage": "A",
+    "sym_precision": "A",
+    "sym_recall": "A"
+  },
+  "not_measured": [
+    "range_agreement"
+  ],
+  "required_kinds": [
+    "function",
+    "selector",
+    "variable"
+  ],
+  "kind_intersection": [
+    "function",
+    "rule",
+    "selector",
+    "variable"
+  ],
+  "counts": {
+    "call_fathom": 2929,
+    "call_fathom_in_truth": 2817,
+    "call_pairs_excluded_fathom": 1521,
+    "call_truth": 2817,
+    "call_truth_found": 2817,
+    "callables": 697,
+    "callables_signed": 697,
+    "fathom_defs": 3937,
+    "file_edges_agree": 859,
+    "file_edges_fathom": 859,
+    "file_edges_truth": 859,
+    "import_edges_agree": 861,
+    "import_edges_fathom": 861,
+    "import_edges_truth": 861,
+    "import_oracle_out_of_scope": 0,
+    "import_oracle_unpaired": 0,
+    "imports": 871,
+    "imports_in_repo": 861,
+    "imports_resolved_agree": 861,
+    "kind_equal": 3937,
+    "matched": 3937,
+    "oracle_defs": 3937
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 0,
+    "throughput_mb_s": 3.64,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 3.74,
+    "max_file_ms": 6,
+    "peak_module_pages": 323,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:SCSSModule": 379
+  },
+  "notes": [
+    "angular/components: 1686 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "angular/components: W5 (design 1.8): L2 is name references over the @use/@forward/@import closure, walked from sass-parser's tree (tier A for the tree, the binding the harness's own walk): 15504 references read, 9261 resolve to a definition in the referring file's closure, 2522 name a sass: built-in module member, 201 name a package outside the subject, 2739 read a parameter (no definition), 781 name nothing the closure defines; every name no read of a file resolves leaves both sides, counted",
+    "angular/components: restricted to docs/scenes/src/app/app.component.scss, docs/scenes/src/app/scene-viewer/scene-viewer.scss, docs/scenes/src/app/scenes/badge/badge-scene.scss, docs/scenes/src/app/scenes/bottom-sheet/bottom-sheet-scene.scss, docs/scenes/src/app/scenes/button-toggle/button-toggle-scene.scss, docs/scenes/src/app/scenes/button/button-scene.scss, docs/scenes/src/app/scenes/card/card-scene.scss, docs/scenes/src/app/scenes/checkbox/checkbox-scene.scss, docs/scenes/src/app/scenes/chips/chips-scene.scss, docs/scenes/src/app/scenes/core/core-scene.scss, docs/scenes/src/app/scenes/datepicker/datepicker-scene.scss, docs/scenes/src/app/scenes/divider/divider-scene.scss, docs/scenes/src/app/scenes/expansion/expansion-scene.scss, docs/scenes/src/app/scenes/grid-list/grid-list-scene.scss, docs/scenes/src/app/scenes/icon/icon-scene.scss, docs/scenes/src/app/scenes/input/input-scene.scss, docs/scenes/src/app/scenes/list/list-scene.scss, docs/scenes/src/app/scenes/menu/menu-scene.scss, docs/scenes/src/app/scenes/paginator/paginator-scene.scss, docs/scenes/src/app/scenes/placeholder/_placeholder-scene-theme.scss, docs/scenes/src/app/scenes/placeholder/placeholder-scene.scss, docs/scenes/src/app/scenes/progress-bar/progress-bar-scene.scss, docs/scenes/src/app/scenes/progress-spinner/progress-spinner-scene.scss, docs/scenes/src/app/scenes/radio/radio-scene.scss, docs/scenes/src/app/scenes/ripples/ripples-scene.scss, docs/scenes/src/app/scenes/select/select-scene.scss, docs/scenes/src/app/scenes/sidenav/sidenav-scene.scss, docs/scenes/src/app/scenes/slide-toggle/slide-toggle-scene.scss, docs/scenes/src/app/scenes/slider/slider-scene.scss, docs/scenes/src/app/scenes/snack-bar/snack-bar-scene.scss, docs/scenes/src/app/scenes/sort/sort-scene.scss, docs/scenes/src/app/scenes/stepper/stepper-scene.scss, docs/scenes/src/app/scenes/table/table-scene.scss, docs/scenes/src/app/scenes/tabs/tabs-scene.scss, docs/scenes/src/app/scenes/timepicker/timepicker-scene.scss, docs/scenes/src/app/scenes/toolbar/toolbar-scene.scss, docs/scenes/src/app/scenes/tooltip/tooltip-scene.scss, docs/scenes/src/app/scenes/tree/tree-scene.scss, docs/src/app/material-docs-app.scss, docs/src/app/pages/component-category-list/component-category-list.scss, docs/src/app/pages/component-page-header/component-page-header.scss, docs/src/app/pages/component-sidenav/component-sidenav.scss, docs/src/app/pages/component-viewer/component-api.scss, docs/src/app/pages/component-viewer/component-viewer.scss, docs/src/app/pages/component-viewer/token-table.scss, docs/src/app/pages/guide-list/guide-list.scss, docs/src/app/pages/guide-viewer/guide-viewer.scss, docs/src/app/pages/homepage/homepage.scss, docs/src/app/pages/not-found/not-found.scss, docs/src/app/shared/carousel/carousel.scss, docs/src/app/shared/example-viewer/example-viewer.scss, docs/src/app/shared/footer/footer.scss, docs/src/app/shared/logo/logo.scss, docs/src/app/shared/navbar/navbar.scss, docs/src/app/shared/support/support.scss, docs/src/app/shared/table-of-contents/table-of-contents.scss, docs/src/app/shared/theme-picker/theme-picker.scss, docs/src/app/shared/version-picker/version-picker.scss, docs/src/highlightjs/material-dark.scss, docs/src/highlightjs/material-light.scss, docs/src/styles/_api.scss, docs/src/styles/_constants.scss, docs/src/styles/_markdown.scss, docs/src/styles/_tables.scss, docs/src/styles/general.scss, integration/harness-e2e-cli/src/styles.scss, integration/yarn-pnp-compat/src/app/app.component.scss, src/cdk/_index.scss, src/cdk/a11y/_index.scss, src/cdk/a11y/a11y-prebuilt.scss, src/cdk/dialog/dialog-container.scss, src/cdk/drag-drop/resets.scss, src/cdk/overlay/_index.scss, src/cdk/overlay/overlay-prebuilt.scss, src/cdk/overlay/overlay-structure.scss, src/cdk/private/visually-hidden/visually-hidden.scss, src/cdk/scrolling/virtual-scroll-viewport.scss, src/cdk/table/table.scss, src/cdk/text-field/_index.scss, src/cdk/text-field/text-field-prebuilt.scss, src/dev-app/autocomplete/autocomplete-demo.scss, src/dev-app/badge/badge-demo.scss, src/dev-app/baseline/baseline-demo.scss, src/dev-app/bottom-sheet/bottom-sheet-demo.scss, src/dev-app/button-toggle/button-toggle-demo.scss, src/dev-app/button/button-demo.scss, src/dev-app/card/card-demo.scss, src/dev-app/cdk-dialog/dialog-demo.scss, src/dev-app/checkbox/checkbox-demo.scss, src/dev-app/chips/chips-demo.scss, src/dev-app/clipboard/clipboard-demo.scss, src/dev-app/connected-overlay/connected-overlay-demo.scss, src/dev-app/datepicker/custom-header.scss, src/dev-app/dev-app/dev-app-layout.scss, src/dev-app/drag-drop/drag-drop-demo.scss, src/dev-app/drawer/drawer-demo.scss, src/dev-app/expansion/expansion-demo.scss, src/dev-app/focus-origin/focus-origin-demo.scss, src/dev-app/focus-trap/focus-trap-demo.scss, src/dev-app/focus-trap/focus-trap-dialog-demo.scss, src/dev-app/google-map/google-map-demo.scss, src/dev-app/grid-list/grid-list-demo.scss, src/dev-app/icon/icon-demo.scss, src/dev-app/layout/layout-demo.scss, src/dev-app/list/list-demo.scss, src/dev-app/menu/menu-demo.scss, src/dev-app/menubar/mat-menubar-demo.scss, src/dev-app/paginator/paginator-demo.scss, src/dev-app/performance/performance-demo.scss, src/dev-app/portal/portal-demo.scss, src/dev-app/progress-bar/progress-bar-demo.scss, src/dev-app/progress-spinner/progress-spinner-demo.scss, src/dev-app/radio/radio-demo.scss, src/dev-app/ripple/ripple-demo.scss, src/dev-app/screen-type/screen-type-demo.scss, src/dev-app/select/select-demo.scss, src/dev-app/sidenav/sidenav-demo.scss, src/dev-app/slide-toggle/slide-toggle-demo.scss, src/dev-app/slider/slider-demo.scss, src/dev-app/system-classes-demo/system-classes-demo.scss, src/dev-app/system/system-demo.scss, src/dev-app/table-scroll-container/table-scroll-container-demo.scss, src/dev-app/timepicker/timepicker-demo.scss, src/dev-app/toolbar/toolbar-demo.scss, src/dev-app/tree/tree-demo.scss, src/dev-app/typography/typography-demo.scss, src/dev-app/virtual-scroll/virtual-scroll-demo.scss, src/dev-app/youtube-player/youtube-player-demo.scss, src/material-experimental/_index.scss, src/material-experimental/column-resize/_column-resize-theme.scss, src/material-experimental/menubar/_menubar-theme.scss, src/material-experimental/menubar/menubar-item.scss, src/material-experimental/menubar/menubar.scss, src/material-experimental/popover-edit/_popover-edit-theme.scss, src/material-experimental/selection/_selection.scss, src/material-experimental/selection/selection-column.scss, src/material/_index.scss, src/material/autocomplete/_autocomplete-theme.scss, src/material/autocomplete/_m2-autocomplete.scss, src/material/autocomplete/_m3-autocomplete.scss, src/material/badge/_badge-theme.scss, src/material/badge/_m2-badge.scss, src/material/badge/_m3-badge.scss, src/material/bottom-sheet/_bottom-sheet-theme.scss, src/material/bottom-sheet/_m2-bottom-sheet.scss, src/material/bottom-sheet/_m3-bottom-sheet.scss, src/material/button-toggle/_button-toggle-theme.scss, src/material/button-toggle/_m2-button-toggle.scss, src/material/button-toggle/_m3-button-toggle.scss, src/material/button/_button-base.scss, src/material/button/_button-theme.scss, src/material/button/_fab-theme.scss, src/material/button/_icon-button-theme.scss, src/material/button/_m2-button.scss, src/material/button/_m2-fab.scss, src/material/button/_m2-icon-button.scss, src/material/button/_m3-button.scss, src/material/button/_m3-fab.scss, src/material/button/_m3-icon-button.scss, src/material/button/button.scss, src/material/button/fab.scss, src/material/button/icon-button.scss, src/material/card/_card-theme.scss, src/material/card/_m2-card.scss, src/material/card/_m3-card.scss, src/material/card/card.scss, src/material/checkbox/_checkbox-theme.scss, src/material/checkbox/_m2-checkbox.scss, src/material/checkbox/_m3-checkbox.scss, src/material/chips/_chips-theme.scss, src/material/chips/_m2-chip.scss, src/material/chips/_m3-chip.scss, src/material/chips/chip-set.scss, src/material/core/_core-theme.scss, src/material/core/_core.scss, src/material/core/_m2-app.scss, src/material/core/_m3-app.scss, src/material/core/color/_all-color.scss, src/material/core/density/private/_all-density.scss, src/material/core/focus-indicators/_private.scss, src/material/core/internal-form-field/internal-form-field.scss, src/material/core/m2/_index.scss, src/material/core/m2/_palette.scss, src/material/core/m2/_theming.scss, src/material/core/m2/_typography-utils.scss, src/material/core/m2/_typography.scss, src/material/core/option/_m2-optgroup.scss, src/material/core/option/_m2-option.scss, src/material/core/option/_m3-optgroup.scss, src/material/core/option/_m3-option.scss, src/material/core/option/_optgroup-theme.scss, src/material/core/option/_option-theme.scss, src/material/core/option/optgroup.scss, src/material/core/ripple/_m2-ripple.scss, src/material/core/ripple/_m3-ripple.scss, src/material/core/ripple/_ripple-theme.scss, src/material/core/ripple/_ripple.scss, src/material/core/selection/pseudo-checkbox/_m2-pseudo-checkbox.scss, src/material/core/selection/pseudo-checkbox/_m3-pseudo-checkbox.scss, src/material/core/selection/pseudo-checkbox/_pseudo-checkbox-common.scss, src/material/core/selection/pseudo-checkbox/_pseudo-checkbox-theme.scss, src/material/core/selection/pseudo-checkbox/pseudo-checkbox.scss, src/material/core/style/_button-common.scss, src/material/core/style/_checkbox-common.scss, src/material/core/style/_elevation.scss, src/material/core/style/_layout-common.scss, src/material/core/style/_list-common.scss, src/material/core/style/_menu-common.scss, src/material/core/style/_private.scss, src/material/core/style/_sass-utils.scss, src/material/core/style/_validation.scss, src/material/core/style/_variables.scss, src/material/core/style/_vendor-prefixes.scss, src/material/core/theming/_all-theme.scss, src/material/core/theming/_color-api-backwards-compatibility.scss, src/material/core/theming/_config-validation.scss, src/material/core/theming/_definition.scss, src/material/core/theming/_inspection.scss, src/material/core/theming/_m2-inspection.scss, src/material/core/theming/_palettes.scss, src/material/core/theming/_theming-deprecated.scss, src/material/core/theming/_theming.scss, src/material/core/theming/_validation.scss, src/material/core/theming/prebuilt/azure-blue.scss, src/material/core/theming/prebuilt/cyan-orange.scss, src/material/core/theming/prebuilt/deeppurple-amber.scss, src/material/core/theming/prebuilt/indigo-pink.scss, src/material/core/theming/prebuilt/magenta-violet.scss, src/material/core/theming/prebuilt/pink-bluegrey.scss, src/material/core/theming/prebuilt/purple-green.scss, src/material/core/theming/prebuilt/rose-red.scss, src/material/core/theming/tests/test-css-variables-theme.scss, src/material/core/theming/tests/test-theming-api.scss, src/material/core/theming/tests/test-theming-bundle.scss, src/material/core/theming/tests/test-typography-font-family.scss, src/material/core/tokens/_classes.scss, src/material/core/tokens/_m2-utils.scss, src/material/core/tokens/_m3-tokens.scss, src/material/core/tokens/_m3-utils.scss, src/material/core/tokens/_system.scss, src/material/core/tokens/_token-utils.scss, src/material/core/tokens/m2/_index.scss, src/material/core/tokens/m2/_md-sys-color-internal.scss, src/material/core/tokens/m2/_md-sys-color.scss, src/material/core/tokens/m2/_md-sys-elevation.scss, src/material/core/tokens/m2/_md-sys-motion.scss, src/material/core/tokens/m2/_md-sys-shape.scss, src/material/core/tokens/m2/_md-sys-state.scss, src/material/core/tokens/m2/_md-sys-typescale.scss, src/material/core/tokens/m3/_index.scss, src/material/core/tokens/m3/_md-sys-color-internal.scss, src/material/core/tokens/m3/_md-sys-color.scss, src/material/core/tokens/m3/_md-sys-elevation.scss, src/material/core/tokens/m3/_md-sys-motion.scss, src/material/core/tokens/m3/_md-sys-shape.scss, src/material/core/tokens/m3/_md-sys-state.scss, src/material/core/tokens/m3/_md-sys-typescale-internal.scss, src/material/core/tokens/m3/_md-sys-typescale.scss, src/material/core/tokens/m3/_theme.scss, src/material/core/typography/_all-typography.scss, src/material/core/typography/_typography-utils-deprecated.scss, src/material/core/typography/_typography-utils.scss, src/material/core/typography/_typography.scss, src/material/core/typography/_versioning.scss, src/material/datepicker/_datepicker-legacy-compat.scss, src/material/datepicker/_datepicker-theme.scss, src/material/datepicker/_m2-datepicker.scss, src/material/datepicker/_m3-datepicker.scss, src/material/datepicker/datepicker-actions.scss, src/material/datepicker/datepicker-content.scss, src/material/dialog/_dialog-legacy-padding.scss, src/material/dialog/_dialog-theme.scss, src/material/dialog/_m2-dialog.scss, src/material/dialog/_m3-dialog.scss, src/material/divider/_divider-offset.scss, src/material/divider/_divider-theme.scss, src/material/divider/_m2-divider.scss, src/material/divider/_m3-divider.scss, src/material/divider/divider.scss, src/material/expansion/_expansion-theme.scss, src/material/expansion/_expansion-variables.scss, src/material/expansion/_m2-expansion.scss, src/material/expansion/_m3-expansion.scss, src/material/form-field/_form-field-focus-overlay.scss, src/material/form-field/_form-field-high-contrast.scss, src/material/form-field/_form-field-native-select.scss, src/material/form-field/_form-field-subscript.scss, src/material/form-field/_form-field-theme.scss, src/material/form-field/_m2-form-field.scss, src/material/form-field/_m3-form-field.scss, src/material/form-field/_mdc-text-field-density-overrides.scss, src/material/form-field/_mdc-text-field-structure-overrides.scss, src/material/form-field/_mdc-text-field-structure.scss, src/material/form-field/_mdc-text-field-textarea-overrides.scss, src/material/form-field/_user-agent-overrides.scss, src/material/grid-list/_grid-list-theme.scss, src/material/grid-list/_m2-grid-list.scss, src/material/grid-list/_m3-grid-list.scss, src/material/grid-list/grid-list.scss, src/material/icon/_icon-theme.scss, src/material/icon/_m2-icon.scss, src/material/icon/_m3-icon.scss, src/material/icon/icon.scss, src/material/input/_input-theme.scss, src/material/list/_list-inherited-structure.scss, src/material/list/_list-item-hcm-indicator.scss, src/material/list/_list-theme.scss, src/material/list/_m2-list.scss, src/material/list/_m3-list.scss, src/material/menu/_m2-menu.scss, src/material/menu/_m3-menu.scss, src/material/menu/_menu-theme.scss, src/material/paginator/_m2-paginator.scss, src/material/paginator/_m3-paginator.scss, src/material/paginator/_paginator-theme.scss, src/material/progress-bar/_m2-progress-bar.scss, src/material/progress-bar/_m3-progress-bar.scss, src/material/progress-bar/_progress-bar-theme.scss, src/material/progress-spinner/_m2-progress-spinner.scss, src/material/progress-spinner/_m3-progress-spinner.scss, src/material/progress-spinner/_progress-spinner-theme.scss, src/material/radio/_m2-radio.scss, src/material/radio/_m3-radio.scss, src/material/radio/_radio-common.scss, src/material/radio/_radio-theme.scss, src/material/select/_m2-select.scss, src/material/select/_m3-select.scss, src/material/select/_select-theme.scss, src/material/sidenav/_m2-sidenav.scss, src/material/sidenav/_m3-sidenav.scss, src/material/sidenav/_sidenav-theme.scss, src/material/slide-toggle/_m2-slide-toggle.scss, src/material/slide-toggle/_m3-slide-toggle.scss, src/material/slide-toggle/_slide-toggle-theme.scss, src/material/slider/_m2-slider.scss, src/material/slider/_m3-slider.scss, src/material/slider/_slider-theme.scss, src/material/slider/slider-thumb.scss, src/material/snack-bar/_m2-snack-bar.scss, src/material/snack-bar/_m3-snack-bar.scss, src/material/snack-bar/_snack-bar-theme.scss, src/material/snack-bar/simple-snack-bar.scss, src/material/sort/_m2-sort.scss, src/material/sort/_m3-sort.scss, src/material/sort/_sort-theme.scss, src/material/sort/sort-header.scss, src/material/stepper/_m2-stepper.scss, src/material/stepper/_m3-stepper.scss, src/material/stepper/_stepper-theme.scss, src/material/stepper/_stepper-variables.scss, src/material/table/_m2-table.scss, src/material/table/_m3-table.scss, src/material/table/_table-flex-styles.scss, src/material/table/_table-theme.scss, src/material/table/table.scss, src/material/tabs/_m2-tabs.scss, src/material/tabs/_m3-tabs.scss, src/material/tabs/_tabs-common.scss, src/material/tabs/_tabs-theme.scss, src/material/tabs/tab-body.scss, src/material/tabs/tab-group.scss, src/material/tabs/tab-nav-bar/tab-link.scss, src/material/tabs/tab-nav-bar/tab-nav-bar.scss, src/material/timepicker/_m2-timepicker.scss, src/material/timepicker/_m3-timepicker.scss, src/material/timepicker/_timepicker-theme.scss, src/material/toolbar/_m2-toolbar.scss, src/material/toolbar/_m3-toolbar.scss, src/material/toolbar/_toolbar-theme.scss, src/material/toolbar/_toolbar-variables.scss, src/material/tooltip/_m2-tooltip.scss, src/material/tooltip/_m3-tooltip.scss, src/material/tooltip/_tooltip-theme.scss, src/material/tree/_m2-tree.scss, src/material/tree/_m3-tree.scss, src/material/tree/_tree-theme.scss, src/material/tree/tree.scss, src/youtube-player/youtube-player-placeholder.scss, src/youtube-player/youtube-player.scss (-only; the files outside are a disclosed gap, not measured)",
+    "file_edge_precision and file_edge_recall measured against an import dump's (file, imported file) pairs, there being no SCIP index: the truth is what each file's import statements name, not the files its references reach as a SCIP index's cross-file edges are, so a file reached without an import of its own (a file another one required, an autoloaded constant) is outside the truth and a resolved edge to it counts against precision, while a file imported and never referenced is in it (LB-F57)",
+    "import_resolution: 861 of 861 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 1 (861 of 861) and recall 1 (861 of 861); 0 of 871 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "range_agreement not measured: the L1 oracle reported no end line for any matched definition, so L1 can be met at most at good, never excellent (design §1.2)",
+    "the holdout for W5 (LB-Q-scss-rest, O851): angular/components 21.0.2 was pinned in calibration/corpus.d/scss-holdout.yaml in the commit that adds the rule (6394b547), before the rule ran on any subject; this is the reading taken. One scratch run of an incomplete dialect (before the repeated-field and for-loop queries) preceded it (its aggregate counts were seen with the calibration subjects, no pair of it was read and nothing was tuned to it), and no query, harness rule or threshold changed after this reading; a later rule change needs a new holdout"
+  ],
+  "disposition": null
+}
