@@ -43,7 +43,7 @@ func newTraceFixtureRepo(t *testing.T) (root, storePath string) {
 	for _, args := range [][]string{
 		{"init", "-q"},
 		{"-c", "user.email=t@example.invalid", "-c", "user.name=t", "add", "-A"},
-		{"-c", "user.email=t@example.invalid", "-c", "user.name=t", "commit", "-q", "-m", "fixture"},
+		{"-c", "maintenance.auto=false", "-c", "gc.auto=0", "-c", "user.email=t@example.invalid", "-c", "user.name=t", "commit", "-q", "-m", "fixture"},
 	} {
 		cmd := exec.Command("git", append([]string{"-C", root}, args...)...)
 		if out, err := cmd.CombinedOutput(); err != nil {
@@ -183,7 +183,7 @@ func traceProjectWrite(t *testing.T, root, name, body string) {
 
 func traceProjectCommit(t *testing.T, root string) string {
 	t.Helper()
-	for _, args := range [][]string{{"add", "-A"}, {"-c", "user.email=t@example.invalid", "-c", "user.name=t", "commit", "-q", "-m", "project decision sources"}} {
+	for _, args := range [][]string{{"add", "-A"}, {"-c", "maintenance.auto=false", "-c", "gc.auto=0", "-c", "user.email=t@example.invalid", "-c", "user.name=t", "commit", "-q", "-m", "project decision sources"}} {
 		cmd := exec.Command("git", append([]string{"-C", root}, args...)...)
 		if output, err := cmd.CombinedOutput(); err != nil {
 			t.Fatalf("git %v: %v %s", args, err, output)
@@ -486,5 +486,59 @@ func TestCmdTraceExplicitDecisionSourcesRefuseBoundOverflowBeforeWritingPack(t *
 				t.Fatalf("overflow wrote partial pack: %v", err)
 			}
 		})
+	}
+}
+
+// Fixture setup must not leave a detached Git writer racing the read-only
+// export's full-tree assertion. Check native child-process events, rather than
+// waiting for or excluding a maintenance lock that can exist for milliseconds.
+func TestTraceFixtureCommitsDoNotLaunchAutoMaintenance(t *testing.T) {
+	tracePath := filepath.Join(t.TempDir(), "git-trace2.jsonl")
+	t.Setenv("GIT_TRACE2_EVENT", tracePath)
+	newTraceProjectFixture(t)
+
+	raw, err := os.ReadFile(tracePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	type traceEvent struct {
+		Event string   `json:"event"`
+		SID   string   `json:"sid"`
+		Argv  []string `json:"argv"`
+	}
+	var events []traceEvent
+	commits := map[string]bool{}
+	for _, line := range bytes.Split(raw, []byte{'\n'}) {
+		if len(bytes.TrimSpace(line)) == 0 {
+			continue
+		}
+		var event traceEvent
+		if err := json.Unmarshal(line, &event); err != nil {
+			t.Fatalf("native Git Trace2 event: %v", err)
+		}
+		events = append(events, event)
+		if event.Event == "start" {
+			for _, arg := range event.Argv {
+				if arg == "commit" {
+					commits[event.SID] = true
+				}
+			}
+		}
+	}
+	if len(commits) != 2 {
+		t.Fatalf("native Trace2 recorded %d fixture commits, want both 2", len(commits))
+	}
+	for _, event := range events {
+		if event.Event != "child_start" || !commits[event.SID] {
+			continue
+		}
+		automatic, maintenance := false, false
+		for _, arg := range event.Argv {
+			automatic = automatic || arg == "--auto"
+			maintenance = maintenance || arg == "maintenance" || arg == "gc"
+		}
+		if automatic && maintenance {
+			t.Errorf("fixture commit launched automatic maintenance: %s", strings.Join(event.Argv, " "))
+		}
 	}
 }
