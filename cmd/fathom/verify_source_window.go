@@ -7,6 +7,9 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
+
+	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
 
 type sourceWindowReply struct {
@@ -226,6 +229,7 @@ func fetchCurrentWindowResult(hc *http.Client, baseURL, service, token, id strin
 	if err != nil {
 		return httpVerifyResult{}, err
 	}
+	req.Header.Set(mcp.DeclaredBudgetHeader, strconv.Itoa(verifyPlanDeclaredBudget))
 	resp, err := hc.Do(req)
 	if err != nil {
 		return httpVerifyResult{}, err

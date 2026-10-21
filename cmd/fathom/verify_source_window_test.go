@@ -10,6 +10,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
 func assertCurrentWindowRefusal(t *testing.T, code int, stdout, stderr, wantReason string) {
@@ -36,6 +39,88 @@ func assertCurrentWindowRefusal(t *testing.T, code int, stdout, stderr, wantReas
 	}
 	if err := json.Unmarshal(doc["error"], &failure); err != nil || scope != "current_worktree" || freshness != "unknown" || state != "refused" || failure.Code != "current_source_window_refused" || !strings.Contains(failure.Reason, wantReason) || !strings.Contains(stderr, wantReason) {
 		t.Fatalf("incomplete window refusal: %s stderr=%s", stdout, stderr)
+	}
+}
+
+// The pending receipt is budgeted at collection. The closed result must use
+// that same dispatch budget or the handler can recut its tasks after close.
+func TestCurrentWindowFinalResultsPreserveCollectedReceipts(t *testing.T) {
+	f := newConsoleFixtureOpts(t, consoleFixtureOpts{Rooted: true})
+	hc := &http.Client{Timeout: 5 * time.Second}
+	const service = "payment-service"
+	token, err := beginCurrentWindow(hc, f.ts.URL, service)
+	if err != nil || token == "" {
+		t.Fatalf("begin: token=%q err=%v", token, err)
+	}
+	defer abortCurrentWindow(hc, f.ts.URL, service, token)
+
+	planOf := func(prefix string, count, titleBytes int) ([]byte, verify.Plan) {
+		var b strings.Builder
+		b.WriteString("# Window report\n\n")
+		for i := 0; i < count; i++ {
+			fmt.Fprintf(&b, "- [x] %s row %d %s {id: %s-%04d, symbol: Missing%d}\n", prefix, i, strings.Repeat("x", titleBytes), prefix, i, i)
+		}
+		md := []byte(b.String())
+		return md, verify.ParseMarkdownPlan(service, md)
+	}
+	type collected struct {
+		md   []byte
+		plan verify.Plan
+		ids  []string
+	}
+	var reports []collected
+	seenReceipts := make(map[string]bool)
+	for _, spec := range []struct {
+		prefix            string
+		count, titleBytes int
+		wantContinuations bool
+	}{
+		{"small", 3, 20, false},
+		{"medium", 40, 500, false},
+		{"large", 100, 20000, true},
+	} {
+		md, plan := planOf(spec.prefix, spec.count, spec.titleBytes)
+		ids, err := collectVerifyWindow(hc, f.ts.URL, service, "", md, plan, nil, token)
+		if err != nil {
+			t.Fatalf("collect %s: %v", spec.prefix, err)
+		}
+		if len(ids) == 0 || spec.wantContinuations != (len(ids) > 1) {
+			t.Fatalf("collect %s: %d receipts, want continuations=%v", spec.prefix, len(ids), spec.wantContinuations)
+		}
+		for _, id := range ids {
+			if seenReceipts[id] {
+				t.Fatalf("duplicate collected receipt %s", id)
+			}
+			seenReceipts[id] = true
+		}
+		reports = append(reports, collected{md, plan, ids})
+	}
+	if err := closeCurrentWindow(hc, f.ts.URL, service, token); err != nil {
+		t.Fatal(err)
+	}
+	for _, report := range reports {
+		got, err := finalVerifyWindow(hc, f.ts.URL, service, report.md, report.plan, token, report.ids)
+		if err != nil {
+			t.Fatalf("final %s: %v", report.plan.Tasks[0].ID, err)
+		}
+		if len(report.plan.Tasks) == 40 {
+			encoded, err := json.Marshal(got)
+			if err != nil || len(encoded) <= 16000 {
+				t.Fatalf("medium final report = %d bytes, err %v; need a result above the agent default", len(encoded), err)
+			}
+		}
+		if len(got.Tasks) != len(report.plan.Tasks) {
+			t.Fatalf("final %s: %d of %d tasks", report.plan.Tasks[0].ID, len(got.Tasks), len(report.plan.Tasks))
+		}
+		seen := make(map[string]int)
+		for _, task := range got.Tasks {
+			seen[task.TaskID]++
+		}
+		for _, task := range report.plan.Tasks {
+			if seen[task.ID] != 1 {
+				t.Errorf("final %s: task %s appears %d times", report.plan.Tasks[0].ID, task.ID, seen[task.ID])
+			}
+		}
 	}
 }
 
