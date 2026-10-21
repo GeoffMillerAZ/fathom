@@ -61,8 +61,9 @@ func TestAnsibleClassify(t *testing.T) {
 		{"a standalone role's defaults", "defaults/main.yml", anVars, ToolAnsible},
 		{"a standalone role's meta", "meta/main.yml", anMeta, ToolAnsible},
 		{"a standalone role below the root", "myrole/vars/main.yml", anVars, ToolAnsible},
-		// Not Ansible.
-		{"a mapping under tasks/ (a Taskfile include)", "ci/tasks/build.yml", "version: '3'\ntasks:\n  build:\n    cmds: [make]\n", ToolUnclassified},
+		// Not Ansible. A version-3 task map is a Taskfile even under tasks/.
+		{"a mapping under tasks/ (a Taskfile include)", "ci/tasks/build.yml", "version: '3'\ntasks:\n  build:\n    cmds: [make]\n", ToolTaskfile},
+		{"a malformed task list under tasks/", "ci/tasks/not-taskfile.yml", "version: '3'\ntasks:\n  - build\n", ToolUnclassified},
 		{"a vars directory with no role beside it", "other/vars/Debian.yml", anVars, ToolUnclassified},
 		{"a vars file outside the vars directories", "config/vars.yml", anVars, ToolUnclassified},
 		{"an inventory-shaped file outside inventory/", "config/hosts.yml", anInventory, ToolUnclassified},
