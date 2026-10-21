@@ -26,7 +26,6 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
 	"github.com/geoffmilleraz/fathom/internal/receipt"
 	riskreview "github.com/geoffmilleraz/fathom/internal/review"
-	"github.com/geoffmilleraz/fathom/internal/scope"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
@@ -546,11 +545,7 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 	// Pin one scope and snapshot for the entire review. Every consumer below
 	// reads Nodes and GraphBoth without mutating either shared memo value.
 	sc := navScope(ctx, backend, service)
-	snap, graph, typed, typedErr, sequence, err := memo.SnapshotGraphBothForExtra(ctx, sc, func(lctx context.Context) ([]core.SymbolNode, any, error) {
-		cctx, col := scope.WithCollector(lctx)
-		nodes, loadErr := backend.ListAllSymbols(cctx, service)
-		return nodes, col.For(service), loadErr
-	}, typedLoader(backend, service))
+	snap, graph, typed, typedErr, sequence, err := memo.SnapshotGraphBothForExtra(ctx, sc, serviceSnapshotLoader(backend, service), typedLoader(backend, service))
 	if err != nil {
 		return review.Input{}, reviewCorpus{}, navLoadError("review_diff", service, err)
 	}

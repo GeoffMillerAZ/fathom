@@ -158,7 +158,18 @@ func serviceSnapshot(ctx context.Context, backend QueryInterface, service string
 
 // serviceSnapshotAt is serviceSnapshot at a scope the caller already took.
 func serviceSnapshotAt(ctx context.Context, backend QueryInterface, service string, sc memo.Scope) (*memo.Snapshot, error) {
-	snap, err := memo.SnapshotForExtra(ctx, sc, func(lctx context.Context) ([]core.SymbolNode, any, error) {
+	snap, err := memo.SnapshotForExtra(ctx, sc, serviceSnapshotLoader(backend, service))
+	if err != nil {
+		return nil, err
+	}
+	recordSnapshotDisclosure(ctx, service, snap)
+	return snap, nil
+}
+
+// serviceSnapshotLoader is the one governed full-symbol load shared by the
+// navigation snapshot and review's coherent snapshot/graph bundle.
+func serviceSnapshotLoader(backend QueryInterface, service string) func(context.Context) ([]core.SymbolNode, any, error) {
+	return func(lctx context.Context) ([]core.SymbolNode, any, error) {
 		// The load's suppression disclosure is kept on the snapshot and
 		// replayed to every reader below: a cached snapshot still says
 		// what it hides (SP-3).
@@ -166,12 +177,7 @@ func serviceSnapshotAt(ctx context.Context, backend QueryInterface, service stri
 		//fathom:tenancy-allow sources the nav memo's loader: the one shared snapshot per watermark (single flight, memo-budgeted)
 		nodes, err := backend.ListAllSymbols(cctx, service)
 		return nodes, col.For(service), err
-	})
-	if err != nil {
-		return nil, err
 	}
-	recordSnapshotDisclosure(ctx, service, snap)
-	return snap, nil
 }
 
 // recordSnapshotDisclosure replays the snapshot load's suppression
