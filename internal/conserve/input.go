@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/certify"
+	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/verify"
@@ -60,6 +61,9 @@ type Input struct {
 	// HeadFile reads path's content AS OF Head — the worktree file, for
 	// NewInput's callers. Same ok/err contract as BaseFile.
 	HeadFile func(path string) (content []byte, ok bool, err error)
+	// HeadGenerated optionally classifies a worktree file through a bounded
+	// header read. A nil callback leaves legacy HeadFile behavior intact.
+	HeadGenerated func(path string) (generated bool, exists bool, err error)
 	// Store is the live index, for a plane that needs it (certificates,
 	// governance). nil is valid and means exactly that: a plane needing it
 	// reports "no store" in its Missing and goes Unproven (I44) — Input
@@ -351,6 +355,7 @@ func NewInput(ctx context.Context, root, baseRef string, st store.Store, service
 		ChangedFiles:        changed,
 		BaseFile:            func(path string) ([]byte, bool, error) { return gitShowFile(ctx, root, base, path) },
 		HeadFile:            func(path string) ([]byte, bool, error) { return readWorktreeFile(ctx, root, path) },
+		HeadGenerated:       func(path string) (bool, bool, error) { return readWorktreeGenerated(ctx, root, path) },
 		Store:               st,
 		Declarations:        NewDeclarations(basePlans, headPlans),
 		Retired:             NewRetirement(basePlans, headPlans),
@@ -674,6 +679,66 @@ func worktreeFile(root, path string) ([]byte, bool, error) {
 // readWorktreeFile checks cancellation between bounded chunks. It still reads
 // the entire regular file when requested; no size limit is imposed.
 func readWorktreeFile(ctx context.Context, root, path string) ([]byte, bool, error) {
+	f, ok, err := openRegularWorktreeFile(ctx, root, path)
+	if err != nil || !ok {
+		return nil, ok, err
+	}
+	defer f.Close()
+	var out []byte
+	buf := make([]byte, 64*1024)
+	for {
+		if err := ctx.Err(); err != nil {
+			return nil, false, err
+		}
+		n, err := f.Read(buf)
+		if canceled := ctx.Err(); canceled != nil {
+			return nil, false, canceled
+		}
+		out = append(out, buf[:n]...)
+		if err == io.EOF {
+			return out, true, nil
+		}
+		if err != nil {
+			return nil, false, err
+		}
+	}
+}
+
+// readWorktreeGenerated reads only the classifier's header window. It shares
+// the full reader's path, symlink, and regular-file checks.
+func readWorktreeGenerated(ctx context.Context, root, path string) (bool, bool, error) {
+	f, ok, err := openRegularWorktreeFile(ctx, root, path)
+	if err != nil || !ok {
+		return false, ok, err
+	}
+	defer f.Close()
+	generated, err := connector.IsGeneratedReader(path, &contextFileReader{ctx: ctx, file: f})
+	if canceled := ctx.Err(); canceled != nil {
+		return false, false, canceled
+	}
+	if err != nil {
+		return false, false, err
+	}
+	return generated, true, nil
+}
+
+type contextFileReader struct {
+	ctx  context.Context
+	file *os.File
+}
+
+func (r *contextFileReader) Read(p []byte) (int, error) {
+	if err := r.ctx.Err(); err != nil {
+		return 0, err
+	}
+	n, err := r.file.Read(p)
+	if canceled := r.ctx.Err(); canceled != nil {
+		return 0, canceled
+	}
+	return n, err
+}
+
+func openRegularWorktreeFile(ctx context.Context, root, path string) (*os.File, bool, error) {
 	r := filepath.Clean(root)
 	full := filepath.Clean(filepath.Join(r, filepath.FromSlash(path)))
 	if full != r && !strings.HasPrefix(full, r+string(filepath.Separator)) {
@@ -705,30 +770,14 @@ func readWorktreeFile(ctx context.Context, root, path string) ([]byte, bool, err
 		}
 		return nil, false, err
 	}
-	defer f.Close()
 	openedInfo, err := f.Stat()
 	if err != nil {
+		f.Close()
 		return nil, false, err
 	}
 	if !openedInfo.Mode().IsRegular() {
+		f.Close()
 		return nil, false, fmt.Errorf("non-regular file %q: %s", path, openedInfo.Mode())
 	}
-	var out []byte
-	buf := make([]byte, 64*1024)
-	for {
-		if err := ctx.Err(); err != nil {
-			return nil, false, err
-		}
-		n, err := f.Read(buf)
-		if canceled := ctx.Err(); canceled != nil {
-			return nil, false, canceled
-		}
-		out = append(out, buf[:n]...)
-		if err == io.EOF {
-			return out, true, nil
-		}
-		if err != nil {
-			return nil, false, err
-		}
-	}
+	return f, true, nil
 }

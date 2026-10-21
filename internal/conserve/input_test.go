@@ -127,6 +127,12 @@ func TestNewInput_ResolvesBaseChangedFilesAndDeclarations(t *testing.T) {
 	if err != nil || !ok || string(headContent) == "" {
 		t.Fatalf("HeadFile(b.go) = %q ok:%v err:%v", headContent, ok, err)
 	}
+	if in.HeadGenerated == nil {
+		t.Fatal("NewInput did not install the streaming generated classifier")
+	}
+	if generated, exists, err := in.HeadGenerated("b.go"); err != nil || !exists || generated {
+		t.Fatalf("HeadGenerated(b.go) = generated:%v exists:%v err:%v", generated, exists, err)
+	}
 
 	// Declarations: retires "api:foo.Old" was present at base -> prior;
 	// surface_change "json:foo.New.tag" only appears at head -> self.
