@@ -13,6 +13,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -349,7 +350,7 @@ func NewInput(ctx context.Context, root, baseRef string, st store.Store, service
 		Head:                HeadWorktree,
 		ChangedFiles:        changed,
 		BaseFile:            func(path string) ([]byte, bool, error) { return gitShowFile(ctx, root, base, path) },
-		HeadFile:            func(path string) ([]byte, bool, error) { return worktreeFile(root, path) },
+		HeadFile:            func(path string) ([]byte, bool, error) { return readWorktreeFile(ctx, root, path) },
 		Store:               st,
 		Declarations:        NewDeclarations(basePlans, headPlans),
 		Retired:             NewRetirement(basePlans, headPlans),
@@ -667,17 +668,67 @@ func pathAbsentAtRef(stderr string) bool {
 // is false — never an error — when the file simply does not exist there.
 // Refuses (a real error) a path that would resolve outside root.
 func worktreeFile(root, path string) ([]byte, bool, error) {
+	return readWorktreeFile(context.Background(), root, path)
+}
+
+// readWorktreeFile checks cancellation between bounded chunks. It still reads
+// the entire regular file when requested; no size limit is imposed.
+func readWorktreeFile(ctx context.Context, root, path string) ([]byte, bool, error) {
 	r := filepath.Clean(root)
 	full := filepath.Clean(filepath.Join(r, filepath.FromSlash(path)))
 	if full != r && !strings.HasPrefix(full, r+string(filepath.Separator)) {
 		return nil, false, fmt.Errorf("path %q escapes root %q", path, root)
 	}
-	b, err := os.ReadFile(full)
+	if err := ctx.Err(); err != nil {
+		return nil, false, err
+	}
+	// Stat follows symlinks and avoids opening a quiescent FIFO, whose Open
+	// would block before cancellation could be checked. A concurrent path
+	// replacement between Stat and Open remains outside this guard.
+	info, err := os.Stat(full)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, false, nil
 		}
 		return nil, false, err
 	}
-	return b, true, nil
+	if !info.Mode().IsRegular() {
+		return nil, false, fmt.Errorf("non-regular file %q: %s", path, info.Mode())
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, false, err
+	}
+	f, err := os.Open(full)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, false, nil
+		}
+		return nil, false, err
+	}
+	defer f.Close()
+	openedInfo, err := f.Stat()
+	if err != nil {
+		return nil, false, err
+	}
+	if !openedInfo.Mode().IsRegular() {
+		return nil, false, fmt.Errorf("non-regular file %q: %s", path, openedInfo.Mode())
+	}
+	var out []byte
+	buf := make([]byte, 64*1024)
+	for {
+		if err := ctx.Err(); err != nil {
+			return nil, false, err
+		}
+		n, err := f.Read(buf)
+		if canceled := ctx.Err(); canceled != nil {
+			return nil, false, canceled
+		}
+		out = append(out, buf[:n]...)
+		if err == io.EOF {
+			return out, true, nil
+		}
+		if err != nil {
+			return nil, false, err
+		}
+	}
 }
