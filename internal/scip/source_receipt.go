@@ -285,7 +285,7 @@ func ValidateSourceReceipt(ctx context.Context, root, path string, raw []byte, r
 // sourceReceiptIndexSummary validates every complete top-level field with the
 // official decoder, but retains only the data receipt validation reads. SCIP
 // document and external-symbol payloads can dwarf the source index itself.
-func sourceReceiptIndexSummary(raw []byte) (scippb.Index, error) {
+func sourceReceiptIndexSummary(raw []byte) (*scippb.Index, error) {
 	var summary, scratch scippb.Index
 	decoder := proto.UnmarshalOptions{Merge: true}
 	for len(raw) > 0 {
@@ -296,9 +296,9 @@ func sourceReceiptIndexSummary(raw []byte) (scippb.Index, error) {
 			err := decoder.Unmarshal(raw, &scratch)
 			summary.Metadata = sourceReceiptMetadata(scratch.Metadata)
 			if err != nil {
-				return summary, err
+				return &summary, err
 			}
-			return summary, protowire.ParseError(size)
+			return &summary, protowire.ParseError(size)
 		}
 		err := decoder.Unmarshal(raw[:size], &scratch)
 		for _, document := range scratch.Documents {
@@ -316,11 +316,11 @@ func sourceReceiptIndexSummary(raw []byte) (scippb.Index, error) {
 		scratch.Metadata = sourceReceiptMetadata(scratch.Metadata)
 		summary.Metadata = scratch.Metadata
 		if err != nil {
-			return summary, err
+			return &summary, err
 		}
 		raw = raw[size:]
 	}
-	return summary, nil
+	return &summary, nil
 }
 
 func sourceReceiptMetadata(metadata *scippb.Metadata) *scippb.Metadata {

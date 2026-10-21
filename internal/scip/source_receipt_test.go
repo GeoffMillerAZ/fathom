@@ -182,7 +182,7 @@ func TestSourceReceiptDropsUnusedDecodedPayloadBeforeHash(t *testing.T) {
 	runtime.ReadMemStats(&stats)
 	probe := &receiptHeapProbe{baseline: stats.HeapAlloc}
 	bound, err := ValidateSourceReceipt(probe, root, path, raw)
-	runtime.KeepAlive(index)
+	runtime.KeepAlive(&index)
 	runtime.KeepAlive(raw)
 	if !bound || err != nil {
 		t.Fatalf("bound=%v err=%v", bound, err)
