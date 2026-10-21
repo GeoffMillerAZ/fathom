@@ -144,6 +144,37 @@ func TestGatePreflightNamesARefusedClaimAndAMissingPassingRun(t *testing.T) {
 	}
 }
 
+func TestGatePreflightDeadlineBeforeRootReadIsNotSilent(t *testing.T) {
+	dir, _ := preflightRepo(t)
+	requests := make(chan struct{}, 1)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case requests <- struct{}{}:
+		default:
+		}
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+	orig := gatePreflightVerifyCap
+	gatePreflightVerifyCap = 0 // expires before even the first read-only Git lookup
+	defer func() { gatePreflightVerifyCap = orig }()
+
+	line := gatePreflightLine(dir, "", "git commit -m claim", "deadline-before-root", srv.URL)
+	if !strings.Contains(line, "verify: not checked (deadline)") {
+		t.Errorf("expired preflight = %q, want an explicit unchecked deadline", line)
+	}
+	srv.Close()
+	select {
+	case <-requests:
+		t.Error("an already expired preflight contacted the daemon")
+	default:
+	}
+	rows := preflightRows(t)
+	if len(rows) != 1 || rows[0]["verb"] != "commit" || rows[0]["verify"] != "not checked (deadline)" || rows[0]["refused"] != "0" {
+		t.Errorf("expired preflight rows = %v, want one unchecked deadline with no claimed refusal", rows)
+	}
+}
+
 // TestGatePreflightRidesThePreToolUseBashHook: the line reaches the agent
 // through `edit-hook --pre` on Bash, as advisory context, never a deny.
 func TestGatePreflightRidesThePreToolUseBashHook(t *testing.T) {

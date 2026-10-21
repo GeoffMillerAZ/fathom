@@ -138,6 +138,15 @@ func gatePreflightLine(projDir, cwd, command, sessionID, baseURL string) string 
 	defer cancel()
 	top, err := gitro.Output(ctx, projDir, "rev-parse", "--show-toplevel")
 	if err != nil {
+		if deadlinePassed(ctx) {
+			verb := "commit"
+			if push {
+				verb = "push"
+			}
+			meta := map[string]string{"verb": verb, "verify": "not checked (deadline)", "refused": "0"}
+			emitBeat(gatePreflightChannel, "flagged", firingMeta(meta, sessionID, ""))
+			return "🚦 fathom gate preflight (advisory): verify: not checked (deadline)"
+		}
 		return ""
 	}
 	root := strings.TrimSpace(string(top))
