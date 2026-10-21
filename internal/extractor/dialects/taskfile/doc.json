@@ -4,7 +4,8 @@
     "basenames": [
       "Taskfile.yml", "Taskfile.yaml", "taskfile.yml", "taskfile.yaml",
       "Taskfile.dist.yml", "Taskfile.dist.yaml", "taskfile.dist.yml", "taskfile.dist.yaml"
-    ]
+    ],
+    "content_sniff": "(?m)^['\\\"]?version['\\\"]?[ \\t]*:[ \\t]*['\\\"]?3['\\\"]?[ \\t]*(?:#.*)?\\r?$"
   },
   "entities": [
     { "select": "$", "where": { "is_map": true },

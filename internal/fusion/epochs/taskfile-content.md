@@ -1,0 +1,1 @@
+Unnamed .yml and .yaml files with a native version-3 Taskfile shape now dispatch to the Taskfile dialect after earlier YAML claims decline them. Re-extract previously unclassified files so their tasks and include edges enter the graph.
