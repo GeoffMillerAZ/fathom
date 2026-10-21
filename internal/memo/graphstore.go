@@ -23,6 +23,8 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
@@ -77,6 +79,12 @@ const (
 )
 
 var (
+	// A package patch/drop publishes several memo groups under one unchanged
+	// watermark. Readers of a complete snapshot+graph use this bounded
+	// sequence to reject a pair straddling that publication. It stores no
+	// service entries and does not change any group's cache policy.
+	patchWriteMu  sync.RWMutex
+	patchSequence atomic.Uint64
 	snapshotGroup = NewGroup[snapKey, *Snapshot]("snapshot", Options{WatermarkScoped: true, Keep: true, ExpectedCost: snapshotCost})
 	typedGroup    = NewGroup[typedKey, []core.Edge]("typed_edges", Options{WatermarkScoped: true, Keep: true, ExpectedCost: typedCost})
 	graphGroup    = NewGroup[graphKey, *callgraph.Graph]("graphstore", Options{WatermarkScoped: true, Keep: true, ExpectedCost: graphCost})
@@ -95,6 +103,10 @@ var (
 type Snapshot struct {
 	Scope Scope
 	Nodes []core.SymbolNode
+	// publication is the completed patch/drop sequence seen when these
+	// immutable rows were built. It fences a held snapshot after DropScope
+	// even when its cache entry has already been removed.
+	publication uint64
 	// lower holds each node's lowercased search fields, a field already
 	// lower case sharing its original string.
 	lower   []Lowered
@@ -170,11 +182,18 @@ type SnapshotLoader func(ctx context.Context) ([]core.SymbolNode, error)
 // caller.
 func SnapshotFor(ctx context.Context, sc Scope, load SnapshotLoader) (*Snapshot, error) {
 	return snapshotGroup.Get(ctx, snapKey{sc}, func(bctx context.Context) (*Snapshot, int64, error) {
+		before := patchSequence.Load()
+		if before&1 != 0 {
+			return nil, 0, ErrCoherentGraphChanged
+		}
 		nodes, err := load(bctx)
 		if err != nil {
 			return nil, 0, err
 		}
 		s := newSnapshot(sc, nodes)
+		if !CoherentGraphCurrent(before) {
+			return nil, 0, ErrCoherentGraphChanged
+		}
 		return s, snapshotBytes(s), nil
 	})
 }
@@ -189,19 +208,26 @@ func NewSnapshot(nodes []core.SymbolNode) *Snapshot { return newSnapshot(Scope{}
 // kept on the snapshot (Snapshot.Extra).
 func SnapshotForExtra(ctx context.Context, sc Scope, load func(ctx context.Context) ([]core.SymbolNode, any, error)) (*Snapshot, error) {
 	return snapshotGroup.Get(ctx, snapKey{sc}, func(bctx context.Context) (*Snapshot, int64, error) {
+		before := patchSequence.Load()
+		if before&1 != 0 {
+			return nil, 0, ErrCoherentGraphChanged
+		}
 		nodes, extra, err := load(bctx)
 		if err != nil {
 			return nil, 0, err
 		}
 		s := newSnapshot(sc, nodes)
 		s.Extra = extra
+		if !CoherentGraphCurrent(before) {
+			return nil, 0, ErrCoherentGraphChanged
+		}
 		return s, snapshotBytes(s), nil
 	})
 }
 
 // newSnapshot indexes nodes (taken over, not copied).
 func newSnapshot(sc Scope, nodes []core.SymbolNode) *Snapshot {
-	s := &Snapshot{Scope: sc, Nodes: nodes, lower: make([]Lowered, len(nodes)),
+	s := &Snapshot{Scope: sc, Nodes: nodes, publication: patchSequence.Load(), lower: make([]Lowered, len(nodes)),
 		names: make(map[string][]int32, len(nodes)), callees: make(map[string][]int32)}
 	intern := map[string]string{}
 	low := func(v string) string {
@@ -327,28 +353,101 @@ func TypedFor(ctx context.Context, sc Scope, load TypedLoader) ([]core.Edge, err
 // watermark, kind) and shared: callers read it and never add edges to it.
 // Both and resolved graphs take the typed edges from typed (TypedFor).
 func GraphFor(ctx context.Context, snap *Snapshot, kind GraphKind, typed TypedLoader) (*callgraph.Graph, error) {
-	return graphGroup.Get(ctx, graphKey{snap.Scope, kind}, func(bctx context.Context) (*callgraph.Graph, int64, error) {
-		var edges []core.Edge
-		if kind != GraphSyntax {
-			var err error
-			if edges, err = TypedFor(bctx, snap.Scope, typed); err != nil {
-				return nil, 0, err
+	key := graphKey{snap.Scope, kind}
+	// Unscoped snapshots have no cache entry. Keep their standalone build
+	// and deadline behavior unchanged.
+	if snap.Scope.Watermark == "" {
+		return graphGroup.Get(ctx, key, func(bctx context.Context) (*callgraph.Graph, int64, error) {
+			var edges []core.Edge
+			if kind != GraphSyntax {
+				var err error
+				if edges, err = TypedFor(bctx, snap.Scope, typed); err != nil {
+					return nil, 0, err
+				}
 			}
+			g := buildGraph(snap.Nodes, kind, edges)
+			return g, g.EstimatedBytes(), nil
+		})
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if !patchWriteMu.TryRLock() {
+		return nil, ErrCoherentGraphChanged
+	}
+	if !snapshotCurrent(snap) {
+		patchWriteMu.RUnlock()
+		return nil, ErrCoherentGraphChanged
+	}
+	if g, ok := residentGraph(key); ok {
+		patchWriteMu.RUnlock()
+		return g, nil
+	}
+	patchWriteMu.RUnlock()
+	// TypedEdges may auto-refresh. Finish that read before taking the lock
+	// that its PatchPackage would need.
+	var edges []core.Edge
+	if kind != GraphSyntax {
+		var err error
+		if edges, err = TypedFor(ctx, snap.Scope, typed); err != nil {
+			return nil, err
 		}
-		var g *callgraph.Graph
-		switch kind {
-		case GraphBoth:
-			g = callgraph.BuildBoth(snap.Nodes, edges)
-		case GraphResolved:
-			g = callgraph.BuildResolved(snap.Nodes, edges)
-		default:
-			g = callgraph.Build(snap.Nodes)
-		}
-		// The graph's own maps, summed (callgraph.EstimatedBytes): a flat
-		// per-node guess undercounted about 3× and let the cache fraction
-		// admit several times its budget.
+	}
+	if !patchWriteMu.TryRLock() {
+		return nil, ErrCoherentGraphChanged
+	}
+	defer patchWriteMu.RUnlock()
+	if !snapshotCurrent(snap) {
+		return nil, ErrCoherentGraphChanged
+	}
+	return graphGroup.Get(ctx, key, func(context.Context) (*callgraph.Graph, int64, error) {
+		g := buildGraph(snap.Nodes, kind, edges)
 		return g, g.EstimatedBytes(), nil
 	})
+}
+
+// snapshotCurrent is called under patchWriteMu's read lock. A resident
+// snapshot is authoritative even if an unrelated service advanced the
+// conservative global sequence. An evicted snapshot remains valid only
+// until any patch/drop may have changed its same-watermark source.
+func snapshotCurrent(snap *Snapshot) bool {
+	if resident, ok := snapshotGroup.Peek(snapKey{snap.Scope}); ok {
+		return resident == snap
+	}
+	return snap.publication == patchSequence.Load()
+}
+
+// residentGraph follows Group.Get's hit accounting and LRU touch without
+// starting a flight. On a miss, typed facts load before graph publication.
+func residentGraph(key graphKey) (*callgraph.Graph, bool) {
+	g := graphGroup
+	g.reg.mu.Lock()
+	g.mu.Lock()
+	e, ok := g.entries[key]
+	if !ok {
+		g.mu.Unlock()
+		g.reg.mu.Unlock()
+		return nil, false
+	}
+	g.counters.Hits++
+	if e.ref.elem != nil {
+		g.reg.lru.MoveToFront(e.ref.elem)
+	}
+	value := e.val
+	g.mu.Unlock()
+	g.reg.mu.Unlock()
+	return value, true
+}
+
+func buildGraph(nodes []core.SymbolNode, kind GraphKind, edges []core.Edge) *callgraph.Graph {
+	switch kind {
+	case GraphBoth:
+		return callgraph.BuildBoth(nodes, edges)
+	case GraphResolved:
+		return callgraph.BuildResolved(nodes, edges)
+	default:
+		return callgraph.Build(nodes)
+	}
 }
 
 // ProductReachFor returns what the product entry points of snap's graph
@@ -471,6 +570,13 @@ func HasGraphs(sc Scope) bool {
 // is dropped (ReplacePackage re-derives syntax edges it must never carry)
 // and rebuilds on its next use.
 func PatchPackage(sc Scope, pkg string, nodes []core.SymbolNode, typed []core.Edge) {
+	patchPackage(sc, pkg, nodes, typed, nil)
+}
+
+func patchPackage(sc Scope, pkg string, nodes []core.SymbolNode, typed []core.Edge, step func(string)) {
+	patchWriteMu.Lock()
+	patchSequence.Add(1) // odd: multi-group publication in progress
+	defer func() { patchSequence.Add(1); patchWriteMu.Unlock() }()
 	snapshotGroup.Update(snapKey{sc}, func(old *Snapshot) (*Snapshot, int64) {
 		kept := make([]core.SymbolNode, 0, len(old.Nodes)+len(nodes))
 		for _, n := range old.Nodes {
@@ -480,9 +586,13 @@ func PatchPackage(sc Scope, pkg string, nodes []core.SymbolNode, typed []core.Ed
 		}
 		kept = append(kept, nodes...)
 		s := newSnapshot(sc, kept)
-		s.Extra = old.Extra // the load's disclosure still describes it
+		s.publication = patchSequence.Load() + 1 // the even value published on unlock
+		s.Extra = old.Extra                      // the load's disclosure still describes it
 		return s, snapshotBytes(s)
 	})
+	if step != nil {
+		step("snapshot")
+	}
 	for _, k := range []GraphKind{GraphSyntax, GraphBoth} {
 		t := typed
 		if k == GraphSyntax {
@@ -492,6 +602,9 @@ func PatchPackage(sc Scope, pkg string, nodes []core.SymbolNode, typed []core.Ed
 			ng := old.ReplacePackage(pkg, nodes, t)
 			return ng, ng.EstimatedBytes()
 		})
+		if step != nil {
+			step(string(k))
+		}
 	}
 	graphGroup.Remove(graphKey{sc, GraphResolved}, ReasonWatermark)
 	for _, k := range []GraphKind{GraphSyntax, GraphBoth, GraphResolved} {
@@ -516,12 +629,91 @@ func EvictStoreService(store, service string) {
 // DropScope forgets sc's snapshot, typed edges and graphs — the honest
 // fallback when a refresh cannot name the package to patch.
 func DropScope(sc Scope) {
+	dropScope(sc, nil)
+}
+
+func dropScope(sc Scope, step func(string)) {
+	patchWriteMu.Lock()
+	patchSequence.Add(1)
+	defer func() { patchSequence.Add(1); patchWriteMu.Unlock() }()
 	snapshotGroup.Remove(snapKey{sc}, ReasonWatermark)
+	if step != nil {
+		step("snapshot")
+	}
 	typedGroup.Remove(typedKey{sc}, ReasonWatermark)
 	for _, k := range []GraphKind{GraphSyntax, GraphBoth, GraphResolved} {
 		graphGroup.Remove(graphKey{sc, k}, ReasonWatermark)
 		productGroup.Remove(graphKey{sc, k}, ReasonWatermark)
+		if step != nil {
+			step(string(k))
+		}
 	}
+}
+
+// ErrCoherentGraphChanged means a package refresh crossed a complete
+// snapshot/graph read. The caller must name the incomplete read; neither
+// half of the pair is evidence for a clean answer.
+var ErrCoherentGraphChanged = errors.New("memo: service snapshot or graph changed during the read")
+
+// CoherentGraphCurrent checks the publication token returned by
+// SnapshotGraphBothForExtra. A later patch/drop invalidates an answer even
+// when the store watermark is unchanged.
+func CoherentGraphCurrent(sequence uint64) bool {
+	return sequence&1 == 0 && patchSequence.Load() == sequence
+}
+
+// SnapshotGraphBothForExtra returns one complete immutable symbol/typed
+// graph bundle. A package patch or scope drop between its component reads
+// causes one bounded retry, then a named error. The loader's Extra retains
+// suppression disclosure for the caller to replay.
+func SnapshotGraphBothForExtra(ctx context.Context, sc Scope, load func(context.Context) ([]core.SymbolNode, any, error), typed TypedLoader) (*Snapshot, *callgraph.Graph, []core.Edge, error, uint64, error) {
+	return snapshotGraphBothForExtra(ctx, sc, load, typed, nil)
+}
+
+func snapshotGraphBothForExtra(ctx context.Context, sc Scope, load func(context.Context) ([]core.SymbolNode, any, error), typed TypedLoader, afterSnapshot func()) (*Snapshot, *callgraph.Graph, []core.Edge, error, uint64, error) {
+	for attempt := 0; attempt < 2; attempt++ {
+		if err := ctx.Err(); err != nil {
+			return nil, nil, nil, nil, 0, err
+		}
+		before := patchSequence.Load()
+		if before&1 != 0 {
+			return nil, nil, nil, nil, 0, ErrCoherentGraphChanged
+		}
+		snap, err := SnapshotForExtra(ctx, sc, load)
+		if err != nil {
+			if errors.Is(err, ErrCoherentGraphChanged) {
+				continue
+			}
+			return nil, nil, nil, nil, 0, err
+		}
+		if afterSnapshot != nil {
+			afterSnapshot()
+		}
+		// The backend's typed loader may itself refresh this scope. Complete
+		// that read before holding the publication lock.
+		edges, typedErr := TypedFor(ctx, sc, typed)
+		if typedErr != nil {
+			if err := ctx.Err(); err != nil {
+				return nil, nil, nil, nil, 0, err
+			}
+			return nil, nil, nil, typedErr, 0, nil
+		}
+		// GraphFor fences every graph publication, including legacy callers.
+		// Reuse these exact typed facts if their memo entry was evicted.
+		graph, err := GraphFor(ctx, snap, GraphBoth, func(context.Context) ([]core.Edge, error) {
+			return edges, nil
+		})
+		if err != nil {
+			if errors.Is(err, ErrCoherentGraphChanged) {
+				continue
+			}
+			return nil, nil, nil, nil, 0, err
+		}
+		if CoherentGraphCurrent(before) {
+			return snap, graph, edges, nil, before, nil
+		}
+	}
+	return nil, nil, nil, nil, 0, ErrCoherentGraphChanged
 }
 
 // GraphForTyped is GraphFor that also returns the typed edges and never

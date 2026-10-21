@@ -26,6 +26,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
 	"github.com/geoffmilleraz/fathom/internal/receipt"
 	riskreview "github.com/geoffmilleraz/fathom/internal/review"
+	"github.com/geoffmilleraz/fathom/internal/scope"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
@@ -193,6 +194,9 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 		if !asOf.active() {
 			persisted, resolutions = applyAndPersistFindings(ctx, backend, &v, &sources)
 		}
+		// A same-watermark package patch or a full ingest can also move the
+		// indexed facts after the source-byte window was read.
+		sources.indexCurrent(ctx, backend, p.Service)
 		if sources.windowUnverified {
 			for i := range v.Dimensions {
 				if v.Dimensions[i].Name == review.DimSpecCoverage {
@@ -215,7 +219,7 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 		if vo := reviewVerdictOutcome(v, resolutions); vo != nil {
 			payload["verdict_outcome"] = vo
 		}
-		payload["test_impact"] = reviewTestGap(ctx, backend, in).Payload()
+		payload["test_impact"] = reviewTestGap(in).Payload()
 
 		// resolution/index_commit (VB-19, docs/vision/29-verbs-not-lookups.md
 		// §3 wave E): the typed/heuristic mix behind the impact dimension's
@@ -226,12 +230,9 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 		// Governance dimensions (obligations, arch_conformance, spec
 		// coverage, test coverage) are not edge-derived and are outside
 		// this tally.
-		ng, gerr := loadNavGraphsErr(ctx, backend, p.Service)
-		if gerr == nil {
-			payload["resolution"] = resolutionFromBlastBuckets(blastRadiusByDepth(ng.Both, ng.Nodes, in.ChangedFiles))
-		}
-		if ic := indexCommitFor(ctx, backend, p.Service); ic != "" {
-			payload["index_commit"] = ic
+		payload["resolution"] = resolutionFromBlastBuckets(blastRadiusByDepth(in.GraphBoth, in.Nodes, in.ChangedFiles))
+		if sources.indexCommit != "" {
+			payload["index_commit"] = sources.indexCommit
 		}
 		// VB-30: other services whose outbound HTTP client call joins a
 		// route one of changed_files registers (serviceRefHopsInto,
@@ -242,41 +243,39 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 		withServiceRefHops(payload, hops, unextracted)
 		// GL-22: the changed files layered by blast radius (leaf, shared
 		// callee, cross-service provider) from the graph and hops above.
-		if gerr == nil {
-			payload["layers"] = layerDiffByBlastRadius(ng.Both, ng.Nodes, in.ChangedFiles, hops)
-			// CX-5 (docs/plans/change-and-compliance.md §2): the change risk
-			// receipt, additive, over the SAME graph/hops/verdict this call
-			// already resolved — review_receipt.go's own doc comment names
-			// exactly what is and is not wired yet. The risk table is the
-			// repo's own `.fathom/risk.cue` when present (LoadRiskTable's
-			// dual-mode load), the binary default otherwise — never the
-			// daemon process's cwd (only read under in.Root, the service's
-			// own resolved corpus root; "" skips the read, the same
-			// corpusRoot-gated discipline every other read in this file
-			// already keeps).
-			table := riskreview.RiskTableFor(in.Root)
-			risk := reviewDiffReceipt(ng.Both, ng.Nodes, in, v, hops, table)
-			payload["receipt"] = riskReceiptPayload(risk)
-			// SR-49 (docs/plans/surface-reckoning.md): the SAME receipt,
-			// additionally rendered as SARIF 2.1.0 and a GitHub check-run
-			// payload through review.ChangeRiskReceipt — embedded as raw
-			// JSON (json.RawMessage) rather than an escaped string, so the
-			// tool's overall JSON payload carries them as nested objects.
-			// EVX-3: the SARIF run carries its provenance, anchored at the
-			// indexed commit under the service root against the store's
-			// fingerprints (receipt_sarif's content grows; its key does not).
-			anchorRun := receipt.Run{Dir: in.Root, Rev: indexCommitFor(ctx, backend, p.Service), Service: p.Service, Nodes: ng.Nodes,
-				RepositoryURIAt: receipt.ConfiguredRepositoryURI}
-			if rcb, ok := backend.(reviewClaimsBackend); ok {
-				anchorRun.Stored = func(path string) (string, bool) {
-					hash, found, ferr := rcb.SourceFingerprint(ctx, p.Service, path)
-					return hash, ferr == nil && found
-				}
+		payload["layers"] = layerDiffByBlastRadius(in.GraphBoth, in.Nodes, in.ChangedFiles, hops)
+		// CX-5 (docs/plans/change-and-compliance.md §2): the change risk
+		// receipt, additive, over the SAME graph/hops/verdict this call
+		// already resolved — review_receipt.go's own doc comment names
+		// exactly what is and is not wired yet. The risk table is the
+		// repo's own `.fathom/risk.cue` when present (LoadRiskTable's
+		// dual-mode load), the binary default otherwise — never the
+		// daemon process's cwd (only read under in.Root, the service's
+		// own resolved corpus root; "" skips the read, the same
+		// corpusRoot-gated discipline every other read in this file
+		// already keeps).
+		table := riskreview.RiskTableFor(in.Root)
+		risk := reviewDiffReceipt(in.GraphBoth, in.Nodes, in, v, hops, table)
+		payload["receipt"] = riskReceiptPayload(risk)
+		// SR-49 (docs/plans/surface-reckoning.md): the SAME receipt,
+		// additionally rendered as SARIF 2.1.0 and a GitHub check-run
+		// payload through review.ChangeRiskReceipt — embedded as raw
+		// JSON (json.RawMessage) rather than an escaped string, so the
+		// tool's overall JSON payload carries them as nested objects.
+		// EVX-3: the SARIF run carries its provenance, anchored at the
+		// indexed commit under the service root against the store's
+		// fingerprints (receipt_sarif's content grows; its key does not).
+		anchorRun := receipt.Run{Dir: in.Root, Rev: sources.indexCommit, Service: p.Service, Nodes: in.Nodes,
+			RepositoryURIAt: receipt.ConfiguredRepositoryURI}
+		if rcb, ok := backend.(reviewClaimsBackend); ok {
+			anchorRun.Stored = func(path string) (string, bool) {
+				hash, found, ferr := rcb.SourceFingerprint(ctx, p.Service, path)
+				return hash, ferr == nil && found
 			}
-			receiptSARIF, receiptCheck := review.ChangeRiskReceipt(ctx, "fathom review_diff", anchorRun, risk)
-			payload["receipt_sarif"] = json.RawMessage(receiptSARIF)
-			payload["receipt_check"] = json.RawMessage(receiptCheck)
 		}
+		receiptSARIF, receiptCheck := review.ChangeRiskReceipt(ctx, "fathom review_diff", anchorRun, risk)
+		payload["receipt_sarif"] = json.RawMessage(receiptSARIF)
+		payload["receipt_check"] = json.RawMessage(receiptCheck)
 		return payload, nil
 	})
 }
@@ -292,21 +291,10 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 // verdict instead of sending the agent back for N test_impact calls.
 // Additive: every existing payload field is unchanged (law 4).
 //
-// The walk runs on the shared syntax+typed graph (RT-74) — the same
-// graph BuildBoth(in.Nodes, in.TypedEdges) would build, once per (service,
-// watermark) instead of once per review.
-func reviewTestGap(ctx context.Context, backend QueryInterface, in review.Input) impact.TestGapResult {
-	snap, err := serviceSnapshot(ctx, backend, in.Service)
-	if err != nil {
-		return impact.TestGapOn(nil, nil, in.ChangedFiles)
-	}
-	// A typed-edge read failure degrades this review to the syntax graph
-	// and is never cached (GraphForTyped).
-	g, _, _, err := memo.GraphForTyped(ctx, snap, memo.GraphBoth, typedLoader(backend, in.Service))
-	if err != nil {
-		return impact.TestGapOn(nil, nil, in.ChangedFiles)
-	}
-	return impact.TestGapOn(g, snap.Nodes, in.ChangedFiles)
+// The walk reads the complete graph pinned by buildReviewInput for this
+// request, shared with impact and the review receipt.
+func reviewTestGap(in review.Input) impact.TestGapResult {
+	return impact.TestGapOn(in.GraphBoth, in.Nodes, in.ChangedFiles)
 }
 
 // reviewVerdictOutcome computes review_diff's gate-shaped result summary
@@ -476,7 +464,7 @@ func discoverConservePlanPaths(root string) []string {
 }
 
 // buildReviewInput does every I/O review.Run itself never performs:
-// ListAllSymbols/TypedEdges for impact, per-changed-file Obligations for the
+// the memoized complete symbols/typed graph for impact, per-changed-file Obligations for the
 // obligations dimension, ServiceMeta + internal/projectrules.ResolveRules
 // for arch_conformance (review_diff never accepts inline arch rules — it
 // always resolves through the service's own project rule pack, or reports
@@ -496,6 +484,33 @@ type reviewCorpus struct {
 	deadline         time.Time
 	obligationGaps   []string
 	windowUnverified bool
+	indexScope       memo.Scope
+	indexSequence    uint64
+	indexCommit      string
+	indexFound       bool
+}
+
+func (rc *reviewCorpus) indexCurrent(ctx context.Context, backend QueryInterface, service string) bool {
+	if err := ctx.Err(); err != nil {
+		return rc.refuseWindow("partial: index identity recheck: " + err.Error())
+	}
+	if !memo.CoherentGraphCurrent(rc.indexSequence) {
+		return rc.refuseWindow("partial: graph publication changed during review (global conservative guard)")
+	}
+	if navScopeNoEnsure(ctx, backend, service) != rc.indexScope {
+		return rc.refuseWindow("partial: index identity changed during review")
+	}
+	_, commit, found, err := backend.ServiceMeta(ctx, service)
+	if err != nil {
+		return rc.refuseWindow("partial: index identity recheck: " + err.Error())
+	}
+	if found != rc.indexFound || commit != rc.indexCommit {
+		return rc.refuseWindow("partial: index identity changed during review")
+	}
+	if !memo.CoherentGraphCurrent(rc.indexSequence) {
+		return rc.refuseWindow("partial: graph publication changed during review (global conservative guard)")
+	}
+	return true
 }
 
 func (rc reviewCorpus) partialNote() string {
@@ -528,18 +543,29 @@ func summarizeReviewVerdict(v review.Verdict) string {
 }
 
 func buildReviewInput(ctx context.Context, backend QueryInterface, service string, changedFiles []string, concern, since string, asOf *asOfWindow) (review.Input, reviewCorpus, *rpcError) {
-	nodes, err := serviceSymbols(ctx, backend, service)
+	// Pin one scope and snapshot for the entire review. Every consumer below
+	// reads Nodes and GraphBoth without mutating either shared memo value.
+	sc := navScope(ctx, backend, service)
+	snap, graph, typed, typedErr, sequence, err := memo.SnapshotGraphBothForExtra(ctx, sc, func(lctx context.Context) ([]core.SymbolNode, any, error) {
+		cctx, col := scope.WithCollector(lctx)
+		nodes, loadErr := backend.ListAllSymbols(cctx, service)
+		return nodes, col.For(service), loadErr
+	}, typedLoader(backend, service))
 	if err != nil {
-		return review.Input{}, reviewCorpus{}, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
+		return review.Input{}, reviewCorpus{}, navLoadError("review_diff", service, err)
 	}
-	typed, _ := backend.TypedEdges(ctx, service)
+	if typedErr != nil {
+		return review.Input{}, reviewCorpus{}, navLoadError("review_diff typed edges", service, typedErr)
+	}
+	recordSnapshotDisclosure(ctx, service, snap)
 
 	in := review.Input{
 		Service:      service,
 		ChangedFiles: changedFiles,
 		Concern:      concern,
-		Nodes:        nodes,
+		Nodes:        snap.Nodes,
 		TypedEdges:   typed,
+		GraphBoth:    graph,
 	}
 
 	var obligationGaps []string
@@ -610,9 +636,13 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 		}
 	}
 
-	corpusRoot := ""
-	if path, _, found, metaErr := backend.ServiceMeta(ctx, service); metaErr == nil && found {
-		corpusRoot = path
+	corpusRoot, indexCommit, indexFound, metaErr := backend.ServiceMeta(ctx, service)
+	if metaErr != nil {
+		return review.Input{}, reviewCorpus{}, navLoadError("review_diff index identity", service, metaErr)
+	}
+	if !indexFound {
+		corpusRoot = ""
+		indexCommit = ""
 	}
 	// CV-13 (ADR-044 §1.6): resolve since in the service's OWN indexed
 	// root — never the daemon process's cwd — and fill Input.Base/Root.
@@ -642,6 +672,10 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 	in.ArchReason = reason
 
 	rc := readReviewCorpus(ctx, backend, service, changedFiles)
+	rc.indexScope, rc.indexSequence, rc.indexCommit, rc.indexFound = sc, sequence, indexCommit, indexFound
+	if !rc.indexCurrent(ctx, backend, service) {
+		return review.Input{}, reviewCorpus{}, &rpcError{Code: ErrCodeInternal, Message: "review_diff: " + rc.partial}
+	}
 	sort.Strings(obligationGaps)
 	rc.obligationGaps = obligationGaps
 	for _, f := range changedFiles {
@@ -758,10 +792,7 @@ func applyAndPersistFindings(ctx context.Context, backend QueryInterface, v *rev
 		existingByID[cl.ClaimID] = cl
 	}
 
-	watermark := ""
-	if _, indexedCommit, found, err := backend.ServiceMeta(ctx, v.Service); err == nil && found {
-		watermark = indexedCommit
-	}
+	watermark := rc.indexCommit
 	// A citation can be outside the diff. Read every persistable finding's
 	// cited path before BuildPersist, so an unreadable citation cannot cause
 	// PutClaims to replace a previously valid link set with an empty one.
@@ -800,6 +831,9 @@ func applyAndPersistFindings(ctx context.Context, backend QueryInterface, v *rev
 	// The path inventory and source bytes used above are two live reads.
 	// Refuse all writes if either changed before reconciliation starts.
 	if !rc.revalidate(ctx, backend, v.Service) {
+		return false, nil
+	}
+	if !rc.indexCurrent(ctx, backend, v.Service) {
 		return false, nil
 	}
 

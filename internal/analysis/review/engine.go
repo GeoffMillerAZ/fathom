@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/archconformance"
+	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/analysis/coverage"
 	"github.com/geoffmilleraz/fathom/internal/analysis/impact"
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -190,6 +191,9 @@ type Input struct {
 	// impact
 	Nodes      []core.SymbolNode
 	TypedEdges []core.Edge
+	// GraphBoth is the caller's complete, read-only BuildBoth graph for Nodes
+	// and TypedEdges. Nil keeps standalone Run's existing build behavior.
+	GraphBoth *callgraph.Graph
 
 	// obligations — served claims scoped to the changed files.
 	ObligationsSupported bool
@@ -463,7 +467,12 @@ func runImpact(in Input) Dimension {
 	}
 	d.Checked = true
 
-	result := impact.DiffImpactWithTypedEdges(in.Nodes, in.ChangedFiles, in.TypedEdges)
+	var result impact.Result
+	if in.GraphBoth != nil {
+		result = impact.BlastRadiusOn(in.GraphBoth, in.Nodes, in.ChangedFiles)
+	} else {
+		result = impact.DiffImpactWithTypedEdges(in.Nodes, in.ChangedFiles, in.TypedEdges)
+	}
 	d.Tests = append([]string(nil), result.Tests...)
 	d.Files = append([]string(nil), result.Files...)
 
