@@ -406,31 +406,49 @@ func (s *SQLiteStore) NewestTestCaseRuns(ctx context.Context, serviceID string) 
 		return nil, err
 	}
 	rows, err := s.db.QueryContext(ctx, `
-SELECT test_symbol_key, run_digest, suite, component, started_at, status, attempts, ingested_at, commit_sha, dirty, race, duration_ms, native_json
-FROM (
-    SELECT `+columns.key+` AS test_symbol_key, tc.run_digest, tc.suite, tr.component, tr.started_at, tc.status, tc.attempts, tr.ingested_at, tr.commit_sha, tr.dirty, tr.race, tc.duration_ms, `+columns.nativeJSON+` AS native_json,
+WITH ranked AS (
+    SELECT `+columns.key+` AS test_symbol_key, tc.run_digest, tc.suite, tr.component, tr.started_at, tc.status, tc.attempts, tr.ingested_at, tr.commit_sha, tr.dirty, tr.race, tc.duration_ms,
            ROW_NUMBER() OVER (PARTITION BY `+columns.key+` ORDER BY tr.started_at DESC, tr.ingested_at DESC) AS rn
     FROM test_cases tc
     JOIN test_runs tr ON tr.service_id = tc.service_id AND tr.run_digest = tc.run_digest AND tr.suite = tc.suite
     WHERE tc.service_id = ? AND `+columns.key+` != ''
+), picked AS (
+    SELECT test_symbol_key, run_digest, suite, component, started_at, status, attempts, ingested_at, commit_sha, dirty, race, duration_ms
+    FROM ranked WHERE rn = 1
+), owner AS (
+    SELECT run_digest, suite, MIN(test_symbol_key) AS owner_key
+    FROM picked GROUP BY run_digest, suite
 )
-WHERE rn = 1
-ORDER BY test_symbol_key
-`, serviceID)
+SELECT p.test_symbol_key, p.run_digest, p.suite, p.component, p.started_at, p.status, p.attempts, p.ingested_at, p.commit_sha, p.dirty, p.race, p.duration_ms,
+       CASE WHEN p.test_symbol_key = owner.owner_key THEN `+columns.nativeJSON+` ELSE '' END AS native_json
+FROM picked p
+JOIN owner ON owner.run_digest = p.run_digest AND owner.suite = p.suite
+JOIN test_runs tr ON tr.service_id = ? AND tr.run_digest = p.run_digest AND tr.suite = p.suite
+ORDER BY p.test_symbol_key
+`, serviceID, serviceID)
 	if err != nil {
 		return nil, fmt.Errorf("NewestTestCaseRuns query: %w", err)
 	}
 	defer rows.Close()
 	var out []TestCaseRun
+	type runKey struct{ digest, suite string }
+	nativeByRun := make(map[runKey]string)
 	for rows.Next() {
 		var r TestCaseRun
-		if err := rows.Scan(&r.TestSymbolKey, &r.RunDigest, &r.Suite, &r.Component, &r.StartedAt, &r.Status, &r.Attempts, &r.IngestedAt, &r.Commit, &r.Dirty, &r.Race, &r.DurationMS, &r.NativeJSON); err != nil {
+		var nativeJSON string
+		if err := rows.Scan(&r.TestSymbolKey, &r.RunDigest, &r.Suite, &r.Component, &r.StartedAt, &r.Status, &r.Attempts, &r.IngestedAt, &r.Commit, &r.Dirty, &r.Race, &r.DurationMS, &nativeJSON); err != nil {
 			return nil, fmt.Errorf("NewestTestCaseRuns scan: %w", err)
+		}
+		if nativeJSON != "" {
+			nativeByRun[runKey{r.RunDigest, r.Suite}] = nativeJSON
 		}
 		out = append(out, r)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("NewestTestCaseRuns rows: %w", err)
+	}
+	for i := range out {
+		out[i].NativeJSON = nativeByRun[runKey{out[i].RunDigest, out[i].Suite}]
 	}
 	return out, nil
 }
