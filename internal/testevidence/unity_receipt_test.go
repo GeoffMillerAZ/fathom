@@ -1,9 +1,11 @@
 package testevidence
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -105,6 +107,36 @@ func (f *unityFixture) saveEnvelope(t testing.TB) {
 func (f *unityFixture) save(t testing.TB) { t.Helper(); writeUnityJSON(t, f.receipt, f.r) }
 func (f *unityFixture) load() (UnityEvidence, error) {
 	return LoadUnityNUnitEvidence(context.Background(), f.root, f.xml, f.receipt)
+}
+
+// Source freshness still checks each file on every call. Scratch allocations
+// should stay bounded as the number of hashed inputs grows.
+func TestUnitySourceValidationAllocationBound(t *testing.T) {
+	f := newUnityFixture(t)
+	const files = 32
+	content := bytes.Repeat([]byte("x"), 64<<10)
+	for i := 0; i < files; i++ {
+		name := fmt.Sprintf("%s/Assets/extra-%02d.cs", f.r.Project, i)
+		if err := os.WriteFile(filepath.Join(f.root, name), content, 0600); err != nil {
+			t.Fatal(err)
+		}
+		f.r.Source.Inputs = append(f.r.Source.Inputs, UnityFile{Path: name, SHA256: unityDigest(content)})
+		f.r.Source.Inventories[0].Paths = append(f.r.Source.Inventories[0].Paths, name)
+	}
+	sortStrings(f.r.Source.Inventories[0].Paths)
+	f.r.Source.BeforeSHA256 = unityDigest(UnitySourceBytes(f.r.Source))
+	f.r.Source.AfterSHA256 = f.r.Source.BeforeSHA256
+	result := testing.Benchmark(func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			if err := unityValidateSource(context.Background(), f.root, f.r); err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+	t.Logf("unityValidateSource %d files: %d B/op", files+6, result.AllocedBytesPerOp())
+	if got := result.AllocedBytesPerOp(); got > 1<<20 {
+		t.Fatalf("validation allocates %d B/op; want <= 1 MiB", got)
+	}
 }
 
 func TestUnityNUnitReceiptBindsNativeAndStandardRecord(t *testing.T) {

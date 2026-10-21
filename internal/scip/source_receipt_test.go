@@ -1,10 +1,13 @@
 package scip
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,7 +18,7 @@ import (
 )
 
 func receiptHash(data []byte) string { h := sha256.Sum256(data); return hex.EncodeToString(h[:]) }
-func receiptFixture(t *testing.T) (string, string, []byte, map[string]any) {
+func receiptFixture(t testing.TB) (string, string, []byte, map[string]any) {
 	t.Helper()
 	root := t.TempDir()
 	path := filepath.Join(root, "index.scip")
@@ -46,7 +49,7 @@ func receiptFixture(t *testing.T) (string, string, []byte, map[string]any) {
 	writeReceipt(t, path, receipt)
 	return root, path, raw, receipt
 }
-func writeReceipt(t *testing.T, path string, value any) {
+func writeReceipt(t testing.TB, path string, value any) {
 	t.Helper()
 	raw, err := json.Marshal(value)
 	if err != nil {
@@ -54,6 +57,36 @@ func writeReceipt(t *testing.T, path string, value any) {
 	}
 	if err := os.WriteFile(path+".receipt.json", raw, 0644); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// The receipt still hashes every input on each call. Its streaming scratch
+// space should be bounded per validation, rather than growing per input.
+func TestSourceReceiptValidationAllocationBound(t *testing.T) {
+	root, path, raw, receipt := receiptFixture(t)
+	const files = 32
+	content := bytes.Repeat([]byte("x"), 64<<10)
+	inputs := receipt["inputs"].([]any)
+	for i := 0; i < files; i++ {
+		name := fmt.Sprintf("extra-%02d.dat", i)
+		if err := os.WriteFile(filepath.Join(root, name), content, 0600); err != nil {
+			t.Fatal(err)
+		}
+		inputs = append(inputs, map[string]any{"path": name, "sha256": receiptHash(content)})
+	}
+	receipt["inputs"] = inputs
+	writeReceipt(t, path, receipt)
+	result := testing.Benchmark(func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			bound, err := ValidateSourceReceipt(context.Background(), root, path, raw)
+			if !bound || err != nil {
+				b.Fatalf("bound=%v err=%v", bound, err)
+			}
+		}
+	})
+	t.Logf("ValidateSourceReceipt %d files: %d B/op", files+4, result.AllocedBytesPerOp())
+	if got := result.AllocedBytesPerOp(); got > 512<<10 {
+		t.Fatalf("validation allocates %d B/op; want <= 512 KiB", got)
 	}
 }
 func TestSourceReceiptFreshAndLegacyCompatibility(t *testing.T) {
@@ -73,6 +106,23 @@ func TestSourceReceiptFreshAndLegacyCompatibility(t *testing.T) {
 	bound, err = ValidateSourceReceipt(context.Background(), root, path, legacy)
 	if bound || err != nil {
 		t.Fatalf("legacy bound=%v err=%v", bound, err)
+	}
+}
+func TestSourceReceiptRefusesMalformedIndexAndCancelledValidation(t *testing.T) {
+	root, path, raw, _ := receiptFixture(t)
+	bound, err := ValidateSourceReceipt(context.Background(), root, path, raw)
+	if !bound || err != nil {
+		t.Fatalf("uncancelled validation bound=%v err=%v", bound, err)
+	}
+	bound, err = ValidateSourceReceipt(context.Background(), root, path, []byte{0x0a, 0x80}, true)
+	if !bound || err == nil || !strings.Contains(err.Error(), "index decode") {
+		t.Fatalf("malformed index bound=%v err=%v", bound, err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	bound, err = ValidateSourceReceipt(ctx, root, path, raw)
+	if !bound || !errors.Is(err, ErrSourceReceipt) {
+		t.Fatalf("cancelled validation bound=%v err=%v", bound, err)
 	}
 }
 func TestSourceReceiptRefusesStaleMissingAndMixedInputs(t *testing.T) {

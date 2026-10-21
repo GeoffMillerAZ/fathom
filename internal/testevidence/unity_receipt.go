@@ -181,7 +181,7 @@ func unityRead(path string, limit int64) ([]byte, error) {
 	}
 	return raw, nil
 }
-func unityHash(ctx context.Context, path string, limit int64) (string, int64, error) {
+func unityHash(ctx context.Context, path string, limit int64, buffer []byte) (string, int64, error) {
 	info, err := unityRegular(path)
 	if err != nil {
 		return "", 0, err
@@ -199,7 +199,7 @@ func unityHash(ctx context.Context, path string, limit int64) (string, int64, er
 	if bufferSize > 128<<10 {
 		bufferSize = 128 << 10
 	}
-	buf := make([]byte, int(bufferSize))
+	buf := buffer[:int(bufferSize)]
 	var count int64
 	for {
 		if err := ctx.Err(); err != nil {
@@ -324,6 +324,7 @@ func unityValidateSource(ctx context.Context, root string, r UnityReceipt) error
 		return fmt.Errorf("source input/inventory count outside native bounds")
 	}
 	inputs := map[string]string{}
+	buffer := make([]byte, 128<<10)
 	var bytes int64
 	for _, input := range s.Inputs {
 		path, err := unityPath(root, input.Path, true)
@@ -336,7 +337,7 @@ func unityValidateSource(ctx context.Context, root string, r UnityReceipt) error
 		if !unitySHA.MatchString(input.SHA256) {
 			return fmt.Errorf("invalid source hash")
 		}
-		hash, size, err := unityHash(ctx, path, unityInputBytesLimit-bytes)
+		hash, size, err := unityHash(ctx, path, unityInputBytesLimit-bytes, buffer)
 		if err != nil {
 			return err
 		}

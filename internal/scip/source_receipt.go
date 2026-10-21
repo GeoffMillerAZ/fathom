@@ -129,7 +129,8 @@ func ValidateSourceReceipt(ctx context.Context, root, path string, raw []byte, r
 	if receipt.IndexSHA256 != hex.EncodeToString(sum[:]) {
 		return refuse("index hash differs")
 	}
-	currentIndexHash, hashErr := sourceHash(ctx, path, int64(len(raw)))
+	buffer := make([]byte, 32<<10)
+	currentIndexHash, hashErr := sourceHash(ctx, path, int64(len(raw)), buffer)
 	if hashErr != nil || currentIndexHash != receipt.IndexSHA256 {
 		return refuse("index changed since it was read")
 	}
@@ -169,7 +170,7 @@ func ValidateSourceReceipt(ctx context.Context, root, path string, raw []byte, r
 			return refuse("input byte budget exceeded at %q", input.Path)
 		}
 		inputBytes += info.Size()
-		actual, hashErr := sourceHash(ctx, absolute, info.Size())
+		actual, hashErr := sourceHash(ctx, absolute, info.Size(), buffer)
 		if hashErr != nil {
 			return refuse("input %q: %v", input.Path, hashErr)
 		}
@@ -312,7 +313,7 @@ func sourceDigest(value string) bool {
 func sourcePattern(value string) bool {
 	return regexp.MustCompile(`^\*\.[A-Za-z0-9_-]+$`).MatchString(value)
 }
-func sourceHash(ctx context.Context, path string, expectedSize int64) (string, error) {
+func sourceHash(ctx context.Context, path string, expectedSize int64, buffer []byte) (string, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return "", err
@@ -329,7 +330,7 @@ func sourceHash(ctx context.Context, path string, expectedSize int64) (string, e
 		return "", fmt.Errorf("file size changed during validation")
 	}
 	hash := sha256.New()
-	n, err := io.Copy(hash, sourceContextReader{ctx: ctx, reader: io.LimitReader(file, expectedSize+1)})
+	n, err := io.CopyBuffer(hash, sourceContextReader{ctx: ctx, reader: io.LimitReader(file, expectedSize+1)}, buffer)
 	if err != nil {
 		return "", err
 	}
