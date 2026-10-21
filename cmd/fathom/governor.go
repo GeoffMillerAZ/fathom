@@ -25,6 +25,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
@@ -49,15 +50,17 @@ type ladderActions struct {
 
 // governorConfig is newGovernor's input; every OS effect is injectable.
 type governorConfig struct {
-	budget       tenancy.Budget
-	notes        []tenancy.Note
-	host         tenancy.Host
-	now          func() time.Time
-	inflight     *tenancy.InFlight
-	ledger       string // lifecycle.jsonl for this daemon's id
-	pid          int
-	version      string
-	logf         func(string)
+	budget   tenancy.Budget
+	notes    []tenancy.Note
+	host     tenancy.Host
+	now      func() time.Time
+	inflight *tenancy.InFlight
+	ledger   string // lifecycle.jsonl for this daemon's id
+	pid      int
+	version  string
+	logf     func(string)
+	// memoStats is read only on an upward ladder transition, before its drops.
+	memoStats    func() []memo.GroupStats
 	actions      ladderActions
 	freeOSMemory func()
 	memRead      func() scavengeMem // RT-45: the scavenge line's readings; nil = readScavengeMem
@@ -194,6 +197,98 @@ func (g *governor) ringRecord(at time.Time, transition bool) tenancy.RingRecord 
 // freeEvery bounds debug.FreeOSMemory while shed (§2.1).
 const freeEvery = 30 * time.Second
 
+// A transition record is deliberately smaller than a heap capture: it names
+// only the sampled footprint and estimated resident memo totals. In
+// particular it cannot retain cache keys, request data, or symbol values.
+const (
+	preActionMemoGroups = 24
+	preActionMemoBytes  = 16 << 10
+)
+
+type preActionGroup struct {
+	Name             string `json:"name"`
+	Entries          int    `json:"entries"`
+	EstimatedBytes   int64  `json:"estimated_bytes"`
+	Hits             int64  `json:"hits"`
+	Misses           int64  `json:"misses"`
+	Flights          int64  `json:"flights"`
+	Uncached         int64  `json:"uncached"`
+	Abandoned        int64  `json:"abandoned"`
+	RefuseCancelled  int64  `json:"refuse_cancelled"`
+	Declined         int64  `json:"declined"`
+	EvictedBudget    int64  `json:"evicted_budget"`
+	EvictedShed      int64  `json:"evicted_shed"`
+	EvictedRefuse    int64  `json:"evicted_refuse"`
+	EvictedIdle      int64  `json:"evicted_idle"`
+	EvictedWatermark int64  `json:"evicted_watermark"`
+	EvictedMax       int64  `json:"evicted_max_entries"`
+	EvictedOther     int64  `json:"evicted_other"`
+}
+
+type preActionRecord struct {
+	Schema                    string           `json:"schema"`
+	At                        string           `json:"at"`
+	From                      string           `json:"from"`
+	To                        string           `json:"to"`
+	Trigger                   string           `json:"trigger"`
+	FootprintBytes            int64            `json:"footprint_bytes"`
+	ChildrenBytes             int64            `json:"children_bytes"`
+	GoTotalMinusReleasedBytes int64            `json:"go_total_minus_released_bytes"`
+	ShedBytes                 int64            `json:"shed_bytes"`
+	RefuseBytes               int64            `json:"refuse_bytes"`
+	ExitBytes                 int64            `json:"exit_bytes"`
+	Groups                    []preActionGroup `json:"groups"`
+	OmittedGroups             int              `json:"omitted_groups"`
+	OmittedEvictionReasons    int              `json:"omitted_eviction_reasons"`
+}
+
+func preActionMemoLine(sample tenancy.Sample, budget tenancy.Budget, tr tenancy.Transition, stats []memo.GroupStats) string {
+	// Stats is normally sorted, but an injected reader must yield the same
+	// output regardless of its input order. This sorts summaries, not entries.
+	sort.Slice(stats, func(i, j int) bool { return stats[i].Name < stats[j].Name })
+	r := preActionRecord{
+		Schema: "fathom.pre_action_memo/v1", At: sample.At.UTC().Format(time.RFC3339Nano),
+		From: tr.From.String(), To: tr.To.String(), Trigger: tr.Cause.Trigger.String(),
+		FootprintBytes: sample.Footprint, ChildrenBytes: sample.Children,
+		GoTotalMinusReleasedBytes: sample.GoTotalMinusReleased,
+		ShedBytes:                 budget.Shed, RefuseBytes: budget.Refuse, ExitBytes: budget.Exit,
+		Groups:        make([]preActionGroup, 0, min(len(stats), preActionMemoGroups)),
+		OmittedGroups: max(0, len(stats)-preActionMemoGroups),
+	}
+	for _, s := range stats[:min(len(stats), preActionMemoGroups)] {
+		name := s.Name
+		if len(name) > 64 {
+			name = strings.ToValidUTF8(name[:64], "")
+		}
+		g := preActionGroup{
+			Name: name, Entries: s.Entries, EstimatedBytes: s.Bytes,
+			Hits: s.Hits, Misses: s.Misses, Flights: s.Flights, Uncached: s.Uncached,
+			Abandoned: s.Abandoned, RefuseCancelled: s.RefuseCancelled, Declined: s.Declined,
+			EvictedBudget: s.Evictions[memo.ReasonBudget], EvictedShed: s.Evictions[memo.ReasonShed],
+			EvictedRefuse: s.Evictions[memo.ReasonRefuse], EvictedIdle: s.Evictions[memo.ReasonIdle],
+			EvictedWatermark: s.Evictions[memo.ReasonWatermark], EvictedMax: s.Evictions[memo.ReasonMaxEntries],
+		}
+		for reason, count := range s.Evictions {
+			switch reason {
+			case memo.ReasonBudget, memo.ReasonShed, memo.ReasonRefuse, memo.ReasonIdle, memo.ReasonWatermark, memo.ReasonMaxEntries:
+			default:
+				g.EvictedOther += count
+				r.OmittedEvictionReasons++
+			}
+		}
+		r.Groups = append(r.Groups, g)
+	}
+	for {
+		b, _ := json.Marshal(r) // fixed scalar fields have no unsupported values
+		const prefix = "tenancy: pre-action memo "
+		if len(b)+len(prefix) <= preActionMemoBytes || len(r.Groups) == 0 {
+			return prefix + string(b)
+		}
+		r.Groups = r.Groups[:len(r.Groups)-1]
+		r.OmittedGroups++
+	}
+}
+
 // Diagnostic capture bounds (§13.4): at most one capture of each trigger
 // kind per diagEvery, and the capture directory keeps at most diagKeep captures and
 // diagKeepBytes, oldest pruned first.
@@ -216,6 +311,9 @@ func newGovernor(cfg governorConfig) *governor {
 	}
 	if cfg.logf == nil {
 		cfg.logf = func(string) {}
+	}
+	if cfg.memoStats == nil {
+		cfg.memoStats = memo.Stats
 	}
 	if cfg.memRead == nil {
 		cfg.memRead = readScavengeMem
@@ -279,6 +377,9 @@ func (g *governor) tickLocked(at time.Time, late time.Duration) tenancy.Transiti
 	tr := tenancy.StepLadder(&g.st, &g.sample, &g.budget)
 	if tr.Changed {
 		g.lastTrans = tr
+		if tr.To > tr.From && (tr.To == tenancy.LevelShed || tr.To == tenancy.LevelRefuse) {
+			g.logf(preActionMemoLine(g.sample, g.budget, tr, g.memoStats()))
+		}
 		g.applyLadderLevel(tr)
 		g.writeRing(at, true)
 		g.rollDays(at, true, &tr)
