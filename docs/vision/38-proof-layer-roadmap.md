@@ -388,6 +388,17 @@ at birth) gets its design, an ADR with a `## Decision models` section, after RT-
 9.9's decision-model order. A repo-wide clone audit and a general best-practice linter are rejected (F90), and token
 savings get no new record: RO-M0's CUT stands. The two-wave limit and the swap-volume rule of section 9.4 still apply.
 
+### 9.11 Amended 2026-10-21 (owner idea): dependency licenses and an org's policy, after RT-M1
+
+The owner asked for a map of every dependency's license and a policy in fathom's configuration that says which
+licenses an organization accepts. It lands as a design (`docs/design/dependency-licenses.md`) and a plan
+(`docs/plans/dependency-licenses.md`, DL-1 to DL-11). It is the first new program after the O1014 fix wave that RT-M1's
+reading opens, and it does not wait for the mods, which wait on owner questions. It shares SG-36's cache locator with
+wave 4's vuln reach. Licenses come only from what the toolchain already placed on disk or from an SBOM the operator
+names (I56). Fathom reports SPDX identifiers with their evidence and never judges a license (ADR-060 decision 6). Its
+own value is enforcement at the edit (a guard check), reach (shipped versus test-only) and one policy across the fleet.
+Wave 1 derives on read and adds no table.
+
 ## 10. Corrections to the memo (the tree or the memo itself disagreed)
 
 1. **`tests:` is taken.** Plan grammar v2 already has `tests:` (a `gone: callers` modifier,
