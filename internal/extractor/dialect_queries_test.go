@@ -17,6 +17,7 @@ func TestDialectQueriesCompile(t *testing.T) {
 	if _, err := tsRegistry(); err != nil {
 		t.Fatal(err)
 	}
+	slots := make(chan struct{}, 4)
 	for _, id := range TagsDialects() {
 		spec := tsDialectMap[id]
 		variants := map[string]tsVariant{spec.defaultVariant.key(): spec.defaultVariant}
@@ -25,10 +26,11 @@ func TestDialectQueriesCompile(t *testing.T) {
 		}
 		for key, v := range variants {
 			t.Run(key, func(t *testing.T) {
-				// Each variant stands up its own parser and compiles its
-				// own queries: nothing is shared, so the variants run
-				// together. Serial, this test was the longest in the package.
+				// Bound native parser admission so parallel package gates do not
+				// fan out a full WASM VM for every grammar variant at once.
 				t.Parallel()
+				slots <- struct{}{}
+				defer func() { <-slots }()
 				p, err := tsengine.NewParser(context.Background(), v.blob, v.entryPoint)
 				if err != nil {
 					t.Fatal(err)
