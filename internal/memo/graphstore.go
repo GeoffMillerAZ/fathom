@@ -381,17 +381,30 @@ func PeekSnapshot(sc Scope) (*Snapshot, bool) {
 // true when all four are cached. Nothing is built, counted or moved in the
 // LRU.
 func NavBuildCost(sc Scope) (cost time.Duration, resident bool) {
+	return navBuildCost(sc, []GraphKind{GraphSyntax, GraphBoth, GraphResolved}, false)
+}
+
+// NavBuildCostFor estimates the snapshot, typed edges and one requested
+// graph kind. A reader needing only Both must not wait for unrelated kinds.
+func NavBuildCostFor(sc Scope, kind GraphKind) (cost time.Duration, resident bool) {
+	return navBuildCost(sc, []GraphKind{kind}, true)
+}
+
+func navBuildCost(sc Scope, kinds []GraphKind, typedRequired bool) (cost time.Duration, resident bool) {
 	cost, resident = snapshotGroup.pendingCost(snapKey{sc})
-	typedNeeded := false
-	for _, k := range []GraphKind{GraphSyntax, GraphBoth, GraphResolved} {
+	typedNeeded := typedRequired && kinds[0] != GraphSyntax
+	for _, k := range kinds {
 		d, ok := graphGroup.pendingCost(graphKey{sc, k})
 		cost += d
 		resident = resident && ok
 		typedNeeded = typedNeeded || (!ok && k != GraphSyntax)
 	}
 	if typedNeeded {
-		d, _ := typedGroup.pendingCost(typedKey{sc})
+		d, ok := typedGroup.pendingCost(typedKey{sc})
 		cost += d
+		if typedRequired {
+			resident = resident && ok
+		}
 	}
 	return cost, resident
 }
@@ -402,11 +415,21 @@ func NavBuildCost(sc Scope) (cost time.Duration, resident bool) {
 // recorded since the process started, so NavBuildCost is a measurement and
 // not ExpectedCost (O1446). Nothing is built, counted or moved in the LRU.
 func NavBuildMeasured(sc Scope) bool {
+	return navBuildMeasured(sc, []GraphKind{GraphSyntax, GraphBoth, GraphResolved}, false)
+}
+
+// NavBuildMeasuredFor reports whether the requested graph's missing parts
+// have completed builds from which to estimate a cold deadline.
+func NavBuildMeasuredFor(sc Scope, kind GraphKind) bool {
+	return navBuildMeasured(sc, []GraphKind{kind}, true)
+}
+
+func navBuildMeasured(sc Scope, kinds []GraphKind, typedRequired bool) bool {
 	if !snapshotGroup.measured(snapKey{sc}) {
 		return false
 	}
-	typedNeeded := false
-	for _, k := range []GraphKind{GraphSyntax, GraphBoth, GraphResolved} {
+	typedNeeded := typedRequired && kinds[0] != GraphSyntax
+	for _, k := range kinds {
 		key := graphKey{sc, k}
 		if !graphGroup.measured(key) {
 			return false

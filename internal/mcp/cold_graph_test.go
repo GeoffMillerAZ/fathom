@@ -174,8 +174,8 @@ func TestSymbolContextColdGraphAnswersPartial(t *testing.T) {
 	if ctx.Err() != nil {
 		t.Fatalf("answered only after the deadline (%v): %+v", time.Since(start), got)
 	}
-	if p, _ := got["partial"].(string); !strings.HasPrefix(p, "call graph not built (cold)") {
-		t.Errorf("partial = %q, want it to name the cold call graph", p)
+	if p, _ := got["partial"].(string); !strings.HasPrefix(p, "navigation evidence unavailable (cold)") || !strings.Contains(p, "combined call graph, or typed-edge details") {
+		t.Errorf("partial = %q, want missing navigation evidence named", p)
 	}
 	def, _ := got["def"].(map[string]any)
 	if def["name"] != "Run" || def["file_path"] != "work/run.go" || def["signature"] != "func Run()" {

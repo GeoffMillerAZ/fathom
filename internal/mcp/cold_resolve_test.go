@@ -142,8 +142,8 @@ func TestSymbolContextUnknownBuildCostAnswersPartialAtOnce(t *testing.T) {
 		t.Errorf("an unmeasured build was waited for %v instead of answering the partial at once", took)
 	}
 	p, _ := got["partial"].(string)
-	if !strings.HasPrefix(p, "call graph not built (cold)") || !strings.Contains(p, "build time is unknown") || !strings.Contains(p, "the build keeps running") {
-		t.Errorf("partial = %q, want the cold call graph, its build time unknown and its build kept", p)
+	if !strings.HasPrefix(p, "navigation evidence unavailable (cold)") || !strings.Contains(p, "build time is unknown") || !strings.Contains(p, "the load keeps running") {
+		t.Errorf("partial = %q, want missing navigation evidence, unknown build time and a kept load", p)
 	}
 	if def, _ := got["def"].(map[string]any); def["name"] != "Run" {
 		t.Errorf("def = %+v, want Run from the store lookup", got["def"])
