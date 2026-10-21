@@ -39,7 +39,9 @@ type ingestRun struct {
 	defaultIgnore int
 	// stats are the stat gate's vouching records (RT-180): their rows
 	// carry pass 1's stat and an epoch-tagged hash (statRowHash).
-	stats []StatRecord
+	stats     []StatRecord
+	refRows   []store.SourceRefFact
+	refPolicy string
 
 	// changed counts the files this ingest found new, changed or deleted
 	// — TQ-2's centrality memo recomputes when it is non-zero even at an

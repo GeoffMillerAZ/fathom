@@ -141,6 +141,13 @@ type planVerifyOpts struct {
 	// HTTP is the daemon client (the console's own origin-stamped client,
 	// so its reads are never usage); nil is a plain 60 s client.
 	HTTP *http.Client
+	// SourceScope is opt-in for sealed ingest-generation spec references.
+	// Empty keeps the existing live source scan.
+	SourceScope        string
+	ExpectedExclusions []sourceWindowExclusion
+	// WindowObserved is set only after both full-source hashes and every
+	// daemon plan call complete; a caller may disclose this bounded scope.
+	WindowObserved *bool
 }
 
 // planComputed is one plan verified: the locally parsed plan and the
@@ -281,12 +288,20 @@ func computePlanReports(planFiles []string, service, storePath, urlStr string, o
 		if !indexed {
 			return nil, fmt.Errorf("service %q is not indexed on the daemon at %s — ingest it and retry", service, urlStr)
 		}
+		windowToken := ""
+		if opts.SourceScope == "" || opts.SourceScope == "current_worktree" {
+			windowToken, err = beginCurrentWindow(hc, urlStr, service, opts.ExpectedExclusions)
+			if err != nil {
+				return nil, err
+			}
+		}
 		// O29 (docs/dogfood-observations.md): the per-plan verifies are
 		// independent daemon calls; running them serially made this verb
 		// scale at seconds x plans (2m35s measured over this fleet's ~40
 		// active plans). Bounded fan-out; order rebuilt by index below.
 		reports = make([]verify.Report, len(localPlans))
 		verifyErrs := make([]error, len(localPlans))
+		receipts := make([][]string, len(localPlans))
 		sem := make(chan struct{}, 4)
 		var wg sync.WaitGroup
 		for i := range localPlans {
@@ -296,10 +311,38 @@ func computePlanReports(planFiles []string, service, storePath, urlStr string, o
 				defer wg.Done()
 				sem <- struct{}{}
 				defer func() { <-sem }()
-				reports[i], verifyErrs[i] = verifyPlanViaDaemon(hc, urlStr, service, root, raws[i], localPlans[i], files)
+				if windowToken != "" {
+					receipts[i], verifyErrs[i] = collectVerifyWindow(hc, urlStr, service, "", raws[i], localPlans[i], goneTreeFor(root, localPlans[i]), windowToken)
+				} else {
+					reports[i], verifyErrs[i] = verifyPlanViaDaemonScoped(hc, urlStr, service, root, raws[i], localPlans[i], files, opts.SourceScope)
+				}
 			}(i)
 		}
 		wg.Wait()
+		if windowToken != "" {
+			for _, verifyErr := range verifyErrs {
+				if verifyErr != nil {
+					abortCurrentWindow(hc, urlStr, service, windowToken)
+					return nil, fmt.Errorf("current source window: plan collection failed: %w", verifyErr)
+				}
+			}
+		}
+		if err := closeCurrentWindow(hc, urlStr, service, windowToken); err != nil {
+			abortCurrentWindow(hc, urlStr, service, windowToken)
+			return nil, err
+		}
+		if windowToken != "" {
+			for i := range localPlans {
+				reports[i], verifyErrs[i] = finalVerifyWindow(hc, urlStr, service, raws[i], localPlans[i], windowToken, receipts[i])
+				if verifyErrs[i] != nil {
+					return nil, fmt.Errorf("current source window: plan result failed: %w", verifyErrs[i])
+				}
+				overlayPlanReport(&reports[i], localPlans[i], files)
+			}
+		}
+		if windowToken != "" && opts.WindowObserved != nil {
+			*opts.WindowObserved = true
+		}
 		// O1161: one plan's error (a missed deadline) is that plan's, never
 		// the run's: every other plan still reports.
 		unmeasured = verifyErrs
@@ -335,7 +378,15 @@ func parsePlanForVerify(service, root, pf string, raw []byte) verify.Plan {
 // daemon's verdicts, then the working tree's lexical oracles and the local
 // self-skip result overlaid (cmdVerify's own sequence).
 func verifyPlanViaDaemon(hc *http.Client, urlStr, service, root string, raw []byte, lp verify.Plan, files verify.FileEvidence) (verify.Report, error) {
-	rep, err := verifyViaHTTP(hc, urlStr, service, "", raw, lp, goneTreeFor(root, lp))
+	return verifyPlanViaDaemonScoped(hc, urlStr, service, root, raw, lp, files, "")
+}
+
+func verifyPlanViaDaemonScoped(hc *http.Client, urlStr, service, root string, raw []byte, lp verify.Plan, files verify.FileEvidence, sourceScope string) (verify.Report, error) {
+	return verifyPlanViaDaemonWindow(hc, urlStr, service, root, raw, lp, files, sourceScope, "")
+}
+
+func verifyPlanViaDaemonWindow(hc *http.Client, urlStr, service, root string, raw []byte, lp verify.Plan, files verify.FileEvidence, sourceScope, token string) (verify.Report, error) {
+	rep, err := verifyViaHTTPWindow(hc, urlStr, service, "", raw, lp, goneTreeFor(root, lp), sourceScope, token)
 	if err != nil {
 		return rep, err
 	}
@@ -430,6 +481,8 @@ func cmdPlansStatus(args []string, stdout, stderr io.Writer) int {
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL (HTTP mode)")
 	storePath := fs.String("store", "", "store path, .sqlite/.db (direct mode; bypasses daemon)")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a human table")
+	sourceScope := fs.String("source-scope", "current_worktree", "spec reference source: current_worktree or ingest_generation")
+	sourceExclusionsPath := fs.String("source-window-exclusions", "", "JSON array of reviewed {path,reason} exclusions for current-window qualification")
 	weighted := fs.Bool("weighted", false, "roll proven weight over total weight up by fleet, project, plan and section")
 	if err := fs.Parse(args); err != nil {
 		return 1
@@ -437,6 +490,27 @@ func cmdPlansStatus(args []string, stdout, stderr io.Writer) int {
 	if *service == "" {
 		fmt.Fprintln(stderr, "error: --service is required")
 		fs.Usage()
+		return 1
+	}
+	if *sourceScope != "current_worktree" && *sourceScope != "ingest_generation" {
+		fmt.Fprintln(stderr, "error: --source-scope must be current_worktree or ingest_generation")
+		return 1
+	}
+	if *sourceScope == "ingest_generation" && *storePath != "" {
+		fmt.Fprintln(stderr, "error: --source-scope ingest_generation requires daemon HTTP mode")
+		return 1
+	}
+	if *sourceScope == "ingest_generation" && *weighted {
+		fmt.Fprintln(stderr, "error: --source-scope ingest_generation is unavailable with --weighted")
+		return 1
+	}
+	if *sourceExclusionsPath != "" && (*storePath != "" || *sourceScope == "ingest_generation") {
+		fmt.Fprintln(stderr, "error: --source-window-exclusions requires daemon current_worktree scope")
+		return 1
+	}
+	expectedExclusions, err := readSourceWindowExclusions(*sourceExclusionsPath)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
 	files, scanNote, root, err := discoverPlansForServiceRoot(plans, *service, *url)
@@ -453,8 +527,12 @@ func cmdPlansStatus(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	rowSets, unmeasured, err := computePlanRowsIn(files, *service, *storePath, *url, planVerifyOpts{Root: root})
+	var windowObserved bool
+	rowSets, unmeasured, err := computePlanRowsIn(files, *service, *storePath, *url, planVerifyOpts{Root: root, SourceScope: *sourceScope, WindowObserved: &windowObserved, ExpectedExclusions: expectedExclusions})
 	if err != nil {
+		if strings.Contains(err.Error(), "current source window:") {
+			return emitCurrentWindowRefusal(stdout, stderr, *service, *jsonOut, err)
+		}
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
@@ -483,6 +561,13 @@ func cmdPlansStatus(args []string, stdout, stderr io.Writer) int {
 		out := make([]planStatusJSON, len(rollups))
 		for i, r := range rollups {
 			out[i] = planStatusJSON{PlanRollup: r}
+			if *sourceScope == "ingest_generation" {
+				out[i].SourceScope = "ingest_generation"
+				out[i].CurrentWorktreeFreshness = "unknown"
+			} else if windowObserved {
+				out[i].SourceScope = "current_worktree"
+				out[i].CurrentWorktreeFreshness = "observed_window"
+			}
 			if e := unmeasured[i]; e != nil {
 				out[i].NotMeasured = e.Error()
 				continue
@@ -544,12 +629,19 @@ func cmdPlansStatus(args []string, stdout, stderr io.Writer) int {
 	if n := unmeasuredCount(unmeasured); n > 0 {
 		fmt.Fprintf(stdout, "\n%s\n", unmeasuredSummary(n, len(files)))
 	}
+	if *sourceScope == "ingest_generation" {
+		fmt.Fprintln(stdout, "\nsource scope: ingest_generation; current worktree freshness: unknown")
+	} else if windowObserved {
+		fmt.Fprintln(stdout, "\nsource scope: current_worktree; freshness: observed during this completed source window")
+	}
 	return unmeasuredExit(unmeasured)
 }
 
 // planStatusJSON is one `plans status --json` element: the rollup, plus
 // the archivable mark (SV-5), additive to the shape.
 type planStatusJSON struct {
+	SourceScope              string `json:"source_scope,omitempty"`
+	CurrentWorktreeFreshness string `json:"current_worktree_freshness,omitempty"`
 	console.PlanRollup
 	Archivable     bool   `json:"archivable,omitempty"`
 	ArchiveCommand string `json:"archive_command,omitempty"`

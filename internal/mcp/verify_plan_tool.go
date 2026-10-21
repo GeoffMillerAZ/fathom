@@ -13,6 +13,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/internal/sdd"
+	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/testevidence"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 	"github.com/geoffmilleraz/fathom/internal/verify/goneev"
@@ -28,14 +29,16 @@ import (
 func registerVerifyPlan(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "verify_plan",
-		Description: "Definition-of-done per task. This result IS the answer for whether it's proven; a follow-up call only fixes an unproven row. Reach for it when checking off a row. Required: service.",
+		Description: "Verify plan evidence. Reach for it when claiming done. This result is the answer when final. A follow-up adds source context. Required: service.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
-				"service":       map[string]any{"type": "string", "description": "Service / repo identifier"},
+				"service":       map[string]any{"type": "string"},
+				"source_window": map[string]any{"type": "object", "description": "Window {op,token,report_id,expected_exclusions}; close before result."},
+				"source_scope":  map[string]any{"type": "string", "enum": []string{"current_worktree", "ingest_generation"}, "description": "Current (default) or sealed generation."},
 				"concern":       map[string]any{"type": "string"},
-				"plan_markdown": map[string]any{"type": "string", "description": "Markdown checklist alt to tasks: checkbox lines, [SPEC-ID]/{symbol} tags"},
-				"plan_path":     map[string]any{"type": "string", "description": "Plan file relative to the service's indexed root, e.g. docs/plans/<plan>.md"},
+				"plan_markdown": map[string]any{"type": "string"},
+				"plan_path":     map[string]any{"type": "string"},
 				"tasks": map[string]any{
 					"type": "array",
 					"items": map[string]any{
@@ -48,7 +51,7 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 							"package":             map[string]any{"type": "string"},
 							"reachable_from":      map[string]any{"type": "string"},
 							"skip_test":           map[string]any{"type": "boolean"},
-							"skip":                map[string]any{"type": "string", "description": "Justification for skip_test"},
+							"skip":                map[string]any{"type": "string"},
 							"allow_contradiction": map[string]any{"type": "boolean"},
 							"min_tier":            map[string]any{"type": "string", "enum": []string{"verified", "pre-scan", "doc-claimed", "sme-stated", "assumed"}},
 						},
@@ -67,11 +70,17 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
 		}
 		var p struct {
-			Service      string `json:"service"`
-			Concern      string `json:"concern"`
-			PlanMarkdown string `json:"plan_markdown"`
-			PlanPath     string `json:"plan_path"`
-			Tasks        []struct {
+			Service           string          `json:"service"`
+			SourceWindow      json.RawMessage `json:"source_window"`
+			OldWindowOp       json.RawMessage `json:"source_window_op"`
+			OldWindowToken    json.RawMessage `json:"source_window_token"`
+			OldWindowReportID json.RawMessage `json:"source_window_report_id"`
+			OldWindowExpected json.RawMessage `json:"source_window_expected_exclusions"`
+			SourceScope       string          `json:"source_scope"`
+			Concern           string          `json:"concern"`
+			PlanMarkdown      string          `json:"plan_markdown"`
+			PlanPath          string          `json:"plan_path"`
+			Tasks             []struct {
 				ID                 string   `json:"id"`
 				Title              string   `json:"title"`
 				SpecIDs            []string `json:"spec_ids"`
@@ -97,6 +106,35 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 		}
 		if p.Service == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "verify_plan: service required"}
+		}
+		if len(p.OldWindowOp)+len(p.OldWindowToken)+len(p.OldWindowReportID)+len(p.OldWindowExpected) > 0 {
+			return nil, &rpcError{Code: ErrCodeParams, Message: "verify_plan: use source_window object"}
+		}
+		window, windowErr := parseSourceWindowInput(p.SourceWindow)
+		if windowErr != nil {
+			return nil, &rpcError{Code: ErrCodeParams, Message: "verify_plan: " + windowErr.Error()}
+		}
+		if len(p.SourceWindow) > 0 && window.Op == "" && window.Token == "" || window.Op == "" && (window.ReportID != "" || len(window.Expected) > 0) {
+			return nil, &rpcError{Code: ErrCodeParams, Message: "verify_plan: source_window needs op or token"}
+		}
+		if window.Op != "" {
+			return s.sourceWindowOperation(ctx, backend, args)
+		}
+		if p.SourceScope != "" && p.SourceScope != "current_worktree" && p.SourceScope != store.SourceRefScopeIngestGeneration {
+			return nil, &rpcError{Code: ErrCodeParams, Message: "verify_plan: unsupported source_scope"}
+		}
+		if window.Token != "" && p.SourceScope == store.SourceRefScopeIngestGeneration {
+			return nil, &rpcError{Code: ErrCodeParams, Message: "verify_plan: source window requires current_worktree scope"}
+		}
+		var currentProjection store.SourceRefProjection
+		if window.Token != "" {
+			var werr error
+			var release func()
+			currentProjection, release, werr = s.sourceWindowProjection(p.Service, window.Token)
+			if werr != nil {
+				return nil, &rpcError{Code: ErrCodeInternal, Message: "verify_plan: " + werr.Error()}
+			}
+			defer release()
 		}
 
 		// plan_path (O1069) names a file under the service's indexed root:
@@ -211,9 +249,10 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 
 		// Spec matrix (built only if some task declares spec IDs).
 		var (
-			matrix  sdd.Matrix
-			haveMat bool
-			specCov corpus.Coverage
+			matrix     sdd.Matrix
+			haveMat    bool
+			specCov    corpus.Coverage
+			projection store.SourceRefProjection
 		)
 		var allSpecs []string
 		for _, t := range plan.Tasks {
@@ -221,7 +260,13 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 		}
 		if len(allSpecs) > 0 {
 			var merr error
-			matrix, specCov, merr = buildSpecMatrix(ctx, backend, p.Service, nodes, allSpecs)
+			if p.SourceScope == store.SourceRefScopeIngestGeneration {
+				matrix, projection, merr = buildGenerationSpecMatrix(ctx, backend, p.Service, nodes, allSpecs)
+			} else if window.Token != "" {
+				matrix = buildProjectionSpecMatrix(currentProjection, nodes, allSpecs)
+			} else {
+				matrix, specCov, merr = buildSpecMatrix(ctx, backend, p.Service, nodes, allSpecs)
+			}
 			if merr != nil {
 				// RT-146 / I38: a hook's whole-tree read was skipped. An
 				// empty matrix would fail every spec-backed row falsely, so
@@ -247,7 +292,30 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 			evidence = verifyEvidenceWithFiles{verifyEvidence: ev, DirFiles: verify.DirFiles(repoPath)}
 		}
 
-		out := verifyReportToMap(verify.VerifyPlan(plan, evidence))
+		rep := verify.VerifyPlan(plan, evidence)
+		if p.SourceScope == store.SourceRefScopeIngestGeneration && len(allSpecs) > 0 {
+			// A generation-scoped reference can inform a row, but cannot
+			// establish a current-source pass or a current-source absence.
+			markGenerationSpecUnknown(&rep)
+		}
+		if window.Token != "" && len(allSpecs) > 0 {
+			markCurrentExcludedUnknown(&rep, matrix, currentProjection)
+		}
+		out := verifyReportToMap(rep)
+		if window.Token != "" {
+			out["source_scope"] = "current_worktree"
+			out["source_window_state"] = "pending"
+			out["current_worktree_freshness"] = "unknown_until_close"
+			out["source_window_observation"] = "before hash matched; final verdict requires successful close hash"
+			out["source_reference_projection"] = generationProjectionReport(currentProjection, matrix, allSpecs)
+		}
+		if p.SourceScope == store.SourceRefScopeIngestGeneration {
+			out["source_scope"] = store.SourceRefScopeIngestGeneration
+			out["current_worktree_freshness"] = "unknown"
+			if len(allSpecs) > 0 {
+				out["source_reference_projection"] = generationProjectionReport(projection, matrix, allSpecs)
+			}
+		}
 		// O1162: which graph branch ran rides the verdict_outcome line (a
 		// field, never a new record), and a fallback is named in a partial.
 		if vo, ok := out["verdict_outcome"].(map[string]any); ok {
@@ -272,6 +340,17 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 				note = prev + "; " + note
 			}
 			out["partial"] = note
+		}
+		if window.Token != "" {
+			w, err := s.sourceWindowGet(p.Service, window.Token)
+			if err != nil {
+				return nil, &rpcError{Code: ErrCodeInternal, Message: "verify_plan: " + err.Error()}
+			}
+			pending, err := s.sourceWindowPending(ctx, w, out)
+			if err != nil {
+				return nil, &rpcError{Code: ErrCodeInternal, Message: "verify_plan: " + err.Error()}
+			}
+			return pending, nil
 		}
 		return out, nil
 	})
@@ -443,7 +522,7 @@ func (e *verifyEvidence) TestReachesDetail(symbol string) []verify.ReachDetail {
 	details := callgraph.TestImpactDetail(e.graph, symbol)
 	out := make([]verify.ReachDetail, len(details))
 	for i, d := range details {
-		out[i] = verify.ReachDetail{Key: d.Key, ViaDispatch: d.ViaDispatch, Implementers: d.Implementers}
+		out[i] = verify.ReachDetail{Key: d.Key, ViaDispatch: d.ViaDispatch, Implementers: d.Implementers, TestIdentity: d.TestIdentity}
 	}
 	return out
 }
@@ -580,17 +659,25 @@ func buildSpecMatrix(ctx context.Context, backend QueryInterface, service string
 			codeRefs[n.Name] = refs
 		}
 	}
-	files, cov, err := collectSources(ctx, backend, service)
+	// Only references outlive each callback. Keep them separate until the
+	// scan succeeds: the existing best-effort error path discards every file
+	// contribution, even one delivered before the terminal error.
+	fileRefs := map[string][]string{}
+	cov, err := backend.ScanSources(ctx, service, treeBudget, func(f core.SourceFile) bool {
+		if refs := sdd.ExtractRefsBytes(f.Content); len(refs) > 0 {
+			// Every delivered callback contributes, including repeated paths.
+			fileRefs[f.Path] = append(fileRefs[f.Path], refs...)
+		}
+		return false
+	})
 	if errors.Is(err, core.ErrSourcesBusy) {
 		return sdd.Matrix{}, corpus.Coverage{}, err
 	}
 	if err != nil {
 		cov = corpus.Coverage{}
 	} else {
-		for _, f := range files {
-			if refs := sdd.ExtractRefs(string(f.Content)); len(refs) > 0 {
-				codeRefs[f.Path] = append(codeRefs[f.Path], refs...)
-			}
+		for path, refs := range fileRefs {
+			codeRefs[path] = append(codeRefs[path], refs...)
 		}
 	}
 	return sdd.BuildMatrix(specs, codeRefs), cov, nil

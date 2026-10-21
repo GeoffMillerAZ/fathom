@@ -67,6 +67,9 @@ const (
 // console report about a service, derived once per ingest (or backfill).
 type ServiceSummary struct {
 	ServiceID string
+	// RefProjection is an optional ingest-generation source reference snapshot.
+	// It is committed with this summary, never inferred from symbol rows.
+	RefProjection *SourceRefProjection
 	// Watermark is WatermarkOf(service_meta) when the row was written; a
 	// row whose watermark is not the service's current one is stale.
 	Watermark        string
@@ -181,6 +184,26 @@ CREATE TABLE IF NOT EXISTS file_stats (
     PRIMARY KEY (service_id, path)
 );
 
+CREATE TABLE IF NOT EXISTS source_ref_facts (
+    service_id TEXT NOT NULL,
+    path TEXT NOT NULL,
+    source_hash TEXT NOT NULL,
+    extractor_version TEXT NOT NULL,
+    refs_json TEXT,
+    excluded TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY (service_id, path)
+);
+CREATE TABLE IF NOT EXISTS source_ref_seals (
+    service_id TEXT NOT NULL PRIMARY KEY,
+    watermark TEXT NOT NULL,
+    root TEXT NOT NULL,
+    policy TEXT NOT NULL,
+    extractor_version TEXT NOT NULL,
+    membership_hash TEXT NOT NULL,
+    produced_at INTEGER NOT NULL,
+    complete INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS service_summary (
     service_id             TEXT    NOT NULL PRIMARY KEY,
     watermark              TEXT    NOT NULL DEFAULT '',
@@ -292,6 +315,9 @@ ON CONFLICT(service_id) DO UPDATE SET
 	}
 	if _, err := tx.ExecContext(ctx, `DELETE FROM file_stats WHERE service_id = ?`, meta.ServiceID); err != nil {
 		return fmt.Errorf("WriteServiceSummary clear file_stats: %w", err)
+	}
+	if err := writeSourceRefProjectionTx(ctx, tx, meta, files, sum.RefProjection); err != nil {
+		return fmt.Errorf("WriteServiceSummary refs: %w", err)
 	}
 	if len(files) > 0 {
 		stmt, err := tx.PrepareContext(ctx, `

@@ -61,13 +61,16 @@ func TestCmdLangOracleCSharpCompilerSites(t *testing.T) {
 	}
 	out := filepath.Join(t.TempDir(), "csharp.json")
 	args := []string{"-dialect", "csharp", "-manifest", filepath.Join("..", "..", "internal", "extractor", "dialects", "csharp", "dialect.json"), "-subject", subject,
-		"-ctags", filepath.Join(t.TempDir(), "none"), "-scip", scip, "-scip-defs", "-tool-oracle", sites,
+		"-ctags", filepath.Join(t.TempDir(), "none"), "-scip", scip, "-tool-oracle", sites,
 		"-out", out, "-queue", filepath.Join("..", "..", "docs", "plans", "language-breadth.queue.json")}
 	var stdout, stderr bytes.Buffer
 	if code := cmdLangOracle(args, &stdout, &stderr); code != 0 {
 		t.Fatalf("exit %d: %s", code, stderr.String())
 	}
 	r, rawOut := readValidReading(t, out)
+	if r.Metrics[langbench.MSymRecall] != nil {
+		t.Fatal("call/file-edge-only fixture must not claim L1 definition measurement")
+	}
 	if r.Counts[langbench.CntCallFathom] != 2 || r.Counts[langbench.CntCallFathomInTrue] != 2 || r.Counts[langbench.CntCSharpCallsAdded] != 2 || r.Counts[langbench.CntCallsInactive] != 1 {
 		t.Errorf("call_fathom %d in truth %d added %d inactive %d, want 2, 2, 2, 1\n%s", r.Counts[langbench.CntCallFathom], r.Counts[langbench.CntCallFathomInTrue],
 			r.Counts[langbench.CntCSharpCallsAdded], r.Counts[langbench.CntCallsInactive], rawOut)
@@ -137,13 +140,16 @@ func TestCmdLangOracleCSharpCompilerFileEdges(t *testing.T) {
 	}
 	out := filepath.Join(t.TempDir(), "csharp.json")
 	args := []string{"-dialect", "csharp", "-manifest", filepath.Join("..", "..", "internal", "extractor", "dialects", "csharp", "dialect.json"), "-subject", subject,
-		"-ctags", filepath.Join(t.TempDir(), "none"), "-scip", scip, "-scip-defs", "-tool-oracle", sites,
+		"-ctags", filepath.Join(t.TempDir(), "none"), "-scip", scip, "-tool-oracle", sites,
 		"-out", out, "-queue", filepath.Join("..", "..", "docs", "plans", "language-breadth.queue.json")}
 	var stdout, stderr bytes.Buffer
 	if code := cmdLangOracle(args, &stdout, &stderr); code != 0 {
 		t.Fatalf("exit %d: %s", code, stderr.String())
 	}
 	r, rawOut := readValidReading(t, out)
+	if r.Metrics[langbench.MSymRecall] != nil {
+		t.Fatal("call/file-edge-only fixture must not claim L1 definition measurement")
+	}
 	if got := r.Counts[langbench.CntCSharpFileEdgesAdded]; got != 1 {
 		t.Errorf("%s = %d, want 1 (A.cs -> Item.cs; Linked.cs is no document of the index)\n%s", langbench.CntCSharpFileEdgesAdded, got, rawOut)
 	}

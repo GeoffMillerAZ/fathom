@@ -67,6 +67,8 @@ var assertedInterfaces = map[string]reflect.Type{
 	"rootObligationsBackend":                     ifaceOf[rootObligationsBackend](),
 	"rootObligationsLayerBackend":                ifaceOf[rootObligationsLayerBackend](),
 	"scipImportBackend":                          ifaceOf[scipImportBackend](),
+	"sourceWindowBackend":                        ifaceOf[sourceWindowBackend](),
+	"generationRefsBackend":                      ifaceOf[generationRefsBackend](),
 	"serviceWatermarker":                         ifaceOf[serviceWatermarker](),
 	"sourceFileReader":                           ifaceOf[sourceFileReader](),
 	"sourcePathLister":                           ifaceOf[sourcePathLister](),

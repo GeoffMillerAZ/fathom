@@ -33,10 +33,11 @@ type Tree struct {
 
 // Context bundles the neighbourhood information for a single symbol.
 type Context struct {
-	Def          core.SymbolNode // the definition node (zero value when not found)
-	Callers      []string        // canonical keys of direct callers, sorted
-	Callees      []string        // canonical keys of direct callees, sorted
-	RelatedTests []string        // canonical keys of Test* callers, sorted
+	Def          core.SymbolNode   // the definition node (zero value when not found)
+	Definitions  []core.SymbolNode // distinct source declarations of the resolved key, sorted
+	Callers      []string          // canonical keys of direct callers, sorted
+	Callees      []string          // canonical keys of direct callees, sorted
+	RelatedTests []string          // canonical keys of Test* callers, sorted
 }
 
 // Diff summarises the difference between two symbol snapshots.
@@ -200,12 +201,24 @@ func SymbolContext(nodes []core.SymbolNode, g *callgraph.Graph, symbol string) C
 		return ctx
 	}
 
-	// Definition node.
+	// A canonical symbol may have several source declarations (for example a
+	// C# partial type). Preserve their locations; Def is a deterministic primary
+	// location, not a claim that the compiler merged or validated the parts.
 	for _, n := range nodes {
 		if n.Key() == key {
-			ctx.Def = n
-			break
+			ctx.Definitions = append(ctx.Definitions, n)
 		}
+	}
+	sort.Slice(ctx.Definitions, func(i, j int) bool { return definitionLess(ctx.Definitions[i], ctx.Definitions[j]) })
+	parts := ctx.Definitions[:0]
+	for _, n := range ctx.Definitions {
+		if len(parts) == 0 || definitionLess(parts[len(parts)-1], n) {
+			parts = append(parts, n)
+		}
+	}
+	ctx.Definitions = parts
+	if len(parts) > 0 {
+		ctx.Def = parts[0]
 	}
 
 	// Callees (forward).
@@ -709,8 +722,8 @@ func resolveSymbol(nodes []core.SymbolNode, symbol string) string {
 // as resolveSymbol always has), but instead of collapsing an ambiguous tier
 // to a bare "", it returns every node that tier matched.
 //
-// ok is true only when exactly one node resolved (candidates then holds
-// that one node) — the unchanged, unambiguous case. ok is false in two
+// ok is true only when exactly one canonical key resolved (candidates then
+// holds its deterministic first source declaration). ok is false in two
 // DIFFERENT situations a caller must distinguish: candidates == nil is a
 // genuine miss (no tier matched anything at all — resolveSymbol's own "no
 // match" case); len(candidates) > 1 is real ambiguity (a bare name, or a
@@ -719,10 +732,14 @@ func resolveSymbol(nodes []core.SymbolNode, symbol string) string {
 // candidate list instead of a silently empty neighbourhood.
 func ResolveTiered(nodes []core.SymbolNode, symbol string) (key string, candidates []core.SymbolNode, ok bool) {
 	// Exact key match.
+	var exact []core.SymbolNode
 	for _, n := range nodes {
 		if n.Key() == symbol {
-			return symbol, []core.SymbolNode{n}, true
+			exact = append(exact, n)
 		}
+	}
+	if len(exact) > 0 {
+		return symbol, distinctSymbolCandidates(exact), true
 	}
 	// Bare name.
 	var byName []core.SymbolNode
@@ -731,6 +748,7 @@ func ResolveTiered(nodes []core.SymbolNode, symbol string) (key string, candidat
 			byName = append(byName, n)
 		}
 	}
+	byName = distinctSymbolCandidates(byName)
 	if len(byName) == 1 {
 		return byName[0].Key(), byName, true
 	}
@@ -741,14 +759,13 @@ func ResolveTiered(nodes []core.SymbolNode, symbol string) (key string, candidat
 	// key (two nodes sharing one key are not ambiguity).
 	if i := strings.Index(symbol, "::"); i >= 0 {
 		rest := symbol[i+2:]
-		seen := map[string]bool{}
 		var byQualified []core.SymbolNode
 		for _, n := range nodes {
-			if n.Package+"."+n.Name == rest && !seen[n.Key()] {
-				seen[n.Key()] = true
+			if n.Package+"."+n.Name == rest {
 				byQualified = append(byQualified, n)
 			}
 		}
+		byQualified = distinctSymbolCandidates(byQualified)
 		if len(byQualified) == 1 {
 			return byQualified[0].Key(), byQualified, true
 		}
@@ -756,19 +773,52 @@ func ResolveTiered(nodes []core.SymbolNode, symbol string) (key string, candidat
 	}
 	// Suffix match at a component boundary: ".<symbol>" or "/<symbol>",
 	// deduped by key.
-	seen := map[string]bool{}
 	var bySuffix []core.SymbolNode
 	for _, n := range nodes {
 		k := n.Key()
-		if (strings.HasSuffix(k, "."+symbol) || strings.HasSuffix(k, "/"+symbol)) && !seen[k] {
-			seen[k] = true
+		if strings.HasSuffix(k, "."+symbol) || strings.HasSuffix(k, "/"+symbol) {
 			bySuffix = append(bySuffix, n)
 		}
 	}
+	bySuffix = distinctSymbolCandidates(bySuffix)
 	if len(bySuffix) == 1 {
 		return bySuffix[0].Key(), bySuffix, true
 	}
 	return "", bySuffix, false
+}
+
+// distinctSymbolCandidates counts identities, not source parts or ingest
+// order. It never mutates the caller's node slice.
+func distinctSymbolCandidates(nodes []core.SymbolNode) []core.SymbolNode {
+	byKey := make(map[string]core.SymbolNode, len(nodes))
+	for _, n := range nodes {
+		k := n.Key()
+		if old, ok := byKey[k]; !ok || definitionLess(n, old) {
+			byKey[k] = n
+		}
+	}
+	var out []core.SymbolNode
+	for _, n := range byKey {
+		out = append(out, n)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Key() < out[j].Key() })
+	return out
+}
+
+func definitionLess(a, b core.SymbolNode) bool {
+	if a.FilePath != b.FilePath {
+		return a.FilePath < b.FilePath
+	}
+	if a.Line != b.Line {
+		return a.Line < b.Line
+	}
+	if a.EndLine != b.EndLine {
+		return a.EndLine < b.EndLine
+	}
+	if a.Kind != b.Kind {
+		return a.Kind < b.Kind
+	}
+	return a.Signature < b.Signature
 }
 
 // sortedUnion returns a sorted, deduplicated union of two already-sorted slices.

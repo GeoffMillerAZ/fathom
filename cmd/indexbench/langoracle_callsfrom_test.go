@@ -36,7 +36,7 @@ func TestCmdLangOracleCallsFromTool(t *testing.T) {
  {"path":"main.ts","from":"run","to":"greet"},{"path":"main.ts","from":"run","to":"nothing"},{"path":"gone.ts","from":"a","to":"b"}]}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	base := []string{"-dialect", "typescript", "-subject", subject, "-subject-name", "fixture/ts", "-scip", scip, "-scip-defs", "-tool-oracle", oracle,
+	base := []string{"-dialect", "typescript", "-manifest", filepath.Join("..", "..", "internal", "extractor", "dialects", "typescript", "dialect.json"), "-subject", subject, "-subject-name", "fixture/ts", "-scip", scip, "-scip-defs", "-tool-oracle", oracle,
 		"-date", "2026-10-02", "-commit", "abc1234", "-queue", queue}
 
 	var stdout, stderr bytes.Buffer
@@ -60,6 +60,11 @@ func TestCmdLangOracleCallsFromTool(t *testing.T) {
 	}
 	if err := r.Validate(); err != nil {
 		t.Fatal(err)
+	}
+	for _, metric := range []string{langbench.MSymRecall, langbench.MSymPrecision} {
+		if r.Metrics[metric] == nil || r.MetricTiers[metric] != "A" {
+			t.Errorf("supported SCIP L1 %s: value %v tier %q, want measured tier A", metric, r.Metrics[metric], r.MetricTiers[metric])
+		}
 	}
 	if r.MetricTiers[langbench.MCallRecall] != "B" || r.MetricTiers[langbench.MCallPrecision] != "B" {
 		t.Errorf("call metrics are the tool's tier B: %v", r.MetricTiers)

@@ -7,6 +7,7 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"time"
 
@@ -17,9 +18,37 @@ import (
 // summary with counts taken from the stored observations, atomically
 // under the store lock.
 func (m *MemoryStore) WriteServiceSummary(_ context.Context, meta ServiceMeta, sum ServiceSummary, files []FileStat) error {
+	var prepared *SourceRefProjection
+	if sum.RefProjection != nil {
+		p := *sum.RefProjection
+		p.ServiceID, p.Watermark, p.Root = meta.ServiceID, WatermarkOf(meta), meta.Path
+		p.MembershipHash = SourceRefMembershipHash(p.Rows)
+		if !validSourceRefProjection(p) || len(p.Rows) != len(files) {
+			return fmt.Errorf("invalid source reference projection")
+		}
+		paths := make([]FileStat, 0, len(files))
+		for _, f := range files {
+			paths = append(paths, f)
+		}
+		sort.Slice(paths, func(i, j int) bool { return paths[i].Path < paths[j].Path })
+		for i, file := range paths {
+			if file.Path != p.Rows[i].Path || (p.Rows[i].Excluded != "" && file.Excluded != p.Rows[i].Excluded) {
+				return fmt.Errorf("source reference membership differs from file_stats")
+			}
+		}
+		p.Rows = append([]SourceRefFact(nil), p.Rows...)
+		prepared = &p
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.serviceMeta[meta.ServiceID] = meta
+	if m.sourceRefProjections == nil {
+		m.sourceRefProjections = map[string]SourceRefProjection{}
+	}
+	delete(m.sourceRefProjections, meta.ServiceID)
+	if prepared != nil {
+		m.sourceRefProjections[meta.ServiceID] = *prepared
+	}
 	if m.fileStats == nil {
 		m.fileStats = map[string][]FileStat{}
 	}
@@ -31,6 +60,7 @@ func (m *MemoryStore) WriteServiceSummary(_ context.Context, meta ServiceMeta, s
 		delete(m.fileStats, meta.ServiceID)
 	}
 	sum.ServiceID = meta.ServiceID
+	sum.RefProjection = nil
 	sum.Watermark = WatermarkOf(meta)
 	sum.Source = SummaryFromIngest
 	if sum.WrittenAt == 0 {
@@ -190,6 +220,7 @@ func (m *MemoryStore) dropDerivedLocked(serviceID string) bool {
 	_, c := m.serviceRefs[serviceID]
 	delete(m.summaries, serviceID)
 	delete(m.fileStats, serviceID)
+	delete(m.sourceRefProjections, serviceID)
 	delete(m.serviceRefs, serviceID)
 	return a || b || c
 }
@@ -207,5 +238,10 @@ func (m *MemoryStore) renameDerivedLocked(oldID, newID string) {
 	if fs, ok := m.fileStats[oldID]; ok {
 		delete(m.fileStats, oldID)
 		m.fileStats[newID] = fs
+	}
+	if p, ok := m.sourceRefProjections[oldID]; ok {
+		delete(m.sourceRefProjections, oldID)
+		p.ServiceID = newID
+		m.sourceRefProjections[newID] = p
 	}
 }

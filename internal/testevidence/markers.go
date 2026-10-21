@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
@@ -31,16 +32,13 @@ type MarkerReport struct {
 	Warnings []string
 }
 
-// IngestCertifyMarkers walks root (a service's repo root) for *.go files
-// — the same skip-dir convention connector.Discover uses (vendor, .git,
-// testdata, generated, node_modules, .idea, .vscode, .claude —
-// connector.IsSkippedDir) so a marker inside a vendored or generated tree
-// is never scanned — parses each for `// certifies:` markers, and writes
-// the declared facts for service, stamped with watermark.
+// IngestCertifyMarkers scans Go files in the effective local discovery corpus,
+// including scoped ignores, default cache ignores, explicit includes, and
+// the service's configured Git discovery mode.
 func IngestCertifyMarkers(ctx context.Context, st store.Store, service, watermark, root string) (MarkerReport, error) {
 	var report MarkerReport
 
-	files, err := discoverGoFiles(root)
+	files, err := discoverGoFiles(ctx, service, root)
 	if err != nil {
 		return report, fmt.Errorf("discover Go files under %s: %w", root, err)
 	}
@@ -80,33 +78,18 @@ func IngestCertifyMarkers(ctx context.Context, st store.Store, service, watermar
 	return report, nil
 }
 
-// discoverGoFiles returns every *.go file under root (repo-relative,
-// forward-slash paths, sorted), pruning the same directories
-// connector.Discover always skips.
-func discoverGoFiles(root string) ([]string, error) {
-	var files []string
-	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		rel, relErr := filepath.Rel(root, path)
-		if relErr != nil {
-			return relErr
-		}
-		rel = filepath.ToSlash(rel)
-		if d.IsDir() {
-			if rel != "." && connector.IsSkippedDir(d.Name()) {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if strings.HasSuffix(rel, ".go") {
-			files = append(files, rel)
-		}
-		return nil
-	})
+// discoverGoFiles takes its marker file list from ordinary local discovery,
+// rather than maintaining a second traversal with a narrower ignore policy.
+func discoverGoFiles(ctx context.Context, service, root string) ([]string, error) {
+	refs, err := connector.NewLocalConnector().Discover(ctx, core.ServiceRef{ID: service, Path: root})
 	if err != nil {
 		return nil, err
+	}
+	files := make([]string, 0)
+	for _, ref := range refs {
+		if strings.HasSuffix(ref.Path, ".go") {
+			files = append(files, ref.Path)
+		}
 	}
 	sort.Strings(files)
 	return files, nil

@@ -136,6 +136,10 @@ Moved to [usage/inspect.md](usage/inspect.md).
 Moved to [usage/query.md](usage/query.md).
 
 
+### `unity-references`
+
+Read a source-current partial Unity object-reference family through an explicit receipt and registered service root: [usage/unity-references.md](usage/unity-references.md). No Editor invocation, code-call evidence or persistent asset-family store is added.
+
 ### `serve-mcp`
 
 Moved to [usage/serve-mcp.md](usage/serve-mcp.md).

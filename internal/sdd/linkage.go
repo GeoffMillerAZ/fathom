@@ -56,6 +56,25 @@ func ExtractRefs(text string) []string {
 	return extractWithPattern(defaultPattern, text)
 }
 
+// ExtractRefsBytes is ExtractRefs over source bytes. Returned token strings own
+// their bytes, so retaining a reference neither retains nor aliases the file.
+func ExtractRefsBytes(text []byte) []string {
+	raw := defaultPattern.FindAll(text, -1)
+	if len(raw) == 0 {
+		return nil
+	}
+	seen := make(map[string]struct{}, len(raw))
+	for _, match := range raw {
+		seen[string(match)] = struct{}{}
+	}
+	out := make([]string, 0, len(seen))
+	for id := range seen {
+		out = append(out, id)
+	}
+	sort.Strings(out)
+	return out
+}
+
 // ExtractRefsWithPrefixes returns all spec IDs referenced in text whose prefix
 // is one of the supplied prefixes.  An empty prefix list returns nil.  The
 // result is sorted and deduplicated.

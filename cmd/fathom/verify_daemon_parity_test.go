@@ -167,6 +167,9 @@ func TestVerifyDaemonParity_EveryEvidenceKind(t *testing.T) {
 	storeCode, storeOut, storeErr := runInDir(t, repo.root, verifyArgs("--store", storePath))
 	url := startParityDaemon(t, storePath)
 	daemonCode, daemonOut, daemonErr := runInDir(t, repo.root, verifyArgs("--url", url))
+	if strings.TrimSpace(daemonOut) == "" {
+		t.Fatalf("daemon verify emitted no JSON (exit %d): %s", daemonCode, daemonErr)
+	}
 
 	direct, daemon := parityRows(t, storeOut), parityRows(t, daemonOut)
 	if len(direct) != 17 {
@@ -207,11 +210,33 @@ func TestVerifyDaemonParity_EveryEvidenceKind(t *testing.T) {
 	// tree, and both paths must say so rather than prove a gone: row.
 	repo.writePlan("scratch.txt", "uncommitted\n")
 	_, dirtyStore, _ := runInDir(t, repo.root, verifyArgs("--store", storePath))
-	_, dirtyDaemon, _ := runInDir(t, repo.root, verifyArgs("--url", url))
+	dirtyCode, dirtyDaemon, dirtyErr := runInDir(t, repo.root, verifyArgs("--url", url))
+	assertCurrentWindowRefusal(t, dirtyCode, dirtyDaemon, dirtyErr, "sealed projection unavailable")
 	for _, id := range []string{"P-7", "P-9", "P-12"} {
-		ds, dd := parityRows(t, dirtyStore)[id], parityRows(t, dirtyDaemon)[id]
-		if ds.Status != "unknown" || dd.Status != "unknown" || ds.Label != dd.Label {
-			t.Errorf("%s over a dirty tree: direct %+v, daemon %+v, want both unknown", id, ds, dd)
+		if ds := parityRows(t, dirtyStore)[id]; ds.Status != "unknown" {
+			t.Errorf("%s over a dirty tree: direct %+v, want unknown", id, ds)
+		}
+	}
+
+	// A new sealed generation restores the default current window. Exercise
+	// full row parity again instead of treating refusal as permanent.
+	repo.commitAll("include scratch file")
+	if code, out, errOut := runInDir(t, repo.root, []string{"ingest", "--service", "parityfixture", "--path", repo.root, "--store", storePath}); code != 0 {
+		t.Fatalf("recovery ingest: exit %d\n%s%s", code, out, errOut)
+	}
+	recoveredStoreCode, recoveredStore, recoveredStoreErr := runInDir(t, repo.root, verifyArgs("--store", storePath))
+	recoveredDaemonCode, recoveredDaemon, recoveredDaemonErr := runInDir(t, repo.root, verifyArgs("--url", url))
+	if strings.TrimSpace(recoveredDaemon) == "" {
+		t.Fatalf("recovery daemon verify emitted no JSON (exit %d): %s", recoveredDaemonCode, recoveredDaemonErr)
+	}
+	if recoveredStoreCode != recoveredDaemonCode {
+		t.Fatalf("recovery exits differ: direct %d daemon %d; stderr=%s / %s", recoveredStoreCode, recoveredDaemonCode, recoveredStoreErr, recoveredDaemonErr)
+	}
+	direct, daemon = parityRows(t, recoveredStore), parityRows(t, recoveredDaemon)
+	for id, d := range direct {
+		dd, ok := daemon[id]
+		if !ok || d.Status != dd.Status || d.Label != dd.Label || strings.Join(d.Criteria, ",") != strings.Join(dd.Criteria, ",") {
+			t.Errorf("recovered %s: direct %+v daemon %+v", id, d, dd)
 		}
 	}
 }

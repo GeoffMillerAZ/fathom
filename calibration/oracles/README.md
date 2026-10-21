@@ -76,6 +76,32 @@ scores the pairs into `xref_precision`/`xref_recall` at the file's tier.
 | bazel-query/ | A (definitions, references, cross_references from `bazel query` and its instantiation stacks) | Bazel |
 | clang-compdb/ | A (definitions, references) | compile_commands.json |
 
+Roslyn also offers an opt-in raw project-import export, sharing the native
+`project-declarations` workspace and explicit emission selector:
+
+    dotnet <tools>/RoslynDump.dll project-imports <repository-root> <actual.sln|slnx|csproj> <source-directory> [owned-intermediate-root]
+
+`fathom.roslyn.project-imports/v1` records native using bindings and complete
+namespace declaration contributions, not neutral `-tool-oracle` JSON or actual-use
+file dependencies. Current-compilation and actual `CompilationReference` sources
+can supply targets. PE-to-selected-source association is explicitly
+UNSUPPORTED/UNKNOWN with zero source targets; native preference and exact assembly
+identity candidates remain diagnostics. The selector limits emitted source, not
+dependency reads or network access: use trusted projects and provisioned inputs.
+Both native project modes retain every error diagnostic in ordinal rendered-string
+order per project. This intentionally changes error-array byte ordering; preserve
+old outputs and refresh pins rather than normalizing old/new comparisons.
+
+After actual native outputs exist, the generic fixture controls are:
+
+    python3 calibration/oracles/roslyn/testdata/imports/verify_forward.py pe-unsupported <raw-imports.json> <fixture-root>
+    python3 calibration/oracles/roslyn/testdata/imports/verify_forward.py diagnostic-repeat <new-error-1.json> <new-error-2.json>
+
+The first checks unsupported PE binding with zero targets, not successful source
+association; the original metadata-source positive remains unqualified. The second
+requires strict new/new bytes and retained diagnostics. Neither repairs old/new
+error compatibility or establishes generic qualification or a language grade.
+
 ## Tool-format oracles (D4, LB-F30)
 
 Small programs that write `indexbench lang-oracle`'s tool-oracle JSON (`-tool-oracle`,

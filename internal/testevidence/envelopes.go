@@ -68,13 +68,13 @@ type envelopeWire struct {
 
 // envInfoWire is the subset of #EnvInfo (schema/testkit/result.cue)
 // runCommitFromEnvelope reads — CV-1's own commit/dirty/race facts
-// (design doc §1.1, O114). The other #EnvInfo fields (toolchainDigest,
-// runnerClass, arch, os) are not fathom's concern and are left for the
-// decoder to discard.
+// (design doc §1.1, O114), plus runnerClass to keep native Unity declarations
+// out of generic joins. Other fields remain the native adapter's concern.
 type envInfoWire struct {
-	Commit string `json:"commit,omitempty"`
-	Dirty  bool   `json:"dirty,omitempty"`
-	Race   bool   `json:"race,omitempty"`
+	RunnerClass string `json:"runnerClass"`
+	Commit      string `json:"commit,omitempty"`
+	Dirty       bool   `json:"dirty,omitempty"`
+	Race        bool   `json:"race,omitempty"`
 }
 
 // runCommitFromEnvelope (CV-1, design doc §1.1) reads the commit/dirty/
@@ -128,8 +128,15 @@ func runCommitFromEnvelope(env envInfoWire, subjects []inTotoSubject) (commit st
 }
 
 func (w envelopeWire) toRun() Run {
+	nativeUnity := strings.EqualFold(w.Env.RunnerClass, "unity")
+	for _, artifact := range w.Artifacts {
+		if artifact.Name == "unity-nunit-xml" || artifact.Name == "unity-source-inputs" {
+			nativeUnity = true
+		}
+	}
 	return Run{
-		Suite: w.Suite, Key: w.Key, Verdict: w.Verdict, Cases: w.Cases,
+		nativeUnity: nativeUnity,
+		Suite:       w.Suite, Key: w.Key, Verdict: w.Verdict, Cases: w.Cases,
 		Totals: w.Totals, Coverage: w.Coverage, Artifacts: w.Artifacts,
 		StartedAt: w.Timing.StartedAt,
 	}

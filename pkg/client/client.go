@@ -31,6 +31,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/decide"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/gitro"
+	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/internal/query"
 	"github.com/geoffmilleraz/fathom/internal/scip"
 	"github.com/geoffmilleraz/fathom/internal/store"
@@ -191,7 +192,11 @@ func (c *Client) Ingest(ctx context.Context, svc ServiceRef) (Report, error) {
 	if err := c.refuseWorktreeReroot(ctx, svc.ID, svc.Path); err != nil {
 		return Report{}, fmt.Errorf("ingest: %w", err)
 	}
-	return c.pipe.Ingest(ctx, svc)
+	report, ingestErr := c.pipe.Ingest(ctx, svc)
+	var readErr *ReadFailuresError
+	wrote := ingestErr == nil || errors.As(ingestErr, &readErr) && !readErr.WroteNothing()
+	sourceErr := c.reconcileSCIPSources(ctx, svc.ID, svc.Path, wrote)
+	return report, errors.Join(ingestErr, sourceErr)
 }
 
 // SetRehash makes the next ingests read and hash every file, ignoring the
@@ -220,6 +225,8 @@ func (c *Client) ReingestFile(ctx context.Context, serviceID, relFile string) (f
 		return fusion.ReingestReport{}, fmt.Errorf("client.ReingestFile: service %q has no recorded repo path (never ingested)", serviceID)
 	}
 	rep, err := c.pipe.ReingestFile(ctx, c.st, serviceID, meta.Path, relFile)
+	sourceErr := c.reconcileSCIPSources(ctx, serviceID, meta.Path, err == nil)
+	err = errors.Join(err, sourceErr)
 	if err == nil && (rep.Refreshed || rep.Purged) {
 		// The watermark the summary row is keyed by did not move, so the
 		// row's count is recounted here or list_services reports the
@@ -325,6 +332,15 @@ func (c *Client) BatchQuery(ctx context.Context, qs []Query) ([]QueryResult, err
 // concern or keyword filtering.  This is the "list everything" API used by
 // inspect and by the query fallback path.
 func (c *Client) ListAllSymbols(ctx context.Context, serviceID string) ([]SymbolNode, error) {
+	if reader, ok := c.st.(interface {
+		ListSymbolNodes(context.Context, string) ([]core.SymbolNode, error)
+	}); ok {
+		nodes, err := reader.ListSymbolNodes(ctx, serviceID)
+		if err != nil {
+			return nil, fmt.Errorf("client.ListAllSymbols: %w", err)
+		}
+		return nodes, nil
+	}
 	obs, err := c.st.QueryObservations(ctx, serviceID, "")
 	if err != nil {
 		return nil, fmt.Errorf("client.ListAllSymbols: %w", err)
@@ -352,6 +368,10 @@ func (c *Client) TypedEdges(ctx context.Context, serviceID string) ([]Edge, erro
 // ImportSCIPResult is ImportSCIP's return: a re-export of scip.Import so
 // callers never import internal/scip directly.
 type ImportSCIPResult = scip.Import
+
+// ErrSCIPSourceReceipt identifies a refused source-bound import. Syntax may
+// have updated, but the typed enrichment did not succeed and must not be reused.
+var ErrSCIPSourceReceipt = scip.ErrSourceReceipt
 
 // scipStoreKeyPrefix returns the store pkg_path NAMESPACE this SCIP index
 // file's packages are written under — "scip:<path>::" — mirroring
@@ -398,6 +418,9 @@ func scipIndexKey(root, path string) string {
 			}
 			if a, aerr := filepath.EvalSymlinks(abs); aerr == nil {
 				abs = a
+			} else if parent, perr := filepath.EvalSymlinks(filepath.Dir(abs)); perr == nil {
+				// A missing leaf retains the physical identity of its existing parent.
+				abs = filepath.Join(parent, filepath.Base(abs))
 			}
 			if rel, rerr := filepath.Rel(root, abs); rerr == nil && rel != "." && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !filepath.IsAbs(rel) {
 				return filepath.ToSlash(rel)
@@ -435,18 +458,51 @@ func scipIndexKey(root, path string) string {
 // this import did not just (re)write. Never touches a bare (Go typed pass)
 // or "cue:"-prefixed (CUE typed pass) pkg_path, and never touches another
 // SCIP index file's own "scip:<other path>::" rows.
-func (c *Client) ImportSCIP(ctx context.Context, serviceID, path string) (ImportSCIPResult, error) {
+func (c *Client) ImportSCIP(ctx context.Context, serviceID, path string) (result ImportSCIPResult, returnErr error) {
+	root, _, _, err := c.ServiceMeta(ctx, serviceID)
+	if err != nil {
+		return scip.Import{}, fmt.Errorf("client.ImportSCIP: service meta: %w", err)
+	}
+	protected, err := c.scipSourceState(ctx, serviceID, root, path)
+	if err != nil {
+		return scip.Import{}, fmt.Errorf("client.ImportSCIP: source state: %w", err)
+	}
+	var raw []byte
+	var readErr error
+	expected := protected || scip.SourceReceiptExpected(path)
+	if expected {
+		raw, readErr = readSourceSCIP(ctx, path)
+	} else {
+		raw, readErr = os.ReadFile(path)
+	}
+	bound, receiptErr := scip.ValidateSourceReceipt(ctx, root, path, raw, expected)
+	if readErr != nil {
+		receiptErr = fmt.Errorf("index: %w", readErr)
+	}
+	if bound || protected {
+		defer func() {
+			memo.EvictStoreService(c.StoreID(), serviceID)
+			if returnErr != nil {
+				returnErr = errors.Join(returnErr, c.clearSCIPSource(context.WithoutCancel(ctx), serviceID, root, path))
+				if !errors.Is(returnErr, ErrSCIPSourceReceipt) {
+					returnErr = fmt.Errorf("%w: %v", ErrSCIPSourceReceipt, returnErr)
+				}
+			}
+		}()
+		if err := c.rememberSCIPSource(ctx, serviceID, root, path); err != nil {
+			return scip.Import{}, fmt.Errorf("client.ImportSCIP: remember source: %w", err)
+		}
+	}
+	if receiptErr != nil {
+		return scip.Import{}, fmt.Errorf("client.ImportSCIP: source receipt: %w", receiptErr)
+	}
 	nodes, err := c.ListAllSymbols(ctx, serviceID)
 	if err != nil {
 		return scip.Import{}, fmt.Errorf("client.ImportSCIP: list symbols: %w", err)
 	}
-	imp, err := scip.ImportIndexFile(serviceID, path, nodes)
+	imp, err := scip.ImportIndex(serviceID, raw, nodes)
 	if err != nil {
 		return scip.Import{}, fmt.Errorf("client.ImportSCIP: %w", err)
-	}
-	root, _, _, err := c.ServiceMeta(ctx, serviceID)
-	if err != nil {
-		return imp, fmt.Errorf("client.ImportSCIP: service meta: %w", err)
 	}
 	prefix := scipStoreKeyPrefix(scipIndexKey(root, path))
 	keep := make(map[string]bool, len(imp.Packages))
@@ -467,6 +523,11 @@ func (c *Client) ImportSCIP(ctx context.Context, serviceID, path string) (Import
 		}
 		if err := c.st.DeleteTypedEdgePackage(ctx, serviceID, id); err != nil {
 			return imp, fmt.Errorf("client.ImportSCIP: delete vanished package %q: %w", id, err)
+		}
+	}
+	if bound {
+		if _, err := scip.ValidateSourceReceipt(ctx, root, path, raw, true); err != nil {
+			return imp, err
 		}
 	}
 	return imp, nil
@@ -683,7 +744,7 @@ func (c *Client) IngestService(ctx context.Context, service string) error {
 	if p := c.corpusPath(ctx, service); p != "" {
 		ref.Path = p
 	}
-	report, err := c.pipe.Ingest(ctx, ref)
+	report, err := c.Ingest(ctx, ref)
 	if err != nil {
 		return err
 	}
@@ -717,7 +778,7 @@ func (c *Client) IngestServiceAt(ctx context.Context, service, path string) erro
 	}
 	ctx, done := tenancy.BeginIngest(ctx, service) // RT-153/RT-173
 	defer done()
-	report, err := c.pipe.Ingest(ctx, ServiceRef{ID: service, Path: path})
+	report, err := c.Ingest(ctx, ServiceRef{ID: service, Path: path})
 	if err != nil {
 		return err
 	}

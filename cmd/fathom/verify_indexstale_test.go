@@ -94,7 +94,9 @@ func TestVerifyIndexStale_HeadMovedExits2(t *testing.T) {
 	}
 }
 
-// The daemon path reaches the same verdict: same aggregate, same exit 2.
+// A dirty tree invalidates the daemon's sealed source projection. The daemon
+// refuses the entire current window, while direct store mode retains its
+// index-stale row evidence; a fresh ingest restores clean parity.
 func TestVerifyIndexStale_DaemonParity(t *testing.T) {
 	repo, pf, store := indexStaleFixture(t, indexStaleGonePlan)
 	repo.writePlan("stray.txt", "x\n")
@@ -107,7 +109,8 @@ func TestVerifyIndexStale_DaemonParity(t *testing.T) {
 	if sc != 2 || dc != 2 {
 		t.Fatalf("exit: store %d, daemon %d, want 2 and 2\n%s\n%s", sc, dc, dOut, dErr)
 	}
-	for name, out := range map[string]string{"store": sOut, "daemon": dOut} {
+	assertCurrentWindowRefusal(t, dc, dOut, dErr, "sealed projection unavailable")
+	for name, out := range map[string]string{"store": sOut} {
 		var doc struct {
 			IndexStale struct {
 				Rows      int    `json:"rows"`
@@ -115,10 +118,25 @@ func TestVerifyIndexStale_DaemonParity(t *testing.T) {
 			} `json:"index_stale"`
 		}
 		if err := json.Unmarshal([]byte(out), &doc); err != nil {
-			t.Fatalf("%s json: %v\n%s", name, err, out)
+			t.Fatalf("%s json: %v\nstdout=%s\ndaemon stderr=%s", name, err, out, dErr)
 		}
 		if doc.IndexStale.Rows != 2 || doc.IndexStale.FirstPath != "stray.txt" {
 			t.Errorf("%s index_stale = %+v", name, doc.IndexStale)
+		}
+	}
+	repo.commitAll("include stray file")
+	recoveredStore := ingestGoneFixture(t, repo)
+	recoveredURL := startParityDaemon(t, recoveredStore)
+	recoveredStoreCode, recoveredStoreOut, recoveredStoreErr := runInDir(t, repo.root, args("--store", recoveredStore))
+	recoveredDaemonCode, recoveredDaemonOut, recoveredDaemonErr := runInDir(t, repo.root, args("--url", recoveredURL))
+	if recoveredStoreCode != 0 || recoveredDaemonCode != 0 {
+		t.Fatalf("recovery exits: store %d daemon %d; stdout=%s / %s stderr=%s / %s", recoveredStoreCode, recoveredDaemonCode, recoveredStoreOut, recoveredDaemonOut, recoveredStoreErr, recoveredDaemonErr)
+	}
+	storeRows, daemonRows := parityRows(t, recoveredStoreOut), parityRows(t, recoveredDaemonOut)
+	for id, row := range storeRows {
+		other, ok := daemonRows[id]
+		if !ok || row.Status != other.Status || row.Label != other.Label || strings.Join(row.Criteria, ",") != strings.Join(other.Criteria, ",") {
+			t.Errorf("recovery %s: direct %+v daemon %+v", id, row, other)
 		}
 	}
 }

@@ -131,13 +131,13 @@ func snapshotPlans(ctx context.Context, pc *consolePlans, roots []serviceRoot, o
 
 // verifiedRollups is a service's `plans status --json` when every plan is
 // verified: one rollup per plan in the verb's (sorted) order.
-func verifiedRollups(sp console.ServicePlans) ([]planRollup, bool) {
-	out := make([]planRollup, 0, len(sp.Plans))
+func verifiedRollups(sp console.ServicePlans) ([]planStatusJSON, bool) {
+	out := make([]planStatusJSON, 0, len(sp.Plans))
 	for _, p := range sp.Plans {
 		if !p.Verified || p.Err != "" {
 			return nil, false
 		}
-		out = append(out, console.RollupPlan(p.Path, p.Rows, p.DaemonStale))
+		out = append(out, planStatusJSON{SourceScope: "current_worktree", CurrentWorktreeFreshness: "unknown", PlanRollup: console.RollupPlan(p.Path, p.Rows, p.DaemonStale)})
 	}
 	return out, true
 }

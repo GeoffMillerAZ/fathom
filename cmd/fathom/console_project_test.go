@@ -6,6 +6,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"regexp"
 	"strings"
@@ -60,6 +61,50 @@ func dropVolatileVerbFields(verb string, docs ...any) {
 		if m, ok := d.(map[string]any); ok {
 			delete(m, "ms")
 		}
+	}
+}
+
+// reconcilePlanObservation compares the two evidence contracts before the
+// general parity check compares every plan count, criterion and provenance.
+func reconcilePlanObservation(verb string, fromVerb, fromPage any) error {
+	if !strings.Contains(verb, "plans status") {
+		return nil
+	}
+	cli, cok := fromVerb.([]any)
+	page, pok := fromPage.([]any)
+	if !cok || !pok || len(cli) != len(page) {
+		return fmt.Errorf("plans status shape differs")
+	}
+	for i := range cli {
+		c, cok := cli[i].(map[string]any)
+		p, pok := page[i].(map[string]any)
+		if !cok || !pok {
+			return fmt.Errorf("plans status row %d shape differs", i)
+		}
+		if p["source_scope"] != "current_worktree" || p["current_worktree_freshness"] != "unknown" {
+			return fmt.Errorf("plans status row %d console claims unsupported freshness", i)
+		}
+		if c["source_scope"] != "current_worktree" || c["current_worktree_freshness"] != "observed_window" {
+			return fmt.Errorf("plans status row %d CLI lacks closed-window observation", i)
+		}
+		delete(c, "source_scope")
+		delete(c, "current_worktree_freshness")
+		delete(p, "source_scope")
+		delete(p, "current_worktree_freshness")
+	}
+	return nil
+}
+
+func TestConsolePlanObservationRequiresClosedWindow(t *testing.T) {
+	cli := []any{map[string]any{"source_scope": "current_worktree", "current_worktree_freshness": "observed_window", "proven": float64(1)}}
+	page := []any{map[string]any{"source_scope": "current_worktree", "current_worktree_freshness": "unknown", "proven": float64(1)}}
+	if err := reconcilePlanObservation("fathom plans status --json", cli, page); err != nil {
+		t.Fatal(err)
+	}
+	cli = []any{map[string]any{"source_scope": "current_worktree", "current_worktree_freshness": "observed_window", "proven": float64(1)}}
+	page = []any{map[string]any{"source_scope": "current_worktree", "current_worktree_freshness": "observed_window", "proven": float64(1)}}
+	if err := reconcilePlanObservation("fathom plans status --json", cli, page); err == nil {
+		t.Fatal("cached console plan advertised an unobserved window")
 	}
 }
 

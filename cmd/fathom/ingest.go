@@ -218,7 +218,7 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	// all (the store already held evidence and this run could read nothing).
 	// Any other error is the abort it always was.
 	var readErr *client.ReadFailuresError
-	if err != nil && !errors.As(err, &readErr) {
+	if err != nil && (!errors.As(err, &readErr) || errors.Is(err, client.ErrSCIPSourceReceipt)) {
 		fmt.Fprintf(stderr, "error: ingest failed: %v\n", err)
 		return 1
 	}
@@ -235,13 +235,17 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	// actually wrote something — a refused ingest (IT-15) leaves the store
 	// untouched, and importing typed edges for a service the syntax pass
 	// just refused to index would fabricate coverage the symbol table
-	// doesn't have. Best-effort per file: one bad SCIP index never aborts
-	// the ingest that already succeeded.
+	// doesn't have. Legacy optional enrichment stays best-effort; a refused
+	// source-bound receipt is a failing typed import even after syntax writes.
 	var scipResults []scipImportResult
 	if readErr == nil || !readErr.WroteNothing() {
 		for _, p := range resolveSCIPPaths(svcPath, scipPaths) {
 			imp, ierr := c.ImportSCIP(context.Background(), *service, p)
 			if ierr != nil {
+				if errors.Is(ierr, client.ErrSCIPSourceReceipt) {
+					fmt.Fprintf(stderr, "error: scip import %s: %v\n", p, ierr)
+					return 1
+				}
 				fmt.Fprintf(stderr, "warning: scip import %s: %v\n", p, ierr)
 				continue
 			}

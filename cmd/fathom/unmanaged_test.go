@@ -54,6 +54,19 @@ func runTestHelper(role string) int {
 			return 1
 		}
 		return runServeHTTP([]string{"--store", os.Getenv("RT42_STORE"), "--addr", os.Getenv("RT42_ADDR"), "--call-log", "", "--lifecycle-id", "rt42"}, out, out)
+	case "rt-graceful-serve":
+		out, err := os.OpenFile(os.Getenv("RT_GRACEFUL_LOG"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+		if err != nil {
+			return 1
+		}
+		defer out.Close()
+		args := []string{"--store", os.Getenv("RT_GRACEFUL_STORE"), "--addr", os.Getenv("RT_GRACEFUL_ADDR"), "--call-log", ""}
+		if os.Getenv("RT_GRACEFUL_MANAGED") == "1" {
+			args = append(args, "--managed")
+		}
+		return runServeHTTP(args, out, out)
+	case "rt-cleanup-stuck":
+		return runGracefulHungHelper()
 	case "rt42-ttl-serve":
 		// RT-42 with RT-20/RT-21: an unmanaged daemon waiting for its
 		// store still keeps its --ttl; the lifetime tick is shortened.

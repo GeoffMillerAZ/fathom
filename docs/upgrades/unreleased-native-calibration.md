@@ -1,0 +1,11 @@
+# Native compiler calibration migration
+
+`indexbench lang-unity-asmdef -project ROOT -oracle RECEIPT.json` compares declared `.asmdef` names, references, explicit flags and source ownership against an independently retained CompilationPipeline receipt. Exit 0 requires a complete passing comparison, 1 reports counterexamples/unjudged facts, and 2 names argument/schema/operational failure. The command opens no store and launches no Editor. GUID references and `.asmref` ownership stay unjudged. Available SDK references, emitted dependencies and runtime calls remain distinct evidence.
+
+Native Roslyn `project-declarations` and `project-imports` use the explicit actual project/solution and emission selector described in the [oracle guide](../../calibration/oracles/roslyn/README.md). They do not sandbox MSBuild dependency reads or guarantee no network. Use trusted, independently provisioned projects. Raw declarations/imports are not neutral scoring input or whole-language grades. PE-to-selected-source associations remain unsupported/UNKNOWN with zero invented source targets.
+
+Both native project modes retain error diagnostics in ordinal rendered-string order per project, including duplicates. Preserve old raw outputs and the historical old/new failure. Refresh pins only from newly executed exports; never normalize away a compatibility difference. Strict new/new repeat controls remain required.
+
+`lang-oracle -imports-from tool` needs actual SCIP input and exactly one tool imports array. Declaration-membership truth grades the import-statement family only; SCIP retains dependency/typed families. Default import selection is unchanged. `-scip-defs` now exits 2 before subject/output work when the manifest has no scoreable SCIP definition kinds; use native neutral definitions separately when supported.
+
+The new dialect participates in the existing embedded-data digest and an append-only epoch note. Re-ingest under the new binary before relying on its extraction. Fixtures, source authoring and stale historical receipts do not qualify an adopter or establish L4 support. Native loaded-test-assembly MVID comparison remains outside the validator, as the [native evidence migration](unreleased-native-unity-evidence.md) states.

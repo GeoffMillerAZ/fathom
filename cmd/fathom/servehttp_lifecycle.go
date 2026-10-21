@@ -229,6 +229,84 @@ func (r *serveRun) stopServing() {
 	_ = r.httpSrv.Shutdown(ctx)
 }
 
+// requestServeExit makes the serving goroutine return through its registered
+// cleanups. A managed drain has already shut HTTP down; an unmanaged exit
+// shuts it down here. The request precedes store-wait cancellation and
+// listener close, so either return path retains the requested code.
+func (r *serveRun) requestServeExit(code int, shutdownHTTP bool) {
+	r.exitOnce.Do(func() {
+		if shutdownHTTP {
+			r.watchExitDeadline(code, 9*time.Second)
+		}
+		r.exitCode.Store(int32(code))
+		close(r.exitRequested)
+		r.cancelExit()
+		r.stopRefresh()
+		if shutdownHTTP {
+			r.stopServing()
+		}
+		close(r.exitDone)
+	})
+}
+
+// watchExitDeadline preserves the daemon's terminal exit bound if a request
+// or cleanup refuses cancellation. Such an exit leaves the ledger on disk
+// with an explicit unclean row; it never claims that SQLite closed.
+func (r *serveRun) watchExitDeadline(code int, budget time.Duration) {
+	r.watchOnce.Do(func() {
+		schedule := r.deadlineTimer
+		if schedule == nil {
+			schedule = func(d time.Duration, f func()) { time.AfterFunc(d, f) }
+		}
+		schedule(budget, func() { r.forceExitAtDeadline(code) })
+	})
+}
+
+// completeCleanup and forceExitAtDeadline choose one terminal outcome under
+// one lock. A finished cleanup cannot later be forced; a forced exit keeps
+// its unclean ledger instead of having it removed by the return path.
+func (r *serveRun) completeCleanup() {
+	r.terminalMu.Lock()
+	defer r.terminalMu.Unlock()
+	if r.terminalState != 0 {
+		return
+	}
+	if r.perProcessLedger {
+		select {
+		case <-r.exitRequested:
+			removePerProcessLedger(r.lcIn.ledger)
+		default:
+		}
+	}
+	r.terminalState = 1
+}
+
+func (r *serveRun) forceExitAtDeadline(code int) {
+	r.terminalMu.Lock()
+	defer r.terminalMu.Unlock()
+	if r.terminalState != 0 {
+		return
+	}
+	r.terminalState = 2
+	r.exitRow(tenancy.ExitUnclean, "cleanup incomplete at exit deadline", code)
+	r.flog.Warn("serve-http: cleanup incomplete at exit deadline; forcing exit")
+	if r.deadlineExit != nil {
+		r.deadlineExit(code)
+	} else {
+		os.Exit(code)
+	}
+}
+
+func (r *serveRun) requestedExitCode() (int, bool) {
+	select {
+	case <-r.exitRequested:
+		<-r.exitDone // HTTP shutdown completes before the store is closed.
+		return int(r.exitCode.Load()), true
+	default:
+		return 0, false
+	}
+}
+
 // removeRecord removes the daemon record, through the lifetime once it exists.
 func (r *serveRun) removeRecord() {
 	if lt := r.lifetimeP.Load(); lt != nil {
@@ -250,8 +328,11 @@ func (r *serveRun) handleSignals() {
 	// RT-97 (§7.1): the refresh queue's worker lives until the drain (or
 	// return) stops it; it is started once the backend exists below.
 	//fathom:tenancy-allow bg-ctx daemon lifetime context in serve-http startup, cancelled by the drain; not a request
-	r.refreshCtx, r.stopRefresh = context.WithCancel(context.Background())
+	lifetimeCtx := context.Background()
+	r.refreshCtx, r.stopRefresh = context.WithCancel(lifetimeCtx)
 	r.deferred(r.stopRefresh)
+	r.exitCtx, r.cancelExit = context.WithCancel(lifetimeCtx)
+	r.deferred(r.cancelExit)
 	// RT-44 (§8.5): a managed daemon's SIGTERM drains and exits 0.
 	dr := &drainer{
 		stopRefresh: r.stopRefresh,
@@ -259,7 +340,7 @@ func (r *serveRun) handleSignals() {
 		inflight: tenancy.DefaultInFlight, budget: drainBudget, logf: func(m string) { flog.Warn(m) },
 		shutdown:     r.httpSrv.Shutdown,
 		removeRecord: r.removeRecord,
-		exit:         os.Exit,
+		exit:         func(code int) { r.requestServeExit(code, false) },
 	}
 	sigs := make(chan os.Signal, 1)
 	if managed {
@@ -278,6 +359,8 @@ func (r *serveRun) handleSignals() {
 			return
 		}
 		if managed {
+			r.watchExitDeadline(0, 19*time.Second)
+			close(r.managedDrain)
 			dr.drainAndExit(sig.String())
 			return
 		}
@@ -292,11 +375,8 @@ func (r *serveRun) handleSignals() {
 		}
 		outLog.Info(fmt.Sprintf("serve-http: unmanaged daemon exiting before its store opened: %s", reason))
 		r.exitRow(tenancy.ExitSignal, reason, code)
-		if r.perProcessLedger {
-			removePerProcessLedger(r.lcIn.ledger)
-		}
 		r.removeRecord()
-		os.Exit(code)
+		r.requestServeExit(code, true)
 	}()
 }
 
@@ -318,13 +398,10 @@ func (r *serveRun) startLifetime() {
 		recordPath: r.recordPath,
 		now:        time.Now,
 		logf:       func(m string) { outLog.Info(m) },
-		exit:       os.Exit,
+		exit:       func(code int) { r.requestServeExit(code, true) },
 		stopped:    make(chan struct{}),
 		onExit: func(reason string, code int) {
 			r.exitRow(lifetimeExitReason(reason), reason, code)
-			if r.perProcessLedger {
-				removePerProcessLedger(r.lcIn.ledger)
-			}
 		},
 	}
 	r.lifetime = lifetime

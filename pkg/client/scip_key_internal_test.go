@@ -31,6 +31,7 @@ func TestSCIPIndexKey_StableAcrossRootsAndTempPaths(t *testing.T) {
 		{"same repo, other checkout", rootB, filepath.Join(rootB, "index.scip"), "index.scip"},
 		{"nested index", rootA, filepath.Join(rootA, ".fathom", "scip", "ts.scip"), ".fathom/scip/ts.scip"},
 		{"root reached through a symlink", link, filepath.Join(rootA, ".fathom", "scip", "ts.scip"), ".fathom/scip/ts.scip"},
+		{"missing index reached through a symlink", rootA, filepath.Join(link, ".fathom", "scip", "missing.scip"), ".fathom/scip/missing.scip"},
 		{"outside the root", rootA, filepath.Join(t.TempDir(), "zod.scip"), "zod.scip"},
 		{"sibling with a shared name prefix", rootA, rootA + "-other/index.scip", "index.scip"},
 		{"no root recorded", "", filepath.Join(rootA, "index.scip"), "index.scip"},

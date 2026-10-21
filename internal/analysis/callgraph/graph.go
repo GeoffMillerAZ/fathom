@@ -69,14 +69,14 @@ type Graph struct {
 	// bySuffix maps a component-boundary suffix (the raw keyEndsWith once
 	// scanned every key for) to how many node keys end with "."+suffix or
 	// "/"+suffix, and — when exactly one does — that key. Built once per
-	// Build (buildSuffixIndex, O(nodes)) so resolveAmbiguousCallees's suffix
+	// Build, for the suffixes demanded by Calls, so resolveAmbiguousCallees's suffix
 	// match costs one map lookup per unresolved callee instead of the
 	// O(nodes) scan the fallback used to run for every one of them
 	// (bench-pyramid SB-50). nil on a graph buildIndexes alone produced
 	// (BuildResolved never calls resolve, so it never needs this).
 	bySuffix map[string]suffixCandidate
 
-	// byDotSuffix is the "."-boundary-only subset of bySuffix: it is what
+	// byDotSuffix holds demanded method suffixes at "." boundaries: it is what
 	// the method-call fallback in resolveAmbiguousCallees needs, since a
 	// receiver-variable callee ("<var>.Method") can only match a key
 	// immediately preceded by a literal ".", never a directory separator.
@@ -178,8 +178,8 @@ func Build(nodes []core.SymbolNode) *Graph {
 func buildIndexes(nodes []core.SymbolNode) *Graph {
 	g := &Graph{
 		nodes:     make(map[string]core.SymbolNode, len(nodes)),
-		callees:   make(map[string][]string, len(nodes)),
-		callers:   make(map[string][]string, len(nodes)),
+		callees:   make(map[string][]string),
+		callers:   make(map[string][]string),
 		byName:    make(map[string]string),
 		byPkgName: make(map[string]string),
 		byDirName: make(map[string]string),
@@ -207,16 +207,16 @@ func buildIndexes(nodes []core.SymbolNode) *Graph {
 			dirNameCounts[dn]++
 		}
 	}
-	for _, n := range g.nodes {
-		g.byNameAll[n.Name] = append(g.byNameAll[n.Name], n.Key())
+	for key, n := range g.nodes {
+		g.byNameAll[n.Name] = append(g.byNameAll[n.Name], key)
 		if nameCounts[n.Name] == 1 {
-			g.byName[n.Name] = n.Key()
+			g.byName[n.Name] = key
 		}
 		if n.Package != "" && pkgNameCounts[n.Package+"."+n.Name] == 1 {
-			g.byPkgName[n.Package+"."+n.Name] = n.Key()
+			g.byPkgName[n.Package+"."+n.Name] = key
 		}
 		if dn := dirName(n); dn != "" && dirNameCounts[dn] == 1 {
-			g.byDirName[dn] = n.Key()
+			g.byDirName[dn] = key
 		}
 	}
 	for k := range g.byNameAll {
@@ -235,40 +235,53 @@ type suffixCandidate struct {
 	count int
 }
 
-// buildSuffixIndex populates bySuffix and byDotSuffix from every node key's
-// component-boundary suffixes — the suffixes keyEndsWith's "."+raw / "/"+raw
-// checks compare against — once per Build. It is what turns
-// resolveAmbiguousCallees's suffix match and method-call fallback from an
-// O(nodes) scan per unresolved callee into an O(1) map lookup against an
-// index this function builds in O(nodes) (more precisely, O(total key
-// bytes), since it walks each key once).
+// buildSuffixIndex retains only suffixes queried by this graph's Calls.
+// Build collects demand from the deduplicated node set. ReplacePackage
+// additionally passes every raw replacement entry it will resolve, because
+// duplicate keys can carry different Calls even though nodes is last-wins.
+// Every node key still contributes to candidate counts: a node
+// with no outgoing calls can be a target or make a call ambiguous.
 //
-// For a key, a "boundary" is any position immediately after a '.' or '/'
-// character; the suffix starting there is a candidate for whatever raw a
-// later query names. A key can add the SAME suffix at most once (the
-// per-key seen sets below): keyEndsWith's own semantics is a single
-// fixed-position tail check per (key, raw) pair, so a key must never
-// contribute more than one hit for a given suffix, even in the
-// pathological case where the same substring recurs at two boundaries.
-func (g *Graph) buildSuffixIndex() {
+// Construction visits each key boundary once and hashes its suffix for
+// demand checks. That work includes the sum of suffix lengths, which can
+// be quadratic for boundary-dense keys, plus call-demand collection.
+// Retained entries are bounded by raw-call and method-name demand rather
+// than the universe's suffixes.
+// Canonical and CandidateKeys independently scan the complete node universe
+// for arbitrary public queries; they never consult these private maps.
+func (g *Graph) buildSuffixIndex(additional ...core.SymbolNode) {
+	demanded := make(map[string]struct{})
+	methods := make(map[string]struct{})
+	collect := func(n core.SymbolNode) {
+		for _, raw := range n.Calls {
+			demanded[raw] = struct{}{}
+			if i := strings.LastIndex(raw, "."); i > 0 && i < len(raw)-1 {
+				methods[raw[i+1:]] = struct{}{}
+			}
+		}
+	}
+	for _, n := range g.nodes {
+		collect(n)
+	}
+	for _, n := range additional {
+		collect(n)
+	}
 	g.bySuffix = make(map[string]suffixCandidate)
 	g.byDotSuffix = make(map[string]suffixCandidate)
 	for key := range g.nodes {
-		seenAll := make(map[string]struct{})
-		seenDot := make(map[string]struct{})
 		for i := 1; i < len(key); i++ {
 			c := key[i-1]
 			if c != '.' && c != '/' {
 				continue
 			}
 			suf := key[i:]
-			if _, dup := seenAll[suf]; !dup {
-				seenAll[suf] = struct{}{}
+			// Different starting offsets have different suffix lengths, so a
+			// deduplicated key contributes at most once to either suffix map.
+			if _, wanted := demanded[suf]; wanted {
 				addSuffixCandidate(g.bySuffix, suf, key)
 			}
 			if c == '.' {
-				if _, dup := seenDot[suf]; !dup {
-					seenDot[suf] = struct{}{}
+				if _, wanted := methods[suf]; wanted {
 					addSuffixCandidate(g.byDotSuffix, suf, key)
 				}
 			}
@@ -376,8 +389,8 @@ func (g *Graph) resolve(caller core.SymbolNode, raw string) string {
 // suffix indexes Build computes once per call (buildSuffixIndex), replacing
 // what used to be two full O(nodes) scans of g.nodes run for every one of
 // resolve's unresolved callees — O(calls * nodes) overall. The index makes
-// each of the two checks below an O(1) map lookup, so resolving every call
-// in the corpus costs O(calls) amortized against the one O(nodes) build.
+// each of the two checks below an expected O(1) map lookup aside from
+// hashing the query string, after the demand-sized index is constructed.
 // Semantics are byte-for-byte the ones the scans implemented: a lone
 // candidate wins, two or more resolve to nothing — ambiguity, never
 // first-match-wins.
@@ -958,7 +971,8 @@ func (g *Graph) detail(symbol string, in bool, which detailWhich) []EdgeInfo {
 type ReachDetail struct {
 	Key          string
 	ViaDispatch  bool
-	Implementers int // count of dispatch edges from the crossed caller; 0 when !ViaDispatch
+	Implementers int    // count of dispatch edges from the crossed caller; 0 when !ViaDispatch
+	TestIdentity string // source identity convention, not execution proof
 }
 
 // TestImpactDetail is TestImpact with typed-edge dispatch modality: for each
@@ -1001,7 +1015,7 @@ func TestImpactDetail(g *Graph, symbol string) []ReachDetail {
 			implementers[caller] = n
 
 			if node := g.nodes[caller]; IsTestNode(node) {
-				results = append(results, ReachDetail{Key: caller, ViaDispatch: crosses, Implementers: n})
+				results = append(results, ReachDetail{Key: caller, ViaDispatch: crosses, Implementers: n, TestIdentity: node.TestIdentity()})
 			}
 			queue = append(queue, caller)
 		}

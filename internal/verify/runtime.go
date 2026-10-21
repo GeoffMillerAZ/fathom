@@ -23,6 +23,9 @@ const runtimeCriterion = "runtime_pass"
 // producer outside the index attested and fathom ingested, never a run
 // verify started.
 type AttestedRun struct {
+	// UnknownReason names a native freshness/identity refusal, never a pass.
+	UnknownReason string
+
 	// Test is the test the run executed, as the evidence names it (a
 	// canonical key or a bare name).
 	Test string
@@ -60,16 +63,39 @@ type RuntimeEvidence interface {
 // runtimeTests names a row's certifying tests and where they came from:
 // the tests certified_by names, else the reachable_from entry when it is
 // a test, else the tests that statically reach the row's symbol.
-func runtimeTests(e Expect, reaching []string) ([]string, string) {
+func runtimeTests(e Expect, reaching []string, ev Evidence) ([]string, string) {
 	switch {
 	case len(e.CertifiedBy) > 0:
 		return e.CertifiedBy, "certified_by"
-	case isTestName(e.ReachableFrom):
+	case isTestEntry(e.ReachableFrom, ev):
 		return []string{e.ReachableFrom}, "reachable_from"
 	case len(reaching) > 0:
 		return reaching, "the tests that statically reach it"
 	}
 	return nil, ""
+}
+
+// Consult indexed C# source identity without replacing upstream's naming
+// fallback for other languages. This selects candidate names, never execution.
+func isTestEntry(name string, ev Evidence) bool {
+	if name == "" {
+		return false
+	}
+	nodes := ev.FindSymbol(name)
+	csharpOnly := len(nodes) > 0
+	for _, n := range nodes {
+		if !strings.HasPrefix(string(n.Kind), "CSharp") {
+			csharpOnly = false
+			continue
+		}
+		if n.IsTest() {
+			return true
+		}
+	}
+	if csharpOnly {
+		return false
+	}
+	return isTestName(name)
 }
 
 // isTestName reports whether name (bare, qualified or a canonical key)
@@ -120,6 +146,9 @@ func evalRuntimePass(tests []string, from string, ev Evidence) Criterion {
 			strings.Join(dedupSorted(names), ", "), from)}
 	}
 	newest := newestRun(runs)
+	if newest.UnknownReason != "" {
+		return Criterion{Name: runtimeCriterion, Status: Unknown, Detail: newest.UnknownReason}
+	}
 	name := bareTestName(newest.Test)
 	where := runWhere(newest, re.Now())
 	switch newest.Status {

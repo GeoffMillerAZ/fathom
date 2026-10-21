@@ -1,0 +1,11 @@
+# Native source contracts migration
+
+The experimental [`unity-references`](../usage/unity-references.md) command and client methods `PrepareUnityAssetReferences` / `UnityAssetReferences` require an explicit registered service, project, family, immutable receipt and active marker, trusted Editor identity/target, and an exact persistent GUID plus signed64 decimal fileID text. The store is mounted read-only. A prepared DTO cannot authorize a later query; source/context/active generation are checked again. No Editor command, asset payload write, new SQLite family table, MCP tool or runtime code call is introduced.
+
+Asset context/v2 includes all Assets metadata, including opaque Vendor/ThirdParty/folder/importer metadata, plus declared code/config context and ProjectSettings under the original bounds. V1 cannot authorize a current positive query. Grouped locations/properties remain unpaired; partial/native-only/raw-only/package-unbound counts and limitations remain visible. A real new v2 cohort and exact migrated-source qualification remain required; historical failures are not restamped.
+
+C# test candidates require recognized NUnit/Unity attribute syntax rather than an unannotated `Test` method name. Lifecycle hooks, unrelated qualified attributes and strings are excluded. This syntax does not prove framework binding, runner discovery or execution. The upstream non-Go repository convention path remains intact. Native runtime evidence still requires the separate typed/source-bound whole-cohort adapter and remains informational.
+
+Symbol navigation counts distinct canonical keys for ambiguity while retaining repeated source declarations as bounded sorted locations and one deterministic primary definition. This is not typed partial-class merging. Conservation labels the actual stored C# edge source; it does not establish a language grade. Unsupported scip-typescript anonymous object properties remain unmapped, preserving legitimate class/member and other-producer joins.
+
+The native loaded-test-assembly-to-compiler MVID limit is unchanged. See [native evidence](unreleased-native-unity-evidence.md) and [calibration](unreleased-native-calibration.md) migration boundaries. Full generated documentation, ordinary validation and adopter qualification remain separate from source authoring.

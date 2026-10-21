@@ -27,7 +27,10 @@ var capabilityMethodDisposition = map[string]string{
 	"IngestStateStore.GetIngestState":    "service-level state (owner pid, start, corpus root); carries no path-anchored content",
 	"IngestStateStore.DeleteIngestState": "write",
 	// KindObservationsStore (EW-57): the doc-xref pass's Lambda gate.
-	"KindObservationsStore.ObservationsOfKinds": "ingest-time read of the declaring kinds' rows for the doc-xref pass's Lambda gate (suppression must not change what gets indexed); its only caller is internal/fusion's serviceDeclaresLambda, which reduces it to whether the pass runs and serves nothing — a request-path caller must use the filtered QueryObservations instead",
+	"KindObservationsStore.ObservationsOfKinds":                            "ingest-time read of the declaring kinds' rows for the doc-xref pass's Lambda gate (suppression must not change what gets indexed); its only caller is internal/fusion's serviceDeclaresLambda, which reduces it to whether the pass runs and serves nothing — a request-path caller must use the filtered QueryObservations instead",
+	"SourceRefProjectionBackfillReader.ReadSourceRefProjectionForBackfill": "ingest-only read of prior sealed generation after Discover and before writes; suppression must not alter indexed facts",
+	"SourceRefProjectionInvalidator.InvalidateSourceRefProjection":         "write/delete of a stale seal",
+	"SourceRefProjectionReader.ReadSourceRefProjection":                    "raw optional store read; the only serving client.SourceRefProjection refuses unless the suppression-filtered FileStats has the exact same path and exclusion set",
 }
 
 // notStoreCapabilities are exported interfaces in internal/store that no

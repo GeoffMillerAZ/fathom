@@ -21,6 +21,8 @@ markers above `Test*` functions, writing one declared fact per entry into
 file:line, never a silent skip). "no manifests found" and "no runs
 ingested" print as named lines — never a silently clean run.
 
+Native Unity evidence uses paired `--unity-nunit XML --unity-receipt ACTIVE_RECEIPT` instead of `--results`. Unity-declared bare/DSSE envelopes cannot use generic file/name joins. The [native producer contract](../guides/unity-nunit-evidence.md) and [migration](../upgrades/unreleased-native-unity-evidence.md) define source/typed freshness, filtered-run UNKNOWN and live-certificate isolation. No command starts Unity.
+
 `tests status` prints, per declared suite, its class, tier, the last
 ingested run's verdict and totals, and `joined N of M cases` — the
 case-to-symbol join rate is a reported fact, never a pass/fail. A service
@@ -66,6 +68,8 @@ never stored, and each answer names the file it read.
 |---|---|---|
 | `--manifest` | `.` | service repo root: `tests/*.cue` live under `<dir>/tests/`, and `// certifies:` markers are scanned under `<dir>` |
 | `--results` | `""` | attested `#TestResult` envelope file, or a directory of `*.json` envelopes |
+| `--unity-nunit` | `""` | native Unity NUnit XML; requires `--unity-receipt`, mutually exclusive with `--results` |
+| `--unity-receipt` | `""` | active source-bound native receipt and mandatory producer test-kit record |
 | `--service` | resolved from cwd | Service ID |
 | `--store` | `<repo>/workspace/db/fathom.sqlite` | store path |
 

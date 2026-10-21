@@ -200,6 +200,9 @@ var typedEdgeProducers = map[string]string{
 	// Cargo.toml above.
 	"msbuild": "syntax",
 
+	// Declared assembly dependencies do not supply compiler or call edges.
+	"unity-asmdef": "syntax",
+
 	// Envoy, Kong and Traefik configuration (LB-Q-envoy, LB-Q-kong,
 	// LB-Q-traefik): a route's cluster or service, a listener's route
 	// configuration and an xDS or file-provider path become file-tier doc-xref

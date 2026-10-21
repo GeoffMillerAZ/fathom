@@ -601,6 +601,9 @@ func TestConsolePagesRenderTheirVerbs(t *testing.T) {
 			t.Fatal(err)
 		}
 		fromVerb := runVerbJSON(t, f, verb)
+		if err := reconcilePlanObservation(verb, fromVerb, fromPage); err != nil {
+			t.Fatal(err)
+		}
 		dropVolatileVerbFields(verb, fromVerb, fromPage)
 		if !reflect.DeepEqual(fromVerb, fromPage) {
 			a, _ := json.MarshalIndent(fromVerb, "", " ")

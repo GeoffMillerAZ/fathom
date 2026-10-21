@@ -48,8 +48,6 @@ func (g *Graph) ReplacePackage(pkg string, newNodes []core.SymbolNode, typedEdge
 		byPkgName:    cloneStrMap(g.byPkgName),
 		byDirName:    cloneStrMap(g.byDirName),
 		byNameAll:    cloneAdjacency(g.byNameAll),
-		bySuffix:     cloneSuffixMap(g.bySuffix),
-		byDotSuffix:  cloneSuffixMap(g.byDotSuffix),
 		edgeKind:     cloneEdgeKindMap(g.edgeKind),
 		dispatchOut:  cloneIntMap(g.dispatchOut),
 		instantiates: cloneAdjacency(g.instantiates),
@@ -156,8 +154,6 @@ func (g *Graph) ReplacePackage(pkg string, newNodes []core.SymbolNode, typedEdge
 		if dn := dirName(n); dn != "" && ng.byDirName[dn] == k {
 			delete(ng.byDirName, dn)
 		}
-		removeSuffixKey(ng.bySuffix, k)
-		removeSuffixKey(ng.byDotSuffix, k)
 	}
 
 	for _, n := range newNodes {
@@ -196,6 +192,14 @@ func (g *Graph) ReplacePackage(pkg string, newNodes []core.SymbolNode, typedEdge
 			delete(ng.byName, name)
 		}
 	}
+
+	// New Calls can demand a suffix absent from the old graph's demand,
+	// and new or removed targets can change its ambiguity. Rebuild these
+	// demand-sized indexes against ALL patched nodes before resolving pkg.
+	// Include all raw replacement Calls: the resolver below visits every
+	// newNodes entry even when several entries share a last-wins node key.
+	// Other packages' existing edges retain the bounded-staleness contract.
+	ng.buildSuffixIndex(newNodes...)
 
 	// Resolve pkg's own new outgoing edges against the patched graph.
 	for _, n := range newNodes {
@@ -302,17 +306,6 @@ func cloneAdjacency(m map[string][]string) map[string][]string {
 	return out
 }
 
-func cloneSuffixMap(m map[string]suffixCandidate) map[string]suffixCandidate {
-	if m == nil {
-		return nil
-	}
-	out := make(map[string]suffixCandidate, len(m))
-	for k, v := range m {
-		out[k] = v
-	}
-	return out
-}
-
 // removeOne returns ss with the first occurrence of want removed (order of
 // remaining elements preserved; the caller re-sorts when it cares).
 func removeOne(ss []string, want string) []string {
@@ -336,22 +329,4 @@ func appendSortedUnique(ss []string, want string) []string {
 	ss = append(ss, want)
 	sort.Strings(ss)
 	return ss
-}
-
-// removeSuffixKey deletes every entry in m whose sole recorded candidate
-// (count == 1) is key — see buildSuffixIndex's own doc comment for why a
-// count > 1 entry needs no change: its key is already "" (ambiguous,
-// answers nothing), so it can never dangle regardless of which of the 2+
-// original contributors this call removed.
-func removeSuffixKey(m map[string]suffixCandidate, key string) {
-	for i := 1; i < len(key); i++ {
-		c := key[i-1]
-		if c != '.' && c != '/' {
-			continue
-		}
-		suf := key[i:]
-		if cand, ok := m[suf]; ok && cand.count == 1 && cand.key == key {
-			delete(m, suf)
-		}
-	}
 }

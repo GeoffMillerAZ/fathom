@@ -397,6 +397,10 @@ func cannedVerifyServer(t *testing.T, taskStatus, taskLabel string, taskClaimed 
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
+		if rpcMethodIs(body, "tools/list") {
+			writeOldVerifyPlanToolsList(w)
+			return
+		}
 		if strings.Contains(string(body), `"list_services"`) {
 			writeRPCText(w, `{"services":[{"service":"svc","symbol_count":42}]}`)
 			return
@@ -442,6 +446,20 @@ func cannedVerifyServer(t *testing.T, taskStatus, taskLabel string, taskClaimed 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(resp)
 	}))
+}
+
+// The HTTP fixtures predate source windows. They advertise verify_plan but no
+// lifecycle field, the only evidence that permits the CLI's old-server path.
+func writeOldVerifyPlanToolsList(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"jsonrpc": "2.0", "id": 1, "result": map[string]any{"tools": []any{map[string]any{"name": "verify_plan", "inputSchema": map[string]any{"type": "object", "properties": map[string]any{"service": map[string]any{"type": "string"}}}}}}})
+}
+
+func rpcMethodIs(body []byte, want string) bool {
+	var req struct {
+		Method string `json:"method"`
+	}
+	return json.Unmarshal(body, &req) == nil && req.Method == want
 }
 
 // writeRPCText writes a JSON-RPC MCP text-content envelope around inner.

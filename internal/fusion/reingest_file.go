@@ -72,6 +72,11 @@ type ReingestReport struct {
 // one p was constructed with — the daemon's per-request store handle,
 // say — without needing a fresh Pipeline per call.
 func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, repoPath, relFile string) (ReingestReport, error) {
+	if invalidator, ok := st.(store.SourceRefProjectionInvalidator); ok {
+		if err := invalidator.InvalidateSourceRefProjection(ctx, serviceID); err != nil {
+			return ReingestReport{}, fmt.Errorf("fusion: ReingestFile invalidate source refs: %w", err)
+		}
+	}
 	absPath := filepath.Join(repoPath, filepath.FromSlash(relFile))
 	// RT-145: the one-file refresh sees the corpus an ingest sees — a file
 	// Discover would not walk is not indexed here only to be purged as an

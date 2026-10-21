@@ -51,8 +51,9 @@ type MemoryStore struct {
 
 	// summaries and fileStats are the derived facts (RT-76,
 	// memory_derived.go); nil until first written.
-	summaries map[string]ServiceSummary
-	fileStats map[string][]FileStat
+	summaries            map[string]ServiceSummary
+	fileStats            map[string][]FileStat
+	sourceRefProjections map[string]SourceRefProjection
 	// serviceRefs are RT-89's extracted routes and client calls.
 	serviceRefs map[string]*memServiceRefs
 
@@ -246,6 +247,7 @@ func (m *MemoryStore) SetFingerprint(_ context.Context, serviceID, sourceRef, ha
 func (m *MemoryStore) PurgeSource(_ context.Context, serviceID, sourceRef string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	delete(m.sourceRefProjections, serviceID)
 	kept := m.observations[:0]
 	for _, o := range m.observations {
 		if o.ServiceID == serviceID && o.SourceRef == sourceRef {

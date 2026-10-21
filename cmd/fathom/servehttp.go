@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -87,6 +88,18 @@ type serveRun struct {
 	refreshCtx       context.Context
 	stopRefresh      context.CancelFunc
 	lifetime         *daemonLifetime
+	exitCtx          context.Context
+	cancelExit       context.CancelFunc
+	exitRequested    chan struct{}
+	exitDone         chan struct{}
+	managedDrain     chan struct{}
+	exitCode         atomic.Int32
+	exitOnce         sync.Once
+	watchOnce        sync.Once
+	terminalMu       sync.Mutex
+	terminalState    uint8                       // 0 running, 1 clean, 2 forced
+	deadlineTimer    func(time.Duration, func()) // nil: time.AfterFunc
+	deadlineExit     func(int)                   // nil: os.Exit
 
 	// store and tenancy setup
 	c                 *client.Client
@@ -135,8 +148,12 @@ func (r *serveRun) runCleanups() {
 // DISABLED" gap the file's grounding names. Restart-to-apply: this load
 // happens once, at process start.
 func runServeHTTP(args []string, stdout, stderr io.Writer) int {
-	r := &serveRun{args: args, stdout: stdout, stderr: stderr}
-	defer r.runCleanups()
+	r := &serveRun{args: args, stdout: stdout, stderr: stderr,
+		exitRequested: make(chan struct{}), exitDone: make(chan struct{}), managedDrain: make(chan struct{})}
+	defer func() {
+		r.runCleanups()
+		r.completeCleanup()
+	}()
 	if code, done := r.configure(); done {
 		return code
 	}

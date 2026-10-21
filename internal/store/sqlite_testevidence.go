@@ -46,6 +46,8 @@ CREATE TABLE IF NOT EXISTS test_runs (
     commit_sha   TEXT NOT NULL DEFAULT '',
     dirty        INTEGER NOT NULL DEFAULT 0,
     race         INTEGER NOT NULL DEFAULT 0,
+    native_run_id TEXT NOT NULL DEFAULT '',
+    native_json TEXT NOT NULL DEFAULT '',
     PRIMARY KEY (service_id, run_digest, suite)
 );
 
@@ -60,6 +62,7 @@ CREATE TABLE IF NOT EXISTS test_cases (
     duration_ms     BIGINT NOT NULL DEFAULT 0,
     failure         TEXT NOT NULL DEFAULT '',
     test_symbol_key TEXT NOT NULL DEFAULT '',
+    native_symbol_key TEXT NOT NULL DEFAULT '',
     PRIMARY KEY (service_id, run_digest, suite, case_id)
 );
 
@@ -141,8 +144,8 @@ func (s *SQLiteStore) PutTestRuns(ctx context.Context, serviceID string, runs []
 
 	runStmt, err := tx.PrepareContext(ctx, `
 INSERT OR IGNORE INTO test_runs
-    (service_id, run_digest, component, suite, started_at, verdict, totals, coverage, signer_tier, watermark, ingested_at, commit_sha, dirty, race)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (service_id, run_digest, component, suite, started_at, verdict, totals, coverage, signer_tier, watermark, ingested_at, commit_sha, dirty, race, native_run_id, native_json)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `)
 	if err != nil {
 		return fmt.Errorf("PutTestRuns prepare run: %w", err)
@@ -151,8 +154,8 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 
 	caseStmt, err := tx.PrepareContext(ctx, `
 INSERT OR IGNORE INTO test_cases
-    (service_id, run_digest, suite, case_id, name, status, attempts, duration_ms, failure, test_symbol_key)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (service_id, run_digest, suite, case_id, name, status, attempts, duration_ms, failure, test_symbol_key, native_symbol_key)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `)
 	if err != nil {
 		return fmt.Errorf("PutTestRuns prepare case: %w", err)
@@ -161,11 +164,38 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 
 	now := time.Now().UnixNano()
 	for _, r := range runs {
-		if _, err := runStmt.ExecContext(ctx, serviceID, r.RunDigest, r.Component, r.Suite, r.StartedAt, r.Verdict, r.TotalsJSON, r.CoverageJSON, r.SignerTier, r.Watermark, now, r.Commit, r.Dirty, r.Race); err != nil {
+
+		if r.NativeRunID != "" {
+			rows, err := tx.QueryContext(ctx, `SELECT run_digest,native_json FROM test_runs WHERE service_id=? AND (native_run_id=? OR (run_digest=? AND suite=?))`, serviceID, r.NativeRunID, r.RunDigest, r.Suite)
+			if err != nil {
+				return fmt.Errorf("PutTestRuns native replay query: %w", err)
+			}
+			for rows.Next() {
+				var digest, native string
+				if err = rows.Scan(&digest, &native); err != nil {
+					rows.Close()
+					return err
+				}
+				if digest != r.RunDigest || native != r.NativeJSON {
+					rows.Close()
+					return fmt.Errorf("PutTestRuns native run identity replay differs")
+				}
+			}
+			err = rows.Err()
+			rows.Close()
+			if err != nil {
+				return err
+			}
+		}
+		if _, err := runStmt.ExecContext(ctx, serviceID, r.RunDigest, r.Component, r.Suite, r.StartedAt, r.Verdict, r.TotalsJSON, r.CoverageJSON, r.SignerTier, r.Watermark, now, r.Commit, r.Dirty, r.Race, r.NativeRunID, r.NativeJSON); err != nil {
 			return fmt.Errorf("PutTestRuns exec run: %w", err)
 		}
 		for _, c := range r.Cases {
-			if _, err := caseStmt.ExecContext(ctx, serviceID, r.RunDigest, r.Suite, c.CaseID, c.Name, c.Status, c.Attempts, c.DurationMS, c.FailureJSON, c.TestSymbolKey); err != nil {
+			legacyKey, nativeKey := c.TestSymbolKey, ""
+			if r.NativeJSON != "" {
+				legacyKey, nativeKey = "", c.TestSymbolKey
+			}
+			if _, err := caseStmt.ExecContext(ctx, serviceID, r.RunDigest, r.Suite, c.CaseID, c.Name, c.Status, c.Attempts, c.DurationMS, c.FailureJSON, legacyKey, nativeKey); err != nil {
 				return fmt.Errorf("PutTestRuns exec case: %w", err)
 			}
 		}
@@ -176,10 +206,42 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	return nil
 }
 
+// Optional native columns must not make an older read-only module's Go evidence
+// unreadable. A transitional native schema without protected keys is suppressed,
+// never projected through its legacy leaf key.
+type testEvidenceReadSQL struct{ key, nativeJSON, nativeID string }
+
+func (s *SQLiteStore) testEvidenceColumns(ctx context.Context) (testEvidenceReadSQL, error) {
+	var hasKey, hasJSON, hasID bool
+	err := s.db.QueryRowContext(ctx, `SELECT
+ EXISTS(SELECT 1 FROM pragma_table_info('test_cases') WHERE name='native_symbol_key'),
+ EXISTS(SELECT 1 FROM pragma_table_info('test_runs') WHERE name='native_json'),
+ EXISTS(SELECT 1 FROM pragma_table_info('test_runs') WHERE name='native_run_id')`).Scan(&hasKey, &hasJSON, &hasID)
+	if err != nil {
+		return testEvidenceReadSQL{}, err
+	}
+	result := testEvidenceReadSQL{key: "tc.test_symbol_key", nativeJSON: "''", nativeID: "''"}
+	if hasJSON {
+		result.nativeJSON = "tr.native_json"
+		result.key = `CASE WHEN tr.native_json != '' THEN '' ELSE tc.test_symbol_key END`
+		if hasKey {
+			result.key = testCaseJoinedKeySQL
+		}
+	}
+	if hasID {
+		result.nativeID = "tr.native_run_id"
+	}
+	return result, nil
+}
+
 // TestSuiteStatuses returns every declared suite for serviceID with its
 // most-recently-ingested run and that run's join stats — see the Store
 // interface doc comment.
 func (s *SQLiteStore) TestSuiteStatuses(ctx context.Context, serviceID string) ([]TestSuiteStatus, error) {
+	columns, err := s.testEvidenceColumns(ctx)
+	if err != nil {
+		return nil, err
+	}
 	rows, err := s.db.QueryContext(ctx, `
 SELECT service_id, component, suite, class, tier, port, declared_certifies, watermark
 FROM test_suites
@@ -210,16 +272,16 @@ ORDER BY component, suite
 		status := TestSuiteStatus{TestSuite: su}
 
 		var (
-			runDigest, component, suiteName, startedAt, verdict, totalsJSON, coverageJSON, signerTier, watermark string
-			ingestedAt                                                                                           int64
+			runDigest, component, suiteName, startedAt, verdict, totalsJSON, coverageJSON, signerTier, watermark, nativeID, nativeJSON string
+			ingestedAt                                                                                                                 int64
 		)
 		err := s.db.QueryRowContext(ctx, `
-SELECT run_digest, component, suite, started_at, verdict, totals, coverage, signer_tier, watermark, ingested_at
-FROM test_runs
+SELECT run_digest, component, suite, started_at, verdict, totals, coverage, signer_tier, watermark, ingested_at, `+columns.nativeID+`, `+columns.nativeJSON+`
+FROM test_runs tr
 WHERE service_id = ? AND suite = ?
 ORDER BY started_at DESC, ingested_at DESC
 LIMIT 1
-`, serviceID, su.Suite).Scan(&runDigest, &component, &suiteName, &startedAt, &verdict, &totalsJSON, &coverageJSON, &signerTier, &watermark, &ingestedAt)
+`, serviceID, su.Suite).Scan(&runDigest, &component, &suiteName, &startedAt, &verdict, &totalsJSON, &coverageJSON, &signerTier, &watermark, &ingestedAt, &nativeID, &nativeJSON)
 		switch {
 		case err == sql.ErrNoRows:
 			// No run ever ingested for this suite — HasRun stays false.
@@ -230,11 +292,19 @@ LIMIT 1
 			status.LastRun = TestRun{
 				ServiceID: serviceID, RunDigest: runDigest, Component: component, Suite: suiteName,
 				StartedAt: startedAt, Verdict: verdict, TotalsJSON: totalsJSON, CoverageJSON: coverageJSON,
-				SignerTier: signerTier, Watermark: watermark,
+				SignerTier: signerTier, Watermark: watermark, NativeRunID: nativeID, NativeJSON: nativeJSON,
 			}
 			var total, joined int
+			joinedColumn := "test_symbol_key"
+			if nativeJSON != "" {
+				if columns.key == testCaseJoinedKeySQL {
+					joinedColumn = "native_symbol_key"
+				} else {
+					joinedColumn = "NULL"
+				}
+			}
 			cerr := s.db.QueryRowContext(ctx, `
-SELECT COUNT(*), SUM(CASE WHEN test_symbol_key != '' THEN 1 ELSE 0 END)
+SELECT COUNT(*), SUM(CASE WHEN `+joinedColumn+` != '' THEN 1 ELSE 0 END)
 FROM test_cases
 WHERE service_id = ? AND run_digest = ? AND suite = ?
 `, serviceID, runDigest, suiteName).Scan(&total, &joined)
@@ -287,11 +357,15 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 // every attested run for serviceID, most-recent-run-first — see the Store
 // interface doc comment (vision 33 stage 1, TC-6/TC-8).
 func (s *SQLiteStore) TestCaseRunsForSymbol(ctx context.Context, serviceID, testSymbolKey string, limit int) ([]TestCaseRun, error) {
+	columns, err := s.testEvidenceColumns(ctx)
+	if err != nil {
+		return nil, err
+	}
 	query := `
-SELECT tc.run_digest, tc.suite, tr.component, tr.started_at, tc.status, tc.attempts, tr.ingested_at, tr.commit_sha, tr.dirty, tr.race, tc.duration_ms
+SELECT tc.run_digest, tc.suite, tr.component, tr.started_at, tc.status, tc.attempts, tr.ingested_at, tr.commit_sha, tr.dirty, tr.race, tc.duration_ms, ` + columns.nativeJSON + ` AS native_json
 FROM test_cases tc
 JOIN test_runs tr ON tr.service_id = tc.service_id AND tr.run_digest = tc.run_digest AND tr.suite = tc.suite
-WHERE tc.service_id = ? AND tc.test_symbol_key = ?
+WHERE tc.service_id = ? AND ` + columns.key + ` = ?
 ORDER BY tr.started_at DESC, tr.ingested_at DESC
 `
 	args := []any{serviceID, testSymbolKey}
@@ -307,7 +381,7 @@ ORDER BY tr.started_at DESC, tr.ingested_at DESC
 	var out []TestCaseRun
 	for rows.Next() {
 		var r TestCaseRun
-		if err := rows.Scan(&r.RunDigest, &r.Suite, &r.Component, &r.StartedAt, &r.Status, &r.Attempts, &r.IngestedAt, &r.Commit, &r.Dirty, &r.Race, &r.DurationMS); err != nil {
+		if err := rows.Scan(&r.RunDigest, &r.Suite, &r.Component, &r.StartedAt, &r.Status, &r.Attempts, &r.IngestedAt, &r.Commit, &r.Dirty, &r.Race, &r.DurationMS, &r.NativeJSON); err != nil {
 			return nil, fmt.Errorf("TestCaseRunsForSymbol scan: %w", err)
 		}
 		out = append(out, r)
@@ -318,19 +392,27 @@ ORDER BY tr.started_at DESC, tr.ingested_at DESC
 	return out, nil
 }
 
+// Older readers know only test_symbol_key and therefore cannot accidentally
+// interpret a native leaf without its whole-cohort/freshness validation.
+const testCaseJoinedKeySQL = `CASE WHEN tr.native_json != '' THEN tc.native_symbol_key ELSE tc.test_symbol_key END`
+
 // NewestTestCaseRuns returns every joined test symbol's newest attested
 // case observation for serviceID, sorted by key — see the Store interface
 // doc comment (TC-29). One window-function read: the same ORDER BY
 // TestCaseRunsForSymbol uses, partitioned by test symbol.
 func (s *SQLiteStore) NewestTestCaseRuns(ctx context.Context, serviceID string) ([]TestCaseRun, error) {
+	columns, err := s.testEvidenceColumns(ctx)
+	if err != nil {
+		return nil, err
+	}
 	rows, err := s.db.QueryContext(ctx, `
-SELECT test_symbol_key, run_digest, suite, component, started_at, status, attempts, ingested_at, commit_sha, dirty, race, duration_ms
+SELECT test_symbol_key, run_digest, suite, component, started_at, status, attempts, ingested_at, commit_sha, dirty, race, duration_ms, native_json
 FROM (
-    SELECT tc.test_symbol_key, tc.run_digest, tc.suite, tr.component, tr.started_at, tc.status, tc.attempts, tr.ingested_at, tr.commit_sha, tr.dirty, tr.race, tc.duration_ms,
-           ROW_NUMBER() OVER (PARTITION BY tc.test_symbol_key ORDER BY tr.started_at DESC, tr.ingested_at DESC) AS rn
+    SELECT `+columns.key+` AS test_symbol_key, tc.run_digest, tc.suite, tr.component, tr.started_at, tc.status, tc.attempts, tr.ingested_at, tr.commit_sha, tr.dirty, tr.race, tc.duration_ms, `+columns.nativeJSON+` AS native_json,
+           ROW_NUMBER() OVER (PARTITION BY `+columns.key+` ORDER BY tr.started_at DESC, tr.ingested_at DESC) AS rn
     FROM test_cases tc
     JOIN test_runs tr ON tr.service_id = tc.service_id AND tr.run_digest = tc.run_digest AND tr.suite = tc.suite
-    WHERE tc.service_id = ? AND tc.test_symbol_key != ''
+    WHERE tc.service_id = ? AND `+columns.key+` != ''
 )
 WHERE rn = 1
 ORDER BY test_symbol_key
@@ -342,7 +424,7 @@ ORDER BY test_symbol_key
 	var out []TestCaseRun
 	for rows.Next() {
 		var r TestCaseRun
-		if err := rows.Scan(&r.TestSymbolKey, &r.RunDigest, &r.Suite, &r.Component, &r.StartedAt, &r.Status, &r.Attempts, &r.IngestedAt, &r.Commit, &r.Dirty, &r.Race, &r.DurationMS); err != nil {
+		if err := rows.Scan(&r.TestSymbolKey, &r.RunDigest, &r.Suite, &r.Component, &r.StartedAt, &r.Status, &r.Attempts, &r.IngestedAt, &r.Commit, &r.Dirty, &r.Race, &r.DurationMS, &r.NativeJSON); err != nil {
 			return nil, fmt.Errorf("NewestTestCaseRuns scan: %w", err)
 		}
 		out = append(out, r)

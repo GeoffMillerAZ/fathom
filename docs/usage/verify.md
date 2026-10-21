@@ -7,6 +7,21 @@ claimed task verifies; exit `1` — a claimed `[x]` task failed verification (bl
 push); exit `2` — operational error (daemon unreachable, service unindexed, empty index)
 — fail-open, never a false "all claims failed."
 
+In daemon mode, the default current-source reference check opens one bounded
+observation window for all requested plans. It validates the sealed ingest
+generation, hashes every discovered file in 64 MiB / 5 s continuations, runs
+the plan calls, then hashes the files again before reporting their verdicts.
+An excluded file still makes an absent reference Unknown; a binding in an
+examined file can be current only after successful close. The result describes
+this completed observation window, not continuing freshness. If the daemon's
+published `verify_plan` schema lacks the window protocol, the existing live
+scan runs with its lower-bound/partial disclosure. An advertised window that
+fails validation or close is an operational refusal (exit 2).
+`--source-window-exclusions reviewed.json` supplies a sorted exact
+`[{"path":"…","reason":"oversize"}]` review manifest for a qualification
+with excluded files. The CLI collects pending Unknown receipts and renders
+their final verdicts only after the close hash succeeds.
+
 ```sh
 fathom verify --service <id> --plan docs/plans/<slug>.md [--plan <more>...] \
   [--store <path> | --url http://localhost:7575] [--strict] [--require-all] \

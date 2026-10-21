@@ -11,6 +11,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -108,7 +109,44 @@ func IngestRuns(ctx context.Context, st store.Store, service, watermark string, 
 
 	storeRuns := make([]store.TestRun, 0, len(runs))
 	for _, r := range runs {
-		joined, stats := JoinCasesToSymbols(r.Cases, r.Suite.Name, symbols)
+		if r.nativeUnity && r.Unity == nil {
+			return report, unityError("Unity runner envelope requires the explicit source-bound native adapter")
+		}
+		var joined []JoinedCase
+		var stats JoinStats
+		nativeJSON, nativeID := "", ""
+		if r.Unity != nil {
+			e, err := LoadUnityNUnitEvidence(ctx, r.Unity.Root, r.Unity.XMLPath, r.Unity.ReceiptPath)
+			if err != nil {
+				return report, err
+			}
+			if e.ReceiptSHA256 != r.Unity.ReceiptSHA256 || e.Run.Digest != r.Digest || e.Receipt.RunID != r.Unity.RunID {
+				return report, unityError("native run changed before ingestion")
+			}
+			var binding UnityBinding
+			joined, binding, err = UnityJoinCases(e, UnityCurrentSymbols(e, obs))
+			if err != nil {
+				return report, unityError("join: %v", err)
+			}
+			b, err := json.Marshal(binding)
+			if err != nil {
+				return report, err
+			}
+			nativeJSON = string(b)
+			nativeID = binding.RunID
+			r = e.Run
+			stats = JoinStats{Total: len(joined)}
+			for _, c := range joined {
+				if c.TestSymbolKey != "" {
+					stats.Joined++
+				} else {
+					stats.Unmatched = append(stats.Unmatched, c.ID)
+				}
+			}
+			sort.Strings(stats.Unmatched)
+		} else {
+			joined, stats = JoinCasesToSymbols(r.Cases, r.Suite.Name, symbols)
+		}
 		report.CasesJoined += stats.Joined
 		report.CasesUnmatched = append(report.CasesUnmatched, stats.Unmatched...)
 
@@ -147,7 +185,7 @@ func IngestRuns(ctx context.Context, st store.Store, service, watermark string, 
 			ServiceID: service, RunDigest: r.Digest, Component: r.Suite.Component, Suite: r.Suite.Name,
 			StartedAt: r.StartedAt, Verdict: r.Verdict, TotalsJSON: string(totalsJSON), CoverageJSON: coverageJSON,
 			SignerTier: r.SignerTier, Watermark: watermark, Cases: cases,
-			Commit: r.Commit, Dirty: r.Dirty, Race: r.Race,
+			Commit: r.Commit, Dirty: r.Dirty, Race: r.Race, NativeRunID: nativeID, NativeJSON: nativeJSON,
 		})
 	}
 	if err := st.PutTestRuns(ctx, service, storeRuns); err != nil {

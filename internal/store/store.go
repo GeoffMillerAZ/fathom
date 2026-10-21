@@ -144,6 +144,10 @@ type TestCase struct {
 
 // TestRun is one ingested #TestResult envelope (vision 33 stage 0, TC-2).
 type TestRun struct {
+	// Native binding is optional additive provenance; empty is legacy test-kit.
+	NativeRunID string
+	NativeJSON  string
+
 	ServiceID string
 	RunDigest string
 	Component string
@@ -212,6 +216,8 @@ type CertifyDeclaration struct {
 // performs, but keyed by TEST SYMBOL rather than by suite, and carrying
 // every historical run rather than only the newest.
 type TestCaseRun struct {
+	NativeJSON string
+
 	RunDigest  string
 	Suite      string
 	Component  string

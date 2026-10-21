@@ -661,6 +661,29 @@ Execute-and-flag (the 2026-07-16 amendment above) is unchanged — an off-surfac
 still executes and logs `off_surface:true` — so SR-M3 can read fourteen days of
 off-surface demand before anything returns to the default.
 
+**Amendment (2026-10-20): bounded current-source reference observation.**
+The default daemon plan gate may use sealed ingest reference facts for examined
+files only after a request-owned window hashes the entire discovered corpus
+before and after its plan calls. A continuation is bounded to 64 MiB and five
+seconds; the window holds no file bodies, expires, and publishes no final
+current verdict before close. Excluded bytes preserve Unknown for absent
+references. A legacy daemon without the advertised protocol keeps the live
+scan and its partial disclosure; a started window that fails refuses. This is
+derived evidence for one observed interval, not persisted plan state or a
+machine-evaluated process trigger. **Decision models.** None: source identity,
+caps and exclusions are deterministic byte and metadata comparisons.
+
+The CLI's completed window and the console's cached plan section have
+different freshness evidence. CLI JSON marks `observed_window` only after a
+validated close; the console marks `current_worktree_freshness: unknown` until
+it implements that lifecycle. OC-8 parity still covers each plan's counts,
+criteria and provenance; only these explicit freshness fields differ.
+If a current window refuses during begin, collection, close or result
+retrieval, CLI JSON emits one operational refusal with scope
+`current_worktree`, freshness `unknown`, the reason and exit 2. It emits no
+plan verdicts or cached positive rows. Re-ingest may establish a new sealed
+generation, after which a new window can qualify another observation.
+
 ## ADR-019 — In-tree mirror of agentic-kit for kit-free distribution
 
 **Status.** Accepted, amended 2026-09-01; amended 2026-10-16 by ADR-070 (the mirrors are packages of fathom's module by import-path rewrite: no kit require or replace in `go.mod`, `.vendor-commit` is the pin, vendor-check compares after reversing the rewrite).
@@ -2389,6 +2412,23 @@ which file matters).
 primary target (then the per-file resolver graduates to a typed pass); the
 per-file refresh is measured slower than 150 ms p50 at the hook.
 
+### Amendment: source-bound external indexes (2026-10-20)
+
+The external SCIP producer remains the compiler-facing instrument. A versioned
+local sidecar binds mutable generated projects, configuration, source inventories,
+reference assemblies and producer identity to its exact index. `scip-dotnet`
+requires the receipt; other producers opt in by providing it. Import and every
+shared refresh path validate the same contract and invalidate only the refused
+index's own namespace plus served graph memos. Missing sidecars/indexes and failed
+attempts cannot preserve older typed rows as current. State-directory precedence
+also clears remembered rows for a shadowed legacy index without deleting either
+artifact or falling back when the preferred index fails. No new store table,
+model, MCP tool, compiler resolver or polling loop is introduced. This is freshness
+at import/refresh boundaries, not continuous query-time hashing.
+See [the contract and migration](docs/guides/scip-source-receipts.md).
+
+**Decision models.** None: hashes, identity and invalidation are deterministic.
+
 ## ADR-042: The decision port — typed fast decisions behind a flag, off by default (2026-09-22)
 
 **Status.** Accepted. Accepts `docs/vision/32-decision-port.md` (owner-directed,
@@ -2652,6 +2692,12 @@ amendment's "the user's own `[decide] sites`" becomes the user-only `[decide] se
 **Revisit when.** TC-M1 fails (the envelope needs a case-to-symbol contract first); TC-M2 fails (declaration is too heavy); a non-Go service ingests envelopes (TC-26 fires); Review Kit's requirement never fires deny in a month (TC-M3); or a fourth consumer wants the vocabulary outside the platform standard.
 
 **Amended 2026-09-24 (ADR-044, O114): liveness binds to a commit, and the kill rule counts warn.** Two defects in this record's first round. (1) A certificate read `live` whenever the newest ingested run passed; runs carried no commit and the sweep staled a certificate only when its test FILE moved, so after any refactor every certificate stayed live on a run that predated the change (O114). Decision 1's "stale when the test or a reached symbol moves" and decision 5's "no attested run, no live certificate" now mean: a certificate is `live` only when a passing attested run is bound to a commit (test-kit's envelope `env.commit`, clean tree) and no file the certificate reaches (its test file plus the files of the symbols it reaches) changed between that commit and HEAD. A run without a commit leaves the certificate `unproven` with the reason named; a bound run whose reach changed since makes the claim `stale`. (2) The TC-M3 kill clause ("never fires deny in a month") combined with requirements shipped `enforcement: off` is dead on arrival: an off requirement cannot fire. The clause now reads "never fires at warn in a month on a repository where it is armed at warn", and the testing-certifications requirement is armed at warn on this repository.
+
+### Native Unity source-bound adapter amendment (2026-10-20)
+
+The non-Go runner extension uses the existing test-kit record plus a bound native NUnit document and active source receipt. Only exact current typed method identities join; variants aggregate as a whole cohort and filtered or stale evidence stays unjoined/UNKNOWN. Generic non-Go file/name joining remains a separate path and cannot admit a declared Unity envelope. Native dirty/source-bound observations remain informational and excluded from live clean-commit certificates. The producer contract is [documented here](docs/guides/unity-nunit-evidence.md); the compatibility change is [explicit](docs/upgrades/unreleased-native-unity-evidence.md). This does not promote broader native coverage or language grades.
+
+**Decision models.** None applies: identity, hashes, source freshness and native outcomes are deterministic; provider none, no model egress.
 
 ## ADR-044: Refactored means conserved — fathom computes what a change must keep, proves it kept it, and catches faked preservation (2026-09-24)
 

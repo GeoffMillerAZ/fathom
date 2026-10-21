@@ -63,6 +63,15 @@ func TestServiceSummary_WrittenAtIngestCommit(t *testing.T) {
 	if sum.FileCount != 4 || sum.UnsupportedLangs["zig"] != 1 || sum.ExcludedCounts["oversize"] != 1 || sum.Bytes < 3<<20 || !sum.HasFileStats {
 		t.Fatalf("summary facts = %+v", sum)
 	}
+	projection, available, err := st.ReadSourceRefProjection(ctx, "svc")
+	if err != nil || !available || projection.Complete || len(projection.Rows) != 4 {
+		t.Fatalf("oversize ingest source refs = %+v, available=%v, err=%v", projection, available, err)
+	}
+	for _, row := range projection.Rows {
+		if row.Path == "huge.go" && (row.Excluded != "oversize" || row.Refs != nil) {
+			t.Fatalf("oversize source ref fact = %+v", row)
+		}
+	}
 	files, ok, _ := st.FileStats(ctx, "svc")
 	if !ok || len(files) != 4 {
 		t.Fatalf("file_stats = %+v", files)

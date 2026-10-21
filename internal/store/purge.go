@@ -762,6 +762,14 @@ func (s *SQLiteStore) executePurge(ctx context.Context, serviceID string, plan *
 	if err := del(`DELETE FROM file_stats WHERE service_id = ? AND path IN (%s)`, plan.byLocation[LocFileStats], true); err != nil {
 		return out, err
 	}
+	// Purge changes corpus membership outside a full ingest. The old sealed
+	// generation must never survive this transaction.
+	if _, err := tx.ExecContext(ctx, `DELETE FROM source_ref_seals WHERE service_id = ?`, serviceID); err != nil {
+		return out, fmt.Errorf("store.PurgePaths source refs: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM source_ref_facts WHERE service_id = ?`, serviceID); err != nil {
+		return out, fmt.Errorf("store.PurgePaths source ref facts: %w", err)
+	}
 	if _, err := tx.ExecContext(ctx, `DELETE FROM service_summary WHERE service_id = ?`, serviceID); err != nil {
 		return out, fmt.Errorf("store.PurgePaths summary: %w", err)
 	}

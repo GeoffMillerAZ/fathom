@@ -1,0 +1,43 @@
+{
+  "status": "Native regression expectations; source/binary-bound receipts record execution separately; not a language grade",
+  "schema": "fathom.roslyn.project-declarations/v1",
+  "file": "Declarations.cs.input",
+  "name_lines": {
+    "first": 6,
+    "second": 7,
+    "third": 7,
+    "Ready": 8,
+    "Finished": 9,
+    "@event": 10,
+    "café": 11,
+    "Compute": 14,
+    "this": 15,
+    "Bodyless": 33,
+    "Active": 23,
+    "Inactive": 25,
+    "unicodeAfterEmoji": 12
+  },
+  "long_method_name": "SignatureWithLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongName",
+  "expected_active": "Active",
+  "expected_absent": "Inactive",
+  "bodiless_signature": "[Obsolete]",
+  "expression_signature": "[Obsolete] public int Compute<U>(T value, U other)",
+  "field_contract": "Each name and definition span is its variable declarator; statement span covers the entire common field statement",
+  "signature_max_unicode_scalars": 200,
+  "unsupported_for_product_signature": [
+    "operator",
+    "destructor",
+    "delegate",
+    "indexer",
+    "field",
+    "event",
+    "enum",
+    "enumMember",
+    "property"
+  ],
+  "expected_error_diagnostics": [
+    "CS0246",
+    "CS1525"
+  ],
+  "unicode_identifier_column_utf16": 24
+}

@@ -1,0 +1,13 @@
+{
+  "id": "unity-asmdef", "display": "Unity assembly definitions (.asmdef)",
+  "kind": "tooling", "engine": "doc", "lang_tag": "unity-asmdef",
+  "match": {"extensions": [".asmdef"], "basenames": [], "globs": [], "shebangs": [], "sniff": null},
+  "variants": [],
+  "kinds": {
+    "assembly": {"source_kind": "UnityAssemblyDefinition", "canonical": "package"},
+    "reference": {"source_kind": "UnityAssemblyReference", "canonical": "import"}
+  },
+  "required_kinds": ["assembly"], "oracle_kinds": {"tool": {"package": "package", "import": "import"}},
+  "name_match": "identity", "package": {"strategy": "dir"},
+  "signature": {"max_chars": 200}, "target_level": "L1", "queue_id": "unity-asmdef"
+}

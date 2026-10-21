@@ -89,3 +89,90 @@ makes, in a copy of the pinned checkout so the subject stays clean; the build co
 
 then pass the file to `indexbench lang-oracle` as a second `-tool-oracle` beside the scip-dotnet index and the syntax
 dump's definitions (the dump's `calls` removed, as before).
+
+## Opt-in native project declaration evidence
+
+`project-declarations <repository-root> <actual.sln|slnx|csproj>
+<repository-relative-source-directory> [owned-intermediate-root]` loads the subject's actual MSBuild
+selection and writes `fathom.roslyn.project-declarations/v1`. Existing syntax and
+`calls` modes and their output schemas are unchanged. This evidence shape is
+deliberately separate from the legacy neutral tool-oracle input; no scorer
+consumes it and it reports no grade.
+
+The new evidence distinguishes the identifier's span from each declarator's
+definition, the full declaration statement, and trivia-inclusive full span.
+Every variable in a multi-field/event statement has its own location. Native
+semantic kind, namespace, containing symbol, assembly, documentation ID, and
+all partial declaration locations remain separate fields. Unresolved symbols,
+workspace failures and compilation errors are retained; errors exit nonzero.
+Positions use one-based lines and zero-based UTF-16 columns, half-open spans.
+
+Signatures retain both the raw native header and a candidate normalized under
+the existing `tsSignature` contract: start to captured body, or only the first
+line when no body exists; whitespace collapsed; at most 200 Unicode scalars
+(199 plus ellipsis when truncated). The surprising first-line rule is not
+silently improved. Conditional source differences stay unjudged. Native kinds
+outside the product's current signature contract are emitted and flagged,
+not silently removed.
+
+The source directory selects emitted declarations. It does not prevent
+MSBuildWorkspace from loading project/dependency files, run a sandbox, or
+guarantee offline operation. Use only explicitly selected trusted projects and
+locally provisioned dependencies. The command performs no explicit restore or
+download. Active project defines are recorded; this is not exhaustive mixed
+preprocessor coverage, whole-repository completeness, player execution or
+serialized-scene proof. The optional owned intermediate root redirects per-project design-time artifacts
+through a hash-recorded output-only MSBuild props import, preserving original
+project files. Each selected source hash and decoded text is checked
+against the loaded native tree; the project/solution input hash is checked
+before and after, but the filesystem is not an atomic snapshot.
+
+Native regressions in `testdata/declarations` cover distinct field and
+event locations; attributes; expression/bodiless signatures; escaped, Unicode
+and UTF-16 positions; long signatures; partial/generic containers; active
+defines; raw operators/destructors/indexers/delegates/records; and explicit
+syntax/semantic errors. `*.cs.input` fixtures are not compiled into RoslynDump.
+After the native output exists, `verify.py valid|error <output.json>` asserts
+the real evidence. Fixture labels are source regression expectations, never
+an independent language-grade oracle. Actual execution receipts must name their exact source/binary and fixture
+outputs; fixture expectations alone do not establish a pass.
+
+## Project imports and diagnostic-order migration
+
+`project-imports <repository-root> <actual.sln|slnx|csproj>
+<repository-relative-source-directory> [owned-intermediate-root]` reuses the
+native project-declarations workspace and emits raw
+`fathom.roslyn.project-imports/v1` facts. It records active using syntax, native
+symbol/reference identity and complete namespace contribution declarations.
+Current-compilation and actual CompilationReference sources can supply
+declarations. Source, metadata, mixed, unresolved and unsupported cases remain
+explicit; there is no namespace union or source association by textual name.
+
+A PE reference with a possible selected-source match remains
+UNSUPPORTED/UNKNOWN with zero source targets. Native preference and assembly
+identity candidates are diagnostic only. The raw export is neither a closed
+neutral scorer payload nor actual-use file dependency truth. An independently
+reviewed adapter/closed cohort is required before an import-statement reading;
+namespace contribution membership cannot replace file-use edges or a missing
+metric denominator. `-imports-from tool` in lang-oracle only selects its neutral
+import family beside SCIP and does not directly consume this raw export or
+qualify a language grade.
+
+Both native project modes preserve every rendered error diagnostic in ordinal
+string order per project. This changes the old error-array byte ordering while
+leaving its schema, messages and counts intact. Strict-byte consumers must pin
+new error output under this explicit contract. Preserve historical raw outputs;
+do not normalize their order to make old/new bytes appear equal. Valid-output
+identity and new/new deterministic error output are separate controls from
+old/new error-output identity.
+
+The emission selector does not prevent dependency reads or create an OS/offline
+sandbox. Use trusted native projects and pre-provisioned local dependencies,
+recording exact source/reference/compiler closure and all errors. Generic
+controls in `testdata/imports` cover current/referenced sources, partial and
+parent namespaces, aliases/static/global/mixed and unused imports, scope,
+inaccessible/unresolved/ambiguous cases and wrong/duplicate identities. The
+original metadata-source positive remains unqualified. `verify_forward.py`
+checks the distinct explicit unsupported-PE negative and new/new error-order
+contract; it does not waive that historical positive or claim all native cases,
+current-project evidence, default adoption or an overall support grade.

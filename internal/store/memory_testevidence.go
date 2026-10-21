@@ -7,6 +7,7 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"sort"
 )
 
@@ -37,6 +38,27 @@ func (m *MemoryStore) PutTestRuns(_ context.Context, serviceID string, runs []Te
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	existing := m.testRuns[serviceID]
+	// Validate the whole batch before appending any row, matching SQLite rollback.
+	nativeSeen := map[string]TestRun{}
+	digestSeen := map[[2]string]TestRun{}
+	for _, r := range existing {
+		if r.NativeRunID != "" {
+			nativeSeen[r.NativeRunID] = r
+		}
+		digestSeen[[2]string{r.RunDigest, r.Suite}] = r
+	}
+	for _, r := range runs {
+		if r.NativeRunID != "" {
+			if previous, ok := nativeSeen[r.NativeRunID]; ok && (previous.RunDigest != r.RunDigest || previous.NativeJSON != r.NativeJSON) {
+				return fmt.Errorf("PutTestRuns native run identity replay differs")
+			}
+			if previous, ok := digestSeen[[2]string{r.RunDigest, r.Suite}]; ok && previous.NativeJSON != r.NativeJSON {
+				return fmt.Errorf("PutTestRuns native binding differs")
+			}
+			nativeSeen[r.NativeRunID] = r
+		}
+		digestSeen[[2]string{r.RunDigest, r.Suite}] = r
+	}
 	seen := make(map[[2]string]bool, len(existing))
 	for _, r := range existing {
 		seen[[2]string{r.RunDigest, r.Suite}] = true
@@ -129,7 +151,7 @@ func (m *MemoryStore) TestCaseRunsForSymbol(_ context.Context, serviceID, testSy
 			out = append(out, TestCaseRun{
 				RunDigest: r.RunDigest, Suite: r.Suite, Component: r.Component,
 				StartedAt: r.StartedAt, Status: c.Status, Attempts: c.Attempts, DurationMS: c.DurationMS,
-				Commit: r.Commit, Dirty: r.Dirty, Race: r.Race,
+				Commit: r.Commit, Dirty: r.Dirty, Race: r.Race, NativeJSON: r.NativeJSON,
 			})
 		}
 	}
@@ -166,7 +188,7 @@ func (m *MemoryStore) NewestTestCaseRuns(_ context.Context, serviceID string) ([
 			newest[c.TestSymbolKey] = TestCaseRun{
 				RunDigest: r.RunDigest, Suite: r.Suite, Component: r.Component,
 				StartedAt: r.StartedAt, Status: c.Status, Attempts: c.Attempts, DurationMS: c.DurationMS,
-				Commit: r.Commit, Dirty: r.Dirty, Race: r.Race, TestSymbolKey: c.TestSymbolKey,
+				Commit: r.Commit, Dirty: r.Dirty, Race: r.Race, NativeJSON: r.NativeJSON, TestSymbolKey: c.TestSymbolKey,
 			}
 		}
 	}

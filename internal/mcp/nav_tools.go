@@ -17,7 +17,6 @@ import (
 	"context"
 	"encoding/json"
 	"sort"
-	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/analysis/symbolnav"
@@ -202,10 +201,10 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 					}
 				}
 				sctx.Callers = kept
-				byKey := make(map[string]string, len(isRef))
+				byKey := make(map[string]core.SymbolNode, len(isRef))
 				for _, n := range nodes {
 					if isRef[n.Key()] {
-						byKey[n.Key()] = n.Name
+						byKey[n.Key()] = n
 					}
 				}
 				related := map[string]bool{}
@@ -213,7 +212,7 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 					related[k] = true
 				}
 				for _, k := range referencedBy {
-					if strings.HasPrefix(byKey[k], "Test") && !related[k] {
+					if byKey[k].IsTest() && !related[k] {
 						sctx.RelatedTests = append(sctx.RelatedTests, k)
 					}
 				}
@@ -248,6 +247,34 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 			"callers":       stringsToAny(callers),
 			"callees":       stringsToAny(callees),
 			"related_tests": stringsToAny(sctx.RelatedTests),
+		}
+		// Multiple declarations of one key are source locations, not ambiguity
+		// and not proof of a compiler-merged type. Keep the single primary def
+		// and snippet bounded while making the other parts discoverable.
+		if len(sctx.Definitions) > 1 {
+			parts := sctx.Definitions
+			result["definition_count"] = len(parts)
+			if len(parts) > symbolContextCandidateCap {
+				parts = parts[:symbolContextCandidateCap]
+				result["definitions_truncated"] = true
+			}
+			rows := make([]any, len(parts))
+			for i, n := range parts {
+				rows[i] = map[string]any{"symbol_key": n.Key(), "file": n.FilePath, "line": n.Line, "end_line": n.EndLine}
+			}
+			result["definitions"] = rows
+		}
+		if len(sctx.RelatedTests) > 0 {
+			related := make(map[string]bool, len(sctx.RelatedTests))
+			for _, key := range sctx.RelatedTests {
+				related[key] = true
+			}
+			for _, n := range nodes {
+				if n.Kind == core.KindCSharpMethod && related[n.Key()] {
+					result["related_tests_basis"] = "C# test attribute syntax; framework binding and execution unverified"
+					break
+				}
+			}
 		}
 		// referenced_by / references (wave lg): present only when non-empty,
 		// each under its own quarter of the budget.

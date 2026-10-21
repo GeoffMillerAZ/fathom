@@ -19,9 +19,10 @@ import (
 // RuntimeRuns implements verify.RuntimeEvidence over one service's
 // attested runs.
 type RuntimeRuns struct {
-	byKey  map[string]store.TestCaseRun
-	byBare map[string][]string
-	now    func() time.Time
+	byKey         map[string]store.TestCaseRun
+	byBare        map[string][]string
+	now           func() time.Time
+	nativeReasons map[string]string
 }
 
 // LoadRuntimeRuns reads service's newest attested run per joined test
@@ -34,8 +35,30 @@ func LoadRuntimeRuns(ctx context.Context, st store.Store, service string, now fu
 	if now == nil {
 		now = time.Now
 	}
-	r := &RuntimeRuns{byKey: make(map[string]store.TestCaseRun, len(rows)), byBare: map[string][]string{}, now: now}
+	r := &RuntimeRuns{byKey: make(map[string]store.TestCaseRun, len(rows)), byBare: map[string][]string{}, now: now, nativeReasons: map[string]string{}}
+	// A native run repeats the same binding on every joined case. Validate and
+	// decode it once per binding for this read, then project each cohort status.
+	type nativeCheck struct {
+		binding UnityBinding
+		reason  string
+	}
+	nativeChecks := map[string]nativeCheck{}
 	for _, row := range rows {
+		if row.NativeJSON != "" {
+			check, checked := nativeChecks[row.NativeJSON]
+			if !checked {
+				check.binding, check.reason = unityRuntimeFresh(ctx, row.NativeJSON, row.RunDigest)
+				nativeChecks[row.NativeJSON] = check
+			}
+			row.Status = "unknown"
+			if check.reason == "" {
+				if status := check.binding.Cohorts[row.TestSymbolKey]; status != "" {
+					row.Status = status
+				}
+			}
+			// Carry named freshness refusal without mutating execution history.
+			r.nativeReasons[row.TestSymbolKey] = check.reason
+		}
 		r.byKey[row.TestSymbolKey] = row
 		bare := bareName(row.TestSymbolKey)
 		r.byBare[bare] = append(r.byBare[bare], row.TestSymbolKey)
@@ -55,8 +78,30 @@ func (r *RuntimeRuns) NewestAttestedRuns(tests []string) (map[string]verify.Atte
 		if !strings.Contains(t, "::") {
 			keys = r.byBare[bareName(t)]
 			if q, _, ok := strings.Cut(t, "."); ok {
-				keys = inPackage(keys, q)
+				legacyKeys := []string{}
+				for _, key := range keys {
+					if r.byKey[key].NativeJSON == "" {
+						legacyKeys = append(legacyKeys, key)
+					}
+				}
+				legacy := inPackage(legacyKeys, q)
+				for _, key := range keys {
+					if r.byKey[key].NativeJSON != "" && (strings.HasSuffix(key, "/"+t) || strings.HasSuffix(key, "::"+t)) {
+						legacy = append(legacy, key)
+					}
+				}
+				keys = legacy
 			}
+		}
+		nativeMatches := 0
+		for _, key := range keys {
+			if r.byKey[key].NativeJSON != "" {
+				nativeMatches++
+			}
+		}
+		if nativeMatches > 0 && len(keys) > 1 {
+			out[t] = verify.AttestedRun{Test: t, Status: "unknown", UnknownReason: "native test identity is ambiguous; use a canonical symbol key"}
+			continue
 		}
 		var best store.TestCaseRun
 		found := false
@@ -71,6 +116,9 @@ func (r *RuntimeRuns) NewestAttestedRuns(tests []string) (map[string]verify.Atte
 		}
 		if found {
 			out[t] = attested(best)
+			value := out[t]
+			value.UnknownReason = r.nativeReasons[best.TestSymbolKey]
+			out[t] = value
 		}
 	}
 	return out, nil
@@ -137,3 +185,31 @@ func bareName(name string) string {
 }
 
 var _ verify.RuntimeEvidence = (*RuntimeRuns)(nil)
+
+// unityRuntimeFresh is read-only. Replacing the active receipt with a newer
+// started attempt, changing XML/envelope/source/index bytes, or losing any
+// declared input invalidates a previous runtime result immediately at this read.
+func unityRuntimeFresh(ctx context.Context, nativeJSON, digest string) (UnityBinding, string) {
+	var b UnityBinding
+	if err := unityDecode([]byte(nativeJSON), &b); err != nil {
+		return b, "native binding is malformed: " + err.Error()
+	}
+	raw, err := unityRead(b.ReceiptPath, unityJSONLimit)
+	if err != nil {
+		return b, "native active receipt unavailable: " + err.Error()
+	}
+	if unityDigest(raw) != b.ReceiptSHA256 {
+		return b, "native active receipt changed; previous result is not current"
+	}
+	evidence, err := LoadUnityNUnitEvidence(ctx, b.Root, b.XMLPath, b.ReceiptPath)
+	if err != nil {
+		return b, err.Error()
+	}
+	if evidence.Receipt.RunID != b.RunID || evidence.Run.Digest != digest {
+		return b, "native run identity no longer matches its stored standard record"
+	}
+	if evidence.Receipt.Symbols == nil {
+		return b, "native run has no fresh typed C# identity"
+	}
+	return b, ""
+}

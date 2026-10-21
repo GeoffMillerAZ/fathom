@@ -83,6 +83,11 @@ func dirDistance(a, b string) int {
 // Go's rule alone: a fake's method named TestReaches in a _test.go file is
 // not a test entry, so Go reach is unchanged by TQ-28.
 func IsTestNode(n core.SymbolNode) bool {
+	// C# names alone cannot establish a framework test candidate. Other
+	// languages retain upstream TQ27/TQ28 repository-convention discovery.
+	if strings.HasPrefix(string(n.Kind), "CSharp") {
+		return n.IsTest()
+	}
 	if strings.HasPrefix(n.Name, "Test") {
 		return true
 	}

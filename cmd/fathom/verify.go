@@ -55,6 +55,7 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 	service := fs.String("service", "", "service ID (required)")
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL (HTTP mode)")
 	storePath := fs.String("store", "", "store path, .sqlite/.db (direct mode; bypasses daemon)")
+	sourceExclusionsPath := fs.String("source-window-exclusions", "", "JSON array of reviewed {path,reason} exclusions for daemon current-window qualification")
 	strict := fs.Bool("strict", false, "treat claimed+unknown tasks as gate failures (recommended for CI)")
 	requireAll := fs.Bool("require-all", false, "wave gate: additionally fail on open/in-progress tasks")
 	concern := fs.String("concern", "", "optional concern for contradiction scoping")
@@ -108,6 +109,10 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 	if *service == "" {
 		fmt.Fprintln(stderr, "error: --service is required")
 		fs.Usage()
+		return 2
+	}
+	if *sourceExclusionsPath != "" && *storePath != "" {
+		fmt.Fprintln(stderr, "error: --source-window-exclusions requires daemon current_worktree mode")
 		return 2
 	}
 
@@ -224,6 +229,16 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 		// store watermark — recorded on every ledger row and spoken once
 		// (below) when it is not this binary.
 		prov = verifyLedgerProvenance(hc, *url, "", *service)
+		expectedExclusions, err := readSourceWindowExclusions(*sourceExclusionsPath)
+		if err != nil {
+			fmt.Fprintf(stderr, "error: %v\n", err)
+			return 2
+		}
+		windowToken, err := beginCurrentWindow(hc, *url, *service, expectedExclusions)
+		if err != nil {
+			return emitCurrentWindowRefusal(stdout, stderr, *service, *format == "json", err)
+		}
+		windowReceipts := make([][]string, len(localPlans))
 		for i, lp := range localPlans {
 			// A foreign plan reaches the daemon synthesized into the
 			// native grammar (the daemon parses plan_markdown natively);
@@ -233,8 +248,17 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 				wireMD = specdialect.Synthesize(lp)
 				wirePlan = verify.ParseMarkdownPlan(*service, wireMD)
 			}
+			if windowToken != "" {
+				windowReceipts[i], err = collectVerifyWindow(hc, *url, *service, *concern, wireMD, wirePlan, goneTreeFor(root, lp), windowToken)
+				if err != nil {
+					abortCurrentWindow(hc, *url, *service, windowToken)
+					return emitCurrentWindowRefusal(stdout, stderr, *service, *format == "json", err)
+				}
+				continue
+			}
 			rep, err := verifyViaHTTP(hc, *url, *service, *concern, wireMD, wirePlan, goneTreeFor(root, lp))
 			if err != nil {
+				abortCurrentWindow(hc, *url, *service, windowToken)
 				fmt.Fprintf(stderr, "error: %v\n", err)
 				return 2
 			}
@@ -251,6 +275,27 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 			// the daemon never saw lp's AnnotateSelfDeclared result either.
 			verify.OverlaySelfDeclared(&rep, lp)
 			reports = append(reports, rep)
+		}
+		if err := closeCurrentWindow(hc, *url, *service, windowToken); err != nil {
+			abortCurrentWindow(hc, *url, *service, windowToken)
+			return emitCurrentWindowRefusal(stdout, stderr, *service, *format == "json", err)
+		}
+		if windowToken != "" {
+			for i, lp := range localPlans {
+				wireMD, wirePlan := planBytes[i], lp
+				if foreign[i] {
+					wireMD = specdialect.Synthesize(lp)
+					wirePlan = verify.ParseMarkdownPlan(*service, wireMD)
+				}
+				rep, err := finalVerifyWindow(hc, *url, *service, wireMD, wirePlan, windowToken, windowReceipts[i])
+				if err != nil {
+					return emitCurrentWindowRefusal(stdout, stderr, *service, *format == "json", err)
+				}
+				verify.OverlayLocal(&rep, lp, files)
+				verify.OverlaySelfSkip(&rep, lp)
+				verify.OverlaySelfDeclared(&rep, lp)
+				reports = append(reports, rep)
+			}
 		}
 	}
 
@@ -582,8 +627,10 @@ func verifyAllAgainstStore(plans []verify.Plan, service, storePath, concern stri
 
 // httpVerifyResult is the JSON shape returned by verify_plan via the MCP server.
 type httpVerifyResult struct {
-	Service string `json:"service"`
-	Summary struct {
+	Service              string `json:"service"`
+	SourceWindowState    string `json:"source_window_state,omitempty"`
+	SourceWindowReportID string `json:"source_window_report_id,omitempty"`
+	Summary              struct {
 		Total   int `json:"total"`
 		Pass    int `json:"pass"`
 		Fail    int `json:"fail"`
@@ -634,9 +681,52 @@ const maxVerifyFollowUps = 64
 // its gone: rows hold the index to the tree the plan came from, as --store
 // does; nil when the plan has no gone: row.
 func verifyViaHTTP(hc *http.Client, baseURL, service, concern string, planMD []byte, localPlan verify.Plan, tree *goneev.PlanTree) (verify.Report, error) {
+	return verifyViaHTTPScoped(hc, baseURL, service, concern, planMD, localPlan, tree, "")
+}
+
+func verifyViaHTTPScoped(hc *http.Client, baseURL, service, concern string, planMD []byte, localPlan verify.Plan, tree *goneev.PlanTree, sourceScope string) (verify.Report, error) {
+	return verifyViaHTTPWindow(hc, baseURL, service, concern, planMD, localPlan, tree, sourceScope, "")
+}
+
+func verifyViaHTTPWindow(hc *http.Client, baseURL, service, concern string, planMD []byte, localPlan verify.Plan, tree *goneev.PlanTree, sourceScope, token string) (verify.Report, error) {
+	if token != "" {
+		return verify.Report{}, fmt.Errorf("current source window: pending reports require collect and close")
+	}
 	return verifyWithCaller(func(md []byte) (httpVerifyResult, error) {
-		return callVerifyPlan(hc, baseURL, service, concern, md, tree)
+		res, err := callVerifyPlanWindow(hc, baseURL, service, concern, md, tree, sourceScope, token)
+		return res, err
 	}, planMD, localPlan)
+}
+
+func collectVerifyWindow(hc *http.Client, baseURL, service, concern string, planMD []byte, localPlan verify.Plan, tree *goneev.PlanTree, token string) ([]string, error) {
+	ids := make([]string, 0)
+	_, err := verifyWithCaller(func(md []byte) (httpVerifyResult, error) {
+		res, err := callVerifyPlanWindow(hc, baseURL, service, concern, md, tree, "", token)
+		if err == nil && (res.SourceWindowState != "pending" || res.SourceWindowReportID == "") {
+			err = fmt.Errorf("current source window: missing pending report receipt")
+		}
+		if err == nil {
+			ids = append(ids, res.SourceWindowReportID)
+		}
+		return res, err
+	}, planMD, localPlan)
+	return ids, err
+}
+
+func finalVerifyWindow(hc *http.Client, baseURL, service string, planMD []byte, localPlan verify.Plan, token string, ids []string) (verify.Report, error) {
+	index := 0
+	rep, err := verifyWithCaller(func([]byte) (httpVerifyResult, error) {
+		if index >= len(ids) {
+			return httpVerifyResult{}, fmt.Errorf("current source window: final receipt count differs")
+		}
+		id := ids[index]
+		index++
+		return fetchCurrentWindowResult(hc, baseURL, service, token, id)
+	}, planMD, localPlan)
+	if err == nil && index != len(ids) {
+		err = fmt.Errorf("current source window: final receipt sequence differs")
+	}
+	return rep, err
 }
 
 // verifyViaHTTPStop is verifyViaHTTP for the Stop hook, whose 5 s cap cannot
@@ -821,9 +911,17 @@ const verifyPlanDeclaredBudget = verifyPlanReadLimit / 3
 // again at the daemon's default budget, whose cut the follow-up calls
 // complete (verifyWithCaller).
 func callVerifyPlan(hc *http.Client, baseURL, service, concern string, planMD []byte, tree *goneev.PlanTree) (httpVerifyResult, error) {
-	raw, err := postVerifyPlan(hc, baseURL, service, concern, planMD, tree, verifyPlanDeclaredBudget)
+	return callVerifyPlanScoped(hc, baseURL, service, concern, planMD, tree, "")
+}
+
+func callVerifyPlanScoped(hc *http.Client, baseURL, service, concern string, planMD []byte, tree *goneev.PlanTree, sourceScope string) (httpVerifyResult, error) {
+	return callVerifyPlanWindow(hc, baseURL, service, concern, planMD, tree, sourceScope, "")
+}
+
+func callVerifyPlanWindow(hc *http.Client, baseURL, service, concern string, planMD []byte, tree *goneev.PlanTree, sourceScope, token string) (httpVerifyResult, error) {
+	raw, err := postVerifyPlanWindow(hc, baseURL, service, concern, planMD, tree, verifyPlanDeclaredBudget, sourceScope, token)
 	if err == nil && len(raw) > verifyPlanReadLimit {
-		raw, err = postVerifyPlan(hc, baseURL, service, concern, planMD, tree, 0)
+		raw, err = postVerifyPlanWindow(hc, baseURL, service, concern, planMD, tree, 0, sourceScope, token)
 	}
 	if err != nil {
 		return httpVerifyResult{}, err
@@ -835,7 +933,15 @@ func callVerifyPlan(hc *http.Client, baseURL, service, concern string, planMD []
 // budget bytes (none when 0) and reads at most verifyPlanReadLimit+1 bytes
 // of the answer, so a longer one is seen as too long, never parsed cut.
 func postVerifyPlan(hc *http.Client, baseURL, service, concern string, planMD []byte, tree *goneev.PlanTree, budget int) ([]byte, error) {
-	reqBody, err := verifyPlanRequest(service, concern, planMD, tree)
+	return postVerifyPlanScoped(hc, baseURL, service, concern, planMD, tree, budget, "")
+}
+
+func postVerifyPlanScoped(hc *http.Client, baseURL, service, concern string, planMD []byte, tree *goneev.PlanTree, budget int, sourceScope string) ([]byte, error) {
+	return postVerifyPlanWindow(hc, baseURL, service, concern, planMD, tree, budget, sourceScope, "")
+}
+
+func postVerifyPlanWindow(hc *http.Client, baseURL, service, concern string, planMD []byte, tree *goneev.PlanTree, budget int, sourceScope, token string) ([]byte, error) {
+	reqBody, err := verifyPlanRequestWindow(service, concern, planMD, tree, sourceScope, token)
 	if err != nil {
 		return nil, err
 	}
@@ -860,6 +966,14 @@ func postVerifyPlan(hc *http.Client, baseURL, service, concern string, planMD []
 
 // verifyPlanRequest is one verify_plan tools/call message.
 func verifyPlanRequest(service, concern string, planMD []byte, tree *goneev.PlanTree) ([]byte, error) {
+	return verifyPlanRequestScoped(service, concern, planMD, tree, "")
+}
+
+func verifyPlanRequestScoped(service, concern string, planMD []byte, tree *goneev.PlanTree, sourceScope string) ([]byte, error) {
+	return verifyPlanRequestWindow(service, concern, planMD, tree, sourceScope, "")
+}
+
+func verifyPlanRequestWindow(service, concern string, planMD []byte, tree *goneev.PlanTree, sourceScope, token string) ([]byte, error) {
 	args := map[string]any{
 		"service":       service,
 		"plan_markdown": string(planMD),
@@ -869,6 +983,12 @@ func verifyPlanRequest(service, concern string, planMD []byte, tree *goneev.Plan
 	}
 	if tree != nil {
 		args["plan_tree"] = tree
+	}
+	if sourceScope != "" && sourceScope != "current_worktree" {
+		args["source_scope"] = sourceScope
+	}
+	if token != "" {
+		args["source_window"] = map[string]any{"token": token}
 	}
 	reqBody, err := json.Marshal(map[string]any{
 		"jsonrpc": "2.0",

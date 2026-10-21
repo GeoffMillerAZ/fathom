@@ -50,7 +50,7 @@ func fetchCapped(ctx context.Context, path string, limit int64) ([]byte, error) 
 		return nil, err
 	}
 	defer f.Close()
-	data, err := io.ReadAll(io.LimitReader(f, limit+1))
+	data, err := readFetchSized(ctx, f, fi.Size(), limit)
 	if err != nil {
 		return nil, err
 	}
@@ -58,4 +58,44 @@ func fetchCapped(ctx context.Context, path string, limit int64) ([]byte, error) 
 		return nil, &OversizeError{Path: path, Size: int64(len(data)), Cap: limit}
 	}
 	return data, nil
+}
+
+// readFetchSized uses the observed size plus one growth-probe byte for the
+// ordinary read. A file that grew can require one additional bounded buffer;
+// no file is read beyond limit+1. The returned bytes are owned by this call.
+func readFetchSized(ctx context.Context, r io.Reader, size, limit int64) ([]byte, error) {
+	data := make([]byte, min(size+1, limit+1))
+	n, err := fillFetchBuffer(ctx, r, data)
+	if err != nil && err != io.EOF {
+		return nil, err
+	}
+	if err == io.EOF || n < len(data) || int64(n) > limit {
+		return data[:n], nil
+	}
+	// The stat underreported the file. Preserve the probe and read the rest
+	// under the original cap, including its one-byte oversize sentinel.
+	grown := make([]byte, limit+1)
+	copy(grown, data[:n])
+	m, err := fillFetchBuffer(ctx, r, grown[n:])
+	if err != nil && err != io.EOF {
+		return nil, err
+	}
+	return grown[:n+m], nil
+}
+
+func fillFetchBuffer(ctx context.Context, r io.Reader, data []byte) (int, error) {
+	used := 0
+	for used < len(data) {
+		// Check between reads, without a goroutine, changed producer class,
+		// or a late check that would discard a successfully completed read.
+		if err := ctx.Err(); err != nil {
+			return used, err
+		}
+		n, err := r.Read(data[used:])
+		used += n
+		if err != nil {
+			return used, err
+		}
+	}
+	return used, nil
 }

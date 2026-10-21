@@ -107,10 +107,14 @@ type Handler func(ctx context.Context, params json.RawMessage) (any, *rpcError)
 // Server is a JSON-RPC 2.0 MCP server that dispatches requests to Handlers.
 // Handlers are registered via Register before the first Serve call.
 type Server struct {
-	mu       sync.Mutex
-	handlers map[string]Handler
-	tools    []toolEntry // registered MCP tools (see dispatch.go)
-	backend  QueryInterface
+	mu            sync.Mutex
+	windowMu      sync.Mutex
+	windows       map[string]*serverSourceWindow
+	closedWindows map[string]*serverSourceWindow
+	windowClock   func() time.Time
+	handlers      map[string]Handler
+	tools         []toolEntry // registered MCP tools (see dispatch.go)
+	backend       QueryInterface
 
 	// activeProfile guards which tools appear in tools/list.
 	profileMu sync.RWMutex

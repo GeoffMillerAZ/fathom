@@ -23,6 +23,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
+	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
 // autoRefreshBackend wraps a QueryInterface and, before each per-service read,
@@ -512,6 +513,30 @@ func (a *autoRefreshBackend) ListAllSymbols(ctx context.Context, serviceID strin
 func (a *autoRefreshBackend) ScanSources(ctx context.Context, service string, b corpus.Budget, fn func(core.SourceFile) bool) (corpus.Coverage, error) {
 	a.ensure(ctx, service)
 	return a.QueryInterface.ScanSources(ctx, service, b, fn)
+}
+
+func (a *autoRefreshBackend) BeginSourceWindow(ctx context.Context, service string) (*client.SourceWindow, error) {
+	b, ok := a.QueryInterface.(sourceWindowBackend)
+	if !ok {
+		return nil, fmt.Errorf("current source window: unsupported backend")
+	}
+	return b.BeginSourceWindow(ctx, service)
+}
+
+func (a *autoRefreshBackend) AdvanceSourceWindow(ctx context.Context, w *client.SourceWindow, bytes int64, duration time.Duration) error {
+	b, ok := a.QueryInterface.(sourceWindowBackend)
+	if !ok {
+		return fmt.Errorf("current source window: unsupported backend")
+	}
+	return b.AdvanceSourceWindow(ctx, w, bytes, duration)
+}
+
+func (a *autoRefreshBackend) SourceRefProjection(ctx context.Context, service string) (store.SourceRefProjection, bool, error) {
+	b, ok := a.QueryInterface.(generationRefsBackend)
+	if !ok {
+		return store.SourceRefProjection{}, false, fmt.Errorf("sealed ingest-generation reference facts unsupported")
+	}
+	return b.SourceRefProjection(ctx, service)
 }
 
 func (a *autoRefreshBackend) TypedEdges(ctx context.Context, serviceID string) ([]core.Edge, error) {

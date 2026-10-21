@@ -56,7 +56,6 @@ bg-ctx	cmd/fathom/servehttp_loops.go	daemon lifetime context in serve-http start
 bg-ctx	cmd/fathom/servehttp_loops.go	daemon lifetime context in serve-http startup, cancelled by the drain; not a request
 bg-ctx	cmd/fathom/servehttp_loops.go	daemon lifetime context in serve-http startup, cancelled by the drain; not a request
 bg-ctx	cmd/fathom/servehttp_loops.go	daemon lifetime context in serve-http startup, cancelled by the drain; not a request
-bg-ctx	cmd/fathom/servehttp_store.go	daemon lifetime context in serve-http startup, cancelled by the drain; not a request
 bg-ctx	internal/mcp/autorefresh.go	NewAutoRefresh starts a process-lifetime refresh queue; daemons use NewAutoRefreshQueued with the drain's context
 bg-ctx	internal/mcp/graph_patch.go	scope lookup for a cache patch after a refresh job, called through a context-free interface; a point query on the watermark
 bg-ctx	internal/mcp/servicerefs_memo.go	scope lookup to drop a memo entry after a per-file refresh, called through a context-free interface; a point query on the watermark

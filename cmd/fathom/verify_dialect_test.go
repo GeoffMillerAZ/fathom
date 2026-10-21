@@ -141,6 +141,10 @@ func TestVerifyForeignPlanOverHTTP(t *testing.T) {
 	var sent string
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
+		if rpcMethodIs(body, "tools/list") {
+			writeOldVerifyPlanToolsList(w)
+			return
+		}
 		if strings.Contains(string(body), `"list_services"`) {
 			writeRPCText(w, `{"services":[{"service":"svc","symbol_count":42}]}`)
 			return

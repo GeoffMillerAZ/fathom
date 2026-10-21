@@ -64,6 +64,7 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 | Clang compilation database (`compile_commands.json`) | doc dialect `compile-commands`; JSON plus each entry's flags (`decode: compile-commands`) | n/a | fmt, libuv (cmake-generated databases at the checkout root) | **syntax** — a translation unit's include directories, macros and output are its own references; no cross-file selector is declared | joined `-isystem`/`-iquote`/`-idirafter` flags (O376) |
 | Conan (`conanfile.py`, `conanfile.txt`, `conan.lock`, `conandata.yml`) | doc dialect `conan` | yes (tree-sitter-python) | conan-center-index (54 recipes), conan-io/examples2 | **syntax** — a recipe's requires are references to the recipe names they use; no cross-file edge is declared (the doc-xref pass reads no Conan file and no recipe is an entity it can resolve to, O370) | O370, O371 |
 | C# | tags dialect `csharp` | yes (tree-sitter-c-sharp v0.23.5) | Polly, Newtonsoft.Json | **scip** via scip-dotnet | L2 call precision (scip-dotnet writes no occurrence for a generic method called with type arguments, O271), L3, L4 |
+| Unity assembly definitions (.asmdef) | doc dialect `unity-asmdef` | n/a | generic source-bound Editor oracle fixtures | **syntax** — declared assembly names, references and flags only; no compiler, file or call edges | unmeasured; GUID references and .asmref remain unjudged |
 | PHP | tags dialect `php` | yes (tree-sitter-php v0.24.2) | guzzle, monolog | **syntax** (no mature exporter) | L2 call precision against scip-php, L3/L4 (LB-Q-php-rest) |
 | Swift | refused (no extractor); refused (LB-Q-swift-rest, design §14.2): a tree-sitter dialect (`dialects/swift`) is built and measured (L1 excellent, L2 good against the compiler's parser), but 5.6% of its calibration files parse with an error under the pinned grammar, over the 5% line; Swift stays disclosed as unsupported, named per service by `list_services` | yes (alex-pinkus/tree-sitter-swift commit 35245fb, not dispatched) | Alamofire, swift-nio | **none** | a tree-sitter-swift that parses Swift 6 syntax under the 5% line, then re-measure and re-plan (L3 needs a Swift import oracle for `import_resolution` and a typed oracle) |
 | Lua | tags dialect `lua` | yes | Kong, telescope.nvim | **syntax** — call names by syntax only (a name, a field or a method callee); a literal `require "a.b"` or `pcall(require, "a.b")` is a file edge to `a/b.lua` or `a/b/init.lua` under the repository root, `lua/`, `lib/` or `src/` (file-symbol strategy, LB-Q-lua at L3 good) from the file's `<module>` symbol; no SCIP producer exists for Lua | a computed `require` name and a rock or C module have no file; a function in a computed slot has no name |
@@ -117,7 +118,7 @@ item's target; the last column also needs every level up to the target graded ex
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | T1 | language | 33 | 0 | 3 | 13 | 10 | 1 | 3 | 0 | 3 | 23 | 8 |
 | T1 | tool format | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |
-| T2 | tool format | 23 | 0 | 7 | 14 | 0 | 1 | 0 | 0 | 1 | 19 | 14 |
+| T2 | tool format | 24 | 0 | 7 | 14 | 0 | 1 | 0 | 1 | 1 | 19 | 14 |
 | T3 | tool format | 16 | 1 | 4 | 11 | 0 | 0 | 0 | 0 | 0 | 15 | 5 |
 | T4 | language | 3 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 1 | 1 | 0 |
 | T4 | tool format | 7 | 0 | 3 | 2 | 0 | 0 | 0 | 0 | 2 | 5 | 4 |
@@ -126,7 +127,7 @@ item's target; the last column also needs every level up to the target graded ex
 | T6 | tool format | 4 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |
 | T7 | tool format | 4 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
 | **Total** | language | 37 | 0 | 3 | 15 | 10 | 1 | 4 | 0 | 4 | 24 | 8 |
-| **Total** | tool format | 63 | 1 | 17 | 37 | 0 | 1 | 0 | 0 | 7 | 51 | 27 |
+| **Total** | tool format | 64 | 1 | 17 | 37 | 0 | 1 | 0 | 1 | 7 | 51 | 27 |
 
 ### T1
 
@@ -194,6 +195,7 @@ item's target; the last column also needs every level up to the target graded ex
 | vcpkg manifests (vcpkg.json, vcpkg-configuration.json) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | Meson builds (meson.build, meson.options, meson_options.txt) | tool format | L3 | L2 (L1 excellent, L2 excellent) | L3 not met: xref_precision not measured |
 | Clang compilation databases (compile_commands.json) | tool format | L2 | L2 (L1 excellent, L2 excellent) | excellent at target |
+| Unity assembly definitions (.asmdef; declared facts only) | tool format | L1 | tolerated | no reading (LB-Q-unity-asmdef) |
 
 ### T3
 
@@ -459,3 +461,4 @@ Milestone M2 progress: languages at L1 37/45, at L1 excellent 25/35, at L2 33/25
 | fathom concerns (.fathom/concerns.cue) | tool format | native | native:cuelang.org/go (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-fathom-concerns |
 | fathom layer packs (.fathom/layers/*/layer.cue, .fathom/rules/*.cue) | tool format | native | native:cuelang.org/go (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-fathom-layer-packs |
 | fathom plan grammar v2 rows (docs/plans/*.md) | tool format | native | pure-go:plan row grammar (n/a) | L3 | L3 (L1 good, L2 good, L3 good) | C plan_rows_oracle.py: a line parser of docs/plans/README.md's row grammar python 3.14.7 | — | 2026-10-03 | at target (LB-Q-fathom-plan-rows) |
+| Unity assembly definitions (.asmdef; declared facts only) | tool format | doc | pure-go:encoding/json (n/a) | L1 | tolerated | — | syntax | — | LB-Q-unity-asmdef |

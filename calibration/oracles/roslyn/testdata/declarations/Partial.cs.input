@@ -1,0 +1,5 @@
+namespace Fixture.Outer;
+public partial class Host<T> where T : class
+{
+    public void Other() { }
+}

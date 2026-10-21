@@ -6,6 +6,8 @@ package fusion
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -16,6 +18,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/sdd"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
@@ -78,6 +81,11 @@ func (p *Pipeline) ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 		report.DefaultIgnoredDirs = er.Exclusions(svc.ID).DefaultIgnored
 	}
 	run.refs = refs
+	run.refPolicy = sourcePolicyDigest(ctx, p.conn, svc)
+	if _, ok := p.st.(store.SourceRefProjectionBackfillReader); !ok {
+		// A store wrapper without prior facts cannot safely seal stat skips.
+		run.refPolicy = ""
+	}
 	run.defaultIgnore = len(report.DefaultIgnoredDirs)
 
 	// Build this ingest's sibling index ONCE from the just-Discovered list
@@ -93,6 +101,9 @@ func (p *Pipeline) ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	p.mu.Unlock()
 
 	if len(refs) == 0 {
+		if !sourceMembershipStable(ctx, p.conn, svc, refs) || run.refPolicy != sourcePolicyDigest(ctx, p.conn, svc) {
+			run.refPolicy = ""
+		}
 		// Still a full-service ingest: every stored ref is now an orphan.
 		run.changed = 1 // every stored symbol goes: centrality must follow (TQ-2)
 		p.indexDocs(ctx, svc, refs, &report)
@@ -153,12 +164,41 @@ func (p *Pipeline) ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 		svcRefs.complete = false // the rebuild purges the rows with the rest
 	}
 	gate := p.statChangedFiles(ctx, svc.ID, refs, legacy || !svcRefs.complete)
+	// A stat skip only vouches for old reference facts if the extractor
+	// version and its source fingerprint still match. Otherwise backfill that
+	// file through the existing bounded read window.
+	priorRows := map[string]store.SourceRefFact{}
+	if run.refPolicy != "" {
+		if reader, ok := p.st.(store.SourceRefProjectionBackfillReader); ok {
+			if prior, found, err := reader.ReadSourceRefProjectionForBackfill(ctx, svc.ID); err == nil && found {
+				for _, row := range prior.Rows {
+					priorRows[row.Path] = row
+				}
+			}
+		}
+		for i, ref := range refs {
+			if gate.live[i].ContentHash == "" {
+				continue
+			}
+			row, ok := priorRows[ref.Path]
+			if ok && row.ExtractorVersion == store.SourceRefExtractorVersion && row.SourceHash != "" && (row.Refs != nil || row.Excluded != "") {
+				continue
+			}
+			gate.live[i].ContentHash = ""
+			gate.toRead = append(gate.toRead, i)
+			gate.skipped--
+		}
+		sort.Ints(gate.toRead)
+	}
 	report.Skipped += gate.skipped
 	report.StatSkipped = gate.skipped
 	// RT-76: a stat-skipped file's facts are the stat and the hash the gate
 	// vouched for; it is never read.
 	for i, ref := range refs {
 		if gate.live[i].ContentHash != "" {
+			if run.refPolicy != "" {
+				run.refRows = append(run.refRows, priorRows[ref.Path])
+			}
 			run.noteFact(ref.Path, fileFact{size: gate.live[i].Size, hash: gate.live[i].ContentHash,
 				excluded: gate.live[i].Excluded, sniffed: gate.live[i].Sniffed})
 		}
@@ -191,6 +231,7 @@ func (p *Pipeline) ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	peak, streamErr := p.fetchWindowed(ctx, refs, gate.toRead, p.cfg.InflightBytes, p.cfg.Concurrency, func(i int, content []byte, ferr error) error {
 		ref := refs[i]
 		if over := asOversize(ferr); over != nil {
+			run.refRows = append(run.refRows, store.SourceRefFact{Path: ref.Path, ExtractorVersion: store.SourceRefExtractorVersion, Excluded: "oversize"})
 			// RT-69: over the read cap, decided from the stat — never read;
 			// recorded after the refusal check below.
 			oversize = append(oversize, oversizeRef{ref.Path, over.Size})
@@ -199,6 +240,7 @@ func (p *Pipeline) ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 		}
 		if ferr != nil {
 			if isReadFailure(ferr) {
+				run.refRows = append(run.refRows, store.SourceRefFact{Path: ref.Path, ExtractorVersion: store.SourceRefExtractorVersion, Excluded: "unreadable"})
 				// Unreadable this run: no hash-gate, no purge, no
 				// fingerprint — the stored evidence stays until the file
 				// can be read again.
@@ -208,6 +250,12 @@ func (p *Pipeline) ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 			}
 			return fmt.Errorf("fusion: fetch: %w", ferr)
 		}
+		refHash := sha256.Sum256(content)
+		refTokens := sdd.ExtractRefsBytes(content)
+		if refTokens == nil {
+			refTokens = []string{}
+		}
+		run.refRows = append(run.refRows, store.SourceRefFact{Path: ref.Path, SourceHash: hex.EncodeToString(refHash[:]), ExtractorVersion: store.SourceRefExtractorVersion, Refs: refTokens})
 
 		// Epoch-salted content hash (see FingerprintHash / ExtractorEpoch):
 		// an extractor-semantics change must invalidate every stored
@@ -534,6 +582,23 @@ func (p *Pipeline) ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 		return finish(err)
 	}
 	run.changed = len(changed)
+	if stater, ok := p.conn.(connector.Stater); ok {
+		for i, ref := range refs {
+			if !gate.statted[i] {
+				continue
+			}
+			current, statErr := stater.Stat(ctx, ref)
+			if statErr != nil || current != gate.live[i].FileStat {
+				run.refPolicy = ""
+				break
+			}
+		}
+	}
+	if run.refPolicy != "" {
+		if !sourceMembershipStable(ctx, p.conn, svc, refs) || run.refPolicy != sourcePolicyDigest(ctx, p.conn, svc) {
+			run.refPolicy = ""
+		}
+	}
 	commitErr := p.finalCommit(ctx, svc, run, refs)
 	passes.mark("commit") // less centrality, its own span inside it
 	return finish(commitErr)
@@ -575,7 +640,20 @@ func (p *Pipeline) recordIngestMeta(ctx context.Context, svc core.ServiceRef, co
 	// summary write fails, the watermark is still recorded (a missing
 	// summary is backfilled at first use, never a wrong one served).
 	sum, files := ingestSummary(metaPath, run)
+	if run != nil && run.refPolicy != "" {
+		sort.Slice(run.refRows, func(i, j int) bool { return run.refRows[i].Path < run.refRows[j].Path })
+		complete := len(run.refRows) == len(run.refs)
+		for _, row := range run.refRows {
+			if row.Excluded != "" || row.Refs == nil {
+				complete = false
+			}
+		}
+		sum.RefProjection = &store.SourceRefProjection{Policy: run.refPolicy, ExtractorVersion: store.SourceRefExtractorVersion, ProducedAt: time.Now().UnixNano(), Complete: complete, Rows: run.refRows}
+	}
 	if err := p.st.WriteServiceSummary(ctx, meta, sum, files); err != nil {
+		if invalidator, ok := p.st.(store.SourceRefProjectionInvalidator); ok {
+			_ = invalidator.InvalidateSourceRefProjection(context.WithoutCancel(ctx), svc.ID)
+		}
 		_ = p.st.SetServiceMeta(ctx, meta) // best-effort; ignore error
 	}
 

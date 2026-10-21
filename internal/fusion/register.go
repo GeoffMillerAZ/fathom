@@ -475,6 +475,14 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	}
 	p.exts["Cargo.toml"] = cargo
 
+	// Unity assembly definitions are declared package/reference facts only.
+	// The dialect deliberately emits no call or cross-file edges.
+	unityAsmdef, err := extractor.NewDocDialectExtractor("unity-asmdef")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect unity-asmdef: %v", err))
+	}
+	p.exts[".asmdef"] = unityAsmdef
+
 	// MSBuild (LB-Q-msbuild, language-breadth: new — a doc-engine tool format,
 	// no incumbent). No extractor claims these extensions, so the extension
 	// lookup (p.exts[ext]) governs every project, props and targets file;

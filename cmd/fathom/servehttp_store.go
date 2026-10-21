@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 
@@ -29,9 +28,7 @@ func (r *serveRun) openStore() (int, bool) {
 	exePath, _ := os.Executable()
 	lastWaitErrno := ""
 	//fathom:tenancy-allow bg-ctx daemon lifetime context in serve-http startup, cancelled by the drain; not a request
-	storeCtx, cancelStoreWait := context.WithCancel(context.Background())
-	r.deferred(cancelStoreWait)
-	c, err := openStoreWithWait(storeCtx, storeWaitDeps[*client.Client]{
+	c, err := openStoreWithWait(r.exitCtx, storeWaitDeps[*client.Client]{
 		path:  absStorePath(storePath),
 		open:  func() (*client.Client, error) { return client.NewConstantClient(client.ModeLocal, storePath) },
 		stat:  statPath,
@@ -62,6 +59,9 @@ func (r *serveRun) openStore() (int, bool) {
 		},
 	})
 	if err != nil {
+		if code, exiting := r.requestedExitCode(); exiting {
+			return code, true
+		}
 		// A store that opened and is wrong (not unavailability): a failed
 		// start — counted by the breaker, so launchd's relaunch loop is
 		// bounded — and the record written at the bind goes with it.
@@ -76,6 +76,9 @@ func (r *serveRun) openStore() (int, bool) {
 	}
 	r.c = c
 	r.deferred(func() { c.Close() })
+	if code, exiting := r.requestedExitCode(); exiting {
+		return code, true
+	}
 	c.WithStoreStats() // RT-180: a restart reads only the files whose stat moved since the last committed ingest.
 	c.WithLogger(flog) // DG-4: the typed-edge pass's own diagnostics gain a timestamp/level too.
 	return 0, false
@@ -166,6 +169,7 @@ func (r *serveRun) buildBackend() {
 	}
 	r.refreshQ = mcp.NewRefreshQueueLogged(c, refresh.Config{Started: r.startedAt}, flog)
 	r.refreshQ.Start(r.refreshCtx)
+	r.deferred(func() { r.stopRefresh(); r.refreshQ.Wait() })
 	var backend mcp.QueryInterface = c
 	if r.autoRefresh {
 		backend = mcp.NewAutoRefreshQueued(c, flog, r.refreshQ)

@@ -48,6 +48,8 @@ static class RoslynDump
 
     static int Main(string[] args)
     {
+        if (args.Length > 0 && args[0] == "project-imports") return ProjectDeclarations.RunImports(args[1..]);
+        if (args.Length > 0 && args[0] == "project-declarations") return ProjectDeclarations.Run(args[1..]);
         if (args.Length > 0 && args[0] == "calls") return SemanticCalls.Run(args[1..]);
         var root = Path.GetFullPath(args[0]);
         var files = Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories)

@@ -11,10 +11,12 @@ package main
 // truth file_edge_precision and file_edge_recall are scored against.
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
 	"slices"
 	"sort"
 	"strings"
@@ -93,13 +95,15 @@ func includePathLang(lang string) bool {
 // subjectImports is one subject's resolved imports, computed on first use
 // and shared by every imports oracle of the subject.
 type subjectImports struct {
-	ctx     context.Context
-	dialect string
-	root    string
-	name    string
-	files   []core.SourceFile
-	nodes   []core.SymbolNode
-	inScope map[string]bool
+	ctx           context.Context
+	dialect       string
+	root          string
+	name          string
+	files         []core.SourceFile
+	nodes         []core.SymbolNode
+	inScope       map[string]bool
+	toolSelected  bool // explicit -imports-from tool; false preserves the default
+	scipFileEdges bool // actual successful SCIP dependency-family scoring
 
 	done   bool
 	ok     bool
@@ -219,26 +223,131 @@ func (si *subjectImports) score(refs []langbench.OracleImport, tier, tool string
 	return nil
 }
 
+// Declaration targets establish statement binding, not actual-use dependencies.
+const declarationMembership = "declaration-membership/v1"
+
+type importOracleFile struct {
+	Tool      string               `json:"tool"`
+	Tier      string               `json:"tier"`
+	Imports   *[]importOracleEntry `json:"imports"`
+	Semantics string               `json:"imports_semantics"`
+}
+
+func readImportOracle(file string) (importOracleFile, error) {
+	var tf importOracleFile
+	b, err := os.ReadFile(file)
+	if err != nil {
+		return tf, err
+	}
+	if err := json.Unmarshal(b, &tf); err != nil {
+		return tf, fmt.Errorf("%s: %w", file, err)
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(b, &fields); err != nil {
+		return tf, fmt.Errorf("%s: %w", file, err)
+	}
+	if raw, present := fields["imports_semantics"]; present && (tf.Semantics == "" || bytes.Equal(bytes.TrimSpace(raw), []byte("null"))) {
+		return tf, fmt.Errorf("%s: unknown imports_semantics (explicit null/empty is not omitted)", file)
+	}
+	if tf.Semantics == declarationMembership {
+		// New membership envelopes use the existing closed neutral shape,
+		// including its entry fields; ordinary oracle formats are unchanged.
+		var strict toolOracleFile
+		dec := json.NewDecoder(bytes.NewReader(b))
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(&strict); err != nil {
+			return tf, fmt.Errorf("%s: %w", file, err)
+		}
+		keys := make([]string, 0, len(fields))
+		for key := range fields {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			switch key {
+			case "tool", "version", "tier", "source", "revision", "licence", "disclose", "imports", "imports_semantics":
+			default:
+				return tf, fmt.Errorf("%s: declaration membership field %q is not import-family evidence", file, key)
+			}
+		}
+	}
+	return tf, nil
+}
+
+func checkImportSemantics(file string, tf importOracleFile, toolSelected, scipFileEdges bool) error {
+	if tf.Semantics == "" {
+		return nil
+	}
+	if tf.Semantics != declarationMembership {
+		return fmt.Errorf("%s: unknown imports_semantics %q", file, tf.Semantics)
+	}
+	if !toolSelected || !scipFileEdges {
+		return fmt.Errorf("%s: %s needs explicit -imports-from tool and SCIP dependency truth", file, tf.Semantics)
+	}
+	if tf.Imports == nil {
+		return fmt.Errorf("%s: %s needs an imports array (empty [] is valid, missing/null is not)", file, tf.Semantics)
+	}
+	for _, e := range *tf.Imports {
+		if e.SamePackage {
+			return fmt.Errorf("%s: declaration membership cannot contain dependency-only same_package entries", file)
+		}
+		if !importMemberPath(e.Path) || e.ToPath != "" && !importMemberPath(e.ToPath) {
+			return fmt.Errorf("%s: declaration-membership paths must be canonical subject-relative slash paths", file)
+		}
+		if e.Line <= 0 {
+			return fmt.Errorf("%s: declaration membership needs a positive line", file)
+		}
+	}
+	return nil
+}
+
+func importMemberPath(p string) bool {
+	return p != "" && p != "." && p != ".." && !strings.HasPrefix(p, "../") && !path.IsAbs(p) && path.Clean(p) == p && !strings.ContainsAny(p, "\\:\x00")
+}
+
+// Validate explicit family selection before extraction/scoring. Array presence,
+// not len, distinguishes a genuine empty native denominator from no oracle.
+func checkImportOracleSelection(opts oracleOpts) error {
+	n := 0
+	for _, file := range opts.tools {
+		tf, err := readImportOracle(file)
+		if err != nil {
+			return err
+		}
+		if err := checkImportSemantics(file, tf, opts.importsFromTool, opts.scip != ""); err != nil {
+			return err
+		}
+		if tf.Imports != nil {
+			n++
+		}
+	}
+	if opts.importsFromTool && (opts.scip == "" || n != 1) {
+		return fmt.Errorf("-imports-from tool needs -scip and exactly one tool oracle carrying an imports array (got %d)", n)
+	}
+	return nil
+}
+
 // scoreImportsOracle scores a neutral oracle file's imports, when it has
 // the field; one without it leaves import_resolution to another oracle.
 func scoreImportsOracle(path string, si *subjectImports, sub *langbench.Subject) error {
-	b, err := os.ReadFile(path)
+	tf, err := readImportOracle(path)
 	if err != nil {
 		return err
 	}
-	var tf struct {
-		Tool    string               `json:"tool"`
-		Tier    string               `json:"tier"`
-		Imports *[]importOracleEntry `json:"imports"`
-	}
-	if err := json.Unmarshal(b, &tf); err != nil {
-		return fmt.Errorf("%s: %w", path, err)
+	if err := checkImportSemantics(path, tf, si.toolSelected, si.scipFileEdges); err != nil {
+		return err
 	}
 	if err := scoreRangeCompanion(path, si, sub); err != nil {
 		return err
 	}
 	if tf.Imports == nil {
 		return nil
+	}
+	if si.toolSelected {
+		si.notes = append(si.notes, fmt.Sprintf("%s: import_resolution selected from %s (-imports-from tool); SCIP retains independent file-dependency truth", si.name, orDefault(tf.Tool, path)))
+		if tf.Semantics != "" {
+			si.notes = append(si.notes, si.name+": "+tf.Semantics+" targets attest import statements, not actual-use file dependencies")
+		}
 	}
 	stmts := importStatements(*tf.Imports)
 	refs := make([]langbench.OracleImport, 0, len(stmts))
@@ -276,21 +385,20 @@ const noteSamePackageEdges = "%s: %d of the %d file-edge truth pairs are same-pa
 // by langbench.ScoreFileEdges into the file_edges family at the file's
 // tier. A file with no such pair scores nothing.
 func scoreImportFileEdges(ctx context.Context, path, lang, root, name string, files []core.SourceFile, nodes []core.SymbolNode, sub *langbench.Subject, inScope map[string]bool) (notes []string, diff *fileEdgeDiff, err error) {
-	b, err := os.ReadFile(path)
+	tf, err := readImportOracle(path)
 	if err != nil {
 		return nil, nil, err
 	}
-	var tf struct {
-		Tool    string              `json:"tool"`
-		Tier    string              `json:"tier"`
-		Imports []importOracleEntry `json:"imports"`
-	}
-	if err := json.Unmarshal(b, &tf); err != nil {
-		return nil, nil, fmt.Errorf("%s: %w", path, err)
+	if tf.Semantics != "" {
+		return nil, nil, fmt.Errorf("%s: imports_semantics %q is not dependency truth; declaration membership requires explicit tool imports with SCIP", path, tf.Semantics)
 	}
 	truth := map[[2]string]bool{}
 	pkgOnly := map[[2]string]bool{}
-	for _, e := range tf.Imports {
+	var entries []importOracleEntry
+	if tf.Imports != nil {
+		entries = *tf.Imports
+	}
+	for _, e := range entries {
 		if e.ToPath != "" && e.Path != e.ToPath && inScope[e.Path] && inScope[e.ToPath] {
 			k := [2]string{e.Path, e.ToPath}
 			if e.SamePackage && !truth[k] {

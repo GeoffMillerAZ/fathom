@@ -34,6 +34,9 @@ const (
 	goPassStateKey       = typedPassStatePrefix + "go"
 	cuePassStateKey      = typedPassStatePrefix + "cue"
 	passStateOK          = "ok"
+	// A pre-policy completed CUE pass must not bypass the explicit registry
+	// boundary on unchanged files. This is independent of extractor epochs.
+	cueTypedEdgeEpoch = "1"
 	// passStatePartial records a pass that ran to completion with packages
 	// that failed to load (or every package excluded by scope): deterministic
 	// outcomes of the same inputs, so it gates like a clean pass — the next
@@ -90,7 +93,7 @@ func (p *Pipeline) passStateOK(ctx context.Context, service, key string) bool {
 }
 
 // passStateEpoch is the epoch a pass's state row carries: TypedEdgeEpoch
-// for the typed Go pass, "" for a pass whose output has no epoch of its own.
+// for the typed Go pass, cueTypedEdgeEpoch for the native CUE policy, or "".
 //
 // EW-63 (K26 condition d): the per-package fingerprints carry the
 // TypedEdgeEpoch salt, but the gate above them skipped the whole pass when
@@ -102,6 +105,9 @@ func (p *Pipeline) passStateOK(ctx context.Context, service, key string) bool {
 func passStateEpoch(key string) string {
 	if key == goPassStateKey {
 		return TypedEdgeEpoch
+	}
+	if key == cuePassStateKey {
+		return cueTypedEdgeEpoch
 	}
 	return ""
 }
@@ -187,7 +193,8 @@ func (p *Pipeline) commitPartialPassStateUnder(ctx context.Context, service, key
 // they were named here a Go-only change (which skips both gated passes)
 // purged their edges until a doc or route candidate next changed.
 func isNamespacedTypedKey(id string) bool {
-	return strings.HasPrefix(id, cuePackageKeyPrefix) ||
+	return strings.HasPrefix(id, "scip:") || strings.HasPrefix(id, "scip-source:") ||
+		strings.HasPrefix(id, cuePackageKeyPrefix) ||
 		strings.HasPrefix(id, fileResolvedKeyPrefix) ||
 		strings.HasPrefix(id, typedPassStatePrefix) ||
 		id == docXrefPackageKey || id == routeRefPackageKey || id == policyRefPackageKey

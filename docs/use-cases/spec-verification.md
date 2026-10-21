@@ -137,6 +137,14 @@ Writes a deterministic `STATUS.cue` with each task's verdict and cited evidence 
 
 ## The `fathom verify` gate (done-means-proven)
 
+Default daemon `verify` and `plans status` close a bounded current-source
+window before publishing current reference verdicts. Their JSON labels that
+completed observation `current_worktree_freshness: observed_window`. Console
+plan sections are cached without that lifecycle and explicitly label freshness
+`unknown`; their plan counts, criteria and provenance retain verb parity.
+When the window refuses, JSON mode returns one operational refusal with exit 2,
+the reason and no plan rows. Re-ingest and start a new window to recover.
+
 `fathom verify` reads plan files in `docs/plans/*.md` and checks every `[x]`-marked checkbox against the index. A `[x]` line is a *claim* — the task is declared done. The gate verifies each claim has code evidence; unclaimed (`[ ]`) lines are skipped.
 
 **Checkbox semantics:** Annotate a line with `{symbol: Foo}` to name what should exist; add `[US-042]` for spec coverage; add `{reachable_from: Bar}` to require a test edge. An unannotated `[x]` line verifies as `no-contract` (honest, not a false pass).
@@ -246,4 +254,4 @@ bin/fathom plans restore docs/plans/archive/my-plan.md --root .
 
 ## Maintained
 
-This doc covers: `verify_plan`, `fathom gen-status-cue`, `fathom verify` (`--quiet`, `--quiet-pass`, `--strict`, `--require-all`, `--format sarif`; the reachability facts; the lexical oracle `{oracle: lexical, path, pattern}` and cross-plan `needs: <sibling>.md#<id>`), `fathom plans status` (incl. the measured-stale column), `fathom plans next` (`--eligible-only`, `--free`), `fathom plans context`, `fathom plans lease`/`leases`, `fathom plans archive`, `fathom plans restore`, `fathom thread` (`brief`/`note`/`point`/`list`/`close`/`promote`/`handoff`). Update it when these change.
+This doc covers: `verify_plan` (including the bounded current-source window), `fathom gen-status-cue`, `fathom verify` (`--quiet`, `--quiet-pass`, `--strict`, `--require-all`, `--format sarif`; the reachability facts; the lexical oracle `{oracle: lexical, path, pattern}` and cross-plan `needs: <sibling>.md#<id>`), `fathom plans status` (incl. the measured-stale column), `fathom plans next` (`--eligible-only`, `--free`), `fathom plans context`, `fathom plans lease`/`leases`, `fathom plans archive`, `fathom plans restore`, `fathom thread` (`brief`/`note`/`point`/`list`/`close`/`promote`/`handoff`). Update it when these change.

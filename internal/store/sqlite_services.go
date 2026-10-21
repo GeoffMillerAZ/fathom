@@ -17,6 +17,9 @@ import (
 
 // PurgeSource removes all observations for the given (serviceID, sourceRef) pair.
 func (s *SQLiteStore) PurgeSource(ctx context.Context, serviceID, sourceRef string) error {
+	if err := s.InvalidateSourceRefProjection(ctx, serviceID); err != nil {
+		return fmt.Errorf("PurgeSource refs: %w", err)
+	}
 	_, err := s.db.ExecContext(ctx, `
 DELETE FROM observations WHERE service_id = ? AND source_ref = ?
 `, serviceID, sourceRef)
@@ -40,6 +43,8 @@ func (s *SQLiteStore) PurgeService(ctx context.Context, serviceID string) error 
 		// Derived from the content above (RT-76, RT-77): rebuilt by the
 		// next ingest or backfill.
 		`DELETE FROM file_stats WHERE service_id = ?`,
+		`DELETE FROM source_ref_facts WHERE service_id = ?`,
+		`DELETE FROM source_ref_seals WHERE service_id = ?`,
 		`DELETE FROM service_summary WHERE service_id = ?`,
 		`DELETE FROM observation_calls WHERE service_id = ?`,
 		// RT-89: extracted routes and client calls; the next ingest
@@ -75,6 +80,8 @@ var serviceIDTables = []string{
 	"typed_edge_fingerprints",
 	"ingest_state",
 	"file_stats",
+	"source_ref_facts",
+	"source_ref_seals",
 	"service_summary",
 	"observation_calls",
 	"observation_calls_state",

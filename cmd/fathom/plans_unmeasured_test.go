@@ -32,6 +32,7 @@ func unmeasuredDaemon(t *testing.T) *httptest.Server {
 			return
 		}
 		var req struct {
+			Method string `json:"method"`
 			Params struct {
 				Arguments struct {
 					PlanMarkdown string `json:"plan_markdown"`
@@ -40,6 +41,10 @@ func unmeasuredDaemon(t *testing.T) *httptest.Server {
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			t.Error(err)
+			return
+		}
+		if req.Method == "tools/list" {
+			writeOldVerifyPlanToolsList(w)
 			return
 		}
 		md := req.Params.Arguments.PlanMarkdown

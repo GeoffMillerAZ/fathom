@@ -32,6 +32,10 @@ func verdictDaemon(t *testing.T, verdicts []fakeVerdict) string {
 			return
 		}
 		body, _ := io.ReadAll(r.Body)
+		if rpcMethodIs(body, "tools/list") {
+			writeOldVerifyPlanToolsList(w)
+			return
+		}
 		if strings.Contains(string(body), `"list_services"`) {
 			inner, _ := json.Marshal(map[string]any{"services": []map[string]any{{"service": "svc", "symbol_count": 5}}})
 			env, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": 1, "result": map[string]any{"content": []map[string]string{{"type": "text", "text": string(inner)}}}})

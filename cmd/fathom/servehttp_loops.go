@@ -60,9 +60,13 @@ func (r *serveRun) startLoops() {
 	// pre-RT-76 store holds, one at a time under the ingest slot.
 	//fathom:tenancy-allow bg-ctx daemon lifetime context in serve-http startup, cancelled by the drain; not a request
 	backfillCtx, stopBackfill := context.WithCancel(context.Background())
-	r.deferred(stopBackfill)
+	backfillDone := make(chan struct{})
+	r.deferred(func() { stopBackfill(); <-backfillDone })
 	//fathom:tenancy-allow bare-go daemon lifetime goroutine started once at serve-http startup and stopped by the drain
-	go runDerivedBackfill(backfillCtx, c, func(m string) { flog.Info(m) })
+	go func() {
+		defer close(backfillDone)
+		runDerivedBackfill(backfillCtx, c, func(m string) { flog.Info(m) })
+	}()
 	// RT-128 (§12.2): the managed daemon truncates the WAL after 5 idle
 	// minutes, at most hourly.
 	if cp, ok := c.Store().(interface{ Checkpoint(context.Context) error }); ok && managed {

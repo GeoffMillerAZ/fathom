@@ -73,14 +73,19 @@ type TraceRequirement struct {
 }
 
 var decisionRefRe = regexp.MustCompile(`\b(ADR-\d+|I\d+)\b`)
+var projectDecisionRefRe = regexp.MustCompile(`\b(ADR(?:-| )?\d+|I\d+)\b`)
 
 // citedDecisions extracts the ADR and invariant ids a row's text cites,
 // sorted and de-duplicated.
 func citedDecisions(texts ...string) []string {
+	return citedDecisionRefs(decisionRefRe, texts...)
+}
+
+func citedDecisionRefs(pattern *regexp.Regexp, texts ...string) []string {
 	seen := map[string]bool{}
 	var out []string
 	for _, t := range texts {
-		for _, m := range decisionRefRe.FindAllString(t, -1) {
+		for _, m := range pattern.FindAllString(t, -1) {
 			if !seen[m] {
 				seen[m] = true
 				out = append(out, m)
@@ -112,6 +117,14 @@ func taskAnchor(t verify.Task) string {
 // gates by itself, so its own requirement never inherits the row's proof.
 // Sorted by (source, requirement id) for determinism.
 func traceRequirements(sources []TraceSource) []TraceRequirement {
+	return traceRequirementsWithDecisions(sources, false)
+}
+
+func traceRequirementsWithDecisions(sources []TraceSource, projectDecisions bool) []TraceRequirement {
+	pattern := decisionRefRe
+	if projectDecisions {
+		pattern = projectDecisionRefRe
+	}
 	var out []TraceRequirement
 	for _, src := range sources {
 		kind := ReqPlanRow
@@ -130,7 +143,7 @@ func traceRequirements(sources []TraceSource) []TraceRequirement {
 				TaskID:      t.ID,
 				Anchor:      taskAnchor(t),
 				CertifiedBy: append([]string(nil), t.Expect.CertifiedBy...),
-				Decisions:   citedDecisions(t.Title, t.Reason),
+				Decisions:   citedDecisionRefs(pattern, t.Title, t.Reason),
 				Claimed:     t.Claimed,
 				Skipped:     t.Skipped,
 			}
@@ -182,6 +195,9 @@ type TraceInput struct {
 	// invariant ids) — a cited id absent from it reads "unproven".
 	// Nil means "not resolved": cited ids read "cited" unchecked.
 	Decisions map[string]bool
+	// ProjectDecisionReferences opts into exact ADR0001 / ADR 0001 / ADR-001
+	// citation forms. False preserves the legacy grammar and pack bytes.
+	ProjectDecisionReferences bool
 }
 
 // TraceCell is one cell: its live state and the reading that proved it.
@@ -240,7 +256,7 @@ func BuildTraceMatrix(in TraceInput) TraceMatrix {
 	})
 
 	m := TraceMatrix{Commit: in.Commit}
-	for _, req := range traceRequirements(in.Sources) {
+	for _, req := range traceRequirementsWithDecisions(in.Sources, in.ProjectDecisionReferences) {
 		tv, haveVerdict := verdicts[req.Source+"\x00"+req.TaskID]
 		row := TraceRow{Requirement: req}
 

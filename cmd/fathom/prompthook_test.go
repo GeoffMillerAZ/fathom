@@ -59,13 +59,29 @@ func fakePromptDaemon(t *testing.T, obligationsByFile map[string]any, symbolFile
 	}))
 }
 
+type promptDaemonTrace struct {
+	tool, file, event string
+	at                time.Duration
+}
+
+type promptDaemonTraceSink struct {
+	started time.Time
+	events  chan<- promptDaemonTrace
+}
+
 // fakeSlowPromptDaemon is fakePromptDaemon plus a per-file artificial
 // delay on the "obligations" call — lets a test make ONE candidate file
 // resolve fast and another hang well past a shortened deadline, so the
 // deadline (not luck) is what bounds the hook's total wall-clock time.
-func fakeSlowPromptDaemon(t *testing.T, obligationsByFile map[string]any, delayByFile map[string]time.Duration) *httptest.Server {
+func fakeSlowPromptDaemon(t *testing.T, obligationsByFile map[string]any, delayByFile map[string]time.Duration, trace ...promptDaemonTraceSink) *httptest.Server {
 	t.Helper()
+	var sink chan<- promptDaemonTrace
+	started := time.Now()
+	if len(trace) > 0 {
+		sink, started = trace[0].events, trace[0].started
+	}
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedAt := time.Since(started)
 		var req struct {
 			Params struct {
 				Name      string `json:"name"`
@@ -76,6 +92,13 @@ func fakeSlowPromptDaemon(t *testing.T, obligationsByFile map[string]any, delayB
 			} `json:"params"`
 		}
 		_ = json.NewDecoder(r.Body).Decode(&req)
+		record := func(event string, at time.Duration) {
+			select {
+			case sink <- promptDaemonTrace{req.Params.Name, req.Params.Arguments.File, event, at}:
+			default: // Bounded, nonblocking diagnostic; never delay the fake response.
+			}
+		}
+		record("received", receivedAt)
 		if req.Params.Name == "obligations" {
 			if d, ok := delayByFile[req.Params.Arguments.File]; ok {
 				// A zero delay never answers on its own: it holds until the
@@ -88,6 +111,7 @@ func fakeSlowPromptDaemon(t *testing.T, obligationsByFile map[string]any, delayB
 				select {
 				case <-answer:
 				case <-r.Context().Done(): // the client gave up (its own Timeout fired): stop holding the connection open
+					record("cancelled", time.Since(started))
 					return
 				}
 			}
@@ -112,6 +136,7 @@ func fakeSlowPromptDaemon(t *testing.T, obligationsByFile map[string]any, delayB
 			}},
 		}
 		_ = json.NewEncoder(w).Encode(resp)
+		record("encode-returned", time.Since(started))
 	}))
 }
 
@@ -125,11 +150,13 @@ func fakeSlowPromptDaemon(t *testing.T, obligationsByFile map[string]any, delayB
 // (bounded by the shortened deadline, not the daemon's artificial delay),
 // serve the file that DID resolve, and say so resolved partially.
 func TestPromptHook_SlowDaemonReturnsWithinBudget(t *testing.T) {
+	testStarted := time.Now()
 	orig := promptHookDeadlineBudget
 	promptHookDeadlineBudget = 300 * time.Millisecond
 	defer func() { promptHookDeadlineBudget = orig }()
 
 	dir := touchTree(t, t.TempDir(), "internal/store/backend.go", "internal/mcp/tools.go") // EW-21: a prompt's path must exist to count
+	trace := make(chan promptDaemonTrace, 32)
 	srv := fakeSlowPromptDaemon(t, map[string]any{
 		"internal/store/backend.go": map[string]any{
 			"service": strings.ToLower(filepath.Base(dir)),
@@ -148,14 +175,35 @@ func TestPromptHook_SlowDaemonReturnsWithinBudget(t *testing.T) {
 		},
 	}, map[string]time.Duration{
 		"internal/mcp/tools.go": 0, // never answers: the 300ms deadline must end it, not block the hook
-	})
+	}, promptDaemonTraceSink{testStarted, trace})
 	defer srv.Close()
 
 	promptHookStdin(t, dir, "please update internal/store/backend.go and internal/mcp/tools.go together")
 
 	var out, errBuf bytes.Buffer
+	hookDone := make(chan struct{})
+	t.Cleanup(func() {
+		if !t.Failed() {
+			return
+		}
+		for {
+			select {
+			case event := <-trace:
+				t.Logf("fake daemon tool=%q file=%q event=%s at=%s", event.tool, event.file, event.event, event.at)
+			default:
+				select {
+				case <-hookDone:
+					t.Logf("hook output=%q stderr=%q", out.String(), errBuf.String())
+				default:
+					t.Log("hook still running; output buffers unavailable")
+				}
+				return
+			}
+		}
+	})
 	var code int
 	returnsUnaided(t, "prompt-hook against a daemon that never answers for one file", func() {
+		defer close(hookDone)
 		code = runWithStdin([]string{"prompt-hook", "--url=" + srv.URL}, nil, &out, &errBuf)
 	})
 

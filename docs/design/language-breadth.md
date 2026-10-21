@@ -1365,6 +1365,38 @@ dialect does not read and stays in scope when the subject holds it), so the benc
 edges ingest stores. EMF and PutMetricData emitters (Stage B) and a telemetry fetch (ADR-058)
 are not read.
 
+### Unity assembly declarations and compiler receipts
+
+The `unity-asmdef` doc dialect exposes `.asmdef` assembly/reference declarations
+and the explicit `noEngineReferences`/`overrideReferences` settings. Reference
+names, including unresolved GUID strings, stay source-tier facts: no `Calls`,
+file-resolved dependency edges, or typed C# call edges are emitted. Its support
+row stays unmeasured until an appropriate public corpus reading exists.
+
+`indexbench lang-unity-asmdef -project PATH -oracle RECEIPT.json` compares these
+facts against an independently retained Unity Editor CompilationPipeline receipt.
+It binds definitions and source files by SHA256, compares named references against
+both available and compiler-referenced assemblies, and checks nearest-asmdef
+source ownership against `GetAssemblyNameFromScriptPath`. Missing/changed files,
+false references and wrong owners refuse. GUID resolution and asmref ownership
+are explicitly unjudged; platform/define selection is observed only for the
+receipt's named Editor/Player configuration, never inferred for other targets.
+
+For an assembly declaring no engine references, its compiler check refuses
+`UnityEngine*` and exact `UnityEditor`/`UnityEditor.CoreModule` references. Other
+Unity-prefixed available references are explicit notices: an Editor build SDK
+can remain available even with `overrideReferences=true`. That setting governs
+project/package precompiled plugins, not every injected Editor SDK. Separately,
+when loaded emitted-assembly metadata is observed, the instrument checks for no
+Unity-prefixed emitted dependency; missing metadata stays unjudged. Available
+compiler references, emitted assembly dependencies and typed/runtime calls are
+different evidence. Neither an available SDK name nor `noEngineReferences` alone
+proves an actual SDK dependency or a violation of Unity's property. See the [Unity 6.3 assembly properties](https://docs.unity3d.com/6000.3/Documentation/Manual/class-AssemblyDefinitionImporter.html).
+A successful receipt comparison is neither typed reachability nor a runtime,
+scene-call or full language-grade claim. The command opens no store, launches no
+Editor, and calls no model or daemon; exit 0 requires a complete passing reading,
+1 names counterexamples or unjudged facts, and 2 is operational/schema failure.
+
 ## 5. Classification
 
 `connector.classify` consults the manifests in this order (LB-F9): exact basename, path
@@ -2136,3 +2168,19 @@ The queue's `tier` field is the source of tier membership (`schema/langqueue`, `
 The loop: after each wave, re-read the board, re-plan from the gaps (D3), and stop an item at excellent or at a written ceiling (§18.1).
 
 The runtime-topology frame (proxy route to Service to Deployment to image to Dockerfile, IaC resource to the policy that governs it) is named only as a pointer to futures F61. It is not a goal of this program.
+
+### Native import-family calibration boundary (2026-10-20)
+
+`lang-oracle -imports-from tool` selects exactly one neutral imports array alongside an actual SCIP dependency/typed oracle. A `declaration-membership/v1` row states namespace declaration contribution, not actual-use file dependency truth; it cannot grade the dependency fallback. Missing, malformed, unsupported, duplicate or unscoreable selected families refuse rather than silently changing oracle. The default remains SCIP imports. An explicit `-scip-defs` requires manifest `oracle_kinds.scip` with scoreable definition kinds and refuses before subject/output work otherwise. No fixture regrades a language.
+
+**Decision models.** None applies. Source spans, symbol identity, import-family selection, hashes and compiler diagnostics are deterministic; provider none, no model egress.
+
+### C# descriptive test candidates and source-only asset provenance
+
+C# static test reach uses recognized NUnit/Unity attribute heads, not a method-name prefix. Short attributes are syntax candidates, not resolved framework bindings; lifecycle hooks, strings, unrelated qualifiers and incomplete headers do not prove candidate identity. Runtime remains a separate attested whole-cohort fact. The existing non-Go repository conventions remain unchanged outside the C# branch.
+
+Repeated declarations of one canonical key expose source parts and a deterministic primary location, not a compiler-merged type claim. Stored C# edge evidence is labelled by its actual SCIP/file-resolved/syntax source, not a support grade.
+
+Explicit Unity asset references form a partial source/native provenance family separate from code calls or execution. Source-bound context, exact persistent GUID/fileID, active generation and local root validation are required; current qualification still needs a real producer cohort. No SQLite family cache, watcher, Editor runner or model path is introduced.
+
+**Decision models.** None applies. Identity, source locations, hashes and classified source facts are deterministic; provider none, no model egress.

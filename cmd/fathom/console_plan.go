@@ -168,7 +168,7 @@ func buildPlanPage(cr *consoleRequest) (consoleOut, error) {
 	}
 	sections := map[string]any{verbs[2]: burnup}
 	if rows, ok := planRowsAs(pc, plan); ok {
-		sections[verbs[0]] = []planRollup{console.RollupPlan(plan.Rel, plan.Rows, plan.DaemonStale)}
+		sections[verbs[0]] = []planStatusJSON{{SourceScope: "current_worktree", CurrentWorktreeFreshness: "unknown", PlanRollup: console.RollupPlan(plan.Rel, plan.Rows, plan.DaemonStale)}}
 		leases, _ := readLeases(sr.Root)
 		frontier := frontierForPlan(rows, leases, cr.now)
 		if frontier == nil {

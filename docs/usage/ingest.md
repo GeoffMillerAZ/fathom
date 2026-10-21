@@ -13,7 +13,7 @@ fathom ingest --service <id> --path <dir> --dry-run [--stats] [--json]
 | `--path` | `.` | Source root directory (local mode) |
 | `--store` | `<repo>/workspace/db/fathom.sqlite` (see §CLI subcommands) | store path (.sqlite/.db) |
 | `--mode` | `local` | Connector mode: `local` or `faux` |
-| `--scip` | auto-detected | SCIP index file to import as typed edges (ADR-041 decision 5, SU-9; repeatable). Unset: auto-detects `index.scip` at the service root and every `.fathom/scip/*.scip` |
+| `--scip` | auto-detected | SCIP index file to import as typed edges (ADR-041 decision 5, SU-9; repeatable). Unset: auto-detects root `index.scip` and selected state-directory `scip/*.scip` (with legacy `.fathom/scip/` fallback) |
 | `--dry-run` | off | Discover and stat only (RT-70): report files, bytes, files over the 2 MiB read cap, the default-ignored and always-skipped directories, and the five largest files — without reading a file or opening the store. `--json` emits `{service, path, dry_run, files, bytes, oversize_files, oversize_bytes, read_cap_bytes, default_ignored_dirs, skipped_dirs, ignored_dirs, stat_failed, largest: [{path, size}]}`; `stat_failed > 0` makes `bytes` a lower bound |
 | `--stats` | off | With `--dry-run`: the discovery statistics (what `--dry-run` prints) |
 | `--respect-gitignore` | off | With `--dry-run`: discover a git work tree through `git ls-files -co --exclude-standard`, as `[connector] respect_gitignore = true` would (RT-68); `--json` adds `git` and `gitignored`. Run with and without it to measure the delta (RT-M11) |
@@ -101,7 +101,8 @@ fathom never runs or vendors a per-language type-checker itself: produce the ind
 separately (`scip-typescript index`, `scip-python index`, …, per `docs/languages.md`'s
 tracked delegate order) and either name it with `--scip PATH` (repeatable — one ingest
 can import several indexes) or drop it at `index.scip` in the service root / anywhere
-under `.fathom/scip/*.scip` for auto-detection. A reference occurrence resolves to
+under the configured state directory's `scip/*.scip` (with legacy `.fathom/scip/`
+fallback) for auto-detection. A reference occurrence resolves to
 `core.EdgeDirect` when its symbol is defined somewhere in the same index, or
 `core.EdgeUnresolved` when it names something outside the index (never silently
 dropped). The summary line names the producer fathom read from the index's own
@@ -109,6 +110,14 @@ metadata, e.g. `typed_edges: 118 edge(s) (94 direct / 24 unresolved) via scip-ty
 0.3.16 [index.scip]` — `fathom capabilities --json`'s `typed_edge_producers` field names,
 per language, which mechanism fathom's own code currently provides (`native` /
 `scip:<tool>` / `file` / `syntax`).
+
+`scip-dotnet` requires `INDEX.scip.receipt.json`, binding the real producer,
+source inventory, generated project/configuration and reference assemblies.
+Other producers opt in with a sidecar. A missing, stale, mixed or incomplete
+source receipt fails import/refresh and clears only that index's typed rows
+and served graph memo, even after syntax updated. It is a freshness declaration,
+not execution proof. See the [contract](../guides/scip-source-receipts.md) and
+[upgrade requirement](../upgrades/unreleased-source-bound-scip.md).
 
 Each definition is mapped to fathom's own symbol space by its POSITION — the same
 service's already-extracted symbol table (the native or file-resolved pass's output for

@@ -578,6 +578,16 @@
         "description": "Service / repo identifier",
         "type": "string"
       },
+      "source_scope": {
+        "enum": [
+          "current_worktree",
+          "ingest_generation"
+        ],
+        "type": "string"
+      },
+      "source_window": {
+        "type": "object"
+      },
       "tasks": {
         "description": "Plan tasks with acceptance contracts",
         "items": {

@@ -16,6 +16,21 @@ fathom plans restore <plan> [--root DIR]                   # bring it back
 ```
 
 State is always derived from the index by the verify engine, never asserted.
+Daemon `plans status` in its default current-worktree scope uses one bounded
+source observation window across the selected plans and their follow-up
+`verify_plan` calls. JSON reports `current_worktree_freshness: observed_window`
+only after its closing source hash succeeds. This is an observation of that
+request window, not a claim that the tree remains unchanged afterward.
+The explicit `--source-scope ingest_generation` remains generation-only with
+current freshness Unknown. A daemon without the advertised window protocol
+keeps the existing live scan and its partial/lower-bound disclosures.
+For an acceptance run with excluded files, pass
+`--source-window-exclusions reviewed.json` containing the sorted exact
+`[{"path":"…","reason":"oversize"}]` manifest; without that manifest the
+window discloses `exclusion_review: unsupplied` and is a narrower observation.
+An external 15-plan plus control-RPC driver can use the same public
+`verify_plan` begin/advance, pending-report, close/result lifecycle to hold
+the token through its four controls before it publishes verdicts.
 With `--service` and no `--plan`, plans are discovered in the service's
 registered root and their lexical oracles and self-skip history are read from
 that root too. `status --json` names the measurement rows among `proven` and

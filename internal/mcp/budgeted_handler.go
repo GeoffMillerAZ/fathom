@@ -303,10 +303,19 @@ func trimLargestMapArray(result any, byteBudget int) (map[string]any, bool) {
 	return out, true
 }
 
+// jsonInvalidUTF8Len follows the selected JSON implementation: the legacy encoder
+// writes six bytes (\ufffd), while jsonv2's v1-compatible surface writes the
+// three-byte UTF-8 replacement rune. Calibrate this one encoding choice once,
+// rather than pinning the sizer to a Go release or allocating for each leaf.
+var jsonInvalidUTF8Len = func() int {
+	b, _ := json.Marshal("\xff") // a string always marshals; exclude its quotes
+	return len(b) - 2
+}()
+
 // jsonStringLen is the length encoding/json gives s (HTML-escaped, as
 // json.Marshal does): quotes, two-byte escapes for \\ " \b \f \n \r
 // \t, six-byte \u escapes for other controls, < > &, U+2028/U+2029 and
-// each invalid UTF-8 byte (\ufffd).
+// each invalid UTF-8 byte (the encoder's replacement-rune representation).
 func jsonStringLen(s string) int {
 	n := 2
 	for i := 0; i < len(s); {
@@ -326,7 +335,7 @@ func jsonStringLen(s string) int {
 		c, size := utf8.DecodeRuneInString(s[i:])
 		switch {
 		case c == utf8.RuneError && size == 1:
-			n += 6
+			n += jsonInvalidUTF8Len
 		case c == '\u2028' || c == '\u2029':
 			n += 6
 		default:

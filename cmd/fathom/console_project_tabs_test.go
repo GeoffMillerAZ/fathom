@@ -83,6 +83,9 @@ func assertSectionsEqualVerbs(t *testing.T, env consolePageJSONWire, want int) {
 			t.Fatal(err)
 		}
 		fromVerb := runVerbAsShownJSON(t, verb)
+		if err := reconcilePlanObservation(verb, fromVerb, fromPage); err != nil {
+			t.Fatal(err)
+		}
 		dropVolatileVerbFields(verb, fromVerb, fromPage)
 		if !reflect.DeepEqual(fromVerb, fromPage) {
 			a, _ := json.MarshalIndent(fromVerb, "", " ")

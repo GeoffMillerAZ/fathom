@@ -169,6 +169,7 @@ type daemonLifetime struct {
 	// process. Closed by stop, once.
 	stopped  chan struct{}
 	stopOnce sync.Once
+	exitOnce sync.Once
 }
 
 // stop ends run's ticker; idempotent.
@@ -228,12 +229,14 @@ func (l *daemonLifetime) shutdown(reason string) { l.shutdownWith(reason, 0) }
 
 // shutdownWith is shutdown with an exit code (128+signo for a signal).
 func (l *daemonLifetime) shutdownWith(reason string, code int) {
-	l.logf(fmt.Sprintf("serve-http: unmanaged daemon exiting: %s (§10.1; --idle-exit/--ttl/--exit-with-parent, or --managed)", reason))
-	if l.onExit != nil {
-		l.onExit(reason, code)
-	}
-	l.closeRecord()
-	l.exit(code)
+	l.exitOnce.Do(func() {
+		l.logf(fmt.Sprintf("serve-http: unmanaged daemon exiting: %s (§10.1; --idle-exit/--ttl/--exit-with-parent, or --managed)", reason))
+		if l.onExit != nil {
+			l.onExit(reason, code)
+		}
+		l.closeRecord()
+		l.exit(code)
+	})
 }
 
 // closeRecord removes the record; no heartbeat writes it back after.

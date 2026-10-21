@@ -37,6 +37,10 @@ func statuszServer(t *testing.T, commit string, dirty bool, indexed string) *htt
 			return
 		}
 		body, _ := io_ReadAll(r)
+		if rpcMethodIs([]byte(body), "tools/list") {
+			writeOldVerifyPlanToolsList(w)
+			return
+		}
 		if strings.Contains(body, `"list_services"`) {
 			writeRPCText(w, `{"services":[{"service":"svc","symbol_count":42}]}`)
 			return
