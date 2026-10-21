@@ -3,6 +3,8 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -68,6 +70,74 @@ func TestSourceWindowPendingCannotPublishPassBeforeClose(t *testing.T) {
 	encoded, _ := json.Marshal(result)
 	if err := json.Unmarshal(encoded, &final); err != nil || final.SourceWindowState != "closed" || len(final.Tasks) != 1 || final.Tasks[0].Status != "pass" {
 		t.Fatalf("final=%s err=%v", encoded, err)
+	}
+}
+
+func TestSourceWindowPendingAndFinalFitLargeFixedEnvelope(t *testing.T) {
+	b := windowBackendFixture{}
+	s := NewServer(b)
+	begin, e := windowOp(t, s, b, "svc", "begin", "")
+	if e != nil {
+		t.Fatal(e)
+	}
+	token := begin["source_window_token"].(string)
+	if _, e := windowOp(t, s, b, "svc", "advance", token); e != nil {
+		t.Fatal(e)
+	}
+	w, err := s.sourceWindowGet("svc", token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tasks := make([]any, 31)
+	for i := range tasks {
+		tasks[i] = map[string]any{"id": fmt.Sprintf("T-%02d", i+1), "title": "synthetic row", "status": "pass", "criteria": []any{}, "evidence": strings.Repeat("e", 560)}
+	}
+	pending, err := s.sourceWindowPending(context.Background(), w, map[string]any{
+		"service": "svc", "summary": map[string]any{"total": 31, "pass": 31, "fail": 0, "unknown": 0},
+		"metadata": strings.Repeat("m", 6200), "tasks": tasks,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	pendingTasks := pending["tasks"].([]map[string]any)
+	if len(pendingTasks) == 0 || len(pendingTasks) >= len(tasks) {
+		t.Fatalf("pending task prefix = %d of %d", len(pendingTasks), len(tasks))
+	}
+	if summary := pending["summary"].(map[string]any); summary["total"] != len(pendingTasks) || summary["unknown"] != len(pendingTasks) || summary["pass"] != 0 {
+		t.Fatalf("pending summary must describe returned unknown rows: %v", summary)
+	}
+	for i, task := range pendingTasks {
+		if task["id"] != tasks[i].(map[string]any)["id"] || task["status"] != "unknown" {
+			t.Fatalf("pending task %d = %v", i, task)
+		}
+	}
+	if _, e := windowOp(t, s, b, "svc", "close", token); e != nil {
+		t.Fatal(e)
+	}
+	raw, _ := json.Marshal(map[string]any{"service": "svc", "source_window": map[string]string{"op": "result", "token": token, "report_id": pending["source_window_report_id"].(string)}})
+	result, rpcErr := s.sourceWindowOperation(context.Background(), b, raw)
+	if rpcErr != nil {
+		t.Fatal(rpcErr)
+	}
+	var final map[string]any
+	if err := json.Unmarshal(result.(json.RawMessage), &final); err != nil {
+		t.Fatal(err)
+	}
+	if summary := final["summary"].(map[string]any); summary["total"] != float64(31) || summary["pass"] != float64(31) {
+		t.Fatalf("final summary must describe the full plan: %v", summary)
+	}
+	if len(result.(json.RawMessage)) > defaultCharBudget-256 {
+		t.Fatalf("saved final report exceeds budget: %d", len(result.(json.RawMessage)))
+	}
+	finalTasks := final["tasks"].([]any)
+	if len(finalTasks) != len(pendingTasks) {
+		t.Fatalf("pending %d task IDs, final %d", len(pendingTasks), len(finalTasks))
+	}
+	for i, item := range finalTasks {
+		task := item.(map[string]any)
+		if task["id"] != pendingTasks[i]["id"] || task["status"] != "pass" {
+			t.Fatalf("final task %d = %v", i, task)
+		}
 	}
 }
 

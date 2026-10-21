@@ -311,23 +311,9 @@ func (s *Server) sourceWindowPending(ctx context.Context, w *serverSourceWindow,
 	if budget > 256 {
 		budget -= 256
 	}
-	final := budgetedResult(out, budget)
-	raw, err := json.Marshal(final)
+	_, raw, err := fitSourceWindowReport(out, budget)
 	if err != nil {
 		return nil, err
-	}
-	// A report can have two large arrays (task verdicts and projection
-	// details). Trim until the whole saved result fits, so the outer MCP
-	// budget cannot silently change its task IDs after the pending receipt.
-	for tries := 0; len(raw) > budget && tries < 8; tries++ {
-		final = budgetedResult(final, budget)
-		raw, err = json.Marshal(final)
-		if err != nil {
-			return nil, err
-		}
-	}
-	if len(raw) > budget {
-		return nil, fmt.Errorf("current source window: final report exceeds response budget")
 	}
 	var finalMap map[string]any
 	if err = json.Unmarshal(raw, &finalMap); err != nil {
