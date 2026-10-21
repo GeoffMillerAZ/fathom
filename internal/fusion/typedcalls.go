@@ -61,9 +61,10 @@
 // toolchain breakage, so the fallback rows are retained).
 //
 // Connector scope: EnrichTypedEdges takes the connector's allowed-file set
-// (the Discover result the pipeline already holds). packages.Load("./...")
-// knows nothing about .fathomignore / connector exclusions, so without the
-// filter an ignored directory's Go file whose package/func names collide
+// (the Discover result the pipeline already holds). Its load patterns select
+// only directories with allowed Go files; the post-load filter still guards
+// files and targets within those packages. Without that filter, an ignored
+// directory's Go file whose package/func names collide
 // with an indexed package would emit edges keyed onto LIVE symbols. A
 // package with zero allowed files is skipped entirely (and reconciled away
 // if previously stored); an edge is dropped when either its call-site file
@@ -471,9 +472,9 @@ func loadableByRootPattern(repoPath, rel string) bool {
 	return true
 }
 
-// EnrichTypedEdges loads every Go package of every Go module under repoPath
-// (pattern "./..." from each module root — the repository root's module,
-// then each nested module, EW-59; Tests:true so Test* callers are covered —
+// EnrichTypedEdges loads selected Go packages of each owned Go module under
+// repoPath (or "./..." per module when allowed is nil; Tests:true so Test*
+// callers are covered —
 // goextract's own model treats _test.go source as ordinary symbols),
 // resolves each call site, and persists typed core.Edge rows through
 // st.PutTypedEdges, one call per Go package (the cache/replace
@@ -593,7 +594,7 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 			return halted(hErr) // a load the governor cancelled is a halt, never a toolchain failure
 		}
 		if lErr == nil {
-			if m.nested() {
+			if allowed != nil || m.nested() {
 				lErr = zeroPackagesDisclosedIn(filepath.Join(repoPath, filepath.FromSlash(m.rel)), m.expected, len(pkgs))
 			} else {
 				lErr = zeroPackagesDisclosed(repoPath, allowed, len(pkgs))
@@ -673,8 +674,9 @@ func protectedTypedKey(id string, prefixes []string, rootFailed bool) bool {
 	return false
 }
 
-// loadTypedModule runs the one go/packages load of module m: pattern
-// "./..." with Dir at the module root, under env (TypedEdgeEnv: GOWORK=off,
+// loadTypedModule runs one go/packages load of module m: its selected package
+// directories, or "./..." for nil allowed, with Dir at the module root,
+// under env (TypedEdgeEnv: GOWORK=off,
 // the toolchain caps, GOTOOLCHAIN=local last). A failure names the module
 // directory.
 func loadTypedModule(gov *typedPassGovernor, repoPath string, m goModule, env []string) ([]*packages.Package, *token.FileSet, error) {
@@ -693,7 +695,14 @@ func loadTypedModule(gov *typedPassGovernor, repoPath string, m goModule, env []
 		Mode: packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles |
 			packages.NeedImports | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo,
 	}
-	pkgs, err := typedPackagesLoad(cfg, "./...")
+	patterns := m.patterns
+	if !m.scoped {
+		patterns = []string{"./..."}
+	}
+	if len(patterns) == 0 {
+		return nil, fset, nil
+	}
+	pkgs, err := typedPackagesLoad(cfg, patterns...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("fusion: typed-edge load %q: %w", dir, err)
 	}

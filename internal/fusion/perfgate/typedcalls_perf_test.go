@@ -1,9 +1,10 @@
 package perfgate_test
 
-// TestTypedEdges_PerformanceGate is CT-5 (docs/plans/callgraph-types.md):
+// TestTypedEdges_PerformanceGate is CT-5 (docs/plans/archive/callgraph-types.md):
 // measures the typed enrichment pass's first-run CPU cost against a TRUE
-// syntax-only ingest baseline — Config.DisableTypedEdges keeps the typed
-// hook out of the baseline run, so the two measurements are genuinely
+// syntax-only ingest baseline over the SAME connector-discovered files —
+// Config.DisableTypedEdges keeps the typed hook out of the baseline run,
+// so the two measurements are genuinely
 // independent (the first cut of this test ran the unconditional hook inside
 // the "baseline", measuring typed vs syntax+typed — near-vacuous; critic
 // F4).
@@ -32,24 +33,17 @@ package perfgate_test
 // before this test runs, so GOCACHE is usually warm by the time it does;
 // a standalone `go test ./internal/fusion/perfgate/ -run
 // TestTypedEdges_PerformanceGate` against a cold GOCACHE will see higher
-// CPU on both sides (compiling, not just go/packages metadata work) — the
-// RATIO is the portable number, not either side's absolute value.
+// compiler CPU that syntax parsing does not incur. Both the cache regime
+// and exact input cohort must accompany a reported ratio; a warm-cache
+// pass is not evidence about an unmeasured cold-cache run.
 //
-// Honesty note on the assert (see the plan's CT-5 section for the full
-// measurement table): the literal vision-10 criterion — typed ≤ 2× the
-// syntax-only baseline — FAILS on this repo at ~3.3× warm, under every
-// uncontaminated measurement (memory or SQLite store, race or not). The
-// floor is the go/packages driver itself: a FULLY CACHED run (zero
-// resolution work, pure `go list` metadata) already costs ≈2× the syntax
-// baseline, so no optimization of the resolution code can reach 2×; only a
-// custom driver could. Pending the plan owner's criterion decision, this
-// test asserts the kill criterion's SPIRIT — the order-of-magnitude blowup
-// guard (≤10×, which a whole-program-analysis regression would trip) — and
-// logs the exact ratio every run so the real number stays visible. It does
-// NOT assert 2×; that would be permanently red, and a fudged baseline to
-// make it green would be worse.
+// The archived CT-5 row records the owner's 2026-07-22 amendment to the
+// order-of-magnitude bound (≤10×). Its ~3.3× warm measurement used the
+// smaller July corpus, not today's repository. Keep the same 10× guard
+// and report today's exact ratio; neither the original 2× proposal nor
+// the historical subsecond result is asserted here.
 //
-// This exercises the WHOLE repo (hundreds of packages, Tests:true) so it is
+// This exercises the connector-visible repo (including Tests:true), so it is
 // deliberately excluded from -short runs — task test-unit stays fast; task
 // validate (which runs the full `go test`) still covers it.
 import (
@@ -57,6 +51,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -99,8 +94,30 @@ func TestTypedEdges_PerformanceGate(t *testing.T) {
 	// hash-gate cannot short-circuit any file.
 	ctx := context.Background()
 	baselineStore := store.NewMemoryStore()
-	pipe := fusion.New(connector.NewLocalConnector(), baselineStore, fusion.Config{Concurrency: 4, DisableTypedEdges: true})
+	conn := connector.NewLocalConnector()
+	pipe := fusion.New(conn, baselineStore, fusion.Config{Concurrency: 4, DisableTypedEdges: true})
 	svc := core.ServiceRef{ID: "fathom-selfhost", Path: repoRoot}
+	refs, err := conn.Discover(ctx, svc)
+	if err != nil {
+		t.Fatalf("discover comparison scope: %v", err)
+	}
+	// Match Pipeline.enrichTypedEdges: nil means the whole Go module,
+	// bypassing connector exclusions such as this repo's third_party/.
+	// Comparing that broader population with a scoped syntax baseline
+	// measures different work and makes the ratio invalid.
+	allowed := make(map[string]bool)
+	goFiles := 0
+	for _, ref := range refs {
+		if strings.HasSuffix(ref.Path, ".go") {
+			allowed[ref.Path] = true
+			goFiles++
+		} else if ref.Path == "go.work" {
+			allowed[ref.Path] = true
+		}
+	}
+	if goFiles == 0 {
+		t.Fatal("comparison scope contains no discovered Go files")
+	}
 
 	baselineCPUBefore, cpuOK := cpuUsage()
 	baselineStart := time.Now()
@@ -110,6 +127,9 @@ func TestTypedEdges_PerformanceGate(t *testing.T) {
 	baselineCPU := baselineCPUAfter - baselineCPUBefore
 	if err != nil {
 		t.Fatalf("baseline Ingest: %v", err)
+	}
+	if report.Discovered != len(refs) {
+		t.Fatalf("comparison scope changed: baseline discovered %d files, prepared scope has %d", report.Discovered, len(refs))
 	}
 	if report.TypedPackages != 0 || report.TypedPackagesFailed != 0 {
 		t.Fatalf("baseline ran the typed pass (TypedPackages=%d, failed=%d) despite DisableTypedEdges — the measurement below would be vacuous",
@@ -125,13 +145,26 @@ func TestTypedEdges_PerformanceGate(t *testing.T) {
 	typedStore := store.NewMemoryStore()
 	firstCPUBefore, _ := cpuUsage()
 	firstStart := time.Now()
-	firstReport, err := fusion.EnrichTypedEdges(ctx, typedStore, "fathom-selfhost", repoRoot, nil)
+	firstReport, err := fusion.EnrichTypedEdges(ctx, typedStore, "fathom-selfhost", repoRoot, allowed)
 	firstElapsed := time.Since(firstStart)
 	firstCPUAfter, _ := cpuUsage()
 	firstCPU := firstCPUAfter - firstCPUBefore
 	if err != nil {
 		t.Fatalf("first EnrichTypedEdges: %v", err)
 	}
+	if firstReport.PackagesFailed != 0 || firstReport.PackagesLoaded == 0 {
+		t.Fatalf("typed comparison must resolve selected roots: loaded=%d failed=%d", firstReport.PackagesLoaded, firstReport.PackagesFailed)
+	}
+	edges, err := typedStore.TypedEdges(ctx, svc.ID)
+	if err != nil || len(edges) == 0 {
+		t.Fatalf("typed comparison produced no usable edges: edges=%d err=%v", len(edges), err)
+	}
+	for _, edge := range edges {
+		if !allowed[edge.FromFile] {
+			t.Fatalf("typed comparison escaped syntax scope: %q", edge.FromFile)
+		}
+	}
+	t.Logf("CT-5 matched scope: %d discovered files, %d Go files, %d in-scope typed edges", len(refs), goFiles, len(edges))
 	t.Logf("CT-5 first run: %d packages (%d loaded, %d cached, %d failed), "+
 		"%d direct / %d iface-dispatch / %d unresolved edges, took wall=%s cpu=%s",
 		firstReport.PackagesTotal, firstReport.PackagesLoaded, firstReport.PackagesCached, firstReport.PackagesFailed,
@@ -140,7 +173,7 @@ func TestTypedEdges_PerformanceGate(t *testing.T) {
 	// Second (fully cached) run against the SAME store — nothing changed.
 	secondCPUBefore, _ := cpuUsage()
 	secondStart := time.Now()
-	secondReport, err := fusion.EnrichTypedEdges(ctx, typedStore, "fathom-selfhost", repoRoot, nil)
+	secondReport, err := fusion.EnrichTypedEdges(ctx, typedStore, "fathom-selfhost", repoRoot, allowed)
 	secondElapsed := time.Since(secondStart)
 	secondCPUAfter, _ := cpuUsage()
 	secondCPU := secondCPUAfter - secondCPUBefore
@@ -160,16 +193,13 @@ func TestTypedEdges_PerformanceGate(t *testing.T) {
 	if !cpuOK {
 		t.Logf("CT-5: getrusage unavailable on GOOS=%s — CPU-based blowup guard skipped; only wall-clock logged above", runtime.GOOS)
 	} else {
-		// The always-visible number: the literal vision-10 ratio, now on
-		// CPU time rather than wall-clock.
+		// The always-visible ratio uses CPU time rather than wall-clock.
 		cpuRatio := float64(firstCPU) / float64(max(baselineCPU, 1))
-		t.Logf("CT-5 CPU ratio: first-run typed load = %.2fx the true syntax-only baseline CPU (literal criterion: <=2x; see the plan's CT-5 section)", cpuRatio)
+		t.Logf("CT-5 CPU ratio: first-run typed load = %.2fx the true syntax-only baseline CPU (guard: <=10x; archived CT-5 owner amendment)", cpuRatio)
 
 		// Enforced bound: the order-of-magnitude blowup guard (see the
 		// test doc comment), now on CPU time so it can't flip on machine
-		// load. Measured ~3.3x warm; a whole-program-analysis regression
-		// (the scenario the vision-10 kill criterion exists for) would
-		// trip this by an order of magnitude.
+		// wall load. Compiler-cache state still matters as documented above.
 		if limit := 10 * baselineCPU; firstCPU > limit {
 			t.Errorf("typed-edge blowup guard FAILED: first-run typed CPU %s > 10x true baseline CPU %s (limit %s) [wall, informational only: first=%s baseline=%s]",
 				firstCPU, baselineCPU, limit, firstElapsed, baselineElapsed)

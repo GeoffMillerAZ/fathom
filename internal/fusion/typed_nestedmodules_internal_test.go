@@ -44,16 +44,16 @@ func TestTypedModulesFindsNestedModulesTheConnectorKeeps(t *testing.T) {
 	}
 	got, foreign := typedModules(dir, allowed)
 	want := []goModule{
-		{rel: ".", path: "example.com/r"},
-		{rel: "kits/a", path: "example.com/r/kits/a", expected: 2},
-		{rel: "kits/a/sub", path: "example.com/r/kits/a/sub", expected: 1},
-		{rel: "kits/v", path: "example.com/r/kits/v/v2", expected: 1},
+		{rel: ".", path: "example.com/r", expected: 1, patterns: []string{"./."}, scoped: true},
+		{rel: "kits/a", path: "example.com/r/kits/a", expected: 2, patterns: []string{"./.", "./inner"}, scoped: true},
+		{rel: "kits/a/sub", path: "example.com/r/kits/a/sub", expected: 1, patterns: []string{"./."}, scoped: true},
+		{rel: "kits/v", path: "example.com/r/kits/v/v2", expected: 1, patterns: []string{"./."}, scoped: true},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("typedModules(allowed) = %+v\nwant %+v", got, want)
 	}
 	// A module whose path is not the repository's own is disclosed, not loaded.
-	if wantF := []goModule{{rel: "oracles/o", path: "example.org/oracles/o", expected: 1, skip: skipNotOwn}}; !reflect.DeepEqual(foreign, wantF) {
+	if wantF := []goModule{{rel: "oracles/o", path: "example.org/oracles/o", expected: 1, patterns: []string{"./."}, scoped: true, skip: skipNotOwn}}; !reflect.DeepEqual(foreign, wantF) {
 		t.Errorf("typedModules(allowed) foreign = %+v\nwant %+v", foreign, wantF)
 	}
 

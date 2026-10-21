@@ -74,6 +74,11 @@ type goModule struct {
 	// module root would load: zeroPackagesDisclosed's honesty input for
 	// this module. 0 when the allowed set is nil (whole-module scope).
 	expected int
+	// patterns is the sorted package-directory set selected by allowed Go
+	// files, relative to this module. scoped distinguishes an empty selection
+	// from nil allowed (whole-module scope).
+	patterns []string
+	scoped   bool
 	// skip is why a nested module is not loaded (skipConfigured,
 	// skipNotOwn, skipVendored); "" for a module the pass loads.
 	skip string
@@ -160,6 +165,7 @@ func typedModulesSkipping(repoPath string, allowed map[string]bool, skipGlobs []
 		mods = append(mods, goModule{rel: ".", path: rootPath})
 	}
 	nested := map[string]int{}
+	selected := map[string]map[string]bool{} // module dir -> package dirs
 	if allowed == nil {
 		for _, rel := range walkNestedGoMods(repoPath) {
 			nested[rel] = 0
@@ -175,12 +181,18 @@ func typedModulesSkipping(repoPath string, allowed map[string]bool, skipGlobs []
 			}
 			return v
 		}
-		for rel := range allowed {
-			if !strings.HasSuffix(rel, ".go") {
+		for rel, ok := range allowed {
+			if !ok || !strings.HasSuffix(rel, ".go") {
 				continue
 			}
 			dir := path.Dir(rel)
 			if dir == "." {
+				if hasRoot {
+					if selected["."] == nil {
+						selected["."] = map[string]bool{}
+					}
+					selected["."]["."] = true
+				}
 				continue
 			}
 			segs := strings.Split(dir, "/")
@@ -194,11 +206,37 @@ func typedModulesSkipping(repoPath string, allowed map[string]bool, skipGlobs []
 			if skip {
 				continue
 			}
+			owner := "."
 			for i := len(segs); i > 0; i-- {
 				if d := strings.Join(segs[:i], "/"); modAt(d) {
 					nested[d]++
+					owner = d
 					break
 				}
+			}
+			if owner == "." && !hasRoot {
+				continue
+			}
+			pkgDir := dir
+			if owner != "." {
+				pkgDir = strings.TrimPrefix(dir, owner)
+				pkgDir = strings.TrimPrefix(pkgDir, "/")
+				if pkgDir == "" {
+					pkgDir = "."
+				}
+			}
+			if selected[owner] == nil {
+				selected[owner] = map[string]bool{}
+			}
+			selected[owner][pkgDir] = true
+		}
+	}
+	if allowed != nil && hasRoot {
+		mods[0].scoped = true
+		mods[0].patterns = sortedPackagePatterns(selected["."])
+		for rel, ok := range allowed {
+			if ok && strings.HasSuffix(rel, ".go") && loadableByRootPattern(repoPath, rel) {
+				mods[0].expected++
 			}
 		}
 	}
@@ -212,6 +250,10 @@ func typedModulesSkipping(repoPath string, allowed map[string]bool, skipGlobs []
 			rel:      rel,
 			path:     goModulePath(filepath.Join(repoPath, filepath.FromSlash(rel), "go.mod")),
 			expected: nested[rel],
+		}
+		if allowed != nil {
+			m.scoped = true
+			m.patterns = sortedPackagePatterns(selected[rel])
 		}
 		switch {
 		case skippedByConfig(rel, skipGlobs):
@@ -229,6 +271,15 @@ func typedModulesSkipping(repoPath string, allowed map[string]bool, skipGlobs []
 		mods = append(mods, m)
 	}
 	return mods, foreign
+}
+
+func sortedPackagePatterns(dirs map[string]bool) []string {
+	patterns := make([]string, 0, len(dirs))
+	for dir := range dirs {
+		patterns = append(patterns, "./"+dir)
+	}
+	sort.Strings(patterns)
+	return patterns
 }
 
 // goWorkUses is the set of repo-relative module directories a committed
