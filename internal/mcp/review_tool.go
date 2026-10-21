@@ -207,6 +207,17 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 		}
 
 		payload := v.Payload(persisted)
+		// Keep each final dimension's verdict visible when dispatch elides
+		// the detailed dimensions array to meet its default response budget.
+		status := make(map[string]reviewDimensionStatus, len(v.Dimensions))
+		for _, d := range v.Dimensions {
+			item := reviewDimensionStatus{Checked: d.Checked, Count: d.Count}
+			if !d.Checked {
+				item.UncheckedReason = d.Reason
+			}
+			status[d.Name] = item
+		}
+		payload["dimension_status"] = status
 		if asOf.active() {
 			payload["as_of"] = asOf.label()
 			payload["as_of_scope"] = "obligations and certifications are answered as of " + asOf.label() +
