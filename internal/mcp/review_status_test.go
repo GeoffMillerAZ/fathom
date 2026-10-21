@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
