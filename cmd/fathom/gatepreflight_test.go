@@ -5,7 +5,9 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os/exec"
@@ -14,6 +16,53 @@ import (
 	"testing"
 	"time"
 )
+
+func TestGatePreflightRootDiscoveryDeadline(t *testing.T) {
+	dir, _ := preflightRepo(t)
+	original := gatePreflightToplevel
+	gatePreflightToplevel = func(context.Context, string) ([]byte, error) {
+		return nil, context.DeadlineExceeded
+	}
+	t.Cleanup(func() { gatePreflightToplevel = original })
+
+	for _, verb := range []string{"commit", "push"} {
+		before := len(preflightRows(t))
+		line := gatePreflightLine(dir, "", "git "+verb, "deadline-session", "")
+		if !strings.Contains(line, "verify: not checked (deadline)") || strings.Contains(line, "no passing run") {
+			t.Errorf("%s line = %q", verb, line)
+		}
+		rows := preflightRows(t)
+		if len(rows) != before+1 || rows[before]["kind"] != "flagged" || rows[before]["verify"] != "not checked (deadline)" || rows[before]["refused"] != "0" {
+			t.Errorf("%s rows = %v", verb, rows)
+		}
+	}
+
+	// A Git failure outside a work tree cannot be attributed to a repo.
+	outside := t.TempDir()
+	writeRepoFile(t, outside, ".fathom/config.toml", "[hooks]\ngate_preflight = true\n")
+	gatePreflightToplevel = func(context.Context, string) ([]byte, error) { return nil, errors.New("not a git repository") }
+	before := len(preflightRows(t))
+	if line := gatePreflightLine(outside, "", "git commit", "deadline-session", ""); line != "" || len(preflightRows(t)) != before {
+		t.Errorf("outside repo line = %q, rows = %v", line, preflightRows(t))
+	}
+	gatePreflightToplevel = func(context.Context, string) ([]byte, error) { return nil, context.DeadlineExceeded }
+	if line := gatePreflightLine(outside, "", "git commit", "deadline-session", ""); line != "" || len(preflightRows(t)) != before {
+		t.Errorf("outside repo deadline line = %q, rows = %v", line, preflightRows(t))
+	}
+	gatePreflightToplevel = func(context.Context, string) ([]byte, error) { return nil, context.Canceled }
+	if line := gatePreflightLine(dir, "", "git commit", "deadline-session", ""); line != "" || len(preflightRows(t)) != before {
+		t.Errorf("canceled discovery line = %q, rows = %v", line, preflightRows(t))
+	}
+	gatePreflightToplevel = func(context.Context, string) ([]byte, error) { return nil, context.DeadlineExceeded }
+	for _, key := range []string{"GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR"} {
+		t.Run(key, func(t *testing.T) {
+			t.Setenv(key, outside)
+			if line := gatePreflightLine(dir, "", "git commit", "deadline-session", ""); line != "" || len(preflightRows(t)) != before {
+				t.Errorf("redirected discovery line = %q, rows = %v", line, preflightRows(t))
+			}
+		})
+	}
+}
 
 func preflightGit(t *testing.T, dir string, args ...string) {
 	t.Helper()

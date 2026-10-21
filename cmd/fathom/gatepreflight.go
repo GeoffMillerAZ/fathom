@@ -22,6 +22,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -47,6 +48,12 @@ const verifyOriginGatePreflight = "gate-preflight"
 // gatePreflightVerifyCap bounds the verify call when no hook guard runs (a
 // var so a test can shrink it).
 var gatePreflightVerifyCap = 3 * time.Second
+
+// gatePreflightToplevel is replaceable in tests so root discovery can fail
+// at its deadline without relying on scheduler or Git timing.
+var gatePreflightToplevel = func(ctx context.Context, dir string) ([]byte, error) {
+	return gitro.Output(ctx, dir, "rev-parse", "--show-toplevel")
+}
 
 // gatePreflightVerbs reads which gated git verbs the command runs: a
 // literal `git commit` or `git push` unit anywhere in it, nested bodies
@@ -136,8 +143,21 @@ func gatePreflightLine(projDir, cwd, command, sessionID, baseURL string) string 
 	}
 	ctx, cancel := gatePreflightContext()
 	defer cancel()
-	top, err := gitro.Output(ctx, projDir, "rev-parse", "--show-toplevel")
+	top, err := gatePreflightToplevel(ctx, projDir)
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) || deadlinePassed(ctx) {
+			// Stat can attribute an ordinary work tree without the spent
+			// Git budget. Git environment overrides can redirect this read.
+			if os.Getenv("GIT_DIR") == "" && os.Getenv("GIT_WORK_TREE") == "" && os.Getenv("GIT_COMMON_DIR") == "" && gitToplevelByStat(projDir) != "" {
+				meta := map[string]string{"verb": "commit", "verify": "not checked (deadline)", "refused": "0"}
+				if push {
+					meta["verb"] = "push"
+					meta["gate"] = "not checked (deadline)"
+				}
+				emitBeat(gatePreflightChannel, "flagged", firingMeta(meta, sessionID, ""))
+				return "🚦 fathom gate preflight (advisory): verify: not checked (deadline)"
+			}
+		}
 		return ""
 	}
 	root := strings.TrimSpace(string(top))
