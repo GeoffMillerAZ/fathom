@@ -104,6 +104,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+	"unicode/utf8"
 
 	"golang.org/x/tools/go/packages"
 
@@ -685,6 +686,9 @@ func loadTypedModule(gov *typedPassGovernor, repoPath string, m goModule, env []
 		dir = filepath.Join(repoPath, filepath.FromSlash(m.rel))
 	}
 	fset := token.NewFileSet()
+	// Source-load dependencies to avoid go list -export compiling the full
+	// test import graph before this pass type-checks selected packages. Keep
+	// dependency function bodies: eliding them fabricates unused-import errors.
 	cfg := &packages.Config{
 		Context:   gov.ctx,
 		Dir:       dir,
@@ -693,7 +697,7 @@ func loadTypedModule(gov *typedPassGovernor, repoPath string, m goModule, env []
 		Env:       env,
 		ParseFile: gov.parseFile,
 		Mode: packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles |
-			packages.NeedImports | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo,
+			packages.NeedImports | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedDeps,
 	}
 	patterns := m.patterns
 	if !m.scoped {
@@ -788,16 +792,12 @@ func (r *typedRun) enrichModule(m goModule, fset *token.FileSet, pkgs []*package
 		}
 		r.keep[storeKey] = true
 
-		if len(pkg.Errors) > 0 {
+		if loadErrors := typedPackageLoadErrors(pkg); len(loadErrors) > 0 {
 			report.PackagesFailed++
 			if len(report.FailedPackages) < 5 {
-				msgs := make([]string, len(pkg.Errors))
-				for i, e := range pkg.Errors {
-					msgs[i] = e.Error()
-				}
 				report.FailedPackages = append(report.FailedPackages, FailedTypedPackage{
 					PkgID: pkg.ID,
-					Err:   strings.Join(msgs, "; "),
+					Err:   strings.Join(loadErrors, "; "),
 				})
 			}
 			continue
@@ -913,6 +913,67 @@ func (r *typedRun) enrichModule(m goModule, fset *token.FileSet, pkgs []*package
 		}
 	}
 	return nil
+}
+
+const (
+	maxTypedLoadErrorMessages = 5
+	maxTypedLoadErrorBytes    = 1024
+	typedLoadTruncatedMarker  = "… [truncated]"
+)
+
+// typedPackageLoadErrors includes source-loaded dependency failures, which
+// packages.Load does not necessarily copy onto the selected package's Errors.
+// Check before accepting a content-hash cache hit: an unchanged caller must
+// retain its last good rows when an imported package becomes ill-typed.
+func typedPackageLoadErrors(root *packages.Package) []string {
+	seen := map[*packages.Package]bool{}
+	messages := map[string]bool{}
+	stack := []*packages.Package{root}
+	for len(stack) > 0 {
+		pkg := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		if pkg == nil || seen[pkg] {
+			continue
+		}
+		seen[pkg] = true
+		for _, err := range pkg.Errors {
+			msg := err.Error()
+			if pkg != root {
+				msg = pkg.ID + ": " + msg
+			}
+			messages[msg] = true
+		}
+		for _, imported := range pkg.Imports {
+			stack = append(stack, imported)
+		}
+	}
+	result := make([]string, 0, len(messages))
+	for msg := range messages {
+		result = append(result, msg)
+	}
+	sort.Strings(result)
+	omitted := len(result) - maxTypedLoadErrorMessages
+	if omitted > 0 {
+		result = result[:maxTypedLoadErrorMessages]
+	}
+	for i, msg := range result {
+		result[i] = truncateTypedLoadError(msg)
+	}
+	if omitted > 0 {
+		result = append(result, fmt.Sprintf("... %d additional package error(s) omitted", omitted))
+	}
+	return result
+}
+
+func truncateTypedLoadError(msg string) string {
+	if len(msg) <= maxTypedLoadErrorBytes {
+		return msg
+	}
+	cut := maxTypedLoadErrorBytes - len(typedLoadTruncatedMarker)
+	for cut > 0 && !utf8.RuneStart(msg[cut]) {
+		cut--
+	}
+	return msg[:cut] + typedLoadTruncatedMarker
 }
 
 // anyFileAllowed reports whether at least one of files (absolute paths)
