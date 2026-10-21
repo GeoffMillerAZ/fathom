@@ -10,12 +10,191 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	scippb "github.com/geoffmilleraz/fathom/third_party/scip"
+	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
 )
+
+func TestSourceReceiptSummaryMatchesWholeProto(t *testing.T) {
+	field := func(number protowire.Number, payload []byte) []byte {
+		return protowire.AppendBytes(protowire.AppendTag(nil, number, protowire.BytesType), payload)
+	}
+	message := func(value proto.Message) []byte {
+		encoded, err := proto.Marshal(value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return encoded
+	}
+	metadataRoot := field(1, message(&scippb.Metadata{ProjectRoot: "file:///project"}))
+	metadataTool := field(1, message(&scippb.Metadata{ToolInfo: &scippb.ToolInfo{Name: "scip-dotnet", Version: "1"}}))
+	document := field(2, message(&scippb.Document{RelativePath: "src/Actor.cs"}))
+	external := field(3, message(&scippb.SymbolInformation{Symbol: "external"}))
+	unknown := field(42, []byte("unrecognized"))
+	group := protowire.AppendTag(nil, 43, protowire.StartGroupType)
+	group = protowire.AppendBytes(protowire.AppendTag(group, 1, protowire.BytesType), []byte("payload"))
+	group = protowire.AppendTag(group, 43, protowire.EndGroupType)
+	malformedText := field(2, protowire.AppendBytes(protowire.AppendTag(nil, 5, protowire.BytesType), []byte{0xff}))
+	malformedExternal := field(3, protowire.AppendBytes(protowire.AppendTag(nil, 1, protowire.BytesType), []byte{0xff}))
+	malformedRoot := field(1, protowire.AppendBytes(protowire.AppendTag(nil, 3, protowire.BytesType), []byte{0xff}))
+	truncatedDocument := append(protowire.AppendTag(nil, 2, protowire.BytesType), 12, 0x0a, 0x01, 'x')
+	truncatedMetadata := append(protowire.AppendTag(nil, 1, protowire.BytesType), 12, 0x12, 0x04, 0x0a, 0x02, 'o', 'k')
+	deepGroup := []byte{}
+	for i := 0; i < 110; i++ {
+		deepGroup = protowire.AppendTag(deepGroup, 44, protowire.StartGroupType)
+	}
+	for i := 0; i < 110; i++ {
+		deepGroup = protowire.AppendTag(deepGroup, 44, protowire.EndGroupType)
+	}
+	cases := []struct {
+		name string
+		raw  []byte
+	}{
+		{"merged metadata and reordered fields", bytes.Join([][]byte{document, metadataRoot, external, metadataTool}, nil)},
+		{"unknown field and group", bytes.Join([][]byte{metadataTool, unknown, group, document}, nil)},
+		{"malformed unused document UTF8", bytes.Join([][]byte{metadataTool, malformedText}, nil)},
+		{"malformed unused external UTF8", bytes.Join([][]byte{metadataTool, malformedExternal}, nil)},
+		{"malformed metadata UTF8", bytes.Join([][]byte{metadataTool, malformedRoot}, nil)},
+		{"truncated document", bytes.Join([][]byte{metadataTool, truncatedDocument}, nil)},
+		{"truncated metadata with partial tool", bytes.Join([][]byte{metadataTool, truncatedMetadata}, nil)},
+		{"wrong wire type", bytes.Join([][]byte{metadataTool, protowire.AppendVarint(protowire.AppendTag(nil, 2, protowire.VarintType), 1)}, nil)},
+		{"deep unknown group", bytes.Join([][]byte{metadataTool, deepGroup}, nil)},
+		{"unterminated unknown group", bytes.Join([][]byte{metadataTool, protowire.AppendTag(nil, 44, protowire.StartGroupType)}, nil)},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var whole scippb.Index
+			wantErr := proto.Unmarshal(tc.raw, &whole)
+			got, gotErr := sourceReceiptIndexSummary(tc.raw)
+			if (gotErr == nil) != (wantErr == nil) {
+				t.Fatalf("decode errors: whole=%v summary=%v", wantErr, gotErr)
+			}
+			if gotErr != nil && gotErr.Error() != wantErr.Error() {
+				t.Fatalf("decode error differs: whole=%v summary=%v", wantErr, gotErr)
+			}
+			if got.GetMetadata().GetProjectRoot() != whole.GetMetadata().GetProjectRoot() || got.GetMetadata().GetToolInfo().GetName() != whole.GetMetadata().GetToolInfo().GetName() || got.GetMetadata().GetToolInfo().GetVersion() != whole.GetMetadata().GetToolInfo().GetVersion() {
+				t.Fatalf("metadata differs: whole=%v summary=%v", whole.GetMetadata(), got.GetMetadata())
+			}
+			if len(got.Documents) != len(whole.Documents) {
+				t.Fatalf("documents: whole=%d summary=%d", len(whole.Documents), len(got.Documents))
+			}
+			for i, doc := range got.Documents {
+				if doc.GetRelativePath() != whole.Documents[i].GetRelativePath() {
+					t.Fatalf("document %d path differs", i)
+				}
+			}
+		})
+	}
+}
+
+func TestSourceReceiptRejectsMalformedUnusedFields(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		field  protowire.Number
+		member protowire.Number
+	}{
+		{"document text", 2, 5},
+		{"external symbol", 3, 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root, path, raw, receipt := receiptFixture(t)
+			nested := protowire.AppendBytes(protowire.AppendTag(nil, tc.member, protowire.BytesType), []byte{0xff})
+			raw = protowire.AppendBytes(protowire.AppendTag(raw, tc.field, protowire.BytesType), nested)
+			if err := os.WriteFile(path, raw, 0600); err != nil {
+				t.Fatal(err)
+			}
+			receipt["index_sha256"] = receiptHash(raw)
+			writeReceipt(t, path, receipt)
+			bound, err := ValidateSourceReceipt(context.Background(), root, path, raw)
+			if !bound || err == nil || !strings.Contains(err.Error(), "index decode") {
+				t.Fatalf("bound=%v err=%v", bound, err)
+			}
+		})
+	}
+}
+
+func TestSourceReceiptMalformedUnboundIndexUsesPartialMetadata(t *testing.T) {
+	root, path, raw, _ := receiptFixture(t)
+	if err := os.Remove(path + ".receipt.json"); err != nil {
+		t.Fatal(err)
+	}
+	// The metadata tool name precedes a truncated top-level field. The old
+	// whole-message decoder still binds this producer despite its error.
+	raw = append(raw, 0x12, 0x08, 0x0a)
+	bound, err := ValidateSourceReceipt(context.Background(), root, path, raw)
+	if !bound || err == nil || !strings.Contains(err.Error(), "index decode") {
+		t.Fatalf("bound=%v err=%v", bound, err)
+	}
+}
+
+type receiptHeapProbe struct {
+	baseline uint64
+	retained uint64
+	called   bool
+}
+
+func (p *receiptHeapProbe) Deadline() (time.Time, bool) { return time.Time{}, false }
+func (p *receiptHeapProbe) Done() <-chan struct{}       { return nil }
+func (p *receiptHeapProbe) Value(any) any               { return nil }
+func (p *receiptHeapProbe) Err() error {
+	if !p.called {
+		p.called = true
+		runtime.GC()
+		var stats runtime.MemStats
+		runtime.ReadMemStats(&stats)
+		if stats.HeapAlloc > p.baseline {
+			p.retained = stats.HeapAlloc - p.baseline
+		}
+	}
+	return nil
+}
+
+// The first context read occurs while hashing the index, after decoding it.
+// The raw index and fixture are live at both measurements. The budget measures
+// retained decoded payload, not total allocations or process peak RSS.
+func TestSourceReceiptDropsUnusedDecodedPayloadBeforeHash(t *testing.T) {
+	root, path, original, receipt := receiptFixture(t)
+	var index scippb.Index
+	if err := proto.Unmarshal(original, &index); err != nil {
+		t.Fatal(err)
+	}
+	index.Documents = nil
+	text := strings.Repeat("x", 2<<20)
+	for i := 0; i < 8; i++ {
+		index.Documents = append(index.Documents, &scippb.Document{RelativePath: "src/Actor.cs", Text: text})
+	}
+	raw, err := proto.Marshal(&index)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, raw, 0600); err != nil {
+		t.Fatal(err)
+	}
+	receipt["index_sha256"] = receiptHash(raw)
+	writeReceipt(t, path, receipt)
+	runtime.GC()
+	var stats runtime.MemStats
+	runtime.ReadMemStats(&stats)
+	probe := &receiptHeapProbe{baseline: stats.HeapAlloc}
+	bound, err := ValidateSourceReceipt(probe, root, path, raw)
+	runtime.KeepAlive(index)
+	runtime.KeepAlive(raw)
+	if !bound || err != nil {
+		t.Fatalf("bound=%v err=%v", bound, err)
+	}
+	if !probe.called {
+		t.Fatal("index hash boundary was not observed")
+	}
+	t.Logf("retained decoded heap at index hash: %d bytes", probe.retained)
+	if probe.retained > 4<<20 {
+		t.Fatalf("retained decoded heap %d > 4 MiB", probe.retained)
+	}
+}
 
 func receiptHash(data []byte) string { h := sha256.Sum256(data); return hex.EncodeToString(h[:]) }
 func receiptFixture(t testing.TB) (string, string, []byte, map[string]any) {

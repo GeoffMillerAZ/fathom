@@ -66,8 +66,7 @@ type SourceInventory struct {
 // sidecar. A failure never authorizes use of a previous import. The client owns
 // clearing that index's namespace and evicting graph memos before returning it.
 func ValidateSourceReceipt(ctx context.Context, root, path string, raw []byte, required ...bool) (bound bool, err error) {
-	var index scippb.Index
-	decodeErr := proto.Unmarshal(raw, &index)
+	index, decodeErr := sourceReceiptIndexSummary(raw)
 	_, statErr := os.Stat(path + ".receipt.json")
 	bound = statErr == nil || !os.IsNotExist(statErr) || index.GetMetadata().GetToolInfo().GetName() == "scip-dotnet" || len(required) > 0 && required[0]
 	if !bound {
@@ -281,6 +280,58 @@ func ValidateSourceReceipt(ctx context.Context, root, path string, raw []byte, r
 		return refuse("index has no documents")
 	}
 	return true, nil
+}
+
+// sourceReceiptIndexSummary validates every complete top-level field with the
+// official decoder, but retains only the data receipt validation reads. SCIP
+// document and external-symbol payloads can dwarf the source index itself.
+func sourceReceiptIndexSummary(raw []byte) (scippb.Index, error) {
+	var summary, scratch scippb.Index
+	decoder := proto.UnmarshalOptions{Merge: true}
+	for len(raw) > 0 {
+		_, _, size := protowire.ConsumeField(raw)
+		if size < 0 {
+			// Decode the malformed tail with protobuf too: it can populate a
+			// partial metadata message before reporting a nested framing error.
+			err := decoder.Unmarshal(raw, &scratch)
+			summary.Metadata = sourceReceiptMetadata(scratch.Metadata)
+			if err != nil {
+				return summary, err
+			}
+			return summary, protowire.ParseError(size)
+		}
+		err := decoder.Unmarshal(raw[:size], &scratch)
+		for _, document := range scratch.Documents {
+			summary.Documents = append(summary.Documents, &scippb.Document{RelativePath: document.GetRelativePath()})
+		}
+		for i := range scratch.Documents {
+			scratch.Documents[i] = nil
+		}
+		scratch.Documents = scratch.Documents[:0]
+		for i := range scratch.ExternalSymbols {
+			scratch.ExternalSymbols[i] = nil
+		}
+		scratch.ExternalSymbols = scratch.ExternalSymbols[:0]
+		scratch.ProtoReflect().SetUnknown(nil)
+		scratch.Metadata = sourceReceiptMetadata(scratch.Metadata)
+		summary.Metadata = scratch.Metadata
+		if err != nil {
+			return summary, err
+		}
+		raw = raw[size:]
+	}
+	return summary, nil
+}
+
+func sourceReceiptMetadata(metadata *scippb.Metadata) *scippb.Metadata {
+	if metadata == nil {
+		return nil
+	}
+	compact := &scippb.Metadata{ProjectRoot: metadata.ProjectRoot}
+	if metadata.ToolInfo != nil {
+		compact.ToolInfo = &scippb.ToolInfo{Name: metadata.ToolInfo.Name, Version: metadata.ToolInfo.Version}
+	}
+	return compact
 }
 
 func sourceCanonical(path string) (string, error) {
