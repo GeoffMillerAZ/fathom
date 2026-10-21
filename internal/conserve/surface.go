@@ -53,6 +53,9 @@ func (surfacePlane) Check(ctx context.Context, in Input) ([]Finding, []string) {
 			missing = append(missing, "surface scan canceled: "+err.Error())
 			break
 		}
+		if !base.AcceptsPath(path) {
+			continue
+		}
 		b, ok, err := in.BaseFile(path)
 		if err != nil {
 			missing = append(missing, fmt.Sprintf("base %s: %v", path, err))

@@ -97,7 +97,7 @@ func TestIsGeneratedReaderBoundsHeaderRead(t *testing.T) {
 	}
 	yamlBody := []byte("# first\n# second\n# third\n" + strings.Repeat("x", 4<<20))
 	yamlReader := &countingReader{r: bytes.NewReader(yamlBody)}
-	if generated, err := connector.IsGeneratedReader("config.yaml", yamlReader); err != nil || generated || yamlReader.bytes > 64*1024 {
+	if generated, err := connector.IsGeneratedReader("config.yaml", yamlReader); err != nil || generated || yamlReader.bytes > 4*1024 {
 		t.Fatalf("YAML generated=%v err=%v bytes=%d", generated, err, yamlReader.bytes)
 	}
 }

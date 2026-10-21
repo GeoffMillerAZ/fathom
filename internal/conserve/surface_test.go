@@ -2,6 +2,7 @@ package conserve
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,6 +14,73 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
+
+func TestSurfaceSkipsOnlyPathsWithoutExtractors(t *testing.T) {
+	base := map[string]string{
+		"asset.png": "opaque", "api_test.go": "package api\nfunc TestOld() {}\n",
+		"api.go":       "package api\nfunc Old() {}\n",
+		"schema.proto": "syntax = \"proto3\"; service S { rpc Old (A) returns (B); }\n",
+		"routes.js":    "const router = require('express').Router();\nrouter.get('/old', oldHandler);\n",
+		"config.yaml":  "old: value\n",
+	}
+	paths := []string{"asset.png", "api_test.go", "api.go", "schema.proto", "routes.js", "config.yaml"}
+	baseReads, headReads := map[string]bool{}, map[string]bool{}
+	read := func(seen map[string]bool, files map[string]string) func(string) ([]byte, bool, error) {
+		return func(p string) ([]byte, bool, error) {
+			seen[p] = true
+			if p == "asset.png" || p == "api_test.go" {
+				return nil, false, errors.New("irrelevant unreadable file")
+			}
+			return []byte(files[p]), true, nil
+		}
+	}
+	in := Input{ChangedFiles: paths, BaseFile: read(baseReads, base), HeadFile: read(headReads, map[string]string{})}
+	findings, missing := (surfacePlane{}).Check(context.Background(), in)
+	if len(missing) != 0 {
+		t.Fatalf("ineligible read became missing: %v", missing)
+	}
+	for _, p := range paths {
+		want := p != "asset.png" && p != "api_test.go"
+		if baseReads[p] != want || headReads[p] != want {
+			t.Errorf("%s: base/head read=%v/%v, want %v", p, baseReads[p], headReads[p], want)
+		}
+	}
+	if len(findings) == 0 {
+		t.Fatal("eligible Go/proto/route surface produced no findings")
+	}
+}
+
+func TestSurfaceConfiguredEligibilityAndReadErrors(t *testing.T) {
+	for _, tc := range []struct {
+		name, glob, path string
+		read             bool
+	}{
+		{"narrow match", "**/*.png", "assets/asset.png", true},
+		{"narrow miss", "**/*.png", "assets/asset.bin", false},
+		{"empty glob", "", "unknown.bin", true},
+		{"test excluded", "", "a_test.go", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			mustWriteFile(t, filepath.Join(root, ".fathom", "config.toml"),
+				"[[surface.pattern]]\nkind = \"asset\"\nglob = \""+tc.glob+"\"\nregex = 'ID: ([a-z]+)'\n")
+			reads := 0
+			read := func(string) ([]byte, bool, error) {
+				reads++
+				return nil, false, errors.New("permission denied")
+			}
+			_, missing := (surfacePlane{}).Check(context.Background(), Input{
+				Root: root, ChangedFiles: []string{tc.path}, BaseFile: read, HeadFile: read,
+			})
+			if tc.read && (reads != 2 || len(missing) != 2) {
+				t.Fatalf("eligible read/error lost: reads=%d missing=%v", reads, missing)
+			}
+			if !tc.read && (reads != 0 || len(missing) != 0) {
+				t.Fatalf("ineligible path read: reads=%d missing=%v", reads, missing)
+			}
+		})
+	}
+}
 
 func fileReader(m map[string]string) func(path string) ([]byte, bool, error) {
 	return func(path string) ([]byte, bool, error) {

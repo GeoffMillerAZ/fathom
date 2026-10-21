@@ -139,9 +139,28 @@ func NewAccumulator(patterns []Pattern) *Accumulator {
 	return a
 }
 
+// AcceptsPath reports whether Add has any extractor for path. It uses the
+// same compiled patterns and live route registry as Add, so callers can skip
+// content reads without losing configured or cross-file surface items.
+func (a *Accumulator) AcceptsPath(p string) bool {
+	if strings.HasSuffix(p, "_test.go") {
+		return false
+	}
+	if strings.HasSuffix(p, ".go") || strings.HasSuffix(p, ".proto") ||
+		routeLangFor(p) != "" || envScanned(p) {
+		return true
+	}
+	for _, pattern := range a.patterns {
+		if pattern.glob == nil || pattern.glob.Match(p) {
+			return true
+		}
+	}
+	return false
+}
+
 // Add extracts one file without retaining its content.
 func (a *Accumulator) Add(f File) {
-	if strings.HasSuffix(f.Path, "_test.go") {
+	if !a.AcceptsPath(f.Path) {
 		return
 	}
 	switch {

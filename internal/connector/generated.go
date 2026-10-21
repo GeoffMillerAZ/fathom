@@ -147,7 +147,7 @@ func IsGeneratedReader(path string, r io.Reader) (bool, error) {
 	if len(tokens) == 0 {
 		return false, nil
 	}
-	reader := bufio.NewReaderSize(r, 64*1024)
+	reader := bufio.NewReaderSize(r, 4*1024)
 	for line := 0; line < generatedScanLines; line++ {
 		state := generatedLine{tokens: tokens, leading: true}
 		for {
