@@ -688,6 +688,11 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 	if len(obl.DisplacedByTier) > 0 {
 		result["displaced_by_tier"] = obl.DisplacedByTier
 	}
+	// RS-2 (ADR-077 d3, I7): rules withheld because they cite a fully
+	// superseded decision record are counted, never silently dropped.
+	if obl.Superseded > 0 {
+		result["superseded_withheld"] = obl.Superseded
+	}
 	if obl.DisplacedRepo > 0 {
 		result["displaced_repo"] = obl.DisplacedRepo
 	}

@@ -498,7 +498,9 @@ func reorderByNoulWithinTier(matched []scored, relevance map[string]float64) []s
 	byTier := map[int][]int{}
 	var tierOrder []int
 	for i, m := range out {
-		t := m.governing.tier
+		// RS-1: a tier is one scope-evidence tier's one governing tier, so a
+		// re-rank never moves a rule across the selector's evidence order.
+		t := m.evidence*8 + m.governing.tier + 1
 		if _, seen := byTier[t]; !seen {
 			tierOrder = append(tierOrder, t)
 		}

@@ -301,6 +301,9 @@ func explainDisplacement(trace *explainTrace, i int, file string, rankOf, positi
 		case RankKeyRole:
 			return &Displacement{Reason: DisplacedRole, By: by, Why: "governs rules (human-authored guides and ADRs) rank ahead of claims rules, and the cap filled first"}
 		case RankKeyScopeTier:
+			if k.evidence != d.evidence && k.evidence < evidencePathGlob {
+				return &Displacement{Reason: DisplacedTier, By: by, Why: "rules tied to this file by a doc link, contract key or log template rank ahead of glob-scoped ones (ADR-077), and the cap filled first"}
+			}
 			return &Displacement{Reason: DisplacedTier, By: by, Why: fmt.Sprintf("nearer-scope rules (scoped to %s) filled the cap before this rule, scoped to %s", tierWords(k.governing.name()), tierWords(d.governing.name()))}
 		default:
 			return &Displacement{Reason: DisplacedRank, By: by, Why: fmt.Sprintf("same scope tier as the rule served at #%d; ranked lower on %s", p, rankKeyWords(key))}
@@ -331,6 +334,15 @@ func compareScored(a, b scored, outFile string, decideRelevance map[string]float
 	// lets a farther-tier claim with STRONG lexical relevance leapfrog a
 	// nearer-tier claim that is not itself strong — see its own doc
 	// comment; every other case reproduces plain closerThan exactly.
+	// RS-1 (ADR-077 d2): scope evidence is the scope key — a doc link, then
+	// a contract key or log template, then a path glob naming the file (the
+	// most specific first), then a repo-wide glob (selector.go). Only on a
+	// tie there does O3's cross-tier comparison still decide.
+	if outFile != "" {
+		if l, ok := compareEvidence(a, b); ok {
+			return l, RankKeyScopeTier
+		}
+	}
 	if outFile != "" && a.governing != b.governing {
 		return crossTierCloser(a.governing, b.governing, a.strong, b.strong), RankKeyScopeTier
 	}
