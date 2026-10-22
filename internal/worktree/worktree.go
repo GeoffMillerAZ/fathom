@@ -22,8 +22,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-
-	"github.com/geoffmilleraz/fathom/internal/gitro"
 )
 
 // Marker is the path segment Claude Code's agent worktrees live under. Any
@@ -132,7 +130,20 @@ func CommonDir(dir string) (string, bool) {
 // clones, so neither names a repository. ok is false when dir is not a git
 // checkout git can answer for, or HEAD has no commit. Read-only (gitro).
 func RepositoryIdentity(ctx context.Context, dir string) (id string, ok bool) {
-	out, err := gitro.Output(ctx, dir, "rev-list", "--max-parents=0", "HEAD")
+	// Ask git for the cache key without restricting this general identity
+	// helper to linked-worktree layouts. Resolve enforces those layouts
+	// before authorizing any clone path; bare repositories remain supported.
+	meta, err := boundedGitOutput(ctx, dir, "rev-parse", "--git-common-dir", "HEAD")
+	if err != nil {
+		return "", false
+	}
+	lines := strings.Split(strings.TrimSpace(string(meta)), "\n")
+	if len(lines) != 2 {
+		return "", false
+	}
+	common := absFrom(dir, strings.TrimSpace(lines[0]))
+	oid := strings.TrimSpace(lines[1])
+	out, err := gitFactOutput(ctx, &repositoryRoots, gitFactKey{common, oid}, dir, "rev-list", "--max-parents=0", oid)
 	if err != nil {
 		return "", false
 	}

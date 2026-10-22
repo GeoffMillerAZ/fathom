@@ -1,13 +1,15 @@
 package worktree
 
 // Clone identity is shared by daemon joins, MCP paths and the edit fold.
-// All git reads are local and bounded by the caller's context; there is no
-// repository cache, registry mutation or re-ingest of a clone.
+// All git reads are local and bounded by the caller's context. Immutable
+// commit facts are memoized; clones never mutate the service registry.
 import (
 	"bufio"
 	"context"
+	"crypto/sha1"
 	"crypto/sha256"
 	"fmt"
+	"hash"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -63,7 +65,7 @@ func Resolve(ctx context.Context, target string, services []IndexedRoot) (Resolu
 		return Resolution{IndexedRoot: s, Root: canonical(s.Root), Target: target}, true
 	}
 	wt, _, ok := nearestWorkTree(target)
-	if !ok {
+	if !ok || !cloneRootAllowed(wt, services) {
 		return Resolution{}, false
 	}
 	common := commonDir(wt)
@@ -121,11 +123,11 @@ func Resolve(ctx context.Context, target string, services []IndexedRoot) (Resolu
 		if !within(cloneRoot, target) {
 			continue
 		}
-		if rank > best {
+		if rank > best || rank == best && len(matches) > 0 && len(cloneRoot) > len(matches[0].Root) {
 			matches = nil
 			best = rank
 		}
-		if rank == best {
+		if rank == best && (len(matches) == 0 || cloneRoot == matches[0].Root) {
 			matches = append(matches, Resolution{IndexedRoot: s, Root: cloneRoot, Target: target, Checkout: wt, Class: class})
 		}
 	}
@@ -191,10 +193,21 @@ func (r Resolution) MatchesBytes(ctx context.Context, rel string, data []byte) (
 	if r.IndexedCommit == "" {
 		return false, "indexed commit unknown"
 	}
-	base, _, err := gitro.BlobAt(ctx, r.IndexedRoot.Root, r.IndexedCommit, rel, 2<<20)
-	if err != nil || sha256.Sum256(base) != sha256.Sum256(data) {
+	tree, err := indexedTree(ctx, r.IndexedRoot.Root, r.IndexedCommit)
+	blob, found := tree[filepath.ToSlash(filepath.Clean(rel))]
+	if err != nil || !found || (blob.mode != "100644" && blob.mode != "100755") {
 		return false, "changed in clone"
 	}
+	var h hash.Hash = sha1.New()
+	if len(blob.oid) == 64 {
+		h = sha256.New()
+	}
+	fmt.Fprintf(h, "blob %d%c", len(data), 0)
+	h.Write(data)
+	if fmt.Sprintf("%x", h.Sum(nil)) != blob.oid {
+		return false, "changed in clone"
+	}
+
 	return true, ""
 }
 
@@ -215,6 +228,10 @@ func NormalizeOrigin(raw string) (remote string, local bool) {
 			return "", false
 		}
 		host = u.Host
+		switch u.Port() {
+		case "22", "443", "80":
+			host = u.Hostname()
+		}
 		path = u.Path
 	} else if a, b, ok := strings.Cut(raw, ":"); ok && !strings.Contains(a, "/") {
 		host, path = a, b
@@ -256,7 +273,11 @@ func RelatedTarget(roots []string, target string) (class, wt, root string) {
 		origin := originFromConfig(filepath.Join(common, "config"))
 		bo := originFromConfig(filepath.Join(bc, "config"))
 		norm, local := NormalizeOrigin(origin)
-		localRoot := canonical(strings.TrimSuffix(strings.TrimPrefix(origin, "file://"), "/.git"))
+		localPath := strings.TrimSuffix(strings.TrimPrefix(origin, "file://"), "/.git")
+		if !filepath.IsAbs(localPath) {
+			localPath = filepath.Join(wt, localPath)
+		}
+		localRoot := canonical(localPath)
 		bn, _ := NormalizeOrigin(bo)
 		if origin != "" && (local && localRoot == base || !local && norm != "" && norm == bn) {
 			return "clone", wt, r
@@ -293,6 +314,9 @@ func commonDir(wt string) string {
 	if fi.IsDir() {
 		return canonical(p)
 	}
+	if !fi.Mode().IsRegular() {
+		return ""
+	}
 	b, err := os.ReadFile(p)
 	if err != nil {
 		return ""
@@ -305,14 +329,22 @@ func commonDir(wt string) string {
 	if !filepath.IsAbs(gd) {
 		gd = filepath.Join(wt, gd)
 	}
-	if b, err := os.ReadFile(filepath.Join(gd, "commondir")); err == nil {
-		cd := strings.TrimSpace(string(b))
-		if !filepath.IsAbs(cd) {
-			cd = filepath.Join(gd, cd)
-		}
-		return canonical(cd)
+	gd = canonical(gd)
+	b, err = os.ReadFile(filepath.Join(gd, "commondir"))
+	if err != nil {
+		return ""
 	}
-	return canonical(gd)
+	cd := absFrom(gd, strings.TrimSpace(string(b)))
+	// A linked worktree is exactly <common>/worktrees/<name>, registered
+	// by git with a backlink to this checkout's .git file (XM-37).
+	if filepath.Dir(gd) != filepath.Join(cd, "worktrees") {
+		return ""
+	}
+	backlink, err := os.ReadFile(filepath.Join(gd, "gitdir"))
+	if err != nil || absFrom(gd, strings.TrimSpace(string(backlink))) != canonical(p) {
+		return ""
+	}
+	return cd
 }
 func originFromConfig(path string) string {
 	f, err := os.Open(path)
@@ -339,3 +371,21 @@ func originFromConfig(path string) string {
 
 // RootForPath is the nearest checkout containing a file or directory.
 func RootForPath(target string) string { r, _, _ := nearestWorkTree(canonical(target)); return r }
+
+// cloneRootAllowed keeps repository identity from authorizing broad disk
+// roots or a checkout that encloses another indexed service.
+func cloneRootAllowed(root string, services []IndexedRoot) bool {
+	root = canonical(root)
+	if filepath.Dir(root) == root {
+		return false
+	}
+	if home, err := os.UserHomeDir(); err == nil && home != "" && within(root, canonical(home)) {
+		return false
+	}
+	for _, s := range services {
+		if filepath.IsAbs(s.Root) && within(root, canonical(s.Root)) {
+			return false
+		}
+	}
+	return true
+}
