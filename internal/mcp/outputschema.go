@@ -571,7 +571,19 @@ func outputSchemaFor(name string) map[string]any {
 	if !ok {
 		return nil
 	}
-	return schemaOf(t)
+	schema := schemaOf(t)
+	if name == "staleness_report" {
+		// The default report keeps every original required field. The explicit
+		// metadata projection is a separate variant, never fabricated zero counts.
+		fullRequired := schema["required"]
+		schema["required"] = []string{"service"}
+		schema["properties"].(map[string]any)["section"] = map[string]any{"type": "string", "enum": []string{"typed_edges"}}
+		schema["anyOf"] = []any{
+			map[string]any{"type": "object", "required": fullRequired},
+			map[string]any{"type": "object", "required": []string{"section"}},
+		}
+	}
+	return schema
 }
 
 var timeType = reflect.TypeOf(time.Time{})
@@ -658,6 +670,37 @@ func collectFields(t reflect.Type, props map[string]any, required *[]string) {
 // nothing at dispatch time — the server never validates its own output on
 // the hot path.
 func validateAgainstSchema(path string, schema map[string]any, v any) string {
+	if variants, ok := schema["anyOf"].([]any); ok {
+		matched := false
+		for _, variant := range variants {
+			if branch, ok := variant.(map[string]any); ok && validateAgainstSchema(path, branch, v) == "" {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return path + ": no declared result variant matches"
+		}
+	}
+	var enums []any
+	switch values := schema["enum"].(type) {
+	case []any:
+		enums = values
+	case []string:
+		for _, value := range values {
+			enums = append(enums, value)
+		}
+	}
+	if len(enums) > 0 {
+		matched := false
+		for _, candidate := range enums {
+			matched = matched || reflect.DeepEqual(candidate, v)
+		}
+		if !matched {
+			return path + ": value is outside the declared enum"
+		}
+	}
+
 	typ, _ := schema["type"].(string)
 	switch typ {
 	case "object":

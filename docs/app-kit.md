@@ -1171,3 +1171,21 @@ envelopes. Discovery used `cli diagnostic output` / `cli`, selecting `cli.output
 at catalog revision `3ee2c1f02a6199c2e59361171c7f1fdb957a7a70f64e875a73969608314d7318`;
 its terminal status table does not apply to injected context. No kit pin or runtime
 changes. Proof: the readiness, health and unchanged whole-primer cap tests.
+
+## Doctor CLI diagnostics (AD-3, AD-4, GQ4)
+
+FATHOM-DOCTOR-01: **local-divergence** for the added channel table. The existing
+plain doctor table and JSON contract stay in place; the channel projection needs
+numeric cost columns and shared-group/coverage labels beyond cli-kit's StatusRow.
+Ownership is app-local hook evidence, configuration and gate inspection; no kit API,
+dependency, palette or selection changed. Discovery: `search_capabilities` for
+`cli table status output` returned no matching capability; cli-kit and contribution-loop
+guidance were consulted. Evidence: `TestDoctorChannelsStatesAndCosts`,
+`TestDoctorChannelsMissingLogIsNotZero`, `TestDoctorChannelsRenderInTextAndJSON`.
+Next owner: the app maintainer; revisit if cli-kit gains a suitable multi-metric
+status projection. This is synthetic CLI proof; no second-consumer delivery is claimed.
+
+Round-two evidence: `TestDoctorChannelsRetainedSpan` covers rotated logs and the
+covered-span denominator; `TestDoctorChannelBindingsAndSkipPhases` covers rich
+readouts and phase-specific absence. The fixes own app evidence semantics, so
+FATHOM-DOCTOR-01 remains a local divergence with no reusable kit change identified.

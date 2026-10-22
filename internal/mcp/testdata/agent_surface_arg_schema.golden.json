@@ -498,6 +498,12 @@
       "as_of": {
         "type": "string"
       },
+      "section": {
+        "enum": [
+          "typed_edges"
+        ],
+        "type": "string"
+      },
       "service": {
         "description": "Service / repo identifier",
         "type": "string"

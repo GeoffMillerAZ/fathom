@@ -90,6 +90,11 @@ func checkHarnessHookFiles(root, harnessLabel string, parents ...context.Context
 // in the returned notes and never counted as absence (I38 — an unreadable
 // file once made a whole audit report zero findings).
 func harnessHookEntriesByScope(root string, d harness.Descriptor, specs []hookSpec, parents ...context.Context) (map[hookSpecKey][]string, []string, map[hookSpecKey]bool, bool) {
+	return harnessHookEntriesByScopeMode(root, d, specs, false, parents...)
+}
+
+// includeCommands retains exact command identity for the duplicate-injection check.
+func harnessHookEntriesByScopeMode(root string, d harness.Descriptor, specs []hookSpec, includeCommands bool, parents ...context.Context) (map[hookSpecKey][]string, []string, map[hookSpecKey]bool, bool) {
 	ctx, cancel := doctorContextArg(parents)
 	defer cancel()
 	uncertain := map[hookSpecKey]bool{}
@@ -100,7 +105,7 @@ func harnessHookEntriesByScope(root string, d harness.Descriptor, specs []hookSp
 		if f.Kind == "" && f.Scope == "project" && (f.Shape == "cursor-hooks" || f.Shape == "copilot-hooks") {
 			// GL-7/GL-8: a flat hook file the user merged by hand is read
 			// (never written): one entry per binding, no nested group.
-			p, n := flatHookEntries(root, f, specs)
+			p, n := flatHookEntries(root, f, specs, includeCommands)
 			for k, v := range p {
 				present[k] = append(present[k], v...)
 			}
@@ -144,7 +149,13 @@ func harnessHookEntriesByScope(root string, d harness.Descriptor, specs []hookSp
 			indirect = indirect || ev.indirect
 			if ev.found {
 				k := hookSpecKeyOf(spec)
-				present[k] = append(present[k], f.Scope+" "+f.Path)
+				if !includeCommands {
+					present[k] = append(present[k], f.Scope+" "+f.Path)
+				} else {
+					for _, command := range doctorHookCommands(ctx, root, hooksObj, spec) {
+						present[k] = append(present[k], f.Scope+" "+f.Path+"\x00"+command)
+					}
+				}
 			}
 		}
 	}
@@ -161,6 +172,14 @@ func harnessHookEntriesByScope(root string, d harness.Descriptor, specs []hookSp
 // path of "~/.codex/hooks.json" under CODEX_HOME=/tmp/ch resolves to
 // /tmp/ch/hooks.json, not /tmp/ch/.codex/hooks.json.
 func harnessUserPath(d harness.Descriptor, descriptorPath string) (string, bool) {
+	if d.ID == harness.ClaudeCode && strings.HasPrefix(descriptorPath, "~/.claude/") {
+		base := harness.ClaudeConfigRoot(wiringDriftHome())
+		if base == "" {
+			return "", false
+		}
+		return filepath.Join(base, strings.TrimPrefix(descriptorPath, "~/.claude/")), true
+	}
+
 	rel := strings.TrimPrefix(descriptorPath, "~/")
 	if d.Env.Home != "" {
 		if v := os.Getenv(d.Env.Home); v != "" {
@@ -184,7 +203,7 @@ func harnessUserPath(d harness.Descriptor, descriptorPath string) (string, bool)
 // reports which fathom specs it carries: an entry under the spec's event
 // whose matcher equals the spec's and whose command (Cursor `command`,
 // Copilot `bash` or `command`) contains the spec's marker.
-func flatHookEntries(root string, f harness.HookFile, specs []hookSpec) (map[hookSpecKey][]string, []string) {
+func flatHookEntries(root string, f harness.HookFile, specs []hookSpec, includeCommands bool) (map[hookSpecKey][]string, []string) {
 	present := map[hookSpecKey][]string{}
 	var notes []string
 	paths, _ := filepath.Glob(filepath.Join(root, filepath.FromSlash(f.Path)))
@@ -216,11 +235,41 @@ func flatHookEntries(root string, f harness.HookFile, specs []hookSpec) (map[hoo
 				}
 				if strings.Contains(cmd, spec.marker) {
 					k := hookSpecKeyOf(spec)
-					present[k] = append(present[k], f.Scope+" "+rel)
-					break
+					scope := f.Scope + " " + rel
+					if includeCommands {
+						scope += "\x00" + cmd
+					}
+					present[k] = append(present[k], scope)
+					if !includeCommands {
+						break
+					}
 				}
 			}
 		}
 	}
 	return present, notes
+}
+
+// Isolate one command at a time so later rows sharing an event and matcher
+// are compared too. Static wrapper inspection is the same as the wiring check.
+func doctorHookCommands(ctx context.Context, root string, hooksObj map[string]any, spec hookSpec) []string {
+	var commands []string
+	groups, _ := hooksObj[spec.event].([]any)
+	for _, entry := range groups {
+		group, _ := entry.(map[string]any)
+		matcher, _ := group["matcher"].(string)
+		if matcher != spec.matcher {
+			continue
+		}
+		hooks, _ := group["hooks"].([]any)
+		for _, h := range hooks {
+			hook, _ := h.(map[string]any)
+			command, _ := hook["command"].(string)
+			one := map[string]any{spec.event: []any{map[string]any{"matcher": matcher, "hooks": []any{h}}}}
+			if doctorHookEvidence(ctx, root, one, spec).found {
+				commands = append(commands, command)
+			}
+		}
+	}
+	return commands
 }

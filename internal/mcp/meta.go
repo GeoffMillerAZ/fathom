@@ -377,12 +377,13 @@ func renderDocLinkDrift(drifted []docindex.DriftedDocLink) []any {
 func registerStalenessReport(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "staleness_report",
-		Description: "Staleness summary: source files, last-ingested state, git-commit drift. Reach for it when an answer looks wrong. Required: service.",
+		Description: "Source/commit drift. Reach for it when an answer looks stale. Required: service.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
 				"as_of":   map[string]any{"type": "string", "description": "RFC3339 timestamp or indexed commit sha: answer the claims-by-layer and doc-link sections as they stood then (GL-17)"},
+				"section": map[string]any{"type": "string", "enum": []string{"typed_edges"}},
 			},
 			"required": []string{"service"},
 		},
@@ -392,6 +393,7 @@ func registerStalenessReport(s *Server, backend QueryInterface) {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
 		}
 		var p struct {
+			Section string `json:"section"`
 			Service string `json:"service"`
 			AsOf    string `json:"as_of"`
 		}
@@ -400,6 +402,14 @@ func registerStalenessReport(s *Server, backend QueryInterface) {
 		}
 		if p.Service == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "staleness_report: service required"}
+		}
+		if p.Section == "typed_edges" {
+			resp := map[string]any{"service": p.Service, "section": "typed_edges"}
+			appendTypedEdgeStatus(resp, backend, p.Service)
+			return resp, nil
+		}
+		if p.Section != "" {
+			return nil, &rpcError{Code: ErrCodeParams, Message: "staleness_report: unknown section"}
 		}
 		asOf, aerr := asOfFilter(ctx, backend, p.Service, p.AsOf, "staleness_report")
 		if aerr != nil {
@@ -496,43 +506,7 @@ func registerStalenessReport(s *Server, backend QueryInterface) {
 		// backend can report it. `known: false` is the honest "no ingest
 		// of this service has run in this daemon process" state — a
 		// reader must not read an absent block as a passing one.
-		if teb, ok := backend.(typedEdgeStatusBackend); ok {
-			st, known := teb.TypedEdgeStatus(p.Service)
-			block := map[string]any{"known": known}
-			if known {
-				block["packages"] = st.Packages
-				block["failed"] = st.Failed
-				if st.Reason != "" {
-					block["reason"] = st.Reason
-				}
-				// DG-9: same discovery-gap disclosure as list_services'
-				// typed_edges block (platform_tools.go) — doctor's
-				// typed_edges row reads THIS block, not list_services',
-				// so a discovery gap must travel through here to reach
-				// doctor at all.
-				if st.DiscoveryGaps > 0 {
-					block["discovery_gaps"] = st.DiscoveryGaps
-					if len(st.DiscoveryGapFiles) > 0 {
-						block["discovery_gap_files"] = st.DiscoveryGapFiles
-					}
-				}
-				// finding [4]/DG-10: Persisted/RecordedAt exist SPECIFICALLY so a
-				// caller -- doctor's checkTypedEdges, in particular -- can tell a
-				// store-replayed (pre-restart) answer apart from one this daemon
-				// process just computed. Before this fix, THIS was the one
-				// surface doctor actually reads (cmd/fathom/doctor_typed.go), and
-				// it dropped both fields, so a restart-stale PASS was reported
-				// identically to a genuinely fresh one -- the exact "an
-				// instrument may not degrade toward healthy" failure ADR-027 was
-				// written to prevent, reintroduced through the very mechanism
-				// (DG-10) built to fix restart-driven blind spots.
-				if st.Persisted {
-					block["persisted"] = true
-					block["recorded_at"] = st.RecordedAt.UTC().Format(time.RFC3339)
-				}
-			}
-			resp["typed_edges"] = block
-		}
+		appendTypedEdgeStatus(resp, backend, p.Service)
 		// Optional: append per-layer claims summary when backend supports it.
 		// GL-17: a dated call counts the claims valid at the instant instead
 		// (status counts are today's verdicts, not what stood then).
@@ -784,4 +758,45 @@ func readServiceResource(ctx context.Context, backend QueryInterface, svcID stri
 			},
 		},
 	}, nil
+}
+
+// appendTypedEdgeStatus reads the last ingest metadata, never the corpus.
+func appendTypedEdgeStatus(resp map[string]any, backend QueryInterface, service string) {
+	if teb, ok := backend.(typedEdgeStatusBackend); ok {
+		st, known := teb.TypedEdgeStatus(service)
+		block := map[string]any{"known": known}
+		if known {
+			block["packages"] = st.Packages
+			block["failed"] = st.Failed
+			if st.Reason != "" {
+				block["reason"] = st.Reason
+			}
+			// DG-9: same discovery-gap disclosure as list_services'
+			// typed_edges block (platform_tools.go) — doctor's
+			// typed_edges row reads THIS block, not list_services',
+			// so a discovery gap must travel through here to reach
+			// doctor at all.
+			if st.DiscoveryGaps > 0 {
+				block["discovery_gaps"] = st.DiscoveryGaps
+				if len(st.DiscoveryGapFiles) > 0 {
+					block["discovery_gap_files"] = st.DiscoveryGapFiles
+				}
+			}
+			// finding [4]/DG-10: Persisted/RecordedAt exist SPECIFICALLY so a
+			// caller -- doctor's checkTypedEdges, in particular -- can tell a
+			// store-replayed (pre-restart) answer apart from one this daemon
+			// process just computed. Before this fix, THIS was the one
+			// surface doctor actually reads (cmd/fathom/doctor_typed.go), and
+			// it dropped both fields, so a restart-stale PASS was reported
+			// identically to a genuinely fresh one -- the exact "an
+			// instrument may not degrade toward healthy" failure ADR-027 was
+			// written to prevent, reintroduced through the very mechanism
+			// (DG-10) built to fix restart-driven blind spots.
+			if st.Persisted {
+				block["persisted"] = true
+				block["recorded_at"] = st.RecordedAt.UTC().Format(time.RFC3339)
+			}
+		}
+		resp["typed_edges"] = block
+	}
 }

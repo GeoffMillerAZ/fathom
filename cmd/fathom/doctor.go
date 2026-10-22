@@ -45,6 +45,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
 	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 	heartbeat "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/heartbeat"
 	toml "github.com/pelletier/go-toml/v2"
 )
@@ -171,10 +172,12 @@ func cmdDoctor(args []string, stdout, stderr io.Writer) int {
 		// Exit 0 whatever the findings: --brief runs as a hook.
 		return printDoctorBrief(stdout, checks)
 	}
+	channels := doctorChannels(root, harness, time.Now())
 	if *jsonOut {
-		printDoctorJSON(stdout, harness, svc, root, checks)
+		printDoctorJSON(stdout, harness, svc, root, checks, channels)
 	} else {
 		printDoctorTable(stdout, harness, svc, root, checks)
+		printDoctorChannels(stdout, channels)
 	}
 
 	return doctorExitCode(checks)
@@ -239,9 +242,8 @@ func fileExists(path string) bool {
 // doctor never short-circuits on an early failure, so one bad check never
 // hides the rest of the diagnosis.
 func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
-	// Each row is a step, run in order. Inside a hook (doctor --brief, the
-	// Setup hook) a spent deadline stops the run: the rows not reached are
-	// counted in one doctorDeadlineRow, never silently dropped (RT-7).
+	// Prepare shared daemon facts once, then run independent rows concurrently.
+	// Declaration order remains the report order; each unfinished probe is named.
 	var (
 		daemonUp      bool
 		tenancyRep    resourcesReport
@@ -254,8 +256,8 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		return roots
 	} // PE-24/PE-25
 	steps := []doctorStep{
-		{probe: func(ctx context.Context) doctorCheck { return checkMCPRegistration(root, harness, baseURL, ctx) }},
-		{probe: func(ctx context.Context) doctorCheck {
+		{name: "mcp_registration", probe: func(ctx context.Context) doctorCheck { return checkMCPRegistration(root, harness, baseURL, ctx) }},
+		{name: "daemon_reachable", prepare: true, probe: func(ctx context.Context) doctorCheck {
 			up, daemonCheck := checkDaemonReachable(doctorHTTPClient(ctx), baseURL)
 			daemonUp = up
 			if hookDeadlineSpent() {
@@ -270,134 +272,141 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 			}
 			return daemonCheck
 		}},
-		{probe: func(ctx context.Context) doctorCheck { return checkBinaryFresh(root, ctx) }},
-		{probe: func(ctx context.Context) doctorCheck {
+		{name: "binary_fresh", probe: func(ctx context.Context) doctorCheck { return checkBinaryFresh(root, ctx) }},
+		{name: "daemon_fresh", probe: func(ctx context.Context) doctorCheck {
 			return checkDaemonFresh(doctorHTTPClient(ctx), baseURL, daemonUp)
 		}}, // PC-4: the daemon's stamp vs this binary (doctor_provenance.go)
-		{probe: func(ctx context.Context) doctorCheck { return checkDaemonFootprint(tenancyRep, daemonMetrics) }}, // RT-49: phys_footprint vs the budget, live or from the ring (doctor_footprint.go)
-		{probe: func(ctx context.Context) doctorCheck {
+		{name: "daemon_footprint", probe: func(ctx context.Context) doctorCheck { return checkDaemonFootprint(tenancyRep, daemonMetrics) }}, // RT-49: phys_footprint vs the budget, live or from the ring (doctor_footprint.go)
+		{name: "disk_writes", probe: func(ctx context.Context) doctorCheck {
 			return checkDaemonDiskWrites(doctorHTTPClient(ctx), baseURL, daemonUp)
 		}}, // RT-162: bytes written outside explicit ingest vs 2 GiB/day (doctor_footprint.go)
-		{probe: func(ctx context.Context) doctorCheck {
+		{name: "admission_mode", probe: func(ctx context.Context) doctorCheck {
 			return checkAdmissionMode(doctorHTTPClient(ctx), baseURL, daemonUp)
 		}}, // design §1: WARN while the daemon serves with admission off (doctor_admission.go)
-		{probe: func(ctx context.Context) doctorCheck { return checkDaemonPosture("") }},                            // RT-15: the installed plist's launchd posture vs schema 2 (daemon_signing.go)
-		{probe: func(ctx context.Context) doctorCheck { return checkDaemonLifecycle(tenancyRep) }},                  // RT-50: starts, exits, breaker, quarantine (doctor_tenancy.go)
-		{probe: func(ctx context.Context) doctorCheck { return checkHostPressure(tenancyRep) }},                     // RT-50: pressure, swap, swap-volume free
-		{probe: func(ctx context.Context) doctorCheck { return checkScratchDaemons(tenancyRep) }},                   // RT-50: leaked unmanaged daemons and stale records
-		{probe: func(ctx context.Context) doctorCheck { return checkHookBudgetFromFiles(time.Now()) }},              // RT-135: hook p99 vs deadline, breaker-open minutes, unguarded edits, kills (doctor_retention.go)
-		{probe: func(ctx context.Context) doctorCheck { return checkRuleOutcomeWriterFromFiles(time.Now()) }},       // GL-24 (INC-27): a rule-outcome log silent 72 h while the hook served claims (doctor_outcomewriter.go)
-		{probe: func(ctx context.Context) doctorCheck { return checkDiskRetentionFromDisk(root) }, ownBudget: true}, // RT-135: reclaimable bytes by class, internal disk free (doctor_retention.go)
-		{probe: func(ctx context.Context) doctorCheck {
+		{name: "daemon_posture", probe: func(ctx context.Context) doctorCheck { return checkDaemonPosture("") }},                            // RT-15: the installed plist's launchd posture vs schema 2 (daemon_signing.go)
+		{name: "daemon_lifecycle", probe: func(ctx context.Context) doctorCheck { return checkDaemonLifecycle(tenancyRep) }},                // RT-50: starts, exits, breaker, quarantine (doctor_tenancy.go)
+		{name: "host_pressure", probe: func(ctx context.Context) doctorCheck { return checkHostPressure(tenancyRep) }},                      // RT-50: pressure, swap, swap-volume free
+		{name: "scratch_daemons", probe: func(ctx context.Context) doctorCheck { return checkScratchDaemons(tenancyRep) }},                  // RT-50: leaked unmanaged daemons and stale records
+		{name: "hook_budget", probe: func(ctx context.Context) doctorCheck { return checkHookBudgetFromFiles(time.Now()) }},                 // RT-135: hook p99 vs deadline, breaker-open minutes, unguarded edits, kills (doctor_retention.go)
+		{name: "rule_outcome_writer", probe: func(ctx context.Context) doctorCheck { return checkRuleOutcomeWriterFromFiles(time.Now()) }},  // GL-24 (INC-27): a rule-outcome log silent 72 h while the hook served claims (doctor_outcomewriter.go)
+		{name: "disk_retention", probe: func(ctx context.Context) doctorCheck { return checkDiskRetentionFromDisk(root) }, ownBudget: true}, // RT-135: reclaimable bytes by class, internal disk free (doctor_retention.go)
+		{name: "tenancy_scope", probe: func(ctx context.Context) doctorCheck {
 			return checkTenancyScope(root, config.DefaultUserPath(), os.Getenv)
 		}}, // RT-50: [tenancy] is user scope only
-		{probe: func(ctx context.Context) doctorCheck { return checkKeyScope(root, config.DefaultUserPath()) }}, // SEC-1: key sources are user scope only (doctor_keyscope.go)
-		{probe: func(ctx context.Context) doctorCheck { return checkHooksInstalledContext(ctx, root, harness) }},
-		{probe: func(ctx context.Context) doctorCheck { return checkLefthookGates(root) }},
-		{probe: func(ctx context.Context) doctorCheck {
+		{name: "key_source_scope", probe: func(ctx context.Context) doctorCheck { return checkKeyScope(root, config.DefaultUserPath()) }}, // SEC-1: key sources are user scope only (doctor_keyscope.go)
+		{name: "hooks_installed", probe: func(ctx context.Context) doctorCheck { return checkHooksInstalledContext(ctx, root, harness) }},
+		{name: "duplicate_hook_registration", probe: func(ctx context.Context) doctorCheck { return checkDuplicateHookRegistration(root, harness, ctx) }},
+		{name: "lefthook_gates", probe: func(ctx context.Context) doctorCheck { return checkLefthookGates(root) }},
+		{name: "hooks_firing", probe: func(ctx context.Context) doctorCheck {
 			return checkHooksFiring(doctorHTTPClient(ctx), baseURL, daemonUp, root, harness)
 		}},
-		{probe: func(ctx context.Context) doctorCheck { return checkGatePosture(harness) }},
-		{probe: func(ctx context.Context) doctorCheck { return checkHooksCoverage(harness) }},               // HP-32: what the harness offers vs what fathom wires (advisory, never FAIL)
-		{probe: func(ctx context.Context) doctorCheck { return checkHarnessHookFiles(root, harness, ctx) }}, // HP-18/19: doctor_harness.go, never PASS
-		{probe: func(ctx context.Context) doctorCheck { return checkStanzaPresent(root) }},
-		{probe: func(ctx context.Context) doctorCheck { return checkStanzaLoaded(root) }},          // PC-25: the harness-side twin of stanza_present (doctor_stanza_loaded.go)
-		{probe: func(ctx context.Context) doctorCheck { return checkAgentsSkills(root, harness) }}, // RP-3: skills_installed on the standard (doctor_skills.go)
-		{probe: func(ctx context.Context) doctorCheck { return checkWiringDrift(root, harness) }},  // PC-29: hooks, stanzas, MCP entries, owned skills (doctor_wiring.go)
-		{probe: func(ctx context.Context) doctorCheck { return checkConfigValid(root) }},
-		{probe: func(ctx context.Context) doctorCheck {
+		{name: "gate_posture", probe: func(ctx context.Context) doctorCheck { return checkGatePosture(harness) }},
+		{name: "hooks_coverage", probe: func(ctx context.Context) doctorCheck { return checkHooksCoverage(harness) }},              // HP-32: what the harness offers vs what fathom wires (advisory, never FAIL)
+		{name: "harness_hooks", probe: func(ctx context.Context) doctorCheck { return checkHarnessHookFiles(root, harness, ctx) }}, // HP-18/19: doctor_harness.go, never PASS
+		{name: "stanza_present", probe: func(ctx context.Context) doctorCheck { return checkStanzaPresent(root) }},
+		{name: "stanza_loaded", probe: func(ctx context.Context) doctorCheck { return checkStanzaLoaded(root) }},             // PC-25: the harness-side twin of stanza_present (doctor_stanza_loaded.go)
+		{name: "skills_installed", probe: func(ctx context.Context) doctorCheck { return checkAgentsSkills(root, harness) }}, // RP-3: skills_installed on the standard (doctor_skills.go)
+		{name: "wiring_drift", probe: func(ctx context.Context) doctorCheck { return checkWiringDrift(root, harness) }},      // PC-29: hooks, stanzas, MCP entries, owned skills (doctor_wiring.go)
+		{name: "config_valid", probe: func(ctx context.Context) doctorCheck { return checkConfigValid(root) }},
+		{name: "decision_provider", probe: func(ctx context.Context) doctorCheck {
 			return checkDecisionProvider(root, doctorProfileBuilder(ctx), ctx)
 		}, ownBudget: true}, // DP-4 (ADR-042): is the configured [decide] provider viable? (doctor_decide.go)
-		{probe: func(ctx context.Context) doctorCheck { return checkProfileBins(root) }}, // GL-27 (G6): a profile whose bin no longer exists (doctor_compile.go)
-		{probe: func(ctx context.Context) doctorCheck {
+		{name: "profile_bins", probe: func(ctx context.Context) doctorCheck { return checkProfileBins(root) }}, // GL-27 (G6): a profile whose bin no longer exists (doctor_compile.go)
+		{name: "compile_layer", probe: func(ctx context.Context) doctorCheck {
 			return checkCompileLayerEnabled(doctorHTTPClient(ctx), baseURL, daemonUp)
 		}}, // GL-27 (G6): the daemon started with compile_layer disabled (doctor_compile.go)
-		{probe: func(ctx context.Context) doctorCheck {
+		{name: "layers_stale", probe: func(ctx context.Context) doctorCheck {
 			return checkStaleLayers(doctorHTTPClient(ctx), baseURL, root, explicitSvc, daemonUp)
 		}}, // GL-27 (G6): sections compiled vs total per service, --dry-run first (doctor_compile.go)
-		{probe: func(ctx context.Context) doctorCheck {
+		{name: "providers", probe: func(ctx context.Context) doctorCheck {
 			return doctorProvidersRow(root, doctorProfileBuilder(ctx), ctx)
 		}, ownBudget: true}, // SR-32 (surface reckoning F-71): CF-5's own auth probe, folded in (doctor_providers.go); CF-6 (smoke) never runs here
-		{probe: func(ctx context.Context) doctorCheck {
+		{name: "obligations_served", probe: func(ctx context.Context) doctorCheck {
 			return checkObligationsServed(doctorHTTPClient(ctx), baseURL, root, explicitSvc, daemonUp, ctx)
 		}, ownBudget: true},
-		{probe: func(ctx context.Context) doctorCheck {
+		{name: "surface_traffic", probe: func(ctx context.Context) doctorCheck {
 			return checkSurfaceTraffic(doctorHTTPClient(ctx), baseURL, daemonUp, root)
 		}},
 		// Phase O (docs/design/platform-modules.md §4 / guarded-edits.md
 		// §2.4): config-validity first, then the checks that need it.
-		{probe: func(ctx context.Context) doctorCheck { return checkBindingFile(root) }},
-		{probe: func(ctx context.Context) doctorCheck { return checkGuardFile(root) }},
-		{probe: func(ctx context.Context) doctorCheck { return checkProjectKeys(root) }}, // every .fathom/*.cue key: file, status, entries (doctor_project.go)
-		{probe: func(ctx context.Context) doctorCheck { return checkTechPacks(root) }},   // FD-21: discovered tech packs, pins, served and withheld sections, exclusions (doctor_techpacks.go)
-		{probe: func(ctx context.Context) doctorCheck { return checkLegacyFiles(root) }}, // old copies of moved or shadowed files (doctor_legacy.go)
-		{probe: func(ctx context.Context) doctorCheck {
+		{name: "binding_file", probe: func(ctx context.Context) doctorCheck { return checkBindingFile(root) }},
+		{name: "guard_file", probe: func(ctx context.Context) doctorCheck { return checkGuardFile(root) }},
+		{name: "project_keys", probe: func(ctx context.Context) doctorCheck { return checkProjectKeys(root) }}, // every .fathom/*.cue key: file, status, entries (doctor_project.go)
+		{name: "tech_packs", probe: func(ctx context.Context) doctorCheck { return checkTechPacks(root) }},     // FD-21: discovered tech packs, pins, served and withheld sections, exclusions (doctor_techpacks.go)
+		{name: "legacy_files", probe: func(ctx context.Context) doctorCheck { return checkLegacyFiles(root) }}, // old copies of moved or shadowed files (doctor_legacy.go)
+		{name: "binding_modules_mounted", probe: func(ctx context.Context) doctorCheck {
 			return checkBindingModulesMounted(doctorHTTPClient(ctx), baseURL, root, daemonUp)
 		}},
-		{probe: func(ctx context.Context) doctorCheck {
+		{name: "binding_module_readiness", probe: func(ctx context.Context) doctorCheck {
 			return checkBindingModuleReadiness(doctorHTTPClient(ctx), baseURL, root, daemonUp)
 		}},
-		{probe: func(ctx context.Context) doctorCheck {
+		{name: "guard_dead_scopes", probe: func(ctx context.Context) doctorCheck {
 			return checkGuardDeadScopes(doctorHTTPClient(ctx), baseURL, root, explicitSvc, daemonUp, ctx)
 		}},
-		{probe: func(ctx context.Context) doctorCheck { return checkGuardIncludeModulesUnbound(root) }},
+		{name: "guard_include_modules_unbound", probe: func(ctx context.Context) doctorCheck { return checkGuardIncludeModulesUnbound(root) }},
 		// Phase P (docs/design/production-tokenomics.md / scoped-config.md):
 		// env-driven honesty checks first, then scoped-config disclosure.
-		{probe: func(ctx context.Context) doctorCheck { return checkChannelsEnv() }},
-		{probe: func(ctx context.Context) doctorCheck { return checkBinaryOnPath() }},
-		{probe: func(ctx context.Context) doctorCheck { return checkIdentCacheEnv() }},
-		{probe: func(ctx context.Context) doctorCheck { return checkUserScopeIgnoreContext(ctx, root) }},
-		{probe: func(ctx context.Context) doctorCheck { return checkUserScopeGuard() }},
-		{probe: func(ctx context.Context) doctorCheck { return checkSessionLedgerTokens() }},
+		{name: "channels_env", probe: func(ctx context.Context) doctorCheck { return checkChannelsEnv() }},
+		{name: "binary_on_path", probe: func(ctx context.Context) doctorCheck { return checkBinaryOnPath() }},
+		{name: "ident_cache_env", probe: func(ctx context.Context) doctorCheck { return checkIdentCacheEnv() }},
+		{name: "user_scope_ignore", probe: func(ctx context.Context) doctorCheck { return checkUserScopeIgnoreContext(ctx, root) }},
+		{name: "user_scope_guard", probe: func(ctx context.Context) doctorCheck { return checkUserScopeGuard() }},
+		{name: "session_ledger_tokens", probe: func(ctx context.Context) doctorCheck { return checkSessionLedgerTokens() }},
 		// Phase Q (docs/design/observability-surfaces.md §8 item 3).
-		{probe: func(ctx context.Context) doctorCheck { return checkMetricsTier() }},
+		{name: "metrics_tier", probe: func(ctx context.Context) doctorCheck { return checkMetricsTier() }},
 		// Phase R (docs/plans/cpp-toolchain.md CT-7).
-		{probe: func(ctx context.Context) doctorCheck { return checkCppToolchain(root) }},
+		{name: "cpp_toolchain", probe: func(ctx context.Context) doctorCheck { return checkCppToolchain(root) }},
 		// BP-36 (docs/plans/bench-pyramid.md): is the graph this daemon
 		// serves actually typed? (doctor_typed.go)
-		{probe: func(ctx context.Context) doctorCheck {
+		{name: "typed_edges", probe: func(ctx context.Context) doctorCheck {
 			return checkTypedEdges(doctorHTTPClient(ctx), baseURL, root, explicitSvc, daemonUp)
 		}},
 		// O69 (wave P1): does this repo have source in a language fathom has
 		// no extractor for — named and counted, never silent (doctor_languages.go)
-		{probe: func(ctx context.Context) doctorCheck {
+		{name: "unsupported_languages", probe: func(ctx context.Context) doctorCheck {
 			return checkUnsupportedLanguages(doctorHTTPClient(ctx), baseURL, root, explicitSvc, daemonUp)
 		}},
 		// EW-20 (O127): a registered service whose root no longer exists,
 		// named with the ingest call that re-points it (doctor_serviceroots.go)
-		{probe: func(ctx context.Context) doctorCheck {
+		{name: "service_roots", probe: func(ctx context.Context) doctorCheck {
 			return checkServiceRoots(doctorHTTPClient(ctx), baseURL, root, explicitSvc, daemonUp)
 		}},
 		// Phase T (docs/design/capability-registry.md): the one row that
 		// answers "why isn't X happening here?" — last, because it reads
 		// every fact the rows above diagnose individually.
-		{probe: func(ctx context.Context) doctorCheck {
+		{name: "capabilities", probe: func(ctx context.Context) doctorCheck {
 			return checkCapabilities(baseURL, root, explicitSvc, ctx)
 		}, ownBudget: true},
 		// CC-6 (docs/plans/custodian.md): the config custodian — are this
 		// repo's registered config contracts still true?
-		{probe: func(ctx context.Context) doctorCheck { return checkConcerns(root) }},
-		{probe: func(ctx context.Context) doctorCheck { return checkIntent(root, ledgerRoots(ctx)) }},
-		{probe: func(ctx context.Context) doctorCheck { return checkReadouts(root) }}, // RO-18 (ADR-071): readouts mode, refused rules, view support, another Bash rewriter (doctor_readouts.go)
-		{probe: func(ctx context.Context) doctorCheck {
+		{name: "concerns", probe: func(ctx context.Context) doctorCheck { return checkConcerns(root) }},
+		{name: "intent", probe: func(ctx context.Context) doctorCheck { return checkIntent(root, ledgerRoots(ctx)) }},
+		{name: "readouts", probe: func(ctx context.Context) doctorCheck { return checkReadouts(root) }}, // RO-18 (ADR-071): readouts mode, refused rules, view support, another Bash rewriter (doctor_readouts.go)
+		{name: "unproven_claims", probe: func(ctx context.Context) doctorCheck {
 			return checkUnprovenClaims(root, baseURL, explicitSvc, ledgerRoots(ctx))
 		}},
 		// DP-3/DP-4 (docs/plans/custodian.md): the doctrine plane — the
 		// vision promotion pipeline and goals as pre-registered bets
 		// (intentdoctrine.go). Warns, never fails.
-		{probe: func(ctx context.Context) doctorCheck { return checkDoctrine(root) }},
+		{name: "doctrine", probe: func(ctx context.Context) doctorCheck { return checkDoctrine(root) }},
 		// vision 33 / ADR-043 stage 1 (TC-14): the certifications layer's
 		// own declared/live/join-rate facts, read directly from the
 		// repo's local store (doctor's only store-direct row — see
 		// doctor_certifications.go's own doc comment for why).
-		{probe: func(ctx context.Context) doctorCheck {
+		{name: "certifications", probe: func(ctx context.Context) doctorCheck {
 			return checkCertifications(certificationsStorePath(root), certificationsDoctorService(root, explicitSvc), ctx)
 		}},
 		// J5 (app-kit O25): instrument --adoption/research report/flywheel
 		// must agree on which call log they're reading.
-		{probe: func(ctx context.Context) doctorCheck {
+		{name: "instrument_identity", probe: func(ctx context.Context) doctorCheck {
 			return checkInstrumentIdentity(doctorHTTPClient(ctx), baseURL, explicitSvc)
 		}},
+	}
+	// Preserve the existing fail-open contract when doctor is entered after
+	// the caller has already spent the entire invocation budget. Once started,
+	// every individual unfinished check is returned by name as TIMEOUT.
+	if hookDeadlineSpent() {
+		return []doctorCheck{{Name: doctorDeadlineRow, Status: doctorSkipped, Reason: fmt.Sprintf("%d check(s) not run — the hook deadline was already spent before diagnosis", len(steps)), Remedy: "run `fathom doctor` for the full table"}}
 	}
 	return runDoctorSteps(steps)
 }
@@ -406,37 +415,80 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 // of the checks it cut (RT-7).
 const doctorDeadlineRow = "hook_deadline"
 
-// doctorStep keeps the ordinary five-second probe cap unless the work has
-// its own budget (provider pings) or cannot be interrupted (local projections).
+// Individual IO probes keep their own caps. Only a parent deadline permits
+// abandoning a check; interactive local projections run to completion.
 type doctorStep struct {
+	name      string
 	probe     func(context.Context) doctorCheck
 	ownBudget bool
+	prepare   bool // gathers immutable inputs consumed by the independent checks
 }
 
-// runDoctorSteps runs steps in order. Outside a hook every step runs;
-// inside one, a spent deadline stops the run and the steps not reached are
-// named in one skipped doctorDeadlineRow — a cut diagnosis never reads as
-// a clean one.
 func runDoctorSteps(steps []doctorStep) []doctorCheck {
-	checks := make([]doctorCheck, 0, len(steps))
-	for i, step := range steps {
-		if hookDeadlineSpent() {
-			checks = append(checks, doctorCheck{
-				Name:   doctorDeadlineRow,
-				Status: doctorSkipped,
-				Reason: fmt.Sprintf("%d check(s) not run — the hook's deadline was spent (a slow or unreachable daemon)", len(steps)-i),
-				Remedy: "run `fathom doctor` for the full table",
-			})
-			break
+	ctx, cancel := doctorStepContext(context.Background())
+	defer cancel()
+	return runDoctorStepsContext(ctx, steps)
+}
+
+// Preparation finishes before readers start. Independent checks run together,
+// but results retain declaration order regardless of completion order.
+func runDoctorStepsContext(parent context.Context, steps []doctorStep) []doctorCheck {
+	checks := make([]doctorCheck, len(steps))
+	run := func(i int) {
+		step := steps[i]
+		var ctx context.Context
+		var cancel context.CancelFunc
+		if at, ok := parent.Deadline(); ok {
+			remaining := time.Until(at)
+			// Leave part of the existing invocation budget for collection/rendering.
+			cap := remaining * 3 / 4
+			if !step.ownBudget && cap > 5*time.Second {
+				cap = 5 * time.Second
+			}
+			ctx, cancel = context.WithTimeout(parent, cap)
+		} else {
+			ctx, cancel = context.WithCancel(parent)
 		}
-		ctx, cancel := doctorProbeContext(context.Background())
-		if step.ownBudget {
-			cancel()
-			ctx, cancel = doctorStepContext(context.Background())
+		defer cancel()
+		timeout := func() doctorCheck {
+			return doctorCheck{Name: step.name, Status: doctorErrorStatus(ctx.Err()), Reason: "check did not finish within its remaining deadline", Remedy: "re-run doctor for this named check"}
 		}
-		checks = append(checks, runDoctorProbe(ctx, step.probe))
-		cancel()
+		if step.name != "" && ctx.Err() != nil {
+			checks[i] = timeout()
+			return
+		}
+		// Preparations write shared inputs; join them before releasing readers.
+		_, bounded := parent.Deadline()
+		if step.prepare || step.name == "" || !bounded {
+			checks[i] = runDoctorProbe(ctx, step.probe)
+			return
+		}
+		// Let a cooperative probe return its source-specific row after its
+		// context expires, while collection still respects the hook deadline.
+		at, _ := parent.Deadline()
+		collect, finish := context.WithDeadline(context.WithoutCancel(ctx), at)
+		defer finish()
+		stop := context.AfterFunc(ctx, func() { time.AfterFunc(25*time.Millisecond, finish) })
+		defer stop()
+		row, err := tenancy.RunUntilDone(collect, func() doctorCheck { return runDoctorProbe(ctx, step.probe) })
+		if err != nil {
+			checks[i] = timeout()
+		} else {
+			checks[i] = row
+		}
 	}
+	for i, step := range steps {
+		if step.prepare {
+			run(i)
+		}
+	}
+	var wg sync.WaitGroup
+	for i, step := range steps {
+		if !step.prepare {
+			wg.Go(func() { run(i) })
+		}
+	}
+	wg.Wait()
 	return checks
 }
 
@@ -643,7 +695,7 @@ func checkDaemonReachable(hc *http.Client, baseURL string) (bool, doctorCheck) {
 
 	resp, err := hc.Get(baseURL + "/healthz")
 	if err != nil {
-		return false, doctorCheck{Name: name, Status: doctorFail, Reason: doctorReachabilityReason(baseURL, err), Remedy: remedy}
+		return false, doctorCheck{Name: name, Status: doctorFail, Reason: doctorReachabilityReason(baseURL, err), Remedy: remedy, probeErr: err}
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
@@ -2171,10 +2223,10 @@ func tallyDoctorChecks(checks []doctorCheck) (pass, warn, fail, skipped int) {
 	return pass, warn, fail, skipped
 }
 
-func printDoctorJSON(w io.Writer, harness, svc, root string, checks []doctorCheck) {
+func printDoctorJSON(w io.Writer, harness, svc, root string, checks []doctorCheck, channels ...[]doctorChannel) {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
-	_ = enc.Encode(doctorJSONPayload(harness, svc, root, checks))
+	_ = enc.Encode(doctorJSONPayload(harness, svc, root, checks, channels...))
 }
 
 // doctorRunner runs `fathom doctor` (registered below; EW-45).

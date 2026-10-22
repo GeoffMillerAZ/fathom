@@ -21,12 +21,14 @@ const doctorWrapperLevels = 2
 type doctorWiringEvidence struct {
 	found, indirect, unknown bool
 	missingScript            string
+	file                     string
 }
 
 type doctorWrapperReader struct {
 	ctx       context.Context
 	root      string
 	remaining int
+	matches   func([]string) bool
 }
 
 func doctorCommandEvidence(ctx context.Context, root, command, sub string) doctorWiringEvidence {
@@ -101,10 +103,13 @@ func (r *doctorWrapperReader) command(command, sub string, depth int) doctorWiri
 			if len(words) == 0 {
 				continue
 			}
+			if r.matches != nil && r.matches(words) {
+				return doctorWiringEvidence{found: true, indirect: depth > 0}
+			}
 			bin := filepath.Base(words[0])
 			if bin == "fathom" || words[0] == "$FATHOM" || words[0] == "${FATHOM}" {
 				want := strings.Fields(sub)
-				if len(words) > len(want) && strings.Join(words[1:1+len(want)], " ") == sub {
+				if r.matches == nil && len(words) > len(want) && strings.Join(words[1:1+len(want)], " ") == sub {
 					return doctorWiringEvidence{found: true, indirect: depth > 0}
 				}
 				continue
@@ -180,6 +185,9 @@ func (r *doctorWrapperReader) command(command, sub string, depth int) doctorWiri
 					continue
 				}
 				ev = r.command(text, sub, depth+1)
+				if ev.found && ev.file == "" {
+					ev.file, _ = filepath.Rel(r.root, p)
+				}
 			}
 			if ev.found {
 				return ev
@@ -223,9 +231,11 @@ func (r *doctorWrapperReader) task(words []string, sub string, depth int) doctor
 	}
 	var data []byte
 	var err error
+	proofFile := ""
 	for _, path := range paths {
 		data, err = r.read(filepath.Join(r.root, path))
 		if !os.IsNotExist(err) {
+			proofFile = path
 			break
 		}
 	}
@@ -307,6 +317,9 @@ func (r *doctorWrapperReader) task(words []string, sub string, depth int) doctor
 	}
 	ev := r.command(strings.Join(commands, "\n"), sub, depth)
 	ev.unknown = ev.unknown || uncertain
+	if ev.found && ev.file == "" {
+		ev.file = proofFile
+	}
 	return ev
 }
 
