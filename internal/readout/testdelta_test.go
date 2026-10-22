@@ -63,7 +63,7 @@ func TestRenderTestDeltaDoubtNeverReadsFixed(t *testing.T) {
 		}, now("fail", true, true, false, false, pkg+".TestB"),
 			"delta vs the last run: still failing money.TestB (since h1 or earlier)", DeltaCompared},
 		{"this run missing its tree is not compared", []TestRunRow{row("h1", "t1", pkg+".TestA")}, TestRunNow{Invocation: "go test", Head: "h2", Scope: "./..."},
-			"delta vs the last run: not compared", DeltaNotCompared},
+			"", DeltaNotCompared},
 	} {
 		got, outcome := renderTestDelta(c.prev, c.now)
 		if got != c.want || outcome != c.outcome {

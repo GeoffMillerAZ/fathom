@@ -53,11 +53,11 @@ func TestTestDeltaPartialBaseNeverLabelsNew(t *testing.T) {
 			if !ok || len(prev) != 1 {
 				t.Fatalf("previous runs = %+v, read=%v", prev, ok)
 			}
-			line, _ := readout.RunDelta(prev, readout.TestRunNow{
+			line, outcome := readout.RunDelta(prev, readout.TestRunNow{
 				Invocation: "go test", Head: "h2", Tree: "t2", Scope: "./...", Failing: []string{"example.com/m/cart.TestA"},
 			})
-			if strings.Contains(line, "new ") || !strings.Contains(line, "not compared") {
-				t.Fatalf("partial failing baseline: %q", line)
+			if line != "" || outcome != readout.DeltaNotCompared {
+				t.Fatalf("partial failing baseline: %q (%s)", line, outcome)
 			}
 		})
 	}

@@ -63,8 +63,8 @@ type TestRunNow struct {
 
 // The delta's outcomes, as the run row logs them.
 const (
-	DeltaNone        = "none"         // the session has no previous row
-	DeltaNotCompared = "not-compared" // uncertain baseline or missing tree keys
+	DeltaNone        = "none"         // legacy rows with no previous run
+	DeltaNotCompared = "not-compared" // no eligible baseline or missing tree keys
 	DeltaCompared    = "compared"     // a clause naming at least one test
 	DeltaSilent      = "silent"       // nothing could be named
 )
@@ -90,18 +90,20 @@ const (
 	ranNo                       // outside this run's scope, filtered out, or its package never built
 )
 
-// renderTestDelta compares now with the session's last row of the same
-// command shape (invocation and scope), else with its last row.
+// renderTestDelta compares now with the session's last decided, non-partial
+// row of the same command shape (invocation and scope). Without one, only
+// the logged outcome names the missing comparison.
 func renderTestDelta(prev []TestRunRow, now TestRunNow) (string, string) {
-	if len(prev) == 0 {
-		return "", DeltaNone
-	}
-	bi, same := len(prev)-1, false
+	bi := -1
 	for i := len(prev) - 1; i >= 0; i-- {
-		if sameShape(prev[i], now.Invocation, now.Scope) {
-			bi, same = i, true
+		r := prev[i]
+		if sameShape(r, now.Invocation, now.Scope) && !r.Partial && (r.Result == "pass" || r.Result == "fail") {
+			bi = i
 			break
 		}
+	}
+	if bi < 0 {
+		return "", DeltaNotCompared
 	}
 	base := prev[bi]
 	lead := "delta vs the last run"
@@ -109,10 +111,7 @@ func renderTestDelta(prev []TestRunRow, now TestRunNow) (string, string) {
 		lead += " (of the first 10 it logged)"
 	}
 	if now.Head == "" || now.Tree == "" || base.Head == "" || base.Tree == "" {
-		return lead + ": not compared", DeltaNotCompared
-	}
-	if base.Partial || (base.Result != "pass" && base.Result != "fail") {
-		return lead + ": not compared", DeltaNotCompared
+		return "", DeltaNotCompared
 	}
 	sameTree := base.Head == now.Head && base.Tree == now.Tree
 	failingNow := setOf(now.Failing)
@@ -158,8 +157,8 @@ func renderTestDelta(prev []TestRunRow, now TestRunNow) (string, string) {
 		if failedBefore[id] {
 			continue
 		}
-		if !same || base.Capped {
-			unsure++ // the compared row may not have run it, or logged it past the cap
+		if base.Capped {
+			unsure++ // the compared row may have omitted it past the cap
 			continue
 		}
 		name := deltaName(id, now.Packages)
