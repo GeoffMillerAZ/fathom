@@ -8,6 +8,7 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -21,7 +22,6 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/conserve"
 	"github.com/geoffmilleraz/fathom/internal/core"
-	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
 	"github.com/geoffmilleraz/fathom/internal/receipt"
@@ -144,7 +144,7 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 				return nil, &rpcError{Code: ErrCodeInvalid, Message: "review_diff: backend does not support as_of"}
 			}
 		}
-		in, sources, rpcErr := buildReviewInput(ctx, backend, p.Service, p.ChangedFiles, p.Concern, p.Since, asOf)
+		in, sources, rpcErr := buildReviewInput(ctx, backend, p.Service, p.ChangedFiles, p.Concern, p.Since, asOf, s.reviewNow)
 		if rpcErr != nil {
 			return nil, rpcErr
 		}
@@ -166,26 +166,61 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 				return nil, rpcErr
 			}
 		}
+		if err := ctx.Err(); err != nil {
+			return nil, navLoadError("review_diff", p.Service, err)
+		}
 		v := review.Run(in)
+		if len(sources.gaps) > 0 {
+			for i := range v.Dimensions {
+				if v.Dimensions[i].Name == review.DimSpecCoverage {
+					v.Dimensions[i].Checked = false
+					v.Dimensions[i].Reason = "changed source unreadable or over review budget: " + strings.Join(sources.gaps, ", ")
+				}
+			}
+		}
+		if len(sources.gaps) > 0 {
+			v.Summary = summarizeReviewVerdict(v)
+		}
+		if err := ctx.Err(); err != nil {
+			return nil, navLoadError("review_diff", p.Service, err)
+		}
 		// GL-17: a dated review is a read of the past — it never writes the
 		// findings claims or supersedes the predecessors a live run
 		// reconciles, so findings_persisted is honestly false.
 		persisted, resolutions := false, map[string]string(nil)
 		if !asOf.active() {
-			persisted, resolutions = applyAndPersistFindings(ctx, backend, &v, sources)
+			persisted, resolutions = applyAndPersistFindings(ctx, backend, &v, &sources)
+		}
+		if err := ctx.Err(); err != nil {
+			return nil, navLoadError("review_diff", p.Service, err)
+		}
+		if sources.windowUnverified {
+			for i := range v.Dimensions {
+				if v.Dimensions[i].Name == review.DimSpecCoverage {
+					v.Dimensions[i].Checked = false
+					v.Dimensions[i].Reason = strings.TrimPrefix(sources.partial, "partial: ")
+				}
+			}
+			v.Summary = summarizeReviewVerdict(v)
 		}
 
 		payload := v.Payload(persisted)
+		if sources.typedNote != "" {
+			payload["typed_edges_note"] = sources.typedNote
+		}
 		if asOf.active() {
 			payload["as_of"] = asOf.label()
 			payload["as_of_scope"] = "obligations and certifications are answered as of " + asOf.label() +
 				"; impact, architecture, spec, test and integrity dimensions read the code and index as they stand now; nothing was persisted"
 		}
-		if note := partialNote(sources.cov); note != "" {
+		if note := sources.partialNote(); note != "" {
 			payload["corpus_partial"] = note
 		}
 		if vo := reviewVerdictOutcome(v, resolutions); vo != nil {
 			payload["verdict_outcome"] = vo
+		}
+		if err := ctx.Err(); err != nil {
+			return nil, navLoadError("review_diff", p.Service, err)
 		}
 		payload["test_impact"] = reviewTestGap(ctx, backend, in).Payload()
 
@@ -198,9 +233,15 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 		// Governance dimensions (obligations, arch_conformance, spec
 		// coverage, test coverage) are not edge-derived and are outside
 		// this tally.
+		if err := ctx.Err(); err != nil {
+			return nil, navLoadError("review_diff", p.Service, err)
+		}
 		ng, gerr := loadNavGraphsErr(ctx, backend, p.Service)
 		if gerr == nil {
 			payload["resolution"] = resolutionFromBlastBuckets(blastRadiusByDepth(ng.Both, ng.Nodes, in.ChangedFiles))
+		}
+		if err := ctx.Err(); err != nil {
+			return nil, navLoadError("review_diff", p.Service, err)
 		}
 		if ic := indexCommitFor(ctx, backend, p.Service); ic != "" {
 			payload["index_commit"] = ic
@@ -210,7 +251,13 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 		// shared with blast_radius). Additive:
 		// every existing payload field is unchanged (law 4, same as
 		// test_impact above).
+		if err := ctx.Err(); err != nil {
+			return nil, navLoadError("review_diff", p.Service, err)
+		}
 		hops, unextracted := serviceRefHopsInto(ctx, backend, p.Service, p.ChangedFiles)
+		if err := ctx.Err(); err != nil {
+			return nil, navLoadError("review_diff", p.Service, err)
+		}
 		withServiceRefHops(payload, hops, unextracted)
 		// GL-22: the changed files layered by blast radius (leaf, shared
 		// callee, cross-service provider) from the graph and hops above.
@@ -237,10 +284,16 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 			// EVX-3: the SARIF run carries its provenance, anchored at the
 			// indexed commit under the service root against the store's
 			// fingerprints (receipt_sarif's content grows; its key does not).
+			if err := ctx.Err(); err != nil {
+				return nil, navLoadError("review_diff", p.Service, err)
+			}
 			anchorRun := receipt.Run{Dir: in.Root, Rev: indexCommitFor(ctx, backend, p.Service), Service: p.Service, Nodes: ng.Nodes,
 				RepositoryURIAt: receipt.ConfiguredRepositoryURI}
 			if rcb, ok := backend.(reviewClaimsBackend); ok {
 				anchorRun.Stored = func(path string) (string, bool) {
+					if ctx.Err() != nil {
+						return "", false
+					}
 					hash, found, ferr := rcb.SourceFingerprint(ctx, p.Service, path)
 					return hash, ferr == nil && found
 				}
@@ -248,6 +301,9 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 			receiptSARIF, receiptCheck := review.ChangeRiskReceipt(ctx, "fathom review_diff", anchorRun, risk)
 			payload["receipt_sarif"] = json.RawMessage(receiptSARIF)
 			payload["receipt_check"] = json.RawMessage(receiptCheck)
+		}
+		if err := ctx.Err(); err != nil {
+			return nil, navLoadError("review_diff", p.Service, err)
 		}
 		return payload, nil
 	})
@@ -372,17 +428,23 @@ func applyConservationDimension(ctx context.Context, in *review.Input, backend Q
 		return
 	}
 	cin, err := conserve.NewInput(ctx, corpusRoot, in.Base, st, service, discoverConservePlanPaths(corpusRoot))
-	if err != nil {
+	if err != nil || ctx.Err() != nil {
 		return
 	}
 	// CV-65/design §3.4: the conservation dimension carries the SAME
 	// reading set `fathom conserve` would report for this range, execution
 	// evidence included — previously always static reach here, since this
 	// caller never loaded a coverage profile of its own.
-	conserve.LoadConfiguredCoverage(&cin, corpusRoot, "")
+	conserve.LoadConfiguredCoverageContext(ctx, &cin, corpusRoot, "")
+	if ctx.Err() != nil {
+		return
+	}
 	in.ConservationSupported = true
 	rep := conserve.Run(ctx, cin, conserve.Planes())
 	in.ConservationPlanes = conservationPlaneSummaries(rep.Planes)
+	if ctx.Err() != nil {
+		return
+	}
 	in.ConservationResidue = conservationResidueSummary(conserve.Residue(ctx, cin, conserve.DefaultResidueMax))
 }
 
@@ -453,32 +515,97 @@ func discoverConservePlanPaths(root string) []string {
 // for arch_conformance (review_diff never accepts inline arch rules — it
 // always resolves through the service's own project rule pack, or reports
 // checked:false), and the changed files' own source content for
-// spec_coverage. The full source list is also returned: the persist step
-// needs it to hash cited lines (semantic.Sweep's contract), including arch
-// citations on files OUTSIDE the changed set.
-// reviewCorpus is the budgeted scan review_diff's findings persistence
-// reads file contents from (RT-71): files, and whether the scan stopped
-// early — a file absent from a partial scan is unknown, never deleted.
+// spec_coverage. A complete path inventory supports reconciliation, while
+// bounded named reads supply changed text and any persisted citation text.
+// reviewCorpus separates complete path membership from bounded source text.
+// Paths settle deletion; only changed and cited files need content.
 type reviewCorpus struct {
-	files []core.SourceFile
-	cov   corpus.Coverage
+	files                  map[string][]byte
+	fileMeta               map[string]core.SourceFile
+	paths                  map[string]bool
+	pathsComplete          bool
+	gaps                   []string
+	partial                string
+	used                   int64
+	deadline               time.Time
+	windowUnverified       bool
+	now                    func() time.Time
+	legacy                 bool
+	indexScope             memo.Scope
+	indexCommit            string
+	indexFound, indexKnown bool
+	typedNote              string
 }
 
-func buildReviewInput(ctx context.Context, backend QueryInterface, service string, changedFiles []string, concern, since string, asOf *asOfWindow) (review.Input, reviewCorpus, *rpcError) {
-	nodes, err := serviceSymbols(ctx, backend, service)
+func (rc *reviewCorpus) indexCurrent(ctx context.Context, backend QueryInterface, service string) bool {
+	if err := ctx.Err(); err != nil {
+		return rc.refuseWindow("partial: index identity recheck: " + err.Error())
+	}
+	if rc.indexScope.Watermark != "" && navScopeNoEnsure(ctx, backend, service) != rc.indexScope {
+		return rc.refuseWindow("partial: index identity changed during review")
+	}
+	if rc.indexKnown {
+		_, commit, found, err := backend.ServiceMeta(ctx, service)
+		if err == nil && (commit != rc.indexCommit || found != rc.indexFound) {
+			return rc.refuseWindow("partial: index identity changed during review")
+		}
+	}
+	return ctx.Err() == nil
+}
+
+func (rc reviewCorpus) partialNote() string {
+	if len(rc.gaps) > 0 {
+		gap := "required source unreadable or over review budget: " + strings.Join(rc.gaps, ", ")
+		if rc.partial != "" {
+			return rc.partial + "; " + gap
+		}
+		return "partial: " + gap
+	}
+	return rc.partial
+}
+
+func summarizeReviewVerdict(v review.Verdict) string {
+	checked, active := 0, 0
+	var unchecked []string
+	for _, d := range v.Dimensions {
+		if d.Checked {
+			checked++
+			active += d.Count
+		} else {
+			unchecked = append(unchecked, d.Name)
+		}
+	}
+	s := fmt.Sprintf("service %s: %d changed file(s); %d/%d dimensions checked; %d active finding(s)", v.Service, len(v.ChangedFiles), checked, len(v.Dimensions), active)
+	if len(unchecked) > 0 {
+		s += "; unchecked: " + strings.Join(unchecked, ", ")
+	}
+	return s
+}
+
+func buildReviewInput(ctx context.Context, backend QueryInterface, service string, changedFiles []string, concern, since string, asOf *asOfWindow, clock ...func() time.Time) (review.Input, reviewCorpus, *rpcError) {
+	now := time.Now
+	if len(clock) > 0 && clock[0] != nil {
+		now = clock[0]
+	}
+	if err := ctx.Err(); err != nil {
+		return review.Input{}, reviewCorpus{}, navLoadError("review_diff", service, err)
+	}
+	ng, err := loadNavGraphsErr(ctx, backend, service)
 	if err != nil {
 		return review.Input{}, reviewCorpus{}, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 	}
-	typed, _ := backend.TypedEdges(ctx, service)
 
 	in := review.Input{
 		Service:      service,
 		ChangedFiles: changedFiles,
 		Concern:      concern,
-		Nodes:        nodes,
-		TypedEdges:   typed,
+		Nodes:        ng.Nodes,
+		TypedEdges:   ng.Typed,
 	}
 
+	if err := ctx.Err(); err != nil {
+		return review.Input{}, reviewCorpus{}, navLoadError("review_diff", service, err)
+	}
 	if ob, ok := backend.(obligationsBackend); ok {
 		in.ObligationsSupported = true
 		in.ObligationsByFile = make(map[string][]review.ObligationRule, len(changedFiles))
@@ -487,6 +614,9 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 		serve := ob.Obligations
 		if rb, ok := backend.(reviewObligationsBackend); ok {
 			serve = rb.ReviewObligations
+		}
+		if err := ctx.Err(); err != nil {
+			return review.Input{}, reviewCorpus{}, navLoadError("review_diff", service, err)
 		}
 		// GL-17: a dated review asks what governed each file then. The
 		// as-of answer is the general obligations read (ObligationsAsOf
@@ -500,9 +630,12 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 			}
 		}
 		for _, f := range changedFiles {
+			if err := ctx.Err(); err != nil {
+				return review.Input{}, reviewCorpus{}, navLoadError("review_diff", service, err)
+			}
 			obl, oerr := serve(ctx, service, f, 0)
 			if oerr != nil {
-				continue // best-effort per file: a lookup error degrades that file's rules, not the whole dimension
+				continue
 			}
 			for _, r := range obl.Rules {
 				in.ObligationsByFile[f] = append(in.ObligationsByFile[f], review.ObligationRule{
@@ -519,6 +652,9 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 	// unconditionally, since QueryInterface implementations here (unlike
 	// cmd/fathom's concrete *client.Client) may not serve semantic layers
 	// at all.
+	if err := ctx.Err(); err != nil {
+		return review.Input{}, reviewCorpus{}, navLoadError("review_diff", service, err)
+	}
 	if cb, ok := backend.(certificationsBackend); ok {
 		in.CertificationsSupported = true
 		if certClaims, cerr := cb.ClaimsForService(ctx, service, certify.Layer); cerr == nil {
@@ -545,12 +681,18 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 		}
 	}
 
-	corpusRoot := ""
-	if path, _, found, metaErr := backend.ServiceMeta(ctx, service); metaErr == nil && found {
-		corpusRoot = path
+	if err := ctx.Err(); err != nil {
+		return review.Input{}, reviewCorpus{}, navLoadError("review_diff", service, err)
+	}
+	corpusRoot, indexCommit, indexFound, metaErr := backend.ServiceMeta(ctx, service)
+	if metaErr != nil || !indexFound {
+		corpusRoot = ""
 	}
 	// CV-13 (ADR-044 §1.6): resolve since in the service's OWN indexed
 	// root — never the daemon process's cwd — and fill Input.Base/Root.
+	if err := ctx.Err(); err != nil {
+		return review.Input{}, reviewCorpus{}, navLoadError("review_diff", service, err)
+	}
 	reviewDiffWithBase(ctx, &in, corpusRoot, since)
 	// DimIntegrity (ADR-044 §1.6, CV-12, gap-closing wave 3 item 1): the
 	// "integrity" conserve plane over exactly the base just resolved — a
@@ -560,12 +702,21 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 	// sees. Must run BEFORE DimConservation is even reached (Run's own
 	// dimension order), but the ordering here is incidental — the two are
 	// independent computations over the identical base..head range.
+	if err := ctx.Err(); err != nil {
+		return review.Input{}, reviewCorpus{}, navLoadError("review_diff", service, err)
+	}
 	applyIntegrityDimension(ctx, &in, backend, corpusRoot, service)
 	// DimConservation (ADR-044 §1.6/§2, wave 2): the same base, run
 	// through every registered conserve.Plane — a no-op (leaves
 	// ConservationSupported false) when Base is still "" or backend
 	// carries no conserveBackend capability.
+	if err := ctx.Err(); err != nil {
+		return review.Input{}, reviewCorpus{}, navLoadError("review_diff", service, err)
+	}
 	applyConservationDimension(ctx, &in, backend, corpusRoot, service)
+	if err := ctx.Err(); err != nil {
+		return review.Input{}, reviewCorpus{}, navLoadError("review_diff", service, err)
+	}
 	rules, source, deny, checked, reason, resolveErr := projectrules.ResolveRules(corpusRoot, nil, false)
 	if resolveErr != nil {
 		return review.Input{}, reviewCorpus{}, &rpcError{Code: ErrCodeInternal, Message: "review_diff: project rules: " + resolveErr.Error()}
@@ -576,32 +727,25 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 	in.ArchChecked = checked
 	in.ArchReason = reason
 
-	sources, cov, serr := collectSources(ctx, backend, service)
-	if serr == nil {
-		changedSet := make(map[string]bool, len(changedFiles))
-		for _, f := range changedFiles {
-			changedSet[f] = true
-		}
-		for _, f := range sources {
-			if changedSet[f.Path] {
-				in.ChangedSources = append(in.ChangedSources, f)
-				delete(changedSet, f.Path)
-			}
-		}
-		// RT-71 / I38: a changed file the budgeted scan never reached is
-		// read by name, not dropped from spec_coverage.
-		if cov.LowerBound() && len(changedSet) > 0 {
-			missing := make([]string, 0, len(changedSet))
-			for f := range changedSet {
-				missing = append(missing, f)
-			}
-			sort.Strings(missing)
-			in.ChangedSources = append(in.ChangedSources, sourceFiles(ctx, backend, service, missing)...)
-			sort.Slice(in.ChangedSources, func(i, j int) bool { return in.ChangedSources[i].Path < in.ChangedSources[j].Path })
+	if err := ctx.Err(); err != nil {
+		return review.Input{}, reviewCorpus{}, navLoadError("review_diff", service, err)
+	}
+	rc := readReviewCorpus(ctx, backend, service, changedFiles, now)
+	rc.indexScope = ng.Snapshot.Scope
+	rc.indexCommit, rc.indexFound, rc.indexKnown = indexCommit, indexFound, metaErr == nil
+	if ng.TypedErr != nil {
+		rc.typedNote = "typed edge read failed; using syntax graph: " + ng.TypedErr.Error()
+	}
+	for _, f := range changedFiles {
+		if data, ok := rc.files[f]; ok {
+			in.ChangedSources = append(in.ChangedSources, core.SourceFile{Path: f, Content: data})
 		}
 	}
-
-	return in, reviewCorpus{files: sources, cov: cov}, nil
+	sort.Slice(in.ChangedSources, func(i, j int) bool { return in.ChangedSources[i].Path < in.ChangedSources[j].Path })
+	if err := ctx.Err(); err != nil {
+		return review.Input{}, reviewCorpus{}, navLoadError("review_diff", service, err)
+	}
+	return in, rc, nil
 }
 
 // defaultCoverageProfileLayer is the layer an unlabeled `coverage_profile`
@@ -698,12 +842,15 @@ func applyCoverageProfiles(ctx context.Context, backend QueryInterface, service 
 // own Scope and whether each scoped file is still present in sources (the
 // full corpus source list, not just the changed files), mirroring
 // cmd/fathom/review.go's runReview resolve closure exactly.
-func applyAndPersistFindings(ctx context.Context, backend QueryInterface, v *review.Verdict, rc reviewCorpus) (bool, map[string]string) {
+func applyAndPersistFindings(ctx context.Context, backend QueryInterface, v *review.Verdict, rc *reviewCorpus) (bool, map[string]string) {
 	rcb, ok := backend.(reviewClaimsBackend)
-	if !ok {
+	if !ok || ctx.Err() != nil {
 		return false, nil
 	}
 	existing, _ := rcb.ClaimsForService(ctx, v.Service, review.ClaimsLayer)
+	if ctx.Err() != nil {
+		return false, nil
+	}
 	existingByID := make(map[string]core.SemanticClaim, len(existing))
 	for _, cl := range existing {
 		existingByID[cl.ClaimID] = cl
@@ -713,36 +860,33 @@ func applyAndPersistFindings(ctx context.Context, backend QueryInterface, v *rev
 	if _, indexedCommit, found, err := backend.ServiceMeta(ctx, v.Service); err == nil && found {
 		watermark = indexedCommit
 	}
-	content := make(map[string][]byte, len(rc.files))
-	for _, f := range rc.files {
-		content[f.Path] = f.Content
+	// A citation can be outside the diff. Read every persistable finding's
+	// cited path before BuildPersist, so an unreadable citation cannot cause
+	// PutClaims to replace a previously valid link set with an empty one.
+	for _, d := range v.Dimensions {
+		if d.Name != review.DimArch && d.Name != review.DimSpecCoverage {
+			continue
+		}
+		for _, f := range d.Findings {
+			if path, _, _, ok := core.ParseCiteRef(f.Citation); ok {
+				rc.readRequired(ctx, backend, v.Service, path)
+			}
+		}
 	}
-	readByName := map[string][]byte{}
+	if ctx.Err() != nil || len(rc.gaps) > 0 || (!rc.legacy && !rc.pathsComplete) {
+		return false, nil
+	}
 	claims, links, supersede := review.BuildPersist(v, existing, review.PersistInput{
-		Now:       time.Now,
+		Now:       rc.now,
 		Watermark: watermark,
 		FileContent: func(path string) ([]byte, bool) {
-			if data, ok := content[path]; ok {
-				return data, true
-			}
-			if !rc.cov.LowerBound() {
-				return nil, false
-			}
-			// RT-71 / I38: the scan stopped before this file — read it by
-			// name, or a finding citing it would lose its cites link
-			// (PutClaims replaces a claim's link set wholesale).
-			if _, tried := readByName[path]; !tried {
-				readByName[path] = nil
-				for _, f := range sourceFiles(ctx, backend, v.Service, []string{path}) {
-					if f.Path == path {
-						readByName[path] = f.Content
-					}
-				}
-			}
-			data := readByName[path]
-			return data, data != nil
+			data, ok := rc.files[path]
+			return data, ok
 		},
 		ScopeFingerprint: func(path string) (string, bool) {
+			if ctx.Err() != nil {
+				return "", false
+			}
 			hash, found, ferr := rcb.SourceFingerprint(ctx, v.Service, path)
 			return hash, ferr == nil && found
 		},
@@ -754,6 +898,11 @@ func applyAndPersistFindings(ctx context.Context, backend QueryInterface, v *rev
 	for i := range claims {
 		claims[i].AssertedBy = core.AssertedBy("review", watermark)
 	}
+	// The path inventory and source bytes used above are two live reads.
+	// Refuse all writes if either changed before reconciliation starts.
+	if !rc.revalidate(ctx, backend, v.Service) || !rc.indexCurrent(ctx, backend, v.Service) {
+		return false, nil
+	}
 
 	okAll := true
 	if len(claims) > 0 {
@@ -761,12 +910,13 @@ func applyAndPersistFindings(ctx context.Context, backend QueryInterface, v *rev
 			okAll = false
 		}
 	}
-	// A partial scan cannot say a file is gone (I38): an unscanned path
-	// counts as present, so no claim is resolved as a deletion on a guess.
-	fileExists := func(path string) bool { _, ok := content[path]; return ok || rc.cov.LowerBound() }
+	fileExists := func(path string) bool { return rc.paths[path] || (rc.legacy && !rc.pathsComplete) }
 	resolutions := make(map[string]string, len(supersede))
-	supersedeAt := time.Now().UTC()
+	supersedeAt := rc.now().UTC()
 	for _, id := range supersede {
+		if ctx.Err() != nil {
+			return false, resolutions
+		}
 		cl, hasExisting := existingByID[id]
 		if hasExisting {
 			resolutions[id] = review.ClassifyResolution(cl.Scope, fileExists)
@@ -778,10 +928,16 @@ func applyAndPersistFindings(ctx context.Context, backend QueryInterface, v *rev
 		// SU-19 (ADR-041 decision 7): close the predecessor's bi-temporal
 		// validity window at the same instant its status flips —
 		// best-effort, mirroring SetClaimStatus's own error handling.
+		if ctx.Err() != nil {
+			return false, resolutions
+		}
 		_ = rcb.SetClaimValidTo(ctx, v.Service, id, supersedeAt)
 		// SU-20: an explicit supersedes link when this run's reconcile
 		// found a genuine successor for the SAME subject — see
 		// review.SupersedeSuccessor's own doc comment.
+		if ctx.Err() != nil {
+			return false, resolutions
+		}
 		if hasExisting {
 			if successorID, sok := review.SupersedeSuccessor(*v, cl.Subject); sok {
 				_ = rcb.WriteSupersedes(ctx, v.Service, successorID, id, "review reconciliation: fixed/changed finding")

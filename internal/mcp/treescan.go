@@ -7,6 +7,7 @@ package mcp
 // returning a silently shorter corpus.
 
 import (
+	"bytes"
 	"context"
 	"sort"
 	"strings"
@@ -19,6 +20,207 @@ import (
 // treeBudget bounds one handler's tree scan: the design's reference-scan
 // defaults (§4.5, [references] scan_bytes = 64 MiB, scan_wall = 5 s).
 var treeBudget = corpus.Budget{Bytes: 64 << 20, Wall: 5 * time.Second}
+
+// readReviewCorpus lists paths without content, then reads only changed
+// members. The production backend supports both capabilities. Legacy test
+// backends fall back to the budgeted scan, retaining its partial receipt.
+func readReviewCorpus(ctx context.Context, backend QueryInterface, service string, changed []string, now func() time.Time) reviewCorpus {
+	rc := reviewCorpus{
+		files:    map[string][]byte{},
+		fileMeta: map[string]core.SourceFile{},
+		paths:    map[string]bool{},
+		deadline: now().Add(treeBudget.Wall),
+		now:      now,
+	}
+	if err := ctx.Err(); err != nil {
+		rc.refuseWindow("partial: source scan canceled: " + err.Error())
+		return rc
+	}
+	_, pathsOK := backend.(sourcePathLister)
+	_, filesOK := backend.(sourceFileReader)
+	rc.legacy = !pathsOK || !filesOK
+	if pl, ok := backend.(sourcePathLister); ok && filesOK {
+		readCtx, cancel := context.WithTimeout(ctx, rc.deadline.Sub(rc.now()))
+		paths, err := pl.SourcePaths(readCtx, service)
+		cancel()
+		if err == nil {
+			rc.pathsComplete = true
+			for _, p := range paths {
+				rc.paths[p] = true
+			}
+		} else {
+			rc.partial = "partial: source path inventory: " + err.Error()
+		}
+	} else {
+		readCtx, cancel := context.WithTimeout(ctx, rc.deadline.Sub(rc.now()))
+		files, cov, err := collectSources(readCtx, backend, service)
+		cancel()
+		for _, f := range files {
+			rc.paths[f.Path] = true
+			if rc.legacy || (int64(len(f.Content)) <= 2<<20 && rc.used+int64(len(f.Content)) <= treeBudget.Bytes) {
+				rc.files[f.Path] = f.Content
+				rc.fileMeta[f.Path] = f
+				rc.used += int64(len(f.Content))
+			}
+		}
+		rc.pathsComplete = err == nil && !cov.LowerBound()
+		if err != nil {
+			rc.partial = "partial: source path inventory: " + err.Error()
+		} else {
+			rc.partial = partialNote(cov)
+		}
+	}
+	seen := map[string]bool{}
+	for _, p := range changed {
+		if err := ctx.Err(); err != nil {
+			rc.refuseWindow("partial: source scan canceled: " + err.Error())
+			break
+		}
+		if seen[p] {
+			continue
+		}
+		seen[p] = true
+		if rc.pathsComplete && !rc.paths[p] {
+			continue // a deleted changed file has no source text
+		}
+		rc.readRequired(ctx, backend, service, p)
+	}
+	sort.Strings(rc.gaps)
+	return rc
+}
+
+// readRequired accounts for one named file under the review's shared time,
+// per-file and aggregate caps. A missing result for a known member is a
+// coverage gap; it cannot be interpreted as an empty file.
+func (rc *reviewCorpus) readRequired(ctx context.Context, backend QueryInterface, service, path string) {
+	if err := ctx.Err(); err != nil {
+		rc.refuseWindow("partial: required source canceled: " + err.Error())
+		return
+	}
+	// Preserve scan-based backends' best-effort citation behavior. Only a
+	// partial scan needs the same named fallback base used; an absent
+	// citation in a complete legacy scan never vetoed finding persistence.
+	if rc.legacy {
+		if _, ok := rc.files[path]; !ok && !rc.pathsComplete {
+			for _, f := range sourceFiles(ctx, backend, service, []string{path}) {
+				if f.Path == path {
+					rc.files[path], rc.fileMeta[path] = f.Content, f
+				}
+			}
+		}
+		return
+	}
+	if _, ok := rc.files[path]; ok {
+		return
+	}
+	if rc.pathsComplete && !rc.paths[path] {
+		rc.gaps = append(rc.gaps, path+" (absent citation)")
+		return
+	}
+	if rc.used >= treeBudget.Bytes || !rc.now().Before(rc.deadline) {
+		rc.gaps = append(rc.gaps, path+" (review budget)")
+		return
+	}
+	readCtx, cancel := context.WithTimeout(ctx, rc.deadline.Sub(rc.now()))
+	defer cancel()
+	var files []core.SourceFile
+	var err error
+	if reader, ok := backend.(sourceFileReader); ok {
+		files, err = reader.ReadSourceFiles(readCtx, service, []string{path})
+	} else {
+		files = sourceFiles(readCtx, backend, service, []string{path})
+	}
+	if ctx.Err() != nil || readCtx.Err() != nil || !rc.now().Before(rc.deadline) {
+		rc.refuseWindow("partial: source window review budget expired or canceled")
+		rc.gaps = append(rc.gaps, path+" (review budget)")
+		return
+	}
+	if err == nil {
+		for _, f := range files {
+			if f.Path != path {
+				continue
+			}
+			if int64(len(f.Content)) > 2<<20 || rc.used+int64(len(f.Content)) > treeBudget.Bytes {
+				rc.gaps = append(rc.gaps, path+" (review budget)")
+				return
+			}
+			rc.files[path] = f.Content
+			rc.fileMeta[path] = f
+			rc.used += int64(len(f.Content))
+			return
+		}
+	}
+	rc.gaps = append(rc.gaps, path+" (unreadable)")
+}
+
+// revalidate compares the full path set and every byte/metadata field used
+// for this review immediately before its first finding write. It shares the
+// original 64 MiB / 5 s allowance. This closes the analysis-to-write
+// window without treating a live file read as proof of index freshness.
+func (rc *reviewCorpus) revalidate(ctx context.Context, backend QueryInterface, service string) bool {
+	if err := ctx.Err(); err != nil {
+		return rc.refuseWindow("partial: source window canceled: " + err.Error())
+	}
+	pl, pathsOK := backend.(sourcePathLister)
+	reader, filesOK := backend.(sourceFileReader)
+	if !pathsOK || !filesOK {
+		return true
+	} // legacy backends retain their scan-based persistence
+	if !rc.now().Before(rc.deadline) {
+		return rc.refuseWindow("partial: source window review budget expired")
+	}
+	readCtx, cancel := context.WithTimeout(ctx, rc.deadline.Sub(rc.now()))
+	defer cancel()
+	paths, err := pl.SourcePaths(readCtx, service)
+	if err != nil {
+		return rc.refuseWindow("partial: source path inventory recheck: " + err.Error())
+	}
+	current := make(map[string]bool, len(paths))
+	for _, p := range paths {
+		current[p] = true
+	}
+	if len(current) != len(rc.paths) {
+		return rc.refuseWindow("partial: source path membership changed during review")
+	}
+	for p := range rc.paths {
+		if !current[p] {
+			return rc.refuseWindow("partial: source path membership changed during review")
+		}
+	}
+	named := make([]string, 0, len(rc.files))
+	for p := range rc.files {
+		named = append(named, p)
+	}
+	sort.Strings(named)
+	for _, p := range named {
+		if rc.used >= treeBudget.Bytes || readCtx.Err() != nil || !rc.now().Before(rc.deadline) {
+			return rc.refuseWindow("partial: source window review budget expired")
+		}
+		fresh, err := reader.ReadSourceFiles(readCtx, service, []string{p})
+		if err != nil || len(fresh) != 1 || fresh[0].Path != p {
+			return rc.refuseWindow("partial: required source unreadable during review: " + p)
+		}
+		f := fresh[0]
+		if int64(len(f.Content)) > 2<<20 || rc.used+int64(len(f.Content)) > treeBudget.Bytes {
+			return rc.refuseWindow("partial: source window review budget exceeded: " + p)
+		}
+		rc.used += int64(len(f.Content))
+		was := rc.fileMeta[p]
+		if !bytes.Equal(f.Content, was.Content) || f.Lang != was.Lang || f.Generated != was.Generated {
+			return rc.refuseWindow("partial: required source changed during review: " + p)
+		}
+	}
+	if readCtx.Err() != nil || !rc.now().Before(rc.deadline) {
+		return rc.refuseWindow("partial: source window review budget expired")
+	}
+	return true
+}
+
+func (rc *reviewCorpus) refuseWindow(note string) bool {
+	rc.windowUnverified = true
+	rc.partial = note
+	return false
+}
 
 // collectSources gathers service's files under treeBudget for a handler
 // whose analysis needs them together (spec refs, dependency manifests,
