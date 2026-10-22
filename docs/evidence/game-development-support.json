@@ -1,0 +1,1988 @@
+[
+  {
+    "family": "csharp",
+    "kind": "language",
+    "target": "L4",
+    "upstream_level": "L4",
+    "upstream_quality": "L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent)",
+    "consumer_level": "not measured",
+    "oracle": "Unity 6000.3.15f1 Roslyn projects, compatible SCIP and native execution, each separately pinned",
+    "oracle_available_here": false,
+    "oracle_availability_reason": "No dotnet or Unity toolchain here; compatible Unity project, SCIP and execution closure unavailable.",
+    "prerequisites": [
+      {
+        "file": "docs/bench/readings/lang/csharp.json",
+        "upstream_family": "C# (.cs)",
+        "measured_at": "2026-10-09",
+        "source_commit": "90870a7f",
+        "subjects": [
+          {
+            "name": "App-vNext/Polly",
+            "sha": "9ad5ae9b4ff9beb4321b0762249ce173b984f817"
+          },
+          {
+            "name": "JamesNK/Newtonsoft.Json",
+            "sha": "4e13299d4b0ec96bd4df9954ef646bd2d1b5bf2a"
+          }
+        ],
+        "metrics": {
+          "call_precision": 0.9997,
+          "call_recall": 0.997,
+          "def_mapping": 0.9984,
+          "file_edge_precision": 0.9814,
+          "file_edge_recall": 0.5332,
+          "import_resolution": 1,
+          "kind_agreement": 0.9998,
+          "range_agreement": 0.9648,
+          "signature_coverage": 1,
+          "sym_precision": 0.9985,
+          "sym_recall": 0.9997,
+          "typed_recall": 1
+        },
+        "metric_tiers": {
+          "call_precision": "A",
+          "call_recall": "A",
+          "def_mapping": "A",
+          "file_edge_precision": "A",
+          "file_edge_recall": "A",
+          "import_resolution": "A",
+          "kind_agreement": "B",
+          "range_agreement": "B",
+          "signature_coverage": "B",
+          "sym_precision": "B",
+          "sym_recall": "B",
+          "typed_recall": "A"
+        },
+        "oracles": [
+          {
+            "tier": "A",
+            "tool": "roslyn-semantic",
+            "version": "Microsoft.CodeAnalysis.CSharp 5.9.0 (MSBuildWorkspace)"
+          },
+          {
+            "tier": "B",
+            "tool": "roslyn-syntax",
+            "version": "Microsoft.CodeAnalysis.CSharp 5.9.0"
+          },
+          {
+            "tier": "A",
+            "tool": "scip-dotnet",
+            "version": "0.1.0-SNAPSHOT"
+          }
+        ],
+        "scope": "Upstream calibration only. Null metrics remain unmeasured. Denominators, cohort exclusions and raw subgrades remain in the cited reading."
+      }
+    ],
+    "unknowns": [
+      "Unity compiler/SCIP compatibility, active defines, PE/MVID source association, callbacks and native execution on current source.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration.",
+      "Without a compatible imported SCIP index, typed L4 is not available by analogy to the upstream reading."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md",
+      "docs/bench/readings/lang/csharp.json"
+    ],
+    "plan_rows": [
+      "GDEV-10",
+      "GDEV-11"
+    ],
+    "next_step": "Run pinned Unity projects through Roslyn, compatible SCIP and native tests with PE/MVID positive and wrong-assembly controls."
+  },
+  {
+    "family": "python",
+    "kind": "language",
+    "target": "L4",
+    "upstream_level": "L4",
+    "upstream_quality": "L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent)",
+    "consumer_level": "not measured",
+    "oracle": "Python 3.13 venv/Pillow and Blender 5.2.2 embedded Python; interpreter/import and native API checks",
+    "oracle_available_here": false,
+    "oracle_availability_reason": "Python 3.13, Blender 5.2.2 and their pinned Pillow/native API environments are unavailable here.",
+    "prerequisites": [
+      {
+        "file": "docs/bench/readings/lang/python.json",
+        "upstream_family": "Python (.py .pyi)",
+        "measured_at": "2026-10-10",
+        "source_commit": "f2b852ab",
+        "subjects": [
+          {
+            "name": "fastapi",
+            "sha": "864b569cf8453654fc3bc2c64108c0f644e2918c"
+          },
+          {
+            "name": "flask",
+            "sha": "22d924701a6ae2e4cd01e9a15bbaf3946094af65"
+          }
+        ],
+        "metrics": {
+          "call_precision": 0.9184,
+          "call_recall": 0.9922,
+          "def_mapping": 0.9985,
+          "file_edge_precision": 0.9875,
+          "file_edge_recall": 0.9191,
+          "import_resolution": 0.951,
+          "kind_agreement": 1,
+          "range_agreement": 1,
+          "signature_coverage": 1,
+          "sym_precision": 0.9999,
+          "sym_recall": 0.9999,
+          "typed_recall": 0.9979
+        },
+        "metric_tiers": {
+          "call_precision": "A",
+          "call_recall": "A",
+          "def_mapping": "A",
+          "file_edge_precision": "A",
+          "file_edge_recall": "A",
+          "import_resolution": "A",
+          "kind_agreement": "B",
+          "range_agreement": "B",
+          "signature_coverage": "B",
+          "sym_precision": "B",
+          "sym_recall": "B",
+          "typed_recall": "A"
+        },
+        "oracles": [
+          {
+            "tier": "A",
+            "tool": "scip-python",
+            "version": "0.6.6"
+          },
+          {
+            "tier": "B",
+            "tool": "universal-ctags",
+            "version": "6.2.1"
+          }
+        ],
+        "scope": "Upstream calibration only. Null metrics remain unmeasured. Denominators, cohort exclusions and raw subgrades remain in the cited reading."
+      }
+    ],
+    "unknowns": [
+      "Python 3.13 imports/Pillow and Blender embedded bpy APIs are separate unqualified scopes; dynamic facts stay unknown.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration.",
+      "Without a compatible imported SCIP index, typed L4 is not available by analogy to the upstream reading."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md",
+      "docs/bench/readings/lang/python.json"
+    ],
+    "plan_rows": [
+      "GDEV-12"
+    ],
+    "next_step": "Measure Python 3.13 venv/Pillow and Blender 5.2.2 embedded Python independently on current source."
+  },
+  {
+    "family": "javascript",
+    "kind": "language",
+    "target": "L4",
+    "upstream_level": "L4",
+    "upstream_quality": "L4 (L1 excellent, L2 excellent, L3 excellent, L4 good)",
+    "consumer_level": "not measured",
+    "oracle": "Pinned Node/browser compiler identity, Unity globals and embedded source ranges",
+    "oracle_available_here": false,
+    "oracle_availability_reason": "Node is installed, but browser automation qualified for this reading, pinned compiler and Unity embedded-source closure are unavailable.",
+    "prerequisites": [
+      {
+        "file": "docs/bench/readings/lang/javascript.json",
+        "upstream_family": "JavaScript (.js .jsx .mjs .cjs)",
+        "measured_at": "2026-10-10",
+        "source_commit": "753ca697",
+        "subjects": [
+          {
+            "name": "openlayers/openlayers",
+            "sha": "88fc44564552176b761dbb9531f9977386d041c0"
+          }
+        ],
+        "metrics": {
+          "call_precision": 0.9674,
+          "call_recall": 0.9917,
+          "def_mapping": 0.9886,
+          "file_edge_precision": 1,
+          "file_edge_recall": 0.7252,
+          "import_resolution": 1,
+          "kind_agreement": 1,
+          "range_agreement": 1,
+          "signature_coverage": 1,
+          "sym_precision": 1,
+          "sym_recall": 0.9979,
+          "typed_recall": 0.9376
+        },
+        "metric_tiers": {
+          "call_precision": "A",
+          "call_recall": "A",
+          "def_mapping": "A",
+          "file_edge_precision": "A",
+          "file_edge_recall": "A",
+          "import_resolution": "A",
+          "kind_agreement": "A",
+          "range_agreement": "A",
+          "signature_coverage": "A",
+          "sym_precision": "A",
+          "sym_recall": "A",
+          "typed_recall": "A"
+        },
+        "oracles": [
+          {
+            "tier": "A",
+            "tool": "scip-typescript",
+            "version": "0.4.0"
+          }
+        ],
+        "scope": "Upstream calibration only. Null metrics remain unmeasured. Denominators, cohort exclusions and raw subgrades remain in the cited reading."
+      }
+    ],
+    "unknowns": [
+      "Compiler identity, Node/browser/Unity globals and embedded-range mapping on current source.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration.",
+      "Without a compatible imported SCIP index, typed L4 is not available by analogy to the upstream reading."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md",
+      "docs/bench/readings/lang/javascript.json"
+    ],
+    "plan_rows": [
+      "GDEV-13"
+    ],
+    "next_step": "Pin the compiler and run Node/browser/Unity global and embedded-range controls."
+  },
+  {
+    "family": "cue",
+    "kind": "language",
+    "target": "L4",
+    "upstream_level": "L3",
+    "upstream_quality": "L3 (L1 excellent, L2 excellent, L3 good)",
+    "consumer_level": "not measured",
+    "oracle": "Native CUE loader, imports, evaluator and LSP reference oracle",
+    "oracle_available_here": true,
+    "oracle_availability_reason": "Native CUE loader/evaluator and cue CLI are present; exact LSP/tool pins and consumer controls still require a reading.",
+    "prerequisites": [
+      {
+        "file": "docs/bench/readings/lang/cue.json",
+        "upstream_family": "CUE (.cue)",
+        "measured_at": "2026-10-20",
+        "source_commit": "f6a0865af",
+        "subjects": [
+          {
+            "name": "GeoffMillerAZ/fathom",
+            "sha": "90f0a01fa2df1c74eaeb875f13b61b31133ee09b"
+          },
+          {
+            "name": "cue-lang/cue",
+            "sha": "6d609d768f1686f9a3a2a20197cacdbb70e5c79d"
+          },
+          {
+            "name": "monogon/NetMeta",
+            "sha": "b93a56d13f7333d5368f950f96faa7488f1719f2"
+          }
+        ],
+        "metrics": {
+          "call_precision": 0.9979,
+          "call_recall": 1,
+          "def_mapping": null,
+          "file_edge_precision": 1,
+          "file_edge_recall": 0.4898,
+          "import_resolution": 1,
+          "kind_agreement": 1,
+          "range_agreement": 1,
+          "signature_coverage": null,
+          "sym_precision": 1,
+          "sym_recall": 1,
+          "typed_recall": null
+        },
+        "metric_tiers": {
+          "call_precision": "A",
+          "call_recall": "A",
+          "file_edge_precision": "A",
+          "file_edge_recall": "A",
+          "import_resolution": "A",
+          "kind_agreement": "A",
+          "range_agreement": "A",
+          "sym_precision": "A",
+          "sym_recall": "A"
+        },
+        "oracles": [
+          {
+            "tier": "A",
+            "tool": "cue lsp (cue vet gate)",
+            "version": "v0.16.1"
+          }
+        ],
+        "scope": "Upstream calibration only. Null metrics remain unmeasured. Denominators, cohort exclusions and raw subgrades remain in the cited reading."
+      }
+    ],
+    "unknowns": [
+      "L4 def_mapping and typed_recall are unmeasured upstream; consumer imports, invalid constraints and LSP closure are unmeasured.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md",
+      "docs/bench/readings/lang/cue.json"
+    ],
+    "plan_rows": [
+      "GDEV-14"
+    ],
+    "next_step": "Run consumer native loader/evaluator/LSP and invalid-import/constraint controls without network access."
+  },
+  {
+    "family": "html",
+    "kind": "language",
+    "target": "L3",
+    "upstream_level": "L3",
+    "upstream_quality": "L3 (L1 excellent, L2 excellent, L3 excellent)",
+    "consumer_level": "not measured",
+    "oracle": "Template expansion, native DOM/link parse and actual browser DOM",
+    "oracle_available_here": false,
+    "oracle_availability_reason": "No browser automation qualified for actual consumer DOM and template expansion readings.",
+    "prerequisites": [
+      {
+        "file": "docs/bench/readings/lang/html.json",
+        "upstream_family": "HTML (.html .htm)",
+        "measured_at": "2026-10-11",
+        "source_commit": "90c7b068",
+        "subjects": [
+          {
+            "name": "bootstrap",
+            "sha": "25aa8cc0b32f0d1a54be575347e6d84b70b1acd7"
+          },
+          {
+            "name": "html5-boilerplate",
+            "sha": "90066899f33e83c0866f8e078e97f9b82999db58"
+          },
+          {
+            "name": "startbootstrap-sb-admin-2",
+            "sha": "f0309881ef82794a1bd6257cd321801bc38a0f3d"
+          }
+        ],
+        "metrics": {
+          "call_precision": 1,
+          "call_recall": 1,
+          "def_mapping": null,
+          "file_edge_precision": 1,
+          "file_edge_recall": 1,
+          "import_resolution": 1,
+          "kind_agreement": 1,
+          "range_agreement": 1,
+          "signature_coverage": null,
+          "sym_precision": 1,
+          "sym_recall": 1,
+          "typed_recall": null
+        },
+        "metric_tiers": {
+          "call_precision": "A",
+          "call_recall": "A",
+          "file_edge_precision": "A",
+          "file_edge_recall": "A",
+          "import_resolution": "A",
+          "kind_agreement": "B",
+          "range_agreement": "B",
+          "sym_precision": "B",
+          "sym_recall": "B"
+        },
+        "oracles": [
+          {
+            "tier": "A",
+            "tool": "lychee",
+            "version": "0.24.2"
+          },
+          {
+            "tier": "A",
+            "tool": "parse5",
+            "version": "8.0.1"
+          },
+          {
+            "tier": "B",
+            "tool": "universal-ctags",
+            "version": "6.2.1"
+          }
+        ],
+        "scope": "Upstream calibration only. Null metrics remain unmeasured. Denominators, cohort exclusions and raw subgrades remain in the cited reading."
+      }
+    ],
+    "unknowns": [
+      "Consumer template expansion and actual DOM/link controls.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md",
+      "docs/bench/readings/lang/html.json"
+    ],
+    "plan_rows": [
+      "GDEV-15"
+    ],
+    "next_step": "Expand consumer templates and compare links/DOM with the actual browser."
+  },
+  {
+    "family": "css",
+    "kind": "language",
+    "target": "L3",
+    "upstream_level": "L3",
+    "upstream_quality": "L3 (L1 good, L2 excellent, L3 excellent)",
+    "consumer_level": "not measured",
+    "oracle": "Selector/link parse and computed style in actual browser DOM",
+    "oracle_available_here": false,
+    "oracle_availability_reason": "No browser automation qualified for actual consumer computed-style readings.",
+    "prerequisites": [
+      {
+        "file": "docs/bench/readings/lang/css.json",
+        "upstream_family": "CSS (.css)",
+        "measured_at": "2026-10-10",
+        "source_commit": "faf54be1",
+        "subjects": [
+          {
+            "name": "gitea",
+            "sha": "4ebd5e319b6a9e629bfd7a04292a6fe85b08dee9"
+          },
+          {
+            "name": "normalize.css",
+            "sha": "dafaf9ee60ff76173954aca755c78a6912a0ee6c"
+          },
+          {
+            "name": "pico",
+            "sha": "1039a4788d6abc368d5485ae6bac84a8f0e3096f"
+          }
+        ],
+        "metrics": {
+          "call_precision": 1,
+          "call_recall": 1,
+          "def_mapping": null,
+          "file_edge_precision": 1,
+          "file_edge_recall": 1,
+          "import_resolution": 1,
+          "kind_agreement": 1,
+          "range_agreement": null,
+          "signature_coverage": null,
+          "sym_precision": 1,
+          "sym_recall": 1,
+          "typed_recall": null
+        },
+        "metric_tiers": {
+          "call_precision": "A",
+          "call_recall": "A",
+          "file_edge_precision": "A",
+          "file_edge_recall": "A",
+          "import_resolution": "A",
+          "kind_agreement": "A",
+          "sym_precision": "A",
+          "sym_recall": "A"
+        },
+        "oracles": [
+          {
+            "tier": "A",
+            "tool": "lightningcss",
+            "version": "1.33.0"
+          }
+        ],
+        "scope": "Upstream calibration only. Null metrics remain unmeasured. Denominators, cohort exclusions and raw subgrades remain in the cited reading."
+      }
+    ],
+    "unknowns": [
+      "Upstream range_agreement is null; consumer selectors, imported styles and computed style are unmeasured.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md",
+      "docs/bench/readings/lang/css.json"
+    ],
+    "plan_rows": [
+      "GDEV-15"
+    ],
+    "next_step": "Compare consumer selectors/imports/computed styles with the actual browser DOM."
+  },
+  {
+    "family": "shell",
+    "kind": "language",
+    "target": "L3",
+    "upstream_level": "L3",
+    "upstream_quality": "L3 (L1 excellent, L2 good, L3 good)",
+    "consumer_level": "not measured",
+    "oracle": "Declared Bash/Zsh dialect, working directory, quoting, exit/failure cases",
+    "oracle_available_here": true,
+    "oracle_availability_reason": "Bash and Zsh are installed; each consumer dialect/cwd/quoting/failure closure remains unmeasured.",
+    "prerequisites": [
+      {
+        "file": "docs/bench/readings/lang/bash.json",
+        "upstream_family": "Shell / Bash (.sh .bash, shebangs)",
+        "measured_at": "2026-10-11",
+        "source_commit": "4f6fef03",
+        "subjects": [
+          {
+            "name": "bats-core/bats-core",
+            "sha": "713504bc0224a19b3d7c7958c18dc07f64f54b44"
+          },
+          {
+            "name": "nvm-sh/nvm",
+            "sha": "1889911f0841e669de0be5bd02c737a3f1fd20fa"
+          }
+        ],
+        "metrics": {
+          "call_precision": 1,
+          "call_recall": 0.9268,
+          "def_mapping": null,
+          "file_edge_precision": 1,
+          "file_edge_recall": 0.9971,
+          "import_resolution": 1,
+          "kind_agreement": 1,
+          "range_agreement": 0.999,
+          "signature_coverage": 1,
+          "sym_precision": 0.9769,
+          "sym_recall": 0.9941,
+          "typed_recall": null
+        },
+        "metric_tiers": {
+          "call_precision": "C",
+          "call_recall": "C",
+          "file_edge_precision": "B",
+          "file_edge_recall": "B",
+          "import_resolution": "B",
+          "kind_agreement": "B",
+          "range_agreement": "B",
+          "signature_coverage": "B",
+          "sym_precision": "B",
+          "sym_recall": "B"
+        },
+        "oracles": [
+          {
+            "tier": "B",
+            "tool": "bash-source",
+            "version": "v3.14.1 (mvdan.cc/sh/v3 syntax, -ln bash); bash 5 lookup, cwd the script's directory then the subject root; checked by ShellCheck 0.11.0"
+          },
+          {
+            "tier": "C",
+            "tool": "tree-sitter-tags:bash-tags.scm",
+            "version": "py-tree-sitter 0.25.2, tree-sitter-bash 0.25.1"
+          },
+          {
+            "tier": "B",
+            "tool": "universal-ctags",
+            "version": "6.2.1"
+          }
+        ],
+        "scope": "Upstream calibration only. Null metrics remain unmeasured. Denominators, cohort exclusions and raw subgrades remain in the cited reading."
+      }
+    ],
+    "unknowns": [
+      "Bash upstream is not a Zsh grade; consumer cwd, quoting, resolution and failure cases are unmeasured.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md",
+      "docs/bench/readings/lang/bash.json"
+    ],
+    "plan_rows": [
+      "GDEV-16"
+    ],
+    "next_step": "Run separate Bash and Zsh dialect/cwd/quoting/resolution/failure controls."
+  },
+  {
+    "family": "powershell",
+    "kind": "language",
+    "target": "L3",
+    "upstream_level": "L3",
+    "upstream_quality": "L3 (L1 excellent, L2 good, L3 excellent)",
+    "consumer_level": "not measured",
+    "oracle": "Native AST, command/import resolution, real Windows invocation",
+    "oracle_available_here": false,
+    "oracle_availability_reason": "No PowerShell or Windows invocation host here.",
+    "prerequisites": [
+      {
+        "file": "docs/bench/readings/lang/powershell.json",
+        "upstream_family": "PowerShell (.ps1 .psm1 .psd1)",
+        "measured_at": "2026-10-15",
+        "source_commit": "b3be0067",
+        "subjects": [
+          {
+            "name": "PowerShell/PSScriptAnalyzer",
+            "sha": "f05704df81b2aca17dc027ee39b3fce106d418fc"
+          },
+          {
+            "name": "pester/Pester",
+            "sha": "98e56d65da1642a7158992b50ded240c42a3ac18"
+          }
+        ],
+        "metrics": {
+          "call_precision": 0.9909,
+          "call_recall": 0.9949,
+          "def_mapping": null,
+          "file_edge_precision": 1,
+          "file_edge_recall": 1,
+          "import_resolution": 1,
+          "kind_agreement": 1,
+          "range_agreement": 0.997,
+          "signature_coverage": 1,
+          "sym_precision": 1,
+          "sym_recall": 0.9961,
+          "typed_recall": null
+        },
+        "metric_tiers": {
+          "call_precision": "B",
+          "call_recall": "B",
+          "file_edge_precision": "A",
+          "file_edge_recall": "A",
+          "import_resolution": "A",
+          "kind_agreement": "B",
+          "range_agreement": "B",
+          "signature_coverage": "B",
+          "sym_precision": "B",
+          "sym_recall": "B"
+        },
+        "oracles": [
+          {
+            "tier": "B",
+            "tool": "powershell-ast",
+            "version": "PowerShell 7.5.4 System.Management.Automation.Language.Parser"
+          },
+          {
+            "tier": "A",
+            "tool": "powershell-ast-imports",
+            "version": "PowerShell 7.5.4 System.Management.Automation.Language.Parser, StaticParameterBinder, Test-ModuleManifest"
+          }
+        ],
+        "scope": "Upstream calibration only. Null metrics remain unmeasured. Denominators, cohort exclusions and raw subgrades remain in the cited reading."
+      }
+    ],
+    "unknowns": [
+      "Native Windows execution, command/import binding and consumer failures are unmeasured.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md",
+      "docs/bench/readings/lang/powershell.json"
+    ],
+    "plan_rows": [
+      "GDEV-16"
+    ],
+    "next_step": "Run native AST/import/command controls and a separately pinned real Windows invocation."
+  },
+  {
+    "family": "nix",
+    "kind": "tool format",
+    "target": "L3 conditional",
+    "upstream_level": "L3",
+    "upstream_quality": "L3 (L1 good, L2 good, L3 good)",
+    "consumer_level": "not measured",
+    "oracle": "Generated CUE drift plus exact Nix execution consumer once plane activates",
+    "oracle_available_here": false,
+    "oracle_availability_reason": "No Nix execution tool here; consumer execution-plane activation is unknown.",
+    "prerequisites": [
+      {
+        "file": "docs/bench/readings/lang/nix.json",
+        "upstream_family": "Nix (.nix, flake.nix)",
+        "measured_at": "2026-10-20",
+        "source_commit": "11b97be0d",
+        "subjects": [
+          {
+            "name": "mitchellh/nixos-config",
+            "sha": "40d483d74cf48d64379fc9a857237ee18c519ff4"
+          },
+          {
+            "name": "nix-community/home-manager",
+            "sha": "24f8f8e786f87d6a818e1746cb2389bf922afdab"
+          }
+        ],
+        "metrics": {
+          "ref_precision": 0.9988,
+          "ref_recall": 1,
+          "sym_precision": 1,
+          "sym_recall": 1,
+          "xref_precision": 1,
+          "xref_recall": 1
+        },
+        "metric_tiers": {
+          "ref_precision": "C",
+          "ref_recall": "C",
+          "sym_precision": "C",
+          "sym_recall": "C",
+          "xref_precision": "C",
+          "xref_recall": "C"
+        },
+        "oracles": [
+          {
+            "tier": "C",
+            "tool": "nix-instantiate --parse + source locator",
+            "version": "nix-instantiate (Nix) 2.34.7+1"
+          }
+        ],
+        "scope": "Upstream calibration only. Null metrics remain unmeasured. Denominators, cohort exclusions and raw subgrades remain in the cited reading."
+      }
+    ],
+    "unknowns": [
+      "Whether the execution plane is active; exact generated-CUE drift and native Nix execution.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md",
+      "docs/bench/readings/lang/nix.json"
+    ],
+    "plan_rows": [
+      "GDEV-17"
+    ],
+    "next_step": "Establish plane activation first, then check generated CUE drift and exact native Nix consumer."
+  },
+  {
+    "family": "json",
+    "kind": "tool format",
+    "target": "L1",
+    "upstream_level": "tolerated",
+    "upstream_quality": "tolerated",
+    "consumer_level": "not measured",
+    "oracle": "Native decoder; domain references are separately qualified",
+    "oracle_available_here": true,
+    "oracle_availability_reason": "Go encoding/json is available; no consumer decoder reading was run.",
+    "prerequisites": [
+      {
+        "file": "docs/languages.md",
+        "upstream_family": "Generic JSON, YAML and TOML documents",
+        "status": "No measured metrics or calibration subject in this row; tolerated registration is not an earned level."
+      }
+    ],
+    "unknowns": [
+      "Consumer native decode and malformed-input denominators; domain references need separate qualification.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md"
+    ],
+    "plan_rows": [
+      "GDEV-18"
+    ],
+    "next_step": "Run decoder positives and malformed negatives on current consumer JSON, keeping domain links separate."
+  },
+  {
+    "family": "yaml",
+    "kind": "tool format",
+    "target": "L1",
+    "upstream_level": "tolerated",
+    "upstream_quality": "tolerated",
+    "consumer_level": "not measured",
+    "oracle": "Native decoder; domain references are separately qualified",
+    "oracle_available_here": true,
+    "oracle_availability_reason": "Pinned Go YAML decoder is available; no consumer decoder reading was run.",
+    "prerequisites": [
+      {
+        "file": "docs/languages.md",
+        "upstream_family": "Generic JSON, YAML and TOML documents",
+        "status": "No measured metrics or calibration subject in this row; tolerated registration is not an earned level."
+      }
+    ],
+    "unknowns": [
+      "Consumer native decode and malformed-input denominators; domain references need separate qualification.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md"
+    ],
+    "plan_rows": [
+      "GDEV-18"
+    ],
+    "next_step": "Run decoder positives and malformed negatives on current consumer YAML, keeping domain links separate."
+  },
+  {
+    "family": "toml",
+    "kind": "tool format",
+    "target": "L1",
+    "upstream_level": "tolerated",
+    "upstream_quality": "tolerated",
+    "consumer_level": "not measured",
+    "oracle": "Native decoder; domain references are separately qualified",
+    "oracle_available_here": true,
+    "oracle_availability_reason": "Pinned Go TOML decoder is available; no consumer decoder reading was run.",
+    "prerequisites": [
+      {
+        "file": "docs/languages.md",
+        "upstream_family": "Generic JSON, YAML and TOML documents",
+        "status": "No measured metrics or calibration subject in this row; tolerated registration is not an earned level."
+      }
+    ],
+    "unknowns": [
+      "Consumer native decode and malformed-input denominators; domain references need separate qualification.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md"
+    ],
+    "plan_rows": [
+      "GDEV-18"
+    ],
+    "next_step": "Run decoder positives and malformed negatives on current consumer TOML, keeping domain links separate."
+  },
+  {
+    "family": "csv",
+    "kind": "tool format",
+    "target": "L1",
+    "upstream_level": "no upstream reading",
+    "upstream_quality": "no upstream reading",
+    "consumer_level": "not measured",
+    "oracle": "Decoder, ledger schema/identity and source consumer",
+    "oracle_available_here": true,
+    "oracle_availability_reason": "Go encoding/csv is available; consumer ledger schema, identity and source closure must be supplied.",
+    "prerequisites": [
+      {
+        "file": "docs/languages.md",
+        "status": "No upstream row or calibration subject for this family; no prerequisite metrics claimed."
+      }
+    ],
+    "unknowns": [
+      "Ledger schema, row identity, malformed inputs and source consumer.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md"
+    ],
+    "plan_rows": [
+      "GDEV-18"
+    ],
+    "next_step": "Run native decoder and consumer ledger schema/identity controls."
+  },
+  {
+    "family": "markdown",
+    "kind": "tool format",
+    "target": "L3",
+    "upstream_level": "L3",
+    "upstream_quality": "L3 (L1 excellent, L2 good, L3 good)",
+    "consumer_level": "not measured",
+    "oracle": "Headings/anchors/links against repository link consumer",
+    "oracle_available_here": true,
+    "oracle_availability_reason": "Repository link/anchor consumers and Go Markdown parser are present; independent consumer link controls remain unmeasured.",
+    "prerequisites": [
+      {
+        "file": "docs/bench/readings/lang/markdown.json",
+        "upstream_family": "Markdown (.md .mdx)",
+        "measured_at": "2026-10-19",
+        "source_commit": "bc26a8dc",
+        "subjects": [
+          {
+            "name": "facebook/docusaurus",
+            "sha": "f37f9035584917a97a260b91fc2842cba4f8b94f"
+          },
+          {
+            "name": "rust-lang/book",
+            "sha": "4717cec4ba387b4925cff394d71e3d95fb36476b"
+          }
+        ],
+        "metrics": {
+          "ref_precision": 1,
+          "ref_recall": 1,
+          "sym_precision": 0.9867,
+          "sym_recall": 0.9997,
+          "xref_precision": 0.9903,
+          "xref_recall": 0.9931
+        },
+        "metric_tiers": {
+          "ref_precision": "B",
+          "ref_recall": "B",
+          "sym_precision": "B",
+          "sym_recall": "B",
+          "xref_precision": "B",
+          "xref_recall": "B"
+        },
+        "oracles": [
+          {
+            "tier": "B",
+            "tool": "lychee+universal-ctags",
+            "version": "lychee 0.24.2, ctags 6.2.1"
+          },
+          {
+            "tier": "B",
+            "tool": "universal-ctags",
+            "version": "6.2.1"
+          }
+        ],
+        "scope": "Upstream calibration only. Null metrics remain unmeasured. Denominators, cohort exclusions and raw subgrades remain in the cited reading."
+      }
+    ],
+    "unknowns": [
+      "Consumer heading/anchor/link closure and broken-link controls.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md",
+      "docs/bench/readings/lang/markdown.json"
+    ],
+    "plan_rows": [
+      "GDEV-19"
+    ],
+    "next_step": "Measure consumer headings, anchors and links with missing and ambiguous targets."
+  },
+  {
+    "family": "task",
+    "kind": "tool format",
+    "target": "L3",
+    "upstream_level": "L3",
+    "upstream_quality": "L3 (L1 excellent, L2 excellent, L3 excellent)",
+    "consumer_level": "not measured",
+    "oracle": "Actual Task include, dependency and command expansion, including generated include names",
+    "oracle_available_here": true,
+    "oracle_availability_reason": "Task CLI is installed; exact consumer includes, generated names and command expansion are unmeasured.",
+    "prerequisites": [
+      {
+        "file": "docs/bench/readings/lang/taskfile.json",
+        "upstream_family": "Taskfile (go-task: Taskfile.yml)",
+        "measured_at": "2026-10-02",
+        "source_commit": "72c29c13",
+        "subjects": [
+          {
+            "name": "Runtime-Radar/runtime-radar",
+            "sha": "7a3dec53943ed6f9bf2f3530b34763e42551e2f6"
+          },
+          {
+            "name": "go-task/examples",
+            "sha": "c57278bcf08acd347a0292dc18dd5672dfc1485f"
+          },
+          {
+            "name": "go-task/task",
+            "sha": "536f490187b5338a6a83fc9bc67aed02702a534e"
+          }
+        ],
+        "metrics": {
+          "ref_precision": 0.989,
+          "ref_recall": 1,
+          "sym_precision": 1,
+          "sym_recall": 1,
+          "xref_precision": 1,
+          "xref_recall": 1
+        },
+        "metric_tiers": {
+          "ref_precision": "A",
+          "ref_recall": "A",
+          "sym_precision": "A",
+          "sym_recall": "A",
+          "xref_precision": "A",
+          "xref_recall": "A"
+        },
+        "oracles": [
+          {
+            "tier": "A",
+            "tool": "task --dry --force ablation (each deps entry and task: call cut from a scratch copy with every sh: and if: set to true)",
+            "version": "go-task 3.52.0"
+          },
+          {
+            "tier": "A",
+            "tool": "task --list-all --json",
+            "version": "go-task 3.52.0"
+          }
+        ],
+        "scope": "Upstream calibration only. Null metrics remain unmeasured. Denominators, cohort exclusions and raw subgrades remain in the cited reading."
+      }
+    ],
+    "unknowns": [
+      "Generated include names, dependency/command expansion and invalid include controls on current consumer source.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md",
+      "docs/bench/readings/lang/taskfile.json"
+    ],
+    "plan_rows": [
+      "GDEV-20"
+    ],
+    "next_step": "Exercise actual Task includes/dependencies/commands including generated include filenames."
+  },
+  {
+    "family": "npm",
+    "kind": "tool format",
+    "target": "L3",
+    "upstream_level": "L3",
+    "upstream_quality": "L3 (L1 excellent, L2 excellent, L3 excellent)",
+    "consumer_level": "not measured",
+    "oracle": "Package scripts, package-lock graph, versions and integrity under npm loader",
+    "oracle_available_here": true,
+    "oracle_availability_reason": "npm and Node are installed; exact consumer lock graph, loader version and integrity closure are unmeasured.",
+    "prerequisites": [
+      {
+        "file": "docs/bench/readings/lang/package-json.json",
+        "upstream_family": "npm/pnpm/yarn package manifests (package.json, workspaces)",
+        "measured_at": "2026-10-02",
+        "source_commit": "c7cc84db",
+        "subjects": [
+          {
+            "name": "babel",
+            "sha": "54405f212b4e6a40f0e1dfba9293b0e3f3dd20e3"
+          },
+          {
+            "name": "next.js",
+            "sha": "a758ffcf501f6f1ddb03175bd1033508424c261e"
+          }
+        ],
+        "metrics": {
+          "ref_precision": 1,
+          "ref_recall": 1,
+          "sym_precision": 1,
+          "sym_recall": 0.9989,
+          "xref_precision": 0.9916,
+          "xref_recall": 1
+        },
+        "metric_tiers": {
+          "ref_precision": "A",
+          "ref_recall": "A",
+          "sym_precision": "A",
+          "sym_recall": "A",
+          "xref_precision": "A",
+          "xref_recall": "A"
+        },
+        "oracles": [
+          {
+            "tier": "A",
+            "tool": "npm query ':root' (each manifest as npm loads it)",
+            "version": "11.19.1"
+          },
+          {
+            "tier": "A",
+            "tool": "npm query (workspace members) + pnpm 10.33.0 ls -r --filter '{<project>}...' (one project's dependency maps at a time)",
+            "version": "npm 11.19.1; pnpm 10.33.0"
+          },
+          {
+            "tier": "A",
+            "tool": "npm query (workspace members) + yarn 4.10.3 workspaces list -v (the subject's own release, .yarn/releases/yarn-4.10.3.cjs)",
+            "version": "npm 11.19.1; yarn 4.10.3"
+          }
+        ],
+        "scope": "Upstream calibration only. Null metrics remain unmeasured. Denominators, cohort exclusions and raw subgrades remain in the cited reading."
+      }
+    ],
+    "unknowns": [
+      "Consumer package scripts, lock graph, versions and integrity; manifest calibration does not establish lock evaluation.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md",
+      "docs/bench/readings/lang/package-json.json"
+    ],
+    "plan_rows": [
+      "GDEV-20"
+    ],
+    "next_step": "Exercise consumer scripts and package-lock graph/version/integrity through the pinned npm loader."
+  },
+  {
+    "family": "msbuild",
+    "kind": "tool format",
+    "target": "L3",
+    "upstream_level": "L3",
+    "upstream_quality": "L3 (L1 excellent, L2 excellent, L3 excellent)",
+    "consumer_level": "not measured",
+    "oracle": "Generated Unity project/source/reference evaluation and solution producer",
+    "oracle_available_here": false,
+    "oracle_availability_reason": "No dotnet/MSBuild or Unity project/solution producer here.",
+    "prerequisites": [
+      {
+        "file": "docs/bench/readings/lang/msbuild.json",
+        "upstream_family": "MSBuild projects (.csproj .fsproj .vbproj .props .targets, .sln)",
+        "measured_at": "2026-09-29",
+        "source_commit": "bf1f0fea",
+        "subjects": [
+          {
+            "name": "App-vNext/Polly",
+            "sha": "9ad5ae9b4ff9beb4321b0762249ce173b984f817"
+          },
+          {
+            "name": "dotnet/aspnetcore",
+            "sha": "cb21a42eafcd44cc35fad48d99dc82ff7512ce2f"
+          }
+        ],
+        "metrics": {
+          "ref_precision": 0.9688,
+          "ref_recall": 1,
+          "sym_precision": 1,
+          "sym_recall": 1,
+          "xref_precision": 1,
+          "xref_recall": 0.9474
+        },
+        "metric_tiers": {
+          "ref_precision": "A",
+          "ref_recall": "A",
+          "sym_precision": "A",
+          "sym_recall": "A",
+          "xref_precision": "A",
+          "xref_recall": "A"
+        },
+        "oracles": [
+          {
+            "tier": "A",
+            "tool": "dotnet msbuild (-getItem, -getProperty and -preprocess)",
+            "version": "MSBuild 18.9.11.42413; .NET SDK 10.0.401"
+          }
+        ],
+        "scope": "Upstream calibration only. Null metrics remain unmeasured. Denominators, cohort exclusions and raw subgrades remain in the cited reading."
+      }
+    ],
+    "unknowns": [
+      "Generated Unity solution/project source/reference closure under exact defines/tool pins.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md",
+      "docs/bench/readings/lang/msbuild.json"
+    ],
+    "plan_rows": [
+      "GDEV-21"
+    ],
+    "next_step": "Evaluate Unity-generated projects and solution with pinned MSBuild and source/reference controls."
+  },
+  {
+    "family": "nuget",
+    "kind": "tool format",
+    "target": "L3",
+    "upstream_level": "no upstream reading",
+    "upstream_quality": "no upstream reading",
+    "consumer_level": "not measured",
+    "oracle": "NuGet source policy and restore/reference evaluation",
+    "oracle_available_here": false,
+    "oracle_availability_reason": "No dotnet/NuGet restore evaluator or consumer source policy here.",
+    "prerequisites": [
+      {
+        "file": "docs/languages.md",
+        "status": "No upstream row or calibration subject for this family; no prerequisite metrics claimed."
+      }
+    ],
+    "unknowns": [
+      "Consumer source policy, restore/reference evaluation and unavailable dependencies.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md"
+    ],
+    "plan_rows": [
+      "GDEV-21"
+    ],
+    "next_step": "Evaluate consumer source policy and restore/reference closure with missing/wrong-source controls."
+  },
+  {
+    "family": "actions",
+    "kind": "tool format",
+    "target": "L3",
+    "upstream_level": "L3",
+    "upstream_quality": "L3 (L1 excellent, L2 excellent, L3 good)",
+    "consumer_level": "not measured",
+    "oracle": "Workflow entities, invoked scripts and hosted run receipt",
+    "oracle_available_here": false,
+    "oracle_availability_reason": "No hosted run receipt for the consumer workflow; local YAML parsing cannot supply one.",
+    "prerequisites": [
+      {
+        "file": "docs/bench/readings/lang/github-actions.json",
+        "upstream_family": "GitHub Actions workflows and composite actions",
+        "measured_at": "2026-10-15",
+        "source_commit": "e3c03ed7",
+        "subjects": [
+          {
+            "name": "actions/starter-workflows",
+            "sha": "e3c451d60f119b71caebf13c98ac45da6e15b4b7"
+          },
+          {
+            "name": "cli/cli",
+            "sha": "fdd9e7646b7b8ce1d77f738e412ffc608c2f0545"
+          },
+          {
+            "name": "open-telemetry/opentelemetry-demo",
+            "sha": "e5552ee25bcede2900d89188f076c464cd73c074"
+          },
+          {
+            "name": "pytorch/pytorch",
+            "sha": "ba56102387ef21a3b04b357e5b183d48f0afefc7"
+          }
+        ],
+        "metrics": {
+          "ref_precision": 1,
+          "ref_recall": 1,
+          "sym_precision": 1,
+          "sym_recall": 1,
+          "xref_precision": 1,
+          "xref_recall": 1
+        },
+        "metric_tiers": {
+          "ref_precision": "A",
+          "ref_recall": "A",
+          "sym_precision": "A",
+          "sym_recall": "A",
+          "xref_precision": "C",
+          "xref_recall": "C"
+        },
+        "oracles": [
+          {
+            "tier": "A",
+            "tool": "@actions/workflow-parser (parseWorkflow + convertWorkflowTemplate; parseAction + convertActionTemplate)",
+            "version": "@actions/workflow-parser 0.3.61"
+          },
+          {
+            "tier": "C",
+            "tool": "@actions/workflow-parser (parseWorkflow + convertWorkflowTemplate; parseAction + convertActionTemplate) + local uses: directory rule",
+            "version": "@actions/workflow-parser 0.3.61"
+          }
+        ],
+        "scope": "Upstream calibration only. Null metrics remain unmeasured. Denominators, cohort exclusions and raw subgrades remain in the cited reading."
+      }
+    ],
+    "unknowns": [
+      "Actual hosted workflow/script invocation and failure receipts.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md",
+      "docs/bench/readings/lang/github-actions.json"
+    ],
+    "plan_rows": [
+      "GDEV-22"
+    ],
+    "next_step": "Retain a pinned hosted workflow receipt and match invoked scripts to current source."
+  },
+  {
+    "family": "dockerfile",
+    "kind": "tool format",
+    "target": "L3",
+    "upstream_level": "L2",
+    "upstream_quality": "L2 (L1 excellent, L2 excellent)",
+    "consumer_level": "not measured",
+    "oracle": "Exact Dockerfile.context build and CUE image declaration/drift",
+    "oracle_available_here": false,
+    "oracle_availability_reason": "No Docker CLI/runtime here and no exact consumer Dockerfile.context/CUE build receipt.",
+    "prerequisites": [
+      {
+        "file": "docs/bench/readings/lang/dockerfile.json",
+        "upstream_family": "Dockerfile / Containerfile",
+        "measured_at": "2026-09-28",
+        "source_commit": "0e2c7702",
+        "subjects": [
+          {
+            "name": "docker-cli",
+            "sha": "d1c06ef6b41d88d76866aea43c246cd7c63d04fa"
+          },
+          {
+            "name": "docker-compose",
+            "sha": "a32dc3da722e6b2e4fbfc72e40b1a697c4686460"
+          },
+          {
+            "name": "docker-library-python",
+            "sha": "8f2cb2e1c9cae4d8f772fe61f1427c96acea3257"
+          }
+        ],
+        "metrics": {
+          "ref_precision": 1,
+          "ref_recall": 1,
+          "sym_precision": 0.9975,
+          "sym_recall": 0.9949,
+          "xref_precision": null,
+          "xref_recall": null
+        },
+        "metric_tiers": {
+          "ref_precision": "A",
+          "ref_recall": "A",
+          "sym_precision": "A",
+          "sym_recall": "A"
+        },
+        "oracles": [
+          {
+            "tier": "A",
+            "tool": "buildkit-dockerfile-parser",
+            "version": "github.com/moby/buildkit v0.33.0 frontend/dockerfile (docker buildx build --print=outline substitute — no Docker daemon in this sandbox)"
+          },
+          {
+            "tier": "B",
+            "tool": "universal-ctags",
+            "status": "unavailable: universal-ctags has no parser for this dialect"
+          }
+        ],
+        "scope": "Upstream calibration only. Null metrics remain unmeasured. Denominators, cohort exclusions and raw subgrades remain in the cited reading."
+      }
+    ],
+    "unknowns": [
+      "Actual Dockerfile.context build and CUE image declaration/drift; upstream L3 is not attempted.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md",
+      "docs/bench/readings/lang/dockerfile.json"
+    ],
+    "plan_rows": [
+      "GDEV-22"
+    ],
+    "next_step": "Build the exact Dockerfile.context and compare its image declaration with CUE drift controls."
+  },
+  {
+    "family": "lefthook",
+    "kind": "tool format",
+    "target": "L1",
+    "upstream_level": "L1",
+    "upstream_quality": "L1 (L1 good)",
+    "consumer_level": "not measured",
+    "oracle": "Native hook loader and actual pre-push to Task to fresh strict verify",
+    "oracle_available_here": true,
+    "oracle_availability_reason": "lefthook, Task and strict verification machinery are present; the consumer pre-push chain has not been exercised.",
+    "prerequisites": [
+      {
+        "file": "docs/bench/readings/lang/git-hooks-config.json",
+        "upstream_family": "Git hook managers (lefthook.yml, .pre-commit-config.yaml)",
+        "measured_at": "2026-09-29",
+        "source_commit": "9ea6da5f",
+        "subjects": [
+          {
+            "name": "evilmartians/lefthook",
+            "sha": "539f66c92f10e20ed369d769afee1cd6e93d5735"
+          },
+          {
+            "name": "pre-commit/pre-commit-hooks",
+            "sha": "3e8a8703264a2f4a69428a0aa4dcb512790b2c8c"
+          }
+        ],
+        "metrics": {
+          "ref_precision": null,
+          "ref_recall": null,
+          "sym_precision": 1,
+          "sym_recall": 1,
+          "xref_precision": null,
+          "xref_recall": null
+        },
+        "metric_tiers": {
+          "sym_precision": "C",
+          "sym_recall": "C"
+        },
+        "oracles": [
+          {
+            "tier": "A",
+            "tool": "lefthook dump",
+            "version": "1.13.6"
+          },
+          {
+            "tier": "C",
+            "tool": "ruby psych",
+            "version": "3.1.0 (ruby 2.6.10)"
+          }
+        ],
+        "scope": "Upstream calibration only. Null metrics remain unmeasured. Denominators, cohort exclusions and raw subgrades remain in the cited reading."
+      }
+    ],
+    "unknowns": [
+      "Actual consumer pre-push to Task to fresh strict verification, not hook file presence.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md",
+      "docs/bench/readings/lang/git-hooks-config.json"
+    ],
+    "plan_rows": [
+      "GDEV-23"
+    ],
+    "next_step": "Exercise actual project hook loading and pre-push to Task to fresh strict verification."
+  },
+  {
+    "family": "fathom-config",
+    "kind": "tool format",
+    "target": "L2",
+    "upstream_level": "L2",
+    "upstream_quality": "L2 (L1 good, L2 good)",
+    "consumer_level": "not measured",
+    "oracle": "Fathom config loader and resolved project-local references",
+    "oracle_available_here": true,
+    "oracle_availability_reason": "Native config loader and local reference resolver are present; consumer project-local closure remains unmeasured.",
+    "prerequisites": [
+      {
+        "file": "docs/bench/readings/lang/fathom-config.json",
+        "upstream_family": "fathom configuration (.fathom/config.toml)",
+        "measured_at": "2026-10-03",
+        "source_commit": "bb07fa5c",
+        "subjects": [
+          {
+            "name": "GeoffMillerAZ/fathom",
+            "sha": "90f0a01fa2df1c74eaeb875f13b61b31133ee09b"
+          },
+          {
+            "name": "GeoffMillerAZ/fathom (third_party/agentic-kit)",
+            "sha": "90f0a01fa2df1c74eaeb875f13b61b31133ee09b"
+          },
+          {
+            "name": "fathom-config fixture: layered",
+            "sha": "bb07fa5cd6c4858503bd24529f5bab369fa467ed"
+          },
+          {
+            "name": "fathom-config fixture: profiles",
+            "sha": "bb07fa5cd6c4858503bd24529f5bab369fa467ed"
+          }
+        ],
+        "metrics": {
+          "ref_precision": 1,
+          "ref_recall": 1,
+          "sym_precision": 1,
+          "sym_recall": 1,
+          "xref_precision": null,
+          "xref_recall": null
+        },
+        "metric_tiers": {
+          "ref_precision": "C",
+          "ref_recall": "C",
+          "sym_precision": "C",
+          "sym_recall": "C"
+        },
+        "oracles": [
+          {
+            "tier": "C",
+            "tool": "python tomllib (TOML decode) + a line scanner of its own",
+            "version": "python 3.14.7 tomllib"
+          }
+        ],
+        "scope": "Upstream calibration only. Null metrics remain unmeasured. Denominators, cohort exclusions and raw subgrades remain in the cited reading."
+      }
+    ],
+    "unknowns": [
+      "Consumer resolved project-local references and invalid configuration controls.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md",
+      "docs/bench/readings/lang/fathom-config.json"
+    ],
+    "plan_rows": [
+      "GDEV-24"
+    ],
+    "next_step": "Run the native config loader over consumer project-local references and invalid controls."
+  },
+  {
+    "family": "fathom-concern-layer",
+    "kind": "tool format",
+    "target": "L2",
+    "upstream_level": "unsupported (disclosed)",
+    "upstream_quality": "unsupported (disclosed)",
+    "consumer_level": "not measured",
+    "oracle": "Native concern/layer evaluation, unevaluated rules disclosed",
+    "oracle_available_here": true,
+    "oracle_availability_reason": "Native concern/layer evaluation exists in the checkout; no independent consumer reading or complete rule evaluation is claimed.",
+    "prerequisites": [
+      {
+        "file": "docs/languages.md",
+        "upstream_family": "fathom concerns (.fathom/concerns.cue); fathom layer packs (.fathom/layers/*/layer.cue, .fathom/rules/*.cue)",
+        "status": "Both specific rows say unsupported (disclosed); no calibration subjects or metrics. CUE calibration is not a concern/layer grade."
+      }
+    ],
+    "unknowns": [
+      "Specific concern and layer rows are unsupported upstream; unevaluated rules and independent consumer coverage are unknown.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md"
+    ],
+    "plan_rows": [
+      "GDEV-24"
+    ],
+    "next_step": "Measure native concern/layer evaluation and enumerate rules left unevaluated."
+  },
+  {
+    "family": "fathom-plan",
+    "kind": "tool format",
+    "target": "L3",
+    "upstream_level": "L3",
+    "upstream_quality": "L3 (L1 good, L2 good, L3 good)",
+    "consumer_level": "not measured",
+    "oracle": "Plan/context/dependency resolver and independent claim verification",
+    "oracle_available_here": true,
+    "oracle_availability_reason": "Native plan/context/dependency resolver and verifier exist; no consumer claim reading was run.",
+    "prerequisites": [
+      {
+        "file": "docs/bench/readings/lang/fathom-plan-rows.json",
+        "upstream_family": "fathom plan grammar v2 rows (docs/plans/*.md)",
+        "measured_at": "2026-10-03",
+        "source_commit": "5eaeda8c",
+        "subjects": [
+          {
+            "name": "GeoffMillerAZ/fathom",
+            "sha": "90f0a01fa2df1c74eaeb875f13b61b31133ee09b"
+          }
+        ],
+        "metrics": {
+          "ref_precision": 1,
+          "ref_recall": 1,
+          "sym_precision": 1,
+          "sym_recall": 1,
+          "xref_precision": 1,
+          "xref_recall": 1
+        },
+        "metric_tiers": {
+          "ref_precision": "C",
+          "ref_recall": "C",
+          "sym_precision": "C",
+          "sym_recall": "C",
+          "xref_precision": "C",
+          "xref_recall": "C"
+        },
+        "oracles": [
+          {
+            "tier": "C",
+            "tool": "plan_rows_oracle.py: a line parser of docs/plans/README.md's row grammar",
+            "version": "python 3.14.7"
+          }
+        ],
+        "scope": "Upstream calibration only. Null metrics remain unmeasured. Denominators, cohort exclusions and raw subgrades remain in the cited reading."
+      }
+    ],
+    "unknowns": [
+      "Current consumer IDs/context/DAG, independent claim verification and freshness.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md",
+      "docs/bench/readings/lang/fathom-plan-rows.json"
+    ],
+    "plan_rows": [
+      "GDEV-25"
+    ],
+    "next_step": "Resolve current consumer IDs/context/DAG and independently verify claims against fresh source."
+  },
+  {
+    "family": "domain-schema",
+    "kind": "tool format",
+    "target": "L3",
+    "upstream_level": "no upstream reading",
+    "upstream_quality": "no upstream reading",
+    "consumer_level": "not measured",
+    "oracle": "Each exact domain loader/schema, path/hash/ID links and invalid fixture",
+    "oracle_available_here": false,
+    "oracle_availability_reason": "The consumer exact domain loaders, schemas and invalid controls are not supplied here.",
+    "prerequisites": [
+      {
+        "file": "docs/languages.md",
+        "status": "No upstream row or calibration subject for this family; no prerequisite metrics claimed."
+      }
+    ],
+    "unknowns": [
+      "Each exact domain loader/schema and path/hash/ID links, invalid controls and unknown residue.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md"
+    ],
+    "plan_rows": [
+      "GDEV-26"
+    ],
+    "next_step": "Select each exact loader/schema and measure path/hash/ID positives, invalid inputs and unknown residue."
+  },
+  {
+    "family": "unity-assembly",
+    "kind": "tool format",
+    "target": "L3",
+    "upstream_level": "tolerated",
+    "upstream_quality": "tolerated",
+    "consumer_level": "not measured",
+    "oracle": "CompilationPipeline path/GUID ownership, platform/define/editor/player negatives",
+    "oracle_available_here": false,
+    "oracle_availability_reason": "No Unity CompilationPipeline; derived repository facts are not native ownership calibration.",
+    "prerequisites": [
+      {
+        "file": "docs/languages.md",
+        "upstream_family": "Unity assembly definitions and references",
+        "status": "No measured metrics or calibration subject in this row; tolerated registration is not an earned level."
+      }
+    ],
+    "unknowns": [
+      "Inner Assets folder can be mistaken for a project root; metadata refresh needs a full ingest; platform/define rules are not evaluated; CompilationPipeline calibration pending.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md",
+      "internal/fusion/unity_assemblies.go",
+      "internal/fusion/unity_review_test.go",
+      "docs/changelog/unreleased/gd-unity.md",
+      "docs/changelog/unreleased/gd-unity-2.md"
+    ],
+    "plan_rows": [
+      "GDEV-10"
+    ],
+    "next_step": "Compare derived ownership with Unity 6000.3.15f1 CompilationPipeline including inner-Assets and platform/define negatives."
+  },
+  {
+    "family": "unity-serialized",
+    "kind": "tool format",
+    "target": "L3",
+    "upstream_level": "no upstream reading",
+    "upstream_quality": "no upstream reading",
+    "consumer_level": "not measured",
+    "oracle": "AssetDatabase/SerializedObject GUID, fileID, UnityEvent, prefab variant and subasset links",
+    "oracle_available_here": false,
+    "oracle_availability_reason": "No Unity AssetDatabase/SerializedObject witness here.",
+    "prerequisites": [
+      {
+        "file": "docs/languages.md",
+        "status": "No upstream row or calibration subject for this family; no prerequisite metrics claimed."
+      }
+    ],
+    "unknowns": [
+      "GUID/fileID, UnityEvent, prefab variant, subasset, missing and collision controls.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md"
+    ],
+    "plan_rows": [
+      "GDEV-27"
+    ],
+    "next_step": "Compare GUID/fileID/UnityEvent/prefab/subasset links with native Unity consumers and collision negatives."
+  },
+  {
+    "family": "asset-manifest",
+    "kind": "tool format",
+    "target": "L3",
+    "upstream_level": "no upstream reading",
+    "upstream_quality": "no upstream reading",
+    "consumer_level": "not measured",
+    "oracle": "Maintained manifest validator, source/output hashes and engine import receipt",
+    "oracle_available_here": false,
+    "oracle_availability_reason": "Consumer validator/source-output closure and native Unity import receipts are unavailable here.",
+    "prerequisites": [
+      {
+        "file": "docs/languages.md",
+        "status": "No upstream row or calibration subject for this family; no prerequisite metrics claimed."
+      }
+    ],
+    "unknowns": [
+      "Maintained validator, provenance/units and source/output hashes matched to native import receipts.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration.",
+      "Metadata, hashes and catalog ownership do not imply binary contents were indexed or art quality was judged."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md"
+    ],
+    "plan_rows": [
+      "GDEV-28"
+    ],
+    "next_step": "Validate maintained manifests and source/output hashes against native engine import receipts."
+  },
+  {
+    "family": "model-media",
+    "kind": "tool format",
+    "target": "L3 catalog",
+    "upstream_level": "no upstream reading",
+    "upstream_quality": "no upstream reading",
+    "consumer_level": "not measured",
+    "oracle": "Manifest ownership, Blender/Unity/Pillow/ffprobe dependencies and receipts",
+    "oracle_available_here": false,
+    "oracle_availability_reason": "No Blender/Unity/Pillow consumer closure or ffprobe receipt here.",
+    "prerequisites": [
+      {
+        "file": "docs/languages.md",
+        "status": "No upstream row or calibration subject for this family; no prerequisite metrics claimed."
+      }
+    ],
+    "unknowns": [
+      "Manifest ownership and Blender/Unity/Pillow/ffprobe dependencies and receipts.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration.",
+      "Metadata, hashes and catalog ownership do not imply binary contents were indexed or art quality was judged."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md"
+    ],
+    "plan_rows": [
+      "GDEV-29"
+    ],
+    "next_step": "Retain identified Blender/Unity/Pillow/ffprobe dependency and catalog receipts."
+  },
+  {
+    "family": "nunit",
+    "kind": "tool format",
+    "target": "L3",
+    "upstream_level": "no upstream reading",
+    "upstream_quality": "no upstream reading",
+    "consumer_level": "not measured",
+    "oracle": "Source-bound Unity XML, parameterized identity and stale/mixed/replay refusals",
+    "oracle_available_here": false,
+    "oracle_availability_reason": "No source-bound Unity test execution/XML receipt closure here.",
+    "prerequisites": [
+      {
+        "file": "docs/languages.md",
+        "status": "No upstream row or calibration subject for this family; no prerequisite metrics claimed."
+      }
+    ],
+    "unknowns": [
+      "Current source/test identity, parameterized IDs, malformed XML and stale/mixed/replay refusal controls.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md"
+    ],
+    "plan_rows": [
+      "GDEV-30"
+    ],
+    "next_step": "Join fresh source-bound Unity XML and prove malformed/stale/mixed/replay refusals."
+  },
+  {
+    "family": "cli-mcp-interface",
+    "kind": "tool format",
+    "target": "L3",
+    "upstream_level": "no upstream reading",
+    "upstream_quality": "no upstream reading",
+    "consumer_level": "not measured",
+    "oracle": "Exact binary/schema pins, real CLI and Codex/Claude MCP handshakes/calls",
+    "oracle_available_here": false,
+    "oracle_availability_reason": "Installed CLI/configuration inspection is possible, but both actual consumer host handshakes and bounded calls are unqualified here.",
+    "prerequisites": [
+      {
+        "file": "docs/languages.md",
+        "status": "No upstream row or calibration subject for this family; no prerequisite metrics claimed."
+      }
+    ],
+    "unknowns": [
+      "Exact binary/schema pins, real Codex and Claude registrations, initialize/enumerate/bounded calls and refusal identities.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md",
+      "scripts/gdev/README.md",
+      "docs/adoption/codex.md",
+      "docs/adoption/claude-code.md"
+    ],
+    "plan_rows": [
+      "GDEV-31"
+    ],
+    "next_step": "Run both project-local host registrations and retain actual handshake, bounded-call, error and refusal receipts."
+  },
+  {
+    "family": "xml",
+    "kind": "tool format",
+    "target": "not claimed",
+    "upstream_level": "not claimed",
+    "upstream_quality": "not claimed",
+    "consumer_level": "not measured",
+    "oracle": "Generic XML has no dialect grade; MSBuild/NuGet/NUnit have named consumers",
+    "oracle_available_here": false,
+    "oracle_availability_reason": "Generic XML has no grade; the named MSBuild/NuGet/NUnit native consumer closure is unavailable here.",
+    "prerequisites": [
+      {
+        "file": "docs/languages.md",
+        "status": "No upstream row or calibration subject for this family; no prerequisite metrics claimed."
+      }
+    ],
+    "unknowns": [
+      "Named MSBuild/NuGet/NUnit consumers remain separately unmeasured.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration.",
+      "No generic language/dialect grade; only the actual consumer named in oracle may be qualified."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md"
+    ],
+    "plan_rows": [
+      "GDEV-32"
+    ],
+    "next_step": "Qualify only the named MSBuild/NuGet/NUnit consumers; retain generic XML as not claimed."
+  },
+  {
+    "family": "text-record",
+    "kind": "tool format",
+    "target": "not claimed",
+    "upstream_level": "not claimed",
+    "upstream_quality": "not claimed",
+    "consumer_level": "not measured",
+    "oracle": "License, prompt, ignore or policy file under its actual consumer",
+    "oracle_available_here": false,
+    "oracle_availability_reason": "The actual license/prompt/ignore/policy consumer and identified inputs have not been selected here.",
+    "prerequisites": [
+      {
+        "file": "docs/languages.md",
+        "status": "No upstream row or calibration subject for this family; no prerequisite metrics claimed."
+      }
+    ],
+    "unknowns": [
+      "Actual consuming tool/policy and source identity remain unmeasured.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration.",
+      "No generic language/dialect grade; only the actual consumer named in oracle may be qualified."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md"
+    ],
+    "plan_rows": [
+      "GDEV-32"
+    ],
+    "next_step": "Identify and test the actual license/prompt/ignore/policy consumer without assigning a language grade."
+  },
+  {
+    "family": "archive",
+    "kind": "tool format",
+    "target": "not claimed",
+    "upstream_level": "not claimed",
+    "upstream_quality": "not claimed",
+    "consumer_level": "not measured",
+    "oracle": "Source lock, license and integrity receipts; contents are not a language grade",
+    "oracle_available_here": false,
+    "oracle_availability_reason": "The consumer source lock, license and integrity receipt closure is unavailable here.",
+    "prerequisites": [
+      {
+        "file": "docs/languages.md",
+        "status": "No upstream row or calibration subject for this family; no prerequisite metrics claimed."
+      }
+    ],
+    "unknowns": [
+      "Exact source lock/license/integrity closure remains unmeasured.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration.",
+      "Metadata, hashes and catalog ownership do not imply binary contents were indexed or art quality was judged.",
+      "No generic language/dialect grade; only the actual consumer named in oracle may be qualified."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md"
+    ],
+    "plan_rows": [
+      "GDEV-32"
+    ],
+    "next_step": "Retain source lock, license and integrity receipts without assigning a contents language grade."
+  },
+  {
+    "family": "svg-interface",
+    "kind": "tool format",
+    "target": "not claimed",
+    "upstream_level": "not claimed",
+    "upstream_quality": "not claimed",
+    "consumer_level": "not measured",
+    "oracle": "Browser DOM/render and embedded markup references, no dedicated SVG grade",
+    "oracle_available_here": false,
+    "oracle_availability_reason": "No browser automation qualified for actual DOM/render and embedded-markup readings.",
+    "prerequisites": [
+      {
+        "file": "docs/languages.md",
+        "status": "No upstream row or calibration subject for this family; no prerequisite metrics claimed."
+      }
+    ],
+    "unknowns": [
+      "Actual DOM/render and embedded references remain unmeasured.",
+      "Current consumer source/tree/dirty state, tool/package pins, samples and independent controls have not been measured in this report."
+    ],
+    "exclusions": [
+      "No consumer grade, same-closure consumer metrics, resource/response verdict or native execution inferred from upstream calibration.",
+      "No generic language/dialect grade; only the actual consumer named in oracle may be qualified."
+    ],
+    "evidence": [
+      "docs/design/game-development-support.md",
+      "docs/languages.md"
+    ],
+    "plan_rows": [
+      "GDEV-32"
+    ],
+    "next_step": "Run actual browser DOM/render and embedded-markup checks without assigning a dedicated SVG grade."
+  }
+]
