@@ -400,8 +400,9 @@ type ReadoutRule struct {
 
 // Hooks configures hook behaviours (schema.cue #Hooks).
 type Hooks struct {
-	// Dedupe suppresses unchanged Claude Code post-edit and cwd primers.
-	// Default on for Claude Code only; a user false wins over a repo true.
+	// Dedupe suppresses already delivered rules per context on Claude Code
+	// and Codex, and consecutive unchanged cwd primers on Claude Code.
+	// Default on; a user false wins over a repo true.
 	Dedupe bool
 	// TestRun (TR-9, ADR-056 decision 6) turns on the test-run hook: after
 	// a Bash command that runs a declared test command, one line naming
