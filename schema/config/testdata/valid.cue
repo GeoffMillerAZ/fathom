@@ -280,5 +280,5 @@ hookDedupeOff: #Config & {hooks: dedupe: false}
 
 // Local gate evidence defaults to opt-out; labels are explicitly supplied.
 gateEvidence: #Config & {
-	gate: {accept_receipts: false, receipts_dir: "workspace/receipts", host_label: "helper"}
+	gate: {accept_receipts: false, allow_receipt_acceptance: true, receipts_dir: "workspace/receipts", host_label: "helper"}
 }

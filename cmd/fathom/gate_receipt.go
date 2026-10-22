@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
@@ -74,7 +74,7 @@ func gateReceiptOptions(ctx context.Context, root, command string) (gatereceipt.
 	} else if !filepath.IsAbs(dir) {
 		dir = filepath.Join(root, dir)
 	}
-	return gatereceipt.Options{Root: root, Dir: dir, Command: command, HostLabel: gate.HostLabel}, gate.AcceptReceipts, nil
+	return gatereceipt.Options{Root: root, Dir: dir, Command: command, HostLabel: gate.HostLabel}, gate.AcceptReceipts && loaded.Provenance["gate.accept_receipts"].Source == config.SourceProject && gate.AllowReceiptAcceptance, nil
 }
 
 func cmdGateReceiptWrite(args []string, stdout, stderr io.Writer) int {
@@ -95,19 +95,8 @@ func cmdGateReceiptWrite(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "error:", err)
 		return 1
 	}
-	c := exec.CommandContext(ctx, "go", "version")
-	// Reading toolchain identity must never trigger Go's automatic download.
-	c.Env = append(os.Environ(), "GOTOOLCHAIN=local")
-	b, err := c.Output()
-	if err != nil {
-		fmt.Fprintln(stderr, "error: go version:", err)
-		return 1
-	}
 	o.Log = *log
-	o.GoVersion = strings.TrimSpace(string(b))
 	o.FathomVersion = BuildRevision()
-	o.OS = runtime.GOOS
-	o.Arch = runtime.GOARCH
 	_, id, err := gatereceipt.Write(ctx, o)
 	if err != nil {
 		fmt.Fprintln(stderr, "error:", err)
@@ -122,7 +111,7 @@ func cmdGateReceiptCheck(args []string, stdout, stderr io.Writer) int {
 	tree := fs.String("tree", "HEAD", "tree or commit whose gate evidence must match")
 	command := fs.String("command", "validate", "gate task name")
 	root := fs.String("root", ".", "repository directory")
-	enabled := fs.Bool("if-enabled", false, "refuse unless [gate] accept_receipts is true (for pre-push)")
+	enabled := fs.Bool("if-enabled", false, "refuse silently unless project acceptance and user consent are enabled (for pre-push)")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -137,7 +126,10 @@ func cmdGateReceiptCheck(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	if *enabled && !accept {
-		fmt.Fprintln(stderr, "receipt acceptance disabled ([gate] accept_receipts is false)")
+		return 1
+	}
+	if err := gateReceiptLocalEnvironment(ctx, &o); err != nil {
+		fmt.Fprintln(stderr, "receipt rejected:", err)
 		return 1
 	}
 	id, err := gatereceipt.Check(ctx, o, *tree)
@@ -147,6 +139,38 @@ func cmdGateReceiptCheck(args []string, stdout, stderr io.Writer) int {
 	}
 	fmt.Fprintln(stdout, id)
 	return 0
+}
+
+// The checker reads the local Go toolchain, never the binary's build platform.
+func gateReceiptLocalEnvironment(ctx context.Context, o *gatereceipt.Options) error {
+	runGo := func(args ...string) ([]byte, error) {
+		c := exec.CommandContext(ctx, "go", args...)
+		c.Dir = o.Root
+		c.Env = append(os.Environ(), "GOTOOLCHAIN=local")
+		b, err := c.Output()
+		if err != nil {
+			return nil, fmt.Errorf("go %s: %w", strings.Join(args, " "), err)
+		}
+		return b, nil
+	}
+	b, err := runGo("version")
+	if err != nil {
+		return err
+	}
+	o.GoVersion = strings.TrimSpace(string(b))
+	b, err = runGo("env", "-json", "GOOS", "GOARCH", "GOWORK")
+	if err != nil {
+		return err
+	}
+	var env struct{ GOOS, GOARCH, GOWORK string }
+	if err := json.Unmarshal(b, &env); err != nil {
+		return fmt.Errorf("go env: %w", err)
+	}
+	if env.GOOS == "" || env.GOARCH == "" || env.GOWORK != "off" {
+		return fmt.Errorf("local go env requires GOOS, GOARCH and GOWORK=off")
+	}
+	o.OS, o.Arch = env.GOOS, env.GOARCH
+	return nil
 }
 
 type gateRunner struct{}

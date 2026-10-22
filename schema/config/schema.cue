@@ -454,6 +454,7 @@ package config
 // #Gate configures local gate evidence; acceptance defaults off.
 #Gate: {
 	accept_receipts?: bool
+	allow_receipt_acceptance?: bool
 	receipts_dir?:    string
 	host_label?:      string
 }

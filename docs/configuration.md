@@ -187,6 +187,7 @@ an array of tables, and `tenancy.**` for every key under `[tenancy]`.
 | `findings.producers` | behaviour | an allow-list of producer ids |
 | `findings.subject` | behaviour | the review-kit subject this repository maps to |
 | `gate.accept_receipts` | behaviour | the repository opts in to exact-tree gate evidence; default off |
+| `gate.allow_receipt_acceptance` | user-only | permits a project to opt in to receipt acceptance; default off |
 | `gate.host_label` | user-only | an operator-named machine label, never a hostname read |
 | `gate.receipts_dir` | repo-path | the directory for local gate evidence; project values stay within the repository |
 | `guards.enforce` | behaviour | turns the repository's own guards advisory |
@@ -1998,71 +1999,83 @@ with zero first-touch suppressions and zero state errors that suppress output
 
 ## Gate receipts (`[gate]`)
 
+Acceptance requires two independent settings. In the project's `.fathom/config.toml`:
+
 ```toml
 [gate]
-accept_receipts = false # default; pre-push may skip validate only when explicitly true
+accept_receipts = false # default; true requests receipt acceptance
 receipts_dir = "workspace/receipts" # optional; default <fathom home>/receipts
+```
+
+In the user's config:
+
+```toml
+[gate]
+allow_receipt_acceptance = false # default; true permits the project's opt-in
 host_label = "helper" # optional operator label; empty records "unnamed"
 ```
 
+Either setting alone leaves acceptance disabled. A repository cannot grant itself
+user consent, and a user-only `accept_receipts` cannot opt a repository in. Doctor's
+`key_source_scope` row names a half-set configuration. Explicit `check` remains
+available without enabling pre-push reuse.
+
 Relative receipt directories resolve from the git repository root. Repository-layer
 paths must stay inside that root (including symlinks); the user layer may name an
-absolute directory. `host_label` is user-layer only: a clone cannot rename its machine. Keep an in-repository
-directory gitignored and deny agent writes to it with an enforced `forbidden_paths`
+absolute directory. Only project-layer `receipts_dir` values are checked by the
+repository-path diagnostic. `host_label` is user-layer only. Keep an in-repository
+directory gitignored and deny agent edits to it with an enforced `forbidden_paths`
 guard in `.fathom/guard.cue` (this repository protects `workspace/receipts/**`). If you
 change the directory, change that guard too. Fathom never reads the machine hostname.
 `FATHOM_HOME` relocates the default receipt directory in the usual way.
 
-Capture a complete gate log, preserving the gate's exit status:
+Anyone who can run `fathom gate receipt write` as you can create an accepted receipt;
+the guard stops editor-tool tampering only; CI is the independent witness.
+
+The local wrapper captures a complete log and calls `fathom gate receipt write` itself
+on PASS. This repository also denies agent invocations of the receipt writer through
+an enforced command guard. `task validate` uses the wrapper; CI invoking the unleased
+gate directly can use it too:
 
 ```sh
-# task validate emits the framing below in this repository.
-# A CI job invoking validate:unleased directly can use the same wrapper:
-bash scripts/gate-log.sh validate task validate:unleased > workspace/logs/gate.log 2>&1
-fathom gate receipt write --log workspace/logs/gate.log
+GOWORK=off bash scripts/gate-log.sh validate task validate:unleased
 fathom gate receipt check --tree HEAD
 ```
 
-The final non-newline log line must be `fathom gate: validate PASS <RFC3339>` or
-`fathom gate: validate FAIL exit=<status> <RFC3339>` (the timestamp is optional). A matching
-`fathom gate: validate START <RFC3339>` line supplies the start time. Without both
-timestamps, start and end use the source file's modification time, explicitly marked
-`file-mtime`. `--command` selects another gate name and matching log framing.
-A final `task: Failed to run task "validate": exit status N` trailer is also recorded
-as a failure, using file-mtime for its times. It never witnesses success.
-The wrapper emits PASS only after its child exits zero; an interrupted or unfinished
-log has no accepted success line. Receipt write records failures too; check refuses them.
+The first line is `fathom gate: validate START <RFC3339> tree=<tree> clean=1 commit=<commit>`.
+The header prints `go version` and `go env GOOS GOARCH GOWORK CGO_ENABLED GOFLAGS`.
+The last line is `fathom gate: validate PASS <RFC3339> tree=<tree> clean=1 commit=<commit>`
+or `FAIL exit=<status>` with the same metadata. The wrapper prints FAIL when either
+endpoint is dirty or the source identity changes, even if its child exits zero.
+An interrupted log cannot witness success. A final Task failure trailer is recorded
+as failure, never success. `--command` selects another task and matching framing.
 
-Receipts are stable JSON named by their SHA-256, with the original `<id>.log` beside
-`<id>.json`. They record the clean HEAD tree and commit at write time, command identity
-(task name plus digests of `Taskfile.yml` and `lefthook.yml`), toolchain versions,
-os/arch, host label, exit, log digest/size and times. Write and check refuse dirty
-tracked, staged, untracked and submodule changes, naming the dirty path count.
-Check re-hashes both files and requires the gate's final success line; it never trusts
-a hand-edited exit field alone. These are unsigned local evidence, not authenticated
-attestations; the operator supplies a finished log for the tree being recorded.
+Receipts are stable JSON named by their SHA-256, with the copied `<id>.log` beside
+`<id>.json`. Both endpoints must match the receipt's clean tree and commit. Receipts
+record task name plus digests of `Taskfile.yml` and `lefthook.yml` read with `git show`
+from the requested tree, toolchain/environment from the log, host label, exit, log
+digest/size and times. For HEAD, the tree hash already covers tracked gate definitions
+and scripts. Write and check refuse dirty tracked, staged, untracked and submodule
+changes. Check re-hashes both files and requires the log's final success line,
+matching local Go version and `go env` os/arch, and `GOWORK=off` in both the log and
+local environment. Go identity probes use `GOTOOLCHAIN=local` to prevent downloads.
+Legacy logs without the tree and environment header must be regenerated.
 Fathom does not execute gates, transfer receipts, sign, dial or add a store table.
 
-Opt-in pre-push snippet (a missing binary, disabled setting or rejected receipt falls
-through to the existing gate; verification and CI remain independent):
+Pre-push reads each pushed non-delete local SHA from `prepush-refs.sh`'s current
+handoff and skips validate only when every `check --if-enabled --tree <sha>` passes.
+A missing binary, missing handoff or rejected receipt falls through to validation;
+verification and CI remain independent.
 
-```sh
-if [ -x bin/fathom ] && bin/fathom gate receipt check --if-enabled; then
-  echo "pre-push: validate covered by matching gate receipt"
-  exit 0
-fi
-task validate
-```
-
-`check` exits 0 with the receipt id only on acceptance, otherwise 1 with the refusal
-reason. `--if-enabled` additionally requires `accept_receipts = true`. This repository
-explicitly keeps acceptance off pending the owner's BE-11 decision.
+`check` exits 0 with the receipt id only on acceptance, otherwise 1 with a refusal
+reason. `--if-enabled` exits 1 silently when two-key acceptance is disabled. This
+repository keeps receipt acceptance off.
 
 ## Record-id uniqueness
 
 `fathom gate record-ids` (also `task record-ids-check`, in `validate:unleased`) checks
 ADR headings in `ADR.md`, invariant table ids in `docs/intent/invariants.md`, future
-headings in `docs/intent/futures.md` and `docs/intent/futures/*.md`, incident headings
+headings in `docs/intent/futures.md` and `docs/intent/futures/*.md`, incident headings (including bold entries)
 and closed incident bullets in `docs/intent/incidents.md`, and authored task ids
 within each active plan. It prints the id and both `path:line` locations on a duplicate,
 exits 1 on duplicates or unreadable inputs, and exits 0 on success. Fenced examples
@@ -2077,6 +2090,8 @@ one captured id. Omit `families` for the defaults; an explicit list replaces the
 ```
 
 `--cross-plan` or `"cross_plan": true` also checks ids across active plans. This is
-opt-in. The committed config enumerates the 20 ids already shared at adoption as
+opt-in generally, and enabled in this repository. The committed config enumerates ids already shared at adoption as
 `grandfather` entries (`id` plus exact `paths`). Each exception permits only those
 cross-plan pairs; a duplicate within a plan or in an additional plan still fails.
+An exception whose named pair no longer collides fails as a stale exception; remove
+it when the collision is resolved.

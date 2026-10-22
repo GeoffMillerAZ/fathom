@@ -11,7 +11,12 @@ import (
 	"time"
 )
 
-const passingLog = "fathom gate: validate START 2026-10-22T01:00:00Z\nchecks passed\nfathom gate: validate PASS 2026-10-22T02:00:00Z\n"
+const passingLog = "fathom gate: validate START 2026-10-22T01:00:00Z tree=TREE clean=1 commit=COMMIT\ngo version fixture fixture/fixture\nfathom gate: go env GOOS GOARCH GOWORK CGO_ENABLED GOFLAGS\nfixture-os\nfixture-arch\noff\n0\n\nchecks passed\nfathom gate: validate PASS 2026-10-22T02:00:00Z tree=TREE clean=1 commit=COMMIT\n"
+
+func passingLogFor(t *testing.T, o Options) string {
+	t.Helper()
+	return strings.NewReplacer("TREE", gitTest(t, o.Root, "rev-parse", "HEAD^{tree}"), "COMMIT", gitTest(t, o.Root, "rev-parse", "HEAD")).Replace(passingLog)
+}
 
 func gitTest(t *testing.T, root string, args ...string) string {
 	t.Helper()
@@ -44,8 +49,9 @@ func fixture(t *testing.T) Options {
 	gitTest(t, root, "add", ".")
 	gitTest(t, root, "-c", "core.hooksPath="+os.DevNull, "commit", "-qm", "fixture")
 	log := filepath.Join(t.TempDir(), "gate.log")
-	put(t, log, passingLog)
-	return Options{Root: root, Dir: t.TempDir(), Log: log, Command: "validate", GoVersion: "go version fixture", FathomVersion: "fixture", OS: "fixture-os", Arch: "fixture-arch"}
+	o := Options{Root: root, Dir: t.TempDir(), Log: log, Command: "validate", GoVersion: "go version fixture fixture/fixture", FathomVersion: "fixture", OS: "fixture-os", Arch: "fixture-arch"}
+	put(t, log, passingLogFor(t, o))
+	return o
 }
 
 func TestWriteDeterministicAndCopiesLog(t *testing.T) {
@@ -67,13 +73,13 @@ func TestWriteDeterministicAndCopiesLog(t *testing.T) {
 		t.Fatal("receipt changed")
 	}
 	log, err := os.ReadFile(filepath.Join(o.Dir, id+".log"))
-	if err != nil || string(log) != passingLog {
+	if err != nil || string(log) != passingLogFor(t, o) {
 		t.Fatalf("log: %q %v", log, err)
 	}
 	if r.Tree != gitTest(t, o.Root, "rev-parse", "HEAD^{tree}") || r.Commit != gitTest(t, o.Root, "rev-parse", "HEAD") || r.HostLabel != "unnamed" || r.Exit != 0 || r.Dirty || r.TimeSource != "log" {
 		t.Fatalf("receipt: %+v", r)
 	}
-	if r.Start != "2026-10-22T01:00:00Z" || r.End != "2026-10-22T02:00:00Z" || r.LogBytes != int64(len(passingLog)) {
+	if r.Start != "2026-10-22T01:00:00Z" || r.End != "2026-10-22T02:00:00Z" || r.LogBytes != int64(len(passingLogFor(t, o))) {
 		t.Fatalf("metadata: %+v", r)
 	}
 }
@@ -105,7 +111,7 @@ func TestWriteRefusesDirtyTrees(t *testing.T) {
 	}
 }
 
-func TestWriteFailureAndMtimeFallback(t *testing.T) {
+func TestWriteRefusesUnboundMtimeFallback(t *testing.T) {
 	o := fixture(t)
 	put(t, o.Log, "checks failed\nfathom gate: validate FAIL\n")
 	stamp := time.Date(2026, 10, 22, 3, 0, 0, 0, time.UTC)
@@ -113,11 +119,15 @@ func TestWriteFailureAndMtimeFallback(t *testing.T) {
 		t.Fatal(err)
 	}
 	o.HostLabel = "helper"
+	if _, _, err := Write(context.Background(), o); err == nil {
+		t.Fatal("accepted a log without clean tree endpoints")
+	}
+	put(t, o.Log, strings.Replace(passingLogFor(t, o), "PASS", "FAIL", 1))
 	r, _, err := Write(context.Background(), o)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r.Exit != 1 || r.TimeSource != "file-mtime" || r.Start != stamp.Format(time.RFC3339Nano) || r.End != r.Start || r.HostLabel != "helper" {
+	if r.Exit != 1 || r.TimeSource != "log" || r.Start != "2026-10-22T01:00:00Z" || r.End != "2026-10-22T02:00:00Z" || r.HostLabel != "helper" {
 		t.Fatalf("receipt: %+v", r)
 	}
 	put(t, o.Log, "ok\n")
@@ -128,7 +138,7 @@ func TestWriteFailureAndMtimeFallback(t *testing.T) {
 
 func TestWriteRecordsFailureExitStatus(t *testing.T) {
 	o := fixture(t)
-	put(t, o.Log, "fathom gate: validate START 2026-10-22T01:00:00Z\nfathom gate: validate FAIL exit=7 2026-10-22T02:00:00Z\n")
+	put(t, o.Log, strings.Replace(passingLogFor(t, o), "PASS", "FAIL exit=7", 1))
 	r, _, err := Write(context.Background(), o)
 	if err != nil || r.Exit != 7 {
 		t.Fatalf("exit: %+v %v", r, err)
@@ -137,7 +147,7 @@ func TestWriteRecordsFailureExitStatus(t *testing.T) {
 
 func TestWriteFinishedTaskFailureLog(t *testing.T) {
 	o := fixture(t)
-	put(t, o.Log, "fathom gate: validate FAIL exit=7 2026-10-22T02:00:00Z\ntask: Failed to run task \"validate\": exit status 7\n")
+	put(t, o.Log, strings.Replace(passingLogFor(t, o), "PASS", "FAIL exit=7", 1)+"task: Failed to run task \"validate\": exit status 7\n")
 	r, _, err := Write(context.Background(), o)
 	if err != nil || r.Exit != 7 {
 		t.Fatalf("task failure: %+v %v", r, err)

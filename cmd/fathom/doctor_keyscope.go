@@ -28,11 +28,18 @@ func checkKeyScope(root, userPath string) doctorCheck {
 	if err != nil {
 		return doctorCheck{Name: name, Status: doctorWarn, Reason: "config does not load: " + err.Error(), Remedy: "see config_valid"}
 	}
-	refused := config.RefusedRepoPaths(root, loaded.Config)
-	if len(loaded.IgnoredKeySources) == 0 && len(refused) == 0 {
+	refused := config.RefusedRepoPaths(root, loaded.Config, loaded.Provenance)
+	projectAccept := loaded.Config.Gate.AcceptReceipts && loaded.Provenance["gate.accept_receipts"].Source == config.SourceProject
+	userAllow := loaded.Config.Gate.AllowReceiptAcceptance
+	halfConsent := projectAccept != userAllow
+	if !halfConsent && len(loaded.IgnoredKeySources) == 0 && len(refused) == 0 {
 		return doctorCheck{Name: name, Status: doctorPass, Reason: "credentials, executables, key hosts and the daemon's own paths are read from the user config (" + userPath + ") only; the repository sets none, and its paths stay inside it"}
 	}
 	var parts, remedies []string
+	if halfConsent {
+		parts = append(parts, "gate receipt acceptance is disabled: project [gate] accept_receipts and user [gate] allow_receipt_acceptance must both be true")
+		remedies = append(remedies, "set both consent keys in their respective layers, or turn the half-set key off")
+	}
 	if n := len(loaded.IgnoredKeySources); n > 0 {
 		fields := make([]string, 0, n)
 		for _, ig := range loaded.IgnoredKeySources {

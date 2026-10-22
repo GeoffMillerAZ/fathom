@@ -1310,7 +1310,7 @@ func TestLoad_TypedSkipModules(t *testing.T) {
 		t.Fatalf("user-layer typed.skip_modules: err = %v, want a LoadError naming %s and the corpus file it belongs in", err, user)
 	}
 	// A repo-path field: an escaping glob is named by RefusedRepoPaths.
-	refused := RefusedRepoPaths(dir, Config{Typed: Typed{SkipModules: []string{"ok/**", "../out/**", "/abs/**"}}})
+	refused := RefusedRepoPaths(dir, Config{Typed: Typed{SkipModules: []string{"ok/**", "../out/**", "/abs/**"}}}, nil)
 	if len(refused) != 2 || refused[0].Field != "typed.skip_modules[1]" || refused[1].Field != "typed.skip_modules[2]" {
 		t.Fatalf("RefusedRepoPaths = %+v, want typed.skip_modules[1] and [2]", refused)
 	}

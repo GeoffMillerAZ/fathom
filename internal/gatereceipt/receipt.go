@@ -38,6 +38,9 @@ type Receipt struct {
 	FathomVersion   string `json:"fathom_version"`
 	OS              string `json:"os"`
 	Arch            string `json:"arch"`
+	GoWork          string `json:"go_work"`
+	CGOEnabled      string `json:"cgo_enabled"`
+	GoFlags         string `json:"go_flags"`
 	HostLabel       string `json:"host_label"`
 	Exit            int    `json:"exit"`
 	LogSHA256       string `json:"log_sha256"`
@@ -85,13 +88,22 @@ func clean(ctx context.Context, root string) error {
 	return nil
 }
 
-func identity(o Options) (string, error) {
-	// Hash each named input separately, then frame the three identities with JSON.
-	task, err := os.ReadFile(filepath.Join(o.Root, "Taskfile.yml"))
+func identity(ctx context.Context, o Options, tree string) (string, error) {
+	// Read exact blob bytes from the requested tree, never the writer's checkout.
+	read := func(name string) ([]byte, error) {
+		c := exec.CommandContext(ctx, "git", "show", tree+":"+name)
+		c.Dir = o.Root
+		b, err := c.Output()
+		if err != nil {
+			return nil, fmt.Errorf("gate definition %s: %w", name, err)
+		}
+		return b, nil
+	}
+	task, err := read("Taskfile.yml")
 	if err != nil {
 		return "", err
 	}
-	hook, err := os.ReadFile(filepath.Join(o.Root, "lefthook.yml"))
+	hook, err := read("lefthook.yml")
 	if err != nil {
 		return "", err
 	}
@@ -99,7 +111,7 @@ func identity(o Options) (string, error) {
 	return digest(b), nil
 }
 
-var terminalLine = regexp.MustCompile(`^fathom gate: ([A-Za-z0-9_.:-]+) (PASS|FAIL)(?: exit=([0-9]+))?(?: ([^ ]+))?$`)
+var terminalLine = regexp.MustCompile(`^fathom gate: ([A-Za-z0-9_.:-]+) (PASS|FAIL)(?: exit=([0-9]+))?(?: ([^ ]+))?(?: tree=[0-9a-f]+ clean=[01] commit=[0-9a-f]+)?$`)
 var taskFailureLine = regexp.MustCompile(`^task: Failed to run task "([^"]+)": exit status ([1-9][0-9]*)$`)
 
 func logResult(b []byte, command string, mtime time.Time) (exit int, start, end, source string, err error) {
@@ -139,7 +151,7 @@ func logResult(b []byte, command string, mtime time.Time) (exit int, start, end,
 		prefix := "fathom gate: " + command + " START "
 		for _, line := range lines[:len(lines)-1] {
 			if strings.HasPrefix(line, prefix) {
-				begin, e := time.Parse(time.RFC3339Nano, strings.TrimSuffix(strings.TrimPrefix(line, prefix), "\r"))
+				begin, e := time.Parse(time.RFC3339Nano, strings.Fields(strings.TrimPrefix(line, prefix))[0])
 				if e != nil || begin.After(finish) {
 					err = fmt.Errorf("invalid gate start time")
 					return
@@ -172,7 +184,7 @@ func Write(ctx context.Context, o Options) (Receipt, string, error) {
 	if err != nil {
 		return r, "", err
 	}
-	ident, err := identity(o)
+	ident, err := identity(ctx, o, tree)
 	if err != nil {
 		return r, "", err
 	}
@@ -199,6 +211,17 @@ func Write(ctx context.Context, o Options) (Receipt, string, error) {
 		return r, "", closeErr
 	}
 	b := buf.Bytes()
+	stamp, err := logIdentity(b, o.Command, tree)
+	if err != nil {
+		return r, "", err
+	}
+	if stamp != commit {
+		return r, "", fmt.Errorf("log commit differs from HEAD")
+	}
+	env, err := logEnvironment(b)
+	if err != nil {
+		return r, "", err
+	}
 	exit, start, end, source, err := logResult(b, o.Command, info.ModTime())
 	if err != nil {
 		return r, "", err
@@ -207,7 +230,7 @@ func Write(ctx context.Context, o Options) (Receipt, string, error) {
 	if host == "" {
 		host = "unnamed"
 	}
-	r = Receipt{Version: 1, Tree: tree, Commit: commit, Command: o.Command, CommandIdentity: ident, GoVersion: o.GoVersion, FathomVersion: o.FathomVersion, OS: o.OS, Arch: o.Arch, HostLabel: host, Exit: exit, LogSHA256: digest(b), LogBytes: int64(len(b)), Start: start, End: end, TimeSource: source}
+	r = Receipt{Version: 1, Tree: tree, Commit: commit, Command: o.Command, CommandIdentity: ident, GoVersion: env.Version, FathomVersion: o.FathomVersion, OS: env.OS, Arch: env.Arch, GoWork: env.Work, CGOEnabled: env.CGO, GoFlags: env.Flags, HostLabel: host, Exit: exit, LogSHA256: digest(b), LogBytes: int64(len(b)), Start: start, End: end, TimeSource: source}
 	data, err := json.MarshalIndent(r, "", "  ")
 	if err != nil {
 		return r, "", err

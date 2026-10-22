@@ -31,8 +31,8 @@ func TestCheckExactTreeAndCommand(t *testing.T) {
 	put(t, filepath.Join(o.Root, "lefthook.yml"), "changed\n")
 	gitTest(t, o.Root, "add", ".")
 	gitTest(t, o.Root, "-c", "core.hooksPath="+os.DevNull, "commit", "-qm", "change config")
-	if _, err := Check(context.Background(), o, tree); err == nil || !strings.Contains(err.Error(), "command identity differs") {
-		t.Fatalf("config: %v", err)
+	if got, err := Check(context.Background(), o, tree); err != nil || got != id {
+		t.Fatalf("historical config: %s %v", got, err)
 	}
 	put(t, filepath.Join(o.Root, "another"), "new tree\n")
 	gitTest(t, o.Root, "add", ".")
@@ -47,7 +47,7 @@ func TestCheckRefusesTamperedEvidence(t *testing.T) {
 		t.Run(kind, func(t *testing.T) {
 			o := fixture(t)
 			if kind == "failure-with-edited-exit" {
-				put(t, o.Log, strings.Replace(passingLog, "PASS", "FAIL", 1))
+				put(t, o.Log, strings.Replace(passingLogFor(t, o), "PASS", "FAIL", 1))
 			}
 			r, id, err := Write(context.Background(), o)
 			if err != nil {
@@ -61,7 +61,7 @@ func TestCheckRefusesTamperedEvidence(t *testing.T) {
 					t.Fatal(err)
 				}
 			case "altered-log":
-				put(t, filepath.Join(o.Dir, id+".log"), passingLog+"changed\n")
+				put(t, filepath.Join(o.Dir, id+".log"), passingLogFor(t, o)+"changed\n")
 			case "hand-edited-exit":
 				r.Exit = 1
 				b, _ := json.MarshalIndent(r, "", "  ")

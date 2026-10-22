@@ -548,9 +548,10 @@ type Receipts struct {
 
 // Gate configures local gate evidence. Acceptance is deliberately opt-in.
 type Gate struct {
-	AcceptReceipts bool
-	ReceiptsDir    string
-	HostLabel      string
+	AcceptReceipts         bool
+	AllowReceiptAcceptance bool
+	ReceiptsDir            string
+	HostLabel              string
 }
 
 // Config is the merged, in-memory form of one or more config.toml layers.

@@ -1162,3 +1162,10 @@ and record-family policy remain application-owned. No upstream kit edit is neede
 Consumer proof: `TestGateReceiptCommandRoundTrip`,
 `TestGateReceiptLefthookFallsBackUnlessOptedInAndAccepted`, the verb-help proofs and
 `TestGateRecordIDsCommand` in `cmd/fathom`; package race checks at handoff.
+
+## Landing evidence CLI corrections (2026-10-22)
+
+No candidate: receipt identity, two-key consent, pushed-ref checks and record-id
+policy belong to this app. Reviewed `cli.output` and the contribution-loop contract;
+these verbs retain plain scalar output and the existing doctor row renderer. No kit
+renderer, runtime, dependency or selected capability changed.

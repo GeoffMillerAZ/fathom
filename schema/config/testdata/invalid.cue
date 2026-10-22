@@ -293,3 +293,5 @@ package config
 // badHookDedupe: #Config & {hooks: dedupe: "off"}
 
 // gateEvidence: #Config & {gate: {accept_receipts: "yes"}} // bool required
+
+// gateConsent: #Config & {gate: {allow_receipt_acceptance: "yes"}} // bool required

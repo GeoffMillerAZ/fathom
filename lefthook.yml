@@ -37,9 +37,18 @@ pre-push:
           exit 0
         fi
         # LE-2: default off; every refusal falls through to the existing gate.
-        if [ -x bin/fathom ] && bin/fathom gate receipt check --if-enabled; then
-          echo "pre-push: validate covered by matching gate receipt"
-          exit 0
+        trees=$(bash scripts/prepush-refs.sh receipt-trees) || trees=""
+        if [ -x bin/fathom ] && [ -n "$trees" ]; then
+          accepted=1
+          for tree in $trees; do
+            if ! bin/fathom gate receipt check --if-enabled --tree "$tree"; then
+              accepted=0
+            fi
+          done
+          if [ "$accepted" -eq 1 ]; then
+            echo "pre-push: validate covered by matching gate receipts for every pushed SHA"
+            exit 0
+          fi
         fi
         task validate
     # fathom verify gate — §5.1 + §5.3 of docs/design/coding-agent-excellence.md:
@@ -100,7 +109,7 @@ pre-push:
         # A push that carries no new commit (a tag already on the remote, a
         # delete) skips verify, and leaves the same verdict for validate. Only the
         # remote pushed to ({1}, the name git hands pre-push) vouches for a tag.
-        if [ -n "$refs" ] && [ -f scripts/prepush-refs.sh ] && printf '%s\n' "$refs" | bash scripts/prepush-refs.sh decide "{1}"; then
+        if [ -f scripts/prepush-refs.sh ] && printf '%s\n' "$refs" | bash scripts/prepush-refs.sh decide "{1}"; then
           exit 0
         fi
         [ -x bin/fathom ] || exit 0

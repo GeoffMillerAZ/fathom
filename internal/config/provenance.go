@@ -49,6 +49,10 @@ func (p Provenance) clone() Provenance {
 // than a full replacement.
 func mergeLayer(cfg *Config, prov Provenance, raw map[string]any, source Source, path string) {
 	if gm, ok := raw["gate"].(map[string]any); ok {
+		if v, ok := gm["allow_receipt_acceptance"].(bool); ok {
+			cfg.Gate.AllowReceiptAcceptance = v
+			prov["gate.allow_receipt_acceptance"] = SourceInfo{source, path}
+		}
 		if v, ok := gm["accept_receipts"].(bool); ok {
 			cfg.Gate.AcceptReceipts = v
 			prov["gate.accept_receipts"] = SourceInfo{source, path}

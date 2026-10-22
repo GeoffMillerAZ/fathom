@@ -227,7 +227,7 @@ func TestRefusedRepoPaths_CoversEveryRepoPathField(t *testing.T) {
 		Typed:     Typed{SkipModules: []string{"calibration/oracles/**", "../elsewhere/**"}},
 	}
 	got := map[string]bool{}
-	for _, r := range RefusedRepoPaths(t.TempDir(), cfg) {
+	for _, r := range RefusedRepoPaths(t.TempDir(), cfg, Provenance{"gate.receipts_dir": {Source: SourceProject}}) {
 		// connector.include[1] is the list field connector.include;
 		// work.ci_summaries[1].path is work.ci_summaries[].path.
 		k := regexp.MustCompile(`\[\d+\]$`).ReplaceAllString(r.Field, "")

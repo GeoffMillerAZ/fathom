@@ -25,6 +25,7 @@ set -u
 
 marker="${PREPUSH_SKIP_MARKER:-workspace/tmp/prepush-skip}"
 zero_re='^0+$'
+refs_marker="${marker}.refs"
 
 # decide REMOTE < refs. Only the remote-tracking refs of REMOTE (the name git
 # hands pre-push as $1) vouch that it holds a commit: a stale ref of another
@@ -71,14 +72,58 @@ skipped() {
   return 0
 }
 
+# Preserve every non-delete local SHA before decide's early full-gate return.
+# A missing, malformed or stale handoff always keeps validate.
+save_receipt_trees() {
+  local lref lsha rref rsha extra count=0 trees="" head
+  while read -r lref lsha rref rsha extra; do
+    [ -n "${lref:-}${lsha:-}${rref:-}${rsha:-}" ] || continue
+    [ -n "${lref:-}" ] && [ -n "${rref:-}" ] && [ -n "${rsha:-}" ] && [ -z "${extra:-}" ] || return 1
+    [[ "$lsha" =~ ^[0-9a-f]{40}$ || "$lsha" =~ ^[0-9a-f]{64}$ ]] || return 1
+    [[ "$rsha" =~ ^[0-9a-f]{40}$ || "$rsha" =~ ^[0-9a-f]{64}$ ]] || return 1
+    [[ "$lsha" =~ $zero_re ]] && continue
+    git rev-parse --verify -q "${lsha}^{commit}" >/dev/null 2>&1 || return 1
+    trees="${trees}${lsha}
+"
+    count=$((count + 1))
+  done
+  [ "$count" -gt 0 ] || return 1
+  head=$(git rev-parse HEAD 2>/dev/null) || return 1
+  mkdir -p "$(dirname "$refs_marker")" || return 1
+  { printf '%s %s\n' "$head" "$(date +%s)"; printf '%s' "$trees" | LC_ALL=C sort -u; } >"$refs_marker"
+}
+
+receipt_trees() {
+  local head ts now sha trees=""
+  [ -f "$refs_marker" ] || return 1
+  {
+    read -r head ts || return 1
+    [ "$head" = "$(git rev-parse HEAD 2>/dev/null)" ] || return 1
+    [[ "$ts" =~ ^[0-9]+$ ]] || return 1
+    now=$(date +%s)
+    [ $((now - ts)) -ge 0 ] && [ $((now - ts)) -lt 3600 ] || return 1
+    while read -r sha; do
+      [[ "$sha" =~ ^[0-9a-f]{40}$ || "$sha" =~ ^[0-9a-f]{64}$ ]] || return 1
+      trees="${trees}${sha}
+"
+    done
+  } <"$refs_marker"
+  [ -n "$trees" ] || return 1
+  printf '%s' "$trees"
+}
+
 case "${1:-}" in
   decide)
-    if [ -t 0 ]; then rm -f "$marker"; exit 1; fi
-    decide "${2:-}"
+    rm -f "$marker" "$refs_marker"
+    if [ -t 0 ]; then exit 1; fi
+    refs=$(cat) || exit 1
+    if ! printf '%s\n' "$refs" | save_receipt_trees; then rm -f "$refs_marker"; fi
+    printf '%s\n' "$refs" | decide "${2:-}"
     ;;
   skipped) skipped ;;
+  receipt-trees) receipt_trees ;;
   *)
-    echo "usage: prepush-refs.sh decide REMOTE < refs | skipped" >&2
+    echo "usage: prepush-refs.sh decide REMOTE < refs | skipped | receipt-trees" >&2
     exit 2
     ;;
 esac

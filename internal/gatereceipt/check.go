@@ -27,7 +27,7 @@ func Check(ctx context.Context, o Options, ref string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	ident, err := identity(o)
+	ident, err := identity(ctx, o, tree)
 	if err != nil {
 		return "", err
 	}
@@ -95,6 +95,20 @@ func Check(ctx context.Context, o Options, ref string) (string, error) {
 		}
 		if int64(len(log)) != r.LogBytes || digest(log) != r.LogSHA256 {
 			reason = "log digest mismatch"
+			continue
+		}
+		commit, err := logIdentity(log, o.Command, r.Tree)
+		if err != nil || commit != r.Commit {
+			reason = "log tree, clean state or commit differs"
+			continue
+		}
+		env, err := logEnvironment(log)
+		if err != nil || r.GoVersion != env.Version || r.OS != env.OS || r.Arch != env.Arch || r.GoWork != env.Work || r.CGOEnabled != env.CGO || r.GoFlags != env.Flags {
+			reason = "log toolchain differs"
+			continue
+		}
+		if r.GoVersion != o.GoVersion || r.OS != o.OS || r.Arch != o.Arch || r.GoWork != "off" {
+			reason = "toolchain or platform differs, or GOWORK is not off"
 			continue
 		}
 		exit, start, end, source, err := logResult(log, o.Command, time.Time{})

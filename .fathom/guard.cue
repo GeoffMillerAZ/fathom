@@ -5,6 +5,11 @@
 
 guards: [
 	{
+		command_scopes: ["fathom gate receipt write*", "*/fathom gate receipt write*"]
+		note: "Gate receipts are written by scripts/gate-log.sh after PASS; agent invocations of the receipt writer are denied (ADR-081 d1, BE-8)."
+		enforce: true
+	},
+	{
 		scopes: ["workspace/receipts/**"]
 		note: "Gate receipts and their logs are evidence written by fathom gate receipt write; agents must not edit them (ADR-081 d1)."
 		enforce: true

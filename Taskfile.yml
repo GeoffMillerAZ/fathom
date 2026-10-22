@@ -296,6 +296,7 @@ tasks:
         bash scripts/deploy-wait_test.sh
         bash scripts/gate-lease_test.sh
         bash scripts/prepush-refs_test.sh
+        bash scripts/prepush-receipts_test.sh
         bash scripts/test-shards_test.sh
         bash scripts/scratch-home_test.sh
         bash scripts/gdev/cold-arm_test.sh

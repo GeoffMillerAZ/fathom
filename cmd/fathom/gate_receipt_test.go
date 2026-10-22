@@ -34,11 +34,11 @@ func TestGateReceiptCommandRoundTrip(t *testing.T) {
 	git("add", ".")
 	git("-c", "core.hooksPath="+os.DevNull, "commit", "-qm", "fixture")
 	log := filepath.Join(t.TempDir(), "gate.log")
-	if err := os.WriteFile(log, []byte("fathom gate: validate PASS\n"), 0600); err != nil {
+	if err := os.WriteFile(log, []byte(gateCommandLog(t, root)), 0600); err != nil {
 		t.Fatal(err)
 	}
 	goBin := t.TempDir()
-	if err := os.WriteFile(filepath.Join(goBin, "go"), []byte("#!/bin/sh\n[ \"$GOTOOLCHAIN\" = local ] || exit 99\nprintf 'go version fixture fixture/fixture\\n'\n"), 0700); err != nil {
+	if err := os.WriteFile(filepath.Join(goBin, "go"), []byte("#!/bin/sh\n[ \"$GOTOOLCHAIN\" = local ] || exit 99\ncase \"$1\" in version) printf 'go version fixture fixture/fixture\\n';; env) printf '{\"GOOS\":\"fixture-os\",\"GOARCH\":\"fixture-arch\",\"GOWORK\":\"off\"}\\n';; *) exit 2;; esac\n"), 0700); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", goBin+string(os.PathListSeparator)+os.Getenv("PATH"))
@@ -48,7 +48,7 @@ func TestGateReceiptCommandRoundTrip(t *testing.T) {
 		rc := run(args, &out, &err)
 		return rc, out.String(), err.String()
 	}
-	if rc, out, err := invoke("gate", "receipt", "check", "--if-enabled"); rc != 1 || out != "" || !strings.Contains(err, "disabled") {
+	if rc, out, err := invoke("gate", "receipt", "check", "--if-enabled"); rc != 1 || out != "" || err != "" {
 		t.Fatalf("off: %d %s %s", rc, out, err)
 	}
 	rc, id, err := invoke("gate", "receipt", "write", "--log", log)
@@ -62,6 +62,9 @@ func TestGateReceiptCommandRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(".fathom/config.toml", []byte("[gate]\naccept_receipts = true\nreceipts_dir = 'workspace/receipts'\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(os.Getenv("FATHOM_HOME"), "config.toml"), []byte("[gate]\nallow_receipt_acceptance = true\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	if rc, _, err := invoke("gate", "receipt", "check", "--if-enabled"); rc != 1 || !strings.Contains(err, "dirty") {
@@ -99,19 +102,30 @@ func TestGateReceiptLefthookFallsBackUnlessOptedInAndAccepted(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	write("scripts/prepush-refs.sh", "#!/bin/sh\nexit 1\n")
-	write("bin/fathom", "#!/bin/sh\n[ \"$*\" = 'gate receipt check --if-enabled' ] || exit 2\nexit \"$RECEIPT_RC\"\n")
+	write("scripts/prepush-refs.sh", "#!/bin/sh\n[ \"$1\" = receipt-trees ] || exit 1\nprintf '%s\\n' tree-one tree-two\n")
+	write("bin/fathom", "#!/bin/sh\n[ \"$1 $2 $3 $4 $5\" = 'gate receipt check --if-enabled --tree' ] || exit 2\nprintf '%s\\n' \"$6\" >> checked\nif [ \"${RECEIPT_SECOND_RC:-}\" != '' ] && [ \"$6\" = tree-two ]; then exit \"$RECEIPT_SECOND_RC\"; fi\nexit \"$RECEIPT_RC\"\n")
 	write("bin/task", "#!/bin/sh\nprintf 'gate ran\\n'\n")
-	for _, rc := range []string{"1", "0", "2"} {
+	for _, tc := range []struct {
+		first, second string
+		gate          bool
+	}{{"1", "1", true}, {"0", "0", false}, {"2", "2", true}, {"0", "1", true}, {"1", "0", true}} {
+		rc := tc.first
+		if err := os.WriteFile(filepath.Join(root, "checked"), nil, 0600); err != nil {
+			t.Fatal(err)
+		}
 		c := exec.CommandContext(context.Background(), "sh", "-c", script)
 		c.Dir = root
-		c.Env = append(os.Environ(), "PATH="+filepath.Join(root, "bin")+":"+os.Getenv("PATH"), "RECEIPT_RC="+rc)
+		c.Env = append(os.Environ(), "PATH="+filepath.Join(root, "bin")+":"+os.Getenv("PATH"), "RECEIPT_RC="+rc, "RECEIPT_SECOND_RC="+tc.second)
 		out, err := c.CombinedOutput()
 		if err != nil {
 			t.Fatal(err)
 		}
-		if strings.Contains(string(out), "gate ran") != (rc != "0") {
-			t.Fatalf("receipt exit %s: %s", rc, out)
+		if strings.Contains(string(out), "gate ran") != tc.gate {
+			t.Fatalf("receipt exits %s/%s: %s", rc, tc.second, out)
+		}
+		checked, err := os.ReadFile(filepath.Join(root, "checked"))
+		if err != nil || string(checked) != "tree-one\ntree-two\n" {
+			t.Fatalf("not all pushed SHAs checked: %s %v", checked, err)
 		}
 	}
 }
@@ -136,8 +150,25 @@ func TestGateRecordIDsCommand(t *testing.T) {
 }
 
 func TestGateLogWrapperOwnsTerminalVerdict(t *testing.T) {
+	script, err := filepath.Abs("../../scripts/gate-log.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	root, git := gateRepo(t)
+	if err := os.WriteFile(filepath.Join(root, ".gitignore"), []byte("workspace/\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	git("add", ".")
+	git("-c", "core.hooksPath="+os.DevNull, "commit", "-qm", "ignore logs")
+	bins := t.TempDir()
+	if err := os.WriteFile(filepath.Join(bins, "fathom"), []byte("#!/bin/sh\nexit 0\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GOWORK", "off")
 	for _, tc := range []struct{ code, word string }{{"0", "PASS"}, {"7", "FAIL"}} {
-		c := exec.CommandContext(context.Background(), "bash", "../../scripts/gate-log.sh", "validate", "sh", "-c", "printf 'gate output'; exit "+tc.code)
+		c := exec.CommandContext(context.Background(), "bash", script, "validate", "sh", "-c", "printf 'gate output'; exit "+tc.code)
+		c.Dir = root
+		c.Env = append(os.Environ(), "PATH="+bins+":"+os.Getenv("PATH"))
 		b, err := c.CombinedOutput()
 		if tc.code == "0" && err != nil {
 			t.Fatal(err)

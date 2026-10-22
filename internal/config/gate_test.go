@@ -32,11 +32,13 @@ func TestGateConfigDefaultsAndLayering(t *testing.T) {
 }
 
 func TestGateConfigRejectsNonBooleanAcceptance(t *testing.T) {
-	p := filepath.Join(t.TempDir(), "config.toml")
-	if err := os.WriteFile(p, []byte("[gate]\naccept_receipts = 'yes'\n"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := Load("", p); err == nil {
-		t.Fatal("non boolean receipt acceptance")
+	for _, key := range []string{"accept_receipts", "allow_receipt_acceptance"} {
+		p := filepath.Join(t.TempDir(), "config.toml")
+		if err := os.WriteFile(p, []byte("[gate]\n"+key+" = 'yes'\n"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := Load("", p); err == nil {
+			t.Fatalf("non boolean %s", key)
+		}
 	}
 }

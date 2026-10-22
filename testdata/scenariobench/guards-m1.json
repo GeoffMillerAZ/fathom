@@ -202,7 +202,7 @@
       "rule": {
         "id": "core-no-mcp-or-cmd",
         "text": "internal/core imports nothing from internal/mcp or cmd/ -- the domain model is the keystone, never a consumer of the surfaces built on it. Compiled as a layer_rule in .fathom/guard.cue (kind import_direction; `fathom rules gen-test` -> rules/layer_rules_test.go); no AGENTS.md or ADR states this specific import direction in prose -- only the compiled guard and its generated test carry it.",
-        "source": ".fathom/guard.cue#L180",
+        "source": ".fathom/guard.cue#L185",
         "needle": "id:       \"core-no-mcp-or-cmd\""
       },
       "predictions": {
