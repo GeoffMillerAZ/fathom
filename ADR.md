@@ -5864,3 +5864,11 @@ committed the region deletes the file and drops the gate step. The CUE non-goal 
 precision 1.00, +4.5 to +9.2 ms p95 CPU): the d2 order serves the same 3 tasks as before it, so O3's wins-if (no gain over
 VB-40's baseline) is also met. The five misses' governing rules are compiled repo-wide (O1490), and rank (2) is empty on Go
 paths (O1491). The clause reopens compile-time scope narrowing from mappings; d1 to d6 stand until the owner decides.
+
+**Owner decision 2026-10-22 (after the revisit fired).** d1 and d3 to d6 are accepted. d2 stays shipped: it is neutral
+(3 of 8, the same tasks as VB-40's baseline, precision 1.00, under 10 ms p95 CPU added) and RS-M3 shows its in-force half
+withholds nothing wrongly. The clause's remedy is taken as the next row, not a re-tune of the fixed order: RS-4 narrows a
+repo-wide compiled rule to the paths, packages and symbols its own text and mappings name, at compile time, and RS-M2 is
+read again with the d2 order unchanged. Precise obligations are also the largest token lever this repository's prompt
+hook has (each prompt carries up to 6 rules), so RS-4 rides the token-efficiency wave after the game-development P0.
+
