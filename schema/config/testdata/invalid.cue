@@ -296,3 +296,11 @@ package config
 // badShellWrapper: #Config & {shell: wrappers: [{prefix: "uv run", command: "command-wrapper", script_arg: 1}]}
 // badShellScriptArg: #Config & {shell: wrappers: [{command: "command-wrapper", script_arg: 0}]}
 // badShellCwdArg: #Config & {shell: wrappers: [{command: "command-wrapper", script_arg: 1, cwd_arg: 0}]}
+
+// A directory argument must be distinct from the script argument.
+// badShellSameArg: #Config & {shell: wrappers: [{command: "command-wrapper", script_arg: 1, cwd_arg: 1}]}
+// Prefix syntax is validated by config.Load using shellcmd, beyond CUE's string shape:
+// badShellPrefixAssignment: #Config & {shell: wrappers: [{prefix: "X=1 tool run"}]}
+// badShellPrefixRedirect: #Config & {shell: wrappers: [{prefix: "tool > output"}]}
+// badShellPrefixPipe: #Config & {shell: wrappers: [{prefix: "tool | other"}]}
+// badShellPrefixExpansion: #Config & {shell: wrappers: [{prefix: "tool $ARG"}]}

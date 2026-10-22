@@ -861,6 +861,24 @@ func readLayer(path string) (map[string]any, bool, error) {
 		return nil, false, &LoadError{Path: path, Err: err}
 	}
 
+	if sm, ok := raw["shell"].(map[string]any); ok {
+		entries, _ := sm["wrappers"].([]any)
+		for i, entry := range entries {
+			m, _ := entry.(map[string]any)
+			w := shellcmd.Wrapper{}
+			w.Prefix, _ = stringField(m, "prefix")
+			w.Command, _ = stringField(m, "command")
+			if n, ok := m["script_arg"].(int64); ok {
+				w.ScriptArg = int(n)
+			}
+			if n, ok := m["cwd_arg"].(int64); ok {
+				w.CwdArg = int(n)
+			}
+			if err := w.Validate(); err != nil {
+				return nil, false, &LoadError{Path: path, Err: fmt.Errorf("shell.wrappers[%d]: %w", i, err)}
+			}
+		}
+	}
 	return raw, true, nil
 }
 

@@ -622,6 +622,9 @@ package config
 	command?:    string & =~"^[A-Za-z0-9_./-]+$"
 	script_arg?: int & >=1
 	cwd_arg?:    int & >=1
+	if script_arg != _|_ {
+		if cwd_arg != _|_ {cwd_arg: !=script_arg}
+	}
 	if prefix != _|_ {
 		command?:    _|_
 		script_arg?: _|_
