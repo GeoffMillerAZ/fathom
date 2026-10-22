@@ -8,6 +8,7 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -618,7 +619,21 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 	if err != nil {
 		return review.Input{}, reviewCorpus{}, navLoadError("review_diff", service, err)
 	}
-	typed, typedErr := backend.TypedEdges(ctx, service)
+	loadTyped := typedLoader(backend, service)
+	typed, typedErr := memo.TypedFor(ctx, snap.Scope, loadTyped)
+	kind := memo.GraphBoth
+	if typedErr != nil {
+		kind = memo.GraphSyntax
+	}
+	graph, err := memo.GraphFor(ctx, snap, kind, loadTyped)
+	if err != nil {
+		if ctx.Err() != nil || !errors.Is(err, memo.ErrWouldNotFinish) {
+			return review.Input{}, reviewCorpus{}, navLoadError("review_diff", service, err)
+		}
+		// Optional memo graph admission has always left the base verdict
+		// available. Retain its ordinary uncached impact fallback; the
+		// optional dimensions below name the refusal as before.
+	}
 
 	in := review.Input{
 		Service:      service,
@@ -626,6 +641,7 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 		Concern:      concern,
 		Nodes:        snap.Nodes,
 		TypedEdges:   typed,
+		ImpactGraph:  graph,
 	}
 
 	if err := ctx.Err(); err != nil {

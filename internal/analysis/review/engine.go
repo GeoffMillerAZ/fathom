@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/archconformance"
+	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/analysis/coverage"
 	"github.com/geoffmilleraz/fathom/internal/analysis/impact"
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -191,6 +192,8 @@ type Input struct {
 	// impact
 	Nodes      []core.SymbolNode
 	TypedEdges []core.Edge
+	// ImpactGraph is the caller's immutable syntax+typed graph, when shared.
+	ImpactGraph *callgraph.Graph
 
 	// obligations — served claims scoped to the changed files.
 	ObligationsSupported bool
@@ -465,24 +468,38 @@ func runImpact(in Input) Dimension {
 	}
 	d.Checked = true
 
-	result := impact.DiffImpactWithTypedEdges(in.Nodes, in.ChangedFiles, in.TypedEdges)
+	var result impact.Result
+	if in.ImpactGraph != nil {
+		result = impact.BlastRadiusOn(in.ImpactGraph, in.Nodes, in.ChangedFiles)
+	} else {
+		result = impact.DiffImpactWithTypedEdges(in.Nodes, in.ChangedFiles, in.TypedEdges)
+	}
 	d.Tests = append([]string(nil), result.Tests...)
 	d.Files = append([]string(nil), result.Files...)
 
 	changedSet := toSet(in.ChangedFiles)
-	fileOf := make(map[string]string, len(in.Nodes))
-	lineOf := make(map[string]int, len(in.Nodes))
+	type location struct {
+		file string
+		line int
+	}
+	locations := make(map[string]location, len(result.Symbols))
+	for _, sym := range result.Symbols {
+		locations[sym] = location{}
+	}
 	for _, n := range in.Nodes {
-		fileOf[n.Key()] = n.FilePath
-		lineOf[n.Key()] = n.Line
+		key := n.Key()
+		if _, wanted := locations[key]; wanted {
+			locations[key] = location{file: n.FilePath, line: n.Line}
+		}
 	}
 
 	for _, sym := range result.Symbols {
-		f := fileOf[sym]
+		n := locations[sym]
+		f := n.file
 		if changedSet[f] {
 			continue // report downstream impact only, not the changed files themselves
 		}
-		line := lineOf[sym]
+		line := n.line
 		d.Findings = append(d.Findings, Finding{
 			Kind:     DimImpact,
 			Symbol:   sym,
