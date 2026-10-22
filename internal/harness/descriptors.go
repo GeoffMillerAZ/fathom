@@ -244,6 +244,11 @@ var claudeCode = Descriptor{
 			Output: map[string]string{"updated_input": "hookSpecificOutput.updatedInput"},
 			Note:   "append local live-map facts to the spawn prompt; permissionDecision is never emitted; unsupported harnesses leave input untouched",
 		},
+		{
+			Capability: CapDiscoveryObserve, Event: EventPostTool, Harness: "PostToolUse", Matcher: `mcp__fathom__(symbol_context|find_symbol|read_source)|mcp__plugin_[^_]*_fathom__(symbol_context|find_symbol|read_source)`, Verb: "edit-hook", Marker: "fathom edit-hook", TimeoutSec: 5, Vehicle: VehicleHookSilent, ObserveOnly: true,
+			Input: withKey(withKey(withKey(claudeToolIn, "agent_id", "agent_id"), "tool_input", "tool_input"), "tool_response", "tool_response"),
+			Note:  "record completed agent lookups with the harness session and agent identity; local range hashes only, no daemon request or injection",
+		},
 	},
 	// The full event surface of Claude Code 2.1.270, as the hooks
 	// reference lists it (fetched 2026-09-12). Every row fathom does not

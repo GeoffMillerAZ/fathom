@@ -126,6 +126,12 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	if *pre && (hook.ToolName == "Agent" || hook.ToolName == "Task") {
 		return cmdSubagentSpawnMap(codec, hook, armOff, stdout)
 	}
+	if !*pre && mcpDiscoveryTool(hook.ToolName) != "" {
+		if !armOff {
+			recordMCPDiscovery(hook)
+		}
+		return 0
+	}
 
 	// PR-3 (ADR-057 decision 4): a git commit seen by PostToolUse(Bash) is
 	// checked for lost pins before the observe-only exit below swallows the

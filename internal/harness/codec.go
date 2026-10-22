@@ -28,7 +28,10 @@ type HookInput struct {
 	Trigger   string
 	ToolName  string
 	ToolInput string
-	Tool      ToolClass
+	// ToolResponse is the completed MCP tool result, retained structurally for
+	// caller-scoped discovery capture; never interpreted as shell output.
+	ToolResponse string
+	Tool         ToolClass
 	// FilePath is the edited file on tool events (tool_input.file_path)
 	// and the loaded or changed file on the instructions-loaded and
 	// config-change events (top-level file_path).
@@ -337,6 +340,12 @@ func (c claudeCodec) DecodeInput(ev Event, raw []byte) (HookInput, error) {
 		in.ToolUseID = env.ToolUseID
 	case EventPostTool:
 		in.AgentID = env.AgentID // RO-V1: a hook fired inside a subagent carries agent_id
+		var toolEnvelope struct {
+			Input json.RawMessage `json:"tool_input"`
+		}
+		_ = json.Unmarshal(raw, &toolEnvelope)
+		in.ToolInput = string(toolEnvelope.Input)
+		in.ToolResponse = string(env.ToolResponse)
 		in.ToolOutput, in.OutputTruncated = claudeShellOutput(env.ToolResponse)
 		in.Shell = claudeShellStreams(env.ToolResponse)
 		in.ToolUseID = env.ToolUseID

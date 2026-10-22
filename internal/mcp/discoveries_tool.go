@@ -206,9 +206,10 @@ func symbolPointer(name, filePath string) string {
 // budgetDiscoveryLines, and their small helpers) went with it — reachable
 // solely from the removed handler, per design §2 rule 1.
 
-// resultRangePointers records the actual returned source, not a later read of
-// the same path. A clipped line will fail the handoff's live range hash check.
-func resultRangePointers(tool string, result any) []discoveryptr.Pointer {
+// ResultRangePointers records the actual returned source, not a later read of
+// the same path. The completed-tool observer uses this extraction too, with
+// the harness's session/agent identity. Clipped lines fail the live hash check.
+func ResultRangePointers(tool string, result any) []discoveryptr.Pointer {
 	if tool != "read_source" && tool != "symbol_context" {
 		return nil
 	}

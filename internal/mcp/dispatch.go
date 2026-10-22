@@ -298,7 +298,7 @@ func (s *Server) loggedToolsCall(ctx context.Context, toolName string, params js
 	_ = json.Unmarshal(params, &rawArgs)
 	pointers := resultPointers(toolName, rawArgs.Arguments, result)
 	s.callLogger.log(toolName, args.Arguments.Service, group, s.effectiveSurface(ctx), "", originFrom(ctx), offSurface, claimsAttached, verdictOutcome,
-		s.recordCallOutcome(ctx, meta, callOutcome{ResultCount: resultCount, MatchedVia: matchedVia, ResponseBytes: responseBytes, ResponseTokens: responseTokens, ElidedCount: elidedCount, Pointers: pointers, RangePointers: resultRangePointers(toolName, result)}), latency, logErr)
+		s.recordCallOutcome(ctx, meta, callOutcome{ResultCount: resultCount, MatchedVia: matchedVia, ResponseBytes: responseBytes, ResponseTokens: responseTokens, ElidedCount: elidedCount, Pointers: pointers, RangePointers: ResultRangePointers(toolName, result)}), latency, logErr)
 	return result, rpcErr
 }
 

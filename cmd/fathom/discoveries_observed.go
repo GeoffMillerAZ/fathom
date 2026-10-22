@@ -44,6 +44,7 @@ type observedDiscoveryRow struct {
 	SchemaVersion int                    `json:"schema_version"`
 	TS            string                 `json:"ts"` // RFC3339Nano, matches the MCP call log's own ts format
 	SessionID     string                 `json:"session_id,omitempty"`
+	Service       string                 `json:"service,omitempty"`
 	AgentID       string                 `json:"agent_id,omitempty"`
 	RangePointers []discoveryptr.Pointer `json:"range_pointers,omitempty"`
 	Cwd           string                 `json:"cwd,omitempty"`
@@ -56,6 +57,7 @@ type observedDiscoveryRow struct {
 type observedDiscoveryEntry struct {
 	TS            time.Time
 	SessionID     string
+	Service       string
 	AgentID       string
 	RangePointers []discoveryptr.Pointer
 	Tool          string
@@ -319,7 +321,7 @@ func readObservedDiscoveryRows(root string, since time.Time) []observedDiscovery
 		if terr != nil || ts.Before(since) {
 			continue
 		}
-		out = append(out, observedDiscoveryEntry{TS: ts, SessionID: row.SessionID, AgentID: row.AgentID, RangePointers: row.RangePointers, Tool: row.Tool, Pointers: row.Pointers})
+		out = append(out, observedDiscoveryEntry{TS: ts, SessionID: row.SessionID, Service: row.Service, AgentID: row.AgentID, RangePointers: row.RangePointers, Tool: row.Tool, Pointers: row.Pointers})
 	}
 	return out
 }

@@ -12,6 +12,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/discoveryptr"
 )
 
 // ─── repoIdentity (RC-31) ────────────────────────────────────────────────
@@ -397,20 +399,37 @@ func TestSubagentDiscoveries_UsesParentSessionStart(t *testing.T) {
 	threadEnv(t)
 	root := t.TempDir()
 	t.Setenv("FATHOM_SESSIONS_LOG", filepath.Join(root, "sessions.jsonl"))
-	now := time.Now().UTC()
+	now := time.Date(2026, 10, 22, 12, 0, 0, 0, time.UTC)
 	recordSessionWindow(root, sessionWindowRow{SchemaVersion: 1, SessionID: "parent-1", Cwd: root, Service: "fathom", Started: now.Add(-30 * time.Minute).Format(time.RFC3339)})
 	logPath := callLogPathFor(root)
-	writeDiscoCallLogFixture(t, logPath, []string{
-		// before the parent's own start: must be excluded.
-		`{"ts":"` + now.Add(-time.Hour).Format(time.RFC3339Nano) + `","service":"fathom","pointers":["before.Start"]}`,
-		// after the parent's start: must be included.
-		`{"ts":"` + now.Add(-time.Minute).Format(time.RFC3339Nano) + `","service":"fathom","pointers":["after.Start"]}`,
-	})
-	got := subagentDiscoveries("http://127.0.0.1:1", root, "fathom", "parent-1", "", 0, now)
-	if !strings.Contains(got, "after.Start") {
-		t.Errorf("subagentDiscoveries = %q, want it to include after.Start", got)
+	var rows []string
+	for _, c := range []struct {
+		file string
+		age  time.Duration
+	}{{"before.go", -time.Hour}, {"after.go", -time.Minute}} {
+		if err := os.WriteFile(filepath.Join(root, c.file), []byte("package sample\n"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		p, _, ok := discoveryptr.Read(root, c.file, 1, 1)
+		if !ok {
+			t.Fatal("cannot snapshot fixture range")
+		}
+		raw, _ := json.Marshal(map[string]any{
+			"ts": now.Add(c.age).Format(time.RFC3339Nano), "service": "fathom",
+			"caller":         map[string]string{"session": "parent-1", "agent_id": ""},
+			"range_pointers": []discoveryptr.Pointer{p},
+		})
+		rows = append(rows, string(raw))
 	}
-	if strings.Contains(got, "before.Start") {
+	// ADR-080 AD-11 replaces unscoped, unhashed legacy pointers with owned,
+	// content-checked ranges. A recent legacy row is still ineligible.
+	rows = append(rows, `{"ts":"`+now.Add(-time.Minute).Format(time.RFC3339Nano)+`","service":"fathom","pointers":["after.Start"]}`)
+	writeDiscoCallLogFixture(t, logPath, rows)
+	got := subagentDiscoveries("http://127.0.0.1:1", root, "fathom", "parent-1", "", 0, now)
+	if !strings.Contains(got, "after.go#L1-L1") {
+		t.Errorf("subagentDiscoveries = %q, want it to include the parent's checked after.go range", got)
+	}
+	if strings.Contains(got, "before.go") || strings.Contains(got, "after.Start") {
 		t.Errorf("subagentDiscoveries = %q, must not include a pointer from before the parent's start", got)
 	}
 	if !strings.HasPrefix(got, "last session established:") {

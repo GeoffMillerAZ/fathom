@@ -612,7 +612,7 @@ func subagentBrief(baseURL, root, service, parentSessionID string, budget int, n
 		if ctx.Err() != nil || hookDeadlineSpent() {
 			return ""
 		}
-		if row.SessionID != parentSessionID || row.AgentID != "" || row.TS.After(now) {
+		if row.SessionID != parentSessionID || row.AgentID != "" || row.TS.After(now) || (row.Service != "" && row.Service != service) {
 			continue
 		}
 		for _, ptr := range row.RangePointers {

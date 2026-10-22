@@ -16,7 +16,7 @@ func TestAD11ResultRangePointers(t *testing.T) {
 		if err := json.Unmarshal([]byte(c.payload), &result); err != nil {
 			t.Fatal(err)
 		}
-		got := resultRangePointers(c.tool, result)
+		got := ResultRangePointers(c.tool, result)
 		if len(got) != 1 || got[0].Path != "sample.go" || got[0].Start != 2 || got[0].End != 2 || got[0].Hash == "" {
 			t.Errorf("%s: %v", c.tool, got)
 		}

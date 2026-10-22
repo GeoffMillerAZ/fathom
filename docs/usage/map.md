@@ -144,4 +144,10 @@ The SubagentStart discovery section includes only the parent's lookups since its
 recorded session start, with a recorded range hash that still matches the local
 file. Hook and console calls, native instruction files and unverified legacy
 pointers are excluded. MCP rows whose caller cannot prove parent agent identity
-are also omitted. With no qualifying range the section is absent.
+are also omitted. Claude Code's completed-tool hook records `symbol_context`,
+`find_symbol` and `read_source` results in the existing discovery log with the
+harness session and agent identity, including plugin tool names. Source answers
+retain hashes of the returned lines. Locator answers snapshot the returned local
+span at completion. This preserves the parent's lookups even when its MCP
+connection sends no identity tags. Other harnesses without this capture must
+supply tagged evidence themselves. With no qualifying range the section is absent.
