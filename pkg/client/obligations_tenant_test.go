@@ -140,8 +140,8 @@ func TestLayerCoverageFromSourcePathsSingleFlightNeverReadsContents(t *testing.T
 	ctx := context.Background()
 	dir := t.TempDir()
 	tree := map[string]string{
-		"CLAUDE.md":          "# Rules\n\n- Run tests before committing.\n",
-		"internal/CLAUDE.md": "# internal\n\n- Sort all outputs.\n",
+		"CLAUDE.md":          "# Rules\n\n- Always run tests before committing.\n",
+		"internal/CLAUDE.md": "# internal\n\n- Always sort all outputs.\n",
 	}
 	for i := 0; i < 40; i++ {
 		tree[fmt.Sprintf("internal/pkg%02d/file.go", i)] = fmt.Sprintf("package pkg%02d\n\nfunc F%02d() {}\n", i, i)
@@ -214,7 +214,7 @@ func TestLayerCoverageFromSourcePathsSingleFlightNeverReadsContents(t *testing.T
 	}
 
 	// A guide edit is seen on the next call, with no walk.
-	writeTree(t, dir, map[string]string{"internal/CLAUDE.md": "# internal\n\n- Sort all outputs.\n\n## More\n\n- And more.\n"})
+	writeTree(t, dir, map[string]string{"internal/CLAUDE.md": "# internal\n\n- Always sort all outputs.\n\n## More\n\n- Always document more.\n"})
 	future := time.Now().Add(2 * time.Second)
 	_ = os.Chtimes(filepath.Join(dir, "internal", "CLAUDE.md"), future, future)
 	cov, _, err := c.ObligationsLayerCoverage(ctx, "svc")
@@ -223,7 +223,7 @@ func TestLayerCoverageFromSourcePathsSingleFlightNeverReadsContents(t *testing.T
 	}
 
 	// A new guide arrives with the next ingest: one more walk, not per call.
-	writeTree(t, dir, map[string]string{"cmd/CLAUDE.md": "# cmd\n\n- Flags are documented.\n"})
+	writeTree(t, dir, map[string]string{"cmd/CLAUDE.md": "# cmd\n\n- Always document flags.\n"})
 	if _, err := c.Ingest(ctx, client.ServiceRef{ID: "svc", Path: dir}); err != nil {
 		t.Fatal(err)
 	}
@@ -291,7 +291,7 @@ func TestRawFallbackReadsOnlyEditedFile(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
 	tree := map[string]string{
-		"CLAUDE.md":   "# Rules\n\n## Non-negotiables — the workspace/ convention\n\nAll build artifacts belong under workspace/.\n",
+		"CLAUDE.md":   "# Rules\n\n## Non-negotiables — the workspace/ convention\n\nAll build artifacts must remain under workspace/.\n",
 		"cmd/emit.go": "package cmd\n\nimport \"os\"\n\nfunc emit(dir string) error {\n\treturn os.WriteFile(dir, nil, 0o644)\n}\n",
 		"cmd/huge.go": "package cmd\n",
 	}
@@ -363,7 +363,7 @@ func TestRawFallbackReadsOnlyEditedFile(t *testing.T) {
 func TestRawFallbackNamesUnreadGuide(t *testing.T) {
 	ctx := context.Background()
 	oversize := bytes.Repeat([]byte("# h\n"), int(client.HotPathReadCap)/4+1)
-	adr := "# ADR\n\n## ADR-001: Keep builds in workspace\n\nAll build artifacts belong under workspace/.\n"
+	adr := "# ADR\n\n## ADR-001: Keep builds in workspace\n\n**Decision.** All build artifacts must remain under workspace/.\n"
 
 	t.Run("no compile run", func(t *testing.T) {
 		dir := t.TempDir()
@@ -436,7 +436,7 @@ func TestEditedFileReadOnlyWhenStatMoves(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
 	writeTree(t, dir, map[string]string{
-		"CLAUDE.md":   "# Rules\n\n## Non-negotiables — the workspace/ convention\n\nAll build artifacts belong under workspace/.\n",
+		"CLAUDE.md":   "# Rules\n\n## Non-negotiables — the workspace/ convention\n\nAll build artifacts must remain under workspace/.\n",
 		"cmd/emit.go": "package cmd\n\nimport \"os\"\n\nfunc emit(dir string) error {\n\treturn os.WriteFile(dir, nil, 0o644)\n}\n",
 	})
 	c := client.New(connector.NewLocalConnector(), store.NewMemoryStore())

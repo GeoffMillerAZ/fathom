@@ -227,7 +227,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 			// doc comment on skipRuleVerdict).
 			// SR-48w: the ask names the claim id, and an answered one-key
 			// reply pending for the session is written first.
-			text, ok = withRuleVerdictAsk(url, sessionID, meta.service, meta.repoRelFile, meta.topRule, meta.topSrc, meta.topClaimID, text, ok)
+			text, ok = withRuleVerdictAsk(url, sessionID, meta.service, meta.repoRelFile, meta.topRule, meta.topSrc, meta.topClaimID, text, ok, hook.AgentID)
 		}
 		// SR-61 (F-27/U4): served/still_served/top_changed per claim id, the SAME
 		// top-governing-rule turn-over-turn comparison SR-48 already reads
@@ -239,7 +239,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 		// these rules for this same edit, which suppresses the SR-48 ask
 		// above and nothing else: the pre hook writes no row, so skipping
 		// here lost the served row of every guarded edit.
-		trackRuleOutcome(sessionID, meta.service, meta.repoRelFile, meta.servedClaimID)
+		trackRuleOutcome(sessionID, meta.service, meta.repoRelFile, meta.servedClaimID, hook.AgentID)
 	}
 	text, ok = withClaimMoment(url, projDir, filePath, sessionID, text, ok) // PC-22: a newly checked [x] on a depth-1 plan verifies now (edithook_claim.go)
 	text, ok = withSkipGainedNote(projDir, filePath, text, ok)              // O56 fix item 3: note a row gaining skip_test, daemon-free (edithook_skipnote.go)
@@ -275,6 +275,12 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	// rule_outcome_writer reads as "should have written a row".
 	answeredMeta := withFold(withDestination(map[string]string{"emitted": "true", "phase": "post"}, projDir, filePath), meta.fold)
 	answeredMeta["claims"] = strconv.Itoa(meta.claims)
+	if meta.inForceWithheld > 0 {
+		answeredMeta["inforce_withheld"] = strconv.Itoa(meta.inForceWithheld)
+	}
+	if meta.rawWithheld > 0 {
+		answeredMeta["raw_withheld"] = strconv.Itoa(meta.rawWithheld)
+	}
 	// IT-6: the cap-pressure count already rendered into the payload above
 	// (T5-2/O14) must also reach the beat log — a COUNT only, never the
 	// evicted rules themselves — so obligations-cap pressure becomes a
@@ -303,10 +309,12 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 // postEditMeta is what renderPostEdit learned while rendering — the counts
 // the answered beat and the story row carry beside the payload.
 type postEditMeta struct {
-	rules       int
-	moduleRules []semantic.Obligation // emitted-module accounting, after successful delivery
-	repoRelFile string
-	displaced   int
+	rules           int
+	moduleRules     []semantic.Obligation // emitted-module accounting, after successful delivery
+	repoRelFile     string
+	displaced       int
+	rawWithheld     int
+	inForceWithheld int
 	// findingsShown/findingsOmitted (FL-20) are renderFindingsBlock's own
 	// counts — 0/0 when the block never rendered (no finding-kind rows, no
 	// overlap with the edited range, or the shared budget was already
@@ -453,6 +461,8 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 		// candidate (svcName just set, above); the found branch below
 		// covers a later candidate that REBINDS svcName to itself.
 		if justResolved {
+			obl.RawWithheld = o.RawWithheld
+			obl.InForceWithheld = o.InForceWithheld
 			specRefs = sr
 		}
 		if len(o.Rules) > 0 || stale || o.CoverageSkipped != "" {
@@ -653,7 +663,14 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 		return "", postEditMeta{}, false
 	}
 	if sb.Len() == 0 {
-		emitBeat("edit-hook", "answered", firingMeta(withFold(withDestination(silentAnswerMeta(map[string]string{"phase": "post"}, silenceNoRules), projDir, filePath), fold), sessionID, filePath))
+		meta := withFold(withDestination(silentAnswerMeta(map[string]string{"phase": "post"}, silenceNoRules), projDir, filePath), fold)
+		if obl.InForceWithheld > 0 {
+			meta["inforce_withheld"] = strconv.Itoa(obl.InForceWithheld)
+		}
+		if obl.RawWithheld > 0 {
+			meta["raw_withheld"] = strconv.Itoa(obl.RawWithheld)
+		}
+		emitBeat("edit-hook", "answered", firingMeta(meta, sessionID, filePath))
 		return "", postEditMeta{}, false // clean file (or unindexed project), no spec IDs → silent
 	}
 	topRule, topSrc, topClaimID := "", "", ""
@@ -665,6 +682,8 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 		moduleRules:     renderRules,
 		repoRelFile:     repoRelFile,
 		displaced:       obl.Displaced,
+		rawWithheld:     obl.RawWithheld,
+		inForceWithheld: obl.InForceWithheld,
 		findingsShown:   findingsShown,
 		findingsOmitted: findingsOmitted,
 		service:         svcName,
@@ -933,6 +952,8 @@ func fetchObligations(baseURL, service, file string, maxRules int, timeout time.
 		IndexUnchecked      string                `json:"index_unchecked"`
 		Displaced           int                   `json:"displaced"`
 		Superseded          int                   `json:"superseded_withheld"`
+		RawWithheld         int                   `json:"raw_withheld"`
+		InForceWithheld     int                   `json:"inforce_withheld"`
 		DisplacedRepo       int                   `json:"displaced_repo"`
 		DisplacedModule     int                   `json:"displaced_module"`
 		ModuleNotes         []semantic.ModuleNote `json:"module_notes"`
@@ -969,6 +990,8 @@ func fetchObligations(baseURL, service, file string, maxRules int, timeout time.
 		Watermark:       payload.CompiledAtWatermark,
 		Displaced:       payload.Displaced,
 		Superseded:      payload.Superseded,
+		RawWithheld:     payload.RawWithheld,
+		InForceWithheld: payload.InForceWithheld,
 		DisplacedRepo:   payload.DisplacedRepo,
 		DisplacedModule: payload.DisplacedModule,
 		ModuleNotes:     payload.ModuleNotes,

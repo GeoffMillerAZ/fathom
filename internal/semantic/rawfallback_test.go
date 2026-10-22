@@ -46,9 +46,9 @@ func freshClaimFor(t *testing.T, layer LayerDef, sec Section) core.SemanticClaim
 func TestRawFallbackRules_NestedGuideRankedAheadOfRootOther(t *testing.T) {
 	layer := rawFallbackTestLayer(t)
 
-	rootDoc := core.SourceFile{Path: "CLAUDE.md", Content: []byte("# Rules\n\n- Root rule, compiled already.")}
-	nestedDoc := core.SourceFile{Path: "internal/CLAUDE.md", Content: []byte("# internal guide\n\n- Register every extractor in fusion.New.")}
-	adrDoc := core.SourceFile{Path: "ADR.md", Content: []byte("## ADR-001: Some decision\n\nSome unrelated decision text.")}
+	rootDoc := core.SourceFile{Path: "CLAUDE.md", Content: []byte("# Rules\n\n- Always keep the root rule compiled.")}
+	nestedDoc := core.SourceFile{Path: "internal/CLAUDE.md", Content: []byte("# internal guide\n\n- Always register every extractor in fusion.New.")}
+	adrDoc := core.SourceFile{Path: "ADR.md", Content: []byte("## ADR-001: Some decision\n\n**Decision.** Always keep unrelated decisions documented.")}
 
 	rootSec := SplitMarkdownSections(rootDoc.Path, rootDoc.Content)[0]
 	claim := freshClaimFor(t, layer, rootSec) // the ROOT section is already compiled and fresh
@@ -93,7 +93,7 @@ func TestRawFallbackRules_NestedGuideRankedAheadOfRootOther(t *testing.T) {
 
 func TestRawFallbackRules_NoGapReturnsNil(t *testing.T) {
 	layer := rawFallbackTestLayer(t)
-	doc := core.SourceFile{Path: "CLAUDE.md", Content: []byte("# Rules\n\n- Only rule, already compiled.")}
+	doc := core.SourceFile{Path: "CLAUDE.md", Content: []byte("# Rules\n\n- Always keep this rule compiled.")}
 	sec := SplitMarkdownSections(doc.Path, doc.Content)[0]
 	claim := freshClaimFor(t, layer, sec)
 
@@ -108,8 +108,8 @@ func TestRawFallbackRules_NoGapReturnsNil(t *testing.T) {
 
 func TestRawFallbackRules_RespectsMax(t *testing.T) {
 	layer := rawFallbackTestLayer(t)
-	docA := core.SourceFile{Path: "internal/CLAUDE.md", Content: []byte("# internal\n\n- Rule A.")}
-	docB := core.SourceFile{Path: "internal/store/CLAUDE.md", Content: []byte("# store\n\n- Rule B, deeper and nearer to the file.")}
+	docA := core.SourceFile{Path: "internal/CLAUDE.md", Content: []byte("# internal\n\n- Rule A: always sort outputs.")}
+	docB := core.SourceFile{Path: "internal/store/CLAUDE.md", Content: []byte("# store\n\n- Rule B: always sort outputs, deeper and nearer to the file.")}
 	corpus := []core.SourceFile{docA, docB}
 
 	rows, err := RawFallbackRules(nil, layer, corpus, "internal/store/backend.go", 1, "why", nil, nil)
@@ -195,7 +195,7 @@ func TestRawFallbackRules_RelevanceRanksExtractorSectionFirst(t *testing.T) {
 		"## Testing discipline\n\n" +
 		"- Always run the race detector before claiming green.\n\n" +
 		"## Adding things\n\n" +
-		"- Extractor: implement extractor.Extractor, register it by extension\n" +
+		"- Extractor: must implement extractor.Extractor, register it by extension\n" +
 		"  in fusion.New(), add its ext-to-kind mapping in connector, then\n" +
 		"  write a golden-test for it against the fixture fleet.\n" +
 		"- Analyzer: a pure internal/analysis/<name> package; deterministic.\n" +
@@ -212,8 +212,9 @@ func TestRawFallbackRules_RelevanceRanksExtractorSectionFirst(t *testing.T) {
 	if len(rows) == 0 {
 		t.Fatalf("expected raw rows, got none")
 	}
-	if rows[0].Rule != "Adding things" {
-		t.Fatalf("rows[0].Rule = %q, want %q (the extractor-wiring section) — got rows=%+v", rows[0].Rule, "Adding things", rows)
+	wantRule := "Extractor: must implement extractor.Extractor, register it by extension in fusion.New(), add its ext-to-kind mapping in connector, then write a golden-test for it against the fixture fleet."
+	if rows[0].Rule != wantRule {
+		t.Fatalf("rows[0].Rule = %q, want %q (the extractor-wiring section) — got rows=%+v", rows[0].Rule, wantRule, rows)
 	}
 
 	// The served citation must resolve to lines that actually contain
@@ -287,7 +288,7 @@ func TestRawFallbackRules_CrossTierPromotion_StrongRootBeatsBlankNestedGuide(t *
 		"# Unrelated policy\n\nWidgets must be logged and reviewed before merging. " +
 			"Nothing in this sentence names the edited file at all.\n")}
 	rootDoc := core.SourceFile{Path: "ADR.md", Content: []byte(
-		"## ADR-099: The bar type\n\nEverything in this subsystem revolves around bar. " +
+		"## ADR-099: The bar type\n\n**Decision.** Everything in this subsystem must revolve around bar. " +
 			"See bar's own tests for details.\n")}
 	corpus := []core.SourceFile{nestedDoc, rootDoc}
 
@@ -321,7 +322,7 @@ func TestRawFallbackRules_CrossTierPromotion_AncestorOnlyHitDoesNotBlockPromotio
 	nestedDoc := core.SourceFile{Path: "internal/foo/CLAUDE.md", Content: []byte(
 		"# Unrelated policy\n\nEvery internal package must log before merging widgets.\n")}
 	rootDoc := core.SourceFile{Path: "ADR.md", Content: []byte(
-		"## ADR-099: The bar type\n\nEverything in this subsystem revolves around bar. " +
+		"## ADR-099: The bar type\n\n**Decision.** Everything in this subsystem must revolve around bar. " +
 			"See bar's own tests for details.\n")}
 	corpus := []core.SourceFile{nestedDoc, rootDoc}
 
@@ -349,7 +350,7 @@ func TestRawFallbackRules_CrossTierPromotion_StrongHitOnNestedGuideBlocksPromoti
 	nestedDoc := core.SourceFile{Path: "internal/foo/CLAUDE.md", Content: []byte(
 		"# Foo package policy\n\nEvery file in foo must log before merging widgets.\n")}
 	rootDoc := core.SourceFile{Path: "ADR.md", Content: []byte(
-		"## ADR-099: The bar type\n\nEverything in this subsystem revolves around bar. " +
+		"## ADR-099: The bar type\n\n**Decision.** Everything in this subsystem must revolve around bar. " +
 			"See bar's own tests for details.\n")}
 	corpus := []core.SourceFile{nestedDoc, rootDoc}
 
@@ -385,7 +386,7 @@ func TestRawFallbackRules_BehaviorTokenPromotesUntiedRootConvention(t *testing.T
 	// alone (repeats the file's own generic path tokens once each) but is
 	// otherwise unrelated to output-writing behaviour.
 	decoyDoc := core.SourceFile{Path: "ADR.md", Content: []byte(
-		"## ADR-050: cmd tool\n\nThe cmd package wraps go binaries.\n")}
+		"## ADR-050: cmd tool\n\n**Decision.** The cmd package must wrap go binaries.\n")}
 	corpus := []core.SourceFile{workspaceDoc, decoyDoc}
 	file := "cmd/emit.go"
 
@@ -393,7 +394,7 @@ func TestRawFallbackRules_BehaviorTokenPromotesUntiedRootConvention(t *testing.T
 	if err != nil {
 		t.Fatalf("RawFallbackRules (no behaviour token): %v", err)
 	}
-	if len(without) != 1 || without[0].Rule != "ADR-050: cmd tool" {
+	if len(without) != 1 || without[0].Rule != "The cmd package must wrap go binaries." {
 		t.Fatalf("test setup: without a behaviour token the decoy should win the single slot, got %+v", without)
 	}
 
@@ -405,7 +406,7 @@ func TestRawFallbackRules_BehaviorTokenPromotesUntiedRootConvention(t *testing.T
 	if err != nil {
 		t.Fatalf("RawFallbackRules (with behaviour token): %v", err)
 	}
-	if len(with) != 1 || with[0].Rule != "Non-negotiables — the workspace/ convention" {
+	if len(with) != 1 || with[0].Rule != "All build artifacts belong under the gitignored workspace/ directory, never elsewhere in the tree.\nRun go tools from cmd as usual." {
 		t.Errorf("with the workspace behaviour token, the untied convention must win the slot instead of the decoy: got %+v", with)
 	}
 }
@@ -414,7 +415,7 @@ func TestRawFallbackRules_BehaviorTokenPromotesUntiedRootConvention(t *testing.T
 // back only the named sections, not every uncompiled one.
 func TestRawFallbackRules_RestrictsToSubjects(t *testing.T) {
 	layer := rawFallbackTestLayer(t)
-	doc := core.SourceFile{Path: "ADR.md", Content: []byte("## ADR-001: One\n\nFirst text.\n\n## ADR-002: Two\n\nSecond text.")}
+	doc := core.SourceFile{Path: "ADR.md", Content: []byte("## ADR-001: One\n\n**Decision.** Always apply ADR-001 first.\n\n## ADR-002: Two\n\n**Decision.** Always apply ADR-002 second.")}
 	secs := SplitMarkdownSections(doc.Path, doc.Content)
 	if len(secs) != 2 {
 		t.Fatalf("want 2 sections, got %d", len(secs))

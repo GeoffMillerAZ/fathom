@@ -2175,7 +2175,7 @@ func TestCompile_PrefilterSkipsAndDiscloses(t *testing.T) {
 	}
 	var sawRuleB bool
 	for _, row := range rawRows {
-		if row.Tier == "raw" && row.Rule == "Rule B" {
+		if row.Tier == "raw" && row.Rule == "Never do the other thing." {
 			sawRuleB = true
 		}
 	}

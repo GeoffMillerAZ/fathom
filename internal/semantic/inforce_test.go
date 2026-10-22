@@ -109,10 +109,16 @@ func TestClaimCitingSupersededADRIsWithheldAndCounted(t *testing.T) {
 	if _, ok := byID["full"]; ok {
 		t.Errorf("a claim citing a fully superseded section was served: %+v", got.Rules)
 	}
-	for _, id := range []string{"part", "bare", "prop", "guide"} {
+	for _, id := range []string{"part", "bare", "guide"} {
 		if _, ok := byID[id]; !ok {
 			t.Errorf("%s withheld, want served: %+v", id, got.Rules)
 		}
+	}
+	if _, ok := byID["prop"]; ok {
+		t.Error("proposed claim served under ADR-080 d2")
+	}
+	if got.InForceWithheld != 2 {
+		t.Errorf("InForceWithheld = %d, want 2", got.InForceWithheld)
 	}
 	if got.Superseded != 1 {
 		t.Errorf("Superseded = %d, want 1", got.Superseded)
@@ -120,7 +126,7 @@ func TestClaimCitingSupersededADRIsWithheldAndCounted(t *testing.T) {
 	if byID["part"].InForce != partlySuperseded {
 		t.Errorf("partly superseded rule tag = %q, want %q", byID["part"].InForce, partlySuperseded)
 	}
-	for _, id := range []string{"bare", "prop", "guide"} {
+	for _, id := range []string{"bare", "guide"} {
 		if byID[id].InForce != "" {
 			t.Errorf("%s tagged %q, want in force", id, byID[id].InForce)
 		}

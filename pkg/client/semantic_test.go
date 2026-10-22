@@ -593,7 +593,7 @@ func TestClient_RawFallbackObligations_CorpusGrowthServesNestedGuideRaw(t *testi
 	if err := os.MkdirAll(filepath.Join(dir, "internal", "extractor"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "internal", "CLAUDE.md"), []byte("# internal\n\n- Register every extractor in fusion.New.\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "internal", "CLAUDE.md"), []byte("# internal\n\n- Always register every extractor in fusion.New.\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -642,7 +642,7 @@ func TestClient_RawFallbackObligations_BehaviorTokenFromFileContent(t *testing.T
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "ADR.md"), []byte(
-		"## ADR-050: cmd tool\n\nThe cmd package wraps go binaries.\n"), 0o644); err != nil {
+		"## ADR-050: cmd tool\n\n**Decision.** The cmd package must wrap go binaries.\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.MkdirAll(filepath.Join(dir, "cmd"), 0o755); err != nil {
@@ -668,7 +668,7 @@ func TestClient_RawFallbackObligations_BehaviorTokenFromFileContent(t *testing.T
 	if !ok || len(rows) != 1 {
 		t.Fatalf("ok=%v rows=%+v, want exactly one raw row", ok, rows)
 	}
-	if rows[0].Rule != "Non-negotiables — the workspace/ convention" {
+	if rows[0].Rule != "All build artifacts belong under the gitignored workspace/ directory, never elsewhere in the tree.\nRun go tools from cmd as usual." {
 		t.Errorf("rows[0].Rule = %q, want the workspace/ convention row — cmd/emit.go's own os.WriteFile call should have promoted it over the ADR-050 decoy: rows=%+v", rows[0].Rule, rows)
 	}
 }
@@ -686,7 +686,7 @@ func TestClient_RawFallbackObligations_BudgetStoppedNamesStatus(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(dir, "internal", "mcp"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "internal", "CLAUDE.md"), []byte("# internal\n\n- Sort all outputs.\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "internal", "CLAUDE.md"), []byte("# internal\n\n- Always sort all outputs.\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "internal", "mcp", "tools.go"), []byte("package mcp\nfunc Foo() {}\n"), 0o644); err != nil {
@@ -777,7 +777,7 @@ func TestClient_RawFallbackObligations_NeverCompiledAtAllStillServesRaw(t *testi
 	if err := os.MkdirAll(filepath.Join(dir, "docs", "use-cases"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "docs", "CLAUDE.md"), []byte("# docs\n\n- Every use-case doc needs a Maintained line.\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "docs", "CLAUDE.md"), []byte("# docs\n\n- Every use-case doc must have a Maintained line.\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "docs", "use-cases", "new-thing.md"), []byte("# New thing\n"), 0o644); err != nil {

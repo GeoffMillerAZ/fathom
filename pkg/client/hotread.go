@@ -30,6 +30,16 @@ var readObserver atomic.Pointer[func(path string)]
 // the governor or meter refusing the read. A file that grew past max
 // between the stat and the read is skipped too, never truncated.
 func readFileCapped(ctx context.Context, path string, max int64) (data []byte, info os.FileInfo, skipped string, err error) {
+	// Raw serving shares a bounded read with corpus loading in the same request.
+	// A stale or refreshing citation is read again on the next request, even
+	// if stat metadata matches a longer-lived corpus memo.
+	if call, _ := ctx.Value(rawRefindKey{}).(*rawRefindCall); call != nil && max == HotPathReadCap {
+		if prior, found := call.files[path]; found {
+			return prior.data, prior.info, prior.skipped, prior.err
+		}
+		defer func() { call.files[path] = rawLiveFile{data: data, info: info, skipped: skipped, err: err} }()
+	}
+
 	var onOpen func(string)
 	if obs := readObserver.Load(); obs != nil {
 		onOpen = *obs

@@ -48,11 +48,6 @@ import (
 // match. RE2 has no lookbehind, hence the consumed-prefix trick.
 var redirectRe = regexp.MustCompile(`(?:^|[^0-9&])(>{1,2})\s*([^\s|;&<>]+)`)
 
-// sedInPlaceRe finds `sed ... -i` (with or without a suffix like -i.bak,
-// or BSD sed's quoted-empty extension-suffix form) anywhere in the
-// command.
-var sedInPlaceRe = regexp.MustCompile(`\bsed\b.*?\s-i(?:[\w.]*|\s+'')?\b`)
-
 // gitApplyRe matches `git apply` / `git am` — both rewrite whatever the
 // patch names, which is never recoverable from the command line alone.
 var gitApplyRe = regexp.MustCompile(`\bgit\s+(?:apply|am)\b`)
@@ -292,19 +287,19 @@ func detectBashWritesInStatement(stmt string, st *bwState, c *bwCollector) {
 		c.add(resolve(target))
 	}
 
-	if loc := sedInPlaceRe.FindStringIndex(mask); loc != nil {
-		sawWrite = true
-		fields, _ := lexClauseFields(stmt[loc[1]:]) // unreadable: sawWrite already marks doubt, no target named
-		sawScript := false
-		for _, f := range fields {
-			if strings.HasPrefix(f, "-") {
+	for _, verb := range []string{"sed", "perl", "ruby"} {
+		if idx := wordEnd(mask, verb); idx >= 0 {
+			args, unreadable := lexClauseFields(stmt[idx:])
+			if unreadable {
 				continue
 			}
-			if !sawScript {
-				sawScript = true // the sed script/pattern itself, not a target
-				continue
+			targets, inPlace := inPlaceWriteArgs(verb, args)
+			if inPlace {
+				sawWrite = true
+				for _, target := range targets {
+					c.add(resolve(target))
+				}
 			}
-			c.add(resolve(f))
 		}
 	}
 
@@ -318,16 +313,28 @@ func detectBashWritesInStatement(stmt string, st *bwState, c *bwCollector) {
 		}
 	}
 
-	for _, verb := range []string{"cp", "mv"} {
+	for _, verb := range []string{"cp", "mv", "scp"} {
 		if idx := wordEnd(mask, verb); idx >= 0 {
-			sawWrite = true
 			var nonFlags []string
 			vfields, _ := lexClauseFields(stmt[idx:]) // unreadable: sawWrite already marks doubt, no target named
-			for _, f := range vfields {
+			for i := 0; i < len(vfields); i++ {
+				f := vfields[i]
+				if verb == "scp" && (f == "-P" || f == "-i" || f == "-F" || f == "-J" || f == "-o" || f == "-S" || f == "-c" || f == "-l") {
+					i++
+					continue
+				}
 				if !strings.HasPrefix(f, "-") {
 					nonFlags = append(nonFlags, f)
 				}
 			}
+			remoteCopy := verb == "scp"
+			for _, word := range strings.Fields(mask[:idx-len(verb)]) {
+				remoteCopy = remoteCopy || word == "docker" || word == "kubectl"
+			}
+			if remoteCopy && len(nonFlags) >= 2 && foreignBashTarget(nonFlags[len(nonFlags)-1]) {
+				continue // a known foreign destination is silence, not doubt
+			}
+			sawWrite = true
 			if len(nonFlags) >= 2 {
 				c.add(resolve(nonFlags[len(nonFlags)-1])) // the last argument is the destination
 			}
@@ -337,6 +344,98 @@ func detectBashWritesInStatement(stmt string, st *bwState, c *bwCollector) {
 	if sawWrite {
 		c.writeShaped = true
 	}
+}
+
+// foreignBashTarget recognizes the host:path syntax used by remote copy
+// commands. An explicit local ./ prefix keeps a colon in a local filename.
+func foreignBashTarget(p string) bool {
+	colon := strings.IndexByte(p, ':')
+	return colon >= 0 && !strings.Contains(p[:colon], "/")
+}
+
+// inPlaceWriteArgs consumes scripts and option values before naming files.
+func inPlaceWriteArgs(verb string, args []string) (targets []string, inPlace bool) {
+	hasScript, options := false, true
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if options && a == "--" {
+			options = false
+			continue
+		}
+		if options && strings.HasPrefix(a, "-") && a != "-" {
+			if a == "-e" || a == "-f" || a == "--expression" || a == "--file" {
+				hasScript = true
+				i++
+				continue
+			}
+			if strings.HasPrefix(a, "--expression=") || strings.HasPrefix(a, "--file=") {
+				hasScript = true
+				continue
+			}
+			if verb == "sed" {
+				if a == "--in-place" || strings.HasPrefix(a, "--in-place=") {
+					inPlace = true
+					continue
+				}
+				for j := 1; j < len(a); j++ {
+					switch a[j] {
+					case 'i':
+						inPlace = true
+						if j == len(a)-1 && i+1 < len(args) && args[i+1] == "" {
+							i++ // BSD sed's separate empty backup suffix
+						}
+						j = len(a) // any remainder is a backup suffix
+					case 'e', 'f':
+						hasScript = true
+						j = len(a) // any remainder is the script or script path
+					}
+				}
+				continue
+			}
+			// Perl and Ruby accept combined flags (-pi, -pe). Value-taking
+			// flags differ: some take the next word, some only the attached
+			// suffix, and optional numeric values keep scanning the cluster.
+			for j := 1; j < len(a); j++ {
+				if a[j] == 'i' {
+					inPlace = true
+					break
+				}
+				if a[j] == 'e' {
+					hasScript = true
+					if j == len(a)-1 {
+						i++
+					}
+					break
+				}
+				nextWord := a[j] == 'I' || (verb == "ruby" && a[j] == 'r')
+				attachedOnly := (verb == "perl" && strings.ContainsRune("CdDFxMm", rune(a[j]))) ||
+					(verb == "ruby" && strings.ContainsRune("CEFK", rune(a[j])))
+				optionalDigits := (verb == "perl" && strings.ContainsRune("0l", rune(a[j]))) ||
+					(verb == "ruby" && strings.ContainsRune("W0x", rune(a[j])))
+				if nextWord {
+					if j == len(a)-1 {
+						i++
+					}
+					break
+				}
+				if attachedOnly {
+					break
+				}
+				if optionalDigits {
+					for j+1 < len(a) && a[j+1] >= '0' && a[j+1] <= '9' {
+						j++
+					}
+				}
+			}
+			continue
+		}
+		if !hasScript {
+			hasScript = true
+			continue
+		}
+		targets = append(targets, a)
+	}
+	return targets, inPlace
 }
 
 // maskQuotedSpans returns s with every byte inside a single- or double-
@@ -364,6 +463,12 @@ func maskQuotedSpans(s string) string {
 			}
 		case quote == '"':
 			switch {
+			case c == '$' && i+1 < len(b) && b[i+1] == '(':
+				end := min(matchParenEnd(s, i+1)+1, len(b))
+				for j := i; j < end; j++ {
+					b[j] = '_'
+				}
+				i = end - 1
 			case c == '\\' && i+1 < len(b):
 				b[i], b[i+1] = '_', '_'
 				i++
@@ -549,6 +654,10 @@ func splitTopLevelStatements(s string) []bwStatement {
 	for i < len(s) {
 		c := s[i]
 		switch {
+		case quote == '"' && c == '$' && i+1 < len(s) && s[i+1] == '(':
+			j := matchParenEnd(s, i+1)
+			cur.WriteString(s[i:min(j+1, len(s))])
+			i = j + 1
 		case quote != 0:
 			cur.WriteByte(c)
 			if c == quote {
@@ -601,6 +710,10 @@ func matchParenEnd(s string, open int) int {
 	for i := open; i < len(s); i++ {
 		c := s[i]
 		switch {
+		case c == '\\' && quote != '\'':
+			i++
+		case quote != '\'' && c == '$' && i+1 < len(s) && s[i+1] == '(':
+			i = matchParenEnd(s, i+1)
 		case quote != 0:
 			if c == quote {
 				quote = 0

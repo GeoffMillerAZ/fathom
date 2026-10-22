@@ -48,6 +48,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -64,14 +65,14 @@ const ruleOutcomeMemoTTL = 4 * time.Hour
 var ruleOutcomeMemoDir = filepath.Join(os.TempDir(), "fathom-rule-outcome-memos")
 
 // ruleOutcomeMemo is the prior turn's top served claim id for one
-// (session, service, file).
+// (session, agent, service, file).
 type ruleOutcomeMemo struct {
 	ClaimID   string `json:"claim_id"`
 	WrittenAt string `json:"written_at"`
 }
 
-func ruleOutcomeMemoPath(sessionID, service, repoRelFile string) string {
-	h := sha256.Sum256([]byte(sessionID + "\x1f" + service + "\x1f" + repoRelFile))
+func ruleOutcomeMemoPath(sessionID, service, repoRelFile string, agentID ...string) string {
+	h := sha256.Sum256([]byte(sessionID + "\x1f" + strings.Join(agentID, "\x1f") + "\x1f" + service + "\x1f" + repoRelFile))
 	return filepath.Join(ruleOutcomeMemoDir, hex.EncodeToString(h[:16])+".json")
 }
 
@@ -81,7 +82,7 @@ func ruleOutcomeMemoPath(sessionID, service, repoRelFile string) string {
 // (guardstamp.go's own leakage-bound reasoning). Failures are swallowed
 // (hook doctrine): worst case, next turn simply finds no memo and skips
 // the still_served/top_changed signal, still recording "served".
-func writeRuleOutcomeMemo(sessionID, service, repoRelFile, claimID string, now time.Time) {
+func writeRuleOutcomeMemo(sessionID, service, repoRelFile, claimID string, now time.Time, agentID ...string) {
 	if sessionID == "" {
 		return
 	}
@@ -92,7 +93,7 @@ func writeRuleOutcomeMemo(sessionID, service, repoRelFile, claimID string, now t
 	if err != nil {
 		return
 	}
-	path := ruleOutcomeMemoPath(sessionID, service, repoRelFile)
+	path := ruleOutcomeMemoPath(sessionID, service, repoRelFile, agentID...)
 	_ = os.Remove(path) // never write through a pre-existing entry — guardstamp.go's own reasoning
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY|syscall.O_NOFOLLOW, 0o600)
 	if err != nil {
@@ -107,11 +108,11 @@ func writeRuleOutcomeMemo(sessionID, service, repoRelFile, claimID string, now t
 // sessionID is "" — mirrors readRuleVerdictMemo's hardening exactly
 // (O_NOFOLLOW open, regular-file + ownership + not-group/world-writable
 // checks on the open FD, no TOCTOU gap).
-func readRuleOutcomeMemo(sessionID, service, repoRelFile string, now time.Time) (ruleOutcomeMemo, bool) {
+func readRuleOutcomeMemo(sessionID, service, repoRelFile string, now time.Time, agentID ...string) (ruleOutcomeMemo, bool) {
 	if sessionID == "" {
 		return ruleOutcomeMemo{}, false
 	}
-	path := ruleOutcomeMemoPath(sessionID, service, repoRelFile)
+	path := ruleOutcomeMemoPath(sessionID, service, repoRelFile, agentID...)
 	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
 	if err != nil {
 		return ruleOutcomeMemo{}, false
@@ -177,8 +178,8 @@ func claimBearing(rules []semantic.Obligation) int {
 }
 
 // trackRuleOutcome is trackRuleOutcomeAt with the real clock.
-func trackRuleOutcome(sessionID, service, repoRelFile, claimID string) {
-	trackRuleOutcomeAt(sessionID, service, repoRelFile, claimID, time.Now())
+func trackRuleOutcome(sessionID, service, repoRelFile, claimID string, agentID ...string) {
+	trackRuleOutcomeAt(sessionID, service, repoRelFile, claimID, time.Now(), agentID...)
 }
 
 // trackRuleOutcomeAt is SR-61's anchor (JF-1 renamed its events): reads the
@@ -189,8 +190,8 @@ func trackRuleOutcome(sessionID, service, repoRelFile, claimID string) {
 // the exact read-then-rewrite shape withRuleVerdictAskAt already uses
 // (askruleverdict.go), kept in its own memo so the two mechanisms can
 // never interfere with each other.
-func trackRuleOutcomeAt(sessionID, service, repoRelFile, claimID string, now time.Time) {
-	prior, found := readRuleOutcomeMemo(sessionID, service, repoRelFile, now)
+func trackRuleOutcomeAt(sessionID, service, repoRelFile, claimID string, now time.Time, agentID ...string) {
+	prior, found := readRuleOutcomeMemo(sessionID, service, repoRelFile, now, agentID...)
 	if claimID != "" {
 		recordRuleOutcome(claimID, ruleOutcomeServed, sessionID, repoRelFile)
 		if found && prior.ClaimID == claimID {
@@ -204,8 +205,8 @@ func trackRuleOutcomeAt(sessionID, service, repoRelFile, claimID string, now tim
 		return
 	}
 	if claimID == "" {
-		_ = os.Remove(ruleOutcomeMemoPath(sessionID, service, repoRelFile))
+		_ = os.Remove(ruleOutcomeMemoPath(sessionID, service, repoRelFile, agentID...))
 		return
 	}
-	writeRuleOutcomeMemo(sessionID, service, repoRelFile, claimID, now)
+	writeRuleOutcomeMemo(sessionID, service, repoRelFile, claimID, now, agentID...)
 }

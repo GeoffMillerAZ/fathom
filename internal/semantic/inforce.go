@@ -12,6 +12,7 @@ package semantic
 // written: valid_to stays empty and no column is added (ADR-077 d3, d6).
 
 import (
+	"fmt"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -54,29 +55,53 @@ func decisionSections(root, rel string) []adr.Section {
 	return adr.ParseSections([]byte(strings.Join(lines, "\n")))
 }
 
-// statusParagraph returns the last `**Status.**` paragraph of a section
-// body (the one ParseSections' status came from), lower-cased: the label
-// line and its continuation lines up to a blank line or the next bold label.
+// statusParagraph reads only the labelled status value, never surrounding prose.
+var statusLabel = regexp.MustCompile(`(?i)^\*\*Status[.:]?\*\*[:.]?\s*(.*)$`)
+
 func statusParagraph(body string) string {
 	lines := strings.Split(body, "\n")
-	var last string
-	for i := 0; i < len(lines); i++ {
-		t := strings.TrimSpace(lines[i])
-		if !strings.HasPrefix(t, "**Status.**") && !strings.HasPrefix(t, "**Status:**") {
+	for i, line := range lines {
+		m := statusLabel.FindStringSubmatch(strings.TrimSpace(line))
+		if m == nil {
 			continue
 		}
-		para := []string{t}
+		value := m[1]
 		for j := i + 1; j < len(lines); j++ {
-			n := strings.TrimSpace(lines[j])
-			if n == "" || strings.HasPrefix(n, "**") || strings.HasPrefix(n, "#") {
+			next := strings.TrimSpace(lines[j])
+			if next == "" || strings.HasPrefix(next, "**") || strings.HasPrefix(next, "#") {
 				break
 			}
-			para = append(para, n)
+			value += " " + next
 		}
-		last = strings.ToLower(strings.Join(para, " "))
+		return strings.ToLower(strings.TrimSpace(value))
 	}
-	return last
+	return ""
 }
+
+func recordStanding(body string) string {
+	status := statusParagraph(body)
+	words := strings.Fields(status)
+	if len(words) == 0 {
+		return inForce
+	}
+	first := strings.Trim(words[0], ".,:;()")
+	switch first {
+	case "proposed", "rejected", "deferred":
+		return first
+	case "superseded":
+		if partialSupersessionRe.MatchString(status) {
+			return partlySuperseded
+		}
+		return fullySuperseded
+	case "partly", "partially":
+		if len(words) > 1 && strings.Trim(words[1], ".,:;()") == "superseded" {
+			return partlySuperseded
+		}
+	}
+	return inForce
+}
+
+func inactiveStanding(st string) bool { return st != "" && st != partlySuperseded }
 
 // claimInForce reports the standing of a claim whose primary citation is
 // cite ("ADR.md#L852-L853") against the decision log's parsed sections
@@ -85,6 +110,9 @@ func statusParagraph(body string) string {
 // outside every section, or not into a decision log, is in force.
 func claimInForce(cite string, sections []adr.Section) (standing, record string) {
 	p, start, _, ok := parseCite(cite)
+	if strings.HasPrefix(p, "docs/plans/archive/") {
+		return "archived", ""
+	}
 	if !ok || !isDecisionLog(p) || len(sections) == 0 {
 		return inForce, ""
 	}
@@ -94,22 +122,64 @@ func claimInForce(cite string, sections []adr.Section) (standing, record string)
 		return inForce, ""
 	}
 	sec := sections[i]
-	if sec.Status != adr.StatusSuperseded {
+	standing = recordStanding(sec.Body)
+	if standing == inForce {
 		return inForce, ""
 	}
-	if partialSupersessionRe.MatchString(statusParagraph(sec.Body)) {
-		return partlySuperseded, sec.ID
-	}
-	return fullySuperseded, sec.ID
+	return standing, sec.ID
 }
 
-// inForceResolver answers claimInForce for one serve call, parsing each
-// cited decision log at most once and only when a candidate cites one.
+// rawSectionStanding applies the same status parser to any ADR heading.
+func rawSectionStanding(sec Section, decisions []adr.Section) string {
+	if strings.HasPrefix(sec.Path, "docs/plans/archive/") {
+		return "archived"
+	}
+	if isDecisionLog(sec.Path) {
+		st, _ := claimInForce(fmt.Sprintf("%s#L%d-L%d", sec.Path, sec.StartLine, sec.EndLine), decisions)
+		return st
+	}
+	if regexpADRHeading.MatchString(strings.TrimSpace(strings.SplitN(sec.Text, "\n", 2)[0])) {
+		return recordStanding(sec.Text)
+	}
+	return inForce
+}
+func rawSectionInForce(sec Section, decisions []adr.Section) bool {
+	return !inactiveStanding(rawSectionStanding(sec, decisions))
+}
+
+var regexpADRHeading = regexp.MustCompile(`^#+\s+ADR-\d+\b`)
+var checkedPlanRow = regexp.MustCompile(`^[-*+]\s+\[[xX]\]\s`)
+
+// inForceResolver retains only request-local parsed files. Unread files fail open.
 func inForceResolver(root string) func(cite string) (standing, record string) {
 	parsed := map[string][]adr.Section{}
+	plans := map[string][]string{}
 	return func(cite string) (string, string) {
-		p, _, _, ok := parseCite(cite)
-		if !ok || !isDecisionLog(p) {
+		p, start, _, ok := parseCite(cite)
+		if strings.HasPrefix(p, "docs/plans/archive/") {
+			return "archived", ""
+		}
+		if !ok {
+			return inForce, ""
+		}
+		if strings.HasPrefix(p, "docs/plans/") {
+			lines, done := plans[p]
+			if !done {
+				lines = readCitedLines(filepath.Join(root, filepath.FromSlash(p)))
+				plans[p] = lines
+			}
+			// A continuation citation inherits the nearest preceding plan row.
+			for i := min(start, len(lines)) - 1; i >= 0; i-- {
+				line := strings.TrimSpace(lines[i])
+				if checkedPlanRow.MatchString(line) {
+					return "checked", ""
+				}
+				if strings.HasPrefix(line, "#") || strings.HasPrefix(line, "- [") || strings.HasPrefix(line, "* [") || strings.HasPrefix(line, "+ [") {
+					break
+				}
+			}
+		}
+		if !isDecisionLog(p) {
 			return inForce, ""
 		}
 		secs, done := parsed[p]

@@ -26,10 +26,10 @@ func obligationsCorpus(t *testing.T, nFiles int) (*client.Client, func()) {
 	dir := t.TempDir()
 	body := strings.Repeat("// filler line for a realistically sized source file\n", 36)
 	tree := map[string]string{
-		"CLAUDE.md":            "# Rules\n\n## Non-negotiables\n\n- Keep the gate green.\n- workspace/ holds artifacts.\n",
-		"ADR.md":               "# ADR\n\n## ADR-001: store purity\n\nThe store is pure Go.\n",
-		"internal/CLAUDE.md":   "# internal\n\n- Sort every output.\n",
-		"docs/plans/README.md": "# Plans\n\n- Done means proven.\n",
+		"CLAUDE.md":            "# Rules\n\n## Non-negotiables\n\n- Always keep the gate green.\n- Always put artifacts under workspace/.\n",
+		"ADR.md":               "# ADR\n\n## ADR-001: store purity\n\n**Decision.** The store must remain pure Go.\n",
+		"internal/CLAUDE.md":   "# internal\n\n- Always sort every output.\n",
+		"docs/plans/README.md": "# Plans\n\n- Done must be proven.\n",
 	}
 	for i := 0; i < nFiles; i++ {
 		pkg := fmt.Sprintf("p%03d", i/20)

@@ -27,7 +27,7 @@ store-purego` (`CGO_ENABLED=0 go test -race ./internal/store/`, invariant I2).
 
 ## The domain model is the keystone
 
-Shared types live in `internal/core`; extend it additively.
+Put shared types in `internal/core` and extend them additively.
 `pkg/client` re-exports for external consumers.
 
 ## Adding things

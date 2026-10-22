@@ -17,7 +17,7 @@ func TestDropHotPathMemosForgetsGuideContents(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
 	writeTree(t, dir, map[string]string{
-		"CLAUDE.md":   "# Rules\n\n## Non-negotiables — the workspace/ convention\n\nAll build artifacts belong under workspace/.\n",
+		"CLAUDE.md":   "# Rules\n\n## Non-negotiables — the workspace/ convention\n\nAll build artifacts must remain under workspace/.\n",
 		"cmd/emit.go": "package cmd\n\nimport \"os\"\n\nfunc emit(dir string) error {\n\treturn os.WriteFile(dir, nil, 0o644)\n}\n",
 	})
 	c := client.New(connector.NewLocalConnector(), store.NewMemoryStore())

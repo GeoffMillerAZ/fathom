@@ -28,11 +28,13 @@ package semantic
 // the same section-splitting/digest machinery LiveLayerCoverage already
 // uses — no second corpus-scanning mechanism to keep in sync.
 import (
+	"context"
+	"crypto/sha256"
 	"fmt"
-	"path"
 	"sort"
 	"strings"
 
+	"github.com/geoffmilleraz/fathom/internal/adr"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/filter"
 )
@@ -69,7 +71,7 @@ import (
 // back the CURRENT text of a section whose compiled claim it withheld as
 // stale (I38), without dragging in every other uncompiled section of the
 // same document.
-func RawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []core.SourceFile, file string, max int, why string, extraTokens []string, only map[string]bool) ([]Obligation, error) {
+func RawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []core.SourceFile, file string, max int, why string, extraTokens []string, only map[string]bool, stats ...*RawFallbackStats) ([]Obligation, error) {
 	if file == "" || max <= 0 || len(corpus) == 0 {
 		return nil, nil
 	}
@@ -92,13 +94,18 @@ func RawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []c
 	}
 
 	type candidate struct {
-		sec    Section
-		gs     governingScope
-		rel    float64
-		strong bool
+		sec      Section
+		gs       governingScope
+		rel      float64
+		strong   bool
+		text     string
+		standing string
 	}
 	var cands []candidate
-	for _, ds := range corpusSections(corpus) {
+	refinder := rawStatsRefinder(stats)
+	for _, ds := range refinder.corpusSections(corpus) {
+		_, decisions := refinder.parse(ds.doc.Path, ds.doc.Content)
+
 		for _, sec := range ds.sections {
 			if only != nil && !only[sec.Subject] {
 				continue
@@ -106,6 +113,7 @@ func RawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []c
 			if prior, seen := bySubject[sec.Subject]; seen && allDigestsMatch(prior, sec.Digest, promptVersion) {
 				continue // a fresh compiled claim already answers this exact section
 			}
+
 			scope := impliedGuideScope(sec.Path)
 			// classifyGlob (rankByGoverningScope's own worker) documents
 			// that it only classifies PROXIMITY for a glob already known to
@@ -123,8 +131,18 @@ func RawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []c
 			if gs.tier < 0 {
 				continue // defensive: rankByGoverningScope found no tier despite the match above
 			}
+			if !rawSectionInForce(sec, decisions) {
+				countInForceWithheld(stats)
+				continue
+			}
+			countCheckedPlanRows(sec, stats)
+			text := rawRuleText(sec)
+			if text == "" {
+				countRawWithheld(stats)
+				continue
+			}
 			rel, strong := relevanceStrength(sec.Text, tokens)
-			cands = append(cands, candidate{sec: sec, gs: gs, rel: rel, strong: strong})
+			cands = append(cands, candidate{sec: sec, gs: gs, rel: rel, strong: strong, text: text, standing: rawSectionStanding(sec, decisions)})
 		}
 	}
 	if len(cands) == 0 {
@@ -178,11 +196,13 @@ func RawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []c
 	for _, c := range cands {
 		start, end := citeWindow(c.sec, tokens)
 		out = append(out, Obligation{
-			Rule:  rawRuleText(c.sec),
-			Src:   fmt.Sprintf("%s#L%d-L%d", c.sec.Path, start, end),
-			Tier:  "raw",
-			Layer: layerDef.Name,
-			Why:   why,
+			Rule:    c.text,
+			Subject: c.sec.Subject,
+			InForce: c.standing,
+			Src:     fmt.Sprintf("%s#L%d-L%d", c.sec.Path, start, end),
+			Tier:    "raw",
+			Layer:   layerDef.Name,
+			Why:     why,
 		})
 	}
 	return out, nil
@@ -199,7 +219,7 @@ func RawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []c
 // own subtree, not the root, and ADR.md and docs/design/*.md are not guides.
 // Deterministic; returns (nil, nil) when nothing qualifies. A non-nil error
 // only when layerDef's prompt identity cannot be resolved.
-func RootRawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []core.SourceFile, max int, why string) ([]Obligation, error) {
+func RootRawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []core.SourceFile, max int, why string, stats ...*RawFallbackStats) ([]Obligation, error) {
 	if max <= 0 || len(corpus) == 0 {
 		return nil, nil
 	}
@@ -215,12 +235,22 @@ func RootRawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus
 		bySubject[cl.Subject] = append(bySubject[cl.Subject], cl)
 	}
 	var cands []Section
-	for _, ds := range corpusSections(corpus) {
+	refinder := rawStatsRefinder(stats)
+	for _, ds := range refinder.corpusSections(corpus) {
+		_, decisions := refinder.parse(ds.doc.Path, ds.doc.Content)
 		for _, sec := range ds.sections {
 			if !isRootGuidePath(sec.Path) {
 				continue
 			}
 			if prior, seen := bySubject[sec.Subject]; seen && allDigestsMatch(prior, sec.Digest, promptVersion) {
+				continue
+			}
+			if !rawSectionInForce(sec, decisions) {
+				countInForceWithheld(stats)
+				continue
+			}
+			if rawRuleText(sec) == "" {
+				countRawWithheld(stats)
 				continue
 			}
 			cands = append(cands, sec)
@@ -238,11 +268,12 @@ func RootRawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus
 	out := make([]Obligation, 0, len(cands))
 	for _, sec := range cands {
 		out = append(out, Obligation{
-			Rule:  rawRuleText(sec),
-			Src:   fmt.Sprintf("%s#L%d-L%d", sec.Path, sec.StartLine, sec.EndLine),
-			Tier:  "raw",
-			Layer: layerDef.Name,
-			Why:   why,
+			Rule:    rawRuleText(sec),
+			Subject: sec.Subject,
+			Src:     fmt.Sprintf("%s#L%d-L%d", sec.Path, sec.StartLine, sec.EndLine),
+			Tier:    "raw",
+			Layer:   layerDef.Name,
+			Why:     why,
 		})
 	}
 	return out, nil
@@ -320,19 +351,142 @@ func impliedGuideScope(docPath string) []string {
 	return []string{"**"}
 }
 
-// rawRuleText renders a raw section's served "rule" text: the section's own
-// ATX heading, stripped of its "#" markers, so a raw row reads like a named
-// rule rather than a raw text dump. A heading-less section (the preamble, or
-// a heading this parser could not read back out — SplitMarkdownSections
-// itself never fails to find one when it split at a heading, so this is a
-// defensive fallback, not an expected path) is named by its own document
-// instead: the cited lines (served alongside via the same snippet mechanism
-// every compiled rule's citation uses) carry the real content either way.
-func rawRuleText(sec Section) string {
-	first, _, _ := strings.Cut(sec.Text, "\n")
-	first = strings.TrimSpace(first)
-	if trimmed := strings.TrimSpace(strings.TrimLeft(first, "#")); trimmed != "" && trimmed != first {
-		return trimmed
+// RawFallbackStats is request-local serving state, never retained in the store.
+type RawFallbackStats struct {
+	Withheld        int
+	InForceWithheld int
+	Refinder        *RawRuleRefinder         // shared only within this request, keyed by path and content hash
+	Skipped         string                   // the first selected citation that could not be read
+	CheckCitations  func([]Obligation)       // optional surface-owned freshness check before live refinding
+	ReadCitation    func(Obligation, []byte) // capture a selected citation from bytes already read
+}
+type rawFallbackStatsKey struct{}
+
+// WithRawFallbackStats lets the tool collect extraction counts from its backend
+// without changing the existing raw-fallback interface.
+func WithRawFallbackStats(ctx context.Context) (context.Context, *RawFallbackStats) {
+	stats := &RawFallbackStats{}
+	return context.WithValue(ctx, rawFallbackStatsKey{}, stats), stats
+}
+
+func RawFallbackStatsFromContext(ctx context.Context) *RawFallbackStats {
+	stats, _ := ctx.Value(rawFallbackStatsKey{}).(*RawFallbackStats)
+	return stats
+}
+
+func countRawWithheld(stats []*RawFallbackStats) {
+	if len(stats) > 0 && stats[0] != nil {
+		stats[0].Withheld++
 	}
-	return path.Base(sec.Path) + " (untitled section)"
+}
+
+// RawRuleRefinder splits each live file/content identity once per call.
+// It is request-local; it never persists corpus data across requests.
+type RawRuleRefinder struct {
+	sections  map[rawContentKey][]Section
+	decisions map[rawContentKey][]adr.Section
+}
+type rawContentKey struct {
+	path string
+	hash [32]byte
+}
+
+func NewRawRuleRefinder() *RawRuleRefinder {
+	return &RawRuleRefinder{sections: map[rawContentKey][]Section{}, decisions: map[rawContentKey][]adr.Section{}}
+}
+
+// RefindRawRule preserves caller-resolved relevance tokens at the live heading.
+func RefindRawRule(row Obligation, data []byte, file string, extraTokens []string, refinders ...*RawRuleRefinder) (Obligation, bool) {
+	var refinder *RawRuleRefinder
+	if len(refinders) > 0 {
+		refinder = refinders[0]
+	}
+	if refinder == nil {
+		refinder = NewRawRuleRefinder()
+	}
+	return refinder.Refind(row, data, file, extraTokens)
+}
+
+func (r *RawRuleRefinder) Refind(row Obligation, data []byte, file string, extraTokens []string) (Obligation, bool) {
+	p, _, _, ok := parseCite(row.Src)
+	if !ok {
+		return row, false
+	}
+	sections, decisions := r.parse(p, data)
+	for _, sec := range sections {
+		if sec.Subject != row.Subject {
+			continue
+		}
+		standing := rawSectionStanding(sec, decisions)
+		row.InForce = standing
+		if inactiveStanding(standing) {
+			return row, false
+		}
+		text := rawRuleText(sec)
+		if text == "" {
+			return row, false
+		}
+		tokens := append(pathRelevanceTokens(file), symbolRelevanceTokens(extraTokens)...)
+		start, end := citeWindow(sec, tokens)
+		row.Rule = text
+		row.InForce = standing
+		row.Src = fmt.Sprintf("%s#L%d-L%d", p, start, end)
+		return row, true
+	}
+	return row, false
+}
+
+func decisionsForSection(p string, data []byte) []adr.Section {
+	if isDecisionLog(p) {
+		return adr.ParseSections(data)
+	}
+	return nil
+}
+func countInForceWithheld(stats []*RawFallbackStats) {
+	if len(stats) > 0 && stats[0] != nil {
+		stats[0].InForceWithheld++
+	}
+}
+
+func countCheckedPlanRows(sec Section, stats []*RawFallbackStats) {
+	if !strings.HasPrefix(sec.Path, "docs/plans/") {
+		return
+	}
+	for _, line := range strings.Split(sec.Text, "\n") {
+		if checkedPlanRow.MatchString(strings.TrimSpace(line)) {
+			countInForceWithheld(stats)
+		}
+	}
+}
+
+// parse is shared by selection and live refinding, so unchanged live bytes
+// reuse the exact section split that ranking already examined.
+func (r *RawRuleRefinder) parse(p string, data []byte) ([]Section, []adr.Section) {
+	key := rawContentKey{p, sha256.Sum256(data)}
+	sections, found := r.sections[key]
+	if !found {
+		sections = SplitMarkdownSections(p, data)
+		r.sections[key] = sections
+		r.decisions[key] = decisionsForSection(p, data)
+	}
+	return sections, r.decisions[key]
+}
+func (r *RawRuleRefinder) corpusSections(corpus []core.SourceFile) []docSections {
+	docs := append([]core.SourceFile(nil), corpus...)
+	sort.Slice(docs, func(i, j int) bool { return docs[i].Path < docs[j].Path })
+	all := make([]docSections, 0, len(docs))
+	for _, doc := range docs {
+		sections, _ := r.parse(doc.Path, doc.Content)
+		all = append(all, docSections{doc: doc, sections: sections})
+	}
+	return dedupeTwinGuideSections(all)
+}
+func rawStatsRefinder(stats []*RawFallbackStats) *RawRuleRefinder {
+	if len(stats) > 0 && stats[0] != nil {
+		if stats[0].Refinder == nil {
+			stats[0].Refinder = NewRawRuleRefinder()
+		}
+		return stats[0].Refinder
+	}
+	return NewRawRuleRefinder()
 }

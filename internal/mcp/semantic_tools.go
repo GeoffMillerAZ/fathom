@@ -473,6 +473,24 @@ func obligationsDecidedBy(obl semantic.Obligations) string {
 //     catch-all crowding out a package rule reads very differently than
 //     the reverse.
 func renderObligationReceipt(ctx context.Context, backend QueryInterface, service string, obl semantic.Obligations, rootScope bool, servedLayer string, includeSnippets, indexStale bool) (map[string]any, string) {
+	ctx, rawStats := semantic.WithRawFallbackStats(ctx)
+	rawStats.CheckCitations = func(rows []semantic.Obligation) {
+		for i := range rows {
+			if file, _, _, ok := parseCitation(rows[i].Src); ok {
+				status := citationForFile(ctx, backend, service, file)
+				if status.State != "" {
+					rows[i].CitationStatus = &status
+				}
+			}
+		}
+	}
+	if includeSnippets {
+		// Register compiled windows before a raw row checks a shared file.
+		prepareObligationWindows(ctx, service, obl.Rules)
+		rawStats.ReadCitation = func(row semantic.Obligation, data []byte) {
+			captureRawCitationWindow(ctx, service, row, data)
+		}
+	}
 	obl.Rules = claimIDsForCaller(ctx, obl.Rules)
 	result := map[string]any{
 		"service": obl.Service,
@@ -614,15 +632,21 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 		}
 	}
 
+	if coverageSkipped == "" {
+		coverageSkipped = rawStats.Skipped
+	}
+	obl.InForceWithheld += rawStats.InForceWithheld
+	if obl.InForceWithheld > 0 {
+		result["inforce_withheld"] = obl.InForceWithheld
+	}
+	if rawStats.Withheld > 0 {
+		result["raw_withheld"] = rawStats.Withheld
+	}
 	if includeSnippets {
 		prepareObligationWindows(ctx, service, obl.Rules)
 	}
 	for i := range obl.Rules {
 		r := &obl.Rules[i]
-		if r.Tier == "raw" {
-			r.CitationStatus = nil
-			continue
-		}
 		if file, _, _, ok := parseCitation(r.Src); ok {
 			bindCitation(ctx, backend, service, file, func(status *core.CitationStatus) { r.CitationStatus = status })
 		}

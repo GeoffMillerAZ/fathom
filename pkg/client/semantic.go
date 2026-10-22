@@ -499,6 +499,7 @@ func (c *Client) RawFallbackObligations(ctx context.Context, service, file strin
 	if file == "" || max <= 0 {
 		return nil, "", false, nil
 	}
+	ctx = withRawRefind(ctx)
 	root := c.serviceRoot(ctx, service)
 	relevance := c.rawRelevance(ctx, root, service, file)
 	rows, why, err := c.obligationsRawRows(ctx, root, service, file, max, relevance)
@@ -531,6 +532,7 @@ func (c *Client) RawFallbackObligations(ctx context.Context, service, file strin
 // scope. ok is false (and rows nil) when the root guide is fully compiled,
 // the layer has no coverage to judge, or nothing qualifies.
 func (c *Client) RootRawFallbackObligations(ctx context.Context, service string, max int) ([]semantic.Obligation, string, bool, error) {
+	ctx = withRawRefind(ctx)
 	if max <= 0 {
 		return nil, "", false, nil
 	}
@@ -556,11 +558,12 @@ func (c *Client) RootRawFallbackObligations(ctx context.Context, service string,
 	}
 	why := "compiled layer incomplete: root guide uncompiled; its current sections served raw"
 	why += unreadNote(unread)
-	rows, rerr := semantic.RootRawFallbackRules(claims, layerDef, corpus, max, why)
+	rows, rerr := semantic.RootRawFallbackRules(claims, layerDef, corpus, max, why, semantic.RawFallbackStatsFromContext(ctx))
 	if rerr != nil || len(rows) == 0 {
 		return nil, "", false, nil
 	}
-	return rows, why, true, nil
+	rows = c.refindRawRows(ctx, root, "", rows, nil, corpus)
+	return rows, why, len(rows) > 0, nil
 }
 
 // staleRawLayers is withheld sorted and deduplicated, without the
@@ -687,11 +690,11 @@ func (c *Client) obligationsRawRows(ctx context.Context, root, service, file str
 	if note != "" {
 		why += "; edited file not read for relevance (" + note + ")"
 	}
-	rows, rerr := semantic.RawFallbackRules(claims, layerDef, corpus, file, max, why, extraTokens, onlyStale)
+	rows, rerr := semantic.RawFallbackRules(claims, layerDef, corpus, file, max, why, extraTokens, onlyStale, semantic.RawFallbackStatsFromContext(ctx))
 	if rerr != nil || len(rows) == 0 {
 		return nil, "", nil
 	}
-	return rows, why, nil
+	return c.refindRawRows(ctx, root, file, rows, extraTokens, corpus), why, nil
 }
 
 // staleSectionRawRows serves the CURRENT text of layer's stale sections
@@ -732,11 +735,11 @@ func (c *Client) staleSectionRawRows(ctx context.Context, root, service, layer, 
 	if note != "" {
 		why += "; edited file not read for relevance (" + note + ")"
 	}
-	rows, rerr := semantic.RawFallbackRules(claims, layerDef, corpus, file, max, why, tokens, only)
+	rows, rerr := semantic.RawFallbackRules(claims, layerDef, corpus, file, max, why, tokens, only, semantic.RawFallbackStatsFromContext(ctx))
 	if rerr != nil || len(rows) == 0 {
 		return nil, "", nil
 	}
-	return rows, why, nil
+	return c.refindRawRows(ctx, root, file, rows, tokens, corpus), why, nil
 }
 
 // unreadNote names the guides a corpus read skipped (over the cap, EPERM):
@@ -1218,4 +1221,87 @@ func (c *Client) SourceFingerprintEpoch(ctx context.Context, service, path, fing
 		return parts[0], nil
 	}
 	return "", nil
+}
+
+type rawRefindKey struct{}
+type rawLiveFile struct {
+	data    []byte
+	info    os.FileInfo
+	skipped string
+	err     error
+}
+type rawRefindCall struct {
+	files    map[string]rawLiveFile
+	refinder *semantic.RawRuleRefinder
+}
+
+func withRawRefind(ctx context.Context) context.Context {
+	if _, ok := ctx.Value(rawRefindKey{}).(*rawRefindCall); ok {
+		return ctx
+	}
+	stats := semantic.RawFallbackStatsFromContext(ctx)
+	if stats == nil {
+		ctx, stats = semantic.WithRawFallbackStats(ctx)
+	}
+	if stats.Refinder == nil {
+		stats.Refinder = semantic.NewRawRuleRefinder()
+	}
+	return context.WithValue(ctx, rawRefindKey{}, &rawRefindCall{files: map[string]rawLiveFile{}, refinder: stats.Refinder})
+}
+
+// refindRawRows bypasses corpus memos only when citation freshness proves
+// drift or a refresh. Fresh citations retain their stored ranges without a read.
+func (c *Client) refindRawRows(ctx context.Context, root, file string, rows []semantic.Obligation, extraTokens []string, corpus []core.SourceFile) []semantic.Obligation {
+	if root == "" {
+		return rows
+	}
+	ctx = withRawRefind(ctx)
+	call := ctx.Value(rawRefindKey{}).(*rawRefindCall)
+	stats := semantic.RawFallbackStatsFromContext(ctx)
+	if stats.CheckCitations != nil {
+		stats.CheckCitations(rows)
+	}
+	out := rows[:0]
+	for _, row := range rows {
+		rel, _, _ := strings.Cut(row.Subject, "#")
+		if row.CitationStatus == nil || (row.CitationStatus.State != "stale" && row.CitationStatus.State != "refreshing") {
+			if stats.ReadCitation != nil {
+				for _, doc := range corpus {
+					if doc.Path == rel {
+						stats.ReadCitation(row, doc.Content)
+						break
+					}
+				}
+			}
+			out = append(out, row)
+			continue
+		}
+		data, _, skipped, err := readFileCapped(ctx, filepath.Join(root, filepath.FromSlash(rel)), HotPathReadCap)
+		if err != nil || skipped != "" {
+			if stats := semantic.RawFallbackStatsFromContext(ctx); stats != nil && stats.Skipped == "" {
+				reason := skipped
+				if err != nil {
+					reason = err.Error()
+				}
+				stats.Skipped = "raw citation not read: " + rel + ": " + reason
+			}
+			continue
+		}
+		refound, ok := semantic.RefindRawRule(row, data, file, extraTokens, call.refinder)
+		if ok {
+			if stats.ReadCitation != nil {
+				stats.ReadCitation(refound, data)
+			}
+			out = append(out, refound)
+			continue
+		}
+		if stats := semantic.RawFallbackStatsFromContext(ctx); stats != nil {
+			if refound.InForce != "" && refound.InForce != "partly_superseded" {
+				stats.InForceWithheld++
+			} else {
+				stats.Withheld++
+			}
+		}
+	}
+	return out
 }

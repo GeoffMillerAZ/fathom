@@ -51,7 +51,7 @@ func TestRootRawFallbackObligations_UncompiledRootGuide(t *testing.T) {
 		t.Fatalf("stale root guide: rows=%+v ok=%v err=%v, want its one changed section", rows, ok, err)
 	}
 	r := rows[0]
-	if r.Tier != "raw" || r.Layer != "obligations" || !strings.HasPrefix(r.Src, "AGENTS.md#") || r.Rule != "Guidance" || r.Why != why {
+	if r.Tier != "raw" || r.Layer != "obligations" || !strings.HasPrefix(r.Src, "AGENTS.md#") || r.Rule != "Run the gate before pushing.\nDeploy through the task, never cp." || r.Why != why {
 		t.Errorf("row = %+v, want the AGENTS.md section raw from obligations carrying %q", r, why)
 	}
 	if rows, _, _, _ := c.RootRawFallbackObligations(ctx, "svc", 0); len(rows) != 0 {

@@ -55,14 +55,31 @@ func prepareObligationWindows(ctx context.Context, service string, rules []seman
 		}
 		if file, start, end, ok := parseCitation(r.Src); ok {
 			addCitationWindow(ctx, service, file, start, end, end-start+1, obligationSnippetMaxBytes*2)
-			if r.Tier != "raw" {
-				if reads, _ := ctx.Value(citationReadsKey{}).(*citationReads); reads != nil {
-					reads.mu.Lock()
-					reads.files[citationKey(service, file)].indexed = true
-					reads.mu.Unlock()
-				}
+			if reads, _ := ctx.Value(citationReadsKey{}).(*citationReads); reads != nil {
+				reads.mu.Lock()
+				reads.files[citationKey(service, file)].indexed = true
+				reads.mu.Unlock()
 			}
 		}
+	}
+}
+
+// captureRawCitationWindow retains only the bounded snippet from the corpus
+// bytes (fresh) or the live refind bytes (stale), without another file read.
+func captureRawCitationWindow(ctx context.Context, service string, row semantic.Obligation, data []byte) {
+	r, _ := ctx.Value(citationReadsKey{}).(*citationReads)
+	file, start, end, ok := parseCitation(row.Src)
+	if r == nil || !ok {
+		return
+	}
+	w := &citationWindow{start: start, end: end, maxLines: end - start + 1, maxBytes: obligationSnippetMaxBytes * 2}
+	capture := citationCapture{windows: []*citationWindow{w}, line: 1}
+	_, _ = capture.Write(data)
+	capture.finish()
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if f := r.files[citationKey(service, file)]; f != nil {
+		f.windows = append(f.windows, w)
 	}
 }
 func citationSourceRange(ctx context.Context, b QueryInterface, service, file string, start, end, maxLines, maxBytes int) (sourceRange, error) {
@@ -74,26 +91,6 @@ func citationSourceRange(ctx context.Context, b QueryInterface, service, file st
 	rng, err := w.sourceRange()
 	rng.Citation = status
 	return rng, err
-}
-
-// Raw fallback rules are already live-tree evidence: retain their windows
-// without reading a stored fingerprint or computing a digest for them.
-func liveCitationSourceRange(ctx context.Context, b QueryInterface, service, file string, start, end, maxLines, maxBytes int) (sourceRange, error) {
-	w := addCitationWindow(ctx, service, file, start, end, maxLines, maxBytes)
-	if reads, _ := ctx.Value(citationReadsKey{}).(*citationReads); reads != nil {
-		reads.mu.Lock()
-		reads.file(ctx, b, service, file, false)
-		reads.mu.Unlock()
-		if w == nil {
-			return sourceRange{}, nil
-		}
-	} else {
-		w = &citationWindow{start: max(start, 1), end: end, maxLines: maxLines, maxBytes: maxBytes}
-		if _, _, err := streamSourceFile(ctx, b, service, file, []*citationWindow{w}, false); err != nil {
-			return sourceRange{}, err
-		}
-	}
-	return w.sourceRange()
 }
 
 func (w *citationWindow) sourceRange() (sourceRange, error) {
