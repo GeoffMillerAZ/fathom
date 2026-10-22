@@ -422,6 +422,7 @@ func cmdDiscoveries(args []string, stdout, stderr io.Writer) int {
 	storePath := fs.String("store", "", "store path, .sqlite/.db (direct mode; bypasses daemon)")
 	callLog := fs.String("call-log", "", "call log path (default: workspace/logs/mcp-calls.jsonl under --root)")
 	root := fs.String("root", ".", "repository root")
+	parent := fs.String("parent-session", "", "only this parent session's current, content-checked ranges (AD-11)")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -435,6 +436,17 @@ func cmdDiscoveries(args []string, stdout, stderr io.Writer) int {
 	svc := *service
 	if svc == "" {
 		svc = scope.service
+	}
+	if *parent != "" {
+		rendered := subagentBrief(*url, rootAbs, svc, *parent, *budget, nowFunc())
+		if *jsonOut {
+			_ = json.NewEncoder(stdout).Encode(map[string]any{"service": svc, "parent_session": *parent, "rendered": rendered})
+		} else if rendered == "" {
+			fmt.Fprintln(stdout, "no discoveries recorded")
+		} else {
+			fmt.Fprintln(stdout, rendered)
+		}
+		return 0
 	}
 	logPath := *callLog
 	if logPath == "" {
@@ -530,7 +542,7 @@ func subagentDiscoveries(baseURL, root, service, parentSessionID, agentID string
 	mapLine := subagentMapLine(hookMapRoot(root), parentSessionID, agentID, now)
 	budget := subagentDiscoveriesBudget
 	if mapLine != "" && room > 0 {
-		left := room - len(mapLine) - 1 - len(subagentBriefLead) - 1 - subagentBriefFooterReserve
+		left := room - len(mapLine) - 1 - len(subagentBriefLead) - 1 - len(subagentBriefMore(parentSessionID, subagentDiscoveriesMaxPointers, subagentDiscoveriesBudget*2))
 		if left < budget {
 			budget = left
 		}
@@ -551,10 +563,10 @@ func subagentDiscoveries(baseURL, root, service, parentSessionID, agentID string
 // subagentBriefLead heads the discoveries brief.
 const subagentBriefLead = "last session established:"
 
-// subagentBriefFooterReserve is what renderDiscoveryLines' closing "…N more"
-// line can add past its budget, held back so a brief that shares the cap with a
-// map line ends on a whole line and not on the primer's byte cut.
-const subagentBriefFooterReserve = 56
+// subagentBriefMore expands through the same parent-owned range filter.
+func subagentBriefMore(session string, count, budget int) string {
+	return fmt.Sprintf("…%d more: fathom discoveries --parent-session %s --budget %d\n", count, shellQuote(session), budget)
+}
 
 // subagentBriefMinBudget is the least room worth rendering a brief into: under
 // it not even one pointer line fits whole, so the map line ships alone rather
@@ -577,37 +589,6 @@ func subagentBrief(baseURL, root, service, parentSessionID string, budget int, n
 		ts  time.Time
 	}
 	var candidates []candidate
-	rc, err := openCallLogGenerationsSince(callLogPathFor(root), since)
-	if err == nil {
-		defer rc.Close()
-		sc := bufio.NewScanner(rc)
-		sc.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
-		for sc.Scan() {
-			if ctx.Err() != nil || hookDeadlineSpent() {
-				return ""
-			}
-			var row struct {
-				TS      string `json:"ts"`
-				Service string `json:"service"`
-				Origin  string `json:"origin"`
-				Caller  struct {
-					Session string  `json:"session"`
-					AgentID *string `json:"agent_id"`
-				} `json:"caller"`
-				Ranges []discoveryptr.Pointer `json:"range_pointers"`
-			}
-			if json.Unmarshal(sc.Bytes(), &row) != nil || row.Service != service || row.Origin != "" || row.Caller.Session != parentSessionID || (row.Caller.AgentID == nil || *row.Caller.AgentID != "") {
-				continue
-			}
-			ts, err := time.Parse(time.RFC3339Nano, row.TS)
-			if err != nil || ts.Before(since) || ts.After(now) {
-				continue
-			}
-			for _, ptr := range row.Ranges {
-				candidates = append(candidates, candidate{ptr, ts})
-			}
-		}
-	}
 	for _, row := range readObservedDiscoveryRows(root, since) {
 		if ctx.Err() != nil || hookDeadlineSpent() {
 			return ""
@@ -657,7 +638,7 @@ func subagentBrief(baseURL, root, service, parentSessionID string, budget int, n
 		return ""
 	}
 	if dropped := len(lines) - count; dropped > 0 {
-		fmt.Fprintf(&b, "…%d more: fathom discoveries --budget %d\n", dropped, budget*2)
+		b.WriteString(subagentBriefMore(parentSessionID, dropped, budget*2))
 	}
 	return subagentBriefLead + "\n" + strings.TrimRight(b.String(), "\n")
 }

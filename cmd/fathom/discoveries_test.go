@@ -401,7 +401,7 @@ func TestSubagentDiscoveries_UsesParentSessionStart(t *testing.T) {
 	t.Setenv("FATHOM_SESSIONS_LOG", filepath.Join(root, "sessions.jsonl"))
 	now := time.Date(2026, 10, 22, 12, 0, 0, 0, time.UTC)
 	recordSessionWindow(root, sessionWindowRow{SchemaVersion: 1, SessionID: "parent-1", Cwd: root, Service: "fathom", Started: now.Add(-30 * time.Minute).Format(time.RFC3339)})
-	logPath := callLogPathFor(root)
+	logPath := observedDiscoveriesLogPathFor(root)
 	var rows []string
 	for _, c := range []struct {
 		file string
@@ -416,7 +416,7 @@ func TestSubagentDiscoveries_UsesParentSessionStart(t *testing.T) {
 		}
 		raw, _ := json.Marshal(map[string]any{
 			"ts": now.Add(c.age).Format(time.RFC3339Nano), "service": "fathom",
-			"caller":         map[string]string{"session": "parent-1", "agent_id": ""},
+			"session_id": "parent-1", "tool": "read", "pointers": []string{p.Ref()},
 			"range_pointers": []discoveryptr.Pointer{p},
 		})
 		rows = append(rows, string(raw))

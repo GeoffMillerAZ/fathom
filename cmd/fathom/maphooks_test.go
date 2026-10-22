@@ -155,7 +155,7 @@ func TestSubagentStartCarriesOneMapIDWithin1200Bytes(t *testing.T) {
 		}
 		row, err := json.Marshal(map[string]any{
 			"ts": now.Add(-time.Duration(i) * time.Second).Format(time.RFC3339Nano), "service": "fathom",
-			"caller":         map[string]string{"session": "sess-parent", "agent_id": ""},
+			"session_id": "sess-parent", "tool": "read", "pointers": []string{path},
 			"range_pointers": []map[string]any{{"path": path, "start": 3, "end": 3, "hash": hash}},
 		})
 		if err != nil {
@@ -163,7 +163,7 @@ func TestSubagentStartCarriesOneMapIDWithin1200Bytes(t *testing.T) {
 		}
 		rows = append(rows, string(row))
 	}
-	writeDiscoCallLogFixture(t, callLogPathFor(repo), rows)
+	writeDiscoCallLogFixture(t, observedDiscoveriesLogPathFor(repo), rows)
 	fileMapEntry(t, repo, "auth-surface", "a.go#L3-L5", "the handler", "sess-parent", now.Add(-30*time.Minute))
 	nameMap(t, repo, "auth-surface", "which handlers gate the admin API")
 

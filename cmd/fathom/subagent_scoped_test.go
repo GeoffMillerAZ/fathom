@@ -45,15 +45,20 @@ func TestAD11BriefOnlyParentFreshRanges(t *testing.T) {
 		{"CLAUDE.md", "", "parent", "", hash, -time.Minute},
 		{"../outside.go", "", "parent", "", hash, -time.Minute},
 	}
-	var lines []string
+	var lines, observed []string
 	for _, c := range cases {
 		raw, err := json.Marshal(map[string]any{"ts": now.Add(c.age).Format(time.RFC3339Nano), "service": "svc", "origin": c.origin, "caller": map[string]string{"session": c.session, "agent_id": c.agent}, "pointers": []string{c.path + "#L2-L2"}, "range_pointers": []map[string]any{{"path": c.path, "start": 2, "end": 2, "hash": c.hash}}})
 		if err != nil {
 			t.Fatal(err)
 		}
 		lines = append(lines, string(raw))
+		if c.origin == "" {
+			row, _ := json.Marshal(map[string]any{"ts": now.Add(c.age).Format(time.RFC3339Nano), "service": "svc", "session_id": c.session, "agent_id": c.agent, "tool": "read", "pointers": []string{c.path}, "range_pointers": []map[string]any{{"path": c.path, "start": 2, "end": 2, "hash": c.hash}}})
+			observed = append(observed, string(row))
+		}
 	}
 	writeDiscoCallLogFixture(t, callLogPathFor(root), lines)
+	writeDiscoCallLogFixture(t, observedDiscoveriesLogPathFor(root), observed)
 	got := subagentBrief("http://127.0.0.1:1", root, "svc", "parent", 900, now)
 	if !strings.Contains(got, "own.go#L2-L2") {
 		t.Errorf("missing own checked range: %q", got)
