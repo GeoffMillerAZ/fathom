@@ -41,7 +41,7 @@ func TestDoctorProbePreservesDefiniteVerdicts(t *testing.T) {
 func TestDoctorStepsDoNotCapLocalWork(t *testing.T) {
 	for _, ownBudget := range []bool{false, true} {
 		rows := runDoctorSteps([]doctorStep{{ownBudget: ownBudget, probe: func(ctx context.Context) doctorCheck {
-			if _, capped := ctx.Deadline(); capped == ownBudget {
+			if _, capped := ctx.Deadline(); capped {
 				t.Errorf("ownBudget=%v: step cap present=%v", ownBudget, capped)
 			}
 			return doctorCheck{Name: "local", Status: doctorFail, Reason: "definite evidence"}

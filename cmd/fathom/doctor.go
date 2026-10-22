@@ -415,8 +415,8 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 // of the checks it cut (RT-7).
 const doctorDeadlineRow = "hook_deadline"
 
-// doctorStep keeps the ordinary five-second probe cap unless the work has
-// its own budget (provider pings) or cannot be interrupted (local projections).
+// Individual IO probes keep their own caps. Only a parent deadline permits
+// abandoning a check; interactive local projections run to completion.
 type doctorStep struct {
 	name      string
 	probe     func(context.Context) doctorCheck
@@ -446,10 +446,8 @@ func runDoctorStepsContext(parent context.Context, steps []doctorStep) []doctorC
 				cap = 5 * time.Second
 			}
 			ctx, cancel = context.WithTimeout(parent, cap)
-		} else if step.ownBudget {
-			ctx, cancel = context.WithCancel(parent)
 		} else {
-			ctx, cancel = context.WithTimeout(parent, 5*time.Second)
+			ctx, cancel = context.WithCancel(parent)
 		}
 		defer cancel()
 		timeout := func() doctorCheck {
@@ -460,11 +458,19 @@ func runDoctorStepsContext(parent context.Context, steps []doctorStep) []doctorC
 			return
 		}
 		// Preparations write shared inputs; join them before releasing readers.
-		if step.prepare || step.name == "" {
+		_, bounded := parent.Deadline()
+		if step.prepare || step.name == "" || !bounded {
 			checks[i] = runDoctorProbe(ctx, step.probe)
 			return
 		}
-		row, err := tenancy.RunUntilDone(ctx, func() doctorCheck { return runDoctorProbe(ctx, step.probe) })
+		// Let a cooperative probe return its source-specific row after its
+		// context expires, while collection still respects the hook deadline.
+		at, _ := parent.Deadline()
+		collect, finish := context.WithDeadline(context.WithoutCancel(ctx), at)
+		defer finish()
+		stop := context.AfterFunc(ctx, func() { time.AfterFunc(25*time.Millisecond, finish) })
+		defer stop()
+		row, err := tenancy.RunUntilDone(collect, func() doctorCheck { return runDoctorProbe(ctx, step.probe) })
 		if err != nil {
 			checks[i] = timeout()
 		} else {
