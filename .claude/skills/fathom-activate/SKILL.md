@@ -53,8 +53,13 @@ description: >
    must fail, not pass. Stanza/hook writes go through receipts
    (`fathom fleet undo --last` reverses; a hand-edited region is BLOCKED,
    never overwritten).
-6b. **No INTENT.md** (ADR-074): the generator is removed; delete any root
-   `INTENT.md` and read `docs/intent/README.md`. `fathom intent index --check` holds the
+6b. **Retire fathom-generated upgrade artifacts only** (ADR-074): the old
+   generator is removed. Delete a root `INTENT.md` only if the entire file
+   is fathom's old generated playbook, identified by
+   `<!-- fathom:intent-playbook begin -->` and
+   `<!-- fathom:intent-playbook end -->`, with no consumer-authored additions.
+   If ownership is unclear, leave the file in place; consumer-authored intent is never deleted.
+   Read `docs/intent/README.md`. `fathom intent index --check` holds the
    decisions index to `ADR.md` headings, row for row.
 6c. **The advisory hook rows** (Claude Code): `SubagentStart` primes a
    subagent that never saw `SessionStart` — identity plus, when the parent

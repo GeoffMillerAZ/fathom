@@ -31,6 +31,8 @@ func shippedSkillRenderDigests() map[string]bool {
 }
 
 var shippedSkillRenderDigestList = []string{
+	"sha256:f23f2c15c84a505641d79039a8ca459f67003f9cc03b33328a29448337213740", // fathom-doctor claude+agents GDEV-41
+	"sha256:376d2d86edfb224af7161affbc382fea766966e0fa1946391b3f5b296b29bd9d", // fathom-activate claude+agents GDEV-42
 	"sha256:98689cc4c3f8ce4529f76d91c1b45d6672a11b873c98e68b9bf67835f6872912", // fathom-offload claude+agents 2026-10-22 ADR-078
 	"sha256:936bdc913d6d719ccb26f8cc8971346ed0f05381997dd235fa7031f2a5f1f62a", // fathom-offload codex-prompts 2026-10-22 ADR-078
 	"sha256:8d9ef605ed855b258d59321a2de88183bbf4b524f0561e485b13905750b4ed17", // fathom-doctor claude/agents 2026-10-21 gd-doctor-2

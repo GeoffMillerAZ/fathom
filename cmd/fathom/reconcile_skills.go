@@ -22,14 +22,15 @@ import (
 
 // skillOwnedFiles renders every shipped skill into its one real copy,
 // `.claude/skills` (ADR-059), as owned files in name order. `.agents/skills`
-// is never written file by file: it is the owned link (skillLinks). root is
-// unused for the rendering (the content is embedded) and kept for symmetry
-// with the other spec builders.
+// is never written file by file: it is the owned link (skillLinks). Declared
+// adaptations at root are consumer-owned and excluded from the write plan.
 func skillOwnedFiles(root string) []wiring.OwnedFile {
-	_ = root
 	var out []wiring.OwnedFile
 	for _, target := range []string{skillsTargetClaude} {
 		for _, name := range skillsdist.Names {
+			if isAdaptedSkillFile(skillDest(root, "", target, name), name) {
+				continue // a declared adaptation is not fathom's file to reconcile
+			}
 			body, err := renderSkill(target, name)
 			if err != nil {
 				continue // embedded source; cannot fail at runtime

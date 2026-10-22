@@ -282,7 +282,7 @@ func installSkills(iw *initWrites, root, mode string, stdout io.Writer) error {
 type skillWrite struct {
 	Target string `json:"target"`
 	Path   string `json:"path"`
-	Action string `json:"action"` // created | updated | current | linked
+	Action string `json:"action"` // created | updated | current | linked | adapted
 }
 
 // installSkillsReport is installSkills returning every write as data.
@@ -351,6 +351,9 @@ func installSkillsReport(iw *initWrites, root, mode string, stdout io.Writer) (w
 				return writes, err
 			}
 			writes = append(writes, skillWrite{Target: target, Path: dest, Action: action})
+			if action == "adapted" {
+				continue // consumer bytes never become fathom's owned baseline
+			}
 			label := skillRelPath(target, name)
 			if target == skillsTargetCodexPrompts {
 				label = "~/.codex/prompts/" + name + ".md"
@@ -384,7 +387,8 @@ func installAgentsSkillsLink(iw *initWrites, root string, stdout io.Writer) (ski
 
 // installSkillFile writes content to destPath, honoring the fathom-owned
 // marker convention: create if absent, overwrite if the existing file
-// carries skillMarker (no-op if the bytes are already identical), and
+// carries skillMarker (no-op if the bytes are already identical), preserve
+// a declared adaptation, and
 // refuse loudly — an error, not a silent skip — if a different,
 // non-fathom-owned file already lives there. It returns the action taken
 // (created | updated | current).
@@ -392,6 +396,10 @@ func installSkillFile(iw *initWrites, destPath string, content []byte, stdout io
 	existing, err := os.ReadFile(destPath)
 	switch {
 	case err == nil:
+		if version := adaptedSkillVersion(existing, skillNameAt(destPath)); version != "" {
+			fmt.Fprintf(stdout, "ok %s (%s; preserved)\n", destPath, skillAdaptationNote(skillNameAt(destPath), version))
+			return "adapted", nil
+		}
 		if !strings.Contains(string(existing), skillMarker) {
 			return "", fmt.Errorf("refusing to overwrite %s: a file already exists there and is not fathom-owned (no %q marker) — rename/remove it, or this skill name collides with one of yours", destPath, skillMarker)
 		}

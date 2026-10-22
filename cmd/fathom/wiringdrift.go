@@ -87,6 +87,9 @@ func ownedSkillFiles(root, home string) []wiring.SkillFile {
 			}
 			return
 		}
+		if adaptedSkillVersion(data, name) != "" {
+			return
+		}
 		if bytes.Contains(data, []byte(skillMarker)) {
 			out = append(out, f)
 		}
