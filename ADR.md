@@ -5859,3 +5859,8 @@ committed the region deletes the file and drops the gate step. The CUE non-goal 
 - DM2, in force: none applies. An ADR status line is a deterministic oracle, and a model verdict would serve judgment as fact (I62).
 
 **Revisit when** RS-M2 reads below 6 of 8 (apply VB-40's own clause and reopen compile-time scope narrowing from mappings); a served-rule behavior reading shows no drop at n>=30; raw rows exceed 50% of served rows.
+
+**Fired 2026-10-21 (RS-M2).** The VB-40 offline reading read FAIL at 3 of 8 (`docs/bench/readings/rule-selection/vb40-offline.md`;
+precision 1.00, +4.5 to +9.2 ms p95 CPU): the d2 order serves the same 3 tasks as before it, so O3's wins-if (no gain over
+VB-40's baseline) is also met. The five misses' governing rules are compiled repo-wide (O1490), and rank (2) is empty on Go
+paths (O1491). The clause reopens compile-time scope narrowing from mappings; d1 to d6 stand until the owner decides.
