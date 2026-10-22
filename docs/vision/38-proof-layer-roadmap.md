@@ -399,6 +399,10 @@ names (I56). Fathom reports SPDX identifiers with their evidence and never judge
 own value is enforcement at the edit (a guard check), reach (shipped versus test-only) and one policy across the fleet.
 Wave 1 derives on read and adds no table.
 
+### 9.12 Amended 2026-10-22 (owner): multi-machine development
+
+Every machine serves its own checkouts through its own loopback fathom, with no central shared daemon or daemon-to-daemon calls; git moves code, attested receipts move evidence and index snapshots will move the index on existing operator carriers (ADR-078 D1–D3). The multi-machine guide and shipped `fathom-offload` skill ship now; receipt identity columns wait for RT-M1 PASS, and helper-machine cold start names an IXS phase 1 consumer after RT-M1 PASS and IXS-M0b parity, without unparking that plan.
+
 ## 10. Corrections to the memo (the tree or the memo itself disagreed)
 
 1. **`tests:` is taken.** Plan grammar v2 already has `tests:` (a `gone: callers` modifier,

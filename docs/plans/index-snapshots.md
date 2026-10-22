@@ -4,7 +4,7 @@ Design: `docs/design/index-snapshots.md` (accepted as a design, parked, 2026-10-
 `docs/design/index-snapshots-deployment.md`. Decision: ADR-069. Roadmap: `docs/vision/38-proof-layer-roadmap.md`
 section 9.4. Futures: F27, F70, F72, F73, F74, F3 as amended. Readings live under
 `docs/bench/readings/index-snapshots/`; every reading is $0 in model spend, and its bar is fixed here before any
-run (K19: never moved after the data).
+run (K19: never moved after the data). Named consumer: helper-machine cold start (ADR-078 D3); phase 1 starts after RT-M1 reads PASS.
 
 Parked, not scheduled. The owner prioritizes this work when ready, and no earlier than war1 landing and RT-M1
 reading (its first amended window closes 2026-10-19 00:00Z). Only phase 0 rides war1 (IXS-M0, IXS-0); war1 is

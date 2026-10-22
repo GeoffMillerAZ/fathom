@@ -1,0 +1,172 @@
+# Multi-machine development
+
+ADR-078 fixes the topology and job contract. The shipped `fathom-offload` skill teaches the same workflow. This is an operator recipe, not a fathom transport or placement service.
+
+## When to use helper machines
+
+Use a helper for a bounded build, test or agent task when the controller has a clear base commit, ownership boundary and integration check. Check the helper's other users and resources first. Remote Macs follow the same contract as any helper; OS-specific commands belong to the operator.
+
+## Topology
+
+Every machine runs its own loopback daemon over its own checkouts, only when fathom answers are needed there. No central shared daemon or daemon-to-daemon calls: an answer must be about the tree the agent edits, and loopback is the unauthenticated daemon's boundary. A local daemon fails open when the network does not (ADR-078 D1, I14).
+
+Three movers use their existing carriers: git moves code through ssh fetch or bundles; attested receipts (`test_runs`, ADR-067 decision 11) and gate logs move evidence with source identity; exported index snapshots will move the index once IXS is unparked (ADR-069 decisions 11–12). Fathom adds identity, never transport: it does not upload, fetch, sign or open a transfer port. Snapshot helper cold start waits for RT-M1 PASS and IXS-M0b parity.
+
+## Set up a helper
+
+Choose an unused job root under `~/work`, outside every git repository and Go module. Verify its ancestry before using it; do not assume the directory name proves isolation. Replace every angle-bracket placeholder before running commands. Use tools already authorized on the helper; authenticate each machine separately rather than copying credentials.
+
+```sh
+ssh '<user>@<helper>' 'uptime; vm_stat; df -h'
+```
+
+Use the orchestrator's terminal-multiplexer agent list as well. On non-Mac helpers use the platform's memory inspection command instead of `vm_stat`. Agree a concurrency cap with the helper's other users before heavy work. Never stop or restart their sessions, daemons or servers, and do not claim a busy agent session.
+
+On the helper, in a fresh shell:
+
+```sh
+export JOB_ROOT="$HOME/work/jobs/<job>"
+mkdir -p "$JOB_ROOT/tmp" "$JOB_ROOT/results" "$JOB_ROOT/fathom-home"
+export TMPDIR="$JOB_ROOT/tmp"
+export GOTMPDIR="$JOB_ROOT/tmp"
+export GOCACHE="$JOB_ROOT/go-build-cache"
+export FATHOM_HOME="$JOB_ROOT/fathom-home"
+go version
+fathom version
+codex --version
+claude --version
+git clone --no-checkout '<repository-url>' "$JOB_ROOT/checkout"
+cd "$JOB_ROOT/checkout"
+git switch -c '<job-branch>' '<base-commit>'
+export BASE_COMMIT='<base-commit>'
+test "$(git rev-parse HEAD)" = "$BASE_COMMIT"
+```
+
+`<base-commit>` is a full commit ID agreed with the controller, not a moving branch name. Check the toolchain against the checkout's pins (including `go.mod` and `env.lock` when present); only the chosen agent CLI is required. One checkout belongs to one job. Never run the job in a shared or user checkout.
+
+A helper needs a daemon only when the job needs fathom answers there. Ingest only the job's own checkouts into a job-owned store and start an unused loopback listener; choose `<loopback-address>` locally and never bind a non-loopback address. Do not reuse, stop or restart an existing server to claim its port.
+
+```sh
+fathom ingest --store "$JOB_ROOT/index.sqlite" --service '<service>' --path "$JOB_ROOT/checkout"
+fathom serve-http --store "$JOB_ROOT/index.sqlite" --addr '<loopback-address>' --call-log "$JOB_ROOT/results/mcp-calls.jsonl" > "$JOB_ROOT/results/daemon.log" 2>&1 &
+```
+
+Register MCP only within the task-owned project. `<loopback-agent-rpc-url>` is this helper's loopback listener with `/rpc/agent` appended; it never points across machines. For Codex, merge this table into the checkout's `.codex/config.toml` (create the directory if absent, preserve existing settings):
+
+```toml
+[mcp_servers.fathom]
+command = "fathom"
+args = ["serve-mcp", "--url", "<loopback-agent-rpc-url>"]
+```
+
+Codex loads project configuration only for trusted projects; see [OpenAI's MCP configuration documentation](https://developers.openai.com/codex/mcp). Do not use a global registration command. For Claude Code, from this checkout:
+
+```sh
+claude mcp add --scope project fathom -- fathom serve-mcp --url '<loopback-agent-rpc-url>'
+```
+
+This writes the project's `.mcp.json`. Keep job-specific MCP setup out of the returned code unless it is part of the task. Never edit global agent settings or copy authentication material to make a helper work.
+
+## The job contract
+
+- [ ] One task-owned checkout per job, never a shared or user checkout; pin and record the exact commit before work.
+- [ ] Both `TMPDIR` and `GOTMPDIR` point at a job-owned directory outside every git repository and Go module.
+- [ ] Start a helper-local daemon only if needed, ingest only its own checkouts, and register MCP project-locally for Codex or Claude Code; never edit global agent settings.
+- [ ] Never transfer an operational fathom store, credentials, private keys or a build cache directory.
+- [ ] Return a branch fetched over ssh or a `git bundle`, plus a result file with source identity in and out, exact commands, exit codes and artifact sha256 sums; the controller verifies all sums before integration.
+- [ ] Integrate through `review_diff` with `since` equal to the job base commit, then `fathom verify --strict` on a fresh scratch ingest of integrated HEAD.
+- [ ] Check helper load before heavy jobs, cap concurrency, and never stop or restart existing sessions or servers.
+
+Stamp identity in the job's own result file before work and again after it. Set `<host-label>` yourself; never obtain it with `hostname` or a host-name lookup. The controller records the expected base commit separately and compares it with the helper's input stamp.
+
+```sh
+stamp_identity() {
+  printf '\nsource identity %s\noperator host label: %s\n' "$1" '<host-label>'
+  git rev-parse HEAD HEAD^{tree}
+  git status --porcelain
+  git diff --binary | shasum -a 256
+  go version
+  uname -sm
+}
+stamp_identity in >> "$JOB_ROOT/results/result.md"
+```
+
+Record the purpose, base commit, concurrency cap, exact commands and their exit codes in that same file. The diff digest covers unstaged tracked changes: it does not hash staged or untracked contents. If either is present, record `git diff --cached --binary | shasum -a 256` too and preserve any relevant untracked input with its own sha256 sum; do not represent the unstaged digest as the whole dirty tree. Commit all intended returned code and record any remaining dirty state explicitly.
+
+Run each command with logging and retain its real exit status, for example:
+
+```sh
+printf '%s\n' 'go test -p <parallelism> ./...' >> "$JOB_ROOT/results/result.md"
+go test -p '<parallelism>' ./... > "$JOB_ROOT/results/tests.log" 2>&1
+job_rc=$?
+printf 'exit code: %s\n' "$job_rc" >> "$JOB_ROOT/results/result.md"
+stamp_identity out >> "$JOB_ROOT/results/result.md"
+```
+
+Do not use a logging pipeline that hides the command's exit code. The out stamp follows the last change and names the returned commit. These plain git and shell stamps are the current recipe, not new attested receipt columns. Platform (os/arch), operator host label, toolchain version, tree hash and dirty-diff digest in `test_runs` wait for RT-M1 PASS (ADR-078 D4).
+
+## Return and integrate
+
+Return committed code as either a bundle or a branch fetched over ssh. On the helper, produce the bundle and checksums of every returned artifact (add any other returned logs or receipts explicitly):
+
+```sh
+git bundle create "$JOB_ROOT/results/job.bundle" '<job-branch>' "^$BASE_COMMIT"
+git bundle verify "$JOB_ROOT/results/job.bundle"
+cd "$JOB_ROOT/results"
+shasum -a 256 job.bundle tests.log > SHA256SUMS
+cat SHA256SUMS >> result.md
+```
+
+Use the operator's existing file-transfer tool to bring `result.md`, `SHA256SUMS` and all named artifacts back. For the ssh-branch alternative, return the branch name and out commit in the result file, checksum the returned artifacts, and fetch it on the controller:
+
+```sh
+git fetch '<user>@<helper>:~/work/jobs/<job>/checkout' '<job-branch>'
+```
+
+For a bundle, first verify sums in the received artifact directory, then import into a task-owned integration checkout that contains the base commit:
+
+```sh
+shasum -a 256 -c SHA256SUMS
+cd '<integration-checkout>'
+git bundle verify '<received-artifacts>/job.bundle'
+git fetch '<received-artifacts>/job.bundle' '<job-branch>'
+```
+
+The ssh path must pass the same checksum check before integrating. Stop on a missing artifact, a mismatched sum, a changed base identity or an out commit different from the fetched result. Compare the result's input commit and tree with the controller's recorded base (`git rev-parse '<base-commit>' '<base-commit>^{tree}'`). Logs and stamps identify evidence; they do not by themselves authenticate an arbitrary sender.
+
+On the controller, integrate the verified result through the repository's normal branch workflow (for example, `git merge --no-ff FETCH_HEAD` in the task-owned integration checkout). Ensure its local fathom service is rooted at that checkout and refreshed for integrated HEAD, then call `review_diff` on the resulting diff with `since` exactly the recorded job base commit, not a moving branch. Example MCP arguments:
+
+```json
+{"service":"<service>","since":"<base-commit>"}
+```
+
+Resolve the review findings before accepting integration. Then build the integrated HEAD and ingest it into a fresh, never-reused scratch-store path owned by this job, with no shared daemon or store involved:
+
+```sh
+cd '<integration-checkout>'
+git rev-parse HEAD HEAD^{tree}
+fathom ingest --store '<fresh-scratch-store>' --service '<service>' --path .
+fathom verify --strict --store '<fresh-scratch-store>' --service '<service>' --plan 'docs/plans/<plan>.md'
+```
+
+Run the repository's required tests and repeat strict verification for each affected plan. Record the integrated commit, exact commands, exit codes and verified sums in the controller's result. A failed or operationally incomplete verify is not integration proof. The real round-trip reading MM-M1 remains open until this happens on a real remote job; do not manufacture a reading from these instructions.
+
+## Remote agent sessions
+
+Write the brief using [agent-waves.md](agent-waves.md): task ownership, exact base commit, allowed files, required checks, concurrency cap, scratch and result paths, and the return contract. Use a fresh non-interactive session on the helper, never resume or reuse a busy session. For example, inside the helper shell already configured above:
+
+```sh
+codex exec -s workspace-write -C "$JOB_ROOT/checkout" --add-dir "$JOB_ROOT/results" -o "$JOB_ROOT/results/agent.md" '<brief>' > "$JOB_ROOT/results/agent.log" 2>&1
+agent_rc=$?
+printf 'codex exec exit code: %s\n' "$agent_rc" >> "$JOB_ROOT/results/result.md"
+```
+
+`-o` writes the last message, not a complete command/evidence log; the brief must still require the result contract and artifact sums. These flags are documented in [OpenAI's non-interactive guide](https://developers.openai.com/codex/noninteractive). A Claude Code job can use a fresh `claude -p '<brief>'` from the task checkout, with its output and exit code captured in the same way. Agent execution uses the helper's separately authorized authentication and model budget. Include `agent.md` and `agent.log` (or the Claude output) in `SHA256SUMS` when returning them.
+
+## What fathom does not do
+
+Fathom does not schedule, place or monitor work across machines, or read host load. The orchestrator uses its own tools to check load and cap concurrency. Static job peak memory and duration from receipts are future F92: at least 30 attested runs with resource fields AND a written orchestrator request are required before promotion.
+
+Threads stay per-machine in `~/.fathom/threads.jsonl`. The controlling machine owns the thread ledger; helpers report through job result files. Observations are repository files and move by git. No thread or observation sync is built.
+
+Never transfer an operational fathom store, credentials, private keys or a build cache directory. Exported, scrubbed index snapshots are a separate future artifact under ADR-069: helper cold start with `export snapshot` and `ingest --cache-from` waits for RT-M1 PASS and IXS-M0b parity. Fathom never uploads, fetches, signs or opens a transfer port. Do not tunnel a shared daemon or add daemon-to-daemon calls.

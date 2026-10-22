@@ -42,6 +42,13 @@ the 2026-09-29 wave carried a host name for want of it).
   capture the owner's service. `fathom doctor`'s `service_roots` row names a service whose root is
   gone (EW-20).
 
+## Workers on another machine
+
+Use the [multi-machine guide](multi-machine.md) and shipped `fathom-offload` skill for remote jobs (ADR-078).
+Give each job an exact base commit, its own checkout and external scratch, and a result file with source identity and sha256 sums.
+The helper serves only its own checkouts through loopback; the controller verifies returned artifacts and integration.
+Check helper load and cap concurrency; never reuse a busy session or stop its servers.
+
 ## Read a hot file by the part you need (EW-10)
 
 Before opening `ADR.md`, `CHANGELOG.md`, `Taskfile.yml` or a design doc whole, a worker asks docs
