@@ -108,6 +108,8 @@ type Inputs struct {
 	// package doc comment.
 	Nodes      []core.SymbolNode
 	TypedEdges []core.Edge
+	// ResolvedGraph is the caller's immutable compiler-resolved graph.
+	ResolvedGraph *callgraph.Graph
 	// Fingerprint returns the store's current content fingerprint for a
 	// repo-relative file (store.Fingerprint — the same view review's
 	// PersistInput.ScopeFingerprint reads), digested per file the closure
@@ -273,7 +275,10 @@ func closureComponent(in Inputs) (string, []string) {
 	}
 	sort.Strings(unknown)
 
-	g := callgraph.BuildResolved(in.Nodes, in.TypedEdges)
+	g := in.ResolvedGraph
+	if g == nil {
+		g = callgraph.BuildResolved(in.Nodes, in.TypedEdges)
+	}
 	visited := map[string]bool{}
 	queue := make([]string, 0, len(changed))
 	for _, n := range in.Nodes {
