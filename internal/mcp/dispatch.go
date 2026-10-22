@@ -76,6 +76,9 @@ func (s *Server) registerTool(desc toolDescriptor, h func(ctx context.Context, a
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if citationTool(desc.Name) {
+		h = citationHandler(s.backend, h)
+	}
 	s.tools = append(s.tools, toolEntry{desc: desc, handler: budgetedHandler(h, desc.declaredBudget), class: class})
 }
 
@@ -429,6 +432,9 @@ func (s *Server) handleToolsCallMeta(ctx context.Context, params json.RawMessage
 	ctx, collector := scope.WithCollector(ctx)
 	// RT-150: a read whose auto-refresh was deferred says so.
 	ctx, refreshed := withRefreshNotes(ctx)
+	if citationTool(te.desc.Name) {
+		ctx = context.WithValue(ctx, citationReadsKey{}, newCitationReads(ctx, s.backend, serviceOfArgs(p.Arguments), s.RefreshQueue()))
+	}
 
 	result, rpcErr := runHandler(ctx, te, p.Arguments)
 	// RT-57 (§3.4): the answer names itself — abandoned, partial or ok.

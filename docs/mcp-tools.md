@@ -56,6 +56,10 @@ A tool result is `content` (one text block holding the JSON result) and, for an 
 
 When a read was answered from an index that may be behind the working tree (a refresh deferred under load, or queued and not yet run), the result object itself carries `freshness`: service id to a one-line disclosure, for example `deferred (shed) -- served from the index as it stands; freshness not checked`. It is in the text block and in `structuredContent`, so the agent reads it with the answer. The envelope's `refresh` key still carries the same map. A result with no refresh note has no `freshness` member. A tool that already returns its own `freshness` member keeps it, and the envelope adds nothing.
 
+`find_symbol`, `symbol_context`, `obligations` and `review_diff` check cited files against the index's existing content fingerprints. A citation whose bytes differ carries `citation_status: {state: "stale", reason: ...}`; a service refresh produces `refreshing`, and unavailable source identity produces `unknown`. These states qualify the indexed location, even when Git HEAD has not changed. A `symbol_context` snippet shares its definition's status; stale or refreshing definition snippets are withheld. Clean citations retain their existing JSON bytes. Checks read only cited files, through the same containment, suppression and size limits as source reads.
+
+`read_source` reads the working tree by default and returns `source_identity: {state: "working_tree", content_sha256: ...}` for the exact bytes it sliced. With `ref`, it returns `source_identity: {state: "commit", commit: ..., content_sha256: ...}` alongside the existing `ref` and resolved `commit`. A working-tree read does not assert that the index matches those bytes.
+
 ---
 
 ## Secrets: what a read tool serves (SR-76)

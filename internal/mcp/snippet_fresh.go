@@ -77,7 +77,8 @@ func serveDefinitionSnippet(ctx context.Context, backend QueryInterface, service
 	if def.FilePath == "" || def.Line <= 0 {
 		return
 	}
-	if snippetFileChanged(ctx, backend, service, def.FilePath) {
+	_, pointIdentity := backend.(sourceFingerprintBackend)
+	if !pointIdentity && snippetFileChanged(ctx, backend, service, def.FilePath) {
 		// The definition is the index's, the text would be the working
 		// tree's; never pair them.
 		why := "file changed since the index"
@@ -89,6 +90,10 @@ func serveDefinitionSnippet(ctx context.Context, backend QueryInterface, service
 	}
 	rng, err := readSourceRange(ctx, backend, service, def.FilePath, def.Line, 0, symbolContextSnippetMaxLines, sourceReadMaxBytes)
 	if err != nil || len(rng.Lines) == 0 {
+		return
+	}
+	if rng.Citation.State == "stale" || rng.Citation.State == "refreshing" {
+		result["snippet_withheld"] = rng.Citation.Reason
 		return
 	}
 	snippet := make([]any, len(rng.Lines))
