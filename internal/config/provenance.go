@@ -48,6 +48,20 @@ func (p Provenance) clone() Provenance {
 // layer's value, which is what makes user+project layering additive rather
 // than a full replacement.
 func mergeLayer(cfg *Config, prov Provenance, raw map[string]any, source Source, path string) {
+	if gm, ok := raw["gate"].(map[string]any); ok {
+		if v, ok := gm["accept_receipts"].(bool); ok {
+			cfg.Gate.AcceptReceipts = v
+			prov["gate.accept_receipts"] = SourceInfo{source, path}
+		}
+		if v, ok := stringField(gm, "receipts_dir"); ok {
+			cfg.Gate.ReceiptsDir = v
+			prov["gate.receipts_dir"] = SourceInfo{source, path}
+		}
+		if v, ok := stringField(gm, "host_label"); ok {
+			cfg.Gate.HostLabel = v
+			prov["gate.host_label"] = SourceInfo{source, path}
+		}
+	}
 	if v, ok := stringField(raw, "default_profile"); ok {
 		cfg.DefaultProfile = v
 		prov["default_profile"] = SourceInfo{source, path}

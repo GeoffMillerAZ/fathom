@@ -221,6 +221,7 @@ func TestRefusedRepoPaths_CoversEveryRepoPathField(t *testing.T) {
 	cfg := Config{
 		Connector: Connector{Include: []string{"coverage", "/abs"}},
 		Findings:  Findings{Outbox: "../x.json"},
+		Gate:      Gate{ReceiptsDir: "/gate"},
 		Tests:     Tests{ResultsDir: "/r", ArtifactsDir: "/a"},
 		Work:      Work{CISummaries: []CISummary{{Path: "ci/ok.xml"}, {Path: "/ci.xml"}}},
 		Typed:     Typed{SkipModules: []string{"calibration/oracles/**", "../elsewhere/**"}},
@@ -240,7 +241,7 @@ func TestRefusedRepoPaths_CoversEveryRepoPathField(t *testing.T) {
 			t.Errorf("repo-path field %s is not checked by RefusedRepoPaths", fs.Key)
 		}
 	}
-	if len(got) != 6 {
-		t.Errorf("refused = %v, want the six escaping values only", got)
+	if len(got) != 7 {
+		t.Errorf("refused = %v, want the seven escaping values only", got)
 	}
 }

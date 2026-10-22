@@ -277,3 +277,8 @@ exampleReadouts: #Config & {
 
 // CB-1/CB-2: lossless hook context dedupe can be switched off.
 hookDedupeOff: #Config & {hooks: dedupe: false}
+
+// Local gate evidence defaults to opt-out; labels are explicitly supplied.
+gateEvidence: #Config & {
+	gate: {accept_receipts: false, receipts_dir: "workspace/receipts", host_label: "helper"}
+}

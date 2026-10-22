@@ -96,6 +96,9 @@ var fieldScopes = []FieldScope{
 	{"findings.outbox", ScopeRepoPath, "a repo-relative file the session hook imports (findings_outbox.go)"},
 	{"findings.producers", ScopeBehaviour, "an allow-list of producer ids"},
 	{"findings.subject", ScopeBehaviour, "the review-kit subject this repository maps to"},
+	{"gate.accept_receipts", ScopeBehaviour, "the repository opts in to exact-tree gate evidence; default off"},
+	{"gate.host_label", ScopeUserOnly, "an operator-named machine label, never a hostname read"},
+	{"gate.receipts_dir", ScopeRepoPath, "the directory for local gate evidence; project values stay within the repository"},
 	{"guards.enforce", ScopeBehaviour, "turns the repository's own guards advisory"},
 	{"hooks.claim_check", ScopeBehaviour, "the claim check runs nothing: it reads the final message and the hook log's test-run rows (claimcheck.go)"},
 	{"hooks.dedupe", ScopeBehaviour, "suppresses unchanged hook context within one agent session"},
@@ -297,6 +300,7 @@ func RefusedRepoPaths(root string, cfg Config) []RepoPathRefusal {
 		check(fmt.Sprintf("connector.include[%d]", i), e)
 	}
 	check("findings.outbox", cfg.Findings.Outbox)
+	check("gate.receipts_dir", cfg.Gate.ReceiptsDir)
 	check("tests.artifacts_dir", cfg.Tests.ArtifactsDir)
 	check("tests.results_dir", cfg.Tests.ResultsDir)
 	for i, g := range cfg.Typed.SkipModules {

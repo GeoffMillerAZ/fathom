@@ -291,3 +291,5 @@ package config
 
 // The hooks dedupe switch is boolean, never a string:
 // badHookDedupe: #Config & {hooks: dedupe: "off"}
+
+// gateEvidence: #Config & {gate: {accept_receipts: "yes"}} // bool required
