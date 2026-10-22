@@ -26,7 +26,15 @@ Unreleased changes wait as fragments under docs/changelog/unreleased/; the relea
 
 ## [0.18.0] — 2026-10-22
 
-Release impact: minor
+Release impact: major (pre-1.0: breaking bumps minor)
+
+**What this release is.** Advice that earns its tokens, and evidence that a change landed. Hooks inject only what is ready, instructional and new to the context: a channel whose prerequisites are missing stays silent, raw rules serve only sentences that read as instructions, and a repeated rule is dropped per rule and context on Claude Code and Codex; `fathom doctor` shows each channel's state and estimated tokens per day. Subagents receive the parent's checked discoveries and, opt-in, its live exploration map. Clones and worktrees resolve to their indexed service. The gate can record clean-tree receipts, a record-id check catches colliding ADR and plan ids, and contributor gates reject merge debris and commit messages without evidence. For the game-development consumer, certification and review use less memory (O13) and init preserves consumer-owned skills and user configuration. Decisions: ADR-080, ADR-081.
+
+### Breaking
+
+- Hook output: raw governing rules print only sentences that read as instructions (at most two per section), and a section without one prints nothing. Obligations are deduplicated per rule and context on Claude Code and Codex (`[hooks] dedupe = false` restores every injection). See `docs/upgrades/0.18.0-hook-output.md`.
+- Hook output: a hook whose prerequisites are missing (no index for the root, no matching registration) prints nothing and logs a named readiness skip, and heading-only post-edit rules are omitted.
+- `stop-hook` and the claim check report a criterion as unknown, not failed, when its contract path has uncommitted files and the index cannot prove it yet; other failures still fail and `--block` still blocks proven failures.
 
 ### Added
 
@@ -52,11 +60,8 @@ Release impact: minor
 - Doctor's duplicate-registration check compares exact commands across user and project scopes and ignores silent hook bindings. Claude Code user-path diagnostics honor `CLAUDE_CONFIG_DIR`.
 - `lefthook_gates` accepts local pre-push wrappers reaching both `task validate` and `fathom verify --strict` within two script levels and names the Taskfile or script proving the gate. Native hooks, `core.hooksPath` and `.husky/pre-push` are inspected; without lefthook configuration, a hook reaching neither gate remains skipped, while a wrapper reaching exactly one fails.
 - The Learn page lists the opt-in hook seams with their set commands, and the project wiring page shows doctor's channel health table; both match the CLI JSON.
-- Hooks with unavailable advice prerequisites stay silent and log a named readiness skip independently of advisory stamp errors. Heading-only post-edit rules are omitted while findings, spec references and freshness notes remain available.
 - Fixed-size hook health stamps record state transitions and the last emission day. Unsupported seams and unused maps do not appear in the primer; inactive features share its existing attention line and budget.
 - Primer truncation names the cut even when every thread-brief line is dropped.
-- Stop and claim hooks report absent-index criteria as unknown only when the contract path has uncommitted files, preserving the original criterion and adding a freshness note. Other failures remain failures; proven failures keep blocking every Stop with `--block`, while advisory sets are reported once per change.
-- Obligations are shown per rule and context on Claude Code and Codex, with immediate delivery when rendered text, tags or staleness markers change. Capacity evicts the oldest rule entries; suppressed counts include distinct rules with correct pluralization. `[hooks] dedupe = false` restores full injections.
 
 ### Fixed
 
@@ -74,7 +79,6 @@ Release impact: minor
 - Certification gates compare claim identities, settle duplicate markers, and compile newly indexed declared tests.
 - Certification ingests preserve test-file citations across recompiles and sweep existing claims when declarations or watermarks change, marking moved tests stale and vanished tests contradicted.
 - Reviews preserve typed impact when an optional memo graph cannot be loaded or built.
-- Extract up to two bounded instructions from raw governing sections and ADR Decision blocks. Strip decision-item titles, keep wrapped bold text in its paragraph, and preserve a preceding question condition together with its instruction or serve neither. Preserve code spans and identifiers, skip tables and examples, and withhold sections without instructions.
 - Apply ADR standing and completed-plan filters to raw and compiled obligations. Tag partly superseded rules and count inactive rules on the existing hook log row.
 - Re-find stale or refreshing raw citations in live content once per file per call, retain relevance tokens, and report citation freshness. Fresh citations keep their stored line ranges without an extra file read.
 - Isolate verdict and rule-outcome memos by agent, and suppress user verdict requests in subagents.
