@@ -107,10 +107,11 @@ type Handler func(ctx context.Context, params json.RawMessage) (any, *rpcError)
 // Server is a JSON-RPC 2.0 MCP server that dispatches requests to Handlers.
 // Handlers are registered via Register before the first Serve call.
 type Server struct {
-	mu       sync.Mutex
-	handlers map[string]Handler
-	tools    []toolEntry // registered MCP tools (see dispatch.go)
-	backend  QueryInterface
+	mu        sync.Mutex
+	handlers  map[string]Handler
+	tools     []toolEntry // registered MCP tools (see dispatch.go)
+	backend   QueryInterface
+	reviewNow func() time.Time
 
 	// activeProfile guards which tools appear in tools/list.
 	profileMu sync.RWMutex
@@ -167,9 +168,14 @@ func (s *Server) DropCaches() {
 
 // NewServer constructs a Server wired to backend. If backend is nil the server
 // can still serve initialize / ping / tools/list / set_profile; tool calls
-// that require the backend will return ErrCodeInternal.
-func NewServer(backend QueryInterface) *Server {
-	return newServer(backend, nil, nil, nil)
+// that require the backend will return ErrCodeInternal. The optional clock
+// controls review source budgets and finding timestamps.
+func NewServer(backend QueryInterface, clock ...func() time.Time) *Server {
+	s := newServer(backend, nil, nil, nil)
+	if len(clock) > 0 && clock[0] != nil {
+		s.reviewNow = clock[0]
+	}
+	return s
 }
 
 // NewServerWithLogger constructs a Server that writes JSONL call-log entries to
@@ -206,6 +212,7 @@ func newServer(backend QueryInterface, fleet FleetBackend, logger *CallLogger, m
 	s := &Server{
 		handlers:   make(map[string]Handler),
 		backend:    backend,
+		reviewNow:  time.Now,
 		startTime:  time.Now(),
 		callLogger: logger,
 	}

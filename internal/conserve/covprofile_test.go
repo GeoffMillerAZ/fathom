@@ -8,6 +8,7 @@ package conserve
 // section — by MAXIMUM count.
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -49,7 +50,7 @@ func TestLoadCoverage_MapsModulePathsAndMergesBlocks(t *testing.T) {
 		t.Fatalf("WriteFile profile: %v", err)
 	}
 
-	prof, skipped, err := LoadCoverage(root, profPath)
+	prof, skipped, err := LoadCoverage(context.Background(), root, profPath)
 	if err != nil {
 		t.Fatalf("LoadCoverage: %v", err)
 	}
@@ -85,7 +86,7 @@ func TestLoadCoverage_MapsModulePathsAndMergesBlocks(t *testing.T) {
 func TestLoadCoverage_MissingFile(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, root, "go.mod", "module example.com/outer\n\ngo 1.22\n")
-	if _, _, err := LoadCoverage(root, filepath.Join(root, "does-not-exist.out")); err == nil {
+	if _, _, err := LoadCoverage(context.Background(), root, filepath.Join(root, "does-not-exist.out")); err == nil {
 		t.Fatal("want an error for a missing profile file")
 	}
 }
@@ -109,7 +110,7 @@ func TestLoadCoverage_SkipsTestdataAndDotUnderscoreModules(t *testing.T) {
 		t.Fatalf("WriteFile profile: %v", err)
 	}
 
-	prof, skipped, err := LoadCoverage(root, profPath)
+	prof, skipped, err := LoadCoverage(context.Background(), root, profPath)
 	if err != nil {
 		t.Fatalf("LoadCoverage: %v", err)
 	}
@@ -145,7 +146,7 @@ func TestLoadCoverage_IdenticalModulePathPrefersNearestDir(t *testing.T) {
 		t.Fatalf("WriteFile profile: %v", err)
 	}
 
-	prof, _, err := LoadCoverage(root, profPath)
+	prof, _, err := LoadCoverage(context.Background(), root, profPath)
 	if err != nil {
 		t.Fatalf("LoadCoverage: %v", err)
 	}

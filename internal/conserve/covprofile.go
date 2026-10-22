@@ -10,6 +10,7 @@ package conserve
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -95,14 +96,14 @@ var coverProfileLineRe = regexp.MustCompile(`^(.+):(\d+)\.(\d+),(\d+)\.(\d+) (\d
 // `-coverpkg=./...` profile run across many test binaries) are merged by
 // MAXIMUM count: the block ran if ANY test binary's own run of it shows a
 // nonzero count.
-func LoadCoverage(root, profilePath string) (CoverageProfile, []string, error) {
+func LoadCoverage(ctx context.Context, root, profilePath string) (CoverageProfile, []string, error) {
 	f, err := os.Open(profilePath)
 	if err != nil {
 		return CoverageProfile{}, nil, fmt.Errorf("opening %s: %w", profilePath, err)
 	}
 	defer f.Close()
 
-	modules, err := findModules(root)
+	modules, err := findModules(ctx, root)
 	if err != nil {
 		return CoverageProfile{}, nil, fmt.Errorf("scanning %s for go.mod files: %w", root, err)
 	}
@@ -118,6 +119,9 @@ func LoadCoverage(root, profilePath string) (CoverageProfile, []string, error) {
 	scanner.Buffer(make([]byte, 0, 64*1024), 8*1024*1024)
 	first := true
 	for scanner.Scan() {
+		if err := ctx.Err(); err != nil {
+			return CoverageProfile{}, nil, err
+		}
 		line := scanner.Text()
 		if first {
 			first = false
@@ -218,9 +222,12 @@ type goModule struct {
 // over a deeper, nested duplicate, and a final lexical tie-break on the
 // directory keeps the order fully deterministic (never an unstable
 // sort's arbitrary pick).
-func findModules(root string) ([]goModule, error) {
+func findModules(ctx context.Context, root string) ([]goModule, error) {
 	var mods []goModule
 	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if err != nil {
 			return err
 		}
@@ -237,9 +244,16 @@ func findModules(root string) ([]goModule, error) {
 		if d.Name() != "go.mod" {
 			return nil
 		}
-		b, rerr := os.ReadFile(p)
+		relFile, rerr := filepath.Rel(root, p)
 		if rerr != nil {
+			return nil
+		}
+		b, ok, rerr := readWorktreeFile(ctx, root, relFile)
+		if rerr != nil || !ok {
 			return nil // an unreadable go.mod names no module; never fatal to the whole scan
+		}
+		if err := ctx.Err(); err != nil {
+			return err
 		}
 		mp, ok := moduleDeclFrom(b)
 		if !ok {

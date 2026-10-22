@@ -14,7 +14,6 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -39,28 +38,57 @@ func (surfacePlane) Name() string { return "surface" }
 // every removed/changed key — Declared from in.Declarations, exactly as
 // I45 requires. A removed/changed `route:` key additionally gets
 // ConsumerLosses' cross-repo consumer findings appended. Missing is
-// non-empty only when Input itself cannot read file content at all (a
-// caller-built Input with no BaseFile/HeadFile) — the plane's core
-// mechanism needs nothing else (no store, no typed pass), so it is
-// UNPROVEN far less often than integrity/absence.
+// names unreadable input and cancellation rather than treating either as
+// absent. The file contents are released after each extraction.
 func (surfacePlane) Check(ctx context.Context, in Input) ([]Finding, []string) {
 	if in.BaseFile == nil || in.HeadFile == nil {
 		return nil, []string{"no base/head file reader"}
 	}
 
-	var baseFiles, headFiles []inventory.File
-	for _, path := range in.ChangedFiles {
-		if b, ok, err := in.BaseFile(path); err == nil && ok {
-			baseFiles = append(baseFiles, inventory.File{Path: path, Content: b})
-		}
-		if h, ok, err := in.HeadFile(path); err == nil && ok {
-			headFiles = append(headFiles, inventory.File{Path: path, Content: h})
-		}
-	}
-
 	patterns := repoSurfacePatterns(in.Root)
-	baseItems := inventory.Extract(baseFiles, patterns)
-	headItems := inventory.Extract(headFiles, patterns)
+	base, head := inventory.NewAccumulator(patterns), inventory.NewAccumulator(patterns)
+	var missing []string
+	for _, path := range in.ChangedFiles {
+		if err := ctx.Err(); err != nil {
+			missing = append(missing, "surface scan canceled: "+err.Error())
+			break
+		}
+		if !base.AcceptsPath(path) {
+			continue
+		}
+		b, ok, err := in.BaseFile(path)
+		if err != nil {
+			missing = append(missing, fmt.Sprintf("base %s: %v", path, err))
+		} else if ok {
+			base.Add(inventory.File{Path: path, Content: b})
+		}
+		b = nil
+		if err := ctx.Err(); err != nil {
+			missing = append(missing, "surface scan canceled: "+err.Error())
+			break
+		}
+		h, ok, err := in.HeadFile(path)
+		if err != nil {
+			missing = append(missing, fmt.Sprintf("head %s: %v", path, err))
+		} else if ok {
+			head.Add(inventory.File{Path: path, Content: h})
+		}
+		h = nil
+	}
+	if err := ctx.Err(); err != nil && len(missing) == 0 {
+		missing = append(missing, "surface scan canceled: "+err.Error())
+	}
+	if len(missing) > 0 {
+		return nil, missing
+	}
+	baseItems := base.Items()
+	if err := ctx.Err(); err != nil {
+		return nil, []string{"surface scan canceled: " + err.Error()}
+	}
+	headItems := head.Items()
+	if err := ctx.Err(); err != nil {
+		return nil, []string{"surface scan canceled: " + err.Error()}
+	}
 	delta := inventory.Diff(baseItems, headItems)
 
 	baseByKey := make(map[string]inventory.Item, len(baseItems))
@@ -74,6 +102,9 @@ func (surfacePlane) Check(ctx context.Context, in Input) ([]Finding, []string) {
 
 	var findings []Finding
 	for _, key := range delta.Removed {
+		if err := ctx.Err(); err != nil {
+			return nil, []string{"surface scan canceled: " + err.Error()}
+		}
 		it := baseByKey[key]
 		findings = append(findings, Finding{
 			Plane: "surface", Kind: "removed", Key: key,
@@ -89,6 +120,9 @@ func (surfacePlane) Check(ctx context.Context, in Input) ([]Finding, []string) {
 		findings = append(findings, ConsumerLosses(ctx, in, key)...)
 	}
 	for _, key := range delta.Changed {
+		if err := ctx.Err(); err != nil {
+			return nil, []string{"surface scan canceled: " + err.Error()}
+		}
 		bi, hi := baseByKey[key], headByKey[key]
 		findings = append(findings, Finding{
 			Plane: "surface", Kind: "changed", Key: key,
@@ -105,6 +139,9 @@ func (surfacePlane) Check(ctx context.Context, in Input) ([]Finding, []string) {
 		findings = append(findings, ConsumerLosses(ctx, in, key)...)
 	}
 
+	if err := ctx.Err(); err != nil {
+		return nil, []string{"surface scan canceled: " + err.Error()}
+	}
 	return findings, nil
 }
 
@@ -161,6 +198,9 @@ func ConsumerLosses(ctx context.Context, in Input, key string) []Finding {
 
 	var findings []Finding
 	for _, id := range ids {
+		if ctx.Err() != nil {
+			return nil
+		}
 		if id == in.Service {
 			continue
 		}
@@ -168,7 +208,10 @@ func ConsumerLosses(ctx context.Context, in Input, key string) []Finding {
 		if merr != nil || !found || meta.Path == "" {
 			continue
 		}
-		for _, call := range walkClientCalls(meta.Path) {
+		for _, call := range walkClientCalls(ctx, meta.Path) {
+			if ctx.Err() != nil {
+				return nil
+			}
 			if call.Method != method || call.Template != template {
 				continue
 			}
@@ -216,9 +259,12 @@ func parseRouteKey(rest string) (method, template string, ok bool) {
 // that does not exist at all, yields no calls rather than an error —
 // root may legitimately be stale (a service recorded at ingest time,
 // since moved or removed).
-func walkClientCalls(root string) []serviceref.ClientCall {
+func walkClientCalls(ctx context.Context, root string) []serviceref.ClientCall {
 	var out []serviceref.ClientCall
 	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if err != nil {
 			return nil // best-effort: skip unreadable entries, never abort the walk
 		}
@@ -232,13 +278,13 @@ func walkClientCalls(root string) []serviceref.ClientCall {
 		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 			return nil
 		}
-		src, rerr := os.ReadFile(path)
-		if rerr != nil {
-			return nil
-		}
 		rel, relErr := filepath.Rel(root, path)
 		if relErr != nil {
 			rel = path
+		}
+		src, _, rerr := readWorktreeFile(ctx, root, rel)
+		if rerr != nil {
+			return nil
 		}
 		out = append(out, serviceref.ExtractClientCalls("go", filepath.ToSlash(rel), src)...)
 		return nil

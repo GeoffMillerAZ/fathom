@@ -33,7 +33,6 @@ import (
 	"go/parser"
 	"go/token"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -49,21 +48,36 @@ func init() { Register(deprecatedCallersPlane{}) }
 // plane's own file registering itself is what lets two workers land a
 // plane apiece in the same wave without ever touching the same file
 // (conserve.go's package doc comment).
-type deprecatedCallersPlane struct{}
+type deprecatedParser func(string, []byte) (*ast.File, error)
+
+type deprecatedCallersPlane struct{ parse deprecatedParser }
 
 func (deprecatedCallersPlane) Name() string { return "absence" }
 
-func (deprecatedCallersPlane) Check(ctx context.Context, in Input) ([]Finding, []string) {
-	return DeprecatedCallers(in)
+func (p deprecatedCallersPlane) Check(ctx context.Context, in Input) ([]Finding, []string) {
+	if p.parse == nil {
+		return DeprecatedCallers(ctx, in)
+	}
+	return deprecatedCallers(ctx, in, p.parse)
 }
 
 // DeprecatedCallers is deprecatedCallersPlane's own analysis (CV-30),
 // callable directly (a test, or a caller that wants just this check).
-func DeprecatedCallers(in Input) ([]Finding, []string) {
+func DeprecatedCallers(ctx context.Context, in Input) ([]Finding, []string) {
+	return deprecatedCallers(ctx, in, nil)
+}
+
+func deprecatedCallers(ctx context.Context, in Input, parse deprecatedParser) ([]Finding, []string) {
 	if in.Root == "" {
 		return nil, []string{"no corpus root: cannot find symbols documented Deprecated:"}
 	}
-	deprecated, err := deprecatedSymbolNames(in.Root)
+	var deprecated map[string]bool
+	var err error
+	if parse == nil {
+		deprecated, err = deprecatedSymbolNames(ctx, in.Root)
+	} else {
+		deprecated, err = deprecatedSymbolNamesWithParser(ctx, in.Root, parse)
+	}
 	if err != nil {
 		return nil, []string{fmt.Sprintf("scanning %s for Deprecated: symbols: %v", in.Root, err)}
 	}
@@ -74,6 +88,9 @@ func DeprecatedCallers(in Input) ([]Finding, []string) {
 	var findings []Finding
 	var missing []string
 	for _, path := range in.ChangedFiles {
+		if err := ctx.Err(); err != nil {
+			return nil, []string{err.Error()}
+		}
 		if !strings.HasSuffix(path, ".go") {
 			continue
 		}
@@ -85,6 +102,9 @@ func DeprecatedCallers(in Input) ([]Finding, []string) {
 		if !headOK {
 			continue // deleted at head — no NEW call site can live there
 		}
+		if err := ctx.Err(); err != nil {
+			return nil, []string{err.Error()}
+		}
 		headCalls := callSitesOf(path, headBody, deprecated)
 		if len(headCalls) == 0 {
 			continue
@@ -94,6 +114,9 @@ func DeprecatedCallers(in Input) ([]Finding, []string) {
 		if err != nil {
 			missing = append(missing, fmt.Sprintf("%s: reading base content: %v", path, err))
 			continue
+		}
+		if err := ctx.Err(); err != nil {
+			return nil, []string{err.Error()}
 		}
 		var baseNames map[string]bool
 		if baseOK {
@@ -195,9 +218,21 @@ func calleeName(fun ast.Expr) string {
 // matching (above) only ever compares bare selector names, so the two
 // sides of the comparison can never disagree over a qualified name a
 // single-file AST walk has no way to resolve anyway.
-func deprecatedSymbolNames(root string) (map[string]bool, error) {
+func deprecatedSymbolNames(ctx context.Context, root string) (map[string]bool, error) {
+	return deprecatedSymbolNamesWithParser(ctx, root, nil)
+}
+
+func deprecatedSymbolNamesWithParser(ctx context.Context, root string, parse deprecatedParser) (map[string]bool, error) {
+	if parse == nil {
+		parse = func(path string, body []byte) (*ast.File, error) {
+			return parser.ParseFile(token.NewFileSet(), path, body, parser.ParseComments)
+		}
+	}
 	names := map[string]bool{}
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if err != nil {
 			return err
 		}
@@ -214,12 +249,21 @@ func deprecatedSymbolNames(root string) (map[string]bool, error) {
 		if !strings.HasSuffix(path, ".go") {
 			return nil
 		}
-		body, rerr := os.ReadFile(path)
+		rel, rerr := filepath.Rel(root, path)
 		if rerr != nil {
+			return nil
+		}
+		body, ok, rerr := readWorktreeFile(ctx, root, rel)
+		if rerr != nil || !ok {
 			return nil // unreadable file: skip it, never fail the whole scan
 		}
-		fset := token.NewFileSet()
-		af, perr := parser.ParseFile(fset, path, body, parser.ParseComments)
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		af, perr := parse(path, body)
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if perr != nil {
 			return nil
 		}

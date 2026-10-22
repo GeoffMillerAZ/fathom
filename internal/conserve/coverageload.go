@@ -13,6 +13,7 @@ package conserve
 // `conservation` dimension carries the counts" already promised against
 // — CV-65).
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -48,6 +49,15 @@ import (
 // samples them (ResidueReport.CoverageUnmapped) rather than letting a
 // partial mapping pass for a complete one.
 func LoadConfiguredCoverage(in *Input, root, metaPathOverride string) {
+	LoadConfiguredCoverageContext(context.Background(), in, root, metaPathOverride)
+}
+
+// LoadConfiguredCoverageContext carries request cancellation into the module walk.
+func LoadConfiguredCoverageContext(ctx context.Context, in *Input, root, metaPathOverride string) {
+	if err := ctx.Err(); err != nil {
+		in.CoverageLoadError = err.Error()
+		return
+	}
 	explicit := metaPathOverride != ""
 	metaPath := metaPathOverride
 	if metaPath == "" {
@@ -99,7 +109,7 @@ func LoadConfiguredCoverage(in *Input, root, metaPathOverride string) {
 	if !filepath.IsAbs(profilePath) {
 		profilePath = filepath.Join(filepath.Dir(metaPath), profilePath)
 	}
-	prof, skipped, err := LoadCoverage(root, profilePath)
+	prof, skipped, err := LoadCoverage(ctx, root, profilePath)
 	if err != nil {
 		in.CoverageLoadError = err.Error()
 		return

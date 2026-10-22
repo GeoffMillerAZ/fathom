@@ -453,6 +453,8 @@ type reviewDiffResult struct {
 	DetailsComplete   *bool                            `json:"details_complete,omitempty"`
 	Summary           string                           `json:"summary"`
 	FindingsPersisted bool                             `json:"findings_persisted"`
+	Excluded          []reviewSourceExclusion          `json:"excluded,omitempty"`
+	Partial           string                           `json:"partial,omitempty"`
 	VerdictOutcome    any                              `json:"verdict_outcome,omitempty"`
 	TestImpact        any                              `json:"test_impact"`
 	// Resolution/IndexCommit (VB-19): the typed/heuristic mix behind the

@@ -3,12 +3,15 @@ package mcp_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/analysis/review"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
@@ -31,6 +34,8 @@ type reviewFakeBackend struct {
 	claims      map[string]core.SemanticClaim   // keyed by claim ID
 	links       map[string][]core.ClaimLink     // keyed by claim ID
 	putErr      error
+	putCalls    int
+	setCalls    int
 	// sources, when non-nil, overrides extendedFakeBackend's always-nil
 	// Sources() — needed so applyAndPersistFindings' fileExists check (IT-7,
 	// docs/plans/instrument-truth.md) can see a scoped file as still present
@@ -38,6 +43,8 @@ type reviewFakeBackend struct {
 	// superseded claim defaulting to scope-disappearance.
 	sources map[string][]byte // keyed by repo-relative path
 }
+
+var reviewHandlerSource = []byte("package api\n\n\n\n\n\nfunc Handler() {}\n")
 
 func (r *reviewFakeBackend) Sources(_ context.Context, _ string) ([]core.SourceFile, error) {
 	if r.sources == nil {
@@ -50,6 +57,25 @@ func (r *reviewFakeBackend) Sources(_ context.Context, _ string) ([]core.SourceF
 	return out, nil
 }
 
+func (r *reviewFakeBackend) SourcePaths(_ context.Context, _ string) ([]string, error) {
+	paths := make([]string, 0, len(r.sources))
+	for p := range r.sources {
+		paths = append(paths, p)
+	}
+	sort.Strings(paths)
+	return paths, nil
+}
+
+func (r *reviewFakeBackend) ReadSourceFiles(_ context.Context, _ string, paths []string) ([]core.SourceFile, error) {
+	var out []core.SourceFile
+	for _, p := range paths {
+		if c, ok := r.sources[p]; ok {
+			out = append(out, core.SourceFile{Path: p, Content: c})
+		}
+	}
+	return out, nil
+}
+
 func (r *reviewFakeBackend) Obligations(_ context.Context, _, file string, _ int) (semantic.Obligations, error) {
 	return r.obligations[file], nil
 }
@@ -57,6 +83,7 @@ func (r *reviewFakeBackend) Obligations(_ context.Context, _, file string, _ int
 func (r *reviewFakeBackend) ObligationsIndexStale(_ context.Context, _, _ string) bool { return false }
 
 func (r *reviewFakeBackend) PutClaims(_ context.Context, claims []core.SemanticClaim, links []core.ClaimLink) error {
+	r.putCalls++
 	if r.putErr != nil {
 		return r.putErr
 	}
@@ -95,6 +122,7 @@ func (r *reviewFakeBackend) ClaimsForService(_ context.Context, _, layer string)
 }
 
 func (r *reviewFakeBackend) SetClaimStatus(_ context.Context, _, claimID string, status core.ClaimStatus) error {
+	r.setCalls++
 	if c, ok := r.claims[claimID]; ok {
 		c.Status = status
 		r.claims[claimID] = c
@@ -615,6 +643,7 @@ rules: [
 	}
 	fake := &reviewFakeBackend{
 		extendedFakeBackend: extendedFakeBackend{nodes: nodes, services: []string{"svc"}, svcPath: corpusRoot},
+		sources:             map[string][]byte{"api/handler.go": reviewHandlerSource},
 	}
 	srv := mcp.NewServer(fake)
 
@@ -709,6 +738,7 @@ rules: [
 	}
 	fake := &reviewFakeBackend{
 		extendedFakeBackend: extendedFakeBackend{nodes: violating, services: []string{"svc"}, svcPath: corpusRoot},
+		sources:             map[string][]byte{"api/handler.go": reviewHandlerSource},
 	}
 	srv := mcp.NewServer(fake)
 	resp := roundtrip(t, srv, request{
@@ -749,6 +779,7 @@ rules: [
 	}
 	fake := &reviewFakeBackend{
 		extendedFakeBackend: extendedFakeBackend{nodes: violating, services: []string{"svc"}, svcPath: corpusRoot},
+		sources:             map[string][]byte{"api/handler.go": reviewHandlerSource},
 	}
 	srv := mcp.NewServer(fake)
 	call := func(id int) map[string]any {
@@ -965,6 +996,218 @@ func TestReviewDiff_PartialScanKeepsCitationLinks(t *testing.T) {
 	}
 	if !hasCites(id) {
 		t.Fatalf("a partial scan stripped the cites link: %+v", fake.links[id])
+	}
+}
+
+type largeReviewBackend struct {
+	*reviewFakeBackend
+	paths []string
+	reads []string
+	scans int
+}
+
+func (b *largeReviewBackend) SourcePaths(context.Context, string) ([]string, error) {
+	return b.paths, nil
+}
+
+func (b *largeReviewBackend) ReadSourceFiles(ctx context.Context, svc string, paths []string) ([]core.SourceFile, error) {
+	b.reads = append(b.reads, paths...)
+	var out []core.SourceFile
+	for _, p := range paths {
+		if data, ok := b.sources[p]; ok {
+			out = append(out, core.SourceFile{Path: p, Content: data})
+		} else if strings.HasPrefix(p, "bulk/") {
+			out = append(out, core.SourceFile{Path: p, Content: bytes.Repeat([]byte("x"), 64<<10)})
+		}
+	}
+	return out, nil
+}
+
+func (b *largeReviewBackend) ScanSources(ctx context.Context, _ string, budget corpus.Budget, fn func(core.SourceFile) bool) (corpus.Coverage, error) {
+	b.scans++
+	return corpus.ScanFetch(ctx, b.paths, budget, func(_ context.Context, path string) ([]byte, error) {
+		if data, ok := b.sources[path]; ok {
+			return data, nil
+		}
+		return bytes.Repeat([]byte("x"), 64<<10), nil
+	}, func(path string, data []byte) bool {
+		return fn(core.SourceFile{Path: path, Content: data})
+	})
+}
+
+// An 8,844-file corpus exceeds the former 64 MiB whole-tree budget before
+// these late paths. Complete path membership plus named reads still checks
+// the changed document and distinguishes a repaired file from a deletion.
+func TestReviewDiff_LargeCorpusReadsOnlyRequiredSourcesAndResolvesByPath(t *testing.T) {
+	root := t.TempDir()
+	writeCorpusFile(t, root, ".fathom/rules/archconformance.cue", "rules: [\n\t{from_pkg: \"api\", to_pkg: \"store\", allow: false},\n]\n")
+	paths := make([]string, 0, 8844)
+	for i := 0; i < 8842; i++ {
+		paths = append(paths, fmt.Sprintf("bulk/%04d.go", i))
+	}
+	paths = append(paths, "late/changed.go", "late/rules.md")
+	if len(paths) != 8844 || int64(1018*(64<<10)) >= 64<<20 || int64(8842*(64<<10)) <= 64<<20 {
+		t.Fatal("fixture must exceed 8,000 files and the 64 MiB scan cap")
+	}
+	fake := &reviewFakeBackend{
+		extendedFakeBackend: extendedFakeBackend{nodes: []core.SymbolNode{{Service: "svc", Package: "late", Name: "Changed", Kind: core.KindGoFunc, FilePath: "late/changed.go", Line: 2}}, services: []string{"svc"}, svcPath: root},
+		sources: map[string][]byte{
+			"late/changed.go": []byte("package late\nfunc Changed() {}\n"),
+			"late/rules.md":   []byte("// implements [US-001]\n"),
+		},
+		claims: map[string]core.SemanticClaim{
+			"repaired": {ClaimID: "repaired", ServiceID: "svc", Layer: review.ClaimsLayer, PromptVersion: review.ClaimsPromptVersion, Subject: review.DimArch + "#old-repaired", Scope: []string{"late/changed.go"}, Status: core.ClaimFresh},
+			"deleted":  {ClaimID: "deleted", ServiceID: "svc", Layer: review.ClaimsLayer, PromptVersion: review.ClaimsPromptVersion, Subject: review.DimArch + "#old-deleted", Scope: []string{"gone/old.go"}, Status: core.ClaimFresh},
+		},
+	}
+	b := &largeReviewBackend{reviewFakeBackend: fake, paths: paths}
+	resp := roundtrip(t, mcp.NewServer(b), request{JSONRPC: "2.0", ID: 1, Method: "tools/call", Params: map[string]any{"name": "review_diff", "arguments": map[string]any{"service": "svc", "changed_files": []string{"late/changed.go", "late/rules.md", "gone/old.go"}}}})
+	p := extToolPayload(t, resp)
+	if b.scans != 0 || len(b.reads) != 4 || b.reads[0] != "late/changed.go" || b.reads[1] != "late/rules.md" || b.reads[2] != "late/changed.go" || b.reads[3] != "late/rules.md" {
+		t.Fatalf("scan=%d named reads=%v, want only live changed files and their rechecks", b.scans, b.reads)
+	}
+	if _, ok := p["corpus_partial"]; ok {
+		t.Errorf("complete required coverage reported partial: %v", p["corpus_partial"])
+	}
+	var spec map[string]any
+	for _, raw := range p["dimensions"].([]any) {
+		d := raw.(map[string]any)
+		if d["name"] == review.DimSpecCoverage {
+			spec = d
+		}
+	}
+	if spec == nil || spec["checked"] != true || spec["count"] != float64(1) {
+		t.Errorf("late spec source not analyzed: %v", spec)
+	}
+	if fake.claims["repaired"].Status != core.ClaimSuperseded || fake.claims["deleted"].Status != core.ClaimSuperseded {
+		t.Errorf("existing findings not reconciled: %+v", fake.claims)
+	}
+	if vo, ok := p["verdict_outcome"].(map[string]any); !ok || vo["fixed"] != float64(1) || vo["superseded"] != float64(1) {
+		t.Errorf("path-based resolutions = %v", p["verdict_outcome"])
+	}
+}
+
+func TestReviewDiff_NamedUnreadableSourceLeavesSpecUnchecked(t *testing.T) {
+	fake := &reviewFakeBackend{extendedFakeBackend: extendedFakeBackend{nodes: extFixtureNodes(), services: []string{"svc"}}}
+	b := &largeReviewBackend{reviewFakeBackend: fake, paths: []string{"pkg/a.go"}}
+	resp := roundtrip(t, mcp.NewServer(b), request{JSONRPC: "2.0", ID: 1, Method: "tools/call", Params: map[string]any{"name": "review_diff", "arguments": map[string]any{"service": "svc", "changed_files": []string{"pkg/a.go"}}}})
+	p := extToolPayload(t, resp)
+	if note, _ := p["corpus_partial"].(string); !strings.Contains(note, "pkg/a.go (unreadable)") {
+		t.Errorf("corpus_partial = %q", note)
+	}
+	for _, raw := range p["dimensions"].([]any) {
+		d := raw.(map[string]any)
+		if d["name"] == review.DimSpecCoverage && d["checked"] != false {
+			t.Errorf("unreadable changed source produced checked spec coverage: %v", d)
+		}
+	}
+	if p["findings_persisted"] != false {
+		t.Errorf("unreadable source persisted findings: %v", p["findings_persisted"])
+	}
+}
+
+type sourceWindowRaceBackend struct {
+	*reviewFakeBackend
+	mode      string
+	pathCalls int
+	readCalls int
+}
+
+func (b *sourceWindowRaceBackend) SourcePaths(ctx context.Context, svc string) ([]string, error) {
+	b.pathCalls++
+	paths, err := b.reviewFakeBackend.SourcePaths(ctx, svc)
+	if b.pathCalls == 2 {
+		switch b.mode {
+		case "add":
+			paths = append(paths, "pkg/new.go")
+		case "delete":
+			paths = nil
+		}
+	}
+	return paths, err
+}
+
+func (b *sourceWindowRaceBackend) ReadSourceFiles(ctx context.Context, svc string, paths []string) ([]core.SourceFile, error) {
+	b.readCalls++
+	if b.mode == "rewrite" && b.readCalls == 2 {
+		b.sources["pkg/a.go"] = []byte("package pkg\nfunc Changed() {}\n")
+	}
+	return b.reviewFakeBackend.ReadSourceFiles(ctx, svc, paths)
+}
+
+func TestReviewDiff_SourceWindowChangeRefusesEveryFindingWrite(t *testing.T) {
+	makeBackend := func() *reviewFakeBackend {
+		return &reviewFakeBackend{
+			extendedFakeBackend: extendedFakeBackend{nodes: []core.SymbolNode{{Service: "svc", Package: "pkg", Name: "Changed", Kind: core.KindGoFunc, FilePath: "pkg/a.go", Line: 2}}, services: []string{"svc"}},
+			sources:             map[string][]byte{"pkg/a.go": []byte("// implements [US-001]\nfunc Changed() {}\n")},
+			claims:              map[string]core.SemanticClaim{"old": {ClaimID: "old", ServiceID: "svc", Layer: review.ClaimsLayer, PromptVersion: review.ClaimsPromptVersion, Subject: review.DimSpecCoverage + "#old", Scope: []string{"pkg/a.go"}, Status: core.ClaimFresh}},
+		}
+	}
+	call := func(b mcp.QueryInterface) map[string]any {
+		t.Helper()
+		resp := roundtrip(t, mcp.NewServer(b), request{JSONRPC: "2.0", ID: 1, Method: "tools/call", Params: map[string]any{"name": "review_diff", "arguments": map[string]any{"service": "svc", "changed_files": []string{"pkg/a.go"}}}})
+		return extToolPayload(t, resp)
+	}
+	stable := makeBackend()
+	call(stable)
+	if stable.putCalls == 0 || stable.setCalls == 0 {
+		t.Fatalf("control fixture did not exercise both write paths: put=%d set=%d", stable.putCalls, stable.setCalls)
+	}
+	for _, mode := range []string{"add", "delete", "rewrite"} {
+		t.Run(mode, func(t *testing.T) {
+			fake := makeBackend()
+			b := &sourceWindowRaceBackend{reviewFakeBackend: fake, mode: mode}
+			p := call(b)
+			if fake.putCalls != 0 || fake.setCalls != 0 || fake.claims["old"].Status != core.ClaimFresh {
+				t.Errorf("source moved but finding writes occurred: put=%d set=%d claim=%+v", fake.putCalls, fake.setCalls, fake.claims["old"])
+			}
+			if p["findings_persisted"] != false {
+				t.Errorf("source moved but persisted=true: %v", p)
+			}
+			if note, _ := p["corpus_partial"].(string); !strings.Contains(note, "changed during review") {
+				t.Errorf("missing source-window receipt: %v", p["corpus_partial"])
+			}
+			for _, raw := range p["dimensions"].([]any) {
+				d := raw.(map[string]any)
+				if d["name"] == review.DimSpecCoverage && d["checked"] != false {
+					t.Errorf("changed source window still checked spec coverage: %v", d)
+				}
+			}
+		})
+	}
+}
+
+type lateReviewReadBackend struct {
+	*reviewFakeBackend
+	now   time.Time
+	reads int
+}
+
+func (b *lateReviewReadBackend) ReadSourceFiles(ctx context.Context, svc string, paths []string) ([]core.SourceFile, error) {
+	b.reads++
+	if b.reads == 2 {
+		b.now = b.now.Add(6 * time.Second) // advance the injected clock beyond the budget
+		return b.reviewFakeBackend.ReadSourceFiles(context.Background(), svc, paths)
+	}
+	return b.reviewFakeBackend.ReadSourceFiles(ctx, svc, paths)
+}
+
+func TestReviewDiff_FinalNamedReadAfterDeadlineRefusesWrites(t *testing.T) {
+	fake := &reviewFakeBackend{
+		extendedFakeBackend: extendedFakeBackend{nodes: []core.SymbolNode{{Service: "svc", Package: "pkg", Name: "Changed", Kind: core.KindGoFunc, FilePath: "pkg/a.go", Line: 2}}, services: []string{"svc"}},
+		sources:             map[string][]byte{"pkg/a.go": []byte("// implements [US-001]\nfunc Changed() {}\n")},
+		claims: map[string]core.SemanticClaim{
+			"old": {ClaimID: "old", ServiceID: "svc", Layer: review.ClaimsLayer, PromptVersion: review.ClaimsPromptVersion, Subject: review.DimSpecCoverage + "#old", Scope: []string{"pkg/a.go"}, Status: core.ClaimFresh},
+		},
+	}
+	b := &lateReviewReadBackend{reviewFakeBackend: fake, now: time.Unix(1800000000, 0)}
+	resp := roundtrip(t, mcp.NewServer(b, func() time.Time { return b.now }), request{JSONRPC: "2.0", ID: 1, Method: "tools/call", Params: map[string]any{"name": "review_diff", "arguments": map[string]any{"service": "svc", "changed_files": []string{"pkg/a.go"}}}})
+	p := extToolPayload(t, resp)
+	if b.reads != 2 || fake.putCalls != 0 || fake.setCalls != 0 || fake.claims["old"].Status != core.ClaimFresh {
+		t.Errorf("late final read wrote findings: reads=%d put=%d set=%d claim=%+v", b.reads, fake.putCalls, fake.setCalls, fake.claims["old"])
+	}
+	if p["findings_persisted"] != false || !strings.Contains(fmt.Sprint(p["corpus_partial"]), "budget expired") {
+		t.Errorf("late read not disclosed: persisted=%v partial=%v", p["findings_persisted"], p["corpus_partial"])
 	}
 }
 

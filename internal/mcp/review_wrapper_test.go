@@ -31,6 +31,7 @@ func TestReviewDiff_FindingsPersistedThroughAutoRefreshWrapper(t *testing.T) {
 	}
 	fake := &reviewFakeBackend{
 		extendedFakeBackend: extendedFakeBackend{nodes: nodes, services: []string{"svc"}, svcPath: corpusRoot},
+		sources:             map[string][]byte{"api/handler.go": reviewHandlerSource},
 	}
 	srv := mcp.NewServer(mcp.NewAutoRefreshForTest(t, fake))
 	resp := roundtrip(t, srv, request{

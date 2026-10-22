@@ -259,7 +259,16 @@ func Run(ctx context.Context, in Input, planes []Plane) Report {
 		Planes:  make([]PlaneReport, 0, len(planes)),
 	}
 	for _, p := range planes {
-		findings, missing := p.Check(ctx, in)
+		var findings []Finding
+		var missing []string
+		if err := ctx.Err(); err != nil {
+			missing = []string{"conservation canceled before " + p.Name() + ": " + err.Error()}
+		} else {
+			findings, missing = p.Check(ctx, in)
+			if err := ctx.Err(); err != nil {
+				missing = append(missing, "conservation canceled during "+p.Name()+": "+err.Error())
+			}
+		}
 
 		// fs/ms start as non-nil, zero-length slices (never append's
 		// nil-preserving shorthand) so a plane with nothing to report
