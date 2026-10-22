@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -162,6 +163,19 @@ const hookRPCSlack = 150 * time.Millisecond
 // run at a tenth of real time (hookBudgetScale) so ~40 bindings take
 // seconds; the formula itself is checked unscaled for each binding.
 func TestNoHookRPCOutlivesItsDescriptorBudget(t *testing.T) {
+	// The hook's CPU is read for the whole process, so goroutines that earlier
+	// tests in a shard leave running (a background typed-edge pass) count as
+	// the hook's work and fail it under load. Measure in a fresh process that
+	// runs only this test; every assertion below is unchanged.
+	if os.Getenv("FATHOM_HOOKGUARD_ISOLATED") != "1" {
+		cmd := exec.Command(os.Args[0], "-test.run=^TestNoHookRPCOutlivesItsDescriptorBudget$", "-test.count=1", "-test.v")
+		cmd.Env = append(os.Environ(), "FATHOM_HOOKGUARD_ISOLATED=1")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("isolated run: %v\n%s", err, out)
+		}
+		return
+	}
 	const scale = 0.1
 	orig := hookBudgetScale
 	hookBudgetScale = scale
