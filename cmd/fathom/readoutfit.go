@@ -175,7 +175,7 @@ func readoutFitLabels(rs *readout.RuleSet, logPath, projects string, since time.
 // neither outcome is known.
 func readoutFitLabelOf(r roFitRow, call *roCall, rule *readout.Rule) (l readout.FitLabel, why string) {
 	l.ID = r.toolUseID
-	cmd := parseShellCommand(call.command).Transparent()
+	cmd := parseShellCommand(call.command, call.cwd).Transparent()
 	f := readout.Features{Event: readout.EventSuccess, Bytes: r.bytesIn, Recovery: -1, Records: map[string]int{}}
 	if r.event == "tool-failure" || call.interrupted {
 		f.Event = readout.EventFailure

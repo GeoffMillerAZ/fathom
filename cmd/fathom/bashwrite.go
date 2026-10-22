@@ -147,7 +147,7 @@ func scanBashWriteStatements(cmd string, st *bwState, c *bwCollector) {
 // bashWriteTargets recognizes, each target resolved against st.cwd.
 func processBashWriteStatement(stmt string, st *bwState, c *bwCollector) {
 	parsed := parseShellCommand(stmt, c.roots...)
-	if parsed.Unreadable && strings.Contains(parsed.Reason, "wrapper") {
+	if parsed.Refusal == shellcmd.RefusalWrapper {
 		c.writeShaped = true // an unreadable declared script is doubt
 		return
 	}

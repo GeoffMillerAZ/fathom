@@ -123,6 +123,11 @@ func gatePreflightLine(projDir, cwd, command, sessionID, baseURL string) string 
 	if lexed.Unreadable {
 		return ""
 	}
+	for _, u := range lexed.Units() {
+		if u.CwdUnknown {
+			return ""
+		}
+	}
 	commit, push, at := gatePreflightVerbs(lexed)
 	if !commit && !push {
 		return ""

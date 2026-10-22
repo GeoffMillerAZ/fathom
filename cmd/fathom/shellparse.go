@@ -1,30 +1,45 @@
 package main
 
 import (
-	"os"
+	"sync"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/shellcmd"
 )
 
+var shellConfigLoad = config.Load
+
+type shellConfigPaths struct{ user, project string }
+
+// Declarations live only for this hook process, keyed by both config paths.
+// This avoids repeating CUE validation on each lex; errors also memoize the
+// zero-declaration fallback. Nothing persists or refreshes in the background.
+var shellDeclarations = struct {
+	sync.Mutex
+	byPaths map[shellConfigPaths][]shellcmd.Wrapper
+}{byPaths: make(map[shellConfigPaths][]shellcmd.Wrapper)}
+
 // parseShellCommand keeps configuration at the application boundary. The
-// lexer remains pure; hooks supply their own cwd rather than the process's.
-// No cache, daemon request or command execution is involved.
+// lexer remains pure; callers supply their own cwd rather than the process's.
+// No root means no declarations, including declarations from the user config.
 func parseShellCommand(command string, roots ...string) shellcmd.Command {
-	root := ""
-	if len(roots) > 0 {
-		root = roots[0]
+	if len(roots) == 0 || roots[0] == "" {
+		return shellcmd.ParseCommand(command)
 	}
-	if root == "" {
-		root, _ = os.Getwd()
-	}
+	root := roots[0]
 	if top := gitToplevelByStat(root); top != "" {
 		root = top
 	}
-	l, err := config.Load(config.DefaultUserPath(), projectdir.Config.Path(root))
-	if err != nil {
-		return shellcmd.Command{Unreadable: true, Reason: "shell wrapper configuration: " + err.Error()}
+	paths := shellConfigPaths{config.DefaultUserPath(), projectdir.Config.Path(root)}
+	shellDeclarations.Lock()
+	wrappers, found := shellDeclarations.byPaths[paths]
+	if !found {
+		if l, err := shellConfigLoad(paths.user, paths.project); err == nil {
+			wrappers = l.Config.Shell.Wrappers
+		}
+		shellDeclarations.byPaths[paths] = wrappers
 	}
-	return shellcmd.ParseCommand(command, l.Config.Shell.Wrappers...)
+	shellDeclarations.Unlock()
+	return shellcmd.ParseCommand(command, wrappers...)
 }

@@ -382,6 +382,7 @@ func readoutReportRowOf(line []byte, since time.Time) (roRow, bool) {
 type roCall struct {
 	idx         int
 	command     string
+	cwd         string
 	stdout      string
 	stderr      string
 	interrupted bool
@@ -410,7 +411,7 @@ func (c *roCall) replay(rule *readout.Rule, r roRow) (referenced bool, recoveryB
 	if r.cmdSHA != "" && sha256Hex(c.command) != r.cmdSHA {
 		return false, 0, false, false
 	}
-	cmd := parseShellCommand(c.command).Transparent()
+	cmd := parseShellCommand(c.command, c.cwd).Transparent()
 	ro := readout.Render(&readout.RuleSet{Rules: []*readout.Rule{rule}}, readout.Input{
 		Command: &cmd, Stdout: c.stdout, Stderr: c.stderr, Interrupted: c.interrupted,
 		Persisted: c.persisted, Mode: r.mode,
@@ -534,7 +535,7 @@ func readoutReportLine(raw []byte, seq int, want map[string]bool, out, open map[
 		b := &blocks[i]
 		switch b.Type {
 		case "tool_use":
-			fl, command := roFollowerOf(b)
+			fl, command := roFollowerOf(b, l.Cwd)
 			for _, c := range open {
 				if seq > c.idx && seq <= c.idx+replayFollowers {
 					c.followers = append(c.followers, fl)
@@ -544,7 +545,7 @@ func readoutReportLine(raw []byte, seq int, want map[string]bool, out, open map[
 				}
 			}
 			if b.Name == "Bash" && want[b.ID] && out[b.ID] == nil && open[b.ID] == nil {
-				open[b.ID] = &roCall{idx: seq, command: command}
+				open[b.ID] = &roCall{idx: seq, command: command, cwd: l.Cwd}
 			}
 			seq++
 		case "tool_result":
@@ -563,14 +564,14 @@ func readoutReportLine(raw []byte, seq int, want map[string]bool, out, open map[
 // roFollowerOf reads a tool call's input as replay does, plus its command
 // hash and the files it reads (a Read's file_path, a whole-file cat or a
 // `sed -n` of a Bash command).
-func roFollowerOf(b *replayBlock) (*roFollower, string) {
+func roFollowerOf(b *replayBlock, roots ...string) (*roFollower, string) {
 	fl := &roFollower{id: b.ID, tokens: map[string]struct{}{}}
 	if b.Name == "Bash" {
 		var in struct {
 			Command string `json:"command"`
 		}
 		_ = json.Unmarshal(b.Input, &in)
-		c := parseShellCommand(in.Command).Transparent()
+		c := parseShellCommand(in.Command, roots...).Transparent()
 		refTokens(in.Command, fl.tokens)
 		fl.cmdSHA = sha256Hex(in.Command)
 		fl.reads = append(wholeFileRead(&c), sedReadFiles(&c)...)

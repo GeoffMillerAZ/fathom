@@ -74,8 +74,7 @@ func leadingCdTarget(command string, roots ...string) (string, bool) {
 	for i := range c.Pipelines {
 		p := &c.Pipelines[i]
 		if len(p.Units) > 0 && p.Units[0].Body != nil {
-			// A script wrapper's undeclared directory remains the hook's
-			// cwd. Only declared cwd metadata may change its row identity;
+			// Only declared cwd metadata may change a wrapper's row identity;
 			// do not infer the wrapper's own cwd from a cd in its script.
 			for _, u := range p.Units[0].Body.Units() {
 				if u.Kind == shellcmd.KindSimple && len(u.Words) > 0 {
@@ -223,6 +222,12 @@ func lastToolCallDir(path, cwd string) (string, bool) {
 			}
 			switch c.Name {
 			case "Bash":
+				parsed := parseShellCommand(c.Input.Command, base)
+				for _, u := range parsed.Units() {
+					if u.CwdUnknown {
+						return "", false
+					}
+				}
 				dir, _ := hookEffectiveDir(c.Input.Command, "", base)
 				return dir, dir != ""
 			case "Read", "Edit", "Write", "MultiEdit":

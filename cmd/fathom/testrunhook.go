@@ -179,7 +179,7 @@ func cmdTestRunHook(codec harness.Codec, ev harness.Event, event, baseURL, dirOv
 		var extra []string
 		if loaded.Config.Readouts.Mode == config.ReadoutsRich {
 			// RO-23: rich mode's test delta, a local read of the hook log
-			if d := testRunDeltaClause(&rec, res.Run, in.Command, !m.Piped && !in.OutputTruncated); d != "" {
+			if d := testRunDeltaClause(&rec, res.Run, in.Command, !m.Piped && !in.OutputTruncated, syntaxDir); d != "" {
 				extra = append(extra, d)
 			}
 		}
@@ -679,6 +679,7 @@ type testRunRecord struct {
 	// RO-35: HEAD's sha, the working-tree digest and the lexed scope. Empty
 	// means a miss and the row carries no such key.
 	Head, Tree, Scope string
+	CwdUnknown        bool
 	// AgentID is the subagent that ran the command (RO-39: the input's
 	// agent_id, RO-V1); "" for the main agent, and the row carries no key.
 	AgentID string
@@ -738,6 +739,9 @@ func logTestRunRow(r testRunRecord) {
 	if r.ToolUseID != "" {
 		meta["tool_use_id"] = r.ToolUseID // O1210: the baseline locates the run in the transcript by it
 	}
+	if r.CwdUnknown {
+		meta["cwd"] = "undeclared"
+	}
 	if r.Delta != "" {
 		meta["delta"] = r.Delta
 	}
@@ -782,6 +786,13 @@ func fillTestRunRowKeys(ctx context.Context, rec *testRunRecord, root, session, 
 		syntaxRoots = []string{root}
 	}
 	rec.Scope = testRunScope(command, invocation, syntaxRoots...)
+	parsed := parseShellCommand(command, syntaxRoots...)
+	for _, u := range parsed.Units() {
+		if u.CwdUnknown {
+			rec.Head, rec.Tree, rec.CwdUnknown = "", "", true
+			return "", false
+		}
+	}
 	if deadlinePassed(ctx) {
 		return "", false
 	}

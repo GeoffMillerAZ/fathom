@@ -59,13 +59,13 @@ const (
 // hook's command ran in (cd, pushd and -C followed), found by stat; ok false
 // when the command runs no git commit or the directory is in no work tree.
 func pinCommitRoot(codec harness.Codec, hook harness.HookInput) (string, bool) {
-	at, ok := lastGitCommitDir(hook.Command)
-	if !ok {
-		return "", false
-	}
 	start := hook.Cwd
 	if start == "" {
 		start = resolveProjDirFor(codec.ID(), "")
+	}
+	at, ok := lastGitCommitDir(hook.Command, start)
+	if !ok {
+		return "", false
 	}
 	dir := start
 	if at.known {
