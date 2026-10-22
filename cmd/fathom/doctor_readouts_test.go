@@ -7,6 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/hookguard"
 )
 
 // TestDoctorReadoutsRowNamesRefusedRulesAndAnotherRewriter pins RO-18: the
@@ -175,5 +178,31 @@ func TestDoctorReadoutsNamesEachPacksServedAndWithheldRules(t *testing.T) {
 	}
 	if got.Status != doctorWarn {
 		t.Errorf("a withheld rule is advisory, got %s", got.Status)
+	}
+}
+
+// TestDoctorReadoutsRowIsSkippedInsideAHook: the readouts row reads ok or
+// advisory, never FAIL, and doctor --brief shows only FAIL, TIMEOUT and
+// UNKNOWN rows, so inside the Setup hook the row could only ever surface as
+// its own timeout. Loading the rules runs every rule's fixtures: about 40%
+// of doctor --brief's CPU, measured under -race, and the probe still running
+// when the hook returned. Inside a hook the row is skipped before it loads
+// anything (a refused rule outside the hook proves it was not read).
+func TestDoctorReadoutsRowIsSkippedInsideAHook(t *testing.T) {
+	fh := readoutHookEnv(t, "[readouts]\nmode = \"lean\"\n")
+	bad := strings.Replace(readoutTestRule, `id = "ls-head"`, `id = "ls-bad"`, 1)
+	bad = strings.Replace(bad, "a.go\\nb.go\\n[readout ls-head@1 observe", "a.go\\n[readout ls-head@1 observe", 1)
+	if err := os.WriteFile(filepath.Join(fh, "readouts.toml"), []byte(bad), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	root := t.TempDir()
+	if out := checkReadouts(root); out.Status != doctorWarn || !strings.Contains(out.Reason, "ls-bad") {
+		t.Fatalf("outside a hook the row = %+v, want advisory naming ls-bad", out)
+	}
+	restore := activateHookGuard(&hookguard.Guard{Deadline: hookguard.HookDeadline(time.Now(), 15)})
+	t.Cleanup(restore)
+	in := checkReadouts(root)
+	if in.Name != "readouts" || in.Status != doctorSkipped || in.Reason != inHookSkip || strings.Contains(in.Reason, "ls-bad") {
+		t.Fatalf("inside a hook the row = %+v, want skipped with %q and no rule read", in, inHookSkip)
 	}
 }

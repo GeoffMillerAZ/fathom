@@ -24,6 +24,12 @@ import (
 
 func checkReadouts(root string) doctorCheck {
 	const name = "readouts"
+	if activeHookGuard() != nil {
+		// Never FAIL, so doctor --brief could only show it as its own
+		// timeout; loading the rules runs every rule's fixtures, the largest
+		// share of the Setup hook's CPU.
+		return doctorCheck{Name: name, Status: doctorSkipped, Reason: inHookSkip}
+	}
 	cfg, ok := readoutsUserConfig()
 	if !ok {
 		return doctorCheck{Name: name, Status: doctorWarn, Reason: "the user config did not load, so the readouts mode is unknown", Remedy: "fathom doctor (config_valid row)"}
