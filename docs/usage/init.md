@@ -24,17 +24,31 @@ fathom init [--path <dir>] [--service <id>] [--url http://localhost:7575] [--bin
 | `--harness` | `claude-code` | Which registry descriptor's vehicles to write (ADR-029); `none` = stanza + `.fathom/` only. Prints the descriptor's own `mcp add` line, never runs it |
 | `--skills` | omit = skip | Install the ten shipped agent skills into `.claude/skills/`, the one real copy (spec-only frontmatter, held by test). Bare `--skills` (= `all`), `codex` and `agents` also make `.agents/skills` (the Agent Skills standard path) a relative link to it, through the wiring engine (receipted; an earlier real copy of fathom's own files is replaced, a foreign entry blocks); `claude` writes `.claude/skills/` only; `codex-prompts` writes the deprecated user-global `~/.codex/prompts/` twin — the only user-global write, explicit only |
 | `--seed-user-ignore` | off | Seed `~/.fathom/ignore` with machine-junk defaults; prints exactly what it writes |
-| `--no-user-writes` | implied by `--harness none` unless `--seed-user-ignore` or `--skills=codex-prompts` is requested | Preview user config, ignore, deprecated prompts and PATH shim writes without creating or modifying them. An explicit `--no-user-writes` wins over user-scope flags. Project skills and wiring still apply |
+| `--no-user-writes` | implied by `--harness none` | Preview user configuration (config.toml, ignore, deprecated prompts, PATH shim and harness settings) without creating or modifying it. Under `--harness none`, each explicit user-scope flag enables only its requested write. An explicit `--no-user-writes` wins over those flags. Project skills and wiring still apply; operational state still uses the named state directory |
 | `--no-scip` | off | Skip the SCIP step below: by default init runs `scip-typescript` / `scip-python` when already installed for a repo of that language |
 | `--harness` | `claude-code` | Which registry descriptor's vehicles to write (ADR-029): `claude-code` (hooks into `.claude/settings.json`), `codex` (hooks into the repo's `.codex/hooks.json`, run after `/hooks` trust), `gemini-cli` (hooks into the repo's `.gemini/settings.json`, ms timeouts, and its `context.fileName` set to `["AGENTS.md", "GEMINI.md"]` so Gemini CLI reads the stanza — no `GEMINI.md` stanza), `cursor` / `copilot` (data rows: stanza + skills, no hook file), `agents` (AGENTS.md + MCP), `none` (stanza + `.fathom/` only). Every harness gets the stanza in `AGENTS.md`. Non-Claude descriptors are *unverified on this machine*; every one prints its own `mcp add` line and never writes a user-global file; a descriptor 60 days unverified after its codec landed is refused |
 | `--json` | off | Emit the run as JSON (below) instead of the narration |
 
+**User configuration and operational state (GDEV-43).** The preview names the
+actual state directory, normally `~/.local/state/fathom/<repo-id>/`. Wiring receipts,
+ownership ledgers, skill baselines and SCIP operational state still go there;
+`--no-user-writes` does not promise an untouched HOME. Relocate state with
+`FATHOM_STATE_DIR` (the directory itself) or `XDG_STATE_HOME` (the parent of
+`fathom/<repo-id>/`). Under `--harness none`, `--seed-user-ignore` writes only the
+ignore file, and `--skills=codex-prompts` writes only prompts. Neither enables the
+config scaffold or PATH shim. A real run reports previewed user writes in JSON as
+`skipped-user-scope`; `would-create` and related actions belong to `--dry-run`.
+
 **Declared skill adaptations (GDEV-41).** Replace the ownership line in a hand-adapted
 copy with `<!-- fathom:adapted from=fathom-plan version=0.3.19 -->` (use its skill name
-and shipped plugin version, shown by `fathom plugin render`). Init and reconcile preserve
+and shipped plugin version, shown by `fathom plugin render`). The marker must be on
+a line of its own. Init and reconcile preserve
 it, even if the old ownership line remains. Doctor reports
 `adapted (shipped vX, adapted from vY)`: PASS when versions match, WARN with a render
-and `diff -u` command when they differ. A file with neither marker still refuses.
+and `diff -u` command when they differ, including a newer adaptation. Build metadata
+is ignored (`0.3.19+local` matches `0.3.19`). A real `.agents/skills/` directory holding
+any declared adaptation is preserved, with a named skip and comparison command,
+even without a ledger baseline. A file with neither marker still refuses.
 
 **SCIP typed edges (SR-65, F-74).** After the wiring, once the ingest confirmed the
 service, init runs `scip-typescript` (a repo with `tsconfig.json` or `package.json` at its
@@ -53,7 +67,7 @@ import that is declined is a printed warning, never a non-zero exit. `--no-scip`
 step (a producer type-checks the whole repository and can take minutes).
 
 **`--json` envelope.** `{service, root, exit_code, writes: [{path, action:
-created|updated|linked|ok|shim, detail}], blocked: [{path, action: "blocked",
+created|updated|linked|ok|shim|skipped-user-scope, detail}], blocked: [{path, action: "blocked",
 detail}], receipt: {id, time, files} | null, manual_steps: [{text,
 command?}], narration: [...], stderr: [...]}` — every write init narrates,
 the receipt the wiring engine appended during the run (`fathom fleet undo
@@ -68,7 +82,7 @@ does not do for you: interactive MCP registration and the lefthook pre-push snip
 
 **Law 15 (SH-7/SH-8).** The AGENTS.md stanza region, a CLAUDE file's import region and `.claude/settings.json`
 hooks are written only through `internal/wiring`: one plan → apply → one receipt per repo
-(`.fathom/receipts.jsonl`, gitignored; `fathom fleet undo` reverses it). A tracked region
+(`receipts.jsonl` in the named state directory; `fathom fleet undo` reverses it). A tracked region
 (`<!-- fathom:begin v3 sha256:… -->`) that a human edited is **blocked** (exit 1, file
 byte-identical, the other files still applied, one line per file distinguishing
 "drifted (hand-edited) region" from "could not be read/parsed"); a v1 region
