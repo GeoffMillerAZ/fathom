@@ -143,3 +143,5 @@ Pre-1.0: breaking changes bump minor. The line still gets written.
 ## Non-goals
 
 What fathom deliberately does not do, each with its revisit condition: `scope/non-goals.md`.
+
+- Fathom does not schedule, place or monitor work across machines (ADR-078).

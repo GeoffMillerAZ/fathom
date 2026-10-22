@@ -504,7 +504,7 @@ func TestCmdInit_SkillsFlag_ConflictReturnsExit1(t *testing.T) {
 // TestSkillsAgentsRendering pins IO-24 (vision 16 R2): --skills=agents
 // writes the spec-conformant SKILL.md set to the shared .agents/skills
 // discovery path Codex and Gemini both walk — and the pack now counts
-// eight (rewire + activate joined, IO-23).
+// eleven (including the remote-job contract, ADR-078).
 func TestSkillsAgentsRendering(t *testing.T) {
 	root := t.TempDir()
 	var out strings.Builder
@@ -515,8 +515,8 @@ func TestSkillsAgentsRendering(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(entries) != 10 {
-		t.Fatalf("got %d skills, want 10 (the pack including rewire+activate+custodian+findings)", len(entries))
+	if len(entries) != 11 {
+		t.Fatalf("got %d skills, want 11 (the pack including fathom-offload)", len(entries))
 	}
 	data, err := os.ReadFile(filepath.Join(root, ".agents", "skills", "fathom-rewire", "SKILL.md"))
 	if err != nil {

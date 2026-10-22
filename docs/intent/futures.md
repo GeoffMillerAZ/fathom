@@ -106,3 +106,4 @@ no member defines, and one defined twice.
 | F88 | Collision-free append points: promoted 2026-10-19 (goal G43, ADR-075) | `futures/f86-f91.md` |
 | F89 | Responsibility clusters: split candidates for files agents keep growing | `futures/f86-f91.md` |
 | F90 | Duplicate at birth: a new symbol that already exists | `futures/f86-f91.md` |
+| F92 | Job cost evidence for placement | `futures/f92-f97.md` |
