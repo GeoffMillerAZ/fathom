@@ -5,6 +5,7 @@ package conserve
 // already present at base is not.
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -65,7 +66,7 @@ func OldFunc() int { return 1 }
 		HeadFile:     mapFile(head),
 	}
 
-	findings, missing := DeprecatedCallers(in)
+	findings, missing := DeprecatedCallers(context.Background(), in)
 	if len(missing) != 0 {
 		t.Fatalf("missing = %v, want none", missing)
 	}
@@ -105,7 +106,7 @@ func OldFunc() int { return 1 }
 		BaseFile:     mapFile(base),
 		HeadFile:     mapFile(head),
 	}
-	findings, missing := DeprecatedCallers(in)
+	findings, missing := DeprecatedCallers(context.Background(), in)
 	if len(missing) != 0 || len(findings) != 0 {
 		t.Fatalf("findings=%+v missing=%v, want both empty", findings, missing)
 	}
@@ -126,7 +127,7 @@ func OldFunc() int { return 1 }
 		BaseFile:     mapFile(map[string]string{}), // absent at base entirely
 		HeadFile:     mapFile(head),
 	}
-	findings, _ := DeprecatedCallers(in)
+	findings, _ := DeprecatedCallers(context.Background(), in)
 	if len(findings) != 1 {
 		t.Fatalf("findings = %+v, want exactly 1 (a wholly new file counts as new usage)", findings)
 	}
@@ -142,7 +143,7 @@ func TestDeprecatedCallers_NoDeprecatedSymbolsIsConserved(t *testing.T) {
 		BaseFile:     mapFile(map[string]string{}),
 		HeadFile:     mapFile(map[string]string{"caller.go": "package pkg\n\nfunc G() { F() }\n"}),
 	}
-	findings, missing := DeprecatedCallers(in)
+	findings, missing := DeprecatedCallers(context.Background(), in)
 	if len(findings) != 0 || len(missing) != 0 {
 		t.Fatalf("findings=%+v missing=%v, want both empty (nothing is deprecated)", findings, missing)
 	}
@@ -150,7 +151,7 @@ func TestDeprecatedCallers_NoDeprecatedSymbolsIsConserved(t *testing.T) {
 
 func TestDeprecatedCallers_NoRootIsMissing(t *testing.T) {
 	in := Input{ChangedFiles: []string{"a.go"}, BaseFile: mapFile(nil), HeadFile: mapFile(nil)}
-	findings, missing := DeprecatedCallers(in)
+	findings, missing := DeprecatedCallers(context.Background(), in)
 	if len(findings) != 0 {
 		t.Errorf("findings = %v, want none", findings)
 	}
