@@ -2020,13 +2020,23 @@ A prefix is a literal argv sequence; the remaining argv is the real command.
 A script wrapper's `script_arg` is 1-based **after the command name**:
 `command-wrapper label 'go test ./... && go build ./...'` has its script in
 argument 2. Both single and double quotes work when the resulting script is
-literal. A variable or command substitution in the script argument is unreadable;
-the lexer retains the reason and never guesses its value. At most two nested
-script wrappers are opened. Declarations describe local syntax, without reading a
-script file, running a wrapper, or fetching anything.
+literal to the outer shell. A variable or command substitution expanded by the
+outer shell makes the script argument unreadable; the lexer retains the reason
+and never guesses its value. Substitutions protected from the outer shell, such
+as `command-wrapper label 'echo "$(printf x)"'`, remain readable inside the script.
+At most two nested script wrappers are opened. Declarations describe local syntax, without reading a
+script file, running a wrapper, or fetching anything. Config load rejects prefixes
+with assignments, redirects, pipelines or non-literal words. A config load error
+falls back to the ordinary lexer with zero declarations. Each hook process loads
+declarations once per user/project config path pair; callers with no known root
+use zero declarations. `config --explain` attributes each appended entry to the
+layer that supplied it.
 
-Without `cwd_arg`, the wrapper uses the hook's cwd for run identity. When the
-wrapper's argument M is its working directory, set `cwd_arg = M`: relative values
+Without `cwd_arg`, the wrapper's working directory is unknown: test-run rows keep
+head and tree empty and log `cwd=undeclared`; failure lines still appear, while
+checks that require a known tree cannot use those rows. Gate preflight stays silent
+for commits or pushes inside such a script. When argument M declares the working
+directory, set `cwd_arg = M` (distinct from `script_arg`): relative values
 resolve from the hook's cwd, and nested relative directories compose. A missing
 or computed directory is unreadable. Declare this only when the wrapper actually
 runs there; the lexer cannot infer a directory chosen internally by a wrapper.

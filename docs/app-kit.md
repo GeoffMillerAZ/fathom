@@ -1147,3 +1147,14 @@ cwd-changed primer dedupe, measured in
 Ownership stays with fathom's hook lifecycle, config and byte accounting; no
 kit rendering API, theme, adoption selection or dependency pin changed.
 Synthetic hook tests cover the originating app; no second-app propagation is claimed.
+
+## Wrapper provenance correction (2026-10-22)
+
+`cli.config` was checked for the appended-wrapper explanation task. Its CUE
+unification contract differs from the existing additive user/project wrapper list,
+so the correction stays in the existing loader and text/JSON renderers; no runtime
+or dependency changes apply. Disposition: local-divergence, app-owned merge policy.
+`TestShellWrapperProvenanceKeepsEachContributor` and
+`TestConfigExplainAttributesAppendedWrappers` cover both contributing layers and an
+empty project list. No shared kit defect or reusable component was found in this
+scope; no upstream change or second-consumer propagation is claimed.

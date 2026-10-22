@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"slices"
 	"sort"
 
@@ -63,9 +64,13 @@ func mergeLayer(cfg *Config, prov Provenance, raw map[string]any, source Source,
 				if n, ok := m["cwd_arg"].(int64); ok {
 					w.CwdArg = int(n)
 				}
+				// Lists append across layers; retain each entry's actual source.
+				prov[fmt.Sprintf("shell.wrappers[%d]", len(cfg.Shell.Wrappers))] = SourceInfo{source, path}
 				cfg.Shell.Wrappers = append(cfg.Shell.Wrappers, w)
 			}
-			prov["shell.wrappers"] = SourceInfo{source, path}
+			if len(entries) > 0 {
+				prov["shell.wrappers"] = SourceInfo{source, path}
+			}
 		}
 	}
 	if v, ok := stringField(raw, "default_profile"); ok {
