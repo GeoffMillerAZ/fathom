@@ -44,11 +44,20 @@ grep -F 'example_test.go:3: useful failure' "$scratch/out" >/dev/null || fail 'f
 if task t > "$scratch/out" 2>&1; then fail 't without packages ran the whole module'; fi
 export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
 git init -q .
-# Use a tree ref, without committing in the worker checkout or test fixture.
+# Build fixture history with commit-tree; never run commit hooks.
 printf 'package fixture\n' > unchanged.go
 git add .
 tree=$(git write-tree)
-git update-ref refs/remotes/origin/main "$tree"
+export GIT_AUTHOR_NAME=Fixture GIT_AUTHOR_EMAIL=fixture@example.com GIT_COMMITTER_NAME=Fixture GIT_COMMITTER_EMAIL=fixture@example.com
+base=$(printf 'fixture base\n' | git commit-tree "$tree")
+git update-ref HEAD "$base"
+# A main-only parse error must not count as a change on this branch.
+printf 'not go source\n' > upstream.go
+git add upstream.go
+upstream_tree=$(git write-tree)
+upstream=$(printf 'fixture upstream\n' | git commit-tree "$upstream_tree" -p "$base")
+git update-ref refs/remotes/origin/main "$upstream"
+git reset -q --hard "$base"
 printf 'package fixture\nfunc F( ){ }\n' > 'changed file.go'
 git add 'changed file.go'
 cp 'changed file.go' "$scratch/before"
@@ -62,4 +71,32 @@ printf 'package fixture\nfunc F( ){ }\n' > unchanged.go
 rm 'changed file.go'
 if task fmt:changed > "$scratch/out" 2>&1; then fail 'fmt:changed missed unstaged file'; fi
 grep -F 'unchanged.go' "$scratch/out" >/dev/null || fail 'unstaged offender missing'
+# Match the GOFILES exclusions, including ignored parse errors.
+printf 'package fixture\n' > unchanged.go
+mkdir -p third_party nested/_reference nested/testdata .claude tmp ref workspace
+for path in third_party/ignored.go nested/_reference/ignored.go nested/testdata/ignored.go .claude/ignored.go tmp/ignored.go ref/ignored.go workspace/ignored.go; do
+  printf 'not go source\n' > "$path"
+  git add -f "$path"
+done
+task fmt:changed > "$scratch/out" 2>&1 || fail 'fmt:changed inspected excluded or main-only files'
+# One invocation must report both a parse error and another format offender.
+printf 'not go source\n' > 'broken file.go'
+printf 'package fixture\nfunc F( ){ }\n' > 'another file.go'
+git add 'broken file.go' 'another file.go'
+real_gofmt=$(command -v gofmt)
+export REAL_GOFMT="$real_gofmt" FORMAT_LOG="$scratch/format-log"
+cat > "$scratch/tools/gofmt" <<'STUB'
+#!/bin/sh
+echo call >> "$FORMAT_LOG"
+exec "$REAL_GOFMT" "$@"
+STUB
+chmod +x "$scratch/tools/gofmt"
+export PATH="$scratch/tools:$PATH"
+if task fmt:changed > "$scratch/out" 2>&1; then fail 'fmt:changed accepted parse error'; fi
+grep -F 'broken file.go' "$scratch/out" >/dev/null || fail 'parse offender missing'
+grep -F 'another file.go' "$scratch/out" >/dev/null || fail 'other format offender missing'
+[ "$(wc -l < "$FORMAT_LOG" | tr -d ' ')" -eq 1 ] || fail 'fmt:changed invokes gofmt more than once'
+git update-ref -d refs/remotes/origin/main
+if task fmt:changed > "$scratch/out" 2>&1; then fail 'fmt:changed accepted missing base'; fi
+grep -F 'origin/main' "$scratch/out" >/dev/null || fail 'missing ref not named'
 echo 'targeted-tasks test: ok'
