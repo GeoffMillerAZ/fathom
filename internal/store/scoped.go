@@ -89,6 +89,12 @@ func (s *SQLiteStore) QueryObservations(ctx context.Context, serviceID, concernI
 	return filterScoped(ctx, s.gate, serviceID, obs, err, func(o core.Observation) string { return o.SourceRef })
 }
 
+// ListSymbolNodes filters the symbol projection by its source file.
+func (s *SQLiteStore) ListSymbolNodes(ctx context.Context, serviceID string) ([]core.SymbolNode, error) {
+	nodes, err := s.listSymbolNodesRaw(ctx, serviceID)
+	return filterScoped(ctx, s.gate, serviceID, nodes, err, func(n core.SymbolNode) string { return n.FilePath })
+}
+
 // SymbolNamesForSource filters by observations.source_ref, like
 // QueryObservations: a suppressed file declares nothing.
 func (s *SQLiteStore) SymbolNamesForSource(ctx context.Context, serviceID, file string) ([]string, error) {
@@ -159,6 +165,12 @@ func (s *SQLiteStore) SourceKindCounts(ctx context.Context, serviceID string) ([
 func (m *MemoryStore) QueryObservations(ctx context.Context, serviceID, concernID string) ([]core.Observation, error) {
 	obs, err := m.queryObservationsRaw(ctx, serviceID, concernID)
 	return filterScoped(ctx, m.gate, serviceID, obs, err, func(o core.Observation) string { return o.SourceRef })
+}
+
+// ListSymbolNodes filters the symbol projection by its source file.
+func (m *MemoryStore) ListSymbolNodes(ctx context.Context, serviceID string) ([]core.SymbolNode, error) {
+	nodes, err := m.listSymbolNodesRaw(ctx, serviceID)
+	return filterScoped(ctx, m.gate, serviceID, nodes, err, func(n core.SymbolNode) string { return n.FilePath })
 }
 
 // SymbolNamesForSource filters by observations.source_ref.

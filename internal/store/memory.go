@@ -153,6 +153,19 @@ func (m *MemoryStore) queryObservationsRaw(_ context.Context, serviceID, concern
 	return result, nil
 }
 
+// listSymbolNodesRaw retains the observation-based projection for memory stores.
+func (m *MemoryStore) listSymbolNodesRaw(ctx context.Context, serviceID string) ([]core.SymbolNode, error) {
+	obs, err := m.queryObservationsRaw(ctx, serviceID, "")
+	if err != nil {
+		return nil, err
+	}
+	nodes := make([]core.SymbolNode, 0, len(obs))
+	for _, o := range obs {
+		nodes = append(nodes, o.ToSymbolNode())
+	}
+	return nodes, nil
+}
+
 // sourcePackagesRaw is SourcePackages before the suppression filter.
 func (m *MemoryStore) sourcePackagesRaw(_ context.Context, serviceID, sourceRef string) ([]string, error) {
 	m.mu.RLock()

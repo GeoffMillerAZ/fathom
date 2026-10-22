@@ -47,6 +47,7 @@ var fixedTime = time.Date(2026, 8, 13, 12, 0, 0, 0, time.UTC)
 var storeMethodDisposition = map[string]string{
 	// --- filtered: path-anchored content leaves the store here ---
 	"QueryObservations":             "",
+	"ListSymbolNodes":               "",
 	"SymbolNamesForSource":          "",
 	"SymbolSourcesForNames":         "",
 	"DocSummaries":                  "",
@@ -242,6 +243,12 @@ func refsOf[T any](items []T, refOf func(T) string) []string {
 	return out
 }
 
+func TestSymbolProjectionIsScopedStoreMethod(t *testing.T) {
+	if _, ok := reflect.TypeOf((*store.Store)(nil)).Elem().MethodByName("ListSymbolNodes"); !ok {
+		t.Fatal("ListSymbolNodes must be in store.Store so the scope audit covers it")
+	}
+}
+
 // TestSuppressionCoversEverySurface is SP-2. The disposition map must
 // classify every store.Store method, and every method classified as
 // filtered is proven, behaviorally, to drop a suppressed ref — on the
@@ -331,6 +338,13 @@ func TestSuppressionCoversEverySurface(t *testing.T) {
 					t.Fatal(err)
 				}
 				assertRefs(t, refsOf(got, func(o core.Observation) string { return o.SourceRef }))
+			})
+			t.Run("ListSymbolNodes", func(t *testing.T) {
+				got, err := g.ListSymbolNodes(ctx, svc)
+				if err != nil {
+					t.Fatal(err)
+				}
+				assertRefs(t, refsOf(got, func(n core.SymbolNode) string { return n.FilePath }))
 			})
 			t.Run("SymbolNamesForSource", func(t *testing.T) {
 				hidden, err := g.SymbolNamesForSource(ctx, svc, hiddenRef)
