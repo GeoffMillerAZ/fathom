@@ -46,6 +46,22 @@ tasks:
     cmds: [task --list]
     silent: true
 
+  t:
+    desc: Run selected packages with race detection (task t [RUN=pattern] -- PACKAGES)
+    silent: true
+    env:
+      FATHOM_TEST_RUN: '{{.RUN | default ""}}'
+    cmds: ['bash scripts/test-targeted.sh {{.CLI_ARGS}}']
+
+  fmt:changed:
+    desc: Check Go files changed against origin/main without rewriting them
+    silent: true
+    cmds: [bash scripts/fmt-changed.sh]
+
+  merge-debris-check:
+    desc: Reject conflict markers and tracked backup or reject files
+    cmds: [bash scripts/check-merge-debris.sh]
+
   fmt:
     desc: Format all Go code
     cmds: ["{{.GO}} fmt $({{.GO}} list ./... | grep -v /third_party/)"]
@@ -292,6 +308,11 @@ tasks:
           bash -n "$f" || { echo "bash -n FAILED: $f"; rc=1; }
         done
         [ "$rc" -eq 0 ] || exit "$rc"
+        bash scripts/check-merge-debris_test.sh
+        bash scripts/commit-msg-check_test.sh
+        bash scripts/boundary-hooks_test.sh
+        bash scripts/ci-boundary_test.sh
+        bash scripts/targeted-tasks_test.sh
         bash scripts/build-cache_test.sh
         bash scripts/deploy-wait_test.sh
         bash scripts/gate-lease_test.sh
@@ -324,7 +345,7 @@ tasks:
     cmds: ["bash scripts/gate-lease.sh task validate:unleased"]
 
   validate:unleased:
-    desc: Full gate — fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, intent-index-check, intent-guard-check, bench-l0-gate, tenancy-lint, perfgate, test
+    desc: Full gate — merge-debris-check, fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, intent-index-check, intent-guard-check, bench-l0-gate, tenancy-lint, perfgate, test
     # clean-clone-check is IN the gate, not a nice-to-have: the adopter build
     # broke silently once (go.work committed, app-kit unmirrored) and stayed
     # broken because every machine that ran validate had the siblings.
@@ -336,7 +357,7 @@ tasks:
     # scenariobench is not a dep: `task test` already runs
     # ./internal/scenariobench (race, under the test task's CGO_ENABLED=1), and
     # the dep ran it a second time (77–102 s each, measured 2026-09-30).
-    deps: [fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, intent-index-check, intent-guard-check, bench-l0-gate, tenancy-lint, changelog-check, perfgate]
+    deps: [merge-debris-check, fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, intent-index-check, intent-guard-check, bench-l0-gate, tenancy-lint, changelog-check, perfgate]
     cmds: [{ task: test }]
 
   push:

@@ -5941,4 +5941,3 @@ completeness are computed; provider `none` emits unknown when a witness is absen
 
 **Revisit when** the consumer's acceptance run (GDEV-35) fails a P0 control on a release that passed it here; a family
 reads below its threshold with its oracle available for two releases; the consumer withdraws.
-||||||| 76f942a33

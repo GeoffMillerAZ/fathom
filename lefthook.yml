@@ -6,6 +6,8 @@
 pre-commit:
   parallel: true
   commands:
+    merge-debris:
+      run: bash scripts/check-merge-debris.sh --staged
     go-fmt-check:
       glob: "*.go"
       run: |
@@ -22,6 +24,11 @@ pre-commit:
           [ -f "$d/schema.cue" ] || continue
           (cd "$d" && cue vet ./...) || exit 1
         done
+
+commit-msg:
+  commands:
+    message-policy:
+      run: bash scripts/commit-msg-check.sh "{1}"
 
 pre-push:
   commands:
@@ -111,6 +118,8 @@ pre-push:
         store="workspace/tmp/gate-verify.sqlite"
         rm -f "$store" "$store-wal" "$store-shm"
         ingest_log=workspace/tmp/gate-verify-ingest.log
+        ingest_err=workspace/tmp/gate-verify-ingest-stderr.log
+        verify_err=workspace/tmp/gate-verify-stderr.log
         # Memory canary (O1366): this is the one ingest of the whole tree, so it
         # runs with the managed daemon's 4 GiB budget in force and its peak RSS
         # is read back below (the stranger check wires only a fixture fleet since
@@ -125,8 +134,9 @@ pre-push:
           esac
         fi
         # shellcheck disable=SC2086
-        FATHOM_TENANCY_BUDGET=4GiB $lease $timer bin/fathom ingest --store "$store" --service fathom --path . >"$ingest_log" 2>&1
+        FATHOM_TENANCY_BUDGET=4GiB $lease $timer bin/fathom ingest --store "$store" --service fathom --path . >"$ingest_log" 2>"$ingest_err"
         ingest_rc=$?
+        cat "$ingest_err" >>"$ingest_log"
         peak_bytes=$(awk '/maximum resident set size/ {print $1; exit} /Maximum resident set size/ {print $NF * 1024; exit}' "$rss_log" 2>/dev/null)
         if [ -n "$peak_bytes" ]; then
           peak_mib=$((peak_bytes / 1048576))
@@ -143,7 +153,7 @@ pre-push:
           if [ "$ingest_rc" -eq 1 ] && [ -f "$store" ] && [ -n "$gap" ]; then
             echo "fathom verify: scratch ingest of HEAD is degraded, verifying on it: ${gap#error: ingest degraded: }"
           else
-            echo "fathom verify: scratch ingest of HEAD failed (exit $ingest_rc) — allowing push (fail-open, see $ingest_log)"
+            echo "fathom verify: scratch ingest of HEAD failed (exit $ingest_rc) — allowing push (fail-open, see $ingest_log): $(sed -n '1p' "$ingest_err")"
             exit 0
           fi
         fi
@@ -164,21 +174,21 @@ pre-push:
         REFS
         fi
         if [ -n "$remote_sha" ]; then
-          if git cat-file -e "$remote_sha^{commit}" 2>/dev/null && base=$(git merge-base "$remote_sha" HEAD 2>/dev/null) && [ -n "$base" ]; then
+          if git cat-file -e "$remote_sha^{commit}" 2>"$verify_err" && base=$(git merge-base "$remote_sha" HEAD 2>"$verify_err") && [ -n "$base" ]; then
             range_from="the remote sha this push replaces"
           else
             base=""
-            echo "fathom verify: the remote sha $remote_sha is not a commit in this clone (fetch first) — falling back to the merge-base with origin/main"
+            echo "fathom verify: the remote sha $remote_sha is not a commit in this clone (fetch first) — falling back to the merge-base with origin/main: $(sed -n '1p' "$verify_err")"
           fi
         elif [ -n "$new_branch" ]; then
           echo "fathom verify: a new branch has no remote sha — reading the range from the merge-base with origin/main"
         fi
         if [ -z "$base" ]; then
-          if base=$(git merge-base HEAD origin/main 2>/dev/null) && [ -n "$base" ]; then
+          if base=$(git merge-base HEAD origin/main 2>"$verify_err") && [ -n "$base" ]; then
             range_from="merge-base with origin/main"
           else
             base=""
-            echo "fathom verify: no merge-base with origin/main — verifying without --since (a waiver added in this push is not checked for self-declaration)"
+            echo "fathom verify: no merge-base with origin/main — verifying without --since (a waiver added in this push is not checked for self-declaration): $(sed -n '1p' "$verify_err")"
           fi
         fi
         # ONE verify process over every plan (--plan is repeatable and
@@ -194,17 +204,19 @@ pre-push:
         for f in "$@"; do planargs="$planargs --plan $f"; done
         rc=0
         # shellcheck disable=SC2086
-        $lease bin/fathom verify --strict ${base:+--since "$base"} --store "$store" --service fathom $planargs --quiet
+        $lease bin/fathom verify --strict ${base:+--since "$base"} --store "$store" --service fathom $planargs --quiet 2>"$verify_err"
         code=$?
+        if [ "$code" -eq 0 ] || [ "$code" -eq 1 ]; then cat "$verify_err" >&2; fi
         if [ $code -eq 1 ]; then rc=1; fi
         if [ $code -ne 0 ] && [ $code -ne 1 ]; then
-          echo "fathom verify: the single call over every plan exited $code — re-running plan by plan"
+          echo "fathom verify: the single call over every plan exited $code — re-running plan by plan: $(sed -n '1p' "$verify_err")"
           for f in "$@"; do
-            $lease bin/fathom verify --strict ${base:+--since "$base"} --store "$store" --service fathom --plan "$f" --quiet
+            $lease bin/fathom verify --strict ${base:+--since "$base"} --store "$store" --service fathom --plan "$f" --quiet 2>"$verify_err"
             code=$?
+            if [ "$code" -eq 0 ] || [ "$code" -eq 1 ]; then cat "$verify_err" >&2; fi
             if [ $code -eq 1 ]; then rc=1; fi
-            if [ $code -eq 2 ]; then
-              echo "fathom verify: operational error — allowing push (fail-open, see docs/design/coding-agent-excellence.md §5.3)"
+            if [ "$code" -ne 0 ] && [ "$code" -ne 1 ]; then
+              echo "fathom verify: operational error — allowing push (fail-open, see docs/design/coding-agent-excellence.md §5.3): $(sed -n '1p' "$verify_err")"
             fi
           done
         fi
@@ -239,11 +251,15 @@ pre-push:
     review:
       run: |
         [ -x bin/fathom ] || exit 0
-        out=$(bin/fathom review --service fathom --since origin/main --store workspace/db/fleet.sqlite --no-persist --budget-seconds 20 2>&1)
+        mkdir -p workspace/tmp
+        err_log=$(mktemp workspace/tmp/review-stderr.XXXXXX)
+        trap 'rm -f "$err_log"' EXIT
+        out=$(bin/fathom review --service fathom --since origin/main --store workspace/db/fleet.sqlite --no-persist --budget-seconds 20 2>"$err_log")
         if [ $? -ne 0 ]; then
-          echo "fathom review: operational error — skipped (fail-open, see docs/design/coding-agent-excellence.md §5.3)"
+          echo "fathom review: operational error — skipped (fail-open, see docs/design/coding-agent-excellence.md §5.3): $(sed -n '1p' "$err_log")"
           exit 0
         fi
+        cat "$err_log" >&2
         echo "$out"
         exit 0
     # fathom conserve — ADR-044 §6/CV-47: the refactor-conservation
@@ -270,19 +286,27 @@ pre-push:
     refactor-conserve:
       run: |
         [ -x bin/fathom ] || exit 0
-        since=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null)
-        [ -n "$since" ] || since="origin/main"
-        out=$(bin/fathom conserve --service fathom --since "$since" --store workspace/db/fleet.sqlite --strict-plane integrity 2>&1)
+        mkdir -p workspace/tmp
+        err_log=$(mktemp workspace/tmp/conserve-stderr.XXXXXX)
+        trap 'rm -f "$err_log"' EXIT
+        since=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>"$err_log")
+        if [ -z "$since" ]; then
+          since="origin/main"
+          echo "fathom conserve: upstream unavailable — using origin/main: $(sed -n '1p' "$err_log")"
+        fi
+        out=$(bin/fathom conserve --service fathom --since "$since" --store workspace/db/fleet.sqlite --strict-plane integrity 2>"$err_log")
         rc=$?
         if [ $rc -eq 1 ]; then
+          cat "$err_log" >&2
           echo "$out"
           echo "fathom conserve: a silent pin loss or an uncited retirement blocks this push (ADR-057, PR-9, PR-12)"
           exit 1
         fi
         if [ $rc -ne 0 ]; then
-          echo "fathom conserve: operational error — skipped (fail-open, see docs/design/coding-agent-excellence.md §5.3)"
+          echo "fathom conserve: operational error — skipped (fail-open, see docs/design/coding-agent-excellence.md §5.3): $(sed -n '1p' "$err_log")"
           exit 0
         fi
+        cat "$err_log" >&2
         echo "$out"
         exit 0
 
@@ -309,11 +333,19 @@ post-commit:
     rebuild-binary:
       run: |
         git diff-tree --no-commit-id --name-only -r HEAD | grep -q '\.go$' || exit 0
-        if ! go build -o bin/fathom ./cmd/fathom >/dev/null 2>&1; then
-          echo "post-commit: bin/fathom rebuild FAILED — the binary is now STALE vs HEAD." >&2
+        mkdir -p workspace/tmp
+        err_log=$(mktemp workspace/tmp/rebuild-stderr.XXXXXX)
+        trap 'rm -f "$err_log"' EXIT
+        if ! go build -o bin/fathom ./cmd/fathom >/dev/null 2>"$err_log"; then
+          echo "post-commit: bin/fathom rebuild FAILED — the binary is now STALE vs HEAD: $(sed -n '1p' "$err_log")" >&2
           echo "  disk-full class? retry with an external build tmp:  GOTMPDIR=<big-disk>/tmp/gobuild TMPDIR=<big-disk>/tmp/gobuild go build -o bin/fathom ./cmd/fathom  (BOTH vars: the linker/dsymutil write to TMPDIR)" >&2
         fi
     fathom-refresh:
       run: |
         [ -x bin/fathom ] || exit 0
-        bin/fathom post-commit-hook --dir "$PWD" --service fathom --quiet || true
+        mkdir -p workspace/tmp
+        err_log=$(mktemp workspace/tmp/refresh-stderr.XXXXXX)
+        trap 'rm -f "$err_log"' EXIT
+        bin/fathom post-commit-hook --dir "$PWD" --service fathom --quiet 2>"$err_log" || {
+          echo "post-commit: fathom refresh skipped (fail-open): $(sed -n '1p' "$err_log")" >&2
+        }
