@@ -88,3 +88,8 @@ include = ["coverage", "dist"]
 #   0.2s, opa-parse 0.2s, argo (fails to load: its go.mod needs go 1.26.5)
 [typed]
 skip_modules = ["calibration/oracles/**", "calibration/telemetry-census"]
+
+# LE-2: owner decision BE-11 is required before enabling this here.
+[gate]
+accept_receipts = false
+receipts_dir = "workspace/receipts"

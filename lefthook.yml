@@ -36,6 +36,11 @@ pre-push:
           echo "pre-push: validate skipped — no commit is new to the remote"
           exit 0
         fi
+        # LE-2: default off; every refusal falls through to the existing gate.
+        if [ -x bin/fathom ] && bin/fathom gate receipt check --if-enabled; then
+          echo "pre-push: validate covered by matching gate receipt"
+          exit 0
+        fi
         task validate
     # fathom verify gate — §5.1 + §5.3 of docs/design/coding-agent-excellence.md:
     # gating only [x] claimed tasks in docs/plans/*.md.
