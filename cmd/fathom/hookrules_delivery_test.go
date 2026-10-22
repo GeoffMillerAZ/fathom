@@ -199,11 +199,89 @@ func TestRuleContextDeliveryStableClaimAndRawIdentity(t *testing.T) {
 	if strings.Contains(got, "Always sort outputs.") || !strings.Contains(got, "Always inject clocks.") {
 		t.Fatalf("claim/raw identity: %q", got)
 	}
-	// Per-rule records last for the context rather than CB-1's refresh window.
-	now = now.Add(time.Hour)
-	for i := 0; i < 12; i++ {
-		if got := ruleDeliveryPost(t, harness.ClaudeCode, root, file, "", "", ""); strings.Contains(got, "Always inject clocks.") {
-			t.Fatalf("rule refreshed: %q", got)
+	// ADR-080 d3 keeps CB-1's refresh backstop for each rule identity.
+	now = now.Add(30 * time.Minute)
+	if got := ruleDeliveryPost(t, harness.ClaudeCode, root, file, "", "", ""); !strings.Contains(got, "Always sort outputs.") || !strings.Contains(got, "Always inject clocks.") || strings.Contains(got, "already shown") {
+		t.Fatalf("rule identities did not refresh: %q", got)
+	}
+}
+
+func TestRuleContextDeliveryUnchangedPayload(t *testing.T) {
+	for _, id := range []string{harness.ClaudeCode, harness.Codex} {
+		for _, channel := range []string{"post-edit", "post-bash"} {
+			t.Run(id+"/"+channel, func(t *testing.T) {
+				root, _ := ruleDeliveryEnv(t)
+				file := writeEditedFile(t, root, "pkg/a.go", "package pkg\n")
+				command := ""
+				if channel == "post-bash" {
+					command = "sed -i 's/pkg/pkg/' pkg/a.go"
+				}
+				first := ruleDeliveryPost(t, id, root, file, "", "", command)
+				if !strings.Contains(first, "Sort outputs.") {
+					t.Fatalf("first delivery: %q", first)
+				}
+				if got := ruleDeliveryPost(t, id, root, file, "", "", command); got != "" {
+					t.Fatalf("CB-1 unchanged payload repeated: %q", got)
+				}
+			})
+		}
+	}
+}
+
+func TestRuleContextDeliveryRefreshBackstops(t *testing.T) {
+	for _, id := range []string{harness.ClaudeCode, harness.Codex} {
+		for _, backstop := range []string{"30-minutes", "10-withholdings"} {
+			t.Run(id+"/"+backstop, func(t *testing.T) {
+				root, transport := ruleDeliveryEnv(t)
+				firstFile := writeEditedFile(t, root, "pkg/a.go", "package pkg\n")
+				secondFile := writeEditedFile(t, root, "pkg/b.go", "package pkg\n")
+				now := time.Date(2026, 10, 22, 12, 0, 0, 0, time.UTC)
+				previous := nowFunc
+				nowFunc = func() time.Time { return now }
+				t.Cleanup(func() { nowFunc = previous })
+				emit := func(file, command string) string {
+					return ruleDeliveryPost(t, id, root, file, "", "", command)
+				}
+				if got := emit(firstFile, ""); !strings.Contains(got, "Sort outputs.") {
+					t.Fatalf("first rule: %q", got)
+				}
+				// A later payload delivers one new rule without refreshing the old one.
+				now = now.Add(15 * time.Minute)
+				transport.rules = append(transport.rules, cbRule("Inject clocks."))
+				got := emit(secondFile, "")
+				if strings.Contains(got, "Sort outputs.") || !strings.Contains(got, "Inject clocks.") || !strings.HasSuffix(got, "(1 rules already shown in this session)") {
+					t.Fatalf("different-file delta: %q", got)
+				}
+				if backstop == "30-minutes" {
+					now = now.Add(15*time.Minute - time.Nanosecond)
+					if got := emit(secondFile, ""); got != "" {
+						t.Fatalf("whole payload repeated before refresh: %q", got)
+					}
+					now = now.Add(time.Nanosecond)
+				} else {
+					// Count both whole-payload suppressions and cross-channel deltas.
+					for i := 2; i <= 10; i++ {
+						command := ""
+						if i%2 == 0 {
+							command = "sed -i 's/pkg/pkg/' pkg/b.go"
+						}
+						got := emit(secondFile, command)
+						if strings.Contains(got, "Sort outputs.") || strings.Contains(got, "Inject clocks.") || (got != "" && !strings.HasSuffix(got, "(2 rules already shown in this session)")) {
+							t.Fatalf("withholding %d: %q", i, got)
+						}
+					}
+				}
+				got = emit(secondFile, "")
+				if !strings.Contains(got, "Sort outputs.") || strings.Contains(got, "Inject clocks.") || !strings.HasSuffix(got, "(1 rules already shown in this session)") {
+					t.Fatalf("per-rule backstop: %q", got)
+				}
+				if backstop == "10-withholdings" {
+					got = emit(firstFile, "")
+					if strings.Contains(got, "Sort outputs.") || !strings.Contains(got, "Inject clocks.") || !strings.HasSuffix(got, "(1 rules already shown in this session)") {
+						t.Fatalf("independent rule counter: %q", got)
+					}
+				}
+			})
 		}
 	}
 }

@@ -189,6 +189,10 @@ func cmdEditHookBashWrite(codec harness.Codec, hook harness.HookInput, url strin
 	if !doubt {
 		text, dedupe = dedupeHookRules(codec.ID(), projDir, hook, "post-bash", promptNamesLabel(m.namedFiles), svc, text, m.rules, nowFunc())
 		defer dedupe.close()
+		if dedupe.suppressed {
+			dedupe.record(codec.ID(), sessionID, "post-bash", text)
+			return silent(silenceSessionDeduped)
+		}
 	}
 	out, err := codec.EncodeOutput(harness.EventPostTool, harness.HookOutput{Context: text})
 	if err != nil {

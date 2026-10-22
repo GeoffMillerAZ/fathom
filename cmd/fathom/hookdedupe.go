@@ -244,9 +244,8 @@ func (d *hookDedupeCheck) commit(now time.Time) {
 		for _, key := range d.ruleKeys {
 			d.state.Digests[key] = hookDedupeEntry{Digest: key, EmittedAt: now}
 		}
-	} else {
-		d.state.Digests[d.key] = hookDedupeEntry{Digest: d.digest, EmittedAt: now}
 	}
+	d.state.Digests[d.key] = hookDedupeEntry{Digest: d.digest, EmittedAt: now}
 	d.state.At = now
 	d.persist()
 	d.close()

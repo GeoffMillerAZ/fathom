@@ -1975,9 +1975,9 @@ exceed its context cap establish no rule-delivery claim.
 
 Cwd-changed primers retain their Claude Code behavior: suppress consecutive
 repeats with the same repository root and rendered digest; A → B → A re-emits
-A. Cwd primers and post-edit payloads containing no rules retain the
-30-minute / 10-suppression refresh backstops. Per-rule delivery resets with
-the context instead.
+A. Cwd primers, post-edit payloads containing no rules, and individual rules
+retain the 30-minute / 10-suppression refresh backstops. Unchanged whole
+payloads for the same channel and target stay silent within those backstops.
 
 ```toml
 [hooks]

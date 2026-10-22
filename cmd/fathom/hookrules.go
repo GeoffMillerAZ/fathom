@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 	"time"
 
@@ -37,6 +38,10 @@ func dedupeHookRules(id, root string, in harness.HookInput, channel, target, ser
 		return payload, d
 	}
 	d.ruleMode = true
+	// CB-1's whole-payload slot is context-specific too. Keep the original
+	// digest: filtering a changed payload must not make its next touch new.
+	d.key = hookDigest("payload\x00" + context + "\x00" + channel + "\x00" + target)
+	previousPayload, payloadSeen := d.state.Digests[d.key]
 	var kept []semantic.Obligation
 	withheld := 0
 	pending := make(map[string]bool)
@@ -46,37 +51,47 @@ func dedupeHookRules(id, root string, in harness.HookInput, channel, target, ser
 			identity = "raw\x00" + rule.Rule + "\x00" + rule.Src
 		}
 		key := hookDigest("rule\x00" + context + "\x00" + service + "\x00" + rule.Module + "\x00" + identity)
-		if _, seen := d.state.Digests[key]; seen || pending[key] {
+		if pending[key] {
 			withheld++
 			continue
 		}
 		pending[key] = true
+		previous, seen := d.state.Digests[key]
+		if seen && !now.Before(previous.EmittedAt) && now.Sub(previous.EmittedAt) < hookDedupeRefresh && previous.Suppressions < hookDedupeMaxSuppressions {
+			previous.Suppressions++
+			d.state.Digests[key] = previous
+			withheld++
+			continue
+		}
 		d.ruleKeys = append(d.ruleKeys, key)
 		kept = append(kept, rule)
 	}
-	// Capacity failure never authorizes withholding even an already-seen rule.
-	if len(d.state.Digests)+len(d.ruleKeys) > hookDedupeMaxEntries {
-		d.stateError = true
-		d.close()
-		return payload, d
-	}
-	// A write fault must not suppress. Probe the existing state, without
-	// recording any newly delivered rule, before withholding old rules.
-	if withheld > 0 && !d.persist() {
-		d.close()
-		return payload, d
-	}
-	// Check the byte bound before withholding, including new identities.
+	d.state.At = now
+	// Check both bounds with the prospective deliveries, but never persist
+	// those identities before stdout succeeds. Refreshing a rule uses its slot.
+	prior := d.state.Digests
+	d.state.Digests = maps.Clone(prior)
 	for _, key := range d.ruleKeys {
 		d.state.Digests[key] = hookDedupeEntry{Digest: key, EmittedAt: now}
 	}
-	if !d.fits() {
+	d.state.Digests[d.key] = hookDedupeEntry{Digest: d.digest, EmittedAt: now}
+	fits := len(d.state.Digests) <= hookDedupeMaxEntries && d.fits()
+	d.state.Digests = prior
+	if !fits {
 		d.stateError = true
 		d.close()
 		return payload, d
 	}
-	d.firstTouch = withheld == 0
+	d.firstTouch = !payloadSeen
 	if withheld == 0 {
+		return payload, d
+	}
+	// An unchanged whole payload stays silent unless a per-rule backstop
+	// makes at least one rule due again. Suppressions count in either case.
+	if payloadSeen && previousPayload.Digest == d.digest && len(d.ruleKeys) == 0 {
+		ok := d.persist()
+		d.close()
+		d.suppressed = ok && !d.stateError
 		return payload, d
 	}
 	render := func(rs []semantic.Obligation) string {
@@ -99,6 +114,12 @@ func dedupeHookRules(id, root string, in harness.HookInput, channel, target, ser
 	filtered := strings.Replace(payload, before, render(kept), 1) + fmt.Sprintf("\n(%d rules already shown in this session)", withheld)
 	if id == harness.Codex && len(filtered) > harness.CodexAdditionalContextCap {
 		d.close() // capped output cannot establish delivery of every rule
+		return payload, d
+	}
+	// A write fault must not withhold. Persist only old-rule counters here;
+	// newly delivered rules and the original payload commit after stdout.
+	if !d.persist() {
+		d.close()
 		return payload, d
 	}
 	return filtered, d
