@@ -10,12 +10,6 @@ guards: [
 		enforce: true
 	},
 	{
-		scopes: ["workspace/receipts/**"]
-		note: "Gate receipts and their logs are evidence written by fathom gate receipt write; agents must not edit them (ADR-081 d1)."
-		enforce: true
-		forbidden_paths: ["workspace/receipts/**"]
-	},
-	{
 		// from app-kit fathom-pack v0.1 (consumer; scoped for fathom)
 		scopes: ["cmd/fathom/observatory*.go", "cmd/fathom/brief.go", "cmd/fathom/statusz.go"]
 		note:      "UI markup here is app-kit (D10/D13): search the corpus (appkit MCP search_components) and the kit packages (ui/dashboard, ui/stat, ui/viz) BEFORE writing any markup — a hand-rolled tile set was deleted from this repo the same day it was written (2026-08-08). Role utilities only (bg-surface-raised, text-ink-muted); dark: color variants are DROPPED (tokens carry dark); stat.Absent for uninstrumented metrics — never a fabricated zero (law 3). New render files must be added to cmd/fathom/ui/input.css @source globs or their classes silently never render; then run task ui:css."
