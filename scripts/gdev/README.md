@@ -22,6 +22,8 @@ The installed daemon is never addressed. SIGTERM stops the child. Current
 unmanaged Fathom handles that signal and deliberately exits 143, recorded as-is.
 Startup is bounded at 60 seconds, each request at 900 seconds, async ingest at
 900 one-second polls, and shutdown at 30 seconds before a recorded forced stop.
+SIGKILL of the harness can orphan the daemon and sampler. Their PIDs are saved
+in `<out>/daemon-pid.txt` and `<out>/sampler-pid.txt`.
 
 **Use a new output for the second cold arm. Warmed reruns are not cold arms.
 Do not raise the budget.** Keep binary, corpus and budget identical across arms.
@@ -51,12 +53,16 @@ commits use HEAD and all tracked files, explicitly labeled in the receipt.
 `arm.json` has fixed key order: `schema_version`, `identity`, `inputs`, `daemon`,
 `requests`, `physical_footprint`, `estimated_memory`, `outcome`. It records binary
 version/hash, subject commit/tree/dirty status, OS/arch, Go version, runtime
-overrides, exact inputs and plan hashes. Every control retains argv/request,
+overrides, exact inputs and plan hashes. The subject's post-arm Git porcelain
+status and comparison with its pre-arm snapshot are recorded in `identity.subject`.
+A changed status or failed status check makes the arm incomplete. Every control
+retains argv/request,
 exit, uncut stdout/stderr, bytes/hash and wall duration. Readiness attempts and
 resource reads have separate ledgers and raw files. Named response refusals and
 admission fields are retained, alongside the latest sampled tenancy state
 (labeled as a sample, not a per-call admission decision). Complete, truncated,
-refused, error and unknown are distinct; a complete failed gate can exit 1.
+refused, error and unknown are distinct. A failed verify gate makes the arm
+incomplete.
 
 `resources --json --url <private URL>` is polled every 0.25 seconds from record
 publication through shutdown, plus a final sequential read. The governor's
@@ -73,7 +79,9 @@ never the post-exit config fallback.
 exits and known physical samples. It does **not** qualify GDEV-01 or prove budget
 compliance. Inspect observed budgets, peak, truncation, refusals and ingest
 quality. Request failures stay in the receipt and do not stop later controls.
-Harness operational failures/interruption exit nonzero and retain a receipt.
+Exit 0 means a complete arm. Exit 3 means an incomplete arm after the sequence
+finishes. Operational failures/interruption preserve their nonzero exit and
+retain a receipt when preparation succeeded.
 
 ## Fathom snapshot and checks
 

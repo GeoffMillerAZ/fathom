@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 EVIDENCE="$SCRIPT_DIR/cold_arm.py"
 die() { echo "cold-arm: $*" >&2; exit 2; }
-subject= service= plans= ids= budget= out= binary=fathom
+subject='' service='' plans='' ids='' budget='' out='' binary=fathom
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --subject|--service|--plans|--ids|--budget|--out|--fathom)
@@ -31,7 +31,7 @@ python3 "$EVIDENCE" prepare "$subject" "$service" "$plans" "$ids" "$budget" "$ou
 out="$(cd "$out" && pwd -P)"
 export FATHOM_HOME="$out/home"
 store="$out/store.sqlite"
-daemon_pid= sampler_pid= url= stopped=false
+daemon_pid='' sampler_pid='' url='' stopped=false
 stop() {
   local code=0
   [ "$stopped" = false ] || return 0
@@ -57,7 +57,9 @@ finish() {
   local code=$?
   trap - EXIT
   stop
-  python3 "$EVIDENCE" finish "$out" "$code"
+  local receipt_code=0
+  python3 "$EVIDENCE" finish "$out" "$code" || receipt_code=$?
+  if [ "$code" -eq 0 ]; then code="$receipt_code"; fi
   exit "$code"
 }
 trap finish EXIT
@@ -72,6 +74,7 @@ daemon_pid=$!
 printf '%s\n' "$daemon_pid" > "$out/daemon-pid.txt"
 python3 "$EVIDENCE" sample "$out" "$binary" &
 sampler_pid=$!
+printf '%s\n' "$sampler_pid" > "$out/sampler-pid.txt"
 url="$(python3 "$EVIDENCE" ready "$out" "$daemon_pid")"
 export FATHOM_HTTP="$url"
 run() { python3 "$EVIDENCE" run "$out" "$@"; }
@@ -87,7 +90,7 @@ rpc ingest extended
 for ((poll=0; poll<900; poll++)); do
   state="$(python3 "$EVIDENCE" ingest-state "$out")"
   case "$state" in
-    done|failed) break ;;
+    done|failed|unknown) break ;;
     *) sleep 1; python3 "$EVIDENCE" poll "$out" "$state"; rpc ingest-poll extended ;;
   esac
 done

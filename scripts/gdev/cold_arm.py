@@ -155,11 +155,11 @@ def facts(value):
                     admission.append({"path": where, "value": child})
                 if child and key in ("refused", "refusal", "refusal_reason"):
                     refused.append({"path": where, "value": child})
-                if key in ("state", "status", "outcome") and isinstance(child, str) and child in ("refused", "busy", "cancelled", "canceled", "deadline_exceeded", "abandoned", "abandoned-by-governor"):
+                if key in ("state", "status", "outcome") and isinstance(child, str) and child in ("refused", "degraded", "degradation", "incomplete", "busy", "cancelled", "canceled", "deadline_exceeded", "abandoned", "abandoned-by-governor"):
                     refused.append({"path": where, "value": child})
                 if ((key in ("truncated", "elided", "elided_count", "omitted_count", "suppressed_count", "suppressed") and child)
                         or (key.endswith(("_truncated", "_elided", "_omitted")) and child)
-                        or (key == "partial" and child)
+                        or (key in ("partial", "degraded", "degradation") and child)
                         or (key == "complete" and child is False)):
                     truncated.append({"path": where, "value": child})
                 if (key == "error" and child) or (key == "iserror" and child is True):
@@ -206,8 +206,13 @@ def record(out, name, mode, request, argv, directory="responses", ledger="reques
             valid = False
         if mode == "text":
             for line in value.splitlines():
-                if re.search(r"\b(elided|truncated|unresolved)\b", line, re.I):
+                if re.search(r"\b(elided|truncated)\b", line, re.I):
                     truncated.append({"line": line})
+                # CLI messages: admission_http.go, resources.go, governor.go,
+                # postcommithook.go and drain.go. Ordinary context can say
+                # "unresolved" without a refusal or omitted response.
+                if re.search(r"\b(refus(?:ed|al)|busy|over budget|halted|admission)\b", line, re.I):
+                    refused.append({"line": line})
     except (ValueError, TypeError):
         valid = False
     if directory == "responses":
@@ -223,11 +228,8 @@ def record(out, name, mode, request, argv, directory="responses", ledger="reques
             admission.append({"source": "response", "value": "unknown; no admission state exposed"})
     status = ("refused" if refused else "error" if code or errors else
               "unknown" if not valid or not raw else "truncated" if truncated else "complete")
-    # verify exit 1 is a failed gate, and may still be a complete JSON report.
-    if name.startswith("verify:") and code == 1 and valid and not (errors or refused or truncated):
-        status = "complete"
     entry = {"name": "tools/list" if name == "tools-list" else name, "argv": argv,
-             "request": json.loads(Path(request).read_text()) if request != "-" else None,
+             "request": json.loads(Path(request).read_text()) if request != "-" else {"argv": argv},
              "exit_code": code, "response_bytes": len(raw),
              "response_sha256": hashlib.sha256(raw).hexdigest(),
              "stderr_bytes": base.with_suffix(".stderr").stat().st_size,
@@ -285,22 +287,26 @@ def result_value(out, entry):
 
 def ingest_state(out):
     entry = entries(out, "requests.jsonl")[-1]
+    value = None
     try:
         value = result_value(out, entry)
-        run = value.get("run")
-        if isinstance(run, dict):
-            if run.get("done"):
-                return "done" if run.get("ok", False) else "failed"
-            return run["id"]
-        if value.get("completed") is True or value.get("done") is True or value.get("ok") is True:
-            return "done" if value.get("ok") is True else "failed"
-        if value.get("state") == "unknown":
+        # registerIngest / ingestQueueState / ingestRunState in
+        # internal/mcp/extra_tools.go (cmd/fathom/init.go consumes these).
+        if entry["completeness"] in ("refused", "error"):
             return "failed"
-        if run and entry["completeness"] not in ("refused", "error"):
-            return run
+        if isinstance(value, dict):
+            if value.get("ok") is False:
+                return "failed"
+            if value.get("ok") is True:
+                return "done"
+            if (value.get("completed") is False and value.get("state") in ("queued", "running")
+                    and isinstance(value.get("run"), str) and value["run"]):
+                return value["run"]
     except (ValueError, KeyError, TypeError, AttributeError):
         pass
-    return "failed"
+    keys = sorted(value) if isinstance(value, dict) else []
+    print("cold-arm: unknown ingest response keys=" + json.dumps(keys), file=sys.stderr)
+    return "unknown"
 
 
 def finish(out, harness_exit, clock=time.time):
@@ -345,9 +351,16 @@ def finish(out, harness_exit, clock=time.time):
               "arm_wall_clock": "POSIX wall clock across processes; request durations use process-local monotonic clocks",
               "stop_signal": "SIGTERM",
               "ingest_state": read("ingest-state.txt", "unknown")}
-    complete = (not harness_exit and daemon["exit_code"] in (0, 143) and not daemon["forced_stop"] and now
+    identity = json.loads((out / "identity.json").read_text())
+    subject = identity["subject"]
+    status = capture(["git", "-C", subject["path"], "status", "--porcelain=v1", "--untracked-files=all"])
+    subject["post_arm_status"] = status["stdout"].strip() if status["exit_code"] == 0 else None
+    subject["post_arm_status_unchanged"] = status["exit_code"] == 0 and subject["post_arm_status"] == subject["status"]
+    if status["exit_code"]:
+        subject["post_arm_status_error"] = status["stderr"]
+    complete = (subject["post_arm_status_unchanged"] and not harness_exit and daemon["exit_code"] in (0, 143) and not daemon["forced_stop"] and now
                 and daemon["ingest_state"] == "done" and requests and all(r["completeness"] == "complete" and r["exit_code"] == 0 for r in requests))
-    arm = {"schema_version": 1, "identity": json.loads((out / "identity.json").read_text()),
+    arm = {"schema_version": 1, "identity": identity,
            "inputs": json.loads((out / "inputs.json").read_text()), "daemon": daemon, "requests": requests,
            "physical_footprint": {"method": "fathom resources --json --url PRIVATE_URL; poll every 0.25s plus final sample; daemon OS sampler/ring cadence applies",
                                   "peak_daemon_bytes": max(now) if now else None,
@@ -362,6 +375,7 @@ def finish(out, harness_exit, clock=time.time):
            "outcome": "complete" if complete else "incomplete"}
     dump(out / "arm.json", arm)
     print(str(out / "arm.json"))
+    return 0 if complete else 3
 
 
 def main():
@@ -391,7 +405,7 @@ def main():
             os.kill(int(args[1]), 9)
         except ProcessLookupError:
             pass
-    elif command == "finish": finish(out, int(args[1]))
+    elif command == "finish": sys.exit(finish(out, int(args[1])))
     else: raise ValueError("unknown command " + command)
 
 
