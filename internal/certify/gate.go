@@ -9,6 +9,7 @@ package certify
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/store"
@@ -79,7 +80,7 @@ func AfterIngest(ctx context.Context, st store.Store, service, watermark, repoDi
 // nothing is declared at all (a compile would be a pure no-op, and no
 // claim is read); StepSweep when the layer has already been compiled at
 // least once, every existing claim already carries the CURRENT watermark,
-// and the declared-entry count has changed neither up nor down since —
+// and the resolvable declaration count has changed neither up nor down since —
 // the cheap proxy for "the declarations and watermark are unchanged";
 // StepCompile otherwise.
 //
@@ -111,15 +112,29 @@ func nextStep(ctx context.Context, st store.Store, service, watermark string) (S
 	if err != nil {
 		return StepNothing, err
 	}
-	if len(existing) == 0 {
-		return StepCompile, nil
-	}
 	for _, c := range existing {
 		if c.CompiledAtWatermark != watermark {
 			return StepCompile, nil
 		}
 	}
-	if len(existing) != len(decls) {
+	// A declaration whose test is not indexed cannot produce a claim.
+	// Resolve just the declared names, then require the exact canonical
+	// key: an identically named test in another package is not a match.
+	resolved := 0
+	for _, d := range decls {
+		name := d.TestSymbolKey[strings.LastIndex(d.TestSymbolKey, ".")+1:]
+		obs, err := st.ObservationsForSymbol(ctx, service, name)
+		if err != nil {
+			return StepNothing, err
+		}
+		for _, o := range obs {
+			if o.ToSymbolNode().Key() == d.TestSymbolKey {
+				resolved++
+				break
+			}
+		}
+	}
+	if len(existing) != resolved || (len(existing) == 0 && declared > len(decls)) {
 		return StepCompile, nil
 	}
 	return StepSweep, nil
