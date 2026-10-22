@@ -367,8 +367,9 @@ func inPlaceWriteArgs(verb string, args []string) (targets []string, inPlace boo
 				}
 				continue
 			}
-			// Perl and Ruby accept combined flags (-pi, -pe). Stop at
-			// switches whose remaining bytes (or next word) are their value.
+			// Perl and Ruby accept combined flags (-pi, -pe). Value-taking
+			// flags differ: some take the next word, some only the attached
+			// suffix, and optional numeric values keep scanning the cluster.
 			for j := 1; j < len(a); j++ {
 				if a[j] == 'i' {
 					inPlace = true
@@ -381,13 +382,24 @@ func inPlaceWriteArgs(verb string, args []string) (targets []string, inPlace boo
 					}
 					break
 				}
-				argumentFlag := (verb == "perl" && strings.ContainsRune("IMmx0lCdDF", rune(a[j]))) ||
-					(verb == "ruby" && strings.ContainsRune("IrCEFKWx0", rune(a[j])))
-				if argumentFlag {
+				nextWord := a[j] == 'I' || (verb == "ruby" && a[j] == 'r')
+				attachedOnly := (verb == "perl" && strings.ContainsRune("CdDFxMm", rune(a[j]))) ||
+					(verb == "ruby" && strings.ContainsRune("CEFK", rune(a[j])))
+				optionalDigits := (verb == "perl" && strings.ContainsRune("0l", rune(a[j]))) ||
+					(verb == "ruby" && strings.ContainsRune("W0x", rune(a[j])))
+				if nextWord {
 					if j == len(a)-1 {
 						i++
 					}
 					break
+				}
+				if attachedOnly {
+					break
+				}
+				if optionalDigits {
+					for j+1 < len(a) && a[j+1] >= '0' && a[j+1] <= '9' {
+						j++
+					}
 				}
 			}
 			continue
