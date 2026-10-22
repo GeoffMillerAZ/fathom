@@ -13,7 +13,7 @@ is built only if a later reading raises its coverage.
 
 ## Wave 1: selector and in force (d2, d3)
 
-- [ ] (op) RS-M1: anchor coverage of the rules eligible on the 8 VB-40 target paths, by `doc_links`. KEEP (25% or more) builds the anchor rank, CUT starts RS-1 with contract keys and path proximity. Read CUT at 23 of 1731 (1.3%) {id: RS-M1, oracle: lexical, path: docs/bench/readings/rule-selection/anchor-coverage.md, pattern: "^RS-M1 verdict: (KEEP|CUT)"}
+- [x] (op) RS-M1: anchor coverage of the rules eligible on the 8 VB-40 target paths, by `doc_links`. KEEP (25% or more) builds the anchor rank, CUT starts RS-1 with contract keys and path proximity. Read CUT at 23 of 1731 (1.3%) {id: RS-M1, oracle: lexical, path: docs/bench/readings/rule-selection/anchor-coverage.md, pattern: "^RS-M1 verdict: (KEEP|CUT)"}
 - [ ] One deterministic selector between the candidates (claims plus raw sections) and the 6-rule cap, ranking by scope evidence, strongest first: a `doc_links` row, a contract key or log template on the edited symbol, a path glob naming the edited path, a repo-wide glob; moved out of `serve.go` into its own file; rank only {id: RS-1, symbol: rankByScopeEvidence, package: internal/semantic, reachable_from: TestSelectorRanksByScopeEvidence, needs: "RS-M1"}
 - [ ] A claim citing a fully superseded ADR section is withheld from the cap with the withheld count disclosed; a partly superseded one stays, tagged; `internal/adr.ParseSections`, a section without a status line parses as accepted, `valid_to` stays empty {id: RS-2, symbol: claimInForce, package: internal/semantic, reachable_from: TestClaimCitingSupersededADRIsWithheldAndCounted}
 
