@@ -826,7 +826,11 @@ func loadDocExtractor(fsys fs.FS, d Dialect) (*DocExtractor, error) {
 			return nil, fmt.Errorf("doc spec: entities[%d] source_kind %q is not a kind the manifest declares", i, e.SourceKind)
 		}
 	}
-	return NewDocExtractor(spec)
+	x, err := NewDocExtractor(spec)
+	if err == nil {
+		x.unityMetadata = d.ID == "unity-asmdef"
+	}
+	return x, err
 }
 
 func sortedKindKeys(d Dialect) []string {

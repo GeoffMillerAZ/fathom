@@ -228,6 +228,7 @@ func (s *extractSink) add(ctx context.Context, pf pendingFile) error {
 		obs := make([]core.Observation, 0, len(nodes))
 		now := time.Now().UTC()
 		for _, node := range nodes {
+			node = unityDerivedNode(node)
 			// Tool identity: an extractor's per-symbol verdict (set for
 			// multi-document formats where identity is per-document,
 			// e.g. a CRD beside a Deployment in one YAML stream —

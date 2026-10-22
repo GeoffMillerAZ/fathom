@@ -263,6 +263,23 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 		_ = st.SetFingerprint(ctx, serviceID, relFile, hash)
 		return ReingestReport{}, fmt.Errorf("fusion: ReingestFile extract %q: %w", relFile, extractErr)
 	}
+	// Editing an existing C# file does not change its assembly folder. Keep
+	// its derived ownership. Metadata declarations use the shared builder
+	// and name the full ingest required to recompute cross-file claims.
+	var unityFacts []core.Observation
+	if ext == ".cs" {
+		if fis, ok := st.(store.FileImportsStore); ok {
+			previous, err := fis.SourceObservations(ctx, serviceID, []string{relFile})
+			if err != nil {
+				return ReingestReport{}, err
+			}
+			for _, o := range previous {
+				if strings.HasPrefix(string(o.SourceKind), "Unity") {
+					unityFacts = append(unityFacts, o)
+				}
+			}
+		}
+	}
 
 	// Replace idiom (store.go's PutObservations doc comment): purge this
 	// file's old observations immediately before writing the new ones.
@@ -275,9 +292,10 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 	generated := connector.IsGenerated(relFile, content)
 	now := time.Now().UTC()
 	templates := logTemplateObservations(serviceID, relFile, hash, content, nodes, now, generated)
-	if len(nodes)+len(templates) > 0 {
-		obs := make([]core.Observation, 0, len(nodes)+len(templates))
+	if len(nodes)+len(templates)+len(unityFacts) > 0 {
+		obs := make([]core.Observation, 0, len(nodes)+len(templates)+len(unityFacts))
 		for _, node := range nodes {
+			node = unityDerivedNode(node)
 			obs = append(obs, core.Observation{
 				ServiceID:    serviceID,
 				SourceRef:    relFile,
@@ -297,6 +315,10 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 			})
 		}
 		obs = append(obs, templates...)
+		for _, o := range unityFacts {
+			o.ContentHash, o.IngestedAt, o.Generated = hash, now, generated
+			obs = append(obs, o)
+		}
 		if err := st.PutObservations(ctx, obs); err != nil {
 			return ReingestReport{}, fmt.Errorf("fusion: ReingestFile put observations %q: %w", relFile, err)
 		}
@@ -308,8 +330,8 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 
 	return ReingestReport{
 		Refreshed:       true,
-		Symbols:         len(nodes),
-		TypedEdgesStale: ext == ".go",
+		Symbols:         len(nodes) + len(unityFacts),
+		TypedEdgesStale: ext == ".go" || ext == ".asmdef" || ext == ".asmref",
 	}, nil
 }
 

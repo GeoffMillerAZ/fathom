@@ -501,6 +501,14 @@ func (p *Pipeline) ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	if docErr != nil {
 		return finish(fmt.Errorf("fusion: doc-xref edge pass %q: %w", svc.ID, docErr))
 	}
+	unityRep, unityErr := p.enrichUnityAssembliesChanged(ctx, svc, refs, changed, time.Unix(0, run.started).UTC())
+	if unityRep.ran {
+		passes.mark("unity_assembly")
+	}
+	report.UnityAssemblyUnresolved, report.UnityAssemblyProblems = unityRep.unresolved, unityRep.problems
+	if unityErr != nil {
+		return finish(fmt.Errorf("fusion: Unity assembly facts %q: %w", svc.ID, unityErr))
+	}
 
 	// Route references (LB-F97, wave px; docs/design/language-breadth.md
 	// §4): a route's target host joined to the Kubernetes or compose

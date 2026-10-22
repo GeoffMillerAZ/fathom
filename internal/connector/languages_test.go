@@ -101,6 +101,7 @@ var langRowHint = map[string]string{
 	"python-packaging": "pyproject.toml",
 	"maven":            "pom.xml",
 	"msbuild":          ".csproj",
+	"unity-asmdef":     "| Unity assembly definitions and references ",
 	"cargo":            "Cargo.toml",
 	"vcpkg":            "vcpkg.json",
 	"conan":            "conanfile.txt",

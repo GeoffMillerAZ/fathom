@@ -67,6 +67,9 @@ type Config struct {
 
 // Report summarises a completed Ingest run.
 type Report struct {
+	// Unity assembly facts are derived from repository files, never compiler-verified.
+	UnityAssemblyUnresolved int      `json:",omitempty"`
+	UnityAssemblyProblems   []string `json:",omitempty"`
 	// Discovered is the number of SourceRefs returned by Connector.Discover
 	// (after ignore filtering; currently all refs are kept).
 	Discovered int
