@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/explmap"
 )
 
@@ -139,13 +140,28 @@ func mapHeaderRows(t *testing.T) map[string]threadItem {
 // minted composite made only of references.
 func TestSubagentStartCarriesOneMapIDWithin1200Bytes(t *testing.T) {
 	repo := hookMapRepo(t)
-	srv := fakeIndexDaemon(t)
+	writeSessionStamp(sessionStamp{SessionID: "sess-parent", Cwd: repo, Identity: &identityResult{Schema: 1, Service: "fathom", Symbols: 10}})
 	now := time.Now().UTC()
 	recordSessionWindow(repo, sessionWindowRow{SchemaVersion: 1, SessionID: "sess-parent", Cwd: repo, Service: "fathom", Started: now.Add(-time.Hour).Format(time.RFC3339)})
+	hash, ok := core.HashLines([]byte(hookMapFile), 3, 3)
+	if !ok {
+		t.Fatal("fixture range must hash")
+	}
 	var rows []string
 	for i := 0; i < 12; i++ {
-		rows = append(rows, fmt.Sprintf(`{"ts":"%s","service":"fathom","pointers":["internal/pkgname%02d.LongSymbolNameForTheBrief%02d"]}`,
-			now.Add(-time.Duration(i)*time.Second).Format(time.RFC3339Nano), i, i))
+		path := fmt.Sprintf("long_parent_discovery_range_for_the_brief_%02d.go", i)
+		if err := os.WriteFile(filepath.Join(repo, path), []byte(hookMapFile), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		row, err := json.Marshal(map[string]any{
+			"ts": now.Add(-time.Duration(i) * time.Second).Format(time.RFC3339Nano), "service": "fathom",
+			"caller":         map[string]string{"session": "sess-parent", "agent_id": ""},
+			"range_pointers": []map[string]any{{"path": path, "start": 3, "end": 3, "hash": hash}},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		rows = append(rows, string(row))
 	}
 	writeDiscoCallLogFixture(t, callLogPathFor(repo), rows)
 	fileMapEntry(t, repo, "auth-surface", "a.go#L3-L5", "the handler", "sess-parent", now.Add(-30*time.Minute))
@@ -154,7 +170,7 @@ func TestSubagentStartCarriesOneMapIDWithin1200Bytes(t *testing.T) {
 	spawn := func() string {
 		var out, errb bytes.Buffer
 		payload := `{"session_id":"sess-parent","cwd":"` + repo + `","agent_id":"agent-7","agent_type":"explorer"}`
-		if code := cmdSessionHookEvent("subagent-start", []string{"--url", srv.URL, "--dir", repo}, strings.NewReader(payload), &out, &errb); code != 0 {
+		if code := cmdSessionHookEvent("subagent-start", []string{"--url", "http://127.0.0.1:1", "--dir", repo}, strings.NewReader(payload), &out, &errb); code != 0 {
 			t.Fatalf("exit %d: %s", code, errb.String())
 		}
 		return hookContext(t, out.String())

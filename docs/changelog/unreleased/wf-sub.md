@@ -1,5 +1,6 @@
 ### Fixed
 
+- Subagent discovery briefs again name checked ranges omitted to keep the live parent-map id within the 1,200-byte primer.
 - Subagent discovery briefs now keep only the parent's current, content-checked file ranges, excluding hook echoes, instruction files and shell fragments. Index errors no longer fill the brief.
 - Completed Claude Code `symbol_context`, `find_symbol` and `read_source` lookups retain their harness session and agent identity in the discovery log, including plugin tool names, so the parent's lookups remain eligible when the daemon connection lacks those tags.
 - Earlier session-end notes no longer close maps filed after the parent resumes.

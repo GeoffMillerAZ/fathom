@@ -625,9 +625,8 @@ func subagentBrief(baseURL, root, service, parentSessionID string, budget int, n
 		}
 		return candidates[i].ptr.Ref() < candidates[j].ptr.Ref()
 	})
-	var b strings.Builder
 	seen := map[string]bool{}
-	count := 0
+	var lines []string
 	for _, c := range candidates {
 		if ctx.Err() != nil || hookDeadlineSpent() {
 			return ""
@@ -639,16 +638,26 @@ func subagentBrief(baseURL, root, service, parentSessionID string, budget int, n
 		if _, ok := p.Current(root); !ok {
 			continue
 		}
-		line := "read " + p.Ref() + "\n"
-		if b.Len()+len(line) > budget || count >= subagentDiscoveriesMaxPointers {
+		seen[p.Ref()] = true
+		lines = append(lines, "read "+p.Ref()+"\n")
+		if len(lines) >= subagentDiscoveriesMaxPointers {
 			break
 		}
-		seen[p.Ref()] = true
+	}
+	var b strings.Builder
+	count := 0
+	for _, line := range lines {
+		if b.Len()+len(line) > budget {
+			break
+		}
 		b.WriteString(line)
 		count++
 	}
 	if b.Len() == 0 {
 		return ""
+	}
+	if dropped := len(lines) - count; dropped > 0 {
+		fmt.Fprintf(&b, "…%d more: fathom discoveries --budget %d\n", dropped, budget*2)
 	}
 	return subagentBriefLead + "\n" + strings.TrimRight(b.String(), "\n")
 }

@@ -112,6 +112,40 @@ func TestAD12ResumedParentDoesNotCloseNewMaps(t *testing.T) {
 	}
 }
 
+func TestAD12SubagentStartKeepsLiveParentMapWithoutDiscoveries(t *testing.T) {
+	repo := hookMapRepo(t)
+	now := time.Now().UTC()
+	writeSessionStamp(sessionStamp{SessionID: "sess-parent", Cwd: repo, Identity: &identityResult{Schema: 1, Service: "fathom", Symbols: 10}})
+	fileMapEntry(t, repo, "before", "g1.go#L3-L3", "before end", "sess-parent", now.Add(-2*time.Minute))
+	if err := appendThreadItem(threadItem{SchemaVersion: threadSchemaVersion, ID: "end-parent", Kind: "session-end", FiledAt: now.Add(-time.Minute).Format(time.RFC3339), Pointers: map[string]string{"session_id": "sess-parent"}}); err != nil {
+		t.Fatal(err)
+	}
+	fileMapEntry(t, repo, "resumed", "g2.go#L5-L5", "after resume", "sess-parent", now)
+	fileMapEntry(t, repo, "foreign", "g3.go#L3-L3", "another parent", "sess-other", now)
+	var out, errb bytes.Buffer
+	payload, err := json.Marshal(map[string]string{"session_id": "sess-parent", "cwd": repo, "agent_id": "agent-7"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if code := cmdSessionHookEvent("subagent-start", []string{"--url", "http://127.0.0.1:1", "--dir", repo}, bytes.NewReader(payload), &out, &errb); code != 0 {
+		t.Fatalf("exit %d: %s", code, errb.String())
+	}
+	primer := hookContext(t, out.String())
+	if len(primer) > subagentDiscoveriesPrimerBudget || strings.Count(primer, subagentMapLead) != 1 {
+		t.Fatalf("want one map inside the primer cap, got %d bytes: %s", len(primer), primer)
+	}
+	for _, want := range []string{"fathom map show resumed --budget 1200", "--agent agent-7"} {
+		if !strings.Contains(primer, want) {
+			t.Errorf("primer lacks %q: %s", want, primer)
+		}
+	}
+	for _, unwanted := range []string{"exploration map before", "exploration map foreign", subagentBriefLead} {
+		if strings.Contains(primer, unwanted) {
+			t.Errorf("primer contains %q: %s", unwanted, primer)
+		}
+	}
+}
+
 func TestAD12MapBriefClipsUTF8AndDropsChangedRanges(t *testing.T) {
 	repo := hookMapRepo(t)
 	oldNow := nowFunc
