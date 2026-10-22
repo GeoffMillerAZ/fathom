@@ -20,6 +20,14 @@ done
 check pass 'fix: a subject
 
 Verified: a command'
+check fail '# ignored comment
+arbitrary subject
+
+Verified: a command'
+check pass '# ignored comment
+fix: a subject
+
+Verified: a command'
 check fail 'arbitrary subject
 
 Verified: a command'
@@ -37,7 +45,7 @@ Verified:'
 check fail 'fix: a subject
 
 prefix Verified: a command'
-for subject in 'Merge branch topic' 'merge topic: a summary' 'Revert "fix: a subject"' 'revert: a subject' 'fixup! fix: a subject' 'squash! fix: a subject'; do
+for subject in 'Merge branch topic' 'merge topic: a summary' 'merge: topic' 'Revert "fix: a subject"' 'revert: a subject' 'fixup! fix: a subject' 'squash! fix: a subject'; do
   check pass "$subject"
   check fail "$subject
 
@@ -54,8 +62,26 @@ check fail 'fix: a subject
 
 Verified: a command
  co-authored-by: Person <person@example.com>'
+# A real merge may have an arbitrary edited subject.
+mkdir -p "$scratch/merge-repo"
+git init -q "$scratch/merge-repo"
+printf 'a merge parent\n' > "$scratch/merge-repo/.git/MERGE_HEAD"
+(cd "$scratch/merge-repo" && check pass 'an edited merge subject')
+rm "$scratch/merge-repo/.git/MERGE_HEAD"
+check pass 'fix: a subject
+
+Verified: a command
+# Co-authored-by: comment
+# ------------------------ >8 ------------------------
+diff --git a/message b/message
++Co-authored-by: diff content
+Co-authored-by: diff context'
+check fail 'fix: a subject
+# Verified: comment only
+# ------------------------ >8 ------------------------
+Verified: diff content'
 grep -F 'run: bash scripts/commit-msg-check.sh "{1}"' "$root/lefthook.yml" >/dev/null || fail 'commit-msg hook missing'
-grep -F "github.event.before != '0000000000000000000000000000000000000000'" "$root/.github/workflows/ci.yml" >/dev/null || fail 'zero-before push not skipped'
+grep -F 'git cat-file -e "$BEFORE^{commit}"' "$root/.github/workflows/ci.yml" >/dev/null || fail 'unknown-before fallback missing'
 # Run the exact CI range loop against deterministic git output: all messages
 # must be checked, and an invalid later commit must fail the step.
 mkdir -p "$scratch/repo/scripts" "$scratch/tools"
@@ -70,10 +96,18 @@ awk '
 cat > "$scratch/tools/git" <<'STUB'
 #!/bin/sh
 case "$1" in
-  rev-list) [ "$*" = 'rev-list --reverse base..head' ] || exit 2; printf 'one\ntwo\n' ;;
+  cat-file) [ "${UNKNOWN_BEFORE:-0}" = 0 ] ;;
+  rev-list)
+    case "$*" in
+      'rev-list --reverse base..head') printf 'one\ntwo\nmerged\n' ;;
+      'rev-list --parents -n1 merged') echo 'merged parent1 parent2' ;;
+      'rev-list --parents -n1 '*) echo "$4 parent" ;;
+      *) exit 2 ;;
+    esac ;;
+  rev-parse) exit 1 ;;
   show)
     echo "$4" >> "$CHECKED_LOG"
-    if [ "$4" = two ] && [ "${BAD_SECOND:-0}" = 1 ]; then
+    if [ "${BAD_ALL:-0}" = 1 ] || { [ "$4" = two ] && [ "${BAD_SECOND:-0}" = 1 ]; }; then
       printf 'fix: missing evidence\n'
     else
       printf 'fix: valid message\n\nVerified: a command\n'
@@ -87,4 +121,13 @@ export PATH="$scratch/tools:$PATH" RUNNER_TEMP="$scratch" BEFORE=base AFTER=head
 printf 'one\ntwo\n' > "$scratch/want"
 cmp "$scratch/checked" "$scratch/want" || fail 'CI did not check every commit'
 if (cd "$scratch/repo" && BAD_SECOND=1 bash "$scratch/ci-run") > "$scratch/out" 2>&1; then fail 'CI accepted invalid later commit'; fi
-echo 'commit-msg test: ok' 
+# Failures must accumulate, and an unknown BEFORE must check AFTER alone.
+: > "$CHECKED_LOG"
+if (cd "$scratch/repo" && BAD_ALL=1 bash "$scratch/ci-run") > "$scratch/out" 2>&1; then fail 'CI accepted bad range'; fi
+cmp "$scratch/checked" "$scratch/want" || fail 'CI stopped before reporting every bad commit'
+[ "$(grep -c 'body requires' "$scratch/out")" -eq 2 ] || fail 'CI did not report both invalid commits'
+: > "$CHECKED_LOG"
+(cd "$scratch/repo" && UNKNOWN_BEFORE=1 bash "$scratch/ci-run") > "$scratch/out" 2>&1 || fail 'CI rejected unknown BEFORE fallback'
+printf 'head\n' > "$scratch/want"
+cmp "$scratch/checked" "$scratch/want" || fail 'unknown BEFORE did not check AFTER alone'
+echo 'commit-msg test: ok'

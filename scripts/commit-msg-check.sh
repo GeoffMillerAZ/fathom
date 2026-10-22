@@ -2,10 +2,16 @@
 # BE-2: the same message policy for lefthook and each commit in a CI push range.
 set -euo pipefail
 [ "$#" -eq 1 ] || { echo 'usage: commit-msg-check.sh MESSAGE_FILE' >&2; exit 2; }
-LC_ALL=C awk '
+merge=0
+merge_head=$(git rev-parse --git-path MERGE_HEAD 2>/dev/null) || merge_head=""
+[ -z "$merge_head" ] || [ ! -f "$merge_head" ] || merge=1
+LC_ALL=C awk -v merge="$merge" '
   { sub(/\r$/, "") }
-  NR == 1 {
-    special=($0 ~ /^(Merge |merge |Revert |fixup! |squash! )[^[:space:]]/)
+  $0 == "# ------------------------ >8 ------------------------" { exit }
+  /^#/ { next }
+  !subject {
+    subject=1
+    special=(merge || $0 ~ /^([Mm]erge[: ]|Revert |fixup! |squash! )[[:blank:]]*[^[:space:]]/)
     exempt=(special || $0 ~ /^revert(\([^()]+\))?!?: [^[:space:]]/)
     if (!special && $0 !~ /^(bench|build|calibration|chore|ci|docs|feat|fix|perf|refactor|release|revert|style|test)(\([^()]+\))?!?: [^[:space:]].*$/) {
       print "commit-msg: subject must use a conventional commit type" > "/dev/stderr"
@@ -18,7 +24,7 @@ LC_ALL=C awk '
     bad=1
   }
   END {
-    if (NR == 0) { print "commit-msg: empty message" > "/dev/stderr"; bad=1 }
+    if (!subject) { print "commit-msg: empty message" > "/dev/stderr"; bad=1 }
     if (!exempt && !verified) {
       print "commit-msg: body requires a nonempty Verified: line" > "/dev/stderr"
       bad=1
