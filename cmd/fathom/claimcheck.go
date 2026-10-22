@@ -102,6 +102,7 @@ func checkStopClaims(in claimCheckInput) string {
 		c.run()
 	}
 	c.log()
+	noteAdviceComponent(harness.CapClaimCheck, len(c.lines) > 0 && !c.observe)
 	if c.observe {
 		return ""
 	}
@@ -344,6 +345,15 @@ func cmdSubagentStopHook(codec harness.Codec, url string, stdin io.Reader, stdou
 		return 0
 	}
 	rpcSession = in.SessionID
+	root := subagentStopProjDir(codec, in)
+	if hooksKeyOn(root, hookOptInClaimCheck) {
+		var finishHealth func()
+		stdout, finishHealth = beginAdviceHealth(root, codec.ID(), harness.CapClaimCheck, stdout)
+		defer finishHealth()
+		if !channelReady(harness.CapClaimCheck, readinessInput{root: root, harnessID: codec.ID(), now: nowFunc()}, "subagent-stop-hook", in.SessionID) {
+			return 0
+		}
+	}
 	text := checkStopClaims(claimCheckInputFor(subagentStopProjDir(codec, in), in, true))
 	if text == "" {
 		return 0

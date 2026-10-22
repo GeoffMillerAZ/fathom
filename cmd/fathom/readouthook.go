@@ -112,8 +112,17 @@ func cmdReadoutHook(args []string, stdin io.Reader, stdout, stderr io.Writer) (c
 	readoutStep("envelope")
 	cfg, ok := readoutsUserConfig()
 	readoutStep("config")
+	if !readoutsOn(cfg, ok) {
+		return 0
+	}
+	root := eventProjectDir(codec, in)
+	stdout, finishHealth := beginAdviceHealth(root, codec.ID(), harness.CapReadout, stdout)
+	defer finishHealth()
+	if !channelReady(harness.CapReadout, readinessInput{root: root, harnessID: codec.ID(), now: nowFunc()}, readoutChannel, in.SessionID) {
+		return 0
+	}
 	var richOut *readoutRichOutput
-	if readoutsOn(cfg, ok) {
+	{
 		// RO-21: the test-run tier first, inside the descriptor's deadline,
 		// whatever [readouts] roots says (roots gate the readout, never the
 		// test-run hook); the readout row's ms stays the readout's own.
@@ -129,9 +138,6 @@ func cmdReadoutHook(args []string, stdin io.Reader, stdout, stderr io.Writer) (c
 		}
 		readoutTestRunTier(tierCodec, ev, raw, tierOut)
 		start = start.Add(readoutHookClock().Sub(t0))
-	}
-	if !ok || cfg.Mode == config.ReadoutsOff {
-		return 0
 	}
 	dir := readoutHookDir(codec, in)
 	if !underReadoutRoots(cfg.Roots, dir) {

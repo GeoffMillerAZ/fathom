@@ -36,6 +36,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/explmap"
+	"github.com/geoffmilleraz/fathom/internal/harness"
 )
 
 // mapsPointerKey is the threadItem.Pointers key that names maps: a thread
@@ -163,12 +164,20 @@ func subagentMapLine(root, parentSessionID, agentID string, now time.Time) strin
 	if parentSessionID == "" || root == "" {
 		return ""
 	}
+	if !threadsHoldMaps() {
+		emitBeat("subagent-hook", "skipped", firingMeta(map[string]string{"emitted": "false", "reason": "no-maps", "capability": string(harness.CapSubagentPrime)}, parentSessionID, ""))
+		return ""
+	}
 	set, alive := loadAliveMaps(root, now)
 	var filed []string
 	for _, id := range alive {
 		if mapFiledInSession(set, id, parentSessionID) {
 			filed = append(filed, id)
 		}
+	}
+	if len(filed) == 0 {
+		emitBeat("subagent-hook", "skipped", firingMeta(map[string]string{"emitted": "false", "reason": "no-maps", "capability": string(harness.CapSubagentPrime)}, parentSessionID, ""))
+		return ""
 	}
 	roots := mapRoots(set.maps, filed)
 	if len(roots) == 0 {

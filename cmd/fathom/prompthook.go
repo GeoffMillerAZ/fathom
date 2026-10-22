@@ -139,6 +139,8 @@ func cmdPromptHook(args []string, stdout, stderr io.Writer) int {
 	}
 
 	projDir := resolveProjDirFor(codec.ID(), hook.Cwd)
+	stdout, finishHealth := beginAdviceHealth(projDir, codec.ID(), harness.CapPromptObligations, stdout)
+	defer finishHealth()
 	deadline := time.Now().Add(promptHookDeadlineBudget)
 	text, meta, ok := renderPromptObligations(url, projDir, prompt, sessionID, deadline)
 

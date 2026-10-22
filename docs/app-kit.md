@@ -1164,3 +1164,10 @@ and working-tree claim freshness belong to fathom's harness JSON codecs and
 hook state. Regression evidence: `TestRuleContextDeliveryAcrossFilesAndChannels`
 and `TestStopDeliveryUncommittedIsUnknown`; the terminal rendering contract and
 kit adoption selections are unchanged.
+
+AD-READY contribution disposition: **no-candidate**. Hook readiness and the capped
+SessionStart flag are app-owned protocol text, so they retain the existing hook
+envelopes. Discovery used `cli diagnostic output` / `cli`, selecting `cli.output`
+at catalog revision `3ee2c1f02a6199c2e59361171c7f1fdb957a7a70f64e875a73969608314d7318`;
+its terminal status table does not apply to injected context. No kit pin or runtime
+changes. Proof: the readiness, health and unchanged whole-primer cap tests.

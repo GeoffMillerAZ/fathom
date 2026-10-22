@@ -99,6 +99,8 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 	if projDir == "" {
 		projDir, _ = os.Getwd()
 	}
+	stdout, finishHealth := beginAdviceHealth(projDir, codec.ID(), harness.CapPrime, stdout)
+	defer finishHealth()
 
 	ctx, primerIdentity := sessionContext(*url, projDir)
 	// RT-7 (§11.1): a hung daemon spends the whole deadline in the line
@@ -152,7 +154,7 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 	// mistake in a new costume. The stamp records the cohort label and the
 	// brief's measured cost either way, which is what makes the
 	// pre-registered bet evaluable (fresh-with-brief vs resumed).
-	briefBytes, attentionBytes := 0, 0
+	briefBytes, attentionBytes, inactiveBytes := 0, 0, 0
 	intentLine := false
 	if startSource == "startup" || startSource == "clear" || startSource == "" {
 		// CC-7 (docs/plans/custodian.md) + EP-19: the continuity brief and
@@ -170,7 +172,11 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 			if primerIdentity == nil {
 				primerIdentity = stampIdentity
 			}
-			ctx, briefBytes, line = composePrimer(ctx, projDir, time.Now(), attentionLedgerRoots(projDir, primerIdentity))
+			inactive := inactiveFeaturesLine(projDir, codec.ID(), nowFunc())
+			ctx, briefBytes, line = composePrimer(ctx, projDir, nowFunc(), attentionLedgerRoots(projDir, primerIdentity), inactive)
+			if inactive != "" && strings.Contains(line, inactive) && strings.Contains(ctx, line) {
+				inactiveBytes = len(inactive)
+			}
 			attentionBytes = len(line)
 			intentLine = line != ""
 			if intentLine {
@@ -196,6 +202,9 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 	var component map[string]string
 	if attentionBytes > 0 {
 		component = map[string]string{"attention_bytes": strconv.Itoa(attentionBytes)}
+		if inactiveBytes > 0 {
+			component["inactive_features_bytes"] = strconv.Itoa(inactiveBytes)
+		}
 	}
 	emitPayloadCost("session-brief", ctx, 0, "", sessionID, component)
 
@@ -241,7 +250,7 @@ const primerOverflowNote = " …[session primer truncated at its byte cap]"
 //
 // roots are the registered service roots the attention line reads the
 // intent ledger under (PE-25; attentionLedgerRoots).
-func composePrimer(identity, projDir string, now time.Time, roots ledgerroots.Roots) (primer string, briefBytes int, attention string) {
+func composePrimer(identity, projDir string, now time.Time, roots ledgerroots.Roots, featureLines ...string) (primer string, briefBytes int, attention string) {
 	items := loadThreadItems(threadsPath())
 	var mapLines []string
 	if threadsHoldMaps() {
@@ -251,7 +260,7 @@ func composePrimer(identity, projDir string, now time.Time, roots ledgerroots.Ro
 		mapLines = briefMapLines(items, projDir, now)
 	}
 	brief := renderThreadBrief(items, projDir, threadBriefBudgetBytes, now, mapLines...)
-	line := attentionLine(projDir, now, roots)
+	line := attentionLine(projDir, now, roots, featureLines...)
 	// RT-51: the tenancy line, only when the daemon is not normal (≤160 B).
 	tenancyLine := primerTenancyLine(now)
 	// IV-3c: repo-wide invariants, once, here and never at an edit (≤480 B).
@@ -282,9 +291,7 @@ func composePrimer(identity, projDir string, now time.Time, roots ledgerroots.Ro
 			lines = lines[:len(lines)-1]
 			dropped++
 			trimmed := strings.Join(lines, "\n")
-			if trimmed != "" {
-				trimmed += fmt.Sprintf("\n… %d brief line(s) cut to fit the %d B session primer — `fathom thread brief` for all of them", dropped, sessionPrimerBudget)
-			}
+			trimmed = strings.TrimPrefix(trimmed+fmt.Sprintf("\n… %d brief line(s) cut to fit the %d B session primer — `fathom thread brief` for all of them", dropped, sessionPrimerBudget), "\n")
 			brief = trimmed
 			primer = join(brief)
 		}

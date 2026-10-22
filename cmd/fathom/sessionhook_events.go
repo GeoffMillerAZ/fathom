@@ -68,7 +68,9 @@ func subagentPrimer(baseURL, projDir, parentSessionID, agentID string) string {
 	// worktree line here: WorktreeCreate is a creation hook, not an
 	// advisory one (O34), so this is the only moment that can carry it.
 	if isWorktreeDir(projDir) {
-		if line := worktreeAdvice(baseURL, projDir); line != "" {
+		line := worktreeAdvice(baseURL, projDir)
+		noteAdviceComponent(harness.CapWorktreeAdvice, line != "")
+		if line != "" {
 			primer = line + "\n" + primer
 		}
 	}
@@ -293,6 +295,12 @@ func runAdvisoryEvent(codec harness.Codec, ev harness.Event, channel string, std
 	if err != nil {
 		return 0
 	}
+	cap := harness.CapToolFailureAdvice
+	if ev == harness.EventSubagentStart {
+		cap = harness.CapSubagentPrime
+	}
+	stdout, finishHealth := beginAdviceHealth(eventProjectDir(codec, in), codec.ID(), cap, stdout)
+	defer finishHealth()
 	payload := render(in)
 	meta := map[string]string{"emitted": boolStr(payload != "")}
 	if payload != "" {

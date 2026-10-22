@@ -164,7 +164,7 @@ func attentionLedgerRoots(projDir string, id *identityResult) ledgerroots.Roots 
 // the intent rows, and each names its own drill-down verb). Returns "" when
 // every fragment is empty — silence is the correct output for a repo with
 // nothing to report.
-func attentionLine(projDir string, now time.Time, roots ledgerroots.Roots) string {
+func attentionLine(projDir string, now time.Time, roots ledgerroots.Roots, features ...string) string {
 	var parts []string
 	if n := violatedConcernCount(projDir); n > 0 {
 		parts = append(parts, fmt.Sprintf("config %d", n))
@@ -182,15 +182,31 @@ func attentionLine(projDir string, now time.Time, roots ledgerroots.Roots) strin
 	if frag := learningAttentionFragment(projDir, now, roots); frag != "" {
 		parts = append(parts, frag)
 	}
+	feature := ""
+	if len(features) > 0 {
+		feature = features[0]
+	}
+	if feature != "" {
+		parts = append(parts, feature)
+	}
 	if len(parts) == 0 {
 		return ""
 	}
-	line := "⚠️ attention: " + strings.Join(parts, " · ") + " — fathom doctor"
+	render := func(parts []string) string {
+		return "⚠️ attention: " + strings.Join(parts, " · ") + " — fathom doctor"
+	}
+	line := render(parts)
 	if len(line) > attentionLineBudget {
-		// Unreachable with the counts this repo can produce, but a budget
-		// that is not enforced is a comment. Drop the intent half rather
-		// than truncate mid-number into a different, wrong count.
-		line = fmt.Sprintf("⚠️ attention: %s — fathom doctor", parts[0])
+		// Keep the original leading signal and the inactive-channel fragment
+		// together when possible; both share this line's existing budget.
+		if feature != "" && parts[0] != feature {
+			line = render([]string{parts[0], feature})
+			if len(line) > attentionLineBudget {
+				line = render([]string{feature})
+			}
+		} else {
+			line = render(parts[:1])
+		}
 	}
 	return line
 }

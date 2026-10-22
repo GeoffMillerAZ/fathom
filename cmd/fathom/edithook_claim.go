@@ -29,6 +29,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/geoffmilleraz/fathom/internal/harness"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
@@ -179,6 +180,9 @@ func claimMomentVerdicts(hc *http.Client, baseURL, projDir, root, rel string, ol
 // and turns a would-be-silent hook into an answering one.
 func withClaimMoment(url, projDir, filePath, sessionID, text string, ok bool) (string, bool) {
 	claim := claimMomentVerify(url, projDir, filePath, sessionID)
+	if _, plan := claimMomentPlanRel(projDir, filePath); plan {
+		noteAdviceComponent(harness.CapClaimGate, claim != "")
+	}
 	if claim == "" {
 		return text, ok
 	}

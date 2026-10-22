@@ -76,7 +76,10 @@ func hookDedupeEnabled(root string) bool {
 }
 
 func openHookDedupe(sessionID string) (*os.File, os.FileInfo, error) {
-	path := hookDedupePath(sessionID)
+	return openHookState(hookDedupePath(sessionID))
+}
+
+func openHookState(path string) (*os.File, os.FileInfo, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return nil, nil, err
 	}
