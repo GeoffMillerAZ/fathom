@@ -1,0 +1,39 @@
+From dbf2cb8ff0c1c77fe73a5274fe53bb48ba803a51 Mon Sep 17 00:00:00 2001
+From: Geoff Miller <contributor@example.invalid>
+Date: Tue, 20 Oct 2026 19:46:37 -0700
+Subject: [PATCH 04/27] test(extractor): bound dialect parser admission
+
+Keep variant subtests parallel while admitting at most four native parsers until each parser closes. This limits full WASM VM fanout during parallel package gates.
+
+Verified: go test -race -count=1 -v -run '^TestDialectQueriesCompile$' ./internal/extractor (54/54 variants, A and B; evidence in parser-fixture-admission-20261021/A and B)
+---
+ internal/extractor/dialect_queries_test.go | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/internal/extractor/dialect_queries_test.go b/internal/extractor/dialect_queries_test.go
+index dfa08ac666ee515476723ff17ecea5f11a53f798..1f9d615559d1d5c4b9714bad707afbdae66fc6b4 100644
+--- a/internal/extractor/dialect_queries_test.go
++++ b/internal/extractor/dialect_queries_test.go
+@@ -17,6 +17,7 @@ func TestDialectQueriesCompile(t *testing.T) {
+ 	if _, err := tsRegistry(); err != nil {
+ 		t.Fatal(err)
+ 	}
++	slots := make(chan struct{}, 4)
+ 	for _, id := range TagsDialects() {
+ 		spec := tsDialectMap[id]
+ 		variants := map[string]tsVariant{spec.defaultVariant.key(): spec.defaultVariant}
+@@ -25,10 +26,11 @@ func TestDialectQueriesCompile(t *testing.T) {
+ 		}
+ 		for key, v := range variants {
+ 			t.Run(key, func(t *testing.T) {
+-				// Each variant stands up its own parser and compiles its
+-				// own queries: nothing is shared, so the variants run
+-				// together. Serial, this test was the longest in the package.
++				// Bound native parser admission so parallel package gates do not
++				// fan out a full WASM VM for every grammar variant at once.
+ 				t.Parallel()
++				slots <- struct{}{}
++				defer func() { <-slots }()
+ 				p, err := tsengine.NewParser(context.Background(), v.blob, v.entryPoint)
+ 				if err != nil {
+ 					t.Fatal(err)

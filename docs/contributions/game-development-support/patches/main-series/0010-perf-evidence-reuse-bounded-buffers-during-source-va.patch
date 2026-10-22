@@ -1,0 +1,257 @@
+From 3b2e7a32788b81310b02d8210219fa57074eefa2 Mon Sep 17 00:00:00 2001
+From: Geoff Miller <contributor@example.invalid>
+Date: Tue, 20 Oct 2026 23:15:58 -0700
+Subject: [PATCH 10/27] perf(evidence): reuse bounded buffers during source
+ validation
+
+Share one hash buffer across each receipt validation while rehashing every current input. Preserve full SCIP decoding, native inventories, byte limits, file-growth checks and cancellation refusal.
+
+Verified: allocation regressions failed before the change and pass after it; focused fresh, stale, malformed and cancellation fixtures pass. SCIP fixture 1419655 to 238075 B/op, Unity fixture 2552169 to 325118 B/op. Independent source review found no issues. Full canonical gate follows on this clean commit.
+---
+ .../native-receipt-hash-buffer-reuse.md       |  3 ++
+ internal/scip/source_receipt.go               |  9 ++--
+ internal/scip/source_receipt_test.go          | 54 ++++++++++++++++++-
+ internal/testevidence/unity_receipt.go        |  7 +--
+ internal/testevidence/unity_receipt_test.go   | 32 +++++++++++
+ 5 files changed, 96 insertions(+), 9 deletions(-)
+ create mode 100644 docs/changelog/unreleased/native-receipt-hash-buffer-reuse.md
+
+diff --git a/docs/changelog/unreleased/native-receipt-hash-buffer-reuse.md b/docs/changelog/unreleased/native-receipt-hash-buffer-reuse.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..7f53200b3011529f7d48b816aaebc9308d15981d
+--- /dev/null
++++ b/docs/changelog/unreleased/native-receipt-hash-buffer-reuse.md
+@@ -0,0 +1,3 @@
++### Fixed
++
++- Native Unity and SCIP receipt validation reuse one bounded hashing buffer per call while rehashing every input on each validation. This reduces allocation growth for large source inventories without changing freshness checks.
+diff --git a/internal/scip/source_receipt.go b/internal/scip/source_receipt.go
+index 19b0e483820bafafcc6c23471cfa54e6e635a943..8a963c0bb174ded41ce4353c3930457dfd89723c 100644
+--- a/internal/scip/source_receipt.go
++++ b/internal/scip/source_receipt.go
+@@ -129,7 +129,8 @@ func ValidateSourceReceipt(ctx context.Context, root, path string, raw []byte, r
+ 	if receipt.IndexSHA256 != hex.EncodeToString(sum[:]) {
+ 		return refuse("index hash differs")
+ 	}
+-	currentIndexHash, hashErr := sourceHash(ctx, path, int64(len(raw)))
++	buffer := make([]byte, 32<<10)
++	currentIndexHash, hashErr := sourceHash(ctx, path, int64(len(raw)), buffer)
+ 	if hashErr != nil || currentIndexHash != receipt.IndexSHA256 {
+ 		return refuse("index changed since it was read")
+ 	}
+@@ -169,7 +170,7 @@ func ValidateSourceReceipt(ctx context.Context, root, path string, raw []byte, r
+ 			return refuse("input byte budget exceeded at %q", input.Path)
+ 		}
+ 		inputBytes += info.Size()
+-		actual, hashErr := sourceHash(ctx, absolute, info.Size())
++		actual, hashErr := sourceHash(ctx, absolute, info.Size(), buffer)
+ 		if hashErr != nil {
+ 			return refuse("input %q: %v", input.Path, hashErr)
+ 		}
+@@ -312,7 +313,7 @@ func sourceDigest(value string) bool {
+ func sourcePattern(value string) bool {
+ 	return regexp.MustCompile(`^\*\.[A-Za-z0-9_-]+$`).MatchString(value)
+ }
+-func sourceHash(ctx context.Context, path string, expectedSize int64) (string, error) {
++func sourceHash(ctx context.Context, path string, expectedSize int64, buffer []byte) (string, error) {
+ 	file, err := os.Open(path)
+ 	if err != nil {
+ 		return "", err
+@@ -329,7 +330,7 @@ func sourceHash(ctx context.Context, path string, expectedSize int64) (string, e
+ 		return "", fmt.Errorf("file size changed during validation")
+ 	}
+ 	hash := sha256.New()
+-	n, err := io.Copy(hash, sourceContextReader{ctx: ctx, reader: io.LimitReader(file, expectedSize+1)})
++	n, err := io.CopyBuffer(hash, sourceContextReader{ctx: ctx, reader: io.LimitReader(file, expectedSize+1)}, buffer)
+ 	if err != nil {
+ 		return "", err
+ 	}
+diff --git a/internal/scip/source_receipt_test.go b/internal/scip/source_receipt_test.go
+index 86df94d371da24493b76a2f6cb4b8513c6ddc45b..7c6f272b7292ff386ebeae7f0d21ec93daa30c67 100644
+--- a/internal/scip/source_receipt_test.go
++++ b/internal/scip/source_receipt_test.go
+@@ -1,10 +1,13 @@
+ package scip
+ 
+ import (
++	"bytes"
+ 	"context"
+ 	"crypto/sha256"
+ 	"encoding/hex"
+ 	"encoding/json"
++	"errors"
++	"fmt"
+ 	"os"
+ 	"path/filepath"
+ 	"strings"
+@@ -15,7 +18,7 @@ import (
+ )
+ 
+ func receiptHash(data []byte) string { h := sha256.Sum256(data); return hex.EncodeToString(h[:]) }
+-func receiptFixture(t *testing.T) (string, string, []byte, map[string]any) {
++func receiptFixture(t testing.TB) (string, string, []byte, map[string]any) {
+ 	t.Helper()
+ 	root := t.TempDir()
+ 	path := filepath.Join(root, "index.scip")
+@@ -46,7 +49,7 @@ func receiptFixture(t *testing.T) (string, string, []byte, map[string]any) {
+ 	writeReceipt(t, path, receipt)
+ 	return root, path, raw, receipt
+ }
+-func writeReceipt(t *testing.T, path string, value any) {
++func writeReceipt(t testing.TB, path string, value any) {
+ 	t.Helper()
+ 	raw, err := json.Marshal(value)
+ 	if err != nil {
+@@ -56,6 +59,36 @@ func writeReceipt(t *testing.T, path string, value any) {
+ 		t.Fatal(err)
+ 	}
+ }
++
++// The receipt still hashes every input on each call. Its streaming scratch
++// space should be bounded per validation, rather than growing per input.
++func TestSourceReceiptValidationAllocationBound(t *testing.T) {
++	root, path, raw, receipt := receiptFixture(t)
++	const files = 32
++	content := bytes.Repeat([]byte("x"), 64<<10)
++	inputs := receipt["inputs"].([]any)
++	for i := 0; i < files; i++ {
++		name := fmt.Sprintf("extra-%02d.dat", i)
++		if err := os.WriteFile(filepath.Join(root, name), content, 0600); err != nil {
++			t.Fatal(err)
++		}
++		inputs = append(inputs, map[string]any{"path": name, "sha256": receiptHash(content)})
++	}
++	receipt["inputs"] = inputs
++	writeReceipt(t, path, receipt)
++	result := testing.Benchmark(func(b *testing.B) {
++		for i := 0; i < b.N; i++ {
++			bound, err := ValidateSourceReceipt(context.Background(), root, path, raw)
++			if !bound || err != nil {
++				b.Fatalf("bound=%v err=%v", bound, err)
++			}
++		}
++	})
++	t.Logf("ValidateSourceReceipt %d files: %d B/op", files+4, result.AllocedBytesPerOp())
++	if got := result.AllocedBytesPerOp(); got > 512<<10 {
++		t.Fatalf("validation allocates %d B/op; want <= 512 KiB", got)
++	}
++}
+ func TestSourceReceiptFreshAndLegacyCompatibility(t *testing.T) {
+ 	root, path, raw, _ := receiptFixture(t)
+ 	bound, err := ValidateSourceReceipt(context.Background(), root, path, raw)
+@@ -75,6 +108,23 @@ func TestSourceReceiptFreshAndLegacyCompatibility(t *testing.T) {
+ 		t.Fatalf("legacy bound=%v err=%v", bound, err)
+ 	}
+ }
++func TestSourceReceiptRefusesMalformedIndexAndCancelledValidation(t *testing.T) {
++	root, path, raw, _ := receiptFixture(t)
++	bound, err := ValidateSourceReceipt(context.Background(), root, path, raw)
++	if !bound || err != nil {
++		t.Fatalf("uncancelled validation bound=%v err=%v", bound, err)
++	}
++	bound, err = ValidateSourceReceipt(context.Background(), root, path, []byte{0x0a, 0x80}, true)
++	if !bound || err == nil || !strings.Contains(err.Error(), "index decode") {
++		t.Fatalf("malformed index bound=%v err=%v", bound, err)
++	}
++	ctx, cancel := context.WithCancel(context.Background())
++	cancel()
++	bound, err = ValidateSourceReceipt(ctx, root, path, raw)
++	if !bound || !errors.Is(err, ErrSourceReceipt) {
++		t.Fatalf("cancelled validation bound=%v err=%v", bound, err)
++	}
++}
+ func TestSourceReceiptRefusesStaleMissingAndMixedInputs(t *testing.T) {
+ 	cases := []struct {
+ 		name, want string
+diff --git a/internal/testevidence/unity_receipt.go b/internal/testevidence/unity_receipt.go
+index 5782fe64c0d7fed04eb5e4eae851072d324ebbed..3dcdd19d9e05baa1e5a3c8370c2314ae57f886b8 100644
+--- a/internal/testevidence/unity_receipt.go
++++ b/internal/testevidence/unity_receipt.go
+@@ -181,7 +181,7 @@ func unityRead(path string, limit int64) ([]byte, error) {
+ 	}
+ 	return raw, nil
+ }
+-func unityHash(ctx context.Context, path string, limit int64) (string, int64, error) {
++func unityHash(ctx context.Context, path string, limit int64, buffer []byte) (string, int64, error) {
+ 	info, err := unityRegular(path)
+ 	if err != nil {
+ 		return "", 0, err
+@@ -199,7 +199,7 @@ func unityHash(ctx context.Context, path string, limit int64) (string, int64, er
+ 	if bufferSize > 128<<10 {
+ 		bufferSize = 128 << 10
+ 	}
+-	buf := make([]byte, int(bufferSize))
++	buf := buffer[:int(bufferSize)]
+ 	var count int64
+ 	for {
+ 		if err := ctx.Err(); err != nil {
+@@ -324,6 +324,7 @@ func unityValidateSource(ctx context.Context, root string, r UnityReceipt) error
+ 		return fmt.Errorf("source input/inventory count outside native bounds")
+ 	}
+ 	inputs := map[string]string{}
++	buffer := make([]byte, 128<<10)
+ 	var bytes int64
+ 	for _, input := range s.Inputs {
+ 		path, err := unityPath(root, input.Path, true)
+@@ -336,7 +337,7 @@ func unityValidateSource(ctx context.Context, root string, r UnityReceipt) error
+ 		if !unitySHA.MatchString(input.SHA256) {
+ 			return fmt.Errorf("invalid source hash")
+ 		}
+-		hash, size, err := unityHash(ctx, path, unityInputBytesLimit-bytes)
++		hash, size, err := unityHash(ctx, path, unityInputBytesLimit-bytes, buffer)
+ 		if err != nil {
+ 			return err
+ 		}
+diff --git a/internal/testevidence/unity_receipt_test.go b/internal/testevidence/unity_receipt_test.go
+index 20133532276bfcce6a4aabae1a193c4c76b0c4df..d6e17a01ceb7ba901c0abf4b91ffc78b547cadba 100644
+--- a/internal/testevidence/unity_receipt_test.go
++++ b/internal/testevidence/unity_receipt_test.go
+@@ -1,9 +1,11 @@
+ package testevidence
+ 
+ import (
++	"bytes"
+ 	"context"
+ 	"encoding/json"
+ 	"errors"
++	"fmt"
+ 	"os"
+ 	"path/filepath"
+ 	"strings"
+@@ -107,6 +109,36 @@ func (f *unityFixture) load() (UnityEvidence, error) {
+ 	return LoadUnityNUnitEvidence(context.Background(), f.root, f.xml, f.receipt)
+ }
+ 
++// Source freshness still checks each file on every call. Scratch allocations
++// should stay bounded as the number of hashed inputs grows.
++func TestUnitySourceValidationAllocationBound(t *testing.T) {
++	f := newUnityFixture(t)
++	const files = 32
++	content := bytes.Repeat([]byte("x"), 64<<10)
++	for i := 0; i < files; i++ {
++		name := fmt.Sprintf("%s/Assets/extra-%02d.cs", f.r.Project, i)
++		if err := os.WriteFile(filepath.Join(f.root, name), content, 0600); err != nil {
++			t.Fatal(err)
++		}
++		f.r.Source.Inputs = append(f.r.Source.Inputs, UnityFile{Path: name, SHA256: unityDigest(content)})
++		f.r.Source.Inventories[0].Paths = append(f.r.Source.Inventories[0].Paths, name)
++	}
++	sortStrings(f.r.Source.Inventories[0].Paths)
++	f.r.Source.BeforeSHA256 = unityDigest(UnitySourceBytes(f.r.Source))
++	f.r.Source.AfterSHA256 = f.r.Source.BeforeSHA256
++	result := testing.Benchmark(func(b *testing.B) {
++		for i := 0; i < b.N; i++ {
++			if err := unityValidateSource(context.Background(), f.root, f.r); err != nil {
++				b.Fatal(err)
++			}
++		}
++	})
++	t.Logf("unityValidateSource %d files: %d B/op", files+6, result.AllocedBytesPerOp())
++	if got := result.AllocedBytesPerOp(); got > 1<<20 {
++		t.Fatalf("validation allocates %d B/op; want <= 1 MiB", got)
++	}
++}
++
+ func TestUnityNUnitReceiptBindsNativeAndStandardRecord(t *testing.T) {
+ 	f := newUnityFixture(t)
+ 	got, err := f.load()

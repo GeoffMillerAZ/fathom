@@ -1,0 +1,720 @@
+From 8d3a32b6db87850b5276e549a77b0ae678a38236 Mon Sep 17 00:00:00 2001
+From: Geoff Miller <contributor@example.invalid>
+Date: Wed, 21 Oct 2026 08:19:02 -0700
+Subject: [PATCH 20/27] perf(conserve): stream inventory inputs and honor
+ cancellation
+
+Verified: go test -race ./internal/analysis/inventory ./internal/conserve -count=1
+
+Verified: go test -race ./internal/mcp -run '^TestBuildReviewInput_ConservationDimension' -count=1
+---
+ .../unreleased/conserve-surface-stream.md     |   3 +
+ internal/analysis/inventory/inventory.go      | 131 ++++++++-------
+ internal/analysis/inventory/stream_test.go    |  37 +++++
+ internal/conserve/conserve.go                 |  11 +-
+ internal/conserve/input.go                    |  57 ++++++-
+ internal/conserve/input_fifo_test.go          |  41 +++++
+ internal/conserve/stream_test.go              | 151 ++++++++++++++++++
+ internal/conserve/surface.go                  |  83 +++++++---
+ 8 files changed, 432 insertions(+), 82 deletions(-)
+ create mode 100644 docs/changelog/unreleased/conserve-surface-stream.md
+ create mode 100644 internal/analysis/inventory/stream_test.go
+ create mode 100644 internal/conserve/input_fifo_test.go
+ create mode 100644 internal/conserve/stream_test.go
+
+diff --git a/docs/changelog/unreleased/conserve-surface-stream.md b/docs/changelog/unreleased/conserve-surface-stream.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..5975ded79907e11a8f6752cc81032c4850ceeed3
+--- /dev/null
++++ b/docs/changelog/unreleased/conserve-surface-stream.md
+@@ -0,0 +1,3 @@
++### Fixed
++
++- Conservation's surface scan processes changed files one at a time and retains only extracted items and route metadata. File read errors and cancellation now leave the affected plane unproven, and cancellation prevents later planes from running.
+diff --git a/internal/analysis/inventory/inventory.go b/internal/analysis/inventory/inventory.go
+index c8820024e7bed2b1f8f99d7b60a93cb9dba062de..3f0ec66dfdf87eda4cd17d9d14432dce829de4a1 100644
+--- a/internal/analysis/inventory/inventory.go
++++ b/internal/analysis/inventory/inventory.go
+@@ -98,41 +98,73 @@ type Item struct {
+ // assumes production code; this is the one rule Extract adds beyond it,
+ // applied uniformly rather than kind by kind).
+ func Extract(files []File, patterns []Pattern) []Item {
+-	// Filter _test.go out ONCE, up front: every kind below — including
+-	// the configured-pattern kind — must see the identical file set, or a
+-	// pattern like CV-26's own `tool:` glob (internal/mcp/*.go) silently
+-	// picks up every *_test.go fixture's own toolDescriptor literal too
+-	// (a real bug this exact fix closed: a test-only fake tool name
+-	// otherwise showed up as a surface item indistinguishable from a real
+-	// registration).
+-	var prod []File
++	a := NewAccumulator(patterns)
+ 	for _, f := range files {
+-		if strings.HasSuffix(f.Path, "_test.go") {
+-			continue
+-		}
+-		prod = append(prod, f)
++		a.Add(f)
+ 	}
++	return a.Items()
++}
+ 
+-	var out []Item
+-	var routeFiles []routes.Result
+-	for _, f := range prod {
+-		switch {
+-		case strings.HasSuffix(f.Path, ".go"):
+-			out = append(out, extractGoAPI(f)...)
+-			out = append(out, extractGoJSON(f)...)
+-			out = append(out, extractGoCLI(f)...)
+-		case strings.HasSuffix(f.Path, ".proto"):
+-			out = append(out, extractProtoRPC(f)...)
++type compiledPattern struct {
++	kind string
++	re   *regexp.Regexp
++	glob *filter.Matcher
++}
++
++// Accumulator extracts one file at a time. It retains only capability items
++// and route metadata; callers can release each file's content after Add.
++type Accumulator struct {
++	items    []Item
++	routes   []routes.Result
++	patterns []compiledPattern
++}
++
++// NewAccumulator compiles configured patterns once for a file stream.
++func NewAccumulator(patterns []Pattern) *Accumulator {
++	a := &Accumulator{}
++	for _, p := range patterns {
++		if p.Kind == "" || p.Regex == "" {
++			continue
++		}
++		re, err := regexp.Compile(p.Regex)
++		if err != nil || re.NumSubexp() < 1 {
++			continue
+ 		}
+-		if lang := routeLangFor(f.Path); lang != "" {
+-			routeFiles = append(routeFiles, routes.ExtractFile(lang, f.Path, f.Content))
++		cp := compiledPattern{kind: p.Kind, re: re}
++		if p.Glob != "" {
++			cp.glob = filter.New([]string{p.Glob})
+ 		}
+-		out = append(out, extractEnv(f)...)
++		a.patterns = append(a.patterns, cp)
+ 	}
+-	out = append(out, routeItems(routeFiles)...)
+-	for _, p := range patterns {
+-		out = append(out, extractConfigured(prod, p)...)
++	return a
++}
++
++// Add extracts one file without retaining its content.
++func (a *Accumulator) Add(f File) {
++	if strings.HasSuffix(f.Path, "_test.go") {
++		return
++	}
++	switch {
++	case strings.HasSuffix(f.Path, ".go"):
++		a.items = append(a.items, extractGoAPI(f)...)
++		a.items = append(a.items, extractGoJSON(f)...)
++		a.items = append(a.items, extractGoCLI(f)...)
++	case strings.HasSuffix(f.Path, ".proto"):
++		a.items = append(a.items, extractProtoRPC(f)...)
++	}
++	if lang := routeLangFor(f.Path); lang != "" {
++		a.routes = append(a.routes, routes.ExtractFile(lang, f.Path, f.Content))
+ 	}
++	a.items = append(a.items, extractEnv(f)...)
++	for _, p := range a.patterns {
++		a.items = append(a.items, extractConfiguredFile(f, p)...)
++	}
++}
++
++// Items composes routes across all added files and sorts shared keys once.
++func (a *Accumulator) Items() []Item {
++	out := append([]Item(nil), a.items...)
++	out = append(out, routeItems(a.routes)...)
+ 	return sortDedupe(out)
+ }
+ 
+@@ -554,42 +586,25 @@ func envScanned(p string) bool {
+ 
+ // ─── configured `[[surface.pattern]]` kinds ────────────────────────────────
+ 
+-// extractConfigured returns "<p.Kind>:<name>" items for every match of
+-// p.Regex's first capturing group across files whose path matches p.Glob
+-// (every file when p.Glob is "") — design doc §2.1's "configured patterns"
+-// row, this repo's own mechanism for a `tool:`/`verb:` surface no built-in
+-// kind covers. A malformed regex, or a pattern naming no capture group,
+-// yields no items rather than erroring — Extract itself never fails.
+-func extractConfigured(files []File, p Pattern) []Item {
+-	if p.Kind == "" || p.Regex == "" {
+-		return nil
+-	}
+-	re, err := regexp.Compile(p.Regex)
+-	if err != nil || re.NumSubexp() < 1 {
++// extractConfiguredFile applies one compiled configured-pattern kind to a
++// single file; an empty glob matches every path.
++func extractConfiguredFile(f File, p compiledPattern) []Item {
++	if p.glob != nil && !p.glob.Match(f.Path) {
+ 		return nil
+ 	}
+-	var m *filter.Matcher
+-	if p.Glob != "" {
+-		m = filter.New([]string{p.Glob})
+-	}
+ 	var out []Item
+-	for _, f := range files {
+-		if m != nil && !m.Match(f.Path) {
++	for _, loc := range p.re.FindAllSubmatchIndex(f.Content, -1) {
++		if len(loc) < 4 || loc[2] < 0 {
+ 			continue
+ 		}
+-		for _, loc := range re.FindAllSubmatchIndex(f.Content, -1) {
+-			if len(loc) < 4 || loc[2] < 0 {
+-				continue
+-			}
+-			name := string(f.Content[loc[2]:loc[3]])
+-			if name == "" {
+-				continue
+-			}
+-			out = append(out, Item{
+-				Key: p.Kind + ":" + name, Kind: p.Kind,
+-				File: f.Path, Line: lineForOffset(f.Content, loc[0]),
+-			})
++		name := string(f.Content[loc[2]:loc[3]])
++		if name == "" {
++			continue
+ 		}
++		out = append(out, Item{
++			Key: p.kind + ":" + name, Kind: p.kind,
++			File: f.Path, Line: lineForOffset(f.Content, loc[0]),
++		})
+ 	}
+ 	return out
+ }
+diff --git a/internal/analysis/inventory/stream_test.go b/internal/analysis/inventory/stream_test.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..559af9e70c0d5ce55eee00c4d1a2007f9bc39992
+--- /dev/null
++++ b/internal/analysis/inventory/stream_test.go
+@@ -0,0 +1,37 @@
++package inventory
++
++import (
++	"reflect"
++	"testing"
++)
++
++func TestStreamMatchesExtractAcrossMountedRoutesAndPatterns(t *testing.T) {
++	files := []File{
++		{Path: "app.js", Content: []byte("const users = require('./users')\nfastify.register(users, { prefix: '/api' })\nconst a = process.env.API_KEY\n")},
++		{Path: "users.js", Content: []byte("fastify.get('/users', listUsers)\nName: \"first\"\nName: \"same\"\n")},
++		{Path: "other.go", Content: []byte("package other\nfunc Pub() {}\n// Name: \"same\"\n")},
++		{Path: "other_test.go", Content: []byte("package other\n// Name: \"excluded\"\n")},
++	}
++	patterns := []Pattern{
++		{Kind: "tag", Regex: `Name: "([a-z]+)"`},
++		{Kind: "scoped", Glob: "users.js", Regex: `Name: "([a-z]+)"`},
++	}
++	want := Extract(files, patterns)
++	a := NewAccumulator(patterns)
++	for _, f := range files {
++		a.Add(f)
++	}
++	if got := a.Items(); !reflect.DeepEqual(got, want) {
++		t.Fatalf("stream differs from Extract\n got: %#v\nwant: %#v", got, want)
++	}
++	var mounted, env, pattern, scoped bool
++	for _, it := range want {
++		mounted = mounted || it.Key == "route:GET /api/users"
++		env = env || it.Key == "env:API_KEY"
++		pattern = pattern || it.Key == "tag:same" && it.File == "other.go"
++		scoped = scoped || it.Key == "scoped:same" && it.File == "users.js"
++	}
++	if !mounted || !env || !pattern || !scoped {
++		t.Fatalf("fixture did not exercise mount/env/dedup/glob: mounted=%v env=%v pattern=%v scoped=%v", mounted, env, pattern, scoped)
++	}
++}
+diff --git a/internal/conserve/conserve.go b/internal/conserve/conserve.go
+index d1f0cf8a18d31516ab94a7e1cd2373f398435f74..79cb85a77ce16acb4669d3bcc07d49895ec16f8f 100644
+--- a/internal/conserve/conserve.go
++++ b/internal/conserve/conserve.go
+@@ -259,7 +259,16 @@ func Run(ctx context.Context, in Input, planes []Plane) Report {
+ 		Planes:  make([]PlaneReport, 0, len(planes)),
+ 	}
+ 	for _, p := range planes {
+-		findings, missing := p.Check(ctx, in)
++		var findings []Finding
++		var missing []string
++		if err := ctx.Err(); err != nil {
++			missing = []string{"conservation canceled before " + p.Name() + ": " + err.Error()}
++		} else {
++			findings, missing = p.Check(ctx, in)
++			if err := ctx.Err(); err != nil {
++				missing = append(missing, "conservation canceled during "+p.Name()+": "+err.Error())
++			}
++		}
+ 
+ 		// fs/ms start as non-nil, zero-length slices (never append's
+ 		// nil-preserving shorthand) so a plane with nothing to report
+diff --git a/internal/conserve/input.go b/internal/conserve/input.go
+index e2f2f4f9d0393be044e21607b07c21f93347de1d..1f8c6bc2b7b1d96ed0c24cd93295b9b8c3b7b31d 100644
+--- a/internal/conserve/input.go
++++ b/internal/conserve/input.go
+@@ -13,6 +13,7 @@ import (
+ 	"context"
+ 	"errors"
+ 	"fmt"
++	"io"
+ 	"os"
+ 	"os/exec"
+ 	"path/filepath"
+@@ -349,7 +350,7 @@ func NewInput(ctx context.Context, root, baseRef string, st store.Store, service
+ 		Head:                HeadWorktree,
+ 		ChangedFiles:        changed,
+ 		BaseFile:            func(path string) ([]byte, bool, error) { return gitShowFile(ctx, root, base, path) },
+-		HeadFile:            func(path string) ([]byte, bool, error) { return worktreeFile(root, path) },
++		HeadFile:            func(path string) ([]byte, bool, error) { return readWorktreeFile(ctx, root, path) },
+ 		Store:               st,
+ 		Declarations:        NewDeclarations(basePlans, headPlans),
+ 		Retired:             NewRetirement(basePlans, headPlans),
+@@ -667,17 +668,67 @@ func pathAbsentAtRef(stderr string) bool {
+ // is false — never an error — when the file simply does not exist there.
+ // Refuses (a real error) a path that would resolve outside root.
+ func worktreeFile(root, path string) ([]byte, bool, error) {
++	return readWorktreeFile(context.Background(), root, path)
++}
++
++// readWorktreeFile checks cancellation between bounded chunks. It still reads
++// the entire regular file when requested; no size limit is imposed.
++func readWorktreeFile(ctx context.Context, root, path string) ([]byte, bool, error) {
+ 	r := filepath.Clean(root)
+ 	full := filepath.Clean(filepath.Join(r, filepath.FromSlash(path)))
+ 	if full != r && !strings.HasPrefix(full, r+string(filepath.Separator)) {
+ 		return nil, false, fmt.Errorf("path %q escapes root %q", path, root)
+ 	}
+-	b, err := os.ReadFile(full)
++	if err := ctx.Err(); err != nil {
++		return nil, false, err
++	}
++	// Stat follows symlinks and avoids opening a quiescent FIFO, whose Open
++	// would block before cancellation could be checked. A concurrent path
++	// replacement between Stat and Open remains outside this guard.
++	info, err := os.Stat(full)
+ 	if err != nil {
+ 		if os.IsNotExist(err) {
+ 			return nil, false, nil
+ 		}
+ 		return nil, false, err
+ 	}
+-	return b, true, nil
++	if !info.Mode().IsRegular() {
++		return nil, false, fmt.Errorf("non-regular file %q: %s", path, info.Mode())
++	}
++	if err := ctx.Err(); err != nil {
++		return nil, false, err
++	}
++	f, err := os.Open(full)
++	if err != nil {
++		if os.IsNotExist(err) {
++			return nil, false, nil
++		}
++		return nil, false, err
++	}
++	defer f.Close()
++	openedInfo, err := f.Stat()
++	if err != nil {
++		return nil, false, err
++	}
++	if !openedInfo.Mode().IsRegular() {
++		return nil, false, fmt.Errorf("non-regular file %q: %s", path, openedInfo.Mode())
++	}
++	var out []byte
++	buf := make([]byte, 64*1024)
++	for {
++		if err := ctx.Err(); err != nil {
++			return nil, false, err
++		}
++		n, err := f.Read(buf)
++		if canceled := ctx.Err(); canceled != nil {
++			return nil, false, canceled
++		}
++		out = append(out, buf[:n]...)
++		if err == io.EOF {
++			return out, true, nil
++		}
++		if err != nil {
++			return nil, false, err
++		}
++	}
+ }
+diff --git a/internal/conserve/input_fifo_test.go b/internal/conserve/input_fifo_test.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..cf4583dd049e284be9fff0b6a5a9395cc994b220
+--- /dev/null
++++ b/internal/conserve/input_fifo_test.go
+@@ -0,0 +1,41 @@
++//go:build darwin || linux
++
++package conserve
++
++import (
++	"context"
++	"os"
++	"path/filepath"
++	"strings"
++	"syscall"
++	"testing"
++)
++
++func TestReadWorktreeFileRefusesFIFOWithoutOpening(t *testing.T) {
++	root := t.TempDir()
++	fifo := filepath.Join(root, "pipe")
++	if err := syscall.Mkfifo(fifo, 0o600); err != nil {
++		t.Fatal(err)
++	}
++	if b, ok, err := readWorktreeFile(context.Background(), root, "pipe"); err == nil || ok || b != nil || !strings.Contains(err.Error(), "non-regular") {
++		t.Fatalf("FIFO read = %d bytes, ok=%v, err=%v", len(b), ok, err)
++	}
++	if err := os.Symlink("pipe", filepath.Join(root, "pipe-link")); err != nil {
++		t.Fatal(err)
++	}
++	if b, ok, err := readWorktreeFile(context.Background(), root, "pipe-link"); err == nil || ok || b != nil || !strings.Contains(err.Error(), "non-regular") {
++		t.Fatalf("FIFO symlink read = %d bytes, ok=%v, err=%v", len(b), ok, err)
++	}
++	if b, ok, err := readWorktreeFile(context.Background(), root, "."); err == nil || ok || b != nil || !strings.Contains(err.Error(), "non-regular") {
++		t.Fatalf("directory read = %d bytes, ok=%v, err=%v", len(b), ok, err)
++	}
++	if err := os.WriteFile(filepath.Join(root, "regular"), []byte("content"), 0o600); err != nil {
++		t.Fatal(err)
++	}
++	if err := os.Symlink("regular", filepath.Join(root, "regular-link")); err != nil {
++		t.Fatal(err)
++	}
++	if b, ok, err := readWorktreeFile(context.Background(), root, "regular-link"); err != nil || !ok || string(b) != "content" {
++		t.Fatalf("regular symlink read = %q, ok=%v, err=%v", b, ok, err)
++	}
++}
+diff --git a/internal/conserve/stream_test.go b/internal/conserve/stream_test.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..8abd2e8e4cb315c44b199ef4e0ddc86d314f6a55
+--- /dev/null
++++ b/internal/conserve/stream_test.go
+@@ -0,0 +1,151 @@
++package conserve
++
++import (
++	"bytes"
++	"context"
++	"errors"
++	"os"
++	"path/filepath"
++	"strings"
++	"testing"
++	"time"
++)
++
++func TestSurfaceReadFailureIsUnproven(t *testing.T) {
++	readErr := func(string) ([]byte, bool, error) { return nil, false, errors.New("permission denied") }
++	readOK := fileReader(map[string]string{"a.go": "package a\nfunc A() {}\n"})
++	for _, tc := range []struct {
++		name       string
++		base, head func(string) ([]byte, bool, error)
++	}{
++		{"base", readErr, readOK},
++		{"head", readOK, readErr},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			in := Input{ChangedFiles: []string{"a.go"}, BaseFile: tc.base, HeadFile: tc.head}
++			rep := Run(context.Background(), in, []Plane{surfacePlane{}}).Planes[0]
++			if rep.Verdict != Unproven || len(rep.Missing) == 0 || !strings.Contains(strings.Join(rep.Missing, " "), "permission denied") {
++				t.Fatalf("read failure became absence: %+v", rep)
++			}
++		})
++	}
++}
++
++func TestSurfaceCancellationStopsNextRead(t *testing.T) {
++	ctx, cancel := context.WithCancel(context.Background())
++	defer cancel()
++	baseReads, headReads := 0, 0
++	in := Input{ChangedFiles: []string{"a.go", "b.go"},
++		BaseFile: func(string) ([]byte, bool, error) { baseReads++; cancel(); return []byte("package a\n"), true, nil },
++		HeadFile: func(string) ([]byte, bool, error) { headReads++; return []byte("package a\n"), true, nil },
++	}
++	rep := Run(ctx, in, []Plane{surfacePlane{}}).Planes[0]
++	if baseReads != 1 || headReads != 0 || rep.Verdict != Unproven || len(rep.Missing) == 0 {
++		t.Fatalf("cancel: base=%d head=%d report=%+v", baseReads, headReads, rep)
++	}
++}
++
++func TestSurfacePreCanceledReadsNothing(t *testing.T) {
++	ctx, cancel := context.WithCancel(context.Background())
++	cancel()
++	reads := 0
++	read := func(string) ([]byte, bool, error) { reads++; return nil, false, nil }
++	in := Input{ChangedFiles: []string{"a.go"}, BaseFile: read, HeadFile: read}
++	rep := Run(ctx, in, []Plane{surfacePlane{}}).Planes[0]
++	if reads != 0 || rep.Verdict != Unproven || len(rep.Missing) == 0 {
++		t.Fatalf("pre-cancel: reads=%d report=%+v", reads, rep)
++	}
++}
++
++func TestSurfaceExtractsBeforeReaderReusesBuffer(t *testing.T) {
++	buf := make([]byte, len("package a\nfunc A() {}\n"))
++	in := Input{ChangedFiles: []string{"a/a.go", "a/b.go"},
++		BaseFile: func(path string) ([]byte, bool, error) {
++			if path == "a/a.go" {
++				copy(buf, "package a\nfunc A() {}\n")
++			} else {
++				copy(buf, "package a\nfunc B() {}\n")
++			}
++			return buf, true, nil
++		},
++		HeadFile: func(string) ([]byte, bool, error) { return nil, false, nil },
++	}
++	rep := Run(context.Background(), in, []Plane{surfacePlane{}}).Planes[0]
++	keys := map[string]bool{}
++	for _, f := range rep.Findings {
++		keys[f.Key] = true
++	}
++	if !keys["api:a.A"] || !keys["api:a.B"] || rep.Verdict != Losses {
++		t.Fatalf("reused buffer lost a file's surface: %+v", rep)
++	}
++}
++
++type countingPlane struct {
++	name  string
++	calls *int
++}
++
++func (p countingPlane) Name() string { return p.name }
++func (p countingPlane) Check(context.Context, Input) ([]Finding, []string) {
++	*p.calls++
++	return nil, nil
++}
++
++func TestRunCanceledDoesNotInvokeLaterPlanes(t *testing.T) {
++	ctx, cancel := context.WithCancel(context.Background())
++	defer cancel()
++	calls := 0
++	first := cancelPlane{cancel: cancel}
++	rep := Run(ctx, Input{}, []Plane{first, countingPlane{name: "later", calls: &calls}})
++	if calls != 0 || len(rep.Planes) != 2 || rep.Planes[0].Verdict != Unproven || rep.Planes[1].Verdict != Unproven || len(rep.Planes[1].Missing) == 0 {
++		t.Fatalf("later plane ran or looked conserved: calls=%d report=%+v", calls, rep.Planes)
++	}
++}
++
++type cancelPlane struct{ cancel context.CancelFunc }
++
++func (cancelPlane) Name() string                                         { return "first" }
++func (p cancelPlane) Check(context.Context, Input) ([]Finding, []string) { p.cancel(); return nil, nil }
++
++type cancelAfterChecks struct{ checks, limit int }
++
++func (*cancelAfterChecks) Deadline() (time.Time, bool) { return time.Time{}, false }
++func (*cancelAfterChecks) Done() <-chan struct{}       { return nil }
++func (c *cancelAfterChecks) Err() error {
++	c.checks++
++	if c.checks >= c.limit {
++		return context.Canceled
++	}
++	return nil
++}
++func (*cancelAfterChecks) Value(any) any { return nil }
++
++func TestReadWorktreeFileStopsBetweenChunks(t *testing.T) {
++	root := t.TempDir()
++	body := bytes.Repeat([]byte("x"), 1024*1024)
++	if err := os.WriteFile(filepath.Join(root, "huge.txt"), body, 0o644); err != nil {
++		t.Fatal(err)
++	}
++	ctx := &cancelAfterChecks{limit: 3}
++	if b, ok, err := readWorktreeFile(ctx, root, "huge.txt"); !errors.Is(err, context.Canceled) || ok || b != nil {
++		t.Fatalf("canceled read = %d bytes, ok=%v, err=%v", len(b), ok, err)
++	}
++	if got, ok, err := worktreeFile(root, "huge.txt"); err != nil || !ok || !bytes.Equal(got, body) {
++		t.Fatalf("legacy read = %d bytes, ok=%v, err=%v", len(got), ok, err)
++	}
++}
++
++func TestNewInputHeadReaderUsesRequestContext(t *testing.T) {
++	repo := newInputTestRepo(t)
++	repo.write("a.go", "package a\n")
++	repo.commitAll("base")
++	ctx, cancel := context.WithCancel(context.Background())
++	in, err := NewInput(ctx, repo.root, repo.headSHA(), nil, "svc", nil)
++	if err != nil {
++		t.Fatal(err)
++	}
++	cancel()
++	if b, ok, err := in.HeadFile("a.go"); !errors.Is(err, context.Canceled) || ok || b != nil {
++		t.Fatalf("HeadFile after cancellation: %d bytes, ok=%v, err=%v", len(b), ok, err)
++	}
++}
+diff --git a/internal/conserve/surface.go b/internal/conserve/surface.go
+index 6c81cf1a9e9473144a015e45560a67f02a3d43ce..407bbee42190dae45e8012e2b0a221f0ce78800b 100644
+--- a/internal/conserve/surface.go
++++ b/internal/conserve/surface.go
+@@ -14,7 +14,6 @@ import (
+ 	"context"
+ 	"fmt"
+ 	"io/fs"
+-	"os"
+ 	"path/filepath"
+ 	"sort"
+ 	"strings"
+@@ -39,28 +38,54 @@ func (surfacePlane) Name() string { return "surface" }
+ // every removed/changed key — Declared from in.Declarations, exactly as
+ // I45 requires. A removed/changed `route:` key additionally gets
+ // ConsumerLosses' cross-repo consumer findings appended. Missing is
+-// non-empty only when Input itself cannot read file content at all (a
+-// caller-built Input with no BaseFile/HeadFile) — the plane's core
+-// mechanism needs nothing else (no store, no typed pass), so it is
+-// UNPROVEN far less often than integrity/absence.
++// names unreadable input and cancellation rather than treating either as
++// absent. The file contents are released after each extraction.
+ func (surfacePlane) Check(ctx context.Context, in Input) ([]Finding, []string) {
+ 	if in.BaseFile == nil || in.HeadFile == nil {
+ 		return nil, []string{"no base/head file reader"}
+ 	}
+ 
+-	var baseFiles, headFiles []inventory.File
++	patterns := repoSurfacePatterns(in.Root)
++	base, head := inventory.NewAccumulator(patterns), inventory.NewAccumulator(patterns)
++	var missing []string
+ 	for _, path := range in.ChangedFiles {
+-		if b, ok, err := in.BaseFile(path); err == nil && ok {
+-			baseFiles = append(baseFiles, inventory.File{Path: path, Content: b})
++		if err := ctx.Err(); err != nil {
++			missing = append(missing, "surface scan canceled: "+err.Error())
++			break
++		}
++		b, ok, err := in.BaseFile(path)
++		if err != nil {
++			missing = append(missing, fmt.Sprintf("base %s: %v", path, err))
++		} else if ok {
++			base.Add(inventory.File{Path: path, Content: b})
+ 		}
+-		if h, ok, err := in.HeadFile(path); err == nil && ok {
+-			headFiles = append(headFiles, inventory.File{Path: path, Content: h})
++		b = nil
++		if err := ctx.Err(); err != nil {
++			missing = append(missing, "surface scan canceled: "+err.Error())
++			break
+ 		}
++		h, ok, err := in.HeadFile(path)
++		if err != nil {
++			missing = append(missing, fmt.Sprintf("head %s: %v", path, err))
++		} else if ok {
++			head.Add(inventory.File{Path: path, Content: h})
++		}
++		h = nil
++	}
++	if err := ctx.Err(); err != nil && len(missing) == 0 {
++		missing = append(missing, "surface scan canceled: "+err.Error())
++	}
++	if len(missing) > 0 {
++		return nil, missing
++	}
++	baseItems := base.Items()
++	if err := ctx.Err(); err != nil {
++		return nil, []string{"surface scan canceled: " + err.Error()}
++	}
++	headItems := head.Items()
++	if err := ctx.Err(); err != nil {
++		return nil, []string{"surface scan canceled: " + err.Error()}
+ 	}
+-
+-	patterns := repoSurfacePatterns(in.Root)
+-	baseItems := inventory.Extract(baseFiles, patterns)
+-	headItems := inventory.Extract(headFiles, patterns)
+ 	delta := inventory.Diff(baseItems, headItems)
+ 
+ 	baseByKey := make(map[string]inventory.Item, len(baseItems))
+@@ -74,6 +99,9 @@ func (surfacePlane) Check(ctx context.Context, in Input) ([]Finding, []string) {
+ 
+ 	var findings []Finding
+ 	for _, key := range delta.Removed {
++		if err := ctx.Err(); err != nil {
++			return nil, []string{"surface scan canceled: " + err.Error()}
++		}
+ 		it := baseByKey[key]
+ 		findings = append(findings, Finding{
+ 			Plane: "surface", Kind: "removed", Key: key,
+@@ -89,6 +117,9 @@ func (surfacePlane) Check(ctx context.Context, in Input) ([]Finding, []string) {
+ 		findings = append(findings, ConsumerLosses(ctx, in, key)...)
+ 	}
+ 	for _, key := range delta.Changed {
++		if err := ctx.Err(); err != nil {
++			return nil, []string{"surface scan canceled: " + err.Error()}
++		}
+ 		bi, hi := baseByKey[key], headByKey[key]
+ 		findings = append(findings, Finding{
+ 			Plane: "surface", Kind: "changed", Key: key,
+@@ -105,6 +136,9 @@ func (surfacePlane) Check(ctx context.Context, in Input) ([]Finding, []string) {
+ 		findings = append(findings, ConsumerLosses(ctx, in, key)...)
+ 	}
+ 
++	if err := ctx.Err(); err != nil {
++		return nil, []string{"surface scan canceled: " + err.Error()}
++	}
+ 	return findings, nil
+ }
+ 
+@@ -161,6 +195,9 @@ func ConsumerLosses(ctx context.Context, in Input, key string) []Finding {
+ 
+ 	var findings []Finding
+ 	for _, id := range ids {
++		if ctx.Err() != nil {
++			return nil
++		}
+ 		if id == in.Service {
+ 			continue
+ 		}
+@@ -168,7 +205,10 @@ func ConsumerLosses(ctx context.Context, in Input, key string) []Finding {
+ 		if merr != nil || !found || meta.Path == "" {
+ 			continue
+ 		}
+-		for _, call := range walkClientCalls(meta.Path) {
++		for _, call := range walkClientCalls(ctx, meta.Path) {
++			if ctx.Err() != nil {
++				return nil
++			}
+ 			if call.Method != method || call.Template != template {
+ 				continue
+ 			}
+@@ -216,9 +256,12 @@ func parseRouteKey(rest string) (method, template string, ok bool) {
+ // that does not exist at all, yields no calls rather than an error —
+ // root may legitimately be stale (a service recorded at ingest time,
+ // since moved or removed).
+-func walkClientCalls(root string) []serviceref.ClientCall {
++func walkClientCalls(ctx context.Context, root string) []serviceref.ClientCall {
+ 	var out []serviceref.ClientCall
+ 	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
++		if err := ctx.Err(); err != nil {
++			return err
++		}
+ 		if err != nil {
+ 			return nil // best-effort: skip unreadable entries, never abort the walk
+ 		}
+@@ -232,14 +275,14 @@ func walkClientCalls(root string) []serviceref.ClientCall {
+ 		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+ 			return nil
+ 		}
+-		src, rerr := os.ReadFile(path)
+-		if rerr != nil {
+-			return nil
+-		}
+ 		rel, relErr := filepath.Rel(root, path)
+ 		if relErr != nil {
+ 			rel = path
+ 		}
++		src, _, rerr := readWorktreeFile(ctx, root, rel)
++		if rerr != nil {
++			return nil
++		}
+ 		out = append(out, serviceref.ExtractClientCalls("go", filepath.ToSlash(rel), src)...)
+ 		return nil
+ 	})

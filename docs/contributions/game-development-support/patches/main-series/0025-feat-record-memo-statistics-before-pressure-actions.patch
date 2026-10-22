@@ -1,0 +1,350 @@
+From 378224a362b428e07bdae7ac350fc230d26f9a12 Mon Sep 17 00:00:00 2001
+From: Geoff Miller <contributor@example.invalid>
+Date: Wed, 21 Oct 2026 16:09:39 -0700
+Subject: [PATCH 25/27] feat: record memo statistics before pressure actions
+
+Capture bounded estimated memo state before shed and refuse cache eviction.
+Keep steady samples and emergency exit free of diagnostic reads.
+
+Verified: focused governor race tests and representative stats/format benchmark
+with Go 1.27.1. Existing diagnostic regressions retained. Full gate pending.
+---
+ cmd/fathom/governor.go                        | 119 ++++++++++++-
+ cmd/fathom/governor_preaction_test.go         | 159 ++++++++++++++++++
+ .../unreleased/pre-action-memo-diagnostics.md |   3 +
+ 3 files changed, 272 insertions(+), 9 deletions(-)
+ create mode 100644 cmd/fathom/governor_preaction_test.go
+ create mode 100644 docs/changelog/unreleased/pre-action-memo-diagnostics.md
+
+diff --git a/cmd/fathom/governor.go b/cmd/fathom/governor.go
+index 99d10b24194552a5a87f1cc020c5e0f97a5c319f..dc902ed4093388f5915153716ffd37990ae4ac6d 100644
+--- a/cmd/fathom/governor.go
++++ b/cmd/fathom/governor.go
+@@ -25,6 +25,7 @@ import (
+ 	"sync/atomic"
+ 	"time"
+ 
++	"github.com/geoffmilleraz/fathom/internal/memo"
+ 	"github.com/geoffmilleraz/fathom/internal/tenancy"
+ )
+ 
+@@ -49,15 +50,17 @@ type ladderActions struct {
+ 
+ // governorConfig is newGovernor's input; every OS effect is injectable.
+ type governorConfig struct {
+-	budget       tenancy.Budget
+-	notes        []tenancy.Note
+-	host         tenancy.Host
+-	now          func() time.Time
+-	inflight     *tenancy.InFlight
+-	ledger       string // lifecycle.jsonl for this daemon's id
+-	pid          int
+-	version      string
+-	logf         func(string)
++	budget   tenancy.Budget
++	notes    []tenancy.Note
++	host     tenancy.Host
++	now      func() time.Time
++	inflight *tenancy.InFlight
++	ledger   string // lifecycle.jsonl for this daemon's id
++	pid      int
++	version  string
++	logf     func(string)
++	// memoStats is read only on an upward ladder transition, before its drops.
++	memoStats    func() []memo.GroupStats
+ 	actions      ladderActions
+ 	freeOSMemory func()
+ 	memRead      func() scavengeMem // RT-45: the scavenge line's readings; nil = readScavengeMem
+@@ -194,6 +197,98 @@ func (g *governor) ringRecord(at time.Time, transition bool) tenancy.RingRecord
+ // freeEvery bounds debug.FreeOSMemory while shed (§2.1).
+ const freeEvery = 30 * time.Second
+ 
++// A transition record is deliberately smaller than a heap capture: it names
++// only the sampled footprint and estimated resident memo totals. In
++// particular it cannot retain cache keys, request data, or symbol values.
++const (
++	preActionMemoGroups = 24
++	preActionMemoBytes  = 16 << 10
++)
++
++type preActionGroup struct {
++	Name             string `json:"name"`
++	Entries          int    `json:"entries"`
++	EstimatedBytes   int64  `json:"estimated_bytes"`
++	Hits             int64  `json:"hits"`
++	Misses           int64  `json:"misses"`
++	Flights          int64  `json:"flights"`
++	Uncached         int64  `json:"uncached"`
++	Abandoned        int64  `json:"abandoned"`
++	RefuseCancelled  int64  `json:"refuse_cancelled"`
++	Declined         int64  `json:"declined"`
++	EvictedBudget    int64  `json:"evicted_budget"`
++	EvictedShed      int64  `json:"evicted_shed"`
++	EvictedRefuse    int64  `json:"evicted_refuse"`
++	EvictedIdle      int64  `json:"evicted_idle"`
++	EvictedWatermark int64  `json:"evicted_watermark"`
++	EvictedMax       int64  `json:"evicted_max_entries"`
++	EvictedOther     int64  `json:"evicted_other"`
++}
++
++type preActionRecord struct {
++	Schema                    string           `json:"schema"`
++	At                        string           `json:"at"`
++	From                      string           `json:"from"`
++	To                        string           `json:"to"`
++	Trigger                   string           `json:"trigger"`
++	FootprintBytes            int64            `json:"footprint_bytes"`
++	ChildrenBytes             int64            `json:"children_bytes"`
++	GoTotalMinusReleasedBytes int64            `json:"go_total_minus_released_bytes"`
++	ShedBytes                 int64            `json:"shed_bytes"`
++	RefuseBytes               int64            `json:"refuse_bytes"`
++	ExitBytes                 int64            `json:"exit_bytes"`
++	Groups                    []preActionGroup `json:"groups"`
++	OmittedGroups             int              `json:"omitted_groups"`
++	OmittedEvictionReasons    int              `json:"omitted_eviction_reasons"`
++}
++
++func preActionMemoLine(sample tenancy.Sample, budget tenancy.Budget, tr tenancy.Transition, stats []memo.GroupStats) string {
++	// Stats is normally sorted, but an injected reader must yield the same
++	// output regardless of its input order. This sorts summaries, not entries.
++	sort.Slice(stats, func(i, j int) bool { return stats[i].Name < stats[j].Name })
++	r := preActionRecord{
++		Schema: "fathom.pre_action_memo/v1", At: sample.At.UTC().Format(time.RFC3339Nano),
++		From: tr.From.String(), To: tr.To.String(), Trigger: tr.Cause.Trigger.String(),
++		FootprintBytes: sample.Footprint, ChildrenBytes: sample.Children,
++		GoTotalMinusReleasedBytes: sample.GoTotalMinusReleased,
++		ShedBytes:                 budget.Shed, RefuseBytes: budget.Refuse, ExitBytes: budget.Exit,
++		Groups:        make([]preActionGroup, 0, min(len(stats), preActionMemoGroups)),
++		OmittedGroups: max(0, len(stats)-preActionMemoGroups),
++	}
++	for _, s := range stats[:min(len(stats), preActionMemoGroups)] {
++		name := s.Name
++		if len(name) > 64 {
++			name = strings.ToValidUTF8(name[:64], "")
++		}
++		g := preActionGroup{
++			Name: name, Entries: s.Entries, EstimatedBytes: s.Bytes,
++			Hits: s.Hits, Misses: s.Misses, Flights: s.Flights, Uncached: s.Uncached,
++			Abandoned: s.Abandoned, RefuseCancelled: s.RefuseCancelled, Declined: s.Declined,
++			EvictedBudget: s.Evictions[memo.ReasonBudget], EvictedShed: s.Evictions[memo.ReasonShed],
++			EvictedRefuse: s.Evictions[memo.ReasonRefuse], EvictedIdle: s.Evictions[memo.ReasonIdle],
++			EvictedWatermark: s.Evictions[memo.ReasonWatermark], EvictedMax: s.Evictions[memo.ReasonMaxEntries],
++		}
++		for reason, count := range s.Evictions {
++			switch reason {
++			case memo.ReasonBudget, memo.ReasonShed, memo.ReasonRefuse, memo.ReasonIdle, memo.ReasonWatermark, memo.ReasonMaxEntries:
++			default:
++				g.EvictedOther += count
++				r.OmittedEvictionReasons++
++			}
++		}
++		r.Groups = append(r.Groups, g)
++	}
++	for {
++		b, _ := json.Marshal(r) // fixed scalar fields have no unsupported values
++		const prefix = "tenancy: pre-action memo "
++		if len(b)+len(prefix) <= preActionMemoBytes || len(r.Groups) == 0 {
++			return prefix + string(b)
++		}
++		r.Groups = r.Groups[:len(r.Groups)-1]
++		r.OmittedGroups++
++	}
++}
++
+ // Diagnostic capture bounds (§13.4): at most one capture of each trigger
+ // kind per diagEvery, and the capture directory keeps at most diagKeep captures and
+ // diagKeepBytes, oldest pruned first.
+@@ -217,6 +312,9 @@ func newGovernor(cfg governorConfig) *governor {
+ 	if cfg.logf == nil {
+ 		cfg.logf = func(string) {}
+ 	}
++	if cfg.memoStats == nil {
++		cfg.memoStats = memo.Stats
++	}
+ 	if cfg.memRead == nil {
+ 		cfg.memRead = readScavengeMem
+ 	}
+@@ -279,6 +377,9 @@ func (g *governor) tickLocked(at time.Time, late time.Duration) tenancy.Transiti
+ 	tr := tenancy.StepLadder(&g.st, &g.sample, &g.budget)
+ 	if tr.Changed {
+ 		g.lastTrans = tr
++		if tr.To > tr.From && (tr.To == tenancy.LevelShed || tr.To == tenancy.LevelRefuse) {
++			g.logf(preActionMemoLine(g.sample, g.budget, tr, g.memoStats()))
++		}
+ 		g.applyLadderLevel(tr)
+ 		g.writeRing(at, true)
+ 		g.rollDays(at, true, &tr)
+diff --git a/cmd/fathom/governor_preaction_test.go b/cmd/fathom/governor_preaction_test.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..0414b839fa91b3306f478ff346bb8d35beef289a
+--- /dev/null
++++ b/cmd/fathom/governor_preaction_test.go
+@@ -0,0 +1,159 @@
++package main
++
++import (
++	"context"
++	"encoding/json"
++	"fmt"
++	"strings"
++	"testing"
++	"time"
++
++	"github.com/geoffmilleraz/fathom/internal/memo"
++	"github.com/geoffmilleraz/fathom/internal/tenancy"
++)
++
++const preActionPrefix = "tenancy: pre-action memo "
++
++func TestPreActionMemoIsSampledBeforeUpwardActionsOnly(t *testing.T) {
++	r := newGovRig(t)
++	reads := 0
++	r.g.memoStats = func() []memo.GroupStats {
++		reads++
++		r.record("read memo")
++		return []memo.GroupStats{{Name: "graphstore", Entries: 7, Bytes: 12345,
++			Hits: 8, Misses: 4, Flights: 4, Evictions: map[memo.DropReason]int64{memo.ReasonBudget: 2}}}
++	}
++	var records []preActionRecord
++	r.g.logf = func(line string) {
++		if !strings.HasPrefix(line, preActionPrefix) {
++			return
++		}
++		r.record("emit memo")
++		var rec preActionRecord
++		if err := json.Unmarshal([]byte(strings.TrimPrefix(line, preActionPrefix)), &rec); err != nil {
++			t.Fatalf("pre-action record: %v", err)
++		}
++		records = append(records, rec)
++	}
++	r.ticks(3)
++	if reads != 0 || len(records) != 0 {
++		t.Fatalf("normal samples read or emit memo stats: reads=%d records=%d", reads, len(records))
++	}
++	r.host.set(3200*tenancy.MiB, 0)
++	r.ticks(2)
++	if reads != 1 || len(records) != 1 {
++		t.Fatalf("shed must capture once: reads=%d records=%d", reads, len(records))
++	}
++	if got := records[0]; got.FootprintBytes != 3200*tenancy.MiB || got.From != "normal" || got.To != "shed" || got.Trigger != "own_mark" ||
++		len(got.Groups) != 1 || got.Groups[0].Name != "graphstore" || got.Groups[0].EstimatedBytes != 12345 || got.Groups[0].EvictedBudget != 2 {
++		t.Fatalf("wrong pre-action shed evidence: %+v", got)
++	}
++	r.ticks(5)
++	if reads != 1 || len(records) != 1 {
++		t.Fatalf("steady shed sampled memo: reads=%d records=%d", reads, len(records))
++	}
++	r.host.set(4500*tenancy.MiB, 0)
++	r.ticks(2)
++	if reads != 2 || len(records) != 2 || records[1].To != "refuse" || records[1].FootprintBytes != 4500*tenancy.MiB {
++		t.Fatalf("refuse pre-action evidence missing: reads=%d records=%+v", reads, records)
++	}
++	r.mu.Lock()
++	events := append([]string(nil), r.events...)
++	r.mu.Unlock()
++	// Each record precedes that transition's cache drops and scavenging.
++	for len(events) > 0 && events[0] != "read memo" {
++		events = events[1:] // a footprint-threshold capture can be queued first
++	}
++	want := []string{"read memo", "emit memo", "drop console", "drop fleet", "pause", "free",
++		"read memo", "emit memo", "drop console", "drop fleet", "drop graph", "drop symbols", "free"}
++	if len(events) < len(want) {
++		t.Fatalf("missing actions: %v", events)
++	}
++	for i, e := range want {
++		if events[i] != e {
++			t.Fatalf("event %d=%q, want %q: %v", i, events[i], e, events)
++		}
++	}
++	r.host.set(tenancy.GiB, 0)
++	r.ticks(70)
++	if reads != 2 || len(records) != 2 {
++		t.Fatalf("downward/normal samples read or emitted memo: reads=%d records=%d", reads, len(records))
++	}
++}
++
++func TestPreActionMemoLineBoundAndUnknownEvictions(t *testing.T) {
++	stats := make([]memo.GroupStats, 100)
++	for i := range stats {
++		stats[i] = memo.GroupStats{Name: fmt.Sprintf("%03d-%s", 99-i, strings.Repeat("x", 500)),
++			Entries: 1, Bytes: 32, Evictions: map[memo.DropReason]int64{"future": 7}}
++	}
++	line := preActionMemoLine(tenancy.Sample{At: time.Unix(1, 0), Footprint: 2}, tenancy.Budget{},
++		tenancy.Transition{From: tenancy.LevelNormal, To: tenancy.LevelShed}, stats)
++	if len(line) > preActionMemoBytes {
++		t.Fatalf("line has %d bytes, cap %d", len(line), preActionMemoBytes)
++	}
++	var record preActionRecord
++	if err := json.Unmarshal([]byte(strings.TrimPrefix(line, preActionPrefix)), &record); err != nil {
++		t.Fatal(err)
++	}
++	if record.OmittedGroups != 100-len(record.Groups) || len(record.Groups) > preActionMemoGroups || record.OmittedEvictionReasons != len(record.Groups) ||
++		record.Groups[0].Name[:3] != "000" || record.Groups[0].EvictedOther != 7 {
++		t.Fatalf("bounded group disclosure wrong: %+v", record)
++	}
++}
++
++func TestPreActionMemoDoesNotDelayEmergencyExit(t *testing.T) {
++	r := newGovRig(t)
++	reads, emissions := 0, 0
++	r.g.memoStats = func() []memo.GroupStats { reads++; return nil }
++	r.g.logf = func(line string) {
++		if strings.HasPrefix(line, preActionPrefix) {
++			emissions++
++		}
++	}
++	r.host.set(9*tenancy.GiB, 0)
++	r.ticks(2)
++	if tenancy.CurrentLevel() != tenancy.LevelExit || reads != 0 || emissions != 0 {
++		t.Fatalf("exit must not read or emit memo: level=%s reads=%d emitted=%d", tenancy.CurrentLevel(), reads, emissions)
++	}
++}
++
++func memoDiagnosticFixture(tb testing.TB) *memo.Registry {
++	tb.Helper()
++	reg := memo.NewRegistry()
++	for group := range 4 {
++		g := memo.NewGroupIn[int, int](reg, fmt.Sprintf("group-%d", group), memo.Options{})
++		for key := range 1024 {
++			if _, err := g.Get(context.Background(), key, func(context.Context) (int, int64, error) {
++				return key, 64, nil
++			}); err != nil {
++				tb.Fatal(err)
++			}
++		}
++	}
++	return reg
++}
++
++func TestPreActionMemoRealResidentStats(t *testing.T) {
++	reg := memoDiagnosticFixture(t)
++	stats := reg.Stats()
++	if len(stats) != 4 || stats[0].Entries != 1024 || stats[0].Bytes != 1024*64 || stats[0].Misses != 1024 || stats[0].Flights != 1024 {
++		t.Fatalf("real memo summaries differ: %+v", stats)
++	}
++	line := preActionMemoLine(tenancy.Sample{At: time.Unix(1, 0), Footprint: 512 * tenancy.MiB}, tenancy.Budget{},
++		tenancy.Transition{From: tenancy.LevelShed, To: tenancy.LevelRefuse}, stats)
++	if !strings.Contains(line, `"estimated_bytes":65536`) || !strings.Contains(line, `"flights":1024`) {
++		t.Fatalf("resident memo evidence lost: %s", line)
++	}
++}
++
++func BenchmarkPreActionMemoRepresentative(b *testing.B) {
++	reg := memoDiagnosticFixture(b)
++	sample := tenancy.Sample{At: time.Unix(1, 0), Footprint: 512 * tenancy.MiB}
++	tr := tenancy.Transition{From: tenancy.LevelShed, To: tenancy.LevelRefuse}
++	b.ReportAllocs()
++	b.ResetTimer()
++	for range b.N {
++		_ = preActionMemoLine(sample, tenancy.Budget{}, tr, reg.Stats())
++	}
++}
+diff --git a/docs/changelog/unreleased/pre-action-memo-diagnostics.md b/docs/changelog/unreleased/pre-action-memo-diagnostics.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..7fa240e8d33d54b5c8fde7723ac3d964be2862c4
+--- /dev/null
++++ b/docs/changelog/unreleased/pre-action-memo-diagnostics.md
+@@ -0,0 +1,3 @@
++### Changed
++
++- On entry to shed or refuse, the daemon logs a bounded pre-action snapshot of sampled footprint and each memo group's estimated resident bytes, entries, and cumulative activity counters before cache eviction and scavenging. The record excludes cache contents and does not attribute the footprint to a particular allocator.

@@ -1,0 +1,84 @@
+From 7f779f59b7ce8385dbf53f996404d0d25578c71d Mon Sep 17 00:00:00 2001
+From: Geoff Miller <contributor@example.invalid>
+Date: Tue, 20 Oct 2026 21:08:12 -0700
+Subject: [PATCH 06/27] fix(hooks): report preflight expiry before root lookup
+
+Verified: deterministic expired-root regression failed before the fix; go test -race ./cmd/fathom -run ^TestGatePreflight -count=1 passed. Full candidate gate remains pending.
+---
+ cmd/fathom/gatepreflight.go                   |  9 ++++++
+ cmd/fathom/gatepreflight_test.go              | 31 +++++++++++++++++++
+ .../unreleased/preflight-root-deadline.md     |  3 ++
+ 3 files changed, 43 insertions(+)
+ create mode 100644 docs/changelog/unreleased/preflight-root-deadline.md
+
+diff --git a/cmd/fathom/gatepreflight.go b/cmd/fathom/gatepreflight.go
+index 2ca302c766a7c3e6f508b67c3db8625031a63479..c8c16446de0ef63284f5fce12e7b3a00ab049144 100644
+--- a/cmd/fathom/gatepreflight.go
++++ b/cmd/fathom/gatepreflight.go
+@@ -138,6 +138,15 @@ func gatePreflightLine(projDir, cwd, command, sessionID, baseURL string) string
+ 	defer cancel()
+ 	top, err := gitro.Output(ctx, projDir, "rev-parse", "--show-toplevel")
+ 	if err != nil {
++		if deadlinePassed(ctx) {
++			verb := "commit"
++			if push {
++				verb = "push"
++			}
++			meta := map[string]string{"verb": verb, "verify": "not checked (deadline)", "refused": "0"}
++			emitBeat(gatePreflightChannel, "flagged", firingMeta(meta, sessionID, ""))
++			return "🚦 fathom gate preflight (advisory): verify: not checked (deadline)"
++		}
+ 		return ""
+ 	}
+ 	root := strings.TrimSpace(string(top))
+diff --git a/cmd/fathom/gatepreflight_test.go b/cmd/fathom/gatepreflight_test.go
+index 0d5da2148cad6ba407806007f85f256089601e8d..bbfafbbe61c5c74079dd640fb46a5d2812562e23 100644
+--- a/cmd/fathom/gatepreflight_test.go
++++ b/cmd/fathom/gatepreflight_test.go
+@@ -144,6 +144,37 @@ func TestGatePreflightNamesARefusedClaimAndAMissingPassingRun(t *testing.T) {
+ 	}
+ }
+ 
++func TestGatePreflightDeadlineBeforeRootReadIsNotSilent(t *testing.T) {
++	dir, _ := preflightRepo(t)
++	requests := make(chan struct{}, 1)
++	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		select {
++		case requests <- struct{}{}:
++		default:
++		}
++		http.NotFound(w, r)
++	}))
++	defer srv.Close()
++	orig := gatePreflightVerifyCap
++	gatePreflightVerifyCap = 0 // expires before even the first read-only Git lookup
++	defer func() { gatePreflightVerifyCap = orig }()
++
++	line := gatePreflightLine(dir, "", "git commit -m claim", "deadline-before-root", srv.URL)
++	if !strings.Contains(line, "verify: not checked (deadline)") {
++		t.Errorf("expired preflight = %q, want an explicit unchecked deadline", line)
++	}
++	srv.Close()
++	select {
++	case <-requests:
++		t.Error("an already expired preflight contacted the daemon")
++	default:
++	}
++	rows := preflightRows(t)
++	if len(rows) != 1 || rows[0]["verb"] != "commit" || rows[0]["verify"] != "not checked (deadline)" || rows[0]["refused"] != "0" {
++		t.Errorf("expired preflight rows = %v, want one unchecked deadline with no claimed refusal", rows)
++	}
++}
++
+ // TestGatePreflightRidesThePreToolUseBashHook: the line reaches the agent
+ // through `edit-hook --pre` on Bash, as advisory context, never a deny.
+ func TestGatePreflightRidesThePreToolUseBashHook(t *testing.T) {
+diff --git a/docs/changelog/unreleased/preflight-root-deadline.md b/docs/changelog/unreleased/preflight-root-deadline.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..8b7d771308687c33a215122603e464b92afe11bf
+--- /dev/null
++++ b/docs/changelog/unreleased/preflight-root-deadline.md
+@@ -0,0 +1,3 @@
++### Fixed
++
++- Gate preflight reports `verify: not checked (deadline)` when its budget expires during the first Git lookup, retaining an unchecked observation rather than returning silence.

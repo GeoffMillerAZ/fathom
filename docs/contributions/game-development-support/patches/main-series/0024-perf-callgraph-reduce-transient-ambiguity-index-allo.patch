@@ -1,0 +1,327 @@
+From 11a851b002527996bea7a549864cccc5b5beed2a Mon Sep 17 00:00:00 2001
+From: Geoff Miller <contributor@example.invalid>
+Date: Wed, 21 Oct 2026 15:23:39 -0700
+Subject: [PATCH 24/27] perf(callgraph): reduce transient ambiguity index
+ allocations
+
+Derive unique names from the retained candidate lists and remove temporary
+package/directory count maps without narrowing nodes or resolution.
+
+Verified: exact-source M2 task validate and full callgraph race tests;
+paired 4096/65536-node allocation benchmarks and semantic differential tests.
+---
+ .../unreleased/callgraph-index-allocation.md  |   3 +
+ internal/analysis/callgraph/graph.go          |  53 +++--
+ .../callgraph/index_allocation_test.go        | 218 ++++++++++++++++++
+ 3 files changed, 250 insertions(+), 24 deletions(-)
+ create mode 100644 docs/changelog/unreleased/callgraph-index-allocation.md
+ create mode 100644 internal/analysis/callgraph/index_allocation_test.go
+
+diff --git a/docs/changelog/unreleased/callgraph-index-allocation.md b/docs/changelog/unreleased/callgraph-index-allocation.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..ca4965aaa701ae814c2f5ecc78f23278029072af
+--- /dev/null
++++ b/docs/changelog/unreleased/callgraph-index-allocation.md
+@@ -0,0 +1,3 @@
++### Fixed
++
++- Call graph construction uses less transient memory while retaining the full node universe and the same name, package, directory, and typed-edge resolution.
+diff --git a/internal/analysis/callgraph/graph.go b/internal/analysis/callgraph/graph.go
+index 69722ee15c6352490792f61d1101af29e4f5c506..54827c737fdbf0bb5900586854d3a3262c6e5534 100644
+--- a/internal/analysis/callgraph/graph.go
++++ b/internal/analysis/callgraph/graph.go
+@@ -186,41 +186,46 @@ func buildIndexes(nodes []core.SymbolNode) *Graph {
+ 		byNameAll: make(map[string][]string),
+ 	}
+ 
+-	// First pass: register all nodes (g.nodes dedupes identical SymbolKeys)
+-	// and build the byName / byPkgName indexes. The ambiguity counts MUST be
+-	// computed over the deduplicated key set, not the raw slice: duplicate
+-	// observations of the same symbol (e.g. stale worktree copies indexed
+-	// more than once) would otherwise make a genuinely unique name look
+-	// ambiguous and silently drop its cross-package call edges.
++	// First register all nodes. Indexes must count the deduplicated key set,
++	// not repeated observations of the same symbol.
+ 	for _, n := range nodes {
+ 		g.nodes[n.Key()] = n
+ 	}
+-	nameCounts := make(map[string]int, len(g.nodes))
+-	pkgNameCounts := make(map[string]int, len(g.nodes))
+-	dirNameCounts := make(map[string]int, len(g.nodes))
+-	for _, n := range g.nodes {
+-		nameCounts[n.Name]++
++	for key, n := range g.nodes {
++		g.byNameAll[n.Name] = append(g.byNameAll[n.Name], key)
+ 		if n.Package != "" {
+-			pkgNameCounts[n.Package+"."+n.Name]++
++			name := n.Package + "." + n.Name
++			if _, seen := g.byPkgName[name]; seen {
++				g.byPkgName[name] = "" // ambiguous, including any later collisions
++			} else {
++				g.byPkgName[name] = key
++			}
+ 		}
+ 		if dn := dirName(n); dn != "" {
+-			dirNameCounts[dn]++
++			if _, seen := g.byDirName[dn]; seen {
++				g.byDirName[dn] = ""
++			} else {
++				g.byDirName[dn] = key
++			}
+ 		}
+ 	}
+-	for key, n := range g.nodes {
+-		g.byNameAll[n.Name] = append(g.byNameAll[n.Name], key)
+-		if nameCounts[n.Name] == 1 {
+-			g.byName[n.Name] = key
+-		}
+-		if n.Package != "" && pkgNameCounts[n.Package+"."+n.Name] == 1 {
+-			g.byPkgName[n.Package+"."+n.Name] = key
++	for name, keys := range g.byNameAll {
++		sort.Strings(keys)
++		if len(keys) == 1 {
++			g.byName[name] = keys[0]
+ 		}
+-		if dn := dirName(n); dn != "" && dirNameCounts[dn] == 1 {
+-			g.byDirName[dn] = key
++	}
++	// SymbolKey always contains "::", so an empty value is safe as a
++	// construction-only ambiguity marker. Public indexes remain unique-only.
++	for name, key := range g.byPkgName {
++		if key == "" {
++			delete(g.byPkgName, name)
+ 		}
+ 	}
+-	for k := range g.byNameAll {
+-		sort.Strings(g.byNameAll[k])
++	for name, key := range g.byDirName {
++		if key == "" {
++			delete(g.byDirName, name)
++		}
+ 	}
+ 
+ 	return g
+diff --git a/internal/analysis/callgraph/index_allocation_test.go b/internal/analysis/callgraph/index_allocation_test.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..dfae0d53bfeb8452791c7dbfa55edcd967c9ba58
+--- /dev/null
++++ b/internal/analysis/callgraph/index_allocation_test.go
+@@ -0,0 +1,218 @@
++package callgraph
++
++import (
++	"fmt"
++	"reflect"
++	"sort"
++	"testing"
++
++	"github.com/geoffmilleraz/fathom/internal/core"
++)
++
++// Frozen pre-change index construction. Keep this independent of buildIndexes
++// so the allocation comparison has a real baseline in the same binary.
++func countMapIndexes(nodes []core.SymbolNode) *Graph {
++	g := &Graph{
++		nodes:   make(map[string]core.SymbolNode, len(nodes)),
++		callees: make(map[string][]string), callers: make(map[string][]string),
++		byName: make(map[string]string), byPkgName: make(map[string]string),
++		byDirName: make(map[string]string), byNameAll: make(map[string][]string),
++	}
++	for _, n := range nodes {
++		g.nodes[n.Key()] = n
++	}
++	nameCounts := make(map[string]int, len(g.nodes))
++	pkgNameCounts := make(map[string]int, len(g.nodes))
++	dirNameCounts := make(map[string]int, len(g.nodes))
++	for _, n := range g.nodes {
++		nameCounts[n.Name]++
++		if n.Package != "" {
++			pkgNameCounts[n.Package+"."+n.Name]++
++		}
++		if dn := dirName(n); dn != "" {
++			dirNameCounts[dn]++
++		}
++	}
++	for key, n := range g.nodes {
++		g.byNameAll[n.Name] = append(g.byNameAll[n.Name], key)
++		if nameCounts[n.Name] == 1 {
++			g.byName[n.Name] = key
++		}
++		if n.Package != "" && pkgNameCounts[n.Package+"."+n.Name] == 1 {
++			g.byPkgName[n.Package+"."+n.Name] = key
++		}
++		if dn := dirName(n); dn != "" && dirNameCounts[dn] == 1 {
++			g.byDirName[dn] = key
++		}
++	}
++	for name := range g.byNameAll {
++		sort.Strings(g.byNameAll[name])
++	}
++	return g
++}
++
++func indexAllocationFixture(noise int) []core.SymbolNode {
++	nodes := []core.SymbolNode{
++		{Service: "svc", Package: "api", Name: "Entry", Kind: core.KindGoFunc, FilePath: "api/entry.go", Calls: []string{"OldOnly"}},
++		{Service: "svc", Package: "alpha", Name: "Unique", Kind: core.KindGoFunc, FilePath: "alpha/unique.go"},
++		{Service: "svc", Package: "api", Name: "OldOnly", Kind: core.KindGoFunc, FilePath: "api/old.go"},
++		{Service: "svc", Package: "alpha", Name: "Shared", Kind: core.KindGoFunc, FilePath: "alpha/shared.go"},
++		{Service: "svc", Package: "alpha", Name: "Shared", Kind: core.KindGoFunc, FilePath: "other/shared.go"},
++		{Service: "svc", Package: "beta", Name: "Shared", Kind: core.KindGoFunc, FilePath: "third/shared.go"},
++		{Service: "svc", Package: "alpha", Name: "Third", Kind: core.KindGoFunc, FilePath: "alpha/third.go"},
++		{Service: "svc", Package: "alpha", Name: "Third", Kind: core.KindGoFunc, FilePath: "other/third.go"},
++		{Service: "svc", Package: "alpha", Name: "Third", Kind: core.KindGoFunc, FilePath: "third/third.go"},
++		{Service: "svc", Package: "docs", Name: "Chunk", Kind: core.KindDocChunk, FilePath: "docs/readme.md"},
++		{Service: "svc", Package: "p1", Name: "DirCollision", Kind: core.KindGoFunc, FilePath: "a/shared/one.go"},
++		{Service: "svc", Package: "p2", Name: "DirCollision", Kind: core.KindGoFunc, FilePath: "b/shared/two.go"},
++		{Service: "svc", Package: "p3", Name: "DirCollision", Kind: core.KindGoFunc, FilePath: "c/shared/three.go"},
++		{Service: "", Package: "", Name: "", Kind: core.KindJSONKey},
++		{Service: "svc", Package: "zero", Name: "", Kind: core.KindJSONKey, FilePath: "zero/empty.json"},
++		{Service: "", Package: "meta", Name: "Vacant", Kind: core.KindDocChunk, FilePath: "meta/empty.md"},
++	}
++	// Last observation wins for one key, including its Calls and payload.
++	duplicate := nodes[1]
++	duplicate.Signature = "last"
++	nodes = append(nodes, duplicate)
++	entry := nodes[0]
++	entry.Calls = []string{"Unique", "alpha.Shared", "other.Shared", "alpha.Third", "shared.DirCollision", "docs.Chunk", "missing.None"}
++	nodes = append(nodes, entry)
++	for i := 0; i < noise; i++ {
++		nodes = append(nodes, core.SymbolNode{Service: "svc", Package: "json", Name: fmt.Sprintf("field%d.deep.value", i), Kind: core.KindJSONKey, FilePath: fmt.Sprintf("data/file%04d.json", i)})
++	}
++	return nodes
++}
++
++func countMapGraph(nodes []core.SymbolNode, typed []core.Edge, mode string) *Graph {
++	g := countMapIndexes(nodes)
++	if mode != "resolved" {
++		g.buildSuffixIndex()
++		for caller, node := range g.nodes {
++			seen := make(map[string]bool)
++			for _, raw := range node.Calls {
++				callee := g.resolve(node, raw)
++				if callee == "" || seen[callee] {
++					continue
++				}
++				seen[callee] = true
++				g.callees[caller] = append(g.callees[caller], callee)
++				g.callers[callee] = append(g.callers[callee], caller)
++			}
++		}
++		for key := range g.callees {
++			sort.Strings(g.callees[key])
++		}
++		for key := range g.callers {
++			sort.Strings(g.callers[key])
++		}
++	}
++	if mode == "resolved" {
++		resolved := make([]core.Edge, 0, len(typed))
++		for _, edge := range typed {
++			if core.EdgeConfidenceOf(edge) == core.EdgeConfidenceResolved {
++				resolved = append(resolved, edge)
++			}
++		}
++		AddTypedEdges(g, resolved)
++	} else if mode == "both" {
++		AddTypedEdges(g, typed)
++	}
++	return g
++}
++
++func TestIndexAllocationPreservesGraphSemantics(t *testing.T) {
++	nodes := indexAllocationFixture(128)
++	want := countMapIndexes(nodes)
++	got := buildIndexes(nodes)
++	if !reflect.DeepEqual(got.nodes, want.nodes) || !reflect.DeepEqual(got.byNameAll, want.byNameAll) ||
++		!reflect.DeepEqual(got.byName, want.byName) || !reflect.DeepEqual(got.byPkgName, want.byPkgName) ||
++		!reflect.DeepEqual(got.byDirName, want.byDirName) {
++		t.Fatal("node universe or ambiguity indexes differ from pre-change construction")
++	}
++	if _, exists := got.byPkgName["alpha.Third"]; exists {
++		t.Fatal("triple package collision became a unique match")
++	}
++	if _, exists := got.byDirName["shared.DirCollision"]; exists {
++		t.Fatal("triple directory collision became a unique match")
++	}
++	_, hasEmptyKey := got.nodes["::"]
++	if len(got.byNameAll[""]) != 2 || !hasEmptyKey {
++		t.Fatal("empty name or empty service key lost")
++	}
++	if Canonical(got, "svc::alpha.Unique") != nodes[1].Key() {
++		t.Fatal("service-qualified package lookup lost")
++	}
++	for _, query := range []string{"Unique", "svc::alpha.Unique", "Shared", "alpha.Shared", "other.Shared", "alpha.Third", "svc::alpha.Third", "shared.DirCollision", "docs.Chunk", "Chunk", "field127.deep.value", "missing.None", "", "::", "svc::zero/zero.", "Vacant"} {
++		if Canonical(got, query) != Canonical(want, query) || !reflect.DeepEqual(CandidateKeys(got, query), CandidateKeys(want, query)) {
++			t.Errorf("public resolution changed for %q", query)
++		}
++		if got.resolve(nodes[0], query) != want.resolve(nodes[0], query) {
++			t.Errorf("callee resolution changed for %q", query)
++		}
++	}
++	if got.NodeCount() != len(nodes)-2 {
++		t.Fatalf("nodes=%d, want %d", got.NodeCount(), len(nodes)-2)
++	}
++	if got.nodes[nodes[1].Key()].Signature != "last" || !reflect.DeepEqual(got.nodes[nodes[0].Key()].Calls,
++		[]string{"Unique", "alpha.Shared", "other.Shared", "alpha.Third", "shared.DirCollision", "docs.Chunk", "missing.None"}) {
++		t.Fatal("duplicate key did not keep the final observation")
++	}
++	for _, mode := range []string{"syntax", "both", "resolved"} {
++		caller, target := nodes[0].Key(), nodes[1].Key()
++		typed := []core.Edge{{FromSymbol: caller, ToSymbol: target, FromFile: nodes[0].FilePath, Kind: core.EdgeDirect}}
++		var g *Graph
++		switch mode {
++		case "syntax":
++			g = Build(nodes)
++		case "both":
++			g = BuildBoth(nodes, typed)
++		case "resolved":
++			g = BuildResolved(nodes, typed)
++		}
++		baseline := countMapGraph(nodes, typed, mode)
++		if !reflect.DeepEqual(g, baseline) {
++			t.Errorf("%s graph differs from count-map baseline", mode)
++		}
++		if g.NodeCount() != got.NodeCount() || !reflect.DeepEqual(CandidateKeys(g, "Shared"), CandidateKeys(want, "Shared")) {
++			t.Errorf("%s lost nodes or candidates", mode)
++		}
++		if !Reachable(g, caller, target) {
++			t.Errorf("%s lost call edge", mode)
++		}
++		if Reachable(g, caller, nodes[2].Key()) {
++			t.Errorf("%s retained call from the overwritten observation", mode)
++		}
++	}
++}
++
++var indexAllocationSink *Graph
++
++func TestIndexAllocationReducesAllocations(t *testing.T) {
++	nodes := indexAllocationFixture(4096)
++	baseline := testing.AllocsPerRun(3, func() { indexAllocationSink = countMapIndexes(nodes) })
++	candidate := testing.AllocsPerRun(3, func() { indexAllocationSink = buildIndexes(nodes) })
++	if candidate >= baseline {
++		t.Fatalf("index allocations did not fall: baseline %.0f, candidate %.0f", baseline, candidate)
++	}
++}
++
++func BenchmarkIndexAllocation(b *testing.B) {
++	for _, noise := range []int{4096, 65536} {
++		b.Run(fmt.Sprintf("nodes-%d", noise), func(b *testing.B) {
++			nodes := indexAllocationFixture(noise)
++			for _, arm := range []struct {
++				name  string
++				build func([]core.SymbolNode) *Graph
++			}{
++				{"count-maps", countMapIndexes}, {"candidate", buildIndexes},
++			} {
++				b.Run(arm.name, func(b *testing.B) {
++					b.ReportAllocs()
++					for i := 0; i < b.N; i++ {
++						indexAllocationSink = arm.build(nodes)
++					}
++				})
++			}
++		})
++	}
++}

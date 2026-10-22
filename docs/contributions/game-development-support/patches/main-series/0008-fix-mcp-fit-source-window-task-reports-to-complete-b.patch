@@ -1,0 +1,364 @@
+From 7939bbfd40caa943a4b02b977f5fa3878701d614 Mon Sep 17 00:00:00 2001
+From: Geoff Miller <contributor@example.invalid>
+Date: Tue, 20 Oct 2026 22:11:11 -0700
+Subject: [PATCH 08/27] fix(mcp): fit source-window task reports to complete
+ budget
+
+Verified: source-window envelope and pending/final prefix tests plus caller-elision regression; go test -race ./internal/mcp ./internal/verify -count=1.
+---
+ .../unreleased/mcp-envelope-budget.md         |   3 +
+ internal/mcp/source_window.go                 |  16 +--
+ internal/mcp/source_window_budget.go          |  86 +++++++++++++
+ internal/mcp/source_window_budget_test.go     | 121 ++++++++++++++++++
+ internal/mcp/source_window_test.go            |  70 ++++++++++
+ 5 files changed, 281 insertions(+), 15 deletions(-)
+ create mode 100644 docs/changelog/unreleased/mcp-envelope-budget.md
+ create mode 100644 internal/mcp/source_window_budget.go
+ create mode 100644 internal/mcp/source_window_budget_test.go
+
+diff --git a/docs/changelog/unreleased/mcp-envelope-budget.md b/docs/changelog/unreleased/mcp-envelope-budget.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..bf79a647b7c9c15499637d59308ce4a26e602b4c
+--- /dev/null
++++ b/docs/changelog/unreleased/mcp-envelope-budget.md
+@@ -0,0 +1,3 @@
++### Fixed
++
++- Current-source verify reports now fit task rows against the complete saved report, including fixed metadata and elision. The pending receipt and final report expose the same ordered task IDs within the default budget; omitted IDs remain available through follow-up verification calls. The generic response backstop stays unchanged because it cannot safely recalculate tool-specific verdict metadata.
+diff --git a/internal/mcp/source_window.go b/internal/mcp/source_window.go
+index b39cf8e63a5c647a4844c7e99d00710864c26102..c8d0c15cd1ff4a144492a2a5b2aae4ab088eecaf 100644
+--- a/internal/mcp/source_window.go
++++ b/internal/mcp/source_window.go
+@@ -311,24 +311,10 @@ func (s *Server) sourceWindowPending(ctx context.Context, w *serverSourceWindow,
+ 	if budget > 256 {
+ 		budget -= 256
+ 	}
+-	final := budgetedResult(out, budget)
+-	raw, err := json.Marshal(final)
++	_, raw, err := fitSourceWindowReport(out, budget)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+-	// A report can have two large arrays (task verdicts and projection
+-	// details). Trim until the whole saved result fits, so the outer MCP
+-	// budget cannot silently change its task IDs after the pending receipt.
+-	for tries := 0; len(raw) > budget && tries < 8; tries++ {
+-		final = budgetedResult(final, budget)
+-		raw, err = json.Marshal(final)
+-		if err != nil {
+-			return nil, err
+-		}
+-	}
+-	if len(raw) > budget {
+-		return nil, fmt.Errorf("current source window: final report exceeds response budget")
+-	}
+ 	var finalMap map[string]any
+ 	if err = json.Unmarshal(raw, &finalMap); err != nil {
+ 		return nil, err
+diff --git a/internal/mcp/source_window_budget.go b/internal/mcp/source_window_budget.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..bb29f31ed0bc3ce60226a694cef77694066e88e2
+--- /dev/null
++++ b/internal/mcp/source_window_budget.go
+@@ -0,0 +1,86 @@
++package mcp
++
++import (
++	"encoding/json"
++	"fmt"
++)
++
++// fitSourceWindowReport owns the task prefix used by both the pending receipt
++// and its saved final report. The summary remains the full-plan verdict; an
++// elision receipt names every task omitted from this response. Other fields
++// are preserved, so the measured budget includes their actual JSON encoding.
++func fitSourceWindowReport(out map[string]any, budget int) (map[string]any, []byte, error) {
++	tasks, ok := out["tasks"].([]any)
++	if !ok {
++		return nil, nil, fmt.Errorf("current source window: final report could not fit task envelope")
++	}
++	var prior *elided
++	if v, exists := out["elided"]; exists && v != nil {
++		b, err := json.Marshal(v)
++		if err != nil {
++			return nil, nil, err
++		}
++		var e elided
++		if err := json.Unmarshal(b, &e); err != nil || e.Count < 0 || e.Of < len(tasks) || e.Count != e.Of-len(tasks) {
++			return nil, nil, fmt.Errorf("current source window: invalid task elision receipt")
++		}
++		prior = &e
++	}
++	n, err := jsonSize(out, budget)
++	if err != nil {
++		return nil, nil, err
++	}
++	if n <= budget {
++		raw, err := json.Marshal(out)
++		if err != nil {
++			return nil, nil, err
++		}
++		if len(raw) <= budget {
++			return out, raw, nil
++		}
++	}
++	if len(tasks) == 0 {
++		return nil, nil, fmt.Errorf("current source window: final report exceeds response budget")
++	}
++	candidate := make(map[string]any, len(out))
++	for key, value := range out {
++		candidate[key] = value
++	}
++	setPrefix := func(n int) {
++		candidate["tasks"] = tasks[:n]
++		if prior != nil {
++			e := *prior
++			e.Count += len(tasks) - n
++			candidate["elided"] = &e
++		} else {
++			candidate["elided"] = elisionFor(n, len(tasks), "plan order", "query omitted task IDs with verify_plan")
++		}
++	}
++	best := 0
++	for low, high := 1, len(tasks)-1; low <= high; {
++		mid := low + (high-low)/2
++		setPrefix(mid)
++		n, err := jsonSize(candidate, budget)
++		if err != nil {
++			return nil, nil, err
++		}
++		if n <= budget {
++			best = mid
++			low = mid + 1
++		} else {
++			high = mid - 1
++		}
++	}
++	if best == 0 {
++		return nil, nil, fmt.Errorf("current source window: final report exceeds response budget")
++	}
++	setPrefix(best)
++	raw, err := json.Marshal(candidate)
++	if err != nil {
++		return nil, nil, err
++	}
++	if len(raw) > budget {
++		return nil, nil, fmt.Errorf("current source window: final report exceeds response budget")
++	}
++	return candidate, raw, nil
++}
+diff --git a/internal/mcp/source_window_budget_test.go b/internal/mcp/source_window_budget_test.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..9dab777ba28d12069d4826303a07e2e5b860ee0f
+--- /dev/null
++++ b/internal/mcp/source_window_budget_test.go
+@@ -0,0 +1,121 @@
++package mcp
++
++import (
++	"encoding/json"
++	"fmt"
++	"reflect"
++	"strings"
++	"testing"
++)
++
++func syntheticWindowReport(rows int, evidence string) map[string]any {
++	tasks := make([]any, rows)
++	for i := range tasks {
++		tasks[i] = map[string]any{
++			"id": fmt.Sprintf("T-%02d", i+1), "title": "synthetic row",
++			"status": "pass", "criteria": []any{}, "evidence": evidence,
++		}
++	}
++	return map[string]any{
++		"service": "svc", "summary": map[string]any{"total": rows, "pass": rows, "fail": 0, "unknown": 0},
++		"metadata": strings.Repeat("m", 6200), "tasks": tasks,
++	}
++}
++
++func TestFitSourceWindowReportCountsCompleteEscapedEnvelope(t *testing.T) {
++	const budget = defaultCharBudget - 256
++	out := syntheticWindowReport(31, strings.Repeat("<>&\n\"", 115))
++	final, raw, err := fitSourceWindowReport(out, budget)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if len(raw) > budget {
++		t.Fatalf("final report %d > %d bytes", len(raw), budget)
++	}
++	if final["metadata"] != out["metadata"] || !reflect.DeepEqual(final["summary"], out["summary"]) {
++		t.Fatal("fixed report fields changed")
++	}
++	kept := final["tasks"].([]any)
++	if len(kept) == 0 || len(kept) >= 31 {
++		t.Fatalf("task prefix = %d of 31", len(kept))
++	}
++	for i, item := range kept {
++		if item.(map[string]any)["id"] != out["tasks"].([]any)[i].(map[string]any)["id"] {
++			t.Fatalf("task prefix changed at %d", i)
++		}
++	}
++	el := final["elided"].(*elided)
++	if el.Count != 31-len(kept) || el.Of != 31 || el.Ordering != "plan order" || el.HowToGetMore == "" {
++		t.Fatalf("elision = %+v", el)
++	}
++	var decoded map[string]any
++	if err := json.Unmarshal(raw, &decoded); err != nil || len(decoded["tasks"].([]any)) != len(kept) {
++		t.Fatalf("saved report disagrees with selected prefix: %v", err)
++	}
++}
++
++func TestFitSourceWindowReportExactBoundaryAndPassthrough(t *testing.T) {
++	out := syntheticWindowReport(2, strings.Repeat("x", 90))
++	full, err := json.Marshal(out)
++	if err != nil {
++		t.Fatal(err)
++	}
++	got, raw, err := fitSourceWindowReport(out, len(full))
++	if err != nil || string(raw) != string(full) || got["elided"] != nil {
++		t.Fatalf("exact boundary changed result: size=%d err=%v", len(raw), err)
++	}
++	got["identity_probe"] = true
++	if out["identity_probe"] != true {
++		t.Fatal("under-budget report was copied")
++	}
++	delete(out, "identity_probe")
++	cut, raw, err := fitSourceWindowReport(out, len(full)-1)
++	if err != nil || len(raw) > len(full)-1 || len(cut["tasks"].([]any)) != 1 {
++		t.Fatalf("one byte below boundary did not retain one fitting row: size=%d err=%v", len(raw), err)
++	}
++}
++
++func TestFitSourceWindowReportCombinesExistingTaskElision(t *testing.T) {
++	out := syntheticWindowReport(31, strings.Repeat("e", 560))
++	out["summary"] = map[string]any{"total": 35, "pass": 35, "fail": 0, "unknown": 0}
++	out["elided"] = &elided{Count: 4, Of: 35, Ordering: "plan order", HowToGetMore: "existing follow-up guidance"}
++	final, raw, err := fitSourceWindowReport(out, defaultCharBudget-256)
++	if err != nil || len(raw) > defaultCharBudget-256 {
++		t.Fatalf("combined result size=%d err=%v", len(raw), err)
++	}
++	kept := len(final["tasks"].([]any))
++	e := final["elided"].(*elided)
++	if kept < 1 || kept >= 31 || e.Count != 35-kept || e.Of != 35 || e.Ordering != "plan order" || e.HowToGetMore != "existing follow-up guidance" {
++		t.Fatalf("combined elision=%+v kept=%d", e, kept)
++	}
++	if len(out["tasks"].([]any)) != 31 || out["elided"].(*elided).Count != 4 || out["elided"].(*elided).Of != 35 {
++		t.Fatal("source report or prior receipt was mutated")
++	}
++}
++
++func TestFitSourceWindowReportRefusesMalformedPriorTaskElision(t *testing.T) {
++	for _, tc := range []struct {
++		name     string
++		rows     int
++		evidence string
++	}{
++		{"under budget", 2, "short"},
++		{"over budget", 31, strings.Repeat("e", 560)},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			out := syntheticWindowReport(tc.rows, tc.evidence)
++			out["elided"] = &elided{Count: 4, Of: 4 + tc.rows - 1, Ordering: "plan order", HowToGetMore: "follow up"}
++			if _, _, err := fitSourceWindowReport(out, defaultCharBudget-256); err == nil || !strings.Contains(err.Error(), "invalid task elision receipt") {
++				t.Fatalf("inconsistent prior receipt should refuse, err=%v", err)
++			}
++		})
++	}
++}
++
++func TestFitSourceWindowReportRefusesImpossibleFirstRow(t *testing.T) {
++	out := syntheticWindowReport(2, strings.Repeat("x", 500))
++	out["metadata"] = strings.Repeat("m", defaultCharBudget)
++	if _, _, err := fitSourceWindowReport(out, defaultCharBudget-256); err == nil || !strings.Contains(err.Error(), "exceeds response budget") {
++		t.Fatalf("impossible first row should refuse, err=%v", err)
++	}
++}
+diff --git a/internal/mcp/source_window_test.go b/internal/mcp/source_window_test.go
+index bbe126916e22768c090de34521ff5344f5a81c3a..51bc2f5eb73651bcee4aa91150e50453cd4ddf46 100644
+--- a/internal/mcp/source_window_test.go
++++ b/internal/mcp/source_window_test.go
+@@ -3,6 +3,8 @@ package mcp
+ import (
+ 	"context"
+ 	"encoding/json"
++	"fmt"
++	"strings"
+ 	"sync/atomic"
+ 	"testing"
+ 	"time"
+@@ -71,6 +73,74 @@ func TestSourceWindowPendingCannotPublishPassBeforeClose(t *testing.T) {
+ 	}
+ }
+ 
++func TestSourceWindowPendingAndFinalFitLargeFixedEnvelope(t *testing.T) {
++	b := windowBackendFixture{}
++	s := NewServer(b)
++	begin, e := windowOp(t, s, b, "svc", "begin", "")
++	if e != nil {
++		t.Fatal(e)
++	}
++	token := begin["source_window_token"].(string)
++	if _, e := windowOp(t, s, b, "svc", "advance", token); e != nil {
++		t.Fatal(e)
++	}
++	w, err := s.sourceWindowGet("svc", token)
++	if err != nil {
++		t.Fatal(err)
++	}
++	tasks := make([]any, 31)
++	for i := range tasks {
++		tasks[i] = map[string]any{"id": fmt.Sprintf("T-%02d", i+1), "title": "synthetic row", "status": "pass", "criteria": []any{}, "evidence": strings.Repeat("e", 560)}
++	}
++	pending, err := s.sourceWindowPending(context.Background(), w, map[string]any{
++		"service": "svc", "summary": map[string]any{"total": 31, "pass": 31, "fail": 0, "unknown": 0},
++		"metadata": strings.Repeat("m", 6200), "tasks": tasks,
++	})
++	if err != nil {
++		t.Fatal(err)
++	}
++	pendingTasks := pending["tasks"].([]map[string]any)
++	if len(pendingTasks) == 0 || len(pendingTasks) >= len(tasks) {
++		t.Fatalf("pending task prefix = %d of %d", len(pendingTasks), len(tasks))
++	}
++	if summary := pending["summary"].(map[string]any); summary["total"] != len(pendingTasks) || summary["unknown"] != len(pendingTasks) || summary["pass"] != 0 {
++		t.Fatalf("pending summary must describe returned unknown rows: %v", summary)
++	}
++	for i, task := range pendingTasks {
++		if task["id"] != tasks[i].(map[string]any)["id"] || task["status"] != "unknown" {
++			t.Fatalf("pending task %d = %v", i, task)
++		}
++	}
++	if _, e := windowOp(t, s, b, "svc", "close", token); e != nil {
++		t.Fatal(e)
++	}
++	raw, _ := json.Marshal(map[string]any{"service": "svc", "source_window": map[string]string{"op": "result", "token": token, "report_id": pending["source_window_report_id"].(string)}})
++	result, rpcErr := s.sourceWindowOperation(context.Background(), b, raw)
++	if rpcErr != nil {
++		t.Fatal(rpcErr)
++	}
++	var final map[string]any
++	if err := json.Unmarshal(result.(json.RawMessage), &final); err != nil {
++		t.Fatal(err)
++	}
++	if summary := final["summary"].(map[string]any); summary["total"] != float64(31) || summary["pass"] != float64(31) {
++		t.Fatalf("final summary must describe the full plan: %v", summary)
++	}
++	if len(result.(json.RawMessage)) > defaultCharBudget-256 {
++		t.Fatalf("saved final report exceeds budget: %d", len(result.(json.RawMessage)))
++	}
++	finalTasks := final["tasks"].([]any)
++	if len(finalTasks) != len(pendingTasks) {
++		t.Fatalf("pending %d task IDs, final %d", len(pendingTasks), len(finalTasks))
++	}
++	for i, item := range finalTasks {
++		task := item.(map[string]any)
++		if task["id"] != pendingTasks[i]["id"] || task["status"] != "pass" {
++			t.Fatalf("final task %d = %v", i, task)
++		}
++	}
++}
++
+ func TestSourceWindowExpiredPointerCannotUseOrDeleteReplacement(t *testing.T) {
+ 	b := windowBackendFixture{}
+ 	s := NewServer(b)

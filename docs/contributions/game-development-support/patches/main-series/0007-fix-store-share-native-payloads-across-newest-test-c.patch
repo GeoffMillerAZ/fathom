@@ -1,0 +1,207 @@
+From eb684508330388c2d54d5a65685ffe54b59a2d62 Mon Sep 17 00:00:00 2001
+From: Geoff Miller <contributor@example.invalid>
+Date: Tue, 20 Oct 2026 21:36:06 -0700
+Subject: [PATCH 07/27] fix(store): share native payloads across newest test
+ cases
+
+Keep one SQLite read snapshot and preserve per-test newest selection,
+legacy schema handling and per-call native freshness validation. Return
+each selected run payload once and share its immutable string.
+
+Verified: focused selection fixture; store and testevidence race suites.
+The retained one-iteration allocation benchmark changed from 53,796,368
+to 445,232 B/op. Full upstream gate and real cold qualification pending.
+---
+ .../unreleased/newest-native-payload-read.md  |   3 +
+ internal/store/sqlite_testevidence.go         |  32 +++--
+ .../sqlite_testevidence_newest_native_test.go | 109 ++++++++++++++++++
+ 3 files changed, 137 insertions(+), 7 deletions(-)
+ create mode 100644 docs/changelog/unreleased/newest-native-payload-read.md
+ create mode 100644 internal/store/sqlite_testevidence_newest_native_test.go
+
+diff --git a/docs/changelog/unreleased/newest-native-payload-read.md b/docs/changelog/unreleased/newest-native-payload-read.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..f4b9c1f1b3b62fd14934695b905bfed9fe78d19e
+--- /dev/null
++++ b/docs/changelog/unreleased/newest-native-payload-read.md
+@@ -0,0 +1,3 @@
++### Fixed
++
++- Newest test-case reads return the native binding once per selected run and reuse it across that run's joined cases, reducing memory allocated for large native test suites while preserving each case's evidence and newest-run ordering.
+diff --git a/internal/store/sqlite_testevidence.go b/internal/store/sqlite_testevidence.go
+index 571cb7ccb9b6850690b0048ddc981d3bc7a36030..b66a3c4fc2e9daac31bbb8d5d9f7905db24c4c67 100644
+--- a/internal/store/sqlite_testevidence.go
++++ b/internal/store/sqlite_testevidence.go
+@@ -406,32 +406,50 @@ func (s *SQLiteStore) NewestTestCaseRuns(ctx context.Context, serviceID string)
+ 		return nil, err
+ 	}
+ 	rows, err := s.db.QueryContext(ctx, `
+-SELECT test_symbol_key, run_digest, suite, component, started_at, status, attempts, ingested_at, commit_sha, dirty, race, duration_ms, native_json
+-FROM (
+-    SELECT `+columns.key+` AS test_symbol_key, tc.run_digest, tc.suite, tr.component, tr.started_at, tc.status, tc.attempts, tr.ingested_at, tr.commit_sha, tr.dirty, tr.race, tc.duration_ms, `+columns.nativeJSON+` AS native_json,
++WITH ranked AS (
++    SELECT `+columns.key+` AS test_symbol_key, tc.run_digest, tc.suite, tr.component, tr.started_at, tc.status, tc.attempts, tr.ingested_at, tr.commit_sha, tr.dirty, tr.race, tc.duration_ms,
+            ROW_NUMBER() OVER (PARTITION BY `+columns.key+` ORDER BY tr.started_at DESC, tr.ingested_at DESC) AS rn
+     FROM test_cases tc
+     JOIN test_runs tr ON tr.service_id = tc.service_id AND tr.run_digest = tc.run_digest AND tr.suite = tc.suite
+     WHERE tc.service_id = ? AND `+columns.key+` != ''
++), picked AS (
++    SELECT test_symbol_key, run_digest, suite, component, started_at, status, attempts, ingested_at, commit_sha, dirty, race, duration_ms
++    FROM ranked WHERE rn = 1
++), owner AS (
++    SELECT run_digest, suite, MIN(test_symbol_key) AS owner_key
++    FROM picked GROUP BY run_digest, suite
+ )
+-WHERE rn = 1
+-ORDER BY test_symbol_key
+-`, serviceID)
++SELECT p.test_symbol_key, p.run_digest, p.suite, p.component, p.started_at, p.status, p.attempts, p.ingested_at, p.commit_sha, p.dirty, p.race, p.duration_ms,
++       CASE WHEN p.test_symbol_key = owner.owner_key THEN `+columns.nativeJSON+` ELSE '' END AS native_json
++FROM picked p
++JOIN owner ON owner.run_digest = p.run_digest AND owner.suite = p.suite
++JOIN test_runs tr ON tr.service_id = ? AND tr.run_digest = p.run_digest AND tr.suite = p.suite
++ORDER BY p.test_symbol_key
++`, serviceID, serviceID)
+ 	if err != nil {
+ 		return nil, fmt.Errorf("NewestTestCaseRuns query: %w", err)
+ 	}
+ 	defer rows.Close()
+ 	var out []TestCaseRun
++	type runKey struct{ digest, suite string }
++	nativeByRun := make(map[runKey]string)
+ 	for rows.Next() {
+ 		var r TestCaseRun
+-		if err := rows.Scan(&r.TestSymbolKey, &r.RunDigest, &r.Suite, &r.Component, &r.StartedAt, &r.Status, &r.Attempts, &r.IngestedAt, &r.Commit, &r.Dirty, &r.Race, &r.DurationMS, &r.NativeJSON); err != nil {
++		var nativeJSON string
++		if err := rows.Scan(&r.TestSymbolKey, &r.RunDigest, &r.Suite, &r.Component, &r.StartedAt, &r.Status, &r.Attempts, &r.IngestedAt, &r.Commit, &r.Dirty, &r.Race, &r.DurationMS, &nativeJSON); err != nil {
+ 			return nil, fmt.Errorf("NewestTestCaseRuns scan: %w", err)
+ 		}
++		if nativeJSON != "" {
++			nativeByRun[runKey{r.RunDigest, r.Suite}] = nativeJSON
++		}
+ 		out = append(out, r)
+ 	}
+ 	if err := rows.Err(); err != nil {
+ 		return nil, fmt.Errorf("NewestTestCaseRuns rows: %w", err)
+ 	}
++	for i := range out {
++		out[i].NativeJSON = nativeByRun[runKey{out[i].RunDigest, out[i].Suite}]
++	}
+ 	return out, nil
+ }
+ 
+diff --git a/internal/store/sqlite_testevidence_newest_native_test.go b/internal/store/sqlite_testevidence_newest_native_test.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..a14a2f42a05a7c086470409e922ab58cce645c1f
+--- /dev/null
++++ b/internal/store/sqlite_testevidence_newest_native_test.go
+@@ -0,0 +1,109 @@
++package store
++
++import (
++	"context"
++	"fmt"
++	"path/filepath"
++	"strings"
++	"testing"
++)
++
++func TestNewestTestCaseRunsNativePayloadSelection(t *testing.T) {
++	st, err := Open(filepath.Join(t.TempDir(), "newest-native.sqlite"))
++	if err != nil {
++		t.Fatal(err)
++	}
++	defer st.Close()
++	ctx := context.Background()
++	const service = "svc"
++	const sameDigest = "shared-digest"
++	const editJSON = `{"suite":"EditMode"}`
++	const playJSON = `{"suite":"PlayMode"}`
++	key := func(name string) string { return service + "::pkg." + name }
++	if err := st.PutTestRuns(ctx, service, []TestRun{
++		{RunDigest: "legacy-old", Suite: "unit", Component: "legacy", StartedAt: "2026-10-01T00:00:00Z", Cases: []TestCase{
++			{CaseID: "a", Status: "fail", Attempts: 1, TestSymbolKey: key("A")},
++			{CaseID: "b", Status: "pass", Attempts: 1, TestSymbolKey: key("B")},
++		}},
++		{RunDigest: sameDigest, Suite: "EditMode", Component: "edit", StartedAt: "2026-10-02T00:00:00Z", NativeRunID: "edit-native", NativeJSON: editJSON, Commit: strings.Repeat("a", 40), Dirty: true, Cases: []TestCase{
++			{CaseID: "a", Status: "pass", Attempts: 2, DurationMS: 31, TestSymbolKey: key("A")},
++			{CaseID: "c", Status: "fail", Attempts: 3, DurationMS: 32, TestSymbolKey: key("C")},
++			{CaseID: "loose", Status: "pass"},
++		}},
++		{RunDigest: sameDigest, Suite: "PlayMode", Component: "play", StartedAt: "2026-10-03T00:00:00Z", NativeRunID: "play-native", NativeJSON: playJSON, Race: true, Cases: []TestCase{
++			{CaseID: "d", Status: "pass", Attempts: 1, TestSymbolKey: key("D")},
++			{CaseID: "e", Status: "fail", Attempts: 2, TestSymbolKey: key("E")},
++		}},
++		{RunDigest: "tie-old", Suite: "unit", StartedAt: "2026-10-04T00:00:00Z", Cases: []TestCase{{CaseID: "f", Status: "fail", TestSymbolKey: key("F")}}},
++	}); err != nil {
++		t.Fatal(err)
++	}
++	// The same started_at must select the later ingestion for F.
++	if err := st.PutTestRuns(ctx, service, []TestRun{{RunDigest: "tie-new", Suite: "unit", StartedAt: "2026-10-04T00:00:00Z", Cases: []TestCase{{CaseID: "f", Status: "pass", TestSymbolKey: key("F")}}}}); err != nil {
++		t.Fatal(err)
++	}
++	if err := st.PutTestRuns(ctx, "other", []TestRun{{RunDigest: "other", Suite: "unit", StartedAt: "2026-10-05T00:00:00Z", Cases: []TestCase{{CaseID: "a", Status: "fail", TestSymbolKey: key("A")}}}}); err != nil {
++		t.Fatal(err)
++	}
++	got, err := st.NewestTestCaseRuns(ctx, service)
++	if err != nil {
++		t.Fatal(err)
++	}
++	want := []struct{ name, digest, suite, status, nativeJSON string }{
++		{"A", sameDigest, "EditMode", "pass", editJSON},
++		{"B", "legacy-old", "unit", "pass", ""},
++		{"C", sameDigest, "EditMode", "fail", editJSON},
++		{"D", sameDigest, "PlayMode", "pass", playJSON},
++		{"E", sameDigest, "PlayMode", "fail", playJSON},
++		{"F", "tie-new", "unit", "pass", ""},
++	}
++	if len(got) != len(want) {
++		t.Fatalf("got %d rows, want %d: %+v", len(got), len(want), got)
++	}
++	for i, w := range want {
++		r := got[i]
++		if r.TestSymbolKey != key(w.name) || r.RunDigest != w.digest || r.Suite != w.suite || r.Status != w.status || r.NativeJSON != w.nativeJSON {
++			t.Errorf("row %d = %+v, want key %q, digest %q, suite %q, status %q, native JSON %q", i, r, key(w.name), w.digest, w.suite, w.status, w.nativeJSON)
++		}
++	}
++	if got[0].Component != "edit" || got[0].Attempts != 2 || got[0].DurationMS != 31 || got[0].Commit != strings.Repeat("a", 40) || !got[0].Dirty || got[0].Race {
++		t.Errorf("EditMode metadata changed: %+v", got[0])
++	}
++	if got[3].Component != "play" || !got[3].Race || got[3].Dirty {
++		t.Errorf("PlayMode metadata changed: %+v", got[3])
++	}
++	if got[5].IngestedAt <= got[1].IngestedAt {
++		t.Errorf("ingestion ordering lost: F=%d B=%d", got[5].IngestedAt, got[1].IngestedAt)
++	}
++}
++
++var newestTestCaseRunsBenchmarkSink []TestCaseRun
++
++func BenchmarkNewestTestCaseRunsNativePayload(b *testing.B) {
++	st, err := Open(filepath.Join(b.TempDir(), "native-benchmark.sqlite"))
++	if err != nil {
++		b.Fatal(err)
++	}
++	defer st.Close()
++	ctx := context.Background()
++	cases := make([]TestCase, 384)
++	for i := range cases {
++		cases[i] = TestCase{CaseID: fmt.Sprintf("%03d", i), Status: "pass", TestSymbolKey: fmt.Sprintf("svc::pkg.Test%03d", i)}
++	}
++	payload := `{"receipt":"` + strings.Repeat("x", 128<<10) + `"}`
++	if err := st.PutTestRuns(ctx, "svc", []TestRun{{RunDigest: "native", Suite: "EditMode", NativeRunID: "native", NativeJSON: payload, Cases: cases}}); err != nil {
++		b.Fatal(err)
++	}
++	b.ReportAllocs()
++	b.ResetTimer()
++	for i := 0; i < b.N; i++ {
++		newestTestCaseRunsBenchmarkSink, err = st.NewestTestCaseRuns(ctx, "svc")
++		if err != nil {
++			b.Fatal(err)
++		}
++	}
++	b.StopTimer()
++	if len(newestTestCaseRunsBenchmarkSink) != len(cases) || newestTestCaseRunsBenchmarkSink[0].NativeJSON != payload {
++		b.Fatalf("newest native payload was not retained for all %d rows", len(cases))
++	}
++}

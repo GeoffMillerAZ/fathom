@@ -1,0 +1,65 @@
+From f2a6ea57969f6bd7c10f77850061b72b6633ab70 Mon Sep 17 00:00:00 2001
+From: Geoff Miller <contributor@example.invalid>
+Date: Wed, 21 Oct 2026 00:22:45 -0700
+Subject: [PATCH 12/27] fix(scip): avoid copying protobuf receipt mutexes
+
+Return the compact source receipt index by pointer and keep the test fixture alive through a pointer. Preserve decoding and source-validation semantics.
+
+Verified: canonical gate01 reproduced go vet copylocks failures. The complete internal/scip vet, normal and race commands now pass against unchanged corrective source. Independent source review found no issues. Full canonical gate and cold workload remain pending.
+---
+ internal/scip/source_receipt.go      | 10 +++++-----
+ internal/scip/source_receipt_test.go |  2 +-
+ 2 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/internal/scip/source_receipt.go b/internal/scip/source_receipt.go
+index 216e626d9ec337ef4eb2703e70a677b20a52ee38..9ba80db20270d03acb7a315b4e060eedbee02aec 100644
+--- a/internal/scip/source_receipt.go
++++ b/internal/scip/source_receipt.go
+@@ -285,7 +285,7 @@ func ValidateSourceReceipt(ctx context.Context, root, path string, raw []byte, r
+ // sourceReceiptIndexSummary validates every complete top-level field with the
+ // official decoder, but retains only the data receipt validation reads. SCIP
+ // document and external-symbol payloads can dwarf the source index itself.
+-func sourceReceiptIndexSummary(raw []byte) (scippb.Index, error) {
++func sourceReceiptIndexSummary(raw []byte) (*scippb.Index, error) {
+ 	var summary, scratch scippb.Index
+ 	decoder := proto.UnmarshalOptions{Merge: true}
+ 	for len(raw) > 0 {
+@@ -296,9 +296,9 @@ func sourceReceiptIndexSummary(raw []byte) (scippb.Index, error) {
+ 			err := decoder.Unmarshal(raw, &scratch)
+ 			summary.Metadata = sourceReceiptMetadata(scratch.Metadata)
+ 			if err != nil {
+-				return summary, err
++				return &summary, err
+ 			}
+-			return summary, protowire.ParseError(size)
++			return &summary, protowire.ParseError(size)
+ 		}
+ 		err := decoder.Unmarshal(raw[:size], &scratch)
+ 		for _, document := range scratch.Documents {
+@@ -316,11 +316,11 @@ func sourceReceiptIndexSummary(raw []byte) (scippb.Index, error) {
+ 		scratch.Metadata = sourceReceiptMetadata(scratch.Metadata)
+ 		summary.Metadata = scratch.Metadata
+ 		if err != nil {
+-			return summary, err
++			return &summary, err
+ 		}
+ 		raw = raw[size:]
+ 	}
+-	return summary, nil
++	return &summary, nil
+ }
+ 
+ func sourceReceiptMetadata(metadata *scippb.Metadata) *scippb.Metadata {
+diff --git a/internal/scip/source_receipt_test.go b/internal/scip/source_receipt_test.go
+index 8850697595fc99562f07bb326afdd00299c421ba..9f8c2e3b1ee1dd76323158be73b8a92c3ab5fb84 100644
+--- a/internal/scip/source_receipt_test.go
++++ b/internal/scip/source_receipt_test.go
+@@ -182,7 +182,7 @@ func TestSourceReceiptDropsUnusedDecodedPayloadBeforeHash(t *testing.T) {
+ 	runtime.ReadMemStats(&stats)
+ 	probe := &receiptHeapProbe{baseline: stats.HeapAlloc}
+ 	bound, err := ValidateSourceReceipt(probe, root, path, raw)
+-	runtime.KeepAlive(index)
++	runtime.KeepAlive(&index)
+ 	runtime.KeepAlive(raw)
+ 	if !bound || err != nil {
+ 		t.Fatalf("bound=%v err=%v", bound, err)

@@ -1,0 +1,150 @@
+From f24665f8dfc16525e4c2bb7b847e5619774326b0 Mon Sep 17 00:00:00 2001
+From: Geoff Miller <contributor@example.invalid>
+Date: Tue, 20 Oct 2026 19:23:21 -0700
+Subject: [PATCH 02/27] fix(verify): preserve the source-window result budget
+
+Why: Closed results were recut at the agent default after pending receipts used the CLI declaration, so the final receipt count could differ.
+Verified: focused Go race test passed; <PRIVATE_RECEIPT> (SHA-256 4c81fb37c65c859ebac8613e648e37e5ba4efcfb22a16bcaee9b4d79d1866784). Mutation RED with the header disabled: <PRIVATE_RECEIPT> (SHA-256 8856463dbc116ddc7cd64422f335f58a2c31a7895ed0e2b53250879bdfe83c8e). No new full gate.
+---
+ cmd/fathom/verify_source_window.go            |  4 +
+ cmd/fathom/verify_source_window_test.go       | 85 +++++++++++++++++++
+ .../bounded-current-source-window.md          |  4 +
+ 3 files changed, 93 insertions(+)
+
+diff --git a/cmd/fathom/verify_source_window.go b/cmd/fathom/verify_source_window.go
+index dc1e758acc18435f75e9b2b66ab9d3bfe4117169..6c098caa605d72c9802081a2c016a5b16de12d61 100644
+--- a/cmd/fathom/verify_source_window.go
++++ b/cmd/fathom/verify_source_window.go
+@@ -7,6 +7,9 @@ import (
+ 	"io"
+ 	"net/http"
+ 	"os"
++	"strconv"
++
++	"github.com/geoffmilleraz/fathom/internal/mcp"
+ )
+ 
+ type sourceWindowReply struct {
+@@ -226,6 +229,7 @@ func fetchCurrentWindowResult(hc *http.Client, baseURL, service, token, id strin
+ 	if err != nil {
+ 		return httpVerifyResult{}, err
+ 	}
++	req.Header.Set(mcp.DeclaredBudgetHeader, strconv.Itoa(verifyPlanDeclaredBudget))
+ 	resp, err := hc.Do(req)
+ 	if err != nil {
+ 		return httpVerifyResult{}, err
+diff --git a/cmd/fathom/verify_source_window_test.go b/cmd/fathom/verify_source_window_test.go
+index a48f2978ef1c03195d2e27e3bc82ac4da28c4a07..532eb885abf48be0fae0055406849dc429dd6527 100644
+--- a/cmd/fathom/verify_source_window_test.go
++++ b/cmd/fathom/verify_source_window_test.go
+@@ -10,6 +10,9 @@ import (
+ 	"path/filepath"
+ 	"strings"
+ 	"testing"
++	"time"
++
++	"github.com/geoffmilleraz/fathom/internal/verify"
+ )
+ 
+ func assertCurrentWindowRefusal(t *testing.T, code int, stdout, stderr, wantReason string) {
+@@ -39,6 +42,88 @@ func assertCurrentWindowRefusal(t *testing.T, code int, stdout, stderr, wantReas
+ 	}
+ }
+ 
++// The pending receipt is budgeted at collection. The closed result must use
++// that same dispatch budget or the handler can recut its tasks after close.
++func TestCurrentWindowFinalResultsPreserveCollectedReceipts(t *testing.T) {
++	f := newConsoleFixtureOpts(t, consoleFixtureOpts{Rooted: true})
++	hc := &http.Client{Timeout: 5 * time.Second}
++	const service = "payment-service"
++	token, err := beginCurrentWindow(hc, f.ts.URL, service)
++	if err != nil || token == "" {
++		t.Fatalf("begin: token=%q err=%v", token, err)
++	}
++	defer abortCurrentWindow(hc, f.ts.URL, service, token)
++
++	planOf := func(prefix string, count, titleBytes int) ([]byte, verify.Plan) {
++		var b strings.Builder
++		b.WriteString("# Window report\n\n")
++		for i := 0; i < count; i++ {
++			fmt.Fprintf(&b, "- [x] %s row %d %s {id: %s-%04d, symbol: Missing%d}\n", prefix, i, strings.Repeat("x", titleBytes), prefix, i, i)
++		}
++		md := []byte(b.String())
++		return md, verify.ParseMarkdownPlan(service, md)
++	}
++	type collected struct {
++		md   []byte
++		plan verify.Plan
++		ids  []string
++	}
++	var reports []collected
++	seenReceipts := make(map[string]bool)
++	for _, spec := range []struct {
++		prefix            string
++		count, titleBytes int
++		wantContinuations bool
++	}{
++		{"small", 3, 20, false},
++		{"medium", 40, 500, false},
++		{"large", 100, 20000, true},
++	} {
++		md, plan := planOf(spec.prefix, spec.count, spec.titleBytes)
++		ids, err := collectVerifyWindow(hc, f.ts.URL, service, "", md, plan, nil, token)
++		if err != nil {
++			t.Fatalf("collect %s: %v", spec.prefix, err)
++		}
++		if len(ids) == 0 || spec.wantContinuations != (len(ids) > 1) {
++			t.Fatalf("collect %s: %d receipts, want continuations=%v", spec.prefix, len(ids), spec.wantContinuations)
++		}
++		for _, id := range ids {
++			if seenReceipts[id] {
++				t.Fatalf("duplicate collected receipt %s", id)
++			}
++			seenReceipts[id] = true
++		}
++		reports = append(reports, collected{md, plan, ids})
++	}
++	if err := closeCurrentWindow(hc, f.ts.URL, service, token); err != nil {
++		t.Fatal(err)
++	}
++	for _, report := range reports {
++		got, err := finalVerifyWindow(hc, f.ts.URL, service, report.md, report.plan, token, report.ids)
++		if err != nil {
++			t.Fatalf("final %s: %v", report.plan.Tasks[0].ID, err)
++		}
++		if len(report.plan.Tasks) == 40 {
++			encoded, err := json.Marshal(got)
++			if err != nil || len(encoded) <= 16000 {
++				t.Fatalf("medium final report = %d bytes, err %v; need a result above the agent default", len(encoded), err)
++			}
++		}
++		if len(got.Tasks) != len(report.plan.Tasks) {
++			t.Fatalf("final %s: %d of %d tasks", report.plan.Tasks[0].ID, len(got.Tasks), len(report.plan.Tasks))
++		}
++		seen := make(map[string]int)
++		for _, task := range got.Tasks {
++			seen[task.TaskID]++
++		}
++		for _, task := range report.plan.Tasks {
++			if seen[task.ID] != 1 {
++				t.Errorf("final %s: task %s appears %d times", report.plan.Tasks[0].ID, task.ID, seen[task.ID])
++			}
++		}
++	}
++}
++
+ func TestCurrentWindowRefusalJSONNeverPublishesReports(t *testing.T) {
+ 	for _, phase := range []string{"begin", "advance", "close", "result"} {
+ 		t.Run(phase, func(t *testing.T) {
+diff --git a/docs/changelog/unreleased/bounded-current-source-window.md b/docs/changelog/unreleased/bounded-current-source-window.md
+index 3c8389b7d506f1afa770fe2c6db77aeca455a823..566793f97edbfc6ff79637acf8f72dead96b2f9e 100644
+--- a/docs/changelog/unreleased/bounded-current-source-window.md
++++ b/docs/changelog/unreleased/bounded-current-source-window.md
+@@ -3,3 +3,7 @@
+ - Default daemon `verify` and `plans status` can validate sealed source-reference facts against the current tree in a bounded two-pass observation window. Each continuation accepts at most 64 MiB and has a five-second deadline. A synchronous filesystem read can overrun that deadline; its return invalidates the window instead of publishing a current verdict. Failed identity or close refuses the current verdict; excluded files keep absence Unknown. Older daemons retain the live scan with its partial disclosure.
+ - The console's cached plan section explicitly reports current-worktree freshness as `unknown`; it does not inherit a CLI run's completed-window receipt.
+ - A refused current window returns exit 2 and a JSON operational refusal with `current_worktree_freshness: unknown`, a reason, and no plan verdicts. A later re-ingest can supply a new seal for a fresh window.
++
++### Fixed
++
++- Closed current-source-window reports use the collection response budget, preserving every verdict recorded in pending receipts.

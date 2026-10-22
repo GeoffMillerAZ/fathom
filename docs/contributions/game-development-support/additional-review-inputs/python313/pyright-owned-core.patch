@@ -1,0 +1,56 @@
+--- pyright-1.1.390/analyzer/program.ts
++++ candidate/analyzer/program.ts
+@@ -1004,6 +1004,10 @@
+     }
+ 
+     private _handleMemoryHighUsage() {
++        // NOTE(scip-python): SCIP emission revisits every parsed file after analysis.
++        // Keep the evaluator and parse trees intact until emission completes.
++        return;
++
+         const cacheUsage = this._cacheManager.getCacheUsage();
+         const usedHeapRatio = this._cacheManager.getUsedHeapRatio(
+             this._configOptions.verboseOutput ? this._console : undefined
+--- pyright-1.1.390/analyzer/sourceFile.ts
++++ candidate/analyzer/sourceFile.ts
+@@ -421,6 +421,9 @@
+     // in cases where memory is low. When info is needed, the file
+     // will be re-parsed and rebound.
+     dropParseAndBindInfo(): void {
++        // NOTE(scip-python): SCIP emission needs the original bound tree.
++        return;
++
+         this._fireFileDirtyEvent();
+ 
+         this._writableData.parserOutput = undefined;
+--- pyright-1.1.390/common/fullAccessHost.ts
++++ candidate/common/fullAccessHost.ts
+@@ -109,9 +109,11 @@
+         const importFailureInfo = logInfo ?? [];
+ 
+         try {
+-            const execOutput = this._executePythonInterpreter(pythonPath?.getFilePath(), (p) =>
+-                this._executeCodeInInterpreter(p, ['-I'], extractVersion)
+-            );
++            const execOutput = this._executePythonInterpreter(pythonPath?.getFilePath(), (p) => {
++                // NOTE(scip-python): expose the actual executable selected for the candidate receipt.
++                importFailureInfo.push(`Version interpreter: ${p}`);
++                return this._executeCodeInInterpreter(p, ['-I'], extractVersion);
++            });
+ 
+             const versionJson: any[] = JSON.parse(execOutput!);
+ 
+--- pyright-1.1.390/languageService/hoverProvider.ts
++++ candidate/languageService/hoverProvider.ts
+@@ -216,6 +216,11 @@
+         return convertHoverResults(this._getHoverResult(), this._format);
+     }
+ 
++    // NOTE(scip-python): Preserve the structured hover parts used for SCIP documentation.
++    getHoverResults(): HoverResults | null {
++        return this._getHoverResult();
++    }
++
+     static getPrimaryDeclaration(declarations: Declaration[]) {
+         // In most cases, it's best to treat the first declaration as the
+         // "primary". This works well for properties that have setters

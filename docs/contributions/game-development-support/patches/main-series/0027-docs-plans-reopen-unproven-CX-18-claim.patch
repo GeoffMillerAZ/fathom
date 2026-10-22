@@ -1,0 +1,24 @@
+From d08aadb0f26155c514e82196c024947a2dcc5faf Mon Sep 17 00:00:00 2001
+From: Geoff Miller <contributor@example.invalid>
+Date: Wed, 21 Oct 2026 18:25:37 -0700
+Subject: [PATCH 27/27] docs(plans): reopen unproven CX-18 claim
+
+Verified: task build; fathom verify --strict --row CX-18 (exit 0 after reopening)
+---
+ docs/plans/change-and-compliance.md | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/docs/plans/change-and-compliance.md b/docs/plans/change-and-compliance.md
+index b4f1397b72f74247b2af37542fd443c3a141f5b9..dcd84e3c08d6999e93e0f10c51a22c067c16aab0 100644
+--- a/docs/plans/change-and-compliance.md
++++ b/docs/plans/change-and-compliance.md
+@@ -34,7 +34,8 @@ the computable subset of F9.
+ - [x] `fathom trace export --standard --out` writes the matrix, digests, readings, commit and a sha256 manifest, only on request {id: CX-16, symbol: cmdTraceExport, package: cmd/fathom, reachable_from: TestCmdTraceExportManifest, needs: "CX-14,CX-15"}
+ - [ ] `fathom trace verify <dir>` recomputes at the pack's commit and must be byte-identical, differences named by file and cell {id: CX-17, symbol: cmdTraceVerify, package: cmd/fathom, reachable_from: TestCmdTraceVerifyByteIdentical, needs: "CX-16"}
+   <!-- reopened 2026-10-10 (ADR-068, done means proven): `trace verify` recomputes from the current store and the working tree (`verify.DirFiles(repo)`, cmd/fathom/trace.go:296), not at the pack's commit. Replay at the pack's commit is portable-receipts.md EVX-28. -->
+-- [x] `accept:` criteria and foreign spec requirements appear as matrix requirements {id: CX-18, symbol: traceRequirements, package: internal/review, reachable_from: TestTraceRequirementsIncludeAccept, needs: "CX-14,spec-interop.md#SI-8"}
++- [ ] `accept:` criteria and foreign spec requirements appear as matrix requirements {id: CX-18, symbol: traceRequirements, package: internal/review, reachable_from: TestTraceRequirementsIncludeAccept, needs: "CX-14,spec-interop.md#SI-8"}
++  <!-- Reopened 2026-10-22: strict verify on a fresh index of 378224a36 reported wired: unknown. The selected traceRequirements wrapper (internal/review/trace.go:119) has only test callers; the product calls traceRequirementsWithDecisions. Reclaim with product reachability and runtime proof. -->
+ - [x] ADR dependency statements proposed as archconformance rules with citations; a human accepts each (F24 promoted) (§5) {id: CX-19, symbol: ProposeADRRules, package: internal/review, reachable_from: TestProposeADRRulesCited}
+ - [x] Violation counts per rule recorded at each ingest; the trend and the commits that added violations {id: CX-20, symbol: recordViolationTrend, package: internal/fusion, reachable_from: TestViolationTrendAtIngest}
+ - [x] Computable revisit and promote triggers (bet-block shape: an instrument and a threshold) evaluated by `fathom intent audit`, never by the daemon on its own; prose triggers listed as unevaluated (F9's subset) {id: CX-21, symbol: evalComputableTriggers, package: internal/intent, reachable_from: TestComputableTriggersEvaluatedOnDemand}

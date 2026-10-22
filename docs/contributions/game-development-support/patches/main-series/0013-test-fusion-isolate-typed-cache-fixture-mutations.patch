@@ -1,0 +1,29 @@
+From cb0a515eaa0ad0c664158fbd3ae4a769b0aa3610 Mon Sep 17 00:00:00 2001
+From: Geoff Miller <contributor@example.invalid>
+Date: Wed, 21 Oct 2026 00:36:11 -0700
+Subject: [PATCH 13/27] test(fusion): isolate typed cache fixture mutations
+
+Copy the self-contained typed fixture to a test-owned temporary directory before exercising content-based cache invalidation. Preserve cache-hit, stored-edge and exactly-two-package reload assertions.
+
+Verified: unchanged original test passed while an integrity observer detected tracked direct.go changing from 176 to 188 bytes. Fixed test passes normally and under race with zero observed tracked mutations and unchanged original content and mtime. Independent source review found no issues. Canonical gate and cold qualification remain pending.
+---
+ internal/fusion/typedcalls_test.go | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/internal/fusion/typedcalls_test.go b/internal/fusion/typedcalls_test.go
+index 375d08ba11a419d6d5cb3ec7ab4e4c5e91368e10..4ed833754d0ae81eaecaed8035c4e532cf68493f 100644
+--- a/internal/fusion/typedcalls_test.go
++++ b/internal/fusion/typedcalls_test.go
+@@ -267,7 +267,11 @@ func TestEnrichTypedEdges_MethodKeyMatchesExtractorCanonicalKey(t *testing.T) {
+ // leave the previously stored edges completely untouched; touching one
+ // file's content must invalidate only that file's package.
+ func TestEnrichTypedEdges_Caching(t *testing.T) {
+-	dir := typedFixtureDir(t)
++	src := typedFixtureDir(t)
++	dir := t.TempDir()
++	if err := os.CopyFS(dir, os.DirFS(src)); err != nil {
++		t.Fatalf("copy typed fixture: %v", err)
++	}
+ 	ctx := context.Background()
+ 	st := store.NewMemoryStore()
+ 

@@ -1,0 +1,958 @@
+From 2b9cdae0a9631da8fa5e02ef10fb634bf844dc8d Mon Sep 17 00:00:00 2001
+From: Geoff Miller <contributor@example.invalid>
+Date: Wed, 21 Oct 2026 17:51:12 -0700
+Subject: [PATCH 1/2] fix(mcp): bound review diff result envelope
+
+Verified: focused review and budget race tests; complete MCP envelope regressions
+---
+ .../unreleased/review-diff-envelope-budget.md |   3 +
+ internal/mcp/budgeted_handler.go              |   4 +-
+ internal/mcp/dispatch.go                      |  23 +-
+ internal/mcp/review_budget.go                 | 407 ++++++++++++++++++
+ internal/mcp/review_budget_test.go            | 406 +++++++++++++++++
+ internal/mcp/review_status_test.go            |  24 +-
+ 6 files changed, 853 insertions(+), 14 deletions(-)
+ create mode 100644 docs/changelog/unreleased/review-diff-envelope-budget.md
+ create mode 100644 internal/mcp/review_budget.go
+ create mode 100644 internal/mcp/review_budget_test.go
+
+diff --git a/docs/changelog/unreleased/review-diff-envelope-budget.md b/docs/changelog/unreleased/review-diff-envelope-budget.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..8cdfc73a27329295926fa483b6a41a952cec86bd
+--- /dev/null
++++ b/docs/changelog/unreleased/review-diff-envelope-budget.md
+@@ -0,0 +1,3 @@
++### Changed
++
++- `review_diff` now caps its complete MCP result, including text, structured data, suppression, refresh, and partial-budget metadata, at the default 16 KB. Large nested findings, test impacts, receipt views, suppression IDs/reasons, and long refresh or partial-budget reasons become deterministic compact summaries. All eight dimension verdicts, original finding counts, per-service hidden-row counts, and partial-budget counters remain visible; omitted details disclose original and returned counts or bytes. Small results are unchanged. This is a `review_diff` transport exception to the shared first-item-preserving payload budget; other tools retain that contract.
+diff --git a/internal/mcp/budgeted_handler.go b/internal/mcp/budgeted_handler.go
+index 27acb059d47e7eb1a28852ac9e897ac2b8c03dd7..c0e22c2b7f3636344b849e213e4114f243c081be 100644
+--- a/internal/mcp/budgeted_handler.go
++++ b/internal/mcp/budgeted_handler.go
+@@ -4,8 +4,8 @@ package mcp
+ // 3): a dispatch-level backstop so a tool handler that forgets to budget
+ // its own result (O90's defect class: a ~63k-token symbol_context answer
+ // shipped before that tool had any budget line at all) cannot regress past
+-// defaultCharBudget either. Every handler passed to registerTool is wrapped
+-// with budgetedHandler, so this applies uniformly — no per-tool opt-in.
++// defaultCharBudget either. All handlers except review_diff use this wrapper;
++// review_diff bounds its full duplicated MCP envelope after dispatch metadata.
+ //
+ // A handler that already keeps its result under budget sees NO difference:
+ // budgetedResult only touches the marshaled bytes when they exceed
+diff --git a/internal/mcp/dispatch.go b/internal/mcp/dispatch.go
+index 4011014177b3b354286116960094f38cc3b55f64..d7f820f85174feb1b378afd1e46f4f58ef456c61 100644
+--- a/internal/mcp/dispatch.go
++++ b/internal/mcp/dispatch.go
+@@ -62,10 +62,9 @@ type toolEntry struct {
+ 	class   tenancy.Class // the declared cost class (RT-55)
+ }
+ 
+-// registerTool adds a tool to the server's tool registry. Every handler is
+-// wrapped with budgetedHandler (SU-3, ADR-041 decision 3) — a single choke
+-// point, so a handler that forgets its own budget still cannot exceed the
+-// dispatch-level one.
++// registerTool adds a tool to the server's tool registry. Handlers use
++// budgetedHandler (SU-3, ADR-041 decision 3), except review_diff: its nested
++// detail and duplicated wire payload are budgeted after envelope construction.
+ //
+ // RT-55 (design §3.1): a tool without a cost class cannot be registered —
+ // the admission gate would have nothing to admit it in.
+@@ -76,7 +75,13 @@ func (s *Server) registerTool(desc toolDescriptor, h func(ctx context.Context, a
+ 	}
+ 	s.mu.Lock()
+ 	defer s.mu.Unlock()
+-	s.tools = append(s.tools, toolEntry{desc: desc, handler: budgetedHandler(h, desc.declaredBudget), class: class})
++	handler := budgetedHandler(h, desc.declaredBudget)
++	if desc.Name == "review_diff" {
++		// O23: review_diff has nested detail and two wire copies. Its complete
++		// MCP result is budgeted after freshness and envelope construction.
++		handler = h
++	}
++	s.tools = append(s.tools, toolEntry{desc: desc, handler: handler, class: class})
+ }
+ 
+ // findTool returns the toolEntry for a given name, or (zero, false).
+@@ -471,5 +476,13 @@ func (s *Server) handleToolsCallMeta(ctx context.Context, params json.RawMessage
+ 	if partial != nil {
+ 		envelope["budget"] = partial
+ 	}
++	if te.desc.Name == "review_diff" {
++		var budgetErr error
++		envelope, budgetErr = capReviewDiffEnvelope(envelope, defaultCharBudget)
++		if budgetErr != nil {
++			meta.outcome = string(tenancy.OutcomeError)
++			return nil, &rpcError{Code: ErrCodeInternal, Message: "review_diff response budget: " + budgetErr.Error()}, meta
++		}
++	}
+ 	return envelope, nil, meta
+ }
+diff --git a/internal/mcp/review_budget.go b/internal/mcp/review_budget.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..d3677e00141ab34e1774186e4f2c9dc13d77177f
+--- /dev/null
++++ b/internal/mcp/review_budget.go
+@@ -0,0 +1,407 @@
++package mcp
++
++// O23: review_diff's composed detail is budgeted as one MCP result: content,
++// structuredContent, suppressed, refresh, and budget are the actual dispatch
++// fields. This is intentionally stricter
++// than BA-4's shared, first-item-preserving *payload target*: one enormous
++// nested test or SARIF entry must not turn a review answer into 745 KB.
++
++import (
++	"encoding/json"
++	"errors"
++	"unicode/utf8"
++)
++
++type reviewOmission struct {
++	Total    int    `json:"total"`
++	Returned int    `json:"returned"`
++	Unit     string `json:"unit"`
++}
++
++func capReviewDiffEnvelope(envelope map[string]any, limit int) (map[string]any, error) {
++	if limit <= 0 {
++		limit = defaultCharBudget
++	}
++	encoded, err := json.Marshal(envelope)
++	if err != nil {
++		return nil, err
++	}
++	if len(encoded) <= limit {
++		return envelope, nil
++	}
++	raw, ok := envelope["structuredContent"].(json.RawMessage)
++	if !ok {
++		return nil, errors.New("structured review result missing")
++	}
++	var original map[string]any
++	if err := json.Unmarshal(raw, &original); err != nil {
++		return nil, err
++	}
++	statuses, ok := original["dimension_status"].(map[string]any)
++	if !ok || len(statuses) != 8 {
++		return nil, errors.New("eight compact dimension statuses missing")
++	}
++	payload := make(map[string]any, len(original))
++	for k, v := range original {
++		payload[k] = v
++	}
++	omitted := make(map[string]reviewOmission)
++	record := func(path string, value any, returned int) {
++		switch rows := value.(type) {
++		case []any:
++			if len(rows) > returned {
++				prev := omitted[path]
++				omitted[path] = reviewOmission{Total: prev.Total + len(rows), Returned: prev.Returned + returned, Unit: "items"}
++			}
++		default:
++			b, _ := json.Marshal(value)
++			if len(b) > returned {
++				prev := omitted[path]
++				omitted[path] = reviewOmission{Total: prev.Total + len(b), Returned: prev.Returned + returned, Unit: "json_bytes"}
++			}
++		}
++	}
++	// Retain every dimension's name/verdict/count, but remove detailed arrays.
++	if dims, ok := payload["dimensions"].([]any); ok {
++		compact := make([]any, len(dims))
++		for i, item := range dims {
++			d, ok := item.(map[string]any)
++			if !ok {
++				return nil, errors.New("review dimension is not an object")
++			}
++			brief := map[string]any{"findings": []any{}}
++			for _, key := range []string{"name", "checked", "count", "reason"} {
++				if value, exists := d[key]; exists {
++					brief[key] = value
++				}
++			}
++			for key, value := range d {
++				if _, keep := brief[key]; !keep {
++					record("dimensions."+key, value, 0)
++				}
++			}
++			if findings, exists := d["findings"]; exists {
++				record("dimensions.findings", findings, 0)
++			}
++			compact[i] = brief
++		}
++		payload["dimensions"] = compact
++	}
++	if gap, ok := payload["test_impact"].(map[string]any); ok {
++		brief := map[string]any{"affected_tests": []any{}, "test_gap": []any{}}
++		for _, key := range []string{"checked", "reason"} {
++			if value, exists := gap[key]; exists {
++				brief[key] = value
++			}
++		}
++		for key, value := range gap {
++			if key != "checked" && key != "reason" {
++				record("test_impact."+key, value, 0)
++			}
++		}
++		payload["test_impact"] = brief
++	}
++	for _, key := range []string{"receipt_sarif", "receipt_check", "receipt"} {
++		if value, exists := payload[key]; exists {
++			record(key, value, 0)
++			delete(payload, key)
++		}
++	}
++	payload["details_complete"] = false
++	wire := make(map[string]any, len(envelope)+2)
++	for key, value := range envelope {
++		wire[key] = value
++	}
++	refreshDisclosure := func() {
++		payload["elided"] = map[string]any{"fields": omitted, "how_to_get_more": "narrow changed_files; query test_impact for one symbol"}
++	}
++	fit := func() (map[string]any, bool, error) {
++		refreshDisclosure()
++		candidate, err := reviewEnvelopeWithPayload(wire, payload)
++		if err != nil {
++			return nil, false, err
++		}
++		b, err := json.Marshal(candidate)
++		if err != nil {
++			return nil, false, err
++		}
++		return candidate, len(b) <= limit, nil
++	}
++	if out, yes, err := fit(); err != nil || yes {
++		return out, err
++	}
++	// Suppression disclosure is envelope metadata, outside the duplicated
++	// payload. Preserve each service's hidden-row count while bounding its
++	// optional IDs and reasons before trimming further review fields.
++	if suppressed, ok := envelope["suppressed"].(map[string]any); ok {
++		if brief, changed := compactReviewSuppressions(suppressed, 2, 96); changed {
++			wire["suppressed"] = brief
++			if out, yes, err := fit(); err != nil || yes {
++				return out, err
++			}
++		}
++	}
++	if refresh, ok := envelope["refresh"].(map[string]string); ok {
++		brief := make(map[string]string, len(refresh))
++		cut := make(map[string]reviewOmission)
++		for service, note := range refresh {
++			short := reviewPrefix(note, 256)
++			brief[service] = short
++			if short != note {
++				cut[service] = reviewOmission{Total: len(note), Returned: len(short), Unit: "utf8_bytes"}
++				if freshness, ok := payload["freshness"].(map[string]any); ok && freshness[service] == note {
++					freshness[service] = short
++					omitted["freshness."+service] = cut[service]
++				}
++			}
++		}
++		if len(cut) > 0 {
++			wire["refresh"] = brief
++			wire["refresh_elided"] = cut
++			wire["details_complete"] = false
++			if out, yes, err := fit(); err != nil || yes {
++				return out, err
++			}
++		}
++	}
++	if budget, ok := envelope["budget"].(map[string]any); ok {
++		if reason, ok := budget["reason"].(string); ok {
++			if short := reviewPrefix(reason, 256); short != reason {
++				brief := make(map[string]any, len(budget)+2)
++				for key, value := range budget {
++					brief[key] = value
++				}
++				brief["reason"] = short
++				brief["details_complete"] = false
++				brief["reason_elided"] = reviewOmission{Total: len(reason), Returned: len(short), Unit: "utf8_bytes"}
++				wire["budget"] = brief
++				if out, yes, err := fit(); err != nil || yes {
++					return out, err
++				}
++			}
++		}
++	}
++	// Optional views are omitted in fixed order, each with a named count.
++	for _, key := range []string{"layers", "service_ref_unextracted", "as_of_scope", "corpus_partial", "verdict_outcome", "index_commit"} {
++		if value, exists := payload[key]; exists {
++			record(key, value, 0)
++			delete(payload, key)
++			if out, yes, err := fit(); err != nil || yes {
++				return out, err
++			}
++		}
++	}
++	if value, exists := payload["service_ref_hops"]; exists {
++		record("service_ref_hops", value, 0)
++		payload["service_ref_hops"] = []any{}
++		if out, yes, err := fit(); err != nil || yes {
++			return out, err
++		}
++	}
++	// Long reasons are still status claims, so keep a UTF-8 prefix and name
++	// precisely how many source bytes could not be carried.
++	if statuses, ok := payload["dimension_status"].(map[string]any); ok {
++		for name, row := range statuses {
++			status, ok := row.(map[string]any)
++			if !ok {
++				continue
++			}
++			if reason, ok := status["unchecked_reason"].(string); ok {
++				if short := reviewPrefix(reason, 128); short != reason {
++					copyRow := make(map[string]any, len(status))
++					for k, v := range status {
++						copyRow[k] = v
++					}
++					copyRow["unchecked_reason"] = short
++					statuses[name] = copyRow
++					omitted["dimension_status."+name+".unchecked_reason"] = reviewOmission{Total: len(reason), Returned: len(short), Unit: "utf8_bytes"}
++				}
++			}
++		}
++	}
++	if dims, ok := payload["dimensions"].([]any); ok {
++		for _, row := range dims {
++			if dim, ok := row.(map[string]any); ok {
++				if reason, ok := dim["reason"].(string); ok {
++					if short := reviewPrefix(reason, 128); short != reason {
++						dim["reason"] = short
++						prev := omitted["dimensions.reason"]
++						omitted["dimensions.reason"] = reviewOmission{Total: prev.Total + len(reason), Returned: prev.Returned + len(short), Unit: "utf8_bytes"}
++					}
++				}
++			}
++		}
++	}
++	if out, yes, err := fit(); err != nil || yes {
++		return out, err
++	}
++	for _, key := range []string{"summary", "service"} {
++		if value, ok := payload[key].(string); ok {
++			if short := reviewPrefix(value, 256); short != value {
++				payload[key] = short
++				omitted[key] = reviewOmission{Total: len(value), Returned: len(short), Unit: "utf8_bytes"}
++			}
++		}
++	}
++	if paths, ok := payload["changed_files"].([]any); ok {
++		var originalBytes, keptBytes int
++		kept := len(paths)
++		if kept > 4 {
++			kept = 4
++		}
++		for i := range paths {
++			if path, ok := paths[i].(string); ok {
++				originalBytes += len(path)
++				if i < kept {
++					short := reviewPrefix(path, 64)
++					keptBytes += len(short)
++					paths[i] = short
++				}
++			}
++		}
++		if originalBytes > keptBytes {
++			omitted["changed_files.path_bytes"] = reviewOmission{Total: originalBytes, Returned: keptBytes, Unit: "utf8_bytes"}
++		}
++		if len(paths) > kept {
++			omitted["changed_files"] = reviewOmission{Total: len(paths), Returned: kept, Unit: "items"}
++			payload["changed_files"] = paths[:kept]
++		}
++	}
++	if notes, ok := payload["freshness"].(map[string]any); ok {
++		for name, value := range notes {
++			if note, ok := value.(string); ok {
++				if short := reviewPrefix(note, 256); short != note {
++					notes[name] = short
++					omitted["freshness."+name] = reviewOmission{Total: len(note), Returned: len(short), Unit: "utf8_bytes"}
++				}
++			}
++		}
++	}
++	if out, yes, err := fit(); err != nil || yes {
++		return out, err
++	}
++	if dims, ok := payload["dimensions"].([]any); ok {
++		omitted["dimensions"] = reviewOmission{Total: len(dims), Returned: 0, Unit: "items"}
++		payload["dimensions"] = []any{}
++	}
++	if out, yes, err := fit(); err != nil || yes {
++		return out, err
++	}
++	if suppressed, ok := envelope["suppressed"].(map[string]any); ok {
++		if brief, changed := compactReviewSuppressions(suppressed, 0, 0); changed {
++			wire["suppressed"] = brief
++			if out, yes, err := fit(); err != nil || yes {
++				return out, err
++			}
++		}
++	}
++	return nil, errors.New("eight review statuses cannot fit the complete MCP result budget")
++}
++
++func compactReviewSuppressions(original map[string]any, maxItems, maxBytes int) (map[string]any, bool) {
++	out := make(map[string]any, len(original))
++	changed := false
++	for service, value := range original {
++		row, ok := value.(map[string]any)
++		if !ok {
++			out[service] = value
++			continue
++		}
++		brief := make(map[string]any, len(row)+2)
++		for key, field := range row {
++			brief[key] = field
++		}
++		omitted := map[string]reviewOmission{}
++		for _, key := range []string{"ids", "reasons"} {
++			var items []string
++			switch typed := row[key].(type) {
++			case []string:
++				items = typed
++			case []any:
++				valid := true
++				for _, item := range typed {
++					s, ok := item.(string)
++					if !ok {
++						valid = false
++						break
++					}
++					items = append(items, s)
++				}
++				if !valid {
++					continue
++				}
++			default:
++				continue
++			}
++			kept := len(items)
++			if kept > maxItems {
++				kept = maxItems
++			}
++			prefix := make([]string, kept)
++			var totalBytes, returnedBytes int
++			for i, item := range items {
++				totalBytes += len(item)
++				if i < kept {
++					prefix[i] = reviewPrefix(item, maxBytes)
++					returnedBytes += len(prefix[i])
++				}
++			}
++			if kept != len(items) || totalBytes != returnedBytes {
++				changed = true
++				brief[key] = prefix
++				omitted[key] = reviewOmission{Total: len(items), Returned: kept, Unit: "items"}
++				omitted[key+".utf8_bytes"] = reviewOmission{Total: totalBytes, Returned: returnedBytes, Unit: "utf8_bytes"}
++			}
++		}
++		if len(omitted) > 0 {
++			brief["details_complete"] = false
++			brief["elided"] = omitted
++		}
++		out[service] = brief
++	}
++	return out, changed
++}
++
++func reviewEnvelopeWithPayload(envelope, payload map[string]any) (map[string]any, error) {
++	b, err := json.Marshal(payload)
++	if err != nil {
++		return nil, err
++	}
++	out := make(map[string]any, len(envelope))
++	for k, v := range envelope {
++		out[k] = v
++	}
++	content, ok := envelope["content"].([]any)
++	if !ok || len(content) == 0 {
++		return nil, errors.New("review text content missing")
++	}
++	block, ok := content[0].(map[string]any)
++	if !ok {
++		return nil, errors.New("review text block invalid")
++	}
++	newBlock := make(map[string]any, len(block))
++	for k, v := range block {
++		newBlock[k] = v
++	}
++	newBlock["text"] = string(b)
++	newContent := append([]any(nil), content...)
++	newContent[0] = newBlock
++	out["content"] = newContent
++	out["structuredContent"] = json.RawMessage(b)
++	return out, nil
++}
++
++func reviewPrefix(s string, maxBytes int) string {
++	if len(s) <= maxBytes {
++		return s
++	}
++	i := 0
++	for i < len(s) {
++		_, size := utf8.DecodeRuneInString(s[i:])
++		if size == 0 || i+size > maxBytes {
++			break
++		}
++		i += size
++	}
++	return s[:i]
++}
+diff --git a/internal/mcp/review_budget_test.go b/internal/mcp/review_budget_test.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..4822531462f467fbd82bb86b1a4aa2f8bf424d10
+--- /dev/null
++++ b/internal/mcp/review_budget_test.go
+@@ -0,0 +1,406 @@
++package mcp
++
++import (
++	"context"
++	"encoding/json"
++	"fmt"
++	"reflect"
++	"strings"
++	"testing"
++	"unicode/utf8"
++
++	"github.com/geoffmilleraz/fathom/internal/scope"
++)
++
++func reviewEnvelopeForTest(t *testing.T, payload map[string]any) map[string]any {
++	t.Helper()
++	b, err := json.Marshal(payload)
++	if err != nil {
++		t.Fatal(err)
++	}
++	return map[string]any{
++		"content":           []any{map[string]any{"type": "text", "text": string(b)}},
++		"structuredContent": json.RawMessage(b),
++	}
++}
++
++func reviewBudgetFixture(tests int, hugeReason bool) map[string]any {
++	statuses := map[string]any{}
++	dims := make([]any, 0, 8)
++	for i, name := range []string{"impact", "obligations", "architecture", "spec_coverage", "test_coverage", "certifications", "integrity", "conservation"} {
++		checked := i < 3
++		status := map[string]any{"checked": checked, "count": 100 + i}
++		dim := map[string]any{"name": name, "checked": checked, "count": 100 + i, "findings": []any{}}
++		if !checked {
++			reason := "source unavailable"
++			if hugeReason {
++				reason = strings.Repeat("é<&", 12000)
++			}
++			status["unchecked_reason"] = reason
++			dim["reason"] = reason
++		}
++		findings := make([]any, 200)
++		for j := range findings {
++			findings[j] = map[string]any{"kind": "impact", "message": strings.Repeat("nested finding ", 20), "severity": "info"}
++		}
++		dim["findings"] = findings
++		statuses[name] = status
++		dims = append(dims, dim)
++	}
++	affected := make([]any, tests)
++	for i := range affected {
++		affected[i] = map[string]any{"test": "TestExampleIncident", "file": "example/game/tests/ExampleIncidentTests.cs", "citation": "ExampleIncidentTests.cs:1", "reaches": []any{strings.Repeat("nested reach <&é", 40)}}
++	}
++	return map[string]any{
++		"service": "<CONSUMER_SERVICE>", "changed_files": []any{"ExampleIncident.cs", "ExampleIncidentPacket.cs", "ExampleMotor.cs", "ExampleIncidentTests.cs"},
++		"dimensions": dims, "dimension_status": statuses, "summary": "3/8 dimensions checked; 527 impacts are graph evidence, not completed tests",
++		"findings_persisted": false, "test_impact": map[string]any{"checked": true, "affected_tests": affected, "test_gap": []any{}},
++		"resolution": map[string]any{"typed": 527, "heuristic": 0}, "service_ref_hops": []any{},
++		"receipt_sarif": map[string]any{"runs": []any{strings.Repeat("SARIF<&é", 30000)}},
++		"receipt_check": map[string]any{"annotations": []any{strings.Repeat("check<&é", 30000)}},
++		"freshness":     map[string]any{"<CONSUMER_SERVICE>": "deferred (shed); served from indexed source"},
++	}
++}
++
++func TestReviewDiffBudgetNested527WholeEnvelope(t *testing.T) {
++	in := reviewEnvelopeForTest(t, reviewBudgetFixture(527, false))
++	before, _ := json.Marshal(in)
++	if len(before) <= 745220 {
++		t.Fatalf("fixture must reproduce large envelope, got %d", len(before))
++	}
++	var first []byte
++	for i := 0; i < 2; i++ {
++		out, err := capReviewDiffEnvelope(in, defaultCharBudget)
++		if err != nil {
++			t.Fatal(err)
++		}
++		encoded, err := json.Marshal(out)
++		if err != nil {
++			t.Fatal(err)
++		}
++		if len(encoded) > defaultCharBudget {
++			t.Fatalf("whole result %d > %d", len(encoded), defaultCharBudget)
++		}
++		if i == 1 && !reflect.DeepEqual(first, encoded) {
++			t.Fatal("nondeterministic compact result")
++		}
++		first = encoded
++		content := out["content"].([]any)[0].(map[string]any)["text"].(string)
++		var textPayload, structuredPayload map[string]any
++		if err := json.Unmarshal([]byte(content), &textPayload); err != nil {
++			t.Fatal(err)
++		}
++		if err := json.Unmarshal(out["structuredContent"].(json.RawMessage), &structuredPayload); err != nil {
++			t.Fatal(err)
++		}
++		if !reflect.DeepEqual(textPayload, structuredPayload) {
++			t.Fatal("text and structured payload differ")
++		}
++		if msg := validateAgainstSchema("$", outputSchemaFor("review_diff"), textPayload); msg != "" {
++			t.Fatal(msg)
++		}
++		statuses := textPayload["dimension_status"].(map[string]any)
++		if len(statuses) != 8 {
++			t.Fatalf("status count %d", len(statuses))
++		}
++		for _, name := range []string{"impact", "obligations", "architecture", "spec_coverage", "test_coverage", "certifications", "integrity", "conservation"} {
++			if statuses[name].(map[string]any)["count"] == nil {
++				t.Fatalf("missing original count: %s", name)
++			}
++		}
++		if textPayload["details_complete"] != false {
++			t.Fatal("missing incomplete-detail disclosure")
++		}
++		if textPayload["elided"] == nil {
++			t.Fatal("missing omission metadata")
++		}
++		fields := textPayload["elided"].(map[string]any)["fields"].(map[string]any)
++		if fields["test_impact.affected_tests"].(map[string]any)["total"] != float64(527) ||
++			fields["dimensions.findings"].(map[string]any)["total"] != float64(1600) {
++			t.Fatalf("incorrect original detail counts: %v", fields)
++		}
++		if textPayload["freshness"] == nil {
++			t.Fatal("freshness lost")
++		}
++	}
++}
++
++func TestReviewDiffBudgetHugeFirstItemAndReasons(t *testing.T) {
++	payload := reviewBudgetFixture(1, true)
++	payload["test_impact"].(map[string]any)["affected_tests"].([]any)[0] = strings.Repeat("巨大<&é", 100000)
++	in := reviewEnvelopeForTest(t, payload)
++	out, err := capReviewDiffEnvelope(in, defaultCharBudget)
++	if err != nil {
++		t.Fatal(err)
++	}
++	b, _ := json.Marshal(out)
++	if len(b) > defaultCharBudget || !utf8.Valid(b) {
++		t.Fatalf("oversize or invalid UTF-8: %d", len(b))
++	}
++	var got map[string]any
++	if err := json.Unmarshal(out["structuredContent"].(json.RawMessage), &got); err != nil {
++		t.Fatal(err)
++	}
++	if len(got["dimension_status"].(map[string]any)) != 8 {
++		t.Fatal("lost compact statuses")
++	}
++	if got["details_complete"] != false || got["elided"] == nil {
++		t.Fatal("missing disclosure")
++	}
++}
++
++func TestReviewDiffBudgetSmallUnchanged(t *testing.T) {
++	in := reviewEnvelopeForTest(t, map[string]any{"service": "svc", "summary": "small", "dimensions": []any{}, "dimension_status": map[string]any{}})
++	in["suppressed"] = map[string]any{"svc": map[string]any{"count": 1, "ids": []string{"S1"}, "reasons": []string{"test suppression"}}}
++	before, _ := json.Marshal(in)
++	out, err := capReviewDiffEnvelope(in, defaultCharBudget)
++	if err != nil {
++		t.Fatal(err)
++	}
++	after, _ := json.Marshal(out)
++	if !reflect.DeepEqual(before, after) {
++		t.Fatalf("small result changed: %s", after)
++	}
++}
++
++func TestReviewDiffBudgetLongChangedFilesDisclosed(t *testing.T) {
++	payload := reviewBudgetFixture(1, false)
++	paths := make([]any, 12)
++	for i := range paths {
++		paths[i] = strings.Repeat("長<&", 1500)
++	}
++	payload["changed_files"] = paths
++	out, err := capReviewDiffEnvelope(reviewEnvelopeForTest(t, payload), defaultCharBudget)
++	if err != nil {
++		t.Fatal(err)
++	}
++	b, _ := json.Marshal(out)
++	if len(b) > defaultCharBudget {
++		t.Fatalf("complete result %d bytes", len(b))
++	}
++	var got map[string]any
++	if err := json.Unmarshal(out["structuredContent"].(json.RawMessage), &got); err != nil {
++		t.Fatal(err)
++	}
++	if len(got["changed_files"].([]any)) != 4 {
++		t.Fatal("wrong retained path count")
++	}
++	fields := got["elided"].(map[string]any)["fields"].(map[string]any)
++	if fields["changed_files"].(map[string]any)["total"] != float64(12) ||
++		fields["changed_files.path_bytes"].(map[string]any)["returned"].(float64) > float64(4*64) {
++		t.Fatalf("wrong path omission: %v", fields)
++	}
++}
++
++func TestReviewDiffBudgetDispatchBothCopiesAndFreshness(t *testing.T) {
++	s := NewServer(nil)
++	s.mu.Lock()
++	var others []toolEntry
++	for _, te := range s.tools {
++		if te.desc.Name != "review_diff" {
++			others = append(others, te)
++		}
++	}
++	s.tools = others
++	s.mu.Unlock()
++	s.registerTool(toolDescriptor{Name: "review_diff", InputSchema: map[string]any{"type": "object"}, group: GroupInvestigation},
++		func(ctx context.Context, _ json.RawMessage) (any, *rpcError) {
++			noteRefreshDeferred(ctx, "<CONSUMER_SERVICE>", "stale-index last refresh error: "+strings.Repeat("失敗<&", 6000))
++			payload := reviewBudgetFixture(527, false)
++			delete(payload, "freshness")
++			return payload, nil
++		})
++	req, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": map[string]any{"name": "review_diff", "arguments": map[string]any{}}})
++	response, ok := s.HandleRequest(context.Background(), req)
++	if !ok {
++		t.Fatal("no response")
++	}
++	var wire map[string]any
++	if err := json.Unmarshal(response, &wire); err != nil {
++		t.Fatal(err)
++	}
++	if wire["error"] != nil {
++		t.Fatalf("review_diff error: %v", wire["error"])
++	}
++	result := wire["result"].(map[string]any)
++	resultBytes, _ := json.Marshal(result)
++	if len(resultBytes) > defaultCharBudget {
++		t.Fatalf("complete MCP result %d bytes", len(resultBytes))
++	}
++	text := result["content"].([]any)[0].(map[string]any)["text"].(string)
++	var payload map[string]any
++	if err := json.Unmarshal([]byte(text), &payload); err != nil {
++		t.Fatal(err)
++	}
++	if !reflect.DeepEqual(payload, result["structuredContent"]) {
++		t.Fatal("text and structured copies differ")
++	}
++	if len(payload["dimension_status"].(map[string]any)) != 8 {
++		t.Fatal("lost dimension statuses")
++	}
++	if payload["freshness"] == nil || result["refresh"] == nil || result["refresh_elided"] == nil {
++		t.Fatal("refresh disclosure lost")
++	}
++	if payload["freshness"].(map[string]any)["<CONSUMER_SERVICE>"] != result["refresh"].(map[string]any)["<CONSUMER_SERVICE>"] {
++		t.Fatal("inner/outer refresh disagree")
++	}
++	if payload["elided"].(map[string]any)["fields"].(map[string]any)["test_impact.affected_tests"] == nil {
++		t.Fatal("nested omission not reported")
++	}
++}
++
++func TestReviewDiffBudgetDispatchSuppressionDisclosure(t *testing.T) {
++	payload := reviewBudgetFixture(0, false)
++	for _, item := range payload["dimensions"].([]any) {
++		item.(map[string]any)["findings"] = []any{}
++	}
++	delete(payload, "receipt_sarif")
++	delete(payload, "receipt_check")
++	ids, reasons := make([]string, 90), make([]string, 90)
++	for i := range ids {
++		ids[i] = fmt.Sprintf("%03d-%s", i, strings.Repeat("識別子<&", 90))
++		reasons[i] = fmt.Sprintf("%03d-%s", i, strings.Repeat("suppressed 理由<&", 90))
++	}
++	s := NewServer(nil)
++	s.mu.Lock()
++	var others []toolEntry
++	for _, te := range s.tools {
++		if te.desc.Name != "review_diff" {
++			others = append(others, te)
++		}
++	}
++	s.tools = others
++	s.mu.Unlock()
++	s.registerTool(toolDescriptor{Name: "review_diff", InputSchema: map[string]any{"type": "object"}, group: GroupInvestigation},
++		func(ctx context.Context, _ json.RawMessage) (any, *rpcError) {
++			scope.Record(ctx, "<CONSUMER_SERVICE>", &scope.Disclosure{Count: 123, IDs: ids, Reasons: reasons})
++			return payload, nil
++		})
++	req, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": map[string]any{"name": "review_diff", "arguments": map[string]any{}}})
++	response, ok := s.HandleRequest(context.Background(), req)
++	if !ok {
++		t.Fatal("no response")
++	}
++	var wire map[string]any
++	if err := json.Unmarshal(response, &wire); err != nil {
++		t.Fatal(err)
++	}
++	if wire["error"] != nil {
++		t.Fatalf("review_diff error: %v", wire["error"])
++	}
++	result := wire["result"].(map[string]any)
++	b, _ := json.Marshal(result)
++	if len(b) > defaultCharBudget || !utf8.Valid(b) {
++		t.Fatalf("complete envelope %d bytes or invalid UTF-8", len(b))
++	}
++	brief := result["suppressed"].(map[string]any)["<CONSUMER_SERVICE>"].(map[string]any)
++	if brief["count"] != float64(123) || brief["details_complete"] != false {
++		t.Fatalf("suppression count or disclosure lost: %v", brief)
++	}
++	omitted := brief["elided"].(map[string]any)
++	if omitted["ids"].(map[string]any)["total"] != float64(90) ||
++		omitted["reasons"].(map[string]any)["total"] != float64(90) {
++		t.Fatalf("suppression omission counts: %v", omitted)
++	}
++	if n := len(brief["ids"].([]any)); n == 0 || n > 2 {
++		t.Fatalf("available suppression IDs lost or unbounded: %d", n)
++	}
++	text := result["content"].([]any)[0].(map[string]any)["text"].(string)
++	var textPayload map[string]any
++	if err := json.Unmarshal([]byte(text), &textPayload); err != nil {
++		t.Fatal(err)
++	}
++	if !reflect.DeepEqual(textPayload, result["structuredContent"]) ||
++		len(textPayload["dimension_status"].(map[string]any)) != 8 {
++		t.Fatal("payload copies or statuses differ")
++	}
++	if msg := validateAgainstSchema("$", outputSchemaFor("review_diff"), textPayload); msg != "" {
++		t.Fatal(msg)
++	}
++}
++
++func TestReviewDiffBudgetOuterFieldCombinations(t *testing.T) {
++	for _, tc := range []struct {
++		name                      string
++		refresh, budget, suppress bool
++	}{
++		{"refresh", true, false, false},
++		{"budget", false, true, false},
++		{"suppressed", false, false, true},
++		{"combined", true, true, true},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			payload := reviewBudgetFixture(0, tc.name == "combined")
++			for _, item := range payload["dimensions"].([]any) {
++				item.(map[string]any)["findings"] = []any{}
++			}
++			delete(payload, "receipt_sarif")
++			delete(payload, "receipt_check")
++			envelope := reviewEnvelopeForTest(t, payload)
++			if tc.refresh {
++				note := "stale-index last refresh error: " + strings.Repeat("失敗<&", 6000)
++				r := (&refreshNotes{m: map[string]string{"<CONSUMER_SERVICE>": note}}).render()
++				envelope["refresh"] = r
++				payload["freshness"] = map[string]any{"<CONSUMER_SERVICE>": note}
++				envelope = reviewEnvelopeForTest(t, payload)
++				envelope["refresh"] = r
++			}
++			if tc.budget {
++				envelope["budget"] = map[string]any{"partial": true, "elided": 527, "bytes_read": 4096,
++					"reason": "source read ceiling: " + strings.Repeat("予算<&", 6000)}
++			}
++			if tc.suppress {
++				ctx, collector := scope.WithCollector(context.Background())
++				ids, reasons := make([]string, 40), make([]string, 40)
++				for i := range ids {
++					ids[i] = fmt.Sprintf("S-%03d-%s", i, strings.Repeat("識別<&", 80))
++					reasons[i] = fmt.Sprintf("R-%03d-%s", i, strings.Repeat("理由<&", 80))
++				}
++				scope.Record(ctx, "<CONSUMER_SERVICE>", &scope.Disclosure{Count: 200, IDs: ids, Reasons: reasons})
++				envelope["suppressed"] = collector.Render()
++			}
++			out, err := capReviewDiffEnvelope(envelope, defaultCharBudget)
++			if err != nil {
++				t.Fatal(err)
++			}
++			b, _ := json.Marshal(out)
++			if len(b) > defaultCharBudget || !utf8.Valid(b) {
++				t.Fatalf("complete envelope %d bytes or invalid UTF-8", len(b))
++			}
++			var textPayload, structuredPayload map[string]any
++			if err := json.Unmarshal([]byte(out["content"].([]any)[0].(map[string]any)["text"].(string)), &textPayload); err != nil {
++				t.Fatal(err)
++			}
++			if err := json.Unmarshal(out["structuredContent"].(json.RawMessage), &structuredPayload); err != nil {
++				t.Fatal(err)
++			}
++			if !reflect.DeepEqual(textPayload, structuredPayload) || len(textPayload["dimension_status"].(map[string]any)) != 8 {
++				t.Fatal("text/structured mismatch or lost statuses")
++			}
++			if msg := validateAgainstSchema("$", outputSchemaFor("review_diff"), textPayload); msg != "" {
++				t.Fatal(msg)
++			}
++			if tc.refresh {
++				note := out["refresh"].(map[string]string)["<CONSUMER_SERVICE>"]
++				loss := out["refresh_elided"].(map[string]reviewOmission)["<CONSUMER_SERVICE>"]
++				if !strings.HasPrefix(note, "stale-index last refresh error:") ||
++					textPayload["freshness"].(map[string]any)["<CONSUMER_SERVICE>"] != note || loss.Total <= loss.Returned {
++					t.Fatal("refresh status or omission disclosure lost")
++				}
++			}
++			if tc.budget {
++				partial := out["budget"].(map[string]any)
++				loss := partial["reason_elided"].(reviewOmission)
++				if partial["partial"] != true || partial["elided"] != 527 || partial["bytes_read"] != 4096 || loss.Total <= loss.Returned {
++					t.Fatalf("budget status/count/omission lost: %v", partial)
++				}
++			}
++			if tc.suppress {
++				supp := out["suppressed"].(map[string]any)["<CONSUMER_SERVICE>"].(map[string]any)
++				if supp["count"] != 200 || supp["details_complete"] != false || supp["elided"] == nil {
++					t.Fatalf("suppression status/count/omission lost: %v", supp)
++				}
++			}
++		})
++	}
++}
+diff --git a/internal/mcp/review_status_test.go b/internal/mcp/review_status_test.go
+index f15ea873c107c95bdd9bf858782c58f21e294b11..2df1ef26aabac55764a3215a8b32a93c4b003bef 100644
+--- a/internal/mcp/review_status_test.go
++++ b/internal/mcp/review_status_test.go
+@@ -10,9 +10,9 @@ import (
+ 	"github.com/geoffmilleraz/fathom/internal/semantic"
+ )
+ 
+-// The default tools/call budget can remove seven detailed dimensions when
+-// one early dimension has many findings. Their final statuses must survive.
+-func TestReviewDiff_DimensionStatusSurvivesDispatchElision(t *testing.T) {
++// One large dimension's findings are compacted, while all eight final
++// dimension statuses and original counts remain visible.
++func TestReviewDiff_DimensionStatusSurvivesDispatchCompaction(t *testing.T) {
+ 	call := func(rules []semantic.Obligation) map[string]any {
+ 		fake := &reviewFakeBackend{
+ 			extendedFakeBackend: extendedFakeBackend{nodes: extFixtureNodes(), services: []string{"svc"}},
+@@ -53,12 +53,22 @@ func TestReviewDiff_DimensionStatusSurvivesDispatchElision(t *testing.T) {
+ 	}
+ 	large := call(rules)
+ 	kept, ok := large["dimensions"].([]any)
+-	if !ok || len(kept) >= len(detailed) {
+-		t.Fatalf("default dispatch did not elide detailed dimensions: %v", large["dimensions"])
++	if !ok || len(kept) != len(detailed) {
++		t.Fatalf("default dispatch lost a dimension: %v", large["dimensions"])
+ 	}
+ 	elided, ok := large["elided"].(map[string]any)
+-	if !ok || elided["of"] != float64(len(detailed)) || elided["count"] != float64(len(detailed)-len(kept)) {
+-		t.Fatalf("dispatch elision = %v; kept %d of %d", large["elided"], len(kept), len(detailed))
++	if !ok || large["details_complete"] != false {
++		t.Fatalf("dispatch compaction disclosure = %v", large["elided"])
++	}
++	fields := elided["fields"].(map[string]any)
++	if fields["dimensions.findings"].(map[string]any)["total"] != float64(len(rules)+1) {
++		t.Fatalf("original finding counts = %v", fields)
++	}
++	for _, raw := range kept {
++		dim := raw.(map[string]any)
++		if len(dim["findings"].([]any)) != 0 {
++			t.Fatalf("compacted dimension still has findings: %v", dim)
++		}
+ 	}
+ 	want["obligations"].(map[string]any)["count"] = float64(len(rules))
+ 	if !reflect.DeepEqual(large["dimension_status"], want) {

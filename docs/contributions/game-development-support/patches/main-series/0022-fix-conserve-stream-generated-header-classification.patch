@@ -1,0 +1,710 @@
+From fa7f038ea8df4e6cf8b5dc4670f71a9b647f3645 Mon Sep 17 00:00:00 2001
+From: Geoff Miller <contributor@example.invalid>
+Date: Wed, 21 Oct 2026 09:30:44 -0700
+Subject: [PATCH 22/27] fix(conserve): stream generated header classification
+
+Verified: go test -race ./internal/connector ./internal/analysis/integrity ./internal/conserve -count=1
+---
+ internal/analysis/integrity/generated.go      |  79 +++++++++---
+ .../integrity/generated_stream_test.go        |  91 ++++++++++++++
+ internal/connector/generated.go               | 119 ++++++++++++++++++
+ internal/connector/generated_reader_test.go   | 103 +++++++++++++++
+ internal/conserve/input.go                    |  87 ++++++++++---
+ internal/conserve/input_fifo_test.go          |  21 ++++
+ internal/conserve/input_test.go               |   6 +
+ internal/conserve/plane_integrity.go          |  11 +-
+ 8 files changed, 477 insertions(+), 40 deletions(-)
+ create mode 100644 internal/analysis/integrity/generated_stream_test.go
+ create mode 100644 internal/connector/generated_reader_test.go
+
+diff --git a/internal/analysis/integrity/generated.go b/internal/analysis/integrity/generated.go
+index 098d5dcb00e081625fff363dcdaca10a41f5d763..0da241db119e7113c807d751c6494469fe9fd385 100644
+--- a/internal/analysis/integrity/generated.go
++++ b/internal/analysis/integrity/generated.go
+@@ -35,6 +35,9 @@ type GeneratedInput struct {
+ 	ChangedFiles []string
+ 	BaseFile     func(path string) ([]byte, bool, error)
+ 	HeadFile     func(path string) ([]byte, bool, error)
++	// HeadGenerated classifies a worktree header without retaining the full
++	// file. Nil preserves the legacy HeadFile-based classifier.
++	HeadGenerated func(path string) (generated bool, exists bool, err error)
+ 	// SiblingFiles maps a directory (repo-relative, "." for the root) to
+ 	// every OTHER repo-relative file that exists in it at HEAD —
+ 	// conserve.Input carries no directory-listing primitive of its own,
+@@ -75,16 +78,45 @@ func GeneratedHandEdits(in GeneratedInput) (findings []Finding, missing []string
+ 	}
+ 	for _, p := range in.ChangedFiles {
+ 		if d, sources, ok := declarationFor(decls, p); ok {
+-			if f, edited := declaredHandEdit(in, d, p, sources); edited {
++			if f, edited, err := declaredHandEdit(in, d, p, sources); err != nil {
++				missingSet[fmt.Sprintf("generated declaration %s could not be checked: %v", p, err)] = true
++			} else if edited {
+ 				findings = append(findings, f)
+ 			}
+ 			continue
+ 		}
+-		head, ok, err := in.HeadFile(p)
+-		if err != nil || !ok || !connector.IsGenerated(p, head) {
++		var head []byte
++		var ok, generated bool
++		var err error
++		if in.HeadGenerated != nil {
++			generated, ok, err = in.HeadGenerated(p)
++		} else {
++			head, ok, err = in.HeadFile(p)
++			generated = ok && connector.IsGenerated(p, head)
++		}
++		if err != nil {
++			missingSet[fmt.Sprintf("generated header %s could not be read: %v", p, err)] = true
++			continue
++		}
++		if !ok || !generated {
++			continue
++		}
++		if in.HeadGenerated != nil {
++			head, ok, err = in.HeadFile(p)
++			if err != nil {
++				missingSet[fmt.Sprintf("generated file %s could not be read: %v", p, err)] = true
++				continue
++			}
++			if !ok {
++				missingSet[fmt.Sprintf("generated file %s disappeared after header classification", p)] = true
++				continue
++			}
++		}
++		base, baseOK, err := in.BaseFile(p)
++		if err != nil {
++			missingSet[fmt.Sprintf("generated base %s could not be read: %v", p, err)] = true
+ 			continue
+ 		}
+-		base, baseOK, _ := in.BaseFile(p)
+ 		if !baseOK {
+ 			continue // newly added generated file: nothing to compare against, never a hand edit
+ 		}
+@@ -104,15 +136,21 @@ func GeneratedHandEdits(in GeneratedInput) (findings []Finding, missing []string
+ 		}
+ 
+ 		anyChanged := false
++		inputUnknown := false
+ 		for _, ip := range inputs {
+-			b, _, _ := in.BaseFile(ip)
+-			h, _, _ := in.HeadFile(ip)
++			b, _, berr := in.BaseFile(ip)
++			h, _, herr := in.HeadFile(ip)
++			if berr != nil || herr != nil {
++				missingSet[fmt.Sprintf("generator input %s could not be read: base=%v head=%v", ip, berr, herr)] = true
++				inputUnknown = true
++				continue
++			}
+ 			if !bytes.Equal(b, h) {
+ 				anyChanged = true
+ 				break
+ 			}
+ 		}
+-		if anyChanged {
++		if anyChanged || inputUnknown {
+ 			continue // a real generator input changed too — regenerating explains the diff
+ 		}
+ 
+@@ -194,14 +232,20 @@ func declarationFor(decls []declaration, p string) (declaration, []string, bool)
+ 
+ // declaredHandEdit judges one declared output: changed in the range while
+ // none of its declared sources (a glob source matches the changed files) did.
+-func declaredHandEdit(in GeneratedInput, d declaration, p string, sources []string) (Finding, bool) {
++func declaredHandEdit(in GeneratedInput, d declaration, p string, sources []string) (Finding, bool, error) {
+ 	head, headOK, err := in.HeadFile(p)
+-	if err != nil || !headOK {
+-		return Finding{}, false // deleted at head: nothing hand-edited
++	if err != nil {
++		return Finding{}, false, err
++	}
++	if !headOK {
++		return Finding{}, false, nil // deleted at head: nothing hand-edited
++	}
++	base, baseOK, err := in.BaseFile(p)
++	if err != nil {
++		return Finding{}, false, err
+ 	}
+-	base, baseOK, _ := in.BaseFile(p)
+ 	if !baseOK || bytes.Equal(base, head) {
+-		return Finding{}, false // newly added, or unchanged
++		return Finding{}, false, nil // newly added, or unchanged
+ 	}
+ 	var candidates []string
+ 	for _, s := range sources {
+@@ -216,10 +260,13 @@ func declaredHandEdit(in GeneratedInput, d declaration, p string, sources []stri
+ 		}
+ 	}
+ 	for _, c := range candidates {
+-		b, _, _ := in.BaseFile(c)
+-		h, _, _ := in.HeadFile(c)
++		b, _, berr := in.BaseFile(c)
++		h, _, herr := in.HeadFile(c)
++		if berr != nil || herr != nil {
++			return Finding{}, false, fmt.Errorf("declared source %s: base=%v head=%v", c, berr, herr)
++		}
+ 		if !bytes.Equal(b, h) {
+-			return Finding{}, false // a declared source changed: regenerating explains the diff
++			return Finding{}, false, nil // a declared source changed: regenerating explains the diff
+ 		}
+ 	}
+ 	return Finding{
+@@ -228,7 +275,7 @@ func declaredHandEdit(in GeneratedInput, d declaration, p string, sources []stri
+ 		Detail:   fmt.Sprintf("declared generated output changed but its source(s) (%s) did not: declared by %s, regenerated by %q", strings.Join(sources, ", "), d.by, d.Regenerate),
+ 		BaseFile: p,
+ 		HeadFile: p,
+-	}, true
++	}, true, nil
+ }
+ 
+ // generatorInputCandidates returns every path in siblings (repo-relative,
+diff --git a/internal/analysis/integrity/generated_stream_test.go b/internal/analysis/integrity/generated_stream_test.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..3af004906fd64a24603b31ad4224c7bde2f44da5
+--- /dev/null
++++ b/internal/analysis/integrity/generated_stream_test.go
+@@ -0,0 +1,91 @@
++package integrity
++
++import (
++	"errors"
++	"fmt"
++	"strings"
++	"testing"
++)
++
++func TestGeneratedHandEditsStreamingSkipsUnmarkedBodies(t *testing.T) {
++	var paths []string
++	for i := 0; i < 1000; i++ {
++		paths = append(paths, fmt.Sprintf("assets/image-%04d.png", i))
++	}
++	reads := 0
++	findings, missing := GeneratedHandEdits(GeneratedInput{
++		ChangedFiles:  paths,
++		HeadGenerated: func(string) (bool, bool, error) { return false, true, nil },
++		HeadFile: func(string) ([]byte, bool, error) {
++			reads++
++			return nil, false, errors.New("unexpected full read")
++		},
++	})
++	if len(findings) != 0 || len(missing) != 0 || reads != 0 {
++		t.Fatalf("findings=%v missing=%v full reads=%d", findings, missing, reads)
++	}
++}
++
++func TestGeneratedHandEditsStreamingReadsMarkedBodyAndReportsErrors(t *testing.T) {
++	const output = "api/thing.pb.go"
++	base := map[string][]byte{output: []byte(goGenHeader + "package api\nvar X = 1\n"), "api/thing.proto": []byte("message Thing {}\n")}
++	head := map[string][]byte{output: []byte(goGenHeader + "package api\nvar X = 2\n"), "api/thing.proto": base["api/thing.proto"]}
++	fullReads := 0
++	in := GeneratedInput{
++		ChangedFiles:  []string{output},
++		HeadGenerated: func(string) (bool, bool, error) { return true, true, nil },
++		BaseFile:      fileReader(base),
++		HeadFile: func(p string) ([]byte, bool, error) {
++			fullReads++
++			return fileReader(head)(p)
++		},
++		SiblingFiles: map[string][]string{"api": {output, "api/thing.proto"}},
++	}
++	findings, missing := GeneratedHandEdits(in)
++	if len(findings) != 1 || findings[0].Key != output || len(missing) != 0 || fullReads != 2 {
++		t.Fatalf("findings=%v missing=%v full reads=%d", findings, missing, fullReads)
++	}
++	in.HeadGenerated = func(string) (bool, bool, error) { return false, false, errors.New("header read failed") }
++	findings, missing = GeneratedHandEdits(in)
++	if len(findings) != 0 || len(missing) != 1 || !strings.Contains(missing[0], "header read failed") || fullReads != 2 {
++		t.Fatalf("header failure: findings=%v missing=%v full reads=%d", findings, missing, fullReads)
++	}
++	in.HeadGenerated = func(string) (bool, bool, error) { return true, true, nil }
++	in.HeadFile = func(string) ([]byte, bool, error) { return nil, false, errors.New("body read failed") }
++	findings, missing = GeneratedHandEdits(in)
++	if len(findings) != 0 || len(missing) != 1 || !strings.Contains(missing[0], "body read failed") {
++		t.Fatalf("body failure: findings=%v missing=%v", findings, missing)
++	}
++	in.HeadFile = fileReader(head)
++	in.BaseFile = func(p string) ([]byte, bool, error) {
++		if p == "api/thing.proto" {
++			return nil, false, errors.New("source read failed")
++		}
++		return fileReader(base)(p)
++	}
++	findings, missing = GeneratedHandEdits(in)
++	if len(findings) != 0 || len(missing) != 1 || !strings.Contains(missing[0], "source read failed") {
++		t.Fatalf("source failure: findings=%v missing=%v", findings, missing)
++	}
++}
++
++func TestGeneratedHandEditsDeclaredOutputUsesFullBody(t *testing.T) {
++	root := t.TempDir()
++	writeDeclFile(t, root, ".fathom/pack.cue", "generated: [{output: \"ui/app.css\", source: [\"ui/input.css\"], regenerate: \"task ui:css\"}]\n")
++	base := map[string][]byte{"ui/app.css": []byte(".a{}\n"), "ui/input.css": []byte("a\n")}
++	head := map[string][]byte{"ui/app.css": []byte(".a{color:red}\n"), "ui/input.css": []byte("a\n")}
++	in := GeneratedInput{
++		Root:         root,
++		ChangedFiles: []string{"ui/app.css"},
++		BaseFile:     fileReader(base),
++		HeadFile:     fileReader(head),
++		HeadGenerated: func(string) (bool, bool, error) {
++			t.Fatal("declared output must bypass classifier")
++			return false, false, nil
++		},
++	}
++	findings, missing := GeneratedHandEdits(in)
++	if len(findings) != 1 || findings[0].Key != "ui/app.css" || len(missing) != 0 {
++		t.Fatalf("findings=%v missing=%v", findings, missing)
++	}
++}
+diff --git a/internal/connector/generated.go b/internal/connector/generated.go
+index 8e4766762456b0f4ecd7837755696cf710195b6a..2c934f4f833f86be8a5aa539950be9fa0a5ad469 100644
+--- a/internal/connector/generated.go
++++ b/internal/connector/generated.go
+@@ -1,7 +1,9 @@
+ package connector
+ 
+ import (
++	"bufio"
+ 	"bytes"
++	"io"
+ 	"regexp"
+ 	"strings"
+ )
+@@ -21,6 +23,8 @@ var goGeneratedRe = regexp.MustCompile(`^// Code generated .* DO NOT EDIT\.$`)
+ // IsGenerated supplies the "this is a header comment, not quoted prose"
+ // signal that the loose regex alone cannot.
+ var generatedMarkerRe = regexp.MustCompile(`(?i)code generated .*\bdo not edit\b`)
++var generatedStartRe = regexp.MustCompile(`(?i)code generated `)
++var generatedEndRe = regexp.MustCompile(`(?i)\bdo not edit\b`)
+ 
+ // goGeneratedScanLimit bounds the Go package-clause scan: the marker (and
+ // the package clause itself) live in the file header; 4KB comfortably
+@@ -124,6 +128,121 @@ func IsGenerated(path string, content []byte) bool {
+ 	return false
+ }
+ 
++// IsGeneratedReader makes the same decision as IsGenerated while retaining at
++// most a small read buffer and marker overlap. Non-Go's first three lines may
++// be arbitrarily long; they are streamed rather than truncated.
++func IsGeneratedReader(path string, r io.Reader) (bool, error) {
++	if strings.HasSuffix(path, ".go") {
++		head, err := io.ReadAll(io.LimitReader(r, goGeneratedScanLimit))
++		if err != nil {
++			return false, err
++		}
++		return isGeneratedGo(head), nil
++	}
++	lang := LanguageForPath(path)
++	tokens, known := langCommentTokens[lang]
++	if !known {
++		tokens = unclassifiedCommentTokens
++	}
++	if len(tokens) == 0 {
++		return false, nil
++	}
++	reader := bufio.NewReaderSize(r, 64*1024)
++	for line := 0; line < generatedScanLines; line++ {
++		state := generatedLine{tokens: tokens, leading: true}
++		for {
++			fragment, err := reader.ReadSlice('\n')
++			if err != nil && err != io.EOF && err != bufio.ErrBufferFull {
++				return false, err
++			}
++			last := err != bufio.ErrBufferFull
++			if len(fragment) > 0 && fragment[len(fragment)-1] == '\n' {
++				fragment = fragment[:len(fragment)-1]
++			}
++			if state.scan(fragment, last) {
++				return true, nil
++			}
++			if err == io.EOF {
++				return false, nil
++			}
++			if last {
++				break
++			}
++		}
++	}
++	return false, nil
++}
++
++type generatedLine struct {
++	tokens    []string
++	leading   bool
++	decided   bool
++	allowed   bool
++	prefix    []byte // comment token only, at most five bytes
++	seenStart bool
++	startEnd  int
++	processed int
++	tail      []byte // enough overlap for either fixed marker fragment
++}
++
++func (s *generatedLine) scan(fragment []byte, final bool) bool {
++	if !s.decided {
++		for i, b := range fragment {
++			if s.leading && (b == ' ' || b == '\t') {
++				continue
++			}
++			s.leading = false
++			s.prefix = append(s.prefix, b)
++			if hasAnyPrefix(s.prefix, s.tokens) {
++				s.allowed, s.decided = true, true
++				return s.marker(append(s.prefix, fragment[i+1:]...), final)
++			}
++			possible := false
++			for _, token := range s.tokens {
++				if bytes.HasPrefix([]byte(token), s.prefix) {
++					possible = true
++					break
++				}
++			}
++			if !possible {
++				s.decided = true
++				return false
++			}
++		}
++		return false
++	}
++	if !s.allowed {
++		return false
++	}
++	return s.marker(fragment, final)
++}
++
++func (s *generatedLine) marker(fragment []byte, final bool) bool {
++	windowStart := s.processed - len(s.tail)
++	window := make([]byte, 0, len(s.tail)+len(fragment))
++	window = append(window, s.tail...)
++	window = append(window, fragment...)
++	if !s.seenStart {
++		if m := generatedStartRe.FindIndex(window); m != nil {
++			s.seenStart = true
++			s.startEnd = windowStart + m[1]
++		}
++	}
++	if s.seenStart {
++		for _, m := range generatedEndRe.FindAllIndex(window, -1) {
++			if windowStart+m[0] >= s.startEnd && (m[0] > 0 || windowStart == 0) && (m[1] < len(window) || final) {
++				return true
++			}
++		}
++	}
++	s.processed += len(fragment)
++	if len(window) > 64 {
++		window = window[len(window)-64:]
++	}
++	s.tail = append(s.tail[:0], window...)
++	return false
++}
++
+ // isGeneratedGo scans Go content line-by-line for the official convention
+ // line, stopping at the package clause (the marker must precede it) or the
+ // scan limit.
+diff --git a/internal/connector/generated_reader_test.go b/internal/connector/generated_reader_test.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..07eb5f9f83294eee828e84d0e7d7af676d57fdbb
+--- /dev/null
++++ b/internal/connector/generated_reader_test.go
+@@ -0,0 +1,103 @@
++package connector_test
++
++import (
++	"bytes"
++	"errors"
++	"fmt"
++	"io"
++	"strings"
++	"testing"
++
++	"github.com/geoffmilleraz/fathom/internal/connector"
++)
++
++type countingReader struct {
++	r     *bytes.Reader
++	bytes int
++}
++
++func (r *countingReader) Read(p []byte) (int, error) {
++	n, err := r.r.Read(p)
++	r.bytes += n
++	return n, err
++}
++
++type shortReader struct{ data []byte }
++
++func (r *shortReader) Read(p []byte) (int, error) {
++	if len(r.data) == 0 {
++		return 0, io.EOF
++	}
++	n := copy(p, r.data[:min(3, len(r.data))])
++	r.data = r.data[n:]
++	return n, nil
++}
++
++type failingReader struct{}
++
++func (failingReader) Read([]byte) (int, error) { return 0, errors.New("read failed") }
++
++type partialFailingReader struct{ done bool }
++
++func (r *partialFailingReader) Read(p []byte) (int, error) {
++	if r.done {
++		return 0, errors.New("read failed")
++	}
++	r.done = true
++	return copy(p, "# Code generated by fixture. DO NOT EDIT."), errors.New("read failed")
++}
++
++func TestIsGeneratedReaderMatchesFullClassifier(t *testing.T) {
++	long := "# " + strings.Repeat("x", 100000) + " Code generated by fixture. DO NOT EDIT.\n"
++	cases := []struct{ path, body string }{
++		{"asset.png", strings.Repeat("x", 200000)},
++		{"config.yaml", long + "normal\n"},
++		{"config.yaml", "# first\n# second\n" + long},
++		{"config.yaml", "# first\n# second\n# third\n" + long},
++		{"config.yaml", "# Code generated by fixture. DO NOT EDITOR\n"},
++		{"config.yaml", "# Code generated by fixture. dO nOt EdIt.\n"},
++		{"config.yaml", "# Code generated by fixture. DO NOT EDIT" + strings.Repeat("x", 70000) + "\n"},
++		{"config.yaml", "# Code generated by fixture. DO NOT EDIT" + strings.Repeat(" ", 70000) + "\n"},
++		{"config.yaml", "# Code generated by fixture. DO NOT EDIT" + strings.Repeat(" ", 70000) + "E\n"},
++		{"config.yaml", "# " + strings.Repeat("x", 65530) + " Code generated by fixture. DO NOT EDIT.\n"},
++		{"config.yaml", "# " + strings.Repeat("λ", 32764) + " Code generated by fixture. dO nOt EdIt.\n"},
++		{"config.yaml", "# Code generated by fixture. " + strings.Repeat("x", 65512) + " DO NOT EDIT.\n"},
++		{"config.yaml", "value: Code generated by fixture. DO NOT EDIT.\n"},
++		{"docs/readme.md", "<!-- Code generated by fixture. DO NOT EDIT. -->\n"},
++		{"main.go", strings.Repeat("// license\n", 100) + "// Code generated by tool. DO NOT EDIT.\npackage main\n"},
++		{"main.go", "package main\n// Code generated by tool. DO NOT EDIT.\n"},
++		{"main.go", strings.Repeat("x", 4096) + "\n// Code generated by tool. DO NOT EDIT.\n"},
++	}
++	for i, c := range cases {
++		t.Run(fmt.Sprintf("%s/%d", c.path, i), func(t *testing.T) {
++			got, err := connector.IsGeneratedReader(c.path, &shortReader{data: []byte(c.body)})
++			if err != nil || got != connector.IsGenerated(c.path, []byte(c.body)) {
++				t.Fatalf("streamed=%v err=%v, full=%v", got, err, connector.IsGenerated(c.path, []byte(c.body)))
++			}
++		})
++	}
++}
++
++func TestIsGeneratedReaderReportsReadError(t *testing.T) {
++	for _, path := range []string{"main.go", "config.yaml"} {
++		if got, err := connector.IsGeneratedReader(path, failingReader{}); got || err == nil {
++			t.Fatalf("%s: got %v, err %v", path, got, err)
++		}
++	}
++	if got, err := connector.IsGeneratedReader("config.yaml", &partialFailingReader{}); got || err == nil {
++		t.Fatalf("partial failure: got %v, err %v", got, err)
++	}
++}
++
++func TestIsGeneratedReaderBoundsHeaderRead(t *testing.T) {
++	goBody := []byte("package main\n" + strings.Repeat("x", 4<<20))
++	goReader := &countingReader{r: bytes.NewReader(goBody)}
++	if generated, err := connector.IsGeneratedReader("main.go", goReader); err != nil || generated || goReader.bytes != 4096 {
++		t.Fatalf("Go generated=%v err=%v bytes=%d", generated, err, goReader.bytes)
++	}
++	yamlBody := []byte("# first\n# second\n# third\n" + strings.Repeat("x", 4<<20))
++	yamlReader := &countingReader{r: bytes.NewReader(yamlBody)}
++	if generated, err := connector.IsGeneratedReader("config.yaml", yamlReader); err != nil || generated || yamlReader.bytes > 64*1024 {
++		t.Fatalf("YAML generated=%v err=%v bytes=%d", generated, err, yamlReader.bytes)
++	}
++}
+diff --git a/internal/conserve/input.go b/internal/conserve/input.go
+index 1f8c6bc2b7b1d96ed0c24cd93295b9b8c3b7b31d..34061bce13e65864434130d94bfc23bd825c2b8d 100644
+--- a/internal/conserve/input.go
++++ b/internal/conserve/input.go
+@@ -24,6 +24,7 @@ import (
+ 	"time"
+ 
+ 	"github.com/geoffmilleraz/fathom/internal/certify"
++	"github.com/geoffmilleraz/fathom/internal/connector"
+ 	"github.com/geoffmilleraz/fathom/internal/gitro"
+ 	"github.com/geoffmilleraz/fathom/internal/store"
+ 	"github.com/geoffmilleraz/fathom/internal/verify"
+@@ -60,6 +61,9 @@ type Input struct {
+ 	// HeadFile reads path's content AS OF Head — the worktree file, for
+ 	// NewInput's callers. Same ok/err contract as BaseFile.
+ 	HeadFile func(path string) (content []byte, ok bool, err error)
++	// HeadGenerated optionally classifies a worktree file through a bounded
++	// header read. A nil callback leaves legacy HeadFile behavior intact.
++	HeadGenerated func(path string) (generated bool, exists bool, err error)
+ 	// Store is the live index, for a plane that needs it (certificates,
+ 	// governance). nil is valid and means exactly that: a plane needing it
+ 	// reports "no store" in its Missing and goes Unproven (I44) — Input
+@@ -351,6 +355,7 @@ func NewInput(ctx context.Context, root, baseRef string, st store.Store, service
+ 		ChangedFiles:        changed,
+ 		BaseFile:            func(path string) ([]byte, bool, error) { return gitShowFile(ctx, root, base, path) },
+ 		HeadFile:            func(path string) ([]byte, bool, error) { return readWorktreeFile(ctx, root, path) },
++		HeadGenerated:       func(path string) (bool, bool, error) { return readWorktreeGenerated(ctx, root, path) },
+ 		Store:               st,
+ 		Declarations:        NewDeclarations(basePlans, headPlans),
+ 		Retired:             NewRetirement(basePlans, headPlans),
+@@ -674,6 +679,66 @@ func worktreeFile(root, path string) ([]byte, bool, error) {
+ // readWorktreeFile checks cancellation between bounded chunks. It still reads
+ // the entire regular file when requested; no size limit is imposed.
+ func readWorktreeFile(ctx context.Context, root, path string) ([]byte, bool, error) {
++	f, ok, err := openRegularWorktreeFile(ctx, root, path)
++	if err != nil || !ok {
++		return nil, ok, err
++	}
++	defer f.Close()
++	var out []byte
++	buf := make([]byte, 64*1024)
++	for {
++		if err := ctx.Err(); err != nil {
++			return nil, false, err
++		}
++		n, err := f.Read(buf)
++		if canceled := ctx.Err(); canceled != nil {
++			return nil, false, canceled
++		}
++		out = append(out, buf[:n]...)
++		if err == io.EOF {
++			return out, true, nil
++		}
++		if err != nil {
++			return nil, false, err
++		}
++	}
++}
++
++// readWorktreeGenerated reads only the classifier's header window. It shares
++// the full reader's path, symlink, and regular-file checks.
++func readWorktreeGenerated(ctx context.Context, root, path string) (bool, bool, error) {
++	f, ok, err := openRegularWorktreeFile(ctx, root, path)
++	if err != nil || !ok {
++		return false, ok, err
++	}
++	defer f.Close()
++	generated, err := connector.IsGeneratedReader(path, &contextFileReader{ctx: ctx, file: f})
++	if canceled := ctx.Err(); canceled != nil {
++		return false, false, canceled
++	}
++	if err != nil {
++		return false, false, err
++	}
++	return generated, true, nil
++}
++
++type contextFileReader struct {
++	ctx  context.Context
++	file *os.File
++}
++
++func (r *contextFileReader) Read(p []byte) (int, error) {
++	if err := r.ctx.Err(); err != nil {
++		return 0, err
++	}
++	n, err := r.file.Read(p)
++	if canceled := r.ctx.Err(); canceled != nil {
++		return 0, canceled
++	}
++	return n, err
++}
++
++func openRegularWorktreeFile(ctx context.Context, root, path string) (*os.File, bool, error) {
+ 	r := filepath.Clean(root)
+ 	full := filepath.Clean(filepath.Join(r, filepath.FromSlash(path)))
+ 	if full != r && !strings.HasPrefix(full, r+string(filepath.Separator)) {
+@@ -705,30 +770,14 @@ func readWorktreeFile(ctx context.Context, root, path string) ([]byte, bool, err
+ 		}
+ 		return nil, false, err
+ 	}
+-	defer f.Close()
+ 	openedInfo, err := f.Stat()
+ 	if err != nil {
++		f.Close()
+ 		return nil, false, err
+ 	}
+ 	if !openedInfo.Mode().IsRegular() {
++		f.Close()
+ 		return nil, false, fmt.Errorf("non-regular file %q: %s", path, openedInfo.Mode())
+ 	}
+-	var out []byte
+-	buf := make([]byte, 64*1024)
+-	for {
+-		if err := ctx.Err(); err != nil {
+-			return nil, false, err
+-		}
+-		n, err := f.Read(buf)
+-		if canceled := ctx.Err(); canceled != nil {
+-			return nil, false, canceled
+-		}
+-		out = append(out, buf[:n]...)
+-		if err == io.EOF {
+-			return out, true, nil
+-		}
+-		if err != nil {
+-			return nil, false, err
+-		}
+-	}
++	return f, true, nil
+ }
+diff --git a/internal/conserve/input_fifo_test.go b/internal/conserve/input_fifo_test.go
+index cf4583dd049e284be9fff0b6a5a9395cc994b220..1d90f4db0c4835fed70604a953fa771aa57fb521 100644
+--- a/internal/conserve/input_fifo_test.go
++++ b/internal/conserve/input_fifo_test.go
+@@ -39,3 +39,24 @@ func TestReadWorktreeFileRefusesFIFOWithoutOpening(t *testing.T) {
+ 		t.Fatalf("regular symlink read = %q, ok=%v, err=%v", b, ok, err)
+ 	}
+ }
++
++func TestReadWorktreeGeneratedRegularGuardAndCancellation(t *testing.T) {
++	root := t.TempDir()
++	if err := syscall.Mkfifo(filepath.Join(root, "pipe"), 0o600); err != nil {
++		t.Fatal(err)
++	}
++	if generated, ok, err := readWorktreeGenerated(context.Background(), root, "pipe"); err == nil || ok || generated || !strings.Contains(err.Error(), "non-regular") {
++		t.Fatalf("FIFO classification = %v, %v, %v", generated, ok, err)
++	}
++	if err := os.WriteFile(filepath.Join(root, "asset.png"), []byte(strings.Repeat("x", 4<<20)), 0o600); err != nil {
++		t.Fatal(err)
++	}
++	if generated, ok, err := readWorktreeGenerated(context.Background(), root, "asset.png"); err != nil || !ok || generated {
++		t.Fatalf("asset classification = %v, %v, %v", generated, ok, err)
++	}
++	ctx, cancel := context.WithCancel(context.Background())
++	cancel()
++	if generated, ok, err := readWorktreeGenerated(ctx, root, "asset.png"); err == nil || ok || generated {
++		t.Fatalf("canceled classification = %v, %v, %v", generated, ok, err)
++	}
++}
+diff --git a/internal/conserve/input_test.go b/internal/conserve/input_test.go
+index 16704f7a3dbd2db0abd2e7498eb08c284b7e00ff..04674893ed868cfe76a0b7eaa8ec82f53a20fc73 100644
+--- a/internal/conserve/input_test.go
++++ b/internal/conserve/input_test.go
+@@ -127,6 +127,12 @@ func TestNewInput_ResolvesBaseChangedFilesAndDeclarations(t *testing.T) {
+ 	if err != nil || !ok || string(headContent) == "" {
+ 		t.Fatalf("HeadFile(b.go) = %q ok:%v err:%v", headContent, ok, err)
+ 	}
++	if in.HeadGenerated == nil {
++		t.Fatal("NewInput did not install the streaming generated classifier")
++	}
++	if generated, exists, err := in.HeadGenerated("b.go"); err != nil || !exists || generated {
++		t.Fatalf("HeadGenerated(b.go) = generated:%v exists:%v err:%v", generated, exists, err)
++	}
+ 
+ 	// Declarations: retires "api:foo.Old" was present at base -> prior;
+ 	// surface_change "json:foo.New.tag" only appears at head -> self.
+diff --git a/internal/conserve/plane_integrity.go b/internal/conserve/plane_integrity.go
+index 1a366ff0e3c3eb76f7ee5b591068ab44c6fa360d..b4b38b07786b27ccef609cdae752b451eaa0fdbf 100644
+--- a/internal/conserve/plane_integrity.go
++++ b/internal/conserve/plane_integrity.go
+@@ -96,11 +96,12 @@ func (integrityPlane) Check(ctx context.Context, in Input) (findings []Finding,
+ 	}
+ 
+ 	genFindings, genMissing := integrity.GeneratedHandEdits(integrity.GeneratedInput{
+-		Root:         in.Root,
+-		ChangedFiles: in.ChangedFiles,
+-		BaseFile:     in.BaseFile,
+-		HeadFile:     in.HeadFile,
+-		SiblingFiles: siblingFilesFromStore(ctx, in),
++		Root:          in.Root,
++		ChangedFiles:  in.ChangedFiles,
++		BaseFile:      in.BaseFile,
++		HeadFile:      in.HeadFile,
++		HeadGenerated: in.HeadGenerated,
++		SiblingFiles:  siblingFilesFromStore(ctx, in),
+ 	})
+ 	for _, f := range genFindings {
+ 		findings = append(findings, toConserveFinding(f))

@@ -1,0 +1,474 @@
+From f7dc03a2ec23da96c08256b07d3b3e734168832f Mon Sep 17 00:00:00 2001
+From: Geoff Miller <contributor@example.invalid>
+Date: Tue, 20 Oct 2026 22:51:38 -0700
+Subject: [PATCH 09/27] perf(mcp): load only context navigation dependencies
+
+Build the combined graph and typed details used by symbol_context without eagerly loading syntax and resolved variants. Scope cold deadlines to those dependencies and name unavailable evidence honestly.
+
+Verified: focused regression RED with three graph builds, corrected focused MCP/memo suite GREEN; package race suite passed before the final wording-only correction. Full canonical gate follows on this clean commit.
+---
+ .../unreleased/symbol-context-graph-demand.md |   3 +
+ internal/mcp/cold_graph.go                    |  45 +++----
+ internal/mcp/cold_graph_test.go               |   4 +-
+ internal/mcp/cold_resolve_test.go             |   4 +-
+ internal/mcp/symbol_context_graphs.go         |  22 +++
+ internal/mcp/symbol_context_graphs_test.go    | 125 ++++++++++++++++++
+ internal/memo/graphstore.go                   |  33 ++++-
+ internal/memo/nav_cost_scoped_test.go         |  56 ++++++++
+ 8 files changed, 258 insertions(+), 34 deletions(-)
+ create mode 100644 docs/changelog/unreleased/symbol-context-graph-demand.md
+ create mode 100644 internal/mcp/symbol_context_graphs.go
+ create mode 100644 internal/mcp/symbol_context_graphs_test.go
+ create mode 100644 internal/memo/nav_cost_scoped_test.go
+
+diff --git a/docs/changelog/unreleased/symbol-context-graph-demand.md b/docs/changelog/unreleased/symbol-context-graph-demand.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..3f9ceee4facf6128ddb91e06c7e1e50869c80905
+--- /dev/null
++++ b/docs/changelog/unreleased/symbol-context-graph-demand.md
+@@ -0,0 +1,3 @@
++### Changed
++
++- `symbol_context` loads and caches only the combined call graph it uses. Cold calls still return a named partial when the graph cannot finish within the deadline, and a failed typed-edge read still falls back to syntax for that call and retries later.
+diff --git a/internal/mcp/cold_graph.go b/internal/mcp/cold_graph.go
+index bfdf1139481b541eff51685b310bd0729a14839b..0847ed0b59bd26f9d7d4b60694d4b40977607d62 100644
+--- a/internal/mcp/cold_graph.go
++++ b/internal/mcp/cold_graph.go
+@@ -43,26 +43,26 @@ type coldGraph struct {
+ 	kept bool
+ 	// unmeasured is true when no build of the service has completed since
+ 	// the process started, so its cost is unknown and taken as longer than
+-	// the deadline (memo.NavBuildMeasured).
++	// the deadline (memo.NavBuildMeasuredFor).
+ 	unmeasured bool
+ }
+ 
+-// navGraphsWithin is loadNavGraphsErr at sc bounded by ctx's deadline
++// navGraphsWithin loads symbol_context's Both graph at sc bounded by ctx's deadline
+ // (O1446). With no deadline, an uncacheable scope (I21) or everything
+-// resident it is loadNavGraphsAt. When the measured build
+-// (memo.NavBuildCost) fits in the deadline less a reserve for the answer
++// resident it loads directly. When the measured build
++// (memo.NavBuildCostFor) fits in the deadline less a reserve for the answer
+ // (verify_plan's stage reserve) it waits up to that; when it does not, or
+ // no build of the service is measured since the process started
+-// (memo.NavBuildMeasured: ExpectedCost says nothing about a large service,
++// (memo.NavBuildMeasuredFor: ExpectedCost says nothing about a large service,
+ // whose cold build ran past the deadline), it warms the build stage by
+ // stage (warmNavStages) and stops at the first stage still building. A
+ // cold result means the graphs are not ready and the caller answers its
+ // partial; an error is the load's own.
+ func navGraphsWithin(ctx context.Context, backend QueryInterface, service string, sc memo.Scope) (*navGraphs, *coldGraph, error) {
+ 	dl, hasDeadline := ctx.Deadline()
+-	cost, resident := memo.NavBuildCost(sc)
++	cost, resident := memo.NavBuildCostFor(sc, memo.GraphBoth)
+ 	if !hasDeadline || resident || sc.Watermark == "" {
+-		ng, err := loadNavGraphsAt(ctx, backend, service, sc)
++		ng, err := loadSymbolContextGraphsAt(ctx, backend, service, sc)
+ 		return ng, nil, err
+ 	}
+ 	remaining := time.Until(dl)
+@@ -71,10 +71,10 @@ func navGraphsWithin(ctx context.Context, backend QueryInterface, service string
+ 	if wait <= 0 {
+ 		return nil, cold, nil
+ 	}
+-	if cost <= wait && memo.NavBuildMeasured(sc) {
++	if cost <= wait && memo.NavBuildMeasuredFor(sc, memo.GraphBoth) {
+ 		wctx, cancel := context.WithTimeout(ctx, wait)
+ 		defer cancel()
+-		ng, err := loadNavGraphsAt(wctx, backend, service, sc)
++		ng, err := loadSymbolContextGraphsAt(wctx, backend, service, sc)
+ 		switch {
+ 		case err == nil:
+ 			return ng, nil, nil
+@@ -97,11 +97,11 @@ func navGraphsWithin(ctx context.Context, backend QueryInterface, service string
+ 		cold.kept = kept
+ 		return nil, cold, nil
+ 	}
+-	ng, err := loadNavGraphsAt(ctx, backend, service, sc)
++	ng, err := loadSymbolContextGraphsAt(ctx, backend, service, sc)
+ 	return ng, nil, err
+ }
+ 
+-// warmNavStages builds sc's snapshot, typed edges and three graphs one
++// warmNavStages builds sc's snapshot, typed edges and Both graph one
+ // stage at a time until end, each stage held only memo.NavKeepAfter (plus
+ // a margin): long enough that a flight it starts or joins is kept for the
+ // next caller (Group.leave), never cancelled with this one, and short
+@@ -110,18 +110,17 @@ func navGraphsWithin(ctx context.Context, backend QueryInterface, service string
+ // fast snapshot does not spend the graph's keep window. done is true when
+ // every stage is built; kept when the stage it stopped at keeps building;
+ // err is a failure that is not the hold ending (a typed-edge read failure
+-// is left to loadNavGraphsAt, which degrades it).
++// is left to loadSymbolContextGraphsAt, which degrades it).
+ func warmNavStages(ctx context.Context, backend QueryInterface, service string, sc memo.Scope, end time.Time) (done, kept bool, err error) {
+ 	hold := memo.NavKeepAfter() + coldKeepMargin
+ 	typed := typedLoader(backend, service)
+ 	var snap *memo.Snapshot
+ 	stages := []func(context.Context) error{
+ 		func(c context.Context) (e error) { snap, e = serviceSnapshotAt(c, backend, service, sc); return e },
+-		func(c context.Context) error { _, e := memo.GraphFor(c, snap, memo.GraphSyntax, nil); return e },
+ 		func(c context.Context) error {
+ 			_, e := memo.TypedFor(c, sc, typed)
+ 			if e != nil && c.Err() == nil && !errors.Is(e, memo.ErrWouldNotFinish) {
+-				return nil // a read failure, degraded by loadNavGraphsAt (I38)
++				return nil // a read failure, degraded by loadSymbolContextGraphsAt (I38)
+ 			}
+ 			return e
+ 		},
+@@ -129,10 +128,6 @@ func warmNavStages(ctx context.Context, backend QueryInterface, service string,
+ 			_, _, _, e := memo.GraphForTyped(c, snap, memo.GraphBoth, typed)
+ 			return e
+ 		},
+-		func(c context.Context) error {
+-			_, _, _, e := memo.GraphForTyped(c, snap, memo.GraphResolved, typed)
+-			return e
+-		},
+ 	}
+ 	for _, stage := range stages {
+ 		if time.Until(end) < hold {
+@@ -160,16 +155,16 @@ func warmNavStages(ctx context.Context, backend QueryInterface, service string,
+ 
+ // coldGraphNote is a cold symbol_context answer's partial field.
+ func coldGraphNote(service string, c *coldGraph) string {
+-	why := "building it takes longer than this call's deadline leaves"
++	why := "loading the missing evidence takes longer than this call's deadline leaves"
+ 	if c.unmeasured {
+-		why = "no build of it has finished since this server started, so its build time is unknown and taken as longer than this call's deadline leaves"
++		why = "no complete navigation load has finished since this server started, so its build time is unknown and taken as longer than this call's deadline leaves"
+ 	}
+-	msg := "call graph not built (cold): the call graph for service " + service +
+-		" is not built and " + why + "; callers, callees and related tests are not computed, and the definition comes from the symbol index"
++	msg := "navigation evidence unavailable (cold): the symbol snapshot, combined call graph, or typed-edge details for service " + service +
++		" are unavailable within this call's deadline because " + why + "; callers, callees and related tests are not computed, and the definition comes from the symbol index"
+ 	if c.kept {
+-		msg += "; the build keeps running, so a later call answers them"
++		msg += "; the load keeps running, so a later call answers them"
+ 	} else {
+-		msg += "; no build was started: a call with a longer deadline, or none, builds it"
++		msg += "; no load was started: a call with a longer deadline, or none, loads it"
+ 	}
+ 	if lvl := tenancyLevelNote(); lvl != "" {
+ 		msg += "; " + lvl
+@@ -258,7 +253,7 @@ func symbolContextResolveFirst(ctx context.Context, backend QueryInterface, serv
+ 	if sc.Watermark == "" {
+ 		return nil
+ 	}
+-	if _, resident := memo.NavBuildCost(sc); resident {
++	if _, resident := memo.NavBuildCostFor(sc, memo.GraphBoth); resident {
+ 		return nil
+ 	}
+ 	snap, resident := memo.PeekSnapshot(sc)
+diff --git a/internal/mcp/cold_graph_test.go b/internal/mcp/cold_graph_test.go
+index 6db9ac01733762bc5c52613ade36f3d18737c19a..22099a3e22ef013dcb8f82b9e7b7c34fb9444baa 100644
+--- a/internal/mcp/cold_graph_test.go
++++ b/internal/mcp/cold_graph_test.go
+@@ -174,8 +174,8 @@ func TestSymbolContextColdGraphAnswersPartial(t *testing.T) {
+ 	if ctx.Err() != nil {
+ 		t.Fatalf("answered only after the deadline (%v): %+v", time.Since(start), got)
+ 	}
+-	if p, _ := got["partial"].(string); !strings.HasPrefix(p, "call graph not built (cold)") {
+-		t.Errorf("partial = %q, want it to name the cold call graph", p)
++	if p, _ := got["partial"].(string); !strings.HasPrefix(p, "navigation evidence unavailable (cold)") || !strings.Contains(p, "combined call graph, or typed-edge details") {
++		t.Errorf("partial = %q, want missing navigation evidence named", p)
+ 	}
+ 	def, _ := got["def"].(map[string]any)
+ 	if def["name"] != "Run" || def["file_path"] != "work/run.go" || def["signature"] != "func Run()" {
+diff --git a/internal/mcp/cold_resolve_test.go b/internal/mcp/cold_resolve_test.go
+index 93b18e0ece1608637dc69dd0c62bfbb7e075a86b..98bfae1e1f88bf5a89ff01f2a599c09e3793dee0 100644
+--- a/internal/mcp/cold_resolve_test.go
++++ b/internal/mcp/cold_resolve_test.go
+@@ -142,8 +142,8 @@ func TestSymbolContextUnknownBuildCostAnswersPartialAtOnce(t *testing.T) {
+ 		t.Errorf("an unmeasured build was waited for %v instead of answering the partial at once", took)
+ 	}
+ 	p, _ := got["partial"].(string)
+-	if !strings.HasPrefix(p, "call graph not built (cold)") || !strings.Contains(p, "build time is unknown") || !strings.Contains(p, "the build keeps running") {
+-		t.Errorf("partial = %q, want the cold call graph, its build time unknown and its build kept", p)
++	if !strings.HasPrefix(p, "navigation evidence unavailable (cold)") || !strings.Contains(p, "build time is unknown") || !strings.Contains(p, "the load keeps running") {
++		t.Errorf("partial = %q, want missing navigation evidence, unknown build time and a kept load", p)
+ 	}
+ 	if def, _ := got["def"].(map[string]any); def["name"] != "Run" {
+ 		t.Errorf("def = %+v, want Run from the store lookup", got["def"])
+diff --git a/internal/mcp/symbol_context_graphs.go b/internal/mcp/symbol_context_graphs.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..b93ccfc5368e97ca7cd4149b6e4f86588e03efad
+--- /dev/null
++++ b/internal/mcp/symbol_context_graphs.go
+@@ -0,0 +1,22 @@
++package mcp
++
++import (
++	"context"
++
++	"github.com/geoffmilleraz/fathom/internal/memo"
++)
++
++// loadSymbolContextGraphsAt loads exactly the graph symbol_context reads.
++// GraphForTyped preserves its uncached syntax fallback on typed read errors.
++func loadSymbolContextGraphsAt(ctx context.Context, backend QueryInterface, service string, sc memo.Scope) (*navGraphs, error) {
++	snap, err := serviceSnapshotAt(ctx, backend, service, sc)
++	if err != nil {
++		return nil, err
++	}
++	g := &navGraphs{Nodes: snap.Nodes, Snapshot: snap}
++	g.Both, g.Typed, g.TypedErr, err = memo.GraphForTyped(ctx, snap, memo.GraphBoth, typedLoader(backend, service))
++	if err != nil {
++		return nil, err
++	}
++	return g, nil
++}
+diff --git a/internal/mcp/symbol_context_graphs_test.go b/internal/mcp/symbol_context_graphs_test.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..bf31bad9cb945f1186e9d71e73de1d70f8160cd5
+--- /dev/null
++++ b/internal/mcp/symbol_context_graphs_test.go
+@@ -0,0 +1,125 @@
++package mcp
++
++import (
++	"context"
++	"errors"
++	"strings"
++	"testing"
++	"time"
++
++	"github.com/geoffmilleraz/fathom/internal/core"
++	"github.com/geoffmilleraz/fathom/internal/memo"
++)
++
++type contextGraphBackend struct {
++	QueryInterface
++	mark         string
++	nodes        []core.SymbolNode
++	typed        []core.Edge
++	typedReads   int
++	typedFailure error
++}
++
++func (b *contextGraphBackend) StoreID() string { return "symbol-context-graphs" }
++func (b *contextGraphBackend) StoreWatermark(context.Context, string) (string, error) {
++	return b.mark, nil
++}
++func (b *contextGraphBackend) ListAllSymbols(context.Context, string) ([]core.SymbolNode, error) {
++	return b.nodes, nil
++}
++func (b *contextGraphBackend) FindSymbol(_ context.Context, _, name string) ([]core.SymbolNode, error) {
++	var out []core.SymbolNode
++	for _, n := range b.nodes {
++		if n.Name == name {
++			out = append(out, n)
++		}
++	}
++	return out, nil
++}
++func (b *contextGraphBackend) TypedEdges(context.Context, string) ([]core.Edge, error) {
++	b.typedReads++
++	if b.typedFailure != nil {
++		return nil, b.typedFailure
++	}
++	return b.typed, nil
++}
++func (b *contextGraphBackend) ServiceMeta(context.Context, string) (string, string, bool, error) {
++	return "", "", false, nil
++}
++
++func contextGraphMisses() int64 {
++	for _, s := range memo.Stats() {
++		if s.Name == "graphstore" {
++			return s.Misses
++		}
++	}
++	return -1
++}
++
++func TestSymbolContextBuildsOnlyBothGraph(t *testing.T) {
++	n := func(name, file string, calls ...string) core.SymbolNode {
++		return core.SymbolNode{Service: "svc", Package: "p", Name: name, Kind: core.KindGoFunc, FilePath: file, Calls: calls}
++	}
++	b := &contextGraphBackend{mark: t.Name(), nodes: []core.SymbolNode{n("Caller", "p/caller.go", "Target"), n("Target", "p/target.go")}}
++	b.typed = []core.Edge{{FromService: "svc", FromSymbol: b.nodes[0].Key(), ToSymbol: b.nodes[1].Key(), Kind: core.EdgeDirect}}
++	srv := NewServer(b)
++	before := contextGraphMisses()
++	got := callToolWithin(t, context.Background(), srv, "symbol_context", map[string]any{"service": "svc", "symbol": "Target", "snippet": false})
++	if got["resolution"] == nil || got["typed_edges"] == nil {
++		t.Fatalf("typed context lost: %+v", got)
++	}
++	if delta := contextGraphMisses() - before; delta != 1 {
++		t.Fatalf("graphstore misses = %d, want only Both graph", delta)
++	}
++	if b.typedReads != 1 {
++		t.Fatalf("typed reads = %d, want one", b.typedReads)
++	}
++	short, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
++	defer cancel()
++	warm := callToolWithin(t, short, srv, "symbol_context", map[string]any{"service": "svc", "symbol": "Target", "snippet": false})
++	if warm["partial"] != nil {
++		t.Fatalf("resident Both yielded a cold partial: %+v", warm)
++	}
++	if delta := contextGraphMisses() - before; delta != 1 {
++		t.Fatalf("repeat graphstore misses = %d, want resident Both reuse", delta)
++	}
++	b.mark = t.Name() + "/next"
++	b.typed = nil
++	next := callToolWithin(t, context.Background(), srv, "symbol_context", map[string]any{"service": "svc", "symbol": "Target", "snippet": false})
++	if next["typed_edges"] != nil {
++		t.Fatalf("new watermark served old typed edges: %+v", next)
++	}
++	if delta := contextGraphMisses() - before; delta != 2 {
++		t.Fatalf("new watermark graphstore misses = %d, want fresh Both", delta)
++	}
++}
++
++func TestSymbolContextTypedReadFailureRetries(t *testing.T) {
++	b := &contextGraphBackend{mark: t.Name(), typedFailure: errors.New("typed read failed"), nodes: []core.SymbolNode{
++		{Service: "svc", Package: "p", Name: "Caller", Kind: core.KindGoFunc, FilePath: "p/caller.go", Calls: []string{"Target"}},
++		{Service: "svc", Package: "p", Name: "Target", Kind: core.KindGoFunc, FilePath: "p/target.go"},
++	}}
++	srv := NewServer(b)
++	got := callToolWithin(t, context.Background(), srv, "symbol_context", map[string]any{"service": "svc", "symbol": "Target", "snippet": false})
++	if got["typed_edges"] != nil {
++		t.Fatalf("failed typed read served typed edges: %+v", got)
++	}
++	if len(got["callers"].([]any)) != 1 {
++		t.Fatalf("syntax fallback lost caller: %+v", got)
++	}
++	b.typedFailure = nil
++	b.typed = []core.Edge{{FromService: "svc", FromSymbol: b.nodes[0].Key(), ToSymbol: b.nodes[1].Key(), Kind: core.EdgeDirect}}
++	got = callToolWithin(t, context.Background(), srv, "symbol_context", map[string]any{"service": "svc", "symbol": "Target", "snippet": false})
++	if got["typed_edges"] == nil || b.typedReads != 2 {
++		t.Fatalf("typed retry failed (reads %d): %+v", b.typedReads, got)
++	}
++}
++
++func TestColdContextNoteDoesNotClaimResidentGraphIsAbsent(t *testing.T) {
++	// A cached Both graph can outlive its typed-edge details under the memo
++	// budget. The partial note cannot identify which component is missing.
++	note := coldGraphNote("svc", &coldGraph{})
++	if strings.Contains(note, "graph not built") || !strings.Contains(note, "typed-edge details") {
++		t.Fatalf("cold note makes an unsupported graph-state claim: %q", note)
++	}
++}
+diff --git a/internal/memo/graphstore.go b/internal/memo/graphstore.go
+index 1b1100b8673f62667a5aeb5725360347aa05c9a1..a4852030dfdcbc9504530c9dc6ff9bc326fc93d6 100644
+--- a/internal/memo/graphstore.go
++++ b/internal/memo/graphstore.go
+@@ -381,17 +381,30 @@ func PeekSnapshot(sc Scope) (*Snapshot, bool) {
+ // true when all four are cached. Nothing is built, counted or moved in the
+ // LRU.
+ func NavBuildCost(sc Scope) (cost time.Duration, resident bool) {
++	return navBuildCost(sc, []GraphKind{GraphSyntax, GraphBoth, GraphResolved}, false)
++}
++
++// NavBuildCostFor estimates the snapshot, typed edges and one requested
++// graph kind. A reader needing only Both must not wait for unrelated kinds.
++func NavBuildCostFor(sc Scope, kind GraphKind) (cost time.Duration, resident bool) {
++	return navBuildCost(sc, []GraphKind{kind}, true)
++}
++
++func navBuildCost(sc Scope, kinds []GraphKind, typedRequired bool) (cost time.Duration, resident bool) {
+ 	cost, resident = snapshotGroup.pendingCost(snapKey{sc})
+-	typedNeeded := false
+-	for _, k := range []GraphKind{GraphSyntax, GraphBoth, GraphResolved} {
++	typedNeeded := typedRequired && kinds[0] != GraphSyntax
++	for _, k := range kinds {
+ 		d, ok := graphGroup.pendingCost(graphKey{sc, k})
+ 		cost += d
+ 		resident = resident && ok
+ 		typedNeeded = typedNeeded || (!ok && k != GraphSyntax)
+ 	}
+ 	if typedNeeded {
+-		d, _ := typedGroup.pendingCost(typedKey{sc})
++		d, ok := typedGroup.pendingCost(typedKey{sc})
+ 		cost += d
++		if typedRequired {
++			resident = resident && ok
++		}
+ 	}
+ 	return cost, resident
+ }
+@@ -402,11 +415,21 @@ func NavBuildCost(sc Scope) (cost time.Duration, resident bool) {
+ // recorded since the process started, so NavBuildCost is a measurement and
+ // not ExpectedCost (O1446). Nothing is built, counted or moved in the LRU.
+ func NavBuildMeasured(sc Scope) bool {
++	return navBuildMeasured(sc, []GraphKind{GraphSyntax, GraphBoth, GraphResolved}, false)
++}
++
++// NavBuildMeasuredFor reports whether the requested graph's missing parts
++// have completed builds from which to estimate a cold deadline.
++func NavBuildMeasuredFor(sc Scope, kind GraphKind) bool {
++	return navBuildMeasured(sc, []GraphKind{kind}, true)
++}
++
++func navBuildMeasured(sc Scope, kinds []GraphKind, typedRequired bool) bool {
+ 	if !snapshotGroup.measured(snapKey{sc}) {
+ 		return false
+ 	}
+-	typedNeeded := false
+-	for _, k := range []GraphKind{GraphSyntax, GraphBoth, GraphResolved} {
++	typedNeeded := typedRequired && kinds[0] != GraphSyntax
++	for _, k := range kinds {
+ 		key := graphKey{sc, k}
+ 		if !graphGroup.measured(key) {
+ 			return false
+diff --git a/internal/memo/nav_cost_scoped_test.go b/internal/memo/nav_cost_scoped_test.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..156a6719f822553c367dec8f63a2ee237242b2f6
+--- /dev/null
++++ b/internal/memo/nav_cost_scoped_test.go
+@@ -0,0 +1,56 @@
++package memo
++
++import (
++	"context"
++	"testing"
++
++	"github.com/geoffmilleraz/fathom/internal/core"
++)
++
++func TestNavBuildCostForBothDoesNotRequireOtherKinds(t *testing.T) {
++	isolateGraphStore(t)
++	ctx := context.Background()
++	sc := Scope{Store: "scoped-cost", Service: "svc", Watermark: "w1"}
++	if _, resident := NavBuildCostFor(sc, GraphBoth); resident {
++		t.Fatal("unbuilt Both is resident")
++	}
++	if NavBuildMeasuredFor(sc, GraphBoth) {
++		t.Fatal("unbuilt Both is measured")
++	}
++	snap, err := SnapshotFor(ctx, sc, func(context.Context) ([]core.SymbolNode, error) { return fixtureNodes(), nil })
++	if err != nil {
++		t.Fatal(err)
++	}
++	if _, err := GraphFor(ctx, snap, GraphBoth, func(context.Context) ([]core.Edge, error) { return nil, nil }); err != nil {
++		t.Fatal(err)
++	}
++	if _, resident := NavBuildCostFor(sc, GraphBoth); !resident {
++		t.Fatal("snapshot + typed + Both should be resident")
++	}
++	if !NavBuildMeasuredFor(sc, GraphBoth) {
++		t.Fatal("Both should be measured")
++	}
++	typedGroup.Remove(typedKey{sc}, ReasonBudget)
++	if _, resident := NavBuildCostFor(sc, GraphBoth); resident {
++		t.Fatal("Both graph alone cannot serve typed-edge details")
++	}
++	if !NavBuildMeasuredFor(sc, GraphBoth) {
++		t.Fatal("evicted typed edges lost their service cost estimate")
++	}
++	if _, resident := NavBuildCost(sc); resident {
++		t.Fatal("full navigation incorrectly resident without Syntax and Resolved")
++	}
++	// Measurement is per service and graph group, so the completed Both
++	// build supplies an estimate for the other two kinds without making
++	// them resident. Keep the full accessor's existing meaning.
++	if !NavBuildMeasured(sc) {
++		t.Fatal("full navigation lost its per-service graph estimate")
++	}
++	sc.Watermark = "w2"
++	if _, resident := NavBuildCostFor(sc, GraphBoth); resident {
++		t.Fatal("new watermark reused old Both")
++	}
++	if !NavBuildMeasuredFor(sc, GraphBoth) {
++		t.Fatal("new watermark lost the service's completed cost estimate")
++	}
++}

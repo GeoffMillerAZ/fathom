@@ -1,0 +1,264 @@
+From 8cec108ad93e8bb465dd58ecf8f9f4aaa5cf0b0c Mon Sep 17 00:00:00 2001
+From: Geoff Miller <contributor@example.invalid>
+Date: Wed, 21 Oct 2026 10:05:07 -0700
+Subject: [PATCH 23/27] perf: avoid surface reads without extractors and reduce
+ header buffers
+
+Verified: go test ./internal/analysis/inventory ./internal/conserve ./internal/connector; go test -race ./internal/analysis/inventory ./internal/conserve ./internal/connector; git diff --cached --check
+---
+ .../analysis/inventory/eligibility_test.go    | 81 +++++++++++++++++++
+ internal/analysis/inventory/inventory.go      | 21 ++++-
+ internal/connector/generated.go               |  2 +-
+ internal/connector/generated_reader_test.go   |  2 +-
+ internal/conserve/surface.go                  |  3 +
+ internal/conserve/surface_test.go             | 68 ++++++++++++++++
+ 6 files changed, 174 insertions(+), 3 deletions(-)
+ create mode 100644 internal/analysis/inventory/eligibility_test.go
+
+diff --git a/internal/analysis/inventory/eligibility_test.go b/internal/analysis/inventory/eligibility_test.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..4e7254d13d7a4ccdc9798ccf3fbe1148610393b2
+--- /dev/null
++++ b/internal/analysis/inventory/eligibility_test.go
+@@ -0,0 +1,81 @@
++package inventory
++
++import "testing"
++
++func TestAccumulatorAcceptsPathMatchesExtractorSurface(t *testing.T) {
++	base := []struct {
++		path string
++		want bool
++	}{
++		{"asset.png", false}, {"README.md", false}, {"go.mod", false},
++		{"api.go", true}, {"api_test.go", false}, {"schema.proto", true},
++		{"app.jsx", true}, {"app.cjs", true}, {"config.yaml", true},
++	}
++	for _, tc := range base {
++		if got := NewAccumulator(nil).AcceptsPath(tc.path); got != tc.want {
++			t.Errorf("%s: got %v, want %v", tc.path, got, tc.want)
++		}
++	}
++	for _, tc := range []struct {
++		name     string
++		patterns []Pattern
++		path     string
++		want     bool
++		wantKey  string
++	}{
++		{"narrow match", []Pattern{{Kind: "asset", Glob: "**/*.png", Regex: `ID: (\w+)`}}, "assets/asset.png", true, "asset:widget"},
++		{"narrow miss", []Pattern{{Kind: "asset", Glob: "**/*.png", Regex: `ID: (\w+)`}}, "asset.bin", false, ""},
++		{"empty glob", []Pattern{{Kind: "asset", Regex: `ID: (\w+)`}}, "unknown.bin", true, "asset:widget"},
++		{"invalid regex", []Pattern{{Kind: "asset", Regex: "["}}, "unknown.bin", false, ""},
++		{"no capture", []Pattern{{Kind: "asset", Regex: "ID"}}, "unknown.bin", false, ""},
++		{"no kind", []Pattern{{Regex: `ID: (\w+)`}}, "unknown.bin", false, ""},
++		{"test excluded", []Pattern{{Kind: "asset", Regex: `ID: (\w+)`}}, "api_test.go", false, ""},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			a := NewAccumulator(tc.patterns)
++			if got := a.AcceptsPath(tc.path); got != tc.want {
++				t.Fatalf("AcceptsPath(%q)=%v, want %v", tc.path, got, tc.want)
++			}
++			content := []byte("ID: widget\n")
++			a.Add(File{Path: tc.path, Content: content})
++			items := a.Items()
++			if tc.wantKey == "" {
++				if len(items) != 0 {
++					t.Fatalf("unexpected items: %+v", items)
++				}
++			} else if len(items) != 1 || items[0].Key != tc.wantKey || items[0].Kind != "asset" {
++				t.Fatalf("configured item: got %+v, want %s kind asset", items, tc.wantKey)
++			}
++		})
++	}
++}
++
++func TestAccumulatorEligibleBuiltinsRetainFacts(t *testing.T) {
++	files := []File{
++		{Path: "api/api.go", Content: []byte("package api\nfunc Exported() {}\n")},
++		{Path: "schema.proto", Content: []byte("syntax = \"proto3\"; package svc; service API { rpc Call (Req) returns (Resp); }\n")},
++		{Path: "app.js", Content: []byte("fastify.get('/users', listUsers)\nconst token = process.env.API_KEY\n")},
++	}
++	a := NewAccumulator(nil)
++	for _, f := range files {
++		if !a.AcceptsPath(f.Path) {
++			t.Fatalf("eligible builtin skipped: %s", f.Path)
++		}
++		a.Add(f)
++	}
++	want := map[string]string{
++		"api:api.Exported": "api",
++		"rpc:svc.API/Call": "rpc",
++		"route:GET /users": "route",
++		"env:API_KEY":      "env",
++	}
++	for _, item := range a.Items() {
++		if want[item.Key] != item.Kind {
++			t.Fatalf("unexpected or mistyped item: %+v", item)
++		}
++		delete(want, item.Key)
++	}
++	if len(want) != 0 {
++		t.Fatalf("eligible builtin facts missing: %v", want)
++	}
++}
+diff --git a/internal/analysis/inventory/inventory.go b/internal/analysis/inventory/inventory.go
+index 3f0ec66dfdf87eda4cd17d9d14432dce829de4a1..0492ab9fad036347b5c576a412edae7193fa06fa 100644
+--- a/internal/analysis/inventory/inventory.go
++++ b/internal/analysis/inventory/inventory.go
+@@ -139,9 +139,28 @@ func NewAccumulator(patterns []Pattern) *Accumulator {
+ 	return a
+ }
+ 
++// AcceptsPath reports whether Add has any extractor for path. It uses the
++// same compiled patterns and live route registry as Add, so callers can skip
++// content reads without losing configured or cross-file surface items.
++func (a *Accumulator) AcceptsPath(p string) bool {
++	if strings.HasSuffix(p, "_test.go") {
++		return false
++	}
++	if strings.HasSuffix(p, ".go") || strings.HasSuffix(p, ".proto") ||
++		routeLangFor(p) != "" || envScanned(p) {
++		return true
++	}
++	for _, pattern := range a.patterns {
++		if pattern.glob == nil || pattern.glob.Match(p) {
++			return true
++		}
++	}
++	return false
++}
++
+ // Add extracts one file without retaining its content.
+ func (a *Accumulator) Add(f File) {
+-	if strings.HasSuffix(f.Path, "_test.go") {
++	if !a.AcceptsPath(f.Path) {
+ 		return
+ 	}
+ 	switch {
+diff --git a/internal/connector/generated.go b/internal/connector/generated.go
+index 2c934f4f833f86be8a5aa539950be9fa0a5ad469..08c285bacfbfc1df3f8e85ea9c3ccf992403719a 100644
+--- a/internal/connector/generated.go
++++ b/internal/connector/generated.go
+@@ -147,7 +147,7 @@ func IsGeneratedReader(path string, r io.Reader) (bool, error) {
+ 	if len(tokens) == 0 {
+ 		return false, nil
+ 	}
+-	reader := bufio.NewReaderSize(r, 64*1024)
++	reader := bufio.NewReaderSize(r, 4*1024)
+ 	for line := 0; line < generatedScanLines; line++ {
+ 		state := generatedLine{tokens: tokens, leading: true}
+ 		for {
+diff --git a/internal/connector/generated_reader_test.go b/internal/connector/generated_reader_test.go
+index 07eb5f9f83294eee828e84d0e7d7af676d57fdbb..eff7514ba3aff69d97a56e91ada4659c74d100f5 100644
+--- a/internal/connector/generated_reader_test.go
++++ b/internal/connector/generated_reader_test.go
+@@ -97,7 +97,7 @@ func TestIsGeneratedReaderBoundsHeaderRead(t *testing.T) {
+ 	}
+ 	yamlBody := []byte("# first\n# second\n# third\n" + strings.Repeat("x", 4<<20))
+ 	yamlReader := &countingReader{r: bytes.NewReader(yamlBody)}
+-	if generated, err := connector.IsGeneratedReader("config.yaml", yamlReader); err != nil || generated || yamlReader.bytes > 64*1024 {
++	if generated, err := connector.IsGeneratedReader("config.yaml", yamlReader); err != nil || generated || yamlReader.bytes > 4*1024 {
+ 		t.Fatalf("YAML generated=%v err=%v bytes=%d", generated, err, yamlReader.bytes)
+ 	}
+ }
+diff --git a/internal/conserve/surface.go b/internal/conserve/surface.go
+index 407bbee42190dae45e8012e2b0a221f0ce78800b..e69bea7c1e3f3346fe732efce066c57b3a03988d 100644
+--- a/internal/conserve/surface.go
++++ b/internal/conserve/surface.go
+@@ -53,6 +53,9 @@ func (surfacePlane) Check(ctx context.Context, in Input) ([]Finding, []string) {
+ 			missing = append(missing, "surface scan canceled: "+err.Error())
+ 			break
+ 		}
++		if !base.AcceptsPath(path) {
++			continue
++		}
+ 		b, ok, err := in.BaseFile(path)
+ 		if err != nil {
+ 			missing = append(missing, fmt.Sprintf("base %s: %v", path, err))
+diff --git a/internal/conserve/surface_test.go b/internal/conserve/surface_test.go
+index 92d5eef42a7b8b778fdb514f4accc1ce0922c71f..c8677d22797509e67206f19fe4277b4b12d3b962 100644
+--- a/internal/conserve/surface_test.go
++++ b/internal/conserve/surface_test.go
+@@ -2,6 +2,7 @@ package conserve
+ 
+ import (
+ 	"context"
++	"errors"
+ 	"fmt"
+ 	"os"
+ 	"path/filepath"
+@@ -14,6 +15,73 @@ import (
+ 	"github.com/geoffmilleraz/fathom/internal/verify"
+ )
+ 
++func TestSurfaceSkipsOnlyPathsWithoutExtractors(t *testing.T) {
++	base := map[string]string{
++		"asset.png": "opaque", "api_test.go": "package api\nfunc TestOld() {}\n",
++		"api.go":       "package api\nfunc Old() {}\n",
++		"schema.proto": "syntax = \"proto3\"; service S { rpc Old (A) returns (B); }\n",
++		"routes.js":    "const router = require('express').Router();\nrouter.get('/old', oldHandler);\n",
++		"config.yaml":  "old: value\n",
++	}
++	paths := []string{"asset.png", "api_test.go", "api.go", "schema.proto", "routes.js", "config.yaml"}
++	baseReads, headReads := map[string]bool{}, map[string]bool{}
++	read := func(seen map[string]bool, files map[string]string) func(string) ([]byte, bool, error) {
++		return func(p string) ([]byte, bool, error) {
++			seen[p] = true
++			if p == "asset.png" || p == "api_test.go" {
++				return nil, false, errors.New("irrelevant unreadable file")
++			}
++			return []byte(files[p]), true, nil
++		}
++	}
++	in := Input{ChangedFiles: paths, BaseFile: read(baseReads, base), HeadFile: read(headReads, map[string]string{})}
++	findings, missing := (surfacePlane{}).Check(context.Background(), in)
++	if len(missing) != 0 {
++		t.Fatalf("ineligible read became missing: %v", missing)
++	}
++	for _, p := range paths {
++		want := p != "asset.png" && p != "api_test.go"
++		if baseReads[p] != want || headReads[p] != want {
++			t.Errorf("%s: base/head read=%v/%v, want %v", p, baseReads[p], headReads[p], want)
++		}
++	}
++	if len(findings) == 0 {
++		t.Fatal("eligible Go/proto/route surface produced no findings")
++	}
++}
++
++func TestSurfaceConfiguredEligibilityAndReadErrors(t *testing.T) {
++	for _, tc := range []struct {
++		name, glob, path string
++		read             bool
++	}{
++		{"narrow match", "**/*.png", "assets/asset.png", true},
++		{"narrow miss", "**/*.png", "assets/asset.bin", false},
++		{"empty glob", "", "unknown.bin", true},
++		{"test excluded", "", "a_test.go", false},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			root := t.TempDir()
++			mustWriteFile(t, filepath.Join(root, ".fathom", "config.toml"),
++				"[[surface.pattern]]\nkind = \"asset\"\nglob = \""+tc.glob+"\"\nregex = 'ID: ([a-z]+)'\n")
++			reads := 0
++			read := func(string) ([]byte, bool, error) {
++				reads++
++				return nil, false, errors.New("permission denied")
++			}
++			_, missing := (surfacePlane{}).Check(context.Background(), Input{
++				Root: root, ChangedFiles: []string{tc.path}, BaseFile: read, HeadFile: read,
++			})
++			if tc.read && (reads != 2 || len(missing) != 2) {
++				t.Fatalf("eligible read/error lost: reads=%d missing=%v", reads, missing)
++			}
++			if !tc.read && (reads != 0 || len(missing) != 0) {
++				t.Fatalf("ineligible path read: reads=%d missing=%v", reads, missing)
++			}
++		})
++	}
++}
++
+ func fileReader(m map[string]string) func(path string) ([]byte, bool, error) {
+ 	return func(path string) ([]byte, bool, error) {
+ 		c, ok := m[path]

@@ -1,0 +1,1191 @@
+From eeb579a95f81d3cdfeebcc8f772e40f628508eb9 Mon Sep 17 00:00:00 2001
+From: Geoff Miller <contributor@example.invalid>
+Date: Wed, 21 Oct 2026 03:54:25 -0700
+Subject: [PATCH 15/27] fix(review): reuse coherent graph snapshot for
+ review_diff
+
+Share one complete symbol and typed graph across review dimensions. Fence same-watermark patch and drop publications for review and legacy graph callers, and pin indexed identity before finding writes.
+
+Verified: M2 Go 1.26.2 race tests passed for internal/memo, internal/analysis/review, and internal/mcp against exact eight-file source closure. Deterministic tests cover mixed publication, stale legacy graph insertion, read refusal, and index drift. Canonical full gate remains pending.
+---
+ .../unreleased/review-graph-reuse.md          |   3 +
+ internal/analysis/review/engine.go            |  11 +-
+ internal/analysis/review/graph_reuse_test.go  |  31 +++
+ internal/mcp/review_graph_refusal_test.go     |  91 +++++++
+ internal/mcp/review_graph_reuse_test.go       | 148 +++++++++++
+ internal/mcp/review_tool.go                   | 168 ++++++++-----
+ internal/memo/graphstore.go                   | 232 ++++++++++++++++--
+ internal/memo/review_bundle_test.go           | 217 ++++++++++++++++
+ 8 files changed, 813 insertions(+), 88 deletions(-)
+ create mode 100644 docs/changelog/unreleased/review-graph-reuse.md
+ create mode 100644 internal/analysis/review/graph_reuse_test.go
+ create mode 100644 internal/mcp/review_graph_refusal_test.go
+ create mode 100644 internal/mcp/review_graph_reuse_test.go
+ create mode 100644 internal/memo/review_bundle_test.go
+
+diff --git a/docs/changelog/unreleased/review-graph-reuse.md b/docs/changelog/unreleased/review-graph-reuse.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..2ccdce25276b58e30a9f7f4ddd0d451f07d248a9
+--- /dev/null
++++ b/docs/changelog/unreleased/review-graph-reuse.md
+@@ -0,0 +1,3 @@
++### Fixed
++
++- `review_diff` reuses one complete service snapshot and typed call graph for impact, test impact, resolution, and receipts. A symbol, typed-edge, or graph load failure now stops review before finding reconciliation instead of producing a clean-looking partial answer.
+diff --git a/internal/analysis/review/engine.go b/internal/analysis/review/engine.go
+index 8b9f8060dab7f77885dbb0c0953c67ab1b7723df..7b80710e2b7dc6075d79f228297604a8dd740930 100644
+--- a/internal/analysis/review/engine.go
++++ b/internal/analysis/review/engine.go
+@@ -27,6 +27,7 @@ import (
+ 	"strings"
+ 
+ 	"github.com/geoffmilleraz/fathom/internal/analysis/archconformance"
++	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
+ 	"github.com/geoffmilleraz/fathom/internal/analysis/coverage"
+ 	"github.com/geoffmilleraz/fathom/internal/analysis/impact"
+ 	"github.com/geoffmilleraz/fathom/internal/core"
+@@ -190,6 +191,9 @@ type Input struct {
+ 	// impact
+ 	Nodes      []core.SymbolNode
+ 	TypedEdges []core.Edge
++	// GraphBoth is the caller's complete, read-only BuildBoth graph for Nodes
++	// and TypedEdges. Nil keeps standalone Run's existing build behavior.
++	GraphBoth *callgraph.Graph
+ 
+ 	// obligations — served claims scoped to the changed files.
+ 	ObligationsSupported bool
+@@ -463,7 +467,12 @@ func runImpact(in Input) Dimension {
+ 	}
+ 	d.Checked = true
+ 
+-	result := impact.DiffImpactWithTypedEdges(in.Nodes, in.ChangedFiles, in.TypedEdges)
++	var result impact.Result
++	if in.GraphBoth != nil {
++		result = impact.BlastRadiusOn(in.GraphBoth, in.Nodes, in.ChangedFiles)
++	} else {
++		result = impact.DiffImpactWithTypedEdges(in.Nodes, in.ChangedFiles, in.TypedEdges)
++	}
+ 	d.Tests = append([]string(nil), result.Tests...)
+ 	d.Files = append([]string(nil), result.Files...)
+ 
+diff --git a/internal/analysis/review/graph_reuse_test.go b/internal/analysis/review/graph_reuse_test.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..2cb9bf1b75c48247b06e1d2f9a023764dd20e49b
+--- /dev/null
++++ b/internal/analysis/review/graph_reuse_test.go
+@@ -0,0 +1,31 @@
++package review_test
++
++import (
++	"reflect"
++	"testing"
++
++	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
++	"github.com/geoffmilleraz/fathom/internal/analysis/review"
++	"github.com/geoffmilleraz/fathom/internal/core"
++)
++
++func TestRunSuppliedCompleteGraphMatchesStandalone(t *testing.T) {
++	nodes := []core.SymbolNode{
++		{Service: "svc", Package: "p", Name: "Changed", Kind: core.KindGoFunc, FilePath: "p/changed.go", Line: 2},
++		{Service: "svc", Package: "p", Name: "TestChanged", Kind: core.KindGoFunc, FilePath: "p/changed_test.go", Line: 3},
++	}
++	typed := []core.Edge{{FromSymbol: nodes[1].Key(), ToSymbol: nodes[0].Key(), Kind: core.EdgeDirect}}
++	in := review.Input{Service: "svc", ChangedFiles: []string{"p/changed.go"}, Nodes: nodes, TypedEdges: typed}
++	want := review.Run(in)
++	in.GraphBoth = callgraph.BuildBoth(nodes, typed)
++	got := review.Run(in)
++	if !reflect.DeepEqual(got, want) {
++		t.Fatalf("shared graph verdict differs: got %#v; want %#v", got, want)
++	}
++	// The supplied graph, not a rebuilt graph from TypedEdges, must carry
++	// the typed reachability for this call.
++	in.TypedEdges = nil
++	if withoutDuplicateEdges := review.Run(in); !reflect.DeepEqual(withoutDuplicateEdges, want) {
++		t.Fatalf("supplied graph was not used: got %#v; want %#v", withoutDuplicateEdges, want)
++	}
++}
+diff --git a/internal/mcp/review_graph_refusal_test.go b/internal/mcp/review_graph_refusal_test.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..c377b895093a9f5c0cf3300c4c545e7396cd4b70
+--- /dev/null
++++ b/internal/mcp/review_graph_refusal_test.go
+@@ -0,0 +1,91 @@
++package mcp_test
++
++import (
++	"context"
++	"errors"
++	"strings"
++	"testing"
++
++	"github.com/geoffmilleraz/fathom/internal/analysis/review"
++	"github.com/geoffmilleraz/fathom/internal/core"
++	"github.com/geoffmilleraz/fathom/internal/mcp"
++	"github.com/geoffmilleraz/fathom/internal/memo"
++)
++
++type incompleteReviewFake struct {
++	reviewFakeBackend
++	listErr, typedErr error
++}
++
++type commitDriftReviewFake struct {
++	reviewFakeBackend
++	commit string
++}
++
++func (f *commitDriftReviewFake) ServiceMeta(context.Context, string) (string, string, bool, error) {
++	return f.svcPath, f.commit, true, nil
++}
++func (f *commitDriftReviewFake) ClaimsForService(ctx context.Context, service, layer string) ([]core.SemanticClaim, error) {
++	if layer == review.ClaimsLayer {
++		f.commit = "new-commit"
++	}
++	return f.reviewFakeBackend.ClaimsForService(ctx, service, layer)
++}
++
++func TestReviewDiffIndexCommitDriftRefusesFindingWrites(t *testing.T) {
++	f := &commitDriftReviewFake{reviewFakeBackend: reviewFakeBackend{
++		extendedFakeBackend: extendedFakeBackend{nodes: extFixtureNodes(), services: []string{"svc"}, svcPath: t.TempDir()},
++		sources:             map[string][]byte{"pkg/a.go": reviewHandlerSource},
++	}, commit: "old-commit"}
++	resp := roundtrip(t, mcp.NewServer(f), request{JSONRPC: "2.0", ID: 1, Method: "tools/call", Params: map[string]any{"name": "review_diff", "arguments": map[string]any{"service": "svc", "changed_files": []string{"pkg/a.go"}}}})
++	if f.putCalls != 0 || f.setCalls != 0 {
++		t.Fatalf("commit drift allowed finding writes: put=%d set=%d response=%v", f.putCalls, f.setCalls, resp)
++	}
++	if resp["error"] == nil {
++		p := extToolPayload(t, resp)
++		partial, _ := p["corpus_partial"].(string)
++		if !strings.Contains(partial, "index identity changed") {
++			t.Fatalf("commit drift not named: %v", p)
++		}
++	}
++}
++
++func (f *incompleteReviewFake) ListAllSymbols(ctx context.Context, service string) ([]core.SymbolNode, error) {
++	if f.listErr != nil {
++		return nil, f.listErr
++	}
++	return f.reviewFakeBackend.ListAllSymbols(ctx, service)
++}
++func (f *incompleteReviewFake) TypedEdges(ctx context.Context, service string) ([]core.Edge, error) {
++	if f.typedErr != nil {
++		return nil, f.typedErr
++	}
++	return f.reviewFakeBackend.TypedEdges(ctx, service)
++}
++
++func TestReviewDiffGraphReadFailurePrecedesFindingWrites(t *testing.T) {
++	for _, tc := range []struct {
++		name              string
++		listErr, typedErr error
++	}{
++		{"symbols", errors.New("symbols unavailable"), nil},
++		{"typed", nil, errors.New("typed unavailable")},
++		{"deadline", nil, context.DeadlineExceeded},
++		{"refuse", memo.ErrWouldNotFinish, nil},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			f := &incompleteReviewFake{reviewFakeBackend: reviewFakeBackend{extendedFakeBackend: extendedFakeBackend{nodes: extFixtureNodes(), services: []string{"svc"}}}, listErr: tc.listErr, typedErr: tc.typedErr}
++			resp := roundtrip(t, mcp.NewServer(f), request{JSONRPC: "2.0", ID: 1, Method: "tools/call", Params: map[string]any{"name": "review_diff", "arguments": map[string]any{"service": "svc", "changed_files": []string{"pkg/a.go"}}}})
++			if resp["error"] == nil {
++				t.Fatalf("incomplete graph yielded answer: %v", resp)
++			}
++			message := resp["error"].(map[string]any)["message"].(string)
++			if message == "" || (!strings.Contains(message, "unavailable") && !strings.Contains(message, "deadline") && !strings.Contains(message, "declined")) {
++				t.Fatalf("read failure was not named: %s", message)
++			}
++			if f.putCalls != 0 || f.setCalls != 0 {
++				t.Fatalf("finding writes after read failure: put=%d set=%d", f.putCalls, f.setCalls)
++			}
++		})
++	}
++}
+diff --git a/internal/mcp/review_graph_reuse_test.go b/internal/mcp/review_graph_reuse_test.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..1f4bb4f0741bf521a080b8de02962aca7451460e
+--- /dev/null
++++ b/internal/mcp/review_graph_reuse_test.go
+@@ -0,0 +1,148 @@
++package mcp
++
++import (
++	"context"
++	"errors"
++	"strings"
++	"sync"
++	"sync/atomic"
++	"testing"
++
++	"github.com/geoffmilleraz/fathom/internal/core"
++	"github.com/geoffmilleraz/fathom/internal/memo"
++)
++
++type reviewMemoFake struct {
++	refreshFake
++	testStore
++	nodes      []core.SymbolNode
++	edges      []core.Edge
++	listErr    error
++	typedErr   error
++	loads      atomic.Int32
++	typedLoads atomic.Int32
++	mark       atomic.Value
++	token      atomic.Value
++}
++
++func (f *reviewMemoFake) StoreWatermark(context.Context, string) (string, error) {
++	if v := f.mark.Load(); v != nil {
++		return v.(string), nil
++	}
++	return "w1", nil
++}
++func (f *reviewMemoFake) SuppressionToken(string) string {
++	if v := f.token.Load(); v != nil {
++		return v.(string)
++	}
++	return ""
++}
++func (f *reviewMemoFake) ListAllSymbols(context.Context, string) ([]core.SymbolNode, error) {
++	f.loads.Add(1)
++	return f.nodes, f.listErr
++}
++func (f *reviewMemoFake) TypedEdges(context.Context, string) ([]core.Edge, error) {
++	f.typedLoads.Add(1)
++	return f.edges, f.typedErr
++}
++
++func TestBuildReviewInputSharesOneCompleteSnapshotAndGraph(t *testing.T) {
++	f := &reviewMemoFake{nodes: []core.SymbolNode{{Service: "svc", Package: "p", Name: "F", Kind: core.KindGoFunc, FilePath: "p/f.go"}}}
++	ctx := context.Background()
++	a, _, err := buildReviewInput(ctx, f, "svc", []string{"p/f.go"}, "", "", nil)
++	if err != nil {
++		t.Fatal(err)
++	}
++	b, _, err := buildReviewInput(ctx, f, "svc", []string{"p/f.go"}, "", "", nil)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if a.GraphBoth == nil || a.GraphBoth != b.GraphBoth || &a.Nodes[0] != &b.Nodes[0] {
++		t.Fatal("review did not reuse its complete immutable graph and snapshot")
++	}
++	if f.loads.Load() != 1 || f.typedLoads.Load() != 1 {
++		t.Fatalf("loads=%d typed=%d; want one each", f.loads.Load(), f.typedLoads.Load())
++	}
++}
++
++func TestBuildReviewInputConcurrentCallsShareCompleteGraph(t *testing.T) {
++	f := &reviewMemoFake{nodes: []core.SymbolNode{{Service: "svc", Package: "p", Name: "F", Kind: core.KindGoFunc, FilePath: "p/f.go"}}}
++	var wg sync.WaitGroup
++	graphs := make(chan any, 8)
++	for range 8 {
++		wg.Add(1)
++		go func() {
++			defer wg.Done()
++			in, _, err := buildReviewInput(context.Background(), f, "svc", []string{"p/f.go"}, "", "", nil)
++			if err != nil {
++				t.Errorf("review input: %v", err)
++				return
++			}
++			graphs <- in.GraphBoth
++		}()
++	}
++	wg.Wait()
++	close(graphs)
++	var first any
++	for g := range graphs {
++		if first == nil {
++			first = g
++		} else if first != g {
++			t.Fatal("concurrent reviews built distinct graphs")
++		}
++	}
++	if f.loads.Load() != 1 || f.typedLoads.Load() != 1 {
++		t.Fatalf("concurrent loads=%d typed=%d; want one each", f.loads.Load(), f.typedLoads.Load())
++	}
++}
++
++func TestBuildReviewInputRefusesIncompleteGraphInputs(t *testing.T) {
++	for _, tc := range []struct {
++		name              string
++		listErr, typedErr error
++	}{
++		{"symbols", errors.New("symbols unavailable"), nil},
++		{"typed", nil, errors.New("typed unavailable")},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			f := &reviewMemoFake{nodes: []core.SymbolNode{{Service: "svc", Package: "p", Name: "F", FilePath: "p/f.go"}}, listErr: tc.listErr, typedErr: tc.typedErr}
++			in, _, rpcErr := buildReviewInput(context.Background(), f, "svc", []string{"p/f.go"}, "", "", nil)
++			if rpcErr == nil || !strings.Contains(rpcErr.Message, "unavailable") || in.GraphBoth != nil {
++				t.Fatalf("incomplete input was accepted: graph=%v error=%v", in.GraphBoth, rpcErr)
++			}
++		})
++	}
++}
++
++func TestBuildReviewInputRefusesCancelledRead(t *testing.T) {
++	f := &reviewMemoFake{nodes: []core.SymbolNode{{Service: "svc", Package: "p", Name: "F", FilePath: "p/f.go"}}}
++	ctx, cancel := context.WithCancel(context.Background())
++	cancel()
++	in, _, err := buildReviewInput(ctx, f, "svc", []string{"p/f.go"}, "", "", nil)
++	if err == nil || in.GraphBoth != nil {
++		t.Fatalf("cancelled read accepted: graph=%v error=%v", in.GraphBoth, err)
++	}
++}
++
++func TestReviewInputIdentityRefusesPatchWatermarkAndSuppressionDrift(t *testing.T) {
++	for _, change := range []string{"patch", "watermark", "suppression"} {
++		t.Run(change, func(t *testing.T) {
++			f := &reviewMemoFake{nodes: []core.SymbolNode{{Service: "svc", Package: "p", Name: "F", Kind: core.KindGoFunc, FilePath: "p/f.go"}}}
++			_, rc, err := buildReviewInput(context.Background(), f, "svc", []string{"p/f.go"}, "", "", nil)
++			if err != nil {
++				t.Fatal(err)
++			}
++			switch change {
++			case "patch":
++				memo.PatchPackage(rc.indexScope, "p", []core.SymbolNode{{Service: "svc", Package: "p", Name: "New", Kind: core.KindGoFunc, FilePath: "p/f.go"}}, nil)
++			case "watermark":
++				f.mark.Store("w2")
++			case "suppression":
++				f.token.Store("hidden")
++			}
++			if rc.indexCurrent(context.Background(), f, "svc") || !rc.windowUnverified || (!strings.Contains(rc.partial, "index identity changed") && !strings.Contains(rc.partial, "graph publication changed")) {
++				t.Fatalf("%s drift accepted: %+v", change, rc)
++			}
++		})
++	}
++}
+diff --git a/internal/mcp/review_tool.go b/internal/mcp/review_tool.go
+index 38950ab08e6512dbe873376257c39e7707ca91bc..a75bdb25e57a9a2b150f20c9b219e710d29a7155 100644
+--- a/internal/mcp/review_tool.go
++++ b/internal/mcp/review_tool.go
+@@ -26,6 +26,7 @@ import (
+ 	"github.com/geoffmilleraz/fathom/internal/projectrules"
+ 	"github.com/geoffmilleraz/fathom/internal/receipt"
+ 	riskreview "github.com/geoffmilleraz/fathom/internal/review"
++	"github.com/geoffmilleraz/fathom/internal/scope"
+ 	"github.com/geoffmilleraz/fathom/internal/semantic"
+ 	"github.com/geoffmilleraz/fathom/internal/store"
+ )
+@@ -193,6 +194,9 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
+ 		if !asOf.active() {
+ 			persisted, resolutions = applyAndPersistFindings(ctx, backend, &v, &sources)
+ 		}
++		// A same-watermark package patch or a full ingest can also move the
++		// indexed facts after the source-byte window was read.
++		sources.indexCurrent(ctx, backend, p.Service)
+ 		if sources.windowUnverified {
+ 			for i := range v.Dimensions {
+ 				if v.Dimensions[i].Name == review.DimSpecCoverage {
+@@ -215,7 +219,7 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
+ 		if vo := reviewVerdictOutcome(v, resolutions); vo != nil {
+ 			payload["verdict_outcome"] = vo
+ 		}
+-		payload["test_impact"] = reviewTestGap(ctx, backend, in).Payload()
++		payload["test_impact"] = reviewTestGap(in).Payload()
+ 
+ 		// resolution/index_commit (VB-19, docs/vision/29-verbs-not-lookups.md
+ 		// §3 wave E): the typed/heuristic mix behind the impact dimension's
+@@ -226,12 +230,9 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
+ 		// Governance dimensions (obligations, arch_conformance, spec
+ 		// coverage, test coverage) are not edge-derived and are outside
+ 		// this tally.
+-		ng, gerr := loadNavGraphsErr(ctx, backend, p.Service)
+-		if gerr == nil {
+-			payload["resolution"] = resolutionFromBlastBuckets(blastRadiusByDepth(ng.Both, ng.Nodes, in.ChangedFiles))
+-		}
+-		if ic := indexCommitFor(ctx, backend, p.Service); ic != "" {
+-			payload["index_commit"] = ic
++		payload["resolution"] = resolutionFromBlastBuckets(blastRadiusByDepth(in.GraphBoth, in.Nodes, in.ChangedFiles))
++		if sources.indexCommit != "" {
++			payload["index_commit"] = sources.indexCommit
+ 		}
+ 		// VB-30: other services whose outbound HTTP client call joins a
+ 		// route one of changed_files registers (serviceRefHopsInto,
+@@ -242,41 +243,39 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
+ 		withServiceRefHops(payload, hops, unextracted)
+ 		// GL-22: the changed files layered by blast radius (leaf, shared
+ 		// callee, cross-service provider) from the graph and hops above.
+-		if gerr == nil {
+-			payload["layers"] = layerDiffByBlastRadius(ng.Both, ng.Nodes, in.ChangedFiles, hops)
+-			// CX-5 (docs/plans/change-and-compliance.md §2): the change risk
+-			// receipt, additive, over the SAME graph/hops/verdict this call
+-			// already resolved — review_receipt.go's own doc comment names
+-			// exactly what is and is not wired yet. The risk table is the
+-			// repo's own `.fathom/risk.cue` when present (LoadRiskTable's
+-			// dual-mode load), the binary default otherwise — never the
+-			// daemon process's cwd (only read under in.Root, the service's
+-			// own resolved corpus root; "" skips the read, the same
+-			// corpusRoot-gated discipline every other read in this file
+-			// already keeps).
+-			table := riskreview.RiskTableFor(in.Root)
+-			risk := reviewDiffReceipt(ng.Both, ng.Nodes, in, v, hops, table)
+-			payload["receipt"] = riskReceiptPayload(risk)
+-			// SR-49 (docs/plans/surface-reckoning.md): the SAME receipt,
+-			// additionally rendered as SARIF 2.1.0 and a GitHub check-run
+-			// payload through review.ChangeRiskReceipt — embedded as raw
+-			// JSON (json.RawMessage) rather than an escaped string, so the
+-			// tool's overall JSON payload carries them as nested objects.
+-			// EVX-3: the SARIF run carries its provenance, anchored at the
+-			// indexed commit under the service root against the store's
+-			// fingerprints (receipt_sarif's content grows; its key does not).
+-			anchorRun := receipt.Run{Dir: in.Root, Rev: indexCommitFor(ctx, backend, p.Service), Service: p.Service, Nodes: ng.Nodes,
+-				RepositoryURIAt: receipt.ConfiguredRepositoryURI}
+-			if rcb, ok := backend.(reviewClaimsBackend); ok {
+-				anchorRun.Stored = func(path string) (string, bool) {
+-					hash, found, ferr := rcb.SourceFingerprint(ctx, p.Service, path)
+-					return hash, ferr == nil && found
+-				}
++		payload["layers"] = layerDiffByBlastRadius(in.GraphBoth, in.Nodes, in.ChangedFiles, hops)
++		// CX-5 (docs/plans/change-and-compliance.md §2): the change risk
++		// receipt, additive, over the SAME graph/hops/verdict this call
++		// already resolved — review_receipt.go's own doc comment names
++		// exactly what is and is not wired yet. The risk table is the
++		// repo's own `.fathom/risk.cue` when present (LoadRiskTable's
++		// dual-mode load), the binary default otherwise — never the
++		// daemon process's cwd (only read under in.Root, the service's
++		// own resolved corpus root; "" skips the read, the same
++		// corpusRoot-gated discipline every other read in this file
++		// already keeps).
++		table := riskreview.RiskTableFor(in.Root)
++		risk := reviewDiffReceipt(in.GraphBoth, in.Nodes, in, v, hops, table)
++		payload["receipt"] = riskReceiptPayload(risk)
++		// SR-49 (docs/plans/surface-reckoning.md): the SAME receipt,
++		// additionally rendered as SARIF 2.1.0 and a GitHub check-run
++		// payload through review.ChangeRiskReceipt — embedded as raw
++		// JSON (json.RawMessage) rather than an escaped string, so the
++		// tool's overall JSON payload carries them as nested objects.
++		// EVX-3: the SARIF run carries its provenance, anchored at the
++		// indexed commit under the service root against the store's
++		// fingerprints (receipt_sarif's content grows; its key does not).
++		anchorRun := receipt.Run{Dir: in.Root, Rev: sources.indexCommit, Service: p.Service, Nodes: in.Nodes,
++			RepositoryURIAt: receipt.ConfiguredRepositoryURI}
++		if rcb, ok := backend.(reviewClaimsBackend); ok {
++			anchorRun.Stored = func(path string) (string, bool) {
++				hash, found, ferr := rcb.SourceFingerprint(ctx, p.Service, path)
++				return hash, ferr == nil && found
+ 			}
+-			receiptSARIF, receiptCheck := review.ChangeRiskReceipt(ctx, "fathom review_diff", anchorRun, risk)
+-			payload["receipt_sarif"] = json.RawMessage(receiptSARIF)
+-			payload["receipt_check"] = json.RawMessage(receiptCheck)
+ 		}
++		receiptSARIF, receiptCheck := review.ChangeRiskReceipt(ctx, "fathom review_diff", anchorRun, risk)
++		payload["receipt_sarif"] = json.RawMessage(receiptSARIF)
++		payload["receipt_check"] = json.RawMessage(receiptCheck)
+ 		return payload, nil
+ 	})
+ }
+@@ -292,21 +291,10 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
+ // verdict instead of sending the agent back for N test_impact calls.
+ // Additive: every existing payload field is unchanged (law 4).
+ //
+-// The walk runs on the shared syntax+typed graph (RT-74) — the same
+-// graph BuildBoth(in.Nodes, in.TypedEdges) would build, once per (service,
+-// watermark) instead of once per review.
+-func reviewTestGap(ctx context.Context, backend QueryInterface, in review.Input) impact.TestGapResult {
+-	snap, err := serviceSnapshot(ctx, backend, in.Service)
+-	if err != nil {
+-		return impact.TestGapOn(nil, nil, in.ChangedFiles)
+-	}
+-	// A typed-edge read failure degrades this review to the syntax graph
+-	// and is never cached (GraphForTyped).
+-	g, _, _, err := memo.GraphForTyped(ctx, snap, memo.GraphBoth, typedLoader(backend, in.Service))
+-	if err != nil {
+-		return impact.TestGapOn(nil, nil, in.ChangedFiles)
+-	}
+-	return impact.TestGapOn(g, snap.Nodes, in.ChangedFiles)
++// The walk reads the complete graph pinned by buildReviewInput for this
++// request, shared with impact and the review receipt.
++func reviewTestGap(in review.Input) impact.TestGapResult {
++	return impact.TestGapOn(in.GraphBoth, in.Nodes, in.ChangedFiles)
+ }
+ 
+ // reviewVerdictOutcome computes review_diff's gate-shaped result summary
+@@ -476,7 +464,7 @@ func discoverConservePlanPaths(root string) []string {
+ }
+ 
+ // buildReviewInput does every I/O review.Run itself never performs:
+-// ListAllSymbols/TypedEdges for impact, per-changed-file Obligations for the
++// the memoized complete symbols/typed graph for impact, per-changed-file Obligations for the
+ // obligations dimension, ServiceMeta + internal/projectrules.ResolveRules
+ // for arch_conformance (review_diff never accepts inline arch rules — it
+ // always resolves through the service's own project rule pack, or reports
+@@ -496,6 +484,33 @@ type reviewCorpus struct {
+ 	deadline         time.Time
+ 	obligationGaps   []string
+ 	windowUnverified bool
++	indexScope       memo.Scope
++	indexSequence    uint64
++	indexCommit      string
++	indexFound       bool
++}
++
++func (rc *reviewCorpus) indexCurrent(ctx context.Context, backend QueryInterface, service string) bool {
++	if err := ctx.Err(); err != nil {
++		return rc.refuseWindow("partial: index identity recheck: " + err.Error())
++	}
++	if !memo.CoherentGraphCurrent(rc.indexSequence) {
++		return rc.refuseWindow("partial: graph publication changed during review (global conservative guard)")
++	}
++	if navScopeNoEnsure(ctx, backend, service) != rc.indexScope {
++		return rc.refuseWindow("partial: index identity changed during review")
++	}
++	_, commit, found, err := backend.ServiceMeta(ctx, service)
++	if err != nil {
++		return rc.refuseWindow("partial: index identity recheck: " + err.Error())
++	}
++	if found != rc.indexFound || commit != rc.indexCommit {
++		return rc.refuseWindow("partial: index identity changed during review")
++	}
++	if !memo.CoherentGraphCurrent(rc.indexSequence) {
++		return rc.refuseWindow("partial: graph publication changed during review (global conservative guard)")
++	}
++	return true
+ }
+ 
+ func (rc reviewCorpus) partialNote() string {
+@@ -528,18 +543,29 @@ func summarizeReviewVerdict(v review.Verdict) string {
+ }
+ 
+ func buildReviewInput(ctx context.Context, backend QueryInterface, service string, changedFiles []string, concern, since string, asOf *asOfWindow) (review.Input, reviewCorpus, *rpcError) {
+-	nodes, err := serviceSymbols(ctx, backend, service)
++	// Pin one scope and snapshot for the entire review. Every consumer below
++	// reads Nodes and GraphBoth without mutating either shared memo value.
++	sc := navScope(ctx, backend, service)
++	snap, graph, typed, typedErr, sequence, err := memo.SnapshotGraphBothForExtra(ctx, sc, func(lctx context.Context) ([]core.SymbolNode, any, error) {
++		cctx, col := scope.WithCollector(lctx)
++		nodes, loadErr := backend.ListAllSymbols(cctx, service)
++		return nodes, col.For(service), loadErr
++	}, typedLoader(backend, service))
+ 	if err != nil {
+-		return review.Input{}, reviewCorpus{}, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
++		return review.Input{}, reviewCorpus{}, navLoadError("review_diff", service, err)
++	}
++	if typedErr != nil {
++		return review.Input{}, reviewCorpus{}, navLoadError("review_diff typed edges", service, typedErr)
+ 	}
+-	typed, _ := backend.TypedEdges(ctx, service)
++	recordSnapshotDisclosure(ctx, service, snap)
+ 
+ 	in := review.Input{
+ 		Service:      service,
+ 		ChangedFiles: changedFiles,
+ 		Concern:      concern,
+-		Nodes:        nodes,
++		Nodes:        snap.Nodes,
+ 		TypedEdges:   typed,
++		GraphBoth:    graph,
+ 	}
+ 
+ 	var obligationGaps []string
+@@ -610,9 +636,13 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
+ 		}
+ 	}
+ 
+-	corpusRoot := ""
+-	if path, _, found, metaErr := backend.ServiceMeta(ctx, service); metaErr == nil && found {
+-		corpusRoot = path
++	corpusRoot, indexCommit, indexFound, metaErr := backend.ServiceMeta(ctx, service)
++	if metaErr != nil {
++		return review.Input{}, reviewCorpus{}, navLoadError("review_diff index identity", service, metaErr)
++	}
++	if !indexFound {
++		corpusRoot = ""
++		indexCommit = ""
+ 	}
+ 	// CV-13 (ADR-044 §1.6): resolve since in the service's OWN indexed
+ 	// root — never the daemon process's cwd — and fill Input.Base/Root.
+@@ -642,6 +672,10 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
+ 	in.ArchReason = reason
+ 
+ 	rc := readReviewCorpus(ctx, backend, service, changedFiles)
++	rc.indexScope, rc.indexSequence, rc.indexCommit, rc.indexFound = sc, sequence, indexCommit, indexFound
++	if !rc.indexCurrent(ctx, backend, service) {
++		return review.Input{}, reviewCorpus{}, &rpcError{Code: ErrCodeInternal, Message: "review_diff: " + rc.partial}
++	}
+ 	sort.Strings(obligationGaps)
+ 	rc.obligationGaps = obligationGaps
+ 	for _, f := range changedFiles {
+@@ -758,10 +792,7 @@ func applyAndPersistFindings(ctx context.Context, backend QueryInterface, v *rev
+ 		existingByID[cl.ClaimID] = cl
+ 	}
+ 
+-	watermark := ""
+-	if _, indexedCommit, found, err := backend.ServiceMeta(ctx, v.Service); err == nil && found {
+-		watermark = indexedCommit
+-	}
++	watermark := rc.indexCommit
+ 	// A citation can be outside the diff. Read every persistable finding's
+ 	// cited path before BuildPersist, so an unreadable citation cannot cause
+ 	// PutClaims to replace a previously valid link set with an empty one.
+@@ -802,6 +833,9 @@ func applyAndPersistFindings(ctx context.Context, backend QueryInterface, v *rev
+ 	if !rc.revalidate(ctx, backend, v.Service) {
+ 		return false, nil
+ 	}
++	if !rc.indexCurrent(ctx, backend, v.Service) {
++		return false, nil
++	}
+ 
+ 	okAll := true
+ 	if len(claims) > 0 {
+diff --git a/internal/memo/graphstore.go b/internal/memo/graphstore.go
+index a4852030dfdcbc9504530c9dc6ff9bc326fc93d6..84034a9035e614322876aee00e22321f18443125 100644
+--- a/internal/memo/graphstore.go
++++ b/internal/memo/graphstore.go
+@@ -23,6 +23,8 @@ import (
+ 	"context"
+ 	"errors"
+ 	"strings"
++	"sync"
++	"sync/atomic"
+ 	"time"
+ 
+ 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
+@@ -77,6 +79,12 @@ const (
+ )
+ 
+ var (
++	// A package patch/drop publishes several memo groups under one unchanged
++	// watermark. Readers of a complete snapshot+graph use this bounded
++	// sequence to reject a pair straddling that publication. It stores no
++	// service entries and does not change any group's cache policy.
++	patchWriteMu  sync.RWMutex
++	patchSequence atomic.Uint64
+ 	snapshotGroup = NewGroup[snapKey, *Snapshot]("snapshot", Options{WatermarkScoped: true, Keep: true, ExpectedCost: snapshotCost})
+ 	typedGroup    = NewGroup[typedKey, []core.Edge]("typed_edges", Options{WatermarkScoped: true, Keep: true, ExpectedCost: typedCost})
+ 	graphGroup    = NewGroup[graphKey, *callgraph.Graph]("graphstore", Options{WatermarkScoped: true, Keep: true, ExpectedCost: graphCost})
+@@ -95,6 +103,10 @@ var (
+ type Snapshot struct {
+ 	Scope Scope
+ 	Nodes []core.SymbolNode
++	// publication is the completed patch/drop sequence seen when these
++	// immutable rows were built. It fences a held snapshot after DropScope
++	// even when its cache entry has already been removed.
++	publication uint64
+ 	// lower holds each node's lowercased search fields, a field already
+ 	// lower case sharing its original string.
+ 	lower   []Lowered
+@@ -170,11 +182,18 @@ type SnapshotLoader func(ctx context.Context) ([]core.SymbolNode, error)
+ // caller.
+ func SnapshotFor(ctx context.Context, sc Scope, load SnapshotLoader) (*Snapshot, error) {
+ 	return snapshotGroup.Get(ctx, snapKey{sc}, func(bctx context.Context) (*Snapshot, int64, error) {
++		before := patchSequence.Load()
++		if before&1 != 0 {
++			return nil, 0, ErrCoherentGraphChanged
++		}
+ 		nodes, err := load(bctx)
+ 		if err != nil {
+ 			return nil, 0, err
+ 		}
+ 		s := newSnapshot(sc, nodes)
++		if !CoherentGraphCurrent(before) {
++			return nil, 0, ErrCoherentGraphChanged
++		}
+ 		return s, snapshotBytes(s), nil
+ 	})
+ }
+@@ -189,19 +208,26 @@ func NewSnapshot(nodes []core.SymbolNode) *Snapshot { return newSnapshot(Scope{}
+ // kept on the snapshot (Snapshot.Extra).
+ func SnapshotForExtra(ctx context.Context, sc Scope, load func(ctx context.Context) ([]core.SymbolNode, any, error)) (*Snapshot, error) {
+ 	return snapshotGroup.Get(ctx, snapKey{sc}, func(bctx context.Context) (*Snapshot, int64, error) {
++		before := patchSequence.Load()
++		if before&1 != 0 {
++			return nil, 0, ErrCoherentGraphChanged
++		}
+ 		nodes, extra, err := load(bctx)
+ 		if err != nil {
+ 			return nil, 0, err
+ 		}
+ 		s := newSnapshot(sc, nodes)
+ 		s.Extra = extra
++		if !CoherentGraphCurrent(before) {
++			return nil, 0, ErrCoherentGraphChanged
++		}
+ 		return s, snapshotBytes(s), nil
+ 	})
+ }
+ 
+ // newSnapshot indexes nodes (taken over, not copied).
+ func newSnapshot(sc Scope, nodes []core.SymbolNode) *Snapshot {
+-	s := &Snapshot{Scope: sc, Nodes: nodes, lower: make([]Lowered, len(nodes)),
++	s := &Snapshot{Scope: sc, Nodes: nodes, publication: patchSequence.Load(), lower: make([]Lowered, len(nodes)),
+ 		names: make(map[string][]int32, len(nodes)), callees: make(map[string][]int32)}
+ 	intern := map[string]string{}
+ 	low := func(v string) string {
+@@ -327,30 +353,103 @@ func TypedFor(ctx context.Context, sc Scope, load TypedLoader) ([]core.Edge, err
+ // watermark, kind) and shared: callers read it and never add edges to it.
+ // Both and resolved graphs take the typed edges from typed (TypedFor).
+ func GraphFor(ctx context.Context, snap *Snapshot, kind GraphKind, typed TypedLoader) (*callgraph.Graph, error) {
+-	return graphGroup.Get(ctx, graphKey{snap.Scope, kind}, func(bctx context.Context) (*callgraph.Graph, int64, error) {
+-		var edges []core.Edge
+-		if kind != GraphSyntax {
+-			var err error
+-			if edges, err = TypedFor(bctx, snap.Scope, typed); err != nil {
+-				return nil, 0, err
++	key := graphKey{snap.Scope, kind}
++	// Unscoped snapshots have no cache entry. Keep their standalone build
++	// and deadline behavior unchanged.
++	if snap.Scope.Watermark == "" {
++		return graphGroup.Get(ctx, key, func(bctx context.Context) (*callgraph.Graph, int64, error) {
++			var edges []core.Edge
++			if kind != GraphSyntax {
++				var err error
++				if edges, err = TypedFor(bctx, snap.Scope, typed); err != nil {
++					return nil, 0, err
++				}
+ 			}
++			g := buildGraph(snap.Nodes, kind, edges)
++			return g, g.EstimatedBytes(), nil
++		})
++	}
++	if err := ctx.Err(); err != nil {
++		return nil, err
++	}
++	if !patchWriteMu.TryRLock() {
++		return nil, ErrCoherentGraphChanged
++	}
++	if !snapshotCurrent(snap) {
++		patchWriteMu.RUnlock()
++		return nil, ErrCoherentGraphChanged
++	}
++	if g, ok := residentGraph(key); ok {
++		patchWriteMu.RUnlock()
++		return g, nil
++	}
++	patchWriteMu.RUnlock()
++	// TypedEdges may auto-refresh. Finish that read before taking the lock
++	// that its PatchPackage would need.
++	var edges []core.Edge
++	if kind != GraphSyntax {
++		var err error
++		if edges, err = TypedFor(ctx, snap.Scope, typed); err != nil {
++			return nil, err
+ 		}
+-		var g *callgraph.Graph
+-		switch kind {
+-		case GraphBoth:
+-			g = callgraph.BuildBoth(snap.Nodes, edges)
+-		case GraphResolved:
+-			g = callgraph.BuildResolved(snap.Nodes, edges)
+-		default:
+-			g = callgraph.Build(snap.Nodes)
+-		}
+-		// The graph's own maps, summed (callgraph.EstimatedBytes): a flat
+-		// per-node guess undercounted about 3× and let the cache fraction
+-		// admit several times its budget.
++	}
++	if !patchWriteMu.TryRLock() {
++		return nil, ErrCoherentGraphChanged
++	}
++	defer patchWriteMu.RUnlock()
++	if !snapshotCurrent(snap) {
++		return nil, ErrCoherentGraphChanged
++	}
++	return graphGroup.Get(ctx, key, func(context.Context) (*callgraph.Graph, int64, error) {
++		g := buildGraph(snap.Nodes, kind, edges)
+ 		return g, g.EstimatedBytes(), nil
+ 	})
+ }
+ 
++// snapshotCurrent is called under patchWriteMu's read lock. A resident
++// snapshot is authoritative even if an unrelated service advanced the
++// conservative global sequence. An evicted snapshot remains valid only
++// until any patch/drop may have changed its same-watermark source.
++func snapshotCurrent(snap *Snapshot) bool {
++	if resident, ok := snapshotGroup.Peek(snapKey{snap.Scope}); ok {
++		return resident == snap
++	}
++	return snap.publication == patchSequence.Load()
++}
++
++// residentGraph follows Group.Get's hit accounting and LRU touch without
++// starting a flight. On a miss, typed facts load before graph publication.
++func residentGraph(key graphKey) (*callgraph.Graph, bool) {
++	g := graphGroup
++	g.reg.mu.Lock()
++	g.mu.Lock()
++	e, ok := g.entries[key]
++	if !ok {
++		g.mu.Unlock()
++		g.reg.mu.Unlock()
++		return nil, false
++	}
++	g.counters.Hits++
++	if e.ref.elem != nil {
++		g.reg.lru.MoveToFront(e.ref.elem)
++	}
++	value := e.val
++	g.mu.Unlock()
++	g.reg.mu.Unlock()
++	return value, true
++}
++
++func buildGraph(nodes []core.SymbolNode, kind GraphKind, edges []core.Edge) *callgraph.Graph {
++	switch kind {
++	case GraphBoth:
++		return callgraph.BuildBoth(nodes, edges)
++	case GraphResolved:
++		return callgraph.BuildResolved(nodes, edges)
++	default:
++		return callgraph.Build(nodes)
++	}
++}
++
+ // ProductReachFor returns what the product entry points of snap's graph
+ // of kind reach (callgraph.ProductEntryReach) — computed once per (store,
+ // service, watermark, kind) from the shared graph GraphFor serves, and
+@@ -471,6 +570,13 @@ func HasGraphs(sc Scope) bool {
+ // is dropped (ReplacePackage re-derives syntax edges it must never carry)
+ // and rebuilds on its next use.
+ func PatchPackage(sc Scope, pkg string, nodes []core.SymbolNode, typed []core.Edge) {
++	patchPackage(sc, pkg, nodes, typed, nil)
++}
++
++func patchPackage(sc Scope, pkg string, nodes []core.SymbolNode, typed []core.Edge, step func(string)) {
++	patchWriteMu.Lock()
++	patchSequence.Add(1) // odd: multi-group publication in progress
++	defer func() { patchSequence.Add(1); patchWriteMu.Unlock() }()
+ 	snapshotGroup.Update(snapKey{sc}, func(old *Snapshot) (*Snapshot, int64) {
+ 		kept := make([]core.SymbolNode, 0, len(old.Nodes)+len(nodes))
+ 		for _, n := range old.Nodes {
+@@ -480,9 +586,13 @@ func PatchPackage(sc Scope, pkg string, nodes []core.SymbolNode, typed []core.Ed
+ 		}
+ 		kept = append(kept, nodes...)
+ 		s := newSnapshot(sc, kept)
+-		s.Extra = old.Extra // the load's disclosure still describes it
++		s.publication = patchSequence.Load() + 1 // the even value published on unlock
++		s.Extra = old.Extra                      // the load's disclosure still describes it
+ 		return s, snapshotBytes(s)
+ 	})
++	if step != nil {
++		step("snapshot")
++	}
+ 	for _, k := range []GraphKind{GraphSyntax, GraphBoth} {
+ 		t := typed
+ 		if k == GraphSyntax {
+@@ -492,6 +602,9 @@ func PatchPackage(sc Scope, pkg string, nodes []core.SymbolNode, typed []core.Ed
+ 			ng := old.ReplacePackage(pkg, nodes, t)
+ 			return ng, ng.EstimatedBytes()
+ 		})
++		if step != nil {
++			step(string(k))
++		}
+ 	}
+ 	graphGroup.Remove(graphKey{sc, GraphResolved}, ReasonWatermark)
+ 	for _, k := range []GraphKind{GraphSyntax, GraphBoth, GraphResolved} {
+@@ -516,12 +629,91 @@ func EvictStoreService(store, service string) {
+ // DropScope forgets sc's snapshot, typed edges and graphs — the honest
+ // fallback when a refresh cannot name the package to patch.
+ func DropScope(sc Scope) {
++	dropScope(sc, nil)
++}
++
++func dropScope(sc Scope, step func(string)) {
++	patchWriteMu.Lock()
++	patchSequence.Add(1)
++	defer func() { patchSequence.Add(1); patchWriteMu.Unlock() }()
+ 	snapshotGroup.Remove(snapKey{sc}, ReasonWatermark)
++	if step != nil {
++		step("snapshot")
++	}
+ 	typedGroup.Remove(typedKey{sc}, ReasonWatermark)
+ 	for _, k := range []GraphKind{GraphSyntax, GraphBoth, GraphResolved} {
+ 		graphGroup.Remove(graphKey{sc, k}, ReasonWatermark)
+ 		productGroup.Remove(graphKey{sc, k}, ReasonWatermark)
++		if step != nil {
++			step(string(k))
++		}
++	}
++}
++
++// ErrCoherentGraphChanged means a package refresh crossed a complete
++// snapshot/graph read. The caller must name the incomplete read; neither
++// half of the pair is evidence for a clean answer.
++var ErrCoherentGraphChanged = errors.New("memo: service snapshot or graph changed during the read")
++
++// CoherentGraphCurrent checks the publication token returned by
++// SnapshotGraphBothForExtra. A later patch/drop invalidates an answer even
++// when the store watermark is unchanged.
++func CoherentGraphCurrent(sequence uint64) bool {
++	return sequence&1 == 0 && patchSequence.Load() == sequence
++}
++
++// SnapshotGraphBothForExtra returns one complete immutable symbol/typed
++// graph bundle. A package patch or scope drop between its component reads
++// causes one bounded retry, then a named error. The loader's Extra retains
++// suppression disclosure for the caller to replay.
++func SnapshotGraphBothForExtra(ctx context.Context, sc Scope, load func(context.Context) ([]core.SymbolNode, any, error), typed TypedLoader) (*Snapshot, *callgraph.Graph, []core.Edge, error, uint64, error) {
++	return snapshotGraphBothForExtra(ctx, sc, load, typed, nil)
++}
++
++func snapshotGraphBothForExtra(ctx context.Context, sc Scope, load func(context.Context) ([]core.SymbolNode, any, error), typed TypedLoader, afterSnapshot func()) (*Snapshot, *callgraph.Graph, []core.Edge, error, uint64, error) {
++	for attempt := 0; attempt < 2; attempt++ {
++		if err := ctx.Err(); err != nil {
++			return nil, nil, nil, nil, 0, err
++		}
++		before := patchSequence.Load()
++		if before&1 != 0 {
++			return nil, nil, nil, nil, 0, ErrCoherentGraphChanged
++		}
++		snap, err := SnapshotForExtra(ctx, sc, load)
++		if err != nil {
++			if errors.Is(err, ErrCoherentGraphChanged) {
++				continue
++			}
++			return nil, nil, nil, nil, 0, err
++		}
++		if afterSnapshot != nil {
++			afterSnapshot()
++		}
++		// The backend's typed loader may itself refresh this scope. Complete
++		// that read before holding the publication lock.
++		edges, typedErr := TypedFor(ctx, sc, typed)
++		if typedErr != nil {
++			if err := ctx.Err(); err != nil {
++				return nil, nil, nil, nil, 0, err
++			}
++			return nil, nil, nil, typedErr, 0, nil
++		}
++		// GraphFor fences every graph publication, including legacy callers.
++		// Reuse these exact typed facts if their memo entry was evicted.
++		graph, err := GraphFor(ctx, snap, GraphBoth, func(context.Context) ([]core.Edge, error) {
++			return edges, nil
++		})
++		if err != nil {
++			if errors.Is(err, ErrCoherentGraphChanged) {
++				continue
++			}
++			return nil, nil, nil, nil, 0, err
++		}
++		if CoherentGraphCurrent(before) {
++			return snap, graph, edges, nil, before, nil
++		}
+ 	}
++	return nil, nil, nil, nil, 0, ErrCoherentGraphChanged
+ }
+ 
+ // GraphForTyped is GraphFor that also returns the typed edges and never
+diff --git a/internal/memo/review_bundle_test.go b/internal/memo/review_bundle_test.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..292e2b6aae251823f0c160440b3f463c3d15713e
+--- /dev/null
++++ b/internal/memo/review_bundle_test.go
+@@ -0,0 +1,217 @@
++package memo
++
++import (
++	"context"
++	"errors"
++	"sync"
++	"sync/atomic"
++	"testing"
++	"time"
++
++	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
++	"github.com/geoffmilleraz/fathom/internal/core"
++)
++
++func bundleNodes(name string) []core.SymbolNode {
++	return []core.SymbolNode{{Service: "svc", Package: "p", Name: name, Kind: core.KindGoFunc, FilePath: "p/f.go", Line: 1}}
++}
++
++func TestReviewBundleRejectsSnapshotPublishedBeforeGraph(t *testing.T) {
++	isolateGraphStore(t)
++	sc := Scope{Store: t.Name(), Service: "svc", Watermark: "w1"}
++	load := func(context.Context) ([]core.SymbolNode, any, error) { return bundleNodes("Old"), nil, nil }
++	typed := func(context.Context) ([]core.Edge, error) { return nil, nil }
++	if _, _, _, _, _, err := SnapshotGraphBothForExtra(context.Background(), sc, load, typed); err != nil {
++		t.Fatal(err)
++	}
++	entered, release, done := make(chan struct{}), make(chan struct{}), make(chan struct{})
++	go func() {
++		patchPackage(sc, "p", bundleNodes("New"), nil, func(phase string) {
++			if phase == "snapshot" {
++				close(entered)
++				<-release
++			}
++		})
++		close(done)
++	}()
++	<-entered
++	_, _, _, _, _, err := SnapshotGraphBothForExtra(context.Background(), sc, load, typed)
++	if !errors.Is(err, ErrCoherentGraphChanged) {
++		t.Fatalf("published snapshot with old graph accepted: %v", err)
++	}
++	ctx, cancel := context.WithCancel(context.Background())
++	cancel()
++	if _, _, _, _, _, err := SnapshotGraphBothForExtra(ctx, sc, load, typed); !errors.Is(err, context.Canceled) {
++		t.Fatalf("cancelled reader: %v", err)
++	}
++	close(release)
++	<-done
++	snap, graph, _, _, seq, err := SnapshotGraphBothForExtra(context.Background(), sc, load, typed)
++	if err != nil || !CoherentGraphCurrent(seq) || snap.Nodes[0].Name != "New" || !callgraph.Reachable(graph, snap.Nodes[0].Key(), snap.Nodes[0].Key()) {
++		t.Fatalf("after patch: snap=%v graph=%v err=%v", snap, graph, err)
++	}
++}
++
++func TestReviewBundleRetriesOldSnapshotAfterNewGraph(t *testing.T) {
++	isolateGraphStore(t)
++	sc := Scope{Store: t.Name(), Service: "svc", Watermark: "w1"}
++	load := func(context.Context) ([]core.SymbolNode, any, error) { return bundleNodes("Old"), nil, nil }
++	typed := func(context.Context) ([]core.Edge, error) { return nil, nil }
++	if _, _, _, _, _, err := SnapshotGraphBothForExtra(context.Background(), sc, load, typed); err != nil {
++		t.Fatal(err)
++	}
++	entered, release := make(chan struct{}), make(chan struct{})
++	var once sync.Once
++	type result struct {
++		snap  *Snapshot
++		graph *callgraph.Graph
++		err   error
++	}
++	done := make(chan result, 1)
++	go func() {
++		snap, graph, _, _, _, err := snapshotGraphBothForExtra(context.Background(), sc, load, typed, func() { once.Do(func() { close(entered); <-release }) })
++		done <- result{snap, graph, err}
++	}()
++	<-entered
++	PatchPackage(sc, "p", bundleNodes("New"), nil)
++	close(release)
++	r := <-done
++	if r.err != nil || r.snap.Nodes[0].Name != "New" || !callgraph.Reachable(r.graph, r.snap.Nodes[0].Key(), r.snap.Nodes[0].Key()) {
++		t.Fatalf("old snapshot/new graph was returned: %+v", r)
++	}
++}
++
++func TestReviewBundleDropScopeIsOnePublication(t *testing.T) {
++	isolateGraphStore(t)
++	sc := Scope{Store: t.Name(), Service: "svc", Watermark: "w1"}
++	var rows atomic.Value
++	rows.Store(bundleNodes("Old"))
++	load := func(context.Context) ([]core.SymbolNode, any, error) {
++		return rows.Load().([]core.SymbolNode), nil, nil
++	}
++	typed := func(context.Context) ([]core.Edge, error) { return nil, nil }
++	if _, _, _, _, _, err := SnapshotGraphBothForExtra(context.Background(), sc, load, typed); err != nil {
++		t.Fatal(err)
++	}
++	entered, release, done := make(chan struct{}), make(chan struct{}), make(chan struct{})
++	rows.Store(bundleNodes("New"))
++	go func() {
++		dropScope(sc, func(phase string) {
++			if phase == "snapshot" {
++				close(entered)
++				<-release
++			}
++		})
++		close(done)
++	}()
++	<-entered
++	_, _, _, _, _, err := SnapshotGraphBothForExtra(context.Background(), sc, load, typed)
++	if !errors.Is(err, ErrCoherentGraphChanged) {
++		t.Fatalf("partial drop accepted: %v", err)
++	}
++	close(release)
++	<-done
++	snap, graph, _, _, _, err := SnapshotGraphBothForExtra(context.Background(), sc, load, typed)
++	if err != nil || snap.Nodes[0].Name != "New" || !callgraph.Reachable(graph, snap.Nodes[0].Key(), snap.Nodes[0].Key()) {
++		t.Fatalf("after drop: snap=%v graph=%v err=%v", snap, graph, err)
++	}
++	// The opposite interleaving holds the old snapshot while DropScope
++	// removes the graph, then resumes the graph read at the same watermark.
++	entered2, release2 := make(chan struct{}), make(chan struct{})
++	var once sync.Once
++	type result struct {
++		snap  *Snapshot
++		graph *callgraph.Graph
++		err   error
++	}
++	readDone := make(chan result, 1)
++	go func() {
++		s, g, _, _, _, e := snapshotGraphBothForExtra(context.Background(), sc, load, typed, func() { once.Do(func() { close(entered2); <-release2 }) })
++		readDone <- result{s, g, e}
++	}()
++	<-entered2
++	rows.Store(bundleNodes("After"))
++	DropScope(sc)
++	if cached, ok := PeekSnapshot(sc); ok {
++		t.Fatalf("drop retained snapshot: %s", cached.Nodes[0].Name)
++	}
++	close(release2)
++	r := <-readDone
++	if r.err != nil || r.snap.Nodes[0].Name != "After" || !callgraph.Reachable(r.graph, r.snap.Nodes[0].Key(), r.snap.Nodes[0].Key()) {
++		t.Fatalf("old snapshot after drop: name=%s snap=%v graph=%v err=%v", r.snap.Nodes[0].Name, r.snap, r.graph, r.err)
++	}
++}
++
++func TestReviewBundleTypedRefreshDoesNotWaitOnReadLock(t *testing.T) {
++	isolateGraphStore(t)
++	sc := Scope{Store: t.Name(), Service: "svc", Watermark: "w1"}
++	load := func(context.Context) ([]core.SymbolNode, any, error) { return bundleNodes("Old"), nil, nil }
++	var calls atomic.Int32
++	typed := func(context.Context) ([]core.Edge, error) {
++		if calls.Add(1) == 1 {
++			PatchPackage(sc, "p", bundleNodes("New"), []core.Edge{})
++		}
++		return nil, nil
++	}
++	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
++	defer cancel()
++	_, _, _, _, _, err := SnapshotGraphBothForExtra(ctx, sc, load, typed)
++	if err != nil && !errors.Is(err, ErrCoherentGraphChanged) {
++		t.Fatalf("typed refresh blocked graph acquisition: %v", err)
++	}
++	if calls.Load() == 0 {
++		t.Fatal("typed loader did not run")
++	}
++}
++
++func TestLegacyGraphForTypedCannotRepublishAfterDropScope(t *testing.T) {
++	isolateGraphStore(t)
++	sc := Scope{Store: t.Name(), Service: "svc", Watermark: "w1"}
++	var rows atomic.Value
++	rows.Store(bundleNodes("Old"))
++	load := func(context.Context) ([]core.SymbolNode, any, error) {
++		return rows.Load().([]core.SymbolNode), nil, nil
++	}
++	typed := func(context.Context) ([]core.Edge, error) { return nil, nil }
++	old, oldGraph, _, _, _, err := SnapshotGraphBothForExtra(context.Background(), sc, load, typed)
++	if err != nil || !callgraph.Reachable(oldGraph, old.Nodes[0].Key(), old.Nodes[0].Key()) {
++		t.Fatalf("old graph prerequisite: %v", err)
++	}
++	rows.Store(bundleNodes("New"))
++	DropScope(sc)
++	if _, _, _, err := GraphForTyped(context.Background(), old, GraphBoth, typed); !errors.Is(err, ErrCoherentGraphChanged) {
++		t.Fatalf("legacy held snapshot republished graph: %v", err)
++	}
++	if _, ok := graphGroup.Peek(graphKey{sc, GraphBoth}); ok {
++		t.Fatal("legacy held snapshot cached graph after drop")
++	}
++	fresh, graph, _, _, _, err := SnapshotGraphBothForExtra(context.Background(), sc, load, typed)
++	if err != nil || fresh.Nodes[0].Name != "New" || !callgraph.Reachable(graph, fresh.Nodes[0].Key(), fresh.Nodes[0].Key()) || callgraph.Reachable(graph, old.Nodes[0].Key(), old.Nodes[0].Key()) {
++		t.Fatalf("fresh bundle mixed with legacy graph: fresh=%v graph=%v err=%v", fresh, graph, err)
++	}
++}
++
++func TestSnapshotFlightCannotRepublishAfterDropScope(t *testing.T) {
++	isolateGraphStore(t)
++	sc := Scope{Store: t.Name(), Service: "svc", Watermark: "w1"}
++	entered, release := make(chan struct{}), make(chan struct{})
++	loader := func(context.Context) ([]core.SymbolNode, any, error) {
++		close(entered)
++		<-release
++		return bundleNodes("Old"), nil, nil
++	}
++	done := make(chan error, 1)
++	go func() {
++		_, err := SnapshotForExtra(context.Background(), sc, loader)
++		done <- err
++	}()
++	<-entered
++	DropScope(sc)
++	close(release)
++	if err := <-done; !errors.Is(err, ErrCoherentGraphChanged) {
++		t.Fatalf("old snapshot flight accepted after drop: %v", err)
++	}
++	if snap, ok := PeekSnapshot(sc); ok {
++		t.Fatalf("old snapshot flight cached after drop: %v", snap)
++	}
++}

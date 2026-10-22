@@ -1,0 +1,52 @@
+{
+  "baseline": {
+    "microsoft_pyright": "2f28cd390b534ad6647d190e05e9c57f20f6a3a1",
+    "sourcegraph_scip_python": "8b60bbce1f2a4c7a517776cb395bbafb2e731e4f"
+  },
+  "dependency_patch_paths": [
+    "package.json",
+    "package-lock.json",
+    "packages/pyright-internal/package.json",
+    "packages/pyright-internal/package-lock.json",
+    "packages/pyright-scip/package.json",
+    "packages/pyright-scip/package-lock.json",
+    "tsconfig.json"
+  ],
+  "patches": {
+    "dependency-manifests-and-locks.patch": "177e78c6aa67adc328b277f357cfec9fa49864adeb9b5e832fdc4bd4180a7937",
+    "producer-adapter.patch": "40682f2d2be7047327e61ecda08c5decbe1a31cb9c24ee3224f50cd5e6b2eea8",
+    "pyright-owned-core.patch": "05232fb3dd858aa11ee6f2df8a0c1103c4caa86e845cfa42760246c73702db56"
+  },
+  "producer_patch_paths": [
+    "packages/pyright-scip/src/FileMatcher.ts",
+    "packages/pyright-scip/src/ModifiedTypeUtils.ts",
+    "packages/pyright-scip/src/TypeStubExtendedWriter.ts",
+    "packages/pyright-scip/src/assertions.ts",
+    "packages/pyright-scip/src/config.ts",
+    "packages/pyright-scip/src/hardcoded.ts",
+    "packages/pyright-scip/src/indexer.ts",
+    "packages/pyright-scip/src/treeVisitor.ts",
+    "packages/pyright-scip/src/virtualenv/environment.ts",
+    "packages/pyright-scip/test/test-main.ts",
+    "packages/pyright-scip/src/ProjectFirstImportResolver.ts",
+    "packages/pyright-scip/src/ProjectOwnership.test.ts",
+    "packages/pyright-scip/src/ProjectOwnership.ts",
+    "packages/pyright-scip/src/hover.ts",
+    "packages/pyright-scip/src/virtualenv/environment.test.ts"
+  ],
+  "pyright_core": {
+    "different_files": [
+      "src/analyzer/program.ts",
+      "src/analyzer/sourceFile.ts",
+      "src/common/fullAccessHost.ts",
+      "src/languageService/hoverProvider.ts"
+    ],
+    "typeshed_differences": 0
+  },
+  "qualified_candidate": {
+    "bundle_sha256": "45049a13ef78fbd00b481396a47561d60077a93fc3d150c25b0ba5237d933ece",
+    "cohort_scip_sha256": "2499126beea7cf41a23dfc653788d32c16e923c317ebab4a77846f537f38e2eb",
+    "source_file_count": 6647,
+    "source_tree_sha256": "00168fca54e3157360a2b5bbdcb818948c94ec43c88f5a67bf5510ae5fb85a52"
+  }
+}

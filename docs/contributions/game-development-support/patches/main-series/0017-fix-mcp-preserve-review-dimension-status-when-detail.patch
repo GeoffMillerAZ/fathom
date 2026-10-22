@@ -1,0 +1,160 @@
+From d0688ef83218cbbc0b834cece75b023758945170 Mon Sep 17 00:00:00 2001
+From: Geoff Miller <contributor@example.invalid>
+Date: Wed, 21 Oct 2026 05:31:28 -0700
+Subject: [PATCH 17/27] fix(mcp): preserve review dimension status when details
+ are elided
+
+---
+ .../unreleased/review-dimension-status.md     |  3 +
+ internal/mcp/outputschema.go                  | 22 ++++--
+ internal/mcp/review_status_test.go            | 68 +++++++++++++++++++
+ internal/mcp/review_tool.go                   | 11 +++
+ 4 files changed, 97 insertions(+), 7 deletions(-)
+ create mode 100644 docs/changelog/unreleased/review-dimension-status.md
+ create mode 100644 internal/mcp/review_status_test.go
+
+diff --git a/docs/changelog/unreleased/review-dimension-status.md b/docs/changelog/unreleased/review-dimension-status.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..5c057650b61dcb80e6ade9ad5585f1e353c66f09
+--- /dev/null
++++ b/docs/changelog/unreleased/review-dimension-status.md
+@@ -0,0 +1,3 @@
++### Added
++
++- `review_diff` returns a compact `dimension_status` entry for every review dimension, including its checked state, finding count, and reason when unchecked, even when the default response budget elides detailed dimensions.
+diff --git a/internal/mcp/outputschema.go b/internal/mcp/outputschema.go
+index cd1e88ce395288a3756ee0323d74999e0927e3b9..7e5c2464c0218ce22efea1f13a7189e625cdbcba 100644
+--- a/internal/mcp/outputschema.go
++++ b/internal/mcp/outputschema.go
+@@ -445,13 +445,14 @@ type blastRadiusResult struct {
+ // capabilitiesResult.ExtractionEngines is `any` rather than a fully
+ // reflected type.
+ type reviewDiffResult struct {
+-	Service           string   `json:"service"`
+-	ChangedFiles      []string `json:"changed_files"`
+-	Dimensions        []any    `json:"dimensions"`
+-	Summary           string   `json:"summary"`
+-	FindingsPersisted bool     `json:"findings_persisted"`
+-	VerdictOutcome    any      `json:"verdict_outcome,omitempty"`
+-	TestImpact        any      `json:"test_impact"`
++	Service           string                           `json:"service"`
++	ChangedFiles      []string                         `json:"changed_files"`
++	Dimensions        []any                            `json:"dimensions"`
++	DimensionStatus   map[string]reviewDimensionStatus `json:"dimension_status"`
++	Summary           string                           `json:"summary"`
++	FindingsPersisted bool                             `json:"findings_persisted"`
++	VerdictOutcome    any                              `json:"verdict_outcome,omitempty"`
++	TestImpact        any                              `json:"test_impact"`
+ 	// Resolution/IndexCommit (VB-19): the typed/heuristic mix behind the
+ 	// impact dimension's blast radius, and the daemon's watermark.
+ 	Resolution  resolutionMix `json:"resolution"`
+@@ -466,6 +467,13 @@ type reviewDiffResult struct {
+ 	Layers []diffLayer `json:"layers,omitempty"`
+ }
+ 
++// reviewDimensionStatus remains available when dispatch elides detailed dimensions.
++type reviewDimensionStatus struct {
++	Checked         bool   `json:"checked"`
++	Count           int    `json:"count"`
++	UncheckedReason string `json:"unchecked_reason,omitempty"`
++}
++
+ // safeDeleteCheckResult mirrors safe_delete_check's payload (safe_delete.go).
+ type safeDeleteCheckResult struct {
+ 	// Summary (wave L1): the count and the first three sites, or the
+diff --git a/internal/mcp/review_status_test.go b/internal/mcp/review_status_test.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..33c24198fdc29f392f730bfd4a9016a02890104a
+--- /dev/null
++++ b/internal/mcp/review_status_test.go
+@@ -0,0 +1,68 @@
++package mcp_test
++
++import (
++	"fmt"
++	"reflect"
++	"strings"
++	"testing"
++
++	"github.com/geoffmilleraz/fathom/internal/core"
++	"github.com/geoffmilleraz/fathom/internal/mcp"
++	"github.com/geoffmilleraz/fathom/internal/semantic"
++)
++
++// The default tools/call budget can remove seven detailed dimensions when
++// one early dimension has many findings. Their final statuses must survive.
++func TestReviewDiff_DimensionStatusSurvivesDispatchElision(t *testing.T) {
++	call := func(rules []semantic.Obligation) map[string]any {
++		fake := &reviewFakeBackend{
++			extendedFakeBackend: extendedFakeBackend{nodes: extFixtureNodes(), services: []string{"svc"}},
++			obligations:         map[string]semantic.Obligations{"pkg/a.go": {Rules: rules}},
++		}
++		return callTool(t, mcp.NewServer(fake), "review_diff", map[string]any{
++			"service": "svc", "changed_files": []string{"pkg/a.go"},
++		})
++	}
++
++	small := call(nil)
++	detailed, ok := small["dimensions"].([]any)
++	if !ok || len(detailed) != 8 || small["elided"] != nil {
++		t.Fatalf("under-budget dimensions = %v; elided = %v", small["dimensions"], small["elided"])
++	}
++	want := make(map[string]any, len(detailed))
++	for _, raw := range detailed {
++		d := raw.(map[string]any)
++		state := map[string]any{"checked": d["checked"], "count": d["count"]}
++		if d["checked"] == false {
++			state["unchecked_reason"] = d["reason"]
++		}
++		want[d["name"].(string)] = state
++	}
++	if !reflect.DeepEqual(small["dimension_status"], want) {
++		t.Fatalf("under-budget status = %v; want detailed dimensions = %v", small["dimension_status"], want)
++	}
++	if want["coverage"].(map[string]any)["count"] != float64(0) || want["coverage"].(map[string]any)["unchecked_reason"] != "no coverage profile supplied" {
++		t.Fatalf("fixture lost unchecked zero-count coverage: %v", want["coverage"])
++	}
++
++	rules := make([]semantic.Obligation, 90)
++	for i := range rules {
++		rules[i] = semantic.Obligation{
++			Rule: fmt.Sprintf("rule %03d: %s", i, strings.Repeat("detail ", 45)),
++			Src:  "pkg/a.go#L1-L1",
++		}
++	}
++	large := call(rules)
++	kept, ok := large["dimensions"].([]any)
++	if !ok || len(kept) >= len(detailed) {
++		t.Fatalf("default dispatch did not elide detailed dimensions: %v", large["dimensions"])
++	}
++	elided, ok := large["elided"].(map[string]any)
++	if !ok || elided["of"] != float64(len(detailed)) || elided["count"] != float64(len(detailed)-len(kept)) {
++		t.Fatalf("dispatch elision = %v; kept %d of %d", large["elided"], len(kept), len(detailed))
++	}
++	want["obligations"].(map[string]any)["count"] = float64(len(rules))
++	if !reflect.DeepEqual(large["dimension_status"], want) {
++		t.Fatalf("elided status = %v; want %v", large["dimension_status"], want)
++	}
++}
+diff --git a/internal/mcp/review_tool.go b/internal/mcp/review_tool.go
+index 99c9e891d8d88e94ba210d5e002250a57f4cc833..64279b67fb9063af2c11e7ddcff940e51114e5f1 100644
+--- a/internal/mcp/review_tool.go
++++ b/internal/mcp/review_tool.go
+@@ -207,6 +207,17 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
+ 		}
+ 
+ 		payload := v.Payload(persisted)
++		// Keep each final dimension's verdict visible when dispatch elides
++		// the detailed dimensions array to meet its default response budget.
++		status := make(map[string]reviewDimensionStatus, len(v.Dimensions))
++		for _, d := range v.Dimensions {
++			item := reviewDimensionStatus{Checked: d.Checked, Count: d.Count}
++			if !d.Checked {
++				item.UncheckedReason = d.Reason
++			}
++			status[d.Name] = item
++		}
++		payload["dimension_status"] = status
+ 		if asOf.active() {
+ 			payload["as_of"] = asOf.label()
+ 			payload["as_of_scope"] = "obligations and certifications are answered as of " + asOf.label() +

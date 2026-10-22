@@ -1,0 +1,340 @@
+From 87687c66a7131f3b6bd6b031f321c411669be65e Mon Sep 17 00:00:00 2001
+From: Geoff Miller <contributor@example.invalid>
+Date: Tue, 20 Oct 2026 20:50:09 -0700
+Subject: [PATCH 05/27] fix(mcp): load plan graph evidence only when required
+
+Verified: regression RED, focused tests, go test -race ./internal/mcp ./internal/verify, and CLI build passed. Cold workload qualification remains pending.
+---
+ .../unreleased/verify-plan-demand-evidence.md |   3 +
+ internal/mcp/verify_plan_demand_test.go       | 196 ++++++++++++++++++
+ internal/mcp/verify_plan_tool.go              |  66 ++++--
+ 3 files changed, 247 insertions(+), 18 deletions(-)
+ create mode 100644 docs/changelog/unreleased/verify-plan-demand-evidence.md
+ create mode 100644 internal/mcp/verify_plan_demand_test.go
+
+diff --git a/docs/changelog/unreleased/verify-plan-demand-evidence.md b/docs/changelog/unreleased/verify-plan-demand-evidence.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..dbe08656281135490b5a6465a0f561bc330852f0
+--- /dev/null
++++ b/docs/changelog/unreleased/verify-plan-demand-evidence.md
+@@ -0,0 +1,3 @@
++### Changed
++
++- `verify_plan` reads the call graph and product reach only when a plan contains a symbol or `gone:` row. File-only and empty plans no longer wait for graph construction; spec-only plans still read the indexed symbol snapshot and source references.
+diff --git a/internal/mcp/verify_plan_demand_test.go b/internal/mcp/verify_plan_demand_test.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..6b7b6957b51ba36423c8425bd37e482f14ae1e82
+--- /dev/null
++++ b/internal/mcp/verify_plan_demand_test.go
+@@ -0,0 +1,196 @@
++package mcp
++
++import (
++	"context"
++	"reflect"
++	"strings"
++	"testing"
++	"time"
++
++	"github.com/geoffmilleraz/fathom/internal/core"
++	"github.com/geoffmilleraz/fathom/internal/corpus"
++)
++
++type demandNoSnapshotBackend struct {
++	*coldGraphBackend
++	listCalls int
++}
++
++func (b *demandNoSnapshotBackend) ListAllSymbols(ctx context.Context, service string) ([]core.SymbolNode, error) {
++	b.listCalls++
++	return b.coldGraphBackend.ListAllSymbols(ctx, service)
++}
++
++// A file-only plan has a verdict even while this service's graph input is
++// unavailable. The blocked typed read makes accidental graph construction
++// observable as an elided answer instead of relying on timing assertions.
++func TestVerifyPlanFileOnlyDoesNotLoadGraph(t *testing.T) {
++	gate := make(chan struct{})
++	defer close(gate)
++	b := &demandNoSnapshotBackend{coldGraphBackend: &coldGraphBackend{
++		storeID: "file-only-" + t.Name(), mark: "w1", gate: gate, typedReads: map[string]int{},
++	}}
++	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
++	defer cancel()
++	srv := NewServer(b)
++	got := callToolWithin(t, ctx, srv, "verify_plan", map[string]any{
++		"service": "svc",
++		"tasks":   []any{map[string]any{"id": "N-1", "title": "no contract", "claimed": true}},
++	})
++	tasks, ok := got["tasks"].([]any)
++	if !ok || len(tasks) != 1 || tasks[0].(map[string]any)["label"] != "no-contract" {
++		t.Fatalf("no-contract verdict was elided by an unused graph: %+v", got)
++	}
++	oracle := callToolWithin(t, ctx, srv, "verify_plan", map[string]any{
++		"service": "svc", "plan_markdown": "- [x] file {id: F-1, oracle: lexical, path: proof.txt}\n",
++	})
++	rows := oracle["tasks"].([]any)
++	if len(rows) != 1 || rows[0].(map[string]any)["label"] != "oracle-unevaluated" {
++		t.Fatalf("unreadable file oracle lost its Unknown verdict: %+v", oracle)
++	}
++	empty := callToolWithin(t, ctx, srv, "verify_plan", map[string]any{"service": "svc"})
++	if len(empty["tasks"].([]any)) != 0 || empty["summary"].(map[string]any)["total"] != float64(0) {
++		t.Fatalf("empty plan did not report zero rows: %+v", empty)
++	}
++	b.mu.Lock()
++	reads := b.typedReads["w1"]
++	b.mu.Unlock()
++	if reads != 0 {
++		t.Fatalf("file-only plan read typed graph input %d times", reads)
++	}
++	if b.listCalls != 0 {
++		t.Fatalf("file-only plan loaded the unused symbol snapshot %d times", b.listCalls)
++	}
++}
++
++type demandSpecBackend struct {
++	*coldGraphBackend
++	scanErr error
++	partial bool
++}
++
++func (b *demandSpecBackend) ScanSources(_ context.Context, _ string, _ corpus.Budget, fn func(core.SourceFile) bool) (corpus.Coverage, error) {
++	if b.scanErr != nil {
++		return corpus.Coverage{}, b.scanErr
++	}
++	if b.partial {
++		fn(core.SourceFile{Path: "one.go", Content: []byte("package one\n")})
++		return corpus.Coverage{Scanned: 1, Total: 2, Stopped: corpus.StopBytes}, nil
++	}
++	return corpus.Coverage{}, nil
++}
++
++func TestVerifyPlanSpecOnlyKeepsSnapshotAndScanSemantics(t *testing.T) {
++	for _, tc := range []struct {
++		name, spec, status string
++		partial            bool
++		scanErr            error
++	}{
++		{name: "symbol reference", spec: "[FR-1]", status: "pass"},
++		{name: "partial source scan", spec: "[FR-2]", status: "fail", partial: true},
++		{name: "busy source scan", spec: "[FR-1]", scanErr: core.ErrSourcesBusy},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			gate := make(chan struct{})
++			defer close(gate)
++			b := &demandSpecBackend{coldGraphBackend: &coldGraphBackend{
++				storeID: "spec-only-" + t.Name(), mark: "w1", gate: gate,
++				nodes:      []core.SymbolNode{{Service: "svc", Name: "Implement", Signature: "// [FR-1]", FilePath: "impl.go"}},
++				typedReads: map[string]int{},
++			}, partial: tc.partial, scanErr: tc.scanErr}
++			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
++			defer cancel()
++			args := map[string]any{"service": "svc", "tasks": []any{map[string]any{
++				"id": "S-1", "title": "spec", "spec_ids": []string{tc.spec}, "claimed": true,
++			}}}
++			if tc.scanErr != nil {
++				msg := callToolFailure(t, NewServer(b), "verify_plan", args)
++				if !strings.Contains(msg, tc.scanErr.Error()) {
++					t.Fatalf("busy scan was not refused: %s", msg)
++				}
++			} else {
++				got := callToolWithin(t, ctx, NewServer(b), "verify_plan", args)
++				tasks, ok := got["tasks"].([]any)
++				if !ok || len(tasks) != 1 || tasks[0].(map[string]any)["status"] != tc.status {
++					t.Fatalf("spec-only verdict: %+v", got)
++				}
++				_, hasPartial := got["partial"]
++				if hasPartial != tc.partial {
++					t.Fatalf("partial disclosure = %v, want %v: %+v", hasPartial, tc.partial, got)
++				}
++			}
++			b.mu.Lock()
++			reads := b.typedReads["w1"]
++			b.mu.Unlock()
++			if reads != 0 {
++				t.Fatalf("spec-only plan read typed edges %d times", reads)
++			}
++		})
++	}
++}
++
++func TestVerifyPlanMixedAndGoneStillWaitForGraph(t *testing.T) {
++	for _, tc := range []struct{ name, plan string }{
++		{"mixed", "- [x] file {id: F-1, oracle: lexical, path: missing.txt}\n- [x] code {id: C-1, symbol: Run}\n"},
++		{"gone", "- [x] remove callers {id: G-1, gone: callers Run}\n"},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			gate := make(chan struct{})
++			defer close(gate)
++			b := &coldGraphBackend{storeID: "semantic-" + t.Name(), mark: "w1", gate: gate,
++				nodes:      []core.SymbolNode{{Service: "svc", Name: "Run", Kind: core.KindGoFunc, FilePath: "run.go", Tier: core.TierVerified}},
++				typedReads: map[string]int{},
++			}
++			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
++			defer cancel()
++			got := callToolWithin(t, ctx, NewServer(b), "verify_plan", map[string]any{
++				"service": "svc", "plan_markdown": tc.plan,
++			})
++			if len(got["tasks"].([]any)) != 0 || got["elided"].(map[string]any)["count"] != float64(strings.Count(tc.plan, "- [x]")) {
++				t.Fatalf("semantic plan bypassed unavailable graph: %+v", got)
++			}
++			b.mu.Lock()
++			reads := b.typedReads["w1"]
++			b.mu.Unlock()
++			if reads != 1 {
++				t.Fatalf("semantic plan loaded typed edges %d times, want 1", reads)
++			}
++		})
++	}
++}
++
++// The same spec row must report the same criteria when a second, semantic
++// row forces the full stage. Only the mixed plan's aggregate may differ.
++func TestVerifyPlanSpecRowMatchesFullStage(t *testing.T) {
++	b := &demandSpecBackend{coldGraphBackend: &coldGraphBackend{
++		storeID: "spec-parity-" + t.Name(), mark: "w1", typedReads: map[string]int{},
++		nodes: []core.SymbolNode{
++			{Service: "svc", Name: "Implement", Signature: "// [FR-1]", FilePath: "impl.go"},
++			{Service: "svc", Name: "Run", Kind: core.KindGoFunc, FilePath: "run.go", Tier: core.TierVerified},
++		},
++	}}
++	srv := NewServer(b)
++	spec := map[string]any{"id": "S-1", "title": "spec", "spec_ids": []string{"[FR-1]"}, "claimed": true}
++	fileOnly := callToolWithin(t, context.Background(), srv, "verify_plan", map[string]any{
++		"service": "svc", "tasks": []any{spec},
++	})
++	mixed := callToolWithin(t, context.Background(), srv, "verify_plan", map[string]any{
++		"service": "svc", "tasks": []any{spec, map[string]any{"id": "C-1", "symbol": "Run"}},
++	})
++	want := fileOnly["tasks"].([]any)[0]
++	var got any
++	for _, row := range mixed["tasks"].([]any) {
++		if row.(map[string]any)["id"] == "S-1" {
++			got = row
++		}
++	}
++	if !reflect.DeepEqual(got, want) {
++		t.Fatalf("spec row changed with unused graph stage:\nonly: %+v\nmixed: %+v", want, got)
++	}
++	b.mu.Lock()
++	reads := b.typedReads["w1"]
++	b.mu.Unlock()
++	if reads != 1 {
++		t.Fatalf("mixed plan loaded typed edges %d times, want 1", reads)
++	}
++}
+diff --git a/internal/mcp/verify_plan_tool.go b/internal/mcp/verify_plan_tool.go
+index 119da01418faefd4db3a64b80189a773bcd5e19f..0e3b6d3fb9e8522e8d38270f57fb01ea097194dd 100644
+--- a/internal/mcp/verify_plan_tool.go
++++ b/internal/mcp/verify_plan_tool.go
+@@ -164,15 +164,6 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
+ 			}
+ 		}
+ 
+-		// The evidence stage — the service's symbols, the graph every
+-		// reachability check walks and what its product entry points reach
+-		// — from the graph store's watermark-keyed memo (O33, RT-74), waited
+-		// for no longer than this call's deadline allows (EW-22, O130).
+-		stage, serr := verifyPlanWithDeadline(ctx, backend, p.Service)
+-		if serr != nil && !errors.Is(serr, errVerifyStageBuilding) {
+-			return nil, navLoadError("verify_plan", p.Service, serr)
+-		}
+-
+ 		// Build the plan: from a Markdown checklist when provided, else from the
+ 		// structured tasks.
+ 		var plan verify.Plan
+@@ -212,20 +203,45 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
+ 			}
+ 		}
+ 
++		// A file/spec-only plan has no consumer of the call graph or product
++		// reach. Keep the full stage for any symbol or gone row, including a
++		// malformed conflicting contract: verification still owns its refusal.
++		var allSpecs []string
++		needsGraph := false
++		for _, t := range plan.Tasks {
++			allSpecs = append(allSpecs, t.SpecIDs...)
++			needsGraph = needsGraph || t.Expect.Symbol != "" || t.Gone != ""
++		}
++		stage := &verifyStage{}
++		var serr error
++		switch {
++		case needsGraph:
++			stage, serr = verifyPlanWithDeadline(ctx, backend, p.Service)
++		case len(allSpecs) > 0:
++			stage, serr = verifyPlanSnapshotWithDeadline(ctx, backend, p.Service)
++		}
++		if serr != nil && !errors.Is(serr, errVerifyStageBuilding) {
++			return nil, navLoadError("verify_plan", p.Service, serr)
++		}
++
+ 		if errors.Is(serr, errVerifyStageBuilding) {
+-			// The graph this index state needs is still building: answer
++			// The evidence this index state needs is still building: answer
+ 			// within the deadline, every row elided and the build named —
+ 			// the flights it runs in are kept, so the next call is served
+ 			// from them rather than starting over (O130). At shed or refuse
+ 			// the build may never finish, so the partial names the level
+ 			// and the budget knob instead (EW-79, O1073, I38).
+-			partial := "the call graph for this index state is still building (the first call after an ingest or a daemon start pays for it); no row was verified — the build keeps running for the next call"
++			stageName := "call graph"
++			if !needsGraph {
++				stageName = "symbol snapshot"
++			}
++			partial := "the " + stageName + " for this index state is still building (the first call after an ingest or a daemon start pays for it); no row was verified — the build keeps running for the next call"
+ 			if lvl := tenancyLevelNote(); lvl != "" {
+-				partial = "the call graph for this index state did not finish building; no row was verified — " + lvl
++				partial = "the " + stageName + " for this index state did not finish building; no row was verified — " + lvl
+ 			}
+ 			again := "call verify_plan again: the next call is served from the build this one left running"
+ 			if errors.Is(serr, memo.ErrWouldNotFinish) {
+-				partial = "the call graph for this index state is not built and building it would not finish inside this call's deadline, so no build was started; no row was verified"
++				partial = "the " + stageName + " for this index state is not built and building it would not finish inside this call's deadline, so no build was started; no row was verified"
+ 				if lvl := tenancyLevelNote(); lvl != "" {
+ 					partial += " — " + lvl
+ 				}
+@@ -254,10 +270,6 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
+ 			specCov    corpus.Coverage
+ 			projection store.SourceRefProjection
+ 		)
+-		var allSpecs []string
+-		for _, t := range plan.Tasks {
+-			allSpecs = append(allSpecs, t.SpecIDs...)
+-		}
+ 		if len(allSpecs) > 0 {
+ 			var merr error
+ 			if p.SourceScope == store.SourceRefScopeIngestGeneration {
+@@ -397,6 +409,24 @@ const (
+ // start). Only the one graph verify reads is built — not the nav tools'
+ // syntax-only and resolved-only graphs.
+ func verifyPlanWithDeadline(ctx context.Context, backend QueryInterface, service string) (*verifyStage, error) {
++	return verifyStageWithDeadline(ctx, func(wctx context.Context) (*verifyStage, error) {
++		return loadVerifyStage(wctx, backend, service)
++	})
++}
++
++// Spec-only rows need indexed symbol names for their matrix, but no graph.
++// They share the snapshot memo and the same bounded wait as the full stage.
++func verifyPlanSnapshotWithDeadline(ctx context.Context, backend QueryInterface, service string) (*verifyStage, error) {
++	return verifyStageWithDeadline(ctx, func(wctx context.Context) (*verifyStage, error) {
++		snap, err := serviceSnapshot(wctx, backend, service)
++		if err != nil {
++			return nil, err
++		}
++		return &verifyStage{nodes: snap.Nodes}, nil
++	})
++}
++
++func verifyStageWithDeadline(ctx context.Context, load func(context.Context) (*verifyStage, error)) (*verifyStage, error) {
+ 	wctx := ctx
+ 	if dl, ok := ctx.Deadline(); ok {
+ 		reserve := min(max(time.Until(dl)/verifyStageReserveShare, verifyStageReserveMin), verifyStageReserveMax)
+@@ -404,7 +434,7 @@ func verifyPlanWithDeadline(ctx context.Context, backend QueryInterface, service
+ 		wctx, cancel = context.WithDeadline(ctx, dl.Add(-reserve))
+ 		defer cancel()
+ 	}
+-	st, err := loadVerifyStage(wctx, backend, service)
++	st, err := load(wctx)
+ 	if err != nil && wctx.Err() != nil && ctx.Err() == nil {
+ 		return nil, errVerifyStageBuilding
+ 	}

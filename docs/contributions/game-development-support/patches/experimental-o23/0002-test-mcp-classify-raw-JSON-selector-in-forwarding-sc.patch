@@ -1,0 +1,23 @@
+From 96a3b8bf6c4545d5c6f9ad92b2e8d02d60a677f4 Mon Sep 17 00:00:00 2001
+From: Geoff Miller <contributor@example.invalid>
+Date: Wed, 21 Oct 2026 18:09:32 -0700
+Subject: [PATCH 2/2] test(mcp): classify raw JSON selector in forwarding scan
+
+Verified: internal/mcp full package normal and race tests with isolated Shared temp
+---
+ internal/mcp/autorefresh_forwarding_test.go | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/internal/mcp/autorefresh_forwarding_test.go b/internal/mcp/autorefresh_forwarding_test.go
+index 15db568a1a11e38e534dbbdd9e0807d7df7ca03d..fa2d0693f7d9769e828c30827cb77f6f4f487abd 100644
+--- a/internal/mcp/autorefresh_forwarding_test.go
++++ b/internal/mcp/autorefresh_forwarding_test.go
+@@ -95,7 +95,7 @@ var notTheServedBackend = map[string]string{
+ 
+ // assertedConcreteSelectors are the package-qualified asserted types that
+ // are not interfaces (a selector's kind is not visible to the parser).
+-var assertedConcreteSelectors = map[string]bool{"time.Time": true}
++var assertedConcreteSelectors = map[string]bool{"time.Time": true, "json.RawMessage": true}
+ 
+ // TestAutoRefreshForwardsEveryClientCapability closes the O7 forwarding
+ // class (O7, O1068, O1072; EW-80): every daemon serves through

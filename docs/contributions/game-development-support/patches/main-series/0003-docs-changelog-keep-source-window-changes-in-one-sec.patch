@@ -1,0 +1,24 @@
+From 0f011b0378c359bf1205adec0cec000a567bec89 Mon Sep 17 00:00:00 2001
+From: Geoff Miller <contributor@example.invalid>
+Date: Tue, 20 Oct 2026 19:28:34 -0700
+Subject: [PATCH 03/27] docs(changelog): keep source-window changes in one
+ section
+
+Why: The unreleased fragment had two headings, which release-notes rejects.
+Verified: task changelog-check passed; <PRIVATE_RECEIPT> (SHA-256 80dd90790a121b0d806607e2ca8a27ffb5d4d8d708fb040ce4fd53aa04ac70f8).
+---
+ docs/changelog/unreleased/bounded-current-source-window.md | 3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/docs/changelog/unreleased/bounded-current-source-window.md b/docs/changelog/unreleased/bounded-current-source-window.md
+index 566793f97edbfc6ff79637acf8f72dead96b2f9e..3c22ce24b78b9fbbcfa498a71e5482ba530ad36c 100644
+--- a/docs/changelog/unreleased/bounded-current-source-window.md
++++ b/docs/changelog/unreleased/bounded-current-source-window.md
+@@ -3,7 +3,4 @@
+ - Default daemon `verify` and `plans status` can validate sealed source-reference facts against the current tree in a bounded two-pass observation window. Each continuation accepts at most 64 MiB and has a five-second deadline. A synchronous filesystem read can overrun that deadline; its return invalidates the window instead of publishing a current verdict. Failed identity or close refuses the current verdict; excluded files keep absence Unknown. Older daemons retain the live scan with its partial disclosure.
+ - The console's cached plan section explicitly reports current-worktree freshness as `unknown`; it does not inherit a CLI run's completed-window receipt.
+ - A refused current window returns exit 2 and a JSON operational refusal with `current_worktree_freshness: unknown`, a reason, and no plan verdicts. A later re-ingest can supply a new seal for a fresh window.
+-
+-### Fixed
+-
+ - Closed current-source-window reports use the collection response budget, preserving every verdict recorded in pending receipts.

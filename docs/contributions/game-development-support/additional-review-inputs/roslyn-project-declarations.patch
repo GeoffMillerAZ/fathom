@@ -1,0 +1,553 @@
+diff --git a/calibration/oracles/roslyn/Program.cs b/calibration/oracles/roslyn/Program.cs
+index 3f5d0876..66312ce1 100644
+--- a/calibration/oracles/roslyn/Program.cs
++++ b/calibration/oracles/roslyn/Program.cs
+@@ -48,6 +48,7 @@ static class RoslynDump
+ 
+     static int Main(string[] args)
+     {
++        if (args.Length > 0 && args[0] == "project-declarations") return ProjectDeclarations.Run(args[1..]);
+         if (args.Length > 0 && args[0] == "calls") return SemanticCalls.Run(args[1..]);
+         var root = Path.GetFullPath(args[0]);
+         var files = Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories)
+diff --git a/calibration/oracles/roslyn/README.md b/calibration/oracles/roslyn/README.md
+index f388ecde..dc4c43cc 100644
+--- a/calibration/oracles/roslyn/README.md
++++ b/calibration/oracles/roslyn/README.md
+@@ -89,3 +89,50 @@ makes, in a copy of the pinned checkout so the subject stays clean; the build co
+ 
+ then pass the file to `indexbench lang-oracle` as a second `-tool-oracle` beside the scip-dotnet index and the syntax
+ dump's definitions (the dump's `calls` removed, as before).
++
++## Opt-in native project declaration evidence
++
++`project-declarations <repository-root> <actual.sln|slnx|csproj>
++<repository-relative-source-directory> [owned-intermediate-root]` loads the subject's actual MSBuild
++selection and writes `fathom.roslyn.project-declarations/v1`. Existing syntax and
++`calls` modes and their output schemas are unchanged. This evidence shape is
++deliberately separate from the legacy neutral tool-oracle input; no scorer
++consumes it and it reports no grade.
++
++The new evidence distinguishes the identifier's span from each declarator's
++definition, the full declaration statement, and trivia-inclusive full span.
++Every variable in a multi-field/event statement has its own location. Native
++semantic kind, namespace, containing symbol, assembly, documentation ID, and
++all partial declaration locations remain separate fields. Unresolved symbols,
++workspace failures and compilation errors are retained; errors exit nonzero.
++Positions use one-based lines and zero-based UTF-16 columns, half-open spans.
++
++Signatures retain both the raw native header and a candidate normalized under
++the existing `tsSignature` contract: start to captured body, or only the first
++line when no body exists; whitespace collapsed; at most 200 Unicode scalars
++(199 plus ellipsis when truncated). The surprising first-line rule is not
++silently improved. Conditional source differences stay unjudged. Native kinds
++outside the product's current signature contract are emitted and flagged,
++not silently removed.
++
++The source directory selects emitted declarations. It does not prevent
++MSBuildWorkspace from loading project/dependency files, run a sandbox, or
++guarantee offline operation. Use only explicitly selected trusted projects and
++locally provisioned dependencies. The command performs no explicit restore or
++download. Active project defines are recorded; this is not exhaustive mixed
++preprocessor coverage, whole-repository completeness, player execution or
++serialized-scene proof. The optional owned intermediate root redirects per-project design-time artifacts
++through a hash-recorded output-only MSBuild props import, preserving original
++project files. Each selected source hash and decoded text is checked
++against the loaded native tree; the project/solution input hash is checked
++before and after, but the filesystem is not an atomic snapshot.
++
++Native regressions in `testdata/declarations` cover distinct field and
++event locations; attributes; expression/bodiless signatures; escaped, Unicode
++and UTF-16 positions; long signatures; partial/generic containers; active
++defines; raw operators/destructors/indexers/delegates/records; and explicit
++syntax/semantic errors. `*.cs.input` fixtures are not compiled into RoslynDump.
++After the native output exists, `verify.py valid|error <output.json>` asserts
++the real evidence. Fixture labels are source regression expectations, never
++an independent language-grade oracle. Actual execution receipts must name their exact source/binary and fixture
++outputs; fixture expectations alone do not establish a pass.
+diff --git a/calibration/oracles/roslyn/DeclarationEvidence.cs b/calibration/oracles/roslyn/DeclarationEvidence.cs
+new file mode 100644
+--- /dev/null
++++ b/calibration/oracles/roslyn/DeclarationEvidence.cs
+@@ -0,0 +1,145 @@
++// Bench-only native declaration evidence from the native project loader.
++// No extractor output/SCIP/store is read to construct these answers. Rich raw
++// spans remain available when the product's declared signature rule is lossy.
++using System.Security.Cryptography;
++using System.Text;
++using Microsoft.CodeAnalysis;
++using Microsoft.CodeAnalysis.CSharp;
++using Microsoft.CodeAnalysis.CSharp.Syntax;
++using Microsoft.CodeAnalysis.Text;
++
++static class DeclarationEvidence
++{
++    // Grounded in docs/design/language-breadth.md section3.3 and
++    // internal/extractor/tsextract.go:1231-1250, exact f844af51. This exports
++    // evidence, not a new score. No-body FIRST-LINE behavior is preserved.
++    public const string SignatureContract = "definition Span.Start to body Span.Start; without a body only its first line; Unicode whitespace collapsed/trimmed; cap200Unicode scalar values (199 + ellipsis), per existing product contract";
++
++    internal sealed record Result(object File, List<object> Declarations);
++    sealed record Declaration(string Kind, SyntaxNode Definition, SyntaxNode Statement, SyntaxNodeOrToken Name);
++
++    public static Result Collect(string root, string relative, Project project, SyntaxNode syntax, SemanticModel model)
++    {
++        var path=Path.GetFullPath(syntax.SyntaxTree.FilePath);
++        var raw=System.IO.File.ReadAllBytes(path);
++        var before=Convert.ToHexString(SHA256.HashData(raw)).ToLowerInvariant();
++        var text=syntax.SyntaxTree.GetText();
++        using(var reader=new StreamReader(new MemoryStream(raw),text.Encoding??Encoding.UTF8,true))
++            if(!String.Equals(reader.ReadToEnd(),text.ToString(),StringComparison.Ordinal))
++                throw new IOException("Loaded semantic source differs from disk: "+relative);
++        var rows=new List<object>();
++        foreach(var declaration in Declarations(syntax))
++        {
++            var node=declaration.Definition;
++            var symbol=model.GetDeclaredSymbol(node);
++            // Events/fields are emitted at their individual variable declarator;
++            // no first-variable line is borrowed for later names.
++            var nameText=declaration.Name.ToString();
++            var nameToken=declaration.Name.IsToken?declaration.Name.AsToken():default;
++            var bodyStart=BodyStart(node);
++            var headerEnd=bodyStart??node.Span.End;
++            var contractEnd=headerEnd;
++            if(bodyStart==null)
++            {
++                var firstLine=text.Lines.GetLineFromPosition(node.SpanStart);
++                contractEnd=Math.Min(contractEnd,firstLine.End);
++            }
++            var header=text.ToString(TextSpan.FromBounds(node.SpanStart,headerEnd));
++            var contractSource=text.ToString(TextSpan.FromBounds(node.SpanStart,contractEnd));
++            var semanticContainer=symbol?.ContainingSymbol;
++            var declarations=symbol?.DeclaringSyntaxReferences.OrderBy(reference=>reference.SyntaxTree.FilePath,StringComparer.Ordinal).ThenBy(reference=>reference.Span.Start).Select(reference=>{
++                var target=reference.GetSyntax();
++                return new {path=Path.GetRelativePath(root,target.SyntaxTree.FilePath).Replace('\\','/'),
++                    span=Span(target.SyntaxTree,target.Span)};
++            }).ToArray();
++            rows.Add(new {path=relative,project=project.Name,project_file=project.FilePath,
++                assembly=model.Compilation.Assembly.Identity.ToString(),
++                raw_kind=declaration.Kind,syntax_kind=node.Kind().ToString(),
++                name_text=nameText,name_value=nameToken.RawKind==0?nameText:nameToken.ValueText,
++                name_span=Span(node.SyntaxTree,declaration.Name.Span),
++                definition_span=Span(node.SyntaxTree,node.Span),full_span=Span(node.SyntaxTree,node.FullSpan),
++                statement_span=Span(node.SyntaxTree,declaration.Statement.Span),
++                containing_namespace=symbol?.ContainingNamespace?.ToDisplayString(),
++                containing_symbol=semanticContainer?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
++                semantic_kind=symbol?.Kind.ToString(),semantic_type_kind=(symbol as INamedTypeSymbol)?.TypeKind.ToString(),
++                method_kind=(symbol as IMethodSymbol)?.MethodKind.ToString(),metadata_name=symbol?.MetadataName,
++                display_name=symbol?.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat),
++                documentation_id=symbol?.GetDocumentationCommentId(),
++                binding_status=symbol==null?"unresolved-declared-symbol":"resolved",declaring_syntax_references=declarations,
++                raw_header=header,header_span=Span(node.SyntaxTree,TextSpan.FromBounds(node.SpanStart,headerEnd)),
++                signature_contract_applies=SignatureApplies(declaration.Kind),
++                signature_normalized_candidate=NormalizeSignature(contractSource),
++                signature_source_span=Span(node.SyntaxTree,TextSpan.FromBounds(node.SpanStart,contractEnd)),
++                signature_has_conditional_directives=contractSource.Split('\n').Any(line=>line.TrimStart().StartsWith("#",StringComparison.Ordinal)),
++                signature_limit="Raw active-tree source slice; conditional directive/preprocessor policy differences remain unjudged until compared explicitly; this output computes no accuracy"});
++        }
++        var after=Convert.ToHexString(SHA256.HashData(System.IO.File.ReadAllBytes(path))).ToLowerInvariant();
++        if(before!=after)throw new IOException("Source changed while exporting declarations: "+relative);
++        var options=syntax.SyntaxTree.Options as CSharpParseOptions;
++        var diagnostics=syntax.SyntaxTree.GetDiagnostics().Select(d=>new {id=d.Id,severity=d.Severity.ToString(),message=d.ToString()}).ToArray();
++        return new Result(new {path=relative,project=project.Name,source_sha256=before,
++            source_text_checksum=Convert.ToHexString(text.GetChecksum().ToArray()).ToLowerInvariant(),
++            source_text_checksum_algorithm=text.ChecksumAlgorithm.ToString(),
++            language_version=options?.LanguageVersion.ToString(),
++            preprocessor_symbols=options?.PreprocessorSymbolNames.OrderBy(value=>value,StringComparer.Ordinal).ToArray(),
++            diagnostics,declarations=rows.Count},rows);
++    }
++
++    static object Span(SyntaxTree tree,TextSpan span)
++    {
++        var lines=tree.GetLineSpan(span).Span;
++        return new {start_line=lines.Start.Line+1,start_column_utf16=lines.Start.Character,
++            end_line=lines.End.Line+1,end_column_utf16=lines.End.Character,
++            start_offset_utf16=span.Start,length_utf16=span.Length};
++    }
++
++    static IEnumerable<Declaration> Declarations(SyntaxNode root)
++    {
++        foreach(var node in root.DescendantNodes())
++        {
++            Declaration declaration=node switch {
++                BaseNamespaceDeclarationSyntax n=>new("namespace",n,n,n.Name.GetLastToken()),
++                RecordDeclarationSyntax n=>new(n.ClassOrStructKeyword.IsKind(SyntaxKind.StructKeyword)?"recordStruct":"record",n,n,n.Identifier),
++                ClassDeclarationSyntax n=>new("class",n,n,n.Identifier),
++                StructDeclarationSyntax n=>new("struct",n,n,n.Identifier),
++                InterfaceDeclarationSyntax n=>new("interface",n,n,n.Identifier),
++                EnumDeclarationSyntax n=>new("enum",n,n,n.Identifier),
++                EnumMemberDeclarationSyntax n=>new("enumMember",n,n,n.Identifier),
++                DelegateDeclarationSyntax n=>new("delegate",n,n,n.Identifier),
++                MethodDeclarationSyntax n=>new("method",n,n,n.Identifier),
++                ConstructorDeclarationSyntax n=>new("constructor",n,n,n.Identifier),
++                DestructorDeclarationSyntax n=>new("destructor",n,n,n.Identifier),
++                OperatorDeclarationSyntax n=>new("operator",n,n,n.OperatorToken),
++                ConversionOperatorDeclarationSyntax n=>new("conversionOperator",n,n,n.Type),
++                PropertyDeclarationSyntax n=>new("property",n,n,n.Identifier),
++                IndexerDeclarationSyntax n=>new("indexer",n,n,n.ThisKeyword),
++                EventDeclarationSyntax n=>new("event",n,n,n.Identifier),
++                _=>null};
++            if(declaration!=null)yield return declaration;
++            if(node is BaseFieldDeclarationSyntax field)
++                foreach(var variable in field.Declaration.Variables)
++                    yield return new Declaration(field is EventFieldDeclarationSyntax?"event":"field",variable,field,variable.Identifier);
++        }
++    }
++
++    static int? BodyStart(SyntaxNode node)=>node switch {
++        BaseMethodDeclarationSyntax method=>method.Body?.SpanStart??method.ExpressionBody?.SpanStart,
++        TypeDeclarationSyntax type when !type.OpenBraceToken.IsMissing&&type.OpenBraceToken.RawKind!=0=>type.OpenBraceToken.SpanStart,
++        _=>null};
++
++    static bool SignatureApplies(string kind)=>kind is "method" or "constructor" or "conversionOperator" or "class" or "record" or "recordStruct" or "struct" or "interface";
++
++    internal static string NormalizeSignature(string source)
++    {
++        var builder=new StringBuilder();var pendingSpace=false;
++        foreach(var rune in source.EnumerateRunes())
++        {
++            if(Rune.IsWhiteSpace(rune)){pendingSpace=builder.Length>0;continue;}
++            if(pendingSpace)builder.Append(' ');
++            builder.Append(rune.ToString());pendingSpace=false;
++        }
++        var normalized=builder.ToString();var runes=normalized.EnumerateRunes().ToArray();
++        if(runes.Length<=200)return normalized;
++        return string.Concat(runes.Take(199).Select(rune=>rune.ToString())).TrimEnd(' ')+"…";
++    }
++}
+diff --git a/calibration/oracles/roslyn/ProjectDeclarations.cs b/calibration/oracles/roslyn/ProjectDeclarations.cs
+new file mode 100644
+--- /dev/null
++++ b/calibration/oracles/roslyn/ProjectDeclarations.cs
+@@ -0,0 +1,96 @@
++// Bench-only declaration export from the subject's actual MSBuild selection.
++// No extractor output, SCIP or store is read to construct native answers.
++using System.Security.Cryptography;
++using System.Text.Json;
++using System.Xml.Linq;
++using Microsoft.CodeAnalysis;
++using Microsoft.CodeAnalysis.MSBuild;
++
++static class ProjectDeclarations
++{
++    public static int Run(string[] args) => RunAsync(args).GetAwaiter().GetResult();
++
++    static async Task<int> RunAsync(string[] args)
++    {
++        if(args.Length is not (3 or 4))
++            throw new ArgumentException("project-declarations <repository-root> <actual.sln|slnx|csproj> <repository-relative-source-directory> [owned-intermediate-root]");
++        var root=Path.GetFullPath(args[0]);
++        var input=Path.GetFullPath(args[1]);
++        var selector=args[2];
++        if(Path.IsPathRooted(selector)||selector.Contains('\\')||selector.Any(char.IsControl)||
++            selector.Split('/').Any(segment=>segment is "" or "." or ".."))
++            throw new ArgumentException("Source directory must be an explicit canonical repository-relative path");
++        if(!Directory.Exists(Path.Combine(root,selector)))throw new DirectoryNotFoundException(selector);
++        var prefix=selector+"/";
++        var failures=new List<string>();var errors=new List<object>();var projects=new List<object>();
++        var declarations=new List<object>();var files=new List<object>();var outside=new List<object>();
++        var inputHash=Hash(input);
++        var properties=new Dictionary<string,string>();
++        string isolatedProperties=null;
++        if(args.Length==4)
++        {
++            var owned=Path.GetFullPath(args[3]);Directory.CreateDirectory(owned);
++            isolatedProperties=Path.Combine(owned,"oracle-output-paths.props");
++            // Imported after Unity-style pre-SDK property groups. Keep each
++            // project's design-time artifacts distinct without editing it.
++            var obj=Path.Combine(owned,"obj").Replace('\\','/')+"/$(MSBuildProjectName)/";
++            var bin=Path.Combine(owned,"bin").Replace('\\','/')+"/$(MSBuildProjectName)/";
++            new XDocument(new XElement("Project",new XElement("PropertyGroup",
++                new XElement("BaseIntermediateOutputPath",obj),new XElement("IntermediateOutputPath",obj),
++                new XElement("MSBuildProjectExtensionsPath",obj),new XElement("OutputPath",bin),
++                new XElement("UseSharedCompilation","false"),new XElement("NuGetAudit","false"))))
++                .Save(isolatedProperties);
++            properties["CustomBeforeMicrosoftCommonProps"]=isolatedProperties;
++        }
++        using var workspace=MSBuildWorkspace.Create(properties);
++        workspace.RegisterWorkspaceFailedHandler(e=>{
++            if(e.Diagnostic.Kind==WorkspaceDiagnosticKind.Failure)failures.Add(e.Diagnostic.Message);
++            Console.Error.WriteLine("workspace: "+e.Diagnostic);
++        });
++        Solution solution;
++        if(Path.GetExtension(input).Equals(".csproj",StringComparison.OrdinalIgnoreCase))
++            solution=(await workspace.OpenProjectAsync(input)).Solution;
++        else solution=await workspace.OpenSolutionAsync(input);
++        foreach(var project in solution.Projects.OrderBy(project=>project.Name,StringComparer.Ordinal).ThenBy(project=>project.FilePath,StringComparer.Ordinal))
++        {
++            if(project.Language!=LanguageNames.CSharp)continue;
++            var compilation=await project.GetCompilationAsync();
++            if(compilation==null){failures.Add("null compilation: "+project.Name);continue;}
++            var projectErrors=compilation.GetDiagnostics().Where(d=>d.Severity==DiagnosticSeverity.Error).ToArray();
++            foreach(var error in projectErrors)errors.Add(new {project=project.Name,message=error.ToString()});
++            projects.Add(new {name=project.Name,path=project.FilePath,
++                source_sha256=project.FilePath==null?null:Hash(project.FilePath),
++                assembly=compilation.Assembly.Identity.ToString(),trees=compilation.SyntaxTrees.Count(),errors=projectErrors.Length});
++            Console.Error.WriteLine($"project {project.Name}: {compilation.SyntaxTrees.Count()} trees, {projectErrors.Length} errors");
++            foreach(var document in project.Documents.OrderBy(document=>document.FilePath,StringComparer.Ordinal))
++            {
++                if(document.FilePath==null){failures.Add("document has no source path: "+project.Name+"/"+document.Name);continue;}
++                var relative=Path.GetRelativePath(root,document.FilePath).Replace('\\','/');
++                if(!relative.StartsWith(prefix,StringComparison.Ordinal))
++                {
++                    outside.Add(new {project=project.Name,path=relative,reason="outside explicit source directory; not declaration-emission selected"});
++                    continue;
++                }
++                var model=await document.GetSemanticModelAsync();var syntax=await document.GetSyntaxRootAsync();
++                if(model==null||syntax==null){failures.Add("null native model/root: "+relative);continue;}
++                var evidence=DeclarationEvidence.Collect(root,relative,project,syntax,model);
++                declarations.AddRange(evidence.Declarations);files.Add(evidence.File);
++            }
++        }
++        if(inputHash!=Hash(input))failures.Add("Project/solution input changed while exporting declarations");
++        var payload=new {schema="fathom.roslyn.project-declarations/v1",tool="roslyn-project-declarations",
++            version=typeof(Microsoft.CodeAnalysis.CSharp.CSharpCompilation).Assembly.GetName().Version.ToString(),
++            repository_root=root,input,input_sha256=inputHash,source_directory=selector,
++            isolated_output_properties=isolatedProperties,
++            isolated_output_properties_sha256=isolatedProperties==null?null:Hash(isolatedProperties),
++            scope="Actual MSBuild project/solution and active configuration only; source-directory-selected native declaration occurrences, not a syntax-union or runtime proof",
++            read_boundary="Source directory controls emitted declarations only. MSBuildWorkspace loads other project/dependency inputs; this is not an allowed-read sandbox or offline guarantee.",
++            positions="1-based lines, 0-based UTF16 columns, half-open ranges; definition/full/statement/name spans are separate",
++            signature_contract=DeclarationEvidence.SignatureContract,projects,workspace_failures=failures,compile_errors=errors,
++            outside_emission_selection=outside,files,declarations};
++        Console.WriteLine(JsonSerializer.Serialize(payload,new JsonSerializerOptions{WriteIndented=true}));
++        return failures.Count==0&&errors.Count==0?0:1;
++    }
++
++    static string Hash(string path)=>Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant();
++}
+diff --git a/calibration/oracles/roslyn/testdata/declarations/Broken.cs.input b/calibration/oracles/roslyn/testdata/declarations/Broken.cs.input
+new file mode 100644
+--- /dev/null
++++ b/calibration/oracles/roslyn/testdata/declarations/Broken.cs.input
+@@ -0,0 +1,6 @@
++namespace Fixture.Error;
++public class Broken
++{
++    public MissingType Invalid;
++    public void Incomplete() => ;
++}
+diff --git a/calibration/oracles/roslyn/testdata/declarations/Declarations.cs.input b/calibration/oracles/roslyn/testdata/declarations/Declarations.cs.input
+new file mode 100644
+--- /dev/null
++++ b/calibration/oracles/roslyn/testdata/declarations/Declarations.cs.input
+@@ -0,0 +1,37 @@
++// Regression fixture, not an authored-subject language-grade corpus.
++using System;
++namespace Fixture.Outer;
++public partial class Host<T> where T : class
++{
++    public float first,
++        second, third;
++    public event Action Ready,
++        Finished;
++    public int @event;
++    public string café;
++    public int /* 🚽 */ unicodeAfterEmoji;
++    [Obsolete]
++    public int Compute<U>(T value, U other) => 1;
++    public int this[int i] => i;
++    public Host() { }
++    ~Host() { }
++    public static Host<T> operator +(Host<T> left, Host<T> right) => left;
++    public static implicit operator bool(Host<T> value) => value != null;
++    public delegate void Sink<U>(U value);
++    public struct Nested { public int X; }
++#if FIXTURE_ACTIVE
++    public int Active;
++#else
++    public int Inactive;
++#endif
++    public void SignatureWithLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongName() { }
++}
++public abstract class AbstractHost
++{
++    [Obsolete]
++    public abstract
++        void Bodyless(int value);
++}
++public record RecordHost(int Value);
++public record struct RecordValue(int Value);
++public enum Mode { First, Second }
+diff --git a/calibration/oracles/roslyn/testdata/declarations/Error.csproj b/calibration/oracles/roslyn/testdata/declarations/Error.csproj
+new file mode 100644
+--- /dev/null
++++ b/calibration/oracles/roslyn/testdata/declarations/Error.csproj
+@@ -0,0 +1,11 @@
++<Project Sdk="Microsoft.NET.Sdk">
++  <PropertyGroup>
++    <TargetFramework>net10.0</TargetFramework>
++    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
++    <DefineConstants>FIXTURE_ACTIVE</DefineConstants>
++    <Nullable>disable</Nullable>
++  </PropertyGroup>
++  <ItemGroup>
++    <Compile Include="Broken.cs.input" />
++  </ItemGroup>
++</Project>
+diff --git a/calibration/oracles/roslyn/testdata/declarations/Partial.cs.input b/calibration/oracles/roslyn/testdata/declarations/Partial.cs.input
+new file mode 100644
+--- /dev/null
++++ b/calibration/oracles/roslyn/testdata/declarations/Partial.cs.input
+@@ -0,0 +1,5 @@
++namespace Fixture.Outer;
++public partial class Host<T> where T : class
++{
++    public void Other() { }
++}
+diff --git a/calibration/oracles/roslyn/testdata/declarations/Valid.csproj b/calibration/oracles/roslyn/testdata/declarations/Valid.csproj
+new file mode 100644
+--- /dev/null
++++ b/calibration/oracles/roslyn/testdata/declarations/Valid.csproj
+@@ -0,0 +1,12 @@
++<Project Sdk="Microsoft.NET.Sdk">
++  <PropertyGroup>
++    <TargetFramework>net10.0</TargetFramework>
++    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
++    <DefineConstants>FIXTURE_ACTIVE</DefineConstants>
++    <Nullable>disable</Nullable>
++  </PropertyGroup>
++  <ItemGroup>
++    <Compile Include="Declarations.cs.input" />
++    <Compile Include="Partial.cs.input" />
++  </ItemGroup>
++</Project>
+diff --git a/calibration/oracles/roslyn/testdata/declarations/expected.json b/calibration/oracles/roslyn/testdata/declarations/expected.json
+new file mode 100644
+--- /dev/null
++++ b/calibration/oracles/roslyn/testdata/declarations/expected.json
+@@ -0,0 +1,43 @@
++{
++  "status": "Native regression expectations; source/binary-bound receipts record execution separately; not a language grade",
++  "schema": "fathom.roslyn.project-declarations/v1",
++  "file": "Declarations.cs.input",
++  "name_lines": {
++    "first": 6,
++    "second": 7,
++    "third": 7,
++    "Ready": 8,
++    "Finished": 9,
++    "@event": 10,
++    "café": 11,
++    "Compute": 14,
++    "this": 15,
++    "Bodyless": 33,
++    "Active": 23,
++    "Inactive": 25,
++    "unicodeAfterEmoji": 12
++  },
++  "long_method_name": "SignatureWithLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongNameLongName",
++  "expected_active": "Active",
++  "expected_absent": "Inactive",
++  "bodiless_signature": "[Obsolete]",
++  "expression_signature": "[Obsolete] public int Compute<U>(T value, U other)",
++  "field_contract": "Each name and definition span is its variable declarator; statement span covers the entire common field statement",
++  "signature_max_unicode_scalars": 200,
++  "unsupported_for_product_signature": [
++    "operator",
++    "destructor",
++    "delegate",
++    "indexer",
++    "field",
++    "event",
++    "enum",
++    "enumMember",
++    "property"
++  ],
++  "expected_error_diagnostics": [
++    "CS0246",
++    "CS1525"
++  ],
++  "unicode_identifier_column_utf16": 24
++}
+diff --git a/calibration/oracles/roslyn/testdata/declarations/verify.py b/calibration/oracles/roslyn/testdata/declarations/verify.py
+new file mode 100644
+--- /dev/null
++++ b/calibration/oracles/roslyn/testdata/declarations/verify.py
+@@ -0,0 +1,86 @@
++#!/usr/bin/env python3
++"""Verify actual native exporter output; never manufactures oracle answers.
++
++Usage: verify.py valid|error output.json
++These source regression checks are unexecuted until the native exporter runs.
++They are not a language-grade scorer.
++"""
++import hashlib
++import json
++from pathlib import Path
++import sys
++
++
++def verify(mode, output):
++    fixture = Path(__file__).resolve().parent
++    expected = json.loads((fixture / "expected.json").read_text())
++    data = json.loads(Path(output).read_text())
++    assert data["schema"] == expected["schema"]
++    assert not data["workspace_failures"], data["workspace_failures"]
++    rows = data["declarations"]
++    assert rows, "No native declaration rows"
++    for file in data["files"]:
++        source = Path(data["repository_root"]) / file["path"]
++        assert file["source_sha256"] == hashlib.sha256(source.read_bytes()).hexdigest()
++    if mode == "error":
++        diagnostics = "\n".join(error["message"] for error in data["compile_errors"])
++        for code in expected["expected_error_diagnostics"]:
++            assert code in diagnostics, (code, diagnostics)
++        assert any(row["name_value"] == "Invalid" for row in rows)
++        print("PASS native error rows and explicit compilation diagnostics (not a grade)")
++        return
++    assert mode == "valid"
++    assert not data["compile_errors"], data["compile_errors"]
++    assert len(data["files"]) == 2, data["files"]
++    main = [row for row in rows if row["path"].endswith("/Declarations.cs.input")]
++
++    def named(name):
++        hits = [row for row in main if row["name_text"] == name]
++        assert len(hits) == 1, (name, len(hits))
++        return hits[0]
++
++    # Later declarators retain their own name and definition position while
++    # preserving the larger shared statement as independently exposed evidence.
++    for name in ("first", "second", "third", "Ready", "Finished"):
++        row = named(name)
++        assert row["name_span"]["start_line"] == expected["name_lines"][name], row
++        assert row["definition_span"]["start_line"] == expected["name_lines"][name], row
++    assert named("second")["statement_span"]["start_line"] == 6
++    assert named("second")["statement_span"]["end_line"] == 7
++    assert named("Finished")["statement_span"]["start_line"] == 8
++    assert named("Finished")["semantic_kind"] == "Event"
++    assert named("@event")["name_value"] == "event"
++    assert named("café")["name_value"] == "café"
++    assert named("unicodeAfterEmoji")["name_span"]["start_column_utf16"] == expected["unicode_identifier_column_utf16"]
++    assert named("this")["raw_kind"] == "indexer"
++    assert named("Compute")["signature_normalized_candidate"] == expected["expression_signature"]
++    assert named("Compute")["name_span"]["start_line"] == expected["name_lines"]["Compute"]
++    assert named("Compute")["definition_span"]["start_line"] == expected["name_lines"]["Compute"] - 1
++    bodyless = named("Bodyless")
++    assert bodyless["signature_normalized_candidate"] == expected["bodiless_signature"]
++    assert "void Bodyless(int value)" in bodyless["raw_header"]
++    assert bodyless["name_span"]["start_line"] == expected["name_lines"]["Bodyless"]
++    long_method = named(expected["long_method_name"])
++    signature = long_method["signature_normalized_candidate"]
++    assert len(signature) == 200 and signature.endswith("…"), signature
++    assert expected["expected_active"] in {row["name_text"] for row in main}
++    assert expected["expected_absent"] not in {row["name_text"] for row in main}
++    assert "FIXTURE_ACTIVE" in next(file for file in data["files"] if file["path"].endswith("/Declarations.cs.input"))["preprocessor_symbols"]
++    types = [row for row in rows if row["name_text"] == "Host" and row["raw_kind"] == "class"]
++    assert len(types) == 2
++    assert len({row["documentation_id"] for row in types}) == 1
++    assert all(row["metadata_name"] == "Host`1" and len(row["declaring_syntax_references"]) == 2 for row in types)
++    assert all(row["containing_namespace"] == "Fixture.Outer" for row in types)
++    assert any(row["raw_kind"] == "operator" and row["method_kind"] == "UserDefinedOperator" for row in rows)
++    assert any(row["raw_kind"] == "conversionOperator" and row["method_kind"] == "Conversion" for row in rows)
++    assert any(row["raw_kind"] == "destructor" and row["method_kind"] == "Destructor" for row in rows)
++    assert {"record", "recordStruct", "delegate", "enum", "enumMember", "struct"} <= {row["raw_kind"] for row in rows}
++    assert all(not row["signature_contract_applies"] for row in rows if row["raw_kind"] in expected["unsupported_for_product_signature"])
++    assert all(row["binding_status"] == "resolved" for row in rows)
++    print("PASS native spans, containment, partial identity, signature contract, active configuration and raw-kind regressions (not a grade)")
++
++
++if __name__ == "__main__":
++    if len(sys.argv) != 3:
++        raise SystemExit(__doc__)
++    verify(sys.argv[1], sys.argv[2])

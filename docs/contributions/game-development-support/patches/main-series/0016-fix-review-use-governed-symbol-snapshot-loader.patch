@@ -1,0 +1,75 @@
+From 98a786a764c39017e8eaa7d25c0b58ae78a5c7ac Mon Sep 17 00:00:00 2001
+From: Geoff Miller <contributor@example.invalid>
+Date: Wed, 21 Oct 2026 04:04:40 -0700
+Subject: [PATCH 16/27] fix(review): use governed symbol snapshot loader
+
+Reuse the existing navigation loader for review_diff so the complete memo bundle keeps suppression disclosure while the request handler avoids a second raw symbol read.
+
+Verified: M2 tenancy lint and race tests for internal/memo, internal/analysis/review, and internal/mcp passed against exact two-file repair hashes. Canonical full gate is pending.
+---
+ internal/mcp/resolved_nav.go | 18 ++++++++++++------
+ internal/mcp/review_tool.go  |  7 +------
+ 2 files changed, 13 insertions(+), 12 deletions(-)
+
+diff --git a/internal/mcp/resolved_nav.go b/internal/mcp/resolved_nav.go
+index 778a301bf600aece451e8a26f66855574d676a7c..4409538c639e6ac95c21ee3816bb414daa2dfea4 100644
+--- a/internal/mcp/resolved_nav.go
++++ b/internal/mcp/resolved_nav.go
+@@ -158,7 +158,18 @@ func serviceSnapshot(ctx context.Context, backend QueryInterface, service string
+ 
+ // serviceSnapshotAt is serviceSnapshot at a scope the caller already took.
+ func serviceSnapshotAt(ctx context.Context, backend QueryInterface, service string, sc memo.Scope) (*memo.Snapshot, error) {
+-	snap, err := memo.SnapshotForExtra(ctx, sc, func(lctx context.Context) ([]core.SymbolNode, any, error) {
++	snap, err := memo.SnapshotForExtra(ctx, sc, serviceSnapshotLoader(backend, service))
++	if err != nil {
++		return nil, err
++	}
++	recordSnapshotDisclosure(ctx, service, snap)
++	return snap, nil
++}
++
++// serviceSnapshotLoader is the one governed full-symbol load shared by the
++// navigation snapshot and review's coherent snapshot/graph bundle.
++func serviceSnapshotLoader(backend QueryInterface, service string) func(context.Context) ([]core.SymbolNode, any, error) {
++	return func(lctx context.Context) ([]core.SymbolNode, any, error) {
+ 		// The load's suppression disclosure is kept on the snapshot and
+ 		// replayed to every reader below: a cached snapshot still says
+ 		// what it hides (SP-3).
+@@ -166,12 +177,7 @@ func serviceSnapshotAt(ctx context.Context, backend QueryInterface, service stri
+ 		//fathom:tenancy-allow sources the nav memo's loader: the one shared snapshot per watermark (single flight, memo-budgeted)
+ 		nodes, err := backend.ListAllSymbols(cctx, service)
+ 		return nodes, col.For(service), err
+-	})
+-	if err != nil {
+-		return nil, err
+ 	}
+-	recordSnapshotDisclosure(ctx, service, snap)
+-	return snap, nil
+ }
+ 
+ // recordSnapshotDisclosure replays the snapshot load's suppression
+diff --git a/internal/mcp/review_tool.go b/internal/mcp/review_tool.go
+index a75bdb25e57a9a2b150f20c9b219e710d29a7155..99c9e891d8d88e94ba210d5e002250a57f4cc833 100644
+--- a/internal/mcp/review_tool.go
++++ b/internal/mcp/review_tool.go
+@@ -26,7 +26,6 @@ import (
+ 	"github.com/geoffmilleraz/fathom/internal/projectrules"
+ 	"github.com/geoffmilleraz/fathom/internal/receipt"
+ 	riskreview "github.com/geoffmilleraz/fathom/internal/review"
+-	"github.com/geoffmilleraz/fathom/internal/scope"
+ 	"github.com/geoffmilleraz/fathom/internal/semantic"
+ 	"github.com/geoffmilleraz/fathom/internal/store"
+ )
+@@ -546,11 +545,7 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
+ 	// Pin one scope and snapshot for the entire review. Every consumer below
+ 	// reads Nodes and GraphBoth without mutating either shared memo value.
+ 	sc := navScope(ctx, backend, service)
+-	snap, graph, typed, typedErr, sequence, err := memo.SnapshotGraphBothForExtra(ctx, sc, func(lctx context.Context) ([]core.SymbolNode, any, error) {
+-		cctx, col := scope.WithCollector(lctx)
+-		nodes, loadErr := backend.ListAllSymbols(cctx, service)
+-		return nodes, col.For(service), loadErr
+-	}, typedLoader(backend, service))
++	snap, graph, typed, typedErr, sequence, err := memo.SnapshotGraphBothForExtra(ctx, sc, serviceSnapshotLoader(backend, service), typedLoader(backend, service))
+ 	if err != nil {
+ 		return review.Input{}, reviewCorpus{}, navLoadError("review_diff", service, err)
+ 	}

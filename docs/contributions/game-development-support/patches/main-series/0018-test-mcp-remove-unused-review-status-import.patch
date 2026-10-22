@@ -1,0 +1,21 @@
+From 456c6e31915a9ce07a3ada254e0f0ac0e54145f7 Mon Sep 17 00:00:00 2001
+From: Geoff Miller <contributor@example.invalid>
+Date: Wed, 21 Oct 2026 05:38:25 -0700
+Subject: [PATCH 18/27] test(mcp): remove unused review status import
+
+---
+ internal/mcp/review_status_test.go | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/internal/mcp/review_status_test.go b/internal/mcp/review_status_test.go
+index 33c24198fdc29f392f730bfd4a9016a02890104a..f15ea873c107c95bdd9bf858782c58f21e294b11 100644
+--- a/internal/mcp/review_status_test.go
++++ b/internal/mcp/review_status_test.go
+@@ -6,7 +6,6 @@ import (
+ 	"strings"
+ 	"testing"
+ 
+-	"github.com/geoffmilleraz/fathom/internal/core"
+ 	"github.com/geoffmilleraz/fathom/internal/mcp"
+ 	"github.com/geoffmilleraz/fathom/internal/semantic"
+ )
