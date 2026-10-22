@@ -73,14 +73,14 @@ const symbolContextHubCallerCap = 50
 // fan-in that tripped the cap) — candidates there is the single resolved
 // definition itself, so a caller can still see its file/line without a
 // second lookup. hint always points at the fix: qualify the query.
-func ambiguousSymbolContextResult(candidates []core.SymbolNode, count int, hub bool) map[string]any {
+func ambiguousSymbolContextResult(ctx context.Context, backend QueryInterface, service string, candidates []core.SymbolNode, count int, hub bool) map[string]any {
 	shown := candidates
 	if len(shown) > symbolContextCandidateCap {
 		shown = shown[:symbolContextCandidateCap]
 	}
 	rows := make([]any, len(shown))
 	for i, n := range shown {
-		rows[i] = map[string]any{"symbol_key": n.Key(), "file": n.FilePath, "line": n.Line}
+		rows[i] = citationCandidate(ctx, backend, service, n)
 	}
 	result := map[string]any{
 		"candidates": rows,
@@ -171,12 +171,12 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 		key, candidates, ok, resolved := resolveSymbolContextName(nodes, p.Service, p.Symbol)
 		switch {
 		case len(candidates) > 1:
-			return ambiguousSymbolContextResult(candidates, len(candidates), false), nil
+			return ambiguousSymbolContextResult(ctx, backend, p.Service, candidates, len(candidates), false), nil
 		case !ok:
-			return symbolContextNotFound(nodes, p.Service, p.Symbol), nil
+			return symbolContextNotFound(ctx, backend, nodes, p.Service, p.Symbol), nil
 		}
 		if callers := callgraph.RenameImpact(g, key); len(callers) > symbolContextHubCallerCap {
-			return ambiguousSymbolContextResult(candidates, len(callers), true), nil
+			return ambiguousSymbolContextResult(ctx, backend, p.Service, candidates, len(callers), true), nil
 		}
 		p.Symbol = resolved
 
@@ -319,6 +319,17 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 			// O1450, O1466: the changed-file check and the read, shared
 			// with the cold answer.
 			serveDefinitionSnippet(ctx, backend, p.Service, sctx.Def, result)
+		}
+
+		if defDTO != nil && defDTO.Line > 0 {
+			bindCitation(ctx, backend, p.Service, defDTO.FilePath, func(status *core.CitationStatus) {
+				defDTO.CitationStatus = status
+				if status != nil {
+					result["citation_status"] = status
+				} else {
+					delete(result, "citation_status")
+				}
+			})
 		}
 
 		// Typed Go call edges (ADR-021 §3): kind-labeled callers/callees,

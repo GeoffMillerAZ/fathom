@@ -1,2 +1,2 @@
 ### Changed
-- Answers that cite source lines mark a citation stale, refreshing or unknown when the file on disk no longer matches what was indexed, and `read_source` reports what it read.
+- Index-sourced symbol, obligation and review citations carry typed freshness statuses and qualified rule summaries and hook tags. Each call streams each cited file once, keeps only snippet windows, and leaves byte-identical files clean during refresh; `read_source` reports its content identity and known index match.

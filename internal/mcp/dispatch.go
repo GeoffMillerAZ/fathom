@@ -76,6 +76,8 @@ func (s *Server) registerTool(desc toolDescriptor, h func(ctx context.Context, a
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	// Typed citation marking and its final ingest guard run before the whole
+	// result budget, so the budget includes the marks.
 	if citationTool(desc.Name) {
 		h = citationHandler(s.backend, h)
 	}

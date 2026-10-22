@@ -614,6 +614,19 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 		}
 	}
 
+	if includeSnippets {
+		prepareObligationWindows(ctx, service, obl.Rules)
+	}
+	for i := range obl.Rules {
+		r := &obl.Rules[i]
+		if r.Tier == "raw" {
+			r.CitationStatus = nil
+			continue
+		}
+		if file, _, _, ok := parseCitation(r.Src); ok {
+			bindCitation(ctx, backend, service, file, func(status *core.CitationStatus) { r.CitationStatus = status })
+		}
+	}
 	// summary (wave L1): computed from obl.Rules right here — AFTER the raw
 	// fallback prepend above, so the summary never lags the priority order
 	// the "rules" field itself will render — never from result["rules"]
@@ -664,8 +677,8 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 			rendered = withSnippets(ctx, backend, service, obl.Rules)
 		} else {
 			rendered = make([]any, len(obl.Rules))
-			for i, r := range obl.Rules {
-				rendered[i] = r
+			for i := range obl.Rules {
+				rendered[i] = &obl.Rules[i]
 			}
 		}
 		kept, byteElided := fitToolBudget(rendered, defaultCharBudget)
@@ -835,7 +848,18 @@ func obligationsSummary(obl semantic.Obligations, rootScope bool) string {
 		runes := []rune(head)
 		head = strings.TrimRight(string(runes[:headMaxChars]), " ") + "…"
 	}
-	return capSummary(fmt.Sprintf("%s: %s (%s, %s)", subject, head, r.Tier, r.Src))
+	suffix := ""
+	if r.CitationStatus != nil {
+		suffix = " [citation " + r.CitationStatus.State + "]"
+	}
+	text := fmt.Sprintf("%s: %s (%s, %s)", subject, head, r.Tier, r.Src)
+	if suffix != "" {
+		limit := summaryMaxChars - utf8.RuneCountInString(suffix)
+		if utf8.RuneCountInString(text) > limit {
+			text = string([]rune(text)[:limit-1]) + "…"
+		}
+	}
+	return capSummary(text + suffix)
 }
 
 // citedDocKind names the kind of the document a rule's citation points at,
@@ -1059,7 +1083,7 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 			if indexUnchecked != "" {
 				body["index_unchecked"] = indexUnchecked
 			}
-			return withSummary(summary, body), nil
+			return withObligationSummary(ctx, summary, body), nil
 		}
 
 		ob, ok := backend.(obligationsBackend)
@@ -1112,7 +1136,7 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 		if indexUnchecked != "" {
 			body["index_unchecked"] = indexUnchecked
 		}
-		return withSummary(summary, body), nil
+		return withObligationSummary(ctx, summary, body), nil
 	})
 
 	// compile_layer: trigger obligations compilation for a service. Defaults to

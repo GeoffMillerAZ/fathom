@@ -11,6 +11,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"io/fs"
 	"maps"
 	"path"
@@ -809,6 +810,37 @@ func FingerprintHash(content []byte) string { return saltedFingerprint(content, 
 
 // saltedFingerprint is FingerprintHash's formula under a given epoch.
 func saltedFingerprint(content []byte, epoch string) string {
-	sum := sha256.Sum256(append(content, []byte("\x00fathom-extractor-epoch:"+epoch)...))
-	return hex.EncodeToString(sum[:])
+	h := sha256.New()
+	h.Write(content)
+	h.Write([]byte("\x00fathom-extractor-epoch:" + epoch))
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+// FingerprintHashReader streams the same digest as FingerprintHash.
+func FingerprintHashReader(r io.Reader) (string, error) {
+	return FingerprintHashReaderAtEpoch(r, ExtractorEpoch)
+}
+
+// FingerprintHashReaderAtEpoch streams the hash-gate digest under the indexed epoch.
+// Callers use ExtractorEpoch for a current ingest, or the epoch in the existing
+// file-stat receipt when comparing content to an older index. io.Copy keeps the
+// working buffer bounded independently of file size.
+func FingerprintHashReaderAtEpoch(r io.Reader, epoch string) (string, error) {
+	h := sha256.New()
+	if _, err := io.Copy(h, r); err != nil {
+		return "", err
+	}
+	h.Write([]byte("\x00fathom-extractor-epoch:" + epoch))
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// FingerprintAndContentHash computes both identities from one content pass.
+// The unsalted identity is read_source's portable receipt; the salted digest
+// compares those same bytes with the index under its recorded epoch.
+func FingerprintAndContentHash(content []byte, epoch string) (fingerprint, contentSHA256 string) {
+	h := sha256.New()
+	h.Write(content)
+	contentSHA256 = hex.EncodeToString(h.Sum(nil))
+	h.Write([]byte("\x00fathom-extractor-epoch:" + epoch))
+	return hex.EncodeToString(h.Sum(nil)), contentSHA256
 }

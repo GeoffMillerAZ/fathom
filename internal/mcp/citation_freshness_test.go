@@ -69,7 +69,9 @@ func citationCall(t *testing.T, b QueryInterface, tool string, args map[string]a
 	env := r.(map[string]any)
 	raw := env["content"].([]any)[0].(map[string]any)["text"].(string)
 	var out map[string]any
-	if err := json.Unmarshal([]byte(raw), &out); err != nil {
+	decoder := json.NewDecoder(strings.NewReader(raw))
+	decoder.UseNumber()
+	if err := decoder.Decode(&out); err != nil {
 		t.Fatal(err)
 	}
 	return out, raw
@@ -161,7 +163,7 @@ func (b *citationProbe) IngestState(context.Context, string) (store.IngestState,
 
 func TestCitationDuringRefreshIsMarkedRefreshing(t *testing.T) {
 	c, _ := citationFixture(t)
-	p, _ := citationContext(t, &citationProbe{Client: c, refresh: true})
+	p, _ := citationContext(t, &citationProbe{Client: c, refresh: true, unknown: true})
 	requireCitationState(t, p["def"].(map[string]any), "refreshing")
 }
 
@@ -262,10 +264,12 @@ func TestCitationReviewLocationsAreMarkedStale(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "sample.go"), []byte(strings.ReplaceAll(citationSource, "Alpha", "Bravo")), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	p, raw := citationCall(t, &citationProbe{Client: c}, "review_diff", map[string]any{"service": "sample", "changed_files": []string{"sample.go"}})
-	if !strings.Contains(raw, `"citation_status":{"state":"stale"`) && !strings.Contains(raw, `"state":"stale"`) {
-		t.Fatalf("no marked review location: %v", p)
+	p, _ := citationCall(t, &citationProbe{Client: c}, "review_diff", map[string]any{"service": "sample", "changed_files": []string{"sample.go"}})
+	loc := p["test_impact"].(map[string]any)["test_gap"].([]any)[0].(map[string]any)
+	if loc["file"] != "sample.go" || loc["line"] != json.Number("3") {
+		t.Fatalf("wrong location: %v", loc)
 	}
+	requireCitationState(t, loc, "stale")
 }
 
 func TestCitationUnknownIdentityDoesNotReadSource(t *testing.T) {

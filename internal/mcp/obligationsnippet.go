@@ -18,7 +18,6 @@ package mcp
 
 import (
 	"context"
-	"encoding/json"
 	"strconv"
 	"strings"
 
@@ -42,12 +41,18 @@ const obligationSnippetCutNote = " … (cut at 240 bytes)"
 // citation did not parse, the service has no recorded corpus root, the
 // cited file is outside the indexed corpus, or the range no longer
 // resolves. The caller omits the field rather than emitting "".
-func obligationSnippet(ctx context.Context, backend QueryInterface, service, cite string) (string, bool) {
+func obligationSnippet(ctx context.Context, backend QueryInterface, service, cite string, live bool) (string, bool) {
 	file, start, end, ok := parseCitation(cite)
 	if !ok {
 		return "", false
 	}
-	rng, err := readSourceRange(ctx, backend, service, file, start, end, end-start+1, obligationSnippetMaxBytes*2)
+	var rng sourceRange
+	var err error
+	if live {
+		rng, err = liveCitationSourceRange(ctx, backend, service, file, start, end, end-start+1, obligationSnippetMaxBytes*2)
+	} else {
+		rng, err = readSourceRange(ctx, backend, service, file, start, end, end-start+1, obligationSnippetMaxBytes*2)
+	}
 	if err != nil || len(rng.Lines) == 0 {
 		return "", false
 	}
@@ -107,10 +112,7 @@ const staleSnippetLabel = "cited text at compile; current file differs"
 // withSnippets renders served rules as JSON objects with an inlined
 // "snippet" (BP-20). A rule whose citation cannot be read keeps exactly the
 // shape it had before this field existed — the absence is the honest
-// answer, and every other field is carried through untouched by
-// round-tripping the rule's own JSON rather than re-listing its fields here
-// (semantic.Obligation is extended additively; a hand-copied field list
-// would silently drop the next one).
+// answer. Its typed wire row retains the former map's alphabetical key order.
 //
 // A stale/contradicted rule (r.Status != "") never reaches obligationSnippet
 // at all: that function reads the CURRENT file at the rule's OLD cited line
@@ -122,28 +124,56 @@ const staleSnippetLabel = "cited text at compile; current file differs"
 // caller can never mistake it for a live read. A stale rule with no stored
 // AnchorText (a legacy hash-only citation) gets neither field — an honest
 // absence, never a fabricated or unsafe one.
+type obligationWithSnippet struct {
+	AnchorCurrent  *bool                    `json:"anchor_current,omitempty"`
+	AnchorText     string                   `json:"anchor_text,omitempty"`
+	AssertedBy     string                   `json:"asserted_by,omitempty"`
+	CitationStatus *semantic.CitationStatus `json:"citation_status,omitempty"`
+	ClaimID        string                   `json:"claim_id,omitempty"`
+	Class          string                   `json:"class,omitempty"`
+	CodeDrifted    bool                     `json:"code_drifted,omitempty"`
+	InForce        string                   `json:"in_force,omitempty"`
+	Kind           string                   `json:"kind,omitempty"`
+	Layer          string                   `json:"layer"`
+	Module         string                   `json:"module,omitempty"`
+	ObservedAt     string                   `json:"observed_at,omitempty"`
+	Producer       string                   `json:"producer,omitempty"`
+	Relevance      *float64                 `json:"relevance,omitempty"`
+	Remedy         string                   `json:"remedy,omitempty"`
+	Rule           string                   `json:"rule"`
+	RuleID         string                   `json:"rule_id,omitempty"`
+	Snippet        string                   `json:"snippet,omitempty"`
+	SnippetLabel   string                   `json:"snippet_label,omitempty"`
+	SourceID       string                   `json:"source_id,omitempty"`
+	SourceRevision string                   `json:"source_revision,omitempty"`
+	Src            string                   `json:"src"`
+	Status         string                   `json:"status,omitempty"`
+	Tier           string                   `json:"tier"`
+	Unanchored     bool                     `json:"unanchored,omitempty"`
+	Why            string                   `json:"why,omitempty"`
+}
+
+func obligationSnippetRow(r semantic.Obligation) *obligationWithSnippet {
+	return &obligationWithSnippet{AnchorCurrent: r.AnchorCurrent, AnchorText: r.AnchorText, AssertedBy: r.AssertedBy, CitationStatus: r.CitationStatus, ClaimID: r.ClaimID, Class: r.Class, CodeDrifted: r.CodeDrifted, InForce: r.InForce, Kind: r.Kind, Layer: r.Layer, Module: r.Module, ObservedAt: r.ObservedAt, Producer: r.Producer, Relevance: r.Relevance, Remedy: r.Remedy, Rule: r.Rule, RuleID: r.RuleID, SourceID: r.SourceID, SourceRevision: r.SourceRevision, Src: r.Src, Status: r.Status, Tier: r.Tier, Unanchored: r.Unanchored, Why: r.Why}
+}
 func withSnippets(ctx context.Context, backend QueryInterface, service string, rules []semantic.Obligation) []any {
+	prepareObligationWindows(ctx, service, rules)
 	out := make([]any, 0, len(rules))
-	for _, r := range rules {
-		raw, err := json.Marshal(r)
-		if err != nil {
-			out = append(out, r)
-			continue
-		}
-		var m map[string]any
-		if err := json.Unmarshal(raw, &m); err != nil {
-			out = append(out, r)
-			continue
+	for i := range rules {
+		r := &rules[i]
+		row := obligationSnippetRow(*r)
+		if file, _, _, ok := parseCitation(r.Src); ok && r.Tier != "raw" {
+			bindCitation(ctx, backend, service, file, func(status *semantic.CitationStatus) { row.CitationStatus = status })
 		}
 		if r.Status != "" {
 			if r.AnchorText != "" {
-				m["snippet"] = r.AnchorText
-				m["snippet_label"] = staleSnippetLabel
+				row.Snippet = r.AnchorText
+				row.SnippetLabel = staleSnippetLabel
 			}
-		} else if snip, ok := obligationSnippet(ctx, backend, service, r.Src); ok {
-			m["snippet"] = snip
+		} else if snippet, ok := obligationSnippet(ctx, backend, service, r.Src, r.Tier == "raw"); ok {
+			row.Snippet = snippet
 		}
-		out = append(out, m)
+		out = append(out, row)
 	}
 	return out
 }

@@ -444,7 +444,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
 		if len(nodes) > 0 {
-			resp := map[string]any{"symbols": toNodeDTOs(nodes), "matched_via": "exact"}
+			resp := map[string]any{"symbols": markSymbolDTOs(ctx, backend, p.Service, toNodeDTOs(nodes)), "matched_via": "exact"}
 			// SB-5: an exact hit on a single Go interface additionally
 			// carries its implementers (H1-T06's question in one call).
 			if len(nodes) == 1 && nodes[0].Kind == core.KindGoInterface {
@@ -463,7 +463,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 		if listed, listErr := serviceSymbols(ctx, backend, p.Service); listErr == nil {
 			all = listed
 			if ci, ciTotal := caseFoldMatches(all, p.Name); len(ci) > 0 {
-				resp := map[string]any{"symbols": toNodeDTOs(ci), "matched_via": "case_insensitive"}
+				resp := map[string]any{"symbols": markSymbolDTOs(ctx, backend, p.Service, toNodeDTOs(ci)), "matched_via": "case_insensitive"}
 				if el := elisionFor(len(ci), ciTotal, "name match before package match, then name/file/line/kind", "narrow with the exact name, or a package-qualified query (pkg.Name)"); el != nil {
 					resp["truncated"] = true
 					resp["elided"] = el
@@ -471,7 +471,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 				return resp, nil
 			}
 			if sub, total := substringMatches(all, p.Name); len(sub) > 0 {
-				resp := map[string]any{"symbols": toNodeDTOs(sub), "matched_via": "substring"}
+				resp := map[string]any{"symbols": markSymbolDTOs(ctx, backend, p.Service, toNodeDTOs(sub)), "matched_via": "substring"}
 				if el := elisionFor(len(sub), total, "shortest name first, then name/file/line/kind", "narrow the query, or ask for the exact/qualified name"); el != nil {
 					resp["truncated"] = true
 					resp["elided"] = el
@@ -485,7 +485,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 		// concern-ranked query is the last resort for conceptual near-misses.
 		resp := map[string]any{"symbols": []any{}, "matched_via": "none"}
 		if fuzzy := fuzzySuggestions(all, p.Name); len(fuzzy) > 0 {
-			resp["did_you_mean"] = suggestionDTOs(fuzzy)
+			resp["did_you_mean"] = suggestionDTOs(ctx, backend, p.Service, fuzzy)
 			return resp, nil
 		}
 		ranked, qErr := backend.QuerySymbols(ctx, core.Query{
@@ -495,7 +495,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 			TopN:      maxSuggestions,
 		})
 		if qErr == nil && len(ranked.Nodes) > 0 {
-			resp["did_you_mean"] = suggestionDTOs(ranked.Nodes)
+			resp["did_you_mean"] = suggestionDTOs(ctx, backend, p.Service, ranked.Nodes)
 		}
 		return resp, nil
 	})
@@ -542,11 +542,12 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 // symbolNodeDTO is the JSON-serialisable representation of a SymbolNode
 // returned to MCP clients.
 type symbolNodeDTO struct {
-	Service  string `json:"service"`
-	Name     string `json:"name"`
-	Kind     string `json:"kind"`
-	FilePath string `json:"file_path"`
-	Line     int    `json:"line,omitempty"`
+	CitationStatus *core.CitationStatus `json:"citation_status,omitempty"`
+	Service        string               `json:"service"`
+	Name           string               `json:"name"`
+	Kind           string               `json:"kind"`
+	FilePath       string               `json:"file_path"`
+	Line           int                  `json:"line,omitempty"`
 	// EndLine mirrors core.SymbolNode.EndLine (T5-5): the last line covered
 	// by this symbol, when the extractor computed one — DocChunk headings,
 	// Go func/method/type/const/var, and most tree-sitter/AST-backed

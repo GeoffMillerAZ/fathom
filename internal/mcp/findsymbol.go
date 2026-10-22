@@ -9,6 +9,7 @@
 package mcp
 
 import (
+	"context"
 	"sort"
 	"strings"
 	"unicode"
@@ -281,18 +282,17 @@ func editDistanceCapped(a, b string, limit int) int {
 
 // suggestionDTOs renders ranked nodes as slim did_you_mean entries — enough
 // to re-query by the right name without bloating a miss response.
-func suggestionDTOs(nodes []core.SymbolNode) []map[string]any {
+func suggestionDTOs(ctx context.Context, backend QueryInterface, service string, nodes []core.SymbolNode) []*symbolSuggestion {
 	if len(nodes) > maxSuggestions {
 		nodes = nodes[:maxSuggestions]
 	}
-	out := make([]map[string]any, len(nodes))
+	out := make([]*symbolSuggestion, len(nodes))
 	for i, n := range nodes {
-		out[i] = map[string]any{
-			"name":      n.Name,
-			"kind":      string(n.Kind),
-			"file_path": n.FilePath,
-			"line":      n.Line,
+		row := &symbolSuggestion{FilePath: n.FilePath, Kind: string(n.Kind), Line: n.Line, Name: n.Name}
+		if n.Line > 0 {
+			bindCitation(ctx, backend, service, n.FilePath, func(s *core.CitationStatus) { row.CitationStatus = s })
 		}
+		out[i] = row
 	}
 	return out
 }

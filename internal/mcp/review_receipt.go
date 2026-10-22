@@ -242,7 +242,7 @@ func riskReceiptPayload(r riskreview.RiskReceipt) map[string]any {
 			"evidence": f.Evidence,
 		})
 	}
-	hints := make([]map[string]any, 0, len(r.LinkHints))
+	hints := make([]*reviewLinkLocation, 0, len(r.LinkHints))
 	for _, l := range r.LinkHints {
 		hints = append(hints, linkRefPayload(l))
 	}
@@ -261,17 +261,16 @@ func riskReceiptPayload(r riskreview.RiskReceipt) map[string]any {
 	}
 }
 
-func linkRefPayload(l riskreview.LinkRef) map[string]any {
-	m := map[string]any{
-		"provider": l.Provider,
-		"consumer": l.Consumer,
-		"tier":     l.Tier,
-	}
-	if l.ConsumerService != "" {
-		m["consumer_service"] = l.ConsumerService
-	}
-	if l.Citation != "" {
-		m["citation"] = l.Citation
-	}
-	return m
+// reviewLinkLocation is an index-sourced provider location in a risk hint.
+type reviewLinkLocation struct {
+	CitationStatus  *core.CitationStatus `json:"citation_status,omitempty"`
+	Citation        string               `json:"citation,omitempty"`
+	Consumer        string               `json:"consumer"`
+	ConsumerService string               `json:"consumer_service,omitempty"`
+	Provider        string               `json:"provider"`
+	Tier            string               `json:"tier"`
+}
+
+func linkRefPayload(l riskreview.LinkRef) *reviewLinkLocation {
+	return &reviewLinkLocation{Citation: l.Citation, Consumer: l.Consumer, ConsumerService: l.ConsumerService, Provider: l.Provider, Tier: l.Tier}
 }

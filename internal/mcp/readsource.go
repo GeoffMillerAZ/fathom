@@ -44,6 +44,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/filter"
+	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"github.com/geoffmilleraz/fathom/internal/scope"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
@@ -412,6 +413,9 @@ func matchesFileOrAncestor(m *filter.Matcher, relFile string, segs []string) boo
 // readSourceLines with onWire set, so its budget bounds the lines as they
 // are sent (BP-42).
 func readSourceRange(ctx context.Context, backend QueryInterface, service, file string, startLine, endLine, maxLines, maxBytes int) (sourceRange, error) {
+	if reads, _ := ctx.Value(citationReadsKey{}).(*citationReads); reads != nil {
+		return citationSourceRange(ctx, backend, service, file, startLine, endLine, maxLines, maxBytes)
+	}
 	return readSourceLines(ctx, backend, service, file, startLine, endLine, maxLines, maxBytes, false)
 }
 
@@ -423,7 +427,7 @@ func readSourceRange(ctx context.Context, backend QueryInterface, service, file 
 // read_source, 10,849 of them the lines array, because the raw count left
 // the per-line envelope out.
 func readSourceLines(ctx context.Context, backend QueryInterface, service, file string, startLine, endLine, maxLines, maxBytes int, onWire bool) (sourceRange, error) {
-	data, status, err := readSourceBytes(ctx, backend, service, file, false)
+	data, status, contentHash, err := readSourceBytes(ctx, backend, service, file, false)
 	if err != nil {
 		return sourceRange{}, err
 	}
@@ -432,33 +436,69 @@ func readSourceLines(ctx context.Context, backend QueryInterface, service, file 
 	if onWire {
 		// Only read_source exposes this unsalted identity. Snippets already
 		// checked these same bytes against the index's salted fingerprint.
-		sum := sha256.Sum256(data)
-		rng.ContentSHA256 = hex.EncodeToString(sum[:])
+		rng.ContentSHA256 = contentHash
 	}
 	return rng, err
 }
 
 // readSourceBytes enforces the shared source-read boundaries and checks the
-// bytes once. Identity-only callers need neither source lines nor an unsalted
-// hash, and can stop without reading when identity is already uncertain.
-func readSourceBytes(ctx context.Context, backend QueryInterface, service, file string, identityOnly bool) ([]byte, citationStatus, error) {
+// bytes once. Identity-only callers stream without retaining the file.
+func readSourceBytes(ctx context.Context, backend QueryInterface, service, file string, identityOnly bool) ([]byte, citationStatus, string, error) {
+	if identityOnly {
+		_, status, err := streamCitationFile(ctx, backend, service, file, nil)
+		return nil, status, "", err
+	}
+	rel, full, err := sourceReadPath(ctx, backend, service, file)
+	if err != nil {
+		return nil, citationStatus{}, "", err
+	}
+	// Through the corpus reader (RT-91): the same cap, re-checked at open,
+	// and every byte charged to the request's admission ticket. full is the
+	// EvalSymlinks-resolved, corpus-root-contained path from resolveRealPath.
+	before, known := indexedSourceFingerprint(ctx, backend, service, rel)
+	epoch, epochKnown := citationEpoch(ctx, backend, service, rel, before)
+	data, ex, err := corpus.ReadFileCapped(ctx, full, sourceReadMaxFileBytes)
+	if err != nil {
+		if ctx.Err() != nil || !errors.Is(err, fs.ErrNotExist) {
+			return nil, citationStatus{}, "", err
+		}
+		return nil, citationStatus{}, "", fmt.Errorf("file not found in service corpus: %q", file)
+	}
+	if ex != nil {
+		switch ex.Reason {
+		case corpus.ReasonBinary:
+			return nil, citationStatus{}, "", fmt.Errorf("refusing to read binary file: %q", file)
+		case corpus.ReasonOversize:
+			return nil, citationStatus{}, "", fmt.Errorf("file %q is %d bytes, over the %d-byte read ceiling (files this large are excluded from the index by the same extraction cap)", file, ex.Size, sourceReadMaxFileBytes)
+		}
+		return nil, citationStatus{}, "", fmt.Errorf("file not found in service corpus: %q", file)
+	}
+	if connector.IsBinary(data) {
+		return nil, citationStatus{}, "", fmt.Errorf("refusing to read binary file: %q", file)
+	}
+	hash, contentHash := fusion.FingerprintAndContentHash(data, epoch)
+	status := checkedCitation(ctx, backend, service, rel, before, known, hash, epochKnown)
+	return data, status, contentHash, nil
+}
+
+func sourceReadPath(ctx context.Context, backend QueryInterface, service, file string) (string, string, error) {
 	corpusRoot, err := resolveCorpusRoot(ctx, backend, service)
 	if err != nil {
-		return nil, citationStatus{}, err
+		return "", "", err
 	}
 	// Order matters: lexical validation first (an absolute path or
 	// traversal gets ITS refusal, never a confusing corpus-membership one),
 	// then indexed-corpus membership, then physical symlink containment.
 	rel, full, err := validateRelPath(corpusRoot, file)
 	if err != nil {
-		return nil, citationStatus{}, err
+		return "", "", err
 	}
 	if reason := notIndexedReason(ctx, corpusRoot, service, rel); reason != "" {
-		return nil, citationStatus{}, fmt.Errorf("%s", reason)
+		return "", "", fmt.Errorf("%s", reason)
 	}
 	full, err = resolveRealPath(corpusRoot, full, file)
 	if err != nil {
-		return nil, citationStatus{}, err
+		return "", "", err
 	}
 	// Hard per-file ceiling BEFORE reading: a stat is O(1); loading a
 	// multi-GB artifact into the shared daemon just to slice 200 lines out
@@ -466,49 +506,15 @@ func readSourceBytes(ctx context.Context, backend QueryInterface, service, file 
 	// the index either (fusion.MaxExtractSize), so this is also honesty.
 	info, err := os.Stat(full)
 	if err != nil {
-		return nil, citationStatus{}, fmt.Errorf("file not found in service corpus: %q", file)
+		return "", "", fmt.Errorf("file not found in service corpus: %q", file)
+	}
+	if !info.Mode().IsRegular() {
+		return "", "", fmt.Errorf("not a regular source file: %q", file)
 	}
 	if info.Size() > sourceReadMaxFileBytes {
-		return nil, citationStatus{}, fmt.Errorf("file %q is %d bytes, over the %d-byte read ceiling (files this large are excluded from the index by the same extraction cap)", file, info.Size(), sourceReadMaxFileBytes)
+		return "", "", fmt.Errorf("file %q is %d bytes, over the %d-byte read ceiling (files this large are excluded from the index by the same extraction cap)", file, info.Size(), sourceReadMaxFileBytes)
 	}
-	// Through the corpus reader (RT-91): the same cap, re-checked at open,
-	// and every byte charged to the request's admission ticket. full is the
-	// EvalSymlinks-resolved, corpus-root-contained path from resolveRealPath.
-	initial := citationRefreshState(ctx, backend, service)
-	before, known := indexedSourceFingerprint(ctx, backend, service, rel)
-	if identityOnly {
-		if initial.State != "" {
-			recordCitationRead(ctx, service, rel, initial)
-			return nil, initial, nil
-		}
-		if !known {
-			status := citationStatus{"unknown", "indexed source identity is unavailable"}
-			recordCitationRead(ctx, service, rel, status)
-			return nil, status, nil
-		}
-	}
-	data, ex, err := corpus.ReadFileCapped(ctx, full, sourceReadMaxFileBytes)
-	if err != nil {
-		if ctx.Err() != nil || !errors.Is(err, fs.ErrNotExist) {
-			return nil, citationStatus{}, err
-		}
-		return nil, citationStatus{}, fmt.Errorf("file not found in service corpus: %q", file)
-	}
-	if ex != nil {
-		switch ex.Reason {
-		case corpus.ReasonBinary:
-			return nil, citationStatus{}, fmt.Errorf("refusing to read binary file: %q", file)
-		case corpus.ReasonOversize:
-			return nil, citationStatus{}, fmt.Errorf("file %q is %d bytes, over the %d-byte read ceiling (files this large are excluded from the index by the same extraction cap)", file, ex.Size, sourceReadMaxFileBytes)
-		}
-		return nil, citationStatus{}, fmt.Errorf("file not found in service corpus: %q", file)
-	}
-	if connector.IsBinary(data) {
-		return nil, citationStatus{}, fmt.Errorf("refusing to read binary file: %q", file)
-	}
-	status := checkedCitation(ctx, backend, service, rel, before, known, data, initial)
-	recordCitationRead(ctx, service, rel, status)
-	return data, status, nil
+	return rel, full, nil
 }
 
 // sliceSourceLines is the line-ranged, capped view of one file's bytes that
@@ -782,7 +788,13 @@ func registerReadSource(s *Server, backend QueryInterface) {
 			resp["commit"] = commit
 			resp["source_identity"] = map[string]any{"state": "commit", "commit": commit, "content_sha256": rng.ContentSHA256}
 		} else {
-			resp["source_identity"] = map[string]any{"state": "working_tree", "content_sha256": rng.ContentSHA256}
+			identity := map[string]any{"state": "working_tree", "content_sha256": rng.ContentSHA256}
+			if rng.Citation.State == "" {
+				identity["matches_index"] = true
+			} else if rng.Citation.State == "stale" {
+				identity["matches_index"] = false
+			}
+			resp["source_identity"] = identity
 		}
 		// elided (SB-3) fires only when actual LINES were dropped — the
 		// line/byte cap cut the range short before it reached its natural
