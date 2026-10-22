@@ -163,8 +163,9 @@ func cmdTestRunHook(codec harness.Codec, ev harness.Event, event, baseURL, dirOv
 		}
 		changed := testrun.ChangedGoSymbols(root, diff)
 		var idx testrun.Index
-		if svc, ok := testRunService(ctx, baseURL, root); ok {
-			idx = daemonTestRunIndex{ctx: ctx, baseURL: baseURL, service: svc}
+		id, identityErr := reachIdentity(ctx, baseURL, root)
+		if identityErr == nil {
+			idx = daemonTestRunIndex{ctx: ctx, baseURL: baseURL, service: id.Service}
 		}
 		cands := testrun.FindCandidates(res.Run, changed, idx)
 		for _, r := range cands.Reach {
@@ -173,6 +174,9 @@ func cmdTestRunHook(codec harness.Codec, ev harness.Event, event, baseURL, dirOv
 			}
 		}
 		var extra []string
+		if id.FreshnessNote != "" {
+			extra = append(extra, id.FreshnessNote)
+		}
 		if loaded.Config.Readouts.Mode == config.ReadoutsRich {
 			// RO-23: rich mode's test delta, a local read of the hook log
 			if d := testRunDeltaClause(&rec, res.Run, in.Command, !m.Piped && !in.OutputTruncated); d != "" {
@@ -378,16 +382,6 @@ func pruneTestRunSaved(dir, keep string) {
 	}
 }
 
-// testRunService resolves root to its indexed service (the cached
-// identity lookup the other advisory events use), inside ctx.
-func testRunService(ctx context.Context, baseURL, root string) (string, bool) {
-	if ctx.Err() != nil {
-		return "", false
-	}
-	name, _, ok := indexedServiceFor(&http.Client{Timeout: 2 * time.Second}, baseURL, root)
-	return name, ok
-}
-
 // daemonTestRunIndex is the testrun.Index port over the daemon's /rpc:
 // test_impact bound to the hook's deadline, and no localize (EW-76).
 type daemonTestRunIndex struct {
@@ -508,7 +502,22 @@ func renderTestRunLine(res testrun.Result, c testrun.Candidates, saved string, e
 		p := r.Panics[0]
 		parts = append(parts, fmt.Sprintf("panic in %s: %s", p.Test, testRunClip(p.Message, 60)))
 	}
-	parts = append(parts, reachClauses(leaves, c)...)
+	if c.Reach != nil || len(c.Localized) > 0 {
+		clauses := reachClauses(leaves, c)
+		for _, note := range extra {
+			if strings.HasPrefix(note, "clone at ") {
+				for i, clause := range clauses {
+					if strings.HasPrefix(clause, "no changed symbol reaches") {
+						clauses[i] = "unknown (changed in clone); reach is from the base index"
+					} else {
+						clauses[i] = strings.ReplaceAll(clause, "changed in working tree", "unknown: changed in clone")
+					}
+				}
+				break
+			}
+		}
+		parts = append(parts, clauses...)
+	}
 	parts = append(parts, extra...)
 	body := "🧪 fathom test run: " + strings.Join(parts, "; ")
 	tail := ""

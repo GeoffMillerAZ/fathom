@@ -80,14 +80,17 @@ func testsToRunLine(baseURL, filePath, sessionID string) (string, map[string]str
 	defer cancel()
 	row := map[string]string{}
 	line := ""
-	svc, err := reachService(ctx, baseURL, root)
+	id, err := reachIdentity(ctx, baseURL, root)
 	var r blastReach
 	if err == nil {
-		r, err = fetchBlastReach(ctx, baseURL, svc, []string{rel})
+		r, err = fetchBlastReach(ctx, baseURL, id.Service, []string{rel})
 	}
 	if err != nil {
 		reason := daemonMissReason(ctx, err)
 		line, row["kind"], row["missed"] = testsToRunMissLine(reason), "missed", reason
+		if errors.Is(err, errNoService) {
+			line = ""
+		}
 	} else {
 		shown, more := pickTestsToRun(r.Tests, path.Dir(rel))
 		row["reached"] = strconv.Itoa(len(shown) + more)
@@ -96,6 +99,9 @@ func testsToRunLine(baseURL, filePath, sessionID string) (string, map[string]str
 		} else {
 			ran := testsRanAtTree(ctx, root, sessionID, cfg.Hooks.TestRun, shown)
 			line, row["kind"] = testsToRunText(shown, more, ran), "line"
+			if id.FreshnessNote != "" {
+				line += "; " + id.FreshnessNote
+			}
 			row["named"] = strconv.Itoa(len(shown))
 			row["ran"] = strings.TrimPrefix(ran, "at this tree: ")
 			keys := make([]string, len(shown))

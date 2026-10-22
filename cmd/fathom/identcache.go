@@ -60,6 +60,7 @@ package main
 // follow-up, not silently dropped.
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -278,13 +279,16 @@ func identityCacheKey(dir, baseURL string) string { return identCacheKey(dir+"\x
 // daemon cannot). errIdentityRouteMissing is returned, never cached, so a
 // caller facing an older daemon falls back to the full list.
 // FATHOM_IDENT_NO_CACHE disables both layers.
-func lookupIdentityCached(hc *http.Client, baseURL, dir string) (identityResult, error) {
+func lookupIdentityCached(hc *http.Client, baseURL, dir string, contexts ...context.Context) (identityResult, error) {
 	dir = strings.TrimRight(dir, "/")
 	key := baseURL + "\x1f" + dir
 	noCache := identCacheDisabled()
 	if !noCache {
 		if v, ok := identityMemo.Load(key); ok {
-			return v.(identityResult), nil
+			id := v.(identityResult)
+			if id.FreshnessNote == "" {
+				return id, nil
+			}
 		}
 		if e, ok := readIdentityCacheEntry(dir, baseURL); ok {
 			if at, err := time.Parse(time.RFC3339, e.WrittenAt); err == nil {
@@ -292,7 +296,7 @@ func lookupIdentityCached(hc *http.Client, baseURL, dir string) (identityResult,
 				if e.Result.Service == "" {
 					ttl = identCacheNegativeTTL
 				}
-				if time.Since(at) <= ttl {
+				if time.Since(at) <= ttl && e.Result.FreshnessNote == "" {
 					emitBeat("ident-cache", "hit", nil)
 					identityMemo.Store(key, e.Result)
 					return e.Result, nil
@@ -301,10 +305,10 @@ func lookupIdentityCached(hc *http.Client, baseURL, dir string) (identityResult,
 		}
 		emitBeat("ident-cache", "miss", nil)
 	}
-	id, err := lookupIdentity(hc, baseURL, dir)
+	id, err := lookupIdentity(hc, baseURL, dir, contexts...)
 	if err != nil {
 		if !noCache && !errors.Is(err, errIdentityRouteMissing) {
-			if e, ok := readIdentityCacheEntry(dir, baseURL); ok && e.Result.Service != "" {
+			if e, ok := readIdentityCacheEntry(dir, baseURL); ok && e.Result.Service != "" && e.Result.FreshnessNote == "" {
 				if at, perr := time.Parse(time.RFC3339, e.WrittenAt); perr == nil && time.Since(at) <= identCacheStaleServeMax {
 					emitBeat("ident-cache", "stale-served", nil)
 					return e.Result, nil
@@ -313,7 +317,7 @@ func lookupIdentityCached(hc *http.Client, baseURL, dir string) (identityResult,
 		}
 		return identityResult{}, err
 	}
-	if !noCache {
+	if !noCache && id.FreshnessNote == "" {
 		identityMemo.Store(key, id)
 		writeIdentityCacheEntry(dir, baseURL, id, time.Now())
 	}

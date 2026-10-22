@@ -49,34 +49,39 @@ func fetchBlastReach(ctx context.Context, baseURL, service string, files []strin
 // left of ctx rather than its own fixed cap. errNoService names a root the
 // daemon indexes no service at; any other error is the daemon's.
 func reachService(ctx context.Context, baseURL, root string) (string, error) {
+	id, err := reachIdentity(ctx, baseURL, root)
+	return id.Service, err
+}
+
+func reachIdentity(ctx context.Context, baseURL, root string) (identityResult, error) {
 	if root == "" {
-		return "", errNoService
+		return identityResult{}, errNoService
 	}
 	if deadlinePassed(ctx) {
-		return "", context.DeadlineExceeded
+		return identityResult{}, context.DeadlineExceeded
 	}
 	hc := &http.Client{Timeout: 2 * time.Second}
 	if dl, ok := ctx.Deadline(); ok {
 		hc.Timeout = time.Until(dl)
 	}
-	id, err := lookupIdentityCached(hc, baseURL, root)
+	id, err := lookupIdentityCached(hc, baseURL, root, ctx)
 	switch {
 	case errors.Is(err, errIdentityRouteMissing):
 		// A daemon that predates GET /identity: the service list.
 		name, _, ok := indexedServiceFor(hc, baseURL, root)
 		if !ok {
-			return "", errNoService
+			return identityResult{}, errNoService
 		}
-		return name, nil
+		return identityResult{Service: name}, nil
 	case err != nil:
 		if deadlinePassed(ctx) {
-			return "", context.DeadlineExceeded
+			return identityResult{}, context.DeadlineExceeded
 		}
-		return "", err
+		return identityResult{}, err
 	case id.Service == "":
-		return "", errNoService
+		return identityResult{}, errNoService
 	}
-	return id.Service, nil
+	return id, nil
 }
 
 // errNoService is a root the daemon indexes no service at.

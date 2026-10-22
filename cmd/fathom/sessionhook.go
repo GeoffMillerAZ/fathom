@@ -359,10 +359,11 @@ func defaultFathomURL() string {
 }
 
 type svcInfo struct {
-	symbols  int
-	countErr string
-	langs    string
-	path     string // recorded corpus root; "" when the daemon has none
+	indexedCommit string
+	symbols       int
+	countErr      string
+	langs         string
+	path          string // recorded corpus root; "" when the daemon has none
 }
 
 // sessionContext returns the additionalContext line for the project at
@@ -564,7 +565,7 @@ func svcInfoFromSummaries(sums []mcp.ServiceSummary) map[string]svcInfo {
 		if err := core.ValidServiceID(s.Service); err != nil {
 			continue
 		}
-		out[strings.ToLower(s.Service)] = svcInfo{symbols: s.SymbolCount, countErr: s.CountErr, langs: joinLangs(s.Languages), path: s.Path}
+		out[strings.ToLower(s.Service)] = svcInfo{symbols: s.SymbolCount, countErr: s.CountErr, langs: joinLangs(s.Languages), path: s.Path, indexedCommit: s.IndexedCommit}
 	}
 	return out
 }

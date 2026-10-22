@@ -184,6 +184,9 @@ type sourceRange struct {
 // relative root under a shared daemon could otherwise read a FOREIGN
 // service's files and attribute them to this one.
 func resolveCorpusRoot(ctx context.Context, backend QueryInterface, service string) (string, error) {
+	if r, ok := clonePath(ctx, service); ok {
+		return r.Root, nil
+	}
 	path, _, found, err := backend.ServiceMeta(ctx, service)
 	if err != nil {
 		return "", fmt.Errorf("service metadata: %w", err)
@@ -493,6 +496,11 @@ func sourceReadPath(ctx context.Context, backend QueryInterface, service, file s
 	if err != nil {
 		return "", "", err
 	}
+	if r, ok := clonePath(ctx, service); ok {
+		if reason := notIndexedReason(ctx, r.IndexedRoot.Root, service, rel); reason != "" {
+			return "", "", fmt.Errorf("%s", reason)
+		}
+	}
 	if reason := notIndexedReason(ctx, corpusRoot, service, rel); reason != "" {
 		return "", "", fmt.Errorf("%s", reason)
 	}
@@ -657,6 +665,11 @@ func readSourceAtRef(ctx context.Context, backend QueryInterface, service, file,
 	}
 	if strings.HasPrefix(ref, "-") {
 		return sourceRange{}, "", fmt.Errorf("refusing ref %q: a ref may not start with '-' (git would read it as an option)", ref)
+	}
+	if r, ok := clonePath(ctx, service); ok {
+		if reason := notIndexedReason(ctx, r.IndexedRoot.Root, service, rel); reason != "" {
+			return sourceRange{}, "", fmt.Errorf("%s", reason)
+		}
 	}
 	if reason := notIndexedReason(ctx, corpusRoot, service, rel); reason != "" {
 		return sourceRange{}, "", fmt.Errorf("%s", reason)
