@@ -5872,6 +5872,11 @@ repo-wide compiled rule to the paths, packages and symbols its own text and mapp
 read again with the d2 order unchanged. Precise obligations are also the largest token lever this repository's prompt
 hook has (each prompt carries up to 6 rules), so RS-4 rides the token-efficiency wave after the game-development P0.
 
+**RS-4 read 2026-10-22.** Built and measured at $0: RS-M2b read FAIL at 1 of 8 (+85 to +97 ms p95), worse than the
+baseline, because resolving rule text against the index turned common words into scopes. RS-4 is rejected for now with
+its wins-if in the plan; d2 stays as shipped. The token lever for edit-time rules moves to per-session dedupe
+(`docs/plans/context-bill.md`), which is lossless whatever a rule's relevance.
+
 ## ADR-078: Multi-machine development: every machine its own loopback fathom; git moves code, receipts move evidence, snapshots move the index; placement is not fathom's (2026-10-22)
 
 **Status.** Accepted 2026-10-22 (owner-architect). **Type.** process / architecture. Reaffirms ADR-069 decisions 9 and 10 and I14. Design: `docs/design/multi-machine-development.md`. Plan: `docs/plans/multi-machine.md` (MM-). Guide: `docs/guides/multi-machine.md`.
