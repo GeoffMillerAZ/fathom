@@ -1,7 +1,9 @@
 package connector
 
 import (
+	"bufio"
 	"bytes"
+	"io"
 	"regexp"
 	"strings"
 )
@@ -21,6 +23,8 @@ var goGeneratedRe = regexp.MustCompile(`^// Code generated .* DO NOT EDIT\.$`)
 // IsGenerated supplies the "this is a header comment, not quoted prose"
 // signal that the loose regex alone cannot.
 var generatedMarkerRe = regexp.MustCompile(`(?i)code generated .*\bdo not edit\b`)
+var generatedStartRe = regexp.MustCompile(`(?i)code generated `)
+var generatedEndRe = regexp.MustCompile(`(?i)\bdo not edit\b`)
 
 // goGeneratedScanLimit bounds the Go package-clause scan: the marker (and
 // the package clause itself) live in the file header; 4KB comfortably
@@ -121,6 +125,121 @@ func IsGenerated(path string, content []byte) bool {
 			return true
 		}
 	}
+	return false
+}
+
+// IsGeneratedReader makes the same decision as IsGenerated while retaining at
+// most a small read buffer and marker overlap. Non-Go's first three lines may
+// be arbitrarily long; they are streamed rather than truncated.
+func IsGeneratedReader(path string, r io.Reader) (bool, error) {
+	if strings.HasSuffix(path, ".go") {
+		head, err := io.ReadAll(io.LimitReader(r, goGeneratedScanLimit))
+		if err != nil {
+			return false, err
+		}
+		return isGeneratedGo(head), nil
+	}
+	lang := LanguageForPath(path)
+	tokens, known := langCommentTokens[lang]
+	if !known {
+		tokens = unclassifiedCommentTokens
+	}
+	if len(tokens) == 0 {
+		return false, nil
+	}
+	reader := bufio.NewReaderSize(r, 4*1024)
+	for line := 0; line < generatedScanLines; line++ {
+		state := generatedLine{tokens: tokens, leading: true}
+		for {
+			fragment, err := reader.ReadSlice('\n')
+			if err != nil && err != io.EOF && err != bufio.ErrBufferFull {
+				return false, err
+			}
+			last := err != bufio.ErrBufferFull
+			if len(fragment) > 0 && fragment[len(fragment)-1] == '\n' {
+				fragment = fragment[:len(fragment)-1]
+			}
+			if state.scan(fragment, last) {
+				return true, nil
+			}
+			if err == io.EOF {
+				return false, nil
+			}
+			if last {
+				break
+			}
+		}
+	}
+	return false, nil
+}
+
+type generatedLine struct {
+	tokens    []string
+	leading   bool
+	decided   bool
+	allowed   bool
+	prefix    []byte // comment token only, at most five bytes
+	seenStart bool
+	startEnd  int
+	processed int
+	tail      []byte // enough overlap for either fixed marker fragment
+}
+
+func (s *generatedLine) scan(fragment []byte, final bool) bool {
+	if !s.decided {
+		for i, b := range fragment {
+			if s.leading && (b == ' ' || b == '\t') {
+				continue
+			}
+			s.leading = false
+			s.prefix = append(s.prefix, b)
+			if hasAnyPrefix(s.prefix, s.tokens) {
+				s.allowed, s.decided = true, true
+				return s.marker(append(s.prefix, fragment[i+1:]...), final)
+			}
+			possible := false
+			for _, token := range s.tokens {
+				if bytes.HasPrefix([]byte(token), s.prefix) {
+					possible = true
+					break
+				}
+			}
+			if !possible {
+				s.decided = true
+				return false
+			}
+		}
+		return false
+	}
+	if !s.allowed {
+		return false
+	}
+	return s.marker(fragment, final)
+}
+
+func (s *generatedLine) marker(fragment []byte, final bool) bool {
+	windowStart := s.processed - len(s.tail)
+	window := make([]byte, 0, len(s.tail)+len(fragment))
+	window = append(window, s.tail...)
+	window = append(window, fragment...)
+	if !s.seenStart {
+		if m := generatedStartRe.FindIndex(window); m != nil {
+			s.seenStart = true
+			s.startEnd = windowStart + m[1]
+		}
+	}
+	if s.seenStart {
+		for _, m := range generatedEndRe.FindAllIndex(window, -1) {
+			if windowStart+m[0] >= s.startEnd && (m[0] > 0 || windowStart == 0) && (m[1] < len(window) || final) {
+				return true
+			}
+		}
+	}
+	s.processed += len(fragment)
+	if len(window) > 64 {
+		window = window[len(window)-64:]
+	}
+	s.tail = append(s.tail[:0], window...)
 	return false
 }
 

@@ -13,6 +13,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -20,9 +21,11 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/certify"
+	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/verify"
@@ -59,6 +62,9 @@ type Input struct {
 	// HeadFile reads path's content AS OF Head — the worktree file, for
 	// NewInput's callers. Same ok/err contract as BaseFile.
 	HeadFile func(path string) (content []byte, ok bool, err error)
+	// HeadGenerated optionally classifies a worktree file through a bounded
+	// header read. A nil callback leaves legacy HeadFile behavior intact.
+	HeadGenerated func(path string) (generated bool, exists bool, err error)
 	// Store is the live index, for a plane that needs it (certificates,
 	// governance). nil is valid and means exactly that: a plane needing it
 	// reports "no store" in its Missing and goes Unproven (I44) — Input
@@ -320,6 +326,9 @@ func goneImportTarget(raw string) (string, bool) {
 // or at head, which Declarations treats as "no declarations from that
 // file at that point," not a fatal condition.
 func NewInput(ctx context.Context, root, baseRef string, st store.Store, service string, planPaths []string) (Input, error) {
+	if err := ctx.Err(); err != nil {
+		return Input{}, err
+	}
 	base, err := resolveRef(ctx, root, baseRef)
 	if err != nil {
 		return Input{}, fmt.Errorf("resolving base ref %q in %s: %w", baseRef, root, err)
@@ -331,17 +340,29 @@ func NewInput(ctx context.Context, root, baseRef string, st store.Store, service
 
 	var basePlans, headPlans []verify.Plan
 	for _, raw := range planPaths {
+		if err := ctx.Err(); err != nil {
+			return Input{}, err
+		}
 		rel := planPathRelativeTo(root, raw)
 		if b, ok, _ := gitShowFile(ctx, root, base, rel); ok {
 			basePlans = append(basePlans, verify.ParseMarkdownPlan(service, b))
 		}
-		if b, ok, _ := worktreeFile(root, rel); ok {
+		if err := ctx.Err(); err != nil {
+			return Input{}, err
+		}
+		if b, ok, _ := readWorktreeFile(ctx, root, rel); ok {
 			headPlans = append(headPlans, verify.ParseMarkdownPlan(service, b))
 		}
 	}
 
+	if err := ctx.Err(); err != nil {
+		return Input{}, err
+	}
 	indexAtHead, indexAtHeadReason := resolveIndexAtHead(ctx, root, st, service)
 
+	if err := ctx.Err(); err != nil {
+		return Input{}, err
+	}
 	return Input{
 		Service:             service,
 		Root:                root,
@@ -349,7 +370,8 @@ func NewInput(ctx context.Context, root, baseRef string, st store.Store, service
 		Head:                HeadWorktree,
 		ChangedFiles:        changed,
 		BaseFile:            func(path string) ([]byte, bool, error) { return gitShowFile(ctx, root, base, path) },
-		HeadFile:            func(path string) ([]byte, bool, error) { return worktreeFile(root, path) },
+		HeadFile:            func(path string) ([]byte, bool, error) { return readWorktreeFile(ctx, root, path) },
+		HeadGenerated:       func(path string) (bool, bool, error) { return readWorktreeGenerated(ctx, root, path) },
 		Store:               st,
 		Declarations:        NewDeclarations(basePlans, headPlans),
 		Retired:             NewRetirement(basePlans, headPlans),
@@ -637,6 +659,9 @@ func gitShowFile(ctx context.Context, root, ref, path string) ([]byte, bool, err
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()
+	if canceled := ctx.Err(); canceled != nil {
+		return nil, false, canceled
+	}
 	if err == nil {
 		return out, true, nil
 	}
@@ -663,21 +688,98 @@ func pathAbsentAtRef(stderr string) bool {
 	return strings.Contains(s, "does not exist in") || strings.Contains(s, "exists on disk, but not in")
 }
 
-// worktreeFile reads path's content from the working tree under root. ok
-// is false — never an error — when the file simply does not exist there.
-// Refuses (a real error) a path that would resolve outside root.
-func worktreeFile(root, path string) ([]byte, bool, error) {
+// readWorktreeFile checks cancellation between bounded chunks. It still reads
+// the entire regular file when requested; no size limit is imposed.
+func readWorktreeFile(ctx context.Context, root, path string) ([]byte, bool, error) {
+	f, ok, err := openRegularWorktreeFile(ctx, root, path)
+	if err != nil || !ok {
+		return nil, ok, err
+	}
+	defer f.Close()
+	var out []byte
+	buf := make([]byte, 64*1024)
+	for {
+		if err := ctx.Err(); err != nil {
+			return nil, false, err
+		}
+		n, err := f.Read(buf)
+		if canceled := ctx.Err(); canceled != nil {
+			return nil, false, canceled
+		}
+		out = append(out, buf[:n]...)
+		if err == io.EOF {
+			return out, true, nil
+		}
+		if err != nil {
+			return nil, false, err
+		}
+	}
+}
+
+// readWorktreeGenerated reads only the classifier's header window. It shares
+// the full reader's path, symlink, and regular-file checks.
+func readWorktreeGenerated(ctx context.Context, root, path string) (bool, bool, error) {
+	f, ok, err := openRegularWorktreeFile(ctx, root, path)
+	if err != nil || !ok {
+		return false, ok, err
+	}
+	defer f.Close()
+	generated, err := connector.IsGeneratedReader(path, &contextFileReader{ctx: ctx, file: f})
+	if canceled := ctx.Err(); canceled != nil {
+		return false, false, canceled
+	}
+	if err != nil {
+		return false, false, err
+	}
+	return generated, true, nil
+}
+
+type contextFileReader struct {
+	ctx  context.Context
+	file *os.File
+}
+
+func (r *contextFileReader) Read(p []byte) (int, error) {
+	if err := r.ctx.Err(); err != nil {
+		return 0, err
+	}
+	n, err := r.file.Read(p)
+	if canceled := r.ctx.Err(); canceled != nil {
+		return 0, canceled
+	}
+	return n, err
+}
+
+func openRegularWorktreeFile(ctx context.Context, root, path string) (*os.File, bool, error) {
 	r := filepath.Clean(root)
 	full := filepath.Clean(filepath.Join(r, filepath.FromSlash(path)))
 	if full != r && !strings.HasPrefix(full, r+string(filepath.Separator)) {
 		return nil, false, fmt.Errorf("path %q escapes root %q", path, root)
 	}
-	b, err := os.ReadFile(full)
+	if err := ctx.Err(); err != nil {
+		return nil, false, err
+	}
+	// Open nonblocking before inspecting the descriptor: a concurrent path
+	// replacement with a FIFO must not block between a path check and open.
+	f, err := os.OpenFile(full, os.O_RDONLY|syscall.O_NONBLOCK, 0)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, false, nil
 		}
 		return nil, false, err
 	}
-	return b, true, nil
+	openedInfo, err := f.Stat()
+	if err != nil {
+		f.Close()
+		return nil, false, err
+	}
+	if openedInfo.IsDir() {
+		f.Close()
+		return nil, false, nil // directories (including gitlinks) have no file body
+	}
+	if !openedInfo.Mode().IsRegular() {
+		f.Close()
+		return nil, false, fmt.Errorf("non-regular file %q: %s", path, openedInfo.Mode())
+	}
+	return f, true, nil
 }
