@@ -91,7 +91,7 @@ func blockedSitesSuffix(cfg config.Decide) string {
 // HTTP client a test counts); production passes none. With no [decide]
 // block and no kill the row is DP-35's, byte for byte.
 func decisionProviderVerdict(loaded config.Loaded, build profileClientBuilder, callLogPath string, opts ...decide.Option) doctorCheck {
-	ctx, cancel := doctorProbeContext(context.Background())
+	ctx, cancel := doctorStepContext(context.Background())
 	defer cancel()
 	return decisionProviderVerdictContext(ctx, loaded, build, callLogPath, opts...)
 }
@@ -203,17 +203,24 @@ func providerVerdict(ctx context.Context, loaded config.Loaded, build profileCli
 		cl, err := build(p)
 		if err != nil {
 			return doctorCheck{
-				Name: name, Status: doctorFail,
+				Name: name, Status: doctorFail, probeErr: err,
 				Reason: fmt.Sprintf("[decide] provider=llm profile=%s: %v", displayProfileName(dc.Profile), err),
 				Remedy: "fathom providers  (diagnose the same lane's auth health)",
 			}
 		}
 		if pinger, ok := cl.(llmclient.Pinger); ok {
-			pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			budget := 5 * time.Second
+			switch p.Provider {
+			case config.ProviderCodexCLI:
+				budget = 20 * time.Second
+			case config.ProviderClaudeCLI:
+				budget = 15 * time.Second
+			}
+			pingCtx, cancel := context.WithTimeout(ctx, budget)
 			defer cancel()
 			if err := pinger.Ping(pingCtx); err != nil {
 				return doctorCheck{
-					Name: name, Status: doctorFail,
+					Name: name, Status: doctorFail, probeErr: err,
 					Reason: fmt.Sprintf("[decide] provider=llm profile=%s ping failed: %v", displayProfileName(dc.Profile), err),
 					Remedy: "fathom providers",
 				}

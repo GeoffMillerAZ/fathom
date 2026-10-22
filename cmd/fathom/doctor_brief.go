@@ -22,9 +22,9 @@ import (
 // wired yet), and the last line says how many were elided.
 const doctorBriefMaxLines = 5
 
-// doctorBrief renders the FAIL rows of checks as at most
+// doctorBrief renders the FAIL, TIMEOUT and UNKNOWN rows of checks as at most
 // doctorBriefMaxLines short lines — name, reason, and the remedy where
-// there is one. "" when nothing failed: silence is the correct output of
+// there is one. "" when no failure or uncertainty was found: silence is the correct output of
 // a clean diagnosis, and a hook that prints "all good" on every setup is
 // noise the adopter learns to skip.
 func doctorBrief(checks []doctorCheck) string {
@@ -32,7 +32,7 @@ func doctorBrief(checks []doctorCheck) string {
 	var cut *doctorCheck
 	for i, c := range checks {
 		switch {
-		case c.Status == doctorFail:
+		case c.Status == doctorFail || c.Status == doctorTimeout || c.Status == doctorUnknown:
 			fails = append(fails, c)
 		case c.Name == doctorDeadlineRow:
 			// The hook's deadline stopped the run (RT-7): the checks it cut
@@ -57,7 +57,16 @@ func doctorBrief(checks []doctorCheck) string {
 		elided = len(fails) - len(shown)
 	}
 	var sb strings.Builder
-	fmt.Fprintf(&sb, "fathom doctor: %d check(s) FAIL\n", len(fails))
+	counts := map[doctorStatus]int{}
+	for _, c := range fails {
+		counts[c.Status]++
+	}
+	fmt.Fprintf(&sb, "fathom doctor: %d check(s) FAIL\n", counts[doctorFail])
+	for _, status := range []doctorStatus{doctorTimeout, doctorUnknown} {
+		if counts[status] > 0 {
+			fmt.Fprintf(&sb, "%d check(s) %s\n", counts[status], statusLabel(status))
+		}
+	}
 	for _, c := range shown {
 		line := fmt.Sprintf("- %s: %s", c.Name, oneLine(c.Reason))
 		if c.Remedy != "" {

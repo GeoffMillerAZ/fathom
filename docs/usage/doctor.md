@@ -37,10 +37,14 @@ Claude project MCP entries in `.mcp.json` and stdio entries using project wrappe
 are recognized, alongside the existing harness configuration files. Recognition
 establishes configuration only, without launching the stdio server.
 
-Each probe inherits the Setup hook's remaining deadline when doctor runs as a
-hook, with a five-second probe cap. Standalone doctor has no overall run deadline.
-Daemon requests, git subprocesses, provider construction/Ping and diagnostic file
-walks receive cancellation. Existing shorter request caps remain in effect.
+Each step inherits the Setup hook's remaining deadline when doctor runs as a
+hook. Standalone doctor has no overall run deadline. Daemon requests and doctor's
+git probes retain their five-second caps. CLI pings retain their own budgets
+(Codex construction: 20 s; other CLI pings: 15 s). Existing shorter request caps
+remain in effect. Local work without cancellation, including the retention walk
+and Observatory projection, runs outside the per-probe cap and keeps its verdict.
+A daemon that does not answer within 5 s remains a confirmed FAIL. The brief names
+FAIL, TIMEOUT and UNKNOWN rows with separate counts, so a hang cannot look clean.
 An expired run stops before later rows and names the checks not run. JSON retains
 `unknown`/`timeout` on the individual rows, and counts both under `summary.skipped`
 for compatibility. Human output labels them `UNKNOWN` and `TIMEOUT`.

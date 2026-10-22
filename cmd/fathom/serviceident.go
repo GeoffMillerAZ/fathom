@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
+
+	"github.com/geoffmilleraz/fathom/internal/gitro"
 )
 
 // serviceCandidate is one (service name, corpus root) identity guess for a
@@ -39,7 +41,7 @@ type serviceCandidate struct {
 // registered as "fathom" otherwise sent every daemon-unresolved lookup
 // (spec_refs, memories) to a service that does not exist — 170 of 306
 // live spec_refs calls failed that way.
-func serviceCandidates(projDir string) []serviceCandidate {
+func serviceCandidates(projDir string, parents ...context.Context) []serviceCandidate {
 	projDir = strings.TrimRight(projDir, "/")
 	var out []serviceCandidate
 	add := func(root string) {
@@ -50,7 +52,13 @@ func serviceCandidates(projDir string) []serviceCandidate {
 		out = append(out, serviceCandidate{name: base, root: root})
 	}
 	add(projDir)
-	if top := gitToplevel(projDir); top != "" && top != projDir {
+	top := ""
+	if len(parents) > 0 {
+		top = gitToplevelContext(parents[0], projDir)
+	} else {
+		top = gitToplevel(projDir)
+	}
+	if top != "" && top != projDir {
 		add(top)
 	}
 	return out
@@ -65,9 +73,11 @@ func gitToplevel(dir string) string { return gitToplevelCached(dir) }
 
 // gitToplevelUncached forks `git rev-parse --show-toplevel` in dir.
 func gitToplevelUncached(dir string) string {
-	ctx, cancel := doctorProbeContext(context.Background())
-	defer cancel()
-	out, err := doctorGitCommand(ctx, dir, "rev-parse", "--show-toplevel").Output()
+	return gitToplevelContext(context.Background(), dir)
+}
+
+func gitToplevelContext(ctx context.Context, dir string) string {
+	out, err := gitro.Output(ctx, dir, "rev-parse", "--show-toplevel")
 	if err != nil {
 		return ""
 	}

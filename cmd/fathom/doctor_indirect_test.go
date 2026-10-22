@@ -98,13 +98,13 @@ func (doctorSlowTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	return nil, ctx.Err()
 }
 
-func TestDoctorProbeTimeoutReportsTimeoutNotFailure(t *testing.T) {
+func TestDoctorProbeTimeoutReportsDaemonFailure(t *testing.T) {
 	_, got := checkDaemonReachable(&http.Client{Transport: doctorSlowTransport{}}, "http://daemon.invalid")
-	if got.Status != doctorStatus("timeout") {
+	if got.Status != doctorFail {
 		t.Fatalf("expired probe = %+v", got)
 	}
-	if doctorExitCode([]doctorCheck{got}) != 0 {
-		t.Fatal("timeout must retain fail-open exit contract")
+	if doctorExitCode([]doctorCheck{got}) != 1 {
+		t.Fatal("daemon timeout must fail the diagnosis")
 	}
 }
 
@@ -128,7 +128,7 @@ func TestDoctorProbeCancelsInjectedWork(t *testing.T) {
 	row := runDoctorProbe(ctx, func(ctx context.Context) doctorCheck {
 		<-ctx.Done()
 		observed = true
-		return doctorCheck{Name: "slow", Status: doctorFail, Reason: "not established"}
+		return doctorCheck{Name: "slow", Status: doctorFail, Reason: "not established", probeErr: ctx.Err()}
 	})
 	if !observed || row.Status != doctorTimeout {
 		t.Fatalf("cancelled work = %+v, observed %v", row, observed)
@@ -220,7 +220,10 @@ func TestDoctorExpiredDeadlineStopsFileWalks(t *testing.T) {
 	doctorWriteFixture(t, root, "code/main.go", "package main\n")
 	ctx, cancel := context.WithDeadline(context.Background(), time.Unix(1, 0))
 	defer cancel()
-	visited := walkForUserHiddenFiles(root, nil, filter.New([]string{"**"}), ctx)
+	visited, err := walkForUserHiddenFiles(root, nil, filter.New([]string{"**"}), ctx)
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("walk lost cancellation error: %v", err)
+	}
 	if len(visited) != 0 {
 		t.Fatalf("walk continued after deadline: %v", visited)
 	}

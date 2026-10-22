@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
 
 	"gopkg.in/yaml.v3"
 )
@@ -34,19 +35,26 @@ func (r *doctorWrapperReader) read(path string) ([]byte, error) {
 	if err := r.ctx.Err(); err != nil {
 		return nil, err
 	}
-	info, err := os.Stat(path)
+	// Resolve the repository boundary before opening any wrapper. OpenRoot
+	// also prevents symlink replacement from escaping that boundary.
+	if r.root == "" {
+		return nil, fmt.Errorf("wrapper root is unknown")
+	}
+	rel, err := filepath.Rel(r.root, path)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
+		return nil, fmt.Errorf("wrapper is outside the repository")
+	}
+	root, err := os.OpenRoot(r.root)
 	if err != nil {
 		return nil, err
 	}
-	if !info.Mode().IsRegular() || info.Size() > int64(r.remaining) {
-		return nil, fmt.Errorf("wrapper is not a bounded regular file")
-	}
-	f, err := os.Open(path)
+	defer root.Close()
+	f, err := root.OpenFile(rel, os.O_RDONLY|syscall.O_NONBLOCK, 0)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
-	info, err = f.Stat()
+	info, err := f.Stat()
 	if err != nil {
 		return nil, err
 	}
@@ -69,16 +77,16 @@ func (r *doctorWrapperReader) command(command, sub string, depth int) doctorWiri
 		return doctorWiringEvidence{unknown: true}
 	}
 	var unknown bool
-	// A semicolon/&& list is wiring evidence, never proof the branch fired.
-	for _, line := range strings.Split(strings.ReplaceAll(command, "&&", ";"), "\n") {
+	// A shell command list is wiring evidence, never proof the branch fired.
+	for _, line := range strings.Split(command, "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-		for _, part := range strings.Split(line, ";") {
+		for _, part := range strings.FieldsFunc(line, func(c rune) bool { return c == '|' || c == '&' || c == ';' }) {
 			words := strings.Fields(part)
 			for i := range words {
-				words[i] = strings.Trim(words[i], "\"'")
+				words[i] = strings.NewReplacer("\"", "", "'", "").Replace(words[i])
 			}
 			if len(words) > 1 && words[0] == "command" && words[1] == "-v" {
 				continue // template availability guard, not an unresolved wrapper
@@ -97,19 +105,21 @@ func (r *doctorWrapperReader) command(command, sub string, depth int) doctorWiri
 				}
 				continue
 			}
+			shellScript := false
 			if bin == "sh" || bin == "bash" || bin == "zsh" {
 				if len(words) < 2 || strings.HasPrefix(words[1], "-") {
-					unknown = true
+					unknown = unknown || depth > 0
 					continue
 				}
 				words = words[1:]
+				shellScript = true
 				bin = filepath.Base(words[0])
 			}
-			wrapper := strings.Contains(words[0], "/") || strings.HasSuffix(bin, ".sh")
+			wrapper := shellScript || strings.Contains(words[0], "/") || strings.HasSuffix(bin, ".sh")
 			if bin != "task" && bin != "lefthook" && !wrapper {
-				// Simple non-hook commands are decidable. Shell expansion/control flow
-				// and other runners are not a basis for an absence claim.
-				if bin != "echo" && bin != "printf" && bin != "touch" && bin != "true" && bin != "false" {
+				// Other tools do not stand for fathom. Dynamic shell work is
+				// uncertain only inside a project wrapper we actually read.
+				if depth > 0 && (bin == "eval" || bin == "source" || bin == ".") {
 					unknown = true
 				}
 				continue
@@ -123,14 +133,21 @@ func (r *doctorWrapperReader) command(command, sub string, depth int) doctorWiri
 			case "task", "lefthook":
 				ev = r.task(words, sub, depth+1)
 			default:
-				p := strings.ReplaceAll(words[0], "${CLAUDE_PROJECT_DIR}", r.root)
-				if strings.ContainsAny(p, "$`{}") {
+				p := words[0]
+				// Quote removal precedes expansion so "$VAR"/script.sh works too.
+				// Only documented project-dir aliases resolve, using the root doctor
+				// is diagnosing, never an unrelated ambient environment value.
+				for _, name := range []string{"CLAUDE_PROJECT_DIR", "GEMINI_PROJECT_DIR", "CURSOR_PROJECT_DIR"} {
+					p = strings.ReplaceAll(p, "${"+name+"}", ".")
+					if p == "$"+name || strings.HasPrefix(p, "$"+name+"/") {
+						p = "." + strings.TrimPrefix(p, "$"+name)
+					}
+				}
+				if filepath.IsAbs(p) || strings.ContainsAny(p, "$`{}") {
 					unknown = true
 					continue
 				}
-				if !filepath.IsAbs(p) {
-					p = filepath.Join(r.root, p)
-				}
+				p = filepath.Join(r.root, p)
 				b, err := r.read(p)
 				if err != nil {
 					unknown = true
@@ -186,6 +203,7 @@ func (r *doctorWrapperReader) task(words []string, sub string, depth int) doctor
 		return doctorWiringEvidence{unknown: true}
 	}
 	var commands []string
+	uncertain := false
 	if bin == "task" {
 		tasks, _ := doc["tasks"].(map[string]any)
 		entry, ok := tasks[names[0]]
@@ -196,6 +214,7 @@ func (r *doctorWrapperReader) task(words []string, sub string, depth int) doctor
 		case string:
 			commands = append(commands, v)
 		case map[string]any:
+			_, uncertain = v["deps"]
 			if _, ok := v["dir"]; ok {
 				return doctorWiringEvidence{unknown: true}
 			}
@@ -225,6 +244,9 @@ func (r *doctorWrapperReader) task(words []string, sub string, depth int) doctor
 		if !ok {
 			return doctorWiringEvidence{unknown: true}
 		}
+		_, scripts := entry["scripts"]
+		_, jobs := entry["jobs"]
+		uncertain = scripts || jobs
 		cmds, ok := entry["commands"].(map[string]any)
 		if !ok {
 			return doctorWiringEvidence{unknown: true}
@@ -249,7 +271,9 @@ func (r *doctorWrapperReader) task(words []string, sub string, depth int) doctor
 			commands = append(commands, run)
 		}
 	}
-	return r.command(strings.Join(commands, "\n"), sub, depth)
+	ev := r.command(strings.Join(commands, "\n"), sub, depth)
+	ev.unknown = ev.unknown || uncertain
+	return ev
 }
 
 func doctorHookEvidence(ctx context.Context, root string, hooksObj map[string]any, spec hookSpec) doctorWiringEvidence {

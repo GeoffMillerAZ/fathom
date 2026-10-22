@@ -120,13 +120,16 @@ func checkUserScopeIgnoreContext(ctx context.Context, root string) doctorCheck {
 	}
 	projectOnly := connector.ProjectOnlyIgnore(root)
 
-	hidden := walkForUserHiddenFiles(root, projectOnly, union, ctx)
+	hidden, walkErr := walkForUserHiddenFiles(root, projectOnly, union, ctx)
 	if len(hidden) > 0 {
 		return doctorCheck{
 			Name: name, Status: doctorWarn,
 			Reason: fmt.Sprintf("~/.fathom/ignore (%d pattern(s)) is excluding %d otherwise-indexable file(s) from this repo, e.g. %q — this may be why fathom can't see some of your code", counts.User, len(hidden), hidden[0]),
 			Remedy: fmt.Sprintf("review %s, or add a project-scope override in .fathomignore (project scope always wins — docs/design/scoped-config.md law 13)", userPath),
 		}
+	}
+	if walkErr != nil {
+		return doctorCheck{Name: name, Status: doctorErrorStatus(walkErr), Reason: "user-scope exclusion walk did not finish: " + walkErr.Error(), probeErr: walkErr, Remedy: "re-run doctor when the walk can finish"}
 	}
 	return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("~/.fathom/ignore in effect (%d pattern(s)); excluding %d pattern(s) total (%d project, %d user-scope)", counts.User, counts.Project+counts.User, counts.Project, counts.User)}
 }
@@ -137,17 +140,17 @@ func checkUserScopeIgnoreContext(ctx context.Context, root string) doctorCheck {
 // because of the project's own .fathomignore. Returns up to a handful of
 // example relative paths (sorted, first-found order from a deterministic
 // walk), nil when none found or the walk cannot proceed at all.
-func walkForUserHiddenFiles(root string, projectOnly, union *filter.Matcher, parents ...context.Context) []string {
+func walkForUserHiddenFiles(root string, projectOnly, union *filter.Matcher, parents ...context.Context) ([]string, error) {
 	ctx, cancel := doctorContextArg(parents)
 	defer cancel()
 	if union == nil {
-		return nil
+		return nil, nil
 	}
 	var hidden []string
 	visited := 0
-	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
-		if ctx.Err() != nil {
-			return filepath.SkipAll
+	walkErr := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err := ctx.Err(); err != nil {
+			return err
 		}
 		if err != nil {
 			return nil //nolint:nilerr // best-effort diagnostic walk; a single unreadable entry must not abort the check
@@ -181,7 +184,7 @@ func walkForUserHiddenFiles(root string, projectOnly, union *filter.Matcher, par
 		}
 		return nil
 	})
-	return hidden
+	return hidden, walkErr
 }
 
 // checkUserScopeGuard is checkUserScopeIgnore's twin for

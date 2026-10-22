@@ -16,6 +16,7 @@ package main
 // and a Claude beat are distinguishable in one user-global log.
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sort"
@@ -104,16 +105,19 @@ func descriptorHooksVerifiable(harnessLabel string) (harness.Descriptor, bool) {
 // checkHarnessHooksInstalled is `hooks_installed` for a verified
 // non-Claude descriptor: the descriptor's own hook files, read for
 // fathom's markers, exactly as the Claude row reads .claude/settings.json.
-func checkHarnessHooksInstalled(root string, d harness.Descriptor) doctorCheck {
+func checkHarnessHooksInstalled(root string, d harness.Descriptor, parents ...context.Context) doctorCheck {
 	const name = "hooks_installed"
 	specs := hookSpecsFor(d.ID)
-	present, fileNotes, uncertain, indirect := harnessHookEntriesByScope(root, d, specs)
+	present, fileNotes, uncertain, indirect := harnessHookEntriesByScope(root, d, specs, parents...)
 
-	var missing []string
+	var missing, unknownLabels []string
 	scopes := map[string]bool{}
 	for _, spec := range specs {
 		where := present[hookSpecKeyOf(spec)]
 		if len(where) == 0 {
+			if uncertain[hookSpecKeyOf(spec)] {
+				unknownLabels = append(unknownLabels, specLabel(spec))
+			}
 			missing = append(missing, specLabel(spec))
 			continue
 		}
@@ -142,9 +146,12 @@ func checkHarnessHooksInstalled(root string, d harness.Descriptor) doctorCheck {
 	if len(fileNotes) > 0 {
 		reason += "; " + strings.Join(fileNotes, "; ")
 	}
+	if len(unknownLabels) > 0 {
+		reason += "; uncertain project wrappers: " + strings.Join(unknownLabels, ", ")
+	}
 	if len(missing) > 0 {
-		if uncertain {
-			return doctorCheck{Name: name, Status: doctorUnknown, Reason: "unknown: " + reason + "; unreadable or ambiguous wrapper wiring"}
+		if len(unknownLabels) == len(missing) {
+			return doctorCheck{Name: name, Status: doctorUnknown, Reason: "unknown: " + reason, Remedy: "inspect the named project wrappers manually"}
 		}
 		remedy := "fathom init --harness=" + d.ID + " --path " + root
 		if _, writable := d.InitHookFile(); !writable {

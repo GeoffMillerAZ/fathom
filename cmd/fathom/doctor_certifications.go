@@ -69,7 +69,7 @@ func checkCertifications(storePath, service string, parents ...context.Context) 
 
 	statuses, err := st.TestSuiteStatuses(ctx, service)
 	if err != nil {
-		return doctorCheck{Name: name, Status: doctorSkipped, Reason: "no manifests found: " + err.Error()}
+		return doctorCheck{Name: name, Status: doctorSkipped, Reason: "no manifests found: " + err.Error(), probeErr: err}
 	}
 	if len(statuses) == 0 {
 		return doctorCheck{

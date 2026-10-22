@@ -31,6 +31,8 @@ func shippedSkillRenderDigests() map[string]bool {
 }
 
 var shippedSkillRenderDigestList = []string{
+	"sha256:8d9ef605ed855b258d59321a2de88183bbf4b524f0561e485b13905750b4ed17", // fathom-doctor claude/agents 2026-10-21 gd-doctor-2
+	"sha256:8203d82deeed4371fe76611ffde5c30a34eae4cb3084e14cdba4b5ad01deef5f", // fathom-doctor codex-prompts 2026-10-21 gd-doctor-2
 	"sha256:5bff9abf3c52df63fe4a28b01071e416b006714bd253b6c8f0c8ba31aab76332", // fathom-activate claude 2026-10-18 o1221
 	"sha256:4b1b66c1d9dbd4c20fcdbc20a25b40a95ecff99eb76f7b015ad97b6c2e9fcb17", // fathom-plan claude 2026-10-17 iv2-retire
 	"sha256:9ba3f4d8f219c5b1e9b48f9b65cd130453ea2b1ba7a4b1471fd603f2397887af", // fathom-custodian claude 2026-10-17 iv2-retire

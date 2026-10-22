@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -13,8 +14,16 @@ import (
 	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
-// Keep the existing five-second RPC cap for each probe, bounded further by
-// the active Setup hook deadline. Standalone doctor has no run-wide deadline.
+// Local checks run to completion. IO keeps its own request cap, CLI pings
+// keep their adapter budgets, and Setup still supplies the run-wide deadline.
+func doctorStepContext(parent context.Context) (context.Context, context.CancelFunc) {
+	if g := activeHookGuard(); g != nil && !g.Deadline.IsZero() {
+		return g.Deadline.Context(parent)
+	}
+	return context.WithCancel(parent)
+}
+
+// Bound an individual RPC/git probe without imposing its cap on local work.
 func doctorProbeContext(parent context.Context) (context.Context, context.CancelFunc) {
 	if g := activeHookGuard(); g != nil && !g.Deadline.IsZero() {
 		ctx, cancel := g.Deadline.Context(parent)
@@ -37,7 +46,7 @@ func doctorErrorStatus(err error) doctorStatus {
 
 func runDoctorProbe(ctx context.Context, probe func(context.Context) doctorCheck) doctorCheck {
 	row := probe(ctx)
-	if err := ctx.Err(); err != nil {
+	if err := ctx.Err(); err != nil && errors.Is(row.probeErr, err) {
 		row.Status = doctorErrorStatus(err)
 		row.Reason = string(row.Status) + ": probe cancelled; " + row.Reason
 		row.Remedy = "re-run doctor when the probe can finish within its deadline"
@@ -104,5 +113,12 @@ func doctorContextArg(parents []context.Context) (context.Context, context.Cance
 	if len(parents) > 0 {
 		return context.WithCancel(parents[0])
 	}
-	return doctorProbeContext(context.Background())
+	return doctorStepContext(context.Background())
+}
+
+func doctorReachabilityReason(baseURL string, err error) string {
+	if doctorErrorStatus(err) == doctorTimeout {
+		return "daemon did not answer within 5 s: " + err.Error()
+	}
+	return fmt.Sprintf("GET %s/healthz: %v", baseURL, err)
 }
