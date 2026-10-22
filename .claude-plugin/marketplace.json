@@ -9,7 +9,7 @@
       "description": "Code intelligence for coding agents: routing by question shape, governing rules at the edit, and done-means-proven gates. Skills, hooks and the MCP registration in one install.",
       "name": "fathom",
       "source": "./plugins/fathom",
-      "version": "0.3.15"
+      "version": "0.3.16"
     }
   ]
 }

@@ -90,8 +90,8 @@ func TestPluginManifestsVet(t *testing.T) {
 
 	// One skills/ tree, spec-only frontmatter, all ten.
 	entries, err := os.ReadDir(filepath.Join(out, "skills"))
-	if err != nil || len(entries) != 10 {
-		t.Fatalf("skills/ = %v (%v), want 10", entries, err)
+	if err != nil || len(entries) != 11 {
+		t.Fatalf("skills/ = %v (%v), want 11", entries, err)
 	}
 	// The two Agent Plugins files agree on the schema version.
 	var pj, mj map[string]any
