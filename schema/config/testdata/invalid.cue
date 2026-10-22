@@ -306,3 +306,7 @@ package config
 // badShellPrefixRedirect: #Config & {shell: wrappers: [{prefix: "tool > output"}]}
 // badShellPrefixPipe: #Config & {shell: wrappers: [{prefix: "tool | other"}]}
 // badShellPrefixExpansion: #Config & {shell: wrappers: [{prefix: "tool $ARG"}]}
+
+// gateEvidence: #Config & {gate: {accept_receipts: "yes"}} // bool required
+
+// gateConsent: #Config & {gate: {allow_receipt_acceptance: "yes"}} // bool required

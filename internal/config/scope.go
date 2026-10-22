@@ -96,6 +96,10 @@ var fieldScopes = []FieldScope{
 	{"findings.outbox", ScopeRepoPath, "a repo-relative file the session hook imports (findings_outbox.go)"},
 	{"findings.producers", ScopeBehaviour, "an allow-list of producer ids"},
 	{"findings.subject", ScopeBehaviour, "the review-kit subject this repository maps to"},
+	{"gate.accept_receipts", ScopeBehaviour, "the repository opts in to exact-tree gate evidence; default off"},
+	{"gate.allow_receipt_acceptance", ScopeUserOnly, whyConsent + ": allows a repository to accept exact-tree gate evidence"},
+	{"gate.host_label", ScopeUserOnly, "an operator-named machine label, never a hostname read"},
+	{"gate.receipts_dir", ScopeRepoPath, "the directory for local gate evidence; project values stay within the repository"},
 	{"guards.enforce", ScopeBehaviour, "turns the repository's own guards advisory"},
 	{"hooks.claim_check", ScopeBehaviour, "the claim check runs nothing: it reads the final message and the hook log's test-run rows (claimcheck.go)"},
 	{"hooks.dedupe", ScopeBehaviour, "suppresses delivered rules per context on Claude Code and Codex, and consecutive unchanged cwd primers on Claude Code"},
@@ -287,7 +291,7 @@ type RepoPathRefusal struct {
 // repository root and returns the values RepoPath refuses, in field order.
 // Each use site refuses the same value on its own; this is the listing
 // `fathom config` and doctor's key_source_scope row print.
-func RefusedRepoPaths(root string, cfg Config) []RepoPathRefusal {
+func RefusedRepoPaths(root string, cfg Config, provenance Provenance) []RepoPathRefusal {
 	var out []RepoPathRefusal
 	check := func(field, v string) {
 		if v == "" {
@@ -301,6 +305,9 @@ func RefusedRepoPaths(root string, cfg Config) []RepoPathRefusal {
 		check(fmt.Sprintf("connector.include[%d]", i), e)
 	}
 	check("findings.outbox", cfg.Findings.Outbox)
+	if provenance["gate.receipts_dir"].Source == SourceProject {
+		check("gate.receipts_dir", cfg.Gate.ReceiptsDir)
+	}
 	check("tests.artifacts_dir", cfg.Tests.ArtifactsDir)
 	check("tests.results_dir", cfg.Tests.ResultsDir)
 	for i, g := range cfg.Typed.SkipModules {

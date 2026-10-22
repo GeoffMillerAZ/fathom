@@ -294,3 +294,8 @@ exampleShellWrappers: #Config & {shell: wrappers: [
 	{command: "command-wrapper", script_arg: 2},
 	{command: "directory-wrapper", script_arg: 2, cwd_arg: 1},
 ]}
+
+// Local gate evidence defaults to opt-out; labels are explicitly supplied.
+gateEvidence: #Config & {
+	gate: {accept_receipts: false, allow_receipt_acceptance: true, receipts_dir: "workspace/receipts", host_label: "helper"}
+}

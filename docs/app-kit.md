@@ -1189,3 +1189,25 @@ Round-two evidence: `TestDoctorChannelsRetainedSpan` covers rotated logs and the
 covered-span denominator; `TestDoctorChannelBindingsAndSkipPhases` covers rich
 readouts and phase-specific absence. The fixes own app evidence semantics, so
 FATHOM-DOCTOR-01 remains a local divergence with no reusable kit change identified.
+
+## Landing-evidence CLI divergence (2026-10-22)
+
+LE-1/LE-2/LE-6 retain the existing flag-based verb registry for `gate` and its nested
+commands. Discovery: `search_capabilities(query="command", profile="cli")`,
+`cli.command`, catalog `3ee2c1f02a6199c2e59361171c7f1fdb957a7a70f64e875a73969608314d7318`,
+quality-work revision `7c2842f733cc32984cce29ceb707aa0c82b72e87b073bc0125e318a60cd0cc7b`
+(`untracked`; no quality item to retrieve). Adopting Cobra/Fang here would require a
+CLI-wide migration outside these rows. Plain receipt ids and refusal diagnostics
+preserve script output without a new terminal runtime or styling. The reusable
+contract is the existing help/exit behavior; gate identity, local evidence integrity
+and record-family policy remain application-owned. No upstream kit edit is needed.
+Consumer proof: `TestGateReceiptCommandRoundTrip`,
+`TestGateReceiptLefthookFallsBackUnlessOptedInAndAccepted`, the verb-help proofs and
+`TestGateRecordIDsCommand` in `cmd/fathom`; package race checks at handoff.
+
+## Landing evidence CLI corrections (2026-10-22)
+
+No candidate: receipt identity, two-key consent, pushed-ref checks and record-id
+policy belong to this app. Reviewed `cli.output` and the contribution-loop contract;
+these verbs retain plain scalar output and the existing doctor row renderer. No kit
+renderer, runtime, dependency or selected capability changed.

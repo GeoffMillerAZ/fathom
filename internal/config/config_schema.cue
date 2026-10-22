@@ -451,6 +451,14 @@ package config
 	skip_modules?: [...(string & !="")]
 }
 
+// #Gate configures local gate evidence; acceptance defaults off.
+#Gate: {
+	accept_receipts?: bool
+	allow_receipt_acceptance?: bool
+	receipts_dir?:    string
+	host_label?:      string
+}
+
 // #Receipts configures what a portable receipt states about the repository
 // it was produced in. repository_uri is the absolute URI (a scheme, then no
 // whitespace) a receipt's SARIF names as versionControlProvenance's
@@ -554,6 +562,7 @@ package config
 	surface?:   #Surface
 	connector?: #Connector
 	receipts?:  #Receipts
+	gate?:      #Gate
 	typed?:     #Typed
 	tenancy?:   #Tenancy
 	readouts?:  #Readouts

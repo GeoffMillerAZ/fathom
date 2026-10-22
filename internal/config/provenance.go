@@ -73,6 +73,24 @@ func mergeLayer(cfg *Config, prov Provenance, raw map[string]any, source Source,
 			}
 		}
 	}
+	if gm, ok := raw["gate"].(map[string]any); ok {
+		if v, ok := gm["allow_receipt_acceptance"].(bool); ok {
+			cfg.Gate.AllowReceiptAcceptance = v
+			prov["gate.allow_receipt_acceptance"] = SourceInfo{source, path}
+		}
+		if v, ok := gm["accept_receipts"].(bool); ok {
+			cfg.Gate.AcceptReceipts = v
+			prov["gate.accept_receipts"] = SourceInfo{source, path}
+		}
+		if v, ok := stringField(gm, "receipts_dir"); ok {
+			cfg.Gate.ReceiptsDir = v
+			prov["gate.receipts_dir"] = SourceInfo{source, path}
+		}
+		if v, ok := stringField(gm, "host_label"); ok {
+			cfg.Gate.HostLabel = v
+			prov["gate.host_label"] = SourceInfo{source, path}
+		}
+	}
 	if v, ok := stringField(raw, "default_profile"); ok {
 		cfg.DefaultProfile = v
 		prov["default_profile"] = SourceInfo{source, path}

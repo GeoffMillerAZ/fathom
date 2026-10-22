@@ -115,3 +115,13 @@ needs them rebuilds them: seconds on a small service, a minute on a large one.
   (`dir/file.Name`, a candidate key without its `service::` prefix) resolves within the call's service.
 
 `search`'s `path` is a directory, or a glob under one. The leading literal directory is the search root, so `.gitignore` and `.fathomignore` still apply under it; the rest of a glob filters the returned paths.
+
+## Local landing evidence (CLI)
+
+`fathom gate receipt write --log FILE [--command validate]` writes clean-tree gate
+receipts and their logs; `fathom gate receipt check [--tree HEAD] [--command validate]`
+checks exact identity and log integrity (exit 0 accepted, 1 refused).
+`fathom gate record-ids [--cross-plan] [--config FILE]` checks authored record ids.
+These are local CLI operations; no MCP tool, transport or store table is added.
+See [configuration and the default-off pre-push snippet](configuration.md#gate-receipts-gate)
+and [the use-case guide](use-cases/spec-verification.md#local-gate-evidence-and-record-ids).

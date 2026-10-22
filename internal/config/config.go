@@ -573,11 +573,20 @@ type Receipts struct {
 	RepositoryURI string
 }
 
+// Gate configures local gate evidence. Acceptance is deliberately opt-in.
+type Gate struct {
+	AcceptReceipts         bool
+	AllowReceiptAcceptance bool
+	ReceiptsDir            string
+	HostLabel              string
+}
+
 // Config is the merged, in-memory form of one or more config.toml layers.
 type Config struct {
 	Shell          Shell
 	Connector      Connector
 	Receipts       Receipts
+	Gate           Gate
 	Typed          Typed
 	DefaultProfile string
 	Profiles       map[string]Profile

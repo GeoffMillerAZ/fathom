@@ -313,7 +313,7 @@ func configRefusedRepoPaths(loaded config.Loaded) []config.RepoPathRefusal {
 	if !loaded.ProjectFound || loaded.ProjectPath == "" {
 		return nil
 	}
-	return config.RefusedRepoPaths(filepath.Dir(filepath.Dir(loaded.ProjectPath)), loaded.Config)
+	return config.RefusedRepoPaths(filepath.Dir(filepath.Dir(loaded.ProjectPath)), loaded.Config, loaded.Provenance)
 }
 
 // configRunner runs `fathom config` (registered below; EW-45).
