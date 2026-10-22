@@ -24,6 +24,69 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Unreleased changes wait as fragments under docs/changelog/unreleased/; the release ritual folds them here.
 
+## [0.18.0] — 2026-10-22
+
+Release impact: minor
+
+### Added
+
+- `fathom gate receipt write|check` records clean-tree gate evidence and checks exact tree/command identity, log integrity and the gate's final success line. The gate wrapper publishes receipts after PASS; logs bind both endpoints to the clean tree and carry the Go environment. Receipt acceptance requires compatible local Go/platform, `GOWORK=off`, project opt-in and user consent; pre-push checks every pushed local SHA. Acceptance remains off in this repository.
+- `fathom gate record-ids` checks duplicate ADR, invariant, future, incident (including bold entries) and active-plan task ids in validation, excluding archived plans. This repository enables cross-plan checks with explicit existing-collision exceptions; stale exceptions fail.
+- Correctness hooks accept `"observe"` to compute and log their advice without injecting it. Init and reconcile register the required hooks in this mode.
+- Observe hooks log `dropped=budget` when their computed line would exceed the output cap. Prompt definitions log their channel and line, missed or silent outcome; tests-to-run uses the existing `not indexed` miss spelling.
+- Test deltas compare against the last decided, complete run of the same command shape and omit the delta clause when no comparison is possible. Compile readouts exclude formatter, dead-code, linter, and headerless module/embed diagnostics while retaining compiler errors with cut headers.
+- Unindexed roots and unknown test-run verdicts stay quiet when no decided verdict is known. Claim checks retain a decided verdict at the same HEAD and tree since the last edit when a piped rerun is unknown, and report a missing command even when another command ran. Test-run lines omit negative reach claims when the index has not answered.
+- Declare command wrappers with `[shell] wrappers` in user or repository config so test-run hooks, readouts, gate preflight, Bash write detection and discovery can read their commands. Script wrappers support a declared working-directory argument and refuse unreadable scripts or nesting beyond two levels.
+- Script wrappers without a declared working directory retain failure lines but leave test-run head/tree keys empty and gate preflight silent.
+- Validate literal wrapper prefixes and distinct script/directory arguments, load declarations once per hook process and config path pair, and keep ordinary commands readable when config loading fails. Declarations require an explicit hook or transcript directory.
+- Show each appended wrapper entry's source in `config --explain`.
+
+### Changed
+
+- Contributor gates reject merge conflict markers, tracked backup files, and commit messages without a conventional subject or verification evidence; provenance trailers are refused. Main pushes check the same message policy in CI.
+- `task t [RUN=pattern] -- PACKAGES` runs isolated race tests and shows package summaries and failure blocks. `task fmt:changed` checks Go files changed since the merge-base with `origin/main` without rewriting them.
+- Main CI runs no longer cancel each other. Fail-open hook messages include an error diagnostic from stderr, and the stray conflict marker at the end of the decision records is removed.
+- Doctor runs independent checks concurrently, lets interactive local checks finish, and preserves check details during a short cancellation grace inside the hook deadline. Guard discovery follows each scope's literal prefix and caller deadline. Typed-edge metadata avoids a corpus scan.
+- Doctor adds the `channels` JSON key and a text table for injecting-channel readiness. It reads up to 32 MiB across live and rotated hook logs, estimates tokens per day over the covered span (at most seven days), and reports unknown use when a shorter span has no channel rows. Shared costs and absent measurements are identified; rich readouts, the OFF arm and edit-hook phases are reflected in the table.
+- Capabilities lists readouts and the five opt-in hook seams, with commands that change their actual config.toml controls. Turning readouts on selects rich mode; enabling a seam with opt-in hook rows prints the `fathom init --hooks` registration instruction.
+- Doctor's duplicate-registration check compares exact commands across user and project scopes and ignores silent hook bindings. Claude Code user-path diagnostics honor `CLAUDE_CONFIG_DIR`.
+- `lefthook_gates` accepts local pre-push wrappers reaching both `task validate` and `fathom verify --strict` within two script levels and names the Taskfile or script proving the gate. Native hooks, `core.hooksPath` and `.husky/pre-push` are inspected; without lefthook configuration, a hook reaching neither gate remains skipped, while a wrapper reaching exactly one fails.
+- The Learn page lists the opt-in hook seams with their set commands, and the project wiring page shows doctor's channel health table; both match the CLI JSON.
+- Hooks with unavailable advice prerequisites stay silent and log a named readiness skip independently of advisory stamp errors. Heading-only post-edit rules are omitted while findings, spec references and freshness notes remain available.
+- Fixed-size hook health stamps record state transitions and the last emission day. Unsupported seams and unused maps do not appear in the primer; inactive features share its existing attention line and budget.
+- Primer truncation names the cut even when every thread-brief line is dropped.
+- Stop and claim hooks report absent-index criteria as unknown only when the contract path has uncommitted files, preserving the original criterion and adding a freshness note. Other failures remain failures; proven failures keep blocking every Stop with `--block`, while advisory sets are reported once per change.
+- Obligations are shown per rule and context on Claude Code and Codex, with immediate delivery when rendered text, tags or staleness markers change. Capacity evicts the oldest rule entries; suppressed counts include distinct rules with correct pluralization. `[hooks] dedupe = false` restores full injections.
+
+### Fixed
+
+- Resolve verified clones and worktrees to their indexed service for MCP paths and hook reach queries. Clone searches and source reads use the clone's files, retain index receipts only for unchanged content, and label changed or new code unknown with clone/index freshness notes.
+- Restrict clone reads and searches to tracked paths in the service subtree. Untracked clone files return unknown without source bytes. Refuse home and indexed-root case aliases by file identity, fail closed when home is unavailable, and canonicalize absolute changed-file paths.
+- Verify linked-worktree registration, preserve direct service ranking, and reuse immutable Git facts and hook identities within existing deadlines.
+- `fathom init --no-user-writes` preserves user configuration while applying project wiring and writing operational state to the previewed state directory, relocatable with `FATHOM_STATE_DIR` or `XDG_STATE_HOME`. Under `--harness none`, each user-scope flag enables only its requested write. JSON marks skipped user writes separately from dry runs, and manual config guidance appears only for an existing config file.
+- Init and reconcile preserve real skills directories containing declared adaptations even without an ownership baseline, naming the skipped file and its diff command. Doctor ignores semver build metadata when matching adaptations, and warns on both older and newer versions.
+- Receipt evidence retains both command and forbidden-path file guards. Doctor reports empty gitignored guard scopes as waiting for files.
+- Doctor's channel report excludes its own invocation so an empty-history report agrees with the project wiring page.
+- The activate skill retires only fathom-generated intent playbooks and explicitly preserves consumer-authored intent (plugin 0.3.19).
+- Certification scans honor corpus exclusions and stop when cancelled or refused. Unresolvable test declarations no longer force recompilation of unchanged corpora.
+- Reviews share typed edges and call graphs with the daemon's memo, reducing repeated allocations without changing review results.
+- Oversized Go files no longer abort certification scans. Ingest summaries and daemon logs report skipped oversized files, and daemon certification refresh failures are logged.
+- Certification gates compare claim identities, settle duplicate markers, and compile newly indexed declared tests.
+- Certification ingests preserve test-file citations across recompiles and sweep existing claims when declarations or watermarks change, marking moved tests stale and vanished tests contradicted.
+- Reviews preserve typed impact when an optional memo graph cannot be loaded or built.
+- Extract up to two bounded instructions from raw governing sections and ADR Decision blocks. Strip decision-item titles, keep wrapped bold text in its paragraph, and preserve a preceding question condition together with its instruction or serve neither. Preserve code spans and identifiers, skip tables and examples, and withhold sections without instructions.
+- Apply ADR standing and completed-plan filters to raw and compiled obligations. Tag partly superseded rules and count inactive rules on the existing hook log row.
+- Re-find stale or refreshing raw citations in live content once per file per call, retain relevance tokens, and report citation freshness. Fresh citations keep their stored line ranges without an extra file read.
+- Isolate verdict and rule-outcome memos by agent, and suppress user verdict requests in subagents.
+- Correct Bash write targets for sed expressions and script files, remote copies, Perl and Ruby in-place edits, nested command-substitution quotes, and flag clusters with next-word, attached-only or optional numeric arguments.
+- Subagent discovery briefs expand omitted ranges through `fathom discoveries --parent-session ID`, with the same ownership and content-hash filters, while keeping the parent-map id within the 1,200-byte primer.
+- Subagent discovery briefs now keep only the parent's current, content-checked file ranges, excluding hook echoes, instruction files and shell fragments. Index errors no longer fill the brief.
+- Completed Claude Code `symbol_context`, `find_symbol` and `read_source` lookups retain their harness session and agent identity in the discovery log, including plugin tool names, so the parent's lookups remain eligible when the daemon connection lacks those tags.
+- Earlier session-end notes no longer close maps filed after the parent resumes.
+- Claude Code spawn hooks opt in through `[hooks] subagent_map_facts = true` (default false, `"observe"` logs only). They append up to 1,500 bytes of live exploration-map excerpts to `Agent` and `Task` prompts, framed as data, preserving other input and permission decisions. An existing facts marker skips rewriting, including nested spawns. `fathom map show ID --brief` prints the same facts for orchestrators. Relocated logs require the same `FATHOM_THREADS` setting in the harness environment.
+- Plugin 0.3.19 ships the anchored spawn matcher and completed-lookup observer, with a refreshed template pin and reconciled repository hooks.
+- Exploration-map hooks read and decode one thread-log snapshot per map load, index session-end positions once, and skip excerpt reads when their byte budget or deadline is spent.
+
 ## [0.17.0] — 2026-10-22
 
 Release impact: major (pre-1.0: breaking bumps minor)
