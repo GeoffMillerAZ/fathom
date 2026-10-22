@@ -9,9 +9,9 @@ package semantic
 // found broken: the raw fallback fired on 8 of 10 trials but never once
 // served the rule the oracle wanted (0 of 10 from the raw row itself).
 //
-// Expectations are scored against the SERVED SECTION'S OWN HEADING (the
-// Rule field on a raw row — rawRuleText's own rendering of the section's
-// ATX heading), the same "did the right document/section get served"
+// Expectations use the served section identity (Subject), because ADR-080 d2
+// replaces heading text with instructions and withholds instruction-free sections.
+// This retains the "did the right document/section get served"
 // granularity indexbench's GoverningRuleOracle already uses — never the
 // exact prompt-answer substring, which is the scorer's job, not this
 // ranker's.
@@ -77,8 +77,9 @@ func TestH1GovernanceTasks_RawFallbackOffline(t *testing.T) {
 		id       string
 		file     string
 		extra    []string // caller-resolved symbol/import tokens, item 1's optional signal
-		want     string   // substring expected in a top-3 row's own section heading (Rule)
+		want     string   // substring expected in a top-3 row's section identity
 		note     string
+		withheld bool   // ADR-080 d2: the matching section has no imperative body
 		hardGate bool   // wave O3 item 3: a MISS here fails the build, not just logs
 		missWhy  string // required when !hardGate: why this case still misses, so a MISS never reads as an unexplained skip
 	}{
@@ -126,7 +127,7 @@ func TestH1GovernanceTasks_RawFallbackOffline(t *testing.T) {
 		},
 		{
 			id: "H1-T12", file: "internal/core/model.go",
-			want: "domain model", hardGate: true,
+			want: "domain model", hardGate: true, withheld: true,
 			note: "shared types live in internal/core, extend additively",
 		},
 		{
@@ -153,9 +154,15 @@ func TestH1GovernanceTasks_RawFallbackOffline(t *testing.T) {
 			}
 			found := false
 			for _, r := range rows {
-				if strings.Contains(strings.ToLower(r.Rule), strings.ToLower(c.want)) {
+				if strings.Contains(r.Subject, slugify(c.want)) {
 					found = true
 				}
+			}
+			if c.withheld {
+				if found {
+					t.Fatalf("ADR-080 d2: instruction-free section served: %+v", rows)
+				}
+				return
 			}
 			if found {
 				t.Logf("%s: PASS — found %q among top-3 rows", c.id, c.want)

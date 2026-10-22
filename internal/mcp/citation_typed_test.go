@@ -406,14 +406,14 @@ func TestCitationSummaryFirstOnPreviewFallback(t *testing.T) {
 	}
 }
 
-func TestCitationRawFallbackIsLiveAndUnhashed(t *testing.T) {
+func TestCitationRawFallbackCarriesFreshness(t *testing.T) {
 	b := sixCitationFixture(t)
 	for i := range b.rules {
 		b.rules[i].Tier = "raw"
 	}
 	p, _ := citationCall(t, b, "obligations", map[string]any{"service": "sample", "file": "sample.go"})
-	if b.fingerprints != 0 {
-		t.Fatalf("live raw citations made %d fingerprint reads", b.fingerprints)
+	if b.fingerprints != 2 {
+		t.Fatalf("raw citations made %d fingerprint reads, want one before/after pair", b.fingerprints)
 	}
 	rows := p["rules"].([]any)
 	if len(rows) != 6 {

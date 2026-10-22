@@ -255,6 +255,8 @@ type Obligations struct {
 	// because their citation lies in a fully superseded decision record:
 	// never served, never silent (I7).
 	Superseded int `json:"superseded_withheld,omitempty"`
+	// RawWithheld counts raw sections without an extractable instruction.
+	RawWithheld int `json:"raw_withheld,omitempty"`
 	// DisplacedRepo is the count ObligationsFor itself cut from this
 	// service's own claims (identical to the pre-phase-O Displaced value).
 	// Always 0 (omitted) before internal/modserve.Bind runs.

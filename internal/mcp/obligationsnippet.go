@@ -41,18 +41,14 @@ const obligationSnippetCutNote = " … (cut at 240 bytes)"
 // citation did not parse, the service has no recorded corpus root, the
 // cited file is outside the indexed corpus, or the range no longer
 // resolves. The caller omits the field rather than emitting "".
-func obligationSnippet(ctx context.Context, backend QueryInterface, service, cite string, live bool) (string, bool) {
+func obligationSnippet(ctx context.Context, backend QueryInterface, service, cite string, _ bool) (string, bool) {
 	file, start, end, ok := parseCitation(cite)
 	if !ok {
 		return "", false
 	}
 	var rng sourceRange
 	var err error
-	if live {
-		rng, err = liveCitationSourceRange(ctx, backend, service, file, start, end, end-start+1, obligationSnippetMaxBytes*2)
-	} else {
-		rng, err = readSourceRange(ctx, backend, service, file, start, end, end-start+1, obligationSnippetMaxBytes*2)
-	}
+	rng, err = readSourceRange(ctx, backend, service, file, start, end, end-start+1, obligationSnippetMaxBytes*2)
 	if err != nil || len(rng.Lines) == 0 {
 		return "", false
 	}
@@ -170,7 +166,7 @@ func withSnippets(ctx context.Context, backend QueryInterface, service string, r
 				row.Snippet = r.AnchorText
 				row.SnippetLabel = staleSnippetLabel
 			}
-		} else if snippet, ok := obligationSnippet(ctx, backend, service, r.Src, r.Tier == "raw"); ok {
+		} else if snippet, ok := obligationSnippet(ctx, backend, service, r.Src, false); ok {
 			row.Snippet = snippet
 		}
 		out = append(out, row)

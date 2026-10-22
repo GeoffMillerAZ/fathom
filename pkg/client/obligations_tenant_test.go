@@ -291,7 +291,7 @@ func TestRawFallbackReadsOnlyEditedFile(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
 	tree := map[string]string{
-		"CLAUDE.md":   "# Rules\n\n## Non-negotiables — the workspace/ convention\n\nAll build artifacts belong under workspace/.\n",
+		"CLAUDE.md":   "# Rules\n\n## Non-negotiables — the workspace/ convention\n\nAll build artifacts must remain under workspace/.\n",
 		"cmd/emit.go": "package cmd\n\nimport \"os\"\n\nfunc emit(dir string) error {\n\treturn os.WriteFile(dir, nil, 0o644)\n}\n",
 		"cmd/huge.go": "package cmd\n",
 	}
@@ -363,7 +363,7 @@ func TestRawFallbackReadsOnlyEditedFile(t *testing.T) {
 func TestRawFallbackNamesUnreadGuide(t *testing.T) {
 	ctx := context.Background()
 	oversize := bytes.Repeat([]byte("# h\n"), int(client.HotPathReadCap)/4+1)
-	adr := "# ADR\n\n## ADR-001: Keep builds in workspace\n\nAll build artifacts belong under workspace/.\n"
+	adr := "# ADR\n\n## ADR-001: Keep builds in workspace\n\nAll build artifacts must remain under workspace/.\n"
 
 	t.Run("no compile run", func(t *testing.T) {
 		dir := t.TempDir()
@@ -436,7 +436,7 @@ func TestEditedFileReadOnlyWhenStatMoves(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
 	writeTree(t, dir, map[string]string{
-		"CLAUDE.md":   "# Rules\n\n## Non-negotiables — the workspace/ convention\n\nAll build artifacts belong under workspace/.\n",
+		"CLAUDE.md":   "# Rules\n\n## Non-negotiables — the workspace/ convention\n\nAll build artifacts must remain under workspace/.\n",
 		"cmd/emit.go": "package cmd\n\nimport \"os\"\n\nfunc emit(dir string) error {\n\treturn os.WriteFile(dir, nil, 0o644)\n}\n",
 	})
 	c := client.New(connector.NewLocalConnector(), store.NewMemoryStore())

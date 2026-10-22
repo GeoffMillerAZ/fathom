@@ -111,7 +111,7 @@ func TestRawFallbackObligations_WithheldLayerStaleSection(t *testing.T) {
 			t.Fatalf("compile %s: run=%+v err=%v", layer, run, err)
 		}
 	}
-	if err := os.WriteFile(design, []byte("# Boundary\n\n- pkg/** may import cmd/** now.\n"), 0o644); err != nil {
+	if err := os.WriteFile(design, []byte("# Boundary\n\n- pkg/** must allow imports from cmd/** now.\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -123,7 +123,7 @@ func TestRawFallbackObligations_WithheldLayerStaleSection(t *testing.T) {
 		t.Fatalf("adr-rules named: rows=%+v ok=%v err=%v, want the one changed section", rows, ok, err)
 	}
 	r := rows[0]
-	if r.Tier != "raw" || r.Layer != "adr-rules" || !strings.HasPrefix(r.Src, "docs/design/x.md#") || r.Rule != "Boundary" {
+	if r.Tier != "raw" || r.Layer != "adr-rules" || !strings.HasPrefix(r.Src, "docs/design/x.md#") || r.Rule != "pkg/ must allow imports from cmd/ now." {
 		t.Errorf("row = %+v, want the docs/design/x.md section raw from adr-rules", r)
 	}
 	if !strings.Contains(why, "stale section withheld") || r.Why != why {

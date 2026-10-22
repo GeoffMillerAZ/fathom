@@ -238,6 +238,9 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	// rule_outcome_writer reads as "should have written a row".
 	answeredMeta := withFold(withDestination(map[string]string{"emitted": "true", "phase": "post"}, projDir, filePath), meta.fold)
 	answeredMeta["claims"] = strconv.Itoa(meta.claims)
+	if meta.rawWithheld > 0 {
+		answeredMeta["raw_withheld"] = strconv.Itoa(meta.rawWithheld)
+	}
 	// IT-6: the cap-pressure count already rendered into the payload above
 	// (T5-2/O14) must also reach the beat log — a COUNT only, never the
 	// evicted rules themselves — so obligations-cap pressure becomes a
@@ -270,6 +273,7 @@ type postEditMeta struct {
 	moduleRules []semantic.Obligation // emitted-module accounting, after successful delivery
 	repoRelFile string
 	displaced   int
+	rawWithheld int
 	// findingsShown/findingsOmitted (FL-20) are renderFindingsBlock's own
 	// counts — 0/0 when the block never rendered (no finding-kind rows, no
 	// overlap with the edited range, or the shared budget was already
@@ -413,6 +417,7 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 		// candidate (svcName just set, above); the found branch below
 		// covers a later candidate that REBINDS svcName to itself.
 		if justResolved {
+			obl.RawWithheld = o.RawWithheld
 			specRefs = sr
 		}
 		if len(o.Rules) > 0 || stale || o.CoverageSkipped != "" {
@@ -598,7 +603,11 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 	}
 
 	if sb.Len() == 0 {
-		emitBeat("edit-hook", "answered", firingMeta(withFold(withDestination(silentAnswerMeta(map[string]string{"phase": "post"}, silenceNoRules), projDir, filePath), fold), sessionID, filePath))
+		meta := withFold(withDestination(silentAnswerMeta(map[string]string{"phase": "post"}, silenceNoRules), projDir, filePath), fold)
+		if obl.RawWithheld > 0 {
+			meta["raw_withheld"] = strconv.Itoa(obl.RawWithheld)
+		}
+		emitBeat("edit-hook", "answered", firingMeta(meta, sessionID, filePath))
 		return "", postEditMeta{}, false // clean file (or unindexed project), no spec IDs → silent
 	}
 	topRule, topSrc, topClaimID := "", "", ""
@@ -610,6 +619,7 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 		moduleRules:     renderRules,
 		repoRelFile:     repoRelFile,
 		displaced:       obl.Displaced,
+		rawWithheld:     obl.RawWithheld,
 		findingsShown:   findingsShown,
 		findingsOmitted: findingsOmitted,
 		service:         svcName,
@@ -878,6 +888,7 @@ func fetchObligations(baseURL, service, file string, maxRules int, timeout time.
 		IndexUnchecked      string                `json:"index_unchecked"`
 		Displaced           int                   `json:"displaced"`
 		Superseded          int                   `json:"superseded_withheld"`
+		RawWithheld         int                   `json:"raw_withheld"`
 		DisplacedRepo       int                   `json:"displaced_repo"`
 		DisplacedModule     int                   `json:"displaced_module"`
 		ModuleNotes         []semantic.ModuleNote `json:"module_notes"`
@@ -898,6 +909,7 @@ func fetchObligations(baseURL, service, file string, maxRules int, timeout time.
 		Watermark:       payload.CompiledAtWatermark,
 		Displaced:       payload.Displaced,
 		Superseded:      payload.Superseded,
+		RawWithheld:     payload.RawWithheld,
 		DisplacedRepo:   payload.DisplacedRepo,
 		DisplacedModule: payload.DisplacedModule,
 		ModuleNotes:     payload.ModuleNotes,

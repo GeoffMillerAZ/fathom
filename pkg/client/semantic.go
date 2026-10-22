@@ -555,11 +555,12 @@ func (c *Client) RootRawFallbackObligations(ctx context.Context, service string,
 	}
 	why := "compiled layer incomplete: root guide uncompiled; its current sections served raw"
 	why += unreadNote(unread)
-	rows, rerr := semantic.RootRawFallbackRules(claims, layerDef, corpus, max, why)
+	rows, rerr := semantic.RootRawFallbackRules(claims, layerDef, corpus, max, why, semantic.RawFallbackStatsFromContext(ctx))
 	if rerr != nil || len(rows) == 0 {
 		return nil, "", false, nil
 	}
-	return rows, why, true, nil
+	rows = c.refindRawRows(ctx, root, "", rows)
+	return rows, why, len(rows) > 0, nil
 }
 
 // staleRawLayers is withheld sorted and deduplicated, without the
@@ -686,11 +687,11 @@ func (c *Client) obligationsRawRows(ctx context.Context, root, service, file str
 	if note != "" {
 		why += "; edited file not read for relevance (" + note + ")"
 	}
-	rows, rerr := semantic.RawFallbackRules(claims, layerDef, corpus, file, max, why, extraTokens, onlyStale)
+	rows, rerr := semantic.RawFallbackRules(claims, layerDef, corpus, file, max, why, extraTokens, onlyStale, semantic.RawFallbackStatsFromContext(ctx))
 	if rerr != nil || len(rows) == 0 {
 		return nil, "", nil
 	}
-	return rows, why, nil
+	return c.refindRawRows(ctx, root, file, rows), why, nil
 }
 
 // staleSectionRawRows serves the CURRENT text of layer's stale sections
@@ -731,11 +732,11 @@ func (c *Client) staleSectionRawRows(ctx context.Context, root, service, layer, 
 	if note != "" {
 		why += "; edited file not read for relevance (" + note + ")"
 	}
-	rows, rerr := semantic.RawFallbackRules(claims, layerDef, corpus, file, max, why, tokens, only)
+	rows, rerr := semantic.RawFallbackRules(claims, layerDef, corpus, file, max, why, tokens, only, semantic.RawFallbackStatsFromContext(ctx))
 	if rerr != nil || len(rows) == 0 {
 		return nil, "", nil
 	}
-	return rows, why, nil
+	return c.refindRawRows(ctx, root, file, rows), why, nil
 }
 
 // unreadNote names the guides a corpus read skipped (over the cap, EPERM):
@@ -1217,4 +1218,35 @@ func (c *Client) SourceFingerprintEpoch(ctx context.Context, service, path, fing
 		return parts[0], nil
 	}
 	return "", nil
+}
+
+// refindRawRows bypasses corpus memos only for the selected citations. Stat
+// equality cannot prove their heading still occupies the memoized line range.
+func (c *Client) refindRawRows(ctx context.Context, root, file string, rows []semantic.Obligation) []semantic.Obligation {
+	if root == "" {
+		return rows
+	}
+	out := rows[:0]
+	for _, row := range rows {
+		rel, _, _ := strings.Cut(row.Subject, "#")
+		data, _, skipped, err := readFileCapped(ctx, filepath.Join(root, filepath.FromSlash(rel)), HotPathReadCap)
+		if err != nil || skipped != "" {
+			if stats := semantic.RawFallbackStatsFromContext(ctx); stats != nil && stats.Skipped == "" {
+				reason := skipped
+				if err != nil {
+					reason = err.Error()
+				}
+				stats.Skipped = "raw citation not read: " + rel + ": " + reason
+			}
+			continue
+		}
+		if live, ok := semantic.RefindRawRule(row, data, file); ok {
+			out = append(out, live)
+			continue
+		}
+		if stats := semantic.RawFallbackStatsFromContext(ctx); stats != nil {
+			stats.Withheld++
+		}
+	}
+	return out
 }

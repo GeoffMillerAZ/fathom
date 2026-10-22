@@ -28,8 +28,9 @@ package semantic
 // the same section-splitting/digest machinery LiveLayerCoverage already
 // uses — no second corpus-scanning mechanism to keep in sync.
 import (
+	"context"
 	"fmt"
-	"path"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -70,7 +71,7 @@ import (
 // back the CURRENT text of a section whose compiled claim it withheld as
 // stale (I38), without dragging in every other uncompiled section of the
 // same document.
-func RawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []core.SourceFile, file string, max int, why string, extraTokens []string, only map[string]bool) ([]Obligation, error) {
+func RawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []core.SourceFile, file string, max int, why string, extraTokens []string, only map[string]bool, stats ...*RawFallbackStats) ([]Obligation, error) {
 	if file == "" || max <= 0 || len(corpus) == 0 {
 		return nil, nil
 	}
@@ -131,6 +132,10 @@ func RawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []c
 			if gs.tier < 0 {
 				continue // defensive: rankByGoverningScope found no tier despite the match above
 			}
+			if rawRuleText(sec) == "" {
+				countRawWithheld(stats)
+				continue
+			}
 			rel, strong := relevanceStrength(sec.Text, tokens)
 			cands = append(cands, candidate{sec: sec, gs: gs, rel: rel, strong: strong})
 		}
@@ -186,11 +191,12 @@ func RawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []c
 	for _, c := range cands {
 		start, end := citeWindow(c.sec, tokens)
 		out = append(out, Obligation{
-			Rule:  rawRuleText(c.sec),
-			Src:   fmt.Sprintf("%s#L%d-L%d", c.sec.Path, start, end),
-			Tier:  "raw",
-			Layer: layerDef.Name,
-			Why:   why,
+			Rule:    rawRuleText(c.sec),
+			Subject: c.sec.Subject,
+			Src:     fmt.Sprintf("%s#L%d-L%d", c.sec.Path, start, end),
+			Tier:    "raw",
+			Layer:   layerDef.Name,
+			Why:     why,
 		})
 	}
 	return out, nil
@@ -207,7 +213,7 @@ func RawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []c
 // own subtree, not the root, and ADR.md and docs/design/*.md are not guides.
 // Deterministic; returns (nil, nil) when nothing qualifies. A non-nil error
 // only when layerDef's prompt identity cannot be resolved.
-func RootRawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []core.SourceFile, max int, why string) ([]Obligation, error) {
+func RootRawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []core.SourceFile, max int, why string, stats ...*RawFallbackStats) ([]Obligation, error) {
 	if max <= 0 || len(corpus) == 0 {
 		return nil, nil
 	}
@@ -231,6 +237,10 @@ func RootRawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus
 			if prior, seen := bySubject[sec.Subject]; seen && allDigestsMatch(prior, sec.Digest, promptVersion) {
 				continue
 			}
+			if rawRuleText(sec) == "" {
+				countRawWithheld(stats)
+				continue
+			}
 			cands = append(cands, sec)
 		}
 	}
@@ -246,11 +256,12 @@ func RootRawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus
 	out := make([]Obligation, 0, len(cands))
 	for _, sec := range cands {
 		out = append(out, Obligation{
-			Rule:  rawRuleText(sec),
-			Src:   fmt.Sprintf("%s#L%d-L%d", sec.Path, sec.StartLine, sec.EndLine),
-			Tier:  "raw",
-			Layer: layerDef.Name,
-			Why:   why,
+			Rule:    rawRuleText(sec),
+			Subject: sec.Subject,
+			Src:     fmt.Sprintf("%s#L%d-L%d", sec.Path, sec.StartLine, sec.EndLine),
+			Tier:    "raw",
+			Layer:   layerDef.Name,
+			Why:     why,
 		})
 	}
 	return out, nil
@@ -328,19 +339,103 @@ func impliedGuideScope(docPath string) []string {
 	return []string{"**"}
 }
 
-// rawRuleText renders a raw section's served "rule" text: the section's own
-// ATX heading, stripped of its "#" markers, so a raw row reads like a named
-// rule rather than a raw text dump. A heading-less section (the preamble, or
-// a heading this parser could not read back out — SplitMarkdownSections
-// itself never fails to find one when it split at a heading, so this is a
-// defensive fallback, not an expected path) is named by its own document
-// instead: the cited lines (served alongside via the same snippet mechanism
-// every compiled rule's citation uses) carry the real content either way.
+var rawImperative = regexp.MustCompile(`(?i)\b(must|never|always|only|do not|don't|required)\b`)
+var rawDecision = regexp.MustCompile(`^\*\*Decision[.:]?\*\*[:.]?\s*`)
+var rawListPrefix = regexp.MustCompile(`^(?:[-*+]\s+|[0-9]+[.)]\s+)(?:\[[ xX]\]\s+)?`)
+var rawMarkdownLink = regexp.MustCompile(`!?\[([^\]]+)\]\([^)]*\)`)
+
+// rawRuleText extracts at most two instructions from the body, never its
+// heading (ADR-080 d2). The complete row is capped at 240 characters so
+// instructions reach callers that disable citation snippets.
 func rawRuleText(sec Section) string {
-	first, _, _ := strings.Cut(sec.Text, "\n")
-	first = strings.TrimSpace(first)
-	if trimmed := strings.TrimSpace(strings.TrimLeft(first, "#")); trimmed != "" && trimmed != first {
-		return trimmed
+	var selected []string
+	inFence := false
+	for _, line := range strings.Split(sec.Text, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "```") || strings.HasPrefix(line, "~~~") {
+			inFence = !inFence
+			continue
+		}
+		if inFence || atxHeading.MatchString(line) || checkedPlanRow.MatchString(line) {
+			continue
+		}
+		line = rawListPrefix.ReplaceAllString(line, "")
+		decision := isDecisionLog(sec.Path) && rawDecision.MatchString(line)
+		if decision {
+			line = rawDecision.ReplaceAllString(line, "")
+		}
+		line = rawMarkdownLink.ReplaceAllString(line, "$1")
+		line = strings.NewReplacer("**", "", "__", "", "*", "", "_", "", "`", "", "~~", "").Replace(line)
+		line = strings.Join(strings.Fields(strings.TrimLeft(line, "> ")), " ")
+		if line == "" || (!decision && !rawImperative.MatchString(line)) {
+			continue
+		}
+		selected = append(selected, line)
+		if len(selected) == 2 {
+			break
+		}
 	}
-	return path.Base(sec.Path) + " (untitled section)"
+	text := []rune(strings.Join(selected, " "))
+	if len(text) > 240 {
+		return string(text[:237]) + "..."
+	}
+	return string(text)
+}
+
+// RawFallbackStats is request-local accounting, never retained in the store.
+type RawFallbackStats struct {
+	Withheld int
+	Skipped  string // the first selected citation that could not be read
+}
+type rawFallbackStatsKey struct{}
+
+// WithRawFallbackStats lets the tool collect extraction counts from its backend
+// without changing the existing raw-fallback interface.
+func WithRawFallbackStats(ctx context.Context) (context.Context, *RawFallbackStats) {
+	stats := &RawFallbackStats{}
+	return context.WithValue(ctx, rawFallbackStatsKey{}, stats), stats
+}
+
+func RawFallbackStatsFromContext(ctx context.Context) *RawFallbackStats {
+	stats, _ := ctx.Value(rawFallbackStatsKey{}).(*RawFallbackStats)
+	return stats
+}
+
+func countRawWithheld(stats []*RawFallbackStats) {
+	if len(stats) > 0 && stats[0] != nil {
+		stats[0].Withheld++
+	}
+}
+
+// RefindRawRule locates the selected heading in current bytes. A vanished,
+// inactive or instruction-free section is withheld, never cited at its old range.
+func RefindRawRule(row Obligation, data []byte, file string) (Obligation, bool) {
+	p, _, _, ok := parseCite(row.Src)
+	if !ok {
+		return row, false
+	}
+	var decisions []adr.Section
+	if isDecisionLog(p) {
+		decisions = adr.ParseSections(data)
+	}
+	for _, sec := range SplitMarkdownSections(p, data) {
+		if sec.Subject != row.Subject {
+			continue
+		}
+		if !rawSectionInForce(sec, decisions) {
+			return row, false
+		}
+		text := rawRuleText(sec)
+		if text == "" {
+			return row, false
+		}
+		start, end := sec.StartLine, sec.EndLine
+		if file != "" {
+			start, end = citeWindow(sec, pathRelevanceTokens(file))
+		}
+		row.Rule = text
+		row.Src = fmt.Sprintf("%s#L%d-L%d", p, start, end)
+		return row, true
+	}
+	return row, false
 }

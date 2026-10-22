@@ -89,7 +89,7 @@ func TestObligationsTool_StaleDesignSectionServedRawAfterWithhold(t *testing.T) 
 		t.Fatalf("fresh: served %v, want both compiled rules", got)
 	}
 
-	writeTestFile(t, design, "# Boundary\n\n- pkg/** may import cmd/** now.\n")
+	writeTestFile(t, design, "# Boundary\n\n- pkg/** must allow imports from cmd/** now.\n")
 	payload := call()
 	if n, _ := staleWithheld(payload).(float64); n != 1 {
 		t.Fatalf("layer_coverage.stale_withheld = %v, want 1 (the adr-rules claim)", staleWithheld(payload))
