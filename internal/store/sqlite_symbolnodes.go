@@ -15,12 +15,17 @@ import (
 // Observation slice beside the SymbolNode slice. Other Store implementations may
 // omit this optional capability; the client retains its existing fallback.
 func (s *SQLiteStore) ListSymbolNodes(ctx context.Context, serviceID string) ([]core.SymbolNode, error) {
+	// This indexed count is only a bounded capacity hint. Finish it before
+	// opening rows: a store with one available connection must not deadlock.
+	var count int64
+	countErr := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM observations WHERE service_id = ?`, serviceID).Scan(&count)
+	hint := boundedSymbolNodeCapacity(count, countErr)
 	rows, err := s.db.QueryContext(ctx, queryObservationsSQL, serviceID)
 	if err != nil {
 		return nil, fmt.Errorf("QueryObservations query: %w", err)
 	}
 	defer rows.Close()
-	nodes, err := scanSymbolNodes(ctx, rows)
+	nodes, err := scanSymbolNodesWithHint(ctx, rows, hint)
 	return filterScoped(ctx, s.gate, serviceID, nodes, err, func(n core.SymbolNode) string { return n.FilePath })
 }
 
@@ -28,6 +33,20 @@ type symbolNodeRows interface {
 	Next() bool
 	Scan(...any) error
 	Err() error
+}
+
+// A stale count can be smaller than the actual result; append still reads all
+// rows. Cap the eager backing array at about 22 MiB on 64-bit platforms.
+const maxSymbolNodeCapacityHint = 131072
+
+func boundedSymbolNodeCapacity(count int64, err error) int {
+	if err != nil || count < 0 {
+		return -1
+	}
+	if count > maxSymbolNodeCapacityHint {
+		count = maxSymbolNodeCapacityHint
+	}
+	return int(count)
 }
 
 // symbolNodeOrder preserves QueryObservations' stable timestamp ordering without
@@ -48,6 +67,17 @@ func (s symbolNodeOrder) Swap(i, j int) {
 func scanSymbolNodes(ctx context.Context, rows symbolNodeRows) ([]core.SymbolNode, error) {
 	nodes := make([]core.SymbolNode, 0)
 	var stamps []int64
+	return scanSymbolNodesInto(ctx, rows, nodes, stamps)
+}
+
+func scanSymbolNodesWithHint(ctx context.Context, rows symbolNodeRows, hint int) ([]core.SymbolNode, error) {
+	if hint < 0 {
+		return scanSymbolNodes(ctx, rows)
+	}
+	return scanSymbolNodesInto(ctx, rows, make([]core.SymbolNode, 0, hint), make([]int64, 0, hint))
+}
+
+func scanSymbolNodesInto(ctx context.Context, rows symbolNodeRows, nodes []core.SymbolNode, stamps []int64) ([]core.SymbolNode, error) {
 	gov := tenancy.NewRowGovernor(ctx, tenancy.ClassIndex)
 	for rows.Next() {
 		if err := gov.Row(); err != nil {
