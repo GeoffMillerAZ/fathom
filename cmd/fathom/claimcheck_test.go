@@ -26,13 +26,19 @@ func claimCheckRepo(t *testing.T, claimCheck bool) (repo, head string) {
 	writeRepoFile(t, repo, "money/money.go", "package money\n\nfunc Round(n int) int { return n }\n")
 	head = commitAll(t, repo)
 	t.Setenv("CLAUDE_PROJECT_DIR", repo)
-	// The check reads HEAD and the working tree through git inside a 200 ms
-	// budget; on a loaded gate that read misses and the verdict reads
-	// "not checked (tree)", so the tests that assert a verdict widen it.
+	widenClaimCheckBudget(t)
+	return repo, head
+}
+
+// widenClaimCheckBudget lifts the check's 200 ms budget for one test. The
+// check reads the hook log, HEAD and the working tree inside it; on a loaded
+// gate that read misses and every verdict reads "not checked (deadline)" or
+// "not checked (tree)", so the tests that assert a verdict widen it.
+func widenClaimCheckBudget(t *testing.T) {
+	t.Helper()
 	orig := claimCheckBudget
 	claimCheckBudget = 10 * time.Second
 	t.Cleanup(func() { claimCheckBudget = orig })
-	return repo, head
 }
 
 // markSessionEdit logs the edit hook's post-edit beat for the session, the

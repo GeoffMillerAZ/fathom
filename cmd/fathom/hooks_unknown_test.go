@@ -14,6 +14,7 @@ import (
 
 func TestTestsToRunUnindexedRootIsSilent(t *testing.T) {
 	repo := testRunRepo(t, false)
+	widenTestsToRunWait(t)
 	t.Setenv("FATHOM_HOME", t.TempDir())
 	writeRepoFile(t, repo, ".fathom/config.toml", "[hooks]\ntests_to_run = true\n")
 	serveHookRequests(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -48,6 +49,7 @@ func TestClaimCheckUnknownRunIsSilentAndNeverUnbacked(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			repo := testRunRepo(t, true)
+			widenClaimCheckBudget(t)
 			t.Setenv("FATHOM_HOME", t.TempDir())
 			writeRepoFile(t, repo, ".fathom/config.toml", "[hooks]\ntest_run = true\nclaim_check = true\n")
 			markSessionEdit("unknown-session")
@@ -70,6 +72,7 @@ func TestClaimCheckUnknownRunIsSilentAndNeverUnbacked(t *testing.T) {
 
 func TestClaimCheckNoRunSinceEditIsUnbacked(t *testing.T) {
 	repo := testRunRepo(t, true)
+	widenClaimCheckBudget(t)
 	t.Setenv("FATHOM_HOME", t.TempDir())
 	writeRepoFile(t, repo, ".fathom/config.toml", "[hooks]\ntest_run = true\nclaim_check = true\n")
 	markSessionEdit("unknown-session")

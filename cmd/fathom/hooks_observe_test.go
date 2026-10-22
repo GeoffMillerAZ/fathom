@@ -30,6 +30,7 @@ func serveHookRequests(t *testing.T, handler http.Handler) {
 
 func TestTestsToRunObserveComputesWithoutInjecting(t *testing.T) {
 	repo := testRunRepo(t, false)
+	widenTestsToRunWait(t)
 	t.Setenv("FATHOM_HOME", t.TempDir())
 	writeRepoFile(t, repo, ".fathom/config.toml", "[hooks]\ntests_to_run = \"observe\"\n")
 	ident := handleIdentity(func(*http.Request) (map[string]svcInfo, error) {
@@ -101,6 +102,7 @@ func TestPromptDefinitionsObserveComputesWithoutInjecting(t *testing.T) {
 
 func TestClaimCheckObserveComputesWithoutInjecting(t *testing.T) {
 	repo := testRunRepo(t, true)
+	widenClaimCheckBudget(t)
 	t.Setenv("FATHOM_HOME", t.TempDir())
 	writeRepoFile(t, repo, ".fathom/config.toml", "[hooks]\ntest_run = true\nclaim_check = \"observe\"\n")
 	markSessionEdit("observe-session")
@@ -167,6 +169,7 @@ func TestReadOutlineObserveComputesWithoutInjecting(t *testing.T) {
 	repo := testRunRepo(t, false)
 	t.Setenv("FATHOM_HOME", t.TempDir())
 	t.Setenv("CLAUDE_PROJECT_DIR", repo)
+	widenReadOutlineHintBudgets(t) // asserts what observe computes, not how fast
 	writeRepoFile(t, repo, ".fathom/config.toml", "[hooks]\nread_outline_hint = \"observe\"\n")
 	writeRepoFile(t, repo, "big.go", readOutlineHintSource(14))
 	commitAll(t, repo)

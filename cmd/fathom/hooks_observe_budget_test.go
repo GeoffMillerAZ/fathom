@@ -14,6 +14,7 @@ func TestTestsToRunObserveLogsOutputCap(t *testing.T) {
 		for _, fits := range []bool{true, false} {
 			t.Run(mode+"/fits="+boolStr(fits), func(t *testing.T) {
 				repo := testRunRepo(t, false)
+				widenTestsToRunWait(t)
 				t.Setenv("FATHOM_HOME", t.TempDir())
 				writeRepoFile(t, repo, ".fathom/config.toml", "[hooks]\ntests_to_run = "+mode+"\n")
 				ident := handleIdentity(func(*http.Request) (map[string]svcInfo, error) {

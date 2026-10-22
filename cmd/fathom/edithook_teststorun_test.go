@@ -18,6 +18,16 @@ import (
 	"time"
 )
 
+// widenTestsToRunWait lifts the line's 300 ms wait for one test: success
+// paths run real git work in a temp repo, and on a loaded -race shard that
+// work reads as a deadline miss. Only the deadline cases shrink it.
+func widenTestsToRunWait(t *testing.T) {
+	t.Helper()
+	orig := testsToRunWait
+	testsToRunWait = time.Minute
+	t.Cleanup(func() { testsToRunWait = orig })
+}
+
 // reachDaemon resolves repo over GET /identity, answers blast_radius with
 // *tests and every other tool with no rules; a slow one holds each /rpc
 // call until the caller gives up.

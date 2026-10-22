@@ -8,6 +8,7 @@ import (
 
 func TestClaimCheckFailThenPipedUnknownAtSameTree(t *testing.T) {
 	repo := testRunRepo(t, true)
+	widenClaimCheckBudget(t)
 	t.Setenv("FATHOM_HOME", t.TempDir())
 	writeRepoFile(t, repo, ".fathom/config.toml", "[hooks]\ntest_run = true\nclaim_check = true\n")
 	head := commitAll(t, repo)
@@ -44,6 +45,7 @@ func TestClaimCheckUnknownRunKeepsLastDecidedVerdict(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			repo := testRunRepo(t, true)
+			widenClaimCheckBudget(t)
 			t.Setenv("FATHOM_HOME", t.TempDir())
 			writeRepoFile(t, repo, ".fathom/config.toml", "[hooks]\ntest_run = true\nclaim_check = true\n")
 			const session = "claim-history"
@@ -79,6 +81,7 @@ func TestClaimCheckUnmatchedCommandIsUnbacked(t *testing.T) {
 	for _, result := range []string{"unknown", "fail", "pass"} {
 		t.Run(result, func(t *testing.T) {
 			repo := testRunRepo(t, true)
+			widenClaimCheckBudget(t)
 			t.Setenv("FATHOM_HOME", t.TempDir())
 			writeRepoFile(t, repo, ".fathom/config.toml", "[hooks]\ntest_run = true\nclaim_check = true\n")
 			markSessionEdit("claim-history")

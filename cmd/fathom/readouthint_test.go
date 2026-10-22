@@ -51,18 +51,27 @@ func readOutlineHintEnv(t *testing.T, on bool) string {
 	origSet := editSetDir
 	editSetDir = filepath.Join(t.TempDir(), "edit-set")
 	t.Cleanup(func() { editSetDir = origSet })
-	// The 150 ms join deadline and the 300 ms edit check are wall-clock
-	// budgets a loaded -race shard misses, which reads as a silent hint
-	// (CI on 897da463). These cases assert what the hint says, not its
-	// speed; the deadline cases set their own.
-	origDeadline, origBudget := readOutlineHintDeadline, readOutlineHintEditBudget
-	readOutlineHintDeadline, readOutlineHintEditBudget = time.Minute, time.Minute
-	t.Cleanup(func() { readOutlineHintDeadline, readOutlineHintEditBudget = origDeadline, origBudget })
+	widenReadOutlineHintBudgets(t)
 	dir := t.TempDir()
 	if on {
 		writeRepoFile(t, dir, ".fathom/config.toml", "[hooks]\nread_outline_hint = true\n")
 	}
 	return dir
+}
+
+// widenReadOutlineHintBudgets lifts the hint's two wall-clock budgets for
+// one test. The 150 ms join deadline and the 300 ms edit check are budgets
+// a loaded -race shard misses, which reads as a silent hint (CI on
+// 897da463; CI on 2c780f1d2 logged join_ms 151, missed). Under -race the
+// first outline join in a process is the slow one: 138-141 ms on an M-series
+// Mac against 1-3 ms warm, so a case that happens to run first sits within
+// 10 ms of the deadline. Cases that assert what the hint says, not its
+// speed, call this; the deadline cases set their own.
+func widenReadOutlineHintBudgets(t *testing.T) {
+	t.Helper()
+	origDeadline, origBudget := readOutlineHintDeadline, readOutlineHintEditBudget
+	readOutlineHintDeadline, readOutlineHintEditBudget = time.Minute, time.Minute
+	t.Cleanup(func() { readOutlineHintDeadline, readOutlineHintEditBudget = origDeadline, origBudget })
 }
 
 // readOutlineHintEnvelope is a Claude Code PreToolUse(Read) envelope.
