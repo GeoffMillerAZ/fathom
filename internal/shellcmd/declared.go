@@ -16,6 +16,49 @@ type Wrapper struct {
 	CwdArg    int
 }
 
+// Validate checks that a declaration names literal argv syntax only.
+func (w Wrapper) Validate() error {
+	if w.Prefix != "" {
+		if w.Command != "" || w.ScriptArg != 0 || w.CwdArg != 0 {
+			return fail("prefix cannot also declare script arguments")
+		}
+		c := ParseCommand(w.Prefix)
+		if c.Unreadable || len(c.Pipelines) != 1 {
+			return fail("prefix must be a literal argv sequence")
+		}
+		p := c.Pipelines[0]
+		if len(p.Units) != 1 || p.Bang || p.Sep != "" {
+			return fail("prefix must be a literal argv sequence")
+		}
+		u := p.Units[0]
+		if u.Kind != KindSimple || len(u.Words) == 0 || len(u.Env)+len(u.Wrappers)+len(u.Redirects)+len(u.Subst) > 0 {
+			return fail("prefix must be a literal argv sequence")
+		}
+		for _, word := range u.Words {
+			if !word.Literal() {
+				return fail("prefix words must be literal")
+			}
+		}
+		return nil
+	}
+	if w.Command == "" || w.ScriptArg < 1 || w.CwdArg < 0 || w.CwdArg == w.ScriptArg {
+		return fail("invalid script or cwd argument declaration")
+	}
+	c := ParseCommand(w.Command)
+	if c.Unreadable || len(c.Pipelines) != 1 {
+		return fail("command must be a literal name")
+	}
+	p := c.Pipelines[0]
+	if len(p.Units) != 1 || p.Bang || p.Sep != "" {
+		return fail("command must be a literal name")
+	}
+	u := p.Units[0]
+	if u.Kind != KindSimple || len(u.Words) != 1 || !u.Words[0].Literal() || len(u.Env)+len(u.Wrappers)+len(u.Redirects)+len(u.Subst) > 0 {
+		return fail("command must be a literal name")
+	}
+	return nil
+}
+
 // Unwrap applies declarations to an already lexed command. Like
 // ParseCommand it is pure, never executes a command, and preserves refusal
 // reasons. Built-in transparent prefixes are peeled by ParseCommand first.
@@ -25,14 +68,24 @@ func Unwrap(c Command, wrappers []Wrapper) Command {
 	if len(wrappers) == 0 || c.Unreadable {
 		return c
 	}
+	valid := make([]Wrapper, 0, len(wrappers))
+	for _, w := range wrappers {
+		if w.Validate() == nil {
+			valid = append(valid, w)
+		}
+	}
+	if len(valid) == 0 {
+		return c
+	}
+	wrappers = valid
 	c = cloneCommand(c)
-	if err := unwrapAt(&c, wrappers, 0, ""); err != nil {
-		return *unreadableCommand(err.Error())
+	if err := unwrapAt(&c, wrappers, 0, "", false); err != nil {
+		return Command{Unreadable: true, Reason: err.Error(), Refusal: RefusalWrapper}
 	}
 	return c
 }
 
-func unwrapAt(c *Command, wrappers []Wrapper, depth int, cwd string) error {
+func unwrapAt(c *Command, wrappers []Wrapper, depth int, cwd string, cwdUnknown bool) error {
 	if c.Unreadable {
 		return fail(c.Reason)
 	}
@@ -40,6 +93,7 @@ func unwrapAt(c *Command, wrappers []Wrapper, depth int, cwd string) error {
 		for ui := range c.Pipelines[pi].Units {
 			u := &c.Pipelines[pi].Units[ui]
 			u.Cwd = cwd
+			u.CwdUnknown = cwdUnknown
 			childDepth := depth
 			for u.Kind == KindSimple && len(u.Words) > 0 {
 				matched := false
@@ -47,11 +101,11 @@ func unwrapAt(c *Command, wrappers []Wrapper, depth int, cwd string) error {
 					if w.Prefix != "" {
 						prefix := ParseCommand(w.Prefix)
 						if prefix.Unreadable || len(prefix.Pipelines) != 1 || len(prefix.Pipelines[0].Units) != 1 {
-							return fail("invalid wrapper prefix")
+							continue
 						}
 						pu := prefix.Pipelines[0].Units[0]
 						if pu.Kind != KindSimple || len(pu.Words) == 0 || len(pu.Env)+len(pu.Wrappers)+len(pu.Redirects)+len(pu.Subst) > 0 || prefix.Pipelines[0].Sep != "" {
-							return fail("invalid wrapper prefix")
+							continue
 						}
 						if len(u.Words) <= len(pu.Words) {
 							continue
@@ -112,11 +166,13 @@ func unwrapAt(c *Command, wrappers []Wrapper, depth int, cwd string) error {
 						if !script.Literal() {
 							return fail("wrapper script is not literal")
 						}
+						u.CwdUnknown = true
 						if w.CwdArg != 0 {
 							if w.CwdArg < 1 || w.CwdArg >= len(u.Words) || !u.Words[w.CwdArg].Literal() || u.Words[w.CwdArg].Text == "" {
 								return fail("wrapper cwd argument is missing or not literal")
 							}
 							u.Cwd = wrapperDir(cwd, u.Words[w.CwdArg].Text)
+							u.CwdUnknown = cwdUnknown && !path.IsAbs(u.Cwd)
 						}
 						u.Kind, u.DeclaredScript, u.Script = KindShell, true, script.Text
 						u.Body = parseAt(script.Text, 0)
@@ -133,12 +189,12 @@ func unwrapAt(c *Command, wrappers []Wrapper, depth int, cwd string) error {
 				}
 			}
 			if u.Body != nil {
-				if err := unwrapAt(u.Body, wrappers, childDepth, u.Cwd); err != nil {
+				if err := unwrapAt(u.Body, wrappers, childDepth, u.Cwd, u.CwdUnknown); err != nil {
 					return err
 				}
 			}
 			for _, sub := range u.Subst {
-				if err := unwrapAt(sub, wrappers, depth, cwd); err != nil {
+				if err := unwrapAt(sub, wrappers, depth, cwd, cwdUnknown); err != nil {
 					return err
 				}
 			}
