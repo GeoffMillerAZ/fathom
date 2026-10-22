@@ -1,7 +1,10 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -60,15 +63,10 @@ func doctorChannelLogName(cap harness.Capability) string {
 
 // Pure projection with an injected clock. No readiness registry/stamp producer
 // exists in this checkout: derive observations from the bounded hook-log tail.
-func doctorChannelRows(d harness.Descriptor, cfg config.Config, wired map[harness.Capability]bool, beats []heartbeat.Beat, now time.Time, logOK bool, coverage string) []doctorChannel {
+func doctorChannelRows(d harness.Descriptor, cfg config.Config, wired map[harness.Capability]bool, beats []heartbeat.Beat, now time.Time, logOK bool, coverage string, coveredFrom ...time.Time) []doctorChannel {
 	bindings := map[harness.Capability][]harness.EventBinding{}
-	for cap, v := range d.Vehicles {
-		if v == harness.VehicleHookInject {
-			bindings[cap] = nil
-		}
-	}
 	for _, b := range d.Hooks {
-		if b.Vehicle == harness.VehicleHookInject {
+		if b.Vehicle == harness.VehicleHookInject || b.Capability == harness.CapReadout && cfg.Readouts.Mode == config.ReadoutsRich {
 			bindings[b.Capability] = append(bindings[b.Capability], b)
 		}
 	}
@@ -79,6 +77,12 @@ func doctorChannelRows(d harness.Descriptor, cfg config.Config, wired map[harnes
 	slices.Sort(keys)
 	rows := make([]doctorChannel, 0, len(keys))
 	since := now.Add(-7 * 24 * time.Hour)
+	complete := logOK
+	if len(coveredFrom) > 0 && coveredFrom[0].After(since) {
+		since = coveredFrom[0]
+		complete = false
+	}
+	days := now.Sub(since).Hours() / 24
 	for _, cap := range keys {
 		r := doctorChannel{Channel: string(cap), State: "on but unused", Coverage: coverage, CostGroup: doctorChannelCostGroup(cap)}
 		enabled := len(bindings[cap]) == 0
@@ -122,6 +126,18 @@ func doctorChannelRows(d harness.Descriptor, cfg config.Config, wired map[harnes
 			if !tagged && bt.Channel != string(cap) && bt.Channel != doctorChannelLogName(cap) {
 				continue
 			}
+			if !tagged && bt.Channel == "edit-hook" {
+				phase := "post"
+				if cap == harness.CapGuardPreEdit || cap == harness.CapGuardPreShell {
+					phase = "pre"
+				}
+				if cap == harness.CapObligationsPostShell {
+					phase = "post-bash"
+				}
+				if bt.Meta["phase"] != phase {
+					continue
+				}
+			}
 			reason := bt.Meta["reason"]
 			if strings.HasPrefix(bt.Kind, "skipped:") {
 				reason = bt.Kind
@@ -142,10 +158,10 @@ func doctorChannelRows(d harness.Descriptor, cfg config.Config, wired map[harnes
 		// A missing log and channels without a payload-cost producer are absent
 		// metrics, not measured zero. Shared groups carry a named denominator.
 		knownGroup := r.CostGroup == "session-brief" || r.CostGroup == "post-edit" || r.CostGroup == "pre-edit-guard" || r.CostGroup == "post-bash"
-		if logOK && (knownGroup || injections > 0) {
+		if logOK && (injections > 0 || complete && knownGroup) {
 			r.Injections = &injections
-			rate := float64(tokens) / 7
-			if tokensKnown {
+			rate := float64(tokens) / days
+			if tokensKnown && days > 0 {
 				r.TokensPerDayEstimate = &rate
 			}
 		}
@@ -162,6 +178,9 @@ func doctorChannelRows(d harness.Descriptor, cfg config.Config, wired map[harnes
 		case injections > 0:
 			r.State = "on and ready"
 			r.Reason = "registered; payload-cost rows observed in the last 7 days"
+		case !complete:
+			r.State = "unknown"
+			r.Reason = "registered; no payload-cost rows in the covered span; use outside that span is unknown"
 		default:
 			r.Reason = "registered; no payload-cost rows observed (use is unmeasured for channels without cost rows)"
 		}
@@ -194,32 +213,21 @@ func doctorChannels(root, label string, now time.Time) []doctorChannel {
 			}
 		}
 	}
-	path := beatLogPath()
-	logOK := false
-	if st, e := os.Stat(path); e == nil && st.Mode().IsRegular() {
-		if f, e := os.Open(path); e == nil {
-			logOK = true
-			f.Close()
-		}
-	}
-	var beats []heartbeat.Beat
-	var coveredFrom time.Time
-	if logOK {
-		beats, coveredFrom = readBeatsSince(path, now.Add(-7*24*time.Hour), 1<<20)
-	}
+	beats, coveredFrom, logOK := readDoctorChannelBeats(beatLogPath(), now.Add(-7*24*time.Hour), now, hookBudgetBeatMaxBytes)
 
-	coverage := "last 7 days; bounded 1 MiB tail; hook-log scope is all repositories (untagged rows may span harnesses); tokens are estimates, uptake unmeasured"
+	coverage := fmt.Sprintf("up to 7 days; bounded %d MiB across live and rotated hook logs; hook-log scope is all repositories (untagged rows may span harnesses); tokens are estimates, uptake unmeasured", hookBudgetBeatMaxBytes>>20)
 	if !coveredFrom.IsZero() {
-		coverage += "; retained coverage starts " + coveredFrom.UTC().Format(time.RFC3339) + " (counts/rates are lower bounds)"
+		coverage += "; covered span " + coveredFrom.UTC().Format(time.RFC3339) + " to " + now.UTC().Format(time.RFC3339) + " (counts are lower bounds; rates use this span)"
 	}
 	if !logOK {
 		coverage = "hook log unavailable; injections and cost unknown"
 	}
-	rows := doctorChannelRows(d, cfg.Config, wired, beats, now, logOK, coverage)
+	rows := doctorChannelRows(d, cfg.Config, wired, beats, now, logOK, coverage, coveredFrom)
+	disabled := assistiveChannelsDisabled()
 	for i := range rows {
-		if os.Getenv("FATHOM_CHANNELS") == "off" {
+		if disabled {
 			rows[i].State = "off by choice"
-			rows[i].Reason = "FATHOM_CHANNELS=off in doctor environment"
+			rows[i].Reason = "assistive channels disabled by FATHOM_CHANNELS or the OFF arm"
 			continue
 		}
 		if err != nil {
@@ -231,6 +239,77 @@ func doctorChannels(root, label string, now time.Time) []doctorChannel {
 		}
 	}
 	return rows
+}
+
+// Read each generation once, newest first, under one byte budget. Filter cost
+// and skip lines before decoding full beats; unrelated discovery traffic never
+// becomes a large in-memory beat corpus. The first timestamp in each retained
+// tail establishes coverage even when that tail contains no channel cost rows.
+func readDoctorChannelBeats(path string, since, now time.Time, maxBytes int64) (beats []heartbeat.Beat, coveredFrom time.Time, logOK bool) {
+	coveredFrom = now
+	left := maxBytes
+	clean := true
+	for _, generation := range []string{path, path + ".1"} {
+		if left <= 0 || !coveredFrom.After(since) {
+			break
+		}
+		f, err := os.Open(generation)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				clean = false
+			}
+			continue
+		}
+		st, err := f.Stat()
+		if err != nil || !st.Mode().IsRegular() {
+			f.Close()
+			clean = false
+			continue
+		}
+		n := min(left, st.Size())
+		left -= n
+		offset := st.Size() - n
+		scanner := bufio.NewScanner(io.NewSectionReader(f, offset, n))
+		scanner.Buffer(make([]byte, 64<<10), int(maxBytes))
+		if offset > 0 {
+			scanner.Scan()
+		} // discard the possibly partial first row
+		first := true
+		var got []heartbeat.Beat
+		for scanner.Scan() {
+			line := scanner.Bytes()
+			if first {
+				var stamp struct {
+					At time.Time `json:"at"`
+				}
+				if json.Unmarshal(line, &stamp) == nil && !stamp.At.IsZero() {
+					if stamp.At.Before(coveredFrom) {
+						coveredFrom = stamp.At
+					}
+					first = false
+				}
+			}
+			if !bytes.Contains(line, []byte(`"payload-cost"`)) && !bytes.Contains(line, []byte(`"reason"`)) && !bytes.Contains(line, []byte("skipped:")) {
+				continue
+			}
+			var beat heartbeat.Beat
+			if json.Unmarshal(line, &beat) != nil {
+				clean = false
+				continue
+			}
+			got = append(got, beat)
+		}
+		if scanner.Err() != nil {
+			clean = false
+		}
+		f.Close()
+		logOK = true
+		beats = append(got, beats...)
+	}
+	if !coveredFrom.After(since) {
+		coveredFrom = time.Time{}
+	}
+	return beats, coveredFrom, logOK && clean
 }
 
 func printDoctorChannels(w io.Writer, rows []doctorChannel) {

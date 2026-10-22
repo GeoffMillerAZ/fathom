@@ -1160,3 +1160,8 @@ guidance were consulted. Evidence: `TestDoctorChannelsStatesAndCosts`,
 `TestDoctorChannelsMissingLogIsNotZero`, `TestDoctorChannelsRenderInTextAndJSON`.
 Next owner: the app maintainer; revisit if cli-kit gains a suitable multi-metric
 status projection. This is synthetic CLI proof; no second-consumer delivery is claimed.
+
+Round-two evidence: `TestDoctorChannelsRetainedSpan` covers rotated logs and the
+covered-span denominator; `TestDoctorChannelBindingsAndSkipPhases` covers rich
+readouts and phase-specific absence. The fixes own app evidence semantics, so
+FATHOM-DOCTOR-01 remains a local divergence with no reusable kit change identified.
