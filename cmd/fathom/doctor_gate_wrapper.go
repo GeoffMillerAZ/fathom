@@ -54,13 +54,42 @@ func checkComposedPushGate(root string) (doctorCheck, bool) {
 		source = p
 		break
 	}
-	if source == "" {
-		b, err := r.read(filepath.Join(root, ".git/hooks/pre-push"))
-		if err != nil {
+	native := source == ""
+	if native {
+		paths := []string{".git/hooks/pre-push", ".husky/pre-push"}
+		if b, err := doctorGitCommand(ctx, root, "config", "--get", "core.hooksPath").Output(); err == nil {
+			if hooksPath := strings.TrimSpace(string(b)); hooksPath != "" {
+				paths = []string{filepath.Join(hooksPath, "pre-push"), ".husky/pre-push"}
+				hooksDir := hooksPath
+				if filepath.IsAbs(hooksDir) {
+					hooksDir, _ = filepath.Rel(root, hooksDir)
+				}
+				if filepath.ToSlash(filepath.Clean(hooksDir)) == ".husky/_" {
+					// Husky's generated dispatcher delegates to this authored hook.
+					paths = []string{".husky/pre-push", filepath.Join(hooksPath, "pre-push")}
+				}
+			}
+		}
+		for _, p := range dedupeStrings(paths) {
+			path := p
+			if !filepath.IsAbs(path) {
+				path = filepath.Join(root, path)
+			}
+			b, err := r.read(path)
+			if os.IsNotExist(err) {
+				continue
+			}
+			if err != nil {
+				return doctorCheck{Name: "lefthook_gates", Status: doctorUnknown, Reason: "pre-push hook could not be inspected: " + err.Error()}, true
+			}
+			commands = append(commands, string(b))
+			rel, _ := filepath.Rel(root, path)
+			source = rel
+			break
+		}
+		if source == "" {
 			return doctorCheck{}, false
 		}
-		commands = append(commands, string(b))
-		source = ".git/hooks/pre-push"
 	}
 	command := strings.Join(commands, "\n")
 	probe := func(match func([]string) bool) doctorWiringEvidence {
@@ -73,13 +102,16 @@ func checkComposedPushGate(root string) (doctorCheck, bool) {
 	verify := probe(func(w []string) bool {
 		return len(w) > 2 && (filepath.Base(w[0]) == "fathom" || w[0] == "$FATHOM" || w[0] == "${FATHOM}") && w[1] == "verify" && slices.Contains(w[2:], "--strict")
 	})
-	if validate.found && verify.found && (validate.indirect || verify.indirect || source == ".git/hooks/pre-push") {
+	verifyAny := probe(func(w []string) bool {
+		return len(w) > 1 && (filepath.Base(w[0]) == "fathom" || w[0] == "$FATHOM" || w[0] == "${FATHOM}") && w[1] == "verify"
+	})
+	if validate.found && verify.found && (validate.indirect || verify.indirect || native) {
 		files := dedupeStrings([]string{source, validate.file, verify.file})
 		files = slices.DeleteFunc(files, func(s string) bool { return s == "" })
 		slices.Sort(files)
 		return doctorCheck{Name: "lefthook_gates", Status: doctorPass, Reason: fmt.Sprintf("pre-push reaches task validate and fathom verify --strict; proved by %s", strings.Join(files, ", "))}, true
 	}
-	if source == ".git/hooks/pre-push" {
+	if native && (validate.found || verifyAny.found) {
 		return doctorCheck{Name: "lefthook_gates", Status: doctorFail, Reason: "pre-push does not reach both task validate and fathom verify --strict", Remedy: "wire both commands in the repository-local pre-push wrapper"}, true
 	}
 	return doctorCheck{}, false

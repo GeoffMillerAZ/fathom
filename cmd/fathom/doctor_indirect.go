@@ -231,9 +231,11 @@ func (r *doctorWrapperReader) task(words []string, sub string, depth int) doctor
 	}
 	var data []byte
 	var err error
+	proofFile := ""
 	for _, path := range paths {
 		data, err = r.read(filepath.Join(r.root, path))
 		if !os.IsNotExist(err) {
+			proofFile = path
 			break
 		}
 	}
@@ -315,6 +317,9 @@ func (r *doctorWrapperReader) task(words []string, sub string, depth int) doctor
 	}
 	ev := r.command(strings.Join(commands, "\n"), sub, depth)
 	ev.unknown = ev.unknown || uncertain
+	if ev.found && ev.file == "" {
+		ev.file = proofFile
+	}
 	return ev
 }
 
