@@ -119,7 +119,8 @@ pre-push:
         rm -f "$store" "$store-wal" "$store-shm"
         ingest_log=workspace/tmp/gate-verify-ingest.log
         ingest_err=workspace/tmp/gate-verify-ingest-stderr.log
-        verify_err=workspace/tmp/gate-verify-stderr.log
+        verify_err=$(mktemp workspace/tmp/gate-verify-stderr.XXXXXX) || verify_err=/dev/null
+        trap '[ "$verify_err" = /dev/null ] || rm -f "$verify_err"' EXIT
         # Memory canary (O1366): this is the one ingest of the whole tree, so it
         # runs with the managed daemon's 4 GiB budget in force and its peak RSS
         # is read back below (the stranger check wires only a fixture fleet since
@@ -209,14 +210,14 @@ pre-push:
         if [ "$code" -eq 0 ] || [ "$code" -eq 1 ]; then cat "$verify_err" >&2; fi
         if [ $code -eq 1 ]; then rc=1; fi
         if [ $code -ne 0 ] && [ $code -ne 1 ]; then
-          echo "fathom verify: the single call over every plan exited $code — re-running plan by plan: $(sed -n '1p' "$verify_err")"
+          echo "fathom verify: the single call over every plan exited $code — re-running plan by plan: $(awk 'NF { last=$0 } END { print last }' "$verify_err")"
           for f in "$@"; do
             $lease bin/fathom verify --strict ${base:+--since "$base"} --store "$store" --service fathom --plan "$f" --quiet 2>"$verify_err"
             code=$?
             if [ "$code" -eq 0 ] || [ "$code" -eq 1 ]; then cat "$verify_err" >&2; fi
             if [ $code -eq 1 ]; then rc=1; fi
             if [ "$code" -ne 0 ] && [ "$code" -ne 1 ]; then
-              echo "fathom verify: operational error — allowing push (fail-open, see docs/design/coding-agent-excellence.md §5.3): $(sed -n '1p' "$verify_err")"
+              echo "fathom verify: operational error — allowing push (fail-open, see docs/design/coding-agent-excellence.md §5.3): $(awk 'NF { last=$0 } END { print last }' "$verify_err")"
             fi
           done
         fi
@@ -252,8 +253,8 @@ pre-push:
       run: |
         [ -x bin/fathom ] || exit 0
         mkdir -p workspace/tmp
-        err_log=$(mktemp workspace/tmp/review-stderr.XXXXXX)
-        trap 'rm -f "$err_log"' EXIT
+        err_log=$(mktemp workspace/tmp/review-stderr.XXXXXX) || err_log=/dev/null
+        trap '[ "$err_log" = /dev/null ] || rm -f "$err_log"' EXIT
         out=$(bin/fathom review --service fathom --since origin/main --store workspace/db/fleet.sqlite --no-persist --budget-seconds 20 2>"$err_log")
         if [ $? -ne 0 ]; then
           echo "fathom review: operational error — skipped (fail-open, see docs/design/coding-agent-excellence.md §5.3): $(sed -n '1p' "$err_log")"
@@ -287,8 +288,8 @@ pre-push:
       run: |
         [ -x bin/fathom ] || exit 0
         mkdir -p workspace/tmp
-        err_log=$(mktemp workspace/tmp/conserve-stderr.XXXXXX)
-        trap 'rm -f "$err_log"' EXIT
+        err_log=$(mktemp workspace/tmp/conserve-stderr.XXXXXX) || err_log=/dev/null
+        trap '[ "$err_log" = /dev/null ] || rm -f "$err_log"' EXIT
         since=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>"$err_log")
         if [ -z "$since" ]; then
           since="origin/main"
@@ -334,8 +335,8 @@ post-commit:
       run: |
         git diff-tree --no-commit-id --name-only -r HEAD | grep -q '\.go$' || exit 0
         mkdir -p workspace/tmp
-        err_log=$(mktemp workspace/tmp/rebuild-stderr.XXXXXX)
-        trap 'rm -f "$err_log"' EXIT
+        err_log=$(mktemp workspace/tmp/rebuild-stderr.XXXXXX) || err_log=/dev/null
+        trap '[ "$err_log" = /dev/null ] || rm -f "$err_log"' EXIT
         if ! go build -o bin/fathom ./cmd/fathom >/dev/null 2>"$err_log"; then
           echo "post-commit: bin/fathom rebuild FAILED — the binary is now STALE vs HEAD: $(sed -n '1p' "$err_log")" >&2
           echo "  disk-full class? retry with an external build tmp:  GOTMPDIR=<big-disk>/tmp/gobuild TMPDIR=<big-disk>/tmp/gobuild go build -o bin/fathom ./cmd/fathom  (BOTH vars: the linker/dsymutil write to TMPDIR)" >&2
@@ -344,8 +345,8 @@ post-commit:
       run: |
         [ -x bin/fathom ] || exit 0
         mkdir -p workspace/tmp
-        err_log=$(mktemp workspace/tmp/refresh-stderr.XXXXXX)
-        trap 'rm -f "$err_log"' EXIT
+        err_log=$(mktemp workspace/tmp/refresh-stderr.XXXXXX) || err_log=/dev/null
+        trap '[ "$err_log" = /dev/null ] || rm -f "$err_log"' EXIT
         bin/fathom post-commit-hook --dir "$PWD" --service fathom --quiet 2>"$err_log" || {
           echo "post-commit: fathom refresh skipped (fail-open): $(sed -n '1p' "$err_log")" >&2
         }

@@ -25,7 +25,7 @@ if [ "$1" = ingest ] && [ "${STUB_INGEST_OK:-0}" = 1 ]; then
   done
   exit 0
 fi
-printf 'first diagnostic\nsecond diagnostic\n' >&2
+printf 'first diagnostic\nsecond diagnostic\n\n' >&2
 exit "${STUB_EXIT:-2}"
 STUB
 cat > "$scratch/tools/git" <<'STUB'
@@ -38,7 +38,7 @@ esac
 STUB
 cat > "$scratch/tools/go" <<'STUB'
 #!/bin/sh
-printf 'first diagnostic\nsecond diagnostic\n' >&2
+printf 'first diagnostic\nsecond diagnostic\n\n' >&2
 exit 2
 STUB
 cat > "$scratch/repo/scripts/gate-lease.sh" <<'STUB'
@@ -65,11 +65,32 @@ done
 # Exercise both the bulk verify fallback and each plan's operational skip.
 body pre-push verify > "$scratch/run"
 STUB_INGEST_OK=1 sh "$scratch/run" </dev/null > "$scratch/out" 2>&1 || fail 'verify fallback did not fail open'
-grep 're-running plan by plan: first diagnostic' "$scratch/out" >/dev/null || fail 'bulk verify swallowed stderr'
-grep 'operational error.*first diagnostic' "$scratch/out" >/dev/null || fail 'per-plan verify swallowed stderr'
-if grep 'second diagnostic' "$scratch/out" >/dev/null; then fail 'verify fallback dumped stderr'; fi
+grep 're-running plan by plan: second diagnostic' "$scratch/out" >/dev/null || fail 'bulk verify swallowed stderr'
+grep 'operational error.*second diagnostic' "$scratch/out" >/dev/null || fail 'per-plan verify swallowed stderr'
+grep 'second diagnostic' "$scratch/out" >/dev/null || fail 'verify fallback swallowed final diagnostic'
 body pre-push refactor-conserve > "$scratch/run"
 rc=0
 STUB_EXIT=1 sh "$scratch/run" > "$scratch/out" 2>&1 || rc=$?
 [ "$rc" -eq 1 ] || fail 'conserve no longer blocks integrity losses'
+# An unwritable TMPDIR makes mktemp fail. Model that failure even for
+# workspace-relative templates, without changing permissions on a shared tree.
+cat > "$scratch/tools/mktemp" <<'STUB'
+#!/bin/sh
+printf '%s\n' "$*" >> "$MKTEMP_LOG"
+exec /usr/bin/mktemp "$TMPDIR/hook-stderr.XXXXXX"
+STUB
+chmod +x "$scratch/tools/mktemp"
+export MKTEMP_LOG="$scratch/mktemp-log"
+for step in review refactor-conserve verify; do
+  body pre-push "$step" > "$scratch/run"
+  rc=0
+  TMPDIR=/dev/null STUB_INGEST_OK=1 sh "$scratch/run" </dev/null > "$scratch/out" 2>&1 || rc=$?
+  [ "$rc" -eq 0 ] || fail "$step treated mktemp failure as integrity loss"
+done
+grep 'verify-stderr' "$MKTEMP_LOG" >/dev/null || fail 'verify stderr path is not guarded by mktemp'
+# Losing the diagnostic file must still preserve a real integrity block.
+body pre-push refactor-conserve > "$scratch/run"
+rc=0
+TMPDIR=/dev/null STUB_EXIT=1 sh "$scratch/run" > "$scratch/out" 2>&1 || rc=$?
+[ "$rc" -eq 1 ] || fail 'conserve lost integrity block when mktemp failed'
 echo 'boundary-hooks test: ok'
