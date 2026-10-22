@@ -849,7 +849,7 @@ func obligationsSummary(obl semantic.Obligations, rootScope bool) string {
 		head = strings.TrimRight(string(runes[:headMaxChars]), " ") + "…"
 	}
 	suffix := ""
-	if r.CitationStatus != nil {
+	if r.CitationStatus != nil && (r.CitationStatus.State == "stale" || r.CitationStatus.State == "refreshing") {
 		suffix = " [citation " + r.CitationStatus.State + "]"
 	}
 	text := fmt.Sprintf("%s: %s (%s, %s)", subject, head, r.Tier, r.Src)

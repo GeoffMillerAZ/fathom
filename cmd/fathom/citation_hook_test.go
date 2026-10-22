@@ -55,7 +55,7 @@ func TestCitationHookGoldens(t *testing.T) {
 					t.Fatalf("%s output differs\ngot %s\nwant %s", phase, got, want)
 				}
 				tag := "guide.md#L1-L2"
-				if state != "" {
+				if state == "stale" || state == "refreshing" {
 					tag += " [citation " + state + "]"
 				}
 				if !strings.Contains(got, tag) {

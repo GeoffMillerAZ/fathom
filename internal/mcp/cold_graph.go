@@ -224,11 +224,6 @@ func symbolContextColdAnswer(ctx context.Context, backend QueryInterface, servic
 	}
 	bindCitation(ctx, backend, service, dto.FilePath, func(status *core.CitationStatus) {
 		dto.CitationStatus = status
-		if status != nil {
-			result["citation_status"] = status
-		} else {
-			delete(result, "citation_status")
-		}
 	})
 	if !wantSnippet {
 		return result, nil

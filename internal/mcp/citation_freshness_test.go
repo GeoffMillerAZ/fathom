@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -104,7 +105,7 @@ func TestCitationOnDirtyFileIsMarkedStale(t *testing.T) {
 	p, _ := citationContext(t, c)
 	requireCitationState(t, p["def"].(map[string]any), "stale")
 	if _, ok := p["snippet"]; ok {
-		requireCitationState(t, p, "stale")
+		requireCitationState(t, p["def"].(map[string]any), "stale")
 	}
 	found, _ := citationCall(t, c, "find_symbol", map[string]any{"service": "sample", "name": "Alpha"})
 	requireCitationState(t, found["symbols"].([]any)[0].(map[string]any), "stale")
@@ -231,7 +232,7 @@ func TestCitationReadRaceUsesHashedBytes(t *testing.T) {
 	p, _ := citationContext(t, b)
 	raw, _ := json.Marshal(p["snippet"])
 	if strings.Contains(string(raw), "Bravo") {
-		requireCitationState(t, p, "stale")
+		requireCitationState(t, p["def"].(map[string]any), "stale")
 	}
 	// Even when the snippet uses the original hashed bytes, its location
 	// must be marked if the current file moved before the response.
@@ -287,5 +288,78 @@ func TestCitationUnknownIdentityDoesNotReadSource(t *testing.T) {
 	}
 	if got := ticket.BytesRead(); got != 0 {
 		t.Fatalf("read %d bytes without an indexed identity to compare", got)
+	}
+}
+
+// A portable index has citations but no current tree against which to check them.
+type citationNoRootBackend struct{ *citationProbe }
+
+func (b *citationNoRootBackend) ServiceMeta(context.Context, string) (string, string, bool, error) {
+	return "", "", true, nil
+}
+
+func TestCitationNoLocalRootHasOneNoteAndNoHashing(t *testing.T) {
+	c, _ := citationFixture(t)
+	for _, tool := range []string{"find_symbol", "symbol_context", "obligations", "review_diff"} {
+		for _, snippets := range []bool{false, true} {
+			t.Run(tool+"/snippets="+strconv.FormatBool(snippets), func(t *testing.T) {
+				b := &citationNoRootBackend{&citationProbe{Client: c, refresh: true}}
+				p, raw := citationCall(t, b, tool, map[string]any{"service": "sample", "symbol": "Alpha", "name": "Alpha", "file": "sample.go", "changed_files": []string{"sample.go"}, "snippet": snippets, "include_snippets": snippets})
+				if p["citation_freshness"] != "no local source root" || strings.Count(raw, `"citation_freshness"`) != 1 {
+					t.Errorf("expected one response note: %s", raw)
+				}
+				if strings.Contains(raw, `"citation_status"`) || strings.Contains(raw, "[citation ") {
+					t.Errorf("portable citation marked: %s", raw)
+				}
+				if b.fingerprintReads != 0 {
+					t.Errorf("portable citations made %d fingerprint reads", b.fingerprintReads)
+				}
+			})
+		}
+	}
+}
+
+func TestCitationSymbolContextMarksOnlyDefinition(t *testing.T) {
+	c, root := citationFixture(t)
+	if err := os.Remove(filepath.Join(root, "sample.go")); err != nil {
+		t.Fatal(err)
+	}
+	for _, cold := range []bool{false, true} {
+		t.Run(strconv.FormatBool(cold), func(t *testing.T) {
+			var p map[string]any
+			if cold {
+				ctx := context.Background()
+				ctx = context.WithValue(ctx, citationReadsKey{}, newCitationReads(ctx, c, "sample", nil))
+				h := citationHandler(c, func(ctx context.Context, _ json.RawMessage) (any, *rpcError) {
+					return symbolContextColdAnswer(ctx, c, "sample", "Alpha", true, &coldGraph{})
+				})
+				result, err := h(ctx, nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				raw, errJSON := json.Marshal(result)
+				if errJSON != nil {
+					t.Fatal(errJSON)
+				}
+				if errJSON := json.Unmarshal(raw, &p); errJSON != nil {
+					t.Fatal(errJSON)
+				}
+			} else {
+				p, _ = citationContext(t, c)
+			}
+			requireCitationState(t, p["def"].(map[string]any), "unknown")
+			if p["citation_status"] != nil || p["citation_freshness"] != nil {
+				t.Fatalf("definition citation duplicated or missing file treated as absent root: %v", p)
+			}
+		})
+	}
+}
+
+func TestCitationUnknownSummaryHasNoSuffix(t *testing.T) {
+	c, _ := citationFixture(t)
+	p, _ := citationCall(t, &citationProbe{Client: c, unknown: true}, "obligations", map[string]any{"service": "sample", "file": "sample.go"})
+	requireCitationState(t, p["rules"].([]any)[0].(map[string]any), "unknown")
+	if strings.Contains(p["summary"].(string), "[citation ") {
+		t.Fatalf("unknown added summary suffix: %v", p["summary"])
 	}
 }

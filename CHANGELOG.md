@@ -32,7 +32,7 @@ Release impact: major (pre-1.0: breaking bumps minor)
 
 ### Breaking
 
-- Hook output on Claude Code: `edit-hook` and `session-hook --event cwd-changed` print nothing when the same injection was already delivered unchanged in the session (compaction, a pre-compact hook, 30 minutes or 10 skipped repeats bring it back), and hook citations can carry a `[citation stale]`, `[citation refreshing]` or `[citation unknown]` tag. Other harnesses still receive every injection. Set `[hooks] dedupe = false` to restore every injection; see `docs/upgrades/0.17.0-hook-output.md`.
+- Hook output on Claude Code: `edit-hook` and `session-hook --event cwd-changed` print nothing when the same injection was already delivered unchanged in the session (compaction, a pre-compact hook, 30 minutes or 10 skipped repeats bring it back), and hook citations can carry a `[citation stale]` or `[citation refreshing]` tag. Other harnesses still receive every injection. Set `[hooks] dedupe = false` to restore every injection; see `docs/upgrades/0.17.0-hook-output.md`.
 - `doctor --brief` lists TIMEOUT and UNKNOWN rows next to FAIL rows (at most 8 lines), and `fathom doctor` exits 0 when the only open rows are timeouts, unknowns or project wrapper wiring it cannot resolve without running it; a definite failure still exits 1. Scripts that treat any brief line as a failure should match `FAIL` rows.
 - `pkg/client.ReadSourceFiles` returns the files it could read together with a non-nil error naming the ones it could not (oversized, binary or unreadable); a caller that discards results on any error should read both.
 
@@ -49,6 +49,7 @@ Release impact: major (pre-1.0: breaking bumps minor)
 - `--json` adds the `unknown` and `timeout` status values on individual rows; both count under `summary.skipped`. `--brief` lists them with separate counts. Request cancellation preserves completed verdicts and the existing provider ping budgets.
 - Foreign hook commands count as missing fathom hooks. Missing project scripts fail with their path and an init remedy. Setup brief descriptions include FAIL, TIMEOUT and UNKNOWN rows within eight lines.
 - Index-sourced symbol, obligation and review citations carry typed freshness statuses and qualified rule summaries and hook tags. Each call streams each cited file once, keeps only snippet windows, and leaves byte-identical files clean during refresh; `read_source` reports its content identity and known index match.
+- A service with no local source root carries one `citation_freshness` note instead of per-citation marks. Unknown citations retain their typed status without summary suffixes or hook tags.
 - Existing indexes report `unknown` (not `stale`) for a changed file whose last full ingest saw it within 2 s of a write, until the next full ingest.
 - Cold plan verification and symbol context use less memory by loading only required graph evidence and projecting stored symbols directly through the scoped store interface.
 - File-only and spec-only plans no longer report the typed-fallback partial or `graph_fallback`, and graph-load errors no longer fail them. The spec-only building message names the symbol snapshot.

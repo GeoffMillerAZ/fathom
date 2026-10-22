@@ -634,7 +634,7 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 // the ENTIRE case before phase O) is byte-identical to the pre-existing
 // rendering.
 func citationTag(r semantic.Obligation) string {
-	if r.CitationStatus == nil || r.CitationStatus.State == "" {
+	if r.CitationStatus == nil || (r.CitationStatus.State != "stale" && r.CitationStatus.State != "refreshing") {
 		return ""
 	}
 	return " [citation " + r.CitationStatus.State + "]"

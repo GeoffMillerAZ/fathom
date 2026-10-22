@@ -8,7 +8,7 @@
     },
     "count_field": "rules",
     "budget_ms": 250,
-    "bytes": 904,
+    "bytes": 948,
     "result_count": 3,
     "displaced": 0
   },
@@ -21,7 +21,7 @@
     },
     "count_field": "rules",
     "budget_ms": 250,
-    "bytes": 701,
+    "bytes": 745,
     "result_count": 2,
     "displaced": 0
   },
@@ -34,7 +34,7 @@
     },
     "count_field": "rules",
     "budget_ms": 250,
-    "bytes": 760,
+    "bytes": 804,
     "result_count": 2,
     "displaced": 0
   },
@@ -90,7 +90,7 @@
     },
     "count_field": "callees",
     "budget_ms": 250,
-    "bytes": 486,
+    "bytes": 530,
     "result_count": 2,
     "displaced": 0
   },

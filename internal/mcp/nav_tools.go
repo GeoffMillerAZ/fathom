@@ -324,11 +324,6 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 		if defDTO != nil && defDTO.Line > 0 {
 			bindCitation(ctx, backend, p.Service, defDTO.FilePath, func(status *core.CitationStatus) {
 				defDTO.CitationStatus = status
-				if status != nil {
-					result["citation_status"] = status
-				} else {
-					delete(result, "citation_status")
-				}
 			})
 		}
 

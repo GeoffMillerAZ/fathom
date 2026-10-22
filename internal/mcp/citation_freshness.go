@@ -46,15 +46,16 @@ type citationFileRead struct {
 	indexed bool
 }
 type citationReads struct {
-	mu          sync.Mutex
-	files       map[citationReadKey]*citationFileRead
-	queue       *refresh.Queue
-	service     string
-	ingest      store.IngestState
-	ingestFound bool
-	initial     citationStatus
-	pending     bool
-	bindings    []func()
+	mu                sync.Mutex
+	files             map[citationReadKey]*citationFileRead
+	queue             *refresh.Queue
+	service           string
+	ingest            store.IngestState
+	ingestFound       bool
+	initial           citationStatus
+	pending           bool
+	bindings          []func()
+	noLocalSourceRoot bool
 }
 
 func citationHandler(b QueryInterface, h func(context.Context, json.RawMessage) (any, *rpcError)) func(context.Context, json.RawMessage) (any, *rpcError) {
@@ -62,12 +63,35 @@ func citationHandler(b QueryInterface, h func(context.Context, json.RawMessage) 
 		result, rpcErr := h(ctx, args)
 		if reads, _ := ctx.Value(citationReadsKey{}).(*citationReads); reads != nil {
 			reads.finish(ctx, b)
+			if rpcErr == nil && reads.noLocalSourceRoot {
+				var body map[string]any
+				switch result := result.(type) {
+				case map[string]any:
+					body = result
+				case summaryEnvelope:
+					body, _ = result.body.(map[string]any)
+				case *summaryEnvelope:
+					body, _ = result.body.(map[string]any)
+				}
+				if body != nil {
+					body["citation_freshness"] = "no local source root"
+				}
+			}
 		}
 		return result, rpcErr
 	}
 }
 func newCitationReads(ctx context.Context, b QueryInterface, service string, q *refresh.Queue) *citationReads {
 	r := &citationReads{files: make(map[citationReadKey]*citationFileRead), queue: q, service: service}
+	// An index without a local tree has no current bytes to compare. Keep
+	// this distinction request-local, and do not probe individual citations.
+	if b != nil && service != "" {
+		root, _, _, err := b.ServiceMeta(ctx, service)
+		r.noLocalSourceRoot = err == nil && root == ""
+	}
+	if r.noLocalSourceRoot {
+		return r
+	}
 	r.ingest, r.ingestFound, r.initial, r.pending = readCitationRefresh(ctx, b, service, q)
 	return r
 }
@@ -87,6 +111,13 @@ func readCitationRefresh(ctx context.Context, b QueryInterface, service string, 
 	return store.IngestState{}, false, citationStatus{}, pending
 }
 func (r *citationReads) finish(ctx context.Context, b QueryInterface) {
+	if r.noLocalSourceRoot {
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		clear(r.files)
+		r.bindings = nil
+		return
+	}
 	row, found, status, pending := readCitationRefresh(ctx, b, r.service, r.queue)
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -173,6 +204,10 @@ func (r *citationReads) file(ctx context.Context, b QueryInterface, service, fil
 		f = &citationFileRead{}
 		r.files[key] = f
 	}
+	if r.noLocalSourceRoot {
+		f.read = true
+		return f
+	}
 	if indexed {
 		if f.read && !f.indexed {
 			f.status = citationStatus{State: "unknown", Reason: "source was read live without an index identity check"}
@@ -200,6 +235,10 @@ func (r *citationReads) file(ctx context.Context, b QueryInterface, service, fil
 // service ingest identity at call end. No JSON encoding/decoding is involved.
 func bindCitation(ctx context.Context, b QueryInterface, service, file string, set func(*core.CitationStatus)) {
 	if file == "" {
+		return
+	}
+	if r, _ := ctx.Value(citationReadsKey{}).(*citationReads); r != nil && r.noLocalSourceRoot {
+		set(nil)
 		return
 	}
 	status := citationForFile(ctx, b, service, file)
@@ -249,7 +288,7 @@ func withObligationSummary(ctx context.Context, summary string, body map[string]
 			for _, state := range []string{"stale", "unknown", "refreshing"} {
 				base = strings.TrimSuffix(base, " [citation "+state+"]")
 			}
-			if status != nil {
+			if status != nil && (status.State == "stale" || status.State == "refreshing") {
 				suffix := " [citation " + status.State + "]"
 				runes := []rune(base)
 				limit := summaryMaxChars - len(suffix)
