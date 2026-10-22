@@ -27,10 +27,14 @@ On the helper, in a fresh shell:
 
 ```sh
 export JOB_ROOT="$HOME/work/jobs/<job>"
-mkdir -p "$JOB_ROOT/tmp" "$JOB_ROOT/results" "$JOB_ROOT/fathom-home"
-export TMPDIR="$JOB_ROOT/tmp"
-export GOTMPDIR="$JOB_ROOT/tmp"
-export GOCACHE="$JOB_ROOT/go-build-cache"
+mkdir -p "$JOB_ROOT/results" "$JOB_ROOT/fathom-home"
+# Scratch and caches churn many files: keep them where file indexers skip them
+# (on macOS ~/Library/Caches, which Spotlight does not index), outside every repository.
+export SCRATCH="${XDG_CACHE_HOME:-$HOME/Library/Caches}/fathom-jobs/<job>"
+mkdir -p "$SCRATCH/tmp"
+export TMPDIR="$SCRATCH/tmp"
+export GOTMPDIR="$SCRATCH/tmp"
+export GOCACHE="${XDG_CACHE_HOME:-$HOME/Library/Caches}/fathom-jobs/go-build"  # shared per machine; safe for concurrent jobs
 export FATHOM_HOME="$JOB_ROOT/fathom-home"
 go version
 fathom version
