@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"encoding/json"
+	"fmt"
 	"runtime"
 	"strings"
 	"testing"
@@ -79,5 +80,21 @@ func TestJSONSizeMatchesMarshal(t *testing.T) {
 		if n, err := jsonSize(v, 1<<30); err != nil || n != len(b) {
 			t.Errorf("jsonSize(%#v) = %d, %v; Marshal = %d", v, n, err, len(b))
 		}
+	}
+}
+
+func TestJSONSizeInvalidUTF8MatchesMarshal(t *testing.T) {
+	for _, s := range []string{"\xff", "\xc0\xaf", "\xe2\x82", "<\xff>&\u2028\u2029", "\ufffd"} {
+		t.Run(fmt.Sprintf("%x", s), func(t *testing.T) {
+			for _, v := range []any{s, []string{s}, map[string]string{s: s}} {
+				b, err := json.Marshal(v)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if n, err := jsonSize(v, 1<<30); err != nil || n != len(b) {
+					t.Errorf("jsonSize(%#v) = %d, %v; Marshal = %d", v, n, err, len(b))
+				}
+			}
+		})
 	}
 }
