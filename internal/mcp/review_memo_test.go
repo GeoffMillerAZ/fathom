@@ -83,7 +83,11 @@ func TestReviewDiffReusesMemoGraphAndTypedEdges(t *testing.T) {
 		}
 	})
 	t.Logf("warm review allocations: %.0f", allocs)
-	if allocs > 18000 {
-		t.Fatalf("warm review allocations=%.0f, want <=18000 for 512 symbols", allocs)
+	base := testing.AllocsPerRun(3, func() { _ = review.Run(in) })
+	in.ImpactGraph = g
+	shared := testing.AllocsPerRun(3, func() { _ = review.Run(in) })
+	t.Logf("base=%.0f shared=%.0f impact allocations", base, shared)
+	if shared >= base*0.85 {
+		t.Fatalf("shared graph allocations=%.0f, want <85%% of base graph %.0f", shared, base)
 	}
 }
