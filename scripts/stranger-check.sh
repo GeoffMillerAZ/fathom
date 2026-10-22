@@ -71,7 +71,7 @@ start=$SECONDS
 # RH-9: sub-second timestamps for the per-step timing table ($SECONDS
 # alone is 1s-resolution — too coarse for a fixture ingest/verify that
 # each complete in well under a second).
-t_setup=$EPOCHREALTIME
+t_setup=${EPOCHREALTIME:-$(date +%s)}
 # RT-25 (docs/design/responsible-tenant.md §10.3): a PRIVATE work dir per
 # run, removed by the trap. The fixed ${TMPDIR}/fathom-stranger-check was
 # shared by concurrent runs (one run's rm -rf pulled the tree from under
@@ -137,7 +137,7 @@ if ! (cd "${tree}" && GOWORK=off go build -trimpath -o bin/fathom ./cmd/fathom >
   exit 1
 fi
 bin="${tree}/bin/fathom"
-t_build=$EPOCHREALTIME
+t_build=${EPOCHREALTIME:-$(date +%s)}
 
 # 3. A throwaway daemon on a free port with a temp store.
 #    FATHOM_TENANCY_BUDGET: an unmanaged serve-http takes the 512 MiB
@@ -161,7 +161,7 @@ if ! curl -s --max-time 1 "${url}/healthz" 2>/dev/null | grep -q ok; then
   tail -20 "${work}/daemon.log" >&2
   exit 1
 fi
-t_daemon=$EPOCHREALTIME
+t_daemon=${EPOCHREALTIME:-$(date +%s)}
 
 # 4. init as a stranger: temp HOME, --harness=none (stanza + .fathom/ +
 #    skills, no hook file), the copy's own binary, against a stranger's
@@ -199,7 +199,7 @@ if [ "${init_rc}" -ne 0 ]; then
   tail -10 "${work}/init.log" >&2
   exit 1
 fi
-t_init=$EPOCHREALTIME
+t_init=${EPOCHREALTIME:-$(date +%s)}
 
 # 4b. RH-9 (docs/design/reach.md §5): the timed first proven answer. A
 #     SECOND, tiny fixture service — fauxtown's checkout-service, copied
@@ -229,14 +229,14 @@ if ! (cd "${fixture_dir}" && HOME="${home}" "${bin}" ingest -service fathom-stra
   cat "${fixture_dir}/ingest.log" >&2
   exit 1
 fi
-t_ingest=$EPOCHREALTIME
+t_ingest=${EPOCHREALTIME:-$(date +%s)}
 
 if ! (cd "${fixture_dir}" && HOME="${home}" "${bin}" verify -service fathom-stranger-fixture -plan plan.md -store fixture-store.sqlite >verify.log 2>&1); then
   echo "stranger-check: FAIL the RH-9 fixture verify did not exit 0 — no first proven answer:" >&2
   cat "${fixture_dir}/verify.log" >&2
   exit 1
 fi
-t_first_answer=$EPOCHREALTIME
+t_first_answer=${EPOCHREALTIME:-$(date +%s)}
 
 # 5. One real tool call against /rpc/agent, the way a stranger's first
 #    session makes one — this is what proves the surface answers, and it
