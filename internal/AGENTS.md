@@ -27,12 +27,12 @@ store-purego` (`CGO_ENABLED=0 go test -race ./internal/store/`, invariant I2).
 
 ## The domain model is the keystone
 
-Shared types live in `internal/core`; extend it additively.
+Put shared types in `internal/core` and extend them additively.
 `pkg/client` re-exports for external consumers.
 
 ## Adding things
 
-- **Extractor**: a new language or tool format is a dialect directory, not Go —
+- **Extractor**: a new language or tool format must be a dialect directory, never Go —
   follow the worker recipe (`docs/design/language-breadth.md` §13, ADR-048). Only the
   engines, L3 strategies and native typed passes are Go: a native extractor implements
   `extractor.Extractor`, registers by extension in `fusion.New()`, adds its ext→kind in

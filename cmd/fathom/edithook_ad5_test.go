@@ -35,7 +35,7 @@ func TestAD5EditHookInstructionsAndWithheldLog(t *testing.T) {
 			original := http.DefaultTransport
 			t.Cleanup(func() { http.DefaultTransport = original })
 			http.DefaultTransport = ad5RoundTripper(func(r *http.Request) (*http.Response, error) {
-				payload := map[string]any{"service": strings.ToLower(filepath.Base(dir)), "file": "pkg/a.go", "rules": rules, "raw_withheld": 1}
+				payload := map[string]any{"service": strings.ToLower(filepath.Base(dir)), "file": "pkg/a.go", "rules": rules, "raw_withheld": 1, "inforce_withheld": 2}
 				envelope := map[string]any{"jsonrpc": "2.0", "id": 1, "result": map[string]any{"content": []any{map[string]any{"type": "text", "text": mustJSON(payload)}}}}
 				return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(mustJSON(envelope))), Header: make(http.Header)}, nil
 			})
@@ -61,6 +61,9 @@ func TestAD5EditHookInstructionsAndWithheldLog(t *testing.T) {
 			for _, b := range beats {
 				if b.Channel == "edit-hook" && b.Kind == "answered" {
 					answered++
+					if b.Meta["inforce_withheld"] != "2" {
+						t.Errorf("in-force count missing: %+v", b)
+					}
 					if b.Meta["raw_withheld"] != "1" {
 						t.Errorf("answered row = %+v", b)
 					}

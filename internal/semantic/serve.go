@@ -256,7 +256,8 @@ type Obligations struct {
 	// never served, never silent (I7).
 	Superseded int `json:"superseded_withheld,omitempty"`
 	// RawWithheld counts raw sections without an extractable instruction.
-	RawWithheld int `json:"raw_withheld,omitempty"`
+	RawWithheld     int `json:"raw_withheld,omitempty"`
+	InForceWithheld int `json:"inforce_withheld,omitempty"`
 	// DisplacedRepo is the count ObligationsFor itself cut from this
 	// service's own claims (identical to the pre-phase-O Displaced value).
 	// Always 0 (omitted) before internal/modserve.Bind runs.
@@ -927,6 +928,10 @@ func obligationsCoreTrace(ctx context.Context, st store.Store, serviceID, outFil
 			switch st, _ := standing(primaryCite[cl.ClaimID]); st {
 			case fullySuperseded:
 				out.Superseded++
+				out.InForceWithheld++
+				continue
+			case "proposed", "rejected", "deferred", "archived", "checked":
+				out.InForceWithheld++
 				continue
 			case partlySuperseded:
 				inForceTag[cl.ClaimID] = st

@@ -642,7 +642,7 @@ func TestClient_RawFallbackObligations_BehaviorTokenFromFileContent(t *testing.T
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "ADR.md"), []byte(
-		"## ADR-050: cmd tool\n\nThe cmd package must wrap go binaries.\n"), 0o644); err != nil {
+		"## ADR-050: cmd tool\n\n**Decision.** The cmd package must wrap go binaries.\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.MkdirAll(filepath.Join(dir, "cmd"), 0o755); err != nil {
@@ -668,7 +668,7 @@ func TestClient_RawFallbackObligations_BehaviorTokenFromFileContent(t *testing.T
 	if !ok || len(rows) != 1 {
 		t.Fatalf("ok=%v rows=%+v, want exactly one raw row", ok, rows)
 	}
-	if rows[0].Rule != "All build artifacts belong under the gitignored workspace/ directory, never elsewhere in the tree. Run go tools from cmd as usual." {
+	if rows[0].Rule != "All build artifacts belong under the gitignored workspace/ directory, never elsewhere in the tree.\nRun go tools from cmd as usual." {
 		t.Errorf("rows[0].Rule = %q, want the workspace/ convention row — cmd/emit.go's own os.WriteFile call should have promoted it over the ADR-050 decoy: rows=%+v", rows[0].Rule, rows)
 	}
 }

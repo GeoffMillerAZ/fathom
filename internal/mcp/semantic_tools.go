@@ -618,6 +618,10 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 	if coverageSkipped == "" {
 		coverageSkipped = rawStats.Skipped
 	}
+	obl.InForceWithheld += rawStats.InForceWithheld
+	if obl.InForceWithheld > 0 {
+		result["inforce_withheld"] = obl.InForceWithheld
+	}
 	if rawStats.Withheld > 0 {
 		result["raw_withheld"] = rawStats.Withheld
 	}

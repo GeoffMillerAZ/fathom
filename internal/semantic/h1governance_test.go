@@ -79,7 +79,6 @@ func TestH1GovernanceTasks_RawFallbackOffline(t *testing.T) {
 		extra    []string // caller-resolved symbol/import tokens, item 1's optional signal
 		want     string   // substring expected in a top-3 row's section identity
 		note     string
-		withheld bool   // ADR-080 d2: the matching section has no imperative body
 		hardGate bool   // wave O3 item 3: a MISS here fails the build, not just logs
 		missWhy  string // required when !hardGate: why this case still misses, so a MISS never reads as an unexplained skip
 	}{
@@ -127,7 +126,7 @@ func TestH1GovernanceTasks_RawFallbackOffline(t *testing.T) {
 		},
 		{
 			id: "H1-T12", file: "internal/core/model.go",
-			want: "domain model", hardGate: true, withheld: true,
+			want: "domain model", hardGate: true,
 			note: "shared types live in internal/core, extend additively",
 		},
 		{
@@ -157,12 +156,6 @@ func TestH1GovernanceTasks_RawFallbackOffline(t *testing.T) {
 				if strings.Contains(r.Subject, slugify(c.want)) {
 					found = true
 				}
-			}
-			if c.withheld {
-				if found {
-					t.Fatalf("ADR-080 d2: instruction-free section served: %+v", rows)
-				}
-				return
 			}
 			if found {
 				t.Logf("%s: PASS — found %q among top-3 rows", c.id, c.want)

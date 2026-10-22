@@ -238,6 +238,9 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	// rule_outcome_writer reads as "should have written a row".
 	answeredMeta := withFold(withDestination(map[string]string{"emitted": "true", "phase": "post"}, projDir, filePath), meta.fold)
 	answeredMeta["claims"] = strconv.Itoa(meta.claims)
+	if meta.inForceWithheld > 0 {
+		answeredMeta["inforce_withheld"] = strconv.Itoa(meta.inForceWithheld)
+	}
 	if meta.rawWithheld > 0 {
 		answeredMeta["raw_withheld"] = strconv.Itoa(meta.rawWithheld)
 	}
@@ -269,11 +272,12 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 // postEditMeta is what renderPostEdit learned while rendering — the counts
 // the answered beat and the story row carry beside the payload.
 type postEditMeta struct {
-	rules       int
-	moduleRules []semantic.Obligation // emitted-module accounting, after successful delivery
-	repoRelFile string
-	displaced   int
-	rawWithheld int
+	rules           int
+	moduleRules     []semantic.Obligation // emitted-module accounting, after successful delivery
+	repoRelFile     string
+	displaced       int
+	rawWithheld     int
+	inForceWithheld int
 	// findingsShown/findingsOmitted (FL-20) are renderFindingsBlock's own
 	// counts — 0/0 when the block never rendered (no finding-kind rows, no
 	// overlap with the edited range, or the shared budget was already
@@ -418,6 +422,7 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 		// covers a later candidate that REBINDS svcName to itself.
 		if justResolved {
 			obl.RawWithheld = o.RawWithheld
+			obl.InForceWithheld = o.InForceWithheld
 			specRefs = sr
 		}
 		if len(o.Rules) > 0 || stale || o.CoverageSkipped != "" {
@@ -604,6 +609,9 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 
 	if sb.Len() == 0 {
 		meta := withFold(withDestination(silentAnswerMeta(map[string]string{"phase": "post"}, silenceNoRules), projDir, filePath), fold)
+		if obl.InForceWithheld > 0 {
+			meta["inforce_withheld"] = strconv.Itoa(obl.InForceWithheld)
+		}
 		if obl.RawWithheld > 0 {
 			meta["raw_withheld"] = strconv.Itoa(obl.RawWithheld)
 		}
@@ -620,6 +628,7 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 		repoRelFile:     repoRelFile,
 		displaced:       obl.Displaced,
 		rawWithheld:     obl.RawWithheld,
+		inForceWithheld: obl.InForceWithheld,
 		findingsShown:   findingsShown,
 		findingsOmitted: findingsOmitted,
 		service:         svcName,
@@ -889,6 +898,7 @@ func fetchObligations(baseURL, service, file string, maxRules int, timeout time.
 		Displaced           int                   `json:"displaced"`
 		Superseded          int                   `json:"superseded_withheld"`
 		RawWithheld         int                   `json:"raw_withheld"`
+		InForceWithheld     int                   `json:"inforce_withheld"`
 		DisplacedRepo       int                   `json:"displaced_repo"`
 		DisplacedModule     int                   `json:"displaced_module"`
 		ModuleNotes         []semantic.ModuleNote `json:"module_notes"`
@@ -910,6 +920,7 @@ func fetchObligations(baseURL, service, file string, maxRules int, timeout time.
 		Displaced:       payload.Displaced,
 		Superseded:      payload.Superseded,
 		RawWithheld:     payload.RawWithheld,
+		InForceWithheld: payload.InForceWithheld,
 		DisplacedRepo:   payload.DisplacedRepo,
 		DisplacedModule: payload.DisplacedModule,
 		ModuleNotes:     payload.ModuleNotes,
