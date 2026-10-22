@@ -24,8 +24,14 @@ func cmdLangNext(args []string, stdout, stderr io.Writer) int {
 	fs.SetOutput(stderr)
 	root := fs.String("root", ".", "repository root")
 	all := fs.Bool("all", false, "also list blocked items, items needing re-planning, and what holds them")
+	near := fs.Bool("near-miss", false, "list measured first-level blockers within -margin of their bar, including refused items")
+	margin := fs.Float64("margin", .01, "absolute ratio margin (0.01 is one percentage point)")
+	jsonOut := fs.Bool("json", false, "emit near-miss rows as JSON")
 	if err := fs.Parse(args); err != nil {
 		return 2
+	}
+	if *near {
+		return cmdLangNearMiss(*root, *margin, *jsonOut, stdout, stderr)
 	}
 	q, err := langbench.LoadQueue(filepath.Join(*root, "docs", "plans", "language-breadth.queue.json"))
 	if err != nil {

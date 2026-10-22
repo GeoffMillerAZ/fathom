@@ -1,0 +1,11 @@
+{
+ "dialect":"sample", "kind":"language", "target_level":"L1", "level_met":"L1",
+ "grade":{"L1":"good","L2":"not-attempted","L3":"not-attempted","L4":"not-attempted"},
+ "grammar":{"blob":"sample","commit":"0123456789012345678901234567890123456789"},
+ "subjects":[{"name":"sample","files":100,"bytes":1000000}],
+ "required_kinds":["class"],"kind_intersection":["class"],
+ "metrics":{"sym_recall":1,"sym_precision":1,"kind_agreement":1,"range_agreement":0.8,"signature_coverage":1},
+ "metric_tiers":{"sym_recall":"A","sym_precision":"A","kind_agreement":"A","range_agreement":"A","signature_coverage":"A"},
+ "counts":{"range_eligible":10,"range_ok":7,"imports_unresolved":2},
+ "tenancy":{"throughput_mb_s":2,"max_file_ms":1,"peak_module_pages":1}
+}

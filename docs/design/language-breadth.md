@@ -1981,6 +1981,59 @@ worktree and your scratch directory.
     missed call shape). Each iteration adds or fixes a fixture first. Stop iterating after
     three rounds without movement.
 
+### 13.4.1 Offline measure loop and gap reports
+
+`task lang:loop -- <id>` runs steps 12, 18–21 and the tracker part of step 22:
+probe every fixture for a tags engine, measure all locally cloned subjects in the
+item's calibration shard, regrade from their raw counts, and render the tracker in
+memory. A doc/native engine discloses that the tree probe is skipped. Missing
+subjects are errors, never silently removed from the corpus. Nothing is cloned,
+fetched or installed. `task lang:loop -- <id> SUBJECT=<checkout>` explicitly selects
+one local subject. To save a non-regressing reading and tracker, pass `WRITE=1`.
+Without it, both committed files remain unchanged. A regression in any level's
+grade or in `level_met` exits non-zero and is never written, even with `WRITE=1`.
+The summary reports all four grades, the committed-reading delta and the three
+largest counted mismatch classes. Stage notes are capped at 20 lines.
+
+The queue names oracles in prose, not executable recipes. Installed universal-ctags
+runs when the entry names `ctags`. Other oracles require an explicit local runner
+file: `task lang:loop ORACLE_CONFIG=<runners.json> -- <id>`. The JSON object is keyed
+by the entry's exact oracle name. Each value has `command`, `args`, `format`
+(`tool` for neutral oracle JSON or `scip`) and optional `defs: true` for SCIP L1.
+Arguments substitute `{subject}` and `{out}`. The command must write the output
+file. Commands run directly, without a shell, with step 19's 20-minute timeout.
+For example, an already installed local adapter can be declared as:
+
+```json
+{"a local oracle": {"command": "local-oracle", "args": ["-subject", "{subject}", "-out", "{out}"], "format": "tool"}}
+```
+
+Adapters must operate offline. A missing tool or undeclared runner is named as
+skipped, and the harness grades only the evidence that actually ran. A failed
+installed oracle fails the loop. Configure every oracle the queue names before
+using the result as a complete calibration. `READING=<reading.json>` replays only
+regrading and tracker generation, explicitly skipping probe and oracle stages.
+`LANG_ROOT=<fixture checkout>` selects metadata for an offline task replay.
+
+`go run ./cmd/indexbench lang-gap -id <id>` diagnoses the committed reading;
+`-reading <path>` selects a newer scratch reading, and `-fresh` measures local
+subjects first (`-subject` and `-oracle-config` match the loop). It reports named
+blockers, counts with units, and the recipe step to try next. `-unmatched <path>`
+can be repeated for the harness's mismatch sidecars. Up to three sorted file:line
+examples are shown where those sidecars record locations. Counts alone do not
+invent locations or attribute a missing call to generics. `--json` emits the same
+report as stable JSON.
+
+`go run ./cmd/indexbench lang-next --near-miss [-margin 0.01] [--json]` reports
+measured blockers at the first blocked level. The margin is an absolute ratio
+(one percentage point by default), never a changed grading bar. The parse-error
+line stays 5%. A legacy refusal row with explicit calibration-file error counts
+and a grammar pin can supply that measurement when its reading predates
+`files_with_error`; the report cites that row. Other prose is not evidence.
+The measured grammar commit wins. Older readings without one disclose a fallback
+to the current local lock, or an unknown pin. Resource/time metrics are excluded
+from this ratio-based shortlist because their units differ.
+
 ### 13.5 Register and document
 
 22. Run `go test ./internal/extractor ./internal/connector ./internal/fusion -run
