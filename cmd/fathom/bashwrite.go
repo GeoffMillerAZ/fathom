@@ -348,18 +348,27 @@ func inPlaceWriteArgs(verb string, args []string) (targets []string, inPlace boo
 				continue
 			}
 			if verb == "sed" {
-				if strings.HasPrefix(a, "-i") || a == "--in-place" || strings.HasPrefix(a, "--in-place=") {
+				if a == "--in-place" || strings.HasPrefix(a, "--in-place=") {
 					inPlace = true
-					if a == "-i" && i+1 < len(args) && args[i+1] == "" {
-						i++ // BSD sed's separate empty backup suffix
+					continue
+				}
+				for j := 1; j < len(a); j++ {
+					switch a[j] {
+					case 'i':
+						inPlace = true
+						if j == len(a)-1 && i+1 < len(args) && args[i+1] == "" {
+							i++ // BSD sed's separate empty backup suffix
+						}
+						j = len(a) // any remainder is a backup suffix
+					case 'e', 'f':
+						hasScript = true
+						j = len(a) // any remainder is the script or script path
 					}
-				} else if strings.HasPrefix(a, "-e") || strings.HasPrefix(a, "-f") {
-					hasScript = true
 				}
 				continue
 			}
-			// Perl and Ruby accept combined flags (-pi, -pe). The rest of
-			// an -i flag is a backup suffix; -e consumes its script.
+			// Perl and Ruby accept combined flags (-pi, -pe). Stop at
+			// switches whose remaining bytes (or next word) are their value.
 			for j := 1; j < len(a); j++ {
 				if a[j] == 'i' {
 					inPlace = true
@@ -367,6 +376,14 @@ func inPlaceWriteArgs(verb string, args []string) (targets []string, inPlace boo
 				}
 				if a[j] == 'e' {
 					hasScript = true
+					if j == len(a)-1 {
+						i++
+					}
+					break
+				}
+				argumentFlag := (verb == "perl" && strings.ContainsRune("IMmx0lCdDF", rune(a[j]))) ||
+					(verb == "ruby" && strings.ContainsRune("IrCEFKWx0", rune(a[j])))
+				if argumentFlag {
 					if j == len(a)-1 {
 						i++
 					}
