@@ -10,11 +10,10 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
-// ListSymbolNodes reads the same complete observation rows as QueryObservations,
+// listSymbolNodesRaw reads the same complete observation rows as QueryObservations,
 // directly into their public symbol projection. It avoids retaining an entire
-// Observation slice beside the SymbolNode slice. Other Store implementations may
-// omit this optional capability; the client retains its existing fallback.
-func (s *SQLiteStore) ListSymbolNodes(ctx context.Context, serviceID string) ([]core.SymbolNode, error) {
+// Observation slice beside the SymbolNode slice.
+func (s *SQLiteStore) listSymbolNodesRaw(ctx context.Context, serviceID string) ([]core.SymbolNode, error) {
 	// Finish the bounded count before opening rows, including when the
 	// store has only one connection. A failed/stale count never limits rows.
 	var count int64
@@ -25,8 +24,7 @@ func (s *SQLiteStore) ListSymbolNodes(ctx context.Context, serviceID string) ([]
 		return nil, fmt.Errorf("QueryObservations query: %w", err)
 	}
 	defer rows.Close()
-	nodes, err := scanSymbolNodesWithHint(ctx, rows, hint)
-	return filterScoped(ctx, s.gate, serviceID, nodes, err, func(n core.SymbolNode) string { return n.FilePath })
+	return scanSymbolNodesWithHint(ctx, rows, hint)
 }
 
 type symbolNodeRows interface {

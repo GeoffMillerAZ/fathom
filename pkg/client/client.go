@@ -325,24 +325,9 @@ func (c *Client) BatchQuery(ctx context.Context, qs []Query) ([]QueryResult, err
 // concern or keyword filtering.  This is the "list everything" API used by
 // inspect and by the query fallback path.
 func (c *Client) ListAllSymbols(ctx context.Context, serviceID string) ([]SymbolNode, error) {
-	// Stores may project rows directly, avoiding a second full observation
-	// slice. Other backends retain the observation-based fallback.
-	if reader, ok := c.st.(interface {
-		ListSymbolNodes(context.Context, string) ([]core.SymbolNode, error)
-	}); ok {
-		nodes, err := reader.ListSymbolNodes(ctx, serviceID)
-		if err != nil {
-			return nil, fmt.Errorf("client.ListAllSymbols: %w", err)
-		}
-		return nodes, nil
-	}
-	obs, err := c.st.QueryObservations(ctx, serviceID, "")
+	nodes, err := c.st.ListSymbolNodes(ctx, serviceID)
 	if err != nil {
 		return nil, fmt.Errorf("client.ListAllSymbols: %w", err)
-	}
-	nodes := make([]SymbolNode, 0, len(obs))
-	for _, o := range obs {
-		nodes = append(nodes, o.ToSymbolNode())
 	}
 	return nodes, nil
 }

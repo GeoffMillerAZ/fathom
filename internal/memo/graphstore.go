@@ -372,74 +372,32 @@ func PeekSnapshot(sc Scope) (*Snapshot, bool) {
 	return snapshotGroup.Peek(snapKey{sc})
 }
 
-// NavBuildCost is what sc's snapshot and its three call graphs (syntax,
-// both, resolved: the navigation tools' set) still cost to build (O1446):
-// for each one not resident, its group's last completed build of the
-// service (O1236's per-service record), ExpectedCost when none is
-// measured, less what a flight in progress has already run; the typed
-// edges count too while a graph that reads them is missing. resident is
-// true when all four are cached. Nothing is built, counted or moved in the
-// LRU. With kinds provided, only those graphs and their typed details are required.
-func NavBuildCost(sc Scope, kinds ...GraphKind) (cost time.Duration, resident bool) {
-	typedRequired := len(kinds) > 0
-	if len(kinds) == 0 {
-		kinds = []GraphKind{GraphSyntax, GraphBoth, GraphResolved}
-	}
+// NavBuildCostFor estimates the snapshot, requested graph and (except for
+// Syntax) typed edges still needed by a navigation reader. Each missing part
+// uses its service's last completed build cost, or ExpectedCost before any
+// measurement, less elapsed flight work. Resident requires every part,
+// including typed details even when the graph remains cached. It builds
+// nothing and does not move entries in the LRU.
+func NavBuildCostFor(sc Scope, kind GraphKind) (cost time.Duration, resident bool) {
 	cost, resident = snapshotGroup.pendingCost(snapKey{sc})
-	typedNeeded := typedRequired && kinds[0] != GraphSyntax
-	for _, k := range kinds {
-		d, ok := graphGroup.pendingCost(graphKey{sc, k})
-		cost += d
-		resident = resident && ok
-		typedNeeded = typedNeeded || (!ok && k != GraphSyntax)
-	}
-	if typedNeeded {
+	d, ok := graphGroup.pendingCost(graphKey{sc, kind})
+	cost += d
+	resident = resident && ok
+	if kind != GraphSyntax {
 		d, ok := typedGroup.pendingCost(typedKey{sc})
 		cost += d
-		if typedRequired {
-			resident = resident && ok
-		}
+		resident = resident && ok
 	}
 	return cost, resident
-}
-
-// NavBuildCostFor estimates the snapshot, typed edges and one requested
-// graph kind. A reader needing only Both must not wait for unrelated kinds.
-func NavBuildCostFor(sc Scope, kind GraphKind) (cost time.Duration, resident bool) {
-	return NavBuildCost(sc, kind)
-}
-
-// NavBuildMeasured reports whether every part of sc's navigation set that
-// is not resident (the snapshot, the three graphs, the typed edges while a
-// graph that reads them is missing) has a completed build of the service
-// recorded since the process started, so NavBuildCost is a measurement and
-// not ExpectedCost (O1446). Nothing is built, counted or moved in the LRU.
-// With kinds provided, only those graphs and their typed details are required.
-func NavBuildMeasured(sc Scope, kinds ...GraphKind) bool {
-	typedRequired := len(kinds) > 0
-	if len(kinds) == 0 {
-		kinds = []GraphKind{GraphSyntax, GraphBoth, GraphResolved}
-	}
-	if !snapshotGroup.measured(snapKey{sc}) {
-		return false
-	}
-	typedNeeded := typedRequired && kinds[0] != GraphSyntax
-	for _, k := range kinds {
-		key := graphKey{sc, k}
-		if !graphGroup.measured(key) {
-			return false
-		}
-		if _, ok := graphGroup.Peek(key); !ok && k != GraphSyntax {
-			typedNeeded = true
-		}
-	}
-	return !typedNeeded || typedGroup.measured(typedKey{sc})
 }
 
 // NavBuildMeasuredFor reports whether the requested graph's missing parts
 // have completed builds from which to estimate a cold deadline.
 func NavBuildMeasuredFor(sc Scope, kind GraphKind) bool {
-	return NavBuildMeasured(sc, kind)
+	if !snapshotGroup.measured(snapKey{sc}) || !graphGroup.measured(graphKey{sc, kind}) {
+		return false
+	}
+	return kind == GraphSyntax || typedGroup.measured(typedKey{sc})
 }
 
 // NavKeepAfter is how long a caller must stay on a snapshot or graph flight

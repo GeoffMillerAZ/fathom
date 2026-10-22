@@ -192,85 +192,88 @@ func TestSnapshot_NameIndexSharedByReaders(t *testing.T) {
 	}
 }
 
-// TestNavBuildCostPeeksWithoutBuilding pins the O1446 accessors: before any
-// build NavBuildCost is the expected costs summed and nothing resident;
-// it builds nothing and PeekSnapshot loads nothing; once the snapshot and
-// the three graphs are built it is zero and resident.
+// TestNavBuildCostPeeksWithoutBuilding checks each kind independently:
+// missing parts contribute their expected costs without starting a build.
 func TestNavBuildCostPeeksWithoutBuilding(t *testing.T) {
-	isolateGraphStore(t)
-	ctx := context.Background()
-	sc := Scope{Store: "navcost-test", Service: "svc", Watermark: "w1"}
-	cost, resident := NavBuildCost(sc)
-	if resident || cost != snapshotCost+3*graphCost+typedCost {
-		t.Fatalf("cold NavBuildCost = %v, %v; want %v, false", cost, resident, snapshotCost+3*graphCost+typedCost)
-	}
-	if _, ok := PeekSnapshot(sc); ok {
-		t.Fatal("PeekSnapshot found a snapshot nothing built")
-	}
-	var loads atomic.Int32
-	snap, err := SnapshotFor(ctx, sc, func(context.Context) ([]core.SymbolNode, error) { loads.Add(1); return fixtureNodes(), nil })
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got, ok := PeekSnapshot(sc); !ok || got != snap {
-		t.Fatal("PeekSnapshot misses the resident snapshot")
-	}
-	if cost, resident := NavBuildCost(sc); resident || cost >= snapshotCost+3*graphCost+typedCost {
-		t.Fatalf("NavBuildCost with the snapshot resident = %v, %v; want less than cold and not resident", cost, resident)
-	}
-	typed := func(context.Context) ([]core.Edge, error) { return nil, nil }
-	for _, k := range []GraphKind{GraphSyntax, GraphBoth, GraphResolved} {
-		if _, err := GraphFor(ctx, snap, k, typed); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if cost, resident := NavBuildCost(sc); !resident || cost != 0 {
-		t.Fatalf("warm NavBuildCost = %v, %v; want 0, true", cost, resident)
-	}
-	if loads.Load() != 1 {
-		t.Fatalf("snapshot loaded %d times, want once", loads.Load())
+	for _, kind := range []GraphKind{GraphSyntax, GraphBoth, GraphResolved} {
+		t.Run(string(kind), func(t *testing.T) {
+			isolateGraphStore(t)
+			ctx := context.Background()
+			sc := Scope{Store: "navcost-test-" + string(kind), Service: "svc", Watermark: "w1"}
+			wantCost := snapshotCost + graphCost
+			if kind != GraphSyntax {
+				wantCost += typedCost
+			}
+			cost, resident := NavBuildCostFor(sc, kind)
+			if resident || cost != wantCost {
+				t.Fatalf("cold NavBuildCostFor = %v, %v; want %v, false", cost, resident, wantCost)
+			}
+			if _, ok := PeekSnapshot(sc); ok {
+				t.Fatal("PeekSnapshot found a snapshot nothing built")
+			}
+			var loads atomic.Int32
+			snap, err := SnapshotFor(ctx, sc, func(context.Context) ([]core.SymbolNode, error) { loads.Add(1); return fixtureNodes(), nil })
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got, ok := PeekSnapshot(sc); !ok || got != snap {
+				t.Fatal("PeekSnapshot misses the resident snapshot")
+			}
+			if cost, resident := NavBuildCostFor(sc, kind); resident || cost >= wantCost {
+				t.Fatalf("NavBuildCostFor with the snapshot resident = %v, %v; want less than cold and not resident", cost, resident)
+			}
+			typed := func(context.Context) ([]core.Edge, error) { return nil, nil }
+			if _, err := GraphFor(ctx, snap, kind, typed); err != nil {
+				t.Fatal(err)
+			}
+			if cost, resident := NavBuildCostFor(sc, kind); !resident || cost != 0 {
+				t.Fatalf("warm NavBuildCostFor = %v, %v; want 0, true", cost, resident)
+			}
+			if loads.Load() != 1 {
+				t.Fatalf("snapshot loaded %d times, want once", loads.Load())
+			}
+		})
 	}
 }
 
-// TestNavBuildMeasuredSurvivesANewWatermark pins O1446's restart signal:
-// before any build of a service NavBuildMeasured is false (NavBuildCost is
-// ExpectedCost); once its snapshot, typed edges and three graphs were built,
-// it stays true at the next watermark (an ingest evicts the entries, not the
-// measurement), and another store's service is still unmeasured.
+// TestNavBuildMeasuredSurvivesANewWatermark pins O1446's restart signal
+// for each graph kind: ingest evicts entries, not service measurements.
 func TestNavBuildMeasuredSurvivesANewWatermark(t *testing.T) {
-	isolateGraphStore(t)
-	ctx := context.Background()
-	sc := Scope{Store: "navmeasured-test", Service: "svc", Watermark: "w1"}
-	if NavBuildMeasured(sc) {
-		t.Fatal("NavBuildMeasured is true before any build")
-	}
-	snap, err := SnapshotFor(ctx, sc, func(context.Context) ([]core.SymbolNode, error) { return fixtureNodes(), nil })
-	if err != nil {
-		t.Fatal(err)
-	}
-	if NavBuildMeasured(sc) {
-		t.Fatal("NavBuildMeasured is true with only the snapshot built: the graphs' cost is still ExpectedCost")
-	}
-	typed := func(context.Context) ([]core.Edge, error) { return nil, nil }
-	for _, k := range []GraphKind{GraphSyntax, GraphBoth, GraphResolved} {
-		if _, err := GraphFor(ctx, snap, k, typed); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if !NavBuildMeasured(sc) {
-		t.Fatal("NavBuildMeasured is false with everything built")
-	}
-	next := sc
-	next.Watermark = "w2"
-	if _, resident := NavBuildCost(next); resident {
-		t.Fatal("a new watermark's set is resident before any build")
-	}
-	if !NavBuildMeasured(next) {
-		t.Fatal("a new watermark lost the service's measured build: an ingest evicts entries, not measurements")
-	}
-	other := next
-	other.Store = "navmeasured-other"
-	if NavBuildMeasured(other) {
-		t.Fatal("another store's service reads as measured")
+	for _, kind := range []GraphKind{GraphSyntax, GraphBoth, GraphResolved} {
+		t.Run(string(kind), func(t *testing.T) {
+			isolateGraphStore(t)
+			ctx := context.Background()
+			sc := Scope{Store: "navmeasured-test-" + string(kind), Service: "svc", Watermark: "w1"}
+			if NavBuildMeasuredFor(sc, kind) {
+				t.Fatal("NavBuildMeasuredFor is true before any build")
+			}
+			snap, err := SnapshotFor(ctx, sc, func(context.Context) ([]core.SymbolNode, error) { return fixtureNodes(), nil })
+			if err != nil {
+				t.Fatal(err)
+			}
+			if NavBuildMeasuredFor(sc, kind) {
+				t.Fatal("NavBuildMeasuredFor is true with only the snapshot built")
+			}
+			typed := func(context.Context) ([]core.Edge, error) { return nil, nil }
+			if _, err := GraphFor(ctx, snap, kind, typed); err != nil {
+				t.Fatal(err)
+			}
+			if !NavBuildMeasuredFor(sc, kind) {
+				t.Fatal("NavBuildMeasuredFor is false with every required part built")
+			}
+			next := sc
+			next.Watermark = "w2"
+			if _, resident := NavBuildCostFor(next, kind); resident {
+				t.Fatal("a new watermark's set is resident before any build")
+			}
+			if !NavBuildMeasuredFor(next, kind) {
+				t.Fatal("a new watermark lost the service's measured build")
+			}
+			other := next
+			other.Store = "navmeasured-other"
+			if NavBuildMeasuredFor(other, kind) {
+				t.Fatal("another store's service reads as measured")
+			}
+		})
 	}
 }

@@ -258,6 +258,10 @@ type Store interface {
 	// when concernID is "" all observations for the service are returned.
 	QueryObservations(ctx context.Context, serviceID, concernID string) ([]core.Observation, error)
 
+	// ListSymbolNodes returns every observation's symbol projection for the
+	// service, in the same order as QueryObservations, with scope filtering.
+	ListSymbolNodes(ctx context.Context, serviceID string) ([]core.SymbolNode, error)
+
 	// SymbolNamesForSource returns the distinct, sorted symbol names the
 	// service's observations declare in file — a source_ref equal to file
 	// or file followed by ":<line>". It reads only that file's rows (the

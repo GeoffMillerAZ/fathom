@@ -58,7 +58,7 @@ type coldGraph struct {
 // stage (warmNavStages) and stops at the first stage still building. A
 // cold result means the graphs are not ready and the caller answers its
 // partial; an error is the load's own.
-func navGraphsWithin(ctx context.Context, backend QueryInterface, service string, sc memo.Scope) (*navGraphs, *coldGraph, error) {
+func navGraphsWithin(ctx context.Context, backend QueryInterface, service string, sc memo.Scope) (*symbolContextGraphs, *coldGraph, error) {
 	dl, hasDeadline := ctx.Deadline()
 	cost, resident := memo.NavBuildCostFor(sc, memo.GraphBoth)
 	if !hasDeadline || resident || sc.Watermark == "" {

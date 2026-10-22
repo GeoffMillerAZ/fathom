@@ -186,7 +186,8 @@ func buildIndexes(nodes []core.SymbolNode) *Graph {
 		byNameAll: make(map[string][]string),
 	}
 
-	// Count ambiguity over deduplicated keys. The final observation wins.
+	// Count deduplicated keys so stale worktrees do not create false ambiguity.
+	// The final observation wins.
 	for _, n := range nodes {
 		g.nodes[n.Key()] = n
 	}

@@ -70,10 +70,11 @@ func TestSymbolContextNavigationAllocationBound(t *testing.T) {
 		b.nodes = append(b.nodes, core.SymbolNode{Service: "svc", Package: "work", FilePath: "work/run.go", Name: fmt.Sprintf("Extra%d", i), Kind: core.KindGoFunc})
 	}
 	sc := memo.Scope{}
-	var sink *navGraphs
+	var full *navGraphs
+	var sink *symbolContextGraphs
 	baseline := testing.AllocsPerRun(3, func() {
 		var err error
-		sink, err = loadNavGraphsAt(context.Background(), b, "svc", sc)
+		full, err = loadNavGraphsAt(context.Background(), b, "svc", sc)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -85,6 +86,9 @@ func TestSymbolContextNavigationAllocationBound(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
+	if len(full.Nodes) != len(sink.Nodes) {
+		t.Fatal("snapshot size changed")
+	}
 	t.Logf("full=%.0f context=%.0f nodes=%d", baseline, allocs, len(sink.Nodes))
 	if allocs > baseline*0.65 {
 		t.Fatalf("context allocations %.0f exceed 65%% of full navigation %.0f", allocs, baseline)

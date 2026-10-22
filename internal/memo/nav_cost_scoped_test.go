@@ -37,14 +37,15 @@ func TestNavBuildCostForBothDoesNotRequireOtherKinds(t *testing.T) {
 	if !NavBuildMeasuredFor(sc, GraphBoth) {
 		t.Fatal("evicted typed edges lost their service cost estimate")
 	}
-	if _, resident := NavBuildCost(sc); resident {
-		t.Fatal("full navigation incorrectly resident without Syntax and Resolved")
-	}
-	// Measurement is per service and graph group, so the completed Both
-	// build supplies an estimate for the other two kinds without making
-	// them resident. Keep the full accessor's existing meaning.
-	if !NavBuildMeasured(sc) {
-		t.Fatal("full navigation lost its per-service graph estimate")
+	for _, kind := range []GraphKind{GraphSyntax, GraphResolved} {
+		if _, resident := NavBuildCostFor(sc, kind); resident {
+			t.Fatalf("unbuilt graph kind %v is resident", kind)
+		}
+		// Measurements are per service and graph group, so Both supplies
+		// an estimate for other kinds without making them resident.
+		if !NavBuildMeasuredFor(sc, kind) {
+			t.Fatalf("graph kind %v lost its per-service estimate", kind)
+		}
 	}
 	sc.Watermark = "w2"
 	if _, resident := NavBuildCostFor(sc, GraphBoth); resident {
