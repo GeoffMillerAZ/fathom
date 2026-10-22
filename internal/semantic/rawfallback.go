@@ -351,12 +351,14 @@ func impliedGuideScope(docPath string) []string {
 	return []string{"**"}
 }
 
-// RawFallbackStats is request-local accounting, never retained in the store.
+// RawFallbackStats is request-local serving state, never retained in the store.
 type RawFallbackStats struct {
 	Withheld        int
 	InForceWithheld int
-	Refinder        *RawRuleRefinder // shared only within this request, keyed by path and content hash
-	Skipped         string           // the first selected citation that could not be read
+	Refinder        *RawRuleRefinder         // shared only within this request, keyed by path and content hash
+	Skipped         string                   // the first selected citation that could not be read
+	CheckCitations  func([]Obligation)       // optional surface-owned freshness check before live refinding
+	ReadCitation    func(Obligation, []byte) // capture a selected citation from bytes already read
 }
 type rawFallbackStatsKey struct{}
 

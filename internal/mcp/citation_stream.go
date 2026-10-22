@@ -63,6 +63,25 @@ func prepareObligationWindows(ctx context.Context, service string, rules []seman
 		}
 	}
 }
+
+// captureRawCitationWindow retains only the bounded snippet from the corpus
+// bytes (fresh) or the live refind bytes (stale), without another file read.
+func captureRawCitationWindow(ctx context.Context, service string, row semantic.Obligation, data []byte) {
+	r, _ := ctx.Value(citationReadsKey{}).(*citationReads)
+	file, start, end, ok := parseCitation(row.Src)
+	if r == nil || !ok {
+		return
+	}
+	w := &citationWindow{start: start, end: end, maxLines: end - start + 1, maxBytes: obligationSnippetMaxBytes * 2}
+	capture := citationCapture{windows: []*citationWindow{w}, line: 1}
+	_, _ = capture.Write(data)
+	capture.finish()
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if f := r.files[citationKey(service, file)]; f != nil {
+		f.windows = append(f.windows, w)
+	}
+}
 func citationSourceRange(ctx context.Context, b QueryInterface, service, file string, start, end, maxLines, maxBytes int) (sourceRange, error) {
 	w := addCitationWindow(ctx, service, file, start, end, maxLines, maxBytes)
 	status := citationForFile(ctx, b, service, file)
