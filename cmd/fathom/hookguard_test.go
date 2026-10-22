@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -191,6 +192,8 @@ func TestNoHookRPCOutlivesItsDescriptorBudget(t *testing.T) {
 	var bindings, withRPC int
 	var worstOver time.Duration // the most any hook's CPU + RPC wait ran past its budget
 	var worstWho string
+	var worstLeft time.Duration // the most CPU any hook's abandoned work used after it returned
+	var worstLeftWho string
 	for _, d := range harness.All() {
 		for _, b := range d.Hooks {
 			if b.TimeoutSec <= 0 || seen[d.ID+"\x00"+b.Verb] {
@@ -221,10 +224,24 @@ func TestNoHookRPCOutlivesItsDescriptorBudget(t *testing.T) {
 			budget := time.Duration(float64(full) * scale)
 			before := h.requests.Load()
 
+			goroutines0 := runtime.NumGoroutine()
 			cpu0, cpuOK := processCPUTime()
 			start := time.Now()
 			code, _, elapsed := runHookVerb(t, verb, payload)
 			cpu1, _ := processCPUTime()
+			// A hook may return at its deadline with work still running:
+			// tenancy.RunUntilDone abandons it, and in production os.Exit
+			// ends it the moment the hook returns. In process nothing ends
+			// it, so it ran inside the NEXT binding's CPU window and was
+			// charged there: on v0.18.0's CI, doctor --brief's abandoned
+			// probes put 469 ms on claude-code prompt-hook, the binding after
+			// it, whose own CPU is 5-10 ms. Wait for
+			// what this hook left to finish before the next binding starts,
+			// as the process boundary would; that CPU is charged to no hook,
+			// because in production it is never spent.
+			if left := settleHookGoroutines(goroutines0, total); left > worstLeft {
+				worstLeft, worstLeftWho = left, d.ID+" "+b.Verb
+			}
 			if code != 0 && verb[0] != "doctor" {
 				t.Errorf("%s %q: exit %d, want 0 (I9)", d.ID, b.Verb, code)
 			}
@@ -306,8 +323,22 @@ func TestNoHookRPCOutlivesItsDescriptorBudget(t *testing.T) {
 	if bindings < 20 || withRPC < 5 {
 		t.Fatalf("exercised %d bindings, %d reached the hanging daemon — the test did not test", bindings, withRPC)
 	}
-	t.Logf("%d bindings, %d reached the hanging daemon, %d RPCs total; worst CPU+RPC overrun %v of %v slack (%s)",
-		bindings, withRPC, h.requests.Load(), worstOver.Round(time.Millisecond), hookLocalWorkSlack, worstWho)
+	t.Logf("%d bindings, %d reached the hanging daemon, %d RPCs total; worst CPU+RPC overrun %v of %v slack (%s); most CPU after a hook returned %v (%s)",
+		bindings, withRPC, h.requests.Load(), worstOver.Round(time.Millisecond), hookLocalWorkSlack, worstWho, worstLeft.Round(time.Millisecond), worstLeftWho)
+}
+
+// settleHookGoroutines waits until the goroutines a hook left running when
+// it returned have exited (the count is back to baseline, what it was before
+// the hook started), bounded by limit, and returns the CPU the process used
+// meanwhile. Past limit it stops waiting: the harness would have killed the
+// hook process by then.
+func settleHookGoroutines(baseline int, limit time.Duration) time.Duration {
+	cpu0, _ := processCPUTime()
+	for deadline := time.Now().Add(limit); runtime.NumGoroutine() > baseline && time.Now().Before(deadline); {
+		time.Sleep(5 * time.Millisecond)
+	}
+	cpu1, _ := processCPUTime()
+	return cpu1 - cpu0
 }
 
 // TestHooksSilentWhenDisabled is RT-10 (§9): with disabled.json (or
