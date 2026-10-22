@@ -8,7 +8,6 @@ package mcp
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -620,19 +619,15 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 		return review.Input{}, reviewCorpus{}, navLoadError("review_diff", service, err)
 	}
 	loadTyped := typedLoader(backend, service)
-	typed, typedErr := memo.TypedFor(ctx, snap.Scope, loadTyped)
-	kind := memo.GraphBoth
-	if typedErr != nil {
-		kind = memo.GraphSyntax
-	}
-	graph, err := memo.GraphFor(ctx, snap, kind, loadTyped)
+	graph, typed, typedErr, err := memo.GraphForTyped(ctx, snap, memo.GraphBoth, loadTyped)
 	if err != nil {
-		if ctx.Err() != nil || !errors.Is(err, memo.ErrWouldNotFinish) {
-			return review.Input{}, reviewCorpus{}, navLoadError("review_diff", service, err)
+		if ctx.Err() != nil {
+			return review.Input{}, reviewCorpus{}, navLoadError("review_diff", service, ctx.Err())
 		}
-		// Optional memo graph admission has always left the base verdict
-		// available. Retain its ordinary uncached impact fallback; the
-		// optional dimensions below name the refusal as before.
+		// The memo is optional. Its admission or build failure leaves the
+		// ordinary uncached typed-impact path available for this review.
+		graph = nil
+		typed, typedErr = backend.TypedEdges(ctx, service)
 	}
 
 	in := review.Input{
