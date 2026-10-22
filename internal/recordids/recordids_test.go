@@ -106,9 +106,6 @@ func TestRepositoryRecordIDs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(cfg.Grandfather) != 20 {
-		t.Fatalf("expected 20 adoption exceptions, got %d", len(cfg.Grandfather))
-	}
 	d, err := Check("../..", cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -139,5 +136,35 @@ func TestDuplicateOutputIsSorted(t *testing.T) {
 	d, err := Check(root, cfg)
 	if err != nil || len(d) != 2 || d[0].Family != "a" || d[1].Family != "z" {
 		t.Fatalf("not sorted: %+v %v", d, err)
+	}
+}
+
+func TestIncidentBoldHeading(t *testing.T) {
+	root := t.TempDir()
+	write(t, root, "docs/intent/incidents.md", "**INC-15 first**\n**INC-15 duplicate**\n")
+	d, err := Check(root, Defaults())
+	if err != nil || len(d) != 1 || d[0].ID != "INC-15" {
+		t.Fatalf("bold incident duplicates: %+v %v", d, err)
+	}
+}
+
+func TestGrandfatherRejectsStalePairs(t *testing.T) {
+	for _, paths := range [][]string{{"docs/plans/a.md", "docs/plans/b.md"}, {"docs/plans/a.md", "docs/plans/b.md", "docs/plans/c.md"}} {
+		root := t.TempDir()
+		write(t, root, "docs/plans/a.md", "- [ ] one {id: P-1}\n")
+		write(t, root, "docs/plans/b.md", "- [ ] another {id: P-2}\n")
+		cfg := Defaults()
+		cfg.CrossPlan = true
+		cfg.Grandfather = []Exception{{ID: "P-1", Paths: paths}}
+		if _, err := Check(root, cfg); err == nil || !strings.Contains(err.Error(), "stale exception") {
+			t.Fatalf("stale pair accepted: %v", err)
+		}
+	}
+}
+
+func TestRepositoryEnforcesCrossPlanUniqueness(t *testing.T) {
+	cfg, err := Load("../../.fathom/record-ids.json")
+	if err != nil || !cfg.CrossPlan {
+		t.Fatalf("cross-plan check disabled: %+v %v", cfg, err)
 	}
 }

@@ -52,7 +52,7 @@ func Defaults() Config {
 		{Name: "adr", Files: []string{"ADR.md"}, Pattern: `^##\s+(ADR-[0-9]+)\b`},
 		{Name: "invariant", Files: []string{"docs/intent/invariants.md"}, Pattern: `^\|\s*(I[0-9]+)\s*\|`},
 		{Name: "future", Files: []string{"docs/intent/futures.md", "docs/intent/futures/*.md"}, Pattern: `^#{2,6}\s+(F[0-9]+)\b`},
-		{Name: "incident", Files: []string{"docs/intent/incidents.md"}, Pattern: `^(?:#{2,6}\s+|-\s+)(INC-[0-9]+)\b`},
+		{Name: "incident", Files: []string{"docs/intent/incidents.md"}, Pattern: `^(?:#{2,6}\s+|-\s+|\*\*)(INC-[0-9]+)\b`},
 		{Name: "plan", Files: []string{"docs/plans/*.md"}, Plans: true, PerFile: true},
 	}}
 }
@@ -101,6 +101,7 @@ func Check(root string, cfg Config) ([]Duplicate, error) {
 		return nil, fmt.Errorf("repository root is not a directory")
 	}
 	var out []Duplicate
+	planIDs := map[string]map[string]bool{}
 	for _, family := range cfg.Families {
 		var re *regexp.Regexp
 		if !family.Plans {
@@ -146,6 +147,12 @@ func Check(root string, cfg Config) ([]Duplicate, error) {
 					key = rel + "\x00" + id
 				}
 				at := Location{Path: rel, Line: line}
+				if family.Plans {
+					if planIDs[id] == nil {
+						planIDs[id] = map[string]bool{}
+					}
+					planIDs[id][rel] = true
+				}
 				if first, ok := seen[key]; ok {
 					// Always check each plan separately, including an excepted plan pair.
 					if !family.Plans || !cfg.CrossPlan || !excepted(cfg, id, first, at) {
@@ -198,6 +205,21 @@ func Check(root string, cfg Config) ([]Duplicate, error) {
 					}
 					local[id] = at
 					record(id, task.Line)
+				}
+			}
+		}
+	}
+	if cfg.CrossPlan {
+		for _, e := range cfg.Grandfather {
+			paths := slices.Clone(e.Paths)
+			slices.Sort(paths)
+			paths = slices.Compact(paths)
+			if len(paths) < 2 {
+				return nil, fmt.Errorf("stale exception %s: requires at least two distinct plan paths", e.ID)
+			}
+			for _, path := range paths {
+				if !planIDs[e.ID][path] {
+					return nil, fmt.Errorf("stale exception %s: %s no longer collides", e.ID, path)
 				}
 			}
 		}
