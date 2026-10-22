@@ -9,6 +9,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -94,6 +95,12 @@ const userScopeIgnoreWalkCap = 20000
 // violation) is reported as its own warn, naming the file, rather than
 // silently degrading the way the read-time LoadIgnore convenience does.
 func checkUserScopeIgnore(root string) doctorCheck {
+	ctx, cancel := doctorProbeContext(context.Background())
+	defer cancel()
+	return runDoctorProbe(ctx, func(ctx context.Context) doctorCheck { return checkUserScopeIgnoreContext(ctx, root) })
+}
+
+func checkUserScopeIgnoreContext(ctx context.Context, root string) doctorCheck {
 	const name = "user_scope_ignore"
 	userPath := connector.UserIgnorePath()
 	if userPath == "" {
@@ -113,7 +120,7 @@ func checkUserScopeIgnore(root string) doctorCheck {
 	}
 	projectOnly := connector.ProjectOnlyIgnore(root)
 
-	hidden := walkForUserHiddenFiles(root, projectOnly, union)
+	hidden := walkForUserHiddenFiles(root, projectOnly, union, ctx)
 	if len(hidden) > 0 {
 		return doctorCheck{
 			Name: name, Status: doctorWarn,
@@ -130,13 +137,18 @@ func checkUserScopeIgnore(root string) doctorCheck {
 // because of the project's own .fathomignore. Returns up to a handful of
 // example relative paths (sorted, first-found order from a deterministic
 // walk), nil when none found or the walk cannot proceed at all.
-func walkForUserHiddenFiles(root string, projectOnly, union *filter.Matcher) []string {
+func walkForUserHiddenFiles(root string, projectOnly, union *filter.Matcher, parents ...context.Context) []string {
+	ctx, cancel := doctorContextArg(parents)
+	defer cancel()
 	if union == nil {
 		return nil
 	}
 	var hidden []string
 	visited := 0
 	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if ctx.Err() != nil {
+			return filepath.SkipAll
+		}
 		if err != nil {
 			return nil //nolint:nilerr // best-effort diagnostic walk; a single unreadable entry must not abort the check
 		}

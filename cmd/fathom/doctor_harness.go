@@ -12,6 +12,7 @@ package main
 // named, never counted as absent (I38).
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -43,7 +44,7 @@ func checkHarnessHookFiles(root, harnessLabel string) doctorCheck {
 		return doctorCheck{Name: name, Status: doctorSkipped, Reason: hooksNotWiredReason(harnessLabel, fmt.Sprintf("%s documents %d hook binding(s) this build does not wire (data row, no codec) — nothing to read", d.Display, len(d.Hooks)))}
 	}
 	specs := hookSpecsFor(d.ID)
-	present, fileNotes := harnessHookEntriesByScope(root, d, specs)
+	present, fileNotes, _, _ := harnessHookEntriesByScope(root, d, specs)
 	var missing []string
 	for _, spec := range specs {
 		if len(present[hookSpecKeyOf(spec)]) == 0 {
@@ -88,7 +89,10 @@ func checkHarnessHookFiles(root, harnessLabel string) doctorCheck {
 // Absence is normal and silent; an unreadable or unparsable file is NAMED
 // in the returned notes and never counted as absence (I38 — an unreadable
 // file once made a whole audit report zero findings).
-func harnessHookEntriesByScope(root string, d harness.Descriptor, specs []hookSpec) (map[hookSpecKey][]string, []string) {
+func harnessHookEntriesByScope(root string, d harness.Descriptor, specs []hookSpec) (map[hookSpecKey][]string, []string, bool, bool) {
+	ctx, cancel := doctorProbeContext(context.Background())
+	defer cancel()
+	uncertain, indirect := false, false
 	present := map[hookSpecKey][]string{}
 	var fileNotes []string
 	for _, f := range d.HookFiles {
@@ -131,13 +135,16 @@ func harnessHookEntriesByScope(root string, d harness.Descriptor, specs []hookSp
 		}
 		hooksObj, _ := parsed["hooks"].(map[string]any)
 		for _, spec := range specs {
-			if hookMarkerPresent(hooksObj, spec) {
+			ev := doctorHookEvidence(ctx, root, hooksObj, spec)
+			uncertain = uncertain || ev.unknown
+			indirect = indirect || ev.indirect
+			if ev.found {
 				k := hookSpecKeyOf(spec)
 				present[k] = append(present[k], f.Scope+" "+f.Path)
 			}
 		}
 	}
-	return present, fileNotes
+	return present, fileNotes, uncertain || len(fileNotes) > 0, indirect
 }
 
 // harnessUserPath resolves a "~/"-prefixed descriptor path, honoring the

@@ -18,6 +18,7 @@ package main
 // state here that deserves a red mark.
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -25,7 +26,9 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/capability"
 )
 
-func checkCapabilities(baseURL, root, explicitSvc string) doctorCheck {
+func checkCapabilities(baseURL, root, explicitSvc string, parents ...context.Context) doctorCheck {
+	ctx, cancel := doctorContextArg(parents)
+	defer cancel()
 	const name = "capabilities"
 
 	reg := capability.Default()
@@ -42,7 +45,7 @@ func checkCapabilities(baseURL, root, explicitSvc string) doctorCheck {
 		}
 	}
 
-	probe := buildCapabilityProbe(baseURL, root, explicitSvc, time.Now())
+	probe := buildCapabilityProbeContext(ctx, baseURL, root, explicitSvc, time.Now())
 	reports := reg.DetectAll(probe, res)
 
 	var (

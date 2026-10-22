@@ -11,6 +11,7 @@ package main
 // lesson (doctor's repo-relative assumptions) applied at the source.
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -25,6 +26,10 @@ import (
 
 // buildCapabilityProbe gathers every observable fact the registry reads.
 func buildCapabilityProbe(baseURL, root, svc string, now time.Time) capability.Probe {
+	return buildCapabilityProbeContext(context.Background(), baseURL, root, svc, now)
+}
+
+func buildCapabilityProbeContext(ctx context.Context, baseURL, root, svc string, now time.Time) capability.Probe {
 	p := capability.Probe{RepoRoot: root, Service: svc}
 
 	// The intent corpus is read from disk only — no daemon, no RPC — so a
@@ -41,7 +46,7 @@ func buildCapabilityProbe(baseURL, root, svc string, now time.Time) capability.P
 		p.TechPacks = len(d.Packs)
 	}
 
-	m := cachedObservatoryModel(baseURL, now)
+	m := cachedObservatoryModelCtx(ctx, baseURL, now)
 	p.LedgerSessions = m.Impact.LedgerSessions
 	p.AgentSurfaceTools = m.AgentSurfaceTools
 	p.AgentSchemaBytes = m.AgentSchemaBytes

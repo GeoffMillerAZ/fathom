@@ -7,7 +7,8 @@ package main
 // docs/adoption/claude-code-internals.md §14 and docs/adoption/codex.md §7.
 //
 // Every check follows the C4-5 honesty discipline (docs/plans/review-verb.md):
-// an uncheckable state (unreadable config, unreachable daemon, unresolvable
+// uncertain wiring and expired probes are unknown/timeout, never a pass or
+// a claimed failure. Other uncheckable states (unreadable config, unresolvable
 // home directory) is reported `skipped` with a reason and, where possible, a
 // manual instruction — NEVER a guessed `pass`. A real, observable problem is
 // `fail` with a one-command `remedy`. doctor is strictly read-only: it never
@@ -21,6 +22,7 @@ package main
 // skillMarker from init.go/skillsinstall.go (read-only reuse of their
 // detection conventions, never their write paths).
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -52,6 +54,8 @@ type doctorStatus string
 
 const (
 	doctorPass    doctorStatus = "pass"
+	doctorUnknown doctorStatus = "unknown"
+	doctorTimeout doctorStatus = "timeout"
 	doctorFail    doctorStatus = "fail"
 	doctorSkipped doctorStatus = "skipped"
 	// doctorWarn is phase O's addition (docs/design/platform-modules.md
@@ -79,7 +83,7 @@ type doctorCheck struct {
 //
 // Exit codes:
 //
-//	0 — every check passed (skipped checks do not fail the gate; they are
+//	0 — no confirmed failure (skipped/unknown/timeout do not fail the gate; they are
 //	    honestly-uncheckable states, not failures)
 //	1 — at least one check failed
 //	2 — doctor itself could not run (bad flags, unresolvable --path/cwd) —
@@ -232,8 +236,6 @@ func fileExists(path string) bool {
 // doctor never short-circuits on an early failure, so one bad check never
 // hides the rest of the diagnosis.
 func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
-	hc := &http.Client{Timeout: 5 * time.Second}
-
 	// Each row is a step, run in order. Inside a hook (doctor --brief, the
 	// Setup hook) a spent deadline stops the run: the rows not reached are
 	// counted in one doctorDeadlineRow, never silently dropped (RT-7).
@@ -242,11 +244,16 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		tenancyRep    resourcesReport
 		daemonMetrics map[string]float64
 	)
-	ledgerRoots := sync.OnceValue(func() ledgerroots.Roots { return doctorLedgerRoots(hc, baseURL) }) // PE-24/PE-25
-	steps := []func() doctorCheck{
-		func() doctorCheck { return checkMCPRegistration(root, harness, baseURL) },
-		func() doctorCheck {
-			up, daemonCheck := checkDaemonReachable(hc, baseURL)
+	var roots ledgerroots.Roots
+	var once sync.Once
+	ledgerRoots := func(ctx context.Context) ledgerroots.Roots {
+		once.Do(func() { roots = doctorLedgerRoots(doctorHTTPClient(ctx), baseURL) })
+		return roots
+	} // PE-24/PE-25
+	steps := []func(context.Context) doctorCheck{
+		func(ctx context.Context) doctorCheck { return checkMCPRegistration(root, harness, baseURL) },
+		func(ctx context.Context) doctorCheck {
+			up, daemonCheck := checkDaemonReachable(doctorHTTPClient(ctx), baseURL)
 			daemonUp = up
 			if hookDeadlineSpent() {
 				return daemonCheck // every later row is cut; skip their inputs too
@@ -254,100 +261,140 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 			// RT-49/RT-50 (§13.3): one resources projection feeds every
 			// tenancy row — live when the daemon answers, else its ring and
 			// ledger.
-			tenancyRep = doctorResourcesReport(baseURL)
+			tenancyRep = doctorResourcesReport(ctx, baseURL)
 			if daemonUp {
-				daemonMetrics, _ = fetchMetricsText(hc, baseURL)
+				daemonMetrics, _ = fetchMetricsText(doctorHTTPClient(ctx), baseURL)
 			}
 			return daemonCheck
 		},
-		func() doctorCheck { return checkBinaryFresh(root) },
-		func() doctorCheck { return checkDaemonFresh(hc, baseURL, daemonUp) },                      // PC-4: the daemon's stamp vs this binary (doctor_provenance.go)
-		func() doctorCheck { return checkDaemonFootprint(tenancyRep, daemonMetrics) },              // RT-49: phys_footprint vs the budget, live or from the ring (doctor_footprint.go)
-		func() doctorCheck { return checkDaemonDiskWrites(hc, baseURL, daemonUp) },                 // RT-162: bytes written outside explicit ingest vs 2 GiB/day (doctor_footprint.go)
-		func() doctorCheck { return checkAdmissionMode(hc, baseURL, daemonUp) },                    // design §1: WARN while the daemon serves with admission off (doctor_admission.go)
-		func() doctorCheck { return checkDaemonPosture("") },                                       // RT-15: the installed plist's launchd posture vs schema 2 (daemon_signing.go)
-		func() doctorCheck { return checkDaemonLifecycle(tenancyRep) },                             // RT-50: starts, exits, breaker, quarantine (doctor_tenancy.go)
-		func() doctorCheck { return checkHostPressure(tenancyRep) },                                // RT-50: pressure, swap, swap-volume free
-		func() doctorCheck { return checkScratchDaemons(tenancyRep) },                              // RT-50: leaked unmanaged daemons and stale records
-		func() doctorCheck { return checkHookBudgetFromFiles(time.Now()) },                         // RT-135: hook p99 vs deadline, breaker-open minutes, unguarded edits, kills (doctor_retention.go)
-		func() doctorCheck { return checkRuleOutcomeWriterFromFiles(time.Now()) },                  // GL-24 (INC-27): a rule-outcome log silent 72 h while the hook served claims (doctor_outcomewriter.go)
-		func() doctorCheck { return checkDiskRetentionFromDisk(root) },                             // RT-135: reclaimable bytes by class, internal disk free (doctor_retention.go)
-		func() doctorCheck { return checkTenancyScope(root, config.DefaultUserPath(), os.Getenv) }, // RT-50: [tenancy] is user scope only
-		func() doctorCheck { return checkKeyScope(root, config.DefaultUserPath()) },                // SEC-1: key sources are user scope only (doctor_keyscope.go)
-		func() doctorCheck { return checkHooksInstalled(root, harness) },
-		func() doctorCheck { return checkLefthookGates(root) },
-		func() doctorCheck { return checkHooksFiring(hc, baseURL, daemonUp, root, harness) },
-		func() doctorCheck { return checkGatePosture(harness) },
-		func() doctorCheck { return checkHooksCoverage(harness) },          // HP-32: what the harness offers vs what fathom wires (advisory, never FAIL)
-		func() doctorCheck { return checkHarnessHookFiles(root, harness) }, // HP-18/19: doctor_harness.go, never PASS
-		func() doctorCheck { return checkStanzaPresent(root) },
-		func() doctorCheck { return checkStanzaLoaded(root) },          // PC-25: the harness-side twin of stanza_present (doctor_stanza_loaded.go)
-		func() doctorCheck { return checkAgentsSkills(root, harness) }, // RP-3: skills_installed on the standard (doctor_skills.go)
-		func() doctorCheck { return checkWiringDrift(root, harness) },  // PC-29: hooks, stanzas, MCP entries, owned skills (doctor_wiring.go)
-		func() doctorCheck { return checkConfigValid(root) },
-		func() doctorCheck { return checkDecisionProvider(root, providerClientBuilder) },         // DP-4 (ADR-042): is the configured [decide] provider viable? (doctor_decide.go)
-		func() doctorCheck { return checkProfileBins(root) },                                     // GL-27 (G6): a profile whose bin no longer exists (doctor_compile.go)
-		func() doctorCheck { return checkCompileLayerEnabled(hc, baseURL, daemonUp) },            // GL-27 (G6): the daemon started with compile_layer disabled (doctor_compile.go)
-		func() doctorCheck { return checkStaleLayers(hc, baseURL, root, explicitSvc, daemonUp) }, // GL-27 (G6): sections compiled vs total per service, --dry-run first (doctor_compile.go)
-		func() doctorCheck { return doctorProvidersRow(root, providerClientBuilder) },            // SR-32 (surface reckoning F-71): CF-5's own auth probe, folded in (doctor_providers.go); CF-6 (smoke) never runs here
-		func() doctorCheck { return checkObligationsServed(hc, baseURL, root, explicitSvc, daemonUp) },
-		func() doctorCheck { return checkSurfaceTraffic(hc, baseURL, daemonUp, root) },
+		func(ctx context.Context) doctorCheck { return checkBinaryFresh(root, ctx) },
+		func(ctx context.Context) doctorCheck {
+			return checkDaemonFresh(doctorHTTPClient(ctx), baseURL, daemonUp)
+		}, // PC-4: the daemon's stamp vs this binary (doctor_provenance.go)
+		func(ctx context.Context) doctorCheck { return checkDaemonFootprint(tenancyRep, daemonMetrics) }, // RT-49: phys_footprint vs the budget, live or from the ring (doctor_footprint.go)
+		func(ctx context.Context) doctorCheck {
+			return checkDaemonDiskWrites(doctorHTTPClient(ctx), baseURL, daemonUp)
+		}, // RT-162: bytes written outside explicit ingest vs 2 GiB/day (doctor_footprint.go)
+		func(ctx context.Context) doctorCheck {
+			return checkAdmissionMode(doctorHTTPClient(ctx), baseURL, daemonUp)
+		}, // design §1: WARN while the daemon serves with admission off (doctor_admission.go)
+		func(ctx context.Context) doctorCheck { return checkDaemonPosture("") },                      // RT-15: the installed plist's launchd posture vs schema 2 (daemon_signing.go)
+		func(ctx context.Context) doctorCheck { return checkDaemonLifecycle(tenancyRep) },            // RT-50: starts, exits, breaker, quarantine (doctor_tenancy.go)
+		func(ctx context.Context) doctorCheck { return checkHostPressure(tenancyRep) },               // RT-50: pressure, swap, swap-volume free
+		func(ctx context.Context) doctorCheck { return checkScratchDaemons(tenancyRep) },             // RT-50: leaked unmanaged daemons and stale records
+		func(ctx context.Context) doctorCheck { return checkHookBudgetFromFiles(time.Now()) },        // RT-135: hook p99 vs deadline, breaker-open minutes, unguarded edits, kills (doctor_retention.go)
+		func(ctx context.Context) doctorCheck { return checkRuleOutcomeWriterFromFiles(time.Now()) }, // GL-24 (INC-27): a rule-outcome log silent 72 h while the hook served claims (doctor_outcomewriter.go)
+		func(ctx context.Context) doctorCheck { return checkDiskRetentionFromDisk(root) },            // RT-135: reclaimable bytes by class, internal disk free (doctor_retention.go)
+		func(ctx context.Context) doctorCheck {
+			return checkTenancyScope(root, config.DefaultUserPath(), os.Getenv)
+		}, // RT-50: [tenancy] is user scope only
+		func(ctx context.Context) doctorCheck { return checkKeyScope(root, config.DefaultUserPath()) }, // SEC-1: key sources are user scope only (doctor_keyscope.go)
+		func(ctx context.Context) doctorCheck { return checkHooksInstalledContext(ctx, root, harness) },
+		func(ctx context.Context) doctorCheck { return checkLefthookGates(root) },
+		func(ctx context.Context) doctorCheck {
+			return checkHooksFiring(doctorHTTPClient(ctx), baseURL, daemonUp, root, harness)
+		},
+		func(ctx context.Context) doctorCheck { return checkGatePosture(harness) },
+		func(ctx context.Context) doctorCheck { return checkHooksCoverage(harness) },          // HP-32: what the harness offers vs what fathom wires (advisory, never FAIL)
+		func(ctx context.Context) doctorCheck { return checkHarnessHookFiles(root, harness) }, // HP-18/19: doctor_harness.go, never PASS
+		func(ctx context.Context) doctorCheck { return checkStanzaPresent(root) },
+		func(ctx context.Context) doctorCheck { return checkStanzaLoaded(root) },          // PC-25: the harness-side twin of stanza_present (doctor_stanza_loaded.go)
+		func(ctx context.Context) doctorCheck { return checkAgentsSkills(root, harness) }, // RP-3: skills_installed on the standard (doctor_skills.go)
+		func(ctx context.Context) doctorCheck { return checkWiringDrift(root, harness) },  // PC-29: hooks, stanzas, MCP entries, owned skills (doctor_wiring.go)
+		func(ctx context.Context) doctorCheck { return checkConfigValid(root) },
+		func(ctx context.Context) doctorCheck {
+			return checkDecisionProvider(root, doctorProfileBuilder(ctx), ctx)
+		}, // DP-4 (ADR-042): is the configured [decide] provider viable? (doctor_decide.go)
+		func(ctx context.Context) doctorCheck { return checkProfileBins(root) }, // GL-27 (G6): a profile whose bin no longer exists (doctor_compile.go)
+		func(ctx context.Context) doctorCheck {
+			return checkCompileLayerEnabled(doctorHTTPClient(ctx), baseURL, daemonUp)
+		}, // GL-27 (G6): the daemon started with compile_layer disabled (doctor_compile.go)
+		func(ctx context.Context) doctorCheck {
+			return checkStaleLayers(doctorHTTPClient(ctx), baseURL, root, explicitSvc, daemonUp)
+		}, // GL-27 (G6): sections compiled vs total per service, --dry-run first (doctor_compile.go)
+		func(ctx context.Context) doctorCheck {
+			return doctorProvidersRow(root, doctorProfileBuilder(ctx), ctx)
+		}, // SR-32 (surface reckoning F-71): CF-5's own auth probe, folded in (doctor_providers.go); CF-6 (smoke) never runs here
+		func(ctx context.Context) doctorCheck {
+			return checkObligationsServed(doctorHTTPClient(ctx), baseURL, root, explicitSvc, daemonUp)
+		},
+		func(ctx context.Context) doctorCheck {
+			return checkSurfaceTraffic(doctorHTTPClient(ctx), baseURL, daemonUp, root)
+		},
 		// Phase O (docs/design/platform-modules.md §4 / guarded-edits.md
 		// §2.4): config-validity first, then the checks that need it.
-		func() doctorCheck { return checkBindingFile(root) },
-		func() doctorCheck { return checkGuardFile(root) },
-		func() doctorCheck { return checkProjectKeys(root) }, // every .fathom/*.cue key: file, status, entries (doctor_project.go)
-		func() doctorCheck { return checkTechPacks(root) },   // FD-21: discovered tech packs, pins, served and withheld sections, exclusions (doctor_techpacks.go)
-		func() doctorCheck { return checkLegacyFiles(root) }, // old copies of moved or shadowed files (doctor_legacy.go)
-		func() doctorCheck { return checkBindingModulesMounted(hc, baseURL, root, daemonUp) },
-		func() doctorCheck { return checkBindingModuleReadiness(hc, baseURL, root, daemonUp) },
-		func() doctorCheck { return checkGuardDeadScopes(hc, baseURL, root, explicitSvc, daemonUp) },
-		func() doctorCheck { return checkGuardIncludeModulesUnbound(root) },
+		func(ctx context.Context) doctorCheck { return checkBindingFile(root) },
+		func(ctx context.Context) doctorCheck { return checkGuardFile(root) },
+		func(ctx context.Context) doctorCheck { return checkProjectKeys(root) }, // every .fathom/*.cue key: file, status, entries (doctor_project.go)
+		func(ctx context.Context) doctorCheck { return checkTechPacks(root) },   // FD-21: discovered tech packs, pins, served and withheld sections, exclusions (doctor_techpacks.go)
+		func(ctx context.Context) doctorCheck { return checkLegacyFiles(root) }, // old copies of moved or shadowed files (doctor_legacy.go)
+		func(ctx context.Context) doctorCheck {
+			return checkBindingModulesMounted(doctorHTTPClient(ctx), baseURL, root, daemonUp)
+		},
+		func(ctx context.Context) doctorCheck {
+			return checkBindingModuleReadiness(doctorHTTPClient(ctx), baseURL, root, daemonUp)
+		},
+		func(ctx context.Context) doctorCheck {
+			return checkGuardDeadScopes(doctorHTTPClient(ctx), baseURL, root, explicitSvc, daemonUp, ctx)
+		},
+		func(ctx context.Context) doctorCheck { return checkGuardIncludeModulesUnbound(root) },
 		// Phase P (docs/design/production-tokenomics.md / scoped-config.md):
 		// env-driven honesty checks first, then scoped-config disclosure.
-		func() doctorCheck { return checkChannelsEnv() },
-		func() doctorCheck { return checkBinaryOnPath() },
-		func() doctorCheck { return checkIdentCacheEnv() },
-		func() doctorCheck { return checkUserScopeIgnore(root) },
-		func() doctorCheck { return checkUserScopeGuard() },
-		func() doctorCheck { return checkSessionLedgerTokens() },
+		func(ctx context.Context) doctorCheck { return checkChannelsEnv() },
+		func(ctx context.Context) doctorCheck { return checkBinaryOnPath() },
+		func(ctx context.Context) doctorCheck { return checkIdentCacheEnv() },
+		func(ctx context.Context) doctorCheck { return checkUserScopeIgnoreContext(ctx, root) },
+		func(ctx context.Context) doctorCheck { return checkUserScopeGuard() },
+		func(ctx context.Context) doctorCheck { return checkSessionLedgerTokens() },
 		// Phase Q (docs/design/observability-surfaces.md §8 item 3).
-		func() doctorCheck { return checkMetricsTier() },
+		func(ctx context.Context) doctorCheck { return checkMetricsTier() },
 		// Phase R (docs/plans/cpp-toolchain.md CT-7).
-		func() doctorCheck { return checkCppToolchain(root) },
+		func(ctx context.Context) doctorCheck { return checkCppToolchain(root) },
 		// BP-36 (docs/plans/bench-pyramid.md): is the graph this daemon
 		// serves actually typed? (doctor_typed.go)
-		func() doctorCheck { return checkTypedEdges(hc, baseURL, root, explicitSvc, daemonUp) },
+		func(ctx context.Context) doctorCheck {
+			return checkTypedEdges(doctorHTTPClient(ctx), baseURL, root, explicitSvc, daemonUp)
+		},
 		// O69 (wave P1): does this repo have source in a language fathom has
 		// no extractor for — named and counted, never silent (doctor_languages.go)
-		func() doctorCheck { return checkUnsupportedLanguages(hc, baseURL, root, explicitSvc, daemonUp) },
+		func(ctx context.Context) doctorCheck {
+			return checkUnsupportedLanguages(doctorHTTPClient(ctx), baseURL, root, explicitSvc, daemonUp)
+		},
 		// EW-20 (O127): a registered service whose root no longer exists,
 		// named with the ingest call that re-points it (doctor_serviceroots.go)
-		func() doctorCheck { return checkServiceRoots(hc, baseURL, root, explicitSvc, daemonUp) },
+		func(ctx context.Context) doctorCheck {
+			return checkServiceRoots(doctorHTTPClient(ctx), baseURL, root, explicitSvc, daemonUp)
+		},
 		// Phase T (docs/design/capability-registry.md): the one row that
 		// answers "why isn't X happening here?" — last, because it reads
 		// every fact the rows above diagnose individually.
-		func() doctorCheck { return checkCapabilities(baseURL, root, explicitSvc) },
+		func(ctx context.Context) doctorCheck {
+			return checkCapabilities(baseURL, root, explicitSvc, ctx)
+		},
 		// CC-6 (docs/plans/custodian.md): the config custodian — are this
 		// repo's registered config contracts still true?
-		func() doctorCheck { return checkConcerns(root) },
-		func() doctorCheck { return checkIntent(root, ledgerRoots()) },
-		func() doctorCheck { return checkReadouts(root) }, // RO-18 (ADR-071): readouts mode, refused rules, view support, another Bash rewriter (doctor_readouts.go)
-		func() doctorCheck { return checkUnprovenClaims(root, baseURL, explicitSvc, ledgerRoots()) },
+		func(ctx context.Context) doctorCheck { return checkConcerns(root) },
+		func(ctx context.Context) doctorCheck { return checkIntent(root, ledgerRoots(ctx)) },
+		func(ctx context.Context) doctorCheck { return checkReadouts(root) }, // RO-18 (ADR-071): readouts mode, refused rules, view support, another Bash rewriter (doctor_readouts.go)
+		func(ctx context.Context) doctorCheck {
+			return checkUnprovenClaims(root, baseURL, explicitSvc, ledgerRoots(ctx))
+		},
 		// DP-3/DP-4 (docs/plans/custodian.md): the doctrine plane — the
 		// vision promotion pipeline and goals as pre-registered bets
 		// (intentdoctrine.go). Warns, never fails.
-		func() doctorCheck { return checkDoctrine(root) },
+		func(ctx context.Context) doctorCheck { return checkDoctrine(root) },
 		// vision 33 / ADR-043 stage 1 (TC-14): the certifications layer's
 		// own declared/live/join-rate facts, read directly from the
 		// repo's local store (doctor's only store-direct row — see
 		// doctor_certifications.go's own doc comment for why).
-		func() doctorCheck {
-			return checkCertifications(certificationsStorePath(root), certificationsDoctorService(root, explicitSvc))
+		func(ctx context.Context) doctorCheck {
+			return checkCertifications(certificationsStorePath(root), certificationsDoctorService(root, explicitSvc), ctx)
 		},
 		// J5 (app-kit O25): instrument --adoption/research report/flywheel
 		// must agree on which call log they're reading.
-		func() doctorCheck { return checkInstrumentIdentity(hc, baseURL, explicitSvc) },
+		func(ctx context.Context) doctorCheck {
+			return checkInstrumentIdentity(doctorHTTPClient(ctx), baseURL, explicitSvc)
+		},
 	}
 	return runDoctorSteps(steps)
 }
@@ -360,7 +407,7 @@ const doctorDeadlineRow = "hook_deadline"
 // inside one, a spent deadline stops the run and the steps not reached are
 // named in one skipped doctorDeadlineRow — a cut diagnosis never reads as
 // a clean one.
-func runDoctorSteps(steps []func() doctorCheck) []doctorCheck {
+func runDoctorSteps(steps []func(context.Context) doctorCheck) []doctorCheck {
 	checks := make([]doctorCheck, 0, len(steps))
 	for i, step := range steps {
 		if hookDeadlineSpent() {
@@ -372,7 +419,9 @@ func runDoctorSteps(steps []func() doctorCheck) []doctorCheck {
 			})
 			break
 		}
-		checks = append(checks, step())
+		ctx, cancel := doctorProbeContext(context.Background())
+		checks = append(checks, runDoctorProbe(ctx, step))
+		cancel()
 	}
 	return checks
 }
@@ -397,7 +446,12 @@ func doctorExitCode(checks []doctorCheck) int {
 func checkMCPRegistration(root, harnessLabel, baseURL string) doctorCheck {
 	switch harnessLabel {
 	case "claude":
-		return checkClaudeMCPRegistration(baseURL)
+		ctx, cancel := doctorProbeContext(context.Background())
+		defer cancel()
+		if c, found := checkProjectMCPRegistration(ctx, root); found {
+			return c
+		}
+		return checkClaudeMCPRegistration(baseURL, root)
 	case "codex":
 		// The TOML read is real evidence (a missing entry is a real FAIL,
 		// an unreadable file is named — ADR-027), but a found entry is not
@@ -450,7 +504,7 @@ func registeredAtAgentSurface(url string) bool {
 	return strings.HasSuffix(trimmed, "/rpc/agent") || strings.HasSuffix(trimmed, "/rpc/companion")
 }
 
-func checkClaudeMCPRegistration(baseURL string) doctorCheck {
+func checkClaudeMCPRegistration(baseURL string, roots ...string) doctorCheck {
 	const name = "mcp_registration"
 	remedy := fmt.Sprintf("claude mcp add --transport http --scope user fathom %s/rpc/agent", baseURL)
 
@@ -464,8 +518,10 @@ func checkClaudeMCPRegistration(baseURL string) doctorCheck {
 	}
 	var doc struct {
 		McpServers map[string]struct {
-			Type string `json:"type"`
-			URL  string `json:"url"`
+			Type    string   `json:"type"`
+			URL     string   `json:"url"`
+			Command string   `json:"command"`
+			Args    []string `json:"args"`
 		} `json:"mcpServers"`
 	}
 	if err := json.Unmarshal(data, &doc); err != nil {
@@ -475,18 +531,28 @@ func checkClaudeMCPRegistration(baseURL string) doctorCheck {
 	if !ok {
 		return doctorCheck{Name: name, Status: doctorFail, Reason: fmt.Sprintf("no \"fathom\" entry in %s's mcpServers", path), Remedy: remedy}
 	}
+	if entry.Command != "" {
+		root := ""
+		if len(roots) > 0 {
+			root = roots[0]
+		}
+		ctx, cancel := doctorProbeContext(context.Background())
+		defer cancel()
+		return doctorStdioRegistration(ctx, root, path, entry.Command, entry.Args)
+	}
 	if entry.Type != "http" || !registeredAtAgentSurface(entry.URL) {
 		return doctorCheck{Name: name, Status: doctorFail, Reason: fmt.Sprintf("fathom is registered in %s but not at /rpc/agent (type=%q url=%q)", path, entry.Type, entry.URL), Remedy: remedy}
 	}
-	return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("registered in %s at %s", path, entry.URL)}
+	return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("configured: registered in %s at %s", path, entry.URL)}
 }
 
 // codexMCPEntry mirrors the subset of Codex's [mcp_servers.<name>] TOML
 // shape doctor needs (docs/adoption/codex.md §2): `url` selects the HTTP
 // transport, `command` the stdio transport.
 type codexMCPEntry struct {
-	Command string `toml:"command"`
-	URL     string `toml:"url"`
+	Command string   `toml:"command"`
+	Args    []string `toml:"args"`
+	URL     string   `toml:"url"`
 }
 
 type codexConfigDoc struct {
@@ -529,11 +595,14 @@ func checkCodexMCPRegistration(root string) doctorCheck {
 		}
 		switch {
 		case entry.URL != "" && registeredAtAgentSurface(entry.URL):
-			return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("registered in %s at %s", path, entry.URL)}
+			return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("configured: registered in %s at %s", path, entry.URL)}
 		case entry.URL != "":
 			return doctorCheck{Name: name, Status: doctorFail, Reason: fmt.Sprintf("fathom is registered in %s but not at /rpc/agent (url=%q)", path, entry.URL), Remedy: remedy}
 		case entry.Command != "":
-			return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("registered in %s via stdio (command=%q) — the /rpc/agent check does not apply to a stdio transport", path, entry.Command)}
+			ctx, cancel := doctorProbeContext(context.Background())
+			row := doctorStdioRegistration(ctx, root, path, entry.Command, entry.Args)
+			cancel()
+			return row
 		}
 	}
 	if !readAny {
@@ -563,7 +632,7 @@ func checkDaemonReachable(hc *http.Client, baseURL string) (bool, doctorCheck) {
 
 	resp, err := hc.Get(baseURL + "/healthz")
 	if err != nil {
-		return false, doctorCheck{Name: name, Status: doctorFail, Reason: fmt.Sprintf("GET %s/healthz: %v", baseURL, err), Remedy: remedy}
+		return false, doctorCheck{Name: name, Status: doctorErrorStatus(err), Reason: fmt.Sprintf("GET %s/healthz: %v", baseURL, err), Remedy: remedy}
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
@@ -671,7 +740,9 @@ var doctorBinaryRevision = func() (rev string, dirty, ok bool) {
 // different project's commit history can never be meaningful, so this
 // check now only runs when root IS the fathom checkout; every other repo
 // gets an honest SKIP instead of a guaranteed-wrong FAIL.
-func checkBinaryFresh(root string) doctorCheck {
+func checkBinaryFresh(root string, parents ...context.Context) doctorCheck {
+	ctx, cancel := doctorContextArg(parents)
+	defer cancel()
 	const name = "binary_fresh"
 	remedy := "task deploy (signs the rebuilt binary, installs it via temp+rename, restarts the daemon, and asserts it serves HEAD) — never a raw cp over the running executable: an unsigned copy loses the TCC grant and cp truncates a live binary (docs/adoption/claude-code.md)"
 
@@ -694,7 +765,7 @@ func checkBinaryFresh(root string) doctorCheck {
 		return doctorCheck{Name: name, Status: doctorSkipped, Reason: "this binary carries no embedded VCS revision (built without -buildvcs, or outside a git checkout) — compare `fathom version` to `git rev-parse HEAD` by hand", Remedy: remedy}
 	}
 
-	head, err := doctorGitHead(root)
+	head, err := doctorGitHead(root, ctx)
 	if err != nil || head == "" {
 		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("could not resolve git HEAD at %s: %v", root, err), Remedy: remedy}
 	}
@@ -704,7 +775,7 @@ func checkBinaryFresh(root string) doctorCheck {
 		if dirty {
 			reason += "; vcs.modified=true (built from a locally modified tree — the stamp names the commit, not the exact code)"
 		}
-		if n := nestedLinkedWorktrees(root); n > 0 {
+		if n := nestedLinkedWorktrees(ctx, root); n > 0 {
 			reason += fmt.Sprintf("; note: %d linked worktree(s) are nested under this checkout — a `go build` run inside one stamps THIS checkout's HEAD (enclosing-checkout resolution), so a matching stamp does not prove the binary was built from this tree's code", n)
 		}
 		return doctorCheck{Name: name, Status: doctorPass, Reason: reason}
@@ -720,21 +791,21 @@ func checkBinaryFresh(root string) doctorCheck {
 	// to today's direction-less message and generic remedy.
 	reason := fmt.Sprintf("this binary @ %s does not match HEAD %s of its own source tree (local binary only; the daemon's build is daemon_fresh's row)", shortSHA(rev), shortSHA(head))
 	freshRemedy := remedy
-	if binaryBehind, ok := gitIsAncestor(root, rev, head); ok && binaryBehind {
+	if binaryBehind, ok := gitIsAncestor(ctx, root, rev, head); ok && binaryBehind {
 		// rev is an ancestor of head: the binary was built from an older
 		// commit than HEAD. Deploying is the correct fix.
 		reason = fmt.Sprintf("binary @ %s is behind HEAD %s", shortSHA(rev), shortSHA(head))
-		if n, ok := gitCommitCount(root, rev, head); ok {
+		if n, ok := gitCommitCount(ctx, root, rev, head); ok {
 			reason = fmt.Sprintf("binary @ %s is %d commit(s) behind HEAD %s", shortSHA(rev), n, shortSHA(head))
 		}
 		reason += " — deploy to catch up"
-	} else if checkoutBehind, ok := gitIsAncestor(root, head, rev); ok && checkoutBehind {
+	} else if checkoutBehind, ok := gitIsAncestor(ctx, root, head, rev); ok && checkoutBehind {
 		// head is an ancestor of rev: this checkout has NOT pulled the
 		// commits the running binary was built from. Deploying from here
 		// would rebuild from the older tree and reinstall a regression
 		// over the currently-running binary.
 		reason = fmt.Sprintf("local checkout HEAD %s is behind the running binary @ %s", shortSHA(head), shortSHA(rev))
-		if n, ok := gitCommitCount(root, head, rev); ok {
+		if n, ok := gitCommitCount(ctx, root, head, rev); ok {
 			reason = fmt.Sprintf("local checkout HEAD %s is %d commit(s) behind the running binary @ %s", shortSHA(head), n, shortSHA(rev))
 		}
 		reason += " — do not deploy from here (would install a regression); pull the latest commits first"
@@ -760,9 +831,8 @@ func checkBinaryFresh(root string) doctorCheck {
 // all (git unavailable, or a revision unknown to this repo — e.g. a
 // shallow clone) — callers must treat that as "undetermined", never as a
 // negative answer.
-func gitIsAncestor(root, ancestor, descendant string) (bool, bool) {
-	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
-	err := exec.Command("git", "-C", root, "merge-base", "--is-ancestor", ancestor, descendant).Run()
+func gitIsAncestor(ctx context.Context, root, ancestor, descendant string) (bool, bool) {
+	err := doctorGitCommand(ctx, root, "merge-base", "--is-ancestor", ancestor, descendant).Run()
 	if err == nil {
 		return true, true
 	}
@@ -780,9 +850,8 @@ func gitIsAncestor(root, ancestor, descendant string) (bool, bool) {
 // from `from` (`git rev-list --count from..to`). ok is false when the
 // count could not be determined; the caller then omits the number rather
 // than guessing.
-func gitCommitCount(root, from, to string) (int, bool) {
-	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
-	out, err := exec.Command("git", "-C", root, "rev-list", "--count", from+".."+to).Output()
+func gitCommitCount(ctx context.Context, root, from, to string) (int, bool) {
+	out, err := doctorGitCommand(ctx, root, "rev-list", "--count", from+".."+to).Output()
 	if err != nil {
 		return 0, false
 	}
@@ -793,9 +862,10 @@ func gitCommitCount(root, from, to string) (int, bool) {
 	return n, true
 }
 
-func doctorGitHead(root string) (string, error) {
-	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
-	out, err := exec.Command("git", "-C", root, "rev-parse", "HEAD").Output()
+func doctorGitHead(root string, parents ...context.Context) (string, error) {
+	ctx, cancel := doctorContextArg(parents)
+	defer cancel()
+	out, err := doctorGitCommand(ctx, root, "rev-parse", "HEAD").Output()
 	if err != nil {
 		return "", err
 	}
@@ -819,9 +889,8 @@ func isGitWorktree(root string) bool {
 // and embeds its HEAD, so a binary carrying root's HEAD may actually have
 // been compiled from a nested worktree's different code. Best-effort: any
 // git failure reports zero (the note is additive, never load-bearing).
-func nestedLinkedWorktrees(root string) int {
-	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
-	out, err := exec.Command("git", "-C", root, "worktree", "list", "--porcelain").Output()
+func nestedLinkedWorktrees(ctx context.Context, root string) int {
+	out, err := doctorGitCommand(ctx, root, "worktree", "list", "--porcelain").Output()
 	if err != nil {
 		return 0
 	}
@@ -881,6 +950,12 @@ func shortSHA(s string) string {
 // cannot read (managed settings, e.g.); prescribing `fathom init` for that
 // one would install a project-scope duplicate.
 func checkHooksInstalled(root, harness string) doctorCheck {
+	ctx, cancel := doctorProbeContext(context.Background())
+	defer cancel()
+	return checkHooksInstalledContext(ctx, root, harness)
+}
+
+func checkHooksInstalledContext(ctx context.Context, root, harness string) doctorCheck {
 	const name = "hooks_installed"
 	if harness != "claude" {
 		// HP-34: a verified non-Claude descriptor gets a REAL row — its own
@@ -904,19 +979,30 @@ func checkHooksInstalled(root, harness string) doctorCheck {
 	specs := fathomHookSpecsAt(root)          // RO-38: an opt-in row is expected only while root's config switches it on
 	wiredScopes := map[hookSpecKey][]string{} // spec key (event+matcher+marker) -> scope labels that wire it
 	var scopeNotes []string
+	indirect := false
+	uncertain := map[hookSpecKey]bool{}
+	scopeUnknown := false
 	for _, sc := range scopes {
 		data, err := os.ReadFile(sc.path)
 		if err != nil {
+			if !errors.Is(err, fs.ErrNotExist) {
+				scopeUnknown = true
+				scopeNotes = append(scopeNotes, fmt.Sprintf("%s unreadable: %v", sc.path, err))
+			}
 			continue // an absent scope file is normal, not a finding
 		}
 		var parsed map[string]any
 		if err := json.Unmarshal(data, &parsed); err != nil {
+			scopeUnknown = true
 			scopeNotes = append(scopeNotes, fmt.Sprintf("%s scope %s did not parse as JSON (%v) — hooks wired there are invisible to this check", sc.label, sc.path, err))
 			continue
 		}
 		hooksObj, _ := parsed["hooks"].(map[string]any)
 		for _, spec := range specs {
-			if hookMarkerPresent(hooksObj, spec) {
+			ev := doctorHookEvidence(ctx, root, hooksObj, spec)
+			uncertain[hookSpecKeyOf(spec)] = uncertain[hookSpecKeyOf(spec)] || ev.unknown
+			if ev.found {
+				indirect = indirect || ev.indirect
 				k := hookSpecKeyOf(spec)
 				wiredScopes[k] = append(wiredScopes[k], sc.label)
 			}
@@ -941,13 +1027,25 @@ func checkHooksInstalled(root, harness string) doctorCheck {
 	}
 
 	if len(missing) == 0 {
-		reason := fmt.Sprintf("all %d fathom hooks wired (%s scope)", len(specs), strings.Join(labels, " + "))
+		state := "configured"
+		if indirect {
+			state = "configured (indirect)"
+		}
+		reason := fmt.Sprintf("%s: all %d fathom hooks wired (%s scope)", state, len(specs), strings.Join(labels, " + "))
 		if len(scopeNotes) > 0 {
 			reason += "; " + strings.Join(scopeNotes, "; ")
 		}
 		return doctorCheck{Name: name, Status: doctorPass, Reason: reason}
 	}
 
+	if ctx.Err() != nil {
+		return doctorCheck{Name: name, Status: doctorTimeout, Reason: "timeout inspecting hook wiring"}
+	}
+	for _, spec := range missing {
+		if scopeUnknown || uncertain[hookSpecKeyOf(spec)] {
+			return doctorCheck{Name: name, Status: doctorUnknown, Reason: "unknown: hook wiring unreadable, ambiguous, exceeds 64 KiB or two wrapper levels; " + strings.Join(scopeNotes, "; "), Remedy: "inspect the hook command and its project wrapper manually"}
+		}
+	}
 	checked := "checked project .claude/settings.json, .claude/settings.local.json, user ~/.claude/settings.json"
 
 	var missingLabels []string
@@ -1385,7 +1483,7 @@ func checkHooksFiring(hc *http.Client, baseURL string, daemonUp bool, root, harn
 				Remedy: "edit a file in this repo under Claude Code, then re-run doctor; if still silent, confirm obligations is compiled: fathom compile --service <svc> --dry-run=false",
 			}
 		}
-		return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("%s: %d edit-hook call(s), %d verify-cli call(s)", logPath, editHookCalls, verifyCalls)}
+		return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("firing: %s: %d edit-hook call(s), %d verify-cli call(s)", logPath, editHookCalls, verifyCalls)}
 	}
 
 	return doctorCheck{
@@ -2024,6 +2122,10 @@ func statusLabel(s doctorStatus) string {
 		return "FAIL"
 	case doctorWarn:
 		return "WARN"
+	case doctorUnknown:
+		return "UNKNOWN"
+	case doctorTimeout:
+		return "TIMEOUT"
 	default:
 		return "SKIP"
 	}
@@ -2038,7 +2140,7 @@ func tallyDoctorChecks(checks []doctorCheck) (pass, warn, fail, skipped int) {
 			warn++
 		case doctorFail:
 			fail++
-		case doctorSkipped:
+		case doctorSkipped, doctorUnknown, doctorTimeout:
 			skipped++
 		}
 	}

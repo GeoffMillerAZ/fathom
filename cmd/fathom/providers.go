@@ -141,6 +141,10 @@ var providerClientBuilder profileClientBuilder = buildLLMClientForProfile
 // concurrently, none skipped early), and returns rows in the same name
 // order for deterministic output.
 func probeProfiles(loaded config.Loaded, names []string, build profileClientBuilder) []providerRow {
+	return probeProfilesContext(context.Background(), loaded, names, build)
+}
+
+func probeProfilesContext(ctx context.Context, loaded config.Loaded, names []string, build profileClientBuilder) []providerRow {
 	rows := make([]providerRow, 0, len(names))
 	rowIndex := map[string]int{}
 	lanes := map[string]llmclient.Pinger{}
@@ -174,7 +178,7 @@ func probeProfiles(loaded config.Loaded, names []string, build profileClientBuil
 		rows = append(rows, row)
 	}
 
-	results := llmclient.ProbeAll(context.Background(), lanes)
+	results := llmclient.ProbeAll(ctx, lanes)
 	for name := range lanes {
 		i := rowIndex[name]
 		if err, failed := results[name]; failed {

@@ -1,0 +1,342 @@
+package main
+
+// Static wrapper inspection only. Neither shell scripts nor task runners run.
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+
+	"gopkg.in/yaml.v3"
+)
+
+const doctorWrapperBytes = 64 << 10
+const doctorWrapperLevels = 2
+
+type doctorWiringEvidence struct{ found, indirect, unknown bool }
+
+type doctorWrapperReader struct {
+	ctx       context.Context
+	root      string
+	remaining int
+}
+
+func doctorCommandEvidence(ctx context.Context, root, command, sub string) doctorWiringEvidence {
+	r := doctorWrapperReader{ctx: ctx, root: root, remaining: doctorWrapperBytes}
+	return r.command(command, sub, 0)
+}
+
+func (r *doctorWrapperReader) read(path string) ([]byte, error) {
+	if err := r.ctx.Err(); err != nil {
+		return nil, err
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() || info.Size() > int64(r.remaining) {
+		return nil, fmt.Errorf("wrapper is not a bounded regular file")
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	info, err = f.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() || info.Size() > int64(r.remaining) {
+		return nil, fmt.Errorf("wrapper is not a bounded regular file")
+	}
+	b, err := io.ReadAll(io.LimitReader(f, int64(r.remaining)+1))
+	r.remaining -= len(b)
+	if r.remaining < 0 {
+		return nil, fmt.Errorf("wrapper exceeds 64 KiB")
+	}
+	if err == nil {
+		err = r.ctx.Err()
+	}
+	return b, err
+}
+
+func (r *doctorWrapperReader) command(command, sub string, depth int) doctorWiringEvidence {
+	if r.ctx.Err() != nil {
+		return doctorWiringEvidence{unknown: true}
+	}
+	var unknown bool
+	// A semicolon/&& list is wiring evidence, never proof the branch fired.
+	for _, line := range strings.Split(strings.ReplaceAll(command, "&&", ";"), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		for _, part := range strings.Split(line, ";") {
+			words := strings.Fields(part)
+			for i := range words {
+				words[i] = strings.Trim(words[i], "\"'")
+			}
+			if len(words) > 1 && words[0] == "command" && words[1] == "-v" {
+				continue // template availability guard, not an unresolved wrapper
+			}
+			for len(words) > 0 && (words[0] == "exec" || words[0] == "command" || words[0] == "env" || strings.Contains(words[0], "=")) {
+				words = words[1:]
+			}
+			if len(words) == 0 {
+				continue
+			}
+			bin := filepath.Base(words[0])
+			if bin == "fathom" || words[0] == "$FATHOM" || words[0] == "${FATHOM}" {
+				want := strings.Fields(sub)
+				if len(words) > len(want) && strings.Join(words[1:1+len(want)], " ") == sub {
+					return doctorWiringEvidence{found: true, indirect: depth > 0}
+				}
+				continue
+			}
+			if bin == "sh" || bin == "bash" || bin == "zsh" {
+				if len(words) < 2 || strings.HasPrefix(words[1], "-") {
+					unknown = true
+					continue
+				}
+				words = words[1:]
+				bin = filepath.Base(words[0])
+			}
+			wrapper := strings.Contains(words[0], "/") || strings.HasSuffix(bin, ".sh")
+			if bin != "task" && bin != "lefthook" && !wrapper {
+				// Simple non-hook commands are decidable. Shell expansion/control flow
+				// and other runners are not a basis for an absence claim.
+				if bin != "echo" && bin != "printf" && bin != "touch" && bin != "true" && bin != "false" {
+					unknown = true
+				}
+				continue
+			}
+			if depth >= doctorWrapperLevels {
+				unknown = true
+				continue
+			}
+			var ev doctorWiringEvidence
+			switch bin {
+			case "task", "lefthook":
+				ev = r.task(words, sub, depth+1)
+			default:
+				p := strings.ReplaceAll(words[0], "${CLAUDE_PROJECT_DIR}", r.root)
+				if strings.ContainsAny(p, "$`{}") {
+					unknown = true
+					continue
+				}
+				if !filepath.IsAbs(p) {
+					p = filepath.Join(r.root, p)
+				}
+				b, err := r.read(p)
+				if err != nil {
+					unknown = true
+					continue
+				}
+				// Dynamic shell structure is outside this deliberately small reader.
+				text := string(b)
+				if strings.Contains(text, "<<") || strings.Contains(text, "$(") || strings.Contains(text, "()") || strings.Contains(text, "`") {
+					unknown = true
+					continue
+				}
+				ev = r.command(text, sub, depth+1)
+			}
+			if ev.found {
+				return ev
+			}
+			unknown = unknown || ev.unknown
+		}
+	}
+	return doctorWiringEvidence{unknown: unknown}
+}
+
+func (r *doctorWrapperReader) task(words []string, sub string, depth int) doctorWiringEvidence {
+	bin := filepath.Base(words[0])
+	var names []string
+	var paths []string
+	if bin == "task" {
+		if len(words) != 2 || strings.HasPrefix(words[1], "-") {
+			return doctorWiringEvidence{unknown: true}
+		}
+		names = []string{words[1]}
+		paths = []string{"Taskfile.yml", "Taskfile.yaml"}
+	} else {
+		if len(words) != 3 || words[1] != "run" {
+			return doctorWiringEvidence{unknown: true}
+		}
+		names = []string{words[2]}
+		paths = []string{"lefthook.yml", "lefthook.yaml"}
+	}
+	var data []byte
+	var err error
+	for _, path := range paths {
+		data, err = r.read(filepath.Join(r.root, path))
+		if !os.IsNotExist(err) {
+			break
+		}
+	}
+	if err != nil {
+		return doctorWiringEvidence{unknown: true}
+	}
+	var doc map[string]any
+	if yaml.Unmarshal(data, &doc) != nil {
+		return doctorWiringEvidence{unknown: true}
+	}
+	var commands []string
+	if bin == "task" {
+		tasks, _ := doc["tasks"].(map[string]any)
+		entry, ok := tasks[names[0]]
+		if !ok {
+			return doctorWiringEvidence{unknown: true}
+		}
+		switch v := entry.(type) {
+		case string:
+			commands = append(commands, v)
+		case map[string]any:
+			if _, ok := v["dir"]; ok {
+				return doctorWiringEvidence{unknown: true}
+			}
+			cmds, ok := v["cmds"].([]any)
+			if !ok {
+				return doctorWiringEvidence{unknown: true}
+			}
+			for _, cmd := range cmds {
+				switch c := cmd.(type) {
+				case string:
+					commands = append(commands, c)
+				case map[string]any:
+					if task, ok := c["task"].(string); ok {
+						commands = append(commands, "task "+task)
+					} else {
+						return doctorWiringEvidence{unknown: true}
+					}
+				default:
+					return doctorWiringEvidence{unknown: true}
+				}
+			}
+		default:
+			return doctorWiringEvidence{unknown: true}
+		}
+	} else {
+		entry, ok := doc[names[0]].(map[string]any)
+		if !ok {
+			return doctorWiringEvidence{unknown: true}
+		}
+		cmds, ok := entry["commands"].(map[string]any)
+		if !ok {
+			return doctorWiringEvidence{unknown: true}
+		}
+		keys := make([]string, 0, len(cmds))
+		for k := range cmds {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			c, ok := cmds[k].(map[string]any)
+			if !ok {
+				return doctorWiringEvidence{unknown: true}
+			}
+			if _, ok := c["root"]; ok {
+				return doctorWiringEvidence{unknown: true}
+			}
+			run, ok := c["run"].(string)
+			if !ok {
+				return doctorWiringEvidence{unknown: true}
+			}
+			commands = append(commands, run)
+		}
+	}
+	return r.command(strings.Join(commands, "\n"), sub, depth)
+}
+
+func doctorHookEvidence(ctx context.Context, root string, hooksObj map[string]any, spec hookSpec) doctorWiringEvidence {
+	groups, _ := hooksObj[spec.event].([]any)
+	var out doctorWiringEvidence
+	for _, g := range groups {
+		group, _ := g.(map[string]any)
+		matcher, _ := group["matcher"].(string)
+		if matcher != spec.matcher {
+			continue
+		}
+		hooks, _ := group["hooks"].([]any)
+		for _, h := range hooks {
+			hook, _ := h.(map[string]any)
+			command, _ := hook["command"].(string)
+			// Preserve the existing settings marker contract, including
+			// template guards and explicit launcher prefixes. A literal
+			// invocation of another hook does not make this hook uncertain.
+			if strings.Contains(command, spec.marker) {
+				return doctorWiringEvidence{found: true}
+			}
+			if strings.Contains(command, "fathom ") {
+				continue
+			}
+			ev := doctorCommandEvidence(ctx, root, command, spec.sub)
+			if ev.found {
+				return ev
+			}
+			out.unknown = out.unknown || ev.unknown
+		}
+	}
+	return out
+}
+
+// Project-scope MCP entries are valid wiring too. A stdio wrapper is read,
+// never launched (including when it names a task runner).
+func checkProjectMCPRegistration(ctx context.Context, root string) (doctorCheck, bool) {
+	path := filepath.Join(root, ".mcp.json")
+	r := doctorWrapperReader{ctx: ctx, root: root, remaining: doctorWrapperBytes}
+	data, err := r.read(path)
+	if os.IsNotExist(err) {
+		return doctorCheck{}, false
+	}
+	if err != nil {
+		return doctorCheck{Name: "mcp_registration", Status: doctorUnknown, Reason: "unknown: project MCP config unreadable or exceeds 64 KiB"}, true
+	}
+	var doc struct {
+		Servers map[string]struct {
+			Type    string   `json:"type"`
+			URL     string   `json:"url"`
+			Command string   `json:"command"`
+			Args    []string `json:"args"`
+		} `json:"mcpServers"`
+	}
+	if err := json.Unmarshal(data, &doc); err != nil {
+		return doctorCheck{Name: "mcp_registration", Status: doctorUnknown, Reason: "unknown: project MCP config did not parse"}, true
+	}
+	entry, ok := doc.Servers["fathom"]
+	if !ok {
+		return doctorCheck{}, false
+	}
+	if entry.Command != "" {
+		return doctorStdioRegistration(ctx, root, path, entry.Command, entry.Args), true
+	}
+	if registeredAtAgentSurface(entry.URL) {
+		return doctorCheck{Name: "mcp_registration", Status: doctorPass, Reason: "configured: project MCP registration at " + entry.URL}, true
+	}
+	return doctorCheck{Name: "mcp_registration", Status: doctorFail, Reason: "project MCP registration does not point at /rpc/agent", Remedy: "correct the fathom entry in .mcp.json"}, true
+}
+
+func doctorStdioRegistration(ctx context.Context, root, path, command string, args []string) doctorCheck {
+	row := doctorCheck{Name: "mcp_registration", Status: doctorUnknown, Reason: "unknown: stdio wrapper unreadable, ambiguous, or exceeds two levels/64 KiB in " + path}
+	// argv preserves spaces in an executable's path; an ordinary fathom
+	// binary is configuration evidence regardless of its argument spelling.
+	if filepath.Base(command) == "fathom" {
+		row.Status = doctorPass
+		row.Reason = "configured: stdio fathom entry in " + path
+		return row
+	}
+	ev := doctorCommandEvidence(ctx, root, strings.Join(append([]string{command}, args...), " "), "serve-mcp")
+	if ev.found {
+		row.Status = doctorPass
+		row.Reason = "configured (indirect): stdio fathom wrapper in " + path
+	}
+	if ctx.Err() != nil {
+		row.Status = doctorTimeout
+		row.Reason = "timeout inspecting stdio wrapper in " + path
+	}
+	return row
+}

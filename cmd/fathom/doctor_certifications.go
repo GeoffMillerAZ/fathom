@@ -49,7 +49,9 @@ func certificationsDoctorService(root, explicitSvc string) string {
 // checkCertifications reports the certifications layer's own declared/
 // live/gap counts and the case-to-symbol join rate (TestSuiteStatuses'
 // own fact) for service, read from the store at storePath.
-func checkCertifications(storePath, service string) doctorCheck {
+func checkCertifications(storePath, service string, parents ...context.Context) doctorCheck {
+	ctx, cancel := doctorContextArg(parents)
+	defer cancel()
 	const name = "certifications"
 
 	if _, err := os.Stat(storePath); err != nil {
@@ -64,7 +66,6 @@ func checkCertifications(storePath, service string) doctorCheck {
 		return doctorCheck{Name: name, Status: doctorSkipped, Reason: "no manifests found: could not open store: " + err.Error()}
 	}
 	defer st.Close()
-	ctx := context.Background()
 
 	statuses, err := st.TestSuiteStatuses(ctx, service)
 	if err != nil {

@@ -41,16 +41,21 @@ import (
 // layers, same precedence every other config-reading row uses) and reports
 // its verdict. build is the profileClientBuilder seam (providers.go) so a
 // test can drive the "llm" branch without a real credential or network
-// call — production passes providerClientBuilder, the same var `fathom
-// providers` uses.
-func checkDecisionProvider(root string, build profileClientBuilder) doctorCheck {
+// call. Production uses the same profile constructor as `fathom providers`,
+// carrying the doctor probe context through construction and liveness checks.
+func checkDecisionProvider(root string, build profileClientBuilder, parents ...context.Context) doctorCheck {
+	ctx, cancel := doctorContextArg(parents)
+	defer cancel()
 	const name = "decision_provider"
 
 	loaded, err := config.Load(config.DefaultUserPath(), projectdir.Config.Path(root))
 	if err != nil {
 		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("config did not load: %v", err)}
 	}
-	return decisionProviderVerdict(loaded, build, resolveCallLogPath())
+	if len(parents) == 0 {
+		return decisionProviderVerdict(loaded, build, resolveCallLogPath())
+	}
+	return decisionProviderVerdictContext(ctx, loaded, build, resolveCallLogPath())
 }
 
 // blockedSitesSuffix names, in decide.AllSites order, any site cfg.Sites
@@ -86,13 +91,19 @@ func blockedSitesSuffix(cfg config.Decide) string {
 // HTTP client a test counts); production passes none. With no [decide]
 // block and no kill the row is DP-35's, byte for byte.
 func decisionProviderVerdict(loaded config.Loaded, build profileClientBuilder, callLogPath string, opts ...decide.Option) doctorCheck {
+	ctx, cancel := doctorProbeContext(context.Background())
+	defer cancel()
+	return decisionProviderVerdictContext(ctx, loaded, build, callLogPath, opts...)
+}
+
+func decisionProviderVerdictContext(ctx context.Context, loaded config.Loaded, build profileClientBuilder, callLogPath string, opts ...decide.Option) doctorCheck {
 	dc := loaded.Config.Decide
 	gate := decide.Check(dc, "", opts...)
 	var c doctorCheck
 	if gate.Closed {
 		c = closedProviderVerdict(dc, gate)
 	} else {
-		c = providerVerdict(loaded, build, callLogPath, opts)
+		c = providerVerdict(ctx, loaded, build, callLogPath, opts)
 		c.Reason += killedSitesSuffix(dc, callLogPath, opts)
 	}
 	if gate.IgnoredEnv != "" {
@@ -172,7 +183,7 @@ func closedProviderVerdict(dc config.Decide, g decide.Gate) doctorCheck {
 }
 
 // providerVerdict is the row for an open port: the provider's own checks.
-func providerVerdict(loaded config.Loaded, build profileClientBuilder, callLogPath string, opts []decide.Option) doctorCheck {
+func providerVerdict(ctx context.Context, loaded config.Loaded, build profileClientBuilder, callLogPath string, opts []decide.Option) doctorCheck {
 	const name = "decision_provider"
 	dc := loaded.Config.Decide
 
@@ -198,7 +209,7 @@ func providerVerdict(loaded config.Loaded, build profileClientBuilder, callLogPa
 			}
 		}
 		if pinger, ok := cl.(llmclient.Pinger); ok {
-			pingCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 			defer cancel()
 			if err := pinger.Ping(pingCtx); err != nil {
 				return doctorCheck{
@@ -216,7 +227,7 @@ func providerVerdict(loaded config.Loaded, build profileClientBuilder, callLogPa
 		return doctorCheck{Name: name, Status: doctorPass, Reason: reason}
 
 	case "typesafe", "openai":
-		return remoteProviderVerdict(dc, callLogPath, opts...)
+		return remoteProviderVerdict(ctx, dc, callLogPath, opts...)
 
 	default:
 		return doctorCheck{
@@ -265,7 +276,7 @@ const uncalibratedNote = "; its thresholds need a calibration reading (" + calib
 // reading a key out of a file (config.KeySource.Probe) — and a one-question
 // ping through the kit adapter must answer. The Reason names provider,
 // model, transport, endpoint and the key's source and state, never the key.
-func remoteProviderVerdict(dc config.Decide, callLogPath string, opts ...decide.Option) doctorCheck {
+func remoteProviderVerdict(ctx context.Context, dc config.Decide, callLogPath string, opts ...decide.Option) doctorCheck {
 	const name = "decision_provider"
 	transport := dc.EffectiveTransport()
 	model := decide.ResolvedModel(dc)
@@ -280,7 +291,7 @@ func remoteProviderVerdict(dc config.Decide, callLogPath string, opts ...decide.
 		}
 	}
 	src := dc.KeySource()
-	state, err := src.Probe(context.Background(), decide.KeyIOOf(opts...))
+	state, err := src.Probe(ctx, decide.KeyIOOf(opts...))
 	if err != nil {
 		remedy := "in ~/.fathom/config.toml (key sources are read from the user config only), set [decide] api_key_file to a chmod 600 file holding the key (the launchd daemon does not see your shell's environment, so a file is the way to hand it a key), or api_key_env"
 		if src.File != "" {
@@ -300,7 +311,7 @@ func remoteProviderVerdict(dc config.Decide, callLogPath string, opts ...decide.
 	}
 	pinger, ok := ports.Adapter.(interface{ Ping(context.Context) error })
 	if ok {
-		pingCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
 		if err := pinger.Ping(pingCtx); err != nil {
 			return doctorCheck{

@@ -1152,7 +1152,10 @@ func rungEntriesLine(d tenancy.DaySummary) string {
 
 // fetchStatuszReport GETs the daemon's /statusz JSON with a short deadline.
 func fetchStatuszReport(baseURL string) (*StatuszReport, error) {
-	hc := &http.Client{Timeout: 2 * time.Second}
+	return fetchStatuszReportClient(&http.Client{Timeout: 2 * time.Second}, baseURL)
+}
+
+func fetchStatuszReportClient(hc *http.Client, baseURL string) (*StatuszReport, error) {
 	req, err := http.NewRequest(http.MethodGet, baseURL+"/statusz?format=json", nil)
 	if err != nil {
 		return nil, err
@@ -1188,12 +1191,6 @@ func liveResourcesEnv() resourcesEnv {
 			return readHookLatency(hookLatencyPath(), since)
 		},
 	}
-}
-
-// doctorResourcesReport is the resources projection doctor's tenancy
-// rows read (RT-49, RT-50): the daemon at baseURL, its files, the census.
-func doctorResourcesReport(baseURL string) resourcesReport {
-	return buildResources(liveResourcesEnv(), "", baseURL, 24*time.Hour)
 }
 
 // resolveLocalBudget resolves the managed budget from this machine's

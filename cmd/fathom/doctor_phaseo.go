@@ -29,6 +29,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -288,7 +289,9 @@ func resolveLocalManifest(storePath string) string {
 // Command-scoped guards are NOT checkable this way (no "indexed commands"
 // exist) — reported once, honestly, rather than silently skipped per
 // guard.
-func checkGuardDeadScopes(hc *http.Client, baseURL, root, explicitSvc string, daemonUp bool) doctorCheck {
+func checkGuardDeadScopes(hc *http.Client, baseURL, root, explicitSvc string, daemonUp bool, parents ...context.Context) doctorCheck {
+	ctx, cancel := doctorContextArg(parents)
+	defer cancel()
 	const name = "guard_dead_scopes"
 	set, ok, skip := loadGuardSetForDoctor(root)
 	if skip != nil {
@@ -339,7 +342,7 @@ func checkGuardDeadScopes(hc *http.Client, baseURL, root, explicitSvc string, da
 		// a remedy that DELETES correct configuration. Look at the disk
 		// before saying nothing is there.
 		label := fmt.Sprintf("guards[%d] (%s)", i, strings.Join(g.Scopes, ", "))
-		if n := filesOnDiskUnder(root, g.Scopes); n > 0 {
+		if n := filesOnDiskUnderContext(ctx, root, g.Scopes); n > 0 {
 			unindexed = append(unindexed, fmt.Sprintf("%s — %d file(s) on disk, none indexed", label, n))
 			continue
 		}
@@ -463,10 +466,20 @@ func loadGuardSetForDoctor(root string) (guardspec.GuardSet, bool, *string) {
 // as unindexed rather than dead (RC-8). Walk errors are treated as "found
 // something": a reader that cannot look must not conclude emptiness.
 func filesOnDiskUnder(root string, scopes []string) int {
+	ctx, cancel := doctorProbeContext(context.Background())
+	defer cancel()
+	return filesOnDiskUnderContext(ctx, root, scopes)
+}
+
+func filesOnDiskUnderContext(ctx context.Context, root string, scopes []string) int {
 	m := filter.New(scopes)
 	found := 0
 	blind := false
 	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if ctx.Err() != nil {
+			blind = true
+			return filepath.SkipAll
+		}
 		if err != nil {
 			blind = true
 			return nil

@@ -1,9 +1,9 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"net/http"
-	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -65,8 +65,9 @@ func gitToplevel(dir string) string { return gitToplevelCached(dir) }
 
 // gitToplevelUncached forks `git rev-parse --show-toplevel` in dir.
 func gitToplevelUncached(dir string) string {
-	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
-	out, err := exec.Command("git", "-C", dir, "rev-parse", "--show-toplevel").Output()
+	ctx, cancel := doctorProbeContext(context.Background())
+	defer cancel()
+	out, err := doctorGitCommand(ctx, dir, "rev-parse", "--show-toplevel").Output()
 	if err != nil {
 		return ""
 	}

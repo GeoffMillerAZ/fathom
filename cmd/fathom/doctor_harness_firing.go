@@ -107,7 +107,7 @@ func descriptorHooksVerifiable(harnessLabel string) (harness.Descriptor, bool) {
 func checkHarnessHooksInstalled(root string, d harness.Descriptor) doctorCheck {
 	const name = "hooks_installed"
 	specs := hookSpecsFor(d.ID)
-	present, fileNotes := harnessHookEntriesByScope(root, d, specs)
+	present, fileNotes, uncertain, indirect := harnessHookEntriesByScope(root, d, specs)
 
 	var missing []string
 	scopes := map[string]bool{}
@@ -122,7 +122,11 @@ func checkHarnessHooksInstalled(root string, d harness.Descriptor) doctorCheck {
 		}
 	}
 	found := len(specs) - len(missing)
-	reason := fmt.Sprintf("%d of %d fathom hook entries wired for %s", found, len(specs), d.Display)
+	state := "configured"
+	if indirect {
+		state = "configured (indirect)"
+	}
+	reason := fmt.Sprintf("%s: %d of %d fathom hook entries wired for %s", state, found, len(specs), d.Display)
 	if len(scopes) > 0 {
 		// Name the file the entries were actually READ from, not the file
 		// init would write: on Codex those are different files, and naming
@@ -139,6 +143,9 @@ func checkHarnessHooksInstalled(root string, d harness.Descriptor) doctorCheck {
 		reason += "; " + strings.Join(fileNotes, "; ")
 	}
 	if len(missing) > 0 {
+		if uncertain {
+			return doctorCheck{Name: name, Status: doctorUnknown, Reason: "unknown: " + reason + "; unreadable or ambiguous wrapper wiring"}
+		}
 		remedy := "fathom init --harness=" + d.ID + " --path " + root
 		if _, writable := d.InitHookFile(); !writable {
 			// init cannot write this harness's hook file (Codex loads only
@@ -184,6 +191,6 @@ func checkHarnessHooksFiring(d harness.Descriptor) doctorCheck {
 	}
 	return doctorCheck{
 		Name: name, Status: doctorPass,
-		Reason: fmt.Sprintf("%s: %d beat(s) stamped harness=%s across %s; last %s", ev.path, ev.total, d.ID, ev.sortedChannels(), ev.last.UTC().Format(time.RFC3339)),
+		Reason: fmt.Sprintf("firing: %s: %d beat(s) stamped harness=%s across %s; last %s", ev.path, ev.total, d.ID, ev.sortedChannels(), ev.last.UTC().Format(time.RFC3339)),
 	}
 }

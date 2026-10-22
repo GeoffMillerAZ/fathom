@@ -49,19 +49,26 @@ func resolveActiveProfile(flagProfile string) (config.Profile, config.Provenance
 // this is a separate implementation rather than a refactor of
 // buildLLMClient.
 func buildLLMClientForProfile(p config.Profile) (llmclient.LLMClient, error) {
+	return buildLLMClientForProfileContext(context.Background(), p)
+}
+
+func buildLLMClientForProfileContext(ctx context.Context, p config.Profile) (llmclient.LLMClient, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	switch p.Provider {
 	case "", config.ProviderAnthropic:
-		return buildAnthropicClientProfile(p)
+		return buildAnthropicClientProfile(ctx, p)
 	case config.ProviderClaudeCLI:
 		return buildClaudeCLIClientProfile(p)
 	case config.ProviderOpenAI:
-		return buildOpenAIClientProfile(p)
+		return buildOpenAIClientProfile(ctx, p)
 	case config.ProviderAzureOpenAI:
-		return buildAzureOpenAIClientProfile(p)
+		return buildAzureOpenAIClientProfile(ctx, p)
 	case config.ProviderBedrock:
 		return buildBedrockClientProfile(p)
 	case config.ProviderCodexCLI:
-		return buildCodexCLIClientProfile(p)
+		return buildCodexCLIClientProfile(ctx, p)
 	default:
 		return nil, fmt.Errorf("unknown provider %q in profile (want one of \"anthropic\", \"claude-cli\", \"openai\", \"azure-openai\", \"bedrock\", \"codex-cli\")", p.Provider)
 	}
@@ -81,8 +88,8 @@ func compileModelForProfile(p config.Profile) string {
 	return defaultCompileModel
 }
 
-func buildAnthropicClientProfile(p config.Profile) (llmclient.LLMClient, error) {
-	apiKey, err := p.ResolveAPIKey(context.Background())
+func buildAnthropicClientProfile(ctx context.Context, p config.Profile) (llmclient.LLMClient, error) {
+	apiKey, err := p.ResolveAPIKey(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("resolve profile API key: %w", err)
 	}
@@ -126,8 +133,8 @@ func buildClaudeCLIClientProfile(p config.Profile) (llmclient.LLMClient, error) 
 	return cl, nil
 }
 
-func buildOpenAIClientProfile(p config.Profile) (llmclient.LLMClient, error) {
-	apiKey, err := p.ResolveAPIKey(context.Background())
+func buildOpenAIClientProfile(ctx context.Context, p config.Profile) (llmclient.LLMClient, error) {
+	apiKey, err := p.ResolveAPIKey(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("resolve profile API key: %w", err)
 	}
@@ -138,14 +145,14 @@ func buildOpenAIClientProfile(p config.Profile) (llmclient.LLMClient, error) {
 	return cl, nil
 }
 
-func buildAzureOpenAIClientProfile(p config.Profile) (llmclient.LLMClient, error) {
+func buildAzureOpenAIClientProfile(ctx context.Context, p config.Profile) (llmclient.LLMClient, error) {
 	if p.Endpoint == "" {
 		return nil, fmt.Errorf("profile provider=azure-openai requires endpoint (profile field, or AZURE_OPENAI_ENDPOINT via the env overlay) — the Azure resource base URL, e.g. https://<resource>.openai.azure.com or, for Azure Government, https://<resource>.openai.azure.us")
 	}
 	if p.Deployment == "" {
 		return nil, fmt.Errorf("profile provider=azure-openai requires deployment (profile field, or AZURE_OPENAI_DEPLOYMENT via the env overlay)")
 	}
-	apiKey, err := p.ResolveAPIKey(context.Background())
+	apiKey, err := p.ResolveAPIKey(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("resolve profile API key: %w", err)
 	}
@@ -186,7 +193,7 @@ func buildBedrockClientProfile(p config.Profile) (llmclient.LLMClient, error) {
 	return cl, nil
 }
 
-func buildCodexCLIClientProfile(p config.Profile) (llmclient.LLMClient, error) {
+func buildCodexCLIClientProfile(ctx context.Context, p config.Profile) (llmclient.LLMClient, error) {
 	cl, err := codexcli.New(codexcli.Config{Bin: p.Bin})
 	if err != nil {
 		return nil, fmt.Errorf("construct Codex CLI client: %w", err)
@@ -199,7 +206,7 @@ func buildCodexCLIClientProfile(p config.Profile) (llmclient.LLMClient, error) {
 	// constraint under CPU contention (e.g. `go test -race ./...` running
 	// many packages' subprocess-spawning tests concurrently, including
 	// providers.go's own second Ping of this same lane via ProbeAll).
-	pingCtx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	pingCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	if err := cl.Ping(pingCtx); err != nil {
 		return nil, fmt.Errorf("codex-cli liveness check failed: the installed codex CLI may be silently degraded — undocumented config keys this adapter depends on (system-prompt mapping, ambient-context suppression) may have been dropped by a CLI upgrade, so fathom refuses to compile through it rather than risk a silent quality or cost regression: %w", err)
