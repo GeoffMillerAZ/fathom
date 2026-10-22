@@ -240,6 +240,14 @@ func TestProjectTabs_VerbParityOnALocalRoot(t *testing.T) {
 	root := t.TempDir()
 	mustWrite(t, filepath.Join(root, "CLAUDE.md"), "# Project\n")
 	f := newConsoleFixture(t)
+	// Both surfaces already use doctorChannels and beatLogPath. Give them
+	// the same retained history before doctor records its own run: otherwise
+	// the page sees a missing log and the subsequent verb sees a new one.
+	// Doctor uses the real clock, so align this fixture with it and seed a
+	// full window; the coverage text then has no moving partial-span bounds.
+	now := time.Now()
+	f.advance(now.Sub(f.now))
+	mustWrite(t, beatLogPath(), `{"at":"`+now.Add(-8*24*time.Hour).UTC().Format(time.RFC3339)+`","channel":"doctor","kind":"run"}`+"\n")
 	seedProjectRoot(t, f, "payment-service", root)
 
 	env := f.pageJSON(t, "/projects/payment-service/wiring")
