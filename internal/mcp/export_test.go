@@ -103,3 +103,9 @@ func BudgetedResultForTest(result any, byteBudget int) any { return budgetedResu
 
 // DeclaredBudgetForTest is the dispatch budget ctx declares; 0 for none.
 func DeclaredBudgetForTest(ctx context.Context) int { return declaredBudgetFrom(ctx) }
+
+// WithoutReviewBudgetForTest bypasses only the private whole-result cap for
+// a differential dispatch run; it is absent from production builds.
+func WithoutReviewBudgetForTest(ctx context.Context) context.Context {
+	return context.WithValue(ctx, reviewBudgetDisabled{}, true)
+}

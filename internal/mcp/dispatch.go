@@ -479,7 +479,7 @@ func (s *Server) handleToolsCallMeta(ctx context.Context, params json.RawMessage
 	if partial != nil {
 		envelope["budget"] = partial
 	}
-	if te.desc.Name == "review_diff" {
+	if te.desc.Name == "review_diff" && ctx.Value(reviewBudgetDisabled{}) != true {
 		var err error
 		envelope, err = capReviewDiffEnvelope(envelope, defaultCharBudget)
 		if err != nil {

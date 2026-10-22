@@ -18,7 +18,8 @@ with the registry.
 
 `review_diff` caps its complete serialized MCP ToolResult at 16,000 bytes, including
 both payload copies and metadata. Oversized reviews retain all eight dimension
-statuses and counts, with named omissions; small results are unchanged. See
+statuses and counts, the primary receipt band and deterministic detail prefixes, with
+named omissions and logged elision counts; small results are unchanged. See
 [change review](use-cases/change-review.md) for the disclosure contract.
 
 See [usage.md](usage.md) for how to connect a client and select a surface.

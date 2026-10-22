@@ -449,6 +449,8 @@ type reviewDiffResult struct {
 	ChangedFiles      []string                         `json:"changed_files"`
 	Dimensions        []any                            `json:"dimensions"`
 	DimensionStatus   map[string]reviewDimensionStatus `json:"dimension_status,omitempty"`
+	Elided            *reviewElision                   `json:"elided,omitempty"`
+	DetailsComplete   *bool                            `json:"details_complete,omitempty"`
 	Summary           string                           `json:"summary"`
 	FindingsPersisted bool                             `json:"findings_persisted"`
 	VerdictOutcome    any                              `json:"verdict_outcome,omitempty"`
