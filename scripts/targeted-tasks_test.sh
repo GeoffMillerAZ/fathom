@@ -26,7 +26,7 @@ chmod +x "$scratch/tools/go"
 export FATHOM_GO_BINARY="$scratch/tools/go" ARGS_LOG="$scratch/args" ENV_LOG="$scratch/env"
 cd "$scratch/repo"
 # task --list is also the discoverability contract.
-task --list > "$scratch/list"
+NO_COLOR=1 task --list > "$scratch/list"
 grep -E '^\* t:' "$scratch/list" >/dev/null || fail 't not listed'
 grep -E '^\* fmt:changed:' "$scratch/list" >/dev/null || fail 'fmt:changed not listed'
 task t 'RUN=TestOne|TestTwo' -- ./fixture/one ./fixture/two > "$scratch/out" 2>&1 || fail 't did not run'
