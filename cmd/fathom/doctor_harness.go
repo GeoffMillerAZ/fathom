@@ -161,6 +161,14 @@ func harnessHookEntriesByScope(root string, d harness.Descriptor, specs []hookSp
 // path of "~/.codex/hooks.json" under CODEX_HOME=/tmp/ch resolves to
 // /tmp/ch/hooks.json, not /tmp/ch/.codex/hooks.json.
 func harnessUserPath(d harness.Descriptor, descriptorPath string) (string, bool) {
+	if d.ID == harness.ClaudeCode && strings.HasPrefix(descriptorPath, "~/.claude/") {
+		base := harness.ClaudeConfigRoot(wiringDriftHome())
+		if base == "" {
+			return "", false
+		}
+		return filepath.Join(base, strings.TrimPrefix(descriptorPath, "~/.claude/")), true
+	}
+
 	rel := strings.TrimPrefix(descriptorPath, "~/")
 	if d.Env.Home != "" {
 		if v := os.Getenv(d.Env.Home); v != "" {

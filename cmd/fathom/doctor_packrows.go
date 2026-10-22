@@ -78,6 +78,9 @@ func lefthookReviewConcern() custodian.Concern {
 
 func checkLefthookGates(root string) doctorCheck {
 	const name = "lefthook_gates"
+	if row, ok := checkComposedPushGate(root); ok {
+		return row
+	}
 	remedy := "add a `fathom verify` (and optionally `fathom review`) step to lefthook.yml's pre-push (see docs/adoption/claude-code.md in the fathom repo)"
 
 	fs, err := doctorPackFindings(root, []packRef{{"lefthook", "lefthook_pre_push_verify"}}, lefthookReviewConcern())

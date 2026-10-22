@@ -1147,3 +1147,16 @@ cwd-changed primer dedupe, measured in
 Ownership stays with fathom's hook lifecycle, config and byte accounting; no
 kit rendering API, theme, adoption selection or dependency pin changed.
 Synthetic hook tests cover the originating app; no second-app propagation is claimed.
+
+## Doctor CLI diagnostics (AD-3, AD-4, GQ4)
+
+FATHOM-DOCTOR-01: **local-divergence** for the added channel table. The existing
+plain doctor table and JSON contract stay in place; the channel projection needs
+numeric cost columns and shared-group/coverage labels beyond cli-kit's StatusRow.
+Ownership is app-local hook evidence, configuration and gate inspection; no kit API,
+dependency, palette or selection changed. Discovery: `search_capabilities` for
+`cli table status output` returned no matching capability; cli-kit and contribution-loop
+guidance were consulted. Evidence: `TestDoctorChannelsStatesAndCosts`,
+`TestDoctorChannelsMissingLogIsNotZero`, `TestDoctorChannelsRenderInTextAndJSON`.
+Next owner: the app maintainer; revisit if cli-kit gains a suitable multi-metric
+status projection. This is synthetic CLI proof; no second-consumer delivery is claimed.

@@ -311,18 +311,35 @@ func checkGuardDeadScopes(hc *http.Client, baseURL, root, explicitSvc string, da
 			svc = strings.ToLower(cands[0].name)
 		}
 	}
-	sources, err := listSourcesForDoctor(hc, baseURL, svc)
+	sources, sourceTotal, err := listSourcesProjectionForDoctor(hc, baseURL, svc)
 	if err != nil {
 		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("list_sources(%s): %v", svc, err), probeErr: err}
 	}
 
+	// Bound comparisons and collect disk paths once, shared by every guard.
+	const maxGuards = 128
+	const maxSources = 8192
+	sort.Strings(sources)
+	sourceComplete := len(sources) <= maxSources && sourceTotal <= len(sources)
+	if len(sources) > maxSources {
+		sources = sources[:maxSources]
+	}
+	var disk []string
+	diskRead, diskComplete := false, false
+	checked := 0
+	var unfinished bool
 	var dead, unindexed []string
 	var commandGuardCount int
 	for i, g := range set.Guards {
+		if i >= maxGuards {
+			unfinished = true
+			break
+		}
 		if len(g.CommandScopes) > 0 {
 			commandGuardCount++
 		}
 		if len(g.Scopes) == 0 {
+			checked++
 			continue
 		}
 		m := filter.New(g.Scopes)
@@ -334,6 +351,11 @@ func checkGuardDeadScopes(hc *http.Client, baseURL, root, explicitSvc string, da
 			}
 		}
 		if matches {
+			checked++
+			continue
+		}
+		if !sourceComplete {
+			unfinished = true
 			continue
 		}
 		// RC-8 (ADR-027): "matches no INDEXED file" is not "matches no
@@ -342,10 +364,25 @@ func checkGuardDeadScopes(hc *http.Client, baseURL, root, explicitSvc string, da
 		// a remedy that DELETES correct configuration. Look at the disk
 		// before saying nothing is there.
 		label := fmt.Sprintf("guards[%d] (%s)", i, strings.Join(g.Scopes, ", "))
-		n, walkErr := filesOnDiskUnderContext(ctx, root, g.Scopes)
-		if walkErr != nil && n == 0 {
-			return doctorCheck{Name: name, Status: doctorErrorStatus(walkErr), Reason: "guard file discovery did not finish: " + walkErr.Error(), probeErr: walkErr, Remedy: "re-run doctor when the walk can finish"}
+		if !diskRead {
+			var walkErr error
+			disk, diskComplete, walkErr = doctorDiskPaths(ctx, root, maxSources)
+			diskRead = true
+			if walkErr != nil {
+				return doctorCheck{Name: name, Status: doctorErrorStatus(walkErr), Reason: "guard file discovery did not finish: " + walkErr.Error(), probeErr: walkErr, Remedy: "re-run doctor when the walk can finish"}
+			}
 		}
+		n := 0
+		for _, path := range disk {
+			if m.Match(path) {
+				n++
+			}
+		}
+		if n == 0 && (!diskComplete || !sourceComplete) {
+			unfinished = true
+			continue
+		}
+		checked++
 		if n > 0 {
 			unindexed = append(unindexed, fmt.Sprintf("%s — %d file(s) on disk, none indexed", label, n))
 			continue
@@ -361,6 +398,10 @@ func checkGuardDeadScopes(hc *http.Client, baseURL, root, explicitSvc string, da
 		note = fmt.Sprintf("; %d guard(s) cover real files fathom does not INDEX (not dead — do not delete them): %s",
 			len(unindexed), strings.Join(unindexed, "; ")) + note
 	}
+	if unfinished {
+		return doctorCheck{Name: name, Status: doctorUnknown, Reason: fmt.Sprintf("checked %d of %d guards (cap %d guards, %d indexed paths and disk entries); %d dead scope(s) confirmed%s", checked, len(set.Guards), maxGuards, maxSources, len(dead), note), Remedy: "narrow the guard scopes or inspect the remaining guards manually"}
+	}
+
 	if len(dead) > 0 {
 		return doctorCheck{
 			Name: name, Status: doctorWarn,
@@ -378,22 +419,33 @@ func checkGuardDeadScopes(hc *http.Client, baseURL, root, explicitSvc string, da
 }
 
 func listSourcesForDoctor(hc *http.Client, baseURL, service string) ([]string, error) {
+	sources, _, err := listSourcesProjectionForDoctor(hc, baseURL, service)
+	return sources, err
+}
+func listSourcesProjectionForDoctor(hc *http.Client, baseURL, service string) ([]string, int, error) {
 	if service == "" {
-		return nil, fmt.Errorf("no service resolved")
+		return nil, 0, fmt.Errorf("no service resolved")
 	}
 	// SR-23: list_sources merged into status(section:"sources"), byte-
 	// compatible with its own {sources: [...]} shape.
 	inner, err := callMCPTool(hc, baseURL, "status", map[string]any{"section": "sources", "service": service})
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	var payload struct {
 		Sources []string `json:"sources"`
+		Elided  *struct {
+			Of int `json:"of"`
+		} `json:"elided"`
 	}
 	if err := json.Unmarshal(inner, &payload); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	return payload.Sources, nil
+	total := len(payload.Sources)
+	if payload.Elided != nil && payload.Elided.Of > total {
+		total = payload.Elided.Of
+	}
+	return payload.Sources, total, nil
 }
 
 // ─── guard_include_modules_unbound: include_modules with no binding warns ─
@@ -513,4 +565,40 @@ func filesOnDiskUnderContext(ctx context.Context, root string, scopes []string) 
 		return 1, nil // could not look everywhere; refuse to call it empty
 	}
 	return found, nil
+}
+
+// doctorDiskPaths performs at most limit directory-entry visits. Incomplete
+// coverage never establishes absence. WalkDir supplies deterministic order.
+func doctorDiskPaths(ctx context.Context, root string, limit int) ([]string, bool, error) {
+	paths := []string{}
+	visits := 0
+	complete := true
+	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err != nil {
+			complete = false
+			return nil
+		}
+		visits++
+		if visits > limit {
+			complete = false
+			return filepath.SkipAll
+		}
+		if d.IsDir() {
+			if d.Name() == ".git" || d.Name() == "node_modules" || d.Name() == "workspace" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			complete = false
+			return nil
+		}
+		paths = append(paths, filepath.ToSlash(rel))
+		return nil
+	})
+	return paths, complete, err
 }

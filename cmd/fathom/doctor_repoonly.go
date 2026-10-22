@@ -13,6 +13,7 @@ package main
 func doctorRepoChecks(root, harness string) []doctorCheck {
 	return []doctorCheck{
 		checkHooksInstalled(root, harness),
+		checkDuplicateHookRegistration(root, harness),
 		checkLefthookGates(root),
 		checkHarnessHookFiles(root, harness),
 		checkStanzaPresentRepoOnly(root), // no `claude --version` spawn (ADR-059's version half)
@@ -28,9 +29,9 @@ func doctorRepoChecks(root, harness string) []doctorCheck {
 
 // doctorJSONPayload is `fathom doctor --json`'s document — printDoctorJSON
 // writes it and the wiring tab carries it as the verb's section (P10).
-func doctorJSONPayload(harness, svc, root string, checks []doctorCheck) map[string]any {
+func doctorJSONPayload(harness, svc, root string, checks []doctorCheck, channels ...[]doctorChannel) map[string]any {
 	pass, warn, fail, skipped := tallyDoctorChecks(checks)
-	return map[string]any{
+	out := map[string]any{
 		"service": svc,
 		"harness": harness,
 		"root":    root,
@@ -40,4 +41,8 @@ func doctorJSONPayload(harness, svc, root string, checks []doctorCheck) map[stri
 		// skipped still sees the same numbers those fields always meant.
 		"summary": map[string]any{"total": len(checks), "pass": pass, "warn": warn, "fail": fail, "skipped": skipped},
 	}
+	if len(channels) > 0 {
+		out["channels"] = channels[0]
+	}
+	return out
 }

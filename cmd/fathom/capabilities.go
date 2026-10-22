@@ -70,7 +70,7 @@ func cmdCapabilitiesList(args []string, stdout, stderr io.Writer) int {
 	if *asJSON {
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")
-		if err := enc.Encode(capabilityJSON(probe, reports)); err != nil {
+		if err := enc.Encode(capabilityJSONWithSeams(probe, reports, root)); err != nil {
 			fmt.Fprintf(stderr, "error: %v\n", err)
 			return 1
 		}
@@ -102,6 +102,7 @@ func cmdCapabilitiesList(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stdout, "    %-15s   cost: %s\n", "", r.Capability.Cost)
 		}
 	}
+	printHookSeams(stdout, hookSeams(root))
 	fmt.Fprintln(stdout, "\n  fathom capabilities explain <id>   what it does and what it costs")
 	return 0
 }
@@ -210,7 +211,7 @@ func cmdCapabilitiesSet(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("capabilities set", stderr)
 	repo := fs.String("repo", ".", "repository root")
 	scope := fs.String("scope", "project", "which scope to write: project|user")
-	if err := fs.Parse(args); err != nil {
+	if err := fs.Parse(reorderFlagsFirst(fs, args)); err != nil {
 		return 1
 	}
 	if fs.NArg() != 2 {
@@ -227,6 +228,16 @@ func cmdCapabilitiesSet(args []string, stdout, stderr io.Writer) int {
 	default:
 		fmt.Fprintf(stderr, "error: value must be on or off, got %q\n", val)
 		return 1
+	}
+
+	if hookSeamKnown(id) {
+		path, err := setHookSeam(*repo, *scope, id, on)
+		if err != nil {
+			fmt.Fprintf(stderr, "error: %v\n", err)
+			return 1
+		}
+		fmt.Fprintf(stdout, "%s: %s (%s scope) — written to %s\n", id, onOff(on), *scope, path)
+		return 0
 	}
 
 	reg := capability.Default()
@@ -395,6 +406,7 @@ type capabilityRow struct {
 }
 
 type capabilityModel struct {
+	HookSeams    []hookSeamRow   `json:"hook_seams,omitempty"`
 	Service      string          `json:"service,omitempty"`
 	RepoRoot     string          `json:"repo_root"`
 	Operating    int             `json:"operating"`
@@ -494,4 +506,10 @@ func (capabilitiesRunner) execVerb(args []string, _ io.Reader, stdout, stderr io
 func init() {
 	declareVerb(verb{Name: "capabilities", Group: "operate", Order: 140, Run: capabilitiesRunner{},
 		Summary: "What is switched on here and WHY anything is off: list | explain <id> | set <id> on|off"})
+}
+
+func capabilityJSONWithSeams(p capability.Probe, reports []capability.Report, root string) capabilityModel {
+	m := capabilityJSON(p, reports)
+	m.HookSeams = hookSeams(root)
+	return m
 }
