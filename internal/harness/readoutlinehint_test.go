@@ -18,7 +18,7 @@ var readOutlineHintClaudeHookAddition = []struct {
 
 func TestClaudeHookTableReadOutlineHintAddition(t *testing.T) {
 	d, _ := Lookup(ClaudeCode)
-	base := len(d.Hooks) - len(readOutlineHintClaudeHookAddition)
+	base := len(d.Hooks) - len(readOutlineHintClaudeHookAddition) - len(adviceClaudeHookAdditions)
 	for i, want := range readOutlineHintClaudeHookAddition {
 		got := d.Hooks[base+i]
 		if got.Harness != want.event || got.Matcher != want.matcher || got.Marker != want.marker || got.Verb != want.sub || got.TimeoutSec != want.timeout {

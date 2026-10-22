@@ -11,6 +11,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"path"
@@ -121,6 +122,7 @@ func cmdMapShow(args []string, stdout, stderr io.Writer) int {
 	storePath := fs.String("store", "", "resolve symbol anchors from this store (default: the daemon)")
 	url := fs.String("url", defaultFathomURL(), "fathom daemon URL")
 	service := fs.String("service", "", "the service symbol anchors resolve in (default: the one the daemon names for this repository; needed with --store when it names none)")
+	brief := fs.Bool("brief", false, "print at most 1500 bytes of anchored excerpts and why lines for an orchestrator brief")
 	jsonOut := fs.Bool("json", false, "emit JSON: the entries shown, the entries cut, the counts (the budget picks the entries; the JSON itself is not capped)")
 	focus := fs.String("focus", "", "comma-separated paths or package directories your task touches: the entries under them print first and every other entry is marked outside focus, none hidden")
 	if err := fs.Parse(rest); err != nil {
@@ -142,6 +144,20 @@ func cmdMapShow(args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		fmt.Fprintf(stderr, "error: %v %q (`fathom map list` shows this repo's maps)\n", explmap.ErrUnknownMap, ids[0])
 		return 1
+	}
+	if *brief {
+		cap := subagentMapBriefBudget
+		explicitBudget := false
+		fs.Visit(func(f *flag.Flag) {
+			if f.Name == "budget" {
+				explicitBudget = true
+			}
+		})
+		if explicitBudget && *budget > 0 && *budget < cap {
+			cap = *budget
+		}
+		fmt.Fprint(stdout, renderMapBrief(set, []string{m.ID}, root, cap))
+		return 0
 	}
 	src := newRepoMapSource(root, func() mapSymbolResolver {
 		return openMapSymbols(root, *storePath, *url, *service)

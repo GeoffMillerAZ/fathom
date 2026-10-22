@@ -310,3 +310,4 @@ package config
 // gateEvidence: #Config & {gate: {accept_receipts: "yes"}} // bool required
 
 // gateConsent: #Config & {gate: {allow_receipt_acceptance: "yes"}} // bool required
+// badSubagentFacts: #Config & {hooks: subagent_map_facts: "on"}

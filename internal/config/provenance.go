@@ -131,6 +131,16 @@ func mergeLayer(cfg *Config, prov Provenance, raw map[string]any, source Source,
 	}
 
 	if hm, ok := raw["hooks"].(map[string]any); ok {
+		if v, ok := hm["subagent_map_facts"]; ok {
+			cfg.Hooks.SubagentMapFacts = ""
+			switch v {
+			case true:
+				cfg.Hooks.SubagentMapFacts = "on"
+			case "observe":
+				cfg.Hooks.SubagentMapFacts = "observe"
+			}
+			prov["hooks.subagent_map_facts"] = SourceInfo{source, path}
+		}
 		// A cloned repository cannot override the user's full-context switch.
 		if b, ok := hm["dedupe"].(bool); ok && !(source == SourceProject && !cfg.Hooks.Dedupe && prov["hooks.dedupe"].Source == SourceUser) {
 			cfg.Hooks.Dedupe = b

@@ -167,10 +167,10 @@ func TestLookupClaudeCodeReproducesHookTable(t *testing.T) {
 	if !ok {
 		t.Fatal("claude-code missing from the registry")
 	}
-	want := len(preSeamClaudeHookTable) + len(postSeamClaudeHookAdditions) + len(waveThreeClaudeHookAdditions) + len(promptHookClaudeHookAddition) + len(testRunClaudeHookAddition) + len(readoutClaudeHookAddition) + len(claimCheckClaudeHookAddition) + len(readOutlineHintClaudeHookAddition)
+	want := len(preSeamClaudeHookTable) + len(postSeamClaudeHookAdditions) + len(waveThreeClaudeHookAdditions) + len(promptHookClaudeHookAddition) + len(testRunClaudeHookAddition) + len(readoutClaudeHookAddition) + len(claimCheckClaudeHookAddition) + len(readOutlineHintClaudeHookAddition) + len(adviceClaudeHookAdditions)
 	if len(d.Hooks) != want {
-		t.Fatalf("claude-code bindings = %d, want %d (%d pre-seam + %d vision 26 §4 + %d wave 3 + %d O57 + %d TR-2 + %d readout + %d RO-38 + %d H8)", len(d.Hooks), want,
-			len(preSeamClaudeHookTable), len(postSeamClaudeHookAdditions), len(waveThreeClaudeHookAdditions), len(promptHookClaudeHookAddition), len(testRunClaudeHookAddition), len(readoutClaudeHookAddition), len(claimCheckClaudeHookAddition), len(readOutlineHintClaudeHookAddition))
+		t.Fatalf("claude-code bindings = %d, want %d (%d pre-seam + %d vision 26 §4 + %d wave 3 + %d O57 + %d TR-2 + %d readout + %d RO-38 + %d H8 + %d ADR-080)", len(d.Hooks), want,
+			len(preSeamClaudeHookTable), len(postSeamClaudeHookAdditions), len(waveThreeClaudeHookAdditions), len(promptHookClaudeHookAddition), len(testRunClaudeHookAddition), len(readoutClaudeHookAddition), len(claimCheckClaudeHookAddition), len(readOutlineHintClaudeHookAddition), len(adviceClaudeHookAdditions))
 	}
 	for i, want := range preSeamClaudeHookTable {
 		got := d.Hooks[i]

@@ -10,22 +10,24 @@
 // as a discovery pointer, so a planner that only grepped still hands its
 // workers a brief.
 //
-// Pointers here are paths as written (repo-relative), never a symbol id
-// — resolving path+line against the index is deliberately skipped on the
-// hook path (it would add a daemon round trip to a path that must never
-// block); gatherDiscoveryPointers/renderOneDiscoveryLine do that
-// resolution, fresh, at render time, exactly as they already do for the
-// MCP call log's pointers.
+// Paths are repo-relative. RangePointers additionally snapshots a read span
+// and its hash at observation, so the worker brief can verify it locally.
+// The legacy Pointers list serves the discovery counters. RangePointers is
+// the handoff evidence: a read's local span and content hash, captured with
+// the session and agent identity. Neither capture nor verification needs an
+// index lookup. Shell targets must resolve on disk before they are recorded.
 package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/discoveryptr"
 	"github.com/geoffmilleraz/fathom/internal/harness"
 	"github.com/geoffmilleraz/fathom/internal/shellcmd"
 	"github.com/geoffmilleraz/fathom/internal/statedir"
@@ -39,21 +41,27 @@ const observedDiscoverySchemaVersion = 1
 // observed-discoveries.jsonl — the observer's own mechanical fact ("this
 // call named this location"), never a model's summary of one.
 type observedDiscoveryRow struct {
-	SchemaVersion int      `json:"schema_version"`
-	TS            string   `json:"ts"` // RFC3339Nano, matches the MCP call log's own ts format
-	SessionID     string   `json:"session_id,omitempty"`
-	Cwd           string   `json:"cwd,omitempty"`
-	Tool          string   `json:"tool"` // "read" | "grep" | "glob" — the verb gatherDiscoveryPointers renders an observed-only pointer with
-	Pointers      []string `json:"pointers"`
+	SchemaVersion int                    `json:"schema_version"`
+	TS            string                 `json:"ts"` // RFC3339Nano, matches the MCP call log's own ts format
+	SessionID     string                 `json:"session_id,omitempty"`
+	Service       string                 `json:"service,omitempty"`
+	AgentID       string                 `json:"agent_id,omitempty"`
+	RangePointers []discoveryptr.Pointer `json:"range_pointers,omitempty"`
+	Cwd           string                 `json:"cwd,omitempty"`
+	Tool          string                 `json:"tool"` // "read" | "grep" | "glob" — the verb gatherDiscoveryPointers renders an observed-only pointer with
+	Pointers      []string               `json:"pointers"`
 }
 
 // observedDiscoveryEntry is observedDiscoveryRow parsed back for merging:
 // TS as a time.Time, everything else unchanged.
 type observedDiscoveryEntry struct {
-	TS        time.Time
-	SessionID string
-	Tool      string
-	Pointers  []string
+	TS            time.Time
+	SessionID     string
+	Service       string
+	AgentID       string
+	RangePointers []discoveryptr.Pointer
+	Tool          string
+	Pointers      []string
 }
 
 // ─── extraction (item 1) ─────────────────────────────────────────────────
@@ -84,7 +92,7 @@ func observedDiscoveryPointers(in harness.HookInput) []string {
 			return []string{p}
 		}
 	case harness.ToolShell:
-		if target, _ := bashObservedReadPath(in.Command, in.Cwd); target != "" {
+		if target, _ := bashObservedReadPath(in.Command, in.Cwd); target != "" && discoveryptr.PathLike(target) {
 			cwd, _ := hookEffectiveDir(in.Command, "", in.Cwd)
 			if p, ok := observedRepoRelPath(resolveBashDir(cwd, target), cwd); ok {
 				return []string{p}
@@ -108,29 +116,25 @@ func discoveryToolLabel(in harness.HookInput) string {
 	return discoveryBeatName(in.Tool)
 }
 
-// observedRepoRelPath resolves p (as sent on a tool call: usually
-// absolute, occasionally relative to the session's own cwd) against the
-// local, daemon-free service-candidate roots — the exact resolution
-// fileInEditSet already performs for a Read's target. ok is false when p
-// is empty or resolves under no known root (out of any indexed repo
-// entirely, or a path fathom cannot place).
+// observedRepoRelPath resolves a tool's target relative to its cwd, then
+// expresses it relative to the same repository root used for range capture.
+// A subdirectory's basename must never point at an unrelated root-level file.
 func observedRepoRelPath(p, cwd string) (string, bool) {
 	if p == "" {
 		return "", false
 	}
 	if !filepath.IsAbs(p) {
-		a, err := filepath.Abs(p)
+		a, err := filepath.Abs(filepath.Join(cwd, p))
 		if err != nil {
 			return "", false
 		}
 		p = a
 	}
-	for _, root := range localCandidateRoots(resolveProjDir(cwd)) {
-		if rel, ok := relativeToRoot(root, p); ok {
-			return rel, true
-		}
-	}
-	return "", false
+	// Always use the same root as range capture and handoff rendering. A
+	// lookup from a subdirectory must not become a pointer into the root's
+	// unrelated file with the same basename.
+	root := hookMapRoot(resolveProjDir(cwd))
+	return relativeToRoot(root, p)
 }
 
 // bashObservedReadKind classifies which discovery verb a recognized shell
@@ -262,13 +266,29 @@ func recordObservedDiscovery(root string, row observedDiscoveryRow) {
 // unresolvable target, all leave the log untouched.
 func recordObservedDiscoveryIfAny(in harness.HookInput) {
 	pointers := observedDiscoveryPointers(in)
+	root := hookMapRoot(resolveProjDir(in.Cwd))
+	if in.Tool == harness.ToolShell {
+		var existing []string
+		for _, p := range pointers {
+			real, err := filepath.EvalSymlinks(filepath.Join(root, p))
+			if err != nil {
+				continue
+			}
+			if _, ok := relativeToRoot(resolveSymlinks(root), real); ok {
+				existing = append(existing, p)
+			}
+		}
+		pointers = existing
+	}
 	if len(pointers) == 0 {
 		return
 	}
 	recordObservedDiscovery(resolveProjDir(in.Cwd), observedDiscoveryRow{
 		SchemaVersion: observedDiscoverySchemaVersion,
-		TS:            time.Now().UTC().Format(time.RFC3339Nano),
+		TS:            nowFunc().UTC().Format(time.RFC3339Nano),
 		SessionID:     in.SessionID,
+		AgentID:       in.AgentID,
+		RangePointers: observedRangePointers(in, pointers),
 		Cwd:           in.Cwd,
 		Tool:          discoveryToolLabel(in),
 		Pointers:      pointers,
@@ -302,7 +322,7 @@ func readObservedDiscoveryRows(root string, since time.Time) []observedDiscovery
 		if terr != nil || ts.Before(since) {
 			continue
 		}
-		out = append(out, observedDiscoveryEntry{TS: ts, SessionID: row.SessionID, Tool: row.Tool, Pointers: row.Pointers})
+		out = append(out, observedDiscoveryEntry{TS: ts, SessionID: row.SessionID, Service: row.Service, AgentID: row.AgentID, RangePointers: row.RangePointers, Tool: row.Tool, Pointers: row.Pointers})
 	}
 	return out
 }
@@ -317,4 +337,48 @@ func observedDiscoveryVerb(tool string) string {
 		return "read"
 	}
 	return "grepped"
+}
+
+// observedRangePointers snapshots only the literal range the read named.
+// Search directory targets carry no range and cannot enter a worker brief.
+func observedRangePointers(in harness.HookInput, paths []string) []discoveryptr.Pointer {
+	start, end := 1, 0
+	if in.Tool == harness.ToolDiscoveryRead {
+		if in.ReadOffset > 0 {
+			start = in.ReadOffset
+		}
+		if in.ReadLimit > 0 {
+			end = start + in.ReadLimit - 1
+		}
+	} else if in.Tool == harness.ToolShell {
+		cmd := shellcmd.ParseCommand(in.Command)
+		if cmd.Unreadable || len(cmd.Pipelines) != 1 || len(cmd.Pipelines[0].Units) != 1 {
+			return nil
+		}
+		u := cmd.Pipelines[0].Units[0]
+		switch u.Name() {
+		case "cat":
+		case "sed":
+			if len(u.Words) != 4 || u.Words[1].Text != "-n" {
+				return nil
+			}
+			var n int
+			script := u.Words[2].Text
+			if n, _ = fmt.Sscanf(script, "%d,%dp", &start, &end); n != 2 || script != fmt.Sprintf("%d,%dp", start, end) {
+				return nil
+			}
+		default:
+			return nil
+		}
+	} else {
+		return nil
+	}
+	root := hookMapRoot(resolveProjDir(in.Cwd))
+	var out []discoveryptr.Pointer
+	for _, p := range paths {
+		if ptr, _, ok := discoveryptr.Read(root, p, start, end); ok {
+			out = append(out, ptr)
+		}
+	}
+	return out
 }

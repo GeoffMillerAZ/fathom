@@ -120,3 +120,34 @@ free (no daemon call) for a repository whose threads log holds no map.
   the pre-compact pointer carries the ids of the alive maps the session filed or
   added to (`active maps: …`); `thread brief` and `thread handoff` show a note's
   references as `[maps …]`, so a session that resumes the thread finds them.
+
+#### Facts in a worker brief
+
+`fathom map show ID --brief` prints at most 1,500 bytes of current anchored
+excerpts and their why lines, newest entries first. `--budget N` can lower that
+cap. Changed or missing ranges contribute nothing. This mode uses local files
+and the threads log, with no index lookup.
+
+Claude Code's `PreToolUse` hook for `Agent` and older `Task` calls appends the
+same block to the spawn prompt from live maps filed in the parent session.
+Every other tool-input field and the permission decision stay unchanged. No live
+facts, an unsupported harness, malformed input or a hook error leaves the input
+untouched and logs a skip reason. A session-end note closes only unnamed maps
+filed before that note in the same session, so a resumed parent can file new maps.
+
+An orchestrator that relocates its threads log must set `FATHOM_THREADS` to the
+same location in the harness environment as in its map-writing commands. Passing
+it only to a shell command does not configure the hooks. Orchestrators writing
+their own prompts can paste `map show ID --brief` output directly.
+
+The SubagentStart discovery section includes only the parent's lookups since its
+recorded session start, with a recorded range hash that still matches the local
+file. Hook and console calls, native instruction files and unverified legacy
+pointers are excluded. MCP rows whose caller cannot prove parent agent identity
+are also omitted. Claude Code's completed-tool hook records `symbol_context`,
+`find_symbol` and `read_source` results in the existing discovery log with the
+harness session and agent identity, including plugin tool names. Source answers
+retain hashes of the returned lines. Locator answers snapshot the returned local
+span at completion. This preserves the parent's lookups even when its MCP
+connection sends no identity tags. Other harnesses without this capture must
+supply tagged evidence themselves. With no qualifying range the section is absent.

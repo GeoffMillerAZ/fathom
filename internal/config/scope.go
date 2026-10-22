@@ -107,6 +107,7 @@ var fieldScopes = []FieldScope{
 	{"hooks.pin_check", ScopeBehaviour, "the commit pin line's output mode; the check itself is on by default"},
 	{"hooks.prompt_definitions", ScopeBehaviour, "the definitions line runs nothing: it names find_symbol answers the prompt hook already fetched (prompthook.go)"},
 	{"hooks.read_outline_hint", ScopeBehaviour, "the Read outline hint runs nothing: it reads the file the Read names and runs fathom's own extractors over it in process (readouthint.go)"},
+	{"hooks.subagent_map_facts", ScopeBehaviour, "opts in to local exploration-map excerpts in subagent prompts"},
 	{"hooks.test_run", ScopeBehaviour, "the test-run hook runs nothing: it reads the output of a command the harness ran (TR-X2, testrunhook.go)"},
 	{"hooks.tests_to_run", ScopeBehaviour, "the tests-to-run line runs nothing: it asks the daemon which tests reach the edited file and prints the go test recipe as text (edithook_teststorun.go)"},
 	{"learning.promote_corroborations", ScopeBehaviour, "a threshold (the learned-rule promotion bar)"},

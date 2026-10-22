@@ -197,6 +197,7 @@ an array of tables, and `tenancy.**` for every key under `[tenancy]`.
 | `hooks.pin_check` | behaviour | the commit pin line's output mode; the check itself is on by default |
 | `hooks.prompt_definitions` | behaviour | the definitions line runs nothing: it names find_symbol answers the prompt hook already fetched (prompthook.go) |
 | `hooks.read_outline_hint` | behaviour | the Read outline hint runs nothing: it reads the file the Read names and runs fathom's own extractors over it in process (readouthint.go) |
+| `hooks.subagent_map_facts` | behaviour | opts in to local exploration-map excerpts in subagent prompts |
 | `hooks.test_run` | behaviour | the test-run hook runs nothing: it reads the output of a command the harness ran (TR-X2, testrunhook.go) |
 | `hooks.tests_to_run` | behaviour | the tests-to-run line runs nothing: it asks the daemon which tests reach the edited file and prints the go test recipe as text (edithook_teststorun.go) |
 | `learning.promote_corroborations` | behaviour | a threshold (the learned-rule promotion bar) |
@@ -2205,3 +2206,28 @@ opt-in generally, and enabled in this repository. The committed config enumerate
 cross-plan pairs; a duplicate within a plan or in an additional plan still fails.
 An exception whose named pair no longer collides fails as a stale exception; remove
 it when the collision is resolved.
+
+## Spawn-time exploration facts: `[hooks] subagent_map_facts`
+
+```toml
+[hooks]
+subagent_map_facts = false # default; true enables, "observe" logs only
+```
+
+In Claude Code, the `PreToolUse` hook on `^(Agent|Task)$` can append up to
+1,500 bytes of the parent's live map excerpts and why lines to the spawn
+prompt. It is the one hook input rewrite (AD-12), enabled only by `true`.
+`"observe"` performs the same checks and logs an `observed` beat without
+changing the prompt. Off by choice is silent; missing facts and errors fail
+open. The repository may set this behaviour key, overriding the user layer.
+
+A prompt containing `[fathom exploration facts]` is left byte-identical and
+logs `already-present`, including nested spawns. Orchestrators can paste
+`fathom map show ID --brief` output to keep cached prompts stable. The block
+labels its excerpts as data, not instructions. Changed ranges are omitted.
+Set `FATHOM_THREADS` in the harness environment when using a relocated log.
+
+To expand a discovery brief with the same AD-11 filters, run
+`fathom discoveries --parent-session ID --budget N` from the repository.
+It includes only that parent's current, content-checked ranges and excludes
+child observations, instruction files and pre-session reads.

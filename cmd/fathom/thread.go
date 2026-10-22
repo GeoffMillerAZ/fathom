@@ -128,19 +128,22 @@ func loadThreadItems(path string) []threadItem {
 // loadAllThreadRows is loadThreadItems' fold over every row, the maps' own
 // included.
 func loadAllThreadRows(path string) []threadItem {
-	data, err := os.ReadFile(path)
+	data, err := readThreadsFile(path)
 	if err != nil {
 		return nil
 	}
+	return foldThreadRows(parseThreadRows(data))
+}
+
+// readThreadsFile is the single-read seam for a thread-log snapshot.
+var readThreadsFile = os.ReadFile
+
+func foldThreadRows(rows []threadItem) []threadItem {
 	latest := map[string]threadItem{}
 	var order []string
-	for _, line := range strings.Split(string(data), "\n") {
-		if strings.TrimSpace(line) == "" {
-			continue
-		}
-		var it threadItem
-		if json.Unmarshal([]byte(line), &it) != nil || it.ID == "" {
-			continue // a malformed line is skipped, never guessed at
+	for _, it := range rows {
+		if hookDeadlineSpent() {
+			return nil
 		}
 		if _, seen := latest[it.ID]; !seen {
 			order = append(order, it.ID)

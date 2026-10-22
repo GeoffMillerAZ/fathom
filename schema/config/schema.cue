@@ -364,6 +364,7 @@ package config
 // with its definition file:line. Unset means off for all five. "observe"
 // computes and logs with emitted=false without injecting the line.
 #Hooks: {
+	subagent_map_facts?: bool | "observe"
 	// Unchanged edit/cwd context is injected once per session (default on).
 	dedupe?:             bool
 	test_run?:           bool

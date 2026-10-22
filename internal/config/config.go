@@ -404,6 +404,9 @@ type Hooks struct {
 	// observeSeams records observe-only modes while the boolean fields keep
 	// their existing meaning: the seam runs, including in observe mode.
 	observeSeams uint8
+	// SubagentMapFacts is off (empty), on, or observe. Only on rewrites
+	// Claude Code spawn prompts with checked exploration-map excerpts.
+	SubagentMapFacts string
 	// Dedupe suppresses already delivered rules per context on Claude Code
 	// and Codex, and consecutive unchanged cwd primers on Claude Code.
 	// Default on; a user false wins over a repo true.
