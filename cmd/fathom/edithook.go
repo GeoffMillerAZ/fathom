@@ -192,7 +192,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 			// doc comment on skipRuleVerdict).
 			// SR-48w: the ask names the claim id, and an answered one-key
 			// reply pending for the session is written first.
-			text, ok = withRuleVerdictAsk(url, sessionID, meta.service, meta.repoRelFile, meta.topRule, meta.topSrc, meta.topClaimID, text, ok)
+			text, ok = withRuleVerdictAsk(url, sessionID, meta.service, meta.repoRelFile, meta.topRule, meta.topSrc, meta.topClaimID, text, ok, hook.AgentID)
 		}
 		// SR-61 (F-27/U4): served/still_served/top_changed per claim id, the SAME
 		// top-governing-rule turn-over-turn comparison SR-48 already reads
@@ -204,7 +204,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 		// these rules for this same edit, which suppresses the SR-48 ask
 		// above and nothing else: the pre hook writes no row, so skipping
 		// here lost the served row of every guarded edit.
-		trackRuleOutcome(sessionID, meta.service, meta.repoRelFile, meta.servedClaimID)
+		trackRuleOutcome(sessionID, meta.service, meta.repoRelFile, meta.servedClaimID, hook.AgentID)
 	}
 	text, ok = withClaimMoment(url, projDir, filePath, sessionID, text, ok) // PC-22: a newly checked [x] on a depth-1 plan verifies now (edithook_claim.go)
 	text, ok = withSkipGainedNote(projDir, filePath, text, ok)              // O56 fix item 3: note a row gaining skip_test, daemon-free (edithook_skipnote.go)

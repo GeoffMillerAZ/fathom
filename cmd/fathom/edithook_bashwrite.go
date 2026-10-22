@@ -201,7 +201,7 @@ func cmdEditHookBashWrite(codec harness.Codec, hook harness.HookInput, url strin
 		// Edit's are (trackRuleOutcome, keyed per written file by the first
 		// served claim). A doubt line serves no rule body, so it records none.
 		for _, f := range m.namedFiles {
-			trackRuleOutcome(sessionID, svc, f, m.topClaims[f])
+			trackRuleOutcome(sessionID, svc, f, m.topClaims[f], hook.AgentID)
 		}
 		answeredMeta["claims"] = strconv.Itoa(claimBearing(m.rules)) // rule_outcome_writer reads it
 	}
