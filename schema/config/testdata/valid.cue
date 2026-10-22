@@ -267,10 +267,13 @@ exampleTyped: #Config & {
 // The readout hook's modes (RO-15): user scope only, off unless set.
 exampleReadouts: #Config & {
 	readouts: {
-		mode:  "observe"
+		mode: "observe"
 		roots: ["/work/waves"]
 		quiet_prefixes: ["nvm", "direnv exec"]
 		rules: "ls-long": mode: "lean"
 		trust: ["0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"]
 	}
 }
+
+// CB-1/CB-2: lossless hook context dedupe can be switched off.
+hookDedupeOff: #Config & {hooks: dedupe: false}

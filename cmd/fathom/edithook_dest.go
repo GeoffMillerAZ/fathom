@@ -43,6 +43,7 @@ const (
 	silenceGitignored         silenceReason = "gitignored"           // git ignores the target (EW-55, GL-25)
 	silenceForeignTarget      silenceReason = "foreign-target"       // the target sits under no candidate root of the project
 	silenceDoubtAlreadyServed silenceReason = "doubt-already-served" // the unnamed-write line was already shown for this directory
+	silenceSessionDeduped     silenceReason = "session-deduped"      // unchanged context already injected in this session
 	silenceNoRules            silenceReason = "no-rules"             // resolved, and nothing governs it or cites a spec
 	silenceNoGuard            silenceReason = "no-guard"             // --pre: no guard names the file or command
 	silenceGuardSilent        silenceReason = "guard-silent"         // --pre: a guard matched and had nothing to say

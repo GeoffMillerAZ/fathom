@@ -213,7 +213,20 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		return 0 // renderPostEdit already emitted the beat that names the silence
 	}
-	emitPayloadCost("post-edit", text, meta.rules, "post", sessionID, nil)
+
+	// Compare the final injection, including claim-moment and tests-to-run
+	// additions. Only Claude Code proves child identity and context resets.
+	target := resolveSymlinks(filePath)
+	if hook.AgentID != "" {
+		target = hook.AgentID + "\x00" + target
+	}
+	dedupe := dedupeHookInjection(codec.ID(), projDir, sessionID, "post-edit", target, text, nowFunc())
+	defer dedupe.close()
+	if dedupe.suppressed {
+		dedupe.record(codec.ID(), sessionID, "post-edit", text)
+		emitBeat("edit-hook", "answered", firingMeta(withFold(withDestination(silentAnswerMeta(map[string]string{"phase": "post"}, silenceSessionDeduped), projDir, filePath), meta.fold), sessionID, filePath))
+		return 0
+	}
 
 	out, err := codec.EncodeOutput(harness.EventPostTool, harness.HookOutput{Context: text})
 	if err != nil {
@@ -238,8 +251,15 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	if meta.findingsOmitted > 0 {
 		answeredMeta["findings_omitted"] = strconv.Itoa(meta.findingsOmitted)
 	}
+
+	if n, err := fmt.Fprintln(stdout, string(out)); err != nil || n != len(out)+1 {
+		return 0
+	}
+	dedupe.commit(nowFunc())
+	dedupe.record(codec.ID(), sessionID, "post-edit", text)
+	reportModuleBeats(meta.moduleRules, "post", sessionID)
+	emitPayloadCost("post-edit", text, meta.rules, "post", sessionID, nil)
 	emitBeat("edit-hook", "answered", firingMeta(answeredMeta, sessionID, filePath))
-	fmt.Fprintln(stdout, string(out))
 	return 0
 }
 
@@ -247,6 +267,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 // the answered beat and the story row carry beside the payload.
 type postEditMeta struct {
 	rules       int
+	moduleRules []semantic.Obligation // emitted-module accounting, after successful delivery
 	repoRelFile string
 	displaced   int
 	// findingsShown/findingsOmitted (FL-20) are renderFindingsBlock's own
@@ -507,7 +528,6 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 		for _, n := range obl.ModuleNotes {
 			fmt.Fprintf(&sb, "\n⚠️ module %s: %s", n.Module, n.Note)
 		}
-		reportModuleBeats(renderRules, "post", sessionID)
 	}
 
 	// FL-20 (docs/vision/30-findings-loop.md §3.4): the post-edit findings
@@ -587,6 +607,7 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 	}
 	return sb.String(), postEditMeta{
 		rules:           len(renderRules),
+		moduleRules:     renderRules,
 		repoRelFile:     repoRelFile,
 		displaced:       obl.Displaced,
 		findingsShown:   findingsShown,

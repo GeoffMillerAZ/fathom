@@ -181,15 +181,17 @@ func cmdPreCompactHook(args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		return 0
 	}
-	endGuard, silent := beginHookGuard("pre-compact-hook", "fathom pre-compact-hook", codec.ID(), defaultFathomURL())
-	if silent {
-		return 0 // §9: the managed daemon is disabled or paused — no RPC, no output
-	}
-	defer endGuard()
+	// Local context reset must happen even when the daemon guard is silent.
 	in, ok := readLifecycleInput(codec, harness.EventPreCompact)
 	if !ok || in.SessionID == "" {
 		return 0
 	}
+	resetHookDedupe(in.SessionID, "compact", nowFunc())
+	endGuard, silent := beginHookGuard("pre-compact-hook", "fathom pre-compact-hook", codec.ID(), defaultFathomURL())
+	if silent {
+		return 0
+	}
+	defer endGuard()
 	root := in.Cwd
 	if root == "" {
 		root, _ = os.Getwd()

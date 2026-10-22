@@ -83,9 +83,7 @@ func cmdSessionHookEvent(event string, args []string, stdin io.Reader, stdout, s
 			return toolFailureAdvice(*url, root(in), in.ToolName, in.ToolError)
 		})
 	case "cwd-changed":
-		return runAdvisoryEvent(codec, harness.EventCwdChanged, "cwd-hook", stdin, stdout, func(in harness.HookInput) string {
-			return cwdChangedPrimer(*url, root(in))
-		})
+		return runCwdChangedEvent(codec, *url, stdin, stdout, root)
 	case "test-run": // TR-2: PostToolUse(Bash), a piped or passing test run (TR-V1)
 		return testRunEntryHook(codec, harness.EventPostTool, event, *url, *dir, stdin, stdout)
 	case "failed-test-run": // TR-2: PostToolUseFailure(Bash), an unpiped run that exited non-zero

@@ -288,3 +288,6 @@ package config
 // bad46: #Config & {
 // 	readouts: trust: [true]
 // }
+
+// The hooks dedupe switch is boolean, never a string:
+// badHookDedupe: #Config & {hooks: dedupe: "off"}

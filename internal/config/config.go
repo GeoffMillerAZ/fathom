@@ -398,8 +398,11 @@ type ReadoutRule struct {
 	Mode string
 }
 
-// Hooks configures opt-in hook behaviours (schema.cue #Hooks).
+// Hooks configures hook behaviours (schema.cue #Hooks).
 type Hooks struct {
+	// Dedupe suppresses unchanged Claude Code post-edit and cwd primers.
+	// Default on for Claude Code only; a user false wins over a repo true.
+	Dedupe bool
 	// TestRun (TR-9, ADR-056 decision 6) turns on the test-run hook: after
 	// a Bash command that runs a declared test command, one line naming
 	// the failing tests and the changed symbols they reach. Default false
@@ -752,7 +755,7 @@ func dropRepoKeySources(raw map[string]any, path string) []IgnoredKeySource {
 // validate is a *LoadError naming that file.
 func Load(userPath, projectPath string) (Loaded, error) {
 	out := Loaded{
-		Config:      Config{Profiles: map[string]Profile{}, Decide: DefaultDecide, Hooks: Hooks{PinCheck: PinCheckRecord}, Readouts: Readouts{Mode: ReadoutsOff}},
+		Config:      Config{Profiles: map[string]Profile{}, Decide: DefaultDecide, Hooks: Hooks{PinCheck: PinCheckRecord, Dedupe: true}, Readouts: Readouts{Mode: ReadoutsOff}},
 		Provenance:  Provenance{},
 		UserPath:    userPath,
 		ProjectPath: projectPath,
