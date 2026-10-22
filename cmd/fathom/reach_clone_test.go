@@ -45,12 +45,15 @@ func TestCloneHookReachAndFreshness(t *testing.T) {
 	if code != 0 || !strings.Contains(out, "clone at ") || !strings.Contains(out, "unknown: changed in clone") {
 		t.Fatalf("test-run clone freshness: %d %s", code, out)
 	}
+	// A later hook process, after the daemon stopped indexing the service:
+	// no in-process memo and no cached answer carry over.
+	resetIdentityMemo()
+	identCacheDir = filepath.Join(t.TempDir(), "ident-after")
 	inProcessReg.Store(&inProcessRegistry{self: url, services: func(context.Context) (map[string]svcInfo, error) { return map[string]svcInfo{}, nil }})
 	line, row = testsToRunLine(url, filepath.Join(clone, "money/money.go"), "unknown-session")
 	if line != "" || row["missed"] != daemonJoinMissNotIndexed {
 		t.Fatalf("unresolved tests-to-run: %q %v", line, row)
 	}
-
 }
 
 func TestUnresolvedReachIsSilent(t *testing.T) {
