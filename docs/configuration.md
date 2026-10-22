@@ -1255,6 +1255,8 @@ confirmed (PR-V1). The backstop is pre-push: `fathom conserve
 
 ## Observe correctness seams: `[hooks]`
 
+Minimum build for `"observe"`: post-v0.17.0 revision `78903dfe6`; v0.17.0 accepts booleans only.
+
 The five correctness seams accept `false` (off, the default), `true`
 (compute, log and inject), or `"observe"` (compute and log with
 `emitted=false`, without injecting their line). Existing boolean settings
@@ -1269,7 +1271,8 @@ read_outline_hint = "observe"
 prompt_definitions = "observe"
 ```
 
-Observe uses the same deadlines and output caps as `true`. Init and fleet
+Observe uses the same deadlines and output caps as `true`, logging
+`dropped=budget` when the computed line would not fit. Init and fleet
 reconcile register the required hook entries in either enabled mode,
 including SubagentStop for claim checking and PreToolUse(Read) for outline
 hints. The computed rows remain in the hook log for evaluating the seams
@@ -1302,10 +1305,11 @@ What it does, once on:
 - A claim whose last matching run failed gets **one line** naming that
   run: the command, the result, the failing test ids as logged, the commit.
   A claim that a passing run at the current HEAD and tree backs is silent.
-- A last run whose piped or unreadable output leaves its verdict unknown
-  is silent and logged as `not-checked:piped`. An `unbacked` line requires
-  no recorded test run since the last edit, including piped runs. A run of
-  another declared command is `not checked (command)` rather than absent.
+- A last matching run whose piped or unreadable output leaves its verdict
+  unknown keeps the most recent decided verdict at the same HEAD and tree
+  since the last edit. With none, it is silent and logged as
+  `not-checked:piped`. With no matching command in the covered log window,
+  the check says `no <cmd> run is recorded`; another command cannot back it.
 - When the log tail does not reach back to the session's last edit (or its
   start), a claim with no run in it is `not checked (window)`, never a line
   saying no run backs it.
@@ -1441,7 +1445,8 @@ tests to run: TestFloor, TestRound, TestA and 2 more; recipe: go test -run '^(Te
   tail does not reach the session's last edit).
 
 No reaching test, a file that is not Go, or an unindexed root says nothing.
-An unindexed root logs `missed:not-indexed` with `emitted=false`. The line has its
+An unindexed root logs `missed="not indexed"` with `emitted=false`, using the
+same spaced miss value as the other daemon-backed channels. The line has its
 own 300 ms deadline inside the edit hook's; a daemon that does not answer
 in time (a cold one building its call graph) reads `tests: not computed
 (deadline)`, an unreachable one `tests: not computed (daemon)` and a file
@@ -1480,6 +1485,11 @@ route call. When no identifier resolves, or the deadline has passed, the
 line is absent or says `definitions not computed (deadline)` and never
 reads as "nothing found". Any error leaves the hook's other output
 unchanged.
+
+Each computed call logs channel `prompt-definitions`: kind `line`, `missed`
+(deadline), or `silent`, matching `tests-to-run`; definition count, `missed`,
+`dropped=budget` when the line would not fit, and `emitted`. Observe always
+logs `emitted=false`. The row carries no prompt text.
 
 ## The console: `[console]`
 

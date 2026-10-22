@@ -759,6 +759,10 @@ func init() {
 		Summary: "UserPromptSubmit hook: resolve the paths/packages/symbols the prompt names through the index and inject the rules that govern them, before the first edit"})
 }
 
+// promptDefinitionsChannel logs the definitions line's counts and outcome,
+// never prompt text. Kinds match tests-to-run: line, missed or silent.
+const promptDefinitionsChannel = "prompt-definitions"
+
 // withPromptDefinitions uses the definitions already resolved by the prompt
 // hook. Observe records the same computed row without adding context.
 func withPromptDefinitions(projDir, sessionID, text string, ok bool, defs []promptDefinition, missed bool) (string, bool) {
@@ -771,10 +775,12 @@ func withPromptDefinitions(projDir, sessionID, text string, ok bool, defs []prom
 	if missed {
 		meta["missed"] = "deadline"
 	}
-	if line != "" && !cfg.Hooks.Observes(hookOptInPromptDefinitions) {
+	if line != "" {
 		joined, joinedOK := combineWithRouteLine(text, ok, line)
 		if joined != text {
-			text, ok, meta["emitted"] = joined, joinedOK, "true"
+			if !cfg.Hooks.Observes(hookOptInPromptDefinitions) {
+				text, ok, meta["emitted"] = joined, joinedOK, "true"
+			}
 		} else {
 			meta["dropped"] = "budget"
 		}
@@ -783,6 +789,9 @@ func withPromptDefinitions(projDir, sessionID, text string, ok bool, defs []prom
 	if line != "" {
 		kind = "line"
 	}
-	emitBeat("prompt-definitions", kind, firingMeta(meta, sessionID, ""))
+	if missed {
+		kind = "missed"
+	}
+	emitBeat(promptDefinitionsChannel, kind, firingMeta(meta, sessionID, ""))
 	return text, ok
 }

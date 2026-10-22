@@ -8,7 +8,8 @@ package main
 // agent_id) decide: a claim whose last matching run failed,
 // or with no matching run since the session's last edit, gets one line
 // naming that run; a claim a passing run at the current head and tree backs
-// is silent, as is an unknown verdict from piped or unreadable output.
+// is silent. An unknown verdict keeps the last decided verdict at that
+// head and tree since the edit, or stays silent when there is none.
 // Advisory context only, never a block.
 //
 // Local reads only (the hook log's last 256 KiB, the message the input
@@ -149,16 +150,6 @@ func (c *claimCheck) run() {
 		c.cited[i] = "-"
 		rows := matchingRuns(runs.Rows, cl.Invocation)
 		if len(rows) == 0 {
-			// A different declared command still proves a run happened.
-			// Its scope cannot back this claim, but absence would be false.
-			if last, ok := runs.lastSinceEdit(); ok {
-				c.cited[i] = last.At.UTC().Format(time.RFC3339Nano)
-				c.verdicts[i] = "not checked (command)"
-				if last.Result != "pass" && last.Result != "fail" {
-					c.verdicts[i] = "not checked (piped)"
-				}
-				continue
-			}
 			if !startRead && runs.LastEdit.IsZero() {
 				start, _ = sessionStartFor(c.in.Root, c.in.Session)
 				startRead = true
@@ -172,6 +163,20 @@ func (c *claimCheck) run() {
 			continue
 		}
 		last := rows[len(rows)-1]
+		if last.Result != "pass" && last.Result != "fail" && last.Head != "" && last.Tree != "" {
+			// A filtered rerun cannot erase a decided verdict at the same
+			// tree. Only look back as far as the session's last edit.
+			for j := len(rows) - 2; j >= 0; j-- {
+				r := rows[j]
+				if r.At.Before(runs.LastEdit) {
+					break
+				}
+				if r.Head == last.Head && r.Tree == last.Tree && (r.Result == "pass" || r.Result == "fail") {
+					last = r
+					break
+				}
+			}
+		}
 		c.cited[i] = last.At.UTC().Format(time.RFC3339Nano)
 		switch last.Result {
 		case "pass":

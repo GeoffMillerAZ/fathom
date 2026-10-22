@@ -29,7 +29,7 @@ func TestTestsToRunUnindexedRootIsSilent(t *testing.T) {
 	beats, _ := readBeatLog(os.Getenv("FATHOM_HOOKS_LOG"))
 	for _, b := range beats {
 		if b.Channel == testsToRunChannel {
-			if b.Kind != "missed" || b.Meta["missed"] != "not-indexed" || b.Meta["emitted"] != "false" {
+			if b.Kind != "missed" || b.Meta["missed"] != "not indexed" || b.Meta["emitted"] != "false" {
 				t.Fatalf("unindexed row = %+v", b)
 			}
 			return
@@ -45,8 +45,6 @@ func TestClaimCheckUnknownRunIsSilentAndNeverUnbacked(t *testing.T) {
 		{"piped unknown", "go test", "unknown", "true", "All tests pass.", "not checked (piped)"},
 		{"unreadable result", "go test", "unknown", "false", "All tests pass.", "not checked (piped)"},
 		{"piped unknown named claim", "go test", "unknown", "true", "`go test ./...` passes.", "not checked (piped)"},
-		{"different piped run after edit", "task test", "unknown", "true", "`go test ./...` passes.", "not checked (piped)"},
-		{"different decided run after edit", "task test", "fail", "false", "`go test ./...` passes.", "not checked (command)"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			repo := testRunRepo(t, true)

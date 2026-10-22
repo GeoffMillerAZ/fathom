@@ -82,16 +82,6 @@ func (s sessionRuns) agentRows(agentID string) sessionRuns {
 	return kept
 }
 
-// lastSinceEdit keeps unknown and piped runs: a missing verdict is not
-// evidence that no test command ran after the edit.
-func (s sessionRuns) lastSinceEdit() (sessionRunRow, bool) {
-	if len(s.Rows) == 0 {
-		return sessionRunRow{}, false
-	}
-	last := s.Rows[len(s.Rows)-1]
-	return last, s.LastEdit.IsZero() || !last.At.Before(s.LastEdit)
-}
-
 // covers reports whether the tail reaches back far enough that a missing
 // run is a fact, not a gap (I38): it holds the session's last edit, or,
 // when the tail holds no edit of the session's, its oldest row is older

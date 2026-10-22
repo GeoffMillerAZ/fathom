@@ -129,7 +129,9 @@ package config
 // 	hooks: test_run: "yes"
 // }
 //
-// [hooks] claim_check and gate_preflight are bools (RO-38, RO-40):
+// The five correctness seams accept only bool | "observe". Other strings
+// ("on", "Observe") and numbers are rejected naming the key; Load negatives
+// are asserted for every seam in internal/config/hooks_observe_test.go.
 // badClaimCheck: #Config & {
 // 	hooks: claim_check: "on"
 // }
@@ -137,17 +139,17 @@ package config
 // 	hooks: gate_preflight: 1
 // }
 //
-// [hooks] prompt_definitions is a bool (H10):
+// [hooks] prompt_definitions rejects a case-changed observe (H10):
 // badPromptDefinitions: #Config & {
-// 	hooks: prompt_definitions: "yes"
+// 	hooks: prompt_definitions: "Observe"
 // }
 //
-// [hooks] read_outline_hint is a bool (H8):
+// [hooks] read_outline_hint rejects other strings (H8):
 // badReadOutlineHint: #Config & {
 // 	hooks: read_outline_hint: "yes"
 // }
 //
-// [hooks] tests_to_run is a bool (RO-43):
+// [hooks] tests_to_run rejects other strings (RO-43):
 // badTestsToRun: #Config & {
 // 	hooks: tests_to_run: "on"
 // }

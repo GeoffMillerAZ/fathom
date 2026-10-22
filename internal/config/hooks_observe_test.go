@@ -2,8 +2,23 @@ package config
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 )
+
+func TestHooksSeamsRejectInvalidObserveModesByKey(t *testing.T) {
+	for _, key := range []string{"claim_check", "gate_preflight", "tests_to_run", "read_outline_hint", "prompt_definitions"} {
+		for _, mode := range []string{`"on"`, `"Observe"`, "1"} {
+			t.Run(key+"/"+mode, func(t *testing.T) {
+				p := filepath.Join(t.TempDir(), "config.toml")
+				writeTOML(t, p, "[hooks]\n"+key+" = "+mode+"\n")
+				if _, err := Load("", p); err == nil || !strings.Contains(err.Error(), key) {
+					t.Fatalf("%s = %s: error=%v, want rejection naming %s", key, mode, err, key)
+				}
+			})
+		}
+	}
+}
 
 func TestHooksSeamsAcceptBooleansAndObserve(t *testing.T) {
 	for _, tc := range []struct {

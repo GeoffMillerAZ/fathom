@@ -92,7 +92,7 @@ func testsToRunLine(baseURL, filePath, sessionID string) (string, map[string]str
 		reason := daemonMissReason(ctx, err)
 		line, row["kind"], row["missed"] = testsToRunMissLine(reason), "missed", reason
 		if reason == daemonJoinMissNotIndexed && svc == "" {
-			line, row["missed"] = "", "not-indexed"
+			line = ""
 		}
 	} else {
 		shown, more := pickTestsToRun(r.Tests, path.Dir(rel))
@@ -203,13 +203,15 @@ func withTestsToRun(baseURL, filePath, sessionID, text string, ok bool) (string,
 	kind := row["kind"]
 	delete(row, "kind")
 	emitted := false
-	if line != "" && row["mode"] != "observe" {
+	if line != "" {
 		joined := line
 		if ok && text != "" {
 			joined = text + "\n" + line
 		}
 		if cost.Estimate(joined) <= specLineTokenBudget {
-			text, ok, emitted = joined, true, true
+			if row["mode"] != "observe" {
+				text, ok, emitted = joined, true, true
+			}
 		} else {
 			row["dropped"] = "budget"
 		}
