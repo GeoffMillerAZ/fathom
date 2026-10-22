@@ -56,6 +56,7 @@ const (
 // into a Verdict carries a citation and a severity — "one cited verdict
 // structure" per dimension (C1-1).
 type Finding struct {
+	CitationStatus *core.CitationStatus `json:"citation_status,omitempty"`
 	// Kind is dimension-specific: "impact", "obligation" (or a served
 	// claim's own Kind, e.g. "finding"), "arch_violation", "spec_uncovered".
 	Kind string
@@ -329,6 +330,7 @@ type ConservationResidueSummary struct {
 
 // ConservationResidueItem mirrors one internal/conserve.ResidueItem.
 type ConservationResidueItem struct {
+	CitationStatus              *core.CitationStatus `json:"citation_status,omitempty"`
 	Symbol, File, Change, Class string
 	Line, Callers               int
 	Tests                       []string
@@ -884,9 +886,10 @@ const dimCoverageName = "coverage"
 // joined, per-layer test coverage, as DimTestCoverage renders it into
 // Dimension.Coverage.
 type CoverageDetail struct {
-	Symbol string
-	File   string
-	Line   int
+	CitationStatus *core.CitationStatus `json:"citation_status,omitempty"`
+	Symbol         string
+	File           string
+	Line           int
 	// Layers is the sorted set of test layers that ACTUALLY COVER this
 	// symbol (Covered>0 in that layer's own profile) — an assertion
 	// grounded in which caller-labeled profile recorded the coverage
@@ -906,7 +909,7 @@ type CoverageDetail struct {
 }
 
 func (c CoverageDetail) payload() map[string]any {
-	return map[string]any{
+	out := map[string]any{
 		"symbol":       c.Symbol,
 		"file":         c.File,
 		"line":         c.Line,
@@ -915,6 +918,10 @@ func (c CoverageDetail) payload() map[string]any {
 		"percent":      c.Percent,
 		"uncovered":    c.Uncovered,
 	}
+	if c.CitationStatus != nil {
+		out["citation_status"] = c.CitationStatus
+	}
+	return out
 }
 
 // DimTestCoverage computes the "coverage" dimension (RC-41, extended for

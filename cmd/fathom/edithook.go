@@ -633,6 +633,13 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 // already does; a repo-local rule (the overwhelmingly common case, and
 // the ENTIRE case before phase O) is byte-identical to the pre-existing
 // rendering.
+func citationTag(r semantic.Obligation) string {
+	if r.CitationStatus == nil || r.CitationStatus.State == "" {
+		return ""
+	}
+	return " [citation " + r.CitationStatus.State + "]"
+}
+
 func writeRuleBullet(sb *strings.Builder, r semantic.Obligation) {
 	// FT-2's last hop: non-obligation kinds ("finding") are labeled in
 	// the bracket, and remediation drift (FT-6) is surfaced — a
@@ -656,9 +663,9 @@ func writeRuleBullet(sb *strings.Builder, r semantic.Obligation) {
 		extra += ", code drifted since compile"
 	}
 	if r.Module != "" {
-		fmt.Fprintf(sb, "\n• [%s] %s [%s, %s%s]", r.Module, r.Rule, r.Src, r.Tier, extra)
+		fmt.Fprintf(sb, "\n• [%s] %s [%s, %s%s]", r.Module, r.Rule, r.Src+citationTag(r), r.Tier, extra)
 	} else {
-		fmt.Fprintf(sb, "\n• %s [%s, %s%s]", r.Rule, r.Src, r.Tier, extra)
+		fmt.Fprintf(sb, "\n• %s [%s, %s%s]", r.Rule, r.Src+citationTag(r), r.Tier, extra)
 	}
 }
 

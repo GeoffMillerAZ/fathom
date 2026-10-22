@@ -230,7 +230,9 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 		if err := ctx.Err(); err != nil {
 			return nil, navLoadError("review_diff", p.Service, err)
 		}
-		payload["test_impact"] = reviewTestGap(ctx, backend, in).Payload()
+		gap := reviewTestGap(ctx, backend, in)
+		payload["test_impact"] = gap.Payload()
+		markReviewLocations(ctx, backend, p.Service, &v, payload, &gap)
 
 		// resolution/index_commit (VB-19, docs/vision/29-verbs-not-lookups.md
 		// §3 wave E): the typed/heuristic mix behind the impact dimension's
@@ -285,7 +287,13 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 			// already keeps).
 			table := riskreview.RiskTableFor(in.Root)
 			risk := reviewDiffReceipt(ng.Both, ng.Nodes, in, v, hops, table)
-			payload["receipt"] = riskReceiptPayload(risk)
+			riskPayload := riskReceiptPayload(risk)
+			for _, hint := range riskPayload["link_hints"].([]*reviewLinkLocation) {
+				if file := citationPath(hint.Citation); file != "" {
+					bindCitation(ctx, backend, p.Service, file, func(status *core.CitationStatus) { hint.CitationStatus = status })
+				}
+			}
+			payload["receipt"] = riskPayload
 			// SR-49 (docs/plans/surface-reckoning.md): the SAME receipt,
 			// additionally rendered as SARIF 2.1.0 and a GitHub check-run
 			// payload through review.ChangeRiskReceipt — embedded as raw

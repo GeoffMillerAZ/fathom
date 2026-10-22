@@ -17,6 +17,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/llmsec"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
+	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
 	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
@@ -1195,4 +1196,25 @@ func withoutUnread(files []string, unread []corpusSkip) []string {
 		}
 	}
 	return out
+}
+
+// SourceFingerprintEpoch returns the salt of the indexed file's content digest,
+// only when the point file-stat receipt agrees with that fingerprint. Legacy
+// stores without a receipt return an empty epoch (the caller cannot prove drift).
+func (c *Client) SourceFingerprintEpoch(ctx context.Context, service, path, fingerprint string) (string, error) {
+	point, ok := c.st.(interface {
+		FileStatFor(context.Context, string, string) (store.FileStat, bool, error)
+	})
+	if !ok {
+		return "", nil
+	}
+	row, found, err := point.FileStatFor(ctx, service, path)
+	if err != nil || !found {
+		return "", err
+	}
+	parts := strings.Split(row.ContentHash, ":")
+	if len(parts) == 3 && parts[2] == fingerprint {
+		return parts[0], nil
+	}
+	return "", nil
 }

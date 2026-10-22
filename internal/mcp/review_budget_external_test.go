@@ -66,11 +66,15 @@ func TestReviewDiffSmallResultByteIdentical(t *testing.T) {
 	}
 }
 
+// wholeFitFindings sits in the window this test needs: the structured payload, citation marks
+// included, fits the legacy per-handler budget, while dispatch's two copies exceed the cap.
+const wholeFitFindings = 60
+
 func TestReviewDiffWholeResultFitsBudget(t *testing.T) {
 	// The pre-cap handler budget leaves this fixture intact, yet dispatch's
 	// two copies exceed the whole-result cap. This size assertion is red if
 	// the finalizer is reverted, rather than passing due to legacy elision.
-	uncapped := reviewBudgetResultWithCap(t, 100, false)
+	uncapped := reviewBudgetResultWithCap(t, wholeFitFindings, false)
 	var legacy struct {
 		Structured map[string]any `json:"structuredContent"`
 	}
@@ -85,7 +89,7 @@ func TestReviewDiffWholeResultFitsBudget(t *testing.T) {
 	if len(uncapped) <= 16000 {
 		t.Fatalf("base fixture only %d bytes, want over 16000", len(uncapped))
 	}
-	raw := reviewBudgetResultWithCap(t, 100, true)
+	raw := reviewBudgetResultWithCap(t, wholeFitFindings, true)
 	t.Logf("uncapped/base result: %d bytes; compacted result: %d bytes", len(uncapped), len(raw))
 	if len(raw) > 16000 {
 		t.Fatalf("complete serialized MCP ToolResult = %d bytes, cap 16000", len(raw))
@@ -123,7 +127,7 @@ func TestReviewDiffWholeResultFitsBudget(t *testing.T) {
 		status := statuses[name].(map[string]any)
 		wantCount := dim["count"]
 		if name == "obligations" {
-			wantCount = float64(100)
+			wantCount = float64(wholeFitFindings)
 		}
 		if status["checked"] != dim["checked"] || status["count"] != wantCount {
 			t.Errorf("%s status = %v, want checked %v count %v", name, status, dim["checked"], wantCount)
@@ -133,7 +137,7 @@ func TestReviewDiffWholeResultFitsBudget(t *testing.T) {
 		}
 	}
 	if len(raw) < 12000 {
-		t.Errorf("compacted 100-finding result wastes budget: %d bytes", len(raw))
+		t.Errorf("compacted %d-finding result wastes budget: %d bytes", wholeFitFindings, len(raw))
 	}
 	if receipt, ok := p["receipt"].(map[string]any); !ok || receipt["band"] == nil {
 		t.Error("receipt.band lost")
@@ -160,10 +164,10 @@ func TestReviewDiffWholeResultFitsBudget(t *testing.T) {
 	}
 	fields := p["elided"].(map[string]any)["fields"].(map[string]any)
 	omission := fields["/dimensions/obligations/findings"].(map[string]any)
-	if omission["total"] != float64(100) || omission["returned"] != float64(len(p["dimensions"].([]any)[1].(map[string]any)["findings"].([]any))) || omission["unit"] != "items" {
+	if omission["total"] != float64(wholeFitFindings) || omission["returned"] != float64(len(p["dimensions"].([]any)[1].(map[string]any)["findings"].([]any))) || omission["unit"] != "items" {
 		t.Fatalf("original findings omission = %v", omission)
 	}
-	if next := reviewBudgetResultWithCap(t, 100, true); !bytes.Equal(raw, next) {
+	if next := reviewBudgetResultWithCap(t, wholeFitFindings, true); !bytes.Equal(raw, next) {
 		t.Fatal("compaction is nondeterministic")
 	}
 }

@@ -65,6 +65,8 @@ var assertedInterfaces = map[string]reflect.Type{
 	"reviewClaimsBackend":                        ifaceOf[reviewClaimsBackend](),
 	"reviewObligationsBackend":                   ifaceOf[reviewObligationsBackend](),
 	"rootObligationsBackend":                     ifaceOf[rootObligationsBackend](),
+	"sourceFingerprintEpochBackend":              ifaceOf[sourceFingerprintEpochBackend](),
+	"sourceFingerprintBackend":                   ifaceOf[sourceFingerprintBackend](),
 	"rootObligationsLayerBackend":                ifaceOf[rootObligationsLayerBackend](),
 	"scipImportBackend":                          ifaceOf[scipImportBackend](),
 	"serviceWatermarker":                         ifaceOf[serviceWatermarker](),

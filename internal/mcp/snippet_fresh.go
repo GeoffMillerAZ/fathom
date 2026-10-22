@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
@@ -58,14 +59,15 @@ func snippetFileChanged(ctx context.Context, backend QueryInterface, service, fi
 	// Stat moved: only a matching fingerprint clears the file. The row
 	// carries "<epoch>:<flags>:<hash>" or nothing usable.
 	parts := strings.Split(row.ContentHash, ":")
-	if len(parts) != 3 || parts[2] == "" || parts[0] != fusion.ExtractorEpoch {
+	if len(parts) != 3 || parts[2] == "" || parts[0] == "" {
 		return true
 	}
 	data, ex, err := corpus.ReadFileCapped(ctx, full, sourceReadMaxFileBytes)
 	if err != nil || ex != nil {
 		return true
 	}
-	return fusion.FingerprintHash(data) != parts[2]
+	hash, err := fusion.FingerprintHashReaderAtEpoch(bytes.NewReader(data), parts[0])
+	return err != nil || hash != parts[2]
 }
 
 // serveDefinitionSnippet sets result["snippet"] to def's source lines, or
@@ -77,7 +79,8 @@ func serveDefinitionSnippet(ctx context.Context, backend QueryInterface, service
 	if def.FilePath == "" || def.Line <= 0 {
 		return
 	}
-	if snippetFileChanged(ctx, backend, service, def.FilePath) {
+	_, pointIdentity := backend.(sourceFingerprintBackend)
+	if !pointIdentity && snippetFileChanged(ctx, backend, service, def.FilePath) {
 		// The definition is the index's, the text would be the working
 		// tree's; never pair them.
 		why := "file changed since the index"
@@ -89,6 +92,14 @@ func serveDefinitionSnippet(ctx context.Context, backend QueryInterface, service
 	}
 	rng, err := readSourceRange(ctx, backend, service, def.FilePath, def.Line, 0, symbolContextSnippetMaxLines, sourceReadMaxBytes)
 	if err != nil || len(rng.Lines) == 0 {
+		return
+	}
+	if rng.Citation.State == "stale" || rng.Citation.State == "refreshing" {
+		why := rng.Citation.Reason
+		if ic, _ := result["index_commit"].(string); ic != "" {
+			why += " (" + ic + ")"
+		}
+		result["snippet_withheld"] = why
 		return
 	}
 	snippet := make([]any, len(rng.Lines))

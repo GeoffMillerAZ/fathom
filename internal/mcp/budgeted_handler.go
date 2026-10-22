@@ -67,6 +67,13 @@ func budgetedResult(result any, byteBudget int) any {
 	if n, err := jsonSize(result, byteBudget); err != nil || n <= byteBudget {
 		return result
 	}
+	// Preserve the answer-first envelope when its body needs trimming too.
+	switch e := result.(type) {
+	case *summaryEnvelope:
+		copy := *e
+		copy.body = budgetedResult(e.body, max(1, byteBudget-jsonStringLen(e.summary)-11))
+		return &copy
+	}
 	// A top-level map: the largest array-valued field is found by
 	// measuring (no copy), and only that field's elements are encoded; the
 	// other fields pass through as the handler built them.
@@ -108,6 +115,13 @@ func budgetedResult(result any, byteBudget int) any {
 							obj["elided"] = elRaw
 						}
 					}
+					if rawSummary, ok := obj["summary"]; ok {
+						var summary string
+						if json.Unmarshal(rawSummary, &summary) == nil {
+							delete(obj, "summary")
+							return withSummary(summary, obj)
+						}
+					}
 					return obj
 				}
 			}
@@ -120,11 +134,15 @@ func budgetedResult(result any, byteBudget int) any {
 	if cut > len(b) {
 		cut = len(b)
 	}
-	return map[string]any{
+	preview := map[string]any{
 		"truncated": true,
 		"note":      "response exceeded the dispatch byte budget and had no array field to trim",
 		"preview":   string(b[:cut]),
 	}
+	if e, ok := result.(summaryEnvelope); ok {
+		return withSummary(e.summary, preview)
+	}
+	return preview
 }
 
 // jsonSize is v's JSON encoding length, or a number past limit once it is
@@ -148,6 +166,16 @@ type jsonSizer struct {
 }
 
 func (js jsonSizer) size(rv reflect.Value) error {
+	if rv.IsValid() && rv.CanInterface() {
+		switch e := rv.Interface().(type) {
+		case summaryEnvelope:
+			return js.summary(e)
+		case *summaryEnvelope:
+			if e != nil {
+				return js.summary(*e)
+			}
+		}
+	}
 	for rv.IsValid() && (rv.Kind() == reflect.Interface || rv.Kind() == reflect.Pointer) && !rv.IsNil() && !implementsMarshaler(rv) {
 		rv = rv.Elem()
 	}
@@ -202,6 +230,20 @@ func (js jsonSizer) size(rv reflect.Value) error {
 		return nil
 	}
 	return js.leaf(rv)
+}
+
+// summary sizes the typed envelope without invoking its MarshalJSON method.
+func (js jsonSizer) summary(e summaryEnvelope) error {
+	before := js.cw.n
+	if err := js.size(reflect.ValueOf(e.body)); err != nil {
+		return err
+	}
+	comma := 1
+	if js.cw.n-before == 2 {
+		comma = 0
+	}
+	js.cw.n += 10 + jsonStringLen(e.summary) + comma
+	return nil
 }
 
 // leaf adds rv's encoded length: strings, booleans and integers are

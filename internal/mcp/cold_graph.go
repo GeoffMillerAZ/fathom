@@ -195,12 +195,12 @@ func symbolContextColdAnswer(ctx context.Context, backend QueryInterface, servic
 	}
 	_, cands, ok, _ := resolveSymbolContextName(nodes, service, symbol)
 	if len(cands) > 1 {
-		return ambiguousSymbolContextResult(cands, len(cands), false), nil
+		return ambiguousSymbolContextResult(ctx, backend, service, cands, len(cands), false), nil
 	}
 	if !ok {
 		var r map[string]any
 		if resident {
-			r = symbolContextNotFound(nodes, service, symbol)
+			r = symbolContextNotFound(ctx, backend, nodes, service, symbol)
 		} else {
 			r = storeNotFound(service, symbol)
 		}
@@ -219,6 +219,17 @@ func symbolContextColdAnswer(ctx context.Context, backend QueryInterface, servic
 	if ic := indexCommitFor(ctx, backend, service); ic != "" {
 		result["index_commit"] = ic
 	}
+	if wantSnippet && resident {
+		addCitationWindow(ctx, service, dto.FilePath, dto.Line, 0, symbolContextSnippetMaxLines, sourceReadMaxBytes)
+	}
+	bindCitation(ctx, backend, service, dto.FilePath, func(status *core.CitationStatus) {
+		dto.CitationStatus = status
+		if status != nil {
+			result["citation_status"] = status
+		} else {
+			delete(result, "citation_status")
+		}
+	})
 	if !wantSnippet {
 		return result, nil
 	}
@@ -265,7 +276,7 @@ func symbolContextResolveFirst(ctx context.Context, backend QueryInterface, serv
 		_, cands, ok, _ := resolveSymbolContextName(found, service, symbol)
 		switch {
 		case len(cands) > 1:
-			return ambiguousSymbolContextResult(cands, len(cands), false)
+			return ambiguousSymbolContextResult(ctx, backend, service, cands, len(cands), false)
 		case ok:
 			return nil
 		}
@@ -277,9 +288,9 @@ func symbolContextResolveFirst(ctx context.Context, backend QueryInterface, serv
 	_, cands, ok, _ := resolveSymbolContextName(snap.Nodes, service, symbol)
 	switch {
 	case len(cands) > 1:
-		return ambiguousSymbolContextResult(cands, len(cands), false)
+		return ambiguousSymbolContextResult(ctx, backend, service, cands, len(cands), false)
 	case !ok:
-		return symbolContextNotFound(snap.Nodes, service, symbol)
+		return symbolContextNotFound(ctx, backend, snap.Nodes, service, symbol)
 	}
 	return nil
 }
@@ -350,7 +361,7 @@ func symbolLookupName(symbol string) string {
 // (case-insensitive, then substring, then edit distance), never a null
 // definition beside empty callers, callees and tests that read as "exists,
 // nobody calls it" (I38).
-func symbolContextNotFound(nodes []core.SymbolNode, service, symbol string) map[string]any {
+func symbolContextNotFound(ctx context.Context, backend QueryInterface, nodes []core.SymbolNode, service, symbol string) map[string]any {
 	name := symbolLookupName(symbol)
 	leaf := name[strings.LastIndex(name, ".")+1:]
 	near, total := caseFoldMatches(nodes, name)
@@ -370,7 +381,7 @@ func symbolContextNotFound(nodes []core.SymbolNode, service, symbol string) map[
 	shown := near[:min(len(near), symbolContextCandidateCap)]
 	rows := make([]any, len(shown))
 	for i, n := range shown {
-		rows[i] = map[string]any{"symbol_key": n.Key(), "file": n.FilePath, "line": n.Line}
+		rows[i] = citationCandidate(ctx, backend, service, n)
 	}
 	result["candidates"] = rows
 	result["count"] = total

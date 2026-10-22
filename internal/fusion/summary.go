@@ -47,6 +47,11 @@ func ingestSummary(root string, run *ingestRun) (store.ServiceSummary, []store.F
 		fact, known := run.facts[ref.Path]
 		if known {
 			f.Size, f.ContentHash, f.Excluded = fact.size, fact.hash, fact.excluded
+			if fact.hash != "" {
+				// Preserve the content salt without vouching for a post-read stat.
+				// The unvouched flag is deliberately rejected by statRecordFromRow.
+				f.ContentHash = ExtractorEpoch + ":unvouched:" + fact.hash
+			}
 			if fact.excluded != "" {
 				excluded[fact.excluded]++
 			}

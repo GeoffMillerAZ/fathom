@@ -102,6 +102,9 @@ func (it ConservationResidueItem) payload() map[string]any {
 		"tests":   nonNilStrings(it.Tests),
 		"callers": it.Callers,
 	}
+	if it.CitationStatus != nil {
+		resp["citation_status"] = it.CitationStatus
+	}
 	if it.Evidence != "" {
 		resp["evidence"] = it.Evidence
 	}
@@ -116,6 +119,9 @@ func (f Finding) payload() map[string]any {
 		"kind":     f.Kind,
 		"message":  f.Message,
 		"severity": f.Severity,
+	}
+	if f.CitationStatus != nil {
+		m["citation_status"] = f.CitationStatus
 	}
 	if f.Symbol != "" {
 		m["symbol"] = f.Symbol

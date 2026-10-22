@@ -139,7 +139,7 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 	}
 
 	if connector.IsBinary(content) {
-		if err := st.SetFingerprint(ctx, serviceID, relFile, hash); err != nil {
+		if err := setFingerprintAndReceipt(ctx, st, serviceID, relFile, hash); err != nil {
 			return ReingestReport{}, fmt.Errorf("fusion: ReingestFile set fingerprint %q: %w", relFile, err)
 		}
 		return ReingestReport{}, nil
@@ -152,7 +152,7 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 		if err := st.PurgeSource(ctx, serviceID, relFile); err != nil {
 			return ReingestReport{}, fmt.Errorf("fusion: ReingestFile purge %q: %w", relFile, err)
 		}
-		if err := st.SetFingerprint(ctx, serviceID, relFile, hash); err != nil {
+		if err := setFingerprintAndReceipt(ctx, st, serviceID, relFile, hash); err != nil {
 			return ReingestReport{}, fmt.Errorf("fusion: ReingestFile set fingerprint %q: %w", relFile, err)
 		}
 		return ReingestReport{}, nil
@@ -252,7 +252,7 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 		extExtractor, ok = p.sniffedExtractor(relFile, content)
 	}
 	if !ok {
-		if err := st.SetFingerprint(ctx, serviceID, relFile, hash); err != nil {
+		if err := setFingerprintAndReceipt(ctx, st, serviceID, relFile, hash); err != nil {
 			return ReingestReport{}, fmt.Errorf("fusion: ReingestFile set fingerprint %q: %w", relFile, err)
 		}
 		return ReingestReport{}, nil
@@ -260,7 +260,7 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 
 	nodes, extractErr := extExtractor.Extract(serviceID, relFile, content)
 	if extractErr != nil {
-		_ = st.SetFingerprint(ctx, serviceID, relFile, hash)
+		_ = setFingerprintAndReceipt(ctx, st, serviceID, relFile, hash)
 		return ReingestReport{}, fmt.Errorf("fusion: ReingestFile extract %q: %w", relFile, extractErr)
 	}
 	// Editing an existing C# file does not change its assembly folder. Keep
@@ -324,7 +324,7 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 		}
 	}
 
-	if err := st.SetFingerprint(ctx, serviceID, relFile, hash); err != nil {
+	if err := setFingerprintAndReceipt(ctx, st, serviceID, relFile, hash); err != nil {
 		return ReingestReport{}, fmt.Errorf("fusion: ReingestFile set fingerprint %q: %w", relFile, err)
 	}
 
@@ -333,6 +333,33 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 		Symbols:         len(nodes) + len(unityFacts),
 		TypedEdgesStale: ext == ".go" || ext == ".asmdef" || ext == ".asmref",
 	}, nil
+}
+
+// setFingerprintAndReceipt moves relFile's fingerprint and keeps its
+// file_stats receipt in step.
+func setFingerprintAndReceipt(ctx context.Context, st store.Store, serviceID, relFile, hash string) error {
+	if err := st.SetFingerprint(ctx, serviceID, relFile, hash); err != nil {
+		return err
+	}
+	return keepEpochReceipt(ctx, st, serviceID, relFile, hash)
+}
+
+// keepEpochReceipt points relFile's existing file_stats content hash at the
+// same unvouched epoch receipt a whole ingest writes (summary.go), so the
+// fingerprint a refresh just moved and the receipt agree and a later edit
+// reads stale, not unknown. A store without the point update, or a service
+// with no file_stats row for the path, is left alone.
+func keepEpochReceipt(ctx context.Context, st store.Store, serviceID, relFile, hash string) error {
+	pt, ok := st.(interface {
+		SetFileStatContentHash(context.Context, string, string, string) (bool, error)
+	})
+	if !ok {
+		return nil
+	}
+	if _, err := pt.SetFileStatContentHash(ctx, serviceID, relFile, ExtractorEpoch+":unvouched:"+hash); err != nil {
+		return fmt.Errorf("fusion: ReingestFile file receipt %q: %w", relFile, err)
+	}
+	return nil
 }
 
 // readCapped reads at most limit+1 bytes of path: a file that grew past the

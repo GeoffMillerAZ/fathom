@@ -74,7 +74,7 @@ func writeStaleRulesBlock(sb *strings.Builder, stale []semantic.Obligation, serv
 	fmt.Fprintf(sb, "\nstale rules — not binding until recompiled (%d):", len(stale))
 	layer := ""
 	for _, r := range stale {
-		fmt.Fprintf(sb, "\n%s · %s", r.Src, truncateBytes(r.Rule, staleRuleTextMaxBytes))
+		fmt.Fprintf(sb, "\n%s · %s", r.Src+citationTag(r), truncateBytes(r.Rule, staleRuleTextMaxBytes))
 		if layer == "" && r.Layer != "" {
 			layer = r.Layer
 		}

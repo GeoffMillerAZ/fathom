@@ -875,11 +875,24 @@ func (a *autoRefreshBackend) SetClaimStatus(ctx context.Context, serviceID, clai
 }
 
 func (a *autoRefreshBackend) SourceFingerprint(ctx context.Context, serviceID, path string) (string, bool, error) {
-	rcb, err := a.reviewClaims()
-	if err != nil {
-		return "", false, err
+	if fp, ok := a.QueryInterface.(sourceFingerprintBackend); ok {
+		return fp.SourceFingerprint(ctx, serviceID, path)
 	}
-	return rcb.SourceFingerprint(ctx, serviceID, path)
+	return "", false, fmt.Errorf("source fingerprints are not supported by this backend")
+}
+
+func (a *autoRefreshBackend) SourceFingerprintEpoch(ctx context.Context, service, path, fingerprint string) (string, error) {
+	if fp, ok := a.QueryInterface.(sourceFingerprintEpochBackend); ok {
+		return fp.SourceFingerprintEpoch(ctx, service, path, fingerprint)
+	}
+	return "", nil
+}
+
+func (a *autoRefreshBackend) IngestState(ctx context.Context, service string) (store.IngestState, bool, error) {
+	if ib, ok := a.QueryInterface.(ingestStateBackend); ok {
+		return ib.IngestState(ctx, service)
+	}
+	return store.IngestState{}, false, nil
 }
 
 func (a *autoRefreshBackend) SetClaimValidTo(ctx context.Context, serviceID, claimID string, t time.Time) error {

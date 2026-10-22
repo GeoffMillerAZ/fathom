@@ -1,0 +1,1 @@
+{"callees":[],"callers":[],"def":{"service":"sample","name":"Alpha","kind":"GoFunc","file_path":"sample.go","line":3,"end_line":3,"signature":"func Alpha()","tier":"verified"},"index_commit":"539a7c004ed2380c1d505ca1684a76232a00b9d1","related_tests":[],"resolution":{"typed":0,"heuristic":0},"snippet":[{"line":3,"text":"func Alpha() { println(1) }"}]}

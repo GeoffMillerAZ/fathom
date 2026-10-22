@@ -41,9 +41,13 @@ const MaxObligations = 6
 // (and must never consume) a slot out of the shared six-rule cap.
 const RawFallbackReserve = 2
 
+// CitationStatus qualifies a served rule's source location.
+type CitationStatus = core.CitationStatus
+
 // Obligation is one served rule.
 type Obligation struct {
-	Rule string `json:"rule"`
+	CitationStatus *CitationStatus `json:"citation_status,omitempty"`
+	Rule           string          `json:"rule"`
 	// Src is the primary citation, "path#Lstart-Lend" — always attached
 	// (bounded blast radius: the agent can check the source in one Read).
 	Src string `json:"src"`

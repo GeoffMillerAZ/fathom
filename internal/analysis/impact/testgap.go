@@ -10,11 +10,12 @@ import (
 // TestReach is one Test* function that statically reaches at least one
 // changed symbol, with file:line evidence (BD-4, docs/plans/blast-depth.md).
 type TestReach struct {
-	Test     string   // canonical key of the test function
-	File     string   // repo-relative file the test lives in
-	Line     int      // 1-based definition line (0 when the index has none)
-	Citation string   // core.CiteRef form "path#Lstart-Lend", or the bare path
-	Reaches  []string // sorted canonical keys of the changed symbols it reaches
+	CitationStatus *core.CitationStatus `json:"citation_status,omitempty"`
+	Test           string               // canonical key of the test function
+	File           string               // repo-relative file the test lives in
+	Line           int                  // 1-based definition line (0 when the index has none)
+	Citation       string               // core.CiteRef form "path#Lstart-Lend", or the bare path
+	Reaches        []string             // sorted canonical keys of the changed symbols it reaches
 	// ViaDispatch is true when the shortest path to at least one reached
 	// symbol crossed an interface-dispatch edge (callgraph.ReachDetail).
 	ViaDispatch bool
@@ -22,10 +23,11 @@ type TestReach struct {
 
 // SymbolGap is one changed symbol that no test statically reaches.
 type SymbolGap struct {
-	Symbol   string
-	File     string
-	Line     int
-	Citation string
+	CitationStatus *core.CitationStatus `json:"citation_status,omitempty"`
+	Symbol         string
+	File           string
+	Line           int
+	Citation       string
 }
 
 // TestGapResult is the test-impact composition review_diff and `fathom
@@ -190,6 +192,9 @@ func (r TestGapResult) Payload() map[string]any {
 			reaches[j] = s
 		}
 		m := map[string]any{"test": t.Test, "file": t.File, "citation": t.Citation, "reaches": reaches}
+		if t.CitationStatus != nil {
+			m["citation_status"] = t.CitationStatus
+		}
 		if t.Line > 0 {
 			m["line"] = t.Line
 		}
@@ -201,6 +206,9 @@ func (r TestGapResult) Payload() map[string]any {
 	gap := make([]any, len(r.Gap))
 	for i, s := range r.Gap {
 		m := map[string]any{"symbol": s.Symbol, "file": s.File, "citation": s.Citation}
+		if s.CitationStatus != nil {
+			m["citation_status"] = s.CitationStatus
+		}
 		if s.Line > 0 {
 			m["line"] = s.Line
 		}

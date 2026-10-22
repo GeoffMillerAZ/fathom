@@ -13,6 +13,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/store"
+	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
 // TestReingestFile_ReplacesOneFile is SU-5's headline proof: after a
@@ -180,5 +181,47 @@ func TestReingestFile_HonoursCorpusExclusions(t *testing.T) {
 	rep, err := p.ReingestFile(ctx, st, "excl", dir, "dist/gen.go")
 	if err != nil || !rep.Refreshed {
 		t.Fatalf("re-included dist/gen.go: %+v, %v; want refreshed", rep, err)
+	}
+}
+
+// TestReingestFileKeepsEpochReceiptSoEditsReadStale: a one-file refresh moves
+// the fingerprint, so the file_stats receipt must follow or the next edit
+// reads "unknown" (no epoch receipt) instead of "stale" until a full ingest.
+func TestReingestFileKeepsEpochReceiptSoEditsReadStale(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "target.go")
+	write := func(body string) {
+		t.Helper()
+		if err := os.WriteFile(target, []byte(body), 0o644); err != nil {
+			t.Fatalf("write: %v", err)
+		}
+	}
+	write("package main\n\nfunc One() int { return 1 }\n")
+	st := store.NewMemoryStore()
+	svc := core.ServiceRef{ID: "receipt-svc", Path: dir}
+	p := fusion.New(connector.NewLocalConnector(), st, fusion.Config{Concurrency: 1})
+	ctx := context.Background()
+	if _, err := p.Ingest(ctx, svc); err != nil {
+		t.Fatalf("Ingest: %v", err)
+	}
+	write("package main\n\nfunc Two() int { return 2 }\n")
+	if _, err := p.ReingestFile(ctx, st, svc.ID, dir, "target.go"); err != nil {
+		t.Fatalf("ReingestFile: %v", err)
+	}
+	indexed, found, err := st.Fingerprint(ctx, svc.ID, "target.go")
+	if err != nil || !found {
+		t.Fatalf("Fingerprint: found=%v err=%v", found, err)
+	}
+	write("package main\n\nfunc Three() int { return 3 }\n")
+	if now := fusion.FingerprintHash([]byte("package main\n\nfunc Three() int { return 3 }\n")); now == indexed {
+		t.Fatal("edit did not change the fingerprint")
+	}
+	c := client.New(connector.NewLocalConnector(), st)
+	epoch, err := c.SourceFingerprintEpoch(ctx, svc.ID, "target.go", indexed)
+	if err != nil {
+		t.Fatalf("SourceFingerprintEpoch: %v", err)
+	}
+	if epoch != fusion.ExtractorEpoch {
+		t.Fatalf("epoch receipt = %q, want %q (an edit would read unknown, not stale)", epoch, fusion.ExtractorEpoch)
 	}
 }
