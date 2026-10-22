@@ -246,7 +246,7 @@ func deprecatedSymbolNamesWithParser(ctx context.Context, root string, parse dep
 			}
 			return nil
 		}
-		if !d.Type().IsRegular() || !strings.HasSuffix(path, ".go") {
+		if !strings.HasSuffix(path, ".go") {
 			return nil
 		}
 		rel, rerr := filepath.Rel(root, path)

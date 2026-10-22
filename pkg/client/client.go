@@ -627,14 +627,16 @@ func (c *Client) ScanSources(ctx context.Context, service string, b corpus.Budge
 // ReadSourceFiles reads the named files of service (paths relative to its
 // recorded root) through the connector — the fetch cap, the meter and the
 // producer governor — for a handler that needs a few files' text, never
-// the tree (RT-71). A path that is not local to the root, missing, oversize
-// or unreadable is left out.
+// the tree (RT-71). A path that is not local to the root, missing or unreadable
+// is left out. Oversize files are left out with typed exclusion errors beside
+// the readable results so a bounded caller can disclose why they were not read.
 func (c *Client) ReadSourceFiles(ctx context.Context, service string, paths []string) ([]SourceFile, error) {
 	root := ""
 	if meta, found, err := c.st.GetServiceMeta(ctx, service); err == nil && found {
 		root = meta.Path
 	}
 	out := make([]SourceFile, 0, len(paths))
+	var exclusions []error
 	for _, p := range paths {
 		if err := ctx.Err(); err != nil {
 			return out, err
@@ -648,6 +650,10 @@ func (c *Client) ReadSourceFiles(ctx context.Context, service string, paths []st
 		}
 		data, err := c.conn.Fetch(ctx, ref)
 		if err != nil {
+			var over *connector.OversizeError
+			if errors.As(err, &over) {
+				exclusions = append(exclusions, err)
+			}
 			continue
 		}
 		lang := connector.LanguageForPath(p)
@@ -656,7 +662,7 @@ func (c *Client) ReadSourceFiles(ctx context.Context, service string, paths []st
 		}
 		out = append(out, SourceFile{Path: p, Content: data, Lang: lang, Generated: connector.IsGenerated(p, data)})
 	}
-	return out, nil
+	return out, errors.Join(exclusions...)
 }
 
 // IngestService re-ingests the named service and satisfies the

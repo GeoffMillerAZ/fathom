@@ -445,13 +445,15 @@ type blastRadiusResult struct {
 // capabilitiesResult.ExtractionEngines is `any` rather than a fully
 // reflected type.
 type reviewDiffResult struct {
-	Service           string   `json:"service"`
-	ChangedFiles      []string `json:"changed_files"`
-	Dimensions        []any    `json:"dimensions"`
-	Summary           string   `json:"summary"`
-	FindingsPersisted bool     `json:"findings_persisted"`
-	VerdictOutcome    any      `json:"verdict_outcome,omitempty"`
-	TestImpact        any      `json:"test_impact"`
+	Service           string                  `json:"service"`
+	ChangedFiles      []string                `json:"changed_files"`
+	Dimensions        []any                   `json:"dimensions"`
+	Summary           string                  `json:"summary"`
+	FindingsPersisted bool                    `json:"findings_persisted"`
+	Excluded          []reviewSourceExclusion `json:"excluded,omitempty"`
+	Partial           string                  `json:"partial,omitempty"`
+	VerdictOutcome    any                     `json:"verdict_outcome,omitempty"`
+	TestImpact        any                     `json:"test_impact"`
 	// Resolution/IndexCommit (VB-19): the typed/heuristic mix behind the
 	// impact dimension's blast radius, and the daemon's watermark.
 	Resolution  resolutionMix `json:"resolution"`

@@ -205,6 +205,14 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 		}
 
 		payload := v.Payload(persisted)
+		if len(sources.excluded) > 0 {
+			excluded := make([]reviewSourceExclusion, 0, len(sources.excluded))
+			for path, reason := range sources.excluded {
+				excluded = append(excluded, reviewSourceExclusion{Path: path, Reason: reason})
+			}
+			sort.Slice(excluded, func(i, j int) bool { return excluded[i].Path < excluded[j].Path })
+			payload["excluded"] = excluded
+		}
 		if sources.typedNote != "" {
 			payload["typed_edges_note"] = sources.typedNote
 		}
@@ -239,6 +247,8 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 		ng, gerr := loadNavGraphsErr(ctx, backend, p.Service)
 		if gerr == nil {
 			payload["resolution"] = resolutionFromBlastBuckets(blastRadiusByDepth(ng.Both, ng.Nodes, in.ChangedFiles))
+		} else {
+			payload["partial"] = navLoadError("review_diff", p.Service, gerr).Message
 		}
 		if err := ctx.Err(); err != nil {
 			return nil, navLoadError("review_diff", p.Service, err)
@@ -519,12 +529,18 @@ func discoverConservePlanPaths(root string) []string {
 // bounded named reads supply changed text and any persisted citation text.
 // reviewCorpus separates complete path membership from bounded source text.
 // Paths settle deletion; only changed and cited files need content.
+type reviewSourceExclusion struct {
+	Path   string `json:"path"`
+	Reason string `json:"reason"`
+}
+
 type reviewCorpus struct {
 	files                  map[string][]byte
 	fileMeta               map[string]core.SourceFile
 	paths                  map[string]bool
 	pathsComplete          bool
 	gaps                   []string
+	excluded               map[string]string
 	partial                string
 	used                   int64
 	deadline               time.Time
@@ -590,17 +606,18 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 	if err := ctx.Err(); err != nil {
 		return review.Input{}, reviewCorpus{}, navLoadError("review_diff", service, err)
 	}
-	ng, err := loadNavGraphsErr(ctx, backend, service)
+	snap, err := serviceSnapshot(ctx, backend, service)
 	if err != nil {
-		return review.Input{}, reviewCorpus{}, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
+		return review.Input{}, reviewCorpus{}, navLoadError("review_diff", service, err)
 	}
+	typed, typedErr := backend.TypedEdges(ctx, service)
 
 	in := review.Input{
 		Service:      service,
 		ChangedFiles: changedFiles,
 		Concern:      concern,
-		Nodes:        ng.Nodes,
-		TypedEdges:   ng.Typed,
+		Nodes:        snap.Nodes,
+		TypedEdges:   typed,
 	}
 
 	if err := ctx.Err(); err != nil {
@@ -731,10 +748,11 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 		return review.Input{}, reviewCorpus{}, navLoadError("review_diff", service, err)
 	}
 	rc := readReviewCorpus(ctx, backend, service, changedFiles, now)
-	rc.indexScope = ng.Snapshot.Scope
+	rc.indexScope = snap.Scope
 	rc.indexCommit, rc.indexFound, rc.indexKnown = indexCommit, indexFound, metaErr == nil
-	if ng.TypedErr != nil {
-		rc.typedNote = "typed edge read failed; using syntax graph: " + ng.TypedErr.Error()
+	if typedErr != nil {
+		in.TypedEdges = nil
+		rc.typedNote = "typed edge read failed; using syntax graph: " + typedErr.Error()
 	}
 	for _, f := range changedFiles {
 		if data, ok := rc.files[f]; ok {
@@ -863,6 +881,8 @@ func applyAndPersistFindings(ctx context.Context, backend QueryInterface, v *rev
 	// A citation can be outside the diff. Read every persistable finding's
 	// cited path before BuildPersist, so an unreadable citation cannot cause
 	// PutClaims to replace a previously valid link set with an empty one.
+	// Citation reads have their own bounded window, starting after analysis.
+	rc.deadline = rc.now().Add(treeBudget.Wall)
 	for _, d := range v.Dimensions {
 		if d.Name != review.DimArch && d.Name != review.DimSpecCoverage {
 			continue

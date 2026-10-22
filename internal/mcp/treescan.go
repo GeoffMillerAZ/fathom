@@ -9,10 +9,12 @@ package mcp
 import (
 	"bytes"
 	"context"
+	"errors"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/corpus"
 )
@@ -29,6 +31,7 @@ func readReviewCorpus(ctx context.Context, backend QueryInterface, service strin
 		files:    map[string][]byte{},
 		fileMeta: map[string]core.SourceFile{},
 		paths:    map[string]bool{},
+		excluded: map[string]string{},
 		deadline: now().Add(treeBudget.Wall),
 		now:      now,
 	}
@@ -57,6 +60,9 @@ func readReviewCorpus(ctx context.Context, backend QueryInterface, service strin
 		cancel()
 		for _, f := range files {
 			rc.paths[f.Path] = true
+			if rc.exclude(f) {
+				continue
+			}
 			if rc.legacy || (int64(len(f.Content)) <= 2<<20 && rc.used+int64(len(f.Content)) <= treeBudget.Bytes) {
 				rc.files[f.Path] = f.Content
 				rc.fileMeta[f.Path] = f
@@ -64,6 +70,15 @@ func readReviewCorpus(ctx context.Context, backend QueryInterface, service strin
 			}
 		}
 		rc.pathsComplete = err == nil && !cov.LowerBound()
+		for _, ex := range cov.Excluded {
+			rc.paths[ex.Path] = true
+			switch ex.Reason {
+			case corpus.ReasonOversize:
+				rc.excluded[ex.Path] = "over 2 MiB"
+			case corpus.ReasonBinary:
+				rc.excluded[ex.Path] = "binary"
+			}
+		}
 		if err != nil {
 			rc.partial = "partial: source path inventory: " + err.Error()
 		} else {
@@ -89,12 +104,15 @@ func readReviewCorpus(ctx context.Context, backend QueryInterface, service strin
 	return rc
 }
 
-// readRequired accounts for one named file under the review's shared time,
+// readRequired accounts for one named file under the current reading phase's time,
 // per-file and aggregate caps. A missing result for a known member is a
 // coverage gap; it cannot be interpreted as an empty file.
 func (rc *reviewCorpus) readRequired(ctx context.Context, backend QueryInterface, service, path string) {
 	if err := ctx.Err(); err != nil {
 		rc.refuseWindow("partial: required source canceled: " + err.Error())
+		return
+	}
+	if rc.excluded[path] != "" {
 		return
 	}
 	// Preserve scan-based backends' best-effort citation behavior. Only a
@@ -104,6 +122,9 @@ func (rc *reviewCorpus) readRequired(ctx context.Context, backend QueryInterface
 		if _, ok := rc.files[path]; !ok && !rc.pathsComplete {
 			for _, f := range sourceFiles(ctx, backend, service, []string{path}) {
 				if f.Path == path {
+					if rc.exclude(f) {
+						return
+					}
 					rc.files[path], rc.fileMeta[path] = f.Content, f
 				}
 			}
@@ -135,12 +156,20 @@ func (rc *reviewCorpus) readRequired(ctx context.Context, backend QueryInterface
 		rc.gaps = append(rc.gaps, path+" (review budget)")
 		return
 	}
+	var over *connector.OversizeError
+	if errors.As(err, &over) {
+		rc.excluded[path] = "over 2 MiB"
+		return
+	}
 	if err == nil {
 		for _, f := range files {
 			if f.Path != path {
 				continue
 			}
-			if int64(len(f.Content)) > 2<<20 || rc.used+int64(len(f.Content)) > treeBudget.Bytes {
+			if rc.exclude(f) {
+				return
+			}
+			if rc.used+int64(len(f.Content)) > treeBudget.Bytes {
 				rc.gaps = append(rc.gaps, path+" (review budget)")
 				return
 			}
@@ -153,9 +182,24 @@ func (rc *reviewCorpus) readRequired(ctx context.Context, backend QueryInterface
 	rc.gaps = append(rc.gaps, path+" (unreadable)")
 }
 
+// exclude records intentional per-file exclusions separately from read gaps.
+func (rc *reviewCorpus) exclude(f core.SourceFile) bool {
+	reason := ""
+	if int64(len(f.Content)) > 2<<20 {
+		reason = "over 2 MiB"
+	} else if f.Lang == core.LangBinary || connector.IsBinary(f.Content) {
+		reason = "binary"
+	}
+	if reason == "" {
+		return false
+	}
+	rc.excluded[f.Path] = reason
+	return true
+}
+
 // revalidate compares the full path set and every byte/metadata field used
-// for this review immediately before its first finding write. It shares the
-// original 64 MiB / 5 s allowance. This closes the analysis-to-write
+// for this review immediately before its first finding write. Its fresh
+// 64 MiB / 5 s allowance counts only revalidation. This closes the analysis-to-write
 // window without treating a live file read as proof of index freshness.
 func (rc *reviewCorpus) revalidate(ctx context.Context, backend QueryInterface, service string) bool {
 	if err := ctx.Err(); err != nil {
@@ -166,10 +210,8 @@ func (rc *reviewCorpus) revalidate(ctx context.Context, backend QueryInterface, 
 	if !pathsOK || !filesOK {
 		return true
 	} // legacy backends retain their scan-based persistence
-	if !rc.now().Before(rc.deadline) {
-		return rc.refuseWindow("partial: source window review budget expired")
-	}
-	readCtx, cancel := context.WithTimeout(ctx, rc.deadline.Sub(rc.now()))
+	deadline := rc.now().Add(treeBudget.Wall)
+	readCtx, cancel := context.WithTimeout(ctx, deadline.Sub(rc.now()))
 	defer cancel()
 	paths, err := pl.SourcePaths(readCtx, service)
 	if err != nil {
@@ -192,8 +234,9 @@ func (rc *reviewCorpus) revalidate(ctx context.Context, backend QueryInterface, 
 		named = append(named, p)
 	}
 	sort.Strings(named)
+	var used int64
 	for _, p := range named {
-		if rc.used >= treeBudget.Bytes || readCtx.Err() != nil || !rc.now().Before(rc.deadline) {
+		if used >= treeBudget.Bytes || readCtx.Err() != nil || !rc.now().Before(deadline) {
 			return rc.refuseWindow("partial: source window review budget expired")
 		}
 		fresh, err := reader.ReadSourceFiles(readCtx, service, []string{p})
@@ -201,16 +244,16 @@ func (rc *reviewCorpus) revalidate(ctx context.Context, backend QueryInterface, 
 			return rc.refuseWindow("partial: required source unreadable during review: " + p)
 		}
 		f := fresh[0]
-		if int64(len(f.Content)) > 2<<20 || rc.used+int64(len(f.Content)) > treeBudget.Bytes {
+		if int64(len(f.Content)) > 2<<20 || used+int64(len(f.Content)) > treeBudget.Bytes {
 			return rc.refuseWindow("partial: source window review budget exceeded: " + p)
 		}
-		rc.used += int64(len(f.Content))
+		used += int64(len(f.Content))
 		was := rc.fileMeta[p]
 		if !bytes.Equal(f.Content, was.Content) || f.Lang != was.Lang || f.Generated != was.Generated {
 			return rc.refuseWindow("partial: required source changed during review: " + p)
 		}
 	}
-	if readCtx.Err() != nil || !rc.now().Before(rc.deadline) {
+	if readCtx.Err() != nil || !rc.now().Before(deadline) {
 		return rc.refuseWindow("partial: source window review budget expired")
 	}
 	return true
@@ -290,7 +333,8 @@ func sourceFiles(ctx context.Context, backend QueryInterface, service string, pa
 	}
 	if r, ok := backend.(sourceFileReader); ok {
 		files, err := r.ReadSourceFiles(ctx, service, paths)
-		if err != nil {
+		var over *connector.OversizeError
+		if err != nil && !errors.As(err, &over) {
 			return nil
 		}
 		return files

@@ -166,3 +166,18 @@ func TestDeprecatedCallers_PlaneName(t *testing.T) {
 		t.Errorf("Name() = %q, want absence", got)
 	}
 }
+
+func TestDeprecatedCallersReadsSymlinkedGoDeclarations(t *testing.T) {
+	root := t.TempDir()
+	writeGoFile(t, root, "declaration.txt", "package sample\n// Deprecated: use New.\nfunc Old() {}\n")
+	if err := os.Symlink("declaration.txt", filepath.Join(root, "declaration.go")); err != nil {
+		t.Fatal(err)
+	}
+	findings, missing := DeprecatedCallers(context.Background(), Input{
+		Root: root, ChangedFiles: []string{"caller.go"},
+		BaseFile: mapFile(nil), HeadFile: mapFile(map[string]string{"caller.go": "package sample\nfunc Caller() { Old() }\n"}),
+	})
+	if len(missing) != 0 || len(findings) != 1 || findings[0].Key != "Old" {
+		t.Fatalf("symlink declaration lost: findings=%v missing=%v", findings, missing)
+	}
+}

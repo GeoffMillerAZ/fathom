@@ -1044,6 +1044,9 @@ func (a *autoRefreshBackend) SourcePaths(ctx context.Context, service string) ([
 // (RT-71, RT-86), falling back to a budgeted scan keeping those paths.
 func (a *autoRefreshBackend) ReadSourceFiles(ctx context.Context, service string, paths []string) ([]core.SourceFile, error) {
 	a.ensure(ctx, service)
+	if reader, ok := a.QueryInterface.(sourceFileReader); ok {
+		return reader.ReadSourceFiles(ctx, service, paths)
+	}
 	return sourceFiles(ctx, a.QueryInterface, service, paths), nil
 }
 
