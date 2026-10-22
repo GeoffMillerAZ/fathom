@@ -42,7 +42,7 @@ func TestDoctorGuardScopesBounded(t *testing.T) {
 	writeGuardCue(t, root, cue.String())
 	hc := &http.Client{Transport: doctorDeliveryTransport{}}
 	got := checkGuardDeadScopes(hc, "http://daemon.invalid", root, "fixture", true)
-	if got.Status != doctorUnknown || !strings.Contains(got.Reason, "checked 128 of 140") {
+	if got.Status != doctorPass {
 		t.Fatalf("unbounded scopes = %+v", got)
 	}
 }
@@ -61,8 +61,8 @@ func TestDoctorDiskDiscoveryCapsWork(t *testing.T) {
 	for i := 0; i < 20; i++ {
 		doctorWriteFixture(t, root, fmt.Sprintf("src/file%02d.go", i), "package fixture\n")
 	}
-	paths, complete, err := doctorDiskPaths(context.Background(), root, 8)
-	if err != nil || complete || len(paths) > 6 {
+	paths, complete, err := doctorDiskPaths(context.Background(), root, []string{"src/**"})
+	if err != nil || !complete || len(paths) != 20 {
 		t.Fatalf("unbounded discovery: %d paths complete=%v err=%v", len(paths), complete, err)
 	}
 	for i := 1; i < len(paths); i++ {

@@ -316,24 +316,16 @@ func checkGuardDeadScopes(hc *http.Client, baseURL, root, explicitSvc string, da
 		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("list_sources(%s): %v", svc, err), probeErr: err}
 	}
 
-	// Bound comparisons and collect disk paths once, shared by every guard.
-	const maxGuards = 128
-	const maxSources = 8192
+	// The caller deadline bounds work; source elision never proves absence.
 	sort.Strings(sources)
-	sourceComplete := len(sources) <= maxSources && sourceTotal <= len(sources)
-	if len(sources) > maxSources {
-		sources = sources[:maxSources]
-	}
-	var disk []string
-	diskRead, diskComplete := false, false
+	sourceComplete := sourceTotal <= len(sources)
 	checked := 0
 	var unfinished bool
 	var dead, unindexed []string
 	var commandGuardCount int
 	for i, g := range set.Guards {
-		if i >= maxGuards {
-			unfinished = true
-			break
+		if err := ctx.Err(); err != nil {
+			return doctorCheck{Name: name, Status: doctorErrorStatus(err), Reason: fmt.Sprintf("checked %d of %d guards: %v", checked, len(set.Guards), err), probeErr: err}
 		}
 		if len(g.CommandScopes) > 0 {
 			commandGuardCount++
@@ -364,13 +356,9 @@ func checkGuardDeadScopes(hc *http.Client, baseURL, root, explicitSvc string, da
 		// a remedy that DELETES correct configuration. Look at the disk
 		// before saying nothing is there.
 		label := fmt.Sprintf("guards[%d] (%s)", i, strings.Join(g.Scopes, ", "))
-		if !diskRead {
-			var walkErr error
-			disk, diskComplete, walkErr = doctorDiskPaths(ctx, root, maxSources)
-			diskRead = true
-			if walkErr != nil {
-				return doctorCheck{Name: name, Status: doctorErrorStatus(walkErr), Reason: "guard file discovery did not finish: " + walkErr.Error(), probeErr: walkErr, Remedy: "re-run doctor when the walk can finish"}
-			}
+		disk, diskComplete, walkErr := doctorDiskPaths(ctx, root, g.Scopes)
+		if walkErr != nil {
+			return doctorCheck{Name: name, Status: doctorErrorStatus(walkErr), Reason: "guard file discovery did not finish: " + walkErr.Error(), probeErr: walkErr, Remedy: "re-run doctor when the walk can finish"}
 		}
 		n := 0
 		for _, path := range disk {
@@ -399,7 +387,7 @@ func checkGuardDeadScopes(hc *http.Client, baseURL, root, explicitSvc string, da
 			len(unindexed), strings.Join(unindexed, "; ")) + note
 	}
 	if unfinished {
-		return doctorCheck{Name: name, Status: doctorUnknown, Reason: fmt.Sprintf("checked %d of %d guards (cap %d guards, %d indexed paths and disk entries); %d dead scope(s) confirmed%s", checked, len(set.Guards), maxGuards, maxSources, len(dead), note), Remedy: "narrow the guard scopes or inspect the remaining guards manually"}
+		return doctorCheck{Name: name, Status: doctorUnknown, Reason: fmt.Sprintf("checked %d of %d guards (incomplete indexed or disk coverage); %d dead scope(s) confirmed%s", checked, len(set.Guards), len(dead), note), Remedy: "narrow the guard scopes or inspect the remaining guards manually"}
 	}
 
 	if len(dead) > 0 {
@@ -567,38 +555,70 @@ func filesOnDiskUnderContext(ctx context.Context, root string, scopes []string) 
 	return found, nil
 }
 
-// doctorDiskPaths performs at most limit directory-entry visits. Incomplete
-// coverage never establishes absence. WalkDir supplies deterministic order.
-func doctorDiskPaths(ctx context.Context, root string, limit int) ([]string, bool, error) {
+// doctorDiskPaths walks only the literal directory prefixes of positive scopes.
+// Wildcard-only or unanchored scopes require the root. The caller deadline,
+// rather than a fixed path count, bounds discovery; WalkDir orders each walk.
+func doctorDiskPaths(ctx context.Context, root string, scopes []string) ([]string, bool, error) {
 	paths := []string{}
-	visits := 0
 	complete := true
-	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
-		if err := ctx.Err(); err != nil {
-			return err
+	var prefixes []string
+	for _, scope := range scopes {
+		scope = strings.TrimSpace(scope)
+		if scope == "" || strings.HasPrefix(scope, "!") || strings.HasPrefix(scope, "#") {
+			continue
 		}
-		if err != nil {
-			complete = false
-			return nil
-		}
-		visits++
-		if visits > limit {
-			complete = false
-			return filepath.SkipAll
-		}
-		if d.IsDir() {
-			if d.Name() == ".git" || d.Name() == "node_modules" || d.Name() == "workspace" {
-				return filepath.SkipDir
+		scope = strings.TrimPrefix(scope, "/")
+		prefix := "."
+		if strings.Contains(scope, "/") {
+			literal := scope
+			if i := strings.IndexAny(literal, "*?["); i >= 0 {
+				literal = literal[:i]
 			}
-			return nil
+			if i := strings.LastIndex(literal, "/"); i >= 0 {
+				prefix = literal[:i]
+				if prefix == "" {
+					prefix = "."
+				}
+			}
 		}
-		rel, err := filepath.Rel(root, path)
-		if err != nil {
+		prefix = filepath.Clean(filepath.FromSlash(prefix))
+		if filepath.IsAbs(prefix) || prefix == ".." || strings.HasPrefix(prefix, ".."+string(filepath.Separator)) {
 			complete = false
-			return nil
+			continue
 		}
-		paths = append(paths, filepath.ToSlash(rel))
-		return nil
-	})
-	return paths, complete, err
+		prefixes = append(prefixes, prefix)
+	}
+	sort.Strings(prefixes)
+	prefixes = dedupeStrings(prefixes)
+	for _, prefix := range prefixes {
+		err := filepath.WalkDir(filepath.Join(root, prefix), func(path string, d os.DirEntry, err error) error {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			if err != nil {
+				if !os.IsNotExist(err) {
+					complete = false
+				}
+				return nil
+			}
+			if d.IsDir() {
+				if d.Name() == ".git" || d.Name() == "node_modules" || d.Name() == "workspace" {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			rel, err := filepath.Rel(root, path)
+			if err != nil {
+				complete = false
+				return nil
+			}
+			paths = append(paths, filepath.ToSlash(rel))
+			return nil
+		})
+		if err != nil {
+			return paths, false, err
+		}
+	}
+	sort.Strings(paths)
+	return dedupeStrings(paths), complete, nil
 }
