@@ -33,12 +33,6 @@ const externalImportPromptVersion = "external-import/v1"
 // only what the edit hook appends after them).
 const MaxObligations = 6
 
-// nearestTierReserveSlots (O57 item 4) is how many of a capped payload's
-// slots go to the nearest-scope tier unconditionally, before role or
-// freshness competes for the rest. See the cap block in obligationsCore
-// and reserveNearestTier.
-const nearestTierReserveSlots = 2
-
 // RawFallbackReserve (wave O1, ADR-037) is how many raw-tier fallback rows
 // RawFallbackRules ever returns for one obligations call — a small, FIXED
 // budget on top of MaxObligations' compiled-rule cap, never competing with
@@ -211,6 +205,10 @@ type Obligation struct {
 	// RankNote) and for any rule left unanswered — a payload that never
 	// asked is byte-identical to what it was before this field existed.
 	Relevance *float64 `json:"relevance,omitempty"`
+	// InForce (RS-2, ADR-077 d3) tags a rule whose citation lies in a
+	// PARTLY superseded decision record ("partly_superseded"): it still
+	// binds in part, so it is served, named. Absent for a rule in force.
+	InForce string `json:"in_force,omitempty"`
 }
 
 // ModuleNote is an explicit, never-silent note attached to an Obligations
@@ -249,6 +247,10 @@ type Obligations struct {
 	// "displaced" keep seeing a meaningful number; a phase-O-aware consumer
 	// reads the two named fields for the split.
 	Displaced int `json:"displaced,omitempty"`
+	// Superseded (RS-2, ADR-077 d3) counts the scope-matched rules withheld
+	// because their citation lies in a fully superseded decision record:
+	// never served, never silent (I7).
+	Superseded int `json:"superseded_withheld,omitempty"`
 	// DisplacedRepo is the count ObligationsFor itself cut from this
 	// service's own claims (identical to the pre-phase-O Displaced value).
 	// Always 0 (omitted) before internal/modserve.Bind runs.
@@ -635,6 +637,7 @@ type scored struct {
 	governing   governingScope
 	relevance   float64
 	strong      bool // wave O3, item 1: relevanceStrength's verdict — see crossTierCloser
+	evidence    int  // RS-1: scope evidence tier (selector.go), strongest first
 }
 
 // claimRelevanceText builds the text relevanceScore scores one compiled
@@ -652,45 +655,6 @@ func claimRelevanceText(cl core.SemanticClaim) string {
 	}
 	heading = strings.ReplaceAll(heading, "-", " ")
 	return heading + "\n" + cl.Rule
-}
-
-// reserveNearestTier returns up to n items from matched belonging to the
-// single closest governingScope TIER actually present among them — tier
-// 0 (exact_file) if any matched claim reaches it, else tier 1 (package),
-// else tier 2 (parent_dir), else tier 3 (root) — in matched's existing
-// order (already sorted by less() before the caller reaches here), so
-// which of that tier's own rules fill the reserved slots still respects
-// freshness, role and specificity; only the cross-tier competition
-// against FARTHER rules is bypassed for these n slots. Empty when
-// outFile is "" (a root-scope call has no path to be proximate to, so
-// every candidate carries noGoverningScope and reservation is a no-op)
-// or when nothing in matched carries a real governing scope.
-func reserveNearestTier(matched []scored, n int, outFile string) []scored {
-	if outFile == "" || n <= 0 {
-		return nil
-	}
-	nearestTier := -1
-	for _, m := range matched {
-		if m.governing.tier < 0 {
-			continue
-		}
-		if nearestTier < 0 || m.governing.tier < nearestTier {
-			nearestTier = m.governing.tier
-		}
-	}
-	if nearestTier < 0 {
-		return nil
-	}
-	var reserved []scored
-	for _, m := range matched {
-		if len(reserved) >= n {
-			break
-		}
-		if m.governing.tier == nearestTier {
-			reserved = append(reserved, m)
-		}
-	}
-	return reserved
 }
 
 // noteNoEligibleRerank (O109) names, in out.RankNote, WHY out.RankedBy
@@ -915,6 +879,10 @@ func obligationsCoreTrace(ctx context.Context, st store.Store, serviceID, outFil
 	if outFile != "" {
 		relevanceTokens = pathRelevanceTokens(outFile)
 	}
+	// RS-2 (ADR-077 d3): a claim citing a fully superseded decision record
+	// is withheld below and counted; a partly superseded one stays, tagged.
+	standing := inForceResolver(root)
+	inForceTag := map[string]string{}
 
 	var matched []scored
 	for _, cl := range served {
@@ -950,6 +918,13 @@ func obligationsCoreTrace(ctx context.Context, st store.Store, serviceID, outFil
 		}
 		best := match(cl, scope)
 		if best >= 0 {
+			switch st, _ := standing(primaryCite[cl.ClaimID]); st {
+			case fullySuperseded:
+				out.Superseded++
+				continue
+			case partlySuperseded:
+				inForceTag[cl.ClaimID] = st
+			}
 			governing := noGoverningScope
 			var relevance float64
 			var strong bool
@@ -977,7 +952,11 @@ func obligationsCoreTrace(ctx context.Context, st store.Store, serviceID, outFil
 		l, _ := compareScored(a, b, outFile, decideRelevance)
 		return l
 	}
-	sort.Slice(matched, func(i, j int) bool { return less(matched[i], matched[j]) })
+	// RS-1 (ADR-077 d2): the selector ranks every candidate by scope
+	// evidence (selector.go); rank only, nothing is dropped.
+	matched = rankByScopeEvidence(matched, outFile, editedFileFacts(ctx, st, serviceID, outFile), func(m scored) string {
+		return claimRelevanceText(m.cl) + "\n" + anchorText[m.cl.ClaimID]
+	}, less)
 	if trace != nil {
 		trace.ranked = append([]scored(nil), matched...)
 		trace.src = primaryCite
@@ -1051,89 +1030,7 @@ func obligationsCoreTrace(ctx context.Context, st store.Store, serviceID, outFil
 		}
 	}
 
-	if len(matched) > max {
-		// T5-2/O14: record the cap's damage BEFORE slicing it away — this is
-		// the only point that knows how many served-eligible claims existed
-		// versus how many fit the budget. BP-18: the cut is role-partitioned,
-		// so a claims rule can never evict a governs rule, but Displaced
-		// still counts BOTH — the eviction stays one honest integer.
-		out.Displaced = len(matched) - max
-		// O57 item 4: the nearest-scope tier gets first claim on the first
-		// nearestTierReserveSlots slots, unconditionally — before role or
-		// freshness gets a say. VB-8's proximity tie-break (governingscope.go)
-		// already sorts a FRESH, governs-role nearest rule to the front of
-		// its bucket, which is why the ordering-only test below already
-		// passed before this reservation existed; what it does NOT protect
-		// is a nearest rule that is stale, or claims-role — six fresh root
-		// rules can fill every slot before either is even considered, which
-		// is exactly what guards-pilot-5's second reading caught (a served
-		// payload naming no rule closer than "root" while a package guide
-		// governed the edited file). Reservation only decides MEMBERSHIP;
-		// which of the nearest tier's own rules fill the reserved slots
-		// still goes through matched's existing freshness/role/specificity
-		// order, and the final presentation order below is unaffected by
-		// how a rule reached kept.
-		reserveN := nearestTierReserveSlots
-		if reserveN > max {
-			reserveN = max
-		}
-		reserved := reserveNearestTier(matched, reserveN, outFile)
-		reservedIDs := make(map[string]bool, len(reserved))
-		for _, m := range reserved {
-			reservedIDs[m.cl.ClaimID] = true
-		}
-		if trace != nil && outFile != "" {
-			// A root-scope call has no path to be near: nothing is reserved.
-			trace.reserved = reservedIDs
-			trace.reserveN = reserveN
-		}
-		kept := make([]scored, 0, max)
-		kept = append(kept, reserved...)
-		for _, m := range matched {
-			if len(kept) >= max {
-				break
-			}
-			if !m.claims && !reservedIDs[m.cl.ClaimID] {
-				kept = append(kept, m)
-			}
-		}
-		if len(kept) > max {
-			kept = kept[:max]
-		}
-		for _, m := range matched {
-			if len(kept) >= max {
-				break
-			}
-			if m.claims && !reservedIDs[m.cl.ClaimID] {
-				kept = append(kept, m)
-			}
-		}
-		// VB-10 (ADR-035 decision 2): before the survivors are re-sorted,
-		// tally the DROPPED claims by governing-scope tier — a caller can
-		// then see WHAT KIND of rule the cap displaced, not just how many.
-		// File-scoped only: a root-scope call carries no computable tier.
-		if outFile != "" {
-			keptIDs := make(map[string]bool, len(kept))
-			for _, k := range kept {
-				keptIDs[k.cl.ClaimID] = true
-			}
-			byTier := map[string]int{}
-			for _, m := range matched {
-				if !keptIDs[m.cl.ClaimID] {
-					byTier[m.governing.name()]++
-				}
-			}
-			if len(byTier) > 0 {
-				out.DisplacedByTier = byTier
-			}
-		}
-		// Re-order the survivors: the role partition above is a BUDGET
-		// decision, not a presentation one, and it can leave a stale governs
-		// rule ahead of a fresh claims rule. The served payload is ordered
-		// by less() — fresh first (BP-17) — whatever the budget did.
-		sort.Slice(kept, func(i, j int) bool { return less(kept[i], kept[j]) })
-		matched = kept
-	}
+	matched = selectWithinCap(matched, max, outFile, less, &out, trace)
 
 	// Remediation-drift annotation (FT-6): computed once, only when a claim
 	// from a drift-tracked layer (LC-2: serving.drift_tracked, not a
@@ -1190,6 +1087,7 @@ func obligationsCoreTrace(ctx context.Context, st store.Store, serviceID, outFil
 		if v, ok := decideRelevance[m.cl.ClaimID]; ok {
 			ob.Relevance = &v
 		}
+		ob.InForce = inForceTag[m.cl.ClaimID]
 		out.Rules = append(out.Rules, ob)
 		if trace != nil {
 			trace.servedIDs = append(trace.servedIDs, m.cl.ClaimID)

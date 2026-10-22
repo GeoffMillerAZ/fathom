@@ -486,6 +486,9 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 			if obl.Displaced > 0 {
 				fmt.Fprintf(&sb, "\n⚠️ %d more eligible rule(s) not shown (cap)", obl.Displaced)
 			}
+			if obl.Superseded > 0 {
+				fmt.Fprintf(&sb, "\n⚠️ %d rule(s) citing a superseded decision withheld", obl.Superseded)
+			}
 			if indexStale {
 				sb.WriteString("\n⚠️ index is behind your working tree for this file")
 			} else if obl.IndexUnchecked != "" {
@@ -846,6 +849,7 @@ func fetchObligations(baseURL, service, file string, maxRules int, timeout time.
 		IndexStale          bool                  `json:"index_stale"`
 		IndexUnchecked      string                `json:"index_unchecked"`
 		Displaced           int                   `json:"displaced"`
+		Superseded          int                   `json:"superseded_withheld"`
 		DisplacedRepo       int                   `json:"displaced_repo"`
 		DisplacedModule     int                   `json:"displaced_module"`
 		ModuleNotes         []semantic.ModuleNote `json:"module_notes"`
@@ -865,6 +869,7 @@ func fetchObligations(baseURL, service, file string, maxRules int, timeout time.
 		Rules:           payload.Rules,
 		Watermark:       payload.CompiledAtWatermark,
 		Displaced:       payload.Displaced,
+		Superseded:      payload.Superseded,
 		DisplacedRepo:   payload.DisplacedRepo,
 		DisplacedModule: payload.DisplacedModule,
 		ModuleNotes:     payload.ModuleNotes,
