@@ -4,9 +4,6 @@ package main
 // missing fact or a read error preserves the hook's existing behavior (I9).
 
 import (
-	"bufio"
-	"encoding/json"
-	"os"
 	"strings"
 	"time"
 
@@ -45,7 +42,7 @@ func hookReadinessRegistry() map[harness.Capability]readinessEntry {
 		harness.CapGuardPreShell:        {"shell guards", readinessAlways},
 		harness.CapStopVerify:           {"stop verification", readinessAlways},
 		harness.CapClaimGate:            {"claim gate", readinessAlways},
-		harness.CapSubagentPrime:        {"exploration maps", readinessMaps},
+		harness.CapSubagentPrime:        {"exploration maps", readinessAlways},
 		harness.CapToolFailureAdvice:    {"tool failure advice", readinessAlways},
 		harness.CapWorktreeAdvice:       {"worktree advice", readinessAlways},
 		harness.CapPromptObligations:    {"prompt obligations", readinessAlways},
@@ -70,42 +67,8 @@ func readinessBinding(cap harness.Capability) func(readinessInput) readinessResu
 				}
 			}
 		}
-		return readinessResult{reason: "hook-not-registered"}
+		return readinessResult{reason: "unsupported-here"}
 	}
-}
-
-// Read only the log the hook actually sees, bounded to the same byte cap
-// as hook state. Oversize/unreadable input is unknown, never no-maps.
-func readinessMaps(in readinessInput) readinessResult {
-	raw, err := readReadinessFile(threadsPath())
-	if err != nil {
-		if os.IsNotExist(err) {
-			return readinessResult{reason: "no-maps"}
-		}
-		return readinessResult{ready: true}
-	}
-	s := bufio.NewScanner(strings.NewReader(string(raw)))
-	s.Buffer(make([]byte, 4096), hookDedupeMaxBytes)
-	for s.Scan() {
-		var row threadItem
-		if json.Unmarshal(s.Bytes(), &row) != nil {
-			return readinessResult{ready: true}
-		}
-		if !isMapItem(row) {
-			continue
-		}
-		at, err := time.Parse(time.RFC3339, row.FiledAt)
-		if err != nil {
-			return readinessResult{ready: true}
-		}
-		if !at.After(in.now) && !at.Before(in.now.Add(-hookDedupeAge)) {
-			return readinessResult{ready: true}
-		}
-	}
-	if s.Err() != nil {
-		return readinessResult{ready: true}
-	}
-	return readinessResult{reason: "no-maps"}
 }
 
 func readinessInstructions(in readinessInput) readinessResult {
@@ -156,9 +119,7 @@ func channelReady(cap harness.Capability, in readinessInput, channel, session st
 		return true
 	}
 	reason := "not-ready:" + r.reason
-	if err := updateHookHealth(in.root, in.harnessID, cap, false, reason, r.uncompiled, in.now); err != nil {
-		return true
-	}
+	_ = updateHookHealth(in.root, in.harnessID, cap, false, reason, in.now)
 	if h := activeAdviceHealth; h != nil && h.cap == cap {
 		h.recorded = true
 	}

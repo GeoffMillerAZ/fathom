@@ -154,7 +154,7 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 	// mistake in a new costume. The stamp records the cohort label and the
 	// brief's measured cost either way, which is what makes the
 	// pre-registered bet evaluable (fresh-with-brief vs resumed).
-	briefBytes, attentionBytes := 0, 0
+	briefBytes, attentionBytes, inactiveBytes := 0, 0, 0
 	intentLine := false
 	if startSource == "startup" || startSource == "clear" || startSource == "" {
 		// CC-7 (docs/plans/custodian.md) + EP-19: the continuity brief and
@@ -172,7 +172,11 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 			if primerIdentity == nil {
 				primerIdentity = stampIdentity
 			}
-			ctx, briefBytes, line = composePrimer(ctx, projDir, nowFunc(), attentionLedgerRoots(projDir, primerIdentity), inactiveFeaturesLine(projDir, codec.ID(), nowFunc()))
+			inactive := inactiveFeaturesLine(projDir, codec.ID(), nowFunc())
+			ctx, briefBytes, line = composePrimer(ctx, projDir, nowFunc(), attentionLedgerRoots(projDir, primerIdentity), inactive)
+			if inactive != "" && strings.Contains(line, inactive) && strings.Contains(ctx, line) {
+				inactiveBytes = len(inactive)
+			}
 			attentionBytes = len(line)
 			intentLine = line != ""
 			if intentLine {
@@ -198,6 +202,9 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 	var component map[string]string
 	if attentionBytes > 0 {
 		component = map[string]string{"attention_bytes": strconv.Itoa(attentionBytes)}
+		if inactiveBytes > 0 {
+			component["inactive_features_bytes"] = strconv.Itoa(inactiveBytes)
+		}
 	}
 	emitPayloadCost("session-brief", ctx, 0, "", sessionID, component)
 
@@ -253,7 +260,7 @@ func composePrimer(identity, projDir string, now time.Time, roots ledgerroots.Ro
 		mapLines = briefMapLines(items, projDir, now)
 	}
 	brief := renderThreadBrief(items, projDir, threadBriefBudgetBytes, now, mapLines...)
-	line := attentionLine(projDir, now, roots)
+	line := attentionLine(projDir, now, roots, featureLines...)
 	// RT-51: the tenancy line, only when the daemon is not normal (≤160 B).
 	tenancyLine := primerTenancyLine(now)
 	// IV-3c: repo-wide invariants, once, here and never at an edit (≤480 B).
@@ -272,9 +279,6 @@ func composePrimer(identity, projDir string, now time.Time, roots ledgerroots.Ro
 		}
 		if line != "" {
 			out += "\n" + line
-		}
-		if len(featureLines) > 0 && featureLines[0] != "" {
-			out += "\n" + featureLines[0]
 		}
 		return out
 	}

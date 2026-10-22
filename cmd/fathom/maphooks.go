@@ -164,11 +164,8 @@ func subagentMapLine(root, parentSessionID, agentID string, now time.Time) strin
 	if parentSessionID == "" || root == "" {
 		return ""
 	}
-	harnessID := harness.ClaudeCode
-	if h := activeAdviceHealth; h != nil {
-		harnessID = h.id
-	}
-	if !channelReady(harness.CapSubagentPrime, readinessInput{root: root, harnessID: harnessID, now: now}, "subagent-hook", parentSessionID) {
+	if !threadsHoldMaps() {
+		emitBeat("subagent-hook", "skipped", firingMeta(map[string]string{"emitted": "false", "reason": "no-maps", "capability": string(harness.CapSubagentPrime)}, parentSessionID, ""))
 		return ""
 	}
 	set, alive := loadAliveMaps(root, now)
@@ -177,6 +174,10 @@ func subagentMapLine(root, parentSessionID, agentID string, now time.Time) strin
 		if mapFiledInSession(set, id, parentSessionID) {
 			filed = append(filed, id)
 		}
+	}
+	if len(filed) == 0 {
+		emitBeat("subagent-hook", "skipped", firingMeta(map[string]string{"emitted": "false", "reason": "no-maps", "capability": string(harness.CapSubagentPrime)}, parentSessionID, ""))
+		return ""
 	}
 	roots := mapRoots(set.maps, filed)
 	if len(roots) == 0 {

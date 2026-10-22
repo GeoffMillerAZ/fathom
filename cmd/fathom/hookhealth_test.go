@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -14,39 +15,32 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/harness"
 )
 
-func TestHookHealthRollingCountsAndRecovery(t *testing.T) {
+func TestHookHealthTransitionsAndRecovery(t *testing.T) {
 	root, now := readinessEnv(t)
 	cap := harness.CapObligationsPostEdit
-	for _, event := range []struct {
-		age    time.Duration
-		emit   bool
-		reason string
-	}{
-		{8 * 24 * time.Hour, true, ""}, {6 * 24 * time.Hour, true, ""},
-		{time.Hour, false, "not-ready:no-instructions"}, {0, false, "breaker_open"},
-	} {
-		if err := updateHookHealth(root, harness.ClaudeCode, cap, event.emit, event.reason, 3, now.Add(-event.age)); err != nil {
-			t.Fatal(err)
-		}
-	}
-	s, err := readHookHealth(root, harness.ClaudeCode, now)
-	if err != nil {
+	old := now.Add(-24 * time.Hour)
+	if err := updateHookHealth(root, harness.ClaudeCode, cap, true, "", old); err != nil {
 		t.Fatal(err)
 	}
-	stamp := s.Channels[cap]
-	if stamp.Emitted != 1 || stamp.Skipped != 2 || stamp.LastSkip != "breaker_open" || !stamp.LastEmit.Equal(now.Add(-6*24*time.Hour)) || stamp.Uncompiled != 3 {
-		t.Fatalf("stamp = %+v", stamp)
+	if err := updateHookHealth(root, harness.ClaudeCode, cap, false, "not-ready:no-instructions", now); err != nil {
+		t.Fatal(err)
 	}
-	if err := updateHookHealth(root, harness.ClaudeCode, cap, true, "", 1, now.Add(time.Minute)); err != nil {
+	s, err := readHookHealth(root, harness.ClaudeCode, now)
+	stamp := s.Channels[cap]
+	if err != nil || stamp.LastState != "not-ready:no-instructions" || !stamp.ChangedAt.Equal(now) || !stamp.LastEmitAt.Equal(old) {
+		t.Fatalf("stamp=%+v err=%v", stamp, err)
+	}
+	if err := updateHookHealth(root, harness.ClaudeCode, cap, true, "", now.Add(time.Minute)); err != nil {
 		t.Fatal(err)
 	}
 	s, err = readHookHealth(root, harness.ClaudeCode, now.Add(time.Minute))
-	if err != nil || s.Channels[cap].Inactive != "" || s.Channels[cap].LastSkip != "breaker_open" {
-		t.Fatalf("recovery = %+v, %v", s, err)
+	stamp = s.Channels[cap]
+	if err != nil || stamp.LastState != "ready" || !stamp.ChangedAt.Equal(now.Add(time.Minute)) || !stamp.LastEmitAt.Equal(now.Add(time.Minute)) {
+		t.Fatalf("recovery=%+v err=%v", stamp, err)
 	}
 	other, err := readHookHealth(t.TempDir(), harness.ClaudeCode, now)
 	if err != nil || len(other.Channels) != 0 {
-		t.Fatalf("cross-root state: %+v, %v", other, err)
+		t.Fatalf("cross-root state=%+v err=%v", other, err)
 	}
 }
 
@@ -56,7 +50,7 @@ func TestHookHealthInactiveLineAndOffByChoice(t *testing.T) {
 		t.Fatal(err)
 	}
 	line := inactiveFeaturesLine(root, harness.ClaudeCode, now)
-	want := "fathom: 2 features inactive: exploration maps (no maps filed in 7 days), readouts (hook not registered). Run fathom doctor."
+	want := "1 feature inactive: readouts"
 	if line != want {
 		t.Fatalf("line = %q, want %q", line, want)
 	}
@@ -89,6 +83,9 @@ func TestHookHealthBoundedAndFailOpen(t *testing.T) {
 
 func TestHookHealthPrimerGatingAndCap(t *testing.T) {
 	root, now := readinessEnv(t)
+	if err := os.WriteFile(filepath.Join(os.Getenv("FATHOM_HOME"), "config.toml"), []byte("[readouts]\nmode = 'rich'\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
 	isolateHookRun(t)
 	clock := nowFunc
 	nowFunc = func() time.Time { return now }
@@ -123,8 +120,15 @@ func TestHookHealthPrimerGatingAndCap(t *testing.T) {
 		if source == "resume" || source == "compact" {
 			want = 0
 		}
-		if got := strings.Count(envelope.Hook.Text, "features inactive:"); got != want {
+		if got := strings.Count(envelope.Hook.Text, "feature inactive:"); got != want {
 			t.Fatalf("%q: got %d flags: %q", source, got, envelope.Hook.Text)
+		}
+		rows := readBeats(t, beatLogPath(), "payload-cost")
+		if want == 1 {
+			last := rows[len(rows)-1]
+			if last.Meta["inactive_features_bytes"] != strconv.Itoa(len(inactiveFeaturesLine(root, harness.ClaudeCode, now))) {
+				t.Fatalf("inactive bytes unmeasured: %+v", last)
+			}
 		}
 		if len(envelope.Hook.Text) > sessionPrimerBudget {
 			t.Fatalf("primer over cap: %d", len(envelope.Hook.Text))
@@ -154,7 +158,7 @@ func TestHookHealthInvocationAndComponentDelivery(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, cap := range []harness.Capability{harness.CapObligationsPostEdit, harness.CapClaimGate} {
-		if s.Channels[cap].Emitted != 1 {
+		if s.Channels[cap].LastState != "ready" || !s.Channels[cap].LastEmitAt.Equal(now) {
 			t.Fatalf("%s: %+v", cap, s.Channels[cap])
 		}
 	}
@@ -162,7 +166,7 @@ func TestHookHealthInvocationAndComponentDelivery(t *testing.T) {
 
 func TestHookHealthLocalReadinessRecoversWithoutAnotherInvocation(t *testing.T) {
 	root, now := readinessEnv(t)
-	if err := updateHookHealth(root, harness.ClaudeCode, harness.CapSubagentPrime, false, "not-ready:no-maps", 0, now); err != nil {
+	if err := updateHookHealth(root, harness.ClaudeCode, harness.CapSubagentPrime, false, "not-ready:no-maps", now); err != nil {
 		t.Fatal(err)
 	}
 	raw, _ := json.Marshal(threadItem{ID: "map:example", Kind: "map", FiledAt: now.Format(time.RFC3339)})

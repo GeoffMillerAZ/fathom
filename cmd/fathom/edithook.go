@@ -113,21 +113,6 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	}
 	sessionID := hook.SessionID
 	rpcSession = sessionID // O1151: the daemon sees this hook session
-	if !armOff {
-		cap := harness.CapObligationsPostEdit
-		if *pre {
-			cap = harness.CapGuardPreEdit
-		}
-		if hook.Tool == harness.ToolShell {
-			cap = harness.CapObligationsPostShell
-			if *pre {
-				cap = harness.CapGuardPreShell
-			}
-		}
-		var finishHealth func()
-		stdout, finishHealth = beginAdviceHealth(resolveProjDirFor(codec.ID(), hook.Cwd), codec.ID(), cap, stdout)
-		defer finishHealth()
-	}
 
 	// PR-3 (ADR-057 decision 4): a git commit seen by PostToolUse(Bash) is
 	// checked for lost pins before the observe-only exit below swallows the
@@ -148,6 +133,22 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	if observeOnlyExit(ev, hook, armOff) {
 		emitPinContext(codec, pinText, stdout)
 		return 0
+	}
+
+	if !armOff {
+		cap := harness.CapObligationsPostEdit
+		if *pre {
+			cap = harness.CapGuardPreEdit
+		}
+		if hook.Tool == harness.ToolShell {
+			cap = harness.CapObligationsPostShell
+			if *pre {
+				cap = harness.CapGuardPreShell
+			}
+		}
+		var finishHealth func()
+		stdout, finishHealth = beginAdviceHealth(resolveProjDirFor(codec.ID(), hook.Cwd), codec.ID(), cap, stdout)
+		defer finishHealth()
 	}
 
 	if *pre {
@@ -399,6 +400,7 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 	if containsFile {
 		cands = candidatesWithDaemon(&http.Client{Timeout: 2 * time.Second}, url, projDir)
 	}
+	notReady := readinessResult{ready: true}
 	for _, cand := range cands {
 		rel, ok := relativeToRoot(cand.root, lookup)
 		if !ok {
@@ -422,18 +424,7 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 			emitBeat("edit-hook", "answered", firingMeta(withDestination(silentAnswerMeta(map[string]string{"phase": "post"}, silenceDaemonError), projDir, filePath), sessionID, filePath))
 			return "", postEditMeta{}, false // daemon down, error or out of time → silent, named
 		}
-		if h := activeAdviceHealth; h != nil {
-			h.uncompiled = readiness.uncompiled
-		}
-		if !readiness.ready && (cand.verified || len(o.Rules) > 0 || o.Service == name) {
-			cap, id := harness.CapObligationsPostEdit, harness.ClaudeCode
-			if h := activeAdviceHealth; h != nil {
-				cap, id = h.cap, h.id
-			}
-			if !channelReady(cap, readinessInput{root: projDir, harnessID: id, now: nowFunc(), rules: o.Rules, instructionsKnown: true, uncompiled: readiness.uncompiled}, "edit-hook", sessionID) {
-				return "", postEditMeta{}, false
-			}
-		}
+		notReady = readiness
 		// SR-27 (surface reckoning F-35): specRefs must always come from
 		// whichever candidate's call is CURRENTLY bound to svcName/
 		// repoRelFile — the OP-4 block below renders spec lines against
@@ -481,6 +472,13 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 	// identical when no findings exist" pin). findingRows is rendered
 	// separately, after the governing-rules block, by renderFindingsBlock.
 	govRules, findingRows := splitFindingRows(obl.Rules)
+	filtered := make([]semantic.Obligation, 0, len(govRules))
+	for _, rule := range govRules {
+		if rule.Tier != "raw" || rawHasInstruction(rule.Rule) {
+			filtered = append(filtered, rule)
+		}
+	}
+	govRules = filtered
 
 	// Guarded-edits dedup (docs/design/guarded-edits.md §2.3): when the
 	// --pre hook already served rules for this exact (session, service,
@@ -516,7 +514,7 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 
 	// Build compact text.
 	var sb strings.Builder
-	if found {
+	if found && (len(renderRules) > 0 || suppressedByStamp > 0 || indexStale || obl.IndexUnchecked != "" || obl.CoverageSkipped != "" || len(obl.ModuleNotes) > 0 || obl.Displaced > 0 || obl.Superseded > 0) {
 		if stampConsulted && suppressedByStamp > 0 && len(renderRules) == 0 && !staleChangedSincePre {
 			// Never silent (design §2.3): the marker line always names the
 			// suppression, even when there is nothing else to say.
@@ -625,6 +623,14 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 		}
 	}
 
+	if sb.Len() == 0 && !notReady.ready {
+		cap, id := harness.CapObligationsPostEdit, harness.ClaudeCode
+		if h := activeAdviceHealth; h != nil {
+			cap, id = h.cap, h.id
+		}
+		channelReady(cap, readinessInput{root: projDir, harnessID: id, now: nowFunc(), instructionsKnown: true, uncompiled: notReady.uncompiled}, "edit-hook", sessionID)
+		return "", postEditMeta{}, false
+	}
 	if sb.Len() == 0 {
 		emitBeat("edit-hook", "answered", firingMeta(withFold(withDestination(silentAnswerMeta(map[string]string{"phase": "post"}, silenceNoRules), projDir, filePath), fold), sessionID, filePath))
 		return "", postEditMeta{}, false // clean file (or unindexed project), no spec IDs → silent
@@ -927,7 +933,7 @@ func fetchObligations(baseURL, service, file string, maxRules int, timeout time.
 	if len(checks) > 0 {
 		in := readinessInput{rules: payload.Rules}
 		if cov := payload.LayerCoverage; cov != nil && cov.SectionsCompiled != nil && cov.SectionsTotal != nil && cov.Status == "" {
-			in.instructionsKnown = *cov.SectionsCompiled == 0 && len(cov.UnreadCorpus) == 0 && payload.CoverageSkipped == ""
+			in.instructionsKnown = *cov.SectionsTotal > 0 && *cov.SectionsCompiled == 0 && len(cov.UnreadCorpus) == 0 && payload.CoverageSkipped == ""
 			in.uncompiled = max(0, *cov.SectionsTotal-*cov.SectionsCompiled)
 		}
 		for _, check := range checks {

@@ -48,11 +48,11 @@ func TestReadinessMapsRecentRowsAndReadErrors(t *testing.T) {
 		age        time.Duration
 		ready      bool
 	}{
-		{"no map", "handoff-note", 0, false},
-		{"old map", "map", 8 * 24 * time.Hour, false},
+		{"no map", "handoff-note", 0, true},
+		{"old map", "map", 8 * 24 * time.Hour, true},
 		{"recent header", "map", time.Hour, true},
 		{"recent entry", "map-entry", 2 * time.Hour, true},
-		{"future map", "map", -time.Hour, false},
+		{"future map", "map", -time.Hour, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			raw, _ := json.Marshal(threadItem{ID: "map:example", Kind: tc.kind, FiledAt: now.Add(-tc.age).Format(time.RFC3339)})
@@ -106,7 +106,7 @@ func TestReadinessOptInBinding(t *testing.T) {
 			t.Fatalf("Claude binding %s: %+v", cap, got)
 		}
 		ctx.harnessID = harness.GeminiCLI
-		if got := hookReadinessRegistry()[cap].check(ctx); got.ready || got.reason != "hook-not-registered" {
+		if got := hookReadinessRegistry()[cap].check(ctx); got.ready || got.reason != "unsupported-here" {
 			t.Fatalf("unsupported binding %s: %+v", cap, got)
 		}
 	}
@@ -118,7 +118,7 @@ func TestReadinessNotReadyMapIsSilentAndLogged(t *testing.T) {
 		t.Fatalf("map line = %q", got)
 	}
 	rows := readBeats(t, beatLogPath(), "subagent-hook")
-	if len(rows) != 1 || rows[0].Kind != "skipped" || rows[0].Meta["reason"] != "not-ready:no-maps" {
+	if len(rows) != 1 || rows[0].Kind != "skipped" || rows[0].Meta["reason"] != "no-maps" {
 		t.Fatalf("rows = %+v", rows)
 	}
 }
@@ -134,7 +134,7 @@ func TestReadinessUnsupportedReadoutEmitsNothing(t *testing.T) {
 		t.Fatalf("code=%d output=%q", code, out.String())
 	}
 	rows := readBeats(t, beatLogPath(), readoutChannel)
-	if len(rows) != 1 || rows[0].Meta["reason"] != "not-ready:hook-not-registered" {
+	if len(rows) != 1 || rows[0].Meta["reason"] != "not-ready:unsupported-here" {
 		t.Fatalf("rows = %+v", rows)
 	}
 }
@@ -195,13 +195,16 @@ func TestReadinessPostEditNoInstructionsSkipsExistingHookRow(t *testing.T) {
 		t.Fatalf("rows = %+v", rows)
 	}
 	s, err := readHookHealth(root, harness.ClaudeCode, now)
-	if err != nil || s.Channels[harness.CapObligationsPostEdit].Uncompiled != 3 {
+	if err != nil || s.Channels[harness.CapObligationsPostEdit].LastState != "not-ready:no-instructions" {
 		t.Fatalf("state=%+v err=%v", s, err)
 	}
 }
 
 func TestReadinessInstalledHookRows(t *testing.T) {
 	root, _ := readinessEnv(t)
+	if err := os.WriteFile(filepath.Join(os.Getenv("FATHOM_HOME"), "config.toml"), []byte("[readouts]\nmode = 'rich'\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
 	cap := harness.CapReadout
 	if got := readinessInstalled(root, harness.ClaudeCode, cap); got.ready {
 		t.Fatal("absent hook is ready")
@@ -236,16 +239,16 @@ func TestReadinessOptInSeamsUseTheirParentHookRows(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(os.Getenv("FATHOM_HOME"), "config.toml"), []byte("[hooks]\ngate_preflight = true\nprompt_definitions = true\ntests_to_run = true\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	line := inactiveFeaturesLine(root, harness.Codex, now)
-	for _, name := range []string{"gate preflight (hook not registered)", "prompt definitions (hook not registered)", "tests to run (hook not registered)"} {
-		if !strings.Contains(line, name) {
-			t.Fatalf("missing %q: %q", name, line)
-		}
+	if line := inactiveFeaturesLine(root, harness.Codex, now); line != "" {
+		t.Fatalf("unsupported parent seams reached primer: %q", line)
 	}
 }
 
 func TestReadinessInstalledWrapperAndPluginUncertainty(t *testing.T) {
 	root, _ := readinessEnv(t)
+	if err := os.WriteFile(filepath.Join(os.Getenv("FATHOM_HOME"), "config.toml"), []byte("[readouts]\nmode = 'rich'\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
 	d, _ := harness.Lookup(harness.ClaudeCode)
 	hooks := map[string][]any{}
 	var script strings.Builder

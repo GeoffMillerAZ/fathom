@@ -1,9 +1,10 @@
 package main
 
-// Bounded hook-owned delivery stamps share CB-1's directory, lock, byte
-// limit and seven-day GC. No daemon/store state or background work.
+// Advisory transition stamps share CB-1's directory and nonblocking lock.
+// Each channel has fixed-size state; invocation counts belong to the hook log.
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -18,20 +19,10 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/harness"
 )
 
-type hookHealthEvent struct {
-	At      time.Time `json:"at"`
-	Emitted bool      `json:"emitted,omitempty"`
-}
-
 type hookHealthStamp struct {
-	LastEmit   time.Time         `json:"last_emit,omitempty"`
-	LastSkip   string            `json:"last_skip,omitempty"`
-	At         time.Time         `json:"at"`
-	Inactive   string            `json:"inactive,omitempty"`
-	Uncompiled int               `json:"uncompiled,omitempty"`
-	Emitted    int               `json:"emitted"`
-	Skipped    int               `json:"skipped"`
-	Events     []hookHealthEvent `json:"events"`
+	LastState  string    `json:"last_state"`
+	ChangedAt  time.Time `json:"changed_at"`
+	LastEmitAt time.Time `json:"last_emit_at"`
 }
 
 type hookHealthState struct {
@@ -44,54 +35,65 @@ func hookHealthPath(root, id string) string {
 }
 
 func loadHookHealth(f *os.File, now time.Time) (hookHealthState, error) {
-	s := hookHealthState{Version: 1, Channels: map[harness.Capability]hookHealthStamp{}}
+	empty := hookHealthState{Version: 2, Channels: map[harness.Capability]hookHealthStamp{}}
 	raw, err := io.ReadAll(io.LimitReader(f, hookDedupeMaxBytes+1))
 	if err != nil {
-		return s, err
+		return empty, err
 	}
 	if len(raw) == 0 {
-		return s, nil
+		return empty, nil
 	}
-	if len(raw) > hookDedupeMaxBytes || json.Unmarshal(raw, &s) != nil || s.Version != 1 || s.Channels == nil || len(s.Channels) > len(hookReadinessRegistry()) {
-		return s, os.ErrInvalid
+	var s hookHealthState
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.DisallowUnknownFields()
+	if len(raw) > hookDedupeMaxBytes || dec.Decode(&s) != nil || dec.Decode(new(any)) != io.EOF || s.Version != 2 || s.Channels == nil || len(s.Channels) > len(hookReadinessRegistry()) {
+		return empty, nil
 	}
-	total := 0
 	for cap, stamp := range s.Channels {
-		if _, ok := hookReadinessRegistry()[cap]; !ok || stamp.At.IsZero() || stamp.Uncompiled < 0 || len(stamp.LastSkip) > 128 || len(stamp.Inactive) > 128 {
-			return s, os.ErrInvalid
+		_, known := hookReadinessRegistry()[cap]
+		if !known || stamp.ChangedAt.IsZero() || stamp.ChangedAt.After(now) || stamp.LastEmitAt.After(now) || !validHealthState(stamp.LastState) {
+			return empty, nil
 		}
-		if stamp.At.After(now) || now.Sub(stamp.At) > hookDedupeAge {
-			delete(s.Channels, cap)
-			continue
-		}
-		kept := make([]hookHealthEvent, 0, len(stamp.Events))
-		stamp.Emitted, stamp.Skipped = 0, 0
-		for _, ev := range stamp.Events {
-			if ev.At.IsZero() {
-				return s, os.ErrInvalid
-			}
-			if ev.At.After(now) || now.Sub(ev.At) > hookDedupeAge {
-				continue
-			}
-			kept = append(kept, ev)
-			if ev.Emitted {
-				stamp.Emitted++
-			} else {
-				stamp.Skipped++
-			}
-		}
-		stamp.Events = kept
-		total += len(kept)
-		s.Channels[cap] = stamp
-	}
-	if total > hookDedupeMaxEntries {
-		return s, os.ErrInvalid
 	}
 	return s, nil
 }
 
+func validHealthState(state string) bool {
+	return state == "ready" || state == "not-ready:no-instructions" || state == "not-ready:hook-not-registered" || state == "not-ready:unsupported-here"
+}
+
+// Oversize/corrupt advisory contents are reset by loadHookHealth. File identity,
+// ownership and permissions still fail closed for bookkeeping, never for advice.
+func openHookHealth(path string) (*os.File, error) {
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		return nil, err
+	}
+	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0600)
+	if err != nil {
+		return nil, err
+	}
+	if err = syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+		f.Close()
+		return nil, err
+	}
+	info, err := f.Stat()
+	if err == nil && (!info.Mode().IsRegular() || info.Mode().Perm()&0077 != 0) {
+		err = os.ErrInvalid
+	}
+	if err == nil {
+		if st, ok := info.Sys().(*syscall.Stat_t); !ok || int(st.Uid) != os.Getuid() {
+			err = os.ErrPermission
+		}
+	}
+	if err != nil {
+		f.Close()
+		return nil, err
+	}
+	return f, nil
+}
+
 func readHookHealth(root, id string, now time.Time) (hookHealthState, error) {
-	f, _, err := openHookState(hookHealthPath(root, id))
+	f, err := openHookHealth(hookHealthPath(root, id))
 	if err != nil {
 		return hookHealthState{}, err
 	}
@@ -99,8 +101,11 @@ func readHookHealth(root, id string, now time.Time) (hookHealthState, error) {
 	return loadHookHealth(f, now)
 }
 
-func updateHookHealth(root, id string, cap harness.Capability, emitted bool, reason string, uncompiled int, now time.Time) error {
-	f, _, err := openHookState(hookHealthPath(root, id))
+func updateHookHealth(root, id string, cap harness.Capability, emitted bool, reason string, now time.Time) error {
+	if _, ok := hookReadinessRegistry()[cap]; !ok {
+		return os.ErrInvalid
+	}
+	f, err := openHookHealth(hookHealthPath(root, id))
 	if err != nil {
 		return err
 	}
@@ -109,27 +114,23 @@ func updateHookHealth(root, id string, cap harness.Capability, emitted bool, rea
 	if err != nil {
 		return err
 	}
-	n := 0
-	for _, stamp := range s.Channels {
-		n += len(stamp.Events)
-	}
-	if n >= hookDedupeMaxEntries {
-		return os.ErrInvalid
+	state := "ready"
+	if strings.HasPrefix(reason, "not-ready:") && validHealthState(reason) {
+		state = reason
 	}
 	stamp := s.Channels[cap]
-	stamp.At, stamp.Uncompiled = now, uncompiled
-	stamp.Inactive = ""
-	if emitted {
-		stamp.LastEmit = now
-		stamp.Emitted++
-	} else {
-		stamp.LastSkip = reason
-		stamp.Skipped++
-		if strings.HasPrefix(reason, "not-ready:") || reason == "breaker_open" {
-			stamp.Inactive = reason
-		}
+	changed := stamp.LastState != state
+	if changed {
+		stamp.LastState, stamp.ChangedAt = state, now
 	}
-	stamp.Events = append(stamp.Events, hookHealthEvent{At: now, Emitted: emitted})
+	// Emission is coalesced by UTC day; skips never clear the last emit.
+	dayChanged := emitted && (stamp.LastEmitAt.IsZero() || stamp.LastEmitAt.UTC().Format(time.DateOnly) != now.UTC().Format(time.DateOnly))
+	if dayChanged {
+		stamp.LastEmitAt = now
+	}
+	if !changed && !dayChanged {
+		return nil
+	}
 	s.Channels[cap] = stamp
 	raw, err := json.Marshal(s)
 	if err != nil {
@@ -149,7 +150,7 @@ func updateHookHealth(root, id string, cap harness.Capability, emitted bool, rea
 	} else if n != len(raw) {
 		return io.ErrShortWrite
 	}
-	return f.Sync()
+	return nil // advisory state: never fsync
 }
 
 // One hook process runs one invocation; nested readout/test-run hooks
@@ -162,7 +163,6 @@ type adviceHealthInvocation struct {
 	cap               harness.Capability
 	emitted, recorded bool
 	reason            string
-	uncompiled        int
 	components        map[harness.Capability]bool
 }
 
@@ -180,22 +180,8 @@ func beginAdviceHealth(root, id string, cap harness.Capability, out io.Writer) (
 	activeAdviceHealth = h
 	return h, func() {
 		activeAdviceHealth = prev
-		if g := activeHookGuard(); g != nil {
-			skips := g.Skips()
-			keys := make([]string, 0, len(skips))
-			for key := range skips {
-				keys = append(keys, string(key))
-			}
-			sort.Strings(keys)
-			for _, key := range keys {
-				if key == "breaker_open" || key == "deadline_spent" {
-					h.reason = key
-					break
-				}
-			}
-		}
 		if !h.recorded {
-			_ = updateHookHealth(root, id, cap, h.emitted, h.reason, h.uncompiled, nowFunc())
+			_ = updateHookHealth(root, id, cap, h.emitted, h.reason, nowFunc())
 		}
 		caps := make([]harness.Capability, 0, len(h.components))
 		for cap := range h.components {
@@ -203,7 +189,7 @@ func beginAdviceHealth(root, id string, cap harness.Capability, out io.Writer) (
 		}
 		sort.Slice(caps, func(i, j int) bool { return caps[i] < caps[j] })
 		for _, cap := range caps {
-			_ = updateHookHealth(root, id, cap, h.components[cap] && h.emitted, h.reason, 0, nowFunc())
+			_ = updateHookHealth(root, id, cap, h.components[cap] && h.emitted, h.reason, nowFunc())
 		}
 	}
 }
@@ -255,14 +241,23 @@ func readinessInstalled(root, id string, cap harness.Capability) readinessResult
 	if !ok {
 		return readinessResult{ready: true}
 	}
-	var bindings []harness.EventBinding
+	var bindings []hookSpec
+	table := hookSpecsFor(id, hookOptInsAt(root)...)
 	for _, b := range d.Hooks {
-		if b.Capability == cap {
-			bindings = append(bindings, b)
+		if b.Capability != cap {
+			continue
+		}
+		for _, spec := range table {
+			direct := spec.event == b.Harness && spec.matcher == b.Matcher && spec.marker == b.Marker
+			folded := cap == harness.CapTestRunLine && spec.event == b.Harness && spec.matcher == b.Matcher && spec.optIn == harness.OptInReadouts
+			if direct || folded {
+				bindings = append(bindings, spec)
+				break
+			}
 		}
 	}
 	if len(bindings) == 0 {
-		return readinessResult{reason: "hook-not-registered"}
+		return readinessResult{reason: "unsupported-here"}
 	}
 	found := make([]bool, len(bindings))
 	for _, file := range d.HookFiles {
@@ -300,7 +295,7 @@ func readinessInstalled(root, id string, cap harness.Capability) readinessResult
 		}
 		hooks, _ := parsed["hooks"].(map[string]any)
 		for i, b := range bindings {
-			evidence := doctorHookEvidence(ctx, root, hooks, hookSpec{event: b.Harness, matcher: b.Matcher, marker: b.Marker, sub: b.Verb})
+			evidence := doctorHookEvidence(ctx, root, hooks, b)
 			if evidence.unknown {
 				return readinessResult{ready: true}
 			}
@@ -335,91 +330,93 @@ func readReadinessFile(path string) ([]byte, error) {
 	return raw, err
 }
 
+// Opt-in capabilities come from descriptor keys, the same keys used to build
+// the installation table. Parent-hook advisory lines have no separate binding.
+func hookOptInCapabilities() map[string][]harness.Capability {
+	out := map[string][]harness.Capability{}
+	for _, key := range hookOptInKeys() {
+		for _, d := range harness.All() {
+			for _, b := range d.Hooks {
+				if b.OptIn != key {
+					continue
+				}
+				found := false
+				for _, cap := range out[key] {
+					if cap == b.Capability {
+						found = true
+					}
+				}
+				if !found {
+					out[key] = append(out[key], b.Capability)
+				}
+			}
+		}
+		sort.Slice(out[key], func(i, j int) bool { return out[key][i] < out[key][j] })
+	}
+	return out
+}
+
 func inactiveFeaturesLine(root, id string, now time.Time) string {
 	if hookDeadlineSpent() {
 		return ""
 	}
 	s, err := readHookHealth(root, id, now)
 	if err != nil {
-		return ""
+		s = hookHealthState{}
 	}
 	reasons := map[harness.Capability]string{}
-	names := map[harness.Capability]string{}
-	ctx := readinessInput{root: root, harnessID: id, now: now}
-	// These local prerequisites can be checked even when the missing hook
-	// has never fired. All other channels report from their latest stamp.
-	if d, ok := harness.Lookup(id); ok && d.Vehicles[harness.CapSubagentPrime] == harness.VehicleHookInject {
-		if r := hookReadinessRegistry()[harness.CapSubagentPrime].check(ctx); !r.ready {
-			reasons[harness.CapSubagentPrime] = r.reason
+	// A capability without a binding is unsupported here, not broken wiring.
+	supported := map[harness.Capability]bool{}
+	if d, ok := harness.Lookup(id); ok {
+		for _, b := range d.Hooks {
+			supported[b.Capability] = true
 		}
 	}
-	for _, cap := range []harness.Capability{harness.CapReadout, harness.CapClaimCheck, harness.CapReadOutlineHint, harness.CapTestRunLine} {
-		if hookDeadlineSpent() {
-			return ""
-		}
-		if !adviceOn(root, cap) {
+	optIns := hookOptInCapabilities()
+	for _, key := range hookOptInKeys() {
+		if !hooksKeyOn(root, key) {
 			continue
 		}
-		if r := readinessInstalled(root, id, cap); !r.ready {
-			reasons[cap] = r.reason
-		}
-	}
-	// These opt-in lines ride a parent binding instead of owning a
-	// descriptor row. Check that row, without inventing a new capability.
-	seams := []struct {
-		cap       harness.Capability
-		key, name string
-	}{
-		{harness.CapGuardPreShell, hookOptInGatePreflight, "gate preflight"},
-		{harness.CapPromptObligations, hookOptInPromptDefinitions, "prompt definitions"},
-		{harness.CapObligationsPostEdit, "hooks.tests_to_run", "tests to run"},
-	}
-	for _, seam := range seams {
-		if hookDeadlineSpent() {
-			return ""
-		}
-		cfg, ok := hooksConfigAt(root, seam.key)
-		on := ok && (seam.key == hookOptInGatePreflight && cfg.Hooks.GatePreflight || seam.key == hookOptInPromptDefinitions && cfg.Hooks.PromptDefinitions || seam.key == "hooks.tests_to_run" && cfg.Hooks.TestsToRun)
-		if on {
-			if r := readinessInstalled(root, id, seam.cap); !r.ready {
-				reasons[seam.cap], names[seam.cap] = r.reason, seam.name
+		for _, cap := range optIns[key] {
+			if hookDeadlineSpent() {
+				return ""
+			}
+			if !supported[cap] {
+				continue
+			}
+			if r := readinessInstalled(root, id, cap); !r.ready && r.reason != "unsupported-here" {
+				reasons[cap] = r.reason
 			}
 		}
 	}
 	for cap, stamp := range s.Channels {
-		if stamp.Inactive != "" && adviceOn(root, cap) {
-			// A prerequisite rechecked above beats an older skip stamp.
-			if stamp.Inactive == "not-ready:no-maps" || stamp.Inactive == "not-ready:hook-not-registered" {
-				continue
-			}
-			if _, fresh := reasons[cap]; !fresh {
-				reasons[cap] = strings.TrimPrefix(stamp.Inactive, "not-ready:")
-			}
-		}
-	}
-	var entries []string
-	for cap, reason := range reasons {
-		if !adviceOn(root, cap) {
+		if !supported[cap] || !adviceOn(root, cap) || !strings.HasPrefix(stamp.LastState, "not-ready:") {
 			continue
 		}
-		label := strings.ReplaceAll(reason, "-", " ")
-		switch reason {
-		case "no-maps":
-			label = "no maps filed in 7 days"
-		case "hook-not-registered":
-			label = "hook not registered"
-		case "breaker_open":
-			label = "daemon breaker open"
+		// Registration was rechecked above; an old stamp cannot undo recovery.
+		if stamp.LastState == "not-ready:hook-not-registered" {
+			continue
 		}
-		name := hookReadinessRegistry()[cap].name
-		if names[cap] != "" {
-			name = names[cap]
+		reasons[cap] = strings.TrimPrefix(stamp.LastState, "not-ready:")
+	}
+	var entries []string
+	for cap := range reasons {
+		if adviceOn(root, cap) {
+			entries = append(entries, hookReadinessRegistry()[cap].name)
 		}
-		entries = append(entries, name+" ("+label+")")
 	}
 	if len(entries) == 0 {
 		return ""
 	}
 	sort.Strings(entries)
-	return fmt.Sprintf("fathom: %d features inactive: %s. Run fathom doctor.", len(entries), strings.Join(entries, ", "))
+	noun := "features"
+	if len(entries) == 1 {
+		noun = "feature"
+	}
+	shown := min(2, len(entries))
+	text := fmt.Sprintf("%d %s inactive: %s", len(entries), noun, strings.Join(entries[:shown], ", "))
+	if shown < len(entries) {
+		text += fmt.Sprintf(" +%d more", len(entries)-shown)
+	}
+	return text
 }

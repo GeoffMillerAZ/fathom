@@ -74,13 +74,14 @@ func hooksKeyOn(root, key string) bool {
 	return false
 }
 
-// hookOptInKeys lists every opt-in key a Claude Code binding names, sorted.
+// hookOptInKeys lists every opt-in key a harness binding names, sorted.
 func hookOptInKeys() []string {
-	d, _ := harness.Lookup(harness.ClaudeCode)
 	var keys []string
-	for _, b := range d.Hooks {
-		if b.OptIn != "" && !slices.Contains(keys, b.OptIn) {
-			keys = append(keys, b.OptIn)
+	for _, d := range harness.All() {
+		for _, b := range d.Hooks {
+			if b.OptIn != "" && !slices.Contains(keys, b.OptIn) {
+				keys = append(keys, b.OptIn)
+			}
 		}
 	}
 	slices.Sort(keys)
