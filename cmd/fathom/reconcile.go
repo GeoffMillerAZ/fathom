@@ -534,7 +534,7 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 				fmt.Fprintf(stdout, "  apply failed (baselines): %v\n", rerr)
 			}
 			for _, r := range recorded {
-				fmt.Fprintf(stdout, "  recorded: baseline digest for %s (.fathom/owned.json)\n", r)
+				fmt.Fprintf(stdout, "  recorded: baseline digest for %s (%s)\n", r, wiring.LedgerPath(root))
 			}
 			for _, r := range refused {
 				fmt.Fprintf(stdout, "  refused: %s\n", r)

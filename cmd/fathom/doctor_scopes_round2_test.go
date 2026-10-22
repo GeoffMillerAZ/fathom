@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -33,7 +34,9 @@ func TestDoctorGuardCheckoutScopes(t *testing.T) {
 	if row.Status != doctorPass {
 		t.Fatalf("checkout guard scopes: %+v", row)
 	}
-	if !strings.Contains(row.Reason, "waiting for files") {
+	// The gate writes receipts into the checkout after every pass, so the
+	// receipt scope waits for files only while that directory is empty.
+	if entries, _ := os.ReadDir(filepath.Join(root, "workspace", "receipts")); len(entries) == 0 && !strings.Contains(row.Reason, "waiting for files") {
 		t.Errorf("empty receipt scope not explained: %+v", row)
 	}
 }

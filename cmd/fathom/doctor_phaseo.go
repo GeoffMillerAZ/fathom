@@ -653,7 +653,9 @@ func doctorGuardScopesIgnored(ctx context.Context, root string, scopes []string)
 		if literal == "" || escapesRoot(filepath.FromSlash(literal)) {
 			return false
 		}
-		if err := doctorGitCommand(ctx, root, "check-ignore", "-q", "--", literal).Run(); err != nil {
+		// The repository's own ignore rules decide, not a developer's global
+		// excludes file, so the verdict is the same on every machine.
+		if err := doctorGitCommand(ctx, root, "-c", "core.excludesFile="+os.DevNull, "check-ignore", "-q", "--", literal).Run(); err != nil {
 			return false
 		}
 	}
