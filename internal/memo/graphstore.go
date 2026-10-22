@@ -379,21 +379,34 @@ func PeekSnapshot(sc Scope) (*Snapshot, bool) {
 // measured, less what a flight in progress has already run; the typed
 // edges count too while a graph that reads them is missing. resident is
 // true when all four are cached. Nothing is built, counted or moved in the
-// LRU.
-func NavBuildCost(sc Scope) (cost time.Duration, resident bool) {
+// LRU. With kinds provided, only those graphs and their typed details are required.
+func NavBuildCost(sc Scope, kinds ...GraphKind) (cost time.Duration, resident bool) {
+	typedRequired := len(kinds) > 0
+	if len(kinds) == 0 {
+		kinds = []GraphKind{GraphSyntax, GraphBoth, GraphResolved}
+	}
 	cost, resident = snapshotGroup.pendingCost(snapKey{sc})
-	typedNeeded := false
-	for _, k := range []GraphKind{GraphSyntax, GraphBoth, GraphResolved} {
+	typedNeeded := typedRequired && kinds[0] != GraphSyntax
+	for _, k := range kinds {
 		d, ok := graphGroup.pendingCost(graphKey{sc, k})
 		cost += d
 		resident = resident && ok
 		typedNeeded = typedNeeded || (!ok && k != GraphSyntax)
 	}
 	if typedNeeded {
-		d, _ := typedGroup.pendingCost(typedKey{sc})
+		d, ok := typedGroup.pendingCost(typedKey{sc})
 		cost += d
+		if typedRequired {
+			resident = resident && ok
+		}
 	}
 	return cost, resident
+}
+
+// NavBuildCostFor estimates the snapshot, typed edges and one requested
+// graph kind. A reader needing only Both must not wait for unrelated kinds.
+func NavBuildCostFor(sc Scope, kind GraphKind) (cost time.Duration, resident bool) {
+	return NavBuildCost(sc, kind)
 }
 
 // NavBuildMeasured reports whether every part of sc's navigation set that
@@ -401,12 +414,17 @@ func NavBuildCost(sc Scope) (cost time.Duration, resident bool) {
 // graph that reads them is missing) has a completed build of the service
 // recorded since the process started, so NavBuildCost is a measurement and
 // not ExpectedCost (O1446). Nothing is built, counted or moved in the LRU.
-func NavBuildMeasured(sc Scope) bool {
+// With kinds provided, only those graphs and their typed details are required.
+func NavBuildMeasured(sc Scope, kinds ...GraphKind) bool {
+	typedRequired := len(kinds) > 0
+	if len(kinds) == 0 {
+		kinds = []GraphKind{GraphSyntax, GraphBoth, GraphResolved}
+	}
 	if !snapshotGroup.measured(snapKey{sc}) {
 		return false
 	}
-	typedNeeded := false
-	for _, k := range []GraphKind{GraphSyntax, GraphBoth, GraphResolved} {
+	typedNeeded := typedRequired && kinds[0] != GraphSyntax
+	for _, k := range kinds {
 		key := graphKey{sc, k}
 		if !graphGroup.measured(key) {
 			return false
@@ -416,6 +434,12 @@ func NavBuildMeasured(sc Scope) bool {
 		}
 	}
 	return !typedNeeded || typedGroup.measured(typedKey{sc})
+}
+
+// NavBuildMeasuredFor reports whether the requested graph's missing parts
+// have completed builds from which to estimate a cold deadline.
+func NavBuildMeasuredFor(sc Scope, kind GraphKind) bool {
+	return NavBuildMeasured(sc, kind)
 }
 
 // NavKeepAfter is how long a caller must stay on a snapshot or graph flight

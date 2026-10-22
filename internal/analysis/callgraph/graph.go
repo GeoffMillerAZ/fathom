@@ -186,41 +186,45 @@ func buildIndexes(nodes []core.SymbolNode) *Graph {
 		byNameAll: make(map[string][]string),
 	}
 
-	// First pass: register all nodes (g.nodes dedupes identical SymbolKeys)
-	// and build the byName / byPkgName indexes. The ambiguity counts MUST be
-	// computed over the deduplicated key set, not the raw slice: duplicate
-	// observations of the same symbol (e.g. stale worktree copies indexed
-	// more than once) would otherwise make a genuinely unique name look
-	// ambiguous and silently drop its cross-package call edges.
+	// Count ambiguity over deduplicated keys. The final observation wins.
 	for _, n := range nodes {
 		g.nodes[n.Key()] = n
 	}
-	nameCounts := make(map[string]int, len(g.nodes))
-	pkgNameCounts := make(map[string]int, len(g.nodes))
-	dirNameCounts := make(map[string]int, len(g.nodes))
-	for _, n := range g.nodes {
-		nameCounts[n.Name]++
+	for key, n := range g.nodes {
+		g.byNameAll[n.Name] = append(g.byNameAll[n.Name], key)
 		if n.Package != "" {
-			pkgNameCounts[n.Package+"."+n.Name]++
+			name := n.Package + "." + n.Name
+			if _, seen := g.byPkgName[name]; seen {
+				g.byPkgName[name] = ""
+			} else {
+				g.byPkgName[name] = key
+			}
 		}
-		if dn := dirName(n); dn != "" {
-			dirNameCounts[dn]++
-		}
-	}
-	for _, n := range g.nodes {
-		g.byNameAll[n.Name] = append(g.byNameAll[n.Name], n.Key())
-		if nameCounts[n.Name] == 1 {
-			g.byName[n.Name] = n.Key()
-		}
-		if n.Package != "" && pkgNameCounts[n.Package+"."+n.Name] == 1 {
-			g.byPkgName[n.Package+"."+n.Name] = n.Key()
-		}
-		if dn := dirName(n); dn != "" && dirNameCounts[dn] == 1 {
-			g.byDirName[dn] = n.Key()
+		if name := dirName(n); name != "" {
+			if _, seen := g.byDirName[name]; seen {
+				g.byDirName[name] = ""
+			} else {
+				g.byDirName[name] = key
+			}
 		}
 	}
-	for k := range g.byNameAll {
-		sort.Strings(g.byNameAll[k])
+	for name, keys := range g.byNameAll {
+		sort.Strings(keys)
+		if len(keys) == 1 {
+			g.byName[name] = keys[0]
+		}
+	}
+	// Every SymbolKey contains "::", so empty values mark collisions only
+	// during construction. Published indexes contain unique matches only.
+	for name, key := range g.byPkgName {
+		if key == "" {
+			delete(g.byPkgName, name)
+		}
+	}
+	for name, key := range g.byDirName {
+		if key == "" {
+			delete(g.byDirName, name)
+		}
 	}
 
 	return g

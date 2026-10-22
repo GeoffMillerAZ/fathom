@@ -43,26 +43,26 @@ type coldGraph struct {
 	kept bool
 	// unmeasured is true when no build of the service has completed since
 	// the process started, so its cost is unknown and taken as longer than
-	// the deadline (memo.NavBuildMeasured).
+	// the deadline (memo.NavBuildMeasuredFor).
 	unmeasured bool
 }
 
-// navGraphsWithin is loadNavGraphsErr at sc bounded by ctx's deadline
+// navGraphsWithin loads symbol_context's Both graph at sc bounded by ctx's deadline
 // (O1446). With no deadline, an uncacheable scope (I21) or everything
-// resident it is loadNavGraphsAt. When the measured build
-// (memo.NavBuildCost) fits in the deadline less a reserve for the answer
+// resident it loads directly. When the measured build
+// (memo.NavBuildCostFor) fits in the deadline less a reserve for the answer
 // (verify_plan's stage reserve) it waits up to that; when it does not, or
 // no build of the service is measured since the process started
-// (memo.NavBuildMeasured: ExpectedCost says nothing about a large service,
+// (memo.NavBuildMeasuredFor: ExpectedCost says nothing about a large service,
 // whose cold build ran past the deadline), it warms the build stage by
 // stage (warmNavStages) and stops at the first stage still building. A
 // cold result means the graphs are not ready and the caller answers its
 // partial; an error is the load's own.
 func navGraphsWithin(ctx context.Context, backend QueryInterface, service string, sc memo.Scope) (*navGraphs, *coldGraph, error) {
 	dl, hasDeadline := ctx.Deadline()
-	cost, resident := memo.NavBuildCost(sc)
+	cost, resident := memo.NavBuildCostFor(sc, memo.GraphBoth)
 	if !hasDeadline || resident || sc.Watermark == "" {
-		ng, err := loadNavGraphsAt(ctx, backend, service, sc)
+		ng, err := loadSymbolContextGraphsAt(ctx, backend, service, sc)
 		return ng, nil, err
 	}
 	remaining := time.Until(dl)
@@ -71,10 +71,10 @@ func navGraphsWithin(ctx context.Context, backend QueryInterface, service string
 	if wait <= 0 {
 		return nil, cold, nil
 	}
-	if cost <= wait && memo.NavBuildMeasured(sc) {
+	if cost <= wait && memo.NavBuildMeasuredFor(sc, memo.GraphBoth) {
 		wctx, cancel := context.WithTimeout(ctx, wait)
 		defer cancel()
-		ng, err := loadNavGraphsAt(wctx, backend, service, sc)
+		ng, err := loadSymbolContextGraphsAt(wctx, backend, service, sc)
 		switch {
 		case err == nil:
 			return ng, nil, nil
@@ -97,11 +97,11 @@ func navGraphsWithin(ctx context.Context, backend QueryInterface, service string
 		cold.kept = kept
 		return nil, cold, nil
 	}
-	ng, err := loadNavGraphsAt(ctx, backend, service, sc)
+	ng, err := loadSymbolContextGraphsAt(ctx, backend, service, sc)
 	return ng, nil, err
 }
 
-// warmNavStages builds sc's snapshot, typed edges and three graphs one
+// warmNavStages builds sc's snapshot, typed edges and Both graph one
 // stage at a time until end, each stage held only memo.NavKeepAfter (plus
 // a margin): long enough that a flight it starts or joins is kept for the
 // next caller (Group.leave), never cancelled with this one, and short
@@ -110,27 +110,22 @@ func navGraphsWithin(ctx context.Context, backend QueryInterface, service string
 // fast snapshot does not spend the graph's keep window. done is true when
 // every stage is built; kept when the stage it stopped at keeps building;
 // err is a failure that is not the hold ending (a typed-edge read failure
-// is left to loadNavGraphsAt, which degrades it).
+// is left to loadSymbolContextGraphsAt, which degrades it).
 func warmNavStages(ctx context.Context, backend QueryInterface, service string, sc memo.Scope, end time.Time) (done, kept bool, err error) {
 	hold := memo.NavKeepAfter() + coldKeepMargin
 	typed := typedLoader(backend, service)
 	var snap *memo.Snapshot
 	stages := []func(context.Context) error{
 		func(c context.Context) (e error) { snap, e = serviceSnapshotAt(c, backend, service, sc); return e },
-		func(c context.Context) error { _, e := memo.GraphFor(c, snap, memo.GraphSyntax, nil); return e },
 		func(c context.Context) error {
 			_, e := memo.TypedFor(c, sc, typed)
 			if e != nil && c.Err() == nil && !errors.Is(e, memo.ErrWouldNotFinish) {
-				return nil // a read failure, degraded by loadNavGraphsAt (I38)
+				return nil // a read failure, degraded by loadSymbolContextGraphsAt (I38)
 			}
 			return e
 		},
 		func(c context.Context) error {
 			_, _, _, e := memo.GraphForTyped(c, snap, memo.GraphBoth, typed)
-			return e
-		},
-		func(c context.Context) error {
-			_, _, _, e := memo.GraphForTyped(c, snap, memo.GraphResolved, typed)
 			return e
 		},
 	}
@@ -258,7 +253,7 @@ func symbolContextResolveFirst(ctx context.Context, backend QueryInterface, serv
 	if sc.Watermark == "" {
 		return nil
 	}
-	if _, resident := memo.NavBuildCost(sc); resident {
+	if _, resident := memo.NavBuildCostFor(sc, memo.GraphBoth); resident {
 		return nil
 	}
 	snap, resident := memo.PeekSnapshot(sc)

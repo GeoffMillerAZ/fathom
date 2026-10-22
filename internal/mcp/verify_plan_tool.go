@@ -126,15 +126,6 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 			}
 		}
 
-		// The evidence stage — the service's symbols, the graph every
-		// reachability check walks and what its product entry points reach
-		// — from the graph store's watermark-keyed memo (O33, RT-74), waited
-		// for no longer than this call's deadline allows (EW-22, O130).
-		stage, serr := verifyPlanWithDeadline(ctx, backend, p.Service)
-		if serr != nil && !errors.Is(serr, errVerifyStageBuilding) {
-			return nil, navLoadError("verify_plan", p.Service, serr)
-		}
-
 		// Build the plan: from a Markdown checklist when provided, else from the
 		// structured tasks.
 		var plan verify.Plan
@@ -174,6 +165,33 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 			}
 		}
 
+		// Parse before loading evidence: file rows need no graph, spec rows
+		// need only the symbol snapshot. Symbol and gone contracts retain
+		// the complete reachability stage, even for conflicting contracts.
+		var allSpecs []string
+		needsGraph := false
+		for _, t := range plan.Tasks {
+			allSpecs = append(allSpecs, t.SpecIDs...)
+			needsGraph = needsGraph || t.Expect.Symbol != "" || t.Gone != ""
+		}
+		stage := &verifyStage{}
+		var serr error
+		switch {
+		case needsGraph:
+			stage, serr = verifyPlanWithDeadline(ctx, backend, p.Service)
+		case len(allSpecs) > 0:
+			stage, serr = verifyStageWithDeadline(ctx, func(c context.Context) (*verifyStage, error) {
+				snap, err := serviceSnapshot(c, backend, p.Service)
+				if err != nil {
+					return nil, err
+				}
+				return &verifyStage{nodes: snap.Nodes}, nil
+			})
+		}
+		if serr != nil && !errors.Is(serr, errVerifyStageBuilding) {
+			return nil, navLoadError("verify_plan", p.Service, serr)
+		}
+
 		if errors.Is(serr, errVerifyStageBuilding) {
 			// The graph this index state needs is still building: answer
 			// within the deadline, every row elided and the build named —
@@ -181,13 +199,17 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 			// from them rather than starting over (O130). At shed or refuse
 			// the build may never finish, so the partial names the level
 			// and the budget knob instead (EW-79, O1073, I38).
-			partial := "the call graph for this index state is still building (the first call after an ingest or a daemon start pays for it); no row was verified — the build keeps running for the next call"
+			stageName := "call graph"
+			if !needsGraph {
+				stageName = "symbol snapshot"
+			}
+			partial := "the " + stageName + " for this index state is still building (the first call after an ingest or a daemon start pays for it); no row was verified — the build keeps running for the next call"
 			if lvl := tenancyLevelNote(); lvl != "" {
-				partial = "the call graph for this index state did not finish building; no row was verified — " + lvl
+				partial = "the " + stageName + " for this index state did not finish building; no row was verified — " + lvl
 			}
 			again := "call verify_plan again: the next call is served from the build this one left running"
 			if errors.Is(serr, memo.ErrWouldNotFinish) {
-				partial = "the call graph for this index state is not built and building it would not finish inside this call's deadline, so no build was started; no row was verified"
+				partial = "the " + stageName + " for this index state is not built and building it would not finish inside this call's deadline, so no build was started; no row was verified"
 				if lvl := tenancyLevelNote(); lvl != "" {
 					partial += " — " + lvl
 				}
@@ -215,10 +237,6 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 			haveMat bool
 			specCov corpus.Coverage
 		)
-		var allSpecs []string
-		for _, t := range plan.Tasks {
-			allSpecs = append(allSpecs, t.SpecIDs...)
-		}
 		if len(allSpecs) > 0 {
 			var merr error
 			matrix, specCov, merr = buildSpecMatrix(ctx, backend, p.Service, nodes, allSpecs)
@@ -318,6 +336,13 @@ const (
 // start). Only the one graph verify reads is built — not the nav tools'
 // syntax-only and resolved-only graphs.
 func verifyPlanWithDeadline(ctx context.Context, backend QueryInterface, service string) (*verifyStage, error) {
+	return verifyStageWithDeadline(ctx, func(c context.Context) (*verifyStage, error) {
+		return loadVerifyStage(c, backend, service)
+	})
+}
+
+// Snapshot-only and graph-backed plans share deadline and flight semantics.
+func verifyStageWithDeadline(ctx context.Context, load func(context.Context) (*verifyStage, error)) (*verifyStage, error) {
 	wctx := ctx
 	if dl, ok := ctx.Deadline(); ok {
 		reserve := min(max(time.Until(dl)/verifyStageReserveShare, verifyStageReserveMin), verifyStageReserveMax)
@@ -325,7 +350,7 @@ func verifyPlanWithDeadline(ctx context.Context, backend QueryInterface, service
 		wctx, cancel = context.WithDeadline(ctx, dl.Add(-reserve))
 		defer cancel()
 	}
-	st, err := loadVerifyStage(wctx, backend, service)
+	st, err := load(wctx)
 	if err != nil && wctx.Err() != nil && ctx.Err() == nil {
 		return nil, errVerifyStageBuilding
 	}
