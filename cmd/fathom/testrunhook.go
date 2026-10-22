@@ -102,6 +102,10 @@ func cmdTestRunHook(codec harness.Codec, ev harness.Event, event, baseURL, dirOv
 	if root == "" {
 		return 0
 	}
+	syntaxDir := in.Cwd
+	if syntaxDir == "" {
+		syntaxDir = root
+	}
 	// The gate, cheapest first, all local: a layer that never names
 	// test_run cannot switch the hook on; a command that runs no declared
 	// test is not the hook's business; only then the validated config.
@@ -115,12 +119,12 @@ func cmdTestRunHook(codec harness.Codec, ev harness.Event, event, baseURL, dirOv
 	if !names("hooks.test_run", "test_run") && !capabilityCueNames(root, "test-run-hook") {
 		return 0
 	}
-	m, matched := matchDeclaredTestCommand(root, in.Command, nil)
+	m, matched := matchDeclaredTestCommand(root, in.Command, nil, syntaxDir)
 	var loaded *config.Loaded
 	if !matched && names("tests.commands", "commands") {
 		if l, err := config.Load(config.DefaultUserPath(), projectdir.Config.Path(root)); err == nil {
 			loaded = &l
-			m, matched = matchDeclaredTestCommand(root, in.Command, l.Config.Tests.Commands)
+			m, matched = matchDeclaredTestCommand(root, in.Command, l.Config.Tests.Commands, syntaxDir)
 		}
 	}
 	if !matched {
@@ -147,7 +151,7 @@ func cmdTestRunHook(codec harness.Codec, ev harness.Event, event, baseURL, dirOv
 	// deadline. One context serves them and the failing path's line.
 	ctx, cancel := testRunHookContext()
 	defer cancel()
-	diff, diffOK := fillTestRunRowKeys(ctx, &rec, root, in.SessionID, in.Command, m.Invocation)
+	diff, diffOK := fillTestRunRowKeys(ctx, &rec, root, in.SessionID, in.Command, m.Invocation, syntaxDir)
 	if res.Verdict != testrun.Fail {
 		return 0
 	}
@@ -175,7 +179,7 @@ func cmdTestRunHook(codec harness.Codec, ev harness.Event, event, baseURL, dirOv
 		var extra []string
 		if loaded.Config.Readouts.Mode == config.ReadoutsRich {
 			// RO-23: rich mode's test delta, a local read of the hook log
-			if d := testRunDeltaClause(&rec, res.Run, in.Command, !m.Piped && !in.OutputTruncated); d != "" {
+			if d := testRunDeltaClause(&rec, res.Run, in.Command, !m.Piped && !in.OutputTruncated, syntaxDir); d != "" {
 				extra = append(extra, d)
 			}
 		}
@@ -675,6 +679,7 @@ type testRunRecord struct {
 	// RO-35: HEAD's sha, the working-tree digest and the lexed scope. Empty
 	// means a miss and the row carries no such key.
 	Head, Tree, Scope string
+	CwdUnknown        bool
 	// AgentID is the subagent that ran the command (RO-39: the input's
 	// agent_id, RO-V1); "" for the main agent, and the row carries no key.
 	AgentID string
@@ -737,6 +742,9 @@ func logTestRunRow(r testRunRecord) {
 	if r.ToolUseID != "" {
 		meta["tool_use_id"] = r.ToolUseID // O1210: the baseline locates the run in the transcript by it
 	}
+	if r.CwdUnknown {
+		meta["cwd"] = "undeclared"
+	}
 	if r.Delta != "" {
 		meta["delta"] = r.Delta
 	}
@@ -776,8 +784,18 @@ func testRunRowKeys(r testRunRecord) map[string]string {
 // (testRunScope). A key whose read failed or ran past the deadline stays
 // empty. It returns the diff text for the failing path's reach, and whether
 // that text is a real read.
-func fillTestRunRowKeys(ctx context.Context, rec *testRunRecord, root, session, command, invocation string) (string, bool) {
-	rec.Scope = testRunScope(command, invocation)
+func fillTestRunRowKeys(ctx context.Context, rec *testRunRecord, root, session, command, invocation string, syntaxRoots ...string) (string, bool) {
+	if len(syntaxRoots) == 0 {
+		syntaxRoots = []string{root}
+	}
+	rec.Scope = testRunScope(command, invocation, syntaxRoots...)
+	parsed := parseShellCommand(command, syntaxRoots...)
+	for _, u := range parsed.Units() {
+		if u.CwdUnknown {
+			rec.Head, rec.Tree, rec.CwdUnknown = "", "", true
+			return "", false
+		}
+	}
 	if deadlinePassed(ctx) {
 		return "", false
 	}
@@ -848,9 +866,12 @@ func testRunValueFlag(flag string) bool {
 // nothing is lexed (a task or script invocation names its scope inside the
 // script). It reads the one command lexer, so a runner named inside a quoted
 // argument never reads as the invocation;.
-func testRunScope(command, invocation string) string {
+func testRunScope(command, invocation string, roots ...string) string {
+	if command == "" || invocation == "" {
+		return ""
+	}
 	want := strings.Fields(invocation)
-	segs, unreadable := lexShellSegments(command)
+	segs, unreadable := lexShellSegments(command, roots...)
 	if unreadable {
 		return "" // RO-4: an unreadable command has no lexed scope
 	}

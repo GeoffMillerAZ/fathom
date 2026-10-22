@@ -299,36 +299,36 @@ type gitCommitAt struct {
 // lastGitCommitDir finds the last `git commit` statement in cmd and where it
 // ran, threading cd/pushd/popd and `git -C` the way bashwrite.go threads
 // them for a write. ok is false when cmd runs no git commit.
-func lastGitCommitDir(cmd string) (gitCommitAt, bool) {
+func lastGitCommitDir(cmd string, roots ...string) (gitCommitAt, bool) {
 	if !strings.Contains(cmd, "git") || !strings.Contains(cmd, "commit") {
 		return gitCommitAt{}, false // the cheap gate: almost every Bash call ends here
 	}
 	cmd = strings.TrimSpace(blankHeredocBodies(cmd))
 	var found []gitCommitAt
-	walkGitCommits(cmd, &bwState{cwdKnown: true}, &found)
+	walkGitCommits(cmd, &bwState{cwdKnown: true}, &found, roots...)
 	if len(found) == 0 {
 		return gitCommitAt{}, false
 	}
 	return found[len(found)-1], true
 }
 
-func walkGitCommits(cmd string, st *bwState, found *[]gitCommitAt) {
+func walkGitCommits(cmd string, st *bwState, found *[]gitCommitAt, roots ...string) {
 	for _, s := range splitTopLevelStatements(cmd) {
 		if s.subshell {
 			inner := *st
 			inner.stack = append([]bwStackEntry(nil), st.stack...)
-			walkGitCommits(s.text, &inner, found)
+			walkGitCommits(s.text, &inner, found, roots...)
 			continue
 		}
 		// RO-4: a statement the lexer cannot read is no commit we can place.
-		if fields, unreadable := lexClauseFields(s.text); !unreadable {
+		if fields, unreadable := lexClauseFields(s.text, roots...); !unreadable {
 			if at, ok := gitCommitStatement(fields, st); ok {
 				*found = append(*found, at)
 				continue
 			}
 		}
 		// cd, pushd and popd move st exactly as they do for a write.
-		processBashWriteStatement(s.text, st, &bwCollector{seen: map[string]bool{}})
+		processBashWriteStatement(s.text, st, &bwCollector{seen: map[string]bool{}, roots: roots})
 	}
 }
 

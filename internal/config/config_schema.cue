@@ -557,6 +557,7 @@ package config
 	typed?:     #Typed
 	tenancy?:   #Tenancy
 	readouts?:  #Readouts
+	shell?:     #Shell
 	console?:   #Console
 	work?:      #Work
 	risk?:      #Risk
@@ -614,3 +615,24 @@ package config
 	// and left to `fathom conserve --since`.
 	conserve_max_files?: int & >=1
 }
+
+// #ShellWrapper is either a transparent argv prefix or a script argument.
+#ShellWrapper: {
+	prefix?:     string & =~"[^[:space:]]"
+	command?:    string & =~"^[A-Za-z0-9_./-]+$"
+	script_arg?: int & >=1
+	cwd_arg?:    int & >=1
+	if script_arg != _|_ {
+		if cwd_arg != _|_ {cwd_arg: !=script_arg}
+	}
+	if prefix != _|_ {
+		command?:    _|_
+		script_arg?: _|_
+		cwd_arg?:    _|_
+	}
+	if prefix == _|_ {
+		command:    string
+		script_arg: int
+	}
+}
+#Shell: wrappers?: [...#ShellWrapper]

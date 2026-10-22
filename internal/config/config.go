@@ -35,6 +35,7 @@ import (
 	cueerrors "cuelang.org/go/cue/errors"
 	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/projectdir"
+	"github.com/geoffmilleraz/fathom/internal/shellcmd"
 	toml "github.com/pelletier/go-toml/v2"
 )
 
@@ -573,6 +574,7 @@ type Receipts struct {
 
 // Config is the merged, in-memory form of one or more config.toml layers.
 type Config struct {
+	Shell          Shell
 	Connector      Connector
 	Receipts       Receipts
 	Typed          Typed
@@ -593,6 +595,12 @@ type Config struct {
 	// Zones is `[zones]` (WI-1): zone name to its repo-relative path
 	// globs. A layer that sets it replaces the whole table.
 	Zones map[string][]string
+}
+
+// Shell declares how command wrappers pass through argv or a script.
+// Repository declarations append to the user's list, in that order.
+type Shell struct {
+	Wrappers []shellcmd.Wrapper
 }
 
 // SurfacePatterns returns cfg's configured `[[surface.pattern]]` entries
@@ -878,6 +886,24 @@ func readLayer(path string) (map[string]any, bool, error) {
 		return nil, false, &LoadError{Path: path, Err: err}
 	}
 
+	if sm, ok := raw["shell"].(map[string]any); ok {
+		entries, _ := sm["wrappers"].([]any)
+		for i, entry := range entries {
+			m, _ := entry.(map[string]any)
+			w := shellcmd.Wrapper{}
+			w.Prefix, _ = stringField(m, "prefix")
+			w.Command, _ = stringField(m, "command")
+			if n, ok := m["script_arg"].(int64); ok {
+				w.ScriptArg = int(n)
+			}
+			if n, ok := m["cwd_arg"].(int64); ok {
+				w.CwdArg = int(n)
+			}
+			if err := w.Validate(); err != nil {
+				return nil, false, &LoadError{Path: path, Err: fmt.Errorf("shell.wrappers[%d]: %w", i, err)}
+			}
+		}
+	}
 	return raw, true, nil
 }
 

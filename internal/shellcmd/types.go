@@ -11,7 +11,17 @@ type Command struct {
 	// names the first cause.
 	Unreadable bool
 	Reason     string
+	// Refusal distinguishes a declared-wrapper refusal from ordinary syntax errors.
+	Refusal Refusal
 }
+
+// Refusal is the typed source of an unreadable declared command.
+type Refusal uint8
+
+const (
+	RefusalNone Refusal = iota
+	RefusalWrapper
+)
 
 // Pipeline is one or more units joined by `|` or `|&`, ended by Sep.
 type Pipeline struct {
@@ -56,6 +66,15 @@ func (k Kind) String() string {
 // Unit is one element of a pipeline.
 type Unit struct {
 	Kind Kind
+	// DeclaredScript marks an operator-declared script wrapper. Script is
+	// the literal script; Cwd is its declared directory, inherited by its
+	// body. Relative directories remain relative to the caller's cwd.
+	DeclaredScript bool
+	Script         string
+	Cwd            string
+	// CwdUnknown means a script wrapper did not declare its working directory.
+	// Its body inherits this uncertainty, even after a relative cd.
+	CwdUnknown bool
 	// Keyword names a compound: "if", "while", "until", "for", "select",
 	// "case", "[[" or "((".
 	Keyword string

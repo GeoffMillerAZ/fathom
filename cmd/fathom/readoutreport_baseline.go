@@ -26,7 +26,6 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/ask"
-	"github.com/geoffmilleraz/fathom/internal/shellcmd"
 	"github.com/geoffmilleraz/fathom/internal/testrun"
 	heartbeat "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/heartbeat"
 )
@@ -322,7 +321,7 @@ func blLine(raw []byte, p string, seq int, wantID map[string]bool, invs [][]stri
 				*active = (*active)[1:]
 			}
 			if len(*active) > 0 {
-				fl := blFollowerOf(b)
+				fl := blFollowerOf(b, l.Cwd)
 				for _, c := range *active {
 					if seq > c.idx && seq <= c.idx+blFollowers {
 						c.followers = append(c.followers, fl)
@@ -333,7 +332,7 @@ func blLine(raw []byte, p string, seq int, wantID map[string]bool, invs [][]stri
 				var in struct {
 					Command string `json:"command"`
 				}
-				if json.Unmarshal(b.Input, &in) == nil && (wantID[b.ID] || blRunsInvocation(in.Command, invs)) {
+				if json.Unmarshal(b.Input, &in) == nil && (wantID[b.ID] || blRunsInvocation(in.Command, invs, l.Cwd)) {
 					c := &blCall{path: p, id: b.ID, idx: seq, command: in.Command}
 					*all = append(*all, c)
 					*active = append(*active, c)
@@ -354,11 +353,11 @@ func blLine(raw []byte, p string, seq int, wantID map[string]bool, invs [][]stri
 
 // blRunsInvocation: the command lexes to a simple command that is one of
 // the rows' declared invocations.
-func blRunsInvocation(command string, invs [][]string) bool {
+func blRunsInvocation(command string, invs [][]string, roots ...string) bool {
 	if len(command) > blMaxCmd {
 		return false
 	}
-	segs, unreadable := lexShellSegments(command)
+	segs, unreadable := lexShellSegments(command, roots...)
 	if unreadable {
 		return false
 	}
@@ -375,7 +374,7 @@ func blRunsInvocation(command string, invs [][]string) bool {
 
 // blFollowerOf reads a call as a toucher: a Read, Edit, Write or MultiEdit's
 // file, a shell read of a file through the lexer, and a Bash command's words.
-func blFollowerOf(b *replayBlock) *blFollower {
+func blFollowerOf(b *replayBlock, roots ...string) *blFollower {
 	fl := &blFollower{}
 	switch b.Name {
 	case "Read", "Edit", "Write", "MultiEdit":
@@ -392,9 +391,9 @@ func blFollowerOf(b *replayBlock) *blFollower {
 		if json.Unmarshal(b.Input, &in) != nil || len(in.Command) > blMaxCmd {
 			return fl
 		}
-		c := shellcmd.ParseCommand(in.Command)
+		c := parseShellCommand(in.Command, roots...).Transparent()
 		fl.files = append(wholeFileRead(&c), sedReadFiles(&c)...)
-		segs, _ := lexShellSegments(in.Command)
+		segs, _ := lexShellSegments(in.Command, roots...)
 		for _, s := range segs {
 			for _, w := range s.words {
 				if len(fl.words) < blMaxWords {

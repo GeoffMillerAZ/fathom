@@ -554,7 +554,7 @@ func (a *replayAgg) use(st *replayFile, l *replayTranscriptLine, b *replayBlock)
 		}
 		_ = json.Unmarshal(b.Input, &in)
 		command = in.Command
-		c := shellcmd.ParseCommand(command)
+		c := parseShellCommand(command, l.Cwd).Transparent()
 		f.sedFiles = sedReadFiles(&c)
 		refTokens(command, f.tokens)
 	} else {
@@ -706,7 +706,7 @@ func (a *replayAgg) result(st *replayFile, l *replayTranscriptLine, b *replayBlo
 	a.rep.Bash.Calls++
 	a.rep.Bash.Bytes += n
 
-	c := shellcmd.ParseCommand(pd.command)
+	c := parseShellCommand(pd.command, pd.cwd).Transparent()
 	a.shape(&c, n)
 	if b.IsError {
 		a.rep.Bash.Failures++
@@ -916,7 +916,7 @@ func (a *replayAgg) declaredTest(cwd, command string) (declared, byRoot bool) {
 			a.roots[cwd] = r
 		}
 		if r.exists {
-			_, m := matchDeclaredIn(r.declared, command)
+			_, m := matchDeclaredIn(r.declared, command, cwd)
 			return m, true
 		}
 	}

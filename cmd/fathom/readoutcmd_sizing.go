@@ -357,7 +357,7 @@ func (z *replaySizing) use(st *sizingFile, l *sizingLine, b *replayBlock, inWind
 		}
 		_ = json.Unmarshal(b.Input, &in)
 		command = in.Command
-		c := shellcmd.ParseCommand(command)
+		c := parseShellCommand(command, l.Cwd).Transparent()
 		cmd = &c
 	}
 	if st.subagent && st.calls < sizingFirstCalls {

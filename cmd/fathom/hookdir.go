@@ -38,7 +38,7 @@ func hookEffectiveDir(command, filePath, cwd string) (dir string, resolved bool)
 	case filePath != "":
 		target = filepath.Dir(resolveBashDir(cwd, filePath))
 	case command != "":
-		t, ok := leadingCdTarget(command)
+		t, ok := leadingCdTarget(command, cwd)
 		if !ok {
 			return cwd, false
 		}
@@ -66,13 +66,23 @@ func hookGitDir(command, at, cwd string) string {
 
 // leadingCdTarget is the literal operand of command's leading cd or pushd
 // (bash-path text), ok false when the command has none the lexer can read.
-func leadingCdTarget(command string) (string, bool) {
-	c := shellcmd.ParseCommand(command)
+func leadingCdTarget(command string, roots ...string) (string, bool) {
+	c := parseShellCommand(command, roots...)
 	if c.Unreadable {
 		return "", false
 	}
 	for i := range c.Pipelines {
 		p := &c.Pipelines[i]
+		if len(p.Units) > 0 && p.Units[0].Body != nil {
+			// Only declared cwd metadata may change a wrapper's row identity;
+			// do not infer the wrapper's own cwd from a cd in its script.
+			for _, u := range p.Units[0].Body.Units() {
+				if u.Kind == shellcmd.KindSimple && len(u.Words) > 0 {
+					return u.Cwd, u.Cwd != ""
+				}
+			}
+			return p.Units[0].Cwd, p.Units[0].Cwd != ""
+		}
 		if t, isCd, ok := cdSegmentTarget(p); isCd {
 			return t, ok
 		}
@@ -212,6 +222,12 @@ func lastToolCallDir(path, cwd string) (string, bool) {
 			}
 			switch c.Name {
 			case "Bash":
+				parsed := parseShellCommand(c.Input.Command, base)
+				for _, u := range parsed.Units() {
+					if u.CwdUnknown {
+						return "", false
+					}
+				}
 				dir, _ := hookEffectiveDir(c.Input.Command, "", base)
 				return dir, dir != ""
 			case "Read", "Edit", "Write", "MultiEdit":

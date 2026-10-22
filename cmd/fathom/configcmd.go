@@ -156,6 +156,21 @@ func printConfigText(w io.Writer, loaded config.Loaded, profile config.Profile, 
 		fmt.Fprintln(w, line)
 	}
 
+	if len(loaded.Config.Shell.Wrappers) > 0 {
+		fmt.Fprintln(w, "\nshell wrappers:")
+		for i, wrapper := range loaded.Config.Shell.Wrappers {
+			value := fmt.Sprintf("prefix=%q", wrapper.Prefix)
+			if wrapper.Command != "" {
+				value = fmt.Sprintf("command=%q script_arg=%d", wrapper.Command, wrapper.ScriptArg)
+				if wrapper.CwdArg != 0 {
+					value += fmt.Sprintf(" cwd_arg=%d", wrapper.CwdArg)
+				}
+			}
+			key := fmt.Sprintf("shell.wrappers[%d]", i)
+			printDaemonRow(w, key, value, loaded.Provenance[key], explain)
+		}
+	}
+
 	fmt.Fprintln(w, "\ndaemon:")
 	printDaemonRow(w, "store", loaded.Config.Daemon.Store, loaded.Provenance["daemon.store"], explain)
 	printDaemonRow(w, "addr", loaded.Config.Daemon.Addr, loaded.Provenance["daemon.addr"], explain)
@@ -252,6 +267,24 @@ func configJSONValue(loaded config.Loaded, profile config.Profile, prov config.P
 		"active_profile":  activeName,
 		"profile":         profileMap,
 		"daemon":          daemonMap,
+	}
+	if len(loaded.Config.Shell.Wrappers) > 0 {
+		wrappers := make([]map[string]any, 0, len(loaded.Config.Shell.Wrappers))
+		for i, wrapper := range loaded.Config.Shell.Wrappers {
+			entry := map[string]any{}
+			if wrapper.Prefix != "" {
+				entry["prefix"] = wrapper.Prefix
+			} else {
+				entry["command"], entry["script_arg"] = wrapper.Command, wrapper.ScriptArg
+				if wrapper.CwdArg != 0 {
+					entry["cwd_arg"] = wrapper.CwdArg
+				}
+			}
+			wrappers = append(wrappers, entry)
+			key := fmt.Sprintf("shell.wrappers[%d]", i)
+			explainMap[key] = sourceLabel(loaded.Provenance[key])
+		}
+		out["shell"] = map[string]any{"wrappers": wrappers}
 	}
 	if explain {
 		out["explain"] = explainMap

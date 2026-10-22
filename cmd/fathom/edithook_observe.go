@@ -27,7 +27,7 @@ func observeOnlyExit(ev harness.Event, hook harness.HookInput, armOff bool) bool
 		cmdEditHookPreDiscovery(hook, armOff)
 		return true
 	case ev == harness.EventPostTool && hook.FilePath == "" && hook.Tool == harness.ToolShell:
-		if _, writeShaped := bashWriteTargets(hook.Command); !writeShaped || strings.TrimSpace(hook.Command) == "" {
+		if _, writeShaped := bashWriteTargets(hook.Command, hook.Cwd); !writeShaped || strings.TrimSpace(hook.Command) == "" {
 			return true // a read-only or unrecognized command: silent, as before
 		}
 	case ev == harness.EventPostTool && hook.FilePath == "" && hook.Tool != harness.ToolShell:

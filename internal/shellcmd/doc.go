@@ -18,6 +18,12 @@
 // leading `NAME=value` words are Unit.Env, which is where a `FATHOM_READOUT=`
 // prefix is read (Command.ReadoutPrefix). Command.Units walks every unit,
 // nested bodies included, in source order.
+// Optional Wrapper declarations extend argv prefixes and literal script
+// arguments. Declared scripts have KindShell, DeclaredScript and a Body;
+// their Cwd is inherited by nested units. Two declared script levels are
+// allowed. Transparent projects standalone declared scripts for classifiers
+// while preserving opaque pipeline boundaries. Unwrap exposes the same
+// operation to consumers with an already lexed command.
 //
 // The lexer classifies and never re-emits: nothing here renders a Command
 // back to shell text, because readouts never rewrite a command (ADR-071
@@ -37,5 +43,5 @@
 // RO-4).
 //
 // ParseCommand is pure (no I/O, no clock) and deterministic: the same text
-// gives the same Command.
+// and wrapper declarations give the same Command.
 package shellcmd

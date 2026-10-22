@@ -1,8 +1,11 @@
 package config
 
 import (
+	"fmt"
 	"slices"
 	"sort"
+
+	"github.com/geoffmilleraz/fathom/internal/shellcmd"
 )
 
 // Source names which precedence tier supplied a resolved value
@@ -48,6 +51,28 @@ func (p Provenance) clone() Provenance {
 // layer's value, which is what makes user+project layering additive rather
 // than a full replacement.
 func mergeLayer(cfg *Config, prov Provenance, raw map[string]any, source Source, path string) {
+	if sm, ok := raw["shell"].(map[string]any); ok {
+		if entries, ok := sm["wrappers"].([]any); ok {
+			for _, entry := range entries {
+				m, _ := entry.(map[string]any)
+				w := shellcmd.Wrapper{}
+				w.Prefix, _ = stringField(m, "prefix")
+				w.Command, _ = stringField(m, "command")
+				if n, ok := m["script_arg"].(int64); ok {
+					w.ScriptArg = int(n)
+				}
+				if n, ok := m["cwd_arg"].(int64); ok {
+					w.CwdArg = int(n)
+				}
+				// Lists append across layers; retain each entry's actual source.
+				prov[fmt.Sprintf("shell.wrappers[%d]", len(cfg.Shell.Wrappers))] = SourceInfo{source, path}
+				cfg.Shell.Wrappers = append(cfg.Shell.Wrappers, w)
+			}
+			if len(entries) > 0 {
+				prov["shell.wrappers"] = SourceInfo{source, path}
+			}
+		}
+	}
 	if v, ok := stringField(raw, "default_profile"); ok {
 		cfg.DefaultProfile = v
 		prov["default_profile"] = SourceInfo{source, path}
