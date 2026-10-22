@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/recordids"
 )
 
@@ -24,7 +24,7 @@ func cmdGateRecordIDs(args []string, stdout, stderr io.Writer) int {
 	cfg := recordids.Defaults()
 	configPath := *path
 	if configPath == "" {
-		candidate := filepath.Join(*root, ".fathom", "record-ids.json")
+		candidate := projectdir.File("record-ids.json").Path(*root)
 		if _, err := os.Stat(candidate); err == nil {
 			configPath = candidate
 		} else if !os.IsNotExist(err) {

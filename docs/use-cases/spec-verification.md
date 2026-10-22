@@ -246,13 +246,13 @@ bin/fathom plans restore docs/plans/archive/my-plan.md --root .
 
 ## Maintained
 
-This doc covers: `fathom gate` (`receipt write`/`check`, `record-ids`), `verify_plan`, `fathom gen-status-cue`, `fathom verify` (`--quiet`, `--quiet-pass`, `--strict`, `--require-all`, `--format sarif`; the reachability facts; the lexical oracle `{oracle: lexical, path, pattern}` and cross-plan `needs: <sibling>.md#<id>`), `fathom plans status` (incl. the measured-stale column), `fathom plans next` (`--eligible-only`, `--free`), `fathom plans context`, `fathom plans lease`/`leases`, `fathom plans archive`, `fathom plans restore`, `fathom thread` (`brief`/`note`/`point`/`list`/`close`/`promote`/`handoff`). Update it when these change.
+This doc covers: `fathom gate` (receipt write/check and record-ids subcommands), `verify_plan`, `fathom gen-status-cue`, `fathom verify` (`--quiet`, `--quiet-pass`, `--strict`, `--require-all`, `--format sarif`; the reachability facts; the lexical oracle `{oracle: lexical, path, pattern}` and cross-plan `needs: <sibling>.md#<id>`), `fathom plans status` (incl. the measured-stale column), `fathom plans next` (`--eligible-only`, `--free`), `fathom plans context`, `fathom plans lease`/`leases`, `fathom plans archive`, `fathom plans restore`, `fathom thread` (`brief`/`note`/`point`/`list`/`close`/`promote`/`handoff`). Update it when these change.
 
 ### Local gate evidence and record ids
 
 `fathom gate receipt write --log FILE` records a completed gate for a clean HEAD;
 `fathom gate receipt check --tree HEAD` checks exact source and command identity plus
 the copied successful log. Pre-push reuse is explicitly opt-in and stays off here.
-`fathom gate record-ids` gates duplicate record ids, with cross-plan checks optional
+`fathom gate record-ids` (the `task record-ids-check` task) gates duplicate record ids, with cross-plan checks optional
 and archived plans excluded. Configuration, log framing and the opt-in hook snippet:
 [`docs/configuration.md`](../configuration.md#gate-receipts-gate).
