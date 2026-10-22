@@ -517,15 +517,6 @@ func TestMapPointerCostsNothingWithoutMapsAndBoundedCPUWith(t *testing.T) {
 	if err := os.WriteFile(threadsPath(), log.Bytes(), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	cpu := func(f func()) time.Duration {
-		c0, ok := processCPUTime()
-		if !ok {
-			t.Skip("no process CPU time on this platform")
-		}
-		f()
-		c1, _ := processCPUTime()
-		return c1 - c0
-	}
 	if threadsHoldMaps() {
 		t.Fatal("no map row filed yet")
 	}
@@ -546,12 +537,16 @@ func TestMapPointerCostsNothingWithoutMapsAndBoundedCPUWith(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		fileMapEntry(t, repo, fmt.Sprintf("m%d", i), "a.go#L3-L5", "the handler", "sess-parent", now.Add(-time.Duration(i+1)*time.Minute))
 	}
-	if d := cpu(func() {
-		for i := 0; i < 5; i++ {
-			mapPointerLine(repo, fmt.Sprintf("cpu%d", i), mapTouch{Files: []string{"a.go"}}, now)
-		}
-	}); d > 4*time.Second { // measured 0.19s, 1.2s under -race: the bound catches a quadratic, not a slow machine
-		t.Errorf("5 firings against a %d-row log used %s of CPU, over the bound", 3000, d)
+	// Same measure for the with-maps path: allocations, not CPU time. A firing
+	// parses the log once (loadMapSet) and measured 129,868 allocations; a
+	// second whole-log parse adds ~66,000 and trips the bound.
+	firing = 0
+	n := testing.AllocsPerRun(20, func() {
+		firing++
+		mapPointerLine(repo, fmt.Sprintf("cpu%d", firing), mapTouch{Files: []string{"a.go"}}, now)
+	})
+	if n > 180000 {
+		t.Errorf("a firing against a %d-row log with maps made %.0f allocations, over the bound", 3000, n)
 	}
 }
 
