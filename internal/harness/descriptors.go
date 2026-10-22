@@ -155,7 +155,7 @@ var claudeCode = Descriptor{
 		{
 			Capability: CapSetupDoctor, Event: EventSetup, Harness: "Setup", Matcher: "", Verb: "doctor --brief", Marker: "fathom doctor --brief", TimeoutSec: 15, Vehicle: VehicleHookSilent,
 			Input: withKey(claudeCommonIn, "triggered_by", "triggered_by"),
-			Note:  "FAIL rows only, at most 5 lines, exit 0 whatever doctor finds — a setup diagnosis that fails setup is worse than no diagnosis",
+			Note:  "FAIL, TIMEOUT and UNKNOWN rows, at most 8 lines, exit 0 whatever doctor finds — a setup diagnosis that fails setup is worse than no diagnosis",
 		},
 		// O57 items 4/5, appended after wave 3 for the same reason that
 		// group was appended after the vision 26 §4 pair: a repo wired
@@ -293,7 +293,7 @@ var claudeCode = Descriptor{
 		CapToolFailureAdvice:    "PostToolUseFailure injects one remedy line after a FATHOM tool call fails (plain and plugin-scoped names); silent for anyone else's failure",
 		CapWorktreeAdvice:       "not hooked: WorktreeCreate is a CREATION hook in Claude Code — a registered hook must create the worktree and print its path, and any other stdout is refused (O34); the worktree line rides on SubagentStart when the subagent's cwd is a worktree",
 		CapCwdPrime:             "CwdChanged / DirectoryAdded record the new root's service identity; no additionalContext on either event, so the line is a beat",
-		CapSetupDoctor:          "Setup runs `fathom doctor --brief` (FAIL rows only, ≤5 lines, exit 0); the event documents no additionalContext",
+		CapSetupDoctor:          "Setup runs `fathom doctor --brief` (FAIL, TIMEOUT and UNKNOWN rows, at most 8 lines, exit 0); the event documents no additionalContext",
 		CapPromptObligations:    "UserPromptSubmit resolves the paths/packages/symbols the prompt names through the index and injects the union of rules governing them, capped (O57 items 4/5)",
 		CapObligationsPostShell: "PostToolUse on Bash: edit-hook parses tool_input.command for a write shape (redirection, sed -i, tee, cp/mv, git apply) and serves the written path(s), or the cwd's nearest guide on doubt",
 		CapTestRunLine:          "opt-in ([hooks] test_run): PostToolUse and PostToolUseFailure on Bash; after a declared test command fails, one line naming the failing tests and the changed symbols they reach, the full output saved under workspace/tmp; silent on a pass",

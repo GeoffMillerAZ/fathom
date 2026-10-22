@@ -79,7 +79,7 @@ const (
 	// to or added (HP-30).
 	CapCwdPrime Capability = "cwd-prime"
 	// CapSetupDoctor is `fathom doctor --brief` on the harness's setup
-	// event: FAIL rows only, ≤5 lines, exit 0 (HP-31).
+	// event: FAIL, TIMEOUT and UNKNOWN rows, at most 8 lines, exit 0 (HP-31).
 	CapSetupDoctor Capability = "setup-doctor"
 	// CapPromptObligations is the rules governing the paths, packages and
 	// symbols the user's OWN prompt names, served before the first tool

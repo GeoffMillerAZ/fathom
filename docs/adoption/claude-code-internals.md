@@ -784,7 +784,7 @@ not have.
 | `WorktreeCreate` | — | not wired | — | a creation hook: a registered hook must create the worktree and print its path, so fathom does not register one (O34); the worktree line rides on `SubagentStart` when the subagent starts inside a worktree |
 | `CwdChanged` | none | `fathom session-hook --event cwd-changed` | no | the identity line for the root the session moved to |
 | `DirectoryAdded` | none | `fathom session-hook --event cwd-changed` | no | the same, for `/add-dir` and the SDK (the new root arrives in `directory_path`) |
-| `Setup` | none | `fathom doctor --brief` | no | FAIL rows only, at most 5 lines, **exit 0 whatever it finds** — a setup diagnosis that fails setup is worse than no diagnosis |
+| `Setup` | none | `fathom doctor --brief` | no | FAIL, TIMEOUT and UNKNOWN rows, at most 8 lines, **exit 0 whatever it finds** — a setup diagnosis that fails setup is worse than no diagnosis |
 
 A repo wired before wave 3 gains exactly these seven entries on its next
 `fathom init` / `fathom fleet reconcile` and loses nothing: they are

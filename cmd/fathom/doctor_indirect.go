@@ -18,7 +18,10 @@ import (
 const doctorWrapperBytes = 64 << 10
 const doctorWrapperLevels = 2
 
-type doctorWiringEvidence struct{ found, indirect, unknown bool }
+type doctorWiringEvidence struct {
+	found, indirect, unknown bool
+	missingScript            string
+}
 
 type doctorWrapperReader struct {
 	ctx       context.Context
@@ -77,6 +80,7 @@ func (r *doctorWrapperReader) command(command, sub string, depth int) doctorWiri
 		return doctorWiringEvidence{unknown: true}
 	}
 	var unknown bool
+	var missingScript string
 	// A shell command list is wiring evidence, never proof the branch fired.
 	for _, line := range strings.Split(command, "\n") {
 		line = strings.TrimSpace(line)
@@ -103,6 +107,11 @@ func (r *doctorWrapperReader) command(command, sub string, depth int) doctorWiri
 				if len(words) > len(want) && strings.Join(words[1:1+len(want)], " ") == sub {
 					return doctorWiringEvidence{found: true, indirect: depth > 0}
 				}
+				continue
+			}
+			// A foreign executable cannot stand in for a project wrapper,
+			// even if its basename happens to be a supported task runner.
+			if doctorForeignProgram(r.root, words[0]) {
 				continue
 			}
 			shellScript := false
@@ -143,14 +152,25 @@ func (r *doctorWrapperReader) command(command, sub string, depth int) doctorWiri
 						p = "." + strings.TrimPrefix(p, "$"+name)
 					}
 				}
-				if filepath.IsAbs(p) || strings.ContainsAny(p, "$`{}") {
+				if doctorForeignProgram(r.root, p) {
+					continue
+				}
+				if strings.ContainsAny(p, "$`{}") {
 					unknown = true
 					continue
 				}
-				p = filepath.Join(r.root, p)
+				if !filepath.IsAbs(p) {
+					p = filepath.Join(r.root, p)
+				}
 				b, err := r.read(p)
 				if err != nil {
-					unknown = true
+					if os.IsNotExist(err) {
+						if missingScript == "" {
+							missingScript = p
+						}
+					} else {
+						unknown = true
+					}
 					continue
 				}
 				// Dynamic shell structure is outside this deliberately small reader.
@@ -165,9 +185,23 @@ func (r *doctorWrapperReader) command(command, sub string, depth int) doctorWiri
 				return ev
 			}
 			unknown = unknown || ev.unknown
+			if missingScript == "" {
+				missingScript = ev.missingScript
+			}
 		}
 	}
-	return doctorWiringEvidence{unknown: unknown}
+	return doctorWiringEvidence{unknown: unknown, missingScript: missingScript}
+}
+
+func doctorForeignProgram(root, program string) bool {
+	if strings.HasPrefix(program, "~/") {
+		return true
+	}
+	if !filepath.IsAbs(program) {
+		return false
+	}
+	rel, err := filepath.Rel(root, program)
+	return err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel)
 }
 
 func (r *doctorWrapperReader) task(words []string, sub string, depth int) doctorWiringEvidence {
@@ -303,6 +337,9 @@ func doctorHookEvidence(ctx context.Context, root string, hooksObj map[string]an
 				return ev
 			}
 			out.unknown = out.unknown || ev.unknown
+			if out.missingScript == "" {
+				out.missingScript = ev.missingScript
+			}
 		}
 	}
 	return out

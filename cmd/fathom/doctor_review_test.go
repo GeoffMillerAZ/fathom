@@ -162,7 +162,7 @@ func TestDoctorWrapperRefusesExternalFilesAndFIFOs(t *testing.T) {
 	}
 	for _, command := range []string{filepath.Join(outside, "outside.sh"), "./escape/outside.sh"} {
 		got := doctorCommandEvidence(context.Background(), root, command, "prompt-hook")
-		if got.found || !got.unknown {
+		if got.found || (got.unknown != strings.HasPrefix(command, "./")) {
 			t.Fatalf("external wrapper %q = %+v", command, got)
 		}
 	}
@@ -254,9 +254,6 @@ func TestDoctorHarnessUncertaintyIsPerHook(t *testing.T) {
 			}
 			got := checkHarnessHooksInstalled(root, testDescriptor)
 			want := doctorFail
-			if mode == "uncertain-only" {
-				want = doctorUnknown
-			}
 			if strings.HasPrefix(mode, "parse") && !strings.Contains(got.Reason, "did not parse") {
 				t.Fatalf("parse note missing: %+v", got)
 			}

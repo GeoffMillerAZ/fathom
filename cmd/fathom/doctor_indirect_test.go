@@ -145,7 +145,7 @@ func TestDoctorWrapperUncertainAndNegativeControls(t *testing.T) {
 		status     doctorStatus
 	}{
 		{"oversize", strings.Repeat("#", doctorWrapperBytes) + "\nfathom prompt-hook", doctorUnknown},
-		{"missing", "", doctorUnknown},
+		{"missing", "", doctorFail},
 		{"comment", "# fathom prompt-hook\necho fathom prompt-hook\n", doctorFail},
 		{"unrelated-task", "task unrelated\n", doctorFail},
 		{"dynamic", "eval \"$HOOK\"\n", doctorUnknown},

@@ -465,7 +465,7 @@ func checkMCPRegistration(root, harnessLabel, baseURL string, parents ...context
 		if c, found := checkProjectMCPRegistration(ctx, root); found {
 			return c
 		}
-		return checkClaudeMCPRegistration(baseURL, ctx, root)
+		return checkClaudeMCPRegistration(ctx, baseURL, root)
 	case "codex":
 		// The TOML read is real evidence (a missing entry is a real FAIL,
 		// an unreadable file is named — ADR-027), but a found entry is not
@@ -518,7 +518,7 @@ func registeredAtAgentSurface(url string) bool {
 	return strings.HasSuffix(trimmed, "/rpc/agent") || strings.HasSuffix(trimmed, "/rpc/companion")
 }
 
-func checkClaudeMCPRegistration(baseURL string, ctx context.Context, roots ...string) doctorCheck {
+func checkClaudeMCPRegistration(ctx context.Context, baseURL string, roots ...string) doctorCheck {
 	const name = "mcp_registration"
 	remedy := fmt.Sprintf("claude mcp add --transport http --scope user fathom %s/rpc/agent", baseURL)
 
@@ -1010,7 +1010,10 @@ func checkHooksInstalledContext(ctx context.Context, root, harness string) docto
 		hooksObj, _ := parsed["hooks"].(map[string]any)
 		for _, spec := range specs {
 			ev := doctorHookEvidence(ctx, root, hooksObj, spec)
-			uncertain[hookSpecKeyOf(spec)] = uncertain[hookSpecKeyOf(spec)] || ev.unknown
+			uncertain[hookSpecKeyOf(spec)] = uncertain[hookSpecKeyOf(spec)] || (ev.unknown && ev.missingScript == "")
+			if !ev.found && ev.missingScript != "" {
+				scopeNotes = append(scopeNotes, "hook script not found: "+ev.missingScript)
+			}
 			if ev.found {
 				indirect = indirect || ev.indirect
 				k := hookSpecKeyOf(spec)
