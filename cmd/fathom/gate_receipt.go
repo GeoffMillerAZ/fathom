@@ -13,6 +13,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/gatereceipt"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 func cmdGate(args []string, stdout, stderr io.Writer) int {
@@ -55,7 +56,7 @@ func gateReceiptOptions(ctx context.Context, root, command string) (gatereceipt.
 		return gatereceipt.Options{}, false, fmt.Errorf("git repository root: %w", err)
 	}
 	root = strings.TrimSpace(string(b))
-	loaded, err := config.Load(config.DefaultUserPath(), filepath.Join(root, ".fathom", "config.toml"))
+	loaded, err := config.Load(config.DefaultUserPath(), projectdir.Config.Path(root))
 	if err != nil {
 		return gatereceipt.Options{}, false, err
 	}
