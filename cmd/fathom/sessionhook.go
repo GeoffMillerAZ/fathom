@@ -85,7 +85,7 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 	}
 
 	// Context loss resets dedupe even when the daemon guard declines RPC.
-	resetHookDedupe(sessionID, startSource, time.Now())
+	resetHookDedupe(sessionID, startSource, nowFunc())
 	endGuard, silent := beginHookGuard("session-hook", "fathom session-hook", codec.ID(), *url)
 	if silent {
 		return 0 // §9: the managed daemon is disabled or paused — no RPC, no output

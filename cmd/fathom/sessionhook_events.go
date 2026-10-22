@@ -183,23 +183,51 @@ func cwdChangedPrimer(baseURL, newRoot string) string {
 	return line
 }
 
-// cwdChangedPrimerForSession compares content at the repository root, so
-// visiting a subdirectory or returning from another repository costs no
-// repeated primer. Identity/warning changes still emit their full text.
-func cwdChangedPrimerForSession(baseURL, dir, sessionID string) string {
-	if dir == "" {
-		return ""
-	}
+// cwdChangedPrimerForSession checks only consecutive repeats, leaving a
+// full emit pending until the caller has encoded and delivered it.
+func cwdChangedPrimerForSession(id, baseURL, dir, sessionID string) (string, *hookDedupeCheck) {
 	root := dir
 	if top := gitToplevel(dir); top != "" {
 		root = top
 	}
 	root = resolveSymlinks(root)
 	payload := cwdChangedPrimer(baseURL, dir)
-	if dedupeHookInjection(root, sessionID, "cwd-changed", root, payload, time.Now()) {
-		return ""
+	return payload, dedupeHookInjection(id, root, sessionID, "cwd-changed", root, payload, nowFunc())
+}
+
+func runCwdChangedEvent(codec harness.Codec, baseURL string, stdin io.Reader, stdout io.Writer, root func(harness.HookInput) string) int {
+	if stdin == nil {
+		return 0
 	}
-	return payload
+	raw, err := io.ReadAll(io.LimitReader(stdin, 1<<16))
+	if err != nil {
+		return 0
+	}
+	in, err := codec.DecodeInput(harness.EventCwdChanged, raw)
+	if err != nil {
+		return 0
+	}
+	payload, dedupe := cwdChangedPrimerForSession(codec.ID(), baseURL, root(in), in.SessionID)
+	defer dedupe.close()
+	if dedupe.suppressed {
+		dedupe.record(codec.ID(), in.SessionID, "cwd-changed", payload)
+		emitBeat("cwd-hook", "cwd-changed", firingMeta(map[string]string{"emitted": "false", "bytes": "0"}, in.SessionID, ""))
+		return 0
+	}
+	if payload == "" {
+		return 0
+	}
+	out, err := codec.EncodeOutput(harness.EventCwdChanged, harness.HookOutput{Context: payload})
+	if err != nil || len(out) == 0 {
+		return 0
+	}
+	if n, err := fmt.Fprintln(stdout, string(out)); err != nil || n != len(out)+1 {
+		return 0
+	}
+	dedupe.commit(nowFunc())
+	dedupe.record(codec.ID(), in.SessionID, "cwd-changed", payload)
+	emitBeat("cwd-hook", "cwd-changed", firingMeta(map[string]string{"emitted": "true", "bytes": fmt.Sprint(len(payload))}, in.SessionID, ""))
+	return 0
 }
 
 // daemonAnswering is the healthz probe the advisory events share.

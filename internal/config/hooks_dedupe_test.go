@@ -23,9 +23,9 @@ func TestConfig_HooksDedupe(t *testing.T) {
 	writeTOML(t, user, "[hooks]\ndedupe = false\n")
 	check(false)
 	writeTOML(t, project, "[hooks]\ndedupe = true\n")
-	check(true)
+	check(false)
 	loaded, _ := Load(user, project)
-	if got := loaded.Provenance["hooks.dedupe"]; got.Source != SourceProject || got.Path != project {
+	if got := loaded.Provenance["hooks.dedupe"]; got.Source != SourceUser || got.Path != user {
 		t.Errorf("provenance = %+v", got)
 	}
 	writeTOML(t, project, "[hooks]\ndedupe = \"no\"\n")

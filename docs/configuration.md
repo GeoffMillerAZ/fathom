@@ -188,7 +188,7 @@ an array of tables, and `tenancy.**` for every key under `[tenancy]`.
 | `findings.subject` | behaviour | the review-kit subject this repository maps to |
 | `guards.enforce` | behaviour | turns the repository's own guards advisory |
 | `hooks.claim_check` | behaviour | the claim check runs nothing: it reads the final message and the hook log's test-run rows (claimcheck.go) |
-| `hooks.dedupe` | behaviour | suppresses unchanged hook context within one agent session (default on) |
+| `hooks.dedupe` | behaviour | suppresses unchanged Claude Code hook context within one agent session (default on for Claude Code only; a user false wins) |
 | `hooks.gate_preflight` | behaviour | the gate preflight runs nothing: it lexes the command, reads git and the hook log, and asks the claim-moment verify path (gatepreflight.go) |
 | `hooks.pin_check` | behaviour | the commit pin line's output mode; the check itself is on by default |
 | `hooks.prompt_definitions` | behaviour | the definitions line runs nothing: it names find_symbol answers the prompt hook already fetched (prompthook.go) |
@@ -1954,20 +1954,41 @@ removal work does not touch it.
 
 ## Unchanged hook context: `[hooks] dedupe`
 
-Post-edit obligations and cwd-changed primers emit once per file or repository
-in an agent session while their rendered content is unchanged. Changed content
-emits in full. SessionStart with source `compact` or `resume` resets dedupe;
-the first injection after context loss is unchanged.
+Dedupe is default-on for **Claude Code only**. Post-edit context is compared
+per file and agent in a primed session. Cwd-changed primers suppress only
+consecutive repeats with the same repository root and rendered digest;
+A → B → A re-emits A. Changed content always emits in full. Other harnesses
+(Codex, Gemini CLI, Copilot and Cursor) emit in full until their tool events
+show `agent_id` and they provide a compaction reset.
+
+SessionStart with source `compact` or `resume`, and every wired pre-compact
+hook, reset the record. As a backstop for a missed reset, each key re-emits
+in full after **30 minutes** since its last full emit or after **10 consecutive
+suppressions**, whichever comes first. Both backstops restart on a full emit.
+Only a successful stdout write records a full emit; encoding errors, failed
+writes and a hook killed before delivery leave no new delivery claim.
 
 ```toml
 [hooks]
-dedupe = false # default true; false emits every injection
+dedupe = false # default true for Claude Code only; false emits every injection
 ```
 
+A user's `dedupe = false` wins over a repository's `dedupe = true`.
 Hook processes keep one bounded file per session under
 `$FATHOM_HOME/hook-dedupe/` (normally `~/.fathom/hook-dedupe/`), alongside
 session stamps. The existing `session-stamps` GC class prunes dedupe records
-older than seven days. Missing session ids or SessionStart stamps, contention,
-invalid config and state read/write errors emit the full context. A `hook-dedupe/suppressed` beat
-records `bytes=0`, `suppressed_bytes`, `channel` and `session`; it is distinct
-from emitted payload-cost and cwd-hook bytes. SubagentStart remains per subagent.
+older than seven days. Empty payloads take no entry. Missing session ids or
+SessionStart stamps, contention, invalid config and state read/write errors
+emit the full context. SubagentStart remains per subagent.
+
+The `hook-dedupe` log records delivered `emitted` and `suppressed` rows with
+`channel` (`post-edit` or `cwd-changed`), `harness`, `session`, `bytes`,
+`suppressed_bytes`, the hashed `key`, `first_touch` and `state_error`.
+Suppression rows have `bytes=0`; emission rows have `suppressed_bytes=0`.
+Use these rows alone for the per-channel suppression ratio; adding the
+payload-cost or cwd-hook rows would double-count delivered bytes.
+An edit-heavy Claude Code session has at least 50 `edit-hook/answered` rows
+with `phase=post`. Over seven days, each channel must have
+`suppressed_bytes / (bytes + suppressed_bytes) >= 0.40` across these sessions,
+with zero first-touch suppressions and zero state errors that suppress output
+(CB-M2). Log loss or missing audit fields cannot establish those zeroes.

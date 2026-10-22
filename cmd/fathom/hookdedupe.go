@@ -1,13 +1,11 @@
 package main
 
-// Hook-owned context bookkeeping, beside the existing session stamps. It
-// never reaches the daemon store. A missed optimization always costs bytes,
-// never guidance: even a duplicate must successfully write its state before
-// it may be suppressed. Nonblocking flock serializes hook processes without
-// another lock file or time budget. A contending process simply emits in full.
+// Hook-owned bookkeeping beside session stamps, never the daemon store.
+// A full emit is recorded only after stdout succeeds. Nonblocking flock
+// holds the check through delivery; contention and every state error emit
+// in full. A killed hook leaves no new claim that context was delivered.
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -20,20 +18,38 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/fathomhome"
+	"github.com/geoffmilleraz/fathom/internal/harness"
 	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 const (
-	hookDedupeMaxBytes   = 256 << 10
-	hookDedupeMaxEntries = 2048
-	hookDedupeAge        = 7 * 24 * time.Hour
+	hookDedupeMaxBytes        = 256 << 10
+	hookDedupeMaxEntries      = 2048
+	hookDedupeAge             = 7 * 24 * time.Hour
+	hookDedupeRefresh         = 30 * time.Minute
+	hookDedupeMaxSuppressions = 10
 )
 
+type hookDedupeEntry struct {
+	Digest       string    `json:"digest"`
+	EmittedAt    time.Time `json:"emitted_at"`
+	Suppressions int       `json:"suppressions"`
+}
+
 type hookDedupeState struct {
-	Version int               `json:"version"`
-	Epoch   string            `json:"epoch"`
-	At      time.Time         `json:"at"`
-	Digests map[string]string `json:"digests"`
+	Version int                        `json:"version"`
+	Epoch   string                     `json:"epoch"`
+	At      time.Time                  `json:"at"`
+	Digests map[string]hookDedupeEntry `json:"digests"`
+}
+
+// A pending full injection owns the lock until commit or close. Merely
+// checking a payload never records it as delivered.
+type hookDedupeCheck struct {
+	file                               *os.File
+	state                              hookDedupeState
+	key, digest, logKey                string
+	suppressed, firstTouch, stateError bool
 }
 
 func hookDedupePath(sessionID string) string {
@@ -48,124 +64,196 @@ func hookDigest(text string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// hookDedupeEnabled follows the existing pin-check config fast path. A bad
-// config disables dedupe, preserving the full context instead of guessing.
+// Even config without a dedupe key must parse and validate. A bad config
+// cannot authorize withholding guidance.
 func hookDedupeEnabled(root string) bool {
-	user, project := config.DefaultUserPath(), projectdir.Config.Path(root)
-	if !bytes.Contains(readConfigLayer(user), []byte("dedupe")) && !bytes.Contains(readConfigLayer(project), []byte("dedupe")) {
-		return true
-	}
-	loaded, err := config.Load(user, project)
+	loaded, err := config.Load(config.DefaultUserPath(), projectdir.Config.Path(root))
 	return err == nil && loaded.Config.Hooks.Dedupe
 }
 
-// hookInjectionSeen compares the latest digest for a channel/target, not a
-// historical set: A -> B -> A is a changed answer and must be served again.
-// Keys and payloads are hashed; no rule text or repository paths are saved.
-// now is injected for expiry; state and per-call work are size bounded.
-func hookInjectionSeen(sessionID, channel, target, payload string, now time.Time, reset bool) (seen bool) {
-	// An id without SessionStart evidence is an unprimed/replayed hook.
-	stamp := readSessionStamp(sessionID)
-	if !reset && (stamp.SessionID != sessionID || stamp.At == "") {
-		return false
-	}
+func openHookDedupe(sessionID string) (*os.File, os.FileInfo, error) {
 	path := hookDedupePath(sessionID)
-	if path == "" {
-		return false
-	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-		return false
+		return nil, nil, err
 	}
 	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0o600)
 	if err != nil {
-		return false
+		return nil, nil, err
 	}
-	defer func() {
-		if err := f.Close(); err != nil {
-			seen = false
-		}
-	}()
 	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
-		return false
+		f.Close()
+		return nil, nil, err
 	}
-	defer syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
 	info, err := f.Stat()
-	if err != nil || !info.Mode().IsRegular() || info.Mode().Perm()&0o077 != 0 || info.Size() > hookDedupeMaxBytes {
-		return false
+	if err == nil && (!info.Mode().IsRegular() || info.Mode().Perm()&0o077 != 0 || info.Size() > hookDedupeMaxBytes) {
+		err = os.ErrInvalid
 	}
-	if st, ok := info.Sys().(*syscall.Stat_t); !ok || int(st.Uid) != os.Getuid() {
-		return false
-	}
-	if reset {
-		// Empty is a fresh context, including a resume whose old stamp was
-		// unavailable. The next injection writes its current epoch.
-		if err := f.Truncate(0); err == nil {
-			_ = f.Sync()
+	if err == nil {
+		if st, ok := info.Sys().(*syscall.Stat_t); !ok || int(st.Uid) != os.Getuid() {
+			err = os.ErrPermission
 		}
-		return false
 	}
-	epoch := stamp.At
-	state := hookDedupeState{Version: 1, Epoch: epoch, At: now, Digests: map[string]string{}}
+	if err != nil {
+		f.Close()
+		return nil, nil, err
+	}
+	return f, info, nil
+}
+
+func dedupeHookInjection(id, root, sessionID, channel, target, payload string, now time.Time) *hookDedupeCheck {
+	if id != harness.ClaudeCode || sessionID == "" || payload == "" || !hookDedupeEnabled(root) {
+		return newHookDedupeCheck(channel, target, payload)
+	}
+	return checkHookInjection(sessionID, channel, target, payload, now)
+}
+
+func newHookDedupeCheck(channel, target, payload string) *hookDedupeCheck {
+	d := &hookDedupeCheck{firstTouch: true}
+	d.key, d.digest = hookDigest(channel+"\x00"+target), hookDigest(payload)
+	if channel == "cwd-changed" {
+		// One slot per session: only the last repository AND digest count.
+		// A -> B -> A must re-emit A even if its text did not change.
+		d.key, d.digest = hookDigest(channel), hookDigest(target+"\x00"+payload)
+	}
+	d.logKey = hookDigest(channel + "\x00" + target)
+	return d
+}
+
+func checkHookInjection(sessionID, channel, target, payload string, now time.Time) *hookDedupeCheck {
+	d := newHookDedupeCheck(channel, target, payload)
+	stamp := readSessionStamp(sessionID)
+	if sessionID == "" || payload == "" || stamp.SessionID != sessionID || stamp.At == "" {
+		return d
+	}
+	f, info, err := openHookDedupe(sessionID)
+	if err != nil {
+		d.stateError = true
+		return d
+	}
+	d.file = f
+	fresh := func() hookDedupeState {
+		return hookDedupeState{Version: 2, Epoch: stamp.At, At: now, Digests: map[string]hookDedupeEntry{}}
+	}
+	d.state = fresh()
 	if info.Size() > 0 {
 		raw, err := io.ReadAll(io.LimitReader(f, hookDedupeMaxBytes+1))
-		var prior hookDedupeState
-		if err != nil || len(raw) > hookDedupeMaxBytes || json.Unmarshal(raw, &prior) != nil || prior.Version != 1 || prior.Epoch == "" || prior.Digests == nil || len(prior.Digests) > hookDedupeMaxEntries || prior.At.IsZero() {
-			return false
+		// v1 has no delivery timestamps or counters. Discard its claims and
+		// start with a full emit when upgrading; no old digest can suppress.
+		var header struct {
+			Version int `json:"version"`
 		}
-		state = prior
-		if state.Epoch != epoch || now.Sub(state.At) > hookDedupeAge || state.At.After(now) {
-			state = hookDedupeState{Version: 1, Epoch: epoch, At: now, Digests: map[string]string{}}
+		if err != nil || len(raw) > hookDedupeMaxBytes || json.Unmarshal(raw, &header) != nil || (header.Version != 1 && header.Version != 2) {
+			d.stateError = true
+			d.close()
+			return d
+		}
+		if header.Version == 2 {
+			var prior hookDedupeState
+			if json.Unmarshal(raw, &prior) != nil || prior.Epoch == "" || prior.Digests == nil || len(prior.Digests) > hookDedupeMaxEntries || prior.At.IsZero() {
+				d.stateError = true
+				d.close()
+				return d
+			}
+			d.state = prior
+			for key, entry := range d.state.Digests {
+				if len(key) != 64 || len(entry.Digest) != 64 || entry.EmittedAt.IsZero() || entry.Suppressions < 0 || entry.Suppressions > hookDedupeMaxSuppressions {
+					d.stateError = true
+					d.close()
+					return d
+				}
+			}
+			if d.state.Epoch != stamp.At || now.Sub(d.state.At) > hookDedupeAge || d.state.At.After(now) {
+				d.state = fresh()
+			}
 		}
 	}
-	duplicate := false
-	{
-		key, digest := hookDigest(channel+"\x00"+target), hookDigest(payload)
-		previous, exists := state.Digests[key]
-		if !exists && len(state.Digests) >= hookDedupeMaxEntries {
-			return false
-		}
-		duplicate = exists && previous == digest
-		state.Digests[key] = digest
+	previous, exists := d.state.Digests[d.key]
+	d.firstTouch = !exists || (channel == "cwd-changed" && previous.Digest != d.digest)
+	if !exists && len(d.state.Digests) >= hookDedupeMaxEntries {
+		d.close()
+		return d
 	}
-	state.At = now
-	raw, err := json.Marshal(state)
+	if exists && previous.Digest == d.digest && !now.Before(previous.EmittedAt) && now.Sub(previous.EmittedAt) < hookDedupeRefresh && previous.Suppressions < hookDedupeMaxSuppressions {
+		previous.Suppressions++
+		d.state.Digests[d.key] = previous
+		d.state.At = now
+		ok := d.persist()
+		d.close()
+		d.suppressed = ok && !d.stateError
+	}
+	return d
+}
+
+func (d *hookDedupeCheck) persist() bool {
+	raw, err := json.Marshal(d.state)
 	if err != nil || len(raw) > hookDedupeMaxBytes {
+		d.stateError = true
 		return false
 	}
-	if _, err = f.Seek(0, io.SeekStart); err != nil {
+	if _, err = d.file.Seek(0, io.SeekStart); err != nil {
+		d.stateError = true
 		return false
 	}
-	if err = f.Truncate(0); err != nil {
+	if err = d.file.Truncate(0); err != nil {
+		d.stateError = true
 		return false
 	}
-	if n, err := f.Write(raw); err != nil || n != len(raw) {
+	if n, err := d.file.Write(raw); err != nil || n != len(raw) {
+		d.stateError = true
 		return false
 	}
-	// Detect delayed write/close errors too. A corrupt/partial record is never
-	// trusted next time; no failure path can authorize suppression.
-	if err = f.Sync(); err != nil {
+	if err = d.file.Sync(); err != nil {
+		d.stateError = true
 		return false
-	}
-	return duplicate
-}
-
-func resetHookDedupe(sessionID, source string, now time.Time) {
-	if source == "compact" || source == "resume" {
-		hookInjectionSeen(sessionID, "", "", "", now, true)
-	}
-}
-
-func dedupeHookInjection(root, sessionID, channel, target, payload string, now time.Time) bool {
-	if sessionID == "" || !hookDedupeEnabled(root) {
-		return false
-	}
-	if !hookInjectionSeen(sessionID, channel, target, payload, now, false) {
-		return false
-	}
-	if payload != "" {
-		emitBeat("hook-dedupe", "suppressed", firingMeta(map[string]string{
-			"channel": channel, "bytes": "0", "suppressed_bytes": strconv.Itoa(len(payload)), "emitted": "false",
-		}, sessionID, ""))
 	}
 	return true
+}
+
+func (d *hookDedupeCheck) commit(now time.Time) {
+	if d.file == nil {
+		return
+	}
+	d.state.Digests[d.key] = hookDedupeEntry{Digest: d.digest, EmittedAt: now}
+	d.state.At = now
+	d.persist()
+	d.close()
+}
+
+func (d *hookDedupeCheck) close() {
+	if d.file != nil {
+		// Close releases flock too. A delayed close error cannot authorize
+		// suppression, even if the preceding write appeared to succeed.
+		if err := d.file.Close(); err != nil {
+			d.stateError = true
+		}
+		d.file = nil
+	}
+}
+
+func (d *hookDedupeCheck) record(id, sessionID, channel, payload string) {
+	if payload == "" {
+		return
+	}
+	kind, emittedBytes, suppressedBytes := "emitted", len(payload), 0
+	if d.suppressed {
+		kind, emittedBytes, suppressedBytes = "suppressed", 0, len(payload)
+	}
+	emitBeat("hook-dedupe", kind, firingMeta(map[string]string{
+		"channel": channel, "harness": id, "emitted": boolStr(!d.suppressed), "bytes": strconv.Itoa(emittedBytes), "suppressed_bytes": strconv.Itoa(suppressedBytes),
+		"key": d.logKey, "first_touch": boolStr(d.firstTouch), "state_error": boolStr(d.stateError),
+	}, sessionID, ""))
+}
+
+func resetHookDedupe(sessionID, source string, _ time.Time) {
+	if sessionID == "" || (source != "compact" && source != "resume") {
+		return
+	}
+	f, _, err := openHookDedupe(sessionID)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	if err := f.Truncate(0); err == nil {
+		_ = f.Sync()
+	}
 }
