@@ -33,6 +33,7 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/geoffmilleraz/fathom/internal/capability"
+	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -298,7 +299,7 @@ func cachedLearnCapabilities(cr *consoleRequest, m observatoryModel, row obsServ
 	probe := buildCapabilityProbe(cr.deps.selfURL, root, svc, cr.now)
 	res, _ := loadCapabilityConfig(reg, root)
 	reports := reg.DetectAll(probe, res)
-	out := learnCaps{model: capabilityJSON(probe, reports)}
+	out := learnCaps{model: capabilityJSONWithSeams(probe, reports, root)}
 	for _, r := range reports {
 		remedy := r.Remedy.Cmd
 		if remedy == "" {
@@ -369,6 +370,9 @@ func learnProbeFilesKey(root string) string {
 		stat(filepath.Join(root, f), false)
 	}
 	if p := capability.DefaultUserPath(); p != "" {
+		stat(p, false)
+	}
+	if p := config.DefaultUserPath(); p != "" {
 		stat(p, false)
 	}
 	return b.String()
@@ -1187,5 +1191,16 @@ func renderLearnSwitches(choice learnChoice, pipe console.Pipeline, facts learnF
 		Columns: []table.Column{{Key: "id", Label: "Switch"}, {Key: "stage", Label: "Stage"}, {Key: "state", Label: "State"}, {Key: "why", Label: "Evidence, or what turns it on"}},
 		Rows:    rows,
 	})
+	if len(cm.HookSeams) > 0 {
+		seams := make([]table.Row, 0, len(cm.HookSeams))
+		for _, s := range cm.HookSeams {
+			seams = append(seams, table.Row{ID: "seam-" + s.ID, Cells: []string{s.ID, s.State, s.Reason, s.Cost, s.Command}})
+		}
+		p.Body += renderKitTable(table.TableParams{
+			TableID: "learn-hook-seams", Caption: "Opt-in hook seams (config.toml)",
+			Columns: []table.Column{{Key: "id", Label: "Seam"}, {Key: "state", Label: "State"}, {Key: "reason", Label: "Reason"}, {Key: "cost", Label: "Cost"}, {Key: "command", Label: "Set command"}},
+			Rows:    seams,
+		})
+	}
 	return renderPanel(p)
 }
