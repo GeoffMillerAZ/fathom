@@ -62,10 +62,9 @@ type toolEntry struct {
 	class   tenancy.Class // the declared cost class (RT-55)
 }
 
-// registerTool adds a tool to the server's tool registry. Every handler is
-// wrapped with budgetedHandler (SU-3, ADR-041 decision 3) — a single choke
-// point, so a handler that forgets its own budget still cannot exceed the
-// dispatch-level one.
+// registerTool adds a tool to the server's tool registry. Handlers use
+// budgetedHandler (SU-3, ADR-041 decision 3), except review_diff, whose
+// complete MCP result is bounded after both copies and metadata are assembled.
 //
 // RT-55 (design §3.1): a tool without a cost class cannot be registered —
 // the admission gate would have nothing to admit it in.
@@ -76,7 +75,12 @@ func (s *Server) registerTool(desc toolDescriptor, h func(ctx context.Context, a
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.tools = append(s.tools, toolEntry{desc: desc, handler: budgetedHandler(h, desc.declaredBudget), class: class})
+	handler := budgetedHandler(h, desc.declaredBudget)
+	if desc.Name == "review_diff" {
+		// Preserve the original dimension counts until the whole-result finalizer.
+		handler = h
+	}
+	s.tools = append(s.tools, toolEntry{desc: desc, handler: handler, class: class})
 }
 
 // findTool returns the toolEntry for a given name, or (zero, false).
@@ -441,6 +445,10 @@ func (s *Server) handleToolsCallMeta(ctx context.Context, params json.RawMessage
 	// Wrap result in MCP content envelope.
 	b, err := json.Marshal(result)
 	if err != nil {
+		if te.desc.Name == "review_diff" {
+			meta.outcome = string(tenancy.OutcomeError)
+			return nil, reviewBudgetRefusal("malformed result"), meta
+		}
 		return nil, &rpcError{Code: ErrCodeInternal, Message: "marshal result: " + err.Error()}, meta
 	}
 	// O1449: the refresh disclosure also rides inside the result object,
@@ -470,6 +478,14 @@ func (s *Server) handleToolsCallMeta(ctx context.Context, params json.RawMessage
 	}
 	if partial != nil {
 		envelope["budget"] = partial
+	}
+	if te.desc.Name == "review_diff" && ctx.Value(reviewBudgetDisabled{}) != true {
+		var err error
+		envelope, err = capReviewDiffEnvelope(envelope, defaultCharBudget)
+		if err != nil {
+			meta.outcome = string(tenancy.OutcomeError)
+			return nil, reviewBudgetRefusal(err.Error()), meta
+		}
 	}
 	return envelope, nil, meta
 }
