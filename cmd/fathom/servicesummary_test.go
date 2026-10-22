@@ -27,6 +27,11 @@ func (s *symbolLoadCountingStore) QueryObservations(ctx context.Context, service
 	return s.MemoryStore.QueryObservations(ctx, serviceID, concernID)
 }
 
+func (s *symbolLoadCountingStore) ListSymbolNodes(ctx context.Context, serviceID string) ([]core.SymbolNode, error) {
+	s.loads.Add(1)
+	return s.MemoryStore.ListSymbolNodes(ctx, serviceID)
+}
+
 func (s *symbolLoadCountingStore) SourceKindCounts(ctx context.Context, serviceID string) ([]store.SourceKindCount, error) {
 	s.aggregates.Add(1)
 	if s.gate != nil {

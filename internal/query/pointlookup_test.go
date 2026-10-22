@@ -23,6 +23,11 @@ func (n *noFullLoad) QueryObservations(ctx context.Context, svc, concern string)
 	return n.Store.QueryObservations(ctx, svc, concern)
 }
 
+func (n *noFullLoad) ListSymbolNodes(ctx context.Context, svc string) ([]core.SymbolNode, error) {
+	n.fullLoads++
+	return n.Store.ListSymbolNodes(ctx, svc)
+}
+
 func pointLookupFixture() []core.Observation {
 	return []core.Observation{
 		{ServiceID: "s", SourceRef: "a.go", SourceKind: core.KindGoFunc, Symbol: "ValidateToken", Package: "auth", Calls: []string{"strings.TrimSpace"}},

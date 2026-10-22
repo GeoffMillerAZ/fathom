@@ -139,6 +139,13 @@ func (s *errInjectingStore) QueryObservations(ctx context.Context, serviceID, co
 	return s.MemoryStore.QueryObservations(ctx, serviceID, concernID)
 }
 
+func (s *errInjectingStore) ListSymbolNodes(ctx context.Context, serviceID string) ([]core.SymbolNode, error) {
+	if s.queryObservationsErr != nil {
+		return nil, s.queryObservationsErr
+	}
+	return s.MemoryStore.ListSymbolNodes(ctx, serviceID)
+}
+
 // TestSymbolsFor_TagsCantopenDistinctly pins DG-17: a SQLITE_CANTOPEN-shaped
 // store error is tagged as "store-locked (possibly transient...)" rather
 // than logged identically to any other store failure.

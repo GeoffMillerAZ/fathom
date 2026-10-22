@@ -28,6 +28,11 @@ func (s *fullLoadCountingStore) QueryObservations(ctx context.Context, serviceID
 	return s.Store.QueryObservations(ctx, serviceID, concernID)
 }
 
+func (s *fullLoadCountingStore) ListSymbolNodes(ctx context.Context, serviceID string) ([]core.SymbolNode, error) {
+	s.fullLoads.Add(1)
+	return s.Store.ListSymbolNodes(ctx, serviceID)
+}
+
 // TestObligationsSymbolOnlyContractNeverLoadsService is RT-174: a served
 // claims-role claim citing a symbol-only plan row ({id, symbol} with no
 // package) resolved that symbol's file by loading every observation in
