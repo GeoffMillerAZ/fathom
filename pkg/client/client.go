@@ -29,6 +29,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/decide"
+	"github.com/geoffmilleraz/fathom/internal/dlog"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"github.com/geoffmilleraz/fathom/internal/query"
@@ -102,6 +103,7 @@ type Client struct {
 	engine *query.Engine
 	st     store.Store
 	conn   connector.Connector // retained for Sources()
+	logger *dlog.Logger
 
 	// Optional LLM config for semantic-layer compilation (WithLLM).
 	llm        llmclient.LLMClient
@@ -740,23 +742,41 @@ func (c *Client) IngestServiceAt(ctx context.Context, service, path string) erro
 // walk. Best-effort like the claims sweep above: a failure leaves the
 // ingest's own result alone.
 func (c *Client) refreshCertifications(ctx context.Context, service, root string, report Report) {
-	if decls, err := c.st.CertifyDeclarationsForService(ctx, service); err != nil || len(decls) == 0 {
+	decls, err := c.st.CertifyDeclarationsForService(ctx, service)
+	if err == nil && len(decls) == 0 {
+		return
+	}
+	logger := c.logger
+	if logger == nil {
+		logger = dlog.New(os.Stderr, dlog.LevelInfo, time.Now)
+	}
+	if err != nil {
+		logger.Warn("certify: declarations", "service", service, "error", err)
 		return
 	}
 	now := time.Now()
 	watermark := fmt.Sprintf("tests-ingest:%d", now.UnixNano())
-	if meta, found, err := c.st.GetServiceMeta(ctx, service); err == nil && found && meta.IndexedCommit != "" {
+	if meta, found, err := c.st.GetServiceMeta(ctx, service); err != nil {
+		logger.Warn("certify: watermark", "service", service, "error", err)
+	} else if found && meta.IndexedCommit != "" {
 		watermark = meta.IndexedCommit
 	}
 	marks, err := testevidence.IngestCertifyMarkers(ctx, c.st, service, watermark, root)
-	if err != nil || marks.Declared == 0 {
+	if err != nil {
+		logger.Warn("certify: scan markers", "service", service, "error", err)
+		return
+	}
+	logger.Info("certify", "service", service, "declared", marks.Declared, "files", marks.FilesScanned, "oversize_skipped", marks.OversizeSkipped)
+	if marks.Declared == 0 {
 		return
 	}
 	// O1270: the sweep re-checks files and runs; an ingest that read no
 	// file and deleted none changed nothing it checks (the daemon picks up
 	// no test run).
 	sweep := report.Extracted+report.Skipped-report.StatSkipped > 0 || report.Deleted > 0
-	_, _ = certify.AfterIngest(ctx, c.st, service, watermark, root, now, sweep)
+	if _, err := certify.AfterIngest(ctx, c.st, service, watermark, root, now, sweep); err != nil {
+		logger.Warn("certify: refresh", "service", service, "error", err)
+	}
 }
 
 // RemoveService deletes every stored row for serviceID — registry surgery

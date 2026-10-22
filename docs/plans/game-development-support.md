@@ -8,6 +8,12 @@ For operational rows, a lexical marker in a future docs/evidence/game-developmen
 
 ## P0: evidence and operations before any family grade
 
+- [ ] Certify discovery honors every corpus exclusion and parses only marker-bearing Go files; proof TestCertifyDiscoveryHonorsCorpusExclusions and TestCertifyScanStopsWithoutReplacingDeclarations {id: GDEV-36, symbol: IngestCertifyMarkers, package: internal/testevidence, weight: 5}
+- [ ] Certify gate settles on an unchanged corpus with unresolvable declarations using point lookups; proof TestCertifyGateSettlesWithUnresolvedDeclaration {id: GDEV-37, symbol: AfterIngest, package: internal/certify, weight: 5}
+- [ ] review_diff reuses memo typed edges and the Both graph without changing architecture or spec outputs; proof TestReviewDiffReusesMemoGraphAndTypedEdges {id: GDEV-38, symbol: buildReviewInput, package: internal/mcp, weight: 5}
+- [ ] Shared client ReviewKey reuses the memo resolved graph with identical keys; proof TestReviewKeyReusesWarmResolvedGraph and TestComputeReusesResolvedGraph {id: GDEV-39, symbol: ReviewKey, package: pkg/client, weight: 4}
+- [ ] Stream SCIP import without materializing the complete index; proof TestImportSCIPStreaming {id: GDEV-40, symbol: ImportSCIP, package: pkg/client, weight: 5}
+
 - [ ] Reproduce consumer O13 with two independent cold arms on the full roughly 13k-file/85k-symbol subject under 512 MiB, each with 15 plans, 152 IDs, four CLI and four raw MCP calls, complete budgeted responses, separate physical peaks and memory estimates; retain pins and refusals {id: GDEV-01, oracle: lexical, path: docs/evidence/game-development-support.md, pattern: "^GDEV-01 cold-arm receipt:", weight: 5}
 - [ ] Bound ingest without a corpus cut, memory-budget raise or warmed cold arm; account for cancellation and named admission in both daemon and CLI paths {id: GDEV-02, symbol: Ingest, package: internal/fusion, needs: "GDEV-01", weight: 5}
 - [ ] Consumer O21: a cancelled baseline review stops work beyond the daemon boundary, releases admission, and preserves ordinary success and failure behavior {id: GDEV-03, symbol: buildReviewInput, package: internal/mcp, needs: "GDEV-01", weight: 5}

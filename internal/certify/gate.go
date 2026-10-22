@@ -9,8 +9,11 @@ package certify
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
@@ -77,11 +80,11 @@ func AfterIngest(ctx context.Context, st store.Store, service, watermark, repoDi
 
 // nextStep reports what the certifications layer needs: StepNothing when
 // nothing is declared at all (a compile would be a pure no-op, and no
-// claim is read); StepSweep when the layer has already been compiled at
-// least once, every existing claim already carries the CURRENT watermark,
-// and the declared-entry count has changed neither up nor down since —
-// the cheap proxy for "the declarations and watermark are unchanged";
-// StepCompile otherwise.
+// claim is read); StepSweep when every existing claim carries the current
+// watermark and belongs to the declared set, and every unclaimed declaration
+// is still unresolvable; StepCompile otherwise. Duplicate markers share a
+// claim ID. Suite-only claims conservatively recompile because this gate
+// does not expand suite declarations into test keys.
 //
 // A NEW attested run ingested at the SAME watermark (no commit between
 // two ingests, e.g. a CI rerun picked up from `[tests] results_dir`) does
@@ -111,16 +114,54 @@ func nextStep(ctx context.Context, st store.Store, service, watermark string) (S
 	if err != nil {
 		return StepNothing, err
 	}
-	if len(existing) == 0 {
-		return StepCompile, nil
+	declaredIDs := make(map[string]bool, len(decls))
+	for _, d := range decls {
+		declaredIDs[core.ClaimID(Layer, Kind, d.Kind+":"+d.TargetID, d.TestSymbolKey)] = true
 	}
+	claimed := make(map[string]bool, len(existing))
 	for _, c := range existing {
 		if c.CompiledAtWatermark != watermark {
 			return StepCompile, nil
 		}
+		if !declaredIDs[c.ClaimID] {
+			return StepCompile, nil
+		}
+		claimed[c.ClaimID] = true
 	}
-	if len(existing) != len(decls) {
+	if len(existing) == 0 && declared > len(decls) {
 		return StepCompile, nil
+	}
+	// Only unclaimed declarations need resolution. SymbolSourcesForNames
+	// uses symbol IN over the existing (service_id, symbol) index, without
+	// ObservationsForSymbol's leading-wildcard GLOB. Require the full key
+	// so the same test name in another package cannot resolve a declaration.
+	unclaimedKeys := make(map[string]bool)
+	nameSet := make(map[string]bool)
+	for _, d := range decls {
+		if claimed[core.ClaimID(Layer, Kind, d.Kind+":"+d.TargetID, d.TestSymbolKey)] {
+			continue
+		}
+		unclaimedKeys[d.TestSymbolKey] = true
+		name := d.TestSymbolKey[strings.LastIndex(d.TestSymbolKey, ".")+1:]
+		nameSet[name] = true
+	}
+	if len(nameSet) == 0 {
+		return StepSweep, nil
+	}
+	names := make([]string, 0, len(nameSet))
+	for name := range nameSet {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	rows, err := st.SymbolSourcesForNames(ctx, service, names)
+	if err != nil {
+		return StepNothing, err
+	}
+	for _, row := range rows {
+		key := core.SymbolKey(service, core.QualifiedPackage(row.SourceRef, row.Package), row.Symbol)
+		if unclaimedKeys[key] {
+			return StepCompile, nil
+		}
 	}
 	return StepSweep, nil
 }

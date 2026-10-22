@@ -17,7 +17,10 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/reviewkey"
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
+	"github.com/geoffmilleraz/fathom/internal/scope"
 )
 
 // ReviewKey computes vision 30 §3.2 / ADR-040 decision 6's review key for
@@ -25,11 +28,27 @@ import (
 // reviewkey.ManifestEntry's doc comment for the unreadable-path handling),
 // diffed against req.Prior when given.
 func (c *Client) ReviewKey(ctx context.Context, req reviewkey.Request) (reviewkey.Key, error) {
-	nodes, err := c.ListAllSymbols(ctx, req.Service)
+	// Use the shared snapshot scope, including its suppression
+	// identity and disclosure, so a key and a navigation call share data.
+	sc := MemoScope(ctx, c, req.Service)
+	snap, err := memo.SnapshotForExtra(ctx, sc, func(lctx context.Context) ([]core.SymbolNode, any, error) {
+		cctx, col := scope.WithCollector(lctx)
+		//fathom:tenancy-allow sources the shared watermarked snapshot loader
+		nodes, err := c.ListAllSymbols(cctx, req.Service)
+		return nodes, col.For(req.Service), err
+	})
 	if err != nil {
 		return reviewkey.Key{}, err
 	}
-	typed, _ := c.TypedEdges(ctx, req.Service)
+	if d, ok := snap.Extra.(*scope.Disclosure); ok {
+		scope.Record(ctx, req.Service, d)
+	}
+	graph, typed, _, err := memo.GraphForTyped(ctx, snap, memo.GraphResolved, func(ctx context.Context) ([]core.Edge, error) {
+		return c.TypedEdges(ctx, req.Service)
+	})
+	if err != nil {
+		return reviewkey.Key{}, err
+	}
 
 	corpusRoot := ""
 	if path, _, found, merr := c.ServiceMeta(ctx, req.Service); merr == nil && found {
@@ -37,9 +56,10 @@ func (c *Client) ReviewKey(ctx context.Context, req reviewkey.Request) (reviewke
 	}
 
 	in := reviewkey.Inputs{
-		Manifest:   req.Manifest,
-		Nodes:      nodes,
-		TypedEdges: typed,
+		Manifest:      req.Manifest,
+		Nodes:         snap.Nodes,
+		TypedEdges:    typed,
+		ResolvedGraph: graph,
 		Fingerprint: func(path string) (string, bool) {
 			hash, found, ferr := c.SourceFingerprint(ctx, req.Service, path)
 			return hash, ferr == nil && found

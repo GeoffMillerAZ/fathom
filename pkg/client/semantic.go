@@ -80,13 +80,14 @@ func (c *Client) WithDecision(d decision.Decider, cfg config.Decide, rec *decide
 	return c
 }
 
-// WithLogger routes the underlying fusion.Pipeline's own diagnostics
+// WithLogger routes certification refresh and fusion.Pipeline diagnostics
 // (the typed-edge pass's process-wide-slot/load-failure/discovery-gap
 // lines, DG-4 diagnostics sweep) through log instead of a bare
 // fmt.Fprintf(os.Stderr, ...). Never calling WithLogger (pipe.logger stays
 // nil) leaves those lines byte-identical to before this method existed —
 // like WithLLM/WithDecision, this is additive. Returns c for chaining.
 func (c *Client) WithLogger(log *dlog.Logger) *Client {
+	c.logger = log
 	c.pipe.SetLogger(log)
 	return c
 }

@@ -18,14 +18,7 @@ import (
 
 // consoleScope is service's graph-store scope in c's store.
 func consoleScope(ctx context.Context, c *client.Client, service string) memo.Scope {
-	wm, err := c.StoreWatermark(ctx, service)
-	if err != nil {
-		wm = ""
-	}
-	if tok := c.SuppressionToken(service); wm != "" && tok != "" {
-		wm += "|suppressed:" + tok // the MCP tools' key (resolved_nav.go navScope)
-	}
-	return memo.Scope{Store: c.StoreID(), Service: service, Watermark: wm}
+	return client.MemoScope(ctx, c, service)
 }
 
 // consoleSnapshot is service's symbol snapshot.

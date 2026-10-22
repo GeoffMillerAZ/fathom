@@ -206,7 +206,8 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	} else {
 		defer undo()
 	}
-	report, err := c.Ingest(fusion.WithPassClock(context.Background(), ingestPassClock), client.ServiceRef{
+	ctx := fusion.WithPassClock(context.Background(), ingestPassClock)
+	report, err := c.Ingest(ctx, client.ServiceRef{
 		ID:   *service,
 		Path: svcPath,
 	})
@@ -287,7 +288,7 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 		// runs only when this ingest read a file, deleted one, or picked
 		// up a run (O1270).
 		sweep := report.Extracted+report.Skipped-report.StatSkipped > 0 || report.Deleted > 0 || newRuns
-		ingestConfiguredCertifications(context.Background(), *storePath, *service, svcPath, stdout, stderr, *jsonOut, sweep)
+		ingestConfiguredCertifications(ctx, *storePath, *service, svcPath, stdout, stderr, *jsonOut, sweep)
 	}
 
 	if *jsonOut {
@@ -563,7 +564,7 @@ func ingestConfiguredCertifications(ctx context.Context, storePath, service, svc
 		return
 	}
 	if !jsonOut {
-		fmt.Fprintf(stdout, "certify: %d declared certification(s) found in %d file(s)\n", markerReport.Declared, markerReport.FilesScanned)
+		fmt.Fprintf(stdout, "certify: %d declared certification(s) found in %d file(s); oversize_skipped=%d\n", markerReport.Declared, markerReport.FilesScanned, markerReport.OversizeSkipped)
 	}
 	runCertifyCompileGated(ctx, st, service, watermark, svcPath, stdout, stderr, jsonOut, sweep)
 }

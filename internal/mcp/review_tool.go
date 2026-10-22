@@ -618,7 +618,17 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 	if err != nil {
 		return review.Input{}, reviewCorpus{}, navLoadError("review_diff", service, err)
 	}
-	typed, typedErr := backend.TypedEdges(ctx, service)
+	loadTyped := typedLoader(backend, service)
+	graph, typed, typedErr, err := memo.GraphForTyped(ctx, snap, memo.GraphBoth, loadTyped)
+	if err != nil {
+		if ctx.Err() != nil {
+			return review.Input{}, reviewCorpus{}, navLoadError("review_diff", service, ctx.Err())
+		}
+		// The memo is optional. Its admission or build failure leaves the
+		// ordinary uncached typed-impact path available for this review.
+		graph = nil
+		typed, typedErr = backend.TypedEdges(ctx, service)
+	}
 
 	in := review.Input{
 		Service:      service,
@@ -626,6 +636,7 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 		Concern:      concern,
 		Nodes:        snap.Nodes,
 		TypedEdges:   typed,
+		ImpactGraph:  graph,
 	}
 
 	if err := ctx.Err(); err != nil {

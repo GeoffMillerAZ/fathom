@@ -10,49 +10,74 @@ package testevidence
 // found, across every file.
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
 	"github.com/geoffmilleraz/fathom/internal/store"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
 // MarkerReport is IngestCertifyMarkers' return: what it found.
 type MarkerReport struct {
-	FilesScanned int
-	Declared     int
+	FilesScanned    int
+	FilesParsed     int
+	OversizeSkipped int
+	Declared        int
 	// Warnings is one line per malformed marker, "<file>:<line>: <err>" —
 	// surfaced verbatim in the ingest report (design doc §1).
 	Warnings []string
 }
 
-// IngestCertifyMarkers walks root (a service's repo root) for *.go files
-// — the same skip-dir convention connector.Discover uses (vendor, .git,
-// testdata, generated, node_modules, .idea, .vscode, .claude —
-// connector.IsSkippedDir) so a marker inside a vendored or generated tree
-// is never scanned — parses each for `// certifies:` markers, and writes
-// the declared facts for service, stamped with watermark.
+// IngestCertifyMarkers discovers the same corpus as local ingest, including
+// default, project, user and git exclusions. Only Go files containing the
+// marker bytes are parsed. Cancellation or producer refusal preserves the
+// previous declaration set rather than replacing it with a partial scan.
 func IngestCertifyMarkers(ctx context.Context, st store.Store, service, watermark, root string) (MarkerReport, error) {
 	var report MarkerReport
 
-	files, err := discoverGoFiles(root)
+	if err := ctx.Err(); err != nil {
+		return report, err
+	}
+	if err := tenancy.ProducerAllowsCtx(ctx, tenancy.ClassIngest); err != nil {
+		return report, err
+	}
+	conn := connector.NewLocalConnector()
+	files, err := conn.Discover(ctx, core.ServiceRef{ID: service, Path: root})
 	if err != nil {
 		return report, fmt.Errorf("discover Go files under %s: %w", root, err)
 	}
 
 	var decls []store.CertifyDeclaration
-	for _, relPath := range files {
-		abs := filepath.Join(root, relPath)
-		src, err := os.ReadFile(abs)
-		if err != nil {
-			return report, fmt.Errorf("read %s: %w", abs, err)
+	for _, ref := range files {
+		if !strings.HasSuffix(ref.Path, ".go") {
+			continue
 		}
-		found, warnings, err := extractor.ScanCertifiesMarkers(service, relPath, src)
+		if err := ctx.Err(); err != nil {
+			return report, err
+		}
+		// Fetch checks the producer before every file and honors ctx.
+		src, err := conn.Fetch(ctx, ref)
+		if err != nil {
+			var over *connector.OversizeError
+			if errors.As(err, &over) {
+				report.OversizeSkipped++
+				continue
+			}
+			return report, fmt.Errorf("read %s: %w", ref.Path, err)
+		}
+		report.FilesScanned++
+		if !bytes.Contains(src, []byte("certifies:")) {
+			continue
+		}
+		report.FilesParsed++
+		found, warnings, err := extractor.ScanCertifiesMarkers(service, ref.Path, src)
 		if err != nil {
 			// A file that fails to PARSE (invalid Go) is not this scan's
 			// job to diagnose — the ordinary Go extractor already reports
@@ -60,7 +85,6 @@ func IngestCertifyMarkers(ctx context.Context, st store.Store, service, watermar
 			// whole marker scan over one broken file.
 			continue
 		}
-		report.FilesScanned++
 		for _, d := range found {
 			decls = append(decls, store.CertifyDeclaration{
 				TestSymbolKey: d.TestSymbolKey, Kind: string(d.Kind), TargetID: d.TargetID,
@@ -73,41 +97,15 @@ func IngestCertifyMarkers(ctx context.Context, st store.Store, service, watermar
 	}
 	sort.Strings(report.Warnings)
 
+	if err := ctx.Err(); err != nil {
+		return report, err
+	}
+	if err := tenancy.ProducerAllowsCtx(ctx, tenancy.ClassIngest); err != nil {
+		return report, err
+	}
 	if err := st.PutCertifyDeclarations(ctx, service, decls); err != nil {
 		return report, fmt.Errorf("PutCertifyDeclarations: %w", err)
 	}
 	report.Declared = len(decls)
 	return report, nil
-}
-
-// discoverGoFiles returns every *.go file under root (repo-relative,
-// forward-slash paths, sorted), pruning the same directories
-// connector.Discover always skips.
-func discoverGoFiles(root string) ([]string, error) {
-	var files []string
-	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		rel, relErr := filepath.Rel(root, path)
-		if relErr != nil {
-			return relErr
-		}
-		rel = filepath.ToSlash(rel)
-		if d.IsDir() {
-			if rel != "." && connector.IsSkippedDir(d.Name()) {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if strings.HasSuffix(rel, ".go") {
-			files = append(files, rel)
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	sort.Strings(files)
-	return files, nil
 }
