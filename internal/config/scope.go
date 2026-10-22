@@ -98,6 +98,7 @@ var fieldScopes = []FieldScope{
 	{"findings.subject", ScopeBehaviour, "the review-kit subject this repository maps to"},
 	{"guards.enforce", ScopeBehaviour, "turns the repository's own guards advisory"},
 	{"hooks.claim_check", ScopeBehaviour, "the claim check runs nothing: it reads the final message and the hook log's test-run rows (claimcheck.go)"},
+	{"hooks.dedupe", ScopeBehaviour, "suppresses unchanged hook context within one agent session"},
 	{"hooks.gate_preflight", ScopeBehaviour, "the gate preflight runs nothing: it lexes the command, reads git and the hook log, and asks the claim-moment verify path (gatepreflight.go)"},
 	{"hooks.pin_check", ScopeBehaviour, "the commit pin line's output mode; the check itself is on by default"},
 	{"hooks.prompt_definitions", ScopeBehaviour, "the definitions line runs nothing: it names find_symbol answers the prompt hook already fetched (prompthook.go)"},

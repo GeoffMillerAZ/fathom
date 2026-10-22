@@ -84,7 +84,7 @@ func cmdSessionHookEvent(event string, args []string, stdin io.Reader, stdout, s
 		})
 	case "cwd-changed":
 		return runAdvisoryEvent(codec, harness.EventCwdChanged, "cwd-hook", stdin, stdout, func(in harness.HookInput) string {
-			return cwdChangedPrimer(*url, root(in))
+			return cwdChangedPrimerForSession(*url, root(in), in.SessionID)
 		})
 	case "test-run": // TR-2: PostToolUse(Bash), a piped or passing test run (TR-V1)
 		return testRunEntryHook(codec, harness.EventPostTool, event, *url, *dir, stdin, stdout)

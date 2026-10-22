@@ -178,7 +178,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 
 	// decode → payload → encode (HP-5): the payload is harness-free text;
 	// only the envelope around it belongs to the codec.
-	text, meta, ok := renderPostEdit(url, projDir, filePath, sessionID, hook.NewContent)
+	text, meta, ok := renderPostEdit(url, projDir, filePath, sessionID, hook.NewContent, hook.AgentID)
 	if meta.repoRelFile != "" {
 		if !meta.skipRuleVerdict {
 			// SR-48 (F-31): the file resolved against a real service this turn
@@ -303,7 +303,7 @@ type postEditMeta struct {
 // contract: nothing to say (or a refused/out-of-repo file, or a daemon
 // error) after the beat that names WHY has been emitted. The caller wraps
 // the text in the calling harness's envelope.
-func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (string, postEditMeta, bool) {
+func renderPostEdit(url, projDir, filePath, sessionID, newContent string, agentID ...string) (string, postEditMeta, bool) {
 	// Try each service-identity candidate (dir basename, then the enclosing
 	// git repo for subdirectory-rooted projects), resolving the file against
 	// that candidate's root. First candidate with rules (or a stale flag)
@@ -507,7 +507,6 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 		for _, n := range obl.ModuleNotes {
 			fmt.Fprintf(&sb, "\n⚠️ module %s: %s", n.Module, n.Note)
 		}
-		reportModuleBeats(renderRules, "post", sessionID)
 	}
 
 	// FL-20 (docs/vision/30-findings-loop.md §3.4): the post-edit findings
@@ -577,6 +576,21 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 		}
 	}
 
+	// CB-1: compare the complete rendered context, including warnings,
+	// findings and spec refs, so changed guidance always emits in full.
+	// Subagent tool events carry their parent's session id. Keep each
+	// child's context distinct inside the same bounded per-session file.
+	target := resolveSymlinks(filePath)
+	if len(agentID) > 0 && agentID[0] != "" {
+		target = agentID[0] + "\x00" + target
+	}
+	deduped := dedupeHookInjection(projDir, sessionID, "post-edit", target, sb.String(), time.Now()) && sb.Len() > 0
+	if deduped {
+		emitBeat("edit-hook", "answered", firingMeta(withFold(withDestination(silentAnswerMeta(map[string]string{"phase": "post"}, silenceSessionDeduped), projDir, filePath), fold), sessionID, filePath))
+	}
+	if found && !deduped {
+		reportModuleBeats(renderRules, "post", sessionID)
+	}
 	if sb.Len() == 0 {
 		emitBeat("edit-hook", "answered", firingMeta(withFold(withDestination(silentAnswerMeta(map[string]string{"phase": "post"}, silenceNoRules), projDir, filePath), fold), sessionID, filePath))
 		return "", postEditMeta{}, false // clean file (or unindexed project), no spec IDs → silent
@@ -585,7 +599,11 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 	if len(govRules) > 0 {
 		topRule, topSrc, topClaimID = govRules[0].Rule, govRules[0].Src, govRules[0].ClaimID
 	}
-	return sb.String(), postEditMeta{
+	payload := sb.String()
+	if deduped {
+		payload = ""
+	}
+	return payload, postEditMeta{
 		rules:           len(renderRules),
 		repoRelFile:     repoRelFile,
 		displaced:       obl.Displaced,
@@ -599,7 +617,7 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 		claims:          claimBearing(govRules),
 		skipRuleVerdict: stampConsulted,
 		fold:            fold,
-	}, true
+	}, !deduped
 }
 
 // writeRuleBullet appends one rendered rule bullet to sb, in the exact

@@ -1138,3 +1138,12 @@ and measured responsiveness. Avoid decorative charts or invented success metrics
 Return observed generic failures to app-kit with adversarial fixtures; retain app
 domain calculations here. The mirror mismatch demonstrates why adoption needs
 standalone runtime proof, not just a passing workspace or static manifest check.
+
+## Context-bill hooks (CB-, 2026-10-22)
+
+Contribution-loop disposition: **no-candidate**. Scope: post-edit obligations and
+cwd-changed primer dedupe, measured in
+[the context-bill reading](bench/readings/context-bill/2026-10-22.md).
+Ownership stays with fathom's hook lifecycle, config and byte accounting; no
+kit rendering API, theme, adoption selection or dependency pin changed.
+Synthetic hook tests cover the originating app; no second-app propagation is claimed.

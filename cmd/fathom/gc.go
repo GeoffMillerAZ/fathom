@@ -163,6 +163,12 @@ func runGC(o gcOptions) gcReport {
 			return "session stamp older than 30 days", o.Now.Sub(st.ModTime()) > gcSessionStampAge
 		}, "session-stamps", add, errf)
 
+		// Hook-owned dedupe records share the session-stamps GC class, with
+		// a shorter seven-day retention. No new scheduler or daemon state.
+		gcEntries(filepath.Join(fh, "hook-dedupe"), func(e os.DirEntry, st os.FileInfo) (string, bool) {
+			return "hook dedupe state older than seven days", o.Now.Sub(st.ModTime()) > hookDedupeAge
+		}, "session-stamps", add, errf)
+
 		// Dead daemons' records (the directory keeps its lifecycle ledger).
 		recs, rerrs := listDaemonRecords(o.Home)
 		for _, e := range rerrs {

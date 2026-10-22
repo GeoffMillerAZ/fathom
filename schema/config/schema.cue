@@ -364,6 +364,8 @@ package config
 // (H10) adds one line to the prompt hook naming each identifier it resolved
 // with its definition file:line. Unset means off for all four.
 #Hooks: {
+	// Unchanged edit/cwd context is injected once per session (default on).
+	dedupe?:             bool
 	test_run?:           bool
 	pin_check?:          "off" | "record" | "feedback"
 	claim_check?:        bool

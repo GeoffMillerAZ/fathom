@@ -183,6 +183,25 @@ func cwdChangedPrimer(baseURL, newRoot string) string {
 	return line
 }
 
+// cwdChangedPrimerForSession compares content at the repository root, so
+// visiting a subdirectory or returning from another repository costs no
+// repeated primer. Identity/warning changes still emit their full text.
+func cwdChangedPrimerForSession(baseURL, dir, sessionID string) string {
+	if dir == "" {
+		return ""
+	}
+	root := dir
+	if top := gitToplevel(dir); top != "" {
+		root = top
+	}
+	root = resolveSymlinks(root)
+	payload := cwdChangedPrimer(baseURL, dir)
+	if dedupeHookInjection(root, sessionID, "cwd-changed", root, payload, time.Now()) {
+		return ""
+	}
+	return payload
+}
+
 // daemonAnswering is the healthz probe the advisory events share.
 func daemonAnswering(hc *http.Client, baseURL string) bool {
 	resp, err := hc.Get(baseURL + "/healthz")

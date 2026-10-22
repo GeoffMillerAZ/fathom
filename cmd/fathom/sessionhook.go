@@ -69,12 +69,6 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 	if !ok {
 		return 0
 	}
-	endGuard, silent := beginHookGuard("session-hook", "fathom session-hook", codec.ID(), *url)
-	if silent {
-		return 0 // §9: the managed daemon is disabled or paused — no RPC, no output
-	}
-	defer endGuard()
-
 	// session_id (docs/design/production-tokenomics.md §6): read
 	// best-effort from the SessionStart hook JSON through the codec — the
 	// same envelope edit-hook/stop-hook decode. Absent/unreadable/malformed
@@ -89,6 +83,14 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 			startSource = in.Source
 		}
 	}
+
+	// Context loss resets dedupe even when the daemon guard declines RPC.
+	resetHookDedupe(sessionID, startSource, time.Now())
+	endGuard, silent := beginHookGuard("session-hook", "fathom session-hook", codec.ID(), *url)
+	if silent {
+		return 0 // §9: the managed daemon is disabled or paused — no RPC, no output
+	}
+	defer endGuard()
 
 	projDir := *dir
 	if projDir == "" {

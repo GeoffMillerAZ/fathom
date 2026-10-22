@@ -88,6 +88,10 @@ func mergeLayer(cfg *Config, prov Provenance, raw map[string]any, source Source,
 	}
 
 	if hm, ok := raw["hooks"].(map[string]any); ok {
+		if b, ok := hm["dedupe"].(bool); ok {
+			cfg.Hooks.Dedupe = b
+			prov["hooks.dedupe"] = SourceInfo{source, path}
+		}
 		if b, ok := hm["test_run"].(bool); ok {
 			cfg.Hooks.TestRun = b
 			prov["hooks.test_run"] = SourceInfo{source, path}

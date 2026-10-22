@@ -188,6 +188,7 @@ an array of tables, and `tenancy.**` for every key under `[tenancy]`.
 | `findings.subject` | behaviour | the review-kit subject this repository maps to |
 | `guards.enforce` | behaviour | turns the repository's own guards advisory |
 | `hooks.claim_check` | behaviour | the claim check runs nothing: it reads the final message and the hook log's test-run rows (claimcheck.go) |
+| `hooks.dedupe` | behaviour | suppresses unchanged hook context within one agent session (default on) |
 | `hooks.gate_preflight` | behaviour | the gate preflight runs nothing: it lexes the command, reads git and the hook log, and asks the claim-moment verify path (gatepreflight.go) |
 | `hooks.pin_check` | behaviour | the commit pin line's output mode; the check itself is on by default |
 | `hooks.prompt_definitions` | behaviour | the definitions line runs nothing: it names find_symbol answers the prompt hook already fetched (prompthook.go) |
@@ -1950,3 +1951,23 @@ gone; a genuine rollback needs a pre-SS-8 build of fathom. The on-disk
 `workspace/db/fleet.duckdb` rollback file itself is left for the operator to
 delete manually once they're satisfied it's no longer needed — SS-8's
 removal work does not touch it.
+
+## Unchanged hook context: `[hooks] dedupe`
+
+Post-edit obligations and cwd-changed primers emit once per file or repository
+in an agent session while their rendered content is unchanged. Changed content
+emits in full. SessionStart with source `compact` or `resume` resets dedupe;
+the first injection after context loss is unchanged.
+
+```toml
+[hooks]
+dedupe = false # default true; false emits every injection
+```
+
+Hook processes keep one bounded file per session under
+`$FATHOM_HOME/hook-dedupe/` (normally `~/.fathom/hook-dedupe/`), alongside
+session stamps. The existing `session-stamps` GC class prunes dedupe records
+older than seven days. Missing session ids or SessionStart stamps, contention,
+invalid config and state read/write errors emit the full context. A `hook-dedupe/suppressed` beat
+records `bytes=0`, `suppressed_bytes`, `channel` and `session`; it is distinct
+from emitted payload-cost and cwd-hook bytes. SubagentStart remains per subagent.
