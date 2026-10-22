@@ -17,6 +17,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
 	"github.com/geoffmilleraz/fathom/internal/cost"
+	"github.com/geoffmilleraz/fathom/internal/discoveryptr"
 )
 
 // callLogSchemaVersion identifies this record type's field semantics.
@@ -118,7 +119,8 @@ type callLogEntry struct {
 	// from the tool's STRUCTURED result by resultPointers (discoveries_
 	// tool.go), never rendered text. At most maxResultPointers (8); nil
 	// when the tool's result carries nothing pointer-shaped.
-	Pointers []string `json:"pointers,omitempty"`
+	Pointers      []string               `json:"pointers,omitempty"`
+	RangePointers []discoveryptr.Pointer `json:"range_pointers,omitempty"`
 }
 
 // SurfaceStat is one surface's process-lifetime traffic snapshot (A1-1,
@@ -197,7 +199,8 @@ type callOutcome struct {
 	// Pointers (RC-25) is the pre-extracted discovery-pointer list for
 	// this call's result — computed by dispatch.go's pointer-extraction
 	// hook (resultPointers) before the call is logged.
-	Pointers []string
+	Pointers      []string
+	RangePointers []discoveryptr.Pointer
 	// Outcome is the call-log row's outcome name (RT-64), "" for none.
 	Outcome string
 	// Class, QueuedMS, BytesRead and Caller are the admission columns
@@ -241,6 +244,7 @@ func (l *CallLogger) log(tool, service, group, surface, via, origin string, offS
 		ElidedCount:    outcome.ElidedCount,
 		LatencyMS:      float64(latency.Milliseconds()),
 		Pointers:       outcome.Pointers,
+		RangePointers:  outcome.RangePointers,
 		Outcome:        outcome.Outcome,
 		Class:          outcome.Class,
 		QueuedMS:       outcome.QueuedMS,

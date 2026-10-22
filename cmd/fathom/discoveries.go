@@ -22,6 +22,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/discoveryptr"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/internal/statedir"
 )
@@ -560,50 +561,96 @@ const subagentBriefFooterReserve = 56
 // than a brief the cap would clip mid-line.
 const subagentBriefMinBudget = 60
 
-// subagentBrief is the RC-28 discoveries brief itself, rendered within budget
-// bytes of pointer lines.
+// subagentBrief serves only the parent's own, session-current range evidence.
+// Old rows without range hashes or caller identity are intentionally ineligible.
+// Verification is local: an unreachable index cannot leak errors into a brief.
 func subagentBrief(baseURL, root, service, parentSessionID string, budget int, now time.Time) string {
-	since := now.Add(-2 * time.Hour)
-	if t, ok := sessionStartFor(root, parentSessionID); ok {
-		since = t
-	}
-	logPath := callLogPathFor(root)
-	scope := threadScopeFor(root)
-	ptrs := gatherDiscoveryPointers(logPath, service, since, scope, root)
-	if len(ptrs) == 0 {
-		return ""
-	}
-	if len(ptrs) > subagentDiscoveriesMaxPointers {
-		ptrs = ptrs[:subagentDiscoveriesMaxPointers]
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), subagentDiscoveriesDeadline)
 	defer cancel()
-	ch := make(chan string, 1)
-	//fathom:tenancy-allow bare-go one-shot CLI: a single reader goroutine raced against the command's timeout
-	go func() {
-		// baseURL is the SAME daemon subagentPrimer already resolved this
-		// service against — never defaultFathomURL() again, which would
-		// silently re-resolve against a DIFFERENT daemon when --url pointed
-		// subagentPrimer somewhere else (a scratch daemon, a non-default
-		// FATHOM_HTTP) and make every pointer read back "stale" for no reason.
-		idx, idxErr := openCtxIndex(service, "", baseURL)
-		ch <- renderDiscoveryLines(idx, idxErr, ptrs, budget)
-	}()
-	var rendered string
-	select {
-	case rendered = <-ch:
-	case <-ctx.Done():
-		// Deadline hit: abandon the brief entirely so the constant primer
-		// ships alone — the goroutine above may still be blocked in an
-		// HTTP call and simply exits on its own once that returns; nothing
-		// reads its result.
+
+	since, ok := sessionStartFor(root, parentSessionID)
+	if !ok || service == "" {
 		return ""
 	}
-	if rendered == "" {
+	type candidate struct {
+		ptr discoveryptr.Pointer
+		ts  time.Time
+	}
+	var candidates []candidate
+	rc, err := openCallLogGenerationsSince(callLogPathFor(root), since)
+	if err == nil {
+		defer rc.Close()
+		sc := bufio.NewScanner(rc)
+		sc.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
+		for sc.Scan() {
+			if ctx.Err() != nil || hookDeadlineSpent() {
+				return ""
+			}
+			var row struct {
+				TS      string `json:"ts"`
+				Service string `json:"service"`
+				Origin  string `json:"origin"`
+				Caller  struct {
+					Session string  `json:"session"`
+					AgentID *string `json:"agent_id"`
+				} `json:"caller"`
+				Ranges []discoveryptr.Pointer `json:"range_pointers"`
+			}
+			if json.Unmarshal(sc.Bytes(), &row) != nil || row.Service != service || row.Origin != "" || row.Caller.Session != parentSessionID || (row.Caller.AgentID == nil || *row.Caller.AgentID != "") {
+				continue
+			}
+			ts, err := time.Parse(time.RFC3339Nano, row.TS)
+			if err != nil || ts.Before(since) || ts.After(now) {
+				continue
+			}
+			for _, ptr := range row.Ranges {
+				candidates = append(candidates, candidate{ptr, ts})
+			}
+		}
+	}
+	for _, row := range readObservedDiscoveryRows(root, since) {
+		if ctx.Err() != nil || hookDeadlineSpent() {
+			return ""
+		}
+		if row.SessionID != parentSessionID || row.AgentID != "" || row.TS.After(now) {
+			continue
+		}
+		for _, ptr := range row.RangePointers {
+			candidates = append(candidates, candidate{ptr, row.TS})
+		}
+	}
+	sort.Slice(candidates, func(i, j int) bool {
+		if !candidates[i].ts.Equal(candidates[j].ts) {
+			return candidates[i].ts.After(candidates[j].ts)
+		}
+		return candidates[i].ptr.Ref() < candidates[j].ptr.Ref()
+	})
+	var b strings.Builder
+	seen := map[string]bool{}
+	count := 0
+	for _, c := range candidates {
+		if ctx.Err() != nil || hookDeadlineSpent() {
+			return ""
+		}
+		p := c.ptr
+		if seen[p.Ref()] || discoveryptr.NativeInstructions(p.Path) {
+			continue
+		}
+		if _, ok := p.Current(root); !ok {
+			continue
+		}
+		line := "read " + p.Ref() + "\n"
+		if b.Len()+len(line) > budget || count >= subagentDiscoveriesMaxPointers {
+			break
+		}
+		seen[p.Ref()] = true
+		b.WriteString(line)
+		count++
+	}
+	if b.Len() == 0 {
 		return ""
 	}
-	return subagentBriefLead + "\n" + strings.TrimRight(rendered, "\n")
+	return subagentBriefLead + "\n" + strings.TrimRight(b.String(), "\n")
 }
 
 // ─── the session-end pointer set (RC-29) ─────────────────────────────────

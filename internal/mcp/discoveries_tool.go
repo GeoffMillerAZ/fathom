@@ -18,6 +18,8 @@ package mcp
 
 import (
 	"encoding/json"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/discoveryptr"
 	"path"
 	"strings"
 )
@@ -203,3 +205,50 @@ func symbolPointer(name, filePath string) string {
 // discoveriesResult, aggregateCallLogPointers, renderDiscoveryPointer,
 // budgetDiscoveryLines, and their small helpers) went with it — reachable
 // solely from the removed handler, per design §2 rule 1.
+
+// resultRangePointers records the actual returned source, not a later read of
+// the same path. A clipped line will fail the handoff's live range hash check.
+func resultRangePointers(tool string, result any) []discoveryptr.Pointer {
+	if tool != "read_source" && tool != "symbol_context" {
+		return nil
+	}
+	payload, ok := unwrapDiscoveryPayload(result)
+	if !ok {
+		return nil
+	}
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		return nil
+	}
+	var v struct {
+		File string `json:"file"`
+		Def  struct {
+			File string `json:"file_path"`
+		} `json:"def"`
+		Lines   []sourceLine `json:"lines"`
+		Snippet []sourceLine `json:"snippet"`
+	}
+	if json.Unmarshal(raw, &v) != nil {
+		return nil
+	}
+	lines := v.Lines
+	if tool == "symbol_context" {
+		v.File = v.Def.File
+		lines = v.Snippet
+	}
+	if !discoveryptr.PathLike(v.File) || len(lines) == 0 {
+		return nil
+	}
+	texts := make([]string, len(lines))
+	for i, l := range lines {
+		if l.Line < 1 || l.Line != lines[0].Line+i {
+			return nil
+		}
+		texts[i] = l.Text
+	}
+	hash, ok := core.HashLines([]byte(strings.Join(texts, "\n")), 1, len(lines))
+	if !ok {
+		return nil
+	}
+	return []discoveryptr.Pointer{{Path: v.File, Start: lines[0].Line, End: lines[len(lines)-1].Line, Hash: hash}}
+}

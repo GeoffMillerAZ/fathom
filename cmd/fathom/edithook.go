@@ -109,10 +109,23 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	}
 	hook, err := codec.DecodeInput(ev, raw)
 	if err != nil {
+		if *pre {
+			var spawn struct {
+				Tool    string `json:"tool_name"`
+				Session string `json:"session_id"`
+			}
+			if json.Unmarshal(raw, &spawn) == nil && (spawn.Tool == "Agent" || spawn.Tool == "Task") {
+				emitBeat("subagent-map", "skipped", firingMeta(map[string]string{"reason": "invalid-input"}, spawn.Session, ""))
+			}
+		}
 		return 0 // silent
 	}
 	sessionID := hook.SessionID
 	rpcSession = sessionID // O1151: the daemon sees this hook session
+
+	if *pre && (hook.ToolName == "Agent" || hook.ToolName == "Task") {
+		return cmdSubagentSpawnMap(codec, hook, armOff, stdout)
+	}
 
 	// PR-3 (ADR-057 decision 4): a git commit seen by PostToolUse(Bash) is
 	// checked for lost pins before the observe-only exit below swallows the

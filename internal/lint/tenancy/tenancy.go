@@ -524,4 +524,4 @@ func allowlistCount(body []byte) int {
 // allowlistCeiling is the committed number of excuses (RT-92). It may only
 // fall: TestTenancyAllowlistOnlyShrinks fails when the allowlist grows past
 // it, and when the allowlist shrinks below it until it is lowered to match.
-const allowlistCeiling = 159
+const allowlistCeiling = 158

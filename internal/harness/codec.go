@@ -25,9 +25,10 @@ type HookInput struct {
 	// prompt_input_exit|other).
 	Reason string
 	// Trigger is the compaction trigger (manual|auto).
-	Trigger  string
-	ToolName string
-	Tool     ToolClass
+	Trigger   string
+	ToolName  string
+	ToolInput string
+	Tool      ToolClass
 	// FilePath is the edited file on tool events (tool_input.file_path)
 	// and the loaded or changed file on the instructions-loaded and
 	// config-change events (top-level file_path).
@@ -111,7 +112,9 @@ type HookInput struct {
 	// ReadRange reports that a Read tool call names a range rather than
 	// the whole file (Claude Code: tool_input.offset or tool_input.limit
 	// present and not null). Read on PreToolUse only (H8's outline hint).
-	ReadRange bool
+	ReadRange  bool
+	ReadOffset int
+	ReadLimit  int
 }
 
 // ShellOutput is a shell tool call's result with its streams apart (Claude
@@ -160,6 +163,8 @@ type HookOutput struct {
 	// with an error, which the calling verb treats as silence. Nothing sets
 	// it yet.
 	View *ShellOutput
+	// UpdatedInput is a Claude Code PreToolUse input rewrite. It makes no permission decision.
+	UpdatedInput json.RawMessage
 }
 
 // Codec is the ONLY per-harness code: envelope in, envelope out.
@@ -353,6 +358,16 @@ func (c claudeCodec) DecodeInput(ev Event, raw []byte) (HookInput, error) {
 	case EventUserPromptSubmit:
 		in.Prompt = env.Prompt
 	case EventPreTool:
+		var toolEnvelope struct {
+			Input json.RawMessage `json:"tool_input"`
+		}
+		_ = json.Unmarshal(raw, &toolEnvelope)
+		if env.ToolName == "Agent" || env.ToolName == "Task" {
+			in.ToolInput = string(toolEnvelope.Input)
+		}
+		in.AgentID = env.AgentID
+		_ = json.Unmarshal(env.ToolInput.Offset, &in.ReadOffset)
+		_ = json.Unmarshal(env.ToolInput.Limit, &in.ReadLimit)
 		in.ReadRange = claudeRawSet(env.ToolInput.Offset) || claudeRawSet(env.ToolInput.Limit)
 		in.ToolUseID = env.ToolUseID
 	}
@@ -513,6 +528,20 @@ func (c claudeCodec) EncodeOutput(ev Event, out HookOutput) ([]byte, error) {
 		// Top-level decision: the Stop contract (also accepted on the other
 		// blockable events). Only the stop verb behind --block ever asks.
 		return json.Marshal(map[string]any{"decision": "block", "reason": out.Reason})
+	}
+	if len(out.UpdatedInput) > 0 {
+		if ev != EventPreTool {
+			return nil, fmt.Errorf("claude-code: updatedInput requires PreToolUse")
+		}
+		var input map[string]json.RawMessage
+		if json.Unmarshal(out.UpdatedInput, &input) != nil || input == nil {
+			return nil, fmt.Errorf("claude-code: updatedInput requires an object")
+		}
+		specific := map[string]any{"hookEventName": "PreToolUse", "updatedInput": input}
+		if out.Context != "" {
+			specific["additionalContext"] = out.Context
+		}
+		return json.Marshal(map[string]any{"hookSpecificOutput": specific})
 	}
 	if out.Context == "" {
 		return nil, nil

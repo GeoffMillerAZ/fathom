@@ -146,7 +146,7 @@ func loadMapSetAs(root string, now time.Time, reader mapReader) mapSet {
 	// Close any header whose own condition now holds, against every row
 	// (a session_ended condition reads the session-end notes).
 	closed := map[string]threadItem{}
-	for _, h := range evaluateMapConditions(headers, folded, creators, reader, root, now) {
+	for _, h := range evaluateMapConditions(headers, folded, raw, creators, reader, root, now) {
 		closed[h.ID] = h
 	}
 
@@ -270,12 +270,12 @@ func loadMapSetAs(root string, now time.Time, reader mapReader) mapSet {
 // but the shared log and names the creator's own session, which can never
 // read again once it has ended, so any reader closes it (an unnamed map
 // still ends with its session).
-func evaluateMapConditions(headers, all []threadItem, creators map[string]mapCreatorRow, reader mapReader, root string, now time.Time) []threadItem {
+func evaluateMapConditions(headers, all, raw []threadItem, creators map[string]mapCreatorRow, reader mapReader, root string, now time.Time) []threadItem {
 	out := make([]threadItem, 0, len(headers))
 	for _, h := range headers {
 		named := strings.TrimSpace(h.Pointers["name"]) != ""
 		judge := h.CompletesWhen != nil && (h.CompletesWhen.Kind == "session_ended" || reader.createdIt(creators[h.ID]))
-		if !named && h.ClosedAt == "" && judge && threadConditionHolds(*h.CompletesWhen, root, all) {
+		if !named && h.ClosedAt == "" && judge && mapConditionHolds(h, root, all, raw) {
 			h.ClosedAt = now.UTC().Format(time.RFC3339)
 			h.ClosedBy = "condition"
 			h.ClosedWhy = describeCondition(*h.CompletesWhen) + " now holds"
@@ -287,6 +287,29 @@ func evaluateMapConditions(headers, all []threadItem, creators map[string]mapCre
 		out = append(out, h)
 	}
 	return out
+}
+
+// mapConditionHolds uses append order for the session-end default. A resumed
+// session can file another map after an end note, and timestamps may be equal
+// or come from different clocks. Only a note after the FIRST header ends it.
+func mapConditionHolds(h threadItem, root string, all, raw []threadItem) bool {
+	if h.CompletesWhen.Kind != "session_ended" {
+		return threadConditionHolds(*h.CompletesWhen, root, all)
+	}
+	session := h.CompletesWhen.SessionID
+	if session == "" {
+		return false
+	}
+	filed := false
+	for _, row := range raw {
+		if row.ID == h.ID && row.Kind == mapHeaderKind {
+			filed = true
+		}
+		if filed && row.Kind == "session-end" && row.Pointers["session_id"] == session {
+			return true
+		}
+	}
+	return false
 }
 
 // mapHeaderRow renders m as a header row: every field restated, so the latest

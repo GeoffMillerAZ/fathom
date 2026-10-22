@@ -6,7 +6,6 @@ bare-go	cmd/fathom/calllog_rotate.go	one archive per rotation, tracked by the ar
 bare-go	cmd/fathom/console_events.go	one detached flight guarded by storeKicked (CompareAndSwap)
 bare-go	cmd/fathom/console_events.go	the feeder goroutine, one per event stream, cancelled with the last subscriber
 bare-go	cmd/fathom/console_tenancy_panel.go	one background rebuild at a time (c.building), signalled through c.done
-bare-go	cmd/fathom/discoveries.go	one-shot CLI: a single reader goroutine raced against the command's timeout
 bare-go	cmd/fathom/governor_wiring.go	the governor's sampler, one per process, stopped by its cancel
 bare-go	cmd/fathom/lifecyclehooks.go	hook-side fan-out of four fixed session-end reads, joined by a WaitGroup under the hook deadline
 bare-go	cmd/fathom/obligationsmerge.go	hook-side fan-out bounded by the file list, joined by a WaitGroup under the hook deadline
