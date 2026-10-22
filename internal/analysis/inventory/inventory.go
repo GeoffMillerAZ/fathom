@@ -98,41 +98,92 @@ type Item struct {
 // assumes production code; this is the one rule Extract adds beyond it,
 // applied uniformly rather than kind by kind).
 func Extract(files []File, patterns []Pattern) []Item {
-	// Filter _test.go out ONCE, up front: every kind below — including
-	// the configured-pattern kind — must see the identical file set, or a
-	// pattern like CV-26's own `tool:` glob (internal/mcp/*.go) silently
-	// picks up every *_test.go fixture's own toolDescriptor literal too
-	// (a real bug this exact fix closed: a test-only fake tool name
-	// otherwise showed up as a surface item indistinguishable from a real
-	// registration).
-	var prod []File
+	a := NewAccumulator(patterns)
 	for _, f := range files {
-		if strings.HasSuffix(f.Path, "_test.go") {
+		a.Add(f)
+	}
+	return a.Items()
+}
+
+type compiledPattern struct {
+	kind string
+	re   *regexp.Regexp
+	glob *filter.Matcher
+}
+
+// Accumulator extracts one file at a time. It retains only capability items
+// and route metadata; callers can release each file's content after Add.
+type Accumulator struct {
+	items    []Item
+	routes   []routes.Result
+	patterns []compiledPattern
+}
+
+// NewAccumulator compiles configured patterns once for a file stream.
+func NewAccumulator(patterns []Pattern) *Accumulator {
+	a := &Accumulator{}
+	for _, p := range patterns {
+		if p.Kind == "" || p.Regex == "" {
 			continue
 		}
-		prod = append(prod, f)
+		re, err := regexp.Compile(p.Regex)
+		if err != nil || re.NumSubexp() < 1 {
+			continue
+		}
+		cp := compiledPattern{kind: p.Kind, re: re}
+		if p.Glob != "" {
+			cp.glob = filter.New([]string{p.Glob})
+		}
+		a.patterns = append(a.patterns, cp)
 	}
+	return a
+}
 
-	var out []Item
-	var routeFiles []routes.Result
-	for _, f := range prod {
-		switch {
-		case strings.HasSuffix(f.Path, ".go"):
-			out = append(out, extractGoAPI(f)...)
-			out = append(out, extractGoJSON(f)...)
-			out = append(out, extractGoCLI(f)...)
-		case strings.HasSuffix(f.Path, ".proto"):
-			out = append(out, extractProtoRPC(f)...)
-		}
-		if lang := routeLangFor(f.Path); lang != "" {
-			routeFiles = append(routeFiles, routes.ExtractFile(lang, f.Path, f.Content))
-		}
-		out = append(out, extractEnv(f)...)
+// AcceptsPath reports whether Add has any extractor for path. It uses the
+// same compiled patterns and live route registry as Add, so callers can skip
+// content reads without losing configured or cross-file surface items.
+func (a *Accumulator) AcceptsPath(p string) bool {
+	if strings.HasSuffix(p, "_test.go") {
+		return false
 	}
-	out = append(out, routeItems(routeFiles)...)
-	for _, p := range patterns {
-		out = append(out, extractConfigured(prod, p)...)
+	if strings.HasSuffix(p, ".go") || strings.HasSuffix(p, ".proto") ||
+		routeLangFor(p) != "" || envScanned(p) {
+		return true
 	}
+	for _, pattern := range a.patterns {
+		if pattern.glob == nil || pattern.glob.Match(p) {
+			return true
+		}
+	}
+	return false
+}
+
+// Add extracts one file without retaining its content.
+func (a *Accumulator) Add(f File) {
+	if !a.AcceptsPath(f.Path) {
+		return
+	}
+	switch {
+	case strings.HasSuffix(f.Path, ".go"):
+		a.items = append(a.items, extractGoAPI(f)...)
+		a.items = append(a.items, extractGoJSON(f)...)
+		a.items = append(a.items, extractGoCLI(f)...)
+	case strings.HasSuffix(f.Path, ".proto"):
+		a.items = append(a.items, extractProtoRPC(f)...)
+	}
+	if lang := routeLangFor(f.Path); lang != "" {
+		a.routes = append(a.routes, routes.ExtractFile(lang, f.Path, f.Content))
+	}
+	a.items = append(a.items, extractEnv(f)...)
+	for _, p := range a.patterns {
+		a.items = append(a.items, extractConfiguredFile(f, p)...)
+	}
+}
+
+// Items composes routes across all added files and sorts shared keys once.
+func (a *Accumulator) Items() []Item {
+	out := append([]Item(nil), a.items...)
+	out = append(out, routeItems(a.routes)...)
 	return sortDedupe(out)
 }
 
@@ -554,42 +605,25 @@ func envScanned(p string) bool {
 
 // ─── configured `[[surface.pattern]]` kinds ────────────────────────────────
 
-// extractConfigured returns "<p.Kind>:<name>" items for every match of
-// p.Regex's first capturing group across files whose path matches p.Glob
-// (every file when p.Glob is "") — design doc §2.1's "configured patterns"
-// row, this repo's own mechanism for a `tool:`/`verb:` surface no built-in
-// kind covers. A malformed regex, or a pattern naming no capture group,
-// yields no items rather than erroring — Extract itself never fails.
-func extractConfigured(files []File, p Pattern) []Item {
-	if p.Kind == "" || p.Regex == "" {
+// extractConfiguredFile applies one compiled configured-pattern kind to a
+// single file; an empty glob matches every path.
+func extractConfiguredFile(f File, p compiledPattern) []Item {
+	if p.glob != nil && !p.glob.Match(f.Path) {
 		return nil
-	}
-	re, err := regexp.Compile(p.Regex)
-	if err != nil || re.NumSubexp() < 1 {
-		return nil
-	}
-	var m *filter.Matcher
-	if p.Glob != "" {
-		m = filter.New([]string{p.Glob})
 	}
 	var out []Item
-	for _, f := range files {
-		if m != nil && !m.Match(f.Path) {
+	for _, loc := range p.re.FindAllSubmatchIndex(f.Content, -1) {
+		if len(loc) < 4 || loc[2] < 0 {
 			continue
 		}
-		for _, loc := range re.FindAllSubmatchIndex(f.Content, -1) {
-			if len(loc) < 4 || loc[2] < 0 {
-				continue
-			}
-			name := string(f.Content[loc[2]:loc[3]])
-			if name == "" {
-				continue
-			}
-			out = append(out, Item{
-				Key: p.Kind + ":" + name, Kind: p.Kind,
-				File: f.Path, Line: lineForOffset(f.Content, loc[0]),
-			})
+		name := string(f.Content[loc[2]:loc[3]])
+		if name == "" {
+			continue
 		}
+		out = append(out, Item{
+			Key: p.kind + ":" + name, Kind: p.kind,
+			File: f.Path, Line: lineForOffset(f.Content, loc[0]),
+		})
 	}
 	return out
 }
