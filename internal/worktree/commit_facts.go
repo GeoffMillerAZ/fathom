@@ -5,7 +5,10 @@ package worktree
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -111,11 +114,18 @@ func indexedTree(ctx context.Context, root, commit string) (map[string]indexedBl
 	return entry.blobs, entry.err
 }
 
-// VisiblePaths is called once by the request owner. Its allowlist includes
-// tracked and nonignored untracked paths, expressed relative to the service
-// root, even when that service occupies a subtree of the checkout.
+// VisiblePaths is called once by the request owner. Only tracked paths in
+// the service subtree are enumerated, expressed relative to its root.
 func (r Resolution) VisiblePaths(ctx context.Context) (map[string]bool, error) {
-	data, err := boundedGitOutput(ctx, r.Checkout, "ls-files", "-z", "--cached", "--others", "--exclude-standard")
+	prefix, err := filepath.Rel(r.Checkout, r.Root)
+	if err != nil || escapes(prefix) {
+		return nil, fmt.Errorf("service root escapes resolved checkout")
+	}
+	pathspec := ":(top,literal)"
+	if prefix != "." {
+		pathspec = ":(top,literal)" + filepath.ToSlash(prefix) + "/"
+	}
+	data, err := boundedGitOutput(ctx, r.Checkout, "ls-files", "-z", "--cached", "--", pathspec)
 	if err != nil {
 		return nil, err
 	}
@@ -134,4 +144,25 @@ func (r Resolution) VisiblePaths(ctx context.Context) (map[string]bool, error) {
 		}
 	}
 	return out, nil
+}
+
+// UntrackedPath qualifies a path absent from VisiblePaths without reading
+// its bytes. Ignored files and symlinks retain their existing refusals;
+// errors never turn an unlisted path into a readable one.
+func (r Resolution) UntrackedPath(ctx context.Context, rel string) bool {
+	if filepath.IsAbs(rel) || escapes(filepath.Clean(rel)) {
+		return false
+	}
+	full := filepath.Join(r.Root, filepath.FromSlash(rel))
+	info, err := os.Lstat(full)
+	if err != nil || !info.Mode().IsRegular() {
+		return false
+	}
+	real, err := filepath.EvalSymlinks(full)
+	if err != nil || !within(canonical(r.Root), real) {
+		return false
+	}
+	_, err = boundedGitOutput(ctx, r.Root, "check-ignore", "--quiet", "--", rel)
+	var exit *exec.ExitError
+	return errors.As(err, &exit) && exit.ExitCode() == 1
 }

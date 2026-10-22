@@ -52,17 +52,20 @@ func Resolve(ctx context.Context, target string, services []IndexedRoot) (Resolu
 	})
 	var direct []IndexedRoot
 	for _, s := range services {
-		if filepath.IsAbs(s.Root) && within(canonical(s.Root), target) {
+		if filepath.IsAbs(s.Root) && withinIdentity(canonical(s.Root), target) {
 			direct = append(direct, s)
 		}
 	}
 	if len(direct) > 0 {
 		sort.Slice(direct, func(i, j int) bool { return len(canonical(direct[i].Root)) > len(canonical(direct[j].Root)) })
-		if len(direct) > 1 && canonical(direct[0].Root) == canonical(direct[1].Root) {
+		if len(direct) > 1 && withinIdentity(canonical(direct[0].Root), canonical(direct[1].Root)) && withinIdentity(canonical(direct[1].Root), canonical(direct[0].Root)) {
 			return Resolution{}, false
 		}
 		s := direct[0]
 		return Resolution{IndexedRoot: s, Root: canonical(s.Root), Target: target}, true
+	}
+	if home, err := os.UserHomeDir(); err != nil || home == "" {
+		return Resolution{Note: "clone mode refused: home directory unavailable"}, false
 	}
 	wt, _, ok := nearestWorkTree(target)
 	if !ok || !cloneRootAllowed(wt, services) {
@@ -155,6 +158,28 @@ func short(s string) string {
 func within(root, p string) bool {
 	rel, err := filepath.Rel(root, p)
 	return err == nil && !escapes(rel)
+}
+
+// Filesystems may resolve different spellings to the same directory.
+// Walk ancestors too: a missing target still has an existing parent.
+func withinIdentity(root, p string) bool {
+	if within(root, p) {
+		return true
+	}
+	rootInfo, err := os.Stat(root)
+	if err != nil {
+		return false
+	}
+	for {
+		if info, err := os.Stat(p); err == nil && os.SameFile(rootInfo, info) {
+			return true
+		}
+		parent := filepath.Dir(p)
+		if parent == p {
+			return false
+		}
+		p = parent
+	}
 }
 func escapes(rel string) bool {
 	return rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel)
@@ -379,11 +404,11 @@ func cloneRootAllowed(root string, services []IndexedRoot) bool {
 	if filepath.Dir(root) == root {
 		return false
 	}
-	if home, err := os.UserHomeDir(); err == nil && home != "" && within(root, canonical(home)) {
+	if home, err := os.UserHomeDir(); err != nil || home == "" || withinIdentity(root, canonical(home)) {
 		return false
 	}
 	for _, s := range services {
-		if filepath.IsAbs(s.Root) && within(root, canonical(s.Root)) {
+		if filepath.IsAbs(s.Root) && withinIdentity(root, canonical(s.Root)) {
 			return false
 		}
 	}

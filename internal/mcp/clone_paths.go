@@ -105,6 +105,9 @@ func clonePathHandler(name string, b QueryInterface, h func(context.Context, jso
 			return h(ctx, args)
 		}
 		r, ok, err := resolveMCPPath(ctx, b, target)
+		if !ok && r.Note != "" {
+			return nil, &rpcError{Code: ErrCodeParams, Message: r.Note}
+		}
 		if err != nil || !ok || r.Class == "" {
 			return h(ctx, args)
 		}
@@ -117,11 +120,28 @@ func clonePathHandler(name string, b QueryInterface, h func(context.Context, jso
 		}
 		request := &clonePathValue{resolution: r, visible: visible, states: map[string]cloneFileStatus{}}
 		ctx = context.WithValue(ctx, clonePathKey{}, request)
+		for i, f := range files {
+			if filepath.IsAbs(f) {
+				if real, err := filepath.EvalSymlinks(f); err == nil {
+					f = real
+				}
+				rel, e := filepath.Rel(r.Root, filepath.Clean(f))
+				if e != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+					return nil, &rpcError{Code: ErrCodeParams, Message: "changed files must share one resolved checkout"}
+				}
+				files[i] = filepath.ToSlash(rel)
+			}
+		}
 		// Every explicit file must be visible to git in this checkout. Directories
 		// remain identity hints, never permission to read arbitrary descendants.
 		if info, statErr := os.Stat(r.Target); name == "read_source" || info != nil && !info.IsDir() || os.IsNotExist(statErr) && filepath.Ext(r.Target) != "" {
 			rel, e := filepath.Rel(r.Root, r.Target)
 			if e != nil || !cloneVisiblePath(ctx, filepath.ToSlash(rel)) {
+				if e == nil {
+					if out, ok := cloneUntrackedAnswer(ctx, r, filepath.ToSlash(rel)); ok {
+						return out, nil
+					}
+				}
 				return nil, &rpcError{Code: ErrCodeParams, Message: "file is not git-visible in resolved checkout"}
 			}
 		}
@@ -140,15 +160,11 @@ func clonePathHandler(name string, b QueryInterface, h func(context.Context, jso
 			p["file"], _ = json.Marshal(filepath.ToSlash(rel))
 		}
 		if name == "blast_radius" {
-			for i, f := range files {
-				if filepath.IsAbs(f) {
-					rel, e := filepath.Rel(r.Root, f)
-					if e != nil || rel == ".." || strings.HasPrefix(rel, "../") {
-						return nil, &rpcError{Code: ErrCodeParams, Message: "changed files must share one resolved checkout"}
+			for _, file := range files {
+				if !cloneVisiblePath(ctx, file) {
+					if out, ok := cloneUntrackedAnswer(ctx, r, file); ok {
+						return out, nil
 					}
-					files[i] = filepath.ToSlash(rel)
-				}
-				if !cloneVisiblePath(ctx, files[i]) {
 					return nil, &rpcError{Code: ErrCodeParams, Message: "changed file is not git-visible in resolved checkout"}
 				}
 			}
@@ -224,6 +240,17 @@ func clonePathHandler(name string, b QueryInterface, h func(context.Context, jso
 		}
 		return body, nil
 	}
+}
+
+func cloneUntrackedAnswer(ctx context.Context, r worktree.Resolution, file string) (map[string]any, bool) {
+	if notIndexedReason(ctx, r.IndexedRoot.Root, r.Service, file) != "" || notIndexedReason(ctx, r.Root, r.Service, file) != "" || !r.UntrackedPath(ctx, file) {
+		return nil, false
+	}
+	return map[string]any{
+		"status": "unknown", "reason": "changed in clone",
+		"summary": "unknown (untracked in clone); source withheld", "freshness_note": r.Note,
+		"unknown_files": []map[string]string{{"file": file, "status": "unknown", "reason": "untracked in clone"}},
+	}, true
 }
 
 func markCloneLocations(ctx context.Context, b QueryInterface, r worktree.Resolution, v any) string {

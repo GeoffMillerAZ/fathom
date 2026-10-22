@@ -163,7 +163,7 @@ func TestReviewF3OneFileStateCheck(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Count(string(data), "ls-files -z --cached --others --exclude-standard\n") != 1 {
+	if strings.Count(string(data), "ls-files -z --cached -- :(top,literal)\n") != 1 {
 		t.Fatalf("visible path calls: %s", data)
 	}
 	if checks != 1 {
