@@ -34,6 +34,7 @@ type hookDedupeEntry struct {
 	Digest       string    `json:"digest"`
 	EmittedAt    time.Time `json:"emitted_at"`
 	Suppressions int       `json:"suppressions"`
+	Rule         bool      `json:"rule,omitempty"`
 }
 
 type hookDedupeState struct {
@@ -50,6 +51,7 @@ type hookDedupeCheck struct {
 	state                              hookDedupeState
 	key, digest, logKey                string
 	ruleKeys                           []string
+	ruleDigests                        map[string]string
 	ruleMode                           bool
 	suppressed, firstTouch, stateError bool
 }
@@ -242,7 +244,7 @@ func (d *hookDedupeCheck) commit(now time.Time) {
 	}
 	if d.ruleMode {
 		for _, key := range d.ruleKeys {
-			d.state.Digests[key] = hookDedupeEntry{Digest: key, EmittedAt: now}
+			d.state.Digests[key] = hookDedupeEntry{Digest: d.ruleDigests[key], EmittedAt: now, Rule: true}
 		}
 	}
 	d.state.Digests[d.key] = hookDedupeEntry{Digest: d.digest, EmittedAt: now}

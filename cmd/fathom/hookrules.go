@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"maps"
+	"sort"
 	"strings"
 	"time"
 
@@ -38,12 +39,14 @@ func dedupeHookRules(id, root string, in harness.HookInput, channel, target, ser
 		return payload, d
 	}
 	d.ruleMode = true
+	d.ruleDigests = make(map[string]string)
 	// CB-1's whole-payload slot is context-specific too. Keep the original
 	// digest: filtering a changed payload must not make its next touch new.
 	d.key = hookDigest("payload\x00" + context + "\x00" + channel + "\x00" + target)
 	previousPayload, payloadSeen := d.state.Digests[d.key]
 	var kept []semantic.Obligation
 	withheld := 0
+	duplicates := false
 	pending := make(map[string]bool)
 	for _, rule := range rules {
 		identity := "claim\x00" + rule.ClaimID
@@ -52,18 +55,22 @@ func dedupeHookRules(id, root string, in harness.HookInput, channel, target, ser
 		}
 		key := hookDigest("rule\x00" + context + "\x00" + service + "\x00" + rule.Module + "\x00" + identity)
 		if pending[key] {
-			withheld++
+			duplicates = true
 			continue
 		}
 		pending[key] = true
+		var bullet strings.Builder
+		writeRuleBullet(&bullet, rule)
+		digest := hookDigest(bullet.String())
 		previous, seen := d.state.Digests[key]
-		if seen && !now.Before(previous.EmittedAt) && now.Sub(previous.EmittedAt) < hookDedupeRefresh && previous.Suppressions < hookDedupeMaxSuppressions {
+		if seen && previous.Digest == digest && !now.Before(previous.EmittedAt) && now.Sub(previous.EmittedAt) < hookDedupeRefresh && previous.Suppressions < hookDedupeMaxSuppressions {
 			previous.Suppressions++
 			d.state.Digests[key] = previous
 			withheld++
 			continue
 		}
 		d.ruleKeys = append(d.ruleKeys, key)
+		d.ruleDigests[key] = digest
 		kept = append(kept, rule)
 	}
 	d.state.At = now
@@ -72,18 +79,51 @@ func dedupeHookRules(id, root string, in harness.HookInput, channel, target, ser
 	prior := d.state.Digests
 	d.state.Digests = maps.Clone(prior)
 	for _, key := range d.ruleKeys {
-		d.state.Digests[key] = hookDedupeEntry{Digest: key, EmittedAt: now}
+		d.state.Digests[key] = hookDedupeEntry{Digest: d.ruleDigests[key], EmittedAt: now, Rule: true}
 	}
 	d.state.Digests[d.key] = hookDedupeEntry{Digest: d.digest, EmittedAt: now}
-	fits := len(d.state.Digests) <= hookDedupeMaxEntries && d.fits()
+	// Make room in the same bounded file by retiring the oldest rule
+	// deliveries first. Preserve pending deliveries and all other channels.
+	fits := func() bool { return len(d.state.Digests) <= hookDedupeMaxEntries && d.fits() }
+	room := fits()
+	if !room {
+		var evictable []string
+		for key, entry := range d.state.Digests {
+			// Before rendered digests, per-rule entries used Digest == key.
+			if key != d.key && d.ruleDigests[key] == "" && (entry.Rule || entry.Digest == key) {
+				evictable = append(evictable, key)
+			}
+		}
+		sort.Slice(evictable, func(i, j int) bool {
+			a, b := d.state.Digests[evictable[i]], d.state.Digests[evictable[j]]
+			if a.EmittedAt.Equal(b.EmittedAt) {
+				return evictable[i] < evictable[j]
+			}
+			return a.EmittedAt.Before(b.EmittedAt)
+		})
+		for _, key := range evictable {
+			if fits() {
+				break
+			}
+			delete(d.state.Digests, key)
+		}
+		room = fits()
+	}
+	if room {
+		for key := range prior {
+			if _, retained := d.state.Digests[key]; !retained {
+				delete(prior, key)
+			}
+		}
+	}
 	d.state.Digests = prior
-	if !fits {
+	if !room {
 		d.stateError = true
 		d.close()
 		return payload, d
 	}
 	d.firstTouch = !payloadSeen
-	if withheld == 0 {
+	if withheld == 0 && !duplicates {
 		return payload, d
 	}
 	// An unchanged whole payload stays silent unless a per-rule backstop
@@ -111,7 +151,14 @@ func dedupeHookRules(id, root string, in harness.HookInput, channel, target, ser
 		d.close()
 		return payload, d
 	}
-	filtered := strings.Replace(payload, before, render(kept), 1) + fmt.Sprintf("\n(%d rules already shown in this session)", withheld)
+	filtered := strings.Replace(payload, before, render(kept), 1)
+	if withheld > 0 {
+		noun := "rules"
+		if withheld == 1 {
+			noun = "rule"
+		}
+		filtered += fmt.Sprintf("\n(%d %s already shown in this session)", withheld, noun)
+	}
 	if id == harness.Codex && len(filtered) > harness.CodexAdditionalContextCap {
 		d.close() // capped output cannot establish delivery of every rule
 		return payload, d

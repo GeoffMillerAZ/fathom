@@ -79,7 +79,7 @@ func TestPostEditObligationsDedupeWithinSession(t *testing.T) {
 		t.Fatalf("new session first touch = %q, want %q", got, first)
 	}
 	other := writeEditedFile(t, root, "pkg/b.go", "package pkg\n")
-	if got := cbPost(t, srv.URL, root, other, "session-a"); strings.Contains(got, "Sort outputs.") || !strings.HasSuffix(got, "(1 rules already shown in this session)") {
+	if got := cbPost(t, srv.URL, root, other, "session-a"); strings.Contains(got, "Sort outputs.") || !strings.HasSuffix(got, "(1 rule already shown in this session)") {
 		t.Fatalf("new file repeated a delivered rule: %q", got)
 	}
 	for i := 0; i < 2; i++ {
@@ -144,7 +144,7 @@ func TestPostEditObligationsEmitWhenRulesChange(t *testing.T) {
 	changedSrv := changedFake.start()
 	defer changedSrv.Close()
 	changed := cbPost(t, changedSrv.URL, root, file, "session-a")
-	if strings.Contains(changed, "Sort outputs.") || !strings.Contains(changed, "Inject clocks.") || !strings.HasSuffix(changed, "(1 rules already shown in this session)") {
+	if strings.Contains(changed, "Sort outputs.") || !strings.Contains(changed, "Inject clocks.") || !strings.HasSuffix(changed, "(1 rule already shown in this session)") {
 		t.Fatalf("changed rules must emit only new rules and the count: %q", changed)
 	}
 	if got := cbPost(t, changedSrv.URL, root, file, "session-a"); got != "" {
@@ -153,7 +153,7 @@ func TestPostEditObligationsEmitWhenRulesChange(t *testing.T) {
 	if !strings.Contains(first, "Sort outputs.") {
 		t.Fatalf("first delivery lost rules: %q", first)
 	}
-	if got := cbPost(t, srv.URL, root, file, "session-a"); strings.Contains(got, "Sort outputs.") || !strings.HasSuffix(got, "(1 rules already shown in this session)") {
+	if got := cbPost(t, srv.URL, root, file, "session-a"); strings.Contains(got, "Sort outputs.") || !strings.HasSuffix(got, "(1 rule already shown in this session)") {
 		t.Fatalf("older rule set repeated delivered rules: %q", got)
 	}
 }

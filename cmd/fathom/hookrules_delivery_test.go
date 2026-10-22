@@ -100,7 +100,7 @@ func TestRuleContextDeliveryAcrossFilesAndChannels(t *testing.T) {
 			}
 			transport.rules = append(transport.rules, cbRule("Inject clocks."))
 			got := ruleDeliveryPost(t, id, root, secondFile, "", "", "")
-			if strings.Contains(got, "Sort outputs.") || !strings.Contains(got, "Inject clocks.") || !strings.HasSuffix(got, "(1 rules already shown in this session)") {
+			if strings.Contains(got, "Sort outputs.") || !strings.Contains(got, "Inject clocks.") || !strings.HasSuffix(got, "(1 rule already shown in this session)") {
 				t.Fatalf("per-rule delta: %q", got)
 			}
 			got = ruleDeliveryPost(t, id, root, secondFile, "", "", "sed -i 's/pkg/pkg/' pkg/b.go")
@@ -196,7 +196,7 @@ func TestRuleContextDeliveryStableClaimAndRawIdentity(t *testing.T) {
 	claim["rule"] = "Always sort outputs."
 	transport.rules = []any{claim, cbRule("Always inject clocks.")}
 	got := ruleDeliveryPost(t, harness.ClaudeCode, root, file, "", "", "")
-	if strings.Contains(got, "Always sort outputs.") || !strings.Contains(got, "Always inject clocks.") {
+	if !strings.Contains(got, "Always sort outputs.") || !strings.Contains(got, "Always inject clocks.") {
 		t.Fatalf("claim/raw identity: %q", got)
 	}
 	// ADR-080 d3 keeps CB-1's refresh backstop for each rule identity.
@@ -249,7 +249,7 @@ func TestRuleContextDeliveryRefreshBackstops(t *testing.T) {
 				now = now.Add(15 * time.Minute)
 				transport.rules = append(transport.rules, cbRule("Inject clocks."))
 				got := emit(secondFile, "")
-				if strings.Contains(got, "Sort outputs.") || !strings.Contains(got, "Inject clocks.") || !strings.HasSuffix(got, "(1 rules already shown in this session)") {
+				if strings.Contains(got, "Sort outputs.") || !strings.Contains(got, "Inject clocks.") || !strings.HasSuffix(got, "(1 rule already shown in this session)") {
 					t.Fatalf("different-file delta: %q", got)
 				}
 				if backstop == "30-minutes" {
@@ -272,12 +272,12 @@ func TestRuleContextDeliveryRefreshBackstops(t *testing.T) {
 					}
 				}
 				got = emit(secondFile, "")
-				if !strings.Contains(got, "Sort outputs.") || strings.Contains(got, "Inject clocks.") || !strings.HasSuffix(got, "(1 rules already shown in this session)") {
+				if !strings.Contains(got, "Sort outputs.") || strings.Contains(got, "Inject clocks.") || !strings.HasSuffix(got, "(1 rule already shown in this session)") {
 					t.Fatalf("per-rule backstop: %q", got)
 				}
 				if backstop == "10-withholdings" {
 					got = emit(firstFile, "")
-					if strings.Contains(got, "Sort outputs.") || !strings.Contains(got, "Inject clocks.") || !strings.HasSuffix(got, "(1 rules already shown in this session)") {
+					if strings.Contains(got, "Sort outputs.") || !strings.Contains(got, "Inject clocks.") || !strings.HasSuffix(got, "(1 rule already shown in this session)") {
 						t.Fatalf("independent rule counter: %q", got)
 					}
 				}
