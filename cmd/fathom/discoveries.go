@@ -422,7 +422,7 @@ func cmdDiscoveries(args []string, stdout, stderr io.Writer) int {
 	storePath := fs.String("store", "", "store path, .sqlite/.db (direct mode; bypasses daemon)")
 	callLog := fs.String("call-log", "", "call log path (default: workspace/logs/mcp-calls.jsonl under --root)")
 	root := fs.String("root", ".", "repository root")
-	parent := fs.String("parent-session", "", "only this parent session's current, content-checked ranges (AD-11)")
+	parent := fs.String("parent-session", "", "only this parent session's current, content-checked ranges")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}

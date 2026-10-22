@@ -92,18 +92,17 @@ func TestCmdInit_WiresRepoEndToEnd(t *testing.T) {
 	}
 
 	// Guarded edits (docs/design/guarded-edits.md) + the discovery observer
-	// (docs/design/production-tokenomics.md §4): PreToolUse wires THREE
-	// matcher groups (Edit|Write|MultiEdit, Bash, and Grep|Glob|Read) with
-	// the SAME command — all three must actually be present, not just the
-	// marker substring once.
+	// (docs/design/production-tokenomics.md §4), plus the subagent handoff
+	// (AD-12): all four matcher groups must actually be present, not just
+	// the marker substring once.
 	var settingsTree map[string]any
 	if err := json.Unmarshal(settingsRaw, &settingsTree); err != nil {
 		t.Fatalf("settings.json not valid JSON: %v", err)
 	}
 	hooksObj, _ := settingsTree["hooks"].(map[string]any)
 	preArr, _ := hooksObj["PreToolUse"].([]any)
-	if len(preArr) != 3 {
-		t.Fatalf("PreToolUse groups = %d, want 3 (Edit|Write|MultiEdit + Bash + Grep|Glob|Read): %v", len(preArr), preArr)
+	if len(preArr) != 4 {
+		t.Fatalf("PreToolUse groups = %d, want 4 (Edit|Write|MultiEdit + Bash + Grep|Glob|Read + ^(Agent|Task)$): %v", len(preArr), preArr)
 	}
 	gotMatchers := map[string]bool{}
 	for _, g := range preArr {
@@ -117,6 +116,11 @@ func TestCmdInit_WiresRepoEndToEnd(t *testing.T) {
 	}
 	if !gotMatchers["Edit|Write|MultiEdit"] || !gotMatchers["Bash"] {
 		t.Errorf("PreToolUse matchers = %v, want both Edit|Write|MultiEdit and Bash", gotMatchers)
+	}
+	for _, matcher := range []string{"Grep|Glob|Read", "^(Agent|Task)$"} {
+		if !gotMatchers[matcher] {
+			t.Errorf("PreToolUse matchers = %v, missing %s", gotMatchers, matcher)
+		}
 	}
 
 	// .fathom/guard.cue + modules.cue: scaffolded, commented (inert).
@@ -320,14 +324,12 @@ func TestMergeHookSettings_PreservesExisting(t *testing.T) {
 
 	// The pre-existing PostToolUse group (same matcher) must gain the fathom
 	// hook alongside the unrelated one — never split into a duplicate
-	// sibling. O57 item 4/5(b) added a SECOND PostToolUse matcher group
-	// (Bash, the write-detecting edit-hook), so there are now two groups —
-	// exactly the shape PreToolUse's three matcher groups already prove
-	// ensureHookEntry's per-group marker scoping handles correctly.
+	// sibling. Bash (O57 item 4/5(b)) and the completed-lookup observer
+	// (AD-11) each have their own matcher group.
 	hooksObj, _ := got["hooks"].(map[string]any)
 	ptu, _ := hooksObj["PostToolUse"].([]any)
-	if len(ptu) != 2 {
-		t.Fatalf("PostToolUse groups = %d, want 2 (Edit|Write|MultiEdit merged into the existing matcher group, Bash a new sibling): %v", len(ptu), ptu)
+	if len(ptu) != 3 {
+		t.Fatalf("PostToolUse groups = %d, want 3 (Edit|Write|MultiEdit merged into the existing matcher group, Bash and completed lookups as siblings): %v", len(ptu), ptu)
 	}
 	group, _ := ptu[0].(map[string]any)
 	if group["matcher"] != "Edit|Write|MultiEdit" {
@@ -346,6 +348,18 @@ func TestMergeHookSettings_PreservesExisting(t *testing.T) {
 	bashHooks, _ := bashGroup["hooks"].([]any)
 	if len(bashHooks) != 2 {
 		t.Fatalf("PostToolUse Bash hooks = %d, want 2 (fathom edit-hook and the test-run hook): %v", len(bashHooks), bashHooks)
+	}
+	lookupGroup, _ := ptu[2].(map[string]any)
+	if lookupGroup["matcher"] != "mcp__fathom__(symbol_context|find_symbol|read_source)|mcp__plugin_[^_]*_fathom__(symbol_context|find_symbol|read_source)" {
+		t.Fatalf("PostToolUse group 2 matcher = %v, want completed lookups", lookupGroup["matcher"])
+	}
+	lookupHooks, _ := lookupGroup["hooks"].([]any)
+	if len(lookupHooks) != 1 {
+		t.Fatalf("PostToolUse lookup hooks = %d, want 1: %v", len(lookupHooks), lookupHooks)
+	}
+	lookupHook, _ := lookupHooks[0].(map[string]any)
+	if lookupHook["async"] != true {
+		t.Fatalf("PostToolUse lookup hook must be asynchronous: %v", lookupHook)
 	}
 
 	// Re-running against the merged output is a byte-identical no-op.
@@ -407,20 +421,24 @@ func TestMergeHookSettings_SkipsUserScopeWiring(t *testing.T) {
 		}
 		// The Edit|Write|MultiEdit group is already wired at user scope and
 		// must not be duplicated at project scope; the Bash group (O57 item
-		// 4/5b) is genuinely missing from the user-scope fixture above (only
-		// the pre-phase-O three are wired there) and so DOES get written —
-		// its own matcher, not a dupe of Edit|Write|MultiEdit's.
+		// 4/5b) and completed-lookup observer (AD-11) are genuinely missing
+		// from the user-scope fixture above and so DO get written — their
+		// own matchers, not duplicates of Edit|Write|MultiEdit's.
 		ptu, _ := hooksObj["PostToolUse"].([]any)
-		if len(ptu) != 1 {
-			t.Fatalf("PostToolUse groups = %d, want 1 (only Bash, genuinely missing at user scope): %v", len(ptu), ptu)
+		if len(ptu) != 2 {
+			t.Fatalf("PostToolUse groups = %d, want 2 (Bash and completed lookups, genuinely missing at user scope): %v", len(ptu), ptu)
 		}
 		group, _ := ptu[0].(map[string]any)
 		if group["matcher"] != "Bash" {
 			t.Errorf("PostToolUse group matcher = %v, want Bash (Edit|Write|MultiEdit is already wired at user scope)", group["matcher"])
 		}
+		lookupGroup, _ := ptu[1].(map[string]any)
+		if lookupGroup["matcher"] != "mcp__fathom__(symbol_context|find_symbol|read_source)|mcp__plugin_[^_]*_fathom__(symbol_context|find_symbol|read_source)" {
+			t.Errorf("PostToolUse group 1 matcher = %v, want completed lookups", lookupGroup["matcher"])
+		}
 		pre, _ := hooksObj["PreToolUse"].([]any)
-		if len(pre) != 3 {
-			t.Fatalf("PreToolUse groups = %d, want 3 (all three guard/discovery groups, genuinely missing)", len(pre))
+		if len(pre) != 4 {
+			t.Fatalf("PreToolUse groups = %d, want 4 (guard/discovery/spawn groups, genuinely missing)", len(pre))
 		}
 		mergedStr := string(merged)
 		if !strings.Contains(mergedStr, testBinPath+" edit-hook --pre") {

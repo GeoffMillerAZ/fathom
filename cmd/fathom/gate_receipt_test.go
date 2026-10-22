@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/fathom/internal/guardspec"
 	"gopkg.in/yaml.v3"
 )
 
@@ -187,14 +186,15 @@ func TestGateLogWrapperOwnsTerminalVerdict(t *testing.T) {
 }
 
 func TestGateReceiptsDirectoryGuard(t *testing.T) {
-	gs, err := guardspec.LoadGuards("../../.fathom/guard.cue")
+	root, err := filepath.Abs("../..")
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, p := range []string{"workspace/receipts/id.json", "workspace/receipts/id.log"} {
-		g, ok := matchingFileGuard(gs, p)
-		if !ok || len(guardspec.EvaluateGuardEnforcement(g, p, "edited", "original")) == 0 {
-			t.Fatalf("receipt evidence unprotected: %s", p)
+	t.Setenv("FATHOM_HOME", t.TempDir())
+	t.Setenv("FATHOM_ENFORCE", "on")
+	for _, command := range []string{"fathom gate receipt write --log gate.log", "bin/fathom gate receipt write --log gate.log"} {
+		if d := evaluateEnforcedCommand(root, command); !d.Denied {
+			t.Fatalf("agent receipt write not denied: %s %+v", command, d)
 		}
 	}
 }

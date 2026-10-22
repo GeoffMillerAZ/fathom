@@ -142,8 +142,8 @@ func TestPostEditReadinessFiltersHeadingsWithoutDroppingOtherPayloads(t *testing
 				rules = append(rules, semantic.Obligation{Rule: "Never lose an instruction.", Tier: "raw"})
 				want = "Never lose an instruction."
 			case "decision":
-				rules = append(rules, semantic.Obligation{Rule: "**Decision** Keep deterministic evidence.", Tier: "raw"})
-				want = "**Decision** Keep deterministic evidence."
+				rules = append(rules, semantic.Obligation{Rule: "**Decision** Always keep deterministic evidence.", Tier: "raw"})
+				want = "**Decision** Always keep deterministic evidence."
 			case "finding":
 				rules = append(rules, semantic.Obligation{Rule: "Check the edit.", Kind: "finding", Src: "file.go#L1-L2", RuleID: "example", Producer: "review"})
 				want = "Check the edit."
