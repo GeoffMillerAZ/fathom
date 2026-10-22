@@ -5830,3 +5830,32 @@ committed the region deletes the file and drops the gate step. The CUE non-goal 
 - *A line per resolved file instead of per identifier:* names rules, not definitions; ADR-036 already does that.
 
 **Revisit when** the flag stays off in every adopter for 60 days, the line's names are ignored once RO-M18 (the readouts seam reading) runs, or a named `file:line` is found not to be the definition at HEAD in a rechecked sample.
+
+## ADR-077: Rule selection: no semantic-layer rearchitecture, a deterministic scope-evidence selector ahead of the 6-rule cap, and claims citing a fully superseded ADR section withheld at read (2026-10-22)
+
+**Status.** Proposed 2026-10-22 (owner-architect decision, 2026-10-20). Flips to accepted on RS-M2's reading. **Type.** process / architecture. Amends ADR-016 (serving). Plan: `docs/plans/rule-selection.md` (RS-). Design pointer: `docs/design/semantic-layers.md`.
+
+**Context.**
+- VB-40's baseline served the governing rule at first touch on 3 of 8 guards tasks (`docs/bench/readings/decision-port-ab-2026-09-23.md`) while fixture precision is 1.00.
+- Serving reaches about 6 of 140 eligible rules per edit (the cap).
+- 12+ fresh claims cite ADR-003 (superseded) or ADR-004 (partly superseded). `valid_to` is empty on every claim.
+- Construction works. Selection fails.
+
+**Decision.**
+1. *d1, no rearchitecture of the semantic layers.* Rejected: O1 full rebuild (the claim table is frozen, ADR-049 d11/d12, F29, and no measurement shows the claim model failing); O2 mappings, doctrine, incident maps and map graduation as new claim producers (P20, and serving is already starved); O3 leave as is.
+2. *d2, selector (T2).* One deterministic step between the candidates (claims plus raw sections) and the 6-rule cap. It ranks by scope evidence, strongest first, and the order is FIXED here before any measurement reads the tasks: (1) a `doc_links` row tying the cited doc unit to the edited path, (2) a contract key or log template on the edited symbol, (3) a path glob naming the edited path, (4) a repo-wide glob. Rank only: heuristic-tier links never deny an edit (I57). The selector moves out of `internal/semantic/serve.go` into its own file. The 6-rule cap and the 320-token ceiling do not rise (I35).
+3. *d3, in force at read (T3).* A claim citing a FULLY superseded ADR section is withheld from the cap and the withheld count is disclosed (I7, I35 tail). A PARTLY superseded section stays, tagged. It uses `internal/adr.ParseSections` (as `internal/intent/audit.go` does); a section without a status line parses as accepted. `valid_to` stays empty and no column is added.
+4. *d4, mappings stay facts.* `doc_links`, contract keys, `system_links`, log templates and repository facts stay facts in the index stratum and are never copied into `semantic_claims` (ADR-015, ADR-016).
+5. *d5, LC-10's revival deferred.* Widening `schema/semantic/producers.cue` to every claim writer waits for a new trigger: a catalogued writer's claim refuted at a tier above its method, or 2+ new writers with a named consumer by 2027-01-20.
+6. *d6, no new surface.* No table, column, cache or background job (ADR-049 d2) and no new MCP tool (P4).
+
+**Rejected alternatives.**
+- *O1, full rebuild of the semantic layers:* table freeze, no measured claim-model failure. Wins if: a reading shows the claim model, not selection, loses the governing rule.
+- *O2, mappings and doctrine as new claim producers:* feeds a serving path that already drops 134 of 140 eligible rules. Wins if: RS-M2 reads at least 6 of 8 and a producer's rules are still missing.
+- *O3, leave as is:* 3 of 8 at first touch. Wins if: RS-M2 reads no gain over VB-40's baseline.
+
+**Decision models.**
+- DM1, ranking: the existing `decisionrank` score site (ADR-042). Question: "how strongly does rule R govern this edit to path P". Fallback with provider `none` is the d2 order, byte-identical (I42). Off by default (I60). Already measured on these 8 tasks on 2026-09-23: 3 worse, 0 better, so it stays off.
+- DM2, in force: none applies. An ADR status line is a deterministic oracle, and a model verdict would serve judgment as fact (I62).
+
+**Revisit when** RS-M2 reads below 6 of 8 (apply VB-40's own clause and reopen compile-time scope narrowing from mappings); a served-rule behavior reading shows no drop at n>=30; raw rows exceed 50% of served rows.

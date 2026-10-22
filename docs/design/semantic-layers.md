@@ -346,3 +346,7 @@ digest gating). Every compile records real usage; every spending path requires a
 dry-run estimate first. This is the inverse of the GraphRAG cost shape, on purpose.
 Costs must scale with change size, never repo size — that constraint is structural
 (query-time scope joins), not aspirational.
+
+**Rule selection (ADR-077, proposed 2026-10-22).** The layers are not rearchitected. Serving gains a deterministic
+scope-evidence selector ahead of the 6-rule cap and withholds claims that cite a fully superseded ADR section; mappings
+stay facts in the index stratum. Plan: `docs/plans/rule-selection.md`.
