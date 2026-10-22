@@ -1,3 +1,3 @@
-### Fixed
+### Changed
 
-- Hook context dedupe is default-on for Claude Code only; every other harness emits in full until its tool events show `agent_id` and it provides a compaction reset. Full emits are recorded only after successful stdout delivery. Cwd-changed dedupe suppresses consecutive repeats only, and every wired pre-compact hook resets state. A 30-minute or 10-consecutive-suppression backstop re-emits full context after a missed reset. Invalid config emits in full, and a user's `[hooks] dedupe = false` wins over a repository's `true`.
+- On Claude Code, edit-time obligations and the directory-change primer are no longer repeated within a session when nothing changed: a session sees each unchanged injection once, compaction or a pre-compact hook resets that, and full context returns after 30 minutes or 10 skipped repeats. Other harnesses still receive every injection. Turn it off with `[hooks] dedupe = false`.
