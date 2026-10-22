@@ -100,26 +100,26 @@ func TestTestDeltaFromHookLogRows(t *testing.T) {
 			rowDelta: "compared",
 		},
 		{
-			name: "a previous failure in a package this run never reached is not run, never fixed",
+			name: "a previous run of another package scope is not compared",
 			cfg:  rich,
 			steps: []deltaStep{
 				{edit: "v1", commit: true, cmd: "go test ./...", output: goFailOutput(deltaMoney, "TestA") + goOKOutput(deltaCart)},
 				{cmd: "go test ./cart/", output: goFailOutput(deltaCart, "TestC")},
 			},
-			want:     []string{"delta vs the last run: not run money.TestA; 1 not compared"},
-			absent:   []string{"fixed", "new cart."},
-			rowDelta: "compared",
+			want:     []string{"TestC"},
+			absent:   []string{"delta vs", "fixed", "new cart."},
+			rowDelta: "not-compared",
 		},
 		{
-			name: "a previous failure a -run filter excludes is not run, never fixed",
+			name: "a previous run with another filter is not compared",
 			cfg:  rich,
 			steps: []deltaStep{
 				{edit: "v1", commit: true, cmd: "go test ./money/", output: goFailOutput(deltaMoney, "TestA", "TestB")},
 				{edit: "v2", cmd: "go test ./money/ -run TestB", output: goFailOutput(deltaMoney, "TestB")},
 			},
-			want:     []string{"delta vs the last run: still failing money.TestB (since {h0}); not run money.TestA"},
-			absent:   []string{"fixed"},
-			rowDelta: "compared",
+			want:     []string{"TestB"},
+			absent:   []string{"delta vs", "fixed"},
+			rowDelta: "not-compared",
 		},
 		{
 			name: "a previous row at the id cap compares only the first 10",
@@ -139,8 +139,8 @@ func TestTestDeltaFromHookLogRows(t *testing.T) {
 				{edit: "v1", cmd: "go test ./money/", output: goFailOutput(deltaMoney, "TestA")}, // no commit yet: no head, no tree
 				{commit: true, cmd: "go test ./money/", output: goFailOutput(deltaMoney, "TestA")},
 			},
-			want:     []string{"delta vs the last run: not compared"},
-			absent:   []string{"still failing"},
+			want:     []string{"TestA"},
+			absent:   []string{"delta vs", "still failing"},
 			rowDelta: "not-compared",
 		},
 		{
@@ -151,7 +151,7 @@ func TestTestDeltaFromHookLogRows(t *testing.T) {
 			},
 			want:     []string{"TestA"},
 			absent:   []string{"delta vs"},
-			rowDelta: "none",
+			rowDelta: "not-compared",
 		},
 		{
 			name: "outside rich mode the line carries no delta and the row no key",

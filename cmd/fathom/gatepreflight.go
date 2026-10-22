@@ -154,8 +154,7 @@ func gatePreflightLine(projDir, cwd, command, sessionID, baseURL string) string 
 					meta["verb"] = "push"
 					meta["gate"] = "not checked (deadline)"
 				}
-				emitBeat(gatePreflightChannel, "flagged", firingMeta(meta, sessionID, ""))
-				return "🚦 fathom gate preflight (advisory): verify: not checked (deadline)"
+				return logGatePreflight("🚦 fathom gate preflight (advisory): verify: not checked (deadline)", meta, sessionID, cfg.Hooks.Observes(hookOptInGatePreflight))
 			}
 		}
 		return ""
@@ -183,13 +182,23 @@ func gatePreflightLine(projDir, cwd, command, sessionID, baseURL string) string 
 			parts = append(parts, "gate: no passing run at this tree in this session")
 		}
 	}
-	kind := "silent"
 	line := ""
 	if len(parts) > 0 {
-		kind = "flagged"
 		line = strings.ReplaceAll("🚦 fathom gate preflight (advisory): "+strings.Join(parts, "; "), "\n", " ")
 	}
+	return logGatePreflight(line, meta, sessionID, cfg.Hooks.Observes(hookOptInGatePreflight))
+}
+
+func logGatePreflight(line string, meta map[string]string, sessionID string, observe bool) string {
+	kind := "silent"
+	if line != "" {
+		kind = "flagged"
+	}
+	meta["emitted"] = boolStr(line != "" && !observe)
 	emitBeat(gatePreflightChannel, kind, firingMeta(meta, sessionID, ""))
+	if observe {
+		return ""
+	}
 	return line
 }
 

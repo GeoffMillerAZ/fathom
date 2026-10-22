@@ -145,9 +145,7 @@ func cmdPromptHook(args []string, stdout, stderr io.Writer) int {
 	// H10 (ADR-076): behind [hooks] prompt_definitions, one line naming the
 	// definitions of the identifiers resolved above. It adds no call, shares
 	// the obligations cap, and yields to it when it does not fit.
-	if promptDefinitionsOn(projDir) {
-		text, ok = combineWithRouteLine(text, ok, promptDefinitionsLine(meta.defs, meta.defsMissed))
-	}
+	text, ok = withPromptDefinitions(projDir, sessionID, text, ok, meta.defs, meta.defsMissed)
 
 	// DP-10 (ADR-042, docs/vision/32-decision-port.md §2 item 3): routing
 	// draws on the SAME shared deadline as the obligations work above, and
@@ -761,9 +759,39 @@ func init() {
 		Summary: "UserPromptSubmit hook: resolve the paths/packages/symbols the prompt names through the index and inject the rules that govern them, before the first edit"})
 }
 
-// promptDefinitionsOn reports whether [hooks] prompt_definitions is on for
-// projDir. Off by default; any load error reads off (the hook fails open).
-func promptDefinitionsOn(projDir string) bool {
-	cfg, ok := hooksConfigAt(projDir, hookOptInPromptDefinitions)
-	return ok && cfg.Hooks.PromptDefinitions
+// promptDefinitionsChannel logs the definitions line's counts and outcome,
+// never prompt text. Kinds match tests-to-run: line, missed or silent.
+const promptDefinitionsChannel = "prompt-definitions"
+
+// withPromptDefinitions uses the definitions already resolved by the prompt
+// hook. Observe records the same computed row without adding context.
+func withPromptDefinitions(projDir, sessionID, text string, ok bool, defs []promptDefinition, missed bool) (string, bool) {
+	cfg, loaded := hooksConfigAt(projDir, hookOptInPromptDefinitions)
+	if !loaded || !cfg.Hooks.PromptDefinitions {
+		return text, ok
+	}
+	line := promptDefinitionsLine(defs, missed)
+	meta := map[string]string{"definitions": fmt.Sprint(len(defs)), "emitted": "false"}
+	if missed {
+		meta["missed"] = "deadline"
+	}
+	if line != "" {
+		joined, joinedOK := combineWithRouteLine(text, ok, line)
+		if joined != text {
+			if !cfg.Hooks.Observes(hookOptInPromptDefinitions) {
+				text, ok, meta["emitted"] = joined, joinedOK, "true"
+			}
+		} else {
+			meta["dropped"] = "budget"
+		}
+	}
+	kind := "silent"
+	if line != "" {
+		kind = "line"
+	}
+	if missed {
+		kind = "missed"
+	}
+	emitBeat(promptDefinitionsChannel, kind, firingMeta(meta, sessionID, ""))
+	return text, ok
 }

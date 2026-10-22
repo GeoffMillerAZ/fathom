@@ -14,6 +14,7 @@ import (
 	"io"
 	"path"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"sort"
 	"strconv"
@@ -195,7 +196,7 @@ func readoutCompileLine(ctx context.Context, in harness.HookInput, dir string, c
 		}
 		return strings.TrimPrefix(filepath.ToSlash(p), "./")
 	}
-	recs := readout.CompileErrors(text, norm)
+	recs := readout.CompileErrors(compileReadoutText(c, text), norm)
 	if len(recs) == 0 {
 		return cl
 	}
@@ -242,6 +243,66 @@ func readoutCompileLine(ctx context.Context, in harness.HookInput, dir string, c
 	cl.overlap = readout.CompileOverlap(recs, changed, edited)
 	cl.line = readout.CompileErrorLine(tool, recs, defs, edited, readoutRichLineBudget-len(suffix)) + suffix
 	return cl
+}
+
+var compileReadoutHeader = regexp.MustCompile(`^# \S+(?: \[.*\])?$`)
+var compileReadoutDiagnostic = regexp.MustCompile(`^(?:vet: )?([^\s:][^:]*\.go):\d+:(?:(\d+):)? (.+)$`)
+var compileReadoutLinterSuffix = regexp.MustCompile(` \([A-Za-z][A-Za-z0-9_-]*\)$`)
+
+// compileReadoutText keeps diagnostics attributable to build or vet. A
+// mixed command needs a package header; a head/tail-cut compiler output
+// can instead establish its origin with the full file:line:column shape.
+func compileReadoutText(c *shellcmd.Command, text string) string {
+	mixed := false
+	for _, u := range c.Units() {
+		switch u.Name() {
+		case "gofmt", "deadcode", "staticcheck", "golangci-lint":
+			mixed = true
+		}
+	}
+	lines := strings.Split(text, "\n")
+	header := false
+	for i, line := range lines {
+		line = strings.TrimRight(line, "\r")
+		if compileReadoutHeader.MatchString(line) {
+			header = true
+			continue
+		}
+		m := compileReadoutDiagnostic.FindStringSubmatch(line)
+		if strings.TrimSpace(line) == "" || (mixed && m != nil && compileReadoutLinterSuffix.MatchString(m[3])) {
+			header = false
+			lines[i] = ""
+			continue
+		}
+		keep := m != nil
+		if keep {
+			for _, part := range strings.Split(strings.TrimPrefix(filepath.ToSlash(m[1]), "./"), "/") {
+				if part == "testdata" || strings.HasPrefix(part, "_") || (part != ".." && strings.HasPrefix(part, ".")) {
+					keep = false
+				}
+			}
+			msg := m[3]
+			if strings.HasPrefix(msg, "unreachable func:") {
+				keep = false
+			}
+			moduleOrEmbed := strings.HasPrefix(msg, "no required module provides package ") ||
+				strings.HasPrefix(msg, "missing go.sum entry for module providing package ") ||
+				(strings.HasPrefix(msg, "module ") && strings.Contains(msg, "does not contain package ")) ||
+				(strings.HasPrefix(msg, "package ") && strings.Contains(msg, " is not in std")) ||
+				strings.HasPrefix(msg, "cannot find package ") || strings.Contains(msg, "import lookup disabled by -mod=") ||
+				strings.Contains(msg, "go:embed") || (strings.HasPrefix(msg, "pattern ") && strings.Contains(msg, ": no matching files found"))
+			if !header && (mixed || m[2] == "" || moduleOrEmbed) {
+				keep = false
+			}
+		}
+		if !keep {
+			lines[i] = "" // preserve the raw diagnostic's line number
+			if line != "" && !strings.HasPrefix(line, "\t") && !strings.HasPrefix(line, " ") {
+				header = false
+			}
+		}
+	}
+	return strings.Join(lines, "\n")
 }
 
 // readoutFailingOverlap counts the tests the tests line names that the

@@ -165,7 +165,7 @@ func readOutlineHint(codec harness.Codec, raw []byte) string {
 		"file_sha": sha256Hex(text),
 		"join_ms":  strconv.FormatInt(joinMS.Milliseconds(), 10),
 		"ms":       strconv.FormatInt(readOutlineHintClock().Sub(start).Milliseconds(), 10),
-		"emitted":  boolStr(line != ""),
+		"emitted":  boolStr(line != "" && !cfg.Hooks.Observes(hookOptInReadOutlineHint)),
 	}
 	if deadline {
 		meta["missed"] = "true"
@@ -180,6 +180,9 @@ func readOutlineHint(codec harness.Codec, raw []byte) string {
 		kind = "silent"
 	}
 	emitBeat(readOutlineHintChannel, kind, firingMeta(meta, in.SessionID, in.FilePath))
+	if cfg.Hooks.Observes(hookOptInReadOutlineHint) {
+		return ""
+	}
 	return line
 }
 

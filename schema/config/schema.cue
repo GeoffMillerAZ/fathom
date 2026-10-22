@@ -359,20 +359,20 @@ package config
 // read_outline_hint (H8) turns on the outline line before a whole Read of a
 // long source file and its PreToolUse(Read) hook entry; tests_to_run (RO-43,
 // H4) turns on the line after an edit of a Go file naming the tests that
-// reach it and their go test recipe. Unset means off for all four.
-// long source file and its PreToolUse(Read) hook entry; prompt_definitions
+// reach it and their go test recipe; prompt_definitions
 // (H10) adds one line to the prompt hook naming each identifier it resolved
-// with its definition file:line. Unset means off for all four.
+// with its definition file:line. Unset means off for all five. "observe"
+// computes and logs with emitted=false without injecting the line.
 #Hooks: {
 	// Unchanged edit/cwd context is injected once per session (default on).
 	dedupe?:             bool
 	test_run?:           bool
 	pin_check?:          "off" | "record" | "feedback"
-	claim_check?:        bool
-	gate_preflight?:     bool
-	read_outline_hint?:  bool
-	tests_to_run?:       bool
-	prompt_definitions?: bool
+	claim_check?:        bool | "observe"
+	gate_preflight?:     bool | "observe"
+	read_outline_hint?:  bool | "observe"
+	tests_to_run?:       bool | "observe"
+	prompt_definitions?: bool | "observe"
 }
 
 // #Readouts configures the readout hook's modes (RO-15, ADR-071, docs/

@@ -606,7 +606,7 @@ func reachClauses(leaves []testrun.Failure, c testrun.Candidates) []string {
 		}
 		out = append(out, fmt.Sprintf("%s %s %s (changed in working tree, %s:%d)", who, verb, g.sym.Name, g.sym.File, g.sym.Line))
 	}
-	if len(order) == 0 && len(leaves) > 0 {
+	if len(order) == 0 && len(leaves) > 0 && !c.ReachUnknown {
 		clause := "no changed symbol reaches them"
 		if len(leaves) == 1 {
 			clause = "no changed symbol reaches it"
@@ -724,6 +724,9 @@ func logTestRunRow(r testRunRecord) {
 	}
 	if r.ExitCode != nil {
 		meta["exit_code"] = strconv.Itoa(*r.ExitCode)
+	}
+	if r.Result.Evidence.Truncated {
+		meta["truncated"] = "true"
 	}
 	if r.Emitted {
 		meta["bytes"] = strconv.Itoa(r.Bytes)

@@ -1,5 +1,15 @@
 package config
 
+exampleObserveHooks: #Config & {
+	hooks: {
+		claim_check:        "observe"
+		gate_preflight:     "observe"
+		tests_to_run:       "observe"
+		read_outline_hint:  "observe"
+		prompt_definitions: "observe"
+	}
+}
+
 // A well-formed config carrying one profile of each kind that needs
 // non-trivial fields, plus a daemon table — what an operator's
 // ~/.fathom/config.toml converts to after TOML→CUE.

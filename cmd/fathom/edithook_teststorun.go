@@ -79,6 +79,9 @@ func testsToRunLine(baseURL, filePath, sessionID string) (string, map[string]str
 	ctx, cancel := context.WithTimeout(context.Background(), wait)
 	defer cancel()
 	row := map[string]string{}
+	if cfg.Hooks.Observes(hookOptInTestsToRun) {
+		row["mode"] = "observe"
+	}
 	line := ""
 	svc, err := reachService(ctx, baseURL, root)
 	var r blastReach
@@ -88,6 +91,9 @@ func testsToRunLine(baseURL, filePath, sessionID string) (string, map[string]str
 	if err != nil {
 		reason := daemonMissReason(ctx, err)
 		line, row["kind"], row["missed"] = testsToRunMissLine(reason), "missed", reason
+		if reason == daemonJoinMissNotIndexed && svc == "" {
+			line = ""
+		}
 	} else {
 		shown, more := pickTestsToRun(r.Tests, path.Dir(rel))
 		row["reached"] = strconv.Itoa(len(shown) + more)
@@ -203,7 +209,9 @@ func withTestsToRun(baseURL, filePath, sessionID, text string, ok bool) (string,
 			joined = text + "\n" + line
 		}
 		if cost.Estimate(joined) <= specLineTokenBudget {
-			text, ok, emitted = joined, true, true
+			if row["mode"] != "observe" {
+				text, ok, emitted = joined, true, true
+			}
 		} else {
 			row["dropped"] = "budget"
 		}
