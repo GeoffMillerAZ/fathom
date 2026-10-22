@@ -33,6 +33,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/geoffmilleraz/fathom/internal/adr"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/filter"
 )
@@ -99,12 +100,19 @@ func RawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []c
 	}
 	var cands []candidate
 	for _, ds := range corpusSections(corpus) {
+		var decisions []adr.Section
+		if isDecisionLog(ds.doc.Path) {
+			decisions = adr.ParseSections(ds.doc.Content)
+		}
 		for _, sec := range ds.sections {
 			if only != nil && !only[sec.Subject] {
 				continue
 			}
 			if prior, seen := bySubject[sec.Subject]; seen && allDigestsMatch(prior, sec.Digest, promptVersion) {
 				continue // a fresh compiled claim already answers this exact section
+			}
+			if !rawSectionInForce(sec, decisions) {
+				continue
 			}
 			scope := impliedGuideScope(sec.Path)
 			// classifyGlob (rankByGoverningScope's own worker) documents

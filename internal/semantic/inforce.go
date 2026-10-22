@@ -103,6 +103,47 @@ func claimInForce(cite string, sections []adr.Section) (standing, record string)
 	return fullySuperseded, sec.ID
 }
 
+// rawSectionInForce applies record standing to the current corpus text.
+// Raw sections have no compiled claim whose status could withhold them.
+func rawSectionInForce(sec Section, decisions []adr.Section) bool {
+	if strings.HasPrefix(sec.Path, "docs/plans/archive/") {
+		return false
+	}
+	if isDecisionLog(sec.Path) {
+		i := sort.Search(len(decisions), func(i int) bool { return decisions[i].Line > sec.StartLine }) - 1
+		if i >= 0 {
+			record := decisions[i]
+			if record.Status == adr.StatusProposed || record.Status == adr.StatusRejected ||
+				strings.Contains(statusParagraph(record.Body), "deferred") {
+				return false
+			}
+			if record.Status == adr.StatusSuperseded && !partialSupersessionRe.MatchString(statusParagraph(record.Body)) {
+				return false
+			}
+		}
+	}
+	if strings.HasPrefix(sec.Path, "docs/plans/") {
+		checked, other := false, false
+		for _, line := range strings.Split(sec.Text, "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" || atxHeading.MatchString(line) {
+				continue
+			}
+			if checkedPlanRow.MatchString(line) {
+				checked = true
+			} else {
+				other = true
+			}
+		}
+		if checked && !other {
+			return false
+		}
+	}
+	return true
+}
+
+var checkedPlanRow = regexp.MustCompile(`^[-*+]\s+\[[xX]\]\s`)
+
 // inForceResolver answers claimInForce for one serve call, parsing each
 // cited decision log at most once and only when a candidate cites one.
 func inForceResolver(root string) func(cite string) (standing, record string) {
