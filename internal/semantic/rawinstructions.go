@@ -489,6 +489,21 @@ func rawNonterminalDot(s string, i int) bool {
 	return word == "e.g." || word == "i.e." || word == "vs." || word == "e." || word == "i."
 }
 
+// IsInstruction reports whether text holds at least one sentence that
+// passes the same imperative test raw fallback rows are served by
+// (ADR-080 d2). Hooks use it so that one rule decides what counts as an
+// instruction on both sides of the daemon boundary.
+func IsInstruction(text string) bool {
+	for _, line := range strings.Split(text, "\n") {
+		for _, sentence := range rawSentences(line) {
+			if rawImperative(sentence) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func rawImperative(s string) bool {
 	if rawModal.MatchString(s) || rawOnly.MatchString(s) {
 		return true

@@ -4,7 +4,6 @@ package main
 // missing fact or a read error preserves the hook's existing behavior (I9).
 
 import (
-	"strings"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/harness"
@@ -88,22 +87,12 @@ func readinessInstructions(in readinessInput) readinessResult {
 	return r
 }
 
-// The raw extraction lane owns serving text. Here we only distinguish an
-// instruction already returned by that path from its old heading-only row.
+// rawHasInstruction applies the daemon's own imperative test
+// (semantic.IsInstruction, ADR-080 d2), so the hook never second-guesses a
+// raw row with a different word list; a heading-only row from an older
+// daemon still reads as no instruction.
 func rawHasInstruction(text string) bool {
-	for _, line := range strings.Split(strings.ToLower(text), "\n") {
-		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "#") {
-			continue
-		}
-		words := " " + strings.Join(strings.Fields(line), " ") + " "
-		for _, word := range []string{" must ", " never ", " always ", " only ", " do not ", "**decision**"} {
-			if strings.Contains(words, word) {
-				return true
-			}
-		}
-	}
-	return false
+	return semantic.IsInstruction(text)
 }
 
 // An invocation itself proves that its entry point is registered. The

@@ -106,7 +106,7 @@ func TestRawRuleText_RepositoryADRs(t *testing.T) {
 		"adr-058": "Links are rendered, show their host, and are never fetched (I56): `https` only, no userinfo, no token-named query keys, window placeholders on any host, commit and key placeholders only on configured link hosts.\nno incident path executes a command other than read-only git, fetches a link, or calls another MCP server; the answer uses only point and index work and names every facet it could not compute; the change facet always names its horizon and…",
 		"adr-061": "A kit pack applies when the repository's committed Go or CUE pin puts it on disk (a local `replace`, `vendor/`, or the module cache at the required version; never `go.work`, never the network) and it carries a `pack` header.\nNo MCP tool and no new verb: `fathom rules fixtures <dir>` (a kit runs it in CI), `fathom layers strata` lists the tech stratum, one doctor row; `#Layer.stratum` gains `\"tech\"` (additive; `provider` never shipped as a value).",
 		"adr-075": "",
-		"adr-077": "", // Proposed at this source revision, despite its later accepted index entry.
+		"adr-077": "`doc_links`, contract keys, `system_links`, log templates and repository facts stay facts in the index stratum and are never copied into `semantic_claims` (ADR-015, ADR-016).",
 		"adr-078": "An attested run gains platform (os/arch), an operator-named host label (never a hostname read from the machine), toolchain version, git tree hash and a digest of the dirty diff.\nOne task-owned checkout per job at an exact commit, never a shared or user checkout; record the commit before work.",
 	}
 	for id, prefix := range wants {

@@ -50,7 +50,7 @@ func TestRuleVerdictAskNeedsAClaimAndAllegesNoViolation(t *testing.T) {
 	}
 
 	// 2. A raw heading rule through the real edit hook: silent on the second edit.
-	raw := map[string]any{"rule": "Maintainer-only workflow", "src": "AGENTS.md#L76-L84", "tier": "raw", "layer": "obligations", "why": "no fresh compiled claim"}
+	raw := map[string]any{"rule": "Never run the maintainer-only workflow from an adopter checkout.", "src": "AGENTS.md#L76-L84", "tier": "raw", "layer": "obligations", "why": "no fresh compiled claim"}
 	if out := twoVerdictHookEdits(t, raw); strings.Contains(out, "served again") || strings.Contains(out, "ignored") || strings.Contains(out, "corroborate") {
 		t.Fatalf("a raw heading rule served twice was asked about: %q", out)
 	}

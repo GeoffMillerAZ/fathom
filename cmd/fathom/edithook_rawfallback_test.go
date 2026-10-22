@@ -30,7 +30,7 @@ func TestEditHookBrandNewFile_RawFallbackRuleNamedNotJustStale(t *testing.T) {
 		"file":    "docs/use-cases/new-thing.md",
 		"rules": []any{
 			map[string]any{
-				"rule":  "Every use-case doc needs a Maintained line.",
+				"rule":  "Every use-case doc must carry a Maintained line.",
 				"src":   "docs/CLAUDE.md#L1-L3",
 				"tier":  "raw",
 				"layer": "obligations",
@@ -93,7 +93,7 @@ func TestEditHookBrandNewFile_RawFallbackRuleNamedNotJustStale(t *testing.T) {
 	}
 	// The fix: a NAMED rule, tagged raw, actually reaches the agent —
 	// never silence, never the stale note alone.
-	if !strings.Contains(ctx, "Every use-case doc needs a Maintained line") {
+	if !strings.Contains(ctx, "Every use-case doc must carry a Maintained line") {
 		t.Errorf("additionalContext should name the raw fallback rule, got %q", ctx)
 	}
 	if !strings.Contains(ctx, "raw") {
