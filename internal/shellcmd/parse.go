@@ -4,8 +4,8 @@ import "strings"
 
 // ParseCommand lexes one Bash command line. It never fails: what it cannot
 // read comes back with Unreadable set and Reason naming the first cause.
-func ParseCommand(src string) Command {
-	return *parseAt(src, 0)
+func ParseCommand(src string, wrappers ...Wrapper) Command {
+	return Unwrap(*parseAt(src, 0), wrappers)
 }
 
 func parseAt(src string, depth int) *Command {

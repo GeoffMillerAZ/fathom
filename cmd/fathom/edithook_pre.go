@@ -49,7 +49,7 @@ const refreshTimeout = 400 * time.Millisecond
 func cmdEditHookPre(codec harness.Codec, in harness.HookInput, url string, armOff bool, stdout io.Writer) int {
 	switch in.Tool {
 	case harness.ToolShell:
-		emitDiscoveryBeatIfShellSearch(in.Command, in.SessionID, armOff)
+		emitDiscoveryBeatIfShellSearch(in.Command, in.SessionID, armOff, in.Cwd)
 		recordObservedDiscoveryIfAny(in) // RC-56: a recognized shell read/search counts too
 		return cmdEditHookPreCommand(codec, in.Command, in.Cwd, in.SessionID, url, armOff, stdout)
 	case harness.ToolDiscoveryRead, harness.ToolDiscoveryGrep, harness.ToolDiscoveryGlob:

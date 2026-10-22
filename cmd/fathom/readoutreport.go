@@ -29,7 +29,6 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/ask"
 	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/readout"
-	"github.com/geoffmilleraz/fathom/internal/shellcmd"
 	heartbeat "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/heartbeat"
 )
 
@@ -411,7 +410,7 @@ func (c *roCall) replay(rule *readout.Rule, r roRow) (referenced bool, recoveryB
 	if r.cmdSHA != "" && sha256Hex(c.command) != r.cmdSHA {
 		return false, 0, false, false
 	}
-	cmd := shellcmd.ParseCommand(c.command)
+	cmd := parseShellCommand(c.command).Transparent()
 	ro := readout.Render(&readout.RuleSet{Rules: []*readout.Rule{rule}}, readout.Input{
 		Command: &cmd, Stdout: c.stdout, Stderr: c.stderr, Interrupted: c.interrupted,
 		Persisted: c.persisted, Mode: r.mode,
@@ -571,7 +570,7 @@ func roFollowerOf(b *replayBlock) (*roFollower, string) {
 			Command string `json:"command"`
 		}
 		_ = json.Unmarshal(b.Input, &in)
-		c := shellcmd.ParseCommand(in.Command)
+		c := parseShellCommand(in.Command).Transparent()
 		refTokens(in.Command, fl.tokens)
 		fl.cmdSHA = sha256Hex(in.Command)
 		fl.reads = append(wholeFileRead(&c), sedReadFiles(&c)...)

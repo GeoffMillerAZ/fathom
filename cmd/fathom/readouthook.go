@@ -147,7 +147,7 @@ func cmdReadoutHook(args []string, stdin io.Reader, stdout, stderr io.Writer) (c
 	}
 	readoutStep("rules")
 	rs = readoutRulesFor(rs, cfg.Rules)
-	cmd := shellcmd.ParseCommand(in.Command)
+	cmd := parseShellCommand(in.Command, eventProjectDir(codec, in)).Transparent()
 	// lean and rich build their emission later; until then every mode is
 	// observe, and the row names the configured one beside it.
 	rin := readout.Input{

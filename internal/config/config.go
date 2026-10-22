@@ -35,6 +35,7 @@ import (
 	cueerrors "cuelang.org/go/cue/errors"
 	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/projectdir"
+	"github.com/geoffmilleraz/fathom/internal/shellcmd"
 	toml "github.com/pelletier/go-toml/v2"
 )
 
@@ -548,6 +549,7 @@ type Receipts struct {
 
 // Config is the merged, in-memory form of one or more config.toml layers.
 type Config struct {
+	Shell          Shell
 	Connector      Connector
 	Receipts       Receipts
 	Typed          Typed
@@ -568,6 +570,12 @@ type Config struct {
 	// Zones is `[zones]` (WI-1): zone name to its repo-relative path
 	// globs. A layer that sets it replaces the whole table.
 	Zones map[string][]string
+}
+
+// Shell declares how command wrappers pass through argv or a script.
+// Repository declarations append to the user's list, in that order.
+type Shell struct {
+	Wrappers []shellcmd.Wrapper
 }
 
 // SurfacePatterns returns cfg's configured `[[surface.pattern]]` entries

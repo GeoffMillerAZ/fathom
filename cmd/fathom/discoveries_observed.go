@@ -84,8 +84,9 @@ func observedDiscoveryPointers(in harness.HookInput) []string {
 			return []string{p}
 		}
 	case harness.ToolShell:
-		if target, _ := bashObservedReadPath(in.Command); target != "" {
-			if p, ok := observedRepoRelPath(target, in.Cwd); ok {
+		if target, _ := bashObservedReadPath(in.Command, in.Cwd); target != "" {
+			cwd, _ := hookEffectiveDir(in.Command, "", in.Cwd)
+			if p, ok := observedRepoRelPath(resolveBashDir(cwd, target), cwd); ok {
 				return []string{p}
 			}
 		}
@@ -101,7 +102,7 @@ func observedDiscoveryPointers(in harness.HookInput) []string {
 // recognized discovery action at all.
 func discoveryToolLabel(in harness.HookInput) string {
 	if in.Tool == harness.ToolShell {
-		_, tool := bashObservedReadPath(in.Command)
+		_, tool := bashObservedReadPath(in.Command, in.Cwd)
 		return tool
 	}
 	return discoveryBeatName(in.Tool)
@@ -155,8 +156,8 @@ var bashObservedReadKind = map[string]string{
 // target is not written out), as does a trailing flag or too few words. A
 // command the lexer cannot read records no read; the beat that counts it as
 // unreadable is emitDiscoveryBeatIfShellSearch (RO-29).
-func bashObservedReadPath(command string) (target, tool string) {
-	cmd := shellcmd.ParseCommand(command)
+func bashObservedReadPath(command string, roots ...string) (target, tool string) {
+	cmd := parseShellCommand(command, roots...).Transparent()
 	if cmd.Unreadable || len(cmd.Pipelines) != 1 || len(cmd.Pipelines[0].Units) != 1 {
 		return "", ""
 	}

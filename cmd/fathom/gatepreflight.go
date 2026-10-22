@@ -115,7 +115,11 @@ func gatePreflightContext() (context.Context, context.CancelFunc) {
 // the directory the command starts in ("" is projDir): a relative
 // `git -C` resolves from the directory its leading cd reaches (hookGitDir).
 func gatePreflightLine(projDir, cwd, command, sessionID, baseURL string) string {
-	lexed := shellcmd.ParseCommand(command)
+	syntaxDir := cwd
+	if syntaxDir == "" {
+		syntaxDir = projDir
+	}
+	lexed := parseShellCommand(command, syntaxDir)
 	if lexed.Unreadable {
 		return ""
 	}
@@ -123,6 +127,7 @@ func gatePreflightLine(projDir, cwd, command, sessionID, baseURL string) string 
 	if !commit && !push {
 		return ""
 	}
+	projDir = hookCallRoot(command, "", syntaxDir, projDir)
 	if at != "" {
 		// `git -C <dir>` commits or pushes from dir's work tree (O1230); a
 		// dir that is not one is no root to preflight.

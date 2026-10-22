@@ -56,6 +56,12 @@ func (k Kind) String() string {
 // Unit is one element of a pipeline.
 type Unit struct {
 	Kind Kind
+	// DeclaredScript marks an operator-declared script wrapper. Script is
+	// the literal script; Cwd is its declared directory, inherited by its
+	// body. Relative directories remain relative to the caller's cwd.
+	DeclaredScript bool
+	Script         string
+	Cwd            string
 	// Keyword names a compound: "if", "while", "until", "for", "select",
 	// "case", "[[" or "((".
 	Keyword string

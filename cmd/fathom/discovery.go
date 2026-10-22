@@ -97,8 +97,8 @@ var shellSearchBinaries = map[string]bool{
 // is counted as such and never as zero reads. Anything else is not counted.
 // Zero daemon calls and zero stdout; best-effort and deliberately
 // conservative: a coarse classifier for a denominator, never an evaluator.
-func emitDiscoveryBeatIfShellSearch(command, sessionID string, armOff bool) {
-	if kind := shellDiscoveryKind(command); kind != "" {
+func emitDiscoveryBeatIfShellSearch(command, sessionID string, armOff bool, roots ...string) {
+	if kind := shellDiscoveryKind(command, roots...); kind != "" {
 		emitBeat("discovery", kind, firingMetaArm(map[string]string{"phase": "pre"}, sessionID, "", armOff))
 	}
 }
@@ -114,11 +114,11 @@ const discoveryKindUnreadable = "unreadable"
 // command is empty or is not a discovery action. Each pipeline is judged by
 // its first command (a leading cd, pushd or popd is skipped), the first
 // pipeline that classifies wins.
-func shellDiscoveryKind(command string) string {
+func shellDiscoveryKind(command string, roots ...string) string {
 	if strings.TrimSpace(command) == "" {
 		return ""
 	}
-	cmd := shellcmd.ParseCommand(command)
+	cmd := parseShellCommand(command, roots...).Transparent()
 	if cmd.Unreadable {
 		return discoveryKindUnreadable
 	}

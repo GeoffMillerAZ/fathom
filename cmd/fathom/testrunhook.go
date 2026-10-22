@@ -102,6 +102,10 @@ func cmdTestRunHook(codec harness.Codec, ev harness.Event, event, baseURL, dirOv
 	if root == "" {
 		return 0
 	}
+	syntaxDir := in.Cwd
+	if syntaxDir == "" {
+		syntaxDir = root
+	}
 	// The gate, cheapest first, all local: a layer that never names
 	// test_run cannot switch the hook on; a command that runs no declared
 	// test is not the hook's business; only then the validated config.
@@ -115,12 +119,12 @@ func cmdTestRunHook(codec harness.Codec, ev harness.Event, event, baseURL, dirOv
 	if !names("hooks.test_run", "test_run") && !capabilityCueNames(root, "test-run-hook") {
 		return 0
 	}
-	m, matched := matchDeclaredTestCommand(root, in.Command, nil)
+	m, matched := matchDeclaredTestCommand(root, in.Command, nil, syntaxDir)
 	var loaded *config.Loaded
 	if !matched && names("tests.commands", "commands") {
 		if l, err := config.Load(config.DefaultUserPath(), projectdir.Config.Path(root)); err == nil {
 			loaded = &l
-			m, matched = matchDeclaredTestCommand(root, in.Command, l.Config.Tests.Commands)
+			m, matched = matchDeclaredTestCommand(root, in.Command, l.Config.Tests.Commands, syntaxDir)
 		}
 	}
 	if !matched {
@@ -147,7 +151,7 @@ func cmdTestRunHook(codec harness.Codec, ev harness.Event, event, baseURL, dirOv
 	// deadline. One context serves them and the failing path's line.
 	ctx, cancel := testRunHookContext()
 	defer cancel()
-	diff, diffOK := fillTestRunRowKeys(ctx, &rec, root, in.SessionID, in.Command, m.Invocation)
+	diff, diffOK := fillTestRunRowKeys(ctx, &rec, root, in.SessionID, in.Command, m.Invocation, syntaxDir)
 	if res.Verdict != testrun.Fail {
 		return 0
 	}
@@ -773,8 +777,11 @@ func testRunRowKeys(r testRunRecord) map[string]string {
 // (testRunScope). A key whose read failed or ran past the deadline stays
 // empty. It returns the diff text for the failing path's reach, and whether
 // that text is a real read.
-func fillTestRunRowKeys(ctx context.Context, rec *testRunRecord, root, session, command, invocation string) (string, bool) {
-	rec.Scope = testRunScope(command, invocation)
+func fillTestRunRowKeys(ctx context.Context, rec *testRunRecord, root, session, command, invocation string, syntaxRoots ...string) (string, bool) {
+	if len(syntaxRoots) == 0 {
+		syntaxRoots = []string{root}
+	}
+	rec.Scope = testRunScope(command, invocation, syntaxRoots...)
 	if deadlinePassed(ctx) {
 		return "", false
 	}
@@ -845,9 +852,12 @@ func testRunValueFlag(flag string) bool {
 // nothing is lexed (a task or script invocation names its scope inside the
 // script). It reads the one command lexer, so a runner named inside a quoted
 // argument never reads as the invocation;.
-func testRunScope(command, invocation string) string {
+func testRunScope(command, invocation string, roots ...string) string {
+	if command == "" || invocation == "" {
+		return ""
+	}
 	want := strings.Fields(invocation)
-	segs, unreadable := lexShellSegments(command)
+	segs, unreadable := lexShellSegments(command, roots...)
 	if unreadable {
 		return "" // RO-4: an unreadable command has no lexed scope
 	}

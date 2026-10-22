@@ -126,7 +126,14 @@ func readoutRichLines(ctx context.Context, in harness.HookInput, dir string, c *
 	if ctx.Err() != nil {
 		return r
 	}
-	if line := readoutGuardLine(dir, c); line != "" {
+	// Declared-wrapper guard matching belongs to BE-8. Keep this guard's
+	// existing lexer view while the other readout seams unwrap declarations.
+	guardCommand := c
+	if in.Command != "" {
+		raw := shellcmd.ParseCommand(in.Command)
+		guardCommand = &raw
+	}
+	if line := readoutGuardLine(dir, guardCommand); line != "" {
 		r.lines = append(r.lines, line)
 		r.kinds = append(r.kinds, readoutRichGuardKind)
 	}

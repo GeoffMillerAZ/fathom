@@ -75,12 +75,12 @@ const maxBashWriteTargets = 5
 // command looks like it wrote SOMETHING, confident or not — the caller's
 // three-way branch (silent / confident paths / doubt) is
 // `!writeShaped` / `len(paths)>0` / `writeShaped && len(paths)==0`.
-func bashWriteTargets(cmd string) (paths []string, writeShaped bool) {
+func bashWriteTargets(cmd string, roots ...string) (paths []string, writeShaped bool) {
 	cmd = strings.TrimSpace(blankHeredocBodies(cmd))
 	if cmd == "" {
 		return nil, false
 	}
-	c := &bwCollector{seen: map[string]bool{}}
+	c := &bwCollector{seen: map[string]bool{}, roots: roots}
 	st := &bwState{cwdKnown: true}
 	scanBashWriteStatements(cmd, st, c)
 	if len(c.paths) > 0 {
@@ -109,6 +109,7 @@ type bwStackEntry struct {
 // write-shaped flag across however many statements and subshells a
 // command has.
 type bwCollector struct {
+	roots       []string
 	paths       []string
 	seen        map[string]bool
 	writeShaped bool
@@ -145,7 +146,31 @@ func scanBashWriteStatements(cmd string, st *bwState, c *bwCollector) {
 // cd/pushd/popd mutates st, anything else is scanned for the write shapes
 // bashWriteTargets recognizes, each target resolved against st.cwd.
 func processBashWriteStatement(stmt string, st *bwState, c *bwCollector) {
-	fields, unreadable := lexClauseFields(stmt)
+	parsed := parseShellCommand(stmt, c.roots...)
+	if parsed.Unreadable && strings.Contains(parsed.Reason, "wrapper") {
+		c.writeShaped = true // an unreadable declared script is doubt
+		return
+	}
+	wrapped := false
+	for _, p := range parsed.Pipelines {
+		for _, u := range p.Units {
+			if u.DeclaredScript {
+				wrapped = true
+				inner := *st
+				inner.stack = append([]bwStackEntry(nil), st.stack...)
+				if u.Cwd != "" {
+					applyBashCd(&inner, u.Cwd, true)
+				}
+				scanBashWriteStatements(u.Script, &inner, c)
+			}
+		}
+	}
+	if wrapped {
+		// Outer redirects and other pipeline commands act in the caller's cwd.
+		detectBashWritesInStatement(stmt, st, c)
+		return
+	}
+	fields, unreadable := lexClauseFields(stmt, c.roots...)
 	if unreadable {
 		// RO-4: the lexer cannot read this statement (the splitter hands
 		// over fragments of compounds and of `2>&1`, so unreadable alone is
@@ -614,8 +639,8 @@ func wordEnd(cmd, word string) int {
 // command as if they were its own. unreadable is true when the lexer could
 // not read s (RO-4); fields is then nil and each caller decides what that
 // means for itself (the bash-write detector reads it as doubt).
-func lexClauseFields(s string) (fields []string, unreadable bool) {
-	cmd := shellcmd.ParseCommand(s)
+func lexClauseFields(s string, roots ...string) (fields []string, unreadable bool) {
+	cmd := parseShellCommand(s, roots...)
 	if cmd.Unreadable {
 		return nil, true
 	}

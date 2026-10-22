@@ -19,7 +19,6 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/readout"
-	"github.com/geoffmilleraz/fathom/internal/shellcmd"
 )
 
 // readoutStdinMax bounds what explain reads from stdin.
@@ -122,7 +121,7 @@ func cmdReadoutExplain(args []string, stdin io.Reader, stdout, stderr io.Writer)
 		fmt.Fprintf(stderr, "error: readout explain: reading stdin: %v\n", err)
 		return 2
 	}
-	cmd := shellcmd.ParseCommand(fs.Arg(0))
+	cmd := parseShellCommand(fs.Arg(0)).Transparent()
 	ro := readout.Render(rs, readout.Input{Command: &cmd, Stdout: string(data), Mode: *mode})
 	ex := readoutExplain{
 		Rule: ro.Rule, Mode: ro.Mode, Stream: string(ro.Stream), Raw: ro.Raw, Reason: ro.Reason, Detail: ro.Detail,

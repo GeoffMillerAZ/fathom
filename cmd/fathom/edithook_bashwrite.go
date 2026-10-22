@@ -55,7 +55,7 @@ func cmdEditHookBashWrite(codec harness.Codec, hook harness.HookInput, url strin
 	}()
 	deadline := time.Now().Add(bashWriteTimeout) // one shared budget for every RPC this call makes, not a fresh one each
 	sessionID := hook.SessionID
-	paths, writeShaped := bashWriteTargets(hook.Command)
+	paths, writeShaped := bashWriteTargets(hook.Command, hook.Cwd)
 	if !writeShaped {
 		return 0 // a read-only or unrecognized command: no beat, no output — matches edit-hook's silence on a clean/irrelevant call
 	}

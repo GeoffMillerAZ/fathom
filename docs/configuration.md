@@ -218,6 +218,10 @@ an array of tables, and `tenancy.**` for every key under `[tenancy]`.
 | `receipts.repository_uri` | behaviour | a URI SARIF's versionControlProvenance names; fathom never derives one from a git remote (ADR-011) |
 | `risk.blast_radius_high_callers` | behaviour | a threshold (the review risk table) |
 | `risk.zone_interest_medium_rate` | behaviour | a threshold (the review risk table) |
+| `shell.wrappers[].command` | behaviour | declares command syntax without executing it; repository entries append to user entries |
+| `shell.wrappers[].cwd_arg` | behaviour | declares command syntax without executing it; repository entries append to user entries |
+| `shell.wrappers[].prefix` | behaviour | declares command syntax without executing it; repository entries append to user entries |
+| `shell.wrappers[].script_arg` | behaviour | declares command syntax without executing it; repository entries append to user entries |
 | `surface.pattern[].glob` | behaviour | a glob over the repository's files |
 | `surface.pattern[].kind` | behaviour | a label |
 | `surface.pattern[].regex` | behaviour | an RE2 pattern over the repository's files |
@@ -1992,3 +1996,43 @@ with `phase=post`. Over seven days, each channel must have
 `suppressed_bytes / (bytes + suppressed_bytes) >= 0.40` across these sessions,
 with zero first-touch suppressions and zero state errors that suppress output
 (CB-M2). Log loss or missing audit fields cannot establish those zeroes.
+
+## Command wrappers: `[shell] wrappers`
+
+Declare wrappers in user `~/.fathom/config.toml` or repository
+`.fathom/config.toml`. Repository entries append to the user's entries;
+an empty repository list keeps the user entries. The first matching declaration
+wins. Built-in prefixes are always transparent: `rtk <tool> args`, `nice`,
+`timeout <duration>`, `env VAR=value`, `command`, and `time` (also `sudo`,
+`exec`, and `nohup`). No command is executed to discover wrapper behavior.
+
+```toml
+[shell]
+wrappers = [
+  { prefix = "uv run" },
+  { prefix = "bundle exec" },
+  { command = "command-wrapper", script_arg = 2 },
+  { command = "directory-wrapper", script_arg = 2, cwd_arg = 1 },
+]
+```
+
+A prefix is a literal argv sequence; the remaining argv is the real command.
+A script wrapper's `script_arg` is 1-based **after the command name**:
+`command-wrapper label 'go test ./... && go build ./...'` has its script in
+argument 2. Both single and double quotes work when the resulting script is
+literal. A variable or command substitution in the script argument is unreadable;
+the lexer retains the reason and never guesses its value. At most two nested
+script wrappers are opened. Declarations describe local syntax, without reading a
+script file, running a wrapper, or fetching anything.
+
+Without `cwd_arg`, the wrapper uses the hook's cwd for run identity. When the
+wrapper's argument M is its working directory, set `cwd_arg = M`: relative values
+resolve from the hook's cwd, and nested relative directories compose. A missing
+or computed directory is unreadable. Declare this only when the wrapper actually
+runs there; the lexer cannot infer a directory chosen internally by a wrapper.
+
+The test-run matcher, readout classifier, gate preflight, Bash write detector and
+discovery observer share this lexer. Script lists keep their operators and pipe
+boundaries; readouts keep a script inside a pipe opaque when its output cannot be
+safely projected. The unwrapping API is available to command guards; guard matching
+is unchanged by these declarations.

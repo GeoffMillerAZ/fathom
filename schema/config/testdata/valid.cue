@@ -277,3 +277,10 @@ exampleReadouts: #Config & {
 
 // CB-1/CB-2: lossless hook context dedupe can be switched off.
 hookDedupeOff: #Config & {hooks: dedupe: false}
+
+// Declared shell wrappers extend user syntax additively at repository scope.
+exampleShellWrappers: #Config & {shell: wrappers: [
+	{prefix: "uv run"},
+	{command: "command-wrapper", script_arg: 2},
+	{command: "directory-wrapper", script_arg: 2, cwd_arg: 1},
+]}

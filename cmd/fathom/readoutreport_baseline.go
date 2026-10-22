@@ -26,7 +26,6 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/ask"
-	"github.com/geoffmilleraz/fathom/internal/shellcmd"
 	"github.com/geoffmilleraz/fathom/internal/testrun"
 	heartbeat "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/heartbeat"
 )
@@ -392,7 +391,7 @@ func blFollowerOf(b *replayBlock) *blFollower {
 		if json.Unmarshal(b.Input, &in) != nil || len(in.Command) > blMaxCmd {
 			return fl
 		}
-		c := shellcmd.ParseCommand(in.Command)
+		c := parseShellCommand(in.Command).Transparent()
 		fl.files = append(wholeFileRead(&c), sedReadFiles(&c)...)
 		segs, _ := lexShellSegments(in.Command)
 		for _, s := range segs {

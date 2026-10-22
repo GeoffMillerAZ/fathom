@@ -58,20 +58,23 @@ const declaredFileCap = 1 << 20
 // declaration in declaration order ([tests] commands, then the Taskfile,
 // the Makefile and package.json, each in name order), so the answer is
 // deterministic.
-func matchDeclaredTestCommand(root, command string, configured []string) (testCommandMatch, bool) {
+func matchDeclaredTestCommand(root, command string, configured []string, syntaxRoots ...string) (testCommandMatch, bool) {
 	if strings.TrimSpace(command) == "" {
 		return testCommandMatch{}, false
 	}
-	return matchDeclaredIn(declaredTestCommands(root, configured), command)
+	if len(syntaxRoots) == 0 {
+		syntaxRoots = []string{root}
+	}
+	return matchDeclaredIn(declaredTestCommands(root, configured), command, syntaxRoots...)
 }
 
 // matchDeclaredIn is matchDeclaredTestCommand over a declaration list
 // already read (readout replay reads each root's once).
-func matchDeclaredIn(declared []declaredTestCommand, command string) (testCommandMatch, bool) {
+func matchDeclaredIn(declared []declaredTestCommand, command string, roots ...string) (testCommandMatch, bool) {
 	if len(declared) == 0 || strings.TrimSpace(command) == "" {
 		return testCommandMatch{}, false
 	}
-	segs, unreadable := lexShellSegments(command)
+	segs, unreadable := lexShellSegments(command, roots...)
 	if unreadable {
 		return testCommandMatch{}, false // RO-4: a command the lexer cannot read matches nothing
 	}
@@ -170,7 +173,7 @@ func taskfileTestCommands(root string) []declaredTestCommand {
 	// A `task <name>` nested inside a command line is a reference too.
 	for tname, cmds := range bodies {
 		for _, c := range cmds {
-			segs, unreadable := lexShellSegments(c)
+			segs, unreadable := lexShellSegments(c, root)
 			if unreadable {
 				continue // RO-4: an unreadable line names no task reference
 			}
@@ -185,7 +188,7 @@ func taskfileTestCommands(root string) []declaredTestCommand {
 			}
 		}
 	}
-	return declaredFromGraph(name, "task ", bodies, refs)
+	return declaredFromGraph(name, "task ", bodies, refs, root)
 }
 
 // taskfileTaskShape returns a Taskfile task's command lines and the tasks
@@ -327,7 +330,7 @@ func makefileTestCommands(root string) []declaredTestCommand {
 				return strings.ToLower(v)
 			})
 			lines[i] = l
-			segs, unreadable := lexShellSegments(l)
+			segs, unreadable := lexShellSegments(l, root)
 			if unreadable {
 				continue // RO-4: an unreadable recipe line names no make reference
 			}
@@ -340,7 +343,7 @@ func makefileTestCommands(root string) []declaredTestCommand {
 			}
 		}
 	}
-	return declaredFromGraph(name, "make ", bodies, refs)
+	return declaredFromGraph(name, "make ", bodies, refs, root)
 }
 
 // packageJSONTestCommands reads package.json's scripts: the package-manager
@@ -360,7 +363,7 @@ func packageJSONTestCommands(root string) []declaredTestCommand {
 	refs := map[string][]string{}
 	for s, body := range doc.Scripts {
 		bodies[s] = []string{body}
-		segs, unreadable := lexShellSegments(body)
+		segs, unreadable := lexShellSegments(body, root)
 		if unreadable {
 			continue // RO-4: an unreadable script body names no script reference
 		}
@@ -371,7 +374,7 @@ func packageJSONTestCommands(root string) []declaredTestCommand {
 			}
 		}
 	}
-	tests := testNodes(bodies, refs)
+	tests := testNodes(bodies, refs, root)
 	var out []declaredTestCommand
 	for _, s := range tests {
 		src := name + " scripts." + s
@@ -383,7 +386,7 @@ func packageJSONTestCommands(root string) []declaredTestCommand {
 		}
 		out = append(out, declaredTestCommand{"yarn " + s, src}, declaredTestCommand{"pnpm " + s, src})
 	}
-	return append(out, runnerCommands(name+" scripts.", tests, bodies)...)
+	return append(out, runnerCommands(name+" scripts.", tests, bodies, root)...)
 }
 
 func isPackageManager(w string) bool {
@@ -396,21 +399,21 @@ func isPackageManager(w string) bool {
 
 // declaredFromGraph turns one file's named bodies and references into
 // declarations: prefix+name for every test node, then the runners.
-func declaredFromGraph(file, prefix string, bodies, refs map[string][]string) []declaredTestCommand {
-	tests := testNodes(bodies, refs)
+func declaredFromGraph(file, prefix string, bodies, refs map[string][]string, roots ...string) []declaredTestCommand {
+	tests := testNodes(bodies, refs, roots...)
 	out := make([]declaredTestCommand, 0, len(tests))
 	for _, t := range tests {
 		out = append(out, declaredTestCommand{Invocation: prefix + t, Source: file + ": " + prefix + t})
 	}
-	return append(out, runnerCommands(file+": "+prefix, tests, bodies)...)
+	return append(out, runnerCommands(file+": "+prefix, tests, bodies, roots...)...)
 }
 
 // testNodes returns, sorted, every name that is test-named, whose body
 // invokes a test runner, or that references a test node (to a fixpoint).
-func testNodes(bodies, refs map[string][]string) []string {
+func testNodes(bodies, refs map[string][]string, roots ...string) []string {
 	is := map[string]bool{}
 	for n, lines := range bodies {
-		if testNamed(n) || len(runnersIn(lines)) > 0 {
+		if testNamed(n) || len(runnersIn(lines, roots...)) > 0 {
 			is[n] = true
 		}
 	}
@@ -438,11 +441,11 @@ func testNodes(bodies, refs map[string][]string) []string {
 
 // runnerCommands declares every test runner the test nodes' own bodies
 // invoke, sourced to the first node (in name order) that invokes it.
-func runnerCommands(srcPrefix string, tests []string, bodies map[string][]string) []declaredTestCommand {
+func runnerCommands(srcPrefix string, tests []string, bodies map[string][]string, roots ...string) []declaredTestCommand {
 	var out []declaredTestCommand
 	seen := map[string]bool{}
 	for _, t := range tests {
-		for _, r := range runnersIn(bodies[t]) {
+		for _, r := range runnersIn(bodies[t], roots...) {
 			if !seen[r] {
 				seen[r] = true
 				out = append(out, declaredTestCommand{Invocation: r, Source: srcPrefix + t + " runs " + r})
@@ -478,11 +481,11 @@ var testRunners = [][]string{
 
 // runnersIn returns the runner invocations lines contain, in first-seen
 // order.
-func runnersIn(lines []string) []string {
+func runnersIn(lines []string, roots ...string) []string {
 	var out []string
 	seen := map[string]bool{}
 	for _, l := range lines {
-		segs, unreadable := lexShellSegments(l)
+		segs, unreadable := lexShellSegments(l, roots...)
 		if unreadable {
 			continue // RO-4: an unreadable line names no runner
 		}
@@ -539,8 +542,8 @@ type shellSeg struct {
 // never reads as an invocation. unreadable is true when the lexer could not
 // read the line (RO-4); segs is then nil and each caller decides what that
 // means for itself (the test-run matcher matches nothing).
-func lexShellSegments(line string) (segs []shellSeg, unreadable bool) {
-	cmd := shellcmd.ParseCommand(line)
+func lexShellSegments(line string, roots ...string) (segs []shellSeg, unreadable bool) {
+	cmd := parseShellCommand(line, roots...)
 	if cmd.Unreadable {
 		return nil, true
 	}
@@ -549,6 +552,10 @@ func lexShellSegments(line string) (segs []shellSeg, unreadable bool) {
 }
 
 func collectShellSegs(c *shellcmd.Command, out *[]shellSeg) {
+	collectPipedShellSegs(c, out, false)
+}
+
+func collectPipedShellSegs(c *shellcmd.Command, out *[]shellSeg, piped bool) {
 	if c == nil {
 		return
 	}
@@ -556,9 +563,9 @@ func collectShellSegs(c *shellcmd.Command, out *[]shellSeg) {
 		for i := range p.Units {
 			u := &p.Units[i]
 			if u.Kind == shellcmd.KindSimple && len(u.Words) > 0 {
-				*out = append(*out, shellSeg{words: u.Args(), pipedOut: i < len(p.Units)-1})
+				*out = append(*out, shellSeg{words: u.Args(), pipedOut: piped || i < len(p.Units)-1})
 			}
-			collectShellSegs(u.Body, out)
+			collectPipedShellSegs(u.Body, out, piped || i < len(p.Units)-1)
 		}
 	}
 }
