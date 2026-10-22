@@ -168,6 +168,14 @@ func cmdEditHookBashWrite(codec harness.Codec, hook harness.HookInput, url strin
 	m := mergeObligationsAcrossFiles(url, svc, files, deadline, func(f string) {
 		emitBeat("edit-hook", "error", firingMetaArm(map[string]string{"phase": "post-bash", "target": f}, sessionID, "", armOff))
 	})
+	if h := activeAdviceHealth; h != nil {
+		h.uncompiled = m.readiness.uncompiled
+	}
+	if m.resolved == m.total && m.resolved > 0 && !m.readiness.ready {
+		if !channelReady(harness.CapObligationsPostShell, readinessInput{root: projDir, harnessID: codec.ID(), now: nowFunc(), rules: m.rules, instructionsKnown: true, uncompiled: m.readiness.uncompiled}, "edit-hook", sessionID) {
+			return 0
+		}
+	}
 	if len(m.rules) == 0 {
 		if m.resolved == 0 && m.total > 0 {
 			return silent(silenceDaemonError) // every fetch failed or ran out of time; each failure has its error beat

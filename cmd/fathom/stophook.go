@@ -90,6 +90,11 @@ func cmdStopHook(args []string, stdout, stderr io.Writer) int {
 	}
 	rpcSession = hook.SessionID // O1151: the daemon sees this hook session
 	projDir := stopHookProjDir(codec, hook)
+	if !assistiveChannelsDisabled() {
+		var finishHealth func()
+		stdout, finishHealth = beginAdviceHealth(projDir, codec.ID(), harness.CapStopVerify, stdout)
+		defer finishHealth()
+	}
 	if hook.ReEntrant {
 		// RO-39 prints at most once per stop chain (RO-V1: Stop's context
 		// re-opens the turn): a repeat is logged, never printed.

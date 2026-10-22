@@ -39,6 +39,7 @@ var beatLogRotateBytes int64 = 64 << 20
 // ALL failures are swallowed: hooks never block, and instrumentation must
 // never be the reason a hook breaks its silent-exit contract.
 func emitBeat(channel, kind string, meta map[string]string) {
+	noteAdviceSkip(meta)
 	path := beatLogPath()
 	if path == "" {
 		return

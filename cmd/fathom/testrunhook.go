@@ -136,6 +136,11 @@ func cmdTestRunHook(codec harness.Codec, ev harness.Event, event, baseURL, dirOv
 	if !capabilityOnAt(root, "test-run-hook", loaded.Config.Hooks.TestRun) {
 		return 0
 	}
+	stdout, finishHealth := beginAdviceHealth(root, codec.ID(), harness.CapTestRunLine, stdout)
+	defer finishHealth()
+	if !channelReady(harness.CapTestRunLine, readinessInput{root: root, harnessID: codec.ID(), now: nowFunc()}, testRunChannel, in.SessionID) {
+		return 0
+	}
 	rpcOrigin = testRunChannel
 	rpcSession = in.SessionID // O1151: the daemon sees this hook session
 

@@ -99,6 +99,8 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 	if projDir == "" {
 		projDir, _ = os.Getwd()
 	}
+	stdout, finishHealth := beginAdviceHealth(projDir, codec.ID(), harness.CapPrime, stdout)
+	defer finishHealth()
 
 	ctx, primerIdentity := sessionContext(*url, projDir)
 	// RT-7 (§11.1): a hung daemon spends the whole deadline in the line
@@ -170,7 +172,7 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 			if primerIdentity == nil {
 				primerIdentity = stampIdentity
 			}
-			ctx, briefBytes, line = composePrimer(ctx, projDir, time.Now(), attentionLedgerRoots(projDir, primerIdentity))
+			ctx, briefBytes, line = composePrimer(ctx, projDir, nowFunc(), attentionLedgerRoots(projDir, primerIdentity), inactiveFeaturesLine(projDir, codec.ID(), nowFunc()))
 			attentionBytes = len(line)
 			intentLine = line != ""
 			if intentLine {
@@ -241,7 +243,7 @@ const primerOverflowNote = " …[session primer truncated at its byte cap]"
 //
 // roots are the registered service roots the attention line reads the
 // intent ledger under (PE-25; attentionLedgerRoots).
-func composePrimer(identity, projDir string, now time.Time, roots ledgerroots.Roots) (primer string, briefBytes int, attention string) {
+func composePrimer(identity, projDir string, now time.Time, roots ledgerroots.Roots, featureLines ...string) (primer string, briefBytes int, attention string) {
 	items := loadThreadItems(threadsPath())
 	var mapLines []string
 	if threadsHoldMaps() {
@@ -271,6 +273,9 @@ func composePrimer(identity, projDir string, now time.Time, roots ledgerroots.Ro
 		if line != "" {
 			out += "\n" + line
 		}
+		if len(featureLines) > 0 && featureLines[0] != "" {
+			out += "\n" + featureLines[0]
+		}
 		return out
 	}
 
@@ -282,9 +287,7 @@ func composePrimer(identity, projDir string, now time.Time, roots ledgerroots.Ro
 			lines = lines[:len(lines)-1]
 			dropped++
 			trimmed := strings.Join(lines, "\n")
-			if trimmed != "" {
-				trimmed += fmt.Sprintf("\n… %d brief line(s) cut to fit the %d B session primer — `fathom thread brief` for all of them", dropped, sessionPrimerBudget)
-			}
+			trimmed = strings.TrimPrefix(trimmed+fmt.Sprintf("\n… %d brief line(s) cut to fit the %d B session primer — `fathom thread brief` for all of them", dropped, sessionPrimerBudget), "\n")
 			brief = trimmed
 			primer = join(brief)
 		}

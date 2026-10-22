@@ -75,6 +75,17 @@ type outlineSymbol struct {
 // emitReadOutlineHint prints the hint as PreToolUse context when there is
 // one. It always returns 0.
 func emitReadOutlineHint(codec harness.Codec, raw []byte, stdout io.Writer) int {
+	if in, err := codec.DecodeInput(harness.EventPreTool, raw); err == nil {
+		root := eventProjectDir(codec, in)
+		if hooksKeyOn(root, hookOptInReadOutlineHint) {
+			var finishHealth func()
+			stdout, finishHealth = beginAdviceHealth(root, codec.ID(), harness.CapReadOutlineHint, stdout)
+			defer finishHealth()
+			if !channelReady(harness.CapReadOutlineHint, readinessInput{root: root, harnessID: codec.ID(), now: nowFunc()}, readOutlineHintChannel, in.SessionID) {
+				return 0
+			}
+		}
+	}
 	line := readOutlineHint(codec, raw)
 	if line == "" {
 		return 0

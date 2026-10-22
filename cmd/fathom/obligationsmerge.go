@@ -34,6 +34,7 @@ const mergeObligationsConcurrency = 4
 // mergedObligations is the union of every resolved file's obligations,
 // already capped and ordered for rendering.
 type mergedObligations struct {
+	readiness readinessResult
 	rules     []semantic.Obligation
 	displaced int
 	stale     bool
@@ -69,6 +70,7 @@ type mergedObligations struct {
 // outright for time.
 func mergeObligationsAcrossFiles(url, service string, files []string, deadline time.Time, onError func(file string)) mergedObligations {
 	type fileResult struct {
+		readiness  readinessResult
 		obl        semantic.Obligations
 		indexStale bool
 		ok         bool
@@ -91,8 +93,9 @@ func mergeObligationsAcrossFiles(url, service string, files []string, deadline t
 			if remaining <= 0 {
 				return // deadline passed while queued behind the concurrency cap
 			}
-			obl, indexStale, _, ok, _ := fetchObligations(url, service, f, 0, remaining, "")
-			results[i] = fileResult{obl: obl, indexStale: indexStale, ok: ok, attempted: true}
+			ready := readinessResult{ready: true}
+			obl, indexStale, _, ok, _ := fetchObligations(url, service, f, 0, remaining, "", func(r readinessResult) { ready = r })
+			results[i] = fileResult{obl: obl, indexStale: indexStale, ok: ok, attempted: true, readiness: ready}
 		}(i, f)
 	}
 	wg.Wait()
@@ -112,6 +115,8 @@ func mergeObligationsAcrossFiles(url, service string, files []string, deadline t
 			continue
 		}
 		m.resolved++
+		m.readiness.ready = m.readiness.ready || r.readiness.ready
+		m.readiness.uncompiled = max(m.readiness.uncompiled, r.readiness.uncompiled)
 		if len(r.obl.Rules) > 0 {
 			m.namedFiles = append(m.namedFiles, files[i])
 		}

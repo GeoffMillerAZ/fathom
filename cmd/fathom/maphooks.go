@@ -36,6 +36,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/explmap"
+	"github.com/geoffmilleraz/fathom/internal/harness"
 )
 
 // mapsPointerKey is the threadItem.Pointers key that names maps: a thread
@@ -161,6 +162,13 @@ const (
 // still carries one id (XM-3). "" when the parent filed nothing.
 func subagentMapLine(root, parentSessionID, agentID string, now time.Time) string {
 	if parentSessionID == "" || root == "" {
+		return ""
+	}
+	harnessID := harness.ClaudeCode
+	if h := activeAdviceHealth; h != nil {
+		harnessID = h.id
+	}
+	if !channelReady(harness.CapSubagentPrime, readinessInput{root: root, harnessID: harnessID, now: now}, "subagent-hook", parentSessionID) {
 		return ""
 	}
 	set, alive := loadAliveMaps(root, now)

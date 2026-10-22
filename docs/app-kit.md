@@ -1147,3 +1147,10 @@ cwd-changed primer dedupe, measured in
 Ownership stays with fathom's hook lifecycle, config and byte accounting; no
 kit rendering API, theme, adoption selection or dependency pin changed.
 Synthetic hook tests cover the originating app; no second-app propagation is claimed.
+
+AD-READY contribution disposition: **no-candidate**. Hook readiness and the capped
+SessionStart flag are app-owned protocol text, so they retain the existing hook
+envelopes. Discovery used `cli diagnostic output` / `cli`, selecting `cli.output`
+at catalog revision `3ee2c1f02a6199c2e59361171c7f1fdb957a7a70f64e875a73969608314d7318`;
+its terminal status table does not apply to injected context. No kit pin or runtime
+changes. Proof: the readiness, health and unchanged whole-primer cap tests.

@@ -113,6 +113,21 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	}
 	sessionID := hook.SessionID
 	rpcSession = sessionID // O1151: the daemon sees this hook session
+	if !armOff {
+		cap := harness.CapObligationsPostEdit
+		if *pre {
+			cap = harness.CapGuardPreEdit
+		}
+		if hook.Tool == harness.ToolShell {
+			cap = harness.CapObligationsPostShell
+			if *pre {
+				cap = harness.CapGuardPreShell
+			}
+		}
+		var finishHealth func()
+		stdout, finishHealth = beginAdviceHealth(resolveProjDirFor(codec.ID(), hook.Cwd), codec.ID(), cap, stdout)
+		defer finishHealth()
+	}
 
 	// PR-3 (ADR-057 decision 4): a git commit seen by PostToolUse(Bash) is
 	// checked for lost pins before the observe-only exit below swallows the
@@ -398,13 +413,26 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 		// EW-76 (G11): the call runs to the hook's own deadline, less
 		// postEditReserve for the rendering after it, not a fixed 2 s
 		// under it (2 s outside a hook).
-		o, stale, sr, ok, ferr := fetchObligations(url, name, rel, 0, hookCallTimeout(postEditReserve, 2*time.Second), semantic.ObligationLayerAll)
+		readiness := readinessResult{ready: true}
+		o, stale, sr, ok, ferr := fetchObligations(url, name, rel, 0, hookCallTimeout(postEditReserve, 2*time.Second), semantic.ObligationLayerAll, func(r readinessResult) { readiness = r })
 		if !ok {
 			emitBeat("edit-hook", "error", firingMeta(map[string]string{"phase": "post", "reason": truncateBytes(ferr.Error(), reasonMetaMaxBytes)}, sessionID, filePath))
 			// GL-24: the silent answer names its reason (a call that ran
 			// out of time counts as daemon-error, as on the bash-write path).
 			emitBeat("edit-hook", "answered", firingMeta(withDestination(silentAnswerMeta(map[string]string{"phase": "post"}, silenceDaemonError), projDir, filePath), sessionID, filePath))
 			return "", postEditMeta{}, false // daemon down, error or out of time → silent, named
+		}
+		if h := activeAdviceHealth; h != nil {
+			h.uncompiled = readiness.uncompiled
+		}
+		if !readiness.ready && (cand.verified || len(o.Rules) > 0 || o.Service == name) {
+			cap, id := harness.CapObligationsPostEdit, harness.ClaudeCode
+			if h := activeAdviceHealth; h != nil {
+				cap, id = h.cap, h.id
+			}
+			if !channelReady(cap, readinessInput{root: projDir, harnessID: id, now: nowFunc(), rules: o.Rules, instructionsKnown: true, uncompiled: readiness.uncompiled}, "edit-hook", sessionID) {
+				return "", postEditMeta{}, false
+			}
 		}
 		// SR-27 (surface reckoning F-35): specRefs must always come from
 		// whichever candidate's call is CURRENTLY bound to svcName/
@@ -815,7 +843,7 @@ func resolveSymlinks(p string) string {
 // flag, its additive spec_refs section (SR-27, surface reckoning F-35 —
 // nil when the file cites nothing or the call was root-scope; never a
 // separate RPC), an ok flag, and an error.
-func fetchObligations(baseURL, service, file string, maxRules int, timeout time.Duration, layer semantic.ObligationLayerFilter) (semantic.Obligations, bool, map[string][]specRefLoc, bool, error) {
+func fetchObligations(baseURL, service, file string, maxRules int, timeout time.Duration, layer semantic.ObligationLayerFilter, checks ...func(readinessResult)) (semantic.Obligations, bool, map[string][]specRefLoc, bool, error) {
 	args := map[string]any{
 		"service": service,
 		"file":    file,
@@ -882,6 +910,12 @@ func fetchObligations(baseURL, service, file string, maxRules int, timeout time.
 		DisplacedModule     int                   `json:"displaced_module"`
 		ModuleNotes         []semantic.ModuleNote `json:"module_notes"`
 		CoverageSkipped     string                `json:"coverage_skipped"`
+		LayerCoverage       *struct {
+			SectionsTotal    *int     `json:"sections_total"`
+			SectionsCompiled *int     `json:"sections_compiled"`
+			Status           string   `json:"status"`
+			UnreadCorpus     []string `json:"unread_corpus"`
+		} `json:"layer_coverage"`
 		// SpecRefs (SR-27, surface reckoning F-35): the retired spec_refs
 		// tool's one real consumer, this hook's OP-4 spec-line block, reads
 		// it straight off THIS decode now — never a second RPC.
@@ -889,6 +923,16 @@ func fetchObligations(baseURL, service, file string, maxRules int, timeout time.
 	}
 	if err := json.Unmarshal(inner, &payload); err != nil {
 		return semantic.Obligations{}, false, nil, false, fmt.Errorf("decode obligations payload: %w", err)
+	}
+	if len(checks) > 0 {
+		in := readinessInput{rules: payload.Rules}
+		if cov := payload.LayerCoverage; cov != nil && cov.SectionsCompiled != nil && cov.SectionsTotal != nil && cov.Status == "" {
+			in.instructionsKnown = *cov.SectionsCompiled == 0 && len(cov.UnreadCorpus) == 0 && payload.CoverageSkipped == ""
+			in.uncompiled = max(0, *cov.SectionsTotal-*cov.SectionsCompiled)
+		}
+		for _, check := range checks {
+			check(readinessInstructions(in))
+		}
 	}
 
 	obl := semantic.Obligations{
