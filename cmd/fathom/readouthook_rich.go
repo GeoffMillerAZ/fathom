@@ -247,6 +247,7 @@ func readoutCompileLine(ctx context.Context, in harness.HookInput, dir string, c
 
 var compileReadoutHeader = regexp.MustCompile(`^# \S+(?: \[.*\])?$`)
 var compileReadoutDiagnostic = regexp.MustCompile(`^(?:vet: )?([^\s:][^:]*\.go):\d+:(?:(\d+):)? (.+)$`)
+var compileReadoutLinterSuffix = regexp.MustCompile(` \([A-Za-z][A-Za-z0-9_-]*\)$`)
 
 // compileReadoutText keeps diagnostics attributable to build or vet. A
 // mixed command needs a package header; a head/tail-cut compiler output
@@ -268,6 +269,11 @@ func compileReadoutText(c *shellcmd.Command, text string) string {
 			continue
 		}
 		m := compileReadoutDiagnostic.FindStringSubmatch(line)
+		if strings.TrimSpace(line) == "" || (mixed && m != nil && compileReadoutLinterSuffix.MatchString(m[3])) {
+			header = false
+			lines[i] = ""
+			continue
+		}
 		keep := m != nil
 		if keep {
 			for _, part := range strings.Split(strings.TrimPrefix(filepath.ToSlash(m[1]), "./"), "/") {
