@@ -15,16 +15,31 @@ func checkDuplicateHookRegistration(root, label string, parents ...context.Conte
 		return doctorCheck{Name: name, Status: doctorSkipped, Reason: "unknown harness"}
 	}
 	specs := hookSpecsFor(d.ID, hookOptInKeys()...)
-	present, notes, _, _ := harnessHookEntriesByScope(root, d, specs, parents...)
+	specs = slices.DeleteFunc(specs, func(s hookSpec) bool {
+		for _, binding := range d.Hooks {
+			if binding.Harness == s.event && binding.Matcher == s.matcher && binding.Marker == s.marker {
+				return binding.Vehicle == harness.VehicleHookSilent
+			}
+		}
+		return true
+	})
+	present, notes, _, _ := harnessHookEntriesByScopeMode(root, d, specs, true, parents...)
 	var duplicated []string
 	for _, s := range specs {
-		var user, project bool
-		for _, scope := range present[hookSpecKeyOf(s)] {
-			user = user || strings.HasPrefix(scope, "user ")
-			project = project || strings.HasPrefix(scope, "project ") || strings.HasPrefix(scope, "project-local ")
+		user, project := map[string]bool{}, map[string]bool{}
+		for _, entry := range present[hookSpecKeyOf(s)] {
+			scope, command, _ := strings.Cut(entry, "\x00")
+			if strings.HasPrefix(scope, "user ") {
+				user[command] = true
+			}
+			if strings.HasPrefix(scope, "project ") || strings.HasPrefix(scope, "project-local ") {
+				project[command] = true
+			}
 		}
-		if user && project {
-			duplicated = append(duplicated, s.event+" ("+s.matcher+", "+s.marker+")")
+		for command := range user {
+			if project[command] {
+				duplicated = append(duplicated, s.event+" ("+s.matcher+", "+command+")")
+			}
 		}
 	}
 	if len(duplicated) > 0 {

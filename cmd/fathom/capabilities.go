@@ -237,6 +237,12 @@ func cmdCapabilitiesSet(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 		fmt.Fprintf(stdout, "%s: %s (%s scope) — written to %s\n", id, onOff(on), *scope, path)
+		if on {
+			switch id {
+			case "readouts", "claim_check", "read_outline_hint":
+				fmt.Fprintln(stdout, "run `fathom init --hooks` to register it")
+			}
+		}
 		return 0
 	}
 

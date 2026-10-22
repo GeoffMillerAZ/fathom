@@ -118,7 +118,7 @@ func setHookSeam(root, scope, id string, on bool) (string, error) {
 		table, key = "readouts", "mode"
 		value = `"off"`
 		if on {
-			value = `"lean"`
+			value = `"rich"`
 		}
 	}
 	lines := strings.Split(string(b), "\n")
