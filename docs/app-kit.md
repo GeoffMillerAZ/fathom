@@ -1,5 +1,10 @@
 # App-kit adoption: evidence workspace
 
+CLI contribution review (2026-10-22, GDEV-41..43): no candidate. Skill ownership,
+adaptation diagnostics and init user-write previews belong to fathom's application
+policy; they use its existing CLI output vocabulary. `search_capabilities` query
+`cli output flags configuration` returned no items at kit revision `3ee2c1f`.
+
 Consumer [intent](intent/README.md), [product context](../PRODUCT.md) and the
 [UI doctrine](../cmd/fathom/AGENTS.md) govern this selection. It executes existing
 architecture; no metric model, daemon behavior or future has been promoted.

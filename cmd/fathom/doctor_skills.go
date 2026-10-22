@@ -52,6 +52,7 @@ func checkAgentsSkills(root, harnessLabel string) doctorCheck {
 	}
 
 	var missing, stale, notOwned []string
+	var adapted, comparisons []string
 	current := 0
 	for _, skillName := range skillsdist.Names {
 		want, err := renderSkill(target, skillName)
@@ -60,6 +61,15 @@ func checkAgentsSkills(root, harnessLabel string) doctorCheck {
 		}
 		dest := skillDest(root, "", target, skillName)
 		got, err := os.ReadFile(dest)
+		if err == nil {
+			if version := adaptedSkillVersion(got, skillName); version != "" {
+				adapted = append(adapted, skillAdaptationNote(skillName, version))
+				if version != pluginVersion {
+					comparisons = append(comparisons, skillAdaptationDiff(dest, skillName))
+				}
+				continue
+			}
+		}
 		switch {
 		case err != nil:
 			missing = append(missing, skillName)
@@ -92,6 +102,21 @@ func checkAgentsSkills(root, harnessLabel string) doctorCheck {
 		c = doctorCheck{Name: name, Status: doctorFail, Reason: strings.Join(parts, "; "), Remedy: remedy}
 	default:
 		c = doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("all %d shipped skills current in %s for %s", current, dir, harnessLabel)}
+		if len(adapted) > 0 {
+			c.Reason = fmt.Sprintf("%d shipped skills current in %s for %s", current, dir, harnessLabel)
+		}
+		if len(comparisons) > 0 {
+			c.Status = doctorWarn
+		}
+	}
+	if len(adapted) > 0 {
+		c.Reason += "; " + strings.Join(adapted, "; ")
+	}
+	if len(comparisons) > 0 {
+		if c.Remedy != "" {
+			c.Remedy += "; "
+		}
+		c.Remedy += strings.Join(comparisons, "; ")
 	}
 	c.Reason += linkNote
 	if d, ok := harness.Lookup(doctorHarnessID(harnessLabel)); ok && !d.Skills.Verified {
