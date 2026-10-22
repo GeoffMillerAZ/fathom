@@ -24,7 +24,7 @@ type Step int
 
 const (
 	StepNothing      Step = iota // nothing declared: the count read is the whole cost
-	StepCompile                  // declarations or watermark moved: re-derive the layer
+	StepCompile                  // declarations or watermark moved: re-derive, then sweep existing claims
 	StepSweep                    // compiled at this watermark: re-check what exists
 	StepSweepSkipped             // compiled at this watermark, and the ingest read no file and picked up no run
 )
@@ -46,7 +46,10 @@ type Outcome struct {
 // repoDir is the working tree the reach check runs `git diff` against
 // (CV-5, design doc §1.1, O114), the root the caller is ingesting from.
 //
-// sweep gates the sweep step. It is false for an ingest that read no file
+// A compile preserves existing test-file citations and always sweeps them
+// afterward, so changed declarations or a changed watermark cannot hide a
+// moved or vanished test. sweep gates only the already-compiled step.
+// It is false for an ingest that read no file
 // and picked up no new test run, where nothing a sweep checks (a test or
 // reached symbol moved or gone, a new attested run) can have changed; the
 // Outcome then says StepSweepSkipped. Outcome.Step is set before the step
@@ -71,9 +74,21 @@ func AfterIngest(ctx context.Context, st store.Store, service, watermark, repoDi
 		}
 		return out, nil
 	}
-	out.Report, err = CompileCertifications(ctx, st, service, watermark, now, repoDir, ExecGit)
+	previous, err := st.ClaimsForService(ctx, service, Layer)
+	if err != nil {
+		return out, fmt.Errorf("compile citations: %w", err)
+	}
+	out.Report, err = compileCertifications(ctx, st, service, watermark, now, repoDir, ExecGitContext(ctx), previous)
 	if err != nil {
 		return out, fmt.Errorf("compile: %w", err)
+	}
+	if len(previous) > 0 {
+		report, err := SweepCertifications(ctx, st, service, repoDir, ExecGitContext(ctx))
+		if err != nil {
+			return out, fmt.Errorf("sweep after compile: %w", err)
+		}
+		out.Report.Skipped = append(out.Report.Skipped, report.Skipped...)
+		sort.Strings(out.Report.Skipped)
 	}
 	return out, nil
 }

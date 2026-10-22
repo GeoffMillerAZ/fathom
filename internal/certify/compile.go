@@ -40,6 +40,9 @@ type declaredEntry struct {
 	Kind          string
 	TargetID      string
 	Strength      string
+	// TestFile preserves an existing claim's citation during an ingest
+	// compile, so the following sweep can still detect a moved test.
+	TestFile string
 	// Suite/Class/Component are best-effort provenance (design doc §3's
 	// meta.suite/meta.class) — set only when the entry came from a
 	// suite-level declaration, or (for a marker-based entry) recovered
@@ -92,6 +95,10 @@ type Meta struct {
 // GitRunner rather than CompileCertifications silently trusting a path it
 // was never told to trust.
 func CompileCertifications(ctx context.Context, st store.Store, service, watermark string, now time.Time, repoDir string, git GitRunner) (Report, error) {
+	return compileCertifications(ctx, st, service, watermark, now, repoDir, git, nil)
+}
+
+func compileCertifications(ctx context.Context, st store.Store, service, watermark string, now time.Time, repoDir string, git GitRunner, previous []core.SemanticClaim) (Report, error) {
 	var report Report
 
 	decls, err := st.CertifyDeclarationsForService(ctx, service)
@@ -168,10 +175,18 @@ func CompileCertifications(ctx context.Context, st store.Store, service, waterma
 	g := callgraph.Build(nodes)
 	callgraph.AddTypedEdges(g, edges)
 
+	testFiles := make(map[string]string, len(previous))
+	for _, c := range previous {
+		var m Meta
+		if err := json.Unmarshal(c.Meta, &m); err == nil {
+			testFiles[c.ClaimID] = m.TestFile
+		}
+	}
 	targetCache := make(map[string]Target)
 	var claims []core.SemanticClaim
 	for _, e := range entries {
 		targetKey := e.Kind + ":" + e.TargetID
+		e.TestFile = testFiles[core.ClaimID(Layer, Kind, targetKey, e.TestSymbolKey)]
 		target, ok := targetCache[targetKey]
 		if !ok {
 			target, err = ResolveTarget(ctx, st, service, e.Kind, e.TargetID)
@@ -315,10 +330,14 @@ func evaluateCertificate(ctx context.Context, st store.Store, service, watermark
 		rule += " (" + reason + ")"
 	}
 
+	testFile := e.TestFile
+	if testFile == "" {
+		testFile = testNode.FilePath
+	}
 	m := Meta{
 		Test: testBareName(testNode.Name), Suite: suite, Class: class, Strength: strength, State: string(state),
 		RunDigest: runDigest, Attempts: attempts,
-		TestSymbolKey: e.TestSymbolKey, TargetKind: e.Kind, TargetID: e.TargetID, TestFile: testNode.FilePath,
+		TestSymbolKey: e.TestSymbolKey, TargetKind: e.Kind, TargetID: e.TargetID, TestFile: testFile,
 	}
 	_ = component // reserved for a future per-component gap report; not yet rendered
 	metaJSON, err := json.Marshal(m)
