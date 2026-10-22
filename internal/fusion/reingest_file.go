@@ -264,8 +264,8 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 		return ReingestReport{}, fmt.Errorf("fusion: ReingestFile extract %q: %w", relFile, extractErr)
 	}
 	// Editing an existing C# file does not change its assembly folder. Keep
-	// its derived ownership and any predefined assembly anchored here. A
-	// metadata edit is reconciled across files by the next full ingest.
+	// its derived ownership. Metadata declarations use the shared builder
+	// and name the full ingest required to recompute cross-file claims.
 	var unityFacts []core.Observation
 	if ext == ".cs" {
 		if fis, ok := st.(store.FileImportsStore); ok {

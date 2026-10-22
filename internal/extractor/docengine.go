@@ -349,14 +349,15 @@ func ParseDocSpec(b []byte) (DocSpec, error) {
 // DocExtractor is the document-path engine for one spec. It implements
 // Extractor; ExtractDoc also returns the cross-file references.
 type DocExtractor struct {
-	spec     DocSpec
-	entities []compiledEntity
-	refs     []compiledRef
-	cross    []compiledCross
-	labels   []compiledLabels
-	matchers []compiledMatchers
-	facts    []compiledFacts
-	sniff    *regexp.Regexp // detect.content_sniff, nil when the spec has none
+	unityMetadata bool
+	spec          DocSpec
+	entities      []compiledEntity
+	refs          []compiledRef
+	cross         []compiledCross
+	labels        []compiledLabels
+	matchers      []compiledMatchers
+	facts         []compiledFacts
+	sniff         *regexp.Regexp // detect.content_sniff, nil when the spec has none
 	// sniffLits is a set of literals one of which every match of sniff contains (LB-F209),
 	// nil when the pattern promises none.
 	sniffLits []string
@@ -995,6 +996,9 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 		return a.Raw < b.Raw
 	})
 	sortUnresolved(res.Unresolved)
+	if x.unityMetadata {
+		res.Nodes = unityMetadataNodes(res.Nodes, relPath, src)
+	}
 	sortObsData(&res)
 	return res, nil
 }

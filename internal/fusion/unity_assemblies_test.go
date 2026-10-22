@@ -97,6 +97,28 @@ func assertUnityOwner(t *testing.T, st *store.MemoryStore, file, assembly, scope
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Predefined ownership without an anchor is a claim only, with no node
+	// and no edge. A declared/anchored assembly must have a real target node.
+	if strings.HasPrefix(assembly, "Assembly-CSharp") {
+		obs, err := st.QueryObservations(context.Background(), "unity-fixture", "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defined := false
+		for _, fact := range obs {
+			if fact.SourceKind == "UnityAssemblyDefinition" && fact.Symbol == assembly {
+				defined = true
+			}
+		}
+		if !defined {
+			for _, e := range edges {
+				if e.FromSymbol == o.ToSymbolNode().Key() {
+					t.Fatalf("unanchored predefined edge: %+v", e)
+				}
+			}
+			return
+		}
+	}
 	for _, e := range edges {
 		if e.FromFile == file && e.FromSymbol == o.ToSymbolNode().Key() && e.Kind == core.EdgeFileResolved && strings.HasSuffix(e.ToSymbol, "."+assembly) {
 			return

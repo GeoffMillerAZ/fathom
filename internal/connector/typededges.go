@@ -201,7 +201,7 @@ var typedEdgeProducers = map[string]string{
 	"msbuild": "syntax",
 	// Unity assembly ownership is derived file resolution, not a C# compiler
 	// producer. C# keeps scip-dotnet; assembly declarations have this baseline.
-	"unity-asmdef": "syntax",
+	"unity-asmdef": "file",
 
 	// Envoy, Kong and Traefik configuration (LB-Q-envoy, LB-Q-kong,
 	// LB-Q-traefik): a route's cluster or service, a listener's route
