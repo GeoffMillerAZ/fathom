@@ -73,10 +73,6 @@ exec-noctx	cmd/fathom/daemon.go	one-shot CLI verb with no request context; the g
 exec-noctx	cmd/fathom/daemon.go	one-shot CLI verb with no request context; the git/child call ends with the process
 exec-noctx	cmd/fathom/daemon_census.go	one-shot CLI verb with no request context; the git/child call ends with the process
 exec-noctx	cmd/fathom/daemon_census.go	one-shot CLI verb with no request context; the git/child call ends with the process
-exec-noctx	cmd/fathom/doctor.go	one-shot CLI verb with no request context; the git/child call ends with the process
-exec-noctx	cmd/fathom/doctor.go	one-shot CLI verb with no request context; the git/child call ends with the process
-exec-noctx	cmd/fathom/doctor.go	one-shot CLI verb with no request context; the git/child call ends with the process
-exec-noctx	cmd/fathom/doctor.go	one-shot CLI verb with no request context; the git/child call ends with the process
 exec-noctx	cmd/fathom/intentbaseline.go	one-shot CLI verb with no request context; the git/child call ends with the process
 exec-noctx	cmd/fathom/lifecyclehooks.go	hook process bounded by its hookguard deadline, which kills the process tree; no request context to pass
 exec-noctx	cmd/fathom/module.go	one-shot CLI verb with no request context; the git/child call ends with the process
@@ -85,7 +81,6 @@ exec-noctx	cmd/fathom/retro.go	one-shot CLI verb with no request context; the gi
 exec-noctx	cmd/fathom/retro.go	one-shot CLI verb with no request context; the git/child call ends with the process
 exec-noctx	cmd/fathom/selfrestart.go	runs the new binary's --version with its own watchdog timer in the self-restart path; no request context
 exec-noctx	cmd/fathom/selfskip.go	one-shot CLI verb with no request context; the git/child call ends with the process
-exec-noctx	cmd/fathom/serviceident.go	one-shot CLI verb with no request context; the git/child call ends with the process
 exec-noctx	cmd/fathom/sincerefplan.go	one-shot CLI verb with no request context; the git/child call ends with the process
 exec-noctx	cmd/fathom/stophook.go	hook process bounded by its hookguard deadline, which kills the process tree; no request context to pass
 exec-noctx	cmd/fathom/thread.go	one-shot CLI verb with no request context; the git/child call ends with the process

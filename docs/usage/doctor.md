@@ -2,9 +2,10 @@
 
 Deterministic wiring-diagnosis checklist for a fathom-adopting repo — the one-command
 answer to "is fathom actually wired here, end to end?" Every row is `{name, status,
-reason, remedy}`; `status` is `pass`, `fail`, or `skipped` (an uncheckable state, e.g. an
-unreadable config or an unreachable daemon, is always `skipped` with a reason — never a
-guessed `pass`). `remedy` is a single command, present on every `fail`. `doctor` is
+reason, remedy}`; `status` is `pass`, `fail`, `warn`, `skipped`, `unknown`, or `timeout`.
+`unknown` names wiring that cannot be decided from readable configuration, and
+`timeout` names a probe whose deadline expired. Neither is a pass or a confirmed
+failure. Other inapplicable or uncheckable rows remain `skipped` with a reason. `remedy` is a single command, present on every `fail`. `doctor` is
 strictly read-only: it never writes a file, calls a mutating MCP tool, or restarts
 anything.
 
@@ -20,6 +21,33 @@ fathom doctor [--harness claude|codex|gemini-cli|cursor|copilot|agents|auto] [--
 | `--url` | `http://localhost:7575` | fathom `serve-http` base URL |
 | `--json` | off | Machine-readable report instead of the human table |
 | `--repo-only` | off | Only the eleven rows that read the repository's own files and the user scope's config — `hooks_installed`, `lefthook_gates`, `harness_hooks`, `stanza_present`, `skills_installed`, `wiring_drift`, `config_valid`, `binding_file`, `guard_file`, `guard_include_modules_unbound`, `user_scope_ignore` — no daemon, harness process or ledger; the Observatory's project wiring tab renders it. Exit codes unchanged |
+
+Wiring and execution are separate evidence states:
+
+- `configured`: a hook command or MCP entry was found in configuration.
+- `configured (indirect)`: a project wrapper contains the fathom invocation.
+  Doctor reads scripts and the selected Task or lefthook entry, at most two
+  wrapper levels and 64 KiB total per command inspection. It never executes them.
+  Dynamic commands, unreadable wrappers and deeper chains report `unknown`.
+- `firing`: the separate `hooks_firing` row has execution evidence from the
+  existing call or hook log. A configured command alone never establishes this.
+  `surface_traffic` independently reports observed MCP usage.
+
+Claude project MCP entries in `.mcp.json` and stdio entries using project wrappers
+are recognized, alongside the existing harness configuration files. Recognition
+establishes configuration only, without launching the stdio server.
+
+Each step inherits the Setup hook's remaining deadline when doctor runs as a
+hook. Standalone doctor has no overall run deadline. Daemon requests and doctor's
+git probes retain their five-second caps. CLI pings retain their own budgets
+(Codex construction: 20 s; other CLI pings: 15 s). Existing shorter request caps
+remain in effect. Local work without cancellation, including the retention walk
+and Observatory projection, runs outside the per-probe cap and keeps its verdict.
+A daemon that does not answer within 5 s remains a confirmed FAIL. The brief names
+FAIL, TIMEOUT and UNKNOWN rows with separate counts, so a hang cannot look clean.
+An expired run stops before later rows and names the checks not run. JSON retains
+`unknown`/`timeout` on the individual rows, and counts both under `summary.skipped`
+for compatibility. Human output labels them `UNKNOWN` and `TIMEOUT`.
 
 The founding eleven checks: `mcp_registration`, `daemon_reachable`, `binary_fresh` (the running
 binary's own build vs `git rev-parse HEAD` of its own source tree — the LOCAL binary only,
@@ -119,7 +147,8 @@ gc`'s dry run: reclaimable bytes by class and the largest classes, what it only 
 and the home volume's free space; WARN above 512 MiB reclaimable). `fathom resources`'
 hooks line reads the same latency log, the CPU medians included.
 
-Exit `0` every check passed; `1` at least one check failed; `2` doctor itself could not
+Exit `0` no confirmed failure (including runs with `unknown`, `timeout`, `warn` or
+`skipped` rows); `1` at least one check failed; `2` doctor itself could not
 run (bad flags, unresolvable `--path`) — an operational error, not a verdict on the
 repo's wiring. See the `fathom-doctor` skill for interpretation, the remedy-approval
 discipline, and the tie-in/latency-budget checks doctor itself doesn't run.

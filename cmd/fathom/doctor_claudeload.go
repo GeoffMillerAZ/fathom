@@ -206,7 +206,9 @@ func claudeLoadPath(root string, probeVersion bool) claudeLoad {
 	case !probeVersion:
 		l.VersionNote = "claude version not probed (--repo-only spawns no harness process)"
 	default:
-		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		parent, stop := doctorProbeContext(context.Background())
+		defer stop()
+		ctx, cancel := context.WithTimeout(parent, 3*time.Second)
 		defer cancel()
 		if v, err := claudeLoadEnv.version(ctx); err == nil {
 			l.Version = v

@@ -113,10 +113,10 @@ func readHookLatency(path string, since time.Time) []hookLatencyRow {
 	return out
 }
 
-// inHookSkip: doctor --brief (the Setup hook) prints FAIL rows only, and
-// these rows never FAIL — their log and disk scans are not spent inside a
+// inHookSkip: doctor --brief (the Setup hook) prints FAIL, TIMEOUT and UNKNOWN
+// rows in at most 8 lines. These log and disk scans are not spent inside a
 // hook's deadline.
-const inHookSkip = "not run inside a hook (doctor --brief shows FAIL rows only; this row never FAILs) — run `fathom doctor`"
+const inHookSkip = "not run inside a hook (doctor --brief shows FAIL, TIMEOUT and UNKNOWN rows, at most 8 lines; this row never FAILs) — run `fathom doctor`"
 
 // hookBudgetWindow is what hook_budget judges.
 const hookBudgetWindow = 24 * time.Hour

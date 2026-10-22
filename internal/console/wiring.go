@@ -21,7 +21,7 @@ import (
 // WiringCheck is one doctor row.
 type WiringCheck struct {
 	Name   string `json:"name"`
-	Status string `json:"status"` // pass | warn | fail | skipped
+	Status string `json:"status"` // pass | warn | fail | skipped | unknown | timeout
 	Reason string `json:"reason"`
 	Remedy string `json:"remedy,omitempty"`
 	// Group is "wiring" (what fathom writes into the repository) or
@@ -155,7 +155,11 @@ func WiringView(f WiringFacts) WiringViewModel {
 		m.Pass = Measured(counts["pass"], src).WithDenominator(denom)
 		m.Warn = Measured(counts["warn"], src).WithDenominator(denom)
 		m.Fail = Measured(counts["fail"], src).WithDenominator(denom)
-		m.Skip = Measured(counts["skipped"], src).WithDenominator(denom)
+		skipDenom := denom
+		if counts["unknown"]+counts["timeout"] > 0 {
+			skipDenom += fmt.Sprintf("; includes %d unknown and %d timeout", counts["unknown"], counts["timeout"])
+		}
+		m.Skip = Measured(counts["skipped"]+counts["unknown"]+counts["timeout"], src).WithDenominator(skipDenom)
 	}
 
 	failingRow := map[string]WiringCheck{}

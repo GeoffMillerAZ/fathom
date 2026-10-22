@@ -31,17 +31,24 @@ fathom doctor [--harness=claude|codex|auto|<registry id>] [--path <dir>] [--serv
 - `--json` for machine output; otherwise a table.
 
 Exit codes: `0` no row failed; `1` at least one row failed; `2` doctor
-itself could not run (bad flags, an unresolvable `--path`).
+itself could not run (bad flags, an unresolvable `--path`). UNKNOWN and TIMEOUT
+are neither PASS nor FAIL and count under `summary.skipped` in JSON. The Setup
+hook's `--brief` names FAIL, TIMEOUT and UNKNOWN rows with separate counts and
+always exits 0. An unfinished probe must never be summarized as a clean run.
 
 ## 2. Read the report honestly
 
-Every row is `{name, status, reason, remedy}`. Keep the four statuses apart
+Every row is `{name, status, reason, remedy}`. Keep the six statuses apart
 when you summarize:
 
 - **PASS**: verified true; the evidence is in `reason`.
 - **FAIL**: an observable problem; `remedy` is one command.
 - **WARN**: worth attention, never fails the exit code (a dead guard, a
   leftover scratch daemon).
+- **UNKNOWN**: project wrapper wiring could not be resolved by static inspection.
+  Name the uncertain hooks. Other definitely missing hooks still FAIL.
+- **TIMEOUT**: a probe could not finish within its deadline. Report it explicitly.
+  The daemon reachability probe remains FAIL when it does not answer within 5 s.
 - **SKIP**: doctor could not check it (daemon down, no call log, a feature
   not configured). It is neither a failure nor a pass. Report it as "could
   not verify: <reason>".
@@ -117,5 +124,5 @@ skill).
 
 ## 5. Report back
 
-Give a short PASS/FAIL/WARN/SKIP tally and the remedy for each failure,
+Give a short PASS/FAIL/WARN/SKIP/UNKNOWN/TIMEOUT tally and the remedy for each failure,
 ready to copy. Never a bare "N checks failed".

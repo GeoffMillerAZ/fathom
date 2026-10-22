@@ -28,7 +28,7 @@ func checkDaemonFresh(hc *http.Client, baseURL string, daemonUp bool) doctorChec
 	}
 	st, err := fetchStatusz(hc, baseURL)
 	if err != nil {
-		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("could not read %s/statusz: %v", baseURL, err)}
+		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("could not read %s/statusz: %v", baseURL, err), probeErr: err}
 	}
 	if st.SchemaVersion < statuszSchemaVersion || st.BinaryCommit == "" {
 		return doctorCheck{

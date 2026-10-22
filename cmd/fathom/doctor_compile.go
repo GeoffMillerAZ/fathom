@@ -106,7 +106,7 @@ func checkCompileLayerEnabled(hc *http.Client, baseURL string, daemonUp bool) do
 	}
 	inner, err := callMCPTool(hc, baseURL, "status", map[string]any{"section": "daemon"})
 	if err != nil {
-		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("status(daemon) did not answer: %v", err)}
+		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("status(daemon) did not answer: %v", err), probeErr: err}
 	}
 	var payload struct {
 		CompileLayer *struct {

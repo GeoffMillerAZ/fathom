@@ -21,7 +21,7 @@ func checkAdmissionMode(hc *http.Client, baseURL string, daemonUp bool) doctorCh
 	}
 	m, err := fetchMetricsText(hc, baseURL)
 	if err != nil {
-		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("could not read %s/metrics: %v", baseURL, err)}
+		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("could not read %s/metrics: %v", baseURL, err), probeErr: err}
 	}
 	var modes []string
 	for k, v := range m {

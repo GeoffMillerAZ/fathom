@@ -12,6 +12,7 @@ package main
 // CF-6) — a doctor run must never spend real money against a real
 // account just because someone ran a wiring diagnosis.
 import (
+	"context"
 	"fmt"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
@@ -32,7 +33,9 @@ import (
 //     fail, naming the first failure — a configured credential that does
 //     not work is exactly what this row exists to catch.
 //   - otherwise: pass, counting ok vs not-probeable lanes.
-func doctorProvidersRow(root string, build profileClientBuilder) doctorCheck {
+func doctorProvidersRow(root string, build profileClientBuilder, parents ...context.Context) doctorCheck {
+	ctx, cancel := doctorContextArg(parents)
+	defer cancel()
 	const name = "providers"
 
 	loaded, err := config.Load(config.DefaultUserPath(), projectdir.Config.Path(root))
@@ -48,7 +51,7 @@ func doctorProvidersRow(root string, build profileClientBuilder) doctorCheck {
 		}
 	}
 
-	rows := probeProfiles(loaded, names, build)
+	rows := probeProfilesContext(ctx, loaded, names, build)
 
 	var okN, notProbeableN, errN int
 	var firstErr string

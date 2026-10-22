@@ -153,7 +153,7 @@ func checkDaemonDiskWrites(hc *http.Client, baseURL string, daemonUp bool) docto
 	}
 	m, err := fetchMetricsText(hc, baseURL)
 	if err != nil {
-		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("could not read %s/metrics: %v", baseURL, err)}
+		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("could not read %s/metrics: %v", baseURL, err), probeErr: err}
 	}
 	outside, ok := m["fathom_bytes_written_24h_outside_ingest"]
 	budget, okB := m["fathom_disk_write_budget_bytes"]

@@ -29,6 +29,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -288,7 +289,9 @@ func resolveLocalManifest(storePath string) string {
 // Command-scoped guards are NOT checkable this way (no "indexed commands"
 // exist) — reported once, honestly, rather than silently skipped per
 // guard.
-func checkGuardDeadScopes(hc *http.Client, baseURL, root, explicitSvc string, daemonUp bool) doctorCheck {
+func checkGuardDeadScopes(hc *http.Client, baseURL, root, explicitSvc string, daemonUp bool, parents ...context.Context) doctorCheck {
+	ctx, cancel := doctorContextArg(parents)
+	defer cancel()
 	const name = "guard_dead_scopes"
 	set, ok, skip := loadGuardSetForDoctor(root)
 	if skip != nil {
@@ -310,7 +313,7 @@ func checkGuardDeadScopes(hc *http.Client, baseURL, root, explicitSvc string, da
 	}
 	sources, err := listSourcesForDoctor(hc, baseURL, svc)
 	if err != nil {
-		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("list_sources(%s): %v", svc, err)}
+		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("list_sources(%s): %v", svc, err), probeErr: err}
 	}
 
 	var dead, unindexed []string
@@ -339,7 +342,11 @@ func checkGuardDeadScopes(hc *http.Client, baseURL, root, explicitSvc string, da
 		// a remedy that DELETES correct configuration. Look at the disk
 		// before saying nothing is there.
 		label := fmt.Sprintf("guards[%d] (%s)", i, strings.Join(g.Scopes, ", "))
-		if n := filesOnDiskUnder(root, g.Scopes); n > 0 {
+		n, walkErr := filesOnDiskUnderContext(ctx, root, g.Scopes)
+		if walkErr != nil && n == 0 {
+			return doctorCheck{Name: name, Status: doctorErrorStatus(walkErr), Reason: "guard file discovery did not finish: " + walkErr.Error(), probeErr: walkErr, Remedy: "re-run doctor when the walk can finish"}
+		}
+		if n > 0 {
 			unindexed = append(unindexed, fmt.Sprintf("%s — %d file(s) on disk, none indexed", label, n))
 			continue
 		}
@@ -463,10 +470,23 @@ func loadGuardSetForDoctor(root string) (guardspec.GuardSet, bool, *string) {
 // as unindexed rather than dead (RC-8). Walk errors are treated as "found
 // something": a reader that cannot look must not conclude emptiness.
 func filesOnDiskUnder(root string, scopes []string) int {
+	ctx, cancel := doctorProbeContext(context.Background())
+	defer cancel()
+	n, err := filesOnDiskUnderContext(ctx, root, scopes)
+	if err != nil && n == 0 {
+		return 1
+	} // an interrupted legacy count is never proof of emptiness
+	return n
+}
+
+func filesOnDiskUnderContext(ctx context.Context, root string, scopes []string) (int, error) {
 	m := filter.New(scopes)
 	found := 0
 	blind := false
-	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+	walkErr := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if err != nil {
 			blind = true
 			return nil
@@ -486,8 +506,11 @@ func filesOnDiskUnder(root string, scopes []string) int {
 		}
 		return nil
 	})
-	if found == 0 && blind {
-		return 1 // could not look everywhere; refuse to call it empty
+	if walkErr != nil {
+		return found, walkErr
 	}
-	return found
+	if found == 0 && blind {
+		return 1, nil // could not look everywhere; refuse to call it empty
+	}
+	return found, nil
 }

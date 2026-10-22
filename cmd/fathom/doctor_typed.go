@@ -65,7 +65,7 @@ func checkTypedEdges(hc *http.Client, baseURL, root, explicitSvc string, daemonU
 
 	inner, err := callMCPTool(hc, baseURL, "staleness_report", map[string]any{"service": svc})
 	if err != nil {
-		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("staleness_report(%s) did not answer: %v", svc, err), Remedy: remedy}
+		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("staleness_report(%s) did not answer: %v", svc, err), probeErr: err, Remedy: remedy}
 	}
 	var payload struct {
 		TypedEdges *struct {

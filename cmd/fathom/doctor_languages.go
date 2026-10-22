@@ -53,7 +53,7 @@ func checkUnsupportedLanguages(hc *http.Client, baseURL, root, explicitSvc strin
 
 	inner, err := callMCPTool(hc, baseURL, "list_services", map[string]any{})
 	if err != nil {
-		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("list_services did not answer: %v", err)}
+		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("list_services did not answer: %v", err), probeErr: err}
 	}
 	var payload struct {
 		Services []struct {

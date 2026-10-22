@@ -39,10 +39,17 @@ Omit any arg to use its default (`--harness=auto`, `--path` cwd, `--service`
 resolved from the same candidate identities the hooks probe). Add `--json`
 for machine output.
 
-Exit codes: `0` all-pass; `1` a real, fixable problem; `2` doctor itself
+Exit codes: `0` no confirmed failure; `1` a real, fixable problem; `2` doctor itself
 could not run (bad flags / unresolvable path) — not a verdict on the repo.
 
 ## 2. Read the report
+
+`unknown` names unresolved project wrapper wiring. `timeout` names an unfinished
+probe. Neither is PASS or FAIL; both count under `summary.skipped` in JSON.
+Definite missing hooks still FAIL alongside uncertainty, and a daemon that does
+not answer within 5 s remains FAIL. The Setup hook's `--brief` names FAIL,
+TIMEOUT and UNKNOWN rows with separate counts and always exits 0. An unfinished
+probe must never be summarized as a clean run.
 
 Each row is `{name, status, reason, remedy}`. `skipped` is NOT `fail` and
 NOT a guessed `pass` — it means doctor could not check that condition
