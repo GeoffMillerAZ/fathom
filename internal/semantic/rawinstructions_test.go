@@ -38,10 +38,14 @@ func TestRawRuleText_ImperativeExtraction(t *testing.T) {
 
 func TestRawRuleText_ADRDecisionBlock(t *testing.T) {
 	tests := []struct{ name, body, want string }{
-		{"numbered", "## ADR-080: Advice\n**Status.** Accepted.\n**Decision.**\n1. *First.* Measure output before serving it. More explanation follows.\n2. *Second.* Keep the cap fixed. Additional detail.\n3. *Third.* Never expand it.\n**Consequences.** Ignore this.", "First.\nSecond."},
-		{"prose", "## ADR-081: Evidence\n**Decision.** The receipt records the tree. Its digest is checked. **Why.** Never trust the context.", "The receipt records the tree.\nIts digest is checked."},
+		{"numbered", "## ADR-080: Advice\n**Status.** Accepted.\n\n**Decision.**\n1. *First.* Measure output before serving it. More explanation follows.\n2. *Second.* Keep the cap fixed. Additional detail.\n3. *Third.* Never expand it.\n\n**Consequences.** Ignore this.", "Keep the cap fixed.\nNever expand it."},
+		{"prose", "## ADR-081: Evidence\n**Decision.** The receipt records the tree. Its digest is checked.\n\n**Why.** Never trust the context.", ""},
 		{"not ADR", "## General rules\n**Decision.** The receipt records the tree.\nAlways check it.", "Always check it."},
-		{"decision boundary", "## ADR-082: Evidence\n**Decision.**\n1. Read the input.\n**Alternatives rejected.** Always do the other thing.", "Read the input."},
+		{"qualifying prose", "## ADR-080: Rules\n**Decision.** This is context. Keep the input order stable for every caller. This explains it. Never discard an error from the caller. Always preserve evidence.", "Keep the input order stable for every caller.\nNever discard an error from the caller."},
+		{"item titles", "## ADR-080: Rules\n**Decision.**\n1. *Title.* This is context. Never serve this later sentence.\n2. **Title.** Keep the input order stable for every caller.\n- *D1, topology.* Never discard an error from the caller.\n- **D2, evidence.** Always preserve evidence for every returned result.", "Keep the input order stable for every caller.\nNever discard an error from the caller."},
+		{"wrapped bold continuation", "## ADR-080: Rules\n**Decision.** The engine must run in the\n**WASM runtime** with no network access. Keep the output order stable for every caller.\n\n**Why.** Never serve this explanation.", "The engine must run in the WASM runtime with no network access.\nKeep the output order stable for every caller."},
+		{"bold midparagraph", "## ADR-080: Rules\n**Decision.** This is context and\n**Always preserve** the source identity for every result.", "This is context and Always preserve the source identity for every result."},
+		{"decision boundary", "## ADR-082: Evidence\n**Decision.**\n1. Read the input.\n\n**Alternatives rejected.** Always do the other thing.", "Read the input."},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -93,15 +97,17 @@ func TestRawRuleText_RepositoryADRs(t *testing.T) {
 	corpus := []core.SourceFile{{Path: "ADR.md", Content: data}}
 	wants := map[string]string{
 		"adr-004": "",
-		"adr-005": "Pipeline runs: Pass 1 Filter (sequential, ignore vendor/testdata/generated), Pass 2 Fetch (N parallel workers into pre-allocated slots, first error via atomic CAS, no mid-flight cancel), Pass 3 post-fetch (sequential, in input order:…\nThen bucket pending by language and extract.",
-		"adr-046": "Every judgment is a typed decision-port question.\nThe only egress is the decision port (`[decide] provider`, the new `assess` site).",
-		"adr-047": "A declared budget, measured on the OS quantity.\nA ladder the daemon enforces on itself, sampled every 2 s from `phys_footprint`, `runtime/metrics`, host memory pressure, swap and volume free space: shed at 0.75 × budget or host pressure warn (drop caches, pause background work, serve…",
-		"adr-048": "Four support levels with thresholds and an oracle rule.\nA level is a reading, not a registration.",
-		"adr-049": "The kitchen-sink gate.\nPillars and a lane.",
-		"adr-056": "The decision-model bet (principle P24).\nProgram rules R1 to R8.",
-		"adr-058": "The kind.\nThe core facet is the suspect list, computed and never stored.",
-		"adr-061": "Four zones.\nOne schema entry point, extended by key.",
+		"adr-005": "",
+		"adr-046": "A malformed capabilities file refuses the run, the opposite of the safety capabilities, because an unreadable file is never consent to spend.",
+		"adr-047": "Read tools run under `r.Context()` with a class deadline and the client's `X-Fathom-Deadline`; only ingest and single-flighted memo builds run detached, and a flight is cancelled when its last waiter leaves unless it is past half its…\nOne monotonic deadline per hook process (the harness `TimeoutSec` minus max(1 s, 20%)), never a retry after a timeout, and a breaker file per daemon URL with a single half-open prober.",
+		"adr-048": "Extraction must be deterministic (P2); ambiguous extensions resolve by deterministic content sniff with the ambiguous count disclosed.",
+		"adr-049": "The decision port proposes anchors for unanchored foreign tasks (a Choice over `find_symbol`/`pack_context` candidates), shown as a proposal with its calibration, never as proof, and only after a calibration check on adjudicated anchors…\nRules are promoted and retired from corroborate/refute signals under thresholds published in the repository, and every promotion or retirement is announced, never silent.",
+		"adr-056": "R1 structural routing: named operators or existing tools answer every computable question and a model never decides what is computable.\nThe decision port may open from the daemon, or from any explicitly invoked CLI verb whose site is listed in `[decide] sites`; it never opens from a hook process directly (a hook reaches a daemon endpoint).",
+		"adr-058": "Links are rendered, show their host, and are never fetched (I56): `https` only, no userinfo, no token-named query keys, window placeholders on any host, commit and key placeholders only on configured link hosts.\nno incident path executes a command other than read-only git, fetches a link, or calls another MCP server; the answer uses only point and index work and names every facet it could not compute; the change facet always names its horizon and…",
+		"adr-061": "A kit pack applies when the repository's committed Go or CUE pin puts it on disk (a local `replace`, `vendor/`, or the module cache at the required version; never `go.work`, never the network) and it carries a `pack` header.\nNo MCP tool and no new verb: `fathom rules fixtures <dir>` (a kit runs it in CI), `fathom layers strata` lists the tech stratum, one doctor row; `#Layer.stratum` gains `\"tech\"` (additive; `provider` never shipped as a value).",
+		"adr-075": "",
 		"adr-077": "", // Proposed at this source revision, despite its later accepted index entry.
+		"adr-078": "An attested run gains platform (os/arch), an operator-named host label (never a hostname read from the machine), toolchain version, git tree hash and a digest of the dirty diff.\nOne task-owned checkout per job at an exact commit, never a shared or user checkout; record the commit before work.",
 	}
 	for id, prefix := range wants {
 		var found bool
@@ -196,7 +202,7 @@ func TestRawRuleText_MixedPlanChecks(t *testing.T) {
 }
 
 func TestRawRuleText_ADRColonAndFreeformBoldBoundary(t *testing.T) {
-	text := "## ADR-080: Rules\n**Decision**: Keep this.\n**Alternatives / rejected.** Never serve this."
+	text := "## ADR-080: Rules\n**Decision**: Keep this.\n\n**Alternatives / rejected.** Never serve this."
 	if got := rawRuleText(Section{Text: text}); got != "Keep this." {
 		t.Errorf("got %q", got)
 	}
@@ -262,5 +268,52 @@ func TestRawRuleText_MarkdownCleanupTable(t *testing.T) {
 				t.Errorf("got %q want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestRawRuleText_QuestionConditions(t *testing.T) {
+	question := "Evaluating fathom rather than changing it?"
+	instruction := "Start at `README.md` and `docs/early-testers.md`."
+	longQuestion := "Changing " + strings.Repeat("the current input ", 15) + "now?"
+	for _, tt := range []struct{ name, body, want string }{
+		{"same paragraph", question + " " + instruction, question + " " + instruction},
+		{"wrapped paragraph", question + "\n" + instruction, question + " " + instruction},
+		{"different paragraphs", question + "\n\n" + instruction, instruction},
+		{"one unit", question + " " + instruction + " Keep the output stable. Never drop errors.", question + " " + instruction + "\nKeep the output stable."},
+		{"condition exceeds cap", longQuestion + " " + instruction + " Never drop errors.", "Never drop errors."},
+		{"imperative question", "Must the input be checked? Keep the output stable.", "Must the input be checked? Keep the output stable."},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := rawRuleText(Section{Text: "## Rules\n" + tt.body}); got != tt.want {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+	for _, body := range []string{
+		"**Decision.** " + question + " " + instruction,
+		"**Decision.**\n1. *Condition.* " + question + " " + instruction,
+	} {
+		if got := rawRuleText(Section{Text: "## ADR-080: Rules\n" + body}); got != question+" "+instruction {
+			t.Errorf("ADR condition = %q", got)
+		}
+	}
+}
+
+func TestRawRuleText_RepositoryADRsServeInstructions(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", "ADR.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, sec := range SplitMarkdownSections("ADR.md", data) {
+		if !rawADRHeading.MatchString(strings.SplitN(sec.Text, "\n", 2)[0]) {
+			continue
+		}
+		if got := rawRuleText(sec); got != "" {
+			for _, sentence := range strings.Split(got, "\n") {
+				if len(strings.Fields(sentence)) <= 5 || !rawImperative(sentence) {
+					t.Errorf("%s served a short or nonimperative sentence: %q", sec.Subject, sentence)
+				}
+			}
+		}
 	}
 }

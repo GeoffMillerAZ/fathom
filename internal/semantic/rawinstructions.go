@@ -19,8 +19,8 @@ var (
 	rawADRHeading     = regexp.MustCompile(`^#+\s+ADR-[0-9]+\b`)
 	rawTableSeparator = regexp.MustCompile(`^\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?$`)
 	rawLabel          = regexp.MustCompile(`^\*\*([A-Z][^*]*)\*\*:?\s*`)
+	rawItemTitle      = regexp.MustCompile(`^(?:\*\*[^*]+\*\*|\*[^*]+\*|__[^_]+__|_[^_]+_)\s+`)
 	rawList           = regexp.MustCompile(`^\s*(?:[-+*]|[0-9]+\.)\s+`)
-	rawNumbered       = regexp.MustCompile(`^\s*[0-9]+\.\s+`)
 	rawLink           = regexp.MustCompile(`\[([^\]]+)\]\([^)]*\)`)
 	rawModal          = regexp.MustCompile(`(?i)\b(?:must|never|always|shall|do not|don['’]t|required to)\b`)
 	rawOnly           = regexp.MustCompile(`(?i)\b(?:may only|must only)\b`)
@@ -42,11 +42,13 @@ func rawRuleText(sec Section) string {
 	blocks := rawBlocks(lines, sec.Path)
 	var out []string
 	for _, block := range blocks {
-		for _, sentence := range rawSentences(rawPlain(block)) {
-			if !rawImperative(sentence) {
+		sentences := rawSentences(rawPlain(block))
+		for i := range sentences {
+			instruction := rawInstruction(sentences, i)
+			if instruction == "" {
 				continue
 			}
-			out = append(out, rawCap(sentence))
+			out = append(out, instruction)
 			if len(out) == 2 {
 				return strings.Join(out, "\n")
 			}
@@ -173,8 +175,8 @@ func rawBlocks(lines []string, path string) []string {
 func rawADRDecisionText(lines []string) string {
 	inside := false
 	type item struct {
-		text     string
-		numbered bool
+		text   string
+		listed bool
 	}
 	var items []item
 	current := item{}
@@ -188,7 +190,7 @@ func rawADRDecisionText(lines []string) string {
 		if strings.HasPrefix(line, "#") {
 			break
 		}
-		if label := rawLabel.FindStringSubmatch(line); label != nil {
+		if label := rawLabel.FindStringSubmatch(line); current.text == "" && label != nil {
 			name := strings.ToLower(strings.TrimRight(strings.TrimSpace(label[1]), ".:"))
 			if !inside {
 				if name == "decision" || name == "decisions" {
@@ -208,9 +210,9 @@ func rawADRDecisionText(lines []string) string {
 			flush()
 			continue
 		}
-		if rawNumbered.MatchString(line) {
+		if rawList.MatchString(line) {
 			flush()
-			current = item{text: rawNumbered.ReplaceAllString(line, ""), numbered: true}
+			current = item{text: rawList.ReplaceAllString(line, ""), listed: true}
 			continue
 		}
 		if current.text == "" {
@@ -225,33 +227,59 @@ func rawADRDecisionText(lines []string) string {
 	}
 	var out []string
 	for _, block := range items {
-		plain := rawPlain(block.text)
+		text := block.text
+		if block.listed {
+			text = rawItemTitle.ReplaceAllString(text, "")
+		}
+		plain := rawPlain(text)
 		sentences := rawSentences(plain)
-		if len(sentences) > 0 && !rawCompleteSentence(sentences[0]) {
-			continue
-		}
-		if block.numbered {
-			if len(sentences) > 0 {
-				out = append(out, rawCap(sentences[0]))
+		if block.listed && len(sentences) > 1 {
+			// Each item supplies its first sentence, with its question
+			// condition when present. Later explanation is not a candidate.
+			end := 1
+			if strings.HasSuffix(sentences[0], "?") {
+				end = 2
 			}
-		} else if len(sentences) > 0 {
-			// A decision paragraph supplies its first two sentences; numbered
-			// items supply one sentence apiece.
-			for _, sentence := range sentences {
-				if !rawCompleteSentence(sentence) {
-					break
-				}
-				out = append(out, rawCap(sentence))
-				if len(out) == 2 {
-					return strings.Join(out, "\n")
-				}
-			}
+			sentences = sentences[:end]
 		}
-		if len(out) == 2 {
-			break
+		for i, sentence := range sentences {
+			if !rawCompleteSentence(sentence) {
+				break
+			}
+			if instruction := rawInstruction(sentences, i); instruction != "" {
+				out = append(out, instruction)
+			}
+			if len(out) == 2 {
+				return strings.Join(out, "\n")
+			}
 		}
 	}
 	return strings.Join(out, "\n")
+}
+
+// rawInstruction keeps a qualifying sentence's immediately preceding question
+// in the same paragraph. A condition and instruction occupy one slot together;
+// if the pair exceeds the cap, neither is safe to serve.
+func rawInstruction(sentences []string, i int) string {
+	sentence := sentences[i]
+	if !rawImperative(sentence) {
+		return ""
+	}
+	if strings.HasSuffix(sentence, "?") && i+1 < len(sentences) && rawImperative(sentences[i+1]) {
+		return ""
+	}
+	if i > 0 && strings.HasSuffix(sentences[i-1], "?") {
+		pair := sentences[i-1] + " " + sentence
+		if utf8.RuneCountInString(pair) > 240 {
+			return ""
+		}
+		return pair
+	}
+	capped := rawCap(sentence)
+	if !rawImperative(capped) {
+		return ""
+	}
+	return capped
 }
 
 func rawCompleteSentence(s string) bool {

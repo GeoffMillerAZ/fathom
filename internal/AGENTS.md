@@ -32,7 +32,7 @@ Put shared types in `internal/core` and extend them additively.
 
 ## Adding things
 
-- **Extractor**: a new language or tool format must be a dialect directory, never Go —
+- **Extractor**: a new language or tool format is a dialect directory, not Go —
   follow the worker recipe (`docs/design/language-breadth.md` §13, ADR-048). Only the
   engines, L3 strategies and native typed passes are Go: a native extractor implements
   `extractor.Extractor`, registers by extension in `fusion.New()`, adds its ext→kind in
