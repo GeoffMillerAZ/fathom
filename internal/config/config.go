@@ -404,8 +404,9 @@ type Hooks struct {
 	// observeSeams records observe-only modes while the boolean fields keep
 	// their existing meaning: the seam runs, including in observe mode.
 	observeSeams uint8
-	// Dedupe suppresses unchanged Claude Code post-edit and cwd primers.
-	// Default on for Claude Code only; a user false wins over a repo true.
+	// Dedupe suppresses already delivered rules per context on Claude Code
+	// and Codex, and consecutive unchanged cwd primers on Claude Code.
+	// Default on; a user false wins over a repo true.
 	Dedupe bool
 	// TestRun (TR-9, ADR-056 decision 6) turns on the test-run hook: after
 	// a Bash command that runs a declared test command, one line naming

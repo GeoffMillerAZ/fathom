@@ -214,13 +214,15 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 		return 0 // renderPostEdit already emitted the beat that names the silence
 	}
 
-	// Compare the final injection, including claim-moment and tests-to-run
-	// additions. Only Claude Code proves child identity and context resets.
+	// Filter rules across files and channels using the harness's context.
 	target := resolveSymlinks(filePath)
 	if hook.AgentID != "" {
 		target = hook.AgentID + "\x00" + target
 	}
-	dedupe := dedupeHookInjection(codec.ID(), projDir, sessionID, "post-edit", target, text, nowFunc())
+	text, dedupe := dedupeHookRules(codec.ID(), projDir, hook, "post-edit", target, meta.service, text, meta.moduleRules, nowFunc())
+	if len(meta.moduleRules) == 0 {
+		dedupe = dedupeHookInjection(codec.ID(), projDir, sessionID, "post-edit", target, text, nowFunc())
+	}
 	defer dedupe.close()
 	if dedupe.suppressed {
 		dedupe.record(codec.ID(), sessionID, "post-edit", text)

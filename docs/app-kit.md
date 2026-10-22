@@ -1158,3 +1158,9 @@ or dependency changes apply. Disposition: local-divergence, app-owned merge poli
 `TestConfigExplainAttributesAppendedWrappers` cover both contributing layers and an
 empty project list. No shared kit defect or reusable component was found in this
 scope; no upstream change or second-consumer propagation is claimed.
+
+AD-6 and AD-14 retain this **no-candidate** disposition: per-context rule delivery
+and working-tree claim freshness belong to fathom's harness JSON codecs and
+hook state. Regression evidence: `TestRuleContextDeliveryAcrossFilesAndChannels`
+and `TestStopDeliveryUncommittedIsUnknown`; the terminal rendering contract and
+kit adoption selections are unchanged.

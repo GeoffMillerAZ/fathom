@@ -44,6 +44,9 @@ const stopHookVerifyTimeout = 5 * time.Second
 //   - ANY error / daemon-down / no git / no plans → print nothing, exit 0.
 //   - stop_hook_active true → exit 0 (no re-entry loops).
 //   - Newly claimed tasks all verify (or are Unknown) → exit 0 silently.
+//   - An absent-index criterion under an uncommitted path → advisory Unknown.
+//   - An unchanged advisory claim set → silence within the session.
+//   - A proven failure with --block → block on every Stop while it persists.
 //   - Newly claimed tasks FAIL verification → advisory additionalContext by
 //     default; {"decision":"block"} with --block.
 func cmdStopHook(args []string, stdout, stderr io.Writer) int {
@@ -137,7 +140,7 @@ func cmdStopHook(args []string, stdout, stderr io.Writer) int {
 
 	hc := newStopHookClient()
 	advice := checkStopClaims(claimCheckInputFor(projDir, hook, false)) // RO-39: local reads only, before verify
-	exit, catches := runStopHookWithAdvice(codec, projDir, hc, *url, *block, advice, stdout)
+	exit, catches := runStopHookWithAdvice(codec, projDir, hc, *url, *block, advice, stdout, hook.SessionID)
 	recordSessionLedgerEntry(codec.ID(), hook.SessionID, hook.TranscriptPath, projDir, time.Now(), catches)
 	runStopHookRetro(projDir, hook.SessionID)
 	return exit
@@ -266,16 +269,48 @@ func newStopHookClient() *http.Client {
 // returns its hook exit code and, when the verify pass actually ran against
 // at least one plan, the number of proven-failing newly-claimed tasks it
 // caught (nil = verify never ran — unknown, not zero; IO-15).
-func runStopHook(projDir string, hc *http.Client, baseURL string, block bool, stdout io.Writer) (int, *int) {
-	return runStopHookWithAdvice(harness.ClaudeCodec(), projDir, hc, baseURL, block, "", stdout)
+func runStopHook(projDir string, hc *http.Client, baseURL string, block bool, stdout io.Writer, sessionIDs ...string) (int, *int) {
+	return runStopHookWithAdvice(harness.ClaudeCodec(), projDir, hc, baseURL, block, "", stdout, sessionIDs...)
 }
 
 // runStopHookWithAdvice renders the verdict in the calling harness's
 // envelope with advice, RO-39's claim-check lines, appended to whatever the verify pass says, so Stop prints one
 // envelope. advice never blocks: only a proven-failing claim may, behind
 // --block.
-func runStopHookWithAdvice(codec harness.Codec, projDir string, hc *http.Client, baseURL string, block bool, advice string, stdout io.Writer) (int, *int) {
+func runStopHookWithAdvice(codec harness.Codec, projDir string, hc *http.Client, baseURL string, block bool, advice string, stdout io.Writer, sessionIDs ...string) (int, *int) {
 	msg, proven, catches := stopHookVerify(projDir, hc, baseURL)
+	// The session is decoded by cmdStopHook before this pass. Keep the
+	// last reported set in the existing bounded, locked hook-state file;
+	// contention, absent session evidence and all state faults report in full.
+	sessionID := ""
+	if len(sessionIDs) > 0 {
+		sessionID = sessionIDs[0]
+	}
+	dedupe := newHookDedupeCheck("stop-verify", resolveSymlinks(projDir), msg)
+	// A Stop that claimed nothing must not create state. Existing state may
+	// contain a prior report to clear, or only another channel's entries.
+	_, stateErr := os.Stat(hookDedupePath(sessionID))
+	if msg != "" || stateErr == nil {
+		dedupe = loadHookDedupe(sessionID, "stop-verify", resolveSymlinks(projDir), msg, nowFunc(), true)
+		if dedupe.file != nil {
+			previous, exists := dedupe.state.Digests[dedupe.key]
+			dedupe.firstTouch = !exists
+			switch {
+			case msg == "" && !exists:
+				dedupe.close()
+			case exists && previous.Digest == dedupe.digest && !(block && proven):
+				// Once-per-change suppression has no counters to persist.
+				dedupe.close()
+				dedupe.suppressed = !dedupe.stateError
+			case !exists && len(dedupe.state.Digests) >= hookDedupeMaxEntries:
+				dedupe.close() // full delivery if no state slot is available
+			}
+		}
+	}
+	defer dedupe.close()
+	if dedupe.suppressed {
+		msg, proven = "", false
+	}
 	text := msg
 	if advice != "" {
 		if text != "" {
@@ -284,6 +319,7 @@ func runStopHookWithAdvice(codec harness.Codec, projDir string, hc *http.Client,
 		text += advice
 	}
 	if text == "" {
+		dedupe.commit(nowFunc()) // a resolved set permits a later recurrence
 		return 0, catches
 	}
 	// A timeout is operational, never evidence of a false claim — it must
@@ -297,7 +333,9 @@ func runStopHookWithAdvice(codec harness.Codec, projDir string, hc *http.Client,
 	if err != nil {
 		return 0, catches // silence over a malformed envelope (§5.3)
 	}
-	fmt.Fprintln(stdout, string(out))
+	if n, err := fmt.Fprintln(stdout, string(out)); err == nil && n == len(out)+1 {
+		dedupe.commit(nowFunc())
+	}
 	return 0, catches
 }
 
@@ -340,7 +378,7 @@ func stopHookVerify(projDir string, hc *http.Client, baseURL string) (string, bo
 		return "", false, nil // unindexed project → silent
 	}
 
-	var complaints, timedOutPlans, busyPlans []string
+	var complaints, unknownClaims, timedOutPlans, busyPlans []string
 	verifiedAny := false
 	for _, c := range claims {
 		rel, newMD, newly := c.rel, c.md, c.newly
@@ -364,6 +402,9 @@ func stopHookVerify(projDir string, hc *http.Client, baseURL string) (string, bo
 			return "", false, nil // other operational errors (daemon down, bad response) → silent
 		}
 		verifiedAny = true
+		// The daemon cannot refute code it has not indexed. Check only the
+		// contract's own paths locally, before either reporting or accounting.
+		unknownClaims = append(unknownClaims, stopUnindexedClaims(projDir, rel, newly, localPlan, &rep)...)
 		// PC-22: every hook verify leaves a ledger row with its origin,
 		// so the claim-moment reading (PC-26) and the stop-hook reading
 		// are separable — best effort, never part of the verdict.
@@ -378,10 +419,11 @@ func stopHookVerify(projDir string, hc *http.Client, baseURL string) (string, bo
 		n := len(complaints)
 		catches = &n
 	}
-	if len(complaints) == 0 && len(timedOutPlans) == 0 && len(busyPlans) == 0 {
+	if len(complaints) == 0 && len(unknownClaims) == 0 && len(timedOutPlans) == 0 && len(busyPlans) == 0 {
 		return "", false, catches
 	}
 	sort.Strings(complaints)
+	sort.Strings(unknownClaims)
 	sort.Strings(timedOutPlans)
 	sort.Strings(busyPlans)
 
@@ -390,6 +432,9 @@ func stopHookVerify(projDir string, hc *http.Client, baseURL string) (string, bo
 		sections = append(sections, "⛔ done-means-proven: task(s) claimed [x] this session fail verification:\n• "+
 			strings.Join(complaints, "\n• ")+
 			"\nProve the claim (fix the code / contract) or uncheck it before ending the session.")
+	}
+	if len(unknownClaims) > 0 {
+		sections = append(sections, "⚠️ done-means-proven: newly claimed task(s) could not be confirmed:\n• "+strings.Join(unknownClaims, "\n• "))
 	}
 	if len(timedOutPlans) > 0 {
 		sections = append(sections, fmt.Sprintf(
@@ -404,6 +449,110 @@ func stopHookVerify(projDir string, hc *http.Client, baseURL string) (string, bo
 		))
 	}
 	return strings.Join(sections, "\n\n"), len(complaints) > 0, catches
+}
+
+// stopUnindexedClaims overlays only newly claimed failures. Package and
+// oracle paths come from the local contract; a resolved symbol's file is a
+// fallback when no package was declared. Unknown rows never enter refusal
+// counts, including the verify ledger's per-row digest.
+func stopUnindexedClaims(root, rel string, newly []string, plan verify.Plan, rep *verify.Report) []string {
+	tasks := make(map[string]verify.Task, len(plan.Tasks))
+	for _, task := range plan.Tasks {
+		tasks[task.ID] = task
+	}
+	newIDs := make(map[string]bool, len(newly))
+	for _, id := range newly {
+		newIDs[id] = true
+	}
+	var lines []string
+	for i := range rep.Tasks {
+		tv := &rep.Tasks[i]
+		if !newIDs[tv.TaskID] || tv.Status != verify.Fail {
+			continue
+		}
+		task := tasks[tv.TaskID]
+		path := task.Expect.Package
+		if path == "" {
+			path = task.OraclePath
+		}
+		if path == "" {
+			path = tv.EvidenceFile
+		}
+		if path == "" {
+			continue // an absent symbol without a path cannot be checked locally
+		}
+		n, err := stopUncommittedFiles(root, path)
+		if errors.Is(err, os.ErrInvalid) || (err == nil && n == 0) {
+			continue
+		}
+		reason := fmt.Sprintf("index may lag: %d uncommitted files under %s", n, path)
+		if err != nil {
+			reason = "working tree could not be checked under " + path
+		}
+		remainingFailures, absent := 0, false
+		var details []string
+		for j := range tv.Criteria {
+			c := &tv.Criteria[j]
+			if c.Status != verify.Fail {
+				continue
+			}
+			missing := claimCriterionAbsent(*c)
+			c.Detail += "; " + reason
+			if missing {
+				c.Status = verify.Unknown
+				absent = true
+				details = append(details, c.Name+": "+c.Detail)
+			} else {
+				remainingFailures++
+			}
+		}
+		if !absent || remainingFailures > 0 {
+			continue
+		}
+		tv.Status, tv.Label = verify.Unknown, "likely-unconfirmed"
+		rep.Summary.Fail--
+		rep.Summary.Unknown++
+		lines = append(lines, fmt.Sprintf("%s [%s] %s — unknown (%s)", rel, tv.TaskID, tv.Title, strings.Join(details, "; ")))
+	}
+	sort.Strings(lines)
+	return lines
+}
+
+// Freshness can explain an index lookup miss, never an ambiguous anchor,
+// failed reach, tier, oracle or other positive evidence of a bad claim.
+func claimCriterionAbsent(c verify.Criterion) bool {
+	switch c.Name {
+	case "symbol_present", "package_present", "test_present", "test_reaches":
+		return strings.Contains(c.Detail, "not found") && strings.Contains(c.Detail, "in the index")
+	default:
+		return false
+	}
+}
+
+func stopUncommittedFiles(root, path string) (int, error) {
+	path = filepath.Clean(filepath.FromSlash(path))
+	if filepath.IsAbs(path) || path == ".." || strings.HasPrefix(path, ".."+string(filepath.Separator)) {
+		return 0, os.ErrInvalid
+	}
+	ctx, cancel := testRunContext() // shares the hook's existing deadline
+	defer cancel()
+	raw, err := gitro.Output(ctx, root, "status", "--porcelain=v1", "-z", "--untracked-files=all", "--", ":(literal)"+filepath.ToSlash(path))
+	if err != nil {
+		return 0, err
+	}
+	count := 0
+	entries := bytes.Split(raw, []byte{0})
+	for i := 0; i < len(entries); i++ {
+		entry := entries[i]
+		if len(entry) < 3 {
+			continue
+		}
+		count++
+		if entry[0] == 'R' || entry[0] == 'C' || entry[1] == 'R' || entry[1] == 'C' {
+			i++ // porcelain -z carries a second path for a rename/copy
+		}
+	}
+	return count, nil
 }
 
 // claimedPlan is a plan file that gained claimed tasks since HEAD: its path

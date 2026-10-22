@@ -185,6 +185,15 @@ func cmdEditHookBashWrite(codec harness.Codec, hook harness.HookInput, url strin
 	if pinText != "" {
 		text += "\n" + pinText
 	}
+	var dedupe *hookDedupeCheck
+	if !doubt {
+		text, dedupe = dedupeHookRules(codec.ID(), projDir, hook, "post-bash", promptNamesLabel(m.namedFiles), svc, text, m.rules, nowFunc())
+		defer dedupe.close()
+		if dedupe.suppressed {
+			dedupe.record(codec.ID(), sessionID, "post-bash", text)
+			return silent(silenceSessionDeduped)
+		}
+	}
 	out, err := codec.EncodeOutput(harness.EventPostTool, harness.HookOutput{Context: text})
 	if err != nil {
 		return silent(silenceEncodeFailed)
@@ -210,7 +219,10 @@ func cmdEditHookBashWrite(codec harness.Codec, hook harness.HookInput, url strin
 	}
 	emitPayloadCost("post-bash", text, len(m.rules), "post-bash", sessionID, costMeta)
 	emitBeat("edit-hook", "answered", firingMetaArm(answered(answeredMeta), sessionID, "", armOff))
-	fmt.Fprintln(stdout, string(out))
+	if n, err := fmt.Fprintln(stdout, string(out)); err == nil && n == len(out)+1 && dedupe != nil {
+		dedupe.commit(nowFunc())
+		dedupe.record(codec.ID(), sessionID, "post-bash", text)
+	}
 	return 0
 }
 
