@@ -1,0 +1,9 @@
+{
+  "decode": "json", "detect": {},
+  "entities": [
+    {"select": "$", "where": {"is_map": true, "has_key": ["name"]}, "kind": "package", "source_kind": "UnityAssemblyDefinition", "name": ".name",
+     "signature_fields": ["rootNamespace", "references", "includePlatforms", "excludePlatforms", "allowUnsafeCode", "overrideReferences", "precompiledReferences", "autoReferenced", "defineConstraints", "versionDefines", "noEngineReferences"]},
+    {"select": "$", "where": {"is_map": true, "has_key": ["reference"]}, "kind": "import", "source_kind": "UnityAssemblyReference", "name": ".reference"},
+    {"select": "$.defineConstraints[*]", "where": {"is_scalar": true}, "kind": "variable", "source_kind": "UnityDefineConstraint", "name": "$", "unique": true}
+  ]
+}

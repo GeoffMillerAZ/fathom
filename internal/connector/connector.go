@@ -313,6 +313,8 @@ var extClassMap = map[string]classification{
 	".vbproj":  {core.KindMSBuildProject, "msbuild"},
 	".props":   {core.KindMSBuildProject, "msbuild"},
 	".targets": {core.KindMSBuildProject, "msbuild"},
+	".asmdef":  {"UnityAssemblyDefinition", "unity-asmdef"},
+	".asmref":  {"UnityAssemblyReference", "unity-asmdef"},
 
 	// Taskfile (LB-Q-taskfile, language-breadth: new, a doc-engine tool format,
 	// no incumbent). The eight basenames go-task looks for, in either case and

@@ -199,6 +199,9 @@ var typedEdgeProducers = map[string]string{
 	// so "syntax" is the honest baseline claim, same as pom.xml and
 	// Cargo.toml above.
 	"msbuild": "syntax",
+	// Unity assembly ownership is derived file resolution, not a C# compiler
+	// producer. C# keeps scip-dotnet; assembly declarations have this baseline.
+	"unity-asmdef": "syntax",
 
 	// Envoy, Kong and Traefik configuration (LB-Q-envoy, LB-Q-kong,
 	// LB-Q-traefik): a route's cluster or service, a listener's route

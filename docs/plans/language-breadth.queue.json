@@ -6124,5 +6124,23 @@
     "plan_row": "LB-Q-fathom-plan-rows",
     "worker_model": "sonnet",
     "notes": "new; excellence program T6; rides the plan row grammar; the oracle is tier C, which caps every metric at good; next gap: needs and symbol anchors as L3 edges"
+  },
+  {
+    "id": "unity-asmdef",
+    "name": "Unity assembly definitions and references",
+    "kind": "tooling",
+    "target_level": "L1",
+    "grammar_source": "doc:json",
+    "licence": "n/a",
+    "oracle": [
+      "UnityEditor.Compilation.CompilationPipeline (tier A, consumer-run; not yet available)"
+    ],
+    "calibration_subjects": [],
+    "depends_on": [],
+    "wave": 6,
+    "engine": "doc",
+    "plan_row": "LB-Q-unity-asmdef",
+    "worker_model": "sonnet",
+    "notes": "GDEV-10 groundwork only. Derived file ownership, scopes and declared references follow documented Unity 2021+ rules. No native oracle reading or support grade claimed."
   }
 ]

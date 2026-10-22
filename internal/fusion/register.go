@@ -487,6 +487,11 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	for _, ext := range []string{".csproj", ".fsproj", ".vbproj", ".props", ".targets"} {
 		p.exts[ext] = msbuild
 	}
+	unity, err := extractor.NewDocDialectExtractor("unity-asmdef")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect unity-asmdef: %v", err))
+	}
+	p.exts[".asmdef"], p.exts[".asmref"] = unity, unity
 
 	// vcpkg manifests (LB-Q-vcpkg, language-breadth: new — a doc-engine tool
 	// format, no incumbent beside the generic JSONExtractor). The basename
