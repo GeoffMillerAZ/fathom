@@ -115,7 +115,7 @@ func resolveIndexedCandidateErr(hc *http.Client, baseURL, projDir string) (servi
 		if err != nil {
 			return serviceCandidate{}, false, err
 		}
-		if id.MatchedBy != identityByRoot {
+		if id.MatchedBy != identityByRoot && id.MatchedBy != destClone && id.MatchedBy != destWorktree {
 			return serviceCandidate{}, false, nil
 		}
 		return serviceCandidate{name: id.Service, root: id.Root}, true, nil

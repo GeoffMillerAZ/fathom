@@ -109,7 +109,8 @@ type searchOpts struct {
 	ignorePatterns []string
 	// sortPaths runs rg with --sort path: searchRipgrep's repeat of a run
 	// stopped at the output cap (O1447), never a caller's choice.
-	sortPaths bool
+	sortPaths    bool
+	allowedPaths map[string]bool
 }
 
 // searchExtraSkipDirs are directory names search always prunes beyond
@@ -136,13 +137,15 @@ func searchSkipDir(name string) bool {
 // test/generated/vendored), and class (ident/comment/string) — each
 // omitted rather than guessed when it cannot be determined.
 type searchHit struct {
-	Loc   string   `json:"loc"`
-	Text  string   `json:"text"`
-	Sym   string   `json:"sym,omitempty"`
-	Kind  string   `json:"kind,omitempty"`
-	Flags string   `json:"flags,omitempty"`
-	Class string   `json:"class,omitempty"`
-	Ctx   []string `json:"ctx,omitempty"`
+	Loc    string   `json:"loc"`
+	Text   string   `json:"text"`
+	Sym    string   `json:"sym,omitempty"`
+	Kind   string   `json:"kind,omitempty"`
+	Flags  string   `json:"flags,omitempty"`
+	Class  string   `json:"class,omitempty"`
+	Status string   `json:"status,omitempty"`
+	Reason string   `json:"reason,omitempty"`
+	Ctx    []string `json:"ctx,omitempty"`
 	// Heading and Score are set only for a `kind: docs` hit (KR-5): Heading
 	// is the doc unit's heading path, Score its fused reciprocal-rank-fusion
 	// value (higher is better, KR-4). A grep-shaped hit never sets either.
@@ -330,6 +333,18 @@ func registerSearch(s *Server, backend QueryInterface) {
 			if rpcErr := searchRootRegistered(ctx, backend, root); rpcErr != nil {
 				return nil, rpcErr
 			}
+			if r, ok := clonePath(ctx, ""); ok {
+				receipts = beginSearchReceipts(ctx, backend, r.Service)
+				// Preserve both the indexed service's exclusions and the clone's.
+				for _, scopeRoot := range []string{r.IndexedRoot.Root, r.Root} {
+					_, pats, _, e := connector.LoadIgnoreScopedForWithPatterns(scopeRoot, r.Service)
+					if e != nil {
+						return nil, &rpcError{Code: ErrCodeInternal, Message: "clone exclusions: " + e.Error()}
+					}
+					ignorePatterns = append(ignorePatterns, pats...)
+				}
+				ignore = filter.New(ignorePatterns)
+			}
 		}
 
 		limit := p.Limit
@@ -344,6 +359,17 @@ func registerSearch(s *Server, backend QueryInterface) {
 		})
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: "search: " + err.Error()}
+		}
+		if r, ok := clonePath(ctx, ""); ok {
+			allowed := rawHits[:0]
+			for _, hit := range rawHits {
+				key := cloneSearchKey(r, root, hit.File)
+				if notIndexedReason(ctx, r.IndexedRoot.Root, r.Service, key) != "" || notIndexedReason(ctx, r.Root, r.Service, key) != "" {
+					continue
+				}
+				allowed = append(allowed, hit)
+			}
+			rawHits = allowed
 		}
 		sort.Slice(rawHits, func(i, j int) bool {
 			if rawHits[i].File != rawHits[j].File {
@@ -361,12 +387,29 @@ func registerSearch(s *Server, backend QueryInterface) {
 		omitted := ""
 		if receipts != nil {
 			byFile, omitted = receipts.finish(ctx)
+			if r, ok := clonePath(ctx, ""); ok {
+				verified := map[string][]core.SymbolNode{}
+				for _, hit := range limited {
+					key := cloneSearchKey(r, root, hit.File)
+					if same, _ := cloneFileState(ctx, backend, r, key); same {
+						verified[hit.File] = byFile[key]
+					}
+				}
+				byFile = verified
+			}
 		}
 		flagsCache := map[string][]string{}
 		linesCache := map[string][]string{}
 		hits := make([]searchHit, 0, len(limited))
 		for _, rh := range limited {
-			hits = append(hits, renderSearchHit(ctx, rh, re, byFile, flagsCache, linesCache, root))
+			hit := renderSearchHit(ctx, rh, re, byFile, flagsCache, linesCache, root)
+			if r, ok := clonePath(ctx, ""); ok {
+				if same, reason := cloneFileState(ctx, backend, r, cloneSearchKey(r, root, rh.File)); !same {
+					hit.Status = "unknown"
+					hit.Reason = reason
+				}
+			}
+			hits = append(hits, hit)
 		}
 		kept, truncated := fitToBudget(hits, 0)
 		var el *elided
@@ -632,6 +675,19 @@ func searchSummary(kept []searchHit) string {
 // capped names the engine bound that stopped the search early ("" when it
 // ran to completion): the result is then a lower bound (RT-88).
 func searchRun(ctx context.Context, root string, o searchOpts) (hits []searchRawHit, engine, capped string, err error) {
+	if r, ok := clonePath(ctx, ""); ok {
+		request := ctx.Value(clonePathKey{}).(*clonePathValue)
+		o.allowedPaths = map[string]bool{}
+		for path := range request.visible {
+			rel, err := filepath.Rel(root, filepath.Join(r.Root, filepath.FromSlash(path)))
+			if err == nil && pathWithin(root, filepath.Join(root, rel)) {
+				o.allowedPaths[filepath.ToSlash(rel)] = true
+			}
+		}
+		hits, capped, err = searchWalk(ctx, root, o)
+		return hits, "regexp", capped, err
+	}
+
 	if _, err := exec.LookPath("rg"); err == nil {
 		if hits, capped, err := searchRipgrep(ctx, root, o); err == nil {
 			return hits, "ripgrep", capped, nil
@@ -647,6 +703,9 @@ func searchRun(ctx context.Context, root string, o searchOpts) (hits []searchRaw
 // searchRootRegistered refuses a bare root outside every registered
 // service root (RT-88): symlinks resolved on both sides.
 func searchRootRegistered(ctx context.Context, backend QueryInterface, root string) *rpcError {
+	if _, ok := clonePath(ctx, ""); ok {
+		return nil
+	}
 	refuse := &rpcError{Code: ErrCodeParams, Message: fmt.Sprintf("search: root %q is not inside an indexed service's root — pass service, or a root under one", root)}
 	if backend == nil || !filepath.IsAbs(root) {
 		return refuse
@@ -979,6 +1038,9 @@ func searchWalk(ctx context.Context, root string, o searchOpts) ([]searchRawHit,
 			return nil
 		}
 		if isEnvPatternFile(d.Name()) || searchIgnoreMatch(o.ignore, rel) {
+			return nil
+		}
+		if o.allowedPaths != nil && !o.allowedPaths[rel] {
 			return nil
 		}
 		paths = append(paths, rel)

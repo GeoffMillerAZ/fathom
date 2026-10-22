@@ -204,10 +204,11 @@ func withServiceRefHops(m map[string]any, hops []serviceref.Hop, unextracted []s
 func registerBlastRadius(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "blast_radius",
-		Description: `Blast radius of changed files (kind:"change"), every rename call site (kind:"rename"), or a symbol's remaining referents (kind:"delete"). Reach for it when a change, rename, or delete needs who breaks. Required: service.`,
+		Description: `Blast radius of files (kind:"change"), rename call sites ("rename"), or remaining referents ("delete"). Reach for it when checking who breaks. Required: service.`,
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
+				"path":              map[string]any{"type": "string", "description": "Absolute clone/worktree path"},
 				"service":           map[string]any{"type": "string", "description": "Service / repo identifier"},
 				"kind":              map[string]any{"type": "string", "enum": []string{"change", "rename", "delete"}, "description": `"change" (default, changed_files), "rename"/"delete" (need symbol) — grep gives none of the three.`},
 				"changed_files":     map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Repo-relative file paths that changed"},

@@ -21,7 +21,6 @@ package main
 // untracked target there is not folded and stays a silent `foreign-target`.
 
 import (
-	"bufio"
 	"context"
 	"os"
 	"path/filepath"
@@ -29,6 +28,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/gitro"
+	"github.com/geoffmilleraz/fathom/internal/worktree"
 )
 
 // silenceReason is the closed vocabulary of an edit-hook answer that said
@@ -141,26 +141,7 @@ func candidateRoots(projDir string) []string {
 // worktree of a candidate root (destWorktree) or a separate clone of one
 // (destClone), and the candidate root it belongs to; class "" otherwise.
 func cloneOrWorktreeOf(roots []string, target string) (class, wt, root string) {
-	wt, dotGit, ok := nearestWorkTree(target)
-	if !ok || rootListed(roots, wt) {
-		return "", "", ""
-	}
-	fi, err := os.Lstat(dotGit)
-	if err != nil {
-		return "", "", ""
-	}
-	if !fi.IsDir() {
-		if common := linkedCommonDir(wt, dotGit); common != "" {
-			if r := rootOfCommonDir(roots, common); r != "" {
-				return destWorktree, wt, r
-			}
-		}
-		return "", "", ""
-	}
-	if r := sameRepositoryRoot(roots, wt); r != "" {
-		return destClone, wt, r
-	}
-	return "", "", ""
+	return worktree.RelatedTarget(roots, target)
 }
 
 // The fold markers (XM-37) a clone or worktree target's answered beat
@@ -203,12 +184,21 @@ func foldCloneTarget(projDir, target string) cloneFold {
 		return cloneFold{}
 	}
 	f := cloneFold{class: class}
+	localCtx, done := testRunContext()
+	defer done()
+	ctx, cancel := context.WithTimeout(localCtx, time.Second)
+	defer cancel()
+	match, ok := worktree.Resolve(ctx, target, []worktree.IndexedRoot{{Service: "project", Root: root}})
+	if !ok || match.Class == "" {
+		return f
+	}
+
 	rel, err := filepath.Rel(wt, filepath.Clean(target))
 	if err != nil || rel == "." || escapesRoot(rel) {
 		return f
 	}
 	key := filepath.ToSlash(rel)
-	if !trackedInWorkTree(wt, key) {
+	if !trackedInWorkTree(ctx, wt, key) {
 		return f
 	}
 	f.tracked, f.key, f.path = true, key, filepath.Join(root, rel)
@@ -221,8 +211,8 @@ func foldCloneTarget(projDir, target string) cloneFold {
 // optional lock, no fetch, no prompt) under a one-second deadline. Exact
 // match only: a directory key lists the files under it, never itself. Any
 // failure reads as untracked (no fold).
-func trackedInWorkTree(wt, key string) bool {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+func trackedInWorkTree(parent context.Context, wt, key string) bool {
+	ctx, cancel := context.WithTimeout(parent, time.Second)
 	defer cancel()
 	out, err := gitro.Output(ctx, wt, "--literal-pathspecs", "ls-files", "-z", "--", key)
 	return err == nil && string(out) == key+"\x00"
@@ -253,127 +243,6 @@ func foldLabel(f cloneFold) string {
 		return ""
 	}
 	return " (" + f.class + "; " + foldedRulesNote + ")"
-}
-
-// nearestWorkTree walks up from target's directory to the first directory
-// holding a `.git` entry (a directory for a main work tree, a file for a
-// linked worktree or a submodule).
-func nearestWorkTree(target string) (root, dotGit string, ok bool) {
-	for dir := filepath.Dir(filepath.Clean(target)); ; dir = filepath.Dir(dir) {
-		p := filepath.Join(dir, ".git")
-		if _, err := os.Lstat(p); err == nil {
-			return dir, p, true
-		}
-		if parent := filepath.Dir(dir); parent == dir {
-			return "", "", false
-		}
-	}
-}
-
-// rootListed reports whether dir is one of roots, symlinks resolved.
-func rootListed(roots []string, dir string) bool {
-	rd := resolveSymlinks(dir)
-	for _, r := range roots {
-		if r == dir || resolveSymlinks(r) == rd {
-			return true
-		}
-	}
-	return false
-}
-
-// linkedCommonDir reads a linked worktree's `.git` file ("gitdir: <path>")
-// and returns the common git directory it shares with its main work tree
-// (the gitdir's commondir file, else the parent of its worktrees/ entry), or
-// "" when the file names no worktree.
-func linkedCommonDir(wt, dotGit string) string {
-	raw, err := os.ReadFile(dotGit)
-	if err != nil {
-		return ""
-	}
-	line := strings.TrimSpace(string(raw))
-	gd, ok := strings.CutPrefix(line, "gitdir:")
-	if !ok {
-		return ""
-	}
-	gd = strings.TrimSpace(gd)
-	if !filepath.IsAbs(gd) {
-		gd = filepath.Join(wt, gd)
-	}
-	if c, err := os.ReadFile(filepath.Join(gd, "commondir")); err == nil {
-		cd := strings.TrimSpace(string(c))
-		if !filepath.IsAbs(cd) {
-			cd = filepath.Join(gd, cd)
-		}
-		return filepath.Clean(cd)
-	}
-	if i := strings.LastIndex(filepath.ToSlash(gd), "/worktrees/"); i >= 0 {
-		return filepath.Clean(gd[:i])
-	}
-	return ""
-}
-
-// rootOfCommonDir returns the root among roots whose .git directory is
-// common, or "".
-func rootOfCommonDir(roots []string, common string) string {
-	rc := resolveSymlinks(common)
-	for _, r := range roots {
-		g := filepath.Join(r, ".git")
-		if g == common || resolveSymlinks(g) == rc {
-			return r
-		}
-	}
-	return ""
-}
-
-// sameRepositoryRoot returns the candidate root the checkout at wt is a
-// clone of: the first whose `origin` names the same repository as wt's
-// `origin` (normalizeOriginURL), or whose own path wt's `origin` names; ""
-// when none is.
-func sameRepositoryRoot(roots []string, wt string) string {
-	origin := originFromConfig(filepath.Join(wt, ".git", "config"))
-	if origin == "" {
-		return ""
-	}
-	norm := normalizeOriginURL(origin)
-	local := ""
-	if filepath.IsAbs(origin) || strings.HasPrefix(origin, "file://") {
-		local = resolveSymlinks(strings.TrimSuffix(strings.TrimPrefix(origin, "file://"), "/.git"))
-	}
-	for _, r := range roots {
-		if local != "" && resolveSymlinks(r) == local {
-			return r
-		}
-		if ro := originFromConfig(filepath.Join(r, ".git", "config")); ro != "" && normalizeOriginURL(ro) == norm {
-			return r
-		}
-	}
-	return ""
-}
-
-// originFromConfig reads the url of [remote "origin"] from a git config
-// file; "" when the file or the remote is absent.
-func originFromConfig(path string) string {
-	f, err := os.Open(path)
-	if err != nil {
-		return ""
-	}
-	defer f.Close()
-	in := false
-	sc := bufio.NewScanner(f)
-	for sc.Scan() {
-		line := strings.TrimSpace(sc.Text())
-		if strings.HasPrefix(line, "[") {
-			in = line == `[remote "origin"]`
-			continue
-		}
-		if !in {
-			continue
-		}
-		if k, v, ok := strings.Cut(line, "="); ok && strings.TrimSpace(k) == "url" {
-			return strings.TrimSpace(v)
-		}
-	}
-	return ""
 }
 
 // scratchPath reports whether p sits under the OS temp directory, /tmp, or a

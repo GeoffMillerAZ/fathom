@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/hookguard"
+	"github.com/geoffmilleraz/fathom/internal/worktree"
 )
 
 // How an identity was matched.
@@ -36,30 +37,89 @@ const (
 type identityResult struct {
 	// Schema marks a real /identity answer (1): a stand-in that answers
 	// every path with some other JSON is a daemon without the route.
-	Schema    int    `json:"identity_schema"`
-	Service   string `json:"service"` // "" when nothing matched
-	Root      string `json:"root,omitempty"`
-	MatchedBy string `json:"matched_by,omitempty"`
-	Symbols   int    `json:"symbols,omitempty"`
-	CountErr  string `json:"count_error,omitempty"`
-	Langs     string `json:"languages,omitempty"`
-	Path      string `json:"path,omitempty"` // the service's recorded corpus root
+	FreshnessNote string `json:"freshness_note,omitempty"`
+	IndexedCommit string `json:"indexed_commit,omitempty"`
+	Schema        int    `json:"identity_schema"`
+	Service       string `json:"service"` // "" when nothing matched
+	Root          string `json:"root,omitempty"`
+	MatchedBy     string `json:"matched_by,omitempty"`
+	Symbols       int    `json:"symbols,omitempty"`
+	CountErr      string `json:"count_error,omitempty"`
+	Langs         string `json:"languages,omitempty"`
+	Path          string `json:"path,omitempty"` // the service's recorded corpus root
 }
 
 func (r identityResult) info() svcInfo {
-	return svcInfo{symbols: r.Symbols, countErr: r.CountErr, langs: r.Langs, path: r.Path}
+	return svcInfo{symbols: r.Symbols, countErr: r.CountErr, langs: r.Langs, path: r.Path, indexedCommit: r.IndexedCommit}
 }
 
-// resolveIdentity is the resolution /identity serves: a corpus-root match
-// first (resolveFromServicesCands' deterministic ranking), then the first
-// candidate whose basename is an indexed service.
-func resolveIdentity(svcs map[string]svcInfo, cands []serviceCandidate) identityResult {
+// resolveIdentity shares repository identity with MCP paths and the edit
+// fold. Direct matches retain the established deterministic ranking.
+func resolveIdentity(svcs map[string]svcInfo, cands []serviceCandidate, ctx context.Context) identityResult {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	if ctx.Err() != nil {
+		return identityResult{Schema: 1}
+	}
+	roots := make([]worktree.IndexedRoot, 0, len(svcs))
+	for name, i := range svcs {
+		roots = append(roots, worktree.IndexedRoot{Service: name, Root: i.path, IndexedCommit: i.indexedCommit})
+	}
 	res := func(name, root, by string) identityResult {
 		i := svcs[name]
-		return identityResult{Schema: 1, Service: name, Root: root, MatchedBy: by, Symbols: i.symbols, CountErr: i.countErr, Langs: i.langs, Path: i.path}
+		return identityResult{Schema: 1, Service: name, Root: root, MatchedBy: by, Symbols: i.symbols, CountErr: i.countErr, Langs: i.langs, Path: i.path, IndexedCommit: i.indexedCommit}
 	}
-	if c, ok := resolveFromServicesCands(svcs, cands); ok {
-		return res(strings.ToLower(c.name), c.root, identityByRoot)
+	// Preserve richness, name affinity and lexical tie breaking for direct
+	// roots, along with the caller's spelling (including symlink aliases).
+	if direct, ok := resolveFromServicesCands(svcs, cands); ok {
+		root := direct.root
+		for _, c := range cands {
+			if resolved, err := filepath.EvalSymlinks(c.root); err == nil {
+				if actual, e := filepath.EvalSymlinks(direct.root); e == nil && resolved == actual {
+					root = c.root
+					break
+				}
+			}
+		}
+		return res(direct.name, root, identityByRoot)
+	}
+	for _, c := range cands {
+		if match, ok := worktree.Resolve(ctx, c.root, roots); ok {
+			by := identityByRoot
+			if match.Class != "" {
+				by = match.Class
+			}
+			root := match.Root
+			if rel, err := filepath.Rel(match.Target, match.Root); err == nil {
+				spelled := filepath.Clean(filepath.Join(c.root, rel))
+				if actual, e := filepath.EvalSymlinks(spelled); e == nil && actual == match.Root {
+					root = spelled
+				}
+			}
+			out := res(match.Service, root, by)
+			out.FreshnessNote = match.Note
+			out.IndexedCommit = match.IndexedCommit
+			return out
+		}
+	}
+	if ctx.Err() != nil {
+		return identityResult{Schema: 1}
+	}
+	// A registry with no local roots still supports the legacy basename
+	// identity. When roots exist, unrelated or ambiguous clones stay unknown.
+	hasLocalRoot := false
+	for _, info := range svcs {
+		if filepath.IsAbs(info.path) {
+			hasLocalRoot = true
+			break
+		}
+	}
+	if hasLocalRoot {
+		for _, c := range cands {
+			if worktree.RootForPath(c.root) != "" {
+				return identityResult{Schema: 1}
+			}
+		}
 	}
 	for _, c := range cands {
 		if _, ok := svcs[strings.ToLower(c.name)]; ok {
@@ -107,7 +167,7 @@ func handleIdentity(services func(*http.Request) (map[string]svcInfo, error)) ht
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(resolveIdentity(svcs, cands))
+		_ = json.NewEncoder(w).Encode(resolveIdentity(svcs, cands, r.Context()))
 	})
 }
 
@@ -125,7 +185,15 @@ var errIdentityRouteMissing = errors.New("daemon has no /identity route")
 
 // lookupIdentity resolves dir: in process when this process is the daemon,
 // else one GET /identity with the directory and its work-tree root.
-func lookupIdentity(hc *http.Client, baseURL, dir string) (identityResult, error) {
+func lookupIdentity(hc *http.Client, baseURL, dir string, contexts ...context.Context) (identityResult, error) {
+	ctx, done := testRunContext()
+	defer done()
+	if len(contexts) > 0 {
+		ctx = contexts[0]
+	}
+	if ctx.Err() != nil {
+		return identityResult{}, ctx.Err()
+	}
 	if hookDeadlineSpent() {
 		// The /identity RPC below would be refused by the hook guard; the
 		// git toplevel read only feeds it (RT-7).
@@ -133,7 +201,7 @@ func lookupIdentity(hc *http.Client, baseURL, dir string) (identityResult, error
 	}
 	dir = strings.TrimRight(dir, "/")
 	paths := []string{dir}
-	if top := gitToplevel(dir); top != "" && top != dir {
+	if top := worktree.RootForPath(dir); top != "" && top != dir {
 		paths = append(paths, top)
 	}
 	if reg := inProcessReg.Load(); reg != nil && reg.services != nil && sameDaemonURL(baseURL, reg.self) {
@@ -141,11 +209,11 @@ func lookupIdentity(hc *http.Client, baseURL, dir string) (identityResult, error
 		if err != nil {
 			return identityResult{}, err
 		}
-		svcs, err := reg.services(context.Background())
+		svcs, err := reg.services(ctx)
 		if err != nil {
 			return identityResult{}, err
 		}
-		return resolveIdentity(svcs, cands), nil
+		return resolveIdentity(svcs, cands, ctx), nil
 	}
 	if hc == nil {
 		hc = &http.Client{Timeout: 2 * time.Second}
@@ -154,7 +222,7 @@ func lookupIdentity(hc *http.Client, baseURL, dir string) (identityResult, error
 	for _, p := range paths {
 		q.Add("path", p)
 	}
-	req, err := http.NewRequest(http.MethodGet, strings.TrimRight(baseURL, "/")+"/identity?"+q.Encode(), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(baseURL, "/")+"/identity?"+q.Encode(), nil)
 	if err != nil {
 		return identityResult{}, err
 	}

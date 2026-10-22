@@ -60,6 +60,7 @@ package main
 // follow-up, not silently dropped.
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -73,6 +74,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"github.com/geoffmilleraz/fathom/internal/hookcache"
 )
 
@@ -278,13 +280,14 @@ func identityCacheKey(dir, baseURL string) string { return identCacheKey(dir+"\x
 // daemon cannot). errIdentityRouteMissing is returned, never cached, so a
 // caller facing an older daemon falls back to the full list.
 // FATHOM_IDENT_NO_CACHE disables both layers.
-func lookupIdentityCached(hc *http.Client, baseURL, dir string) (identityResult, error) {
+func lookupIdentityCached(hc *http.Client, baseURL, dir string, contexts ...context.Context) (identityResult, error) {
 	dir = strings.TrimRight(dir, "/")
 	key := baseURL + "\x1f" + dir
 	noCache := identCacheDisabled()
 	if !noCache {
 		if v, ok := identityMemo.Load(key); ok {
-			return v.(identityResult), nil
+			id := v.(identityResult)
+			return refreshCloneIdentity(id, dir, contexts...)
 		}
 		if e, ok := readIdentityCacheEntry(dir, baseURL); ok {
 			if at, err := time.Parse(time.RFC3339, e.WrittenAt); err == nil {
@@ -295,19 +298,19 @@ func lookupIdentityCached(hc *http.Client, baseURL, dir string) (identityResult,
 				if time.Since(at) <= ttl {
 					emitBeat("ident-cache", "hit", nil)
 					identityMemo.Store(key, e.Result)
-					return e.Result, nil
+					return refreshCloneIdentity(e.Result, dir, contexts...)
 				}
 			}
 		}
 		emitBeat("ident-cache", "miss", nil)
 	}
-	id, err := lookupIdentity(hc, baseURL, dir)
+	id, err := lookupIdentity(hc, baseURL, dir, contexts...)
 	if err != nil {
 		if !noCache && !errors.Is(err, errIdentityRouteMissing) {
 			if e, ok := readIdentityCacheEntry(dir, baseURL); ok && e.Result.Service != "" {
 				if at, perr := time.Parse(time.RFC3339, e.WrittenAt); perr == nil && time.Since(at) <= identCacheStaleServeMax {
 					emitBeat("ident-cache", "stale-served", nil)
-					return e.Result, nil
+					return refreshCloneIdentity(e.Result, dir, contexts...)
 				}
 			}
 		}
@@ -372,4 +375,38 @@ func writeOwnedCacheFile(path string, data []byte) {
 	}
 	defer f.Close()
 	_, _ = f.Write(data)
+}
+
+// The cached service mapping survives edits and new commits. Only its
+// freshness note depends on the clone's current HEAD; no registry/history
+// lookup is repeated on a hook cache hit.
+func refreshCloneIdentity(id identityResult, dir string, contexts ...context.Context) (identityResult, error) {
+	if id.FreshnessNote == "" {
+		return id, nil
+	}
+	ctx, done := testRunContext()
+	defer done()
+	if len(contexts) > 0 {
+		ctx = contexts[0]
+	}
+	if hookDeadlineSpent() {
+		return identityResult{}, context.DeadlineExceeded
+	}
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	head, err := gitro.Output(ctx, dir, "rev-parse", "HEAD")
+	if err != nil {
+		return identityResult{}, err
+	}
+	short := func(s string) string {
+		if s == "" {
+			return "unknown"
+		}
+		if len(s) > 7 {
+			return s[:7]
+		}
+		return s
+	}
+	id.FreshnessNote = "clone at " + short(strings.TrimSpace(string(head))) + ", index at " + short(id.IndexedCommit)
+	return id, nil
 }

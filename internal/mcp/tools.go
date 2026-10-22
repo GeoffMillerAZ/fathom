@@ -392,10 +392,11 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 	// find_symbol — locate a symbol definition.
 	s.registerTool(toolDescriptor{
 		Name:        "find_symbol",
-		Description: "Locates symbol definitions: exact, then case-insensitive, then substring. This result IS the answer once exact; a follow-up call only adds neighbourhood/call sites. Reach for it when you need a file/line. Required: service, name.",
+		Description: "Reach for it when locating definitions: exact, case-insensitive, then substring. This result IS the answer once exact; follow-up adds callers. Required: service, name.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
+				"path": map[string]any{"type": "string", "description": "Absolute clone/worktree path"},
 				"service": map[string]any{
 					"type":        "string",
 					"description": "Service / repo identifier",

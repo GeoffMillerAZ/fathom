@@ -80,6 +80,7 @@ func (s *Server) registerTool(desc toolDescriptor, h func(ctx context.Context, a
 	if citationTool(desc.Name) {
 		h = citationHandler(s.backend, h)
 	}
+	h = clonePathHandler(desc.Name, s.backend, h)
 	handler := budgetedHandler(h, desc.declaredBudget)
 	if desc.Name == "review_diff" {
 		// Preserve the original dimension counts until the whole-result finalizer.

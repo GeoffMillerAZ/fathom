@@ -98,10 +98,11 @@ func ambiguousSymbolContextResult(ctx context.Context, backend QueryInterface, s
 func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend) {
 	s.registerTool(toolDescriptor{
 		Name:        "symbol_context",
-		Description: "Neighbourhood for a symbol: definition, callers/callees, tests, a snippet. This result IS the answer for its neighbourhood; a follow-up call only helps past the 40-line cap. Reach for it when about to change a symbol. Required: service, symbol.",
+		Description: "Reach for it when editing: definition, callers/callees, tests, snippet. This result IS the answer; follow-up helps past 40 lines. Required: service, symbol.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
+				"path":    map[string]any{"type": "string", "description": "Absolute clone/worktree path"},
 				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
 				"symbol":  map[string]any{"type": "string", "description": "Symbol name (bare or fully-qualified)"},
 				"snippet": map[string]any{"type": "boolean", "description": "Include the source snippet (default true)"},

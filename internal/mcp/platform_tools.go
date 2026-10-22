@@ -62,10 +62,11 @@ func registerPlatformTools(s *Server, backend QueryInterface, fleet FleetBackend
 // symbol count, the languages its symbols come from, and its recorded
 // corpus root ("" when none is recorded).
 type ServiceSummary struct {
-	Service     string
-	SymbolCount int
-	Languages   []string
-	Path        string
+	IndexedCommit string
+	Service       string
+	SymbolCount   int
+	Languages     []string
+	Path          string
 	// CountErr names why the symbol count could not be read (RT-41, I38):
 	// the count is then unknown, never zero.
 	CountErr string
@@ -153,8 +154,9 @@ func ServiceSummaries(ctx context.Context, backend QueryInterface, fleet FleetBa
 			sum = ServiceSummary{Service: svc, SymbolCount: len(nodes), Languages: langStrings(nodes)}
 		}
 		if backend != nil {
-			if path, _, found, err := backend.ServiceMeta(ctx, svc); err == nil && found && path != "" {
+			if path, commit, found, err := backend.ServiceMeta(ctx, svc); err == nil && found && path != "" {
 				sum.Path = path
+				sum.IndexedCommit = commit
 			}
 		}
 		out = append(out, sum)
