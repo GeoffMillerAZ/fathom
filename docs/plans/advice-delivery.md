@@ -1,0 +1,40 @@
+# Advice delivery
+
+Grammar: v2. Prefix: AD-.
+Scope: ADR-080 and `docs/design/advice-delivery.md`; advice readiness, correctness, context identity and $0 measurement. No new table, column, cache, background job, tenancy/governor change, network fetch or model spend. I9/I53 fail-open/deadlines and I12's primer cap stand; ADR-077 d2 is unchanged.
+
+- [ ] Readiness registry for every injecting harness Capability (Vehicle hook-inject): cheap checks with no extra daemon round trip; not-ready emits nothing and logs skipped:not-ready:<reason>. {id: AD-1}
+- [ ] Health stamps and a once-per-session-start inactive-channels attention line within I12; distinguish off by choice, on but not ready and on but unused. {id: AD-2}
+- [ ] Doctor finishes inside its hook budget and shows a channel table with state, tokens/day and uptake; unused channels remain enabled and receive a weekly reading. {id: AD-3}
+- [ ] `fathom capabilities` lists opt-in seams and doctor flags double registration at user and project scope. {id: AD-4}
+- [ ] Raw rows are imperative-or-silent (at most two extracted imperative or ADR Decision lines, token-capped), with in-force filtering, citation freshness and live heading re-find; coverage gaps remain counted. {id: AD-5}
+- [ ] Per-rule-per-context dedupe for Claude Code (session plus agent_id, compaction reset) and Codex (session plus transcript path when present, PreCompact reset), with `(k already shown)`; unproven context boundaries keep full injections and doctor names the limitation. {id: AD-6}
+- [ ] Memos key by agent_id, no verdict ask in subagents, and “served rule ignored” appears only for checkable rules whose compliance was checked. {id: AD-7}
+- [ ] Bash write-target parser table tests and fixes: sed -e/-f/--expression consume their argument, host:path targets are foreign, perl/ruby -i writes are recognized, and quotes inside $(...) parse correctly. {id: AD-8}
+- [ ] Experiment: serve-time precision gate, adopted only if frozen replay raises relevance with no checkable relevant rule lost; ADR-077 d2's order remains unchanged. {id: AD-9}
+- [ ] Recompile changed sections after a governing-doc commit only with operator opt-in and a spend cap; this plan authorizes no model spend. {id: AD-10}
+- [ ] Subagent brief is scoped to the parent's own lookups, excluding hook-origin calls, junk and harness-loaded instruction files; hash ranges, expire before the parent session and never ship raw daemon errors. {id: AD-11}
+- [ ] Deliver map facts through a spawn-tool PreToolUse hook that appends the parent's live map excerpt where the harness supports input rewriting; provide `fathom map show --brief` for orchestrators. {id: AD-12}
+- [ ] Clone/worktree identity resolves the indexed service by origin URL plus root commit or git common directory; base-index answers carry clone/index HEAD freshness and changed/new files remain unknown, never absent. {id: AD-13}
+- [ ] Stop hook reports unseen code as unknown (<reason>), never FAIL, and emits a failing-claim set only once per digest change per session. {id: AD-14}
+- [ ] Fix readout wrong-output paths: test delta against an unknown base and compile lines without a compiler header. {id: AD-15}
+- [ ] Add an observe value for every [hooks] seam; true retains its meaning of on. {id: AD-16}
+- [ ] Seams stay quiet when they cannot know, including unindexed roots and piped runs without a verdict. {id: AD-17}
+- [ ] Declared command wrappers in internal/shellcmd support prefix and script-argument forms; every Bash seam sees through them. {id: AD-18}
+- [ ] Trial the seams in this repository: observe three days, then rich/on with pre-registered bars. {id: AD-19}
+- [ ] Deterministic sampling and (session, rule) holdouts use hash(salt, session, target, ordinal) mod N and log fired/sampled-out/held-out; schema rejects sampling enforcement, readiness and failure-triggered lines. {id: AD-20}
+- [ ] $0 compliance replay instrument for checkable rule shapes, with pre-registered per-channel keep bars before tuning. {id: AD-21}
+- [ ] Exploration instrument classifies by primary verb and separates reads later edited, parent-recent re-derivation and other exploration. {id: AD-22}
+- [ ] RTK coexistence: shellcmd treats rtk as a transparent prefix, readouts exclude RTK-covered families, and a pairing guide records exclusions. {id: AD-23}
+- [ ] (op) Replay after AD-5 through AD-8: relevance up and payload tokens down against the frozen 10-16+ baseline, zero checkable relevant rules lost; record population, method and the fresh relevance sample before verdict. {id: AD-M1, oracle: lexical, path: docs/bench/readings/advice-delivery/post-edit.md, pattern: "^AD-M1 verdict: (PASS|FAIL)"}
+- [ ] (op) Subagent replay after AD-11 through AD-13: fewer payload bytes, stale lines below 1%, known-clone refusals zero, search failure share below 10%, map facts delivered and primary-verb exploration compared with three comparable prior waves; name incomplete evidence. {id: AD-M2, oracle: lexical, path: docs/bench/readings/advice-delivery/subagents.md, pattern: "^AD-M2 verdict: (PASS|FAIL)"}
+- [ ] (op) Seam trial reading after AD-19: no false answer and rich acted-on rate at least 56.8% against 46.8% baseline; report the three-day observe phase, per-seam eligible/fired/unknown counts and wrapper reach before verdict. {id: AD-M3, oracle: lexical, path: docs/bench/readings/advice-delivery/seam-trial.md, pattern: "^AD-M3 verdict: (PASS|FAIL)"}
+- [ ] (op) First holdout reading after AD-20 through AD-22: pre-registered per-channel effect bars, eligible/fired/sampled-out/held-out counts and compliance/exploration outcomes; zero within bar for two consecutive readings reopens policy, never auto-disables a channel. {id: AD-M4, oracle: lexical, path: docs/bench/readings/advice-delivery/holdout.md, pattern: "^AD-M4 verdict: (PASS|FAIL)"}
+
+Dependencies: AD-2 and AD-3 follow AD-1; AD-6 follows AD-5's stable served-rule identity. AD-9 waits for the compliance replay (AD-21) and its no-loss bar. AD-19 follows AD-15, AD-16 and AD-17, and uses AD-18 before evaluating wrapped commands; its bars are registered before activation. AD-12's automatic prompt path depends on a harness spawn event with input rewriting; other orchestrators use its explicit brief mode. AD-M1 follows AD-5 through AD-8; AD-M2 follows AD-11 through AD-13; AD-M3 follows AD-19; AD-M4 follows AD-20 through AD-22. AD-10's opt-in and spend cap do not grant spending authority. No implementation contract is asserted yet; add the product symbol contract when implementing and verifying each row. All boxes remain open for controller verification.
+
+Verify before claiming any row: `fathom verify --service fathom --plan docs/plans/advice-delivery.md`.
+
+## Decision models
+
+Only optional sampled audits of compiled-rule faithfulness and rule/diff applicability could use the existing port. Provider none and opt-out keep deterministic answers; declare a calibrated band before enabling a site, and unqualified judgments never prune, block or assert code facts. Keep only on replay improvement under EXP-M4's qualification rule; EXP-M4 is CLOSED and this plan reopens no stopped site or model spend. Readiness, dedupe, identity, parsing and hash sampling are computed.
