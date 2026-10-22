@@ -288,7 +288,7 @@ tasks:
     cmds:
       - |
         rc=0
-        for f in scripts/*.sh; do
+        for f in scripts/*.sh scripts/gdev/*.sh; do
           bash -n "$f" || { echo "bash -n FAILED: $f"; rc=1; }
         done
         [ "$rc" -eq 0 ] || exit "$rc"
@@ -298,6 +298,7 @@ tasks:
         bash scripts/prepush-refs_test.sh
         bash scripts/test-shards_test.sh
         bash scripts/scratch-home_test.sh
+        bash scripts/gdev/cold-arm_test.sh
         bash scripts/tenancy-stress_test.sh
         bash scripts/pipefail-grep_test.sh
         bash scripts/cloud-setup_test.sh

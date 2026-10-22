@@ -1,0 +1,15 @@
+docs/plans/language-breadth.md
+docs/plans/responsible-tenant.md
+docs/plans/ambient-fathom.md
+docs/plans/efficiency-wave.md
+docs/plans/readouts.md
+docs/plans/refactor-conservation.md
+docs/plans/surface-reckoning.md
+docs/plans/observatory-console.md
+docs/plans/exploration-maps.md
+docs/plans/system-graph.md
+docs/plans/decision-port.md
+docs/plans/receipts.md
+docs/plans/strengths-bench.md
+docs/plans/portable-receipts.md
+docs/plans/bench-pyramid.md
