@@ -321,7 +321,7 @@ func checkGuardDeadScopes(hc *http.Client, baseURL, root, explicitSvc string, da
 	sourceComplete := sourceTotal <= len(sources)
 	checked := 0
 	var unfinished bool
-	var dead, unindexed []string
+	var dead, unindexed, waiting []string
 	var commandGuardCount int
 	for i, g := range set.Guards {
 		if err := ctx.Err(); err != nil {
@@ -375,6 +375,10 @@ func checkGuardDeadScopes(hc *http.Client, baseURL, root, explicitSvc string, da
 			unindexed = append(unindexed, fmt.Sprintf("%s — %d file(s) on disk, none indexed", label, n))
 			continue
 		}
+		if doctorGuardScopesIgnored(ctx, root, g.Scopes) {
+			waiting = append(waiting, label)
+			continue
+		}
 		dead = append(dead, label)
 	}
 
@@ -385,6 +389,9 @@ func checkGuardDeadScopes(hc *http.Client, baseURL, root, explicitSvc string, da
 	if len(unindexed) > 0 {
 		note = fmt.Sprintf("; %d guard(s) cover real files fathom does not INDEX (not dead — do not delete them): %s",
 			len(unindexed), strings.Join(unindexed, "; ")) + note
+	}
+	if len(waiting) > 0 {
+		note = "; ignored guard scope(s) waiting for files: " + strings.Join(waiting, "; ") + note
 	}
 	if unfinished {
 		return doctorCheck{Name: name, Status: doctorUnknown, Reason: fmt.Sprintf("checked %d of %d guards (incomplete indexed or disk coverage); %d dead scope(s) confirmed%s", checked, len(set.Guards), len(dead), note), Remedy: "narrow the guard scopes or inspect the remaining guards manually"}
@@ -397,7 +404,7 @@ func checkGuardDeadScopes(hc *http.Client, baseURL, root, explicitSvc string, da
 			Remedy: "narrow or remove the scope in .fathom/guard.cue, or re-ingest if the index is stale",
 		}
 	}
-	if len(unindexed) > 0 {
+	if len(unindexed) > 0 || len(waiting) > 0 {
 		return doctorCheck{
 			Name: name, Status: doctorPass,
 			Reason: fmt.Sprintf("no dead guards%s", note),
@@ -621,4 +628,34 @@ func doctorDiskPaths(ctx context.Context, root string, scopes []string) ([]strin
 	}
 	sort.Strings(paths)
 	return dedupeStrings(paths), complete, nil
+}
+
+// doctorGuardScopesIgnored confirms that every positive scope lies under
+// a gitignored literal path. A missing tracked-path scope stays dead;
+// wildcard-only scopes and failed git probes cannot prove they are waiting.
+func doctorGuardScopesIgnored(ctx context.Context, root string, scopes []string) bool {
+	positive := false
+	for _, scope := range scopes {
+		scope = strings.TrimSpace(scope)
+		if scope == "" || strings.HasPrefix(scope, "!") || strings.HasPrefix(scope, "#") {
+			continue
+		}
+		positive = true
+		literal := strings.TrimPrefix(scope, "/")
+		if i := strings.IndexAny(literal, "*?["); i >= 0 {
+			literal = literal[:i]
+			if i := strings.LastIndex(literal, "/"); i >= 0 {
+				literal = literal[:i+1]
+			} else {
+				return false
+			}
+		}
+		if literal == "" || escapesRoot(filepath.FromSlash(literal)) {
+			return false
+		}
+		if err := doctorGitCommand(ctx, root, "check-ignore", "-q", "--", literal).Run(); err != nil {
+			return false
+		}
+	}
+	return positive
 }
