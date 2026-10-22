@@ -46,6 +46,112 @@ func TestTaskfileClassification(t *testing.T) {
 	}
 }
 
+func TestTaskfileUnnamedContentDispatch(t *testing.T) {
+	p := New(connector.NewLocalConnector(), store.NewMemoryStore(), Config{})
+	t.Cleanup(p.Close)
+	for _, tc := range []struct {
+		path, src string
+		want      bool
+	}{
+		{"taskfiles/envkit.gen.yml", "version: '3'\ntasks:\n  check:\n    cmds: [echo ok]\n", true},
+		{"taskfiles/nested.yaml", "version: 3\nincludes:\n  child: ./child.yml\n", true},
+		{"taskfiles/quoted.yml", "\"version\": \"3\"\n\"tasks\":\n  check:\n    cmds: [echo ok]\n", true},
+		{"taskfiles/spaced.yml", "version : \"3\"\ntasks:\n  check:\n    cmds: [echo ok]\n", true},
+		{"config.yml", "version: '3'\nname: ordinary\n", false},
+		{"comment.yml", "# version: '3'\ntasks:\n  x: {}\n", false},
+		{"scalar.yml", "message: |\n  version: '3'\n  tasks:\n", false},
+		{"wrong-version.yml", "version: '2'\ntasks:\n  x: {}\n", false},
+		{"bad-tasks.yml", "version: '3'\ntasks: [x]\n", false},
+		{"malformed.yml", "version: '3'\ntasks: [\n", false},
+		{"duplicate.yml", "version: '3'\nversion: '3'\ntasks:\n  check: {}\n", false},
+		{"duplicate-body.yml", "version: '3'\ntasks:\n  check: {}\ntasks:\n  other: {}\n", false},
+		{"multi-doc.yml", "version: '3'\ntasks:\n  check: {}\n---\nversion: '3'\ntasks:\n  other: {}\n", false},
+		{"k8s.yml", "apiVersion: v1\nkind: ConfigMap\nversion: '3'\ntasks:\n  x: {}\n", false},
+		{"compose.yml", "version: '3'\nservices:\n  app: {}\ntasks:\n  x: {}\n", false},
+	} {
+		e, kind, ok, _ := p.resolveExtractor(tc.path, []byte(tc.src), buildSiblingIndex(nil))
+		_, isDoc := e.(extractor.DocResulter)
+		got := ok && isDoc && kind == ToolTaskfile
+		if got != tc.want {
+			t.Errorf("%s: taskfile dispatch = %v, want %v", tc.path, got, tc.want)
+		}
+	}
+}
+
+func TestIngest_TaskfileUnnamedIncludeAndReingest(t *testing.T) {
+	dir := t.TempDir()
+	writeCorpus(t, dir, map[string]string{
+		"Taskfile.yml":             "version: '3'\nincludes:\n  env: ./taskfiles/envkit.gen.yml\n  missing: ./taskfiles/gone.yml\ntasks:\n  all:\n    cmds:\n      - task: env:check\n",
+		"taskfiles/envkit.gen.yml": "\"version\" : \"3\"\n\"tasks\":\n  check:\n    cmds: [echo ok]\n",
+		"taskfiles/ordinary.yml":   "version: '3'\nname: ordinary\n",
+	})
+	st := store.NewMemoryStore()
+	p := New(connector.NewLocalConnector(), st, Config{})
+	t.Cleanup(p.Close)
+	ctx := context.Background()
+	if _, err := p.Ingest(ctx, core.ServiceRef{ID: "tf", Path: dir}); err != nil {
+		t.Fatal(err)
+	}
+	check := func(wantTask string, wantEdge bool) {
+		t.Helper()
+		obs, err := st.QueryObservations(ctx, "tf", "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var tasks []string
+		for _, o := range obs {
+			if o.SourceRef == "taskfiles/ordinary.yml" && o.SourceKind == core.KindTaskfile {
+				t.Error("ordinary YAML became a Taskfile")
+			}
+			if o.SourceRef == "taskfiles/envkit.gen.yml" && o.SourceKind == "TaskfileTask" {
+				tasks = append(tasks, o.Symbol)
+			}
+		}
+		if !reflect.DeepEqual(tasks, []string{wantTask}) {
+			t.Errorf("child tasks = %q, want %q", tasks, wantTask)
+		}
+		all, err := st.TypedEdges(ctx, "tf")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var edges []string
+		for _, e := range all {
+			if e.Kind == core.EdgeFileResolved {
+				edges = append(edges, e.FromFile+"->"+e.ToSymbol)
+			}
+		}
+		sort.Strings(edges)
+		var want []string
+		if wantEdge {
+			want = []string{"Taskfile.yml->tf::taskfiles/envkit.gen.envkit.gen.yml"}
+		}
+		if !reflect.DeepEqual(edges, want) {
+			t.Errorf("include edges = %q, want %q", edges, want)
+		}
+	}
+	check("check", true)
+	rel := "taskfiles/envkit.gen.yml"
+	if err := os.WriteFile(filepath.Join(dir, filepath.FromSlash(rel)), []byte("version: '3'\ntasks:\n  lint:\n    cmds: [echo ok]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.ReingestFile(ctx, st, "tf", dir, rel); err != nil {
+		t.Fatal(err)
+	}
+	check("lint", true)
+	root := "Taskfile.yml"
+	if err := os.WriteFile(filepath.Join(dir, root), []byte("version: '3'\ntasks:\n  all:\n    cmds: [echo ok]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.ReingestFile(ctx, st, "tf", dir, root); err != nil {
+		t.Fatal(err)
+	}
+	// ReingestFile refreshes symbols only; the next full ingest replaces typed edges.
+	if _, err := p.Ingest(ctx, core.ServiceRef{ID: "tf", Path: dir}); err != nil {
+		t.Fatal(err)
+	}
+	check("lint", false)
+}
+
 // TestResolveDocXrefs_Taskfile pins LB-Q-taskfile's L3: an include that names a
 // Taskfile, or the directory that holds one, resolves entity to entity (the
 // included file's Taskfile entity), whether it is written as a string or under
@@ -128,12 +234,11 @@ func taskfileRepoCorpus() map[string]string {
 }
 
 // TestIngest_TaskfileRepo (the product-reach proof): an ingest extracts every
-// Taskfile of go-task's eight basenames through the taskfile dialect, leaves an
-// extensionless Taskfile, a backup and an included file under another name
-// alone, and stores the includes that resolve, a Taskfile or the directory of
-// one, as file-tier typed edges from the including Taskfile to the included
-// one. Tasks ride with their names as written and their deps and task calls on
-// Calls.
+// Taskfile of go-task's eight basenames through the taskfile dialect, also
+// reads an arbitrary-name YAML with a version-3 Taskfile shape, and leaves an
+// extensionless Taskfile and a backup alone. It stores includes that resolve
+// to a file or the directory of one as file-tier typed edges. Tasks retain
+// their written names and deps and task calls on Calls.
 func TestIngest_TaskfileRepo(t *testing.T) {
 	dir := t.TempDir()
 	writeCorpus(t, dir, taskfileRepoCorpus())
@@ -158,8 +263,8 @@ func TestIngest_TaskfileRepo(t *testing.T) {
 			calls[o.SourceRef+"|"+o.Symbol] = o.Calls
 		}
 		switch o.SourceRef {
-		case "Taskfile", "Taskfile.docker.yml", "Taskfile.yml.bak":
-			t.Errorf("%s|%s: a file that is not one of the eight basenames was extracted as %s", o.SourceRef, o.Symbol, o.SourceKind)
+		case "Taskfile", "Taskfile.yml.bak":
+			t.Errorf("%s|%s: a non-YAML candidate was extracted as %s", o.SourceRef, o.Symbol, o.SourceKind)
 		}
 	}
 	for _, w := range []string{
@@ -173,6 +278,8 @@ func TestIngest_TaskfileRepo(t *testing.T) {
 		"docs/Taskfile.yaml|Taskfile|Taskfile.yaml",
 		"docs/Taskfile.yaml|TaskfileTask|build",
 		"tools/taskfile.dist.yml|Taskfile|taskfile.dist.yml",
+		"Taskfile.docker.yml|Taskfile|Taskfile.docker.yml",
+		"Taskfile.docker.yml|TaskfileTask|not-read",
 	} {
 		if !got[w] {
 			t.Errorf("missing observation %s\n have: %v", w, taskfileSortedKeys(got))

@@ -7,9 +7,19 @@ and where the calibration oracle comes from. The decode is `gopkg.in/yaml.v3` th
 engine. The manifest claims a file by basename, at any depth: `Taskfile.yml`, `Taskfile.yaml`,
 `taskfile.yml`, `taskfile.yaml`, `Taskfile.dist.yml`, `Taskfile.dist.yaml`, `taskfile.dist.yml`
 and `taskfile.dist.yaml` — the six the queue entry named and the two lowercase `.dist` spellings
-go-task's own search order also reads. An included file under another name (`Taskfile.docker.yml`,
-`tasks/build.yml`, `Taskfile`) is not claimed: the name is what says it is a Taskfile, and no glob
-can tell the arbitrary ones from other YAML.
+go-task's own search order also reads. An arbitrary `.yml` or `.yaml` name is claimed only when
+the decoded top-level mapping has version `3` (including a quoted key or spaced colon) and a
+mapping under `tasks` or `includes`, after earlier YAML dialects decline it. A bare version, a
+comment, a scalar lookalike, duplicate root keys, multiple YAML documents, invalid YAML,
+and other versions remain unclassified. This also reaches an included file such as
+`taskfiles/envkit.gen.yml`. The content claim does not prove that a parent includes the file;
+standalone files with that Taskfile shape are read too. The old reading in
+`docs/bench/readings/lang/taskfile.json` measured only the eight basenames; the new content
+path has no revised corpus-level grade yet.
+
+The existing oracle discovers only the eight basenames, so its full corpus has not been rerun
+for arbitrary names. Its first native listing precedes ablation's `sh:`/`if:` neutralization;
+new calibration uses sanitized, owned fixtures until that order is corrected.
 
 ## What it models
 

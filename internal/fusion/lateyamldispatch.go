@@ -1,6 +1,8 @@
 package fusion
 
 import (
+	"bytes"
+	"io"
 	"path"
 	"path/filepath"
 	"strings"
@@ -8,6 +10,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"gopkg.in/yaml.v3"
 )
 
 // Late YAML dialects (wave c1, the c1-hub contract): YAML dialects whose files
@@ -30,6 +33,8 @@ const (
 	// ToolGrafanaDashboard tags observations from a Grafana dashboard or a
 	// Grafana provisioning file (LB-Q-grafana-dashboard, wave c3).
 	ToolGrafanaDashboard ToolKind = "grafana-dashboard"
+	// ToolTaskfile tags a version-3 Taskfile with an arbitrary YAML basename.
+	ToolTaskfile ToolKind = "taskfile"
 )
 
 // lateYAMLDialects is the ordered table of late-claimed YAML dialects.
@@ -46,6 +51,7 @@ var lateYAMLDialects = []struct {
 	{"alertmanager", ToolAlertmanager},
 	{"prometheus", ToolPrometheus},
 	{"otel-collector", ToolOTelCollector},
+	{"taskfile", ToolTaskfile},
 }
 
 // isLateYAMLKind reports whether kind is a late-claimed YAML dialect's
@@ -116,6 +122,9 @@ func lateYAMLDetects(relPath string, content []byte) ToolKind {
 		if !byPath && !x.DetectsContent(content) {
 			continue
 		}
+		if d.kind == ToolTaskfile && !byPath && !unnamedTaskfileShape(content) {
+			continue
+		}
 		res, err := x.ExtractDoc("", filepath.ToSlash(relPath), content)
 		if err != nil || len(res.Roots) == 0 {
 			continue
@@ -123,4 +132,42 @@ func lateYAMLDetects(relPath string, content []byte) ToolKind {
 		return d.kind
 	}
 	return ""
+}
+
+// unnamedTaskfileShape validates the narrow content claim after the cheap
+// version sniff. A named Taskfile remains governed by its basename, including
+// older versions. The map check keeps unrelated versioned YAML unclaimed.
+func unnamedTaskfileShape(content []byte) bool {
+	var document yaml.Node
+	dec := yaml.NewDecoder(bytes.NewReader(content))
+	if err := dec.Decode(&document); err != nil || len(document.Content) != 1 {
+		return false
+	}
+	var trailing yaml.Node
+	if err := dec.Decode(&trailing); err != io.EOF {
+		return false
+	}
+	root := document.Content[0]
+	if root.Kind != yaml.MappingNode {
+		return false
+	}
+	version, body := false, false
+	seen := make(map[string]struct{}, len(root.Content)/2)
+	for i := 0; i+1 < len(root.Content); i += 2 {
+		key, value := root.Content[i], root.Content[i+1]
+		if key.Kind != yaml.ScalarNode {
+			return false
+		}
+		if _, duplicate := seen[key.Value]; duplicate {
+			return false
+		}
+		seen[key.Value] = struct{}{}
+		switch key.Value {
+		case "version":
+			version = value.Kind == yaml.ScalarNode && value.Value == "3"
+		case "tasks", "includes":
+			body = body || value.Kind == yaml.MappingNode
+		}
+	}
+	return version && body
 }

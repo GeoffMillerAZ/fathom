@@ -205,8 +205,8 @@ func (js jsonSizer) size(rv reflect.Value) error {
 }
 
 // leaf adds rv's encoded length: strings, booleans and integers are
-// measured directly (no encoder, no allocation); anything else is encoded
-// into the counter (less Encode's trailing newline).
+// measured directly (strings with invalid UTF-8 probe the encoder once);
+// anything else is encoded into the counter (less Encode's trailing newline).
 func (js jsonSizer) leaf(rv reflect.Value) error {
 	if !rv.CanInterface() {
 		return nil
@@ -305,10 +305,11 @@ func trimLargestMapArray(result any, byteBudget int) (map[string]any, bool) {
 
 // jsonStringLen is the length encoding/json gives s (HTML-escaped, as
 // json.Marshal does): quotes, two-byte escapes for \\ " \b \f \n \r
-// \t, six-byte \u escapes for other controls, < > &, U+2028/U+2029 and
-// each invalid UTF-8 byte (\ufffd).
+// \t, six-byte \u escapes for other controls, < > & and U+2028/U+2029.
+// Invalid UTF-8 uses the active encoder's replacement-rune representation.
 func jsonStringLen(s string) int {
 	n := 2
+	replacementLen := 0
 	for i := 0; i < len(s); {
 		b := s[i]
 		if b < utf8.RuneSelf {
@@ -326,7 +327,14 @@ func jsonStringLen(s string) int {
 		c, size := utf8.DecodeRuneInString(s[i:])
 		switch {
 		case c == utf8.RuneError && size == 1:
-			n += 6
+			if replacementLen == 0 {
+				// The legacy encoder escapes invalid UTF-8 as \ufffd;
+				// the Go 1.27 JSON v2 encoder writes the UTF-8 rune.
+				// Ask the active encoder once, without copying s.
+				b, _ := json.Marshal("\xff")
+				replacementLen = len(b) - 2 // exclude quotes
+			}
+			n += replacementLen
 		case c == '\u2028' || c == '\u2029':
 			n += 6
 		default:

@@ -267,7 +267,11 @@ func TestEnrichTypedEdges_MethodKeyMatchesExtractorCanonicalKey(t *testing.T) {
 // leave the previously stored edges completely untouched; touching one
 // file's content must invalidate only that file's package.
 func TestEnrichTypedEdges_Caching(t *testing.T) {
-	dir := typedFixtureDir(t)
+	src := typedFixtureDir(t)
+	dir := t.TempDir()
+	if err := os.CopyFS(dir, os.DirFS(src)); err != nil {
+		t.Fatalf("copy typed fixture: %v", err)
+	}
 	ctx := context.Background()
 	st := store.NewMemoryStore()
 
@@ -315,6 +319,13 @@ func TestEnrichTypedEdges_Caching(t *testing.T) {
 		t.Fatalf("write %s: %v", target, err)
 	}
 	t.Cleanup(func() { _ = os.WriteFile(target, orig, 0o644) })
+	tracked, err := os.ReadFile(filepath.Join(typedFixtureDir(t), "direct.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(tracked) != string(orig) {
+		t.Error("cache invalidation modified the tracked fixture")
+	}
 
 	third, err := fusion.EnrichTypedEdges(ctx, st, "typedfixture", dir, nil)
 	if err != nil {
