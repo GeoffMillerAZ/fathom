@@ -2136,12 +2136,14 @@ paths must stay inside that root (including symlinks); the user layer may name a
 absolute directory. Only project-layer `receipts_dir` values are checked by the
 repository-path diagnostic. `host_label` is user-layer only. Keep an in-repository
 directory gitignored. This repository uses an enforced command guard in
-`.fathom/guard.cue` to deny agent invocations of the receipt writer; it has no
-receipt-directory file guard. Fathom never reads the machine hostname.
+`.fathom/guard.cue` to deny agent invocations of the receipt writer, plus an enforced
+forbidden-path file guard on `workspace/receipts/**` for editor writes and parsed
+shell write targets. Fathom never reads the machine hostname.
 `FATHOM_HOME` relocates the default receipt directory in the usual way.
 
 Anyone who can run `fathom gate receipt write` as you can create an accepted receipt;
-CI is the independent witness. A file guard would stop editor-tool writes only.
+CI is the independent witness. Both the command and forbidden-path file guards
+apply; neither authenticates unsigned evidence.
 
 The local wrapper captures a complete log and calls `fathom gate receipt write` itself
 on PASS. This repository also denies agent invocations of the receipt writer through

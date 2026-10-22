@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -108,5 +111,28 @@ func TestDoctorChannelsRenderInTextAndJSON(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "~TOKENS/DAY") {
 		t.Fatal("units omitted")
+	}
+}
+
+func TestDoctorChannelsVerbParityEmptyHistory(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("FATHOM_HOME", t.TempDir())
+	t.Setenv("FATHOM_STATE_DIR", t.TempDir())
+	t.Setenv("FATHOM_HOOKS_LOG", filepath.Join(t.TempDir(), "hooks.jsonl"))
+	now := time.Date(2026, 10, 22, 12, 0, 0, 0, time.UTC)
+	before := doctorChannels(root, "claude", now)
+	var out, errOut bytes.Buffer
+	if code := cmdDoctorWithClock([]string{"--repo-only", "--json", "--harness", "claude", "--path", root, "--service", "fixture"}, &out, &errOut, func() time.Time { return now }); code == 2 {
+		t.Fatalf("doctor: %s", errOut.String())
+	}
+	var got struct {
+		Channels []doctorChannel `json:"channels"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(before, got.Channels) {
+		t.Errorf("doctor's own invocation changed channel history:\npage=%+v\nverb=%+v", before, got.Channels)
 	}
 }

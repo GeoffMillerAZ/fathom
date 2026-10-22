@@ -79,7 +79,7 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	var skillsFlag optionalStringFlag
 	fs.Var(&skillsFlag, "skills", "install the ten shipped agent skills (fathom-activate/custodian/doctor/feedback/findings/impact/onboard/plan/rewire/verify): claude | codex | agents | all | codex-prompts (every repo mode writes the one copy into .claude/skills; bare --skills = all, codex and agents also link .agents/skills to it; claude = .claude/skills only; codex-prompts = the deprecated ~/.codex/prompts twin; omit to skip)")
 	seedUserIgnoreFlag := fs.Bool("seed-user-ignore", false, "seed ~/.fathom/ignore with machine-junk defaults (docs/design/scoped-config.md); prints exactly what it writes, never silent, requires this flag")
-	noUserWritesFlag := fs.Bool("no-user-writes", false, "preview user config, ignore, prompts and PATH shim writes without making them; --harness none implies this unless --seed-user-ignore or --skills=codex-prompts is requested")
+	noUserWritesFlag := fs.Bool("no-user-writes", false, "preview user configuration, ignore, prompts and PATH shim writes; operational state is still written to the state directory; --harness none requires each user-scope write to be requested explicitly")
 	harnessFlag := fs.String("harness", "", initHarnessUsage)
 	noSCIPFlag := fs.Bool("no-scip", false, "do not run scip-typescript / scip-python: by default init runs whichever is already on PATH for a TypeScript/JavaScript or Python repo (never installing one) and has the daemon import its index as typed edges; a producer type-checks the whole repository and can take minutes")
 	dryRun := fs.Bool("dry-run", false, "list every file this init would write or change, and write none: the same steps decide each write, and a dry run stops each one before it lands (it also skips the daemon ingest and any SCIP producer, and names them)")
@@ -125,7 +125,11 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
-	noUserWrites := *noUserWritesFlag || (targets.ID == initHarnessNone && !*seedUserIgnoreFlag && skillsMode != "codex-prompts")
+	noUserWrites := *noUserWritesFlag || targets.ID == initHarnessNone
+	userWritesCause := "--harness none"
+	if *noUserWritesFlag {
+		userWritesCause = "--no-user-writes"
+	}
 
 	root := *path
 	if root == "" {
@@ -257,7 +261,11 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	// deliverable 4) — --seed-user-ignore ONLY: init never touches
 	// user-scope config on its own. Prints exactly what it writes.
 	if *seedUserIgnoreFlag {
-		if err := seedUserIgnoreFile(userWrites, userOut); err != nil {
+		ignoreWrites, ignoreOut := userWrites, userOut
+		if targets.ID == initHarnessNone && !*noUserWritesFlag {
+			ignoreWrites, ignoreOut = w, out
+		}
+		if err := seedUserIgnoreFile(ignoreWrites, ignoreOut); err != nil {
 			fmt.Fprintf(stderr, "error: seeding ~/.fathom/ignore: %v\n", err)
 			return 1
 		}
@@ -270,6 +278,9 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	skillsWrites, skillsOut := w, out
 	if skillsMode == "codex-prompts" {
 		skillsWrites, skillsOut = userWrites, userOut
+		if targets.ID == initHarnessNone && !*noUserWritesFlag {
+			skillsWrites, skillsOut = w, out
+		}
 	}
 	if err := installSkills(skillsWrites, root, skillsMode, skillsOut); err != nil {
 		fmt.Fprintf(stderr, "error: installing skills: %v\n", err)
@@ -294,16 +305,8 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	} else {
 		fmt.Fprintf(userOut, "%s\n", msg)
 	}
-	if userWrites != w {
-		fmt.Fprintln(stdout, "user writes disabled (--no-user-writes):")
-		if len(userWrites.touched) == 0 {
-			fmt.Fprintln(stdout, "would write or change no user file")
-		}
-		home, _ := os.UserHomeDir()
-		sort.Slice(userWrites.touched, func(i, j int) bool { return userWrites.touched[i].Path < userWrites.touched[j].Path })
-		for _, t := range userWrites.touched {
-			fmt.Fprintf(stdout, "would %s %s\n", t.Action, displayPath(t.Path, root, home))
-		}
+	if noUserWrites {
+		printInitUserWritesPreview(stdout, root, userWritesCause, userWrites, !w.dry)
 	}
 
 	if w.dry {
@@ -1785,9 +1788,11 @@ func printGateAndConfigManualSteps(stdout io.Writer, service string) {
 	fmt.Fprintln(stdout, "MANUAL:     commands:")
 	fmt.Fprintln(stdout, "MANUAL:       fathom-refresh:")
 	fmt.Fprintf(stdout, "MANUAL:         run: fathom post-commit-hook --dir \"$PWD\" --service %s --quiet\n", service)
-	fmt.Fprintln(stdout, "MANUAL: pick a provider — uncomment one profile in ~/.fathom/config.toml (or your project's")
-	fmt.Fprintln(stdout, "MANUAL: .fathom/config.toml) and set default_profile; `fathom config --explain` shows what")
-	fmt.Fprintln(stdout, "MANUAL: resolved and from where, `fathom providers` checks auth health at zero cost.")
+	if _, err := os.Stat(config.DefaultUserPath()); err == nil {
+		fmt.Fprintln(stdout, "MANUAL: pick a provider — uncomment one profile in ~/.fathom/config.toml (or your project's")
+		fmt.Fprintln(stdout, "MANUAL: .fathom/config.toml) and set default_profile; `fathom config --explain` shows what")
+		fmt.Fprintln(stdout, "MANUAL: resolved and from where, `fathom providers` checks auth health at zero cost.")
+	}
 	fmt.Fprintln(stdout, "MANUAL: .fathom/guard.cue, .fathom/modules.cue and .fathom/capabilities.cue were scaffolded")
 	fmt.Fprintln(stdout, "        commented (inert) — run `fathom capabilities` to see what is on and why; uncomment")
 	fmt.Fprintln(stdout, "MANUAL: and commit to guard critical scopes ("+docsURL+"/design/guarded-edits.md) or bind a")

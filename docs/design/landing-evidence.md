@@ -59,12 +59,14 @@ change or either endpoint is dirty, logs the Go environment, and calls the recei
 writer only after PASS. Write and check bind both endpoints to the receipt tree.
 
 Anyone who can run `fathom gate receipt write` as you can create an accepted receipt;
-CI is the independent witness. A file guard would stop editor-tool writes only.
+CI is the independent witness. Both command and forbidden-path file guards apply;
+neither authenticates unsigned evidence.
 
-The repository's enforced command guard denies agent receipt-writer invocations;
-there is no receipt-directory file guard (it matched no file before a receipt
-existed and only stopped editor-tool writes). The command guard does not
-authenticate unsigned evidence. Acceptance stays off unless the project sets
+The repository's enforced command guard denies agent receipt-writer invocations.
+Its forbidden-path file guard protects `workspace/receipts/**` against editor writes
+and parsed shell write targets, including before the first receipt exists. Doctor
+reports an empty gitignored scope as waiting for files, rather than dead. Acceptance
+stays off unless the project sets
 `[gate] accept_receipts = true` and the user sets
 `[gate] allow_receipt_acceptance = true`. Either alone does nothing; doctor names
 half-set consent. This repository leaves acceptance off.

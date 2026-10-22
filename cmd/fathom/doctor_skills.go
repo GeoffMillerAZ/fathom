@@ -46,7 +46,11 @@ func checkAgentsSkills(root, harnessLabel string) doctorCheck {
 				Remedy: "move the link aside, then " + remedy}
 		default:
 			if fi, err := os.Lstat(filepath.Join(root, filepath.FromSlash(agentsSkillsDir))); err == nil && fi.IsDir() {
-				linkNote = " (a real directory: `" + remedy + "` replaces it with a link to .claude/skills)"
+				if len(adaptedSkillsDirectorySkips(root)) > 0 {
+					linkNote = " (a real directory with declared adaptations; init and reconcile preserve it)"
+				} else {
+					linkNote = " (a real directory: `" + remedy + "` replaces it with a link to .claude/skills)"
+				}
 			}
 		}
 	}
@@ -64,7 +68,7 @@ func checkAgentsSkills(root, harnessLabel string) doctorCheck {
 		if err == nil {
 			if version := adaptedSkillVersion(got, skillName); version != "" {
 				adapted = append(adapted, skillAdaptationNote(skillName, version))
-				if version != pluginVersion {
+				if !skillAdaptationVersionMatches(version) {
 					comparisons = append(comparisons, skillAdaptationDiff(dest, skillName))
 				}
 				continue

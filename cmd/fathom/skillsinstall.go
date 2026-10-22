@@ -292,7 +292,7 @@ type skillWrite struct {
 //
 // FA-23: every skill file it leaves at the shipped render — created,
 // updated or already current — has its baselines recorded in root's
-// .fathom/owned.json from the bytes on disk, after the writes and also when
+// state-directory owned.json from the bytes on disk, after the writes and also when
 // a refusal stops the loop part-way: this writer used to record none, so a
 // later release's reconcile read fathom's own render as a hand edit.
 //
@@ -317,10 +317,10 @@ func installSkillsReport(iw *initWrites, root, mode string, stdout io.Writer) (w
 		}
 		recorded, rerr := wiring.RecordWritten(root, written, time.Now().UTC().Format(time.RFC3339))
 		if rerr != nil && err == nil {
-			err = fmt.Errorf("recording the skills' baselines in .fathom/owned.json: %w", rerr)
+			err = fmt.Errorf("recording the skills' baselines in %s: %w", wiring.LedgerPath(root), rerr)
 		}
 		if len(recorded) > 0 {
-			fmt.Fprintf(stdout, "recorded baselines for %d skill file(s) in .fathom/owned.json\n", len(recorded))
+			fmt.Fprintf(stdout, "recorded baselines for %d skill file(s) in %s\n", len(recorded), wiring.LedgerPath(root))
 		}
 	}()
 	for _, target := range skillsTargetsFor(mode) {
@@ -370,6 +370,12 @@ func installSkillsReport(iw *initWrites, root, mode string, stdout io.Writer) (w
 // skill file is.
 func installAgentsSkillsLink(iw *initWrites, root string, stdout io.Writer) (skillWrite, error) {
 	dest := filepath.Join(root, filepath.FromSlash(agentsSkillsDir))
+	if notes := adaptedSkillsDirectorySkips(root); len(notes) > 0 {
+		for _, note := range notes {
+			fmt.Fprintln(stdout, note)
+		}
+		return skillWrite{Target: skillsTargetAgents, Path: dest, Action: "adapted"}, nil
+	}
 	res, err := iw.applyWiring(root, wiring.Spec{Links: []wiring.Link{agentsSkillsLink()}})
 	if err != nil {
 		return skillWrite{}, fmt.Errorf("linking %s: %w", dest, err)

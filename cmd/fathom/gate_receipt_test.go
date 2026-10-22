@@ -192,6 +192,10 @@ func TestGateReceiptsDirectoryGuard(t *testing.T) {
 	}
 	t.Setenv("FATHOM_HOME", t.TempDir())
 	t.Setenv("FATHOM_ENFORCE", "on")
+	receipt := filepath.Join(root, "workspace", "receipts", "fixture.json")
+	if d := evaluateEnforcedFileAtProjDir(root, receipt, "{}", ""); !d.Denied {
+		t.Errorf("receipt file write not denied: %+v", d)
+	}
 	for _, command := range []string{"fathom gate receipt write --log gate.log", "bin/fathom gate receipt write --log gate.log"} {
 		if d := evaluateEnforcedCommand(root, command); !d.Denied {
 			t.Fatalf("agent receipt write not denied: %s %+v", command, d)

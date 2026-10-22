@@ -50,12 +50,17 @@ func seedProjectRoot(t *testing.T, f *consoleFixture, svc, root string) {
 }
 
 // runVerbJSON runs a rendered command exactly as shown and decodes its JSON.
-func runVerbAsShownJSON(t *testing.T, verb string) any {
+func runVerbAsShownJSON(t *testing.T, verb string, clock ...time.Time) any {
 	t.Helper()
 	var out, errb bytes.Buffer
 	// doctor's exit 1 is its verdict (a check failed), not a failure to
 	// run; only its exit 2 is.
-	code := run(shellFields(verb)[1:], &out, &errb)
+	var code int
+	if strings.HasPrefix(verb, "fathom doctor ") && len(clock) > 0 {
+		code = cmdDoctorWithClock(shellFields(verb)[2:], &out, &errb, func() time.Time { return clock[0] })
+	} else {
+		code = run(shellFields(verb)[1:], &out, &errb)
+	}
 	if code != 0 && !(code == 1 && strings.HasPrefix(verb, "fathom doctor ")) {
 		t.Fatalf("%s exited %d: %s", verb, code, errb.String())
 	}
@@ -67,7 +72,7 @@ func runVerbAsShownJSON(t *testing.T, verb string) any {
 }
 
 // assertSectionsEqualVerbs holds a page's JSON to the verbs it rendered.
-func assertSectionsEqualVerbs(t *testing.T, env consolePageJSONWire, want int) {
+func assertSectionsEqualVerbs(t *testing.T, env consolePageJSONWire, want int, clock ...time.Time) {
 	t.Helper()
 	if len(env.Verbs) != want {
 		t.Fatalf("page %s rendered %d verbs, want %d: %v", env.Page, len(env.Verbs), want, env.Verbs)
@@ -82,7 +87,7 @@ func assertSectionsEqualVerbs(t *testing.T, env consolePageJSONWire, want int) {
 		if err := json.Unmarshal(raw, &fromPage); err != nil {
 			t.Fatal(err)
 		}
-		fromVerb := runVerbAsShownJSON(t, verb)
+		fromVerb := runVerbAsShownJSON(t, verb, clock...)
 		dropVolatileVerbFields(verb, fromVerb, fromPage)
 		if !reflect.DeepEqual(fromVerb, fromPage) {
 			a, _ := json.MarshalIndent(fromVerb, "", " ")
@@ -237,47 +242,52 @@ func resetIntentAuditMemo() { intentAuditMemo.reset() }
 // rendered, on a repository that is on this machine (OC-8 for the tabs the
 // shared fixture cannot exercise: its services have no local root).
 func TestProjectTabs_VerbParityOnALocalRoot(t *testing.T) {
-	root := t.TempDir()
-	mustWrite(t, filepath.Join(root, "CLAUDE.md"), "# Project\n")
-	f := newConsoleFixture(t)
-	// Both surfaces already use doctorChannels and beatLogPath. Give them
-	// the same retained history before doctor records its own run: otherwise
-	// the page sees a missing log and the subsequent verb sees a new one.
-	// Doctor uses the real clock, so align this fixture with it and seed a
-	// full window; the coverage text then has no moving partial-span bounds.
-	now := time.Now()
-	f.advance(now.Sub(f.now))
-	mustWrite(t, beatLogPath(), `{"at":"`+now.Add(-8*24*time.Hour).UTC().Format(time.RFC3339)+`","channel":"doctor","kind":"run"}`+"\n")
-	seedProjectRoot(t, f, "payment-service", root)
-
-	env := f.pageJSON(t, "/projects/payment-service/wiring")
-	assertSectionsEqualVerbs(t, env, 2)
-	var wv console.WiringViewModel
-	if err := json.Unmarshal(env.Model, &wv); err != nil {
-		t.Fatal(err)
-	}
-	if len(wv.Checks) == 0 || !wv.Fail.Known() || !wv.ReceiptsTotal.Known() || wv.ReceiptsTotal.V != 0 || !wv.DriftCount.Known() {
-		t.Errorf("wiring view on a local root = %+v", wv)
-	}
-	code, _, page := f.get(t, "/projects/payment-service/wiring")
-	if code != http.StatusOK {
-		t.Fatalf("wiring tab = %d", code)
-	}
-	for _, want := range []string{`id="wiring-doctor"`, `id="wiring-drift"`, `id="wiring-receipts"`, `action="/observatory/wiring/preview"`, `name="service" value="payment-service"`, "--repo-only"} {
-		if !strings.Contains(page, want) {
-			t.Errorf("wiring tab missing %q", want)
+	for _, history := range []bool{false, true} {
+		name := "empty history"
+		if history {
+			name = "retained history"
 		}
-	}
-	// The tab only reads: nothing was written into the repository.
-	entries, _ := os.ReadDir(root)
-	if len(entries) != 1 {
-		t.Errorf("rendering the wiring tab wrote into the repository: %v", entries)
-	}
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			mustWrite(t, filepath.Join(root, "CLAUDE.md"), "# Project\n")
+			f := newConsoleFixture(t)
+			// Use the fixture's injected clock for both surfaces. Empty history must
+			// remain comparable before the doctor's own invocation is recorded.
+			if history {
+				mustWrite(t, beatLogPath(), `{"at":"`+f.now.Add(-8*24*time.Hour).UTC().Format(time.RFC3339)+`","channel":"doctor","kind":"run"}`+"\n")
+			}
+			seedProjectRoot(t, f, "payment-service", root)
 
-	env = f.pageJSON(t, "/projects/payment-service/index")
-	assertSectionsEqualVerbs(t, env, 2)
-	env = f.pageJSON(t, "/projects/payment-service/activity")
-	assertSectionsEqualVerbs(t, env, 1)
+			env := f.pageJSON(t, "/projects/payment-service/wiring")
+			assertSectionsEqualVerbs(t, env, 2, f.now)
+			var wv console.WiringViewModel
+			if err := json.Unmarshal(env.Model, &wv); err != nil {
+				t.Fatal(err)
+			}
+			if len(wv.Checks) == 0 || !wv.Fail.Known() || !wv.ReceiptsTotal.Known() || wv.ReceiptsTotal.V != 0 || !wv.DriftCount.Known() {
+				t.Errorf("wiring view on a local root = %+v", wv)
+			}
+			code, _, page := f.get(t, "/projects/payment-service/wiring")
+			if code != http.StatusOK {
+				t.Fatalf("wiring tab = %d", code)
+			}
+			for _, want := range []string{`id="wiring-doctor"`, `id="wiring-drift"`, `id="wiring-receipts"`, `action="/observatory/wiring/preview"`, `name="service" value="payment-service"`, "--repo-only"} {
+				if !strings.Contains(page, want) {
+					t.Errorf("wiring tab missing %q", want)
+				}
+			}
+			// The tab only reads: nothing was written into the repository.
+			entries, _ := os.ReadDir(root)
+			if len(entries) != 1 {
+				t.Errorf("rendering the wiring tab wrote into the repository: %v", entries)
+			}
+
+			env = f.pageJSON(t, "/projects/payment-service/index")
+			assertSectionsEqualVerbs(t, env, 2, f.now)
+			env = f.pageJSON(t, "/projects/payment-service/activity")
+			assertSectionsEqualVerbs(t, env, 1, f.now)
+		})
+	}
 }
 
 // The index tab: the profile (languages, typed share, edge kinds,

@@ -91,6 +91,10 @@ type doctorCheck struct {
 //	2 — doctor itself could not run (bad flags, unresolvable --path/cwd) —
 //	    an operational error, not a verdict on the repo's wiring
 func cmdDoctor(args []string, stdout, stderr io.Writer) int {
+	return cmdDoctorWithClock(args, stdout, stderr, time.Now)
+}
+
+func cmdDoctorWithClock(args []string, stdout, stderr io.Writer, now func() time.Time) int {
 	fs := newFlagSet("doctor", stderr)
 	path := fs.String("path", "", "repo root to diagnose (default: cwd)")
 	harnessFlag := fs.String("harness", "auto", "claude | codex | auto, or a registry id (claude-code, codex, gemini-cli, agents — 'fathom harness list') — which harness's wiring to check")
@@ -141,7 +145,7 @@ func cmdDoctor(args []string, stdout, stderr io.Writer) int {
 		}
 		defer endGuard()
 	}
-	emitBeat("doctor", "run", nil)
+	defer emitBeat("doctor", "run", nil) // report reads the span before this invocation
 
 	// svc here is display identity only (the table header). The
 	// obligations_served check does its own candidate resolution against
@@ -172,7 +176,7 @@ func cmdDoctor(args []string, stdout, stderr io.Writer) int {
 		// Exit 0 whatever the findings: --brief runs as a hook.
 		return printDoctorBrief(stdout, checks)
 	}
-	channels := doctorChannels(root, harness, time.Now())
+	channels := doctorChannels(root, harness, now())
 	if *jsonOut {
 		printDoctorJSON(stdout, harness, svc, root, checks, channels)
 	} else {
