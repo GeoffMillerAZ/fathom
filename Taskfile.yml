@@ -293,6 +293,20 @@ tasks:
       - git config merge.fathom-regen.name "regenerate, do not merge"
       - git config merge.fathom-regen.driver true
 
+  lang:loop:
+    desc: Probe, measure, regrade and render one language queue item without writing by default
+    env:
+      LANG_LOOP_ROOT: '{{.LANG_ROOT | default "."}}'
+      LANG_LOOP_SUBJECT: '{{.SUBJECT | default ""}}'
+      LANG_LOOP_WRITE: '{{.WRITE | default "0"}}'
+      LANG_LOOP_READING: '{{.READING | default ""}}'
+      LANG_LOOP_ORACLES: '{{.ORACLE_CONFIG | default ""}}'
+    cmds:
+      - |
+        write=false
+        if [ "$LANG_LOOP_WRITE" = 1 ]; then write=true; fi
+        {{.GO}} run -p 4 ./cmd/indexbench lang-loop -root "$LANG_LOOP_ROOT" -subject "$LANG_LOOP_SUBJECT" -write="$write" -reading "$LANG_LOOP_READING" -oracle-config "$LANG_LOOP_ORACLES" {{.CLI_ARGS}}
+
   regen:
     desc: Regenerate every committed generated file, in a fixed order (the language board, then the grammar provenance tables)
     cmds:
