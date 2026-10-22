@@ -24,6 +24,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/verify"
+	"github.com/geoffmilleraz/fathom/internal/worktree"
 )
 
 const threadSchemaVersion = 1
@@ -335,16 +336,11 @@ func gitOriginURL(repoRoot string) string {
 // to the identical "github.com/x/y" identity.
 func normalizeOriginURL(url string) string {
 	u := strings.ToLower(strings.TrimSpace(url))
-	if i := strings.Index(u, "://"); i >= 0 {
-		u = u[i+3:]
+	if remote, local := worktree.NormalizeOrigin(u); !local {
+		return remote
 	}
-	if i := strings.LastIndex(u, "@"); i >= 0 {
-		u = u[i+1:]
-	}
-	u = strings.Replace(u, ":", "/", 1) // scp-like "host:path" -> "host/path"
-	u = strings.TrimSuffix(u, "/")
-	u = strings.TrimSuffix(u, ".git")
-	return u
+	u = strings.TrimPrefix(u, "file://")
+	return strings.TrimSuffix(strings.TrimSuffix(u, "/"), ".git")
 }
 
 // defaultThread is where a note lands when --thread is not given: the

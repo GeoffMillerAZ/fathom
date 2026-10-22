@@ -54,17 +54,34 @@ func (r identityResult) info() svcInfo {
 }
 
 // resolveIdentity shares repository identity with MCP paths and the edit
-// fold. The legacy basename fallback is limited to paths outside Git.
+// fold. Direct matches retain the established deterministic ranking.
 func resolveIdentity(svcs map[string]svcInfo, cands []serviceCandidate, ctx context.Context) identityResult {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
+	if ctx.Err() != nil {
+		return identityResult{Schema: 1}
+	}
 	roots := make([]worktree.IndexedRoot, 0, len(svcs))
 	for name, i := range svcs {
 		roots = append(roots, worktree.IndexedRoot{Service: name, Root: i.path, IndexedCommit: i.indexedCommit})
 	}
 	res := func(name, root, by string) identityResult {
 		i := svcs[name]
-		return identityResult{Schema: 1, Service: name, Root: root, MatchedBy: by, Symbols: i.symbols, CountErr: i.countErr, Langs: i.langs, Path: i.path}
+		return identityResult{Schema: 1, Service: name, Root: root, MatchedBy: by, Symbols: i.symbols, CountErr: i.countErr, Langs: i.langs, Path: i.path, IndexedCommit: i.indexedCommit}
+	}
+	// Preserve richness, name affinity and lexical tie breaking for direct
+	// roots, along with the caller's spelling (including symlink aliases).
+	if direct, ok := resolveFromServicesCands(svcs, cands); ok {
+		root := direct.root
+		for _, c := range cands {
+			if resolved, err := filepath.EvalSymlinks(c.root); err == nil {
+				if actual, e := filepath.EvalSymlinks(direct.root); e == nil && resolved == actual {
+					root = c.root
+					break
+				}
+			}
+		}
+		return res(direct.name, root, identityByRoot)
 	}
 	for _, c := range cands {
 		if match, ok := worktree.Resolve(ctx, c.root, roots); ok {
@@ -72,7 +89,14 @@ func resolveIdentity(svcs map[string]svcInfo, cands []serviceCandidate, ctx cont
 			if match.Class != "" {
 				by = match.Class
 			}
-			out := res(match.Service, match.Root, by)
+			root := match.Root
+			if rel, err := filepath.Rel(match.Target, match.Root); err == nil {
+				spelled := filepath.Clean(filepath.Join(c.root, rel))
+				if actual, e := filepath.EvalSymlinks(spelled); e == nil && actual == match.Root {
+					root = spelled
+				}
+			}
+			out := res(match.Service, root, by)
 			out.FreshnessNote = match.Note
 			out.IndexedCommit = match.IndexedCommit
 			return out
@@ -81,10 +105,20 @@ func resolveIdentity(svcs map[string]svcInfo, cands []serviceCandidate, ctx cont
 	if ctx.Err() != nil {
 		return identityResult{Schema: 1}
 	}
-	// Never guess a basename for an unrelated or ambiguous git checkout.
-	for _, c := range cands {
-		if worktree.RootForPath(c.root) != "" {
-			return identityResult{Schema: 1}
+	// A registry with no local roots still supports the legacy basename
+	// identity. When roots exist, unrelated or ambiguous clones stay unknown.
+	hasLocalRoot := false
+	for _, info := range svcs {
+		if filepath.IsAbs(info.path) {
+			hasLocalRoot = true
+			break
+		}
+	}
+	if hasLocalRoot {
+		for _, c := range cands {
+			if worktree.RootForPath(c.root) != "" {
+				return identityResult{Schema: 1}
+			}
 		}
 	}
 	for _, c := range cands {
