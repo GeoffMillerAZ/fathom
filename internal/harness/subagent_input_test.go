@@ -8,7 +8,7 @@ var adviceClaudeHookAdditions = []struct {
 	event, matcher, marker, sub string
 	timeout                     int
 }{
-	{"PreToolUse", "Agent|Task", "fathom edit-hook --pre", "edit-hook --pre", 5},
+	{"PreToolUse", "^(Agent|Task)$", "fathom edit-hook --pre", "edit-hook --pre", 5},
 	{"PostToolUse", `mcp__fathom__(symbol_context|find_symbol|read_source)|mcp__plugin_[^_]*_fathom__(symbol_context|find_symbol|read_source)`, "fathom edit-hook", "edit-hook", 5},
 }
 
@@ -27,7 +27,7 @@ func TestAD12SpawnDescriptor(t *testing.T) {
 	d, _ := Lookup(ClaudeCode)
 	found := false
 	for _, b := range d.Hooks {
-		if b.Harness == "PreToolUse" && b.Matcher == "Agent|Task" {
+		if b.Harness == "PreToolUse" && b.Matcher == "^(Agent|Task)$" {
 			found = b.Output["updated_input"] == "hookSpecificOutput.updatedInput" && b.Verb == "edit-hook --pre" && b.TimeoutSec <= 5
 		}
 	}

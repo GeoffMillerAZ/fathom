@@ -86,6 +86,17 @@
           }
         ],
         "matcher": "Bash"
+      },
+      {
+        "hooks": [
+          {
+            "async": true,
+            "command": "command -v fathom \u003e/dev/null 2\u003e\u00261 || exit 0; fathom edit-hook",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": "mcp__fathom__(symbol_context|find_symbol|read_source)|mcp__plugin_[^_]*_fathom__(symbol_context|find_symbol|read_source)"
       }
     ],
     "PostToolUseFailure": [
@@ -153,6 +164,16 @@
           }
         ],
         "matcher": "Grep|Glob|Read"
+      },
+      {
+        "hooks": [
+          {
+            "command": "command -v fathom \u003e/dev/null 2\u003e\u00261 || exit 0; fathom edit-hook --pre",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": "^(Agent|Task)$"
       }
     ],
     "SessionEnd": [

@@ -239,7 +239,7 @@ var claudeCode = Descriptor{
 			Note:   "opt-in ([hooks] read_outline_hint, default off): a Read with no offset or limit of a source file over 200 lines the session has not edited gets one line, its top-level symbols with line ranges from the file on disk and the offset and limit recipe; additionalContext only, never a permission decision or a changed input, so the read runs unchanged",
 		},
 		{
-			Capability: CapSubagentPrime, Event: EventPreTool, Harness: "PreToolUse", Matcher: "Agent|Task", Verb: "edit-hook --pre", Marker: "fathom edit-hook --pre", TimeoutSec: 5, Vehicle: VehicleHookInject,
+			Capability: CapSubagentPrime, Event: EventPreTool, Harness: "PreToolUse", Matcher: "^(Agent|Task)$", Verb: "edit-hook --pre", Marker: "fathom edit-hook --pre", TimeoutSec: 5, Vehicle: VehicleHookInject,
 			Input:  withKey(claudeToolIn, "tool_input", "tool_input"),
 			Output: map[string]string{"updated_input": "hookSpecificOutput.updatedInput"},
 			Note:   "append local live-map facts to the spawn prompt; permissionDecision is never emitted; unsupported harnesses leave input untouched",

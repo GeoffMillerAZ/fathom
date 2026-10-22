@@ -81,7 +81,7 @@ var readoutHookSpecAddition = []hookSpec{
 // ADR-080 AD-11/AD-12 additions mirror the registry golden, with no changes
 // to any pre-existing event/matcher/command/timeout or opt-in row.
 var adviceHookSpecAdditions = []hookSpec{
-	{event: "PreToolUse", matcher: "Agent|Task", marker: "fathom edit-hook --pre", sub: "edit-hook --pre", timeout: 5},
+	{event: "PreToolUse", matcher: "^(Agent|Task)$", marker: "fathom edit-hook --pre", sub: "edit-hook --pre", timeout: 5},
 	{event: "PostToolUse", matcher: `mcp__fathom__(symbol_context|find_symbol|read_source)|mcp__plugin_[^_]*_fathom__(symbol_context|find_symbol|read_source)`, marker: "fathom edit-hook", sub: "edit-hook", timeout: 5, async: true},
 }
 

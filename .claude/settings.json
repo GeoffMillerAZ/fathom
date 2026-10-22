@@ -63,7 +63,22 @@
             "command": "command -v fathom >/dev/null 2>&1 || exit 0; fathom edit-hook",
             "timeout": 5,
             "type": "command"
-          },
+          }
+        ],
+        "matcher": "Edit|Write|MultiEdit"
+      },
+      {
+        "hooks": [
+          {
+            "command": "command -v fathom >/dev/null 2>&1 || exit 0; fathom edit-hook",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash"
+      },
+      {
+        "hooks": [
           {
             "command": "command -v fathom >/dev/null 2>&1 || exit 0; fathom session-hook --event test-run",
             "timeout": 5,
@@ -75,12 +90,13 @@
       {
         "hooks": [
           {
+            "async": true,
             "command": "command -v fathom >/dev/null 2>&1 || exit 0; fathom edit-hook",
             "timeout": 5,
             "type": "command"
           }
         ],
-        "matcher": "Edit|Write|MultiEdit"
+        "matcher": "mcp__fathom__(symbol_context|find_symbol|read_source)|mcp__plugin_[^_]*_fathom__(symbol_context|find_symbol|read_source)"
       }
     ],
     "PostToolUseFailure": [
@@ -141,12 +157,23 @@
       {
         "hooks": [
           {
+            "async": true,
             "command": "command -v fathom >/dev/null 2>&1 || exit 0; fathom edit-hook --pre",
             "timeout": 5,
             "type": "command"
           }
         ],
         "matcher": "Grep|Glob|Read"
+      },
+      {
+        "hooks": [
+          {
+            "command": "command -v fathom >/dev/null 2>&1 || exit 0; fathom edit-hook --pre",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": "^(Agent|Task)$"
       }
     ],
     "SessionEnd": [
