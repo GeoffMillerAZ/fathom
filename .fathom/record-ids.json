@@ -1,0 +1,145 @@
+{
+  "cross_plan": false,
+  "grandfather": [
+    {
+      "id": "DF-1",
+      "paths": [
+        "docs/plans/ambient-fathom.md",
+        "docs/plans/daemon-footprint.md"
+      ]
+    },
+    {
+      "id": "DF-2",
+      "paths": [
+        "docs/plans/ambient-fathom.md",
+        "docs/plans/daemon-footprint.md"
+      ]
+    },
+    {
+      "id": "DF-3",
+      "paths": [
+        "docs/plans/ambient-fathom.md",
+        "docs/plans/daemon-footprint.md"
+      ]
+    },
+    {
+      "id": "DF-4",
+      "paths": [
+        "docs/plans/ambient-fathom.md",
+        "docs/plans/daemon-footprint.md"
+      ]
+    },
+    {
+      "id": "DF-5",
+      "paths": [
+        "docs/plans/ambient-fathom.md",
+        "docs/plans/daemon-footprint.md"
+      ]
+    },
+    {
+      "id": "DF-6",
+      "paths": [
+        "docs/plans/ambient-fathom.md",
+        "docs/plans/daemon-footprint.md"
+      ]
+    },
+    {
+      "id": "RC-1",
+      "paths": [
+        "docs/plans/reader-coverage.md",
+        "docs/plans/receipts.md"
+      ]
+    },
+    {
+      "id": "RC-10",
+      "paths": [
+        "docs/plans/reader-coverage.md",
+        "docs/plans/receipts.md"
+      ]
+    },
+    {
+      "id": "RC-11",
+      "paths": [
+        "docs/plans/reader-coverage.md",
+        "docs/plans/receipts.md"
+      ]
+    },
+    {
+      "id": "RC-12",
+      "paths": [
+        "docs/plans/reader-coverage.md",
+        "docs/plans/receipts.md"
+      ]
+    },
+    {
+      "id": "RC-13",
+      "paths": [
+        "docs/plans/reader-coverage.md",
+        "docs/plans/receipts.md"
+      ]
+    },
+    {
+      "id": "RC-14",
+      "paths": [
+        "docs/plans/reader-coverage.md",
+        "docs/plans/receipts.md"
+      ]
+    },
+    {
+      "id": "RC-2",
+      "paths": [
+        "docs/plans/reader-coverage.md",
+        "docs/plans/receipts.md"
+      ]
+    },
+    {
+      "id": "RC-3",
+      "paths": [
+        "docs/plans/reader-coverage.md",
+        "docs/plans/receipts.md"
+      ]
+    },
+    {
+      "id": "RC-4",
+      "paths": [
+        "docs/plans/reader-coverage.md",
+        "docs/plans/receipts.md"
+      ]
+    },
+    {
+      "id": "RC-5",
+      "paths": [
+        "docs/plans/reader-coverage.md",
+        "docs/plans/receipts.md"
+      ]
+    },
+    {
+      "id": "RC-6",
+      "paths": [
+        "docs/plans/reader-coverage.md",
+        "docs/plans/receipts.md"
+      ]
+    },
+    {
+      "id": "RC-7",
+      "paths": [
+        "docs/plans/reader-coverage.md",
+        "docs/plans/receipts.md"
+      ]
+    },
+    {
+      "id": "RC-8",
+      "paths": [
+        "docs/plans/reader-coverage.md",
+        "docs/plans/receipts.md"
+      ]
+    },
+    {
+      "id": "RC-9",
+      "paths": [
+        "docs/plans/reader-coverage.md",
+        "docs/plans/receipts.md"
+      ]
+    }
+  ]
+}

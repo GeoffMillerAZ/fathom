@@ -321,7 +321,7 @@ tasks:
     # (~/.fathom/locks/gate.lock; FATHOM_GATE_LOCK overrides) and run under
     # nice -n 10 (FATHOM_GATE_NICE=off opts out; =background is macOS
     # taskpolicy -b, ~3x slower — see scripts/gate-lease.sh).
-    cmds: ["bash scripts/gate-lease.sh task validate:unleased"]
+    cmds: ["bash scripts/gate-log.sh validate bash scripts/gate-lease.sh task validate:unleased"]
 
   validate:unleased:
     desc: Full gate — fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, intent-index-check, intent-guard-check, bench-l0-gate, tenancy-lint, perfgate, test
@@ -336,7 +336,7 @@ tasks:
     # scenariobench is not a dep: `task test` already runs
     # ./internal/scenariobench (race, under the test task's CGO_ENABLED=1), and
     # the dep ran it a second time (77–102 s each, measured 2026-09-30).
-    deps: [fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, intent-index-check, intent-guard-check, bench-l0-gate, tenancy-lint, changelog-check, perfgate]
+    deps: [fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, intent-index-check, intent-guard-check, bench-l0-gate, tenancy-lint, changelog-check, record-ids-check, perfgate]
     cmds: [{ task: test }]
 
   push:
@@ -356,6 +356,11 @@ tasks:
   tenancy-lint:
     desc: "Free, every commit (design §4.7, RT-91/RT-92): the tenancy lint's syntactic rules over cmd/, internal/ and pkg/ (whole reads and walks in handler packages, whole-table loads, uncontexted exec, Background contexts in request-path files, bare goroutines, package-level maps, raw http.Serve, :7575 in tests, a test cmd.Env without os.Environ()), the allowlist in step with the tree's //fathom:tenancy-allow excuses, and the allowlist ratchet. Named as its own validate dependency, like bench-l0-gate, rather than left to the package-wide go test ./..."
     cmds: ["{{.GO}} test -count=1 ./internal/lint/tenancy/..."]
+
+  record-ids-check:
+    desc: Record-id uniqueness (ADR-081 d5); active plans only, cross-plan checks opt in
+    deps: [build]
+    cmds: ["bin/fathom gate record-ids"]
 
   changelog-check:
     desc: Change-note fragments lint - every file under docs/changelog/unreleased/ holds one known heading and at least one line, and CHANGELOG.md's [Unreleased] holds only the pointer line
