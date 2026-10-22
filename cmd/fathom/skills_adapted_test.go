@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	skillsdist "github.com/geoffmilleraz/fathom/dist/agents/skills"
 	"github.com/geoffmilleraz/fathom/internal/wiring"
 )
 
@@ -20,6 +21,10 @@ func TestDeclaredSkillAdaptations(t *testing.T) {
 		adapted      bool
 	}{
 		{"current", fmt.Sprintf("<!-- fathom:adapted from=fathom-plan version=%s -->", pluginVersion), doctorPass, true},
+		{"build metadata", fmt.Sprintf("<!-- fathom:adapted from=fathom-plan version=%s+local -->", pluginVersion), doctorPass, true},
+		{"newer", "<!-- fathom:adapted from=fathom-plan version=999.0.0 -->", doctorWarn, true},
+		{"inline", fmt.Sprintf("example <!-- fathom:adapted from=fathom-plan version=%s -->", pluginVersion), doctorFail, false},
+		{"suffix", fmt.Sprintf("<!-- fathom:adapted from=fathom-plan version=%s --> example", pluginVersion), doctorFail, false},
 		{"older", "<!-- fathom:adapted from=fathom-plan version=0.0.1 -->", doctorWarn, true},
 		{"owned and adapted", fmt.Sprintf("<!-- fathom:owned -->\n<!-- fathom:adapted from=fathom-plan version=%s -->", pluginVersion), doctorPass, true},
 		{"unmarked", "", doctorFail, false},
@@ -81,5 +86,64 @@ func TestDeclaredSkillAdaptations(t *testing.T) {
 				t.Errorf("consumer file changed: %q, %v", got, err)
 			}
 		})
+	}
+}
+
+func TestAdaptedSkillsDirectoryWithoutBaseline(t *testing.T) {
+	for _, via := range []string{"init", "reconcile preview", "reconcile apply"} {
+		t.Run(via, func(t *testing.T) {
+			root := t.TempDir()
+			t.Setenv("HOME", t.TempDir())
+			t.Setenv("FATHOM_HOME", t.TempDir())
+			t.Setenv("FATHOM_STATE_DIR", t.TempDir())
+			rel := ".agents/skills/fathom-plan/SKILL.md"
+			body := fmt.Sprintf("<!-- fathom:owned -->\n<!-- fathom:adapted from=fathom-plan version=%s -->\n# Keep this adaptation\n", pluginVersion)
+			writeRepoFile(t, root, rel, body)
+			l, err := wiring.LoadLedger(root)
+			if err != nil || len(l.Files) != 0 {
+				t.Fatalf("fixture has ledger baseline: %+v, %v", l, err)
+			}
+			var out bytes.Buffer
+			if via == "init" {
+				if err := installSkills(nil, root, "all", &out); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				args := []string{"--repo", root, "--url", "://unavailable"}
+				if via == "reconcile apply" {
+					args = append(args, "--apply")
+				}
+				var errOut bytes.Buffer
+				if code := cmdFleetReconcile(args, &out, &errOut); code != 0 {
+					t.Fatalf("reconcile = %d: %s\n%s", code, out.String(), errOut.String())
+				}
+			}
+
+			if got, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel))); err != nil || string(got) != body {
+				t.Errorf("adaptation changed: %q, %v", got, err)
+			}
+			if fi, err := os.Lstat(filepath.Join(root, ".agents", "skills")); err != nil || !fi.IsDir() {
+				t.Errorf("adapted directory replaced: %v, %v", fi, err)
+			}
+			for _, want := range []string{"skip", rel, "diff -u", "fathom plugin render"} {
+				if !strings.Contains(out.String(), want) {
+					t.Errorf("missing %q in %s", want, out.String())
+				}
+			}
+		})
+	}
+}
+
+func TestRenderedSkillsNeverDeclareAdaptation(t *testing.T) {
+	for _, target := range []string{skillsTargetClaude, skillsTargetAgents, skillsTargetCodexPrompts} {
+		for _, name := range skillsdist.Names {
+			body, err := renderSkill(target, name)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if bytes.Contains(body, []byte("<!-- fathom:adapted")) {
+				t.Errorf("shipped %s/%s declares an adaptation", target, name)
+			}
+		}
 	}
 }

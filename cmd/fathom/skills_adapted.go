@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -39,4 +40,40 @@ func skillAdaptationNote(name, version string) string {
 
 func skillAdaptationDiff(dest, name string) string {
 	return `fathom_diff_dir=$(mktemp -d); fathom plugin render --out "$fathom_diff_dir" && diff -u "$fathom_diff_dir/skills/` + name + `/SKILL.md" ` + shellQuote(dest)
+}
+
+// skillAdaptationVersionMatches compares release identity, ignoring build
+// metadata. Both older and newer adaptations still need a comparison.
+func skillAdaptationVersionMatches(version string) bool {
+	return strings.SplitN(strings.TrimPrefix(version, "v"), "+", 2)[0] == strings.SplitN(pluginVersion, "+", 2)[0]
+}
+
+// adaptedSkillsDirectorySkips protects consumer adaptations in an earlier
+// real .agents/skills directory, even on a machine with no ownership ledger.
+// WalkDir visits files in lexical order and never follows links.
+func adaptedSkillsDirectorySkips(root string) []string {
+	base := filepath.Join(root, filepath.FromSlash(agentsSkillsDir))
+	fi, err := os.Lstat(base)
+	if err != nil || !fi.IsDir() {
+		return nil
+	}
+	var notes []string
+	_ = filepath.WalkDir(base, func(dest string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !d.Type().IsRegular() {
+			return nil
+		}
+		body, err := os.ReadFile(dest)
+		if err != nil {
+			return nil
+		}
+		if marker := skillAdaptationMarker.FindSubmatch(body); marker != nil {
+			rel, err := filepath.Rel(root, dest)
+			if err != nil {
+				return nil
+			}
+			notes = append(notes, "skip "+agentsSkillsDir+" link: adapted file "+filepath.ToSlash(rel)+"; preserved; compare: "+skillAdaptationDiff(dest, string(marker[1])))
+		}
+		return nil
+	})
+	return notes
 }

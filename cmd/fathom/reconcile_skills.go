@@ -52,6 +52,9 @@ func skillOwnedFiles(root string) []wiring.OwnedFile {
 // Reconcile never creates it: which harnesses read `.agents/skills` is the
 // choice `fathom init --skills` made.
 func skillLinks(root string) []wiring.Link {
+	if len(adaptedSkillsDirectorySkips(root)) > 0 {
+		return nil
+	}
 	if _, err := os.Lstat(filepath.Join(root, filepath.FromSlash(agentsSkillsDir))); err != nil {
 		return nil
 	}

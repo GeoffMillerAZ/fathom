@@ -456,6 +456,9 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 	drifted := 0
 	blockedFiles := map[string]bool{}
 	for _, root := range roots {
+		for _, note := range adaptedSkillsDirectorySkips(root) {
+			fmt.Fprintln(stdout, note)
+		}
 		d := analyzeWiringFor(root, svcByRoot[root])
 		hasDrift := len(d.Missing) > 0 || len(d.StaleCmds) > 0 || len(d.MissingSkills) > 0 || len(d.StaleSkills) > 0 || len(d.BlockedSkills) > 0 || d.SettingsNote != "" || len(d.StaleStanzas) > 0 || len(d.DriftedStanzas) > 0 || len(d.WiringDrift) > 0 || len(d.WiringUnreadable) > 0
 		if !hasDrift && len(d.RemarkStanzas) == 0 && (len(d.WiringUnrecorded) == 0 || !*apply) {
