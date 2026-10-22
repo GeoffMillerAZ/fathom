@@ -188,7 +188,7 @@ an array of tables, and `tenancy.**` for every key under `[tenancy]`.
 | `findings.subject` | behaviour | the review-kit subject this repository maps to |
 | `guards.enforce` | behaviour | turns the repository's own guards advisory |
 | `hooks.claim_check` | behaviour | the claim check runs nothing: it reads the final message and the hook log's test-run rows (claimcheck.go) |
-| `hooks.dedupe` | behaviour | suppresses unchanged Claude Code hook context within one agent session (default on for Claude Code only; a user false wins) |
+| `hooks.dedupe` | behaviour | withholds already delivered post-edit/post-bash rules in Claude Code and Codex contexts (default on; a user false wins) |
 | `hooks.gate_preflight` | behaviour | the gate preflight runs nothing: it lexes the command, reads git and the hook log, and asks the claim-moment verify path (gatepreflight.go) |
 | `hooks.pin_check` | behaviour | the commit pin line's output mode; the check itself is on by default |
 | `hooks.prompt_definitions` | behaviour | the definitions line runs nothing: it names find_symbol answers the prompt hook already fetched (prompthook.go) |
@@ -1954,23 +1954,34 @@ removal work does not touch it.
 
 ## Unchanged hook context: `[hooks] dedupe`
 
-Dedupe is default-on for **Claude Code only**. Post-edit context is compared
-per file and agent in a primed session. Cwd-changed primers suppress only
-consecutive repeats with the same repository root and rendered digest;
-A → B → A re-emits A. Changed content always emits in full. Other harnesses
-(Codex, Gemini CLI, Copilot and Cursor) emit in full until their tool events
-show `agent_id` and they provide a compaction reset.
+Dedupe is default-on for **Claude Code and Codex** post-edit and post-bash
+obligations. Each rule is delivered once per context, across files and both
+channels. Compiled rules use their claim id; raw rules use their text and
+source. Withheld rules are replaced by a final
+`(k rules already shown in this session)` line. New rules still render.
+Findings, coverage warnings and other advice keep their existing behavior.
+
+Claude Code contexts use the session id plus `agent_id`. Codex post-tool
+payloads carry no agent id: the key uses the session id plus `transcript_path`
+when present, and the session id alone when it is absent or null. Without a
+transcript path Codex subagents cannot be distinguished. Gemini CLI, Copilot
+and Cursor keep full injections.
 
 SessionStart with source `compact` or `resume`, and every wired pre-compact
-hook, reset the record. As a backstop for a missed reset, each key re-emits
-in full after **30 minutes** since its last full emit or after **10 consecutive
-suppressions**, whichever comes first. Both backstops restart on a full emit.
-Only a successful stdout write records a full emit; encoding errors, failed
-writes and a hook killed before delivery leave no new delivery claim.
+hook (including Codex's `PreCompact`), reset rule delivery. Only a successful
+stdout write records new deliveries; encoding errors, failed writes and a
+hook killed before delivery leave no new delivery claim. Codex payloads that
+exceed its context cap establish no rule-delivery claim.
+
+Cwd-changed primers retain their Claude Code behavior: suppress consecutive
+repeats with the same repository root and rendered digest; A → B → A re-emits
+A. Cwd primers and post-edit payloads containing no rules retain the
+30-minute / 10-suppression refresh backstops. Per-rule delivery resets with
+the context instead.
 
 ```toml
 [hooks]
-dedupe = false # default true for Claude Code only; false emits every injection
+dedupe = false # default true; false emits every obligations injection
 ```
 
 A user's `dedupe = false` wins over a repository's `dedupe = true`.
@@ -1992,3 +2003,12 @@ with `phase=post`. Over seven days, each channel must have
 `suppressed_bytes / (bytes + suppressed_bytes) >= 0.40` across these sessions,
 with zero first-touch suppressions and zero state errors that suppress output
 (CB-M2). Log loss or missing audit fields cannot establish those zeroes.
+
+Stop verification also uses the existing session state to report a failing or
+unknown claim set once per change. Before reporting a new claim as failing,
+the hook checks its contract's package or file path with local git status.
+Uncommitted files make the row `unknown (not indexed yet: <n> uncommitted files
+under <path>)`, advisory even with `--block`, and excluded from verify-ledger
+refusal counts. Changed sets report in full. Missing session evidence,
+contention or state errors report in full. This claim-set dedupe is independent
+of `[hooks] dedupe`, which controls obligations delivery.

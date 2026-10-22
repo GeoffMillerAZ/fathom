@@ -1147,3 +1147,9 @@ cwd-changed primer dedupe, measured in
 Ownership stays with fathom's hook lifecycle, config and byte accounting; no
 kit rendering API, theme, adoption selection or dependency pin changed.
 Synthetic hook tests cover the originating app; no second-app propagation is claimed.
+
+AD-6 and AD-14 retain this **no-candidate** disposition: per-context rule delivery
+and working-tree claim freshness belong to fathom's harness JSON codecs and
+hook state. Regression evidence: `TestRuleContextDeliveryAcrossFilesAndChannels`
+and `TestStopDeliveryUncommittedIsUnknown`; the terminal rendering contract and
+kit adoption selections are unchanged.

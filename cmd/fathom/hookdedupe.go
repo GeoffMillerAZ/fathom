@@ -49,6 +49,8 @@ type hookDedupeCheck struct {
 	file                               *os.File
 	state                              hookDedupeState
 	key, digest, logKey                string
+	ruleKeys                           []string
+	ruleMode                           bool
 	suppressed, firstTouch, stateError bool
 }
 
@@ -120,9 +122,43 @@ func newHookDedupeCheck(channel, target, payload string) *hookDedupeCheck {
 }
 
 func checkHookInjection(sessionID, channel, target, payload string, now time.Time) *hookDedupeCheck {
+	return checkHookInjectionMode(sessionID, channel, target, payload, now, false)
+}
+
+// once records a changing claim set for the session, without CB-1's timed
+// refresh or suppression-count backstops. An empty set clears a past report.
+func checkHookInjectionMode(sessionID, channel, target, payload string, now time.Time, once bool) *hookDedupeCheck {
+	d := loadHookDedupe(sessionID, channel, target, payload, now, once)
+	if d.file == nil {
+		return d
+	}
+	previous, exists := d.state.Digests[d.key]
+	d.firstTouch = !exists || (channel == "cwd-changed" && previous.Digest != d.digest)
+	if !exists && len(d.state.Digests) >= hookDedupeMaxEntries {
+		d.close()
+		return d
+	}
+	if exists && previous.Digest == d.digest && once {
+		ok := d.persist() // a state write error must report the set in full
+		d.close()
+		d.suppressed = ok && !d.stateError
+	} else if exists && previous.Digest == d.digest && !now.Before(previous.EmittedAt) && now.Sub(previous.EmittedAt) < hookDedupeRefresh && previous.Suppressions < hookDedupeMaxSuppressions {
+		previous.Suppressions++
+		d.state.Digests[d.key] = previous
+		d.state.At = now
+		ok := d.persist()
+		d.close()
+		d.suppressed = ok && !d.stateError
+	}
+	return d
+}
+
+// loadHookDedupe opens the existing per-session record without deciding what
+// to withhold. All hook channels share its lock, validation and size bounds.
+func loadHookDedupe(sessionID, channel, target, payload string, now time.Time, allowEmpty bool) *hookDedupeCheck {
 	d := newHookDedupeCheck(channel, target, payload)
 	stamp := readSessionStamp(sessionID)
-	if sessionID == "" || payload == "" || stamp.SessionID != sessionID || stamp.At == "" {
+	if sessionID == "" || (payload == "" && !allowEmpty) || stamp.SessionID != sessionID || stamp.At == "" {
 		return d
 	}
 	f, info, err := openHookDedupe(sessionID)
@@ -167,20 +203,6 @@ func checkHookInjection(sessionID, channel, target, payload string, now time.Tim
 			}
 		}
 	}
-	previous, exists := d.state.Digests[d.key]
-	d.firstTouch = !exists || (channel == "cwd-changed" && previous.Digest != d.digest)
-	if !exists && len(d.state.Digests) >= hookDedupeMaxEntries {
-		d.close()
-		return d
-	}
-	if exists && previous.Digest == d.digest && !now.Before(previous.EmittedAt) && now.Sub(previous.EmittedAt) < hookDedupeRefresh && previous.Suppressions < hookDedupeMaxSuppressions {
-		previous.Suppressions++
-		d.state.Digests[d.key] = previous
-		d.state.At = now
-		ok := d.persist()
-		d.close()
-		d.suppressed = ok && !d.stateError
-	}
 	return d
 }
 
@@ -209,11 +231,22 @@ func (d *hookDedupeCheck) persist() bool {
 	return true
 }
 
+func (d *hookDedupeCheck) fits() bool {
+	raw, err := json.Marshal(d.state)
+	return err == nil && len(raw) <= hookDedupeMaxBytes
+}
+
 func (d *hookDedupeCheck) commit(now time.Time) {
 	if d.file == nil {
 		return
 	}
-	d.state.Digests[d.key] = hookDedupeEntry{Digest: d.digest, EmittedAt: now}
+	if d.ruleMode {
+		for _, key := range d.ruleKeys {
+			d.state.Digests[key] = hookDedupeEntry{Digest: key, EmittedAt: now}
+		}
+	} else {
+		d.state.Digests[d.key] = hookDedupeEntry{Digest: d.digest, EmittedAt: now}
+	}
 	d.state.At = now
 	d.persist()
 	d.close()
