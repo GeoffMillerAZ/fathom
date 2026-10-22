@@ -49,4 +49,36 @@ bash "$check" --staged || fail 'staged check read unstaged content'
 bash "$check" --staged || fail 'checked untracked backup'
 grep -F 'run: bash scripts/check-merge-debris.sh --staged' "$root/lefthook.yml" >/dev/null || fail 'pre-commit does not check staged snapshot'
 grep -E 'deps: \[.*merge-debris-check' "$root/Taskfile.yml" >/dev/null || fail 'validate does not scan the tree'
-echo 'merge-debris test: ok' 
+# Scan content in one git grep, while retaining file:line output.
+mkdir -p "$scratch/tools"
+export REAL_GIT="$(command -v git)" GREP_LOG="$scratch/grep-log"
+cat > "$scratch/tools/git" <<'STUB'
+#!/bin/sh
+if [ "$1" = grep ]; then printf '%s\n' "$*" >> "$GREP_LOG"; fi
+exec "$REAL_GIT" "$@"
+STUB
+chmod +x "$scratch/tools/git"
+export PATH="$scratch/tools:$PATH"
+printf 'clean\n' > 'clean file'
+printf '<<<<<<< topic\n' > one
+printf '>>>>>>> topic\n' > two
+git add -- 'clean file' one two
+for mode in worktree staged; do
+  : > "$GREP_LOG"
+  rc=0
+  if [ "$mode" = staged ]; then
+    bash "$check" --staged > "$scratch/out" || rc=$?
+  else
+    bash "$check" > "$scratch/out" || rc=$?
+  fi
+  [ "$rc" -eq 1 ] || fail "$mode missed conflicts"
+  grep '^one:1:' "$scratch/out" >/dev/null || fail "$mode lost first location"
+  grep '^two:1:' "$scratch/out" >/dev/null || fail "$mode lost second location"
+  [ "$(wc -l < "$GREP_LOG" | tr -d ' ')" -eq 1 ] || fail "$mode did not use exactly one git grep"
+  grep -F ':!third_party/*' "$GREP_LOG" >/dev/null || fail 'vendor pathspec missing'
+  grep -F ':!*testdata/*' "$GREP_LOG" >/dev/null || fail 'fixture pathspec missing'
+  if [ "$mode" = staged ]; then
+    grep -F -- '--cached' "$GREP_LOG" >/dev/null || fail 'staged grep did not use the index'
+  fi
+done
+echo 'merge-debris test: ok'

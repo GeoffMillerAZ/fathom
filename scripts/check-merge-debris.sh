@@ -15,26 +15,24 @@ else
   git ls-files -z > "$scratch/files"
 fi
 rc=0
+paths=()
 while IFS= read -r -d '' path; do
   case "/$path" in */testdata/*|/third_party/*) continue ;; esac
   case "$path" in
     *-e|*-E|*.orig|*.rej) printf '%s:1: backup or reject file\n' "$path"; rc=1 ;;
   esac
-  if [ "$staged" -eq 1 ]; then
-    git show ":$path" > "$scratch/content"
-    content="$scratch/content"
-  else
-    # Deleted files and symlinks cannot contain worktree conflict lines.
-    [ -f "$path" ] && [ ! -L "$path" ] || continue
-    content="$path"
-  fi
-  code=0
-  LC_ALL=C grep -nIE '^(<{7}|>{7}|[|]{7})( |$)' -- "$content" > "$scratch/matches" || code=$?
-  if [ "$code" -eq 0 ]; then
-    while IFS= read -r match; do printf '%s:%s\n' "$path" "$match"; done < "$scratch/matches"
-    rc=1
-  elif [ "$code" -ne 1 ]; then
-    exit "$code"
-  fi
+  if [ "$staged" -eq 1 ]; then paths+=(":(literal)$path"); fi
 done < "$scratch/files"
+mode=()
+if [ "$staged" -eq 1 ]; then
+  [ "${#paths[@]}" -gt 0 ] || exit "$rc"
+  mode=(--cached)
+fi
+code=0
+LC_ALL=C git grep --no-color -nIE ${mode[@]+"${mode[@]}"} '^(<{7}|>{7}|[|]{7})( |$)' -- ${paths[@]+"${paths[@]}"} ':!third_party/*' ':!*testdata/*' || code=$?
+if [ "$code" -eq 0 ]; then
+  rc=1
+elif [ "$code" -ne 1 ]; then
+  exit "$code"
+fi
 exit "$rc"
