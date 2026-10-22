@@ -49,7 +49,7 @@ func mapShowHint(id string) string { return "fathom map show " + id + " --budget
 // threadsHoldMaps is the gate every map channel takes first: does the threads
 // log carry a single map row. A repository with no maps costs one read.
 func threadsHoldMaps() bool {
-	data, err := os.ReadFile(threadsPath())
+	data, err := readThreadsFile(threadsPath())
 	if err != nil {
 		return false
 	}
@@ -80,13 +80,16 @@ func hookMapScope(root string) threadScope {
 
 // loadAliveMaps reads this repository's maps that have not ended, most recently
 // used first. A composite is left out: it only references, and a channel that
-// names one names what it references. Nothing is read or parsed when the log
-// holds no map row.
+// names one names what it references. A log without maps costs one file read
+// and no JSON decoding.
 func loadAliveMaps(root string, now time.Time) (mapSet, []string) {
-	if root == "" || !threadsHoldMaps() {
+	if root == "" || hookDeadlineSpent() {
 		return mapSet{}, nil
 	}
 	set := loadMapSet(root, now)
+	if hookDeadlineSpent() {
+		return mapSet{}, nil
+	}
 	life := explmap.Lifetimes(set.maps)
 	var ids []string
 	for _, id := range set.idsOwnedBy(hookMapScope(root)) {

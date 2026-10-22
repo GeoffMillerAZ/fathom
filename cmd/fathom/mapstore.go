@@ -18,6 +18,7 @@ package main
 // internal/explmap; this file only reads and writes rows.
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -47,12 +48,19 @@ func isMapItem(it threadItem) bool {
 // loadThreadRowsRaw reads every row of the log in file order, unfolded: the
 // header history an include drop is read from.
 func loadThreadRowsRaw(path string) []threadItem {
-	data, err := os.ReadFile(path)
+	data, err := readThreadsFile(path)
 	if err != nil {
 		return nil
 	}
+	return parseThreadRows(data)
+}
+
+func parseThreadRows(data []byte) []threadItem {
 	var out []threadItem
 	for _, line := range strings.Split(string(data), "\n") {
+		if hookDeadlineSpent() {
+			return nil
+		}
 		if strings.TrimSpace(line) == "" {
 			continue
 		}
@@ -123,35 +131,34 @@ func loadMapSet(root string, now time.Time) mapSet {
 
 // loadMapSetAs is loadMapSet for a named reader.
 func loadMapSetAs(root string, now time.Time, reader mapReader) mapSet {
-	path := threadsPath()
-	folded := loadAllThreadRows(path)
-	raw := loadThreadRowsRaw(path)
+	if hookDeadlineSpent() {
+		return mapSet{}
+	}
+	data, err := readThreadsFile(threadsPath())
+	if err != nil || hookDeadlineSpent() || !bytes.Contains(data, []byte(`"map"`)) {
+		return mapSet{}
+	}
+	raw := parseThreadRows(data)
+	folded := foldThreadRows(raw)
+	index := indexMapLog(raw)
 	var headers []threadItem
 	for _, it := range folded {
 		if it.Kind == mapHeaderKind {
 			headers = append(headers, it)
 		}
 	}
-	// The creator is read from each header's FIRST row: a restatement (a
-	// name, an include, a compose) carries the restating session's id.
-	creators := map[string]mapCreatorRow{}
-	for _, r := range raw {
-		if r.Kind != mapHeaderKind || r.Pointers == nil {
-			continue
-		}
-		if _, seen := creators[r.ID]; !seen {
-			creators[r.ID] = mapCreatorRow{Session: r.Pointers["session_id"], CreatedBy: r.Pointers["created_by"]}
-		}
-	}
 	// Close any header whose own condition now holds, against every row
 	// (a session_ended condition reads the session-end notes).
 	closed := map[string]threadItem{}
-	for _, h := range evaluateMapConditions(headers, folded, raw, creators, reader, root, now) {
+	for _, h := range evaluateMapConditions(headers, folded, index, reader, root, now) {
 		closed[h.ID] = h
 	}
 
 	set := mapSet{maps: explmap.Maps{}, headers: map[string]threadItem{}}
 	for _, h := range closed {
+		if hookDeadlineSpent() {
+			return mapSet{}
+		}
 		id := h.Pointers["map"]
 		if id == "" {
 			continue
@@ -179,6 +186,9 @@ func loadMapSetAs(root string, now time.Time, reader mapReader) mapSet {
 	// was dropped at that restatement.
 	prevIncludes := map[string][]string{}
 	for _, r := range raw {
+		if hookDeadlineSpent() {
+			return mapSet{}
+		}
 		if r.Kind != mapHeaderKind || r.Pointers == nil {
 			continue
 		}
@@ -201,6 +211,9 @@ func loadMapSetAs(root string, now time.Time, reader mapReader) mapSet {
 	// restated, so the first row with an id is the entry).
 	seenEntry := map[string]bool{}
 	for _, it := range raw {
+		if hookDeadlineSpent() {
+			return mapSet{}
+		}
 		if it.Kind != mapEntryKind || seenEntry[it.ID] {
 			continue
 		}
@@ -256,6 +269,36 @@ func loadMapSetAs(root string, now time.Time, reader mapReader) mapSet {
 	return set
 }
 
+// mapLogIndex is invocation-local: append positions and the first creator,
+// built once so each header does not rescan the whole log for session ends.
+type mapLogIndex struct {
+	firstHeader map[string]int
+	sessionEnds map[string][]int
+	creators    map[string]mapCreatorRow
+}
+
+func indexMapLog(rows []threadItem) mapLogIndex {
+	index := mapLogIndex{firstHeader: map[string]int{}, sessionEnds: map[string][]int{}, creators: map[string]mapCreatorRow{}}
+	for pos, row := range rows {
+		if hookDeadlineSpent() {
+			return mapLogIndex{}
+		}
+		if row.Kind == mapHeaderKind {
+			if _, seen := index.firstHeader[row.ID]; !seen {
+				index.firstHeader[row.ID] = pos
+			}
+			if _, seen := index.creators[row.ID]; !seen && row.Pointers != nil {
+				index.creators[row.ID] = mapCreatorRow{Session: row.Pointers["session_id"], CreatedBy: row.Pointers["created_by"]}
+			}
+		}
+		if row.Kind == "session-end" {
+			session := row.Pointers["session_id"]
+			index.sessionEnds[session] = append(index.sessionEnds[session], pos)
+		}
+	}
+	return index
+}
+
 // evaluateMapConditions closes each open header whose condition now holds,
 // through the same condition check and the same durable closure row the
 // thread verbs use; the rows are checked against every folded row. A named
@@ -270,12 +313,15 @@ func loadMapSetAs(root string, now time.Time, reader mapReader) mapSet {
 // but the shared log and names the creator's own session, which can never
 // read again once it has ended, so any reader closes it (an unnamed map
 // still ends with its session).
-func evaluateMapConditions(headers, all, raw []threadItem, creators map[string]mapCreatorRow, reader mapReader, root string, now time.Time) []threadItem {
+func evaluateMapConditions(headers, all []threadItem, index mapLogIndex, reader mapReader, root string, now time.Time) []threadItem {
 	out := make([]threadItem, 0, len(headers))
 	for _, h := range headers {
+		if hookDeadlineSpent() {
+			return nil
+		}
 		named := strings.TrimSpace(h.Pointers["name"]) != ""
-		judge := h.CompletesWhen != nil && (h.CompletesWhen.Kind == "session_ended" || reader.createdIt(creators[h.ID]))
-		if !named && h.ClosedAt == "" && judge && mapConditionHolds(h, root, all, raw) {
+		judge := h.CompletesWhen != nil && (h.CompletesWhen.Kind == "session_ended" || reader.createdIt(index.creators[h.ID]))
+		if !named && h.ClosedAt == "" && judge && mapConditionHolds(h, root, all, index) {
 			h.ClosedAt = now.UTC().Format(time.RFC3339)
 			h.ClosedBy = "condition"
 			h.ClosedWhy = describeCondition(*h.CompletesWhen) + " now holds"
@@ -292,7 +338,7 @@ func evaluateMapConditions(headers, all, raw []threadItem, creators map[string]m
 // mapConditionHolds uses append order for the session-end default. A resumed
 // session can file another map after an end note, and timestamps may be equal
 // or come from different clocks. Only a note after the FIRST header ends it.
-func mapConditionHolds(h threadItem, root string, all, raw []threadItem) bool {
+func mapConditionHolds(h threadItem, root string, all []threadItem, index mapLogIndex) bool {
 	if h.CompletesWhen.Kind != "session_ended" {
 		return threadConditionHolds(*h.CompletesWhen, root, all)
 	}
@@ -300,16 +346,12 @@ func mapConditionHolds(h threadItem, root string, all, raw []threadItem) bool {
 	if session == "" {
 		return false
 	}
-	filed := false
-	for _, row := range raw {
-		if row.ID == h.ID && row.Kind == mapHeaderKind {
-			filed = true
-		}
-		if filed && row.Kind == "session-end" && row.Pointers["session_id"] == session {
-			return true
-		}
+	first, ok := index.firstHeader[h.ID]
+	if !ok {
+		return false
 	}
-	return false
+	ends := index.sessionEnds[session]
+	return sort.SearchInts(ends, first+1) < len(ends)
 }
 
 // mapHeaderRow renders m as a header row: every field restated, so the latest
