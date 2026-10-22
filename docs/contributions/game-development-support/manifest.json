@@ -1,0 +1,354 @@
+{
+  "schema": "fathom.game-development-support-patches/v1",
+  "format": "git format-patch --full-index --binary --no-signature",
+  "metadata_redaction": "From email replaced with contributor@example.invalid in all files; three private message receipt paths replaced with <PRIVATE_RECEIPT>",
+  "reference_redaction": "Consumer service/path literals replaced in 0001 and experimental O23-0001; these are .diff.txt and unexecuted after redaction",
+  "pre_source_redaction_historical_base_apply_test": "PASS_TREE_IDENTICAL",
+  "series": [
+    {
+      "name": "main-series",
+      "status": "historical_review_chain",
+      "base": "2d30f9eb7da43cb921f2f22239c4d423beddf493",
+      "source_head": "d08aadb0f26155c514e82196c024947a2dcc5faf",
+      "original_source_tree": "2df5cf8ab2193f9221ddc282a29e58e837137b64",
+      "source_tree_verified_before_source_redaction": true,
+      "shipped_complete_chain_git_am_ready": false,
+      "patches": [
+        {
+          "order": 1,
+          "file": "patches/main-series/0001-feat-fathom-integrate-current-source-and-native-evid.diff.txt",
+          "source_commit": "10eff8c4c949d4e9a37b9abf56060de36d992ee6",
+          "subject": "feat(fathom): integrate current-source and native",
+          "classification": "REDACTED_REFERENCE_ONLY_NOT_GIT_AM_READY",
+          "sha256": "3d16b7888be0d317a0af17c6c0042ba14d3695ba22e2326d15136e321d106be2",
+          "bytes": 1118729,
+          "source_patch_id": "64cdcf13a34c178703d07340f37219cf3f490e86",
+          "export_patch_id": "f03a91c4b3c18264500f057b21f2e1ef2ba55ece"
+        },
+        {
+          "order": 2,
+          "file": "patches/main-series/0002-fix-verify-preserve-the-source-window-result-budget.patch",
+          "source_commit": "f24665f8dfc16525e4c2bb7b847e5619774326b0",
+          "subject": "fix(verify): preserve the source-window result budget",
+          "classification": "SOURCE_DIFF_INTACT_DEPENDENT_PATCH",
+          "sha256": "1e790588c58fb84a6be1715186329f378c528e9f15ec1e7936b9bab666fb8064",
+          "bytes": 6786,
+          "source_patch_id": "b4ce6181cafa0f90447971180d8daf35dca3e96a",
+          "export_patch_id": "b4ce6181cafa0f90447971180d8daf35dca3e96a"
+        },
+        {
+          "order": 3,
+          "file": "patches/main-series/0003-docs-changelog-keep-source-window-changes-in-one-sec.patch",
+          "source_commit": "0f011b0378c359bf1205adec0cec000a567bec89",
+          "subject": "docs(changelog): keep source-window changes in one",
+          "classification": "SOURCE_DIFF_INTACT_DEPENDENT_PATCH",
+          "sha256": "ca727d44bcc7445d4431fb9e4797bd6a7981f8431f9a8a6d1acab63c45d91da0",
+          "bytes": 1958,
+          "source_patch_id": "f225d33a242ae82170d953d1431ab3e599ae9770",
+          "export_patch_id": "f225d33a242ae82170d953d1431ab3e599ae9770"
+        },
+        {
+          "order": 4,
+          "file": "patches/main-series/0004-test-extractor-bound-dialect-parser-admission.patch",
+          "source_commit": "dbf2cb8ff0c1c77fe73a5274fe53bb48ba803a51",
+          "subject": "test(extractor): bound dialect parser admission",
+          "classification": "SOURCE_DIFF_INTACT_DEPENDENT_PATCH",
+          "sha256": "46693ab2941e48d70da69d7602ad255e54fab6e4bd45f4c72773d7331367cdda",
+          "bytes": 1948,
+          "source_patch_id": "9de3ec047662a96f5bae77d800d8df2648201c4e",
+          "export_patch_id": "9de3ec047662a96f5bae77d800d8df2648201c4e"
+        },
+        {
+          "order": 5,
+          "file": "patches/main-series/0005-fix-mcp-load-plan-graph-evidence-only-when-required.patch",
+          "source_commit": "87687c66a7131f3b6bd6b031f321c411669be65e",
+          "subject": "fix(mcp): load plan graph evidence only when required",
+          "classification": "SOURCE_DIFF_INTACT_DEPENDENT_PATCH",
+          "sha256": "13a7fd93e0feb561229ecc4d78215f1a64b2c2a623bfb815254e37a961016859",
+          "bytes": 14881,
+          "source_patch_id": "1a97df1cfe8bc2f17a7906e84c44e3bd9db9b70e",
+          "export_patch_id": "1a97df1cfe8bc2f17a7906e84c44e3bd9db9b70e"
+        },
+        {
+          "order": 6,
+          "file": "patches/main-series/0006-fix-hooks-report-preflight-expiry-before-root-lookup.patch",
+          "source_commit": "7f779f59b7ce8385dbf53f996404d0d25578c71d",
+          "subject": "fix(hooks): report preflight expiry before root lookup",
+          "classification": "SOURCE_DIFF_INTACT_DEPENDENT_PATCH",
+          "sha256": "7844565c8dae9e7b7f2b39f4b6605b0a9f883b866c1b15df6192f4c757a3d56e",
+          "bytes": 3800,
+          "source_patch_id": "10f1bbb4d94acfbfb7d0022e66e203a6cad1efce",
+          "export_patch_id": "10f1bbb4d94acfbfb7d0022e66e203a6cad1efce"
+        },
+        {
+          "order": 7,
+          "file": "patches/main-series/0007-fix-store-share-native-payloads-across-newest-test-c.patch",
+          "source_commit": "eb684508330388c2d54d5a65685ffe54b59a2d62",
+          "subject": "fix(store): share native payloads across newest test",
+          "classification": "SOURCE_DIFF_INTACT_DEPENDENT_PATCH",
+          "sha256": "6fc5c3f85c9244d53c9d38a87df05e58fc6d89a100d4151f6353ea4a960dba71",
+          "bytes": 10162,
+          "source_patch_id": "c1f46a7a17f976d426bedf8a29b9fd3fd5cdd86f",
+          "export_patch_id": "c1f46a7a17f976d426bedf8a29b9fd3fd5cdd86f"
+        },
+        {
+          "order": 8,
+          "file": "patches/main-series/0008-fix-mcp-fit-source-window-task-reports-to-complete-b.patch",
+          "source_commit": "7939bbfd40caa943a4b02b977f5fa3878701d614",
+          "subject": "fix(mcp): fit source-window task reports to complete",
+          "classification": "SOURCE_DIFF_INTACT_DEPENDENT_PATCH",
+          "sha256": "e21962d34080996d8367b68f46f6ec483d25f1d39115edf54195d9b60424a70b",
+          "bytes": 13913,
+          "source_patch_id": "4c2e6db703ccf2136f01714b5fedf3abfbf188bb",
+          "export_patch_id": "4c2e6db703ccf2136f01714b5fedf3abfbf188bb"
+        },
+        {
+          "order": 9,
+          "file": "patches/main-series/0009-perf-mcp-load-only-context-navigation-dependencies.patch",
+          "source_commit": "f7dc03a2ec23da96c08256b07d3b3e734168832f",
+          "subject": "perf(mcp): load only context navigation dependencies",
+          "classification": "SOURCE_DIFF_INTACT_DEPENDENT_PATCH",
+          "sha256": "8ecfc0f046e5b9340a036f405b27b2eceb676cbd694028a11448db2758bc301b",
+          "bytes": 22252,
+          "source_patch_id": "abb7c4002210b136f20ef4ffecccd719ba51d325",
+          "export_patch_id": "abb7c4002210b136f20ef4ffecccd719ba51d325"
+        },
+        {
+          "order": 10,
+          "file": "patches/main-series/0010-perf-evidence-reuse-bounded-buffers-during-source-va.patch",
+          "source_commit": "3b2e7a32788b81310b02d8210219fa57074eefa2",
+          "subject": "perf(evidence): reuse bounded buffers during source",
+          "classification": "SOURCE_DIFF_INTACT_DEPENDENT_PATCH",
+          "sha256": "89e4438cb3b5febac1d31dce6231e4976a22fb4098d92677f2b3aad29f9819b1",
+          "bytes": 11175,
+          "source_patch_id": "c1802c262b485ba972f8331da55334581557376b",
+          "export_patch_id": "c1802c262b485ba972f8331da55334581557376b"
+        },
+        {
+          "order": 11,
+          "file": "patches/main-series/0011-perf-scip-release-unused-receipt-index-payloads.patch",
+          "source_commit": "ff100439bd80ceaa84a7dea949d09037feff38b8",
+          "subject": "perf(scip): release unused receipt index payloads",
+          "classification": "SOURCE_DIFF_INTACT_DEPENDENT_PATCH",
+          "sha256": "1b1f0fb8d9480f69b8f3a16cbc7d6617fb9be3f44b14fc0ac12eea25f9de04c5",
+          "bytes": 13124,
+          "source_patch_id": "9fe3a53fcedbd6ea085e1468b998dbcf339e1744",
+          "export_patch_id": "9fe3a53fcedbd6ea085e1468b998dbcf339e1744"
+        },
+        {
+          "order": 12,
+          "file": "patches/main-series/0012-fix-scip-avoid-copying-protobuf-receipt-mutexes.patch",
+          "source_commit": "f2a6ea57969f6bd7c10f77850061b72b6633ab70",
+          "subject": "fix(scip): avoid copying protobuf receipt mutexes",
+          "classification": "SOURCE_DIFF_INTACT_DEPENDENT_PATCH",
+          "sha256": "d4a9a97a096dbcc6fa6889e414b4743e4ac9e641ce98990ff7c9c9e905339ba7",
+          "bytes": 3182,
+          "source_patch_id": "708a9eec08b21743b2b06be85a11bced337665d1",
+          "export_patch_id": "708a9eec08b21743b2b06be85a11bced337665d1"
+        },
+        {
+          "order": 13,
+          "file": "patches/main-series/0013-test-fusion-isolate-typed-cache-fixture-mutations.patch",
+          "source_commit": "cb0a515eaa0ad0c664158fbd3ae4a769b0aa3610",
+          "subject": "test(fusion): isolate typed cache fixture mutations",
+          "classification": "SOURCE_DIFF_INTACT_DEPENDENT_PATCH",
+          "sha256": "5082c296c5924fa3b47105a4e9bfadce6e033f06c51d3693733c304c3a7817b9",
+          "bytes": 1674,
+          "source_patch_id": "1c3c89bb3e1dd7a79d46a00c496a6138359abc84",
+          "export_patch_id": "1c3c89bb3e1dd7a79d46a00c496a6138359abc84"
+        },
+        {
+          "order": 14,
+          "file": "patches/main-series/0014-fix-review-bound-source-reads-and-guard-finding-writ.patch",
+          "source_commit": "133d938779d97e59f05e1e2fedd5eb6f3ca8a8b6",
+          "subject": "fix(review): bound source reads and guard finding",
+          "classification": "SOURCE_DIFF_INTACT_DEPENDENT_PATCH",
+          "sha256": "928335460e63641d9184e24b1acceaedfb20b426fb18e2ed49432162f5205296",
+          "bytes": 33669,
+          "source_patch_id": "93895fef1c5381cc8a9790db957adeadd818072b",
+          "export_patch_id": "93895fef1c5381cc8a9790db957adeadd818072b"
+        },
+        {
+          "order": 15,
+          "file": "patches/main-series/0015-fix-review-reuse-coherent-graph-snapshot-for-review_.patch",
+          "source_commit": "eeb579a95f81d3cdfeebcc8f772e40f628508eb9",
+          "subject": "fix(review): reuse coherent graph snapshot for",
+          "classification": "SOURCE_DIFF_INTACT_DEPENDENT_PATCH",
+          "sha256": "c3b5bb66f9f8616c3a6deeb28bd0be84ac637de72b5e31f589e7fbda17459f49",
+          "bytes": 49810,
+          "source_patch_id": "27fdbce1b95a1cf40562c1dc912645d9016e2796",
+          "export_patch_id": "27fdbce1b95a1cf40562c1dc912645d9016e2796"
+        },
+        {
+          "order": 16,
+          "file": "patches/main-series/0016-fix-review-use-governed-symbol-snapshot-loader.patch",
+          "source_commit": "98a786a764c39017e8eaa7d25c0b58ae78a5c7ac",
+          "subject": "fix(review): use governed symbol snapshot loader",
+          "classification": "SOURCE_DIFF_INTACT_DEPENDENT_PATCH",
+          "sha256": "f2a289ea87d2269994442d29eb42a41180e87e390ff961347270a704c8d5c725",
+          "bytes": 4082,
+          "source_patch_id": "f25bdcfd5c4ee3c6018ab05378333ac57bbf060e",
+          "export_patch_id": "f25bdcfd5c4ee3c6018ab05378333ac57bbf060e"
+        },
+        {
+          "order": 17,
+          "file": "patches/main-series/0017-fix-mcp-preserve-review-dimension-status-when-detail.patch",
+          "source_commit": "d0688ef83218cbbc0b834cece75b023758945170",
+          "subject": "fix(mcp): preserve review dimension status when details",
+          "classification": "SOURCE_DIFF_INTACT_DEPENDENT_PATCH",
+          "sha256": "f0b83d592ccbaae50bc4a8b3d47c1e6c757eba707e73a6c1c44b202212aeed8d",
+          "bytes": 7316,
+          "source_patch_id": "62cfec82a219613e2c8278bb1ab4edac486f102b",
+          "export_patch_id": "62cfec82a219613e2c8278bb1ab4edac486f102b"
+        },
+        {
+          "order": 18,
+          "file": "patches/main-series/0018-test-mcp-remove-unused-review-status-import.patch",
+          "source_commit": "456c6e31915a9ce07a3ada254e0f0ac0e54145f7",
+          "subject": "test(mcp): remove unused review status import",
+          "classification": "SOURCE_DIFF_INTACT_DEPENDENT_PATCH",
+          "sha256": "21d961f2bf3dbd2bc812db4fbe4c4d8faeb9ab95f2806c8ff3ca8431b5a59f0f",
+          "bytes": 776,
+          "source_patch_id": "8abf2708f3bad317c2684731f938260c3425e247",
+          "export_patch_id": "8abf2708f3bad317c2684731f938260c3425e247"
+        },
+        {
+          "order": 19,
+          "file": "patches/main-series/0019-fix-taskfile-recognize-unnamed-version-3-YAML-Taskfi.patch",
+          "source_commit": "f3530d5f35b77c68832877d367147c6d0633b26f",
+          "subject": "fix(taskfile): recognize unnamed version-3 YAML",
+          "classification": "SOURCE_DIFF_INTACT_DEPENDENT_PATCH",
+          "sha256": "a1c2204aea67b6476d29aa20593016a2453d4d04997fec762d60b0c6101e70b3",
+          "bytes": 14749,
+          "source_patch_id": "c420041795d05f173e15f4114c3ef84a2fd9e7b1",
+          "export_patch_id": "c420041795d05f173e15f4114c3ef84a2fd9e7b1"
+        },
+        {
+          "order": 20,
+          "file": "patches/main-series/0020-perf-conserve-stream-inventory-inputs-and-honor-canc.patch",
+          "source_commit": "8d3a32b6db87850b5276e549a77b0ae678a38236",
+          "subject": "perf(conserve): stream inventory inputs and honor",
+          "classification": "SOURCE_DIFF_INTACT_DEPENDENT_PATCH",
+          "sha256": "8c96c1a04671badecdaf3caf477bf3dd35b72ed2398490f461dd1c49ee964b15",
+          "bytes": 26991,
+          "source_patch_id": "e7d7722cefe234d198a5f4eee018529cadaa8dac",
+          "export_patch_id": "e7d7722cefe234d198a5f4eee018529cadaa8dac"
+        },
+        {
+          "order": 21,
+          "file": "patches/main-series/0021-test-fusion-expect-Taskfile-classification-for-v3-ta.patch",
+          "source_commit": "c98a83723a0a2443a4fad7280ae713aaca42226c",
+          "subject": "test(fusion): expect Taskfile classification for v3",
+          "classification": "SOURCE_DIFF_INTACT_DEPENDENT_PATCH",
+          "sha256": "9e0bbb77b303cea7b255cc84755cc4aaccb28ece784563d1a41d02545420a3bd",
+          "bytes": 1850,
+          "source_patch_id": "feff62622c0496cfb6aced0a624c09734c8b553c",
+          "export_patch_id": "feff62622c0496cfb6aced0a624c09734c8b553c"
+        },
+        {
+          "order": 22,
+          "file": "patches/main-series/0022-fix-conserve-stream-generated-header-classification.patch",
+          "source_commit": "fa7f038ea8df4e6cf8b5dc4670f71a9b647f3645",
+          "subject": "fix(conserve): stream generated header classification",
+          "classification": "SOURCE_DIFF_INTACT_DEPENDENT_PATCH",
+          "sha256": "f47dfd360c7f8970d93671a07dc61d52b5c34991f05ab6a521a418bb96336f7c",
+          "bytes": 27305,
+          "source_patch_id": "33268b59bb31bb5590c93ed3fd1235ec98a7166b",
+          "export_patch_id": "33268b59bb31bb5590c93ed3fd1235ec98a7166b"
+        },
+        {
+          "order": 23,
+          "file": "patches/main-series/0023-perf-avoid-surface-reads-without-extractors-and-redu.patch",
+          "source_commit": "8cec108ad93e8bb465dd58ecf8f9f4aaa5cf0b0c",
+          "subject": "perf: avoid surface reads without extractors and reduce",
+          "classification": "SOURCE_DIFF_INTACT_DEPENDENT_PATCH",
+          "sha256": "6021c186a4e95891b2b3541b2a5c8cdab76a15acd0187b8a875bc096f8c07809",
+          "bytes": 10781,
+          "source_patch_id": "582862dc8e02e8ec4543856ad1ed7dc5e236131e",
+          "export_patch_id": "582862dc8e02e8ec4543856ad1ed7dc5e236131e"
+        },
+        {
+          "order": 24,
+          "file": "patches/main-series/0024-perf-callgraph-reduce-transient-ambiguity-index-allo.patch",
+          "source_commit": "11a851b002527996bea7a549864cccc5b5beed2a",
+          "subject": "perf(callgraph): reduce transient ambiguity index",
+          "classification": "SOURCE_DIFF_INTACT_DEPENDENT_PATCH",
+          "sha256": "b6069c930a9fff0504239e9bdfb5867e6e3609a81196f097474911e32691439b",
+          "bytes": 13281,
+          "source_patch_id": "606f60cee7a85d7dca1fa2053ffe35ecfe2bd8c6",
+          "export_patch_id": "606f60cee7a85d7dca1fa2053ffe35ecfe2bd8c6"
+        },
+        {
+          "order": 25,
+          "file": "patches/main-series/0025-feat-record-memo-statistics-before-pressure-actions.patch",
+          "source_commit": "378224a362b428e07bdae7ac350fc230d26f9a12",
+          "subject": "feat: record memo statistics before pressure actions",
+          "classification": "SOURCE_DIFF_INTACT_DEPENDENT_PATCH",
+          "sha256": "7036397afa3cf87ce8b5de11dec1c7aa83a0b3351c442f57c1a0326f02966d61",
+          "bytes": 14604,
+          "source_patch_id": "6ef65e59f8ffa29208f940bbbeb997c11cb45267",
+          "export_patch_id": "6ef65e59f8ffa29208f940bbbeb997c11cb45267"
+        },
+        {
+          "order": 26,
+          "file": "patches/main-series/0026-perf-store-reserve-symbol-projection-capacity-from-b.patch",
+          "source_commit": "d65521c57e84b2b24f86c1720ff9f93e86ddd95e",
+          "subject": "perf(store): reserve symbol projection capacity from",
+          "classification": "SOURCE_DIFF_INTACT_DEPENDENT_PATCH",
+          "sha256": "5758066ed81a5ae2fb0433acba4c0ecbe66332f1c25b961471ff1cfaa40e2811",
+          "bytes": 12615,
+          "source_patch_id": "afc2d048aa5a7bc38bb8626d604820ba3c2b4366",
+          "export_patch_id": "afc2d048aa5a7bc38bb8626d604820ba3c2b4366"
+        },
+        {
+          "order": 27,
+          "file": "patches/main-series/0027-docs-plans-reopen-unproven-CX-18-claim.patch",
+          "source_commit": "d08aadb0f26155c514e82196c024947a2dcc5faf",
+          "subject": "docs(plans): reopen unproven CX-18 claim",
+          "classification": "SOURCE_DIFF_INTACT_DEPENDENT_PATCH",
+          "sha256": "d44642094636b0a8dd21cfcef4a0bd298e10038fae27f239abc4177c65c39539",
+          "bytes": 3060,
+          "source_patch_id": "8abecb4e6d8972a667bbf807d6d08aa4006ea07c",
+          "export_patch_id": "8abecb4e6d8972a667bbf807d6d08aa4006ea07c"
+        }
+      ]
+    },
+    {
+      "name": "experimental-o23",
+      "status": "experimental_not_full_gated",
+      "base": "378224a362b428e07bdae7ac350fc230d26f9a12",
+      "source_head": "96a3b8bf6c4545d5c6f9ad92b2e8d02d60a677f4",
+      "original_source_tree": "c29cc515cb3a4411930910ba422b09ab6d785148",
+      "source_tree_verified_before_source_redaction": true,
+      "shipped_complete_chain_git_am_ready": false,
+      "patches": [
+        {
+          "order": 1,
+          "file": "patches/experimental-o23/0001-fix-mcp-bound-review-diff-result-envelope.diff.txt",
+          "source_commit": "2b9cdae0a9631da8fa5e02ef10fb634bf844dc8d",
+          "subject": "fix(mcp): bound review diff result envelope",
+          "classification": "REDACTED_REFERENCE_ONLY_NOT_GIT_AM_READY",
+          "sha256": "d11ae408e1f502b91f01c5bbc1ffd282a3e17a8112fefb2f45b1539dc285c3b9",
+          "bytes": 36602,
+          "source_patch_id": "6d859e4a12f013a8ed73054beffab4f54ee6d3a3",
+          "export_patch_id": "2b9cc020957ce8bf07df95d9c6ba2dafd26cdcd4"
+        },
+        {
+          "order": 2,
+          "file": "patches/experimental-o23/0002-test-mcp-classify-raw-JSON-selector-in-forwarding-sc.patch",
+          "source_commit": "96a3b8bf6c4545d5c6f9ad92b2e8d02d60a677f4",
+          "subject": "test(mcp): classify raw JSON selector in forwarding scan",
+          "classification": "SOURCE_DIFF_INTACT_DEPENDENT_PATCH",
+          "sha256": "1e35476c0480fb4a85220207825880c0b7403f016b29a5bfada26f2adb25cd53",
+          "bytes": 1240,
+          "source_patch_id": "98c0fb28d5e368d6fe5e09f7ab2d0ee489de8092",
+          "export_patch_id": "98c0fb28d5e368d6fe5e09f7ab2d0ee489de8092"
+        }
+      ]
+    }
+  ],
+  "documentation_sha256": {
+    "README.md": "d9668b25a344d23a771f051da9f7ba74e72ed621c8bbda16027c47c57d18848a",
+    "evidence.json": "ce4f7dd2f6ce70c96890a70bc2b530a117716d2fde78869abbdb0e1f5eaf1b01"
+  }
+}

@@ -5872,3 +5872,44 @@ repo-wide compiled rule to the paths, packages and symbols its own text and mapp
 read again with the d2 order unchanged. Precise obligations are also the largest token lever this repository's prompt
 hook has (each prompt carries up to 6 rules), so RS-4 rides the token-efficiency wave after the game-development P0.
 
+## ADR-079: Game-development support: the 35-family qualification contract is accepted as a program; P0 evidence safety first, historical units by ledger, unavailable hosts recorded as unavailable (2026-10-22)
+
+**Status.** Accepted 2026-10-22 (owner-architect). **Type.** process / scope. Design: `docs/design/game-development-support.md`.
+Plan: `docs/plans/game-development-support.md` (GDEV-). Dossier and ledger: `docs/contributions/game-development-support/`.
+Reads ADR-011, ADR-047, ADR-048, ADR-049, ADR-067, ADR-069, ADR-073, I38, I54, I56, I57.
+
+**Context.**
+- A consumer (a Unity game, private) contributed a 35-family support contract, five consumer observations that make
+  evidence unsafe to serve (cold-ingest memory, review cancellation, whole-result size, freshness, doctor honesty), 27
+  historical units plus two experimental ones, and producer and oracle drafts for Python, Roslyn and Blender.
+- The historical units were built on a diverged branch and two are redacted references. The disposition ledger
+  (31 units): 11 adopted, 17 adapted, 1 current-main equivalent, 1 superseded (CX-18's premise is false at HEAD),
+  1 rejected (a Python producer fork that bypasses memory reclamation, ADR-047).
+
+**Decision.**
+1. *d1, accepted as a program, not a grade.* The 35 rows are targets. A family's reading is earned on an identified
+   source and tool closure with an independent oracle (I54); a strong subgrade never lifts weak prerequisites.
+2. *d2, P0 before any family.* GDEV-01 to GDEV-08 land first, merged with this repository's own deadline-abandon work
+   (O1014, O1446): the same governor, graph memo and review paths. No budget rises, no corpus is cut, no warmed run is
+   called cold.
+3. *d3, order after P0.* Unity C# (GDEV-10, GDEV-11), then host interfaces (GDEV-31), then the remaining families. A
+   family whose host or oracle is not available to the maintainer (real Windows, a licensed Unity run on the consumer's
+   machine, an active Nix plane) is recorded `unavailable`, never graded by analogy.
+4. *d4, historical units by ledger.* Each unit is adopted, adapted, or rejected against HEAD with the ledger's reason;
+   commits credit the unit. Units that add store columns or edit the governor wait for RT-M1 PASS (ADR-049 d2).
+5. *d5, no vendored producer forks.* Python qualifies through the installed `scip-python` path; a producer fork enters
+   only with reproducible assembly, bounded retention and reviewed notices.
+6. *d6, two approvals.* Fathom's release qualification and the consumer's adoption are separate: the consumer runs the
+   acceptance pack (GDEV-35) on its own corpus and hosts.
+
+**Rejected alternatives.**
+- *O1, apply the historical series:* it depends on a diverged branch and two redacted units. Wins if: a unit applies
+  cleanly and its tests pass unchanged (then it is adopted, d4).
+- *O2, all 35 families in parallel:* most need hosts the maintainer does not have and add nothing to the consumer's
+  near-term use. Wins if: the consumer supplies those hosts' receipts.
+
+**Decision models.** None applies: source identity, compiler binding, oracle scores, resource limits and evidence
+completeness are computed; provider `none` emits unknown when a witness is absent (design, Decision models).
+
+**Revisit when** the consumer's acceptance run (GDEV-35) fails a P0 control on a release that passed it here; a family
+reads below its threshold with its oracle available for two releases; the consumer withdraws.

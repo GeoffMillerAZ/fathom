@@ -1,0 +1,138 @@
+{
+  "schema": "fathom.game-development-support-handoff/v1",
+  "recorded_on": "2026-10-22",
+  "status": "TEMPORARY_DOCS_HANDOFF_NOT_FEATURE_ADOPTION",
+  "source": {
+    "official_release_ancestor": "a22d36856a0f165a75c7a6810ec64cbcfc7a90e0",
+    "public_series_base": "2d30f9eb7da43cb921f2f22239c4d423beddf493",
+    "series_head": "d08aadb0f26155c514e82196c024947a2dcc5faf",
+    "series_commits": 27,
+    "release_to_head_commits": 28,
+    "current_main_observed": "764996011ea58b6f25edd3a04584d7c49f34b982",
+    "current_main_is_moving": true
+  },
+  "clean_378": {
+    "commit": "378224a362b428e07bdae7ac350fc230d26f9a12",
+    "ordinary_full_gate": "PASS",
+    "cli_disjoint_shard_selection_union": 2269,
+    "source_inventory_entries": 10508,
+    "natural_cleanup": true,
+    "private_corpus_admission": {
+      "status": "PASS_LOCAL_PRIVATE_ONLY",
+      "csharp_sources": 205,
+      "index_files": 13105,
+      "oversize_entries": 43,
+      "native_cases": 763,
+      "editmode_cases": 522,
+      "playmode_cases": 241,
+      "replay_equality": "PASS",
+      "refusal_controls_passed": 4
+    }
+  },
+  "first_cold_arm": {
+    "cli_plans_passed": 15,
+    "task_ids": 152,
+    "raw_canonical_status": "REFUSED_POLICY_BUDGET",
+    "policy_bytes": 536870912,
+    "second_arm": "NOT_RUN",
+    "protected_store_tables_unchanged": 42,
+    "pre_shed_memo_graph_estimated_bytes": 70313337,
+    "pre_shed_memo_typed_estimated_bytes": 40329512,
+    "uncached_builds": 14,
+    "limit": "Memo figures are estimates, not measured or attributed peak heap.",
+    "cli_controls_passed": 4,
+    "first_raw_context_control": "PASS",
+    "governor_bytes": 567739544,
+    "complete_raw_canonical_response_returned": false,
+    "graph_memo_entries_at_refusal": 0,
+    "graph_memo_estimated_bytes_at_refusal": 0,
+    "completed_or_refused_graph_build_counts": "NOT_ESTABLISHED"
+  },
+  "d655_capacity": {
+    "commit": "d65521c57e84b2b24f86c1720ff9f93e86ddd95e",
+    "bounded_count_cap_rows": 131072,
+    "benchmark_rows": 85555,
+    "baseline_bytes_per_operation": 143159291,
+    "candidate_bytes_per_operation": 71492633,
+    "allocation_reduction_percent": 50.1,
+    "focused_normal_race_parity": "PASS",
+    "ordinary_full_gate": "PASS",
+    "ordinary_gate_exit": 0,
+    "cli_disjoint_shard_selection_union": 2269,
+    "source_inventory_entries": 10509,
+    "binary_build_info": "CLEAN",
+    "natural_cleanup": true,
+    "receipt_sha256": "95d92b8442c475944be4059b6aa9369e571685676d02e8fcaab58608c0159683",
+    "limits": [
+      "peak_memory_not_measured",
+      "throughput_not_established",
+      "private_adoption_not_done"
+    ]
+  },
+  "d08_cx18": {
+    "commit": "d08aadb0f26155c514e82196c024947a2dcc5faf",
+    "decision": "REOPEN_UNPROVEN_ROW",
+    "test_only_wrapper": "traceRequirements",
+    "product_helper": "traceRequirementsWithDecisions",
+    "first_prepush": {
+      "exit": 1,
+      "claimed": 2273,
+      "verified": 2272,
+      "unproven_row": "CX-18"
+    },
+    "final_direct_hook": {
+      "exit": 1,
+      "claimed": 2272,
+      "verified": 2272,
+      "ingest_peak_mib": 2645,
+      "ordinary_gate": "FAIL",
+      "failed_fixture_tests_reported": 121,
+      "fixture_temp_roots_inside_git_checkout": true
+    },
+    "targeted_corrected_environment": {
+      "tmpdir_and_gotmpdir_outside_git_and_module": true,
+      "focused_tests_passed": 3,
+      "stranger_check_control": "PASS",
+      "full_corrected_hook": "NOT_RUN"
+    },
+    "retained_harness_failures": [
+      "GOEXPERIMENT_nojsonv2_scope_leak",
+      "in_module_non_underscore_scratch_polluted_go_list",
+      "stranger_check_remap_fixture_failed"
+    ]
+  },
+  "o23_experiment": {
+    "commits": [
+      "2b9cdae0a9631da8fa5e02ef10fb634bf844dc8d",
+      "96a3b8bf6c4545d5c6f9ad92b2e8d02d60a677f4"
+    ],
+    "first_full_gate": "FAIL",
+    "first_full_gate_exit": 201,
+    "first_failure": "json.RawMessage selector missing from concrete forwarding registry",
+    "first_receipt_sha256": "73feff3a8db5057b8eaf0d4af2f1fecfd56d1cf3865ffa9bf57851a8b62811dd",
+    "successor_internal_mcp_normal": "PASS",
+    "successor_internal_mcp_race": "PASS",
+    "successor_full_gate": "NOT_RUN",
+    "adopted": false
+  },
+  "publication": {
+    "remote_ref_created": false,
+    "pr_created": false,
+    "upstream_merge": false,
+    "default_installation_changed": false,
+    "whole_project_l4_claimed": false,
+    "historical_implementation_ref_created": false,
+    "connector_write_access": "VERIFIED_AVAILABLE",
+    "snapshot": "PRE_PUBLICATION_DOCS_ONLY"
+  },
+  "documentation_packaging": {
+    "unique_open_plan_rows": 35,
+    "target_families": 35,
+    "claimed_rows": 0,
+    "internal_needs": "VALID",
+    "internal_verify_tests": "PASS",
+    "ordinary_full_gate": "NOT_RUN",
+    "fresh_strict_index_gate": "NOT_RUN",
+    "qualification_limit": "No feature completion or integration claim."
+  }
+}
