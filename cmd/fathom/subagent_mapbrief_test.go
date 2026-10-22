@@ -28,6 +28,7 @@ func ad12Spawn(t *testing.T, repo, tool, harnessID string) string {
 
 func TestAD12SpawnAppendsFactsPreservingInputAndPermission(t *testing.T) {
 	repo := hookMapRepo(t)
+	setSubagentMapMode(t, repo, "true")
 	oldNow := nowFunc
 	nowFunc = func() time.Time { return time.Date(2026, 10, 22, 12, 1, 0, 0, time.UTC) }
 	t.Cleanup(func() { nowFunc = oldNow })
@@ -71,6 +72,7 @@ func TestAD12SpawnAppendsFactsPreservingInputAndPermission(t *testing.T) {
 
 func TestAD12SpawnNoMapAndUnsupportedHarnessLeaveInputUntouched(t *testing.T) {
 	repo := hookMapRepo(t)
+	setSubagentMapMode(t, repo, "true")
 	oldNow := nowFunc
 	nowFunc = func() time.Time { return time.Date(2026, 10, 22, 12, 1, 0, 0, time.UTC) }
 	t.Cleanup(func() { nowFunc = oldNow })
@@ -91,6 +93,7 @@ func TestAD12SpawnNoMapAndUnsupportedHarnessLeaveInputUntouched(t *testing.T) {
 
 func TestAD12ResumedParentDoesNotCloseNewMaps(t *testing.T) {
 	repo := hookMapRepo(t)
+	setSubagentMapMode(t, repo, "true")
 	oldNow := nowFunc
 	nowFunc = func() time.Time { return time.Date(2026, 10, 22, 12, 1, 0, 0, time.UTC) }
 	t.Cleanup(func() { nowFunc = oldNow })
@@ -171,6 +174,7 @@ func TestAD12MapBriefClipsUTF8AndDropsChangedRanges(t *testing.T) {
 
 func TestAD12MalformedSpawnLeavesInputUntouchedAndLogsReason(t *testing.T) {
 	repo := hookMapRepo(t)
+	setSubagentMapMode(t, repo, "true")
 	raw, _ := json.Marshal(map[string]any{"session_id": "sess-parent", "cwd": repo, "tool_name": "Agent", "tool_input": "invalid"})
 	restore := pipeStdin(t, string(raw))
 	defer restore()

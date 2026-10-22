@@ -400,6 +400,9 @@ type ReadoutRule struct {
 
 // Hooks configures hook behaviours (schema.cue #Hooks).
 type Hooks struct {
+	// SubagentMapFacts is off (empty), on, or observe. Only on rewrites
+	// Claude Code spawn prompts with checked exploration-map excerpts.
+	SubagentMapFacts string
 	// Dedupe suppresses unchanged Claude Code post-edit and cwd primers.
 	// Default on for Claude Code only; a user false wins over a repo true.
 	Dedupe bool

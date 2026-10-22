@@ -291,3 +291,4 @@ package config
 
 // The hooks dedupe switch is boolean, never a string:
 // badHookDedupe: #Config & {hooks: dedupe: "off"}
+// badSubagentFacts: #Config & {hooks: subagent_map_facts: "on"}

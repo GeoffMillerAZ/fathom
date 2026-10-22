@@ -1,5 +1,9 @@
 package config
 
+subagentFactsOn: #Config & {hooks: subagent_map_facts: true}
+subagentFactsOff: #Config & {hooks: subagent_map_facts: false}
+subagentFactsObserve: #Config & {hooks: subagent_map_facts: "observe"}
+
 // A well-formed config carrying one profile of each kind that needs
 // non-trivial fields, plus a daemon table — what an operator's
 // ~/.fathom/config.toml converts to after TOML→CUE.

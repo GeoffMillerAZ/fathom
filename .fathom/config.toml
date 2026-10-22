@@ -28,6 +28,7 @@ results_dir = "workspace/artifacts/test-results"
 # writes, from a deployed binary that knows `--event test-run`.
 [hooks]
 test_run = true
+subagent_map_facts = true
 
 # [[surface.pattern]] (ADR-044 §2.1, CV-26): this repository's own
 # capability-inventory sources that no built-in kind (api/json/route/env/
