@@ -5,3 +5,4 @@
 - Cancellation stops conservation between planes and during Go deprecation and coverage-module walks. Deprecation scans read symlinks to regular Go files and refuse FIFOs and devices.
 - Review reads changed and cited sources by name when supported, fences finding writes against source or index identity changes, and stops canceled work between phases. Typed-edge read failures use the syntax graph and name the fallback reason.
 - Review gives citation reads and revalidation separate bounded windows after analysis, names oversized and binary file exclusions without disabling persistence or spec coverage, and discloses optional graph failures while retaining the verdict.
+- `pkg/client.ReadSourceFiles` returns the readable files together with a non-nil error naming the ones it could not read (oversized, binary or unreadable); callers that discard results on any error should read both.

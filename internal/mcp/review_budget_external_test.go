@@ -196,3 +196,54 @@ func TestReviewDiffWholeResultLongFindings(t *testing.T) {
 		t.Fatal("round-one original count lost")
 	}
 }
+
+func TestReviewDiffBudgetKeepsOrNamesExclusions(t *testing.T) {
+	b := reviewRound3Fixture(t)
+	b.sources["generated.lock"] = append([]byte("// Code generated. DO NOT EDIT.\n"), bytes.Repeat([]byte("x"), 3<<20)...)
+	rules := make([]semantic.Obligation, 100)
+	for i := range rules {
+		rules[i] = semantic.Obligation{Rule: fmt.Sprintf("rule %03d: %s", i, strings.Repeat("detail <&\"\n界 ", 45)), Src: "spec.md#L1-L1"}
+	}
+	b.obligations = map[string]semantic.Obligations{"spec.md": {Rules: rules}}
+	req, err := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": map[string]any{"name": "review_diff", "arguments": map[string]any{"service": "svc", "changed_files": []string{"spec.md", "generated.lock"}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, ok := mcp.NewServer(b).HandleRequest(context.Background(), req)
+	if !ok {
+		t.Fatal("no response")
+	}
+	var wire struct {
+		Result json.RawMessage `json:"result"`
+		Error  json.RawMessage `json:"error"`
+	}
+	if err := json.Unmarshal(raw, &wire); err != nil || len(wire.Error) != 0 {
+		t.Fatalf("review_diff failed: %v %s", err, wire.Error)
+	}
+	if len(wire.Result) > 16000 {
+		t.Fatalf("serialized ToolResult = %d bytes, cap 16000", len(wire.Result))
+	}
+	var result struct {
+		Structured map[string]any `json:"structuredContent"`
+	}
+	if err := json.Unmarshal(wire.Result, &result); err != nil {
+		t.Fatal(err)
+	}
+	p := result.Structured
+	if p["details_complete"] != false {
+		t.Fatalf("fixture did not exceed the cap (result %d bytes)", len(wire.Result))
+	}
+	if list, _ := p["excluded"].([]any); len(list) > 0 {
+		for _, e := range list {
+			if m, _ := e.(map[string]any); m["path"] == "generated.lock" {
+				return
+			}
+		}
+		t.Fatalf("excluded present without generated.lock: %v", list)
+	}
+	elided, _ := p["elided"].(map[string]any)
+	fields, _ := elided["fields"].(map[string]any)
+	if _, named := fields["/excluded"]; !named {
+		t.Fatalf("excluded neither kept nor named in elision: %v", p["elided"])
+	}
+}
