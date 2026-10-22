@@ -445,13 +445,14 @@ type blastRadiusResult struct {
 // capabilitiesResult.ExtractionEngines is `any` rather than a fully
 // reflected type.
 type reviewDiffResult struct {
-	Service           string   `json:"service"`
-	ChangedFiles      []string `json:"changed_files"`
-	Dimensions        []any    `json:"dimensions"`
-	Summary           string   `json:"summary"`
-	FindingsPersisted bool     `json:"findings_persisted"`
-	VerdictOutcome    any      `json:"verdict_outcome,omitempty"`
-	TestImpact        any      `json:"test_impact"`
+	Service           string                           `json:"service"`
+	ChangedFiles      []string                         `json:"changed_files"`
+	Dimensions        []any                            `json:"dimensions"`
+	DimensionStatus   map[string]reviewDimensionStatus `json:"dimension_status,omitempty"`
+	Summary           string                           `json:"summary"`
+	FindingsPersisted bool                             `json:"findings_persisted"`
+	VerdictOutcome    any                              `json:"verdict_outcome,omitempty"`
+	TestImpact        any                              `json:"test_impact"`
 	// Resolution/IndexCommit (VB-19): the typed/heuristic mix behind the
 	// impact dimension's blast radius, and the daemon's watermark.
 	Resolution  resolutionMix `json:"resolution"`
@@ -464,6 +465,13 @@ type reviewDiffResult struct {
 	// Layers (GL-22): changed_files grouped by blast radius, in review
 	// order — leaf, shared-callee, cross-service-provider.
 	Layers []diffLayer `json:"layers,omitempty"`
+}
+
+// reviewDimensionStatus remains available when dispatch elides detailed dimensions.
+type reviewDimensionStatus struct {
+	Checked         bool   `json:"checked"`
+	Count           int    `json:"count"`
+	UncheckedReason string `json:"unchecked_reason,omitempty"`
 }
 
 // safeDeleteCheckResult mirrors safe_delete_check's payload (safe_delete.go).

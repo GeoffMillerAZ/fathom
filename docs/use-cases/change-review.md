@@ -63,6 +63,18 @@ Returns `{ "service": "payment-service", "ok": true }`. The store now reflects H
 }
 ```
 
+The complete serialized `review_diff` MCP result is capped at 16,000 bytes,
+including escaped content text, `structuredContent`, refresh notes, suppression
+and partial-budget metadata. Results that fit are unchanged. Larger results
+carry `dimension_status` for all eight dimensions (`checked`, original `count`,
+and `unchecked_reason` when applicable), `details_complete:false`, and
+`elided.fields`: named field paths with original and returned item counts
+or bytes. Arrays can be empty because details were omitted; use the status counts
+to distinguish that from no findings. Long reasons retain a disclosed prefix.
+Suppression counts and partial-budget counters survive. A result whose required
+statuses and disclosure cannot fit returns a named `review_diff response budget`
+refusal, never truncated JSON. Narrow `changed_files` to request more detail.
+
 Returns one cited verdict:
 
 ```json
@@ -250,4 +262,4 @@ The section above is fathom's OWN findings (`fathom report`, compiled through th
 
 ## Maintained
 
-This doc covers: `review_diff` (the composed verb, C1-1/C2-1, `docs/plans/review-verb.md`; incl. its `test_impact` block — `affected_tests` and `test_gap`, BD-4 — its `conservation` dimension's surface-plane finding, the retired api_diff tool's replacement, SR-26 — and its `arch_conformance`/`spec_coverage` dimensions, which fold in the standalone tools SR-27 unregistered, project rule packs only) and its `fathom review` CLI mirror (which prints the same block, BD-5) (incl. `--no-persist`, `--budget-seconds`; `fathom review -h`), `blast_radius`, `findings_near`, `fathom findings` (`near`/`status`; `fathom findings import`/`fathom findings candidates` land in another wave, FL-10/FL-23, `docs/plans/findings-loop.md`), `ingest`, `staleness_report`, `fathom ingest-diff`, `fathom conserve`, `fathom verify` (`--quiet`, `--strict`), the pre-push `fathom review` summary step (C3-1), `fathom report`, `fathom claim` (add/refute/corroborate). Update it when these change.
+This doc covers: `review_diff` (the composed verb, C1-1/C2-1, `docs/plans/review-verb.md`; incl. its 16,000-byte complete MCP result cap and omission disclosures; its `test_impact` block — `affected_tests` and `test_gap`, BD-4 — its `conservation` dimension's surface-plane finding, the retired api_diff tool's replacement, SR-26 — and its `arch_conformance`/`spec_coverage` dimensions, which fold in the standalone tools SR-27 unregistered, project rule packs only) and its `fathom review` CLI mirror (which prints the same block, BD-5) (incl. `--no-persist`, `--budget-seconds`; `fathom review -h`), `blast_radius`, `findings_near`, `fathom findings` (`near`/`status`; `fathom findings import`/`fathom findings candidates` land in another wave, FL-10/FL-23, `docs/plans/findings-loop.md`), `ingest`, `staleness_report`, `fathom ingest-diff`, `fathom conserve`, `fathom verify` (`--quiet`, `--strict`), the pre-push `fathom review` summary step (C3-1), `fathom report`, `fathom claim` (add/refute/corroborate). Update it when these change.

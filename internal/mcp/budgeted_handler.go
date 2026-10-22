@@ -4,8 +4,8 @@ package mcp
 // 3): a dispatch-level backstop so a tool handler that forgets to budget
 // its own result (O90's defect class: a ~63k-token symbol_context answer
 // shipped before that tool had any budget line at all) cannot regress past
-// defaultCharBudget either. Every handler passed to registerTool is wrapped
-// with budgetedHandler, so this applies uniformly — no per-tool opt-in.
+// defaultCharBudget either. review_diff instead bounds its complete MCP
+// result after dispatch assembles both payload copies and metadata.
 //
 // A handler that already keeps its result under budget sees NO difference:
 // budgetedResult only touches the marshaled bytes when they exceed

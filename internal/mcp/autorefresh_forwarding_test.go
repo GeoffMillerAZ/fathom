@@ -93,7 +93,7 @@ var notTheServedBackend = map[string]string{
 
 // assertedConcreteSelectors are the package-qualified asserted types that
 // are not interfaces (a selector's kind is not visible to the parser).
-var assertedConcreteSelectors = map[string]bool{"time.Time": true}
+var assertedConcreteSelectors = map[string]bool{"time.Time": true, "json.RawMessage": true, "json.Number": true}
 
 // TestAutoRefreshForwardsEveryClientCapability closes the O7 forwarding
 // class (O7, O1068, O1072; EW-80): every daemon serves through
