@@ -101,25 +101,27 @@ func mergeLayer(cfg *Config, prov Provenance, raw map[string]any, source Source,
 			cfg.Hooks.PinCheck = s
 			prov["hooks.pin_check"] = SourceInfo{source, path}
 		}
-		if b, ok := hm["claim_check"].(bool); ok {
-			cfg.Hooks.ClaimCheck = b
-			prov["hooks.claim_check"] = SourceInfo{source, path}
-		}
-		if b, ok := hm["gate_preflight"].(bool); ok {
-			cfg.Hooks.GatePreflight = b
-			prov["hooks.gate_preflight"] = SourceInfo{source, path}
-		}
-		if b, ok := hm["read_outline_hint"].(bool); ok {
-			cfg.Hooks.ReadOutlineHint = b
-			prov["hooks.read_outline_hint"] = SourceInfo{source, path}
-		}
-		if b, ok := hm["tests_to_run"].(bool); ok {
-			cfg.Hooks.TestsToRun = b
-			prov["hooks.tests_to_run"] = SourceInfo{source, path}
-		}
-		if b, ok := hm["prompt_definitions"].(bool); ok {
-			cfg.Hooks.PromptDefinitions = b
-			prov["hooks.prompt_definitions"] = SourceInfo{source, path}
+		for _, seam := range []struct {
+			key string
+			on  *bool
+		}{
+			{"claim_check", &cfg.Hooks.ClaimCheck},
+			{"gate_preflight", &cfg.Hooks.GatePreflight},
+			{"read_outline_hint", &cfg.Hooks.ReadOutlineHint},
+			{"tests_to_run", &cfg.Hooks.TestsToRun},
+			{"prompt_definitions", &cfg.Hooks.PromptDefinitions},
+		} {
+			if v, exists := hm[seam.key]; exists {
+				bit := hookSeamBit(seam.key)
+				cfg.Hooks.observeSeams &^= bit
+				if b, ok := v.(bool); ok {
+					*seam.on = b
+				} else if v == "observe" {
+					*seam.on = true
+					cfg.Hooks.observeSeams |= bit
+				}
+				prov["hooks."+seam.key] = SourceInfo{source, path}
+			}
 		}
 	}
 

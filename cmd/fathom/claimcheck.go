@@ -5,10 +5,11 @@ package main
 // SubagentStop. For each test or gate claim RO-37's closed table finds in
 // the agent's final message, the session's recorded test runs (TR-7 rows
 // with RO-35's head and tree; on SubagentStop the subagent's own, by
-// agent_id) decide: a claim whose last matching run failed or read unknown,
+// agent_id) decide: a claim whose last matching run failed,
 // or with no matching run since the session's last edit, gets one line
 // naming that run; a claim a passing run at the current head and tree backs
-// is silent. Advisory context only, never a block.
+// is silent, as is an unknown verdict from piped or unreadable output.
+// Advisory context only, never a block.
 //
 // Local reads only (the hook log's last 256 KiB, the message the input
 // carries, and git for the current tree), no daemon call, inside a 200 ms
@@ -67,6 +68,7 @@ type claimCheck struct {
 	verdicts []string
 	cited    []string
 	lines    []string
+	observe  bool
 }
 
 // checkStopClaims runs the check and returns the advisory text ("" for
@@ -87,7 +89,7 @@ func checkStopClaims(in claimCheckInput) string {
 	if len(claims) == 0 {
 		return ""
 	}
-	c := &claimCheck{in: in, claims: claims, verdicts: make([]string, len(claims)), cited: make([]string, len(claims))}
+	c := &claimCheck{in: in, claims: claims, verdicts: make([]string, len(claims)), cited: make([]string, len(claims)), observe: cfg.Hooks.Observes(hookOptInClaimCheck)}
 	switch {
 	case in.ReEntrant:
 		c.unchecked("repeat")
@@ -99,6 +101,9 @@ func checkStopClaims(in claimCheckInput) string {
 		c.run()
 	}
 	c.log()
+	if c.observe {
+		return ""
+	}
 	return strings.Join(c.lines, "\n")
 }
 
@@ -144,6 +149,16 @@ func (c *claimCheck) run() {
 		c.cited[i] = "-"
 		rows := matchingRuns(runs.Rows, cl.Invocation)
 		if len(rows) == 0 {
+			// A different declared command still proves a run happened.
+			// Its scope cannot back this claim, but absence would be false.
+			if last, ok := runs.lastSinceEdit(); ok {
+				c.cited[i] = last.At.UTC().Format(time.RFC3339Nano)
+				c.verdicts[i] = "not checked (command)"
+				if last.Result != "pass" && last.Result != "fail" {
+					c.verdicts[i] = "not checked (piped)"
+				}
+				continue
+			}
 			if !startRead && runs.LastEdit.IsZero() {
 				start, _ = sessionStartFor(c.in.Root, c.in.Session)
 				startRead = true
@@ -186,8 +201,7 @@ func (c *claimCheck) run() {
 			}
 			c.addLine(seen, fmt.Sprintf("the final message says %s, but the last %s run %s failed at %s%s.", claimPhrase(cl), claimClass(cl), c.scope(), shortHead(last.Head), failing))
 		default:
-			c.verdicts[i] = "unknown"
-			c.addLine(seen, fmt.Sprintf("the final message says %s, but the last %s run %s read no result (its output was cut or piped) at %s.", claimPhrase(cl), claimClass(cl), c.scope(), shortHead(last.Head)))
+			c.verdicts[i] = "not checked (piped)"
 		}
 	}
 	if deadlinePassed(ctx) {
@@ -235,6 +249,7 @@ func (c *claimCheck) log() {
 		"rows":     strings.Join(c.cited, ","),
 		"verdicts": strings.Join(c.verdicts, ","),
 		"lines":    strconv.Itoa(len(c.lines)),
+		"emitted":  boolStr(len(c.lines) > 0 && !c.observe),
 	}
 	if c.in.AgentID != "" {
 		meta["agent_id"] = c.in.AgentID
@@ -242,6 +257,13 @@ func (c *claimCheck) log() {
 	kind := "silent"
 	if len(c.lines) > 0 {
 		kind = "flagged"
+	} else {
+		for _, verdict := range c.verdicts {
+			if verdict == "not checked (piped)" {
+				kind, meta["reason"] = "not-checked", "piped"
+				break
+			}
+		}
 	}
 	emitBeat(claimCheckChannel, kind, firingMeta(meta, c.in.Session, ""))
 }

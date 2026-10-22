@@ -76,6 +76,9 @@ type TestReach struct {
 
 // Candidates is tier 1's answer.
 type Candidates struct {
+	// ReachUnknown means no complete index answer establishes an empty
+	// reach: the index was absent, no symbol was queried, or a query missed.
+	ReachUnknown bool `json:"reach_unknown,omitempty"`
 	// Reach has one row per leaf failure, in failure order.
 	Reach []TestReach `json:"reach,omitempty"`
 	// Localized is localize's top candidates, changed ones first.
@@ -96,7 +99,7 @@ func FindCandidates(run Run, changed []ChangedSymbol, idx Index) Candidates {
 // LocalizeHops hops. A passing run, or one whose only evidence is a build
 // error, asks nothing. An index error on one symbol skips that symbol.
 func testRunCandidates(run Run, changed []ChangedSymbol, idx Index) Candidates {
-	var out Candidates
+	out := Candidates{ReachUnknown: true}
 	leaves := run.LeafFailures()
 	if (len(leaves) == 0 && len(run.Panics) == 0) || idx == nil {
 		return out
@@ -110,9 +113,11 @@ func testRunCandidates(run Run, changed []ChangedSymbol, idx Index) Candidates {
 		out.Skipped = len(queried) - MaxChangedQueried
 		queried = queried[:MaxChangedQueried]
 	}
+	out.ReachUnknown = len(queried) == 0 || out.Skipped > 0
 	for _, c := range queried {
 		tests, err := idx.TestImpact(c.Ref)
 		if err != nil {
+			out.ReachUnknown = true
 			continue
 		}
 		for i, f := range leaves {

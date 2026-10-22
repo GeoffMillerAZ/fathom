@@ -79,6 +79,9 @@ func testsToRunLine(baseURL, filePath, sessionID string) (string, map[string]str
 	ctx, cancel := context.WithTimeout(context.Background(), wait)
 	defer cancel()
 	row := map[string]string{}
+	if cfg.Hooks.Observes(hookOptInTestsToRun) {
+		row["mode"] = "observe"
+	}
 	line := ""
 	svc, err := reachService(ctx, baseURL, root)
 	var r blastReach
@@ -88,6 +91,9 @@ func testsToRunLine(baseURL, filePath, sessionID string) (string, map[string]str
 	if err != nil {
 		reason := daemonMissReason(ctx, err)
 		line, row["kind"], row["missed"] = testsToRunMissLine(reason), "missed", reason
+		if reason == daemonJoinMissNotIndexed && svc == "" {
+			line, row["missed"] = "", "not-indexed"
+		}
 	} else {
 		shown, more := pickTestsToRun(r.Tests, path.Dir(rel))
 		row["reached"] = strconv.Itoa(len(shown) + more)
@@ -197,7 +203,7 @@ func withTestsToRun(baseURL, filePath, sessionID, text string, ok bool) (string,
 	kind := row["kind"]
 	delete(row, "kind")
 	emitted := false
-	if line != "" {
+	if line != "" && row["mode"] != "observe" {
 		joined := line
 		if ok && text != "" {
 			joined = text + "\n" + line

@@ -145,9 +145,7 @@ func cmdPromptHook(args []string, stdout, stderr io.Writer) int {
 	// H10 (ADR-076): behind [hooks] prompt_definitions, one line naming the
 	// definitions of the identifiers resolved above. It adds no call, shares
 	// the obligations cap, and yields to it when it does not fit.
-	if promptDefinitionsOn(projDir) {
-		text, ok = combineWithRouteLine(text, ok, promptDefinitionsLine(meta.defs, meta.defsMissed))
-	}
+	text, ok = withPromptDefinitions(projDir, sessionID, text, ok, meta.defs, meta.defsMissed)
 
 	// DP-10 (ADR-042, docs/vision/32-decision-port.md §2 item 3): routing
 	// draws on the SAME shared deadline as the obligations work above, and
@@ -761,9 +759,30 @@ func init() {
 		Summary: "UserPromptSubmit hook: resolve the paths/packages/symbols the prompt names through the index and inject the rules that govern them, before the first edit"})
 }
 
-// promptDefinitionsOn reports whether [hooks] prompt_definitions is on for
-// projDir. Off by default; any load error reads off (the hook fails open).
-func promptDefinitionsOn(projDir string) bool {
-	cfg, ok := hooksConfigAt(projDir, hookOptInPromptDefinitions)
-	return ok && cfg.Hooks.PromptDefinitions
+// withPromptDefinitions uses the definitions already resolved by the prompt
+// hook. Observe records the same computed row without adding context.
+func withPromptDefinitions(projDir, sessionID, text string, ok bool, defs []promptDefinition, missed bool) (string, bool) {
+	cfg, loaded := hooksConfigAt(projDir, hookOptInPromptDefinitions)
+	if !loaded || !cfg.Hooks.PromptDefinitions {
+		return text, ok
+	}
+	line := promptDefinitionsLine(defs, missed)
+	meta := map[string]string{"definitions": fmt.Sprint(len(defs)), "emitted": "false"}
+	if missed {
+		meta["missed"] = "deadline"
+	}
+	if line != "" && !cfg.Hooks.Observes(hookOptInPromptDefinitions) {
+		joined, joinedOK := combineWithRouteLine(text, ok, line)
+		if joined != text {
+			text, ok, meta["emitted"] = joined, joinedOK, "true"
+		} else {
+			meta["dropped"] = "budget"
+		}
+	}
+	kind := "silent"
+	if line != "" {
+		kind = "line"
+	}
+	emitBeat("prompt-definitions", kind, firingMeta(meta, sessionID, ""))
+	return text, ok
 }

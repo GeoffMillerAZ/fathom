@@ -1253,6 +1253,28 @@ confirmed (PR-V1). The backstop is pre-push: `fathom conserve
 --strict-plane integrity` blocks a silent pin loss whatever this line said
 (PR-9).
 
+## Observe correctness seams: `[hooks]`
+
+The five correctness seams accept `false` (off, the default), `true`
+(compute, log and inject), or `"observe"` (compute and log with
+`emitted=false`, without injecting their line). Existing boolean settings
+keep their meaning. Both user and repository configuration may set them:
+
+```toml
+[hooks]
+claim_check = "observe"
+gate_preflight = "observe"
+tests_to_run = "observe"
+read_outline_hint = "observe"
+prompt_definitions = "observe"
+```
+
+Observe uses the same deadlines and output caps as `true`. Init and fleet
+reconcile register the required hook entries in either enabled mode,
+including SubagentStop for claim checking and PreToolUse(Read) for outline
+hints. The computed rows remain in the hook log for evaluating the seams
+before enabling injection.
+
 ## The stop claim check: `[hooks] claim_check`
 
 The claim check (ADR-071, `docs/design/readouts.md` section 20, seam H2)
@@ -1277,10 +1299,13 @@ What it does, once on:
   hook log, and the final message the stop input carries. No daemon call,
   no model, a 200 ms budget; with `test_run` off there are no rows, so the
   check logs `not checked (test_run off)` and says nothing.
-- A claim whose last matching run failed or read unknown, or that has no
-  matching run since the session's last edit, gets **one line** naming that
+- A claim whose last matching run failed gets **one line** naming that
   run: the command, the result, the failing test ids as logged, the commit.
   A claim that a passing run at the current HEAD and tree backs is silent.
+- A last run whose piped or unreadable output leaves its verdict unknown
+  is silent and logged as `not-checked:piped`. An `unbacked` line requires
+  no recorded test run since the last edit, including piped runs. A run of
+  another declared command is `not checked (command)` rather than absent.
 - When the log tail does not reach back to the session's last edit (or its
   start), a claim with no run in it is `not checked (window)`, never a line
   saying no run backs it.
@@ -1415,7 +1440,8 @@ tests to run: TestFloor, TestRound, TestA and 2 more; recipe: go test -run '^(Te
   and why: `test_run off`, `log`, `deadline`, `scope` or `window` (the log
   tail does not reach the session's last edit).
 
-No reaching test, or a file that is not Go, says nothing. The line has its
+No reaching test, a file that is not Go, or an unindexed root says nothing.
+An unindexed root logs `missed:not-indexed` with `emitted=false`. The line has its
 own 300 ms deadline inside the edit hook's; a daemon that does not answer
 in time (a cold one building its call graph) reads `tests: not computed
 (deadline)`, an unreachable one `tests: not computed (daemon)` and a file

@@ -28,6 +28,8 @@ type TestRunRow struct {
 	// Capped is true when the failing list hit the row's id cap, so a
 	// failure past it is not in Failing.
 	Capped bool
+	// Partial is true when piping or truncation may have hidden failures.
+	Partial bool
 	// Head, Tree and Scope are RO-35's keys; Head and Tree are "" when the
 	// row carries none. Scope is "" for a command with no package pattern
 	// or filter (RO-35 writes no key for an empty scope).
@@ -62,7 +64,7 @@ type TestRunNow struct {
 // The delta's outcomes, as the run row logs them.
 const (
 	DeltaNone        = "none"         // the session has no previous row
-	DeltaNotCompared = "not-compared" // a row missing head or tree
+	DeltaNotCompared = "not-compared" // uncertain baseline or missing tree keys
 	DeltaCompared    = "compared"     // a clause naming at least one test
 	DeltaSilent      = "silent"       // nothing could be named
 )
@@ -109,6 +111,9 @@ func renderTestDelta(prev []TestRunRow, now TestRunNow) (string, string) {
 	if now.Head == "" || now.Tree == "" || base.Head == "" || base.Tree == "" {
 		return lead + ": not compared", DeltaNotCompared
 	}
+	if base.Partial || (base.Result != "pass" && base.Result != "fail") {
+		return lead + ": not compared", DeltaNotCompared
+	}
 	sameTree := base.Head == now.Head && base.Tree == now.Tree
 	failingNow := setOf(now.Failing)
 	failedBefore := setOf(base.Failing)
@@ -116,7 +121,7 @@ func renderTestDelta(prev []TestRunRow, now TestRunNow) (string, string) {
 	// now passed with nothing changed
 	passedHere := false
 	for _, r := range prev {
-		if r.Result == "pass" && sameShape(r, now.Invocation, now.Scope) && r.Head == now.Head && r.Tree == now.Tree {
+		if r.Result == "pass" && !r.Partial && sameShape(r, now.Invocation, now.Scope) && r.Head == now.Head && r.Tree == now.Tree {
 			passedHere = true
 			break
 		}
@@ -206,7 +211,7 @@ func sinceHead(prev []TestRunRow, bi int, id string) (since string, earlier bool
 			since = r.Head
 			continue
 		}
-		return since, r.Capped || (r.Result != "pass" && r.Result != "fail")
+		return since, r.Capped || r.Partial || (r.Result != "pass" && r.Result != "fail")
 	}
 	return since, false
 }

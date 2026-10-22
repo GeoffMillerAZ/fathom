@@ -59,8 +59,9 @@ func sessionTestRunRows(path, session, agentID string) ([]readout.TestRunRow, bo
 		}
 		rows = append(rows, readout.TestRunRow{
 			Invocation: b.Meta["invocation"], Result: b.Meta["result"], Failing: failing,
-			Capped: len(failing) >= testRunMaxLoggedIDs,
-			Head:   b.Meta["head"], Tree: b.Meta["tree"], Scope: b.Meta["scope"],
+			Capped:  len(failing) >= testRunMaxLoggedIDs,
+			Partial: b.Meta["piped"] == "true" || b.Meta["truncated"] == "true",
+			Head:    b.Meta["head"], Tree: b.Meta["tree"], Scope: b.Meta["scope"],
 		})
 	}
 	return rows, true

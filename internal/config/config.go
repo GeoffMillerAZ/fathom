@@ -400,6 +400,9 @@ type ReadoutRule struct {
 
 // Hooks configures hook behaviours (schema.cue #Hooks).
 type Hooks struct {
+	// observeSeams records observe-only modes while the boolean fields keep
+	// their existing meaning: the seam runs, including in observe mode.
+	observeSeams uint8
 	// Dedupe suppresses unchanged Claude Code post-edit and cwd primers.
 	// Default on for Claude Code only; a user false wins over a repo true.
 	Dedupe bool
@@ -441,6 +444,28 @@ type Hooks struct {
 	// each identifier the hook already resolved, its definition file:line
 	// and kind (at most 5). Default false (ADR-076).
 	PromptDefinitions bool
+}
+
+// Observes reports whether a correctness seam computes and logs without
+// injecting context. key is its dotted [hooks] configuration key.
+func (h Hooks) Observes(key string) bool {
+	return h.observeSeams&hookSeamBit(key) != 0
+}
+
+func hookSeamBit(key string) uint8 {
+	switch strings.TrimPrefix(key, "hooks.") {
+	case "claim_check":
+		return 1 << 0
+	case "gate_preflight":
+		return 1 << 1
+	case "tests_to_run":
+		return 1 << 2
+	case "read_outline_hint":
+		return 1 << 3
+	case "prompt_definitions":
+		return 1 << 4
+	}
+	return 0
 }
 
 // The [hooks] pin_check values (schema.cue #Hooks).
