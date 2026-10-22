@@ -109,7 +109,8 @@ type searchOpts struct {
 	ignorePatterns []string
 	// sortPaths runs rg with --sort path: searchRipgrep's repeat of a run
 	// stopped at the output cap (O1447), never a caller's choice.
-	sortPaths bool
+	sortPaths    bool
+	allowedPaths map[string]bool
 }
 
 // searchExtraSkipDirs are directory names search always prunes beyond
@@ -674,6 +675,19 @@ func searchSummary(kept []searchHit) string {
 // capped names the engine bound that stopped the search early ("" when it
 // ran to completion): the result is then a lower bound (RT-88).
 func searchRun(ctx context.Context, root string, o searchOpts) (hits []searchRawHit, engine, capped string, err error) {
+	if r, ok := clonePath(ctx, ""); ok {
+		request := ctx.Value(clonePathKey{}).(*clonePathValue)
+		o.allowedPaths = map[string]bool{}
+		for path := range request.visible {
+			rel, err := filepath.Rel(root, filepath.Join(r.Root, filepath.FromSlash(path)))
+			if err == nil && pathWithin(root, filepath.Join(root, rel)) {
+				o.allowedPaths[filepath.ToSlash(rel)] = true
+			}
+		}
+		hits, capped, err = searchWalk(ctx, root, o)
+		return hits, "regexp", capped, err
+	}
+
 	if _, err := exec.LookPath("rg"); err == nil {
 		if hits, capped, err := searchRipgrep(ctx, root, o); err == nil {
 			return hits, "ripgrep", capped, nil
@@ -1024,6 +1038,9 @@ func searchWalk(ctx context.Context, root string, o searchOpts) ([]searchRawHit,
 			return nil
 		}
 		if isEnvPatternFile(d.Name()) || searchIgnoreMatch(o.ignore, rel) {
+			return nil
+		}
+		if o.allowedPaths != nil && !o.allowedPaths[rel] {
 			return nil
 		}
 		paths = append(paths, rel)

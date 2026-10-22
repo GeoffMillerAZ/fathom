@@ -6,18 +6,31 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
 	"sort"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/worktree"
 )
 
 type clonePathKey struct{}
-type clonePathValue struct{ resolution worktree.Resolution }
+type cloneFileStatus struct {
+	same   bool
+	reason string
+}
+type clonePathValue struct {
+	resolution worktree.Resolution
+	visible    map[string]bool
+	mu         sync.Mutex
+	states     map[string]cloneFileStatus
+}
 
 func clonePath(ctx context.Context, service string) (worktree.Resolution, bool) {
-	value, ok := ctx.Value(clonePathKey{}).(clonePathValue)
+	value, ok := ctx.Value(clonePathKey{}).(*clonePathValue)
+	if !ok {
+		return worktree.Resolution{}, false
+	}
 	r := value.resolution
 	return r, ok && r.Class != "" && (service == "" || r.Service == service)
 }
@@ -26,6 +39,8 @@ func resolveMCPPath(ctx context.Context, b QueryInterface, target string) (workt
 	if b == nil || !filepath.IsAbs(target) {
 		return worktree.Resolution{}, false, nil
 	}
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
 	services, err := b.Services(ctx)
 	if err != nil {
 		return worktree.Resolution{}, false, err
@@ -41,6 +56,9 @@ func resolveMCPPath(ctx context.Context, b QueryInterface, target string) (workt
 		}
 	}
 	r, ok := worktree.Resolve(ctx, target, roots)
+	if ctx.Err() != nil {
+		return worktree.Resolution{}, false, nil
+	}
 	return r, ok, nil
 }
 
@@ -87,20 +105,25 @@ func clonePathHandler(name string, b QueryInterface, h func(context.Context, jso
 			return h(ctx, args)
 		}
 		r, ok, err := resolveMCPPath(ctx, b, target)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "resolve path: " + err.Error()}
-		}
-		if !ok {
-			if name == "blast_radius" || name == "read_source" {
-				return h(ctx, args)
-			}
-			return nil, &rpcError{Code: ErrCodeParams, Message: fmt.Sprintf("absolute path %q is not inside an indexed service's root or a verified clone; identity unknown", target)}
+		if err != nil || !ok || r.Class == "" {
+			return h(ctx, args)
 		}
 		if service != "" && service != r.Service {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "path resolves to a different indexed service"}
 		}
-		if r.Class == "" {
-			return h(ctx, args)
+		visible, e := r.VisiblePaths(ctx)
+		if e != nil {
+			return nil, &rpcError{Code: ErrCodeParams, Message: "clone paths unavailable: " + e.Error()}
+		}
+		request := &clonePathValue{resolution: r, visible: visible, states: map[string]cloneFileStatus{}}
+		ctx = context.WithValue(ctx, clonePathKey{}, request)
+		// Every explicit file must be visible to git in this checkout. Directories
+		// remain identity hints, never permission to read arbitrary descendants.
+		if info, statErr := os.Stat(r.Target); name == "read_source" || info != nil && !info.IsDir() || os.IsNotExist(statErr) && filepath.Ext(r.Target) != "" {
+			rel, e := filepath.Rel(r.Root, r.Target)
+			if e != nil || !cloneVisiblePath(ctx, filepath.ToSlash(rel)) {
+				return nil, &rpcError{Code: ErrCodeParams, Message: "file is not git-visible in resolved checkout"}
+			}
 		}
 		target = r.Target
 		if name == "search" {
@@ -125,11 +148,13 @@ func clonePathHandler(name string, b QueryInterface, h func(context.Context, jso
 					}
 					files[i] = filepath.ToSlash(rel)
 				}
+				if !cloneVisiblePath(ctx, files[i]) {
+					return nil, &rpcError{Code: ErrCodeParams, Message: "changed file is not git-visible in resolved checkout"}
+				}
 			}
 			p["changed_files"], _ = json.Marshal(files)
 		}
 		args, _ = json.Marshal(p)
-		ctx = context.WithValue(ctx, clonePathKey{}, clonePathValue{r})
 		var unknownFiles []map[string]string
 		for _, file := range files {
 			if same, reason := cloneFileState(ctx, b, r, file); !same {
@@ -191,6 +216,12 @@ func clonePathHandler(name string, b QueryInterface, h func(context.Context, jso
 				body["summary"] = "unknown (" + unknown + "); base index only"
 			}
 		}
+		if body["status"] == "unknown" {
+			delete(body, "not_found")
+			delete(body, "not_indexed")
+			delete(body, "hint")
+			body["summary"] = "unknown (" + fmt.Sprint(body["reason"]) + "); base index only"
+		}
 		return body, nil
 	}
 }
@@ -239,6 +270,34 @@ func cloneSearchKey(r worktree.Resolution, root, file string) string {
 // the ingest included uncommitted changes. Commit blobs are a conservative
 // fallback for backends without the fingerprint port.
 func cloneFileState(ctx context.Context, b QueryInterface, r worktree.Resolution, file string) (bool, string) {
+	request, ok := ctx.Value(clonePathKey{}).(*clonePathValue)
+	if ok {
+		file = filepath.ToSlash(filepath.Clean(file))
+		request.mu.Lock()
+		defer request.mu.Unlock()
+		if state, found := request.states[file]; found {
+			return state.same, state.reason
+		}
+		same, reason := checkCloneFileState(ctx, b, r, file)
+		request.states[file] = cloneFileStatus{same, reason}
+		return same, reason
+	}
+	return checkCloneFileState(ctx, b, r, file)
+}
+
+func cloneVisiblePath(ctx context.Context, file string) bool {
+	request, ok := ctx.Value(clonePathKey{}).(*clonePathValue)
+	if !ok {
+		return false
+	}
+	clean := filepath.Clean(filepath.FromSlash(file))
+	return !filepath.IsAbs(clean) && clean != ".." && !strings.HasPrefix(clean, ".."+string(filepath.Separator)) && request.visible[filepath.ToSlash(clean)]
+}
+
+func checkCloneFileState(ctx context.Context, b QueryInterface, r worktree.Resolution, file string) (bool, string) {
+	if !cloneVisiblePath(ctx, file) {
+		return false, "clone path is not git-visible"
+	}
 	if same, reason := r.Unchanged(ctx, file); !same {
 		return false, reason
 	}
@@ -282,14 +341,12 @@ func cloneSymbolStates(ctx context.Context, b QueryInterface, r worktree.Resolut
 	for _, file := range files {
 		requested[file] = true
 	}
-	nodes, err := serviceSymbols(ctx, b, r.Service)
+	snapshot, err := serviceSnapshot(ctx, b, r.Service)
 	if err != nil {
 		return nil
 	}
-	nodes = slices.Clone(nodes)
-	sort.Slice(nodes, func(i, j int) bool { return nodeLess(nodes[i], nodes[j]) })
 	var out []map[string]string
-	for _, n := range nodes {
+	for _, n := range snapshot.Nodes {
 		if !keys[n.Key()] && !requested[n.FilePath] {
 			continue
 		}

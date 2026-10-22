@@ -29,6 +29,9 @@
         "description": "Symbols listed, shallowest first (default 500).",
         "type": "integer"
       },
+      "path": {
+        "type": "string"
+      },
       "service": {
         "description": "Service / repo identifier",
         "type": "string"
@@ -76,6 +79,9 @@
     "properties": {
       "name": {
         "description": "Symbol name (bare or fully-qualified; exact spelling not required). Alias: \"symbol\" (additive \u2014 same field, either name works; both may be given only if they agree).",
+        "type": "string"
+      },
+      "path": {
         "type": "string"
       },
       "service": {
@@ -510,6 +516,9 @@
   },
   "symbol_context": {
     "properties": {
+      "path": {
+        "type": "string"
+      },
       "service": {
         "description": "Service / repo identifier",
         "type": "string"

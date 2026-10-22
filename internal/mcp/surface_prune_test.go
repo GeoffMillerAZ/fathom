@@ -154,6 +154,29 @@ func TestMcpToolsDocMatchesRegistry(t *testing.T) {
 	resp := scopedRoundtrip(t, srv, context.Background(), request{
 		JSONRPC: "2.0", ID: 1, Method: "tools/list", Params: map[string]any{},
 	})
+	// AD-13 review F5/F8: the clone path contract must be reachable in the
+	// served schemas and described alongside its unknown-result behavior.
+	for _, raw := range resp["result"].(map[string]any)["tools"].([]any) {
+		tool := raw.(map[string]any)
+		name, _ := tool["name"].(string)
+		if name != "find_symbol" && name != "symbol_context" && name != "blast_radius" {
+			continue
+		}
+		schema := tool["inputSchema"].(map[string]any)
+		if _, ok := schema["properties"].(map[string]any)["path"]; !ok {
+			t.Errorf("%s omits optional clone path", name)
+		}
+		for _, required := range schema["required"].([]any) {
+			if required == "path" {
+				t.Errorf("%s requires optional clone path", name)
+			}
+		}
+	}
+	for _, phrase := range []string{"optional absolute `path`", "replace `summary`", "omit `not_found`, `not_indexed`, and `hint`"} {
+		if !strings.Contains(whole, phrase) {
+			t.Errorf("clone contract lacks %q", phrase)
+		}
+	}
 	registryNames := map[string]bool{}
 	for _, n := range toolNames(t, resp) {
 		registryNames[n] = true

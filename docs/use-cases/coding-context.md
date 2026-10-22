@@ -149,4 +149,4 @@ Returns `{service, file, rules?, compiled_at_watermark?, index_stale?}`. An empt
 
 ## Maintained
 
-This doc covers: `query_symbols`, `find_symbol`, `outline`, `repo_map`, `pack_context`, `symbol_context`, `read_source`, `references`, `entrypoints`, `search` (`kind: docs`, `pkg`), `staleness_report`, `gen-agents-md` (and its deprecated `gen-claude-md` alias), `obligations`, `edit-hook`, `fathom prime` (listed by `fathom help`; `fathom prime -h`), the `budgets` block in `capabilities.cue`, and the `/rpc/agent` surface facts. Update it when these change.
+This doc covers: `query_symbols`, `find_symbol`, `outline`, `repo_map`, `pack_context`, `symbol_context`, `read_source`, `references`, `entrypoints`, `search` (`kind: docs`, `pkg`; verified clone roots and Git-visible paths), clone paths for `find_symbol`, `symbol_context` and `read_source`, `staleness_report`, `gen-agents-md` (and its deprecated `gen-claude-md` alias), `obligations`, `edit-hook`, `fathom prime` (listed by `fathom help`; `fathom prime -h`), the `budgets` block in `capabilities.cue`, and the `/rpc/agent` surface facts. Update it when these change.
