@@ -1,2 +1,0 @@
-### Fixed
-- Unity assembly facts follow case-insensitive special folders and import exclusions, resolve projects below the repository root, and report conflicting metadata. Predefined assembly nodes require a ProjectVersion anchor. Metadata refresh retains declaration identities and discloses the required full ingest. Unchanged Unity observations are preserved and non-Unity C# ingests avoid Unity processing.

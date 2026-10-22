@@ -24,6 +24,52 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Unreleased changes wait as fragments under docs/changelog/unreleased/; the release ritual folds them here.
 
+## [0.17.0] — 2026-10-22
+
+Release impact: major (pre-1.0: breaking bumps minor)
+
+**What this release is.** A reliability and multi-machine release for a game-development consumer. Reviews stop when cancelled and their whole result stays under 16,000 bytes; citations say when the file on disk changed; doctor names wrapper wiring and timeouts without hiding real failures; cold verification uses less memory; Unity assembly ownership is derived from repository files; a cold-arm harness and an interim 35-family readiness report (`docs/evidence/game-development-support.md`) let the consumer qualify it on its own corpus. On Claude Code, unchanged edit-time context is no longer repeated within a session. A shipped `fathom-offload` skill and `docs/guides/multi-machine.md` cover running work on helper machines: each machine keeps its own loopback fathom, and code, receipts and (later) index snapshots move between them. Decisions: ADR-077 (owner decision), ADR-078, ADR-079.
+
+### Breaking
+
+- Hook output on Claude Code: `edit-hook` and `session-hook --event cwd-changed` print nothing when the same injection was already delivered unchanged in the session (compaction, a pre-compact hook, 30 minutes or 10 skipped repeats bring it back), and hook citations can carry a `[citation stale]`, `[citation refreshing]` or `[citation unknown]` tag. Other harnesses still receive every injection. Set `[hooks] dedupe = false` to restore every injection; see `docs/upgrades/0.17.0-hook-output.md`.
+- `doctor --brief` lists TIMEOUT and UNKNOWN rows next to FAIL rows (at most 8 lines), and `fathom doctor` exits 0 when the only open rows are timeouts, unknowns or project wrapper wiring it cannot resolve without running it; a definite failure still exits 1. Scripts that treat any brief line as a failure should match `FAIL` rows.
+- `pkg/client.ReadSourceFiles` returns the files it could read together with a non-nil error naming the ones it could not (oversized, binary or unreadable); a caller that discards results on any error should read both.
+
+### Added
+
+- A reproducible cold-arm harness under `scripts/gdev` with isolated daemon state, fixed request order, raw responses, resource samples and machine-readable receipts. Incomplete arms exit 3, retain CLI requests and post-arm subject status, and disclose ingest degradation, failed verify gates and CLI refusals.
+- An interim game-development readiness report and 35-family JSON inventory separate upstream calibration from unmeasured consumer acceptance, record merged P0 work and limits, and provide consumer cold-arm and project-local host checks.
+- Derived Unity assembly ownership, editor/player scope, references and define constraints from repository files using documented Unity 2021+ rules, without running Unity.
+- A shipped `fathom-offload` skill and a multi-machine guide (one machine, one loopback daemon; git, receipts and snapshots move between them).
+
+### Changed
+
+- Doctor recognizes project hook and MCP wrappers without executing them and distinguishes configured wiring from firing evidence. Definite missing hooks remain FAIL even alongside uncertain wrappers, unrelated tools or unreadable settings scopes.
+- `--json` adds the `unknown` and `timeout` status values on individual rows; both count under `summary.skipped`. `--brief` lists them with separate counts. Request cancellation preserves completed verdicts and the existing provider ping budgets.
+- Foreign hook commands count as missing fathom hooks. Missing project scripts fail with their path and an init remedy. Setup brief descriptions include FAIL, TIMEOUT and UNKNOWN rows within eight lines.
+- Index-sourced symbol, obligation and review citations carry typed freshness statuses and qualified rule summaries and hook tags. Each call streams each cited file once, keeps only snippet windows, and leaves byte-identical files clean during refresh; `read_source` reports its content identity and known index match.
+- Existing indexes report `unknown` (not `stale`) for a changed file whose last full ingest saw it within 2 s of a write, until the next full ingest.
+- Cold plan verification and symbol context use less memory by loading only required graph evidence and projecting stored symbols directly through the scoped store interface.
+- File-only and spec-only plans no longer report the typed-fallback partial or `graph_fallback`, and graph-load errors no longer fail them. The spec-only building message names the symbol snapshot.
+- Symbol context treats evicted typed edges as non-resident even when its combined graph is cached, so its cold path can run to reload typed details. It leaves the Syntax and Resolved graphs cold, so a later tool pays for those builds.
+- Conservation streams generated headers and reports unreadable generated evidence. Directories at HEAD, including changed submodules, remain absent file bodies. FIFOs and devices are refused without blocking.
+- Conservation extracts inventories one file at a time, skips paths without an extractor, and reports eligible source read failures as unproven instead of treating them as absent.
+- Cancellation stops conservation between planes and during Go deprecation and coverage-module walks. Deprecation scans read symlinks to regular Go files and refuse FIFOs and devices.
+- Review reads changed and cited sources by name when supported, fences finding writes against source or index identity changes, and stops canceled work between phases. Typed-edge read failures use the syntax graph and name the fallback reason.
+- Review gives citation reads and revalidation separate bounded windows after analysis, names oversized and binary file exclusions without disabling persistence or spec coverage, and discloses optional graph failures while retaining the verdict.
+- Obligations rank rules by how directly they scope the edited code (a log template on the file, then the most specific path glob, then a repo-wide glob), and a rule citing a fully superseded decision record is withheld with its count shown; a partly superseded one is served tagged.
+
+### Fixed
+
+- `review_diff`'s complete MCP result (text, structured data and metadata together) now stays within 16,000 bytes. An oversized review keeps all eight dimension statuses and counts, keeps as many leading findings, changed files, tests and layers as fit, names what it omitted (also in the call log), and refuses by name when nothing fits; a result that already fits is byte-identical.
+- Recognize version-3 Taskfiles under arbitrary YAML filenames with task or include mappings, preserving earlier format claims.
+- Unity assembly facts follow case-insensitive special folders and import exclusions, resolve projects below the repository root, and report conflicting metadata. Predefined assembly nodes require a ProjectVersion anchor. Metadata refresh retains declaration identities and discloses the required full ingest. Unchanged Unity observations are preserved and non-Unity C# ingests avoid Unity processing.
+- Gate preflight reports an expired verification budget when Git root discovery times out in a confirmed work tree, instead of silently omitting the hint and observation. Git errors, cancellation and redirected Git environments remain silent.
+- Typed enrichment loads only package directories selected by the connector, preserving test variants, nested-module ownership and explicit load failures. CT-5 now compares the same connector-visible population on both sides of its unchanged 10x CPU guard.
+- Typed enrichment source-loads the selected roots and their dependency closure once per module load, avoiding redundant export compilation while retaining test variants and full type information.
+- Dependency type errors are disclosed before a selected package's cache hit, with bounded deterministic diagnostics and preservation of its last good edges.
+
 ## [0.16.0] — 2026-10-20
 
 Release impact: major (pre-1.0: breaking bumps minor)
