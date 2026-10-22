@@ -51,11 +51,13 @@ func buildProjectWiringPage(cr *consoleRequest) (consoleOut, error) {
 	out.Verbs = []string{}
 	w := projectWiringFor(cr, pc)
 	facts := w.facts
+	var channels []doctorChannel
 	if pc.rootNote == "" {
+		channels = doctorChannels(pc.root, w.harness, cr.now)
 		vals := map[string]string{"root": pc.root, "svc": pc.svc}
 		doctorVerb, receiptsVerb := fillVerb(verbDoctorRepoOnly, vals), fillVerb(verbFleetReceipts, vals)
 		out.Verbs = []string{doctorVerb, receiptsVerb}
-		out.Sections = map[string]any{doctorVerb: doctorJSONPayload(w.harness, pc.svc, pc.root, w.checks)}
+		out.Sections = map[string]any{doctorVerb: doctorJSONPayload(w.harness, pc.svc, pc.root, w.checks, channels)}
 		if w.receiptsErr == nil {
 			out.Sections[receiptsVerb] = fleetReceiptsPayload(pc.root, w.receipts, w.total)
 		} else {
@@ -65,7 +67,7 @@ func buildProjectWiringPage(cr *consoleRequest) (consoleOut, error) {
 	view := console.WiringView(facts)
 	out.Model = view
 	out.Body = func() string {
-		return renderProjectTabs(pc.svc, "wiring") + projectRootCallout(pc) + projectBody(renderProjectWiring(pc, view, out.Verbs))
+		return renderProjectTabs(pc.svc, "wiring") + projectRootCallout(pc) + projectBody(renderProjectWiring(pc, view, out.Verbs, channels))
 	}
 	return out, nil
 }
@@ -159,7 +161,7 @@ func readProjectWiring(cr *consoleRequest, pc projectContext) projectWiringData 
 	return d
 }
 
-func renderProjectWiring(pc projectContext, v console.WiringViewModel, verbs []string) string {
+func renderProjectWiring(pc projectContext, v console.WiringViewModel, verbs []string, channels []doctorChannel) string {
 	doctorVerb, receiptsVerb := "", ""
 	if len(verbs) == 2 {
 		doctorVerb, receiptsVerb = verbs[0], verbs[1]
@@ -233,6 +235,24 @@ func renderProjectWiring(pc projectContext, v console.WiringViewModel, verbs []s
 			Rows:    rows,
 		}))
 		doc.WriteString(`<p class="mt-2 text-xs text-ink-muted">The full diagnosis — daemon, harness registration, hooks firing, serving — is <code class="font-mono">fathom doctor --path ` + html.EscapeString(shellWord(pc.root)) + `</code> (41 rows; it dials the daemon, so it is not run on a page load).</p>`)
+	}
+	if len(channels) > 0 {
+		rows := make([]table.Row, 0, len(channels))
+		for _, c := range channels {
+			count, rate := "not measured", "not measured"
+			if c.Injections != nil {
+				count = strconv.Itoa(*c.Injections)
+			}
+			if c.TokensPerDayEstimate != nil {
+				rate = fmt.Sprintf("%.1f", *c.TokensPerDayEstimate)
+			}
+			rows = append(rows, table.Row{ID: "channel-" + c.Channel, Cells: []string{c.Channel, c.State, count, rate, c.CostGroup, c.LastSkipReason, c.Reason, c.Coverage}})
+		}
+		doc.WriteString(renderKitTable(table.TableParams{
+			TableID: "project-channels", Caption: "Injecting channels — last 7 days; shared cost groups must not be summed",
+			Columns: []table.Column{{Key: "channel", Label: "Channel"}, {Key: "state", Label: "State"}, {Key: "injections", Label: "Injections"}, {Key: "tokens", Label: "Estimated tokens/day"}, {Key: "group", Label: "Cost group"}, {Key: "skip", Label: "Last skip"}, {Key: "reason", Label: "Reason"}, {Key: "coverage", Label: "Coverage"}},
+			Rows:    rows,
+		}))
 	}
 	doctorPanel := renderPanel(consolePanel{
 		ID: "wiring-doctor", Title: "Doctor",
