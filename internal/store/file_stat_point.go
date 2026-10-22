@@ -43,3 +43,36 @@ func (m *MemoryStore) FileStatFor(ctx context.Context, service, path string) (Fi
 	}
 	return rows[0], true, nil
 }
+
+// SetFileStatContentHash points an existing file_stats row's content_hash at
+// hash (a one-file refresh keeping its receipt in step with the fingerprint).
+// It reports false when the service has no row for path: a refresh never
+// creates file_stats rows, only a whole ingest does.
+func (s *SQLiteStore) SetFileStatContentHash(ctx context.Context, service, path, hash string) (bool, error) {
+	if err := ctx.Err(); err != nil {
+		return false, err
+	}
+	res, err := s.db.ExecContext(context.WithoutCancel(ctx), `UPDATE file_stats SET content_hash = ? WHERE service_id = ? AND path = ?`, hash, service, path)
+	if err != nil {
+		if isNoSuchTable(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	n, err := res.RowsAffected()
+	return n > 0, err
+}
+
+// SetFileStatContentHash is the MemoryStore twin of the SQLite point update.
+func (m *MemoryStore) SetFileStatContentHash(_ context.Context, service, path, hash string) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	rows := m.fileStats[service]
+	for i := range rows {
+		if rows[i].Path == path {
+			rows[i].ContentHash = hash
+			return true, nil
+		}
+	}
+	return false, nil
+}
