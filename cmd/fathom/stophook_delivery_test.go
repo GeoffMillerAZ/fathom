@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
 func stopDeliveryRepo(t *testing.T, contract string) (string, string) {
@@ -28,7 +30,10 @@ func stopDeliveryRepo(t *testing.T, contract string) (string, string) {
 	return root, strings.ToLower(filepath.Base(root))
 }
 
-type stopDeliveryTransport struct{ service string }
+type stopDeliveryTransport struct {
+	service  string
+	criteria []verify.Criterion
+}
 
 func (s stopDeliveryTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	if r.Body == nil {
@@ -45,7 +50,11 @@ func (s stopDeliveryTransport) RoundTrip(r *http.Request) (*http.Response, error
 	case "list_services":
 		result = map[string]any{"services": []any{map[string]any{"service": s.service, "symbol_count": 10}}}
 	case "verify_plan":
-		result = map[string]any{"service": s.service, "summary": map[string]int{"total": 1, "fail": 1}, "tasks": []any{map[string]any{"id": "T-1", "title": "One", "status": "fail", "label": "claimed-but-absent", "criteria": []any{map[string]string{"name": "symbol_present", "status": "fail", "detail": "Ghost not found in the index"}}}}}
+		criteria := s.criteria
+		if criteria == nil {
+			criteria = []verify.Criterion{{Name: "symbol_present", Status: verify.Fail, Detail: "Ghost not found in the index"}}
+		}
+		result = map[string]any{"service": s.service, "summary": map[string]int{"total": 1, "fail": 1}, "tasks": []any{map[string]any{"id": "T-1", "title": "One", "status": "fail", "label": "claimed-but-absent", "criteria": criteria}}}
 	default:
 		return &http.Response{StatusCode: 404, Body: io.NopCloser(strings.NewReader("unknown tool")), Header: make(http.Header)}, nil
 	}
@@ -56,10 +65,15 @@ func (s stopDeliveryTransport) RoundTrip(r *http.Request) (*http.Response, error
 
 func stopDelivery(t *testing.T, root, service string) string {
 	t.Helper()
+	return stopDeliveryMode(t, root, service, true)
+}
+
+func stopDeliveryMode(t *testing.T, root, service string, block bool) string {
+	t.Helper()
 	var out bytes.Buffer
 	hc := newStopHookClient()
-	hc.Transport = stopDeliveryTransport{service}
-	if code, _ := runStopHook(root, hc, "http://127.0.0.1:1", true, &out, "session-a"); code != 0 {
+	hc.Transport = stopDeliveryTransport{service: service}
+	if code, _ := runStopHook(root, hc, "http://127.0.0.1:1", block, &out, "session-a"); code != 0 {
 		t.Fatalf("stop exit %d", code)
 	}
 	return out.String()
@@ -83,12 +97,12 @@ func TestStopDeliveryUncommittedIsUnknown(t *testing.T) {
 				}
 			}
 			got := stopDelivery(t, root, svc)
-			want := "unknown (not indexed yet: 1 uncommitted files under " + path + ")"
-			if !strings.Contains(got, want) || strings.Contains(got, `"decision":"block"`) || strings.Contains(got, "not found in the index") {
+			want := "symbol_present: Ghost not found in the index; index may lag: 1 uncommitted files under " + path
+			if !strings.Contains(got, want) || strings.Contains(got, `"decision":"block"`) {
 				t.Fatalf("unseen code must be unknown and advisory, want %q: %s", want, got)
 			}
 			rows := readVerifyLedger()
-			if len(rows) != 1 || len(rows[0].Rows) != 1 || rows[0].Rows[0].State != "unknown" {
+			if len(rows) != 1 || len(rows[0].Rows) != 1 || rows[0].Rows[0].State != "unknown" || rows[0].Rows[0].Criterion != want {
 				t.Fatalf("unknown missing from verify ledger: %+v", rows)
 			}
 			for _, row := range rows {
@@ -109,11 +123,11 @@ func TestStopDeliverySetOncePerChange(t *testing.T) {
 	if !strings.Contains(first, "not found in the index") {
 		t.Fatalf("committed code failure lost: %s", first)
 	}
-	if got := stopDelivery(t, root, svc); got != "" {
-		t.Fatalf("unchanged failure set repeated: %s", got)
+	if got := stopDelivery(t, root, svc); got != first || !strings.Contains(got, `"decision":"block"`) {
+		t.Fatalf("persistent failure must keep blocking: %s", got)
 	}
 	writeEditedFile(t, root, "pkg/tracked/code.go", "package changed\n")
-	if got := stopDelivery(t, root, svc); !strings.Contains(got, "unknown (not indexed yet:") {
+	if got := stopDelivery(t, root, svc); !strings.Contains(got, "unknown (symbol_present: Ghost not found in the index; index may lag:") {
 		t.Fatalf("changed set not reported: %s", got)
 	}
 	if got := stopDelivery(t, root, svc); got != "" {
@@ -125,7 +139,7 @@ func TestStopDeliverySetOncePerChange(t *testing.T) {
 		t.Fatalf("resolved set emitted: %s", got)
 	}
 	writeEditedFile(t, root, "docs/plans/p.md", "- [x] One {id: T-1, symbol: Ghost, package: pkg/tracked}\n")
-	if got := stopDelivery(t, root, svc); !strings.Contains(got, "unknown (not indexed yet:") {
+	if got := stopDelivery(t, root, svc); !strings.Contains(got, "unknown (symbol_present: Ghost not found in the index; index may lag:") {
 		t.Fatalf("recurring set not reported: %s", got)
 	}
 }
@@ -154,14 +168,14 @@ func TestStopDeliveryNoRefreshAndFailedWrite(t *testing.T) {
 	nowFunc = func() time.Time { return now }
 	t.Cleanup(func() { nowFunc = previous })
 	hc := newStopHookClient()
-	hc.Transport = stopDeliveryTransport{svc}
-	runStopHook(root, hc, "http://127.0.0.1:1", true, cbFailedWriter{}, "session-a")
-	if got := stopDelivery(t, root, svc); !strings.Contains(got, "not found in the index") {
+	hc.Transport = stopDeliveryTransport{service: svc}
+	runStopHook(root, hc, "http://127.0.0.1:1", false, cbFailedWriter{}, "session-a")
+	if got := stopDeliveryMode(t, root, svc, false); !strings.Contains(got, "not found in the index") {
 		t.Fatalf("failed delivery suppressed report: %s", got)
 	}
 	now = now.Add(time.Hour)
 	for i := 0; i < 12; i++ {
-		if got := stopDelivery(t, root, svc); got != "" {
+		if got := stopDeliveryMode(t, root, svc, false); got != "" {
 			t.Fatalf("unchanged claim set refreshed: %s", got)
 		}
 	}

@@ -44,8 +44,9 @@ const stopHookVerifyTimeout = 5 * time.Second
 //   - ANY error / daemon-down / no git / no plans → print nothing, exit 0.
 //   - stop_hook_active true → exit 0 (no re-entry loops).
 //   - Newly claimed tasks all verify (or are Unknown) → exit 0 silently.
-//   - A failing claim about uncommitted code → advisory Unknown, never block.
-//   - An unchanged reported claim set → silence within the session.
+//   - An absent-index criterion under an uncommitted path → advisory Unknown.
+//   - An unchanged advisory claim set → silence within the session.
+//   - A proven failure with --block → block on every Stop while it persists.
 //   - Newly claimed tasks FAIL verification → advisory additionalContext by
 //     default; {"decision":"block"} with --block.
 func cmdStopHook(args []string, stdout, stderr io.Writer) int {
@@ -285,7 +286,27 @@ func runStopHookWithAdvice(codec harness.Codec, projDir string, hc *http.Client,
 	if len(sessionIDs) > 0 {
 		sessionID = sessionIDs[0]
 	}
-	dedupe := checkHookInjectionMode(sessionID, "stop-verify", resolveSymlinks(projDir), msg, nowFunc(), true)
+	dedupe := newHookDedupeCheck("stop-verify", resolveSymlinks(projDir), msg)
+	// A Stop that claimed nothing must not create state. Existing state may
+	// contain a prior report to clear, or only another channel's entries.
+	_, stateErr := os.Stat(hookDedupePath(sessionID))
+	if msg != "" || stateErr == nil {
+		dedupe = loadHookDedupe(sessionID, "stop-verify", resolveSymlinks(projDir), msg, nowFunc(), true)
+		if dedupe.file != nil {
+			previous, exists := dedupe.state.Digests[dedupe.key]
+			dedupe.firstTouch = !exists
+			switch {
+			case msg == "" && !exists:
+				dedupe.close()
+			case exists && previous.Digest == dedupe.digest && !(block && proven):
+				// Once-per-change suppression has no counters to persist.
+				dedupe.close()
+				dedupe.suppressed = !dedupe.stateError
+			case !exists && len(dedupe.state.Digests) >= hookDedupeMaxEntries:
+				dedupe.close() // full delivery if no state slot is available
+			}
+		}
+	}
 	defer dedupe.close()
 	if dedupe.suppressed {
 		msg, proven = "", false
@@ -461,20 +482,51 @@ func stopUnindexedClaims(root, rel string, newly []string, plan verify.Plan, rep
 			continue // an absent symbol without a path cannot be checked locally
 		}
 		n, err := stopUncommittedFiles(root, path)
-		if err == nil && n == 0 {
+		if errors.Is(err, os.ErrInvalid) || (err == nil && n == 0) {
 			continue
 		}
-		reason := fmt.Sprintf("not indexed yet: %d uncommitted files under %s", n, path)
+		reason := fmt.Sprintf("index may lag: %d uncommitted files under %s", n, path)
 		if err != nil {
 			reason = "working tree could not be checked under " + path
 		}
+		remainingFailures, absent := 0, false
+		var details []string
+		for j := range tv.Criteria {
+			c := &tv.Criteria[j]
+			if c.Status != verify.Fail {
+				continue
+			}
+			missing := claimCriterionAbsent(*c)
+			c.Detail += "; " + reason
+			if missing {
+				c.Status = verify.Unknown
+				absent = true
+				details = append(details, c.Name+": "+c.Detail)
+			} else {
+				remainingFailures++
+			}
+		}
+		if !absent || remainingFailures > 0 {
+			continue
+		}
 		tv.Status, tv.Label = verify.Unknown, "likely-unconfirmed"
-		tv.Criteria = []verify.Criterion{{Name: "index_freshness", Status: verify.Unknown, Detail: reason}}
 		rep.Summary.Fail--
 		rep.Summary.Unknown++
-		lines = append(lines, fmt.Sprintf("%s [%s] %s — unknown (%s)", rel, tv.TaskID, tv.Title, reason))
+		lines = append(lines, fmt.Sprintf("%s [%s] %s — unknown (%s)", rel, tv.TaskID, tv.Title, strings.Join(details, "; ")))
 	}
+	sort.Strings(lines)
 	return lines
+}
+
+// Freshness can explain an index lookup miss, never an ambiguous anchor,
+// failed reach, tier, oracle or other positive evidence of a bad claim.
+func claimCriterionAbsent(c verify.Criterion) bool {
+	switch c.Name {
+	case "symbol_present", "package_present", "test_present", "test_reaches":
+		return strings.Contains(c.Detail, "not found") && strings.Contains(c.Detail, "in the index")
+	default:
+		return false
+	}
 }
 
 func stopUncommittedFiles(root, path string) (int, error) {
