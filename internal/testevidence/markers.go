@@ -12,6 +12,7 @@ package testevidence
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -25,9 +26,10 @@ import (
 
 // MarkerReport is IngestCertifyMarkers' return: what it found.
 type MarkerReport struct {
-	FilesScanned int
-	FilesParsed  int
-	Declared     int
+	FilesScanned    int
+	FilesParsed     int
+	OversizeSkipped int
+	Declared        int
 	// Warnings is one line per malformed marker, "<file>:<line>: <err>" —
 	// surfaced verbatim in the ingest report (design doc §1).
 	Warnings []string
@@ -63,6 +65,11 @@ func IngestCertifyMarkers(ctx context.Context, st store.Store, service, watermar
 		// Fetch checks the producer before every file and honors ctx.
 		src, err := conn.Fetch(ctx, ref)
 		if err != nil {
+			var over *connector.OversizeError
+			if errors.As(err, &over) {
+				report.OversizeSkipped++
+				continue
+			}
 			return report, fmt.Errorf("read %s: %w", ref.Path, err)
 		}
 		report.FilesScanned++

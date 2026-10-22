@@ -564,7 +564,7 @@ func ingestConfiguredCertifications(ctx context.Context, storePath, service, svc
 		return
 	}
 	if !jsonOut {
-		fmt.Fprintf(stdout, "certify: %d declared certification(s) found in %d file(s)\n", markerReport.Declared, markerReport.FilesScanned)
+		fmt.Fprintf(stdout, "certify: %d declared certification(s) found in %d file(s); oversize_skipped=%d\n", markerReport.Declared, markerReport.FilesScanned, markerReport.OversizeSkipped)
 	}
 	runCertifyCompileGated(ctx, st, service, watermark, svcPath, stdout, stderr, jsonOut, sweep)
 }
