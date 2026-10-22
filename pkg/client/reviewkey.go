@@ -28,13 +28,9 @@ import (
 // reviewkey.ManifestEntry's doc comment for the unreadable-path handling),
 // diffed against req.Prior when given.
 func (c *Client) ReviewKey(ctx context.Context, req reviewkey.Request) (reviewkey.Key, error) {
-	wm, _ := c.StoreWatermark(ctx, req.Service)
-	if tok := c.SuppressionToken(req.Service); wm != "" && tok != "" {
-		wm += "|suppressed:" + tok
-	}
 	// Use the shared snapshot scope, including its suppression
 	// identity and disclosure, so a key and a navigation call share data.
-	sc := memo.Scope{Store: c.StoreID(), Service: req.Service, Watermark: wm}
+	sc := MemoScope(ctx, c, req.Service)
 	snap, err := memo.SnapshotForExtra(ctx, sc, func(lctx context.Context) ([]core.SymbolNode, any, error) {
 		cctx, col := scope.WithCollector(lctx)
 		//fathom:tenancy-allow sources the shared watermarked snapshot loader

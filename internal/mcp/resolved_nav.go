@@ -35,6 +35,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/internal/scope"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
+	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
 // Default bounds for blast_radius (BP-27). Depth 2 is "what breaks and what
@@ -54,20 +55,6 @@ const (
 // QueryInterface would have broken thirteen fakes to buy nothing.
 type storeWatermarker interface {
 	StoreWatermark(ctx context.Context, serviceID string) (string, error)
-}
-
-// serviceWatermark returns the backend's store watermark for service, or ""
-// when the backend cannot name one. "" disables memoization for that call.
-func serviceWatermark(ctx context.Context, backend QueryInterface, service string) string {
-	w, ok := backend.(storeWatermarker)
-	if !ok {
-		return ""
-	}
-	mark, err := w.StoreWatermark(ctx, service)
-	if err != nil {
-		return ""
-	}
-	return mark
 }
 
 // navGraphs is one service's two graphs plus the facts a handler needs to
@@ -125,22 +112,12 @@ func navScope(ctx context.Context, backend QueryInterface, service string) memo.
 // path patching the store's own state).
 func navScopeNoEnsure(ctx context.Context, backend QueryInterface, service string) memo.Scope {
 	id, ok := backend.(storeIdentifier)
-	if !ok || id.StoreID() == "" {
+	if !ok {
 		// A backend that cannot name its store is never cached: an address
 		// is not an identity (a freed backend's address is reused).
 		return memo.Scope{Service: service}
 	}
-	wm := serviceWatermark(ctx, backend, service)
-	if wm != "" {
-		if t, ok := backend.(suppressionTokener); ok {
-			// A suppression change is a new key: a cached snapshot never
-			// serves rows a suppression now hides (SP-2).
-			if tok := t.SuppressionToken(service); tok != "" {
-				wm += "|suppressed:" + tok
-			}
-		}
-	}
-	return memo.Scope{Store: id.StoreID(), Service: service, Watermark: wm}
+	return client.MemoScope(ctx, id, service)
 }
 
 // suppressionTokener is the OPTIONAL backend capability naming the
