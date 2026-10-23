@@ -18,7 +18,14 @@ pre-commit:
     cue-vet:
       glob: "*.cue"
       run: |
-        command -v cue >/dev/null 2>&1 || exit 0
+        if ! command -v cue >/dev/null 2>&1; then
+          if [ "${CI:-}" = true ]; then
+            echo "cue-vet: cue is missing (required in CI)" >&2
+            exit 1
+          fi
+          echo "cue-vet: skipped -- cue is missing"
+          exit 0
+        fi
         dirs=$(printf '%s\n' {staged_files} | grep -vE '/cue.mod/|/testdata/|/ref/' | xargs -n1 dirname 2>/dev/null | sort -u)
         for d in $dirs; do
           [ -f "$d/schema.cue" ] || continue
@@ -119,7 +126,21 @@ pre-push:
         if [ -f scripts/prepush-refs.sh ] && printf '%s\n' "$refs" | bash scripts/prepush-refs.sh decide "{1}"; then
           exit 0
         fi
-        [ -x bin/fathom ] || exit 0
+        mkdir -p workspace/tmp
+        verify_err=$(mktemp workspace/tmp/gate-verify-stderr.XXXXXX) || verify_err=/dev/null
+        trap '[ "$verify_err" = /dev/null ] || rm -f "$verify_err"' EXIT
+        if [ ! -x bin/fathom ]; then
+          echo "fathom verify: bin/fathom missing -- building it"
+          if ! (
+            if [ "$(uname -s)" != Darwin ]; then export CGO_ENABLED=0; fi
+            GOWORK=off bash scripts/gate-lease.sh bash scripts/fathom-go.sh build -o bin/fathom ./cmd/fathom
+          ) >/dev/null 2>"$verify_err"; then
+            build_error=$(grep -v -e '^#' -e '^go: downloading' -e '^gate-lease: ' -e '^fathom cache: ' "$verify_err" | sed -n '1p')
+            [ -n "$build_error" ] || build_error=$(sed -n '1p' "$verify_err")
+            echo "fathom verify: build failed: $build_error" >&2
+            exit 1
+          fi
+        fi
         lease="bash scripts/gate-lease.sh"
         set --
         for f in docs/plans/*.md; do
@@ -128,13 +149,10 @@ pre-push:
           set -- "$@" "$f"
         done
         [ $# -eq 0 ] && exit 0
-        mkdir -p workspace/tmp
         store="workspace/tmp/gate-verify.sqlite"
         rm -f "$store" "$store-wal" "$store-shm"
         ingest_log=workspace/tmp/gate-verify-ingest.log
         ingest_err=workspace/tmp/gate-verify-ingest-stderr.log
-        verify_err=$(mktemp workspace/tmp/gate-verify-stderr.XXXXXX) || verify_err=/dev/null
-        trap '[ "$verify_err" = /dev/null ] || rm -f "$verify_err"' EXIT
         # Memory canary (O1366): this is the one ingest of the whole tree, so it
         # runs with the managed daemon's 4 GiB budget in force and its peak RSS
         # is read back below (the stranger check wires only a fixture fleet since
@@ -250,9 +268,9 @@ pre-push:
     # findings is a deliberate act for direct CLI / MCP use, never a hook
     # side effect). Unlike verify above, a review finding is advisory, not
     # gating: this step ALWAYS exits 0, whatever bin/fathom review itself
-    # returns. Operational errors (no bin/fathom, unreachable ref, unindexed
-    # service, corrupt store) degrade silently to a single line — never a
-    # blocking failure and never a raw error dump (fail-open convention,
+    # returns. A missing bin/fathom is built first. Operational errors (a
+    # failed build, unreachable ref, unindexed service, corrupt store) degrade
+    # to a single line — never a blocking failure and never a raw error dump (fail-open convention,
     # docs/design/coding-agent-excellence.md §5.3). --store points at the
     # same workspace/db/fleet.sqlite the post-commit fathom-refresh step
     # below keeps current, so the summary reflects the just-committed state
@@ -265,10 +283,25 @@ pre-push:
     # channel; it does not weaken a gate — review always exited 0 here.
     review:
       run: |
-        [ -x bin/fathom ] || exit 0
         mkdir -p workspace/tmp
         err_log=$(mktemp workspace/tmp/review-stderr.XXXXXX) || err_log=/dev/null
         trap '[ "$err_log" = /dev/null ] || rm -f "$err_log"' EXIT
+        if [ ! -x bin/fathom ]; then
+          if [ -f scripts/prepush-refs.sh ] && bash scripts/prepush-refs.sh skipped; then
+            echo "fathom review: skipped: no commit is new to the remote"
+            exit 0
+          fi
+          echo "fathom review: bin/fathom missing -- building it"
+          if ! (
+            if [ "$(uname -s)" != Darwin ]; then export CGO_ENABLED=0; fi
+            GOWORK=off bash scripts/gate-lease.sh bash scripts/fathom-go.sh build -o bin/fathom ./cmd/fathom
+          ) >/dev/null 2>"$err_log"; then
+            build_error=$(grep -v -e '^#' -e '^go: downloading' -e '^gate-lease: ' -e '^fathom cache: ' "$err_log" | sed -n '1p')
+            [ -n "$build_error" ] || build_error=$(sed -n '1p' "$err_log")
+            echo "fathom review: build failed -- skipped (fail-open): $build_error"
+            exit 0
+          fi
+        fi
         out=$(bin/fathom review --service fathom --since origin/main --store workspace/db/fleet.sqlite --no-persist --budget-seconds 20 2>"$err_log")
         if [ $? -ne 0 ]; then
           echo "fathom review: operational error — skipped (fail-open, see docs/design/coding-agent-excellence.md §5.3): $(sed -n '1p' "$err_log")"
@@ -294,18 +327,33 @@ pre-push:
     # the branch's own upstream (`@{u}`) so a feature branch conserves
     # against what it will actually merge into, falling back to
     # `origin/main` when there is no upstream yet (a brand-new branch, a
-    # fresh clone that never pushed). A missing bin/fathom or any other
+    # fresh clone that never pushed, or a missing remote-tracking ref).
+    # A missing bin/fathom is built first. A failed build or any other
     # non-zero exit (2: an unresolvable ref, an unreadable input) degrades
     # to a single fail-open line, never a blocking failure
     # (docs/design/coding-agent-excellence.md §5.3).
     refactor-conserve:
       run: |
-        [ -x bin/fathom ] || exit 0
         mkdir -p workspace/tmp
         err_log=$(mktemp workspace/tmp/conserve-stderr.XXXXXX) || err_log=/dev/null
         trap '[ "$err_log" = /dev/null ] || rm -f "$err_log"' EXIT
-        since=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>"$err_log")
-        if [ -z "$since" ]; then
+        if [ ! -x bin/fathom ]; then
+          if [ -f scripts/prepush-refs.sh ] && bash scripts/prepush-refs.sh skipped; then
+            echo "fathom conserve: skipped: no commit is new to the remote"
+            exit 0
+          fi
+          echo "fathom conserve: bin/fathom missing -- building it"
+          if ! (
+            if [ "$(uname -s)" != Darwin ]; then export CGO_ENABLED=0; fi
+            GOWORK=off bash scripts/gate-lease.sh bash scripts/fathom-go.sh build -o bin/fathom ./cmd/fathom
+          ) >/dev/null 2>"$err_log"; then
+            build_error=$(grep -v -e '^#' -e '^go: downloading' -e '^gate-lease: ' -e '^fathom cache: ' "$err_log" | sed -n '1p')
+            [ -n "$build_error" ] || build_error=$(sed -n '1p' "$err_log")
+            echo "fathom conserve: build failed -- skipped (fail-open): $build_error"
+            exit 0
+          fi
+        fi
+        if ! since=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>"$err_log") || [ "$since" = '@{u}' ] || [ -z "$since" ]; then
           since="origin/main"
           echo "fathom conserve: upstream unavailable — using origin/main: $(sed -n '1p' "$err_log")"
         fi
