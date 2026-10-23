@@ -2,6 +2,8 @@ module github.com/geoffmilleraz/fathom
 
 go 1.26.2
 
+toolchain go1.27.3
+
 require (
 	cuelang.org/go v0.16.1
 	github.com/a-h/templ v0.3.1020
