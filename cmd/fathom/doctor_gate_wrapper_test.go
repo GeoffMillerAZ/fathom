@@ -47,6 +47,174 @@ func TestDoctorNativePushGateWrapper(t *testing.T) {
 	}
 }
 
+func TestDoctorPushGateDepthLimit(t *testing.T) {
+	for _, tc := range []struct {
+		name, tasks string
+		want        doctorStatus
+	}{
+		{"verify beyond limit", "  validate:\n    cmds: [task ci]\n  ci:\n    cmds: [task gate]\n  gate:\n    cmds: [fathom verify --strict]\n", doctorUnknown},
+		{"verify within limit", "  validate:\n    cmds: [task ci]\n  ci:\n    cmds: [fathom verify --strict]\n", doctorPass},
+		{"verify after a cut", "  validate:\n    cmds: [task ci, fathom verify --strict]\n  ci:\n    cmds: [task gate]\n  gate:\n    cmds: [echo done]\n", doctorPass},
+		{"no verify and no cut", "  validate:\n    cmds: [task ci]\n  ci:\n    cmds: [echo done]\n", doctorFail},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			gitRepo(t, root)
+			doctorWriteFixture(t, root, ".git/hooks/pre-push", "#!/bin/sh\ntask validate\n")
+			doctorWriteFixture(t, root, "Taskfile.yml", "version: '3'\ntasks:\n"+tc.tasks)
+			got := checkLefthookGates(root)
+			if got.Status != tc.want {
+				t.Fatalf("got %+v, want %s", got, tc.want)
+			}
+			if tc.want == doctorUnknown {
+				for _, want := range []string{"depth limit", "Taskfile.yml", "task ci"} {
+					if !strings.Contains(got.Reason, want) {
+						t.Errorf("reason %q does not name %q", got.Reason, want)
+					}
+				}
+				if doctorExitCode([]doctorCheck{got}) != 0 {
+					t.Fatal("depth cut must fail open")
+				}
+			}
+			if tc.want == doctorFail && got.Remedy != "wire both commands in the repository-local pre-push wrapper" {
+				t.Fatalf("missing-gate remedy changed: %+v", got)
+			}
+		})
+	}
+}
+
+func TestDoctorComposedPushGateDepthCutResolution(t *testing.T) {
+	for _, taskfile := range []bool{true, false} {
+		name, want := "without Taskfile", doctorFail
+		if taskfile {
+			name, want = "with Taskfile", doctorUnknown
+		}
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			doctorWriteFixture(t, root, "lefthook.yml", "pre-push:\n  commands:\n    gate:\n      run: sh scripts/push.sh\n")
+			doctorWriteFixture(t, root, "scripts/push.sh", "task validate\n")
+			if taskfile {
+				doctorWriteFixture(t, root, "Taskfile.yaml", "version: '3'\ntasks:\n  validate:\n    cmds: [task ci]\n  ci:\n    cmds: [task gate]\n  gate:\n    cmds: [fathom verify --strict]\n")
+			}
+			got := checkLefthookGates(root)
+			if got.Status != want {
+				t.Fatalf("got %+v, want %s", got, want)
+			}
+			if taskfile && (!strings.Contains(got.Reason, "Taskfile.yaml (task validate)") || !strings.Contains(got.Reason, "depth limit")) {
+				t.Fatalf("deepest followed task absent: %+v", got)
+			}
+		})
+	}
+}
+
+func TestDoctorPushGateDepthCutUnresolvedTargets(t *testing.T) {
+	for _, command := range []string{"task absent", "sh scripts/absent.sh", "external-tool"} {
+		t.Run(command, func(t *testing.T) {
+			root := t.TempDir()
+			gitRepo(t, root)
+			doctorWriteFixture(t, root, ".git/hooks/pre-push", "task validate\n")
+			doctorWriteFixture(t, root, "Taskfile.yml", "version: '3'\ntasks:\n  validate:\n    cmds: [task ci]\n  ci:\n    cmds: ["+command+"]\n")
+			if got := checkLefthookGates(root); got.Status != doctorFail {
+				t.Fatalf("unresolved cut target hides nothing: %+v", got)
+			}
+		})
+	}
+}
+
+func TestDoctorLefthookPushGateDepthLimit(t *testing.T) {
+	root := t.TempDir()
+	gitRepo(t, root)
+	doctorWriteFixture(t, root, ".git/hooks/pre-push", "#!/bin/sh\nlefthook run pre-push\n")
+	doctorWriteFixture(t, root, "lefthook.yml", "pre-push:\n  commands:\n    gate:\n      run: task validate\n")
+	doctorWriteFixture(t, root, "Taskfile.yml", "version: '3'\ntasks:\n  validate:\n    cmds: [task ci]\n  ci:\n    cmds: [task gate]\n  gate:\n    cmds: [fathom verify --strict]\n")
+	got := checkLefthookGates(root)
+	if got.Status != doctorUnknown || !strings.Contains(got.Reason, "task ci") || !strings.Contains(got.Reason, "depth limit") {
+		t.Fatalf("lefthook depth cut = %+v", got)
+	}
+}
+
+func TestDoctorPushGateDepthLimitNamesScript(t *testing.T) {
+	root := t.TempDir()
+	gitRepo(t, root)
+	doctorWriteFixture(t, root, ".git/hooks/pre-push", "#!/bin/sh\ntask validate\n")
+	doctorWriteFixture(t, root, "Taskfile.yml", "version: '3'\ntasks:\n  validate:\n    cmds: [sh scripts/gate.sh]\n")
+	doctorWriteFixture(t, root, "scripts/gate.sh", "sh scripts/verify.sh\n")
+	doctorWriteFixture(t, root, "scripts/verify.sh", "fathom verify --strict\n")
+	got := checkLefthookGates(root)
+	if got.Status != doctorUnknown || !strings.Contains(got.Reason, "scripts/gate.sh") || !strings.Contains(got.Reason, "depth limit") {
+		t.Fatalf("script depth cut = %+v", got)
+	}
+}
+
+func TestDoctorPushGateDepthCutWalkedTargets(t *testing.T) {
+	for _, tc := range []struct{ name, tasks, script string }{
+		{"task walked after cut", "  validate:\n    cmds: [task test, task build]\n  test:\n    cmds: [task build]\n  build:\n    cmds: [go build ./...]\n", ""},
+		{"task walked before cut", "  validate:\n    cmds: [task build, task test]\n  test:\n    cmds: [task build]\n  build:\n    cmds: [go build ./...]\n", ""},
+		{"cycle", "  validate:\n    cmds: [task ci]\n  ci:\n    cmds: [task validate]\n", ""},
+		{"script walked after cut", "  validate:\n    cmds: [task ci, sh scripts/build.sh]\n  ci:\n    cmds: [sh scripts/build.sh]\n", "go build ./...\n"},
+		{"script walked before cut", "  validate:\n    cmds: [sh scripts/build.sh, task ci]\n  ci:\n    cmds: [sh scripts/build.sh]\n", "go build ./...\n"},
+		{"dynamic script read before cut", "  validate:\n    cmds: [sh scripts/build.sh, task ci]\n  ci:\n    cmds: [sh scripts/build.sh]\n", "x=$(echo)\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			gitRepo(t, root)
+			doctorWriteFixture(t, root, ".git/hooks/pre-push", "task validate\n")
+			doctorWriteFixture(t, root, "Taskfile.yml", "version: '3'\ntasks:\n"+tc.tasks)
+			if tc.script != "" {
+				doctorWriteFixture(t, root, "scripts/build.sh", tc.script)
+			}
+			if got := checkLefthookGates(root); got.Status != doctorFail {
+				t.Fatalf("walked cut target hides no commands: %+v", got)
+			}
+		})
+	}
+}
+
+func TestDoctorLefthookPushGateDepthCutLiteralVerify(t *testing.T) {
+	root := t.TempDir()
+	gitRepo(t, root)
+	doctorWriteFixture(t, root, ".git/hooks/pre-push", "lefthook run pre-push\n")
+	doctorWriteFixture(t, root, "lefthook.yml", "pre-push:\n  commands:\n    validate:\n      run: task validate\n    verify:\n      run: fathom verify\n")
+	doctorWriteFixture(t, root, "Taskfile.yml", "version: '3'\ntasks:\n  validate:\n    cmds: [task ci]\n  ci:\n    cmds: [task gate]\n  gate:\n    cmds: [echo done]\n")
+	got := checkLefthookGates(root)
+	if got.Status != doctorPass || !strings.Contains(got.Reason, "has a fathom verify step") {
+		t.Fatalf("literal lefthook verdict changed: %+v", got)
+	}
+}
+
+func TestDoctorPushGateDepthCutPreservesReadBudget(t *testing.T) {
+	root := t.TempDir()
+	gitRepo(t, root)
+	doctorWriteFixture(t, root, ".git/hooks/pre-push", "task validate\n")
+	taskfile := "version: '3'\ntasks:\n  validate:\n    cmds: [task ci, sh scripts/verify.sh]\n  ci:\n    cmds: [sh scripts/big.sh]\n"
+	doctorWriteFixture(t, root, "Taskfile.yml", taskfile)
+	doctorWriteFixture(t, root, "scripts/big.sh", strings.Repeat("#", doctorWrapperBytes-len(taskfile)-1))
+	doctorWriteFixture(t, root, "scripts/verify.sh", "fathom verify --strict\n")
+	if got := checkLefthookGates(root); got.Status != doctorPass {
+		t.Fatalf("cut target spent the read budget: %+v", got)
+	}
+}
+
+func TestDoctorPushGateDepthCutRequiresWalkableTask(t *testing.T) {
+	for _, entry := range []string{"    dir: elsewhere\n    cmds: [fathom verify --strict]\n", "    cmds: invalid\n", "    cmds: [{unknown: fathom verify --strict}]\n"} {
+		for _, beyond := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/beyond=%t", strings.TrimSpace(entry), beyond), func(t *testing.T) {
+				root := t.TempDir()
+				gitRepo(t, root)
+				cmd := "task gate"
+				if beyond {
+					cmd = "task ci"
+				}
+				doctorWriteFixture(t, root, ".git/hooks/pre-push", "task validate\n")
+				doctorWriteFixture(t, root, "Taskfile.yml", "version: '3'\ntasks:\n  validate:\n    cmds: ["+cmd+"]\n  ci:\n    cmds: [task gate]\n  gate:\n"+entry)
+				if got := checkLefthookGates(root); got.Status != doctorFail {
+					t.Fatalf("unwalkable task hides no readable commands: %+v", got)
+				}
+			})
+		}
+	}
+}
+
 // Adopter report (2026-10-22): the pre-push hook git runs decides; an uninstalled lefthook.yml does not.
 func doctorNativeOverLefthookFixture(t *testing.T, hook string) string {
 	root := t.TempDir()

@@ -38,11 +38,68 @@ type doctorWrapperReader struct {
 	// is never charged twice. cut is set when the byte budget stopped a read.
 	cache map[string][]byte
 	cut   bool
+	// A cut hides commands only if its target is never walked elsewhere.
+	// Keep cuts in traversal order and label them while unwinding.
+	walked    map[string]bool
+	depthCuts []doctorWrapperDepthCut
+}
+
+type doctorWrapperDepthCut struct {
+	target, at string
+}
+
+func (r *doctorWrapperReader) markWalked(target string) {
+	if r.walked == nil {
+		r.walked = map[string]bool{}
+	}
+	r.walked[target] = true
+}
+
+func (r *doctorWrapperReader) labelDepthCuts(start int, at string) {
+	for i := start; i < len(r.depthCuts); i++ {
+		if r.depthCuts[i].at == "" {
+			r.depthCuts[i].at = at
+		}
+	}
+}
+
+// Decide only after the walk: a shallower visit can follow a cut.
+func (r *doctorWrapperReader) depthCutAt() string {
+	for _, cut := range r.depthCuts {
+		if !r.walked[cut.target] {
+			return cut.at
+		}
+	}
+	return ""
 }
 
 func doctorCommandEvidence(ctx context.Context, root, command, sub string) doctorWiringEvidence {
 	r := doctorWrapperReader{ctx: ctx, root: root, remaining: doctorWrapperBytes}
 	return r.command(command, sub, 0)
+}
+
+// A cut target need only resolve to a regular repository file. Do not read
+// its contents or charge the byte budget for commands we cannot scan.
+func (r *doctorWrapperReader) regularFile(path string) bool {
+	if r.ctx.Err() != nil || r.root == "" {
+		return false
+	}
+	rel, err := filepath.Rel(r.root, path)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
+		return false
+	}
+	root, err := os.OpenRoot(r.root)
+	if err != nil {
+		return false
+	}
+	defer root.Close()
+	f, err := root.OpenFile(rel, os.O_RDONLY|syscall.O_NONBLOCK, 0)
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	return err == nil && info.Mode().IsRegular()
 }
 
 func (r *doctorWrapperReader) read(path string) ([]byte, error) {
@@ -195,13 +252,16 @@ func (r *doctorWrapperReader) command(command, sub string, depth int) doctorWiri
 				}
 				continue
 			}
-			if depth >= doctorWrapperLevels {
+			atDepthLimit := depth >= doctorWrapperLevels
+			if atDepthLimit {
 				unknown = true
-				continue
 			}
 			var ev doctorWiringEvidence
 			switch bin {
 			case "task", "lefthook":
+				if atDepthLimit && bin != "task" {
+					continue
+				}
 				ev = r.task(words, sub, depth+1)
 			default:
 				p := words[0]
@@ -224,6 +284,15 @@ func (r *doctorWrapperReader) command(command, sub string, depth int) doctorWiri
 				if !filepath.IsAbs(p) {
 					p = filepath.Join(r.root, p)
 				}
+				if atDepthLimit {
+					// A missing or foreign script hides no readable commands.
+					// Resolve the target, but never walk its contents past the limit.
+					if r.regularFile(p) {
+						rel, _ := filepath.Rel(r.root, p)
+						r.depthCuts = append(r.depthCuts, doctorWrapperDepthCut{target: rel})
+					}
+					continue
+				}
 				b, err := r.read(p)
 				if err != nil {
 					if os.IsNotExist(err) {
@@ -235,13 +304,19 @@ func (r *doctorWrapperReader) command(command, sub string, depth int) doctorWiri
 					}
 					continue
 				}
+				// A script that was read is settled, even when it is refused below:
+				// a later depth cut at the same script hides nothing.
+				rel, _ := filepath.Rel(r.root, p)
+				r.markWalked(rel)
 				// Dynamic shell structure is outside this deliberately small reader.
 				text := string(b)
 				if strings.Contains(text, "<<") || strings.Contains(text, "$(") || strings.Contains(text, "()") || strings.Contains(text, "`") {
 					unknown = true
 					continue
 				}
+				firstCut := len(r.depthCuts)
 				ev = r.command(text, sub, depth+1)
+				r.labelDepthCuts(firstCut, rel)
 				if ev.found && ev.file == "" {
 					ev.file, _ = filepath.Rel(r.root, p)
 				}
@@ -413,7 +488,16 @@ func (r *doctorWrapperReader) task(words []string, sub string, depth int) doctor
 			commands = append(commands, run)
 		}
 	}
+	target := proofFile + " (" + bin + " " + strings.Join(names, " ") + ")"
+	if depth > doctorWrapperLevels {
+		// Only a task the normal lookup can scan is a resolved cut target.
+		r.depthCuts = append(r.depthCuts, doctorWrapperDepthCut{target: target})
+		return doctorWiringEvidence{unknown: true}
+	}
+	r.markWalked(target)
+	firstCut := len(r.depthCuts)
 	ev := r.command(strings.Join(commands, "\n"), sub, depth)
+	r.labelDepthCuts(firstCut, target)
 	ev.unknown = ev.unknown || uncertain
 	if ev.found && ev.file == "" {
 		ev.file = proofFile

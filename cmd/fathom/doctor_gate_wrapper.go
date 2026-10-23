@@ -119,10 +119,12 @@ func checkComposedPushGate(root string) (doctorCheck, bool) {
 	}
 	command := strings.Join(commands, "\n")
 	verifyCut := false
+	verifyDepthCutAt := ""
 	probe := func(match func([]string) bool) doctorWiringEvidence {
 		reader := doctorWrapperReader{ctx: ctx, root: root, remaining: doctorWrapperBytes, matches: match}
 		ev := reader.command(command, "", 0)
 		verifyCut = verifyCut || reader.cut
+		verifyDepthCutAt = reader.depthCutAt()
 		return ev
 	}
 	validate := probe(func(w []string) bool {
@@ -133,6 +135,7 @@ func checkComposedPushGate(root string) (doctorCheck, bool) {
 		return len(w) > 2 && (filepath.Base(w[0]) == "fathom" || w[0] == "$FATHOM" || w[0] == "${FATHOM}") && w[1] == "verify" && slices.Contains(w[2:], "--strict")
 	})
 	verifyCutStrict := verifyCut
+	verifyDepthCutStrict := verifyDepthCutAt
 	verifyAny := probe(func(w []string) bool {
 		return len(w) > 1 && (filepath.Base(w[0]) == "fathom" || w[0] == "$FATHOM" || w[0] == "${FATHOM}") && w[1] == "verify"
 	})
@@ -144,6 +147,9 @@ func checkComposedPushGate(root string) (doctorCheck, bool) {
 	}
 	if native && validate.found && !verify.found && verifyCutStrict {
 		return doctorCheck{Name: "lefthook_gates", Status: doctorUnknown, Reason: fmt.Sprintf("%s%s reaches task validate, but the 64 KiB read budget ran out before the walk found a strict fathom verify step, so whether it runs one is unknown", notInstalled, source), Remedy: "no change needed if the gate runs `fathom verify --strict`; doctor never executes hooks or tasks"}, true
+	}
+	if validate.found && !verify.found && verifyDepthCutStrict != "" && (native || !verifyAny.found) {
+		return doctorCheck{Name: "lefthook_gates", Status: doctorUnknown, Reason: fmt.Sprintf("%s%s reaches task validate, but the depth limit stopped the walk at %s before it found a strict fathom verify step, so whether it runs one is unknown", notInstalled, source, verifyDepthCutStrict), Remedy: "no change needed if the gate runs `fathom verify --strict`; doctor never executes hooks or tasks"}, true
 	}
 	if native && validate.found && !verify.found && verify.opaque != "" {
 		// The hook provably reaches task validate; the strict verify step may
