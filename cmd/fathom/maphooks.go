@@ -167,8 +167,12 @@ func subagentMapLine(root, parentSessionID, agentID string, now time.Time) strin
 	if parentSessionID == "" || root == "" {
 		return ""
 	}
+	threadsSource := "default"
+	if os.Getenv("FATHOM_THREADS") != "" {
+		threadsSource = "env"
+	}
 	if !threadsHoldMaps() {
-		emitBeat("subagent-hook", "skipped", firingMeta(map[string]string{"emitted": "false", "reason": "no-maps", "capability": string(harness.CapSubagentPrime)}, parentSessionID, ""))
+		emitBeat("subagent-hook", "skipped", firingMeta(map[string]string{"emitted": "false", "reason": "no-maps", "capability": string(harness.CapSubagentPrime), "threads_source": threadsSource, "maps_scope": "log"}, parentSessionID, ""))
 		return ""
 	}
 	set, alive := loadAliveMaps(root, now)
@@ -179,7 +183,7 @@ func subagentMapLine(root, parentSessionID, agentID string, now time.Time) strin
 		}
 	}
 	if len(filed) == 0 {
-		emitBeat("subagent-hook", "skipped", firingMeta(map[string]string{"emitted": "false", "reason": "no-maps", "capability": string(harness.CapSubagentPrime)}, parentSessionID, ""))
+		emitBeat("subagent-hook", "skipped", firingMeta(map[string]string{"emitted": "false", "reason": "no-maps", "capability": string(harness.CapSubagentPrime), "threads_source": threadsSource, "maps_scope": "parent"}, parentSessionID, ""))
 		return ""
 	}
 	roots := mapRoots(set.maps, filed)
@@ -240,6 +244,7 @@ func mintHandoffComposite(set mapSet, ids []string, parentSessionID, root string
 	if writeMapHeader(set, *minted, "", root, cond, now) != nil {
 		return "", false
 	}
+	set.maps[id] = *minted
 	return id, true
 }
 

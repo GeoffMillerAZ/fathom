@@ -283,6 +283,96 @@ func TestSubagentMapLineChoosesTheParentsRoots(t *testing.T) {
 	}
 }
 
+func TestSubagentMapLineFirstHandoffResolvesContents(t *testing.T) {
+	repo := hookMapRepo(t)
+	now := time.Date(2026, 10, 23, 12, 0, 0, 0, time.UTC)
+	fileMapEntry(t, repo, "first-root", "g1.go#L3-L3", "entry point", "sess-parent", now)
+	fileMapEntry(t, repo, "first-root", "g2.go#L3-L3", "helper", "sess-parent", now)
+	fileMapEntry(t, repo, "second-root", "g3.go#L3-L3", "other entry point", "sess-parent", now)
+
+	got := subagentMapLine(repo, "sess-parent", "a1", now)
+	if !strings.Contains(got, subagentMapLead+explmap.CompositePrefix) || !strings.Contains(got, "(2 maps, 3 entries)") {
+		t.Errorf("the first handoff must resolve both roots and all entries, got %q", got)
+	}
+}
+
+func TestSubagentStartMapSkipNamesTheLog(t *testing.T) {
+	for _, tc := range []struct {
+		name, source, scope string
+		otherSession        bool
+	}{
+		{name: "empty-env-log", source: "env", scope: "log"},
+		{name: "other-parent", source: "env", scope: "parent", otherSession: true},
+		{name: "default-log", source: "default", scope: "log"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := hookMapRepo(t)
+			now := time.Date(2026, 10, 23, 12, 0, 0, 0, time.UTC)
+			oldNow := nowFunc
+			nowFunc = func() time.Time { return now }
+			t.Cleanup(func() { nowFunc = oldNow })
+			logX := threadsPath()
+			fileMap := func(id, session string) {
+				t.Helper()
+				t.Setenv("CLAUDE_CODE_SESSION_ID", session)
+				if code, _, errs := runCLI(t, mapCLI, "new", id, "--purpose", "Which entry point handles requests?", "--repo", repo); code != 0 {
+					t.Fatalf("map new: %s", errs)
+				}
+			}
+			fileMap("parent-map", "sess-parent")
+			if got := subagentMapLine(repo, "sess-parent", "a1", now); got == "" {
+				t.Fatal("log X must hold a map for the parent")
+			}
+
+			logY := filepath.Join(t.TempDir(), "empty.jsonl")
+			t.Setenv("FATHOM_THREADS", logY)
+			if tc.source == "default" {
+				if err := os.Unsetenv("FATHOM_THREADS"); err != nil {
+					t.Fatal(err)
+				}
+				t.Setenv("FATHOM_HOME", "")
+				logY = threadsPath()
+			}
+			if err := os.MkdirAll(filepath.Dir(logY), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(logY, nil, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if tc.otherSession {
+				fileMap("other-map", "sess-other")
+			}
+			beatsPath := filepath.Join(t.TempDir(), "skip.jsonl")
+			t.Setenv("FATHOM_HOOKS_LOG", beatsPath)
+			if got := subagentMapLine(repo, "sess-parent", "a1", now); got != "" {
+				t.Errorf("log Y has no parent map, want silence, got %q", got)
+			}
+			beats, ok := readBeatLog(beatsPath)
+			if !ok || len(beats) != 1 {
+				t.Fatalf("want one readable skip beat, got %v, readable %v", beats, ok)
+			}
+			beat := beats[0]
+			if beat.Channel != "subagent-hook" || beat.Kind != "skipped" {
+				t.Errorf("want subagent-hook skipped, got %+v", beat)
+			}
+			for key, want := range map[string]string{"reason": "no-maps", "maps_scope": tc.scope, "threads_source": tc.source} {
+				if got := beat.Meta[key]; got != want {
+					t.Errorf("skip %s = %q, want %q", key, got, want)
+				}
+			}
+			raw, err := os.ReadFile(beatsPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, private := range []string{logX, logY, os.Getenv("HOME")} {
+				if strings.Contains(string(raw), private) {
+					t.Errorf("skip beat exposes a threads path or home directory: %s", raw)
+				}
+			}
+		})
+	}
+}
+
 // TestRenderSubagentMapLineStaysWithinItsBound pins the line's byte bound
 // however long the ids and the purpose are, the read command never yielding.
 func TestRenderSubagentMapLineStaysWithinItsBound(t *testing.T) {
