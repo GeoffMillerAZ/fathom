@@ -1,6 +1,6 @@
 package fusion_test
 
-// O25: an adopter's Go 1.27 tree failed 12 of 20 typed loads with
+// An adopter's report (2026-10-22): a Go 1.27 tree failed 12 of 20 typed loads with
 // "math/rand/v2/rand.go: method must have no type parameters" because the
 // released binary was built with Go 1.26, whose go/types rejects the generic
 // methods Go 1.27's standard library uses. The typed pass must load the

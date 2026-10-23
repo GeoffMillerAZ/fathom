@@ -98,8 +98,9 @@ func (r *doctorWrapperReader) read(path string) ([]byte, error) {
 }
 
 // readExternal reads one bounded regular file outside the repository: the
-// git directory's pre-push hook of a linked worktree or submodule. Callers
-// pass a path git itself reported, never one a wrapper named.
+// shared git directory's pre-push hook of a linked worktree or submodule, or
+// a core.hooksPath target outside the repository. Callers pass a path git
+// itself reported, never one a wrapper named.
 func (r *doctorWrapperReader) readExternal(path string) ([]byte, error) {
 	if err := r.ctx.Err(); err != nil {
 		return nil, err

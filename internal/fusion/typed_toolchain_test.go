@@ -9,14 +9,13 @@ import (
 	"testing"
 )
 
-// O25: the typed pass type-checks with the binary's own go/types but runs the
+// An adopter's report (2026-10-22): the typed pass type-checks with the binary's own go/types but runs the
 // go on PATH. A binary built by a Go older than go.mod's toolchain line cannot
-// read the standard library of the newer go the adopter has. CI builds with
-// go.mod's toolchain (setup-go go-version-file), so a drift fails here.
+// read the standard library of the newer go the adopter has. CI (setup-go
+// go-version-file) and the local gate run with GOTOOLCHAIN=local after
+// installing go.mod's toolchain, so this runs there and fails when the go that
+// built the test is older than the toolchain line.
 func TestToolchainMatchesGoMod(t *testing.T) {
-	if os.Getenv("GOTOOLCHAIN") == "local" {
-		t.Skip("GOTOOLCHAIN=local: the toolchain line is not honored on purpose")
-	}
 	mod, err := os.ReadFile("../../go.mod")
 	if err != nil {
 		t.Fatal(err)

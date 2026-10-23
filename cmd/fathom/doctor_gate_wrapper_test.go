@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -46,7 +47,7 @@ func TestDoctorNativePushGateWrapper(t *testing.T) {
 	}
 }
 
-// O27: the pre-push hook git runs decides; an uninstalled lefthook.yml does not.
+// Adopter report (2026-10-22): the pre-push hook git runs decides; an uninstalled lefthook.yml does not.
 func doctorNativeOverLefthookFixture(t *testing.T, hook string) string {
 	root := t.TempDir()
 	if b, err := exec.Command("git", "init", "-q", root).CombinedOutput(); err != nil {
@@ -171,6 +172,44 @@ func TestDoctorNativeHookFixRound(t *testing.T) {
 		root := doctorNativeOverLefthookFixture(t, "#!/bin/sh\nexec lefthook run pre-push \"$@\"\n")
 		got := checkLefthookGates(root)
 		if strings.Contains(got.Reason, "not installed") {
+			t.Fatalf("got %+v", got)
+		}
+	})
+	t.Run("comment mentioning lefthook run is not a hand-off", func(t *testing.T) {
+		root := doctorNativeOverLefthookFixture(t, "#!/bin/sh\n# do not call lefthook run pre-push here\ngit lfs pre-push \"$@\"\n")
+		doctorWriteFixture(t, root, "lefthook.yml", "pre-push:\n  commands:\n    v:\n      run: fathom verify --strict\n")
+		if got := checkLefthookGates(root); got.Status != doctorFail {
+			t.Fatalf("got %+v", got)
+		}
+	})
+	t.Run("unreadable hook is unknown", func(t *testing.T) {
+		if os.Geteuid() == 0 {
+			t.Skip("root reads everything")
+		}
+		root := doctorNativeOverLefthookFixture(t, doctorNativeTaskHook)
+		doctorWriteFixture(t, root, "lefthook.yml", "pre-push:\n  commands:\n    v:\n      run: fathom verify --strict\n")
+		hook := filepath.Join(root, ".git/hooks/pre-push")
+		if err := os.Chmod(hook, 0); err != nil {
+			t.Fatal(err)
+		}
+		got := checkLefthookGates(root)
+		if got.Status != doctorUnknown || !strings.Contains(got.Reason, ".git/hooks/pre-push") {
+			t.Fatalf("got %+v", got)
+		}
+	})
+	t.Run("hook symlinked outside the repository is unknown", func(t *testing.T) {
+		root := doctorNativeOverLefthookFixture(t, doctorNativeTaskHook)
+		doctorWriteFixture(t, root, "lefthook.yml", "pre-push:\n  commands:\n    v:\n      run: fathom verify --strict\n")
+		outside := filepath.Join(t.TempDir(), "hook")
+		if err := os.WriteFile(outside, []byte("#!/bin/sh\nfathom verify --strict\n"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		hook := filepath.Join(root, ".git/hooks/pre-push")
+		_ = os.Remove(hook)
+		if err := os.Symlink(outside, hook); err != nil {
+			t.Fatal(err)
+		}
+		if got := checkLefthookGates(root); got.Status != doctorUnknown {
 			t.Fatalf("got %+v", got)
 		}
 	})

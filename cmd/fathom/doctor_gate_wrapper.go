@@ -20,9 +20,14 @@ func checkComposedPushGate(root string) (doctorCheck, bool) {
 	var commands []string
 	source := ""
 	// The hook git runs decides first: a lefthook.yml only counts when
-	// lefthook's own dispatcher is the installed pre-push hook (O27).
+	// lefthook's own dispatcher is the installed pre-push hook (an adopter's report, 2026-10-22).
 	notInstalled := ""
-	if hook, rel, ok := effectivePushHook(ctx, &r, root); ok && !isLefthookDispatcher(hook) {
+	hook, rel, ok, hookErr := effectivePushHook(ctx, &r, root)
+	if hookErr != nil {
+		// I38: a hook that exists and cannot be read is never "absent".
+		return doctorCheck{Name: "lefthook_gates", Status: doctorUnknown, Reason: "pre-push hook exists but could not be read: " + rel + " (" + hookErr.Error() + ")"}, true
+	}
+	if ok && !isLefthookDispatcher(hook) {
 		for _, p := range []string{"lefthook.yml", "lefthook.yaml"} {
 			if _, err := os.Stat(filepath.Join(root, p)); err == nil {
 				notInstalled = p + " is not installed as the pre-push hook; "
@@ -156,20 +161,23 @@ func checkComposedPushGate(root string) (doctorCheck, bool) {
 }
 
 // effectivePushHook reads the pre-push hook git runs: core.hooksPath's, else
-// .git/hooks/pre-push; under husky's generated dispatcher, the authored
-// .husky/pre-push it delegates to. ok is false when none exists or it cannot
-// be read. Nothing runs.
-func effectivePushHook(ctx context.Context, r *doctorWrapperReader, root string) (body []byte, rel string, ok bool) {
+// the (common) git dir's hooks/pre-push; under husky's generated dispatcher,
+// the authored .husky/pre-push it delegates to. ok is false when none exists.
+// A hook that exists but cannot be read returns err with its label in rel.
+// Nothing runs.
+func effectivePushHook(ctx context.Context, r *doctorWrapperReader, root string) (body []byte, rel string, ok bool, err error) {
 	paths := []string{".git/hooks/pre-push"}
+	label := "git-dir hooks/pre-push"
 	// git names the hook it runs: core.hooksPath, else the common git dir's
 	// hooks (a linked worktree or submodule has a .git file, not a directory).
-	if b, err := doctorGitCommand(ctx, root, "rev-parse", "--git-path", "hooks/pre-push").Output(); err == nil {
+	if b, e := doctorGitCommand(ctx, root, "rev-parse", "--git-path", "hooks/pre-push").Output(); e == nil {
 		if p := strings.TrimSpace(string(b)); p != "" {
 			paths = []string{p}
 		}
 	}
-	if b, err := doctorGitCommand(ctx, root, "config", "--get", "core.hooksPath").Output(); err == nil {
+	if b, e := doctorGitCommand(ctx, root, "config", "--get", "core.hooksPath").Output(); e == nil {
 		if hooksPath := strings.TrimSpace(string(b)); hooksPath != "" {
+			label = "core.hooksPath pre-push"
 			hooksDir := hooksPath
 			if filepath.IsAbs(hooksDir) {
 				hooksDir, _ = filepath.Rel(root, hooksDir)
@@ -184,23 +192,47 @@ func effectivePushHook(ctx context.Context, r *doctorWrapperReader, root string)
 		if !filepath.IsAbs(path) {
 			path = filepath.Join(root, path)
 		}
-		if inRel, err := filepath.Rel(root, path); err == nil && !strings.HasPrefix(inRel, "..") {
-			if b, err := r.read(path); err == nil {
-				return b, inRel, true
-			}
-			continue
+		inRel, relErr := filepath.Rel(root, path)
+		inside := relErr == nil && !strings.HasPrefix(inRel, "..")
+		var data []byte
+		var rerr error
+		name := label
+		if inside {
+			name = filepath.ToSlash(inRel)
+			data, rerr = r.read(path)
+		} else {
+			data, rerr = r.readExternal(path)
 		}
-		if b, err := r.readExternal(path); err == nil {
-			return b, "git-dir hooks/pre-push", true
+		switch {
+		case rerr == nil:
+			return data, name, true, nil
+		case os.IsNotExist(rerr):
+			continue
+		default:
+			return nil, name, false, rerr
 		}
 	}
-	return nil, "", false
+	return nil, "", false, nil
 }
 
 // isLefthookDispatcher reports whether a hook body is the dispatcher lefthook
-// install writes (it defines call_lefthook and honors LEFTHOOK=0), or a hand-written hook
-// that hands off with `lefthook run`.
+// install writes (it defines call_lefthook), or a hand-written hook whose
+// command `lefthook run` hands off to it. Comment lines never count.
 func isLefthookDispatcher(body []byte) bool {
-	t := string(body)
-	return strings.Contains(t, "call_lefthook") || strings.Contains(t, "LEFTHOOK_BIN") || strings.Contains(t, "LEFTHOOK_VERBOSE") || strings.Contains(t, "lefthook run")
+	for _, line := range strings.Split(string(body), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		if strings.Contains(line, "call_lefthook") || strings.Contains(line, "LEFTHOOK_BIN") {
+			return true
+		}
+		words := strings.Fields(strings.NewReplacer("\"", "", "'", "").Replace(line))
+		for i := 0; i+1 < len(words); i++ {
+			if filepath.Base(words[i]) == "lefthook" && words[i+1] == "run" {
+				return true
+			}
+		}
+	}
+	return false
 }

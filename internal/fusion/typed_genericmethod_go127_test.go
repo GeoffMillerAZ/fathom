@@ -9,7 +9,7 @@ import (
 )
 
 // A Go 1.27 generic method must type-check in the typed pass, and its call
-// must resolve (O25). The module is written at test time: a 1.26 gofmt (the
+// must resolve. The module is written at test time: a 1.26 gofmt (the
 // pre-commit check) cannot parse the syntax.
 func TestTypedPassLoadsGenericMethod(t *testing.T) {
 	dir := t.TempDir()
