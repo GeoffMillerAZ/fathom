@@ -110,16 +110,21 @@ func checkComposedPushGate(root string) (doctorCheck, bool) {
 		}
 	}
 	command := strings.Join(commands, "\n")
+	verifyCut := false
 	probe := func(match func([]string) bool) doctorWiringEvidence {
 		reader := doctorWrapperReader{ctx: ctx, root: root, remaining: doctorWrapperBytes, matches: match}
-		return reader.command(command, "", 0)
+		ev := reader.command(command, "", 0)
+		verifyCut = verifyCut || reader.cut
+		return ev
 	}
 	validate := probe(func(w []string) bool {
 		return len(w) > 1 && filepath.Base(w[0]) == "task" && (w[1] == "validate" || w[1] == "validate:unleased")
 	})
+	verifyCut = false // only the strict-verify walk's budget matters below
 	verify := probe(func(w []string) bool {
 		return len(w) > 2 && (filepath.Base(w[0]) == "fathom" || w[0] == "$FATHOM" || w[0] == "${FATHOM}") && w[1] == "verify" && slices.Contains(w[2:], "--strict")
 	})
+	verifyCutStrict := verifyCut
 	verifyAny := probe(func(w []string) bool {
 		return len(w) > 1 && (filepath.Base(w[0]) == "fathom" || w[0] == "$FATHOM" || w[0] == "${FATHOM}") && w[1] == "verify"
 	})
@@ -129,6 +134,9 @@ func checkComposedPushGate(root string) (doctorCheck, bool) {
 		slices.Sort(files)
 		return doctorCheck{Name: "lefthook_gates", Status: doctorPass, Reason: fmt.Sprintf("%spre-push reaches task validate and fathom verify --strict; proved by %s", notInstalled, strings.Join(files, ", "))}, true
 	}
+	if native && validate.found && !verify.found && verifyCutStrict {
+		return doctorCheck{Name: "lefthook_gates", Status: doctorUnknown, Reason: fmt.Sprintf("%s%s reaches task validate, but the 64 KiB read budget ran out before the walk found a strict fathom verify step, so whether it runs one is unknown", notInstalled, source), Remedy: "no change needed if the gate runs `fathom verify --strict`; doctor never executes hooks or tasks"}, true
+	}
 	if native && validate.found && !verify.found && verify.opaque != "" {
 		// The hook provably reaches task validate; the strict verify step may
 		// sit in a script this reader cannot read. Never a guess either way.
@@ -136,6 +144,13 @@ func checkComposedPushGate(root string) (doctorCheck, bool) {
 	}
 	if native && (validate.found || verifyAny.found) {
 		return doctorCheck{Name: "lefthook_gates", Status: doctorFail, Reason: notInstalled + "pre-push does not reach both task validate and fathom verify --strict", Remedy: "wire both commands in the repository-local pre-push wrapper"}, true
+	}
+	if notInstalled != "" {
+		// git never runs lefthook here, so lefthook.yml proves nothing.
+		if validate.unknown || verify.unknown || verifyAny.unknown {
+			return doctorCheck{Name: "lefthook_gates", Status: doctorUnknown, Reason: notInstalled + source + " could not be read far enough to tell whether it reaches task validate and fathom verify --strict"}, true
+		}
+		return doctorCheck{Name: "lefthook_gates", Status: doctorFail, Reason: notInstalled + source + " reaches neither task validate nor fathom verify --strict", Remedy: "run `lefthook install` so lefthook.yml's pre-push runs, or add the gate to the installed hook"}, true
 	}
 	return doctorCheck{}, false
 }
@@ -146,9 +161,15 @@ func checkComposedPushGate(root string) (doctorCheck, bool) {
 // be read. Nothing runs.
 func effectivePushHook(ctx context.Context, r *doctorWrapperReader, root string) (body []byte, rel string, ok bool) {
 	paths := []string{".git/hooks/pre-push"}
+	// git names the hook it runs: core.hooksPath, else the common git dir's
+	// hooks (a linked worktree or submodule has a .git file, not a directory).
+	if b, err := doctorGitCommand(ctx, root, "rev-parse", "--git-path", "hooks/pre-push").Output(); err == nil {
+		if p := strings.TrimSpace(string(b)); p != "" {
+			paths = []string{p}
+		}
+	}
 	if b, err := doctorGitCommand(ctx, root, "config", "--get", "core.hooksPath").Output(); err == nil {
 		if hooksPath := strings.TrimSpace(string(b)); hooksPath != "" {
-			paths = []string{filepath.Join(hooksPath, "pre-push")}
 			hooksDir := hooksPath
 			if filepath.IsAbs(hooksDir) {
 				hooksDir, _ = filepath.Rel(root, hooksDir)
@@ -163,19 +184,23 @@ func effectivePushHook(ctx context.Context, r *doctorWrapperReader, root string)
 		if !filepath.IsAbs(path) {
 			path = filepath.Join(root, path)
 		}
-		b, err := r.read(path)
-		if err != nil {
+		if inRel, err := filepath.Rel(root, path); err == nil && !strings.HasPrefix(inRel, "..") {
+			if b, err := r.read(path); err == nil {
+				return b, inRel, true
+			}
 			continue
 		}
-		rel, _ := filepath.Rel(root, path)
-		return b, rel, true
+		if b, err := r.readExternal(path); err == nil {
+			return b, "git-dir hooks/pre-push", true
+		}
 	}
 	return nil, "", false
 }
 
 // isLefthookDispatcher reports whether a hook body is the dispatcher lefthook
-// install writes (it defines call_lefthook and honors LEFTHOOK=0).
+// install writes (it defines call_lefthook and honors LEFTHOOK=0), or a hand-written hook
+// that hands off with `lefthook run`.
 func isLefthookDispatcher(body []byte) bool {
 	t := string(body)
-	return strings.Contains(t, "call_lefthook") || strings.Contains(t, "LEFTHOOK_BIN") || strings.Contains(t, "LEFTHOOK_VERBOSE")
+	return strings.Contains(t, "call_lefthook") || strings.Contains(t, "LEFTHOOK_BIN") || strings.Contains(t, "LEFTHOOK_VERBOSE") || strings.Contains(t, "lefthook run")
 }

@@ -26,8 +26,7 @@ type doctorWiringEvidence struct {
 	// opaque names the last project file the walk followed into that is not
 	// a shell script (an interpreter's script): it may hold the step, but
 	// this reader cannot read it.
-	opaque       string
-	opaqueVerify bool // the command that ran opaque mentions verify
+	opaque string
 }
 
 type doctorWrapperReader struct {
@@ -35,6 +34,10 @@ type doctorWrapperReader struct {
 	root      string
 	remaining int
 	matches   func([]string) bool
+	// cache holds each file once: a file read again (a Taskfile per `task X`)
+	// is never charged twice. cut is set when the byte budget stopped a read.
+	cache map[string][]byte
+	cut   bool
 }
 
 func doctorCommandEvidence(ctx context.Context, root, command, sub string) doctorWiringEvidence {
@@ -55,6 +58,9 @@ func (r *doctorWrapperReader) read(path string) ([]byte, error) {
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
 		return nil, fmt.Errorf("wrapper is outside the repository")
 	}
+	if b, ok := r.cache[rel]; ok {
+		return b, nil
+	}
 	root, err := os.OpenRoot(r.root)
 	if err != nil {
 		return nil, err
@@ -70,16 +76,48 @@ func (r *doctorWrapperReader) read(path string) ([]byte, error) {
 		return nil, err
 	}
 	if !info.Mode().IsRegular() || info.Size() > int64(r.remaining) {
+		r.cut = r.cut || (info.Mode().IsRegular() && info.Size() > int64(r.remaining))
 		return nil, fmt.Errorf("wrapper is not a bounded regular file")
 	}
 	b, err := io.ReadAll(io.LimitReader(f, int64(r.remaining)+1))
 	r.remaining -= len(b)
 	if r.remaining < 0 {
+		r.cut = true
 		return nil, fmt.Errorf("wrapper exceeds 64 KiB")
 	}
 	if err == nil {
 		err = r.ctx.Err()
 	}
+	if err == nil {
+		if r.cache == nil {
+			r.cache = map[string][]byte{}
+		}
+		r.cache[rel] = b
+	}
+	return b, err
+}
+
+// readExternal reads one bounded regular file outside the repository: the
+// git directory's pre-push hook of a linked worktree or submodule. Callers
+// pass a path git itself reported, never one a wrapper named.
+func (r *doctorWrapperReader) readExternal(path string) ([]byte, error) {
+	if err := r.ctx.Err(); err != nil {
+		return nil, err
+	}
+	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NONBLOCK, 0)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() || info.Size() > int64(r.remaining) {
+		return nil, fmt.Errorf("hook is not a bounded regular file")
+	}
+	b, err := io.ReadAll(io.LimitReader(f, int64(r.remaining)+1))
+	r.remaining -= len(b)
 	return b, err
 }
 
@@ -89,7 +127,6 @@ func (r *doctorWrapperReader) command(command, sub string, depth int) doctorWiri
 	}
 	var unknown bool
 	var missingScript, opaque string
-	var opaqueVerify bool
 	// A shell command list is wiring evidence, never proof the branch fired.
 	for _, line := range strings.Split(command, "\n") {
 		line = strings.TrimSpace(line)
@@ -142,9 +179,10 @@ func (r *doctorWrapperReader) command(command, sub string, depth int) doctorWiri
 			}
 			wrapper := shellScript || strings.Contains(words[0], "/") || strings.HasSuffix(bin, ".sh")
 			if script := r.opaqueScript(words); script != "" {
-				v := strings.Contains(strings.Join(words, " "), "verify")
-				if opaque == "" || (v && !opaqueVerify) {
-					opaque, opaqueVerify = script, v
+				// Only a script run as "...verify..." may hold the verify step;
+				// any other interpreter script is unrelated work.
+				if opaque == "" && strings.Contains(strings.Join(words, " "), "verify") {
+					opaque = script
 				}
 				continue
 			}
@@ -214,12 +252,12 @@ func (r *doctorWrapperReader) command(command, sub string, depth int) doctorWiri
 			if missingScript == "" {
 				missingScript = ev.missingScript
 			}
-			if ev.opaque != "" && (opaque == "" || (ev.opaqueVerify && !opaqueVerify)) {
-				opaque, opaqueVerify = ev.opaque, ev.opaqueVerify
+			if opaque == "" {
+				opaque = ev.opaque
 			}
 		}
 	}
-	return doctorWiringEvidence{unknown: unknown, missingScript: missingScript, opaque: opaque, opaqueVerify: opaqueVerify}
+	return doctorWiringEvidence{unknown: unknown, missingScript: missingScript, opaque: opaque}
 }
 
 // opaqueScript returns the repository-relative path of a project script that
