@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"syscall"
@@ -22,6 +23,11 @@ type doctorWiringEvidence struct {
 	found, indirect, unknown bool
 	missingScript            string
 	file                     string
+	// opaque names the last project file the walk followed into that is not
+	// a shell script (an interpreter's script): it may hold the step, but
+	// this reader cannot read it.
+	opaque       string
+	opaqueVerify bool // the command that ran opaque mentions verify
 }
 
 type doctorWrapperReader struct {
@@ -82,7 +88,8 @@ func (r *doctorWrapperReader) command(command, sub string, depth int) doctorWiri
 		return doctorWiringEvidence{unknown: true}
 	}
 	var unknown bool
-	var missingScript string
+	var missingScript, opaque string
+	var opaqueVerify bool
 	// A shell command list is wiring evidence, never proof the branch fired.
 	for _, line := range strings.Split(command, "\n") {
 		line = strings.TrimSpace(line)
@@ -94,6 +101,10 @@ func (r *doctorWrapperReader) command(command, sub string, depth int) doctorWiri
 			for i := range words {
 				words[i] = strings.NewReplacer("\"", "", "'", "").Replace(words[i])
 			}
+			words = slices.DeleteFunc(words, func(w string) bool {
+				w = strings.TrimLeft(w, "0123456789")
+				return strings.HasPrefix(w, "<") || strings.HasPrefix(w, ">")
+			})
 			if len(words) > 1 && words[0] == "command" && words[1] == "-v" {
 				continue // template availability guard, not an unresolved wrapper
 			}
@@ -130,6 +141,13 @@ func (r *doctorWrapperReader) command(command, sub string, depth int) doctorWiri
 				bin = filepath.Base(words[0])
 			}
 			wrapper := shellScript || strings.Contains(words[0], "/") || strings.HasSuffix(bin, ".sh")
+			if script := r.opaqueScript(words); script != "" {
+				v := strings.Contains(strings.Join(words, " "), "verify")
+				if opaque == "" || (v && !opaqueVerify) {
+					opaque, opaqueVerify = script, v
+				}
+				continue
+			}
 			if bin != "task" && bin != "lefthook" && !wrapper {
 				// Other tools do not stand for fathom. Dynamic shell work is
 				// uncertain only inside a project wrapper we actually read.
@@ -196,9 +214,50 @@ func (r *doctorWrapperReader) command(command, sub string, depth int) doctorWiri
 			if missingScript == "" {
 				missingScript = ev.missingScript
 			}
+			if ev.opaque != "" && (opaque == "" || (ev.opaqueVerify && !opaqueVerify)) {
+				opaque, opaqueVerify = ev.opaque, ev.opaqueVerify
+			}
 		}
 	}
-	return doctorWiringEvidence{unknown: unknown, missingScript: missingScript}
+	return doctorWiringEvidence{unknown: unknown, missingScript: missingScript, opaque: opaque, opaqueVerify: opaqueVerify}
+}
+
+// opaqueScript returns the repository-relative path of a project script that
+// an interpreter (python, node, ruby, perl) or a .py/.js/.rb/.pl executable
+// word runs, when that file exists inside the repository. Such a script is
+// outside this deliberately small shell reader: it is named, never read.
+func (r *doctorWrapperReader) opaqueScript(words []string) string {
+	if len(words) == 0 {
+		return ""
+	}
+	candidate := ""
+	bin := filepath.Base(words[0])
+	switch {
+	case strings.HasPrefix(bin, "python") || bin == "node" || bin == "ruby" || bin == "perl":
+		for _, w := range words[1:] {
+			if !strings.HasPrefix(w, "-") {
+				candidate = w
+				break
+			}
+		}
+	case slices.Contains([]string{".py", ".js", ".rb", ".pl"}, filepath.Ext(bin)):
+		candidate = words[0]
+	}
+	if candidate == "" || strings.ContainsAny(candidate, "$`{}") || doctorForeignProgram(r.root, candidate) {
+		return ""
+	}
+	p := candidate
+	if !filepath.IsAbs(p) {
+		p = filepath.Join(r.root, p)
+	}
+	rel, err := filepath.Rel(r.root, p)
+	if err != nil || strings.HasPrefix(rel, "..") {
+		return ""
+	}
+	if info, err := os.Stat(p); err != nil || !info.Mode().IsRegular() {
+		return ""
+	}
+	return filepath.ToSlash(rel)
 }
 
 func doctorForeignProgram(root, program string) bool {
