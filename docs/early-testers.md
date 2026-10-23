@@ -66,7 +66,7 @@ through the public proxy, with `go get` of `pkg/client` from a scratch module
 
 | Need | Version | Why |
 |---|---|---|
-| Go | 1.26.2, go.mod's `go` line | Go 1.21 or later fetches it for you through `proxy.golang.org` under `GOTOOLCHAIN=auto` (the default) |
+| Go | go.mod's `toolchain` line, Go 1.27.3 | Go 1.21 or later fetches it for you through `proxy.golang.org` under `GOTOOLCHAIN=auto` (the default). A Go 1.26 build with `GOTOOLCHAIN=local` compiles but cannot type-load Go 1.27 sources |
 | A C compiler and `CGO_ENABLED=1` | macOS only: Xcode Command Line Tools | the daemon's two memory readers use cgo; Linux builds pure Go with `CGO_ENABLED=0` and needs no C compiler (ADR-066) |
 | `MACOSX_DEPLOYMENT_TARGET=14.0` | macOS only | the binary's minimum macOS; unset, the cgo link stamps the build machine's version |
 | git | any recent | ingest and verification read git history |

@@ -704,7 +704,7 @@ Building fathom from source, the gate, and the repo's dev-loop conventions. Usin
 
 | Requirement | Notes |
 |---|---|
-| Go 1.26+ | Pure Go (ADR-066): Linux builds with `CGO_ENABLED=0` and no C compiler; macOS keeps cgo (Xcode Command Line Tools) only for the daemon's two memory readers; `go test -race` on Linux needs cgo and gcc |
+| Go 1.27.3 (go.mod's `toolchain`; `go 1.26.2` is the source-build minimum, but a 1.26 build with `GOTOOLCHAIN=local` cannot type-load Go 1.27 sources) | Pure Go (ADR-066): Linux builds with `CGO_ENABLED=0` and no C compiler; macOS keeps cgo (Xcode Command Line Tools) only for the daemon's two memory readers; `go test -race` on Linux needs cgo and gcc |
 | [CUE](https://cuelang.org) 0.16+ | Schema validation |
 | [go-task](https://taskfile.dev) | `Taskfile.yml` is the only command runner |
 | [lefthook](https://github.com/evilmartians/lefthook) | Git hooks (pre-commit gofmt, pre-push validate) |

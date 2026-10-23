@@ -36,8 +36,9 @@ The [overview](docs/overview.md) is a 15-minute tour of the design and its evide
 
 Measured on an Apple M4, cold Go cache: clone 6.8 s, build 28.6 s, daemon under 1 s,
 `fathom init` on [psf/requests](https://github.com/psf/requests) (130 files) 0.55 s, answers
-under 30 ms ([reading](docs/bench/readings/reach/quickstart-2026-10-15.md)). Needs Go
-1.26.2 (Go 1.21 or later fetches it through `GOTOOLCHAIN=auto`).
+under 30 ms ([reading](docs/bench/readings/reach/quickstart-2026-10-15.md)). Builds with
+go.mod's toolchain, Go 1.27.3 (Go 1.21 or later fetches it through `GOTOOLCHAIN=auto`). A Go 1.26
+build with `GOTOOLCHAIN=local` compiles but cannot type-load Go 1.27 sources.
 
 **1. Install.** Three ways; the first needs no Go.
 

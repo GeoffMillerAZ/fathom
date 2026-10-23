@@ -42,8 +42,9 @@ func ingestTypedDir(t *testing.T, name, dir string) (fusion.Report, []core.Edge)
 	return rep, typed
 }
 
-// Version-independent: whatever toolchain runs this, the standard library it
-// ships must type-check in the typed pass.
+// Whatever toolchain runs this, the standard library it ships must type-check
+// in the typed pass. It cannot catch a binary built older than the go on PATH
+// (go test puts its own go first); TestToolchainMatchesGoMod covers that.
 func TestTypedPassLoadsToolchainStdlib(t *testing.T) {
 	rep, typed := ingestTypedFixture(t, "stdlibrand")
 	if rep.TypedPackagesFailed != 0 || rep.TypedFailed {
