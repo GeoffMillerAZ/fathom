@@ -1,2 +1,0 @@
-### Fixed
-- When a pre-push hook is installed, `fathom doctor` judges that hook, including in linked worktrees and submodules, instead of an unused `lefthook.yml`. The `lefthook_gates` row follows `.tools/bin/task validate`, fails with `lefthook install` as the remedy when the installed hook reaches neither gate, and is `unknown` when the strict verify step sits in a non-shell script such as Python, the read budget runs out first, or the installed hook exists but cannot be read. A hook that hands off with `lefthook run` still counts `lefthook.yml`.

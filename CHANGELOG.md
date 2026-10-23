@@ -24,6 +24,17 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Unreleased changes wait as fragments under docs/changelog/unreleased/; the release ritual folds them here.
 
+## [0.18.1] — 2026-10-22
+
+Release impact: patch
+
+### Fixed
+
+- When a pre-push hook is installed, `fathom doctor` judges that hook, including in linked worktrees and submodules, instead of an unused `lefthook.yml`. The `lefthook_gates` row follows `.tools/bin/task validate`, fails with `lefthook install` as the remedy when the installed hook reaches neither gate, and is `unknown` when the strict verify step sits in a non-shell script such as Python, the read budget runs out first, or the installed hook exists but cannot be read. A hook that hands off with `lefthook run` still counts `lefthook.yml`.
+- `fathom init --dry-run` with `--no-user-writes` (or `--harness none`) no longer lists user files such as `~/.fathom/config.toml` as `would-create`. Each shows as `skipped-user-scope`, in text and in `--json` `writes[]`, and the "would write or change N files" count leaves them out.
+- Typed Go loads no longer fail on a Go 1.27 standard library ("method must have no type parameters" in `math/rand/v2`). fathom is now built with Go 1.27.3 (`toolchain go1.27.3` in go.mod; the `go 1.26.2` minimum for source builders is unchanged), so its type checker matches the `go` it drives. Build fathom with Go 1.27 or newer to load Go 1.27 sources.
+- Analyses that read compiled package data instead of source also handle Go 1.27 (golang.org/x/tools moves to v0.52.0).
+
 ## [0.18.0] — 2026-10-22
 
 Release impact: major (pre-1.0: breaking bumps minor)
