@@ -451,6 +451,12 @@ func TestEditHookBashWriteResolvedTargetServesAndCountsAsPayloadCost(t *testing.
 }
 
 func TestEditHookBashWriteSedSafety(t *testing.T) {
+	// Asserts which files the hook names, not how fast: on a loaded gate the
+	// in-process hook spent its deadline and stayed silent, so its budget is
+	// widened as pinRepo widens it.
+	prevScale := hookBudgetScale
+	hookBudgetScale = 30
+	t.Cleanup(func() { hookBudgetScale = prevScale })
 	for _, tt := range []struct {
 		name, command string
 		wantFiles     string
