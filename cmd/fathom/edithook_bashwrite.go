@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -55,8 +56,9 @@ func cmdEditHookBashWrite(codec harness.Codec, hook harness.HookInput, url strin
 	}()
 	deadline := time.Now().Add(bashWriteTimeout) // one shared budget for every RPC this call makes, not a fresh one each
 	sessionID := hook.SessionID
-	paths, writeShaped := bashWriteTargets(hook.Command, hook.Cwd)
-	if !writeShaped {
+	writes := collectBashWriteTargets(hook.Command, hook.Cwd)
+	paths := writes.paths
+	if !writes.writeShaped {
 		return 0 // a read-only or unrecognized command: no beat, no output — matches edit-hook's silence on a clean/irrelevant call
 	}
 	emitBeat("edit-hook", "seen", firingMetaArm(map[string]string{"phase": "post-bash"}, sessionID, "", armOff))
@@ -70,6 +72,13 @@ func cmdEditHookBashWrite(codec harness.Codec, hook harness.HookInput, url strin
 		cwd = projDir
 	}
 	targets := resolveBashWriteTargets(cwd, paths)
+	targets, dropped := dropMissingSedWriteTargets(cwd, targets, writes)
+	if dropped {
+		writes.sedDoubt = true
+		if len(targets) == 0 {
+			paths = nil // a failed or ambiguous sed still takes the doubt branch
+		}
+	}
 	// XM-37: the fold of targets[0], once the targets are folded below.
 	var firstFold cloneFold
 	// XM-36: every answer that names a target records where it went.
@@ -106,7 +115,8 @@ func cmdEditHookBashWrite(codec harness.Codec, hook harness.HookInput, url strin
 		return silent(silenceGitignored)
 	}
 	now := time.Now()
-	if len(paths) == 0 && bashDoubtServed(sessionID, hook.Cwd, now) {
+	doubtSeen := (len(paths) == 0 || writes.sedDoubt) && bashDoubtServed(sessionID, hook.Cwd, now)
+	if len(paths) == 0 && doubtSeen {
 		return silent(silenceDoubtAlreadyServed) // once per session per directory, and no daemon call to learn it
 	}
 
@@ -180,11 +190,16 @@ func cmdEditHookBashWrite(codec harness.Codec, hook harness.HookInput, url strin
 		return silent(silenceNoRules)
 	}
 
-	var text string
+	var text, doubtText string
 	if doubt {
 		text = bashDoubtLine(filepath.ToSlash(filepath.Dir(files[0])), len(m.rules)+m.displaced)
 	} else {
 		text = bashWriteRulesPayload(m, label)
+		if writes.sedDoubt && !doubtSeen {
+			// The known targets keep their rules. We have no directory-rule
+			// count for the ambiguous operand, so the note makes no such claim.
+			doubtText = "⚖️ fathom obligations — this Bash command also wrote something the hook could not name (shown once per directory this session): call `obligations` with the file it wrote."
+		}
 	}
 
 	if pinText != "" {
@@ -196,7 +211,17 @@ func cmdEditHookBashWrite(codec harness.Codec, hook harness.HookInput, url strin
 		defer dedupe.close()
 		if dedupe.suppressed {
 			dedupe.record(codec.ID(), sessionID, "post-bash", text)
-			return silent(silenceSessionDeduped)
+			if doubtText == "" {
+				return silent(silenceSessionDeduped)
+			}
+			doubt = true // only the new uncertainty notice is being delivered
+			dedupe = nil // suppressed rules were already recorded, never committed as emitted
+			text = doubtText
+			if pinText != "" {
+				text += "\n" + pinText
+			}
+		} else if doubtText != "" {
+			text += "\n" + doubtText
 		}
 	}
 	out, err := codec.EncodeOutput(harness.EventPostTool, harness.HookOutput{Context: text})
@@ -206,6 +231,9 @@ func cmdEditHookBashWrite(codec harness.Codec, hook harness.HookInput, url strin
 	pinCarried = true
 	costMeta := map[string]string{}
 	answeredMeta := map[string]string{"emitted": "true", "phase": "post-bash"}
+	if doubtText != "" && !doubt {
+		markBashDoubtServed(sessionID, hook.Cwd, now)
+	}
 	if doubt {
 		costMeta["doubt"] = "true"
 		answeredMeta["doubt"] = "true"
@@ -229,6 +257,29 @@ func cmdEditHookBashWrite(codec harness.Codec, hook harness.HookInput, url strin
 		dedupe.record(codec.ID(), sessionID, "post-bash", text)
 	}
 	return 0
+}
+
+// Only targets named exclusively by sed get this post-command safety check.
+// Other writers retain their semantics, including a failed copy, a redirect,
+// or a patch that deletes a file. A stat failure is uncertainty, never FAIL.
+func dropMissingSedWriteTargets(cwd string, targets []string, writes *bwCollector) (kept []string, dropped bool) {
+	var otherPaths []string
+	for _, p := range writes.paths {
+		if writes.seen[p] {
+			otherPaths = append(otherPaths, p)
+		}
+	}
+	otherTargets := resolveBashWriteTargets(cwd, otherPaths)
+	for _, target := range targets {
+		if !slices.Contains(otherTargets, target) {
+			if _, err := os.Stat(target); err != nil {
+				dropped = true
+				continue
+			}
+		}
+		kept = append(kept, target)
+	}
+	return kept, dropped
 }
 
 // resolveBashWriteTargets makes every confident target bashWriteTargets

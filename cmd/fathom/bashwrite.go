@@ -71,17 +71,21 @@ const maxBashWriteTargets = 5
 // three-way branch (silent / confident paths / doubt) is
 // `!writeShaped` / `len(paths)>0` / `writeShaped && len(paths)==0`.
 func bashWriteTargets(cmd string, roots ...string) (paths []string, writeShaped bool) {
+	c := collectBashWriteTargets(cmd, roots...)
+	return c.paths, c.writeShaped
+}
+
+// collectBashWriteTargets also preserves sed uncertainty and target provenance
+// for the post-edit disk check. The command-only classifier stays pure.
+func collectBashWriteTargets(cmd string, roots ...string) *bwCollector {
+	c := &bwCollector{seen: map[string]bool{}, roots: roots}
 	cmd = strings.TrimSpace(blankHeredocBodies(cmd))
 	if cmd == "" {
-		return nil, false
+		return c
 	}
-	c := &bwCollector{seen: map[string]bool{}, roots: roots}
 	st := &bwState{cwdKnown: true}
 	scanBashWriteStatements(cmd, st, c)
-	if len(c.paths) > 0 {
-		return c.paths, true
-	}
-	return nil, c.writeShaped
+	return c
 }
 
 // bwState is the effective-cwd state threaded across a sequence of
@@ -106,18 +110,27 @@ type bwStackEntry struct {
 type bwCollector struct {
 	roots       []string
 	paths       []string
-	seen        map[string]bool
+	seen        map[string]bool // present = deduped; true = also named by a non-sed writer
 	writeShaped bool
+	sedDoubt    bool
 }
 
 func (c *bwCollector) add(p string) {
+	c.addTarget(p, true)
+}
+
+func (c *bwCollector) addTarget(p string, nonSed bool) {
+	if p == "" {
+		return
+	}
+	if prior, ok := c.seen[p]; ok {
+		c.seen[p] = prior || nonSed
+		return
+	}
 	if len(c.paths) >= maxBashWriteTargets {
 		return
 	}
-	if p == "" || c.seen[p] {
-		return
-	}
-	c.seen[p] = true
+	c.seen[p] = nonSed
 	c.paths = append(c.paths, p)
 }
 
@@ -289,15 +302,22 @@ func detectBashWritesInStatement(stmt string, st *bwState, c *bwCollector) {
 
 	for _, verb := range []string{"sed", "perl", "ruby"} {
 		if idx := wordEnd(mask, verb); idx >= 0 {
-			args, unreadable := lexClauseFields(stmt[idx:])
+			args, unreadable := lexClauseFieldsWithEmpty(stmt[idx:], verb == "sed")
 			if unreadable {
 				continue
 			}
-			targets, inPlace := inPlaceWriteArgs(verb, args)
+			var targets []string
+			var inPlace, uncertain bool
+			if verb == "sed" {
+				targets, inPlace, uncertain = sedInPlaceWriteArgs(args)
+			} else {
+				targets, inPlace = inPlaceWriteArgs(verb, args)
+			}
 			if inPlace {
 				sawWrite = true
+				c.sedDoubt = c.sedDoubt || uncertain
 				for _, target := range targets {
-					c.add(resolve(target))
+					c.addTarget(resolve(target), verb != "sed")
 				}
 			}
 		}
@@ -355,6 +375,10 @@ func foreignBashTarget(p string) bool {
 
 // inPlaceWriteArgs consumes scripts and option values before naming files.
 func inPlaceWriteArgs(verb string, args []string) (targets []string, inPlace bool) {
+	if verb == "sed" {
+		targets, inPlace, _ = sedInPlaceWriteArgs(args)
+		return targets, inPlace
+	}
 	hasScript, options := false, true
 	for i := 0; i < len(args); i++ {
 		a := args[i]
@@ -370,26 +394,6 @@ func inPlaceWriteArgs(verb string, args []string) (targets []string, inPlace boo
 			}
 			if strings.HasPrefix(a, "--expression=") || strings.HasPrefix(a, "--file=") {
 				hasScript = true
-				continue
-			}
-			if verb == "sed" {
-				if a == "--in-place" || strings.HasPrefix(a, "--in-place=") {
-					inPlace = true
-					continue
-				}
-				for j := 1; j < len(a); j++ {
-					switch a[j] {
-					case 'i':
-						inPlace = true
-						if j == len(a)-1 && i+1 < len(args) && args[i+1] == "" {
-							i++ // BSD sed's separate empty backup suffix
-						}
-						j = len(a) // any remainder is a backup suffix
-					case 'e', 'f':
-						hasScript = true
-						j = len(a) // any remainder is the script or script path
-					}
-				}
 				continue
 			}
 			// Perl and Ruby accept combined flags (-pi, -pe). Value-taking
@@ -436,6 +440,136 @@ func inPlaceWriteArgs(verb string, args []string) (targets []string, inPlace boo
 		targets = append(targets, a)
 	}
 	return targets, inPlace
+}
+
+// sedInPlaceWriteArgs keeps script arguments separate from file operands.
+// Only recognized options are consumed: an unknown option may take a value,
+// so guessing past it could turn a script into a written path.
+func sedInPlaceWriteArgs(args []string) (targets []string, inPlace, uncertain bool) {
+	explicitScript, options := false, true
+	var dottedOperands []int
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if options && a == "--" {
+			options = false
+			continue
+		}
+		if !options || !strings.HasPrefix(a, "-") || a == "-" {
+			targets = append(targets, a)
+			continue
+		}
+		switch {
+		case a == "--in-place" || strings.HasPrefix(a, "--in-place="):
+			inPlace = true
+			continue
+		case a == "--quiet" || a == "--silent" || a == "--regexp-extended" ||
+			a == "--separate" || a == "--null-data" || a == "--zero-terminated" ||
+			a == "--unbuffered" || a == "--follow-symlinks" || a == "--sandbox" ||
+			a == "--posix" || a == "--debug":
+			continue
+		case a == "--line-length":
+			if i+1 >= len(args) {
+				return nil, inPlace, true
+			}
+			i++
+			continue
+		case strings.HasPrefix(a, "--line-length="):
+			continue
+		case a == "--expression" || a == "--file":
+			if i+1 >= len(args) || (a == "--file" && args[i+1] == "") {
+				return nil, inPlace, true
+			}
+			i++
+			explicitScript = true
+			continue
+		case strings.HasPrefix(a, "--expression=") || strings.HasPrefix(a, "--file="):
+			if a == "--file=" {
+				return nil, inPlace, true
+			}
+			explicitScript = true
+			continue
+		case strings.HasPrefix(a, "--"):
+			return nil, inPlace || sedRemainingInPlace(args[i:]), true
+		}
+		for j := 1; j < len(a); j++ {
+			switch a[j] {
+			case 'E', 'r', 'n', 's', 'u', 'z':
+			case 'l':
+				if j == len(a)-1 {
+					if i+1 >= len(args) {
+						return nil, inPlace, true
+					}
+					i++
+				}
+				j = len(a) // the remainder is the line length
+			case 'i':
+				inPlace = true
+				// GNU attaches a backup suffix; BSD also accepts a separate
+				// empty or .suffix word. A lone dotfile is a GNU operand.
+				// With later operands it is ambiguous: omit it and say so.
+				if j == len(a)-1 && i+1 < len(args) {
+					next := args[i+1]
+					if next == "" {
+						i++
+					} else if strings.HasPrefix(next, ".") && !strings.Contains(next, "/") {
+						dottedOperands = append(dottedOperands, len(targets))
+						targets = append(targets, next)
+						i++
+					}
+				}
+				j = len(a) // the remainder is the attached backup suffix
+			case 'e', 'f':
+				explicitScript = true
+				if j == len(a)-1 {
+					if i+1 >= len(args) || (a[j] == 'f' && args[i+1] == "") {
+						return nil, inPlace, true
+					}
+					i++
+				}
+				j = len(a) // the remainder is the script or script file
+			default:
+				return nil, inPlace || sedRemainingInPlace(args[i:]), true
+			}
+		}
+	}
+	// Decide after consuming options and their values: a later -e expression
+	// or flag is not another operand. Remove backwards to keep indices valid.
+	for i := len(dottedOperands) - 1; i >= 0; i-- {
+		idx := dottedOperands[i]
+		if idx+1 < len(targets) {
+			targets = append(targets[:idx], targets[idx+1:]...)
+			uncertain = true
+		}
+	}
+	if !explicitScript && len(targets) > 0 {
+		targets = targets[1:] // the first operand is the implicit script
+	}
+	if !inPlace || len(targets) == 0 {
+		return nil, inPlace, uncertain
+	}
+	for _, target := range targets {
+		switch target {
+		case "{}", "+", ";", `\;`, `\`:
+			return nil, inPlace, true // find/xargs expansion cannot name a file here
+		}
+	}
+	return targets, inPlace, uncertain
+}
+
+// An unknown option may take a value, so it cannot safely name operands.
+// Still recognize a possible in-place flag later, including BSD -I, to
+// preserve the hook's cannot-tell fallback rather than silently losing it.
+func sedRemainingInPlace(args []string) bool {
+	for _, a := range args {
+		if a == "--" {
+			break
+		}
+		if strings.HasPrefix(a, "--in-place") || a == "-I" ||
+			(strings.HasPrefix(a, "-") && !strings.HasPrefix(a, "--") && strings.Contains(a[1:], "i")) {
+			return true
+		}
+	}
+	return false
 }
 
 // maskQuotedSpans returns s with every byte inside a single- or double-
@@ -753,6 +887,12 @@ func wordEnd(cmd, word string) int {
 // not read s (RO-4); fields is then nil and each caller decides what that
 // means for itself (the bash-write detector reads it as doubt).
 func lexClauseFields(s string, roots ...string) (fields []string, unreadable bool) {
+	return lexClauseFieldsWithEmpty(s, false, roots...)
+}
+
+// Sed needs empty words to distinguish a BSD backup suffix from its script.
+// Other consumers retain their existing empty-word filtering.
+func lexClauseFieldsWithEmpty(s string, keepEmpty bool, roots ...string) (fields []string, unreadable bool) {
 	cmd := parseShellCommand(s, roots...)
 	if cmd.Unreadable {
 		return nil, true
@@ -765,7 +905,7 @@ func lexClauseFields(s string, roots ...string) (fields []string, unreadable boo
 		return nil, false
 	}
 	for _, w := range u.Words {
-		if w.Text != "" { // an empty quoted word (sed's `-i ''`) is no field
+		if keepEmpty || w.Text != "" {
 			fields = append(fields, w.Text)
 		}
 	}

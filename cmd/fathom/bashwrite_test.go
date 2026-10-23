@@ -5,6 +5,86 @@ import (
 	"testing"
 )
 
+func TestBashWriteTargetsSed(t *testing.T) {
+	for _, tt := range []struct {
+		name, command string
+		want          []string
+	}{
+		{"quiet before in-place", `sed --quiet -i 's/a/b/' f`, []string{"f"}},
+		{"silent before in-place", `sed --silent -i 's/a/b/' f`, []string{"f"}},
+		{"extended before in-place", `sed --regexp-extended -i 's/a/b/' f`, []string{"f"}},
+		{"separate before in-place", `sed --separate -i 's/a/b/' f`, []string{"f"}},
+		{"null data before in-place", `sed --null-data -i 's/a/b/' f`, []string{"f"}},
+		{"zero terminated before in-place", `sed --zero-terminated -i 's/a/b/' f`, []string{"f"}},
+		{"unbuffered before in-place", `sed --unbuffered -i 's/a/b/' f`, []string{"f"}},
+		{"follow symlinks before in-place", `sed --follow-symlinks -i 's/a/b/' f`, []string{"f"}},
+		{"sandbox before in-place", `sed --sandbox -i 's/a/b/' f`, []string{"f"}},
+		{"short line length", `sed -l 80 -i 's/a/b/' f`, []string{"f"}},
+		{"clustered line length", `sed -nl80 -i 's/a/b/' f`, []string{"f"}},
+		{"long line length", `sed --line-length=80 -i 's/a/b/' f`, []string{"f"}},
+		{"separate long line length", `sed --line-length 80 -i 's/a/b/' f`, []string{"f"}},
+		{"unknown before in-place", `sed --unknown value -i 's/a/b/' f`, nil},
+		{"unknown before clustered in-place", `sed -Q value -ni 's/a/b/' f`, nil},
+		{"BSD capital in-place", `sed -I '' 's/a/b/' f`, nil},
+		{"find exec plus", `find . -name '*.html' -exec sed -i '' 's|a|b|g' {} +`, nil},
+		{"find exec semicolon", `find . -name '*.html' -exec sed -i '' 's|a|b|g' {} \;`, nil},
+		{"xargs placeholder", `xargs -I{} sed -i 's/a/b/' {}`, nil},
+		{"plus placeholder", `sed -i 's/a/b/' +`, nil},
+		{"quoted semicolon placeholder", `sed -i 's/a/b/' ';'`, nil},
+		{"escaped semicolon placeholder", `sed -i 's/a/b/' '\;'`, nil},
+		{"backslash placeholder", `sed -i 's/a/b/' '\'`, nil},
+		// Non-dot suffixes remain ambiguous candidates until the post-edit disk check.
+		{"bare backup candidate", `sed -i bak 's/a/b/' f`, []string{"s/a/b", "f"}},
+		{"tilde backup candidate", `sed -i '~' 's/a/b/' f`, []string{"s/a/b", "f"}},
+		{"only dotted operand", `sed -e 's/a/b/' -i .env`, []string{".env"}},
+		{"only dotted operand before flag", `sed -e 's/a/b/' -i .env -n`, []string{".env"}},
+		{"only dotted operand before expression", `sed -i .env -e 's/a/b/'`, []string{".env"}},
+		{"ambiguous dotted operand", `sed -e 's/a/b/' -i .env .bashrc`, []string{".bashrc"}},
+		{"BSD empty suffix", `sed -i '' 's|a/b|c/d|g' dir/f.html`, []string{"dir/f.html"}},
+		{"attached empty suffix", `sed -i'' 's|a/b|c/d|g' dir/f.html`, []string{"dir/f.html"}},
+		{"empty implicit script", `sed -i '' '' f1 f2`, []string{"f1", "f2"}},
+		{"empty explicit script", `sed -i '' -e '' f1 f2`, []string{"f1", "f2"}},
+		{"attached backup and expressions", `sed -i.bak -e 's/x/y/' -e 's/p/q/' a.go b.go`, []string{"a.go", "b.go"}},
+		{"BSD separate backup", `sed -i .bak 's|a/b|c/d|g' dir/f.html`, []string{"dir/f.html"}},
+		{"BSD separate backup and expression", `sed -i .bak -e 's/x/y/' f`, []string{"f"}},
+		{"GNU bare in-place", `sed -i -E 's#x#y#' f`, []string{"f"}},
+		{"long backup and script file", `sed --in-place=.orig -f script.sed f1 f2`, []string{"f1", "f2"}},
+		{"long in-place", `sed --in-place 's/a/b/' f`, []string{"f"}},
+		{"long expression", `sed -i --expression 's/a b/c d/' f`, []string{"f"}},
+		{"attached long expression", `sed -i --expression='s/a/b/' f`, []string{"f"}},
+		{"long script file", `sed -i --file script.sed f`, []string{"f"}},
+		{"attached long script file", `sed -i --file=script.sed f`, []string{"f"}},
+		{"combined flags", `sed -nE -ri 's/a/b/' f`, []string{"f"}},
+		{"no-file options", `sed --posix --debug -suz -i 's/a/b/' f`, []string{"f"}},
+		{"combined expression", `sed -i -nEe 's/a/b/' f`, []string{"f"}},
+		{"combined attached expression", `sed -i -nEes/a/b/ f`, []string{"f"}},
+		{"combined script file", `sed -i -nf script.sed f`, []string{"f"}},
+		{"combined attached script file", `sed -i -nfscript.sed f`, []string{"f"}},
+		{"options after operand", `sed f -i -e 's/a/b/'`, []string{"f"}},
+		{"end of options", `sed -i -e 's/a/b/' -- -f`, []string{"-f"}},
+		{"redirection only", `sed 's/a/b/' f > out.txt`, []string{"out.txt"}},
+		{"read only", `sed -n 's/a/b/p' f`, nil},
+		{"chained cd", `cd sub && sed -i '' 's|a|b|' x.md`, []string{"sub/x.md"}},
+		{"unknown short option", `sed -i -Q value 's/a/b/' f`, nil},
+		{"unknown long option", `sed -i --unknown value 's/a/b/' f`, nil},
+		{"unknown option contains i", `sed --mystery-in-place 's/a/b/' f`, nil},
+		{"unknown clustered option", `sed -i -Qe 's/a/b/' f`, nil},
+		{"missing expression", `sed -i -e`, nil},
+		{"missing clustered expression", `sed -i f -ne`, nil},
+		{"missing script file", `sed -i f --file`, nil},
+		{"empty script file", `sed -i -f '' f1 f2`, nil},
+		{"empty long script file", `sed -i --file= f1 f2`, nil},
+		{"unterminated quote", `sed -i 's/a/b/ f`, nil},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			got, _ := bashWriteTargets(tt.command)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Fatalf("bashWriteTargets(%q) = %q, want %q", tt.command, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestBashWriteTargets(t *testing.T) {
 	cases := []struct {
 		name        string
@@ -316,5 +396,24 @@ func TestBashWriteTargetsUnmatchedParenNeverPanics(t *testing.T) {
 				t.Errorf("bashWriteTargets(%q) = %v, %v; want %v, %v", tc.cmd, gotPaths, gotWritten, tc.wantPaths, tc.wantWritten)
 			}
 		}()
+	}
+}
+
+func TestBashWriteTargetsSedUncertainInPlace(t *testing.T) {
+	for _, command := range []string{
+		`sed --unknown value -i 's/a/b/' f`,
+		`sed -Q value -ni 's/a/b/' f`,
+		`sed -Qi 's/a/b/' f`,
+		`sed --unknown value --in-place=.bak 's/a/b/' f`,
+		`sed -I '' 's/a/b/' f`,
+		`sed --unknown -I '' 's/a/b/' f`,
+		`find . -exec sed -i '' 's/a/b/' {} +`,
+	} {
+		t.Run(command, func(t *testing.T) {
+			paths, write := bashWriteTargets(command)
+			if len(paths) != 0 || !write {
+				t.Fatalf("got %q, %v; want no paths and an uncertain write", paths, write)
+			}
+		})
 	}
 }

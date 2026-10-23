@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -32,6 +33,55 @@ func bashPostToolUseStdin(t *testing.T, cwd, command string) {
 	t.Helper()
 	body := fmt.Sprintf(`{"session_id":"s1","cwd":%q,"tool_name":"Bash","tool_input":{"command":%q}}`, cwd, command)
 	hookStdin(t, body)
+}
+
+func TestEditHookBashWriteSedOnlyEditedFile(t *testing.T) {
+	for _, suffix := range []string{"''", ".bak"} {
+		t.Run(suffix, func(t *testing.T) {
+			root, transport := ruleDeliveryEnv(t)
+			transport.rules = []any{cbRule("Keep HTML accessible.")}
+			gitInitTempRepo(t, root)
+			if err := os.Mkdir(filepath.Join(root, "dir"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(root, "dir", "f.html"), []byte("<p>c/d</p>\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			var files []string
+			http.DefaultTransport = ad5RoundTripper(func(r *http.Request) (*http.Response, error) {
+				if r.Body != nil {
+					raw, err := io.ReadAll(r.Body)
+					if err != nil {
+						return nil, err
+					}
+					r.Body.Close()
+					r.Body = io.NopCloser(bytes.NewReader(raw))
+					var req struct {
+						Params struct {
+							Name      string `json:"name"`
+							Arguments struct {
+								File string `json:"file"`
+							} `json:"arguments"`
+						} `json:"params"`
+					}
+					if err := json.Unmarshal(raw, &req); err != nil {
+						return nil, err
+					}
+					if req.Params.Name == "obligations" {
+						files = append(files, req.Params.Arguments.File)
+					}
+				}
+				return transport.RoundTrip(r)
+			})
+			got := runBashWriteHook(t, "http://sed-test.invalid", "session-a", root, "sed -i "+suffix+" 's|a/b|c/d|g' dir/f.html")
+			if !strings.Contains(got, "dir/f.html") || !strings.Contains(got, "Keep HTML accessible.") {
+				t.Fatalf("edited file's governing rule missing: %q", got)
+			}
+			if strings.Contains(got, "s|a/b|c/d|g") || len(files) != 1 || files[0] != "dir/f.html" {
+				t.Fatalf("sed script must never get rules: context=%q, obligations files=%q", got, files)
+			}
+		})
+	}
 }
 
 // TestEditHookBashWrite_ConfidentTargetServesGoverningRule pins O57 item
@@ -397,5 +447,119 @@ func TestEditHookBashWriteResolvedTargetServesAndCountsAsPayloadCost(t *testing.
 		if b["bytes"] != fmt.Sprint(len(served[i])) || b["rules"] != "1" || b["phase"] != "post-bash" {
 			t.Errorf("beat %d = %v; want bytes=%d rules=1 phase=post-bash", i, b, len(served[i]))
 		}
+	}
+}
+
+func TestEditHookBashWriteSedSafety(t *testing.T) {
+	for _, tt := range []struct {
+		name, command string
+		wantFiles     string
+		wantNote      bool
+	}{
+		{"bare backup", `sed -i bak 's/a/b/' f`, "f", true},
+		{"tilde backup", `sed -i '~' 's/a/b/' f`, "f", true},
+		{"failed sed", `sed -i 's/a/b/' missing`, "", true},
+		{"quiet", `sed --quiet -i 's/a/b/' f`, "f", false},
+		{"unknown before in-place", `sed --unknown value -i 's/a/b/' f`, "", true},
+		{"BSD capital in-place", `sed -I '' 's/a/b/' f`, "", true},
+		{"find plus", `find . -exec sed -i '' 's/a/b/' {} +`, "", true},
+		{"find semicolon", `find . -exec sed -i '' 's/a/b/' {} \;`, "", true},
+		{"xargs", `xargs -I{} sed -i 's/a/b/' {}`, "", true},
+		{"only dotfile", `sed -e 's/a/b/' -i .env`, ".env", false},
+		{"only dotfile before flag", `sed -e 's/a/b/' -i .env -n`, ".env", false},
+		{"only dotfile before expression", `sed -i .env -e 's/a/b/'`, ".env", false},
+		{"ambiguous dotfile", `sed -e 's/a/b/' -i .env .bashrc`, ".bashrc", true},
+		{"dotted backup", `sed -i .bak 's/a/b/' f`, "f", true},
+		{"redirect absent", `echo x > missing`, "missing", false},
+		{"copy absent", `cp source missing`, "missing", false},
+		{"move absent", `mv source missing`, "missing", false},
+		{"tee absent", `echo x | tee missing`, "missing", false},
+		{"perl absent", `perl -pi -e 's/a/b/' missing`, "missing", false},
+		{"ruby absent", `ruby -pi -e 'gsub(/a/, "b")' missing`, "missing", false},
+		{"mixed writers", `sed -i 's/a/b/' missing; echo x > missing`, "missing", false},
+		{"mixed writers reversed", `echo x > missing; sed -i 's/a/b/' missing`, "missing", false},
+		{"mixed writer aliases", `sed -i 's/a/b/' missing; echo x > ./missing`, "missing", false},
+		{"different writers", `sed -i 's/a/b/' missing; echo x > out`, "out", true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			isolateBashDoubt(t)
+			root, transport := ruleDeliveryEnv(t)
+			transport.rules = []any{cbRule("Keep files readable.")}
+			gitInitTempRepo(t, root)
+			for _, file := range []string{"f", ".env", ".bashrc"} {
+				if err := os.WriteFile(filepath.Join(root, file), []byte("b"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			var files []string
+			http.DefaultTransport = ad5RoundTripper(func(r *http.Request) (*http.Response, error) {
+				if r.Body != nil {
+					raw, err := io.ReadAll(r.Body)
+					if err != nil {
+						return nil, err
+					}
+					r.Body.Close()
+					r.Body = io.NopCloser(bytes.NewReader(raw))
+					var req struct {
+						Params struct {
+							Name      string `json:"name"`
+							Arguments struct {
+								File string `json:"file"`
+							} `json:"arguments"`
+						} `json:"params"`
+					}
+					if err := json.Unmarshal(raw, &req); err != nil {
+						return nil, err
+					}
+					if req.Params.Name == "obligations" && req.Params.Arguments.File != "__bash_write__.go" {
+						files = append(files, req.Params.Arguments.File)
+					}
+				}
+				return transport.RoundTrip(r)
+			})
+			got := runBashWriteHook(t, "http://sed-test.invalid", "session-a", root, tt.command)
+			if strings.Join(files, ",") != tt.wantFiles {
+				t.Fatalf("obligations files=%q, want %q; context=%q", files, tt.wantFiles, got)
+			}
+			if note := strings.Contains(got, "hook could not name"); note != tt.wantNote {
+				t.Fatalf("cannot-tell note=%v, want %v; context=%q", note, tt.wantNote, got)
+			}
+			if tt.wantFiles != "" && !strings.Contains(got, tt.wantFiles) {
+				t.Fatalf("written file missing from context: %q", got)
+			}
+			if tt.wantNote && tt.wantFiles == "" && strings.Contains(got, "\n") {
+				t.Fatalf("fallback must be one line: %q", got)
+			}
+			if tt.wantNote {
+				again := runBashWriteHook(t, "http://sed-test.invalid", "session-a", root, tt.command)
+				if strings.Contains(again, "hook could not name") {
+					t.Fatalf("repeated doubt note: %q", again)
+				}
+			}
+		})
+	}
+}
+
+func TestEditHookBashWriteSedDoubtAfterRulesServed(t *testing.T) {
+	isolateBashDoubt(t)
+	root, _ := ruleDeliveryEnv(t)
+	gitInitTempRepo(t, root)
+	if err := os.WriteFile(filepath.Join(root, ".bashrc"), []byte("b"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got := runBashWriteHook(t, "http://sed-test.invalid", "session-a", root, `sed -e 's/a/b/' -i .bashrc`)
+	if !strings.Contains(got, "Sort outputs.") {
+		t.Fatalf("initial rules missing: %q", got)
+	}
+	got = runBashWriteHook(t, "http://sed-test.invalid", "session-a", root, `sed -e 's/a/b/' -i .env .bashrc`)
+	if !strings.Contains(got, "hook could not name") || strings.Contains(got, "\n") {
+		t.Fatalf("new uncertainty must survive rule dedupe as one line: %q", got)
+	}
+	raw, err := os.ReadFile(os.Getenv("FATHOM_HOOKS_LOG"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(raw, []byte(`"doubt":"true"`)) {
+		t.Fatalf("note-only delivery must be accounted as doubt: %s", raw)
 	}
 }
