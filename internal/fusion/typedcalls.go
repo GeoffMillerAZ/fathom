@@ -418,6 +418,10 @@ func formatFailedTypedPackages(fp []FailedTypedPackage) string {
 // that answers no packages and no error (EW-39).
 var typedPackagesLoad = packages.Load
 
+// typedLoadPackages is the complete load, replaceable by the pre-split
+// test-only loader for edge/report parity checks.
+var typedLoadPackages = loadTypedPackages
+
 // zeroPackagesDisclosed turns a load of zero packages into a disclosed
 // failure when the connector found Go files the module should have loaded
 // (EW-39, O304). packages.Load returns err == nil with zero packages when
@@ -686,19 +690,9 @@ func loadTypedModule(gov *typedPassGovernor, repoPath string, m goModule, env []
 		dir = filepath.Join(repoPath, filepath.FromSlash(m.rel))
 	}
 	fset := token.NewFileSet()
-	// Source-load dependencies to avoid go list -export compiling the full
-	// test import graph before this pass type-checks selected packages. Keep
-	// dependency function bodies: eliding them fabricates unused-import errors.
-	cfg := &packages.Config{
-		Context:   gov.ctx,
-		Dir:       dir,
-		Fset:      fset,
-		Tests:     true,
-		Env:       env,
-		ParseFile: gov.parseFile,
-		Mode: packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles |
-			packages.NeedImports | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedDeps,
-	}
+	// Load dependency metadata without export compilation, then type-check
+	// leaves first. Only roots retain syntax and type details; immutable
+	// dependencies skip function bodies (see typedload.go).
 	patterns := m.patterns
 	if !m.scoped {
 		patterns = []string{"./..."}
@@ -706,7 +700,7 @@ func loadTypedModule(gov *typedPassGovernor, repoPath string, m goModule, env []
 	if len(patterns) == 0 {
 		return nil, fset, nil
 	}
-	pkgs, err := typedPackagesLoad(cfg, patterns...)
+	pkgs, fset, err := typedLoadPackages(gov, repoPath, dir, patterns, env)
 	if err != nil {
 		return nil, nil, fmt.Errorf("fusion: typed-edge load %q: %w", dir, err)
 	}

@@ -170,6 +170,23 @@ func TestTypedEdgeEnv_KeepsAbsoluteGoPath(t *testing.T) {
 	}
 }
 
+func TestTypedEdgeEnv_DisablesPackagesDriver(t *testing.T) {
+	for _, inherited := range []string{"", "fixture-driver", "off"} {
+		t.Run(inherited, func(t *testing.T) {
+			t.Setenv("GOPACKAGESDRIVER", inherited)
+			driver := ""
+			for _, kv := range fusion.TypedEdgeEnv() {
+				if value, ok := strings.CutPrefix(kv, "GOPACKAGESDRIVER="); ok {
+					driver = value // later entries win, as in exec
+				}
+			}
+			if driver != "off" {
+				t.Errorf("GOPACKAGESDRIVER = %q, want off", driver)
+			}
+		})
+	}
+}
+
 // TestTypedEdgeStatus_RecordedOnService: the pass's outcome is readable
 // from the pipeline afterwards, not only from a stderr line. A service no
 // ingest has touched in this process reports known=false — never a clean

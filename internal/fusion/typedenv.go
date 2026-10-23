@@ -64,8 +64,9 @@ import (
 
 // TypedEdgeEnv returns the environment for the go/packages subprocess:
 // this process's own environment, GOWORK=off (typed edges are per-service,
-// never workspace-wide), and absolute values for GOPATH, GOCACHE and
-// GOMODCACHE whenever the inherited ones are unset, empty, relative, or
+// never workspace-wide), GOPACKAGESDRIVER=off (always use the Go toolchain),
+// and absolute values for GOPATH, GOCACHE and GOMODCACHE whenever the
+// inherited ones are unset, empty, relative, or
 // carry an unexpanded variable reference.
 //
 // Repair order per variable: the inherited value if it is already usable,
@@ -82,7 +83,7 @@ import (
 //
 // K22: GOTOOLCHAIN=local is the very last entry, after the caps.
 func TypedEdgeEnv() []string {
-	return append(backgroundToolchainEnv(repairedGoEnv("GOWORK=off")), goToolchainLocal)
+	return append(backgroundToolchainEnv(repairedGoEnv("GOWORK=off", "GOPACKAGESDRIVER=off")), goToolchainLocal)
 }
 
 // goToolchainLocal pins the go command to the toolchain on PATH (K22): no
