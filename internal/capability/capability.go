@@ -58,6 +58,9 @@ type State struct {
 	// it: nine "you could also enable this" failures and the one real
 	// break is invisible among them.
 	Broken bool
+	// Unknown names missing evidence needed by this detector. It is never
+	// a broken delivery verdict.
+	Unknown string
 }
 
 // Remedy is what to do about an off capability: either an exact command,
@@ -81,6 +84,9 @@ type Remedy struct {
 type Probe struct {
 	RepoRoot string
 	Service  string
+	// ModelUnavailable names why this repository's daemon model row is
+	// missing. Only detectors that need row-derived facts consult it.
+	ModelUnavailable string
 
 	// Index freshness is THREE states, not two, and the difference
 	// decides whether doctor may fail: known-fresh, known-behind (a
@@ -118,6 +124,9 @@ type Probe struct {
 	// remedies, so both facts travel rather than one merged boolean.
 	ObligationRules     int
 	ObligationsCompiled bool
+	// ObligationsCompileUnavailable names why the per-service compile
+	// state could not be read even though its registry row was available.
+	ObligationsCompileUnavailable string
 
 	// Instruments
 	LedgerSessions    int

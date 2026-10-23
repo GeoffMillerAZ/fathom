@@ -5,8 +5,8 @@ package main
 // internal/capability remains pure and testable in a table.
 //
 // The probe is deliberately best-effort: an unreachable daemon or an
-// unreadable file leaves a field at its zero value, and the registry then
-// reports that capability off WITH a reason. A degraded probe therefore
+// unreadable file leaves a field at its zero value; a missing model marks
+// only detectors needing its facts unknown. A degraded probe therefore
 // produces an honest, useful table rather than an error — which is the O23
 // lesson (doctor's repo-relative assumptions) applied at the source.
 
@@ -31,6 +31,10 @@ func buildCapabilityProbe(baseURL, root, svc string, now time.Time) capability.P
 
 func buildCapabilityProbeContext(ctx context.Context, baseURL, root, svc string, now time.Time) capability.Probe {
 	p := capability.Probe{RepoRoot: root, Service: svc}
+	hooks, stanza := fleetWiringNotes(root)
+	p.HooksNote = hooks
+	p.HooksReferenced = strings.Contains(hooks, "hook reference")
+	p.StanzaPresent = stanzaNotePresent(stanza)
 
 	// The intent corpus is read from disk only — no daemon, no RPC — so a
 	// probe stays cheap even when the daemon is down (EP-10).
@@ -77,15 +81,15 @@ func buildCapabilityProbeContext(ctx context.Context, baseURL, root, svc string,
 		if !p.IndexFresh && row.Freshness != "" {
 			p.IndexNote = row.Freshness
 		}
-		p.HooksNote = row.HooksNote
-		p.HooksReferenced = strings.Contains(row.HooksNote, "hook reference")
-		p.StanzaPresent = stanzaNotePresent(row.StanzaNote)
-		p.ObligationsCompiled = strings.Contains(row.CompileNote, "obligations")
+		p.ObligationsCompileUnavailable = row.CompileUnavailable
+		p.ObligationsCompiled = row.CompileUnavailable == "" && strings.Contains(row.CompileNote, "obligations")
 		if row.Config != nil {
 			for _, l := range row.Config.Layers {
 				p.LayerPacks = append(p.LayerPacks, l.Name)
 			}
 		}
+	} else {
+		p.ModelUnavailable = m.DegradedNote
 	}
 
 	// Facts that are cheaper to read locally than to fetch, and that must

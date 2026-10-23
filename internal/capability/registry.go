@@ -93,6 +93,8 @@ func Default() Registry {
 			Cost:                 "no per-session cost; disk, plus ingest time on each commit",
 			Detect: func(p Probe) State {
 				switch {
+				case p.ModelUnavailable != "":
+					return State{Unknown: p.ModelUnavailable, Reason: "index facts unavailable: " + p.ModelUnavailable}
 				case p.IndexedSymbols == 0:
 					return State{Reason: "this repository has no indexed symbols — it is not a fathom service yet"}
 				case p.IndexStale:
@@ -116,6 +118,8 @@ func Default() Registry {
 			},
 			Remedy: func(p Probe) Remedy {
 				switch {
+				case p.ModelUnavailable != "":
+					return Remedy{Note: p.ModelUnavailable + "; `fathom doctor` diagnoses daemon reachability"}
 				case p.IndexedSymbols == 0:
 					return Remedy{Cmd: "fathom init"}
 				case p.IndexStale:
@@ -140,14 +144,20 @@ func Default() Registry {
 				switch {
 				case p.ObligationRules == 0:
 					return State{Reason: "no obligation rules are authored for this repository (.fathom/rules/ is empty or absent)"}
-				case !p.ObligationsCompiled:
-					return State{Reason: "rules are authored but the obligations layer has never been compiled here", Broken: true}
 				case !p.HooksReferenced:
-					reason := "obligations are compiled but no edit hook is wired to deliver them"
+					reason := "rules are authored but no edit hook is wired to deliver obligations"
 					if p.HooksNote != "" {
 						reason += " (" + p.HooksNote + ")"
 					}
 					return State{Reason: reason, Broken: true}
+				case p.ModelUnavailable != "":
+					return State{Unknown: p.ModelUnavailable, Reason: "obligations compile facts unavailable: " + p.ModelUnavailable}
+				case p.IndexedSymbols == 0:
+					return State{Reason: "rules are authored but this repository is not indexed"}
+				case p.ObligationsCompileUnavailable != "":
+					return State{Unknown: p.ObligationsCompileUnavailable, Reason: "obligations compile facts unavailable: " + p.ObligationsCompileUnavailable}
+				case !p.ObligationsCompiled:
+					return State{Reason: "rules are authored but the obligations layer has never been compiled here", Broken: true}
 				}
 				return State{Operating: true, Detail: count(p.ObligationRules, "rule source") + " compiled, injected on edit"}
 			},
@@ -158,6 +168,14 @@ func Default() Registry {
 						Cmd:  "fathom layers install <pack>",
 						Note: "or author .fathom/rules/*.cue directly; kits ship rule packs",
 					}
+				case !p.HooksReferenced:
+					return Remedy{Cmd: "fathom init --hooks"}
+				case p.ModelUnavailable != "":
+					return Remedy{Note: p.ModelUnavailable + "; `fathom doctor` diagnoses daemon reachability"}
+				case p.IndexedSymbols == 0:
+					return Remedy{Cmd: "fathom init"}
+				case p.ObligationsCompileUnavailable != "":
+					return Remedy{Note: p.ObligationsCompileUnavailable + "; `fathom doctor` diagnoses daemon reachability"}
 				case !p.ObligationsCompiled:
 					return Remedy{Cmd: "fathom compile --service " + orPlaceholder(p.Service)}
 				}

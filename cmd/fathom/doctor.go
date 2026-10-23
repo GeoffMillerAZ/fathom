@@ -1531,7 +1531,23 @@ func checkHooksFiring(hc *http.Client, baseURL string, daemonUp bool, root, harn
 		return doctorCheck{Name: name, Status: doctorSkipped, Reason: hooksNotWiredReason(harness, "Codex has no PostToolUse hook to fire; the lefthook_gates check covers its git-native equivalent")}
 	}
 
-	candidates := resolveCallLogCandidates(hc, baseURL, daemonUp, root)
+	// Firing needs one readable log, while surface traffic must sum all
+	// candidates. Try local candidates before asking the daemon only here.
+	candidates := resolveCallLogCandidates(hc, baseURL, false, root)
+	localReadable := false
+	for _, logPath := range candidates {
+		if f, err := os.Open(logPath); err == nil {
+			info, statErr := f.Stat()
+			_ = f.Close()
+			if statErr == nil && info.Mode().IsRegular() {
+				localReadable = true
+				break
+			}
+		}
+	}
+	if !localReadable && daemonUp {
+		candidates = resolveCallLogCandidates(hc, baseURL, true, root)
+	}
 	if len(candidates) == 0 {
 		return doctorCheck{
 			Name: name, Status: doctorSkipped,
@@ -1920,7 +1936,10 @@ func checkObligationsServed(hc *http.Client, baseURL, root, explicitSvc string, 
 		probeNames = []string{explicitSvc}
 	}
 
-	svcs, _ := fetchServices(hc, baseURL) // best-effort; empty map on any error
+	svcs, err := fetchServices(hc, baseURL)
+	if err != nil {
+		return doctorCheck{Name: name, Status: doctorUnknown, Reason: "cannot read daemon service registry: " + err.Error(), probeErr: err}
+	}
 	indexed := make([]string, 0, len(svcs))
 	for s := range svcs {
 		indexed = append(indexed, s)
@@ -2063,9 +2082,10 @@ func checkObligationsServed(hc *http.Client, baseURL, root, explicitSvc string, 
 	switch {
 	case compErr != nil:
 		return doctorCheck{
-			Name: name, Status: doctorFail,
-			Reason: fmt.Sprintf("obligations(%s, ...) served zero rules and no compile watermark for every probed file (%s) — either the obligations layer has never been compiled for %q, or none of these specific files is in any compiled rule's scope (could not confirm which via staleness_report: %v)", svc, strings.Join(tried, ", "), svc, compErr),
-			Remedy: remedy,
+			Name: name, Status: doctorUnknown,
+			Reason:   fmt.Sprintf("obligations(%s, ...) served zero rules; compile facts unavailable via staleness_report: %v", svc, compErr),
+			Remedy:   "check daemon reachability (see daemon_reachable), then re-run fathom doctor",
+			probeErr: compErr,
 		}
 	case !compiled:
 		return doctorCheck{

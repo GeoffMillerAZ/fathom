@@ -323,6 +323,9 @@ func checkGuardDeadScopes(hc *http.Client, baseURL, root, explicitSvc string, da
 	var unfinished bool
 	var dead, unindexed, waiting []string
 	var commandGuardCount int
+	// Reuse each literal-prefix walk only within this check. Different
+	// guards still apply their own matchers to the same discovered paths.
+	diskByPrefix := map[string]doctorDiskWalk{}
 	for i, g := range set.Guards {
 		if err := ctx.Err(); err != nil {
 			return doctorCheck{Name: name, Status: doctorErrorStatus(err), Reason: fmt.Sprintf("checked %d of %d guards: %v", checked, len(set.Guards), err), probeErr: err}
@@ -346,17 +349,13 @@ func checkGuardDeadScopes(hc *http.Client, baseURL, root, explicitSvc string, da
 			checked++
 			continue
 		}
-		if !sourceComplete {
-			unfinished = true
-			continue
-		}
 		// RC-8 (ADR-027): "matches no INDEXED file" is not "matches no
 		// file". `cmd/fathom/ui/**` holds three real CSS files that fathom
 		// does not index — reporting it as a dead guard sent the reader to
 		// a remedy that DELETES correct configuration. Look at the disk
 		// before saying nothing is there.
 		label := fmt.Sprintf("guards[%d] (%s)", i, strings.Join(g.Scopes, ", "))
-		disk, diskComplete, walkErr := doctorDiskPaths(ctx, root, g.Scopes)
+		disk, diskComplete, walkErr := doctorDiskPathsMemo(ctx, root, g.Scopes, diskByPrefix)
 		if walkErr != nil {
 			return doctorCheck{Name: name, Status: doctorErrorStatus(walkErr), Reason: "guard file discovery did not finish: " + walkErr.Error(), probeErr: walkErr, Remedy: "re-run doctor when the walk can finish"}
 		}
@@ -372,7 +371,11 @@ func checkGuardDeadScopes(hc *http.Client, baseURL, root, explicitSvc string, da
 		}
 		checked++
 		if n > 0 {
-			unindexed = append(unindexed, fmt.Sprintf("%s — %d file(s) on disk, none indexed", label, n))
+			coverage := "none indexed"
+			if !sourceComplete {
+				coverage = "not in the indexed sample"
+			}
+			unindexed = append(unindexed, fmt.Sprintf("%s — %d file(s) on disk, %s", label, n, coverage))
 			continue
 		}
 		if doctorGuardScopesIgnored(ctx, root, g.Scopes) {
@@ -387,8 +390,12 @@ func checkGuardDeadScopes(hc *http.Client, baseURL, root, explicitSvc string, da
 		note = fmt.Sprintf(" (%d command-scoped guard(s) not checkable this way — no indexed-commands concept; see research report's guarded-edit coverage instead)", commandGuardCount)
 	}
 	if len(unindexed) > 0 {
-		note = fmt.Sprintf("; %d guard(s) cover real files fathom does not INDEX (not dead — do not delete them): %s",
-			len(unindexed), strings.Join(unindexed, "; ")) + note
+		coverage := "fathom does not INDEX"
+		if !sourceComplete {
+			coverage = "outside the indexed sample"
+		}
+		note = fmt.Sprintf("; %d guard(s) cover real files %s (not dead — do not delete them): %s",
+			len(unindexed), coverage, strings.Join(unindexed, "; ")) + note
 	}
 	if len(waiting) > 0 {
 		note = "; ignored guard scope(s) waiting for files: " + strings.Join(waiting, "; ") + note
@@ -566,6 +573,15 @@ func filesOnDiskUnderContext(ctx context.Context, root string, scopes []string) 
 // Wildcard-only or unanchored scopes require the root. The caller deadline,
 // rather than a fixed path count, bounds discovery; WalkDir orders each walk.
 func doctorDiskPaths(ctx context.Context, root string, scopes []string) ([]string, bool, error) {
+	return doctorDiskPathsMemo(ctx, root, scopes, nil)
+}
+
+type doctorDiskWalk struct {
+	paths    []string
+	complete bool
+}
+
+func doctorDiskPathsMemo(ctx context.Context, root string, scopes []string, memo map[string]doctorDiskWalk) ([]string, bool, error) {
 	paths := []string{}
 	complete := true
 	var prefixes []string
@@ -598,13 +614,19 @@ func doctorDiskPaths(ctx context.Context, root string, scopes []string) ([]strin
 	sort.Strings(prefixes)
 	prefixes = dedupeStrings(prefixes)
 	for _, prefix := range prefixes {
+		if walk, ok := memo[prefix]; ok {
+			paths = append(paths, walk.paths...)
+			complete = complete && walk.complete
+			continue
+		}
+		walk := doctorDiskWalk{complete: true}
 		err := filepath.WalkDir(filepath.Join(root, prefix), func(path string, d os.DirEntry, err error) error {
 			if err := ctx.Err(); err != nil {
 				return err
 			}
 			if err != nil {
 				if !os.IsNotExist(err) {
-					complete = false
+					walk.complete = false
 				}
 				return nil
 			}
@@ -616,15 +638,20 @@ func doctorDiskPaths(ctx context.Context, root string, scopes []string) ([]strin
 			}
 			rel, err := filepath.Rel(root, path)
 			if err != nil {
-				complete = false
+				walk.complete = false
 				return nil
 			}
-			paths = append(paths, filepath.ToSlash(rel))
+			walk.paths = append(walk.paths, filepath.ToSlash(rel))
 			return nil
 		})
+		paths = append(paths, walk.paths...)
 		if err != nil {
 			return paths, false, err
 		}
+		if memo != nil {
+			memo[prefix] = walk
+		}
+		complete = complete && walk.complete
 	}
 	sort.Strings(paths)
 	return dedupeStrings(paths), complete, nil

@@ -45,6 +45,9 @@ type obsServiceRow struct {
 	// obligations-compile condition.
 	Config      *obsConfigPanel `json:"config,omitempty"`
 	CompileNote string          `json:"compile_note,omitempty"`
+	// CompileUnavailable names a failed statusz read, distinct from a
+	// successful read that reports no compile for this service.
+	CompileUnavailable string `json:"compile_unavailable,omitempty"`
 	// Realization (phase Y): the five-rung ladder — wired, fresh, queried,
 	// preventing, gating — that grades what fathom is DOING here rather
 	// than how it is configured.
@@ -462,7 +465,10 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 			}
 			cp := buildConfigPanel(info.path, obligationsBySvc[name])
 			row.Config = &cp
-			if note, ok := compileBySvc[name]; ok && note != "" {
+			if statusz.err != "" {
+				row.CompileUnavailable = statusz.err
+				row.CompileNote = "compile state unknown: " + statusz.err
+			} else if note, ok := compileBySvc[name]; ok && note != "" {
 				row.CompileNote = note
 			} else {
 				row.CompileNote = "no compile recorded for this service — if every service shows this, the daemon has no LLM key configured (obligations then serve staleness warnings, not compiled rules)"

@@ -51,6 +51,7 @@ func checkCapabilities(baseURL, root, explicitSvc string, parents ...context.Con
 	var (
 		operating []string
 		broken    []capability.Report // inputs exist, delivery is failing
+		unknown   []capability.Report // verdict needs unavailable daemon facts
 		off       []capability.Report // switched off, or its inputs are absent here
 	)
 	for _, r := range reports {
@@ -61,6 +62,8 @@ func checkCapabilities(baseURL, root, explicitSvc string, parents ...context.Con
 			// Enabled, its inputs exist, and something is failing to
 			// deliver them. This is the only state worth a red mark.
 			broken = append(broken, r)
+		case r.State.Unknown != "":
+			unknown = append(unknown, r)
 		default:
 			off = append(off, r)
 		}
@@ -81,6 +84,11 @@ func checkCapabilities(baseURL, root, explicitSvc string, parents ...context.Con
 	}
 
 	reason := capabilityCount(len(operating)) + " operating"
+	status := doctorPass
+	if len(unknown) > 0 {
+		status = doctorUnknown
+		reason = fmt.Sprintf("%d verdict(s) need daemon facts: %s", len(unknown), unknown[0].State.Unknown)
+	}
 	if len(off) > 0 {
 		ids := make([]string, 0, len(off))
 		for _, r := range off {
@@ -93,16 +101,19 @@ func checkCapabilities(baseURL, root, explicitSvc string, parents ...context.Con
 		for _, c := range conflicts {
 			parts = append(parts, fmt.Sprintf("%s (capabilities.cue %s, config.toml %s)", c.ID, onOff(c.Cue), onOff(c.Config)))
 		}
+		if status == doctorPass {
+			status = doctorWarn
+		}
 		return doctorCheck{
 			Name:   name,
-			Status: doctorWarn,
+			Status: status,
 			Reason: reason + "; capabilities.cue wins over config.toml for " + strings.Join(parts, ", "),
 			Remedy: "set each of those once: remove the capabilities.cue entry or the config.toml key",
 		}
 	}
 	return doctorCheck{
 		Name:   name,
-		Status: doctorPass,
+		Status: status,
 		Reason: reason,
 		Remedy: "", // nothing is broken; `fathom capabilities` shows the detail
 	}
