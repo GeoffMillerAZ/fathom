@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -169,6 +170,55 @@ func TestInitSkippedUserScopeJSON(t *testing.T) {
 			}
 			if skipped == 0 {
 				t.Error("missing skipped user configuration writes")
+			}
+		})
+	}
+}
+
+// O26: a dry run under no user writes lists each user-scope write as
+// skipped-user-scope and leaves it out of the would-write count.
+func TestInitDryRunSkippedUserScope(t *testing.T) {
+	for _, flag := range []string{"--no-user-writes", "--harness=none"} {
+		t.Run(flag, func(t *testing.T) {
+			home, root := t.TempDir(), t.TempDir()
+			t.Setenv("HOME", home)
+			t.Setenv("FATHOM_HOME", filepath.Join(home, ".fathom"))
+			t.Setenv("FATHOM_STATE_DIR", filepath.Join(home, "state"))
+			var out, errOut bytes.Buffer
+			if code := cmdInit([]string{flag, "--dry-run", "--json", "--path", root, "--service", "fixture", "--url", "://unavailable", "--no-scip"}, &out, &errOut); code != 0 {
+				t.Fatalf("init = %d: %s", code, errOut.String())
+			}
+			var got initJSON
+			if err := json.Unmarshal(out.Bytes(), &got); err != nil {
+				t.Fatal(err)
+			}
+			skipped, would := 0, 0
+			for _, w := range got.Writes {
+				if strings.HasPrefix(w.Action, "would-") {
+					would++
+					if strings.HasPrefix(w.Path, "~/") && !strings.HasPrefix(w.Path, "~/state") {
+						t.Errorf("user path previewed as a write: %+v", w)
+					}
+				}
+				if w.Action == "skipped-user-scope" {
+					skipped++
+					if !strings.HasPrefix(w.Path, "~/") || !strings.HasPrefix(w.Detail, "would ") {
+						t.Errorf("skipped entry = %+v", w)
+					}
+				}
+			}
+			if skipped == 0 {
+				t.Errorf("missing skipped-user-scope entries: %+v", got.Writes)
+			}
+			want := fmt.Sprintf("dry run: init would write or change %d files; nothing was written", would)
+			if would == 1 {
+				want = "dry run: init would write or change 1 file; nothing was written"
+			}
+			if !strings.Contains(strings.Join(got.Narration, "\n"), want) {
+				t.Errorf("count line %q absent: %v", want, got.Narration)
+			}
+			if _, err := os.Stat(filepath.Join(home, ".fathom", "config.toml")); !os.IsNotExist(err) {
+				t.Errorf("dry run wrote user config: %v", err)
 			}
 		})
 	}

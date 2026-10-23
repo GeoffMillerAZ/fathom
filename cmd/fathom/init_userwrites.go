@@ -11,13 +11,9 @@ import (
 
 // printInitUserWritesPreview separates preserved user configuration from
 // operational state, which still uses the configured state directory.
-func printInitUserWritesPreview(stdout io.Writer, root, cause string, writes *initWrites, realRun bool) {
+func printInitUserWritesPreview(stdout io.Writer, root, cause string, writes *initWrites) {
 	fmt.Fprintf(stdout, "user configuration writes disabled (%s):\n", cause)
 	fmt.Fprintf(stdout, "operational state directory: %s (still written during setup; relocate with FATHOM_STATE_DIR or XDG_STATE_HOME)\n", statedir.Resolve(root))
-	// The dry run prints its complete write list once.
-	if !realRun {
-		return
-	}
 	if len(writes.touched) == 0 {
 		fmt.Fprintln(stdout, "would write or change no user file")
 	}

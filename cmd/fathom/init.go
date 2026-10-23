@@ -178,7 +178,7 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 		out = io.Discard
 	}
 	userWrites, userOut := w, out
-	if noUserWrites && !w.dry {
+	if noUserWrites {
 		userWrites = &initWrites{dry: true}
 		userOut = io.Discard
 	}
@@ -306,7 +306,7 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(userOut, "%s\n", msg)
 	}
 	if noUserWrites {
-		printInitUserWritesPreview(stdout, root, userWritesCause, userWrites, !w.dry)
+		printInitUserWritesPreview(stdout, root, userWritesCause, userWrites)
 	}
 
 	if w.dry {
