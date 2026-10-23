@@ -136,7 +136,12 @@ func TestEditHookFoldsCloneAndWorktreeToRepoRelative(t *testing.T) {
 	}
 
 	// The in-process dispatch folds the same way (the static edge to the code
-	// the hook process ran).
+	// the hook process ran). It asserts what the hook prints, not how fast: on
+	// a loaded -race gate the in-process hook spent its deadline and printed
+	// nothing, so its budget is widened as pinRepo widens it.
+	prevScale := hookBudgetScale
+	hookBudgetScale = 30
+	t.Cleanup(func() { hookBudgetScale = prevScale })
 	if out := runInProcessHook(t, home, f.repo, srv.URL, post, f.repo, map[string]any{"file_path": in(f.pathClone, "widget.go"), "old_string": "a", "new_string": "b"}, "Edit"); !strings.Contains(out, foldedRulesNote) {
 		t.Errorf("in-process clone Edit did not fold: %q", out)
 	}
