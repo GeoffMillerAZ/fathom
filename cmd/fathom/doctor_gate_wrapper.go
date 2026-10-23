@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
+	"syscall"
 
 	"gopkg.in/yaml.v3"
 )
@@ -25,7 +28,7 @@ func checkComposedPushGate(root string) (doctorCheck, bool) {
 	hook, rel, ok, hookErr := effectivePushHook(ctx, &r, root)
 	if hookErr != nil {
 		// I38: a hook that exists and cannot be read is never "absent".
-		return doctorCheck{Name: "lefthook_gates", Status: doctorUnknown, Reason: "pre-push hook exists but could not be read: " + rel + " (" + hookErr.Error() + ")"}, true
+		return doctorCheck{Name: "lefthook_gates", Status: doctorUnknown, Reason: "pre-push hook exists but could not be read: " + rel + " (" + doctorErrCause(hookErr) + ")"}, true
 	}
 	if ok && !isLefthookDispatcher(hook) {
 		for _, p := range []string{"lefthook.yml", "lefthook.yaml"} {
@@ -206,7 +209,7 @@ func effectivePushHook(ctx context.Context, r *doctorWrapperReader, root string)
 		switch {
 		case rerr == nil:
 			return data, name, true, nil
-		case os.IsNotExist(rerr):
+		case errors.Is(rerr, fs.ErrNotExist) || errors.Is(rerr, syscall.ENOTDIR):
 			continue
 		default:
 			return nil, name, false, rerr
@@ -224,15 +227,28 @@ func isLefthookDispatcher(body []byte) bool {
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-		if strings.Contains(line, "call_lefthook") || strings.Contains(line, "LEFTHOOK_BIN") {
+		if i := strings.Index(line, " #"); i >= 0 {
+			line = line[:i] // a trailing comment is not a command
+		}
+		if strings.Contains(line, "call_lefthook") || strings.Contains(line, "LEFTHOOK_BIN") || strings.Contains(line, "LEFTHOOK_VERBOSE") {
 			return true
 		}
 		words := strings.Fields(strings.NewReplacer("\"", "", "'", "").Replace(line))
 		for i := 0; i+1 < len(words); i++ {
-			if filepath.Base(words[i]) == "lefthook" && words[i+1] == "run" {
+			if (filepath.Base(words[i]) == "lefthook" || words[i] == "$LEFTHOOK" || words[i] == "${LEFTHOOK}") && words[i+1] == "run" {
 				return true
 			}
 		}
 	}
 	return false
+}
+
+// doctorErrCause is err without the path a *PathError carries, so a row never
+// names a machine path.
+func doctorErrCause(err error) string {
+	var pe *fs.PathError
+	if errors.As(err, &pe) {
+		return pe.Err.Error()
+	}
+	return err.Error()
 }

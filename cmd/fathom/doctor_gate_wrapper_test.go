@@ -213,4 +213,45 @@ func TestDoctorNativeHookFixRound(t *testing.T) {
 			t.Fatalf("got %+v", got)
 		}
 	})
+	for name, hook := range map[string]string{
+		"$LEFTHOOK run":     "#!/bin/sh\nexec \"$LEFTHOOK\" run pre-push\n",
+		"npx --no lefthook": "#!/bin/sh\nnpx --no lefthook run pre-push\n",
+	} {
+		t.Run("hand-off "+name, func(t *testing.T) {
+			root := doctorNativeOverLefthookFixture(t, hook)
+			if got := checkLefthookGates(root); strings.Contains(got.Reason, "not installed") {
+				t.Fatalf("got %+v", got)
+			}
+		})
+	}
+	t.Run("trailing comment is not a hand-off", func(t *testing.T) {
+		root := doctorNativeOverLefthookFixture(t, "#!/bin/sh\ngit lfs pre-push \"$@\" # lefthook run pre-push\n")
+		doctorWriteFixture(t, root, "lefthook.yml", "pre-push:\n  commands:\n    v:\n      run: fathom verify --strict\n")
+		if got := checkLefthookGates(root); got.Status != doctorFail {
+			t.Fatalf("got %+v", got)
+		}
+	})
+	t.Run("unreadable external hook names no machine path", func(t *testing.T) {
+		if os.Geteuid() == 0 {
+			t.Skip("root reads everything")
+		}
+		main := doctorNativeOverLefthookFixture(t, doctorNativeTaskHook)
+		for _, args := range [][]string{
+			{"-c", "user.email=a@b.c", "-c", "user.name=t", "commit", "-q", "--allow-empty", "-m", "x"},
+			{"worktree", "add", "-q", filepath.Join(main, "wt"), "-b", "wt"},
+		} {
+			if b, err := exec.Command("git", append([]string{"-C", main}, args...)...).CombinedOutput(); err != nil {
+				t.Fatalf("git %v: %v %s", args, err, b)
+			}
+		}
+		if err := os.Chmod(filepath.Join(main, ".git/hooks/pre-push"), 0); err != nil {
+			t.Fatal(err)
+		}
+		wt := filepath.Join(main, "wt")
+		doctorWriteFixture(t, wt, "lefthook.yml", "pre-push:\n  commands:\n    v:\n      run: fathom verify --strict\n")
+		got := checkLefthookGates(wt)
+		if got.Status != doctorUnknown || strings.Contains(got.Reason, main) || !strings.Contains(got.Reason, "permission denied") {
+			t.Fatalf("got %+v", got)
+		}
+	})
 }
