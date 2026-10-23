@@ -147,7 +147,8 @@ tool_job() { # tool_job NAME MODULE VERSION — go install unless that version i
   if [ -x "${bin_dir}/${name}" ] && [ -f "${cloud_home}/${name}.version" ] && [ "$(cat "${cloud_home}/${name}.version")" = "$version" ]; then
     return 0
   fi
-  if GOBIN="$bin_dir" nice -n 10 go install "${module}@${version}" >"${steps}/${name}.log" 2>&1; then
+  # Built with the tools' own Go (TOOLS_GOTOOLCHAIN in cloud-tools.env), not go.mod's toolchain.
+  if GOTOOLCHAIN="${pin_TOOLS_GOTOOLCHAIN:-auto}" GOBIN="$bin_dir" nice -n 10 go install "${module}@${version}" >"${steps}/${name}.log" 2>&1; then
     echo "$version" >"${cloud_home}/${name}.version"
   else
     return 1

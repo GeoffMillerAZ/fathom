@@ -39,6 +39,7 @@ case "$1" in
     esac
     ;;
   install)
+    echo "install GOTOOLCHAIN=${GOTOOLCHAIN-unset}" >>"$FAKE_LOG"
     mod="${2%@*}"
     name="$(basename "$mod")"
     [ "$name" = "${FAKE_GO_FAIL:-}" ] && { echo "fake go: refusing $name" >&2; exit 1; }
@@ -119,6 +120,8 @@ while IFS='=' read -r key value; do
   version="$(sed -n "s/^${version_key}=//p" "${SCRIPT_DIR}/cloud-tools.env")"
   grep -q "^go install ${value}@${version}\$" "${s1}/log" || fail "no 'go install ${value}@${version}' in: $(cat "${s1}/log")"
 done <"${SCRIPT_DIR}/cloud-tools.env"
+tools_go="$(sed -n 's/^TOOLS_GOTOOLCHAIN=//p' "${SCRIPT_DIR}/cloud-tools.env")"
+[ "$(grep -c "^install GOTOOLCHAIN=${tools_go}\$" "${s1}/log")" = 3 ] || fail "the tools were not built with TOOLS_GOTOOLCHAIN=${tools_go}: $(grep '^install ' "${s1}/log")"
 grep -q '^go build -o bin/fathom ./cmd/fathom$' "${s1}/log" || fail "bin/fathom was not built: $(cat "${s1}/log")"
 # The Linux binary is pure Go (ADR-066, CS-9): the build needs no C compiler.
 grep -q '^build CGO_ENABLED=0$' "${s1}/log" || fail "bin/fathom was not built with CGO_ENABLED=0: $(grep '^build ' "${s1}/log")"

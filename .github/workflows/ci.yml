@@ -79,9 +79,10 @@ jobs:
             case "$key" in '' | \#*) continue ;; esac
             export "$key=$value"
           done < scripts/cloud-tools.env
-          go install "${TASK_MODULE}@${TASK_VERSION}"
-          go install "${CUE_MODULE}@${CUE_VERSION}"
-          go install "${LEFTHOOK_MODULE}@${LEFTHOOK_VERSION}"
+          # Tools build with their own pinned Go (cloud-tools.env), not go.mod's toolchain.
+          GOTOOLCHAIN="$TOOLS_GOTOOLCHAIN" go install "${TASK_MODULE}@${TASK_VERSION}"
+          GOTOOLCHAIN="$TOOLS_GOTOOLCHAIN" go install "${CUE_MODULE}@${CUE_VERSION}"
+          GOTOOLCHAIN="$TOOLS_GOTOOLCHAIN" go install "${LEFTHOOK_MODULE}@${LEFTHOOK_VERSION}"
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
       - name: Put a fathom binary on PATH
