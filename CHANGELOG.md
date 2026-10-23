@@ -24,6 +24,22 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Unreleased changes wait as fragments under docs/changelog/unreleased/; the release ritual folds them here.
 
+## [0.18.2] — 2026-10-23
+
+Release impact: patch
+
+### Changed
+
+- Typed Go indexing keeps only your own packages' syntax and type details in memory, roughly halving peak memory (a 20-package module went from about 800 MiB to 270 MiB and now completes under a 512 MiB budget). Standard-library and module-cache dependencies are type-checked without function bodies. A type error inside such a dependency's function body no longer fails your packages. Declaration errors and errors in first-party or replaced dependencies still do. The typed pass also ignores an inherited `GOPACKAGESDRIVER`, so an external package driver cannot change it.
+
+### Fixed
+
+- Post-edit rules after an in-place sed name only the edited files, never the sed expression, a backup suffix or a find/xargs placeholder. Ambiguous targets get a cannot-tell note.
+- `fathom doctor` reports unknown, not FAIL, when its pre-push inspection reaches `task validate` but the depth limit hides an existing script or a defined task that could run the strict verify step; the reason names the deepest task or file followed. A target doctor already read, or that does not exist, keeps the existing verdict.
+- When the daemon is slow or cannot build its model, `fathom doctor` reports affected rows as unknown with the reason instead of failing your hook wiring. It reads hook wiring and the local call log without waiting on the daemon, and checks guard scopes against disk when the daemon's file list is cut short.
+- In a clone or worktree that is not indexed, authored rules point to `fathom init` instead of failing as "never compiled", and doctor no longer recommends a paid compile when it cannot read the daemon's compile state.
+- The first subagent spawned after a handoff map is created sees the map's real contents instead of "(0 entries)".
+
 ## [0.18.1] — 2026-10-22
 
 Release impact: patch
