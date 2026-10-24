@@ -1,0 +1,18 @@
+{
+  "engine": "doc",
+  "symbols": [
+    {
+      "name": "CKV2_CUSTOM_8",
+      "kind": "CheckovGraphCheck",
+      "package": "Flat",
+      "line": 1,
+      "end_line": 8,
+      "signature": "Ensure queues are encrypted",
+      "calls": [
+        "aws_sqs_queue"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

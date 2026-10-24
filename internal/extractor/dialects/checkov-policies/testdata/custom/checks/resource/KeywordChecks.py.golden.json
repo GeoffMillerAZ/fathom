@@ -1,0 +1,31 @@
+{
+  "engine": "tags",
+  "symbols": [
+    {
+      "name": "CKV_CUSTOM_1",
+      "kind": "CheckovCheck",
+      "package": "KeywordChecks",
+      "line": 9,
+      "end_line": 15,
+      "signature": "class BucketVersioning(BaseResourceCheck):",
+      "calls": [
+        "aws_s3_bucket",
+        "google_storage_bucket"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "CKV_CUSTOM_2",
+      "kind": "CheckovCheck",
+      "package": "KeywordChecks",
+      "line": 21,
+      "end_line": 25,
+      "signature": "class WildcardTags(BaseResourceCheck):",
+      "calls": [
+        "*"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

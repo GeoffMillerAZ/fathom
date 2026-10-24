@@ -5893,7 +5893,7 @@
     "grammar_source": "yaml.v3 + tree-sitter/tree-sitter-python",
     "licence": "n/a",
     "oracle": [
-      "checkov --external-checks-dir loader (tier to verify)"
+      "checkov --external-checks-dir loaders (tier A for ids and resource types, C for lines)"
     ],
     "calibration_subjects": [
       "bridgecrewio/checkov"
@@ -5922,7 +5922,7 @@
     "engine": "tags+doc",
     "plan_row": "LB-Q-checkov-policies",
     "worker_model": "sonnet",
-    "notes": "new; excellence program T4; YAML graph checks ride the doc engine, Python checks ride the Python grammar; next gap: the oracle's tier, then check id references"
+    "notes": "new; excellence program T4; YAML graph checks ride the doc engine, Python checks ride the Python grammar; claimed by the checks/ layout globs (checkovDispatch), not by content; L1 and L2 excellent against checkov 3.2.500's own external-checks loaders (tier A) on checkov 3.2.500 (1636 checks, 2131 resource-type references); next gap: L3, a check to the resource definitions it names (no resolver reads a Terraform, CloudFormation or Kubernetes resource as a target), and a user repository's --external-checks-dir of any other name (no glob claims it)"
   },
   {
     "id": "sentinel",

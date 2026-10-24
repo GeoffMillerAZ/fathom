@@ -521,6 +521,10 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 		p.exts[base] = conan
 	}
 
+	// Checkov custom policies (LB-Q-checkov-policies): claimed by checkovDispatch's
+	// manifest globs ahead of the python and YAML dispatch, not by a p.exts key.
+	registerCheckov(p)
+
 	// Taskfile (LB-Q-taskfile, language-breadth: new, a doc-engine tool format,
 	// no incumbent). A .yml or .yaml file with one of go-task's eight basenames
 	// is unambiguous by name (resolveExtractor's basename lookup, before the
@@ -810,6 +814,9 @@ func (p *Pipeline) RegisterExtractor(ext string, e extractor.Extractor) {
 func (p *Pipeline) resolveExtractor(relPath string, content []byte, idx *siblingIndex) (e extractor.Extractor, toolKind ToolKind, ok, unclassified bool) {
 	base := filepath.Base(relPath)
 	ext := filepath.Ext(relPath)
+	if ke, kk, kok := p.checkovDispatch(relPath); kok {
+		return ke, kk, true, false // Checkov Python checks and YAML graph checks (LB-Q-checkov-policies): a manifest glob
+	}
 	if ce, ck, cok := p.cloudPolicyDispatch(relPath, content, idx); cok {
 		// IAM policies, Azure Policy and Cloud Custodian files (LB-F138): the dialect's content sniff AND a decode check, never a file an earlier signal claims.
 		return ce, ck, true, false

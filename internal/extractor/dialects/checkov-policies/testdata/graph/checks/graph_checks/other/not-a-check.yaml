@@ -1,0 +1,5 @@
+# a YAML file under graph_checks that is not a check: no metadata and no definition
+name: notes
+items:
+  - resource_types:
+      - aws_ignored

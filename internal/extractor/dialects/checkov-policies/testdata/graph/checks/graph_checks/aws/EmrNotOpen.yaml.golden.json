@@ -1,0 +1,19 @@
+{
+  "engine": "doc",
+  "symbols": [
+    {
+      "name": "CKV2_CUSTOM_7",
+      "kind": "CheckovGraphCheck",
+      "package": "EmrNotOpen",
+      "line": 1,
+      "end_line": 23,
+      "signature": "Ensure EMR cluster security groups are not open to the world",
+      "calls": [
+        "aws_emr_cluster",
+        "aws_security_group"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

@@ -1,0 +1,29 @@
+{
+  "engine": "tags",
+  "symbols": [
+    {
+      "name": "CKV_K8S_16",
+      "kind": "CheckovCheck",
+      "package": "NoPrivileged",
+      "line": 17,
+      "end_line": 24,
+      "signature": "class NoPrivileged(BaseK8sContainerCheck):",
+      "calls": [],
+      "tier": "verified"
+    },
+    {
+      "name": "CKV_K8S_17",
+      "kind": "CheckovCheck",
+      "package": "NoPrivileged",
+      "line": 30,
+      "end_line": 32,
+      "signature": "class NoPrivilegedKinds(BaseK8sContainerCheck):",
+      "calls": [
+        "Deployment",
+        "Pod"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

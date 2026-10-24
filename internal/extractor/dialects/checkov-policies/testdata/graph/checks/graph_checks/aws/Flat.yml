@@ -1,0 +1,8 @@
+metadata:
+  id: CKV2_CUSTOM_8
+  name: Ensure queues are encrypted
+definition:
+  cond_type: attribute
+  resource_types: "aws_sqs_queue"
+  attribute: kms_master_key_id
+  operator: exists

@@ -161,6 +161,9 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 	base := filepath.Base(relFile)
 	ext := filepath.Ext(relFile)
 	extExtractor, ok := p.exts[base]
+	if ke, _, kok := p.checkovDispatch(relFile); kok {
+		extExtractor, ok = ke, true // Checkov Python checks and YAML graph checks (LB-Q-checkov-policies): resolveExtractor's decision
+	}
 	if ce, _, cok := p.cloudPolicyDispatch(relFile, content, nil); cok {
 		// IAM policies, Azure Policy and Cloud Custodian files (LB-F138): the decision resolveExtractor makes.
 		extExtractor, ok = ce, true
