@@ -356,14 +356,22 @@ func ResolveRouteRefs(files []DocFile) RouteResolution {
 		key string
 	}
 	// nearest keeps the hits in the referring file, else its directory,
-	// else anywhere.
+	// else the nearest ancestor directory holding one (a compose project is
+	// a directory, O435), else anywhere.
 	nearest := func(file string, cands []hit) []hit {
 		var near []hit
-		for _, scope := range []func(string) bool{
+		scopes := []func(string) bool{
 			func(p string) bool { return p == file },
 			func(p string) bool { return path.Dir(p) == path.Dir(file) },
-			func(string) bool { return true },
-		} {
+		}
+		for d := path.Dir(path.Dir(file)); ; d = path.Dir(d) {
+			scopes = append(scopes, func(p string) bool { return path.Dir(p) == d })
+			if d == "." || d == "/" {
+				break
+			}
+		}
+		scopes = append(scopes, func(string) bool { return true })
+		for _, scope := range scopes {
 			for _, h := range cands {
 				if scope(h.p.file) {
 					near = append(near, h)
