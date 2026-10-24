@@ -611,3 +611,34 @@ func TestMongobetweenLaunchRoutes(t *testing.T) {
 		t.Errorf("RouteRefUnresolved = %v, want %v", rep.RouteRefUnresolved, wantBy)
 	}
 }
+
+// TestResolveRouteRefsWalksAncestors pins O435: a route file in a directory
+// with no declaration of its own joins the nearest ancestor directory's
+// compose project, never the same-named service of every sandbox beside it.
+func TestResolveRouteRefsWalksAncestors(t *testing.T) {
+	svc := func(p string) DocFile {
+		return DocFile{Path: p, Result: extractor.DocResult{Nodes: []core.SymbolNode{routeNode(p, "wikibase", core.KindComposeService)}}}
+	}
+	files := []DocFile{
+		svc("docker-compose.yml"),
+		svc("development/tests/a/docker-compose.override.yml"),
+		svc("development/tests/b/docker-compose.override.yml"),
+		{Path: "config/traefik-dynamic.yml", Result: extractor.DocResult{
+			Nodes:     []core.SymbolNode{routeNode("config/traefik-dynamic.yml", "wb", core.KindComposeService)},
+			CrossFile: []extractor.DocCrossFileRef{routeRef("wb", "http://wikibase:80", 3)},
+		}},
+		// a route deeper than its project: the nearest ancestor wins
+		{Path: "development/tests/a/conf/dyn.yml", Result: extractor.DocResult{
+			Nodes:     []core.SymbolNode{routeNode("development/tests/a/conf/dyn.yml", "r", core.KindComposeService)},
+			CrossFile: []extractor.DocCrossFileRef{routeRef("r", "wikibase", 4)},
+		}},
+	}
+	refs, _ := routeBrief(ResolveRouteRefs(files))
+	want := []string{
+		"config/traefik-dynamic.yml:wb -http://wikibase:80-> docker-compose.yml:wikibase deploy:host/wikibase",
+		"development/tests/a/conf/dyn.yml:r -wikibase-> development/tests/a/docker-compose.override.yml:wikibase deploy:host/wikibase",
+	}
+	if !reflect.DeepEqual(refs, want) {
+		t.Fatalf("refs = %q\nwant %q", refs, want)
+	}
+}
