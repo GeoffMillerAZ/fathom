@@ -1,0 +1,212 @@
+{
+  "dialect": "jinja2",
+  "kind": "language",
+  "target_level": "L3",
+  "level_met": "none",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "excellent",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-10-24",
+  "fathom_commit": "470726f",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "openstack/kolla",
+      "sha": "27e42412114c29669f70a298f89c54abc6a7f4ac",
+      "files": 189,
+      "bytes": 192662,
+      "counts": {
+        "call_fathom": 654,
+        "call_fathom_in_truth": 654,
+        "call_truth": 659,
+        "call_truth_found": 654,
+        "callables": 13,
+        "callables_signed": 13,
+        "fathom_defs": 991,
+        "file_edges_agree": 187,
+        "file_edges_fathom": 187,
+        "file_edges_truth": 188,
+        "import_edges_agree": 187,
+        "import_edges_fathom": 187,
+        "import_edges_truth": 187,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 1,
+        "imports": 187,
+        "imports_in_repo": 187,
+        "imports_resolved_agree": 187,
+        "kind_equal": 991,
+        "matched": 991,
+        "oracle_defs": 1021,
+        "range_eligible": 991,
+        "range_ok": 991
+      },
+      "families": {
+        "calls": "A",
+        "file_edges": "A",
+        "imports": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "macro",
+        "section",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "fathom:JinjaTemplate": 189
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 2,
+        "extract_ms": 541.148,
+        "extract_cpu_ms": 541.2580000000002,
+        "max_file_ms": 76,
+        "peak_module_pages": 322,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "openstack/kolla-ansible",
+      "sha": "4b493ef36ace2b90257ecf94feb00e2c6e8014c9",
+      "files": 331,
+      "bytes": 541914,
+      "counts": {
+        "call_fathom": 23,
+        "call_fathom_in_truth": 23,
+        "call_truth": 24,
+        "call_truth_found": 23,
+        "callables": 3,
+        "callables_signed": 3,
+        "fathom_defs": 89,
+        "file_edges_fathom": 0,
+        "file_edges_truth": 1,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 1,
+        "kind_equal": 89,
+        "matched": 89,
+        "oracle_defs": 103,
+        "range_eligible": 89,
+        "range_ok": 89
+      },
+      "families": {
+        "calls": "A",
+        "file_edges": "A",
+        "imports": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "macro",
+        "section",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "fathom:JinjaTemplate": 331
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 19,
+        "extract_ms": 1586.4309999999996,
+        "extract_cpu_ms": 1604.4879999999991,
+        "max_file_ms": 97,
+        "peak_module_pages": 339,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "jinja2.meta.find_referenced_templates",
+      "version": "3.1.6"
+    }
+  ],
+  "metrics": {
+    "call_precision": 1,
+    "call_recall": 0.9912,
+    "def_mapping": null,
+    "file_edge_precision": 1,
+    "file_edge_recall": 0.9894,
+    "import_resolution": 1,
+    "kind_agreement": 1,
+    "range_agreement": 1,
+    "signature_coverage": 1,
+    "sym_precision": 1,
+    "sym_recall": 0.9609,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "A",
+    "call_recall": "A",
+    "file_edge_precision": "A",
+    "file_edge_recall": "A",
+    "import_resolution": "A",
+    "kind_agreement": "A",
+    "range_agreement": "A",
+    "signature_coverage": "A",
+    "sym_precision": "A",
+    "sym_recall": "A"
+  },
+  "required_kinds": [
+    "macro",
+    "section"
+  ],
+  "kind_intersection": [
+    "macro",
+    "section",
+    "variable"
+  ],
+  "counts": {
+    "call_fathom": 677,
+    "call_fathom_in_truth": 677,
+    "call_truth": 683,
+    "call_truth_found": 677,
+    "callables": 16,
+    "callables_signed": 16,
+    "fathom_defs": 1080,
+    "file_edges_agree": 187,
+    "file_edges_fathom": 187,
+    "file_edges_truth": 189,
+    "import_edges_agree": 187,
+    "import_edges_fathom": 187,
+    "import_edges_truth": 187,
+    "import_oracle_out_of_scope": 0,
+    "import_oracle_unpaired": 2,
+    "imports": 187,
+    "imports_in_repo": 187,
+    "imports_resolved_agree": 187,
+    "kind_equal": 1080,
+    "matched": 1080,
+    "oracle_defs": 1124,
+    "range_eligible": 1080,
+    "range_ok": 1080
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 21,
+    "throughput_mb_s": 0.34,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 0.35,
+    "max_file_ms": 97,
+    "peak_module_pages": 339,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:JinjaTemplate": 520
+  },
+  "notes": [
+    "file_edge_precision and file_edge_recall measured against an import dump's (file, imported file) pairs, there being no SCIP index: the truth is what each file's import statements name, not the files its references reach as a SCIP index's cross-file edges are, so a file reached without an import of its own (a file another one required, an autoloaded constant) is outside the truth and a resolved edge to it counts against precision, while a file imported and never referenced is in it (LB-F57)",
+    "import_resolution: 187 of 187 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 1 (187 of 187) and recall 1 (187 of 187); 0 of 187 imports resolved where the oracle names no file of the subject; 2 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
+    "openstack/kolla-ansible: 76 of 331 measured files hold an ERROR or MISSING node as written; the dialect's pre-parse step reads 57 of them clean, and files_with_error counts the 19 it cannot mend, the files the extractor reads with an error",
+    "openstack/kolla-ansible: include-path resolution read 0 compile database(s); 0 quoted include(s) resolved only rooted at an ancestor directory of the includer; header-prototype binding bound 0 call(s) (caller file and name) to the one file defining the function (0 of them chosen among definers by the files the build compiles), left 0 unbound for two or more definers, 0 for no definer among the files read and 0 for definers the build does not compile",
+    "openstack/kolla-ansible: jinja2.meta.find_referenced_templates resolves none of fathom's imports to a file of the subject, so import_resolution has no denominator here",
+    "openstack/kolla: 20 of 189 measured files hold an ERROR or MISSING node as written; the dialect's pre-parse step reads 18 of them clean, and files_with_error counts the 2 it cannot mend, the files the extractor reads with an error",
+    "openstack/kolla: include-path resolution read 0 compile database(s); 0 quoted include(s) resolved only rooted at an ancestor directory of the includer; header-prototype binding bound 0 call(s) (caller file and name) to the one file defining the function (0 of them chosen among definers by the files the build compiles), left 0 unbound for two or more definers, 0 for no definer among the files read and 0 for definers the build does not compile",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": "refused (design section 14.2, tenancy): the dialect is built, tested and measured at L1, L2 and L3 excellent against Jinja's own parser and template lookup (jinja2 3.1.6, tier A: jinja2.meta.find_referenced_templates and the AST, calibration/oracles/jinja2-meta) on openstack/kolla 23.0.0 kolla/docker and openstack/kolla-ansible 23.0.0 ansible/roles (520 files, tags dialect, cathaysia/tree-sitter-jinja v0.5.0, Apache-2.0), but reads no level: throughput .34 MB per CPU-second against the 1.0 floor (tenancy is always required), so the dialect is not dispatched and .j2, .jinja and .jinja2 stay disclosed as unsupported. Cause: the grammar lexes template text one character per token (`_words` is a repeat of single-character regexes), so a text-only file parses at about .4 MB per CPU-second and an expression-heavy one at .25; the pre-parse step (a text line's `# ` blanked, `in` and `not in` read as `==` and `!=` outside a for header) mends 75 of the 96 files that error as written, so files_with_error is 21 of 520 (4.04%, under the 5% line; kolla-ansible alone 19 of 331, 5.74%). Trigger: a Jinja grammar that lexes text as one token or an engine change that parses this grammar above 1.0 MB per CPU-second on the two subjects; then dispatch (an ExtractorEpoch bump), add the sniff for templates/*.html (the pipeline dispatches .html by extension before any sniff), and re-measure."
+}

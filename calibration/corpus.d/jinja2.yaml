@@ -1,0 +1,28 @@
+id: jinja2
+language: Jinja2 templates
+# Subjects, read only, never vendored. A role-heavy Ansible repository (templates/*.j2
+# beside the tasks that render them) and a Salt formula (a map.jinja that every other
+# template imports from).
+repos:
+  - name: openstack/kolla
+    url: https://github.com/openstack/kolla.git
+    ref: 23.0.0
+    sha: 27e42412114c29669f70a298f89c54abc6a7f4ac
+    licence: Apache-2.0
+    subpath: kolla/docker
+    idioms:
+      - "Dockerfile.j2 templates with {% block %} overrides and {% extends %}"
+      - "{% import \"macros.j2\" as macros %} and {% include %} of sibling templates"
+      - "{% macro %} definitions and {% set %} assignments"
+      - "filters and loops over image-build variables"
+  - name: openstack/kolla-ansible
+    url: https://github.com/openstack/kolla-ansible.git
+    ref: 23.0.0
+    sha: 4b493ef36ace2b90257ecf94feb00e2c6e8014c9
+    licence: Apache-2.0
+    subpath: ansible/roles
+    idioms:
+      - "roles/<name>/templates/*.j2 service configuration files"
+      - "{% for %} loops over inventory groups and {% set %} assignments"
+      - "{% if %} chains with whitespace control"
+      - "{% include %} and {% import %} of a sibling template"
