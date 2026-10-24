@@ -215,10 +215,10 @@ func (c *Command) ReadoutPrefix() string {
 	return v
 }
 
-// Rtk reports whether any unit runs behind an `rtk ` prefix.
+// Rtk reports whether any unit runs RTK itself or behind an `rtk ` prefix.
 func (c *Command) Rtk() bool {
 	for _, u := range c.Units() {
-		if u.HasWrapper("rtk") {
+		if u.Name() == "rtk" || u.HasWrapper("rtk") {
 			return true
 		}
 	}

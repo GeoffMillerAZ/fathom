@@ -108,7 +108,10 @@ func peelOne(name string, words []token) (rest []token, env []Assign, ok bool, e
 			return nil, nil, false, nil
 		}
 		return words[i:], nil, true, nil
-	case "exec", "nohup", "time", "nice", "rtk":
+	case "rtk":
+		rest, ok := peelRtk(words)
+		return rest, nil, ok, nil
+	case "exec", "nohup", "time", "nice":
 		i := skipOpts(name, words)
 		if name == "nohup" {
 			i = 1
@@ -125,6 +128,39 @@ func peelOne(name string, words []token) (rest []token, env []Assign, ok bool, e
 		return words[i:], nil, true, nil
 	}
 	return nil, nil, false, nil
+}
+
+// peelRtk recognises direct commands and the test, err and summary wrappers.
+// RTK's own tools and controls are not executable names. Only its known
+// global options are transparent; an unknown option or dynamic command
+// stays with RTK rather than guessing which argument would run.
+func peelRtk(words []token) ([]token, bool) {
+	i := 1
+	for i < len(words) && words[i].word.Literal() {
+		w := words[i].word.Text
+		if w == "--" {
+			i++
+			break
+		}
+		if w != "--verbose" && w != "--skip-env" && !(len(w) > 1 && w[0] == '-' && strings.TrimLeft(w[1:], "v") == "") {
+			break
+		}
+		i++
+	}
+	if i >= len(words) || !words[i].word.Literal() || words[i].word.Text == "" || strings.HasPrefix(words[i].word.Text, "-") {
+		return nil, false
+	}
+	switch words[i].word.Text {
+	case "read", "smart", "json", "deps", "env", "log", "ls", "tree", "find", "grep", "diff", "wc",
+		"help", "gain", "discover", "learn", "cc-economics", "hook-audit", "init", "config", "rewrite", "verify", "recall", "telemetry", "session", "llm-proxy":
+		return nil, false
+	case "test", "err", "summary":
+		i++
+		if i >= len(words) || !words[i].word.Literal() || words[i].word.Text == "" || strings.HasPrefix(words[i].word.Text, "-") {
+			return nil, false
+		}
+	}
+	return words[i:], true
 }
 
 // shells are the shells whose -c script is lexed.

@@ -121,6 +121,7 @@ func cmdReadoutHook(args []string, stdin io.Reader, stdout, stderr io.Writer) (c
 	if !channelReady(harness.CapReadout, readinessInput{root: root, harnessID: codec.ID(), now: nowFunc()}, readoutChannel, in.SessionID) {
 		return 0
 	}
+	cmd := parseShellCommand(in.Command, root).Transparent()
 	var richOut *readoutRichOutput
 	{
 		// RO-21: the test-run tier first, inside the descriptor's deadline,
@@ -143,6 +144,18 @@ func cmdReadoutHook(args []string, stdin io.Reader, stdout, stderr io.Writer) (c
 	if !underReadoutRoots(cfg.Roots, dir) {
 		return 0
 	}
+	if cmd.Rtk() {
+		// RTK owns the output reshaping. The test-run tier above still
+		// records the run and may emit its normal failure context.
+		ro := readout.Render(nil, readout.Input{Command: &cmd, Stdout: in.Shell.Stdout, Stderr: in.Shell.Stderr})
+		ro.Reason = readout.ReasonRtk // RTK also takes precedence over a raw prefix.
+		readoutStep("row")
+		logReadoutRow(readoutRow{
+			event: *eventFlag, configured: cfg.Mode, in: in, cmd: &cmd, ro: ro,
+			elapsed: readoutHookClock().Sub(start),
+		})
+		return 0
+	}
 	rs, err := readout.LoadRules(fathomhome.FathomHome())
 	if err != nil {
 		return 0
@@ -153,7 +166,6 @@ func cmdReadoutHook(args []string, stdin io.Reader, stdout, stderr io.Writer) (c
 	}
 	readoutStep("rules")
 	rs = readoutRulesFor(rs, cfg.Rules)
-	cmd := parseShellCommand(in.Command, eventProjectDir(codec, in)).Transparent()
 	// lean and rich build their emission later; until then every mode is
 	// observe, and the row names the configured one beside it.
 	rin := readout.Input{
