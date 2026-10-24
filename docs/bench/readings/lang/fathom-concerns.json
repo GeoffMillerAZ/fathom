@@ -1,0 +1,157 @@
+{
+ "dialect": "fathom-concerns",
+ "kind": "tooling",
+ "target_level": "L2",
+ "level_met": "L2",
+ "grade": {
+  "L1": "excellent",
+  "L2": "excellent",
+  "L3": "not-attempted",
+  "L4": "not-applicable"
+ },
+ "measured_at": "2026-10-24",
+ "fathom_commit": "77ff107",
+ "extractor": "dialect",
+ "subjects": [
+  {
+   "name": "GeoffMillerAZ/fathom",
+   "sha": "470726f6d4db328ddb0e4e4cad944bc4f0a6272f",
+   "files": 1,
+   "bytes": 9193,
+   "counts": {
+    "fathom_defs": 43,
+    "kind_equal": 43,
+    "matched": 43,
+    "oracle_defs": 43,
+    "range_eligible": 43,
+    "range_ok": 43,
+    "ref_fathom": 1,
+    "ref_fathom_in_truth": 1,
+    "ref_truth": 1,
+    "ref_truth_found": 1,
+    "xref_fathom": 0,
+    "xref_truth": 0
+   },
+   "families": {
+    "l1": "A",
+    "refs": "A",
+    "xref": "A"
+   },
+   "kind_intersection": [
+    "rule"
+   ],
+   "excluded_by_kind": {
+    "fathom:CUEField": 125
+   },
+   "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "extract_ms": 3.341,
+    "extract_cpu_ms": 7.876,
+    "max_file_ms": 7,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+   }
+  },
+  {
+   "name": "fathom-concerns fixture: concerns",
+   "sha": "77ff10726a14aa0225753212a715d518ea4d1a32",
+   "files": 1,
+   "bytes": 855,
+   "counts": {
+    "fathom_defs": 5,
+    "kind_equal": 5,
+    "matched": 5,
+    "oracle_defs": 5,
+    "range_eligible": 5,
+    "range_ok": 4,
+    "ref_fathom": 4,
+    "ref_fathom_in_truth": 4,
+    "ref_truth": 4,
+    "ref_truth_found": 4,
+    "xref_fathom": 0,
+    "xref_truth": 0
+   },
+   "families": {
+    "l1": "A",
+    "refs": "A",
+    "xref": "A"
+   },
+   "kind_intersection": [
+    "rule"
+   ],
+   "excluded_by_kind": {
+    "fathom:CUEField": 26
+   },
+   "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "extract_ms": 0.3,
+    "extract_cpu_ms": 0.295,
+    "max_file_ms": 0,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+   }
+  }
+ ],
+ "oracles": [
+  {
+   "tier": "A",
+   "tool": "cue export + cue lsp (concerns)",
+   "version": "v0.16.1"
+  }
+ ],
+ "metrics": {
+  "ref_precision": 1,
+  "ref_recall": 1,
+  "sym_precision": 1,
+  "sym_recall": 1,
+  "xref_precision": null,
+  "xref_recall": null
+ },
+ "metric_tiers": {
+  "ref_precision": "A",
+  "ref_recall": "A",
+  "sym_precision": "A",
+  "sym_recall": "A"
+ },
+ "required_kinds": [
+  "rule"
+ ],
+ "kind_intersection": [
+  "rule"
+ ],
+ "counts": {
+  "fathom_defs": 48,
+  "kind_equal": 48,
+  "matched": 48,
+  "oracle_defs": 48,
+  "range_eligible": 48,
+  "range_ok": 47,
+  "ref_fathom": 5,
+  "ref_fathom_in_truth": 5,
+  "ref_truth": 5,
+  "ref_truth_found": 5,
+  "xref_fathom": 0,
+  "xref_truth": 0
+ },
+ "tenancy": {
+  "faults": 0,
+  "faulting_files": [],
+  "throughput_mb_s": 1.23,
+  "throughput_basis": "cpu",
+  "wall_throughput_mb_s": 2.76,
+  "max_file_ms": 7,
+  "peak_module_pages": 0,
+  "compiled_bytes": 0
+ },
+ "excluded_by_kind": {
+  "fathom:CUEField": 151
+ },
+ "notes": [
+  "oracle tiers (item fathomcue, calibration/oracles/fathom-cue): sym_* (L1) and ref_* (L2) are tier A. The oracle is the cue binary v0.16.1 as separate processes, never fathom's loader: `cue export --out json` names what exists (including what a comprehension generates, which only evaluation names), `cue lsp` documentSymbol gives each range and textDocument/definition each reference (calibration/oracles/cue). A written entity's range is the language server's field; a generated one's is the dynamic field it lists. Structure is graded beside the metrics, tier A and not one of them: cue vet -d against schema/project, schema/semantic and schema/rules/archconformance passes on all fixtures. The repository's own file has 41 concerns (14 written, 27 generated) and one reference (the concerns block to its hidden _intentDocs table); the second subject is the in-repo fixture calibration/oracles/fathom-cue/fixtures/concerns (their subject sha is the fathom commit measured at, not a pinned external repository), which carries 3 written and 2 generated concerns and 5 references the repository's file does not: L2 rests mostly on it. The subjects are tiny too (46 entities, two files): the throughput gate reads 1.2 to 3 MB/s run to run because the evaluator's per-file cost dominates a 12 KB file, and the committed reading is a run that met it (the cue dialect's extraction is the same code)",
+  "scope: the dialect composes the CUE extraction (references are the CUE extraction's own) and adds a concern entity per `concerns:` member. Not read: concern-to-rule citations (the next gap), the shipped packs `packs:` names, and the files a check names (cross-file, L3)",
+  "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+ ],
+ "disposition": null
+}
