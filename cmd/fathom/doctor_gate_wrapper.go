@@ -122,6 +122,9 @@ func checkComposedPushGate(root string) (doctorCheck, bool) {
 	verifyDepthCutAt := ""
 	probe := func(match func([]string) bool) doctorWiringEvidence {
 		reader := doctorWrapperReader{ctx: ctx, root: root, remaining: doctorWrapperBytes, matches: match}
+		if source != "" {
+			reader.markWalked(source) // a cycle back into the hook file is already walked
+		}
 		ev := reader.command(command, "", 0)
 		verifyCut = verifyCut || reader.cut
 		verifyDepthCutAt = reader.depthCutAt()

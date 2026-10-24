@@ -170,6 +170,31 @@ func TestDoctorPushGateDepthCutWalkedTargets(t *testing.T) {
 	}
 }
 
+func TestDoctorPushGateDepthCutSymlinkAndHookCycle(t *testing.T) {
+	t.Run("symlink to a walked script", func(t *testing.T) {
+		root := t.TempDir()
+		gitRepo(t, root)
+		doctorWriteFixture(t, root, ".git/hooks/pre-push", "task validate\n")
+		doctorWriteFixture(t, root, "Taskfile.yml", "version: '3'\ntasks:\n  validate:\n    cmds: [sh scripts/build.sh, task ci]\n  ci:\n    cmds: [sh scripts/link.sh]\n")
+		doctorWriteFixture(t, root, "scripts/build.sh", "go build ./...\n")
+		if err := os.Symlink("build.sh", filepath.Join(root, "scripts", "link.sh")); err != nil {
+			t.Fatal(err)
+		}
+		if got := checkLefthookGates(root); got.Status != doctorFail {
+			t.Fatalf("symlink to a walked script hides nothing: %+v", got)
+		}
+	})
+	t.Run("cycle back into the hook", func(t *testing.T) {
+		root := t.TempDir()
+		gitRepo(t, root)
+		doctorWriteFixture(t, root, ".git/hooks/pre-push", "task validate\n")
+		doctorWriteFixture(t, root, "Taskfile.yml", "version: '3'\ntasks:\n  validate:\n    cmds: [task ci]\n  ci:\n    cmds: [sh .git/hooks/pre-push]\n")
+		if got := checkLefthookGates(root); got.Status != doctorFail {
+			t.Fatalf("a cycle into the hook hides nothing: %+v", got)
+		}
+	})
+}
+
 func TestDoctorLefthookPushGateDepthCutLiteralVerify(t *testing.T) {
 	root := t.TempDir()
 	gitRepo(t, root)
