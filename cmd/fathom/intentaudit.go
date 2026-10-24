@@ -186,17 +186,38 @@ func runIntentAudit(o intentAuditOptions) (intentAuditRun, error) {
 	if rootsClient == nil {
 		rootsClient = &http.Client{Timeout: 5 * time.Second}
 	}
-	roots := registeredLedgerRoots(rootsClient, o.URL)
+	services, servicesErr := fetchServices(rootsClient, o.URL)
+	roots := ledgerRootsOf(services, servicesErr)
+	localServices := map[string]bool{}
+	if servicesErr == nil {
+		root := ledgerroots.Canonical(abs)
+		for name, service := range services {
+			if service.path == "" {
+				continue
+			}
+			rel, err := filepath.Rel(root, ledgerroots.Canonical(service.path))
+			if err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+				localServices[name] = true
+			}
+		}
+	}
+	if svc != "" {
+		// Identity resolution also recognizes this service's clones and
+		// worktrees, whose root need not contain its registered root.
+		localServices[strings.ToLower(svc)] = true
+	}
 	rows, note := planRowStates(abs, roots)
 	guardNotes, guardScopes, guardNote2 := repoGuardNotes(abs)
 	contracts, contractNote, contractCoverage := planRowContracts(abs)
 	ledger, ledgerIgnored := intent.ReadRegisteredLedger(roots) // PE-25
 	head := gitHeadShort(abs)
 	audit := intent.RunAudit(intent.AuditInput{
-		Corpus:   corpus,
-		Symbols:  newIndexOracle(o.URL, svc, abs, head, o.ReadOnly, o.HTTP),
-		PlanRows: rows,
-		PlanNote: note,
+		Corpus:             corpus,
+		LocalServices:      localServices,
+		ServiceRegistryErr: servicesErr,
+		Symbols:            newIndexOracle(o.URL, svc, abs, head, o.ReadOnly, o.HTTP),
+		PlanRows:           rows,
+		PlanNote:           note,
 
 		PlanContracts:    contracts,
 		PlanContractNote: contractNote,
@@ -358,6 +379,11 @@ func renderIntentAudit(w io.Writer, c intent.Corpus, a intent.Audit, ledger []in
 	}
 	for _, u := range c.Unparsed {
 		fmt.Fprintf(w, "  UNPARSED %s:%d — %s\n", u.File, u.Line, u.Reason)
+	}
+	for _, v := range a.Triggers {
+		if v.State == intent.TriggerUnevaluable {
+			fmt.Fprintf(w, "  UNEVALUABLE %s %s:%d — %s\n", v.ID, v.File, v.Line, v.Reason)
+		}
 	}
 
 	if want("conditions") {

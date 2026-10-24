@@ -15,6 +15,33 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
+func TestDriftRadarUnevaluableBucket(t *testing.T) {
+	for _, instrument := range []string{"plans_failing", ""} {
+		t.Run(instrument, func(t *testing.T) {
+			m := buildDriftRadar([]intent.TriggerVerdict{
+				{Record: "ADR-001", State: intent.TriggerUnevaluated},
+				{Record: "ADR-002", State: intent.TriggerUnevaluable, Instrument: instrument, Reason: "cross-repo refused"},
+			}, nil, nil)
+			if m.Prose != 1 || m.Due.Known() {
+				t.Errorf("refusals must not count as prose or measured triggers: %+v", m)
+			}
+			if instrument != "" && strings.Contains(m.Due.Reason, "no revisit or promote condition names an instrument") {
+				t.Errorf("a refused instrument must not read as an absent annotation: %s", m.Due.Reason)
+			}
+			page := renderDriftRadar("svc", m)
+			for _, want := range []string{"1 unevaluable", "cross-repo refused", "ADR-002"} {
+				if !strings.Contains(page, want) {
+					t.Errorf("radar lacks %q:\n%s", want, page)
+				}
+			}
+			body, err := json.Marshal(m)
+			if err != nil || !strings.Contains(string(body), `"unevaluable":[{`) {
+				t.Errorf("JSON must expose unevaluable verdicts: %s (%v)", body, err)
+			}
+		})
+	}
+}
+
 // TestConsoleDriftRadar (CX-22, design §5 "Output"): the Intent tab's drift
 // radar lists the decisions due for review (computable triggers that fired
 // at this audit, with their reading and citation) and the architecture

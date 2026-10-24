@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +12,125 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/intent"
 )
+
+func TestCmdIntentAuditAnnotationConfinement(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		unreadable bool
+		resolve    bool
+	}{
+		{name: "local nested foreign and own services"},
+		{name: "resolved worktree service", resolve: true},
+		{name: "unreadable registry", unreadable: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root, upstream, foreign := t.TempDir(), t.TempDir(), t.TempDir()
+			t.Setenv("FATHOM_INTENT_LEDGER", filepath.Join(t.TempDir(), "intent.jsonl"))
+			t.Setenv("FATHOM_VERIFY_LEDGER", filepath.Join(t.TempDir(), "verify.jsonl"))
+			if err := os.MkdirAll(filepath.Join(root, "docs", "intent"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(root, "docs", "intent", "README.md"), []byte("# Project intent\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			adr := "# Decisions\n\n" +
+				"## ADR-001 Local\n\nRevisit when: local count {oracle: index, service: LoCaL, instrument: plans_failing, threshold: \"> 0\"}\n\n" +
+				"## ADR-002 Nested\n\nRevisit when: nested count {oracle: index, service: NeStEd, instrument: plans_failing, threshold: \"> 0\"}\n\n" +
+				"## ADR-003 Foreign\n\nRevisit when: foreign count {oracle: index, service: foreign, instrument: plans_failing, threshold: \"> 0\"}\n\n" +
+				"## ADR-004 Own\n\nRevisit when: own count {oracle: index, service: OwN, instrument: plans_failing, threshold: \"> 0\"}\n\n" +
+				"## ADR-005 Path\n\nRevisit when: outside path {oracle: lexical, paths: ../x, service: foreign, instrument: plans_failing, threshold: \"> 0\"}\n\n" +
+				"## ADR-006 Done\n\nDone when: foreign evidence {oracle: index, service: foreign}\n"
+			if err := os.WriteFile(filepath.Join(root, "ADR.md"), []byte(adr), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/identity" {
+					_ = json.NewEncoder(w).Encode(identityResult{Schema: 1, Service: "own", Root: upstream, Path: upstream, MatchedBy: destWorktree})
+					return
+				}
+				var req struct {
+					Params struct{ Name string } `json:"params"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				if req.Params.Name != "list_services" {
+					_, _ = w.Write([]byte(`{"result":{}}`))
+					return
+				}
+				if tc.unreadable {
+					http.Error(w, "registry unreadable", http.StatusServiceUnavailable)
+					return
+				}
+				_ = json.NewEncoder(w).Encode(map[string]any{"result": map[string]any{"services": []map[string]string{
+					{"service": "local", "path": root},
+					{"service": "nested", "path": filepath.Join(root, "modules", "nested")},
+					{"service": "foreign", "path": foreign},
+					{"service": "own", "path": upstream},
+				}}})
+			})
+			previous := http.DefaultTransport
+			t.Cleanup(func() { http.DefaultTransport = previous })
+			http.DefaultTransport = testRunRoundTrip(func(r *http.Request) (*http.Response, error) {
+				rec := httptest.NewRecorder()
+				handler.ServeHTTP(rec, r)
+				return rec.Result(), nil
+			})
+			args := []string{"audit", "--root", root, "--url", "http://daemon.invalid", "--read-only", "--kind", "triggers"}
+			if !tc.resolve {
+				args = append(args, "--service", "own")
+			}
+			var out, errBuf bytes.Buffer
+			if code := cmdIntent(args, &out, &errBuf); code != 0 {
+				t.Fatalf("audit exit %d: %s", code, errBuf.String())
+			}
+			refused := map[string]string{}
+			for _, line := range strings.Split(out.String(), "\n") {
+				if !strings.HasPrefix(line, "  UNEVALUABLE ") {
+					continue
+				}
+				for _, record := range []string{"ADR-001", "ADR-002", "ADR-003", "ADR-004", "ADR-005", "ADR-006"} {
+					if strings.Contains(line, record) {
+						refused[record] = line
+					}
+				}
+			}
+			for _, record := range []string{"ADR-001", "ADR-002", "ADR-004"} {
+				if tc.unreadable {
+					if !strings.Contains(refused[record], "service not confirmed local: registry unreadable (list_services: HTTP 503)") {
+						t.Errorf("%s must name the registry error: %q", record, refused[record])
+					}
+				} else if refused[record] != "" || !strings.Contains(out.String(), "UNEVALUATED "+record) {
+					t.Errorf("%s is local and must reach its instrument:\n%s", record, out.String())
+				}
+			}
+			serviceReason := "cross-repo refused"
+			if tc.unreadable {
+				serviceReason = "service not confirmed local: registry unreadable (list_services: HTTP 503)"
+				if strings.Contains(out.String(), "cross-repo refused") {
+					t.Error("an unreadable registry cannot prove a service is foreign")
+				}
+			}
+			for _, record := range []string{"ADR-003", "ADR-006"} {
+				if !strings.Contains(refused[record], serviceReason) {
+					t.Errorf("%s must be UNEVALUABLE with %q: %q", record, serviceReason, refused[record])
+				}
+			}
+			if !strings.Contains(refused["ADR-005"], "escapes the repository root") {
+				t.Errorf("path checks must still run: %q", refused["ADR-005"])
+			}
+			wantCounts := "3 revisit/promote condition(s)"
+			wantUnevaluable := "3 unevaluable"
+			if tc.unreadable {
+				wantCounts, wantUnevaluable = "0 revisit/promote condition(s)", "6 unevaluable"
+			}
+			if !strings.Contains(out.String(), wantCounts) || !strings.Contains(out.String(), wantUnevaluable) {
+				t.Errorf("refusals need a separate header bucket:\n%s", out.String())
+			}
+		})
+	}
+}
 
 // TestCmdIntentAuditSectionsAndBeat (EP-9): the verb renders the three
 // sections, records its run in the intent ledger and a beat, and — the part

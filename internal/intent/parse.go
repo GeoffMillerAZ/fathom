@@ -282,6 +282,13 @@ func (c *Corpus) parseConditionsWith(rel, body string, st *condState) {
 			text = strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(text), "|"))
 
 			ann, rest, suspect := verify.ParseAnnotation(text)
+			// Path arguments are also corpus lint: name unsafe content at
+			// its source even when no condition evaluator can run it yet.
+			if err := ConfineAnnotation(c.Root, ann, nil); err != nil {
+				if refused, ok := err.(*ConfineError); ok && refused.Key != "service" {
+					c.Unparsed = append(c.Unparsed, Unparsed{File: rel, Line: i + 1, Reason: err.Error()})
+				}
+			}
 			id := st.record
 			if id == "" {
 				id = st.fileID

@@ -67,7 +67,8 @@ type Audit struct {
 	Annotated int
 	// Triggers are the revisit and promote conditions' verdicts (CX-21):
 	// computable ones read through AuditInput.Instruments at this run,
-	// prose ones listed unevaluated. Sorted by file then line.
+	// prose ones listed unevaluated. Also includes refused condition
+	// annotations under any label. Sorted by file then line.
 	Triggers []TriggerVerdict
 	// Coverage is what the corpus reader could and could not see (ADR-027).
 	// When it is incomplete EVERY count in this struct is a lower bound,
@@ -97,12 +98,19 @@ type PlanRowState struct {
 
 // AuditInput is everything an audit needs beyond the corpus.
 type AuditInput struct {
-	Corpus           Corpus
-	Symbols          SymbolOracle   // nil → U4/U11's index half is uncomputable
-	PlanRows         []PlanRowState // empty → U1/U2 uncomputable
-	PlanNote         string         // why PlanRows is empty, when it is
-	PlanContracts    []PlanRow      // static plan-row contracts; empty → U12 uncomputable
-	PlanContractNote string         // why PlanContracts is empty, when it is
+	Corpus Corpus
+	// LocalServices names the audit's own service and services rooted in
+	// Corpus.Root (including services rooted below it), case-insensitively.
+	// An empty set authorizes no service annotation; nil skips the service check.
+	LocalServices map[string]bool
+	// ServiceRegistryErr leaves service annotations unevaluable while path
+	// confinement still runs. An unreadable registry cannot prove refusal.
+	ServiceRegistryErr error
+	Symbols            SymbolOracle   // nil → U4/U11's index half is uncomputable
+	PlanRows           []PlanRowState // empty → U1/U2 uncomputable
+	PlanNote           string         // why PlanRows is empty, when it is
+	PlanContracts      []PlanRow      // static plan-row contracts; empty → U12 uncomputable
+	PlanContractNote   string         // why PlanContracts is empty, when it is
 
 	// GuardNotes are the `note` strings of this repo's .fathom/guard.cue
 	// entries; GuardScopes maps a note back to its scopes. A nil
@@ -172,11 +180,11 @@ func RunAudit(in AuditInput) Audit {
 			a.Annotated++
 		}
 	}
-	a.Triggers = evalComputableTriggers(in.Corpus, in.Instruments)
+	a.Triggers = evalComputableTriggers(in.Corpus, in.Instruments, in.LocalServices, in.ServiceRegistryErr)
 	if in.Instruments == nil {
 		computable := 0
 		for _, t := range a.Triggers {
-			if t.Instrument != "" {
+			if t.Instrument != "" && t.State != TriggerUnevaluable {
 				computable++
 			}
 		}

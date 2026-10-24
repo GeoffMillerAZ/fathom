@@ -28,6 +28,7 @@ const (
 	TriggerFired       = "fired"
 	TriggerHolding     = "not fired"
 	TriggerUnevaluated = "unevaluated"
+	TriggerUnevaluable = "unevaluable"
 )
 
 // triggerLabels are the condition labels a computable trigger may carry.
@@ -59,7 +60,7 @@ type TriggerVerdict struct {
 	State      string  `json:"state"`
 	Value      float64 `json:"value,omitempty"`
 	Reading    string  `json:"reading,omitempty"`
-	// Reason says why a trigger is unevaluated.
+	// Reason says why a trigger is unevaluated or an annotation is refused.
 	Reason string `json:"reason,omitempty"`
 }
 
@@ -123,8 +124,12 @@ func compare(v float64, op string, n float64) bool {
 // evalComputableTriggers returns every non-terminal revisit and promote
 // condition's verdict, sorted by file then line: computable ones read
 // through read (each instrument read once per audit), prose ones listed
-// unevaluated. A nil read leaves every trigger unevaluated.
-func evalComputableTriggers(c Corpus, read InstrumentReader) []TriggerVerdict {
+// unevaluated. Refused annotations are listed as unevaluable, including
+// conditions with other labels. A nil read leaves safe triggers unevaluated.
+func evalComputableTriggers(c Corpus, read InstrumentReader, localServices map[string]bool, registryErr error) []TriggerVerdict {
+	if registryErr != nil {
+		localServices = nil
+	}
 	cache := map[string]struct {
 		r   InstrumentReading
 		ok  bool
@@ -132,17 +137,32 @@ func evalComputableTriggers(c Corpus, read InstrumentReader) []TriggerVerdict {
 	}{}
 	var out []TriggerVerdict
 	for _, cond := range c.Conditions {
-		if !triggerLabels[cond.Label] || cond.Terminal {
+		if cond.Terminal {
 			continue
 		}
 		v := TriggerVerdict{ID: cond.ID, Record: cond.Record, Label: cond.Label, Text: strings.TrimSpace(cond.Text), File: cond.File, Line: cond.Line, State: TriggerUnevaluated}
+		v.Instrument = strings.TrimSpace(cond.Ann["instrument"])
+		v.Threshold = strings.TrimSpace(cond.Ann["threshold"])
+		if cond.Annotated() || cond.IsComputableTrigger() {
+			err := ConfineAnnotation(c.Root, cond.Ann, localServices)
+			if err == nil && registryErr != nil && cond.Ann["service"] != "" {
+				err = fmt.Errorf("service not confirmed local: registry unreadable (%v)", registryErr)
+			}
+			if err != nil {
+				v.State, v.Reason = TriggerUnevaluable, err.Error()
+				out = append(out, v)
+				continue
+			}
+		}
+		if !triggerLabels[cond.Label] {
+			continue
+		}
 		if !cond.IsComputableTrigger() {
+			v.Instrument, v.Threshold = "", ""
 			v.Reason = "prose trigger — human-judged; add {instrument: <name>, threshold: \"<op> <number>\"} to make it computable"
 			out = append(out, v)
 			continue
 		}
-		v.Instrument = strings.TrimSpace(cond.Ann["instrument"])
-		v.Threshold = strings.TrimSpace(cond.Ann["threshold"])
 		op, n, ok := parseThreshold(v.Threshold)
 		switch {
 		case !ok:

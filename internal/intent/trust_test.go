@@ -22,6 +22,9 @@ func TestAnnotationsAreRootConfined(t *testing.T) {
 		{"parent escape", map[string]string{"oracle": "lexical", "paths": "../other-repo/secrets.txt"}, "escapes the repository"},
 		{"absolute path", map[string]string{"oracle": "lexical", "paths": "/etc/passwd"}, "absolute or home-relative"},
 		{"home path", map[string]string{"oracle": "lexical", "paths": "~/.ssh/id_rsa"}, "absolute or home-relative"},
+		{"comma absolute path", map[string]string{"paths": "docs/a, /etc/passwd"}, "absolute or home-relative"},
+		{"comma parent escape", map[string]string{"paths": "docs/a,../x"}, "escapes the repository"},
+		{"comma home path", map[string]string{"paths": "docs/a, ~/.ssh/id_rsa"}, "absolute or home-relative"},
 		{"deep escape", map[string]string{"oracle": "plan", "plan": "docs/../../elsewhere/x.md"}, "escapes the repository"},
 		{"foreign service", map[string]string{"oracle": "index", "service": "other-repo", "symbol": "X"}, "cross-repo refused"},
 	} {
@@ -39,6 +42,8 @@ func TestAnnotationsAreRootConfined(t *testing.T) {
 	for _, ok := range []map[string]string{
 		{"oracle": "lexical", "paths": ".fathom/capabilities.cue", "pattern": "budgets:"},
 		{"oracle": "index", "service": "fathom", "symbol": "Load", "present": "true"},
+		{"oracle": "index", "service": "FaThOm", "symbol": "Load", "present": "true"},
+		{"oracle": "lexical", "paths": "docs/a, docs/b; docs/c"},
 		{"oracle": "plan", "plan": "docs/plans/custodian.md", "rows": "all-proven"},
 		{"oracle": "date", "after": "2027-01-01"},
 		{},

@@ -174,8 +174,8 @@ func renderIntentTriggers(w io.Writer, ts []intent.TriggerVerdict) {
 			prose++
 		}
 	}
-	fmt.Fprintf(w, "\ntriggers: %d revisit/promote condition(s) — %d fired, %d not fired, %d unevaluated (%d prose)\n",
-		len(ts), len(by[intent.TriggerFired]), len(by[intent.TriggerHolding]), len(by[intent.TriggerUnevaluated]), prose)
+	fmt.Fprintf(w, "\ntriggers: %d revisit/promote condition(s) — %d fired, %d not fired, %d unevaluated (%d prose), %d unevaluable annotation(s)\n",
+		len(ts)-len(by[intent.TriggerUnevaluable]), len(by[intent.TriggerFired]), len(by[intent.TriggerHolding]), len(by[intent.TriggerUnevaluated]), prose, len(by[intent.TriggerUnevaluable]))
 	for _, st := range []string{intent.TriggerFired, intent.TriggerHolding} {
 		for _, t := range by[st] {
 			fmt.Fprintf(w, "  %s %s %s — %s %s: %s\n      reading: %s\n      at %s:%d\n", strings.ToUpper(st), t.Record, t.Label, t.Instrument, t.Threshold, clipText(t.Text, 120), t.Reading, t.File, t.Line)

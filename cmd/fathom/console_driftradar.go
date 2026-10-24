@@ -58,6 +58,9 @@ type driftRadarModel struct {
 	// Unevaluated are computable triggers the audit could not read, with
 	// the reason; Prose counts the human-judged ones.
 	Unevaluated []intent.TriggerVerdict `json:"unevaluated,omitempty"`
+	// Unevaluable annotations failed confinement and are never prose or
+	// measured triggers, even when they do not name an instrument.
+	Unevaluable []intent.TriggerVerdict `json:"unevaluable,omitempty"`
 	Prose       int                     `json:"prose"`
 	Eroding     console.Value[int]      `json:"eroding"`
 	Rules       []driftRadarRule        `json:"rules,omitempty"`
@@ -71,6 +74,8 @@ func buildDriftRadar(triggers []intent.TriggerVerdict, trend []store.ArchViolati
 	computable := 0
 	for _, t := range triggers {
 		switch {
+		case t.State == intent.TriggerUnevaluable:
+			m.Unevaluable = append(m.Unevaluable, t)
 		case t.Instrument == "":
 			m.Prose++
 		case t.State == intent.TriggerFired:
@@ -85,7 +90,7 @@ func buildDriftRadar(triggers []intent.TriggerVerdict, trend []store.ArchViolati
 	}
 	const trigSource = "fathom intent audit --read-only (computable revisit/promote triggers)"
 	if computable == 0 {
-		m.Due = console.Absent[int](fmt.Sprintf("no revisit or promote condition names an instrument and a threshold — %d prose trigger(s) are human-judged, never evaluated", m.Prose)).WithSource(trigSource)
+		m.Due = console.Absent[int](fmt.Sprintf("no evaluable revisit or promote condition names an instrument and a threshold — %d prose trigger(s) are human-judged, never evaluated", m.Prose)).WithSource(trigSource)
 	} else {
 		m.Due = console.Measured(len(m.Decisions), trigSource).WithDenominator(fmt.Sprintf("of %d computable trigger(s), the ones that fired at this audit", computable))
 	}
@@ -183,6 +188,12 @@ func renderDriftRadar(svc string, m driftRadarModel) string {
 	}
 	for _, u := range m.Unevaluated {
 		b.WriteString(`<p class="mt-2 text-xs text-caution">unevaluated — ` + html.EscapeString(u.Record+" "+u.Instrument+" "+u.Threshold+": "+u.Reason) + `</p>`)
+	}
+	if len(m.Unevaluable) > 0 {
+		b.WriteString(`<p class="mt-2 text-xs text-caution">` + html.EscapeString(fmt.Sprintf("%d unevaluable annotation(s)", len(m.Unevaluable))) + `</p>`)
+		for _, u := range m.Unevaluable {
+			b.WriteString(`<p class="mt-2 text-xs text-caution">unevaluable — ` + html.EscapeString(u.Record+" "+u.Instrument+" "+u.Threshold+": "+u.Reason) + `</p>`)
+		}
 	}
 	if m.Prose > 0 && m.Due.Known() {
 		b.WriteString(`<p class="mt-2 text-xs text-ink-muted">` + html.EscapeString(fmt.Sprintf("%d prose trigger(s) stay human-judged.", m.Prose)) + `</p>`)

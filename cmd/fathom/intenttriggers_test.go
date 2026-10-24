@@ -13,6 +13,21 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
+func TestIntentTriggersUnevaluableBucket(t *testing.T) {
+	var out bytes.Buffer
+	renderIntentTriggers(&out, []intent.TriggerVerdict{
+		{Record: "ADR-001", Label: "Revisit when", State: intent.TriggerHolding, Instrument: "plans_failing", Threshold: "> 0"},
+		{Record: "ADR-002", Label: "Revisit when", State: intent.TriggerUnevaluated},
+		{Record: "ADR-003", Label: "Revisit when", State: intent.TriggerUnevaluable, Instrument: "plans_failing", Threshold: "> 0", Reason: "cross-repo refused"},
+		{Record: "G1", Label: "Done when", State: intent.TriggerUnevaluable, Reason: "escapes the repository root"},
+	})
+	for _, want := range []string{"2 revisit/promote condition(s)", "1 not fired", "1 unevaluated (1 prose)", "2 unevaluable"} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("missing %q:\n%s", want, out.String())
+		}
+	}
+}
+
 // TestCmdIntentAuditEvaluatesComputableTriggers (CX-21): `fathom intent
 // audit` reads a computable trigger's instrument when the operator runs it
 // — here the ingest-time violation trend in --store — and prints the

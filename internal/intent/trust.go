@@ -48,7 +48,7 @@ func confineAnnotation(root string, ann map[string]string, localServices map[str
 		if !ok {
 			continue
 		}
-		for _, p := range strings.Split(raw, ";") {
+		for _, p := range strings.FieldsFunc(raw, func(r rune) bool { return r == ',' || r == ';' }) {
 			p = strings.TrimSpace(p)
 			if p == "" {
 				continue
@@ -63,7 +63,14 @@ func confineAnnotation(root string, ann map[string]string, localServices map[str
 		if svc == "" {
 			return &ConfineError{Key: "service", Value: svc, Reason: "empty service"}
 		}
-		if localServices != nil && !localServices[svc] {
+		local := false
+		for name, allowed := range localServices {
+			if allowed && strings.EqualFold(name, svc) {
+				local = true
+				break
+			}
+		}
+		if localServices != nil && !local {
 			return &ConfineError{
 				Key: "service", Value: svc,
 				Reason: "cross-repo refused — a condition may only query a service rooted in this repository (F18 federation is not built)",
