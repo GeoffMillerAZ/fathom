@@ -1,0 +1,22 @@
+{
+  "kind": "callers",
+  "tool": "find_callers",
+  "service": "@",
+  "symbol": "Lonely",
+  "index_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "facts": [
+    {
+      "kind": "absence",
+      "subject": "@::pkg/pkg.Lonely",
+      "read_set": {
+        "files": [
+          "pkg/a.go"
+        ],
+        "tree_hash": "cccccccccccccccccccccccccccccccccccccccc",
+        "tool": "fathom/find_callers",
+        "skipped": {}
+      },
+      "count": "0 caller(s)"
+    }
+  ]
+}

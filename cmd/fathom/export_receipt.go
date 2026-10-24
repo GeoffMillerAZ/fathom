@@ -25,7 +25,7 @@ import (
 
 // cmdExportReceipt implements `fathom export receipt --service S --symbol
 // NAME [--kind symbol_location|callers] [--store PATH] [--no-excerpts]
-// [-o FILE]`. Anchors name the service's indexed commit; a symbol with no
+// [--keep-service] [-o FILE]`. Anchors name the service's indexed commit; a symbol with no
 // callers is an absence fact carrying the index's read set.
 func cmdExportReceipt(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("export receipt", stderr)
@@ -35,6 +35,7 @@ func cmdExportReceipt(args []string, stdout, stderr io.Writer) int {
 	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db)")
 	out := fs.String("o", "-", "output file (- is stdout)")
 	noExcerpts := fs.Bool("no-excerpts", false, "keep digests only: no excerpt text leaves")
+	keepService := fs.Bool("keep-service", false, "keep service names in the exported receipt (default: replace with @)")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -70,6 +71,7 @@ func cmdExportReceipt(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "error: export receipt: %v\n", err)
 		return 1
 	}
+	receipt.RedactReceipt(&built, *keepService)
 	data, err := json.MarshalIndent(built, "", "  ")
 	if err != nil {
 		fmt.Fprintf(stderr, "error: export receipt: %v\n", err)

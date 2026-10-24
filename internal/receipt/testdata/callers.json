@@ -1,0 +1,31 @@
+{
+  "kind": "callers",
+  "tool": "find_callers",
+  "service": "@",
+  "symbol": "Greet",
+  "index_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "callers": [
+    "@::pkg/pkg.Hello"
+  ],
+  "facts": [
+    {
+      "kind": "caller",
+      "subject": "@::pkg/pkg.Hello",
+      "anchors": [
+        {
+          "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "object_format": "sha1",
+          "path": "pkg/a.go",
+          "start_line": 7,
+          "end_line": 9,
+          "blob_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "excerpt_sha256": "e06c456ad44753a2cc4236dad74786e95f024d9914bea67998077483eeb1bda8",
+          "fathom_fingerprint": "0226861af9bb3cb1dfabb3b5f8853c9d6f319e2e8b9c2dbbd85a06272c3cf72f",
+          "state": "committed",
+          "clean": true,
+          "excerpt": "func Hello() string {\n\treturn Greet() // see example.invalid/library\n}\n"
+        }
+      ]
+    }
+  ]
+}

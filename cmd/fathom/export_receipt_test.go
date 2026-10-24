@@ -7,14 +7,19 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/receipt"
+	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
 const exportReceiptFixtureSrc = `package pkg
@@ -134,5 +139,148 @@ func TestCmdExportReceiptRefusesUnknownKind(t *testing.T) {
 	}
 	if out.Len() != 0 {
 		t.Errorf("a refused export wrote %q", out.String())
+	}
+}
+
+func exportReceiptRedactFixture(t *testing.T, service, source string) (string, string) {
+	t.Helper()
+	t.Setenv("FATHOM_HOME", t.TempDir())
+	repo := newSelfSkipGitRepo(t)
+	repo.writePlan("pkg/a.go", source)
+	repo.commitAll("fixture")
+	storePath := filepath.Join(t.TempDir(), "receipt.sqlite")
+	st, err := store.Open(storePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	if err := st.SetServiceMeta(ctx, store.ServiceMeta{ServiceID: service, Path: repo.root, IndexedCommit: gitHead(t, repo.root)}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.SetFingerprint(ctx, service, "pkg/a.go", fusion.FingerprintHash([]byte(source))); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.PutObservations(ctx, []core.Observation{
+		{ServiceID: service, Symbol: "Greet", Package: "pkg", SourceRef: "pkg/a.go", SourceKind: core.KindGoFunc, Line: 4, EndLine: 4},
+		{ServiceID: service, Symbol: "Hello", Package: "pkg", SourceRef: "pkg/a.go", SourceKind: core.KindGoFunc, Line: 7, EndLine: 9, Calls: []string{"Greet"}},
+		{ServiceID: service, Symbol: "Lonely", Package: "pkg", SourceRef: "pkg/a.go", SourceKind: core.KindGoFunc, Line: 12, EndLine: 12},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return repo.root, storePath
+}
+
+func TestCmdExportReceiptRedactService(t *testing.T) {
+	_, storePath := exportReceiptRedactFixture(t, "rcpt", exportReceiptFixtureSrc)
+	for _, tc := range []struct{ symbol, kind string }{
+		{"Greet", "symbol_location"}, {"Greet", "callers"}, {"Lonely", "callers"},
+	} {
+		for _, keep := range []bool{false, true} {
+			t.Run(tc.symbol+"/"+tc.kind+"/keep="+strconv.FormatBool(keep), func(t *testing.T) {
+				args := []string{"--symbol", tc.symbol, "--kind", tc.kind}
+				wantService := "@"
+				if keep {
+					args = append(args, "--keep-service")
+					wantService = "rcpt"
+				}
+				r, raw := exportReceipt(t, storePath, args...)
+				if r.Service != wantService {
+					t.Errorf("service = %q, want %q", r.Service, wantService)
+				}
+				for _, f := range r.Facts {
+					if !strings.HasPrefix(f.Subject, wantService+"::") {
+						t.Errorf("fact subject = %q, want service %q", f.Subject, wantService)
+					}
+				}
+				for _, key := range r.Callers {
+					if !strings.HasPrefix(key, wantService+"::") {
+						t.Errorf("caller = %q, want service %q", key, wantService)
+					}
+				}
+				if !keep && strings.Contains(raw, "rcpt") {
+					t.Errorf("default receipt discloses service:\n%s", raw)
+				}
+			})
+		}
+	}
+	path := filepath.Join(t.TempDir(), "redacted.json")
+	var out, errBuf bytes.Buffer
+	if code := run([]string{"export", "receipt", "--service", "rcpt", "--store", storePath, "--symbol", "Greet", "-o", path}, &out, &errBuf); code != 0 {
+		t.Fatalf("file export exit %d: %s", code, errBuf.String())
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(data), "rcpt") || !strings.Contains(string(data), `"service": "@"`) {
+		t.Errorf("file export discloses service:\n%s", data)
+	}
+}
+
+// These goldens come from the product entry point, rather than reconstructed
+// envelopes. Regenerate with go test ./cmd/fathom -run ExportReceiptRedactGoldens -update.
+func TestCmdExportReceiptRedactGoldens(t *testing.T) {
+	_, storePath := exportReceiptRedactFixture(t, "fixture-service", strings.ReplaceAll(
+		exportReceiptFixtureSrc, "return Greet()", "return Greet() // see example.invalid/library"))
+	for _, tc := range []struct{ file, symbol, kind string }{
+		{"definition.json", "Greet", "symbol_location"},
+		{"callers.json", "Greet", "callers"},
+		{"absence.json", "Lonely", "callers"},
+	} {
+		t.Run(tc.file, func(t *testing.T) {
+			var out, errBuf bytes.Buffer
+			if code := run([]string{"export", "receipt", "--service", "fixture-service", "--store", storePath,
+				"--symbol", tc.symbol, "--kind", tc.kind}, &out, &errBuf); code != 0 {
+				t.Fatalf("export exit %d: %s", code, errBuf.String())
+			}
+			var r receipt.ExportedReceipt
+			if err := json.Unmarshal(out.Bytes(), &r); err != nil {
+				t.Fatal(err)
+			}
+			// Git identities vary with fixture commit metadata. This envelope has
+			// no timestamps; retain excerpt digests and fingerprints unchanged.
+			r.IndexCommit = strings.Repeat("a", 40)
+			for i := range r.Facts {
+				f := &r.Facts[i]
+				for j := range f.Anchors {
+					f.Anchors[j].Commit = strings.Repeat("a", 40)
+					f.Anchors[j].BlobID = strings.Repeat("b", 40)
+				}
+				if f.ReadSet != nil {
+					f.ReadSet.TreeHash = strings.Repeat("c", 40)
+				}
+			}
+			got, err := json.MarshalIndent(r, "", "  ")
+			if err != nil {
+				t.Fatal(err)
+			}
+			got = append(got, '\n')
+			path := filepath.Join("..", "..", "internal", "receipt", "testdata", tc.file)
+			if *updateGolden {
+				if err := os.WriteFile(path, got, 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			want, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(got, want) {
+				t.Errorf("export differs from %s (regenerate with -update):\n%s", tc.file, got)
+			}
+		})
+	}
+}
+
+func TestCmdExportReceiptRedactHelp(t *testing.T) {
+	var out, errBuf bytes.Buffer
+	if code := run([]string{"help"}, &out, &errBuf); code != 0 {
+		t.Fatalf("help exit %d: %s", code, errBuf.String())
+	}
+	if !strings.Contains(out.String(), "[--no-excerpts] [--keep-service] [-o FILE]") {
+		t.Error("export receipt summary omits --keep-service")
 	}
 }

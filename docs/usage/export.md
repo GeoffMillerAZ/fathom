@@ -35,3 +35,20 @@ line and naming that the `scip-go` comparison is pending on a machine that has i
 
 `fathom ingest --scip` — importing symbols FROM a SCIP index, rather than exporting TO
 one — is a later, separate decision; not built here.
+
+#### `export receipt` — share an anchored symbol answer
+
+```sh
+fathom export receipt --service <id> --symbol <name> [--kind symbol_location|callers] [--store <path>] [--no-excerpts] [--keep-service] [-o receipt.json]
+```
+
+Writes a receipt as JSON to stdout, or to `-o` when supplied. The default kind
+is `symbol_location`; `callers` includes caller facts or an absence with its
+read set. Anchors identify the indexed commit and repository-relative source.
+`fathom receipt verify --repo <checkout> receipt.json` checks the saved answer.
+
+Exported receipts replace the service name with `@`, including the service
+prefix in symbol keys and the service query parameter. `--keep-service`
+preserves those names when you choose to share them. Redaction leaves source
+paths, excerpts and digests intact. Excerpts contain at most 40 lines;
+`--no-excerpts` keeps digests without excerpt text.

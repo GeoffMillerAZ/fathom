@@ -1,0 +1,30 @@
+{
+  "kind": "symbol_location",
+  "tool": "find_symbol",
+  "service": "@",
+  "symbol": "Greet",
+  "index_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "file": "pkg/a.go",
+  "line": 4,
+  "facts": [
+    {
+      "kind": "definition",
+      "subject": "@::pkg/pkg.Greet",
+      "anchors": [
+        {
+          "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "object_format": "sha1",
+          "path": "pkg/a.go",
+          "start_line": 4,
+          "end_line": 4,
+          "blob_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "excerpt_sha256": "7f51156333f186cfecf2dcac415888e3b9b60b46534345cd46a5b453ef1452a8",
+          "fathom_fingerprint": "0226861af9bb3cb1dfabb3b5f8853c9d6f319e2e8b9c2dbbd85a06272c3cf72f",
+          "state": "committed",
+          "clean": true,
+          "excerpt": "func Greet() string { return \"hi\" }\n"
+        }
+      ]
+    }
+  ]
+}

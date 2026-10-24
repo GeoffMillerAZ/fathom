@@ -125,5 +125,5 @@ func (exportRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Write
 
 func init() {
 	declareVerb(verb{Name: "export", Group: "operate", Order: 20, Run: exportRunner{},
-		Summary: "export scip --service <s> [--store PATH] [-o index.scip]: write the symbol and typed-edge tables as a SCIP index; export receipt --service <s> --symbol <name> [--kind symbol_location|callers] [--no-excerpts] [-o FILE]: write an anchored receipt a stranger checks with git"})
+		Summary: "export scip --service <s> [--store PATH] [-o index.scip]: write the symbol and typed-edge tables as a SCIP index; export receipt --service <s> --symbol <name> [--kind symbol_location|callers] [--no-excerpts] [--keep-service] [-o FILE]: write an anchored receipt a stranger checks with git"})
 }
