@@ -2,15 +2,15 @@
   "dialect": "traefik",
   "kind": "tooling",
   "target_level": "L3",
-  "level_met": "L2",
+  "level_met": "L3",
   "grade": {
     "L1": "excellent",
     "L2": "excellent",
-    "L3": "unmet",
+    "L3": "excellent",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-10-02",
-  "fathom_commit": "44205772",
+  "measured_at": "2026-10-24",
+  "fathom_commit": "dae8417",
   "extractor": "dialect",
   "subjects": [
     {
@@ -29,21 +29,19 @@
         "ref_fathom_in_truth": 4,
         "ref_truth": 4,
         "ref_truth_found": 4,
-        "route_fathom": 1,
-        "route_fathom_in_truth": 1,
-        "route_oracle_unresolved_undeclared": 2,
-        "route_truth": 1,
-        "route_truth_found": 1,
-        "route_unresolved_undeclared": 2,
-        "xref_fathom": 1,
-        "xref_fathom_in_truth": 1,
-        "xref_truth": 1,
-        "xref_truth_found": 1
+        "route_fathom": 3,
+        "route_fathom_in_truth": 3,
+        "route_truth": 3,
+        "route_truth_found": 3,
+        "xref_fathom": 3,
+        "xref_fathom_in_truth": 3,
+        "xref_truth": 3,
+        "xref_truth_found": 3
       },
       "families": {
         "l1": "A",
         "refs": "A",
-        "xref": "C"
+        "xref": "A"
       },
       "kind_intersection": [
         "package",
@@ -55,9 +53,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.253,
-        "extract_cpu_ms": 0.24000000000000002,
-        "max_file_ms": 0,
+        "extract_ms": 0.982,
+        "extract_cpu_ms": 5.177,
+        "max_file_ms": 3,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -104,8 +102,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.17200000000000001,
-        "extract_cpu_ms": 0.171,
+        "extract_ms": 0.497,
+        "extract_cpu_ms": 0.849,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -144,8 +142,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.094,
-        "extract_cpu_ms": 0.092,
+        "extract_ms": 0.132,
+        "extract_cpu_ms": 0.131,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -193,8 +191,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.115,
-        "extract_cpu_ms": 0.115,
+        "extract_ms": 0.245,
+        "extract_cpu_ms": 0.244,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -240,8 +238,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.159,
-        "extract_cpu_ms": 0.153,
+        "extract_ms": 0.27,
+        "extract_cpu_ms": 0.27,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -259,18 +257,18 @@
         "oracle_defs": 11,
         "range_eligible": 9,
         "range_ok": 9,
-        "ref_fathom": 0,
+        "ref_fathom": 3,
+        "ref_fathom_in_truth": 3,
         "ref_truth": 3,
-        "route_fathom": 0,
-        "route_fathom_in_truth": 0,
-        "route_oracle_unresolved_undeclared": 3,
-        "route_truth": 0,
-        "route_truth_found": 0,
-        "route_unresolved_undeclared": 3,
-        "xref_fathom": 0,
-        "xref_fathom_in_truth": 0,
-        "xref_truth": 0,
-        "xref_truth_found": 0
+        "ref_truth_found": 3,
+        "route_fathom": 3,
+        "route_fathom_in_truth": 3,
+        "route_truth": 3,
+        "route_truth_found": 3,
+        "xref_fathom": 3,
+        "xref_fathom_in_truth": 3,
+        "xref_truth": 3,
+        "xref_truth_found": 3
       },
       "families": {
         "l1": "A",
@@ -287,8 +285,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.40199999999999997,
-        "extract_cpu_ms": 0.401,
+        "extract_ms": 0.424,
+        "extract_cpu_ms": 0.424,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -334,9 +332,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.313,
-        "extract_cpu_ms": 0.311,
-        "max_file_ms": 0,
+        "extract_ms": 1.218,
+        "extract_cpu_ms": 1.217,
+        "max_file_ms": 1,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -383,8 +381,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.187,
-        "extract_cpu_ms": 0.185,
+        "extract_ms": 0.359,
+        "extract_cpu_ms": 0.358,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -402,7 +400,7 @@
         "oracle_defs": 13,
         "range_eligible": 11,
         "range_ok": 11,
-        "ref_fathom": 12,
+        "ref_fathom": 13,
         "ref_fathom_in_truth": 12,
         "ref_truth": 12,
         "ref_truth_found": 12,
@@ -430,8 +428,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.216,
-        "extract_cpu_ms": 0.19899999999999998,
+        "extract_ms": 0.437,
+        "extract_cpu_ms": 0.667,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -477,8 +475,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.465,
-        "extract_cpu_ms": 0.427,
+        "extract_ms": 0.645,
+        "extract_cpu_ms": 0.645,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -500,16 +498,16 @@
         "ref_fathom_in_truth": 1,
         "ref_truth": 1,
         "ref_truth_found": 1,
-        "route_fathom": 0,
-        "route_fathom_in_truth": 0,
-        "route_oracle_unresolved_undeclared": 2,
-        "route_truth": 0,
-        "route_truth_found": 0,
-        "route_unresolved_undeclared": 2,
-        "xref_fathom": 0,
-        "xref_fathom_in_truth": 0,
-        "xref_truth": 0,
-        "xref_truth_found": 0
+        "route_fathom": 4,
+        "route_fathom_in_truth": 4,
+        "route_oracle_unresolved_undeclared": 1,
+        "route_truth": 4,
+        "route_truth_found": 4,
+        "route_unresolved_undeclared": 1,
+        "xref_fathom": 4,
+        "xref_fathom_in_truth": 4,
+        "xref_truth": 4,
+        "xref_truth_found": 4
       },
       "families": {
         "l1": "A",
@@ -526,8 +524,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 1.015,
-        "extract_cpu_ms": 0.534,
+        "extract_ms": 0.563,
+        "extract_cpu_ms": 0.563,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -549,11 +547,11 @@
         "ref_fathom_in_truth": 10,
         "ref_truth": 10,
         "ref_truth_found": 10,
-        "route_fathom": 12,
+        "route_fathom": 4,
         "route_fathom_in_truth": 4,
         "route_truth": 4,
         "route_truth_found": 4,
-        "xref_fathom": 12,
+        "xref_fathom": 4,
         "xref_fathom_in_truth": 4,
         "xref_truth": 4,
         "xref_truth_found": 4
@@ -573,8 +571,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.176,
-        "extract_cpu_ms": 0.176,
+        "extract_ms": 0.555,
+        "extract_cpu_ms": 0.554,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -589,11 +587,11 @@
     }
   ],
   "metrics": {
-    "ref_precision": 1,
-    "ref_recall": 0.9643,
+    "ref_precision": 0.9882,
+    "ref_recall": 1,
     "sym_precision": 0.9934,
     "sym_recall": 1,
-    "xref_precision": 0.7241,
+    "xref_precision": 1,
     "xref_recall": 1
   },
   "metric_tiers": {
@@ -601,8 +599,8 @@
     "ref_recall": "A",
     "sym_precision": "A",
     "sym_recall": "A",
-    "xref_precision": "C",
-    "xref_recall": "C"
+    "xref_precision": "A",
+    "xref_recall": "A"
   },
   "required_kinds": [
     "package",
@@ -625,32 +623,32 @@
     "oracle_defs": 151,
     "range_eligible": 132,
     "range_ok": 132,
-    "ref_fathom": 81,
-    "ref_fathom_in_truth": 81,
+    "ref_fathom": 85,
+    "ref_fathom_in_truth": 84,
     "ref_truth": 84,
-    "ref_truth_found": 81,
-    "route_fathom": 29,
-    "route_fathom_in_truth": 21,
+    "ref_truth_found": 84,
+    "route_fathom": 30,
+    "route_fathom_in_truth": 30,
     "route_oracle_unresolved_external": 6,
     "route_oracle_unresolved_ip-literal": 1,
-    "route_oracle_unresolved_undeclared": 7,
-    "route_truth": 21,
-    "route_truth_found": 21,
+    "route_oracle_unresolved_undeclared": 1,
+    "route_truth": 30,
+    "route_truth_found": 30,
     "route_unresolved_external": 6,
     "route_unresolved_ip-literal": 1,
-    "route_unresolved_undeclared": 7,
-    "xref_fathom": 29,
-    "xref_fathom_in_truth": 21,
-    "xref_truth": 21,
-    "xref_truth_found": 21
+    "route_unresolved_undeclared": 1,
+    "xref_fathom": 30,
+    "xref_fathom_in_truth": 30,
+    "xref_truth": 30,
+    "xref_truth_found": 30
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 7.79,
+    "throughput_mb_s": 2.11,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 6.56,
-    "max_file_ms": 0,
+    "wall_throughput_mb_s": 3.7,
+    "max_file_ms": 3,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
@@ -669,10 +667,11 @@
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "picodotdev/blog-ejemplos: restricted to Traefik/traefik-dynamic.yml, Traefik/traefik.yml (-only; the files outside are a disclosed gap, not measured)",
     "quentintaranpino/nostrcheck-server: restricted to dynamic.yml (-only; the files outside are a disclosed gap, not measured)",
+    "references: the provider suffix `@file` is stripped from a router's service, a router's middlewares, a service's weighted, mirroring and failover services and a chain (O349), so druidfi/stonehenge's 3 missed pairs are found (ref_recall .9643 to 1); picodotdev/blog-ejemplos writes `service: [nginx-mirroring]` (a sequence, which Traefik does not accept), and the pattern now reads its strings, so fathom draws 1 pair the oracle does not hold (ref_precision 1 to .9882)",
     "rendiffdev/rendiff-dev: restricted to traefik/dynamic.yml, traefik/traefik.yml (-only; the files outside are a disclosed gap, not measured)",
-    "route references (route_* counts, LB-F98) are scored into xref_precision and xref_recall with the oracle's cross_references: a route, upstream or mesh rule's entity to the Kubernetes Service or compose service its target host names, resolved by fusion.ResolveRouteRefs (the resolver ingest stores route_ref edges from) over the files ingest's route pass reads; route_unresolved_\u003creason\u003e counts fathom's unresolved references, route_oracle_unresolved_\u003creason\u003e the oracle's",
-    "wmde/wikibase-suite: restricted to config/traefik-dynamic.yml (-only; the files outside are a disclosed gap, not measured)",
-    "route pairs (LB-F168, LB-F169): a route joins the declarations of its nearest compose project (the route file's directory, then each ancestor), one pair for every compose file of that directory that declares the service, read by docker compose config 5.1.4 (--no-consistency); scored by lang-routes under -only, which restricts the measured dialect's files and not the compose files a target joins to; the subject set holds at least 10 pairs, the floor under which one miss moves xref_precision by 10 points: 21 pairs (ecamp3 9, blog-ejemplos 4, opa-traefik-microservice-authz 3, Vistack 1, wikibase-suite 4), all found, and fathom draws 8 more for wikibase-suite: the resolver joins the five development/tests overlay stacks beside the root compose file (O435), so xref_precision reads .7241; the xref family is tier C because Vistack's route joins a Kubernetes Service read by yaml.v3"
+    "route pairs (LB-F168, LB-F169): a route joins the declarations of its nearest compose project (the route file's directory, then each ancestor), one pair for every compose file of that directory that declares the service, read by docker compose config 5.1.4 (--no-consistency); scored by lang-routes under -only, which restricts the measured dialect's files and not the compose files a target joins to; 30 pairs from 7 subjects (ecamp3 9, blog-ejemplos 4, rendiff-dev 4, wikibase-suite 4, opa-traefik-microservice-authz 3, Vistack 3, stonehenge 3), all found and none beyond the truth, every one joined to a compose file Compose read (tier A): fathom's resolver now walks ancestor directories before the repository (O435), so wikibase-suite's routes join its root compose file and not the five overlay stacks. Re-measured 2026-10-24 on Linux: the 2026-10-02 reading held 21 pairs and one Vistack pair joined to a Kubernetes Service read by yaml.v3 (tier C); this run joined Vistack, rendiff-dev and stonehenge routes to compose services and did not reproduce that tier C pair, a difference of the measuring environment not explained here",
+    "route references (route_* counts, LB-F98) are scored into xref_precision and xref_recall with the oracle's cross_references: a route, upstream or mesh rule's entity to the Kubernetes Service or compose service its target host names, resolved by fusion.ResolveRouteRefs (the resolver ingest stores route_ref edges from) over the files ingest's route pass reads; route_unresolved_<reason> counts fathom's unresolved references, route_oracle_unresolved_<reason> the oracle's",
+    "wmde/wikibase-suite: restricted to config/traefik-dynamic.yml (-only; the files outside are a disclosed gap, not measured)"
   ],
-  "disposition": "partial: target L3, met L2 (L1 excellent, L2 excellent, tier A) against traefik 3.7.13 (/api/rawdata, /api/entrypoints on a scratch copy) on 12 repositories with Traefik files named where the manifest claims them: sym_recall 1, sym_precision .9934, ref_precision 1, ref_recall .9643 (81 of 84 pairs); L3 unmet: xref_precision .7241 and xref_recall 1 (21 route pairs, all found, 29 drawn: the 8 beyond the truth join wmde/wikibase-suite's routes to the overlay stacks beside its root compose file, the route resolver's repository fallback, O435), and the xref family is tier C: LB-Q-traefik-rest"
+  "disposition": "met: target L3, met L3 (L1 excellent, L2 excellent, L3 excellent, tier A) against traefik 3.7.13 (/api/rawdata, /api/entrypoints on a scratch copy) on 12 repositories with Traefik files named where the manifest claims them: sym_recall 1, sym_precision .9934, ref_precision .9882, ref_recall 1 (84 of 84 pairs), xref_precision 1 and xref_recall 1 (30 route pairs, all found, none beyond the truth); the xref family reads tier A in this run, not the tier C the 2026-10-02 reading held (see the route pairs note)"
 }
