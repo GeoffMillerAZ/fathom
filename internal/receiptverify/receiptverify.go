@@ -37,11 +37,13 @@ import (
 )
 
 // Outcome is one Verify call's result. OK true means the receipt's claim
-// reproduced exactly; OK false names the difference in Diff — never both
-// zero-valued (a claim either reproduces or a difference is named).
+// reproduced exactly. OK false names the difference or unchecked facts
+// in Diff. The two fields are never both zero-valued.
 type Outcome struct {
 	OK   bool
 	Diff string
+	// Rungs names the evidence checked, per exported fact, git before toolchain.
+	Rungs []string
 }
 
 // Verify checks out receipt.IndexCommit from the git repository at
@@ -75,7 +77,7 @@ func Verify(ctx context.Context, repoRoot string, receipt core.Receipt) (Outcome
 		if loadErr != nil {
 			return Outcome{}, loadErr
 		}
-		return verifyCallers(receipt, truth), nil
+		return verifyCallers(dir, receipt, truth)
 	case core.ReceiptKindReferences:
 		truth, loadErr := LoadTruth(ctx, dir, receipt.IndexCommit)
 		if loadErr != nil {
@@ -190,18 +192,18 @@ func CheckoutModule(ctx context.Context, repoRoot, commit string) (dir string, c
 // BareSymbolName reduces a fathom SymbolKey ("service::dir/pkg.Name" or
 // "service::dir/pkg.Recv.Method") — or an already-bare name, unchanged —
 // to go/types' own vocabulary: "Name" or "Recv.Method", the form
-// publicloc.GoTruth's CallersByName/UsesByName keys carry. A directory or
-// package-path segment never contains a dot in valid Go, so stripping the
-// service prefix, then the directory, then the FIRST remaining dot always
-// isolates the package name from what follows it.
+// publicloc.GoTruth's CallersByName/UsesByName keys carry. A service or path
+// prefix (or two dots) identifies a qualified key. A lone dot without a
+// prefix belongs to an already-bare method name and must be preserved.
 func BareSymbolName(s string) string {
+	qualified := strings.Contains(s, "::") || strings.Contains(s, "/") || strings.Count(s, ".") >= 2
 	if i := strings.LastIndex(s, "::"); i >= 0 {
 		s = s[i+2:]
 	}
 	if i := strings.LastIndex(s, "/"); i >= 0 {
 		s = s[i+1:]
 	}
-	if i := strings.Index(s, "."); i >= 0 {
+	if i := strings.Index(s, "."); qualified && i >= 0 {
 		s = s[i+1:]
 	}
 	return s
@@ -224,22 +226,48 @@ func declaredNames(truth publicloc.GoTruth) map[string]bool {
 	return names
 }
 
-func verifyCallers(r core.Receipt, truth publicloc.GoTruth) Outcome {
+func verifyCallers(dir string, r core.Receipt, truth publicloc.GoTruth) (Outcome, error) {
+	seen := map[string]bool{}
+	for _, caller := range r.Callers {
+		key := stripService(caller)
+		if seen[key] {
+			return Outcome{Diff: "duplicated caller: " + caller}, nil
+		}
+		seen[key] = true
+	}
 	symbol := BareSymbolName(r.Symbol)
 	if !declaredNames(truth)[symbol] {
-		return Outcome{OK: false, Diff: fmt.Sprintf("%s is not declared at %s", symbol, r.IndexCommit)}
+		return Outcome{OK: false, Diff: fmt.Sprintf("%s is not declared at %s", symbol, r.IndexCommit)}, nil
 	}
 	want := sortedCopy(r.Callers)
-	got := sortedCopy(truth.CallersByName[symbol])
+	var got []string
+	if qualifiedCallerReceipt(r, truth) {
+		var err error
+		want, got, err = qualifiedCallers(dir, r, truth)
+		if err != nil {
+			return Outcome{}, err
+		}
+	} else {
+		callers := make(map[string]bool)
+		for _, e := range truth.Edges {
+			if e.Callee == symbol && validAnchorPath(e.CallerFile) {
+				callers[e.Caller] = true
+			}
+		}
+		for caller := range callers {
+			got = append(got, caller)
+		}
+		sort.Strings(got)
+	}
 	if equalSlices(want, got) {
-		return Outcome{OK: true}
+		return Outcome{OK: true}, nil
 	}
 	missing := setDiff(want, got)
 	extra := setDiff(got, want)
 	return Outcome{OK: false, Diff: fmt.Sprintf(
 		"callers of %s: receipt names %d (%v), re-derived %d (%v) — missing %v, extra %v",
 		symbol, len(want), want, len(got), got, missing, extra,
-	)}
+	)}, nil
 }
 
 func verifyReferences(r core.Receipt, truth publicloc.GoTruth) Outcome {
@@ -264,8 +292,11 @@ func verifySymbolLocation(dir string, r core.Receipt) (Outcome, error) {
 	if r.File == "" {
 		return Outcome{}, fmt.Errorf("receipt: symbol_location claim has no file")
 	}
+	if !validAnchorPath(r.File) {
+		return Outcome{Diff: "invalid repo-relative file"}, nil
+	}
 	full := filepath.Join(dir, r.File)
-	src, err := os.ReadFile(full) //nolint:gosec — full is joined from the archived checkout, not caller input
+	src, err := os.ReadFile(full) //nolint:gosec — r.File is validated as repo-relative above
 	if err != nil {
 		return Outcome{}, fmt.Errorf("receipt: read %s at this commit: %w", r.File, err)
 	}

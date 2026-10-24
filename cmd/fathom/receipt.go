@@ -6,13 +6,16 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/receipt"
 	"github.com/geoffmilleraz/fathom/internal/receiptverify"
 )
 
@@ -55,22 +58,40 @@ func cmdReceiptVerify(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "receipt verify: %v\n", err)
 		return 2
 	}
-	var r core.Receipt
-	if err := json.Unmarshal(data, &r); err != nil {
+	if err := uniqueKeys(json.NewDecoder(bytes.NewReader(data))); err != nil {
 		fmt.Fprintf(stderr, "receipt verify: invalid receipt JSON: %v\n", err)
 		return 2
 	}
-
-	if r.Kind == core.ReceiptKindCertification {
-		return cmdReceiptVerifyCertification(*repo, r, *runTests, stdout, stderr)
+	var exported receipt.ExportedReceipt
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&exported); err != nil {
+		fmt.Fprintf(stderr, "receipt verify: invalid receipt JSON: %v\n", err)
+		return 2
+	}
+	if err := decoder.Decode(new(any)); err != io.EOF {
+		fmt.Fprintln(stderr, "receipt verify: invalid receipt JSON: trailing data")
+		return 2
 	}
 
-	outcome, err := receiptverify.Verify(context.Background(), *repo, r)
+	r := exported.Receipt
+	var outcome receiptverify.Outcome
+	if r.Kind == core.ReceiptKindCertification {
+		outcome, err = receiptverify.VerifyGitAnchors(context.Background(), *repo, exported.Facts)
+	} else {
+		outcome, err = receiptverify.VerifyExported(context.Background(), *repo, exported)
+	}
+	for _, rung := range outcome.Rungs {
+		fmt.Fprintln(stdout, rung)
+	}
 	if err != nil {
 		fmt.Fprintf(stderr, "receipt verify: cannot run: %v\n", err)
 		return 2
 	}
 	if outcome.OK {
+		if r.Kind == core.ReceiptKindCertification {
+			return cmdReceiptVerifyCertification(*repo, r, *runTests, stdout, stderr)
+		}
 		fmt.Fprintf(stdout, "receipt verify: OK — %s reproduced at %s\n", r.Symbol, r.IndexCommit)
 		return 0
 	}
@@ -88,4 +109,32 @@ func (receiptRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writ
 func init() {
 	declareVerb(verb{Name: "receipt", Group: "govern", Order: 70, Run: receiptRunner{},
 		Summary: "A stranger's re-derivation: verify [--repo DIR] <receipt.json> checks a saved answer against a bare git checkout with go/types and git alone — no daemon, no store"})
+}
+
+// uniqueKeys refuses a key repeated in one object, exactly or by case:
+// encoding/json keeps the last of them, another reader may show the first.
+func uniqueKeys(dec *json.Decoder) error {
+	t, err := dec.Token()
+	d, ok := t.(json.Delim)
+	if err != nil || !ok {
+		return err
+	}
+	seen := map[string]bool{}
+	for err == nil && dec.More() {
+		if d == '{' {
+			k, kerr := dec.Token()
+			fold := strings.ToUpper(strings.ToLower(fmt.Sprint(k)))
+			if kerr == nil && seen[fold] {
+				return fmt.Errorf("key %q repeats in one object", k)
+			}
+			seen[fold], err = true, kerr
+		}
+		if err == nil {
+			err = uniqueKeys(dec)
+		}
+	}
+	if err == nil {
+		_, err = dec.Token()
+	}
+	return err
 }
