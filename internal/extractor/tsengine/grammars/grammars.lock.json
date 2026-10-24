@@ -310,6 +310,26 @@
       "gz_bytes": 114833
     },
     {
+      "blob": "jinja2",
+      "repo": "cathaysia/tree-sitter-jinja",
+      "tag": "v0.5.0",
+      "commit": "687b1ff1d6a7eaae26df84560bb1c049f4f1b4c1",
+      "tarball_sha256": "542ff7f3fc077f835e880984ff08701bb0fbd5d3c22b54e63c2b485bdd5d587b",
+      "licence": "Apache-2.0",
+      "entry_points": [
+        "tree_sitter_jinja"
+      ],
+      "subdirs": [
+        "tree-sitter-jinja"
+      ],
+      "scanner": true,
+      "generate": false,
+      "abi": 14,
+      "blob_sha256": "421b3f813557d124fdbb6630f028f03d1ba9906c7214c97584729e3f5a6147d9",
+      "blob_bytes": 230381,
+      "gz_bytes": 73025
+    },
+    {
       "blob": "kotlin",
       "repo": "fwcd/tree-sitter-kotlin",
       "tag": "1852ea17b7f60fb3f9d84e0b1555d56b46b39fb1",

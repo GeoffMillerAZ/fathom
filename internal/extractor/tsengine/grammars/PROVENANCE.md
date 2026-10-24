@@ -47,6 +47,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `html` | tree-sitter/tree-sitter-html | v0.23.2 | `5a5ca8551a179998360b4a4ca2c0f366a35acc03` | MIT | `tree_sitter_html` | `21fa4f2d4dcb890ef12d09f4979a0007814f67f1c7294a9b17b0108a09e45ef7` |
 | `java` | tree-sitter/tree-sitter-java | v0.23.5 | `94703d5a6bed02b98e438d7cad1136c01a60ba2c` | MIT | `tree_sitter_java` | `cb199e0faae4b2c08425f88cbb51c1a9319612e7b96315a174a624db9bf3d9f0` |
 | `javascript` | tree-sitter/tree-sitter-javascript | v0.25.0 | `44c892e0be055ac465d5eeddae6d3e194424e7de` | MIT | `tree_sitter_javascript` | `9712fc283d3dc01d996d20b6392143445d05867a7aad76fdd723824468428b86` |
+| `jinja2` | cathaysia/tree-sitter-jinja | v0.5.0 | `687b1ff1d6a7eaae26df84560bb1c049f4f1b4c1` | Apache-2.0 | `tree_sitter_jinja` | `542ff7f3fc077f835e880984ff08701bb0fbd5d3c22b54e63c2b485bdd5d587b` |
 | `kotlin` | fwcd/tree-sitter-kotlin | 1852ea17b7f60fb3f9d84e0b1555d56b46b39fb1 | `1852ea17b7f60fb3f9d84e0b1555d56b46b39fb1` | MIT | `tree_sitter_kotlin` | `61282c8d3d231fab7d6086d4d0c9ff284824f78d4a7a8d3993d49023fbb739c5` |
 | `lua` | tree-sitter-grammars/tree-sitter-lua | v0.5.0 | `10fe0054734eec83049514ea2e718b2a56acd0c9` | MIT | `tree_sitter_lua` | `cf01b93f4b61b96a6d27942cf28eeda4cbce7d503c3bef773a8930b3d778a2d9` |
 | `luau` | tree-sitter-grammars/tree-sitter-luau | a8914d6c1fc5131f8e1c13f769fa704c9f5eb02f | `a8914d6c1fc5131f8e1c13f769fa704c9f5eb02f` | MIT | `tree_sitter_luau` | `e60c16f73ee29f2e04f78e6c807a82c0b1de1794db01e2c92e6e59701c897eb0` |
@@ -102,6 +103,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `html` | (root) | yes | 14 | 146,253 | 61,224 | `da122f8345c4c4a052cd71c55b7b34b5f4bde63cedfd6de3ad8aeb11c8099289` |
 | `java` | (root) | no | 14 | 401,009 | 113,109 | `335ca5db18443f9ff6bbb917bccd3c79425991bdf1d3474b62a64169c58405b4` |
 | `javascript` | (root) | yes | 15 | 458,741 | 114,833 | `7245ee58564f991827498e36b5ec14420b99759596490e3a74ed0993b24ed904` |
+| `jinja2` | tree-sitter-jinja | yes | 14 | 230,381 | 73,025 | `421b3f813557d124fdbb6630f028f03d1ba9906c7214c97584729e3f5a6147d9` |
 | `kotlin` | (root) | yes | 14 | 3,054,455 | 567,216 | `5e672dfa0997692cea7aa6b0f19be4a26a846d6130264604a9a42fa6184652f6` |
 | `lua` | (root) | yes | 15 | 173,721 | 64,669 | `e43aedffa10b61ea16c0c30dc70d5daed934be28a8259b5bda56d7230a3713f2` |
 | `luau` | (root) | yes | 14 | 213,773 | 72,266 | `c80e039ffb082509ce038a4021ead4da3e2b55422d4770d272fa918fd089dc8f` |
