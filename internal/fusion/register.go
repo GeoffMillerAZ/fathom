@@ -790,9 +790,11 @@ func (p *Pipeline) sniffedExtractor(relPath string, content []byte) (extractor.E
 // the plan for the tracker). swift: LB-Q-swift-rest — 36 of its 642
 // calibration files (5.6%) parse with an error under the pinned grammar, over
 // the 5% line. tcl: LB-Q-tcl-rest — 516 of its 827 calibration files (62.4%).
-// vimscript: LB-Q-vimscript-rest — 3 of its 7 (42.9%). Dispatching one later is
-// an ExtractorEpoch bump.
-var refusedDialects = map[string]bool{"swift": true, "tcl": true, "vimscript": true}
+// vimscript: LB-Q-vimscript-rest — 3 of its 7 (42.9%). jinja2: LB-Q-jinja2-rest
+// — its extraction is correct (L1 to L3 excellent) but parses at .34 MB per
+// CPU-second, under the 1.0 tenancy floor. Dispatching one later is an
+// ExtractorEpoch bump.
+var refusedDialects = map[string]bool{"jinja2": true, "swift": true, "tcl": true, "vimscript": true}
 
 // RegisterExtractor registers an extractor for the given file extension
 // (including leading dot, e.g. ".py"). It replaces any existing extractor for

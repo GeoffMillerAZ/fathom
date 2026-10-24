@@ -53,9 +53,10 @@ const oracleTimeout = 20 * time.Minute
 // C++ on the include-path strategy (LB-F80). Rego, native, resolves through
 // its own reader's import specs and the rego-package strategy (LB-F131), CUE
 // through its own reader's and the cue-module strategy (LB-F583).
-// Kotlin joins them on namespace-dir (O474): its file edges are read from the
+// Jinja2 joins C on include-path (LB-Q-jinja2): a template name is looked up in
+// the includer's directory, then each ancestor. Kotlin joins them on namespace-dir (O474): its file edges are read from the
 // PSI dump's imports, tier B.
-var fileResolveLang = map[string]string{"typescript": "javascript", "javascript": "javascript", "python": "python", "c": "c", "cpp": "cpp", "php": "php", "rust": "rust", "ruby": "ruby", "dart": "dart", "csharp": "csharp", "java": "java", "kotlin": "kotlin", "rego": "rego", "scala": "scala", "css": "css", "scss": "scss", "cue": "cue"}
+var fileResolveLang = map[string]string{"typescript": "javascript", "javascript": "javascript", "python": "python", "c": "c", "cpp": "cpp", "php": "php", "rust": "rust", "ruby": "ruby", "dart": "dart", "csharp": "csharp", "java": "java", "kotlin": "kotlin", "rego": "rego", "scala": "scala", "css": "css", "scss": "scss", "cue": "cue", "jinja2": "jinja2"}
 
 // cmdLangOracle is `indexbench lang-oracle` (LB-F23, design §10): one
 // subject's measurement of one dialect, merged into the dialect's reading.
