@@ -123,18 +123,18 @@ item's target; the last column also needs every level up to the target graded ex
 
 | Tier | Kind | Items | L1 | L2 | L3 | L4 | None | Refused | Tolerated | Unsupported | At target | At target, all excellent |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| T1 | language | 33 | 0 | 3 | 13 | 10 | 1 | 4 | 0 | 2 | 23 | 8 |
+| T1 | language | 33 | 0 | 3 | 13 | 10 | 1 | 5 | 0 | 1 | 23 | 8 |
 | T1 | tool format | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |
-| T2 | tool format | 23 | 0 | 7 | 14 | 0 | 1 | 0 | 0 | 1 | 19 | 14 |
-| T3 | tool format | 16 | 1 | 4 | 11 | 0 | 0 | 0 | 0 | 0 | 15 | 5 |
+| T2 | tool format | 23 | 0 | 6 | 15 | 0 | 1 | 0 | 0 | 1 | 20 | 15 |
+| T3 | tool format | 16 | 0 | 5 | 11 | 0 | 0 | 0 | 0 | 0 | 15 | 5 |
 | T4 | language | 3 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 1 | 1 | 0 |
-| T4 | tool format | 7 | 0 | 3 | 2 | 0 | 0 | 0 | 0 | 2 | 5 | 4 |
-| T5 | tool format | 8 | 0 | 1 | 5 | 0 | 0 | 0 | 0 | 2 | 5 | 2 |
+| T4 | tool format | 7 | 0 | 4 | 2 | 0 | 0 | 0 | 0 | 1 | 6 | 5 |
+| T5 | tool format | 8 | 0 | 2 | 6 | 0 | 0 | 0 | 0 | 0 | 8 | 3 |
 | T6 | language | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| T6 | tool format | 4 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |
+| T6 | tool format | 4 | 0 | 3 | 1 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
 | T7 | tool format | 4 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
-| **Total** | language | 37 | 0 | 3 | 15 | 10 | 1 | 5 | 0 | 3 | 24 | 8 |
-| **Total** | tool format | 63 | 1 | 17 | 37 | 0 | 1 | 0 | 0 | 7 | 51 | 27 |
+| **Total** | language | 37 | 0 | 3 | 15 | 10 | 1 | 6 | 0 | 2 | 24 | 8 |
+| **Total** | tool format | 63 | 0 | 21 | 39 | 0 | 1 | 0 | 0 | 2 | 58 | 32 |
 
 ### T1
 
@@ -173,7 +173,7 @@ item's target; the last column also needs every level up to the target graded ex
 | Vue single-file components (.vue) | language | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | Svelte components (.svelte) | language | L3 | none (measured) | L1 not met: sym_precision 0.3816 < 0.9 |
 | Laravel Blade templates (.blade.php) | language | L3 | refused | re-plan (LB-Q-blade-rest refused) |
-| Jinja2 templates (.j2 .jinja .jinja2, templates/*.html by sniff) | language | L3 | unsupported | no dialect (LB-Q-jinja2) |
+| Jinja2 templates (.j2 .jinja .jinja2, templates/*.html by sniff) | language | L3 | refused | re-plan (LB-Q-jinja2-rest refused) |
 
 ### T2
 
@@ -198,7 +198,7 @@ item's target; the last column also needs every level up to the target graded ex
 | Jenkins pipelines (Jenkinsfile, *.jenkinsfile) | tool format | L3 | L3 (L1 good, L2 good, L3 good) | L1 good: oracle tier C caps at good |
 | Azure Pipelines (azure-pipelines.yml, templates) | tool format | L3 | unsupported | no dialect (LB-Q-azure-pipelines) |
 | CircleCI (.circleci/config.yml) | tool format | L2 | L2 (L1 good, L2 good) | L1 good: sym_precision 0.9796 < 0.98 |
-| Conan recipes and lockfiles (conanfile.txt, conanfile.py, conan.lock, conandata.yml) | tool format | L3 | L2 (L1 excellent, L2 excellent) | L3 not met: xref_precision not measured |
+| Conan recipes and lockfiles (conanfile.txt, conanfile.py, conan.lock, conandata.yml) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | vcpkg manifests (vcpkg.json, vcpkg-configuration.json) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | Meson builds (meson.build, meson.options, meson_options.txt) | tool format | L3 | L2 (L1 excellent, L2 excellent) | L3 not met: xref_precision not measured |
 | Clang compilation databases (compile_commands.json) | tool format | L2 | L2 (L1 excellent, L2 excellent) | excellent at target |
@@ -222,7 +222,7 @@ item's target; the last column also needs every level up to the target graded ex
 | Azure Resource Manager templates (azuredeploy.json shape, by content) | tool format | L3 | L3 (L1 excellent, L2 good, L3 excellent) | L2 good: ref_recall 0.9448 < 0.95 |
 | AWS CDK apps (cdk.json; programs ride their language) | tool format | L2 | L2 (L1 excellent, L2 good) | L2 good: oracle tier C caps at good |
 | Flux CD resources (Kustomization, HelmRelease, GitRepository, OCIRepository) | tool format | L3 | L3 (L1 excellent, L2 good, L3 good) | L2 good: oracle tier C caps at good |
-| Timoni modules and bundles (timoni.cue, values.cue, templates/*.cue, bundle.cue, runtime.cue) | tool format | L3 | L1 (L1 good) | L2 not met: ref_precision 0.1611 < 0.9 |
+| Timoni modules and bundles (timoni.cue, values.cue, templates/*.cue, bundle.cue, runtime.cue) | tool format | L3 | L2 (L1 good, L2 good) | L3 not met: xref_recall 0.4502 < 0.6 |
 
 ### T4
 
@@ -236,7 +236,7 @@ item's target; the last column also needs every level up to the target graded ex
 | AWS IAM policy documents (JSON by content, inline in CloudFormation and Terraform) | tool format | L2 | L2 (L1 excellent, L2 excellent) | excellent at target |
 | Azure Policy definitions and initiatives (policyRule JSON) | tool format | L2 | L2 (L1 good, L2 good) | L1 good: oracle tier C caps at good |
 | Cloud Custodian policies (policies YAML) | tool format | L2 | L2 (L1 excellent, L2 excellent) | excellent at target |
-| Checkov custom policies (YAML graph checks, Python checks) | tool format | L2 | unsupported | no dialect (LB-Q-checkov-policies) |
+| Checkov custom policies (YAML graph checks, Python checks) | tool format | L2 | L2 (L1 excellent, L2 excellent) | excellent at target |
 | HashiCorp Sentinel policies (.sentinel) | language | L2 | unsupported | no dialect (LB-Q-sentinel) |
 
 ### T5
@@ -248,9 +248,9 @@ item's target; the last column also needs every level up to the target graded ex
 | Caddyfile (Caddyfile, Caddyfile.* by glob, .caddyfile) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | Envoy proxy configuration (bootstrap, xDS resource files) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 good) | L3 good: xref_precision 0.9398 < 0.95 |
 | Kong declarative configuration (decK, DB-less) | tool format | L3 | L3 (L1 excellent, L2 good, L3 excellent) | L2 good: oracle tier C caps at good |
-| Traefik static and file-provider configuration | tool format | L3 | L2 (L1 excellent, L2 excellent) | L3 not met: xref_precision 0.7241 < 0.9 |
-| PgBouncer configuration (pgbouncer.ini) | tool format | L2 | unsupported | no dialect (LB-Q-pgbouncer) |
-| ProxySQL configuration (proxysql.cnf) | tool format | L2 | unsupported | no dialect (LB-Q-proxysql) |
+| Traefik static and file-provider configuration | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
+| PgBouncer configuration (pgbouncer.ini) | tool format | L2 | L2 (L1 good, L2 good) | L1 good: oracle tier C caps at good |
+| ProxySQL configuration (proxysql.cnf) | tool format | L2 | L2 (L1 good, L2 excellent) | L1 good: sym_precision 0.9544 < 0.98 |
 
 ### T6
 
@@ -258,8 +258,8 @@ item's target; the last column also needs every level up to the target graded ex
 |---|---|---|---|---|
 | CUE (.cue) | language | L4 | L3 (L1 excellent, L2 excellent, L3 good) | L4 not met: def_mapping not measured |
 | fathom configuration (.fathom/config.toml) | tool format | L2 | L2 (L1 good, L2 good) | L1 good: oracle tier C caps at good |
-| fathom concerns (.fathom/concerns.cue) | tool format | L2 | unsupported | no dialect (LB-Q-fathom-concerns) |
-| fathom layer packs (.fathom/layers/*/layer.cue, .fathom/rules/*.cue) | tool format | L2 | unsupported | no dialect (LB-Q-fathom-layer-packs) |
+| fathom concerns (.fathom/concerns.cue) | tool format | L2 | L2 (L1 excellent, L2 excellent) | excellent at target |
+| fathom layer packs (.fathom/layers/*/layer.cue, .fathom/rules/*.cue) | tool format | L2 | L2 (L1 excellent, L2 excellent) | excellent at target |
 | fathom plan grammar v2 rows (docs/plans/*.md) | tool format | L3 | L3 (L1 good, L2 good, L3 good) | L1 good: oracle tier C caps at good |
 
 ### T7
@@ -282,8 +282,8 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 reached (languages at L1 37, L1 excellent 25, L2 33, L3 27, L4 10; tool formats at target 60)
-Milestone M2 progress: languages at L1 37/45, at L1 excellent 25/35, at L2 33/25, at L3 27/14, at L4 10/10; tool formats at target 60/30
+Milestone M1 reached (languages at L1 37, L1 excellent 25, L2 33, L3 27, L4 10; tool formats at target 67)
+Milestone M2 progress: languages at L1 37/45, at L1 excellent 25/35, at L2 33/25, at L3 27/14, at L4 10/10; tool formats at target 67/30
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -411,7 +411,7 @@ Milestone M2 progress: languages at L1 37/45, at L1 excellent 25/35, at L2 33/25
 | Envoy proxy configuration (bootstrap, xDS resource files) | tool format | doc | pure-go:yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 good) | A envoy 1.39.1 | syntax | 2026-10-02 | at target (LB-Q-envoy) |
 | OpenTelemetry Collector configuration (receivers, processors, exporters, connectors, extensions, pipelines) | tool format | doc | pure-go:yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 good) | A otelcol-contrib validate + collector confmap decode (component.ID, pipeline.ID) otelcol-contrib version 0.162.0; go.opentelemetry.io/collector v1.68.0; C otelcol-oracle routes (yaml.v3 walk, the Kubernetes and compose DNS rules) gopkg.in/yaml.v3 v3.0.1 | — | 2026-10-09 | at target (LB-Q-otel-collector) |
 | Kong declarative configuration (decK, DB-less) | tool format | doc | pure-go:yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 good, L3 excellent) | A deck v1.68.0 (34b752e) | syntax | 2026-10-02 | at target (LB-Q-kong) |
-| Traefik static and file-provider configuration | tool format | doc | pure-go:yaml.v3 + go-toml/v2 (n/a) | L3 | L2 (L1 excellent, L2 excellent) | A traefik 3.7.13 | syntax | 2026-10-02 | LB-Q-traefik |
+| Traefik static and file-provider configuration | tool format | doc | pure-go:yaml.v3 + go-toml/v2 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A traefik 3.7.13 | syntax | 2026-10-24 | at target (LB-Q-traefik) |
 | WGSL shaders (.wgsl) | language | tags | szebniok/tree-sitter-wgsl (or tree-sitter-grammars/tree-sitter-wgsl-bevy) (MIT (verify at pin)) | L1 | unsupported (disclosed) | — | — | — | LB-Q-wgsl |
 | Renovate and Dependabot configs | tool format | doc | pure-go:JSON5 + gopkg.in/yaml.v3 (n/a) | L1 | unsupported (disclosed) | — | — | — | LB-Q-dependency-bots |
 | CUDA (.cu .cuh) | language | tags | tree-sitter-grammars/tree-sitter-cuda (MIT) | L3 | unsupported (disclosed) | — | — | — | LB-Q-cuda |
@@ -441,9 +441,9 @@ Milestone M2 progress: languages at L1 37/45, at L1 excellent 25/35, at L2 33/25
 | Typst (.typ) | language | tags | uben0/tree-sitter-typst (MIT (verify at pin)) | L1 | unsupported (disclosed) | — | — | — | LB-Q-typst |
 | CODEOWNERS (.github/CODEOWNERS, docs/CODEOWNERS) | tool format | doc | pure-go:line parser (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-codeowners |
 | Laravel Blade templates (.blade.php) | language | tags | EmranMR/tree-sitter-blade (MIT (verify at pin)) | L3 | refused | — | — | — | re-plan (LB-Q-blade-rest refused) |
-| Jinja2 templates (.j2 .jinja .jinja2, templates/*.html by sniff) | language | tags | a Jinja tree-sitter grammar (verify at pin, licence allowlist) (verify at pin) | L3 | unsupported (disclosed) | — | — | — | LB-Q-jinja2 |
+| Jinja2 templates (.j2 .jinja .jinja2, templates/*.html by sniff) | language | tags | a Jinja tree-sitter grammar (verify at pin, licence allowlist) (verify at pin) | L3 | refused; measured none (measured) | A jinja2.meta.find_referenced_templates 3.1.6 | — | 2026-10-24 | re-plan (LB-Q-jinja2-rest refused) |
 | Serverless Framework (serverless.yml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L2 | L2 (L1 excellent, L2 excellent) | A serverless print 3.40.0 | syntax | 2026-10-09 | at target (LB-Q-serverless) |
-| Conan recipes and lockfiles (conanfile.txt, conanfile.py, conan.lock, conandata.yml) | tool format | tags+doc | tree-sitter/tree-sitter-python + pure-go:INI, encoding/json, gopkg.in/yaml.v3 (verify at pin) | L3 | L2 (L1 excellent, L2 excellent) | A conan graph info --format json -nr (macOS, Linux, Windows and mingw host+build profiles; the versions of a recipe folder at default options; each option at each of its other values, and every boolean all True and all False, at the newest and oldest version) Conan version 2.33.0 | syntax | 2026-10-02 | LB-Q-conan |
+| Conan recipes and lockfiles (conanfile.txt, conanfile.py, conan.lock, conandata.yml) | tool format | tags+doc | tree-sitter/tree-sitter-python + pure-go:INI, encoding/json, gopkg.in/yaml.v3 (verify at pin) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A conan graph info --format json -nr (macOS, Linux, Windows and mingw host+build profiles; the versions of a recipe folder at default options; each option at each of its other values, and every boolean all True and all False, at the newest and oldest version) Conan version 2.33.0 | syntax | 2026-10-24 | at target (LB-Q-conan) |
 | vcpkg manifests (vcpkg.json, vcpkg-configuration.json) | tool format | doc | pure-go:encoding/json (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A vcpkg x-package-info --x-json vcpkg package management program version 2026-09-26-Homebrew; A vcpkg x-package-info --x-json (dependencies joined by name to the attested manifests of the subject) vcpkg package management program version 2026-09-26-Homebrew | syntax | 2026-10-02 | at target (LB-Q-vcpkg) |
 | Meson builds (meson.build, meson.options, meson_options.txt) | tool format | tags | tree-sitter-grammars/tree-sitter-meson (MIT) | L3 | L2 (L1 excellent, L2 excellent) | A meson mparser + introspect 1.12.1 | file | 2026-10-01 | LB-Q-meson |
 | Clang compilation databases (compile_commands.json) | tool format | doc | pure-go:encoding/json (n/a) | L2 | L2 (L1 excellent, L2 excellent) | A libclang CompilationDatabase libclang 18.1.1 (pip) | syntax | 2026-10-01 | at target (LB-Q-compile-commands) |
@@ -451,7 +451,7 @@ Milestone M2 progress: languages at L1 37/45, at L1 excellent 25/35, at L2 33/25
 | Azure Resource Manager templates (azuredeploy.json shape, by content) | tool format | doc | pure-go:encoding/json (n/a) | L3 | L3 (L1 excellent, L2 good, L3 excellent) | A bicep decompile 0.47.16 | — | 2026-10-02 | at target (LB-Q-arm-templates) |
 | AWS CDK apps (cdk.json; programs ride their language) | tool format | doc | pure-go:encoding/json (n/a) | L2 | L2 (L1 excellent, L2 good) | C cdk app command reference parse 2.1144.0; A cdk context -vv 2.1144.0 | syntax | 2026-10-02 | at target (LB-Q-aws-cdk) |
 | Flux CD resources (Kustomization, HelmRelease, GitRepository, OCIRepository) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 good, L3 good) | A Flux API types, strict (kustomize-controller api v1.9.6, helm-controller api v1.6.5, source-controller api v1.9.6, notification-controller api v1.9.4) and flux build kustomization --dry-run; lines: gopkg.in/yaml.v3 flux: v2.9.6; C flux-oracle (independent gopkg.in/yaml.v3 walk) gopkg.in/yaml.v3 v3.0.1 | — | 2026-10-02 | at target (LB-Q-flux) |
-| Timoni modules and bundles (timoni.cue, values.cue, templates/*.cue, bundle.cue, runtime.cue) | tool format | native | native:cuelang.org/go (Apache-2.0) | L3 | L1 (L1 good) | A timoni 0.35.0 (cue 0.17.1) timoni 0.35.0 (cue 0.17.1); C timoni oracle: a CUE syntax walk gated by timoni 0.35.0 (cue 0.17.1) timoni 0.35.0 (cue 0.17.1) | — | 2026-10-03 | LB-Q-timoni |
+| Timoni modules and bundles (timoni.cue, values.cue, templates/*.cue, bundle.cue, runtime.cue) | tool format | native | native:cuelang.org/go (Apache-2.0) | L3 | L2 (L1 good, L2 good) | A timoni 0.35.0 (cue 0.17.1) timoni 0.35.0 (cue 0.17.1); C timoni oracle: a CUE syntax walk gated by timoni 0.35.0 (cue 0.17.1) timoni 0.35.0 (cue 0.17.1) | — | 2026-10-24 | LB-Q-timoni |
 | Kyverno policies (ClusterPolicy, Policy, PolicyException) | tool format | doc | yaml.v3 (n/a) | L2 | L3 (L1 excellent, L2 excellent, L3 good) | A Kyverno's own loaders (github.com/kyverno/kyverno v1.18.1 cmd/cli/kubectl-kyverno policy.Load and test.LoadTest) + gopkg.in/yaml.v3 for lines kyverno v1.18.1; C kyverno-oracle policy walk (independent gopkg.in/yaml.v3) over the loader-attested policies gopkg.in/yaml.v3 v3.0.1 | — | 2026-10-02 | at target (LB-Q-kyverno) |
 | OPA Gatekeeper ConstraintTemplates and constraints | tool format | doc | yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A Gatekeeper's own match (github.com/open-policy-agent/gatekeeper/v3 v3.23.1 pkg/target K8sValidationTarget.ToMatcher + Match) over the dialect's object set, the dialect's nearest-first join gatekeeper/v3 v3.23.1; A gator verify (gator version v3.23.1 (Feature State: beta), opa/v1.17.1, frameworks/v0.0.0-20260616163050-e1eaa1bf6d62) + gopkg.in/yaml.v3 for names and lines gator version v3.23.1 (Feature State: beta), opa/v1.17.1, frameworks/v0.0.0-20260616163050-e1eaa1bf6d62 | — | 2026-10-02 | at target (LB-Q-gatekeeper) |
 | Conftest policies (policy/*.rego, conftest.toml) | tool format | tags+doc | rides LB-Q-rego's grammar + pure-go:go-toml/v2 (verify at pin) | L2 | unsupported (disclosed) | — | — | — | LB-Q-conftest |
@@ -459,12 +459,12 @@ Milestone M2 progress: languages at L1 37/45, at L1 excellent 25/35, at L2 33/25
 | AWS IAM policy documents (JSON by content, inline in CloudFormation and Terraform) | tool format | doc | encoding/json (n/a) | L2 | L2 (L1 excellent, L2 excellent) | A aws-cdk-lib aws_iam PolicyDocument.fromJson and PolicyStatement.fromJson (AWS) + jsonc-parser for lines aws-cdk-lib 2.272.0, jsonc-parser 3.3.1 | — | 2026-10-02 | at target (LB-Q-aws-iam-policy) |
 | Azure Policy definitions and initiatives (policyRule JSON) | tool format | doc | encoding/json (n/a) | L2 | L2 (L1 good, L2 good) | C azure-policy JSON walk (the definition schema's structure, an independent JSON reader) 1 | — | 2026-10-02 | at target (LB-Q-azure-policy) |
 | Cloud Custodian policies (policies YAML) | tool format | doc | yaml.v3 (n/a) | L2 | L2 (L1 excellent, L2 excellent) | A c7n (custodian validate's loader) 0.9.53 | — | 2026-10-02 | at target (LB-Q-cloud-custodian) |
-| Checkov custom policies (YAML graph checks, Python checks) | tool format | tags+doc | yaml.v3 + tree-sitter/tree-sitter-python (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-checkov-policies |
+| Checkov custom policies (YAML graph checks, Python checks) | tool format | tags+doc | yaml.v3 + tree-sitter/tree-sitter-python (n/a) | L2 | L2 (L1 excellent, L2 excellent) | A checkov (--external-checks-dir loaders) 3.2.500 | — | 2026-10-24 | at target (LB-Q-checkov-policies) |
 | HashiCorp Sentinel policies (.sentinel) | language | tags | none open (verify at pin) (verify at pin) | L2 | unsupported (disclosed) | — | — | — | LB-Q-sentinel |
-| PgBouncer configuration (pgbouncer.ini) | tool format | doc | pure-go:INI parser (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-pgbouncer |
-| ProxySQL configuration (proxysql.cnf) | tool format | doc | pure-go:libconfig parser (verify at pin) (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-proxysql |
+| PgBouncer configuration (pgbouncer.ini) | tool format | doc | pure-go:INI parser (n/a) | L2 | L2 (L1 good, L2 good) | C pgbouncer PgBouncer 1.26.1 + line scanner | — | 2026-10-24 | at target (LB-Q-pgbouncer) |
+| ProxySQL configuration (proxysql.cnf) | tool format | doc | pure-go:libconfig parser (verify at pin) (n/a) | L2 | L2 (L1 good, L2 excellent) | A proxysql ProxySQL version 3.0.9-618-g7ddb3dc, codename Truls + line scanner | — | 2026-10-24 | at target (LB-Q-proxysql) |
 | fathom configuration (.fathom/config.toml) | tool format | doc | pure-go:go-toml/v2 (n/a) | L2 | L2 (L1 good, L2 good) | C python tomllib (TOML decode) + a line scanner of its own python 3.14.7 tomllib | — | 2026-10-03 | at target (LB-Q-fathom-config) |
-| fathom concerns (.fathom/concerns.cue) | tool format | native | native:cuelang.org/go (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-fathom-concerns |
-| fathom layer packs (.fathom/layers/*/layer.cue, .fathom/rules/*.cue) | tool format | native | native:cuelang.org/go (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-fathom-layer-packs |
+| fathom concerns (.fathom/concerns.cue) | tool format | native | native:cuelang.org/go (n/a) | L2 | L2 (L1 excellent, L2 excellent) | A cue export + cue lsp (concerns) v0.16.1 | — | 2026-10-24 | at target (LB-Q-fathom-concerns) |
+| fathom layer packs (.fathom/layers/*/layer.cue, .fathom/rules/*.cue) | tool format | native | native:cuelang.org/go (n/a) | L2 | L2 (L1 excellent, L2 excellent) | A cue export + cue lsp (layer-packs) v0.16.1 | — | 2026-10-24 | at target (LB-Q-fathom-layer-packs) |
 | fathom plan grammar v2 rows (docs/plans/*.md) | tool format | native | pure-go:plan row grammar (n/a) | L3 | L3 (L1 good, L2 good, L3 good) | C plan_rows_oracle.py: a line parser of docs/plans/README.md's row grammar python 3.14.7 | — | 2026-10-03 | at target (LB-Q-fathom-plan-rows) |
 | Unity assembly definitions and references | tool format | doc | doc:json (n/a) | L1 | tolerated | — | file | — | LB-Q-unity-asmdef |
