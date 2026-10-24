@@ -1,11 +1,78 @@
 package specdialect
 
 import (
+	"encoding/json"
+	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/verify"
+	"github.com/geoffmilleraz/fathom/internal/worktree"
 )
+
+var foreignTaskHeadingRe = regexp.MustCompile(`^\s*#{1,6}(?:\s|$)`)
+
+// foreignPlanTestRefs preserves references while the foreign source is still
+// available, before Synthesize renders its canonical rows. Dialect parsers
+// remain pure; only Spec Kit's explicitly named test files are read here.
+func foreignPlanTestRefs(d SpecDialect, root, file string, content []byte, plan verify.Plan) verify.Plan {
+	var strategies map[string]string
+	switch d.ID() {
+	case "kiro":
+	case "speckit":
+		if root == "" && specKitPath(file) {
+			root = worktree.RootForPath(file)
+			if root == "" {
+				// Exported specs may have no Git metadata; retain the layout root.
+				root = filepath.Dir(filepath.Dir(filepath.Dir(file)))
+			}
+		}
+	case "taskmaster":
+		var doc struct {
+			Tasks []tmTask `json:"tasks"`
+		}
+		if json.Unmarshal(content, &doc) != nil {
+			return plan
+		}
+		strategies = map[string]string{}
+		var walk func([]tmTask, string)
+		walk = func(tasks []tmTask, parent string) {
+			for _, task := range tasks {
+				id := strings.TrimSpace(task.ID.String())
+				if parent != "" {
+					id = parent + "." + id
+				}
+				strategies[id] = task.TestStrategy
+				walk(task.Subtasks, id)
+			}
+		}
+		walk(doc.Tasks, "")
+	default:
+		return plan
+	}
+	lines := strings.Split(string(content), "\n")
+	plan.Tasks = append([]verify.Task(nil), plan.Tasks...)
+	for i := range plan.Tasks {
+		t := &plan.Tasks[i]
+		// Derived names only tighten symbol contracts. An explicit
+		// certified_by is author-owned, including its name order.
+		if t.Expect.Symbol == "" || len(t.Expect.CertifiedBy) > 0 {
+			continue
+		}
+		text := t.Title
+		switch d.ID() {
+		case "kiro":
+			for j := t.Line; j > 0 && j < len(lines) && !checkboxLine.MatchString(lines[j]) && !foreignTaskHeadingRe.MatchString(lines[j]); j++ {
+				text += " " + lines[j]
+			}
+		case "taskmaster":
+			text = strategies[t.ID]
+		}
+		t.DerivedTests = mapForeignTestRefs(root, text, d.ID() == "speckit" && root != "")
+	}
+	return plan
+}
 
 // Synthesize renders plan as a native grammar-v2 checklist: one row per
 // task, every task's id and contract written into its annotation block, so
@@ -63,6 +130,7 @@ func synthPairs(t verify.Task) []string {
 	addBool("allow_contradiction", e.AllowContradiction)
 	addBool("library", e.Library)
 	add("certified_by", strings.Join(e.CertifiedBy, ","))
+	add("derived_tests", strings.Join(t.DerivedTests, ","))
 	add("strength", e.CertifyStrength)
 	add("disposition", t.Disposition)
 	add("reason", t.Reason)

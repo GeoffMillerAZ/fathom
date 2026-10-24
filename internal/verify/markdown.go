@@ -173,6 +173,13 @@ func ParseMarkdownPlan(service string, md []byte) Plan {
 					}
 				}
 			}
+			// Internal foreign-plan transport: additional certificate names,
+			// kept distinct from the author's replacing certified_by contract.
+			for _, name := range strings.Split(ann["derived_tests"], ",") {
+				if name = strings.TrimSpace(name); name != "" {
+					t.DerivedTests = append(t.DerivedTests, name)
+				}
+			}
 			t.Expect.CertifyStrength = ann["strength"]
 			// ADR-030: the lexical oracle keys. `path`/`pattern` mean nothing
 			// without `oracle`, so they are read only alongside it — a stray
@@ -422,7 +429,7 @@ var annotationKeys = []string{
 	// refactor-conservation grammar (ADR-044, vision 34)
 	"gone", "tests", "retires", "surface_change",
 	// spec interop (ADR-049, docs/design/spec-interop.md §4)
-	"weight", "accept",
+	"weight", "accept", "derived_tests",
 }
 
 // ParseAnnotation is parseAnnotation's exported face for callers outside

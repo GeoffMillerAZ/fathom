@@ -220,14 +220,19 @@ func ParseFile(d SpecDialect, root, path string) (verify.Plan, []Span, []byte, e
 	if err != nil {
 		return verify.Plan{}, nil, nil, err
 	}
-	plan, spans, err := ParseContent(d, abs, content)
+	plan, spans, err := parseContent(d, root, abs, content)
 	return plan, spans, content, err
 }
 
 // ParseContent parses content (the bytes of the file at file, a path the
 // process can open) with d, handing a sibling-aware dialect the sibling
-// files it names — and only those.
+// files it names — and only those. For Spec Kit it also reads the `_test.go`
+// files a task names, under the repository root.
 func ParseContent(d SpecDialect, file string, content []byte) (verify.Plan, []Span, error) {
+	return parseContent(d, "", file, content)
+}
+
+func parseContent(d SpecDialect, root, file string, content []byte) (verify.Plan, []Span, error) {
 	if sp, ok := d.(siblingParser); ok {
 		sib := map[string][]byte{}
 		for _, p := range sp.SiblingPaths(file) {
@@ -235,7 +240,15 @@ func ParseContent(d SpecDialect, file string, content []byte) (verify.Plan, []Sp
 				sib[p] = b
 			}
 		}
-		return sp.ParseWithSiblings(file, content, sib)
+		plan, spans, err := sp.ParseWithSiblings(file, content, sib)
+		if err == nil {
+			plan = foreignPlanTestRefs(d, root, file, content, plan)
+		}
+		return plan, spans, err
 	}
-	return d.Parse(file, content)
+	plan, spans, err := d.Parse(file, content)
+	if err == nil {
+		plan = foreignPlanTestRefs(d, root, file, content, plan)
+	}
+	return plan, spans, err
 }

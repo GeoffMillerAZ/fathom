@@ -1,0 +1,4 @@
+{"tasks":[
+  {"id":1,"title":"Implement checks {symbol: Check, package: internal/example, certified_by: TestExisting}","testStrategy":"Run `TestZulu` and `TestAlpha`, then `TestZulu`.","status":"done", "subtasks":[{"id":1,"title":"Child check","testStrategy":"Run `TestChild`","status":"pending"}]},
+  {"id":2,"title":"Mention TestTitle","details":"Mention TestDetails","testStrategy":"Exercise normal and error cases in internal/example/check_test.go","status":"pending"}
+]}

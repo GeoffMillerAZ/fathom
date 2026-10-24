@@ -252,6 +252,12 @@ type Task struct {
 	// annotation is accept: still verifies no-contract. Shown in the
 	// converge report; proven only through certified_by:.
 	Accept string
+
+	// DerivedTests are test names inferred from a foreign task's text.
+	// Unlike Expect.CertifiedBy they add a certificate requirement without
+	// replacing test_reaches. Synthesis carries them as derived_tests for
+	// daemon verification; explicit certified_by rows ignore this field.
+	DerivedTests []string
 }
 
 // Expect is a task's acceptance contract. The zero value is the STRICTEST
@@ -1012,6 +1018,30 @@ func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[stri
 				reaching = tests
 			} else {
 				graphFail("test_reaches", "no Test* statically reaches it", "present-but-untested")
+			}
+		}
+
+		// Foreign prose may only tighten a contract: keep the ordinary
+		// test_reaches/skip_test verdict above AND require a live certificate
+		// from a derived name. Explicit certified_by remains unchanged.
+		if len(t.DerivedTests) > 0 && len(e.CertifiedBy) == 0 {
+			switch {
+			case ambiguous:
+				na("derived_tests", "derived test certificates: ambiguous anchor")
+			case len(matches) == 0:
+				na("derived_tests", "derived test certificates: symbol absent")
+			default:
+				crit := Criterion{Name: "derived_tests", Status: Fail, Detail: "no certification evidence available"}
+				label := "certificate-absent"
+				if ce, ok := ev.(CertificationEvidence); ok {
+					crit, label = EvaluateCertifiedBy(matches[0].FilePath, t.DerivedTests, e.CertifyStrength, ce.CertificationsByTest(t.DerivedTests))
+				}
+				detail := "derived test certificates: " + crit.Detail
+				if crit.Status == Pass {
+					pass("derived_tests", detail)
+				} else {
+					fail("derived_tests", detail, label)
+				}
 			}
 		}
 

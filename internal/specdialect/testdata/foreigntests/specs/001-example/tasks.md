@@ -1,0 +1,2 @@
+- [x] T001 [US1] Check `internal/example/check_test.go` and `check_test.go` {symbol: Check, package: internal/example, certified_by: TestExisting}
+- [ ] T002 Exercise normal and error cases
