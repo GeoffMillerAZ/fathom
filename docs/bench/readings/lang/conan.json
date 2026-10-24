@@ -2,15 +2,15 @@
   "dialect": "conan",
   "kind": "tooling",
   "target_level": "L3",
-  "level_met": "L2",
+  "level_met": "L3",
   "grade": {
     "L1": "excellent",
     "L2": "excellent",
-    "L3": "not-attempted",
+    "L3": "excellent",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-10-02",
-  "fathom_commit": "06064b7c",
+  "measured_at": "2026-10-24",
+  "fathom_commit": "470726f",
   "extractor": "dialect",
   "subjects": [
     {
@@ -26,13 +26,18 @@
         "matched": 54,
         "oracle_defs": 54,
         "ref_fathom": 172,
-        "ref_fathom_in_truth": 165,
-        "ref_truth": 165,
-        "ref_truth_found": 165
+        "ref_fathom_in_truth": 163,
+        "ref_truth": 163,
+        "ref_truth_found": 163,
+        "xref_fathom": 78,
+        "xref_fathom_in_truth": 77,
+        "xref_truth": 77,
+        "xref_truth_found": 77
       },
       "families": {
         "l1": "A",
-        "refs": "A"
+        "refs": "A",
+        "xref": "A"
       },
       "kind_intersection": [
         "package"
@@ -40,9 +45,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 217.16099999999994,
-        "extract_cpu_ms": 199.47999999999993,
-        "max_file_ms": 42,
+        "extract_ms": 325.036,
+        "extract_cpu_ms": 337.87000000000006,
+        "max_file_ms": 86,
         "peak_module_pages": 370,
         "compiled_bytes": 0
       }
@@ -62,11 +67,14 @@
         "ref_fathom": 33,
         "ref_fathom_in_truth": 33,
         "ref_truth": 33,
-        "ref_truth_found": 33
+        "ref_truth_found": 33,
+        "xref_fathom": 0,
+        "xref_truth": 0
       },
       "families": {
         "l1": "A",
-        "refs": "A"
+        "refs": "A",
+        "xref": "A"
       },
       "kind_intersection": [
         "package"
@@ -78,10 +86,10 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 26.396,
-        "extract_cpu_ms": 26.487999999999992,
-        "max_file_ms": 1,
-        "peak_module_pages": 304,
+        "extract_ms": 41.659,
+        "extract_cpu_ms": 43.336,
+        "max_file_ms": 2,
+        "peak_module_pages": 305,
         "compiled_bytes": 0
       }
     }
@@ -94,18 +102,20 @@
     }
   ],
   "metrics": {
-    "ref_precision": 0.9659,
+    "ref_precision": 0.9561,
     "ref_recall": 1,
     "sym_precision": 1,
     "sym_recall": 1,
-    "xref_precision": null,
-    "xref_recall": null
+    "xref_precision": 0.9872,
+    "xref_recall": 1
   },
   "metric_tiers": {
     "ref_precision": "A",
     "ref_recall": "A",
     "sym_precision": "A",
-    "sym_recall": "A"
+    "sym_recall": "A",
+    "xref_precision": "A",
+    "xref_recall": "A"
   },
   "required_kinds": [
     "package"
@@ -121,17 +131,21 @@
     "matched": 109,
     "oracle_defs": 109,
     "ref_fathom": 205,
-    "ref_fathom_in_truth": 198,
-    "ref_truth": 198,
-    "ref_truth_found": 198
+    "ref_fathom_in_truth": 196,
+    "ref_truth": 196,
+    "ref_truth_found": 196,
+    "xref_fathom": 78,
+    "xref_fathom_in_truth": 77,
+    "xref_truth": 77,
+    "xref_truth_found": 77
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 2.31,
+    "throughput_mb_s": 1.37,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 2.14,
-    "max_file_ms": 42,
+    "wall_throughput_mb_s": 1.42,
+    "max_file_ms": 86,
     "peak_module_pages": 370,
     "compiled_bytes": 0
   },
@@ -141,7 +155,9 @@
   },
   "notes": [
     "conan-io/conan-center-index: restricted to recipes/abseil/all/conanfile.py, recipes/benchmark/all/conanfile.py, recipes/boost/all/conanfile.py, recipes/brotli/all/conanfile.py, recipes/bzip2/all/conanfile.py, recipes/c-ares/all/conanfile.py, recipes/cairo/all/conanfile.py, recipes/catch2/3.x.x/conanfile.py, recipes/cli11/all/conanfile.py, recipes/eigen/all/conanfile.py, recipes/expat/all/conanfile.py, recipes/fmt/all/conanfile.py, recipes/freetype/meson/conanfile.py, recipes/fribidi/all/conanfile.py, recipes/gflags/all/conanfile.py, recipes/giflib/all/conanfile.py, recipes/glog/all/conanfile.py, recipes/gtest/all/conanfile.py, recipes/harfbuzz/all/conanfile.py, recipes/libarchive/all/conanfile.py, recipes/libcurl/all/conanfile.py, recipes/libffi/all/conanfile.py, recipes/libgit2/all/conanfile.py, recipes/libiconv/all/conanfile.py, recipes/libidn2/all/conanfile.py, recipes/libjpeg-turbo/all/conanfile.py, recipes/libjpeg/all/conanfile.py, recipes/libnghttp2/all/conanfile.py, recipes/libpng/all/conanfile.py, recipes/libpq/meson/conanfile.py, recipes/libpsl/all/conanfile.py, recipes/libssh2/all/conanfile.py, recipes/libtiff/all/conanfile.py, recipes/libunistring/all/conanfile.py, recipes/libuuid/all/conanfile.py, recipes/libwebp/all/conanfile.py, recipes/libxml2/cmake/conanfile.py, recipes/lz4/all/conanfile.py, recipes/mbedtls/all/conanfile.py, recipes/nlohmann_json/all/conanfile.py, recipes/openssl/4.x.x/conanfile.py, recipes/pcre2/all/conanfile.py, recipes/pixman/all/conanfile.py, recipes/protobuf/all/conanfile.py, recipes/re2/all/conanfile.py, recipes/snappy/all/conanfile.py, recipes/spdlog/all/conanfile.py, recipes/sqlite3/all/conanfile.py, recipes/tinyxml2/all/conanfile.py, recipes/wolfssl/all/conanfile.py, recipes/xz_utils/all/conanfile.py, recipes/yaml-cpp/all/conanfile.py, recipes/zlib/all/conanfile.py, recipes/zstd/all/conanfile.py (-only; the files outside are a disclosed gap, not measured)",
+    "conan-io/conan-center-index: xref_precision and xref_recall score the doc-xref pass's edges together with the file resolver's global-name edges (fusion.ResolveFileEdges, the pass ingest stores file-resolved edges from) at entity grain: (file, referring recipe, referenced file, referenced recipe)",
     "conan-io/examples2: restricted to ci/game/mathlib/conanfile.py, examples/conanfile/finalize/finalize_consume/dependency/conanfile.py, examples/conanfile/finalize/finalize_method/conanfile.py, examples/conanfile/layout/conanfile_in_subfolder/conan/conanfile.py, examples/conanfile/layout/editable_components/greetings/conanfile.py, examples/conanfile/layout/multiple_subprojects/bye/conanfile.py, examples/conanfile/layout/multiple_subprojects/hello/conanfile.py, examples/conanfile/layout/third_party_libraries/conanfile.py, examples/conanfile/package_info/components/conanfile.py, examples/cross_build/android/raylib/app/src/main/cpp/conanfile.txt, examples/extensions/deployers/development_deploy/conanfile.txt, examples/extensions/deployers/sources/conanfile.py, examples/extensions/python_build_backend/conanfile.py, examples/graph/tool_requires/different_options/gcc/conanfile.py, examples/graph/tool_requires/different_versions/gcc/conanfile.py, examples/graph/tool_requires/different_versions/wine/conanfile.py, examples/graph/tool_requires/using_protobuf/myaddresser/conanfile.py, examples/libraries/protobuf/serialization/conanfile.txt, examples/security/sanitizers/index_out_of_bounds/conanfile.py, examples/security/sanitizers/signed_integer_overflow/conanfile.py, examples/tools/autotools/autotoolstoolchain/string_formatter/conanfile.txt, examples/tools/cmake/cmake_toolchain/extend_own_cmake_presets/conanfile.py, examples/tools/cmake/cmake_toolchain/user_toolchain_profile/conanfile.py, examples/tools/cmake/pkg_config_files/conanfile.py, examples/tools/files/patches/conanfile.py, examples/tools/google/bazeltoolchain/6_x/string_formatter/conanfile.txt, examples/tools/google/bazeltoolchain/7_x/string_formatter/conanfile.txt, examples/tools/meson/mesontoolchain/simple_meson_project/conanfile.txt, examples/tools/ros/rosenv/navigation_ws/navigation_package/conanfile.txt, examples/tools/ros/rosenv/workspace/str_printer/conanfile.txt, examples/tools/scm/git/capture_scm/conanfile.py, examples/tools/system/package_manager/conanfile.py, tutorial/consuming_packages/different_configurations/conanfile.txt, tutorial/consuming_packages/simple_cmake_project/conanfile.txt, tutorial/consuming_packages/tool_requires/conanfile.txt, tutorial/creating_packages/add_requires/conanfile.py, tutorial/creating_packages/build_method/conanfile.py, tutorial/creating_packages/configure_options_settings/conanfile.py, tutorial/creating_packages/handle_sources/conanfile.py, tutorial/creating_packages/other_packages/header_only/conanfile.py, tutorial/creating_packages/other_packages/header_only_gtest/conanfile.py, tutorial/creating_packages/other_packages/prebuilt_binaries/conanfile.py, tutorial/creating_packages/other_packages/prebuilt_remote_binaries/conanfile.py, tutorial/creating_packages/other_packages/tool_requires/tool/conanfile.py, tutorial/creating_packages/package_information/conanfile.py, tutorial/creating_packages/package_method/conanfile.py, tutorial/creating_packages/preparing_the_build/conanfile.py, tutorial/creating_packages/testing_packages/conanfile.py, tutorial/developing_packages/editable_packages/say/conanfile.py, tutorial/developing_packages/local_package_development_flow/conanfile.py, tutorial/developing_packages/package_layout/say/conanfile.py, tutorial/versioning/conflicts/options/matrix/conanfile.py, tutorial/versioning/conflicts/versions/matrix/conanfile.py, tutorial/versioning/lockfiles/intro/matrix/conanfile.py, tutorial/versioning/lockfiles/intro/sound32/conanfile.py (-only; the files outside are a disclosed gap, not measured)",
+    "conan-io/examples2: xref_precision and xref_recall score the doc-xref pass's edges together with the file resolver's global-name edges (fusion.ResolveFileEdges, the pass ingest stores file-resolved edges from) at entity grain: (file, referring recipe, referenced file, referenced recipe)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
   ],
   "disposition": null
