@@ -1124,6 +1124,7 @@ func TestCheckHooksFiring(t *testing.T) {
 // ─── stanza_present ─────────────────────────────────────────────────────────
 
 func TestCheckStanzaPresent(t *testing.T) {
+	isolateDoctorHome(t)
 	t.Run("missing files fail", func(t *testing.T) {
 		got := checkStanzaPresent(t.TempDir())
 		if got.Status != doctorFail {
@@ -1867,8 +1868,12 @@ func TestCmdDoctor_JSON(t *testing.T) {
 // code-scoped. The assertion: a correctly-wired adopter reports ZERO
 // FAILs, and each of the three checks individually is never the FAIL.
 func TestCmdDoctor_AdopterRepoIsNotFathom(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
+	home := isolateDoctorHome(t)
+	bin := t.TempDir()
+	if err := os.WriteFile(filepath.Join(bin, "fathom"), []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	adopter := t.TempDir()
 	svc := strings.ToLower(filepath.Base(adopter))

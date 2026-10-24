@@ -14,6 +14,23 @@ import (
 	"testing"
 )
 
+// isolateDoctorHome also moves fixtures out of inherited TMPDIR/GOTMPDIR:
+// they may sit below the real home, whose CLAUDE files ancestorClaudeFiles
+// still reads after HOME changes. Child tests inherit this test-owned root.
+func isolateDoctorHome(t *testing.T) string {
+	t.Helper()
+	t.Setenv("TMPDIR", "")
+	t.Setenv("GOTMPDIR", "")
+	home := t.TempDir()
+	t.Setenv("TMPDIR", home)
+	t.Setenv("GOTMPDIR", home)
+	t.Setenv("HOME", home)
+	t.Setenv("CLAUDE_CONFIG_DIR", "")
+	t.Setenv("CODEX_HOME", filepath.Join(home, ".codex"))
+	t.Setenv("XDG_STATE_HOME", filepath.Join(home, ".local", "state"))
+	return home
+}
+
 // withClaudeLoadEnv points claudeLoadEnv at a fake home, managed settings
 // file and claude version for one test.
 func withClaudeLoadEnv(t *testing.T, home, managed, version string) {
@@ -46,6 +63,7 @@ func agentsRepo(t *testing.T) (parent, root string) {
 }
 
 func TestCheckStanzaPresentAgentsMD(t *testing.T) {
+	isolateDoctorHome(t)
 	t.Run("no AGENTS.md fails", func(t *testing.T) {
 		withClaudeLoadEnv(t, t.TempDir(), "", "2.1.284")
 		root := t.TempDir()
@@ -199,6 +217,7 @@ func TestCheckStanzaPresentAgentsMD(t *testing.T) {
 // half: no root CLAUDE file and no beat is a SKIP naming why no evidence can
 // exist; a beat for AGENTS.md (arriving through a CLAUDE.md import) passes.
 func TestStanzaLoadedSkipsByNameWithNoClaudeFile(t *testing.T) {
+	isolateDoctorHome(t)
 	beatsPath := filepath.Join(t.TempDir(), "hooks.jsonl")
 	t.Setenv("FATHOM_HOOKS_LOG", beatsPath)
 	withClaudeLoadEnv(t, t.TempDir(), "", "2.1.284")
@@ -229,6 +248,7 @@ func TestStanzaLoadedSkipsByNameWithNoClaudeFile(t *testing.T) {
 // its reasons; it never says Claude Code loads the file. Where nothing warns,
 // the named agents-md SKIP is unchanged.
 func TestStanzaLoadedSkipNeverClaimsALoadStanzaPresentDenies(t *testing.T) {
+	isolateDoctorHome(t)
 	cases := []struct {
 		name  string
 		setup func(t *testing.T) (root string)
@@ -296,6 +316,7 @@ func TestStanzaLoadedSkipNeverClaimsALoadStanzaPresentDenies(t *testing.T) {
 // renamed it cc-plugin-agents-md@builtin. Doctor reads both keys, the new id
 // first, names the key it read, and names a disagreement between the two.
 func TestInstructionFilesSettingReadsBothPluginIDs(t *testing.T) {
+	isolateDoctorHome(t)
 	setting := func(pairs ...string) string {
 		var b strings.Builder
 		b.WriteString(`{"pluginConfigs":{`)
