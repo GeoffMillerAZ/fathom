@@ -1,6 +1,0 @@
-### Fixed
-
-- Receipt verification checks each exported fact's recorded git blob or filtered checkout bytes and excerpt before checking its claim with the Go toolchain. Withheld anchors must omit source evidence. Uncommitted facts and facts without a toolchain check are reported as unchecked and cannot verify successfully. Anchors from a different commit are rejected, and caller lists are checked even when some facts are uncommitted.
-- Receipt verification rejects unknown JSON fields and fact kinds, duplicate facts or callers, missing caller facts, empty absence read sets and symbol-location paths outside the repository. Receipts without facts still have their envelope checked.
-- Exported caller and symbol-location receipts verify value, pointer and generic methods with package-qualified names, whether service names are retained or redacted. Caller verification ignores generated Go test runners outside the repository.
-- Receipt verification refuses a JSON key repeated in one object (exactly or by case) before decoding, checks an anchor's `fathom_fingerprint` against the recorded blob, and checks absence facts' own fields: no anchors, a count of zero (a lower bound only when a read is missing), a read set from the receipt's tree, and a declared package-qualified subject.

@@ -24,6 +24,41 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Unreleased changes wait as fragments under docs/changelog/unreleased/; the release ritual folds them here.
 
+## [0.19.0] — 2026-10-23
+
+Release impact: minor
+
+### Added
+
+- The adoption gauge now shows which fathom version wrote each share of the call log; rows older than version stamps read as unknown.
+- `fathom culprit <good>..<bad>` ranks commits by failing-test reach, blast radius and recency and prints bisect commands for the operator without running tests or changing the checkout. It counts edits to failing tests, labels merges without charging inherited changes, and names missing evidence: commits with missing evidence rank below commits that reach a failing test and above indexed non-reaching ones. Output identifies the store and indexed commit, names unresolved tests once, and suggests testing the candidate's parent to confirm the boundary.
+- Default git-safety guards block bypassing push or commit hooks, force-pushing or deleting remote main/master, and force or mirror pushes without a named target branch, with a remedy. Disabled Lefthook and hook-path overrides count too.
+- Unreadable commands, `xargs git`, unknown force targets, git alias configuration and `--config-env` warn without blocking. Local git operations, push dry runs and forced tags-only pushes remain allowed.
+- Set `[guards] git_safety = false` to opt out; the nearest project setting wins. The enforcement switch makes denials advisory, with the nearest project `[guards] enforce` setting deciding for the pack.
+- `fathom init --dry-run` previews the implemented entry-point, runs and test-entry facets at no model cost, compile estimates using the same corpus and model rates as `fathom compile --dry-run --store` (direct mode) with `[decide] provider = "none"`, and unpriced decision sites with their own commands and configuration gates. The cost preview makes no provider calls.
+- Plan row weight estimates appear beside authored weights in context output and console row cards. Estimates compare similar proven work with the service median, include planned scope, dependencies and blast radius, and use the scale 1, 2, 3, 5, 8, 13. `fathom plans weight accept <row-id>` supports a dry-run preview and preserves annotation formatting. Repeated acceptance is stable; unreadable explicit stores and malformed weights are refused. Help is available for the weight command and its accept subcommand.
+- `fathom provenance note` records declared agent harness, model, operator host label, session and lane in a local git note without changing the target commit or pushing notes.
+- `fathom tests flaky` finds tests that failed and later passed on the same git tree with a matching gate name, Go toolchain and environment, ranks them by recorded failing gate duration, and shows gate runs with unknown identity separately. It reads saved gate logs without Task command echoes, ignores unrelated output, and skips each cached result while retaining fresh results from other steps in the same run. Every fresh package result must pass before that package is treated as recovered. Use `--json` for scripts and `--since` to limit history and exclude undated runs. Verb help lists `tests flaky`.
+
+### Changed
+
+- Symbol-anchored foreign tasks that name tests must also hold a live certificate from at least one named test, in addition to their existing checks. A claimed row that passed before can now report `certificate-absent`. Kiro and Task Master require test names in backticks or `-run` arguments, and Kiro uses only the task text. Rows with an explicit `certified_by` are unchanged.
+- The pre-tool edit hook now checks commands within shell chains and nested commands, broadening the commands existing repository guards match while preserving their whole-command glob matches. Readout checks for required arguments share the segment matcher.
+- Advisory repository guards no longer hide enforced command guards, and repository or user notes appear before additional git-safety advice.
+- Exported receipts replace the service name with `@` unless `--keep-service` is supplied.
+- RTK's own tools and controls remain RTK commands in fathom's shell checks; `rtk test`, `rtk err` and `rtk summary` expose the command they wrap. Readouts leave RTK output unchanged while test runs are still recorded and normal test failure context remains available.
+
+### Fixed
+
+- In a Claude Code cloud session, the pre-push gate gets CI's test budget (`GOFLAGS=-timeout=30m`, `FATHOM_TEST_SHARDS_TIMEOUT=30m0s`), so `cmd/fathom`'s race shards no longer fail at go's default 10-minute timeout on the VM's four vCPUs. A timeout you set yourself is kept.
+- Intent audit refuses condition annotations that point outside the repository or at another repository's service instead of evaluating them. Refused annotations print as UNEVALUABLE lines, count in the unevaluable buckets, and an unreadable service registry leaves service annotations unevaluable with its own wording while path confinement still runs.
+- Receipt verification checks each exported fact's recorded git blob or filtered checkout bytes and excerpt before checking its claim with the Go toolchain. Withheld anchors must omit source evidence. Uncommitted facts and facts without a toolchain check are reported as unchecked and cannot verify successfully. Anchors from a different commit are rejected, and caller lists are checked even when some facts are uncommitted.
+- Receipt verification rejects unknown JSON fields and fact kinds, duplicate facts or callers, missing caller facts, empty absence read sets and symbol-location paths outside the repository. Receipts without facts still have their envelope checked.
+- Exported caller and symbol-location receipts verify value, pointer and generic methods with package-qualified names, whether service names are retained or redacted. Caller verification ignores generated Go test runners outside the repository.
+- Receipt verification refuses a JSON key repeated in one object (exactly or by case) before decoding, checks an anchor's `fathom_fingerprint` against the recorded blob, and checks absence facts' own fields: no anchors, a count of zero (a lower bound only when a read is missing), a read set from the receipt's tree, and a declared package-qualified subject.
+- Reconcile changes only keys it owns and adopts exact legacy fathom hooks once, even after init or other wiring updates. Commands with different arguments, shell steps, async settings or extra fields stay unchanged and are reported as collisions without counting as drift.
+- Dry runs name pending hook adoptions, and the observatory reports completed adoptions. Ownership ledger saves sync a complete replacement before swapping it into place.
+
 ## [0.18.2] — 2026-10-23
 
 Release impact: patch
