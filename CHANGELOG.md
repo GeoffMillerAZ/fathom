@@ -24,6 +24,28 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Unreleased changes wait as fragments under docs/changelog/unreleased/; the release ritual folds them here.
 
+## [0.20.0] — 2026-10-23
+
+Release impact: minor
+
+### Added
+
+- Checkov checks are read as policies: a Python check under `checks/{resource,data,provider,module}/` becomes a symbol named for its id (`CKV_AWS_18`) with the resource types it covers as its calls, and a YAML graph check under `checks/graph_checks/` becomes one named for `metadata.id` with the resource types its definition names. Measured at L2, excellent, against Checkov's own loaders on Checkov 3.2.500 (1,636 checks, 2,131 resource-type references). Python files under those directories no longer carry Python symbols, and a check directory of any other name is not claimed.
+- fathom's own CUE configuration files now index as entities: each concern of `.fathom/concerns.cue` (those a comprehension generates included), each layer pack's `layer.cue` and each rule pack under `.fathom/rules/`. They read as CUE before. Stores ingested earlier re-extract these files on the next ingest.
+- Conan recipes reach L3: a `requires`, `tool_requires`, `build_requires` or `test_requires` reference (class attribute or `self.requires(...)`) in a `conanfile.py` now draws a file-resolved edge to the one recipe of the service that declares that name. The reference's version, user/channel and revision are cut; a name two recipes declare binds nothing.
+- PgBouncer configuration (`pgbouncer.ini`, and any `.ini` that opens a `[databases]` or `[pgbouncer]` section) extraction at L2 (good), measured against PgBouncer 1.26.1's own load on pgbouncer/pgbouncer: sections, databases, peers, users and settings, and `auth_dbname` as an in-file reference to the database it names.
+- ProxySQL configuration (`proxysql.cnf`, `proxysql.cfg`, `proxysql*.cnf`) extraction at L2 (L1 good, L2 excellent), measured against ProxySQL 3.0.9's own load of sysown/proxysql's configuration files: sections, variables, servers, users, query rules, replication hostgroups, scheduler entries and cluster peers, and the hostgroup each server, user, rule and replication entry names as an in-file reference. A file libconfig refuses (a bare word where a quoted string belongs) reads as no entities.
+
+### Fixed
+
+- `doctor --brief` (the Setup hook) no longer sends a daemon read after it returns. Its capabilities row built the console model through a detached rebuild, and when that rebuild reached the daemon after the hook's deadline it sent `list_services` with no `X-Fathom-Deadline`. Doctor now builds the model inline with its reads bound to the probe's deadline.
+- A route in a configuration file (a Traefik, Envoy or Caddy upstream, any route-host reference) now joins the compose or Kubernetes service of its nearest ancestor directory before falling back to every same-named service in the repository, so a config beside a root compose file no longer links to unrelated overlay stacks.
+- Traefik: a router's `service: x@file` and `middlewares: [y@file]` (the file provider's suffix) now name the `x` and `y` declared in the file.
+- The Bash write hook now recognises BSD `sed -I` (alone, in a flag cluster such as `-EI`, or with an attached suffix) and abbreviated GNU `--in-place` forms (`--in-pl`, `--in-place=SUF`) as in-place writes and names their targets.
+- The Bash write hook no longer reports `%`, glob patterns or `{}` placeholders as written files. When a `sed` also names such an operand, the rules of that operand's directory are served alongside the named files' rules.
+- `FATHOM_TENANCY_BUDGET` accepts a plain byte count (`536870912`) as well as an IEC size (`512MiB`); any other value is rejected with a message naming both forms.
+- The 0.19.0 block was rolled but never tagged: Linux CI found two defects fixed in 0.20.0, so install 0.20.0.
+
 ## [0.19.0] — 2026-10-23
 
 Release impact: minor
