@@ -126,7 +126,7 @@ func cmdEditHookBashWrite(codec harness.Codec, hook harness.HookInput, url strin
 		return silent(silenceNoService)
 	}
 
-	var files []string
+	var files, unnamedSentinels []string
 	doubt := false
 	svc := ""
 	label := ""
@@ -147,6 +147,19 @@ func cmdEditHookBashWrite(codec harness.Codec, hook harness.HookInput, url strin
 			return silent(silenceForeignTarget) // resolved outside every candidate root: not doubt
 		}
 		svc = strings.ToLower(cand.name)
+		// A sed that also named operands the hook could not read: the rules
+		// of those operands' directory still govern the write.
+		if writes.sedDoubt {
+			for _, dir := range resolveBashWriteTargets(cwd, writes.unnamedDirs) {
+				if rel, ok := relativeToRoot(cand.root, dir); ok {
+					sentinel := filepath.ToSlash(filepath.Join(rel, "__bash_write__.go"))
+					if !slices.Contains(files, sentinel) {
+						files = append(files, sentinel)
+						unnamedSentinels = append(unnamedSentinels, sentinel)
+					}
+				}
+			}
+		}
 	} else {
 		// Doubt (O57 item 4/5b): git apply, or no extractable target. Ask
 		// for the cwd's nearest guide through a synthetic sentinel filename
@@ -190,6 +203,11 @@ func cmdEditHookBashWrite(codec harness.Codec, hook harness.HookInput, url strin
 		return silent(silenceNoRules)
 	}
 
+	for i, f := range m.namedFiles {
+		if slices.Contains(unnamedSentinels, f) {
+			m.namedFiles[i] = strings.TrimSuffix(filepath.ToSlash(filepath.Dir(f)), ".") + "/" // name the directory, not the probe file
+		}
+	}
 	var text, doubtText string
 	if doubt {
 		text = bashDoubtLine(filepath.ToSlash(filepath.Dir(files[0])), len(m.rules)+m.displaced)
