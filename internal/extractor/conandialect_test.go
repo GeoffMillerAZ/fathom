@@ -172,3 +172,41 @@ func TestConanSurvivesSyntaxError(t *testing.T) {
 		t.Fatalf("the recipe before the error must survive with its requires; nodes %+v", nodes)
 	}
 }
+
+// TestConanImportsCutAtTheReferenceName (L3): every requirement a recipe writes — a class attribute in any of its
+// four spellings, self.requires and its siblings — is an import spec whose name is the reference cut at the "/",
+// so the global-name strategy binds the recipe it names; a reference that is no string names none.
+func TestConanImportsCutAtTheReferenceName(t *testing.T) {
+	d, err := NewTSExtractor("conan")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(d.Close)
+	src := `from conan import ConanFile
+
+
+class R(ConanFile):
+    name = "r"
+    requires = "a/1.0@user/chan"
+    tool_requires = ["b/[>=1 <2]", "c/2"]
+    build_requires = ("d/3",)
+
+    def requirements(self):
+        self.requires("e/4#rev")
+        self.test_requires(self.tested_reference_str)
+        self.tool_requires("f/5")
+`
+	specs, err := d.ExtractImports("recipes/r/all/conanfile.py", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, s := range specs {
+		got = append(got, s.Module+"/"+s.LocalName)
+	}
+	sort.Strings(got)
+	want := []string{"a/a", "b/b", "c/c", "d/d", "e/e", "f/f"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("imports = %v, want %v", got, want)
+	}
+}

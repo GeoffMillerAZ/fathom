@@ -1104,7 +1104,14 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			if lang, ok := fileResolveLang[spec.Manifest.ID]; ok && spec.Manifest.Engine == "native" {
 				resolved = fileResolvedXrefPairs(ctx, lang, root, srcFiles, nodes)
 			}
-			n, note, err := scoreXrefOracle(toolOracle, doc, service, srcFiles, lambdaCode(pipe, service, root, refs), resolved, &sub, inScope)
+			// A tags+doc dialect (Conan, LB-Q-conan) has its file resolver's edges beside the doc pass's:
+			// ingest stores both, so both score.
+			scoreResolved := false
+			if lang, ok := importLang(spec.Manifest.ID); ok && spec.Manifest.Engine == "tags+doc" {
+				resolved = fileResolvedXrefPairs(ctx, lang, root, srcFiles, nodes)
+				scoreResolved = resolved != nil
+			}
+			n, note, err := scoreXrefOracle(toolOracle, doc, service, srcFiles, lambdaCode(pipe, service, root, refs), resolved, scoreResolved, &sub, inScope)
 			if err != nil {
 				return res, err
 			}
