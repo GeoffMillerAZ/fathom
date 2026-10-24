@@ -1,0 +1,2 @@
+{"type":"system","subtype":"init","mcp_servers":[{"name":"fathom","status":"connected"}],"tools":["mcp__fathom__obligations"]}
+{"type":"system","subtype":"hook_response","hook_event":"SessionStart","hook_name":"SessionStart:startup"}

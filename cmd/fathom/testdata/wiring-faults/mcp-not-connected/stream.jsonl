@@ -1,0 +1,2 @@
+{"type":"system","subtype":"init","mcp_servers":[],"tools":[]}
+{"type":"system","subtype":"hook_response","hook_event":"SessionStart","hook_name":"SessionStart:startup"}

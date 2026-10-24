@@ -1,0 +1,106 @@
+{
+  "cases": [
+    {
+      "directory": "channel-off",
+      "fault": "channel-off",
+      "healthy_twin": "healthy-001",
+      "touched_files": [
+        "hooks.jsonl",
+        "mcp-calls.jsonl",
+        "session-stamps/session-001.json"
+      ],
+      "detectable_from_records": false,
+      "records_note": "FATHOM_CHANNELS=off exits before any hook record; absence alone cannot identify the kill switch. statusz reflects only the daemon's environment, never the harness's."
+    },
+    {
+      "directory": "daemon-down",
+      "fault": "daemon-down",
+      "healthy_twin": "healthy-001",
+      "touched_files": [
+        "hooks.jsonl",
+        "mcp-calls.jsonl",
+        "session-stamps/session-001.json",
+        "statusz.json"
+      ],
+      "detectable_from_records": true
+    },
+    {
+      "directory": "healthy-001",
+      "fault": "healthy",
+      "touched_files": [],
+      "detectable_from_records": true
+    },
+    {
+      "directory": "healthy-002",
+      "fault": "healthy",
+      "touched_files": [],
+      "detectable_from_records": true
+    },
+    {
+      "directory": "hook-unregistered",
+      "fault": "hook-unregistered",
+      "healthy_twin": "healthy-001",
+      "touched_files": [
+        ".claude/settings.json",
+        "hooks.jsonl",
+        "session-stamps/session-001.json",
+        "stream.jsonl"
+      ],
+      "detectable_from_records": true,
+      "removed_registration": "SessionStart:startup|resume|clear|compact"
+    },
+    {
+      "directory": "index-behind-head",
+      "fault": "index-behind-head",
+      "healthy_twin": "healthy-001",
+      "touched_files": [
+        "session-stamps/session-001.json",
+        "statusz.json"
+      ],
+      "detectable_from_records": true
+    },
+    {
+      "directory": "mcp-not-connected",
+      "fault": "mcp-not-connected",
+      "healthy_twin": "healthy-001",
+      "touched_files": [
+        "stream.jsonl"
+      ],
+      "detectable_from_records": true,
+      "records_note": "The bench captures Claude Code's init event, which explicitly records an empty MCP server list; a normal session writes no init capture.",
+      "record_scope": "bench-only"
+    },
+    {
+      "directory": "rules-empty",
+      "fault": "rules-empty",
+      "healthy_twin": "healthy-001",
+      "touched_files": [
+        "hooks.jsonl",
+        "mcp-calls.jsonl"
+      ],
+      "detectable_from_records": true
+    },
+    {
+      "directory": "stale-binary",
+      "fault": "stale-binary",
+      "healthy_twin": "healthy-001",
+      "touched_files": [
+        "hooks.jsonl",
+        "mcp-calls.jsonl",
+        "statusz.json"
+      ],
+      "detectable_from_records": true,
+      "records_note": "Models a stale daemon and hooks. doctor daemon_fresh compares statusz binary_commit with the local binary running doctor, not repository HEAD; that local binary is assumed current here."
+    },
+    {
+      "directory": "stale-hook-binary",
+      "fault": "stale-hook-binary",
+      "healthy_twin": "healthy-001",
+      "touched_files": [
+        "hooks.jsonl"
+      ],
+      "detectable_from_records": true,
+      "records_note": "Only the hook binary is stale: its beats stamp the parent revision while the daemon's statusz and MCP calls remain current."
+    }
+  ]
+}

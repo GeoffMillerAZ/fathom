@@ -1,0 +1,1 @@
+{"schema_version":3,"fathom_version":"cfdc275d8ef3","ts":"2026-10-20T12:00:00Z","tool":"obligations","service":"service-001","group":"shared","origin":"edit-hook","response_bytes":920,"response_tokens":230,"latency_ms":0,"outcome":"ok","class":"tree","queued_ms":0,"bytes_read":0,"pointers":["entry.go","AGENTS.md#L1-L1"]}

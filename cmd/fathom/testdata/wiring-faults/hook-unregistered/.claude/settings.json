@@ -1,0 +1,230 @@
+{
+  "hooks": {
+    "ConfigChange": [
+      {
+        "hooks": [
+          {
+            "command": "command -v /tools/fathom >/dev/null 2>&1 || exit 0; /tools/fathom config audit --hook",
+            "timeout": 10,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "CwdChanged": [
+      {
+        "hooks": [
+          {
+            "command": "command -v /tools/fathom >/dev/null 2>&1 || exit 0; /tools/fathom session-hook --event cwd-changed",
+            "timeout": 5,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "DirectoryAdded": [
+      {
+        "hooks": [
+          {
+            "command": "command -v /tools/fathom >/dev/null 2>&1 || exit 0; /tools/fathom session-hook --event cwd-changed",
+            "timeout": 5,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "FileChanged": [
+      {
+        "hooks": [
+          {
+            "command": "command -v /tools/fathom >/dev/null 2>&1 || exit 0; /tools/fathom config audit --hook --event file-changed",
+            "timeout": 10,
+            "type": "command"
+          }
+        ],
+        "matcher": "CLAUDE.md|AGENTS.md|concerns.cue|config.toml"
+      }
+    ],
+    "InstructionsLoaded": [
+      {
+        "hooks": [
+          {
+            "command": "command -v /tools/fathom >/dev/null 2>&1 || exit 0; /tools/fathom session-hook --event instructions-loaded",
+            "timeout": 5,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "command -v /tools/fathom >/dev/null 2>&1 || exit 0; /tools/fathom edit-hook",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": "Edit|Write|MultiEdit"
+      },
+      {
+        "hooks": [
+          {
+            "command": "command -v /tools/fathom >/dev/null 2>&1 || exit 0; /tools/fathom edit-hook",
+            "timeout": 5,
+            "type": "command"
+          },
+          {
+            "command": "command -v /tools/fathom >/dev/null 2>&1 || exit 0; /tools/fathom session-hook --event test-run",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash"
+      },
+      {
+        "hooks": [
+          {
+            "async": true,
+            "command": "command -v /tools/fathom >/dev/null 2>&1 || exit 0; /tools/fathom edit-hook",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": "mcp__fathom__(symbol_context|find_symbol|read_source)|mcp__plugin_[^_]*_fathom__(symbol_context|find_symbol|read_source)"
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "command": "command -v /tools/fathom >/dev/null 2>&1 || exit 0; /tools/fathom session-hook --event tool-failure",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": "mcp__fathom__.*|mcp__plugin_[^_]*_fathom__.*"
+      },
+      {
+        "hooks": [
+          {
+            "command": "command -v /tools/fathom >/dev/null 2>&1 || exit 0; /tools/fathom session-hook --event failed-test-run",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash"
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "command": "command -v /tools/fathom >/dev/null 2>&1 || exit 0; /tools/fathom pre-compact-hook",
+            "timeout": 10,
+            "type": "command"
+          }
+        ],
+        "matcher": "manual|auto"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "command -v /tools/fathom >/dev/null 2>&1 || exit 0; /tools/fathom edit-hook --pre",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": "Edit|Write|MultiEdit"
+      },
+      {
+        "hooks": [
+          {
+            "command": "command -v /tools/fathom >/dev/null 2>&1 || exit 0; /tools/fathom edit-hook --pre",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash"
+      },
+      {
+        "hooks": [
+          {
+            "async": true,
+            "command": "command -v /tools/fathom >/dev/null 2>&1 || exit 0; /tools/fathom edit-hook --pre",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": "Grep|Glob|Read"
+      },
+      {
+        "hooks": [
+          {
+            "command": "command -v /tools/fathom >/dev/null 2>&1 || exit 0; /tools/fathom edit-hook --pre",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": "^(Agent|Task)$"
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "command": "command -v /tools/fathom >/dev/null 2>&1 || exit 0; /tools/fathom session-end-hook",
+            "timeout": 10,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "Setup": [
+      {
+        "hooks": [
+          {
+            "command": "command -v /tools/fathom >/dev/null 2>&1 || exit 0; /tools/fathom doctor --brief",
+            "timeout": 15,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "command": "command -v /tools/fathom >/dev/null 2>&1 || exit 0; /tools/fathom stop-hook",
+            "timeout": 10,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "command": "command -v /tools/fathom >/dev/null 2>&1 || exit 0; /tools/fathom session-hook --event subagent-start",
+            "timeout": 5,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "command": "command -v /tools/fathom >/dev/null 2>&1 || exit 0; /tools/fathom prompt-hook",
+            "timeout": 10,
+            "type": "command"
+          }
+        ]
+      }
+    ]
+  }
+}
