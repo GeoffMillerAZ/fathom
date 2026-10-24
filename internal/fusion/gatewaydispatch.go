@@ -31,6 +31,8 @@ const (
 	ToolKong ToolKind = "kong"
 	// ToolTraefik: a Traefik static or file-provider file, YAML or TOML (LB-Q-traefik).
 	ToolTraefik ToolKind = "traefik"
+	// ToolPgBouncer: a pgbouncer.ini (LB-Q-pgbouncer).
+	ToolPgBouncer ToolKind = "pgbouncer"
 )
 
 // gatewayKinds maps a dialect id to its ToolKind.
@@ -38,7 +40,14 @@ var gatewayKinds = map[string]ToolKind{
 	"envoy":   ToolEnvoy,
 	"kong":    ToolKong,
 	"traefik": ToolTraefik,
+	// pgbouncer's manifest names pgbouncer.ini and its variants, and sniffs
+	// any other .ini for a [databases] or [pgbouncer] section (gatewaySniffed).
+	"pgbouncer": ToolPgBouncer,
 }
+
+// gatewaySniffed are the dialects a manifest content sniff may claim, beyond a
+// basename or glob: an .ini carries no other signal of its tool.
+var gatewaySniffed = map[string]bool{"pgbouncer": true}
 
 var (
 	gatewayOnce sync.Once
@@ -66,7 +75,8 @@ func gatewayExtractors() map[string]*extractor.DocExtractor {
 // as a Kubernetes object (a top-level apiVersion and kind) is never one.
 func gatewayDispatch(relPath string, content []byte) (extractor.Extractor, ToolKind, bool) {
 	v := connector.ClassifyDialect(dialectRules(), relPath, content)
-	if v.By != connector.ClassifiedByBasename && v.By != connector.ClassifiedByGlob {
+	if v.By != connector.ClassifiedByBasename && v.By != connector.ClassifiedByGlob &&
+		!(v.By == connector.ClassifiedBySniff && gatewaySniffed[v.Dialect]) {
 		return nil, "", false
 	}
 	tk, ok := gatewayKinds[v.Dialect]

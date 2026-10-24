@@ -1,0 +1,38 @@
+{
+  "symbols": [
+    {
+      "name": "databases",
+      "kind": "PgBouncerSection",
+      "package": "minimal",
+      "line": 1,
+      "end_line": 2,
+      "tier": "verified"
+    },
+    {
+      "name": "mydb",
+      "kind": "PgBouncerDatabase",
+      "package": "minimal",
+      "line": 2,
+      "end_line": 2,
+      "signature": "host=localhost; dbname=mydb",
+      "tier": "verified"
+    },
+    {
+      "name": "pgbouncer",
+      "kind": "PgBouncerSection",
+      "package": "minimal",
+      "line": 4,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "listen_port",
+      "kind": "PgBouncerSetting",
+      "package": "minimal",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

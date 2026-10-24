@@ -9,10 +9,10 @@ package dialect
 	// "compile-commands" is JSON read through extractor's compile-commands decoder
 	// (LB-Q-compile-commands, LB-F127): each entry of a Clang compilation database
 	// gains the include directories, macros and output of its flags as keys.
-	decode:          "yaml" | "json" | "jsonc" | "toml" | "xml" | "ini" | "compile-commands"
+	decode:          "yaml" | "json" | "jsonc" | "toml" | "xml" | "ini" | "compile-commands" | "pgbouncer" | "libconfig"
 	// decode_files: a decode for the basenames it lists, in place of decode
 	// (one dialect reading a YAML file and an INI file, Conan's).
-	decode_files?: [string & !=""]: "yaml" | "json" | "jsonc" | "toml" | "xml" | "ini" | "compile-commands"
+	decode_files?: [string & !=""]: "yaml" | "json" | "jsonc" | "toml" | "xml" | "ini" | "compile-commands" | "pgbouncer" | "libconfig"
 	multi_document?: bool
 	if multi_document != _|_ if multi_document {
 		decode: "yaml"
