@@ -33,6 +33,11 @@ func newFixtureRepo(t *testing.T, initArgs ...string) *fixtureRepo {
 	}
 	r := &fixtureRepo{t: t, dir: dir}
 	r.git(append([]string{"init", "-q"}, initArgs...)...)
+	// No background auto-maintenance: after a commit git may start a detached
+	// `maintenance run --auto` that creates and removes .git/objects/maintenance.lock
+	// while a test snapshots the git directory (TestAnchorAt_ReadOnly flaked on CI).
+	r.git("config", "maintenance.auto", "false")
+	r.git("config", "gc.auto", "0")
 	return r
 }
 
