@@ -434,6 +434,10 @@ Moved to [usage/refactor.md](usage/refactor.md).
 Moved to [usage/trace.md](usage/trace.md).
 
 
+### `provenance note`
+
+`fathom provenance note [<commit>]` (default `HEAD`) replaces the local note under `refs/notes/fathom/provenance` with declared harness, model, host label, session and lane as JSON. Use `--harness`, `--model`, `--session`, `--lane` or their defaults `FATHOM_HARNESS`, `FATHOM_MODEL`, `FATHOM_SESSION_ID`, `FATHOM_LANE`; session also falls back to the harness's session environment, whose harness label supplies the harness default. `--host-label` overrides the user-only `gate.host_label` config key; absent fields are `unknown`, and the machine name is never inferred. The confirmation prints the resolved commit SHA. Notes are declarations, not authenticated identities. The target commit and its message stay unchanged; notes are never pushed by this command.
+
 ### `receipt` — a stranger's re-derivation (VB-20)
 
 Moved to [usage/receipt.md](usage/receipt.md).
