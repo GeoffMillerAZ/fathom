@@ -1,0 +1,28 @@
+{
+  "id": "fathom-layer-packs",
+  "display": "fathom layer packs (.fathom/layers/*/layer.cue, .fathom/rules/*.cue)",
+  "kind": "tooling",
+  "engine": "native",
+  "lang_tag": "fathom-layer-packs",
+  "match": {
+    "extensions": [],
+    "basenames": [],
+    "globs": ["**/.fathom/layers/*/layer.cue", "**/.fathom/rules/*.cue"],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "layer":   { "source_kind": "FathomLayer",   "canonical": "policy" },
+    "ruleset": { "source_kind": "FathomRuleSet", "canonical": "rule" }
+  },
+  "required_kinds": ["layer", "ruleset"],
+  "oracle_kinds": {
+    "tool": { "policy": "policy", "rule": "rule" }
+  },
+  "name_match": "bare",
+  "package": { "strategy": "dir" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L2",
+  "queue_id": "fathom-layer-packs"
+}
