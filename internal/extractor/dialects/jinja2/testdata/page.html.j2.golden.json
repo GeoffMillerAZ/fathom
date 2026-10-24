@@ -1,0 +1,78 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "JinjaTemplate",
+      "package": "page.html",
+      "line": 1,
+      "end_line": 21,
+      "calls": [
+        "badge",
+        "card"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "badge",
+      "kind": "JinjaMacro",
+      "package": "page.html",
+      "line": 4,
+      "end_line": 5,
+      "signature": "{%",
+      "tier": "verified"
+    },
+    {
+      "name": "title",
+      "kind": "JinjaBlock",
+      "package": "page.html",
+      "line": 9,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "content",
+      "kind": "JinjaBlock",
+      "package": "page.html",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "greeting",
+      "kind": "JinjaVariable",
+      "package": "page.html",
+      "line": 12,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "footer",
+      "kind": "JinjaBlock",
+      "package": "page.html",
+      "line": 21,
+      "end_line": 21,
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "base.html.j2",
+      "module": "base.html.j2",
+      "kind": "whole",
+      "line": 1
+    },
+    {
+      "local": "card",
+      "exported": "card",
+      "module": "macros/ui.j2",
+      "kind": "named",
+      "line": 2
+    },
+    {
+      "local": "partials/empty.html",
+      "module": "partials/empty.html",
+      "kind": "whole",
+      "line": 17
+    }
+  ]
+}

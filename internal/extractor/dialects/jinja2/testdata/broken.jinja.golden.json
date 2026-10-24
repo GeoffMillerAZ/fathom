@@ -1,0 +1,29 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "JinjaTemplate",
+      "package": "broken",
+      "line": 1,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "ok",
+      "kind": "JinjaMacro",
+      "package": "broken",
+      "line": 1,
+      "end_line": 1,
+      "signature": "{%",
+      "tier": "verified"
+    },
+    {
+      "name": "good",
+      "kind": "JinjaBlock",
+      "package": "broken",
+      "line": 2,
+      "end_line": 2,
+      "tier": "verified"
+    }
+  ]
+}

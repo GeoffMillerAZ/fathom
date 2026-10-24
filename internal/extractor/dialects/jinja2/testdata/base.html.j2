@@ -1,0 +1,27 @@
+{#- base layout: blocks and a macro -#}
+{% import "macros/forms.j2" as forms %}
+{% from "macros/ui.j2" import button, icon as ico %}
+{% set site_name = "Example" %}
+{% macro nav_item(href, label, active=false) %}
+  <li class="{{ 'active' if active else '' }}"><a href="{{ href }}">{{ label|e }}</a></li>
+{% endmacro %}
+<!doctype html>
+<html>
+<head>
+  <title>{% block title %}{{ site_name }}{% endblock %}</title>
+  {% block head %}
+    {% include "partials/meta.html" %}
+  {% endblock head %}
+</head>
+<body>
+  <nav>
+    {% for item in menu %}
+      {{ nav_item(item.href, item.label) }}
+    {% endfor %}
+  </nav>
+  {% block content %}
+    {% block sidebar %}{{ button("Go") }}{% endblock %}
+  {% endblock %}
+  {{ forms.input("q") }}
+</body>
+</html>

@@ -1,0 +1,37 @@
+{
+  "id": "jinja2",
+  "display": "Jinja2 templates",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "jinja",
+  "match": {
+    "extensions": [".j2", ".jinja", ".jinja2"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "jinja2", "entry_point": "tree_sitter_jinja" },
+  "variants": [],
+  "queries": { "tags": "tags.scm", "imports": "imports.scm" },
+  "imports": { "strategy": "include-path", "source_roots": [""] },
+  "kinds": {
+    "macro":    { "source_kind": "JinjaMacro",    "canonical": "macro",    "callable": true },
+    "block":    { "source_kind": "JinjaBlock",    "canonical": "section" },
+    "variable": { "source_kind": "JinjaVariable", "canonical": "variable" },
+    "template": { "source_kind": "JinjaTemplate", "canonical": "module" }
+  },
+  "module_symbol": "template",
+  "calls": { "owner": "scope" },
+  "required_kinds": ["macro", "block"],
+  "oracle_kinds": {
+    "tool": { "macro": "macro", "block": "section", "set": "variable" }
+  },
+  "name_match": "identity",
+  "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "signature": { "max_chars": 200 },
+  "preprocess": "jinja-templates",
+  "target_level": "L3",
+  "queue_id": "jinja2"
+}
