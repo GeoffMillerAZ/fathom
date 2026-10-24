@@ -133,6 +133,7 @@ func (e *TSExtractor) ExtractFileSpecs(relPath string, src []byte) (FileSpecs, e
 func (e *TSExtractor) fileSpecsLocked(l *tsengine.Lease, tree *tsengine.Tree, rules *tsDialectRules, relPath string, src []byte, matches []tsengine.Match) (FileSpecs, error) {
 	out := FileSpecs{Imports: importSpecsFromCaptures(matches, src)}
 	if rules.importStrategy == "global-name" {
+		cutImportNames(out.Imports, rules.cutAt, func(s *ImportSpec) *ImportSpec { return s })
 		out.Imports = distinctNamedImports(out.Imports, importSpecOf)
 	}
 	if rules.refsQuery == "" {
@@ -186,6 +187,26 @@ func distinctNamedImports[T any](xs []T, spec func(T) ImportSpec) []T {
 }
 
 func importSpecOf(s ImportSpec) ImportSpec { return s }
+
+// cutImportNames keeps, under global-name, only the text of a spec's names before the manifest's
+// names.cut_at: a Conan requirement `zlib/1.3.1@user/chan` names the recipe `zlib` (LB-Q-conan), the
+// same cut the tags query's own names take, so the spec binds the call it came from. A name that
+// starts with the cut (no text before it) is kept whole. No-op for an empty cut.
+func cutImportNames[T any](xs []T, cut string, spec func(*T) *ImportSpec) {
+	if cut == "" {
+		return
+	}
+	trim := func(s string) string {
+		if i := strings.Index(s, cut); i > 0 {
+			return s[:i]
+		}
+		return s
+	}
+	for i := range xs {
+		s := spec(&xs[i])
+		s.LocalName, s.ExportedName, s.Module = trim(s.LocalName), trim(s.ExportedName), trim(s.Module)
+	}
+}
 
 // definitionNames is the byte range of every definition's own @name among
 // the tags query's matches: a name written there declares, never references.

@@ -198,3 +198,47 @@ type Address {
 		t.Errorf("report bound=%d ambiguous=%d, want 3 and 0", report.GlobalNameBound, report.GlobalNameAmbiguous)
 	}
 }
+
+// TestResolveFileEdges_ConanGlobalName: a Conan recipe's requirement (`name/version`, the version and any
+// user/channel cut off) binds the one recipe of the service that declares that name; a name two recipes declare, one
+// no recipe declares and a recipe's own name bind nothing; the test_package recipe (no name literal) is no definer.
+func TestResolveFileEdges_ConanGlobalName(t *testing.T) {
+	recipe := func(name, body string) string {
+		return "from conan import ConanFile\n\n\nclass R(ConanFile):\n    name = \"" + name + "\"\n" + body
+	}
+	dir, rels := writeGlobalNameFixture(t, map[string]string{
+		"recipes/curl/all/conanfile.py": recipe("curl", `    requires = "zlib/1.3.1", "openssl/[>=3 <4]"
+
+    def requirements(self):
+        self.requires("nghttp2/1.64.0@user/chan")
+        self.requires("curl/8.0")
+        self.requires("hello/1.0")
+        self.test_requires("gtest/1.14.0")
+`),
+		"recipes/zlib/all/conanfile.py":    recipe("zlib", ""),
+		"recipes/openssl/all/conanfile.py": recipe("openssl", "    requires = \"zlib/1.3.1\"\n"),
+		"recipes/nghttp2/all/conanfile.py": recipe("nghttp2", ""),
+		"recipes/hello/a/conanfile.py":     recipe("hello", ""),
+		"recipes/hello/b/conanfile.py":     recipe("hello", ""),
+	})
+	files, symbols := loadFileResolveFixture(t, dir, "conan", rels)
+	edges, report := fusion.ResolveFileEdges(context.Background(), "conan", dir, files, symbols)
+	if report.Skipped {
+		t.Fatalf("unexpectedly skipped: %s", report.SkipReason)
+	}
+	got := globalNameFileEdges(edges, symbols)
+	want := []string{
+		"recipes/curl/all/conanfile.py: curl -> recipes/zlib/all/conanfile.py: zlib",
+		"recipes/curl/all/conanfile.py: curl -> recipes/openssl/all/conanfile.py: openssl",
+		"recipes/curl/all/conanfile.py: curl -> recipes/nghttp2/all/conanfile.py: nghttp2",
+		"recipes/openssl/all/conanfile.py: openssl -> recipes/zlib/all/conanfile.py: zlib",
+	}
+	for _, w := range want {
+		if !got[w] {
+			t.Errorf("missing edge %s", w)
+		}
+	}
+	if len(got) != len(want) {
+		t.Errorf("got %d cross-file edges %v, want %d", len(got), got, len(want))
+	}
+}

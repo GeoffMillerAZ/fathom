@@ -31,8 +31,12 @@ with more than 8 values and ANY are left out; at most 60 single-option runs per 
     `name = "..."` literal, found by Python's own `ast`), one per attested conanfile.txt (named
     `conanfile.txt`, line 1).
   - references: (package, dependency name) for every direct dependency of any run.
-  - no cross_references: a requirement reaches a recipe folder only through config.yml and
-    conan's version resolution, which is no doc-engine edge; the reading does not measure L3.
+  - cross_references (entity granularity, as the vcpkg oracle's): a reference whose name is
+    declared by exactly one other attested definition of the subject, from the referring package to
+    that package's file. A name no attested recipe declares (a recipe outside the measured set, a
+    package built elsewhere) or that two declare (several `hello`s of the examples) is no edge.
+    The edge is conan's own: the dependency was evaluated by `conan graph info`; only the join of a
+    name to a file is by name.
 
 Bench-only; never a product dependency.
 """
@@ -373,6 +377,15 @@ def main():
         o["definitions"].append({"path": r["path"], "name": r["name"], "line": r["line"], "kind": "package"})
         for d in sorted(r["names"]):
             o["references"].append({"path": r["path"], "from": r["name"], "to": d})
+    by_name = {}
+    for d in o["definitions"]:
+        if d["name"] != "conanfile.txt":
+            by_name.setdefault(d["name"], []).append(d["path"])
+    o["cross_references"] = []
+    for r in o["references"]:
+        tos = [p for p in by_name.get(r["to"], []) if p != r["path"]]
+        if len(by_name.get(r["to"], [])) == 1 and len(tos) == 1:
+            o["cross_references"].append({"path": r["path"], "from": r["from"], "to_path": tos[0], "to": r["to"]})
     print("attested %d of %d; closure exported %d recipe versions; not exportable: %s" % (
         len(results), len(jobs), len(exported), sorted(failed_exports)), file=sys.stderr)
     if a.files_out:

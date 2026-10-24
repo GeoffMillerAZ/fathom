@@ -56,7 +56,7 @@ type xrefOracleEntry struct {
 // as a note. resolved, when the file resolver also serves the dialect (CUE,
 // LB-F583), is that pass's edges as references: scored beside the doc-xref
 // pass's into a note (fileResolvedXrefNote), never into the metrics.
-func scoreXrefOracle(path string, doc extractor.DocResulter, service string, files []core.SourceFile, code fusion.LambdaCode, resolved []langbench.XrefPair, sub *langbench.Subject, inScope map[string]bool) (int, string, error) {
+func scoreXrefOracle(path string, doc extractor.DocResulter, service string, files []core.SourceFile, code fusion.LambdaCode, resolved []langbench.XrefPair, scoreResolved bool, sub *langbench.Subject, inScope map[string]bool) (int, string, error) {
 	entries, tier, err := readXrefOracle(path)
 	if err != nil || entries == nil {
 		return 0, "", err
@@ -93,10 +93,15 @@ func scoreXrefOracle(path string, doc extractor.DocResulter, service string, fil
 			handlerFound = append(handlerFound, p)
 		}
 	}
+	if scoreResolved {
+		found = append(found, resolved...) // a tags+doc dialect: the file resolver's edges are ingest's too
+	}
 	langbench.ScoreXrefs(truth, found, sub.Counts)
 	sub.Families[langbench.FamilyXref] = tier
 	note := ""
-	if resolved != nil {
+	if scoreResolved {
+		note = noteResolvedScored
+	} else if resolved != nil {
 		note = fileResolvedXrefNote(truth, found, resolved)
 	}
 	if len(handlerTruth) > 0 || st.Functions > 0 {
@@ -111,6 +116,10 @@ func scoreXrefOracle(path string, doc extractor.DocResulter, service string, fil
 	}
 	return dropped, note, nil
 }
+
+// noteResolvedScored discloses that a tags+doc dialect's xref metrics hold the file resolver's edges beside the
+// doc-xref pass's (LB-Q-conan).
+const noteResolvedScored = "xref_precision and xref_recall score the doc-xref pass's edges together with the file resolver's global-name edges (fusion.ResolveFileEdges, the pass ingest stores file-resolved edges from) at entity grain: (file, referring recipe, referenced file, referenced recipe)"
 
 // ratioText is n/d to four places, "n/a" for none.
 func ratioText(n, d int) string {

@@ -97,6 +97,7 @@ func (e *TSExtractor) ExtractImports(relPath string, src []byte) ([]ImportSpec, 
 
 	specs := importSpecsFromCaptures(matches, src)
 	if variant.rules.importStrategy == "global-name" {
+		cutImportNames(specs, variant.rules.cutAt, func(s *ImportSpec) *ImportSpec { return s })
 		specs = distinctNamedImports(specs, importSpecOf)
 	}
 	return specs, nil
@@ -148,6 +149,7 @@ func (e *TSExtractor) ExtractImportSpans(relPath string, src []byte) ([]ImportSp
 		out[i] = ImportSpan{ImportSpec: s, StartLine: lo, EndLine: max(spans[i][1], s.Line)}
 	}
 	if variant.rules.importStrategy == "global-name" {
+		cutImportNames(out, variant.rules.cutAt, func(s *ImportSpan) *ImportSpec { return &s.ImportSpec })
 		out = distinctNamedImports(out, func(s ImportSpan) ImportSpec { return s.ImportSpec })
 	}
 	if variant.rules.injectionHost {
