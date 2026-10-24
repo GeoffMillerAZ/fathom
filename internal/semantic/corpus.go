@@ -42,3 +42,20 @@ func SelectCorpus(files []core.SourceFile, include, exclude []string) []core.Sou
 	})
 	return selected
 }
+
+// BuildCompileCorpus selects a layer's source files and adds the governing
+// rules and root guides the connector does not index. Both init's first-run
+// estimate and CompileLayer use this corpus, including identical exclusions.
+func BuildCompileCorpus(root string, files []core.SourceFile, layer LayerDef) []core.SourceFile {
+	corpus := SelectCorpus(files, layer.CorpusInclude, layer.CorpusExclude)
+	if layer.Name == LayerObligations {
+		corpus = WithRulesSources(corpus, root, layer.CorpusExclude, nil)
+		have := make(map[string]bool, len(corpus))
+		for _, f := range corpus {
+			have[f.Path] = true
+		}
+		corpus = append(corpus, RootGuideExtras(root, layer.CorpusInclude, layer.CorpusExclude, have)...)
+	}
+	sort.Slice(corpus, func(i, j int) bool { return corpus[i].Path < corpus[j].Path })
+	return corpus
+}

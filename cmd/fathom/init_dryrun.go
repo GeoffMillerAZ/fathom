@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -9,6 +10,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/config"
+	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/decide"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
+	"github.com/geoffmilleraz/fathom/internal/semantic"
+	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/wiring"
 )
 
@@ -167,7 +175,7 @@ func displayPath(p, root, home string) string {
 // line per file — the repository's first, then the home's, then any other,
 // each group sorted — then the skipped effects that are not files, then
 // the count.
-func (w *initWrites) printDryRun(stdout io.Writer, root string) {
+func (w *initWrites) printDryRun(stdout io.Writer, root, service string) {
 	home, _ := os.UserHomeDir()
 	type line struct {
 		group  int
@@ -206,5 +214,101 @@ func (w *initWrites) printDryRun(stdout io.Writer, root string) {
 		fmt.Fprintln(stdout, "dry run: init would write or change 1 file; nothing was written")
 	default:
 		fmt.Fprintf(stdout, "dry run: init would write or change %d files; nothing was written\n", len(touched))
+	}
+
+	printInitCost(stdout, root, service, semantic.Compiler{})
+}
+
+// printInitCost sizes the initial compile, using the compiler's own section
+// and prompt accounting over the local corpus. The providers are never opened.
+// A fresh in-memory store gives first-compile estimates without touching a
+// daemon or a persisted index. Supplying a compiler also lets callers exercise
+// the sizing path with rejecting providers.
+func printInitCost(stdout io.Writer, root, service string, compiler semantic.Compiler) {
+	fmt.Fprintln(stdout, "\nCost")
+	for _, facet := range []string{"entry-point", "runs", "test-entry"} {
+		fmt.Fprintf(stdout, "  %s: $0; command: fathom init --path %s --service %s\n", facet, shellQuote(root), shellQuote(service))
+	}
+	ctx := semantic.WithSizingEstimate(context.Background())
+	conn := connector.NewLocalConnector()
+	refs, discoverErr := conn.Discover(ctx, core.ServiceRef{ID: service, Path: root})
+	model := compileModel()
+	if loaded, err := config.Load(config.DefaultUserPath(), projectdir.Config.Path(root)); err == nil {
+		if profile, _, err := config.ResolveProfile(loaded.Config, loaded.Provenance, ""); err == nil {
+			model = compileModelForProfile(profile)
+		}
+	}
+	compiler.St = store.NewMemoryStore()
+	defer compiler.St.Close()
+	compiler.Now = func() time.Time { return time.Unix(0, 0).UTC() }
+	compiler.Model = model
+	var priceKnown bool
+	compiler.InRatePerKTok, compiler.OutRatePerKTok, priceKnown = rateForModel(model)
+	for _, name := range semantic.DefaultLayersFor(root) {
+		command := "fathom compile --service " + shellQuote(service) + " --layer " + shellQuote(name) + " --dry-run=false"
+		def, err := semantic.LoadLayerIn(root, name)
+		if err != nil || discoverErr != nil {
+			fmt.Fprintf(stdout, "  %s: tokens: unknown (corpus unavailable); price: unknown; command: %s\n", name, command)
+			continue
+		}
+		files := make([]core.SourceFile, 0, len(refs))
+		for _, ref := range refs {
+			files = append(files, core.SourceFile{Path: ref.Path})
+		}
+		docs := semantic.BuildCompileCorpus(root, files, def)
+		for i := range docs {
+			if docs[i].Content != nil {
+				continue // rules sources and root-guide extras are already read
+			}
+			docs[i].Content, err = conn.Fetch(ctx, core.SourceRef{Service: service, Path: docs[i].Path})
+			if err != nil {
+				break
+			}
+		}
+		if err != nil {
+			fmt.Fprintf(stdout, "  %s: tokens: unknown (corpus unreadable); price: unknown; command: %s\n", name, command)
+			continue
+		}
+		compiler.Layer = def
+		run, err := compiler.Compile(ctx, semantic.CompileInput{ServiceID: service, Docs: docs, DryRun: true})
+		if err != nil {
+			fmt.Fprintf(stdout, "  %s: tokens: unknown (sizing unavailable); price: unknown; command: %s\n", name, command)
+			continue
+		}
+		price := "unknown"
+		if priceKnown {
+			price = fmt.Sprintf("$%.6f-$%.6f", run.EstCostLowUSD, run.EstCostHighUSD)
+		}
+		fmt.Fprintf(stdout, "  %s: input %d tokens; output %d-%d tokens; price: %s (model %s); command: %s\n", name, run.TokensIn, run.EstTokensOutLow, run.EstTokensOutHigh, price, model, command)
+	}
+	// These are the commands that actually reach each decision site. The
+	// coverage test holds this table to AllSites; opt-in differs from provider
+	// configuration because most sites are already in the default allowlist.
+	commands := map[string]string{
+		decide.SiteRoute:             "fathom serve-http",
+		decide.SiteCompilePrefilter:  "fathom compile --service " + shellQuote(service) + " --dry-run=false",
+		decide.SiteObligationsRerank: "fathom serve-http",
+		decide.SiteCertifySuggest:    "fathom certify suggest --service " + shellQuote(service),
+		decide.SiteAssess:            "fathom assess --project " + shellQuote(root),
+		decide.SitePreflight:         "fathom plans context <plan.md> --row <id> --service " + shellQuote(service) + " --store <db> --preflight --score",
+	}
+	sites := append([]string(nil), decide.AllSites...)
+	sort.Strings(sites)
+	for _, site := range sites {
+		command, ok := commands[site]
+		if !ok {
+			command = "unknown"
+		}
+		gate := "site allowed by default"
+		if !decide.SiteAllowed(config.DefaultDecide, site) {
+			gate = "sites including " + site
+		}
+		if site == decide.SiteAssess {
+			gate += "; fathom capabilities set assess on"
+		}
+		if site == decide.SiteObligationsRerank {
+			gate += "; [decide] rank_within_tier = true"
+		}
+		fmt.Fprintf(stdout, "  %s: unpriced (no measurement yet); command: %s (requires [decide] provider configured; %s; init adds no decision opt-in; provider none: no call)\n", site, command, gate)
 	}
 }

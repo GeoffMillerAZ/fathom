@@ -843,20 +843,7 @@ func (c *Client) compileLayer(ctx context.Context, service, layerName string, dr
 	if err != nil {
 		return core.CompileRun{}, fmt.Errorf("client.CompileLayer: fetch sources: %w", err)
 	}
-	corpus := semantic.SelectCorpus(files, layer.CorpusInclude, layer.CorpusExclude)
-	// GL-2..GL-6: the governing layer also compiles every client's own
-	// rules files (Cursor, Copilot, Kiro, Bugbot, Gemini), read from the
-	// service root at compile — the same compile path, the same I27 checks.
-	if layer.Name == semantic.LayerObligations {
-		corpus = semantic.WithRulesSources(corpus, root, layer.CorpusExclude, nil)
-		// ADR-059: .claude/AGENTS.md and .claude/CLAUDE.md are root guides
-		// the connector never indexes (it prunes .claude/).
-		have := make(map[string]bool, len(corpus))
-		for _, f := range corpus {
-			have[f.Path] = true
-		}
-		corpus = append(corpus, semantic.RootGuideExtras(root, layer.CorpusInclude, layer.CorpusExclude, have)...)
-	}
+	corpus := semantic.BuildCompileCorpus(root, files, layer)
 
 	// Collect distinct sorted SourceRefs from the live index for scope verification.
 	obs, err := c.st.QueryObservations(ctx, service, "")

@@ -12,8 +12,19 @@ init never creates one; ADR-059 amendment 2026-10-02: where a repository keeps C
 ```sh
 fathom init [--path <dir>] [--service <id>] [--url http://localhost:7575] [--bin <path>] \
   [--harness claude-code|codex|gemini-cli|cursor|copilot|agents|none] \
-  [--skills[=claude|codex|agents|all|codex-prompts]] [--seed-user-ignore] [--no-user-writes] [--no-scip] [--json]
+  [--skills[=claude|codex|agents|all|codex-prompts]] [--seed-user-ignore] [--no-user-writes] [--no-scip] [--dry-run] [--json]
 ```
+
+`fathom init --dry-run --service my-service` previews writes, then prints a
+**Cost** section: implemented deterministic facets (`entry-point`, `runs`,
+`test-entry`) at $0, default compile layers with input/output token estimates and
+price ranges, and decision sites marked `unpriced (no measurement yet)`. The
+compile estimates use the same corpus and model rates as `fathom compile --dry-run --store` (direct mode), with
+`[decide] provider = "none"`, including client rules and root guides. Models without a known compile
+rate show `price: unknown`; the user price file does not set compile rates. Each
+line names its command and decision sites name the provider, site and capability
+gates they need. Sizing is local and calls no provider. Supply `--service` to also
+avoid init's existing daemon lookup for the repository's identity.
 
 | Flag | Default | Description |
 |---|---|---|
@@ -25,6 +36,7 @@ fathom init [--path <dir>] [--service <id>] [--url http://localhost:7575] [--bin
 | `--skills` | omit = skip | Install the ten shipped agent skills into `.claude/skills/`, the one real copy (spec-only frontmatter, held by test). Bare `--skills` (= `all`), `codex` and `agents` also make `.agents/skills` (the Agent Skills standard path) a relative link to it, through the wiring engine (receipted; an earlier real copy of fathom's own files is replaced, a foreign entry blocks); `claude` writes `.claude/skills/` only; `codex-prompts` writes the deprecated user-global `~/.codex/prompts/` twin — the only user-global write, explicit only |
 | `--seed-user-ignore` | off | Seed `~/.fathom/ignore` with machine-junk defaults; prints exactly what it writes |
 | `--no-user-writes` | implied by `--harness none` | Preview user configuration (config.toml, ignore, deprecated prompts, PATH shim and harness settings) without creating or modifying it. Under `--harness none`, each explicit user-scope flag enables only its requested write. An explicit `--no-user-writes` wins over those flags. Project skills and wiring still apply; operational state still uses the named state directory |
+| `--dry-run` | off | Preview writes and the Cost section without writing, ingesting, running SCIP or calling a provider |
 | `--no-scip` | off | Skip the SCIP step below: by default init runs `scip-typescript` / `scip-python` when already installed for a repo of that language |
 | `--harness` | `claude-code` | Which registry descriptor's vehicles to write (ADR-029): `claude-code` (hooks into `.claude/settings.json`), `codex` (hooks into the repo's `.codex/hooks.json`, run after `/hooks` trust), `gemini-cli` (hooks into the repo's `.gemini/settings.json`, ms timeouts, and its `context.fileName` set to `["AGENTS.md", "GEMINI.md"]` so Gemini CLI reads the stanza — no `GEMINI.md` stanza), `cursor` / `copilot` (data rows: stanza + skills, no hook file), `agents` (AGENTS.md + MCP), `none` (stanza + `.fathom/` only). Every harness gets the stanza in `AGENTS.md`. Non-Claude descriptors are *unverified on this machine*; every one prints its own `mcp add` line and never writes a user-global file; a descriptor 60 days unverified after its codec landed is refused |
 | `--json` | off | Emit the run as JSON (below) instead of the narration |
