@@ -1,0 +1,16 @@
+fathom gate: validate START 2026-10-22T01:00:00Z tree=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa clean=1 commit=cccccccccccccccccccccccccccccccccccccccc
+go version fixture fixture/fixture
+fathom gate: go env GOOS GOARCH GOWORK CGO_ENABLED GOFLAGS
+fixture-os
+fixture-arch
+off
+0
+
+task: [test] go test -race -run . ./...
+
+--- FAIL: TestSlow (0.01s)
+FAIL	fixture/alpha	0.01s
+--- FAIL: TestTieZ (0.01s)
+--- FAIL: TestTieA (0.01s)
+FAIL	fixture/beta	0.01s
+fathom gate: validate FAIL 2026-10-22T01:00:20Z tree=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa clean=1 commit=cccccccccccccccccccccccccccccccccccccccc

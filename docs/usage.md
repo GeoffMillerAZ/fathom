@@ -480,6 +480,32 @@ classify the tests yourself: fathom runs no build, test, checkout or bisect. Thi
 a candidate list, not a causal verdict.
 
 
+### `tests flaky` — same-tree failures followed by passes
+
+`fathom tests flaky [--json] [--since 24h]` reads local `workspace/logs/gate.*`
+files, saved hook output named `<16 hex>.log` in `workspace/tmp/test-run`, and
+imported `<64 hex>.json` receipts with their matching `.log` files in
+`[gate] receipts_dir` (default: the fathom home's `receipts` directory).
+Unrelated log and JSON files are ignored.
+
+A named Go verbose or JSON test failure followed by a pass counts only when both
+runs share the same identity: the same clean git tree, gate name, Go version,
+GOOS/GOARCH, GOWORK, CGO_ENABLED and GOFLAGS. The tree pins `Taskfile.yml` and
+`lefthook.yml`, so no Task command echo is compared. A package `ok <pkg>` also
+counts as a pass for tests in that package that an earlier matching run recorded as
+failing, but only from a gate that passed. A `(cached)` result is no evidence. Saved
+hook output counts only if it starts with the gate START line. An aggregate passing
+gate without test or package results proves nothing.
+
+Results rank by recorded failing gate duration, then package and test. Each failing
+gate's full duration is attributed to each affected test, so costs can overlap.
+JSON reports `lost_ns` in nanoseconds. Unknown or unreadable tree, command or
+platform identity is counted separately; legacy hook diff digests never establish
+a git tree. `--since` filters by recorded run end and excludes undated files.
+Missing directories mean no evidence. This command reads files without a daemon,
+network access or running tests.
+
+
 ### `tests ingest` / `tests status` — test-kit evidence (vision 33 / ADR-043 stage 0)
 
 Moved to [usage/tests-ingest-status.md](usage/tests-ingest-status.md).

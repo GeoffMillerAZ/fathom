@@ -1,0 +1,3 @@
+### Added
+
+- `fathom tests flaky` finds tests that failed and later passed on the same git tree with a matching gate name, Go toolchain and environment, ranks them by recorded failing gate duration, and shows gate runs with unknown identity separately. It reads saved gate logs without Task command echoes, ignores unrelated output, and skips each cached result while retaining fresh results from other steps in the same run. Every fresh package result must pass before that package is treated as recovered. Use `--json` for scripts and `--since` to limit history and exclude undated runs. Verb help lists `tests flaky`.

@@ -579,8 +579,11 @@ func renderTestsCoverageJSON(w io.Writer, profiles []coverage.LabeledProfile, sy
 	return 0
 }
 
-// runTests dispatches `fathom tests coverage|select|ingest|status`.
+// runTests dispatches `fathom tests coverage|flaky|select|ingest|status`.
 func runTests(args []string, stdout, stderr io.Writer) int {
+	if len(args) > 0 && args[0] == "flaky" {
+		return cmdTestsFlaky(args[1:], stdout, stderr)
+	}
 	if len(args) > 0 && args[0] == "coverage" {
 		return cmdTestsCoverage(args[1:], stdout, stderr)
 	}
@@ -593,7 +596,7 @@ func runTests(args []string, stdout, stderr io.Writer) int {
 	if len(args) > 0 && args[0] == "status" {
 		return cmdTestsStatus(args[1:], stdout, stderr)
 	}
-	fmt.Fprintln(stderr, "usage: fathom tests coverage --profile <file> [--service S] [--diff <base>] [--json]\n       fathom tests select --since <ref> [--profile <file>]... [--service S] [--json]\n       fathom tests ingest --manifest <dir> --results <file|dir> [--service S] [--store DB]\n       fathom tests status [--service S] [--store DB] [--json]")
+	fmt.Fprintln(stderr, "usage: fathom tests coverage --profile <file> [--service S] [--diff <base>] [--json]\n       fathom tests select --since <ref> [--profile <file>]... [--service S] [--json]\n       fathom tests ingest --manifest <dir> --results <file|dir> [--service S] [--store DB]\n       fathom tests status [--service S] [--store DB] [--json]\n       fathom tests flaky [--json] [--since <duration>]")
 	return 1
 }
 
@@ -606,5 +609,5 @@ func (testsRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer
 
 func init() {
 	declareVerb(verb{Name: "tests", Group: "review", Order: 80, Run: testsRunner{},
-		Summary: "tests coverage --profile <file>: per-symbol Go statement coverage by test layer (--mutation <report>: adds a mutation score column); --diff <base> narrows to changed symbols with no covering test | tests select --since <ref>: ranks Test* functions for a diff by reachability/coverage/layer with a test that already certifies a changed-file target promoted first, emits go test invocations grouped per package plus the test gap | tests ingest --manifest <dir> --results <file|dir>: loads declared tests/*.cue manifests + attested #TestResult envelopes into additive test evidence tables, joining cases to Test* symbols and scanning `// certifies:` markers (vision 33 / the design decision stage 0) | tests status: per suite, class/tier/last-run-verdict/totals and the case-to-symbol join rate"})
+		Summary: "tests coverage --profile <file>: per-symbol Go statement coverage by test layer (--mutation <report>: adds a mutation score column); --diff <base> narrows to changed symbols with no covering test | tests select --since <ref>: ranks Test* functions for a diff by reachability/coverage/layer with a test that already certifies a changed-file target promoted first, emits go test invocations grouped per package plus the test gap | tests ingest --manifest <dir> --results <file|dir>: loads declared tests/*.cue manifests + attested #TestResult envelopes into additive test evidence tables, joining cases to Test* symbols and scanning `// certifies:` markers (vision 33 / the design decision stage 0) | tests flaky [--json] [--since <duration>]: same-tree fail-then-pass tests ranked by recorded gate duration | tests status: per suite, class/tier/last-run-verdict/totals and the case-to-symbol join rate"})
 }

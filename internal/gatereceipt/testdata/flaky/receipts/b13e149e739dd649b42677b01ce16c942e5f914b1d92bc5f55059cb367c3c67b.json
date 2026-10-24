@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "tree": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "commit": "cccccccccccccccccccccccccccccccccccccccc",
+  "command": "validate",
+  "exit": 0,
+  "log_sha256": "61448c8f6892a529cc2473d24178d890841a7723c26983951dd90a92299f1ebe",
+  "log_bytes": 593,
+  "start": "2026-10-22T01:02:00Z",
+  "end": "2026-10-22T01:02:01Z",
+  "time_source": "log"
+}
