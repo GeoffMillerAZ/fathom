@@ -1,0 +1,27 @@
+{
+  "id": "fathom-concerns",
+  "display": "fathom concerns (.fathom/concerns.cue)",
+  "kind": "tooling",
+  "engine": "native",
+  "lang_tag": "fathom-concerns",
+  "match": {
+    "extensions": [],
+    "basenames": [],
+    "globs": ["**/.fathom/concerns.cue"],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "concern": { "source_kind": "FathomConcern", "canonical": "rule" }
+  },
+  "required_kinds": ["concern"],
+  "oracle_kinds": {
+    "tool": { "rule": "rule" }
+  },
+  "name_match": "bare",
+  "package": { "strategy": "dir" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L2",
+  "queue_id": "fathom-concerns"
+}
