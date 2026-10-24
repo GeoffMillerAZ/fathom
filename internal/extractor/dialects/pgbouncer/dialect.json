@@ -1,0 +1,36 @@
+{
+  "id": "pgbouncer",
+  "display": "PgBouncer configuration (pgbouncer.ini)",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "pgbouncer",
+  "match": {
+    "extensions": [],
+    "basenames": ["pgbouncer.ini"],
+    "globs": ["**/pgbouncer*.ini", "**/pgbouncer/**/*.ini"],
+    "shebangs": [],
+    "sniff": {
+      "extensions": [".ini"],
+      "pattern": "^[ \\t]*\\[(?:databases|pgbouncer)\\][ \\t]*\\r?$",
+      "priority": 10,
+      "scan_bytes": 16384
+    }
+  },
+  "variants": [],
+  "kinds": {
+    "section":  { "source_kind": "PgBouncerSection",  "canonical": "section" },
+    "database": { "source_kind": "PgBouncerDatabase", "canonical": "target" },
+    "peer":     { "source_kind": "PgBouncerPeer",     "canonical": "service" },
+    "user":     { "source_kind": "PgBouncerUser",     "canonical": "element" },
+    "setting":  { "source_kind": "PgBouncerSetting",  "canonical": "key" }
+  },
+  "required_kinds": ["section", "database", "setting"],
+  "oracle_kinds": {
+    "tool": { "section": "section", "target": "target", "service": "service", "element": "element", "key": "key" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L2",
+  "queue_id": "pgbouncer"
+}

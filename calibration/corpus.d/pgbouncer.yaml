@@ -1,0 +1,18 @@
+id: pgbouncer
+language: PgBouncer configuration (pgbouncer.ini)
+# pgbouncer/pgbouncer is read whole (ISC, read only, never vendored): its etc/ holds the
+# two shipped sample configurations and test/ the suite's own, which carry the connect
+# string shapes the dialect reads ([databases] entries with host, port, dbname, user and
+# pool parameters, host lists, a per-database auth_dbname, a wildcard fallback).
+# The subject is small (a handful of files), and the reading says so. Pinned at the
+# commit the pgbouncer_1_26_1 tag points to, the version the oracle runs.
+repos:
+  - name: pgbouncer/pgbouncer
+    url: https://github.com/pgbouncer/pgbouncer.git
+    ref: pgbouncer_1_26_1
+    sha: f03e9bf263d7ccd5d1d152a61811bf3258dd6b87
+    licence: ISC
+    idioms:
+      - "etc/pgbouncer.ini and etc/pgbouncer-minimal.ini: the shipped samples, almost all comments around an empty [databases] and a [pgbouncer] of a few settings"
+      - "test/test.ini: some forty [databases] entries of host, port, dbname, user, pool_size, pool_mode and password parameters, host lists, auth_user and auth_dbname, quoted connect_query"
+      - "test/ctest*.ini and test/ssl/test.ini: a database with a password and a [pgbouncer] of listen, auth, pool and timeout settings"

@@ -1,0 +1,19 @@
+{
+  "decode": "pgbouncer",
+  "detect": {
+    "basenames": ["pgbouncer.ini"],
+    "globs": ["**/pgbouncer*.ini", "**/pgbouncer/**/*.ini"],
+    "content_sniff": "(?m)^[ \\t]*\\[(?:databases|pgbouncer)\\][ \\t]*\\r?$"
+  },
+  "entities": [
+    { "select": "$.*", "where": { "is_map": true }, "kind": "section", "source_kind": "PgBouncerSection", "name": "$key", "sensitive": true },
+    { "select": "$.databases.*", "where": { "is_map": true }, "kind": "target", "source_kind": "PgBouncerDatabase", "name": "$key", "sensitive": true, "signature_fields": ["host", "port", "dbname"] },
+    { "select": "$.peers.*", "where": { "is_map": true }, "kind": "service", "source_kind": "PgBouncerPeer", "name": "$key", "sensitive": true },
+    { "select": "$.users.*", "where": { "is_map": true }, "kind": "element", "source_kind": "PgBouncerUser", "name": "$key", "sensitive": true },
+    { "select": "$.pgbouncer.*", "where": { "is_scalar": true }, "kind": "key", "source_kind": "PgBouncerSetting", "name": "$key", "sensitive": true }
+  ],
+  "references": [
+    { "from": "PgBouncerDatabase", "select": "$.auth_dbname", "value": "$", "to_kind": "PgBouncerDatabase", "edge": "auth_dbname", "declared_only": true },
+    { "from": "PgBouncerSection", "select": "$.auth_dbname", "value": "$", "to_kind": "PgBouncerDatabase", "edge": "auth_dbname", "declared_only": true }
+  ]
+}

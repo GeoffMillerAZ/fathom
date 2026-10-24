@@ -129,12 +129,12 @@ item's target; the last column also needs every level up to the target graded ex
 | T3 | tool format | 16 | 1 | 4 | 11 | 0 | 0 | 0 | 0 | 0 | 15 | 5 |
 | T4 | language | 3 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 1 | 1 | 0 |
 | T4 | tool format | 7 | 0 | 3 | 2 | 0 | 0 | 0 | 0 | 2 | 5 | 4 |
-| T5 | tool format | 8 | 0 | 1 | 5 | 0 | 0 | 0 | 0 | 2 | 5 | 2 |
+| T5 | tool format | 8 | 0 | 2 | 5 | 0 | 0 | 0 | 0 | 1 | 6 | 2 |
 | T6 | language | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | T6 | tool format | 4 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |
 | T7 | tool format | 4 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
 | **Total** | language | 37 | 0 | 3 | 15 | 10 | 1 | 4 | 0 | 4 | 24 | 8 |
-| **Total** | tool format | 63 | 1 | 17 | 37 | 0 | 1 | 0 | 0 | 7 | 51 | 27 |
+| **Total** | tool format | 63 | 1 | 18 | 37 | 0 | 1 | 0 | 0 | 6 | 52 | 27 |
 
 ### T1
 
@@ -249,7 +249,7 @@ item's target; the last column also needs every level up to the target graded ex
 | Envoy proxy configuration (bootstrap, xDS resource files) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 good) | L3 good: xref_precision 0.9398 < 0.95 |
 | Kong declarative configuration (decK, DB-less) | tool format | L3 | L3 (L1 excellent, L2 good, L3 excellent) | L2 good: oracle tier C caps at good |
 | Traefik static and file-provider configuration | tool format | L3 | L2 (L1 excellent, L2 excellent) | L3 not met: xref_precision 0.7241 < 0.9 |
-| PgBouncer configuration (pgbouncer.ini) | tool format | L2 | unsupported | no dialect (LB-Q-pgbouncer) |
+| PgBouncer configuration (pgbouncer.ini) | tool format | L2 | L2 (L1 good, L2 good) | L1 good: oracle tier C caps at good |
 | ProxySQL configuration (proxysql.cnf) | tool format | L2 | unsupported | no dialect (LB-Q-proxysql) |
 
 ### T6
@@ -282,8 +282,8 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 reached (languages at L1 37, L1 excellent 25, L2 33, L3 27, L4 10; tool formats at target 60)
-Milestone M2 progress: languages at L1 37/45, at L1 excellent 25/35, at L2 33/25, at L3 27/14, at L4 10/10; tool formats at target 60/30
+Milestone M1 reached (languages at L1 37, L1 excellent 25, L2 33, L3 27, L4 10; tool formats at target 61)
+Milestone M2 progress: languages at L1 37/45, at L1 excellent 25/35, at L2 33/25, at L3 27/14, at L4 10/10; tool formats at target 61/30
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -461,7 +461,7 @@ Milestone M2 progress: languages at L1 37/45, at L1 excellent 25/35, at L2 33/25
 | Cloud Custodian policies (policies YAML) | tool format | doc | yaml.v3 (n/a) | L2 | L2 (L1 excellent, L2 excellent) | A c7n (custodian validate's loader) 0.9.53 | — | 2026-10-02 | at target (LB-Q-cloud-custodian) |
 | Checkov custom policies (YAML graph checks, Python checks) | tool format | tags+doc | yaml.v3 + tree-sitter/tree-sitter-python (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-checkov-policies |
 | HashiCorp Sentinel policies (.sentinel) | language | tags | none open (verify at pin) (verify at pin) | L2 | unsupported (disclosed) | — | — | — | LB-Q-sentinel |
-| PgBouncer configuration (pgbouncer.ini) | tool format | doc | pure-go:INI parser (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-pgbouncer |
+| PgBouncer configuration (pgbouncer.ini) | tool format | doc | pure-go:INI parser (n/a) | L2 | L2 (L1 good, L2 good) | C pgbouncer PgBouncer 1.26.1 + line scanner | — | 2026-10-24 | at target (LB-Q-pgbouncer) |
 | ProxySQL configuration (proxysql.cnf) | tool format | doc | pure-go:libconfig parser (verify at pin) (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-proxysql |
 | fathom configuration (.fathom/config.toml) | tool format | doc | pure-go:go-toml/v2 (n/a) | L2 | L2 (L1 good, L2 good) | C python tomllib (TOML decode) + a line scanner of its own python 3.14.7 tomllib | — | 2026-10-03 | at target (LB-Q-fathom-config) |
 | fathom concerns (.fathom/concerns.cue) | tool format | native | native:cuelang.org/go (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-fathom-concerns |

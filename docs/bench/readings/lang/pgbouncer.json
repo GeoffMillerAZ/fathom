@@ -1,0 +1,117 @@
+{
+  "dialect": "pgbouncer",
+  "kind": "tooling",
+  "target_level": "L2",
+  "level_met": "L2",
+  "grade": {
+    "L1": "good",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-24",
+  "fathom_commit": "470726f",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "pgbouncer/pgbouncer",
+      "sha": "f03e9bf263d7ccd5d1d152a61811bf3258dd6b87",
+      "files": 6,
+      "bytes": 18826,
+      "counts": {
+        "fathom_defs": 161,
+        "kind_equal": 161,
+        "matched": 161,
+        "oracle_defs": 161,
+        "range_eligible": 161,
+        "range_ok": 161,
+        "ref_fathom": 1,
+        "ref_fathom_in_truth": 1,
+        "ref_truth": 1,
+        "ref_truth_found": 1
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "element",
+        "key",
+        "section",
+        "service",
+        "target"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.7969999999999999,
+        "extract_cpu_ms": 0.7969999999999999,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "C",
+      "tool": "pgbouncer",
+      "version": "PgBouncer 1.26.1 + line scanner"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "ref_precision": "C",
+    "ref_recall": "C",
+    "sym_precision": "C",
+    "sym_recall": "C"
+  },
+  "required_kinds": [
+    "key",
+    "section",
+    "target"
+  ],
+  "kind_intersection": [
+    "element",
+    "key",
+    "section",
+    "service",
+    "target"
+  ],
+  "counts": {
+    "fathom_defs": 161,
+    "kind_equal": 161,
+    "matched": 161,
+    "oracle_defs": 161,
+    "range_eligible": 161,
+    "range_ok": 161,
+    "ref_fathom": 1,
+    "ref_fathom_in_truth": 1,
+    "ref_truth": 1,
+    "ref_truth_found": 1
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 23.62,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 23.62,
+    "max_file_ms": 0,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "pgbouncer/pgbouncer: 1 files skipped by ingest's gates (ambiguous)",
+    "pgbouncer/pgbouncer: pgbouncer loaded 6 of 6 files on a scratch instance (0 read by the line scanner alone); 0 entries the scanner read and pgbouncer did not report were left out"
+  ],
+  "disposition": null
+}

@@ -1,0 +1,56 @@
+{
+  "symbols": [
+    {
+      "name": "databases",
+      "kind": "PgBouncerSection",
+      "package": "broken",
+      "line": 2,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "ok",
+      "kind": "PgBouncerDatabase",
+      "package": "broken",
+      "line": 3,
+      "end_line": 3,
+      "signature": "host=h1.example.test; dbname=x",
+      "tier": "verified"
+    },
+    {
+      "name": "broken",
+      "kind": "PgBouncerDatabase",
+      "package": "broken",
+      "line": 5,
+      "end_line": 5,
+      "signature": "host=unterminated dbname=y",
+      "tier": "verified"
+    },
+    {
+      "name": "pgbouncer",
+      "kind": "PgBouncerSection",
+      "package": "broken",
+      "line": 6,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "pool_mode",
+      "kind": "PgBouncerSetting",
+      "package": "broken",
+      "line": 7,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "late",
+      "kind": "PgBouncerDatabase",
+      "package": "broken",
+      "line": 9,
+      "end_line": 9,
+      "signature": "host=h2.example.test",
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

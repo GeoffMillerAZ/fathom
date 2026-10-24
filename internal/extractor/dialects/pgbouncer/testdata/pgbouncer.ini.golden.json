@@ -1,0 +1,160 @@
+{
+  "symbols": [
+    {
+      "name": "databases",
+      "kind": "PgBouncerSection",
+      "package": "pgbouncer",
+      "line": 2,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "app",
+      "kind": "PgBouncerDatabase",
+      "package": "pgbouncer",
+      "line": 4,
+      "end_line": 4,
+      "signature": "host=db1.example.test; port=5433; dbname=appdb",
+      "tier": "verified"
+    },
+    {
+      "name": "reports",
+      "kind": "PgBouncerDatabase",
+      "package": "pgbouncer",
+      "line": 5,
+      "end_line": 5,
+      "signature": "host=db2.example.test; dbname=reports",
+      "calls": [
+        "authdb"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "authdb",
+      "kind": "PgBouncerDatabase",
+      "package": "pgbouncer",
+      "line": 6,
+      "end_line": 6,
+      "signature": "host=db1.example.test; dbname=postgres",
+      "tier": "verified"
+    },
+    {
+      "name": "quoted",
+      "kind": "PgBouncerDatabase",
+      "package": "pgbouncer",
+      "line": 7,
+      "end_line": 7,
+      "signature": "host=db1.example.test; dbname=odd name",
+      "tier": "verified"
+    },
+    {
+      "name": "*",
+      "kind": "PgBouncerDatabase",
+      "package": "pgbouncer",
+      "line": 8,
+      "end_line": 8,
+      "signature": "host=fallback.example.test",
+      "tier": "verified"
+    },
+    {
+      "name": "users",
+      "kind": "PgBouncerSection",
+      "package": "pgbouncer",
+      "line": 10,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "batch",
+      "kind": "PgBouncerUser",
+      "package": "pgbouncer",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "peers",
+      "kind": "PgBouncerSection",
+      "package": "pgbouncer",
+      "line": 13,
+      "end_line": 15,
+      "tier": "verified"
+    },
+    {
+      "name": "1",
+      "kind": "PgBouncerPeer",
+      "package": "pgbouncer",
+      "line": 14,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": "2",
+      "kind": "PgBouncerPeer",
+      "package": "pgbouncer",
+      "line": 15,
+      "end_line": 15,
+      "tier": "verified"
+    },
+    {
+      "name": "pgbouncer",
+      "kind": "PgBouncerSection",
+      "package": "pgbouncer",
+      "line": 17,
+      "end_line": 23,
+      "calls": [
+        "authdb"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "listen_addr",
+      "kind": "PgBouncerSetting",
+      "package": "pgbouncer",
+      "line": 18,
+      "end_line": 18,
+      "tier": "verified"
+    },
+    {
+      "name": "listen_port",
+      "kind": "PgBouncerSetting",
+      "package": "pgbouncer",
+      "line": 19,
+      "end_line": 19,
+      "tier": "verified"
+    },
+    {
+      "name": "auth_type",
+      "kind": "PgBouncerSetting",
+      "package": "pgbouncer",
+      "line": 20,
+      "end_line": 20,
+      "tier": "verified"
+    },
+    {
+      "name": "auth_file",
+      "kind": "PgBouncerSetting",
+      "package": "pgbouncer",
+      "line": 21,
+      "end_line": 21,
+      "tier": "verified"
+    },
+    {
+      "name": "auth_dbname",
+      "kind": "PgBouncerSetting",
+      "package": "pgbouncer",
+      "line": 22,
+      "end_line": 22,
+      "tier": "verified"
+    },
+    {
+      "name": "pool_mode",
+      "kind": "PgBouncerSetting",
+      "package": "pgbouncer",
+      "line": 23,
+      "end_line": 23,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}
