@@ -1,0 +1,1 @@
+Route references now resolve to the nearest ancestor directory's declarations before the repository, and Traefik references drop a `@file` provider suffix. Re-extract Traefik files and re-resolve routes so their edges are redrawn.
