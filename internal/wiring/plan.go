@@ -450,8 +450,8 @@ func planKey(root string, k Key, ledger Ledger) Item {
 		it.Verdict = VerdictSkip
 		it.Reason = k.ID() + " is present but " + ledgerRelPath + " does not record fathom adding it — it is someone else's and fathom will not touch it"
 	case !isOwned && current == want:
-		it.Verdict = VerdictSkip
-		it.Reason = "already current (" + ledgerRelPath + " does not record it; fathom will record ownership when it next has a reason to write)"
+		it.Verdict = VerdictApply
+		it.Reason = "already current — adopting the legacy key into " + ledgerRelPath + " without changing its value"
 	case !isOwned:
 		it.Verdict = VerdictApply
 		it.Reason = "fathom's own entry (identified by its marker, unrecorded in " + ledgerRelPath + ") is out of date — updating it to the current template and recording ownership"

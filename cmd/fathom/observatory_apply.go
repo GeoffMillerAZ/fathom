@@ -264,13 +264,13 @@ func requireLocalMutation(reg wiringRegistry, next http.Handler) http.Handler {
 // hook entries with the shim spelling — reconcile's safe subset plus the
 // initial wiring, since the button exists precisely for repositories the
 // remedy line has been nagging about.
-func serviceWiringSpec(root, service string) (wiring.Spec, []string) {
+func serviceWiringSpec(root, service string) (wiring.Spec, []string, bool) {
 	spec := wiring.Spec{}
 	regions, stanzaNotes := instructionRegions(root, harness.ClaudeCode, service, intentChannelWired(root))
 	spec.Regions = append(spec.Regions, regions...)
-	keys, notes := shimHookKeys(root)
+	keys, notes, migrate := planShimHookKeys(root)
 	spec.Keys = keys
-	return spec, append(notes, stanzaNotes...)
+	return spec, append(notes, stanzaNotes...), migrate
 }
 
 // wiringPreview is one repository's typed diff plus the freshness token the
@@ -285,6 +285,8 @@ type wiringPreview struct {
 	// the digest and the apply is refused.
 	PlanDigest string   `json:"plan_digest"`
 	Notes      []string `json:"notes,omitempty"`
+	// migrateHooks is the clean adoption pass recomputed for this preview.
+	migrateHooks bool
 }
 
 // planDigest is sha256 over the plan's own digest (its sorted items) and,
@@ -321,12 +323,12 @@ func planDigest(root string, plan wiring.Plan) string {
 
 // previewFor computes the typed diff for a target without touching it.
 func previewFor(t mutationTarget) (wiringPreview, wiring.Spec, error) {
-	spec, notes := serviceWiringSpec(t.Root, t.Service)
+	spec, notes, migrate := serviceWiringSpec(t.Root, t.Service)
 	plan, err := wiring.PlanWiring(t.Root, spec)
 	if err != nil {
 		return wiringPreview{}, spec, err
 	}
-	return wiringPreview{Service: t.Service, Root: t.Root, Plan: plan, PlanDigest: planDigest(t.Root, plan), Notes: notes}, spec, nil
+	return wiringPreview{Service: t.Service, Root: t.Root, Plan: plan, PlanDigest: planDigest(t.Root, plan), Notes: notes, migrateHooks: migrate}, spec, nil
 }
 
 // wiringPreviewHandler answers POST /observatory/wiring/preview.
@@ -359,7 +361,8 @@ type wiringApplyResult struct {
 	Result  wiring.Result `json:"result"`
 	// ReceiptDigest is the token an undo of this apply must hand back
 	// (receiptDigest of Result.Receipt); empty when nothing was written.
-	ReceiptDigest string `json:"receipt_digest,omitempty"`
+	ReceiptDigest string   `json:"receipt_digest,omitempty"`
+	Notes         []string `json:"notes,omitempty"`
 }
 
 // receiptDigest is the undo token for one receipt: sha256 over its id, the
@@ -423,7 +426,7 @@ func wiringApplyHandler(baseURL string, now func() time.Time) http.Handler {
 			_, _ = w.Write([]byte(wiringStepPage(t.Service, renderWiringRefused(t, msg), m)))
 			return
 		}
-		res, err := wiring.ApplyWiring(t.Root, spec, wiring.ApplyOptions{Now: now, ExpectDigest: pv.Plan.Digest})
+		res, err := wiring.ApplyWiring(t.Root, spec, wiring.ApplyOptions{Now: now, ExpectDigest: pv.Plan.Digest, MigrateHooks: pv.migrateHooks})
 		if err != nil {
 			status := http.StatusInternalServerError
 			if strings.Contains(err.Error(), "changed since the plan was previewed") {
@@ -432,7 +435,10 @@ func wiringApplyHandler(baseURL string, now func() time.Time) http.Handler {
 			wiringError(w, r, status, wiringErrorTitle(status), "apply: "+err.Error())
 			return
 		}
-		out := wiringApplyResult{Service: t.Service, Root: t.Root, Result: res}
+		out := wiringApplyResult{Service: t.Service, Root: t.Root, Result: res, Notes: pv.Notes}
+		if note := hookAdoptionNote(t.Root, spec); note != "" {
+			out.Notes = append(out.Notes, note)
+		}
 		if res.Receipt != nil {
 			out.ReceiptDigest = receiptDigest(*res.Receipt)
 		}
@@ -735,6 +741,9 @@ func renderWiringApplied(out wiringApplyResult) string {
 	var b strings.Builder
 	res := out.Result
 	b.WriteString(sectionHeading("applied · " + out.Service))
+	for _, note := range out.Notes {
+		b.WriteString(callout.Render(callout.Callout{Kind: callout.Info, Title: "Hook wiring", Body: note}))
+	}
 	for _, it := range res.Blocked {
 		b.WriteString(callout.Render(callout.Callout{Kind: callout.Danger, Title: "BLOCKED · " + it.File + " — not written (law 15)", Body: it.Reason}))
 	}

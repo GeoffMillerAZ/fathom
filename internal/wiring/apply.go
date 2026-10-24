@@ -36,6 +36,9 @@ type ApplyOptions struct {
 	// MaxReceipts bounds the receipt log by COUNT, not age, so an undo is
 	// always available for the last N applies however long ago they were.
 	MaxReceipts int
+	// MigrateHooks completes the one-time hook adoption pass, even when
+	// no keys need adopting. Set only after reading and planning hooks cleanly.
+	MigrateHooks bool
 }
 
 func (o ApplyOptions) now() time.Time {
@@ -73,7 +76,7 @@ func ApplyWiring(root string, spec Spec, opt ApplyOptions) (res Result, err erro
 	}
 
 	todo := plan.Applicable()
-	if len(todo) == 0 {
+	if len(todo) == 0 && !opt.MigrateHooks {
 		return res, nil
 	}
 
@@ -106,6 +109,9 @@ func ApplyWiring(root string, spec Spec, opt ApplyOptions) (res Result, err erro
 
 	ledger, lerr := LoadLedger(root)
 	if lerr != nil {
+		if opt.MigrateHooks {
+			return res, lerr // An unreadable ledger cannot complete migration.
+		}
 		// Already named in plan.LedgerNote. Fathom owns nothing it cannot
 		// prove it owns, so it starts a fresh ledger rather than guessing.
 		ledger = NewLedger()
@@ -130,13 +136,17 @@ func ApplyWiring(root string, spec Spec, opt ApplyOptions) (res Result, err erro
 	// repository at all (law 15). So the receipt is flushed on EVERY exit
 	// once any file has been touched, success or not.
 	defer func() {
-		if len(receipt.Files) == 0 {
-			return
+		if opt.MigrateHooks && err == nil { // a torn apply keeps the migration pending
+			ledger.Version = ledgerVersion
+			keysRecorded = true
 		}
 		if keysRecorded {
 			if lerr := flushLedger(root, ledger, &receipt); lerr != nil && err == nil {
 				err = lerr
 			}
+		}
+		if len(receipt.Files) == 0 {
+			return
 		}
 		sort.Slice(receipt.Files, func(i, j int) bool { return receipt.Files[i].Path < receipt.Files[j].Path })
 		written, aerr := AppendReceipt(root, receipt, opt.MaxReceipts)

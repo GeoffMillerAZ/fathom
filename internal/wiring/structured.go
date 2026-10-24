@@ -60,8 +60,8 @@ type Key struct {
 	// .fathom/owned.json was written by a fathom that kept no ledger. The
 	// caller that sets this asserts the entry's identity is fathom's, so an
 	// out-of-date one is updated to the template and recorded rather than
-	// left as "someone else's". An entry that already matches is skipped
-	// unchanged. The engine default (false) stays strict.
+	// left as "someone else's". An entry that already matches is recorded
+	// without changing its bytes. The engine default (false) stays strict.
 	AdoptUntracked bool
 	// ShippedTimeout is, for a KindJSONHook key whose Timeout the caller
 	// adopted from the file, the timeout fathom's template ships (0: Timeout

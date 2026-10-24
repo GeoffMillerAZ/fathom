@@ -9,11 +9,13 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/harness"
 	"github.com/geoffmilleraz/fathom/internal/projectdir"
+	"github.com/geoffmilleraz/fathom/internal/shellcmd"
 	"github.com/geoffmilleraz/fathom/internal/wiring"
 )
 
@@ -315,12 +317,14 @@ func repointCommand(cmd string) string {
 //     never created here;
 //   - hook entries absent at both scopes, added with the shim spelling
 //     (`fathom <sub>`) at project scope;
-//   - hook entries present at project scope whose command is fathom's own
-//     spelling once its absolute path is repointed — adopted (they predate
-//     the ownership ledger) and rewritten to the shim, keeping the timeout
-//     the file already carries. An entry with any other spelling is not
-//     fathom's to rewrite and is returned as a note.
-func reconcileSpec(root string, d wiringDiff) (wiring.Spec, []string) {
+//   - hook entries recorded in the ownership ledger, or recognizably fathom
+//     entries adopted on a repository's one legacy-ledger migration run,
+//     rewritten to the shim while keeping their timeout. Unrecorded keys
+//     beside a migrated ledger are left alone and reported as collisions.
+//
+// The third result reports that the hook-adoption pass read the ledger and planned cleanly, so the
+// apply may complete a pending ledger migration (ApplyOptions.MigrateHooks).
+func reconcileSpec(root string, d wiringDiff) (wiring.Spec, []string, bool) {
 	svc := stanzaServiceID(root, d.Service)
 	spec := wiring.Spec{}
 	want := map[string]bool{}
@@ -350,49 +354,187 @@ func reconcileSpec(root string, d wiringDiff) (wiring.Spec, []string) {
 	}
 
 	spec.Regions = append(spec.Regions, wiring.LocalZoneIgnoreRegion())
-	keys, notes := shimHookKeys(root)
+	keys, notes, migrate := planShimHookKeys(root)
 	spec.Keys = keys
 	// RP-4: the shipped skills ride the same plan → apply → receipt, so a
 	// hand-authored file by a skill's name is BLOCKED by name and a rewrite
 	// is undoable with everything else in the receipt.
 	spec.Files = skillOwnedFiles(root)
 	spec.Links = skillLinks(root)
-	return spec, notes
+	return spec, notes, migrate
 }
 
-// shimHookKeys is the hook half of the safe subset (see reconcileSpec): the
-// keys to add at project scope with the shim spelling, and the present
-// fathom-spelled entries to adopt and repoint. Notes name what was left
-// alone and why; they are never silent.
+// shimHookKeys adds missing template keys, updates recorded keys, and
+// migrates exact fathom hooks when no ledger or an older ledger exists.
+// Unrecorded entries beside a current ledger are user collisions.
 func shimHookKeys(root string) ([]wiring.Key, []string) {
+	keys, notes, _ := planShimHookKeys(root)
+	return keys, notes
+}
+
+// planShimHookKeys also reports whether a readable hook adoption pass can
+// be completed, including a clean pass that found no keys to adopt.
+func planShimHookKeys(root string) ([]wiring.Key, []string, bool) {
 	var keys []wiring.Key
 	var notes []string
+	ledger, lerr := wiring.LoadLedger(root)
+	if lerr != nil {
+		notes = append(notes, "  note:    hook ownership unknown: cannot read the ledger; existing unrecorded keys are left alone")
+	}
+	owned := map[string]bool{}
+	if lerr == nil {
+		for _, k := range wiring.OwnedKeys(ledger, ".claude/settings.json") {
+			owned[k.ID] = true
+		}
+	}
 	userWired, userReadable := userScopeHookKeys()
-	present := projectHookEntries(root)
+	var templates []wiring.Key
+	subcommands := map[string]string{}
 	for _, hs := range fathomHookSpecsAt(root) {
-		template := hookCommand("fathom", hs.sub)
-		if entry, ok := present[hookSpecKeyOf(hs)]; ok {
-			// A legacy unguarded `fathom <sub>` (or its absolute-path
-			// spelling) is adopted too and rewritten to the guarded template.
-			if rc := repointCommand(entry.command); rc != template && rc != "fathom "+hs.sub {
-				notes = append(notes, fmt.Sprintf("  note:    %s[%s] spells %q — not fathom's template spelling, left alone", hs.event, hs.matcher, entry.command))
-				continue
+		k := hookKeyFor(hs, hookCommand("fathom", hs.sub))
+		templates = append(templates, k)
+		subcommands[k.ID()] = hs.sub
+	}
+	// Decide from the exact value the writer addresses. The legacy reader
+	// chooses the last matching entry, while the writer targets the first;
+	// using the other entry could adopt and overwrite a user's collision.
+	view, err := wiring.PlanWiring(root, wiring.Spec{Keys: templates})
+	if err != nil {
+		return nil, append(notes, "  note:    hook ownership unknown: "+err.Error()), false
+	}
+	migrate := lerr == nil && ledger.NeedsHookAdoption() && view.LedgerNote == ""
+	type hookEntry struct {
+		Command string          `json:"command"`
+		Timeout int             `json:"timeout"`
+		Async   json.RawMessage `json:"async"`
+	}
+	present := map[string]hookEntry{}
+	adoptable := map[string]bool{}
+	for _, it := range view.Items {
+		if it.Cause == wiring.CauseUnreadable {
+			migrate = false
+		}
+		if !it.Present {
+			continue
+		}
+		var entry hookEntry
+		if json.Unmarshal([]byte(it.Before), &entry) == nil {
+			present[it.Target] = entry
+			var fields map[string]json.RawMessage
+			if json.Unmarshal([]byte(it.Before), &fields) == nil {
+				adoptable[it.Target] = true
+				for name := range fields {
+					switch name {
+					case "type", "command", "timeout", "async":
+					default:
+						adoptable[it.Target] = false
+					}
+				}
 			}
-			k := hookKeyFor(hs, template)
+		}
+	}
+	for _, k := range templates {
+		if entry, ok := present[k.ID()]; ok {
+			if !owned[k.ID()] {
+				asyncMatches := len(entry.Async) == 0 || string(entry.Async) == strconv.FormatBool(k.Async)
+				if ledger.NeedsHookAdoption() && lerr == nil && adoptable[k.ID()] && asyncMatches && invokesFathom(entry.Command, subcommands[k.ID()]) {
+					k.AdoptUntracked = true
+				} else {
+					notes = append(notes, fmt.Sprintf("  collision: %s %s is not recorded as fathom's; left alone", k.File, k.ID()))
+					continue
+				}
+			}
 			k.ShippedTimeout = k.Timeout
-			if entry.timeout > 0 {
-				k.Timeout = entry.timeout
+			if entry.Timeout > 0 {
+				k.Timeout = entry.Timeout
 			}
-			k.AdoptUntracked = true
 			keys = append(keys, k)
 			continue
 		}
-		if userReadable && userWired[hookSpecKeyOf(hs)] {
+		if userReadable && userWired[hookSpecKey{event: k.Path[0], matcher: k.Path[1], marker: k.Marker}] {
 			continue // served by user scope — one scope, never both
 		}
-		keys = append(keys, hookKeyFor(hs, template))
+		keys = append(keys, k)
 	}
-	return keys, notes
+	sort.Strings(notes)
+	return keys, notes, migrate
+}
+
+// invokesFathom accepts only a single literal invocation, optionally behind
+// the exact shipped availability guard. Shell side effects never grant ownership.
+func invokesFathom(command, subcommand string) bool {
+	command = strings.TrimSpace(command)
+	if strings.ContainsAny(command, "\r\n") {
+		return false
+	}
+	guardedBin := ""
+	const guardEnd = " >/dev/null 2>&1 || exit 0; "
+	if strings.HasPrefix(command, "command -v ") {
+		i := strings.Index(command, guardEnd)
+		if i < 0 {
+			return false
+		}
+		guardedBin = command[len("command -v "):i]
+		guard := shellcmd.ParseCommand(guardedBin)
+		if guard.Unreadable || len(guard.Pipelines) != 1 {
+			return false
+		}
+		p := guard.Pipelines[0]
+		if len(p.Units) != 1 || p.Bang || p.Sep != "" {
+			return false
+		}
+		u := p.Units[0]
+		if u.Kind != shellcmd.KindSimple || len(u.Words) != 1 || !u.Words[0].Literal() || u.Words[0].Text != guardedBin || len(u.Env)+len(u.Wrappers)+len(u.Redirects)+len(u.Subst) > 0 {
+			return false
+		}
+		command = command[i+len(guardEnd):]
+	}
+	parsed := shellcmd.ParseCommand(command)
+	if parsed.Unreadable || len(parsed.Pipelines) != 1 {
+		return false
+	}
+	p := parsed.Pipelines[0]
+	if len(p.Units) != 1 || p.Bang || p.Sep != "" {
+		return false
+	}
+	u := p.Units[0]
+	if u.Kind != shellcmd.KindSimple || len(u.Words) < 2 || len(u.Env)+len(u.Wrappers)+len(u.Redirects)+len(u.Subst) > 0 {
+		return false
+	}
+	for _, word := range u.Words {
+		if !word.Literal() {
+			return false
+		}
+	}
+	name := u.Words[0].Text
+	// Match the source, not just parsed argv: a parser may discard a comment
+	// or continuation that the user wrote. Only the binary may be quoted.
+	exact := command == name+" "+subcommand || command == "'"+name+"' "+subcommand || command == "\""+name+"\" "+subcommand
+	return exact && (name == "fathom" || strings.HasSuffix(name, "/fathom")) && (guardedBin == "" || guardedBin == name)
+}
+
+// hookAdoptionNote reports only keys whose ownership was actually saved.
+func hookAdoptionNote(root string, spec wiring.Spec) string {
+	ledger, err := wiring.LoadLedger(root)
+	if err != nil {
+		return ""
+	}
+	adopted := 0
+	for _, k := range spec.Keys {
+		if !k.AdoptUntracked {
+			continue
+		}
+		for _, owned := range wiring.OwnedKeys(ledger, k.File) {
+			if owned.ID == k.ID() {
+				adopted++
+				break
+			}
+		}
+	}
+	if adopted == 0 {
+		return ""
+	}
+	return fmt.Sprintf("adopted %d fathom keys into the ledger", adopted)
 }
 
 func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
@@ -460,8 +602,22 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stdout, note)
 		}
 		d := analyzeWiringFor(root, svcByRoot[root])
-		hasDrift := len(d.Missing) > 0 || len(d.StaleCmds) > 0 || len(d.MissingSkills) > 0 || len(d.StaleSkills) > 0 || len(d.BlockedSkills) > 0 || d.SettingsNote != "" || len(d.StaleStanzas) > 0 || len(d.DriftedStanzas) > 0 || len(d.WiringDrift) > 0 || len(d.WiringUnreadable) > 0
-		if !hasDrift && len(d.RemarkStanzas) == 0 && (len(d.WiringUnrecorded) == 0 || !*apply) {
+		// Decide ownership before the baseline writers can create a ledger.
+		spec, notes, migrateHooks := reconcileSpec(root, d)
+		legacyKeys := 0
+		for _, k := range spec.Keys {
+			if k.AdoptUntracked {
+				legacyKeys++
+			}
+		}
+		hasNotes := false
+		for _, note := range notes {
+			if !strings.HasPrefix(note, "  collision:") {
+				hasNotes = true
+			}
+		}
+		hasDrift := len(d.Missing) > 0 || len(d.StaleCmds) > 0 || len(d.MissingSkills) > 0 || len(d.StaleSkills) > 0 || len(d.BlockedSkills) > 0 || d.SettingsNote != "" || len(d.StaleStanzas) > 0 || len(d.DriftedStanzas) > 0 || len(d.WiringDrift) > 0 || len(d.WiringUnreadable) > 0 || hasNotes || legacyKeys > 0
+		if !hasDrift && len(notes) == 0 && !(*apply && migrateHooks) && len(d.RemarkStanzas) == 0 && (len(d.WiringUnrecorded) == 0 || !*apply) {
 			fmt.Fprintf(stdout, "%s: wiring current\n", root)
 			continue
 		}
@@ -506,6 +662,10 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 		if d.SettingsNote != "" {
 			fmt.Fprintf(stdout, "  note:    %s\n", d.SettingsNote)
 		}
+		for _, n := range notes {
+			fmt.Fprintln(stdout, n)
+		}
+
 		for _, w := range d.WiringDrift {
 			if strings.HasPrefix(w, wiring.DriftKindSkill+" ") {
 				// FA-24: no rebaseline blesses a skill no fathom release rendered.
@@ -519,6 +679,9 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 		}
 
 		if !*apply {
+			if legacyKeys > 0 {
+				fmt.Fprintf(stdout, "  would adopt %d fathom keys into the ledger\n", legacyKeys)
+			}
 			continue
 		}
 		// FA-23: every file this run changes is named at the end. First
@@ -546,15 +709,17 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 		// Safe subset as ONE plan → apply (law 15): the stanza regions
 		// fathom owns and the hook entries, in one receipt per repository.
 		// A BLOCKED file is named and left byte-identical; the rest applies.
-		spec, notes := reconcileSpec(root, d)
-		for _, n := range notes {
-			fmt.Fprintln(stdout, n)
-		}
-		if len(spec.Regions) > 0 || len(spec.Keys) > 0 || len(spec.Files) > 0 || len(spec.Links) > 0 {
-			res, err := wiring.ApplyWiring(root, spec, wiring.ApplyOptions{Now: time.Now})
+		if migrateHooks || len(spec.Regions) > 0 || len(spec.Keys) > 0 || len(spec.Files) > 0 || len(spec.Links) > 0 {
+			res, err := wiring.ApplyWiring(root, spec, wiring.ApplyOptions{Now: time.Now, MigrateHooks: migrateHooks})
 			if err != nil {
 				fmt.Fprintf(stdout, "  apply failed: %v\n", err)
 			}
+			if legacyKeys > 0 {
+				if note := hookAdoptionNote(root, spec); note != "" {
+					fmt.Fprintln(stdout, "  "+note)
+				}
+			}
+
 			// One line per file and per distinct reason — not per item: a
 			// settings.json that will not parse blocks every hook key with
 			// the same words.

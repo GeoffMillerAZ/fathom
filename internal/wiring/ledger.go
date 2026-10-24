@@ -8,10 +8,9 @@ package wiring
 // of band: fathom adds only entries whose identity it can state exactly,
 // and records the set of them here at the same instant as the edit.
 //
-// Losing this file does not cause damage. It causes fathom to consider
-// itself the owner of nothing, and to propose additions that already exist
-// — which surfaces as a no-op, not as a duplicate. That is precisely the
-// structural fix for the `fathom init` hook-duplication incident.
+// Without this file the engine considers fathom the owner of nothing.
+// Reconcile may explicitly adopt recognizable legacy hooks on that first
+// run; other callers remain add-only unless they authorize adoption.
 
 import (
 	"encoding/json"
@@ -26,7 +25,7 @@ import (
 
 const (
 	ledgerRelPath = projectdir.Dir + "/" + string(projectdir.Owned)
-	ledgerVersion = 1
+	ledgerVersion = 2
 )
 
 // OwnedKey is one entry fathom added to a structured file it does not own.
@@ -53,12 +52,17 @@ type Ledger struct {
 // NewLedger returns an empty ledger — fathom owning nothing, which is the
 // correct starting assumption in a repository it has never edited.
 func NewLedger() Ledger {
-	return Ledger{Version: ledgerVersion, Files: map[string][]OwnedKey{}}
+	return Ledger{Version: 1, Files: map[string][]OwnedKey{}}
 }
+
+// NeedsHookAdoption identifies ledgers written before exact hook adoption.
+// Only an explicit hook migration completes adoption; ordinary saves do not.
+func (l Ledger) NeedsHookAdoption() bool { return l.Version < ledgerVersion }
 
 // OwnedKeys returns the keys fathom recorded for one file, sorted by ID.
 // Everything else in that file is someone else's and is invisible to
-// fathom: reconciliation touches only what this returns.
+// fathom: reconciliation changes or removes only what this returns.
+// Template additions and explicit legacy adoption are recorded separately.
 func OwnedKeys(l Ledger, file string) []OwnedKey {
 	src := l.Files[file]
 	out := make([]OwnedKey, len(src))
@@ -86,7 +90,7 @@ func (l *Ledger) Record(file string, k OwnedKey) {
 		l.Files = map[string][]OwnedKey{}
 	}
 	if l.Version == 0 {
-		l.Version = ledgerVersion
+		l.Version = 1
 	}
 	keys := l.Files[file]
 	for i := range keys {
@@ -145,6 +149,20 @@ func LedgerLegacyStale(root string) bool {
 	return err == nil
 }
 
+// LedgerExists distinguishes a pre-ledger repository from an existing empty
+// ledger. It follows LoadLedger's state-directory precedence and legacy fallback.
+// An error is not absence and must never authorize migration adoption.
+func LedgerExists(root string) (bool, error) {
+	for _, path := range []string{ledgerPath(root), legacyLedgerPath(root)} {
+		if _, err := os.Stat(path); err == nil {
+			return true, nil
+		} else if !os.IsNotExist(err) {
+			return false, err
+		}
+	}
+	return false, nil
+}
+
 // LoadLedger reads owned.json from the state directory, falling back to the
 // legacy <root>/.fathom/owned.json only when the new path is absent. An
 // absent file is normal and yields an empty ledger with no error. An UNREADABLE or unparsable one
@@ -176,9 +194,10 @@ func LoadLedger(root string) (Ledger, error) {
 // SaveLedger writes the ledger deterministically: map keys sorted by
 // encoding/json, key lists sorted by Record, two-space indent, one trailing
 // newline. Two runs over the same state produce byte-identical files.
+// A same-directory replacement keeps readers on a complete old or new ledger.
 func SaveLedger(root string, l Ledger) error {
 	if l.Version == 0 {
-		l.Version = ledgerVersion
+		l.Version = 1
 	}
 	if l.Files == nil {
 		l.Files = map[string][]OwnedKey{}
@@ -196,5 +215,25 @@ func SaveLedger(root string, l Ledger) error {
 	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(p, append(data, '\n'), 0o644)
+	f, err := os.CreateTemp(filepath.Dir(p), ".owned-*.tmp")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(f.Name())
+	if err := f.Chmod(0o644); err != nil {
+		f.Close()
+		return err
+	}
+	if _, err := f.Write(append(data, '\n')); err != nil {
+		f.Close()
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	return os.Rename(f.Name(), p)
 }
