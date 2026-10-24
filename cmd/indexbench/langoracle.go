@@ -80,6 +80,8 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 	scipDefs := fs.Bool("scip-defs", false, "score L1 against the -scip index's definitions (tier A) instead of universal-ctags (owner decision D2: a stronger oracle where ctags is deficient)")
 	var toolOracles multiFlag
 	fs.Var(&toolOracles, "tool-oracle", "oracle JSON in the neutral shape (definitions, calls, references; tier A unless it says otherwise; repeatable)")
+	var baseOracles multiFlag
+	fs.Var(&baseOracles, "base-oracle", "a composing dialect's base dialect's oracle JSON (e.g. the cue oracle for timoni): its calls, references and cross_references join those of the -tool-oracle files that grade references or cross-references (langoracle_base.go; LB-Q-timoni-rest; repeatable)")
 	callsFrom := fs.String("calls-from", "scip", "which oracle grades L2 beside -scip: scip (the index's call sites, tier A) or tool (the -tool-oracle files' calls at their own tier, the index still grading definitions, typed edges and imports; LB-F204, O264)")
 	adjudicate := fs.String("adjudicate", "", "oracle-deficiency disclosure JSON (owner decision D3): dialect-only definitions the L1 oracle is verified to miss, each admitted only by a deterministic file:line, name and module-scope check, listed in the reading and left out of sym_precision's denominator")
 	unmatched := fs.String("unmatched", "", "write this subject's L1 misses both ways (dialect_only, oracle_only) and its L2 call pairs both ways (calls.fathom_only, calls.oracle_only) as JSON — the worker's diagnosis and the source of D3 adjudication candidates; never part of the reading")
@@ -200,7 +202,20 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "lang-oracle:", err)
 		return tagsQueryExit(err)
 	}
-	m, err := measureSubject(ctx, spec, *subject, name, oracleOpts{ctags: *ctagsPath, scip: *scipPath, scipDefs: *scipDefs, callsFromTool: *callsFrom == "tool", tools: tools, only: onlyGlobs, adjudicate: *adjudicate, unmatched: *unmatched}, with)
+	var baseNotes []string
+	if len(baseOracles) > 0 {
+		mdir, err := os.MkdirTemp("", "langoracle-base-")
+		if err != nil {
+			fmt.Fprintln(stderr, "lang-oracle:", err)
+			return 1
+		}
+		defer os.RemoveAll(mdir)
+		if tools, baseNotes, err = mergeBaseOracles(tools, baseOracles, mdir); err != nil {
+			fmt.Fprintln(stderr, "lang-oracle:", err)
+			return 1
+		}
+	}
+	m, err := measureSubject(ctx, spec, *subject, name, oracleOpts{ctags: *ctagsPath, scip: *scipPath, scipDefs: *scipDefs, callsFromTool: *callsFrom == "tool", tools: tools, only: onlyGlobs, adjudicate: *adjudicate, unmatched: *unmatched, baseNotes: baseNotes}, with)
 	if err != nil {
 		fmt.Fprintln(stderr, "lang-oracle:", err)
 		return 1
@@ -319,6 +334,7 @@ type oracleOpts struct {
 	// notes are not part of the reading.
 	callsFromTool bool
 	tools         []string // neutral oracle JSON files (definitions, calls, references)
+	baseNotes     []string // -base-oracle's disclosures (mergeBaseOracles), one per base oracle
 	only          []string // globs restricting the subject's files (D2, SQL)
 	adjudicate    string   // oracle-deficiency disclosure file (D3)
 	unmatched     string   // where to write the L1 and call-pair misses both ways (diagnosis)
@@ -1124,6 +1140,9 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			}
 		}
 		// ── end LB-F30 ──
+	}
+	for _, n := range opts.baseNotes {
+		res.notes = append(res.notes, name+": "+n)
 	}
 	if fx != nil {
 		res.notes = append(res.notes, fx.notes...)

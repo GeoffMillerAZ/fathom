@@ -40,6 +40,11 @@ go run ./cmd/indexbench lang-oracle -dialect timoni -subject <checkout> -subject
     -out docs/bench/readings/lang/timoni.json
 ```
 
+To grade the CUE references and cross-references the dialect composes, add the cue oracle's output
+(`calibration/oracles/cue`, run with cue 0.17.1 on the same checkout: these modules declare language v0.17.1) as
+`-base-oracle <cue.json>`: its calls and references join the references, its cross_references the cross-references, and
+the dialect's own pairs stay graded by this oracle (`cmd/indexbench/langoracle_base.go`).
+
 `-files-out` lists the measured files (every `.cue` of a vetted module outside `cue.mod/`, and every vetted bundle
 or runtime); `lang-oracle -only` restricts the measurement to them. The summary counts the modules the tool
 rejected, the ablations and how many broke the build, the bundle instances (local, built by the tool, `oci://`
