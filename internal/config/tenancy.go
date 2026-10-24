@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -163,7 +164,17 @@ func ResolveTenancyConfigNotes(l Loaded, getenv func(string) string) (tenancy.Co
 	}
 
 	if v := strings.TrimSpace(getenv("FATHOM_TENANCY_BUDGET")); v != "" {
-		n, err := tenancy.ParseSize(v)
+		// A plain non-negative integer is a byte count; anything else is an
+		// IEC size.
+		n, err := strconv.ParseInt(v, 10, 64)
+		if err != nil || n < 0 {
+			var sizeErr error
+			if n, sizeErr = tenancy.ParseSize(v); sizeErr != nil {
+				err = fmt.Errorf("%q: want a plain byte count such as 536870912 or an IEC size such as 512MiB or 4GiB", v)
+			} else {
+				err = nil
+			}
+		}
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("FATHOM_TENANCY_BUDGET: %v", err))
 		} else {

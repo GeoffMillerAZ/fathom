@@ -241,3 +241,22 @@ func TestTenancyHostAllowanceTellsUnsetFromZero(t *testing.T) {
 		}
 	}
 }
+
+func TestTenancyBudgetEnvAcceptsPlainBytes(t *testing.T) {
+	loaded := Loaded{}
+	for env, want := range map[string]int64{"536870912": 536870912, " 1024 ": 1024, "1GiB": tenancy.GiB, "0": 0} {
+		cfg, _, err := ResolveTenancyConfig(loaded, envOf(map[string]string{"FATHOM_TENANCY_BUDGET": env}))
+		if err != nil {
+			t.Fatalf("FATHOM_TENANCY_BUDGET=%q: %v", env, err)
+		}
+		if cfg.EnvBudget != want {
+			t.Errorf("FATHOM_TENANCY_BUDGET=%q: EnvBudget = %d, want %d", env, cfg.EnvBudget, want)
+		}
+	}
+	for _, bad := range []string{"-1", "1.5", "lots", "5 MB"} {
+		_, _, err := ResolveTenancyConfig(loaded, envOf(map[string]string{"FATHOM_TENANCY_BUDGET": bad}))
+		if err == nil || !strings.Contains(err.Error(), "byte count") || !strings.Contains(err.Error(), "IEC") {
+			t.Errorf("FATHOM_TENANCY_BUDGET=%q: err = %v, want one naming both accepted forms", bad, err)
+		}
+	}
+}
