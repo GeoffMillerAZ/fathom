@@ -569,3 +569,51 @@ func TestEditHookBashWriteSedDoubtAfterRulesServed(t *testing.T) {
 		t.Fatalf("note-only delivery must be accounted as doubt: %s", raw)
 	}
 }
+
+// A sed that names a file without rules and also an operand the hook cannot
+// read (a glob) still owes the rules of that operand's directory.
+func TestEditHookBashWriteSedServesUnnamedOperandDirRules(t *testing.T) {
+	prevScale := hookBudgetScale
+	hookBudgetScale = 30
+	t.Cleanup(func() { hookBudgetScale = prevScale })
+	isolateBashDoubt(t)
+	dir := t.TempDir()
+	gitInitTempRepo(t, dir)
+	if err := os.MkdirAll(filepath.Join(dir, "sub"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "a.go"), []byte("b"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Params struct {
+				Name      string `json:"name"`
+				Arguments struct {
+					File string `json:"file"`
+				} `json:"arguments"`
+			} `json:"params"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		inner := "{}"
+		switch req.Params.Name {
+		case "obligations":
+			rules := []any{}
+			if strings.HasPrefix(req.Params.Arguments.File, "sub/") {
+				rules = []any{cbRule("Sub rule.")}
+			}
+			inner = mustJSON(map[string]any{"service": "svc", "file": req.Params.Arguments.File, "rules": rules})
+		case "list_services":
+			inner = mustJSON(map[string]any{"services": []any{}})
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"jsonrpc": "2.0", "id": 1,
+			"result": map[string]any{"content": []any{map[string]any{"type": "text", "text": inner}}},
+		})
+	}))
+	defer srv.Close()
+	got := runBashWriteHook(t, srv.URL, "s1", dir, `sed -i 's/a/b/' a.go sub/*.go`)
+	if !strings.Contains(got, "Sub rule.") {
+		t.Fatalf("the unnamed operand's directory rules were not served: %q", got)
+	}
+}

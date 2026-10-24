@@ -113,6 +113,10 @@ type bwCollector struct {
 	seen        map[string]bool // present = deduped; true = also named by a non-sed writer
 	writeShaped bool
 	sedDoubt    bool
+	// unnamedDirs are directories of operands the hook could not name (a
+	// glob or a placeholder): their rules
+	// still govern the write. Relative entries resolve against the cwd.
+	unnamedDirs []string
 }
 
 // unnamableTarget reports a would-be target that is a pattern or a
@@ -133,6 +137,9 @@ func (c *bwCollector) addTarget(p string, nonSed bool) {
 		// A glob or placeholder names no single file: the write is real but
 		// the target is not, so a sed keeps its cannot-name doubt.
 		c.sedDoubt = c.sedDoubt || !nonSed
+		if !nonSed {
+			c.unnamedDirs = append(c.unnamedDirs, path.Dir(p))
+		}
 		return
 	}
 	if prior, ok := c.seen[p]; ok {
