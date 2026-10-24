@@ -1,0 +1,19 @@
+{
+  "engine": "tags",
+  "symbols": [
+    {
+      "name": "CKV_AWS_131",
+      "kind": "CheckovCheck",
+      "package": "AlbDropHttpHeaders",
+      "line": 8,
+      "end_line": 24,
+      "signature": "class AlbDropHttpHeaders(BaseResourceValueCheck):",
+      "calls": [
+        "aws_alb",
+        "aws_lb"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

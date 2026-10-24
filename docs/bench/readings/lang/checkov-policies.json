@@ -1,0 +1,110 @@
+{
+  "dialect": "checkov-policies",
+  "kind": "tooling",
+  "target_level": "L2",
+  "level_met": "L2",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-24",
+  "fathom_commit": "470726f",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "bridgecrewio/checkov",
+      "sha": "f4d437e71678db75050c1f5db6f188632368ac4e",
+      "files": 1753,
+      "bytes": 1993702,
+      "counts": {
+        "callables": 1385,
+        "callables_signed": 1385,
+        "fathom_defs": 1641,
+        "kind_equal": 1636,
+        "matched": 1636,
+        "oracle_defs": 1636,
+        "range_eligible": 1636,
+        "range_ok": 1624,
+        "ref_fathom": 2128,
+        "ref_fathom_in_truth": 2128,
+        "ref_truth": 2131,
+        "ref_truth_found": 2128
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A"
+      },
+      "kind_intersection": [
+        "policy"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 1404.6689999999999,
+        "extract_cpu_ms": 1428.496,
+        "max_file_ms": 6,
+        "peak_module_pages": 310,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "checkov (--external-checks-dir loaders)",
+      "version": "3.2.500"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 0.9986,
+    "sym_precision": 0.997,
+    "sym_recall": 1,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A"
+  },
+  "required_kinds": [
+    "policy"
+  ],
+  "kind_intersection": [
+    "policy"
+  ],
+  "counts": {
+    "callables": 1385,
+    "callables_signed": 1385,
+    "fathom_defs": 1641,
+    "kind_equal": 1636,
+    "matched": 1636,
+    "oracle_defs": 1636,
+    "range_eligible": 1636,
+    "range_ok": 1624,
+    "ref_fathom": 2128,
+    "ref_fathom_in_truth": 2128,
+    "ref_truth": 2131,
+    "ref_truth_found": 2128
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 1.4,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 1.42,
+    "max_file_ms": 6,
+    "peak_module_pages": 310,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "a file whose extraction instantiated a grammar module after the warm-up (an injected language) is timed on a second, warm extraction",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

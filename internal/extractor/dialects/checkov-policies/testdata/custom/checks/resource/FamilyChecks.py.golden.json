@@ -1,0 +1,37 @@
+{
+  "engine": "tags",
+  "symbols": [
+    {
+      "name": "CKV_FAM_22",
+      "kind": "CheckovCheck",
+      "package": "FamilyChecks",
+      "line": 12,
+      "end_line": 12,
+      "signature": "class Port22(AbsPortCheck):",
+      "tier": "verified"
+    },
+    {
+      "name": "CKV_FAM_80",
+      "kind": "CheckovCheck",
+      "package": "FamilyChecks",
+      "line": 17,
+      "end_line": 18,
+      "signature": "class Port80(AbsPortCheck):",
+      "tier": "verified"
+    },
+    {
+      "name": "CKV_FAM_1",
+      "kind": "CheckovCheck",
+      "package": "FamilyChecks",
+      "line": 28,
+      "end_line": 31,
+      "signature": "class SingularNames(AbsPortCheck):",
+      "calls": [
+        "aws_one",
+        "aws_two"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

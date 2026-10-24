@@ -1,0 +1,34 @@
+{
+ "decode": "yaml",
+ "detect": {
+  "globs": [
+   "**/checks/graph_checks/**/*.yaml",
+   "**/checks/graph_checks/**/*.yml"
+  ]
+ },
+ "entities": [
+  {
+   "select": "$",
+   "where": {
+    "is_map": true,
+    "has_key": [
+     "metadata",
+     "definition"
+    ]
+   },
+   "kind": "policy",
+   "source_kind": "CheckovGraphCheck",
+   "name": ".metadata.id",
+   "signature": ".metadata.name"
+  }
+ ],
+ "references": [
+  {
+   "from": "CheckovGraphCheck",
+   "select": "$.definition..resource_types[*]",
+   "value": "$",
+   "to_kind": "policy",
+   "edge": "resource_type"
+  }
+ ]
+}

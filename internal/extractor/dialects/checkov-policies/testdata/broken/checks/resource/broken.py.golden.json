@@ -1,0 +1,18 @@
+{
+  "engine": "tags",
+  "symbols": [
+    {
+      "name": "CKV_EARLY_1",
+      "kind": "CheckovCheck",
+      "package": "broken",
+      "line": 7,
+      "end_line": 9,
+      "signature": "class EarlyCheck(BaseResourceCheck):",
+      "calls": [
+        "aws_early"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

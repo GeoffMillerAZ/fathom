@@ -377,6 +377,9 @@ func (p *Pipeline) Close() {
 			seen[ts] = true
 			ts.Close()
 		}
+		if td, ok := e.(*extractor.TagsDocExtractor); ok {
+			td.Close() // the checkov-policies dialect's tags engine, reached by glob
+		}
 	}
 }
 

@@ -1,0 +1,18 @@
+{
+  "engine": "tags",
+  "symbols": [
+    {
+      "name": "CKV_FLAT_1",
+      "kind": "CheckovCheck",
+      "package": "flat",
+      "line": 7,
+      "end_line": 12,
+      "signature": "class FlatCheck(BaseResourceCheck):",
+      "calls": [
+        "aws_flat"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}
