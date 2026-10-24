@@ -1,0 +1,4 @@
+mysql_servers =
+(
+	{ address="db1.example.test" , port=3306 , hostgroup=0
+)

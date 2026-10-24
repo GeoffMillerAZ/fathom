@@ -1,0 +1,20 @@
+id: proxysql
+language: ProxySQL configuration (proxysql.cnf)
+# sysown/proxysql (GPL-3.0, read only, never vendored; the licence file is read at the tag) holds
+# its sample configuration (etc/proxysql.cnf, src/proxysql.cfg), the Docker scenarios', the TAP
+# groups' and the cluster tests' own: nineteen files that ProxySQL itself loads, one it refuses
+# (a bare word where libconfig wants a quoted string). The files are short and most are
+# variable groups with an empty or one-server list, and the reading says so. Pinned at the
+# v3.0.9 tag, the version the oracle runs.
+repos:
+  - name: sysown/proxysql
+    url: https://github.com/sysown/proxysql.git
+    ref: v3.0.9
+    sha: 7ddb3dc015d1440e8a0fb0bbafa2df9aaaa2669d
+    licence: GPL-3.0-only
+    sparse: ["**/proxysql*.cnf", "**/proxysql*.cfg", "**/proxysql/**/*.cnf"]
+    idioms:
+      - "etc/proxysql.cnf and src/proxysql.cfg: the shipped samples, admin_variables and mysql_variables groups around lists of servers, users, query rules, a scheduler and replication hostgroups that are mostly commented out, written with = and with :"
+      - "docker/1backend-complex-config/proxysql/proxysql.cnf: three servers in one hostgroup, two users with a default_hostgroup"
+      - "test/cluster/confs/proxysql0N.cfg: a cluster node, its admin and mysql and pgsql variables, and a proxysql_servers list of its peers"
+      - "test/tap and test/infra proxysql-ci.cnf: variable groups only (admin, mysql, pgsql, sqliteserver)"

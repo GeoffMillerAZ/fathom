@@ -1,0 +1,249 @@
+{
+  "symbols": [
+    {
+      "name": "datadir",
+      "kind": "ProxySQLSetting",
+      "package": "proxysql",
+      "line": 2,
+      "end_line": 2,
+      "tier": "verified"
+    },
+    {
+      "name": "errorlog",
+      "kind": "ProxySQLSetting",
+      "package": "proxysql",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "admin_variables",
+      "kind": "ProxySQLSection",
+      "package": "proxysql",
+      "line": 5,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "admin_variables.admin_credentials",
+      "kind": "ProxySQLVariable",
+      "package": "proxysql",
+      "line": 7,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "admin_variables.mysql_ifaces",
+      "kind": "ProxySQLVariable",
+      "package": "proxysql",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "mysql_variables",
+      "kind": "ProxySQLSection",
+      "package": "proxysql",
+      "line": 12,
+      "end_line": 18,
+      "tier": "verified"
+    },
+    {
+      "name": "mysql_variables.threads",
+      "kind": "ProxySQLVariable",
+      "package": "proxysql",
+      "line": 14,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": "mysql_variables.interfaces",
+      "kind": "ProxySQLVariable",
+      "package": "proxysql",
+      "line": 15,
+      "end_line": 15,
+      "tier": "verified"
+    },
+    {
+      "name": "mysql_variables.monitor_username",
+      "kind": "ProxySQLVariable",
+      "package": "proxysql",
+      "line": 16,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
+      "name": "mysql_variables.default_schema",
+      "kind": "ProxySQLVariable",
+      "package": "proxysql",
+      "line": 17,
+      "end_line": 17,
+      "tier": "verified"
+    },
+    {
+      "name": "mysql_servers",
+      "kind": "ProxySQLSection",
+      "package": "proxysql",
+      "line": 20,
+      "end_line": 29,
+      "tier": "verified"
+    },
+    {
+      "name": "10",
+      "kind": "ProxySQLHostgroup",
+      "package": "proxysql",
+      "line": 22,
+      "end_line": 22,
+      "tier": "verified"
+    },
+    {
+      "name": "db1.example.test:3306@10",
+      "kind": "ProxySQLServer",
+      "package": "proxysql",
+      "line": 22,
+      "end_line": 22,
+      "signature": "address=db1.example.test; port=3306; hostgroup=10; weight=5",
+      "calls": [
+        "10"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "db2.example.test:3306@20",
+      "kind": "ProxySQLServer",
+      "package": "proxysql",
+      "line": 23,
+      "end_line": 28,
+      "signature": "address=db2.example.test; port=3306; hostgroup=20",
+      "calls": [
+        "20"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "20",
+      "kind": "ProxySQLHostgroup",
+      "package": "proxysql",
+      "line": 26,
+      "end_line": 26,
+      "tier": "verified"
+    },
+    {
+      "name": "mysql_users",
+      "kind": "ProxySQLSection",
+      "package": "proxysql",
+      "line": 31,
+      "end_line": 35,
+      "tier": "verified"
+    },
+    {
+      "name": "mysql/app",
+      "kind": "ProxySQLUser",
+      "package": "proxysql",
+      "line": 33,
+      "end_line": 33,
+      "signature": "default_hostgroup=10",
+      "calls": [
+        "10"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "mysql/report",
+      "kind": "ProxySQLUser",
+      "package": "proxysql",
+      "line": 34,
+      "end_line": 34,
+      "signature": "default_hostgroup=20",
+      "calls": [
+        "20"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "mysql_query_rules",
+      "kind": "ProxySQLSection",
+      "package": "proxysql",
+      "line": 37,
+      "end_line": 47,
+      "tier": "verified"
+    },
+    {
+      "name": "mysql/1",
+      "kind": "ProxySQLQueryRule",
+      "package": "proxysql",
+      "line": 39,
+      "end_line": 45,
+      "signature": "destination_hostgroup=10; match_pattern=^SELECT .* FOR UPDATE$",
+      "calls": [
+        "10"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "mysql/2",
+      "kind": "ProxySQLQueryRule",
+      "package": "proxysql",
+      "line": 46,
+      "end_line": 46,
+      "signature": "destination_hostgroup=20; match_digest=^SELECT",
+      "calls": [
+        "20"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "mysql_replication_hostgroups",
+      "kind": "ProxySQLSection",
+      "package": "proxysql",
+      "line": 49,
+      "end_line": 52,
+      "tier": "verified"
+    },
+    {
+      "name": "mysql/10-20",
+      "kind": "ProxySQLReplication",
+      "package": "proxysql",
+      "line": 51,
+      "end_line": 51,
+      "calls": [
+        "10",
+        "20"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "scheduler",
+      "kind": "ProxySQLSection",
+      "package": "proxysql",
+      "line": 54,
+      "end_line": 57,
+      "tier": "verified"
+    },
+    {
+      "name": "1",
+      "kind": "ProxySQLScheduler",
+      "package": "proxysql",
+      "line": 56,
+      "end_line": 56,
+      "tier": "verified"
+    },
+    {
+      "name": "proxysql_servers",
+      "kind": "ProxySQLSection",
+      "package": "proxysql",
+      "line": 59,
+      "end_line": 62,
+      "tier": "verified"
+    },
+    {
+      "name": "proxysql2.example.test:6032",
+      "kind": "ProxySQLPeer",
+      "package": "proxysql",
+      "line": 61,
+      "end_line": 61,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

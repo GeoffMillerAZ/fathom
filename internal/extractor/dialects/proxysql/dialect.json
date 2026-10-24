@@ -1,0 +1,93 @@
+{
+  "id": "proxysql",
+  "display": "ProxySQL configuration (proxysql.cnf)",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "proxysql",
+  "match": {
+    "extensions": [],
+    "basenames": [
+      "proxysql.cnf",
+      "proxysql.cfg"
+    ],
+    "globs": [
+      "**/proxysql*.cnf",
+      "**/proxysql*.cfg",
+      "**/proxysql/**/*.cnf"
+    ],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "section": {
+      "source_kind": "ProxySQLSection",
+      "canonical": "section"
+    },
+    "setting": {
+      "source_kind": "ProxySQLSetting",
+      "canonical": "key"
+    },
+    "variable": {
+      "source_kind": "ProxySQLVariable",
+      "canonical": "variable_decl"
+    },
+    "server": {
+      "source_kind": "ProxySQLServer",
+      "canonical": "target"
+    },
+    "hostgroup": {
+      "source_kind": "ProxySQLHostgroup",
+      "canonical": "label"
+    },
+    "user": {
+      "source_kind": "ProxySQLUser",
+      "canonical": "element"
+    },
+    "rule": {
+      "source_kind": "ProxySQLQueryRule",
+      "canonical": "rule"
+    },
+    "replication": {
+      "source_kind": "ProxySQLReplication",
+      "canonical": "selector"
+    },
+    "scheduler": {
+      "source_kind": "ProxySQLScheduler",
+      "canonical": "task"
+    },
+    "peer": {
+      "source_kind": "ProxySQLPeer",
+      "canonical": "service"
+    }
+  },
+  "required_kinds": [
+    "section",
+    "variable",
+    "server",
+    "user"
+  ],
+  "oracle_kinds": {
+    "tool": {
+      "section": "section",
+      "key": "key",
+      "variable_decl": "variable_decl",
+      "target": "target",
+      "label": "label",
+      "element": "element",
+      "rule": "rule",
+      "selector": "selector",
+      "task": "task",
+      "service": "service"
+    }
+  },
+  "name_match": "identity",
+  "package": {
+    "strategy": "none"
+  },
+  "signature": {
+    "max_chars": 200
+  },
+  "target_level": "L2",
+  "queue_id": "proxysql"
+}

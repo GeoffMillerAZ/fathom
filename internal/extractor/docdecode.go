@@ -65,6 +65,10 @@ func decodeDoc(format string, src []byte, multi bool, yamlTags string) ([]*docNo
 		var n *docNode
 		n, err = decodePgBouncerDoc(src)
 		docs = []*docNode{n}
+	case "libconfig":
+		var n *docNode
+		n, err = decodeLibconfigDoc(src)
+		docs = []*docNode{n}
 	case "compile-commands":
 		var n *docNode
 		n, err = decodeCompDB(src)

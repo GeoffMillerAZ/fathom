@@ -1,0 +1,34 @@
+{
+  "decode": "libconfig",
+  "detect": {"basenames": ["proxysql.cnf", "proxysql.cfg"], "globs": ["**/proxysql*.cnf", "**/proxysql*.cfg", "**/proxysql/**/*.cnf"], "content_sniff": "(?m)^[ \\t]*(?:admin_variables|mysql_variables|pgsql_variables|mysql_servers|mysql_users|pgsql_servers|proxysql_servers|datadir)[ \\t\\r\\n]*[=:]"},
+  "entities": [
+    {"select": "$.*", "where": {"is_map": true}, "kind": "section", "source_kind": "ProxySQLSection", "name": "$key", "sensitive": true},
+    {"select": "$.*", "where": {"is_seq": true}, "kind": "section", "source_kind": "ProxySQLSection", "name": "$key", "sensitive": true},
+    {"select": "$.*", "where": {"is_scalar": true}, "kind": "key", "source_kind": "ProxySQLSetting", "name": "$key", "sensitive": true},
+    {"select": "$.*.*", "where": {"is_scalar": true}, "kind": "variable_decl", "source_kind": "ProxySQLVariable", "name": "fmt:{$parent}.{$key}", "sensitive": true},
+    {"select": "$.mysql_servers[*]", "where": {"is_map": true}, "kind": "target", "source_kind": "ProxySQLServer", "name": "fmt:{.address}:{.port}@{.hostgroup}", "signature_fields": ["address", "port", "hostgroup", "weight"], "sensitive": true},
+    {"select": "$.mysql_users[*]", "where": {"is_map": true}, "kind": "element", "source_kind": "ProxySQLUser", "name": "fmt:mysql/{.username}", "signature_fields": ["default_hostgroup"], "sensitive": true},
+    {"select": "$.mysql_query_rules[*]", "where": {"is_map": true}, "kind": "rule", "source_kind": "ProxySQLQueryRule", "name": "fmt:mysql/{.rule_id}", "signature_fields": ["destination_hostgroup", "match_pattern", "match_digest"], "sensitive": true},
+    {"select": "$.mysql_replication_hostgroups[*]", "where": {"is_map": true}, "kind": "selector", "source_kind": "ProxySQLReplication", "name": "fmt:mysql/{.writer_hostgroup}-{.reader_hostgroup}", "sensitive": true},
+    {"select": "$.mysql_servers[*].hostgroup", "where": {"is_scalar": true}, "kind": "label", "source_kind": "ProxySQLHostgroup", "name": "$", "unique": true},
+    {"select": "$.mysql_replication_hostgroups[*].writer_hostgroup", "where": {"is_scalar": true}, "kind": "label", "source_kind": "ProxySQLHostgroup", "name": "$", "unique": true},
+    {"select": "$.mysql_replication_hostgroups[*].reader_hostgroup", "where": {"is_scalar": true}, "kind": "label", "source_kind": "ProxySQLHostgroup", "name": "$", "unique": true},
+    {"select": "$.pgsql_servers[*]", "where": {"is_map": true}, "kind": "target", "source_kind": "ProxySQLServer", "name": "fmt:{.address}:{.port}@{.hostgroup}", "signature_fields": ["address", "port", "hostgroup", "weight"], "sensitive": true},
+    {"select": "$.pgsql_users[*]", "where": {"is_map": true}, "kind": "element", "source_kind": "ProxySQLUser", "name": "fmt:pgsql/{.username}", "signature_fields": ["default_hostgroup"], "sensitive": true},
+    {"select": "$.pgsql_query_rules[*]", "where": {"is_map": true}, "kind": "rule", "source_kind": "ProxySQLQueryRule", "name": "fmt:pgsql/{.rule_id}", "signature_fields": ["destination_hostgroup", "match_pattern", "match_digest"], "sensitive": true},
+    {"select": "$.pgsql_replication_hostgroups[*]", "where": {"is_map": true}, "kind": "selector", "source_kind": "ProxySQLReplication", "name": "fmt:pgsql/{.writer_hostgroup}-{.reader_hostgroup}", "sensitive": true},
+    {"select": "$.pgsql_servers[*].hostgroup", "where": {"is_scalar": true}, "kind": "label", "source_kind": "ProxySQLHostgroup", "name": "$", "unique": true},
+    {"select": "$.pgsql_replication_hostgroups[*].writer_hostgroup", "where": {"is_scalar": true}, "kind": "label", "source_kind": "ProxySQLHostgroup", "name": "$", "unique": true},
+    {"select": "$.pgsql_replication_hostgroups[*].reader_hostgroup", "where": {"is_scalar": true}, "kind": "label", "source_kind": "ProxySQLHostgroup", "name": "$", "unique": true},
+    {"select": "$.scheduler[*]", "where": {"is_map": true}, "kind": "task", "source_kind": "ProxySQLScheduler", "name": ".id"},
+    {"select": "$.proxysql_servers[*]", "where": {"is_map": true}, "kind": "service", "source_kind": "ProxySQLPeer", "name": "fmt:{.hostname}:{.port}"}
+  ],
+  "references": [
+    {"from": "ProxySQLServer", "select": "$.hostgroup", "value": "$", "to_kind": "ProxySQLHostgroup", "edge": "hostgroup", "declared_only": true},
+    {"from": "ProxySQLUser", "select": "$.default_hostgroup", "value": "$", "to_kind": "ProxySQLHostgroup", "edge": "default_hostgroup", "declared_only": true},
+    {"from": "ProxySQLQueryRule", "select": "$.destination_hostgroup", "value": "$", "to_kind": "ProxySQLHostgroup", "edge": "destination_hostgroup", "declared_only": true},
+    {"from": "ProxySQLQueryRule", "select": "$.mirror_hostgroup", "value": "$", "to_kind": "ProxySQLHostgroup", "edge": "mirror_hostgroup", "declared_only": true},
+    {"from": "ProxySQLReplication", "select": "$.writer_hostgroup", "value": "$", "to_kind": "ProxySQLHostgroup", "edge": "writer_hostgroup", "declared_only": true},
+    {"from": "ProxySQLReplication", "select": "$.reader_hostgroup", "value": "$", "to_kind": "ProxySQLHostgroup", "edge": "reader_hostgroup", "declared_only": true}
+  ]
+}

@@ -1,0 +1,125 @@
+{
+  "symbols": [
+    {
+      "name": "cluster_sync_interfaces",
+      "kind": "ProxySQLSetting",
+      "package": "proxysql-pg",
+      "line": 1,
+      "end_line": 1,
+      "tier": "verified"
+    },
+    {
+      "name": "pgsql_variables",
+      "kind": "ProxySQLSection",
+      "package": "proxysql-pg",
+      "line": 3,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "pgsql_variables.interfaces",
+      "kind": "ProxySQLVariable",
+      "package": "proxysql-pg",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "pgsql_variables.threads",
+      "kind": "ProxySQLVariable",
+      "package": "proxysql-pg",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "pgsql_servers",
+      "kind": "ProxySQLSection",
+      "package": "proxysql-pg",
+      "line": 9,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "0",
+      "kind": "ProxySQLHostgroup",
+      "package": "proxysql-pg",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "pg1.example.test:5432@0",
+      "kind": "ProxySQLServer",
+      "package": "proxysql-pg",
+      "line": 11,
+      "end_line": 11,
+      "signature": "address=pg1.example.test; port=5432; hostgroup=0",
+      "calls": [
+        "0"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "1",
+      "kind": "ProxySQLHostgroup",
+      "package": "proxysql-pg",
+      "line": 12,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "pg2.example.test:5432@1",
+      "kind": "ProxySQLServer",
+      "package": "proxysql-pg",
+      "line": 12,
+      "end_line": 12,
+      "signature": "address=pg2.example.test; port=5432; hostgroup=1",
+      "calls": [
+        "1"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "pgsql_users",
+      "kind": "ProxySQLSection",
+      "package": "proxysql-pg",
+      "line": 15,
+      "end_line": 18,
+      "tier": "verified"
+    },
+    {
+      "name": "pgsql/app",
+      "kind": "ProxySQLUser",
+      "package": "proxysql-pg",
+      "line": 17,
+      "end_line": 17,
+      "signature": "default_hostgroup=0",
+      "calls": [
+        "0"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "pgsql_query_rules",
+      "kind": "ProxySQLSection",
+      "package": "proxysql-pg",
+      "line": 20,
+      "end_line": 23,
+      "tier": "verified"
+    },
+    {
+      "name": "pgsql/1",
+      "kind": "ProxySQLQueryRule",
+      "package": "proxysql-pg",
+      "line": 22,
+      "end_line": 22,
+      "signature": "destination_hostgroup=1; match_digest=^SELECT",
+      "calls": [
+        "1"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}
