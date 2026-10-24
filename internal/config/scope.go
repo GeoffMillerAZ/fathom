@@ -101,6 +101,7 @@ var fieldScopes = []FieldScope{
 	{"gate.host_label", ScopeUserOnly, "an operator-named machine label, never a hostname read"},
 	{"gate.receipts_dir", ScopeRepoPath, "the directory for local gate evidence; project values stay within the repository"},
 	{"guards.enforce", ScopeBehaviour, "turns the repository's own guards advisory"},
+	{"guards.git_safety", ScopeBehaviour, "enables the shipped git command safety pack; default on"},
 	{"hooks.claim_check", ScopeBehaviour, "the claim check runs nothing: it reads the final message and the hook log's test-run rows (claimcheck.go)"},
 	{"hooks.dedupe", ScopeBehaviour, "suppresses delivered rules per context on Claude Code and Codex, and consecutive unchanged cwd primers on Claude Code"},
 	{"hooks.gate_preflight", ScopeBehaviour, "the gate preflight runs nothing: it lexes the command, reads git and the hook log, and asks the claim-moment verify path (gatepreflight.go)"},

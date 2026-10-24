@@ -42,6 +42,10 @@ type Guard struct {
 	Enforce        bool
 	ForbiddenPaths []string
 	Checks         []string
+
+	// commandCheck is a predicate selected by the embedded safety pack,
+	// never by repository/user configuration or the guard schema.
+	commandCheck string
 }
 
 // GuardSet is the decoded runtime form of a `.fathom/guard.cue` file

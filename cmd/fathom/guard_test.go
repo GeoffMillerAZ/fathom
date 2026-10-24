@@ -81,10 +81,19 @@ func TestMatchingCommandGuard(t *testing.T) {
 }
 
 func TestCommandMatches_StarCrossesSlash(t *testing.T) {
-	if !commandMatches([]string{"*/migrate *"}, "bin/migrate up") {
+	if _, ok := guardspec.MatchCommandGuard(guardspec.GuardSet{Guards: []guardspec.Guard{{CommandScopes: []string{"*/migrate *"}}}}, "bin/migrate up"); !ok {
 		t.Error("pattern */migrate * should match \"bin/migrate up\"")
 	}
-	if !commandMatches([]string{"kubectl *"}, "kubectl apply -f a/b/c.yaml") {
+	if _, ok := guardspec.MatchCommandGuard(guardspec.GuardSet{Guards: []guardspec.Guard{{CommandScopes: []string{"kubectl *"}}}}, "kubectl apply -f a/b/c.yaml"); !ok {
 		t.Error("'*' in a command pattern must match across '/' (this is a command string, not a filepath)")
+	}
+}
+
+func TestMatchingCommandGuardSegmentsAndFallback(t *testing.T) {
+	gs := guardspec.GuardSet{Guards: []guardspec.Guard{{CommandScopes: []string{"kubectl delete ns *"}, Note: "repo", Enforce: true}}}
+	for _, command := range []string{`true && kubectl delete ns demo`, `kubectl delete ns $NS`, `kubectl delete ns demo; eval true`} {
+		if g, ok := matchingCommandGuard(gs, command); !ok || g.Note != "repo" {
+			t.Errorf("%q: want repo guard, got %+v, %v", command, g, ok)
+		}
 	}
 }

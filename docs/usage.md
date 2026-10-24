@@ -190,7 +190,6 @@ Moved to [usage/session-hook.md](usage/session-hook.md).
 
 Moved to [usage/edit-hook.md](usage/edit-hook.md) Also the commit pin line on a `git commit` (`[hooks] pin_check = "off"|"record"|"feedback"`, default `record`).
 
-
 ### `stop-hook`
 
 Moved to [usage/stop-hook.md](usage/stop-hook.md).

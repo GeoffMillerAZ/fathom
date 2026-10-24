@@ -382,6 +382,10 @@ func mergeDaemonFields(d *Daemon, raw map[string]any, source Source, path string
 }
 
 func mergeGuardsFields(g *Guards, raw map[string]any, source Source, path string, prov Provenance) {
+	if b, ok := raw["git_safety"].(bool); ok {
+		g.GitSafety = &b
+		prov["guards.git_safety"] = SourceInfo{source, path}
+	}
 	if v, ok := raw["enforce"]; ok {
 		if b, ok := v.(bool); ok {
 			g.Enforce = &b

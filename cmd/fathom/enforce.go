@@ -11,6 +11,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"slices"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/guardspec"
@@ -107,25 +108,21 @@ func evaluateEnforcedFile(root, repoRelPath, newContent, oldContent string) enfo
 	return newEnforceDecision(violations[0], repoRelPath)
 }
 
-// evaluateEnforcedCommand is evaluateEnforcedFile's command-guard sibling:
-// only a PROJECT guard.cue is consulted (never the user-scope file — law
-// 13, guardspec.LoadUserGuards' own forbidden-fields list already refuses
-// enforce/forbidden_paths/checks there, so a user-scope guard can never
-// reach this path at all).
-func evaluateEnforcedCommand(root, command string) enforceDecision {
+// evaluateEnforcedCommand uses matchingCommandGuard (guardspec.MatchCommandGuard)
+// for project guards and the shipped git-safety pack. Both obey enforceEnabled;
+// unknown safety targets remain advisory. User guards never enforce (law 13).
+func evaluateEnforcedCommand(root, command string, configRoots ...string) enforceDecision {
 	if !enforceEnabled(root) {
 		return enforceDecision{}
 	}
-	gs, ok := loadGuardSet(root)
-	if !ok {
-		return enforceDecision{}
-	}
-	g, matched := matchingCommandGuard(gs, command)
-	if !matched {
-		return enforceDecision{}
-	}
-	if v := guardspec.EvaluateCommandEnforcement(g); v != nil {
-		return newEnforceDecision(*v, "")
+	for _, gs := range loadCommandGuardSets(root, configRoots...) {
+		// Advisory matches must never hide a later enforced match.
+		gs.Guards = slices.DeleteFunc(slices.Clone(gs.Guards), func(g guardspec.Guard) bool { return !g.Enforce })
+		if g, matched := matchingCommandGuard(gs, command); matched {
+			if v := guardspec.EvaluateCommandEnforcement(g); v != nil {
+				return newEnforceDecision(*v, "")
+			}
+		}
 	}
 	return enforceDecision{}
 }
@@ -157,8 +154,9 @@ func evaluateEnforcedFileAtProjDir(projDir, filePath, newContent, oldContent str
 // candidate walk: every candidate root is tried in order, the first
 // enforced match wins.
 func evaluateEnforcedCommandAtProjDir(projDir, command string) enforceDecision {
-	for _, cand := range serviceCandidates(projDir) {
-		if d := evaluateEnforcedCommand(cand.root, command); d.Denied {
+	roots := commandGuardRoots(serviceCandidates(projDir))
+	for _, root := range roots {
+		if d := evaluateEnforcedCommand(root, command, roots...); d.Denied {
 			return d
 		}
 	}

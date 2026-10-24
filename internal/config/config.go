@@ -97,7 +97,8 @@ type Daemon struct {
 // #Guards): `[guards] enforce = false` turns every enforce:true guard/
 // layer-rule in .fathom/guard.cue back to advisory, repo-wide.
 type Guards struct {
-	Enforce *bool // nil = unset at every layer; caller applies its own default (true)
+	GitSafety *bool // nil = shipped command pack enabled; false opts out
+	Enforce   *bool // nil = unset at every layer; caller applies its own default (true)
 }
 
 // Findings configures the findings-loop's governed external import

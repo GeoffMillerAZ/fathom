@@ -465,13 +465,14 @@ func cmdEditHookPreCommand(codec harness.Codec, command, cwd, sessionID, url str
 
 	var note string
 	matched := false
-	for _, cand := range serviceCandidates(projDir) {
-		gs, gok := loadGuardSet(cand.root)
-		if !gok {
-			continue
+	roots := commandGuardRoots(serviceCandidates(projDir))
+	for _, root := range roots {
+		if gs, ok := loadGuardSet(root); ok {
+			if g, gmatched := matchingCommandGuard(gs, command); gmatched {
+				note, matched = g.Note, true
+			}
 		}
-		if g, gmatched := matchingCommandGuard(gs, command); gmatched {
-			note, matched = g.Note, true
+		if matched {
 			break
 		}
 	}
@@ -486,6 +487,18 @@ func cmdEditHookPreCommand(codec harness.Codec, command, cwd, sessionID, url str
 		if ugs, uok := loadUserGuardSet(); uok {
 			if g, gmatched := matchingCommandGuard(ugs, command); gmatched {
 				note, matched = g.Note, true
+			}
+		}
+	}
+	// The shipped pack adds safety advice after repository/user advice; an
+	// unknown safety command must not hide an author's own note.
+	if commandGitSafetyEnabled(roots) {
+		if gs, err := guardspec.GitSafetyPack(); err == nil {
+			if g, ok := matchingCommandGuard(gs, command); ok {
+				if note != "" && g.Note != "" {
+					note += "\n"
+				}
+				note, matched = note+g.Note, true
 			}
 		}
 	}

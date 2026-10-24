@@ -59,7 +59,7 @@ func guardLineForCommand(gs guardspec.GuardSet, c *shellcmd.Command, cite string
 			if u.Kind != shellcmd.KindSimple || len(u.Words) == 0 {
 				continue
 			}
-			pattern, ok := matchedCommandScope(g.CommandScopes, strings.Join(u.Args(), " "))
+			pattern, ok := guardspec.MatchCommandScope(g.CommandScopes, u)
 			if !ok {
 				continue
 			}
@@ -78,16 +78,6 @@ func guardLineForCommand(gs guardspec.GuardSet, c *shellcmd.Command, cite string
 		}
 	}
 	return ""
-}
-
-// matchedCommandScope is the first of patterns command matches.
-func matchedCommandScope(patterns []string, command string) (string, bool) {
-	for _, p := range patterns {
-		if commandMatches([]string{p}, command) {
-			return p, true
-		}
-	}
-	return "", false
 }
 
 // missingRequiredTokens is the tokens of requires u does not carry, in

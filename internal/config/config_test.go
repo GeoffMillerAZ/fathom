@@ -1315,3 +1315,24 @@ func TestLoad_TypedSkipModules(t *testing.T) {
 		t.Fatalf("RefusedRepoPaths = %+v, want typed.skip_modules[1] and [2]", refused)
 	}
 }
+
+func TestLoad_GuardsGitSafety(t *testing.T) {
+	dir := t.TempDir()
+	userPath, projectPath := filepath.Join(dir, "user.toml"), filepath.Join(dir, "project.toml")
+	writeTOML(t, userPath, "[guards]\ngit_safety = true\n")
+	writeTOML(t, projectPath, "[guards]\ngit_safety = false\n")
+	loaded, err := Load(userPath, projectPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.Config.Guards.GitSafety == nil || *loaded.Config.Guards.GitSafety {
+		t.Fatal("project's explicit false must override user true")
+	}
+
+	if info := loaded.Provenance["guards.git_safety"]; info.Source != SourceProject || info.Path != projectPath {
+		t.Errorf("project opt-out provenance = %+v", info)
+	}
+	if class, ok := ScopeOf("guards.git_safety"); !ok || class.Class != ScopeBehaviour {
+		t.Errorf("git_safety scope = %v, %v; want project behaviour", class, ok)
+	}
+}

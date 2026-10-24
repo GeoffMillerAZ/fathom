@@ -30,6 +30,35 @@ of kind `no_cycles`/`cross_service_direction`) is refused, naming it. `FATHOM_EN
 `[guards] enforce = false` in `.fathom/config.toml` / `~/.fathom/config.toml`, turns every
 enforced rule in this repo back to advisory.
 
+#### Command guards
+
+The pre-tool edit hook matches `.fathom/guard.cue` command guards against each
+executable shell segment, including chains, pipelines and nested commands. Segment
+inspection keeps quoted command text as an argument. Repository and user guards
+also always keep their whole-command glob matches; segment matching adds coverage.
+The readout hook uses the same segment matcher when checking required arguments.
+
+The shipped git-safety pack is on by default, even without a `guard.cue`. It denies
+`git push --no-verify`, `git commit --no-verify` and `git commit -n`; push or commit
+with `LEFTHOOK` set to `0`, `false`, `no` or `off` (any case), including an earlier
+`export` in the same shell; `git -c core.hooksPath=<value> push|commit`; forced
+pushes to, or deletions of, remote `main`/`master`; and forced or `--mirror` pushes
+without an explicit target branch. Executable paths and
+unambiguous long-option abbreviations count too. Literal bypass flags still count
+when other words need expansion. For an unnamed target, the remedy is
+`name the branch: git push --force-with-lease origin <branch>`. An unknown force
+target, unreadable shell input, `xargs git`, or `-c alias.*`/`--config-env` with no
+other violation produces an unknown warning, never a guessed denial. Any push dry-run flag (`-n`, including `-nf`, or `--dry-run`) allows
+the push. A forced tags-only push with no branch refspec is allowed. The pack has no
+formatting-command guards.
+
+Set `[guards] git_safety = false` in `.fathom/config.toml` to disable only this
+pack. The nearest project config that sets the key wins, followed by the user
+default. The existing `[guards] enforce = false`, `FATHOM_ENFORCE=off` and
+guard-enforcement capability switch make its denials advisory, just like repository
+guards. A config or pack loading error skips the shipped pack; hooks keep their
+fail-open behavior.
+
 **The commit pin line (ADR-057 decision 4, PR-3..PR-6).** On a `git commit` seen by the
 PostToolUse `Bash` path, the hook takes the new sha from git's own `[branch sha]` summary
 line in the tool output (a `git commit -q`, or a commit that failed, has none and is not

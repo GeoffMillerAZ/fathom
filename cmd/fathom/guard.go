@@ -10,9 +10,8 @@ package main
 
 import (
 	"os"
-	"regexp"
-	"strings"
 
+	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/filter"
 	"github.com/geoffmilleraz/fathom/internal/guardspec"
@@ -72,56 +71,75 @@ func matchingFileGuard(gs guardspec.GuardSet, repoRelFile string) (guardspec.Gua
 	return guardspec.Guard{}, false
 }
 
-// matchingCommandGuard returns the first guard whose command_scopes match
-// command, ok=false when none does (design §2.5).
+// matchingCommandGuard uses guardspec's per-segment matcher, including the
+// whole-string matches for repository and user commands.
 func matchingCommandGuard(gs guardspec.GuardSet, command string) (guardspec.Guard, bool) {
-	for _, g := range gs.Guards {
-		if len(g.CommandScopes) == 0 {
-			continue
-		}
-		if commandMatches(g.CommandScopes, command) {
-			return g, true
-		}
-	}
-	return guardspec.Guard{}, false
+	return guardspec.MatchCommandGuard(gs, command)
 }
 
-// commandMatches reports whether command matches any of patterns, where
-// each pattern is a simple shell-style glob ("terraform apply*",
-// "*/migrate *") with '*' matching ANY sequence of characters, including
-// spaces and slashes — this is NOT internal/filter's gitignore-style
-// matcher (path.Match/filepath.Match would also be wrong here: their '*'
-// stops at a path separator, which would silently break a pattern like
-// "kubectl *" against a command containing a '/' argument, e.g.
-// "kubectl apply -f infra/prod.yaml"). '?' matches exactly one character,
-// mirroring the same shell-glob convention. Case-sensitive: command
-// patterns name literal binaries/subcommands.
-func commandMatches(patterns []string, command string) bool {
-	for _, p := range patterns {
-		if globToRegexp(p).MatchString(command) {
-			return true
-		}
+// loadCommandGuardSets keeps repository precedence and adds the shipped pack
+// only at its policy root, even when no guard.cue exists. A config or pack error
+// cannot enable a deny.
+func loadCommandGuardSets(root string, configRoots ...string) []guardspec.GuardSet {
+	var sets []guardspec.GuardSet
+	if gs, ok := loadGuardSet(root); ok {
+		sets = append(sets, gs)
 	}
-	return false
+	if len(configRoots) == 0 {
+		configRoots = []string{root}
+	}
+	if root != commandPackRoot(configRoots) || !commandGitSafetyEnabled(configRoots) {
+		return sets
+	}
+	if gs, err := guardspec.GitSafetyPack(); err == nil {
+		sets = append(sets, gs)
+	}
+	return sets
 }
 
-// globToRegexp compiles a shell-glob pattern (only '*' and '?' are
-// special) into an anchored regexp. Compilation cannot fail: every
-// non-glob rune is escaped via regexp.QuoteMeta before glob runes are
-// substituted in, so the result is always a valid pattern.
-func globToRegexp(pattern string) *regexp.Regexp {
-	var sb strings.Builder
-	sb.WriteString("^")
-	for _, r := range pattern {
-		switch r {
-		case '*':
-			sb.WriteString(".*")
-		case '?':
-			sb.WriteString(".")
-		default:
-			sb.WriteString(regexp.QuoteMeta(string(r)))
+// commandPackRoot selects the nearest explicit project enforcement setting for
+// the pack. Without one, the nearest service root supplies the user/default
+// setting. Repository guards retain their own root's policy.
+func commandPackRoot(roots []string) string {
+	for _, root := range roots {
+		loaded, err := config.Load(config.DefaultUserPath(), projectdir.Config.Path(root))
+		if err == nil && loaded.Provenance["guards.enforce"].Source == config.SourceProject {
+			return root
 		}
 	}
-	sb.WriteString("$")
-	return regexp.MustCompile(sb.String())
+	if len(roots) == 0 {
+		return ""
+	}
+	return roots[0]
+}
+
+// commandGitSafetyEnabled resolves the nearest explicit project setting before
+// the user default. All service candidates must use this same root order, so an
+// outer candidate cannot re-enable a nested opt-out. Read errors fail open.
+func commandGitSafetyEnabled(roots []string) bool {
+	for _, root := range roots {
+		loaded, err := config.Load(config.DefaultUserPath(), projectdir.Config.Path(root))
+		if err != nil {
+			return false
+		}
+		if source := loaded.Provenance["guards.git_safety"].Source; source == config.SourceProject {
+			return *loaded.Config.Guards.GitSafety
+		}
+	}
+	loaded, err := config.Load(config.DefaultUserPath(), "")
+	if err != nil {
+		return false
+	}
+	return loaded.Config.Guards.GitSafety == nil || *loaded.Config.Guards.GitSafety
+}
+
+// commandGuardRoots deduplicates identity aliases without changing precedence.
+func commandGuardRoots(candidates []serviceCandidate) []string {
+	var roots []string
+	for _, candidate := range candidates {
+		if len(roots) == 0 || roots[len(roots)-1] != candidate.root {
+			roots = append(roots, candidate.root)
+		}
+	}
+	return roots
 }

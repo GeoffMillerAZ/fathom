@@ -127,6 +127,7 @@ package config
 // #Daemon.auto_refresh's *bool Go type already uses to distinguish "never
 // set" from "explicitly false" (internal/config.Guards.Enforce).
 #Guards: {
+	git_safety?: bool // default on; project or user may opt out of the shipped pack
 	enforce?: bool
 }
 

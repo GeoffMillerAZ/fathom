@@ -191,6 +191,7 @@ an array of tables, and `tenancy.**` for every key under `[tenancy]`.
 | `gate.host_label` | user-only | an operator-named machine label, never a hostname read |
 | `gate.receipts_dir` | repo-path | the directory for local gate evidence; project values stay within the repository |
 | `guards.enforce` | behaviour | turns the repository's own guards advisory |
+| `guards.git_safety` | behaviour | enables the shipped git command safety pack; default on |
 | `hooks.claim_check` | behaviour | the claim check runs nothing: it reads the final message and the hook log's test-run rows (claimcheck.go) |
 | `hooks.dedupe` | behaviour | withholds already delivered post-edit/post-bash rules in Claude Code and Codex contexts (default on; a user false wins) |
 | `hooks.gate_preflight` | behaviour | the gate preflight runs nothing: it lexes the command, reads git and the hook log, and asks the claim-moment verify path (gatepreflight.go) |

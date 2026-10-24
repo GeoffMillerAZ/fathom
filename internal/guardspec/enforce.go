@@ -97,8 +97,7 @@ func EvaluateGuardEnforcement(g Guard, repoRelPath, newText, oldText string) []E
 }
 
 // EvaluateCommandEnforcement reports the violation for a command guard g
-// that the CALLER has already matched against a command (cmd/fathom's own
-// matchingCommandGuard — command-glob matching is not duplicated here; for
+// that the CALLER has already matched against a command (MatchCommandGuard; for
 // a command guard, matching command_scopes at all IS the violation, design
 // §2.5's own shape: a command guard serves only its note). nil when g is
 // not enforced.
@@ -106,16 +105,23 @@ func EvaluateCommandEnforcement(g Guard) *EnforceViolation {
 	if !g.Enforce || len(g.CommandScopes) == 0 {
 		return nil
 	}
+	cite := projectdir.Guard.Rel()
+	if g.commandCheck != "" {
+		cite = "git-safety"
+	}
 	return &EnforceViolation{
 		CheckID: "command_match",
 		RuleID:  guardRuleID(g),
-		Cite:    projectdir.Guard.Rel(),
+		Cite:    cite,
 		Message: "this command matches an enforced command guard",
 		Remedy:  firstNonEmpty(g.Note, "see the governing guard's note in .fathom/guard.cue"),
 	}
 }
 
 func guardRuleID(g Guard) string {
+	if g.commandCheck != "" {
+		return "git-safety/" + g.commandCheck
+	}
 	if g.Note != "" {
 		return g.Note
 	}

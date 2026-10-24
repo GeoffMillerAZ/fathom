@@ -297,3 +297,65 @@ func TestEditHookPre_ConfigGuardsEnforceFalse_DowngradesToAdvisory(t *testing.T)
 		t.Errorf("[guards] enforce=false must never deny, got %s", out.String())
 	}
 }
+
+func TestEditHookPre_GitSafetyModes(t *testing.T) {
+	for _, tc := range []struct {
+		name, config, env, command, want string
+		deny                             bool
+	}{
+		{"default", "", "", `true && git push --no-verify origin "$BRANCH"`, "hooks enabled", true},
+		{"commit", "", "", `git commit -n`, "hooks enabled", true},
+		{"force_implicit", "", "", `git push -f`, "name the branch", true},
+		{"env_advisory", "", "off", `git push --no-verify`, "hooks enabled", false},
+		{"config_advisory", "[guards]\nenforce = false\n", "", `git push --no-verify`, "hooks enabled", false},
+		{"opt_out", "[guards]\ngit_safety = false\n", "", `git push --no-verify`, "", false},
+		{"force_unknown", "", "", `git push -f origin $B`, "unknown", false},
+		{"unreadable", "", "", `git push --no-verify; eval true`, "unknown", false},
+		{"function", "", "", `f(){ :; }; git push --no-verify`, "unknown", false},
+		{"push_dry_run", "", "", `git push -n`, "", false},
+		{"gofmt", "", "", `gofmt -l .`, "", false},
+		{"config_error", "[guards", "", `git push --no-verify`, "", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("HOME", t.TempDir())
+			t.Setenv("FATHOM_ENFORCE", tc.env)
+			t.Setenv("CLAUDE_PROJECT_DIR", "")
+			dir := t.TempDir()
+			if tc.config != "" {
+				if err := os.MkdirAll(filepath.Join(dir, ".fathom"), 0755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(dir, ".fathom", "config.toml"), []byte(tc.config), 0644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			var out bytes.Buffer
+			if code := cmdEditHookPreCommand(harness.ClaudeCodec(), tc.command, dir, "", "", false, &out); code != 0 {
+				t.Fatalf("exit = %d", code)
+			}
+			denied := strings.Contains(out.String(), `"permissionDecision":"deny"`)
+			if denied != tc.deny || tc.want != "" && !strings.Contains(out.String(), tc.want) || tc.want == "" && out.Len() != 0 {
+				t.Errorf("want deny=%v text=%q; got %s", tc.deny, tc.want, out.String())
+			}
+		})
+	}
+}
+
+func TestEditHookPre_RepoCommandSegmentsAndFallback(t *testing.T) {
+	for _, enforced := range []bool{false, true} {
+		for _, command := range []string{`true && kubectl delete ns demo`, `kubectl delete ns $NS`, `kubectl delete ns demo; eval true`} {
+			t.Run(fmt.Sprintf("%v/%s", enforced, command), func(t *testing.T) {
+				t.Setenv("HOME", t.TempDir())
+				t.Setenv("FATHOM_ENFORCE", "")
+				t.Setenv("CLAUDE_PROJECT_DIR", "")
+				dir := t.TempDir()
+				writeGuardCue(t, dir, fmt.Sprintf(`guards: [{command_scopes: ["kubectl delete ns *"], enforce: %v, note: "repo guard"}]`, enforced))
+				var out bytes.Buffer
+				cmdEditHookPreCommand(harness.ClaudeCodec(), command, dir, "", "", false, &out)
+				if !strings.Contains(out.String(), "repo guard") || strings.Contains(out.String(), `"permissionDecision":"deny"`) != enforced {
+					t.Errorf("want repo guard, deny=%v; got %s", enforced, out.String())
+				}
+			})
+		}
+	}
+}
