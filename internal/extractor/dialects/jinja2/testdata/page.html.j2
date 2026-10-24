@@ -1,0 +1,21 @@
+{% extends "base.html.j2" %}
+{% from "macros/ui.j2" import card %}
+
+{% macro badge(text,
+               kind="info") -%}
+  <span class="badge {{ kind }}">{{ text }}</span>
+{%- endmacro %}
+
+{% block title %}Home | {{ super() }}{% endblock %}
+
+{% block content %}
+  {% set greeting = "hello" %}
+  {% for post in posts %}
+    {{ card(post.title) }}
+    {{ badge(post.kind, kind="new") }}
+  {% else %}
+    {% include "partials/empty.html" ignore missing %}
+  {% endfor %}
+  {% call card("wrapped") %}{{ greeting|upper }}{% endcall %}
+{% endblock %}
+{% block footer %}{{ items|join(", ") }} {{ badge("x") ~ card("y") }}{% endblock %}

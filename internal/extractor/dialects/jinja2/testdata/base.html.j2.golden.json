@@ -1,0 +1,94 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "JinjaTemplate",
+      "package": "base.html",
+      "line": 1,
+      "end_line": 27,
+      "calls": [
+        "button",
+        "input",
+        "nav_item"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "site_name",
+      "kind": "JinjaVariable",
+      "package": "base.html",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "nav_item",
+      "kind": "JinjaMacro",
+      "package": "base.html",
+      "line": 5,
+      "end_line": 5,
+      "signature": "{%",
+      "tier": "verified"
+    },
+    {
+      "name": "title",
+      "kind": "JinjaBlock",
+      "package": "base.html",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "head",
+      "kind": "JinjaBlock",
+      "package": "base.html",
+      "line": 12,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "content",
+      "kind": "JinjaBlock",
+      "package": "base.html",
+      "line": 22,
+      "end_line": 22,
+      "tier": "verified"
+    },
+    {
+      "name": "sidebar",
+      "kind": "JinjaBlock",
+      "package": "base.html",
+      "line": 23,
+      "end_line": 23,
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "forms",
+      "module": "macros/forms.j2",
+      "kind": "whole",
+      "line": 2
+    },
+    {
+      "local": "button",
+      "exported": "button",
+      "module": "macros/ui.j2",
+      "kind": "named",
+      "line": 3
+    },
+    {
+      "local": "ico",
+      "exported": "icon",
+      "module": "macros/ui.j2",
+      "kind": "named",
+      "line": 3
+    },
+    {
+      "local": "partials/meta.html",
+      "module": "partials/meta.html",
+      "kind": "whole",
+      "line": 13
+    }
+  ]
+}

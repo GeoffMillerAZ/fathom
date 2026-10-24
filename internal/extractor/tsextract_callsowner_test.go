@@ -73,7 +73,7 @@ func TestCallsOwnerOnlyWhereTheManifestNamesIt(t *testing.T) {
 			named = append(named, d.ID)
 		}
 	}
-	if !reflect.DeepEqual(named, []string{"astro", "html", "scss"}) {
-		t.Fatalf("dialects naming calls.owner or calls.split = %q, want [astro html scss]", named)
+	if !reflect.DeepEqual(named, []string{"astro", "html", "jinja2", "scss"}) {
+		t.Fatalf("dialects naming calls.owner or calls.split = %q, want [astro html jinja2 scss]", named)
 	}
 }

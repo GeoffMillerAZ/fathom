@@ -123,6 +123,7 @@ type tsDialectRules struct {
 // parse as written (none when a rewrite would change nothing).
 var tsPreprocessors = map[string]func(src []byte) [][]byte{
 	"csharp-conditionals": csharpConditionalTexts,
+	"jinja-templates":     jinjaTexts,     // tsextract_jinja.go (LB-Q-jinja2)
 	"cpp-macros":          cppMacroTexts,  // tsextract_cppmacros.go (O455)
 	"objc-macros":         objcMacroTexts, // tsextract_objcmacros.go (LB-Q-objective-c)
 	"tailwind-at-rules":   tailwindTexts,  // tsextract_tailwind.go (LB-Q-tailwind)
