@@ -52,7 +52,30 @@ func (r *doctorWrapperReader) markWalked(target string) {
 	if r.walked == nil {
 		r.walked = map[string]bool{}
 	}
-	r.walked[target] = true
+	r.walked[r.walkKey(target)] = true
+}
+
+// walkKey is the key a script is walked under: its resolved repository path,
+// so a symlink to a walked script (or the hook file reached by another name)
+// is the same script. A target that does not resolve inside the repository,
+// or is not a file path (a task label), keeps its own spelling.
+func (r *doctorWrapperReader) walkKey(target string) string {
+	if r.root == "" || filepath.IsAbs(target) || strings.ContainsAny(target, " ()") {
+		return target
+	}
+	root, err := filepath.EvalSymlinks(r.root)
+	if err != nil {
+		return target
+	}
+	resolved, err := filepath.EvalSymlinks(filepath.Join(root, target))
+	if err != nil {
+		return target
+	}
+	rel, err := filepath.Rel(root, resolved)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return target
+	}
+	return rel
 }
 
 func (r *doctorWrapperReader) labelDepthCuts(start int, at string) {
@@ -66,7 +89,7 @@ func (r *doctorWrapperReader) labelDepthCuts(start int, at string) {
 // Decide only after the walk: a shallower visit can follow a cut.
 func (r *doctorWrapperReader) depthCutAt() string {
 	for _, cut := range r.depthCuts {
-		if !r.walked[cut.target] {
+		if !r.walked[r.walkKey(cut.target)] {
 			return cut.at
 		}
 	}
