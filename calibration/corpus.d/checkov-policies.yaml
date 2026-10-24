@@ -1,0 +1,25 @@
+id: checkov-policies
+language: Checkov custom policies (YAML graph checks, Python checks)
+# bridgecrewio/checkov at 3.2.500 (Apache-2.0), the version the oracle runs. Read, never vendored.
+# Its built-in checks are the same two shapes a user's --external-checks-dir holds: Python classes
+# (checkov/*/checks/{resource,data,provider,module}/**) and YAML graph checks (checkov/*/checks/graph_checks/**).
+# Only those directories are checked out.
+repos:
+  - name: bridgecrewio/checkov
+    url: https://github.com/bridgecrewio/checkov.git
+    ref: 3.2.500
+    sha: f4d437e71678db75050c1f5db6f188632368ac4e
+    licence: Apache-2.0
+    sparse:
+      - "checkov/*/checks/resource/**/*.py"
+      - "checkov/*/checks/data/**/*.py"
+      - "checkov/*/checks/provider/**/*.py"
+      - "checkov/*/checks/module/**/*.py"
+      - "checkov/*/checks/graph_checks/**/*.yaml"
+      - "checkov/*/checks/graph_checks/**/*.yml"
+    idioms:
+      - "a class deriving BaseResourceCheck whose __init__ binds name, id and supported_resources locals and calls super().__init__(name=name, id=id, categories=categories, supported_resources=supported_resources)"
+      - "the same call written with literal keyword arguments, and supported_resources as a list or tuple of resource type strings"
+      - "a module-level `check = ClassName()` instance that registers the check"
+      - "YAML graph checks: metadata (id, name, category) and a definition tree of cond_type attribute, connection and filter blocks over resource_types"
+      - "checks for other frameworks (Kubernetes, Dockerfile, CloudFormation, GitHub Actions) that derive their own Base*Check classes"
