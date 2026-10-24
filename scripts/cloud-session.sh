@@ -170,6 +170,14 @@ session_env() { # export what the session's Bash commands need (CLAUDE_ENV_FILE)
     case "${TMPDIR:-/tmp}" in
       /tmp | /tmp/*) mkdir -p "${cloud_home}/tmp" && printf 'export TMPDIR="%s"\n' "${cloud_home}/tmp" ;;
     esac
+    # CI's test budget (.github/workflows/ci.yml): on the VM's four vCPUs the
+    # race build needs 30 minutes per test binary, and go's default 10 failed
+    # cmd/fathom's shards in a cloud push gate. A timeout the caller set wins.
+    case " ${GOFLAGS:-} " in
+      *" -timeout="*) ;;
+      *) printf 'export GOFLAGS="%s"\n' "${GOFLAGS:+${GOFLAGS} }-timeout=30m" ;;
+    esac
+    [ -n "${FATHOM_TEST_SHARDS_TIMEOUT:-}" ] || echo 'export FATHOM_TEST_SHARDS_TIMEOUT=30m0s'
     if command -v go >/dev/null 2>&1 && [ "$(go env GOTOOLCHAIN 2>/dev/null)" = "local" ]; then
       echo 'export GOTOOLCHAIN=auto' # go.mod pins the toolchain; local would refuse it
     fi

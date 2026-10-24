@@ -195,6 +195,13 @@ grep -q "^fathom post-commit-hook --dir ${repo} --service fathom --quiet" "${s6}
 grep -q '"hook_event_name":"SessionStart"' "${s6}/session-hook.stdin" || fail "the primer did not get the hook's stdin"
 grep -q "^export PATH=\"${scratch}/bin:" "${s6}/claude.env" || fail "PATH was not exported to the session: $(cat "${s6}/claude.env" 2>/dev/null)"
 grep -q "^export TMPDIR=\"${scratch}/cloud/tmp\"" "${s6}/claude.env" || fail "a /tmp TMPDIR was not moved off /tmp for the session: $(cat "${s6}/claude.env" 2>/dev/null)"
+grep -q '^export GOFLAGS="-timeout=30m"$' "${s6}/claude.env" || fail "the session did not get CI's 30-minute test timeout: $(cat "${s6}/claude.env" 2>/dev/null)"
+grep -q '^export FATHOM_TEST_SHARDS_TIMEOUT=30m0s$' "${s6}/claude.env" || fail "the session did not get CI's shard timeout: $(cat "${s6}/claude.env" 2>/dev/null)"
+s6b="${scratch}/state6b"
+port="$(free_port)"
+run_hook "$s6b" "$port" GOFLAGS="-mod=mod -timeout=45m" FATHOM_TEST_SHARDS_TIMEOUT=45m0s <<<'{}' >/dev/null || fail "the cloud hook exited non-zero with a caller timeout"
+stop_daemon "$s6b"
+grep -q 'GOFLAGS\|FATHOM_TEST_SHARDS_TIMEOUT' "${s6b}/claude.env" && fail "a timeout the caller set was overridden: $(cat "${s6b}/claude.env")"
 
 # 7. The clone lives elsewhere than the checkout setup indexed: the service
 #    is remapped before the daemon owns the store.
