@@ -1,0 +1,127 @@
+{
+  "dialect": "proxysql",
+  "kind": "tooling",
+  "target_level": "L2",
+  "level_met": "L2",
+  "grade": {
+    "L1": "good",
+    "L2": "excellent",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-24",
+  "fathom_commit": "4ea6f25",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "sysown/proxysql",
+      "sha": "7ddb3dc015d1440e8a0fb0bbafa2df9aaaa2669d",
+      "files": 19,
+      "bytes": 31981,
+      "counts": {
+        "fathom_defs": 373,
+        "kind_equal": 356,
+        "matched": 356,
+        "oracle_defs": 356,
+        "range_eligible": 356,
+        "range_ok": 356,
+        "ref_fathom": 10,
+        "ref_fathom_in_truth": 10,
+        "ref_truth": 10,
+        "ref_truth_found": 10
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A"
+      },
+      "kind_intersection": [
+        "element",
+        "key",
+        "label",
+        "rule",
+        "section",
+        "selector",
+        "service",
+        "target",
+        "task",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 2.333,
+        "extract_cpu_ms": 2.3430000000000004,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "proxysql",
+      "version": "ProxySQL version 3.0.9-618-g7ddb3dc, codename Truls + line scanner"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 0.9544,
+    "sym_recall": 1,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A"
+  },
+  "required_kinds": [
+    "element",
+    "section",
+    "target",
+    "variable_decl"
+  ],
+  "kind_intersection": [
+    "element",
+    "key",
+    "label",
+    "rule",
+    "section",
+    "selector",
+    "service",
+    "target",
+    "task",
+    "variable_decl"
+  ],
+  "counts": {
+    "fathom_defs": 373,
+    "kind_equal": 356,
+    "matched": 356,
+    "oracle_defs": 356,
+    "range_eligible": 356,
+    "range_ok": 356,
+    "ref_fathom": 10,
+    "ref_fathom_in_truth": 10,
+    "ref_truth": 10,
+    "ref_truth_found": 10
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 13.65,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 13.71,
+    "max_file_ms": 0,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "sysown/proxysql: proxysql loaded 18 of 19 files into its database (1 refused and left out); 96 top-level sections and settings are the scanner's alone (the database holds no row of them); 17 entries the scanner read and the database did not hold were left out"
+  ],
+  "disposition": null
+}

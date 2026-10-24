@@ -33,6 +33,8 @@ const (
 	ToolTraefik ToolKind = "traefik"
 	// ToolPgBouncer: a pgbouncer.ini (LB-Q-pgbouncer).
 	ToolPgBouncer ToolKind = "pgbouncer"
+	// ToolProxySQL: a proxysql.cnf (LB-Q-proxysql).
+	ToolProxySQL ToolKind = "proxysql"
 )
 
 // gatewayKinds maps a dialect id to its ToolKind.
@@ -43,6 +45,7 @@ var gatewayKinds = map[string]ToolKind{
 	// pgbouncer's manifest names pgbouncer.ini and its variants, and sniffs
 	// any other .ini for a [databases] or [pgbouncer] section (gatewaySniffed).
 	"pgbouncer": ToolPgBouncer,
+	"proxysql":  ToolProxySQL,
 }
 
 // gatewaySniffed are the dialects a manifest content sniff may claim, beyond a

@@ -1,0 +1,62 @@
+# ProxySQL configuration written for this dialect's fixtures.
+datadir="/var/lib/proxysql"
+errorlog="/var/lib/proxysql/proxysql.log"
+
+admin_variables=
+{
+	admin_credentials="admin:secret"
+	mysql_ifaces="0.0.0.0:6032"
+#	refresh_interval=2000
+}
+
+mysql_variables=
+{
+	threads=4
+	interfaces="0.0.0.0:6033"
+	monitor_username="monitor"
+	default_schema="information_schema"
+}
+
+mysql_servers =
+(
+	{ address="db1.example.test" , port=3306 , hostgroup=10 , weight=5 },
+	{
+		address="db2.example.test"
+		port=3306
+		hostgroup=20
+		max_connections=200
+	}
+)
+
+mysql_users:
+(
+	{ username="app" , password="secret" , default_hostgroup=10 , active=1 },
+	{ username="report" , password="secret2" , default_hostgroup=20 }
+)
+
+mysql_query_rules:
+(
+	{
+		rule_id=1
+		active=1
+		match_pattern="^SELECT .* FOR UPDATE$"
+		destination_hostgroup=10
+		apply=1
+	},
+	{ rule_id=2 , active=1 , match_digest="^SELECT" , destination_hostgroup=20 , mirror_hostgroup=30 , apply=1 }
+)
+
+mysql_replication_hostgroups=
+(
+	{ writer_hostgroup=10 , reader_hostgroup=20 , comment="primary and replicas" }
+)
+
+scheduler=
+(
+	{ id=1 , active=0 , interval_ms=10000 , filename="/var/lib/proxysql/checker.sh" }
+)
+
+proxysql_servers =
+(
+	{ hostname="proxysql2.example.test" , port=6032 , weight=0 , comment="peer" }
+)
