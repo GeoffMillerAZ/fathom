@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/langbench"
 )
@@ -16,12 +17,17 @@ import (
 // the same oracle; per-metric delta, the SourceKind diff, and the
 // dispatch-at-parity rule as the exit code.
 func TestCmdLangParity(t *testing.T) {
+	// The tenancy floor (1 MB/s, level_met's precondition) reads injected
+	// clocks, never the machine's: the real CPU clock is the whole process's
+	// (getrusage RUSAGE_SELF), so GC, the race detector and any goroutine an
+	// earlier test left running are charged to the file. On a loaded CI
+	// runner that charge dropped the dialect under the floor, level_met went
+	// "none" and the merge case exited 1 on the same commit that had passed.
+	// Each file costs 1 µs of CPU here; a 5 s wall step shows wall clock
+	// gates nothing.
+	stubFileClocks(t, 5*time.Second, time.Microsecond, true)
 	subject := t.TempDir()
-	// Padding keeps the doc engine's throughput honest under -race: the
-	// tenancy floor is 1 MB/s, and a few hundred bytes would be timed in
-	// microseconds of fixed cost.
-	pad := strings.Repeat("# a comment line that the TOML decoder skips quickly\n", 1200)
-	src := "[project]\nname = \"demo\"\nversion = \"1.0\"\n\n[project.scripts]\ndemo = \"demo.cli:main\"\n\n[tool.black.sub]\nx = 1\n" + pad
+	src := "[project]\nname = \"demo\"\nversion = \"1.0\"\n\n[project.scripts]\ndemo = \"demo.cli:main\"\n\n[tool.black.sub]\nx = 1\n"
 	if err := os.WriteFile(filepath.Join(subject, "pyproject.toml"), []byte(src), 0o644); err != nil {
 		t.Fatal(err)
 	}
