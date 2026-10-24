@@ -457,6 +457,28 @@ Moved to [usage/readout.md](usage/readout.md).
 
 Moved to [usage/tests-coverage-select.md](usage/tests-coverage-select.md).
 
+### `culprit` — candidates for a red commit range
+
+`fathom culprit <good>..<bad> [--failing TestA,TestB] [--service S] [--store DB]`
+ranks commits by failing-test static reach, including edits to the failing test's
+own file. Commits with missing file evidence rank above indexed commits without
+reach, followed by descending blast radius and recency. Incomplete radii print as
+`>=N`. Merges are labeled and use combined diffs to count their own resolution
+changes rather than inherited changes.
+
+Analysis uses changed files and the current read-only index, not historical symbol
+bodies. The store defaults to `[daemon].store`, then the workspace database. Output
+names the store and indexed commit, and reports whether that commit matches
+`<bad>`, is behind it by a commit count, or is not its ancestor. Unavailable commit
+metadata is unknown. A service with zero symbols gets a no-index-evidence notice.
+Unresolved `--failing` names appear once and provide no negative evidence. Without
+`--failing`, reach is unknown. Missing reach evidence never clears a commit.
+
+The output prints bisect commands to try the top candidate, says when it is `<bad>`
+itself, and includes testing its parent (`C^`) to confirm the boundary. Run and
+classify the tests yourself: fathom runs no build, test, checkout or bisect. This is
+a candidate list, not a causal verdict.
+
 
 ### `tests ingest` / `tests status` — test-kit evidence (vision 33 / ADR-043 stage 0)
 
