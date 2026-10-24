@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -44,16 +45,40 @@ type hangingDaemon struct {
 	paths    []string
 	noHeader atomic.Int32
 	requests atomic.Int32
+	// phase names what the test is doing when a request arrives (which
+	// binding is running, or which one last returned), and bare holds one
+	// line per request that carried no X-Fathom-Deadline: its method, path,
+	// phase and the in-process client call sites that sent it.
+	phase atomic.Pointer[string]
+	bare  []string
+}
+
+// setPhase records what the test is doing, for naming a bare request.
+func (h *hangingDaemon) setPhase(format string, args ...any) {
+	s := fmt.Sprintf(format, args...)
+	h.phase.Store(&s)
+}
+
+// bareRequests is the line per request that carried no deadline header.
+func (h *hangingDaemon) bareRequests() []string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return append([]string(nil), h.bare...)
 }
 
 func newHangingDaemon(t *testing.T) *hangingDaemon {
 	t.Helper()
 	h := &hangingDaemon{release: make(chan struct{})}
+	h.setPhase("before any binding ran")
 	h.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		began := time.Now()
 		h.requests.Add(1)
 		if r.Header.Get(hookguard.DeadlineHeader) == "" {
 			h.noHeader.Add(1)
+			line := fmt.Sprintf("%s %s %s; sent by %s", r.Method, r.URL.Path, *h.phase.Load(), inFlightClientCallers())
+			h.mu.Lock()
+			h.bare = append(h.bare, line)
+			h.mu.Unlock()
 		}
 		var carried time.Duration
 		var hasCarried bool
@@ -76,6 +101,56 @@ func newHangingDaemon(t *testing.T) *hangingDaemon {
 		h.srv.Close()
 	})
 	return h
+}
+
+// inFlightClientCallers names the fathom call sites of every goroutine in
+// this process that is waiting on an HTTP round trip — the hook runs in
+// process, so the request the daemon is serving is among them. A round
+// trip that did not pass the hook guard (no (*Guard).roundTrip frame) is
+// listed first and marked unguarded: that is the request a hook sent
+// with no guard active.
+func inFlightClientCallers() string {
+	buf := make([]byte, 1<<20)
+	buf = buf[:runtime.Stack(buf, true)]
+	var unguarded, guarded []string
+	for _, g := range strings.Split(string(buf), "\n\n") {
+		if !strings.Contains(g, "net/http.(*Transport).roundTrip") {
+			continue
+		}
+		var frames []string
+		lines := strings.Split(g, "\n")
+		for i := 1; i+1 < len(lines) && len(frames) < 5; i += 2 {
+			fn := lines[i]
+			if !strings.HasPrefix(fn, "main.") && !strings.HasPrefix(fn, "github.com/geoffmilleraz/fathom/") {
+				continue
+			}
+			if strings.Contains(fn, "internal/hookguard.") || strings.HasPrefix(fn, "main.inFlightClientCallers") {
+				continue
+			}
+			if p := strings.IndexByte(fn, '('); p > 0 {
+				fn = fn[:p]
+			}
+			loc := strings.TrimSpace(lines[i+1])
+			if sp := strings.IndexByte(loc, ' '); sp > 0 {
+				loc = loc[:sp]
+			}
+			frames = append(frames, fn+" "+filepath.Base(loc))
+		}
+		if len(frames) == 0 {
+			continue // net/http's own helpers
+		}
+		site := strings.Join(frames, " < ")
+		if strings.Contains(g, "hookguard.(*Guard).roundTrip") {
+			guarded = append(guarded, site)
+		} else {
+			unguarded = append(unguarded, "UNGUARDED "+site)
+		}
+	}
+	all := append(unguarded, guarded...)
+	if len(all) == 0 {
+		return "no in-process client (another process sent it)"
+	}
+	return strings.Join(all, " | ")
 }
 
 // settledSpans returns the spans of the n requests a hook run made since
@@ -227,7 +302,9 @@ func TestNoHookRPCOutlivesItsDescriptorBudget(t *testing.T) {
 			goroutines0 := runtime.NumGoroutine()
 			cpu0, cpuOK := processCPUTime()
 			start := time.Now()
+			h.setPhase("while %s %q ran", d.ID, b.Verb)
 			code, _, elapsed := runHookVerb(t, verb, payload)
+			h.setPhase("after %s %q returned (%v in)", d.ID, b.Verb, elapsed.Round(time.Millisecond))
 			cpu1, _ := processCPUTime()
 			// A hook may return at its deadline with work still running:
 			// tenancy.RunUntilDone abandons it, and in production os.Exit
@@ -317,14 +394,71 @@ func TestNoHookRPCOutlivesItsDescriptorBudget(t *testing.T) {
 			}
 		}
 	}
-	if h.noHeader.Load() != 0 {
-		t.Errorf("%d hook RPCs carried no %s", h.noHeader.Load(), hookguard.DeadlineHeader)
+	if n := h.noHeader.Load(); n != 0 {
+		t.Errorf("%d hook RPCs carried no %s:\n\t%s", n, hookguard.DeadlineHeader, strings.Join(h.bareRequests(), "\n\t"))
 	}
 	if bindings < 20 || withRPC < 5 {
 		t.Fatalf("exercised %d bindings, %d reached the hanging daemon — the test did not test", bindings, withRPC)
 	}
 	t.Logf("%d bindings, %d reached the hanging daemon, %d RPCs total; worst CPU+RPC overrun %v of %v slack (%s); most CPU after a hook returned %v (%s)",
 		bindings, withRPC, h.requests.Load(), worstOver.Round(time.Millisecond), hookLocalWorkSlack, worstWho, worstLeft.Round(time.Millisecond), worstLeftWho)
+}
+
+// TestDoctorBriefSendsNoRPCAfterItReturns pins the CI flake of RT-7 above
+// ("1 hook RPCs carried no X-Fathom-Deadline", main at 4f6514927): doctor
+// --brief's capabilities row read the console's observatory model, whose
+// cold-cache rebuild is a detached flight bound to nothing the hook
+// controls. When that flight reached its list_services read after the
+// hook had returned — the hook's guard already restored to none — the read
+// went out bare: no deadline header, no hook deadline, only its own 5 s
+// client cap. In production os.Exit ends abandoned work the moment the hook
+// returns, so a hook's work reaches the daemon only while the hook runs.
+// The model build is held here until doctor has returned, which is the
+// loaded-runner timing made certain.
+func TestDoctorBriefSendsNoRPCAfterItReturns(t *testing.T) {
+	isolateHookRun(t)
+	hermeticObsEnv(t)
+	t.Cleanup(resetObsCache)
+	t.Setenv("HOME", t.TempDir())
+	orig := hookBudgetScale
+	hookBudgetScale = 0.1
+	defer func() { hookBudgetScale = orig }()
+	h := newHangingDaemon(t)
+	t.Setenv("FATHOM_HTTP", h.srv.URL)
+	repo := hookRepo(t)
+	t.Setenv("CLAUDE_PROJECT_DIR", repo)
+
+	entered, gate, built := make(chan struct{}, 1), make(chan struct{}), make(chan struct{})
+	prev := obsModelBuilder
+	obsModelBuilder = func(ctx context.Context, baseURL string, now time.Time) observatoryModel {
+		entered <- struct{}{}
+		<-gate
+		defer close(built)
+		return buildObservatoryModelCtx(ctx, baseURL, now)
+	}
+	t.Cleanup(func() { obsModelBuilder = prev })
+
+	h.setPhase("while doctor --brief ran")
+	runHookVerb(t, []string{"doctor", "--brief", "--path", repo}, hookStdinPayload(repo))
+	h.setPhase("after doctor --brief returned")
+	afterReturn := h.requests.Load()
+	select {
+	case <-entered:
+	case <-time.After(waitSafety):
+		t.Fatal("doctor --brief never read the observatory model: the test did not test")
+	}
+	close(gate)
+	select {
+	case <-built:
+	case <-time.After(waitSafety):
+		t.Fatal("the held observatory model build never finished")
+	}
+	if n := h.requests.Load() - afterReturn; n != 0 {
+		t.Errorf("%d RPCs reached the daemon after doctor --brief returned", n)
+	}
+	if n := h.noHeader.Load(); n != 0 {
+		t.Errorf("%d RPCs carried no %s:\n\t%s", n, hookguard.DeadlineHeader, strings.Join(h.bareRequests(), "\n\t"))
+	}
 }
 
 // settleHookGoroutines waits until the goroutines a hook left running when

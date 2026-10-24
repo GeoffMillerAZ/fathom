@@ -270,6 +270,14 @@ type obsTrafficDay struct {
 // unreachable registry degrades to a named note with zero service rows —
 // the impact section still renders from user-central state (OB-1).
 func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
+	return buildObservatoryModelCtx(context.Background(), baseURL, now)
+}
+
+// buildObservatoryModelCtx is buildObservatoryModel with its daemon reads
+// bound to ctx: once ctx is done none is sent. Doctor reads the model this
+// way, inline, because its probes can outlive a hook (see
+// buildCapabilityProbeContext).
+func buildObservatoryModelCtx(ctx context.Context, baseURL string, now time.Time) observatoryModel {
 	m := observatoryModel{
 		SchemaVersion: observatorySchemaVersion,
 		FathomVersion: buildinfo.Version(),
@@ -295,7 +303,7 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 
 	// The model's reads of the daemon (list_services) carry the console's
 	// origin: the console reading itself is never usage (mcp.OriginConsole).
-	hc := consoleRPCClient(5 * time.Second)
+	hc := consoleRPCClientCtx(ctx, 5*time.Second)
 	svcs, err := fetchServices(hc, baseURL)
 	if err != nil {
 		m.DegradedNote = "service registry unreachable (" + err.Error() + ") — fleet tiles are not measured, never empty-as-healthy"
@@ -885,7 +893,7 @@ const obsCacheTTL = 30 * time.Second
 const obsColdRetries = 3
 
 // obsModelBuilder builds the model (tests hold it to observe a rebuild).
-var obsModelBuilder = buildObservatoryModel
+var obsModelBuilder = buildObservatoryModelCtx
 
 // dropObsCacheLocked forgets the model; the caller holds obsCache.
 func dropObsCacheLocked() {
@@ -981,7 +989,7 @@ func rebuildObservatoryModel(baseURL string, now time.Time, gen uint64, done cha
 		close(done)
 		obsCache.Unlock()
 	}()
-	m = obsModelBuilder(baseURL, now)
+	m = obsModelBuilder(context.Background(), baseURL, now)
 	built = true
 }
 

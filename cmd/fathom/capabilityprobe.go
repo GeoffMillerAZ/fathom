@@ -26,10 +26,21 @@ import (
 
 // buildCapabilityProbe gathers every observable fact the registry reads.
 func buildCapabilityProbe(baseURL, root, svc string, now time.Time) capability.Probe {
-	return buildCapabilityProbeContext(context.Background(), baseURL, root, svc, now)
+	return capabilityProbeFrom(root, svc, func() observatoryModel { return cachedObservatoryModel(baseURL, now) })
 }
 
+// buildCapabilityProbeContext is doctor's probe: it builds the model
+// inline, its daemon reads bound to ctx, never through the console's
+// cached flight. That flight is detached by design (RT-113) and bound to
+// nothing a hook controls: doctor --brief's probe, abandoned at the hook
+// deadline, left it running, and its list_services read went out after
+// the hook returned with no X-Fathom-Deadline and no hook deadline. Doctor
+// is a one-shot process, so the cache never had a next read to serve.
 func buildCapabilityProbeContext(ctx context.Context, baseURL, root, svc string, now time.Time) capability.Probe {
+	return capabilityProbeFrom(root, svc, func() observatoryModel { return obsModelBuilder(ctx, baseURL, now) })
+}
+
+func capabilityProbeFrom(root, svc string, model func() observatoryModel) capability.Probe {
 	p := capability.Probe{RepoRoot: root, Service: svc}
 	hooks, stanza := fleetWiringNotes(root)
 	p.HooksNote = hooks
@@ -50,7 +61,7 @@ func buildCapabilityProbeContext(ctx context.Context, baseURL, root, svc string,
 		p.TechPacks = len(d.Packs)
 	}
 
-	m := cachedObservatoryModelCtx(ctx, baseURL, now)
+	m := model()
 	p.LedgerSessions = m.Impact.LedgerSessions
 	p.AgentSurfaceTools = m.AgentSurfaceTools
 	p.AgentSchemaBytes = m.AgentSchemaBytes

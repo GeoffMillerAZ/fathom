@@ -30,7 +30,7 @@ func doctorFactsEnv(t *testing.T) {
 func doctorFactsModel(t *testing.T, model observatoryModel) {
 	t.Helper()
 	previous := obsModelBuilder
-	obsModelBuilder = func(string, time.Time) observatoryModel { return model }
+	obsModelBuilder = func(context.Context, string, time.Time) observatoryModel { return model }
 	t.Cleanup(func() { obsModelBuilder = previous })
 }
 

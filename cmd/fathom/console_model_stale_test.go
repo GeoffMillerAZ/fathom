@@ -27,7 +27,7 @@ func TestObservatoryModelServesStaleWhileRebuilding(t *testing.T) {
 	release := make(chan struct{})
 	var builds atomic.Int32
 	prev := obsModelBuilder
-	obsModelBuilder = func(baseURL string, now time.Time) observatoryModel {
+	obsModelBuilder = func(_ context.Context, baseURL string, now time.Time) observatoryModel {
 		n := builds.Add(1)
 		if n > 1 {
 			<-release
@@ -116,7 +116,7 @@ func TestObservatoryModelNeverServesAnEmptyModel(t *testing.T) {
 	var builds atomic.Int32
 	var panics atomic.Bool
 	prev := obsModelBuilder
-	obsModelBuilder = func(baseURL string, now time.Time) observatoryModel {
+	obsModelBuilder = func(_ context.Context, baseURL string, now time.Time) observatoryModel {
 		if n := builds.Add(1); n == 2 {
 			<-release
 		}
@@ -165,7 +165,7 @@ func TestColdModelWaitHonoursTheRequest(t *testing.T) {
 	t.Cleanup(resetObsCache)
 	release := make(chan struct{})
 	prev := obsModelBuilder
-	obsModelBuilder = func(baseURL string, now time.Time) observatoryModel {
+	obsModelBuilder = func(_ context.Context, baseURL string, now time.Time) observatoryModel {
 		<-release
 		return observatoryModel{GeneratedAt: now.UTC().Format(time.RFC3339)}
 	}

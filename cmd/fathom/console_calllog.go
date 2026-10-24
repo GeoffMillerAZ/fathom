@@ -24,6 +24,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -332,4 +333,14 @@ func consoleInProcessRoundTrip(r *http.Request) (*http.Response, bool) {
 // reader leaves them out (classifyCallLogRead).
 func consoleRPCClient(timeout time.Duration) *http.Client {
 	return &http.Client{Timeout: timeout, Transport: consoleOriginTransport{}}
+}
+
+// consoleRPCClientCtx is consoleRPCClient with every request bound to ctx
+// (doctorTransport): once ctx is done no request is sent. A ctx that is
+// never done is the plain client.
+func consoleRPCClientCtx(ctx context.Context, timeout time.Duration) *http.Client {
+	if ctx.Done() == nil {
+		return consoleRPCClient(timeout)
+	}
+	return &http.Client{Timeout: timeout, Transport: consoleOriginTransport{base: doctorTransport{ctx: ctx}}}
 }
