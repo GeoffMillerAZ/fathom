@@ -126,7 +126,7 @@ item's target; the last column also needs every level up to the target graded ex
 | T1 | language | 33 | 0 | 3 | 13 | 10 | 1 | 3 | 0 | 3 | 23 | 8 |
 | T1 | tool format | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |
 | T2 | tool format | 23 | 0 | 7 | 14 | 0 | 1 | 0 | 0 | 1 | 19 | 14 |
-| T3 | tool format | 16 | 1 | 4 | 11 | 0 | 0 | 0 | 0 | 0 | 15 | 5 |
+| T3 | tool format | 16 | 0 | 5 | 11 | 0 | 0 | 0 | 0 | 0 | 15 | 5 |
 | T4 | language | 3 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 1 | 1 | 0 |
 | T4 | tool format | 7 | 0 | 3 | 2 | 0 | 0 | 0 | 0 | 2 | 5 | 4 |
 | T5 | tool format | 8 | 0 | 1 | 5 | 0 | 0 | 0 | 0 | 2 | 5 | 2 |
@@ -134,7 +134,7 @@ item's target; the last column also needs every level up to the target graded ex
 | T6 | tool format | 4 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |
 | T7 | tool format | 4 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
 | **Total** | language | 37 | 0 | 3 | 15 | 10 | 1 | 4 | 0 | 4 | 24 | 8 |
-| **Total** | tool format | 63 | 1 | 17 | 37 | 0 | 1 | 0 | 0 | 7 | 51 | 27 |
+| **Total** | tool format | 63 | 0 | 18 | 37 | 0 | 1 | 0 | 0 | 7 | 51 | 27 |
 
 ### T1
 
@@ -222,7 +222,7 @@ item's target; the last column also needs every level up to the target graded ex
 | Azure Resource Manager templates (azuredeploy.json shape, by content) | tool format | L3 | L3 (L1 excellent, L2 good, L3 excellent) | L2 good: ref_recall 0.9448 < 0.95 |
 | AWS CDK apps (cdk.json; programs ride their language) | tool format | L2 | L2 (L1 excellent, L2 good) | L2 good: oracle tier C caps at good |
 | Flux CD resources (Kustomization, HelmRelease, GitRepository, OCIRepository) | tool format | L3 | L3 (L1 excellent, L2 good, L3 good) | L2 good: oracle tier C caps at good |
-| Timoni modules and bundles (timoni.cue, values.cue, templates/*.cue, bundle.cue, runtime.cue) | tool format | L3 | L1 (L1 good) | L2 not met: ref_precision 0.1611 < 0.9 |
+| Timoni modules and bundles (timoni.cue, values.cue, templates/*.cue, bundle.cue, runtime.cue) | tool format | L3 | L2 (L1 good, L2 good) | L3 not met: xref_recall 0.4502 < 0.6 |
 
 ### T4
 
@@ -451,7 +451,7 @@ Milestone M2 progress: languages at L1 37/45, at L1 excellent 25/35, at L2 33/25
 | Azure Resource Manager templates (azuredeploy.json shape, by content) | tool format | doc | pure-go:encoding/json (n/a) | L3 | L3 (L1 excellent, L2 good, L3 excellent) | A bicep decompile 0.47.16 | — | 2026-10-02 | at target (LB-Q-arm-templates) |
 | AWS CDK apps (cdk.json; programs ride their language) | tool format | doc | pure-go:encoding/json (n/a) | L2 | L2 (L1 excellent, L2 good) | C cdk app command reference parse 2.1144.0; A cdk context -vv 2.1144.0 | syntax | 2026-10-02 | at target (LB-Q-aws-cdk) |
 | Flux CD resources (Kustomization, HelmRelease, GitRepository, OCIRepository) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 good, L3 good) | A Flux API types, strict (kustomize-controller api v1.9.6, helm-controller api v1.6.5, source-controller api v1.9.6, notification-controller api v1.9.4) and flux build kustomization --dry-run; lines: gopkg.in/yaml.v3 flux: v2.9.6; C flux-oracle (independent gopkg.in/yaml.v3 walk) gopkg.in/yaml.v3 v3.0.1 | — | 2026-10-02 | at target (LB-Q-flux) |
-| Timoni modules and bundles (timoni.cue, values.cue, templates/*.cue, bundle.cue, runtime.cue) | tool format | native | native:cuelang.org/go (Apache-2.0) | L3 | L1 (L1 good) | A timoni 0.35.0 (cue 0.17.1) timoni 0.35.0 (cue 0.17.1); C timoni oracle: a CUE syntax walk gated by timoni 0.35.0 (cue 0.17.1) timoni 0.35.0 (cue 0.17.1) | — | 2026-10-03 | LB-Q-timoni |
+| Timoni modules and bundles (timoni.cue, values.cue, templates/*.cue, bundle.cue, runtime.cue) | tool format | native | native:cuelang.org/go (Apache-2.0) | L3 | L2 (L1 good, L2 good) | A timoni 0.35.0 (cue 0.17.1) timoni 0.35.0 (cue 0.17.1); C timoni oracle: a CUE syntax walk gated by timoni 0.35.0 (cue 0.17.1) timoni 0.35.0 (cue 0.17.1) | — | 2026-10-24 | LB-Q-timoni |
 | Kyverno policies (ClusterPolicy, Policy, PolicyException) | tool format | doc | yaml.v3 (n/a) | L2 | L3 (L1 excellent, L2 excellent, L3 good) | A Kyverno's own loaders (github.com/kyverno/kyverno v1.18.1 cmd/cli/kubectl-kyverno policy.Load and test.LoadTest) + gopkg.in/yaml.v3 for lines kyverno v1.18.1; C kyverno-oracle policy walk (independent gopkg.in/yaml.v3) over the loader-attested policies gopkg.in/yaml.v3 v3.0.1 | — | 2026-10-02 | at target (LB-Q-kyverno) |
 | OPA Gatekeeper ConstraintTemplates and constraints | tool format | doc | yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A Gatekeeper's own match (github.com/open-policy-agent/gatekeeper/v3 v3.23.1 pkg/target K8sValidationTarget.ToMatcher + Match) over the dialect's object set, the dialect's nearest-first join gatekeeper/v3 v3.23.1; A gator verify (gator version v3.23.1 (Feature State: beta), opa/v1.17.1, frameworks/v0.0.0-20260616163050-e1eaa1bf6d62) + gopkg.in/yaml.v3 for names and lines gator version v3.23.1 (Feature State: beta), opa/v1.17.1, frameworks/v0.0.0-20260616163050-e1eaa1bf6d62 | — | 2026-10-02 | at target (LB-Q-gatekeeper) |
 | Conftest policies (policy/*.rego, conftest.toml) | tool format | tags+doc | rides LB-Q-rego's grammar + pure-go:go-toml/v2 (verify at pin) | L2 | unsupported (disclosed) | — | — | — | LB-Q-conftest |
