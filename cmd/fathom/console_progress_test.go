@@ -4,14 +4,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/verify"
+	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
 // progressHistoryFixture is a schema-3 proof history: A-2 proven then
@@ -152,6 +158,80 @@ func TestConsoleProgressPage(t *testing.T) {
 	}
 	if err := json.Unmarshal(env.Model, &model); err != nil || len(model.Regressions) != 1 || model.Regressions[0].ChangedCommit != "c2" {
 		t.Fatalf("the model carries the regression with its commit: %v %s", err, env.Model)
+	}
+}
+
+func TestConsoleProgressInvariantRegressionsFromStore(t *testing.T) {
+	dir := hermeticObsEnv(t)
+	t.Setenv("FATHOM_VERIFY_LEDGER", filepath.Join(dir, "verify-ledger.jsonl"))
+	const service = "regression-service"
+	st := store.NewMemoryStore()
+	c := client.New(nil, st)
+	t.Cleanup(func() { c.Close() })
+	ctx := t.Context()
+	meta, err := json.Marshal(certify.Meta{
+		TargetKind: "invariant", TargetID: "I1", Test: "TestInvariant", TestSymbolKey: "k:TestInvariant",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := st.PutClaims(ctx, []core.SemanticClaim{{
+		ClaimID: "invariant-regression", ServiceID: service, Layer: certify.Layer, Kind: certify.Kind,
+		Subject: "invariant:I1", Tier: core.TierPreScan, Status: core.ClaimFresh, Meta: meta,
+	}}, nil); err != nil {
+		t.Fatal(err)
+	}
+	var runs []store.TestRun
+	for _, r := range []struct{ at, commit, status string }{
+		{"2026-09-01T00:00:00Z", "c1", "pass"},
+		{"2026-09-02T00:00:00Z", "c2", "fail"},
+	} {
+		runs = append(runs, store.TestRun{
+			ServiceID: service, RunDigest: r.commit, Component: "p", Suite: "unit", StartedAt: r.at, Commit: r.commit, Verdict: r.status,
+			Cases: []store.TestCase{{CaseID: "1", Name: "TestInvariant", Status: r.status, Attempts: 1, TestSymbolKey: "k:TestInvariant"}},
+		})
+	}
+	if err := st.PutTestRuns(ctx, service, runs); err != nil {
+		t.Fatal(err)
+	}
+
+	// The handler reads a generated service's real claim/run history. No
+	// conservation-plane history exists to seed: conserve persists no readings.
+	now := time.Date(2026, 9, 25, 12, 0, 0, 0, time.UTC)
+	resetObsCache()
+	t.Cleanup(resetObsCache)
+	obsCache.Lock()
+	obsCache.model = observatoryModel{GeneratedAt: now.Format(time.RFC3339), Services: []obsServiceRow{{
+		fleetServiceRow: fleetServiceRow{Service: service, Path: dir},
+	}}}
+	obsCache.at = now
+	obsCache.Unlock()
+	deps := newConsoleDeps(c, "", now)
+	deps.now = func() time.Time { return now }
+	page, ok := deps.reg.page("progress")
+	if !ok {
+		t.Fatal("progress page is not registered")
+	}
+	w := httptest.NewRecorder()
+	deps.pageHandler(page).ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/progress?svc="+service+"&format=json", nil))
+	if w.Code != http.StatusOK {
+		t.Fatalf("GET /progress = %d: %s", w.Code, w.Body.String())
+	}
+	var env struct {
+		Model progressPageModel `json:"model"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &env); err != nil {
+		t.Fatal(err)
+	}
+	if len(env.Model.Regressions) != 1 {
+		t.Fatalf("want one stored invariant regression, got %+v", env.Model.Regressions)
+	}
+	r := env.Model.Regressions[0]
+	if r.Service != service || r.Kind != "invariant" || r.ID != "I1" || r.Test != "TestInvariant" || r.ProvenCommit != "c1" || r.ChangedCommit != "c2" || r.State != "broken" {
+		t.Errorf("stored invariant regression lost identity or evidence: %+v", r)
+	}
+	if env.Model.RegressionsChecked.Invariants != 1 || len(env.Model.RegressionsChecked.Unread) != 0 {
+		t.Errorf("stored invariant was not counted as read: %+v", env.Model.RegressionsChecked)
 	}
 }
 

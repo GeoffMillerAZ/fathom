@@ -168,20 +168,33 @@ func TestAllProofRegressionsMerged(t *testing.T) {
 			{RunDigest: "d2", StartedAt: "2026-09-10T00:00:00Z", Commit: "cd2", Status: "fail"},
 			{RunDigest: "d1", StartedAt: "2026-09-03T00:00:00Z", Commit: "cd1", Status: "pass"},
 		},
+	}, {
+		Service: "svc", Kind: "invariant", TargetID: "I1", Test: "TestInvariant", Reached: true,
+		Runs: []store.TestCaseRun{
+			{RunDigest: "i2", StartedAt: "2026-09-08T00:00:00Z", Commit: "ci2", Status: "fail"},
+			{RunDigest: "i1", StartedAt: "2026-09-03T00:00:00Z", Commit: "ci1", Status: "pass"},
+		},
 	}}
 	planes := []ConservationReading{
 		{Service: "svc", Plane: "integrity", At: "2026-09-03T00:00:00Z", Commit: "p1", Verdict: "conserved"},
 		{Service: "svc", Plane: "integrity", At: "2026-09-07T00:00:00Z", Commit: "p2", Verdict: "losses"},
 	}
 	regs := AllProofRegressions(h, HistoryFilter{}, certs, planes)
-	if len(regs) != 3 {
-		t.Fatalf("want 3 merged regressions (plan, certificate, conservation), got %+v", regs)
+	if len(regs) != 4 {
+		t.Fatalf("want 4 merged regressions (plan, certificate, conservation, invariant), got %+v", regs)
 	}
-	// Newest change first: certificate (09-10) > conservation (09-07) > plan (09-06).
-	if regs[0].Kind != "certificate" || regs[1].Kind != "conservation" || regs[2].Kind != "plan" {
-		t.Fatalf("want newest-first order certificate, conservation, plan; got %+v", regs)
+	// Newest change first, retaining the commits needed to identify each change.
+	for i, want := range []struct{ kind, proven, changed string }{
+		{"certificate", "cd1", "cd2"},
+		{"invariant", "ci1", "ci2"},
+		{"conservation", "p1", "p2"},
+		{"plan", "c1", "c3"},
+	} {
+		if got := regs[i]; got.Kind != want.kind || got.ProvenCommit != want.proven || got.ChangedCommit != want.changed {
+			t.Errorf("regression %d: want %+v, got %+v", i, want, got)
+		}
 	}
-	if regs[2].ID != "A-2" {
-		t.Fatalf("the plan regression should still be PE-8's A-2: %+v", regs[2])
+	if regs[3].ID != "A-2" {
+		t.Fatalf("the plan regression should still be PE-8's A-2: %+v", regs[3])
 	}
 }
