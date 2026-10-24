@@ -924,3 +924,33 @@ in-tree layout the same way this one does — `[daemon] state_dir = "workspace"`
 invocation (hooks' fixed command lines can't pass a flag). The code index (`-store` /
 `workspace/db/`) is unaffected either way — it is the artifact fathom exists to produce,
 not runtime state, and stays under the repo's `workspace/` regardless.
+
+### Plan row weight estimates
+
+`fathom plans context docs/plans/example.md --row EX-1 --service example --store workspace/db/fathom.sqlite`
+shows estimated weight beside authored weight. The console row card shows the same estimate.
+Add `--preflight` for the difficulty profile and tier recommendation.
+
+The estimate expresses effort relative to the service's median proven row. Its formula is
+`kind baseline * (similar-row median tokens / service median tokens) + distinct explicit files + needs count + ceil(transitive callers / 10)`.
+The contract-kind baseline is 3 for reachability, 2 for symbol, certification or gone contracts,
+and 1 otherwise. Explicit files come from `path:` and `paths:`. The result snaps to the nearest
+of **1, 2, 3, 5, 8, 13**, ties upward, with a maximum of 13. Similarity excludes the row's
+own weight, so accepting twice against the same evidence leaves the estimate unchanged.
+
+Both effort medians must be finite and positive; otherwise the effort ratio defaults to 1
+and the missing evidence is labeled. Without index evidence, only the effort ratio and blast
+radius drop out. The contract baseline, file count and dependencies still count, labeled
+`estimate (no index evidence)`. Estimates are advisory and never change a plan by themselves.
+
+Preview acceptance without writing:
+
+```sh
+fathom plans weight accept EX-1 --plan docs/plans/example.md --store workspace/db/fathom.sqlite --service example --dry-run
+```
+
+Remove `--dry-run` to accept the estimate as the authored weight. `--store` and `--service`
+are optional together. Without them acceptance uses the labeled plan-fact estimate. An explicit
+`--store` that cannot be read is an error and leaves the plan unchanged. An absent weight
+prints `absent -> N`. A malformed weight is refused with the row ID. Other annotations and
+line breaks are preserved. `plans weight --help` and `plans weight accept --help` print usage.

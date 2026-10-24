@@ -435,7 +435,7 @@ func (ix *helpProofIndex) proveHelp(verb, sub string) (p helpProof) {
 	p = helpProof{Verb: verb, Sub: sub}
 	in := []string{"-h"}
 	if sub != "" {
-		in = []string{sub, "-h"}
+		in = append(strings.Fields(sub), "-h")
 	}
 	fd := ix.methods[ix.runners[verb]+".execVerb"]
 	if fd == nil {
@@ -1201,6 +1201,10 @@ func (ix *helpProofIndex) subverbLiterals(verb string) []string {
 		}
 		fd = ix.funcs[id.Name]
 	}
+	return handlerSubverbLiterals(fd)
+}
+
+func handlerSubverbLiterals(fd *ast.FuncDecl) []string {
 	if fd == nil {
 		return nil
 	}
@@ -1306,6 +1310,9 @@ func helpKeys() []helpTarget {
 		out = append(out, helpTarget{v.Name, ""})
 		for _, s := range subs[v.Name] {
 			out = append(out, helpTarget{v.Name, s})
+			for _, nested := range verbNestedSubverbs()[v.Name+" "+s] {
+				out = append(out, helpTarget{v.Name, s + " " + nested})
+			}
 		}
 	}
 	return out
@@ -1364,12 +1371,41 @@ func TestVerbHelpParseFirstProof(t *testing.T) {
 func TestVerbSubverbsMatchDispatch(t *testing.T) {
 	ix := loadHelpIndex(t)
 	subs := verbSubverbs()
+	for name := range subs {
+		if _, ok := lookupVerb(name); !ok {
+			t.Errorf("verbSubverbs names unregistered verb %q", name)
+		}
+	}
 	for _, v := range verbs() {
 		got := append([]string(nil), subs[v.Name]...)
 		sort.Strings(got)
 		want := ix.subverbLiterals(v.Name)
 		if !reflect.DeepEqual(got, want) && !(len(got) == 0 && len(want) == 0) {
 			t.Errorf("%s: verbSubverbs %v, the handler dispatches %v", v.Name, got, want)
+		}
+	}
+	var parents []string
+	for parent := range verbNestedSubverbs() {
+		parents = append(parents, parent)
+	}
+	sort.Strings(parents)
+	for _, parent := range parents {
+		verb, sub, _ := strings.Cut(parent, " ")
+		if _, ok := lookupVerb(verb); !ok || !isSubverb(verb, sub) {
+			t.Errorf("nested subverbs name unregistered parent %q", parent)
+			continue
+		}
+		p := ix.proveHelp(verb, sub)
+		if len(p.Chain) == 0 {
+			t.Errorf("no dispatch chain for nested parent %q", parent)
+			continue
+		}
+		fd := ix.funcs[p.Chain[len(p.Chain)-1]]
+		got := append([]string(nil), verbNestedSubverbs()[parent]...)
+		sort.Strings(got)
+		want := handlerSubverbLiterals(fd)
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("%s: nested subverbs %v, the handler dispatches %v", parent, got, want)
 		}
 	}
 }

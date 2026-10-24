@@ -7,14 +7,17 @@ package main
 // ?format=fragment is the body of the plan page's drawer.
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
 	"html"
 	"html/template"
+	"io"
 	"io/fs"
 	"net/http"
 	"net/url"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -80,9 +83,21 @@ func buildPlanRowPage(cr *consoleRequest) (consoleOut, error) {
 			sections[verb] = verifyJSONDoc(narrowed, verifyGateFailures(narrowed, false, false))
 		}
 	}
-	pre, preWhy := buildPlanRowPreflight(cr, sr, plan, row)
+	task := verify.Task{}
+	if f, err := os.Open(plan.Path); err == nil {
+		selected, err := readWeightRow(f, row.Line)
+		_ = f.Close()
+		if err == nil && selected.ID == id {
+			task = selected
+		}
+	}
+	pre, preWhy, estProfile := buildPlanRowPreflight(cr, sr, plan, row, task.Weight)
+	weight := console.EstimateRowWeight(console.RowWeightInput{ContractKind: contract.Kind})
+	if task.ID == id {
+		weight = estimatePlanTask(task, estProfile)
+	}
 	body := func() string {
-		return renderRowEvidence(view, verb, "plans:"+sr.Service) + `<div class="mt-4">` + renderPreflightPanel(pre, preWhy, sr, plan, row, "plans:"+sr.Service) + `</div>`
+		return renderRowEvidence(view, verb, "plans:"+sr.Service, weight) + `<div class="mt-4">` + renderPreflightPanel(pre, preWhy, sr, plan, row, "plans:"+sr.Service) + `</div>`
 	}
 	title := id + " · " + row.Title
 	return consoleOut{
@@ -96,7 +111,7 @@ func buildPlanRowPage(cr *consoleRequest) (consoleOut, error) {
 			{Label: id},
 		},
 		Meta:  []string{fmt.Sprintf("%s:%d", plan.Rel, row.Line), stateBadge[view.State].Label, view.Contract.Kind},
-		Model: planRowModel{RowEvidenceView: view, Preflight: pre, PreflightErr: preWhy}, Sections: sections, Verbs: []string{verb},
+		Model: planRowModel{RowEvidenceView: view, Preflight: pre, PreflightErr: preWhy, Weight: weight}, Sections: sections, Verbs: []string{verb},
 		Body: body,
 		// The drawer's fragment is a person opening this row's evidence
 		// over the plan page: a view of this page (UX-M4 reads it).
@@ -108,10 +123,44 @@ func buildPlanRowPage(cr *consoleRequest) (consoleOut, error) {
 			// The drawer's fragment: the same panels, not live regions (the
 			// plan page around it follows the plan's source already).
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			_, _ = w.Write([]byte(renderRowEvidence(view, verb, "")))
+			_, _ = w.Write([]byte(renderRowEvidence(view, verb, "", weight)))
 			return true
 		},
 	}, nil
+}
+
+// readWeightRow retains only the selected row and its indented continuation.
+// The plan grammar decides where its annotation ends. It does not load the
+// plan a second time just to recover weight/needs, nor read rows after it.
+func readWeightRow(r io.Reader, line int) (verify.Task, error) {
+	reader := bufio.NewReader(r)
+	var row strings.Builder
+	for n := 1; ; n++ {
+		text, err := reader.ReadString('\n')
+		if err != nil && err != io.EOF {
+			return verify.Task{}, err
+		}
+		if n >= line {
+			if n > line && len(text) > 0 && text[0] != ' ' && text[0] != '\t' {
+				break
+			}
+			row.WriteString(text)
+			if ann, _, _ := verify.ParseAnnotation(row.String()); len(ann) > 0 {
+				break
+			}
+		}
+		if err == io.EOF {
+			break
+		}
+	}
+	raw := []byte(row.String())
+	tasks := verify.ParseMarkdownPlan("", raw).Tasks
+	if len(tasks) == 0 {
+		return verify.Task{}, fmt.Errorf("row annotation unavailable")
+	}
+	task := tasks[0]
+	authoredTaskWeight(&task, raw)
+	return task, nil
 }
 
 // rowReach is the call graph's answer for a row's symbol: every test that
@@ -179,11 +228,16 @@ func trimServiceKey(k string) string {
 
 // renderRowEvidence is the row page's body and the drawer's fragment; live
 // names the source its panels follow ("" for the fragment).
-func renderRowEvidence(v console.RowEvidenceView, verb, live string) string {
+func renderRowEvidence(v console.RowEvidenceView, verb, live string, estimates ...console.RowWeightEstimate) string {
 	var b strings.Builder
 	b.WriteString(`<div class="flex flex-col gap-4" data-row-evidence data-row-id="` + html.EscapeString(v.Row.ID) + `">`)
 
 	items := []chrome.DescItem{{Term: "kind", Detail: v.Contract.Kind}}
+	weight := console.EstimateRowWeight(console.RowWeightInput{ContractKind: v.Contract.Kind})
+	if len(estimates) > 0 {
+		weight = estimates[0]
+	}
+	items = append(items, chrome.DescItem{Term: "weight", Detail: weight.Summary()})
 	for _, f := range v.Contract.Fields {
 		items = append(items, chrome.DescItem{Term: f.Name, DetailHTML: template.HTML(`<span class="font-mono text-xs [overflow-wrap:anywhere]">` + html.EscapeString(f.Value) + `</span>`)})
 	}

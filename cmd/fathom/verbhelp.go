@@ -39,26 +39,43 @@ func isHelpToken(a string) bool {
 }
 
 // helpRequest reports whether args (the arguments after the verb) ask for
-// help: one help token (sub ""), or a subverb of the verb then one help
-// token.
+// help: a registered subcommand path (possibly empty), then one help token.
 func helpRequest(verb string, args []string) (sub string, ok bool) {
-	switch {
-	case len(args) == 1 && isHelpToken(args[0]):
-		return "", true
-	case len(args) == 2 && isHelpToken(args[1]) && isSubverb(verb, args[0]):
-		return args[0], true
+	if len(args) == 0 || !isHelpToken(args[len(args)-1]) {
+		return "", false
 	}
-	return "", false
+	sub = strings.Join(args[:len(args)-1], " ")
+	return sub, sub == "" || isSubverb(verb, sub)
 }
 
-// isSubverb reports whether sub is one of verb's subverbs.
+// isSubverb reports whether sub is a registered subcommand path of verb.
 func isSubverb(verb, sub string) bool {
-	for _, s := range verbSubverbs()[verb] {
-		if s == sub {
-			return true
-		}
+	parts := strings.Fields(sub)
+	if len(parts) == 0 {
+		return false
 	}
-	return false
+	parent := verb
+	for _, part := range parts {
+		found := false
+		for _, s := range subverbsFor(parent) {
+			if s == part {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+		parent += " " + part
+	}
+	return true
+}
+
+func subverbsFor(parent string) []string {
+	if strings.Contains(parent, " ") {
+		return verbNestedSubverbs()[parent]
+	}
+	return verbSubverbs()[parent]
 }
 
 // verbSubverbs returns, per verb, the subverbs it dispatches: data kept
@@ -87,7 +104,7 @@ func verbSubverbs() map[string][]string {
 		"map":          {"new", "append", "name", "include", "compose", "show", "list"},
 		"metrics":      {"spend", "traffic", "channels", "interventions", "series", "rollup", "rotate", "impact", "catches", "sessions", "load", "instrument", "flywheel", "retro", "rate", "arm"},
 		"obligations":  {"promote"},
-		"plans":        {"status", "next", "history", "context", "outcome", "lease", "leases", "archive", "restore", "lines"},
+		"plans":        {"status", "next", "history", "context", "outcome", "lease", "leases", "archive", "restore", "lines", "weight"},
 		"plugin":       {"render"},
 		"provenance":   {"note"},
 		"purge":        {"history"},
@@ -103,6 +120,12 @@ func verbSubverbs() map[string][]string {
 		"trace":        {"export", "verify"},
 		"scope":        {"list", "suppress", "unsuppress", "preview"},
 	}
+}
+
+// verbNestedSubverbs registers children of subcommand paths separately from
+// verbSubverbs, whose keys must always be registered top-level verbs.
+func verbNestedSubverbs() map[string][]string {
+	return map[string][]string{"plans weight": {"accept"}}
 }
 
 // verbHelpHeaderOnly names the verbs and subverbs ("verb" or "verb sub")
@@ -174,7 +197,7 @@ func runVerbHelp(stdout io.Writer, v verb, sub string) int {
 	}
 	in := []string{"-h"}
 	if sub != "" {
-		in = []string{sub, "-h"}
+		in = append(strings.Fields(sub), "-h")
 	}
 	// The proven ErrHelp path: Parse prints the defaults to the handler's
 	// stderr, bound here to stdout, and the handler returns its parse-error
@@ -188,6 +211,9 @@ func runVerbHelp(stdout io.Writer, v verb, sub string) int {
 // subverbs.
 func printVerbHelp(w io.Writer, v verb, sub string) {
 	subs := verbSubverbs()[v.Name]
+	if sub != "" {
+		subs = verbNestedSubverbs()[v.Name+" "+sub]
+	}
 	// name is the invocation help describes, as its usage line spells it.
 	name := v.Name
 	switch {
@@ -203,10 +229,10 @@ func printVerbHelp(w io.Writer, v verb, sub string) {
 	fmt.Fprintf(w, "Usage: fathom %s [flags]\n", name)
 	fmt.Fprintln(w)
 	fmt.Fprintf(w, "%s: %s\n", v.Name, v.Summary)
-	if len(subs) > 0 && sub == "" {
+	if len(subs) > 0 {
 		fmt.Fprintln(w)
 		fmt.Fprintf(w, "Subcommands: %s\n", strings.Join(subs, ", "))
-		fmt.Fprintf(w, "Run `fathom %s <subcommand> --help` for a subcommand's flags.\n", v.Name)
+		fmt.Fprintf(w, "Run `fathom %s <subcommand> --help` for a subcommand's flags.\n", strings.TrimSuffix(name, " <subcommand>"))
 	}
 	fmt.Fprintln(w)
 	fmt.Fprintf(w, "Run `fathom %s` with its flags to execute it; -h, --help, -help and help only print this text.\n", name)

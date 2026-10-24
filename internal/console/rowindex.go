@@ -126,6 +126,8 @@ type RowQuery struct {
 	Zones   []string
 	Retries int
 	Weight  int
+	// ExcludeWeight omits the weight dimension when estimating that value.
+	ExcludeWeight bool
 }
 
 // SimilarRow is one nearest proven change with its measured effort.
@@ -161,6 +163,9 @@ func (ix *RowFeatureIndex) Similar(q RowQuery, k int) []SimilarRow {
 	for _, r := range ix.rows {
 		d := 0.0
 		for _, i := range similarDims {
+			if i == 5 && q.ExcludeWeight {
+				continue
+			}
 			d += (r.vec[i] - qv[i]) * (r.vec[i] - qv[i])
 		}
 		shared := 0

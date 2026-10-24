@@ -307,24 +307,48 @@ func preflightPortsAtSite(ports *decide.Ports) *decide.Ports {
 // runPreflight prints the preflight of task to stdout. Direct mode only
 // (--store): the profile reads the index's call graph, obligations and
 // certifications, which the daemon path does not expose to the CLI.
-func runPreflight(ctx context.Context, task verify.Task, planFile, service, storePath string, score bool, stdout, stderr io.Writer) {
-	if storePath == "" {
-		fmt.Fprintln(stdout, "\npreflight: needs direct mode — pass --store DB (the daemon path does not serve the call graph, obligations and certifications a profile reads)")
+func runPreflight(ctx context.Context, task verify.Task, planFile, service, storePath string, score, details bool, stdout, stderr io.Writer) {
+	in, err := rowWeightPreflightInput(ctx, task, planFile, service, storePath, time.Now().UTC())
+	profile := console.DifficultyProfile(in)
+	est := in
+	est.ExcludeWeight = true
+	fmt.Fprintln(stdout, estimatePlanTask(task, console.DifficultyProfile(est)).Summary())
+	if err != nil {
+		if details {
+			fmt.Fprintf(stdout, "\npreflight: %v\n", err)
+		}
 		return
+	}
+	if !details {
+		return
+	}
+	sc := console.Value[console.ScoreReading]{}
+	if score {
+		sc = console.PreflightScoreFor(ctx, preflightPortsAtSite(preflightOpenPorts(stderr)), profile)
+	}
+	outcomes, _ := console.PreflightOutcomes(ctx, preflightLedgerPath(), preflightLedgerTail)
+	fmt.Fprint(stdout, renderPreflightText(console.Preflight(in, sc, filterOutcomes(outcomes, service)), planFile, score))
+}
+
+// rowWeightPreflightInput reuses U6's local evidence for previews and acceptance.
+// An unavailable index is an advisory baseline, never a fabricated zero.
+func rowWeightPreflightInput(ctx context.Context, task verify.Task, planFile, service, storePath string, now time.Time) (console.PreflightInput, error) {
+	if storePath == "" {
+		return console.PreflightInput{}, fmt.Errorf("needs direct mode — pass --store DB (the daemon path does not serve the call graph, obligations and certifications a profile reads)")
+	}
+	if _, err := os.Stat(storePath); err != nil {
+		return console.PreflightInput{}, fmt.Errorf("opening store: %w", err)
 	}
 	c, err := client.NewConstantClient(client.ModeLocal, storePath)
 	if err != nil {
-		fmt.Fprintf(stdout, "\npreflight: opening store %q: %v\n", storePath, err)
-		return
+		return console.PreflightInput{}, err
 	}
 	defer c.Close()
 	root := verifyRepoRoot()
 	src, err := newPreflightSources(ctx, c, service, root)
 	if err != nil {
-		fmt.Fprintf(stdout, "\npreflight: %v\n", err)
-		return
+		return console.PreflightInput{}, err
 	}
-	now := time.Now().UTC()
 	work := preflightWork(ctx, service, root, now)
 	rel := planRelToRoot(root, planFile)
 	retries, weight, _ := console.RowProofFacts(work.history, service, rel, task.ID)
@@ -332,14 +356,7 @@ func runPreflight(ctx context.Context, task verify.Task, planFile, service, stor
 		weight = task.Weight
 	}
 	row := console.PreflightRow{Service: service, Plan: rel, ID: task.ID, Title: task.Title, Symbol: task.Expect.Symbol, Package: task.Expect.Package, Weight: weight, Retries: retries}
-	in := src.preflightInput(ctx, row, work.changes, work.zones)
-	profile := console.DifficultyProfile(in)
-	sc := console.Value[console.ScoreReading]{}
-	if score {
-		sc = console.PreflightScoreFor(ctx, preflightPortsAtSite(preflightOpenPorts(stderr)), profile)
-	}
-	outcomes, _ := console.PreflightOutcomes(ctx, preflightLedgerPath(), preflightLedgerTail)
-	fmt.Fprint(stdout, renderPreflightText(console.Preflight(in, sc, filterOutcomes(outcomes, service)), planFile, score))
+	return src.preflightInput(ctx, row, work.changes, work.zones), nil
 }
 
 // planRelToRoot names a plan file relative to the repository root when it

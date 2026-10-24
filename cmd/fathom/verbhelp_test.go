@@ -72,7 +72,7 @@ func TestEveryVerbHelpExitsZeroWithoutRunning(t *testing.T) {
 		p := ix.proveHelp(k.verb, k.sub)
 		base := []string{k.verb}
 		if k.sub != "" {
-			base = append(base, k.sub)
+			base = append(base, strings.Fields(k.sub)...)
 		}
 		var forms [][]string
 		for _, h := range []string{"-h", "--help", "-help", "help"} {
@@ -104,11 +104,13 @@ func TestEveryVerbHelpExitsZeroWithoutRunning(t *testing.T) {
 					t.Errorf("%v: stdout does not list -%s (%s help):\n%s", args, f.Name, p.Kind, out.String())
 				}
 			}
-			if k.sub == "" {
-				for _, s := range subs[k.verb] {
-					if !strings.Contains(out.String(), s) {
-						t.Errorf("%v: stdout does not list subverb %q", args, s)
-					}
+			children := subs[k.verb]
+			if k.sub != "" {
+				children = verbNestedSubverbs()[k.verb+" "+k.sub]
+			}
+			for _, s := range children {
+				if !strings.Contains(out.String(), s) {
+					t.Errorf("%v: stdout does not list subverb %q", args, s)
 				}
 			}
 		}
@@ -205,5 +207,40 @@ func TestSingleDashLongFlagsStillDispatch(t *testing.T) {
 	}
 	if !isHelpToken("-help") || isHelpToken("-dry-run") || isHelpToken("-plan") {
 		t.Error("isHelpToken misclassifies")
+	}
+}
+
+func TestVerbHelpNestedCommands(t *testing.T) {
+	dir := helpSandbox(t)
+	for _, base := range [][]string{{"plans", "weight"}, {"plans", "weight", "accept"}} {
+		forms := [][]string{append([]string{"help"}, base...)}
+		for _, h := range []string{"-h", "--help", "-help", "help"} {
+			forms = append(forms, append(append([]string(nil), base...), h))
+		}
+		for _, args := range forms {
+			var out, errs bytes.Buffer
+			in := &recordingReader{}
+			if code := runWithStdin(args, in, &out, &errs); code != 0 || errs.Len() != 0 || in.reads != 0 || !strings.Contains(out.String(), strings.Join(base, " ")) {
+				t.Errorf("%v: exit %d: %s %s; stdin reads %d", args, code, &out, &errs, in.reads)
+			}
+			if len(base) == 3 {
+				for _, flag := range []string{"plan", "store", "service", "dry-run"} {
+					if !helpFlagLine(flag).MatchString(out.String()) {
+						t.Errorf("%v omits -%s: %s", args, flag, &out)
+					}
+				}
+			} else if !strings.Contains(out.String(), "Subcommands: accept") {
+				t.Errorf("%v omits nested subcommands: %s", args, &out)
+			}
+		}
+	}
+	for _, args := range [][]string{{"help", "plans", "weight", "bogus"}, {"plans", "weight", "bogus", "--help"}} {
+		var out, errs bytes.Buffer
+		if code := runWithStdin(args, &recordingReader{}, &out, &errs); code == 0 || out.Len() != 0 {
+			t.Errorf("unknown nested command %v: exit %d: %s %s", args, code, &out, &errs)
+		}
+	}
+	if got := dirEntries(t, dir); len(got) != 0 {
+		t.Errorf("nested help created files: %v", got)
 	}
 }

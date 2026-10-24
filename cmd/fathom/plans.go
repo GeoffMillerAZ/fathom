@@ -36,7 +36,7 @@ import (
 //	                against the integration branch (SV-2)
 func cmdPlans(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "error: plans requires a subcommand (status, next, history, archive, restore, lines)")
+		fmt.Fprintln(stderr, "error: plans requires a subcommand (status, next, history, archive, restore, lines, weight)")
 		return 1
 	}
 	switch args[0] {
@@ -60,8 +60,10 @@ func cmdPlans(args []string, stdout, stderr io.Writer) int {
 		return cmdPlansRestore(args[1:], stdout, stderr)
 	case "lines":
 		return cmdPlansLines(args[1:], stdout, stderr)
+	case "weight":
+		return cmdPlansWeightAccept(args[1:], stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "error: unknown plans subcommand %q (want status, next, history, context, outcome, lease, leases, archive, restore, lines)\n", args[0])
+		fmt.Fprintf(stderr, "error: unknown plans subcommand %q (want status, next, history, context, outcome, lease, leases, archive, restore, lines, weight)\n", args[0])
 		return 1
 	}
 }

@@ -81,21 +81,22 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return 0
 	}
 	v, ok := lookupVerb(args[0])
-	if ok && v.Name == "help" && (len(args) == 2 || len(args) == 3) && !isHelpToken(args[1]) {
-		// `fathom help <verb> [<sub>]` is `fathom <verb> [<sub>] --help`.
+	if ok && v.Name == "help" && len(args) >= 2 && !isHelpToken(args[1]) {
+		// `fathom help <verb> [<sub> ...]` is the same path followed by --help.
 		hv, found := lookupVerb(args[1])
 		if !found {
 			fmt.Fprintf(stderr, "error: unknown subcommand %q\n", args[1])
 			printUsage(stderr)
 			return 1
 		}
-		sub := ""
-		if len(args) == 3 && !isHelpToken(args[2]) {
-			if !isSubverb(hv.Name, args[2]) {
-				fmt.Fprintf(stderr, "error: unknown %s subcommand %q (%s)\n", hv.Name, args[2], strings.Join(verbSubverbs()[hv.Name], ", "))
-				return 1
-			}
-			sub = args[2]
+		path := args[2:]
+		if len(path) > 0 && isHelpToken(path[len(path)-1]) {
+			path = path[:len(path)-1]
+		}
+		sub := strings.Join(path, " ")
+		if sub != "" && !isSubverb(hv.Name, sub) {
+			fmt.Fprintf(stderr, "error: unknown %s subcommand %q (%s)\n", hv.Name, sub, strings.Join(verbSubverbs()[hv.Name], ", "))
+			return 1
 		}
 		return runVerbHelp(stdout, hv, sub)
 	}

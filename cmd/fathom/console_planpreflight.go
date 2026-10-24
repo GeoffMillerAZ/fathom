@@ -23,30 +23,36 @@ import (
 // its preflight when one could be computed.
 type planRowModel struct {
 	console.RowEvidenceView
-	Preflight    *console.PreflightModel `json:"preflight,omitempty"`
-	PreflightErr string                  `json:"preflight_error,omitempty"`
+	Preflight    *console.PreflightModel   `json:"preflight,omitempty"`
+	PreflightErr string                    `json:"preflight_error,omitempty"`
+	Weight       console.RowWeightEstimate `json:"weight"`
 }
 
 // buildPlanRowPreflight computes the row's preflight over the daemon's
 // graph store and the same proven-change memo /work reads. The returned
 // string is why no preflight could be computed, else "".
-func buildPlanRowPreflight(cr *consoleRequest, sr serviceRoot, plan console.PlanFacts, row console.PlanRowFact) (*console.PreflightModel, string) {
+func buildPlanRowPreflight(cr *consoleRequest, sr serviceRoot, plan console.PlanFacts, row console.PlanRowFact, authoredWeight ...int) (*console.PreflightModel, string, console.Profile) {
 	if cr.deps == nil || cr.deps.c == nil {
-		return nil, errNoStore.Error()
+		return nil, errNoStore.Error(), console.Profile{}
 	}
 	ctx := cr.r.Context()
 	snap, _, g, _, err := consoleBothGraph(ctx, cr.deps.c, sr.Service)
 	if err != nil {
-		return nil, "the call graph could not be read: " + err.Error()
+		return nil, "the call graph could not be read: " + err.Error(), console.Profile{}
 	}
 	work := memoWork(ctx, cr, cr.model(), sr)
 	src := &preflightSources{c: cr.deps.c, graph: g, nodes: snap.Nodes, service: sr.Service, root: sr.Root}
 	retries, weight, _ := console.RowProofFacts(work.history, sr.Service, plan.Rel, row.ID)
+	if len(authoredWeight) > 0 && authoredWeight[0] > 0 {
+		weight = authoredWeight[0]
+	}
 	prow := console.PreflightRow{Service: sr.Service, Plan: plan.Rel, ID: row.ID, Title: row.Title, Symbol: row.Symbol, Package: row.Package, Weight: weight, Retries: retries}
 	in := src.preflightInput(ctx, prow, work.changes, work.zones)
 	outcomes, _ := console.PreflightOutcomes(ctx, preflightLedgerPath(), preflightLedgerTail)
 	m := console.Preflight(in, console.Value[console.ScoreReading]{}, filterOutcomes(outcomes, sr.Service))
-	return &m, ""
+	est := in
+	est.ExcludeWeight = true
+	return &m, "", console.DifficultyProfile(est)
 }
 
 // renderPreflightPanel renders the row's preflight as one panel.

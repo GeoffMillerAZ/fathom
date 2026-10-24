@@ -83,9 +83,8 @@ func cmdPlansContext(args []string, stdout, stderr io.Writer) int {
 	idx, idxErr := openCtxIndex(*service, *storePath, *url)
 	segs := renderContextPack(*task, planFile, idx, idxErr)
 	fmt.Fprint(stdout, budgetContextPack(segs, *budget))
-	if *preflight || *score {
-		runPreflight(context.Background(), *task, planFile, *service, *storePath, *score, stdout, stderr)
-	}
+	authoredTaskWeight(task, raw)
+	runPreflight(context.Background(), *task, planFile, *service, *storePath, *score, *preflight || *score, stdout, stderr)
 	return 0
 }
 

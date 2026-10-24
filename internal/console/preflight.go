@@ -139,6 +139,9 @@ type PreflightInput struct {
 	Interest InterestModel
 	// Index is WI-15's nearest-neighbour index; nil when none was built.
 	Index *RowFeatureIndex
+	// ExcludeWeight prevents an estimate from selecting its own evidence.
+	// The authored weight remains available to the difficulty rules.
+	ExcludeWeight bool
 }
 
 // LevelCounts counts governing rules per level.
@@ -305,8 +308,11 @@ func DifficultyProfile(in PreflightInput) Profile {
 	case in.Index == nil || in.Index.Len() == 0:
 		p.Similar = Absent[SimilarEffort]("no proven change with measured effort to compare with")
 	default:
-		near := in.Index.Similar(RowQuery{Zones: zones, Retries: p.Row.Retries, Weight: p.Row.Weight}, PreflightK)
+		near := in.Index.Similar(RowQuery{Zones: zones, Retries: p.Row.Retries, Weight: p.Row.Weight, ExcludeWeight: in.ExcludeWeight}, PreflightK)
 		se := SimilarEffort{K: PreflightK, Rows: near, Basis: PreflightBasis}
+		if in.ExcludeWeight {
+			se.Basis = strings.Replace(PreflightBasis, "claimed-unproven readings and plan weight", "claimed-unproven readings, excluding plan weight for estimation", 1)
+		}
 		var tok, turns, wall []float64
 		first := 0
 		for _, r := range near {
