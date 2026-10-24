@@ -125,7 +125,7 @@ item's target; the last column also needs every level up to the target graded ex
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | T1 | language | 33 | 0 | 3 | 13 | 10 | 1 | 3 | 0 | 3 | 23 | 8 |
 | T1 | tool format | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |
-| T2 | tool format | 23 | 0 | 7 | 14 | 0 | 1 | 0 | 0 | 1 | 19 | 14 |
+| T2 | tool format | 23 | 0 | 6 | 15 | 0 | 1 | 0 | 0 | 1 | 20 | 15 |
 | T3 | tool format | 16 | 1 | 4 | 11 | 0 | 0 | 0 | 0 | 0 | 15 | 5 |
 | T4 | language | 3 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 1 | 1 | 0 |
 | T4 | tool format | 7 | 0 | 3 | 2 | 0 | 0 | 0 | 0 | 2 | 5 | 4 |
@@ -134,7 +134,7 @@ item's target; the last column also needs every level up to the target graded ex
 | T6 | tool format | 4 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |
 | T7 | tool format | 4 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
 | **Total** | language | 37 | 0 | 3 | 15 | 10 | 1 | 4 | 0 | 4 | 24 | 8 |
-| **Total** | tool format | 63 | 1 | 17 | 37 | 0 | 1 | 0 | 0 | 7 | 51 | 27 |
+| **Total** | tool format | 63 | 1 | 16 | 38 | 0 | 1 | 0 | 0 | 7 | 52 | 28 |
 
 ### T1
 
@@ -198,7 +198,7 @@ item's target; the last column also needs every level up to the target graded ex
 | Jenkins pipelines (Jenkinsfile, *.jenkinsfile) | tool format | L3 | L3 (L1 good, L2 good, L3 good) | L1 good: oracle tier C caps at good |
 | Azure Pipelines (azure-pipelines.yml, templates) | tool format | L3 | unsupported | no dialect (LB-Q-azure-pipelines) |
 | CircleCI (.circleci/config.yml) | tool format | L2 | L2 (L1 good, L2 good) | L1 good: sym_precision 0.9796 < 0.98 |
-| Conan recipes and lockfiles (conanfile.txt, conanfile.py, conan.lock, conandata.yml) | tool format | L3 | L2 (L1 excellent, L2 excellent) | L3 not met: xref_precision not measured |
+| Conan recipes and lockfiles (conanfile.txt, conanfile.py, conan.lock, conandata.yml) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | vcpkg manifests (vcpkg.json, vcpkg-configuration.json) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | Meson builds (meson.build, meson.options, meson_options.txt) | tool format | L3 | L2 (L1 excellent, L2 excellent) | L3 not met: xref_precision not measured |
 | Clang compilation databases (compile_commands.json) | tool format | L2 | L2 (L1 excellent, L2 excellent) | excellent at target |
@@ -282,8 +282,8 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 reached (languages at L1 37, L1 excellent 25, L2 33, L3 27, L4 10; tool formats at target 60)
-Milestone M2 progress: languages at L1 37/45, at L1 excellent 25/35, at L2 33/25, at L3 27/14, at L4 10/10; tool formats at target 60/30
+Milestone M1 reached (languages at L1 37, L1 excellent 25, L2 33, L3 27, L4 10; tool formats at target 61)
+Milestone M2 progress: languages at L1 37/45, at L1 excellent 25/35, at L2 33/25, at L3 27/14, at L4 10/10; tool formats at target 61/30
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -443,7 +443,7 @@ Milestone M2 progress: languages at L1 37/45, at L1 excellent 25/35, at L2 33/25
 | Laravel Blade templates (.blade.php) | language | tags | EmranMR/tree-sitter-blade (MIT (verify at pin)) | L3 | unsupported (disclosed) | — | — | — | LB-Q-blade |
 | Jinja2 templates (.j2 .jinja .jinja2, templates/*.html by sniff) | language | tags | a Jinja tree-sitter grammar (verify at pin, licence allowlist) (verify at pin) | L3 | unsupported (disclosed) | — | — | — | LB-Q-jinja2 |
 | Serverless Framework (serverless.yml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L2 | L2 (L1 excellent, L2 excellent) | A serverless print 3.40.0 | syntax | 2026-10-09 | at target (LB-Q-serverless) |
-| Conan recipes and lockfiles (conanfile.txt, conanfile.py, conan.lock, conandata.yml) | tool format | tags+doc | tree-sitter/tree-sitter-python + pure-go:INI, encoding/json, gopkg.in/yaml.v3 (verify at pin) | L3 | L2 (L1 excellent, L2 excellent) | A conan graph info --format json -nr (macOS, Linux, Windows and mingw host+build profiles; the versions of a recipe folder at default options; each option at each of its other values, and every boolean all True and all False, at the newest and oldest version) Conan version 2.33.0 | syntax | 2026-10-02 | LB-Q-conan |
+| Conan recipes and lockfiles (conanfile.txt, conanfile.py, conan.lock, conandata.yml) | tool format | tags+doc | tree-sitter/tree-sitter-python + pure-go:INI, encoding/json, gopkg.in/yaml.v3 (verify at pin) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A conan graph info --format json -nr (macOS, Linux, Windows and mingw host+build profiles; the versions of a recipe folder at default options; each option at each of its other values, and every boolean all True and all False, at the newest and oldest version) Conan version 2.33.0 | syntax | 2026-10-24 | at target (LB-Q-conan) |
 | vcpkg manifests (vcpkg.json, vcpkg-configuration.json) | tool format | doc | pure-go:encoding/json (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A vcpkg x-package-info --x-json vcpkg package management program version 2026-09-26-Homebrew; A vcpkg x-package-info --x-json (dependencies joined by name to the attested manifests of the subject) vcpkg package management program version 2026-09-26-Homebrew | syntax | 2026-10-02 | at target (LB-Q-vcpkg) |
 | Meson builds (meson.build, meson.options, meson_options.txt) | tool format | tags | tree-sitter-grammars/tree-sitter-meson (MIT) | L3 | L2 (L1 excellent, L2 excellent) | A meson mparser + introspect 1.12.1 | file | 2026-10-01 | LB-Q-meson |
 | Clang compilation databases (compile_commands.json) | tool format | doc | pure-go:encoding/json (n/a) | L2 | L2 (L1 excellent, L2 excellent) | A libclang CompilationDatabase libclang 18.1.1 (pip) | syntax | 2026-10-01 | at target (LB-Q-compile-commands) |
