@@ -459,7 +459,7 @@ func sedInPlaceWriteArgs(args []string) (targets []string, inPlace, uncertain bo
 			continue
 		}
 		switch {
-		case a == "--in-place" || strings.HasPrefix(a, "--in-place="):
+		case sedLongInPlace(a):
 			inPlace = true
 			continue
 		case a == "--quiet" || a == "--silent" || a == "--regexp-extended" ||
@@ -502,7 +502,7 @@ func sedInPlaceWriteArgs(args []string) (targets []string, inPlace, uncertain bo
 					i++
 				}
 				j = len(a) // the remainder is the line length
-			case 'i':
+			case 'i', 'I':
 				inPlace = true
 				// GNU attaches a backup suffix; BSD also accepts a separate
 				// empty or .suffix word. A lone dotfile is a GNU operand.
@@ -556,6 +556,14 @@ func sedInPlaceWriteArgs(args []string) (targets []string, inPlace, uncertain bo
 	return targets, inPlace, uncertain
 }
 
+// sedLongInPlace reports whether a is GNU sed's --in-place, an unambiguous
+// abbreviation of it (--i is enough: no other long option starts so), or
+// either with an attached =SUFFIX.
+func sedLongInPlace(a string) bool {
+	name, _, _ := strings.Cut(a, "=")
+	return len(name) >= 3 && strings.HasPrefix("--in-place", name)
+}
+
 // An unknown option may take a value, so it cannot safely name operands.
 // Still recognize a possible in-place flag later, including BSD -I, to
 // preserve the hook's cannot-tell fallback rather than silently losing it.
@@ -564,8 +572,8 @@ func sedRemainingInPlace(args []string) bool {
 		if a == "--" {
 			break
 		}
-		if strings.HasPrefix(a, "--in-place") || a == "-I" ||
-			(strings.HasPrefix(a, "-") && !strings.HasPrefix(a, "--") && strings.Contains(a[1:], "i")) {
+		if sedLongInPlace(a) ||
+			(strings.HasPrefix(a, "-") && !strings.HasPrefix(a, "--") && strings.ContainsAny(a[1:], "iI")) {
 			return true
 		}
 	}

@@ -467,7 +467,7 @@ func TestEditHookBashWriteSedSafety(t *testing.T) {
 		{"failed sed", `sed -i 's/a/b/' missing`, "", true},
 		{"quiet", `sed --quiet -i 's/a/b/' f`, "f", false},
 		{"unknown before in-place", `sed --unknown value -i 's/a/b/' f`, "", true},
-		{"BSD capital in-place", `sed -I '' 's/a/b/' f`, "", true},
+		{"BSD capital in-place", `sed -I '' 's/a/b/' f`, "f", false},
 		{"find plus", `find . -exec sed -i '' 's/a/b/' {} +`, "", true},
 		{"find semicolon", `find . -exec sed -i '' 's/a/b/' {} \;`, "", true},
 		{"xargs", `xargs -I{} sed -i 's/a/b/' {}`, "", true},
