@@ -26,8 +26,10 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -57,6 +59,27 @@ func threadsHoldMaps() bool {
 	return bytes.Contains(data, []byte(`"kind":"map`))
 }
 
+// threadsLogState says why the threads log held no maps when it cannot be
+// read as one: "missing", "unreadable" or "empty"; "" when it was readable
+// and non-empty (it simply has no map row).
+func threadsLogState() string {
+	path := threadsPath()
+	info, err := os.Stat(path)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return "missing"
+	case err != nil:
+		return "unreadable"
+	}
+	if _, err := readThreadsFile(path); err != nil {
+		return "unreadable"
+	}
+	if info.Size() == 0 {
+		return "empty"
+	}
+	return ""
+}
+
 // hookMapRoot is the repository root a hook resolves maps against: projDir when
 // it is the work tree's top (however it is spelled through a symlink), else the
 // work tree's top, found by stat and never by a fork.
@@ -84,15 +107,24 @@ func hookMapScope(root string) threadScope {
 // names one names what it references. A log without maps costs one file read
 // and no JSON decoding.
 func loadAliveMaps(root string, now time.Time) (mapSet, []string) {
-	if root == "" || hookDeadlineSpent() {
-		return mapSet{}, nil
+	set, ids, _ := loadAliveMapsCut(root, now)
+	return set, ids
+}
+
+// loadAliveMapsCut is loadAliveMaps that also reports a load the hook's
+// deadline cut short, so a skip beat can tell "no maps" from "never read".
+func loadAliveMapsCut(root string, now time.Time) (set mapSet, ids []string, cut bool) {
+	if root == "" {
+		return mapSet{}, nil, false
 	}
-	set := loadMapSet(root, now)
 	if hookDeadlineSpent() {
-		return mapSet{}, nil
+		return mapSet{}, nil, true
+	}
+	set = loadMapSet(root, now)
+	if hookDeadlineSpent() {
+		return mapSet{}, nil, true
 	}
 	life := explmap.Lifetimes(set.maps)
-	var ids []string
 	for _, id := range set.idsOwnedBy(hookMapScope(root)) {
 		if set.maps[id].Kind == explmap.KindComposite || life[id].State == explmap.Ended {
 			continue
@@ -106,7 +138,7 @@ func loadAliveMaps(root string, now time.Time) (mapSet, []string) {
 		}
 		return ids[i] < ids[j]
 	})
-	return set, ids
+	return set, ids, false
 }
 
 // mapFiledInSession reports whether the session filed the map's header or any
@@ -172,10 +204,14 @@ func subagentMapLine(root, parentSessionID, agentID string, now time.Time) strin
 		threadsSource = "env"
 	}
 	if !threadsHoldMaps() {
-		emitBeat("subagent-hook", "skipped", firingMeta(map[string]string{"emitted": "false", "reason": "no-maps", "capability": string(harness.CapSubagentPrime), "threads_source": threadsSource, "maps_scope": "log"}, parentSessionID, ""))
+		meta := map[string]string{"emitted": "false", "reason": "no-maps", "capability": string(harness.CapSubagentPrime), "threads_source": threadsSource, "maps_scope": "log"}
+		if state := threadsLogState(); state != "" {
+			meta["log"] = state
+		}
+		emitBeat("subagent-hook", "skipped", firingMeta(meta, parentSessionID, ""))
 		return ""
 	}
-	set, alive := loadAliveMaps(root, now)
+	set, alive, cut := loadAliveMapsCut(root, now)
 	var filed []string
 	for _, id := range alive {
 		if mapFiledInSession(set, id, parentSessionID) {
@@ -183,7 +219,11 @@ func subagentMapLine(root, parentSessionID, agentID string, now time.Time) strin
 		}
 	}
 	if len(filed) == 0 {
-		emitBeat("subagent-hook", "skipped", firingMeta(map[string]string{"emitted": "false", "reason": "no-maps", "capability": string(harness.CapSubagentPrime), "threads_source": threadsSource, "maps_scope": "parent"}, parentSessionID, ""))
+		scope := "parent"
+		if cut {
+			scope = "deadline" // the hook's budget ran out inside the load: the parent's maps were never read
+		}
+		emitBeat("subagent-hook", "skipped", firingMeta(map[string]string{"emitted": "false", "reason": "no-maps", "capability": string(harness.CapSubagentPrime), "threads_source": threadsSource, "maps_scope": scope}, parentSessionID, ""))
 		return ""
 	}
 	roots := mapRoots(set.maps, filed)

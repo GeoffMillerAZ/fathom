@@ -19,6 +19,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/explmap"
+	"github.com/geoffmilleraz/fathom/internal/hookguard"
 )
 
 const hookMapFile = "package g\n\nfunc F() {}\n\nfunc G() {}\n"
@@ -893,4 +894,63 @@ func TestThreadNoteMapRefRefusesUnknownMaps(t *testing.T) {
 	if !found {
 		t.Error("the note was not filed")
 	}
+}
+
+// A skip says why the log held no maps (log=...) and a load the deadline cut
+// short is maps_scope=deadline, not the parent's.
+func TestSubagentStartMapSkipNamesLogStateAndDeadline(t *testing.T) {
+	skipBeat := func(t *testing.T, repo string, now time.Time) map[string]string {
+		t.Helper()
+		beatsPath := filepath.Join(t.TempDir(), "skip.jsonl")
+		t.Setenv("FATHOM_HOOKS_LOG", beatsPath)
+		if got := subagentMapLine(repo, "sess-parent", "a1", now); got != "" {
+			t.Fatalf("want silence, got %q", got)
+		}
+		beats, ok := readBeatLog(beatsPath)
+		if !ok || len(beats) != 1 {
+			t.Fatalf("want one readable skip beat, got %v, readable %v", beats, ok)
+		}
+		return beats[0].Meta
+	}
+	now := time.Date(2026, 10, 23, 12, 0, 0, 0, time.UTC)
+	for _, tc := range []struct {
+		name, log string
+		setup     func(t *testing.T, path string)
+	}{
+		{"missing", "missing", func(t *testing.T, path string) {}},
+		{"empty", "empty", func(t *testing.T, path string) {
+			if err := os.WriteFile(path, nil, 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}},
+		{"unreadable", "unreadable", func(t *testing.T, path string) {
+			if err := os.MkdirAll(path, 0o755); err != nil { // a directory cannot be read as a log
+				t.Fatal(err)
+			}
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := hookMapRepo(t)
+			path := filepath.Join(t.TempDir(), "log.jsonl")
+			t.Setenv("FATHOM_THREADS", path)
+			tc.setup(t, path)
+			meta := skipBeat(t, repo, now)
+			if meta["maps_scope"] != "log" || meta["log"] != tc.log {
+				t.Errorf("skip meta = %v, want maps_scope=log log=%s", meta, tc.log)
+			}
+		})
+	}
+	t.Run("deadline", func(t *testing.T) {
+		repo := hookMapRepo(t)
+		t.Setenv("CLAUDE_CODE_SESSION_ID", "sess-parent")
+		if code, _, errs := runCLI(t, mapCLI, "new", "parent-map", "--purpose", "Which entry point handles requests?", "--repo", repo); code != 0 {
+			t.Fatalf("map new: %s", errs)
+		}
+		restore := activateHookGuard(&hookguard.Guard{Deadline: hookguard.HookDeadline(time.Now().Add(-time.Hour), 10)})
+		defer restore()
+		meta := skipBeat(t, repo, now)
+		if meta["maps_scope"] != "deadline" {
+			t.Errorf("skip meta = %v, want maps_scope=deadline", meta)
+		}
+	})
 }
