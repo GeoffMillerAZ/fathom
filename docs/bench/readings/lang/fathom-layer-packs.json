@@ -1,0 +1,156 @@
+{
+ "dialect": "fathom-layer-packs",
+ "kind": "tooling",
+ "target_level": "L2",
+ "level_met": "L2",
+ "grade": {
+  "L1": "excellent",
+  "L2": "excellent",
+  "L3": "not-attempted",
+  "L4": "not-applicable"
+ },
+ "measured_at": "2026-10-24",
+ "fathom_commit": "77ff107",
+ "extractor": "dialect",
+ "subjects": [
+  {
+   "name": "GeoffMillerAZ/fathom",
+   "sha": "470726f6d4db328ddb0e4e4cad944bc4f0a6272f",
+   "files": 2,
+   "bytes": 4684,
+   "counts": {
+    "fathom_defs": 2,
+    "kind_equal": 2,
+    "matched": 2,
+    "oracle_defs": 2,
+    "range_eligible": 2,
+    "range_ok": 2,
+    "xref_fathom": 0,
+    "xref_truth": 0
+   },
+   "families": {
+    "l1": "A",
+    "xref": "A"
+   },
+   "kind_intersection": [
+    "policy",
+    "rule"
+   ],
+   "excluded_by_kind": {
+    "fathom:CUEField": 27
+   },
+   "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "extract_ms": 1.026,
+    "extract_cpu_ms": 1.024,
+    "max_file_ms": 0,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+   }
+  },
+  {
+   "name": "fathom-layer-packs fixture: layer-packs",
+   "sha": "77ff10726a14aa0225753212a715d518ea4d1a32",
+   "files": 2,
+   "bytes": 682,
+   "counts": {
+    "fathom_defs": 2,
+    "kind_equal": 2,
+    "matched": 2,
+    "oracle_defs": 2,
+    "range_eligible": 2,
+    "range_ok": 2,
+    "ref_fathom": 5,
+    "ref_fathom_in_truth": 5,
+    "ref_truth": 5,
+    "ref_truth_found": 5,
+    "xref_fathom": 0,
+    "xref_truth": 0
+   },
+   "families": {
+    "l1": "A",
+    "refs": "A",
+    "xref": "A"
+   },
+   "kind_intersection": [
+    "policy",
+    "rule"
+   ],
+   "excluded_by_kind": {
+    "fathom:CUEField": 23
+   },
+   "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "extract_ms": 0.33899999999999997,
+    "extract_cpu_ms": 0.33299999999999996,
+    "max_file_ms": 0,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+   }
+  }
+ ],
+ "oracles": [
+  {
+   "tier": "A",
+   "tool": "cue export + cue lsp (layer-packs)",
+   "version": "v0.16.1"
+  }
+ ],
+ "metrics": {
+  "ref_precision": 1,
+  "ref_recall": 1,
+  "sym_precision": 1,
+  "sym_recall": 1,
+  "xref_precision": null,
+  "xref_recall": null
+ },
+ "metric_tiers": {
+  "ref_precision": "A",
+  "ref_recall": "A",
+  "sym_precision": "A",
+  "sym_recall": "A"
+ },
+ "required_kinds": [
+  "policy",
+  "rule"
+ ],
+ "kind_intersection": [
+  "policy",
+  "rule"
+ ],
+ "counts": {
+  "fathom_defs": 4,
+  "kind_equal": 4,
+  "matched": 4,
+  "oracle_defs": 4,
+  "range_eligible": 4,
+  "range_ok": 4,
+  "ref_fathom": 5,
+  "ref_fathom_in_truth": 5,
+  "ref_truth": 5,
+  "ref_truth_found": 5,
+  "xref_fathom": 0,
+  "xref_truth": 0
+ },
+ "tenancy": {
+  "faults": 0,
+  "faulting_files": [],
+  "throughput_mb_s": 3.95,
+  "throughput_basis": "cpu",
+  "wall_throughput_mb_s": 3.93,
+  "max_file_ms": 0,
+  "peak_module_pages": 0,
+  "compiled_bytes": 0
+ },
+ "excluded_by_kind": {
+  "fathom:CUEField": 50
+ },
+ "notes": [
+  "oracle tiers (item fathomcue, calibration/oracles/fathom-cue): sym_* (L1) and ref_* (L2) are tier A. The oracle is the cue binary v0.16.1 as separate processes, never fathom's loader: `cue export --out json` names what exists (including what a comprehension generates, which only evaluation names), `cue lsp` documentSymbol gives each range and textDocument/definition each reference (calibration/oracles/cue). A written entity's range is the language server's field; a generated one's is the dynamic field it lists. Structure is graded beside the metrics, tier A and not one of them: cue vet -d against schema/project, schema/semantic and schema/rules/archconformance passes on all fixtures. The repository's own files are one layer.cue (ui-appkit) and one rule pack (archconformance) and have no reference a language server resolves (the rule pack's list is a let, which is no entity), so all 5 references (L2) are on the in-repo fixture calibration/oracles/fathom-cue/fixtures/layer-packs (budgets naming a hidden table; a rule pack comprehension over one), whose subject sha is the fathom commit measured at: L2 rests on it. The repository subject alone reads L1 excellent and no L2 evidence. The subjects are tiny (4 entities): the throughput gate reads a first-run value under 1 MB/s on the repository subject alone, and the committed reading is the merged run that met it",
+  "scope: one entity per layer.cue (named by its `name`) and per rule file (named by its stem, spanning `rules:`). Not read: the individual rules of a pack (list elements have no symbol in the language server, so no tier A range), the corpus and prompt_file paths (cross-file, L3)",
+  "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+ ],
+ "disposition": null
+}

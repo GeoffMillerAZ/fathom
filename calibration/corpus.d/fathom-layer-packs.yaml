@@ -1,0 +1,22 @@
+id: fathom-layer-packs
+language: fathom layer packs (.fathom/layers/*/layer.cue, .fathom/rules/*.cue)
+# fathom's own layer pack and rule pack, measured at a pinned commit: one layer.cue (the
+# ui-appkit platform pack) and one rule pack (archconformance, whose rules a comprehension
+# over a hidden list generates). Two fixtures beside it
+# (calibration/oracles/fathom-cue/fixtures/layer-packs, in-repo) carry the references this
+# repository's files do not: budgets naming a hidden table, and a rule pack comprehension over
+# one. fathom is read only, never vendored (its own licence, FSL-1.1-ALv2).
+repos:
+  - name: GeoffMillerAZ/fathom
+    url: https://github.com/GeoffMillerAZ/fathom.git
+    ref: main
+    sha: 470726f6d4db328ddb0e4e4cad944bc4f0a6272f
+    licence: FSL-1.1-ALv2
+    sparse:
+      - "/.fathom/layers/*/layer.cue"
+      - "/.fathom/rules/*.cue"
+    idioms:
+      - "a layer pack: name, version, kind, a corpus include list, a prompt file, a tier and
+        budgets, with long header comments"
+      - "a rule pack as plain data (no package clause): a rules list of struct literals and two
+        comprehensions over a let-bound list of package names"

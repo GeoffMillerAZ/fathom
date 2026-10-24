@@ -131,10 +131,10 @@ item's target; the last column also needs every level up to the target graded ex
 | T4 | tool format | 7 | 0 | 3 | 2 | 0 | 0 | 0 | 0 | 2 | 5 | 4 |
 | T5 | tool format | 8 | 0 | 1 | 5 | 0 | 0 | 0 | 0 | 2 | 5 | 2 |
 | T6 | language | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| T6 | tool format | 4 | 0 | 1 | 1 | 0 | 0 | 0 | 2 | 0 | 2 | 0 |
+| T6 | tool format | 4 | 0 | 3 | 1 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
 | T7 | tool format | 4 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
 | **Total** | language | 37 | 0 | 3 | 15 | 10 | 1 | 4 | 0 | 4 | 24 | 8 |
-| **Total** | tool format | 63 | 1 | 17 | 37 | 0 | 1 | 0 | 2 | 5 | 51 | 27 |
+| **Total** | tool format | 63 | 1 | 19 | 37 | 0 | 1 | 0 | 0 | 5 | 53 | 29 |
 
 ### T1
 
@@ -258,8 +258,8 @@ item's target; the last column also needs every level up to the target graded ex
 |---|---|---|---|---|
 | CUE (.cue) | language | L4 | L3 (L1 excellent, L2 excellent, L3 good) | L4 not met: def_mapping not measured |
 | fathom configuration (.fathom/config.toml) | tool format | L2 | L2 (L1 good, L2 good) | L1 good: oracle tier C caps at good |
-| fathom concerns (.fathom/concerns.cue) | tool format | L2 | tolerated | no reading (LB-Q-fathom-concerns) |
-| fathom layer packs (.fathom/layers/*/layer.cue, .fathom/rules/*.cue) | tool format | L2 | tolerated | no reading (LB-Q-fathom-layer-packs) |
+| fathom concerns (.fathom/concerns.cue) | tool format | L2 | L2 (L1 excellent, L2 excellent) | excellent at target |
+| fathom layer packs (.fathom/layers/*/layer.cue, .fathom/rules/*.cue) | tool format | L2 | L2 (L1 excellent, L2 excellent) | excellent at target |
 | fathom plan grammar v2 rows (docs/plans/*.md) | tool format | L3 | L3 (L1 good, L2 good, L3 good) | L1 good: oracle tier C caps at good |
 
 ### T7
@@ -282,8 +282,8 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 reached (languages at L1 37, L1 excellent 25, L2 33, L3 27, L4 10; tool formats at target 60)
-Milestone M2 progress: languages at L1 37/45, at L1 excellent 25/35, at L2 33/25, at L3 27/14, at L4 10/10; tool formats at target 60/30
+Milestone M1 reached (languages at L1 37, L1 excellent 25, L2 33, L3 27, L4 10; tool formats at target 62)
+Milestone M2 progress: languages at L1 37/45, at L1 excellent 25/35, at L2 33/25, at L3 27/14, at L4 10/10; tool formats at target 62/30
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -464,7 +464,7 @@ Milestone M2 progress: languages at L1 37/45, at L1 excellent 25/35, at L2 33/25
 | PgBouncer configuration (pgbouncer.ini) | tool format | doc | pure-go:INI parser (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-pgbouncer |
 | ProxySQL configuration (proxysql.cnf) | tool format | doc | pure-go:libconfig parser (verify at pin) (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-proxysql |
 | fathom configuration (.fathom/config.toml) | tool format | doc | pure-go:go-toml/v2 (n/a) | L2 | L2 (L1 good, L2 good) | C python tomllib (TOML decode) + a line scanner of its own python 3.14.7 tomllib | — | 2026-10-03 | at target (LB-Q-fathom-config) |
-| fathom concerns (.fathom/concerns.cue) | tool format | native | native:cuelang.org/go (n/a) | L2 | tolerated | — | — | — | LB-Q-fathom-concerns |
-| fathom layer packs (.fathom/layers/*/layer.cue, .fathom/rules/*.cue) | tool format | native | native:cuelang.org/go (n/a) | L2 | tolerated | — | — | — | LB-Q-fathom-layer-packs |
+| fathom concerns (.fathom/concerns.cue) | tool format | native | native:cuelang.org/go (n/a) | L2 | L2 (L1 excellent, L2 excellent) | A cue export + cue lsp (concerns) v0.16.1 | — | 2026-10-24 | at target (LB-Q-fathom-concerns) |
+| fathom layer packs (.fathom/layers/*/layer.cue, .fathom/rules/*.cue) | tool format | native | native:cuelang.org/go (n/a) | L2 | L2 (L1 excellent, L2 excellent) | A cue export + cue lsp (layer-packs) v0.16.1 | — | 2026-10-24 | at target (LB-Q-fathom-layer-packs) |
 | fathom plan grammar v2 rows (docs/plans/*.md) | tool format | native | pure-go:plan row grammar (n/a) | L3 | L3 (L1 good, L2 good, L3 good) | C plan_rows_oracle.py: a line parser of docs/plans/README.md's row grammar python 3.14.7 | — | 2026-10-03 | at target (LB-Q-fathom-plan-rows) |
 | Unity assembly definitions and references | tool format | doc | doc:json (n/a) | L1 | tolerated | — | file | — | LB-Q-unity-asmdef |

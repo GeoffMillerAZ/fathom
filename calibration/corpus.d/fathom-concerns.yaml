@@ -1,0 +1,21 @@
+id: fathom-concerns
+language: fathom concerns (.fathom/concerns.cue)
+# fathom's own concerns file, measured at a pinned commit: the custodian contracts of this
+# repository, 14 written concerns and the 27 a comprehension generates from a hidden table of
+# intent docs. The sparse set is the one file. Two fixtures beside it
+# (calibration/oracles/fathom-cue/fixtures/concerns, in-repo) carry the references this
+# repository's own file does not: a written concern naming a hidden table. fathom is read only,
+# never vendored (its own licence, FSL-1.1-ALv2).
+repos:
+  - name: GeoffMillerAZ/fathom
+    url: https://github.com/GeoffMillerAZ/fathom.git
+    ref: main
+    sha: 470726f6d4db328ddb0e4e4cad944bc4f0a6272f
+    licence: FSL-1.1-ALv2
+    sparse:
+      - "/.fathom/concerns.cue"
+    idioms:
+      - "written concerns with want, why and a check of one kind (forbidden_pattern, max_lines,
+        adr_references_resolve, stanza_tools_served), and an entry disabled by id ({off: true})"
+      - "a hidden table (_intentDocs) and a second `concerns:` block whose comprehension
+        generates one concern per entry with a dynamic (id) label: only evaluation names them"
