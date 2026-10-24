@@ -123,7 +123,7 @@ item's target; the last column also needs every level up to the target graded ex
 
 | Tier | Kind | Items | L1 | L2 | L3 | L4 | None | Refused | Tolerated | Unsupported | At target | At target, all excellent |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| T1 | language | 33 | 0 | 3 | 13 | 10 | 1 | 3 | 0 | 3 | 23 | 8 |
+| T1 | language | 33 | 0 | 3 | 13 | 10 | 1 | 4 | 0 | 2 | 23 | 8 |
 | T1 | tool format | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |
 | T2 | tool format | 23 | 0 | 7 | 14 | 0 | 1 | 0 | 0 | 1 | 19 | 14 |
 | T3 | tool format | 16 | 1 | 4 | 11 | 0 | 0 | 0 | 0 | 0 | 15 | 5 |
@@ -133,7 +133,7 @@ item's target; the last column also needs every level up to the target graded ex
 | T6 | language | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | T6 | tool format | 4 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |
 | T7 | tool format | 4 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
-| **Total** | language | 37 | 0 | 3 | 15 | 10 | 1 | 4 | 0 | 4 | 24 | 8 |
+| **Total** | language | 37 | 0 | 3 | 15 | 10 | 1 | 5 | 0 | 3 | 24 | 8 |
 | **Total** | tool format | 63 | 1 | 17 | 37 | 0 | 1 | 0 | 0 | 7 | 51 | 27 |
 
 ### T1
@@ -172,7 +172,7 @@ item's target; the last column also needs every level up to the target graded ex
 | Astro components (.astro) | language | L3 | L3 (L1 good, L2 excellent, L3 excellent) | L1 good: sym_recall 0.9362 < 0.95 |
 | Vue single-file components (.vue) | language | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | Svelte components (.svelte) | language | L3 | none (measured) | L1 not met: sym_precision 0.3816 < 0.9 |
-| Laravel Blade templates (.blade.php) | language | L3 | unsupported | no dialect (LB-Q-blade) |
+| Laravel Blade templates (.blade.php) | language | L3 | refused | re-plan (LB-Q-blade-rest refused) |
 | Jinja2 templates (.j2 .jinja .jinja2, templates/*.html by sniff) | language | L3 | unsupported | no dialect (LB-Q-jinja2) |
 
 ### T2
@@ -440,7 +440,7 @@ Milestone M2 progress: languages at L1 37/45, at L1 excellent 25/35, at L2 33/25
 | Android manifests (AndroidManifest.xml) | tool format | doc | pure-go:encoding/xml (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-android-manifest |
 | Typst (.typ) | language | tags | uben0/tree-sitter-typst (MIT (verify at pin)) | L1 | unsupported (disclosed) | — | — | — | LB-Q-typst |
 | CODEOWNERS (.github/CODEOWNERS, docs/CODEOWNERS) | tool format | doc | pure-go:line parser (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-codeowners |
-| Laravel Blade templates (.blade.php) | language | tags | EmranMR/tree-sitter-blade (MIT (verify at pin)) | L3 | unsupported (disclosed) | — | — | — | LB-Q-blade |
+| Laravel Blade templates (.blade.php) | language | tags | EmranMR/tree-sitter-blade (MIT (verify at pin)) | L3 | refused | — | — | — | re-plan (LB-Q-blade-rest refused) |
 | Jinja2 templates (.j2 .jinja .jinja2, templates/*.html by sniff) | language | tags | a Jinja tree-sitter grammar (verify at pin, licence allowlist) (verify at pin) | L3 | unsupported (disclosed) | — | — | — | LB-Q-jinja2 |
 | Serverless Framework (serverless.yml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L2 | L2 (L1 excellent, L2 excellent) | A serverless print 3.40.0 | syntax | 2026-10-09 | at target (LB-Q-serverless) |
 | Conan recipes and lockfiles (conanfile.txt, conanfile.py, conan.lock, conandata.yml) | tool format | tags+doc | tree-sitter/tree-sitter-python + pure-go:INI, encoding/json, gopkg.in/yaml.v3 (verify at pin) | L3 | L2 (L1 excellent, L2 excellent) | A conan graph info --format json -nr (macOS, Linux, Windows and mingw host+build profiles; the versions of a recipe folder at default options; each option at each of its other values, and every boolean all True and all False, at the newest and oldest version) Conan version 2.33.0 | syntax | 2026-10-02 | LB-Q-conan |
