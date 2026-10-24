@@ -115,12 +115,24 @@ type bwCollector struct {
 	sedDoubt    bool
 }
 
+// unnamableTarget reports a would-be target that is a pattern or a
+// placeholder (`%`, a glob, a `{}` template) rather than a file name.
+func unnamableTarget(p string) bool {
+	return p == "%" || strings.ContainsAny(p, "*?[") || strings.Contains(p, "{")
+}
+
 func (c *bwCollector) add(p string) {
 	c.addTarget(p, true)
 }
 
 func (c *bwCollector) addTarget(p string, nonSed bool) {
 	if p == "" {
+		return
+	}
+	if unnamableTarget(p) {
+		// A glob or placeholder names no single file: the write is real but
+		// the target is not, so a sed keeps its cannot-name doubt.
+		c.sedDoubt = c.sedDoubt || !nonSed
 		return
 	}
 	if prior, ok := c.seen[p]; ok {

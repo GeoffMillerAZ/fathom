@@ -91,6 +91,37 @@ func TestBashWriteTargetsSed(t *testing.T) {
 	}
 }
 
+func TestBashWriteTargetsDropsUnnamable(t *testing.T) {
+	for _, tt := range []struct {
+		name, command string
+		want          []string
+		sedDoubt      bool
+	}{
+		{"percent", `echo x > %`, nil, false},
+		{"glob redirect", `echo x > out/*.txt`, nil, false},
+		{"glob tee", `echo x | tee out/*.txt`, nil, false},
+		{"placeholder", `cp src {}.txt`, nil, false},
+		{"sed glob keeps named", `sed -i 's/a/b/' f *.go`, []string{"f"}, true},
+		{"sed glob only", `sed -i 's/a/b/' src/*.go`, nil, true},
+		{"sed question mark", `sed -i 's/a/b/' f? g`, []string{"g"}, true},
+		{"sed bracket", `sed -i 's/a/b/' f[12]`, nil, true},
+		{"sed placeholder", `sed -i 's/a/b/' {}.txt g`, []string{"g"}, true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			c := collectBashWriteTargets(tt.command)
+			if !reflect.DeepEqual(c.paths, tt.want) {
+				t.Fatalf("paths = %q, want %q", c.paths, tt.want)
+			}
+			if !c.writeShaped {
+				t.Fatalf("writeShaped = false, want true")
+			}
+			if c.sedDoubt != tt.sedDoubt {
+				t.Fatalf("sedDoubt = %v, want %v", c.sedDoubt, tt.sedDoubt)
+			}
+		})
+	}
+}
+
 func TestBashWriteTargets(t *testing.T) {
 	cases := []struct {
 		name        string
