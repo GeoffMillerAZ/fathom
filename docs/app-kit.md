@@ -1,5 +1,13 @@
 # App-kit adoption: evidence workspace
 
+CLI contribution review (2026-10-24, WR-9): no candidate. Writer-version grouping is
+fathom's evidence semantics and retains the gauge's existing text/JSON rendering.
+`search_capabilities` query `cli output`, profile `cli`, returned `cli.output`
+at catalog revision `3ee2c1f`; its diagnostic status rows do not fit era counts and
+time ranges. No app-kit capability was selected: CLI text output only.
+Command fixtures cover mixed writers, scoped totals and empty output; no kit
+runtime, dependency or adoption pin changes.
+
 CLI contribution review (2026-10-22, GDEV-41..43): no candidate. Skill ownership,
 adaptation diagnostics and init user-write previews belong to fathom's application
 policy; they use its existing CLI output vocabulary. `search_capabilities` query

@@ -44,6 +44,8 @@ const maxTopTools = 10
 // in a different package has no business depending on mcp's unexported
 // struct even if it could.
 type adoptionCallEntry struct {
+	SchemaVersion  int    `json:"schema_version"`
+	FathomVersion  string `json:"fathom_version"`
 	TS             string `json:"ts"`
 	Tool           string `json:"tool"`
 	Service        string `json:"service,omitempty"`
@@ -96,6 +98,79 @@ type ToolCallRow struct {
 	Calls int    `json:"calls"`
 }
 
+// AdoptionEraRow attributes a share of the counted log to its writer's stamps.
+type AdoptionEraRow struct {
+	Version string `json:"version"`
+	Schema  int    `json:"schema"`
+	Calls   int    `json:"calls"`
+	FirstTS string `json:"first_ts"`
+	LastTS  string `json:"last_ts"`
+}
+
+// adoptionEraRows groups the same filtered rows the report counts. Missing
+// stamps remain unknown; neither the running binary nor the current schema
+// can establish which writer produced an older row.
+func adoptionEraRows(entries []adoptionCallEntry) []AdoptionEraRow {
+	type eraKey struct {
+		version string
+		schema  int
+	}
+	// RFC3339Nano strings do not sort chronologically when a whole-second
+	// stamp meets a fractional one, or when offsets differ. Invalid stamps
+	// follow valid ones and retain a deterministic lexical order.
+	compareTS := func(a, b string) int {
+		ta, errA := time.Parse(time.RFC3339Nano, a)
+		tb, errB := time.Parse(time.RFC3339Nano, b)
+		switch {
+		case errA == nil && errB == nil:
+			return ta.Compare(tb)
+		case errA == nil:
+			return -1
+		case errB == nil:
+			return 1
+		default:
+			return strings.Compare(a, b)
+		}
+	}
+	grouped := make(map[eraKey]AdoptionEraRow)
+	for _, e := range entries {
+		key := eraKey{e.FathomVersion, e.SchemaVersion}
+		row, exists := grouped[key]
+		if !exists {
+			version := e.FathomVersion
+			if version == "" {
+				version = "unknown"
+				if e.SchemaVersion == 0 {
+					version = "unknown (predates version stamps)"
+				}
+			}
+			row = AdoptionEraRow{Version: version, Schema: e.SchemaVersion, FirstTS: e.TS, LastTS: e.TS}
+		}
+		row.Calls++
+		if compareTS(e.TS, row.FirstTS) < 0 {
+			row.FirstTS = e.TS
+		}
+		if compareTS(e.TS, row.LastTS) > 0 {
+			row.LastTS = e.TS
+		}
+		grouped[key] = row
+	}
+	var rows []AdoptionEraRow
+	for _, row := range grouped {
+		rows = append(rows, row)
+	}
+	sort.Slice(rows, func(i, j int) bool {
+		if order := compareTS(rows[i].FirstTS, rows[j].FirstTS); order != 0 {
+			return order < 0
+		}
+		if rows[i].Version != rows[j].Version {
+			return rows[i].Version < rows[j].Version
+		}
+		return rows[i].Schema < rows[j].Schema
+	})
+	return rows
+}
+
 // AdoptionReport is FW-1's deterministic-given-inputs report shape.
 // Json-tagged for --json; renderAdoptionReport renders the human table
 // from the exact same values.
@@ -112,8 +187,9 @@ type AdoptionReport struct {
 	// RegisteredNotOnAgent/ZeroCallAgentTools below were deliberately left
 	// uncomputed rather than fabricated from an empty read that never
 	// actually happened (never "zero-call registered tools (88 of 88)").
-	CallLogReadError string `json:"call_log_read_error,omitempty"`
-	TotalCalls       int    `json:"total_calls"`
+	CallLogReadError string           `json:"call_log_read_error,omitempty"`
+	TotalCalls       int              `json:"total_calls"`
+	Eras             []AdoptionEraRow `json:"eras,omitempty"`
 	// SkippedMalformedLines counts call-log lines that failed to decode
 	// (torn writes, editing debris) and were skipped line-wise (H2) — when
 	// nonzero, the counts above are a floor over a partially readable log,
@@ -220,6 +296,8 @@ type adoptionPreread struct {
 	fold    *callLogFold
 	skipped int
 	err     error
+	// eras is adoptionEraRows over the entries the caller read.
+	eras []AdoptionEraRow
 }
 
 // instrumentAdoption is `fathom instrument --adoption`'s whole computation;
@@ -245,12 +323,14 @@ func instrumentAdoption(q adoptionQuery, stderr io.Writer) (AdoptionReport, cons
 	// apart from a real defect.
 	var (
 		fold             *callLogFold
+		eras             []AdoptionEraRow
 		skippedMalformed int
 		callLogErr       error
 	)
 	unattributedExcluded := 0
 	if q.preread != nil && q.Service == "" {
 		fold, skippedMalformed, callLogErr = q.preread.fold, q.preread.skipped, q.preread.err
+		eras = q.preread.eras
 		if fold == nil {
 			fold = newCallLogFold()
 		}
@@ -261,6 +341,7 @@ func instrumentAdoption(q adoptionQuery, stderr io.Writer) (AdoptionReport, cons
 			entries, unattributedExcluded = filterEntriesByService(entries, q.Service)
 		}
 		fold = foldCallLog(entries)
+		eras = adoptionEraRows(entries)
 	}
 	read := callLogErr == nil
 	realReadErr := callLogErr != nil && !os.IsNotExist(callLogErr)
@@ -297,6 +378,7 @@ func instrumentAdoption(q adoptionQuery, stderr io.Writer) (AdoptionReport, cons
 	// PE-24: over the registered roots' rows only, the ignored ones named.
 	ledgerRows, ledgerIgnored := readRegisteredVerifyLedger(cliLedgerRoots(q.BaseURL))
 	report := buildAdoptionReportFold(callLogPath, read, callLogReadError, fold, skippedMalformed, toolNames, toolNote, openObs, observationsPath(q.Root), ledgerRows)
+	report.Eras = eras
 	report.VerifyGateNote = withIgnored(report.VerifyGateNote, ledgerIgnored, verifyLedgerNoun)
 	report.ServiceFilter = q.Service
 	report.UnattributedExcluded = unattributedExcluded
@@ -508,7 +590,9 @@ func registeredToolNames(storePath string) ([]string, error) {
 // per FW-1's own requirement) — cmdInstrumentAdoption does all the I/O,
 // this function does none.
 func buildAdoptionReport(callLogPath string, read bool, callLogReadError string, entries []adoptionCallEntry, skippedMalformed int, registeredTools []string, toolNote string, openObs *int, obsPath string, ledgerRows []verifyLedgerRow) AdoptionReport {
-	return buildAdoptionReportFold(callLogPath, read, callLogReadError, foldCallLog(entries), skippedMalformed, registeredTools, toolNote, openObs, obsPath, ledgerRows)
+	report := buildAdoptionReportFold(callLogPath, read, callLogReadError, foldCallLog(entries), skippedMalformed, registeredTools, toolNote, openObs, obsPath, ledgerRows)
+	report.Eras = adoptionEraRows(entries)
+	return report
 }
 
 // buildAdoptionReportFold is buildAdoptionReport over the log's fold (the
@@ -651,6 +735,12 @@ func renderAdoptionReport(w io.Writer, r AdoptionReport) {
 	}
 	if r.SkippedMalformedLines > 0 {
 		fmt.Fprintf(w, "  ⚠ skipped %d malformed line(s) — counts are a floor over a partially readable log\n", r.SkippedMalformedLines)
+	}
+	if len(r.Eras) > 0 {
+		fmt.Fprintln(w, "\neras:")
+		for _, era := range r.Eras {
+			fmt.Fprintf(w, "  %s schema=%d calls=%d first_ts=%s last_ts=%s\n", era.Version, era.Schema, era.Calls, era.FirstTS, era.LastTS)
+		}
 	}
 
 	fmt.Fprintln(w, "\nsurface traffic:")

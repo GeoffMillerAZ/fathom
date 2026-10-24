@@ -226,7 +226,7 @@ func buildOperateProjection(d *consoleDeps, m observatoryModel, resolved console
 	p.ToolHours = trafficResultFrom(entries, reason, isErr, "", metrics.TrafficGroupByToolHour, now.Add(-24*time.Hour), now)
 	p.Harnesses = harness.AdoptionRows(d.selfURL, now)
 	p.Resources = operateResourcesCached(d.selfURL, now) // RT-121: kept, refreshed off the request path
-	pre := &adoptionPreread{fold: fold, skipped: snap.skipped, err: readErr}
+	pre := &adoptionPreread{fold: fold, skipped: snap.skipped, err: readErr, eras: adoptionEraRows(entries)}
 	if resolved.Path == "" {
 		pre = nil
 	}
