@@ -3,7 +3,7 @@ http:
     web:
       rule: Host(`app.example.com`)
       entryPoints: [web, websecure]
-      middlewares: [auth, strip]
+      middlewares: [auth, strip@file]
       service: app
     api:
       rule: PathPrefix(`/api`)
@@ -31,7 +31,7 @@ http:
         prefixes: [/api]
     both:
       chain:
-        middlewares: [auth, strip]
+        middlewares: [auth, strip@file]
 tcp:
   routers:
     db:

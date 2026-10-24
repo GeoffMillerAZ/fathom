@@ -2,7 +2,7 @@
   "symbols": [
     { "name": "dynamic.yml", "kind": "TraefikConfig", "package": "dynamic", "line": 1, "end_line": 55, "tier": "verified" },
     { "name": "web", "kind": "TraefikRouter", "package": "dynamic", "line": 3, "end_line": 7, "signature": "Host(`app.example.com`)", "calls": ["app", "auth", "strip"], "tier": "verified" },
-    { "name": "api", "kind": "TraefikRouter", "package": "dynamic", "line": 8, "end_line": 10, "signature": "PathPrefix(`/api`)", "tier": "verified" },
+    { "name": "api", "kind": "TraefikRouter", "package": "dynamic", "line": 8, "end_line": 10, "signature": "PathPrefix(`/api`)", "calls": ["api"], "tier": "verified" },
     { "name": "other", "kind": "TraefikRouter", "package": "dynamic", "line": 11, "end_line": 13, "signature": "Host(`other.example.com`)", "tier": "verified" },
     { "name": "app", "kind": "TraefikService", "package": "dynamic", "line": 15, "end_line": 19, "tier": "verified" },
     { "name": "api", "kind": "TraefikService", "package": "dynamic", "line": 20, "end_line": 24, "calls": ["app"], "tier": "verified" },
@@ -20,7 +20,7 @@
     { "from": "web", "edge": "router_middleware", "raw": "auth", "target": "auth", "strategy": "service-name", "line": 6 },
     { "from": "web", "edge": "router_middleware", "raw": "strip", "target": "strip", "strategy": "service-name", "line": 6 },
     { "from": "web", "edge": "router_service", "raw": "app", "target": "app", "strategy": "service-name", "line": 7 },
-    { "from": "api", "edge": "router_service", "raw": "api@file", "target": "api@file", "strategy": "service-name", "line": 10 },
+    { "from": "api", "edge": "router_service", "raw": "api", "target": "api", "strategy": "service-name", "line": 10 },
     { "from": "other", "edge": "router_service", "raw": "missing", "target": "missing", "strategy": "service-name", "line": 13 },
     { "from": "app", "edge": "route_ref", "raw": "http://app:8080", "target": "http://app:8080", "strategy": "route-host", "line": 18 },
     { "from": "app", "edge": "route_ref", "raw": "http://10.0.0.5:8080", "target": "http://10.0.0.5:8080", "strategy": "route-host", "line": 19 },
