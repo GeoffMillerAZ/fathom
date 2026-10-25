@@ -36,6 +36,14 @@ pass) reads the harness's own `files_with_error` (LB-F59: an ERROR or MISSING no
 The file set is every file whose extension the draft manifest claims (`.glsl .vert .frag .comp .geom .tesc .tese
 .rgen .rchit .rmiss .rahit .rint .rcall .mesh .task .vsh .fsh`).
 
+A refused item ships nothing, so the draft dialect and blob are not committed. To reproduce the count: draft the lock
+row with `go run ./cmd/indexbench lang-pin -id glsl` at the pin below, build the blob with
+`internal/extractor/tsengine/grammars/build.sh glsl`, write a dialect manifest claiming the extensions above with
+`dialects/c/tags.scm` as the query's starting point, clone the subjects with `task calibrate-clone -- glsl` (the
+committed `calibration/corpus.d/glsl.yaml`), and run `go run ./cmd/indexbench lang-oracle -dialect glsl -subject
+workspace/calibration/glsl/<subject>` once per subject; each reading's `tenancy.files_with_error` is the count in the
+table.
+
 | Subject | Pin | Licence | Subpath or sparse | Files | With an error |
 |---|---|---|---|---|---|
 | SaschaWillems/Vulkan | `master` `1cbc8d87b731b438f47dea00a2e083ba7d59051d` | MIT | `shaders/glsl` | 353 | 32 (9.1%) |
