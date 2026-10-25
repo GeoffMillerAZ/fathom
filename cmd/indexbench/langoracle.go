@@ -55,8 +55,9 @@ const oracleTimeout = 20 * time.Minute
 // through its own reader's and the cue-module strategy (LB-F583).
 // Jinja2 joins C on include-path (LB-Q-jinja2): a template name is looked up in
 // the includer's directory, then each ancestor. Kotlin joins them on namespace-dir (O474): its file edges are read from the
-// PSI dump's imports, tier B.
-var fileResolveLang = map[string]string{"typescript": "javascript", "javascript": "javascript", "python": "python", "c": "c", "cpp": "cpp", "php": "php", "rust": "rust", "ruby": "ruby", "dart": "dart", "csharp": "csharp", "java": "java", "kotlin": "kotlin", "rego": "rego", "scala": "scala", "css": "css", "scss": "scss", "cue": "cue", "jinja2": "jinja2"}
+// PSI dump's imports, tier B. HLSL joins C on include-path (LB-Q-hlsl): its
+// file edges are read from clang-includes' imports, tier B.
+var fileResolveLang = map[string]string{"typescript": "javascript", "javascript": "javascript", "python": "python", "c": "c", "cpp": "cpp", "php": "php", "rust": "rust", "ruby": "ruby", "dart": "dart", "csharp": "csharp", "java": "java", "kotlin": "kotlin", "rego": "rego", "scala": "scala", "css": "css", "scss": "scss", "cue": "cue", "jinja2": "jinja2", "hlsl": "hlsl"}
 
 // cmdLangOracle is `indexbench lang-oracle` (LB-F23, design §10): one
 // subject's measurement of one dialect, merged into the dialect's reading.
