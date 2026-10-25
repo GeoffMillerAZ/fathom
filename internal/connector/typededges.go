@@ -92,6 +92,7 @@ var typedEdgeProducers = map[string]string{
 	"perl":        "syntax",
 	"elixir":      "syntax",
 	"objective-c": "syntax",
+	"hlsl":        "syntax",
 	"jupyter":     "syntax",
 	"emacs-lisp":  "syntax",
 	"commonlisp":  "syntax",
