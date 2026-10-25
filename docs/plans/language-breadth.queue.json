@@ -4149,15 +4149,17 @@
     "id": "hlsl",
     "name": "HLSL shaders (.hlsl .hlsli .fx)",
     "kind": "language",
-    "target_level": "L1",
+    "target_level": "L3",
     "grammar_source": "tree-sitter-grammars/tree-sitter-hlsl",
     "licence": "MIT",
     "oracle": [
-      "tree-sitter-tags (C)"
+      "dxc -ast-dump (B)",
+      "clang-includes (B)"
     ],
     "calibration_subjects": [
       "microsoft/DirectX-Graphics-Samples",
-      "GPUOpen-Effects/FidelityFX-SDK"
+      "EmbarkStudios/kajiya",
+      "microsoft/DirectXTK12"
     ],
     "depends_on": [
       "LB-F1",
@@ -4177,7 +4179,8 @@
     "engine": "tags",
     "plan_row": "LB-Q-hlsl",
     "worker_model": "sonnet",
-    "notes": "new; functions, structs, cbuffers"
+    "notes": "new; functions, structs, cbuffers",
+    "retargeted": "2026-10-24 (owner ruling): L1 -> L3, oracles DXC -ast-dump (L1, L2) and clang-includes over the shader roots (L3), subjects DirectX-Graphics-Samples, kajiya and DirectXTK12 (FidelityFX-SDK dropped); no source pre-pass"
   },
   {
     "id": "devcontainer",
