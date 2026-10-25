@@ -2,7 +2,7 @@ id: cuda
 language: CUDA
 # Measurement conventions (docs/bench/readings/lang/cuda.json). Linux x86_64 only. cuda-samples is measured as ONE
 # subject from its own CMake build with nvcc (owner ruling C-R4), by calibration/oracles/scip-clang/cuda-samples.sh
-# (see the README beside it): 114 .cu translation units configure, 99 compile under the clang translation the index reads.
+# (see the README beside it): 114 .cu translation units configure, 99 compile under the clang translation the index reads (round 4).
 # NVIDIA/cuda-samples is cloned sparse (Samples/ is mostly data): its .cu/.cuh/.h sources,
 # CMakeLists.txt and cmake/** and Common/**. The repository's LICENSE is BSD-3 text plus a pointer
 # to the CUDA EULA (the redistributable headers the oracles read): FLAGGED for the owner, measurement only.
