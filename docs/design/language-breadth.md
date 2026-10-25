@@ -78,6 +78,14 @@ process, `throughput_basis: "cpu"`; D1, §1.5); `max_file_ms ≤ 2000`; `peak_mo
 Tool formats: L1 `sym_recall` and `sym_precision` ≥ .98 (good ≥ .95); L2 reference
 recall and precision ≥ .95 (good ≥ .90); L3 precision ≥ .95, recall ≥ .80 (good .90/.60).
 
+**A manifest's evidence bar.** A dialect manifest may set `l3_evidence: {min_references,
+min_subjects}` (owner ruling S-R6, scoped to the manifest by S3-R4, 2026-10-25): its L3 then
+counts only when the L3 recall metric's denominator (`xref_truth` for a tool format,
+`file_edges_truth` for a language) holds at least `min_references` across at least
+`min_subjects` subjects, else L3 grades unmet whatever its ratios read. The reading carries
+the bar it was graded under. Simulink sets 20 across 2. It is not a general rule: applied to
+every committed reading on 2026-10-25 it would lower 24 of 115 (an owner ruling decides).
+
 ### 1.3 Oracle tiers and what they can prove
 
 | Tier | Oracles | May prove |

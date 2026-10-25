@@ -26,5 +26,6 @@
   "package": { "strategy": "dir" },
   "signature": { "max_chars": 200 },
   "target_level": "L3",
+  "l3_evidence": { "min_references": 20, "min_subjects": 2 },
   "queue_id": "simulink"
 }

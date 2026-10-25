@@ -62,6 +62,9 @@ type Dialect struct {
 	Signature   DialectSignature `json:"signature"`
 	TargetLevel string           `json:"target_level"`
 	QueueID     string           `json:"queue_id"`
+	// L3Evidence is the harness's minimum-evidence bar for the dialect's L3 (S-R6); the
+	// extractor never reads it.
+	L3Evidence *DialectL3Evidence `json:"l3_evidence,omitempty"`
 	// Ctags names the dialect's own universal-ctags invocation (design
 	// §13.4 step 18) for a tags dialect the langbench harness's
 	// incumbents.json (the five pre-manifest languages) does not cover —
@@ -390,6 +393,13 @@ var importStrategies = map[string]bool{
 	"relative-path": true, "dotted-module": true, "namespace-dir": true, "include-path": true,
 	"crate-mod": true, "swift-module": true, "file-symbol": true, "go-package": true,
 	"rego-package": true, "global-name": true, "cue-module": true,
+}
+
+// DialectL3Evidence is a manifest's l3_evidence: the fewest resolvable references, and the
+// fewest subjects holding them, a reading needs before its L3 counts.
+type DialectL3Evidence struct {
+	MinReferences int `json:"min_references"`
+	MinSubjects   int `json:"min_subjects"`
 }
 
 // DialectSignature caps Signature (§3.3).

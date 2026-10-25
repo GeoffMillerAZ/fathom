@@ -226,6 +226,14 @@ import "struct"
 	}
 
 	target_level: #Level
+	// l3_evidence (owner ruling S-R6, scoped to the manifest by the 2026-10-25 ruling S3-R4):
+	// L3 counts only when its cross-file metric's denominator (xref_truth for a tool format,
+	// file_edges_truth for a language) holds at least min_references resolvable references
+	// across at least min_subjects subjects. Omitted: no bar beyond §1.2's thresholds.
+	l3_evidence?: {
+		min_references: int & >=1
+		min_subjects:   int & >=1
+	}
 	// queue_id equals id: the dialect is its queue entry's (§2.2).
 	queue_id: id
 }

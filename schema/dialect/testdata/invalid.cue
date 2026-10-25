@@ -54,6 +54,8 @@ package dialect
 // 16x. injection_host with no module_symbol:  injection_host: true, queries: {tags: "tags.scm", injections: "injections.scm"}, imports: {...}
 // 16y. injection_host with no imports:        injection_host: true, queries: {..., injections: "injections.scm"}, module_symbol: "document"
 // 16z. injection_host not a boolean:          injection_host: "yes"
+// 16aa. l3_evidence with no references:       l3_evidence: {min_references: 0, min_subjects: 2}
+// 16ab. l3_evidence missing a count:          l3_evidence: {min_references: 20}
 //      (16w..16z asserted by internal/langbench/dialectschema_host_test.go, TestDialectInjectionHostSchema;
 //      the same rules are refused at load by internal/extractor checkInjectionHost, F2 wave lf7)
 // 16i. A variant's tags query not a .scm file: variants: [{id: "tsx", ..., queries: {tags: "tags.tsx.json"}}]

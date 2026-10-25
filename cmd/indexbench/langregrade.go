@@ -39,6 +39,7 @@ func cmdLangRegrade(args []string, stdout, stderr io.Writer) int {
 		}
 		if spec, _, err := resolveBenchSpec(r.Dialect, ""); err == nil {
 			r.RequiredKinds = spec.Manifest.RequiredCanonical()
+			r.L3Evidence = spec.Manifest.L3Evidence
 		}
 		before := r.LevelMet
 		langbench.Regrade(&r)
