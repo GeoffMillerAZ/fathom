@@ -1,0 +1,73 @@
+{
+  "symbols": [
+    {
+      "name": "LOAD",
+      "kind": "HlslMacro",
+      "package": "calls",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "gTex",
+      "kind": "HlslVariable",
+      "package": "calls",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "gOut",
+      "kind": "HlslVariable",
+      "package": "calls",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "gSamp",
+      "kind": "HlslVariable",
+      "package": "calls",
+      "line": 7,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "Hash",
+      "kind": "HlslFunc",
+      "package": "calls",
+      "line": 9,
+      "end_line": 12,
+      "signature": "uint Hash(uint x)",
+      "tier": "verified"
+    },
+    {
+      "name": "Fetch",
+      "kind": "HlslFunc",
+      "package": "calls",
+      "line": 14,
+      "end_line": 19,
+      "signature": "float4 Fetch(float2 uv, uint i)",
+      "calls": [
+        "Hash",
+        "Sample",
+        "asuint",
+        "lerp"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "MainCS",
+      "kind": "HlslFunc",
+      "package": "calls",
+      "line": 22,
+      "end_line": 27,
+      "signature": "[numthreads(64, 1, 1)] void MainCS(uint3 id : SV_DispatchThreadID)",
+      "calls": [
+        "Fetch",
+        "InterlockedAdd"
+      ],
+      "tier": "verified"
+    }
+  ]
+}
