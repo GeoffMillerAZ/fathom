@@ -406,6 +406,7 @@ func TestGrammars(t *testing.T) {
 	want["prisma"] = true                // LB-Q-prisma (wave lang6, victorhqc/tree-sitter-prisma)
 	want["thrift"] = true                // LB-Q-thrift (wave lang7, duskmoon314/tree-sitter-thrift v0.5.0)
 	want["jinja2"] = true                // LB-Q-jinja2 (cathaysia/tree-sitter-jinja v0.5.0)
+	want["cuda"] = true                  // LB-Q-cuda (tree-sitter-grammars/tree-sitter-cuda v0.21.2)
 	if len(names) != len(want) {
 		t.Fatalf("Grammars() = %v, want %d entries", names, len(want))
 	}

@@ -415,7 +415,7 @@ func SCIPOptionsFor(dialect string, src func(path string) []byte) SCIPOptions {
 	if dialect == "ruby" {
 		return rubySCIPOptions(src) // scip_ruby.go: the calls Sorbet writes no occurrence for (LB-F257)
 	}
-	if dialect == "c" || dialect == "cpp" {
+	if dialect == "c" || dialect == "cpp" || dialect == "cuda" {
 		// Call sites written in the source: scip-clang references a function
 		// passed as a value, and a call a macro expands to at the macro's own
 		// name; neither is written as a call. C records a function-like macro

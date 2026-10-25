@@ -64,6 +64,7 @@ var langRowHint = map[string]string{
 	"rust":             "| Rust ",
 	"c":                "| C ",
 	"cpp":              "| C++ ",
+	"cuda":             "| CUDA ",
 	"ruby":             "| Ruby ",
 	"cs":               "| C# ",
 	"php":              "| PHP ",

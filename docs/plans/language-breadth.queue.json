@@ -4412,7 +4412,7 @@
     "id": "cuda",
     "name": "CUDA (.cu .cuh)",
     "kind": "language",
-    "target_level": "L3",
+    "target_level": "L4",
     "grammar_source": "tree-sitter-grammars/tree-sitter-cuda",
     "licence": "MIT",
     "oracle": [
