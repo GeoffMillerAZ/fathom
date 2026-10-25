@@ -36,8 +36,8 @@ repos:
         every other by a relative local href (index.html, tables.html,
         login.html), the page-to-page denominator L3 grades
       - ids and fragment links within one page (collapse targets, modals)
-      - script and stylesheet hrefs to sibling vendor/ trees (out of scope
-        for L3: design 1.8 counts only links between measured pages)
+      - "script and stylesheet hrefs to sibling vendor/ trees (out of scope
+        for L3: design 1.8 counts only links between measured pages)"
     notes: >
       selected for wave lf6 (M4, O841) before any reading of it: lychee
       --offline resolves its page links to files of the subject (about 250

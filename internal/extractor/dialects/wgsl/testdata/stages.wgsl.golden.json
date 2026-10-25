@@ -1,0 +1,46 @@
+{
+  "symbols": [
+    {
+      "name": "VertexOut",
+      "kind": "WgslStruct",
+      "package": "stages",
+      "line": 2,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "vs_main",
+      "kind": "WgslFunction",
+      "package": "stages",
+      "line": 8,
+      "end_line": 15,
+      "signature": "@vertex fn vs_main(@builtin(vertex_index) index: u32) -> VertexOut",
+      "calls": [
+        "f32",
+        "vec2",
+        "vec4"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "cs_main",
+      "kind": "WgslFunction",
+      "package": "stages",
+      "line": 18,
+      "end_line": 21,
+      "signature": "@compute @workgroup_size(8, 8, 1) fn cs_main(@builtin(global_invocation_id) id: vec3<u32>)",
+      "calls": [
+        "workgroupBarrier"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Empty",
+      "kind": "WgslStruct",
+      "package": "stages",
+      "line": 23,
+      "end_line": 25,
+      "tier": "verified"
+    }
+  ]
+}

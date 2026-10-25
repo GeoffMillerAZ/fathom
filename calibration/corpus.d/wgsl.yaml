@@ -1,0 +1,32 @@
+id: wgsl
+language: WGSL
+# deep-template.wgsl (gfx-rs/wgpu, naga/tests/naga) is left out by the sparse list: it is wgpu's recursion_depth_template
+# negative test, a template nested thousands deep that naga's own front end rejects. tree-sitter's GLR parse of it takes
+# 6 to 8 s, inside the 10 s per-file budget but alone dropping throughput under the 1 MB/s floor, so it is outside the
+# measured set. The oracle prints the product-limit note only when the file is absent from the checkout.
+# gfx-rs/wgpu holds naga's WGSL front-end test inputs (naga/tests/in/wgsl, the snapshot suite), the examples' shaders and
+# the wgpu test shaders; naga/tests/out holds naga's own output (SPIR-V, HLSL, MSL, WGSL), which is not input. One of its
+# inputs, debug-symbol-large-source.wgsl, is 1.5 MB of comments: it stays, and the reading discloses its time.
+# webgpu/webgpu-samples is the WebGPU sample set: a shader per sample, written for browsers.
+repos:
+  - name: gfx-rs/wgpu
+    url: https://github.com/gfx-rs/wgpu
+    ref: v30.0.1
+    sha: 40f4a34ebaf56f9a046231f54125ad046239d3f3
+    licence: Apache-2.0 OR MIT
+    sparse: ["*.wgsl", "!naga/tests/out/**", "!naga/tests/naga/deep-template.wgsl"]
+    idioms:
+      - 'naga snapshot inputs: one language feature per file (atomics, arrays, bounds checks, binding arrays, ray queries)'
+      - 'entry points with @vertex, @fragment, @compute @workgroup_size and @builtin / @location parameters'
+      - 'resource bindings: @group(n) @binding(m) var<uniform | storage | private | workgroup> and texture/sampler globals'
+      - 'const, override and alias declarations, template types (vec4<f32>, array<T, N>, ptr<function, T>)'
+      - 'a 1.5 MB comment-only file (debug-symbol-large-source.wgsl) exercising the comment scanner'
+  - name: webgpu/webgpu-samples
+    url: https://github.com/webgpu/webgpu-samples
+    ref: main
+    sha: e040ec1a20dbbe01afed30c812e825b2639cfe5b
+    licence: BSD-3-Clause
+    idioms:
+      - 'one shader per sample: vertex and fragment stages in a single file, struct-passed varyings'
+      - 'compute shaders (particles, boids, game of life) with storage buffers and workgroup sizes'
+      - 'uniform structs, textures and samplers bound by @group/@binding, and helper functions called from entry points'

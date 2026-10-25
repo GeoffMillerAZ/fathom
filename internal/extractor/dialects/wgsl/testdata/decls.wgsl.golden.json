@@ -1,0 +1,118 @@
+{
+  "symbols": [
+    {
+      "name": "Light",
+      "kind": "WgslStruct",
+      "package": "decls",
+      "line": 2,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "camera",
+      "kind": "WgslVariable",
+      "package": "decls",
+      "line": 7,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "lights",
+      "kind": "WgslVariable",
+      "package": "decls",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "albedo",
+      "kind": "WgslVariable",
+      "package": "decls",
+      "line": 9,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "samp",
+      "kind": "WgslVariable",
+      "package": "decls",
+      "line": 10,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "counter",
+      "kind": "WgslVariable",
+      "package": "decls",
+      "line": 12,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "PI",
+      "kind": "WgslConstant",
+      "package": "decls",
+      "line": 13,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "TAU",
+      "kind": "WgslConstant",
+      "package": "decls",
+      "line": 14,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": "workgroup_size",
+      "kind": "WgslConstant",
+      "package": "decls",
+      "line": 15,
+      "end_line": 15,
+      "tier": "verified"
+    },
+    {
+      "name": "scale",
+      "kind": "WgslConstant",
+      "package": "decls",
+      "line": 16,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
+      "name": "Color",
+      "kind": "WgslTypeAlias",
+      "package": "decls",
+      "line": 18,
+      "end_line": 18,
+      "tier": "verified"
+    },
+    {
+      "name": "Index",
+      "kind": "WgslTypeAlias",
+      "package": "decls",
+      "line": 19,
+      "end_line": 19,
+      "tier": "verified"
+    },
+    {
+      "name": "lerp",
+      "kind": "WgslFunction",
+      "package": "decls",
+      "line": 21,
+      "end_line": 27,
+      "signature": "fn lerp( a: f32, b: f32, t: f32, ) -> f32",
+      "tier": "verified"
+    },
+    {
+      "name": "nothing",
+      "kind": "WgslFunction",
+      "package": "decls",
+      "line": 29,
+      "end_line": 29,
+      "signature": "fn nothing()",
+      "tier": "verified"
+    }
+  ]
+}

@@ -892,6 +892,20 @@ attests a pipeline's syntax, not the files its steps load, so no tier-A oracle c
 good. L3 is graded under §1.2's tool-format thresholds in this unit (good: precision >= .90, recall >= .60), and the
 reading says so. Criterion, pre-registered: jenkinsfile.json reads `level_met` L3.
 
+### 1.9 Owner rulings on throughput measurement (2026-10-25)
+
+- **T1, the median of three.** A reading's throughput is the median of at least three runs of one binary at one
+  commit on one machine, and the reading's notes give every run's value and its basis. One run near the floor proves
+  nothing: CUDA's round-1 pair at one commit read 1.06 and 0.97.
+- **T2, the machine class.** The §1.2 floor is read on the development-machine class (Apple silicon) that every
+  reading before the cloud lanes was taken on. A cloud VM ran 2.5 to 2.7 times slower than that class on the same
+  binary (lua Kong/kong 1.32 against the committed 3.61, python fastapi 1.21 against 3.02). So a cloud reading below
+  the floor is re-measured on the development-machine class before a refusal, a -rest row or a level cites
+  throughput, and the reading names its machine class, never a host. A cloud reading above the floor stands, since
+  the slower machine can only understate it. MATLAB is the first case: 0.71 in the VM, 2.22 on the class.
+  Revisit when a reading set measured on Linux CI is needed, or a user reports ingest slower than the floor on a
+  Linux host; then each reading is normalized by a control dialect measured in the same session instead.
+
 ## 2. Dialects as data
 
 ### 2.1 Layout
