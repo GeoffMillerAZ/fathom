@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 
 	"google.golang.org/protobuf/proto"
@@ -44,9 +46,14 @@ func metricTiersSubject(t *testing.T, tier string, extra ...string) []string {
  {"path": "m.cc", "line": 3, "col": 10, "name": "g", "class": "resolved"}]}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	return append([]string{"-dialect", "cpp", "-manifest", filepath.Join("..", "..", "internal", "extractor", "dialects", "cpp", "dialect.json"), "-subject", subject,
+	var tierArgs []string
+	if !slices.Contains(extra, "-scip-tier") && !slices.Contains(extra, "-no-scip-tier") {
+		tierArgs = []string{"-scip-tier", "A"} // round 4 C4-R2: a scip-clang index names its tier
+	}
+	extra = slices.DeleteFunc(slices.Clone(extra), func(a string) bool { return a == "-no-scip-tier" })
+	return append(append(tierArgs, "-dialect", "cpp", "-manifest", filepath.Join("..", "..", "internal", "extractor", "dialects", "cpp", "dialect.json"), "-subject", subject,
 		"-ctags", filepath.Join(t.TempDir(), "none"), "-scip", scip, "-scip-defs", "-tool-oracle", sites,
-		"-out", filepath.Join(t.TempDir(), "cpp.json"), "-queue", filepath.Join("..", "..", "docs", "plans", "language-breadth.queue.json")}, extra...)
+		"-out", filepath.Join(t.TempDir(), "cpp.json"), "-queue", filepath.Join("..", "..", "docs", "plans", "language-breadth.queue.json")), extra...)
 }
 
 // TestCmdLangOracleMetricTiers (round 3 A3, F3): end to end, a tier-B
@@ -67,6 +74,26 @@ func TestCmdLangOracleMetricTiers(t *testing.T) {
 	stderr.Reset()
 	if code := cmdLangOracle(metricTiersSubject(t, ""), &stdout, &stderr); code == 0 {
 		t.Errorf("an untiered call-site file: exit 0, want a refusal")
+	}
+	// round 4 C4-R2: an untiered preprocessor file (its imports grade
+	// import_resolution) and an untiered ranges companion (range_agreement,
+	// the linkage rule) are refused too, never read as tier A.
+	for _, c := range []struct{ name, file, body string }{
+		{"preproc", "preproc.json", `{"tool": "clang-preprocessor", "version": "test", "imports": [{"path": "m.cc", "line": 1, "to_path": "m.h"}]}`},
+		{"ranges companion", "preproc.ranges.json", `{"tool": "clang-ast", "version": "test", "ranges": [{"path": "m.cc", "name": "run", "kind": "function", "line": 2, "end": 4}]}`},
+	} {
+		dir := t.TempDir()
+		pre := filepath.Join(dir, "preproc.json")
+		if err := os.WriteFile(pre, []byte(`{"tool": "clang-preprocessor", "version": "test", "tier": "A", "imports": []}`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, c.file), []byte(c.body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		stderr.Reset()
+		if code := cmdLangOracle(metricTiersSubject(t, "B", "-tool-oracle", pre), &stdout, &stderr); code == 0 || !strings.Contains(stderr.String(), filepath.Join(dir, c.file)+": feeds") {
+			t.Errorf("an untiered %s: exit %d, want a refusal naming it: %s", c.name, code, stderr.String())
+		}
 	}
 }
 
@@ -96,5 +123,9 @@ func TestCmdLangOracleSCIPTier(t *testing.T) {
 	}
 	if code := cmdLangOracle(metricTiersSubject(t, "A", "-scip-tier", "AA"), &stdout, &stderr); code != 2 {
 		t.Errorf("-scip-tier AA: exit %d, want 2", code)
+	}
+	// round 4 C4-R2: a scip-clang index's tier is required, never A by default
+	if code := cmdLangOracle(metricTiersSubject(t, "A", "-no-scip-tier"), &stdout, &stderr); code != 2 {
+		t.Errorf("a scip-clang index without -scip-tier: exit %d, want 2", code)
 	}
 }

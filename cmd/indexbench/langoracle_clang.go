@@ -157,6 +157,16 @@ func feedTierFrom(tier string, paths []string, keys ...string) (string, error) {
 	return tier, nil
 }
 
+// oracleFileTier is the tier an oracle file at path names, which feeds a
+// metric: one naming none A-D is refused, never read as tier A (round 3 A3,
+// round 4 C4-R2), as feedTierFrom refuses one.
+func oracleFileTier(path, tier string) (string, error) {
+	if !slices.Contains([]string{"A", "B", "C", "D"}, tier) {
+		return "", fmt.Errorf("%s: feeds a metric but names no tier A-D (%q)", path, tier)
+	}
+	return tier, nil
+}
+
 // weakerTier is the weaker of two oracle tiers (A strongest, D weakest).
 func weakerTier(a, b string) string {
 	if b > a {

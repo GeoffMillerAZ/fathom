@@ -24,9 +24,11 @@ to the entry's directory). One database then serves the index, the preprocessor 
 harness's own file edges and imports, so they all see the flags the build used:
 
     cmake -S <subject> -B <subject>/build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON [options]   # nothing is built
-    run.sh <tools>/bin/scip-clang <subject> <subject>/build <out.scip> [jobs]
+    run.sh <tools>/bin/scip-clang <subject> <subject>/build <out.scip> <tier> [jobs]   # tier A: the build's own database
 
-The scratch copy is deleted when the readings are taken. `run.sh` refuses any release but 0.4.0, warns when the database
+The scratch copy is deleted when the readings are taken. `run.sh` takes the index's tier (A for the build's own
+database, B for a translation) and `indexbench lang-oracle` refuses a scip-clang index without `-scip-tier` (round 4
+C4-R2: no tier is read as A by default, nor any oracle file's that names none). `run.sh` refuses any release but 0.4.0, warns when the database
 is not at `<subject>/build`, and runs scip-clang from the subject root, so document paths are subject-relative. libuv
 indexes in 4 s, curl in 5 s, fmt in 1 s, json in 2 s. The other two oracle files of a reading are written the same way
 (`preproc/` below, and `../clang-ast-defs`, which runs `clang -Xclang -ast-dump=json` per entry for the definition end
@@ -85,7 +87,7 @@ the entry's own flags, and writes a neutral oracle file with two things the inde
   in files the index holds and on lines the preprocessor keeps, and the callers of the L2 calls the same way; the
   counts are disclosed in the reading's notes.
 
-    indexbench lang-oracle -dialect c -subject <libuv> -subject-name libuv/libuv -scip libuv.scip -scip-defs \
+    indexbench lang-oracle -dialect c -subject <libuv> -subject-name libuv/libuv -scip libuv.scip -scip-tier A -scip-defs \
         -tool-oracle preproc.json -unmatched unmatched.json -out docs/bench/readings/lang/c.json
 
 `../clang-ast-defs` writes `preproc.ranges.json` for the same subject (`go run . -subject <subject> -tier A -compdb

@@ -214,7 +214,7 @@ out["imports"] = [json.loads(i) for i in sorted(imps)]
 out["version"] = a.get("version", "") + " (nvcc device and host passes, unioned)"
 json.dump(out, open(os.path.join(w, "preproc.json"), "w"), indent=1)
 EOF
-bash "$here/run.sh" "$tools/bin/scip-clang" "$subj" "$subj/build" "$work/index.scip" 4
+bash "$here/run.sh" "$tools/bin/scip-clang" "$subj" "$subj/build" "$work/index.scip" "$scip_tier" 4
 ( cd "$repo/calibration/oracles/clang-calls" && go run . -subject "$subj" -compdb "$subj/build/compile_commands.json" -jobs 4 -tier "$scip_tier" > "$work/clang-calls-host.json" )
 ( cd "$repo/calibration/oracles/clang-calls" && go run . -subject "$subj" -compdb "$work/clang-device.json" -jobs 4 -tier "$scip_tier" > "$work/clang-calls-device.json" )
 python3 - "$work" <<'EOF'

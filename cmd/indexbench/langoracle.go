@@ -79,7 +79,7 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 	subjectName := fs.String("subject-name", "", "subject name recorded in the reading (default: the directory name)")
 	ctagsPath := fs.String("ctags", "", "universal-ctags binary (default: workspace/tools/ctags, then ctags on PATH; a non-universal ctags is reported unavailable)")
 	scipPath := fs.String("scip", "", "SCIP index of the subject (tier A; optional)")
-	scipTier := fs.String("scip-tier", "A", "the -scip index's tier (round 3 A2): A when the subject's own build wrote the compile database it read untranslated, B for a translation (a clang database derived from nvcc's); every metric the index feeds starts at it")
+	scipTier := fs.String("scip-tier", "", "the -scip index's tier (round 3 A2): A when the subject's own build wrote the compile database it read untranslated, B for a translation (a clang database derived from nvcc's); every metric the index feeds starts at it; required for a scip-clang index (round 4 C4-R2), A for any other when not given")
 	scipDefs := fs.Bool("scip-defs", false, "score L1 against the -scip index's definitions (tier A) instead of universal-ctags (owner decision D2: a stronger oracle where ctags is deficient)")
 	var toolOracles multiFlag
 	fs.Var(&toolOracles, "tool-oracle", "oracle JSON in the neutral shape (definitions, calls, references; tier A unless it says otherwise; repeatable)")
@@ -100,9 +100,22 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
-	if !slices.Contains([]string{"A", "B", "C", "D"}, *scipTier) {
+	if *scipTier != "" && !slices.Contains([]string{"A", "B", "C", "D"}, *scipTier) {
 		fmt.Fprintf(stderr, "lang-oracle: -scip-tier %q: want A, B, C or D\n", *scipTier)
 		return 2
+	}
+	if *scipPath != "" && *scipTier == "" {
+		// round 4 C4-R2: a scip-clang index read a compile database the driver
+		// chose (the build's own, or a translation), so it names its tier
+		raw, err := os.ReadFile(*scipPath)
+		if err != nil {
+			fmt.Fprintf(stderr, "lang-oracle: %v\n", err)
+			return 2
+		}
+		if _, tool, err := langbench.SCIPDocuments(raw); err == nil && tool == scipClangTool {
+			fmt.Fprintf(stderr, "lang-oracle: -scip %s is a scip-clang index: -scip-tier is required (A for the build's own compile database, B for a translation)\n", *scipPath)
+			return 2
+		}
 	}
 	if *dialect == "" || *subject == "" || *out == "" || fs.NArg() != 0 {
 		fmt.Fprintln(stderr, "usage: indexbench lang-oracle -dialect <id> -subject <dir> -out <reading.json> [-ctags <bin>] [-scip <index>] [-tool-oracle <json>]")
