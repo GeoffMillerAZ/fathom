@@ -35,14 +35,18 @@ What it counts, and does not:
   `naga/tests/naga/deep-template.wgsl` (a template nested thousands deep, a parser stress input) takes wgsl-parse exponential
   time, and a deep file overflows the default stack.
 
-Subjects (calibration/corpus.d/wgsl.yaml, 2026-10-25): gfx-rs/wgpu v30.0.1 (40f4a34e; 268 files, 1.98 MB, `naga/tests/out/` left out
-by the sparse pattern; wgsl-parse rejects or times out on 10: 3.7%) and webgpu/webgpu-samples main (e040ec1a; 76 files; 1 rejected).
-The reading is measured with `lang-oracle -only` excluding `naga/tests/naga/deep-template.wgsl` alone (owner ruling 2026-10-24: a
-restriction to files wgsl-parse accepts is allowed while its rejects are at most 5% of a subject's files, each named in disclose):
-tree-sitter's GLR parse of that file does not finish inside the engine's 10 s budget, which is one fault in 344 files against the
-0.1% floor, so it cannot stay in the measured set; the other nine rejects stay in, and their 39 definitions are the reading's
-extra definitions. `task lang:loop` has no `-only` pass-through, so the reading came from two `lang-oracle` runs (one per subject,
-the same `-out`) replayed with `task lang:loop READING=... WRITE=1 -- wgsl`.
+Subjects (calibration/corpus.d/wgsl.yaml, 2026-10-25): gfx-rs/wgpu v30.0.1 (40f4a34e; 267 files, `naga/tests/out/` and
+`naga/tests/naga/deep-template.wgsl` left out by the sparse list; wgsl-parse rejects or times out on 9) and
+webgpu/webgpu-samples main (e040ec1a; 76 files; 1 rejected). The reading is measured with no `-only`: every file in both
+subjects counts, the nine wgpu rejects and the one samples reject stay in, and their definitions are the reading's extra definitions.
+
+`naga/tests/naga/deep-template.wgsl` (a template nested thousands deep, 25 KB) is not in the subject, by owner ruling 2026-10-25
+(design 1.5 precedent: a file past what the engine can parse leaves the subjects, disclosed as a product limit). It is a negative
+fixture, not code real WGSL resembles: wgpu's `recursion_depth_template` test (naga/tests/naga/wgsl_errors.rs:998) feeds it to naga's
+own front end and expects the error "Parser recursion limit exceeded". tree-sitter's GLR parse of it takes 6.1 to 8.1 s on the
+4-core measuring VM (one earlier run exceeded the 10 s guest budget, a fault), and with it in the set wgpu's throughput is 0.31 MB/s
+against the 1 MB/s floor, so the level would not be met. The oracle prints this limit in `disclose` whenever the subject has
+`naga/tests/naga`. A template-nesting ingest guard is a separate follow-up.
 
 Totals on that scope: 2,287 oracle definitions all matched (kind, range and signature agreement 1.0), 39 extra fathom definitions
 in rejected files (sym_precision .9832), 2,573 call pairs all found (call_recall 1.0, call_precision 1.0).

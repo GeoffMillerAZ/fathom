@@ -78,7 +78,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `vhdl` | jpt13653903/tree-sitter-vhdl | v2.0.3 | `a7cf493d07dbcf52ca287596451ae3fb8b12099f` | MIT | `tree_sitter_vhdl` | `0afd50c99d2ee6277c9b183a6fb160173cf8635b3e14900a8dfc3dbbd6e93378` |
 | `vim` | tree-sitter-grammars/tree-sitter-vim | v0.8.1 | `3092fcd99eb87bbd0fc434aa03650ba58bd5b43b` | MIT | `tree_sitter_vim` | `93cafb9a0269420362454ace725a118ff1c3e08dcdfdc228aa86334b54d53c2a` |
 | `vue` | tree-sitter-grammars/tree-sitter-vue | ce8011a414fdf8091f4e4071752efc376f4afb08 | `ce8011a414fdf8091f4e4071752efc376f4afb08` | MIT | `tree_sitter_vue` | `e62913c5709ed1e68616bb85aedb2641a0c35c6b6709986ab71487d54b16ad0d` |
-| `wgsl` | include-yy/tree-sitter-wgsl | b58422ee34029f81ae8b7dd44fc14d043809b321 | `b58422ee34029f81ae8b7dd44fc14d043809b321` | MIT | `tree_sitter_wgsl` | `802090792a917e9a685bd9cb3657785b1639b0cf2f2104697aeb2fa0f0a3282c` |
+| `wgsl` | include-yy/tree-sitter-wgsl | b58422ee34029f81ae8b7dd44fc14d043809b321 | `b58422ee34029f81ae8b7dd44fc14d043809b321` | MIT | `tree_sitter_wgsl` | `ad66d792d4c58c9e5d7bcd596c83a0b93c34b802b540a92c2f44da207be5fd2f` |
 
 ### Committed blobs
 

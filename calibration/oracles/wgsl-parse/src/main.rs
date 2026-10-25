@@ -107,6 +107,9 @@ fn run() {
     for r in &rejected {
         disclose.push(format!("wgsl-parse rejects or times out on {r}"));
     }
+    if std::path::Path::new(&root).join("naga/tests/naga").is_dir() {
+        disclose.push("product limit: naga/tests/naga/deep-template.wgsl (wgpu's recursion_depth_template negative test, naga/tests/naga/wgsl_errors.rs:998, which expects naga's own front end to reject it with a recursion-limit error; a template nested thousands deep) is left out of the subject by the sparse list; tree-sitter's GLR parse of it takes 6.1 to 8.1 s on the 4-core measuring VM (it exceeded the 10 s budget in one earlier run, a fault) and alone drops throughput to 0.31 MB/s against the 1 MB/s floor; a template-nesting ingest guard is a follow-up".to_string());
+    }
     eprintln!("files {} parsed {} rejected {} definitions {} calls {}", files.len(), parsed, rejected.len(), defs.len(), calls.len());
     let out: Value = json!({
         "tool": "wgsl-parse", "version": "0.6.0", "tier": "B",

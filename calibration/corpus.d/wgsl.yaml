@@ -10,7 +10,7 @@ repos:
     ref: v30.0.1
     sha: 40f4a34ebaf56f9a046231f54125ad046239d3f3
     licence: Apache-2.0 OR MIT
-    sparse: ["*.wgsl", "!naga/tests/out/**"]
+    sparse: ["*.wgsl", "!naga/tests/out/**", "!naga/tests/naga/deep-template.wgsl"]
     idioms:
       - 'naga snapshot inputs: one language feature per file (atomics, arrays, bounds checks, binding arrays, ray queries)'
       - 'entry points with @vertex, @fragment, @compute @workgroup_size and @builtin / @location parameters'

@@ -4351,7 +4351,7 @@
     "name": "WGSL shaders (.wgsl)",
     "kind": "language",
     "target_level": "L2",
-    "grammar_source": "szebniok/tree-sitter-wgsl (or tree-sitter-grammars/tree-sitter-wgsl-bevy)",
+    "grammar_source": "include-yy/tree-sitter-wgsl",
     "licence": "MIT",
     "oracle": [
       "wgsl-parse"

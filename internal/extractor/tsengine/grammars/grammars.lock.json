@@ -786,7 +786,7 @@
       "repo": "include-yy/tree-sitter-wgsl",
       "tag": "b58422ee34029f81ae8b7dd44fc14d043809b321",
       "commit": "b58422ee34029f81ae8b7dd44fc14d043809b321",
-      "tarball_sha256": "802090792a917e9a685bd9cb3657785b1639b0cf2f2104697aeb2fa0f0a3282c",
+      "tarball_sha256": "ad66d792d4c58c9e5d7bcd596c83a0b93c34b802b540a92c2f44da207be5fd2f",
       "licence": "MIT",
       "entry_points": ["tree_sitter_wgsl"],
       "scanner": true,

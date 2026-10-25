@@ -793,12 +793,12 @@
     },
     "wgsl": {
       "catalogue": "wgsl",
-      "repo": "include-yy/tree-sitter-wgsl",
-      "commit": "b58422ee34029f81ae8b7dd44fc14d043809b321",
+      "repo": "szebniok/tree-sitter-wgsl",
+      "commit": "40259f3c77ea856841a4e0c4c807705f3e4a2b65",
       "abi": 14,
       "generate": false,
       "licence": "MIT",
-      "licence_basis": "LICENSE",
+      "licence_basis": "catalogue",
       "flags": [
         "grammar-differs:include-yy/tree-sitter-wgsl"
       ]

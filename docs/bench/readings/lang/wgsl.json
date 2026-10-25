@@ -10,7 +10,7 @@
     "L4": "not-attempted"
   },
   "measured_at": "2026-10-25",
-  "fathom_commit": "787c146",
+  "fathom_commit": "d839525",
   "extractor": "dialect",
   "subjects": [
     {
@@ -47,9 +47,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 12,
-        "extract_ms": 412.2100000000001,
-        "extract_cpu_ms": 421.40900000000005,
-        "max_file_ms": 63,
+        "extract_ms": 326.8530000000001,
+        "extract_cpu_ms": 330.0349999999998,
+        "max_file_ms": 48,
         "peak_module_pages": 388,
         "compiled_bytes": 0
       }
@@ -88,9 +88,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 1,
-        "extract_ms": 61.108000000000004,
-        "extract_cpu_ms": 62.836000000000006,
-        "max_file_ms": 2,
+        "extract_ms": 50.34299999999998,
+        "extract_cpu_ms": 51.23799999999999,
+        "max_file_ms": 1,
         "peak_module_pages": 271,
         "compiled_bytes": 0
       }
@@ -158,21 +158,20 @@
     "faults": 0,
     "faulting_files": [],
     "files_with_error": 13,
-    "throughput_mb_s": 4.22,
+    "throughput_mb_s": 5.36,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 4.32,
-    "max_file_ms": 63,
+    "wall_throughput_mb_s": 5.42,
+    "max_file_ms": 48,
     "peak_module_pages": 388,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {},
   "notes": [
-    "gfx-rs/wgpu: restricted to benches/**, examples/**, naga/src/**, naga/tests/in/**, naga/tests/naga/deep-expression.wgsl, player/**, tests/**, wgpu-core/**, wgpu-hal/**, wgpu/** (-only; the files outside are a disclosed gap, not measured)",
-    "gfx-rs/wgpu: wgsl-parse rejects or times out on 10 of 268 .wgsl files (no definitions read from them)",
+    "gfx-rs/wgpu: product limit: naga/tests/naga/deep-template.wgsl (wgpu's recursion_depth_template negative test, naga/tests/naga/wgsl_errors.rs:998, which expects naga's own front end to reject it with a recursion-limit error; a template nested thousands deep) is left out of the subject by the sparse list; tree-sitter's GLR parse of it takes 6.1 to 8.1 s on the 4-core measuring VM (it exceeded the 10 s budget in one earlier run, a fault) and alone drops throughput to 0.31 MB/s against the 1 MB/s floor; a template-nesting ingest guard is a follow-up",
+    "gfx-rs/wgpu: wgsl-parse rejects or times out on 9 of 267 .wgsl files (no definitions read from them)",
     "gfx-rs/wgpu: wgsl-parse rejects or times out on examples/features/src/render_with_compute/shader.wgsl",
     "gfx-rs/wgpu: wgsl-parse rejects or times out on naga/tests/in/wgsl/early-depth-test-force.wgsl",
     "gfx-rs/wgpu: wgsl-parse rejects or times out on naga/tests/in/wgsl/per-vertex.wgsl",
-    "gfx-rs/wgpu: wgsl-parse rejects or times out on naga/tests/naga/deep-template.wgsl",
     "gfx-rs/wgpu: wgsl-parse rejects or times out on tests/src/copy_texture_to_buffer.wgsl",
     "gfx-rs/wgpu: wgsl-parse rejects or times out on tests/tests/wgpu-gpu/per_vertex/per_vertex.wgsl",
     "gfx-rs/wgpu: wgsl-parse rejects or times out on tests/tests/wgpu-gpu/regression/issue_4485.wgsl",
