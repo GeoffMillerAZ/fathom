@@ -40,6 +40,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -427,6 +428,7 @@ func main() {
 	subject := flag.String("subject", "", "checkout to measure (required)")
 	dxc := flag.String("dxc", "dxc", "dxc binary")
 	target := flag.String("target", "lib_6_3", "dxc -T profile")
+	retry := flag.String("retry-target", "lib_6_9", "the newest library profile, retried on a unit with an error")
 	filesList := flag.String("files", "", "file of subject-relative paths, one per line: the harness's measured set (required)")
 	scopeOut := flag.String("scope", "", "write the in-scope files here, one per line")
 	var incs multi
@@ -436,13 +438,13 @@ func main() {
 		fmt.Fprintln(os.Stderr, "usage: dxc-ast -subject <dir> -files <list> [-dxc <dxc>] [-I <dir>]... [-target lib_6_3] [-scope <out>]")
 		os.Exit(2)
 	}
-	if err := run(*subject, *dxc, *target, *filesList, *scopeOut, incs, os.Stdout, os.Stderr); err != nil {
+	if err := run(*subject, *dxc, *target, *retry, *filesList, *scopeOut, incs, os.Stdout, os.Stderr); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
 
-func run(subject, dxc, target, filesList, scopeOut string, incs []string, stdout, stderr io.Writer) error {
+func run(subject, dxc, target, retryTarget, filesList, scopeOut string, incs []string, stdout, stderr io.Writer) error {
 	b, err := os.ReadFile(filesList)
 	if err != nil {
 		return err
@@ -471,28 +473,61 @@ func run(subject, dxc, target, filesList, scopeOut string, incs []string, stdout
 	if out, err := exec.Command(dxc, "--version").CombinedOutput(); err == nil {
 		version = strings.TrimSpace(string(out))
 	}
-	base := []string{"-T", target, "-HV", "2021"}
-	for _, inc := range incs {
-		base = append(base, "-I", inc)
+	// The run's setting, then the retries an errored unit gets (H5-R5): the
+	// 2018 language version, and the newest library profile.
+	settings := []setting{{target, "2021"}, {target, "2018"}, {retryTarget, "2021"}}
+	argsFor := func(st setting, mode, f string) []string {
+		a := []string{"-T", st.target, "-HV", st.hv}
+		for _, inc := range incs {
+			a = append(a, "-I", inc)
+		}
+		return append(a, mode, "./"+f)
+	}
+	dumpUnit := func(st setting, f string) (*bytes.Buffer, string, bool) {
+		cmd := exec.Command(dxc, argsFor(st, "-ast-dump", f)...)
+		cmd.Dir = subject
+		var dump, diag bytes.Buffer
+		cmd.Stdout, cmd.Stderr = &dump, &diag
+		runErr := cmd.Run()
+		if first := firstError(diag.String()); first != "" || runErr != nil {
+			if first == "" {
+				first = strings.TrimSpace(diag.String())
+			}
+			return nil, first, false
+		}
+		return &dump, "", true
 	}
 	scope := map[string]bool{}
 	seenDef := map[Def]bool{}
 	seenCall := map[Pair]bool{}
 	var out oracleFile
 	errored, macroDefs, macroCalls := 0, 0, 0
+	var excluded []unitError             // units no setting parses, with the first error of the run's setting
+	admits := make([]int, len(settings)) // errored units each retry setting parses
+	var admitted []string                // "<file> (<setting>)": units a retry setting admitted
 	for _, f := range list {
-		args := append(append([]string{}, base...), "-ast-dump", "./"+f)
-		cmd := exec.Command(dxc, args...)
-		cmd.Dir = subject
-		var dump, diag bytes.Buffer
-		cmd.Stdout, cmd.Stderr = &dump, &diag
-		runErr := cmd.Run()
-		if runErr != nil || bytes.Contains(diag.Bytes(), []byte("error:")) {
+		st := settings[0]
+		dump, first, ok := dumpUnit(st, f)
+		if !ok {
 			errored++
-			continue
+			var chosen *bytes.Buffer
+			for k, retry := range settings[1:] {
+				if d, _, ok := dumpUnit(retry, f); ok {
+					admits[k+1]++
+					if chosen == nil {
+						chosen, st = d, retry
+					}
+				}
+			}
+			if chosen == nil {
+				excluded = append(excluded, unitError{File: f, Msg: first})
+				continue
+			}
+			dump = chosen
+			admitted = append(admitted, fmt.Sprintf("%s (%s)", f, st))
 		}
 		scope[f] = true
-		dep := exec.Command(dxc, append(append([]string{}, base...), "-M", "./"+f)...)
+		dep := exec.Command(dxc, argsFor(st, "-M", f)...)
 		dep.Dir = subject
 		if deps, err := dep.Output(); err == nil {
 			for _, d := range depFiles(string(deps), subject) {
@@ -501,7 +536,7 @@ func run(subject, dxc, target, filesList, scopeOut string, incs []string, stdout
 				}
 			}
 		}
-		u := parseDump(&dump, files, macro)
+		u := parseDump(dump, files, macro)
 		macroDefs += u.MacroDefs
 		macroCalls += u.MacroCalls
 		for _, d := range u.Defs {
@@ -536,9 +571,11 @@ func run(subject, dxc, target, filesList, scopeOut string, incs []string, stdout
 	sortPairs(out.Calls)
 	out.Tool, out.Version, out.Tier = "dxc-ast", version, "B"
 	out.Disclose = []string{
-		fmt.Sprintf("dxc-ast (dxc -T %s -HV 2021 -ast-dump, run-chosen flags, no build database): %d of %d measured files in scope (their own unit, or a header of one, parses without error); %d units with an error not read", target, len(scope), len(list), errored),
+		fmt.Sprintf("dxc-ast (dxc -T %s -HV 2021 -ast-dump, run-chosen flags, no build database): %d of %d measured files in scope (their own unit, or a header of one, parses without error under a setting below); %d units with an error under that setting, %d of them not read under any", target, len(scope), len(list), errored, len(excluded)),
+		fmt.Sprintf("dxc-ast: of the %d units with an error, %s admits %d and %s admits %d, each tried on every one; a unit is read under the first that parses it (%s, then %s), chosen per unit: %d admitted%s", errored, settings[1], admits[1], settings[2], admits[2], settings[1], settings[2], len(admitted), listSuffix(admitted)),
 		fmt.Sprintf("dxc-ast: %d definitions and %d calls spelled on a #define line (a macro body) not written, macro-generated (counted per reading unit)", macroDefs, macroCalls),
 	}
+	out.Disclose = append(out.Disclose, errorClasses(excluded)...)
 	for k := range scope {
 		out.Scope = append(out.Scope, k)
 	}
@@ -548,8 +585,8 @@ func run(subject, dxc, target, filesList, scopeOut string, incs []string, stdout
 			return err
 		}
 	}
-	fmt.Fprintf(stderr, "files %d in_scope %d errored %d definitions %d calls %d macro_defs %d macro_calls %d\n",
-		len(list), len(scope), errored, len(out.Definitions), len(out.Calls), macroDefs, macroCalls)
+	fmt.Fprintf(stderr, "files %d in_scope %d errored %d excluded %d admitted %d definitions %d calls %d macro_defs %d macro_calls %d\n",
+		len(list), len(scope), errored, len(excluded), len(admitted), len(out.Definitions), len(out.Calls), macroDefs, macroCalls)
 	enc := json.NewEncoder(stdout)
 	enc.SetIndent("", " ")
 	return enc.Encode(out)
@@ -577,4 +614,96 @@ func depFiles(s, subject string) []string {
 		out = append(out, rel(d))
 	}
 	return out
+}
+
+// setting is one dxc front-end configuration: a profile and a language
+// version.
+type setting struct{ target, hv string }
+
+func (s setting) String() string { return fmt.Sprintf("-T %s -HV %s", s.target, s.hv) }
+
+// unitError is a unit no setting parses and the first error its run wrote.
+type unitError struct{ File, Msg string }
+
+var (
+	reErrorLine = regexp.MustCompile(`(?m)^(.*?):(\d+):\d+: (?:fatal )?error: (.*)$`)
+	reQuoted    = regexp.MustCompile(`'[^']*'`)
+)
+
+// firstError is the first `error:` diagnostic of a dxc run, as
+// `<file>:<line>: <message>`, or "" when it wrote none.
+func firstError(diag string) string {
+	if m := reErrorLine.FindStringSubmatch(diag); m != nil {
+		return fmt.Sprintf("%s:%s: %s", strings.TrimPrefix(m[1], "./"), m[2], strings.TrimSpace(m[3]))
+	}
+	for _, l := range strings.Split(diag, "\n") {
+		if strings.Contains(l, "error:") {
+			return strings.TrimSpace(l)
+		}
+	}
+	return ""
+}
+
+// errorClass is a first error's class: its message with every quoted name
+// replaced by '_' and any trailing [-W...] flag dropped.
+func errorClass(first string) string {
+	msg := first
+	if i := strings.Index(first, ": "); i >= 0 && strings.Contains(first[:i], ":") {
+		msg = first[i+2:]
+	}
+	if i := strings.LastIndex(msg, " [-W"); i >= 0 {
+		msg = msg[:i]
+	}
+	return reQuoted.ReplaceAllString(msg, "'_'")
+}
+
+// errorClasses discloses the excluded units by first-error class, the most
+// frequent first, with two examples each.
+func errorClasses(units []unitError) []string {
+	by := map[string][]string{}
+	for _, u := range units {
+		c := errorClass(u.Msg)
+		by[c] = append(by[c], u.Msg)
+	}
+	classes := make([]string, 0, len(by))
+	for c := range by {
+		classes = append(classes, c)
+	}
+	sort.Slice(classes, func(i, j int) bool {
+		if len(by[classes[i]]) != len(by[classes[j]]) {
+			return len(by[classes[i]]) > len(by[classes[j]])
+		}
+		return classes[i] < classes[j]
+	})
+	out := make([]string, 0, len(classes)+1)
+	for _, c := range classes {
+		ex := slices.Compact(slices.Sorted(slices.Values(by[c]))) // one header's error reached from two units is one example
+		if len(ex) > 2 {
+			ex = ex[:2]
+		}
+		out = append(out, fmt.Sprintf("dxc-ast excluded units by first error: %d %q (e.g. %s)", len(by[c]), c, strings.Join(ex, "; ")))
+	}
+	missing, elsewhere := 0, 0
+	for _, u := range units {
+		switch c := errorClass(u.Msg); {
+		case strings.Contains(c, "file not found"):
+			missing++
+		case strings.HasPrefix(c, "use of undeclared identifier"), strings.HasPrefix(c, "unknown type name"):
+			elsewhere++
+		}
+	}
+	if len(units) > 0 {
+		out = append(out, fmt.Sprintf("dxc-ast scope bias: of the %d units excluded, %d stop at an #include this run's -I roots do not resolve (a build passes its own) and %d use a name no file they include declares (a header written to be compiled inside an includer, or a name a build define supplies), so the scope leans to self-contained units and away from code built with its own include roots and defines", len(units), missing, elsewhere))
+	}
+	return out
+}
+
+// listSuffix is ": a, b" for a non-empty list, sorted.
+func listSuffix(items []string) string {
+	if len(items) == 0 {
+		return ""
+	}
+	sorted := append([]string(nil), items...)
+	sort.Strings(sorted)
+	return ": " + strings.Join(sorted, ", ")
 }

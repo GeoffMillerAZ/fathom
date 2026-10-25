@@ -108,6 +108,8 @@ case "$*" in
 esac
 case "$last" in
 ./bad.hlsl) echo "./bad.hlsl:1:1: error: unknown type name 'Foo'" >&2; exit 1 ;;
+./old.hlsl) case "$*" in *"-HV 2018"*) printf '%s\n' 'TranslationUnitDecl 0x1 <<invalid sloc>> <invalid sloc>' ;;
+  *) echo "./old.hlsl:2:5: error: operator overloading is not allowed" >&2; exit 1 ;; esac ;;
 ./good.hlsl) printf '%s\n' 'TranslationUnitDecl 0x1 <<invalid sloc>> <invalid sloc>' \
   '|-FunctionDecl 0x2 <./good.hlsl:1:1, line:3:1> line:1:7 main '"'"'float ()'"'"'' \
   '| ` + "`" + `-CompoundStmt 0x3 <line:2:1, line:3:1>' ;;
@@ -135,7 +137,7 @@ func TestRunScope(t *testing.T) {
 	}
 	scopeOut := filepath.Join(t.TempDir(), "scope")
 	var stdout, stderr bytes.Buffer
-	if err := run(subject, fakeDXC(t), "lib_6_3", list, scopeOut, nil, &stdout, &stderr); err != nil {
+	if err := run(subject, fakeDXC(t), "lib_6_3", "lib_6_9", list, scopeOut, nil, &stdout, &stderr); err != nil {
 		t.Fatal(err)
 	}
 	var out oracleFile
@@ -150,5 +152,55 @@ func TestRunScope(t *testing.T) {
 	}
 	if want := []Def{{"good.hlsl", "main", "function", 1, 3}}; !reflect.DeepEqual(out.Definitions, want) {
 		t.Errorf("definitions %v, want %v", out.Definitions, want)
+	}
+}
+
+func TestFirstErrorReadsFatal(t *testing.T) {
+	got := firstError("./a.h:12:10: fatal error: 'b.h' file not found\n#include \"b.h\"\n")
+	if want := "a.h:12: 'b.h' file not found"; got != want {
+		t.Errorf("firstError = %q, want %q", got, want)
+	}
+	if c := errorClass(got); c != "'_' file not found" {
+		t.Errorf("errorClass = %q", c)
+	}
+}
+
+// TestRunRetries (H5-R5): a unit with an error under the run's setting is
+// retried under -HV 2018 and the newest library profile, read under the first
+// that parses it, and disclosed; one no setting parses is excluded with its
+// first error, counted by class with examples.
+func TestRunRetries(t *testing.T) {
+	subject := t.TempDir()
+	for _, f := range []string{"bad.hlsl", "old.hlsl"} {
+		if err := os.WriteFile(filepath.Join(subject, f), []byte("\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	list := filepath.Join(t.TempDir(), "files")
+	if err := os.WriteFile(list, []byte("bad.hlsl\nold.hlsl\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var stdout, stderr bytes.Buffer
+	if err := run(subject, fakeDXC(t), "lib_6_3", "lib_6_9", list, "", nil, &stdout, &stderr); err != nil {
+		t.Fatal(err)
+	}
+	var out oracleFile
+	if err := json.Unmarshal(stdout.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"old.hlsl"}; !reflect.DeepEqual(out.Scope, want) {
+		t.Errorf("scope %v, want %v", out.Scope, want)
+	}
+	all := strings.Join(out.Disclose, "\n")
+	for _, want := range []string{
+		"2 units with an error under that setting, 1 of them not read under any",
+		"-T lib_6_3 -HV 2018 admits 1 and -T lib_6_9 -HV 2021 admits 0",
+		"1 admitted: old.hlsl (-T lib_6_3 -HV 2018)",
+		`1 "unknown type name '_'" (e.g. bad.hlsl:1: unknown type name 'Foo')`,
+		"of the 1 units excluded, 0 stop at an #include this run's -I roots do not resolve (a build passes its own) and 1 use a name",
+	} {
+		if !strings.Contains(all, want) {
+			t.Errorf("disclose lacks %q:\n%s", want, all)
+		}
 	}
 }

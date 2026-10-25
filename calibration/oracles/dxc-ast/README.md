@@ -8,7 +8,12 @@ lang-oracle -tool-oracle`'s neutral `definitions` and `calls` for an HLSL subjec
 
 from the subject root, one process per measured file, with run-chosen flags and no build database (tier B: a shader's
 build passes its own profile, entry point and defines; this run does not know them). A unit whose run writes an
-`error:` is not read. A file is in scope when its own unit parses without error, or when it is a header that
+`error:` is retried under `-HV 2018` and under the newest library profile DXC 1.9 lists (`-retry-target`, default
+`lib_6_9`), each on every such unit, and read under the first that parses it (2018, then the profile), chosen per unit;
+the `disclose` lines count what each retry admits and name the units admitted. A unit no setting parses is not read:
+its first error is recorded, and the excluded units are disclosed by first-error class (the message with each quoted
+name as `'_'`), the most frequent first, with two examples each, and by the bias they give the scope (a missing
+include, a name declared elsewhere). A file is in scope when its own unit parses without error, or when it is a header that
 `dxc -M` lists for such a unit; `-scope` writes that list for lang-oracle's `-only`, so a file the front end cannot
 read is neither a recall miss nor a precision miss. The oracle file's `scope` names the same list, so `lang-oracle`
 grades definitions and calls on those files alone while its run (tenancy, throughput, L3) covers every measured file.
