@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"os/exec"
@@ -51,5 +52,22 @@ func TestSubjectSHA(t *testing.T) {
 	}
 	if _, err := subjectSHA(ctx, inner, "v12.9"); err == nil {
 		t.Error("-subject-sha v12.9: want an error (a full 40-hex commit is required)")
+	}
+}
+
+// TestCmdLangOracleRequiresSubjectSHA (round 4 C4-R7): a reading that names no
+// commit of its subject is refused unless -subject-sha names one: a scratch
+// copy with no .git, or a directory inside another repository, has none of
+// its own.
+func TestCmdLangOracleRequiresSubjectSHA(t *testing.T) {
+	allowUnpinnedSubject = false
+	t.Cleanup(func() { allowUnpinnedSubject = true })
+	var stdout, stderr bytes.Buffer
+	if code := cmdLangOracle(metricTiersSubject(t, "A"), &stdout, &stderr); code == 0 || !strings.Contains(stderr.String(), "-subject-sha") {
+		t.Errorf("a subject with no commit: exit %d, want a refusal naming -subject-sha: %s", code, stderr.String())
+	}
+	stderr.Reset()
+	if code := cmdLangOracle(metricTiersSubject(t, "A", "-subject-sha", "cab7c66b4fcf35b09ea8fbc4c3c1a9272e92d997"), &stdout, &stderr); code != 0 {
+		t.Errorf("-subject-sha given: exit %d: %s", code, stderr.String())
 	}
 }

@@ -88,7 +88,7 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 	callsFrom := fs.String("calls-from", "scip", "which oracle grades L2 beside -scip: scip (the index's call sites, tier A) or tool (the -tool-oracle files' calls at their own tier, the index still grading definitions, typed edges and imports; LB-F204, O264)")
 	adjudicate := fs.String("adjudicate", "", "oracle-deficiency disclosure JSON (owner decision D3): dialect-only definitions the L1 oracle is verified to miss, each admitted only by a deterministic file:line, name and module-scope check, listed in the reading and left out of sym_precision's denominator")
 	unmatched := fs.String("unmatched", "", "write this subject's L1 misses both ways (dialect_only, oracle_only) and its L2 call pairs both ways (calls.fathom_only, calls.oracle_only) as JSON — the worker's diagnosis and the source of D3 adjudication candidates; never part of the reading")
-	subjectSHAFlag := fs.String("subject-sha", "", "the subject's commit (a full 40-hex sha) when -subject is a copy with no .git of its own, as the CUDA driver's scratch subject is; without it the sha is the subject's own HEAD, and none when -subject is not its repository's top level")
+	subjectSHAFlag := fs.String("subject-sha", "", "the subject's commit (a full 40-hex sha) when -subject is a copy with no .git of its own, as the CUDA driver's scratch subject is; without it the sha is the subject's own HEAD, and a subject that has none (not its repository's top level, no .git) is refused (round 4 C4-R7)")
 	var extraNotes multiFlag
 	fs.Var(&extraNotes, "note", "a disclosure the measurement driver writes into the reading's notes, prefixed with the subject's name (repeatable; round 3 A4: a driver's own record, never a hand edit)")
 	only := fs.String("only", "", "comma-separated globs (subject-relative, * within a segment, ** across): measure only these files — e.g. the SQL families a grammar supports (D2); the reading names the restriction")
@@ -238,7 +238,7 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 	}
-	m, err := measureSubject(ctx, spec, *subject, name, oracleOpts{ctags: *ctagsPath, scip: *scipPath, scipTier: *scipTier, scipDefs: *scipDefs, callsFromTool: *callsFrom == "tool", tools: tools, only: onlyGlobs, adjudicate: *adjudicate, unmatched: *unmatched, baseNotes: baseNotes, subjectSHA: *subjectSHAFlag}, with)
+	m, err := measureSubject(ctx, spec, *subject, name, oracleOpts{ctags: *ctagsPath, scip: *scipPath, scipTier: *scipTier, scipDefs: *scipDefs, callsFromTool: *callsFrom == "tool", tools: tools, only: onlyGlobs, adjudicate: *adjudicate, unmatched: *unmatched, baseNotes: baseNotes, subjectSHA: *subjectSHAFlag, requireSHA: true}, with)
 	if err != nil {
 		fmt.Fprintln(stderr, "lang-oracle:", err)
 		return 1
@@ -366,6 +366,7 @@ type oracleOpts struct {
 	adjudicate    string   // oracle-deficiency disclosure file (D3)
 	unmatched     string   // where to write the L1 and call-pair misses both ways (diagnosis)
 	subjectSHA    string   // the subject's commit when its checkout has no .git (round 3 A1)
+	requireSHA    bool     // lang-oracle: a subject with no commit is refused (round 4 C4-R7)
 }
 
 // unmatchedFile is -unmatched's JSON: the subject's L1 misses both ways when
@@ -726,6 +727,10 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 	sha, err := subjectSHA(ctx, root, opts.subjectSHA)
 	if err != nil {
 		return res, err
+	}
+	if sha == "" && opts.requireSHA && !allowUnpinnedSubject {
+		// round 4 C4-R7: a reading names the commit it measured
+		return res, fmt.Errorf("subject %s has no commit of its own (a copy with no .git, or a directory inside another repository): pass -subject-sha", name)
 	}
 	sub := langbench.Subject{Name: name, SHA: sha, Counts: map[string]int{},
 		Families: map[string]string{}, ExcludedByKind: map[string]int{}, Tenancy: &langbench.SubjectTenancy{FaultingFiles: []string{}}}
@@ -1590,6 +1595,11 @@ func subjectSHA(ctx context.Context, root, sha string) (string, error) {
 }
 
 var fullSHA = regexp.MustCompile(`^[0-9a-f]{40}$`)
+
+// allowUnpinnedSubject lets lang-oracle measure a subject with no commit of
+// its own; only the package's tests set it (their subjects are temporary
+// directories).
+var allowUnpinnedSubject = false
 
 // samePath reports whether two paths name one directory once symlinks are
 // resolved.
