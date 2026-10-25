@@ -491,3 +491,36 @@ func TestSimulinkExtractDocModelRefs(t *testing.T) {
 		t.Errorf("cross-file %+v, want %+v", r.CrossFile, want)
 	}
 }
+
+// TestReadSimulinkModelStrayEndTags is the S-R1 regression: a part whose end tags outnumber
+// or mismatch its start tags is a bounded ErrSimulinkCap error, never a panic.
+func TestReadSimulinkModelStrayEndTags(t *testing.T) {
+	for name, part := range map[string]string{
+		"extra end tags":  `<System><Block Name="a" SID="1"/></System></x></y>`,
+		"mismatched end":  `<System><Block Name="a" SID="1"></System></Block>`,
+		"unclosed at end": `<System><Block Name="a" SID="1">`,
+		"stray end only":  `</System>`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			for _, entry := range []string{"simulink/systems/system_root.xml", "simulink/blockdiagram.xml", "simulink/graphicalInterface.xml"} {
+				src := slxPackage(t, "[Content_Types].xml", slxContentTypes, entry, part)
+				_, err := ReadSimulinkModel("m.slx", src)
+				if entry == "simulink/graphicalInterface.xml" {
+					continue // a broken interface part drops the references, as before
+				}
+				if !errors.Is(err, ErrSimulinkCap) {
+					t.Errorf("%s: err = %v, want an ErrSimulinkCap syntax error", entry, err)
+				}
+				if r, err := (SimulinkExtractor{}).ExtractDoc("svc", "m.slx", src); err != nil || len(r.Nodes) != 0 {
+					t.Errorf("%s: ExtractDoc = %d nodes, %v; want none, nil", entry, len(r.Nodes), err)
+				}
+			}
+		})
+	}
+	t.Run("mdl", func(t *testing.T) {
+		m, err := ReadSimulinkModel("m.mdl", []byte("Model {\n}\n}\n}\nSystem {\n"))
+		if err != nil || len(m.Blocks) != 0 {
+			t.Errorf("stray braces: %d blocks, %v", len(m.Blocks), err)
+		}
+	})
+}

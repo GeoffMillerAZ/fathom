@@ -58,7 +58,8 @@ const (
 )
 
 var (
-	// ErrSimulinkCap: a package over one of the caps, read as nothing.
+	// ErrSimulinkCap: a package over one of the caps, or a part that does not parse, read as
+	// nothing.
 	ErrSimulinkCap = errors.New("simulink: package over a read cap")
 	// ErrSimulinkTextPackage: a text-package .mdl, disclosed and not read.
 	ErrSimulinkTextPackage = errors.New("simulink: text-package .mdl is not read")
@@ -269,7 +270,7 @@ func parseXMLPart(b []byte) (*xnode, error) {
 			break
 		}
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("%w: %w", ErrSimulinkCap, err)
 		}
 		top := stack[len(stack)-1]
 		switch t := tok.(type) {
@@ -284,6 +285,10 @@ func parseXMLPart(b []byte) (*xnode, error) {
 			top.kids = append(top.kids, n)
 			stack = append(stack, n)
 		case xml.EndElement:
+			// RawToken matches no end tag to its start: the reader does, and never pops the root.
+			if len(stack) == 1 || t.Name.Local != top.name {
+				return nil, fmt.Errorf("%w: syntax error: line %d: unexpected end tag </%s>", ErrSimulinkCap, lineOf(off), t.Name.Local)
+			}
 			// off is the `<` of an end tag, or just past a self-closed tag's `/>`.
 			top.to = lineOf(off)
 			stack = stack[:len(stack)-1]
@@ -292,6 +297,9 @@ func parseXMLPart(b []byte) (*xnode, error) {
 				top.text += string(t)
 			}
 		}
+	}
+	if len(stack) > 1 {
+		return nil, fmt.Errorf("%w: syntax error: <%s> is not closed", ErrSimulinkCap, stack[len(stack)-1].name)
 	}
 	return doc, nil
 }
