@@ -1,0 +1,1360 @@
+{
+  "etherlab-examples/appinterface_minexample/appint_minex_extmode.mdl": {
+    "blocks": 14,
+    "signals": 16,
+    "model_refs": 0,
+    "calls": 16,
+    "cross_file": 0
+  },
+  "etherlab-examples/appinterface_ros/appint_ros_example.mdl": {
+    "blocks": 97,
+    "signals": 96,
+    "model_refs": 0,
+    "calls": 96,
+    "cross_file": 0
+  },
+  "etherlab-examples/devices/EtherLab/EL3104.mdl": {
+    "blocks": 2,
+    "signals": 0,
+    "model_refs": 0,
+    "calls": 0,
+    "cross_file": 0
+  },
+  "etherlab-examples/devices/EtherLab/EL3702.mdl": {
+    "blocks": 2,
+    "signals": 0,
+    "model_refs": 0,
+    "calls": 0,
+    "cross_file": 0
+  },
+  "etherlab-examples/devices/EtherLab/EL4102.mdl": {
+    "blocks": 1,
+    "signals": 0,
+    "model_refs": 0,
+    "calls": 0,
+    "cross_file": 0
+  },
+  "etherlab-examples/devices/EtherLab/EL5101.mdl": {
+    "blocks": 10,
+    "signals": 9,
+    "model_refs": 0,
+    "calls": 9,
+    "cross_file": 0
+  },
+  "etherlab-examples/devices/EtherLab/EL7211.mdl": {
+    "blocks": 2,
+    "signals": 0,
+    "model_refs": 0,
+    "calls": 0,
+    "cross_file": 0
+  },
+  "etherlab-examples/devices/EtherLab/EL7221.mdl": {
+    "blocks": 63,
+    "signals": 57,
+    "model_refs": 0,
+    "calls": 57,
+    "cross_file": 0
+  },
+  "etherlab-examples/devices/EtherLab/Maxon.mdl": {
+    "blocks": 1,
+    "signals": 0,
+    "model_refs": 0,
+    "calls": 0,
+    "cross_file": 0
+  },
+  "etherlab-examples/devices/EtherLab/S600_stromregelung.mdl": {
+    "blocks": 47,
+    "signals": 42,
+    "model_refs": 0,
+    "calls": 42,
+    "cross_file": 0
+  },
+  "etherlab-examples/devices/EtherLab/imu_EtherCAT_shield.mdl": {
+    "blocks": 1,
+    "signals": 0,
+    "model_refs": 0,
+    "calls": 0,
+    "cross_file": 0
+  },
+  "etherlab-examples/devices/KMS40/KMS.mdl": {
+    "blocks": 0,
+    "signals": 0,
+    "model_refs": 0,
+    "calls": 0,
+    "cross_file": 0
+  },
+  "etherlab-examples/devices/Mini40/KMS.mdl": {
+    "blocks": 0,
+    "signals": 0,
+    "model_refs": 0,
+    "calls": 0,
+    "cross_file": 0
+  },
+  "etherlab-examples/devices/ixxat/ETCio100_example.mdl": {
+    "blocks": 38,
+    "signals": 37,
+    "model_refs": 0,
+    "calls": 37,
+    "cross_file": 0
+  },
+  "etherlab-examples/devices/ni/NI9144_NI9401_example.mdl": {
+    "blocks": 10,
+    "signals": 8,
+    "model_refs": 0,
+    "calls": 8,
+    "cross_file": 0
+  },
+  "etherlab-examples/extmode_minexample/extmode_minimal.mdl": {
+    "blocks": 5,
+    "signals": 6,
+    "model_refs": 0,
+    "calls": 6,
+    "cross_file": 0
+  },
+  "fmt-model/lib/FMT_Model_Lib.slx": {
+    "blocks": 866,
+    "signals": 1010,
+    "model_refs": 0,
+    "calls": 1010,
+    "cross_file": 0
+  },
+  "fmt-model/model/Controller/ADRC-Controller/Controller.slx": {
+    "blocks": 914,
+    "signals": 978,
+    "model_refs": 0,
+    "calls": 978,
+    "cross_file": 0
+  },
+  "fmt-model/model/Controller/Boat-Controller/Controller.slx": {
+    "blocks": 242,
+    "signals": 230,
+    "model_refs": 0,
+    "calls": 230,
+    "cross_file": 0
+  },
+  "fmt-model/model/Controller/Car-Controller/Controller.slx": {
+    "blocks": 268,
+    "signals": 304,
+    "model_refs": 0,
+    "calls": 304,
+    "cross_file": 0
+  },
+  "fmt-model/model/Controller/FW-Controller/Controller.slx": {
+    "blocks": 368,
+    "signals": 378,
+    "model_refs": 0,
+    "calls": 378,
+    "cross_file": 0
+  },
+  "fmt-model/model/Controller/MC-Controller/Controller.slx": {
+    "blocks": 1313,
+    "signals": 1579,
+    "model_refs": 0,
+    "calls": 1579,
+    "cross_file": 0
+  },
+  "fmt-model/model/Controller/Submarine-Controller/Controller.slx": {
+    "blocks": 256,
+    "signals": 251,
+    "model_refs": 0,
+    "calls": 251,
+    "cross_file": 0
+  },
+  "fmt-model/model/Controller/VTOL-Controller/Controller.slx": {
+    "blocks": 1413,
+    "signals": 1624,
+    "model_refs": 0,
+    "calls": 1624,
+    "cross_file": 0
+  },
+  "fmt-model/model/FMS/Boat-FMS/FMS.slx": {
+    "blocks": 1175,
+    "signals": 1235,
+    "model_refs": 0,
+    "calls": 1235,
+    "cross_file": 0
+  },
+  "fmt-model/model/FMS/Car-FMS/FMS.slx": {
+    "blocks": 1199,
+    "signals": 1228,
+    "model_refs": 0,
+    "calls": 1228,
+    "cross_file": 0
+  },
+  "fmt-model/model/FMS/FW-FMS/FMS.slx": {
+    "blocks": 1810,
+    "signals": 2008,
+    "model_refs": 0,
+    "calls": 2008,
+    "cross_file": 0
+  },
+  "fmt-model/model/FMS/MC-FMS/FMS.slx": {
+    "blocks": 3426,
+    "signals": 3910,
+    "model_refs": 0,
+    "calls": 3910,
+    "cross_file": 0
+  },
+  "fmt-model/model/FMS/Submarine-FMS/FMS.slx": {
+    "blocks": 900,
+    "signals": 882,
+    "model_refs": 0,
+    "calls": 882,
+    "cross_file": 0
+  },
+  "fmt-model/model/FMS/VTOL-FMS/FMS.slx": {
+    "blocks": 5801,
+    "signals": 6665,
+    "model_refs": 0,
+    "calls": 6665,
+    "cross_file": 0
+  },
+  "fmt-model/model/INS/CF-INS/INS.slx": {
+    "blocks": 2526,
+    "signals": 2738,
+    "model_refs": 0,
+    "calls": 2738,
+    "cross_file": 0
+  },
+  "fmt-model/model/Plant/Boat-Plant/Plant.slx": {
+    "blocks": 727,
+    "signals": 758,
+    "model_refs": 0,
+    "calls": 758,
+    "cross_file": 0
+  },
+  "fmt-model/model/Plant/FW-Plant/Plant.slx": {
+    "blocks": 1123,
+    "signals": 1214,
+    "model_refs": 0,
+    "calls": 1214,
+    "cross_file": 0
+  },
+  "fmt-model/model/Plant/MC-Plant/Plant.slx": {
+    "blocks": 879,
+    "signals": 933,
+    "model_refs": 0,
+    "calls": 933,
+    "cross_file": 0
+  },
+  "fmt-model/model/Plant/VTOL-Plant/Plant.slx": {
+    "blocks": 1191,
+    "signals": 1275,
+    "model_refs": 0,
+    "calls": 1275,
+    "cross_file": 0
+  },
+  "fmt-model/simulation/DataSIM.slx": {
+    "blocks": 29,
+    "signals": 25,
+    "model_refs": 3,
+    "calls": 25,
+    "cross_file": 3
+  },
+  "fmt-model/simulation/ExtINS_DataSIM.slx": {
+    "blocks": 19,
+    "signals": 16,
+    "model_refs": 2,
+    "calls": 16,
+    "cross_file": 2
+  },
+  "fmt-model/simulation/MILSIM.slx": {
+    "blocks": 372,
+    "signals": 371,
+    "model_refs": 4,
+    "calls": 371,
+    "cross_file": 4
+  },
+  "ladac/actuators/actuators_lib.slx": {
+    "blocks": 124,
+    "signals": 133,
+    "model_refs": 0,
+    "calls": 133,
+    "cross_file": 0
+  },
+  "ladac/actuators/actuators_lib_example.slx": {
+    "blocks": 10,
+    "signals": 11,
+    "model_refs": 0,
+    "calls": 11,
+    "cross_file": 0
+  },
+  "ladac/aerodynamics/aerodynamics_lib.slx": {
+    "blocks": 71,
+    "signals": 65,
+    "model_refs": 0,
+    "calls": 65,
+    "cross_file": 0
+  },
+  "ladac/aerodynamics/airfoil/dynamic_stall/example_sim_airfoilDynStall.slx": {
+    "blocks": 130,
+    "signals": 158,
+    "model_refs": 0,
+    "calls": 158,
+    "cross_file": 0
+  },
+  "ladac/aerodynamics/airfoil/unsteady/unstAirfoilAero_sim_example_drag.slx": {
+    "blocks": 70,
+    "signals": 76,
+    "model_refs": 0,
+    "calls": 76,
+    "cross_file": 0
+  },
+  "ladac/aerodynamics/fuselage/fuselage_lib.slx": {
+    "blocks": 87,
+    "signals": 78,
+    "model_refs": 0,
+    "calls": 78,
+    "cross_file": 0
+  },
+  "ladac/aerodynamics/fuselage/fuselage_lib_example.slx": {
+    "blocks": 13,
+    "signals": 12,
+    "model_refs": 0,
+    "calls": 12,
+    "cross_file": 0
+  },
+  "ladac/aerodynamics/rotorcraft/rotorcraft_lib.slx": {
+    "blocks": 192,
+    "signals": 179,
+    "model_refs": 0,
+    "calls": 179,
+    "cross_file": 0
+  },
+  "ladac/aerodynamics/simple_fuselage/simpleFuselage_lib.slx": {
+    "blocks": 76,
+    "signals": 81,
+    "model_refs": 0,
+    "calls": 81,
+    "cross_file": 0
+  },
+  "ladac/aerodynamics/simple_fuselage/simpleFuselage_lib_example.slx": {
+    "blocks": 9,
+    "signals": 8,
+    "model_refs": 0,
+    "calls": 8,
+    "cross_file": 0
+  },
+  "ladac/aerodynamics/simple_wing/examples/simpleWing_example_simModel.slx": {
+    "blocks": 39,
+    "signals": 44,
+    "model_refs": 0,
+    "calls": 44,
+    "cross_file": 0
+  },
+  "ladac/aerodynamics/simple_wing/simple_wing_lib.slx": {
+    "blocks": 291,
+    "signals": 301,
+    "model_refs": 0,
+    "calls": 301,
+    "cross_file": 0
+  },
+  "ladac/aerodynamics/vlm_wing/aeroelasticity/aeroelasticity_lib.slx": {
+    "blocks": 23,
+    "signals": 16,
+    "model_refs": 0,
+    "calls": 16,
+    "cross_file": 0
+  },
+  "ladac/aerodynamics/vlm_wing/test/wing_example_sim.slx": {
+    "blocks": 22,
+    "signals": 22,
+    "model_refs": 0,
+    "calls": 22,
+    "cross_file": 0
+  },
+  "ladac/aerodynamics/vlm_wing/test/wing_example_unst_sim.slx": {
+    "blocks": 23,
+    "signals": 24,
+    "model_refs": 0,
+    "calls": 24,
+    "cross_file": 0
+  },
+  "ladac/aerodynamics/vlm_wing/vlm_wing_lib.slx": {
+    "blocks": 175,
+    "signals": 177,
+    "model_refs": 0,
+    "calls": 177,
+    "cross_file": 0
+  },
+  "ladac/aerodynamics/wing_downwash/wing_downwash_lib.slx": {
+    "blocks": 36,
+    "signals": 38,
+    "model_refs": 0,
+    "calls": 38,
+    "cross_file": 0
+  },
+  "ladac/aircraft/aircraft_lib.slx": {
+    "blocks": 4,
+    "signals": 0,
+    "model_refs": 0,
+    "calls": 0,
+    "cross_file": 0
+  },
+  "ladac/aircraft/airplanes/airplanes_lib.slx": {
+    "blocks": 2,
+    "signals": 0,
+    "model_refs": 0,
+    "calls": 0,
+    "cross_file": 0
+  },
+  "ladac/aircraft/airplanes/complete/airplanes_complete_lib.slx": {
+    "blocks": 1,
+    "signals": 0,
+    "model_refs": 0,
+    "calls": 0,
+    "cross_file": 0
+  },
+  "ladac/aircraft/airplanes/complete/conventional_airplane_single_engine/conventional_airplane_single_engine_lib.slx": {
+    "blocks": 83,
+    "signals": 101,
+    "model_refs": 0,
+    "calls": 101,
+    "cross_file": 0
+  },
+  "ladac/aircraft/airplanes/subsystems/airplane_subsystems_lib.slx": {
+    "blocks": 1,
+    "signals": 0,
+    "model_refs": 0,
+    "calls": 0,
+    "cross_file": 0
+  },
+  "ladac/aircraft/airplanes/subsystems/conventional_airplane_aerodynamics/conventional_airplane_aerodynamics_lib.slx": {
+    "blocks": 84,
+    "signals": 103,
+    "model_refs": 0,
+    "calls": 103,
+    "cross_file": 0
+  },
+  "ladac/aircraft/evtols/evtols_complete/evtols_complete_lib.slx": {
+    "blocks": 2,
+    "signals": 0,
+    "model_refs": 0,
+    "calls": 0,
+    "cross_file": 0
+  },
+  "ladac/aircraft/evtols/evtols_complete/tailsitter/tailsitter_lib.slx": {
+    "blocks": 218,
+    "signals": 262,
+    "model_refs": 0,
+    "calls": 262,
+    "cross_file": 0
+  },
+  "ladac/aircraft/evtols/evtols_complete/tandem_tiltwing/tandem_tiltwing_lib.slx": {
+    "blocks": 234,
+    "signals": 295,
+    "model_refs": 0,
+    "calls": 295,
+    "cross_file": 0
+  },
+  "ladac/aircraft/evtols/evtols_lib.slx": {
+    "blocks": 1,
+    "signals": 0,
+    "model_refs": 0,
+    "calls": 0,
+    "cross_file": 0
+  },
+  "ladac/aircraft/multicopters/complete/multicopters_complete_lib.slx": {
+    "blocks": 1,
+    "signals": 0,
+    "model_refs": 0,
+    "calls": 0,
+    "cross_file": 0
+  },
+  "ladac/aircraft/multicopters/complete/quadcopter/quadcopter_lib.slx": {
+    "blocks": 50,
+    "signals": 65,
+    "model_refs": 0,
+    "calls": 65,
+    "cross_file": 0
+  },
+  "ladac/aircraft/multicopters/multicopters_lib.slx": {
+    "blocks": 2,
+    "signals": 0,
+    "model_refs": 0,
+    "calls": 0,
+    "cross_file": 0
+  },
+  "ladac/aircraft/multicopters/subsystems/multicopter_aerodynamics_simple/multicopter_aerodynamics_simple_lib.slx": {
+    "blocks": 24,
+    "signals": 32,
+    "model_refs": 0,
+    "calls": 32,
+    "cross_file": 0
+  },
+  "ladac/aircraft/multicopters/subsystems/multicopters_subsystems_lib.slx": {
+    "blocks": 2,
+    "signals": 0,
+    "model_refs": 0,
+    "calls": 0,
+    "cross_file": 0
+  },
+  "ladac/aircraft/multicopters/subsystems/quadcopter_propulsion/quadcopter_propulsion_lib.slx": {
+    "blocks": 28,
+    "signals": 49,
+    "model_refs": 0,
+    "calls": 49,
+    "cross_file": 0
+  },
+  "ladac/aircraft/suspended_payload/suspended_payload_lib.slx": {
+    "blocks": 362,
+    "signals": 385,
+    "model_refs": 0,
+    "calls": 385,
+    "cross_file": 0
+  },
+  "ladac/control/INDI/examples/INDI_Rate_Controller_Example.slx": {
+    "blocks": 88,
+    "signals": 100,
+    "model_refs": 0,
+    "calls": 100,
+    "cross_file": 0
+  },
+  "ladac/control/INDI/indi_lib.slx": {
+    "blocks": 305,
+    "signals": 309,
+    "model_refs": 0,
+    "calls": 309,
+    "cross_file": 0
+  },
+  "ladac/control/NDI/multicopter/multicopterNDI_lib.slx": {
+    "blocks": 269,
+    "signals": 260,
+    "model_refs": 0,
+    "calls": 260,
+    "cross_file": 0
+  },
+  "ladac/control/NDI/ndi_lib.slx": {
+    "blocks": 21,
+    "signals": 12,
+    "model_refs": 0,
+    "calls": 12,
+    "cross_file": 0
+  },
+  "ladac/control/PLAN/plan_lib.slx": {
+    "blocks": 66,
+    "signals": 57,
+    "model_refs": 0,
+    "calls": 57,
+    "cross_file": 0
+  },
+  "ladac/control/angles/angles_lib.slx": {
+    "blocks": 13,
+    "signals": 9,
+    "model_refs": 0,
+    "calls": 9,
+    "cross_file": 0
+  },
+  "ladac/control/autopilots/LindiCopter/lindiCopter_lib.slx": {
+    "blocks": 220,
+    "signals": 250,
+    "model_refs": 0,
+    "calls": 250,
+    "cross_file": 0
+  },
+  "ladac/control/autopilots/LindiPlane/lindiPlane_lib.slx": {
+    "blocks": 1073,
+    "signals": 1185,
+    "model_refs": 0,
+    "calls": 1185,
+    "cross_file": 0
+  },
+  "ladac/control/autopilots/autopilots_lib.slx": {
+    "blocks": 2,
+    "signals": 0,
+    "model_refs": 0,
+    "calls": 0,
+    "cross_file": 0
+  },
+  "ladac/control/control_allocation/ca_lib.slx": {
+    "blocks": 55,
+    "signals": 51,
+    "model_refs": 0,
+    "calls": 51,
+    "cross_file": 0
+  },
+  "ladac/control/control_lib.slx": {
+    "blocks": 14,
+    "signals": 0,
+    "model_refs": 0,
+    "calls": 0,
+    "cross_file": 0
+  },
+  "ladac/control/controller_modules/altitude_control/cntrlAltIndi_lib.slx": {
+    "blocks": 54,
+    "signals": 63,
+    "model_refs": 0,
+    "calls": 63,
+    "cross_file": 0
+  },
+  "ladac/control/controller_modules/attitude_control/cntrlAttiRedIndi_lib.slx": {
+    "blocks": 235,
+    "signals": 272,
+    "model_refs": 0,
+    "calls": 272,
+    "cross_file": 0
+  },
+  "ladac/control/controller_modules/attitude_quaternion_control/quatAttitudeController_lib.slx": {
+    "blocks": 56,
+    "signals": 57,
+    "model_refs": 0,
+    "calls": 57,
+    "cross_file": 0
+  },
+  "ladac/control/controller_modules/controller_modules_lib.slx": {
+    "blocks": 4,
+    "signals": 0,
+    "model_refs": 0,
+    "calls": 0,
+    "cross_file": 0
+  },
+  "ladac/control/controller_modules/pos_cntrl/cntrlPosNdi_lib.slx": {
+    "blocks": 103,
+    "signals": 111,
+    "model_refs": 0,
+    "calls": 111,
+    "cross_file": 0
+  },
+  "ladac/control/filters/filters_lib.slx": {
+    "blocks": 117,
+    "signals": 110,
+    "model_refs": 0,
+    "calls": 110,
+    "cross_file": 0
+  },
+  "ladac/control/flight_modes/altitude_hold/fmCopterAltHoldIndi_lib.slx": {
+    "blocks": 84,
+    "signals": 77,
+    "model_refs": 0,
+    "calls": 77,
+    "cross_file": 0
+  },
+  "ladac/control/flight_modes/attitude/fmCopterAttiRedIndi_lib.slx": {
+    "blocks": 58,
+    "signals": 58,
+    "model_refs": 0,
+    "calls": 58,
+    "cross_file": 0
+  },
+  "ladac/control/flight_modes/attitude/fmPlaneAttiIndi_lib.slx": {
+    "blocks": 163,
+    "signals": 181,
+    "model_refs": 0,
+    "calls": 181,
+    "cross_file": 0
+  },
+  "ladac/control/flight_modes/flight_modes_lib.slx": {
+    "blocks": 3,
+    "signals": 0,
+    "model_refs": 0,
+    "calls": 0,
+    "cross_file": 0
+  },
+  "ladac/control/flight_modes/loiter/fmCopterLoiterIndi_lib.slx": {
+    "blocks": 94,
+    "signals": 92,
+    "model_refs": 0,
+    "calls": 92,
+    "cross_file": 0
+  },
+  "ladac/control/joystick/joystick_example.slx": {
+    "blocks": 4,
+    "signals": 3,
+    "model_refs": 0,
+    "calls": 3,
+    "cross_file": 0
+  },
+  "ladac/control/joystick/joystick_lib.slx": {
+    "blocks": 23,
+    "signals": 18,
+    "model_refs": 0,
+    "calls": 18,
+    "cross_file": 0
+  },
+  "ladac/control/joystick/joystick_setup.slx": {
+    "blocks": 14,
+    "signals": 13,
+    "model_refs": 0,
+    "calls": 13,
+    "cross_file": 0
+  },
+  "ladac/control/linear_systems/linear_systems_lib.slx": {
+    "blocks": 51,
+    "signals": 46,
+    "model_refs": 0,
+    "calls": 46,
+    "cross_file": 0
+  },
+  "ladac/control/stick/stick_lib.slx": {
+    "blocks": 24,
+    "signals": 21,
+    "model_refs": 0,
+    "calls": 21,
+    "cross_file": 0
+  },
+  "ladac/control/trajectory/examples/traj_controller_mass_point_example.slx": {
+    "blocks": 84,
+    "signals": 83,
+    "model_refs": 0,
+    "calls": 83,
+    "cross_file": 0
+  },
+  "ladac/control/trajectory/examples/traj_rigid_body_example.slx": {
+    "blocks": 128,
+    "signals": 147,
+    "model_refs": 0,
+    "calls": 147,
+    "cross_file": 0
+  },
+  "ladac/control/trajectory/traj_lib.slx": {
+    "blocks": 184,
+    "signals": 180,
+    "model_refs": 0,
+    "calls": 180,
+    "cross_file": 0
+  },
+  "ladac/control/wpnav/wpnav_lib.slx": {
+    "blocks": 173,
+    "signals": 196,
+    "model_refs": 0,
+    "calls": 196,
+    "cross_file": 0
+  },
+  "ladac/environment/atmosphere/atmosphere_lib.slx": {
+    "blocks": 162,
+    "signals": 159,
+    "model_refs": 0,
+    "calls": 159,
+    "cross_file": 0
+  },
+  "ladac/environment/environment_lib.slx": {
+    "blocks": 2,
+    "signals": 0,
+    "model_refs": 0,
+    "calls": 0,
+    "cross_file": 0
+  },
+  "ladac/environment/ground/ground_lib.slx": {
+    "blocks": 107,
+    "signals": 107,
+    "model_refs": 0,
+    "calls": 107,
+    "cross_file": 0
+  },
+  "ladac/equations_of_motion/equations_of_motion_lib.slx": {
+    "blocks": 3,
+    "signals": 0,
+    "model_refs": 0,
+    "calls": 0,
+    "cross_file": 0
+  },
+  "ladac/equations_of_motion/flexible_body_simple/examples/flexibleBody_lib_example.slx": {
+    "blocks": 23,
+    "signals": 21,
+    "model_refs": 0,
+    "calls": 21,
+    "cross_file": 0
+  },
+  "ladac/equations_of_motion/flexible_body_simple/flexibleBody_lib.slx": {
+    "blocks": 51,
+    "signals": 48,
+    "model_refs": 0,
+    "calls": 48,
+    "cross_file": 0
+  },
+  "ladac/equations_of_motion/rigid_body/rigidBody_lib.slx": {
+    "blocks": 89,
+    "signals": 106,
+    "model_refs": 0,
+    "calls": 106,
+    "cross_file": 0
+  },
+  "ladac/equations_of_motion/rigid_body/rigidBody_lib_example.slx": {
+    "blocks": 45,
+    "signals": 45,
+    "model_refs": 0,
+    "calls": 45,
+    "cross_file": 0
+  },
+  "ladac/external/3DScope/lorenz3d.slx": {
+    "blocks": 44,
+    "signals": 67,
+    "model_refs": 0,
+    "calls": 67,
+    "cross_file": 0
+  },
+  "ladac/external/3DScope/m3dscope_new.slx": {
+    "blocks": 10,
+    "signals": 9,
+    "model_refs": 0,
+    "calls": 9,
+    "cross_file": 0
+  },
+  "ladac/external/3DScope/m3dscope_old.slx": {
+    "blocks": 17,
+    "signals": 15,
+    "model_refs": 0,
+    "calls": 15,
+    "cross_file": 0
+  },
+  "ladac/flight_parameters/flight_parameters_lib.slx": {
+    "blocks": 90,
+    "signals": 66,
+    "model_refs": 0,
+    "calls": 66,
+    "cross_file": 0
+  },
+  "ladac/interfaces/ArduPilot_SITL/ardupilot_sitl_example.slx": {
+    "blocks": 82,
+    "signals": 91,
+    "model_refs": 0,
+    "calls": 91,
+    "cross_file": 0
+  },
+  "ladac/interfaces/ArduPilot_SITL/ardupilot_sitl_lib.slx": {
+    "blocks": 161,
+    "signals": 155,
+    "model_refs": 0,
+    "calls": 155,
+    "cross_file": 0
+  },
+  "ladac/interfaces/ArduPilot_custom_controller/ArduCopter_TemplateController.slx": {
+    "blocks": 22,
+    "signals": 19,
+    "model_refs": 0,
+    "calls": 19,
+    "cross_file": 0
+  },
+  "ladac/interfaces/ArduPilot_custom_controller/ArduPlane_TemplateController.slx": {
+    "blocks": 40,
+    "signals": 37,
+    "model_refs": 0,
+    "calls": 37,
+    "cross_file": 0
+  },
+  "ladac/interfaces/ArduPilot_custom_controller/ardupilot_custom_controller_lib.slx": {
+    "blocks": 67,
+    "signals": 55,
+    "model_refs": 0,
+    "calls": 55,
+    "cross_file": 0
+  },
+  "ladac/interfaces/FlexiFlightVis/flexiFlightVis_lib.slx": {
+    "blocks": 30,
+    "signals": 26,
+    "model_refs": 0,
+    "calls": 26,
+    "cross_file": 0
+  },
+  "ladac/interfaces/FlexiFlightVis/flexiFlightVis_lib_example.slx": {
+    "blocks": 6,
+    "signals": 2,
+    "model_refs": 0,
+    "calls": 2,
+    "cross_file": 0
+  },
+  "ladac/interfaces/FlightGear_visualization/FlightGearInterface_Example.slx": {
+    "blocks": 6,
+    "signals": 5,
+    "model_refs": 0,
+    "calls": 5,
+    "cross_file": 0
+  },
+  "ladac/interfaces/FlightGear_visualization/flightgear_visualization_lib.slx": {
+    "blocks": 274,
+    "signals": 266,
+    "model_refs": 0,
+    "calls": 266,
+    "cross_file": 0
+  },
+  "ladac/interfaces/interfaces_lib.slx": {
+    "blocks": 4,
+    "signals": 0,
+    "model_refs": 0,
+    "calls": 0,
+    "cross_file": 0
+  },
+  "ladac/ladac_lib.slx": {
+    "blocks": 11,
+    "signals": 0,
+    "model_refs": 0,
+    "calls": 0,
+    "cross_file": 0
+  },
+  "ladac/propulsion/battery/battery_lib.slx": {
+    "blocks": 51,
+    "signals": 54,
+    "model_refs": 0,
+    "calls": 54,
+    "cross_file": 0
+  },
+  "ladac/propulsion/propulsion_lib.slx": {
+    "blocks": 119,
+    "signals": 116,
+    "model_refs": 0,
+    "calls": 116,
+    "cross_file": 0
+  },
+  "ladac/sensors/rangefinders/rangefinders_example.slx": {
+    "blocks": 135,
+    "signals": 121,
+    "model_refs": 0,
+    "calls": 121,
+    "cross_file": 0
+  },
+  "ladac/sensors/rangefinders/rangefinders_lib.slx": {
+    "blocks": 39,
+    "signals": 33,
+    "model_refs": 0,
+    "calls": 33,
+    "cross_file": 0
+  },
+  "ladac/sensors/sensors_lib.slx": {
+    "blocks": 23,
+    "signals": 18,
+    "model_refs": 0,
+    "calls": 18,
+    "cross_file": 0
+  },
+  "ladac/utilities/axes_transformation/axes_transformation_lib.slx": {
+    "blocks": 96,
+    "signals": 72,
+    "model_refs": 0,
+    "calls": 72,
+    "cross_file": 0
+  },
+  "ladac/utilities/quaternions/quat_lib.slx": {
+    "blocks": 106,
+    "signals": 76,
+    "model_refs": 0,
+    "calls": 76,
+    "cross_file": 0
+  },
+  "ladac/utilities/unit_conversions/unit_conversions_lib.slx": {
+    "blocks": 16,
+    "signals": 8,
+    "model_refs": 0,
+    "calls": 8,
+    "cross_file": 0
+  },
+  "ladac/utilities/utilities_lib.slx": {
+    "blocks": 3,
+    "signals": 0,
+    "model_refs": 0,
+    "calls": 0,
+    "cross_file": 0
+  },
+  "thermodynamics/InstructorResources/Solutions/Models/CompressorHarnessSoln.slx": {
+    "blocks": 8,
+    "signals": 5,
+    "model_refs": 0,
+    "calls": 5,
+    "cross_file": 0
+  },
+  "thermodynamics/InstructorResources/Solutions/Models/CompressorSoln.slx": {
+    "blocks": 8,
+    "signals": 4,
+    "model_refs": 0,
+    "calls": 4,
+    "cross_file": 0
+  },
+  "thermodynamics/InstructorResources/Solutions/Models/CondenserHarnessSoln.slx": {
+    "blocks": 16,
+    "signals": 12,
+    "model_refs": 0,
+    "calls": 12,
+    "cross_file": 0
+  },
+  "thermodynamics/InstructorResources/Solutions/Models/CondenserSoln.slx": {
+    "blocks": 16,
+    "signals": 13,
+    "model_refs": 0,
+    "calls": 13,
+    "cross_file": 0
+  },
+  "thermodynamics/InstructorResources/Solutions/Models/Condenser_2Pass.slx": {
+    "blocks": 11,
+    "signals": 10,
+    "model_refs": 0,
+    "calls": 10,
+    "cross_file": 0
+  },
+  "thermodynamics/InstructorResources/Solutions/Models/EvaporatorHarnessSoln.slx": {
+    "blocks": 10,
+    "signals": 4,
+    "model_refs": 0,
+    "calls": 4,
+    "cross_file": 0
+  },
+  "thermodynamics/InstructorResources/Solutions/Models/EvaporatorSoln.slx": {
+    "blocks": 10,
+    "signals": 5,
+    "model_refs": 0,
+    "calls": 5,
+    "cross_file": 0
+  },
+  "thermodynamics/InstructorResources/Solutions/Models/ModelFridgeCompressorSoln.slx": {
+    "blocks": 37,
+    "signals": 26,
+    "model_refs": 0,
+    "calls": 26,
+    "cross_file": 0
+  },
+  "thermodynamics/InstructorResources/Solutions/Models/ModelFridgeCondenserSoln.slx": {
+    "blocks": 56,
+    "signals": 46,
+    "model_refs": 0,
+    "calls": 46,
+    "cross_file": 0
+  },
+  "thermodynamics/InstructorResources/Solutions/Models/ModelFridgeEvapCompCondSoln.slx": {
+    "blocks": 83,
+    "signals": 64,
+    "model_refs": 0,
+    "calls": 64,
+    "cross_file": 0
+  },
+  "thermodynamics/InstructorResources/Solutions/Models/ModelFridgeEvaporatorSoln.slx": {
+    "blocks": 50,
+    "signals": 38,
+    "model_refs": 0,
+    "calls": 38,
+    "cross_file": 0
+  },
+  "thermodynamics/InstructorResources/Solutions/Models/ModelFridgeSoln.slx": {
+    "blocks": 84,
+    "signals": 66,
+    "model_refs": 0,
+    "calls": 66,
+    "cross_file": 0
+  },
+  "thermodynamics/InstructorResources/Solutions/Models/ModelFridge_WithQualitySoln.slx": {
+    "blocks": 84,
+    "signals": 66,
+    "model_refs": 0,
+    "calls": 66,
+    "cross_file": 0
+  },
+  "thermodynamics/InstructorResources/Solutions/Models/ValveHarnessSoln.slx": {
+    "blocks": 40,
+    "signals": 30,
+    "model_refs": 0,
+    "calls": 30,
+    "cross_file": 0
+  },
+  "thermodynamics/InstructorResources/Solutions/Models/Work_demo.slx": {
+    "blocks": 42,
+    "signals": 37,
+    "model_refs": 0,
+    "calls": 37,
+    "cross_file": 0
+  },
+  "thermodynamics/InstructorResources/Solutions/Models/step0_Soln.slx": {
+    "blocks": 5,
+    "signals": 1,
+    "model_refs": 0,
+    "calls": 1,
+    "cross_file": 0
+  },
+  "thermodynamics/InstructorResources/Solutions/Models/step1_EvaporatorHarnessSoln.slx": {
+    "blocks": 50,
+    "signals": 38,
+    "model_refs": 0,
+    "calls": 38,
+    "cross_file": 0
+  },
+  "thermodynamics/InstructorResources/Solutions/Models/step2_CompressorHarnessSoln.slx": {
+    "blocks": 37,
+    "signals": 26,
+    "model_refs": 0,
+    "calls": 26,
+    "cross_file": 0
+  },
+  "thermodynamics/InstructorResources/Solutions/Models/step3_CondenserHarnessSoln.slx": {
+    "blocks": 56,
+    "signals": 46,
+    "model_refs": 0,
+    "calls": 46,
+    "cross_file": 0
+  },
+  "thermodynamics/InstructorResources/Solutions/Models/step4_EvapCompCondHarnessSoln.slx": {
+    "blocks": 83,
+    "signals": 64,
+    "model_refs": 0,
+    "calls": 64,
+    "cross_file": 0
+  },
+  "thermodynamics/InstructorResources/Solutions/Models/step5_ValveHarnessSoln.slx": {
+    "blocks": 40,
+    "signals": 30,
+    "model_refs": 0,
+    "calls": 30,
+    "cross_file": 0
+  },
+  "thermodynamics/InstructorResources/Solutions/Models/step6_ClosedLoopHarnessSoln.slx": {
+    "blocks": 84,
+    "signals": 66,
+    "model_refs": 0,
+    "calls": 66,
+    "cross_file": 0
+  },
+  "thermodynamics/InstructorResources/Solutions/Models/step7_ClosedLoopFixDensityHarness.slx": {
+    "blocks": 84,
+    "signals": 66,
+    "model_refs": 0,
+    "calls": 66,
+    "cross_file": 0
+  },
+  "thermodynamics/InstructorResources/Solutions/Models/step7_ClosedLoopFixDensityHarnessSoln.slx": {
+    "blocks": 84,
+    "signals": 66,
+    "model_refs": 0,
+    "calls": 66,
+    "cross_file": 0
+  },
+  "thermodynamics/Models/Condenser_2Pass.slx": {
+    "blocks": 11,
+    "signals": 10,
+    "model_refs": 0,
+    "calls": 10,
+    "cross_file": 0
+  },
+  "thermodynamics/Models/ModelFridge.slx": {
+    "blocks": 84,
+    "signals": 63,
+    "model_refs": 0,
+    "calls": 63,
+    "cross_file": 0
+  },
+  "thermodynamics/Models/ModelFridgeCompressor.slx": {
+    "blocks": 37,
+    "signals": 24,
+    "model_refs": 0,
+    "calls": 24,
+    "cross_file": 0
+  },
+  "thermodynamics/Models/ModelFridgeCondenser.slx": {
+    "blocks": 56,
+    "signals": 45,
+    "model_refs": 0,
+    "calls": 45,
+    "cross_file": 0
+  },
+  "thermodynamics/Models/ModelFridgeEvapCompCond.slx": {
+    "blocks": 83,
+    "signals": 61,
+    "model_refs": 0,
+    "calls": 61,
+    "cross_file": 0
+  },
+  "thermodynamics/Models/ModelFridgeEvaporator.slx": {
+    "blocks": 50,
+    "signals": 37,
+    "model_refs": 0,
+    "calls": 37,
+    "cross_file": 0
+  },
+  "thermodynamics/Models/ModelFridge_WithQuality.slx": {
+    "blocks": 84,
+    "signals": 63,
+    "model_refs": 0,
+    "calls": 63,
+    "cross_file": 0
+  },
+  "thermodynamics/Models/ValveHarness.slx": {
+    "blocks": 40,
+    "signals": 28,
+    "model_refs": 0,
+    "calls": 28,
+    "cross_file": 0
+  },
+  "thermodynamics/Models/Work_demo.slx": {
+    "blocks": 42,
+    "signals": 37,
+    "model_refs": 0,
+    "calls": 37,
+    "cross_file": 0
+  },
+  "thermodynamics/Models/step1_EvaporatorHarness.slx": {
+    "blocks": 37,
+    "signals": 29,
+    "model_refs": 0,
+    "calls": 29,
+    "cross_file": 0
+  },
+  "thermodynamics/Models/step2_CompressorHarness.slx": {
+    "blocks": 40,
+    "signals": 33,
+    "model_refs": 0,
+    "calls": 33,
+    "cross_file": 0
+  },
+  "thermodynamics/Models/step3_CondenserHarness.slx": {
+    "blocks": 40,
+    "signals": 33,
+    "model_refs": 0,
+    "calls": 33,
+    "cross_file": 0
+  },
+  "thermodynamics/Models/step4_EvapCompCondHarness.slx": {
+    "blocks": 91,
+    "signals": 77,
+    "model_refs": 0,
+    "calls": 77,
+    "cross_file": 0
+  },
+  "thermodynamics/Models/step5_ValveHarness.slx": {
+    "blocks": 44,
+    "signals": 32,
+    "model_refs": 0,
+    "calls": 32,
+    "cross_file": 0
+  },
+  "thermodynamics/Models/step6_ClosedLoopHarness.slx": {
+    "blocks": 91,
+    "signals": 68,
+    "model_refs": 0,
+    "calls": 68,
+    "cross_file": 0
+  },
+  "thermodynamics/Models/step7_ClosedLoopFixDensityHarness.slx": {
+    "blocks": 92,
+    "signals": 71,
+    "model_refs": 0,
+    "calls": 71,
+    "cross_file": 0
+  },
+  "wec-sim/examples/OSWEC/OSWEC.slx": {
+    "blocks": 5,
+    "signals": 3,
+    "model_refs": 0,
+    "calls": 3,
+    "cross_file": 0
+  },
+  "wec-sim/examples/RM3/RM3.slx": {
+    "blocks": 5,
+    "signals": 2,
+    "model_refs": 0,
+    "calls": 2,
+    "cross_file": 0
+  },
+  "wec-sim/source/lib/MOST/MOST_Lib.slx": {
+    "blocks": 494,
+    "signals": 504,
+    "model_refs": 0,
+    "calls": 504,
+    "cross_file": 0
+  },
+  "wec-sim/source/lib/WEC-Sim/WECSim_Lib.slx": {
+    "blocks": 7,
+    "signals": 0,
+    "model_refs": 0,
+    "calls": 0,
+    "cross_file": 0
+  },
+  "wec-sim/source/lib/WEC-Sim/WECSim_Lib_Body_Elements.slx": {
+    "blocks": 1740,
+    "signals": 1624,
+    "model_refs": 0,
+    "calls": 1624,
+    "cross_file": 0
+  },
+  "wec-sim/source/lib/WEC-Sim/WECSim_Lib_Cables.slx": {
+    "blocks": 177,
+    "signals": 177,
+    "model_refs": 0,
+    "calls": 177,
+    "cross_file": 0
+  },
+  "wec-sim/source/lib/WEC-Sim/WECSim_Lib_Constraints.slx": {
+    "blocks": 169,
+    "signals": 205,
+    "model_refs": 0,
+    "calls": 205,
+    "cross_file": 0
+  },
+  "wec-sim/source/lib/WEC-Sim/WECSim_Lib_Frames.slx": {
+    "blocks": 31,
+    "signals": 16,
+    "model_refs": 0,
+    "calls": 16,
+    "cross_file": 0
+  },
+  "wec-sim/source/lib/WEC-Sim/WECSim_Lib_Moorings.slx": {
+    "blocks": 155,
+    "signals": 143,
+    "model_refs": 0,
+    "calls": 143,
+    "cross_file": 0
+  },
+  "wec-sim/source/lib/WEC-Sim/WECSim_Lib_PTOSim.slx": {
+    "blocks": 835,
+    "signals": 923,
+    "model_refs": 0,
+    "calls": 923,
+    "cross_file": 0
+  },
+  "wec-sim/source/lib/WEC-Sim/WECSim_Lib_PTOs.slx": {
+    "blocks": 325,
+    "signals": 424,
+    "model_refs": 0,
+    "calls": 424,
+    "cross_file": 0
+  },
+  "wec-sim/tests/RegressionTests/IrregularWaves/irregularCIC/RM3.slx": {
+    "blocks": 5,
+    "signals": 2,
+    "model_refs": 0,
+    "calls": 2,
+    "cross_file": 0
+  },
+  "wec-sim/tests/RegressionTests/IrregularWaves/irregularSS/RM3.slx": {
+    "blocks": 5,
+    "signals": 2,
+    "model_refs": 0,
+    "calls": 2,
+    "cross_file": 0
+  },
+  "wec-sim/tests/RegressionTests/IrregularWaves/irregularSpread_OSWEC/OSWEC.slx": {
+    "blocks": 5,
+    "signals": 3,
+    "model_refs": 0,
+    "calls": 3,
+    "cross_file": 0
+  },
+  "wec-sim/tests/RegressionTests/RegularWaves/regular/RM3.slx": {
+    "blocks": 5,
+    "signals": 2,
+    "model_refs": 0,
+    "calls": 2,
+    "cross_file": 0
+  },
+  "wec-sim/tests/RegressionTests/RegularWaves/regularCIC/RM3.slx": {
+    "blocks": 5,
+    "signals": 2,
+    "model_refs": 0,
+    "calls": 2,
+    "cross_file": 0
+  },
+  "wec-sim/tests/RegressionTests/RegularWaves/regularSS/RM3.slx": {
+    "blocks": 5,
+    "signals": 2,
+    "model_refs": 0,
+    "calls": 2,
+    "cross_file": 0
+  },
+  "wec-sim/tutorials/OSWEC/OSWEC.slx": {
+    "blocks": 0,
+    "signals": 0,
+    "model_refs": 0,
+    "calls": 0,
+    "cross_file": 0
+  },
+  "wec-sim/tutorials/RM3/RM3.slx": {
+    "blocks": 0,
+    "signals": 0,
+    "model_refs": 0,
+    "calls": 0,
+    "cross_file": 0
+  }
+}
