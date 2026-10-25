@@ -33,11 +33,12 @@
     "ctags": { "namespace": "namespace", "class": "class", "struct": "struct", "union": "union",
                "enum": "enum", "function": "function", "typedef": "type_alias", "macro": "macro" }
   },
+  "ctags": { "languages": ["C++"], "args": ["--map-C++=+.cu", "--map-C++=+.cuh", "-I__global__,__device__,__host__,__forceinline__,__noinline__,__shared__,__constant__,__managed__,__restrict__,__launch_bounds__+"] },
   "qualify": { "chain_containers": true, "container_sep": ".", "method_sep": ".", "scope_sep": "::" },
   "calls": { "qualify": true },
   "package": { "strategy": "dir" },
   "imports": { "strategy": "include-path" },
-  "preprocess": "cpp-macros",
+  "preprocess": "cuda-macros",
   "module_symbol": "module",
   "signature": { "max_chars": 200 },
   "target_level": "L4",

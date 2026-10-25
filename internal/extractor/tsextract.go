@@ -125,6 +125,7 @@ var tsPreprocessors = map[string]func(src []byte) [][]byte{
 	"csharp-conditionals": csharpConditionalTexts,
 	"jinja-templates":     jinjaTexts,     // tsextract_jinja.go (LB-Q-jinja2)
 	"cpp-macros":          cppMacroTexts,  // tsextract_cppmacros.go (O455)
+	"cuda-macros":         cudaMacroTexts, // tsextract_cudamacros.go (LB-Q-cuda)
 	"objc-macros":         objcMacroTexts, // tsextract_objcmacros.go (LB-Q-objective-c)
 	"tailwind-at-rules":   tailwindTexts,  // tsextract_tailwind.go (LB-Q-tailwind)
 }

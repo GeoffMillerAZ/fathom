@@ -4416,7 +4416,7 @@
     "grammar_source": "tree-sitter-grammars/tree-sitter-cuda",
     "licence": "MIT",
     "oracle": [
-      "ctags (C++)",
+      "ctags",
       "scip-clang"
     ],
     "calibration_subjects": [
