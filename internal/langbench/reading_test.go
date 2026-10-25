@@ -148,10 +148,67 @@ func TestLevelMetToolFormats(t *testing.T) {
 		MXrefPrecision: f(0.96), MXrefRecall: f(0.85),
 	}
 	r.MetricTiers = tiers("A", r.Metrics)
+	r.Subjects[0].Counts = map[string]int{CntXrefTruth: 20, CntXrefFathom: 20}
 	level, grade := LevelMet(r)
 	want := Grade{L1: GradeGood, L2: GradeExcellent, L3: GradeExcellent, L4: GradeNotApplicable}
 	if level != "L3" || grade != want {
 		t.Fatalf("tool LevelMet = %s %+v, want L3 %+v", level, grade, want)
+	}
+}
+
+// TestLevelMetL3Evidence is owner ruling D19 (E1, E2): each graded L3 metric counts only when
+// its own denominator, summed over the subjects, holds at least 20 references. A thin metric is
+// not measured, which caps L3 at good; L3 is unmet, with the evidence stated on the grade, only
+// when every graded L3 metric is thin. There is no subject minimum.
+func TestLevelMetL3Evidence(t *testing.T) {
+	tool := func(truth, fathom int) []Subject {
+		return []Subject{{Name: "a", Files: 1, Counts: map[string]int{CntXrefTruth: truth, CntXrefFathom: fathom}}}
+	}
+	lang := func(imports, truth, fathom int) []Subject {
+		return []Subject{
+			{Name: "a", Files: 1, Counts: map[string]int{CntImportsInRepo: imports, CntFileEdgesTruth: truth - 1, CntFileEdgesFathom: fathom}},
+			{Name: "b", Files: 1, Counts: map[string]int{CntFileEdgesTruth: 1}},
+		}
+	}
+	for _, tc := range []struct {
+		name     string
+		kind     string
+		subjects []Subject
+		noL3     bool
+		level    string
+		l3       string
+		reason   string
+	}{
+		{"19 references", "tooling", tool(19, 19), false, "L2", GradeUnmet, "evidence: 19 references, under 20"},
+		{"20 references", "tooling", tool(20, 20), false, "L3", GradeExcellent, ""},
+		{"20 in one subject is enough", "tooling", tool(2445, 2445), false, "L3", GradeExcellent, ""},
+		{"a precision denominator under 20", "tooling", tool(40, 19), false, "L3", GradeGood, ""},
+		{"import_resolution under 20", "language", lang(6, 772, 700), false, "L3", GradeGood, ""},
+		{"every L3 metric under 20", "language", lang(19, 19, 19), false, "L2", GradeUnmet, "evidence: 19 references, under 20"},
+		{"file edges summed across subjects", "language", lang(20, 20, 20), false, "L3", GradeExcellent, ""},
+		{"no L3 metric graded", "tooling", tool(0, 0), true, "L2", GradeNotAttempted, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := baseReading(tc.kind)
+			if tc.kind == "tooling" {
+				r.Metrics = map[string]*float64{MSymRecall: f(1), MSymPrecision: f(1), MRefRecall: f(1), MRefPrecision: f(1), MXrefPrecision: f(1), MXrefRecall: f(1)}
+				if tc.noL3 {
+					delete(r.Metrics, MXrefPrecision)
+					delete(r.Metrics, MXrefRecall)
+				}
+			} else {
+				r.Metrics = l1Metrics(0.97)
+				for _, m := range []string{MCallRecall, MCallPrecision, MImportResolution, MFileEdgePrecision, MFileEdgeRecall} {
+					r.Metrics[m] = f(0.97)
+				}
+			}
+			r.MetricTiers = tiers("A", r.Metrics)
+			r.Subjects = tc.subjects
+			level, grade := LevelMet(r)
+			if level != tc.level || grade.L3 != tc.l3 || grade.L3Reason != tc.reason {
+				t.Errorf("LevelMet = %s %+v, want %s with L3 %s (%q)", level, grade, tc.level, tc.l3, tc.reason)
+			}
+		})
 	}
 }
 

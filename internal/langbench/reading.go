@@ -113,6 +113,9 @@ type Grade struct {
 	L2 string `json:"L2"`
 	L3 string `json:"L3"`
 	L4 string `json:"L4"`
+	// L3Reason states why L3 is unmet when no graded L3 metric holds the minimum evidence
+	// (owner ruling D19, E3): a thin corpus, not a metric failure. Empty otherwise.
+	L3Reason string `json:"L3_reason,omitempty"`
 }
 
 func (g *Grade) set(level, v string) {
@@ -239,6 +242,30 @@ type Reading struct {
 	Disposition      *string             `json:"disposition"`
 }
 
+// MinL3Evidence is owner ruling D19's minimum evidence for L3 (E1, E2): a graded L3 metric
+// counts only when its own denominator, summed over the reading's subjects, holds at least
+// this many references; under it the metric is not measured, which caps L3 at good, and L3
+// is unmet when every graded L3 metric is under it. Breadth is the corpus rules' job, so
+// there is no subject minimum.
+const MinL3Evidence = 20
+
+// l3Denominator names the count each L3 metric is a ratio over (merge.go's recompute):
+// for file_edge_precision the raw fathom count, before any oracle-blind pairs come back.
+var l3Denominator = map[string]string{
+	MXrefRecall: CntXrefTruth, MXrefPrecision: CntXrefFathom,
+	MFileEdgeRecall: CntFileEdgesTruth, MFileEdgePrecision: CntFileEdgesFathom,
+	MImportResolution: CntImportsInRepo,
+}
+
+// l3Evidence is metric's denominator summed over r's subjects.
+func l3Evidence(r Reading, metric string) int {
+	n := 0
+	for _, s := range r.Subjects {
+		n += s.Counts[l3Denominator[metric]]
+	}
+	return n
+}
+
 func thresholdsFor(kind string) map[string][]threshold {
 	if kind == "tooling" {
 		return toolThresholds
@@ -292,7 +319,7 @@ func tenancyHolds(r Reading) bool {
 // LevelMet computes a reading's level and per-level grade from its metrics,
 // the §1.2 thresholds and the §1.3 tiers alone. A level is met when its own
 // metrics grade good or better, every level below it is met, and the
-// tenancy floor holds.
+// tenancy floor holds; an L3 metric under MinL3Evidence counts as not measured.
 func LevelMet(r Reading) (string, Grade) {
 	th := thresholdsFor(r.Kind)
 	var g Grade
@@ -305,7 +332,10 @@ func LevelMet(r Reading) (string, Grade) {
 			chain = false
 			continue
 		}
-		grade := gradeLevel(r, level, ts)
+		grade, thin, allThin := gradeLevel(r, level, ts)
+		if allThin {
+			g.L3Reason = fmt.Sprintf("evidence: %d references, under %d", thin, MinL3Evidence)
+		}
 		g.set(level, grade)
 		if chain && (grade == GradeExcellent || grade == GradeGood) {
 			levelMet = level
@@ -316,9 +346,12 @@ func LevelMet(r Reading) (string, Grade) {
 	return levelMet, g
 }
 
-func gradeLevel(r Reading, level string, ts []threshold) string {
-	measured, missing := 0, 0
-	grade := GradeExcellent
+// gradeLevel grades one level's metrics. At L3 a metric under MinL3Evidence is not
+// measured; when every graded L3 metric is, the level is unmet, allThin is set and thin is
+// the most evidence any of them held.
+func gradeLevel(r Reading, level string, ts []threshold) (grade string, thin int, allThin bool) {
+	measured, missing, thinMetrics := 0, 0, 0
+	grade = GradeExcellent
 	capped := false
 	for _, t := range ts {
 		if slices.Contains(r.NotApplicable, t.metric) {
@@ -332,6 +365,14 @@ func gradeLevel(r Reading, level string, ts []threshold) string {
 		if v == nil {
 			missing++
 			continue
+		}
+		if level == "L3" {
+			if n := l3Evidence(r, t.metric); n < MinL3Evidence {
+				thinMetrics++
+				thin = max(thin, n)
+				capped = true
+				continue
+			}
 		}
 		measured++
 		var mg string
@@ -349,14 +390,16 @@ func gradeLevel(r Reading, level string, ts []threshold) string {
 		grade = minGrade(grade, mg)
 	}
 	switch {
+	case measured == 0 && thinMetrics > 0:
+		return GradeUnmet, thin, true
 	case measured == 0:
-		return GradeNotAttempted
+		return GradeNotAttempted, 0, false
 	case missing > 0:
-		return GradeUnmet
+		return GradeUnmet, 0, false
 	case capped:
-		return minGrade(grade, GradeGood)
+		return minGrade(grade, GradeGood), 0, false
 	}
-	return grade
+	return grade, 0, false
 }
 
 // Finalize computes LevelMet and Grade and normalizes the reading's slices
