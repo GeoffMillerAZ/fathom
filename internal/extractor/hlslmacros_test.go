@@ -46,3 +46,30 @@ func TestHLSLMacroTextsRegisterClause(t *testing.T) {
 		t.Error("a file with no register-qualified header has a rewrite")
 	}
 }
+
+// TestHLSLMacroTextsDeclarationMacro pins rewrite (b): a function-like macro
+// invocation (an all-capitals word with an underscore and its argument list)
+// standing where a declaration starts and alone on its line with no `;` is
+// blanked; one inside braces, one a `;` closes, one followed on its line by
+// more code and a lower-case call all stay.
+func TestHLSLMacroTextsDeclarationMacro(t *testing.T) {
+	src := "#include \"a.hlsli\"\nMAKE_BINDINGS(1, 2)\nMAKE_MORE_BINDINGS(3)\n" +
+		"float g;\nSET_UP_RESOURCES((4), 5)\n" +
+		"void f() {\n    LOG_VALUE(g)\n}\nWITH_SLOT(6)\n" +
+		"KEEP_ME(7);\nLEAD_IN(8) float h;\nkeep_me_too(9)\n"
+	texts := hlslMacroTexts([]byte(src))
+	if len(texts) != 1 {
+		t.Fatalf("got %d texts, want 1", len(texts))
+	}
+	hlslSameShape(t, src, texts)
+	want := src
+	for _, call := range []string{"MAKE_BINDINGS(1, 2)", "MAKE_MORE_BINDINGS(3)", "SET_UP_RESOURCES((4), 5)", "WITH_SLOT(6)"} {
+		want = strings.Replace(want, call, strings.Repeat(" ", len(call)), 1)
+	}
+	if got := string(texts[0]); got != want {
+		t.Errorf("rewrite:\n%s\nwant:\n%s", got, want)
+	}
+	if hlslMacroTexts([]byte("KEEP_ME(7);\nvoid f() {\n    LOG_VALUE(g)\n}\n")) != nil {
+		t.Error("a file with no declaration-position macro has a rewrite")
+	}
+}

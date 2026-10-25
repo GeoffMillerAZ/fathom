@@ -1,5 +1,7 @@
 package extractor
 
+import "strings"
+
 // tsextract_hlslmacros.go — the HLSL dialect's pre-parse step (the hlsl
 // dialect.json's preprocess key "hlsl-macros", LB-Q-hlsl). tree-sitter-hlsl's
 // cbuffer_specifier takes a name, an optional base class clause and the body,
@@ -13,7 +15,12 @@ package extractor
 //   - the register clause of a `cbuffer` or `tbuffer` header, `: register(...)`
 //     with any space-qualified form (`register(b0, space1)`), between the name
 //     and the `{`; a register on a resource declaration is the grammar's own
-//     and stays.
+//     and stays;
+//   - a function-like macro invocation standing where a declaration starts
+//     (the file's start, after `;` or `}`, outside any braces) and alone on
+//     its line with no `;`: an all-capitals word with an underscore, then its
+//     argument list (`DEFINE_LIGHT_BINDINGS(4, 5)`, a macro that expands to
+//     resource declarations the grammar cannot see through).
 //
 // The rewritten text is tried only when the file does not parse as written,
 // and read only when it parses clean (tsPreprocessed). The trigger to retire
@@ -36,7 +43,54 @@ func hlslMacroTexts(src []byte) [][]byte {
 	punct := func(i int, c byte) bool {
 		return i >= 0 && i < len(toks) && toks[i].kind == 'p' && src[toks[i].start] == c
 	}
+	closeParen := func(open int) int {
+		depth := 0
+		for j := open; j < len(toks); j++ {
+			switch {
+			case punct(j, '('):
+				depth++
+			case punct(j, ')'):
+				depth--
+				if depth == 0 {
+					return j
+				}
+			case punct(j, ';') || punct(j, '{') || punct(j, '}'):
+				return -1
+			}
+		}
+		return -1
+	}
+	braces := 0
+	atStart := true // the file's start
 	for i := 0; i < len(toks); i++ {
+		start := atStart && braces == 0
+		atStart = false
+		switch {
+		case punct(i, '{'):
+			braces++
+			continue
+		case punct(i, '}'):
+			if braces > 0 {
+				braces--
+			}
+			atStart = braces == 0
+			continue
+		case punct(i, ';'):
+			atStart = braces == 0
+			continue
+		}
+		// a declaration-position macro alone on its line
+		if w := word(i); start && cppAllCaps([]byte(w)) && strings.Contains(w, "_") && punct(i+1, '(') {
+			cp := closeParen(i + 1)
+			if cp > 0 && (cp+1 == len(toks) || (!punct(cp+1, ';') &&
+				strings.Contains(string(src[toks[cp].end:toks[cp+1].start]), "\n"))) {
+				blankKeepNewlines(out, toks[i].start, toks[cp].end)
+				changed = true
+				i = cp
+				atStart = true
+				continue
+			}
+		}
 		// cbuffer Name : register ( ... ) {
 		if w := word(i); (w == "cbuffer" || w == "tbuffer") && word(i+1) != "" && punct(i+2, ':') &&
 			word(i+3) == "register" && punct(i+4, '(') {
