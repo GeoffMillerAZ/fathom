@@ -160,6 +160,10 @@ func ResolveFileEdges(ctx context.Context, lang, repoPath string, files []core.S
 	return resolveFileEdgesWith(ctx, ext, lang, repoPath, files, symbols)
 }
 
+// readRepoFile reads a header the measurement path's include-path pass
+// reaches (a variable so a test can count the reads, round 4 C4-R6).
+var readRepoFile = os.ReadFile
+
 // diskManifestReader reads a repo manifest (a strategy's composer.json,
 // Cargo.toml, …) from repoPath, bounded by maxManifestBytes.
 func diskManifestReader(repoPath string) func(string) ([]byte, bool) {
@@ -280,7 +284,7 @@ func resolveFileEdgesWith(ctx context.Context, ext extractor.FileSpecExtractor, 
 		// Headers the router sent to the other language (cproto.go).
 		extra := foreignHeaders(repoPath, r.env.set)
 		readHeader := func(p string) ([]byte, bool) {
-			b, err := os.ReadFile(filepath.Join(repoPath, filepath.FromSlash(p)))
+			b, err := readRepoFile(filepath.Join(repoPath, filepath.FromSlash(p)))
 			return b, err == nil && len(b) <= MaxExtractSize
 		}
 		var borrowed []core.SymbolNode

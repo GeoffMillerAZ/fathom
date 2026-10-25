@@ -96,3 +96,55 @@ func TestClangLinkageIncludeClosure(t *testing.T) {
 		t.Errorf("nil rule reached %v", got)
 	}
 }
+
+// TestScoreSCIPClangLinkUnitsHeaderAndSource (round 4 C4-R6): one symbol defined
+// in a header that two executables' sources include, and also in a .cu of a third
+// executable. A header takes its includers' executables, so a.cu's and b.cu's
+// references draw to the header's copy and not to c.cu's, and c.cu's reference,
+// whose own executable holds its own copy, draws to neither of the others.
+func TestScoreSCIPClangLinkUnitsHeaderAndSource(t *testing.T) {
+	sym := "cxx . . $ iDivUp(1111111111111111)."
+	idx := &scippb.Index{Metadata: &scippb.Metadata{ToolInfo: &scippb.ToolInfo{Name: "scip-clang", Version: "0.4.0"}},
+		Documents: []*scippb.Document{
+			{RelativePath: "Common/helper.h", Occurrences: []*scippb.Occurrence{scipCallsiteDef(sym, nil, 0, 11, 17)}},
+			{RelativePath: "Samples/a/a.cu", Occurrences: []*scippb.Occurrence{scipCallsiteRef(sym, 5, 2, 8)}},
+			{RelativePath: "Samples/b/b.cu", Occurrences: []*scippb.Occurrence{scipCallsiteRef(sym, 5, 2, 8)}},
+			{RelativePath: "Samples/c/c.cu", Occurrences: []*scippb.Occurrence{scipCallsiteDef(sym, nil, 1, 4, 10), scipCallsiteRef(sym, 5, 2, 8)}},
+		}}
+	raw, err := proto.Marshal(idx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	opts := SCIPOptionsFor("cuda", nil)
+	dir := t.TempDir()
+	pre := filepath.Join(dir, "preproc.json")
+	if err := os.WriteFile(pre, []byte(`{"tool":"clang-preprocessor","tier":"A","imports":[
+ {"path":"Samples/a/a.cu","line":1,"to_path":"Common/helper.h"},{"path":"Samples/b/b.cu","line":1,"to_path":"Common/helper.h"}]}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "preproc.units.json"), []byte(`{"tool":"cmake-link-lines","tier":"A","link_units":{
+ "a":["Samples/a/a.cu"],"b":["Samples/b/b.cu"],"c":["Samples/c/c.cu"]}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := opts.ClangLinkage.Read([]string{pre}, func(p string) string { return p + ".none" }); err != nil {
+		t.Fatal(err)
+	}
+	res, err := ScoreSCIPWith(raw, "s", nil, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range [][2]string{{"Samples/a/a.cu", "Common/helper.h"}, {"Samples/b/b.cu", "Common/helper.h"}} {
+		if !res.FileEdges[e] {
+			t.Errorf("no truth edge %v: %v", e, res.FileEdges)
+		}
+	}
+	for _, e := range [][2]string{{"Samples/a/a.cu", "Samples/c/c.cu"}, {"Samples/b/b.cu", "Samples/c/c.cu"}, {"Samples/c/c.cu", "Common/helper.h"}} {
+		if res.FileEdges[e] {
+			t.Errorf("truth edge %v crosses an executable boundary: %v", e, res.FileEdges)
+		}
+	}
+	opts.ClangLinkage.Finish("s", res.FileEdges, res.Counts)
+	if res.Counts[CntScipFileEdgesLinkUnit] != 3 {
+		t.Errorf("scip_file_edges_link_unit %d, want 3 (a.cu, b.cu -> c.cu; c.cu -> helper.h)", res.Counts[CntScipFileEdgesLinkUnit])
+	}
+}

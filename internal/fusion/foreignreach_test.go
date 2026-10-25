@@ -3,6 +3,7 @@ package fusion
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -235,5 +236,119 @@ func TestResolveFileEdgesCUDABorrowsHeaders(t *testing.T) {
 		if n.FilePath == "other.h" {
 			t.Errorf("an unreached header lent %s", n.Name)
 		}
+	}
+}
+
+// cudaReachCorpus is one .cu that includes helper.h, which includes deep.h,
+// beside 50 unrelated headers (round 4 C4-R6).
+func cudaReachCorpus() map[string]string {
+	c := map[string]string{
+		"k.cu":            "#include \"helper.h\"\nint main() { return helper() + deep(); }\n",
+		"Common/helper.h": "#include \"deep.h\"\ninline int helper(void) { return 1; }\n",
+		"Common/deep.h":   "inline int deep(void) { return 2; }\n",
+	}
+	for i := 0; i < 50; i++ {
+		c[fmt.Sprintf("other/u%02d.h", i)] = fmt.Sprintf("inline int u%02d(void) { return %d; }\n", i, i)
+	}
+	return c
+}
+
+// TestResolveLangCUDAReadsOnlyReachedHeaders (round 4 C4-R6): the resolver's
+// header pass, through the pipeline's own connector, fetches only the headers
+// an include reaches (helper.h, then deep.h), never the 50 unrelated ones the
+// eager loop fetched to prune them.
+func TestResolveLangCUDAReadsOnlyReachedHeaders(t *testing.T) {
+	dir := t.TempDir()
+	writeCorpus(t, dir, cudaReachCorpus())
+	conn := newCountingConn()
+	st := store.NewMemoryStore()
+	p := New(conn, st, Config{})
+	t.Cleanup(p.Close)
+	ctx := context.Background()
+	svc := core.ServiceRef{ID: "cr", Path: dir}
+	if _, err := p.Ingest(ctx, svc); err != nil {
+		t.Fatal(err)
+	}
+	var fl extractor.FileResolveLang
+	langs, _ := extractor.FileResolveLangs()
+	for _, l := range langs {
+		if l.Lang == "cuda" {
+			fl = l
+		}
+	}
+	if fl.Lang == "" {
+		t.Skip("no cuda file resolver")
+	}
+	ext, done, err := p.fileResolveExtractor("cuda")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer done()
+	var foreign []core.SourceRef
+	var known []string
+	for path := range cudaReachCorpus() {
+		known = append(known, path)
+		if strings.HasSuffix(path, ".h") {
+			foreign = append(foreign, core.SourceRef{Service: svc.ID, Path: path})
+		}
+	}
+	sort.Strings(known)
+	sort.Slice(foreign, func(i, j int) bool { return foreign[i].Path < foreign[j].Path })
+	r := newLangResolver(fl)
+	r.known = known
+	conn.take()
+	read := func(rel string) ([]byte, bool) {
+		b, err := conn.Fetch(ctx, core.SourceRef{Service: svc.ID, Path: rel})
+		return b, err == nil
+	}
+	if _, _, err := p.resolveLang(ctx, svc, r, read, ext, []core.SourceRef{{Service: svc.ID, Path: "k.cu"}}, foreign); err != nil {
+		t.Fatal(err)
+	}
+	var headers []string
+	for path := range conn.take() {
+		if strings.HasSuffix(path, ".h") {
+			headers = append(headers, path)
+		}
+	}
+	sort.Strings(headers)
+	if want := "Common/deep.h,Common/helper.h"; strings.Join(headers, ",") != want {
+		t.Errorf("resolveLang read headers %v, want only %s", headers, want)
+	}
+}
+
+// TestResolveFileEdgesCUDAReadsOnlyReachedHeaders (round 4 C4-R6): the
+// measurement path's header pass reads only the headers an include reaches.
+func TestResolveFileEdgesCUDAReadsOnlyReachedHeaders(t *testing.T) {
+	dir := t.TempDir()
+	corpus := cudaReachCorpus()
+	writeCorpus(t, dir, corpus)
+	e, err := extractor.NewTSExtractor("cuda")
+	if err != nil {
+		t.Skip("no cuda dialect:", err)
+	}
+	src := []byte(corpus["k.cu"])
+	nodes, err := e.Extract("s", "k.cu", src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var mu sync.Mutex
+	var headers []string
+	orig := readRepoFile
+	readRepoFile = func(name string) ([]byte, error) {
+		if strings.HasSuffix(name, ".h") {
+			rel, _ := filepath.Rel(dir, name)
+			mu.Lock()
+			headers = append(headers, filepath.ToSlash(rel))
+			mu.Unlock()
+		}
+		return orig(name)
+	}
+	t.Cleanup(func() { readRepoFile = orig })
+	if _, rep := ResolveFileEdges(context.Background(), "cuda", dir, []core.SourceFile{{Path: "k.cu", Content: src}}, nodes); rep.Skipped {
+		t.Fatal(rep.SkipReason)
+	}
+	sort.Strings(headers)
+	if want := "Common/deep.h,Common/helper.h"; strings.Join(headers, ",") != want {
+		t.Errorf("ResolveFileEdges read headers %v, want only %s", headers, want)
 	}
 }
