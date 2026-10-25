@@ -1145,7 +1145,16 @@ func splitTSMatchesWith(matches []tsengine.Match, kinds map[string]tsDefKind, sr
 	var calls []tsCallSite
 	var attaches []tsCallAttach
 	typeRefs := 0
+	type span struct{ start, end uint32 }
+	var notCalls map[span]bool
 	for _, m := range matches {
+		if n, ok := tsCallNoneOf(m); ok {
+			if notCalls == nil {
+				notCalls = map[span]bool{}
+			}
+			notCalls[span{n.StartByte, n.EndByte}] = true
+			continue
+		}
 		if callee, site, ok := tsCalleeName(m, src); ok {
 			if qualify {
 				callee = qualifiedCallee(m, src, callee, site)
@@ -1267,8 +1276,31 @@ func splitTSMatchesWith(matches []tsengine.Match, kinds map[string]tsDefKind, sr
 			attaches = append(attaches, tsCallAttach{toStart: d.start, toEnd: d.end, fromStart: fromNode.StartByte, fromEnd: fromNode.EndByte})
 		}
 	}
+	if notCalls != nil {
+		kept := calls[:0]
+		for _, c := range calls {
+			if !notCalls[span{c.start, c.end}] {
+				kept = append(kept, c)
+			}
+		}
+		calls = kept
+	}
 	defs, calls = dropShorterParts(defs, calls)
 	return defs, calls, attaches, typeRefs
+}
+
+// tsCallNoneOf reads a match capturing @call.none: a call-shaped node the
+// language does not call (an HLSL attribute, [numthreads(8, 8, 1)], or a
+// register(b0) clause, which the grammar parses as a call_expression). A
+// @reference.call over that same node is dropped, so a query excludes such a
+// call by where it is written, never by a list of its names.
+func tsCallNoneOf(m tsengine.Match) (tsengine.Node, bool) {
+	for i := range m.Captures {
+		if m.Captures[i].Name == "call.none" {
+			return m.Captures[i].Node, true
+		}
+	}
+	return tsengine.Node{}, false
 }
 
 // oneDefPerNode keeps one kind per node and name (LB-F382): when two patterns

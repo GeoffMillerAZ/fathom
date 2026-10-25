@@ -45,3 +45,23 @@ float3 Origin()
 {
     return Ray::create(float3(0, 0, 0)).origin;
 }
+
+// User functions that share an attribute's word stay calls when a body calls
+// them; the attributes ([domain], [instance], [shader], [unroll(4)]) and the
+// register and packoffset clauses are excluded by where they are written.
+float4 Instance(float4 c) { return c; }
+float4 Domain(float4 c) { return c; }
+float4 Shader(float4 c) { return c; }
+
+cbuffer Params : register(b1)
+{
+    float4 gScale : packoffset(c0);
+};
+
+[domain("tri")]
+[instance(2)]
+float4 Main(float4 c : COLOR) : SV_Target
+{
+    [unroll(4)] for (int i = 0; i < 4; i++) { c += gScale; }
+    return Instance(c) + Domain(c) + Shader(c);
+}

@@ -220,13 +220,20 @@
 
 ; --- calls ---------------------------------------------------------------------------
 ; A plain call, intrinsics included (mul, saturate), as the compiler's AST has
-; a CallExpr for each. A vector or matrix constructor (float4(...)), a
-; function-like macro invocation (an all-capitals name) and the keyword-like
-; calls of a semantic or attribute (register(b0), [numthreads(8, 8, 1)], spelled
-; in any case: [RootSignature(RS)], [NumThreads(8, 8, 1)]) are not calls.
+; a CallExpr for each. A vector or matrix constructor (float4(...)) and a
+; function-like macro invocation (an all-capitals name) are not calls, nor is a
+; keyword the grammar reads as a callee in a file it parses in error.
 (call_expression
   function: (identifier) @name
-  (#not-match? @name "^(((u?int|float|half|double|bool|min(10float|12int|16(float|int|uint))|dword)[1-4]?(x[1-4])?)|[A-Z][A-Z0-9_]*|if|while|for|switch|return|sizeof|(?i:register|packoffset|numthreads|shader|maxvertexcount|domain|partitioning|outputtopology|outputcontrolpoints|patchconstantfunc|maxtessfactor|instance|wavesize|earlydepthstencil|clipplanes|rootsignature|nodelaunch|nodeid|noderootargumentstableindex|nodelocalrootargumentstableindex|nodeshareinputof|nodedispatchgrid|nodemaxdispatchgrid|nodemaxrecursiondepth|nodeisprogramentry|nodemaxinputrecordspergraphentryrecord|maxrecords|maxrecordssharedwith|nodearraysize|nodetrackrwinputsharing|allowsparsenodes|unroll))$")) @reference.call
+  (#not-match? @name "^(((u?int|float|half|double|bool|min(10float|12int|16(float|int|uint))|dword)[1-4]?(x[1-4])?)|[A-Z][A-Z0-9_]*|if|while|for|switch|return|sizeof)$")) @reference.call
+
+; Call-shaped but no call, excluded by where they are written (the engine drops
+; a @reference.call over a @call.none node): an attribute ([numthreads(8, 8, 1)],
+; [RootSignature(RS)], [domain("tri")], [unroll(4)] before a loop) and a
+; register(b0) or packoffset(c0) clause, which the grammar reads as a
+; semantics node. A user function named Domain or Instance stays a call.
+(hlsl_attribute (call_expression) @call.none)
+(semantics (call_expression) @call.none)
 
 ; A static member call (Ray::create(o)) is the member's bare name, as the
 ; compiler's DeclRefExpr names it.

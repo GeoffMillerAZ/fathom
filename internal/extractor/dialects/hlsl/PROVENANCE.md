@@ -31,8 +31,14 @@
     every branch kept (`cppBlankConditionals`, as cpp-macros and objc-macros), for a statement or an expression split
     across `#if`/`#else`. Retired by a tree-sitter-hlsl release that parses a conditional inside a statement or an
     expression (tree-sitter-cpp does not either, so this one is expected to stay).
-- `calls`: intrinsics are calls (the compiler has a `CallExpr` for each); vector and matrix constructors, all-capitals
-  macro invocations and the call-shaped words of a semantic or attribute (`register`, `numthreads`) are not.
+- `calls`: intrinsics are calls (the compiler has a `CallExpr` for each); vector and matrix constructors and
+  all-capitals macro invocations are not, nor is a call-shaped node by where it is written: an attribute
+  (`(hlsl_attribute (call_expression))`: `[numthreads(8, 8, 1)]`, `[RootSignature(RS)]`, `[domain("tri")]`,
+  `[unroll(4)]` before a loop) or a `register(b0)` or `packoffset(c0)` clause (`(semantics (call_expression))`),
+  captured as `@call.none`, which the engine drops. No attribute word is listed by name, so a user function named
+  `Domain`, `Instance` or `Shader` called from a body stays a call. On the calibration corpus this exclusion leaves
+  the same call pairs as the word list it replaced (3,696 fathom pairs, 3,572 agreeing with dxc-ast); every word of
+  that list had a structural home, so none stays.
 - `imports.scm`: `#include` only; the manifest's `include-path` strategy resolves the quoted form relative to the
   includer, then the source roots.
 - Dispatch: `.hlsl`, `.hlsli` and `.fxh` by extension; `.fx` (also a Flux config extension) by the manifest's

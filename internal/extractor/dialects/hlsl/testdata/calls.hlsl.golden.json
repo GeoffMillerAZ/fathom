@@ -108,6 +108,55 @@
         "create"
       ],
       "tier": "verified"
+    },
+    {
+      "name": "Instance",
+      "kind": "HlslFunc",
+      "package": "calls",
+      "line": 52,
+      "end_line": 52,
+      "signature": "float4 Instance(float4 c)",
+      "tier": "verified"
+    },
+    {
+      "name": "Domain",
+      "kind": "HlslFunc",
+      "package": "calls",
+      "line": 53,
+      "end_line": 53,
+      "signature": "float4 Domain(float4 c)",
+      "tier": "verified"
+    },
+    {
+      "name": "Shader",
+      "kind": "HlslFunc",
+      "package": "calls",
+      "line": 54,
+      "end_line": 54,
+      "signature": "float4 Shader(float4 c)",
+      "tier": "verified"
+    },
+    {
+      "name": "Params",
+      "kind": "HlslCbuffer",
+      "package": "calls",
+      "line": 56,
+      "end_line": 59,
+      "tier": "verified"
+    },
+    {
+      "name": "Main",
+      "kind": "HlslFunc",
+      "package": "calls",
+      "line": 63,
+      "end_line": 67,
+      "signature": "[domain(\"tri\")] [instance(2)] float4 Main(float4 c : COLOR) : SV_Target",
+      "calls": [
+        "Domain",
+        "Instance",
+        "Shader"
+      ],
+      "tier": "verified"
     }
   ]
 }
