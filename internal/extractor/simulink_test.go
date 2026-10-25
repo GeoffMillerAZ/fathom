@@ -4,8 +4,11 @@ import (
 	"archive/zip"
 	"bytes"
 	"errors"
+	"runtime"
+	"runtime/metrics"
 	"strings"
 	"testing"
+	"time"
 )
 
 // slxPackage writes an OPC zip holding parts, in the order given (a .slx is one; the
@@ -523,4 +526,139 @@ func TestReadSimulinkModelStrayEndTags(t *testing.T) {
 			t.Errorf("stray braces: %d blocks, %v", len(m.Blocks), err)
 		}
 	})
+}
+
+// TestReadSimulinkModelStructureCaps is S-R2: the depth and element caps hold while a part
+// or a .mdl is tokenized, before a tree is built past them. The .slx parts compress as a real
+// part does (slxNoise), far inside the ratio cap, as the 56:1 nesting that once built a
+// 10.8M-deep tree did.
+func TestReadSimulinkModelStructureCaps(t *testing.T) {
+	slx := func(part string) []byte {
+		return slxPackage(t, "[Content_Types].xml", slxContentTypes, "simulink/systems/system_root.xml", part)
+	}
+	cases := map[string][]byte{
+		// 32 MiB of nesting: it compresses far inside the ratio cap and once built a 10.8M-deep tree.
+		"deep slx":     slx(slxNoise(1<<20, "<%s>", true)),
+		"flat slx":     slx(slxNoise((SimulinkMaxInflated-32)/(3+slxNoiseWidth), "<%s/>", false)),
+		"deep mdl":     []byte("Model {\n" + strings.Repeat("A {\n", SimulinkMaxDepth+1) + strings.Repeat("}\n", SimulinkMaxDepth+2)),
+		"flat mdl":     []byte("Model {\n" + strings.Repeat("A {\n}\n", SimulinkMaxElements+1) + "}\n"),
+		"wide spliced": nil,
+	}
+	// Each part nests 64 deep and names the next: the splice is deeper than any one part.
+	var chain []string
+	chain = append(chain, "[Content_Types].xml", slxContentTypes)
+	for i := 0; i < SimulinkMaxDepth/32; i++ {
+		ref := "system_root"
+		if i > 0 {
+			ref = "system_" + itoa(i)
+		}
+		chain = append(chain, "simulink/systems/"+ref+".xml",
+			"<System>"+strings.Repeat(`<Block Name="b" SID="1"><System>`, 32)+`<Block Name="s" SID="2"><System Ref="system_`+itoa(i+1)+`"/></Block>`+strings.Repeat("</System></Block>", 32)+"</System>")
+	}
+	cases["wide spliced"] = slxPackage(t, chain...)
+	for name, src := range cases {
+		t.Run(name, func(t *testing.T) {
+			rel := "m.slx"
+			if strings.HasSuffix(name, "mdl") {
+				rel = "m.mdl"
+			}
+			_, err := ReadSimulinkModel(rel, src)
+			if !errors.Is(err, ErrSimulinkCap) {
+				t.Errorf("err = %v, want ErrSimulinkCap", err)
+			}
+		})
+	}
+	t.Run("under the caps", func(t *testing.T) {
+		deep := "<System>" + strings.Repeat(`<Block Name="b" SID="1"><System>`, SimulinkMaxDepth/2-2) + strings.Repeat("</System></Block>", SimulinkMaxDepth/2-2) + "</System>"
+		m, err := ReadSimulinkModel("m.slx", slx(deep))
+		if err != nil || len(m.Blocks) != SimulinkMaxDepth/2-2 {
+			t.Errorf("a model inside the depth cap: %d blocks, %v", len(m.Blocks), err)
+		}
+	})
+}
+
+// TestReadSimulinkModelHeapBound is S-R2's memory bound: a package filled to the element cap,
+// or to the block cap with blocks holding each attribute the reader keeps, peaks at a small
+// multiple of the inflated budget, sampled while it reads.
+func TestReadSimulinkModelHeapBound(t *testing.T) {
+	if testing.Short() {
+		t.Skip("reads a full element budget")
+	}
+	for name, c := range map[string]struct {
+		el     string
+		n      int
+		blocks int
+	}{
+		"elements": {`<P Name="%s">1</P>`, SimulinkMaxElements - 2, 0},
+		"blocks":   {`<Block Name="%s" SID="1" BlockType="G" Ref="r"/>`, SimulinkMaxBlocks, SimulinkMaxBlocks},
+	} {
+		t.Run(name, func(t *testing.T) { heapBound(t, c.el, c.n, c.blocks) })
+	}
+}
+
+func heapBound(t *testing.T, el string, n, blocks int) {
+	const heapFactor = 8
+	src := slxPackage(t, "[Content_Types].xml", slxContentTypes, "simulink/systems/system_root.xml", slxNoise(n, el, false))
+	runtime.GC()
+	sample := []metrics.Sample{{Name: "/memory/classes/heap/objects:bytes"}}
+	metrics.Read(sample)
+	base := sample[0].Value.Uint64()
+	peak := base
+	done := make(chan struct{})
+	sampled := make(chan uint64)
+	go func() {
+		s := []metrics.Sample{{Name: "/memory/classes/heap/objects:bytes"}}
+		p := base
+		for {
+			metrics.Read(s)
+			p = max(p, s[0].Value.Uint64())
+			select {
+			case <-done:
+				sampled <- p
+				return
+			case <-time.After(time.Millisecond):
+			}
+		}
+	}()
+	m, err := ReadSimulinkModel("m.slx", src)
+	close(done)
+	peak = <-sampled
+	if err != nil || len(m.Blocks) != blocks {
+		t.Fatalf("%d blocks, %v; want %d, nil", len(m.Blocks), err, blocks)
+	}
+	grew := peak - base
+	t.Logf("%d elements: heap peaked %d MiB over the %d MiB before the read", n, grew>>20, base>>20)
+	if limit := uint64(heapFactor) * SimulinkMaxInflated; grew > limit {
+		t.Errorf("heap grew %d MiB, want at most %d MiB (%dx the inflated budget)", grew>>20, limit>>20, heapFactor)
+	}
+}
+
+// slxNoiseWidth is the width of an slxNoise name.
+const slxNoiseWidth = 3
+
+// slxNoise is a <System> part of n elements written by format from pseudo-random names (so
+// the part compresses as a real one does, far inside the ratio cap): nested, each inside the
+// last and closed in turn, or flat.
+func slxNoise(n int, format string, nested bool) string {
+	var b, closing strings.Builder
+	b.WriteString("<System>")
+	seed := uint32(11)
+	names := make([]string, 0, n)
+	for i := 0; i < n; i++ {
+		var nm [slxNoiseWidth]byte
+		for j := range nm {
+			seed = seed*1664525 + 1013904223
+			nm[j] = 'a' + byte(seed>>24)%26
+		}
+		b.WriteString(strings.Replace(format, "%s", string(nm[:]), 1))
+		if nested {
+			names = append(names, string(nm[:]))
+		}
+	}
+	for i := len(names) - 1; i >= 0; i-- {
+		closing.WriteString("</" + names[i] + ">")
+	}
+	b.WriteString(closing.String())
+	b.WriteString("</System>")
+	return b.String()
 }

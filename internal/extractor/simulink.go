@@ -55,7 +55,36 @@ const (
 	SimulinkMaxInflated = 32 << 20
 	// SimulinkMaxRatio is the most a part read may inflate per compressed byte.
 	SimulinkMaxRatio = 200
+	// SimulinkMaxDepth is the deepest a model's elements (or .mdl brace nodes) may nest, a
+	// spliced system's counted from the model. The deepest calibration model nests 38.
+	SimulinkMaxDepth = 1024
+	// SimulinkMaxElements is the most elements (or .mdl brace nodes) a model's parts may hold
+	// together. The largest calibration model holds 96,366.
+	SimulinkMaxElements = 1 << 19
+	// SimulinkMaxBlocks is the most Block elements (or .mdl Block nodes) among them, which
+	// bounds the blocks read. The largest calibration model holds 5,801.
+	SimulinkMaxBlocks = 1 << 16
 )
+
+// simulinkBudget is what is left of a model's element and block caps as its parts tokenize.
+type simulinkBudget struct{ elems, blocks int }
+
+func newSimulinkBudget() *simulinkBudget {
+	return &simulinkBudget{elems: SimulinkMaxElements, blocks: SimulinkMaxBlocks}
+}
+
+// take spends one element named name, an ErrSimulinkCap past a cap.
+func (b *simulinkBudget) take(name string, line int) error {
+	if b.elems--; b.elems < 0 {
+		return fmt.Errorf("%w: line %d: past %d elements", ErrSimulinkCap, line, SimulinkMaxElements)
+	}
+	if name == "Block" {
+		if b.blocks--; b.blocks < 0 {
+			return fmt.Errorf("%w: line %d: past %d blocks", ErrSimulinkCap, line, SimulinkMaxBlocks)
+		}
+	}
+	return nil
+}
 
 var (
 	// ErrSimulinkCap: a package over one of the caps, or a part that does not parse, read as
@@ -189,9 +218,13 @@ func ReadSimulinkModel(relPath string, src []byte) (SimulinkModel, error) {
 
 // simulinkName is a block name as a symbol holds it: each line break one space.
 func simulinkName(s string) string {
-	s = strings.ReplaceAll(s, "\r\n", " ")
-	return strings.NewReplacer("\r", " ", "\n", " ").Replace(s)
+	if !strings.ContainsAny(s, "\r\n") {
+		return s
+	}
+	return simulinkBreaks.Replace(s)
 }
+
+var simulinkBreaks = strings.NewReplacer("\r\n", " ", "\r", " ", "\n", " ")
 
 // simulinkJoin appends a block's name to its parent's path, doubling a `/` in the name.
 func simulinkJoin(parent, name string) string {
@@ -208,16 +241,29 @@ func (m *SimulinkModel) refPath(p string) string {
 
 // --- .slx ---------------------------------------------------------------------------
 
-// xnode is one element of a part, as far as the reader keeps it.
+// xnode is one element of a part, as far as the reader keeps it: the attributes it reads
+// (simulinkAttrs) and a <P>'s text, nothing else.
 type xnode struct {
-	name     string
-	attrs    map[string]string
-	kids     []*xnode
-	text     string
-	line, to int
+	name                       string
+	aName, sid, blockType, ref string // the attributes the reader reads
+	kids                       []*xnode
+	text                       string
+	line, to                   int
 }
 
-func (n *xnode) attr(k string) string { return n.attrs[k] }
+// setAttr keeps an attribute the reader reads and drops any other.
+func (n *xnode) setAttr(k, v string) {
+	switch k {
+	case "Name":
+		n.aName = v
+	case "SID":
+		n.sid = v
+	case "BlockType":
+		n.blockType = v
+	case "Ref":
+		n.ref = v
+	}
+}
 
 func (n *xnode) children(name string) []*xnode {
 	var out []*xnode
@@ -232,14 +278,15 @@ func (n *xnode) children(name string) []*xnode {
 // prop is a <P Name="k"> child's text.
 func (n *xnode) prop(k string) string {
 	for _, c := range n.children("P") {
-		if c.attr("Name") == k {
+		if c.aName == k {
 			return c.text
 		}
 	}
 	return ""
 }
 
-// all is every element named name under n, at any depth, not descending into a match.
+// all is every element named name under n, at any depth, not descending into a match. Its
+// recursion is bounded by SimulinkMaxDepth, which parseXMLPart holds.
 func (n *xnode) all(name string, out []*xnode) []*xnode {
 	for _, k := range n.kids {
 		if k.name == name {
@@ -251,18 +298,23 @@ func (n *xnode) all(name string, out []*xnode) []*xnode {
 	return out
 }
 
-// parseXMLPart reads a part into its element tree, lines from the token offsets.
-func parseXMLPart(b []byte) (*xnode, error) {
-	var nl []int64
-	for i, c := range b {
-		if c == '\n' {
-			nl = append(nl, int64(i))
+// parseXMLPart reads a part into its element tree, lines from the token offsets. The caps
+// hold while it tokenizes: an element deeper than SimulinkMaxDepth, or one past the model's
+// element or block budget (shared by the parts of one package), ends the read with
+// ErrSimulinkCap, as does a part that is not well formed.
+func parseXMLPart(b []byte, budget *simulinkBudget) (*xnode, error) {
+	line, pos := 1, 0
+	lineOf := func(off int64) int { // offsets only grow: count the line breaks since the last
+		if o := min(int(off), len(b)); o > pos {
+			line += bytes.Count(b[pos:o], []byte{'\n'})
+			pos = o
 		}
+		return line
 	}
-	lineOf := func(off int64) int { return sort.Search(len(nl), func(i int) bool { return nl[i] >= off }) + 1 }
 	dec := xml.NewDecoder(bytes.NewReader(b))
 	doc := &xnode{}
 	stack := []*xnode{doc}
+	var text []byte // the open <P>'s text, appended in place
 	for {
 		off := dec.InputOffset()
 		tok, err := dec.RawToken()
@@ -275,26 +327,33 @@ func parseXMLPart(b []byte) (*xnode, error) {
 		top := stack[len(stack)-1]
 		switch t := tok.(type) {
 		case xml.StartElement:
+			if len(stack) > SimulinkMaxDepth {
+				return nil, fmt.Errorf("%w: line %d: elements nest past %d deep", ErrSimulinkCap, lineOf(off), SimulinkMaxDepth)
+			}
+			if err := budget.take(t.Name.Local, lineOf(off)); err != nil {
+				return nil, err
+			}
 			n := &xnode{name: t.Name.Local, line: lineOf(off)}
-			if len(t.Attr) > 0 {
-				n.attrs = make(map[string]string, len(t.Attr))
-				for _, a := range t.Attr {
-					n.attrs[a.Name.Local] = a.Value
-				}
+			for _, a := range t.Attr {
+				n.setAttr(a.Name.Local, a.Value)
 			}
 			top.kids = append(top.kids, n)
 			stack = append(stack, n)
+			text = text[:0]
 		case xml.EndElement:
 			// RawToken matches no end tag to its start: the reader does, and never pops the root.
 			if len(stack) == 1 || t.Name.Local != top.name {
 				return nil, fmt.Errorf("%w: syntax error: line %d: unexpected end tag </%s>", ErrSimulinkCap, lineOf(off), t.Name.Local)
 			}
+			if top.name == "P" { // the only text the reader keeps
+				top.text = string(text)
+			}
 			// off is the `<` of an end tag, or just past a self-closed tag's `/>`.
 			top.to = lineOf(off)
 			stack = stack[:len(stack)-1]
 		case xml.CharData:
-			if top.name == "P" { // the only text the reader keeps
-				top.text += string(t)
+			if top.name == "P" {
+				text = append(text, t...)
 			}
 		}
 	}
@@ -354,12 +413,14 @@ func (m *SimulinkModel) readSLX(src []byte) error {
 	if err != nil {
 		return err
 	}
+	budget := newSimulinkBudget()
 	var diagram *xnode // ModelInformation/Model|Library
 	if b, ok := parts["simulink/blockdiagram.xml"]; ok {
-		doc, err := parseXMLPart(b)
+		doc, err := parseXMLPart(b, budget)
 		if err != nil {
 			return fmt.Errorf("simulink: blockdiagram.xml: %w", err)
 		}
+		delete(parts, "simulink/blockdiagram.xml") // a parsed part's bytes are not held on
 		for _, info := range doc.children("ModelInformation") {
 			for _, k := range info.kids {
 				if (k.name == "Model" || k.name == "Library") && diagram == nil {
@@ -370,28 +431,30 @@ func (m *SimulinkModel) readSLX(src []byte) error {
 	}
 	systems := map[string]*xnode{}
 	var refs []string
-	for name, b := range parts {
-		if !strings.HasPrefix(name, "simulink/systems/") {
-			continue
+	for name := range parts {
+		if strings.HasPrefix(name, "simulink/systems/") {
+			refs = append(refs, strings.TrimSuffix(strings.TrimPrefix(name, "simulink/systems/"), ".xml"))
 		}
-		doc, err := parseXMLPart(b)
+	}
+	sort.Strings(refs) // the parts parse in name order, so the budget runs out on the same one
+	for _, ref := range refs {
+		name := "simulink/systems/" + ref + ".xml"
+		doc, err := parseXMLPart(parts[name], budget)
 		if err != nil {
 			return fmt.Errorf("simulink: %s: %w", name, err)
 		}
-		ref := strings.TrimSuffix(strings.TrimPrefix(name, "simulink/systems/"), ".xml")
+		delete(parts, name)
 		for _, s := range doc.children("System") {
 			systems[ref] = s
 		}
-		refs = append(refs, ref)
 	}
-	sort.Strings(refs)
 	if len(systems) > 0 {
 		m.Layout = SimulinkLayoutSystems
 		w := slxWalk{m: m, systems: systems, seen: map[string]bool{}}
 		named := map[string]bool{}
 		for _, s := range systems {
 			for _, st := range s.all("System", nil) {
-				if r := st.attr("Ref"); r != "" {
+				if r := st.ref; r != "" {
 					named[r] = true
 				}
 			}
@@ -410,29 +473,38 @@ func (m *SimulinkModel) readSLX(src []byte) error {
 		for _, r := range order {
 			w.descend(r, m.Name)
 		}
+		if w.err != nil {
+			return w.err
+		}
 	} else if diagram != nil {
 		m.Layout = SimulinkLayoutInline
 		w := slxWalk{m: m, part: "simulink/blockdiagram.xml"}
 		for _, s := range diagram.children("System") {
 			w.system(s, m.Name)
 		}
+		if w.err != nil {
+			return w.err
+		}
 	} else {
 		m.Layout = SimulinkLayoutSystems
 	}
-	m.slxModelRefs(parts, diagram)
+	m.slxModelRefs(parts, diagram, budget)
 	return nil
 }
 
-// slxWalk walks systems, splicing a <System Ref> stub's part in place.
+// slxWalk walks systems, splicing a <System Ref> stub's part in place. A splice nests no
+// deeper than SimulinkMaxDepth subsystems, else err is the cap and the walk stops.
 type slxWalk struct {
 	m       *SimulinkModel
 	systems map[string]*xnode
 	seen    map[string]bool
 	part    string
+	depth   int
+	err     error
 }
 
 func (w *slxWalk) descend(ref, parent string) {
-	if w.seen[ref] || w.systems[ref] == nil {
+	if w.err != nil || w.seen[ref] || w.systems[ref] == nil {
 		return
 	}
 	w.seen[ref] = true
@@ -444,20 +516,28 @@ func (w *slxWalk) descend(ref, parent string) {
 
 func (w *slxWalk) system(s *xnode, parent string) {
 	for _, b := range s.children("Block") {
-		name := simulinkName(b.attr("Name"))
+		if w.err != nil {
+			return
+		}
+		name := simulinkName(b.aName)
 		p := simulinkJoin(parent, name)
 		inner := b.children("System")
 		w.m.Blocks = append(w.m.Blocks, SimulinkBlock{
-			Path: p, Parent: parent, Name: name, SID: b.attr("SID"), BlockType: b.attr("BlockType"),
+			Path: p, Parent: parent, Name: name, SID: b.sid, BlockType: b.blockType,
 			Subsystem: len(inner) > 0, Part: w.part, Line: b.line, EndLine: b.to,
 		})
+		if w.depth++; w.depth > SimulinkMaxDepth {
+			w.err = fmt.Errorf("%w: subsystems nest past %d deep in %s", ErrSimulinkCap, SimulinkMaxDepth, w.part)
+			return
+		}
 		for _, in := range inner {
-			if r := in.attr("Ref"); r != "" {
+			if r := in.ref; r != "" {
 				w.descend(r, p)
 			} else {
 				w.system(in, p)
 			}
 		}
+		w.depth--
 	}
 	for _, l := range s.children("Line") {
 		e := simulinkEnds{system: parent, src: sidEnd(l.prop("Src"))}
@@ -473,9 +553,9 @@ func (w *slxWalk) system(s *xnode, parent string) {
 func xmlDsts(n *xnode, out []simulinkEnd) []simulinkEnd {
 	for _, k := range n.kids {
 		switch {
-		case k.name == "P" && k.attr("Name") == "Dst":
+		case k.name == "P" && k.aName == "Dst":
 			out = append(out, sidEnd(k.text))
-		case k.name == "P" && k.attr("Name") == "DstBlock":
+		case k.name == "P" && k.aName == "DstBlock":
 			out = append(out, simulinkEnd{name: k.text})
 		case k.name == "Branch":
 			out = xmlDsts(k, out)
@@ -486,7 +566,7 @@ func xmlDsts(n *xnode, out []simulinkEnd) []simulinkEnd {
 
 // slxModelRefs reads the model references: graphicalInterface.json, else its .xml, else the
 // diagram's inline GraphicalInterface.
-func (m *SimulinkModel) slxModelRefs(parts map[string][]byte, diagram *xnode) {
+func (m *SimulinkModel) slxModelRefs(parts map[string][]byte, diagram *xnode, budget *simulinkBudget) {
 	if b, ok := parts["simulink/graphicalInterface.json"]; ok {
 		var doc map[string]json.RawMessage
 		if json.Unmarshal(b, &doc) != nil {
@@ -518,7 +598,7 @@ func (m *SimulinkModel) slxModelRefs(parts map[string][]byte, diagram *xnode) {
 	}
 	var gi *xnode
 	if b, ok := parts["simulink/graphicalInterface.xml"]; ok {
-		if doc, err := parseXMLPart(b); err == nil {
+		if doc, err := parseXMLPart(b, budget); err == nil {
 			gi = doc
 		}
 	} else if diagram != nil {
@@ -588,41 +668,73 @@ func mdlUnquote(s string) (string, string) {
 	return b.String(), ""
 }
 
+// mdlProp reports whether the reader reads a .mdl property of that name; no other is kept.
+func mdlProp(k string) bool {
+	switch k {
+	case "Name", "SID", "BlockType", "Src", "SrcBlock", "Dst", "DstBlock", "ModelRefBlockPath":
+		return true
+	}
+	return false
+}
+
 // parseMDL reads the brace tree. A property's value is the rest of its line, or the
-// concatenation of its quoted strings, a continuation line opening with `"` included.
-func parseMDL(src []byte) *mnode {
+// concatenation of its quoted strings, a continuation line opening with `"` included. A node
+// deeper than SimulinkMaxDepth, or past the element or block cap, ends the read with
+// ErrSimulinkCap.
+func parseMDL(src []byte) (*mnode, error) {
 	root := &mnode{}
 	stack := []*mnode{root}
-	var lastKey string
-	var last *mnode
+	budget := newSimulinkBudget()
+	// The property continuation lines extend, appended in place and stored once it ends.
+	var cont strings.Builder
+	var contKey string
+	var contNode *mnode
+	flush := func() {
+		if contNode != nil {
+			contNode.props[contKey] = cont.String()
+			contNode = nil
+		}
+	}
 	sc := bufio.NewScanner(bytes.NewReader(src))
 	sc.Buffer(make([]byte, 64<<10), MaxSimulinkLine)
 	for line := 1; sc.Scan(); line++ {
 		t := strings.TrimSpace(sc.Text())
 		top := stack[len(stack)-1]
+		if strings.HasPrefix(t, "\"") {
+			if contNode == top {
+				v, _ := mdlQuoted(t)
+				cont.WriteString(v)
+			}
+			continue
+		}
+		flush()
 		switch {
 		case t == "" || strings.HasPrefix(t, "#"):
-			lastKey = ""
 		case t == "}":
 			if len(stack) > 1 {
 				top.to = line
 				stack = stack[:len(stack)-1]
 			}
-			lastKey = ""
 		case mdlOpens(t):
+			if len(stack) > SimulinkMaxDepth {
+				return nil, fmt.Errorf("%w: line %d: nodes nest past %d deep", ErrSimulinkCap, line, SimulinkMaxDepth)
+			}
 			n := &mnode{name: strings.TrimSpace(strings.TrimSuffix(t, "{")), line: line, to: line}
+			if err := budget.take(n.name, line); err != nil {
+				return nil, err
+			}
 			top.kids = append(top.kids, n)
 			stack = append(stack, n)
-			lastKey = ""
-		case strings.HasPrefix(t, "\""):
-			if lastKey != "" && last == top {
-				v, _ := mdlQuoted(t)
-				top.props[lastKey] += v
-			}
 		default:
 			key, val := t, ""
 			if i := strings.IndexAny(t, " \t"); i >= 0 {
 				key, val = t[:i], strings.TrimSpace(t[i:])
+			}
+			if !mdlProp(key) {
+				break
+			}
+			if _, dup := top.props[key]; dup {
+				break
 			}
 			if strings.HasPrefix(val, "\"") {
 				val, _ = mdlQuoted(val)
@@ -630,15 +742,14 @@ func parseMDL(src []byte) *mnode {
 			if top.props == nil {
 				top.props = map[string]string{}
 			}
-			if _, dup := top.props[key]; !dup {
-				top.props[key] = val
-				lastKey, last = key, top
-			} else {
-				lastKey = ""
-			}
+			top.props[key] = val
+			cont.Reset()
+			cont.WriteString(val)
+			contKey, contNode = key, top
 		}
 	}
-	return root
+	flush()
+	return root, nil
 }
 
 // mdlOpens reports whether a trimmed line opens a node: `Name {`.
@@ -669,7 +780,10 @@ func (m *SimulinkModel) readMDL(src []byte) error {
 		return ErrSimulinkTextPackage
 	}
 	m.Layout = SimulinkLayoutMDL
-	root := parseMDL(src)
+	root, err := parseMDL(src)
+	if err != nil {
+		return err
+	}
 	var model *mnode
 	for _, k := range root.kids {
 		if (k.name == "Model" || k.name == "Library") && model == nil {
