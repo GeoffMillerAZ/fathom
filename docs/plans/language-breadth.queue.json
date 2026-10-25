@@ -1769,7 +1769,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-matlab",
     "worker_model": "sonnet",
-    "notes": "new; functions, classdef, methods, properties",
+    "notes": "new; functions, classdef, methods, properties; L1 met 2026-10-25 (throughput median 2.22 MB/CPU-s of 3 runs on the development-machine class, design 1.9 T2; the cloud VM read 0.71); beyond the L1 target, L2 waits on a call oracle that is not the author call-versus-index rule, since MISS_HIT cannot tell a call from an index (f(x) is one syntax): the language's own tools would be that oracle",
     "retargeted": "2026-10-24 (owner ruling, design 14.2 after the LB-Q-matlab-rest reading): oracle ctags -> miss-hit-core 0.9.44 parser dump, tier B on the D2 precedent (ctags has no method or property kind and misses 12 InferiorClasses classes); matlab2tikz/matlab2tikz added as a third subject; target stays L1"
   },
   {
