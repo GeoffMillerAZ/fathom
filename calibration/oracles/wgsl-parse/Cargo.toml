@@ -1,0 +1,10 @@
+[package]
+name = "wgsl-parse-oracle"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+wgsl-parse = { version = "=0.6.0", default-features = false, features = ["naga-ext"] }
+walkdir = "2"
+serde_json = "1"

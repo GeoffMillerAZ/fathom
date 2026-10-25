@@ -1,0 +1,90 @@
+{
+  "symbols": [
+    {
+      "name": "square",
+      "kind": "WgslFunction",
+      "package": "calls",
+      "line": 2,
+      "end_line": 4,
+      "signature": "fn square(x: f32) -> f32",
+      "tier": "verified"
+    },
+    {
+      "name": "length_sq",
+      "kind": "WgslFunction",
+      "package": "calls",
+      "line": 6,
+      "end_line": 8,
+      "signature": "fn length_sq(v: vec3<f32>) -> f32",
+      "calls": [
+        "square"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "shade",
+      "kind": "WgslFunction",
+      "package": "calls",
+      "line": 10,
+      "end_line": 14,
+      "signature": "fn shade(uv: vec2<f32>) -> vec4<f32>",
+      "calls": [
+        "length_sq",
+        "max",
+        "textureSample",
+        "vec4"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "fill",
+      "kind": "WgslFunction",
+      "package": "calls",
+      "line": 16,
+      "end_line": 20,
+      "signature": "fn fill() -> f32",
+      "calls": [
+        "array",
+        "f32",
+        "mat2x2",
+        "square",
+        "vec2"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "fs_main",
+      "kind": "WgslFunction",
+      "package": "calls",
+      "line": 23,
+      "end_line": 25,
+      "signature": "@fragment fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32>",
+      "calls": [
+        "shade"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "ORIGIN",
+      "kind": "WgslConstant",
+      "package": "calls",
+      "line": 27,
+      "end_line": 27,
+      "calls": [
+        "vec3"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "COUNT",
+      "kind": "WgslConstant",
+      "package": "calls",
+      "line": 28,
+      "end_line": 28,
+      "calls": [
+        "max"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "id": "wgsl",
+  "display": "WGSL",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "wgsl",
+  "match": {
+    "extensions": [".wgsl"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "wgsl", "entry_point": "tree_sitter_wgsl" },
+  "variants": [],
+  "queries": { "tags": "tags.scm" },
+  "kinds": {
+    "function":   { "source_kind": "WgslFunction",  "canonical": "function",   "callable": true },
+    "struct":     { "source_kind": "WgslStruct",    "canonical": "struct",     "container": true },
+    "variable":   { "source_kind": "WgslVariable",  "canonical": "variable" },
+    "constant":   { "source_kind": "WgslConstant",  "canonical": "constant" },
+    "type_alias": { "source_kind": "WgslTypeAlias", "canonical": "type_alias" }
+  },
+  "required_kinds": ["function", "struct", "variable", "constant", "type_alias"],
+  "oracle_kinds": {
+    "tool": { "fn": "function", "struct": "struct", "alias": "type_alias", "var": "variable", "const": "constant", "override": "constant" }
+  },
+  "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L2",
+  "queue_id": "wgsl"
+}

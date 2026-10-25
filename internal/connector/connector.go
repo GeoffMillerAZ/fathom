@@ -431,6 +431,10 @@ var extClassMap = map[string]classification{
 	// Luau (LB-Q-luau, wave lang1): the Lua dialect's patterns on the Luau grammar, plus type aliases.
 	".luau": {core.SourceKind("LuauFunction"), "luau"},
 
+	// WGSL (LB-Q-wgsl, wave lang8): functions, structs, global variables, constants and aliases on
+	// include-yy/tree-sitter-wgsl.
+	".wgsl": {core.SourceKind("WgslFunction"), "wgsl"},
+
 	// R (LB-Q-r, wave lang3): function assignments on r-lib/tree-sitter-r. Perl (LB-Q-perl): .pm by
 	// extension, .pl and .t by content sniff (the dialect's match.sniff), so only .pm is listed here.
 	".r":  {core.SourceKind("RFunction"), "r"},

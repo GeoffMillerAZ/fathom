@@ -1,0 +1,187 @@
+{
+  "dialect": "wgsl",
+  "kind": "language",
+  "target_level": "L2",
+  "level_met": "L2",
+  "grade": {
+    "L1": "excellent",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-10-25",
+  "fathom_commit": "787c146",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "gfx-rs/wgpu",
+      "sha": "40f4a34ebaf56f9a046231f54125ad046239d3f3",
+      "files": 267,
+      "bytes": 1950032,
+      "counts": {
+        "call_fathom": 2118,
+        "call_fathom_in_truth": 2118,
+        "call_truth": 2118,
+        "call_truth_found": 2118,
+        "callables": 786,
+        "callables_signed": 786,
+        "fathom_defs": 1828,
+        "kind_equal": 1797,
+        "matched": 1797,
+        "oracle_defs": 1797,
+        "range_eligible": 1797,
+        "range_ok": 1797
+      },
+      "families": {
+        "calls": "B",
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "constant",
+        "function",
+        "struct",
+        "type_alias",
+        "variable"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 12,
+        "extract_ms": 412.2100000000001,
+        "extract_cpu_ms": 421.40900000000005,
+        "max_file_ms": 63,
+        "peak_module_pages": 388,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "webgpu/webgpu-samples",
+      "sha": "e040ec1a20dbbe01afed30c812e825b2639cfe5b",
+      "files": 76,
+      "bytes": 94595,
+      "counts": {
+        "call_fathom": 455,
+        "call_fathom_in_truth": 455,
+        "call_truth": 455,
+        "call_truth_found": 455,
+        "callables": 144,
+        "callables_signed": 144,
+        "fathom_defs": 498,
+        "kind_equal": 490,
+        "matched": 490,
+        "oracle_defs": 490,
+        "range_eligible": 490,
+        "range_ok": 490
+      },
+      "families": {
+        "calls": "B",
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "constant",
+        "function",
+        "struct",
+        "type_alias",
+        "variable"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 1,
+        "extract_ms": 61.108000000000004,
+        "extract_cpu_ms": 62.836000000000006,
+        "max_file_ms": 2,
+        "peak_module_pages": 271,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "wgsl-parse",
+      "version": "0.6.0"
+    }
+  ],
+  "metrics": {
+    "call_precision": 1,
+    "call_recall": 1,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": 1,
+    "signature_coverage": 1,
+    "sym_precision": 0.9832,
+    "sym_recall": 1,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "B",
+    "call_recall": "B",
+    "kind_agreement": "B",
+    "range_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "constant",
+    "function",
+    "struct",
+    "type_alias",
+    "variable"
+  ],
+  "kind_intersection": [
+    "constant",
+    "function",
+    "struct",
+    "type_alias",
+    "variable"
+  ],
+  "counts": {
+    "call_fathom": 2573,
+    "call_fathom_in_truth": 2573,
+    "call_truth": 2573,
+    "call_truth_found": 2573,
+    "callables": 930,
+    "callables_signed": 930,
+    "fathom_defs": 2326,
+    "kind_equal": 2287,
+    "matched": 2287,
+    "oracle_defs": 2287,
+    "range_eligible": 2287,
+    "range_ok": 2287
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 13,
+    "throughput_mb_s": 4.22,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 4.32,
+    "max_file_ms": 63,
+    "peak_module_pages": 388,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "gfx-rs/wgpu: restricted to benches/**, examples/**, naga/src/**, naga/tests/in/**, naga/tests/naga/deep-expression.wgsl, player/**, tests/**, wgpu-core/**, wgpu-hal/**, wgpu/** (-only; the files outside are a disclosed gap, not measured)",
+    "gfx-rs/wgpu: wgsl-parse rejects or times out on 10 of 268 .wgsl files (no definitions read from them)",
+    "gfx-rs/wgpu: wgsl-parse rejects or times out on examples/features/src/render_with_compute/shader.wgsl",
+    "gfx-rs/wgpu: wgsl-parse rejects or times out on naga/tests/in/wgsl/early-depth-test-force.wgsl",
+    "gfx-rs/wgpu: wgsl-parse rejects or times out on naga/tests/in/wgsl/per-vertex.wgsl",
+    "gfx-rs/wgpu: wgsl-parse rejects or times out on naga/tests/naga/deep-template.wgsl",
+    "gfx-rs/wgpu: wgsl-parse rejects or times out on tests/src/copy_texture_to_buffer.wgsl",
+    "gfx-rs/wgpu: wgsl-parse rejects or times out on tests/tests/wgpu-gpu/per_vertex/per_vertex.wgsl",
+    "gfx-rs/wgpu: wgsl-parse rejects or times out on tests/tests/wgpu-gpu/regression/issue_4485.wgsl",
+    "gfx-rs/wgpu: wgsl-parse rejects or times out on tests/tests/wgpu-gpu/shader/compilation_messages/error_shader.wgsl",
+    "gfx-rs/wgpu: wgsl-parse rejects or times out on tests/tests/wgpu-gpu/shader/shader_test.wgsl",
+    "gfx-rs/wgpu: wgsl-parse rejects or times out on wgpu-core/src/timestamp_normalization/common.wgsl",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "webgpu/webgpu-samples: wgsl-parse rejects or times out on 1 of 76 .wgsl files (no definitions read from them)",
+    "webgpu/webgpu-samples: wgsl-parse rejects or times out on sample/cornell/tonemapper.wgsl"
+  ],
+  "disposition": null
+}
