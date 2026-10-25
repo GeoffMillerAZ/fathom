@@ -1743,11 +1743,12 @@
     "grammar_source": "acristoffers/tree-sitter-matlab",
     "licence": "MIT",
     "oracle": [
-      "ctags"
+      "miss-hit-core 0.9.44 parser dump (tier B, D2)"
     ],
     "calibration_subjects": [
       "altmany/export_fig",
-      "chebfun/chebfun"
+      "chebfun/chebfun",
+      "matlab2tikz/matlab2tikz"
     ],
     "depends_on": [
       "LB-F1",
@@ -1768,7 +1769,8 @@
     "engine": "tags",
     "plan_row": "LB-Q-matlab",
     "worker_model": "sonnet",
-    "notes": "new; functions, classdef, methods, properties"
+    "notes": "new; functions, classdef, methods, properties",
+    "retargeted": "2026-10-24 (owner ruling, design 14.2 after the LB-Q-matlab-rest reading): oracle ctags -> miss-hit-core 0.9.44 parser dump, tier B on the D2 precedent (ctags has no method or property kind and misses 12 InferiorClasses classes); matlab2tikz/matlab2tikz added as a third subject; target stays L1"
   },
   {
     "id": "cmake",

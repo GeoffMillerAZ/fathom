@@ -49,6 +49,7 @@ scores the pairs into `xref_precision`/`xref_recall` at the file's tier.
 | powershell-ast/ | B | PowerShell |
 | php-parser/ | B | PHP |
 | luaparse/ | B | Lua (definitions) |
+| miss-hit/ | B | MATLAB (definitions: classes, functions, methods, properties; MISS_HIT's parser) |
 | luau-ast/ | B | Luau (definitions: functions and type aliases, by Luau's own parser) |
 | lua-require/ | B | Lua (imports: `require` statements by luaparse, lookup by Lua's own package.searchpath) |
 | scalameta/ | B | Scala (definitions, calls) |
