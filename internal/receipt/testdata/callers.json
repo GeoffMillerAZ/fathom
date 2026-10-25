@@ -20,7 +20,7 @@
           "end_line": 9,
           "blob_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
           "excerpt_sha256": "e06c456ad44753a2cc4236dad74786e95f024d9914bea67998077483eeb1bda8",
-          "fathom_fingerprint": "06ae91a2bb859078ddde4ba224a557b57b917e228413253d69c86c151eec95a3",
+          "fathom_fingerprint": "c6ac684f6ea27d957b6194fb375410696207be87e26778eb7c3ed308df2121a8",
           "state": "committed",
           "clean": true,
           "excerpt": "func Hello() string {\n\treturn Greet() // see example.invalid/library\n}\n"

@@ -19,7 +19,7 @@
           "end_line": 4,
           "blob_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
           "excerpt_sha256": "7f51156333f186cfecf2dcac415888e3b9b60b46534345cd46a5b453ef1452a8",
-          "fathom_fingerprint": "06ae91a2bb859078ddde4ba224a557b57b917e228413253d69c86c151eec95a3",
+          "fathom_fingerprint": "c6ac684f6ea27d957b6194fb375410696207be87e26778eb7c3ed308df2121a8",
           "state": "committed",
           "clean": true,
           "excerpt": "func Greet() string { return \"hi\" }\n"
