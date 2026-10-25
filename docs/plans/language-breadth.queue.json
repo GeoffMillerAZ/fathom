@@ -4445,7 +4445,8 @@
     "engine": "tags",
     "plan_row": "LB-Q-cuda",
     "worker_model": "sonnet",
-    "notes": "new; C++ kinds plus __global__/__device__ kernels"
+    "notes": "new; C++ kinds plus __global__/__device__ kernels",
+    "retargeted": "2026-10-24 (owner ruling): target L3 -> L4, the plan row's pattern \"L4\" (cutlass as the library subject the L4 reading needs)"
   },
   {
     "id": "jsonnet",
