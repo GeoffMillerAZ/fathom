@@ -11,7 +11,7 @@
     "shebangs": [],
     "sniff": {
       "extensions": [".fx"],
-      "pattern": "^\\s*#\\s*include\\b|\\b(cbuffer|technique\\d*|float[1-4]?|SV_[A-Za-z]+|register\\s*\\(|Texture2D|SamplerState|VSOutput|PSInput)\\b",
+      "pattern": "^\\s*(cbuffer|tbuffer)\\s+\\w+|:\\s*SV_\\w+|\\bregister\\s*\\(\\s*[btsu]\\d+|^\\s*technique\\d*\\s+\\w+\\s*\\{",
       "priority": 0,
       "scan_bytes": 16384
     }

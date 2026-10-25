@@ -41,5 +41,9 @@
   that list had a structural home, so none stays.
 - `imports.scm`: `#include` only; the manifest's `include-path` strategy resolves the quoted form relative to the
   includer, then the source roots.
-- Dispatch: `.hlsl`, `.hlsli` and `.fxh` by extension; `.fx` (also a Flux config extension) by the manifest's
-  `match.sniff` over the first 16 KiB, which requires a shader token.
+- Dispatch: `.hlsl`, `.hlsli` and `.fxh` by extension; `.fx` (also used by other formats, JavaFX script and Flux
+  configuration among them) by the manifest's `match.sniff` over the first 16 KiB, which requires shader structure: a
+  `cbuffer` or `tbuffer` block header, an `SV_` semantic after a colon, a `register(b0)`-style binding or a
+  `technique` block. A bare type word (`float`), an `#include` line or a struct name does not claim a file: each
+  appears in a comment or another format as easily. The sniff claims all 12 of DirectXTK12's `.fx` files, as the
+  word list it replaced did.
