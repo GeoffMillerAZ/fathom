@@ -2,6 +2,7 @@ package fusion
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strings"
 	"sync"
@@ -146,5 +147,44 @@ func TestCUDABindsIncludedHeaders(t *testing.T) {
 		if strings.HasPrefix(line, "k.cu|") && strings.HasSuffix(line, "->fr::other.other") || strings.HasPrefix(line, "helper.h|") || strings.HasPrefix(line, "deep.h|") {
 			t.Errorf("unexpected edge %s:\n%s", line, edges)
 		}
+	}
+}
+
+// TestReachableForeignReadsOnlyReachable (round 3 F6): the header pass prunes
+// by base name before it reads: with one .cu and many unrelated headers, only
+// the headers an include can reach are read at all, and what it returns is
+// what reachableForeign returns from the eager read.
+func TestReachableForeignReadsOnlyReachable(t *testing.T) {
+	own := map[string]extractor.FileSpecs{"k.cu": {Imports: []extractor.ImportSpec{{Module: `"helper.h"`}}}}
+	src := map[string][]byte{"Common/helper.h": []byte("#include \"deep.h\"\n"), "Common/deep.h": []byte("")}
+	paths := []string{"Common/deep.h", "Common/helper.h"}
+	for i := 0; i < 50; i++ {
+		p := fmt.Sprintf("other/u%02d.h", i)
+		src[p] = []byte("#include \"helper.h\"\n")
+		paths = append(paths, p)
+	}
+	var read []string
+	got := reachableForeignRead(own, paths, func(p string) ([]byte, bool) {
+		read = append(read, p)
+		b, ok := src[p]
+		return b, ok
+	})
+	sort.Strings(read)
+	if want := "Common/deep.h,Common/helper.h"; strings.Join(read, ",") != want {
+		t.Errorf("read %v, want only %s", read, want)
+	}
+	var hs []foreignHeader
+	for _, p := range paths {
+		hs = append(hs, foreignHeader{p, src[p]})
+	}
+	var a, b []string
+	for _, h := range got {
+		a = append(a, h.path)
+	}
+	for _, h := range reachableForeign(own, hs) {
+		b = append(b, h.path)
+	}
+	if strings.Join(a, ",") != strings.Join(b, ",") {
+		t.Errorf("lazy %v, eager %v", a, b)
 	}
 }

@@ -275,15 +275,11 @@ func resolveFileEdgesWith(ctx context.Context, ext extractor.FileSpecExtractor, 
 	if r.strategy == "include-path" {
 		// Headers the router sent to the other language (cproto.go).
 		extra := foreignHeaders(repoPath, r.env.set)
-		var hs []foreignHeader
-		for _, p := range extra {
+		readHeader := func(p string) ([]byte, bool) {
 			b, err := os.ReadFile(filepath.Join(repoPath, filepath.FromSlash(p)))
-			if err != nil || len(b) > MaxExtractSize {
-				continue
-			}
-			hs = append(hs, foreignHeader{p, b})
+			return b, err == nil && len(b) <= MaxExtractSize
 		}
-		for _, h := range reachableForeign(specs, hs) {
+		for _, h := range reachableForeignRead(specs, extra, readHeader) {
 			if sp, ierr := ext.ExtractFileSpecs(h.path, h.src); ierr == nil {
 				specs[h.path] = sp
 				r.env.addForeign([]string{h.path})
@@ -1337,18 +1333,23 @@ func (p *Pipeline) resolveLang(ctx context.Context, svc core.ServiceRef, r *impo
 	if r.strategy == "include-path" {
 		// Headers the router sent to the other language (cproto.go): read
 		// for their includes and prototypes, never persisted, never bound.
-		var hs []foreignHeader
+		refOf := make(map[string]core.SourceRef, len(foreign))
+		fpaths := make([]string, 0, len(foreign))
 		for _, fr := range foreign {
-			b, ferr := p.conn.Fetch(ctx, fr)
-			if ferr != nil || len(b) > MaxExtractSize {
-				continue
+			if _, dup := refOf[fr.Path]; !dup {
+				fpaths = append(fpaths, fr.Path)
 			}
-			hs = append(hs, foreignHeader{fr.Path, b})
+			refOf[fr.Path] = fr
 		}
-		// Only the headers an include can reach are parsed (LB-F179): the
-		// rest bind nothing and change no include's resolution.
+		fetchHeader := func(path string) ([]byte, bool) {
+			b, ferr := p.conn.Fetch(ctx, refOf[path])
+			return b, ferr == nil && len(b) <= MaxExtractSize
+		}
+		// Only the headers an include can reach are read and parsed (LB-F179,
+		// round 3 F6: pruned by base name before the read): the rest bind
+		// nothing and change no include's resolution.
 		var bound []string
-		for _, h := range reachableForeign(specs, hs) {
+		for _, h := range reachableForeignRead(specs, fpaths, fetchHeader) {
 			if sp, ierr := extractImports(ext, h.path, h.src); ierr == nil {
 				specs[h.path] = sp
 				r.env.addForeign([]string{h.path})
