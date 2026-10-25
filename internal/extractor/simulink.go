@@ -82,10 +82,12 @@ const (
 	// The most a calibration start tag carries is 13.
 	SimulinkMaxAttrs = 256
 	// SimulinkMaxPath is the longest block path the reader builds. The longest calibration
-	// path is 304 bytes.
-	SimulinkMaxPath = 1 << 20
-	// SimulinkMaxPathBytes is the most bytes a model's block paths may hold together. The
-	// most a calibration model's paths hold is 569,136 bytes.
+	// path is 304 bytes, so 16 KiB leaves a margin of about 50x.
+	SimulinkMaxPath = 16 << 10
+	// SimulinkMaxPathBytes is the most bytes a model's block paths may hold together, and
+	// again the most its distinct signals' endpoint paths may (len(Src)+len(Dst) summed), and
+	// the most the Calls the extractor emits for it may. The most a calibration model's paths
+	// hold is 569,136 bytes, its signals' endpoints 1,316,079 and its Calls 660,200.
 	SimulinkMaxPathBytes = SimulinkMaxInflated
 )
 
@@ -213,8 +215,14 @@ type SimulinkModel struct {
 	// endpoint that names no block of the model is dropped.
 	Signals []SimulinkSignal
 	ends    []simulinkEnds
-	owners  []int // per block, the index of the block whose system holds it, -1 the model's
+	owners  []int          // per block, the index of the block whose system holds it, -1 the model's
+	pairs   []simulinkPair // per signal, its endpoints by block index
+	canon   []int          // per block, the index of the first block with its path
 }
+
+// simulinkPair is a signal by the canonical indexes of its blocks: a pair is deduped and
+// keyed on two integers, never on its paths.
+type simulinkPair struct{ src, dst int32 }
 
 // SimulinkSignal is one line from a source block to a destination block, by path.
 type SimulinkSignal struct {
@@ -247,17 +255,20 @@ func sidEnd(v string) simulinkEnd {
 	return simulinkEnd{sid: strings.TrimSpace(sid)}
 }
 
-// resolve names an endpoint's block path, "" when no block of the model is it. A name
-// endpoint is looked up by its system and name in kids, which holds each block's stored
-// path, so no path is joined anew.
-func (m *SimulinkModel) resolve(system int, e simulinkEnd, kids map[simulinkKid]string) string {
+// resolve names an endpoint's block by its canonical index, -1 when no block of the model is
+// it: a SID endpoint looked up in sids, a name endpoint by its system and name in kids, so
+// only the endpoint's own text is hashed and no path is joined anew.
+func resolve(system int, e simulinkEnd, sids map[string]int, kids map[simulinkKid]int) int {
+	i, ok := -1, false
 	if e.sid != "" {
-		return m.SIDPath[e.sid]
+		i, ok = sids[e.sid]
+	} else if e.name != "" {
+		i, ok = kids[simulinkKid{system, simulinkName(e.name)}]
 	}
-	if e.name != "" {
-		return kids[simulinkKid{system, simulinkName(e.name)}]
+	if !ok {
+		return -1
 	}
-	return ""
+	return i
 }
 
 // ReadSimulinkModel reads a .slx package or a .mdl file. A package over a cap is
@@ -274,13 +285,6 @@ func ReadSimulinkModel(relPath string, src []byte) (SimulinkModel, error) {
 	if err != nil {
 		return SimulinkModel{Name: m.Name, SIDPath: map[string]string{}}, err
 	}
-	for _, b := range m.Blocks {
-		if b.SID != "" {
-			if _, dup := m.SIDPath[b.SID]; !dup {
-				m.SIDPath[b.SID] = b.Path
-			}
-		}
-	}
 	// canon[i] is the first block whose path is block i's, each path hashed once.
 	first := make(map[string]int, len(m.Blocks))
 	canon := make([]int, len(m.Blocks))
@@ -292,33 +296,50 @@ func ReadSimulinkModel(relPath string, src []byte) (SimulinkModel, error) {
 		}
 	}
 	first = nil
+	sids := make(map[string]int, len(m.Blocks)) // SID -> the canonical index of its first block
+	for i, b := range m.Blocks {
+		if b.SID != "" {
+			if _, dup := sids[b.SID]; !dup {
+				sids[b.SID] = canon[i]
+				m.SIDPath[b.SID] = b.Path
+			}
+		}
+	}
 	system := func(owner int) int {
 		if owner < 0 {
 			return -1
 		}
 		return canon[owner]
 	}
-	kids := make(map[simulinkKid]string, len(m.Blocks))
+	kids := make(map[simulinkKid]int, len(m.Blocks))
 	for i, b := range m.Blocks {
-		kids[simulinkKid{system(m.owners[i]), b.Name}] = b.Path
+		kids[simulinkKid{system(m.owners[i]), b.Name}] = canon[i]
 	}
-	seen := map[SimulinkSignal]bool{} // a line drawn twice is one signal
+	seen := map[simulinkPair]bool{} // a line drawn twice is one signal
+	left := SimulinkMaxPathBytes
 	for _, l := range m.ends {
 		sys := system(l.owner)
-		src := m.resolve(sys, l.src, kids)
-		if src == "" {
+		src := resolve(sys, l.src, sids, kids)
+		if src < 0 {
 			continue
 		}
 		for _, d := range l.dsts {
-			if dst := m.resolve(sys, d, kids); dst != "" {
-				if s := (SimulinkSignal{Src: src, Dst: dst}); !seen[s] {
-					seen[s] = true
-					m.Signals = append(m.Signals, s)
+			dst := resolve(sys, d, sids, kids)
+			if p := (simulinkPair{int32(src), int32(dst)}); dst >= 0 && !seen[p] {
+				seen[p] = true
+				if left -= len(m.Blocks[src].Path) + len(m.Blocks[dst].Path); left < 0 {
+					return SimulinkModel{Name: m.Name, SIDPath: map[string]string{}},
+						fmt.Errorf("%w: signals hold past %d bytes of endpoint paths", ErrSimulinkCap, SimulinkMaxPathBytes)
 				}
+				m.pairs = append(m.pairs, p)
 			}
 		}
 	}
-	m.ends, m.owners = nil, nil
+	m.Signals = make([]SimulinkSignal, len(m.pairs))
+	for i, p := range m.pairs {
+		m.Signals[i] = SimulinkSignal{Src: m.Blocks[p.src].Path, Dst: m.Blocks[p.dst].Path}
+	}
+	m.ends, m.owners, m.canon = nil, nil, canon
 	return m, nil
 }
 
@@ -354,7 +375,7 @@ type xnode struct {
 	aName, sid, blockType, ref string // the attributes the reader reads
 	kids                       []*xnode
 	text                       string
-	line, to                   int
+	line, to                   int32 // a part is at most SimulinkMaxInflated bytes: 128 bytes a node, not 144
 }
 
 // simulinkKeptP reports whether the reader reads a <P Name=k>'s text.
@@ -390,10 +411,11 @@ func (n *xnode) children(name string) []*xnode {
 	return out
 }
 
-// prop is a <P Name="k"> child's text.
+// prop is a <P Name="k"> child's text, found without a list of the children (a line may
+// hold half a million).
 func (n *xnode) prop(k string) string {
-	for _, c := range n.children("P") {
-		if c.aName == k {
+	for _, c := range n.kids {
+		if c.name == "P" && c.aName == k {
 			return c.text
 		}
 	}
@@ -427,7 +449,7 @@ func parseXMLPart(b []byte, budget *simulinkBudget) (*xnode, error) {
 		}
 		return line
 	}
-	dec := xml.NewDecoder(bytes.NewReader(b))
+	dec := newSimulinkDecoder(b)
 	doc := &xnode{}
 	stack := []*xnode{doc}
 	var text []byte // the open <P>'s text, appended in place
@@ -454,7 +476,7 @@ func parseXMLPart(b []byte, budget *simulinkBudget) (*xnode, error) {
 			if err := budget.take(t.Name.Local, lineOf(off)); err != nil {
 				return nil, err
 			}
-			n := &xnode{name: t.Name.Local, line: lineOf(off)}
+			n := &xnode{name: t.Name.Local, line: int32(lineOf(off))}
 			for _, a := range t.Attr {
 				n.setAttr(a.Name.Local, a.Value)
 			}
@@ -474,7 +496,7 @@ func parseXMLPart(b []byte, budget *simulinkBudget) (*xnode, error) {
 				top.text = string(text)
 			}
 			// off is the `<` of an end tag, or just past a self-closed tag's `/>`.
-			top.to = lineOf(off)
+			top.to = int32(lineOf(off))
 			stack = stack[:len(stack)-1]
 		case xml.CharData:
 			if top.name == "P" && simulinkKeptP(top.aName) {
@@ -488,6 +510,15 @@ func parseXMLPart(b []byte, budget *simulinkBudget) (*xnode, error) {
 		return nil, fmt.Errorf("%w: syntax error: <%s> is not closed", ErrSimulinkCap, stack[len(stack)-1].name)
 	}
 	return doc, nil
+}
+
+// newSimulinkDecoder is a part's tokenizer. It stays strict, encoding/xml's default:
+// startTagCap counts a tag's attributes by their `=`, which bounds them only while a bare
+// attribute name is a syntax error (TestSimulinkDecoderStrict enforces it).
+func newSimulinkDecoder(b []byte) *xml.Decoder {
+	dec := xml.NewDecoder(bytes.NewReader(b))
+	dec.Strict = true
+	return dec
 }
 
 // slxParts reads the parts the model's blocks and references come from, under the caps.
@@ -721,7 +752,7 @@ func (w *slxWalk) system(s *xnode, parent string, owner int) {
 		inner := b.children("System")
 		w.m.Blocks = append(w.m.Blocks, SimulinkBlock{
 			Path: p, Parent: parent, Name: name, SID: b.sid, BlockType: b.blockType,
-			Subsystem: len(inner) > 0, Part: w.part, Line: b.line, EndLine: b.to,
+			Subsystem: len(inner) > 0, Part: w.part, Line: int(b.line), EndLine: int(b.to),
 		})
 		w.m.owners = append(w.m.owners, owner)
 		self := len(w.m.Blocks) - 1
@@ -743,9 +774,24 @@ func (w *slxWalk) system(s *xnode, parent string, owner int) {
 		if v := l.prop("SrcBlock"); v != "" {
 			e.src = simulinkEnd{name: v}
 		}
-		e.dsts = xmlDsts(l, e.dsts)
+		e.dsts = xmlDsts(l, make([]simulinkEnd, 0, xmlDstCount(l)))
 		w.m.ends = append(w.m.ends, e)
 	}
+}
+
+// xmlDstCount is how many destinations xmlDsts appends, so a line of half a million is
+// allocated once, not grown.
+func xmlDstCount(n *xnode) int {
+	c := 0
+	for _, k := range n.kids {
+		switch {
+		case k.name == "P" && (k.aName == "Dst" || k.aName == "DstBlock"):
+			c++
+		case k.name == "Branch":
+			c += xmlDstCount(k)
+		}
+	}
+	return c
 }
 
 // xmlDsts appends a line's or branch's destinations: its own Dst, then each branch's.
@@ -822,12 +868,37 @@ func (m *SimulinkModel) addPackedRef(packed string) {
 
 // --- .mdl ---------------------------------------------------------------------------
 
-// mnode is one brace node of a .mdl: its properties (first value per key) and children.
+// mnode is one brace node of a .mdl: its kept properties (first value per key) and children.
+// The properties are a slice, not a map: a node keeps at most the few mdlProp keys, and a
+// map's buckets would cost each of a flood of one-property nodes some 300 bytes.
 type mnode struct {
 	name     string
-	props    map[string]string
+	props    []mprop
 	kids     []*mnode
 	line, to int
+}
+
+// mprop is one kept .mdl property.
+type mprop struct{ k, v string }
+
+// prop is the node's value of k, "" for none.
+func (n *mnode) prop(k string) string {
+	for _, p := range n.props {
+		if p.k == k {
+			return p.v
+		}
+	}
+	return ""
+}
+
+// has reports whether the node holds k.
+func (n *mnode) has(k string) bool {
+	for _, p := range n.props {
+		if p.k == k {
+			return true
+		}
+	}
+	return false
 }
 
 func (n *mnode) children(name string) []*mnode {
@@ -890,7 +961,7 @@ func parseMDL(src []byte) (*mnode, error) {
 	var contNode *mnode
 	flush := func() {
 		if contNode != nil {
-			contNode.props[contKey] = cont.String()
+			contNode.props[len(contNode.props)-1].v = cont.String() // contKey, the last one set
 			contNode = nil
 		}
 	}
@@ -936,7 +1007,7 @@ func parseMDL(src []byte) (*mnode, error) {
 			if !mdlProp(key) {
 				break
 			}
-			if _, dup := top.props[key]; dup {
+			if top.has(key) {
 				break
 			}
 			if strings.HasPrefix(val, "\"") {
@@ -945,10 +1016,7 @@ func parseMDL(src []byte) (*mnode, error) {
 			if len(val) > SimulinkMaxValue {
 				return nil, errSimulinkValue(line, key)
 			}
-			if top.props == nil {
-				top.props = map[string]string{}
-			}
-			top.props[key] = val
+			top.props = append(top.props, mprop{key, val})
 			cont.Reset()
 			cont.WriteString(val)
 			contKey, contNode = key, top
@@ -1006,14 +1074,14 @@ func (m *SimulinkModel) readMDL(src []byte) error {
 	var walk func(s *mnode, parent string, owner int) error
 	walk = func(s *mnode, parent string, owner int) error {
 		for _, b := range s.children("Block") {
-			name := simulinkName(b.props["Name"])
+			name := simulinkName(b.prop("Name"))
 			p, err := paths.join(parent, name)
 			if err != nil {
 				return err
 			}
 			inner := b.children("System")
 			m.Blocks = append(m.Blocks, SimulinkBlock{
-				Path: p, Parent: parent, Name: name, SID: b.props["SID"], BlockType: b.props["BlockType"],
+				Path: p, Parent: parent, Name: name, SID: b.prop("SID"), BlockType: b.prop("BlockType"),
 				Subsystem: len(inner) > 0, Line: b.line, EndLine: b.to,
 			})
 			m.owners = append(m.owners, owner)
@@ -1025,8 +1093,8 @@ func (m *SimulinkModel) readMDL(src []byte) error {
 			}
 		}
 		for _, l := range s.children("Line") {
-			e := simulinkEnds{owner: owner, src: sidEnd(l.props["Src"])}
-			if v := l.props["SrcBlock"]; v != "" {
+			e := simulinkEnds{owner: owner, src: sidEnd(l.prop("Src"))}
+			if v := l.prop("SrcBlock"); v != "" {
 				e.src = simulinkEnd{name: v}
 			}
 			e.dsts = mdlDsts(l, e.dsts)
@@ -1041,7 +1109,7 @@ func (m *SimulinkModel) readMDL(src []byte) error {
 	}
 	for _, gi := range model.children("GraphicalInterface") {
 		for _, r := range gi.children("ModelReference") {
-			m.addPackedRef(r.props["ModelRefBlockPath"])
+			m.addPackedRef(r.prop("ModelRefBlockPath"))
 		}
 	}
 	return nil
@@ -1049,9 +1117,9 @@ func (m *SimulinkModel) readMDL(src []byte) error {
 
 // mdlDsts appends a line's or branch's destinations: its own, then each branch's.
 func mdlDsts(n *mnode, out []simulinkEnd) []simulinkEnd {
-	if v := n.props["Dst"]; v != "" {
+	if v := n.prop("Dst"); v != "" {
 		out = append(out, sidEnd(v))
-	} else if v := n.props["DstBlock"]; v != "" {
+	} else if v := n.prop("DstBlock"); v != "" {
 		out = append(out, simulinkEnd{name: v})
 	}
 	for _, b := range n.children("Branch") {
@@ -1086,29 +1154,53 @@ func (x SimulinkExtractor) Extract(service, relPath string, src []byte) ([]core.
 // ExtractDoc implements DocResulter: the symbols, the model as the file's root, and each
 // model reference as a module-source reference by the model's name, which the doc-xref
 // pass joins to the one model of that name in another file (none when several share it).
+// The Calls emitted hold at most SimulinkMaxPathBytes together (blocks sharing a path each
+// carry its calls), else the file yields nothing, as a model over a read cap does.
 func (SimulinkExtractor) ExtractDoc(service, relPath string, src []byte) (DocResult, error) {
 	m, err := ReadSimulinkModel(relPath, src)
 	if err != nil {
 		return DocResult{}, nil
 	}
 	pkg := pkgFromPath(relPath)
-	calls := map[string][]string{}
-	for _, s := range m.Signals {
-		calls[s.Src] = append(calls[s.Src], s.Dst)
+	// calls[i] is canonical block i's destinations by index, size[i] their paths' bytes.
+	calls := make([][]int32, len(m.Blocks))
+	size := make([]int, len(m.Blocks))
+	for _, p := range m.pairs {
+		calls[p.src] = append(calls[p.src], p.dst)
+		size[p.src] += len(m.Blocks[p.dst].Path)
+	}
+	left := SimulinkMaxPathBytes
+	for i := range m.Blocks {
+		if left -= size[m.canon[i]]; left < 0 {
+			return DocResult{}, nil
+		}
+	}
+	sorted := make([][]string, len(m.Blocks)) // a canonical block's calls, each path built once
+	callsOf := func(i int) []string {
+		c := m.canon[i]
+		if sorted[c] == nil && len(calls[c]) > 0 {
+			s := make([]string, len(calls[c]))
+			for k, d := range calls[c] {
+				s[k] = m.Blocks[d].Path
+			}
+			sort.Strings(s) // distinct: each pair is distinct and a canonical index one path
+			sorted[c] = s
+		}
+		return slices.Clone(sorted[c])
 	}
 	res := DocResult{Roots: []string{m.Name}}
 	res.Nodes = make([]core.SymbolNode, 0, len(m.Blocks)+1)
 	res.Nodes = append(res.Nodes, core.SymbolNode{Service: service, Package: pkg, Name: m.Name, Kind: KindSimulinkModel,
 		FilePath: relPath, Line: 1, EndLine: 1, Tier: core.TierPreScan})
 	lines := map[string]int{}
-	for _, b := range m.Blocks {
+	for i, b := range m.Blocks {
 		kind := KindSimulinkBlock
 		if b.Subsystem {
 			kind = KindSimulinkSubsystem
 		}
 		res.Nodes = append(res.Nodes, core.SymbolNode{Service: service, Package: pkg, Name: b.Path, Kind: kind,
 			FilePath: relPath, Line: b.Line, EndLine: b.EndLine, Signature: capString(b.BlockType, 200), Tier: core.TierPreScan,
-			Calls: uniqueSorted(calls[b.Path])})
+			Calls: callsOf(i)})
 		lines[b.Path] = b.Line
 	}
 	for _, r := range m.ModelRefs {
@@ -1120,14 +1212,4 @@ func (SimulinkExtractor) ExtractDoc(service, relPath string, src []byte) (DocRes
 			Raw: r.ModelName, Target: r.ModelName, Strategy: "module-source", Line: line})
 	}
 	return res, nil
-}
-
-// uniqueSorted is s sorted without repeats (nil for none).
-func uniqueSorted(s []string) []string {
-	if len(s) == 0 {
-		return nil
-	}
-	out := append([]string(nil), s...)
-	sort.Strings(out)
-	return slices.Compact(out)
 }

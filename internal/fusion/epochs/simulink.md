@@ -1,1 +1,3 @@
 Wave simulink (LB-F587, LB-Q-simulink). The binary gate becomes one rule, `binaryExcluded`, that lets an OPC zip model container through when a dialect's `match.container` claims its extension (ADR-021 (1), amended 2026-10-24), and the simulink dialect reads `.slx` and `.mdl` files: every block by its full path, signal lines as calls, model references as doc-xref edges. A `.slx` was fingerprinted as binary and a `.mdl` unclassified before, so both re-read once.
+
+Round 4 (S4-R1, S4-R2): a block path past 16 KiB, or a model whose distinct signals hold past 32 MiB of endpoint paths, is refused (yields nothing), as is a model whose emitted Calls would hold past 32 MiB; signals dedupe on block indexes. The 194 calibration models extract unchanged.
