@@ -113,24 +113,26 @@ What L3 and L4 read from the index (wave lf1, `internal/langbench/scip_clang.go`
   `file_edges_oracle_blind`, out of file_edge_precision under LB-F203's 10% cap and listed under -unmatched's
   `oracle_blind` (LB-F296); a name on a line where a macro is invoked is judged at the macro.
 
-## CUDA (LB-Q-cuda): a clang CUDA compilation database, tier B
+## CUDA (LB-Q-cuda): the samples' own CMake database, nvcc's preprocessor (tier A), a clang translation for the index
 
-The CUDA build's compiler is nvcc, which the redistributable components a Linux x86_64 host can fetch without a CUDA
-Toolkit installer do not include (the headers, cudart, ptxas and the libraries ship; the nvcc driver and cicc do not).
-`cuda-compdb.py` therefore rewrites each `.cu` translation unit to a clang CUDA host-only compile and writes the
-database `run.sh`, `preproc/`, `../clang-ast-defs` and `../clang-calls` read:
+`cuda-samples.sh` is the driver (F12) that builds every database, index and run of the reading:
 
-    cuda-compdb.py <subject> <cuda-root> <subject>/build/compile_commands.json -I Common
-    # cuda-root: the CUDA 12.9 headers (cuda_runtime, cccl, cublas, cufft, curand, cusolver, cusparse, npp, nvjpeg, nvrtc, cupti)
-    # unpacked from NVIDIA's own redistributable wheels into one include/ tree; measurement only, never committed.
+    cuda-samples.sh <shared-clone> <cuda-root> <tools-dir> <work-dir> [runs]
+    # cuda-root: CUDA 12.9 from conda-forge (cuda-nvcc-tools, cuda-nvvm-tools and cuda-crt 12.9.86, which carry the
+    # nvcc driver and cicc the pip wheels lack, plus the -dev header packages: cudart, cccl, cublas, cufft, curand,
+    # cusolver, cusparse, npp, nvjpeg, nvrtc, cupti, nvtx); measurement only, under workspace/tools, never committed.
 
-scip-clang indexes it with the clang it embeds (a TU clang cannot compile, a missing OpenMP, GL, Vulkan, D3D or Tegra
-header, is dropped from the database and counted as a skip). That is not the build's compiler, so `preproc/`'s
-imports, `clang-calls` and `clang-ast-defs` over this database are tier B, and their JSON is relabelled `"tier": "B"`
-by hand before the harness reads it (the tools hard-code A). `clang-ast-defs` writes a 340 MB JSON dump per CUDA
-translation unit: run it with `-jobs 2`.
+It measures cuda-samples as ONE subject, the way a user indexes it (owner ruling C-R4): CMake configures the samples
+with nvcc (sources and static libraries the sparse clone or the toolkit lacks get an empty stand-in; nothing is
+built), and that database is the build's own. The preprocessor oracle is nvcc's, both passes (owner ruling C-R6): the
+device pass is `nvcc -E` at the lowest architecture the entry's target names (so `__CUDA_ARCH__` branches are judged,
+not excluded) and the host pass is the `gcc -E` line `nvcc --dryrun` prints for the entry; their active lines and
+includes are unioned (tier A). scip-clang 0.4.0 reads no nvcc entry, so each `.cu` entry is translated to a clang CUDA
+host-only compile over the entry's own `-I`, `-isystem` and `-D` (`cuda-compdb.py`'s flags) at
+`<subject>/build/compile_commands.json`; the index reads it, and `clang-calls` and `clang-ast-defs` over it are run at
+`-tier B`, so the calls family is judged at tier B (the harness takes a family's tier from the weakest oracle that
+feeds it). `cuda-compdb.py` writes the same translation from a directory walk, for a subject with no CMake build.
 
-Each cuda-samples sample is its own executable, so one index over all of them gives two samples that define the same
-global name (`iDivUp`, `main`, a kernel) one SCIP symbol, and the harness then draws a file edge to every definer: 402
-of the 415 truth pairs fathom missed in a single-index run were between two samples. The reading is therefore taken
-per sample (a subject is one sample directory plus `Common/`, with its own database and index).
+Two samples that define the same global name (`iDivUp`, `main`, a kernel) are one SCIP symbol, since scip-clang
+names a global by no file or translation unit, so the index's file-edge truth over the whole set draws an edge to
+every definer: a link-unit scope of that truth (per CMake executable) is LB-Q-cuda-rest's.
