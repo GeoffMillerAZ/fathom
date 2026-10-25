@@ -401,7 +401,7 @@ Milestone M2 progress: languages at L1 37/45, at L1 excellent 25/35, at L2 33/25
 | templ components (.templ) | tool format | tags | vrischmann/tree-sitter-templ (MIT (verify at pin)) | L2 | tolerated | — | syntax | — | LB-Q-templ |
 | VHDL (.vhd .vhdl) | language | tags | jpt13653903/tree-sitter-vhdl (simplified by design) (verify at pin) | L1 | L1 (L1 excellent) | B universal-ctags 6.2.1 | syntax | 2026-09-29 | at target (LB-Q-vhdl) |
 | Dotenv files (.env, .env.example, *.env) | tool format | doc | pure-go:line parser (n/a) | L1 | unsupported (disclosed) | — | — | — | LB-Q-dotenv |
-| GLSL shaders (.glsl .vert .frag .comp, .fs by sniff) | language | tags | tree-sitter-grammars/tree-sitter-glsl (MIT) | L1 | unsupported (disclosed) | — | — | — | LB-Q-glsl |
+| GLSL shaders (.glsl .vert .frag .comp, .fs by sniff) | language | tags | tree-sitter-grammars/tree-sitter-glsl (MIT) | L2 | refused | — | — | — | re-plan (LB-Q-glsl-rest refused) |
 | nginx configuration (nginx.conf, .conf by sniff, sites-enabled/* by glob) | tool format | native | native:pure-go (n/a) | L3 | L3 (L1 excellent, L2 good, L3 good) | B crossplane 0.5.8 | syntax | 2026-10-02 | at target (LB-Q-nginx) |
 | HAProxy configuration (haproxy.cfg, .cfg by sniff) | tool format | native | native:pure-go (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A haproxy 3.4.6-56332c5; A haproxy+docker-compose 3.4.6-56332c5 | syntax | 2026-10-02 | at target (LB-Q-haproxy) |
 | Caddyfile (Caddyfile, Caddyfile.* by glob, .caddyfile) | tool format | native | native:pure-go (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A caddy v2.11.6; A caddy+docker-compose v2.11.6 | syntax | 2026-10-02 | at target (LB-Q-caddyfile) |

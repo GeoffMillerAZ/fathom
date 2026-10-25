@@ -50,6 +50,7 @@ scores the pairs into `xref_precision`/`xref_recall` at the file's tier.
 | php-parser/ | B | PHP |
 | luaparse/ | B | Lua (definitions) |
 | luau-ast/ | B | Luau (definitions: functions and type aliases, by Luau's own parser) |
+| ctags-c-glsl/ | C (definitions: functions, structs, macros; universal-ctags 6.2.1's C parser run over GLSL, a foreign parser; LB-Q-glsl, refused at the grammar gate, kept for the retry) | GLSL |
 | lua-require/ | B | Lua (imports: `require` statements by luaparse, lookup by Lua's own package.searchpath) |
 | scalameta/ | B | Scala (definitions, calls) |
 | protoc-descriptors/ | A (definitions, references, imports) | Protocol Buffers |
