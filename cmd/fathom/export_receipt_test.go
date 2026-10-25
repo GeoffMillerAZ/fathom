@@ -223,7 +223,7 @@ func TestCmdExportReceiptRedactService(t *testing.T) {
 // These goldens come from the product entry point, rather than reconstructed
 // envelopes. Regenerate with go test ./cmd/fathom -run ExportReceiptRedactGoldens -update.
 func TestCmdExportReceiptRedactGoldens(t *testing.T) {
-	_, storePath := exportReceiptRedactFixture(t, "fixture-service", strings.ReplaceAll(
+	root, storePath := exportReceiptRedactFixture(t, "fixture-service", strings.ReplaceAll(
 		exportReceiptFixtureSrc, "return Greet()", "return Greet() // see example.invalid/library"))
 	for _, tc := range []struct{ file, symbol, kind string }{
 		{"definition.json", "Greet", "symbol_location"},
@@ -241,13 +241,30 @@ func TestCmdExportReceiptRedactGoldens(t *testing.T) {
 				t.Fatal(err)
 			}
 			// Git identities vary with fixture commit metadata. This envelope has
-			// no timestamps; retain excerpt digests and fingerprints unchanged.
+			// no timestamps; retain excerpt digests unchanged. A fingerprint is
+			// salted with ExtractorEpoch, which every dialect change moves, so
+			// check it against the checkout at the current epoch and pin it to
+			// a fixed epoch: the goldens move only when the receipt does.
 			r.IndexCommit = strings.Repeat("a", 40)
 			for i := range r.Facts {
 				f := &r.Facts[i]
 				for j := range f.Anchors {
-					f.Anchors[j].Commit = strings.Repeat("a", 40)
-					f.Anchors[j].BlobID = strings.Repeat("b", 40)
+					a := &f.Anchors[j]
+					a.Commit = strings.Repeat("a", 40)
+					a.BlobID = strings.Repeat("b", 40)
+					if a.FathomFingerprint == "" {
+						continue
+					}
+					src, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(a.Path)))
+					if err != nil {
+						t.Fatal(err)
+					}
+					if want := fusion.FingerprintHash(src); a.FathomFingerprint != want {
+						t.Errorf("%s anchor fingerprint = %s, want %s (the checkout at the current epoch)", a.Path, a.FathomFingerprint, want)
+					}
+					if a.FathomFingerprint, err = fusion.FingerprintHashReaderAtEpoch(bytes.NewReader(src), "golden"); err != nil {
+						t.Fatal(err)
+					}
 				}
 				if f.ReadSet != nil {
 					f.ReadSet.TreeHash = strings.Repeat("c", 40)
