@@ -860,10 +860,22 @@ CRC-32 checked, its declared size never trusted past one byte); `SimulinkMaxDept
 levels of element (or `.mdl` brace) nesting, a spliced system's counted from the model;
 `SimulinkMaxElements` 524,288 elements or brace nodes and `SimulinkMaxBlocks` 65,536 blocks
 across a model's parts, counted as each start tag is read; `SimulinkMaxValue` 64 KiB per value
-the reader keeps; and `.mdl` lines of at most `MaxSimulinkLine` 4 MiB. The calibration corpus's
-largest model sits far inside each (depth 38, 96,366 elements, 5,801 blocks, a 411-byte value,
-24.7:1), and a package filled to a cap peaks under 8x the inflated budget in heap
-(`TestReadSimulinkModelHeapBound`). A package over a cap, or one that does not parse, yields no
+the reader keeps; `SimulinkMaxStartTag` 1 MiB and `SimulinkMaxAttrs` 256 attributes per start
+tag, checked on the part's bytes before the tokenizer builds the tag; `SimulinkMaxPath` 1 MiB per
+block path and `SimulinkMaxPathBytes` 32 MiB of paths per model (a name endpoint reuses its
+block's stored path, never a fresh join, and a signal drawn twice is kept once); and `.mdl`
+lines of at most `MaxSimulinkLine` 4 MiB, a longer one a cap error, never a partial model. The
+calibration corpus's largest model sits far inside each (depth 38, 96,366 elements, 5,801
+blocks, a 411-byte value, 24.7:1, a 244-byte start tag, 13 attributes, a 304-byte path, 569,136
+bytes of paths). `TestReadSimulinkModelHeapBound` reads each adversarial shape, for `.slx` and
+`.mdl`, in a child process and holds its peak resident set (the kernel's high-water mark) within
+8x the inflated budget, 256 MiB, of an empty model's (4x that under `-race`): an element flood and a block flood to their
+caps, an attribute flood (one start tag of 3.9M attributes, refused) and 15,000 tags at the
+attribute cap, deep long names (200 nested blocks of one 16 KiB name, refused, and 60 inside the
+caps), endpoint fan-out (100,000 branches at depth 100), and a `.mdl` property flood. The most any
+shape measured is 124 MiB over (the `.slx` element flood); before these caps the attribute flood
+reached 450 MiB, deep long names 326 MiB, and endpoint fan-out ran past a 10 GB address-space
+limit. A package over a cap, or one that does not parse, yields no
 symbols, never a partial model. Ingest's 2 MiB `MaxExtractSize` still applies, to the compressed bytes. Every other
 NUL-sniffed file stays excluded, a `.zip`, `.docx` or `.mlx` included, until a manifest claims
 its extension. Plan row: LB-F587 (`docs/plans/language-breadth.simulink.md`). **Decision
