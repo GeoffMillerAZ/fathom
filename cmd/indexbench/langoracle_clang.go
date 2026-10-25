@@ -6,6 +6,7 @@ import (
 	"os"
 	"slices"
 	"sort"
+	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/langbench"
@@ -59,16 +60,32 @@ func clangSitesOf(paths []string) (map[string][]langbench.ClangSite, error) {
 	return out, nil
 }
 
-// clangSiteNotes discloses each compiler class a subject's scoring counted.
-func clangSiteNotes(name string, counts map[string]int) []string {
+// CUDA's text for the notes whose C++ examples (fmt, nlohmann, gtest) are not
+// its subject's (round 3 A4, F4).
+const (
+	noteClangMacroNamedCUDA = "of fathom's definitions are written by a macro the index defines under another name: the index's callables there are named by what is written, as fathom's extractor names them, so the calls in their bodies are measured; def_mapping does not count them"
+	noteClangBlindDefsCUDA  = "of fathom's definitions that make calls hold no occurrence of the index but a macro's (code scip-clang 0.4.0 does not index) and are scored against the build's own compiler's call sites alone"
+)
+
+// clangSiteNotes discloses each compiler class a subject's scoring counted,
+// naming the call-site oracle's own tier and the dialect's examples (round 3
+// A4, F4).
+func clangSiteNotes(name, dialect, tier string, counts map[string]int) []string {
+	dependent, macroNamed, blind := noteClangDependent, noteClangMacroNamed, noteClangBlindDefs
+	if tier != "A" {
+		dependent = strings.Replace(dependent, "(calibration/oracles/clang-calls, tier A)", "(calibration/oracles/clang-calls, tier "+tier+")", 1)
+	}
+	if dialect == "cuda" {
+		macroNamed, blind = noteClangMacroNamedCUDA, noteClangBlindDefsCUDA
+	}
 	var out []string
 	for _, c := range []struct{ key, note string }{
-		{langbench.CntClangCallsDependent, noteClangDependent},
+		{langbench.CntClangCallsDependent, dependent},
 		{langbench.CntClangCallsAdded, noteClangAdded},
 		{langbench.CntClangConstructs, noteClangConstructs},
 		{langbench.CntClangNotCalls, noteClangNotCalls},
-		{langbench.CntScipDefsMacroNamed, noteClangMacroNamed},
-		{langbench.CntClangBlindDefs, noteClangBlindDefs},
+		{langbench.CntScipDefsMacroNamed, macroNamed},
+		{langbench.CntClangBlindDefs, blind},
 		{langbench.CntCallsInactive, noteCallsInactive},
 	} {
 		if n := counts[c.key]; n > 0 {

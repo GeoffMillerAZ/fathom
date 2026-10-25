@@ -283,8 +283,8 @@ type SCIPOptions struct {
 	// at the macro's own range (needs Source, LB-F80).
 	ClangMacroArgs bool
 	// ClangSites (LB-F116) are the build's own compiler's call sites per
-	// document (calibration/oracles/clang-calls, tier A; needs Source): a
-	// fathom pair whose every written site has no callee before
+	// document (calibration/oracles/clang-calls, at the file's own tier; needs
+	// Source): a fathom pair whose every written site has no callee before
 	// instantiation is left out of both counts; a call the compiler resolves
 	// is in the truth whether or not the index references it (a constructor
 	// call written `T(` scored against the index's class reference there); a

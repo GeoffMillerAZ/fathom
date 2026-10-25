@@ -226,6 +226,13 @@ func compilerVersion(bin string) string {
 	if err != nil {
 		return ""
 	}
+	// nvcc's first line names the driver; its release is a later line
+	// (round 3 A4).
+	for _, line := range strings.Split(string(b), "\n") {
+		if strings.Contains(line, ", release ") {
+			return strings.TrimSpace(line)
+		}
+	}
 	first, _, _ := strings.Cut(string(b), "\n")
 	return strings.TrimSpace(first)
 }

@@ -29,6 +29,7 @@ import (
 const scipClangTool = "scip-clang"
 
 // noteScipClangNoImports discloses why a scip-clang index scores no imports.
+// scipClangNoImportsNote writes it at the file edges' own tier (round 3 A4).
 const noteScipClangNoImports = "scip-clang records no reference on an #include line and gives no occurrence the Import role, so its index is no imports oracle: import_resolution is an imports dump's (the build-flags preprocessor oracle at tier A, or clang-includes at tier B), and file edges stay the index's cross-file references (tier A)"
 
 // noteScipClangDefsScoped names the files L1 against scip-clang leaves out.
@@ -88,6 +89,8 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 	adjudicate := fs.String("adjudicate", "", "oracle-deficiency disclosure JSON (owner decision D3): dialect-only definitions the L1 oracle is verified to miss, each admitted only by a deterministic file:line, name and module-scope check, listed in the reading and left out of sym_precision's denominator")
 	unmatched := fs.String("unmatched", "", "write this subject's L1 misses both ways (dialect_only, oracle_only) and its L2 call pairs both ways (calls.fathom_only, calls.oracle_only) as JSON — the worker's diagnosis and the source of D3 adjudication candidates; never part of the reading")
 	subjectSHAFlag := fs.String("subject-sha", "", "the subject's commit (a full 40-hex sha) when -subject is a copy with no .git of its own, as the CUDA driver's scratch subject is; without it the sha is the subject's own HEAD, and none when -subject is not its repository's top level")
+	var extraNotes multiFlag
+	fs.Var(&extraNotes, "note", "a disclosure the measurement driver writes into the reading's notes, prefixed with the subject's name (repeatable; round 3 A4: a driver's own record, never a hand edit)")
 	only := fs.String("only", "", "comma-separated globs (subject-relative, * within a segment, ** across): measure only these files — e.g. the SQL families a grammar supports (D2); the reading names the restriction")
 	out := fs.String("out", "", "reading to write; an existing reading of the same dialect is merged (required)")
 	queuePath := fs.String("queue", "docs/plans/language-breadth.queue.json", "the queue (for the dialect's target level)")
@@ -238,6 +241,9 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 	r.FathomCommit = *commit
 	r.Extractor = source
 	r.Oracles = mergeOracles(r.Oracles, m.oracles)
+	for _, n := range extraNotes {
+		m.notes = append(m.notes, name+": "+n)
+	}
 	r.Notes = mergeNotes(r.Notes, append(append([]string(nil), spec.Notes...), m.notes...))
 	langbench.MergeSubject(&r, m.subject)
 	if err := r.Validate(); err != nil {
@@ -987,21 +993,14 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 		if spec.Manifest.ID == "csharp" {
 			res.notes = append(res.notes, csharpSiteNotes(name, sr.Counts, scipOpts.CSharp)...) // LB-F286, LB-F287
 		} else {
-			res.notes = append(res.notes, clangSiteNotes(name, sr.Counts)...)
+			siteTier, err := feedTierFrom(indexTier, opts.tools, "call_sites")
+			if err != nil {
+				return res, err
+			}
+			res.notes = append(res.notes, clangSiteNotes(name, spec.Manifest.ID, siteTier, sr.Counts)...)
 		}
 		if n := sr.Counts[langbench.CntScipCallsUnwritten]; n > 0 {
-			why := "an operator rust-analyzer resolves to its trait method: ?, ==, !x, *x, a[i], a + b"
-			switch spec.Manifest.ID {
-			case "dart":
-				why = "a tear-off such as `onError: c.addError`, an operator, the super(...) of an initializer"
-			case "python":
-				why = "a function or method referenced without a call: passed as a value, as in Depends(get_db), or a decorator applied by name"
-			case "c", "cpp":
-				why = "a function passed as a value (a callback argument), or a call a macro's expansion makes (abort and fprintf inside an ASSERT), which scip-clang references at the macro's own name"
-			case "typescript", "javascript":
-				why = "a function or method passed as a value (a callback argument), or an accessor read, which scip-typescript references as `<get>x`"
-			}
-			res.notes = append(res.notes, fmt.Sprintf("%s: %d callable references have no call written at their range (%s) and are left out of the call truth (L2 is call sites)", name, n, why))
+			res.notes = append(res.notes, fmt.Sprintf("%s: %d callable references have no call written at their range (%s) and are left out of the call truth (L2 is call sites)", name, n, unwrittenWhy(spec.Manifest.ID)))
 		}
 		if n := sr.Counts[langbench.CntScipCalledNames]; n > 0 {
 			why := "a reference the producer gives no callable descriptor"
@@ -1089,8 +1088,8 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 				// and gives no occurrence the Import role, so the references it
 				// does carry coincide with an include's line only by accident:
 				// import_resolution is a dump's (clang-includes), never the index's.
-				res.notes = append(res.notes, noteScipClangNoImports)
-			} else if err := imps.score(sr.ImportRefs, "A", orDefault(sr.Tool, "scip"), &sub); err != nil {
+				res.notes = append(res.notes, scipClangNoImportsNote(fileEdgesTier))
+			} else if err := imps.score(sr.ImportRefs, indexTier, orDefault(sr.Tool, "scip"), &sub); err != nil {
 				return res, err
 			}
 		}
@@ -1574,6 +1573,29 @@ func samePath(a, b string) bool {
 	ra, _ = filepath.Abs(ra)
 	rb, _ = filepath.Abs(rb)
 	return ra == rb
+}
+
+// unwrittenWhy names, per dialect, what an index's callable reference with no
+// call written at its range is (scip_calls_unwritten): rust-analyzer's
+// operators are rust's, never another dialect's (round 3 A4, F4).
+func unwrittenWhy(dialect string) string {
+	switch dialect {
+	case "dart":
+		return "a tear-off such as `onError: c.addError`, an operator, the super(...) of an initializer"
+	case "python":
+		return "a function or method referenced without a call: passed as a value, as in Depends(get_db), or a decorator applied by name"
+	case "cuda":
+		return "a function passed as a value (a callback argument, a kernel passed to a launch or attribute API), or a call a macro's expansion makes (check inside checkCudaErrors), which scip-clang references at the macro's own name"
+	case "c", "cpp":
+		return "a function passed as a value (a callback argument), or a call a macro's expansion makes (abort and fprintf inside an ASSERT), which scip-clang references at the macro's own name"
+	case "typescript", "javascript":
+		return "a function or method passed as a value (a callback argument), or an accessor read, which scip-typescript references as `<get>x`"
+	}
+	return "an operator rust-analyzer resolves to its trait method: ?, ==, !x, *x, a[i], a + b"
+}
+
+func scipClangNoImportsNote(fileEdgesTier string) string {
+	return strings.Replace(noteScipClangNoImports, "cross-file references (tier A)", "cross-file references (tier "+fileEdgesTier+")", 1)
 }
 
 func gitOut(ctx context.Context, dir string, args ...string) string {
