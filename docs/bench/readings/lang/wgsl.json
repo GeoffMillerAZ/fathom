@@ -10,7 +10,7 @@
     "L4": "not-attempted"
   },
   "measured_at": "2026-10-25",
-  "fathom_commit": "d839525",
+  "fathom_commit": "2da47f677",
   "extractor": "dialect",
   "subjects": [
     {
@@ -47,9 +47,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 12,
-        "extract_ms": 326.8530000000001,
-        "extract_cpu_ms": 330.0349999999998,
-        "max_file_ms": 48,
+        "extract_ms": 184.45299999999995,
+        "extract_cpu_ms": 194.35700000000006,
+        "max_file_ms": 32,
         "peak_module_pages": 388,
         "compiled_bytes": 0
       }
@@ -88,8 +88,8 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 1,
-        "extract_ms": 50.34299999999998,
-        "extract_cpu_ms": 51.23799999999999,
+        "extract_ms": 28.693999999999996,
+        "extract_cpu_ms": 29.387000000000004,
         "max_file_ms": 1,
         "peak_module_pages": 271,
         "compiled_bytes": 0
@@ -158,10 +158,10 @@
     "faults": 0,
     "faulting_files": [],
     "files_with_error": 13,
-    "throughput_mb_s": 5.36,
+    "throughput_mb_s": 9.14,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 5.42,
-    "max_file_ms": 48,
+    "wall_throughput_mb_s": 9.59,
+    "max_file_ms": 32,
     "peak_module_pages": 388,
     "compiled_bytes": 0
   },
@@ -180,7 +180,8 @@
     "gfx-rs/wgpu: wgsl-parse rejects or times out on wgpu-core/src/timestamp_normalization/common.wgsl",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "webgpu/webgpu-samples: wgsl-parse rejects or times out on 1 of 76 .wgsl files (no definitions read from them)",
-    "webgpu/webgpu-samples: wgsl-parse rejects or times out on sample/cornell/tonemapper.wgsl"
+    "webgpu/webgpu-samples: wgsl-parse rejects or times out on sample/cornell/tonemapper.wgsl",
+    "throughput: three runs at one commit on an Apple-silicon development machine read 9.16, 9.14 and 8.42 MB/s (CPU basis, tenancy throughput_mb_s); the committed reading is the median run, 9.14 MB/s CPU (9.59 MB/s wall)"
   ],
   "disposition": null
 }
