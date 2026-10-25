@@ -283,8 +283,8 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 reached (languages at L1 38, L1 excellent 26, L2 34, L3 27, L4 10; tool formats at target 67)
-Milestone M2 progress: languages at L1 38/45, at L1 excellent 26/35, at L2 34/25, at L3 27/14, at L4 10/10; tool formats at target 67/30
+Milestone M1 reached (languages at L1 38, L1 excellent 26, L2 34, L3 28, L4 11; tool formats at target 67)
+Milestone M2 progress: languages at L1 38/45, at L1 excellent 26/35, at L2 34/25, at L3 28/14, at L4 11/10; tool formats at target 67/30
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -415,7 +415,7 @@ Milestone M2 progress: languages at L1 38/45, at L1 excellent 26/35, at L2 34/25
 | Traefik static and file-provider configuration | tool format | doc | pure-go:yaml.v3 + go-toml/v2 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A traefik 3.7.13 | syntax | 2026-10-24 | at target (LB-Q-traefik) |
 | WGSL shaders (.wgsl) | language | tags | szebniok/tree-sitter-wgsl (or tree-sitter-grammars/tree-sitter-wgsl-bevy) (MIT (verify at pin)) | L1 | unsupported (disclosed) | — | — | — | LB-Q-wgsl |
 | Renovate and Dependabot configs | tool format | doc | pure-go:JSON5 + gopkg.in/yaml.v3 (n/a) | L1 | unsupported (disclosed) | — | — | — | LB-Q-dependency-bots |
-| CUDA (.cu .cuh) | language | tags | tree-sitter-grammars/tree-sitter-cuda (MIT) | L4 | L2 (L1 excellent, L2 good) | B clang-ast Ubuntu clang version 18.1.3 (1ubuntu1); A clang-preprocessor nvcc: NVIDIA (R) Cuda compiler driver (nvcc device and host passes, unioned); A scip-clang 0.4.0; B universal-ctags 6.2.1 | scip:scip-clang | 2026-10-25 | LB-Q-cuda |
+| CUDA (.cu .cuh) | language | tags | tree-sitter-grammars/tree-sitter-cuda (MIT) | L4 | L4 (L1 excellent, L2 good, L3 good, L4 good) | B clang-ast Ubuntu clang version 18.1.3 (1ubuntu1) (clang CUDA host and device-only passes, unioned); A clang-preprocessor Cuda compilation tools, release 12.9, V12.9.86 (nvcc device and host passes, unioned); B scip-clang 0.4.0; B universal-ctags 6.2.1 | scip:scip-clang | 2026-10-25 | at target (LB-Q-cuda) |
 | Jsonnet (.jsonnet .libsonnet) | tool format | tags | sourcegraph/tree-sitter-jsonnet (MIT) | L3 | unsupported (disclosed) | — | — | — | LB-Q-jsonnet |
 | Salesforce Apex (.cls by glob, .trigger) | language | tags | aheber/tree-sitter-sfapex (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-apex |
 | Pkl (.pkl) | tool format | tags | apple/tree-sitter-pkl (Apache-2.0) | L2 | unsupported (disclosed) | — | — | — | LB-Q-pkl |
