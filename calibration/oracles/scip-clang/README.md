@@ -122,7 +122,9 @@ What L3 and L4 read from the index (wave lf1, `internal/langbench/scip_clang.go`
     cuda-samples.sh <shared-clone> <cuda-root> <tools-dir> <work-dir> [runs]
     # cuda-root: CUDA 12.9 from conda-forge (cuda-nvcc-tools, cuda-nvvm-tools and cuda-crt 12.9.86, which carry the
     # nvcc driver and cicc the pip wheels lack, plus the -dev header packages: cudart, cccl, cublas, cufft, curand,
-    # cusolver, cusparse, npp, nvjpeg, nvrtc, cupti, nvtx, and cuda-driver-dev for cuda.h); measurement only, under
+    # cusolver, cusparse, npp, nvjpeg, nvrtc, cupti, nvtx, cuda-driver-dev for cuda.h, and cuda-profiler-api for
+    # cuda_profiler_api.h, which asyncAPI.cu and matrixMul.cu include: round 3's toolkit lacked it and dropped both
+    # units from the clang translation, 97 of 114 where round 2 and round 4 compile 99); measurement only, under
     # workspace/tools, never committed. tools-dir/ctags is universal-ctags 6.2.1 built with jansson (its JSON output).
 
 It measures cuda-samples as ONE subject, the way a user indexes it (owner ruling C-R4): CMake configures the samples
@@ -140,7 +142,10 @@ Round 3 (A2, B, C): the driver first configures the samples with clang++ as thei
 as written (clang-native.json): an index is tier A only when the subject's own build wrote its database untranslated,
 at 90% of the units; cuda-samples v12.9 configures 114 and compiles 0 (its CMake flags carry nvcc's
 `--extended-lambda` and sm_100, sm_101 and sm_120, which clang 18 rejects), so the index reads the translation and
-lang-oracle runs at `-scip-tier B`. clang-calls unions the host pass with a `--cuda-device-only` pass at the first of
+lang-oracle runs at `-scip-tier B` (round 4 C4-R5: the 90% gate counts the nvcc database's 114 .cu units, never the
+clang configure's own count, and `-DCMAKE_CUDA_ARCHITECTURES=52` has no effect: the samples' CMakeLists set it
+themselves). Each unit the translation drops is listed in clang-skipped.json, its first clang error in
+clang-skipped-errors.json (round 4 C4-R4). clang-calls unions the host pass with a `--cuda-device-only` pass at the first of
 the target's CMake architectures that compiles (`-Xclang -target-sdk-version=12.3`: with -nocudalib clang otherwise
 reads no toolkit version and wants the pre-9.2 launch API). `preproc.units.json` maps each CMake executable to its
 sources from the build's own link lines (the link-unit companion of preproc.json). The driver writes its measurement

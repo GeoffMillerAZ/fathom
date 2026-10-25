@@ -88,16 +88,21 @@ print("link units:", sum(1 for s in units.values() if s), "executables,", len({x
 EOF
 
 # 2b (round 3 A2): the samples' own build with clang as its CUDA compiler. An index is tier A only when the subject's
-# own build wrote its database untranslated: when 90% of the .cu units it configures compile as written, that
-# database is the index's (tier A); otherwise the translation below is, at tier B. The counts are in clang-native.json.
+# own build wrote its database untranslated: when 90% of the .cu units the build's own nvcc database holds (round 4
+# C4-R5: that count, never the clang configure's own) compile as written, that database is the index's (tier A);
+# otherwise the translation below is, at tier B. The counts are in clang-native.json. -DCMAKE_CUDA_ARCHITECTURES=52
+# has no effect: the samples' CMakeLists set CMAKE_CUDA_ARCHITECTURES themselves (clang-native.json counts them).
 clang_args=(-S "$subj" -B "$subj/build-clang" -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CUDA_COMPILER=clang++
   -DCMAKE_CUDA_ARCHITECTURES=52 -DCUDAToolkit_ROOT="$cuda" -DCMAKE_CUDA_FLAGS="--cuda-path=$cuda -Wno-unknown-cuda-version"
   -DNVJITLINK_LIB="$lib/libcudart.so")
 PATH="$cuda/bin:$PATH" cmake "${clang_args[@]}" > "$work/cmake-clang.log" 2>&1 || true
-PATH="$cuda/bin:$PATH" python3 - "$subj/build-clang/compile_commands.json" "$work/clang-native.json" <<'EOF2'
-import collections, json, os, shlex, subprocess, sys
+PATH="$cuda/bin:$PATH" python3 - "$subj/build-clang/compile_commands.json" "$work/clang-native.json" "$work/nvcc_compile_commands.json" "$subj" <<'EOF2'
+import collections, json, os, re, shlex, subprocess, sys
 from concurrent.futures import ThreadPoolExecutor
 db = [e for e in json.load(open(sys.argv[1])) if e["file"].endswith(".cu")] if os.path.exists(sys.argv[1]) else []
+nvcc_units = sum(1 for e in json.load(open(sys.argv[3])) if e["file"].endswith(".cu"))
+overrides = sum(1 for d, _, fs in os.walk(sys.argv[4]) if "CMakeLists.txt" in fs
+                and re.search(r"set\(CMAKE_CUDA_ARCHITECTURES", open(os.path.join(d, "CMakeLists.txt"), errors="replace").read()))
 def run(e):
     a = shlex.split(e["command"]); i = a.index("-o"); a = a[:i] + ["-o", "/dev/null"] + a[i + 2:]
     r = subprocess.run(a, cwd=e["directory"], capture_output=True, text=True)
@@ -106,10 +111,11 @@ with ThreadPoolExecutor(4) as ex:
     res = list(ex.map(run, db))
 ok = sum(1 for k, _ in res if k)
 errs = collections.Counter(l for k, ls in res if not k for l in ls)
-out = {"configured": len(db), "compiled": ok, "tier": "A" if db and ok * 10 >= len(db) * 9 else "B",
+out = {"nvcc_units": nvcc_units, "configured": len(db), "compiled": ok, "tier": "A" if nvcc_units and ok * 10 >= nvcc_units * 9 else "B",
+       "architectures_overridden_by": overrides,
        "errors": [{"count": n, "error": l} for l, n in sorted(errs.items(), key=lambda x: (-x[1], x[0]))[:8]]}
 json.dump(out, open(sys.argv[2], "w"), indent=1)
-print("clang-native:", out["configured"], "configure,", ok, "compile -> tier", out["tier"], file=sys.stderr)
+print("clang-native:", nvcc_units, "nvcc units,", out["configured"], "configure,", ok, "compile -> tier", out["tier"], file=sys.stderr)
 EOF2
 scip_tier=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["tier"])' "$work/clang-native.json")
 
@@ -162,9 +168,13 @@ for name, db in (("nvcc-device", dev), ("nvcc-host", host)):
 # A unit clang cannot compile (an OpenMP, GL or Vulkan header it cannot find, a construct only nvcc accepts) is
 # dropped from the clang database and listed: clang-calls refuses a run with a unit that stops.
 from concurrent.futures import ThreadPoolExecutor
+first_error = {}
 def compiles(c):
     a = shlex.split(c["command"]); i = a.index("-c")
     r = subprocess.run(a[:i] + ["-fsyntax-only", "-w", c["file"]], cwd=subj, capture_output=True, text=True)
+    if r.returncode != 0 and "--cuda-device-only" not in a:  # round 4 C4-R4: each dropped unit's first clang error
+        errs = [l.strip() for l in r.stderr.splitlines() if "error:" in l]
+        first_error[os.path.relpath(c["file"], subj)] = (errs[0] if errs else r.stderr.strip()[:300]).replace(subj + os.sep, "")
     return r.returncode == 0
 with ThreadPoolExecutor(4) as ex:
     ok = list(ex.map(compiles, clang))
@@ -181,6 +191,8 @@ json.dump([{k: v for k, v in c.items() if k != "archs"} for c, k, h in zip(clang
 json.dump(sorted(os.path.relpath(c["file"], subj) for c, k, h in zip(clang_dev, ok_dev, ok) if h and not k),
           open(os.path.join(work, "clang-device-skipped.json"), "w"), indent=1)
 json.dump(sorted(os.path.relpath(c["file"], subj) for c, k in zip(clang, ok) if not k), open(os.path.join(work, "clang-skipped.json"), "w"), indent=1)
+json.dump({f: first_error.get(f, "") for f in sorted(os.path.relpath(c["file"], subj) for c, k in zip(clang, ok) if not k)},
+          open(os.path.join(work, "clang-skipped-errors.json"), "w"), indent=1)
 os.makedirs(os.path.join(subj, "build"), exist_ok=True)
 json.dump([{k: v for k, v in c.items() if k != "archs"} for c in kept], open(os.path.join(subj, "build", "compile_commands.json"), "w"), indent=1)
 print(len(nv), "cu entries;", len(host), "host passes;", len(kept), "clang compiles; lowest archs", sorted({c["archs"][0] for c in clang}), file=sys.stderr)
@@ -239,6 +251,10 @@ w, tier = sys.argv[1], sys.argv[2]
 nat = json.load(open(os.path.join(w, "clang-native.json")))
 nv = json.load(open(os.path.join(w, "nvcc_compile_commands.json")))
 skipped = json.load(open(os.path.join(w, "clang-skipped.json")))
+first = json.load(open(os.path.join(w, "clang-skipped-errors.json")))  # round 4 C4-R4: each dropped unit's first error
+import collections, re
+causes = collections.Counter(re.sub(r"^\S*?:\d+:\d+: ", "", e) for e in first.values())
+why = "; ".join("%d: %s" % (n, c) for c, n in sorted(causes.items(), key=lambda x: (-x[1], x[0])))
 dskip = json.load(open(os.path.join(w, "clang-device-skipped.json")))
 units = sum(1 for e in nv if e["file"].endswith(".cu"))
 errs = "; ".join("%d: %s" % (e["count"], e["error"].replace("clang++: error: ", "")) for e in nat["errors"][:4])
@@ -248,10 +264,13 @@ names = lambda fs: ", ".join(os.path.basename(f) for f in fs) or "none"
 print("measured as ONE subject from the samples' own CMake build with nvcc (owner ruling C-R4): %d .cu translation units "
       "configure (the OpenMP, GL, Vulkan, EGL and Tegra samples' CMake skips itself); the preprocessor oracle is nvcc's own, "
       "the device pass at each target's lowest architecture unioned with the host pass (tier A, ruling C-R6); configured "
-      "with clang++ as its CUDA compiler the build configures %d and compiles %d as written (%s), so the index, clang-calls "
-      "and clang-ast-defs read %s, %d units (%d clang cannot compile are dropped: %s), and clang-calls unions that host pass "
-      "with a device-only pass at the target's lowest architecture (%d units; %d more dropped there: %s)%s"
-      % (units, nat["configured"], nat["compiled"], errs, idx, units - len(skipped), len(skipped), names(skipped),
+      "with clang++ as its CUDA compiler (clang-native.json) the build configures %d and compiles %d as written, of the nvcc "
+      "database's %d .cu units (%s; -DCMAKE_CUDA_ARCHITECTURES has no effect, %d of the samples' CMakeLists set it "
+      "themselves), so the index, clang-calls and clang-ast-defs read %s, %d units (%d clang cannot compile are dropped: "
+      "%s; first errors, clang-skipped-errors.json: %s), and clang-calls unions that host pass with a device-only pass at "
+      "the first compiling CMake architecture (%d units; %d more dropped there: %s)%s"
+      % (units, nat["configured"], nat["compiled"], nat["nvcc_units"], errs, nat["architectures_overridden_by"], idx,
+         units - len(skipped), len(skipped), names(skipped), why or "none",
          units - len(skipped) - len(dskip), len(dskip), names(dskip),
          "; a tier-B oracle caps L2 and above at good (tierCeiling)" if tier != "A" else ""))
 EOF
