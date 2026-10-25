@@ -25,3 +25,23 @@ void MainCS(uint3 id : SV_DispatchThreadID)
     InterlockedAdd(gOut[0], 1);
     gOut[id.x] = (uint)v.x + LOAD(gOut, 0);
 }
+
+#define RS "RootFlags(0)"
+
+[RootSignature(RS)]
+[NumThreads(8, 8, 1)]
+void UpperCS(uint3 id : SV_DispatchThreadID)
+{
+    gOut[id.x] = Hash(id.y);
+}
+
+struct Ray
+{
+    float3 origin;
+    static Ray create(float3 o) { Ray r; r.origin = o; return r; }
+};
+
+float3 Origin()
+{
+    return Ray::create(float3(0, 0, 0)).origin;
+}

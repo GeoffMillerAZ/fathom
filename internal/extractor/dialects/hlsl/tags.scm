@@ -50,6 +50,12 @@
   declarator: (identifier) @name
   (#match? @_kw "^(cbuffer|tbuffer)$")) @definition.cbuffer
 
+; After an attribute (`[[vk::binding(5)]] cbuffer Name { ... }`) the grammar reads a
+; cbuffer_specifier.
+(cbuffer_specifier
+  name: (type_identifier) @name
+  body: (field_declaration_list)) @definition.cbuffer
+
 ; --- typedefs ---------------------------------------------------------------------
 (type_definition
   declarator: (type_identifier) @name) @definition.typedef
@@ -80,48 +86,153 @@
     ]
     (#not-match? @_ty "^(cbuffer|tbuffer)$")) @definition.variable)
 
-(preproc_if
-  (declaration
-    type: (_) @_ty
-    declarator: [
-      (identifier) @name
-      (init_declarator declarator: (identifier) @name)
-      (array_declarator declarator: (identifier) @name)
-      (init_declarator declarator: (array_declarator declarator: (identifier) @name))
-    ]
-    (#not-match? @_ty "^(cbuffer|tbuffer)$")) @definition.variable)
+; Under a preprocessor conditional at file scope (one or two levels, an #else or
+; #elif branch included). A conditional inside a function body holds locals, so
+; every pattern is anchored at the translation unit.
 
-(preproc_ifdef
-  (declaration
-    type: (_) @_ty
-    declarator: [
-      (identifier) @name
-      (init_declarator declarator: (identifier) @name)
-      (array_declarator declarator: (identifier) @name)
-      (init_declarator declarator: (array_declarator declarator: (identifier) @name))
-    ]
-    (#not-match? @_ty "^(cbuffer|tbuffer)$")) @definition.variable)
+(translation_unit
+  (preproc_if
+    (declaration
+        type: (_) @_ty
+        declarator: [
+          (identifier) @name
+          (init_declarator declarator: (identifier) @name)
+          (array_declarator declarator: (identifier) @name)
+          (init_declarator declarator: (array_declarator declarator: (identifier) @name))
+        ]
+        (#not-match? @_ty "^(cbuffer|tbuffer)$")) @definition.variable))
 
-(preproc_else
-  (declaration
-    type: (_) @_ty
-    declarator: [
-      (identifier) @name
-      (init_declarator declarator: (identifier) @name)
-      (array_declarator declarator: (identifier) @name)
-      (init_declarator declarator: (array_declarator declarator: (identifier) @name))
-    ]
-    (#not-match? @_ty "^(cbuffer|tbuffer)$")) @definition.variable)
+(translation_unit
+  (preproc_ifdef
+    (declaration
+        type: (_) @_ty
+        declarator: [
+          (identifier) @name
+          (init_declarator declarator: (identifier) @name)
+          (array_declarator declarator: (identifier) @name)
+          (init_declarator declarator: (array_declarator declarator: (identifier) @name))
+        ]
+        (#not-match? @_ty "^(cbuffer|tbuffer)$")) @definition.variable))
+
+(translation_unit
+  (preproc_if
+    (preproc_if
+      (declaration
+          type: (_) @_ty
+          declarator: [
+            (identifier) @name
+            (init_declarator declarator: (identifier) @name)
+            (array_declarator declarator: (identifier) @name)
+            (init_declarator declarator: (array_declarator declarator: (identifier) @name))
+          ]
+          (#not-match? @_ty "^(cbuffer|tbuffer)$")) @definition.variable)))
+
+(translation_unit
+  (preproc_if
+    (preproc_ifdef
+      (declaration
+          type: (_) @_ty
+          declarator: [
+            (identifier) @name
+            (init_declarator declarator: (identifier) @name)
+            (array_declarator declarator: (identifier) @name)
+            (init_declarator declarator: (array_declarator declarator: (identifier) @name))
+          ]
+          (#not-match? @_ty "^(cbuffer|tbuffer)$")) @definition.variable)))
+
+(translation_unit
+  (preproc_if
+    (preproc_else
+      (declaration
+          type: (_) @_ty
+          declarator: [
+            (identifier) @name
+            (init_declarator declarator: (identifier) @name)
+            (array_declarator declarator: (identifier) @name)
+            (init_declarator declarator: (array_declarator declarator: (identifier) @name))
+          ]
+          (#not-match? @_ty "^(cbuffer|tbuffer)$")) @definition.variable)))
+
+(translation_unit
+  (preproc_if
+    (preproc_elif
+      (declaration
+          type: (_) @_ty
+          declarator: [
+            (identifier) @name
+            (init_declarator declarator: (identifier) @name)
+            (array_declarator declarator: (identifier) @name)
+            (init_declarator declarator: (array_declarator declarator: (identifier) @name))
+          ]
+          (#not-match? @_ty "^(cbuffer|tbuffer)$")) @definition.variable)))
+
+(translation_unit
+  (preproc_ifdef
+    (preproc_if
+      (declaration
+          type: (_) @_ty
+          declarator: [
+            (identifier) @name
+            (init_declarator declarator: (identifier) @name)
+            (array_declarator declarator: (identifier) @name)
+            (init_declarator declarator: (array_declarator declarator: (identifier) @name))
+          ]
+          (#not-match? @_ty "^(cbuffer|tbuffer)$")) @definition.variable)))
+
+(translation_unit
+  (preproc_ifdef
+    (preproc_ifdef
+      (declaration
+          type: (_) @_ty
+          declarator: [
+            (identifier) @name
+            (init_declarator declarator: (identifier) @name)
+            (array_declarator declarator: (identifier) @name)
+            (init_declarator declarator: (array_declarator declarator: (identifier) @name))
+          ]
+          (#not-match? @_ty "^(cbuffer|tbuffer)$")) @definition.variable)))
+
+(translation_unit
+  (preproc_ifdef
+    (preproc_else
+      (declaration
+          type: (_) @_ty
+          declarator: [
+            (identifier) @name
+            (init_declarator declarator: (identifier) @name)
+            (array_declarator declarator: (identifier) @name)
+            (init_declarator declarator: (array_declarator declarator: (identifier) @name))
+          ]
+          (#not-match? @_ty "^(cbuffer|tbuffer)$")) @definition.variable)))
+
+(translation_unit
+  (preproc_ifdef
+    (preproc_elif
+      (declaration
+          type: (_) @_ty
+          declarator: [
+            (identifier) @name
+            (init_declarator declarator: (identifier) @name)
+            (array_declarator declarator: (identifier) @name)
+            (init_declarator declarator: (array_declarator declarator: (identifier) @name))
+          ]
+          (#not-match? @_ty "^(cbuffer|tbuffer)$")) @definition.variable)))
 
 ; --- calls ---------------------------------------------------------------------------
 ; A plain call, intrinsics included (mul, saturate), as the compiler's AST has
 ; a CallExpr for each. A vector or matrix constructor (float4(...)), a
 ; function-like macro invocation (an all-capitals name) and the keyword-like
-; calls of a semantic or attribute (register(b0), [numthreads(8, 8, 1)]) are
-; not calls.
+; calls of a semantic or attribute (register(b0), [numthreads(8, 8, 1)], spelled
+; in any case: [RootSignature(RS)], [NumThreads(8, 8, 1)]) are not calls.
 (call_expression
   function: (identifier) @name
-  (#not-match? @name "^(((u?int|float|half|double|bool|min(10float|12int|16(float|int|uint))|dword)[1-4]?(x[1-4])?)|[A-Z][A-Z0-9_]*|if|while|for|switch|return|sizeof|register|packoffset|numthreads|shader|maxvertexcount|domain|partitioning|outputtopology|outputcontrolpoints|patchconstantfunc|instance|WaveSize|earlydepthstencil|clipplanes)$")) @reference.call
+  (#not-match? @name "^(((u?int|float|half|double|bool|min(10float|12int|16(float|int|uint))|dword)[1-4]?(x[1-4])?)|[A-Z][A-Z0-9_]*|if|while|for|switch|return|sizeof|(?i:register|packoffset|numthreads|shader|maxvertexcount|domain|partitioning|outputtopology|outputcontrolpoints|patchconstantfunc|maxtessfactor|instance|wavesize|earlydepthstencil|clipplanes|rootsignature|nodelaunch|nodeid|noderootargumentstableindex|nodelocalrootargumentstableindex|nodeshareinputof|nodedispatchgrid|nodemaxdispatchgrid|nodemaxrecursiondepth|nodeisprogramentry|nodemaxinputrecordspergraphentryrecord|maxrecords|maxrecordssharedwith|nodearraysize|nodetrackrwinputsharing|allowsparsenodes|unroll))$")) @reference.call
+
+; A static member call (Ray::create(o)) is the member's bare name, as the
+; compiler's DeclRefExpr names it.
+(call_expression
+  function: (qualified_identifier
+    name: (identifier) @name)) @reference.call
 
 ; A method call on a resource or struct (tex.Sample(...), buf.Load(...)) keeps
 ; its receiver (the manifest's calls.qualify is off: the bare name pairs with

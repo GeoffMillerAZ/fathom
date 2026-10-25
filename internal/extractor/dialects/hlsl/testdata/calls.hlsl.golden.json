@@ -68,6 +68,46 @@
         "InterlockedAdd"
       ],
       "tier": "verified"
+    },
+    {
+      "name": "RS",
+      "kind": "HlslMacro",
+      "package": "calls",
+      "line": 29,
+      "end_line": 29,
+      "tier": "verified"
+    },
+    {
+      "name": "UpperCS",
+      "kind": "HlslFunc",
+      "package": "calls",
+      "line": 33,
+      "end_line": 36,
+      "signature": "[RootSignature(RS)] [NumThreads(8, 8, 1)] void UpperCS(uint3 id : SV_DispatchThreadID)",
+      "calls": [
+        "Hash"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Ray",
+      "kind": "HlslStruct",
+      "package": "calls",
+      "line": 38,
+      "end_line": 42,
+      "tier": "verified"
+    },
+    {
+      "name": "Origin",
+      "kind": "HlslFunc",
+      "package": "calls",
+      "line": 44,
+      "end_line": 47,
+      "signature": "float3 Origin()",
+      "calls": [
+        "create"
+      ],
+      "tier": "verified"
     }
   ]
 }

@@ -1,0 +1,64 @@
+{
+  "symbols": [
+    {
+      "name": "shadowMap",
+      "kind": "HlslVariable",
+      "package": "conditionals",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "fallbackMap",
+      "kind": "HlslVariable",
+      "package": "conditionals",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "fogHeight",
+      "kind": "HlslVariable",
+      "package": "conditionals",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "fogDensity",
+      "kind": "HlslVariable",
+      "package": "conditionals",
+      "line": 13,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "_",
+      "kind": "HlslCbuffer",
+      "package": "conditionals",
+      "line": 16,
+      "end_line": 18,
+      "tier": "verified"
+    },
+    {
+      "name": "LightData",
+      "kind": "HlslCbuffer",
+      "package": "conditionals",
+      "line": 20,
+      "end_line": 22,
+      "tier": "verified"
+    },
+    {
+      "name": "Sample",
+      "kind": "HlslFunc",
+      "package": "conditionals",
+      "line": 24,
+      "end_line": 31,
+      "signature": "float4 Sample(uint index)",
+      "calls": [
+        "Load"
+      ],
+      "tier": "verified"
+    }
+  ]
+}
