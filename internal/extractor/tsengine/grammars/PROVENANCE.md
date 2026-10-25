@@ -78,6 +78,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `vhdl` | jpt13653903/tree-sitter-vhdl | v2.0.3 | `a7cf493d07dbcf52ca287596451ae3fb8b12099f` | MIT | `tree_sitter_vhdl` | `0afd50c99d2ee6277c9b183a6fb160173cf8635b3e14900a8dfc3dbbd6e93378` |
 | `vim` | tree-sitter-grammars/tree-sitter-vim | v0.8.1 | `3092fcd99eb87bbd0fc434aa03650ba58bd5b43b` | MIT | `tree_sitter_vim` | `93cafb9a0269420362454ace725a118ff1c3e08dcdfdc228aa86334b54d53c2a` |
 | `vue` | tree-sitter-grammars/tree-sitter-vue | ce8011a414fdf8091f4e4071752efc376f4afb08 | `ce8011a414fdf8091f4e4071752efc376f4afb08` | MIT | `tree_sitter_vue` | `e62913c5709ed1e68616bb85aedb2641a0c35c6b6709986ab71487d54b16ad0d` |
+| `wgsl` | include-yy/tree-sitter-wgsl | b58422ee34029f81ae8b7dd44fc14d043809b321 | `b58422ee34029f81ae8b7dd44fc14d043809b321` | MIT | `tree_sitter_wgsl` | `ad66d792d4c58c9e5d7bcd596c83a0b93c34b802b540a92c2f44da207be5fd2f` |
 
 ### Committed blobs
 
@@ -134,6 +135,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `vhdl` | (root) | yes | 15 | 1,314,192 | 240,100 | `3ec7500d69a8177a073f8c42e01fc4b40b4ac7c0259654e781375b3223189a1c` |
 | `vim` | (root) | yes | 15 | 1,177,166 | 212,656 | `fa067ead3ba63fb2610653385665a94ace0a5d56b4cdafcdb8fa68080a7bf3b2` |
 | `vue` | (root) | yes | 15 | 155,696 | 63,858 | `d9389312f43124431ddd3cf3e0914f015ee4be87419e3409be5bf29066430e8a` |
+| `wgsl` | (root) | yes | 14 | 183,727 | 66,803 | `75ac28ff3ef0a0392ccf0fa868c836b80fd95d726043f3a7ffb85660801fad5a` |
 
 Toolchain that produced the committed blobs: zig 0.16.0, wasm-opt 129, tree-sitter-cli 0.26.11.
 

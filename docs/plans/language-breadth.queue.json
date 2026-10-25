@@ -4355,11 +4355,11 @@
     "id": "wgsl",
     "name": "WGSL shaders (.wgsl)",
     "kind": "language",
-    "target_level": "L1",
-    "grammar_source": "szebniok/tree-sitter-wgsl (or tree-sitter-grammars/tree-sitter-wgsl-bevy)",
-    "licence": "MIT (verify at pin)",
+    "target_level": "L2",
+    "grammar_source": "include-yy/tree-sitter-wgsl",
+    "licence": "MIT",
     "oracle": [
-      "tree-sitter-tags (C)"
+      "wgsl-parse"
     ],
     "calibration_subjects": [
       "gfx-rs/wgpu",
@@ -4383,7 +4383,8 @@
     "engine": "tags",
     "plan_row": "LB-Q-wgsl",
     "worker_model": "sonnet",
-    "notes": "new; fns, structs, bindings"
+    "notes": "new; fns, structs, bindings (global var, const and override), type aliases; call edges from call_expression; templates are GLR conflicts with no discovery scanner",
+    "retargeted": "2026-10-24 (owner ruling): L1 -> L2; grammar include-yy/tree-sitter-wgsl at b58422ee (szebniok and wgsl-bevy parse old WGSL); oracle wgsl-parse =0.6.0 (tier B, D2)"
   },
   {
     "id": "dependency-bots",
