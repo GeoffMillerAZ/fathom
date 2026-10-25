@@ -1,0 +1,299 @@
+{
+  "dialect": "hlsl",
+  "kind": "language",
+  "target_level": "L3",
+  "level_met": "none",
+  "grade": {
+    "L1": "excellent",
+    "L2": "good",
+    "L3": "unmet",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-10-25",
+  "fathom_commit": "3264f5a6",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "directx-graphics-samples",
+      "sha": "e5975f9b0744fc5096dd593ed72bf8f5c004164f",
+      "files": 360,
+      "bytes": 630200,
+      "counts": {
+        "call_fathom": 1325,
+        "call_fathom_in_truth": 1299,
+        "call_truth": 1308,
+        "call_truth_found": 1299,
+        "callables": 638,
+        "callables_signed": 638,
+        "fathom_defs": 1571,
+        "file_edges_agree": 129,
+        "file_edges_fathom": 145,
+        "file_edges_truth": 333,
+        "import_edges_agree": 321,
+        "import_edges_fathom": 337,
+        "import_edges_truth": 321,
+        "import_oracle_out_of_scope": 15,
+        "import_oracle_unpaired": 12,
+        "imports": 352,
+        "imports_in_repo": 321,
+        "imports_resolved_agree": 321,
+        "imports_unattested": 16,
+        "kind_equal": 1552,
+        "matched": 1552,
+        "oracle_defs": 1554,
+        "range_eligible": 1552,
+        "range_ok": 1552
+      },
+      "families": {
+        "calls": "B",
+        "file_edges": "B",
+        "imports": "B",
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "function",
+        "struct",
+        "type_alias",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "fathom:HlslMacro": 343
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 3,
+        "extract_ms": 723.1169999999997,
+        "extract_cpu_ms": 725.481,
+        "max_file_ms": 26,
+        "peak_module_pages": 508,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "directxtk12",
+      "sha": "f5b928460d91984b27029d064ee5a7dd4301513c",
+      "files": 21,
+      "bytes": 143165,
+      "counts": {
+        "call_fathom": 561,
+        "call_fathom_in_truth": 561,
+        "call_truth": 568,
+        "call_truth_found": 561,
+        "callables": 267,
+        "callables_signed": 267,
+        "fathom_defs": 368,
+        "file_edges_agree": 35,
+        "file_edges_fathom": 35,
+        "file_edges_truth": 50,
+        "import_edges_agree": 50,
+        "import_edges_fathom": 50,
+        "import_edges_truth": 50,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "imports": 50,
+        "imports_in_repo": 50,
+        "imports_resolved_agree": 50,
+        "kind_equal": 364,
+        "matched": 364,
+        "oracle_defs": 364,
+        "range_eligible": 364,
+        "range_ok": 364
+      },
+      "families": {
+        "calls": "B",
+        "file_edges": "B",
+        "imports": "B",
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "function",
+        "struct",
+        "type_alias",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "fathom:HlslMacro": 44
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 179.323,
+        "extract_cpu_ms": 182.376,
+        "max_file_ms": 29,
+        "peak_module_pages": 510,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "kajiya",
+      "sha": "9fdec0f074f9f822d395f9cfd041b58749e32303",
+      "files": 160,
+      "bytes": 588696,
+      "counts": {
+        "call_fathom": 1810,
+        "call_fathom_in_truth": 1712,
+        "call_truth": 1848,
+        "call_truth_found": 1712,
+        "callables": 460,
+        "callables_signed": 460,
+        "fathom_defs": 1134,
+        "file_edges_agree": 237,
+        "file_edges_fathom": 312,
+        "file_edges_truth": 544,
+        "import_edges_agree": 543,
+        "import_edges_fathom": 569,
+        "import_edges_truth": 543,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 1,
+        "imports": 569,
+        "imports_in_repo": 543,
+        "imports_resolved_agree": 543,
+        "imports_unattested": 26,
+        "kind_equal": 1130,
+        "matched": 1130,
+        "oracle_defs": 1136,
+        "range_eligible": 1130,
+        "range_ok": 1130
+      },
+      "families": {
+        "calls": "B",
+        "file_edges": "B",
+        "imports": "B",
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "function",
+        "struct",
+        "type_alias",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "fathom:HlslMacro": 342
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 5,
+        "extract_ms": 547.3689999999999,
+        "extract_cpu_ms": 551.5009999999997,
+        "max_file_ms": 24,
+        "peak_module_pages": 510,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "clang-includes",
+      "version": "Ubuntu clang version 18.1.3 (1ubuntu1)"
+    },
+    {
+      "tier": "B",
+      "tool": "dxc-ast",
+      "version": "libdxcompiler.so: 1.9(5184-21d28f72)(1.9.0.5184)"
+    }
+  ],
+  "metrics": {
+    "call_precision": 0.9665,
+    "call_recall": 0.9592,
+    "def_mapping": null,
+    "file_edge_precision": 0.815,
+    "file_edge_recall": 0.4326,
+    "import_resolution": 1,
+    "kind_agreement": 1,
+    "range_agreement": 1,
+    "signature_coverage": 1,
+    "sym_precision": 0.9912,
+    "sym_recall": 0.9974,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "B",
+    "call_recall": "B",
+    "file_edge_precision": "B",
+    "file_edge_recall": "B",
+    "import_resolution": "B",
+    "kind_agreement": "B",
+    "range_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "function",
+    "struct",
+    "type_alias",
+    "variable"
+  ],
+  "kind_intersection": [
+    "function",
+    "struct",
+    "type_alias",
+    "variable"
+  ],
+  "counts": {
+    "call_fathom": 3696,
+    "call_fathom_in_truth": 3572,
+    "call_truth": 3724,
+    "call_truth_found": 3572,
+    "callables": 1365,
+    "callables_signed": 1365,
+    "fathom_defs": 3073,
+    "file_edges_agree": 401,
+    "file_edges_fathom": 492,
+    "file_edges_truth": 927,
+    "import_edges_agree": 914,
+    "import_edges_fathom": 956,
+    "import_edges_truth": 914,
+    "import_oracle_out_of_scope": 15,
+    "import_oracle_unpaired": 13,
+    "imports": 971,
+    "imports_in_repo": 914,
+    "imports_resolved_agree": 914,
+    "imports_unattested": 42,
+    "kind_equal": 3046,
+    "matched": 3046,
+    "oracle_defs": 3054,
+    "range_eligible": 3046,
+    "range_ok": 3046
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 8,
+    "throughput_mb_s": 0.93,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 0.94,
+    "max_file_ms": 29,
+    "peak_module_pages": 510,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:HlslMacro": 729
+  },
+  "notes": [
+    "directx-graphics-samples: 108 of 360 measured files hold an ERROR or MISSING node as written; the dialect's pre-parse step reads 105 of them clean, and files_with_error counts the 3 it cannot mend, the files the extractor reads with an error",
+    "directx-graphics-samples: dxc-ast (dxc -T lib_6_3 -HV 2021 -ast-dump, run-chosen flags, no build database): 360 of 446 measured files in scope (their own unit, or a header of one, parses without error); 93 units with an error not read",
+    "directx-graphics-samples: dxc-ast: 0 definitions and 80 calls spelled on a #define line (a macro body) not written, macro-generated (counted per reading unit)",
+    "directx-graphics-samples: include-path resolution read 0 compile database(s); 0 quoted include(s) resolved only rooted at an ancestor directory of the includer; header-prototype binding bound 0 call(s) (caller file and name) to the one file defining the function (0 of them chosen among definers by the files the build compiles), left 0 unbound for two or more definers, 7 for no definer among the files read and 0 for definers the build does not compile",
+    "directx-graphics-samples: restricted to Libraries/D3D12RaytracingFallback/src/BitonicIndirectArgsCS.hlsl, Libraries/D3D12RaytracingFallback/src/BitonicInnerSortCS.hlsl, Libraries/D3D12RaytracingFallback/src/BitonicOuterSortCS.hlsl, Libraries/D3D12RaytracingFallback/src/BitonicPreSortCS.hlsl, Libraries/D3D12RaytracingFallback/src/BitonicSortCommon.hlsli, Libraries/D3D12RaytracingFallback/src/DebugLog.hlsli, Libraries/D3D12RaytracingFallback/src/DynamicIndexTest.hlsl, Libraries/D3D12RaytracingFallback/src/EmulatedPointer.hlsli, Libraries/D3D12RaytracingFallback/src/EmulatedPointerIntrinsics.hlsli, Libraries/D3D12RaytracingFallback/src/FallbackLayerUnitTests/DynamicIndexTest.hlsl, Libraries/D3D12RaytracingFallback/src/FallbackLayerUnitTests/ReadDataBuffer.hlsl, Libraries/D3D12RaytracingFallback/src/FallbackLayerUnitTests/ReadDataRWBuffer.hlsl, Libraries/D3D12RaytracingFallback/src/FallbackLayerUnitTests/ReadDataRWByteAddressBuffer.hlsl, Libraries/D3D12RaytracingFallback/src/FallbackLayerUnitTests/ReadDataRWTexture1D.hlsl, Libraries/D3D12RaytracingFallback/src/FallbackLayerUnitTests/ReadDataRWTexture1DArray.hlsl, Libraries/D3D12RaytracingFallback/src/FallbackLayerUnitTests/ReadDataRWTexture2D.hlsl, Libraries/D3D12RaytracingFallback/src/FallbackLayerUnitTests/ReadDataRWTexture2DArray.hlsl, Libraries/D3D12RaytracingFallback/src/FallbackLayerUnitTests/ReadDataRWTexture3D.hlsl, Libraries/D3D12RaytracingFallback/src/FallbackLayerUnitTests/ReadDataTexture1D.hlsl, Libraries/D3D12RaytracingFallback/src/FallbackLayerUnitTests/ReadDataTexture1DArray.hlsl, Libraries/D3D12RaytracingFallback/src/FallbackLayerUnitTests/ReadDataTexture2D.hlsl, Libraries/D3D12RaytracingFallback/src/FallbackLayerUnitTests/ReadDataTexture2DArray.hlsl, Libraries/D3D12RaytracingFallback/src/FallbackLayerUnitTests/ReadRootConstants.hlsl, Libraries/D3D12RaytracingFallback/src/FallbackLayerUnitTests/SharedReadData.hlsli, Libraries/D3D12RaytracingFallback/src/FallbackLayerUnitTests/SimpleRayTracing.hlsl, Libraries/D3D12RaytracingFallback/src/FallbackLayerUnitTests/SimpleRaygen.hlsl, Libraries/D3D12RaytracingFallback/src/FallbackLayerUnitTests/Validate.hlsli, Libraries/D3D12RaytracingFallback/src/GetBVHCompactedSize.hlsl, Libraries/D3D12RaytracingFallback/src/GpuBvh2Copy.hlsl, Libraries/D3D12RaytracingFallback/src/NullTraverseLib.hlsl, Libraries/D3D12RaytracingFallback/src/RayTracingHelper.hlsli, Libraries/D3D12RaytracingFallback/src/ShaderUtil.hlsli, Libraries/D3D12RaytracingFallback/src/StateMachineLib.hlsl, Libraries/D3D12RaytracingFallback/src/TopLevelLoadAABBs.hlsli, Libraries/D3D12RaytracingFallback/src/TopLevelLoadAABBsFromArrayOfInstances.hlsl, Libraries/D3D12RaytracingFallback/src/TopLevelLoadAABBsFromArrayOfPointers.hlsl, MiniEngine/Core/Shaders/AdaptExposureCS.hlsl, MiniEngine/Core/Shaders/AoBlurAndUpsampleCS.hlsli, MiniEngine/Core/Shaders/AoBlurUpsampleBlendOutCS.hlsl, MiniEngine/Core/Shaders/AoBlurUpsampleCS.hlsl, MiniEngine/Core/Shaders/AoBlurUpsamplePreMinBlendOutCS.hlsl, MiniEngine/Core/Shaders/AoBlurUpsamplePreMinCS.hlsl, MiniEngine/Core/Shaders/AoPrepareDepthBuffers1CS.hlsl, MiniEngine/Core/Shaders/AoPrepareDepthBuffers2CS.hlsl, MiniEngine/Core/Shaders/AoRender1CS.hlsl, MiniEngine/Core/Shaders/AoRender2CS.hlsl, MiniEngine/Core/Shaders/AoRenderCS.hlsli, MiniEngine/Core/Shaders/ApplyBloom2CS.hlsl, MiniEngine/Core/Shaders/ApplyBloomCS.hlsl, MiniEngine/Core/Shaders/AverageLumaCS.hlsl, MiniEngine/Core/Shaders/BicubicFilterFunctions.hlsli, MiniEngine/Core/Shaders/BicubicHorizontalUpsamplePS.hlsl, MiniEngine/Core/Shaders/BicubicUpsampleCS.hlsl, MiniEngine/Core/Shaders/BicubicUpsampleFast16CS.hlsl, MiniEngine/Core/Shaders/BicubicUpsampleFast24CS.hlsl, MiniEngine/Core/Shaders/BicubicUpsampleFast32CS.hlsl, MiniEngine/Core/Shaders/BicubicUpsampleGammaPS.hlsl, MiniEngine/Core/Shaders/BicubicUpsamplePS.hlsl, MiniEngine/Core/Shaders/BicubicVerticalUpsamplePS.hlsl, MiniEngine/Core/Shaders/BilinearUpsamplePS.hlsl, MiniEngine/Core/Shaders/Bitonic32InnerSortCS.hlsl, MiniEngine/Core/Shaders/Bitonic32OuterSortCS.hlsl, MiniEngine/Core/Shaders/Bitonic32PreSortCS.hlsl, MiniEngine/Core/Shaders/Bitonic64InnerSortCS.hlsl, MiniEngine/Core/Shaders/Bitonic64OuterSortCS.hlsl, MiniEngine/Core/Shaders/Bitonic64PreSortCS.hlsl, MiniEngine/Core/Shaders/BitonicIndirectArgsCS.hlsl, MiniEngine/Core/Shaders/BitonicSortCommon.hlsli, MiniEngine/Core/Shaders/BlendUIHDRPS.hlsl, MiniEngine/Core/Shaders/BloomExtractAndDownsampleHdrCS.hlsl, MiniEngine/Core/Shaders/BloomExtractAndDownsampleLdrCS.hlsl, MiniEngine/Core/Shaders/BlurCS.hlsl, MiniEngine/Core/Shaders/BoundNeighborhoodCS.hlsl, MiniEngine/Core/Shaders/BufferCopyPS.hlsl, MiniEngine/Core/Shaders/CameraMotionBlurPrePassCS.hlsl, MiniEngine/Core/Shaders/CameraMotionBlurPrePassLinearZCS.hlsl, MiniEngine/Core/Shaders/CameraVelocityCS.hlsl, MiniEngine/Core/Shaders/ColorSpaceUtility.hlsli, MiniEngine/Core/Shaders/CommonRS.hlsli, MiniEngine/Core/Shaders/CompositeHDRPS.hlsl, MiniEngine/Core/Shaders/CompositeSDRPS.hlsl, MiniEngine/Core/Shaders/CopyBackPostBufferCS.hlsl, MiniEngine/Core/Shaders/DebugDrawHistogramCS.hlsl, MiniEngine/Core/Shaders/DebugLuminanceHdr2CS.hlsl, MiniEngine/Core/Shaders/DebugLuminanceHdrCS.hlsl, MiniEngine/Core/Shaders/DebugLuminanceLdr2CS.hlsl, MiniEngine/Core/Shaders/DebugLuminanceLdrCS.hlsl, MiniEngine/Core/Shaders/DebugSSAOCS.hlsl, MiniEngine/Core/Shaders/DoFCombine2CS.hlsl, MiniEngine/Core/Shaders/DoFCombineCS.hlsl, MiniEngine/Core/Shaders/DoFCombineFast2CS.hlsl, MiniEngine/Core/Shaders/DoFCombineFastCS.hlsl, MiniEngine/Core/Shaders/DoFCommon.hlsli, MiniEngine/Core/Shaders/DoFDebugBlueCS.hlsl, MiniEngine/Core/Shaders/DoFDebugGreenCS.hlsl, MiniEngine/Core/Shaders/DoFDebugRedCS.hlsl, MiniEngine/Core/Shaders/DoFMedianFilterCS.hlsl, MiniEngine/Core/Shaders/DoFMedianFilterFixupCS.hlsl, MiniEngine/Core/Shaders/DoFMedianFilterSepAlphaCS.hlsl, MiniEngine/Core/Shaders/DoFPass1CS.hlsl, MiniEngine/Core/Shaders/DoFPass2CS.hlsl, MiniEngine/Core/Shaders/DoFPass2DebugCS.hlsl, MiniEngine/Core/Shaders/DoFPass2FastCS.hlsl, MiniEngine/Core/Shaders/DoFPass2FixupCS.hlsl, MiniEngine/Core/Shaders/DoFPreFilterCS.hlsl, MiniEngine/Core/Shaders/DoFPreFilterFastCS.hlsl, MiniEngine/Core/Shaders/DoFPreFilterFixupCS.hlsl, MiniEngine/Core/Shaders/DoFRS.hlsli, MiniEngine/Core/Shaders/DoFTilePassCS.hlsl, MiniEngine/Core/Shaders/DoFTilePassFixupCS.hlsl, MiniEngine/Core/Shaders/DownsampleBloomAllCS.hlsl, MiniEngine/Core/Shaders/DownsampleBloomCS.hlsl, MiniEngine/Core/Shaders/DownsampleDepthPS.hlsl, MiniEngine/Core/Shaders/ExtractLumaCS.hlsl, MiniEngine/Core/Shaders/FXAAPass1CS.hlsli, MiniEngine/Core/Shaders/FXAAPass1_Luma2_CS.hlsl, MiniEngine/Core/Shaders/FXAAPass1_Luma_CS.hlsl, MiniEngine/Core/Shaders/FXAAPass1_RGB2_CS.hlsl, MiniEngine/Core/Shaders/FXAAPass1_RGB_CS.hlsl, MiniEngine/Core/Shaders/FXAAPass2CS.hlsli, MiniEngine/Core/Shaders/FXAAPass2H2CS.hlsl, MiniEngine/Core/Shaders/FXAAPass2HCS.hlsl, MiniEngine/Core/Shaders/FXAAPass2HDebug2CS.hlsl, MiniEngine/Core/Shaders/FXAAPass2HDebugCS.hlsl, MiniEngine/Core/Shaders/FXAAPass2V2CS.hlsl, MiniEngine/Core/Shaders/FXAAPass2VCS.hlsl, MiniEngine/Core/Shaders/FXAAPass2VDebug2CS.hlsl, MiniEngine/Core/Shaders/FXAAPass2VDebugCS.hlsl, MiniEngine/Core/Shaders/FXAAResolveWorkQueueCS.hlsl, MiniEngine/Core/Shaders/FXAARootSignature.hlsli, MiniEngine/Core/Shaders/GenerateHistogramCS.hlsl, MiniEngine/Core/Shaders/GenerateMipsCS.hlsli, MiniEngine/Core/Shaders/GenerateMipsGammaCS.hlsl, MiniEngine/Core/Shaders/GenerateMipsGammaOddCS.hlsl, MiniEngine/Core/Shaders/GenerateMipsGammaOddXCS.hlsl, MiniEngine/Core/Shaders/GenerateMipsGammaOddYCS.hlsl, MiniEngine/Core/Shaders/GenerateMipsLinearCS.hlsl, MiniEngine/Core/Shaders/GenerateMipsLinearOddCS.hlsl, MiniEngine/Core/Shaders/GenerateMipsLinearOddXCS.hlsl, MiniEngine/Core/Shaders/GenerateMipsLinearOddYCS.hlsl, MiniEngine/Core/Shaders/LanczosCS.hlsl, MiniEngine/Core/Shaders/LanczosFast16CS.hlsl, MiniEngine/Core/Shaders/LanczosFast24CS.hlsl, MiniEngine/Core/Shaders/LanczosFast32CS.hlsl, MiniEngine/Core/Shaders/LanczosFunctions.hlsli, MiniEngine/Core/Shaders/LanczosHorizontalPS.hlsl, MiniEngine/Core/Shaders/LanczosVerticalPS.hlsl, MiniEngine/Core/Shaders/LinearizeDepthCS.hlsl, MiniEngine/Core/Shaders/MagnifyPixelsPS.hlsl, MiniEngine/Core/Shaders/MotionBlurFinalPassCS.hlsl, MiniEngine/Core/Shaders/MotionBlurFinalPassPS.hlsl, MiniEngine/Core/Shaders/MotionBlurPrePassCS.hlsl, MiniEngine/Core/Shaders/MotionBlurRS.hlsli, MiniEngine/Core/Shaders/ParticleBinCullingCS.hlsl, MiniEngine/Core/Shaders/ParticleDepthBoundsCS.hlsl, MiniEngine/Core/Shaders/ParticleDispatchIndirectArgsCS.hlsl, MiniEngine/Core/Shaders/ParticleFinalDispatchIndirectArgsCS.hlsl, MiniEngine/Core/Shaders/ParticleLargeBinCullingCS.hlsl, MiniEngine/Core/Shaders/ParticleNoSortVS.hlsl, MiniEngine/Core/Shaders/ParticlePS.hlsl, MiniEngine/Core/Shaders/ParticlePreSortCS.hlsl, MiniEngine/Core/Shaders/ParticleRS.hlsli, MiniEngine/Core/Shaders/ParticleSortIndirectArgsCS.hlsl, MiniEngine/Core/Shaders/ParticleSpawnCS.hlsl, MiniEngine/Core/Shaders/ParticleTileCullingCS.hlsl, MiniEngine/Core/Shaders/ParticleTileRender2CS.hlsl, MiniEngine/Core/Shaders/ParticleTileRenderCS.hlsl, MiniEngine/Core/Shaders/ParticleTileRenderFast2CS.hlsl, MiniEngine/Core/Shaders/ParticleTileRenderFastCS.hlsl, MiniEngine/Core/Shaders/ParticleTileRenderFastDynamic2CS.hlsl, MiniEngine/Core/Shaders/ParticleTileRenderFastDynamicCS.hlsl, MiniEngine/Core/Shaders/ParticleTileRenderFastLowRes2CS.hlsl, MiniEngine/Core/Shaders/ParticleTileRenderFastLowResCS.hlsl, MiniEngine/Core/Shaders/ParticleTileRenderSlowDynamic2CS.hlsl, MiniEngine/Core/Shaders/ParticleTileRenderSlowDynamicCS.hlsl, MiniEngine/Core/Shaders/ParticleTileRenderSlowLowRes2CS.hlsl, MiniEngine/Core/Shaders/ParticleTileRenderSlowLowResCS.hlsl, MiniEngine/Core/Shaders/ParticleUpdateCS.hlsl, MiniEngine/Core/Shaders/ParticleUpdateCommon.hlsli, MiniEngine/Core/Shaders/ParticleUtility.hlsli, MiniEngine/Core/Shaders/ParticleVS.hlsl, MiniEngine/Core/Shaders/PerfGraphBackgroundVS.hlsl, MiniEngine/Core/Shaders/PerfGraphPS.hlsl, MiniEngine/Core/Shaders/PerfGraphRS.hlsli, MiniEngine/Core/Shaders/PerfGraphVS.hlsl, MiniEngine/Core/Shaders/PixelPacking.hlsli, MiniEngine/Core/Shaders/PixelPacking_R11G11B10.hlsli, MiniEngine/Core/Shaders/PixelPacking_RGBE.hlsli, MiniEngine/Core/Shaders/PixelPacking_RGBM.hlsli, MiniEngine/Core/Shaders/PixelPacking_Velocity.hlsli, MiniEngine/Core/Shaders/PostEffectsRS.hlsli, MiniEngine/Core/Shaders/PresentHDRPS.hlsl, MiniEngine/Core/Shaders/PresentRS.hlsli, MiniEngine/Core/Shaders/PresentSDRPS.hlsl, MiniEngine/Core/Shaders/ResolveTAACS.hlsl, MiniEngine/Core/Shaders/SSAORS.hlsli, MiniEngine/Core/Shaders/ScaleAndCompositeHDRPS.hlsl, MiniEngine/Core/Shaders/ScaleAndCompositeSDRPS.hlsl, MiniEngine/Core/Shaders/ScreenQuadCommonVS.hlsl, MiniEngine/Core/Shaders/ScreenQuadPresentVS.hlsl, MiniEngine/Core/Shaders/ShaderUtility.hlsli, MiniEngine/Core/Shaders/SharpenTAACS.hlsl, MiniEngine/Core/Shaders/SharpeningUpsampleGammaPS.hlsl, MiniEngine/Core/Shaders/SharpeningUpsamplePS.hlsl, MiniEngine/Core/Shaders/TemporalBlendCS.hlsl, MiniEngine/Core/Shaders/TextAntialiasPS.hlsl, MiniEngine/Core/Shaders/TextRS.hlsli, MiniEngine/Core/Shaders/TextShadowPS.hlsl, MiniEngine/Core/Shaders/TextVS.hlsl, MiniEngine/Core/Shaders/ToneMap2CS.hlsl, MiniEngine/Core/Shaders/ToneMapCS.hlsl, MiniEngine/Core/Shaders/ToneMapHDR2CS.hlsl, MiniEngine/Core/Shaders/ToneMapHDRCS.hlsl, MiniEngine/Core/Shaders/ToneMappingUtility.hlsli, MiniEngine/Core/Shaders/UpsampleAndBlurCS.hlsl, MiniEngine/Model/Shaders/Common.hlsli, MiniEngine/Model/Shaders/CutoutDepthPS.hlsl, MiniEngine/Model/Shaders/CutoutDepthSkinVS.hlsl, MiniEngine/Model/Shaders/CutoutDepthVS.hlsl, MiniEngine/Model/Shaders/DefaultNoTangentNoUV1PS.hlsl, MiniEngine/Model/Shaders/DefaultNoTangentNoUV1SkinVS.hlsl, MiniEngine/Model/Shaders/DefaultNoTangentNoUV1VS.hlsl, MiniEngine/Model/Shaders/DefaultNoTangentPS.hlsl, MiniEngine/Model/Shaders/DefaultNoTangentSkinVS.hlsl, MiniEngine/Model/Shaders/DefaultNoTangentVS.hlsl, MiniEngine/Model/Shaders/DefaultNoUV1PS.hlsl, MiniEngine/Model/Shaders/DefaultNoUV1SkinVS.hlsl, MiniEngine/Model/Shaders/DefaultNoUV1VS.hlsl, MiniEngine/Model/Shaders/DefaultPS.hlsl, MiniEngine/Model/Shaders/DefaultSkinVS.hlsl, MiniEngine/Model/Shaders/DefaultVS.hlsl, MiniEngine/Model/Shaders/DepthOnlySkinVS.hlsl, MiniEngine/Model/Shaders/DepthOnlyVS.hlsl, MiniEngine/Model/Shaders/DepthViewerPS.hlsl, MiniEngine/Model/Shaders/DepthViewerVS.hlsl, MiniEngine/Model/Shaders/FillLightGridCS.hlsli, MiniEngine/Model/Shaders/FillLightGridCS_16.hlsl, MiniEngine/Model/Shaders/FillLightGridCS_24.hlsl, MiniEngine/Model/Shaders/FillLightGridCS_32.hlsl, MiniEngine/Model/Shaders/FillLightGridCS_8.hlsl, MiniEngine/Model/Shaders/LightGrid.hlsli, MiniEngine/Model/Shaders/Lighting.hlsli, MiniEngine/Model/Shaders/ModelViewerPS.hlsl, MiniEngine/Model/Shaders/ModelViewerVS.hlsl, MiniEngine/Model/Shaders/SkyboxPS.hlsl, MiniEngine/Model/Shaders/SkyboxVS.hlsl, Samples/Desktop/D3D1211On12/src/shaders.hlsl, Samples/Desktop/D3D12Bundles/src/shader_mesh_alt_pixel.hlsl, Samples/Desktop/D3D12Bundles/src/shader_mesh_simple_pixel.hlsl, Samples/Desktop/D3D12Bundles/src/shader_mesh_simple_vert.hlsl, Samples/Desktop/D3D12DepthBoundsTest/src/shaders.hlsl, Samples/Desktop/D3D12DynamicIndexing/src/shader_mesh_dynamic_indexing_pixel.hlsl, Samples/Desktop/D3D12DynamicIndexing/src/shader_mesh_simple_vert.hlsl, Samples/Desktop/D3D12ExecuteIndirect/src/compute.hlsl, Samples/Desktop/D3D12ExecuteIndirect/src/shaders.hlsl, Samples/Desktop/D3D12Fullscreen/src/postShaders.hlsl, Samples/Desktop/D3D12Fullscreen/src/sceneShaders.hlsl, Samples/Desktop/D3D12HDR/src/color.hlsli, Samples/Desktop/D3D12HDR/src/gradient.hlsli, Samples/Desktop/D3D12HDR/src/gradientPS.hlsl, Samples/Desktop/D3D12HDR/src/gradientVS.hlsl, Samples/Desktop/D3D12HDR/src/palette.hlsli, Samples/Desktop/D3D12HDR/src/palettePS.hlsl, Samples/Desktop/D3D12HDR/src/paletteVS.hlsl, Samples/Desktop/D3D12HDR/src/present.hlsli, Samples/Desktop/D3D12HDR/src/presentPS.hlsl, Samples/Desktop/D3D12HDR/src/presentVS.hlsl, Samples/Desktop/D3D12HelloWorld/src/HelloBundles/shaders.hlsl, Samples/Desktop/D3D12HelloWorld/src/HelloConstBuffers/shaders.hlsl, Samples/Desktop/D3D12HelloWorld/src/HelloFrameBuffering/shaders.hlsl, Samples/Desktop/D3D12HelloWorld/src/HelloGenericPrograms/shaders.hlsl, Samples/Desktop/D3D12HelloWorld/src/HelloMeshNodes/shaders.hlsl, Samples/Desktop/D3D12HelloWorld/src/HelloPartialGraphicsPrograms/shaders.hlsl, Samples/Desktop/D3D12HelloWorld/src/HelloTexture/shaders.hlsl, Samples/Desktop/D3D12HelloWorld/src/HelloTriangle/shaders.hlsl, Samples/Desktop/D3D12HelloWorld/src/WorkGraphsSandbox/D3D12WorkGraphsSandbox.hlsl, Samples/Desktop/D3D12HeterogeneousMultiadapter/src/blurShaders.hlsl, Samples/Desktop/D3D12HeterogeneousMultiadapter/src/shaders.hlsl, Samples/Desktop/D3D12LinkedGpus/src/LinkedGpus/Post.hlsli, Samples/Desktop/D3D12LinkedGpus/src/LinkedGpus/PostPS.hlsl, Samples/Desktop/D3D12LinkedGpus/src/LinkedGpus/PostVS.hlsl, Samples/Desktop/D3D12LinkedGpus/src/LinkedGpus/Scene.hlsli, Samples/Desktop/D3D12LinkedGpus/src/LinkedGpus/ScenePS.hlsl, Samples/Desktop/D3D12LinkedGpus/src/LinkedGpus/SceneVS.hlsl, Samples/Desktop/D3D12LinkedGpus/src/LinkedGpusAffinity/Post.hlsli, Samples/Desktop/D3D12LinkedGpus/src/LinkedGpusAffinity/PostPS.hlsl, Samples/Desktop/D3D12LinkedGpus/src/LinkedGpusAffinity/PostVS.hlsl, Samples/Desktop/D3D12LinkedGpus/src/LinkedGpusAffinity/Scene.hlsli, Samples/Desktop/D3D12LinkedGpus/src/LinkedGpusAffinity/ScenePS.hlsl, Samples/Desktop/D3D12LinkedGpus/src/LinkedGpusAffinity/SceneVS.hlsl, Samples/Desktop/D3D12LinkedGpus/src/SingleGpu/Post.hlsli, Samples/Desktop/D3D12LinkedGpus/src/SingleGpu/PostPS.hlsl, Samples/Desktop/D3D12LinkedGpus/src/SingleGpu/PostVS.hlsl, Samples/Desktop/D3D12LinkedGpus/src/SingleGpu/Scene.hlsli, Samples/Desktop/D3D12LinkedGpus/src/SingleGpu/ScenePS.hlsl, Samples/Desktop/D3D12LinkedGpus/src/SingleGpu/SceneVS.hlsl, Samples/Desktop/D3D12MeshShaders/src/DynamicLOD/Common.hlsli, Samples/Desktop/D3D12MeshShaders/src/DynamicLOD/MeshletAS.hlsl, Samples/Desktop/D3D12MeshShaders/src/DynamicLOD/MeshletMS.hlsl, Samples/Desktop/D3D12MeshShaders/src/DynamicLOD/MeshletPS.hlsl, Samples/Desktop/D3D12MeshShaders/src/MeshletCull/BoundingSphereMS.hlsl, Samples/Desktop/D3D12MeshShaders/src/MeshletCull/DebugDrawPS.hlsl, Samples/Desktop/D3D12MeshShaders/src/MeshletCull/FrustumMS.hlsl, Samples/Desktop/D3D12MeshShaders/src/MeshletCull/MeshletAS.hlsl, Samples/Desktop/D3D12MeshShaders/src/MeshletCull/MeshletCommon.hlsli, Samples/Desktop/D3D12MeshShaders/src/MeshletCull/MeshletMS.hlsl, Samples/Desktop/D3D12MeshShaders/src/MeshletCull/MeshletPS.hlsl, Samples/Desktop/D3D12MeshShaders/src/MeshletCull/MeshletUtils.hlsli, Samples/Desktop/D3D12MeshShaders/src/MeshletCull/NormalConeMS.hlsl, Samples/Desktop/D3D12MeshShaders/src/MeshletCull/VisualizerCommon.hlsli, Samples/Desktop/D3D12MeshShaders/src/MeshletInstancing/MeshletMS.hlsl, Samples/Desktop/D3D12MeshShaders/src/MeshletInstancing/MeshletPS.hlsl, Samples/Desktop/D3D12MeshShaders/src/MeshletRender/MeshletMS.hlsl, Samples/Desktop/D3D12MeshShaders/src/MeshletRender/MeshletPS.hlsl, Samples/Desktop/D3D12Multithreading/src/shaders.hlsl, Samples/Desktop/D3D12On7/src/shaders.hlsl, Samples/Desktop/D3D12PipelineStateCache/src/BlitPixelShader.hlsl, Samples/Desktop/D3D12PipelineStateCache/src/BlurPixelShader.hlsl, Samples/Desktop/D3D12PipelineStateCache/src/DistortPixelShader.hlsl, Samples/Desktop/D3D12PipelineStateCache/src/EdgeDetectPixelShader.hlsl, Samples/Desktop/D3D12PipelineStateCache/src/GrayScalePixelShader.hlsl, Samples/Desktop/D3D12PipelineStateCache/src/InvertPixelShader.hlsl, Samples/Desktop/D3D12PipelineStateCache/src/PixelatePixelShader.hlsl, Samples/Desktop/D3D12PipelineStateCache/src/QuadVertexShader.hlsl, Samples/Desktop/D3D12PipelineStateCache/src/SimplePixelShader.hlsl, Samples/Desktop/D3D12PipelineStateCache/src/SimpleVertexShader.hlsl, Samples/Desktop/D3D12PipelineStateCache/src/UberPixelShader.hlsl, Samples/Desktop/D3D12PipelineStateCache/src/WarpPixelShader.hlsl, Samples/Desktop/D3D12PipelineStateCache/src/WavePixelShader.hlsl, Samples/Desktop/D3D12PredicationQueries/src/shaders.hlsl, Samples/Desktop/D3D12Raytracing/src/D3D12RaytracingHelloWorld/Raytracing.hlsl, Samples/Desktop/D3D12Raytracing/src/D3D12RaytracingRealTimeDenoisedAmbientOcclusion/RTAO/Shaders/Denoising/Kernels.hlsli, Samples/Desktop/D3D12Raytracing/src/D3D12RaytracingRealTimeDenoisedAmbientOcclusion/RTAO/Shaders/RTAO.hlsli, Samples/Desktop/D3D12Raytracing/src/D3D12RaytracingRealTimeDenoisedAmbientOcclusion/RTAO/Shaders/RandomNumberGenerator.hlsli, Samples/Desktop/D3D12Raytracing/src/D3D12RaytracingRealTimeDenoisedAmbientOcclusion/RTAO/Shaders/Ray sorting/RaySorting.hlsli, Samples/Desktop/D3D12Raytracing/src/D3D12RaytracingRealTimeDenoisedAmbientOcclusion/SampleCore/Shaders/HlslCompat.hlsli, Samples/Desktop/D3D12Raytracing/src/D3D12RaytracingSakuraForestSER/Star.hlsli, Samples/Desktop/D3D12ReservedResources/src/shaders.hlsl, Samples/Desktop/D3D12Residency/src/shaders.hlsl, Samples/Desktop/D3D12SM6WaveIntrinsics/src/magnify.hlsl, Samples/Desktop/D3D12SM6WaveIntrinsics/src/wave.hlsl, Samples/Desktop/D3D12SmallResources/src/shaders.hlsl, Samples/Desktop/D3D12StateObjectDatabase/src/NoRootSignaturePS.hlsl, Samples/Desktop/D3D12StateObjectDatabase/src/NoRootSignatureVS.hlsl, Samples/Desktop/D3D12StateObjectDatabase/src/PositionColorPS.hlsl, Samples/Desktop/D3D12StateObjectDatabase/src/PositionColorVS.hlsl, Samples/Desktop/D3D12StateObjectDatabase/src/RayTracing.hlsl, Samples/Desktop/D3D12StateObjectDatabase/src/RootSignaturePS.hlsl, Samples/Desktop/D3D12StateObjectDatabase/src/RootSignatureVS.hlsl, Samples/Desktop/D3D12VariableRateShading/src/Common.hlsli, Samples/Desktop/D3D12VariableRateShading/src/Glass.hlsl, Samples/Desktop/D3D12VariableRateShading/src/PostprocessPass.hlsl, Samples/Desktop/D3D12VariableRateShading/src/ShadowsAndScenePass.hlsl, Samples/Desktop/D3D12nBodyGravity/src/ParticleDraw.hlsl, Samples/Desktop/D3D12nBodyGravity/src/nBodyGravityCS.hlsl, Samples/Desktop/D3D12xGPU/src/Common.hlsli, Samples/Desktop/D3D12xGPU/src/PostprocessPass.hlsl, Samples/Desktop/D3D12xGPU/src/ShadowsAndScenePass.hlsl, TechniqueDemos/D3D12MemoryManagement/src/Color.hlsl, TechniqueDemos/D3D12MemoryManagement/src/Texture.hlsl (-only; the files outside are a disclosed gap, not measured)",
+    "directxtk12: 13 of 21 measured files hold an ERROR or MISSING node as written; the dialect's pre-parse step reads 13 of them clean, and files_with_error counts the 0 it cannot mend, the files the extractor reads with an error",
+    "directxtk12: dxc-ast (dxc -T lib_6_3 -HV 2021 -ast-dump, run-chosen flags, no build database): 21 of 21 measured files in scope (their own unit, or a header of one, parses without error); 4 units with an error not read",
+    "directxtk12: dxc-ast: 0 definitions and 0 calls spelled on a #define line (a macro body) not written, macro-generated (counted per reading unit)",
+    "directxtk12: include-path resolution read 0 compile database(s); 0 quoted include(s) resolved only rooted at an ancestor directory of the includer; header-prototype binding bound 0 call(s) (caller file and name) to the one file defining the function (0 of them chosen among definers by the files the build compiles), left 0 unbound for two or more definers, 0 for no definer among the files read and 0 for definers the build does not compile",
+    "directxtk12: restricted to Src/Shaders/AlphaTestEffect.fx, Src/Shaders/BasicEffect.fx, Src/Shaders/Common.fxh, Src/Shaders/DebugEffect.fx, Src/Shaders/DualTextureEffect.fx, Src/Shaders/EnvironmentMapEffect.fx, Src/Shaders/GenerateMips.hlsl, Src/Shaders/Lighting.fxh, Src/Shaders/NPREffect.fx, Src/Shaders/NormalMapEffect.fx, Src/Shaders/PBRCommon.fxh, Src/Shaders/PBREffect.fx, Src/Shaders/PixelPacking_Velocity.hlsli, Src/Shaders/PostProcess.fx, Src/Shaders/RootSig.fxh, Src/Shaders/SkinnedEffect.fx, Src/Shaders/Skinning.fxh, Src/Shaders/SpriteEffect.fx, Src/Shaders/Structures.fxh, Src/Shaders/ToneMap.fx, Src/Shaders/Utilities.fxh (-only; the files outside are a disclosed gap, not measured)",
+    "file_edge_precision and file_edge_recall measured against an import dump's (file, imported file) pairs, there being no SCIP index: the truth is what each file's import statements name, not the files its references reach as a SCIP index's cross-file edges are, so a file reached without an import of its own (a file another one required, an autoloaded constant) is outside the truth and a resolved edge to it counts against precision, while a file imported and never referenced is in it (LB-F57)",
+    "import_resolution: 914 of 914 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 0.9561 (914 of 956) and recall 1 (914 of 914); 42 of 971 imports resolved where the oracle names no file of the subject; 13 oracle imports on no statement fathom extracted; 15 oracle import targets outside the files measured",
+    "kajiya: 17 of 160 measured files hold an ERROR or MISSING node as written; the dialect's pre-parse step reads 12 of them clean, and files_with_error counts the 5 it cannot mend, the files the extractor reads with an error",
+    "kajiya: dxc-ast (dxc -T lib_6_3 -HV 2021 -ast-dump, run-chosen flags, no build database): 160 of 177 measured files in scope (their own unit, or a header of one, parses without error); 43 units with an error not read",
+    "kajiya: dxc-ast: 75 definitions and 42 calls spelled on a #define line (a macro body) not written, macro-generated (counted per reading unit)",
+    "kajiya: include-path resolution read 0 compile database(s); 0 quoted include(s) resolved only rooted at an ancestor directory of the includer; header-prototype binding bound 0 call(s) (caller file and name) to the one file defining the function (0 of them chosen among definers by the files the build compiles), left 0 unbound for two or more definers, 0 for no definer among the files read and 0 for definers the build does not compile",
+    "kajiya: restricted to assets/shaders/blur.hlsl, assets/shaders/calculate_reprojection_map.hlsl, assets/shaders/convolve_cube.hlsl, assets/shaders/copy_color.hlsl, assets/shaders/copy_depth_to_r.hlsl, assets/shaders/dof/coc.hlsl, assets/shaders/dof/gather.hlsl, assets/shaders/extract_half_res_depth.hlsl, assets/shaders/extract_half_res_gbuffer_view_normal_rgba8.hlsl, assets/shaders/extract_half_res_ssao.hlsl, assets/shaders/final_blit.hlsl, assets/shaders/ibl/ibl_cube.hlsl, assets/shaders/inc/atmosphere.hlsl, assets/shaders/inc/atmosphere_felix.hlsl, assets/shaders/inc/bilinear.hlsl, assets/shaders/inc/bindless.hlsl, assets/shaders/inc/bindless_textures.hlsl, assets/shaders/inc/blue_noise.hlsl, assets/shaders/inc/brdf.hlsl, assets/shaders/inc/brdf_lut.hlsl, assets/shaders/inc/color.hlsl, assets/shaders/inc/color/bezold_brucke.hlsl, assets/shaders/inc/color/display_transform.hlsl, assets/shaders/inc/color/helmholtz_kohlrausch.hlsl, assets/shaders/inc/color/ictcp.hlsl, assets/shaders/inc/color/ipt.hlsl, assets/shaders/inc/color/lab.hlsl, assets/shaders/inc/color/luv.hlsl, assets/shaders/inc/color/math.hlsl, assets/shaders/inc/color/oklab.hlsl, assets/shaders/inc/color/srgb.hlsl, assets/shaders/inc/color/standard_observer.hlsl, assets/shaders/inc/color/xyz.hlsl, assets/shaders/inc/color/ycbcr.hlsl, assets/shaders/inc/cube_map.hlsl, assets/shaders/inc/curve.hlsl, assets/shaders/inc/frame_constants.hlsl, assets/shaders/inc/gbuffer.hlsl, assets/shaders/inc/hash.hlsl, assets/shaders/inc/image.hlsl, assets/shaders/inc/layered_brdf.hlsl, assets/shaders/inc/lights/packed.hlsl, assets/shaders/inc/lights/triangle.hlsl, assets/shaders/inc/math.hlsl, assets/shaders/inc/math_const.hlsl, assets/shaders/inc/mesh.hlsl, assets/shaders/inc/morton.hlsl, assets/shaders/inc/pack_unpack.hlsl, assets/shaders/inc/quasi_random.hlsl, assets/shaders/inc/ray_cone.hlsl, assets/shaders/inc/reservoir.hlsl, assets/shaders/inc/rt.hlsl, assets/shaders/inc/samplers.hlsl, assets/shaders/inc/sh.hlsl, assets/shaders/inc/soft_color_clamp.hlsl, assets/shaders/inc/sun.hlsl, assets/shaders/inc/unjitter_taa.hlsl, assets/shaders/inc/uv.hlsl, assets/shaders/inc/working_color_space.hlsl, assets/shaders/ircache/age_ircache_entries.hlsl, assets/shaders/ircache/bindings.hlsl, assets/shaders/ircache/clear_ircache_pool.hlsl, assets/shaders/ircache/ircache_compact_entries.hlsl, assets/shaders/ircache/ircache_constants.hlsl, assets/shaders/ircache/ircache_draw_debug.hlsl, assets/shaders/ircache/ircache_grid.hlsl, assets/shaders/ircache/ircache_sampler_common.inc.hlsl, assets/shaders/ircache/ircache_trace_common.inc.hlsl, assets/shaders/ircache/ircache_validate.rgen.hlsl, assets/shaders/ircache/lookup.hlsl, assets/shaders/ircache/prepare_age_dispatch_args.hlsl, assets/shaders/ircache/prepare_trace_dispatch_args.hlsl, assets/shaders/ircache/raster_origins_ps.hlsl, assets/shaders/ircache/raster_origins_vs.hlsl, assets/shaders/ircache/reset_entry.hlsl, assets/shaders/ircache/scroll_cascades.hlsl, assets/shaders/ircache/sum_up_irradiance.hlsl, assets/shaders/ircache/trace_accessibility.rgen.hlsl, assets/shaders/ircache/trace_irradiance.rgen.hlsl, assets/shaders/light_gbuffer.hlsl, assets/shaders/lighting/spatial_reuse_lights.hlsl, assets/shaders/lut/bezold_brucke.hlsl, assets/shaders/lut/brdf_fg.hlsl, assets/shaders/motion_blur/motion_blur.hlsl, assets/shaders/motion_blur/velocity_dilate.hlsl, assets/shaders/motion_blur/velocity_reduce_x.hlsl, assets/shaders/motion_blur/velocity_reduce_y.hlsl, assets/shaders/old/sdf/clear_bricks_meta.hlsl, assets/shaders/old/sdf/find_bricks.hlsl, assets/shaders/old/sdf/gen_empty_sdf.hlsl, assets/shaders/old/sdf/sdf_consts.hlsl, assets/shaders/post/luminance_histogram_calculate.hlsl, assets/shaders/post/luminance_histogram_clear.hlsl, assets/shaders/post/luminance_histogram_common.hlsl, assets/shaders/post/luminance_histogram_copy.hlsl, assets/shaders/post_combine.hlsl, assets/shaders/prefix_scan/inclusive_prefix_scan.hlsl, assets/shaders/prefix_scan/inclusive_prefix_scan_merge.hlsl, assets/shaders/prefix_scan/inclusive_prefix_scan_segments.hlsl, assets/shaders/raster_simple_ps.hlsl, assets/shaders/raster_simple_vs.hlsl, assets/shaders/rt/gbuffer.rchit.hlsl, assets/shaders/rt/gbuffer.rmiss.hlsl, assets/shaders/rt/reference_path_trace.rgen.hlsl, assets/shaders/rt/shadow.rmiss.hlsl, assets/shaders/rt/trace_sun_shadow_mask.rgen.hlsl, assets/shaders/rtdgi/candidate_ray_dir.hlsl, assets/shaders/rtdgi/diffuse_trace_common.inc.hlsl, assets/shaders/rtdgi/diffuse_validate.rgen.hlsl, assets/shaders/rtdgi/fullres_reproject.hlsl, assets/shaders/rtdgi/near_field_settings.hlsl, assets/shaders/rtdgi/occlusion_raymarch.hlsl, assets/shaders/rtdgi/restir_check.rgen.hlsl, assets/shaders/rtdgi/restir_resolve.hlsl, assets/shaders/rtdgi/restir_spatial.hlsl, assets/shaders/rtdgi/restir_temporal.hlsl, assets/shaders/rtdgi/rtdgi_common.hlsl, assets/shaders/rtdgi/rtdgi_restir_settings.hlsl, assets/shaders/rtdgi/spatial_filter.hlsl, assets/shaders/rtdgi/temporal_filter.hlsl, assets/shaders/rtdgi/temporal_validity_integrate.hlsl, assets/shaders/rtdgi/trace_diffuse.rgen.hlsl, assets/shaders/rtr/reflection.rgen.hlsl, assets/shaders/rtr/reflection_trace_common.inc.hlsl, assets/shaders/rtr/reflection_validate.rgen.hlsl, assets/shaders/rtr/resolve.hlsl, assets/shaders/rtr/rtr_restir_pack_unpack.inc.hlsl, assets/shaders/rtr/rtr_restir_temporal.hlsl, assets/shaders/rtr/rtr_settings.hlsl, assets/shaders/rtr/spatial_cleanup.hlsl, assets/shaders/rtr/temporal_filter.hlsl, assets/shaders/shadow_denoise/bitpack_shadow_mask.hlsl, assets/shaders/shadow_denoise/ffx/ffx_denoiser_shadows_filter.hlsl, assets/shaders/shadow_denoise/ffx/ffx_denoiser_shadows_prepare.hlsl, assets/shaders/shadow_denoise/ffx/ffx_denoiser_shadows_tileclassification.hlsl, assets/shaders/shadow_denoise/ffx/ffx_denoiser_shadows_util.hlsl, assets/shaders/shadow_denoise/megakernel.hlsl, assets/shaders/shadow_denoise/spatial_filter.hlsl, assets/shaders/sky/comp_cube.hlsl, assets/shaders/ssgi/spatial_filter.hlsl, assets/shaders/ssgi/ssgi.hlsl, assets/shaders/ssgi/temporal_filter.hlsl, assets/shaders/ssgi/upsample.hlsl, assets/shaders/ssgi/ussgi.hlsl, assets/shaders/taa/filter_history.hlsl, assets/shaders/taa/filter_input.hlsl, assets/shaders/taa/filter_prob.hlsl, assets/shaders/taa/filter_prob2.hlsl, assets/shaders/taa/input_prob.hlsl, assets/shaders/taa/input_variance.hlsl, assets/shaders/taa/input_variance_erode.hlsl, assets/shaders/taa/reproject_history.hlsl, assets/shaders/taa/taa.hlsl, assets/shaders/taa/taa_common.hlsl, assets/shaders/wrc/bindings.hlsl, assets/shaders/wrc/lookup.hlsl, assets/shaders/wrc/trace_wrc.rgen.hlsl, assets/shaders/wrc/wrc_intersect_probe_grid.hlsl, assets/shaders/wrc/wrc_see_through.rgen.hlsl, assets/shaders/wrc/wrc_settings.hlsl (-only; the files outside are a disclosed gap, not measured)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "throughput (design 1.9 T1, T2): three runs at one commit in a cloud VM read 0.99, 0.89 and 0.93 MB/s (CPU basis, tenancy throughput_mb_s); the committed reading is the median run, 0.93 MB/s CPU (0.94 wall), under the 1 MB/s floor, so level_met is none here and the reading is re-measured on the development-machine class before anything cites it (T2); by its metrics alone it meets L2 (L1 excellent, L2 good: tier B), and L3 is unmet on file_edge_precision"
+  ],
+  "disposition": null
+}
