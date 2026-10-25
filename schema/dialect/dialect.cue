@@ -99,8 +99,10 @@ import "struct"
 	// (O148). "cpp-macros" blanks C++ decorator macros by where they are
 	// written and reads try and catch macros as the keywords, at equal byte
 	// length, then also blanks the conditional directive lines (O455).
-	// "cuda-macros" blanks `__align__(N)` and then runs the C++ step, at equal
-	// byte length (LB-Q-cuda). "objc-macros" reads `typedef NS_ENUM(T, Name)` and its siblings as
+	// "cuda-macros" blanks `__align__(N)` and explicit instantiations
+	// (`template class K<float>;`), reads `typeid` as `sizeof` (typeid of a
+	// builtin type), then runs the C++ step, at equal byte length (LB-Q-cuda).
+	// "objc-macros" reads `typedef NS_ENUM(T, Name)` and its siblings as
 	// `enum Name`, at equal byte length (LB-Q-objective-c). "jinja-templates"
 	// blanks a text line's `# ` and reads `in` / `not in` outside a for header
 	// as `==` / `!=`, at equal byte length (LB-Q-jinja2).
