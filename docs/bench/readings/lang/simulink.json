@@ -2,11 +2,11 @@
   "dialect": "simulink",
   "kind": "tooling",
   "target_level": "L3",
-  "level_met": "L3",
+  "level_met": "L2",
   "grade": {
     "L1": "good",
     "L2": "good",
-    "L3": "good",
+    "L3": "unmet",
     "L4": "not-applicable"
   },
   "measured_at": "2026-10-25",
@@ -267,7 +267,12 @@
   "notes": [
     "WEC-Sim/WEC-Sim: 1 files skipped by ingest's gates (oversize)",
     "WEC-Sim/WEC-Sim: 999 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
-    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "regraded at f5a7658 from the recorded subject counts (harness rules only; extraction as measured at 103adc4)"
   ],
-  "disposition": null
+  "disposition": null,
+  "l3_evidence": {
+    "min_references": 20,
+    "min_subjects": 2
+  }
 }
