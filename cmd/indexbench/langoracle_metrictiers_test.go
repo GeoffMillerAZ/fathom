@@ -69,3 +69,32 @@ func TestCmdLangOracleMetricTiers(t *testing.T) {
 		t.Errorf("an untiered call-site file: exit 0, want a refusal")
 	}
 }
+
+// TestCmdLangOracleSCIPTier (round 3 A2, F2): an index's tier is an input.
+// An index read from a translated compile database (-scip-tier B) caps every
+// metric it feeds at B, whatever the tier of the files beside it, and names
+// itself at B among the reading's oracles; a tier other than A-D is refused.
+func TestCmdLangOracleSCIPTier(t *testing.T) {
+	args := metricTiersSubject(t, "A", "-scip-tier", "B")
+	out := args[len(args)-5]
+	var stdout, stderr bytes.Buffer
+	if code := cmdLangOracle(args, &stdout, &stderr); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	r, rawOut := readValidReading(t, out)
+	for m, want := range map[string]string{"call_precision": "B", "call_recall": "B", "def_mapping": "B"} {
+		if got := r.MetricTiers[m]; got != want {
+			t.Errorf("metric_tiers[%s] = %q, want %q\n%s", m, got, want, rawOut)
+		}
+	}
+	named := false
+	for _, o := range r.Oracles {
+		named = named || (o.Tool == "scip-clang" && o.Tier == "B")
+	}
+	if !named {
+		t.Errorf("the index is not named at tier B: %+v", r.Oracles)
+	}
+	if code := cmdLangOracle(metricTiersSubject(t, "A", "-scip-tier", "AA"), &stdout, &stderr); code != 2 {
+		t.Errorf("-scip-tier AA: exit %d, want 2", code)
+	}
+}

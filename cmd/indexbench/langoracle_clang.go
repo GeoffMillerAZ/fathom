@@ -101,7 +101,13 @@ func fileEdgesOracleBlind(raw []byte, truth map[[2]string]bool, edges []core.Edg
 // C-R6, F5), so a clang CUDA translation's preprocessor or call sites lower
 // the index's tier-A metrics they settle.
 func feedTier(paths []string, keys ...string) (string, error) {
-	tier := "A"
+	return feedTierFrom("A", paths, keys...)
+}
+
+// feedTierFrom is feedTier starting from tier rather than A: the index's own
+// (-scip-tier, round 3 A2), so a translated database's index lowers what it
+// feeds even when every file beside it is tier A.
+func feedTierFrom(tier string, paths []string, keys ...string) (string, error) {
 	for _, p := range paths {
 		b, err := os.ReadFile(p)
 		if err != nil {

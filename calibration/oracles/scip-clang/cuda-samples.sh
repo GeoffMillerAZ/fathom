@@ -49,6 +49,32 @@ EOF
 done
 cp "$subj/build-nvcc/compile_commands.json" "$work/nvcc_compile_commands.json"
 
+# 2b (round 3 A2): the samples' own build with clang as its CUDA compiler. An index is tier A only when the subject's
+# own build wrote its database untranslated: when 90% of the .cu units it configures compile as written, that
+# database is the index's (tier A); otherwise the translation below is, at tier B. The counts are in clang-native.json.
+clang_args=(-S "$subj" -B "$subj/build-clang" -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CUDA_COMPILER=clang++
+  -DCMAKE_CUDA_ARCHITECTURES=52 -DCUDAToolkit_ROOT="$cuda" -DCMAKE_CUDA_FLAGS="--cuda-path=$cuda -Wno-unknown-cuda-version"
+  -DNVJITLINK_LIB="$lib/libcudart.so")
+PATH="$cuda/bin:$PATH" cmake "${clang_args[@]}" > "$work/cmake-clang.log" 2>&1 || true
+PATH="$cuda/bin:$PATH" python3 - "$subj/build-clang/compile_commands.json" "$work/clang-native.json" <<'EOF2'
+import collections, json, os, shlex, subprocess, sys
+from concurrent.futures import ThreadPoolExecutor
+db = [e for e in json.load(open(sys.argv[1])) if e["file"].endswith(".cu")] if os.path.exists(sys.argv[1]) else []
+def run(e):
+    a = shlex.split(e["command"]); i = a.index("-o"); a = a[:i] + ["-o", "/dev/null"] + a[i + 2:]
+    r = subprocess.run(a, cwd=e["directory"], capture_output=True, text=True)
+    return r.returncode == 0, sorted({l.strip() for l in r.stderr.splitlines() if "error:" in l})
+with ThreadPoolExecutor(4) as ex:
+    res = list(ex.map(run, db))
+ok = sum(1 for k, _ in res if k)
+errs = collections.Counter(l for k, ls in res if not k for l in ls)
+out = {"configured": len(db), "compiled": ok, "tier": "A" if db and ok * 10 >= len(db) * 9 else "B",
+       "errors": [{"count": n, "error": l} for l, n in sorted(errs.items(), key=lambda x: (-x[1], x[0]))[:8]]}
+json.dump(out, open(sys.argv[2], "w"), indent=1)
+print("clang-native:", out["configured"], "configure,", ok, "compile -> tier", out["tier"], file=sys.stderr)
+EOF2
+scip_tier=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["tier"])' "$work/clang-native.json")
+
 # 3 and 4: the derived databases.
 python3 - "$work" "$subj" "$cuda" <<'EOF'
 import json, os, re, shlex, subprocess, sys
@@ -101,6 +127,9 @@ json.dump([{k: v for k, v in c.items() if k != "archs"} for c in kept], open(os.
 print(len(nv), "cu entries;", len(host), "host passes;", len(kept), "clang compiles; lowest archs", sorted({c["archs"][0] for c in clang}), file=sys.stderr)
 EOF
 
+if [ "$scip_tier" = A ]; then # the samples' own clang build compiles: its database, untranslated, is the index's
+  cp "$subj/build-clang/compile_commands.json" "$subj/build/compile_commands.json"
+fi
 export PATH="$cuda/bin:$PATH"
 ( cd "$here/preproc" && go run . -subject "$subj" -compdb "$work/nvcc-device.json" -tier A > "$work/preproc-device.json" )
 ( cd "$here/preproc" && go run . -subject "$subj" -compdb "$work/nvcc-host.json" -tier A > "$work/preproc-host.json" )
@@ -128,12 +157,12 @@ out["version"] = a.get("version", "") + " (nvcc device and host passes, unioned)
 json.dump(out, open(os.path.join(w, "preproc.json"), "w"), indent=1)
 EOF
 bash "$here/run.sh" "$tools/bin/scip-clang" "$subj" "$subj/build" "$work/index.scip" 4
-( cd "$repo/calibration/oracles/clang-calls" && go run . -subject "$subj" -compdb "$subj/build/compile_commands.json" -jobs 4 -tier B > "$work/clang-calls.json" )
-( cd "$repo/calibration/oracles/clang-ast-defs" && go run . -subject "$subj" -compdb "$subj/build/compile_commands.json" -jobs 2 -tier B > "$work/preproc.ranges.json" )
+( cd "$repo/calibration/oracles/clang-calls" && go run . -subject "$subj" -compdb "$subj/build/compile_commands.json" -jobs 4 -tier "$scip_tier" > "$work/clang-calls.json" )
+( cd "$repo/calibration/oracles/clang-ast-defs" && go run . -subject "$subj" -compdb "$subj/build/compile_commands.json" -jobs 2 -tier "$scip_tier" > "$work/preproc.ranges.json" )
 
 cd "$repo"
 for i in $(seq 1 "$runs"); do
-  go run ./cmd/indexbench lang-oracle -dialect cuda -subject "$subj" -subject-name NVIDIA/cuda-samples -subject-sha "$sha" \
+  go run ./cmd/indexbench lang-oracle -dialect cuda -subject "$subj" -subject-name NVIDIA/cuda-samples -subject-sha "$sha" -scip-tier "$scip_tier" \
     -ctags "$tools/ctags" -scip "$work/index.scip" -tool-oracle "$work/preproc.json" -tool-oracle "$work/clang-calls.json" \
     -unmatched "$work/unmatched-$i.json" -out "$work/reading-$i.json" > "$work/lang-oracle-$i.log" 2>&1
 done
