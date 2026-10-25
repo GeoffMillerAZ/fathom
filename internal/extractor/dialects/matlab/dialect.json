@@ -22,7 +22,8 @@
   },
   "required_kinds": ["class", "function", "method", "property"],
   "oracle_kinds": {
-    "ctags": { "class": "class", "function": "function" }
+    "ctags": { "class": "class", "function": "function" },
+    "tool":  { "class": "class", "function": "function", "method": "method", "property": "property" }
   },
   "ctags": { "languages": ["MatLab"] },
   "qualify": { "chain_containers": true, "container_sep": ".", "method_sep": "." },

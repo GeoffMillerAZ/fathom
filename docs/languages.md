@@ -282,8 +282,8 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 reached (languages at L1 37, L1 excellent 25, L2 33, L3 27, L4 10; tool formats at target 67)
-Milestone M2 progress: languages at L1 37/45, at L1 excellent 25/35, at L2 33/25, at L3 27/14, at L4 10/10; tool formats at target 67/30
+Milestone M1 reached (languages at L1 38, L1 excellent 26, L2 33, L3 27, L4 10; tool formats at target 67)
+Milestone M2 progress: languages at L1 38/45, at L1 excellent 26/35, at L2 33/25, at L3 27/14, at L4 10/10; tool formats at target 67/30
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -336,7 +336,7 @@ Milestone M2 progress: languages at L1 37/45, at L1 excellent 25/35, at L2 33/25
 | Composer manifests (composer.json) | tool format | doc | pure-go:encoding/json (n/a) | L2 | L2 (L1 excellent, L2 excellent) | A composer (Factory::create root package: getPrettyName, getScripts, getRequires, getDevRequires; EventDispatcher::isComposerScript) composer 2.10.3 | — | 2026-10-09 | at target (LB-Q-composer) |
 | Visual Basic .NET (.vb) | language | tags | govindbanura/tree-sitter-vbnet (weak, 2026) (verify at pin) | L1 | unsupported (disclosed) | — | — | — | LB-Q-vbnet |
 | Bazel / Starlark (BUILD, BUILD.bazel, *.bzl, WORKSPACE, MODULE.bazel) | tool format | tags | tree-sitter-grammars/tree-sitter-starlark (MIT) | L3 | L3 (L1 good, L2 excellent, L3 good) | A bazel query --output=streamed_jsonproto bazel 8.7.0 | file | 2026-10-19 | at target (LB-Q-bazel) |
-| MATLAB (.m by sniff) | language | tags | acristoffers/tree-sitter-matlab (MIT) | L1 | tolerated | — | — | — | LB-Q-matlab |
+| MATLAB (.m by sniff) | language | tags | acristoffers/tree-sitter-matlab (MIT) | L1 | L1 (L1 excellent) | B miss-hit-core 0.9.44 | — | 2026-10-25 | at target (LB-Q-matlab) |
 | CMake (CMakeLists.txt, *.cmake) | tool format | tags | uyha/tree-sitter-cmake (MIT (verify at pin)) | L3 | none (measured) | A cmake 4.4.3 (File API codemodel-v2, --trace-expand json-v1); B universal-ctags 6.2.1 | syntax | 2026-10-01 | LB-Q-cmake |
 | Perl (.pl .pm .t by sniff) | language | tags | tree-sitter-perl/tree-sitter-perl (MIT) | L2 | L2 (L1 good, L2 good) | C ppi-calls PPI 1.270; B universal-ctags 6.2.1 | syntax | 2026-10-19 | at target (LB-Q-perl) |
 | Protocol Buffers (.proto) | tool format | tags | coder3101/tree-sitter-proto (MIT (verify at pin)) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A protoc 34.1 | syntax | 2026-10-01 | at target (LB-Q-protobuf) |
