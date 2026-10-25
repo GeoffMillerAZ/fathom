@@ -14,7 +14,7 @@ var notNames = map[string]bool{"operator": true, "template": true, "typename": t
 // calledName finds the callee written in src[from:to], an expression ending in
 // a name (`f`, `ns::f`, `obj.m`, `p->template m<T>`): the last identifier
 // outside a trailing template argument list. ok only when the expression is
-// written as a call (`(` follows it).
+// written as a call (`(` or a kernel launch's `<<<` follows it).
 func calledName(src []byte, from, to int) (string, int, bool) {
 	end := to
 	for end > from && isSpace(src[end-1]) {
@@ -54,7 +54,9 @@ func calledName(src []byte, from, to int) (string, int, bool) {
 	for k < len(src) && isSpace(src[k]) {
 		k++
 	}
-	if k >= len(src) || src[k] != '(' {
+	// A CUDA kernel launch, `k<<<grid, block>>>(args)`, is a call (the
+	// compiler's CUDAKernelCallExpr; round 3 C).
+	if k >= len(src) || (src[k] != '(' && !strings.HasPrefix(string(src[k:min(k+3, len(src))]), "<<<")) {
 		return "", 0, false
 	}
 	return name, start, true

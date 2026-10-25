@@ -295,6 +295,12 @@ type SCIPOptions struct {
 	// sites alone. Each is counted (CntClang*, CntScipDefsMacroNamed) and
 	// disclosed.
 	ClangSites map[string][]ClangSite
+	// ClangCUDA (round 3 C, CUDA alone): a compiler site written inside a
+	// #define body is left out (C's truth holds none: scip-clang references no
+	// token of a macro's body), and a fathom definition the index writes no
+	// definition for (an `extern "C"` function) stands in, its calls scored
+	// against the compiler's sites (needs Source and ClangSites).
+	ClangCUDA bool
 	// ActiveLines are the lines the build's own preprocessor keeps per
 	// document, as [first, last] ranges (the clang-preprocessor oracle's
 	// active_lines). With ClangSites, a fathom pair written only on lines
@@ -420,7 +426,7 @@ func SCIPOptionsFor(dialect string, src func(path string) []byte) SCIPOptions {
 		// passed as a value, and a call a macro expands to at the macro's own
 		// name; neither is written as a call. C and CUDA record a function-like
 		// macro invocation as a call (CUDA: owner ruling C-R3), C++ does not.
-		return SCIPOptions{Source: src, CallSyntax: src != nil, ClangMacroArgs: src != nil, ClangMacroCalls: src != nil && (dialect == "c" || dialect == "cuda"), ClangDefNames: src != nil, FileEdgesOracleBlind: src != nil, ClangLinkage: clangLinkageFor(dialect)}
+		return SCIPOptions{Source: src, CallSyntax: src != nil, ClangMacroArgs: src != nil, ClangMacroCalls: src != nil && (dialect == "c" || dialect == "cuda"), ClangDefNames: src != nil, FileEdgesOracleBlind: src != nil, ClangLinkage: clangLinkageFor(dialect), ClangCUDA: src != nil && dialect == "cuda"}
 	}
 	if dialect == "go" {
 		// Go keeps every callable reference: its extractor records a
@@ -469,8 +475,16 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 	}
 	occLines := map[string]map[int32]bool{}         // lines holding an occurrence but a macro reference (clangBlindDefs)
 	occStarts := map[string]map[[2]int32][]string{} // symbols referenced at each (line, column) start
+	clangSites := opts.ClangSites                   // less the #define bodies' sites for CUDA (round 3 C)
 	if opts.ClangSites != nil && opts.Source != nil {
-		sites = newClangSiteIndex(opts.ClangSites)
+		if opts.ClangCUDA {
+			var n int
+			clangSites, n = dropMacroBodySites(clangSites, opts.Source)
+			if n > 0 {
+				res.Counts[CntClangMacroBody] = n
+			}
+		}
+		sites = newClangSiteIndex(clangSites)
 		for _, d := range idx.GetDocuments() {
 			doc := d.GetRelativePath()
 			if occLines[doc] == nil {
@@ -679,6 +693,16 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 			}
 			res.Counts[CntClangBlindDefs] += len(blind)
 		}
+		if opts.ClangCUDA {
+			covered := map[string]bool{}
+			for _, n := range nodes {
+				covered[n.FilePath] = covered[n.FilePath] || sites.covers(n.FilePath) && occLines[n.FilePath] != nil
+			}
+			for _, def := range csharpStandIns(nodes, defsByDoc, covered) {
+				defsByDoc[def.doc] = append(defsByDoc[def.doc], def)
+				res.Counts[CntClangStandInDefs]++
+			}
+		}
 	}
 
 	truth := map[CallPair]bool{}
@@ -854,7 +878,7 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 		blind.drop(found, truth, nodes, srcOf, opts.JSXElementCalls, res.Counts)
 	}
 	if sites != nil {
-		addClangTruth(truth, opts.ClangSites, docs, defsByDoc, occStarts, res.Counts)
+		addClangTruth(truth, clangSites, docs, defsByDoc, occStarts, res.Counts)
 		dropClangUnjudged(found, truth, nodes, srcOf, sites, opts.ActiveLines, res.Counts)
 	}
 	ScorePairs(truth, found, res.Counts, CntCallTruth, CntCallTruthFound, CntCallFathom, CntCallFathomInTrue)

@@ -64,6 +64,8 @@ func clangSitesOf(paths []string) (map[string][]langbench.ClangSite, error) {
 // its subject's (round 3 A4, F4).
 const (
 	noteClangMacroNamedCUDA = "of fathom's definitions are written by a macro the index defines under another name: the index's callables there are named by what is written, as fathom's extractor names them, so the calls in their bodies are measured; def_mapping does not count them"
+	noteClangMacroBody      = "of the build's own compiler's call sites are written inside a #define body (`#define checkKernelErrors(expr) ... abort()`, `#define UMUL(a, b) __umul24(a, b)`) and are left out of the call truth, as C's is: scip-clang references no token of a macro's body, and a macro is no caller (round 3 C)"
+	noteClangStandIn        = "of fathom's definitions stand in for a function the index writes no definition for (scip-clang 0.4.0 writes none in an `extern \"C\"` linkage specification, cuda-samples' host wrappers around a kernel launch), their calls scored against the build's own compiler's call sites (round 3 C)"
 	noteClangBlindDefsCUDA  = "of fathom's definitions that make calls hold no occurrence of the index but a macro's (code scip-clang 0.4.0 does not index) and are scored against the build's own compiler's call sites alone"
 )
 
@@ -87,6 +89,8 @@ func clangSiteNotes(name, dialect, tier string, counts map[string]int) []string 
 		{langbench.CntScipDefsMacroNamed, macroNamed},
 		{langbench.CntClangBlindDefs, blind},
 		{langbench.CntCallsInactive, noteCallsInactive},
+		{langbench.CntClangMacroBody, noteClangMacroBody},
+		{langbench.CntClangStandInDefs, noteClangStandIn},
 	} {
 		if n := counts[c.key]; n > 0 {
 			out = append(out, fmt.Sprintf("%s: %d %s", name, n, c.note))

@@ -277,3 +277,43 @@ func dropClangUnjudged(found, truth map[CallPair]bool, nodes []core.SymbolNode, 
 		}
 	}
 }
+
+// dropMacroBodySites leaves out the compiler's call sites written inside a
+// #define directive (its line and the lines a trailing backslash continues it
+// onto) and returns how many it left out (round 3 C).
+func dropMacroBodySites(sites map[string][]ClangSite, src func(string) []byte) (map[string][]ClangSite, int) {
+	if src == nil {
+		return sites, 0
+	}
+	out := make(map[string][]ClangSite, len(sites))
+	n := 0
+	for doc, ss := range sites {
+		body := defineLines(src(doc))
+		for _, s := range ss {
+			if body[s.Line] {
+				n++
+				continue
+			}
+			out[doc] = append(out[doc], s)
+		}
+	}
+	return out, n
+}
+
+// defineLines is the 1-based lines of src a #define directive spans.
+func defineLines(src []byte) map[int]bool {
+	out := map[int]bool{}
+	in := false
+	for i, line := range bytes.Split(src, []byte("\n")) {
+		t := bytes.TrimRight(line, " \t\r")
+		if !in {
+			h := bytes.TrimLeft(t, " \t")
+			if !bytes.HasPrefix(h, []byte("#")) || !bytes.HasPrefix(bytes.TrimLeft(h[1:], " \t"), []byte("define")) {
+				continue
+			}
+		}
+		out[i+1] = true
+		in = bytes.HasSuffix(t, []byte("\\"))
+	}
+	return out
+}
