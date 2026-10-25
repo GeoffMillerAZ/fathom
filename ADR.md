@@ -746,7 +746,7 @@ directory to check.
 
 ## ADR-020: Store backend — pure-Go SQLite (WAL) replaces DuckDB (2026-07-22)
 
-**Status.** Accepted (2026-07-22).
+**Status.** Accepted (2026-07-22). Decision (1) amended 2026-10-24 (OPC zip model containers, below).
 
 **Decision.** `internal/store` gains a SQLite backend (modernc.org/sqlite,
 pure Go, WAL mode) as the default; DuckDB remains temporarily behind the
@@ -783,7 +783,7 @@ rebuild by re-ingest.
 
 ## ADR-021: Extraction v2 — language truth, tool identity, typed edges, tree-sitter (2026-07-22)
 
-**Status.** Accepted (2026-07-22).
+**Status.** Accepted (2026-07-22); decision (1) amended 2026-10-24 (an OPC zip model container a dialect claims is read, below).
 
 **Decision.** Four connected corrections to how fathom understands source:
 (1) One language registry: the extractor registry becomes the single
@@ -836,6 +836,35 @@ live on two real subjects (shallow clones, deleted after): bumble-tech/appyx
 (Java, 313 files) — 7,559 symbols including 806 fields and 1,912 imports
 that predate this wave's Java coverage fix. Full account: `.fathom/
 observations.md` O79.
+
+**Amendment (2026-10-24, owner ruling (b), lane simulink): an OPC zip model container is read
+when a dialect claims it.** Decision (1)'s "binary files are detected (NUL-byte sniff) and
+excluded" keeps its rule for every file but one class: an OPC zip package (its first bytes the
+zip local-file signature `PK\x03\x04`) whose extension a dialect manifest's `match.container`
+(`{format: "opc-zip", extensions: [...]}`, each one of the manifest's own `match.extensions`,
+checked at load) claims. The first is the Simulink `.slx`: the model is a zip of XML parts, so a
+NUL sniff that excludes it hides every block of a model-based codebase. The exemption is one
+rule, `fusion.binaryExcluded` (`connector.ClaimedModelContainer`), asked by every fusion read
+path in place of `connector.IsBinary` (ingest's extract sink, the one-file refresh, the harness's
+`ExtractForBench`, the file resolver and the doc-xref, route, policy, alert, Lambda, Jenkins,
+log-template, shebang and Unity passes; `TestBinaryGateIsTheOnlySniff` holds the count at one).
+Surfaces that serve text (`read_source`, the client's sources, the tree and reference scans,
+the corpus reader, the service-ref analyzer) keep `IsBinary`: a package is not text to show. The
+dialect reads the package in memory, never on disk, under three caps
+(`extractor.SimulinkMaxEntries` 4,096 entries, `SimulinkMaxInflated` 32 MiB inflated across the
+parts it reads, `SimulinkMaxRatio` 200:1 per part, a part's declared size never trusted past one
+byte); a package over a cap, or one that does not open, yields no symbols, never a partial
+model. Ingest's 2 MiB `MaxExtractSize` still applies, to the compressed bytes. Every other
+NUL-sniffed file stays excluded, a `.zip`, `.docx` or `.mlx` included, until a manifest claims
+its extension. Plan row: LB-F587 (`docs/plans/language-breadth.simulink.md`). **Decision
+models.** None applies (ADR-073; DP-41 enforces): whether a file is a claimed container is a
+byte signature and a manifest lookup, so there is no typed question for the port to ask; with
+provider `none` the rule runs whole, and there is no opt-out beyond the manifest, which a
+dialect that drops `match.container` withdraws. Measurement: the dialect's reading
+(LB-Q-simulink), whose throughput counts compressed bytes, and `TestReadSimulinkModelCaps`. **Revisit
+when** a claimed container's caps refuse a real calibration model (raise them with the
+measurement), a second container format (a `.mlx`, an `.sldd`) is claimed (the format list
+grows), or a serving surface needs a package's parts as text.
 
 ## ADR-022: MCP server stays bespoke, not `kits/mcp-server` (2026-07-23)
 

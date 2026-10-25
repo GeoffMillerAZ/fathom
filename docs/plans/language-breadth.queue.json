@@ -6142,5 +6142,38 @@
     "plan_row": "LB-Q-unity-asmdef",
     "worker_model": "sonnet",
     "notes": "GDEV-10 groundwork only. Derived file ownership, scopes and declared references follow documented Unity 2021+ rules. No native oracle reading or support grade claimed."
+  },
+  {
+    "id": "simulink",
+    "name": "Simulink models (.slx, .mdl)",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "pure-go:archive/zip + encoding/xml (.slx), the .mdl brace tree",
+    "licence": "n/a",
+    "oracle": [
+      "walk.py (tier C: zipfile and xml.parsers.expat, start and end lines) cross-checked by mathworks/data-explorer-core v1.46.0 (BSD-3, .slx and .mdl, every era, modelReferences), miss-hit-core 0.9.44 s_parser (GPL-3, .slx, both layouts, blocks, no Lines), rustylink v3.1.0 4cc5cd88 (R2025a+ only) and SLX2MDL v1.0 a9d41b38"
+    ],
+    "calibration_subjects": [
+      "WEC-Sim/WEC-Sim v7.1.0 a23d2993 (subpath; 19 .slx, 15 distinct; MOST_Lib.slx 5.97 MB is oversize)",
+      "Thermodynamics v1.3.1 ce9bc73d (40)",
+      "LADAC main 1a295a82 (97, GPL)",
+      "Firmament-Autopilot/FMT-Model master 70984e23 (22)",
+      "etherlab-examples master 491f9375 (16 .mdl, 15 distinct)",
+      "PID_MATLAB_Learn master 0029fffe (73, sniff each)"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22",
+      "language-breadth.simulink.md#LB-F587"
+    ],
+    "wave": 6,
+    "engine": "native",
+    "plan_row": "LB-Q-simulink",
+    "worker_model": "sonnet",
+    "notes": "new, outside 18.3's tiers (owner ruling 2026-10-24 (a)); a .slx is read only through ADR-021 (1)'s 2026-10-24 amendment (match.container); block names hold spaces, line breaks and '/', so the dialect compares names whole (name_match identity); L3 tries resolve entity-name with to_kind before a new mode, same-named models in several directories ambiguous; tier C only (owner ruling (d)), which caps every level at good; MATLAB code a model calls is a handoff for the reading's notes, never an LB-Q-simulink-matlab row; throughput counts compressed bytes"
   }
 ]
