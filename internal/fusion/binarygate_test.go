@@ -13,7 +13,8 @@ import (
 
 // TestBinaryGateExemptsClaimedContainers: the one binary rule (ADR-021 (1), amended
 // 2026-10-24) excludes NUL-sniffed content unless a dialect claims its extension as an
-// OPC zip model container and the bytes open as a zip package.
+// OPC zip model container and the bytes start with the zip local-file signature (the gate
+// checks those four bytes, never that the package opens).
 func TestBinaryGateExemptsClaimedContainers(t *testing.T) {
 	rules := []connector.DialectRule{{ID: "m", Extensions: []string{".slx", ".mdl"}, Containers: []string{".slx"}}}
 	zipBytes := []byte("PK\x03\x04\x14\x00\x00\x00\x08\x00")

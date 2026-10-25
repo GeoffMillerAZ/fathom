@@ -746,7 +746,7 @@ directory to check.
 
 ## ADR-020: Store backend — pure-Go SQLite (WAL) replaces DuckDB (2026-07-22)
 
-**Status.** Accepted (2026-07-22). Decision (1) amended 2026-10-24 (OPC zip model containers, below).
+**Status.** Accepted (2026-07-22).
 
 **Decision.** `internal/store` gains a SQLite backend (modernc.org/sqlite,
 pure Go, WAL mode) as the default; DuckDB remains temporarily behind the
@@ -839,8 +839,9 @@ observations.md` O79.
 
 **Amendment (2026-10-24, owner ruling (b), lane simulink): an OPC zip model container is read
 when a dialect claims it.** Decision (1)'s "binary files are detected (NUL-byte sniff) and
-excluded" keeps its rule for every file but one class: an OPC zip package (its first bytes the
-zip local-file signature `PK\x03\x04`) whose extension a dialect manifest's `match.container`
+excluded" keeps its rule for every file but one class: content whose first four bytes are the
+zip local-file signature `PK\x03\x04` (the gate checks that signature, never that the package
+opens; opening it is the reader's work, under the caps below) whose extension a dialect manifest's `match.container`
 (`{format: "opc-zip", extensions: [...]}`, each one of the manifest's own `match.extensions`,
 checked at load) claims. The first is the Simulink `.slx`: the model is a zip of XML parts, so a
 NUL sniff that excludes it hides every block of a model-based codebase. The exemption is one
@@ -850,18 +851,27 @@ path in place of `connector.IsBinary` (ingest's extract sink, the one-file refre
 log-template, shebang and Unity passes; `TestBinaryGateIsTheOnlySniff` holds the count at one).
 Surfaces that serve text (`read_source`, the client's sources, the tree and reference scans,
 the corpus reader, the service-ref analyzer) keep `IsBinary`: a package is not text to show. The
-dialect reads the package in memory, never on disk, under three caps
-(`extractor.SimulinkMaxEntries` 4,096 entries, `SimulinkMaxInflated` 32 MiB inflated across the
-parts it reads, `SimulinkMaxRatio` 200:1 per part, a part's declared size never trusted past one
-byte); a package over a cap, or one that does not open, yields no symbols, never a partial
-model. Ingest's 2 MiB `MaxExtractSize` still applies, to the compressed bytes. Every other
+dialect reads the package in memory, never on disk, under these caps, each enforced while it
+reads and none taken from a size the package declares: `extractor.SimulinkMaxEntries` 4,096
+entries listed (an entry name listed twice is refused); `SimulinkMaxInflated` 32 MiB inflated
+across the parts it reads, which is the bound on bytes; `SimulinkMaxRatio` 200 bytes inflated
+per compressed byte the inflater actually consumes (counted through `zip.File.OpenRaw`, a part's
+CRC-32 checked, its declared size never trusted past one byte); `SimulinkMaxDepth` 1,024
+levels of element (or `.mdl` brace) nesting, a spliced system's counted from the model;
+`SimulinkMaxElements` 524,288 elements or brace nodes and `SimulinkMaxBlocks` 65,536 blocks
+across a model's parts, counted as each start tag is read; `SimulinkMaxValue` 64 KiB per value
+the reader keeps; and `.mdl` lines of at most `MaxSimulinkLine` 4 MiB. The calibration corpus's
+largest model sits far inside each (depth 38, 96,366 elements, 5,801 blocks, a 411-byte value,
+24.7:1), and a package filled to a cap peaks under 8x the inflated budget in heap
+(`TestReadSimulinkModelHeapBound`). A package over a cap, or one that does not parse, yields no
+symbols, never a partial model. Ingest's 2 MiB `MaxExtractSize` still applies, to the compressed bytes. Every other
 NUL-sniffed file stays excluded, a `.zip`, `.docx` or `.mlx` included, until a manifest claims
 its extension. Plan row: LB-F587 (`docs/plans/language-breadth.simulink.md`). **Decision
 models.** None applies (ADR-073; DP-41 enforces): whether a file is a claimed container is a
 byte signature and a manifest lookup, so there is no typed question for the port to ask; with
 provider `none` the rule runs whole, and there is no opt-out beyond the manifest, which a
 dialect that drops `match.container` withdraws. Measurement: the dialect's reading
-(LB-Q-simulink), whose throughput counts compressed bytes, and `TestReadSimulinkModelCaps`. **Revisit
+(LB-Q-simulink), whose throughput counts compressed bytes, `TestReadSimulinkModelCaps`, `TestReadSimulinkModelRealRatio` and `TestReadSimulinkModelAdversarial`. **Revisit
 when** a claimed container's caps refuse a real calibration model (raise them with the
 measurement), a second container format (a `.mlx`, an `.sldd`) is claimed (the format list
 grows), or a serving surface needs a package's parts as text.

@@ -11,8 +11,10 @@ dialect.
 
 A `.slx` is an OPC zip, which the NUL sniff calls binary. The manifest's `match.container`
 (`opc-zip`, `.slx`) is what lets it through `fusion.binaryExcluded` (ADR-021 decision (1),
-amended 2026-10-24); the reader's caps (4,096 entries, 32 MiB inflated, 200:1 per part) refuse
-the rest. Ingest's 2 MiB cap applies to the compressed bytes, so a large library
+amended 2026-10-24), which checks the four-byte zip signature only; the reader's caps refuse
+the rest, each enforced while it reads (4,096 entries; 32 MiB inflated; 200 bytes out per
+compressed byte consumed; 1,024 levels deep; 524,288 elements and 65,536 blocks; 64 KiB per
+kept value; ADR-021 lists them). Ingest's 2 MiB cap applies to the compressed bytes, so a large library
 (WEC-Sim's MOST_Lib.slx, 5.97 MB) is counted oversize.
 
 ## What it models
