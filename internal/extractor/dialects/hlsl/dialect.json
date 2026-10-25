@@ -35,6 +35,7 @@
   "package": { "strategy": "dir" },
   "imports": { "strategy": "include-path" },
   "signature": { "max_chars": 200 },
+  "preprocess": "hlsl-macros",
   "target_level": "L3",
   "queue_id": "hlsl"
 }
