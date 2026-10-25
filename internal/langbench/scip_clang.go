@@ -228,6 +228,7 @@ type ClangLinkage struct {
 	reach     map[string]map[string]bool // memo: a document's include closure, itself included
 	removed   map[[2]string]bool         // pairs ruling 3 would draw to another unit's copy
 	unplaced  map[[2]string]bool         // pairs drawn as ruling 3 draws: the includes reach no copy
+	functions map[string][]clangFunction // document -> the compiler's function definitions (round 4 C4-R1)
 	read      bool                       // Read ran over at least one oracle file
 }
 
@@ -357,6 +358,76 @@ func (l *ClangLinkage) IncludeClosure(from map[string]bool) map[string]bool {
 // `<name>.units.json` beside `<name>.json`.
 func unitsCompanionFile(p string) string { return strings.TrimSuffix(p, ".json") + ".units.json" }
 
+// Function records that the compiler's AST defines the function name with a
+// body over lines [line, end] of document path, in an `extern "C"` linkage
+// specification when externC (clang-ast-defs' ranges, round 4 C4-R1).
+func (l *ClangLinkage) Function(path, name string, line, end int, externC bool) {
+	if l.functions == nil {
+		l.functions = map[string][]clangFunction{}
+	}
+	l.functions[path] = append(l.functions[path], clangFunction{name: name, line: line, end: end, externC: externC})
+}
+
+// clangFunction is one function definition of the compiler's AST: its name,
+// first and last line, and whether an `extern "C"` block holds it.
+type clangFunction struct {
+	name      string
+	line, end int
+	externC   bool
+}
+
+// clangStandIns are the compiler's function definitions (Function), in the
+// documents covered holds, that the index writes no definition for (none at its
+// line, none of its name within two lines): scip-clang 0.4.0 writes none for a
+// function in an `extern "C"` linkage specification. Each stands in over the
+// compiler's own lines, under the compiler's own name (round 4 C4-R1: a fathom
+// node never shapes the truth). externC counts those an `extern "C"` block
+// holds. A nil rule, or one that read no ranges, has none.
+func (l *ClangLinkage) clangStandIns(defsByDoc map[string][]*scipDef, covered func(doc string) bool) (out []*scipDef, externC int) {
+	if l == nil {
+		return nil, 0
+	}
+	docs := make([]string, 0, len(l.functions))
+	for doc := range l.functions {
+		if covered(doc) {
+			docs = append(docs, doc)
+		}
+	}
+	sort.Strings(docs)
+	for _, doc := range docs {
+		seen := map[[2]int]bool{}
+		fs := slices.Clone(l.functions[doc])
+		sort.Slice(fs, func(i, j int) bool {
+			if fs[i].line != fs[j].line {
+				return fs[i].line < fs[j].line
+			}
+			return fs[i].name < fs[j].name
+		})
+		for _, f := range fs {
+			if seen[[2]int{f.line, f.end}] {
+				continue // one definition dumped by several translation units
+			}
+			seen[[2]int{f.line, f.end}] = true
+			defined := false
+			for _, d := range defsByDoc[doc] {
+				if d.line == f.line || (d.name == f.name || d.fathomDef == f.name) && d.line >= f.line-2 && d.line <= f.line+2 {
+					defined = true
+					break
+				}
+			}
+			if defined {
+				continue
+			}
+			lo, hi := int32(f.line-1), int32(max(f.end, f.line)-1)
+			out = append(out, &scipDef{doc: doc, line: f.line, name: f.name, fathomDef: f.name, enc: [4]int32{lo, 0, hi, 1 << 30}, hasEnc: true})
+			if f.externC {
+				externC++
+			}
+		}
+	}
+	return out, externC
+}
+
 // FileLocal records that document path defines the file-scope identifier name with
 // internal linkage.
 func (l *ClangLinkage) FileLocal(path, name string) {
@@ -434,12 +505,25 @@ func (l *ClangLinkage) Read(toolOracles []string, companion func(string) string)
 				Path string `json:"path"`
 				Name string `json:"name"`
 			} `json:"internal_linkage"`
+			Ranges []struct {
+				Path    string `json:"path"`
+				Name    string `json:"name"`
+				Kind    string `json:"kind"`
+				Line    int    `json:"line"`
+				End     int    `json:"end"`
+				ExternC bool   `json:"extern_c"`
+			} `json:"ranges"`
 		}
 		if err := json.Unmarshal(cb, &lk); err != nil {
 			return fmt.Errorf("%s: %w", companion(p), err)
 		}
 		for _, d := range lk.InternalLinkage {
 			l.FileLocal(d.Path, d.Name)
+		}
+		for _, r := range lk.Ranges {
+			if r.Kind == "function" && r.Line > 0 {
+				l.Function(r.Path, r.Name, r.Line, r.End, r.ExternC)
+			}
 		}
 	}
 	return nil

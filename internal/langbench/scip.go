@@ -297,9 +297,10 @@ type SCIPOptions struct {
 	ClangSites map[string][]ClangSite
 	// ClangCUDA (round 3 C, CUDA alone): a compiler site written inside a
 	// #define body is left out (C's truth holds none: scip-clang references no
-	// token of a macro's body), and a fathom definition the index writes no
-	// definition for (an `extern "C"` function) stands in, its calls scored
-	// against the compiler's sites (needs Source and ClangSites).
+	// token of a macro's body), and a compiler definition the index writes no
+	// definition for (an `extern "C"` function; clang-ast-defs' range, which
+	// ClangLinkage reads, round 4 C4-R1) stands in, its calls scored against
+	// the compiler's sites (needs Source, ClangSites and the ranges companion).
 	ClangCUDA bool
 	// ActiveLines are the lines the build's own preprocessor keeps per
 	// document, as [first, last] ranges (the clang-preprocessor oracle's
@@ -694,13 +695,19 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 			res.Counts[CntClangBlindDefs] += len(blind)
 		}
 		if opts.ClangCUDA {
-			covered := map[string]bool{}
-			for _, n := range nodes {
-				covered[n.FilePath] = covered[n.FilePath] || sites.covers(n.FilePath) && occLines[n.FilePath] != nil
-			}
-			for _, def := range csharpStandIns(nodes, defsByDoc, covered) {
+			// round 4 C4-R1: the compiler's definitions, never fathom's, stand in,
+			// in the documents the compiler covered and the index holds
+			standIns, externC := opts.ClangLinkage.clangStandIns(defsByDoc, func(doc string) bool {
+				return sites.covers(doc) && occLines[doc] != nil
+			})
+			for _, def := range standIns {
 				defsByDoc[def.doc] = append(defsByDoc[def.doc], def)
-				res.Counts[CntClangStandInDefs]++
+			}
+			if len(standIns) > 0 {
+				res.Counts[CntClangStandInDefs] += len(standIns)
+			}
+			if externC > 0 {
+				res.Counts[CntClangStandInExternC] += externC
 			}
 		}
 	}

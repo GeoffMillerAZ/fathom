@@ -12,7 +12,7 @@ never imported by fathom, the way `../scip-clang/preproc` is.
 
     go run . -subject <subject> -compdb <subject>/build/compile_commands.json -tier A [-clang clang] [-jobs 4] > preproc.ranges.json
 
-Output: `{tool: "clang-ast", tier: "A", version, units, errored, skipped, ranges: [{path, name, kind, line, end}],
+Output: `{tool: "clang-ast", tier: "A", version, units, errored, skipped, ranges: [{path, name, kind, line, end, extern_c}],
 internal_linkage: [{path, name, line}]}`, kinds in fathom's canonical names (`function`, `struct`, `union`, `enum`,
 `type_alias`), sorted. `internal_linkage` (owner ruling M3, O863) is every file-scope function or object definition a
 unit gives internal linkage by C11 6.2.2: an identifier any file-scope declaration of the unit writes `static` (p3),
@@ -40,3 +40,8 @@ For C, `internal/langbench` (ClangLinkage, owner ruling M3) also reads the compa
 preprocessor oracle's `imports`: a reference to a file-local function or object resolves to the copy in its own
 translation unit (the referring file, or a header its includes reach), never another unit's same-named one, in the
 file-edge truth alone. `ranges` is unchanged by it (libuv's 2,480 ranges read identically before and after).
+
+A file-scope definition an `extern "C"` linkage specification holds (C++ [dcl.link]: the AST nests it in a
+`LinkageSpecDecl`, braced or not) is reported like any other, and a function there carries `extern_c: true` (round 4
+C4-R1): the CUDA harness takes the stand-ins for the functions scip-clang 0.4.0 writes no definition for from these
+ranges, never from fathom's own lines.

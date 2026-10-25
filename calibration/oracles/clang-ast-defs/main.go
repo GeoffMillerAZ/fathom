@@ -56,6 +56,7 @@ type node struct {
 	IsImplicit         bool   `json:"isImplicit"`
 	TagUsed            string `json:"tagUsed"`
 	CompleteDefinition bool   `json:"completeDefinition"`
+	Language           string `json:"language"` // a LinkageSpecDecl's: "C" or "C++"
 	StorageClass       string `json:"storageClass"`
 	Loc                *loc   `json:"loc"`
 	Range              *struct {
@@ -73,6 +74,9 @@ type Def struct {
 	Kind string `json:"kind"`
 	Line int    `json:"line"`
 	End  int    `json:"end"`
+	// ExternC marks a function an `extern "C"` linkage specification holds
+	// (round 4 C4-R1: the CUDA harness's stand-ins are these).
+	ExternC bool `json:"extern_c,omitempty"`
 }
 
 // Linked is a file-scope function or object definition with internal linkage:
@@ -140,8 +144,8 @@ func ExtractUnit(r io.Reader, subject string) (Unit, error) {
 	var defined []Linked        // file-scope function and object definitions in the subject
 	cur := &cursor{}
 	cur.take(tu.Loc)
-	var walk func(n *node, top bool)
-	walk = func(n *node, top bool) {
+	var walk func(n *node, top, externC bool)
+	walk = func(n *node, top, externC bool) {
 		cur.take(n.Loc)
 		lf, ll := cur.file, cur.line
 		if top && !n.IsImplicit && n.Name != "" && (n.Kind == "FunctionDecl" || n.Kind == "VarDecl") {
@@ -164,16 +168,19 @@ func ExtractUnit(r io.Reader, subject string) (Unit, error) {
 		if top && !n.IsImplicit && n.Name != "" && bf == ef && bl > 0 && el >= bl {
 			if kind := defKind(n); kind != "" {
 				if rel, ok := within(subject, bf); ok {
-					out = append(out, Def{Path: rel, Name: n.Name, Kind: kind, Line: bl, End: el})
+					out = append(out, Def{Path: rel, Name: n.Name, Kind: kind, Line: bl, End: el, ExternC: externC && kind == "function"})
 				}
 			}
 		}
+		// a linkage specification's declarations are at file scope (C++
+		// [dcl.link]): `extern "C" { ... }` nests them in a LinkageSpecDecl
+		spec := top && n.Kind == "LinkageSpecDecl"
 		for i := range n.Inner {
-			walk(&n.Inner[i], false)
+			walk(&n.Inner[i], spec, spec && n.Language == "C" || spec && externC)
 		}
 	}
 	for i := range tu.Inner {
-		walk(&tu.Inner[i], true)
+		walk(&tu.Inner[i], true, false)
 	}
 	u := Unit{Defs: out}
 	for _, d := range defined {
