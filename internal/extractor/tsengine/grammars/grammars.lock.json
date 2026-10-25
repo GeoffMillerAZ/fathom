@@ -265,21 +265,6 @@
       "gz_bytes": 171362
     },
     {
-      "blob": "hlsl",
-      "repo": "tree-sitter-grammars/tree-sitter-hlsl",
-      "tag": "0400dd363f4e8142dcfa7b5a7d2d9db59c129c6e",
-      "commit": "0400dd363f4e8142dcfa7b5a7d2d9db59c129c6e",
-      "tarball_sha256": "6ca6f42968e8e22b70af7deee400f2c44434a116ac368cbf3b992e9142b74ac6",
-      "licence": "MIT",
-      "entry_points": ["tree_sitter_hlsl"],
-      "scanner": true,
-      "generate": false,
-      "abi": 14,
-      "blob_sha256": "8cd650a354c697cbcbc564c36bad78997c550bd94744d85370618e4d6d339cc2",
-      "blob_bytes": 3052819,
-      "gz_bytes": 692820
-    },
-    {
       "blob": "html",
       "repo": "tree-sitter/tree-sitter-html",
       "tag": "v0.23.2",

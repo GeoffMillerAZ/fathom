@@ -2,8 +2,10 @@ package extractor
 
 import "strings"
 
-// tsextract_hlslmacros.go — the HLSL dialect's pre-parse step (the hlsl
-// dialect.json's preprocess key "hlsl-macros", LB-Q-hlsl). tree-sitter-hlsl's
+// tsextract_hlslmacros.go — the HLSL dialect's pre-parse step (preprocess key
+// "hlsl-macros", LB-Q-hlsl). No dialect names it yet: HLSL stays refused at
+// the parse-error gate with it (LB-Q-hlsl-rest), and the hlsl dialect.json
+// declares it when that row's trigger restores the dialect. tree-sitter-hlsl's
 // cbuffer_specifier takes a name, an optional base class clause and the body,
 // so the register clause ordinary HLSL writes in a constant buffer's header
 // (`cbuffer Frame : register(b0) {`) does not fit: the parser inserts a
@@ -25,7 +27,8 @@ import "strings"
 // The rewritten text is tried only when the file does not parse as written,
 // and read only when it parses clean (tsPreprocessed). The trigger to retire
 // the register rewrite is a tree-sitter-hlsl release whose cbuffer and
-// tbuffer headers take a register clause (dialects/hlsl/PROVENANCE.md).
+// tbuffer headers take a register clause (LB-Q-hlsl-rest; the dialect's
+// PROVENANCE.md carries it once the dialect is restored).
 
 // hlslMacroTexts are the texts an HLSL file that does not parse as written is
 // parsed as instead (tsPreprocessors["hlsl-macros"]): one, every rewrite
