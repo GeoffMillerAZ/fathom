@@ -73,7 +73,7 @@ The harness (`indexbench lang-oracle -scip`, internal/langbench/scip*.go) reads 
 `preproc/` (its own Go module, never imported by fathom) runs each compilation database entry with `-E -dD -w` and
 the entry's own flags, and writes a neutral oracle file with two things the index does not say:
 
-    cd preproc && go run . -subject <subject> -compdb <scratch-build-dir>/compile_commands.json > preproc.json
+    cd preproc && go run . -subject <subject> -compdb <scratch-build-dir>/compile_commands.json -tier A > preproc.json
 
 - `imports`: each `#include` written in a subject file and the subject file it entered, from the preprocessor's line
   markers (a guarded re-include writes no marker and is no import, as for ../clang-includes, whose tier-B dump this
@@ -88,7 +88,7 @@ the entry's own flags, and writes a neutral oracle file with two things the inde
     indexbench lang-oracle -dialect c -subject <libuv> -subject-name libuv/libuv -scip libuv.scip -scip-defs \
         -tool-oracle preproc.json -unmatched unmatched.json -out docs/bench/readings/lang/c.json
 
-`../clang-ast-defs` writes `preproc.ranges.json` for the same subject (`go run . -subject <subject> -compdb
+`../clang-ast-defs` writes `preproc.ranges.json` for the same subject (`go run . -subject <subject> -tier A -compdb
 <subject>/build/compile_commands.json > preproc.ranges.json`). The harness reads it as the companion of the tool oracle
 named `preproc.json` (a sibling `<name>.ranges.json`) and scores range_agreement from it alone: the index stays L1's
 oracle, and a missing companion leaves range_agreement not measured, as before.

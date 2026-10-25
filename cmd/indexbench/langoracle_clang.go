@@ -96,7 +96,7 @@ func fileEdgesOracleBlind(raw []byte, truth map[[2]string]bool, edges []core.Edg
 }
 
 // feedTier is the weakest tier among the tool oracle files that carry any of
-// keys (a file's own "tier", A when it names none), A when no file does: a
+// keys (each file's own "tier", required), A when no file does: a
 // metric is judged at the lowest tier of the oracles that feed it (owner ruling
 // C-R6, F5), so a clang CUDA translation's preprocessor or call sites lower
 // the index's tier-A metrics they settle.
@@ -114,15 +114,18 @@ func feedTier(paths []string, keys ...string) (string, error) {
 		if !slices.ContainsFunc(keys, func(k string) bool { _, ok := probe[k]; return ok }) {
 			continue
 		}
-		var own struct {
-			Tier string `json:"tier"`
-		}
+		var own string
 		if raw, ok := probe["tier"]; ok {
-			if err := json.Unmarshal(raw, &own.Tier); err != nil {
+			if err := json.Unmarshal(raw, &own); err != nil {
 				return "", fmt.Errorf("%s: tier: %w", p, err)
 			}
 		}
-		tier = weakerTier(tier, orDefault(own.Tier, "A"))
+		if !slices.Contains([]string{"A", "B", "C", "D"}, own) {
+			// Round 3 A3 (F3): an oracle that feeds a metric names its tier;
+			// an untiered file is refused, never read as tier A.
+			return "", fmt.Errorf("%s: feeds %v but names no tier A-D (%q)", p, keys, own)
+		}
+		tier = weakerTier(tier, own)
 	}
 	return tier, nil
 }

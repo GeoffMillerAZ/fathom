@@ -75,11 +75,11 @@ func main() {
 	subject := flag.String("subject", "", "checkout the compilation database was written for (required)")
 	compdb := flag.String("compdb", "", "compile_commands.json (required)")
 	clang := flag.String("clang", "", "preprocessor (default: each entry's own compiler)")
-	tierArg := flag.String("tier", "A", "the output's oracle tier: A for the build's own compiler, B for a translated database")
+	tierArg := flag.String("tier", "", "the output's oracle tier (required, round 3 A3): A for the build's own compiler, B for a translated database")
 	flag.Parse()
 	tier, terr := tierFlag(*tierArg)
 	if *subject == "" || *compdb == "" || terr != nil {
-		fmt.Fprintln(os.Stderr, "usage: active-lines -subject <dir> -compdb <compile_commands.json> [-clang <clang>] [-tier A|B]")
+		fmt.Fprintln(os.Stderr, "usage: active-lines -subject <dir> -compdb <compile_commands.json> [-clang <clang>] -tier A|B")
 		os.Exit(2)
 	}
 	root, err := filepath.EvalSymlinks(*subject)
@@ -378,7 +378,7 @@ func unescape(s string) string {
 	return b.String()
 }
 
-// tierFlag is the -tier value written to the output's "tier": A when the
+// tierFlag is the required -tier value written to the output's "tier": A when the
 // database is the build's own compiler's, B when it is a translation (a
 // clang CUDA database for an nvcc build, LB-Q-cuda); anything else is refused.
 func tierFlag(s string) (string, error) {

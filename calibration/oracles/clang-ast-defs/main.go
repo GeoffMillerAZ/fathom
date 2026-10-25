@@ -333,11 +333,11 @@ func main() {
 	compdb := flag.String("compdb", "", "compile_commands.json")
 	clang := flag.String("clang", "clang", "clang to run")
 	jobs := flag.Int("jobs", 4, "parallel dumps")
-	tierArg := flag.String("tier", "A", "the output's oracle tier: A for the build's own compiler, B for a translated database")
+	tierArg := flag.String("tier", "", "the output's oracle tier (required, round 3 A3): A for the build's own compiler, B for a translated database")
 	flag.Parse()
 	tier, terr := tierFlag(*tierArg)
 	if *subject == "" || *compdb == "" || terr != nil {
-		fmt.Fprintln(os.Stderr, "usage: clang-ast-defs -subject <dir> -compdb <compile_commands.json> [-clang clang] [-jobs 4] [-tier A|B]")
+		fmt.Fprintln(os.Stderr, "usage: clang-ast-defs -subject <dir> -compdb <compile_commands.json> [-clang clang] [-jobs 4] -tier A|B")
 		os.Exit(2)
 	}
 	abs, err := filepath.Abs(*subject)
@@ -490,7 +490,7 @@ func firstLine(s string) string {
 	return s
 }
 
-// tierFlag is the -tier value written to the output's "tier": A when the
+// tierFlag is the required -tier value written to the output's "tier": A when the
 // database is the build's own compiler's, B when it is a translation (a
 // clang CUDA database for an nvcc build, LB-Q-cuda); anything else is refused.
 func tierFlag(s string) (string, error) {

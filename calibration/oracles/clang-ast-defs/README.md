@@ -10,7 +10,7 @@ removed), and writes the subject's definitions with first and last line: a funct
 with a body, an enum with constants, a typedef. It is its own Go module (`fathom.bench/oracles/clang-ast-defs`),
 never imported by fathom, the way `../scip-clang/preproc` is.
 
-    go run . -subject <subject> -compdb <subject>/build/compile_commands.json [-clang clang] [-jobs 4] > preproc.ranges.json
+    go run . -subject <subject> -compdb <subject>/build/compile_commands.json -tier A [-clang clang] [-jobs 4] > preproc.ranges.json
 
 Output: `{tool: "clang-ast", tier: "A", version, units, errored, skipped, ranges: [{path, name, kind, line, end}],
 internal_linkage: [{path, name, line}]}`, kinds in fathom's canonical names (`function`, `struct`, `union`, `enum`,

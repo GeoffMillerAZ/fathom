@@ -96,11 +96,11 @@ func main() {
 	compdb := flag.String("compdb", "", "compile_commands.json (required)")
 	clang := flag.String("clang", "", "compiler (default: each entry's own)")
 	jobs := flag.Int("jobs", 4, "translation units dumped at once")
-	tierArg := flag.String("tier", "A", "the output's oracle tier: A for the build's own compiler, B for a translated database")
+	tierArg := flag.String("tier", "", "the output's oracle tier (required, round 3 A3): A for the build's own compiler, B for a translated database")
 	flag.Parse()
 	tier, terr := tierFlag(*tierArg)
 	if *subject == "" || *compdb == "" || terr != nil {
-		fmt.Fprintln(os.Stderr, "usage: clang-calls -subject <dir> -compdb <compile_commands.json> [-clang <clang>] [-jobs N] [-tier A|B]")
+		fmt.Fprintln(os.Stderr, "usage: clang-calls -subject <dir> -compdb <compile_commands.json> [-clang <clang>] [-jobs N] -tier A|B")
 		os.Exit(2)
 	}
 	out, err := run(*subject, *compdb, *clang, *jobs)
@@ -358,7 +358,7 @@ func splitCommand(s string) []string {
 	return args
 }
 
-// tierFlag is the -tier value written to the output's "tier": A when the
+// tierFlag is the required -tier value written to the output's "tier": A when the
 // database is the build's own compiler's, B when it is a translation (a
 // clang CUDA database for an nvcc build, LB-Q-cuda); anything else is refused.
 func tierFlag(s string) (string, error) {
