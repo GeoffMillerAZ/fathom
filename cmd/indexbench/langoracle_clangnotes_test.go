@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -17,6 +19,30 @@ func TestClangSiteNotesByDialect(t *testing.T) {
 	counts := map[string]int{langbench.CntClangCallsDependent: 2, langbench.CntClangBlindDefs: 1, langbench.CntScipDefsMacroNamed: 1}
 	cuda := strings.Join(clangSiteNotes("s", "cuda", "B", counts), "\n")
 	for _, bad := range []string{"tier A", "fmt", "nlohmann", "gtest", "rust-analyzer"} {
+		if strings.Contains(cuda, bad) {
+			t.Errorf("cuda notes carry %q:\n%s", bad, cuda)
+		}
+	}
+	// round 4 C4-R3: the linkage note (owner ruling M3) names its companion's tier
+	dir := t.TempDir()
+	pre := filepath.Join(dir, "preproc.json")
+	for p, body := range map[string]string{
+		pre:                     `{"tool":"clang-preprocessor","tier":"A","imports":[]}`,
+		rangeCompanionFile(pre): `{"tool":"clang-ast","tier":"B","ranges":[],"internal_linkage":[{"path":"a.cu","name":"cb","line":1}]}`,
+	} {
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	l := langbench.SCIPOptionsFor("cuda", nil).ClangLinkage
+	if err := l.Read([]string{pre}, rangeCompanionFile); err != nil {
+		t.Fatal(err)
+	}
+	cuda += "\n" + strings.Join(l.Finish("s", map[[2]string]bool{}, map[string]int{}), "\n")
+	if !strings.Contains(cuda, "clang-ast-defs, tier B") {
+		t.Errorf("the linkage note does not name its companion's tier B:\n%s", cuda)
+	}
+	for _, bad := range []string{"tier A"} {
 		if strings.Contains(cuda, bad) {
 			t.Errorf("cuda notes carry %q:\n%s", bad, cuda)
 		}

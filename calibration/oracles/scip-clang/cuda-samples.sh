@@ -82,7 +82,8 @@ def sources(ins, seen):
             out |= sources(libs[i], seen | {i})
     return out
 units = {os.path.relpath(t, build): sorted(sources(ins, set())) for t, ins in sorted(links.items())}
-json.dump({"link_units": {u: s for u, s in units.items() if s}}, open(out, "w"), indent=1)
+# tier A (round 4 C4-R3): the build's own link lines, read untranslated
+json.dump({"tool": "cmake-ninja-link-lines", "tier": "A", "link_units": {u: s for u, s in units.items() if s}}, open(out, "w"), indent=1)
 print("link units:", sum(1 for s in units.values() if s), "executables,", len({x for s in units.values() for x in s}), "sources", file=sys.stderr)
 EOF
 

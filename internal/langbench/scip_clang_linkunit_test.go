@@ -51,7 +51,7 @@ func TestScoreSCIPClangLinkUnits(t *testing.T) {
  {"path":"Samples/a/a.cu","line":1,"to_path":"Common/helper.h"},{"path":"Samples/b/b.cu","line":1,"to_path":"Common/helper.h"}]}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "preproc.units.json"), []byte(`{"link_units":{
+	if err := os.WriteFile(filepath.Join(dir, "preproc.units.json"), []byte(`{"tool":"cmake-link-lines","tier":"A","link_units":{
  "a":["Samples/a/a.cu","Samples/a/main.cpp"],"b":["Samples/b/b.cu"],"c":["Samples/c/c.cu"],"d":["Samples/d/d.cu"]}}`), 0o644); err != nil {
 		t.Fatal(err)
 	}

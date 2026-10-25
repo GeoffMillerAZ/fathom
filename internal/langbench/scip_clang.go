@@ -221,15 +221,17 @@ type ClangLinkage struct {
 	fileLocal map[string]map[string]bool // document -> identifiers it defines with internal linkage
 	// linkUnits is a source document's executables (round 3 B, CUDA): the CMake targets its
 	// objects are linked into, from the driver's `<oracle>.units.json` companion.
-	linkUnits map[string][]string
-	unitsOf   map[string]map[string]bool // memo: a document's link units, a header's through its includers
-	unitCut   map[[2]string]bool         // pairs ruling 3 would draw to a definer in no shared link unit
-	includes  map[string][]string        // document -> subject files its #include lines entered
-	reach     map[string]map[string]bool // memo: a document's include closure, itself included
-	removed   map[[2]string]bool         // pairs ruling 3 would draw to another unit's copy
-	unplaced  map[[2]string]bool         // pairs drawn as ruling 3 draws: the includes reach no copy
-	functions map[string][]clangFunction // document -> the compiler's function definitions (round 4 C4-R1)
-	read      bool                       // Read ran over at least one oracle file
+	linkUnits  map[string][]string
+	unitsOf    map[string]map[string]bool // memo: a document's link units, a header's through its includers
+	unitCut    map[[2]string]bool         // pairs ruling 3 would draw to a definer in no shared link unit
+	includes   map[string][]string        // document -> subject files its #include lines entered
+	reach      map[string]map[string]bool // memo: a document's include closure, itself included
+	removed    map[[2]string]bool         // pairs ruling 3 would draw to another unit's copy
+	unplaced   map[[2]string]bool         // pairs drawn as ruling 3 draws: the includes reach no copy
+	functions  map[string][]clangFunction // document -> the compiler's function definitions (round 4 C4-R1)
+	rangesTier string                     // the weakest tier of the ranges companions read (round 4 C4-R3)
+	unitsTier  string                     // the weakest tier of the link-unit companions read
+	read       bool                       // Read ran over at least one oracle file
 }
 
 // clangLinkageFor is the dialect's linkage rule: C's (owner ruling M3) and CUDA's, whose
@@ -481,10 +483,14 @@ func (l *ClangLinkage) Read(toolOracles []string, companion func(string) string)
 		l.read = true
 		if ub, err := os.ReadFile(unitsCompanionFile(p)); err == nil {
 			var lu struct {
+				Tier      string              `json:"tier"`
 				LinkUnits map[string][]string `json:"link_units"`
 			}
 			if err := json.Unmarshal(ub, &lu); err != nil {
 				return fmt.Errorf("%s: %w", unitsCompanionFile(p), err)
+			}
+			if l.unitsTier, err = companionTier(unitsCompanionFile(p), lu.Tier, l.unitsTier); err != nil {
+				return err
 			}
 			for unit, srcs := range lu.LinkUnits {
 				for _, src := range srcs {
@@ -501,6 +507,7 @@ func (l *ClangLinkage) Read(toolOracles []string, companion func(string) string)
 			return err
 		}
 		var lk struct {
+			Tier            string `json:"tier"`
 			InternalLinkage []struct {
 				Path string `json:"path"`
 				Name string `json:"name"`
@@ -517,6 +524,9 @@ func (l *ClangLinkage) Read(toolOracles []string, companion func(string) string)
 		if err := json.Unmarshal(cb, &lk); err != nil {
 			return fmt.Errorf("%s: %w", companion(p), err)
 		}
+		if l.rangesTier, err = companionTier(companion(p), lk.Tier, l.rangesTier); err != nil {
+			return err
+		}
 		for _, d := range lk.InternalLinkage {
 			l.FileLocal(d.Path, d.Name)
 		}
@@ -527,6 +537,36 @@ func (l *ClangLinkage) Read(toolOracles []string, companion func(string) string)
 		}
 	}
 	return nil
+}
+
+// companionTier is the weaker of was and the tier a companion at path names,
+// refusing one that names no tier A-D (round 4 C4-R3: an untiered file is
+// never read as tier A).
+func companionTier(path, tier, was string) (string, error) {
+	if !slices.Contains([]string{"A", "B", "C", "D"}, tier) {
+		return "", fmt.Errorf("%s: shapes the file-edge truth but names no tier A-D (%q)", path, tier)
+	}
+	return max(was, tier), nil // "" < "A" < ... < "D": D is the weakest
+}
+
+// FeedTier is the weaker of tier and the tiers of the companions the rule read
+// (the ranges companion's linkage and functions, the link units): both shape
+// the file-edge truth (round 4 C4-R3). A nil rule leaves tier as it is.
+func (l *ClangLinkage) FeedTier(tier string) string {
+	if l == nil {
+		return tier
+	}
+	return max(tier, l.rangesTier, l.unitsTier)
+}
+
+// RangesTier is the weaker of tier and the ranges companions' own tier: the
+// CUDA stand-ins' definitions are theirs (round 4 C4-R1), so they feed the
+// calls family too.
+func (l *ClangLinkage) RangesTier(tier string) string {
+	if l == nil {
+		return tier
+	}
+	return max(tier, l.rangesTier)
 }
 
 // clangFileScope is the identifier of a scip-clang symbol for a file-scope function or
@@ -670,7 +710,7 @@ func (l *ClangLinkage) Finish(name string, edges map[[2]string]bool, counts map[
 			}
 		}
 		counts[CntScipFileEdgesLinkUnit] += cut
-		out = append(out, fmt.Sprintf("%s: %d file-edge truth pairs K25 ruling 3 would draw from a reference to a definer linked into no executable the referring document is are left out (%s, round 3 B: the repository is many programs, %d CMake executables by the build's own link lines, and a program holds one definition of an extern identifier, so a reference resolves to the definers sharing an executable with it, a header taking its includers' executables by the build's preprocessor oracle; scip-clang 0.4.0 names a global by no translation unit; a reference whose executables hold no definer keeps ruling 3)", name, cut, CntScipFileEdgesLinkUnit, l.unitCount()))
+		out = append(out, fmt.Sprintf("%s: %d file-edge truth pairs K25 ruling 3 would draw from a reference to a definer linked into no executable the referring document is are left out (%s, round 3 B: the repository is many programs, %d CMake executables by the build's own link lines (tier %s), and a program holds one definition of an extern identifier, so a reference resolves to the definers sharing an executable with it, a header taking its includers' executables by the build's preprocessor oracle; scip-clang 0.4.0 names a global by no translation unit; a reference whose executables hold no definer keeps ruling 3)", name, cut, CntScipFileEdgesLinkUnit, l.unitCount(), l.unitsTier))
 	}
 	if len(l.fileLocal) == 0 {
 		if !l.read {
@@ -678,7 +718,7 @@ func (l *ClangLinkage) Finish(name string, edges map[[2]string]bool, counts map[
 		}
 		return append(out, fmt.Sprintf("%s: the reading's clang-ast-defs companion carries no internal_linkage, so owner ruling M3 (O863: a reference to a file-local function or object resolves within its own translation unit) read no linkage and K25 ruling 3 draws every definer", name))
 	}
-	note := fmt.Sprintf("%s: %d file-edge truth pairs K25 ruling 3 would draw from a reference to a file-local function or object to another translation unit's same-named copy are left out (%s, owner ruling M3, O863: an identifier declared `static` at file scope has internal linkage, C11 6.2.2p3, and denotes its own unit's definition, so the reference resolves to the copy in the referring document or in a header its includes reach, by the build's preprocessor oracle; scip-clang 0.4.0 names every copy alike; linkage is the compiler AST's, clang-ast-defs, tier A; an external-linkage symbol keeps ruling 3)", name, n, CntScipFileEdgesInternalLinkage)
+	note := fmt.Sprintf("%s: %d file-edge truth pairs K25 ruling 3 would draw from a reference to a file-local function or object to another translation unit's same-named copy are left out (%s, owner ruling M3, O863: an identifier declared `static` at file scope has internal linkage, C11 6.2.2p3, and denotes its own unit's definition, so the reference resolves to the copy in the referring document or in a header its includes reach, by the build's preprocessor oracle; scip-clang 0.4.0 names every copy alike; linkage is the compiler AST's, clang-ast-defs, tier %s; an external-linkage symbol keeps ruling 3)", name, n, CntScipFileEdgesInternalLinkage, l.rangesTier)
 	if u := len(l.unplaced); u > 0 {
 		note += fmt.Sprintf("; %d pairs keep ruling 3 because the referring document's includes reach no copy and no definer is external (a header naming a static its includers define)", u)
 	}

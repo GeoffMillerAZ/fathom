@@ -961,6 +961,15 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			if fileEdgesTier, err = feedTierFrom(indexTier, opts.tools, "active_lines"); err != nil { // a dump's imports grade import_resolution, at its own tier
 				return res, err
 			}
+			if err := scipOpts.ClangLinkage.Read(opts.tools, rangeCompanionFile); err != nil { // owner ruling M3 (O863): the oracles' linkage and includes
+				return res, err
+			}
+			// round 4 C4-R3: the ranges and link-unit companions shape the
+			// file-edge truth, and the CUDA stand-ins (the ranges') the calls
+			fileEdgesTier = scipOpts.ClangLinkage.FeedTier(fileEdgesTier)
+			if scipOpts.ClangCUDA {
+				callsTier = scipOpts.ClangLinkage.RangesTier(callsTier)
+			}
 			// LB-F116: the build's own compiler's call sites, when an oracle
 			// file carries them, settle what the index cannot.
 			if scipOpts.ClangSites, err = clangSitesOf(opts.tools); err != nil {
@@ -971,9 +980,6 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			}
 			if scipOpts.ClangDefNames {
 				scipOpts.ClangScope = inScope // LB-F292: L4 over the files the reading measures
-			}
-			if err := scipOpts.ClangLinkage.Read(opts.tools, rangeCompanionFile); err != nil { // owner ruling M3 (O863): the oracles' linkage and includes
-				return res, err
 			}
 		}
 		if scipOpts.DefScoped {
