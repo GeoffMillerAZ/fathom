@@ -4184,7 +4184,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-hlsl",
     "worker_model": "sonnet",
-    "notes": "new; functions, structs, cbuffers; round 4 (2026-10-25): the hlsl-macros pre-pass gains the conditional-blanked candidate (H4-R1), harness parse-error count 33 -> 18 of 644 files (5.1% -> 2.8%) pooled, so the dialect ships on upstream PR 82 head 0400dd3; L1 excellent, L2 good against dxc-ast (tier B), L3 unmet (file_edge_precision .815 against clang-includes' include statements); VM throughput median 0.93 MB/s, re-measured on the development class (T2); see LB-Q-hlsl-rest",
+    "notes": "new; functions, structs, cbuffers; round 5 (2026-10-25): methods scored, attribute calls excluded by position, the .fx sniff requires shader structure; the reading covers all 644 files (18 in error, 2.8%); L1 excellent, L2 good against dxc-ast (tier B, its 543-file scope), L3 good (file_edge_precision 0.9012 against include statements plus dxc-ast reference pairs); VM throughput median 0.73 MB/s, so level_met none until the development class re-measures (T2); see LB-Q-hlsl-rest",
     "retargeted": "2026-10-24 (owner ruling): L1 -> L3, oracles DXC -ast-dump (L1, L2) and clang-includes over the shader roots (L3), subjects DirectX-Graphics-Samples, kajiya and DirectXTK12 (FidelityFX-SDK dropped); no source pre-pass"
   },
   {

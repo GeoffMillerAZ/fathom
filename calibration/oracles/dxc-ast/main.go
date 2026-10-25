@@ -68,8 +68,19 @@ type Pair struct {
 type Unit struct {
 	Defs       []Def
 	Calls      []Pair
-	MacroDefs  int // definitions spelled on a #define line, not written
-	MacroCalls int // calls spelled on a #define line, not written
+	MacroDefs  int   // definitions spelled on a #define line, not written
+	MacroCalls int   // calls spelled on a #define line, not written
+	Refs       []Ref // file pairs a reference draws (H5-R7), one per pair at its first line
+}
+
+// Ref is a reference written in Path (at Line) to a declaration another
+// measured file, ToPath, holds: a DeclRefExpr or MemberExpr resolved through
+// the dump's addresses, or a type a declaration or cast names, resolved by
+// the unit's one declaration of that name.
+type Ref struct {
+	Path   string `json:"path"`
+	Line   int    `json:"line"`
+	ToPath string `json:"to_path"`
 }
 
 type oracleFile struct {
@@ -117,6 +128,9 @@ var fileScope = map[string]bool{"TranslationUnitDecl": true, "NamespaceDecl": tr
 func parseDump(r io.Reader, files map[string]bool, macro func(string, int) bool) Unit {
 	var u Unit
 	var stack []frame
+	declFile := map[string]string{} // a declaration's address -> its file
+	typeFile := map[string]string{} // a record, typedef or enum name -> its file
+	var pending []pendingRef
 	cur := pos{}
 	sc := bufio.NewScanner(r)
 	sc.Buffer(make([]byte, 1<<20), 1<<26)
@@ -139,7 +153,7 @@ func parseDump(r io.Reader, files map[string]bool, macro func(string, int) bool)
 			stack = stack[:len(stack)-1]
 		}
 		// the address, then the range and the location
-		_, rest, _ = strings.Cut(rest, " ")
+		addr, rest, _ := strings.Cut(rest, " ")
 		var begin, end, at pos
 		hasAt := false
 		// `parent cbuffer 0x..` precedes a cbuffer constant's range, `prev 0x..` a redeclaration's
@@ -271,9 +285,96 @@ func parseDump(r io.Reader, files map[string]bool, macro func(string, int) bool)
 		if len(stack) > 0 && stack[len(stack)-1].call && kind != "ImplicitCastExpr" && kind != "DeclRefExpr" && kind != "MemberExpr" && !strings.HasSuffix(kind, "CastExpr") {
 			stack[len(stack)-1].call = false // the callee is not a name (a call through an expression)
 		}
+		if at.file != "" {
+			if strings.HasSuffix(kind, "Decl") && !implicit {
+				declFile[addr] = rp
+				if (kind == "CXXRecordDecl" && strings.HasSuffix(rest, " definition")) || kind == "TypedefDecl" || kind == "EnumDecl" {
+					if n := typeDeclName(kind, rest); n != "" {
+						typeFile[n] = rp
+					}
+				}
+			}
+			if inFiles && at.line > 0 {
+				for _, m := range reRefAddr.FindAllStringSubmatch(rest, -1) {
+					pending = append(pending, pendingRef{path: rp, line: at.line, addr: m[1]})
+				}
+				if typedKinds[kind] {
+					for _, q := range reQuotedType.FindAllStringSubmatch(rest, -1) {
+						for _, w := range reWord.FindAllString(q[1], -1) {
+							pending = append(pending, pendingRef{path: rp, line: at.line, typ: w})
+						}
+					}
+				}
+			}
+		}
 		stack = append(stack, fr)
 	}
+	u.Refs = resolveRefs(pending, declFile, typeFile, files)
 	return u
+}
+
+// pendingRef is a reference waiting for the whole dump: a declaration's
+// address, or a type's name.
+type pendingRef struct {
+	path string
+	line int
+	addr string
+	typ  string
+}
+
+var (
+	// a DeclRefExpr's declaration (`Function 0x.. 'helper'`, `Var 0x..`) or a
+	// MemberExpr's (`.rough 0x..`)
+	reRefAddr    = regexp.MustCompile(`(?:\b(?:Function|Var|CXXMethod|EnumConstant|Field) |\.[A-Za-z_][A-Za-z0-9_]* )(0x[0-9a-f]+)`)
+	reQuotedType = regexp.MustCompile(`'([^']*)'`)
+	reWord       = regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_]*`)
+)
+
+// typedKinds are the nodes whose quoted type names a type a file uses.
+var typedKinds = map[string]bool{"VarDecl": true, "ParmVarDecl": true, "FieldDecl": true, "FunctionDecl": true, "CXXMethodDecl": true, "TypedefDecl": true, "CStyleCastExpr": true, "CXXFunctionalCastExpr": true}
+
+// typeDeclName is the name a record, typedef or enum declaration declares.
+func typeDeclName(kind, rest string) string {
+	if kind == "TypedefDecl" {
+		return declName(rest)
+	}
+	f := strings.Fields(strings.TrimSuffix(rest, " definition"))
+	if len(f) == 0 {
+		return ""
+	}
+	return f[len(f)-1]
+}
+
+// resolveRefs keeps the references whose declaration another measured file
+// holds, one per (file, declaring file) pair at its first line, sorted.
+func resolveRefs(pending []pendingRef, declFile, typeFile map[string]string, files map[string]bool) []Ref {
+	first := map[[2]string]int{}
+	for _, p := range pending {
+		to := ""
+		if p.addr != "" {
+			to = declFile[p.addr]
+		} else {
+			to = typeFile[p.typ]
+		}
+		if to == "" || to == p.path || !files[to] {
+			continue
+		}
+		k := [2]string{p.path, to}
+		if l, ok := first[k]; !ok || p.line < l {
+			first[k] = p.line
+		}
+	}
+	out := make([]Ref, 0, len(first))
+	for k, l := range first {
+		out = append(out, Ref{Path: k[0], Line: l, ToPath: k[1]})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Path != out[j].Path {
+			return out[i].Path < out[j].Path
+		}
+		return out[i].ToPath < out[j].ToPath
+	})
+	return out
 }
 
 // enclosing is the innermost definition among the open frames.
@@ -437,6 +538,7 @@ func main() {
 	retry := flag.String("retry-target", "lib_6_9", "the newest library profile, retried on a unit with an error")
 	filesList := flag.String("files", "", "file of subject-relative paths, one per line: the harness's measured set (required)")
 	scopeOut := flag.String("scope", "", "write the in-scope files here, one per line")
+	refsOut := flag.String("refs", "", "write the reference file pairs here, as an imports oracle's same_package entries (H5-R7)")
 	var incs multi
 	flag.Var(&incs, "I", "include root, subject-relative (repeatable)")
 	flag.Parse()
@@ -444,13 +546,13 @@ func main() {
 		fmt.Fprintln(os.Stderr, "usage: dxc-ast -subject <dir> -files <list> [-dxc <dxc>] [-I <dir>]... [-target lib_6_3] [-scope <out>]")
 		os.Exit(2)
 	}
-	if err := run(*subject, *dxc, *target, *retry, *filesList, *scopeOut, incs, os.Stdout, os.Stderr); err != nil {
+	if err := run(*subject, *dxc, *target, *retry, *filesList, *scopeOut, *refsOut, incs, os.Stdout, os.Stderr); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
 
-func run(subject, dxc, target, retryTarget, filesList, scopeOut string, incs []string, stdout, stderr io.Writer) error {
+func run(subject, dxc, target, retryTarget, filesList, scopeOut, refsOut string, incs []string, stdout, stderr io.Writer) error {
 	b, err := os.ReadFile(filesList)
 	if err != nil {
 		return err
@@ -506,6 +608,7 @@ func run(subject, dxc, target, retryTarget, filesList, scopeOut string, incs []s
 	scope := map[string]bool{}
 	seenDef := map[Def]bool{}
 	seenCall := map[Pair]bool{}
+	refLine := map[[2]string]int{} // (file, declaring file) -> first line, over every unit read
 	var out oracleFile
 	errored, macroDefs, macroCalls := 0, 0, 0
 	var excluded []unitError             // units no setting parses, with the first error of the run's setting
@@ -551,6 +654,12 @@ func run(subject, dxc, target, retryTarget, filesList, scopeOut string, incs []s
 				out.Definitions = append(out.Definitions, d)
 			}
 		}
+		for _, r := range u.Refs {
+			k := [2]string{r.Path, r.ToPath}
+			if l, ok := refLine[k]; !ok || r.Line < l {
+				refLine[k] = r.Line
+			}
+		}
 		for _, c := range u.Calls {
 			if !seenCall[c] {
 				seenCall[c] = true
@@ -586,6 +695,11 @@ func run(subject, dxc, target, retryTarget, filesList, scopeOut string, incs []s
 		out.Scope = append(out.Scope, k)
 	}
 	sort.Strings(out.Scope)
+	if refsOut != "" {
+		if err := writeRefs(refsOut, version, refLine); err != nil {
+			return err
+		}
+	}
 	if scopeOut != "" {
 		if err := os.WriteFile(scopeOut, []byte(strings.Join(out.Scope, "\n")+"\n"), 0o644); err != nil {
 			return err
@@ -712,4 +826,37 @@ func listSuffix(items []string) string {
 	sorted := append([]string(nil), items...)
 	sort.Strings(sorted)
 	return ": " + strings.Join(sorted, ", ")
+}
+
+// writeRefs writes the reference file pairs as an imports oracle's
+// same_package entries: file-edge truth beside the include statements, never
+// an include statement import_resolution scores.
+func writeRefs(path, version string, refLine map[[2]string]int) error {
+	type entry struct {
+		Path        string `json:"path"`
+		Line        int    `json:"line"`
+		ToPath      string `json:"to_path"`
+		SamePackage bool   `json:"same_package"`
+	}
+	out := struct {
+		Tool    string  `json:"tool"`
+		Version string  `json:"version"`
+		Tier    string  `json:"tier"`
+		Imports []entry `json:"imports"`
+	}{Tool: "dxc-ast", Version: version, Tier: "B", Imports: []entry{}}
+	for k, l := range refLine {
+		out.Imports = append(out.Imports, entry{Path: k[0], Line: l, ToPath: k[1], SamePackage: true})
+	}
+	sort.Slice(out.Imports, func(i, j int) bool {
+		a, b := out.Imports[i], out.Imports[j]
+		if a.Path != b.Path {
+			return a.Path < b.Path
+		}
+		return a.ToPath < b.ToPath
+	})
+	b, err := json.MarshalIndent(out, "", " ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, append(b, '\n'), 0o644)
 }

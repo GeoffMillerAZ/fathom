@@ -25,6 +25,8 @@ float Ray::len() { return length(origin); }
 float4 main(float4 c : COLOR) : SV_Target
 {
     Ray r = Ray::create(c.xyz);
-    float s = helper(r.len()) + SCALE(c.x);
+    Material m;
+    m.rough = c.w;
+    float s = helper(r.len() * m.rough) + SCALE(c.x);
     return float4(r.at(s), 1) * tint;
 }

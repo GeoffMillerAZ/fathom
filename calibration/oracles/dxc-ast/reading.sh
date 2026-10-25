@@ -23,14 +23,21 @@ mkdir -p "$tmp" "$tools"
 (cd calibration/oracles/dxc-ast && go build -o "$root/$tools/dxc-ast" .)
 (cd calibration/oracles/clang-includes && go build -o "$root/$tools/clang-includes" .)
 
-for s in "${subjects[@]}"; do
+# NOTES_ONLY=1 rewrites the reading from the last runs under workspace/tmp/oracle
+# (the median run and its generated notes) without measuring again.
+[ "${NOTES_ONLY:-}" = 1 ] || for s in "${subjects[@]}"; do
   dir=$clones/$s
   (cd "$dir" && find . -type f \( -name '*.hlsl' -o -name '*.hlsli' -o -name '*.fx' -o -name '*.fxh' \) -not -path './.git/*' |
     sed 's|^\./||' | LC_ALL=C sort) > "$tmp/hlsl-$s.files"
   "$tools/dxc-ast" -subject "$dir" -dxc "$dxc" -files "$tmp/hlsl-$s.files" -I . -scope "$tmp/hlsl-$s.scope" \
-    > "$tmp/hlsl-$s-dxc.json" 2> "$tmp/hlsl-$s-dxc.err"
+    -refs "$tmp/hlsl-$s-refs.json" > "$tmp/hlsl-$s-dxc.json" 2> "$tmp/hlsl-$s-dxc.err"
   "$tools/clang-includes" -subject "$dir" -files "$tmp/hlsl-$s.files" -lang c++ -I . \
-    > "$tmp/hlsl-$s-imports.json" 2> "$tmp/hlsl-$s-includes.err"
+    > "$tmp/hlsl-$s-includes.json" 2> "$tmp/hlsl-$s-includes.err"
+  # L3's truth (H5-R7): file_edge_* against the include statements plus dxc-ast's
+  # same_package reference pairs, import_resolution against the statements alone
+  jq -s '.[0] + {imports: (.[0].imports + .[1].imports), disclose: [
+      "file-edge truth: clang-includes'"'"' include statements plus \(.[1].imports | length) dxc-ast reference pairs (a DeclRefExpr, MemberExpr or named type in a unit DXC reads, resolved through the dump to a declaration another measured file holds; written as same_package, so they grade file_edge_* and never import_resolution)"]}' \
+    "$tmp/hlsl-$s-includes.json" "$tmp/hlsl-$s-refs.json" > "$tmp/hlsl-$s-imports.json"
   echo "$s: $(tail -1 "$tmp/hlsl-$s-dxc.err") | $(tail -1 "$tmp/hlsl-$s-includes.err")"
 done
 
@@ -44,8 +51,10 @@ measure() { # $1 reading, $2 "scoped" to pass dxc-ast's scope as -only
       -unmatched "$tmp/hlsl-$s-unmatched.json" "${only[@]}" -out "$1" >&2
   done
 }
-for i in 1 2 3; do measure "$tmp/hlsl-run$i.json"; done
-measure "$tmp/hlsl-scoped.json" scoped
+if [ "${NOTES_ONLY:-}" != 1 ]; then
+  for i in 1 2 3; do measure "$tmp/hlsl-run$i.json"; done
+  measure "$tmp/hlsl-scoped.json" scoped
+fi
 
 median=$(for i in 1 2 3; do echo "$(jq .tenancy.throughput_mb_s "$tmp/hlsl-run$i.json") $i"; done | sort -n | sed -n 2p | cut -d' ' -f2)
 cp "$tmp/hlsl-run$median.json" "$out"
@@ -62,9 +71,9 @@ jq --arg runs "$runs" --slurpfile scoped "$tmp/hlsl-scoped.json" '
         + (.subjects | map("\(.name) \(.tenancy.files_with_error) of \(.files)") | join(", "))
         + ", pooled \($err) of \($files) (" + pct($err; $files) + "); throughput \(.tenancy.throughput_mb_s) MB/s CPU (\(.tenancy.wall_throughput_mb_s) wall)"),
       ("throughput (design 1.9 T1, T2; reading.sh): three runs over every measured file read \($runs) MB/s CPU; the reading is the median run, \(.tenancy.throughput_mb_s) MB/s"),
-      ("parse errors by dxc-ast scope (reading.sh, a run with -only the scope): \($serr) of the \($sfiles) files DXC reads hold a parse error and \($err - $serr) of the \($files - $sfiles) it excludes; "
-        + (if ($err - $serr) * 2 > $err then "the files DXC excludes carry most of the remaining parse errors, so L1 and L2 are measured on the easier part of the corpus"
-           else "the files DXC excludes carry \($err - $serr) of the \($err) remaining parse errors" end))
+      ("parse errors by dxc-ast scope (reading.sh, a run with -only the scope): \($serr) of the \($sfiles) files DXC reads hold a parse error (" + pct($serr; $sfiles) + ") and \($err - $serr) of the \($files - $sfiles) it excludes (" + pct($err - $serr; $files - $sfiles) + "); "
+        + (if ($err - $serr) * $sfiles > $serr * ($files - $sfiles) then "the files DXC excludes are the more error-prone part of the corpus" + (if ($err - $serr) * 2 > $err then " and carry most of the remaining parse errors" else "" end) + ", so L1 and L2 are measured on the easier part of the corpus"
+           else "the files DXC excludes are no more error-prone than those it reads" end))
     ]
   | .notes |= sort' "$out" > "$out.tmp" && mv "$out.tmp" "$out"
 jq -c '{level_met, grade, tenancy: {files_with_error: .tenancy.files_with_error, throughput_mb_s: .tenancy.throughput_mb_s}}' "$out"

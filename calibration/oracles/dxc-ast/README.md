@@ -27,6 +27,15 @@ times over every file (no `-only`) and once with `-only` the scope, keeps the me
 appends notes generated from those runs' tenancy output: files with a parse error per subject and pooled, the three
 throughput values, and how the parse errors split between the files DXC reads and those it excludes.
 
+`-refs <out>` writes L3's reference truth (H5-R7, the precedent `../clang-objc`'s): every `DeclRefExpr` and
+`MemberExpr` is resolved to its declaration through the dump's addresses, and every type a declaration or cast names
+(`VarDecl m 'Material'`) to the unit's one record, typedef or enum declaration of that name; whenever that declaration
+sits in another measured file, the pair (file, declaring file) is written once, at its first line, as an imports
+oracle's `same_package` entry. `reading.sh` joins those entries to `../clang-includes`' include statements, so
+`file_edge_precision` and `file_edge_recall` grade fathom's reference-derived file edges against the statements plus
+the references, while `import_resolution` grades the statements alone. Only units DXC reads give reference pairs; a
+file outside the scope contributes its include statements alone. L3 runs over every measured file (no `-only`).
+
 `-files` is the harness's measured set (one subject-relative path per line: every `.hlsl`, `.hlsli`, `.fx` and `.fxh`
 discovery lists). The imports oracle is `../clang-includes` run on the same list with `-lang c++ -I .`.
 

@@ -137,7 +137,7 @@ func TestRunScope(t *testing.T) {
 	}
 	scopeOut := filepath.Join(t.TempDir(), "scope")
 	var stdout, stderr bytes.Buffer
-	if err := run(subject, fakeDXC(t), "lib_6_3", "lib_6_9", list, scopeOut, nil, &stdout, &stderr); err != nil {
+	if err := run(subject, fakeDXC(t), "lib_6_3", "lib_6_9", list, scopeOut, "", nil, &stdout, &stderr); err != nil {
 		t.Fatal(err)
 	}
 	var out oracleFile
@@ -181,7 +181,7 @@ func TestRunRetries(t *testing.T) {
 		t.Fatal(err)
 	}
 	var stdout, stderr bytes.Buffer
-	if err := run(subject, fakeDXC(t), "lib_6_3", "lib_6_9", list, "", nil, &stdout, &stderr); err != nil {
+	if err := run(subject, fakeDXC(t), "lib_6_3", "lib_6_9", list, "", "", nil, &stdout, &stderr); err != nil {
 		t.Fatal(err)
 	}
 	var out oracleFile
@@ -229,8 +229,9 @@ func TestParseDumpFixture(t *testing.T) {
 		{"fixture.hlsl", "at", "method", 19, 19},
 		{"fixture.hlsl", "create", "method", 18, 18},
 		{"fixture.hlsl", "len", "method", 23, 23},
-		{"fixture.hlsl", "main", "function", 25, 30},
-		{"fixture.hlsli", "helper", "function", 4, 7},
+		{"fixture.hlsl", "main", "function", 25, 32},
+		{"fixture.hlsli", "Material", "struct", 4, 7},
+		{"fixture.hlsli", "helper", "function", 9, 12},
 		{"fixture.hlsli", "linearSampler", "variable", 2, 2},
 	}
 	sortDefs(u.Defs)
@@ -252,5 +253,10 @@ func TestParseDumpFixture(t *testing.T) {
 	}
 	if u.MacroCalls != 1 {
 		t.Errorf("macro calls %d, want 1 (frac, spelled on the #define line)", u.MacroCalls)
+	}
+	// H5-R7: main names the header's type Material (line 28), its field
+	// rough and its function helper: one file pair, at its first reference.
+	if want := []Ref{{"fixture.hlsl", 28, "fixture.hlsli"}}; !reflect.DeepEqual(u.Refs, want) {
+		t.Errorf("refs %v, want %v", u.Refs, want)
 	}
 }
