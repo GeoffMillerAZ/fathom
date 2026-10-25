@@ -161,9 +161,9 @@
     {
       "blob": "cuda",
       "repo": "tree-sitter-grammars/tree-sitter-cuda",
-      "tag": "v0.21.2",
+      "tag": "d58080a327756e4d1d16ec329ba7cb2048f6c6cd",
       "commit": "d58080a327756e4d1d16ec329ba7cb2048f6c6cd",
-      "tarball_sha256": "3a16bdcbdb4abd311f308651d75016cf3d54c9ab0ea8465917813f5e7944dbf4",
+      "tarball_sha256": "18f7bcaf6115c7b9ca57505653e787c565f4cdc7886caf76a004c36e8aa1548a",
       "licence": "MIT",
       "entry_points": ["tree_sitter_cuda"],
       "scanner": true,

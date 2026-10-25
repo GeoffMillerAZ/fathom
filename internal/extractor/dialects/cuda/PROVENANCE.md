@@ -1,7 +1,8 @@
 # cuda — provenance
 
 - Grammar: `tree-sitter-grammars/tree-sitter-cuda v0.21.2` (MIT), commit `d58080a327756e4d1d16ec329ba7cb2048f6c6cd`
-  (the tag moved from `cef483d`, upstream issue 123: the commit is the lock), ABI 15, with its `src/scanner.c` and a
+  (the tag moved from `cef483d`, upstream issue 123, so the lock's `tag` field carries the commit and the tarball is
+  that commit's GitHub archive, the go-template precedent), ABI 15, with its `src/scanner.c` and a
   committed `src/parser.c` (`generate: false`); built into `internal/extractor/tsengine/grammars/cuda.wasm.gz`.
   Pin and digests in `internal/extractor/tsengine/grammars/grammars.lock.json`. The grammar extends tree-sitter-cpp
   master (`8b5b49e`), not the v0.23.4 cpp pins here, so cpp's query nodes were checked against the goldens.
