@@ -44,6 +44,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `gotemplate` | ngalaiko/tree-sitter-go-template | aa71f63de226c5592dfbfc1f29949522d7c95fac | `aa71f63de226c5592dfbfc1f29949522d7c95fac` | MIT | `tree_sitter_helm` | `86bcd2cd462a2fdd94a60bb44b6f15e99b3d02177c5d631cbf45761bae482458` |
 | `graphql` | bkegley/tree-sitter-graphql | 5e66e961eee421786bdda8495ed1db045e06b5fe | `5e66e961eee421786bdda8495ed1db045e06b5fe` | MIT | `tree_sitter_graphql` | `ff542fddb51b1f1c110bb36fa16703d2212eeae0c0d12a2e1bf813c5f5db9507` |
 | `groovy` | murtaza64/tree-sitter-groovy | 2a6ddd558b6aa39c5b77d8db9fe9baf817486b2c | `2a6ddd558b6aa39c5b77d8db9fe9baf817486b2c` | MIT | `tree_sitter_groovy` | `00320c650fdf683337d8a1fffd2f2f36fd4606f26d77f154d3f0fb7b268a5892` |
+| `hlsl` | tree-sitter-grammars/tree-sitter-hlsl | 0400dd363f4e8142dcfa7b5a7d2d9db59c129c6e | `0400dd363f4e8142dcfa7b5a7d2d9db59c129c6e` | MIT | `tree_sitter_hlsl` | `0a40e0a1573fb4b6e7433f2be53464f20da6740455d6d5f08316cdd67ccd9dbf` |
 | `html` | tree-sitter/tree-sitter-html | v0.23.2 | `5a5ca8551a179998360b4a4ca2c0f366a35acc03` | MIT | `tree_sitter_html` | `21fa4f2d4dcb890ef12d09f4979a0007814f67f1c7294a9b17b0108a09e45ef7` |
 | `java` | tree-sitter/tree-sitter-java | v0.23.5 | `94703d5a6bed02b98e438d7cad1136c01a60ba2c` | MIT | `tree_sitter_java` | `cb199e0faae4b2c08425f88cbb51c1a9319612e7b96315a174a624db9bf3d9f0` |
 | `javascript` | tree-sitter/tree-sitter-javascript | v0.25.0 | `44c892e0be055ac465d5eeddae6d3e194424e7de` | MIT | `tree_sitter_javascript` | `9712fc283d3dc01d996d20b6392143445d05867a7aad76fdd723824468428b86` |
@@ -101,6 +102,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `gotemplate` | dialects/helm | no | 15 | 189,463 | 68,230 | `b1a9b7c210be48df96ad4f0a0bec88f4aca1f30fe9cb4bb2e05c6e845181d61f` |
 | `graphql` | (root) | no | 13 | 178,965 | 66,018 | `2562a48542af5bdffed0ba53aa178e883828c124aca5b082b9be47f3aca83017` |
 | `groovy` | (root) | no | 15 | 761,792 | 171,362 | `9bfe78467984483569fd59a44dc85fba0f0115d1bb6a6466b32ab7106ece6bc3` |
+| `hlsl` | (root) | yes | 14 | 3,052,819 | 692,820 | `8cd650a354c697cbcbc564c36bad78997c550bd94744d85370618e4d6d339cc2` |
 | `html` | (root) | yes | 14 | 146,253 | 61,224 | `da122f8345c4c4a052cd71c55b7b34b5f4bde63cedfd6de3ad8aeb11c8099289` |
 | `java` | (root) | no | 14 | 401,009 | 113,109 | `335ca5db18443f9ff6bbb917bccd3c79425991bdf1d3474b62a64169c58405b4` |
 | `javascript` | (root) | yes | 15 | 458,741 | 114,833 | `7245ee58564f991827498e36b5ec14420b99759596490e3a74ed0993b24ed904` |
