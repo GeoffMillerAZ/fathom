@@ -33,5 +33,8 @@ What it counts (the parser is independent; the scope is the dialect author's rul
 - `property`: each `Entity_Constraints` item of a class's `properties` blocks (`end` 0). An `arguments` block is never a
   property. Events and enumeration members are not reported.
 - Names are bare: the last `.` segment (a getter `get.Secret` is `Secret`).
-- Files that are not UTF-8 are decoded with replacement characters, so line numbers stay true; the count is disclosed.
+- Files that are not UTF-8 are decoded with replacement characters, so line numbers stay true; the count is disclosed. The
+  replacement decode never changes line counts (it substitutes characters, never line breaks).
+- Line endings: CRLF is normalised to LF; a lone CR (old Mac) line ending is not normalised, so the oracle does not see
+  it as a line break.
 - Octave's `__parse_file__` dumps no AST and is not used.

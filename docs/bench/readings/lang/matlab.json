@@ -10,7 +10,7 @@
     "L4": "not-attempted"
   },
   "measured_at": "2026-10-25",
-  "fathom_commit": "29b6419",
+  "fathom_commit": "a64f5bc",
   "extractor": "dialect",
   "subjects": [
     {
@@ -41,9 +41,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 19,
-        "extract_ms": 6858.024999999996,
-        "extract_cpu_ms": 6975.570000000007,
-        "max_file_ms": 300,
+        "extract_ms": 8893.17000000001,
+        "extract_cpu_ms": 9256.035,
+        "max_file_ms": 552,
         "peak_module_pages": 433,
         "compiled_bytes": 0
       }
@@ -76,9 +76,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 229.84400000000002,
-        "extract_cpu_ms": 231.566,
-        "max_file_ms": 123,
+        "extract_ms": 292.081,
+        "extract_cpu_ms": 292.916,
+        "max_file_ms": 153,
         "peak_module_pages": 394,
         "compiled_bytes": 0
       }
@@ -111,9 +111,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 516.3620000000001,
-        "extract_cpu_ms": 595.2710000000001,
-        "max_file_ms": 338,
+        "extract_ms": 698.9759999999998,
+        "extract_cpu_ms": 818.1110000000002,
+        "max_file_ms": 494,
         "peak_module_pages": 490,
         "compiled_bytes": 0
       }
@@ -173,10 +173,10 @@
     "faults": 0,
     "faulting_files": [],
     "files_with_error": 19,
-    "throughput_mb_s": 0.94,
+    "throughput_mb_s": 0.71,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 0.96,
-    "max_file_ms": 338,
+    "wall_throughput_mb_s": 0.74,
+    "max_file_ms": 552,
     "peak_module_pages": 490,
     "compiled_bytes": 0
   },
@@ -190,7 +190,10 @@
     "export_fig: 1 files are not UTF-8 and were decoded with replacement characters (line numbers unchanged)",
     "export_fig: miss-hit-core 0.9.44 parser dump, 18 .m files, 18 parsed",
     "matlab2tikz: miss-hit-core 0.9.44 parser dump, 64 .m files, 64 parsed",
-    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "control (round 2, same VM, same session, lang-oracle with a placeholder oracle, extract_cpu_ms basis): lua Kong/kong 587 files 3,203,247 bytes read 1.32 MB/CPU-s against the committed 3.61 (VM factor 2.74); python fastapi 1,175 files 3,386,387 bytes read 1.21 against the committed 3.02 (VM factor 2.50); a second pass read 1.32 and 1.22",
+    "profile (chebfun, -only scope, in-guest call timers; the same wasm module runs parse and query): tree-sitter parse (fathom_parse_bounded) 70% of extraction CPU, query evaluation (ts_query_cursor_next_match) 29%, tree delete 1.4%; a one-pattern tags.scm floor cut the pass from 8.99 s to 7.86 s, so the whole 154-line query costs at most 12% over a bare traversal and rewriting it cannot reach 1.0; the cost is the grammar's parse, left unedited (owner ruling M-R3)",
+    "MATLAB reads 0.71 MB/CPU-s in this VM against 1.2 to 1.3 for lua and python measured beside it in the same minutes (0.55 of their speed), so the extractor is genuinely about 1.8x costlier per byte than those dialects and the VM factor alone does not explain the shortfall; the same VM read 0.94 in round 1 (host variance between sessions about 30%)"
   ],
   "disposition": null
 }
