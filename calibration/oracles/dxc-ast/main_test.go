@@ -1,6 +1,10 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -87,5 +91,64 @@ func TestDefineLines(t *testing.T) {
 	want := map[int]bool{2: true, 3: true, 4: true}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("define lines %v, want %v", got, want)
+	}
+}
+
+// fakeDXC writes a stand-in dxc: --version, an -ast-dump that fails for
+// bad.hlsl and prints one function for good.hlsl, and a -M rule naming
+// good.hlsl's header.
+func fakeDXC(t *testing.T) string {
+	t.Helper()
+	p := filepath.Join(t.TempDir(), "dxc")
+	script := `#!/bin/sh
+for a in "$@"; do last="$a"; done
+case "$*" in
+*--version*) echo "fake dxc 1.0"; exit 0 ;;
+*" -M "*) echo "good.cso: ./good.hlsl ./inc.hlsli"; exit 0 ;;
+esac
+case "$last" in
+./bad.hlsl) echo "./bad.hlsl:1:1: error: unknown type name 'Foo'" >&2; exit 1 ;;
+./good.hlsl) printf '%s\n' 'TranslationUnitDecl 0x1 <<invalid sloc>> <invalid sloc>' \
+  '|-FunctionDecl 0x2 <./good.hlsl:1:1, line:3:1> line:1:7 main '"'"'float ()'"'"'' \
+  '| ` + "`" + `-CompoundStmt 0x3 <line:2:1, line:3:1>' ;;
+esac
+`
+	if err := os.WriteFile(p, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
+// TestRunScope: a unit whose dump writes an error is not read; a passing
+// unit and the header its -M rule names are the scope, written into the
+// oracle file and to -scope.
+func TestRunScope(t *testing.T) {
+	subject := t.TempDir()
+	for _, f := range []string{"bad.hlsl", "good.hlsl", "inc.hlsli"} {
+		if err := os.WriteFile(filepath.Join(subject, f), []byte("\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	list := filepath.Join(t.TempDir(), "files")
+	if err := os.WriteFile(list, []byte("bad.hlsl\ngood.hlsl\ninc.hlsli\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	scopeOut := filepath.Join(t.TempDir(), "scope")
+	var stdout, stderr bytes.Buffer
+	if err := run(subject, fakeDXC(t), "lib_6_3", list, scopeOut, nil, &stdout, &stderr); err != nil {
+		t.Fatal(err)
+	}
+	var out oracleFile
+	if err := json.Unmarshal(stdout.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"good.hlsl", "inc.hlsli"}; !reflect.DeepEqual(out.Scope, want) {
+		t.Errorf("scope %v, want %v", out.Scope, want)
+	}
+	if b, _ := os.ReadFile(scopeOut); string(b) != "good.hlsl\ninc.hlsli\n" {
+		t.Errorf("-scope wrote %q", b)
+	}
+	if want := []Def{{"good.hlsl", "main", "function", 1, 3}}; !reflect.DeepEqual(out.Definitions, want) {
+		t.Errorf("definitions %v, want %v", out.Definitions, want)
 	}
 }

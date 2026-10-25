@@ -1085,6 +1085,10 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			var tf toolOracleFile
 			if json.Unmarshal(b, &tf) == nil {
 				res.notes = append(res.notes, toolOracleDisclosures(spec.Manifest, name, tf)...) // wave lf5: the oracle's own counts
+				if len(tf.Scope) > 0 {
+					in, _ := toolOracleScope(tf.Scope, inScope, nil)
+					res.notes = append(res.notes, fmt.Sprintf(noteToolOracleScope, name, tf.Tool, len(in), len(inScope)))
+				}
 			}
 		}
 		if l1 != nil {
@@ -1249,6 +1253,12 @@ type toolOracleFile struct {
 	// (calibration/oracles/clang-calls), read beside a scip-clang index
 	// (clangSitesOf).
 	CallSites []clangCallSite `json:"call_sites,omitempty"`
+	// Scope (LB-Q-hlsl, H5-R4) is the measured files the oracle reads, when
+	// it reads only part of them (a compiler front end that refuses some
+	// units): its definitions, calls and references are graded on those
+	// files alone, so a file outside is neither a recall nor a precision
+	// miss, while the run (tenancy, file edges) still covers every file.
+	Scope []string `json:"scope,omitempty"`
 	// QueryClauses (LB-F287) count the LINQ query clauses the C# compiler binds
 	// (calibration/oracles/roslyn calls mode), disclosed beside its call sites.
 	QueryClauses int `json:"query_clauses,omitempty"`
@@ -1318,6 +1328,9 @@ func scoreToolOracle(path string, m langbench.Manifest, nodes []core.SymbolNode,
 	if tf.Tool == "" || !slices.Contains([]string{"A", "B", "C", "D"}, tier) {
 		return fail(fmt.Errorf("%s: tool and a tier A-D are required", path))
 	}
+	if len(tf.Scope) > 0 {
+		inScope, nodes = toolOracleScope(tf.Scope, inScope, nodes)
+	}
 	dropped := 0
 	var defs []langbench.OracleDef
 	for _, d := range tf.Definitions {
@@ -1378,6 +1391,27 @@ func scoreToolOracle(path string, m langbench.Manifest, nodes []core.SymbolNode,
 	}
 	return langbench.OracleRun{Tier: tier, Tool: tf.Tool, Version: tf.Version, Source: tf.Source, Revision: tf.Revision, Licence: tf.Licence}, dropped, l1res, calls, nil
 }
+
+// toolOracleScope narrows the files a tool oracle grades to its own scope:
+// the measured files it names, and fathom's symbols on them.
+func toolOracleScope(scope []string, inScope map[string]bool, nodes []core.SymbolNode) (map[string]bool, []core.SymbolNode) {
+	in := make(map[string]bool, len(scope))
+	for _, f := range scope {
+		if inScope[f] {
+			in[f] = true
+		}
+	}
+	kept := make([]core.SymbolNode, 0, len(nodes))
+	for _, n := range nodes {
+		if in[n.FilePath] {
+			kept = append(kept, n)
+		}
+	}
+	return in, kept
+}
+
+// noteToolOracleScope discloses a tool oracle's scope (H5-R4).
+const noteToolOracleScope = "%s: %s grades definitions and calls on its scope, %d of %d measured files (the files it reads); a file outside is neither a recall nor a precision miss, while tenancy and file edges cover every measured file"
 
 var universalCtagsRE = regexp.MustCompile(`Universal Ctags ([0-9][^,( ]*)`)
 

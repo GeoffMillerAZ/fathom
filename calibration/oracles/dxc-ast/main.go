@@ -10,8 +10,10 @@
 // unit whose run writes an `error:` is not read. A file is in scope when its
 // own unit parses without error, or when it is a header (a file `dxc -M` lists)
 // of a unit that does: -scope writes that list, one subject-relative path per
-// line, for lang-oracle's -only, so a file the front end cannot read is
-// neither a recall miss nor a precision miss.
+// line, and the oracle file's `scope` names it, so lang-oracle grades the
+// definitions and calls on those files alone: a file the front end cannot
+// read is neither a recall miss nor a precision miss, while the run itself
+// covers every measured file.
 //
 // Definitions, each at its name's line with its range's last line: a function
 // with a body (a template's pattern included, a struct's methods not), a
@@ -75,6 +77,9 @@ type oracleFile struct {
 	Definitions []Def    `json:"definitions"`
 	Calls       []Pair   `json:"calls"`
 	Disclose    []string `json:"disclose,omitempty"`
+	// Scope is the measured files this oracle reads (lang-oracle grades its
+	// definitions and calls on them alone, while the run covers every file).
+	Scope []string `json:"scope,omitempty"`
 }
 
 type pos struct {
@@ -431,13 +436,13 @@ func main() {
 		fmt.Fprintln(os.Stderr, "usage: dxc-ast -subject <dir> -files <list> [-dxc <dxc>] [-I <dir>]... [-target lib_6_3] [-scope <out>]")
 		os.Exit(2)
 	}
-	if err := run(*subject, *dxc, *target, *filesList, *scopeOut, incs); err != nil {
+	if err := run(*subject, *dxc, *target, *filesList, *scopeOut, incs, os.Stdout, os.Stderr); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
 
-func run(subject, dxc, target, filesList, scopeOut string, incs []string) error {
+func run(subject, dxc, target, filesList, scopeOut string, incs []string, stdout, stderr io.Writer) error {
 	b, err := os.ReadFile(filesList)
 	if err != nil {
 		return err
@@ -479,10 +484,10 @@ func run(subject, dxc, target, filesList, scopeOut string, incs []string) error 
 		args := append(append([]string{}, base...), "-ast-dump", "./"+f)
 		cmd := exec.Command(dxc, args...)
 		cmd.Dir = subject
-		var stdout, stderr bytes.Buffer
-		cmd.Stdout, cmd.Stderr = &stdout, &stderr
+		var dump, diag bytes.Buffer
+		cmd.Stdout, cmd.Stderr = &dump, &diag
 		runErr := cmd.Run()
-		if runErr != nil || bytes.Contains(stderr.Bytes(), []byte("error:")) {
+		if runErr != nil || bytes.Contains(diag.Bytes(), []byte("error:")) {
 			errored++
 			continue
 		}
@@ -496,7 +501,7 @@ func run(subject, dxc, target, filesList, scopeOut string, incs []string) error 
 				}
 			}
 		}
-		u := parseDump(&stdout, files, macro)
+		u := parseDump(&dump, files, macro)
 		macroDefs += u.MacroDefs
 		macroCalls += u.MacroCalls
 		for _, d := range u.Defs {
@@ -534,19 +539,18 @@ func run(subject, dxc, target, filesList, scopeOut string, incs []string) error 
 		fmt.Sprintf("dxc-ast (dxc -T %s -HV 2021 -ast-dump, run-chosen flags, no build database): %d of %d measured files in scope (their own unit, or a header of one, parses without error); %d units with an error not read", target, len(scope), len(list), errored),
 		fmt.Sprintf("dxc-ast: %d definitions and %d calls spelled on a #define line (a macro body) not written, macro-generated (counted per reading unit)", macroDefs, macroCalls),
 	}
+	for k := range scope {
+		out.Scope = append(out.Scope, k)
+	}
+	sort.Strings(out.Scope)
 	if scopeOut != "" {
-		var keys []string
-		for k := range scope {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		if err := os.WriteFile(scopeOut, []byte(strings.Join(keys, "\n")+"\n"), 0o644); err != nil {
+		if err := os.WriteFile(scopeOut, []byte(strings.Join(out.Scope, "\n")+"\n"), 0o644); err != nil {
 			return err
 		}
 	}
-	fmt.Fprintf(os.Stderr, "files %d in_scope %d errored %d definitions %d calls %d macro_defs %d macro_calls %d\n",
+	fmt.Fprintf(stderr, "files %d in_scope %d errored %d definitions %d calls %d macro_defs %d macro_calls %d\n",
 		len(list), len(scope), errored, len(out.Definitions), len(out.Calls), macroDefs, macroCalls)
-	enc := json.NewEncoder(os.Stdout)
+	enc := json.NewEncoder(stdout)
 	enc.SetIndent("", " ")
 	return enc.Encode(out)
 }

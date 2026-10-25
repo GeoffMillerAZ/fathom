@@ -10,15 +10,17 @@ from the subject root, one process per measured file, with run-chosen flags and 
 build passes its own profile, entry point and defines; this run does not know them). A unit whose run writes an
 `error:` is not read. A file is in scope when its own unit parses without error, or when it is a header that
 `dxc -M` lists for such a unit; `-scope` writes that list for lang-oracle's `-only`, so a file the front end cannot
-read is neither a recall miss nor a precision miss.
+read is neither a recall miss nor a precision miss. The oracle file's `scope` names the same list, so `lang-oracle`
+grades definitions and calls on those files alone while its run (tenancy, throughput, L3) covers every measured file.
 
-    cd calibration/oracles/dxc-ast && go build -o ../../../workspace/tools/dxc-ast .
-    workspace/tools/dxc-ast -subject <checkout> -dxc workspace/tools/dxc/bin/dxc -files <list> -I . \
-      -scope workspace/tmp/oracle/hlsl-<subject>.scope > workspace/tmp/oracle/hlsl-<subject>-dxc.json
-    go run ./cmd/indexbench lang-oracle -dialect hlsl -subject <checkout> \
-      -tool-oracle workspace/tmp/oracle/hlsl-<subject>-dxc.json \
-      -tool-oracle workspace/tmp/oracle/hlsl-<subject>-imports.json \
-      -only "$(paste -sd, workspace/tmp/oracle/hlsl-<subject>.scope)" -out docs/bench/readings/lang/hlsl.json
+The reading is driven by `reading.sh` (from the repository root, after `task calibrate-clone -- hlsl`):
+
+    calibration/oracles/dxc-ast/reading.sh docs/bench/readings/lang/hlsl.json
+
+It builds this program and `../clang-includes`, runs both on each subject's measured files, runs `lang-oracle` three
+times over every file (no `-only`) and once with `-only` the scope, keeps the median-throughput run as the reading and
+appends notes generated from those runs' tenancy output: files with a parse error per subject and pooled, the three
+throughput values, and how the parse errors split between the files DXC reads and those it excludes.
 
 `-files` is the harness's measured set (one subject-relative path per line: every `.hlsl`, `.hlsli`, `.fx` and `.fxh`
 discovery lists). The imports oracle is `../clang-includes` run on the same list with `-lang c++ -I .`.
