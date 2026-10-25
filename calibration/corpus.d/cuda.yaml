@@ -1,11 +1,15 @@
 id: cuda
 language: CUDA
-# Measurement conventions (docs/bench/readings/lang/cuda.json). Linux x86_64 only.
+# Measurement conventions (docs/bench/readings/lang/cuda.json). Linux x86_64 only. cuda-samples is measured one
+# subject per sample directory (+ Common/), see calibration/oracles/scip-clang/README.md, 134 of its 175 .cu translation
+# units (41 need OpenMP, GL, Vulkan, D3D, EGL or Tegra headers clang cannot find) and the 36 .cuh files those include.
 # NVIDIA/cuda-samples is cloned sparse (Samples/ is mostly data): its .cu/.cuh/.h sources,
 # CMakeLists.txt and cmake/** and Common/**. The repository's LICENSE is BSD-3 text plus a pointer
 # to the CUDA EULA (the redistributable headers the oracles read): FLAGGED for the owner, measurement only.
 # NVIDIA/cutlass is cloned sparse (examples, include, tools/util, cmake); the measured example
 # translation units are capped at 40 (the build's own compilation database is filtered to them).
+# NVIDIA/cutlass is NOT measured yet (LB-Q-cuda-rest): 5 of 40 sampled example translation units do not
+# compile under clang 18 CUDA host-only mode, and its clang-calls and clang-ast-defs runs did not finish in the lane.
 # The CUDA headers the oracles read are downloaded under workspace/tools and never committed.
 repos:
   - name: NVIDIA/cuda-samples

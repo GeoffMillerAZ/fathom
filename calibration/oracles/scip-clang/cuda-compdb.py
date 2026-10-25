@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """cuda-compdb.py — a clang compilation database for a CUDA calibration subject (LB-Q-cuda).
 
-    cuda-compdb.py <subject-dir> <cuda-root> <out-compile_commands.json> [-I dir]... [--only substr]... [--max N]
+    cuda-compdb.py <subject-dir> <cuda-root> <out-compile_commands.json> [-I dir]... [--only substr]... [--max N] [--nvcc-version 12.9.86]
 
 The CUDA build's own compiler is nvcc, which a Linux x86_64 redistributable set without the nvcc driver
 cannot run, so each .cu translation unit is rewritten to a clang CUDA host-only compile
@@ -15,12 +15,14 @@ import json, os, sys
 
 args = sys.argv[1:]
 subject, root, out = (os.path.abspath(a) for a in args[:3])
-incs, only, mx, i = [], [], 0, 3
+incs, only, mx, nvcc, i = [], [], 0, None, 3
 while i < len(args):
     if args[i] == "-I":
         incs.append(os.path.join(subject, args[i + 1])); i += 2
     elif args[i] == "--only":
         only.append(args[i + 1]); i += 2
+    elif args[i] == "--nvcc-version":
+        nvcc = args[i + 1].split("."); i += 2
     elif args[i] == "--max":
         mx = int(args[i + 1]); i += 2
     else:
@@ -44,6 +46,8 @@ entries = []
 for p in files:
     cmd = ["clang++", "-x", "cuda", "--cuda-path=" + root, "--cuda-host-only", "-nocudalib",
            "-Wno-unknown-cuda-version", "-std=c++17", "-I" + os.path.join(root, "include"), "-I" + os.path.dirname(p)]
+    if nvcc:  # the version macros nvcc predefines, which cutlass reads
+        cmd += ["-D__CUDACC_VER_MAJOR__=" + nvcc[0], "-D__CUDACC_VER_MINOR__=" + nvcc[1], "-D__CUDACC_VER_BUILD__=" + nvcc[2]]
     cmd += ["-I" + x for x in incs]
     cmd += ["-c", p, "-o", "/dev/null"]
     entries.append({"directory": subject, "file": p, "command": " ".join(cmd)})

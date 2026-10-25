@@ -48,6 +48,7 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 | Rust | tags dialect `rust` | yes (tree-sitter-rust v0.24.2) | ripgrep, clap | **scip** via rust-analyzer | O540's resolver edits (a macro's textual scope, a fully qualified path no `use` binds); typed receivers need type inference |
 | C | `.c` tags dialect `c`; `.h` tags dialect `c`, `cpp` or `objective-c` (by content sniff) | yes (tree-sitter-c v0.24.2) | curl, libuv, sqlite | **scip** via scip-clang | — |
 | C++ | tags dialect `cpp` | yes (tree-sitter-cpp v0.23.4) | fmt, nlohmann/json | **scip** via scip-clang | L2 call precision, L3 file edges (`import_resolution` reads 1 against the build's own preprocessor, tier A) and L4 (LB-Q-cpp-rest) |
+| CUDA | tags dialect `cuda` (a `.h` a CUDA file includes is C or C++'s through the header router) | yes (tree-sitter-cuda v0.21.2) | NVIDIA/cuda-samples, one subject per sample (NVIDIA/cutlass: LB-Q-cuda-rest) | **scip** via scip-clang over a clang CUDA compilation database (nvcc, the build's own compiler, was not available: tier B for the preprocessor and AST oracles) | L2 call precision (function-like macros such as `checkCudaErrors` are not calls), L3 over the whole subject set and L4 on cutlass (LB-Q-cuda-rest) |
 | Ruby | tags dialect `ruby` | yes | sinatra, jekyll | **scip** via scip-ruby, which needs a Sorbet-typed subject (on untyped code it sees only typed receivers); meanwhile **file**: `require`, `require_relative`, `load` and `autoload` resolve via the file-symbol strategy, and a constant is looked up lexically through its enclosing modules (LB-Q-ruby at L3 good, LB-F76) | L3 excellent and L4 need a Sorbet-typed subject for scip-ruby (tier B and C oracles grade good at most; LB-Q-ruby-rest) |
 | HTML | tags dialect `html` | yes | html5-boilerplate, bootstrap (visual tests) | **file** — `src`/`href` resolve via the relative-path strategy (LB-F11); no SCIP producer exists for HTML, so this is the ceiling until one does | L1 range agreement (ctags writes no HTML end line); L2 is undefined for markup under §1.2 and L3 needs a tier-A link checker (LB-Q-html-rest, O799) |
 | CSS | tags dialect `css` | yes | normalize.css, pico, gitea (web_src/css) | **file** — `@import` resolves via the relative-path strategy (LB-F11) and is an edge between the sheets' module symbols; a `var()` or animation name binds a custom property or `@keyframes` an imported sheet declares (LB-F459); no SCIP producer exists for CSS, so this is the ceiling until one does | L1 range agreement (neither lightningcss nor ctags writes a CSS end line; LB-Q-css-rest); L2 graded as name references within the `@import` closure (W2) |
@@ -282,8 +283,8 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 reached (languages at L1 37, L1 excellent 25, L2 33, L3 27, L4 10; tool formats at target 67)
-Milestone M2 progress: languages at L1 37/45, at L1 excellent 25/35, at L2 33/25, at L3 27/14, at L4 10/10; tool formats at target 67/30
+Milestone M1 reached (languages at L1 38, L1 excellent 26, L2 33, L3 27, L4 10; tool formats at target 67)
+Milestone M2 progress: languages at L1 38/45, at L1 excellent 26/35, at L2 33/25, at L3 27/14, at L4 10/10; tool formats at target 67/30
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -414,7 +415,7 @@ Milestone M2 progress: languages at L1 37/45, at L1 excellent 25/35, at L2 33/25
 | Traefik static and file-provider configuration | tool format | doc | pure-go:yaml.v3 + go-toml/v2 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A traefik 3.7.13 | syntax | 2026-10-24 | at target (LB-Q-traefik) |
 | WGSL shaders (.wgsl) | language | tags | szebniok/tree-sitter-wgsl (or tree-sitter-grammars/tree-sitter-wgsl-bevy) (MIT (verify at pin)) | L1 | unsupported (disclosed) | — | — | — | LB-Q-wgsl |
 | Renovate and Dependabot configs | tool format | doc | pure-go:JSON5 + gopkg.in/yaml.v3 (n/a) | L1 | unsupported (disclosed) | — | — | — | LB-Q-dependency-bots |
-| CUDA (.cu .cuh) | language | tags | tree-sitter-grammars/tree-sitter-cuda (MIT) | L4 | tolerated | — | scip:scip-clang | — | LB-Q-cuda |
+| CUDA (.cu .cuh) | language | tags | tree-sitter-grammars/tree-sitter-cuda (MIT) | L4 | L1 (L1 excellent) | B clang-ast Ubuntu clang version 18.1.3 (1ubuntu1); B clang-preprocessor Ubuntu clang version 18.1.3 (1ubuntu1); A scip-clang 0.4.0; B universal-ctags 6.2.1 | scip:scip-clang | 2026-10-25 | LB-Q-cuda |
 | Jsonnet (.jsonnet .libsonnet) | tool format | tags | sourcegraph/tree-sitter-jsonnet (MIT) | L3 | unsupported (disclosed) | — | — | — | LB-Q-jsonnet |
 | Salesforce Apex (.cls by glob, .trigger) | language | tags | aheber/tree-sitter-sfapex (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-apex |
 | Pkl (.pkl) | tool format | tags | apple/tree-sitter-pkl (Apache-2.0) | L2 | unsupported (disclosed) | — | — | — | LB-Q-pkl |

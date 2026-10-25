@@ -112,3 +112,25 @@ What L3 and L4 read from the index (wave lf1, `internal/langbench/scip_clang.go`
   index writes no occurrence (a type in a template argument or return type, `std::shared_ptr<logger>`), is
   `file_edges_oracle_blind`, out of file_edge_precision under LB-F203's 10% cap and listed under -unmatched's
   `oracle_blind` (LB-F296); a name on a line where a macro is invoked is judged at the macro.
+
+## CUDA (LB-Q-cuda): a clang CUDA compilation database, tier B
+
+The CUDA build's compiler is nvcc, which the redistributable components a Linux x86_64 host can fetch without a CUDA
+Toolkit installer do not include (the headers, cudart, ptxas and the libraries ship; the nvcc driver and cicc do not).
+`cuda-compdb.py` therefore rewrites each `.cu` translation unit to a clang CUDA host-only compile and writes the
+database `run.sh`, `preproc/`, `../clang-ast-defs` and `../clang-calls` read:
+
+    cuda-compdb.py <subject> <cuda-root> <subject>/build/compile_commands.json -I Common
+    # cuda-root: the CUDA 12.9 headers (cuda_runtime, cccl, cublas, cufft, curand, cusolver, cusparse, npp, nvjpeg, nvrtc, cupti)
+    # unpacked from NVIDIA's own redistributable wheels into one include/ tree; measurement only, never committed.
+
+scip-clang indexes it with the clang it embeds (a TU clang cannot compile, a missing OpenMP, GL, Vulkan, D3D or Tegra
+header, is dropped from the database and counted as a skip). That is not the build's compiler, so `preproc/`'s
+imports, `clang-calls` and `clang-ast-defs` over this database are tier B, and their JSON is relabelled `"tier": "B"`
+by hand before the harness reads it (the tools hard-code A). `clang-ast-defs` writes a 340 MB JSON dump per CUDA
+translation unit: run it with `-jobs 2`.
+
+Each cuda-samples sample is its own executable, so one index over all of them gives two samples that define the same
+global name (`iDivUp`, `main`, a kernel) one SCIP symbol, and the harness then draws a file edge to every definer: 402
+of the 415 truth pairs fathom missed in a single-index run were between two samples. The reading is therefore taken
+per sample (a subject is one sample directory plus `Common/`, with its own database and index).
