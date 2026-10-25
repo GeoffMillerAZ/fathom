@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/langbench"
+	"gopkg.in/yaml.v3"
 )
 
 func loopFixture(t *testing.T) (string, langbench.Reading) {
@@ -144,5 +145,34 @@ func TestLangLoopTask(t *testing.T) {
 	after, _ := os.ReadFile(filepath.Join(root, "docs/bench/readings/lang/sample.json"))
 	if !bytes.Equal(before, after) {
 		t.Fatal("task wrote committed reading")
+	}
+}
+
+// Every calibration shard must parse: calibration/clone.sh reads all of them
+// with yq before it clones any, so one malformed shard stops every language's
+// clone, and loopSubjects reads a shard with the same YAML rules.
+func TestCorpusShardsParse(t *testing.T) {
+	paths, err := filepath.Glob("../../calibration/corpus.d/*.yaml")
+	if err != nil || len(paths) == 0 {
+		t.Fatalf("no calibration shards: %v", err)
+	}
+	for _, p := range paths {
+		b, err := os.ReadFile(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var shard struct {
+			ID    string `yaml:"id"`
+			Repos []struct {
+				Name string `yaml:"name"`
+			} `yaml:"repos"`
+		}
+		if err := yaml.Unmarshal(b, &shard); err != nil {
+			t.Errorf("%s: %v", filepath.Base(p), err)
+			continue
+		}
+		if want := strings.TrimSuffix(filepath.Base(p), ".yaml"); shard.ID != want {
+			t.Errorf("%s: id %q, want %q", filepath.Base(p), shard.ID, want)
+		}
 	}
 }

@@ -1,0 +1,39 @@
+{
+  "symbols": [
+    {
+      "name": "before",
+      "kind": "WgslFunction",
+      "package": "broken",
+      "line": 2,
+      "end_line": 4,
+      "signature": "fn before(a: f32) -> f32",
+      "tier": "verified"
+    },
+    {
+      "name": "oops",
+      "kind": "WgslFunction",
+      "package": "broken",
+      "line": 6,
+      "end_line": 8,
+      "signature": "fn oops(",
+      "tier": "verified"
+    },
+    {
+      "name": "after",
+      "kind": "WgslFunction",
+      "package": "broken",
+      "line": 10,
+      "end_line": 12,
+      "signature": "fn after(b: f32) -> f32",
+      "tier": "verified"
+    },
+    {
+      "name": "Done",
+      "kind": "WgslConstant",
+      "package": "broken",
+      "line": 14,
+      "end_line": 14,
+      "tier": "verified"
+    }
+  ]
+}

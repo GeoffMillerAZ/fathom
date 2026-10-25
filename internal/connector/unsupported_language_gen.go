@@ -75,6 +75,5 @@ var unsupportedLangExtMap = map[string]string{
 	".vert":        "glsl",
 	".vh":          "verilog",
 	".vim":         "vimscript",
-	".wgsl":        "wgsl",
 	".zig":         "zig",
 }

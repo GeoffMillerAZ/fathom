@@ -1,0 +1,49 @@
+id: glsl
+language: GLSL
+# GLSL shaders (LB-Q-glsl, lane glsl, owner ruling 2026-10-24). The queue's three.js and glTF-Sample-Viewer are dropped
+# (three.js holds shaders as JS string chunks, glTF-Sample-Viewer's are mostly #include fragments of one program). Each
+# subject is a stand-alone shader tree compiled by its own tool, so glslang can replay the project's own invocation.
+# The three are read once into docs/bench/readings/lang/glsl.json.
+repos:
+  - name: SaschaWillems/Vulkan (shaders subpath glsl)
+    url: https://github.com/SaschaWillems/Vulkan
+    ref: master
+    sha: 1cbc8d87b731b438f47dea00a2e083ba7d59051d
+    licence: MIT
+    subpath: shaders/glsl
+    idioms:
+      - 'one shader per file by stage extension (.vert .frag .comp .geom .tesc .tese .rgen .rchit .rmiss .mesh .task)'
+      - 'layout(binding, set, location) uniform blocks, storage buffers and in/out interface variables'
+      - 'ray-tracing stages (GL_EXT_ray_tracing, rayPayloadEXT, traceRayEXT) and mesh shaders'
+      - 'helper functions and structs declared before main, called by name'
+    notes: >
+      No release tag; pinned at the default branch head of 2026-10-24 (353 shader files under shaders/glsl).
+      LICENSE at the pin: MIT. The project compiles them with glslangValidator (compileshaders.py).
+  - name: KhronosGroup/SPIRV-Cross (shaders)
+    url: https://github.com/KhronosGroup/SPIRV-Cross
+    ref: vulkan-sdk-1.4.363.0
+    sha: f11ba9f0b21ba8fc15153d50a2a1ae31ab1cf8f7
+    licence: Apache-2.0
+    sparse: ["/shaders/", "!*.asm.*", "!*.invalid.*"]
+    idioms:
+      - 'compiler regression shaders: every stage, #version 310 to 460, many extensions'
+      - 'subgroup, ray-query and buffer-reference code, preprocessor-heavy'
+      - 'user functions with in, out and inout parameters and array parameters'
+    notes: >
+      The sparse pattern keeps shaders/ and drops the SPIR-V assembly (*.asm.*) and deliberately invalid (*.invalid.*)
+      files; about 306 GLSL files remain, while 97 files under shaders/ are SPIR-V assembly that use the stage
+      extensions (.asm.vert and the like), which no GLSL dialect reads and the pattern excludes (disclosed in the
+      reading). LICENSE at the pin: Apache-2.0.
+  - name: KhronosGroup/Vulkan-Samples (shaders)
+    url: https://github.com/KhronosGroup/Vulkan-Samples
+    ref: main
+    sha: 69622af06f7652c7fc9b9a9180e7142046315cbc
+    licence: Apache-2.0
+    subpath: shaders
+    idioms:
+      - 'stage-extension files with #include of shared headers and #define-driven variants'
+      - 'push constants, specialization constants and descriptor-indexing arrays'
+      - 'mesh, task and ray-tracing shaders beside classic stages'
+    notes: >
+      No release tag; pinned at the default branch head of 2026-10-24 (309 shader files). LICENSE at the pin:
+      Apache-2.0.

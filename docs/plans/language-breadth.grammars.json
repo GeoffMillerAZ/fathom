@@ -799,7 +799,9 @@
       "generate": false,
       "licence": "MIT",
       "licence_basis": "catalogue",
-      "flags": []
+      "flags": [
+        "grammar-differs:include-yy/tree-sitter-wgsl"
+      ]
     },
     "zig": {
       "catalogue": "zig",

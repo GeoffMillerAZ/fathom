@@ -795,6 +795,21 @@
       "blob_sha256": "d9389312f43124431ddd3cf3e0914f015ee4be87419e3409be5bf29066430e8a",
       "blob_bytes": 155696,
       "gz_bytes": 63858
+    },
+    {
+      "blob": "wgsl",
+      "repo": "include-yy/tree-sitter-wgsl",
+      "tag": "b58422ee34029f81ae8b7dd44fc14d043809b321",
+      "commit": "b58422ee34029f81ae8b7dd44fc14d043809b321",
+      "tarball_sha256": "ad66d792d4c58c9e5d7bcd596c83a0b93c34b802b540a92c2f44da207be5fd2f",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_wgsl"],
+      "scanner": true,
+      "generate": false,
+      "abi": 14,
+      "blob_sha256": "75ac28ff3ef0a0392ccf0fa868c836b80fd95d726043f3a7ffb85660801fad5a",
+      "blob_bytes": 183727,
+      "gz_bytes": 66803
     }
   ]
 }

@@ -23,3 +23,12 @@ repos:
       - "old-style @class method files (one `function` per file in an `@chebfun` directory) beside classdef ones"
       - "+package folders (`+cheb`) and static methods called as `cheb.gallery`"
       - "test files (`test_*.m`) whose first line is a function, and long help blocks under the signature"
+  - name: matlab2tikz/matlab2tikz
+    url: https://github.com/matlab2tikz/matlab2tikz
+    ref: v1.1.0
+    sha: 816f8754804cd45d8b41b3adf3ff9709a29cf173
+    licence: BSD-2-Clause
+    idioms:
+      - "one large main function (`matlab2tikz`) followed by dozens of local functions in `src/`, with a `%` help block under each signature"
+      - "test files (`test/`) holding a function-based suite of figure fixtures, each a short function"
+      - "old-style function files with `varargin`/`nargin` option parsing and `ispc`/`ismac` platform branches"

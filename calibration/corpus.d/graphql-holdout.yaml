@@ -19,5 +19,5 @@ repos:
     idioms:
       - 'one schema per plugin directory, merged at startup with no import statement'
       - 'extend type Query / Mutation in every plugin, input and payload types beside them'
-      - 'a type one plugin defines named by another plugin's fields and arguments'
+      - 'a type one plugin defines named by another plugin''s fields and arguments'
       - 'test operations with variables, fragments and inline fragments naming schema types'
