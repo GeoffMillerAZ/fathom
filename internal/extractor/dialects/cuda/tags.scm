@@ -312,11 +312,11 @@
 ; the build's compiler writes a CXXFunctionalCastExpr there, never a call. Nor
 ; does an operator or a statement keyword the grammar reads as a callee
 ; (noexcept(...), sizeof(...), decltype(...), an `if (` after a macro the
-; grammar cannot place), or a standard function-like macro (assert, offsetof,
-; va_arg); the calls written inside them stay calls.
+; grammar cannot place); the calls written inside them stay calls. A standard
+; function-like macro (assert, offsetof, va_arg) is a call, as any macro is.
 (call_expression
   function: (identifier) @name
-  (#not-match? @name "^([A-Z][0-9]?|unsigned|signed|short|long|char|int|bool|float|double|wchar_t|char(8|16|32)_t|size_t|ssize_t|ptrdiff_t|u?intptr_t|u?intmax_t|u?int(8|16|32|64)_t|u?int_(least|fast)(8|16|32|64)_t|__u?int128_t|__int128|__float128|nullptr_t|max_align_t|if|while|for|switch|return|catch|throw|sizeof|alignof|alignas|decltype|noexcept|typeid|static_assert|assert|offsetof|va_arg|va_start|va_end|va_copy)$")) @reference.call
+  (#not-match? @name "^([A-Z][0-9]?|unsigned|signed|short|long|char|int|bool|float|double|wchar_t|char(8|16|32)_t|size_t|ssize_t|ptrdiff_t|u?intptr_t|u?intmax_t|u?int(8|16|32|64)_t|u?int_(least|fast)(8|16|32|64)_t|__u?int128_t|__int128|__float128|nullptr_t|max_align_t|if|while|for|switch|return|catch|throw|sizeof|alignof|alignas|decltype|noexcept|typeid|static_assert)$")) @reference.call
 
 ; A qualified callee is kept whole ("ns.util"); one written through the
 ; `template` disambiguator (Factory::template create<T>(x)) is the name after

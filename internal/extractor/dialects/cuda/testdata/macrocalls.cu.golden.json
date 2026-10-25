@@ -5,7 +5,7 @@
       "kind": "CudaModule",
       "package": "macrocalls",
       "line": 1,
-      "end_line": 19,
+      "end_line": 25,
       "tier": "verified"
     },
     {
@@ -48,6 +48,26 @@
         "fill"
       ],
       "tier": "verified"
+    },
+    {
+      "name": "checked",
+      "kind": "CudaFunc",
+      "package": "macrocalls",
+      "line": 22,
+      "end_line": 25,
+      "signature": "__device__ int checked(int v)",
+      "calls": [
+        "assert"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "<assert.h>",
+      "module": "<assert.h>",
+      "kind": "whole",
+      "line": 21
     }
   ]
 }

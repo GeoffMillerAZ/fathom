@@ -17,3 +17,9 @@ int run(float *d, int n) {
   CUDA_CHECK(cudaDeviceSynchronize());
   return static_cast<int>(n);
 }
+
+#include <assert.h>
+__device__ int checked(int v) {
+  assert(v >= 0);
+  return v;
+}

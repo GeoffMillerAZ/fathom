@@ -4445,7 +4445,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-cuda",
     "worker_model": "sonnet",
-    "notes": "new; C++ kinds plus __global__/__device__ kernels",
+    "notes": "C++ kinds plus __global__/__device__ kernels; owner ruling C-R3 (2026-10-25): a function-like macro invocation is a call on both sides, C's convention (the oracle's ClangMacroCalls on, the dialect's all-capitals callee filter dropped; cpp unchanged); ruling C-R4: cuda-samples is measured as one subject and a .cu binds the headers its includes reach",
     "retargeted": "2026-10-24 (owner ruling): target L3 -> L4, the plan row's pattern \"L4\" (cutlass as the library subject the L4 reading needs)"
   },
   {
