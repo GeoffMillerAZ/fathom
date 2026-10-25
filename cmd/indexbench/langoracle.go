@@ -86,6 +86,7 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 	callsFrom := fs.String("calls-from", "scip", "which oracle grades L2 beside -scip: scip (the index's call sites, tier A) or tool (the -tool-oracle files' calls at their own tier, the index still grading definitions, typed edges and imports; LB-F204, O264)")
 	adjudicate := fs.String("adjudicate", "", "oracle-deficiency disclosure JSON (owner decision D3): dialect-only definitions the L1 oracle is verified to miss, each admitted only by a deterministic file:line, name and module-scope check, listed in the reading and left out of sym_precision's denominator")
 	unmatched := fs.String("unmatched", "", "write this subject's L1 misses both ways (dialect_only, oracle_only) and its L2 call pairs both ways (calls.fathom_only, calls.oracle_only) as JSON — the worker's diagnosis and the source of D3 adjudication candidates; never part of the reading")
+	subjectSHAFlag := fs.String("subject-sha", "", "the subject's commit (a full 40-hex sha) when -subject is a copy with no .git of its own, as the CUDA driver's scratch subject is; without it the sha is the subject's own HEAD, and none when -subject is not its repository's top level")
 	only := fs.String("only", "", "comma-separated globs (subject-relative, * within a segment, ** across): measure only these files — e.g. the SQL families a grammar supports (D2); the reading names the restriction")
 	out := fs.String("out", "", "reading to write; an existing reading of the same dialect is merged (required)")
 	queuePath := fs.String("queue", "docs/plans/language-breadth.queue.json", "the queue (for the dialect's target level)")
@@ -216,7 +217,7 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 	}
-	m, err := measureSubject(ctx, spec, *subject, name, oracleOpts{ctags: *ctagsPath, scip: *scipPath, scipDefs: *scipDefs, callsFromTool: *callsFrom == "tool", tools: tools, only: onlyGlobs, adjudicate: *adjudicate, unmatched: *unmatched, baseNotes: baseNotes}, with)
+	m, err := measureSubject(ctx, spec, *subject, name, oracleOpts{ctags: *ctagsPath, scip: *scipPath, scipDefs: *scipDefs, callsFromTool: *callsFrom == "tool", tools: tools, only: onlyGlobs, adjudicate: *adjudicate, unmatched: *unmatched, baseNotes: baseNotes, subjectSHA: *subjectSHAFlag}, with)
 	if err != nil {
 		fmt.Fprintln(stderr, "lang-oracle:", err)
 		return 1
@@ -339,6 +340,7 @@ type oracleOpts struct {
 	only          []string // globs restricting the subject's files (D2, SQL)
 	adjudicate    string   // oracle-deficiency disclosure file (D3)
 	unmatched     string   // where to write the L1 and call-pair misses both ways (diagnosis)
+	subjectSHA    string   // the subject's commit when its checkout has no .git (round 3 A1)
 }
 
 // unmatchedFile is -unmatched's JSON: the subject's L1 misses both ways when
@@ -696,7 +698,11 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 	defer pipe.Close()
 	tsengine.ResetPeakModulePages()
 
-	sub := langbench.Subject{Name: name, SHA: gitOut(ctx, root, "rev-parse", "HEAD"), Counts: map[string]int{},
+	sha, err := subjectSHA(ctx, root, opts.subjectSHA)
+	if err != nil {
+		return res, err
+	}
+	sub := langbench.Subject{Name: name, SHA: sha, Counts: map[string]int{},
 		Families: map[string]string{}, ExcludedByKind: map[string]int{}, Tenancy: &langbench.SubjectTenancy{FaultingFiles: []string{}}}
 	var files []string
 	var nodes []core.SymbolNode
@@ -1526,6 +1532,40 @@ func orDefault(s, d string) string {
 		return d
 	}
 	return s
+}
+
+// subjectSHA is the commit a subject is measured at (round 3 A1, F1): sha
+// when the caller names one (the driver passes the clone's, since its scratch
+// copy has no .git), else the subject's own HEAD, and none when root is not
+// its repository's top level (a copy inside the fathom checkout would
+// otherwise report fathom's own commit).
+func subjectSHA(ctx context.Context, root, sha string) (string, error) {
+	if sha != "" {
+		if !fullSHA.MatchString(sha) {
+			return "", fmt.Errorf("-subject-sha %q: want a full 40-hex commit", sha)
+		}
+		return sha, nil
+	}
+	top := gitOut(ctx, root, "rev-parse", "--show-toplevel")
+	if top == "" || !samePath(top, root) {
+		return "", nil
+	}
+	return gitOut(ctx, root, "rev-parse", "HEAD"), nil
+}
+
+var fullSHA = regexp.MustCompile(`^[0-9a-f]{40}$`)
+
+// samePath reports whether two paths name one directory once symlinks are
+// resolved.
+func samePath(a, b string) bool {
+	ra, errA := filepath.EvalSymlinks(a)
+	rb, errB := filepath.EvalSymlinks(b)
+	if errA != nil || errB != nil {
+		return false
+	}
+	ra, _ = filepath.Abs(ra)
+	rb, _ = filepath.Abs(rb)
+	return ra == rb
 }
 
 func gitOut(ctx context.Context, dir string, args ...string) string {

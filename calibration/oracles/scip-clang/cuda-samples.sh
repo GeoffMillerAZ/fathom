@@ -25,6 +25,7 @@ repo=$(cd "$(dirname "$0")/../../.." && pwd)
 here="$repo/calibration/oracles/scip-clang"
 mkdir -p "$work" && work=$(cd "$work" && pwd)
 subj="$work/subject"
+sha=$(git -C "$clone" rev-parse HEAD) # the copy below has no .git: the reading names the clone's commit (round 3 A1)
 rm -rf "$subj" && cp -a "$clone" "$subj" && rm -rf "$subj/.git"
 
 lib="$cuda/targets/x86_64-linux/lib"
@@ -132,7 +133,7 @@ bash "$here/run.sh" "$tools/bin/scip-clang" "$subj" "$subj/build" "$work/index.s
 
 cd "$repo"
 for i in $(seq 1 "$runs"); do
-  go run ./cmd/indexbench lang-oracle -dialect cuda -subject "$subj" -subject-name NVIDIA/cuda-samples \
+  go run ./cmd/indexbench lang-oracle -dialect cuda -subject "$subj" -subject-name NVIDIA/cuda-samples -subject-sha "$sha" \
     -ctags "$tools/ctags" -scip "$work/index.scip" -tool-oracle "$work/preproc.json" -tool-oracle "$work/clang-calls.json" \
     -unmatched "$work/unmatched-$i.json" -out "$work/reading-$i.json" > "$work/lang-oracle-$i.log" 2>&1
 done
