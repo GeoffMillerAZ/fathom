@@ -1097,7 +1097,7 @@ func (p *Pipeline) enrichFileResolvedEdges(ctx context.Context, svc core.Service
 		langOf := map[string]string{"c": cLang, "cpp": cppLang, "objective-c": objcLang}
 		for _, r := range headers {
 			b, err := p.conn.Fetch(ctx, r)
-			if err != nil || len(b) > MaxExtractSize || connector.IsBinary(b) {
+			if err != nil || len(b) > MaxExtractSize || binaryExcluded(r.Path, b) {
 				continue
 			}
 			routed := extractor.HeaderDialect(b)
@@ -1118,7 +1118,7 @@ func (p *Pipeline) enrichFileResolvedEdges(ctx context.Context, svc core.Service
 	if objcLang != "" {
 		for _, r := range objcSources {
 			b, err := p.conn.Fetch(ctx, r)
-			if err != nil || len(b) > MaxExtractSize || connector.IsBinary(b) {
+			if err != nil || len(b) > MaxExtractSize || binaryExcluded(r.Path, b) {
 				continue
 			}
 			if connector.ClassifyDialect(dialectRules(), r.Path, b).Dialect == "objective-c" {
@@ -1302,7 +1302,7 @@ func (p *Pipeline) resolveLang(ctx context.Context, svc core.ServiceRef, r *impo
 		}
 		// LB-F10: a generated/minified (or ambiguous) dialect file is
 		// gated here too — the extract pass never extracted it.
-		if len(content) > MaxExtractSize || connector.IsBinary(content) || gateDialectFile(r.Path, content).excluded != "" {
+		if len(content) > MaxExtractSize || binaryExcluded(r.Path, content) || gateDialectFile(r.Path, content).excluded != "" {
 			rep.Gated++
 			continue
 		}

@@ -108,7 +108,7 @@ func (p *Pipeline) enrichLogTemplates(ctx context.Context, svc core.ServiceRef, 
 // very content (a file that changed again since the stream read it waits
 // for the next ingest) and an ingest would extract it at all.
 func (p *Pipeline) logTemplateFile(ctx context.Context, service, path string, content []byte) (logTemplateFile, bool, error) {
-	if len(content) > MaxExtractSize || connector.IsBinary(content) || gateDialectFile(path, content).excluded != "" {
+	if len(content) > MaxExtractSize || binaryExcluded(path, content) || gateDialectFile(path, content).excluded != "" {
 		return logTemplateFile{}, false, nil
 	}
 	hash := FingerprintHash(content)

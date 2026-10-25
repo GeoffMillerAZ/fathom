@@ -138,7 +138,7 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 		return ReingestReport{}, err
 	}
 
-	if connector.IsBinary(content) {
+	if binaryExcluded(relFile, content) {
 		if err := setFingerprintAndReceipt(ctx, st, serviceID, relFile, hash); err != nil {
 			return ReingestReport{}, fmt.Errorf("fusion: ReingestFile set fingerprint %q: %w", relFile, err)
 		}

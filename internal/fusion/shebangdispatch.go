@@ -78,7 +78,7 @@ func (p *Pipeline) shebangExtractor(dialect string) (extractor.Extractor, bool) 
 // signal that claims the file). indexbench lang-oracle measures exactly these
 // files (ownedSourceRefs; LB-F23: the harness measures what ingest dispatches).
 func (p *Pipeline) ShebangDialect(relPath string, content []byte) string {
-	if !shebangCandidate(relPath, content) || connector.IsBinary(content) {
+	if !shebangCandidate(relPath, content) || binaryExcluded(relPath, content) {
 		return ""
 	}
 	v := connector.ClassifyDialect(dialectRules(), relPath, content)

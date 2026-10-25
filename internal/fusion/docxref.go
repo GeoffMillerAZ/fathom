@@ -438,7 +438,7 @@ func (p *Pipeline) enrichDocXrefEdges(ctx context.Context, svc core.ServiceRef, 
 			}
 			continue
 		}
-		if len(content) > MaxExtractSize || connector.IsBinary(content) || gateDialectFile(r.Path, content).excluded != "" {
+		if len(content) > MaxExtractSize || binaryExcluded(r.Path, content) || gateDialectFile(r.Path, content).excluded != "" {
 			continue
 		}
 		f := DocFile{Path: r.Path}
@@ -542,7 +542,7 @@ func (p *Pipeline) ghaRunXrefs(ctx context.Context, svc core.ServiceRef, files [
 			return nil
 		}
 		content, err := p.conn.Fetch(ctx, r)
-		if err != nil || len(content) > MaxExtractSize || connector.IsBinary(content) || gateDialectFile(file, content).excluded != "" {
+		if err != nil || len(content) > MaxExtractSize || binaryExcluded(file, content) || gateDialectFile(file, content).excluded != "" {
 			return nil
 		}
 		e, _, ok, _ := p.resolveExtractor(file, content, idx)

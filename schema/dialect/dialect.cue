@@ -240,6 +240,15 @@ import "struct"
 	globs: [...(string & !="")] | *[]
 	shebangs: [...(string & !="")] | *[]
 	sniff: null | #Sniff | *null
+	// container (ADR-021 (1), amended 2026-10-24): the extensions whose files are an
+	// OPC zip model container (a Simulink .slx) the dialect reads despite the binary
+	// sniff; each must be one of extensions (checked at load).
+	container?: #Container
+}
+
+#Container: {
+	format: "opc-zip"
+	extensions: [...=~"^\\.[A-Za-z0-9._+-]+$"] & [_, ...]
 }
 
 // #Sniff splits an extension more than one dialect claims (§5): a regex

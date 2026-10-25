@@ -49,7 +49,6 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"gopkg.in/yaml.v3"
 
-	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
@@ -804,7 +803,7 @@ func (p *Pipeline) lambdaXrefs(ctx context.Context, svc core.ServiceRef, files [
 			return nil, false
 		}
 		content, err := p.conn.Fetch(ctx, r)
-		if err != nil || len(content) > MaxExtractSize || connector.IsBinary(content) || gateDialectFile(file, content).excluded != "" {
+		if err != nil || len(content) > MaxExtractSize || binaryExcluded(file, content) || gateDialectFile(file, content).excluded != "" {
 			return nil, false
 		}
 		return content, true

@@ -20,6 +20,9 @@ type DialectRule struct {
 	Globs      []string
 	Shebangs   []string
 	Sniff      *DialectSniffRule
+	// Containers are the extensions whose OPC zip files the dialect reads despite the
+	// binary sniff (a manifest's match.container, ClaimedModelContainer).
+	Containers []string
 }
 
 // DialectSniffRule is a manifest's match.sniff: a regex over the first

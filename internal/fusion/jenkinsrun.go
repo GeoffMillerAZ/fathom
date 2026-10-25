@@ -409,7 +409,7 @@ func (p *Pipeline) jenkinsResolve(serviceID string, refs []core.SourceRef, fetch
 			return nil, false
 		}
 		content, err := fetch(r)
-		if err != nil || len(content) > MaxExtractSize || connector.IsBinary(content) || gateDialectFile(file, content).excluded != "" {
+		if err != nil || len(content) > MaxExtractSize || binaryExcluded(file, content) || gateDialectFile(file, content).excluded != "" {
 			return nil, false
 		}
 		return content, true

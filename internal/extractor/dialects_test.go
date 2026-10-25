@@ -131,6 +131,8 @@ func TestLoadDialectsRefuses(t *testing.T) {
 		"doc bad selector": {map[string]string{"dialects/d/dialect.json": docManifest,
 			"dialects/d/doc.json": strings.Replace(docSpecOK, `"$.*"`, `"$..*"`, 1)}, "select"},
 		"type_wildcard off list": {map[string]string{"dialects/a/dialect.json": strings.Replace(base("a", "AF", ".a"), `"target_level"`, `"imports":{"strategy":"namespace-dir","type_wildcard":"fields"},"target_level"`, 1), "dialects/a/tags.scm": ""}, "imports.type_wildcard"},
+		"container format":       {map[string]string{"dialects/a/dialect.json": strings.Replace(base("a", "AF", ".a"), `"extensions":[".a"]`, `"extensions":[".a"],"container":{"format":"tar","extensions":[".a"]}`, 1), "dialects/a/tags.scm": ""}, "match.container.format"},
+		"container unclaimed":    {map[string]string{"dialects/a/dialect.json": strings.Replace(base("a", "AF", ".a"), `"extensions":[".a"]`, `"extensions":[".a"],"container":{"format":"opc-zip","extensions":[".z"]}`, 1), "dialects/a/tags.scm": ""}, "match.container.extensions"},
 		"required undeclared":    {map[string]string{"dialects/a/dialect.json": strings.Replace(base("a", "AF", ".a"), `"required_kinds":["f"]`, `"required_kinds":["class"]`, 1), "dialects/a/tags.scm": ""}, "not a declared kind"},
 	}
 	for name, c := range cases {

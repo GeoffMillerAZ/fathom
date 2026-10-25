@@ -74,6 +74,8 @@ func TestDialectManifestSchema(t *testing.T) {
 		"preprocess off list":    `{preprocess: "c-conditionals"}`,
 		"calls unknown rule":     `{calls: {resolve: true}}`,
 		"calls qualify not bool": `{calls: {qualify: "yes"}}`,
+		"container format":       `{match: {container: {format: "tar", extensions: [".go"]}}}`,
+		"container no extension": `{match: {container: {format: "opc-zip", extensions: []}}}`,
 	}
 	for name, patch := range cases {
 		src := schema + "\nbad: #Dialect & " + base + " & " + patch

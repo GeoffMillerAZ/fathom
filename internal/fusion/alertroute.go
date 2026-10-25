@@ -34,7 +34,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
 	"github.com/geoffmilleraz/fathom/internal/promql"
@@ -735,7 +734,7 @@ func (p *Pipeline) obsXrefs(ctx context.Context, svc core.ServiceRef, refs []cor
 	var mounts []BindMount
 	fetch := func(r core.SourceRef) []byte {
 		content, err := p.conn.Fetch(ctx, r)
-		if err != nil || len(content) > MaxExtractSize || connector.IsBinary(content) || gateDialectFile(r.Path, content).excluded != "" {
+		if err != nil || len(content) > MaxExtractSize || binaryExcluded(r.Path, content) || gateDialectFile(r.Path, content).excluded != "" {
 			return nil
 		}
 		return content
@@ -833,7 +832,7 @@ func (p *Pipeline) ObsXrefsForBench(service string, refs []core.SourceRef, read 
 			continue
 		}
 		content, err := read(r.Path)
-		if err != nil || len(content) > MaxExtractSize || connector.IsBinary(content) || gateDialectFile(r.Path, content).excluded != "" {
+		if err != nil || len(content) > MaxExtractSize || binaryExcluded(r.Path, content) || gateDialectFile(r.Path, content).excluded != "" {
 			continue
 		}
 		e, _, ok, _ := p.resolveExtractor(r.Path, content, idx)

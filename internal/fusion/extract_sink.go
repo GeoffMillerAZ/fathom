@@ -109,7 +109,7 @@ func (s *extractSink) add(ctx context.Context, pf pendingFile) error {
 	// whether its path happens to match a registered extension (ADR-021
 	// §1 / LT-2). Record the fingerprint so it isn't re-sniffed on every
 	// ingest, but never hand binary bytes to an extractor.
-	if connector.IsBinary(pf.content) {
+	if binaryExcluded(pf.ref.Path, pf.content) {
 		if err := p.st.SetFingerprint(ctx, serviceID, pf.ref.Path, pf.hash); err != nil {
 			return fmt.Errorf("fusion: set fingerprint %q: %w", pf.ref.Path, err)
 		}
