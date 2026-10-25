@@ -120,7 +120,8 @@ What L3 and L4 read from the index (wave lf1, `internal/langbench/scip_clang.go`
     cuda-samples.sh <shared-clone> <cuda-root> <tools-dir> <work-dir> [runs]
     # cuda-root: CUDA 12.9 from conda-forge (cuda-nvcc-tools, cuda-nvvm-tools and cuda-crt 12.9.86, which carry the
     # nvcc driver and cicc the pip wheels lack, plus the -dev header packages: cudart, cccl, cublas, cufft, curand,
-    # cusolver, cusparse, npp, nvjpeg, nvrtc, cupti, nvtx); measurement only, under workspace/tools, never committed.
+    # cusolver, cusparse, npp, nvjpeg, nvrtc, cupti, nvtx, and cuda-driver-dev for cuda.h); measurement only, under
+    # workspace/tools, never committed. tools-dir/ctags is universal-ctags 6.2.1 built with jansson (its JSON output).
 
 It measures cuda-samples as ONE subject, the way a user indexes it (owner ruling C-R4): CMake configures the samples
 with nvcc (sources and static libraries the sparse clone or the toolkit lacks get an empty stand-in; nothing is
@@ -133,6 +134,17 @@ host-only compile over the entry's own `-I`, `-isystem` and `-D` (`cuda-compdb.p
 `-tier B`, so the calls family is judged at tier B (the harness takes a family's tier from the weakest oracle that
 feeds it). `cuda-compdb.py` writes the same translation from a directory walk, for a subject with no CMake build.
 
+Round 3 (A2, B, C): the driver first configures the samples with clang++ as their CUDA compiler and compiles each unit
+as written (clang-native.json): an index is tier A only when the subject's own build wrote its database untranslated,
+at 90% of the units; cuda-samples v12.9 configures 114 and compiles 0 (its CMake flags carry nvcc's
+`--extended-lambda` and sm_100, sm_101 and sm_120, which clang 18 rejects), so the index reads the translation and
+lang-oracle runs at `-scip-tier B`. clang-calls unions the host pass with a `--cuda-device-only` pass at the first of
+the target's CMake architectures that compiles (`-Xclang -target-sdk-version=12.3`: with -nocudalib clang otherwise
+reads no toolkit version and wants the pre-9.2 launch API). `preproc.units.json` maps each CMake executable to its
+sources from the build's own link lines (the link-unit companion of preproc.json). The driver writes its measurement
+record and the median-of-runs throughput into `<work-dir>/reading.json` (no hand edit), and passes the clone's commit
+as `-subject-sha` (the scratch copy has no .git).
+
 Two samples that define the same global name (`iDivUp`, `main`, a kernel) are one SCIP symbol, since scip-clang
 names a global by no file or translation unit, so the index's file-edge truth over the whole set draws an edge to
-every definer: a link-unit scope of that truth (per CMake executable) is LB-Q-cuda-rest's.
+every definer: the truth is scoped to link units (per CMake executable, round 3 B, scip_file_edges_link_unit).
