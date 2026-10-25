@@ -69,7 +69,16 @@ const (
 	// SimulinkMaxBlocks is the most Block elements (or .mdl Block nodes) among them, which
 	// bounds the blocks read. The largest calibration model holds 5,801.
 	SimulinkMaxBlocks = 1 << 16
+	// SimulinkMaxValue is the longest value the reader keeps: a block's name, SID, type or
+	// system reference, a line endpoint or a model reference path. The longest calibration
+	// value is 411 bytes.
+	SimulinkMaxValue = 64 << 10
 )
+
+// errSimulinkValue is a kept value past SimulinkMaxValue.
+func errSimulinkValue(line int, k string) error {
+	return fmt.Errorf("%w: line %d: %s is longer than %d bytes", ErrSimulinkCap, line, k, SimulinkMaxValue)
+}
 
 // simulinkBudget is what is left of a model's element and block caps as its parts tokenize.
 type simulinkBudget struct{ elems, blocks int }
@@ -247,13 +256,22 @@ func (m *SimulinkModel) refPath(p string) string {
 // --- .slx ---------------------------------------------------------------------------
 
 // xnode is one element of a part, as far as the reader keeps it: the attributes it reads
-// (setAttr) and a <P>'s text, nothing else.
+// (setAttr) and the text of a <P> it reads (simulinkKeptP), nothing else.
 type xnode struct {
 	name                       string
 	aName, sid, blockType, ref string // the attributes the reader reads
 	kids                       []*xnode
 	text                       string
 	line, to                   int
+}
+
+// simulinkKeptP reports whether the reader reads a <P Name=k>'s text.
+func simulinkKeptP(k string) bool {
+	switch k {
+	case "Src", "SrcBlock", "Dst", "DstBlock", "ModelRefBlockPath":
+		return true
+	}
+	return false
 }
 
 // setAttr keeps an attribute the reader reads and drops any other.
@@ -342,6 +360,10 @@ func parseXMLPart(b []byte, budget *simulinkBudget) (*xnode, error) {
 			for _, a := range t.Attr {
 				n.setAttr(a.Name.Local, a.Value)
 			}
+			if len(n.aName) > SimulinkMaxValue || len(n.sid) > SimulinkMaxValue ||
+				len(n.blockType) > SimulinkMaxValue || len(n.ref) > SimulinkMaxValue {
+				return nil, errSimulinkValue(lineOf(off), "an attribute")
+			}
 			top.kids = append(top.kids, n)
 			stack = append(stack, n)
 			text = text[:0]
@@ -350,15 +372,17 @@ func parseXMLPart(b []byte, budget *simulinkBudget) (*xnode, error) {
 			if len(stack) == 1 || t.Name.Local != top.name {
 				return nil, fmt.Errorf("%w: syntax error: line %d: unexpected end tag </%s>", ErrSimulinkCap, lineOf(off), t.Name.Local)
 			}
-			if top.name == "P" { // the only text the reader keeps
+			if top.name == "P" && simulinkKeptP(top.aName) { // the only text the reader keeps
 				top.text = string(text)
 			}
 			// off is the `<` of an end tag, or just past a self-closed tag's `/>`.
 			top.to = lineOf(off)
 			stack = stack[:len(stack)-1]
 		case xml.CharData:
-			if top.name == "P" {
-				text = append(text, t...)
+			if top.name == "P" && simulinkKeptP(top.aName) {
+				if text = append(text, t...); len(text) > SimulinkMaxValue {
+					return nil, errSimulinkValue(lineOf(off), top.aName)
+				}
 			}
 		}
 	}
@@ -771,7 +795,9 @@ func parseMDL(src []byte) (*mnode, error) {
 		if strings.HasPrefix(t, "\"") {
 			if contNode == top {
 				v, _ := mdlQuoted(t)
-				cont.WriteString(v)
+				if cont.WriteString(v); cont.Len() > SimulinkMaxValue {
+					return nil, errSimulinkValue(line, contKey)
+				}
 			}
 			continue
 		}
@@ -806,6 +832,9 @@ func parseMDL(src []byte) (*mnode, error) {
 			}
 			if strings.HasPrefix(val, "\"") {
 				val, _ = mdlQuoted(val)
+			}
+			if len(val) > SimulinkMaxValue {
+				return nil, errSimulinkValue(line, key)
 			}
 			if top.props == nil {
 				top.props = map[string]string{}

@@ -727,3 +727,52 @@ func TestReadSimulinkModelRealRatio(t *testing.T) {
 		t.Errorf("%d blocks, %v", len(m.Blocks), err)
 	}
 }
+
+// TestReadSimulinkModelAdversarial is S-R4: each hostile package ends in a bounded
+// ErrSimulinkCap error, never a panic and never a partial model.
+func TestReadSimulinkModelAdversarial(t *testing.T) {
+	root := "simulink/systems/system_root.xml"
+	letters := func(n int) string {
+		b := make([]byte, n)
+		s := uint32(5)
+		for i := range b {
+			s = s*1664525 + 1013904223
+			b[i] = 'a' + byte(s>>24)%26
+		}
+		return string(b)
+	}
+	inner := slxPackage(t, root, `<System><Block Name="a" SID="1"/></System>`)
+	cases := map[string][]byte{
+		"duplicate entry names": slxPackage(t, root, `<System><Block Name="a" SID="1"/></System>`,
+			root, `<System><Block Name="b" SID="2"/></System>`),
+		"nested zip":         slxPackage(t, root, string(inner)),
+		"huge attribute":     slxPackage(t, root, `<System><Block Name="`+letters(8<<20)+`" SID="1"/></System>`),
+		"huge kept text":     slxPackage(t, root, `<System><Line><P Name="Src">`+letters(8<<20)+`</P></Line></System>`),
+		"huge mdl attribute": []byte("Model {\n System {\n  Block {\n   Name \"" + letters(1<<20) + "\"\n  }\n }\n}\n"),
+		"huge mdl continued": []byte("Model {\n System {\n  Block {\n   Name \"a\"\n" + strings.Repeat("   \""+letters(1000)+"\"\n", 100) + "  }\n }\n}\n"),
+		"deep nesting":       slxPackage(t, root, slxNoise(SimulinkMaxDepth+1, "<%s>", true)),
+		"flat flood":         slxPackage(t, root, slxNoise(SimulinkMaxElements+1, "<%s/>", false)),
+		"stray end tags":     slxPackage(t, root, `<System><Block Name="a" SID="1"/></System></x></y>`),
+	}
+	for name, src := range cases {
+		t.Run(name, func(t *testing.T) {
+			rel := "m.slx"
+			if strings.Contains(name, "mdl") {
+				rel = "m.mdl"
+			}
+			m, err := ReadSimulinkModel(rel, src)
+			if !errors.Is(err, ErrSimulinkCap) {
+				t.Errorf("err = %v, want ErrSimulinkCap", err)
+			}
+			if len(m.Blocks) != 0 {
+				t.Errorf("%d blocks read from a refused model", len(m.Blocks))
+			}
+		})
+	}
+	t.Run("an ignored nested package", func(t *testing.T) {
+		m, err := ReadSimulinkModel("m.slx", slxPackage(t, root, `<System><Block Name="a" SID="1"/></System>`, "simulink/inner.slx", string(inner)))
+		if err != nil || len(m.Blocks) != 1 {
+			t.Errorf("%d blocks, %v; a part the reader does not read is never opened", len(m.Blocks), err)
+		}
+	})
+}
