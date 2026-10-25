@@ -24,17 +24,36 @@ import "strings"
 //     argument list (`DEFINE_LIGHT_BINDINGS(4, 5)`, a macro that expands to
 //     resource declarations the grammar cannot see through).
 //
-// The rewritten text is tried only when the file does not parse as written,
-// and read only when it parses clean (tsPreprocessed). The trigger to retire
+// A second candidate also blanks the conditional directive lines, every branch
+// kept, as the C++ and Objective-C steps do (cppBlankConditionals): `#if A` /
+// `#else` around two heads of one statement or expression parse as the
+// branches in a row. It is tried only after the rewritten text still fails to
+// parse. The rewritten texts are tried only when the file does not parse as
+// written, and read only when one parses clean (tsPreprocessed). The trigger to retire
 // the register rewrite is a tree-sitter-hlsl release whose cbuffer and
 // tbuffer headers take a register clause (LB-Q-hlsl-rest; the dialect's
 // PROVENANCE.md carries it once the dialect is restored).
 
 // hlslMacroTexts are the texts an HLSL file that does not parse as written is
-// parsed as instead (tsPreprocessors["hlsl-macros"]): one, every rewrite
-// applied; nil when no rewrite changes anything.
+// parsed as instead (tsPreprocessors["hlsl-macros"]), in order: every rewrite
+// applied, then the same with its conditional directive lines blanked; nil
+// when neither changes anything.
 func hlslMacroTexts(src []byte) [][]byte {
-	toks, _ := cppLex(src)
+	toks, dirs := cppLex(src)
+	text, changed := hlslBlankMacros(src, toks)
+	var out [][]byte
+	if changed {
+		out = append(out, text)
+	}
+	if cond, ok := cppBlankConditionals(text, dirs); ok {
+		out = append(out, cond)
+	}
+	return out
+}
+
+// hlslBlankMacros applies rewrites (a) and (b) as the step's doc says;
+// changed is false when none was found (the returned slice is then src).
+func hlslBlankMacros(src []byte, toks []cppTok) ([]byte, bool) {
 	out := append([]byte(nil), src...)
 	changed := false
 	word := func(i int) string {
@@ -116,7 +135,7 @@ func hlslMacroTexts(src []byte) [][]byte {
 		}
 	}
 	if !changed {
-		return nil
+		return src, false
 	}
-	return [][]byte{out}
+	return out, true
 }

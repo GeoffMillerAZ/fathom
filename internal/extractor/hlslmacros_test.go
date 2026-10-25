@@ -73,3 +73,42 @@ func TestHLSLMacroTextsDeclarationMacro(t *testing.T) {
 		t.Error("a file with no declaration-position macro has a rewrite")
 	}
 }
+
+// TestHLSLMacroTextsConditionals pins rewrite (c): a second candidate, tried
+// only after the rewrites (a)+(b) text, also blanks the conditional directive
+// lines with every branch kept; a file whose only change is its conditionals
+// yields that one text; a file with neither yields nothing.
+func TestHLSLMacroTextsConditionals(t *testing.T) {
+	src := "cbuffer Frame : register(b0) { float4 eye; };\n" +
+		"float4 shade(float4 c) {\n#if USE_FOG\n    return fog(c,\n#else\n    return plain(c,\n#endif\n        eye);\n}\n" +
+		"#define KEEP 1\n"
+	texts := hlslMacroTexts([]byte(src))
+	if len(texts) != 2 {
+		t.Fatalf("got %d texts, want 2 (rewrites, then rewrites with conditionals blanked)", len(texts))
+	}
+	hlslSameShape(t, src, texts)
+	clause := ": register(b0)"
+	first := strings.Replace(src, clause, strings.Repeat(" ", len(clause)), 1)
+	if got := string(texts[0]); got != first {
+		t.Errorf("first text:\n%s\nwant:\n%s", got, first)
+	}
+	second := first
+	for _, dir := range []string{"#if USE_FOG", "#else", "#endif"} {
+		second = strings.Replace(second, dir, strings.Repeat(" ", len(dir)), 1)
+	}
+	if got := string(texts[1]); got != second {
+		t.Errorf("second text:\n%s\nwant:\n%s", got, second)
+	}
+	only := "void f() {\n#ifdef A\n    g(1,\n#else\n    g(2,\n#endif\n    3);\n}\n"
+	texts = hlslMacroTexts([]byte(only))
+	if len(texts) != 1 {
+		t.Fatalf("conditionals only: got %d texts, want 1", len(texts))
+	}
+	hlslSameShape(t, only, texts)
+	if strings.Contains(string(texts[0]), "#") {
+		t.Errorf("conditionals only: a directive survived:\n%s", texts[0])
+	}
+	if hlslMacroTexts([]byte("#define A 1\nfloat f() { return A; }\n")) != nil {
+		t.Error("a file with no rewrite and no conditional has a text")
+	}
+}
