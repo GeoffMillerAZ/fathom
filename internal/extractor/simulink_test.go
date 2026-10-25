@@ -589,7 +589,7 @@ func TestReadSimulinkModelHeapBound(t *testing.T) {
 		n      int
 		blocks int
 	}{
-		"elements": {`<P Name="%s">1</P>`, SimulinkMaxElements - 2, 0},
+		"elements": {`<P Name="Dst">%s</P>`, SimulinkMaxElements - 2, 0},
 		"blocks":   {`<Block Name="%s" SID="1" BlockType="G" Ref="r"/>`, SimulinkMaxBlocks, SimulinkMaxBlocks},
 	} {
 		t.Run(name, func(t *testing.T) { heapBound(t, c.el, c.n, c.blocks) })
@@ -661,4 +661,69 @@ func slxNoise(n int, format string, nested bool) string {
 	b.WriteString(closing.String())
 	b.WriteString("</System>")
 	return b.String()
+}
+
+// slxDeclareCompressed rewrites the central-directory compressed size of entry name, a size
+// an attacker controls.
+func slxDeclareCompressed(t *testing.T, src []byte, name string, size uint32) []byte {
+	t.Helper()
+	out := append([]byte(nil), src...)
+	for i := bytes.Index(out, []byte("PK\x01\x02")); i >= 0; {
+		nlen := int(out[i+28]) | int(out[i+29])<<8
+		if string(out[i+46:i+46+nlen]) == name {
+			out[i+20], out[i+21], out[i+22], out[i+23] = byte(size), byte(size>>8), byte(size>>16), byte(size>>24)
+			return out
+		}
+		next := bytes.Index(out[i+4:], []byte("PK\x01\x02"))
+		if next < 0 {
+			break
+		}
+		i += 4 + next
+	}
+	t.Fatalf("no central-directory entry %s", name)
+	return nil
+}
+
+// TestReadSimulinkModelRealRatio is S-R3: the ratio cap counts the compressed bytes the
+// inflater reads, never the compressed size the package declares.
+func TestReadSimulinkModelRealRatio(t *testing.T) {
+	root := "simulink/systems/system_root.xml"
+	noise := make([]byte, 64<<10)
+	seed := uint32(3)
+	for i := range noise {
+		seed = seed*1664525 + 1013904223
+		noise[i] = byte(seed >> 24)
+	}
+	// A part that inflates about 1000:1, then a stored entry the false size can reach into.
+	bomb := func() []byte {
+		var buf bytes.Buffer
+		w := zip.NewWriter(&buf)
+		f, _ := w.Create(root)
+		f.Write([]byte("<System>" + strings.Repeat(" ", 4<<20) + "</System>"))
+		pad, _ := w.CreateHeader(&zip.FileHeader{Name: "padding.bin", Method: zip.Store})
+		pad.Write(noise)
+		if err := w.Close(); err != nil {
+			t.Fatal(err)
+		}
+		return buf.Bytes()
+	}()
+	zr, err := zip.NewReader(bytes.NewReader(bomb), int64(len(bomb)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	real := zr.File[0].CompressedSize64
+	if r := zr.File[0].UncompressedSize64 / real; r < SimulinkMaxRatio {
+		t.Fatalf("the bomb inflates only %d:1", r)
+	}
+	// The declared compressed size reaches into the next entry, so the declared ratio
+	// (4 MiB : about 70 KiB) is inside the cap; the bytes inflated per byte read are not.
+	_, err = ReadSimulinkModel("m.slx", slxDeclareCompressed(t, bomb, root, uint32(real)+uint32(len(noise))))
+	if !errors.Is(err, ErrSimulinkCap) || !strings.Contains(err.Error(), "inflates past 200:1") {
+		t.Errorf("err = %v, want the ratio cap", err)
+	}
+	// A part that inflates as a real one does reads whole.
+	m, err := ReadSimulinkModel("m.slx", slxPackage(t, root, slxNoise(1000, `<Block Name="%s" SID="1"/>`, false)))
+	if err != nil || len(m.Blocks) != 1000 {
+		t.Errorf("%d blocks, %v", len(m.Blocks), err)
+	}
 }

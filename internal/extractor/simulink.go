@@ -6,9 +6,11 @@ package extractor
 // getfullname) and, from R2010b on, by a SID unique in the model. Two on-disk forms carry it:
 //
 //   - `.slx`, an OPC zip package, read in memory (archive/zip over the bytes, nothing written
-//     to disk) under three caps: SimulinkMaxEntries entries in the package, SimulinkMaxInflated
-//     bytes inflated across the parts read, and SimulinkMaxRatio between a part's inflated and
-//     compressed sizes. Only the parts below are inflated. Layout eras:
+//     to disk) under the caps below: SimulinkMaxEntries entries in the package,
+//     SimulinkMaxInflated bytes inflated across the parts read, SimulinkMaxRatio bytes
+//     inflated per compressed byte the inflater actually reads (a declared size is never
+//     trusted), and the depth, element and block caps that hold while a part tokenizes. Only
+//     the parts below are inflated. Layout eras:
 //     before R2020a every block is inline in `simulink/blockdiagram.xml`
 //     (`ModelInformation/Model|Library/System/Block/System/...`); from R2020a each system is
 //     a part of its own, `simulink/systems/system_<n>.xml`, linked by a `<System Ref=…/>`
@@ -34,10 +36,12 @@ import (
 	"archive/zip"
 	"bufio"
 	"bytes"
+	"compress/flate"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"hash/crc32"
 	"io"
 	"path"
 	"slices"
@@ -53,7 +57,8 @@ const (
 	SimulinkMaxEntries = 4096
 	// SimulinkMaxInflated is the most bytes the parts read may inflate to, together.
 	SimulinkMaxInflated = 32 << 20
-	// SimulinkMaxRatio is the most a part read may inflate per compressed byte.
+	// SimulinkMaxRatio is the most a part may inflate per compressed byte the inflater reads,
+	// counted as it reads. The most a calibration part inflates is 24.7:1.
 	SimulinkMaxRatio = 200
 	// SimulinkMaxDepth is the deepest a model's elements (or .mdl brace nodes) may nest, a
 	// spliced system's counted from the model. The deepest calibration model nests 38.
@@ -242,7 +247,7 @@ func (m *SimulinkModel) refPath(p string) string {
 // --- .slx ---------------------------------------------------------------------------
 
 // xnode is one element of a part, as far as the reader keeps it: the attributes it reads
-// (simulinkAttrs) and a <P>'s text, nothing else.
+// (setAttr) and a <P>'s text, nothing else.
 type xnode struct {
 	name                       string
 	aName, sid, blockType, ref string // the attributes the reader reads
@@ -364,6 +369,10 @@ func parseXMLPart(b []byte, budget *simulinkBudget) (*xnode, error) {
 }
 
 // slxParts reads the parts the model's blocks and references come from, under the caps.
+// The sizes a package declares are not trusted: a part is inflated from its raw bytes, the
+// compressed bytes the inflater consumes counted as it reads, and the read stops with
+// ErrSimulinkCap once the bytes out pass SimulinkMaxRatio per byte in, the inflated budget,
+// or one byte past the part's declared size. A name listed twice is refused.
 func slxParts(src []byte) (map[string][]byte, error) {
 	zr, err := zip.NewReader(bytes.NewReader(src), int64(len(src)))
 	if err != nil {
@@ -371,6 +380,13 @@ func slxParts(src []byte) (map[string][]byte, error) {
 	}
 	if len(zr.File) > SimulinkMaxEntries {
 		return nil, fmt.Errorf("%w: %d entries, cap %d", ErrSimulinkCap, len(zr.File), SimulinkMaxEntries)
+	}
+	names := make(map[string]bool, len(zr.File))
+	for _, f := range zr.File {
+		if names[f.Name] {
+			return nil, fmt.Errorf("%w: entry %s is listed twice", ErrSimulinkCap, f.Name)
+		}
+		names[f.Name] = true
 	}
 	parts := map[string][]byte{}
 	budget := int64(SimulinkMaxInflated)
@@ -382,30 +398,82 @@ func slxParts(src []byte) (map[string][]byte, error) {
 		if !wanted {
 			continue
 		}
-		if f.CompressedSize64 > 0 && f.UncompressedSize64/f.CompressedSize64 >= SimulinkMaxRatio {
-			return nil, fmt.Errorf("%w: %s inflates %d:1, cap %d:1", ErrSimulinkCap, name, f.UncompressedSize64/f.CompressedSize64, SimulinkMaxRatio)
-		}
 		if int64(f.UncompressedSize64) > budget {
 			return nil, fmt.Errorf("%w: parts inflate past %d bytes", ErrSimulinkCap, SimulinkMaxInflated)
 		}
-		rc, err := f.Open()
+		b, err := slxInflate(f, min(budget, int64(f.UncompressedSize64)))
 		if err != nil {
-			return nil, fmt.Errorf("simulink: %s: %w", name, err)
-		}
-		// The declared size is not trusted: reading stops one byte past it or the budget.
-		limit := min(budget, int64(f.UncompressedSize64))
-		b, err := io.ReadAll(io.LimitReader(rc, limit+1))
-		rc.Close()
-		if err != nil {
-			return nil, fmt.Errorf("simulink: %s: %w", name, err)
-		}
-		if int64(len(b)) > limit {
-			return nil, fmt.Errorf("%w: %s inflates past its declared size", ErrSimulinkCap, name)
+			return nil, err
 		}
 		budget -= int64(len(b))
 		parts[name] = b
 	}
 	return parts, nil
+}
+
+// slxInflate reads one part, at most limit bytes, under the real ratio cap.
+func slxInflate(f *zip.File, limit int64) ([]byte, error) {
+	raw, err := f.OpenRaw()
+	if err != nil {
+		return nil, fmt.Errorf("simulink: %s: %w", f.Name, err)
+	}
+	in := &countingByteReader{r: bufio.NewReader(raw)}
+	var r io.Reader
+	switch f.Method {
+	case zip.Store:
+		r = in
+	case zip.Deflate:
+		fr := flate.NewReader(in) // in is an io.ByteReader, so flate reads no byte it does not use
+		defer fr.Close()
+		r = fr
+	default:
+		return nil, fmt.Errorf("simulink: %s: compression method %d", f.Name, f.Method)
+	}
+	var out bytes.Buffer
+	sum := crc32.NewIEEE()
+	chunk := make([]byte, 32<<10)
+	for {
+		n, err := r.Read(chunk)
+		out.Write(chunk[:n])
+		sum.Write(chunk[:n])
+		if int64(out.Len()) > limit {
+			return nil, fmt.Errorf("%w: %s inflates past its declared size or the inflated budget", ErrSimulinkCap, f.Name)
+		}
+		// One compressed byte read is let through, so a part's first bytes are never refused.
+		if int64(out.Len()) > SimulinkMaxRatio*max(in.n, 1) {
+			return nil, fmt.Errorf("%w: %s inflates past %d:1 (%d bytes from %d read)", ErrSimulinkCap, f.Name, SimulinkMaxRatio, out.Len(), in.n)
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("simulink: %s: %w", f.Name, err)
+		}
+	}
+	if sum.Sum32() != f.CRC32 {
+		return nil, fmt.Errorf("simulink: %s: checksum error", f.Name)
+	}
+	return out.Bytes(), nil
+}
+
+// countingByteReader counts the compressed bytes the inflater consumes.
+type countingByteReader struct {
+	r *bufio.Reader
+	n int64
+}
+
+func (c *countingByteReader) Read(p []byte) (int, error) {
+	n, err := c.r.Read(p)
+	c.n += int64(n)
+	return n, err
+}
+
+func (c *countingByteReader) ReadByte() (byte, error) {
+	b, err := c.r.ReadByte()
+	if err == nil {
+		c.n++
+	}
+	return b, err
 }
 
 func (m *SimulinkModel) readSLX(src []byte) error {
