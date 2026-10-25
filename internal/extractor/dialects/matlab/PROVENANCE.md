@@ -34,27 +34,22 @@
 - `testdata/`: six fixtures written in this repository; goldens written by hand from each fixture before any query existed
   (`TestDialectGoldens/matlab` red), then the queries were written against `indexbench lang-probe`.
 
-## L1 is not proven: the oracle cannot report two of the four kinds (LB-Q-matlab-rest)
+## L1 oracle: a MISS_HIT parser dump (LB-Q-matlab, LB-Q-matlab-rest)
 
-`required_kinds` is class, function, method and property: the L1 kinds the queue names. universal-ctags 6.2.1's MatLab parser reports
-three kinds (`ctags --list-kinds-full=MatLab`: class, function, variable), and on the calibration subjects (3,179 files) it reports
-45,154 variables, 4,705 functions and 61 classes:
+universal-ctags 6.2.1 cannot measure the four required kinds: its MatLab parser has class, function and variable only (a method is an
+unscoped function; a property is a `variable` among 45,154 assignment tags; it misses 12 classes whose `classdef` line carries
+`(InferiorClasses = {?class})`, and writes no end line). The oracle is therefore `calibration/oracles/miss-hit/miss_hit_dump.py`, an original
+driver over `miss-hit-core` 0.9.44's parser (tier B on the design 1.5 D2 precedent: an independent parser, as luaparse, php-parser and pglast),
+`oracle_kinds.tool` mapping class, function, method and property one to one. Subjects: export_fig v3.58 (18 files), chebfun v5.7.0 (3,162 `.m`
+files, 3,156 scored) and matlab2tikz v1.1.0 (64 files; BSD-2-Clause).
 
-- A method is a `function` with no scope and no method kind (chebfun has 1,090 method definitions the dialect emits).
-- A property is a `variable`, only when it has a default value, among every assignment `x = ...` at any depth of any function or
-  script (chebfun and export_fig: 45,154 of the 49,920 tags). Mapping `variable` to `property` would score a property's recall against
-  every local variable of the repository; leaving it out puts `property` and `method` outside the kind intersection, which design
-  section 1.4 refuses (`lang-oracle -dialect matlab` says `required kind "method" is outside the kind intersection`).
-- ctags also misses 12 classes whose `classdef` line carries `(InferiorClasses = {?class})` (chebfun's `@adchebfun`, `@chebop`,
-  `@domain` and nine more), names a signature's line continuation `...` as a function 21 times, and writes a getter as `get.name`,
-  which the harness's last-segment rule never pairs with the dialect's `Class.name` (12 accessors in each direction).
+Reading (`docs/bench/readings/lang/matlab.json`, 3,238 files measured): sym_recall .9898, sym_precision 1, kind_agreement .9899, range_agreement
+.9998 (5,235 of 5,236 pairs with an oracle end), signature_coverage 1, 0 faults, max_file_ms 338, 490 peak module pages. MISS_HIT rejects 5
+chebfun files (0.16%) with a parse error; they are left out with `-only` and counted in the reading's notes. Throughput is the one bar not met:
+0.94 MB/CPU-s against 1.0 on the VM that took the reading (see the `LB-Q-matlab-rest` row).
 
-`required_kinds` is left whole, so no reading is written. For the record, on an uncommitted scratch manifest that compares only classes and
-functions (methods and properties outside the intersection, ctags `variable` unmapped; not a reading, no level claimed), 3,179 files
-(chebfun v5.7.0 3,161, export_fig v3.58 18) score sym_recall .8758 (the methods with a body are ctags functions the scratch left
-unmatched), sym_precision .9907, kind_agreement 1, signature_coverage 1 over 4,140 callables, 2.45 MB/CPU-s, 433 peak module pages and 0
-faults; on export_fig alone recall and precision are 1.0 (95 of 95). With methods counted as functions chebfun's precision is .8904 (5,208
-definitions, 4,637 matched): 547 declared-only method signatures ctags cannot see, and 24 definitions of the 12 classes it misses.
+Scope choices the oracle and the dialect share: a getter or setter is the property's name on both sides; an `arguments` block is not a property;
+events and enumeration members are in neither; a function with no `end` has oracle end 0 and is not range-compared.
 
 ## Engine changes this dialect required (LB-Q-matlab)
 
