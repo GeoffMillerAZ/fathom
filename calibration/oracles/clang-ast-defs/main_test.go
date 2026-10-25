@@ -155,3 +155,16 @@ func TestClangEndToEndInternalLinkage(t *testing.T) {
 		t.Errorf("internal = %v, want %v", u.Internal, want)
 	}
 }
+
+// TestTierFlag (ruling C-R6): the output's tier is the -tier flag's, never a
+// hand edit of the JSON; an unknown tier is refused.
+func TestTierFlag(t *testing.T) {
+	for _, s := range []string{"A", "B"} {
+		if got, err := tierFlag(s); err != nil || got != s {
+			t.Errorf("tierFlag(%q) = %q, %v", s, got, err)
+		}
+	}
+	if _, err := tierFlag("tier-a"); err == nil {
+		t.Error("tierFlag(tier-a): no error")
+	}
+}

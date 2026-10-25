@@ -914,7 +914,20 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			b, _ := os.ReadFile(filepath.Join(root, filepath.FromSlash(p)))
 			return b
 		})
+		// Ruling C-R6 (F5): a family the index grades is judged at the weakest
+		// tier of the oracle files that also feed it (the call sites and active
+		// lines below), not at the index's own tier.
+		callsTier, defMapTier, fileEdgesTier := "A", "A", "A"
 		if clangIndex {
+			if callsTier, err = feedTier(opts.tools, "call_sites", "active_lines"); err != nil {
+				return res, err
+			}
+			if defMapTier, err = feedTier(opts.tools, "active_lines"); err != nil {
+				return res, err
+			}
+			if fileEdgesTier, err = feedTier(opts.tools, "active_lines"); err != nil { // a dump's imports grade import_resolution, at its own tier
+				return res, err
+			}
 			// LB-F116: the build's own compiler's call sites, when an oracle
 			// file carries them, settle what the index cannot.
 			if scipOpts.ClangSites, err = clangSitesOf(opts.tools); err != nil {
@@ -1000,10 +1013,10 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 		addCounts(sub.Counts, sr.Counts)
 		if !opts.callsFromTool {
 			calls = &callDiff{oracle: orDefault(sr.Tool, "scip"), truth: sr.CallTruth, mine: sr.CallFound}
-			sub.Families[langbench.FamilyCalls] = "A"
+			sub.Families[langbench.FamilyCalls] = callsTier
 		}
-		sub.Families[langbench.FamilyDefMap] = "A"
-		sub.Families[langbench.FamilyTyped] = "A"
+		sub.Families[langbench.FamilyDefMap] = defMapTier
+		sub.Families[langbench.FamilyTyped] = defMapTier
 		if lang, ok := fileResolveLang[spec.Manifest.HostID()]; ok {
 			edges, rep := fusion.ResolveFileEdges(ctx, lang, root, srcFiles, nodes)
 			if rep.Skipped {
@@ -1025,7 +1038,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 				langbench.ScoreFileEdges(truth, edges, nodes, sub.Counts)
 				fileEdges = &fileEdgeDiff{truth: truth, mine: fileEdgePairs(edges, nodes), via: fileEdgeVia(edges, nodes), blind: blindPairs}
 				fileEdges.by = fileEdgeBy(edges, nodes)
-				sub.Families[langbench.FamilyFileEdges] = "A"
+				sub.Families[langbench.FamilyFileEdges] = fileEdgesTier
 			}
 		} else if spec.Manifest.ID == goDialect {
 			// LB-F58: Go's cross-file edges are the typed pass's.

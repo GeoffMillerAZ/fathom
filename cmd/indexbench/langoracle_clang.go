@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"slices"
 	"sort"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -92,4 +93,44 @@ func fileEdgesOracleBlind(raw []byte, truth map[[2]string]bool, edges []core.Edg
 	counts[langbench.CntFileEdgesOracleBlind] += len(blind)
 	*notes = append(*notes, fmt.Sprintf("%s: %d %s", name, len(blind), noteFileEdgesOracleBlind))
 	return kept, blind, nil
+}
+
+// feedTier is the weakest tier among the tool oracle files that carry any of
+// keys (a file's own "tier", A when it names none), A when no file does: a
+// metric is judged at the lowest tier of the oracles that feed it (owner ruling
+// C-R6, F5), so a clang CUDA translation's preprocessor or call sites lower
+// the index's tier-A metrics they settle.
+func feedTier(paths []string, keys ...string) (string, error) {
+	tier := "A"
+	for _, p := range paths {
+		b, err := os.ReadFile(p)
+		if err != nil {
+			return "", err
+		}
+		var probe map[string]json.RawMessage
+		if err := json.Unmarshal(b, &probe); err != nil {
+			return "", fmt.Errorf("%s: %w", p, err)
+		}
+		if !slices.ContainsFunc(keys, func(k string) bool { _, ok := probe[k]; return ok }) {
+			continue
+		}
+		var own struct {
+			Tier string `json:"tier"`
+		}
+		if raw, ok := probe["tier"]; ok {
+			if err := json.Unmarshal(raw, &own.Tier); err != nil {
+				return "", fmt.Errorf("%s: tier: %w", p, err)
+			}
+		}
+		tier = weakerTier(tier, orDefault(own.Tier, "A"))
+	}
+	return tier, nil
+}
+
+// weakerTier is the weaker of two oracle tiers (A strongest, D weakest).
+func weakerTier(a, b string) string {
+	if b > a {
+		return b
+	}
+	return a
 }

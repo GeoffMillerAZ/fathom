@@ -333,9 +333,11 @@ func main() {
 	compdb := flag.String("compdb", "", "compile_commands.json")
 	clang := flag.String("clang", "clang", "clang to run")
 	jobs := flag.Int("jobs", 4, "parallel dumps")
+	tierArg := flag.String("tier", "A", "the output's oracle tier: A for the build's own compiler, B for a translated database")
 	flag.Parse()
-	if *subject == "" || *compdb == "" {
-		fmt.Fprintln(os.Stderr, "usage: clang-ast-defs -subject <dir> -compdb <compile_commands.json> [-clang clang] [-jobs 4]")
+	tier, terr := tierFlag(*tierArg)
+	if *subject == "" || *compdb == "" || terr != nil {
+		fmt.Fprintln(os.Stderr, "usage: clang-ast-defs -subject <dir> -compdb <compile_commands.json> [-clang clang] [-jobs 4] [-tier A|B]")
 		os.Exit(2)
 	}
 	abs, err := filepath.Abs(*subject)
@@ -354,7 +356,7 @@ func main() {
 		os.Exit(2)
 	}
 	ver, _ := exec.Command(*clang, "--version").Output()
-	out := Output{Tool: "clang-ast", Tier: "A", Version: strings.TrimSpace(strings.SplitN(string(ver), "\n", 2)[0])}
+	out := Output{Tool: "clang-ast", Tier: tier, Version: strings.TrimSpace(strings.SplitN(string(ver), "\n", 2)[0])}
 
 	seen := map[string]bool{}
 	var todo []entry
@@ -486,4 +488,15 @@ func firstLine(s string) string {
 		return s[:i]
 	}
 	return s
+}
+
+// tierFlag is the -tier value written to the output's "tier": A when the
+// database is the build's own compiler's, B when it is a translation (a
+// clang CUDA database for an nvcc build, LB-Q-cuda); anything else is refused.
+func tierFlag(s string) (string, error) {
+	switch s {
+	case "A", "B", "C", "D":
+		return s, nil
+	}
+	return "", fmt.Errorf("-tier %q: want A, B, C or D", s)
 }
