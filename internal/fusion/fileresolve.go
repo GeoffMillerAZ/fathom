@@ -1091,10 +1091,14 @@ func (p *Pipeline) enrichFileResolvedEdges(ctx context.Context, svc core.Service
 	// the extractor did, as the measurement harness does. A header the router
 	// sent to another language is still read by an include-path language for
 	// its includes and prototypes.
+	//
+	// CUDA is a consumer too, though the router sends no .h to it: every
+	// header is foreign to it, and it binds the definitions of the ones its
+	// includes reach (headerBorrowers, ruling C-R4).
 	foreign := map[string][]core.SourceRef{}
-	cLang, cppLang, objcLang := headerLangs()
-	if cLang != "" || cppLang != "" || objcLang != "" {
-		langOf := map[string]string{"c": cLang, "cpp": cppLang, "objective-c": objcLang}
+	cLang, cppLang, objcLang, cudaLang := headerLangs()
+	if cLang != "" || cppLang != "" || objcLang != "" || cudaLang != "" {
+		langOf := map[string]string{"c": cLang, "cpp": cppLang, "objective-c": objcLang, "cuda": cudaLang}
 		for _, r := range headers {
 			b, err := p.conn.Fetch(ctx, r)
 			if err != nil || len(b) > MaxExtractSize || connector.IsBinary(b) {
@@ -1343,10 +1347,32 @@ func (p *Pipeline) resolveLang(ctx context.Context, svc core.ServiceRef, r *impo
 		}
 		// Only the headers an include can reach are parsed (LB-F179): the
 		// rest bind nothing and change no include's resolution.
+		var bound []string
 		for _, h := range reachableForeign(specs, hs) {
 			if sp, ierr := extractImports(ext, h.path, h.src); ierr == nil {
 				specs[h.path] = sp
 				r.env.addForeign([]string{h.path})
+				if headerBorrowers[lang] {
+					bound = append(bound, h.path)
+					if fis == nil {
+						if nodes, eerr := ext.Extract(svc.ID, h.path, h.src); eerr == nil {
+							symbols = append(symbols, nodes...)
+						}
+					}
+				}
+			}
+		}
+		// A borrower binds the reached headers' definitions as the language
+		// the router sent them to stored them; its edges stay its own files'.
+		if len(bound) > 0 && fis != nil {
+			obs, err := fis.SourceObservations(ctx, svc.ID, bound)
+			if err != nil {
+				if h := haltError(ctx, err); h != nil {
+					return nil, rep, h
+				}
+			}
+			for _, o := range obs {
+				symbols = append(symbols, o.ToSymbolNode())
 			}
 		}
 	}
@@ -1406,12 +1432,19 @@ func isHeaderPath(relPath string) bool { return strings.EqualFold(path.Ext(relPa
 // Objective-C dialect claims only through match.sniff (MATLAB's too).
 func isObjCSourcePath(relPath string) bool { return strings.EqualFold(path.Ext(relPath), ".m") }
 
-// headerLangs is the file-resolve languages a .h can be routed to: "c", "cpp"
-// and "objective-c", each "" when no dialect of that name resolves files.
-func headerLangs() (c, cpp, objc string) {
+// headerBorrowers are the file-resolve languages no .h is routed to whose
+// files include headers and call what they define: CUDA, whose .cu and .cuh
+// include C and C++ headers (cuda-samples' helper_cuda.h). Such a language
+// binds the definitions of the headers its includes reach.
+var headerBorrowers = map[string]bool{"cuda": true}
+
+// headerLangs is the file-resolve languages that read a .h: "c", "cpp" and
+// "objective-c", which the router can send one to, and "cuda", which borrows
+// them; each "" when no dialect of that name resolves files.
+func headerLangs() (c, cpp, objc, cuda string) {
 	langs, err := extractor.FileResolveLangs()
 	if err != nil {
-		return "", "", ""
+		return "", "", "", ""
 	}
 	for _, l := range langs {
 		switch l.Lang {
@@ -1421,9 +1454,11 @@ func headerLangs() (c, cpp, objc string) {
 			cpp = "cpp"
 		case "objective-c":
 			objc = "objective-c"
+		case "cuda":
+			cuda = "cuda"
 		}
 	}
-	return c, cpp, objc
+	return c, cpp, objc, cuda
 }
 
 // fileResolveInput reports whether path is an input of the file resolver: a
@@ -1435,11 +1470,11 @@ func fileResolveInput(path string) bool {
 		return true
 	}
 	if isHeaderPath(path) {
-		c, cpp, objc := headerLangs()
-		return c != "" || cpp != "" || objc != ""
+		c, cpp, objc, cuda := headerLangs()
+		return c != "" || cpp != "" || objc != "" || cuda != ""
 	}
 	if isObjCSourcePath(path) {
-		_, _, objc := headerLangs()
+		_, _, objc, _ := headerLangs()
 		return objc != ""
 	}
 	return false

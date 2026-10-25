@@ -120,3 +120,31 @@ func TestReachableForeignScansIncludesGenerously(t *testing.T) {
 		t.Errorf("reachable = %v, want %v (five.h includes a reached header but nothing includes it)", got, want)
 	}
 }
+
+// TestCUDABindsIncludedHeaders (LB-Q-cuda, ruling C-R4): a .h is C's or C++'s
+// through the header router, never CUDA's, yet a .cu includes it and calls
+// what it defines (cuda-samples' helper_cuda.h). The CUDA resolver reads the
+// reached headers for their includes and binds their stored definitions, so
+// k.cu draws an edge to helper.h's helper and, through it, to deep.h's deep;
+// an unreached header binds nothing, and the edges stay the CUDA files'.
+func TestCUDABindsIncludedHeaders(t *testing.T) {
+	dir := t.TempDir()
+	writeCorpus(t, dir, map[string]string{
+		"k.cu":     "#include \"helper.h\"\n__global__ void k(int *p) { p[0] = deep(); }\nint main() { k<<<1, 1>>>(0); return helper(); }\n",
+		"helper.h": "#include \"deep.h\"\ninline int helper(void) { return 1; }\n",
+		"deep.h":   "class Deep;\ninline int deep(void) { return 2; }\n",
+		"other.h":  "inline int other(void) { return 3; }\n",
+		"use.c":    "int other(void);\nint use(void) { return other(); }\n",
+	})
+	edges, _ := foreignIngest(t, dir)
+	for _, want := range []string{"k.cu|fr::k.main->fr::helper.helper", "k.cu|fr::k.k->fr::deep.deep"} {
+		if !strings.Contains(edges, want) {
+			t.Errorf("no %s edge:\n%s", want, edges)
+		}
+	}
+	for _, line := range strings.Split(edges, "\n") {
+		if strings.HasPrefix(line, "k.cu|") && strings.HasSuffix(line, "->fr::other.other") || strings.HasPrefix(line, "helper.h|") || strings.HasPrefix(line, "deep.h|") {
+			t.Errorf("unexpected edge %s:\n%s", line, edges)
+		}
+	}
+}
