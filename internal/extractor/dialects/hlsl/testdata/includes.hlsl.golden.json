@@ -1,0 +1,53 @@
+{
+  "symbols": [
+    {
+      "name": "kFog",
+      "kind": "HlslVariable",
+      "package": "includes",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "gSceneLights",
+      "kind": "HlslVariable",
+      "package": "includes",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "Lit",
+      "kind": "HlslFunc",
+      "package": "includes",
+      "line": 13,
+      "end_line": 18,
+      "signature": "float4 Lit(float3 p : POSITION) : SV_Target",
+      "calls": [
+        "Radiance",
+        "length"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "lib.hlsli",
+      "module": "lib.hlsli",
+      "kind": "whole",
+      "line": 3
+    },
+    {
+      "local": "<Common/Packing.hlsli>",
+      "module": "<Common/Packing.hlsli>",
+      "kind": "whole",
+      "line": 4
+    },
+    {
+      "local": "missing/nothing.hlsli",
+      "module": "missing/nothing.hlsli",
+      "kind": "whole",
+      "line": 5
+    }
+  ]
+}
