@@ -219,6 +219,11 @@ const CntScipFileEdgesInternalLinkage = "scip_file_edges_internal_linkage"
 // its own) is such a reference, and the pairs are counted in the note.
 type ClangLinkage struct {
 	fileLocal map[string]map[string]bool // document -> identifiers it defines with internal linkage
+	// linkUnits is a source document's executables (round 3 B, CUDA): the CMake targets its
+	// objects are linked into, from the driver's `<oracle>.units.json` companion.
+	linkUnits map[string][]string
+	unitsOf   map[string]map[string]bool // memo: a document's link units, a header's through its includers
+	unitCut   map[[2]string]bool         // pairs ruling 3 would draw to a definer in no shared link unit
 	includes  map[string][]string        // document -> subject files its #include lines entered
 	reach     map[string]map[string]bool // memo: a document's include closure, itself included
 	removed   map[[2]string]bool         // pairs ruling 3 would draw to another unit's copy
@@ -226,15 +231,131 @@ type ClangLinkage struct {
 	read      bool                       // Read ran over at least one oracle file
 }
 
-// clangLinkageFor is the dialect's linkage rule: C's (owner ruling M3), none for any other
-// this wave (C++'s internal linkage also takes in an unnamed namespace and namespace-scope
-// const objects, and needs its own ruling and holdout).
+// clangLinkageFor is the dialect's linkage rule: C's (owner ruling M3) and CUDA's, whose
+// file-edge truth is also scoped to link units (round 3 B, C2); none for any other this wave
+// (C++'s internal linkage also takes in an unnamed namespace and namespace-scope const
+// objects, and needs its own ruling and holdout).
 func clangLinkageFor(dialect string) *ClangLinkage {
-	if dialect != "c" {
+	if dialect != "c" && dialect != "cuda" {
 		return nil
 	}
 	return &ClangLinkage{}
 }
+
+// CntScipFileEdgesLinkUnit counts the file-edge truth pairs K25 ruling 3 would draw from a
+// reference to a definer linked into no executable the referring document is (round 3 B,
+// C2) that nothing else draws.
+const CntScipFileEdgesLinkUnit = "scip_file_edges_link_unit"
+
+// LinkUnit records that source document path is compiled into the executable unit.
+func (l *ClangLinkage) LinkUnit(unit, path string) {
+	if l.linkUnits == nil {
+		l.linkUnits = map[string][]string{}
+	}
+	if !slices.Contains(l.linkUnits[path], unit) {
+		l.linkUnits[path] = append(l.linkUnits[path], unit)
+	}
+	l.unitsOf = nil
+}
+
+// units is doc's link units: a source's own executables, a header's those of every source
+// whose includes reach it.
+func (l *ClangLinkage) units(doc string) map[string]bool {
+	if u, ok := l.unitsOf[doc]; ok {
+		return u
+	}
+	if l.unitsOf == nil {
+		l.unitsOf = map[string]map[string]bool{}
+	}
+	u := map[string]bool{}
+	for _, x := range l.linkUnits[doc] {
+		u[x] = true
+	}
+	if len(u) == 0 {
+		srcs := make([]string, 0, len(l.linkUnits))
+		for src := range l.linkUnits {
+			srcs = append(srcs, src)
+		}
+		sort.Strings(srcs)
+		for _, src := range srcs {
+			if l.reaches(src, doc) {
+				for _, x := range l.linkUnits[src] {
+					u[x] = true
+				}
+			}
+		}
+	}
+	l.unitsOf[doc] = u
+	return u
+}
+
+// linkScoped reports whether the link-unit rule reads a reference to a symbol scip-clang
+// defines in the documents tos: link units are known and at least two documents define it.
+func (l *ClangLinkage) linkScoped(tool string, tos []string) bool {
+	return l != nil && len(l.linkUnits) > 0 && tool == "scip-clang" && len(tos) >= 2
+}
+
+// drawUnits draws doc's reference to the definers in tos that share a link unit with doc
+// (a program holds one definition of an extern identifier, C++ [basic.def.odr]), else, none
+// sharing one, to every definer as ruling 3 does, and records the pairs it does not draw.
+func (l *ClangLinkage) drawUnits(d *definerEdges, doc string, tos []string, edges map[[2]string]bool) {
+	mine := l.units(doc)
+	var kept []string
+	for _, to := range tos {
+		for u := range l.units(to) {
+			if mine[u] {
+				kept = append(kept, to)
+				break
+			}
+		}
+	}
+	if kept == nil {
+		kept = tos
+	}
+	if l.unitCut == nil {
+		l.unitCut = map[[2]string]bool{}
+	}
+	d.init()
+	for i, to := range tos {
+		if to == doc {
+			continue
+		}
+		e := [2]string{doc, to}
+		if !slices.Contains(kept, to) {
+			l.unitCut[e] = true
+			continue
+		}
+		edges[e] = true
+		if i == 0 {
+			d.first[e] = true
+		} else {
+			d.later[e] = true
+		}
+	}
+}
+
+// IncludeClosure is the subject files the #include lines of the files in from reach, by
+// the preprocessor oracle the rule read, less from itself (round 3 F5). A nil rule
+// reaches nothing.
+func (l *ClangLinkage) IncludeClosure(from map[string]bool) map[string]bool {
+	out := map[string]bool{}
+	if l == nil {
+		return out
+	}
+	for f := range from {
+		l.reaches(f, "") // fills l.reach[f], f's include closure
+		for to := range l.reach[f] {
+			if !from[to] {
+				out[to] = true
+			}
+		}
+	}
+	return out
+}
+
+// unitsCompanionFile is the link-unit companion of a tool oracle file:
+// `<name>.units.json` beside `<name>.json`.
+func unitsCompanionFile(p string) string { return strings.TrimSuffix(p, ".json") + ".units.json" }
 
 // FileLocal records that document path defines the file-scope identifier name with
 // internal linkage.
@@ -287,6 +408,21 @@ func (l *ClangLinkage) Read(toolOracles []string, companion func(string) string)
 			}
 		}
 		l.read = true
+		if ub, err := os.ReadFile(unitsCompanionFile(p)); err == nil {
+			var lu struct {
+				LinkUnits map[string][]string `json:"link_units"`
+			}
+			if err := json.Unmarshal(ub, &lu); err != nil {
+				return fmt.Errorf("%s: %w", unitsCompanionFile(p), err)
+			}
+			for unit, srcs := range lu.LinkUnits {
+				for _, src := range srcs {
+					l.LinkUnit(unit, src)
+				}
+			}
+		} else if !errors.Is(err, fs.ErrNotExist) {
+			return err
+		}
 		cb, err := os.ReadFile(companion(p))
 		if errors.Is(err, fs.ErrNotExist) {
 			continue
@@ -442,17 +578,38 @@ func (l *ClangLinkage) Finish(name string, edges map[[2]string]bool, counts map[
 	if n > 0 {
 		counts[CntScipFileEdgesInternalLinkage] += n
 	}
+	var out []string
+	if cut := 0; len(l.linkUnits) > 0 {
+		for e := range l.unitCut {
+			if !edges[e] {
+				cut++
+			}
+		}
+		counts[CntScipFileEdgesLinkUnit] += cut
+		out = append(out, fmt.Sprintf("%s: %d file-edge truth pairs K25 ruling 3 would draw from a reference to a definer linked into no executable the referring document is are left out (%s, round 3 B: the repository is many programs, %d CMake executables by the build's own link lines, and a program holds one definition of an extern identifier, so a reference resolves to the definers sharing an executable with it, a header taking its includers' executables by the build's preprocessor oracle; scip-clang 0.4.0 names a global by no translation unit; a reference whose executables hold no definer keeps ruling 3)", name, cut, CntScipFileEdgesLinkUnit, l.unitCount()))
+	}
 	if len(l.fileLocal) == 0 {
 		if !l.read {
-			return nil
+			return out
 		}
-		return []string{fmt.Sprintf("%s: the reading's clang-ast-defs companion carries no internal_linkage, so owner ruling M3 (O863: a reference to a file-local function or object resolves within its own translation unit) read no linkage and K25 ruling 3 draws every definer", name)}
+		return append(out, fmt.Sprintf("%s: the reading's clang-ast-defs companion carries no internal_linkage, so owner ruling M3 (O863: a reference to a file-local function or object resolves within its own translation unit) read no linkage and K25 ruling 3 draws every definer", name))
 	}
 	note := fmt.Sprintf("%s: %d file-edge truth pairs K25 ruling 3 would draw from a reference to a file-local function or object to another translation unit's same-named copy are left out (%s, owner ruling M3, O863: an identifier declared `static` at file scope has internal linkage, C11 6.2.2p3, and denotes its own unit's definition, so the reference resolves to the copy in the referring document or in a header its includes reach, by the build's preprocessor oracle; scip-clang 0.4.0 names every copy alike; linkage is the compiler AST's, clang-ast-defs, tier A; an external-linkage symbol keeps ruling 3)", name, n, CntScipFileEdgesInternalLinkage)
 	if u := len(l.unplaced); u > 0 {
 		note += fmt.Sprintf("; %d pairs keep ruling 3 because the referring document's includes reach no copy and no definer is external (a header naming a static its includers define)", u)
 	}
-	return []string{note}
+	return append(out, note)
+}
+
+// unitCount is the number of link units the rule read.
+func (l *ClangLinkage) unitCount() int {
+	u := map[string]bool{}
+	for _, xs := range l.linkUnits {
+		for _, x := range xs {
+			u[x] = true
+		}
+	}
+	return len(u)
 }
 
 // clangMappedName is the name def_mapping looks a scip-clang definition up by

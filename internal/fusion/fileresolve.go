@@ -112,6 +112,10 @@ type FileResolveReport struct {
 	// files of the scope define it.
 	GlobalNameBound     int
 	GlobalNameAmbiguous int
+	// Borrowed are the definitions a header borrower (CUDA, headerBorrowers)
+	// bound from the headers its includes reach on the measurement path
+	// (ResolveFileEdges, round 3 F5): the targets of its edges into them.
+	Borrowed []core.SymbolNode
 }
 
 // hasScipIndex reports whether repoPath already carries a SCIP index this
@@ -279,11 +283,27 @@ func resolveFileEdgesWith(ctx context.Context, ext extractor.FileSpecExtractor, 
 			b, err := os.ReadFile(filepath.Join(repoPath, filepath.FromSlash(p)))
 			return b, err == nil && len(b) <= MaxExtractSize
 		}
+		var borrowed []core.SymbolNode
 		for _, h := range reachableForeignRead(specs, extra, readHeader) {
 			if sp, ierr := ext.ExtractFileSpecs(h.path, h.src); ierr == nil {
 				specs[h.path] = sp
 				r.env.addForeign([]string{h.path})
+				// A borrower binds the reached headers' definitions here as
+				// resolveLang does at ingest (ruling C-R4, round 3 F5).
+				if headerBorrowers[lang] && len(symbols) > 0 {
+					if nodes, eerr := ext.Extract(symbols[0].Service, h.path, h.src); eerr == nil {
+						borrowed = append(borrowed, nodes...)
+					}
+				}
 			}
+		}
+		if len(borrowed) > 0 {
+			symbols = append(append([]core.SymbolNode(nil), symbols...), borrowed...)
+			edges, report := resolveImports(r, paths, specs, symbols)
+			report.Faults = len(faults)
+			report.FaultFiles = firstN(faults, 5)
+			report.Borrowed = borrowed
+			return edges, report
 		}
 	}
 	edges, report := resolveImports(r, paths, specs, symbols)

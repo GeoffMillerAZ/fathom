@@ -729,6 +729,8 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 					everyDefiner.leaveOut(doc, tos) // owner ruling L2 (O806): a namespace names no file (scip_clang.go)
 				case opts.ClangLinkage.holds(res.Tool, o.GetSymbol(), tos):
 					opts.ClangLinkage.draw(&everyDefiner, doc, o.GetSymbol(), tos, res.FileEdges) // owner ruling M3 (O863): its own translation unit's copy (scip_clang.go)
+				case opts.ClangLinkage.linkScoped(res.Tool, tos):
+					opts.ClangLinkage.drawUnits(&everyDefiner, doc, tos, res.FileEdges) // round 3 B: a definer in the referring document's own executables (scip_clang.go)
 				default:
 					// K25 ruling 3: every defining document, but rust-analyzer's per-target
 					// copies of one symbol (scip_rust.go)

@@ -1038,19 +1038,29 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 				edges = edgesFromIndexed(edges, sr.Docs, name, &res.notes)
 				edges = scopeFileEdgesNote(edges, nodes, active, name, &res.notes)
 				truth := scopedFileEdgeTruth(sr.FileEdges, inScope)
+				edgeNodes := nodes
+				if len(rep.Borrowed) > 0 {
+					// Round 3 F5: a header borrower's reached headers are measured as
+					// the targets of its files' edges (the build's preprocessor says
+					// which its includes reach), so its header edges are scored.
+					reached := scipOpts.ClangLinkage.IncludeClosure(inScope)
+					edgeNodes = append(append([]core.SymbolNode(nil), nodes...), rep.Borrowed...)
+					truth = scopedFileEdgeTruthTo(sr.FileEdges, inScope, reached)
+					res.notes = append(res.notes, fmt.Sprintf("%s: %d headers the measured files' includes reach (by the build's preprocessor oracle) are measured as file-edge targets, the definitions fathom binds there borrowed as ingest binds them (ruling C-R4); an edge from a header is not measured", name, len(reached)))
+				}
 				if n := len(sr.FileEdges) - len(truth); n > 0 {
 					res.notes = append(res.notes, fmt.Sprintf("%s: %d index %s", name, n, noteFileEdgeTruthScoped))
 				}
 				var blindPairs [][2]string
 				if scipOpts.FileEdgesOracleBlind {
 					// LB-F296: the pairs the index cannot judge (langoracle_clang.go).
-					if edges, blindPairs, err = fileEdgesOracleBlind(raw, truth, edges, nodes, scipOpts.Source, name, sub.Counts, &res.notes); err != nil {
+					if edges, blindPairs, err = fileEdgesOracleBlind(raw, truth, edges, edgeNodes, scipOpts.Source, name, sub.Counts, &res.notes); err != nil {
 						return res, err
 					}
 				}
-				langbench.ScoreFileEdges(truth, edges, nodes, sub.Counts)
-				fileEdges = &fileEdgeDiff{truth: truth, mine: fileEdgePairs(edges, nodes), via: fileEdgeVia(edges, nodes), blind: blindPairs}
-				fileEdges.by = fileEdgeBy(edges, nodes)
+				langbench.ScoreFileEdges(truth, edges, edgeNodes, sub.Counts)
+				fileEdges = &fileEdgeDiff{truth: truth, mine: fileEdgePairs(edges, edgeNodes), via: fileEdgeVia(edges, edgeNodes), blind: blindPairs}
+				fileEdges.by = fileEdgeBy(edges, edgeNodes)
 				sub.Families[langbench.FamilyFileEdges] = fileEdgesTier
 			}
 		} else if spec.Manifest.ID == goDialect {
@@ -1653,6 +1663,19 @@ func lineActive(ranges [][2]int, line int) bool {
 }
 
 // scopedFileEdgeTruth keeps the index's cross-file edges between measured files.
+// scopedFileEdgeTruthTo is scopedFileEdgeTruth whose targets may also be the
+// reached headers (round 3 F5): a pair from a measured file to a measured file
+// or a reached one.
+func scopedFileEdgeTruthTo(truth map[[2]string]bool, inScope, reached map[string]bool) map[[2]string]bool {
+	out := make(map[[2]string]bool, len(truth))
+	for k := range truth {
+		if inScope[k[0]] && (inScope[k[1]] || reached[k[1]]) {
+			out[k] = true
+		}
+	}
+	return out
+}
+
 func scopedFileEdgeTruth(truth map[[2]string]bool, inScope map[string]bool) map[[2]string]bool {
 	out := make(map[[2]string]bool, len(truth))
 	for k := range truth {

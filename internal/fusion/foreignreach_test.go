@@ -188,3 +188,52 @@ func TestReachableForeignReadsOnlyReachable(t *testing.T) {
 		t.Errorf("lazy %v, eager %v", a, b)
 	}
 }
+
+// TestResolveFileEdgesCUDABorrowsHeaders (round 3 F5): the measurement path
+// binds the headers a CUDA file's includes reach as ingest does (ruling C-R4),
+// so the harness scores k.cu's edges to helper.h and deep.h: ResolveFileEdges
+// draws them and reports the borrowed definitions (FileResolveReport.Borrowed)
+// so the reading can map their targets; an unreached header lends nothing.
+func TestResolveFileEdgesCUDABorrowsHeaders(t *testing.T) {
+	dir := t.TempDir()
+	corpus := map[string]string{
+		"k.cu":     "#include \"helper.h\"\n__global__ void k(int *p) { p[0] = deep(); }\nint main() { k<<<1, 1>>>(0); return helper(); }\n",
+		"helper.h": "#include \"deep.h\"\ninline int helper(void) { return 1; }\n",
+		"deep.h":   "inline int deep(void) { return 2; }\n",
+		"other.h":  "inline int other(void) { return 3; }\n",
+	}
+	writeCorpus(t, dir, corpus)
+	e, err := extractor.NewTSExtractor("cuda")
+	if err != nil {
+		t.Skip("no cuda dialect:", err)
+	}
+	src := []byte(corpus["k.cu"])
+	nodes, err := e.Extract("s", "k.cu", src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	edges, rep := ResolveFileEdges(context.Background(), "cuda", dir, []core.SourceFile{{Path: "k.cu", Content: src}}, nodes)
+	if rep.Skipped {
+		t.Fatal(rep.SkipReason)
+	}
+	fileOf := map[string]string{}
+	for _, n := range append(append([]core.SymbolNode(nil), nodes...), rep.Borrowed...) {
+		fileOf[n.Key()] = n.FilePath
+	}
+	got := map[string]bool{}
+	for _, ed := range edges {
+		if to := fileOf[ed.ToSymbol]; to != "" && to != ed.FromFile {
+			got[ed.FromFile+"->"+to] = true
+		}
+	}
+	for _, want := range []string{"k.cu->helper.h", "k.cu->deep.h"} {
+		if !got[want] {
+			t.Errorf("no %s edge: %v", want, got)
+		}
+	}
+	for _, n := range rep.Borrowed {
+		if n.FilePath == "other.h" {
+			t.Errorf("an unreached header lent %s", n.Name)
+		}
+	}
+}
