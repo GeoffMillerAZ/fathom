@@ -449,12 +449,6 @@ var extClassMap = map[string]classification{
 	// too) and .h are the dialect's through match.sniff and the header router.
 	".mm": {core.SourceKind("ObjCInterface"), "objective-c"},
 
-	// HLSL (LB-Q-hlsl, wave 5): .hlsl, .hlsli and .fxh by extension; .fx (also a
-	// Flux config extension) by the dialect's match.sniff.
-	".hlsl":  {core.SourceKind("HlslFunc"), "hlsl"},
-	".hlsli": {core.SourceKind("HlslFunc"), "hlsl"},
-	".fxh":   {core.SourceKind("HlslFunc"), "hlsl"},
-
 	// Solidity (LB-Q-solidity, wave lang6): a new tree-sitter dialect, no incumbent.
 	".sol": {core.SourceKind("SolidityContract"), "solidity"},
 

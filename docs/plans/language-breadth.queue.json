@@ -4179,7 +4179,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-hlsl",
     "worker_model": "sonnet",
-    "notes": "new; functions, structs, cbuffers",
+    "notes": "new; functions, structs, cbuffers; round 2 (2026-10-25) on upstream PR 82 head 0400dd3: harness parse-error count 155 of 646 files (24.0%) pooled, DirectX-Graphics-Samples 121 of 446, kajiya 21 of 177 (11.9%, twelve files of file-scope binding macros with no semicolon, one GLSL file), DirectXTK12 13 of 21, mostly the MISSING semicolon after cbuffer Name : register(bN); refused again, see LB-Q-hlsl-rest",
     "retargeted": "2026-10-24 (owner ruling): L1 -> L3, oracles DXC -ast-dump (L1, L2) and clang-includes over the shader roots (L3), subjects DirectX-Graphics-Samples, kajiya and DirectXTK12 (FidelityFX-SDK dropped); no source pre-pass"
   },
   {
