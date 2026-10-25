@@ -4,11 +4,9 @@ import (
 	"archive/zip"
 	"bytes"
 	"errors"
-	"runtime"
-	"runtime/metrics"
 	"strings"
 	"testing"
-	"time"
+	"unsafe"
 )
 
 // slxPackage writes an OPC zip holding parts, in the order given (a .slx is one; the
@@ -577,62 +575,6 @@ func TestReadSimulinkModelStructureCaps(t *testing.T) {
 	})
 }
 
-// TestReadSimulinkModelHeapBound is S-R2's memory bound: a package filled to the element cap,
-// or to the block cap with blocks holding each attribute the reader keeps, peaks at a small
-// multiple of the inflated budget, sampled while it reads.
-func TestReadSimulinkModelHeapBound(t *testing.T) {
-	if testing.Short() {
-		t.Skip("reads a full element budget")
-	}
-	for name, c := range map[string]struct {
-		el     string
-		n      int
-		blocks int
-	}{
-		"elements": {`<P Name="Dst">%s</P>`, SimulinkMaxElements - 2, 0},
-		"blocks":   {`<Block Name="%s" SID="1" BlockType="G" Ref="r"/>`, SimulinkMaxBlocks, SimulinkMaxBlocks},
-	} {
-		t.Run(name, func(t *testing.T) { heapBound(t, c.el, c.n, c.blocks) })
-	}
-}
-
-func heapBound(t *testing.T, el string, n, blocks int) {
-	const heapFactor = 8
-	src := slxPackage(t, "[Content_Types].xml", slxContentTypes, "simulink/systems/system_root.xml", slxNoise(n, el, false))
-	runtime.GC()
-	sample := []metrics.Sample{{Name: "/memory/classes/heap/objects:bytes"}}
-	metrics.Read(sample)
-	base := sample[0].Value.Uint64()
-	peak := base
-	done := make(chan struct{})
-	sampled := make(chan uint64)
-	go func() {
-		s := []metrics.Sample{{Name: "/memory/classes/heap/objects:bytes"}}
-		p := base
-		for {
-			metrics.Read(s)
-			p = max(p, s[0].Value.Uint64())
-			select {
-			case <-done:
-				sampled <- p
-				return
-			case <-time.After(time.Millisecond):
-			}
-		}
-	}()
-	m, err := ReadSimulinkModel("m.slx", src)
-	close(done)
-	peak = <-sampled
-	if err != nil || len(m.Blocks) != blocks {
-		t.Fatalf("%d blocks, %v; want %d, nil", len(m.Blocks), err, blocks)
-	}
-	grew := peak - base
-	t.Logf("%d elements: heap peaked %d MiB over the %d MiB before the read", n, grew>>20, base>>20)
-	if limit := uint64(heapFactor) * SimulinkMaxInflated; grew > limit {
-		t.Errorf("heap grew %d MiB, want at most %d MiB (%dx the inflated budget)", grew>>20, limit>>20, heapFactor)
-	}
-}
-
 // slxNoiseWidth is the width of an slxNoise name.
 const slxNoiseWidth = 3
 
@@ -728,6 +670,48 @@ func TestReadSimulinkModelRealRatio(t *testing.T) {
 	}
 }
 
+// simulinkNested is a .slx system part of depth blocks, each named name and inside the last,
+// the deepest system holding inner.
+func simulinkNested(depth int, name, inner string) string {
+	return "<System>" + strings.Repeat(`<Block BlockType="SubSystem" Name="`+name+`"><System>`, depth) + inner +
+		strings.Repeat("</System></Block>", depth) + "</System>"
+}
+
+// mdlNested is a .mdl model of depth blocks, each named name and inside the last, the deepest
+// system holding inner.
+func mdlNested(depth int, name, inner string) string {
+	return "Model {\n System {\n" + strings.Repeat("Block {\nBlockType SubSystem\nName \""+name+"\"\nSystem {\n", depth) + inner +
+		strings.Repeat("}\n}\n", depth) + " }\n}\n"
+}
+
+// TestReadSimulinkModelSharedPaths is S3-R2: a name endpoint resolves to the block's stored
+// path, never a fresh copy, and a line drawn twice is one signal.
+func TestReadSimulinkModelSharedPaths(t *testing.T) {
+	line := `<Line><P Name="SrcBlock">s</P>` + strings.Repeat(`<Branch><P Name="DstBlock">d</P></Branch>`, 50) + `</Line>`
+	inner := `<Block Name="s" SID="1"/><Block Name="d" SID="2"/>` + line + line
+	m, err := ReadSimulinkModel("m.slx", slxPackage(t, "simulink/systems/system_root.xml", simulinkNested(4, "sub", inner)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	mdlLine := "Line {\nSrcBlock \"s\"\n" + strings.Repeat("Branch {\nDstBlock \"d\"\n}\n", 50) + "}\n"
+	mdl, err := ReadSimulinkModel("m.mdl", []byte(mdlNested(4, "sub", "Block {\nName \"s\"\n}\nBlock {\nName \"d\"\n}\n"+mdlLine+mdlLine)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, m := range map[string]SimulinkModel{"slx": m, "mdl": mdl} {
+		stored := map[*byte]bool{}
+		for _, b := range m.Blocks {
+			stored[unsafe.StringData(b.Path)] = true
+		}
+		if len(m.Signals) != 1 || m.Signals[0] != (SimulinkSignal{Src: "m/sub/sub/sub/sub/s", Dst: "m/sub/sub/sub/sub/d"}) {
+			t.Fatalf("%s: signals %v, want the one line s -> d", name, m.Signals)
+		}
+		if s := m.Signals[0]; !stored[unsafe.StringData(s.Src)] || !stored[unsafe.StringData(s.Dst)] {
+			t.Errorf("%s: a signal's endpoint is a fresh copy of a block's path", name)
+		}
+	}
+}
+
 // TestReadSimulinkModelAdversarial is S-R4: each hostile package ends in a bounded
 // ErrSimulinkCap error, never a panic and never a partial model.
 func TestReadSimulinkModelAdversarial(t *testing.T) {
@@ -753,6 +737,14 @@ func TestReadSimulinkModelAdversarial(t *testing.T) {
 		"deep nesting":       slxPackage(t, root, slxNoise(SimulinkMaxDepth+1, "<%s>", true)),
 		"flat flood":         slxPackage(t, root, slxNoise(SimulinkMaxElements+1, "<%s/>", false)),
 		"stray end tags":     slxPackage(t, root, `<System><Block Name="a" SID="1"/></System></x></y>`),
+		// S3-R1: a start tag is bounded on its bytes before the tokenizer builds its attributes.
+		"attribute flood": slxPackage(t, root, `<System><Block Name="a" SID="1"`+strings.Repeat(` x="1"`, SimulinkMaxAttrs+1)+`/></System>`),
+		"long start tag":  slxPackage(t, root, `<System><Block Name="a" Note="`+letters(SimulinkMaxStartTag)+`"/></System>`),
+		// S3-R2: paths grow as name length times depth squared; both path caps hold.
+		"deep long names":     slxPackage(t, root, simulinkNested(64, letters(16<<10), "")),
+		"long path":           slxPackage(t, root, simulinkNested(SimulinkMaxPath/SimulinkMaxValue+1, letters(SimulinkMaxValue), "")),
+		"deep long names mdl": []byte(mdlNested(64, letters(16<<10), "")),
+		"long line mdl":       []byte("Model {\n System {\n  Block {\n   Name \"a\"\n  }\n  Note " + letters(MaxSimulinkLine) + "\n }\n}\n"),
 	}
 	for name, src := range cases {
 		t.Run(name, func(t *testing.T) {

@@ -9,8 +9,9 @@ package extractor
 //     to disk) under the caps below: SimulinkMaxEntries entries in the package,
 //     SimulinkMaxInflated bytes inflated across the parts read, SimulinkMaxRatio bytes
 //     inflated per compressed byte the inflater actually reads (a declared size is never
-//     trusted), and the depth, element and block caps that hold while a part tokenizes. Only
-//     the parts below are inflated. Layout eras:
+//     trusted), the start-tag caps checked on a part's bytes before it tokenizes, the depth,
+//     element and block caps that hold while it tokenizes, and the path caps that hold while
+//     its blocks are read. Only the parts below are inflated. Layout eras:
 //     before R2020a every block is inline in `simulink/blockdiagram.xml`
 //     (`ModelInformation/Model|Library/System/Block/System/...`); from R2020a each system is
 //     a part of its own, `simulink/systems/system_<n>.xml`, linked by a `<System Ref=…/>`
@@ -73,7 +74,66 @@ const (
 	// system reference, a line endpoint or a model reference path. The longest calibration
 	// value is 411 bytes.
 	SimulinkMaxValue = 64 << 10
+	// SimulinkMaxStartTag is the most bytes one start tag may span, `<` to `>`, checked on
+	// the part's bytes before the tokenizer reads the tag. The longest calibration start tag
+	// is 244 bytes.
+	SimulinkMaxStartTag = 1 << 20
+	// SimulinkMaxAttrs is the most attributes one start tag may carry, checked with its bytes.
+	// The most a calibration start tag carries is 13.
+	SimulinkMaxAttrs = 256
+	// SimulinkMaxPath is the longest block path the reader builds. The longest calibration
+	// path is 304 bytes.
+	SimulinkMaxPath = 1 << 20
+	// SimulinkMaxPathBytes is the most bytes a model's block paths may hold together. The
+	// most a calibration model's paths hold is 569,136 bytes.
+	SimulinkMaxPathBytes = SimulinkMaxInflated
 )
+
+// simulinkPaths is what is left of a model's path caps as its blocks are read.
+type simulinkPaths struct{ left int }
+
+func newSimulinkPaths() *simulinkPaths { return &simulinkPaths{left: SimulinkMaxPathBytes} }
+
+// join builds a block's path from its parent's, an ErrSimulinkCap past a path cap.
+func (c *simulinkPaths) join(parent, name string) (string, error) {
+	n := len(parent) + 1 + len(name) + strings.Count(name, "/")
+	if n > SimulinkMaxPath {
+		return "", fmt.Errorf("%w: a block path is longer than %d bytes", ErrSimulinkCap, SimulinkMaxPath)
+	}
+	if c.left -= n; c.left < 0 {
+		return "", fmt.Errorf("%w: block paths hold past %d bytes", ErrSimulinkCap, SimulinkMaxPathBytes)
+	}
+	return simulinkJoin(parent, name), nil
+}
+
+// startTagCap checks the start tag at b[0] == '<' on its bytes, before the tokenizer
+// allocates it: an ErrSimulinkCap once it spans past SimulinkMaxStartTag bytes or carries
+// past SimulinkMaxAttrs attributes (each `=` outside a quoted value). A tag the part ends
+// inside is left to the tokenizer, which refuses it.
+func startTagCap(b []byte, line int) error {
+	var quote byte
+	attrs := 0
+	for i := 1; i < len(b); i++ {
+		if i >= SimulinkMaxStartTag {
+			return fmt.Errorf("%w: line %d: a start tag spans past %d bytes", ErrSimulinkCap, line, SimulinkMaxStartTag)
+		}
+		switch c := b[i]; {
+		case quote != 0:
+			if c == quote {
+				quote = 0
+			}
+		case c == '"' || c == '\'':
+			quote = c
+		case c == '=':
+			if attrs++; attrs > SimulinkMaxAttrs {
+				return fmt.Errorf("%w: line %d: a start tag carries past %d attributes", ErrSimulinkCap, line, SimulinkMaxAttrs)
+			}
+		case c == '>':
+			return nil
+		}
+	}
+	return nil
+}
 
 // errSimulinkValue is a kept value past SimulinkMaxValue.
 func errSimulinkValue(line int, k string) error {
@@ -149,9 +209,11 @@ type SimulinkModel struct {
 	ModelRefs []SimulinkModelRef
 	SIDPath   map[string]string // SID -> Path
 	// Signals is every signal or connection line, source block to each destination
-	// block, a system's lines after those of the subsystems it holds; an endpoint that names no block of the model is dropped.
+	// block, a system's lines after those of the subsystems it holds, each pair once; an
+	// endpoint that names no block of the model is dropped.
 	Signals []SimulinkSignal
 	ends    []simulinkEnds
+	owners  []int // per block, the index of the block whose system holds it, -1 the model's
 }
 
 // SimulinkSignal is one line from a source block to a destination block, by path.
@@ -163,12 +225,20 @@ type SimulinkSignal struct {
 // a block name in the line's system (a .mdl's SrcBlock and DstBlock).
 type simulinkEnd struct{ sid, name string }
 
-// simulinkEnds is one line before its endpoints resolve: its system's path, its source,
-// its destinations (its own, then each branch's, depth first).
+// simulinkEnds is one line before its endpoints resolve: its system (the index of the block
+// that owns it, -1 the model's), its source, its destinations (its own, then each branch's,
+// depth first).
 type simulinkEnds struct {
-	system string
-	src    simulinkEnd
-	dsts   []simulinkEnd
+	owner int
+	src   simulinkEnd
+	dsts  []simulinkEnd
+}
+
+// simulinkKid is a block by its system and name. A system is named by the first block that
+// has its path (-1 the model), so each path is hashed once, not once per endpoint.
+type simulinkKid struct {
+	system int
+	name   string
 }
 
 // sidEnd reads `7#out:1` as SID 7.
@@ -177,15 +247,15 @@ func sidEnd(v string) simulinkEnd {
 	return simulinkEnd{sid: strings.TrimSpace(sid)}
 }
 
-// resolve names an endpoint's block path, "" when no block of the model is it.
-func (m *SimulinkModel) resolve(system string, e simulinkEnd, paths map[string]bool) string {
+// resolve names an endpoint's block path, "" when no block of the model is it. A name
+// endpoint is looked up by its system and name in kids, which holds each block's stored
+// path, so no path is joined anew.
+func (m *SimulinkModel) resolve(system int, e simulinkEnd, kids map[simulinkKid]string) string {
 	if e.sid != "" {
 		return m.SIDPath[e.sid]
 	}
 	if e.name != "" {
-		if p := simulinkJoin(system, simulinkName(e.name)); paths[p] {
-			return p
-		}
+		return kids[simulinkKid{system, simulinkName(e.name)}]
 	}
 	return ""
 }
@@ -211,22 +281,44 @@ func ReadSimulinkModel(relPath string, src []byte) (SimulinkModel, error) {
 			}
 		}
 	}
-	paths := make(map[string]bool, len(m.Blocks))
-	for _, b := range m.Blocks {
-		paths[b.Path] = true
+	// canon[i] is the first block whose path is block i's, each path hashed once.
+	first := make(map[string]int, len(m.Blocks))
+	canon := make([]int, len(m.Blocks))
+	for i, b := range m.Blocks {
+		if j, dup := first[b.Path]; dup {
+			canon[i] = j
+		} else {
+			first[b.Path], canon[i] = i, i
+		}
 	}
+	first = nil
+	system := func(owner int) int {
+		if owner < 0 {
+			return -1
+		}
+		return canon[owner]
+	}
+	kids := make(map[simulinkKid]string, len(m.Blocks))
+	for i, b := range m.Blocks {
+		kids[simulinkKid{system(m.owners[i]), b.Name}] = b.Path
+	}
+	seen := map[SimulinkSignal]bool{} // a line drawn twice is one signal
 	for _, l := range m.ends {
-		src := m.resolve(l.system, l.src, paths)
+		sys := system(l.owner)
+		src := m.resolve(sys, l.src, kids)
 		if src == "" {
 			continue
 		}
 		for _, d := range l.dsts {
-			if dst := m.resolve(l.system, d, paths); dst != "" {
-				m.Signals = append(m.Signals, SimulinkSignal{Src: src, Dst: dst})
+			if dst := m.resolve(sys, d, kids); dst != "" {
+				if s := (SimulinkSignal{Src: src, Dst: dst}); !seen[s] {
+					seen[s] = true
+					m.Signals = append(m.Signals, s)
+				}
 			}
 		}
 	}
-	m.ends = nil
+	m.ends, m.owners = nil, nil
 	return m, nil
 }
 
@@ -322,7 +414,8 @@ func (n *xnode) all(name string, out []*xnode) []*xnode {
 }
 
 // parseXMLPart reads a part into its element tree, lines from the token offsets. The caps
-// hold while it tokenizes: an element deeper than SimulinkMaxDepth, or one past the model's
+// hold while it tokenizes: a start tag past SimulinkMaxStartTag bytes or SimulinkMaxAttrs
+// attributes (checked before the tokenizer reads it), an element deeper than SimulinkMaxDepth, or one past the model's
 // element or block budget (shared by the parts of one package), ends the read with
 // ErrSimulinkCap, as does a part that is not well formed.
 func parseXMLPart(b []byte, budget *simulinkBudget) (*xnode, error) {
@@ -340,6 +433,11 @@ func parseXMLPart(b []byte, budget *simulinkBudget) (*xnode, error) {
 	var text []byte // the open <P>'s text, appended in place
 	for {
 		off := dec.InputOffset()
+		if o := int(off); o+1 < len(b) && b[o] == '<' && b[o+1] != '/' && b[o+1] != '!' && b[o+1] != '?' {
+			if err := startTagCap(b[o:], lineOf(off)); err != nil {
+				return nil, err
+			}
+		}
 		tok, err := dec.RawToken()
 		if err == io.EOF {
 			break
@@ -422,7 +520,7 @@ func slxParts(src []byte) (map[string][]byte, error) {
 		if !wanted {
 			continue
 		}
-		if int64(f.UncompressedSize64) > budget {
+		if f.UncompressedSize64 > uint64(budget) {
 			return nil, fmt.Errorf("%w: parts inflate past %d bytes", ErrSimulinkCap, SimulinkMaxInflated)
 		}
 		b, err := slxInflate(f, min(budget, int64(f.UncompressedSize64)))
@@ -542,7 +640,7 @@ func (m *SimulinkModel) readSLX(src []byte) error {
 	}
 	if len(systems) > 0 {
 		m.Layout = SimulinkLayoutSystems
-		w := slxWalk{m: m, systems: systems, seen: map[string]bool{}}
+		w := slxWalk{m: m, systems: systems, seen: map[string]bool{}, paths: newSimulinkPaths()}
 		named := map[string]bool{}
 		for _, s := range systems {
 			for _, st := range s.all("System", nil) {
@@ -563,16 +661,16 @@ func (m *SimulinkModel) readSLX(src []byte) error {
 		}
 		order = append(order, refs...)
 		for _, r := range order {
-			w.descend(r, m.Name)
+			w.descend(r, m.Name, -1)
 		}
 		if w.err != nil {
 			return w.err
 		}
 	} else if diagram != nil {
 		m.Layout = SimulinkLayoutInline
-		w := slxWalk{m: m, part: "simulink/blockdiagram.xml"}
+		w := slxWalk{m: m, part: "simulink/blockdiagram.xml", paths: newSimulinkPaths()}
 		for _, s := range diagram.children("System") {
-			w.system(s, m.Name)
+			w.system(s, m.Name, -1)
 		}
 		if w.err != nil {
 			return w.err
@@ -585,54 +683,63 @@ func (m *SimulinkModel) readSLX(src []byte) error {
 }
 
 // slxWalk walks systems, splicing a <System Ref> stub's part in place. A splice nests no
-// deeper than SimulinkMaxDepth subsystems, else err is the cap and the walk stops.
+// deeper than SimulinkMaxDepth subsystems and its paths stay inside the path caps, else err
+// is the cap and the walk stops.
 type slxWalk struct {
 	m       *SimulinkModel
 	systems map[string]*xnode
 	seen    map[string]bool
+	paths   *simulinkPaths
 	part    string
 	depth   int
 	err     error
 }
 
-func (w *slxWalk) descend(ref, parent string) {
+func (w *slxWalk) descend(ref, parent string, owner int) {
 	if w.err != nil || w.seen[ref] || w.systems[ref] == nil {
 		return
 	}
 	w.seen[ref] = true
 	saved := w.part
 	w.part = "simulink/systems/" + ref + ".xml"
-	w.system(w.systems[ref], parent)
+	w.system(w.systems[ref], parent, owner)
 	w.part = saved
 }
 
-func (w *slxWalk) system(s *xnode, parent string) {
+// system walks s, the system of block owner (-1 the model's), whose path is parent.
+func (w *slxWalk) system(s *xnode, parent string, owner int) {
 	for _, b := range s.children("Block") {
 		if w.err != nil {
 			return
 		}
 		name := simulinkName(b.aName)
-		p := simulinkJoin(parent, name)
+		p, err := w.paths.join(parent, name)
+		if err != nil {
+			w.err = err
+			return
+		}
 		inner := b.children("System")
 		w.m.Blocks = append(w.m.Blocks, SimulinkBlock{
 			Path: p, Parent: parent, Name: name, SID: b.sid, BlockType: b.blockType,
 			Subsystem: len(inner) > 0, Part: w.part, Line: b.line, EndLine: b.to,
 		})
+		w.m.owners = append(w.m.owners, owner)
+		self := len(w.m.Blocks) - 1
 		if w.depth++; w.depth > SimulinkMaxDepth {
 			w.err = fmt.Errorf("%w: subsystems nest past %d deep in %s", ErrSimulinkCap, SimulinkMaxDepth, w.part)
 			return
 		}
 		for _, in := range inner {
 			if r := in.ref; r != "" {
-				w.descend(r, p)
+				w.descend(r, p, self)
 			} else {
-				w.system(in, p)
+				w.system(in, p, self)
 			}
 		}
 		w.depth--
 	}
 	for _, l := range s.children("Line") {
-		e := simulinkEnds{system: parent, src: sidEnd(l.prop("Src"))}
+		e := simulinkEnds{owner: owner, src: sidEnd(l.prop("Src"))}
 		if v := l.prop("SrcBlock"); v != "" {
 			e.src = simulinkEnd{name: v}
 		}
@@ -789,7 +896,9 @@ func parseMDL(src []byte) (*mnode, error) {
 	}
 	sc := bufio.NewScanner(bytes.NewReader(src))
 	sc.Buffer(make([]byte, 64<<10), MaxSimulinkLine)
-	for line := 1; sc.Scan(); line++ {
+	line := 0
+	for sc.Scan() {
+		line++
 		t := strings.TrimSpace(sc.Text())
 		top := stack[len(stack)-1]
 		if strings.HasPrefix(t, "\"") {
@@ -845,6 +954,9 @@ func parseMDL(src []byte) (*mnode, error) {
 			contKey, contNode = key, top
 		}
 	}
+	if err := sc.Err(); err != nil { // a line past MaxSimulinkLine: no partial model
+		return nil, fmt.Errorf("%w: line %d: %w", ErrSimulinkCap, line+1, err)
+	}
 	flush()
 	return root, nil
 }
@@ -856,7 +968,7 @@ func mdlOpens(t string) bool {
 	return ok && name != "" && !strings.ContainsAny(name, " \t\"[")
 }
 
-// MaxSimulinkLine is the longest .mdl line the reader reads (a longer one ends the read).
+// MaxSimulinkLine is the longest .mdl line the reader reads (a longer one is ErrSimulinkCap).
 const MaxSimulinkLine = 4 << 20
 
 // mdlQuoted concatenates the quoted strings of a value written `"a" "b"`.
@@ -890,31 +1002,42 @@ func (m *SimulinkModel) readMDL(src []byte) error {
 	if model == nil {
 		return nil
 	}
-	var walk func(s *mnode, parent string)
-	walk = func(s *mnode, parent string) {
+	paths := newSimulinkPaths()
+	var walk func(s *mnode, parent string, owner int) error
+	walk = func(s *mnode, parent string, owner int) error {
 		for _, b := range s.children("Block") {
 			name := simulinkName(b.props["Name"])
-			p := simulinkJoin(parent, name)
+			p, err := paths.join(parent, name)
+			if err != nil {
+				return err
+			}
 			inner := b.children("System")
 			m.Blocks = append(m.Blocks, SimulinkBlock{
 				Path: p, Parent: parent, Name: name, SID: b.props["SID"], BlockType: b.props["BlockType"],
 				Subsystem: len(inner) > 0, Line: b.line, EndLine: b.to,
 			})
+			m.owners = append(m.owners, owner)
+			self := len(m.Blocks) - 1
 			for _, in := range inner {
-				walk(in, p)
+				if err := walk(in, p, self); err != nil {
+					return err
+				}
 			}
 		}
 		for _, l := range s.children("Line") {
-			e := simulinkEnds{system: parent, src: sidEnd(l.props["Src"])}
+			e := simulinkEnds{owner: owner, src: sidEnd(l.props["Src"])}
 			if v := l.props["SrcBlock"]; v != "" {
 				e.src = simulinkEnd{name: v}
 			}
 			e.dsts = mdlDsts(l, e.dsts)
 			m.ends = append(m.ends, e)
 		}
+		return nil
 	}
 	for _, s := range model.children("System") {
-		walk(s, m.Name)
+		if err := walk(s, m.Name, -1); err != nil {
+			return err
+		}
 	}
 	for _, gi := range model.children("GraphicalInterface") {
 		for _, r := range gi.children("ModelReference") {
