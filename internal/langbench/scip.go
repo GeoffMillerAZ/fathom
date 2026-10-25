@@ -418,9 +418,9 @@ func SCIPOptionsFor(dialect string, src func(path string) []byte) SCIPOptions {
 	if dialect == "c" || dialect == "cpp" || dialect == "cuda" {
 		// Call sites written in the source: scip-clang references a function
 		// passed as a value, and a call a macro expands to at the macro's own
-		// name; neither is written as a call. C records a function-like macro
-		// invocation as a call, C++ does not.
-		return SCIPOptions{Source: src, CallSyntax: src != nil, ClangMacroArgs: src != nil, ClangMacroCalls: src != nil && dialect == "c", ClangDefNames: src != nil, FileEdgesOracleBlind: src != nil, ClangLinkage: clangLinkageFor(dialect)}
+		// name; neither is written as a call. C and CUDA record a function-like
+		// macro invocation as a call (CUDA: owner ruling C-R3), C++ does not.
+		return SCIPOptions{Source: src, CallSyntax: src != nil, ClangMacroArgs: src != nil, ClangMacroCalls: src != nil && (dialect == "c" || dialect == "cuda"), ClangDefNames: src != nil, FileEdgesOracleBlind: src != nil, ClangLinkage: clangLinkageFor(dialect)}
 	}
 	if dialect == "go" {
 		// Go keeps every callable reference: its extractor records a

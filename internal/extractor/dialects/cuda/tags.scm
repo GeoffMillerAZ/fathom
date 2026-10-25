@@ -301,9 +301,12 @@
 ; (kept qualified, "ns.util"), the member of `obj.m()` / `p->m()`, or the name
 ; of an explicitly instantiated template call. Three shapes that look like a
 ; call are not one: a C++ cast, which is spelled like a template call; a
-; function-like macro invocation (FMT_ASSERT(...), an all-capitals name), which
-; the preprocessor expands before any call exists; and a type used as a
-; function (T(x), Char(0) — a template parameter or class named in capitals).
+; qualified type used as a function (ns::T(x)); and a template parameter used
+; as one (T(0), a functional cast), spelled as one capital letter and an
+; optional digit. Unlike C++, a function-like
+; macro invocation is a call, in any spelling (checkCudaErrors(...),
+; CUDA_CHECK(...)): CUDA takes C's convention (owner ruling C-R3, 2026-10-25),
+; the one the oracle scores with ClangMacroCalls on.
 ; A functional cast to a builtin type or a standard integer typedef
 ; (unsigned(t), short(4), std::size_t(n), LB-F117) names no function either:
 ; the build's compiler writes a CXXFunctionalCastExpr there, never a call. Nor
@@ -313,7 +316,7 @@
 ; va_arg); the calls written inside them stay calls.
 (call_expression
   function: (identifier) @name
-  (#not-match? @name "^([A-Z][A-Z0-9_]*|unsigned|signed|short|long|char|int|bool|float|double|wchar_t|char(8|16|32)_t|size_t|ssize_t|ptrdiff_t|u?intptr_t|u?intmax_t|u?int(8|16|32|64)_t|u?int_(least|fast)(8|16|32|64)_t|__u?int128_t|__int128|__float128|nullptr_t|max_align_t|if|while|for|switch|return|catch|throw|sizeof|alignof|alignas|decltype|noexcept|typeid|static_assert|assert|offsetof|va_arg|va_start|va_end|va_copy)$")) @reference.call
+  (#not-match? @name "^([A-Z][0-9]?|unsigned|signed|short|long|char|int|bool|float|double|wchar_t|char(8|16|32)_t|size_t|ssize_t|ptrdiff_t|u?intptr_t|u?intmax_t|u?int(8|16|32|64)_t|u?int_(least|fast)(8|16|32|64)_t|__u?int128_t|__int128|__float128|nullptr_t|max_align_t|if|while|for|switch|return|catch|throw|sizeof|alignof|alignas|decltype|noexcept|typeid|static_assert|assert|offsetof|va_arg|va_start|va_end|va_copy)$")) @reference.call
 
 ; A qualified callee is kept whole ("ns.util"); one written through the
 ; `template` disambiguator (Factory::template create<T>(x)) is the name after

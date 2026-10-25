@@ -1,0 +1,53 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "CudaModule",
+      "package": "macrocalls",
+      "line": 1,
+      "end_line": 19,
+      "tier": "verified"
+    },
+    {
+      "name": "checkCudaErrors",
+      "kind": "CudaMacro",
+      "package": "macrocalls",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "CUDA_CHECK",
+      "kind": "CudaMacro",
+      "package": "macrocalls",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "fill",
+      "kind": "CudaFunc",
+      "package": "macrocalls",
+      "line": 9,
+      "end_line": 12,
+      "signature": "__global__ void fill(T *out, int n)",
+      "tier": "verified"
+    },
+    {
+      "name": "run",
+      "kind": "CudaFunc",
+      "package": "macrocalls",
+      "line": 14,
+      "end_line": 19,
+      "signature": "int run(float *d, int n)",
+      "calls": [
+        "CUDA_CHECK",
+        "checkCudaErrors",
+        "cudaDeviceSynchronize",
+        "cudaMalloc",
+        "fill"
+      ],
+      "tier": "verified"
+    }
+  ]
+}
