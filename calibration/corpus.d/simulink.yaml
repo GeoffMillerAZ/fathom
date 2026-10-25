@@ -1,8 +1,8 @@
 id: simulink
 language: "Simulink models (.slx, .mdl)"
-# Five of the queue entry's six subjects, each pinned by commit and checked out sparse to its
-# models (read only, never vendored). The sixth, PID_MATLAB_Learn master 0029fffe, is not
-# measured: no repository of that name resolved to that commit, a disclosed gap. A .slx is an
+# The queue entry's five subjects, each pinned by commit and checked out sparse to its models
+# (read only, never vendored). PID_MATLAB_Learn master 0029fffe, once a sixth, is dropped from
+# the queue: no repository of that name resolved to that commit (owner ruling S-R7). A .slx is an
 # OPC zip package (ADR-021 (1), amended 2026-10-24); a package over the 2 MiB extraction cap
 # (WEC-Sim's MOST_Lib.slx, 5.97 MB) is counted oversize, not read.
 repos:

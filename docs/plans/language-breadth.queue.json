@@ -6151,15 +6151,14 @@
     "grammar_source": "pure-go:archive/zip + encoding/xml (.slx), the .mdl brace tree",
     "licence": "n/a",
     "oracle": [
-      "walk.py (tier C: zipfile and xml.parsers.expat, start and end lines) cross-checked by mathworks/data-explorer-core v1.46.0 (BSD-3, .slx and .mdl, every era, modelReferences), miss-hit-core 0.9.44 s_parser (GPL-3, .slx, both layouts, blocks, no Lines), rustylink v3.1.0 4cc5cd88 (R2025a+ only) and SLX2MDL v1.0 a9d41b38"
+      "walk.py (tier C: zipfile and xml.parsers.expat, start and end lines; the graded oracle, which copies the Go reader's decisions, so it shows agreement); cross-checks run 2026-10-25 under workspace/tools, ungraded: mathworks/data-explorer-core v1.46.0 (BSD-3, parseModel over all 194 models: SID and path for the 8,544 blocks it reports agree, 7,651 byte for byte, 893 differing only by its display labels; 9 of 9 model references), miss-hit-core 0.9.44 s_parser (GPL-3, .slx only, 148 of 163 parsed: all 36,203 of its blocks agree, line breaks read as spaces; fathom adds 3,660 chart-internal blocks it folds); no tool checked the signal lines; rustylink and SLX2MDL did not run"
     ],
     "calibration_subjects": [
       "WEC-Sim/WEC-Sim v7.1.0 a23d2993 (subpath; 19 .slx, 15 distinct; MOST_Lib.slx 5.97 MB is oversize)",
       "Thermodynamics v1.3.1 ce9bc73d (40)",
       "LADAC main 1a295a82 (97, GPL)",
       "Firmament-Autopilot/FMT-Model master 70984e23 (22)",
-      "etherlab-examples master 491f9375 (16 .mdl, 15 distinct)",
-      "PID_MATLAB_Learn master 0029fffe (73, sniff each)"
+      "etherlab-examples master 491f9375 (16 .mdl, 15 distinct)"
     ],
     "depends_on": [
       "LB-F8",
@@ -6174,6 +6173,7 @@
     "engine": "native",
     "plan_row": "LB-Q-simulink",
     "worker_model": "sonnet",
-    "notes": "new, outside 18.3's tiers (owner ruling 2026-10-24 (a)); a .slx is read only through ADR-021 (1)'s 2026-10-24 amendment (match.container); block names hold spaces, line breaks and '/', so the dialect compares names whole (name_match identity); L3 tries resolve entity-name with to_kind before a new mode, same-named models in several directories ambiguous; tier C only (owner ruling (d)), which caps every level at good; MATLAB code a model calls is a handoff for the reading's notes, never an LB-Q-simulink-matlab row; throughput counts compressed bytes"
+    "notes": "new, outside 18.3's tiers (owner ruling 2026-10-24 (a)); a .slx is read only through ADR-021 (1)'s 2026-10-24 amendment (match.container); block names hold spaces, line breaks and '/', so the dialect compares names whole (name_match identity); L3 tries resolve entity-name with to_kind before a new mode, same-named models in several directories ambiguous; tier C only (owner ruling (d)), which caps every level at good; MATLAB code a model calls is a handoff for the reading's notes, never an LB-Q-simulink-matlab row; throughput counts compressed bytes",
+    "retargeted": "2026-10-25 (owner rulings S-R6, S-R7, round 2): L3 counts only with at least 20 resolvable model references across at least 2 subjects; the subjects hold 2 (one subject, 7 more ambiguous), and simulink/blog 2e4bde16 (BSD-3) would add 9, so the item reads L2 good and LB-Q-simulink-rest carries L3 deferred; the oracle text says what ran; PID_MATLAB_Learn dropped from the subjects: no repository of that name resolved to commit 0029fffe, so it was never measured"
   }
 ]
