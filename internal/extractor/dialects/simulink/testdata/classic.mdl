@@ -1,0 +1,34 @@
+# A classic Simulink model file, written for this fixture
+Model {
+  Name			  "classic"
+  Version		  7.9
+  BlockParameterDefaults {
+    Block {
+      BlockType		      Gain
+      Gain		      "1"
+    }
+  }
+  System {
+    Name		    "classic"
+    Block {
+      BlockType		      SubSystem
+      Name		      "Filter"
+      SID		      "2"
+      System {
+	Name			"Filter"
+	Block {
+	  BlockType		  TransferFcn
+	  Name			  "Low-pass\nFilter"
+	  SID			  "3"
+	  Denominator		  "[tau 1]"
+	}
+      }
+    }
+    Block {
+      BlockType		      Constant
+      Name		      "tau "
+      "(s)"
+      SID		      "4"
+    }
+  }
+}

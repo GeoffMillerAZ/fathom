@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ModelInformation Version="1.0">
+  <Model Name="inline">
+    <P Name="Version">9.3</P>
+    <BlockDefaults>
+      <P Name="ForegroundColor">black</P>
+    </BlockDefaults>
+    <BlockParameterDefaults>
+      <Block BlockType="Integrator">
+        <P Name="InitialCondition">0</P>
+      </Block>
+    </BlockParameterDefaults>
+    <System>
+      <P Name="Location">[0, 0, 400, 300]</P>
+      <Block BlockType="Inport" Name="speed cmd" SID="1">
+        <P Name="Position">[20, 20, 50, 34]</P>
+      </Block>
+      <Block BlockType="SubSystem" Name="Plant" SID="2">
+        <P Name="Position">[100, 20, 200, 80]</P>
+        <System>
+          <Block BlockType="Integrator" Name="Integrator" SID="3"/>
+          <Block BlockType="SubSystem" Name="Drag/Friction" SID="4">
+            <System>
+              <Block BlockType="Gain" Name="Gain" SID="5">
+                <P Name="Gain">-c</P>
+              </Block>
+            </System>
+          </Block>
+        </System>
+      </Block>
+      <Block BlockType="Scope" Name="Speed&#xA;Scope" SID="6"/>
+      <Line>
+        <P Name="Src">1#out:1</P>
+        <P Name="Dst">2#in:1</P>
+      </Line>
+    </System>
+  </Model>
+</ModelInformation>

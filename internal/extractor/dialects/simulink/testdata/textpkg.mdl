@@ -1,0 +1,8 @@
+# MathWorks OPC Text Package
+Model {
+  Version 10.6
+}
+__MWOPC_PACKAGE_BEGIN__
+__MWOPC_PART_BEGIN__ /simulink/blockdiagram.xml
+<ModelInformation/>
+__MWOPC_PACKAGE_END__

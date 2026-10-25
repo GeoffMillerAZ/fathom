@@ -1,0 +1,56 @@
+id: simulink
+language: "Simulink models (.slx, .mdl)"
+# Five of the queue entry's six subjects, each pinned by commit and checked out sparse to its
+# models (read only, never vendored). The sixth, PID_MATLAB_Learn master 0029fffe, is not
+# measured: no repository of that name resolved to that commit, a disclosed gap. A .slx is an
+# OPC zip package (ADR-021 (1), amended 2026-10-24); a package over the 2 MiB extraction cap
+# (WEC-Sim's MOST_Lib.slx, 5.97 MB) is counted oversize, not read.
+repos:
+  - name: WEC-Sim/WEC-Sim
+    url: https://github.com/WEC-Sim/WEC-Sim.git
+    ref: v7.1.0
+    sha: a23d2993807410fe78cc63546c1ba9d81912024f
+    licence: Apache-2.0
+    sparse: ["*.slx", "*.mdl"]
+    idioms:
+      - "a block library (WECSim_Lib) and its sublibraries of masked subsystems, linked into
+        the example models by library reference blocks"
+      - "example models one per device under examples/, the same library blocks in each"
+      - "a package over the extraction cap (MOST_Lib.slx), counted oversize"
+  - name: MathWorks-Teaching-Resources/Thermodynamics
+    url: https://github.com/MathWorks-Teaching-Resources/Thermodynamics.git
+    ref: v1.3.1
+    sha: ce9bc73dd93884a198f098f376c921cf095d7c5f
+    licence: BSD-3-Clause
+    sparse: ["*.slx", "*.mdl"]
+    idioms:
+      - "teaching models saved by a recent release: one systems/*.xml part per system"
+      - "solution copies of the same models under InstructorResources"
+  - name: iff-gsc/LADAC
+    url: https://github.com/iff-gsc/LADAC.git
+    ref: main
+    sha: 1a295a82ecdf70acfc296e959cc011cf12eedbf4
+    licence: GPL-3.0
+    sparse: ["*.slx", "*.mdl"]
+    idioms:
+      - "a flight-control library of many small block libraries and their example models"
+      - "block names with spaces and line breaks, deep subsystem nesting"
+  - name: Firmament-Autopilot/FMT-Model
+    url: https://github.com/Firmament-Autopilot/FMT-Model.git
+    ref: master
+    sha: 70984e23cde1416bc90873710e44720e25a02afa
+    licence: GPL-3.0
+    sparse: ["*.slx", "*.mdl"]
+    idioms:
+      - "large controller, FMS and plant models saved inline in blockdiagram.xml (before R2020a)"
+      - "simulation harnesses whose model reference blocks name the controller models"
+      - "same-named models (Controller.slx, FMS.slx, Plant.slx) in several directories"
+  - name: SchapplM/etherlab-examples
+    url: https://github.com/SchapplM/etherlab-examples.git
+    ref: master
+    sha: 491f93755222d9625aa02d388d478b5ea9691e2c
+    licence: MIT
+    sparse: ["*.slx", "*.mdl"]
+    idioms:
+      - "classic .mdl brace files of EtherCAT example models"
+      - "copies of the same model in several directories"

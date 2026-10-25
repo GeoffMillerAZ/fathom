@@ -115,6 +115,7 @@ var langRowHint = map[string]string{
 	"kustomize":        "Kustomize",
 	"taskfile":         "Taskfile.yml",
 	"jupyter":          "| Jupyter notebooks ",
+	"simulink":         "| Simulink models ",
 	"git-hooks-config": "lefthook.yml, .pre-commit-config.yaml, CloudFormation",
 	"meson":            "Meson",
 	"nix":              "Nix",

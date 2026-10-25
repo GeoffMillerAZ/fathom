@@ -1,0 +1,273 @@
+{
+  "dialect": "simulink",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "good",
+    "L2": "good",
+    "L3": "good",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-25",
+  "fathom_commit": "92a641c",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "Firmament-Autopilot/FMT-Model",
+      "sha": "70984e23cde1416bc90873710e44720e25a02afa",
+      "files": 22,
+      "bytes": 3272019,
+      "counts": {
+        "fathom_defs": 26839,
+        "kind_equal": 26839,
+        "matched": 26839,
+        "oracle_defs": 26839,
+        "range_eligible": 26839,
+        "range_ok": 26839,
+        "ref_fathom": 29612,
+        "ref_fathom_in_truth": 29612,
+        "ref_truth": 29612,
+        "ref_truth_found": 29612,
+        "xref_fathom": 2,
+        "xref_fathom_in_truth": 2,
+        "xref_truth": 2,
+        "xref_truth_found": 2
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "element",
+        "module"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 1042.8799999999999,
+        "extract_cpu_ms": 1324.636,
+        "max_file_ms": 333,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "MathWorks-Teaching-Resources/Thermodynamics",
+      "sha": "ce9bc73dd93884a198f098f376c921cf095d7c5f",
+      "files": 40,
+      "bytes": 12468356,
+      "counts": {
+        "fathom_defs": 2040,
+        "kind_equal": 2040,
+        "matched": 2040,
+        "oracle_defs": 2040,
+        "range_eligible": 2040,
+        "range_ok": 2040,
+        "ref_fathom": 1540,
+        "ref_fathom_in_truth": 1540,
+        "ref_truth": 1540,
+        "ref_truth_found": 1540,
+        "xref_fathom": 0,
+        "xref_truth": 0
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "element",
+        "module"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 182.58399999999997,
+        "extract_cpu_ms": 243.63499999999996,
+        "max_file_ms": 16,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "SchapplM/etherlab-examples",
+      "sha": "491f93755222d9625aa02d388d478b5ea9691e2c",
+      "files": 16,
+      "bytes": 1051254,
+      "counts": {
+        "fathom_defs": 307,
+        "kind_equal": 307,
+        "matched": 307,
+        "oracle_defs": 307,
+        "range_eligible": 307,
+        "range_ok": 307,
+        "ref_fathom": 271,
+        "ref_fathom_in_truth": 271,
+        "ref_truth": 271,
+        "ref_truth_found": 271,
+        "xref_fathom": 0,
+        "xref_truth": 0
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "element",
+        "module"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 9.783,
+        "extract_cpu_ms": 9.905,
+        "max_file_ms": 1,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "WEC-Sim/WEC-Sim",
+      "sha": "a23d2993807410fe78cc63546c1ba9d81912024f",
+      "files": 18,
+      "bytes": 1502137,
+      "counts": {
+        "fathom_defs": 3497,
+        "kind_equal": 3497,
+        "matched": 3497,
+        "oracle_defs": 3497,
+        "range_eligible": 3497,
+        "range_ok": 3497,
+        "ref_fathom": 3530,
+        "ref_fathom_in_truth": 3530,
+        "ref_truth": 3530,
+        "ref_truth_found": 3530,
+        "xref_fathom": 0,
+        "xref_truth": 0
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "element",
+        "module"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 133.13600000000002,
+        "extract_cpu_ms": 186.37399999999997,
+        "max_file_ms": 77,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "iff-gsc/LADAC",
+      "sha": "1a295a82ecdf70acfc296e959cc011cf12eedbf4",
+      "files": 97,
+      "bytes": 3822332,
+      "counts": {
+        "fathom_defs": 8303,
+        "kind_equal": 8303,
+        "matched": 8303,
+        "oracle_defs": 8303,
+        "range_eligible": 8303,
+        "range_ok": 8303,
+        "ref_fathom": 8473,
+        "ref_fathom_in_truth": 8473,
+        "ref_truth": 8473,
+        "ref_truth_found": 8473,
+        "xref_fathom": 0,
+        "xref_truth": 0
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "element",
+        "module"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 348.5090000000003,
+        "extract_cpu_ms": 489.27099999999996,
+        "max_file_ms": 51,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "C",
+      "tool": "walk.py: zipfile and xml.parsers.expat over .slx parts, a brace-line reader over .mdl",
+      "version": "1"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": 1,
+    "xref_recall": 1
+  },
+  "metric_tiers": {
+    "ref_precision": "C",
+    "ref_recall": "C",
+    "sym_precision": "C",
+    "sym_recall": "C",
+    "xref_precision": "C",
+    "xref_recall": "C"
+  },
+  "required_kinds": [
+    "element",
+    "module"
+  ],
+  "kind_intersection": [
+    "element",
+    "module"
+  ],
+  "counts": {
+    "fathom_defs": 40986,
+    "kind_equal": 40986,
+    "matched": 40986,
+    "oracle_defs": 40986,
+    "range_eligible": 40986,
+    "range_ok": 40986,
+    "ref_fathom": 43426,
+    "ref_fathom_in_truth": 43426,
+    "ref_truth": 43426,
+    "ref_truth_found": 43426,
+    "xref_fathom": 2,
+    "xref_fathom_in_truth": 2,
+    "xref_truth": 2,
+    "xref_truth_found": 2
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 9.81,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 12.88,
+    "max_file_ms": 333,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "WEC-Sim/WEC-Sim: 1 files skipped by ingest's gates (oversize)",
+    "WEC-Sim/WEC-Sim: 999 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

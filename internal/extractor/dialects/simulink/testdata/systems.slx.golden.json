@@ -1,0 +1,39 @@
+{
+  "symbols": [
+    {
+      "name": "systems",
+      "kind": "SimulinkModel",
+      "line": 1,
+      "end": 1,
+      "signature": ""
+    },
+    {
+      "name": "systems/Controller",
+      "kind": "SimulinkSubsystem",
+      "line": 4,
+      "end": 7,
+      "signature": "SubSystem"
+    },
+    {
+      "name": "systems/Controller/Error",
+      "kind": "SimulinkBlock",
+      "line": 3,
+      "end": 5,
+      "signature": "Sum"
+    },
+    {
+      "name": "systems/Controller/Kp",
+      "kind": "SimulinkBlock",
+      "line": 6,
+      "end": 6,
+      "signature": "Gain"
+    },
+    {
+      "name": "systems/Plant Model",
+      "kind": "SimulinkBlock",
+      "line": 8,
+      "end": 10,
+      "signature": "ModelReference"
+    }
+  ]
+}

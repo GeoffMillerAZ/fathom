@@ -441,6 +441,11 @@ var extClassMap = map[string]classification{
 	// encoding/json over the notebook and the python dialect over its code cells).
 	".ipynb": {core.SourceKind("JupyterFunc"), "jupyter"},
 
+	// Simulink models (LB-Q-simulink): a .slx OPC zip (read past the binary sniff only
+	// because the dialect's match.container claims it) and a classic .mdl.
+	".slx": {core.SourceKind("SimulinkBlock"), "simulink"},
+	".mdl": {core.SourceKind("SimulinkBlock"), "simulink"},
+
 	// Elixir (LB-Q-elixir, wave lang3): a new tree-sitter dialect, no incumbent.
 	".ex":  {core.SourceKind("ElixirModule"), "elixir"},
 	".exs": {core.SourceKind("ElixirModule"), "elixir"},

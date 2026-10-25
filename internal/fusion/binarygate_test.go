@@ -1,6 +1,8 @@
 package fusion
 
 import (
+	"archive/zip"
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -31,21 +33,31 @@ func TestBinaryGateExemptsClaimedContainers(t *testing.T) {
 			t.Errorf("binaryExcludedWith(%s) = %v, want %v", c.path, got, c.want)
 		}
 	}
-	// No embedded manifest claims a container today, so the shipped gate excludes a .slx.
-	if !binaryExcluded("m/plant.slx", zipBytes) && !claimsContainer(".slx") {
-		t.Error("an unclaimed .slx passed the shipped gate")
+	// The shipped manifests: simulink claims .slx, nothing claims .zip.
+	if binaryExcluded("m/plant.slx", zipBytes) || !binaryExcluded("m/bundle.zip", zipBytes) {
+		t.Error("the shipped gate's container claims are not simulink's .slx alone")
 	}
 }
 
-func claimsContainer(ext string) bool {
-	for _, r := range dialectRules() {
-		for _, e := range r.Containers {
-			if strings.EqualFold(e, ext) {
-				return true
-			}
-		}
+// TestExtractForBenchReadsSimulinkPackage: a .slx clears ingest's gates and dispatches to
+// the simulink dialect (LB-Q-simulink), where it was fingerprinted as binary before.
+func TestExtractForBenchReadsSimulinkPackage(t *testing.T) {
+	var buf bytes.Buffer
+	w := zip.NewWriter(&buf)
+	f, _ := w.Create("simulink/systems/system_root.xml")
+	f.Write([]byte(`<System><Block BlockType="Gain" Name="K" SID="1"/></System>`))
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
 	}
-	return false
+	p := New(nil, nil, Config{})
+	defer p.Close()
+	ex, err := p.ExtractForBench("svc", nil, "models/plant.slx", buf.Bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ex.Skipped != "" || len(ex.Nodes) != 2 || ex.Nodes[1].Name != "plant/K" {
+		t.Errorf("skipped %q, nodes %+v", ex.Skipped, ex.Nodes)
+	}
 }
 
 // TestBinaryGateIsTheOnlySniff: every fusion read path asks binaryExcluded, never

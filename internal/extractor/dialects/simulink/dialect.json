@@ -1,0 +1,30 @@
+{
+  "id": "simulink",
+  "display": "Simulink models (.slx, .mdl)",
+  "kind": "tooling",
+  "engine": "native",
+  "lang_tag": "simulink",
+  "match": {
+    "extensions": [".slx", ".mdl"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null,
+    "container": { "format": "opc-zip", "extensions": [".slx"] }
+  },
+  "variants": [],
+  "kinds": {
+    "model":     { "source_kind": "SimulinkModel",     "canonical": "module" },
+    "subsystem": { "source_kind": "SimulinkSubsystem", "canonical": "element", "container": true },
+    "block":     { "source_kind": "SimulinkBlock",     "canonical": "element" }
+  },
+  "required_kinds": ["model", "subsystem", "block"],
+  "oracle_kinds": {
+    "tool": { "model": "module", "subsystem": "element", "block": "element" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "dir" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "simulink"
+}

@@ -58,6 +58,14 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// file; Close releases the module through py.
 	p.exts[".ipynb"] = extractor.NewNotebookExtractor(py)
 
+	// Simulink models (LB-Q-simulink, a native dialect): a .slx OPC zip read in
+	// memory under the reader's caps, which binaryExcluded lets through only
+	// because the manifest's match.container claims it (ADR-021 (1), amended
+	// 2026-10-24); a classic .mdl as its brace tree.
+	simulink := extractor.NewSimulinkExtractor()
+	p.exts[".slx"] = simulink
+	p.exts[".mdl"] = simulink
+
 	// JavaScript / TypeScript / JSX / TSX — tree-sitter via wazero/WASM
 	// (ADR-021 §4), calibration-gated (XT-2).
 	js, err := extractor.NewTSExtractor("javascript")

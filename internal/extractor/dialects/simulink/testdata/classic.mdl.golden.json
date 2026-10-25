@@ -1,0 +1,32 @@
+{
+  "symbols": [
+    {
+      "name": "classic",
+      "kind": "SimulinkModel",
+      "line": 1,
+      "end": 1,
+      "signature": ""
+    },
+    {
+      "name": "classic/Filter",
+      "kind": "SimulinkSubsystem",
+      "line": 13,
+      "end": 26,
+      "signature": "SubSystem"
+    },
+    {
+      "name": "classic/Filter/Low-pass Filter",
+      "kind": "SimulinkBlock",
+      "line": 19,
+      "end": 24,
+      "signature": "TransferFcn"
+    },
+    {
+      "name": "classic/tau (s)",
+      "kind": "SimulinkBlock",
+      "line": 27,
+      "end": 32,
+      "signature": "Constant"
+    }
+  ]
+}

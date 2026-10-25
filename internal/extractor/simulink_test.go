@@ -421,3 +421,73 @@ func TestSimulinkExtractorNodes(t *testing.T) {
 		t.Errorf("an unreadable package yields nothing and no error: %d nodes, %v", len(nodes), err)
 	}
 }
+
+func TestReadSimulinkModelSignals(t *testing.T) {
+	sigs := func(m SimulinkModel) string {
+		var out []string
+		for _, s := range m.Signals {
+			out = append(out, s.Src+" -> "+s.Dst)
+		}
+		return strings.Join(out, "\n")
+	}
+	root := `<System>
+  <Block BlockType="Inport" Name="In1" SID="1"/>
+  <Block BlockType="SubSystem" Name="Ctrl" SID="2"><System Ref="system_2"/></Block>
+  <Block BlockType="Scope" Name="Scope" SID="3"/>
+  <Line><P Name="Src">1#out:1</P><P Name="Dst">2#in:1</P></Line>
+  <Line><P Name="Src">2#out:1</P>
+    <Branch><P Name="Dst">3#in:1</P></Branch>
+    <Branch><Branch><P Name="Dst">99#in:1</P></Branch><P Name="Dst">1#in:1</P></Branch>
+  </Line>
+</System>`
+	sub := `<System>
+  <Block BlockType="Gain" Name="K" SID="4"/>
+  <Block BlockType="Outport" Name="Out1" SID="5"/>
+  <Line><P Name="Src">4#out:1</P><P Name="Dst">5#in:1</P></Line>
+</System>`
+	m, err := ReadSimulinkModel("ctl.slx", slxPackage(t, "simulink/systems/system_root.xml", root, "simulink/systems/system_2.xml", sub))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "ctl/Ctrl/K -> ctl/Ctrl/Out1\nctl/In1 -> ctl/Ctrl\nctl/Ctrl -> ctl/Scope\nctl/Ctrl -> ctl/In1"
+	if got := sigs(m); got != want {
+		t.Errorf("slx signals\n%s\nwant\n%s", got, want)
+	}
+
+	mdl := "Model {\n  Name \"p\"\n  System {\n    Block {\n      BlockType Constant\n      Name \"Two\\nLines\"\n    }\n" +
+		"    Block {\n      BlockType Gain\n      Name \"G\"\n      SID \"7\"\n    }\n" +
+		"    Line {\n      SrcBlock \"Two\\nLines\"\n      SrcPort 1\n      Branch {\n        DstBlock \"G\"\n        DstPort 1\n      }\n      Branch {\n        DstBlock \"Missing\"\n      }\n    }\n" +
+		"    Line {\n      Src \"7#out:1\"\n      Dst \"7#in:1\"\n    }\n  }\n}\n"
+	m, err = ReadSimulinkModel("p.mdl", []byte(mdl))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := sigs(m); got != "p/Two Lines -> p/G\np/G -> p/G" {
+		t.Errorf("mdl signals\n%s", got)
+	}
+
+	nodes, _ := NewSimulinkExtractor().Extract("svc", "p.mdl", []byte(mdl))
+	for _, n := range nodes {
+		if n.Name == "p/Two Lines" && strings.Join(n.Calls, ",") != "p/G" {
+			t.Errorf("calls of %s = %v", n.Name, n.Calls)
+		}
+	}
+}
+
+func TestSimulinkExtractDocModelRefs(t *testing.T) {
+	gi := `{"GraphicalInterface": {"ModelReferences": [{"BlockPath": "$bdroot/Plant", "ModelName": "plant"}]}}`
+	root := `<System><Block BlockType="ModelReference" Name="Plant" SID="1"/></System>`
+	src := slxPackage(t, "simulink/systems/system_root.xml", root, "simulink/graphicalInterface.json", gi)
+	var x DocResulter = NewSimulinkExtractor()
+	r, err := x.ExtractDoc("svc", "sim/harness.slx", src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r.Roots) != 1 || r.Roots[0] != "harness" {
+		t.Errorf("roots %v", r.Roots)
+	}
+	want := DocCrossFileRef{From: "harness/Plant", Edge: SimulinkModelRefEdge, Raw: "plant", Target: "plant", Strategy: "module-source", Line: 1}
+	if len(r.CrossFile) != 1 || r.CrossFile[0].From != want.From || r.CrossFile[0].Raw != want.Raw || r.CrossFile[0].Strategy != want.Strategy || r.CrossFile[0].Edge != want.Edge {
+		t.Errorf("cross-file %+v, want %+v", r.CrossFile, want)
+	}
+}

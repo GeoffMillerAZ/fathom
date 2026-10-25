@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<System>
+  <P Name="Location">[0, 0, 400, 300]</P>
+  <Block BlockType="SubSystem" Name="Controller" SID="10">
+    <P Name="Position">[100, 20, 200, 80]</P>
+    <System Ref="system_10"/>
+  </Block>
+  <Block BlockType="ModelReference" Name="Plant Model" SID="11">
+    <P Name="ModelNameDialog">inline</P>
+  </Block>
+</System>

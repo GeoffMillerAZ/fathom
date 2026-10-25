@@ -40,6 +40,7 @@ import (
 	"fmt"
 	"io"
 	"path"
+	"slices"
 	"sort"
 	"strings"
 
@@ -103,6 +104,46 @@ type SimulinkModel struct {
 	Blocks    []SimulinkBlock
 	ModelRefs []SimulinkModelRef
 	SIDPath   map[string]string // SID -> Path
+	// Signals is every signal or connection line, source block to each destination
+	// block, a system's lines after those of the subsystems it holds; an endpoint that names no block of the model is dropped.
+	Signals []SimulinkSignal
+	ends    []simulinkEnds
+}
+
+// SimulinkSignal is one line from a source block to a destination block, by path.
+type SimulinkSignal struct {
+	Src, Dst string
+}
+
+// simulinkEnd is a line endpoint as written: a SID (`7#out:1`, a .slx's Src and Dst) or
+// a block name in the line's system (a .mdl's SrcBlock and DstBlock).
+type simulinkEnd struct{ sid, name string }
+
+// simulinkEnds is one line before its endpoints resolve: its system's path, its source,
+// its destinations (its own, then each branch's, depth first).
+type simulinkEnds struct {
+	system string
+	src    simulinkEnd
+	dsts   []simulinkEnd
+}
+
+// sidEnd reads `7#out:1` as SID 7.
+func sidEnd(v string) simulinkEnd {
+	sid, _, _ := strings.Cut(v, "#")
+	return simulinkEnd{sid: strings.TrimSpace(sid)}
+}
+
+// resolve names an endpoint's block path, "" when no block of the model is it.
+func (m *SimulinkModel) resolve(system string, e simulinkEnd, paths map[string]bool) string {
+	if e.sid != "" {
+		return m.SIDPath[e.sid]
+	}
+	if e.name != "" {
+		if p := simulinkJoin(system, simulinkName(e.name)); paths[p] {
+			return p
+		}
+	}
+	return ""
 }
 
 // ReadSimulinkModel reads a .slx package or a .mdl file. A package over a cap is
@@ -126,6 +167,22 @@ func ReadSimulinkModel(relPath string, src []byte) (SimulinkModel, error) {
 			}
 		}
 	}
+	paths := make(map[string]bool, len(m.Blocks))
+	for _, b := range m.Blocks {
+		paths[b.Path] = true
+	}
+	for _, l := range m.ends {
+		src := m.resolve(l.system, l.src, paths)
+		if src == "" {
+			continue
+		}
+		for _, d := range l.dsts {
+			if dst := m.resolve(l.system, d, paths); dst != "" {
+				m.Signals = append(m.Signals, SimulinkSignal{Src: src, Dst: dst})
+			}
+		}
+	}
+	m.ends = nil
 	return m, nil
 }
 
@@ -394,6 +451,29 @@ func (w *slxWalk) system(s *xnode, parent string) {
 			}
 		}
 	}
+	for _, l := range s.children("Line") {
+		e := simulinkEnds{system: parent, src: sidEnd(l.prop("Src"))}
+		if v := l.prop("SrcBlock"); v != "" {
+			e.src = simulinkEnd{name: v}
+		}
+		e.dsts = xmlDsts(l, e.dsts)
+		w.m.ends = append(w.m.ends, e)
+	}
+}
+
+// xmlDsts appends a line's or branch's destinations: its own Dst, then each branch's.
+func xmlDsts(n *xnode, out []simulinkEnd) []simulinkEnd {
+	for _, k := range n.kids {
+		switch {
+		case k.name == "P" && k.attr("Name") == "Dst":
+			out = append(out, sidEnd(k.text))
+		case k.name == "P" && k.attr("Name") == "DstBlock":
+			out = append(out, simulinkEnd{name: k.text})
+		case k.name == "Branch":
+			out = xmlDsts(k, out)
+		}
+	}
+	return out
 }
 
 // slxModelRefs reads the model references: graphicalInterface.json, else its .xml, else the
@@ -605,6 +685,14 @@ func (m *SimulinkModel) readMDL(src []byte) error {
 				walk(in, p)
 			}
 		}
+		for _, l := range s.children("Line") {
+			e := simulinkEnds{system: parent, src: sidEnd(l.props["Src"])}
+			if v := l.props["SrcBlock"]; v != "" {
+				e.src = simulinkEnd{name: v}
+			}
+			e.dsts = mdlDsts(l, e.dsts)
+			m.ends = append(m.ends, e)
+		}
 	}
 	for _, s := range model.children("System") {
 		walk(s, m.Name)
@@ -615,6 +703,19 @@ func (m *SimulinkModel) readMDL(src []byte) error {
 		}
 	}
 	return nil
+}
+
+// mdlDsts appends a line's or branch's destinations: its own, then each branch's.
+func mdlDsts(n *mnode, out []simulinkEnd) []simulinkEnd {
+	if v := n.props["Dst"]; v != "" {
+		out = append(out, sidEnd(v))
+	} else if v := n.props["DstBlock"]; v != "" {
+		out = append(out, simulinkEnd{name: v})
+	}
+	for _, b := range n.children("Branch") {
+		out = mdlDsts(b, out)
+	}
+	return out
 }
 
 // --- the extractor ------------------------------------------------------------------
@@ -628,24 +729,63 @@ var _ Extractor = (*SimulinkExtractor)(nil)
 // NewSimulinkExtractor returns the Simulink model extractor.
 func NewSimulinkExtractor() *SimulinkExtractor { return &SimulinkExtractor{} }
 
+// SimulinkModelRefEdge is a model reference block's edge to the model it names.
+const SimulinkModelRefEdge = "model_ref"
+
+var _ DocResulter = (*SimulinkExtractor)(nil)
+
 // Extract implements Extractor. A model the reader refuses (a cap, a corrupt package, a
 // text-package .mdl) yields no symbols and no error, as the doc engine reads malformed input.
-func (SimulinkExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
+func (x SimulinkExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
+	r, err := x.ExtractDoc(service, relPath, src)
+	return r.Nodes, err
+}
+
+// ExtractDoc implements DocResulter: the symbols, the model as the file's root, and each
+// model reference as a module-source reference by the model's name, which the doc-xref
+// pass joins to the one model of that name in another file (none when several share it).
+func (SimulinkExtractor) ExtractDoc(service, relPath string, src []byte) (DocResult, error) {
 	m, err := ReadSimulinkModel(relPath, src)
 	if err != nil {
-		return nil, nil
+		return DocResult{}, nil
 	}
 	pkg := pkgFromPath(relPath)
-	nodes := make([]core.SymbolNode, 0, len(m.Blocks)+1)
-	nodes = append(nodes, core.SymbolNode{Service: service, Package: pkg, Name: m.Name, Kind: KindSimulinkModel,
+	calls := map[string][]string{}
+	for _, s := range m.Signals {
+		calls[s.Src] = append(calls[s.Src], s.Dst)
+	}
+	res := DocResult{Roots: []string{m.Name}}
+	res.Nodes = make([]core.SymbolNode, 0, len(m.Blocks)+1)
+	res.Nodes = append(res.Nodes, core.SymbolNode{Service: service, Package: pkg, Name: m.Name, Kind: KindSimulinkModel,
 		FilePath: relPath, Line: 1, EndLine: 1, Tier: core.TierPreScan})
+	lines := map[string]int{}
 	for _, b := range m.Blocks {
 		kind := KindSimulinkBlock
 		if b.Subsystem {
 			kind = KindSimulinkSubsystem
 		}
-		nodes = append(nodes, core.SymbolNode{Service: service, Package: pkg, Name: b.Path, Kind: kind,
-			FilePath: relPath, Line: b.Line, EndLine: b.EndLine, Signature: capString(b.BlockType, 200), Tier: core.TierPreScan})
+		res.Nodes = append(res.Nodes, core.SymbolNode{Service: service, Package: pkg, Name: b.Path, Kind: kind,
+			FilePath: relPath, Line: b.Line, EndLine: b.EndLine, Signature: capString(b.BlockType, 200), Tier: core.TierPreScan,
+			Calls: uniqueSorted(calls[b.Path])})
+		lines[b.Path] = b.Line
 	}
-	return nodes, nil
+	for _, r := range m.ModelRefs {
+		line := lines[r.BlockPath]
+		if line == 0 {
+			line = 1
+		}
+		res.CrossFile = append(res.CrossFile, DocCrossFileRef{From: r.BlockPath, Edge: SimulinkModelRefEdge,
+			Raw: r.ModelName, Target: r.ModelName, Strategy: "module-source", Line: line})
+	}
+	return res, nil
+}
+
+// uniqueSorted is s sorted without repeats (nil for none).
+func uniqueSorted(s []string) []string {
+	if len(s) == 0 {
+		return nil
+	}
+	out := append([]string(nil), s...)
+	sort.Strings(out)
+	return slices.Compact(out)
 }
