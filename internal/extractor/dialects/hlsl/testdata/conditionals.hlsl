@@ -29,3 +29,33 @@ float4 Sample(uint index)
 #endif
     return shadowMap.Load(int3(index, 0, 0));
 }
+
+// An #elif chain to its #else, and an #else under a nested #if: every branch
+// holds a file-scope variable.
+#if QUALITY == 1
+float qualityLow;
+#elif QUALITY == 2
+float qualityMid;
+#else
+float qualityHigh;
+#endif
+
+#ifdef USE_A
+#if USE_B
+float bothAB;
+#else
+float onlyA;
+#endif
+#endif
+
+float4 Shade(float4 c)
+{
+#if USE_A
+#if USE_B
+    float nestedLocal = 1.0;
+#else
+    float otherLocal = 2.0;
+#endif
+#endif
+    return c * nestedLocal;
+}

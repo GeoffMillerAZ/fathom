@@ -8,9 +8,8 @@
 ;
 ; An HLSL file is flat: definitions sit at file scope (or under a preprocessor
 ; conditional), so the queries name the definition nodes and not their parents.
-; Not captured: a function prototype (no body), a cbuffer's constants, a
-; struct's fields, and a struct's methods (kinds the oracle's intersection
-; leaves out).
+; Not captured: a function prototype (no body), a cbuffer's constants and a
+; struct's fields.
 
 ; --- functions ----------------------------------------------------------------
 ; A definition needs a body. The grammar reads `cbuffer Name { ... }` (no
@@ -24,6 +23,21 @@
     declarator: (identifier) @name)
   body: (_) @body
   (#not-match? @_ret "^(cbuffer|tbuffer)$")) @definition.function
+
+; --- methods ---------------------------------------------------------------------
+; A struct's or class's method with a body, in the struct (its name a
+; field_identifier) or defined out of line (Light::luminance); a prototype in
+; the struct is a field_declaration and no definition.
+(field_declaration_list
+  (function_definition
+    declarator: (function_declarator
+      declarator: (field_identifier) @name)
+    body: (_) @body) @definition.method)
+
+(function_definition
+  declarator: (function_declarator
+    declarator: (qualified_identifier) @name)
+  body: (_) @body) @definition.method
 
 ; --- structs and classes (only a body counts) ----------------------------------
 (struct_specifier
@@ -86,137 +100,57 @@
     ]
     (#not-match? @_ty "^(cbuffer|tbuffer)$")) @definition.variable)
 
-; Under a preprocessor conditional at file scope (one or two levels, an #else or
-; #elif branch included). A conditional inside a function body holds locals, so
-; every pattern is anchored at the translation unit.
+; Under a preprocessor conditional, at any depth and in any branch (#if,
+; #ifdef, #elif, #else). A conditional inside a function body holds locals: the
+; body is a @local.scope, and the engine drops a definition inside one, so the
+; patterns need not be anchored at the translation unit. A cbuffer the grammar
+; reads as a function_definition has its constants in that body too.
+(function_definition
+  body: (compound_statement) @local.scope)
 
-(translation_unit
-  (preproc_if
+(preproc_if
     (declaration
-        type: (_) @_ty
-        declarator: [
-          (identifier) @name
-          (init_declarator declarator: (identifier) @name)
-          (array_declarator declarator: (identifier) @name)
-          (init_declarator declarator: (array_declarator declarator: (identifier) @name))
-        ]
-        (#not-match? @_ty "^(cbuffer|tbuffer)$")) @definition.variable))
+      type: (_) @_ty
+      declarator: [
+        (identifier) @name
+        (init_declarator declarator: (identifier) @name)
+        (array_declarator declarator: (identifier) @name)
+        (init_declarator declarator: (array_declarator declarator: (identifier) @name))
+      ]
+      (#not-match? @_ty "^(cbuffer|tbuffer)$")) @definition.variable)
 
-(translation_unit
-  (preproc_ifdef
+(preproc_ifdef
     (declaration
-        type: (_) @_ty
-        declarator: [
-          (identifier) @name
-          (init_declarator declarator: (identifier) @name)
-          (array_declarator declarator: (identifier) @name)
-          (init_declarator declarator: (array_declarator declarator: (identifier) @name))
-        ]
-        (#not-match? @_ty "^(cbuffer|tbuffer)$")) @definition.variable))
+      type: (_) @_ty
+      declarator: [
+        (identifier) @name
+        (init_declarator declarator: (identifier) @name)
+        (array_declarator declarator: (identifier) @name)
+        (init_declarator declarator: (array_declarator declarator: (identifier) @name))
+      ]
+      (#not-match? @_ty "^(cbuffer|tbuffer)$")) @definition.variable)
 
-(translation_unit
-  (preproc_if
-    (preproc_if
-      (declaration
-          type: (_) @_ty
-          declarator: [
-            (identifier) @name
-            (init_declarator declarator: (identifier) @name)
-            (array_declarator declarator: (identifier) @name)
-            (init_declarator declarator: (array_declarator declarator: (identifier) @name))
-          ]
-          (#not-match? @_ty "^(cbuffer|tbuffer)$")) @definition.variable)))
+(preproc_elif
+    (declaration
+      type: (_) @_ty
+      declarator: [
+        (identifier) @name
+        (init_declarator declarator: (identifier) @name)
+        (array_declarator declarator: (identifier) @name)
+        (init_declarator declarator: (array_declarator declarator: (identifier) @name))
+      ]
+      (#not-match? @_ty "^(cbuffer|tbuffer)$")) @definition.variable)
 
-(translation_unit
-  (preproc_if
-    (preproc_ifdef
-      (declaration
-          type: (_) @_ty
-          declarator: [
-            (identifier) @name
-            (init_declarator declarator: (identifier) @name)
-            (array_declarator declarator: (identifier) @name)
-            (init_declarator declarator: (array_declarator declarator: (identifier) @name))
-          ]
-          (#not-match? @_ty "^(cbuffer|tbuffer)$")) @definition.variable)))
-
-(translation_unit
-  (preproc_if
-    (preproc_else
-      (declaration
-          type: (_) @_ty
-          declarator: [
-            (identifier) @name
-            (init_declarator declarator: (identifier) @name)
-            (array_declarator declarator: (identifier) @name)
-            (init_declarator declarator: (array_declarator declarator: (identifier) @name))
-          ]
-          (#not-match? @_ty "^(cbuffer|tbuffer)$")) @definition.variable)))
-
-(translation_unit
-  (preproc_if
-    (preproc_elif
-      (declaration
-          type: (_) @_ty
-          declarator: [
-            (identifier) @name
-            (init_declarator declarator: (identifier) @name)
-            (array_declarator declarator: (identifier) @name)
-            (init_declarator declarator: (array_declarator declarator: (identifier) @name))
-          ]
-          (#not-match? @_ty "^(cbuffer|tbuffer)$")) @definition.variable)))
-
-(translation_unit
-  (preproc_ifdef
-    (preproc_if
-      (declaration
-          type: (_) @_ty
-          declarator: [
-            (identifier) @name
-            (init_declarator declarator: (identifier) @name)
-            (array_declarator declarator: (identifier) @name)
-            (init_declarator declarator: (array_declarator declarator: (identifier) @name))
-          ]
-          (#not-match? @_ty "^(cbuffer|tbuffer)$")) @definition.variable)))
-
-(translation_unit
-  (preproc_ifdef
-    (preproc_ifdef
-      (declaration
-          type: (_) @_ty
-          declarator: [
-            (identifier) @name
-            (init_declarator declarator: (identifier) @name)
-            (array_declarator declarator: (identifier) @name)
-            (init_declarator declarator: (array_declarator declarator: (identifier) @name))
-          ]
-          (#not-match? @_ty "^(cbuffer|tbuffer)$")) @definition.variable)))
-
-(translation_unit
-  (preproc_ifdef
-    (preproc_else
-      (declaration
-          type: (_) @_ty
-          declarator: [
-            (identifier) @name
-            (init_declarator declarator: (identifier) @name)
-            (array_declarator declarator: (identifier) @name)
-            (init_declarator declarator: (array_declarator declarator: (identifier) @name))
-          ]
-          (#not-match? @_ty "^(cbuffer|tbuffer)$")) @definition.variable)))
-
-(translation_unit
-  (preproc_ifdef
-    (preproc_elif
-      (declaration
-          type: (_) @_ty
-          declarator: [
-            (identifier) @name
-            (init_declarator declarator: (identifier) @name)
-            (array_declarator declarator: (identifier) @name)
-            (init_declarator declarator: (array_declarator declarator: (identifier) @name))
-          ]
-          (#not-match? @_ty "^(cbuffer|tbuffer)$")) @definition.variable)))
+(preproc_else
+    (declaration
+      type: (_) @_ty
+      declarator: [
+        (identifier) @name
+        (init_declarator declarator: (identifier) @name)
+        (array_declarator declarator: (identifier) @name)
+        (init_declarator declarator: (array_declarator declarator: (identifier) @name))
+      ]
+      (#not-match? @_ty "^(cbuffer|tbuffer)$")) @definition.variable)
 
 ; --- calls ---------------------------------------------------------------------------
 ; A plain call, intrinsics included (mul, saturate), as the compiler's AST has

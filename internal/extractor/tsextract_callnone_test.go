@@ -1,6 +1,7 @@
 package extractor
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -31,5 +32,28 @@ func TestSplitTSMatches_CallNoneDropsTheCallAtItsNode(t *testing.T) {
 		if len(calls) != 1 || calls[0].start != body.StartByte || calls[0].text != "Domain" {
 			t.Fatalf("calls = %+v, want only the body's Domain at %d", calls, body.StartByte)
 		}
+	}
+}
+
+// TestSplitTSMatches_LocalScopeDropsDefinitions: a node a match captures as
+// @local.scope (a function's body) holds locals, so a definition inside it is
+// dropped, whatever pattern named it: a query may name a declaration under a
+// preprocessor conditional at any depth without anchoring every shape at the
+// file's top level. A definition outside every such range stays.
+func TestSplitTSMatches_LocalScopeDropsDefinitions(t *testing.T) {
+	src := []byte("int g; void f() { int l; }")
+	kinds := map[string]tsDefKind{"variable": {Kind: core.SourceKind("HlslVariable")}, "function": {Kind: core.SourceKind("HlslFunc"), Callable: true}}
+	def := func(kind string, start, end, nameStart, nameEnd uint32) tsengine.Match {
+		return tsengine.Match{Captures: []tsengine.Capture{{Name: "definition." + kind, Node: tsengine.Node{StartByte: start, EndByte: end}}, {Name: "name", Node: tsengine.Node{StartByte: nameStart, EndByte: nameEnd}}}}
+	}
+	body := tsengine.Node{StartByte: 16, EndByte: 26}
+	local := tsengine.Match{Captures: []tsengine.Capture{{Name: "local.scope", Node: body}}}
+	defs, _, _ := splitTSMatches([]tsengine.Match{def("variable", 18, 24, 22, 23), def("variable", 0, 6, 4, 5), def("function", 7, 26, 12, 13), local}, kinds, src, nil)
+	var names []string
+	for _, d := range defs {
+		names = append(names, d.name)
+	}
+	if want := []string{"g", "f"}; !slices.Equal(names, want) {
+		t.Fatalf("defs = %v, want %v (l is a local of f's body)", names, want)
 	}
 }

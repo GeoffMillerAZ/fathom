@@ -11,7 +11,9 @@
 - `tags.scm`, `imports.scm`, `references.scm`: written in this repository (LB-Q-hlsl, docs/design/language-breadth.md
   §13) with `indexbench lang-probe`, from the shapes of `dialects/cpp/` (the grammar is a C++ derivative). The grammar
   ships no `queries/` directory, so nothing is drafted from an upstream file.
-- Kinds: `HlslFunc` (a function with a body, attributes included), `HlslStruct` (a `struct` or `class` with a body),
+- Kinds: `HlslFunc` (a function with a body, attributes included), `HlslMethod` (a struct's or class's method with a
+  body, in the struct, named `Struct.method`, or defined out of line, named `Struct::method`; its calls are its own),
+  `HlslStruct` (a `struct` or `class` with a body),
   `HlslCbuffer` (a `cbuffer` or `tbuffer`, canonical kind `struct`), `HlslTypedef`, `HlslVariable` (file scope only:
   resources, samplers, constants, globals) and `HlslMacro` (emitted, unscored: outside the oracle's kind intersection).
 - Grammar gaps the queries work around: a `cbuffer Name { }` with no register binding parses as a `function_definition`
@@ -28,9 +30,11 @@
     by a tree-sitter-hlsl release that reads a file-scope macro invocation with no `;` as a declaration or an
     expression statement.
   - (c) a second candidate, tried after the (a)+(b) text still fails: the conditional directive lines blanked with
-    every branch kept (`cppBlankConditionals`, as cpp-macros and objc-macros), for a statement or an expression split
-    across `#if`/`#else`. Retired by a tree-sitter-hlsl release that parses a conditional inside a statement or an
-    expression (tree-sitter-cpp does not either, so this one is expected to stay).
+    every branch kept (`cppBlankConditionals`, as cpp-macros and objc-macros), for a statement head split across
+    `#if`/`#else` (an `if` or `for` head per branch reads as two nested heads; `testdata/split.hlsl`). An expression
+    split the same way (an argument or operand written once per branch) reads as both branches in a row and stays in
+    error. Retired by a tree-sitter-hlsl release that parses a conditional inside a statement or an expression
+    (tree-sitter-cpp does not either, so this one is expected to stay).
 - `calls`: intrinsics are calls (the compiler has a `CallExpr` for each); vector and matrix constructors and
   all-capitals macro invocations are not, nor is a call-shaped node by where it is written: an attribute
   (`(hlsl_attribute (call_expression))`: `[numthreads(8, 8, 1)]`, `[RootSignature(RS)]`, `[domain("tri")]`,
@@ -47,3 +51,6 @@
   `technique` block. A bare type word (`float`), an `#include` line or a struct name does not claim a file: each
   appears in a comment or another format as easily. The sniff claims all 12 of DirectXTK12's `.fx` files, as the
   word list it replaced did.
+- File scope: a declaration under a preprocessor conditional is a file-scope variable at any depth and in any branch
+  (`#if`, `#ifdef`, `#elif`, `#else`), because a function's body is captured `@local.scope` and the engine drops a
+  definition inside one: a conditional inside a body holds locals.

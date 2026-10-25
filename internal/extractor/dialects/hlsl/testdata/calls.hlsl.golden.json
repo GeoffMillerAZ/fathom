@@ -98,6 +98,15 @@
       "tier": "verified"
     },
     {
+      "name": "Ray.create",
+      "kind": "HlslMethod",
+      "package": "calls",
+      "line": 41,
+      "end_line": 41,
+      "signature": "static Ray create(float3 o)",
+      "tier": "verified"
+    },
+    {
       "name": "Origin",
       "kind": "HlslFunc",
       "package": "calls",

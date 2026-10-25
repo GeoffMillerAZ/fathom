@@ -21,6 +21,7 @@
   "queries": { "tags": "tags.scm", "imports": "imports.scm", "references": "references.scm" },
   "kinds": {
     "function": { "source_kind": "HlslFunc",     "canonical": "function",   "callable": true },
+    "method":   { "source_kind": "HlslMethod",   "canonical": "method",     "callable": true },
     "struct":   { "source_kind": "HlslStruct",   "canonical": "struct",     "container": true },
     "cbuffer":  { "source_kind": "HlslCbuffer",  "canonical": "struct" },
     "typedef":  { "source_kind": "HlslTypedef",  "canonical": "type_alias" },
@@ -29,7 +30,7 @@
   },
   "required_kinds": ["function", "struct", "cbuffer", "typedef", "variable"],
   "oracle_kinds": {
-    "tool": { "function": "function", "struct": "struct", "cbuffer": "struct", "typedef": "type_alias", "variable": "variable" }
+    "tool": { "function": "function", "method": "method", "struct": "struct", "cbuffer": "struct", "typedef": "type_alias", "variable": "variable" }
   },
   "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
   "package": { "strategy": "dir" },

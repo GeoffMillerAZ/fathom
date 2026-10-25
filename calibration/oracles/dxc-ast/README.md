@@ -31,7 +31,7 @@ throughput values, and how the parse errors split between the files DXC reads an
 discovery lists). The imports oracle is `../clang-includes` run on the same list with `-lang c++ -I .`.
 
 Definitions, each at its name's line with its range's last line: a function with a body (a template's pattern
-included, a struct's methods not), a struct or class with a body, a cbuffer or tbuffer (kind `cbuffer`, the dialect's
+included), a struct's method with a body (kind `method`, in the struct or defined out of line, with its calls), a struct or class with a body, a cbuffer or tbuffer (kind `cbuffer`, the dialect's
 `oracle_kinds` maps it to `struct`), a typedef and a variable at file scope (a cbuffer's constants are the buffer's).
 Call pairs: (the innermost enclosing definition, the callee's name) for every `CallExpr` naming a function, intrinsics
 included, and every member call (`tex.Sample(...)`, the member's bare name); a vector constructor is a cast, never a

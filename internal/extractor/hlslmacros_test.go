@@ -1,8 +1,13 @@
 package extractor
 
 import (
+	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/extractor/tsengine"
 )
 
 // hlslSameShape fails t unless every text keeps src's byte length and line
@@ -110,5 +115,48 @@ func TestHLSLMacroTextsConditionals(t *testing.T) {
 	}
 	if hlslMacroTexts([]byte("#define A 1\nfloat f() { return A; }\n")) != nil {
 		t.Error("a file with no rewrite and no conditional has a text")
+	}
+}
+
+// TestHLSLCandidateCParseOutcome pins what the conditional-blanked candidate
+// (c) rescues and what it does not: testdata/split.hlsl (an if and a for head
+// split across #if/#else) holds an error as written and parses clean under
+// candidate (c), the step's only text for it; an expression split the same
+// way (an argument written once per branch) reads both branches in a row and
+// stays in error under every candidate.
+func TestHLSLCandidateCParseOutcome(t *testing.T) {
+	target, err := ProbeTargetFor("hlsl", "split.hlsl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := tsengine.NewParser(context.Background(), target.Blob, target.EntryPoint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer p.Close()
+	outcome := func(src []byte) (ProbeParseResult, int) {
+		t.Helper()
+		res, err := ProbeParse(p, target, src)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Tree.Close()
+		n, err := tsErrorCount(p, res.Tree)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return res, n
+	}
+	split, err := os.ReadFile(filepath.Join("dialects", "hlsl", "testdata", "split.hlsl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, errs := outcome(split)
+	if res.Candidate != 1 || res.Candidates != 1 || res.WrittenErrors == 0 || errs != 0 {
+		t.Errorf("split.hlsl: candidate %d of %d (as-written errors %d), errors after %d; want candidate 1 of 1, errors as written, none after", res.Candidate, res.Candidates, res.WrittenErrors, errs)
+	}
+	expr := []byte("float4 shade(float4 c) {\n#if USE_FOG\n    return fog(c,\n#else\n    return plain(c,\n#endif\n        1.0);\n}\n")
+	if res, errs := outcome(expr); res.Candidate != 0 || errs == 0 {
+		t.Errorf("split expression: candidate %d, errors %d; want it read as written, still in error", res.Candidate, errs)
 	}
 }

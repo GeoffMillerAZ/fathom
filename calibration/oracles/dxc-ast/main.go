@@ -16,7 +16,8 @@
 // covers every measured file.
 //
 // Definitions, each at its name's line with its range's last line: a function
-// with a body (a template's pattern included, a struct's methods not), a
+// with a body (a template's pattern included), a struct's method with a body
+// (kind method, in the struct or defined out of line), a
 // struct or class with a body, a cbuffer or tbuffer, a typedef and a variable
 // at file scope (a cbuffer's constants are the buffer's, not the file's). Call
 // pairs: (the innermost enclosing definition, the callee's name) for every
@@ -193,6 +194,11 @@ func parseDump(r io.Reader, files map[string]bool, macro func(string, int) bool)
 		case "FunctionDecl":
 			if fileScope[parent] || parent == "FunctionTemplateDecl" {
 				fr.fn = mk(declName(rest), "function")
+			}
+		case "CXXMethodDecl":
+			// a struct's method, in the struct or defined out of line
+			if parent == "CXXRecordDecl" || fileScope[parent] || parent == "FunctionTemplateDecl" {
+				fr.fn = mk(declName(rest), "method")
 			}
 		case "CompoundStmt":
 			if len(stack) > 0 && stack[len(stack)-1].fn != nil {

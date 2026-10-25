@@ -204,3 +204,53 @@ func TestRunRetries(t *testing.T) {
 		}
 	}
 }
+
+// TestParseDumpFixture reads the pinned DXC's own dump of testdata/fixture.hlsl
+// (testdata/README.md has the command line): every kind the oracle writes, a
+// struct's methods with a body (one defined out of line) as kind method with
+// their calls, and a call a macro body spells counted, not written.
+func TestParseDumpFixture(t *testing.T) {
+	f, err := os.Open(filepath.Join("testdata", "fixture.dump.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	files := map[string]bool{"fixture.hlsl": true, "fixture.hlsli": true}
+	src, err := os.ReadFile(filepath.Join("testdata", "fixture.hlsl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defines := defineLines(src)
+	u := parseDump(f, files, func(p string, line int) bool { return p == "fixture.hlsl" && defines[line] })
+	wantDefs := []Def{
+		{"fixture.hlsl", "Frame", "cbuffer", 8, 11},
+		{"fixture.hlsl", "Index", "typedef", 13, 13},
+		{"fixture.hlsl", "Ray", "struct", 15, 21},
+		{"fixture.hlsl", "at", "method", 19, 19},
+		{"fixture.hlsl", "create", "method", 18, 18},
+		{"fixture.hlsl", "len", "method", 23, 23},
+		{"fixture.hlsl", "main", "function", 25, 30},
+		{"fixture.hlsli", "helper", "function", 4, 7},
+		{"fixture.hlsli", "linearSampler", "variable", 2, 2},
+	}
+	sortDefs(u.Defs)
+	if !reflect.DeepEqual(u.Defs, wantDefs) {
+		t.Errorf("defs:\n%v\nwant:\n%v", u.Defs, wantDefs)
+	}
+	wantCalls := []Pair{
+		{"fixture.hlsl", "at", "saturate"},
+		{"fixture.hlsl", "len", "length"},
+		{"fixture.hlsl", "main", "at"},
+		{"fixture.hlsl", "main", "create"},
+		{"fixture.hlsl", "main", "helper"},
+		{"fixture.hlsl", "main", "len"},
+		{"fixture.hlsli", "helper", "saturate"},
+	}
+	sortPairs(u.Calls)
+	if !reflect.DeepEqual(u.Calls, wantCalls) {
+		t.Errorf("calls:\n%v\nwant:\n%v", u.Calls, wantCalls)
+	}
+	if u.MacroCalls != 1 {
+		t.Errorf("macro calls %d, want 1 (frac, spelled on the #define line)", u.MacroCalls)
+	}
+}

@@ -24,9 +24,12 @@ import "strings"
 //
 // A second candidate also blanks the conditional directive lines, every branch
 // kept, as the C++ and Objective-C steps do (cppBlankConditionals): `#if A` /
-// `#else` around two heads of one statement or expression parse as the
-// branches in a row. It is tried only after the rewritten text still fails to
-// parse. The rewritten texts are tried only when the file does not parse as
+// `#else` around two heads of one statement (an `if` or `for` head per branch)
+// parse as two nested heads, so the file reads clean. An expression split the
+// same way (an argument or operand written once per branch) reads as both
+// branches in a row and stays in error (testdata/split.hlsl and
+// TestHLSLCandidateCParseOutcome pin both). It is tried only after the
+// rewritten text still fails to parse. The rewritten texts are tried only when the file does not parse as
 // written, and read only when one parses clean (tsPreprocessed). The trigger to retire
 // the register rewrite is a tree-sitter-hlsl release whose cbuffer and
 // tbuffer headers take a register clause (dialects/hlsl/PROVENANCE.md).

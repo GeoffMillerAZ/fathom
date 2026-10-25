@@ -1,0 +1,100 @@
+TranslationUnitDecl 0x5619c1c2d360 <<invalid sloc>> <invalid sloc>
+|-VarDecl 0x5619c1c6ddf0 <./fixture.hlsli:2:1, col:14> col:14 linearSampler 'SamplerState'
+| `-RegisterAssignment 0x5619c1c6dea0 <col:30> register(s0)
+|-FunctionDecl 0x5619c1c752d0 <line:4:1, line:7:1> line:4:7 used helper 'float (float)'
+| |-ParmVarDecl 0x5619c1c6dee8 <col:14, col:20> col:20 used x 'float'
+| `-CompoundStmt 0x5619c1c756c8 <line:5:1, line:7:1>
+|   `-ReturnStmt 0x5619c1c756b0 <line:6:5, col:22>
+|     `-CallExpr 0x5619c1c75650 <col:12, col:22> 'float'
+|       |-ImplicitCastExpr 0x5619c1c75638 <col:12> 'float (*)(float)' <FunctionToPointerDecay>
+|       | `-DeclRefExpr 0x5619c1c755d0 <col:12> 'float (float)' lvalue Function 0x5619c1c75420 'saturate' 'float (float)'
+|       `-ImplicitCastExpr 0x5619c1c75698 <col:21> 'float' <LValueToRValue>
+|         `-DeclRefExpr 0x5619c1c753f8 <col:21> 'float' lvalue ParmVar 0x5619c1c6dee8 'x' 'float'
+|-HLSLBufferDecl 0x5619c1c75718 <./fixture.hlsl:8:1, line:11:1> line:8:9 cbuffer Frame
+| |-RegisterAssignment 0x5619c1c75780 <col:17> register(b0)
+| `-VarDecl 0x5619c1c75910 parent cbuffer 0x5619c1c75718 <line:10:5, col:12> col:12 used tint 'const float4':'const vector<float, 4>'
+|-EmptyDecl 0x5619c1c75980 <line:11:2> col:2
+|-TypedefDecl 0x5619c1c75a40 <line:13:1, col:14> col:14 Index 'uint':'unsigned int'
+|-CXXRecordDecl 0x5619c1c75aa0 <line:15:1, line:21:1> line:15:8 referenced struct Ray definition
+| |-CXXRecordDecl 0x5619c1c75be0 <col:1, col:8> col:8 implicit referenced struct Ray
+| |-FieldDecl 0x5619c1c75d80 <line:17:5, col:12> col:12 referenced origin 'float3':'vector<float, 3>'
+| |-CXXMethodDecl 0x5619c1c75f18 <line:18:5, col:66> col:16 used create 'Ray (float3)' static
+| | |-ParmVarDecl 0x5619c1c75de8 <col:23, col:30> col:30 used o 'float3':'vector<float, 3>'
+| | `-CompoundStmt 0x5619c1c7b790 <col:33, col:66>
+| |   |-DeclStmt 0x5619c1c7b640 <col:35, col:40>
+| |   | `-VarDecl 0x5619c1c7b5d0 <col:35, col:39> col:39 used r 'Ray' nrvo
+| |   |-BinaryOperator 0x5619c1c7b6f8 <col:42, col:53> 'float3':'vector<float, 3>' '='
+| |   | |-MemberExpr 0x5619c1c7b680 <col:42, col:44> 'float3':'vector<float, 3>' lvalue .origin 0x5619c1c75d80
+| |   | | `-DeclRefExpr 0x5619c1c7b658 <col:42> 'Ray' lvalue Var 0x5619c1c7b5d0 'r' 'Ray'
+| |   | `-ImplicitCastExpr 0x5619c1c7b6e0 <col:53> 'float3':'vector<float, 3>' <LValueToRValue>
+| |   |   `-DeclRefExpr 0x5619c1c7b6b8 <col:53> 'float3':'vector<float, 3>' lvalue ParmVar 0x5619c1c75de8 'o' 'float3':'vector<float, 3>'
+| |   `-ReturnStmt 0x5619c1c7b778 <col:56, col:63>
+| |     `-ImplicitCastExpr 0x5619c1c7b760 <col:63> 'Ray' <LValueToRValue>
+| |       `-DeclRefExpr 0x5619c1c7b720 <col:63> 'Ray' lvalue Var 0x5619c1c7b5d0 'r' 'Ray'
+| |-CXXMethodDecl 0x5619c1c76118 <line:19:5, col:55> col:12 used at 'float3 (float)'
+| | |-ParmVarDecl 0x5619c1c75fe8 <col:15, col:21> col:21 used t 'float'
+| | `-CompoundStmt 0x5619c1c7b9e8 <col:24, col:55>
+| |   `-ReturnStmt 0x5619c1c7b9d0 <col:26, col:52>
+| |     `-BinaryOperator 0x5619c1c7b9a8 <col:33, col:52> 'float3':'vector<float, 3>' '*'
+| |       |-ImplicitCastExpr 0x5619c1c7b978 <col:33> 'float3':'vector<float, 3>' <LValueToRValue>
+| |       | `-MemberExpr 0x5619c1c7b820 <col:33> 'float3':'vector<float, 3>' lvalue .origin 0x5619c1c75d80
+| |       |   `-CXXThisExpr 0x5619c1c7b808 <col:33> 'Ray' lvalue this
+| |       `-ImplicitCastExpr 0x5619c1c7b990 <col:42, col:52> 'vector<float, 3>':'vector<float, 3>' <HLSLVectorSplat>
+| |         `-CallExpr 0x5619c1c7b918 <col:42, col:52> 'float'
+| |           |-ImplicitCastExpr 0x5619c1c7b900 <col:42> 'float (*)(float)' <FunctionToPointerDecay>
+| |           | `-DeclRefExpr 0x5619c1c7b8d8 <col:42> 'float (float)' lvalue Function 0x5619c1c75420 'saturate' 'float (float)'
+| |           `-ImplicitCastExpr 0x5619c1c7b960 <col:51> 'float' <LValueToRValue>
+| |             `-DeclRefExpr 0x5619c1c7b8b0 <col:51> 'float' lvalue ParmVar 0x5619c1c75fe8 't' 'float'
+| |-CXXMethodDecl 0x5619c1c7b4c0 <line:20:5, col:15> col:11 len 'float ()'
+| `-CXXDestructorDecl 0x5619c1c801a0 <line:15:8> col:8 implicit referenced ~Ray 'void () noexcept' inline
+|-CXXMethodDecl 0x5619c1c7ba60 parent 0x5619c1c75aa0 prev 0x5619c1c7b4c0 <line:23:1, col:43> col:12 used len 'float ()'
+| `-CompoundStmt 0x5619c1c7bf58 <col:18, col:43>
+|   `-ReturnStmt 0x5619c1c7bf40 <col:20, col:40>
+|     `-CallExpr 0x5619c1c7bee0 <col:27, col:40> 'float'
+|       |-ImplicitCastExpr 0x5619c1c7bec8 <col:27> 'float (*)(vector<float, 3>)' <FunctionToPointerDecay>
+|       | `-DeclRefExpr 0x5619c1c7be30 <col:27> 'float (vector<float, 3>)' lvalue Function 0x5619c1c7bc80 'length' 'float (vector<float, 3>)'
+|       `-ImplicitCastExpr 0x5619c1c7bf28 <col:34> 'float3':'vector<float, 3>' <LValueToRValue>
+|         `-MemberExpr 0x5619c1c7bbc8 <col:34> 'float3':'vector<float, 3>' lvalue .origin 0x5619c1c75d80
+|           `-CXXThisExpr 0x5619c1c7bbb0 <col:34> 'Ray' lvalue this
+`-FunctionDecl 0x5619c1c7c108 <line:25:1, line:30:1> line:25:8 main 'float4 (float4)'
+  |-ParmVarDecl 0x5619c1c7bfa0 <col:13, col:20> col:20 used c 'float4':'vector<float, 4>'
+  | `-SemanticDecl 0x5619c1c7c010 <col:24> "COLOR"
+  |-CompoundStmt 0x5619c1c80ba8 <line:26:1, line:30:1>
+  | |-DeclStmt 0x5619c1c80290 <line:27:5, col:31>
+  | | `-VarDecl 0x5619c1c7c210 <col:5, col:30> col:9 used r 'Ray' cinit
+  | |   `-CallExpr 0x5619c1c7c3b0 <col:13, col:30> 'Ray'
+  | |     |-ImplicitCastExpr 0x5619c1c7c398 <col:13, col:18> 'Ray (*)(float3)' <FunctionToPointerDecay>
+  | |     | `-DeclRefExpr 0x5619c1c7c2b8 <col:13, col:18> 'Ray (float3)' lvalue CXXMethod 0x5619c1c75f18 'create' 'Ray (float3)'
+  | |     `-ImplicitCastExpr 0x5619c1c7c3f8 <col:25, col:27> 'vector<float, 3>':'vector<float, 3>' <LValueToRValue>
+  | |       `-HLSLVectorElementExpr 0x5619c1c7c318 <col:25, col:27> 'vector<float, 3>':'vector<float, 3>' lvalue vectorcomponent xyz
+  | |         `-DeclRefExpr 0x5619c1c7c2f0 <col:25> 'float4':'vector<float, 4>' lvalue ParmVar 0x5619c1c7bfa0 'c' 'float4':'vector<float, 4>'
+  | |-DeclStmt 0x5619c1c807a8 <line:28:5, col:43>
+  | | `-VarDecl 0x5619c1c802b8 <col:5, line:6:24> line:28:11 used s 'float' cinit
+  | |   `-BinaryOperator 0x5619c1c80780 <col:15, line:6:24> 'float' '+'
+  | |     |-CallExpr 0x5619c1c80448 <line:28:15, col:29> 'float'
+  | |     | |-ImplicitCastExpr 0x5619c1c80430 <col:15> 'float (*)(float)' <FunctionToPointerDecay>
+  | |     | | `-DeclRefExpr 0x5619c1c80408 <col:15> 'float (float)' lvalue Function 0x5619c1c752d0 'helper' 'float (float)'
+  | |     | `-CXXMemberCallExpr 0x5619c1c803e0 <col:22, col:28> 'float'
+  | |     |   `-MemberExpr 0x5619c1c803a8 <col:22, col:24> '<bound member function type>' .len 0x5619c1c7ba60
+  | |     |     `-DeclRefExpr 0x5619c1c80380 <col:22> 'Ray' lvalue Var 0x5619c1c7c210 'r' 'Ray'
+  | |     `-CallExpr 0x5619c1c80720 <line:6:18, col:24> 'float'
+  | |       |-ImplicitCastExpr 0x5619c1c80708 <col:18> 'float (*)(float)' <FunctionToPointerDecay>
+  | |       | `-DeclRefExpr 0x5619c1c806c8 <col:18> 'float (float)' lvalue Function 0x5619c1c80518 'frac' 'float (float)'
+  | |       `-ImplicitCastExpr 0x5619c1c80768 <line:28:39, col:41> 'float' <LValueToRValue>
+  | |         `-HLSLVectorElementExpr 0x5619c1c804f0 <col:39, col:41> 'float' lvalue vectorcomponent x
+  | |           `-DeclRefExpr 0x5619c1c804c8 <col:39> 'float4':'vector<float, 4>' lvalue ParmVar 0x5619c1c7bfa0 'c' 'float4':'vector<float, 4>'
+  | `-ReturnStmt 0x5619c1c80b90 <line:29:5, col:33>
+  |   `-BinaryOperator 0x5619c1c80b68 <col:12, col:33> 'float4':'vector<float, 4>' '*'
+  |     |-CXXFunctionalCastExpr 0x5619c1c80b00 <col:12, col:29> 'float4':'vector<float, 4>' functional cast to float4 <NoOp>
+  |     | `-InitListExpr 0x5619c1c809d0 <col:18, col:29> 'float4':'vector<float, 4>'
+  |     |   |-CXXMemberCallExpr 0x5619c1c80858 <col:19, col:25> 'float3':'vector<float, 3>'
+  |     |   | |-MemberExpr 0x5619c1c807f8 <col:19, col:21> '<bound member function type>' .at 0x5619c1c76118
+  |     |   | | `-DeclRefExpr 0x5619c1c807d0 <col:19> 'Ray' lvalue Var 0x5619c1c7c210 'r' 'Ray'
+  |     |   | `-ImplicitCastExpr 0x5619c1c808a0 <col:24> 'float' <LValueToRValue>
+  |     |   |   `-DeclRefExpr 0x5619c1c80830 <col:24> 'float' lvalue Var 0x5619c1c802b8 's' 'float'
+  |     |   `-ImplicitCastExpr 0x5619c1c809b8 <col:28> 'float' <IntegralToFloating>
+  |     |     `-IntegerLiteral 0x5619c1c80998 <col:28> 'literal int' 1
+  |     `-ImplicitCastExpr 0x5619c1c80b50 <col:33> 'float4':'vector<float, 4>' <LValueToRValue>
+  |       `-DeclRefExpr 0x5619c1c80b28 <col:33> 'const float4':'const vector<float, 4>' lvalue Var 0x5619c1c75910 'tint' 'const float4':'const vector<float, 4>'
+  `-SemanticDecl 0x5619c1c7c1c8 <line:25:33> "SV_Target"
+

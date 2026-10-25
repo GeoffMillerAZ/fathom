@@ -59,6 +59,55 @@
         "Load"
       ],
       "tier": "verified"
+    },
+    {
+      "name": "qualityLow",
+      "kind": "HlslVariable",
+      "package": "conditionals",
+      "line": 36,
+      "end_line": 36,
+      "tier": "verified"
+    },
+    {
+      "name": "qualityMid",
+      "kind": "HlslVariable",
+      "package": "conditionals",
+      "line": 38,
+      "end_line": 38,
+      "tier": "verified"
+    },
+    {
+      "name": "qualityHigh",
+      "kind": "HlslVariable",
+      "package": "conditionals",
+      "line": 40,
+      "end_line": 40,
+      "tier": "verified"
+    },
+    {
+      "name": "bothAB",
+      "kind": "HlslVariable",
+      "package": "conditionals",
+      "line": 45,
+      "end_line": 45,
+      "tier": "verified"
+    },
+    {
+      "name": "onlyA",
+      "kind": "HlslVariable",
+      "package": "conditionals",
+      "line": 47,
+      "end_line": 47,
+      "tier": "verified"
+    },
+    {
+      "name": "Shade",
+      "kind": "HlslFunc",
+      "package": "conditionals",
+      "line": 51,
+      "end_line": 61,
+      "signature": "float4 Shade(float4 c)",
+      "tier": "verified"
     }
   ]
 }
