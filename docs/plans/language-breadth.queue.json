@@ -3996,15 +3996,17 @@
     "id": "glsl",
     "name": "GLSL shaders (.glsl .vert .frag .comp, .fs by sniff)",
     "kind": "language",
-    "target_level": "L1",
+    "target_level": "L2",
     "grammar_source": "tree-sitter-grammars/tree-sitter-glsl",
     "licence": "MIT",
     "oracle": [
-      "tree-sitter-tags (C)"
+      "ctags-c-glsl",
+      "glslang-ast"
     ],
     "calibration_subjects": [
-      "mrdoob/three.js (src/renderers/shaders subpath)",
-      "KhronosGroup/glTF-Sample-Viewer"
+      "SaschaWillems/Vulkan (shaders subpath glsl)",
+      "KhronosGroup/SPIRV-Cross (shaders)",
+      "KhronosGroup/Vulkan-Samples (shaders)"
     ],
     "depends_on": [
       "LB-F1",
@@ -4025,7 +4027,8 @@
     "engine": "tags",
     "plan_row": "LB-Q-glsl",
     "worker_model": "sonnet",
-    "notes": "new; functions, structs, uniforms"
+    "notes": "Refused at the grammar gate (LB-Q-glsl-rest, docs/bench/readings/lang/glsl-grammar.md): tree-sitter-glsl v0.2.0 leaves 272 of the 968 files of the three subjects in error (28.1%), so no dialect is built. Planned shape if revived: functions, structs, macros (required); uniforms, in/out globals and interface blocks emitted, not required. L1 oracle ctags-c-glsl: universal-ctags 6.2.1's C parser run over GLSL, a foreign parser, so tier C (owner ruling G1, L1 caps at good). L2 oracle glslang-ast: glslang 16.6.0's AST dump, calls only, tier A (replays each subject's own invocation) or B; call_exclusions are the GLSL 4.60 specification's built-in function index plus the built-in type constructors, counted on both sides (ruling G2)",
+    "retargeted": "2026-10-24 (owner rulings G1 G2): L1 -> L2; three.js and glTF-Sample-Viewer dropped for SaschaWillems/Vulkan, KhronosGroup/SPIRV-Cross and KhronosGroup/Vulkan-Samples, each a stand-alone shader tree its own tool compiles"
   },
   {
     "id": "nginx",
