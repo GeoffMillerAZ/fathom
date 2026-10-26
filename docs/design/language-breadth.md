@@ -1759,6 +1759,16 @@ oracle output stays under `workspace/`.
 level is never higher than its reading's `level_met`, and a registered dialect without a
 reading is listed as `tolerated`.
 
+**Tool-oracle call scope.** A neutral oracle's nonempty `scope` names every measured
+file it read, including files where it found no calls. Call precision counts fathom's
+pairs on all those files; an empty truth set in one file cannot hide false positives.
+The oracle's `call_exclusions` still remove the named callees on both sides, with counts.
+An explicit `"calls": []` asserts no calls in that scope (or all measured files when
+scope is absent); omitted or null `calls` contributes no calls family. Nonempty legacy
+call dumps without an explicit scope retain their calls-derived file coverage. This
+coverage is independent of definitions. A correction to raw pair counts requires
+remeasuring affected scoped readings, not merely regrading their stored counts.
+
 **Producer-specific rules (LB-Q-rust, 2026-09-28).** A SCIP producer's own vocabulary is read
 by the harness where it would otherwise score a definition or a call no source text spells:
 rust-analyzer's `impl#[Type]name().` members (`]` closes a descriptor), its macro-expanded

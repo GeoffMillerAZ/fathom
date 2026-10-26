@@ -1447,12 +1447,20 @@ func scoreToolOracle(path string, m langbench.Manifest, nodes []core.SymbolNode,
 		sub.KindIntersection = l1.Intersection
 		sub.Families[langbench.FamilyL1] = tier
 	}
-	if len(tf.Calls) > 0 {
+	if tf.Calls != nil {
 		if _, done := sub.Families[langbench.FamilyCalls]; done {
 			return fail(fmt.Errorf("%s: calls given alongside another calls oracle (a SCIP index or an earlier file); measure one per subject", path))
 		}
 		truth := map[langbench.CallPair]bool{}
 		files := map[string]bool{}
+		if len(tf.Scope) > 0 || len(tf.Calls) == 0 {
+			// Explicit scope covers files with zero oracle calls. An explicit
+			// empty calls list without scope asserts all measured files are
+			// call-free. Legacy nonempty calls still cover only named files.
+			for f := range inScope {
+				files[f] = true
+			}
+		}
 		for _, c := range tf.Calls {
 			if !inScope[c.Path] {
 				dropped++
