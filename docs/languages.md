@@ -285,8 +285,8 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 reached (languages at L1 39, L1 excellent 27, L2 34, L3 27, L4 10; tool formats at target 67)
-Milestone M2 progress: languages at L1 39/45, at L1 excellent 27/35, at L2 34/25, at L3 27/14, at L4 10/10; tool formats at target 67/30
+Milestone M1 reached (languages at L1 40, L1 excellent 28, L2 35, L3 28, L4 10; tool formats at target 67)
+Milestone M2 progress: languages at L1 40/45, at L1 excellent 28/35, at L2 35/25, at L3 28/14, at L4 10/10; tool formats at target 67/30
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -409,7 +409,7 @@ Milestone M2 progress: languages at L1 39/45, at L1 excellent 27/35, at L2 34/25
 | HAProxy configuration (haproxy.cfg, .cfg by sniff) | tool format | native | native:pure-go (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A haproxy 3.4.6-56332c5; A haproxy+docker-compose 3.4.6-56332c5 | syntax | 2026-10-02 | at target (LB-Q-haproxy) |
 | Caddyfile (Caddyfile, Caddyfile.* by glob, .caddyfile) | tool format | native | native:pure-go (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A caddy v2.11.6; A caddy+docker-compose v2.11.6 | syntax | 2026-10-02 | at target (LB-Q-caddyfile) |
 | systemd units (*.service *.timer *.socket …) | tool format | doc | pure-go:INI parser (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-systemd |
-| HLSL shaders (.hlsl .hlsli .fx) | language | tags | tree-sitter-grammars/tree-sitter-hlsl (MIT) | L3 | none (measured) | B clang-includes Ubuntu clang version 18.1.3 (1ubuntu1); B dxc-ast libdxcompiler.so: 1.9(5184-21d28f72)(1.9.0.5184) | syntax | 2026-10-25 | LB-Q-hlsl |
+| HLSL shaders (.hlsl .hlsli .fx) | language | tags | tree-sitter-grammars/tree-sitter-hlsl (MIT) | L3 | L3 (L1 excellent, L2 good, L3 good) | B clang-includes Ubuntu clang version 18.1.3 (1ubuntu1); B dxc-ast libdxcompiler.so: 1.9(5184-21d28f72)(1.9.0.5184) | syntax | 2026-10-25 | at target (LB-Q-hlsl) |
 | Dev containers (devcontainer.json, devcontainer-feature.json) | tool format | doc | pure-go:JSONC (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-devcontainer |
 | Envoy proxy configuration (bootstrap, xDS resource files) | tool format | doc | pure-go:yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 good) | A envoy 1.39.1 | syntax | 2026-10-02 | at target (LB-Q-envoy) |
 | OpenTelemetry Collector configuration (receivers, processors, exporters, connectors, extensions, pipelines) | tool format | doc | pure-go:yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 good) | A otelcol-contrib validate + collector confmap decode (component.ID, pipeline.ID) otelcol-contrib version 0.162.0; go.opentelemetry.io/collector v1.68.0; C otelcol-oracle routes (yaml.v3 walk, the Kubernetes and compose DNS rules) gopkg.in/yaml.v3 v3.0.1 | — | 2026-10-09 | at target (LB-Q-otel-collector) |
