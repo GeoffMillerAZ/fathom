@@ -1312,14 +1312,14 @@
     "kind": "language",
     "tier": "T1",
     "target_level": "L3",
-    "grammar_source": "none pinned: no tree-sitter grammar parses the indented syntax (O853)",
-    "licence": "n/a (no grammar pinned)",
+    "grammar_source": "bajrangCoder/tree-sitter-sass (candidate not pinned: 56.16% of files in error at fb280c41)",
+    "licence": "MIT (LICENSE read at fb280c41b070657e4ff4d4e5e6eea6cb19efd9b8)",
     "oracle": [
       "dart-sass loadedUrls (A, the import graph)"
     ],
     "calibration_subjects": [
-      "twbs/bootstrap",
-      "primer/css"
+      "jgthms/bulma",
+      "vuetifyjs/vuetify"
     ],
     "depends_on": [
       "LB-F1",
@@ -1343,7 +1343,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-sass",
     "worker_model": "sonnet",
-    "notes": "the indented syntax; disclosed unsupported until a grammar passes the 5% ERROR-file gate (O853). target L3 is SCSS's: the same Sass module graph (@use, @forward, @import) read by Dart Sass's loadedUrls, so the oracle and the level carry over; the tree-sitter-scss grammar parses SCSS only",
+    "notes": "Unsupported, no production grammar pinned. The latest upstream/editor pin fb280c41b070657e4ff4d4e5e6eea6cb19efd9b8 is MIT but fails the frozen native parse gate: 123 of 219 real .sass files in error (56.16%; bulma 53/91, vuetify source 70/128). Independent Dart Sass syntax cross-check accepts 213 files; the candidate errors in 117 of those (54.93%), so invalid inputs do not explain the refusal. No files trimmed and no support level claimed. calibration/corpus.d/sass.yaml replaces the prior SCSS-only subjects. Retry a newer licensed grammar under the <=5% complete-source gate, then production WASM and independent L1-L3 oracle. LB-Q-sass-rest records the measured refusal.",
     "retargeted": "2026-10-11 (wave lf6, owner ruling M5, O853): split from the scss entry, which named .sass beside .scss though no dialect parses it, so the generated unsupported table dropped it"
   },
   {
