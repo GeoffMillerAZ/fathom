@@ -1,82 +1,93 @@
-# Kong: native typed-reference route found, not yet measured
+# Kong: complete native written-field diagnostic; canonical unchanged
 
-The canonical reading remains 821/821 definitions, 10/10 written references
-at C and 12/12 route pairs at A. No metric, tier or L3 reading changes in this
-source audit. The former written-reference ceiling has an unbuilt native route.
+The pinned owner SDK now attests the complete typed population for all 1,803
+recorded selectors, representing 681 distinct source paths across nine pinned
+cohorts. All queries complete with zero native refusals and zero observed HTTP
+requests. All native queries finish before any Fathom comparison begins. The unique-source comparison finds 365/365 definition names and
+ranges at C and 4/4 semantic references at A, with zero extraction faults.
+Throughput and the performance-dependent grade are **unmeasured** under T-R10:
+the correctness replay began at load6.20/nice10/free36.81GiB, but the separate
+timing gate saw load7.61 and did not start a timing run. No L3 work occurred.
+The canonical reading remains 821/821 definitions, 10/10 references C and
+12/12 route pairs A; these historical counts are not a directly comparable
+before/after denominator.
 
-The exact decK 1.68.0 module pins Kong's Apache-2.0 go-database-reconciler
-1.42.4. Its [typed content reader](https://github.com/Kong/go-database-reconciler/blob/v1.42.4/pkg/file/reader.go)
-returns Content before native state construction, which resolves services and
-routes using the owner's state lookups. The [vendor types](https://github.com/Kong/go-database-reconciler/blob/v1.42.4/pkg/file/types.go)
-carry explicit foreign fields before rendering nests entities. This can test
-which references were written rather than merely confirming rendered nesting.
+## Scope and identity
 
-One provenance loss matters: the native service decoder normalizes URL into
-Host and does not preserve the original URL/Host presence in Content. The
-protocol preregisters a read-only observation of its typed fields before that
-normalization. No independent YAML scan may choose the native population.
-Native service/route/plugin lookup, full outcome classification and authored
-explicit-versus-nested, URL-versus-host, unused and invalid-target controls are
-required before A evidence. Original native control flow/results must remain
-unchanged, with exact source/observer identity and restoration checks.
+The old record contains repeated legacy scratch-root prefixes, including a
+prefix nested twice. Removing only the two disclosed roots maps 1,803 selectors
+to 681 distinct paths. The replay still executes every selector and requires
+identical projected native truth for aliases; comparison scores each actual
+source once. The historical record reports 568 scored files, whereas this
+reconstruction scores 231 unique files. Its synthetic copy SHA does not attest
+the old scratch-tree bytes. We cannot establish bit-for-bit identity with that
+unavailable historical tree; this is an explicitly identified reconstruction
+from the actual upstream shard pins and original path-renaming contract.
+Do not present the lower denominators as an extraction regression or a
+same-population improvement. No canonical reading or corpus shard is changed.
 
-The owner's [offline validator](https://developer.konghq.com/deck/file/validate/)
-checks foreign relationships without communicating with Kong. The probe must
-remain offline too, without Docker, credentials, analytics, backend requests or
-global installs. Small authored cross-checks precede any calibration clone.
-The SDK has not been installed or executed in this audit. Source pins and the
-preregistered contract are in calibration/oracles/kong/native-source-pins-r1.json
-and native-protocol-r1.json. Raw source downloads stay private.
+The native population contains 1,340 entities (eight unnamed), 391 written
+fields: 39 resolved sites and 352 literal hosts without a named upstream.
+Resolved sites form 37 distinct semantic pairs. Existing ingest/discovery gates
+leave 33 pairs and 967 named definitions outside comparison scope; this is
+explicitly disclosed, not full 37-pair product recall. The C locator attaches
+ranges only after native enumeration and must match its whole named multiset.
 
-The old L1 definitions use native rendered entities but independent yaml.v3
-line/end pairing; the code explicitly shares that decoder family with the
-product. Field authority needs an audit under P-T1. This pass grants no new
-native position claim. X-R4's remaining source families still need recorded
-checks before any renewed ceiling. Native L2 work is open; L3 waits for D19,
-and a shared parent-binding selector remains under T-R2. No model decision
-applies.
+|Cohort|Native queries|Distinct paths|Scored files|Definitions found/truth C|Refs found/truth A|Native semantic pairs|
+|---|---:|---:|---:|---:|---:|---:|
+|1|1|1|1|2/2|0/0|0|
+|2|1358|454|116|154/154|2/2|34|
+|3|1|1|1|2/2|0/0|0|
+|4|437|219|107|154/154|2/2|3|
+|5|2|2|2|16/16|0/0|0|
+|6|1|1|1|9/9|0/0|0|
+|7|1|1|1|14/14|0/0|0|
+|8|1|1|1|6/6|0/0|0|
+|9|1|1|1|8/8|0/0|0|
 
+## Oracle and controls
 
-## Native authored prototype and full-population preregistration
+Kong's Apache-2.0 go-database-reconciler1.42.4 is the exact library pinned by
+decK1.68.0. GetContentFromReader enumerates typed content before independent
+location pairing; file.Get/state.Get evaluate service/route/upstream bindings.
+A byte-verified read-only source observer preserves typed Host/URL before the
+owner's normalization. Strict literal host/name equality rejects the native
+registry's additional ID alias. Nested containment is not a written reference.
+Original native control flow and source bytes are restored by the checked
+instrumenter. The owner SDK evaluates facts; no product output chooses truth.
 
-The pinned owner SDK now builds through a verified private source copy and
-read-only overlay, with no module-cache/global edits. Twelve native Go race
-tests and four Python projection tests pass with zero skips. Raw Host and
-consumer/group population mutants fail then restore green; a locator-filtered
-native multiset mutant also fails. An actual Fathom-output removal is a future
-hidden-read tripwire; changed input alters native truth. Three network-denied
-official decK1.68.0 renders agree on the tested fields, including the URL-only
-versus explicit-host distinction. A strict host-name control prevents the
-native registry's ID alias from becoming a literal host/name binding. Source,
-entity and serialized-output cap+1 tests refuse completely.
+Two initially overbroad probe guards were reproduced and corrected: deployment
+routing metadata is preserved unchanged by the native Gateway path; _config
+looks up the in-file PluginConfigs map through native fillPluginConfig, rather
+than opening an external file. Missing config entries still produce the owner's
+error. Service packages remain a fail-closed unclassified scope; none refuses
+in the completed population. Auxiliary plugin configs do not change the
+existing service/route/upstream binding contract.
 
-The full original input set is 1,803 across nine cohorts, while existing ingest
-gates score 568 files/821 definitions. Two historical SHA fields identify a
-synthetic copy commit. Protocolr2 uses actual source shard pins and separately
-hashes the existing YAML-only testdata-to-td copy mapping. No source byte,
-required kind, holdout membership, canonical L3 reading or corpus is changed.
-The native Go population chooses definitions/fields; independent yaml.v3 only
-attaches C ranges and cannot trim its multiset. Full population is still open,
-not an availability ceiling or a new A metric claim.
+Fourteen own-package Go race tests pass without skips. Raw Host and
+consumer/group population mutants fail then restore green. Six Python scope/
+projection tests and a locator-filtered-population mutation pass. Three official
+decK cross-checks run under OS network denial. Actual Fathom output removal is
+only a future hidden-read tripwire; changed input changes native truth. Exact
+source1MiB, population10000 and output8MiB cap+1 cases refuse whole units.
+Every pinned real source receives unchanged normative before/after tracked-set
+receipts; all subject clones and measured source builds are pruned.
 
-The five-source ledger is calibration/oracles/kong/candidate-search-r1.json,
-with versioned primary runtime/parser/LSP candidates and access gaps. The native
-commands and all authored receipts are linked from NATIVE.md. A legacy full
-module test run attempted docker compose config and failed without starting a
-container. That selection was wrong for this helper: only the focused new
-L1/L2 location tests are verified; the held L3 test is explicitly unverified,
-and no test or golden was weakened. No model decision applies.
+The X-R4 five-source ledger is candidate-search-r1.json. It records native SDK/
+runtime routes, SCIP/LSIF and GitHub searches, language servers, registry parser
+candidates, tracing candidates and access gaps. The old absent-reference-oracle
+premise is withdrawn. Independent yaml.v3 positions remain C; no absence
+ceiling or native position claim is asserted.
 
-T-R10 permits the full correctness replay at start load<=9, nice10, one heavy
-job and free>=20GiB. The driver separately gates three-run timing at load<=6
-and discloses conditions; otherwise throughput and the performance-dependent
-grade remain unmeasured. Azure T-R9 branch9a36618c9 stays frozen for review
-and the controller-provided Linux x64 receipt.
+## Reproduction and limits
 
-The first full replay refused at a nonexistent historical selector, before any
-comparison. Its 1,803 recorded selectors include repeated scratch-root aliases:
-681 distinct native inputs and 1,122 alias replays. The corrected driver strips
-only the two disclosed legacy roots (including their repeated occurrence),
-queries all 1,803 selectors, requires identical projected truth for aliases and
-compares each actual source once. Scope tests reproduce the old failure then
-pass; traversal and unknown scratch roots refuse. No source or entity is removed.
+Commands are in calibration/oracles/kong/NATIVE.md. Script-emitted identities,
+authored controls and the full ordinal population receipt are adjacent JSON.
+The required release-notes check, both merge-debris checks and ADR-011
+TestNoOrgSpecificNames pass. The two new location tests pass with -race. The
+legacy Docker-dependent TestScanDeployedTiers is explicitly unverified on this
+helper: an earlier overbroad selection invoked docker compose config and failed;
+no container ran, and no test or golden was weakened. No Docker, backend,
+global install, paid call or subject task is used by the native replay.
+
+Wave C main6db920e72 is merged. No model decision applies.

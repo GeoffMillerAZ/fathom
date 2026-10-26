@@ -3,7 +3,9 @@
 This page documents the unchanged canonical oracle and historical tier labels.
 The [native written-field prototype](NATIVE.md) withdraws the former
 foreign-key availability premise: the owner's typed reader exposes written
-fields before normalization. Full native measurement remains open. Independent
+fields before normalization. Its complete reconstructed-selector diagnostic
+now finds 4/4 scoped references at A; throughput remains unmeasured, and
+historical aliased counts are not directly comparable (see the linked record). Independent
 yaml.v3 positions stay C in that diagnostic; the canonical range authority
 needs audit. L3 remains held by D19. No Docker/global install is authorized on
 this helper; historical route commands below have not been rerun.

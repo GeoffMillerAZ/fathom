@@ -119,9 +119,9 @@ func TestNativePopulationCapPlusOneRefusesWholeInput(t *testing.T) {
 		t.Fatalf("cap failed: %+v", got)
 	}
 }
-func TestExternalConfigSourceRefusesBeforeAnyAccess(t *testing.T) {
+func TestMissingNativePluginConfigRefusesWithoutAccess(t *testing.T) {
 	got := observe([]byte("_format_version: \"3.0\"\nplugins:\n- name: cors\n  _config: unavailable.json\n"))
-	if got.Status != "refused" || !strings.Contains(got.Error, "external plugin config") || got.HTTPRequests != 0 {
+	if got.Status != "refused" || !strings.Contains(got.Error, "_plugin_config") || got.HTTPRequests != 0 {
 		t.Fatalf("unsafe source admitted: %+v", got)
 	}
 }
@@ -174,5 +174,25 @@ upstreams:
 	got := complete(t, source)
 	if len(got.References) != 1 || got.References[0].Outcome != "literal_host_without_named_upstream" {
 		t.Fatalf("registry ID alias became literal host/name binding: %+v", got.References)
+	}
+}
+
+func TestKonnectRoutingMetadataDoesNotDropGatewayFields(t *testing.T) {
+	plain := "_format_version: \"3.0\"\nservices:\n- name: app\n  host: pool\nupstreams:\n- name: pool\n"
+	metadata := strings.Replace(plain, "services:", "_konnect:\n  runtime_group_name: authored\nservices:", 1)
+	a := complete(t, plain)
+	b := complete(t, metadata)
+	left, _ := json.Marshal(a)
+	right, _ := json.Marshal(b)
+	if !bytes.Equal(left, right) {
+		t.Fatalf("routing metadata changed Gateway fields")
+	}
+}
+
+func TestNativeInlinePluginConfigsRemainOfflineAndKeepPopulation(t *testing.T) {
+	source := "_format_version: \"3.0\"\n_plugin_configs:\n  shared:\n    origins: [\"*\"]\nplugins:\n- name: cors\n  _config: shared\nconsumer_groups:\n- name: group\n  plugins:\n  - name: cors\n    _config: shared\n"
+	got := complete(t, source)
+	if len(got.Nodes) != 2 || got.HTTPRequests != 0 {
+		t.Fatalf("inline native population lost: %+v", got)
 	}
 }

@@ -140,7 +140,7 @@ def measure(args):
     projection_control = json.loads(args.projection_controls.read_text())
     if (sha(args.native.read_bytes()) != identity['binary_sha256'] or
             sha((HERE / 'native/main.go').read_bytes()) != identity['probe_source_sha256'] or
-            control['native_binary_sha256'] != identity['binary_sha256'] or control['race_tests'] != 12 or
+            control['native_binary_sha256'] != identity['binary_sha256'] or control['race_tests'] != 14 or
             len(control['mutations']) != 2 or not all(row['restored_green'] for row in control['mutations']) or
             len(control['cli_cross_checks']) != 3 or control['native_http_requests'] or
             not control['official_cli_network_denied'] or projection_control.get('tests') != 4 or
@@ -233,10 +233,25 @@ def measure(args):
                       machine_class=platform.system() + '/' + platform.machine(),
                       serial_lane_job=True, shared_host_other_activity='uncontrolled')
         timed = timing['start_load_1m'] <= 6
+        timing['attempted_runs'] = 3 if timed else 0
         if timed:
-            run([args.indexbench, 'lang-retime', '-reading', reading, '-runs', '3', '-write', *mappings])
+            if shutil.disk_usage(Path.home()).free < 20 * 1024**3:
+                raise ValueError('disk below floor before timing')
+            timing['max_observed_load_1m'] = timing['start_load_1m']
+            child = subprocess.Popen([str(part) for part in [args.indexbench, 'lang-retime', '-reading', reading, '-runs', '3', '-write', *mappings]])
+            while True:
+                timing['max_observed_load_1m'] = max(timing['max_observed_load_1m'], os.getloadavg()[0])
+                try:
+                    code = child.wait(timeout=1)
+                    break
+                except subprocess.TimeoutExpired:
+                    continue
+            if code:
+                raise subprocess.CalledProcessError(code, child.args)
             timing['end_load_1m'] = os.getloadavg()[0]
-            timed = timing['end_load_1m'] <= 6
+            timing['max_observed_load_1m'] = max(timing['max_observed_load_1m'], timing['end_load_1m'])
+            timing['load_sample_interval_seconds'] = 1
+            timed = timing['max_observed_load_1m'] <= 6
         timing['runs'] = 3 if timed else 0
         timing['status'] = 'measured_median_of_3' if timed else 'unmeasured'
         # Initial correctness-run timings cannot establish a performance grade.

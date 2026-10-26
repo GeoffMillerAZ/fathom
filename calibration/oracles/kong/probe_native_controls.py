@@ -98,7 +98,7 @@ def run(build, deck, deck_receipt, out):
     if code or '--- SKIP:' in log:
         raise ValueError('full native race controls failed or skipped')
     count = log.count('--- PASS:')
-    if count != 12:
+    if count != 14:
         raise ValueError('unexpected native control count')
     mutations = []
     # Mutate only the read-only native field observation, not owner parsing.

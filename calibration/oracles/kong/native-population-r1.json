@@ -1,0 +1,637 @@
+{
+  "kind": "full original-population Kong L1/L2 diagnostic; canonical reading unchanged",
+  "native_binary_sha256": "785276cbd3a0f2609bfd8d0d3fbe3f42e810f65769c62abae44f1ff27ec09316",
+  "cohorts": [
+    {
+      "cohort": 1,
+      "source_sha": "91d6621a3f2d6af45dba40da5bd463f11c7b96a6",
+      "historical_source_sha": "91d6621a3f2d6af45dba40da5bd463f11c7b96a6",
+      "native_queries": 1,
+      "distinct_native_inputs": 1,
+      "alias_replays": 0,
+      "native_entities": 2,
+      "native_written_fields": 1,
+      "native_unnamed_entities": 0,
+      "named_definitions": 2,
+      "semantic_references": 0,
+      "outcomes": {
+        "literal_host_without_named_upstream": 1
+      },
+      "input_manifest_sha256": "e270dcd6359a57db43405a2ec4ab18132c3b462b3888edf2fc7442dfa591c728",
+      "original_tracked_before": {
+        "bytes": 670680,
+        "entries": 26,
+        "files": 26,
+        "gitlinks": 0,
+        "sha256": "b53d153b310bd281f96447e125e80d51743a16a6776ce06478d5db08c966e501",
+        "symlinks": 0,
+        "untracked_entries": 0,
+        "untracked_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normative_recipe_sha256": "de1f63135629703372f6a68361a49d8f85951d30422b8b8b9e048c6f9c9b315e"
+      },
+      "original_tracked_after": {
+        "bytes": 670680,
+        "entries": 26,
+        "files": 26,
+        "gitlinks": 0,
+        "sha256": "b53d153b310bd281f96447e125e80d51743a16a6776ce06478d5db08c966e501",
+        "symlinks": 0,
+        "untracked_entries": 0,
+        "untracked_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normative_recipe_sha256": "de1f63135629703372f6a68361a49d8f85951d30422b8b8b9e048c6f9c9b315e"
+      },
+      "shadow_copy": null
+    },
+    {
+      "cohort": 2,
+      "source_sha": "34b752ef8dbf5befefb45c2abb72f50e289ee952",
+      "historical_source_sha": "f21aff82817c089498af9973722de03bda3ad634",
+      "native_queries": 1358,
+      "distinct_native_inputs": 454,
+      "alias_replays": 904,
+      "native_entities": 810,
+      "native_written_fields": 249,
+      "native_unnamed_entities": 4,
+      "named_definitions": 806,
+      "semantic_references": 34,
+      "outcomes": {
+        "literal_host_without_named_upstream": 213,
+        "owner_registry_resolved": 36
+      },
+      "input_manifest_sha256": "7ab3c409f6a6bb7ef1ed2b28e65876bbb2f5d33a0efbd207b71ea68d1e2a1f97",
+      "original_tracked_before": {
+        "bytes": 4705246,
+        "entries": 848,
+        "files": 848,
+        "gitlinks": 0,
+        "sha256": "d72044d836354ba7eb75e69200edd43a359b5741eaa39953b832a1fc62484e34",
+        "symlinks": 0,
+        "untracked_entries": 0,
+        "untracked_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normative_recipe_sha256": "de1f63135629703372f6a68361a49d8f85951d30422b8b8b9e048c6f9c9b315e"
+      },
+      "original_tracked_after": {
+        "bytes": 4705246,
+        "entries": 848,
+        "files": 848,
+        "gitlinks": 0,
+        "sha256": "d72044d836354ba7eb75e69200edd43a359b5741eaa39953b832a1fc62484e34",
+        "symlinks": 0,
+        "untracked_entries": 0,
+        "untracked_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normative_recipe_sha256": "de1f63135629703372f6a68361a49d8f85951d30422b8b8b9e048c6f9c9b315e"
+      },
+      "shadow_copy": {
+        "yaml_files": 664,
+        "bytes": 1128815,
+        "mapping_sha256": "c481fbf9dea449c3af2045320458491da190927f8249b485714c0c5804374283",
+        "mapping": "YAML-only; every testdata path component becomes td; content unchanged"
+      }
+    },
+    {
+      "cohort": 3,
+      "source_sha": "97182fb17e03ca18430b72df6415e709044068dd",
+      "historical_source_sha": "97182fb17e03ca18430b72df6415e709044068dd",
+      "native_queries": 1,
+      "distinct_native_inputs": 1,
+      "alias_replays": 0,
+      "native_entities": 2,
+      "native_written_fields": 0,
+      "native_unnamed_entities": 0,
+      "named_definitions": 2,
+      "semantic_references": 0,
+      "outcomes": {},
+      "input_manifest_sha256": "2dd3096c2c9d2378dc09c2ba5414a2d3699afc84589bab2107c00f5c8269a4b6",
+      "original_tracked_before": {
+        "bytes": 15136,
+        "entries": 7,
+        "files": 7,
+        "gitlinks": 0,
+        "sha256": "b1cc5fee439396580bb18a8238bc961cc2b8595cd961d0240aa29463c3558b4c",
+        "symlinks": 0,
+        "untracked_entries": 0,
+        "untracked_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normative_recipe_sha256": "de1f63135629703372f6a68361a49d8f85951d30422b8b8b9e048c6f9c9b315e"
+      },
+      "original_tracked_after": {
+        "bytes": 15136,
+        "entries": 7,
+        "files": 7,
+        "gitlinks": 0,
+        "sha256": "b1cc5fee439396580bb18a8238bc961cc2b8595cd961d0240aa29463c3558b4c",
+        "symlinks": 0,
+        "untracked_entries": 0,
+        "untracked_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normative_recipe_sha256": "de1f63135629703372f6a68361a49d8f85951d30422b8b8b9e048c6f9c9b315e"
+      },
+      "shadow_copy": null
+    },
+    {
+      "cohort": 4,
+      "source_sha": "3e9e2aa4a799494cd8824a27867e366745c091fd",
+      "historical_source_sha": "f21aff82817c089498af9973722de03bda3ad634",
+      "native_queries": 437,
+      "distinct_native_inputs": 219,
+      "alias_replays": 218,
+      "native_entities": 473,
+      "native_written_fields": 133,
+      "native_unnamed_entities": 4,
+      "named_definitions": 469,
+      "semantic_references": 3,
+      "outcomes": {
+        "literal_host_without_named_upstream": 130,
+        "owner_registry_resolved": 3
+      },
+      "input_manifest_sha256": "90393f475cc3b3529a61f93c9bc92861d31cb213ea2668bd4452c153ea2e9336",
+      "original_tracked_before": {
+        "bytes": 2540189,
+        "entries": 574,
+        "files": 574,
+        "gitlinks": 0,
+        "sha256": "c81f57547af856f7f777aba460a2078b2c413e953ada4e64cefb6a7817593001",
+        "symlinks": 0,
+        "untracked_entries": 0,
+        "untracked_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normative_recipe_sha256": "de1f63135629703372f6a68361a49d8f85951d30422b8b8b9e048c6f9c9b315e"
+      },
+      "original_tracked_after": {
+        "bytes": 2540189,
+        "entries": 574,
+        "files": 574,
+        "gitlinks": 0,
+        "sha256": "c81f57547af856f7f777aba460a2078b2c413e953ada4e64cefb6a7817593001",
+        "symlinks": 0,
+        "untracked_entries": 0,
+        "untracked_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normative_recipe_sha256": "de1f63135629703372f6a68361a49d8f85951d30422b8b8b9e048c6f9c9b315e"
+      },
+      "shadow_copy": {
+        "yaml_files": 327,
+        "bytes": 279963,
+        "mapping_sha256": "bb9658207470457dda6f874f28ff06a918cbe8a2e1107f925f155c2a905d716d",
+        "mapping": "YAML-only; every testdata path component becomes td; content unchanged"
+      }
+    },
+    {
+      "cohort": 5,
+      "source_sha": "6d3aec7aee37cd46a5e15c56c8096e5408e76dbc",
+      "historical_source_sha": "6d3aec7aee37cd46a5e15c56c8096e5408e76dbc",
+      "native_queries": 2,
+      "distinct_native_inputs": 2,
+      "alias_replays": 0,
+      "native_entities": 16,
+      "native_written_fields": 0,
+      "native_unnamed_entities": 0,
+      "named_definitions": 16,
+      "semantic_references": 0,
+      "outcomes": {},
+      "input_manifest_sha256": "72e52ee8e035c8a63306c2b6c8420a04f1b906bc5ca0785e841344315ed6cc7c",
+      "original_tracked_before": {
+        "bytes": 348464,
+        "entries": 129,
+        "files": 129,
+        "gitlinks": 0,
+        "sha256": "455dc5e63246e1aa2998f017b67c0b1975e011df4260cb97ccafc883b79bdaa3",
+        "symlinks": 0,
+        "untracked_entries": 0,
+        "untracked_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normative_recipe_sha256": "de1f63135629703372f6a68361a49d8f85951d30422b8b8b9e048c6f9c9b315e"
+      },
+      "original_tracked_after": {
+        "bytes": 348464,
+        "entries": 129,
+        "files": 129,
+        "gitlinks": 0,
+        "sha256": "455dc5e63246e1aa2998f017b67c0b1975e011df4260cb97ccafc883b79bdaa3",
+        "symlinks": 0,
+        "untracked_entries": 0,
+        "untracked_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normative_recipe_sha256": "de1f63135629703372f6a68361a49d8f85951d30422b8b8b9e048c6f9c9b315e"
+      },
+      "shadow_copy": null
+    },
+    {
+      "cohort": 6,
+      "source_sha": "07be42fe4a785866c0e02de9295b5111efd45b0b",
+      "historical_source_sha": "07be42fe4a785866c0e02de9295b5111efd45b0b",
+      "native_queries": 1,
+      "distinct_native_inputs": 1,
+      "alias_replays": 0,
+      "native_entities": 9,
+      "native_written_fields": 0,
+      "native_unnamed_entities": 0,
+      "named_definitions": 9,
+      "semantic_references": 0,
+      "outcomes": {},
+      "input_manifest_sha256": "12171262d3d586db836e6e9eb92c853e17ac864ba5b52dbb2692e7013432cfd2",
+      "original_tracked_before": {
+        "bytes": 9988,
+        "entries": 12,
+        "files": 12,
+        "gitlinks": 0,
+        "sha256": "97a4f10496799d14582c382113f03a338241712d982883d414072f1d60c5da40",
+        "symlinks": 0,
+        "untracked_entries": 0,
+        "untracked_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normative_recipe_sha256": "de1f63135629703372f6a68361a49d8f85951d30422b8b8b9e048c6f9c9b315e"
+      },
+      "original_tracked_after": {
+        "bytes": 9988,
+        "entries": 12,
+        "files": 12,
+        "gitlinks": 0,
+        "sha256": "97a4f10496799d14582c382113f03a338241712d982883d414072f1d60c5da40",
+        "symlinks": 0,
+        "untracked_entries": 0,
+        "untracked_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normative_recipe_sha256": "de1f63135629703372f6a68361a49d8f85951d30422b8b8b9e048c6f9c9b315e"
+      },
+      "shadow_copy": null
+    },
+    {
+      "cohort": 7,
+      "source_sha": "577ff95d269e7f350ef0a07da0f68f0cd67f2e89",
+      "historical_source_sha": "577ff95d269e7f350ef0a07da0f68f0cd67f2e89",
+      "native_queries": 1,
+      "distinct_native_inputs": 1,
+      "alias_replays": 0,
+      "native_entities": 14,
+      "native_written_fields": 4,
+      "native_unnamed_entities": 0,
+      "named_definitions": 14,
+      "semantic_references": 0,
+      "outcomes": {
+        "literal_host_without_named_upstream": 4
+      },
+      "input_manifest_sha256": "db970e4c4042a9a772f87e80b1c0d806a27f16b46cca0c26e9ed5913e839c203",
+      "original_tracked_before": {
+        "bytes": 38127,
+        "entries": 23,
+        "files": 19,
+        "gitlinks": 4,
+        "sha256": "670501033df6930e6bec51653ed397b1d492a2b20e333183a6e1870ca8aba264",
+        "symlinks": 0,
+        "untracked_entries": 0,
+        "untracked_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normative_recipe_sha256": "de1f63135629703372f6a68361a49d8f85951d30422b8b8b9e048c6f9c9b315e"
+      },
+      "original_tracked_after": {
+        "bytes": 38127,
+        "entries": 23,
+        "files": 19,
+        "gitlinks": 4,
+        "sha256": "670501033df6930e6bec51653ed397b1d492a2b20e333183a6e1870ca8aba264",
+        "symlinks": 0,
+        "untracked_entries": 0,
+        "untracked_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normative_recipe_sha256": "de1f63135629703372f6a68361a49d8f85951d30422b8b8b9e048c6f9c9b315e"
+      },
+      "shadow_copy": null
+    },
+    {
+      "cohort": 8,
+      "source_sha": "2b662b7bb5ca9f25ee05ce1a5677dc56ae5fffc8",
+      "historical_source_sha": "2b662b7bb5ca9f25ee05ce1a5677dc56ae5fffc8",
+      "native_queries": 1,
+      "distinct_native_inputs": 1,
+      "alias_replays": 0,
+      "native_entities": 6,
+      "native_written_fields": 0,
+      "native_unnamed_entities": 0,
+      "named_definitions": 6,
+      "semantic_references": 0,
+      "outcomes": {},
+      "input_manifest_sha256": "5262196eae27a2bd076d5cd75643f1e35050b3f86508fc6585986afaecf67177",
+      "original_tracked_before": {
+        "bytes": 2114487,
+        "entries": 29,
+        "files": 29,
+        "gitlinks": 0,
+        "sha256": "9c6a3af2313edcc6e50e64ec938050dfc4df2b2a73975e3f257459ca8e5aa1ea",
+        "symlinks": 0,
+        "untracked_entries": 0,
+        "untracked_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normative_recipe_sha256": "de1f63135629703372f6a68361a49d8f85951d30422b8b8b9e048c6f9c9b315e"
+      },
+      "original_tracked_after": {
+        "bytes": 2114487,
+        "entries": 29,
+        "files": 29,
+        "gitlinks": 0,
+        "sha256": "9c6a3af2313edcc6e50e64ec938050dfc4df2b2a73975e3f257459ca8e5aa1ea",
+        "symlinks": 0,
+        "untracked_entries": 0,
+        "untracked_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normative_recipe_sha256": "de1f63135629703372f6a68361a49d8f85951d30422b8b8b9e048c6f9c9b315e"
+      },
+      "shadow_copy": null
+    },
+    {
+      "cohort": 9,
+      "source_sha": "deab41bf1d70f9d183fc8fd3cf6b3090747c6d01",
+      "historical_source_sha": "deab41bf1d70f9d183fc8fd3cf6b3090747c6d01",
+      "native_queries": 1,
+      "distinct_native_inputs": 1,
+      "alias_replays": 0,
+      "native_entities": 8,
+      "native_written_fields": 4,
+      "native_unnamed_entities": 0,
+      "named_definitions": 8,
+      "semantic_references": 0,
+      "outcomes": {
+        "literal_host_without_named_upstream": 4
+      },
+      "input_manifest_sha256": "33b132301f2c45fd8b3494efa0dac5005e4f85eaff6d4ea65b671516e084a351",
+      "original_tracked_before": {
+        "bytes": 30004,
+        "entries": 21,
+        "files": 21,
+        "gitlinks": 0,
+        "sha256": "4715cd780b0de3e9e9bd5a2b5747e10ba3d38e546a22a6bc7157fd9ec7e63a76",
+        "symlinks": 0,
+        "untracked_entries": 0,
+        "untracked_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normative_recipe_sha256": "de1f63135629703372f6a68361a49d8f85951d30422b8b8b9e048c6f9c9b315e"
+      },
+      "original_tracked_after": {
+        "bytes": 30004,
+        "entries": 21,
+        "files": 21,
+        "gitlinks": 0,
+        "sha256": "4715cd780b0de3e9e9bd5a2b5747e10ba3d38e546a22a6bc7157fd9ec7e63a76",
+        "symlinks": 0,
+        "untracked_entries": 0,
+        "untracked_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normative_recipe_sha256": "de1f63135629703372f6a68361a49d8f85951d30422b8b8b9e048c6f9c9b315e"
+      },
+      "shadow_copy": null
+    }
+  ],
+  "refusals": [],
+  "status": "native_population_complete",
+  "canonical_counts_before": {
+    "fathom_defs": 821,
+    "kind_equal": 821,
+    "matched": 821,
+    "oracle_defs": 821,
+    "range_eligible": 821,
+    "range_ok": 821,
+    "ref_fathom": 10,
+    "ref_fathom_in_truth": 10,
+    "ref_truth": 10,
+    "ref_truth_found": 10,
+    "route_fathom": 12,
+    "route_fathom_in_truth": 12,
+    "route_oracle_unresolved_external": 3,
+    "route_oracle_unresolved_ip-literal": 4,
+    "route_oracle_unresolved_undeclared": 6,
+    "route_truth": 12,
+    "route_truth_found": 12,
+    "route_unresolved_external": 3,
+    "route_unresolved_ip-literal": 8,
+    "route_unresolved_undeclared": 2,
+    "xref_fathom": 12,
+    "xref_fathom_in_truth": 12,
+    "xref_truth": 12,
+    "xref_truth_found": 12
+  },
+  "canonical_grades_before": {
+    "L1": "excellent",
+    "L2": "good",
+    "L3": "excellent",
+    "L4": "not-applicable"
+  },
+  "correctness_start_conditions": {
+    "load_1m": 6.19970703125,
+    "nice": 10,
+    "free_gib": 36.81446838378906
+  },
+  "counts": {
+    "fathom_defs": 365,
+    "kind_equal": 365,
+    "matched": 365,
+    "oracle_defs": 365,
+    "range_eligible": 365,
+    "range_ok": 365,
+    "ref_fathom": 4,
+    "ref_fathom_in_truth": 4,
+    "ref_truth": 4,
+    "ref_truth_found": 4
+  },
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "C",
+    "sym_recall": "C"
+  },
+  "grade": "unmeasured: performance gate not established",
+  "timing_conditions": {
+    "start_load_1m": 7.61328125,
+    "nice": 10,
+    "machine_class": "Darwin/arm64",
+    "serial_lane_job": true,
+    "shared_host_other_activity": "uncontrolled",
+    "attempted_runs": 0,
+    "runs": 0,
+    "status": "unmeasured"
+  },
+  "tenancy": {
+    "faults": 0
+  },
+  "per_cohort": [
+    {
+      "sha": "91d6621a3f2d6af45dba40da5bd463f11c7b96a6",
+      "files": 1,
+      "bytes": 271,
+      "counts": {
+        "fathom_defs": 2,
+        "kind_equal": 2,
+        "matched": 2,
+        "oracle_defs": 2,
+        "range_eligible": 2,
+        "range_ok": 2
+      },
+      "families": {
+        "l1": "C"
+      }
+    },
+    {
+      "sha": "34b752ef8dbf5befefb45c2abb72f50e289ee952",
+      "files": 116,
+      "bytes": 79150,
+      "counts": {
+        "fathom_defs": 154,
+        "kind_equal": 154,
+        "matched": 154,
+        "oracle_defs": 154,
+        "range_eligible": 154,
+        "range_ok": 154,
+        "ref_fathom": 2,
+        "ref_fathom_in_truth": 2,
+        "ref_truth": 2,
+        "ref_truth_found": 2
+      },
+      "families": {
+        "l1": "C",
+        "refs": "A"
+      }
+    },
+    {
+      "sha": "97182fb17e03ca18430b72df6415e709044068dd",
+      "files": 1,
+      "bytes": 175,
+      "counts": {
+        "fathom_defs": 2,
+        "kind_equal": 2,
+        "matched": 2,
+        "oracle_defs": 2,
+        "range_eligible": 2,
+        "range_ok": 2
+      },
+      "families": {
+        "l1": "C"
+      }
+    },
+    {
+      "sha": "3e9e2aa4a799494cd8824a27867e366745c091fd",
+      "files": 107,
+      "bytes": 66657,
+      "counts": {
+        "fathom_defs": 154,
+        "kind_equal": 154,
+        "matched": 154,
+        "oracle_defs": 154,
+        "range_eligible": 154,
+        "range_ok": 154,
+        "ref_fathom": 2,
+        "ref_fathom_in_truth": 2,
+        "ref_truth": 2,
+        "ref_truth_found": 2
+      },
+      "families": {
+        "l1": "C",
+        "refs": "A"
+      }
+    },
+    {
+      "sha": "6d3aec7aee37cd46a5e15c56c8096e5408e76dbc",
+      "files": 2,
+      "bytes": 1085,
+      "counts": {
+        "fathom_defs": 16,
+        "kind_equal": 16,
+        "matched": 16,
+        "oracle_defs": 16,
+        "range_eligible": 16,
+        "range_ok": 16
+      },
+      "families": {
+        "l1": "C"
+      }
+    },
+    {
+      "sha": "07be42fe4a785866c0e02de9295b5111efd45b0b",
+      "files": 1,
+      "bytes": 1007,
+      "counts": {
+        "fathom_defs": 9,
+        "kind_equal": 9,
+        "matched": 9,
+        "oracle_defs": 9,
+        "range_eligible": 9,
+        "range_ok": 9
+      },
+      "families": {
+        "l1": "C"
+      }
+    },
+    {
+      "sha": "577ff95d269e7f350ef0a07da0f68f0cd67f2e89",
+      "files": 1,
+      "bytes": 1924,
+      "counts": {
+        "fathom_defs": 14,
+        "kind_equal": 14,
+        "matched": 14,
+        "oracle_defs": 14,
+        "range_eligible": 14,
+        "range_ok": 14
+      },
+      "families": {
+        "l1": "C"
+      }
+    },
+    {
+      "sha": "2b662b7bb5ca9f25ee05ce1a5677dc56ae5fffc8",
+      "files": 1,
+      "bytes": 994,
+      "counts": {
+        "fathom_defs": 6,
+        "kind_equal": 6,
+        "matched": 6,
+        "oracle_defs": 6,
+        "range_eligible": 6,
+        "range_ok": 6
+      },
+      "families": {
+        "l1": "C"
+      }
+    },
+    {
+      "sha": "deab41bf1d70f9d183fc8fd3cf6b3090747c6d01",
+      "files": 1,
+      "bytes": 3020,
+      "counts": {
+        "fathom_defs": 8,
+        "kind_equal": 8,
+        "matched": 8,
+        "oracle_defs": 8,
+        "range_eligible": 8,
+        "range_ok": 8
+      },
+      "families": {
+        "l1": "C"
+      }
+    }
+  ],
+  "scope_exclusion_counts": {
+    "notes": 4
+  },
+  "timing_notes": [
+    "Throughput unmeasured under T-R10; correctness replay only."
+  ],
+  "oracle_sources": [
+    {
+      "path": "native/main.go",
+      "sha256": "8d0db4d22ab67f4df11fcafed30dd0c4d910351485a3661355e94296a5c0efbe"
+    },
+    {
+      "path": "instrument_native.py",
+      "sha256": "4dedc06a8c6609686dceb6f6f380c2e5bec77fdf9a9a16bdd7051792f0c925b3"
+    },
+    {
+      "path": "probe_native_controls.py",
+      "sha256": "fa77bbc5f8395aadc4518e3f528ecec6239cd7676abc851cf41c6ec0d1aec718"
+    },
+    {
+      "path": "grade_native_l2.py",
+      "sha256": "5dde9356fc70aeac46b1197bbf3965366af1a68f56cbc19bb09b680d05825660"
+    },
+    {
+      "path": "locations.go",
+      "sha256": "573563ead40637a158a24aa99c8057981ec07923171b9b3ec1f1481970dec3e0"
+    },
+    {
+      "path": "main.go",
+      "sha256": "662a31a4928c0fe666bf375d88f52e3e7bcdda759e60f2e75aef300bebe4f8f0"
+    }
+  ]
+}

@@ -117,9 +117,6 @@ func observe(source []byte) (r result) {
 				continue
 			}
 			add(node{Kind: "plugin", Name: str(p.Name), ID: str(p.ID), Scope: scope})
-			if p.ConfigSource != nil {
-				unsupported = true
-			}
 			if p.Service != nil {
 				addRef("plugin", str(p.Name), scope, "service", "service", p.Service.Name, p.Service.ID)
 			}
@@ -188,9 +185,6 @@ func observe(source []byte) (r result) {
 				continue
 			}
 			add(node{Kind: "plugin", Name: str(plugin.Name), ID: str(plugin.ID), Scope: label("consumer_group", str(group.Name), str(group.ID))})
-			if plugin.ConfigSource != nil {
-				unsupported = true
-			}
 		}
 	}
 
@@ -208,8 +202,12 @@ func observe(source []byte) (r result) {
 		r.Error = "whole-input native population cap exceeded"
 		return
 	}
-	if unsupported || len(content.ServicePackages) > 0 || content.Konnect != nil {
-		r.Error = "unclassified native typed scope or external plugin config source; whole input refused"
+	// Konnect holds deployment-routing metadata only. The pinned offline
+	// file.Get path does not consume it; preserve the content unchanged and
+	// evaluate its Gateway entity fields normally. Service packages remain
+	// refused until their nested implementation population is classified.
+	if unsupported || len(content.ServicePackages) > 0 {
+		r.Error = "unclassified native typed scope; whole input refused"
 		return
 	}
 	current, err := state.NewKongState()

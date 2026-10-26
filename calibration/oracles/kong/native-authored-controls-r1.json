@@ -1,20 +1,20 @@
 {
   "kind": "authored prototype controls only; no calibration or metric/tier claim",
-  "native_binary_sha256": "30604dedff995ed409dbd32f30a20f0d73a31e30861f0eb427ab1189cfdb5ede",
+  "native_binary_sha256": "785276cbd3a0f2609bfd8d0d3fbe3f42e810f65769c62abae44f1ff27ec09316",
   "official_deck_binary_sha256": "fa560e40045a63987968d18807af38ffe26476aa38b1fd8a6d7d1e1e479e8cc2",
-  "race_tests": 12,
+  "race_tests": 14,
   "skips": 0,
   "mutations": [
     {
       "mutant": "drop raw native Host observation",
       "file": "instrument_native.py",
-      "failure_line": "--- FAIL: TestURLDerivedHostDoesNotBecomeWrittenHost (0.02s)",
+      "failure_line": "--- FAIL: TestURLDerivedHostDoesNotBecomeWrittenHost (0.03s)",
       "restored_green": true
     },
     {
       "mutant": "omit native consumer/group plugin populations",
       "file": "native/main.go",
-      "failure_line": "--- FAIL: TestNativePluginScopesUnderConsumerAndGroupAreEnumerated (0.01s)",
+      "failure_line": "--- FAIL: TestNativePluginScopesUnderConsumerAndGroupAreEnumerated (0.02s)",
       "restored_green": true
     }
   ],

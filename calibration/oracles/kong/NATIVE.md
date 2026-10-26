@@ -23,14 +23,14 @@ keys. A service host obeys the strict literal upstream-name contract: the
 registry's broader ID lookup cannot invent an ID-to-name host alias. This is
 static written-field evidence, not runtime traffic or backend reachability.
 Every native outcome is classified before comparison. Unknown outcomes,
-unsupported typed scopes, external plugin config sources, caps or unmatched
+unsupported typed scopes, missing native config entries, caps or unmatched
 location multisets refuse the whole family; no partial refusal becomes truth.
 The independent C locator only attaches positions to the complete native named
 multiset. It cannot pick, add or remove native recall candidates.
 
 ## Authored proof before calibration
 
-`native-authored-controls-r1.json` records 12 native Go tests under -race,
+`native-authored-controls-r1.json` records 14 native Go tests under -race,
 zero skips, two mutation FAIL-to-GREEN controls, three official CLI renders,
 8 actual Fathom nodes removed as a future-hidden-read tripwire and changed-input
 sensitivity. The tripwire alone proves no independence claim. Discriminating
@@ -54,8 +54,8 @@ normalized to empty JSON families without dropping any nonempty field.
 
 ## Full original-population protocol
 
-`native-protocol-r2.json` freezes all 1,803 historically disclosed native inputs
-from nine cohorts. Existing ingest gates score 568 files and 821 definitions;
+`native-protocol-r2.json` records all 1,803 historical selectors from nine
+cohorts, reconstructed from 681 distinct upstream source paths. The historical record reports 568 scored files and 821 definitions;
 no new exclusion or holdout is introduced. Two historical state-cohort SHA
 fields point at a synthetic source commit. The new replay uses the actual
 shard pins, separately hashes the existing YAML-only testdata-to-td copy mapping
@@ -63,8 +63,12 @@ and preserves source bytes. Every real source clone receives exact normative
 tracked-set manifests before and after. Raw content, inventories, names and
 paths stay private; public receipts contain ordinal counts and hashes only.
 
-The full native population and complete authored controls are prerequisites to
-any new diagnostic grade. The canonical 821/821 definitions, 10/10 references C
+The full native population and complete authored controls precede comparison.
+The completed diagnostic receipt is native-population-r1.json: 231 unique
+scored files, 365/365 definitions C and 4/4 scoped references A. Historical
+copy-tree bytes are unavailable; the synthetic old SHA cannot attest them.
+This explicit upstream-pin reconstruction is not a bit-for-bit replay of that
+old scratch tree. Throughput and the performance-dependent grade are unmeasured. The canonical 821/821 definitions, 10/10 references C
 and 12/12 route pairs A remain unchanged until measured/integrated. L3 work
 still waits for controller D19 authorization; the shared parent selector remains
 held T-R2. This is open measurement work, not an unavailable-oracle ceiling.
@@ -108,16 +112,33 @@ asserted.
 
 | Source searched | Candidate/version/licence | Result |
 |---|---|---|
-| Owner toolchain | decK1.68.0/GDR1.42.4 Apache-2.0 | Typed reader, native state builder, field observer and owner registries work on authored controls; full population pending. |
+| Owner toolchain | decK1.68.0/GDR1.42.4 Apache-2.0 | Typed reader, state builder, raw-field observer and owner registries complete all1,803 reconstructed-selector queries;4/4 scoped references A, throughput unmeasured. |
 | Sourcegraph SCIP/legacy LSIF lists; GitHub `scip-kong` | Lists queried2026-10-26; no producer candidate | No Kong entry; GitHub query zero. Legacy URL redirects; old-version/direct403 gaps and later API rate limit disclosed. |
 | Language-server primary README/registry; dedicated query | YAML Language Server2.0.0 MIT | Schema/symbol services are independent C, not Kong foreign-key evaluation. Dedicated query zero; no global absence claim; not installed. |
 | Package registry and typed parser sources | kongfig1.5.3 MIT; GDR1.42.4 Apache-2.0; yaml.v3 3.0.1 Apache-2.0/MIT | kongfig uses legacy apis/consumers and live Admin API, with optional JS; not installed/executed. Native SDK is stronger; yaml.v3 only C locations. |
 | Runtime configuration parse/tracing source | Kong3.9.1 Apache-2.0 | `kong config parse` invokes declarative parse_file; import is a separate mutating route. Available untried Kong/OpenResty route; no runtime build/install/Docker. Version3.14.0 source attempts404; pinned3.9.1 source read. |
 
-The first full replay refused at a nonexistent historical selector, before any
-comparison. Its 1,803 recorded selectors include repeated scratch-root aliases:
-681 distinct native inputs and 1,122 alias replays. The corrected driver strips
-only the two disclosed legacy roots (including their repeated occurrence),
-queries all 1,803 selectors, requires identical projected truth for aliases and
-compares each actual source once. Scope tests reproduce the old failure then
-pass; traversal and unknown scratch roots refuse. No source or entity is removed.
+## Completed diagnostic and scope limits
+
+The script-emitted native-population-r1.json records zero refusals over all
+1,803 selector queries. Historical scratch-root prefixes map to681 distinct
+upstream paths; aliases are queried and must agree, while comparison counts
+one actual source once. The old synthetic shadow SHA cannot attest old scratch
+bytes. This reconstructed unique-source population is not directly comparable
+to the historical568file/821definition/10reference totals.
+
+The native whole population is1,340 entities,391 written fields and37 semantic
+pairs. Existing ingest gates score231 unique files:365/365 definitions and
+ranges C,4/4 references A,zero faults. Thirty-three native pairs and967 named
+definitions remain outside comparison scope; no full37-pair recall is claimed.
+Timing saw load7.61, so throughput and the performance-dependent grade are
+unmeasured underT-R10. Canonical readings and held L3 work remain unchanged.
+
+Authored regressions reproduce two overbroad guards: Konnect deployment-routing
+metadata does not change offline Gateway fields; native fillPluginConfig
+resolves _config against the in-file PluginConfigs map. Neither requires a
+backend or external file. Missing native config entries still refuse. Service
+packages remain an unclassified whole-input refusal; none refuses in the full
+population. Fourteen native race tests, two mutations and three network-denied
+CLI cross-checks pass. Six Python scope/projection tests and two focused location
+race tests pass; the legacy Docker-dependent L3 test stays unverified.

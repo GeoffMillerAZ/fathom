@@ -4325,7 +4325,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-kong",
     "worker_model": "sonnet",
-    "notes": "px wave; services, routes, upstreams, targets, plugins; route->service, service->upstream references; service hosts and upstream targets as route-host targets (route_ref); Canonical counts unchanged:821 definitions,10 written references C,12 route pairs A. Native route found in decK1.68.0 pinned GDR1.42.4: typed Content before native state lookup can distinguish explicit from nested foreign fields; a raw typed-service observer before URL/Host normalization is required. Full native harness/control/population measurement is open, not an availability ceiling. Existing independent yaml.v3 line/end authority needs audit under P-T1. No Docker or L3 regrade; D19/T-R2 holds remain."
+    "notes": "px wave; services, routes, upstreams, targets, plugins; route->service, service->upstream references; service hosts and upstream targets as route-host targets (route_ref); Canonical counts unchanged:821 definitions,10 written references C,12 route pairs A. Native GDR1.42.4 diagnostic completes1803 recorded selectors reconstructed from681distinct upstream paths:365/365 scoped names/ranges C,4/4 written pairs A,231unique scored files,37native semantic pairs before ingest scope. Historical synthetic shadow identity cannot attest its bytes; old568file/821def/10ref counts are not directly comparable. Raw typed Host/URL observer,14native race controls and3offlineCLI checks pass; throughput/performance grade unmeasured underT-R10. No absent-native-reference ceiling; independent yaml.v3 ranges remain C. No Docker or L3 regrade; D19/T-R2 holds remain."
   },
   {
     "id": "traefik",
