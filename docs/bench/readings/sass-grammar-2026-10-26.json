@@ -1,0 +1,3718 @@
+{
+  "candidate": "bajrangCoder/tree-sitter-sass",
+  "commit": "fb280c41b070657e4ff4d4e5e6eea6cb19efd9b8",
+  "licence": "MIT",
+  "tree_sitter": "0.25.2",
+  "abi": 15,
+  "subjects": [
+    {
+      "name": "jgthms/bulma",
+      "sha": "3e00a8e6d0d0e566d507328f0185ef84854effba",
+      "scope": ".",
+      "files": 91,
+      "bytes": 203393,
+      "files_in_error": 53,
+      "error_rate": 0.5824175824175825,
+      "errors": [
+        {
+          "path": "docs/_sass/old/book.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 19,
+              "end_line": 20
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 19,
+              "end_line": 20
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 66,
+              "end_line": 66
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 68,
+              "end_line": 68
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 104,
+              "end_line": 105
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "docs/_sass/old/bootstrap.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 29,
+              "end_line": 29
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 50,
+              "end_line": 51
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 50,
+              "end_line": 51
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "docs/_sass/old/bsa.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 18,
+              "end_line": 18
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 30,
+              "end_line": 31
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 30,
+              "end_line": 31
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 70,
+              "end_line": 70
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "docs/_sass/old/example.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 1,
+              "end_line": 2
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 1,
+              "end_line": 2
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 2,
+              "end_line": 3
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 2,
+              "end_line": 3
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 28,
+              "end_line": 29
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "docs/_sass/old/focus.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 46,
+              "end_line": 47
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 46,
+              "end_line": 47
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 120,
+              "end_line": 120
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 128,
+              "end_line": 128
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 136,
+              "end_line": 136
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "docs/_sass/old/footer.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 7,
+              "end_line": 8
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 7,
+              "end_line": 8
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 15,
+              "end_line": 17
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 15,
+              "end_line": 17
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 83,
+              "end_line": 84
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "docs/_sass/old/global.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 15,
+              "end_line": 16
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 15,
+              "end_line": 16
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 60,
+              "end_line": 61
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 60,
+              "end_line": 61
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 65,
+              "end_line": 66
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "docs/_sass/old/header.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 16,
+              "end_line": 17
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 16,
+              "end_line": 17
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "docs/_sass/old/highlight.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 11,
+              "end_line": 12
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 11,
+              "end_line": 12
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 16,
+              "end_line": 17
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 16,
+              "end_line": 17
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 44,
+              "end_line": 45
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "docs/_sass/old/index.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 13,
+              "end_line": 14
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 13,
+              "end_line": 14
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 16,
+              "end_line": 17
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 16,
+              "end_line": 17
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 69,
+              "end_line": 70
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "docs/_sass/old/love.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 37,
+              "end_line": 37
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 58,
+              "end_line": 59
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 58,
+              "end_line": 59
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 105,
+              "end_line": 106
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 105,
+              "end_line": 106
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "docs/_sass/old/override.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 3,
+              "end_line": 3
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 9,
+              "end_line": 9
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 15,
+              "end_line": 15
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 20,
+              "end_line": 20
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "docs/_sass/old/patreon.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 5,
+              "end_line": 6
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 5,
+              "end_line": 6
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 31,
+              "end_line": 32
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 31,
+              "end_line": 32
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "docs/_sass/old/specific.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 95,
+              "end_line": 96
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 95,
+              "end_line": 96
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 316,
+              "end_line": 317
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 316,
+              "end_line": 317
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 317,
+              "end_line": 318
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "docs/_sass/old/sponsors.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 50,
+              "end_line": 51
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 50,
+              "end_line": 51
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "docs/_sass/old/twitter.sass",
+          "diagnostics": [
+            {
+              "type": ")",
+              "missing": true,
+              "line": 95,
+              "end_line": 95
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 95,
+              "end_line": 95
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 95,
+              "end_line": 95
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 95,
+              "end_line": 96
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 95,
+              "end_line": 96
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "docs/bulma-dark.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 1,
+              "end_line": 5
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 1,
+              "end_line": 5
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 1,
+              "end_line": 3
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 3,
+              "end_line": 5
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/base/generic.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 45,
+              "end_line": 50
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 45,
+              "end_line": 46
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 46,
+              "end_line": 47
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 47,
+              "end_line": 48
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 48,
+              "end_line": 49
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/base/minireset.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 3,
+              "end_line": 24
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 3,
+              "end_line": 4
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 4,
+              "end_line": 5
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 5,
+              "end_line": 6
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 6,
+              "end_line": 7
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/components/breadcrumb.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 35,
+              "end_line": 35
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 38,
+              "end_line": 39
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 38,
+              "end_line": 39
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 51,
+              "end_line": 52
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 51,
+              "end_line": 52
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/components/dropdown.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 26,
+              "end_line": 27
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 26,
+              "end_line": 27
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 65,
+              "end_line": 66
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 65,
+              "end_line": 66
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/components/level.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 17,
+              "end_line": 18
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 17,
+              "end_line": 18
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 20,
+              "end_line": 20
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 31,
+              "end_line": 31
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 42,
+              "end_line": 43
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/components/media.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 22,
+              "end_line": 23
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 22,
+              "end_line": 23
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 27,
+              "end_line": 27
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 29,
+              "end_line": 29
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 35,
+              "end_line": 35
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/components/message.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 31,
+              "end_line": 31
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 85,
+              "end_line": 85
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 97,
+              "end_line": 98
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 97,
+              "end_line": 98
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/components/modal.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 52,
+              "end_line": 53
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 52,
+              "end_line": 53
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 81,
+              "end_line": 82
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 81,
+              "end_line": 82
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/components/navbar.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 71,
+              "end_line": 71
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 71,
+              "end_line": 72
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 71,
+              "end_line": 72
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 74,
+              "end_line": 74
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 74,
+              "end_line": 75
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/components/pagination.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 50,
+              "end_line": 51
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 50,
+              "end_line": 51
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 58,
+              "end_line": 59
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 58,
+              "end_line": 59
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 65,
+              "end_line": 66
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/components/panel.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 52,
+              "end_line": 53
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 52,
+              "end_line": 53
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 94,
+              "end_line": 94
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 109,
+              "end_line": 110
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 109,
+              "end_line": 110
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/components/tabs.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 126,
+              "end_line": 126
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/elements/box.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 22,
+              "end_line": 23
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 22,
+              "end_line": 23
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/elements/button.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 81,
+              "end_line": 82
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 81,
+              "end_line": 82
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 82,
+              "end_line": 83
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 82,
+              "end_line": 83
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 83,
+              "end_line": 84
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/elements/content.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 28,
+              "end_line": 28
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 31,
+              "end_line": 32
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 31,
+              "end_line": 32
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 32,
+              "end_line": 33
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 32,
+              "end_line": 33
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/elements/image.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 17,
+              "end_line": 18
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 17,
+              "end_line": 18
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 18,
+              "end_line": 19
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 18,
+              "end_line": 19
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 19,
+              "end_line": 20
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/elements/notification.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 21,
+              "end_line": 21
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 26,
+              "end_line": 27
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 26,
+              "end_line": 27
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 31,
+              "end_line": 31
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 35,
+              "end_line": 36
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/elements/table.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 35,
+              "end_line": 36
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 35,
+              "end_line": 36
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 56,
+              "end_line": 57
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 56,
+              "end_line": 57
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 69,
+              "end_line": 70
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/elements/tag.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 114,
+              "end_line": 115
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 114,
+              "end_line": 115
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 130,
+              "end_line": 131
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 130,
+              "end_line": 131
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/elements/title.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 22,
+              "end_line": 24
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 22,
+              "end_line": 23
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 23,
+              "end_line": 24
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 26,
+              "end_line": 27
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 26,
+              "end_line": 27
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/form/checkbox-radio.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 10,
+              "end_line": 11
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 10,
+              "end_line": 11
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 11,
+              "end_line": 12
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 11,
+              "end_line": 12
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 21,
+              "end_line": 21
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/form/file.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 31,
+              "end_line": 32
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 31,
+              "end_line": 32
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 37,
+              "end_line": 38
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 37,
+              "end_line": 38
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 43,
+              "end_line": 44
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/form/input-textarea.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 19,
+              "end_line": 20
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 19,
+              "end_line": 20
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 20,
+              "end_line": 21
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 20,
+              "end_line": 21
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 21,
+              "end_line": 22
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/form/select.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 29,
+              "end_line": 30
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 29,
+              "end_line": 30
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 51,
+              "end_line": 52
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 51,
+              "end_line": 52
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 54,
+              "end_line": 55
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/form/shared.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 41,
+              "end_line": 42
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 41,
+              "end_line": 42
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 44,
+              "end_line": 45
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 44,
+              "end_line": 45
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 45,
+              "end_line": 46
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/form/tools.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 45,
+              "end_line": 46
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 45,
+              "end_line": 46
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 46,
+              "end_line": 47
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 46,
+              "end_line": 47
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 50,
+              "end_line": 51
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/grid/columns.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 11,
+              "end_line": 11
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 14,
+              "end_line": 14
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 17,
+              "end_line": 17
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 20,
+              "end_line": 20
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 23,
+              "end_line": 23
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/grid/tiles.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 27,
+              "end_line": 27
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/helpers/color.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 8,
+              "end_line": 9
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 8,
+              "end_line": 9
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 20,
+              "end_line": 21
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 20,
+              "end_line": 21
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 29,
+              "end_line": 30
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/helpers/flexbox.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 34,
+              "end_line": 34
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/helpers/spacing.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 16,
+              "end_line": 16
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 20,
+              "end_line": 20
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 21,
+              "end_line": 21
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 24,
+              "end_line": 24
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 29,
+              "end_line": 29
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/layout/hero.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 29,
+              "end_line": 29
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 29,
+              "end_line": 30
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 29,
+              "end_line": 30
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 36,
+              "end_line": 51
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 36,
+              "end_line": 39
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/utilities/controls.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 33,
+              "end_line": 34
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 33,
+              "end_line": 34
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 34,
+              "end_line": 35
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 34,
+              "end_line": 35
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 35,
+              "end_line": 36
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/utilities/derived-variables.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 110,
+              "end_line": 110
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 110,
+              "end_line": 110
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 110,
+              "end_line": 110
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 110,
+              "end_line": 110
+            },
+            {
+              "type": ")",
+              "missing": true,
+              "line": 110,
+              "end_line": 110
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/utilities/functions.sass",
+          "diagnostics": [
+            {
+              "type": ")",
+              "missing": true,
+              "line": 43,
+              "end_line": 43
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 43,
+              "end_line": 46
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 43,
+              "end_line": 45
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 45,
+              "end_line": 46
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 90,
+              "end_line": 90
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "sass/utilities/mixins.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 179,
+              "end_line": 179
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 181,
+              "end_line": 181
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 242,
+              "end_line": 243
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 242,
+              "end_line": 243
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 258,
+              "end_line": 259
+            }
+          ],
+          "timeout": false
+        }
+      ]
+    },
+    {
+      "name": "vuetifyjs/vuetify",
+      "sha": "b1cd40459b4a0801c021c0985ccd46fa65b9f579",
+      "scope": "packages/vuetify/src/",
+      "files": 128,
+      "bytes": 216960,
+      "files_in_error": 70,
+      "error_rate": 0.546875,
+      "errors": [
+        {
+          "path": "packages/vuetify/src/components/VAlert/VAlert.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 25,
+              "end_line": 26
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 25,
+              "end_line": 26
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 33,
+              "end_line": 33
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 40,
+              "end_line": 40
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 57,
+              "end_line": 58
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VApp/VApp.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 38,
+              "end_line": 39
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 38,
+              "end_line": 39
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VAppBar/VAppBar.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 48,
+              "end_line": 49
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 48,
+              "end_line": 49
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VAutocomplete/VAutocomplete.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 4,
+              "end_line": 4
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 4,
+              "end_line": 4
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 30,
+              "end_line": 30
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 34,
+              "end_line": 34
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VAvatar/VAvatar.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 14,
+              "end_line": 15
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 14,
+              "end_line": 15
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 15,
+              "end_line": 16
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 15,
+              "end_line": 16
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 16,
+              "end_line": 17
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VBadge/VBadge.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 99,
+              "end_line": 100
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 99,
+              "end_line": 100
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VBanner/VBanner.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 34,
+              "end_line": 38
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 34,
+              "end_line": 34
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 34,
+              "end_line": 36
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 34,
+              "end_line": 35
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 35,
+              "end_line": 36
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VBottomNavigation/VBottomNavigation.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 49,
+              "end_line": 50
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 49,
+              "end_line": 50
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 67,
+              "end_line": 67
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 75,
+              "end_line": 75
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VBtn/VBtn.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 6,
+              "end_line": 7
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 6,
+              "end_line": 7
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 7,
+              "end_line": 8
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 7,
+              "end_line": 8
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 8,
+              "end_line": 9
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VCalendar/VCalendarCategory.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 5,
+              "end_line": 6
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 5,
+              "end_line": 6
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 93,
+              "end_line": 94
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 93,
+              "end_line": 94
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VCalendar/VCalendarDaily.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 22,
+              "end_line": 23
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 22,
+              "end_line": 23
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VCard/VCard.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 8,
+              "end_line": 9
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 8,
+              "end_line": 9
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 27,
+              "end_line": 28
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 27,
+              "end_line": 28
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 47,
+              "end_line": 48
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VChip/VChip.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 6,
+              "end_line": 7
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 6,
+              "end_line": 7
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 7,
+              "end_line": 8
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 7,
+              "end_line": 8
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 8,
+              "end_line": 9
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VColorPicker/VColorPicker.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 29,
+              "end_line": 33
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 31,
+              "end_line": 32
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 32,
+              "end_line": 33
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VDataTable/VDataTableHeader.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 11,
+              "end_line": 12
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 11,
+              "end_line": 12
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VDataTable/VEditDialog.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 4,
+              "end_line": 5
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 4,
+              "end_line": 5
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VDataTable/VSimpleTable.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 33,
+              "end_line": 34
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 33,
+              "end_line": 34
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 49,
+              "end_line": 50
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 49,
+              "end_line": 50
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 65,
+              "end_line": 66
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VDatePicker/VDatePickerHeader.sass",
+          "diagnostics": [
+            {
+              "type": "plain_value",
+              "missing": false,
+              "line": 5,
+              "end_line": 5,
+              "has_error": true,
+              "start_byte": 166,
+              "end_byte": 166
+            }
+          ],
+          "timeout": false,
+          "diagnostic_note": "The smallest node with has_error is zero-width; no visible ERROR or missing child is exposed by the runtime."
+        },
+        {
+          "path": "packages/vuetify/src/components/VDatePicker/VDatePickerTable.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 4,
+              "end_line": 5
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 4,
+              "end_line": 5
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VDialog/VDialog.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 78,
+              "end_line": 79
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 78,
+              "end_line": 79
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 89,
+              "end_line": 90
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 89,
+              "end_line": 90
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VExpansionPanel/VExpansionPanel.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 103,
+              "end_line": 104
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 103,
+              "end_line": 104
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VFooter/VFooter.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 23,
+              "end_line": 24
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 23,
+              "end_line": 24
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VGrid/VGrid.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 17,
+              "end_line": 17
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 26,
+              "end_line": 27
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 26,
+              "end_line": 27
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 34,
+              "end_line": 35
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 34,
+              "end_line": 35
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VGrid/_grid.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 96,
+              "end_line": 97
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 96,
+              "end_line": 97
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VGrid/_mixins.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 49,
+              "end_line": 49
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 51,
+              "end_line": 52
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 51,
+              "end_line": 52
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 65,
+              "end_line": 65
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 71,
+              "end_line": 71
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VIcon/VIcon.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 62,
+              "end_line": 63
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 62,
+              "end_line": 63
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VImg/VImg.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 11,
+              "end_line": 12
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 11,
+              "end_line": 12
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VInput/VInput.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 7,
+              "end_line": 8
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 7,
+              "end_line": 8
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 11,
+              "end_line": 12
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 11,
+              "end_line": 12
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 18,
+              "end_line": 19
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VItemGroup/VItem.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 2,
+              "end_line": 3
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 2,
+              "end_line": 3
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VList/VList.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 6,
+              "end_line": 7
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 6,
+              "end_line": 7
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 7,
+              "end_line": 8
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 7,
+              "end_line": 8
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 8,
+              "end_line": 9
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VList/VListGroup.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 24,
+              "end_line": 25
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 24,
+              "end_line": 25
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 28,
+              "end_line": 28
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 37,
+              "end_line": 38
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 37,
+              "end_line": 38
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VList/VListItem.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 16,
+              "end_line": 17
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 16,
+              "end_line": 17
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 61,
+              "end_line": 62
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 61,
+              "end_line": 62
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 62,
+              "end_line": 63
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VList/_mixins.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 3,
+              "end_line": 4
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 3,
+              "end_line": 4
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 4,
+              "end_line": 5
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 4,
+              "end_line": 5
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 15,
+              "end_line": 16
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VMain/VMain.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 4,
+              "end_line": 5
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 4,
+              "end_line": 5
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VMenu/VMenu.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 31,
+              "end_line": 31
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 47,
+              "end_line": 48
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 47,
+              "end_line": 48
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 51,
+              "end_line": 52
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 51,
+              "end_line": 52
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VNavigationDrawer/VNavigationDrawer.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 107,
+              "end_line": 108
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 107,
+              "end_line": 108
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 124,
+              "end_line": 125
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 124,
+              "end_line": 125
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VOtpInput/VOtpInput.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 32,
+              "end_line": 33
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 32,
+              "end_line": 33
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VOverflowBtn/VOverflowBtn.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 5,
+              "end_line": 5
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 5,
+              "end_line": 5
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 9,
+              "end_line": 9
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 27,
+              "end_line": 27
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 27,
+              "end_line": 27
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VPagination/VPagination.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 32,
+              "end_line": 33
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 32,
+              "end_line": 33
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 33,
+              "end_line": 34
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 33,
+              "end_line": 34
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VPicker/VPicker.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 83,
+              "end_line": 84
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 83,
+              "end_line": 84
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VProgressCircular/VProgressCircular.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 29,
+              "end_line": 30
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 29,
+              "end_line": 30
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 34,
+              "end_line": 35
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 34,
+              "end_line": 35
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VProgressLinear/VProgressLinear.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 128,
+              "end_line": 129
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 128,
+              "end_line": 129
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VRadioGroup/VRadioGroup.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 16,
+              "end_line": 16
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 19,
+              "end_line": 19
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VResponsive/VResponsive.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 14,
+              "end_line": 14
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VSelect/VSelect.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 25,
+              "end_line": 25
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 25,
+              "end_line": 25
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 97,
+              "end_line": 98
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 97,
+              "end_line": 98
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 116,
+              "end_line": 117
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VSkeletonLoader/VSkeletonLoader.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 10,
+              "end_line": 11
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 10,
+              "end_line": 11
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 11,
+              "end_line": 12
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 11,
+              "end_line": 12
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 12,
+              "end_line": 13
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VSlideGroup/VSlideGroup.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 9,
+              "end_line": 10
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 9,
+              "end_line": 10
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 17,
+              "end_line": 18
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 17,
+              "end_line": 18
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 26,
+              "end_line": 27
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VSlider/VSlider.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 6,
+              "end_line": 7
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 6,
+              "end_line": 7
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 7,
+              "end_line": 8
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 7,
+              "end_line": 8
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 216,
+              "end_line": 217
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VSnackbar/VSnackbar.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 76,
+              "end_line": 76
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 139,
+              "end_line": 140
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 139,
+              "end_line": 140
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VSpeedDial/VSpeedDial.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 13,
+              "end_line": 14
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 13,
+              "end_line": 14
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 17,
+              "end_line": 17
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 33,
+              "end_line": 34
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 33,
+              "end_line": 34
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VSwitch/VSwitch.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 19,
+              "end_line": 20
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 19,
+              "end_line": 20
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 85,
+              "end_line": 86
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 85,
+              "end_line": 86
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 98,
+              "end_line": 99
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VTabs/VTabs.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 8,
+              "end_line": 9
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 8,
+              "end_line": 9
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 9,
+              "end_line": 10
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 9,
+              "end_line": 10
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 10,
+              "end_line": 11
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VTextField/VTextField.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 5,
+              "end_line": 5
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 8,
+              "end_line": 8
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 8,
+              "end_line": 8
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 15,
+              "end_line": 15
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 19,
+              "end_line": 19
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VTextField/_mixins.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 2,
+              "end_line": 3
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 2,
+              "end_line": 3
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 3,
+              "end_line": 4
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 3,
+              "end_line": 4
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 4,
+              "end_line": 5
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VTextarea/VTextarea.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 23,
+              "end_line": 24
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 23,
+              "end_line": 24
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 28,
+              "end_line": 29
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 28,
+              "end_line": 29
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 30,
+              "end_line": 31
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VTimePicker/VTimePickerTitle.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 14,
+              "end_line": 15
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 14,
+              "end_line": 15
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 51,
+              "end_line": 52
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 51,
+              "end_line": 52
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VTimeline/VTimeline.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 94,
+              "end_line": 95
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 94,
+              "end_line": 95
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VTimeline/_mixins.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 12,
+              "end_line": 12
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 13,
+              "end_line": 14
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 13,
+              "end_line": 14
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VToolbar/VToolbar.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 26,
+              "end_line": 27
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 26,
+              "end_line": 27
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 71,
+              "end_line": 72
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 71,
+              "end_line": 72
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 130,
+              "end_line": 131
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VTreeview/VTreeview.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 8,
+              "end_line": 9
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 8,
+              "end_line": 9
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 16,
+              "end_line": 16
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 27,
+              "end_line": 28
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 27,
+              "end_line": 28
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VTreeview/_mixins.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 2,
+              "end_line": 3
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 2,
+              "end_line": 3
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 12,
+              "end_line": 13
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 12,
+              "end_line": 13
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/components/VWindow/VWindow.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 16,
+              "end_line": 17
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 16,
+              "end_line": 17
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 45,
+              "end_line": 46
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 45,
+              "end_line": 46
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 64,
+              "end_line": 65
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/styles/components/_selection-controls.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 7,
+              "end_line": 8
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 7,
+              "end_line": 8
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 16,
+              "end_line": 17
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 16,
+              "end_line": 17
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 47,
+              "end_line": 48
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/styles/elements/_global.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 16,
+              "end_line": 17
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 16,
+              "end_line": 17
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/styles/tools/_elevation.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 2,
+              "end_line": 2
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/styles/tools/_functions.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 2,
+              "end_line": 2
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 24,
+              "end_line": 26
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 24,
+              "end_line": 26
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/styles/tools/_radius.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 4,
+              "end_line": 4
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 6,
+              "end_line": 6
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/styles/tools/_states.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 12,
+              "end_line": 13
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 12,
+              "end_line": 13
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/styles/tools/_utilities.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 61,
+              "end_line": 61
+            }
+          ],
+          "timeout": false
+        },
+        {
+          "path": "packages/vuetify/src/styles/utilities/_screenreaders.sass",
+          "diagnostics": [
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 3,
+              "end_line": 4
+            },
+            {
+              "type": "ERROR",
+              "missing": false,
+              "line": 3,
+              "end_line": 4
+            }
+          ],
+          "timeout": false
+        }
+      ]
+    }
+  ],
+  "files": 219,
+  "files_in_error": 123,
+  "error_rate": 0.5616438356164384,
+  "gate": "REFUSED",
+  "scope_note": "Native candidate parse gate only, no production WASM or support level claimed.",
+  "archive_sha256": "b6cd6538805e1543c327da54e25eeb3ef0b58cd728c8e48a342c2b416c42854b",
+  "registered_at": "13234fe9f",
+  "reference_crosscheck": {
+    "tool": "sass-parser",
+    "version": "0.4.57",
+    "results": [
+      {
+        "name": "jgthms/bulma",
+        "files": 91,
+        "reference_accepted": 89,
+        "reference_rejected": [
+          {
+            "path": "docs/_sass/old/focus.sass",
+            "message": "Error: expected selector."
+          },
+          {
+            "path": "docs/_sass/old/love.sass",
+            "message": "Error: expected selector."
+          }
+        ],
+        "grammar_errors_on_reference_accepted": 51
+      },
+      {
+        "name": "vuetifyjs/vuetify",
+        "files": 128,
+        "reference_accepted": 124,
+        "reference_rejected": [
+          {
+            "path": "packages/vuetify/src/components/VDialog/VDialog.sass",
+            "message": "Error: expected selector."
+          },
+          {
+            "path": "packages/vuetify/src/components/VProgressCircular/VProgressCircular.sass",
+            "message": "Error: expected selector."
+          },
+          {
+            "path": "packages/vuetify/src/components/VProgressLinear/VProgressLinear.sass",
+            "message": "Error: expected selector."
+          },
+          {
+            "path": "packages/vuetify/src/components/VSkeletonLoader/VSkeletonLoader.sass",
+            "message": "Error: expected selector."
+          }
+        ],
+        "grammar_errors_on_reference_accepted": 66
+      }
+    ]
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "pagila": {
+    "command_fallback_warnings": 194,
+    "pair_count": 0,
+    "pairs_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "sqlglot_version": "27.8.0"
+  },
+  "publication": "sql-aggregate-v1",
+  "raw_json_sha256": "49fb97162780771f1577386220adb35d24356260c750518ef4ef560f6de36fba",
+  "sqitch": {
+    "command_fallback_warnings": 0,
+    "pair_count": 14,
+    "pairs_sha256": "350167e12cdcf3daa53dd6fdab3b62ff85cf4cb80e8f270d4158d6ce41322171",
+    "sqlglot_version": "27.8.0"
+  },
+  "sqlfluff": {
+    "contract": "syntax parse tree, not native evaluation or resolved FK catalog",
+    "version": "4.4.0",
+    "violation_codes": [
+      "PRS"
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+id: conftest-holdout-native
+language: Conftest configuration
+# This subject was exposed in the draft provisional holdout; never canonical.
+repos:
+  - name: open-policy-agent/conftest
+    url: https://github.com/open-policy-agent/conftest.git
+    ref: master
+    sha: 744c5637a97d60d9cbc06ff41881749c2dc766b9
+    licence: Apache-2.0
+    idioms: ["one real conftest.toml with policy and namespace keys", "native CLI config loader membership; no policy execution", "tiny single-line public scope, multiline ranges not proven"]
