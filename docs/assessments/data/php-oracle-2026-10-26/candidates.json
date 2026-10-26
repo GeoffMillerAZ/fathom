@@ -1,0 +1,379 @@
+{
+  "benchmark_product_revision": "51254ab4f289879699d46a75e1e6fc07057a46e8",
+  "canonical_reading_changed": false,
+  "measurement_phase": "supplementary before wave-A integration; canonical support unchanged",
+  "ruling": "OL-R9",
+  "runtime_collection_limitations": "Attribution matches the fail-closed collector, but completion used a weaker footer substring check and lacked subsequent line/depth/count/total caps. Discarded raw traces were not revalidated under the later collector.",
+  "runtime_collector_revision": "996bc6635",
+  "runtime_dependencies": "Resolved package versions and lock snapshots were discarded before publication; historical runtime rows cannot be pinned to dependency versions after the fact. Future collection must preserve sanitized version/lock provenance.",
+  "runtime_environments": {
+    "PHP 8.4.23": {
+      "guzzle": {
+        "attested_sites": 2552,
+        "coverage": 0.8002508623392913,
+        "driver": "original vendor/bin/phpunit",
+        "driver_exit": 2,
+        "driver_test_counts": {
+          "assertions": 2273,
+          "completed_summary": true,
+          "errors": 20,
+          "skipped": 9,
+          "tests": 566
+        },
+        "executed_call_recall": 1,
+        "executed_call_truth": 2099,
+        "executed_call_truth_found": 2099,
+        "files": 74,
+        "literal_sites": 3189,
+        "native_counts": {
+          "ambiguous_nonliteral_or_magic_source": 26847,
+          "ambiguous_same_line_entries": 5030,
+          "native_entries": 880629,
+          "native_entries_under_subject_root_including_vendor": 734115,
+          "no_named_native_caller": 325,
+          "unpaired_native_entries": 625165
+        },
+        "native_oracle_sha256": "c6d420cd69bc3b7bf21a3d889d19e6fc66d371f03cd69501f6dd9348deb81e49",
+        "native_pairs": 2099,
+        "nonliteral_policy": "unattested when a nonliteral call shares the source line; magic dispatch is not attributed from line-only traces",
+        "pair_source": "Xdebug target + smallest enclosing named PHP Reflection range; never syntax pairs filtered by answers",
+        "php": "8.4.23",
+        "population_sha256": "9ef8f0935f4fc24b2537c02e3ef78bb93aa129c9a0f9b97db8511bfdd2be3a84",
+        "precision": "unmeasured: the diagnostic harness also counts unexecuted predictions",
+        "same_line_duplicate_policy": "unattested when multiple literal sites share file/line/name",
+        "site_population_source": "php-parser syntax, denominator/scope only",
+        "tier": "A on executed population only",
+        "trace_bytes": 191243345,
+        "trace_cap_mib": 2048,
+        "trace_complete": true,
+        "trace_format": 1,
+        "unattested_sites": 637,
+        "xdebug": "3.5.3"
+      },
+      "monolog": {
+        "attested_sites": 4625,
+        "coverage": 0.7749664879356568,
+        "driver": "original vendor/bin/phpunit",
+        "driver_exit": 1,
+        "driver_test_counts": {
+          "assertions": 2082,
+          "completed_summary": true,
+          "deprecations": 9,
+          "failures": 1,
+          "phpunit_deprecations": 220,
+          "skipped": 26,
+          "tests": 1153
+        },
+        "executed_call_recall": 0.9986,
+        "executed_call_truth": 3569,
+        "executed_call_truth_found": 3564,
+        "files": 217,
+        "literal_sites": 5968,
+        "native_counts": {
+          "ambiguous_native_caller": 1180,
+          "ambiguous_nonliteral_or_magic_source": 239574,
+          "ambiguous_same_line_entries": 710,
+          "native_entries": 6198030,
+          "native_entries_under_subject_root_including_vendor": 2475274,
+          "no_named_native_caller": 725,
+          "unpaired_native_entries": 1766004,
+          "unpaired_native_parent": 58
+        },
+        "native_oracle_sha256": "5740d2a0fdb02c3c77348607615830ecb3f1f233ff3f993eebfff8b2b6004099",
+        "native_pairs": 3569,
+        "nonliteral_policy": "unattested when a nonliteral call shares the source line; magic dispatch is not attributed from line-only traces",
+        "pair_source": "Xdebug target + smallest enclosing named PHP Reflection range; never syntax pairs filtered by answers",
+        "php": "8.4.23",
+        "population_sha256": "3a95941d92c30e121a5a15b893ded221288044a721ed253915a54417c8397720",
+        "precision": "unmeasured: the diagnostic harness also counts unexecuted predictions",
+        "same_line_duplicate_policy": "unattested when multiple literal sites share file/line/name",
+        "site_population_source": "php-parser syntax, denominator/scope only",
+        "tier": "A on executed population only",
+        "trace_bytes": 1352443405,
+        "trace_cap_mib": 2048,
+        "trace_complete": true,
+        "trace_format": 1,
+        "unattested_sites": 1343,
+        "xdebug": "3.5.3"
+      }
+    },
+    "PHP 8.5.8": {
+      "guzzle": {
+        "attested_sites": 2472,
+        "coverage": 0.7751646284101599,
+        "driver": "original vendor/bin/phpunit",
+        "driver_exit": 2,
+        "driver_test_counts": {
+          "assertions": 2231,
+          "completed_summary": true,
+          "errors": 111,
+          "skipped": 9,
+          "tests": 566
+        },
+        "executed_call_recall": 1,
+        "executed_call_truth": 2065,
+        "executed_call_truth_found": 2065,
+        "files": 74,
+        "literal_sites": 3189,
+        "native_counts": {
+          "ambiguous_nonliteral_or_magic_source": 27653,
+          "ambiguous_same_line_entries": 5026,
+          "native_entries": 899168,
+          "native_entries_under_subject_root_including_vendor": 752018,
+          "no_named_native_caller": 325,
+          "unpaired_native_entries": 649299
+        },
+        "native_oracle_sha256": "cbbf10ecdd5901e36b4c63b87ade13bd546c67f2ac9611f77cb5d914afbe9657",
+        "native_pairs": 2065,
+        "nonliteral_policy": "unattested when a nonliteral call shares the source line; magic dispatch is not attributed from line-only traces",
+        "pair_source": "Xdebug target + smallest enclosing named PHP Reflection range; never syntax pairs filtered by answers",
+        "php": "8.5.8",
+        "population_sha256": "9ef8f0935f4fc24b2537c02e3ef78bb93aa129c9a0f9b97db8511bfdd2be3a84",
+        "precision": "unmeasured: the diagnostic harness also counts unexecuted predictions",
+        "same_line_duplicate_policy": "unattested when multiple literal sites share file/line/name",
+        "site_population_source": "php-parser syntax, denominator/scope only",
+        "tier": "A on executed population only",
+        "trace_bytes": 195154983,
+        "trace_cap_mib": 2048,
+        "trace_complete": true,
+        "trace_format": 1,
+        "unattested_sites": 717,
+        "xdebug": "3.5.3"
+      },
+      "monolog": {
+        "attested_sites": 4615,
+        "coverage": 0.7732908847184986,
+        "driver": "original vendor/bin/phpunit",
+        "driver_exit": 2,
+        "driver_test_counts": {
+          "assertions": 2079,
+          "completed_summary": true,
+          "deprecations": 11,
+          "errors": 2,
+          "failures": 1,
+          "phpunit_deprecations": 220,
+          "skipped": 26,
+          "tests": 1153
+        },
+        "executed_call_recall": 0.9986,
+        "executed_call_truth": 3563,
+        "executed_call_truth_found": 3558,
+        "files": 217,
+        "literal_sites": 5968,
+        "native_counts": {
+          "ambiguous_native_caller": 1172,
+          "ambiguous_nonliteral_or_magic_source": 239600,
+          "ambiguous_same_line_entries": 710,
+          "native_entries": 6207175,
+          "native_entries_under_subject_root_including_vendor": 2478235,
+          "no_named_native_caller": 725,
+          "unpaired_native_entries": 1766757,
+          "unpaired_native_parent": 55
+        },
+        "native_oracle_sha256": "77cc7bc86cb1fd3ae0add904e77c0ce1dbdac432911347b11169180984d9a64d",
+        "native_pairs": 3563,
+        "nonliteral_policy": "unattested when a nonliteral call shares the source line; magic dispatch is not attributed from line-only traces",
+        "pair_source": "Xdebug target + smallest enclosing named PHP Reflection range; never syntax pairs filtered by answers",
+        "php": "8.5.8",
+        "population_sha256": "3a95941d92c30e121a5a15b893ded221288044a721ed253915a54417c8397720",
+        "precision": "unmeasured: the diagnostic harness also counts unexecuted predictions",
+        "same_line_duplicate_policy": "unattested when multiple literal sites share file/line/name",
+        "site_population_source": "php-parser syntax, denominator/scope only",
+        "tier": "A on executed population only",
+        "trace_bytes": 1352493529,
+        "trace_cap_mib": 2048,
+        "trace_complete": true,
+        "trace_format": 1,
+        "unattested_sites": 1353,
+        "xdebug": "3.5.3"
+      }
+    }
+  },
+  "runtime_oracle_code_sha256": {
+    "literal_sites.php": "1bd2ed6e3ac8b8758e059ac0a81fa8cd44ac464d6ee456f36e50200efc0cf979",
+    "reflect_shutdown.php": "f8f7b96f4f5a20b1bcd95b24493baa6edc970a3b8e3c6fd25bab7649046bbf69",
+    "trace.py": "e0d0398a3538638c032e16b35df2bc998845627022da1715715fe3465a0dc0b5"
+  },
+  "scip_candidates": {
+    "callsite-fork": {
+      "revision": "40288605f28ea0111b42f81a8760ad5b79b8c3a0",
+      "subjects": {
+        "guzzle": {
+          "full_scope_audit": {
+            "documents_sha256": "34055d079227a9d8a5ce5e549d59e6c7b96d171e39fb3d8f3140540bffdda1e8",
+            "full_unattested_fraction": 0.455464799688837,
+            "full_unattested_pairs": 1171,
+            "harness_scope": "native SCIP documents only; full scope audit additionally counts absent documents",
+            "matched_fraction_lower_bound_with_unattested_as_misses": 0.544535200311163,
+            "scip_documents": 57,
+            "syntax_population_source": "complete pinned php-parser dump; denominator only, never native pair truth",
+            "within_index_blind_pairs": 119,
+            "written_pairs": 2571,
+            "written_pairs_in_unindexed_files": 1052
+          },
+          "scip_sha256": "98407a99ebd02f5d0306de07e6debe4a275ef80544a17ff21e58aa1fe4399901",
+          "within_index": {
+            "call_precision": 1,
+            "call_recall": 1
+          },
+          "within_index_counts": {
+            "call_fathom_in_truth": 1400,
+            "call_truth": 1400,
+            "call_truth_found": 1400,
+            "calls_oracle_blind": 119
+          }
+        },
+        "monolog": {
+          "full_scope_audit": {
+            "documents_sha256": "87d1a1107110d6135e5dea35d767223151a6ac99f7fd6cc4ef8a277760829c63",
+            "full_unattested_fraction": 0.041465555068012284,
+            "full_unattested_pairs": 189,
+            "harness_scope": "native SCIP documents only; full scope audit additionally counts absent documents",
+            "matched_fraction_lower_bound_with_unattested_as_misses": 0.951952610794208,
+            "scip_documents": 214,
+            "syntax_population_source": "complete pinned php-parser dump; denominator only, never native pair truth",
+            "within_index_blind_pairs": 189,
+            "written_pairs": 4558,
+            "written_pairs_in_unindexed_files": 0
+          },
+          "scip_sha256": "8a9e8a8fcfff4a050cabfda9b10c4b5155cf8d42da6936fab64793981ae0e392",
+          "within_index": {
+            "call_precision": 0.9931,
+            "call_recall": 1
+          },
+          "within_index_counts": {
+            "call_fathom_in_truth": 4339,
+            "call_truth": 4339,
+            "call_truth_found": 4339,
+            "calls_oracle_blind": 189
+          }
+        }
+      },
+      "tier": "C"
+    },
+    "mago-indexer": {
+      "revision": "04b34f724c9464256891345153b5c2c0a6c23bc8",
+      "subjects": {
+        "guzzle": {
+          "full_scope_audit": {
+            "documents_sha256": "24a10ce8babc09434e2e37b19b40ed0e6710c74b68ec3849221af35fd9662980",
+            "full_unattested_fraction": 0.2322053675612602,
+            "full_unattested_pairs": 597,
+            "harness_scope": "native SCIP documents only; full scope audit additionally counts absent documents",
+            "matched_fraction_lower_bound_with_unattested_as_misses": 0.76390509529366,
+            "scip_documents": 73,
+            "syntax_population_source": "complete pinned php-parser dump; denominator only, never native pair truth",
+            "within_index_blind_pairs": 597,
+            "written_pairs": 2571,
+            "written_pairs_in_unindexed_files": 0
+          },
+          "scip_sha256": "bf7fb845ad89f4d41edad01aaa87835c3d7cb97bfef972ef912e7d037759be50",
+          "within_index": {
+            "call_precision": 0.7639,
+            "call_recall": 0.999
+          },
+          "within_index_counts": {
+            "call_fathom_in_truth": 1964,
+            "call_truth": 1966,
+            "call_truth_found": 1964,
+            "calls_oracle_blind": 597
+          }
+        },
+        "monolog": {
+          "full_scope_audit": {
+            "documents_sha256": "87d1a1107110d6135e5dea35d767223151a6ac99f7fd6cc4ef8a277760829c63",
+            "full_unattested_fraction": 0.1564282580078982,
+            "full_unattested_pairs": 713,
+            "harness_scope": "native SCIP documents only; full scope audit additionally counts absent documents",
+            "matched_fraction_lower_bound_with_unattested_as_misses": 0.8157086441421676,
+            "scip_documents": 214,
+            "syntax_population_source": "complete pinned php-parser dump; denominator only, never native pair truth",
+            "within_index_blind_pairs": 713,
+            "written_pairs": 4558,
+            "written_pairs_in_unindexed_files": 0
+          },
+          "scip_sha256": "93931531922d93b270442c0b0b4b740f8aaa9c61eaa59f2cd8221fdfe5e006e1",
+          "within_index": {
+            "call_precision": 0.8157,
+            "call_recall": 1
+          },
+          "within_index_counts": {
+            "call_fathom_in_truth": 3718,
+            "call_truth": 3718,
+            "call_truth_found": 3718,
+            "calls_oracle_blind": 713
+          }
+        }
+      },
+      "tier": "unadmitted released candidate; even A exceeds the full-scope blind cap"
+    },
+    "php84-fork": {
+      "revision": "9af23514a898dd63a8123b02b567711fbef5dd99",
+      "subjects": {
+        "guzzle": {
+          "full_scope_audit": {
+            "documents_sha256": "34055d079227a9d8a5ce5e549d59e6c7b96d171e39fb3d8f3140540bffdda1e8",
+            "full_unattested_fraction": 0.646052119797744,
+            "full_unattested_pairs": 1661,
+            "harness_scope": "native SCIP documents only; full scope audit additionally counts absent documents",
+            "matched_fraction_lower_bound_with_unattested_as_misses": 0.35316997277323997,
+            "scip_documents": 57,
+            "syntax_population_source": "complete pinned php-parser dump; denominator only, never native pair truth",
+            "within_index_blind_pairs": 609,
+            "written_pairs": 2571,
+            "written_pairs_in_unindexed_files": 1052
+          },
+          "scip_sha256": "89de576a19e7e602ddceb2242ca041801518d5d3da6857c82fcb4dc390f80906",
+          "within_index": {
+            "call_precision": 0.5978,
+            "call_recall": 1
+          },
+          "within_index_counts": {
+            "call_fathom_in_truth": 908,
+            "call_truth": 908,
+            "call_truth_found": 908,
+            "calls_oracle_blind": 609
+          }
+        },
+        "monolog": {
+          "full_scope_audit": {
+            "documents_sha256": "87d1a1107110d6135e5dea35d767223151a6ac99f7fd6cc4ef8a277760829c63",
+            "full_unattested_fraction": 0.26941641070645017,
+            "full_unattested_pairs": 1228,
+            "harness_scope": "native SCIP documents only; full scope audit additionally counts absent documents",
+            "matched_fraction_lower_bound_with_unattested_as_misses": 0.72400175515577,
+            "scip_documents": 214,
+            "syntax_population_source": "complete pinned php-parser dump; denominator only, never native pair truth",
+            "within_index_blind_pairs": 1228,
+            "written_pairs": 4558,
+            "written_pairs_in_unindexed_files": 0
+          },
+          "scip_sha256": "9a6ca49612bff7bb603b168e9645a68e70f8e6238bf5f0ba42612512a617ae6a",
+          "within_index": {
+            "call_precision": 0.724,
+            "call_recall": 1
+          },
+          "within_index_counts": {
+            "call_fathom_in_truth": 3300,
+            "call_truth": 3300,
+            "call_truth_found": 3300,
+            "calls_oracle_blind": 1228
+          }
+        }
+      },
+      "tier": "C"
+    }
+  },
+  "subjects": {
+    "guzzle": {
+      "original_php_files": 74,
+      "repository": "guzzle/guzzle",
+      "revision": "7b2f29fe81dc4da0ca0ea7d42107a0845946ea77"
+    },
+    "monolog": {
+      "original_php_files": 217,
+      "repository": "Seldaek/monolog",
+      "revision": "10d85740180ecba7896c87e06a166e0c95a0e3b6"
+    }
+  }
+}

@@ -7,6 +7,7 @@ are `organization--repository`. Never point outputs at tracked source.
 
 | Instrument | Measures | Command |
 |---|---|---|
+| `verify_apps.py` | Fifteen application-screen receipts, complete archive membership/hashes, local-identity checks, D26 product callers and kept manifest hashes | `python3 calibration/bench/tools/verify_apps.py` |
 | `verify.py --archive` / `verify_logs.py` | Content hashes and complete membership of the thirty round-1 timed logs | `python3 calibration/bench/tools/verify.py --archive docs/bench/readings/bench-prep/raw/bench-subjects-r1-logs.tar.gz` |
 | `prepare.py` | Full clone, immutable pin and public repository metadata; historical acquisition instrument | `python3 calibration/bench/tools/prepare.py` |
 | `static.py` | Tracked primary-language lines, licence blob hashes, lock hashes and test/non-test history co-changes; fix messages use word boundaries | `python3 calibration/bench/tools/static.py` |
@@ -49,3 +50,17 @@ wrappers mount the subject read-only and copy tracked source plus Git metadata
 into `/work/source`; dependencies and all build output live under `/work`.
 `issue_links.py` honors `BENCH_SUBJECTS`. C5 uses committer dates for filtering
 and recording, and the regex `\b(fix(es|ed)?|bugs?|regressions?)\b`.
+
+Application round 1 uses the resumed `remeasure.py` edits: extraction uses
+`--touch --no-same-owner`, and each container shell starts with `set -e`.
+After measurement, compound-command grouping was corrected so a failed staging
+or working-directory check cannot be hidden by later semicolon commands.
+`python3 calibration/bench/tools/test_remeasure.py` proves both failure paths;
+the archive preserves the executed wrapper as `preparation/remeasure-executed.py`
+and hashes the later correction separately. Kept manifests use the corrected
+grouping with the measured setup/test bodies.
+The archive records unsuccessful preparations
+and every completed phase. Failed setup or warm-up does not establish three
+timed trials. TypeScript's final application receipts use `c6_ts_project.cjs`
+with the subject configuration; unresolved PnP/dependency declarations remain
+a limitation, not evidence of a complete runtime graph. C4 stays unrun.

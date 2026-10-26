@@ -19,6 +19,17 @@ IMAGES = {
     'Go': 'golang@sha256:972b4110ba0f47539a975c31e52c64765e1ff19f2d74469ae4a595c6676e80a5',
 }
 
+def shell_command(language, stage, command):
+    # Keep all caller-supplied semicolon commands inside the last AND operand.
+    # Otherwise a staging/cd failure can skip one export and still run setup.
+    if stage == 'setup':
+        command = '(test -d /work/source/.git || ( mkdir -p /work/source && git -C /subject ls-files -z > /work/tracked-files && tar -C /subject --null -T /work/tracked-files -cf /work/source.tar && tar --touch --no-same-owner -C /work/source -xf /work/source.tar && cp -R /subject/.git /work/source/.git )) && cd /work/source && ( ' + command + ' )'
+    elif stage != 'network-probe':
+        command = 'cd /work/source && ( ' + command + ' )'
+    if language == 'TypeScript':
+        command = 'corepack enable && ( ' + command + ' )'
+    return 'set -e; ' + command
+
 def measure(config, job, trials_only=False):
     name = config['id']
     source = Path(config['source']).resolve()
@@ -45,12 +56,7 @@ def measure(config, job, trials_only=False):
                      '-e', 'npm_config_offline=true', '-e', 'PNPM_CONFIG_OFFLINE=true',
                      '-e', 'pnpm_config_verify_deps_before_run=warn', '-e', 'COREPACK_ENABLE_NETWORK=0',
                      '-e', 'HTTP_PROXY=', '-e', 'HTTPS_PROXY=', '-e', 'ALL_PROXY=']
-        if stage == 'setup':
-            command = '(test -d /work/source/.git || ( mkdir -p /work/source && git -C /subject ls-files -z > /work/tracked-files && tar -C /subject --null -T /work/tracked-files -cf /work/source.tar && tar -C /work/source -xf /work/source.tar && cp -R /subject/.git /work/source/.git )) && cd /work/source && ' + command
-        elif stage != 'network-probe':
-            command = 'cd /work/source && ' + command
-        if config['language'] == 'TypeScript':
-            command = 'corepack enable && ' + command
+        command = shell_command(config['language'], stage, command)
         argv += [config.get('image', IMAGES[config['language']]), 'sh', '-c', command]
         lease = (job / 'offline-trials.lock').open('w')
         if offline:

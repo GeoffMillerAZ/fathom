@@ -1,0 +1,46 @@
+[
+  {
+    "case": "unterminated-layout",
+    "bytes": 8199,
+    "exit": 0,
+    "wall_ms": 282,
+    "stdout_sha256": "3c551f5fb84f9b3fd4f0beec40ce28631cbe85db546c113d1aaa99310807f02c",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bounded": true,
+    "parse_refusal": false,
+    "wasm_trap": false
+  },
+  {
+    "case": "deep-expression",
+    "bytes": 8222,
+    "exit": 0,
+    "wall_ms": 277,
+    "stdout_sha256": "d646c1c2aa1087d5db92fafe80b85943123b9c594f6261480c6021bad17f0800",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bounded": true,
+    "parse_refusal": false,
+    "wasm_trap": false
+  },
+  {
+    "case": "array-prefix-flood",
+    "bytes": 360488,
+    "exit": 0,
+    "wall_ms": 800,
+    "stdout_sha256": "d82ffb49d9d254fa63b450e756a84bc22f10601537dfe9b5a71f48209c393913",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bounded": true,
+    "parse_refusal": false,
+    "wasm_trap": false
+  },
+  {
+    "case": "two-mib-token-flood",
+    "bytes": 2097152,
+    "exit": 1,
+    "wall_ms": 488,
+    "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stderr_sha256": "ddcaced9b31772e785729fa1e3306e036699b3f7bd4897febe7f74771bc9c2c9",
+    "bounded": true,
+    "parse_refusal": false,
+    "wasm_trap": true
+  }
+]

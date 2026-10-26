@@ -1,0 +1,36 @@
+{
+  "version": "nginx/1.31.6",
+  "build_inputs": [
+    {
+      "name": "nginx-1.31.6",
+      "url": "https://nginx.org/download/nginx-1.31.6.tar.gz",
+      "sha256": "974ed5298a5e398e008704ed5db284e655fc270c596493dbccada452448fc9f1",
+      "bytes": 1373124,
+      "license": "BSD-2-Clause"
+    },
+    {
+      "name": "openssl-3.6.2",
+      "url": "https://github.com/openssl/openssl/releases/download/openssl-3.6.2/openssl-3.6.2.tar.gz",
+      "sha256": "aaf51a1fe064384f811daeaeb4ec4dce7340ec8bd893027eee676af31e83a04f",
+      "bytes": 54913556,
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "pcre2-10.47",
+      "url": "https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.47/pcre2-10.47.tar.gz",
+      "sha256": "c08ae2388ef333e8403e670ad70c0a11f1eed021fd88308d7e02f596fcd9dc16",
+      "bytes": 2792969,
+      "license": "BSD-3-Clause"
+    }
+  ],
+  "population": "Every original canonical scoped definition/reference input, with no new file exclusion. Current reading has 71 definitions and one local upstream reference. New measurement is L1/L2 only; no L3 regrade before D19.",
+  "rules": [
+    "Require clean pinned subjects and exact native version/binary digest.",
+    "Load each original accepted input through the existing native -T scope checker, with existing path/log isolation only. No server, HTTP request, backend workload or Docker runs.",
+    "A local upstream reference is attested only if the unchanged profile passes and renaming only its target upstream declaration causes native -t/-T rejection that names that original upstream and the queried source directive location.",
+    "Do not mask other references or declarations to move an error to the queried location. If another error wins or the name resolves externally, fail the native family rather than substituting an independent answer.",
+    "Return A reference output only when every original local pair is attested. Keep independent definition evidence separate at its existing tier; do not promote a parser walk.",
+    "Keep raw input/file inventories and native stderr in scratch. Publish counts, version/source/binary identities and digests only.",
+    "Preregister before building/querying; after measurement remove source builds and subjects, keeping only the binary and receipts if needed."
+  ]
+}

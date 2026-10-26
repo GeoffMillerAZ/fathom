@@ -4,7 +4,9 @@ Selected by0047 after the [failed paired trial](../evidence/prose-headless/2026-
 HP-19 commands and the embedded criterion pass the full local gate and
 [offline compiled qualification](../evidence/prose-headless/2026-10-25-oracle/README.md).
 Fresh source verification proves the symbol, 28 statically reaching tests and
-entrypoint wiring. HP-20 semantic adjudication remains unimplemented.
+entrypoint wiring. HP-20's [declared source-floor qualification](../evidence/prose-headless/2026-10-26-floor/README.md)
+now covers85 prospective cases and all70 old dispositions under separately pinned
+criterion /2. Source truth, trusted identity/isolation and provider qualification remain separate.
 This is an offline addition inside0045's existing
 prose-lab incubation, not another kit, provider study or UI. Existing document,
 support-review and paired requests, schemas, digests and replay remain unchanged.
@@ -277,3 +279,8 @@ Reject prompt-only patches, retrospective label changes, removing the disputed
 control, shrinking context to save tokens, model self-certification and a universal
 formal-logic engine. Optional model suggestions remain held observations under0047;
 no new classifier/provider integration is part of HP-19.
+
+HP-20's first source review exposed a criterion ambiguity before new paid calls.
+The [floor receipt refinement](prose-oracle-floor.md) keeps /1 immutable and permits
+an explicitly pinned /2 prospective criterion with whole-scope independent review.
+A determinate inconclusive reference is distinct from an unresolved evaluator.
