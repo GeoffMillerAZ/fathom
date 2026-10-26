@@ -13,3 +13,8 @@ by `ALTER TABLE … ADD CONSTRAINT` have no enclosing definition and are not pai
 Pass the output as `indexbench lang-oracle -tool-oracle`; the harness drops pairs on
 files outside `-only`. A statement sqlglot cannot parse falls back to a command (a
 warning on stderr) and yields no pair — never guessed.
+
+The 2026-10-25 native replay found 17 known pairs in the same scopes; this
+version reports only 14 because it omits three Pagila temporal inline pairs.
+Its perfect subset precision/recall did not establish complete coverage.
+Use [the native catalog oracle](../sql-native/README.md) for the current L2 reading.

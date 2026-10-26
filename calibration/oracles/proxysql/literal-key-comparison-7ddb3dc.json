@@ -1,0 +1,16 @@
+{
+  "source_sha": "7ddb3dc015d1440e8a0fb0bbafa2df9aaaa2669d",
+  "groups": {
+    "mcp": {
+      "literals": 14,
+      "literal_matches": 0,
+      "hypothetical_shortened_matches": 14
+    },
+    "genai": {
+      "literals": 2,
+      "literal_matches": 0,
+      "hypothetical_shortened_matches": 0
+    }
+  },
+  "comparisons_sha256": "483f8d456c96424a8c0e1beb8e3dc1782cea83b23772fa8b59d08636cc4f627e"
+}

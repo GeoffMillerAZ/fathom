@@ -185,7 +185,7 @@ an array of tables, and `tenancy.**` for every key under `[tenancy]`.
 | `default_profile` | behaviour | chooses a profile by name |
 | `findings.outbox` | repo-path | a repo-relative file the session hook imports (findings_outbox.go) |
 | `findings.producers` | behaviour | an allow-list of producer ids |
-| `findings.subject` | behaviour | the review-kit subject this repository maps to |
+| `findings.subject` | behaviour | the review kit subject this repository maps to |
 | `gate.accept_receipts` | behaviour | the repository opts in to exact-tree gate evidence; default off |
 | `gate.allow_receipt_acceptance` | user-only | permits a project to opt in to receipt acceptance; default off |
 | `gate.host_label` | user-only | an operator-named machine label, never a hostname read |
@@ -517,6 +517,7 @@ admission    = "observe" # "observe" (default) | "enforce" | "off"; env FATHOM_T
 [tenancy.host]
 shed_on_pressure      = "warn"      # "warn" | "critical" | "off"
 refuse_on_pressure    = "critical"
+floor_on_pressure     = "warn"      # "normal" | "warn" | "critical"; swap-volume floor applies at or above it; "normal" restores refusal at any pressure
 refuse_on_swap_growth = "2GiB"      # swap grew this much in the window while fathom ≥ the shed mark
 swap_growth_window    = "5m"
 min_swap_volume_free  = "5GiB"      # /System/Volumes/VM
@@ -558,7 +559,7 @@ free space, and steps a ladder:
 | Level | Entered when (two consecutive samples; a sample ≥ 6 s late counts twice) | What happens |
 |---|---|---|
 | `shed` | footprint + children ≥ `shed_at`, or host pressure warn while footprint + children ≥ `[tenancy.host] allowance` | console and fleet memos dropped, console feeders and auto-refresh paused (reads answer from the index as it stands), memory returned to the OS |
-| `refuse` | footprint + children ≥ `refuse_at`; pressure critical; swap grew > 2 GiB in 5 min while fathom ≥ the shed mark; swap volume < 5 GiB free | every cache dropped; every in-flight tree and fleet tool call cancelled, youngest first (`abandoned-by-governor`); whole-tree, fleet and ingest reads stop within one file or 1,000 rows; a heap profile captured |
+| `refuse` | footprint + children ≥ `refuse_at`; pressure critical; swap grew > 2 GiB in 5 min while fathom ≥ the shed mark; swap volume < 5 GiB free while pressure ≥ `[tenancy.host] floor_on_pressure` (default warn) | every cache dropped; every in-flight tree and fleet tool call cancelled, youngest first (`abandoned-by-governor`); whole-tree, fleet and ingest reads stop within one file or 1,000 rows; a heap profile captured |
 | `exit` | own footprint ≥ the exit mark, or pressure critical for 60 s with footprint over budget | an in-flight ingest is halted first and its service **quarantined**; if the next sample is still over (or nothing was in flight), the child tree is killed, `heap.pb.gz` and `inflight.json` written under `~/.fathom/daemon/<id>/diag/`, an `exit` row (`reason: over_budget`) appended to `lifecycle.jsonl`, and the process exits **70** at once |
 
 Step-down: 60 s below 0.6 × the current rung's mark with its host triggers
@@ -1044,12 +1045,12 @@ without a network hop or a daemon round trip:
 ```toml
 # .fathom/config.toml
 [findings]
-subject   = "org/repo/component"                 # the provisioned review-kit subject this repo maps to
+subject   = "org/repo/component"                 # the provisioned review kit subject this repo maps to
 outbox    = ".reviewkit/outbox/projection.json"   # repo-relative; optional
 producers = ["reviewkit.system-review"]           # producer ids this repo trusts
 ```
 
-- `subject` binds this repository to one review-kit subject
+- `subject` binds this repository to one review kit subject
   (`org/repo/component`). `fathom findings import` refuses any event whose
   own subject does not match exactly — no mapping, no import, and never a
   best-effort guess.
@@ -1084,7 +1085,7 @@ for the loop from a reviewer's own seat.
 
 ## Test evidence: `[tests]`
 
-Vision 33 / ADR-043 stage 0's test-kit evidence ingest
+Vision 33 / ADR-043 stage 0's test kit evidence ingest
 (`docs/vision/33-test-certifications.md`): `fathom tests ingest
 --results <file|dir>` always works explicitly; `[tests] results_dir` makes
 a PLAIN `fathom ingest` also pick up attested `#TestResult` envelopes from

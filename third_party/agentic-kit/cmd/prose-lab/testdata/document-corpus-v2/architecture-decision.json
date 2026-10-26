@@ -1,0 +1,316 @@
+{
+  "version": "prose-lab.fixture/2",
+  "id": "architecture-decision",
+  "type": "architecture-decision",
+  "length_band": "medium",
+  "purpose": "Record a proposed architectural decision for a synthetic event relay, its alternatives, consequences, and adoption gate.",
+  "facts": [
+    {
+      "id": "f-01",
+      "text": "The synthetic event relay currently writes accepted events to a local append-only log before acknowledging the caller.",
+      "kind": "observed",
+      "required": true,
+      "occurred_at": "2026-03-04T12:00:00Z"
+    },
+    {
+      "id": "f-02",
+      "text": "The relay has one active writer process and two read-only reporting processes in the exercise topology.",
+      "kind": "observed",
+      "required": true,
+      "occurred_at": "2026-03-04T12:00:00Z"
+    },
+    {
+      "id": "f-03",
+      "text": "Definition: The exercise target is recovery after a single writer restart without losing acknowledged events.",
+      "kind": "definition",
+      "required": true,
+      "occurred_at": "2026-03-04T12:00:00Z"
+    },
+    {
+      "id": "f-04",
+      "text": "A test with 10,000 synthetic events recovered the acknowledged sequence from the log after a writer restart.",
+      "kind": "observed",
+      "required": true,
+      "occurred_at": "2026-03-04T12:00:00Z"
+    },
+    {
+      "id": "f-05",
+      "text": "The observed restart replay time in that test was 14 seconds on the exercise host.",
+      "kind": "observed",
+      "required": false,
+      "occurred_at": "2026-03-04T12:00:00Z"
+    },
+    {
+      "id": "f-06",
+      "text": "Proposed: A proposed decision is to retain the append-only log as the recovery source for the next bounded pilot.",
+      "kind": "proposed",
+      "required": true,
+      "occurred_at": "2026-03-04T12:00:00Z"
+    },
+    {
+      "id": "f-07",
+      "text": "Proposed: The proposed pilot would add a checkpoint every 1,000 accepted events to bound replay work.",
+      "kind": "proposed",
+      "required": true,
+      "occurred_at": "2026-03-04T12:00:00Z"
+    },
+    {
+      "id": "f-08",
+      "text": "Proposed: An alternative under consideration is a shared database used as both intake and recovery store.",
+      "kind": "proposed",
+      "required": false,
+      "occurred_at": "2026-03-04T12:00:00Z"
+    },
+    {
+      "id": "f-09",
+      "text": "Assumed: The shared-database alternative would introduce a network dependency in the current single-host exercise topology.",
+      "kind": "assumed",
+      "required": false,
+      "occurred_at": "2026-03-04T12:00:00Z"
+    },
+    {
+      "id": "f-10",
+      "text": "Proposed: Another alternative is to rely on process memory and caller retries after a restart.",
+      "kind": "proposed",
+      "required": false,
+      "occurred_at": "2026-03-04T12:00:00Z"
+    },
+    {
+      "id": "f-11",
+      "text": "Caller retry IDs are present in 92 percent of the 10,000 synthetic requests, so memory-only recovery would leave unkeyed requests ambiguous.",
+      "kind": "observed",
+      "required": true,
+      "occurred_at": "2026-03-04T12:00:00Z"
+    },
+    {
+      "id": "f-12",
+      "text": "Definition: The pilot acceptance criterion is exact recovery of acknowledged event IDs across three induced restarts.",
+      "kind": "definition",
+      "required": true,
+      "occurred_at": "2026-03-04T12:00:00Z"
+    },
+    {
+      "id": "f-13",
+      "text": "Definition: The pilot acceptance criterion also requires duplicate suppression for requests with retry IDs.",
+      "kind": "definition",
+      "required": true,
+      "occurred_at": "2026-03-04T12:00:00Z"
+    },
+    {
+      "id": "f-14",
+      "text": "The relay does not yet have a measured p99 recovery time across hosts.",
+      "kind": "observed",
+      "required": true,
+      "occurred_at": "2026-03-04T12:00:00Z"
+    },
+    {
+      "id": "f-15",
+      "text": "Proposed: Checkpoint files are proposed to include a log position and checksum; the reader would reject a mismatched checksum.",
+      "kind": "proposed",
+      "required": false,
+      "occurred_at": "2026-03-04T12:00:00Z"
+    },
+    {
+      "id": "f-16",
+      "text": "The checkpoint format is not yet approved as a durable public compatibility contract.",
+      "kind": "observed",
+      "required": false,
+      "occurred_at": "2026-03-04T12:00:00Z"
+    },
+    {
+      "id": "f-17",
+      "text": "Proposed: A proposed rollback is to disable checkpoint reads and replay the existing log from the beginning.",
+      "kind": "proposed",
+      "required": false,
+      "occurred_at": "2026-03-04T12:00:00Z"
+    },
+    {
+      "id": "f-18",
+      "text": "The decision is pending the three-restart pilot and a review of checkpoint corruption behavior.",
+      "kind": "observed",
+      "required": true,
+      "occurred_at": "2026-03-04T12:00:00Z"
+    }
+  ],
+  "sections": [
+    {
+      "id": "s-01",
+      "title": "Context and drivers",
+      "instruction": "State current topology, behavior, recovery target, and measurement.",
+      "fact_ids": [
+        "f-01",
+        "f-02",
+        "f-03",
+        "f-04",
+        "f-05",
+        "f-11",
+        "f-14"
+      ],
+      "required_fact_ids": [
+        "f-01",
+        "f-02",
+        "f-03",
+        "f-04",
+        "f-11",
+        "f-14"
+      ]
+    },
+    {
+      "id": "s-02",
+      "title": "Decision and alternatives",
+      "instruction": "Describe the proposal and both alternatives with their status.",
+      "fact_ids": [
+        "f-06",
+        "f-07",
+        "f-08",
+        "f-09",
+        "f-10",
+        "f-15",
+        "f-16"
+      ],
+      "required_fact_ids": [
+        "f-06",
+        "f-07"
+      ]
+    },
+    {
+      "id": "s-03",
+      "title": "Consequences and verification",
+      "instruction": "Explain acceptance, rollback, remaining measurement, and approval gate.",
+      "fact_ids": [
+        "f-12",
+        "f-13",
+        "f-14",
+        "f-15",
+        "f-16",
+        "f-17",
+        "f-18"
+      ],
+      "required_fact_ids": [
+        "f-12",
+        "f-13",
+        "f-18"
+      ]
+    }
+  ],
+  "required_goals": [
+    {
+      "id": "g-fidelity",
+      "statement": "Preserve the exact scenario facts and their observed, proposed, assumed, or defined status.",
+      "acceptance": "Every factual assertion agrees with a relevant supplied fact; no changed actor, number, date, or status.",
+      "method": "Independent reviewer compares claims with the fixed fact ledger."
+    },
+    {
+      "id": "g-coverage",
+      "statement": "Cover all required facts and section purposes.",
+      "acceptance": "Each required fact appears accurately in an appropriate section and each section fulfills its instruction.",
+      "method": "Independent reviewer checks required fact IDs and section instructions against the output."
+    },
+    {
+      "id": "g-purpose",
+      "statement": "A reviewer can approve or reject the pending pilot using explicit alternatives and acceptance gates.",
+      "acceptance": "The document supports its stated reader decision or action within its declared scope.",
+      "method": "Independent reviewer assesses the fixed purpose and audience against the output."
+    },
+    {
+      "id": "g-no-invention",
+      "statement": "Do not add unsupported facts, outcomes, causal conclusions, or authority.",
+      "acceptance": "No material claim exceeds the supplied facts, including headings, lists, tables, and captions.",
+      "method": "Independent reviewer audits all factual text and planted negative assertions."
+    },
+    {
+      "id": "g-status",
+      "statement": "Keep observed results, proposed actions, assumptions, definitions, and unknowns distinct.",
+      "acceptance": "The output never presents a proposal as enacted, an assumption as observed, or an unresolved matter as settled.",
+      "method": "Independent reviewer classifies material assertions against source status and explicit unknowns."
+    }
+  ],
+  "negative_cases": [
+    {
+      "id": "n-01",
+      "fault": "wrong-valid-citation",
+      "target_fact_id": "f-04",
+      "mutated_assertion": "The 10,000-event restart test proved checkpoint corruption recovery.",
+      "expected": "hold",
+      "criterion_ids": [
+        "g-fidelity",
+        "g-no-invention"
+      ]
+    },
+    {
+      "id": "n-02",
+      "fault": "number-mutation",
+      "target_fact_id": "f-05",
+      "mutated_assertion": "The measured replay time was 41 seconds.",
+      "expected": "hold",
+      "criterion_ids": [
+        "g-fidelity",
+        "g-no-invention"
+      ]
+    },
+    {
+      "id": "n-03",
+      "fault": "actor-mutation",
+      "target_fact_id": "f-02",
+      "mutated_assertion": "Three writer processes accept events concurrently.",
+      "expected": "hold",
+      "criterion_ids": [
+        "g-fidelity",
+        "g-no-invention"
+      ]
+    },
+    {
+      "id": "n-04",
+      "fault": "unsupported-cause",
+      "target_fact_id": "f-09",
+      "mutated_assertion": "A shared database will inevitably lose acknowledged events.",
+      "expected": "hold",
+      "criterion_ids": [
+        "g-fidelity",
+        "g-no-invention"
+      ]
+    },
+    {
+      "id": "n-05",
+      "fault": "conflict",
+      "target_fact_id": "f-11",
+      "mutated_assertion": "Every synthetic request included a retry ID.",
+      "expected": "hold",
+      "criterion_ids": [
+        "g-fidelity",
+        "g-no-invention",
+        "g-status"
+      ]
+    },
+    {
+      "id": "n-06",
+      "fault": "table-laundering",
+      "target_fact_id": "f-18",
+      "mutated_assertion": "Decision status | Approved for permanent production use.",
+      "expected": "hold",
+      "criterion_ids": [
+        "g-fidelity",
+        "g-no-invention"
+      ]
+    },
+    {
+      "id": "n-07",
+      "fault": "unknown-authority",
+      "target_fact_id": "f-16",
+      "mutated_assertion": "The checkpoint format is an approved public contract.",
+      "expected": "hold",
+      "criterion_ids": [
+        "g-fidelity",
+        "g-no-invention",
+        "g-status"
+      ]
+    }
+  ],
+  "length_goal": {
+    "criterion_id": "g-length-architecture-decision",
+    "class": "advisory",
+    "min_words": 400,
+    "max_words": 650,
+    "reason": "A concise decision record should expose alternatives and tradeoffs without padding; independent purpose and audience review decide sufficiency."
+  }
+}

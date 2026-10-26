@@ -1,0 +1,10 @@
+# Command lab final focused security re-review, 2026-10-23
+
+Scope: read-only closure check of earlier F1/F6 and the native command type, duplicate JSON and physical intake-limit paths in `cmd/command-lab`. Applied the `command-safety-audit` offline review workflow. `go test -count=1 ./cmd/command-lab` passed. This is source and focused-test evidence, not an audit of any private transcript or live harness.
+
+- **F1 closed:** `audit.go:275-290` treats every `functions.exec` JavaScript wrapper as `unsupported` and marks its source incomplete, even when literal `cmd` candidates are extracted. Aliased, computed and decoy calls cannot make the audit complete. `main_test.go:179-215` covers mixed literal/dynamic, aliased and all-literal wrappers, with zero proposal counts for wrappers.
+- **F6 closed:** `audit.go:180-216` limits each physical `Read` to the remaining line budget plus one, capped at the 32 KiB buffer. `main_test.go:307-321` checks an oversized second line after a valid prefix: exact bytes read are prefix length plus 1 MiB + one, while read calls stay buffered. The outer source and aggregate readers retain their independent plus-one caps at `audit.go:89-103`.
+- **Native command type guarded:** Codex `functions.exec_command`/`shell_command` and Claude `Bash` require a present nonempty string field (`audit.go:319-325,340-372`). Missing or numeric command values return incomplete with zero shell/other proposals (`main_test.go:217-237`). Normalized records require string `tool` and `command` at `audit.go:261-268`.
+- **Duplicate JSON guarded:** `audit.go:218-240,305-312` rejects duplicate keys in a record and in Codex's JSON-encoded `arguments` before extraction. Focused negative cases cover top-level, Claude nested input and Codex encoded arguments (`main_test.go:239-262`). This prevents last-key-wins proposal laundering.
+
+No new finding in this bounded re-review. The command still has no authority to execute or approve a proposed operation. The previous security review's F2-F5/R1 dispositions remain as recorded there; this check does not establish production invocation or benefit.

@@ -130,10 +130,11 @@ func TestLoadDialectsRefuses(t *testing.T) {
 			"dialects/d/doc.json": strings.Replace(docSpecOK, "DJob", "Other", 1)}, "not a kind the manifest declares"},
 		"doc bad selector": {map[string]string{"dialects/d/dialect.json": docManifest,
 			"dialects/d/doc.json": strings.Replace(docSpecOK, `"$.*"`, `"$..*"`, 1)}, "select"},
-		"type_wildcard off list": {map[string]string{"dialects/a/dialect.json": strings.Replace(base("a", "AF", ".a"), `"target_level"`, `"imports":{"strategy":"namespace-dir","type_wildcard":"fields"},"target_level"`, 1), "dialects/a/tags.scm": ""}, "imports.type_wildcard"},
-		"container format":       {map[string]string{"dialects/a/dialect.json": strings.Replace(base("a", "AF", ".a"), `"extensions":[".a"]`, `"extensions":[".a"],"container":{"format":"tar","extensions":[".a"]}`, 1), "dialects/a/tags.scm": ""}, "match.container.format"},
-		"container unclaimed":    {map[string]string{"dialects/a/dialect.json": strings.Replace(base("a", "AF", ".a"), `"extensions":[".a"]`, `"extensions":[".a"],"container":{"format":"opc-zip","extensions":[".z"]}`, 1), "dialects/a/tags.scm": ""}, "match.container.extensions"},
-		"required undeclared":    {map[string]string{"dialects/a/dialect.json": strings.Replace(base("a", "AF", ".a"), `"required_kinds":["f"]`, `"required_kinds":["class"]`, 1), "dialects/a/tags.scm": ""}, "not a declared kind"},
+		"whole_bindings off list": {map[string]string{"dialects/a/dialect.json": strings.Replace(base("a", "AF", ".a"), `"target_level"`, `"imports":{"strategy":"include-path","whole_bindings":"all"},"target_level"`, 1), "dialects/a/tags.scm": ""}, "imports.whole_bindings"},
+		"type_wildcard off list":  {map[string]string{"dialects/a/dialect.json": strings.Replace(base("a", "AF", ".a"), `"target_level"`, `"imports":{"strategy":"namespace-dir","type_wildcard":"fields"},"target_level"`, 1), "dialects/a/tags.scm": ""}, "imports.type_wildcard"},
+		"required undeclared":     {map[string]string{"dialects/a/dialect.json": strings.Replace(base("a", "AF", ".a"), `"required_kinds":["f"]`, `"required_kinds":["class"]`, 1), "dialects/a/tags.scm": ""}, "not a declared kind"},
+		"container format":        {map[string]string{"dialects/a/dialect.json": strings.Replace(base("a", "AF", ".a"), `"extensions":[".a"]`, `"extensions":[".a"],"container":{"format":"tar","extensions":[".a"]}`, 1), "dialects/a/tags.scm": ""}, "match.container.format"},
+		"container unclaimed":     {map[string]string{"dialects/a/dialect.json": strings.Replace(base("a", "AF", ".a"), `"extensions":[".a"]`, `"extensions":[".a"],"container":{"format":"opc-zip","extensions":[".z"]}`, 1), "dialects/a/tags.scm": ""}, "match.container.extensions"},
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -159,6 +160,10 @@ func TestDialectImportParamsStrict(t *testing.T) {
 	var bad DialectImports
 	if err := json.Unmarshal([]byte(`{"strategy":"file-symbol","roots":["lib"]}`), &bad); err == nil {
 		t.Fatal("an unknown import parameter decoded")
+	}
+	var ns DialectImports
+	if err := json.Unmarshal([]byte(`{"strategy":"include-path","whole_bindings":"namespace"}`), &ns); err != nil || ns.Params.WholeBindings != "namespace" {
+		t.Fatalf("namespace import parameter: %v", err)
 	}
 	var tw DialectImports
 	if err := json.Unmarshal([]byte(`{"strategy":"namespace-dir","type_wildcard":"members"}`), &tw); err != nil || tw.Params.TypeWildcard != "members" {

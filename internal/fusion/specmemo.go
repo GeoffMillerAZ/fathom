@@ -116,12 +116,12 @@ func (p *Pipeline) oneParse(ext extractor.Extractor, path string, content []byte
 		return se, true
 	}
 	if isHeaderPath(path) {
-		if c, cpp, objc := headerLangs(); lang != "" && (lang == c || lang == cpp || lang == objc) {
+		if c, cpp, objc, _ := headerLangs(); lang != "" && (lang == c || lang == cpp || lang == objc) {
 			return se, true
 		}
 	}
 	if isObjCSourcePath(path) {
-		if _, _, objc := headerLangs(); lang != "" && lang == objc {
+		if _, _, objc, _ := headerLangs(); lang != "" && lang == objc {
 			return se, true
 		}
 	}

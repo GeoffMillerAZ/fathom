@@ -521,12 +521,12 @@ const findingsConfigTemplate = `# fathom project configuration (docs/configurati
 # > built-in defaults.
 
 # --- the findings loop (docs/vision/30-findings-loop.md, ADR-040) ---
-# Binds this repository to a review-kit subject and, optionally, a local
+# Binds this repository to a review kit subject and, optionally, a local
 # outbox file the session hook imports once per session (vision 30 §3.7).
-# Uncomment once a review-kit outbox exists for this repo — see
+# Uncomment once a review kit outbox exists for this repo — see
 # docs/adoption/findings-loop.md.
 # [findings]
-# subject   = "org/repo/component"                 # the provisioned review-kit subject this repo maps to; fathom findings import refuses on any mismatch
+# subject   = "org/repo/component"                 # the provisioned review kit subject this repo maps to; fathom findings import refuses on any mismatch
 # outbox    = ".reviewkit/outbox/projection.json"   # repo-relative; the session hook imports it once per session when its digest changes from the last import
 # producers = ["reviewkit.system-review"]           # producer ids this repo trusts (schema/semantic/producers.cue's catalog) — an unlisted producer's events are refused
 

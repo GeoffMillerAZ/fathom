@@ -3,6 +3,7 @@ package langbench
 import (
 	"bytes"
 	"fmt"
+	"maps"
 	"regexp"
 	"slices"
 	"sort"
@@ -283,8 +284,8 @@ type SCIPOptions struct {
 	// at the macro's own range (needs Source, LB-F80).
 	ClangMacroArgs bool
 	// ClangSites (LB-F116) are the build's own compiler's call sites per
-	// document (calibration/oracles/clang-calls, tier A; needs Source): a
-	// fathom pair whose every written site has no callee before
+	// document (calibration/oracles/clang-calls, at the file's own tier; needs
+	// Source): a fathom pair whose every written site has no callee before
 	// instantiation is left out of both counts; a call the compiler resolves
 	// is in the truth whether or not the index references it (a constructor
 	// call written `T(` scored against the index's class reference there); a
@@ -295,6 +296,13 @@ type SCIPOptions struct {
 	// sites alone. Each is counted (CntClang*, CntScipDefsMacroNamed) and
 	// disclosed.
 	ClangSites map[string][]ClangSite
+	// ClangCUDA (round 3 C, CUDA alone): a compiler site written inside a
+	// #define body is left out (C's truth holds none: scip-clang references no
+	// token of a macro's body), and a compiler definition the index writes no
+	// definition for (an `extern "C"` function; clang-ast-defs' range, which
+	// ClangLinkage reads, round 4 C4-R1) stands in, its calls scored against
+	// the compiler's sites (needs Source, ClangSites and the ranges companion).
+	ClangCUDA bool
 	// ActiveLines are the lines the build's own preprocessor keeps per
 	// document, as [first, last] ranges (the clang-preprocessor oracle's
 	// active_lines). With ClangSites, a fathom pair written only on lines
@@ -381,7 +389,9 @@ type SCIPOptions struct {
 	TypeLiteralMembers bool
 	// DefScope is the documents the reading measures (lang-oracle's inScope:
 	// the dialect's files, a variant's included, inside -only, that ingest's
-	// gates keep), handed over when DefScoped; nil scopes nothing.
+	// gates keep). It scopes def_mapping only when DefScoped; scip-go counts a
+	// miss in another document by it (scip_go_defs_unmeasured). nil scopes
+	// nothing.
 	DefScope map[string]bool
 	// FileEdgesOracleBlind: lang-oracle leaves out of the file-edge comparison
 	// a pair the truth lacks whose every written site has no occurrence of the
@@ -415,12 +425,12 @@ func SCIPOptionsFor(dialect string, src func(path string) []byte) SCIPOptions {
 	if dialect == "ruby" {
 		return rubySCIPOptions(src) // scip_ruby.go: the calls Sorbet writes no occurrence for (LB-F257)
 	}
-	if dialect == "c" || dialect == "cpp" {
+	if dialect == "c" || dialect == "cpp" || dialect == "cuda" {
 		// Call sites written in the source: scip-clang references a function
 		// passed as a value, and a call a macro expands to at the macro's own
-		// name; neither is written as a call. C records a function-like macro
-		// invocation as a call, C++ does not.
-		return SCIPOptions{Source: src, CallSyntax: src != nil, ClangMacroArgs: src != nil, ClangMacroCalls: src != nil && dialect == "c", ClangDefNames: src != nil, FileEdgesOracleBlind: src != nil, ClangLinkage: clangLinkageFor(dialect)}
+		// name; neither is written as a call. C and CUDA record a function-like
+		// macro invocation as a call (CUDA: owner ruling C-R3), C++ does not.
+		return SCIPOptions{Source: src, CallSyntax: src != nil, ClangMacroArgs: src != nil, ClangMacroCalls: src != nil && (dialect == "c" || dialect == "cuda"), ClangDefNames: src != nil, FileEdgesOracleBlind: src != nil, ClangLinkage: clangLinkageFor(dialect), ClangCUDA: src != nil && dialect == "cuda"}
 	}
 	if dialect == "go" {
 		// Go keeps every callable reference: its extractor records a
@@ -469,8 +479,16 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 	}
 	occLines := map[string]map[int32]bool{}         // lines holding an occurrence but a macro reference (clangBlindDefs)
 	occStarts := map[string]map[[2]int32][]string{} // symbols referenced at each (line, column) start
+	clangSites := opts.ClangSites                   // less the #define bodies' sites for CUDA (round 3 C)
 	if opts.ClangSites != nil && opts.Source != nil {
-		sites = newClangSiteIndex(opts.ClangSites)
+		if opts.ClangCUDA {
+			var n int
+			clangSites, n = dropMacroBodySites(clangSites, opts.Source)
+			if n > 0 {
+				res.Counts[CntClangMacroBody] = n
+			}
+		}
+		sites = newClangSiteIndex(clangSites)
 		for _, d := range idx.GetDocuments() {
 			doc := d.GetRelativePath()
 			if occLines[doc] == nil {
@@ -637,7 +655,7 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 				continue
 			}
 			_, mappedOK := mapTo(name, true)
-			goDefs.count(o.GetSymbol(), mappedOK) // scip_go.go: Go's def_mapping misses by descriptor class (LB-F299)
+			goDefs.count(o.GetSymbol(), mappedOK, opts.DefScope == nil || opts.DefScope[def.doc]) // scip_go.go: Go's def_mapping misses by descriptor class (LB-F299)
 			if mappedOK {
 				if !generated && !namespace && !objectLiteral && !outOfScope && !typeLiteral {
 					res.Counts[CntScipDefsMapped]++
@@ -673,11 +691,39 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 		}
 	}
 	if sites != nil {
-		if blind := clangBlindDefs(nodes, occLines, sites); len(blind) > 0 {
+		// round 4 C4-R1: the compiler's definitions, never fathom's, stand in,
+		// in the documents the compiler covered and the index holds, and
+		// only those the reading measures (round 5 C5-R1: a header the
+		// dialect does not own adds pairs fathom can never find)
+		covered := func(doc string) bool {
+			return sites.covers(doc) && occLines[doc] != nil && (opts.ClangScope == nil || opts.ClangScope[doc])
+		}
+		indexDefs := maps.Clone(defsByDoc) // the index's own definitions (round 5 C5-R3)
+		var blind []*scipDef
+		if opts.ClangCUDA && opts.ClangLinkage.readRanges() {
+			// round 5 C5-R3: a caller the index holds no occurrence in is the
+			// compiler's function range, never a fathom node
+			blind = opts.ClangLinkage.clangBlindRanges(occLines, covered)
+		} else {
+			blind = clangBlindDefs(nodes, occLines, sites)
+		}
+		if len(blind) > 0 {
 			for _, def := range blind {
 				defsByDoc[def.doc] = append(defsByDoc[def.doc], def)
 			}
 			res.Counts[CntClangBlindDefs] += len(blind)
+		}
+		if opts.ClangCUDA {
+			standIns, externC := opts.ClangLinkage.clangStandIns(indexDefs, blind, covered)
+			for _, def := range standIns {
+				defsByDoc[def.doc] = append(defsByDoc[def.doc], def)
+			}
+			if len(standIns) > 0 {
+				res.Counts[CntClangStandInDefs] += len(standIns)
+			}
+			if externC > 0 {
+				res.Counts[CntClangStandInExternC] += externC
+			}
 		}
 	}
 
@@ -729,6 +775,8 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 					everyDefiner.leaveOut(doc, tos) // owner ruling L2 (O806): a namespace names no file (scip_clang.go)
 				case opts.ClangLinkage.holds(res.Tool, o.GetSymbol(), tos):
 					opts.ClangLinkage.draw(&everyDefiner, doc, o.GetSymbol(), tos, res.FileEdges) // owner ruling M3 (O863): its own translation unit's copy (scip_clang.go)
+				case opts.ClangLinkage.linkScoped(res.Tool, tos):
+					opts.ClangLinkage.drawUnits(&everyDefiner, doc, tos, res.FileEdges) // round 3 B: a definer in the referring document's own executables (scip_clang.go)
 				default:
 					// K25 ruling 3: every defining document, but rust-analyzer's per-target
 					// copies of one symbol (scip_rust.go)
@@ -852,7 +900,7 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 		blind.drop(found, truth, nodes, srcOf, opts.JSXElementCalls, res.Counts)
 	}
 	if sites != nil {
-		addClangTruth(truth, opts.ClangSites, docs, defsByDoc, occStarts, res.Counts)
+		addClangTruth(truth, clangSites, docs, defsByDoc, occStarts, res.Counts)
 		dropClangUnjudged(found, truth, nodes, srcOf, sites, opts.ActiveLines, res.Counts)
 	}
 	ScorePairs(truth, found, res.Counts, CntCallTruth, CntCallTruthFound, CntCallFathom, CntCallFathomInTrue)

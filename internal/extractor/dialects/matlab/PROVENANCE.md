@@ -34,7 +34,9 @@
 - `testdata/`: six fixtures written in this repository; goldens written by hand from each fixture before any query existed
   (`TestDialectGoldens/matlab` red), then the queries were written against `indexbench lang-probe`.
 
-## L1 oracle: a MISS_HIT parser dump (LB-Q-matlab, LB-Q-matlab-rest)
+## L1 oracle: a MISS_HIT parser dump (LB-Q-matlab)
+
+`LB-Q-matlab-rest` now records the free call/resolution-oracle ceiling; it no longer refers to the earlier throughput shortfall.
 
 universal-ctags 6.2.1 cannot measure the four required kinds: its MatLab parser has class, function and variable only (a method is an
 unscoped function; a property is a `variable` among 45,154 assignment tags; it misses 12 classes whose `classdef` line carries
@@ -45,8 +47,8 @@ files, 3,156 scored) and matlab2tikz v1.1.0 (64 files; BSD-2-Clause).
 
 Reading (`docs/bench/readings/lang/matlab.json`, 3,238 files measured): sym_recall .9898, sym_precision 1, kind_agreement .9899, range_agreement
 .9998 (5,235 of 5,236 pairs with an oracle end), signature_coverage 1, 0 faults, max_file_ms 338, 490 peak module pages. MISS_HIT rejects 5
-chebfun files (0.16%) with a parse error; they are left out with `-only` and counted in the reading's notes. Throughput is the one bar not met:
-0.94 MB/CPU-s against 1.0 on the VM that took the reading (see the `LB-Q-matlab-rest` row).
+chebfun files (0.16%) with a parse error; they are left out with `-only` and counted in the reading's notes. The committed reading's
+development-machine retiming meets the throughput bar: median 2.22 MB/CPU-s from 2.08, 2.22 and 2.22, under design section 1.9 T2.
 
 Scope choices the oracle and the dialect share: a getter or setter is the property's name on both sides; an `arguments` block is not a property;
 events and enumeration members are in neither; a function with no `end` has oracle end 0 and is not range-compared.

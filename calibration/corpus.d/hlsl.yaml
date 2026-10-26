@@ -1,0 +1,48 @@
+id: hlsl
+language: HLSL
+# Measurement conventions: each subject is read in place. L1 and L2 are graded against a compiler front end
+# (calibration/oracles/dxc-ast, DXC's text AST, tier B: run-chosen flags, no build database), on the files that front end
+# parses without error. L3 includes are graded against calibration/oracles/clang-includes run over the subject's shader
+# roots (tier B). The DirectX-Graphics-Samples clone is sparse (**/*.hlsl, **/*.hlsli, **/*.h): the whole repository is
+# 835 MB and the shaders are a few hundred files.
+repos:
+  - name: microsoft/DirectX-Graphics-Samples
+    url: https://github.com/microsoft/DirectX-Graphics-Samples
+    ref: master
+    sha: e5975f9b0744fc5096dd593ed72bf8f5c004164f
+    licence: MIT
+    sparse: ["**/*.hlsl", "**/*.hlsli", "**/*.h"]
+    idioms:
+      - "compute shaders with stacked [RootSignature][numthreads] attributes (MiniEngine)"
+      - "cbuffer blocks, with and without register(bN) bindings"
+      - "#include of shared .hlsli headers across engine and sample directories"
+      - "DXR raytracing shaders: [shader(\"raygeneration\")] entry points and payload structs"
+      - "typedefs, static const globals and macro-built resource declarations"
+    notes: >
+      LICENSE at the commit: MIT. The queue pins master, which clone.sh clones by branch; the sha is the head it was
+      measured at.
+  - name: EmbarkStudios/kajiya
+    url: https://github.com/EmbarkStudios/kajiya
+    ref: main
+    sha: 9fdec0f074f9f822d395f9cfd041b58749e32303
+    licence: Apache-2.0
+    subpath: assets/shaders
+    idioms:
+      - "a real-time renderer's shaders: .hlsl compute and raytracing entry points beside .hlsli includes"
+      - "[[vk::binding(n)]] Vulkan binding attributes and templates-by-macro"
+      - "#include of shared headers by relative and root-relative path"
+    notes: >
+      LICENSE at the commit: Apache-2.0 (the repository is archived). The grammar's own test corpus draws on this
+      project, so its parse rate here is an optimistic reading.
+  - name: microsoft/DirectXTK12
+    url: https://github.com/microsoft/DirectXTK12
+    ref: main
+    sha: f5b928460d91984b27029d064ee5a7dd4301513c
+    licence: MIT
+    subpath: Src/Shaders
+    idioms:
+      - "effect shaders in .fx and shared includes in .fxh"
+      - "macro-selected shader variants (#define per effect)"
+      - "cbuffer blocks with register bindings and a root signature string"
+    notes: >
+      LICENSE at the commit: MIT.

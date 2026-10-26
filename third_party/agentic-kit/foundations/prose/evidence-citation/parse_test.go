@@ -26,7 +26,7 @@ func TestParse(t *testing.T) {
 			want: []ec.Citation{{Tag: "span", ID: "abc", Start: 5, End: 13, Raw: "span:abc"}},
 		},
 		{
-			name: "throughline vocabulary, two tags",
+			name: "consumer-a vocabulary, two tags",
 			tags: []string{"span", "authority"},
 			text: "Fact one [span:a] and rule [authority:b-2].",
 			want: []ec.Citation{

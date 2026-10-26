@@ -75,9 +75,11 @@ func main() {
 	subject := flag.String("subject", "", "checkout the compilation database was written for (required)")
 	compdb := flag.String("compdb", "", "compile_commands.json (required)")
 	clang := flag.String("clang", "", "preprocessor (default: each entry's own compiler)")
+	tierArg := flag.String("tier", "", "the output's oracle tier (required, round 3 A3): A for the build's own compiler, B for a translated database")
 	flag.Parse()
-	if *subject == "" || *compdb == "" {
-		fmt.Fprintln(os.Stderr, "usage: active-lines -subject <dir> -compdb <compile_commands.json> [-clang <clang>]")
+	tier, terr := tierFlag(*tierArg)
+	if *subject == "" || *compdb == "" || terr != nil {
+		fmt.Fprintln(os.Stderr, "usage: active-lines -subject <dir> -compdb <compile_commands.json> [-clang <clang>] -tier A|B")
 		os.Exit(2)
 	}
 	root, err := filepath.EvalSymlinks(*subject)
@@ -133,7 +135,7 @@ func main() {
 			stopped++
 		}
 	}
-	out := oracleFile{Tool: "clang-preprocessor", Version: version, Tier: "A", Imports: []importEntry{}, ActiveLines: map[string][][2]int{}}
+	out := oracleFile{Tool: "clang-preprocessor", Version: version, Tier: tier, Imports: []importEntry{}, ActiveLines: map[string][][2]int{}}
 	for e := range imports {
 		out.Imports = append(out.Imports, e)
 	}
@@ -223,6 +225,13 @@ func compilerVersion(bin string) string {
 	b, err := exec.Command(bin, "--version").Output()
 	if err != nil {
 		return ""
+	}
+	// nvcc's first line names the driver; its release is a later line
+	// (round 3 A4).
+	for _, line := range strings.Split(string(b), "\n") {
+		if strings.Contains(line, ", release ") {
+			return strings.TrimSpace(line)
+		}
 	}
 	first, _, _ := strings.Cut(string(b), "\n")
 	return strings.TrimSpace(first)
@@ -374,4 +383,15 @@ func unescape(s string) string {
 		b.WriteByte(s[i])
 	}
 	return b.String()
+}
+
+// tierFlag is the required -tier value written to the output's "tier": A when the
+// database is the build's own compiler's, B when it is a translation (a
+// clang CUDA database for an nvcc build, LB-Q-cuda); anything else is refused.
+func tierFlag(s string) (string, error) {
+	switch s {
+	case "A", "B", "C", "D":
+		return s, nil
+	}
+	return "", fmt.Errorf("-tier %q: want A, B, C or D", s)
 }

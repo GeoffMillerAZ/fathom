@@ -260,3 +260,20 @@ func TestTenancyBudgetEnvAcceptsPlainBytes(t *testing.T) {
 		}
 	}
 }
+
+func TestTenancyHostFloorOnPressure(t *testing.T) {
+	for _, value := range []string{"normal", "warn", "critical"} {
+		t.Run(value, func(t *testing.T) {
+			p := filepath.Join(t.TempDir(), "config.toml")
+			writeTOML(t, p, "[tenancy.host]\nfloor_on_pressure = \""+value+"\"\n")
+			loaded, err := Load(p, "")
+			if err != nil {
+				t.Fatal(err)
+			}
+			cfg, _, err := ResolveTenancyConfig(loaded, envOf(nil))
+			if err != nil || cfg.Host.FloorOnPressure != value {
+				t.Fatalf("floor_on_pressure = %q, err %v, want %q", cfg.Host.FloorOnPressure, err, value)
+			}
+		})
+	}
+}

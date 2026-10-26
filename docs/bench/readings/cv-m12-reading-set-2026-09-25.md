@@ -32,9 +32,9 @@ right class; else the reading set comes out."
 
 Built the NEW fathom (this checkout, branch `reading-set`, the commit that
 carries CV-60..65) once: `go build -o rs-tools/fathom ./cmd/fathom`. Built
-test-kit's `surveyor` from the platform-engineering checkout once. For each
+the test kit's CLI from its checkout once. For each
 range: a detached scratch worktree at the range's head
-(`git worktree add --detach`), `TESTKIT_GO_JSON=<surveyor> task
+(`git worktree add --detach`), `TESTKIT_GO_JSON=<test-kit> task
 tests:attest` run IN the worktree (binds the run to that worktree's own
 HEAD commit via `git rev-parse HEAD` / `git status --porcelain`), then the
 NEW `fathom ingest` and `fathom conserve --since <base> --json` run
@@ -257,14 +257,13 @@ export GOCACHE=/Volumes/m2ext/tmp/cv3-build GOMODCACHE=/Volumes/m2ext/tmp/cv3-mo
 # from this checkout (branch reading-set)
 go build -o /tmp/rs-tools/fathom ./cmd/fathom
 
-# from a platform-engineering checkout
-( cd kits/test-kit && go build -o /tmp/rs-tools/surveyor ./cmd/surveyor )
+# from the test kit's checkout: build its CLI to /tmp/rs-tools/test-kit
 
 for spec in "c75b70e8 4957b916" "5afeee42 78e508d3"; do
   set -- $spec; base=$1; head=$2
   wt=/tmp/rs-measure/$head
   git worktree add --detach "$wt" "$head"
-  ( cd "$wt" && TESTKIT_GO_JSON=/tmp/rs-tools/surveyor task tests:attest )
+  ( cd "$wt" && TESTKIT_GO_JSON=/tmp/rs-tools/test-kit task tests:attest )
   mkdir -p "$wt/workspace/tmp"
   /tmp/rs-tools/fathom ingest --service fathom --path "$wt" \
     --store "$wt/workspace/tmp/m.sqlite"

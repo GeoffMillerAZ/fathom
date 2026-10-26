@@ -1078,7 +1078,7 @@ consumer with a real corpus, eval fixtures, and a kill criterion" (F6). (3) A
 `.fathom/` project pack found copying org-wide content — the amendment's named
 anti-pattern — becomes a platform-module binding instead.
 
-**Trigger (1) fired 2026-10-09 (owner decision D11).** A named consumer (fathom, which already pins app-kit and agentic-kit and adopts env-kit) and two concrete providers (app-kit, env-kit) exist. The provider stratum is renamed `tech` (the word collided with decision providers and infrastructure providers) and promoted by ADR-061 (proposed): a tech pack is deterministic data read from the repository's own pinned copy, so the upstream watermark this record parked is not needed (freshness is the pin). A cousin of trigger (3)'s anti-pattern, a kit's content copied into `.fathom/`, has a measured instance in this repository (`docs/design/fathom-dir.md` §3 a); ADR-061 answers it with the pin, not a module.
+**Trigger (1) fired 2026-10-09 (owner decision D11).** A named consumer (fathom, which already pins app-kit and agentic-kit and adopts the environment kit) and two concrete providers (app-kit, the environment kit) exist. The provider stratum is renamed `tech` (the word collided with decision providers and infrastructure providers) and promoted by ADR-061 (proposed): a tech pack is deterministic data read from the repository's own pinned copy, so the upstream watermark this record parked is not needed (freshness is the pin). A cousin of trigger (3)'s anti-pattern, a kit's content copied into `.fathom/`, has a measured instance in this repository (`docs/design/fathom-dir.md` §3 a); ADR-061 answers it with the pin, not a module.
 
 ## ADR-025: DuckDB backend deleted outright — SS-8 executed (2026-07-23)
 
@@ -2266,10 +2266,10 @@ gone runs `go clean -cache` by hand with no build running.
 ## ADR-040: The findings loop — external review findings are governed projections served as obligations; fathom is a projection adapter, never the organizational record (2026-09-18)
 
 **Status.** Accepted. Vision: `docs/vision/30-findings-loop.md`. Plan:
-`docs/plans/findings-loop.md`. Counterpart: platform-engineering ADR-0103 and
-`kits/review-kit/docs/design/fathom.md`.
+`docs/plans/findings-loop.md`. Counterpart: the review kit's own projection-port decision and
+its fathom design note.
 
-**Context.** The review kit (platform-engineering `kits/review-kit`) owns an
+**Context.** The review kit (an adopting platform's review tool) owns an
 organization's finding identity, lifecycle and dispositions and already emits
 a projection outbox for fathom that it marks "pending: governed external
 importer not negotiated". fathom already stores finding-kind claims with
@@ -2277,8 +2277,8 @@ content-addressed IDs, drift anchors, failure classes, patterns, resolution
 outcomes and a gated promotion rule, and serves governing rules at the edit.
 Neither side could close the loop: findings never reached the agent at the
 point of work, a recurring finding never became a rule, and the review kit's
-uplift brief (P0–P4) named the missing contracts. The earlier decision that
-fathom must not be the only authoritative findings record (ADR-0098) stands;
+uplift brief named the missing contracts. The earlier decision that
+fathom must not be the only authoritative findings record (the review kit's own) stands;
 what was never decided is the projection.
 
 **Decision.**
@@ -2286,7 +2286,7 @@ what was never decided is the projection.
 1. **Ownership is hexagonal.** The review kit owns identity, lifecycle,
    dispositions and the portable bundle behind a `ProjectionPort`; fathom is
    the first projection adapter. fathom never approves, disputes, tailors or
-   closes a review-kit finding, and a review-kit acceptance is never
+   closes a review kit finding, and a review kit acceptance is never
    translated into a fathom `refute`.
 2. **One governed import** (`fathom findings import`, `pkg/client.ImportFindings`)
    accepts the review kit's versioned projection under a provisioned
@@ -2323,7 +2323,7 @@ what was never decided is the projection.
    changed manifest, the typed transitive closure, rule packs, plans, tooling
    and index identity into one token with an explicit unknown set and a
    changed-since-prior diff. The review kit keeps its own reuse policy
-   (ADR-0099) and consumes the key through its `Digester` port.
+   (its own decision) and consumes the key through its `Digester` port.
 7. **The outbox syncs without a network**: with `[findings] outbox` set, the
    session hook imports a changed outbox once per session and reports the
    receipt; the explicit CLI form remains.
@@ -2339,7 +2339,7 @@ gains a `ProjectionPort` with fathom, file and null adapters, a publish verb
 with receipts, additive anchor lines/symbol on its schema, and consumption of
 the review key. agentic-kit gains an `evidence-producer` primitive (catalog
 with tier caps and origin) that fathom consumes. Restore, retention, access
-isolation across trust boundaries and named operators remain review-kit
+isolation across trust boundaries and named operators remain the review kit's
 obligations; the receipts and cursors here make that review possible.
 
 **Alternatives rejected.** A findings database or CRUD API in fathom
@@ -2349,12 +2349,12 @@ interchange (a fine export later; it carries no lifecycle, no source
 versions, no subject authorization — the review kit's event contract does,
 and a SARIF exporter is one adapter away). Enforcing findings at the edit
 (a finding is one producer's observation; only an adopted rule is policy).
-Model-assisted import or dedup (ADR-0098: enrichment may aid retrieval,
+Model-assisted import or dedup (the review kit's record rule: enrichment may aid retrieval,
 never tier or status).
 
 **Revisit when.** The bench shows no lift in `finding_addressed` at n ≥ 3;
 a second external producer needs a projection shape the event contract
-cannot carry; the review kit's ADR-0098 "revisit" fires and fathom is asked
+cannot carry; the review kit's own record decision's "revisit" fires and fathom is asked
 to be the record — then the durability list in vision 30 §5 is the entry bar.
 
 ## ADR-041: The substrate round — relational facts stay, embeddings leave, typed edges arrive by import, freshness follows the edit (2026-09-19)
@@ -2701,23 +2701,23 @@ amendment's "the user's own `[decide] sites`" becomes the user-only `[decide] se
 
 **Status.** Accepted 2026-09-23. Vision: `docs/vision/33-test-certifications.md`. Design: `docs/design/test-certifications.md`. Plan: `docs/plans/test-certifications.md`.
 
-**Context.** The owner asked whether fathom should track test coverage, test kinds and what tests are for, on a standard defined in platform-engineering. Three repositories already hold most of the pieces and agree on the boundary: test-kit declares suites and attests per-case results (ADR-0042 there); Review Kit judges requirements through evidence checks with adapters and enforcement; fathom knows which tests reach which symbols, which symbols each labelled layer covers and which mutants survive, and states "fathom asserts a fact. The review kit judges it." Nothing links a test to what it is for, and nothing computes which invariants, incidents, specs and ports have no certifying test.
+**Context.** The owner asked whether fathom should track test coverage, test kinds and what tests are for, on a standard an adopting platform defines. Three repositories already hold most of the pieces and agree on the boundary: the test kit declares suites and attests per-case results (its testing standard); the review kit judges requirements through evidence checks with adapters and enforcement; fathom knows which tests reach which symbols, which symbols each labelled layer covers and which mutants survive, and states "fathom asserts a fact. The review kit judges it." Nothing links a test to what it is for, and nothing computes which invariants, incidents, specs and ports have no certifying test.
 
 **Decision.**
 1. *A certification is a claim.* `test T, of kind K and strength S, certifies target X` is stored, tiered, swept and served exactly like every other claim: content-addressed, cited, `stale` when the test or a reached symbol moves, `contradicted` when the test is gone or the target does not resolve, `refuted` by a human. Layer `certifications`, role `claims`, compiled deterministically from declarations times joins; no model in the default path.
-2. *The vocabulary is the platform standard's.* `#Certifies` and `#Suite.certifies` are an amendment to test-kit's ADR-0042; the per-test marker `// certifies: <kind> <id> (<strength>)` is comment-grammar fathom reads at ingest. fathom never invents a vocabulary of its own.
-3. *fathom asserts liveness, never adequacy.* A certificate's state (`live`, `flaky`, `broken`, `unproven`, `unreachable`) and tier are facts. No threshold, percentage or "adequate" lives in fathom; a Review Kit requirement with a fathom evidence adapter decides and enforces.
+2. *The vocabulary is the platform standard's.* `#Certifies` and `#Suite.certifies` are an amendment to the test kit's testing standard; the per-test marker `// certifies: <kind> <id> (<strength>)` is comment-grammar fathom reads at ingest. fathom never invents a vocabulary of its own.
+3. *fathom asserts liveness, never adequacy.* A certificate's state (`live`, `flaky`, `broken`, `unproven`, `unreachable`) and tier are facts. No threshold, percentage or "adequate" lives in fathom; a review kit requirement with a fathom evidence adapter decides and enforces.
 4. *Served through the gate, the review and the list.* `fathom verify` gains `certified_by`; `review_diff` gains a `certifications` dimension; `fathom certify status|gaps|manifest|orphans` are verb-first CLI, no new MCP tool. The edit hook is not a site this round (Q21).
-5. *No attested run, no live certificate.* fathom never runs tests; it ingests test-kit's attested envelopes. A reached test is not a passing test; a receipt says `pass: unverified (no run)` until the holder runs it.
+5. *No attested run, no live certificate.* fathom never runs tests; it ingests the test kit's attested envelopes. A reached test is not a passing test; a receipt says `pass: unverified (no run)` until the holder runs it.
 6. *The decision port may suggest, never certify.* `certify suggest` asks a strength choice and an asserts noul per unregistered test; proceed-band answers are suggestions in a workspace artifact, never claims (ADR-042's boundary).
 
-**Alternatives rejected.** A coverage percentage as the product (test-kit already declares floors; Review Kit judges; covered is not asserted). fathom running tests (non-goal: no dispatch loop). Model-inferred test intent as truth (tier discipline). A hand-maintained test registry (state is computed, P17). A test quality score (the advisor recommends; the gate decides, P11). A new MCP tool ahead of call-log justification (P4). A fathom-local vocabulary (one standard, three consumers).
+**Alternatives rejected.** A coverage percentage as the product (the test kit already declares floors; the review kit judges; covered is not asserted). fathom running tests (non-goal: no dispatch loop). Model-inferred test intent as truth (tier discipline). A hand-maintained test registry (state is computed, P17). A test quality score (the advisor recommends; the gate decides, P11). A new MCP tool ahead of call-log justification (P4). A fathom-local vocabulary (one standard, three consumers).
 
-**Consequences.** Three repositories change in one round: test-kit (schema, ADR amendment), fathom (this layer and its verbs), Review Kit (a requirement and an adapter). Every stage carries a kill criterion (plan rows TC-M1..M4). The certifications layer is the second deterministic claim layer after findings; if a third appears the deterministic-layer path is factored (ADR-040's "not a findings database" holds: fathom remains the projection, test-kit the record).
+**Consequences.** Three repositories change in one round: the test kit (schema, ADR amendment), fathom (this layer and its verbs), the review kit (a requirement and an adapter). Every stage carries a kill criterion (plan rows TC-M1..M4). The certifications layer is the second deterministic claim layer after findings; if a third appears the deterministic-layer path is factored (ADR-040's "not a findings database" holds: fathom remains the projection, the test kit the record).
 
-**Revisit when.** TC-M1 fails (the envelope needs a case-to-symbol contract first); TC-M2 fails (declaration is too heavy); a non-Go service ingests envelopes (TC-26 fires); Review Kit's requirement never fires deny in a month (TC-M3); or a fourth consumer wants the vocabulary outside the platform standard.
+**Revisit when.** TC-M1 fails (the envelope needs a case-to-symbol contract first); TC-M2 fails (declaration is too heavy); a non-Go service ingests envelopes (TC-26 fires); the review kit's requirement never fires deny in a month (TC-M3); or a fourth consumer wants the vocabulary outside the platform standard.
 
-**Amended 2026-09-24 (ADR-044, O114): liveness binds to a commit, and the kill rule counts warn.** Two defects in this record's first round. (1) A certificate read `live` whenever the newest ingested run passed; runs carried no commit and the sweep staled a certificate only when its test FILE moved, so after any refactor every certificate stayed live on a run that predated the change (O114). Decision 1's "stale when the test or a reached symbol moves" and decision 5's "no attested run, no live certificate" now mean: a certificate is `live` only when a passing attested run is bound to a commit (test-kit's envelope `env.commit`, clean tree) and no file the certificate reaches (its test file plus the files of the symbols it reaches) changed between that commit and HEAD. A run without a commit leaves the certificate `unproven` with the reason named; a bound run whose reach changed since makes the claim `stale`. (2) The TC-M3 kill clause ("never fires deny in a month") combined with requirements shipped `enforcement: off` is dead on arrival: an off requirement cannot fire. The clause now reads "never fires at warn in a month on a repository where it is armed at warn", and the testing-certifications requirement is armed at warn on this repository.
+**Amended 2026-09-24 (ADR-044, O114): liveness binds to a commit, and the kill rule counts warn.** Two defects in this record's first round. (1) A certificate read `live` whenever the newest ingested run passed; runs carried no commit and the sweep staled a certificate only when its test FILE moved, so after any refactor every certificate stayed live on a run that predated the change (O114). Decision 1's "stale when the test or a reached symbol moves" and decision 5's "no attested run, no live certificate" now mean: a certificate is `live` only when a passing attested run is bound to a commit (the test kit's envelope `env.commit`, clean tree) and no file the certificate reaches (its test file plus the files of the symbols it reaches) changed between that commit and HEAD. A run without a commit leaves the certificate `unproven` with the reason named; a bound run whose reach changed since makes the claim `stale`. (2) The TC-M3 kill clause ("never fires deny in a month") combined with requirements shipped `enforcement: off` is dead on arrival: an off requirement cannot fire. The clause now reads "never fires at warn in a month on a repository where it is armed at warn", and the testing-certifications requirement is armed at warn on this repository.
 
 ## ADR-044: Refactored means conserved — fathom computes what a change must keep, proves it kept it, and catches faked preservation (2026-09-24)
 
@@ -2726,19 +2726,19 @@ amendment's "the user's own `[decide] sites`" becomes the user-only `[decide] se
 **Context.** Agents and codemods now produce refactors cheaply; nothing proves that a large agent-written refactor kept what it had to keep. The field agrees (SWE Refactor Bench: 28 of 520 runs pass its three stages and agents copy the old implementation behind a new name, "Blindness"; RefactorBench: agents 22%, humans 87%; ChangeGuard: a project's own regression tests catch 7.6% of semantics-changing edits). fathom's own data shows the failure that matters: in guards-pilot-8 an agent renamed and inverted the test certifying invariant I28 and another checked off its own plan rows; three of today's pushes failed because line-pinned citations moved; the refactor verbs had two organic calls each in 85,949 while this repo's stanza routed refactors to the lowest-precision tool; and O114 showed certificates survive any code change. fathom already holds most of the facts (typed callers at 1.00 precision and recall on Go, `safe_delete_check`'s proven-zero receipt, certificates, receipts, `review_diff`), but nothing composes them into a statement about conservation, and nothing checks that the proof itself was not tampered with.
 
 **Decision.**
-1. *fathom proves; it never writes the change.* Scope's "No transformation or migration engine … Revisit when: never" stands. Agents, codemods, OpenRewrite and ast-grep write; test-kit runs; fathom computes facts and proofs; Review Kit judges adequacy and enforces; the decision port orders attention over the residue.
+1. *fathom proves; it never writes the change.* Scope's "No transformation or migration engine … Revisit when: never" stands. Agents, codemods, OpenRewrite and ast-grep write; the test kit runs; fathom computes facts and proofs; the review kit judges adequacy and enforces; the decision port orders attention over the residue.
 2. *A refactor is a change under a conservation law, computed from a base commit.* What must stay: the capability inventory (language-neutral keys: `api:`, `route:`, `rpc:`, `env:`, `json:`, `cli:` and configured string surfaces such as `tool:`), the certified behaviour on the touched surface, and the governance bound to the moved code. What must change: whatever the refactor retires is provably gone in the forms a compiler does not check (imports, module dependencies, string and config patterns, kept-but-unused symbols). Base-side facts come from the changed files only (`git show base:path`), so cost scales with the change (P19); there is no second full ingest.
 3. *Proof integrity comes first and gates everything else.* A certifying, enforcing or surface-pinning test that was deleted, renamed, weakened (fewer assertions), skipped, build-tagged out, or had its golden data or certifies marker changed inside the range is a finding, after rename normalisation so a legitimate rename does not flag. Certificates bind to the commit their run exercised (ADR-043 amendment above).
-4. *A declaration made inside the range never excuses a loss.* Any skip, disposition, `retires:`, `surface_change:`, loosened ratchet or deleted plan row added in base..head is reported as self-declared; the loss it would excuse is still listed, and Review Kit decides. This generalises O56's "an agent may not grade its own row" from one prior plan version to the whole range.
+4. *A declaration made inside the range never excuses a loss.* Any skip, disposition, `retires:`, `surface_change:`, loosened ratchet or deleted plan row added in base..head is reported as self-declared; the loss it would excuse is still listed, and the review kit decides. This generalises O56's "an agent may not grade its own row" from one prior plan version to the whole range.
 5. *Report planes, never a grade.* `fathom conserve` and the review's `integrity` and `conservation` dimensions report per-plane findings and which inputs were missing (index not at HEAD, failed typed packages, unbound runs, unsupported language). A plane with a missing input reads `unproven`, never `conserved` (I44). No ordinal rung, no score.
 6. *Forced channels, not pulled tools.* Conservation rides the gate (`fathom verify` rows with `gone:`, `retires:`, `certified_by`), `fathom review --since`, `review_diff`, the pre-push hook as a warning, and CI as `--strict`; the stanza routes refactors to `rename_impact` and `safe_delete_check` first.
-7. *Review Kit judges; the pack is armed.* A `refactoring-conservation` requirement pack with a `fathom-conserve` evidence adapter is armed at warn on this repository from day one. "Complete functional-test coverage" is not the target: every capability in the touched surface keeps a live, unedited, commit-bound certificate, or its loss is declared outside the range. Review Kit's typed-judgment lane (ADR-0104) answers the residue no test covers (satisfied, violated or unknown) and never passes a gate alone.
+7. *The review kit judges; the pack is armed.* A `refactoring-conservation` requirement pack with a `fathom-conserve` evidence adapter is armed at warn on this repository from day one. "Complete functional-test coverage" is not the target: every capability in the touched surface keeps a live, unedited, commit-bound certificate, or its loss is declared outside the range. The review kit's typed-judgment lane answers the residue no test covers (satisfied, violated or unknown) and never passes a gate alone.
 8. *The decision port gets a narrow, measured role* (ADR-042's boundary): ordering attention over a very large frontier after a deterministic split, and same-concept questions for renames in languages without typed edges, each only after its own A/B and after the port's calibration check (0.9 right nine times in ten on adjudicated cases). It never decides a move, a strength, a scope question or safety, and every site is an explicit egress opt-in because questions carry code off-host.
 9. *Claims move with the code.* Citations re-anchor by their anchor text when lines move, so a refactor or a doc edit does not stale a claim whose text is intact.
 
 **Alternatives rejected.** A transformation or campaign engine inside fathom (the Moderne trap, vision 01 §3). An ordinal evidence ladder or safety grade (invites the adequacy judgment I43 forbids). A full re-ingest of the base commit (cost scales with the repo, not the change). Absence proofs for what the compiler already proves (deleted Go symbols). Freezing certifying tests at edit time (legitimate renames must edit them). A model deciding that X moved to Y (would launder a loss). Deleting the `clone` package (the only deterministic Blindness detector). Off-by-default review packs with a deny-based kill rule.
 
-**Consequences.** Three repositories change: test-kit (the envelope records the commit, tree cleanliness and race mode a run exercised), fathom (integrity, inventory, conservation, absence, programs, commit-bound certificates), Review Kit (a pack and an adapter). Existing certificates read `unproven` until runs are re-attested with commits; that is the honest state. Each stage carries a kill criterion (plan rows CV-M1..M8).
+**Consequences.** Three repositories change: the test kit (the envelope records the commit, tree cleanliness and race mode a run exercised), fathom (integrity, inventory, conservation, absence, programs, commit-bound certificates), the review kit (a pack and an adapter). Existing certificates read `unproven` until runs are re-attested with commits; that is the honest state. Each stage carries a kill criterion (plan rows CV-M1..M8).
 
 **Revisit when.** CV-M1 fails (the integrity check misses the i28 and i36 cells); CV-M2 fails (more than 10% of ordinary commits touching certified tests flag after rename normalisation); CV-M4 fails (the Go surface delta disagrees with `apidiff` below 0.95); the refactoring pack never fires at warn in a month; or a second language reaches measured typed edges (the tier caps in decision 5 then move).
 
@@ -2747,9 +2747,9 @@ amendment's "the user's own `[decide] sites`" becomes the user-only `[decide] se
 
 **Amended 2026-09-24 (CV-M5 fixed and re-measured, wave 3): the gap this amendment named above is closed.** `conserve.Resurrected`'s head matching pool (`internal/conserve/resurrection.go`) now admits a head function as a resurrection candidate only when it is itself new in the range (absent at base, by name, in its own file) or its body hash changed in the range (present at base under that name with a different hash) — exactly the fix this amendment's own prior paragraph specified. Both migrations replayed clean per design §3.3's bar: DuckDB genuine 0 `body_resurrected` findings (was 24), vector genuine unchanged at 0; a seeded copy in either migration still flags as a loss (`docs/bench/readings/cv-m5-blindness-replay-2026-09-24.md`'s 2026-09-24 update). The replay also surfaced an unrelated gap, filed as O117 (`.fathom/observations.md`, not fixed here): `fathom conserve`'s default plan discovery (the only invocation shape the pre-push gate uses) hands its plan reader absolute paths where repo-relative ones are expected, so `retires:`/`surface_change:` declarations may be silently invisible on the real repository without an explicit `--plan`.
 
-**Amended 2026-09-25 (Q22, the reading set): fathom computes the residue decision 7 hands to Review Kit.** Decision 7 said Review Kit's typed-judgment lane "answers the residue no test covers" and decision 1 let the decision port "order attention over the residue", but nothing computed the residue: `refactoring.uncovered-behaviour` had no evidence, and Q22 ("what would a reviewer need to be shown to accept a 400-file agent refactor without reading the diff") had no instrument. `fathom conserve` now reports a reading set (design §3.4): every function added or modified in `base..head` in a changed, non-test, non-generated Go file, classed `attested` (a reaching test's latest run passed on a clean tree, bound to a commit after which neither the test's file nor the function's file changed, the O114 rule applied without a declared target), `unattested` (reached, no such run) or `unreached` (no test reaches it over resolved edges). It is counts and lists, never a percentage (I43); it is `unproven` with nothing classed on a stale or partial index (I44); files in languages without typed edges are named `unanalyzed`. It is not a plane: it changes no verdict and no `--strict` exit. The review `conservation` dimension carries it, and Review Kit's `fathom-conserve` adapter makes it the evidence for `refactoring.uncovered-behaviour`, which stays advisory. The decision port's role over the list stays CV-51's deferral (a reading set over 100 items and an A/B corpus); a model deciding whether a changed function's behaviour survived is refused under decision 8. **Kill criterion CV-M12:** on two real ranges of this repository with runs attested at each head, the reading set plus unanalyzed files must name fewer files than the range changed, and 20 hand-checked items must each be a genuinely changed function in the right class; else it comes out.
+**Amended 2026-09-25 (Q22, the reading set): fathom computes the residue decision 7 hands to the review kit.** Decision 7 said the review kit's typed-judgment lane "answers the residue no test covers" and decision 1 let the decision port "order attention over the residue", but nothing computed the residue: `refactoring.uncovered-behaviour` had no evidence, and Q22 ("what would a reviewer need to be shown to accept a 400-file agent refactor without reading the diff") had no instrument. `fathom conserve` now reports a reading set (design §3.4): every function added or modified in `base..head` in a changed, non-test, non-generated Go file, classed `attested` (a reaching test's latest run passed on a clean tree, bound to a commit after which neither the test's file nor the function's file changed, the O114 rule applied without a declared target), `unattested` (reached, no such run) or `unreached` (no test reaches it over resolved edges). It is counts and lists, never a percentage (I43); it is `unproven` with nothing classed on a stale or partial index (I44); files in languages without typed edges are named `unanalyzed`. It is not a plane: it changes no verdict and no `--strict` exit. The review `conservation` dimension carries it, and the review kit's `fathom-conserve` adapter makes it the evidence for `refactoring.uncovered-behaviour`, which stays advisory. The decision port's role over the list stays CV-51's deferral (a reading set over 100 items and an A/B corpus); a model deciding whether a changed function's behaviour survived is refused under decision 8. **Kill criterion CV-M12:** on two real ranges of this repository with runs attested at each head, the reading set plus unanalyzed files must name fewer files than the range changed, and 20 hand-checked items must each be a genuinely changed function in the right class; else it comes out.
 
-**Amended 2026-09-25 (CV-M13, execution evidence): the reading set prefers execution over static reach.** CV-M13 calibrated static-reach attestation against Go coverage (`docs/bench/readings/cv-m13-reading-set-calibration-2026-09-25.md`). Over one head of this repository, 3.7% of functions static reach called attested never executed, and 31 of 91 it called unreached executed through the standard library, the runtime or package initializers. The test named as voucher was always a hub. And a function that ran could still carry a changed line that never did (`runServeHTTP`'s O119 fix). So `task tests:attest` now writes a Go coverage profile from the same run, bound to the commit by `coverage.meta.json`. When that profile is usable (bound, clean, passing, and the function's and test's files unchanged since its commit; I44), the reading set classes each changed function by its changed blocks: `attested` when every changed block executed, `partial` with the unexecuted line ranges, or `unexecuted`. Without a usable profile it falls back to static reach and says so per item. Counts reconcile through `unanalyzed_functions`. Test cases join by package when a name is shared. Review Kit fails `refactoring.uncovered-behaviour` on any item that is not `attested`. No percentage is computed (I43), and the decision port has no role. **Kill criterion CV-M14:** on the CV-M13 ranges with coverage, nothing attested is unexecuted and nothing flagged executed, and the named cases class as predicted. Separately, a `-coverpkg` attest run costing more than twice the plain run makes the profile opt-in.
+**Amended 2026-09-25 (CV-M13, execution evidence): the reading set prefers execution over static reach.** CV-M13 calibrated static-reach attestation against Go coverage (`docs/bench/readings/cv-m13-reading-set-calibration-2026-09-25.md`). Over one head of this repository, 3.7% of functions static reach called attested never executed, and 31 of 91 it called unreached executed through the standard library, the runtime or package initializers. The test named as voucher was always a hub. And a function that ran could still carry a changed line that never did (`runServeHTTP`'s O119 fix). So `task tests:attest` now writes a Go coverage profile from the same run, bound to the commit by `coverage.meta.json`. When that profile is usable (bound, clean, passing, and the function's and test's files unchanged since its commit; I44), the reading set classes each changed function by its changed blocks: `attested` when every changed block executed, `partial` with the unexecuted line ranges, or `unexecuted`. Without a usable profile it falls back to static reach and says so per item. Counts reconcile through `unanalyzed_functions`. Test cases join by package when a name is shared. The review kit fails `refactoring.uncovered-behaviour` on any item that is not `attested`. No percentage is computed (I43), and the decision port has no role. **Kill criterion CV-M14:** on the CV-M13 ranges with coverage, nothing attested is unexecuted and nothing flagged executed, and the named cases class as predicted. Separately, a `-coverpkg` attest run costing more than twice the plain run makes the profile opt-in.
 
 ## ADR-045: The Observatory becomes a console — every panel renders a verb, every number carries its instrument, and fathom returns what the kit lacks (2026-09-25)
 
@@ -2881,6 +2881,8 @@ neither lane takes new rows until an owner pull supersedes this record.
 - *Revisit when (added).* The daemon spends more than 2% of a week in shed or above, or enters a host-triggered rung at normal pressure (RT-M13); the typed pass does not fit a RAM class's exit mark (RT-M10); a service is quarantined twice in a month for a legitimate ingest; `/metrics` is unreachable under load (RT-D7).
 
 **Amended 2026-10-19 (the added Revisit fired).** From 2026-10-12 to 2026-10-18 the daemon spent 30% of the week in shed, almost all of it entered at pressure `warn` while fathom held about 70 MB to 3.4 GB under its 3 GiB shed mark, and each shed trim evicted the call graph the next graph-backed call rebuilt for about 8 s (O1014; `docs/bench/readings/tenancy/rt-m1-2026-10-19.md`). *Decision 2 (the ladder)* gains a precondition: pressure at `warn` sheds only while fathom's footprint + children is at or above `[tenancy.host] allowance` × budget (default 0.45; 0 restores the rule above), as swap growth already requires the shed mark; `critical` and the swap-volume floor are unchanged. *Decision 4 (cancellation)* gains its request-path half: a cache build whose caller's deadline is shorter than the last measured build is not started, and the caller gets a named partial, not a refusal, so I49 is unchanged. The unmanaged default budget is raised only after RT-M1 reads PASS (RT-193). **Decision models.** None applies: each rule is integer arithmetic on the sampler tick or the request path, the fallback is the rule, the opt-outs are `allowance = 0` and `FATHOM_TENANCY_BUDGET`, and RT-M13 and RT-M14 measure it.
+
+**Amended 2026-10-26 (the plan's pre-registered floor trigger fired).** RT-M1 read FAIL a second time on the swap-volume floor (`docs/bench/readings/tenancy/rt-m1-2026-10-26.md`: 769 of 835 host-starved minutes entered on the floor, 9 of its 39 entries at normal pressure). *Decision 2 (the ladder)*: the floor refuses only while host pressure is at or above `[tenancy.host] floor_on_pressure` (default `warn`; `normal` restores the rule above), and its minutes still count on the host-starved bar. The change restarts RT-M1's window at the next 00:00Z after it deploys. It is not expected to make the availability bar pass: 30 of the 39 floor entries were already at `warn`. **Decision models.** None applies: a comparison on the sampler tick; the opt-out is `floor_on_pressure = "normal"`; RT-M1 and RT-M13 measure it.
 
 ## ADR-048: Language breadth and depth — four measured support levels, dialects as data on two engines, embedded compressed grammars with pinned packs, no language above its reading (2026-09-27)
 
@@ -3051,7 +3053,7 @@ a `; source:` header naming it (condition (a) then needs more than headers, e.g.
 
 ## ADR-050: The system graph: one contract-key link model with evidence tiers, three verbs, and dependency APIs read from local caches through a port (2026-09-27)
 
-**Status.** Accepted 2026-09-27. Owner decision memo of 2026-09-27, notes N1 (dependencies) and N6 (calls between services). Vision: `docs/vision/38-proof-layer-roadmap.md`. Design: `docs/design/system-graph.md`. Plan: `docs/plans/system-graph.md` (SG-). Goals G17, G18. Extends ADR-044's inventory keys; keeps vision 15 §3 (ci-kit owns the depgraph engine). Invariants I56, I57.
+**Status.** Accepted 2026-09-27. Owner decision memo of 2026-09-27, notes N1 (dependencies) and N6 (calls between services). Vision: `docs/vision/38-proof-layer-roadmap.md`. Design: `docs/design/system-graph.md`. Plan: `docs/plans/system-graph.md` (SG-). Goals G17, G18. Extends ADR-044's inventory keys; keeps vision 15 §3 (the CI kit owns the dependency-graph engine). Invariants I56, I57.
 
 **Context.** A call graph stops at a process boundary (inside one, `blast_radius` read precision 1.00 on 9 audited calls, 2026-09-27). Fathom already joins Go HTTP client calls to route registrations (`service_ref`, heuristic tier, VB-30) and extracts `route:`, `rpc:`, `env:` and `cli:` inventory keys for conservation (ADR-044), but each relation is its own code path, only HTTP crosses services, and nothing grades a link's evidence. Dependencies are the same problem one level down: our code consumes a library's API the way one service consumes another's route. `dep_drift` and `cross_repo_blast_radius` have zero lifetime calls; `package_deps` was deleted by the surface prune. Peers link routes to handlers across repositories; none grades the evidence or gates on it.
 
@@ -3060,7 +3062,7 @@ a `; source:` header naming it (condition (a) then needs more than headers, e.g.
 2. *Four evidence tiers, ordered.* `spec` (both ends bound through a contract document: OpenAPI, proto, GraphQL SDL, AsyncAPI, Avro, a migration) > `typed` (a typed pass or generated stub resolves the consumer to the provider's declaration) > `literal` (normalized literal key equality) > `template` (a key with holes matched to a template). A link carries its tier and its evidence (file:line at both ends, the extractor and its epoch). A link below `typed` never gates a verify row, a conservation plane or a review verdict; it informs (I57).
 3. *One port, one link table, three verbs.* Extractors implement one contract-source port; keys go to one additive `contract_keys` table per service and links to one `system_links` table, refreshed for the keys an ingest changed. Three verbs answer every kind: `links` (what a node provides and consumes, and who is on the other side), `system_impact` (a change's reach across services and dependents, by kind and tier), and `contract_drift` (a producer's contract against its consumers' usage, and a diff's breaking changes). The two surviving zero-call tools are retired when the verbs land; no tool per edge kind (law 4). The verbs join the agent surface only on call-log justification.
 4. *Dependencies are the `pkg:` kind, read locally.* Fathom never downloads a package, advisory or doc on its own authority (I56). It reads what the toolchain already fetched (the Go module cache, `node_modules` and the pnpm store, a project virtualenv and the uv cache, the Maven and Gradle caches, the Cargo registry sources), indexes each (ecosystem, name, version) public API surface once per machine, content-addressed by the package digest and shared by every service that uses it, lazily, in the background ingest class, under the memory budget. Upgrade impact is `contract_drift` between two versions of a `pkg:` provider; the usage map is `links`; vuln reach reads an OSV file the user supplies.
-5. *The lockfile graph comes through a port.* `DepGraph(ecosystem, root) -> nodes, edges, lock digests` is the seam vision 15 §3 named; an in-tree adapter reads lockfiles only until ci-kit ships its engine, then is deleted. Fathom consumes answers; ci-kit owns the engine.
+5. *The lockfile graph comes through a port.* `DepGraph(ecosystem, root) -> nodes, edges, lock digests` is the seam vision 15 §3 named; an in-tree adapter reads lockfiles only until the CI kit ships its engine, then is deleted. Fathom consumes answers; the CI kit owns the engine.
 6. *Measured by a fixture fleet.* Fauxtown gains services that exercise every kind with an answer key; precision and recall are read per kind and tier; drift detection is read on seeded breaking changes; upgrade impact on a seeded-upgrade corpus. Co-change history from git is an independent oracle for `blast_radius` and `system_impact`, never an input to them.
 7. *Jev has no role in matching.* The route-site calibration failed (45.7% right at confidence at least 0.9, 2026-09-24). Revisit only with a passing calibration sample on adjudicated links.
 8. *Tenancy.* No link computation on a request path: the join is an indexed lookup on key; materialized links refresh at ingest for changed keys only; dependency indexing is lazy, per package, byte-capped, evictable, and a request for an unindexed package answers `pending` with a named reason.
@@ -3070,19 +3072,19 @@ a `; source:` header naming it (condition (a) then needs more than headers, e.g.
 - *A graph database for cross-service edges:* ADR-041; the join is a key equality over an indexed table.
 - *Downloading packages or advisories to fill gaps:* egress is an admission cost the operator never granted, and a daemon that fetches is a supply-chain surface (I56).
 - *Indexing full dependency sources:* private bodies are not the contract and cost memory; the public surface answers upgrade impact and usage.
-- *Building the depgraph engine in fathom:* inverts ownership (vision 15 §3).
+- *Building the dependency-graph engine in fathom:* inverts ownership (vision 15 §3).
 - *Letting heuristic links gate:* a template match is a hint; gating on it would make a false positive block a push.
 
 **Consequences.**
 - New: `internal/syslink` (key grammar, port, join, tiers), `internal/depplane` (the DepGraph port, the in-tree lockfile adapter, cache locators, the API indexer), additive store tables `contract_keys`, `system_links`, `dep_packages`, `dep_api`, the verbs `links`, `system_impact`, `contract_drift`, `indexbench link-oracle`, fauxtown services and an answer key.
 - Changed: `service_ref` becomes the `literal`/`template` tiers of `route:` links; inventory extraction feeds `contract_keys`.
-- Removed at the end: `dep_drift`, `cross_repo_blast_radius`, and the in-tree lockfile adapter once ci-kit's engine ships.
+- Removed at the end: `dep_drift`, `cross_repo_blast_radius`, and the in-tree lockfile adapter once the CI kit's engine ships.
 - The compatibility surface grows by the key grammar and the three verbs' `--json` envelopes when they land.
 
 **Revisit when.**
 - A kind's spec+typed tiers stay below precision 0.95 or recall 0.85 on the fixture fleet after two extractor rounds (SG-M1): drop or narrow that kind.
 - A materialized-link refresh costs more than 10% of ingest wall time on the home fleet, or dependency indexes exceed 256 MiB on disk or push `phys_footprint` beyond budget (SG-M5): change the materialization or the cap.
-- ci-kit ships the depgraph engine: delete the in-tree adapter (SG-31..SG-35).
+- The CI kit ships the dependency-graph engine: delete the in-tree adapter (SG-31..SG-35).
 - A consumer needs private dependency bodies (not the public surface) for a proven answer class.
 - A calibration sample of adjudicated links passes nine in ten at a shown confidence: reconsider a proposal role for Jev in `template`-tier matching.
 
@@ -3306,17 +3308,16 @@ surface; `package_deps` still listed a month after deletion).
 **Status.** Accepted 2026-09-28. Owner decision memo of 2026-09-28 (the owner delegated the
 call). Inputs: the owner's questions (the feature scorecard as a fathom feature, overrides,
 specs as the source, what maps to what, and whether fathom should become the code review tool
-and absorb Review Kit); the owner's Feature Scorecard (86
-features with owner verdicts, 2026-09-27; summarized in `docs/assessments/2026-09-27-feature-scorecard.md`); Review Kit (`platform-engineering/kits/review-kit`,
-`leadsman`) and its fathom uplift brief (`docs/design/fathom-uplifts.md`). Vision:
+and absorb the review kit); the owner's Feature Scorecard (86
+features with owner verdicts, 2026-09-27; summarized in `docs/assessments/2026-09-27-feature-scorecard.md`); the review kit (an adopting platform's review tool) and its fathom uplift brief. Vision:
 `docs/vision/39-feature-map-and-review.md`. Design: `docs/design/feature-map.md`. Plan:
 `docs/plans/feature-map.md` (FM-, wave 5). Goal G26. Extends ADR-040 (findings loop authority
 boundary), ADR-044 (inventory keys), ADR-050 (system graph contract keys), ADR-053 (surface
 reckoning), ADR-054 (support matrix as a projection, never a hand-kept status list).
 
-**Context.** Review Kit already covers standards authored as CUE catalogs, soundings,
+**Context.** The review kit already covers standards authored as CUE catalogs, readiness readings,
 dispositions, admission with live forge approval, signed execution, system/security/practice
-reviews, and a hosted view (DATUM), by explicit design working with no fathom installed.
+reviews, and a hosted view, by explicit design working with no fathom installed.
 Fathom's own invariant (ADR-040) is that it never approves, disputes, tailors or closes a
 finding; the review kit stays the organizational record. The owner's instinct that review is
 superpowered by fathom is right — fathom is the only tool holding the joined evidence (usage,
@@ -3346,7 +3347,7 @@ for one codebase.
    the proposal path is dropped). Never auto-applied; a ditch proposal flows into the
    surface-reckoning pattern (callers proof, re-anchor or refuse the citing rows), never a
    direct delete.
-5. *Overrides and criteria are a Standard*, which is Review Kit's job (a `product-portfolio`
+5. *Overrides and criteria are a Standard*, which is the review kit's job (a `product-portfolio`
    catalog). Fathom's local fallback is a small `.fathom/features.cue` rule table, the same
    shape as the risk table, with defaults in the binary. The spec standard is the source:
    `docs/features.md` rows use plan grammar v2 anchors, and ADRs stay the generic spec that
@@ -3354,21 +3355,21 @@ for one codebase.
 6. *Surfaces:* `fathom features [--json]`, a console page (value x implementation scatter with
    verdict shapes, a filterable table, an underused list, a ditch list), and an artifact-style
    export. The Feature Scorecard artifact becomes the first reading this reproduces.
-7. *Do not merge Review Kit into fathom now (D3). One family, two tools, one contract.* Into
+7. *Do not merge the review kit into fathom now (D3). One family, two tools, one contract.* Into
    fathom (code-grounded, per change, computed): the change risk receipt (U7), SARIF and
    checks, the feature map, conservation, certification facts, the architecture drift radar
-   (U11); `fathom review` is the code-review surface. Stays in Review Kit (organizational
+   (U11); `fathom review` is the code-review surface. Stays in the review kit (organizational
    assurance): standards and catalogs, requirement severity, dispositions (dispute, accept,
    tailor), admission with live forge approval, signed execution, and the non-code domains
    (infra, ops, well-architected, security posture, economics, practice, org controls) plus
-   DATUM (hosted).
-8. *Instead of merging:* (a) a versioned evidence contract (the uplift brief's P0) so every
-   fathom lane Review Kit consumes is stable and receipted; (b) Review Kit's own code-parsing
-   may optionally consume fathom when present, keeping its standalone path; (c) Review Kit
+   its hosted view.
+8. *Instead of merging:* (a) a versioned evidence contract (the uplift brief's first ask) so every
+   fathom lane the review kit consumes is stable and receipted; (b) the review kit's own code-parsing
+   may optionally consume fathom when present, keeping its standalone path; (c) the review kit's
    concern packs reach the edit through the findings outbox (amended 2026-10-10, ADR-067: no
    compiler to obligations exists, see the amendment below); (d) a
-   family bundle: one installer and one plugin that installs fathom plus leadsman, shared
-   nautical naming (fathom, leadsman, sounding, datum), shared licence (FSL). Review Kit's
+   family bundle: one installer and one plugin that installs fathom plus the review kit, shared
+   naming, shared licence (FSL). The review kit's
    eventual move into its own repository beside fathom is a decided future, not built now (the
    owner, 2026-09-28 — see Consequences).
 9. *Sequencing.* After `docs/plans/system-graph.md#SG-2` (contract-key storage) and
@@ -3377,9 +3378,9 @@ for one codebase.
    verdict proposals at least 0.8 agreement or dropped.
 
 **Alternatives rejected.**
-- *Merge Review Kit into fathom outright.* Authority: fathom's invariant and ADR-040 say
+- *Merge the review kit into fathom outright.* Authority: fathom's invariant and ADR-040 say
   fathom never approves or closes; admission and dispositions are authority by design. Hosted
-  and org features conflict with fathom's non-goals and tenancy. Review Kit's independence rule
+  and org features conflict with fathom's non-goals and tenancy. The review kit's independence rule
   (works with no fathom) is what lets an organization adopt it without the index. Scope: fathom
   is shrinking its surface (ADR-053); absorbing roughly 170 Go files of a different domain
   undoes that. The valuable part of a merge — one install, one experience — is a distribution
@@ -3393,19 +3394,19 @@ for one codebase.
 - New: `internal/featuremap`, `docs/features.md` (authored, outside `docs/plans/`), a
   `.fathom/features.cue` local fallback, the `fathom features` verb, the console Features page,
   an artifact-style export, plan `docs/plans/feature-map.md` (FM-).
-- Review Kit gains a versioned evidence contract to consume (its uplift brief's P0); its
+- The review kit gains a versioned evidence contract to consume (its uplift brief's first ask); its
   concern packs reach the edit through the findings outbox import (amended 2026-10-10, ADR-067).
-- `docs/intent/futures.md` gains two entries: "Review Kit merge into fathom" (contingent on
-  this record's Revisit-when below) and "Review Kit in its own repo beside fathom" — the
-  owner answered 2026-09-28 that this is where Review Kit eventually lands, but not now:
+- `docs/intent/futures.md` gains two entries: "the review kit merge into fathom" (contingent on
+  this record's Revisit-when below) and "the review kit in its own repo beside fathom" — the
+  owner answered 2026-09-28 that this is where the review kit eventually lands, but not now:
   recorded as a decided future (confidence likely, horizon later), not an open question.
 - `docs/intent/scope.md` gains goal G26, gated on the feature-map measurement instrument
   (`fathom plans status`).
 
 **Revisit when.**
-- At least 70% of Review Kit's requirements evaluated in a quarter depend on a fathom evidence
+- At least 70% of the review kit's requirements evaluated in a quarter depend on a fathom evidence
   lane.
-- At least 5 adopters exist and every one installs both fathom and Review Kit.
+- At least 5 adopters exist and every one installs both fathom and the review kit.
 - The evidence contract takes more than 3 breaking changes in a quarter (the seam costs more
   than it saves).
 - The owner decides to sell one product (then bundle first, merge code last).
@@ -3423,9 +3424,9 @@ too few for the bar and a model "ditch" could anchor the decision ADR-053 requir
 owner kept the option open instead, so the calibration decides. Future F51.
 
 **Amendment (2026-10-10, ADR-067).** Decision 8(c) and the Consequences bullet that repeated it are corrected. No
-compiler from Review Kit concern packs to fathom obligations exists in either repository. A pack's findings reach
+compiler from the review kit's concern packs to fathom obligations exists in either repository. A pack's findings reach
 the edit through the findings outbox import (ADR-040). A kit's guards and formats may ride tech packs once ADR-061 is
-accepted. A resource-shaped rule stays policy-kit's (platform-engineering ADR-0095 decision 5, ADR-063 O11), so no
+accepted. A resource-shaped rule stays the policy kit's (the review kit's resource-rule boundary, ADR-063 O11), so no
 tech pack carries one. The compiler is not built until a pack consumer exists (P20).
 
 ## ADR-056: Judgment at the port, proof first: level 10 through fathom, optional per site, measured before it is built (2026-09-29)
@@ -3871,8 +3872,8 @@ F59. Reads ADR-049 decision 1, ADR-050 decision 4, ADR-053, ADR-055 decisions 7 
 valuable; 46 worktrees and 53 branches removed by hand), files nothing owns, code we did not write (fathom's binary
 imports 22 of app-kit's 93 non-test Go packages and 19 of agentic-kit's 242 while `third_party/` mirrors both whole,
 1,806 and 1,602 files), and what a service promises (no alert-rule, SLO-spec or dashboard file on this workstation on
-2026-09-30). Tools exist for each part (git, Renovate and Dependabot, `go mod vendor`, Prometheus and Grafana, Review
-Kit); none knows what the code is for. `dep_drift`, which the owner's note assumed, was deleted under ADR-053
+2026-09-30). Tools exist for each part (git, Renovate and Dependabot, `go mod vendor`, Prometheus and Grafana, the review
+kit); none knows what the code is for. `dep_drift`, which the owner's note assumed, was deleted under ADR-053
 (scorecard F-18); `task vendor-check` (I15) proves a mirror equals its pin and says nothing about upstream.
 
 **Decision.**
@@ -3896,15 +3897,15 @@ Kit); none knows what the code is for. `dep_drift`, which the owner's note assum
    tree (SV-4), `archivable` in `plans status` (SV-5), the owner's adjudication SV-M2. Stale documents stay with the
    knowledge-retrieval doc drift; uncited documents are deferred (SV-D4). Stop-hook and compaction nudges and a
    `Lifetime:` header are refused.
-5. *SRE as code: promises as code; the fathom half deferred, the standards in Review Kit.* Fathom's part is the
+5. *SRE as code: promises as code; the fathom half deferred, the standards in the review kit.* Fathom's part is the
    code-grounded chain (feature, route, the SLI metric emitted on the handler's reach, the SLO, alert and dashboard
    that consume it, the runbook declaration): a `metric:` contract-key kind, dangling promises through
-   `contract_drift`, observability conservation at review, and readiness facts delivered to Review Kit through the
-   evidence contract. Readiness levels, error-budget policy and the reliability Standard are Review Kit's (its
+   `contract_drift`, observability conservation at review, and readiness facts delivered to the review kit through the
+   evidence contract. Readiness levels, error-budget policy and the reliability Standard are the review kit's (its
    "Reliability and operations" domain); live values, burn rates and alert state stay in the ops system (a rendered
-   link at most, ADR-058); an organization-wide dashboard is hosted (DATUM, a fathom non-goal). A separate
+   link at most, ADR-058); an organization-wide dashboard is hosted (the review kit's hosted view, a fathom non-goal). A separate
    Reliability Kit is refused (P21). The build is deferred (F59, SV-D5): no consumer on 2026-09-30 (P20). Usable
-   today: a Review Kit concern pack compiling a reliability convention into obligations at the edit.
+   today: a review kit's concern pack compiling a reliability convention into obligations at the edit.
 6. *Minimal vendoring: accepted as the used closure and a licence boundary plane.* `UsedUnits` and `fathom report
    used` compute a dependency's closure from product entry points with a reason per unit: Go packages equal to `go
    list -deps` (file pruning inside a Go package is unsafe and refused), TypeScript and JavaScript modules by import
@@ -3931,7 +3932,7 @@ Kit); none knows what the code is for. `dep_drift`, which the owner's note assum
 - *Fathom as a vendoring tool.* A package manager and the transformation-engine non-goal; `go mod vendor` is already
   exact for Go packages.
 - *Content-similarity detection of derived licensed work.* A legal judgment with a costly false "fine to ship".
-- *A Reliability Kit, or SRE features in fathom now.* No consumer, and the Standard belongs to Review Kit.
+- *A Reliability Kit, or SRE features in fathom now.* No consumer, and the Standard belongs to the review kit.
 - *Reordering work by ditch-then-merge.* Already done; the rule's remaining force is "finish before building".
 - *A per-path policy (`never`, `reached`) that lets a licensed file the product reaches ship.* Replaced on 2026-09-30
   by default deny and an explicit owner allow per path (the amendment below).
@@ -3949,7 +3950,7 @@ Kit); none knows what the code is for. `dep_drift`, which the owner's note assum
   SV-M1: the rows classes are removed, the amendment of 2026-10-01 below; SV-M3 read KEEP, and SV-M2 has not read.)
 - SV-M4 shows no reached upstream change in two quarters: drop F58.
 - A named consumer commits alert rules, SLO specs or dashboards: promote F59.
-- Review Kit asks for readiness facts through the evidence contract before F59's trigger fires.
+- The review kit asks for readiness facts through the evidence contract before F59's trigger fires.
 - A line holding valuable work is lost although the report classed it landed or idle.
 - The owner reverses a refusal or the default-deny boundary. (The trigger "The owner decides decision 7's sequence"
   fired 2026-09-30: accepted, and decision 7 stands.)
@@ -3986,7 +3987,7 @@ the compatibility surface (`docs/intent/scope.md`) and vision 41 sections 4.1 an
 
 **Status.** Accepted 2026-10-19 (owner-architect), with amendments A1-A7 below. Originally proposed 2026-10-09. Owner decisions D11 (tech packs), K5 (projects describe themselves in `.fathom/`; committed index snapshots rejected), K9 (an authored, anchored orientation set in the project pack) and K10 (one noun, one format: the custodian's packs and app-kit's fathom-pack become tech packs) of 2026-10-09, and the owner's ask of the same day: "are some of the patterns or features that we already have better reworked into a .fathom dir paradigm … as we add new capabilities we don't sprawl the config and surface area further than it needs." Design: `docs/design/fathom-dir.md` (normative once accepted). Plan: `docs/plans/fathom-dir.md` (FD-…). Goal G35. Promotes F5 (TX-3); fires ADR-024 *Revisit when* (1); reframes F27; adds F62 to F65.
 
-**Context.** An inventory of every file fathom reads or writes (design §2) found: a kit's guidance adopted by copy drifted inside this repository (three guards marked "app-kit fathom-pack v0.1" in `.fathom/guard.cue` while the pinned `third_party/app-kit/fathom-pack` is v0.2, and `.fathom/layers/ui-appkit` differing from the pinned layer in all three files); per-checkout state in three homes, with `owned.json` and `leases.jsonl` left in the committed `.fathom/` and no ignore written for adopters; the literal `.fathom` spelled by hand in 96 non-test lines across 65 files, one of which (`cmd/fathom/configpanel.go:69`) reads a binding file name nothing writes; two architecture-rule formats (`layer_rules`, `.fathom/rules/archconformance.cue`); two switchboards (`capabilities.cue` and four `config.toml` booleans); tuning tables (`risk.cue`, `learning.cue`) outside `config.toml`'s provenance; and growth by file, each capability adding a file name, schema, loader, doctor row and docs section, with five more designed. Meanwhile the parked provider stratum's trigger fired: fathom is a named consumer and app-kit and env-kit are concrete providers.
+**Context.** An inventory of every file fathom reads or writes (design §2) found: a kit's guidance adopted by copy drifted inside this repository (three guards marked "app-kit fathom-pack v0.1" in `.fathom/guard.cue` while the pinned `third_party/app-kit/fathom-pack` is v0.2, and `.fathom/layers/ui-appkit` differing from the pinned layer in all three files); per-checkout state in three homes, with `owned.json` and `leases.jsonl` left in the committed `.fathom/` and no ignore written for adopters; the literal `.fathom` spelled by hand in 96 non-test lines across 65 files, one of which (`cmd/fathom/configpanel.go:69`) reads a binding file name nothing writes; two architecture-rule formats (`layer_rules`, `.fathom/rules/archconformance.cue`); two switchboards (`capabilities.cue` and four `config.toml` booleans); tuning tables (`risk.cue`, `learning.cue`) outside `config.toml`'s provenance; and growth by file, each capability adding a file name, schema, loader, doctor row and docs section, with five more designed. Meanwhile the parked provider stratum's trigger fired: fathom is a named consumer and app-kit and the environment kit are concrete providers.
 
 **Decision.**
 1. *Four zones.* Z1 authored config (`config.toml`, `capabilities.cue`, `modules.cue`), Z2 authored knowledge, which is the project's own pack (`guard.cue`, the new `generated` and `formats` keys, `concerns.cue`, `layers/`, `trace/`, `observations/`), Z3 local and derived state (never committed: the state directory, and `.fathom/.gitignore` written by `fathom init` through `internal/wiring` for the legacy local names), Z4 user scope (unchanged). No derived index data is ever committed (K5).
@@ -4139,55 +4140,55 @@ ADR-059 (one instruction file) and ADR-061 (tech packs, proposed) as constraints
 tooling fathom's own repository uses; feeds fathom: formats, provenance and evidence a tech pack could carry;
 consumes fathom: readings, test selection, plan gates) and an overlap check before any new wiring. The reading
 (2026-10-09) found three edges K7 treated as future already live: fathom vendors app-kit and agentic-kit
-in-tree (`third_party/`, pinned by `.vendor-commit`, `go.mod` replace), mirrors the test-kit schema
-(`schema/testkit/`, `task tests:attest`, which skips without a surveyor binary), and Review Kit consumes fathom
-through its bridge (`fathom review`, `review-key`, `certify gaps`, `conserve --since`). Nothing consumes env-kit,
-image-kit, docs-kit or ci-kit from fathom today. Ten overlaps were named; one is a true duplicate.
+in-tree (`third_party/`, pinned by `.vendor-commit`, `go.mod` replace), mirrors the test kit schema
+(`schema/testkit/`, `task tests:attest`, which skips without the test kit's binary), and the review kit consumes fathom
+through its bridge (`fathom review`, `review-key`, `certify gaps`, `conserve --since`). Nothing consumes the environment kit,
+the image kit, the docs kit or the CI kit from fathom today. Ten overlaps were named; one is a true duplicate.
 
 **Decision.** One verdict per overlap, each with the boundary that keeps it from coming back:
-1. *O1, the dependency graph: delegate.* ci-kit's `depgraph` (its ADR-0071) is the package and module closure;
-   fathom's graph is symbols and call edges. Fathom consumes `depgraph` through ADR-050 decision 5's port, or
-   ci-kit's own drop-if fires; fathom never builds a package-level resolver.
-2. *O2, review: keep.* `review_diff` and `fathom review` assert diff-scoped facts from the index; leadsman judges
-   readiness and sufficiency over many lanes, fathom's among them. Review Kit's `internal/fathombridge` Collect is
-   the only path between them, and Review Kit never re-derives a blast radius (ADR-055 decision 3).
+1. *O1, the dependency graph: delegate.* The CI kit's package graph (its own decision) is the package and module closure;
+   fathom's graph is symbols and call edges. Fathom consumes that graph through ADR-050 decision 5's port, or
+   the CI kit's own drop-if fires; fathom never builds a package-level resolver.
+2. *O2, review: keep.* `review_diff` and `fathom review` assert diff-scoped facts from the index; the review kit judges
+   readiness and sufficiency over many lanes, fathom's among them. The review kit's fathom bridge is
+   the only path between them, and the review kit never re-derives a blast radius (ADR-055 decision 3).
 3. *O3, plan gates: delegate.* A kit's plan rows are verified by `fathom verify`; no kit builds a second
    checkbox verifier.
-4. *O4, test facts: keep.* The test-kit result envelope (and its attestation) is the source; fathom ingests it
+4. *O4, test facts: keep.* The test kit result envelope (and its attestation) is the source; fathom ingests it
    (`fathom tests ingest`, ADR-043) and joins it against the index. Fathom adds no parallel result format;
-   coverage profiles stay fathom's, since test-kit carries none.
-5. *O5, documentation coverage: delegate.* docs-kit's reference coverage reads the fathom docs and symbol index
-   (its DK-64); docs-kit renders and lints, fathom retrieves and finds contradictions.
-6. *O6, generated configuration: keep with a boundary.* env-kit generates (Taskfile, lefthook, devenv files from
+   coverage profiles stay fathom's, since the test kit carries none.
+5. *O5, documentation coverage: delegate.* The docs kit's reference coverage reads the fathom docs and symbol index
+   (its own plan row); the docs kit renders and lints, fathom retrieves and finds contradictions.
+6. *O6, generated configuration: keep with a boundary.* The environment kit generates (Taskfile, lefthook, devenv files from
    `env.cue`); the custodian audits claims about them. Generated files carry provenance (source and regen
    command), so a custodian rule fires once, on the source, never on every generated copy.
-7. *O7, doctors: keep.* `fathom doctor` and the kits' doctors (`bosun`, `surveyor`, `purser`, `leadsman`) share
+7. *O7, doctors: keep.* `fathom doctor` and the kits' own doctors share
    the exit lineage (0 pass, 1 finding, 2 operational); no merge.
 8. *O8, guards: supersede by tech packs.* Guard entries copied by hand from a kit's fathom-pack (with provenance
    comments) are replaced by the pack read in place (ADR-061, futures F62 to F64) once tech packs ship.
 9. *O9, evidence vocabulary: keep, plus a naming audit.* agentic-kit's `foundations/evidence` and `review` and
    fathom's evidence plane share words (evidence, claim, pack) with separate types; fathom imports slices only.
    The names are audited under K10, not merged.
-10. *O10, test-kit availability: a gap, not an overlap.* The optional `tests:attest` skip closes when surveyor
-    ships as a release artifact (K1).
-11. *O11, resource policy: delegate (added 2026-10-10, ADR-067).* policy-kit (platform-engineering ADR-0015) owns
-    resource-shaped rules: the control, its CEL assert, its admission forms, its crosswalk and coverage. Review Kit
-    refuses a resource-shaped requirement unless it joins policy-kit by canonId (ADR-0095 decision 5) and builds no
-    infrastructure scanner (its F5). Fathom keeps resource facts and membership (`internal/fusion/policyref.go`:
+10. *O10, test kit availability: a gap, not an overlap.* The optional `tests:attest` skip closes when the test kit's
+    binary ships as a release artifact (K1).
+11. *O11, resource policy: delegate (added 2026-10-10, ADR-067).* The policy kit (an adopting platform's, unbuilt) owns
+    resource-shaped rules: the control, its CEL assert, its admission forms, its crosswalk and coverage. The review kit
+    refuses a resource-shaped requirement unless it joins the policy kit by control id and builds no
+    infrastructure scanner (its own boundary). Fathom keeps resource facts and membership (`internal/fusion/policyref.go`:
     which Kyverno or Gatekeeper policy selects a workload) and never evaluates a resource rule, in core or in a
-    tech pack. Fathom builds no resource-policy evaluator. Until policy-kit ships, membership reads the upstream
+    tech pack. Fathom builds no resource-policy evaluator. Until the policy kit ships, membership reads the upstream
     Kyverno policy library a repository applies, its licence checked at use.
 
 *Fathom's edges, summarized.* Adopts: app-kit (UI, `appkit.adoption.json`, `docs/app-kit.md`) and agentic-kit
-(foundations, the project-intent practice and skills), both vendored and pinned; the test-kit schema mirror;
-env-kit next (K4), replacing `scripts/cloud-setup.sh`'s hand-written setup. Feeds fathom: kit fathom-packs today
-(guards and layers, by copy), tech packs after ADR-061 (formats, generated-file provenance, rules), test-kit
-envelopes, Review Kit findings (`fathom findings import`). Consumes fathom: Review Kit (bridge), kit plan gates
-(verify), docs-kit coverage (DK-64), ci-kit selection by blast radius (not specified; would follow O1's port).
+(foundations, the project-intent practice and skills), both vendored and pinned; the test kit schema mirror;
+the environment kit next (K4), replacing `scripts/cloud-setup.sh`'s hand-written setup. Feeds fathom: kit fathom-packs today
+(guards and layers, by copy), tech packs after ADR-061 (formats, generated-file provenance, rules), test kit
+envelopes, review kit findings (`fathom findings import`). Consumes fathom: the review kit (bridge), kit plan gates
+(verify), the docs kit's coverage, the CI kit's selection by blast radius (not specified; would follow O1's port).
 
 **Alternatives rejected.**
-- *Merging Review Kit into fathom:* ADR-055 decision 3 stands; the family shares a contract, not a binary.
-- *A fathom-native package resolver beside ci-kit's:* two graphs of the same inputs diverge; ADR-050 already
+- *Merging the review kit into fathom:* ADR-055 decision 3 stands; the family shares a contract, not a binary.
+- *A fathom-native package resolver beside the CI kit's:* two graphs of the same inputs diverge; ADR-050 already
   inverted that ownership.
 - *A fathom test-result format:* two ingest paths for one fact.
 
@@ -4202,9 +4203,9 @@ measurement that would admit Jev: a kit edge whose answer is a ranking over fath
 blast radius ranked by likely failure), measured against computed ranking before any model reads it.
 
 **Revisit when.**
-- A kit ships the duplicate path: ci-kit `depgraph` gains symbol edges, or a kit builds a plan verifier or a
+- A kit ships the duplicate path: the CI kit's package graph gains symbol edges, or a kit builds a plan verifier or a
   result format of its own.
-- A named consumer needs a package graph from fathom that `depgraph` cannot answer.
+- A named consumer needs a package graph from fathom that the CI kit's graph cannot answer.
 - ADR-061's tech packs ship (O8 executes) or K10's naming audit lands (O9).
 
 ## ADR-064: Log templates are LogTemplate observations of their own file, not typed edges, until the system graph's tables open (2026-10-09)
@@ -4440,8 +4441,8 @@ F69, F37 amended. Invariants: I8 amended, I57 extended to call edges, I65 stated
 (decision 8(c) and its Consequences bullet). Adds ADR-063 O11. The owner rulings it cites (K22, K23, K26) and the
 web rulings W1 to W4 are committed in `docs/design/language-breadth.md` section 1.8 by the language lane (LB-F455),
 the only lane that edits the language-breadth files. Reads ADR-016, ADR-043, ADR-044, ADR-048, ADR-049 decisions 1
-and 2, ADR-050, ADR-051 decision 1, ADR-056, ADR-061 (proposed), ADR-062, ADR-064, platform-engineering ADR-0015
-and ADR-0095, and Review Kit F5 as constraints. The evidence-export design of the same day (N12) is ADR-068.
+and 2, ADR-050, ADR-051 decision 1, ADR-056, ADR-061 (proposed), ADR-062, ADR-064, the policy kit's and the review kit's resource-rule boundaries
+as constraints. The evidence-export design of the same day (N12) is ADR-068.
 
 **Owner-architect rulings at acceptance (2026-10-10).**
 - *W3 (O482).* The oracle-blind cap applies per subject, so a typed subject cannot lift untyped code past its own
@@ -4452,7 +4453,7 @@ and ADR-0095, and Review Kit F5 as constraints. The evidence-export design of th
   migration note (decision 3).
 - *I8 and ADR-023.* Amended as decision 11 says. D0-1 retires.
 - *ADR-063 O11.* Accepted. The upstream Kyverno policies a repository applies, their licence checked at use, stand
-  in until policy-kit ships. Fathom builds no resource-policy evaluator.
+  in until the policy kit ships. Fathom builds no resource-policy evaluator.
 - *K22, K23 and K26.* Their wordings are reviewed by the owner-architect when the language lane commits them.
 - *Open to the owner.* An ops consumer with production manifests (else the selector join waits for its 2027-09-30
   kill date). The CI or review sink for SARIF and JUnit is ADR-068's open input.
@@ -4481,9 +4482,9 @@ scripting languages at their highest practical tier. Read against the tree at fb
   always Unknown, so wiring it is an amendment.
 - A layer (ADR-016) compiles a document corpus into cited claims. ADR-056 R1 and JP-X2 already refuse computable
   labels as model work, and the `ai-derived` tier does not exist (F7).
-- Resource-shaped rules are refused by Review Kit unless they join policy-kit by canonId (platform-engineering
-  ADR-0095 decision 5), and Review Kit builds no infrastructure scanner or second resource-policy evaluator (its F5).
-  policy-kit (ADR-0015) is unbuilt.
+- Resource-shaped rules are refused by the review kit unless they join the policy kit by control id, and the review
+  kit builds no infrastructure scanner or second resource-policy evaluator (its own boundary).
+  The policy kit is unbuilt.
 - The table freeze (ADR-049 decision 2) holds until RT-M1 reads PASS. RT-M1's last window failed on 107 minutes of
   swap-volume disk-floor refusals. The bench and model spend hold of 2026-09-29 holds.
 
@@ -4561,15 +4562,15 @@ scripting languages at their highest practical tier. Read against the tree at fb
     containers as their own fact, replicas, read from all three pod paths: `spec`, `spec.template.spec` and
     CronJob's `spec.jobTemplate.spec.template.spec`), membership (policies through `policyref.go`, monitors through
     the shipped selector joins, served as observed-by, TL-15), delivery at the edit and proof by certifying tests.
-    Resource-shaped rules belong to policy-kit (ADR-0015) or, until it ships, the upstream Kyverno policy library a
-    repository already applies, its licence checked at use. Review Kit owns review judgment, severity, dispositions
+    Resource-shaped rules belong to the policy kit or, until it ships, the upstream Kyverno policy library a
+    repository already applies, its licence checked at use. The review kit owns review judgment, severity, dispositions
     and typed criteria, over practice, process and artifacts. A tech pack never carries a resource rule, and fathom
-    builds no resource-policy evaluator. ADR-063 gains O11 (resource policy: delegate to policy-kit). Observability
+    builds no resource-policy evaluator. ADR-063 gains O11 (resource policy: delegate to the policy kit). Observability
     is the second ops arm: alert and metric reach a workload only through Prometheus' own entities and monitor
     selectors (K19), and metric-to-emitter stays F66. Only the per-container facts and observed-by are built now.
-13. *Correction of ADR-055 decision 8(c) and its Consequences bullet.* Review Kit concern packs reach the edit
+13. *Correction of ADR-055 decision 8(c) and its Consequences bullet.* The review kit's concern packs reach the edit
     through the findings outbox import (ADR-040). A kit's guards and formats may ride tech packs once ADR-061 is
-    accepted. A resource-shaped rule stays policy-kit's. No pack-to-obligations compiler exists or is built until a
+    accepted. A resource-shaped rule stays the policy kit's. No pack-to-obligations compiler exists or is built until a
     pack consumer exists.
 14. *Default-on is earned by a reading.* A deterministic facet becomes default-on, behind an opt-out key, when it is
     $0, egress-free, byte-stable, inside the freeze and the hook bounds, adds no tool, and its reading holds:
@@ -4611,8 +4612,8 @@ scripting languages at their highest practical tier. Read against the tree at fb
 - *A reference-implementation feature with its own verb, a `git:` contract key now, or fathom cloning upstreams.*
   Law 4, ADR-056 R6 and I56. A map kind covers it, and a key rides ADR-050's additive kinds if F68 promotes.
 - *An ops kit, a fathom rule catalog, fathom running kube-linter or Polaris, or a resource predicate in a tech pack
-  (the earlier F52 static-scope amendment).* SV-X7, ADR-055 decision 7, ADR-061's proposed invariant (a), Review Kit
-  F5 and platform-engineering ADR-0095 decision 5.
+  (the earlier F52 static-scope amendment).* SV-X7, ADR-055 decision 7, ADR-061's proposed invariant (a), and the review kit's
+  resource-rule boundary.
 - *A label join from an alert or metric to a workload.* K19's Stage A kill.
 - *Building the pack-to-obligations compiler ADR-055 decision 8(c) assumed.* No pack consumer exists (P20).
 - *Onboarding that compiles or judges by default.* O8 under-reported a compile 25 times, and spend is ask-first.
@@ -4650,7 +4651,7 @@ scripting languages at their highest practical tier. Read against the tree at fb
 
 **Jev, weighed.** No new site. Roles, runners, configurers, entry points and test entries are rules. Ordering an
 overflowing passport would be a re-rank, and the obligations re-rank A/B read negative. Matching a reference to a
-spec would be generation. The memory and leak residue is judgment in Review Kit's criteria lane. What would admit
+spec would be generation. The memory and leak residue is judgment in the review kit's criteria lane. What would admit
 Jev: RF-M1's unknown residue above 5% of files on a subject while J0 reads PASS, then F37's first template, "role
 among declared layers", opt-in per repository.
 
@@ -4663,12 +4664,12 @@ among declared layers", opt-in per repository.
   ADR-044 inventory keys is weighed.
 - ADR-061 is accepted: tool-config `configures` readers are weighed. *Fired 2026-10-19 (ADR-061 accepted).*
 - J0 reads PASS and the spend hold lifts: F37 and F69 are weighed. J0 reads FAIL: both stay down.
-- A consumer with production Kubernetes manifests is named, or policy-kit lands its first canonId join: the
-  selector join is weighed, and membership reads policy-kit's controls instead of the upstream Kyverno library. No
+- A consumer with production Kubernetes manifests is named, or the policy kit lands its first control-id join: the
+  selector join is weighed, and membership reads the policy kit's controls instead of the upstream Kyverno library. No
   consumer by 2027-09-30: the selector join is dropped.
 - Census E reaches 0.25 and the owner records an F59 amendment: F66's metric-to-emitter join is weighed beside
   observed-by.
-- A non-Go service ingests a test-kit envelope: TC-26 fires and non-Go certifying tests are built.
+- A non-Go service ingests a test kit envelope: TC-26 fires and non-Go certifying tests are built.
 - F68's baseline count fires, or 2027-01-31 passes without it.
 - The owner reverses W1, W2, W3 or W4.
 - Edit-hook emission on rule-scoped file edits stays under 5% after XM-37, read with GL-24's reasons: rule scoping
@@ -4692,7 +4693,7 @@ Env values and arg values are withheld under ADR-065 decision 2, except two allo
 retry keys `AWS_RETRY_MODE`, `AWS_MAX_ATTEMPTS` and `AWS_NEW_RETRIES_2026`, and heap flags such as `-Xmx`. A sentinel
 planted in a fixture workload's env value and arg value appears in no row of any store table and in no receipt
 (WAE-13). Owner-architect ruling D16 of 2026-10-11, flagged to the owner because it widens a decision 12 limit.
-Resource rules stay policy-kit's; fathom grades nothing.
+Resource rules stay the policy kit's; fathom grades nothing.
 
 ## ADR-068: Portable receipts: receipts grown up, so a stranger checks fathom's evidence with git and replays it without fathom's state, in formats other tools already read (2026-10-10)
 
@@ -4724,7 +4725,7 @@ linked to its source, and a priority call. Read against the tree on 2026-10-10:
 - The git watermark is the bare HEAD while ADR-041 decision 4 re-extracts an edited file in place, so an answer can
   come from uncommitted bytes. The index stores `FingerprintHash` (raw working-tree bytes, epoch-salted), not git
   blob bytes, and the two differ under autocrlf, eol, ident, working-tree-encoding or LFS.
-- Review Kit's bridge takes seven source-binding inputs, its `SourceFingerprints` are `FingerprintHash` values, and
+- The review kit's bridge takes seven source-binding inputs, its `SourceFingerprints` are `FingerprintHash` values, and
   its `SpanRef` is shaped to be swapped for agentic-kit's `evidence-span`. MCP serves no per-request `_meta`, so an
   agent cannot request a recipe through it.
 - No consumer outside the owner's own code is named. Kubernetes admission engines check attestations on image
@@ -4736,14 +4737,14 @@ linked to its source, and a priority call. Read against the tree on 2026-10-10:
    emitter gains provenance. `fathom export receipt` sits beside `fathom export scip`. Checking, replaying and
    rendering stay under `fathom receipt`. No new top-level verb, no MCP tool, nothing stored.
 2. *The record is an in-toto Statement v1 with one fathom predicate, in wave 3.* ADR-063 forbids a second result
-   format, so the fathom-owned part is a predicate inside an existing envelope, as test-kit does it. A general
+   format, so the fathom-owned part is a predicate inside an existing envelope, as the test kit does it. A general
    predicate needs a second consumer (P20), so it waits on EVX-G3. Its shape is fixed now: a `facts` list (not
    `claims`, an O9 word), the commit subject `{name: "gitCommit", digest: {gitCommit}}` that fathom's own inbound
    reader also reads, a CUE schema with valid and invalid pairs, RFC 8785 bytes with integers only, and a producer
    in agentic-kit's `evidence-producer` shape. The predicate URI is an owner call (Q-EVX-1), and it names no host or
    organization and never `urn:fathom:`.
 3. *The evidence unit is a fact with git-native anchors.* An anchor carries the commit and object format, the
-   repo-relative path and line range, the git blob id, the excerpt sha256 by Review Kit's `SpanRef.ContentHash`
+   repo-relative path and line range, the git blob id, the excerpt sha256 by the review kit's `SpanRef.ContentHash`
    formula, a bounded excerpt and the file's `fathom_fingerprint`. Its state is `committed`, `uncommitted` (the
    index read other bytes than the commit holds), `filtered` (git's filters change the bytes, so no git rung) or
    `withheld` (a secret-bearing or suppressed file gets no excerpt and no digest, ADR-065). `--inclusion` adds the
@@ -4774,7 +4775,7 @@ linked to its source, and a priority call. Read against the tree on 2026-10-10:
    a named consumer.
 9. *The first producers are the ones with a consumer.* Wave 1: all seven SARIF callers through one provenance-aware
    emitter, the duplicate risk converters merged. Wave 2: `fathom export receipt` for the four Go kinds. Wave 3:
-   `fathom review` and the change risk receipt as records, which Review Kit binds. Wave 4: any agent-surface tool
+   `fathom review` and the change risk receipt as records, which the review kit binds. Wave 4: any agent-surface tool
    through the recipe. Wave 5: the trace pack.
 10. *Nothing stored, no new table, no MCP tool, no new parameter, no wire change.* `fathom export receipt <tool>
     --args <json>` runs the tool through an in-process server over the store (the `instrument --adoption`
@@ -4836,7 +4837,7 @@ surface (I62). With provider none, everything here holds.
 - The median receipt for one `fathom review` on this repository exceeds 256 KB, or export exceeds 2 s warm:
   excerpts become opt-in.
 - EVX-M2 reads CUT for a tool: replay for that tool is withdrawn and renders "replay unreliable".
-- A kit ships a code-evidence predicate, or Review Kit asks for its own: fathom adopts it and retires its own
+- A kit ships a code-evidence predicate, or the review kit asks for its own: fathom adopts it and retires its own
   (ADR-063's revisit).
 - An adopter or regulator rejects the evidence pack format (ADR-051's trigger).
 
@@ -4861,7 +4862,7 @@ ADR-067 decision 12 and ADR-068 decision 4. Assessments: `docs/assessments/2026-
 ADR-041 decision 4, ADR-050, ADR-053, ADR-055 decision 7, ADR-056, ADR-058, ADR-063, ADR-064, ADR-065 decision 2,
 ADR-068, I30, I56, I62, P9, P20 and SR-17 as constraints.
 
-**Context.** The owner asked for fathom as Review Kit's evidence engine for well-architected, compliance and
+**Context.** The owner asked for fathom as the review kit's evidence engine for well-architected, compliance and
 incident-prevention catalogs; for fathom in incident investigation, RCA and agent-led mitigation; for indexes kept
 fresh by CI/CD and shared across teams; and then whether live per-service instances, networked to their
 dependencies' deployed versions, would serve the CD gate and incident investigation. Read against the tree on
@@ -4871,8 +4872,8 @@ dependencies' deployed versions, would serve the CD gate and incident investigat
   facts are labels only; Alertmanager facts are receiver and continue. Kubernetes per-container facts are LB-F451,
   open. Third-party call sites are not stored and Go skips composite-literal keys. IAM, Kyverno, Gatekeeper, Rego
   and Azure Policy dialects exist but join nothing to workloads or code.
-- Review Kit's reliability pack has three findings, all off, with no checks, and its fathom adapter answers only
-  `verify-plan`. pe's pdk/risk already tiers Pulumi previews and manifest diffs.
+- The review kit's reliability pack has three findings, all off, with no checks, and its fathom adapter answers only
+  `verify-plan`. An adopting platform's change-risk tierer already tiers IaC previews and manifest diffs.
 - The findings importer records `SourceRevision` while the product hashes cited lines from the working tree.
 - Stores are portable (ADR-017) and read-only mounting is proven (GKE-MH-1), but federation over mounted stores
   covers obligations only (GKE-MH-3); code tools read the daemon's own store. Admission is loopback-only; the auth
@@ -4899,15 +4900,15 @@ dependencies' deployed versions, would serve the CD gate and incident investigat
 4. *Facts and joins leave fathom as receipts.* ADR-068 decision 4's closed kind table gains `fact` and `join`,
    both re-derivable at `fathom@<version>`: git proves the text, never the structure. An absence fact carries its
    read set. No new verb, tool or format.
-5. *Review Kit judges; pdk/risk tiers; policy-kit rules.* Catalog, severity, the library-defaults pack,
-   pass/fail, findings and admission stay in Review Kit (ADR-040, ADR-055 decision 7, ADR-063 O2). Change-risk
-   tiers stay in pe's pdk/risk, which may take fathom concern deltas as named reasons. Resource and security rules
-   and framework crosswalks stay with policy-kit (O11). Fathom never grows a deploy-gate or readiness verb. The PR
+5. *The review kit judges; the change-risk tierer tiers; the policy kit rules.* Catalog, severity, the library-defaults pack,
+   pass/fail, findings and admission stay in the review kit (ADR-040, ADR-055 decision 7, ADR-063 O2). Change-risk
+   tiers stay in the adopter's change-risk tierer, which may take fathom concern deltas as named reasons. Resource and security rules
+   and framework crosswalks stay with the policy kit (O11). Fathom never grows a deploy-gate or readiness verb. The PR
    ratchet (concern deltas against the merge-base) is the default delivery.
 6. *The deploy gate is fail-open on fathom.* A fathom outage, or a missing or stale index, admits with a recorded
-   exception; a rollback to an evaluated commit and a pdk/risk T3 break-glass admit; the evaluation follows.
+   exception; a rollback to an evaluated commit and the tierer's break-glass tier admit; the evaluation follows.
 7. *Deploy state is a declaration.* A per-call `--deployed/--previous`, a GitOps repository indexed as a service,
-   or an operator-named image provenance file (image-kit's bake path; the apko path records none). Nothing about a
+   or an operator-named image provenance file (a provenance-recording build path; a path such as apko records none). Nothing about a
    deploy is stored; attach stays refused (IM-X2). A lineup the operator's deploy job writes, read once at a
    daemon's start, is a further declaration in decision 14's shape; whether a lineup change stays clear of IM-X2 is
    the owner's ruling, and if not, phase 5 waits on a new ADR.
@@ -4966,10 +4967,10 @@ dependencies' deployed versions, would serve the CD gate and incident investigat
   `import snapshot` keeps every tool unchanged.
 - *An overlay store now.* A compatibility-surface change before the cache-from path is measured.
 - *A deploy ledger fed by CD.* IM-X2's attach under another name.
-- *A fathom change-risk gate or readiness verb.* pdk/risk ships tiers and floors; ADR-063 O2.
+- *A fathom change-risk gate or readiness verb.* The adopter's tierer ships tiers and floors; ADR-063 O2.
 - *Kubernetes or security rules in a fathom tech pack.* ADR-063 O11.
-- *Fathom as the findings record.* ADR-040 and Review Kit's ADR-0098 bars are unmet.
-- *A new reliability finding class.* Review Kit tags rules with its reliability domain and maps them onto the
+- *Fathom as the findings record.* ADR-040 and the review kit's own record bar are unmet.
+- *A new reliability finding class.* The review kit tags rules with its reliability domain and maps them onto the
   existing ten classes.
 - *"Fathom workspaces" as the name.* `workspace/` is fathom's scratch directory, and the word means a mutable place
   in Go, Terraform, npm and Bazel; "index snapshot" is already fathom's word (I56, F27, ADR-068).
@@ -4978,9 +4979,9 @@ dependencies' deployed versions, would serve the CD gate and incident investigat
 - One store format, one evidence contract, no new table, no new MCP tool (ADR-053). When index snapshots start:
   two verb forms (`export snapshot`, `import snapshot`), one ingest flag (`--cache-from`) and one serve mode
   (`--read-only --lineup`), each gated by its phase.
-- Cache sharing works only when producer and consumer lock the same fathom release (env-kit `env.lock`).
-- Review Kit, pdk/risk, image-kit, env-kit and the operator's publish and deploy jobs carry the rest; fathom's value
-  depends on Review Kit's reliability catalog landing.
+- Cache sharing works only when producer and consumer lock the same fathom release (the environment kit's lock file).
+- The review kit, the change-risk tierer, the image kit, the environment kit and the operator's publish and deploy jobs carry the rest; fathom's value
+  depends on the review kit's reliability catalog landing.
 - Declared state is not live state: drift stays an attested artifact, and unattested drift is `incomplete`.
 - G37 covers the WAE waves and IXS-M0 only. Index snapshots get their own goal (provisionally G38) when the owner
   starts phase 1, so G37's kill never fires on parked work.
@@ -5000,7 +5001,7 @@ owner's bar; below either, the site stays unbuilt.
 - WAE-M2 or a WAE-M3 or WAE-M6 join reads CUT: that fact family or join is removed.
 - WAE-M2 finds the sentinel in any row: the family is blocked until fixed.
 - WAE-M1 reads BUILD: code client-construction facts move from F71 to the plan.
-- Review Kit's reliability domain declines fathom evidence: WAE stops at wave 2.
+- The review kit's reliability domain declines fathom evidence: WAE stops at wave 2.
 - 2027-01-31 with WAE-M4 unread or CUT: WAE waves 3 to 4 are dropped (G37's kill).
 - IM-M0 reads BUILD: the rollback dimension is built. IM-M1 shows git-invisible causes at 20% or more: attach is
   reconsidered through ADR-058's own trigger.
@@ -5016,6 +5017,27 @@ owner's bar; below either, the site stays unbuilt.
   recipe are deleted with a `gone:` row (the SR-17 precedent).
 - IXS-M5 reads KEEP: an overlay-store ADR (F70). RT-M1 reads PASS: SG-2 and versioned cross-repo joins (F72).
 - A second organization asks in writing to share one daemon: the multi-tenant non-goal is reconsidered.
+
+**Amended 2026-10-26 (platform engineering, PLT).** Fathom is the evidence side of the readiness records an
+adopting platform team already keeps: its readiness inventory, its review kit's facts lane, its change-risk tierer
+and its observability coverage. Design `docs/design/platform-engineering.md` (decisions 1 to 8), plan
+`docs/plans/platform-engineering.md` (PLT-).
+- Fathom ships no question map. Lens mappings stay the review kit's, and framework crosswalks stay the policy kit's
+  under decision 5. A question map waits until an adopter without a review kit asks in writing (PLT-D9).
+- The inventory is a fact receipt per subject with a commit basis. It is not a readiness reading, and nothing rolls
+  subjects up to a service.
+- The concern-delta file (`fathom conserve --since B --concern-deltas FILE`) is decision 5's ratchet delivery. It is
+  information only: never a loss, never counted by `--strict`, never a registered plane, so it is never a second gate.
+- TX-4's consumer half is met when a review kit's facts lane reads fathom's facts, promoted through WAE-.
+- Investigations and reviews use the existing verbs through two skills fathom will ship (PLT-10 and PLT-11, unbuilt
+  at this amendment), and a feature-labs card measures them before any new output is built. The fact at the edit rides platform modules and guarded edits, with no code.
+- Measurement joins bench prep (subjects tagged `platform`, bars in a prereg) and feature labs (`lab-platform-skills`,
+  rows in the labs ledger). The goal is G37, widened, and there is no new goal.
+- **Decision models.** One site runs, in a lab and not in the product: PLT-M0's census classification, kind `choice`
+  through the hexagonal port, with OpenAI Decisions or Jev named in the reading. With provider `none` there is no
+  classification, and the census reads only the owner-audited sample and says so. The opt-out is `[decide] provider =
+  none`, and ADR-073's user kill beats every layer. The measurement is Cohen's kappa against the 20% owner audit;
+  under 0.6 the census is void. The clause-answer judgment (PLT-D5) stays unbuilt while a review kit answers.
 
 ## ADR-070: fathom is one self-contained module; the kit mirrors are internal packages by import-path rewrite (2026-10-16)
 
@@ -5761,9 +5783,9 @@ we should be doing things because I've said so."
 - *Ratings drift.* Futures Confidence reads likely 5, plausible 52, speculative 24; 8 Horizon values sat outside
   `next|later|someday` and 2 futures had neither field. Horizon did not predict promotion (3 of 4 promoted were "later").
 - *The CUE shadow rotted.* `gen-plan-cue` loses data on 49 of 75 active plans and no gate checks the round trip.
-- *Plan triggers.* 308 trigger values (fathom 252, platform-engineering 27, agentic-kit 16, app-kit 13) share only 2
+- *Plan triggers.* 308 trigger values (fathom 252, a platform monorepo 27, agentic-kit 16, app-kit 13) share only 2
   three-word stems across repositories (T2).
-- *Monorepo.* fathom audits and plans only the root; platform-engineering's ids clash (F1 in 7 homes, G1 in 5), and its
+- *Monorepo.* fathom audits and plans only the root; the platform monorepo's ids clash (F1 in 7 homes, G1 in 5), and its
   `obligations` serves 6 rules from `CLAUDE.md` files deleted at its commit `444640c` (measured 2026-10-17). `intent audit`
   U4: 181 of 229 unproven claims were a stale daemon index, not a missing test.
 - *The ADR.md split condition fired* (T3): an ADR id collision at a wave merge has already happened (ADR-058,
@@ -5826,7 +5848,7 @@ the first question and the kit's git-derived bounded review for the second. Ther
   views and `intent export --json`:* annotations are kit 0001's rejected bar, and the views have no record to show
   under R2 and R3. Wins if: three hand-written annotations across two repositories appear, or R2 or R3 wins.
 - *Nested routers discovered as component corpora now:* F86, under its Promote when. *Renaming Confidence to likelihood;
-  "a split rewrites one line":* never (rename churn with no reader gain; platform-engineering's review-kit links out 60
+  "a split rewrites one line":* never (rename churn with no reader gain; the platform monorepo's review kit links out 60
   times and 1,239 lines cite bare root ADRs).
 
 **Consequences.** Breaking: the `<!-- fathom:intent-playbook -->` region of a root INTENT.md leaves the compatibility
@@ -6068,3 +6090,34 @@ reads below its threshold with its oracle available for two releases; the consum
 **Revisit when** Keep/kill bars not attributed to the baseline or an existing reading are set here, not measured results. Reopen when LE-M1 cannot accept a helper-produced receipt for an exact-tree real push with CI agreeing; identity mismatch can reuse a receipt; flake ranking mistakes an unbound run for same-tree evidence; candidate ranking cannot name missing reach; the explicit cross-plan grandfather list grows; a measured workload reaches the set-here contention threshold in O1.
 
 **Reads.** ADR-078 D2 and D4; ADR-049 d2; ADR-067 d11; ADR-068; I14, I56; `docs/intent/scope/non-goals.md`; `docs/plans/portable-receipts.md`; `internal/store/sqlite_testevidence.go`; `internal/readout/testdelta.go`; `cmd/fathom/gatepreflight.go`; `cmd/fathom/intentindex.go`; `internal/verify/lint.go`; the dated measurements named in Context.
+
+## ADR-082: Feature labs: a lab per feature measures its firing funnel, results are files with one ledger row per key, and the product verb never spends (2026-10-26)
+
+**Status.** Accepted 2026-10-26 (owner-architect). **Type.** process / measurement. Design: `docs/design/feature-labs.md`. Plan: `docs/plans/feature-labs.md` (LAB-). Roadmap: `docs/vision/38-proof-layer-roadmap.md` section 9.14. Companion: ADR-071's bench program through `docs/design/bench-prep.md` (BX-). Reads ADR-049 decision 2 (the table freeze), ADR-056, ADR-073 and I61 as constraints.
+
+**Context.** Every agent-facing feature can fail at five stages: eligible, fired, delivered, acted on and helped. Call logs, hook logs, readouts and AD-20/AD-21 cover fired, part of delivered and acted on for two channels. Nothing covers eligible for the choices an agent makes (which verb to call, which skill to invoke), so nothing can say what the agent missed, and no measurement says whether a feature helped rather than merely fired. Description text alone is known to swing tool use by an order of magnitude with flat success, so text changes need held-out, paired evidence.
+
+**Decision.**
+1. *Cards and results are files.* Lab cards (`schema/labs` `#Lab`), cases (`#Case`, the kit scenario bank's `#Scenario` plus lab fields), corpora and readings are committed files. No store table, column, cache or background job is added while the freeze holds.
+2. *One ledger row per key.* Lab and decision-experiment results go to one JSONL ledger, one row per (run, case or site, arm). The writer refuses a duplicate key, so the existing ledger oracle verifies plan rows with no gate change.
+3. *The product verb never spends.* `fathom labs` and the labs section of `fathom instrument --adoption` read local files and never spend or run an agent. Every spending run goes through the bench binary `cmd/labbench`, which refuses to start without `-max-usd`, a `spend_label` and a committed prereg.
+4. *Firing never counts as helping.* A feature's firing rates (recall at should-fire moments, false fires at should-not moments) and its helped metric are reported separately. A knob that raises firing and leaves helped harmed, or inconclusive toward harm, is reverted (K4).
+5. *Helped is the plugin minus one feature.* The helped arm compares the shipped plugin with the plugin minus that one feature, both with `--ablation none`, and fathom computes the difference.
+6. *Replay tunes no knob before K2 reads.* Replay of real sessions may rank where to look. It selects or keeps no knob until agreement between replay predictions and live forks from the same real prefixes reaches Cohen's kappa of at least 0.6 on at least 60 prefixes. Real prefixes are never committed.
+7. *A fix is proved by its own commit's test.* An observation's fix proof is a test its fix commit added, red at the parent and green at the fix, run once in a scratch worktree. No one writes a proof by hand.
+8. *The lab description override is refused by the managed daemon.* The lab-only tool-description override serves a scratch daemon only. The managed daemon and the user's own `FATHOM_HOME` refuse it.
+
+**Decision models.** The labs measure the decision port and are not a decision site. Every grader, label split, interval and verdict is computed with provider `none`. Three typed questions could enter later, none built here. (1) The residue predicate, "is `<verb>` eligible here?", over a decision point's tool names and shape classes, never transcript text. With `none` the point stays unclassified and is counted. It is absent from `[decide] sites` by default. It is kept only at a Wilson lower bound of at least 0.90 against the K1 labels, and built only if LAB-M1a shows the residue above 20% of points (LAB-D6). (2) A theme choice for observations is refused (F49). (3) A judged helped metric is deferred with F12. If proposed, it is a binary verdict through the kit's `eval-journal`, validated by TPR and TNR on at least 100 labeled cases, and never primary.
+
+**Alternatives rejected.** A labs table in the store (the freeze, and files already verify). Counting a fire as a success (it rewards noise). Tuning on replay alone (unproven to predict live). Hand-written fix proofs (they would let the controller count its own claims under K5).
+
+**Consequences.** Every shipped agent surface gets a card with a firing criterion and a helped metric, or a named reason it has none (`CheckLabClosure`). Text knobs change only under a paired, Holm-corrected test on held-out cases (K3). The adopter feedback loop ends in a regression case and a fix proof, not a closed ticket.
+
+**Revisit when.**
+- K1 fails for a surface (TPR or TNR Wilson lower bound under 0.80 on 40 labeled points per class): that surface reports counts only, never rates.
+- K2 reads under 0.6: replay stays a finder and never selects a knob.
+- K3 reads no movement after one rewrite round: "text is not the knob" is recorded and text tuning stops for that surface.
+- K5 reads under half of fixed observations with a fix proof 60 days after LAB-M1: the loop shrinks to what was used.
+- K6 reads no knob change holding on the confirm split, or has not read by 2027-01-31: the program stops at the P1 instruments and P3 is refused.
+- RT-M1 reads PASS: moving cards, cases or the ledger into the store needs a new ADR.
+- A Codex arm is needed: ADR-029 is amended first (cards already carry a `harness` field).

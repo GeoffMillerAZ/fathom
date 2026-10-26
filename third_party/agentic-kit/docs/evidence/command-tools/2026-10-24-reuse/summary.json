@@ -1,0 +1,28 @@
+{
+  "nativeCases": 12,
+  "actualReportsPerValidator": 37,
+  "validators": [
+    "cue version v0.16.1",
+    "cue version v0.17.1"
+  ],
+  "duplicateActualCalls": {
+    "disabled": 8,
+    "enabled": 1
+  },
+  "medianDuplicateRatio": 0.28610204222369884,
+  "medianUniqueRatio": 0.9776518794564254,
+  "qualification": "native macOS synthetic, dual CUE, full gate and strict8/8 passed; publication pending",
+  "failedAttempts": [
+    {
+      "attempt": 1,
+      "reason": "optional-reuse CUE union ambiguous on valid default receipt",
+      "qualification": "failed",
+      "timings": "not retained, not qualified"
+    }
+  ],
+  "crossBuilds": [
+    "windows/amd64",
+    "linux/amd64"
+  ],
+  "crossBuildLimit": "compilation only"
+}

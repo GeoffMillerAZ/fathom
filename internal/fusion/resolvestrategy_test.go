@@ -322,13 +322,15 @@ func TestFileResolveLangsFromManifests(t *testing.T) {
 	want["thrift"] = "file-symbol" // LB-Q-thrift (wave lang7): include "x.thrift", beside the including file first
 	want["nix"] = "relative-path"  // LB-Q-nix (wave lang8): a path literal, and a name only where Nix binds it (u = import ./u.nix)
 	want["conan"] = "global-name"  // conan:global-name (L3 file edges)
+	want["cuda"] = "include-path"  // LB-Q-cuda: #include, the C/C++ convention
+	want["hlsl"] = "include-path"  // LB-Q-hlsl: #include "x.hlsli", beside the including file first
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("FileResolveLangs = %v, want %v", got, want)
 	}
 	if g := fileResolveLangFor("a.scss"); g != "scss" {
 		t.Errorf("fileResolveLangFor(a.scss) = %q, want scss", g)
 	}
-	for path, lang := range map[string]string{"a.ts": "javascript", "a.tsx": "javascript", "a.mjs": "javascript", "a.cts": "javascript", "a.py": "python", "a.rb": "ruby", "a.rake": "ruby", "a.ru": "ruby", "a.kt": "kotlin", "a.go": "", "a.html": "html", "a.htm": "html", "a.css": "css", "a.c": "c", "a.cpp": "cpp", "a.hpp": "cpp", "a.java": "java", "a.cs": "csharp", "a.php": "php", "a.rs": "rust", "a.dart": "dart", "a.swift": "swift", "a.proto": "protobuf", "build.gradle": "gradle", "build.gradle.kts": "kotlin", "a.rego": "rego"} {
+	for path, lang := range map[string]string{"a.j2": "jinja2", "a.jinja": "jinja2", "a.jinja2": "jinja2", "a.ts": "javascript", "a.tsx": "javascript", "a.mjs": "javascript", "a.cts": "javascript", "a.py": "python", "a.rb": "ruby", "a.rake": "ruby", "a.ru": "ruby", "a.kt": "kotlin", "a.go": "", "a.html": "html", "a.htm": "html", "a.css": "css", "a.c": "c", "a.cpp": "cpp", "a.hpp": "cpp", "a.java": "java", "a.cs": "csharp", "a.php": "php", "a.rs": "rust", "a.dart": "dart", "a.swift": "swift", "a.proto": "protobuf", "build.gradle": "gradle", "build.gradle.kts": "kotlin", "a.rego": "rego"} {
 		if g := fileResolveLangFor(path); g != lang {
 			t.Errorf("fileResolveLangFor(%s) = %q, want %q", path, g, lang)
 		}

@@ -1,0 +1,69 @@
+{
+  "tool": "CircleCI-Public/circleci-yaml-language-server",
+  "version": "0.54.0",
+  "source_sha": "9c9c4cedb448caa2444bc89672233e4dae66eeea",
+  "licence": "Apache-2.0",
+  "archive_sha256": "761ad336f47c7691b1b4dc27a2820a80ffecc2a392f2b653f54284737d3e919f",
+  "binary_sha256": "edd2e5ab79bc302fddf19f59919997f8ee81dcfa167d7df01b3867e5d353601f",
+  "subjects": [
+    {
+      "name": "CircleCI-Public/circleci-cli",
+      "sha": "2053bcbdd62e744f05b76b1e263c54febea34804",
+      "source_shard": "circleci.yaml",
+      "checkout": "workspace/calibration/circleci-canonical/circleci-cli"
+    },
+    {
+      "name": "CircleCI-Public/cimg-base",
+      "sha": "0ff85f18597d595f9440eca8387789a26a39fc30",
+      "source_shard": "circleci.yaml",
+      "checkout": "workspace/calibration/circleci-canonical/cimg-base"
+    },
+    {
+      "name": "hasura/graphql-engine",
+      "sha": "037916c890f776dc71375f0adf61a51e0d4b57b1",
+      "source_shard": "circleci.yaml",
+      "checkout": "workspace/calibration/circleci-canonical/graphql-engine"
+    },
+    {
+      "name": "cypress-io/cypress",
+      "sha": "30a4d03221676dc8ede0aa55e63560f38fa78a93",
+      "source_shard": "circleci.yaml",
+      "checkout": "workspace/calibration/circleci-canonical/cypress"
+    },
+    {
+      "name": "OpenAPITools/openapi-generator",
+      "sha": "c5e769be1e428f794ff51237bae5a50de47bc1ce",
+      "source_shard": "circleci.yaml",
+      "checkout": "workspace/calibration/circleci-canonical/openapi-generator"
+    },
+    {
+      "name": "CircleCI-Public/cimg-python",
+      "sha": "a7418d2562d6bd288e953e4a7dbbda478cdf8525",
+      "source_shard": "circleci-holdout-t-r3.yaml",
+      "checkout": "workspace/calibration/circleci-t-r3/cimg-python"
+    },
+    {
+      "name": "CircleCI-Public/cimg-node",
+      "sha": "bb5c7c6dc5e1b5e61172e0ac9dc1825cccdd3c5f",
+      "source_shard": "circleci-holdout-t-r3.yaml",
+      "checkout": "workspace/calibration/circleci-t-r3/cimg-node"
+    },
+    {
+      "name": "scikit-learn/scikit-learn",
+      "sha": "bb9cefde592afccd276c5b2d75957dfde91d5b3e",
+      "source_shard": "circleci-holdout-t-r3.yaml",
+      "checkout": "workspace/calibration/circleci-t-r3/scikit-learn"
+    }
+  ],
+  "protocol": [
+    "Keep the original five canonical and three separate holdout subjects and parameter matrix unchanged.",
+    "Query references at every commands.* and executors.* declaration, including unused declarations. Query positions from YAML are not a reference truth set.",
+    "Classify every returned location: command step, executor use, workflow executor parameter/matrix value, or native namespace error adjudicated by config process. Fail on every unclassified location.",
+    "For a workflow executor parameter, the source owner is the invoked job declaration name, not the workflow; repeated owner-target pairs deduplicate like every existing L2 pair.",
+    "Construct local command/executor truth from classified native answers, then combine compiler-attested workflow/job/requires truth. Never use the scanner-selected local pair set as recall denominator.",
+    "For same-name command/job collisions, references may also include the workflow job entry. Record this as an oracle error only after compiler adjudication of the command expansion; fail if a collision lacks that adjudication.",
+    "Grade the complete L2 truth even if the new parameter pairs lower recall. Do not tune on holdouts, omit a family or relabel a namespace error as a valid command pair.",
+    "P-T1/T-R7 admits the pinned vendor server at A only for evaluated, complete reference population; L3 remains held for D19."
+  ],
+  "revision": "r3: all declarations, complete native reference answers"
+}

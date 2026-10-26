@@ -1,0 +1,40 @@
+{
+  "symbols": [
+    {
+      "name": "Scene",
+      "kind": "HlslCbuffer",
+      "package": "registers",
+      "line": 3,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "Palette",
+      "kind": "HlslCbuffer",
+      "package": "registers",
+      "line": 9,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "gAlbedo",
+      "kind": "HlslVariable",
+      "package": "registers",
+      "line": 14,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": "shade",
+      "kind": "HlslFunc",
+      "package": "registers",
+      "line": 16,
+      "end_line": 19,
+      "signature": "float4 shade(float2 uv)",
+      "calls": [
+        "Load"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

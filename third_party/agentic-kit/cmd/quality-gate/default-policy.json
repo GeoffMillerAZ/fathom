@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "id": "repository-quality",
+  "limits": {
+    "max_files": 256,
+    "max_file_bytes": 1048576,
+    "max_total_bytes": 4194304,
+    "timeout_seconds": 60
+  },
+  "rules": [
+    {
+      "id": "conflict-markers",
+      "kind": "conflict-markers",
+      "boundaries": ["pre-commit", "pre-push", "ci", "pre-publish"],
+      "select": {
+        "prefixes": [""],
+        "suffixes": [".go", ".cue", ".md", ".json", ".yml", ".yaml"]
+      }
+    },
+    {
+      "id": "json-valid",
+      "kind": "json-valid",
+      "boundaries": ["pre-commit", "pre-push", "ci", "pre-publish"],
+      "select": {
+        "prefixes": [""],
+        "suffixes": [".json"]
+      }
+    }
+  ],
+  "model": {
+    "provider": "none",
+    "model_env": "QUALITY_GATE_MODEL",
+    "expected_model_env": "QUALITY_GATE_EXPECTED_MODEL",
+    "api_key_env": "QUALITY_GATE_API_KEY",
+    "max_input_bytes": 65536,
+    "timeout_seconds": 15,
+    "cache_ttl_seconds": 300,
+    "max_batches": 1,
+    "sites": [
+      {
+        "id": "instruction-ambiguity",
+        "version": "1",
+        "question": "Do the changed agent instructions contain a contradictory or ambiguous requirement that needs review?",
+        "boundaries": ["pre-commit", "pre-push", "ci", "pre-publish"],
+        "select": {"prefixes": ["AGENTS.md"]},
+        "mode": "shadow",
+        "min_confidence": 0.95
+      }
+    ]
+  }
+}

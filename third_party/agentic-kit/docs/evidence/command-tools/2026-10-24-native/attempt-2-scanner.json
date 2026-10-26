@@ -1,0 +1,155 @@
+{
+  "version": "command-qualify.report/1",
+  "profile": "files-gitleaks/1",
+  "rosterSHA256": "6fe5d05b55cf071dc4a1c3e42ba9216d59e04f80b22e23be452dc8607b82d315",
+  "goos": "darwin",
+  "goarch": "arm64",
+  "guard": {
+    "sha256": "380116cbff654ae293bd59c03412f1d84cde301ab9c973eafebfcf9dc7f6cb23"
+  },
+  "scanner": {
+    "sha256": "ba52fb1bfabbcde42f032afad3d6e0b19dff8ed105229a16e7caa338bbc0e84f"
+  },
+  "required": 27,
+  "passed": 25,
+  "failed": 2,
+  "unknown": 0,
+  "status": "fail",
+  "cases": [
+    {
+      "id": "read-json",
+      "status": "pass",
+      "code": "oracle_met"
+    },
+    {
+      "id": "read-text",
+      "status": "pass",
+      "code": "oracle_met"
+    },
+    {
+      "id": "read-compact",
+      "status": "pass",
+      "code": "oracle_met"
+    },
+    {
+      "id": "ordinary-compact-fallback",
+      "status": "pass",
+      "code": "oracle_met"
+    },
+    {
+      "id": "search-literal",
+      "status": "pass",
+      "code": "oracle_met"
+    },
+    {
+      "id": "late-regex",
+      "status": "pass",
+      "code": "oracle_met"
+    },
+    {
+      "id": "wrong-input-hash",
+      "status": "pass",
+      "code": "oracle_met"
+    },
+    {
+      "id": "missing-control",
+      "status": "pass",
+      "code": "oracle_met"
+    },
+    {
+      "id": "denied-prefix",
+      "status": "pass",
+      "code": "oracle_met"
+    },
+    {
+      "id": "traversal",
+      "status": "pass",
+      "code": "oracle_met"
+    },
+    {
+      "id": "case-alias",
+      "status": "pass",
+      "code": "oracle_met"
+    },
+    {
+      "id": "reserved-name",
+      "status": "pass",
+      "code": "oracle_met"
+    },
+    {
+      "id": "invalid-utf8",
+      "status": "pass",
+      "code": "oracle_met"
+    },
+    {
+      "id": "file-cap",
+      "status": "pass",
+      "code": "oracle_met"
+    },
+    {
+      "id": "symlink",
+      "status": "pass",
+      "code": "oracle_met"
+    },
+    {
+      "id": "tiny-json",
+      "status": "pass",
+      "code": "oracle_met"
+    },
+    {
+      "id": "tiny-text",
+      "status": "pass",
+      "code": "oracle_met"
+    },
+    {
+      "id": "tiny-compact",
+      "status": "pass",
+      "code": "oracle_met"
+    },
+    {
+      "id": "scanner-clean",
+      "status": "pass",
+      "code": "oracle_met"
+    },
+    {
+      "id": "scanner-empty",
+      "status": "pass",
+      "code": "oracle_met"
+    },
+    {
+      "id": "scanner-aba-disabled",
+      "status": "fail",
+      "code": "oracle_mismatch"
+    },
+    {
+      "id": "scanner-aba-enabled",
+      "status": "fail",
+      "code": "oracle_mismatch"
+    },
+    {
+      "id": "scanner-canary",
+      "status": "pass",
+      "code": "oracle_met"
+    },
+    {
+      "id": "scanner-late-pdf",
+      "status": "pass",
+      "code": "oracle_met"
+    },
+    {
+      "id": "scanner-wrong-hash",
+      "status": "pass",
+      "code": "oracle_met"
+    },
+    {
+      "id": "scanner-missing-scope",
+      "status": "pass",
+      "code": "oracle_met"
+    },
+    {
+      "id": "scanner-ambient-ignore",
+      "status": "pass",
+      "code": "oracle_met"
+    }
+  ]
+}

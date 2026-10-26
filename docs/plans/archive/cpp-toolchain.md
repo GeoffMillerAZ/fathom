@@ -13,7 +13,7 @@
 > the call graph is language-agnostic. The gaps are spelling (`::` vs `.`),
 > `.h` routing, CMake, toolchain awareness, and the languages field.
 >
-> **Covenant (ADR-0070 class):** failing test first; `task validate` green
+> **Covenant (test-first class):** failing test first; `task validate` green
 > before every commit; dated CHANGELOG entry; boxes flip only on
 > `fathom verify`.
 

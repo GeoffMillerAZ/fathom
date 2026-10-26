@@ -1,0 +1,11 @@
+{
+  "id": "C16",
+  "slug": "lesson-transfer",
+  "axis": "component",
+  "acceptance": "Adoption refuses a lesson without independent receiver boundary evidence",
+  "method": "deterministic source plus scoped test",
+  "source": "kits/lesson-transfer/lesson_test.go",
+  "test": "TestCheckAdoptionRequiresIndependentReceiverBoundaries",
+  "group": "security_budget_lessons_hosts",
+  "non_guarantee": "Component test does not prove consumer adoption, live model quality, or all entrypoints."
+}

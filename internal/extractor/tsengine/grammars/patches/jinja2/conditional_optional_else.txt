@@ -1,0 +1,50 @@
+==================
+optional else conditional
+==================
+
+{{ value if enabled }}
+
+---
+
+(source_file
+  (output
+    (conditional_expression
+      value: (identifier)
+      condition: (identifier)))
+  (text))
+
+==================
+optional else with filtered condition
+==================
+
+{{ value if enabled | bool }}
+
+---
+
+(source_file
+  (output
+    (conditional_expression
+      value: (identifier)
+      condition: (filter_expression
+        (identifier)
+        name: (identifier))))
+  (text))
+
+==================
+optional else nested conditional
+==================
+
+{{ value if (enabled if present else fallback) }}
+
+---
+
+(source_file
+  (output
+    (conditional_expression
+      value: (identifier)
+      condition: (parenthesized_expression
+        (conditional_expression
+          value: (identifier)
+          condition: (identifier)
+          alternative: (identifier)))))
+  (text))

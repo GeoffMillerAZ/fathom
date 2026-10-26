@@ -33,6 +33,7 @@ var typedEdgeProducers = map[string]string{
 	"rust":   "scip:rust-analyzer",
 	"c":      "scip:scip-clang",
 	"cpp":    "scip:scip-clang",
+	"cuda":   "scip:scip-clang",
 	"ruby":   "scip:scip-ruby",
 	"dart":   "scip:scip-dart",
 	"cs":     "scip:scip-dotnet",
@@ -42,9 +43,10 @@ var typedEdgeProducers = map[string]string{
 	// LB-F11) — no SCIP producer and no native pass. (Swift's swift-module
 	// strategy would too, but LB-Q-swift is refused and .swift is not
 	// classified: design §14.2.)
-	"html": "file",
-	"css":  "file",
-	"scss": "file",
+	"jinja": "file", // Jinja literal template imports and qualified macro aliases.
+	"html":  "file",
+	"css":   "file",
+	"scss":  "file",
 	// astro (LB-Q-astro, wave lf7): its frontmatter's and scripts' imports
 	// (F2) resolve by the relative-path strategy; an import of a component
 	// is an edge between the files' module symbols.
@@ -93,6 +95,7 @@ var typedEdgeProducers = map[string]string{
 	"perl":        "syntax",
 	"elixir":      "syntax",
 	"objective-c": "syntax",
+	"hlsl":        "syntax",
 	"jupyter":     "syntax",
 	"simulink":    "syntax",
 	"emacs-lisp":  "syntax",

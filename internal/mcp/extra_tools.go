@@ -440,7 +440,7 @@ func registerRemoveService(s *Server, backend QueryInterface) {
 		}
 		// NOTE: no ValidServiceID here, deliberately — the verb's first job
 		// is excising rows whose ids are exactly the malformed kind the
-		// ingest door now refuses ("../geoffmiller-cloud").
+		// ingest door now refuses ("../svc-a").
 		removed, err := rs.RemoveService(ctx, p.Service)
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: "remove_service: " + err.Error()}
@@ -564,7 +564,7 @@ func registerIngest(s *Server, backend QueryInterface) {
 
 		// Registration hygiene (plan IO-2; O1 fix d). Enforced HERE, in the
 		// daemon's handler — client-side ValidServiceID checks let the
-		// ../geoffmiller-cloud twin be re-fed for seven weeks because the
+		// ../svc-a twin be re-fed for seven weeks because the
 		// daemon accepted whatever arrived.
 		if err := core.ValidServiceID(svc); err != nil {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "ingest: a service id is a logical name, never a path (" + err.Error() + ") — pass the repo root separately via path"}

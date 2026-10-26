@@ -1,0 +1,105 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "CudaModule",
+      "package": "align",
+      "line": 1,
+      "end_line": 29,
+      "tier": "verified"
+    },
+    {
+      "name": "Pair.x",
+      "kind": "CudaField",
+      "package": "align",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "Pair.y",
+      "kind": "CudaField",
+      "package": "align",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "Pair",
+      "kind": "CudaTypedef",
+      "package": "align",
+      "line": 7,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "Cell",
+      "kind": "CudaStruct",
+      "package": "align",
+      "line": 9,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "Cell.key",
+      "kind": "CudaField",
+      "package": "align",
+      "line": 10,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "Cell.val",
+      "kind": "CudaField",
+      "package": "align",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "gather",
+      "kind": "CudaFunc",
+      "package": "align",
+      "line": 14,
+      "end_line": 20,
+      "signature": "__global__ void gather(Pair *out, const Cell *cells, int n)",
+      "calls": [
+        "__syncthreads"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Box",
+      "kind": "CudaStruct",
+      "package": "align",
+      "line": 22,
+      "end_line": 22,
+      "tier": "verified"
+    },
+    {
+      "name": "Box.v",
+      "kind": "CudaField",
+      "package": "align",
+      "line": 22,
+      "end_line": 22,
+      "tier": "verified"
+    },
+    {
+      "name": "pick",
+      "kind": "CudaFunc",
+      "package": "align",
+      "line": 25,
+      "end_line": 27,
+      "signature": "void pick(int *flag)",
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "<cuda_runtime.h>",
+      "module": "<cuda_runtime.h>",
+      "kind": "whole",
+      "line": 2
+    }
+  ]
+}

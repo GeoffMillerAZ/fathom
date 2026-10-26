@@ -1,0 +1,2825 @@
+{
+  "unit": "D24 import package (Go) / directory (Python and TypeScript), defining unit excluded; D26 product-only sites and caller units apply to product_only. Top-level counts are historical D24.",
+  "source": "Pinned resolved call-site receipts; CPython 3.12.15 AST direct imports/re-exports for Python, go/types for Go, TypeScript 5.9.3 resolved signatures (project configuration for redux-toolkit); static lower bounds, no C4 measurement.",
+  "candidates": [
+    {
+      "repository": "Textualize/rich",
+      "sha": "9d8f9a372cc5916fd4781fec207ced7ddac2f08f",
+      "language": "Python",
+      "qualifying_symbols": 7,
+      "examples": [
+        {
+          "symbol": "rich.console.Console",
+          "defining_unit": "rich",
+          "calls": 345,
+          "units": [
+            "benchmarks",
+            "examples",
+            "tests",
+            "tools"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "benchmarks/benchmarks.py:106:19",
+            "benchmarks/benchmarks.py:131:24",
+            "benchmarks/benchmarks.py:150:24",
+            "benchmarks/benchmarks.py:16:24",
+            "benchmarks/benchmarks.py:171:24",
+            "benchmarks/benchmarks.py:188:24",
+            "benchmarks/benchmarks.py:66:24",
+            "benchmarks/benchmarks.py:77:24"
+          ]
+        },
+        {
+          "symbol": "rich.segment.Segment",
+          "defining_unit": "rich",
+          "calls": 259,
+          "units": [
+            "benchmarks",
+            "tests",
+            "tools"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "benchmarks/benchmarks.py:210:13",
+            "benchmarks/benchmarks.py:211:13",
+            "benchmarks/benchmarks.py:212:13",
+            "benchmarks/benchmarks.py:213:13",
+            "benchmarks/benchmarks.py:214:13",
+            "tests/test_bar.py:71:9",
+            "tests/test_bar.py:72:9",
+            "tests/test_bar.py:73:9"
+          ]
+        },
+        {
+          "symbol": "rich.text.Text",
+          "defining_unit": "rich",
+          "calls": 237,
+          "units": [
+            "benchmarks",
+            "examples",
+            "tests"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "benchmarks/benchmarks.py:26:9",
+            "benchmarks/benchmarks.py:29:9",
+            "benchmarks/benchmarks.py:35:9",
+            "benchmarks/benchmarks.py:38:9",
+            "benchmarks/benchmarks.py:44:9",
+            "benchmarks/benchmarks.py:47:9",
+            "benchmarks/benchmarks.py:50:9",
+            "benchmarks/benchmarks.py:56:9"
+          ]
+        }
+      ],
+      "product_only": {
+        "qualifying_symbols": 0,
+        "examples": [
+          {
+            "symbol": "rich.cells.CellTable",
+            "defining_unit": "rich",
+            "calls": 21,
+            "units": [
+              "rich/_unicode_data"
+            ],
+            "qualifies": false,
+            "site_examples": [
+              "rich/_unicode_data/unicode10-0-0.py:6:14",
+              "rich/_unicode_data/unicode11-0-0.py:6:14",
+              "rich/_unicode_data/unicode12-0-0.py:6:14",
+              "rich/_unicode_data/unicode12-1-0.py:6:14",
+              "rich/_unicode_data/unicode13-0-0.py:6:14",
+              "rich/_unicode_data/unicode14-0-0.py:6:14",
+              "rich/_unicode_data/unicode15-0-0.py:6:14",
+              "rich/_unicode_data/unicode15-1-0.py:6:14"
+            ],
+            "outside_sites_before_product_filter": 22,
+            "excluded_nonproduct_sites": 1,
+            "excluded_examples": [
+              "tools/make_width_tables.py:39:18"
+            ]
+          },
+          {
+            "symbol": "rich._unicode_data.load",
+            "defining_unit": "rich/_unicode_data",
+            "calls": 3,
+            "units": [
+              "rich"
+            ],
+            "qualifies": false,
+            "site_examples": [
+              "rich/cells.py:135:18",
+              "rich/cells.py:179:18",
+              "rich/cells.py:60:13"
+            ],
+            "outside_sites_before_product_filter": 8,
+            "excluded_nonproduct_sites": 5,
+            "excluded_examples": [
+              "tests/test_unicode_data.py:11:9",
+              "tests/test_unicode_data.py:57:12",
+              "tests/test_unicode_data.py:62:12",
+              "tests/test_unicode_data.py:63:12",
+              "tests/test_unicode_data.py:64:12"
+            ]
+          },
+          {
+            "symbol": "rich.console.Console",
+            "defining_unit": "rich",
+            "calls": 0,
+            "units": [],
+            "qualifies": false,
+            "site_examples": [],
+            "outside_sites_before_product_filter": 345,
+            "excluded_nonproduct_sites": 345,
+            "excluded_examples": [
+              "benchmarks/benchmarks.py:106:19",
+              "benchmarks/benchmarks.py:131:24",
+              "benchmarks/benchmarks.py:150:24",
+              "benchmarks/benchmarks.py:16:24",
+              "benchmarks/benchmarks.py:171:24"
+            ]
+          }
+        ],
+        "resolved_sha256": "c8768b9c64e26a61969aa4fcf06c6cc970c85561dac9de49652b354dad801858",
+        "recount_sha256": "88cf0c75388d2395b61d8ab9878a6aa268c15cbf92333f3508db6e2531cf1964",
+        "disposition": "refused C6"
+      }
+    },
+    {
+      "repository": "encode/starlette",
+      "sha": "8aa828ceaff764a2e57932fb42fdf105a47c4c83",
+      "language": "Python",
+      "qualifying_symbols": 12,
+      "examples": [
+        {
+          "symbol": "starlette.responses.PlainTextResponse",
+          "defining_unit": "starlette",
+          "calls": 97,
+          "units": [
+            "benchmarks",
+            "starlette/middleware",
+            "tests",
+            "tests/middleware"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "benchmarks/routing_benchmark.py:13:12",
+            "starlette/middleware/authentication.py:52:16",
+            "starlette/middleware/body_limit.py:119:28",
+            "starlette/middleware/body_limit.py:93:24",
+            "starlette/middleware/cors.py:143:20",
+            "starlette/middleware/cors.py:145:16",
+            "starlette/middleware/errors.py:256:16",
+            "starlette/middleware/errors.py:259:16"
+          ]
+        },
+        {
+          "symbol": "starlette.responses.Response",
+          "defining_unit": "starlette",
+          "calls": 68,
+          "units": [
+            "benchmarks",
+            "starlette/middleware",
+            "tests",
+            "tests/middleware"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "benchmarks/response_benchmark.py:20:12",
+            "benchmarks/response_benchmark.py:31:15",
+            "benchmarks/response_benchmark.py:42:40",
+            "starlette/middleware/exceptions.py:68:20",
+            "tests/middleware/test_base.py:1047:16",
+            "tests/middleware/test_base.py:1094:16",
+            "tests/middleware/test_base.py:1176:15",
+            "tests/middleware/test_base.py:780:15"
+          ]
+        },
+        {
+          "symbol": "starlette.requests.Request",
+          "defining_unit": "starlette",
+          "calls": 52,
+          "units": [
+            "benchmarks",
+            "starlette/middleware",
+            "tests",
+            "tests/middleware"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "benchmarks/json_benchmark.py:54:25",
+            "benchmarks/multipart_benchmark.py:76:19",
+            "benchmarks/request_benchmark.py:21:22",
+            "benchmarks/request_benchmark.py:28:28",
+            "benchmarks/urlencoded_benchmark.py:58:19",
+            "starlette/middleware/errors.py:166:23",
+            "starlette/middleware/exceptions.py:59:20",
+            "tests/middleware/test_base.py:1223:19"
+          ]
+        }
+      ],
+      "product_only": {
+        "qualifying_symbols": 0,
+        "examples": [
+          {
+            "symbol": "starlette.responses.PlainTextResponse",
+            "defining_unit": "starlette",
+            "calls": 11,
+            "units": [
+              "starlette/middleware"
+            ],
+            "qualifies": false,
+            "site_examples": [
+              "starlette/middleware/authentication.py:52:16",
+              "starlette/middleware/body_limit.py:119:28",
+              "starlette/middleware/body_limit.py:93:24",
+              "starlette/middleware/cors.py:143:20",
+              "starlette/middleware/cors.py:145:16",
+              "starlette/middleware/errors.py:256:16",
+              "starlette/middleware/errors.py:259:16",
+              "starlette/middleware/exceptions.py:69:16"
+            ],
+            "outside_sites_before_product_filter": 97,
+            "excluded_nonproduct_sites": 86,
+            "excluded_examples": [
+              "benchmarks/routing_benchmark.py:13:12",
+              "tests/middleware/test_base.py:1225:15",
+              "tests/middleware/test_base.py:1369:16",
+              "tests/middleware/test_base.py:157:16",
+              "tests/middleware/test_base.py:177:16"
+            ]
+          },
+          {
+            "symbol": "starlette.datastructures.Headers",
+            "defining_unit": "starlette",
+            "calls": 5,
+            "units": [
+              "starlette/middleware"
+            ],
+            "qualifies": false,
+            "site_examples": [
+              "starlette/middleware/body_limit.py:126:22",
+              "starlette/middleware/cors.py:83:19",
+              "starlette/middleware/gzip.py:113:23",
+              "starlette/middleware/gzip.py:66:19",
+              "starlette/middleware/trustedhost.py:40:19"
+            ],
+            "outside_sites_before_product_filter": 17,
+            "excluded_nonproduct_sites": 12,
+            "excluded_examples": [
+              "benchmarks/file_response_benchmark.py:97:15",
+              "tests/test_datastructures.py:302:9",
+              "tests/test_datastructures.py:318:17",
+              "tests/test_datastructures.py:321:9",
+              "tests/test_datastructures.py:389:9"
+            ]
+          },
+          {
+            "symbol": "starlette.middleware.Middleware",
+            "defining_unit": "starlette/middleware",
+            "calls": 4,
+            "units": [
+              "starlette"
+            ],
+            "qualifies": false,
+            "site_examples": [
+              "starlette/applications.py:107:40",
+              "starlette/applications.py:74:23",
+              "starlette/applications.py:76:31",
+              "starlette/applications.py:78:27"
+            ],
+            "outside_sites_before_product_filter": 119,
+            "excluded_nonproduct_sites": 115,
+            "excluded_examples": [
+              "tests/middleware/test_base.py:1098:21",
+              "tests/middleware/test_base.py:1274:21",
+              "tests/middleware/test_base.py:1332:21",
+              "tests/middleware/test_base.py:1376:21",
+              "tests/middleware/test_base.py:162:13"
+            ]
+          }
+        ],
+        "resolved_sha256": "2cf14837f2520ec624363a6ddb8bee548075f2eafefea3f94072438dd5ccf673",
+        "recount_sha256": "ff12a01139508c487ac4e864b7420696725913d9f1bc1f7f5adf93a907140026",
+        "disposition": "refused C6"
+      }
+    },
+    {
+      "repository": "go-chi/chi",
+      "sha": "9f8adb1aabaa8a91180a821111d3f8e668d1c0bf",
+      "language": "Go",
+      "qualifying_symbols": 0,
+      "examples": [
+        {
+          "symbol": "github.com/go-chi/chi/v5.NewRouter",
+          "defining_unit": "github.com/go-chi/chi/v5",
+          "calls": 47,
+          "units": [
+            "github.com/go-chi/chi/v5/middleware"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "middleware/basic_auth_test.go:17:7",
+            "middleware/clean_path_test.go:12:7",
+            "middleware/client_ip_example_test.go:41:7",
+            "middleware/client_ip_example_test.go:92:7",
+            "middleware/client_ip_test.go:395:7",
+            "middleware/client_ip_test.go:427:8"
+          ]
+        },
+        {
+          "symbol": "github.com/go-chi/chi/v5.*Mux.Use",
+          "defining_unit": "github.com/go-chi/chi/v5",
+          "calls": 46,
+          "units": [
+            "github.com/go-chi/chi/v5/middleware"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "middleware/basic_auth_test.go:18:2",
+            "middleware/clean_path_test.go:13:2",
+            "middleware/client_ip_example_test.go:50:2",
+            "middleware/client_ip_example_test.go:93:2",
+            "middleware/client_ip_test.go:396:2",
+            "middleware/client_ip_test.go:428:3"
+          ]
+        },
+        {
+          "symbol": "github.com/go-chi/chi/v5.*Mux.Get",
+          "defining_unit": "github.com/go-chi/chi/v5",
+          "calls": 44,
+          "units": [
+            "github.com/go-chi/chi/v5/middleware"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "middleware/basic_auth_test.go:19:2",
+            "middleware/clean_path_test.go:14:2",
+            "middleware/client_ip_example_test.go:74:2",
+            "middleware/client_ip_example_test.go:94:2",
+            "middleware/client_ip_test.go:397:2",
+            "middleware/client_ip_test.go:429:3"
+          ]
+        }
+      ],
+      "product_only": {
+        "qualifying_symbols": 0,
+        "examples": [
+          {
+            "symbol": "github.com/go-chi/chi/v5.*Mux.Handle",
+            "defining_unit": "github.com/go-chi/chi/v5",
+            "calls": 7,
+            "units": [
+              "github.com/go-chi/chi/v5/middleware"
+            ],
+            "qualifies": false,
+            "site_examples": [
+              "middleware/profiler.go:38:2",
+              "middleware/profiler.go:40:2",
+              "middleware/profiler.go:41:2",
+              "middleware/profiler.go:42:2",
+              "middleware/profiler.go:43:2",
+              "middleware/profiler.go:44:2",
+              "middleware/profiler.go:45:2"
+            ],
+            "outside_sites_before_product_filter": 8,
+            "excluded_nonproduct_sites": 1,
+            "excluded_examples": [
+              "middleware/heartbeat_test.go:16:2"
+            ]
+          },
+          {
+            "symbol": "github.com/go-chi/chi/v5.RouteContext",
+            "defining_unit": "github.com/go-chi/chi/v5",
+            "calls": 6,
+            "units": [
+              "github.com/go-chi/chi/v5/middleware"
+            ],
+            "qualifies": false,
+            "site_examples": [
+              "middleware/clean_path.go:14:11",
+              "middleware/get_head.go:13:12",
+              "middleware/strip.go:17:11",
+              "middleware/strip.go:44:11",
+              "middleware/supress_notfound.go:18:12",
+              "middleware/url_format.go:53:11"
+            ],
+            "outside_sites_before_product_filter": 7,
+            "excluded_nonproduct_sites": 1,
+            "excluded_examples": [
+              "middleware/supress_notfound_test.go:88:9"
+            ]
+          },
+          {
+            "symbol": "github.com/go-chi/chi/v5.*Mux.HandleFunc",
+            "defining_unit": "github.com/go-chi/chi/v5",
+            "calls": 6,
+            "units": [
+              "github.com/go-chi/chi/v5/middleware"
+            ],
+            "qualifies": false,
+            "site_examples": [
+              "middleware/profiler.go:29:2",
+              "middleware/profiler.go:33:2",
+              "middleware/profiler.go:34:2",
+              "middleware/profiler.go:35:2",
+              "middleware/profiler.go:36:2",
+              "middleware/profiler.go:37:2"
+            ],
+            "outside_sites_before_product_filter": 6,
+            "excluded_nonproduct_sites": 0,
+            "excluded_examples": []
+          }
+        ],
+        "resolved_sha256": "79ace630189d3b8c576efc15479a0be12daaa235741129bd6586e623ce6fecf8",
+        "recount_sha256": "58c290dd33000c67d6454d4e3a126a23e553ba2892551c2a69a711538ced6238",
+        "disposition": "refused C6"
+      }
+    },
+    {
+      "repository": "immerjs/immer",
+      "sha": "75a290e44ba14bd723c8ef8546b6559c8ef3ae88",
+      "language": "TypeScript",
+      "qualifying_symbols": 0,
+      "examples": [
+        {
+          "symbol": "src/utils/common.ts#latest",
+          "defining_unit": "src/utils",
+          "calls": 25,
+          "units": [
+            "src/core",
+            "src/plugins"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "src/core/finalize.ts:126:21",
+            "src/plugins/arrayMethods.ts:255:38",
+            "src/core/finalize.ts:241:23",
+            "src/core/proxy.ts:125:18",
+            "src/core/proxy.ts:164:18",
+            "src/core/proxy.ts:167:26"
+          ]
+        },
+        {
+          "symbol": "src/utils/errors.ts#die",
+          "defining_unit": "src/utils",
+          "calls": 17,
+          "units": [
+            "src/core",
+            "src/plugins"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "src/core/current.ts:18:23",
+            "src/plugins/mapset.ts:351:23",
+            "src/core/finalize.ts:35:4",
+            "src/core/immerClass.ts:100:66",
+            "src/core/immerClass.ts:134:10",
+            "src/core/immerClass.ts:153:27"
+          ]
+        },
+        {
+          "symbol": "src/utils/common.ts#isDraftable",
+          "defining_unit": "src/utils",
+          "calls": 12,
+          "units": [
+            "src/core",
+            "src/plugins"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "src/core/current.ts:23:7",
+            "src/plugins/mapset.ts:127:29",
+            "src/core/finalize.ts:238:13",
+            "src/core/finalize.ts:290:4",
+            "src/core/finalize.ts:311:14",
+            "src/core/finalize.ts:37:7"
+          ]
+        }
+      ],
+      "product_only": {
+        "qualifying_symbols": 0,
+        "examples": [
+          {
+            "symbol": "src/utils/common.ts#latest",
+            "defining_unit": "src/utils",
+            "calls": 25,
+            "units": [
+              "src/core",
+              "src/plugins"
+            ],
+            "qualifies": false,
+            "site_examples": [
+              "src/core/finalize.ts:126:21",
+              "src/core/finalize.ts:241:23",
+              "src/core/proxy.ts:125:18",
+              "src/core/proxy.ts:164:18",
+              "src/core/proxy.ts:167:26",
+              "src/core/proxy.ts:174:39",
+              "src/core/proxy.ts:184:25",
+              "src/core/proxy.ts:237:17"
+            ],
+            "outside_sites_before_product_filter": 25,
+            "excluded_nonproduct_sites": 0,
+            "excluded_examples": []
+          },
+          {
+            "symbol": "src/utils/errors.ts#die",
+            "defining_unit": "src/utils",
+            "calls": 17,
+            "units": [
+              "src/core",
+              "src/plugins"
+            ],
+            "qualifies": false,
+            "site_examples": [
+              "src/core/current.ts:18:23",
+              "src/core/finalize.ts:35:4",
+              "src/core/immerClass.ts:100:66",
+              "src/core/immerClass.ts:134:10",
+              "src/core/immerClass.ts:153:27",
+              "src/core/immerClass.ts:167:35",
+              "src/core/immerClass.ts:99:28",
+              "src/core/proxy.ts:248:3"
+            ],
+            "outside_sites_before_product_filter": 17,
+            "excluded_nonproduct_sites": 0,
+            "excluded_examples": []
+          },
+          {
+            "symbol": "src/utils/common.ts#isDraftable",
+            "defining_unit": "src/utils",
+            "calls": 12,
+            "units": [
+              "src/core",
+              "src/plugins"
+            ],
+            "qualifies": false,
+            "site_examples": [
+              "src/core/current.ts:23:7",
+              "src/core/finalize.ts:238:13",
+              "src/core/finalize.ts:290:4",
+              "src/core/finalize.ts:311:14",
+              "src/core/finalize.ts:37:7",
+              "src/core/immerClass.ts:105:7",
+              "src/core/immerClass.ts:153:8",
+              "src/core/proxy.ts:131:28"
+            ],
+            "outside_sites_before_product_filter": 12,
+            "excluded_nonproduct_sites": 0,
+            "excluded_examples": []
+          }
+        ],
+        "resolved_sha256": "e00a66d7415cf9266781dd0b5e47b6bbb02826d5651852ee4317b29e7783328f",
+        "recount_sha256": "ef5f7856cf6b119863e633bf0bfe2af4884696db3a0561f2b63b0a2dd4787447",
+        "disposition": "refused C6"
+      }
+    },
+    {
+      "repository": "marshmallow-code/marshmallow",
+      "sha": "b762ea2d59ca52fe5df76b90de14bed7e5ec5607",
+      "language": "Python",
+      "qualifying_symbols": 6,
+      "examples": [
+        {
+          "symbol": "marshmallow.fields.String",
+          "defining_unit": "src/marshmallow",
+          "calls": 210,
+          "units": [
+            "examples",
+            "performance",
+            "tests",
+            "tests/mypy_test_cases"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "examples/flask_example.py:53:13",
+            "examples/flask_example.py:54:12",
+            "examples/flask_example.py:70:15",
+            "examples/inflection_example.py:28:18",
+            "examples/inflection_example.py:29:17",
+            "examples/package_json_example.py:31:12",
+            "examples/package_json_example.py:33:19",
+            "examples/package_json_example.py:34:12"
+          ]
+        },
+        {
+          "symbol": "marshmallow.fields.Integer",
+          "defining_unit": "src/marshmallow",
+          "calls": 158,
+          "units": [
+            "examples",
+            "performance",
+            "tests",
+            "tests/mypy_test_cases"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "examples/flask_example.py:52:10",
+            "examples/flask_example.py:68:10",
+            "performance/benchmark.py:23:10",
+            "performance/benchmark.py:36:10",
+            "tests/base.py:210:20",
+            "tests/base.py:246:11",
+            "tests/foo_serializer.py:5:11",
+            "tests/mypy_test_cases/test_schema.py:10:11"
+          ]
+        },
+        {
+          "symbol": "marshmallow.exceptions.ValidationError",
+          "defining_unit": "src/marshmallow",
+          "calls": 78,
+          "units": [
+            "examples",
+            "performance",
+            "tests",
+            "tests/mypy_test_cases"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "examples/flask_example.py:64:15",
+            "examples/package_json_example.py:24:19",
+            "performance/benchmark.py:19:15",
+            "tests/base.py:233:19",
+            "tests/base.py:93:19",
+            "tests/mypy_test_cases/test_validation_error.py:11:1",
+            "tests/mypy_test_cases/test_validation_error.py:14:7",
+            "tests/mypy_test_cases/test_validation_error.py:6:1"
+          ]
+        }
+      ],
+      "product_only": {
+        "qualifying_symbols": 0,
+        "examples": [
+          {
+            "symbol": "marshmallow.fields.String",
+            "defining_unit": "src/marshmallow",
+            "calls": 0,
+            "units": [],
+            "qualifies": false,
+            "site_examples": [],
+            "outside_sites_before_product_filter": 210,
+            "excluded_nonproduct_sites": 210,
+            "excluded_examples": [
+              "examples/flask_example.py:53:13",
+              "examples/flask_example.py:54:12",
+              "examples/flask_example.py:70:15",
+              "examples/inflection_example.py:28:18",
+              "examples/inflection_example.py:29:17"
+            ]
+          },
+          {
+            "symbol": "marshmallow.fields.Integer",
+            "defining_unit": "src/marshmallow",
+            "calls": 0,
+            "units": [],
+            "qualifies": false,
+            "site_examples": [],
+            "outside_sites_before_product_filter": 158,
+            "excluded_nonproduct_sites": 158,
+            "excluded_examples": [
+              "examples/flask_example.py:52:10",
+              "examples/flask_example.py:68:10",
+              "performance/benchmark.py:23:10",
+              "performance/benchmark.py:36:10",
+              "tests/base.py:210:20"
+            ]
+          },
+          {
+            "symbol": "marshmallow.fields.Raw",
+            "defining_unit": "src/marshmallow",
+            "calls": 0,
+            "units": [],
+            "qualifies": false,
+            "site_examples": [],
+            "outside_sites_before_product_filter": 125,
+            "excluded_nonproduct_sites": 125,
+            "excluded_examples": [
+              "tests/test_context.py:111:19",
+              "tests/test_context.py:132:19",
+              "tests/test_context.py:157:19",
+              "tests/test_decorators.py:135:19",
+              "tests/test_decorators.py:162:19"
+            ]
+          }
+        ],
+        "resolved_sha256": "77749c7028ad3cad712cfb6de127f33831d677091c0c819115ce3ffed3472ba3",
+        "recount_sha256": "6f45079f507ab923e0a749fe76846d459f9de46a88ae9e6616ad037086042709",
+        "disposition": "refused C6"
+      }
+    },
+    {
+      "repository": "microsoft/tsyringe",
+      "sha": "78222334f49265ea2874fac2c73284345c1124d9",
+      "language": "TypeScript",
+      "qualifying_symbols": 0,
+      "examples": [
+        {
+          "symbol": "src/decorators/injectable.ts#injectable",
+          "defining_unit": "src/decorators",
+          "calls": 66,
+          "units": [
+            "src/__tests__",
+            "src/__tests__/fixtures"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "src/__tests__/auto-injectable.test.ts:102:4",
+            "src/__tests__/fixtures/01-test-case-A01-injects-B01.ts:4:2",
+            "src/__tests__/auto-injectable.test.ts:150:4",
+            "src/__tests__/errors.test.ts:12:4",
+            "src/__tests__/errors.test.ts:17:4",
+            "src/__tests__/errors.test.ts:22:4"
+          ]
+        },
+        {
+          "symbol": "src/decorators/registry.ts#registry",
+          "defining_unit": "src/decorators",
+          "calls": 12,
+          "units": [
+            "src/__tests__",
+            "src/__tests__/fixtures"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "src/__tests__/fixtures/03-test-case-A03-lazy-injects-B03-interface.ts:10:2",
+            "src/__tests__/global-container.test.ts:577:4",
+            "src/__tests__/fixtures/03-test-case-B03-lazy-injects-A03-interface.ts:10:2",
+            "src/__tests__/global-container.test.ts:588:4",
+            "src/__tests__/global-container.test.ts:606:4",
+            "src/__tests__/global-container.test.ts:620:4"
+          ]
+        },
+        {
+          "symbol": "src/decorators/inject.ts#inject",
+          "defining_unit": "src/decorators",
+          "calls": 9,
+          "units": [
+            "src/__tests__",
+            "src/__tests__/fixtures"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "src/__tests__/errors.test.ts:42:18",
+            "src/__tests__/fixtures/02-test-case-A02-lazy-injects-B02.ts:7:16",
+            "src/__tests__/fixtures/02-test-case-B02-lazy-injects-A02.ts:11:16",
+            "src/__tests__/fixtures/03-test-case-A03-lazy-injects-B03-interface.ts:18:16",
+            "src/__tests__/fixtures/03-test-case-B03-lazy-injects-A03-interface.ts:18:16",
+            "src/__tests__/global-container.test.ts:713:18"
+          ]
+        }
+      ],
+      "product_only": {
+        "qualifying_symbols": 0,
+        "examples": [
+          {
+            "symbol": "src/providers/injection-token.ts#isTransformDescriptor",
+            "defining_unit": "src/providers",
+            "calls": 4,
+            "units": [
+              "src",
+              "src/decorators"
+            ],
+            "qualifies": false,
+            "site_examples": [
+              "src/decorators/auto-injectable.ts:29:23",
+              "src/decorators/auto-injectable.ts:48:28",
+              "src/dependency-container.ts:555:15",
+              "src/dependency-container.ts:578:20"
+            ],
+            "outside_sites_before_product_filter": 4,
+            "excluded_nonproduct_sites": 0,
+            "excluded_examples": []
+          },
+          {
+            "symbol": "src/providers/injection-token.ts#isTokenDescriptor",
+            "defining_unit": "src/providers",
+            "calls": 2,
+            "units": [
+              "src",
+              "src/decorators"
+            ],
+            "qualifies": false,
+            "site_examples": [
+              "src/decorators/auto-injectable.ts:28:21",
+              "src/dependency-container.ts:554:13"
+            ],
+            "outside_sites_before_product_filter": 2,
+            "excluded_nonproduct_sites": 0,
+            "excluded_examples": []
+          },
+          {
+            "symbol": "src/providers/injection-token.ts#isNormalToken",
+            "defining_unit": "src/providers",
+            "calls": 6,
+            "units": [
+              "src"
+            ],
+            "qualifies": false,
+            "site_examples": [
+              "src/dependency-container.ts:149:9",
+              "src/dependency-container.ts:185:9",
+              "src/dependency-container.ts:186:11",
+              "src/dependency-container.ts:210:16",
+              "src/dependency-container.ts:232:26",
+              "src/dependency-container.ts:361:27"
+            ],
+            "outside_sites_before_product_filter": 6,
+            "excluded_nonproduct_sites": 0,
+            "excluded_examples": []
+          }
+        ],
+        "resolved_sha256": "568471acc5606759c071cd82b5ba21993f0d3f8fdcc221b569398332753dd3ae",
+        "recount_sha256": "ee5adb7791e3da40a25c5c2f7ab5870d194a33dc5f8238283dc8c41dcf645aed",
+        "disposition": "refused C6"
+      }
+    },
+    {
+      "repository": "pallets/click",
+      "sha": "2247b35ea1c47c727d7a06e51fa280e12a863ff6",
+      "language": "Python",
+      "qualifying_symbols": 17,
+      "examples": [
+        {
+          "symbol": "click.utils.echo",
+          "defining_unit": "src/click",
+          "calls": 404,
+          "units": [
+            "examples/aliases",
+            "examples/colors",
+            "examples/completion",
+            "examples/complex/complex",
+            "examples/imagepipe",
+            "examples/naval",
+            "examples/repo",
+            "examples/termui",
+            "examples/validation",
+            "tests",
+            "tests/test_utils",
+            "tests/typing"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "examples/aliases/aliases.py:104:5",
+            "examples/aliases/aliases.py:110:5",
+            "examples/aliases/aliases.py:116:5",
+            "examples/aliases/aliases.py:122:5",
+            "examples/aliases/aliases.py:129:5",
+            "examples/aliases/aliases.py:143:5",
+            "examples/colors/colors.py:32:9",
+            "examples/colors/colors.py:34:9"
+          ]
+        },
+        {
+          "symbol": "click.decorators.option",
+          "defining_unit": "src/click",
+          "calls": 275,
+          "units": [
+            "examples/aliases",
+            "examples/completion",
+            "examples/complex/complex",
+            "examples/imagepipe",
+            "examples/naval",
+            "examples/repo",
+            "examples/termui",
+            "examples/validation",
+            "tests",
+            "tests/typing"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "examples/aliases/aliases.py:136:2",
+            "examples/aliases/aliases.py:90:2",
+            "examples/completion/completion.py:13:2",
+            "examples/complex/complex/cli.py:49:2",
+            "examples/complex/complex/cli.py:54:2",
+            "examples/imagepipe/imagepipe.py:102:2",
+            "examples/imagepipe/imagepipe.py:132:2",
+            "examples/imagepipe/imagepipe.py:133:2"
+          ]
+        },
+        {
+          "symbol": "click.decorators.argument",
+          "defining_unit": "src/click",
+          "calls": 145,
+          "units": [
+            "examples/aliases",
+            "examples/completion",
+            "examples/complex/complex/commands",
+            "examples/inout",
+            "examples/naval",
+            "examples/repo",
+            "examples/termui",
+            "tests",
+            "tests/test_utils",
+            "tests/typing"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "examples/aliases/aliases.py:134:2",
+            "examples/aliases/aliases.py:135:2",
+            "examples/completion/completion.py:25:2",
+            "examples/completion/completion.py:51:2",
+            "examples/complex/complex/commands/cmd_init.py:7:2",
+            "examples/inout/inout.py:5:2",
+            "examples/inout/inout.py:6:2",
+            "examples/naval/naval.py:21:2"
+          ]
+        }
+      ],
+      "product_only": {
+        "qualifying_symbols": 0,
+        "examples": [
+          {
+            "symbol": "click.utils.echo",
+            "defining_unit": "src/click",
+            "calls": 0,
+            "units": [],
+            "qualifies": false,
+            "site_examples": [],
+            "outside_sites_before_product_filter": 404,
+            "excluded_nonproduct_sites": 404,
+            "excluded_examples": [
+              "examples/aliases/aliases.py:104:5",
+              "examples/aliases/aliases.py:110:5",
+              "examples/aliases/aliases.py:116:5",
+              "examples/aliases/aliases.py:122:5",
+              "examples/aliases/aliases.py:129:5"
+            ]
+          },
+          {
+            "symbol": "click.decorators.command",
+            "defining_unit": "src/click",
+            "calls": 0,
+            "units": [],
+            "qualifies": false,
+            "site_examples": [],
+            "outside_sites_before_product_filter": 346,
+            "excluded_nonproduct_sites": 346,
+            "excluded_examples": [
+              "examples/aliases/aliases.py:89:2",
+              "examples/colors/colors.py:24:2",
+              "examples/complex/complex/cli.py:48:2",
+              "examples/complex/complex/commands/cmd_init.py:6:2",
+              "examples/complex/complex/commands/cmd_status.py:6:2"
+            ]
+          },
+          {
+            "symbol": "click.decorators.option",
+            "defining_unit": "src/click",
+            "calls": 0,
+            "units": [],
+            "qualifies": false,
+            "site_examples": [],
+            "outside_sites_before_product_filter": 275,
+            "excluded_nonproduct_sites": 275,
+            "excluded_examples": [
+              "examples/aliases/aliases.py:136:2",
+              "examples/aliases/aliases.py:90:2",
+              "examples/completion/completion.py:13:2",
+              "examples/complex/complex/cli.py:49:2",
+              "examples/complex/complex/cli.py:54:2"
+            ]
+          }
+        ],
+        "resolved_sha256": "5e00751f6543ca8540aa7f3ea648e9600b30c4e5ce54c2b3a989da33d57bd5bd",
+        "recount_sha256": "149cb80c5c948ff74ce4237bfa82d4882db0f6944290189b176afc058ab07930",
+        "disposition": "refused C6"
+      }
+    },
+    {
+      "repository": "pressly/goose",
+      "sha": "2d285d2249855c959765409c68b17a6634f0acb4",
+      "language": "Go",
+      "qualifying_symbols": 0,
+      "examples": [
+        {
+          "symbol": "github.com/pressly/goose/v3.GetDBVersion",
+          "defining_unit": "github.com/pressly/goose/v3",
+          "calls": 8,
+          "units": [
+            "github.com/pressly/goose/v3/tests/gomigrations/error",
+            "github.com/pressly/goose/v3/tests/gomigrations/success"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "tests/gomigrations/error/gomigrations_error_test.go:33:18",
+            "tests/gomigrations/success/gomigrations_success_test.go:31:19",
+            "tests/gomigrations/error/gomigrations_error_test.go:41:17",
+            "tests/gomigrations/error/gomigrations_error_test.go:55:17",
+            "tests/gomigrations/error/gomigrations_error_test.go:64:17",
+            "tests/gomigrations/success/gomigrations_success_test.go:39:19"
+          ]
+        },
+        {
+          "symbol": "github.com/pressly/goose/v3.RunContext",
+          "defining_unit": "github.com/pressly/goose/v3",
+          "calls": 3,
+          "units": [
+            "github.com/pressly/goose/v3/cmd/goose",
+            "github.com/pressly/goose/v3/examples/go-migrations"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "cmd/goose/main.go:123:13",
+            "examples/go-migrations/main.go:50:12",
+            "cmd/goose/main.go:128:13"
+          ]
+        },
+        {
+          "symbol": "github.com/pressly/goose/v3/database/dialect.Querier.DeleteVersion",
+          "defining_unit": "github.com/pressly/goose/v3/database/dialect",
+          "calls": 3,
+          "units": [
+            "github.com/pressly/goose/v3/database",
+            "github.com/pressly/goose/v3/internal/legacystore"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "database/dialects.go:108:7",
+            "internal/legacystore/legacystore.go:119:7",
+            "internal/legacystore/legacystore.go:125:7"
+          ]
+        }
+      ],
+      "product_only": {
+        "qualifying_symbols": 0,
+        "examples": [
+          {
+            "symbol": "github.com/pressly/goose/v3/database/dialect.Querier.DeleteVersion",
+            "defining_unit": "github.com/pressly/goose/v3/database/dialect",
+            "calls": 3,
+            "units": [
+              "github.com/pressly/goose/v3/database",
+              "github.com/pressly/goose/v3/internal/legacystore"
+            ],
+            "qualifies": false,
+            "site_examples": [
+              "database/dialects.go:108:7",
+              "internal/legacystore/legacystore.go:119:7",
+              "internal/legacystore/legacystore.go:125:7"
+            ],
+            "outside_sites_before_product_filter": 3,
+            "excluded_nonproduct_sites": 0,
+            "excluded_examples": []
+          },
+          {
+            "symbol": "github.com/pressly/goose/v3/database/dialect.Querier.InsertVersion",
+            "defining_unit": "github.com/pressly/goose/v3/database/dialect",
+            "calls": 3,
+            "units": [
+              "github.com/pressly/goose/v3/database",
+              "github.com/pressly/goose/v3/internal/legacystore"
+            ],
+            "qualifies": false,
+            "site_examples": [
+              "database/dialects.go:100:7",
+              "internal/legacystore/legacystore.go:107:7",
+              "internal/legacystore/legacystore.go:113:7"
+            ],
+            "outside_sites_before_product_filter": 3,
+            "excluded_nonproduct_sites": 0,
+            "excluded_examples": []
+          },
+          {
+            "symbol": "github.com/pressly/goose/v3/internal/sqlparser.ParseSQLMigration",
+            "defining_unit": "github.com/pressly/goose/v3/internal/sqlparser",
+            "calls": 3,
+            "units": [
+              "github.com/pressly/goose/v3",
+              "github.com/pressly/goose/v3/internal/migrationstats"
+            ],
+            "qualifies": false,
+            "site_examples": [
+              "internal/migrationstats/migration_sql.go:21:29",
+              "internal/migrationstats/migration_sql.go:29:33",
+              "migration.go:223:29"
+            ],
+            "outside_sites_before_product_filter": 3,
+            "excluded_nonproduct_sites": 0,
+            "excluded_examples": []
+          }
+        ],
+        "resolved_sha256": "ca0847aa33ba836faff356b03f0d7694a036cd9d4912179ca1a1aeacf574289c",
+        "recount_sha256": "b9196e3a674316611809d7bf622c84d9683da4ce9c0a9b365217ff2317b8f029",
+        "disposition": "refused C6"
+      }
+    },
+    {
+      "repository": "python-attrs/attrs",
+      "sha": "c8bb9bfaa2843e7844b5bb13bed4370b51feec4f",
+      "language": "Python",
+      "qualifying_symbols": 3,
+      "examples": [
+        {
+          "symbol": "attr._next_gen.field",
+          "defining_unit": "src/attr",
+          "calls": 143,
+          "units": [
+            "bench",
+            "tests",
+            "typing_tests"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "bench/test_benchmarks.py:56:22",
+            "bench/test_benchmarks.py:57:22",
+            "bench/test_benchmarks.py:58:22",
+            "tests/dataclass_transform_example.py:18:27",
+            "tests/dataclass_transform_example.py:51:15",
+            "tests/test_make.py:1264:19",
+            "tests/test_make.py:1265:18",
+            "tests/test_make.py:1269:19"
+          ]
+        },
+        {
+          "symbol": "attr._next_gen.define",
+          "defining_unit": "src/attr",
+          "calls": 55,
+          "units": [
+            "bench",
+            "tests",
+            "typing_tests"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "bench/test_benchmarks.py:206:6",
+            "tests/dataclass_transform_example.py:16:2",
+            "tests/dataclass_transform_example.py:37:2",
+            "tests/dataclass_transform_example.py:60:2",
+            "tests/dataclass_transform_example.py:7:2",
+            "tests/test_abc.py:29:10",
+            "tests/test_abc.py:47:10",
+            "tests/test_annotations.py:671:10"
+          ]
+        },
+        {
+          "symbol": "attr._make.Factory",
+          "defining_unit": "src/attr",
+          "calls": 34,
+          "units": [
+            "bench",
+            "tests",
+            "typing_tests"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "bench/test_benchmarks.py:182:27",
+            "bench/test_benchmarks.py:69:25",
+            "tests/strategies.py:70:52",
+            "tests/test_annotations.py:110:35",
+            "tests/test_annotations.py:126:16",
+            "tests/test_annotations.py:410:37",
+            "tests/test_converters.py:194:29",
+            "tests/test_converters.py:225:37"
+          ]
+        }
+      ],
+      "product_only": {
+        "qualifying_symbols": 0,
+        "examples": [
+          {
+            "symbol": "attr._make_getattr",
+            "defining_unit": "src/attr",
+            "calls": 1,
+            "units": [
+              "src/attrs"
+            ],
+            "qualifies": false,
+            "site_examples": [
+              "src/attrs/__init__.py:72:15"
+            ],
+            "outside_sites_before_product_filter": 1,
+            "excluded_nonproduct_sites": 0,
+            "excluded_examples": []
+          },
+          {
+            "symbol": "attr._make.attrib",
+            "defining_unit": "src/attr",
+            "calls": 0,
+            "units": [],
+            "qualifies": false,
+            "site_examples": [],
+            "outside_sites_before_product_filter": 494,
+            "excluded_nonproduct_sites": 494,
+            "excluded_examples": [
+              "tests/strategies.py:101:12",
+              "tests/strategies.py:70:36",
+              "tests/strategies.py:77:41",
+              "tests/strategies.py:78:37",
+              "tests/strategies.py:79:56"
+            ]
+          },
+          {
+            "symbol": "attr._make.attrs",
+            "defining_unit": "src/attr",
+            "calls": 0,
+            "units": [],
+            "qualifies": false,
+            "site_examples": [],
+            "outside_sites_before_product_filter": 227,
+            "excluded_nonproduct_sites": 227,
+            "excluded_examples": [
+              "tests/test_annotations.py:106:10",
+              "tests/test_annotations.py:163:14",
+              "tests/test_annotations.py:183:10",
+              "tests/test_annotations.py:188:10",
+              "tests/test_annotations.py:193:10"
+            ]
+          }
+        ],
+        "resolved_sha256": "7f9192eb879aac9a8493aee11f25eb8ea73db4aab9685b6cafe558ac41712052",
+        "recount_sha256": "d13bcb1f3432c07d22d75a53e2cf4b4752203b7ae9fd74e6f221c707cffacdb8",
+        "disposition": "refused C6"
+      }
+    },
+    {
+      "repository": "reduxjs/redux",
+      "sha": "61ebf8596654cf3c4b197e426e302fcb3c2bc13e",
+      "language": "TypeScript",
+      "qualifying_symbols": 0,
+      "examples": [
+        {
+          "symbol": "test/helpers/actionCreators.ts#unknownAction",
+          "defining_unit": "test/helpers",
+          "calls": 22,
+          "units": [
+            "test"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "test/createStore.spec.ts:104:20",
+            "test/createStore.spec.ts:212:20",
+            "test/createStore.spec.ts:217:20",
+            "test/createStore.spec.ts:226:20",
+            "test/createStore.spec.ts:235:20",
+            "test/createStore.spec.ts:244:20"
+          ]
+        },
+        {
+          "symbol": "test/helpers/actionCreators.ts#addTodo",
+          "defining_unit": "test/helpers",
+          "calls": 19,
+          "units": [
+            "test"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "test/applyMiddleware.spec.ts:11:22",
+            "test/applyMiddleware.spec.ts:33:20",
+            "test/applyMiddleware.spec.ts:34:20",
+            "test/applyMiddleware.spec.ts:86:20",
+            "test/bindActionCreators.spec.ts:29:20",
+            "test/bindActionCreators.spec.ts:30:28"
+          ]
+        },
+        {
+          "symbol": "src/compose.ts#compose",
+          "defining_unit": "src",
+          "calls": 16,
+          "units": [
+            "test"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "test/compose.spec.ts:10:14",
+            "test/compose.spec.ts:19:14",
+            "test/compose.spec.ts:20:14",
+            "test/compose.spec.ts:21:14",
+            "test/compose.spec.ts:30:9",
+            "test/compose.spec.ts:33:20"
+          ]
+        }
+      ],
+      "product_only": {
+        "qualifying_symbols": 0,
+        "examples": [
+          {
+            "symbol": "src/utils/kindOf.ts#kindOf",
+            "defining_unit": "src/utils",
+            "calls": 9,
+            "units": [
+              "src"
+            ],
+            "qualifies": false,
+            "site_examples": [
+              "src/bindActionCreators.ts:68:86",
+              "src/combineReducers.ts:35:54",
+              "src/createStore.ts:124:72",
+              "src/createStore.ts:204:72",
+              "src/createStore.ts:273:74",
+              "src/createStore.ts:287:84",
+              "src/createStore.ts:323:75",
+              "src/createStore.ts:358:75"
+            ],
+            "outside_sites_before_product_filter": 9,
+            "excluded_nonproduct_sites": 0,
+            "excluded_examples": []
+          },
+          {
+            "symbol": "src/utils/isPlainObject.ts#isPlainObject",
+            "defining_unit": "src/utils",
+            "calls": 2,
+            "units": [
+              "src"
+            ],
+            "qualifies": false,
+            "site_examples": [
+              "src/combineReducers.ts:33:8",
+              "src/createStore.ts:271:10"
+            ],
+            "outside_sites_before_product_filter": 2,
+            "excluded_nonproduct_sites": 0,
+            "excluded_examples": []
+          },
+          {
+            "symbol": "src/utils/warning.ts#warning",
+            "defining_unit": "src/utils",
+            "calls": 2,
+            "units": [
+              "src"
+            ],
+            "qualifies": false,
+            "site_examples": [
+              "src/combineReducers.ts:133:9",
+              "src/combineReducers.ts:173:9"
+            ],
+            "outside_sites_before_product_filter": 2,
+            "excluded_nonproduct_sites": 0,
+            "excluded_examples": []
+          }
+        ],
+        "resolved_sha256": "6f16b7336b1a43b848c10e3e1f2bd8aa981daff78dd0815bc705c60778b596e2",
+        "recount_sha256": "077ce3ff377bc20cba848e7b0c8627a56a5fbfc7970105e0e43a29dcbd64a529",
+        "disposition": "refused C6"
+      }
+    },
+    {
+      "repository": "spf13/cobra",
+      "sha": "adbc8813901bba65827259daa8e22ff94ec1f30e",
+      "language": "Go",
+      "qualifying_symbols": 0,
+      "examples": [
+        {
+          "symbol": "github.com/spf13/cobra.*Command.CommandPath",
+          "defining_unit": "github.com/spf13/cobra",
+          "calls": 17,
+          "units": [
+            "github.com/spf13/cobra/doc"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "doc/man_docs.go:109:31",
+            "doc/man_docs.go:207:40",
+            "doc/man_docs.go:221:18",
+            "doc/man_docs.go:70:33",
+            "doc/man_docs_test.go:53:16",
+            "doc/man_docs_test.go:88:16"
+          ]
+        },
+        {
+          "symbol": "github.com/spf13/cobra.*Command.Name",
+          "defining_unit": "github.com/spf13/cobra",
+          "calls": 15,
+          "units": [
+            "github.com/spf13/cobra/doc"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "doc/man_docs.go:237:61",
+            "doc/man_docs_test.go:100:40",
+            "doc/man_docs_test.go:59:43",
+            "doc/man_docs_test.go:60:43",
+            "doc/man_docs_test.go:63:43",
+            "doc/man_docs_test.go:64:43"
+          ]
+        },
+        {
+          "symbol": "github.com/spf13/cobra.WriteStringAndCheck",
+          "defining_unit": "github.com/spf13/cobra",
+          "calls": 11,
+          "units": [
+            "github.com/spf13/cobra/doc"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "doc/man_docs.go:149:2",
+            "doc/man_docs.go:152:2",
+            "doc/man_docs.go:153:2",
+            "doc/man_docs.go:154:2",
+            "doc/man_docs.go:155:2",
+            "doc/man_docs.go:156:2"
+          ]
+        }
+      ],
+      "product_only": {
+        "qualifying_symbols": 0,
+        "examples": [
+          {
+            "symbol": "github.com/spf13/cobra.*Command.CommandPath",
+            "defining_unit": "github.com/spf13/cobra",
+            "calls": 0,
+            "units": [],
+            "qualifies": false,
+            "site_examples": [],
+            "outside_sites_before_product_filter": 17,
+            "excluded_nonproduct_sites": 17,
+            "excluded_examples": [
+              "doc/man_docs.go:109:31",
+              "doc/man_docs.go:207:40",
+              "doc/man_docs.go:221:18",
+              "doc/man_docs.go:70:33",
+              "doc/man_docs_test.go:53:16"
+            ]
+          },
+          {
+            "symbol": "github.com/spf13/cobra.*Command.Name",
+            "defining_unit": "github.com/spf13/cobra",
+            "calls": 0,
+            "units": [],
+            "qualifies": false,
+            "site_examples": [],
+            "outside_sites_before_product_filter": 15,
+            "excluded_nonproduct_sites": 15,
+            "excluded_examples": [
+              "doc/man_docs.go:237:61",
+              "doc/man_docs_test.go:100:40",
+              "doc/man_docs_test.go:59:43",
+              "doc/man_docs_test.go:60:43",
+              "doc/man_docs_test.go:63:43"
+            ]
+          },
+          {
+            "symbol": "github.com/spf13/cobra.WriteStringAndCheck",
+            "defining_unit": "github.com/spf13/cobra",
+            "calls": 0,
+            "units": [],
+            "qualifies": false,
+            "site_examples": [],
+            "outside_sites_before_product_filter": 11,
+            "excluded_nonproduct_sites": 11,
+            "excluded_examples": [
+              "doc/man_docs.go:149:2",
+              "doc/man_docs.go:152:2",
+              "doc/man_docs.go:153:2",
+              "doc/man_docs.go:154:2",
+              "doc/man_docs.go:155:2"
+            ]
+          }
+        ],
+        "resolved_sha256": "410889b51d0d69177acb0e41e94b9892c3939de19370da0962d568395163fe9d",
+        "recount_sha256": "b942d0de6e9504dabf32b40d2ec700b24ece1b0d4511581dc4ebdee6dfd6407c",
+        "disposition": "refused C6"
+      }
+    },
+    {
+      "repository": "stretchr/testify",
+      "sha": "87a7b9d57689f6579db2da795ab8deeab29cb724",
+      "language": "Go",
+      "qualifying_symbols": 8,
+      "examples": [
+        {
+          "symbol": "github.com/stretchr/testify/assert.Equal",
+          "defining_unit": "github.com/stretchr/testify/assert",
+          "calls": 232,
+          "units": [
+            "github.com/stretchr/testify",
+            "github.com/stretchr/testify/mock",
+            "github.com/stretchr/testify/require",
+            "github.com/stretchr/testify/suite"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "mock/mock.go:674:9",
+            "package_test.go:10:5",
+            "require/require.go:177:5",
+            "suite/suite_test.go:224:2",
+            "mock/mock_test.go:1257:5",
+            "mock/mock_test.go:1259:4"
+          ]
+        },
+        {
+          "symbol": "github.com/stretchr/testify/assert.False",
+          "defining_unit": "github.com/stretchr/testify/assert",
+          "calls": 41,
+          "units": [
+            "github.com/stretchr/testify/assert/internal/unsafetests",
+            "github.com/stretchr/testify/mock",
+            "github.com/stretchr/testify/require",
+            "github.com/stretchr/testify/suite"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "assert/internal/unsafetests/unsafetests_test.go:27:2",
+            "mock/mock_test.go:1489:2",
+            "require/require.go:565:5",
+            "suite/stats_test.go:28:2",
+            "assert/internal/unsafetests/unsafetests_test.go:30:2",
+            "assert/internal/unsafetests/unsafetests_test.go:32:2"
+          ]
+        },
+        {
+          "symbol": "github.com/stretchr/testify/assert.True",
+          "defining_unit": "github.com/stretchr/testify/assert",
+          "calls": 41,
+          "units": [
+            "github.com/stretchr/testify/assert/internal/unsafetests",
+            "github.com/stretchr/testify/mock",
+            "github.com/stretchr/testify/require",
+            "github.com/stretchr/testify/suite"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "assert/internal/unsafetests/unsafetests_test.go:26:2",
+            "mock/mock_test.go:1469:2",
+            "require/require.go:2039:5",
+            "suite/stats_test.go:17:2",
+            "assert/internal/unsafetests/unsafetests_test.go:29:2",
+            "assert/internal/unsafetests/unsafetests_test.go:33:2"
+          ]
+        }
+      ],
+      "product_only": {
+        "qualifying_symbols": 0,
+        "examples": [
+          {
+            "symbol": "github.com/stretchr/testify/internal/spew.*ConfigState.Sdump",
+            "defining_unit": "github.com/stretchr/testify/internal/spew",
+            "calls": 10,
+            "units": [
+              "github.com/stretchr/testify/assert",
+              "github.com/stretchr/testify/mock"
+            ],
+            "qualifies": false,
+            "site_examples": [
+              "assert/assertions.go:1217:19",
+              "assert/assertions.go:1221:19",
+              "assert/assertions.go:1224:18",
+              "assert/assertions.go:1226:18",
+              "assert/assertions.go:1955:7",
+              "assert/assertions.go:1956:7",
+              "assert/assertions.go:1958:7",
+              "assert/assertions.go:1959:7"
+            ],
+            "outside_sites_before_product_filter": 10,
+            "excluded_nonproduct_sites": 0,
+            "excluded_examples": []
+          },
+          {
+            "symbol": "github.com/stretchr/testify/assert.Fail",
+            "defining_unit": "github.com/stretchr/testify/assert",
+            "calls": 4,
+            "units": [
+              "github.com/stretchr/testify/mock",
+              "github.com/stretchr/testify/require"
+            ],
+            "qualifies": false,
+            "site_examples": [
+              "mock/mock.go:691:11",
+              "mock/mock.go:694:10",
+              "mock/mock.go:709:10",
+              "require/require.go:519:5"
+            ],
+            "outside_sites_before_product_filter": 4,
+            "excluded_nonproduct_sites": 0,
+            "excluded_examples": []
+          },
+          {
+            "symbol": "github.com/stretchr/testify/internal/difflib.SplitLines",
+            "defining_unit": "github.com/stretchr/testify/internal/difflib",
+            "calls": 4,
+            "units": [
+              "github.com/stretchr/testify/assert",
+              "github.com/stretchr/testify/mock"
+            ],
+            "qualifies": false,
+            "site_examples": [
+              "assert/assertions.go:1963:13",
+              "assert/assertions.go:1964:13",
+              "mock/mock.go:1228:13",
+              "mock/mock.go:1229:13"
+            ],
+            "outside_sites_before_product_filter": 4,
+            "excluded_nonproduct_sites": 0,
+            "excluded_examples": []
+          }
+        ],
+        "resolved_sha256": "47f12243a343ddb48e3d75f26adddc64ff9d7705fbaf9a48d7be0d8f468475e5",
+        "recount_sha256": "1114793c79fe5a9da12b3d7da7a2e8c4649f10334b134e5dee8c42e9f9718fbf",
+        "disposition": "refused C6"
+      }
+    },
+    {
+      "repository": "typestack/class-transformer",
+      "sha": "a2734a5d154c9b0beb9a10555a04416bc371de06",
+      "language": "TypeScript",
+      "qualifying_symbols": 4,
+      "examples": [
+        {
+          "symbol": "src/decorators/type.decorator.ts#Type",
+          "defining_unit": "src/decorators",
+          "calls": 79,
+          "units": [
+            "sample/sample1-simple-usage",
+            "sample/sample2-iheritance",
+            "sample/sample3-custom-arrays",
+            "sample/sample4-generics",
+            "sample/sample5-custom-transformer",
+            "test/functional"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "sample/sample1-simple-usage/Album.ts:10:4",
+            "sample/sample2-iheritance/Album.ts:11:4",
+            "sample/sample3-custom-arrays/Photo.ts:14:4",
+            "sample/sample4-generics/SuperCollection.ts:7:4",
+            "sample/sample5-custom-transformer/User.ts:9:4",
+            "test/functional/basic-functionality.spec.ts:1015:8"
+          ]
+        },
+        {
+          "symbol": "src/decorators/exclude.decorator.ts#Exclude",
+          "defining_unit": "src/decorators",
+          "calls": 53,
+          "units": [
+            "sample/sample1-simple-usage",
+            "sample/sample2-iheritance",
+            "sample/sample4-generics",
+            "test/functional"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "sample/sample1-simple-usage/Album.ts:7:4",
+            "sample/sample2-iheritance/Album.ts:8:4",
+            "sample/sample4-generics/SuperCollection.ts:4:4",
+            "test/functional/basic-functionality.spec.ts:126:8",
+            "sample/sample2-iheritance/Authorable.ts:7:4",
+            "sample/sample2-iheritance/Photo.ts:12:4"
+          ]
+        },
+        {
+          "symbol": "src/index.ts#classToPlain",
+          "defining_unit": "src",
+          "calls": 6,
+          "units": [
+            "sample/sample1-simple-usage",
+            "sample/sample2-iheritance",
+            "sample/sample3-custom-arrays",
+            "sample/sample5-custom-transformer"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "sample/sample1-simple-usage/app.ts:35:20",
+            "sample/sample2-iheritance/app.ts:38:20",
+            "sample/sample3-custom-arrays/app.ts:33:20",
+            "sample/sample5-custom-transformer/app.ts:19:13",
+            "sample/sample1-simple-usage/app.ts:90:21",
+            "sample/sample2-iheritance/app.ts:93:21"
+          ]
+        }
+      ],
+      "product_only": {
+        "qualifying_symbols": 0,
+        "examples": [
+          {
+            "symbol": "src/ClassTransformer.ts#instanceToInstance",
+            "defining_unit": "src",
+            "calls": 2,
+            "units": [
+              "src/decorators"
+            ],
+            "qualifies": false,
+            "site_examples": [
+              "src/decorators/transform-instance-to-instance.decorator.ts:19:38",
+              "src/decorators/transform-instance-to-instance.decorator.ts:20:11"
+            ],
+            "outside_sites_before_product_filter": 2,
+            "excluded_nonproduct_sites": 0,
+            "excluded_examples": []
+          },
+          {
+            "symbol": "src/ClassTransformer.ts#instanceToPlain",
+            "defining_unit": "src",
+            "calls": 2,
+            "units": [
+              "src/decorators"
+            ],
+            "qualifies": false,
+            "site_examples": [
+              "src/decorators/transform-instance-to-plain.decorator.ts:19:38",
+              "src/decorators/transform-instance-to-plain.decorator.ts:20:11"
+            ],
+            "outside_sites_before_product_filter": 2,
+            "excluded_nonproduct_sites": 0,
+            "excluded_examples": []
+          },
+          {
+            "symbol": "src/ClassTransformer.ts#plainToInstance",
+            "defining_unit": "src",
+            "calls": 2,
+            "units": [
+              "src/decorators"
+            ],
+            "qualifies": false,
+            "site_examples": [
+              "src/decorators/transform-plain-to-instance.decorator.ts:22:38",
+              "src/decorators/transform-plain-to-instance.decorator.ts:23:11"
+            ],
+            "outside_sites_before_product_filter": 2,
+            "excluded_nonproduct_sites": 0,
+            "excluded_examples": []
+          }
+        ],
+        "resolved_sha256": "ca874374062047be18d84d30c438d3729500907b5a582757bd3be18f0462c1ec",
+        "recount_sha256": "50b244c57308446eadd255054d1fb8da05dd140d14b676c4819c63920cc78c83",
+        "disposition": "refused C6"
+      }
+    },
+    {
+      "repository": "typestack/class-validator",
+      "sha": "2e1a5c27dbd65b80e27fe96b49bd6e6641fa3603",
+      "language": "TypeScript",
+      "qualifying_symbols": 12,
+      "examples": [
+        {
+          "symbol": "src/validation/Validator.ts#validate",
+          "defining_unit": "src/validation",
+          "calls": 143,
+          "units": [
+            "sample/sample2-using-groups",
+            "sample/sample3-nested-objects",
+            "sample/sample4-custom-validator",
+            "sample/sample6-custom-decorator",
+            "sample/sample8-es6-maps",
+            "sample/sample9-es6-sets",
+            "src",
+            "test/functional"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "sample/sample2-using-groups/app.ts:14:1",
+            "sample/sample3-nested-objects/app.ts:17:1",
+            "sample/sample4-custom-validator/app.ts:16:1",
+            "sample/sample6-custom-decorator/app.ts:16:1",
+            "sample/sample8-es6-maps/app.ts:19:1",
+            "sample/sample9-es6-sets/app.ts:19:1"
+          ]
+        },
+        {
+          "symbol": "src/decorator/common/ValidateBy.ts#buildMessage",
+          "defining_unit": "src/decorator/common",
+          "calls": 97,
+          "units": [
+            "src/decorator/array",
+            "src/decorator/date",
+            "src/decorator/number",
+            "src/decorator/object",
+            "src/decorator/string",
+            "src/decorator/typechecker",
+            "test/functional"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "src/decorator/array/ArrayContains.ts:27:25",
+            "src/decorator/date/MaxDate.ts:23:25",
+            "src/decorator/number/IsDivisibleBy.ts:24:25",
+            "src/decorator/object/IsInstance.ts:28:25",
+            "src/decorator/string/Contains.ts:26:25",
+            "src/decorator/typechecker/IsArray.ts:22:25"
+          ]
+        },
+        {
+          "symbol": "src/decorator/common/ValidateBy.ts#ValidateBy",
+          "defining_unit": "src/decorator/common",
+          "calls": 96,
+          "units": [
+            "src/decorator/array",
+            "src/decorator/date",
+            "src/decorator/number",
+            "src/decorator/object",
+            "src/decorator/string",
+            "src/decorator/typechecker"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "src/decorator/array/ArrayContains.ts:21:10",
+            "src/decorator/date/MaxDate.ts:17:10",
+            "src/decorator/number/IsDivisibleBy.ts:18:10",
+            "src/decorator/object/IsInstance.ts:22:10",
+            "src/decorator/string/Contains.ts:20:10",
+            "src/decorator/typechecker/IsArray.ts:17:10"
+          ]
+        }
+      ],
+      "product_only": {
+        "qualifying_symbols": 4,
+        "examples": [
+          {
+            "symbol": "src/decorator/common/ValidateBy.ts#buildMessage",
+            "defining_unit": "src/decorator/common",
+            "calls": 96,
+            "units": [
+              "src/decorator/array",
+              "src/decorator/date",
+              "src/decorator/number",
+              "src/decorator/object",
+              "src/decorator/string",
+              "src/decorator/typechecker"
+            ],
+            "qualifies": true,
+            "site_examples": [
+              "src/decorator/array/ArrayContains.ts:27:25",
+              "src/decorator/array/ArrayMaxSize.ts:25:25",
+              "src/decorator/array/ArrayMinSize.ts:25:25",
+              "src/decorator/array/ArrayNotContains.ts:27:25",
+              "src/decorator/array/ArrayNotEmpty.ts:24:25",
+              "src/decorator/array/ArrayUnique.ts:38:25",
+              "src/decorator/date/MaxDate.ts:23:25",
+              "src/decorator/date/MinDate.ts:23:25"
+            ],
+            "outside_sites_before_product_filter": 97,
+            "excluded_nonproduct_sites": 1,
+            "excluded_examples": [
+              "test/functional/custom-decorators.spec.ts:254:27"
+            ]
+          },
+          {
+            "symbol": "src/decorator/common/ValidateBy.ts#ValidateBy",
+            "defining_unit": "src/decorator/common",
+            "calls": 96,
+            "units": [
+              "src/decorator/array",
+              "src/decorator/date",
+              "src/decorator/number",
+              "src/decorator/object",
+              "src/decorator/string",
+              "src/decorator/typechecker"
+            ],
+            "qualifies": true,
+            "site_examples": [
+              "src/decorator/array/ArrayContains.ts:21:10",
+              "src/decorator/array/ArrayMaxSize.ts:19:10",
+              "src/decorator/array/ArrayMinSize.ts:19:10",
+              "src/decorator/array/ArrayNotContains.ts:21:10",
+              "src/decorator/array/ArrayNotEmpty.ts:19:10",
+              "src/decorator/array/ArrayUnique.ts:33:10",
+              "src/decorator/date/MaxDate.ts:17:10",
+              "src/decorator/date/MinDate.ts:17:10"
+            ],
+            "outside_sites_before_product_filter": 96,
+            "excluded_nonproduct_sites": 0,
+            "excluded_examples": []
+          },
+          {
+            "symbol": "src/metadata/MetadataStorage.ts#getMetadataStorage",
+            "defining_unit": "src/metadata",
+            "calls": 11,
+            "units": [
+              "src",
+              "src/decorator/common",
+              "src/validation"
+            ],
+            "qualifies": true,
+            "site_examples": [
+              "src/decorator/common/Allow.ts:18:5",
+              "src/decorator/common/IsOptional.ts:26:5",
+              "src/decorator/common/Validate.ts:22:5",
+              "src/decorator/common/Validate.ts:52:5",
+              "src/decorator/common/ValidateIf.ts:22:5",
+              "src/decorator/common/ValidateNested.ts:22:5",
+              "src/decorator/common/ValidatePromise.ts:18:5",
+              "src/index.ts:141:3"
+            ],
+            "outside_sites_before_product_filter": 11,
+            "excluded_nonproduct_sites": 0,
+            "excluded_examples": []
+          }
+        ],
+        "resolved_sha256": "c4f94cd622f411c39b6417e7699ef8d7b18c7a356b0064288278a32044c94c65",
+        "recount_sha256": "3d5c9055147df2e2f0d7e0691d45b7f816f0def2bdb8899a73dc5dad3a91c0e3",
+        "disposition": "pass C6 only"
+      }
+    },
+    {
+      "repository": "urfave/cli",
+      "sha": "89ad11673146784b702fb14ce1e29f2b864e51c2",
+      "language": "Go",
+      "qualifying_symbols": 0,
+      "examples": [
+        {
+          "symbol": "github.com/urfave/cli/v3.*Command.Run",
+          "defining_unit": "github.com/urfave/cli/v3",
+          "calls": 2,
+          "units": [
+            "github.com/urfave/cli/v3/examples/example-cli",
+            "github.com/urfave/cli/v3/scripts"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "examples/example-cli/example-cli.go:12:6",
+            "scripts/build.go:164:12"
+          ]
+        },
+        {
+          "symbol": "github.com/urfave/cli/v3.*Command.String",
+          "defining_unit": "github.com/urfave/cli/v3",
+          "calls": 14,
+          "units": [
+            "github.com/urfave/cli/v3/scripts"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "scripts/build.go:181:22",
+            "scripts/build.go:238:34",
+            "scripts/build.go:242:10",
+            "scripts/build.go:299:27",
+            "scripts/build.go:445:10",
+            "scripts/build.go:513:12"
+          ]
+        },
+        {
+          "symbol": "github.com/urfave/cli/v3.*Command.Bool",
+          "defining_unit": "github.com/urfave/cli/v3",
+          "calls": 3,
+          "units": [
+            "github.com/urfave/cli/v3/scripts"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "scripts/build.go:336:10",
+            "scripts/build.go:593:5",
+            "scripts/build.go:655:7"
+          ]
+        }
+      ],
+      "product_only": {
+        "qualifying_symbols": 0,
+        "examples": [
+          {
+            "symbol": "github.com/urfave/cli/v3.*Command.String",
+            "defining_unit": "github.com/urfave/cli/v3",
+            "calls": 0,
+            "units": [],
+            "qualifies": false,
+            "site_examples": [],
+            "outside_sites_before_product_filter": 14,
+            "excluded_nonproduct_sites": 14,
+            "excluded_examples": [
+              "scripts/build.go:181:22",
+              "scripts/build.go:238:34",
+              "scripts/build.go:242:10",
+              "scripts/build.go:299:27",
+              "scripts/build.go:445:10"
+            ]
+          },
+          {
+            "symbol": "github.com/urfave/cli/v3.*Command.Bool",
+            "defining_unit": "github.com/urfave/cli/v3",
+            "calls": 0,
+            "units": [],
+            "qualifies": false,
+            "site_examples": [],
+            "outside_sites_before_product_filter": 3,
+            "excluded_nonproduct_sites": 3,
+            "excluded_examples": [
+              "scripts/build.go:336:10",
+              "scripts/build.go:593:5",
+              "scripts/build.go:655:7"
+            ]
+          },
+          {
+            "symbol": "github.com/urfave/cli/v3.*Command.Run",
+            "defining_unit": "github.com/urfave/cli/v3",
+            "calls": 0,
+            "units": [],
+            "qualifies": false,
+            "site_examples": [],
+            "outside_sites_before_product_filter": 2,
+            "excluded_nonproduct_sites": 2,
+            "excluded_examples": [
+              "examples/example-cli/example-cli.go:12:6",
+              "scripts/build.go:164:12"
+            ]
+          }
+        ],
+        "resolved_sha256": "a404043e0e3e6a5c0dc1da76e5691de714e0551b913bced6a14fbd9615fc79b3",
+        "recount_sha256": "5b18501d8bc594d7e5303c0a7ef1eeb051285e7e927d45602d289e4ac74cdc40",
+        "disposition": "refused C6"
+      }
+    },
+    {
+      "repository": "trpc/trpc",
+      "sha": "8d09833c76791b2ea7270af174fdab9f1408aeb8",
+      "language": "TypeScript",
+      "qualifying_symbols": 13,
+      "examples": [
+        {
+          "symbol": "packages/server/src/unstable-core-do-not-import/utils.ts#run",
+          "defining_unit": "packages/server/src/unstable-core-do-not-import",
+          "calls": 32,
+          "units": [
+            "packages/server/src/__tests__",
+            "packages/server/src/adapters",
+            "packages/server/src/adapters/node-http",
+            "packages/server/src/unstable-core-do-not-import/http",
+            "packages/server/src/unstable-core-do-not-import/stream",
+            "packages/server/src/unstable-core-do-not-import/stream/utils"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "packages/server/src/__tests__/fetchServerResource.ts:15:5",
+            "packages/server/src/adapters/express.ts:30:5",
+            "packages/server/src/adapters/node-http/nodeHTTPRequestHandler.ts:85:7",
+            "packages/server/src/unstable-core-do-not-import/http/resolveResponse.ts:277:57",
+            "packages/server/src/unstable-core-do-not-import/stream/jsonl.test.ts:37:21",
+            "packages/server/src/unstable-core-do-not-import/stream/utils/mergeAsyncIterables.test.ts:120:5"
+          ]
+        },
+        {
+          "symbol": "packages/server/src/unstable-core-do-not-import/error/TRPCError.ts#getTRPCErrorFromUnknown",
+          "defining_unit": "packages/server/src/unstable-core-do-not-import/error",
+          "calls": 20,
+          "units": [
+            "packages/server/src/adapters",
+            "packages/server/src/adapters/next-app-dir",
+            "packages/server/src/adapters/node-http",
+            "packages/server/src/unstable-core-do-not-import",
+            "packages/server/src/unstable-core-do-not-import/http",
+            "packages/server/src/unstable-core-do-not-import/stream"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "packages/server/src/adapters/next-app-dir/nextAppDirCaller.ts:65:21",
+            "packages/server/src/adapters/node-http/nodeHTTPRequestHandler.ts:103:24",
+            "packages/server/src/adapters/ws.ts:162:23",
+            "packages/server/src/unstable-core-do-not-import/http/resolveResponse.ts:203:17",
+            "packages/server/src/unstable-core-do-not-import/middleware.ts:261:37",
+            "packages/server/src/unstable-core-do-not-import/stream/sse.ts:192:21"
+          ]
+        },
+        {
+          "symbol": "packages/server/src/unstable-core-do-not-import/error/TRPCError.ts#TRPCError.constructor",
+          "defining_unit": "packages/server/src/unstable-core-do-not-import/error",
+          "calls": 42,
+          "units": [
+            "packages/server/src/adapters",
+            "packages/server/src/adapters/next-app-dir",
+            "packages/server/src/adapters/node-http",
+            "packages/server/src/unstable-core-do-not-import",
+            "packages/server/src/unstable-core-do-not-import/http"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "packages/server/src/adapters/next-app-dir/nextAppDirCaller.ts:128:15",
+            "packages/server/src/adapters/next.ts:47:15",
+            "packages/server/src/adapters/node-http/incomingMessageToRequest.ts:109:11",
+            "packages/server/src/unstable-core-do-not-import/http/contentType.ts:113:13",
+            "packages/server/src/unstable-core-do-not-import/middleware.ts:204:15",
+            "packages/server/src/adapters/next-app-dir/nextAppDirCaller.ts:55:21"
+          ]
+        }
+      ],
+      "product_only": {
+        "qualifying_symbols": 11,
+        "examples": [
+          {
+            "symbol": "packages/server/src/unstable-core-do-not-import/error/TRPCError.ts#getTRPCErrorFromUnknown",
+            "defining_unit": "packages/server/src/unstable-core-do-not-import/error",
+            "calls": 20,
+            "units": [
+              "packages/server/src/adapters",
+              "packages/server/src/adapters/next-app-dir",
+              "packages/server/src/adapters/node-http",
+              "packages/server/src/unstable-core-do-not-import",
+              "packages/server/src/unstable-core-do-not-import/http",
+              "packages/server/src/unstable-core-do-not-import/stream"
+            ],
+            "qualifies": true,
+            "site_examples": [
+              "packages/server/src/adapters/next-app-dir/nextAppDirCaller.ts:65:21",
+              "packages/server/src/adapters/node-http/nodeHTTPRequestHandler.ts:103:24",
+              "packages/server/src/adapters/node-http/nodeHTTPRequestHandler.ts:40:19",
+              "packages/server/src/adapters/ws.ts:162:23",
+              "packages/server/src/adapters/ws.ts:211:23",
+              "packages/server/src/adapters/ws.ts:355:29",
+              "packages/server/src/adapters/ws.ts:410:25",
+              "packages/server/src/adapters/ws.ts:437:23"
+            ],
+            "outside_sites_before_product_filter": 20,
+            "excluded_nonproduct_sites": 0,
+            "excluded_examples": []
+          },
+          {
+            "symbol": "packages/server/src/unstable-core-do-not-import/error/TRPCError.ts#TRPCError.constructor",
+            "defining_unit": "packages/server/src/unstable-core-do-not-import/error",
+            "calls": 40,
+            "units": [
+              "packages/server/src/adapters",
+              "packages/server/src/adapters/next-app-dir",
+              "packages/server/src/adapters/node-http",
+              "packages/server/src/unstable-core-do-not-import",
+              "packages/server/src/unstable-core-do-not-import/http"
+            ],
+            "qualifies": true,
+            "site_examples": [
+              "packages/server/src/adapters/next-app-dir/nextAppDirCaller.ts:128:15",
+              "packages/server/src/adapters/next-app-dir/nextAppDirCaller.ts:55:21",
+              "packages/server/src/adapters/next-app-dir/notFound.ts:9:9",
+              "packages/server/src/adapters/next-app-dir/redirect.ts:10:5",
+              "packages/server/src/adapters/next.ts:47:15",
+              "packages/server/src/adapters/node-http/incomingMessageToRequest.ts:109:11",
+              "packages/server/src/adapters/node-http/incomingMessageToRequest.ts:44:11",
+              "packages/server/src/adapters/node-http/incomingMessageToRequest.ts:67:11"
+            ],
+            "outside_sites_before_product_filter": 42,
+            "excluded_nonproduct_sites": 2,
+            "excluded_examples": [
+              "packages/server/src/unstable-core-do-not-import/procedureBuilder.test.ts:138:15",
+              "packages/server/src/unstable-core-do-not-import/procedureBuilder.test.ts:64:13"
+            ]
+          },
+          {
+            "symbol": "packages/server/src/unstable-core-do-not-import/utils.ts#isObject",
+            "defining_unit": "packages/server/src/unstable-core-do-not-import",
+            "calls": 11,
+            "units": [
+              "packages/server/src/adapters",
+              "packages/server/src/unstable-core-do-not-import/error",
+              "packages/server/src/unstable-core-do-not-import/http",
+              "packages/server/src/unstable-core-do-not-import/rpc",
+              "packages/server/src/unstable-core-do-not-import/stream"
+            ],
+            "qualifies": true,
+            "site_examples": [
+              "packages/server/src/adapters/ws.ts:248:13",
+              "packages/server/src/adapters/ws.ts:500:18",
+              "packages/server/src/unstable-core-do-not-import/error/TRPCError.ts:52:7",
+              "packages/server/src/unstable-core-do-not-import/http/abortError.ts:6:10",
+              "packages/server/src/unstable-core-do-not-import/http/contentType.ts:141:12",
+              "packages/server/src/unstable-core-do-not-import/http/contentType.ts:175:23",
+              "packages/server/src/unstable-core-do-not-import/http/getHTTPStatusCode.ts:75:29",
+              "packages/server/src/unstable-core-do-not-import/http/parseConnectionParams.ts:12:10"
+            ],
+            "outside_sites_before_product_filter": 11,
+            "excluded_nonproduct_sites": 0,
+            "excluded_examples": []
+          }
+        ],
+        "resolved_sha256": "a127e405eb0bac3343e149f49d0ce3f403460e20c059b1f41f15174e0020cfa2",
+        "recount_sha256": "c20e0ccdf50ceabbd508a3160b243898fcab4f62f8c9e9e55395e50666d3a571",
+        "disposition": "pass C6 only"
+      }
+    },
+    {
+      "repository": "remeda/remeda",
+      "sha": "d02c3bdb5e18cfa53e76f33f4ae525adce515379",
+      "language": "TypeScript",
+      "qualifying_symbols": 0,
+      "examples": [
+        {
+          "symbol": "packages/docs/src/lib/sort-categories.ts#sortByCategories",
+          "defining_unit": "packages/docs/src/lib",
+          "calls": 4,
+          "units": [
+            "packages/docs/src/lib/articles",
+            "packages/docs/src/lib/functions",
+            "packages/docs/src/lib/mapping",
+            "packages/docs/src/lib/v1"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "packages/docs/src/lib/articles/entries.ts:39:5",
+            "packages/docs/src/lib/functions/entries.ts:18:5",
+            "packages/docs/src/lib/mapping/entries.ts:30:5",
+            "packages/docs/src/lib/v1/entries.ts:14:5"
+          ]
+        },
+        {
+          "symbol": "packages/remeda/test/$typed.ts#$typed",
+          "defining_unit": "packages/remeda/test",
+          "calls": 468,
+          "units": [
+            "packages/remeda/src",
+            "packages/remeda/src/internal/types"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "packages/remeda/src/constant.test-d.ts:45:21",
+            "packages/remeda/src/internal/types/ArrayAt.test-d.ts:12:35",
+            "packages/remeda/src/defaultTo.test-d.ts:232:11",
+            "packages/remeda/src/defaultTo.test-d.ts:239:55",
+            "packages/remeda/src/defaultTo.test-d.ts:275:21",
+            "packages/remeda/src/defaultTo.test-d.ts:284:21"
+          ]
+        },
+        {
+          "symbol": "packages/remeda/test/$missingPropertyType.ts#$missingPropertyType",
+          "defining_unit": "packages/remeda/test",
+          "calls": 5,
+          "units": [
+            "packages/remeda/src",
+            "packages/remeda/src/internal/types"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "packages/remeda/src/filter.test-d.ts:273:25",
+            "packages/remeda/src/internal/types/TupleParts.test-d.ts:310:29",
+            "packages/remeda/src/filter.test-d.ts:279:23",
+            "packages/remeda/src/partialBind.test-d.ts:103:20",
+            "packages/remeda/src/partialLastBind.test-d.ts:103:20"
+          ]
+        }
+      ],
+      "product_only": {
+        "qualifying_symbols": 0,
+        "examples": [
+          {
+            "symbol": "packages/remeda/src/internal/purryWithLazy.ts#purryWithLazy",
+            "defining_unit": "packages/remeda/src/internal",
+            "calls": 17,
+            "units": [
+              "packages/remeda/src"
+            ],
+            "qualifies": false,
+            "site_examples": [
+              "packages/remeda/src/difference.ts:41:10",
+              "packages/remeda/src/differenceWith.ts:55:10",
+              "packages/remeda/src/drop.ts:141:10",
+              "packages/remeda/src/filter.ts:81:10",
+              "packages/remeda/src/find.ts:158:10",
+              "packages/remeda/src/first.ts:47:10",
+              "packages/remeda/src/flatMap.ts:58:10",
+              "packages/remeda/src/forEach.ts:62:10"
+            ],
+            "outside_sites_before_product_filter": 17,
+            "excluded_nonproduct_sites": 0,
+            "excluded_examples": []
+          },
+          {
+            "symbol": "packages/remeda/src/internal/requireData.ts#requireDataByArity",
+            "defining_unit": "packages/remeda/src/internal",
+            "calls": 7,
+            "units": [
+              "packages/remeda/src"
+            ],
+            "qualifies": false,
+            "site_examples": [
+              "packages/remeda/src/filter.ts:92:3",
+              "packages/remeda/src/find.ts:170:5",
+              "packages/remeda/src/flatMap.ts:69:3",
+              "packages/remeda/src/forEach.ts:78:3",
+              "packages/remeda/src/mapWithFeedback.ts:101:10",
+              "packages/remeda/src/uniqueBy.ts:84:10",
+              "packages/remeda/src/zipWith.ts:137:7"
+            ],
+            "outside_sites_before_product_filter": 7,
+            "excluded_nonproduct_sites": 0,
+            "excluded_examples": []
+          },
+          {
+            "symbol": "packages/remeda/src/internal/lazyControl.ts#lastLazyValue",
+            "defining_unit": "packages/remeda/src/internal",
+            "calls": 6,
+            "units": [
+              "packages/remeda/src"
+            ],
+            "qualifies": false,
+            "site_examples": [
+              "packages/remeda/src/find.ts:171:39",
+              "packages/remeda/src/first.ts:59:21",
+              "packages/remeda/src/intersection.ts:125:9",
+              "packages/remeda/src/take.ts:67:28",
+              "packages/remeda/src/zip.ts:95:13",
+              "packages/remeda/src/zipWith.ts:142:15"
+            ],
+            "outside_sites_before_product_filter": 6,
+            "excluded_nonproduct_sites": 0,
+            "excluded_examples": []
+          }
+        ],
+        "resolved_sha256": "3ae002cbeecde75503eab8b889a863d2f7d82de8ea9da17311d547aa085936b6",
+        "recount_sha256": "fb84fd1dfbe96db0d41ef447434c7faee50f5c615a62de02f4b8f4d9d5a51219",
+        "disposition": "refused C6"
+      }
+    },
+    {
+      "repository": "reduxjs/redux-toolkit",
+      "sha": "0fd611cc79d44990ac9a040dec4d5cb446233440",
+      "language": "TypeScript",
+      "qualifying_symbols": 26,
+      "examples": [
+        {
+          "symbol": "packages/toolkit/src/configureStore.ts#configureStore@121",
+          "defining_unit": "packages/toolkit/src",
+          "calls": 213,
+          "units": [
+            "examples/action-listener/counter/src",
+            "examples/action-listener/counter/src/services/counter/tests",
+            "examples/publish-ci/expo/src/app",
+            "examples/publish-ci/next/src/app",
+            "examples/publish-ci/next/src/app-core",
+            "examples/publish-ci/react-native",
+            "examples/publish-ci/react-native/src/app",
+            "examples/publish-ci/vite/src/app-core",
+            "examples/query/react/authentication/src/app",
+            "examples/query/react/basic/src",
+            "examples/query/react/infinite-queries/src/app",
+            "examples/query/react/kitchen-sink/src/app",
+            "examples/query/react/mutations/src",
+            "examples/type-portability/bundler/src/app",
+            "examples/type-portability/nodenext-cjs/src/app",
+            "examples/type-portability/nodenext-esm/src/app",
+            "packages/toolkit/src/dynamicMiddleware/tests",
+            "packages/toolkit/src/entities/tests",
+            "packages/toolkit/src/listenerMiddleware/tests",
+            "packages/toolkit/src/query/react",
+            "packages/toolkit/src/query/tests",
+            "packages/toolkit/src/tests",
+            "packages/toolkit/src/tests/utils"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "examples/action-listener/counter/src/services/counter/tests/listener.test.ts:25:12",
+            "examples/action-listener/counter/src/store.ts:17:15",
+            "examples/publish-ci/expo/src/app/store.ts:16:17",
+            "examples/publish-ci/next/src/app-core/store.ts:7:3",
+            "examples/publish-ci/next/src/app/ServerApiInfo.tsx:9:17",
+            "examples/publish-ci/react-native/App.test.tsx:204:17"
+          ]
+        },
+        {
+          "symbol": "packages/toolkit/src/createSlice.ts#createSlice@572",
+          "defining_unit": "packages/toolkit/src",
+          "calls": 115,
+          "units": [
+            "examples/action-listener/counter/src/services/counter",
+            "examples/action-listener/counter/src/services/theme",
+            "examples/publish-ci/expo/src/features/counter",
+            "examples/publish-ci/next/src/features/counter",
+            "examples/publish-ci/react-native/src/features/counter",
+            "examples/publish-ci/vite/src/features/counter",
+            "examples/query/react/authentication/src/features/auth",
+            "examples/query/react/kitchen-sink/src/features/auth",
+            "examples/query/react/kitchen-sink/src/features/polling",
+            "examples/type-portability/bundler/src/features/auth",
+            "examples/type-portability/bundler/src/features/polling",
+            "examples/type-portability/nodenext-cjs/src/features/auth",
+            "examples/type-portability/nodenext-cjs/src/features/polling",
+            "examples/type-portability/nodenext-esm/src/features/auth",
+            "examples/type-portability/nodenext-esm/src/features/polling",
+            "packages/rtk-codemods/transforms/createSliceBuilder/__testfixtures__",
+            "packages/rtk-codemods/transforms/createSliceReducerBuilder/__testfixtures__",
+            "packages/toolkit/src/entities/tests",
+            "packages/toolkit/src/listenerMiddleware/tests",
+            "packages/toolkit/src/query/core",
+            "packages/toolkit/src/query/tests",
+            "packages/toolkit/src/tests"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "examples/action-listener/counter/src/services/counter/slice.ts:16:29",
+            "examples/action-listener/counter/src/services/theme/slice.ts:10:27",
+            "examples/publish-ci/expo/src/features/counter/counterSlice.ts:17:29",
+            "examples/publish-ci/next/src/features/counter/counterSlice.ts:23:29",
+            "examples/publish-ci/react-native/src/features/counter/counterSlice.ts:17:29",
+            "examples/publish-ci/vite/src/features/counter/counterSlice.ts:23:29"
+          ]
+        },
+        {
+          "symbol": "packages/toolkit/src/nanoid.ts#nanoid@11",
+          "defining_unit": "packages/toolkit/src",
+          "calls": 41,
+          "units": [
+            "examples/action-listener/counter/src/services/counter",
+            "examples/query/react/authentication/src/mocks",
+            "examples/query/react/graphql-codegen/src/mocks",
+            "examples/query/react/graphql/src/mocks",
+            "examples/query/react/kitchen-sink/src/features/counter",
+            "examples/query/react/kitchen-sink/src/features/time",
+            "examples/query/react/kitchen-sink/src/mocks",
+            "examples/query/react/mutations/src/mocks",
+            "examples/query/react/prefetching/src/mocks",
+            "examples/type-portability/bundler/src/features/counter",
+            "examples/type-portability/bundler/src/features/time",
+            "examples/type-portability/nodenext-cjs/src/features/counter",
+            "examples/type-portability/nodenext-cjs/src/features/time",
+            "examples/type-portability/nodenext-esm/src/features/counter",
+            "examples/type-portability/nodenext-esm/src/features/time",
+            "packages/rtk-codemods/transforms/createSliceReducerBuilder/__testfixtures__",
+            "packages/toolkit/src/dynamicMiddleware",
+            "packages/toolkit/src/entities/tests",
+            "packages/toolkit/src/listenerMiddleware",
+            "packages/toolkit/src/query",
+            "packages/toolkit/src/query/core"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "examples/action-listener/counter/src/services/counter/slice.ts:28:13",
+            "examples/query/react/authentication/src/mocks/handlers.ts:4:15",
+            "examples/query/react/graphql-codegen/src/mocks/db.ts:36:9",
+            "examples/query/react/graphql/src/mocks/db.ts:27:9",
+            "examples/query/react/kitchen-sink/src/features/counter/CounterList.tsx:14:66",
+            "examples/query/react/kitchen-sink/src/features/time/TimeList.tsx:120:6"
+          ]
+        }
+      ],
+      "product_only": {
+        "qualifying_symbols": 4,
+        "examples": [
+          {
+            "symbol": "packages/toolkit/src/nanoid.ts#nanoid@11",
+            "defining_unit": "packages/toolkit/src",
+            "calls": 8,
+            "units": [
+              "packages/rtk-codemods/transforms/createSliceReducerBuilder/__testfixtures__",
+              "packages/toolkit/src/dynamicMiddleware",
+              "packages/toolkit/src/listenerMiddleware",
+              "packages/toolkit/src/query",
+              "packages/toolkit/src/query/core"
+            ],
+            "qualifies": true,
+            "site_examples": [
+              "packages/rtk-codemods/transforms/createSliceReducerBuilder/__testfixtures__/basic-ts.input.ts:26:24",
+              "packages/rtk-codemods/transforms/createSliceReducerBuilder/__testfixtures__/basic-ts.input.ts:32:33",
+              "packages/rtk-codemods/transforms/createSliceReducerBuilder/__testfixtures__/basic-ts.output.ts:29:22",
+              "packages/rtk-codemods/transforms/createSliceReducerBuilder/__testfixtures__/basic-ts.output.ts:33:31",
+              "packages/toolkit/src/dynamicMiddleware/index.ts:39:22",
+              "packages/toolkit/src/listenerMiddleware/index.ts:222:13",
+              "packages/toolkit/src/query/core/buildSlice.ts:352:26",
+              "packages/toolkit/src/query/createApi.ts:403:15"
+            ],
+            "outside_sites_before_product_filter": 41,
+            "excluded_nonproduct_sites": 33,
+            "excluded_examples": [
+              "examples/action-listener/counter/src/services/counter/slice.ts:28:13",
+              "examples/query/react/authentication/src/mocks/handlers.ts:4:15",
+              "examples/query/react/graphql-codegen/src/mocks/db.ts:36:9",
+              "examples/query/react/graphql/src/mocks/db.ts:27:9",
+              "examples/query/react/kitchen-sink/src/features/counter/CounterList.tsx:14:66"
+            ]
+          },
+          {
+            "symbol": "packages/toolkit/src/createSlice.ts#createSlice@572",
+            "defining_unit": "packages/toolkit/src",
+            "calls": 12,
+            "units": [
+              "packages/rtk-codemods/transforms/createSliceBuilder/__testfixtures__",
+              "packages/rtk-codemods/transforms/createSliceReducerBuilder/__testfixtures__",
+              "packages/toolkit/src/query/core"
+            ],
+            "qualifies": true,
+            "site_examples": [
+              "packages/rtk-codemods/transforms/createSliceBuilder/__testfixtures__/basic-ts.input.ts:35:19",
+              "packages/rtk-codemods/transforms/createSliceBuilder/__testfixtures__/basic-ts.input.ts:89:22",
+              "packages/rtk-codemods/transforms/createSliceBuilder/__testfixtures__/basic-ts.output.ts:107:22",
+              "packages/rtk-codemods/transforms/createSliceBuilder/__testfixtures__/basic-ts.output.ts:35:19",
+              "packages/rtk-codemods/transforms/createSliceReducerBuilder/__testfixtures__/basic-ts.input.ts:15:19",
+              "packages/rtk-codemods/transforms/createSliceReducerBuilder/__testfixtures__/basic-ts.output.ts:15:19",
+              "packages/toolkit/src/query/core/buildSlice.ts:283:22",
+              "packages/toolkit/src/query/core/buildSlice.ts:420:25"
+            ],
+            "outside_sites_before_product_filter": 115,
+            "excluded_nonproduct_sites": 103,
+            "excluded_examples": [
+              "examples/action-listener/counter/src/services/counter/slice.ts:16:29",
+              "examples/action-listener/counter/src/services/theme/slice.ts:10:27",
+              "examples/publish-ci/expo/src/features/counter/counterSlice.ts:17:29",
+              "examples/publish-ci/next/src/features/counter/counterSlice.ts:23:29",
+              "examples/publish-ci/react-native/src/features/counter/counterSlice.ts:17:29"
+            ]
+          },
+          {
+            "symbol": "packages/toolkit/src/createAction.ts#createAction@241",
+            "defining_unit": "packages/toolkit/src",
+            "calls": 10,
+            "units": [
+              "packages/toolkit/src/listenerMiddleware",
+              "packages/toolkit/src/query/core",
+              "packages/toolkit/src/query/core/buildMiddleware"
+            ],
+            "qualifies": true,
+            "site_examples": [
+              "packages/toolkit/src/listenerMiddleware/index.ts:196:17",
+              "packages/toolkit/src/listenerMiddleware/index.ts:300:19",
+              "packages/toolkit/src/listenerMiddleware/index.ts:309:50",
+              "packages/toolkit/src/listenerMiddleware/index.ts:317:19",
+              "packages/toolkit/src/query/core/buildMiddleware/index.ts:52:21",
+              "packages/toolkit/src/query/core/buildSlice.ts:185:25",
+              "packages/toolkit/src/query/core/setupListeners.ts:15:40",
+              "packages/toolkit/src/query/core/setupListeners.ts:18:44"
+            ],
+            "outside_sites_before_product_filter": 77,
+            "excluded_nonproduct_sites": 67,
+            "excluded_examples": [
+              "packages/toolkit/src/dynamicMiddleware/tests/index.test.ts:20:32",
+              "packages/toolkit/src/entities/tests/entity_state.test.ts:61:24",
+              "packages/toolkit/src/entities/tests/sorted_state_adapter.test.ts:62:24",
+              "packages/toolkit/src/listenerMiddleware/tests/effectScenarios.test.ts:44:23",
+              "packages/toolkit/src/listenerMiddleware/tests/effectScenarios.test.ts:46:23"
+            ]
+          }
+        ],
+        "resolved_sha256": "f852a76b2ee5c13182c76b3e47b4a0f05650ca461350ed3267adfaa6c3b01ed7",
+        "recount_sha256": "667bff61b2dfd9a4d1cb50721627918003e47b30d9292d386d75e9cc0d806b00",
+        "disposition": "pass C6 only"
+      }
+    },
+    {
+      "repository": "go-git/go-git",
+      "sha": "bdae57cc427f94a6f7c627201bfe14508b5e19bd",
+      "language": "Go",
+      "qualifying_symbols": 85,
+      "examples": [],
+      "product_only": {
+        "qualifying_symbols": 45,
+        "examples": [
+          {
+            "symbol": "github.com/go-git/go-git/v5/utils/ioutil.CheckClose",
+            "defining_unit": "github.com/go-git/go-git/v5/utils/ioutil",
+            "calls": 68,
+            "units": [
+              "github.com/go-git/go-git/v5",
+              "github.com/go-git/go-git/v5/plumbing/format/gitattributes",
+              "github.com/go-git/go-git/v5/plumbing/format/gitignore",
+              "github.com/go-git/go-git/v5/plumbing/format/packfile",
+              "github.com/go-git/go-git/v5/plumbing/object",
+              "github.com/go-git/go-git/v5/plumbing/protocol/packp",
+              "github.com/go-git/go-git/v5/plumbing/transport/http",
+              "github.com/go-git/go-git/v5/plumbing/transport/internal/common",
+              "github.com/go-git/go-git/v5/storage/filesystem",
+              "github.com/go-git/go-git/v5/storage/filesystem/dotgit"
+            ],
+            "qualifies": true,
+            "site_examples": [
+              "plumbing/format/gitattributes/dir.go:32:8",
+              "plumbing/format/gitattributes/dir.go:97:8",
+              "plumbing/format/gitignore/dir.go:95:8",
+              "plumbing/format/packfile/common.go:51:8",
+              "plumbing/format/packfile/diff_delta.go:38:8",
+              "plumbing/format/packfile/diff_delta.go:45:8",
+              "plumbing/format/packfile/encoder.go:124:8",
+              "plumbing/format/packfile/encoder.go:131:8"
+            ],
+            "outside_sites_before_product_filter": 68,
+            "excluded_nonproduct_sites": 0,
+            "excluded_examples": []
+          },
+          {
+            "symbol": "github.com/go-git/go-git/v5/plumbing.*Reference.Hash",
+            "defining_unit": "github.com/go-git/go-git/v5/plumbing",
+            "calls": 63,
+            "units": [
+              "github.com/go-git/go-git/v5",
+              "github.com/go-git/go-git/v5/plumbing/object",
+              "github.com/go-git/go-git/v5/plumbing/protocol/packp",
+              "github.com/go-git/go-git/v5/plumbing/serverinfo",
+              "github.com/go-git/go-git/v5/plumbing/transport/server",
+              "github.com/go-git/go-git/v5/storage/filesystem/dotgit",
+              "github.com/go-git/go-git/v5/storage/memory",
+              "github.com/go-git/go-git/v5/storage/transactional"
+            ],
+            "qualifies": true,
+            "site_examples": [
+              "object_walker.go:37:27",
+              "options.go:461:14",
+              "options.go:610:32",
+              "options.go:803:18",
+              "plumbing/object/commit_walker.go:244:29",
+              "plumbing/object/commit_walker.go:250:40",
+              "plumbing/protocol/packp/advrefs.go:171:5",
+              "plumbing/protocol/packp/advrefs.go:62:37"
+            ],
+            "outside_sites_before_product_filter": 179,
+            "excluded_nonproduct_sites": 116,
+            "excluded_examples": [
+              "example_test.go:147:15",
+              "plumbing/protocol/packp/advrefs_test.go:119:11",
+              "plumbing/protocol/packp/advrefs_test.go:119:32",
+              "plumbing/protocol/packp/advrefs_test.go:61:13",
+              "plumbing/revlist/revlist_test.go:68:47"
+            ]
+          },
+          {
+            "symbol": "github.com/go-git/go-git/v5/plumbing.*Reference.Name",
+            "defining_unit": "github.com/go-git/go-git/v5/plumbing",
+            "calls": 60,
+            "units": [
+              "github.com/go-git/go-git/v5",
+              "github.com/go-git/go-git/v5/internal/reference",
+              "github.com/go-git/go-git/v5/plumbing/protocol/packp",
+              "github.com/go-git/go-git/v5/plumbing/serverinfo",
+              "github.com/go-git/go-git/v5/plumbing/transport/server",
+              "github.com/go-git/go-git/v5/storage/filesystem/dotgit",
+              "github.com/go-git/go-git/v5/storage/memory",
+              "github.com/go-git/go-git/v5/storage/transactional"
+            ],
+            "qualifies": true,
+            "site_examples": [
+              "internal/reference/sort.go:12:10",
+              "internal/reference/sort.go:12:27",
+              "plumbing/protocol/packp/advrefs.go:136:38",
+              "plumbing/protocol/packp/advrefs.go:172:59",
+              "plumbing/protocol/packp/advrefs.go:59:29",
+              "plumbing/protocol/packp/advrefs.go:62:16",
+              "plumbing/serverinfo/serverinfo.go:50:11",
+              "plumbing/transport/server/server.go:420:17"
+            ],
+            "outside_sites_before_product_filter": 106,
+            "excluded_nonproduct_sites": 46,
+            "excluded_examples": [
+              "common_test.go:204:32",
+              "example_test.go:147:39",
+              "plumbing/protocol/packp/advrefs_test.go:155:34",
+              "plumbing/protocol/packp/advrefs_test.go:59:10",
+              "plumbing/protocol/packp/advrefs_test.go:99:34"
+            ]
+          }
+        ],
+        "resolved_sha256": "f2dbc3170d8cfa2c0e5925aca04f93bf825e1face7656e95bc7669a002d3bf99",
+        "recount_sha256": "02e5e464ea3fcdc998edd024257bfc05e7eb4198f50ed159798d9a72426eee52",
+        "disposition": "pass C6 only"
+      }
+    },
+    {
+      "repository": "pytest-dev/pytest",
+      "sha": "082ed70e314ee8e1ab117763d17fe801648f7508",
+      "language": "Python",
+      "qualifying_symbols": 14,
+      "examples": [
+        {
+          "symbol": "_pytest.fixtures.fixture",
+          "defining_unit": "src/_pytest",
+          "calls": 47,
+          "units": [
+            "bench",
+            "doc/en/example",
+            "doc/en/example/fixtures",
+            "testing",
+            "testing/_py",
+            "testing/example_scripts",
+            "testing/example_scripts/acceptance",
+            "testing/example_scripts/unittest",
+            "testing/io",
+            "testing/logging",
+            "testing/python"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "bench/manyparam.py:6:2",
+            "doc/en/example/fixtures/test_fixtures_order_autouse.py:21:2",
+            "doc/en/example/fixtures/test_fixtures_order_autouse_multiple_scopes.py:11:2",
+            "doc/en/example/fixtures/test_fixtures_order_autouse_multiple_scopes.py:16:2",
+            "doc/en/example/fixtures/test_fixtures_order_autouse_multiple_scopes.py:21:2",
+            "doc/en/example/fixtures/test_fixtures_order_autouse_multiple_scopes.py:6:2",
+            "doc/en/example/fixtures/test_fixtures_order_autouse_temp_effects.py:22:6",
+            "doc/en/example/fixtures/test_fixtures_order_scope.py:16:2"
+          ]
+        },
+        {
+          "symbol": "_pytest.raises.raises",
+          "defining_unit": "src/_pytest",
+          "calls": 539,
+          "units": [
+            "doc/en/example/assertion",
+            "testing",
+            "testing/_py",
+            "testing/code",
+            "testing/example_scripts/fixtures/fill_fixtures/test_conftest_funcargs_only_available_in_subdir/sub1",
+            "testing/example_scripts/fixtures/fill_fixtures/test_conftest_funcargs_only_available_in_subdir/sub2",
+            "testing/io",
+            "testing/logging",
+            "testing/python"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "doc/en/example/assertion/failure_demo.py:168:9",
+            "doc/en/example/assertion/failure_demo.py:171:9",
+            "testing/_py/test_local.py:1019:14",
+            "testing/_py/test_local.py:1028:14",
+            "testing/_py/test_local.py:1096:14",
+            "testing/_py/test_local.py:1134:14",
+            "testing/_py/test_local.py:1144:14",
+            "testing/_py/test_local.py:1240:14"
+          ]
+        },
+        {
+          "symbol": "_pytest._io.terminalwriter.TerminalWriter",
+          "defining_unit": "src/_pytest/_io",
+          "calls": 28,
+          "units": [
+            "src/_pytest",
+            "src/_pytest/_code",
+            "src/_pytest/config",
+            "testing/code",
+            "testing/io",
+            "testing/logging"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "src/_pytest/_code/code.py:1281:14",
+            "src/_pytest/cacheprovider.py:624:10",
+            "src/_pytest/config/__init__.py:171:10",
+            "src/_pytest/config/__init__.py:196:10",
+            "src/_pytest/config/__init__.py:2343:10",
+            "src/_pytest/reports.py:130:14",
+            "testing/code/test_excinfo.py:1379:14",
+            "testing/code/test_excinfo.py:1610:14"
+          ]
+        }
+      ],
+      "product_only": {
+        "qualifying_symbols": 4,
+        "examples": [
+          {
+            "symbol": "_pytest._io.saferepr.saferepr",
+            "defining_unit": "src/_pytest/_io",
+            "calls": 20,
+            "units": [
+              "src/_pytest",
+              "src/_pytest/_code",
+              "src/_pytest/assertion"
+            ],
+            "qualifies": true,
+            "site_examples": [
+              "src/_pytest/_code/code.py:1066:36",
+              "src/_pytest/_code/code.py:179:16",
+              "src/_pytest/_code/code.py:626:32",
+              "src/_pytest/_code/code.py:653:46",
+              "src/_pytest/_code/code.py:936:32",
+              "src/_pytest/_code/code.py:938:32",
+              "src/_pytest/assertion/_compare_mapping.py:41:29",
+              "src/_pytest/assertion/_compare_mapping.py:43:31"
+            ],
+            "outside_sites_before_product_filter": 44,
+            "excluded_nonproduct_sites": 24,
+            "excluded_examples": [
+              "testing/io/test_saferepr.py:102:12",
+              "testing/io/test_saferepr.py:107:12",
+              "testing/io/test_saferepr.py:112:9",
+              "testing/io/test_saferepr.py:115:9",
+              "testing/io/test_saferepr.py:118:9"
+            ]
+          },
+          {
+            "symbol": "_pytest.pathlib.absolutepath",
+            "defining_unit": "src/_pytest",
+            "calls": 10,
+            "units": [
+              "src/_pytest/_code",
+              "src/_pytest/assertion",
+              "src/_pytest/config"
+            ],
+            "qualifies": true,
+            "site_examples": [
+              "src/_pytest/_code/code.py:1587:26",
+              "src/_pytest/_code/code.py:94:17",
+              "src/_pytest/assertion/rewrite.py:233:40",
+              "src/_pytest/config/__init__.py:2174:27",
+              "src/_pytest/config/__init__.py:668:13",
+              "src/_pytest/config/__init__.py:677:22",
+              "src/_pytest/config/findpaths.py:305:19",
+              "src/_pytest/config/findpaths.py:364:9"
+            ],
+            "outside_sites_before_product_filter": 11,
+            "excluded_nonproduct_sites": 1,
+            "excluded_examples": [
+              "testing/test_config.py:1847:23"
+            ]
+          },
+          {
+            "symbol": "_pytest._io.terminalwriter.TerminalWriter",
+            "defining_unit": "src/_pytest/_io",
+            "calls": 6,
+            "units": [
+              "src/_pytest",
+              "src/_pytest/_code",
+              "src/_pytest/config"
+            ],
+            "qualifies": true,
+            "site_examples": [
+              "src/_pytest/_code/code.py:1281:14",
+              "src/_pytest/cacheprovider.py:624:10",
+              "src/_pytest/config/__init__.py:171:10",
+              "src/_pytest/config/__init__.py:196:10",
+              "src/_pytest/config/__init__.py:2343:10",
+              "src/_pytest/reports.py:130:14"
+            ],
+            "outside_sites_before_product_filter": 28,
+            "excluded_nonproduct_sites": 22,
+            "excluded_examples": [
+              "testing/code/test_excinfo.py:1379:14",
+              "testing/code/test_excinfo.py:1610:14",
+              "testing/code/test_excinfo.py:1628:14",
+              "testing/io/test_terminalwriter.py:160:10",
+              "testing/io/test_terminalwriter.py:175:10"
+            ]
+          }
+        ],
+        "resolved_sha256": "eb84c182f32452278815c06d447439adea148744e244c66f46ca512ee8602b98",
+        "recount_sha256": "e072296d82691fc4802647a7efb28e384cc0b5c98dc1f9891b007f0c31bb6efb",
+        "disposition": "pass C6 only"
+      }
+    }
+  ]
+}

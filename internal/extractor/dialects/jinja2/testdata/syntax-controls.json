@@ -1,0 +1,122 @@
+{
+  "oracle": "Jinja2 3.1.6",
+  "cases": [
+    {
+      "name": "optional_else",
+      "source": "{{ x if y }}",
+      "jinja_valid": true
+    },
+    {
+      "name": "filter_condition",
+      "source": "{{ x if y | bool }}",
+      "jinja_valid": true
+    },
+    {
+      "name": "full_conditional",
+      "source": "{{ x if y else z }}",
+      "jinja_valid": true
+    },
+    {
+      "name": "nested",
+      "source": "{{ x if (y if z else w) }}",
+      "jinja_valid": true
+    },
+    {
+      "name": "missing_condition",
+      "source": "{{ x if }}",
+      "jinja_valid": false
+    },
+    {
+      "name": "missing_value",
+      "source": "{{ if y }}",
+      "jinja_valid": false
+    },
+    {
+      "name": "stray_else",
+      "source": "{{ x else z }}",
+      "jinja_valid": false
+    },
+    {
+      "name": "missing_alternative",
+      "source": "{{ x if y else }}",
+      "jinja_valid": false
+    },
+    {
+      "name": "for_filter",
+      "source": "{% for i in xs if i %}{{ i }}{% endfor %}",
+      "jinja_valid": true,
+      "loop_filter": "if i",
+      "loop_iterable": "xs"
+    },
+    {
+      "name": "for_filter_else",
+      "source": "{% for i in xs if i %}{{ i }}{% else %}empty{% endfor %}",
+      "jinja_valid": true,
+      "loop_filter": "if i",
+      "loop_iterable": "xs"
+    },
+    {
+      "name": "parenthesized_conditional_iterable",
+      "source": "{% for i in (xs if a else b) %}{{ i }}{% endfor %}",
+      "jinja_valid": true,
+      "loop_iterable": "(xs if a else b)"
+    },
+    {
+      "name": "conditional_loop_filter",
+      "source": "{% for i in xs if (a if b else c) %}{{ i }}{% endfor %}",
+      "jinja_valid": true
+    },
+    {
+      "name": "set_optional_else",
+      "source": "{% set value = x if y %}",
+      "jinja_valid": true
+    },
+    {
+      "name": "argument_optional_else",
+      "source": "{{ f(x if y) }}",
+      "jinja_valid": true
+    },
+    {
+      "name": "list_optional_else",
+      "source": "{{ [x if y] }}",
+      "jinja_valid": true
+    },
+    {
+      "name": "macro_default_optional_else",
+      "source": "{% macro f(x=a if b) %}{{ x }}{% endmacro %}",
+      "jinja_valid": true
+    },
+    {
+      "name": "chained_conditional",
+      "source": "{{ a if b else c if d }}",
+      "jinja_valid": true
+    },
+    {
+      "name": "filtered_conditional",
+      "source": "{{ (a if b) | safe }}",
+      "jinja_valid": true
+    },
+    {
+      "name": "nested_if_condition",
+      "source": "{% if (a if b) %}yes{% endif %}",
+      "jinja_valid": true
+    },
+    {
+      "name": "chained_loop_filter",
+      "source": "{% for i in xs if a if b %}{{ i }}{% endfor %}",
+      "jinja_valid": true
+    },
+    {
+      "name": "double_if",
+      "source": "{{ a if if b }}",
+      "jinja_valid": false
+    },
+    {
+      "name": "unparenthesized_conditional_iterable",
+      "source": "{% for i in xs if a else b %}{{ i }}{% endfor %}",
+      "jinja_valid": false,
+      "grammar_valid": true,
+      "known_divergence": "Pre-existing grammar over-acceptance: Jinja parse_for disables conditional expressions in an unparenthesized iterable. Both patched and unpatched grammar accept it."
+    }
+  ]
+}

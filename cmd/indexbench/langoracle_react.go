@@ -247,7 +247,8 @@ func measureReact(ctx context.Context, m langbench.Manifest, root, name string, 
 	pipe := fusion.New(nil, nil, fusion.Config{})
 	defer pipe.Close()
 	tsengine.ResetPeakModulePages()
-	sub := langbench.Subject{Name: name, SHA: gitOut(ctx, root, "rev-parse", "HEAD"), Counts: map[string]int{},
+	sha, _ := subjectSHA(ctx, root, "") // round 3 A1: never an enclosing repository's HEAD
+	sub := langbench.Subject{Name: name, SHA: sha, Counts: map[string]int{},
 		Families: map[string]string{}, ExcludedByKind: map[string]int{}, Tenancy: &langbench.SubjectTenancy{FaultingFiles: []string{}}}
 	var owned []core.SourceRef
 	for _, ref := range refs {
@@ -258,7 +259,7 @@ func measureReact(ctx context.Context, m langbench.Manifest, root, name string, 
 	sort.Slice(owned, func(i, j int) bool { return owned[i].Path < owned[j].Path })
 	var notes []string
 	if len(globs) > 0 {
-		notes = append(notes, fmt.Sprintf("%s: restricted to %s (-only; the files outside are a disclosed gap, not measured)", name, strings.Join(globs, ", ")))
+		notes = append(notes, onlyScopeNote(name, globs))
 	}
 	// Warm-up: one untimed extraction per extension compiles each grammar
 	// variant (js, ts, tsx) and its queries, so per-file times measure

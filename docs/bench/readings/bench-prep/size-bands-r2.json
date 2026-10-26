@@ -1,0 +1,347 @@
+{
+  "scope": "One new large-band Go pin and one new large-band Python pin; source truth and D24 counts, no C4 or fix replay",
+  "candidates": [
+    {
+      "sha": "bdae57cc427f94a6f7c627201bfe14508b5e19bd",
+      "language": "Go",
+      "primary_lines": 99417,
+      "files": 478,
+      "licences": [
+        {
+          "path": "LICENSE",
+          "spdx": "Apache-2.0",
+          "sha256": "fecc274e9b67f7e128c7d2ba1ad68fcf23b18fe0448d3c3671e943763502d504"
+        }
+      ],
+      "full_history": true,
+      "c5_window": [
+        "2024-10-25T00:00:00Z",
+        "2026-10-26T00:00:00Z"
+      ],
+      "co_changes": 81,
+      "fix_message_co_changes": 10,
+      "primary_co_changes": 80,
+      "primary_fix_co_changes": 10,
+      "replayed": 0,
+      "locks": {
+        "go.mod": "a311444e53edee7d44ab3d0ebb5d16c1bad89ee8e8d4e51cbd9d98fc8b0b03d3",
+        "go.sum": "3152e684982cc8b439764da817ddb7ef529bd404aa8f3557ae75635a1f6034f4"
+      },
+      "repository": "go-git/go-git",
+      "suite": {
+        "id": "go-git--go-git",
+        "language": "Go",
+        "sha": "bdae57cc427f94a6f7c627201bfe14508b5e19bd",
+        "lock": "go.sum",
+        "lockfile_sha256": "3152e684982cc8b439764da817ddb7ef529bd404aa8f3557ae75635a1f6034f4",
+        "setup": {
+          "command": "go version && go mod download",
+          "seconds": 49.567,
+          "exit_code": 0
+        },
+        "test": "go test -count=1 -timeout=14m ./...",
+        "warmup": {
+          "completion": "interrupted after recorded failures; no complete suite timing",
+          "log": "go-git--go-git-warmup.log",
+          "log_sha256": "469d81e814ae0cc3b592be5355afc8a5c7b40c7e4cdf3dcbf8cd841c7b73be91"
+        },
+        "runs": [],
+        "c3": "refused: whole suite makes upstream GitHub fixture requests with network denied; shared-mount ownership errors also occurred. Three timed trials left unmeasured after these witnessed warm-up failures.",
+        "image": "golang@sha256:972b4110ba0f47539a975c31e52c64765e1ff19f2d74469ae4a595c6676e80a5",
+        "platform": "linux/arm64",
+        "cpus": 4,
+        "offline_environment": {
+          "GOPROXY": "off",
+          "GOFLAGS": "-mod=readonly",
+          "GOTOOLCHAIN": "local",
+          "GOMAXPROCS": "4"
+        }
+      },
+      "c6_qualifying": 85,
+      "c6_examples": [
+        {
+          "symbol": "github.com/go-git/go-git/v5/plumbing.NewHash",
+          "defining_unit": "github.com/go-git/go-git/v5/plumbing",
+          "calls": 748,
+          "units": [
+            "github.com/go-git/go-git/v5",
+            "github.com/go-git/go-git/v5/plumbing/cache",
+            "github.com/go-git/go-git/v5/plumbing/format/commitgraph",
+            "github.com/go-git/go-git/v5/plumbing/format/commitgraph/v2",
+            "github.com/go-git/go-git/v5/plumbing/format/idxfile",
+            "github.com/go-git/go-git/v5/plumbing/format/index",
+            "github.com/go-git/go-git/v5/plumbing/format/objfile",
+            "github.com/go-git/go-git/v5/plumbing/format/packfile",
+            "github.com/go-git/go-git/v5/plumbing/object",
+            "github.com/go-git/go-git/v5/plumbing/object/commitgraph",
+            "github.com/go-git/go-git/v5/plumbing/protocol/packp",
+            "github.com/go-git/go-git/v5/plumbing/revlist",
+            "github.com/go-git/go-git/v5/plumbing/serverinfo",
+            "github.com/go-git/go-git/v5/plumbing/transport/http",
+            "github.com/go-git/go-git/v5/plumbing/transport/server",
+            "github.com/go-git/go-git/v5/plumbing/transport/test",
+            "github.com/go-git/go-git/v5/storage/filesystem",
+            "github.com/go-git/go-git/v5/storage/filesystem/dotgit",
+            "github.com/go-git/go-git/v5/storage/test",
+            "github.com/go-git/go-git/v5/storage/transactional",
+            "github.com/go-git/go-git/v5/tests/objectverify",
+            "github.com/go-git/go-git/v5/utils/binary",
+            "github.com/go-git/go-git/v5/utils/merkletrie/filesystem",
+            "github.com/go-git/go-git/v5/utils/merkletrie/index"
+          ],
+          "sites": [
+            "blame_test.go:18:7",
+            "plumbing/cache/object_test.go:141:11",
+            "plumbing/format/commitgraph/commitgraph_test.go:32:41",
+            "plumbing/format/commitgraph/v2/commitgraph_test.go:39:41",
+            "plumbing/format/idxfile/decoder_test.go:39:10",
+            "plumbing/format/index/decoder_test.go:102:41"
+          ],
+          "qualifies": true
+        },
+        {
+          "symbol": "github.com/go-git/go-git/v5/plumbing.Hash.String",
+          "defining_unit": "github.com/go-git/go-git/v5/plumbing",
+          "calls": 258,
+          "units": [
+            "github.com/go-git/go-git/v5",
+            "github.com/go-git/go-git/v5/plumbing/cache",
+            "github.com/go-git/go-git/v5/plumbing/format/commitgraph",
+            "github.com/go-git/go-git/v5/plumbing/format/commitgraph/v2",
+            "github.com/go-git/go-git/v5/plumbing/format/idxfile",
+            "github.com/go-git/go-git/v5/plumbing/format/index",
+            "github.com/go-git/go-git/v5/plumbing/format/packfile",
+            "github.com/go-git/go-git/v5/plumbing/object",
+            "github.com/go-git/go-git/v5/plumbing/object/commitgraph",
+            "github.com/go-git/go-git/v5/plumbing/protocol/packp",
+            "github.com/go-git/go-git/v5/plumbing/revlist",
+            "github.com/go-git/go-git/v5/plumbing/serverinfo",
+            "github.com/go-git/go-git/v5/plumbing/storer",
+            "github.com/go-git/go-git/v5/plumbing/transport/test",
+            "github.com/go-git/go-git/v5/storage/filesystem",
+            "github.com/go-git/go-git/v5/storage/filesystem/dotgit",
+            "github.com/go-git/go-git/v5/storage/test",
+            "github.com/go-git/go-git/v5/storage/transactional",
+            "github.com/go-git/go-git/v5/tests/objectverify",
+            "github.com/go-git/go-git/v5/utils/binary"
+          ],
+          "sites": [
+            "blame.go:459:36",
+            "plumbing/cache/object_test.go:159:18",
+            "plumbing/format/commitgraph/commitgraph_test.go:46:11",
+            "plumbing/format/commitgraph/v2/commitgraph_test.go:100:13",
+            "plumbing/format/idxfile/decoder_test.go:89:21",
+            "plumbing/format/index/decoder_test.go:141:12"
+          ],
+          "qualifies": true
+        },
+        {
+          "symbol": "github.com/go-git/go-git/v5/plumbing.*Reference.Hash",
+          "defining_unit": "github.com/go-git/go-git/v5/plumbing",
+          "calls": 179,
+          "units": [
+            "github.com/go-git/go-git/v5",
+            "github.com/go-git/go-git/v5/plumbing/object",
+            "github.com/go-git/go-git/v5/plumbing/protocol/packp",
+            "github.com/go-git/go-git/v5/plumbing/revlist",
+            "github.com/go-git/go-git/v5/plumbing/serverinfo",
+            "github.com/go-git/go-git/v5/plumbing/transport/server",
+            "github.com/go-git/go-git/v5/storage/filesystem/dotgit",
+            "github.com/go-git/go-git/v5/storage/memory",
+            "github.com/go-git/go-git/v5/storage/test",
+            "github.com/go-git/go-git/v5/storage/transactional"
+          ],
+          "sites": [
+            "example_test.go:147:15",
+            "plumbing/object/commit_walker.go:244:29",
+            "plumbing/protocol/packp/advrefs.go:171:5",
+            "plumbing/revlist/revlist_test.go:68:47",
+            "plumbing/serverinfo/serverinfo.go:51:11",
+            "plumbing/transport/server/server.go:402:7"
+          ],
+          "qualifies": true
+        }
+      ],
+      "c7": {
+        "prior_reads": [],
+        "organization_subjects": 1,
+        "fleet_index_exclusion": "unmeasured"
+      },
+      "screen": "refuse C3"
+    },
+    {
+      "sha": "082ed70e314ee8e1ab117763d17fe801648f7508",
+      "language": "Python",
+      "primary_lines": 117244,
+      "files": 274,
+      "licences": [
+        {
+          "path": "LICENSE",
+          "spdx": "MIT",
+          "sha256": "ca836a5f9ecca3b2f350230faa20a48fb8b145653b5568d784862df864706b9b"
+        }
+      ],
+      "full_history": true,
+      "c5_window": [
+        "2024-10-25T00:00:00Z",
+        "2026-10-26T00:00:00Z"
+      ],
+      "co_changes": 320,
+      "fix_message_co_changes": 83,
+      "primary_co_changes": 299,
+      "primary_fix_co_changes": 77,
+      "replayed": 0,
+      "locks": {
+        "uv.lock": "d605fa912dadf33a3eea1d00bf74ddb5e1a9c7935b511c4bd48d5b9d8af5e850"
+      },
+      "repository": "pytest-dev/pytest",
+      "suite": {
+        "id": "pytest-dev--pytest",
+        "language": "Python",
+        "lock": "uv.lock",
+        "setup": {
+          "command": "python -m venv /work/tools && /work/tools/bin/pip install uv==0.13.5 && /work/tools/bin/uv sync --frozen --no-default-groups --group dev",
+          "seconds": 79.299,
+          "exit_code": 0,
+          "network": "bridge",
+          "log": "pytest-dev--pytest-setup.log",
+          "log_sha256": "d17bfba7c64bea577b329ad3574a552292009f93cdce49b0c245ab31f2e827ed"
+        },
+        "test": "/work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/tmp/pytest-temp",
+        "stop_on_failed_warmup": true,
+        "sha": "082ed70e314ee8e1ab117763d17fe801648f7508",
+        "image": "python@sha256:14a4933e6cef421424f7a66d89a3f4eafcbd0d90e0a822251f298e05132dc735",
+        "platform": "linux/arm64",
+        "cpus": 4,
+        "lockfile_sha256": "d605fa912dadf33a3eea1d00bf74ddb5e1a9c7935b511c4bd48d5b9d8af5e850",
+        "runs": [
+          {
+            "command": "/work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/tmp/pytest-temp",
+            "seconds": 160.138,
+            "started_at": "2026-10-26T05:30:24.016545Z",
+            "exit_code": 0,
+            "network": "none",
+            "log": "pytest-dev--pytest-run1.log",
+            "log_sha256": "1a83e804e3b3604abceb21c04401f7e9bd075318fa0181ebffebb2848761e162"
+          },
+          {
+            "command": "/work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/tmp/pytest-temp",
+            "seconds": 165.92,
+            "started_at": "2026-10-26T05:34:37.021425Z",
+            "exit_code": 0,
+            "network": "none",
+            "log": "pytest-dev--pytest-run2.log",
+            "log_sha256": "1b0450fc095953f555a6991c8d1e1aad4e258cd36b568b60564d143d68258b0e"
+          },
+          {
+            "command": "/work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/tmp/pytest-temp",
+            "seconds": 150.788,
+            "started_at": "2026-10-26T05:39:02.133478Z",
+            "exit_code": 0,
+            "network": "none",
+            "log": "pytest-dev--pytest-run3.log",
+            "log_sha256": "088fe1a2d441306fe725ac538ff67a652c5650611126f9088e7f86b5e89f6bd4"
+          }
+        ],
+        "network_probe": {
+          "command": "curl --noproxy \"*\" -I --connect-timeout 2 --max-time 3 https://1.1.1.1",
+          "seconds": 0.178,
+          "started_at": "2026-10-26T05:25:11.298086Z",
+          "exit_code": 7,
+          "network": "none",
+          "log": "pytest-dev--pytest-network-probe.log",
+          "log_sha256": "f9cf55b50dba65ca08df39180414f845e67c0f97277b46e404c346152653260d"
+        },
+        "warmup": {
+          "command": "/work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/tmp/pytest-temp",
+          "seconds": 161.968,
+          "started_at": "2026-10-26T05:25:55.123444Z",
+          "exit_code": 0,
+          "network": "none",
+          "log": "pytest-dev--pytest-warmup.log",
+          "log_sha256": "ed78f536113b1fdfccfcd6b5b003f447e2f9ff459796d275e71c683bf96f519a"
+        },
+        "tracked_diff": []
+      },
+      "c6_qualifying": 12,
+      "c6_examples": [
+        {
+          "symbol": "_pytest.fixtures.fixture",
+          "defining_unit": "src/_pytest",
+          "calls": 47,
+          "units": [
+            "bench",
+            "doc/en/example",
+            "doc/en/example/fixtures",
+            "testing",
+            "testing/_py",
+            "testing/example_scripts",
+            "testing/example_scripts/acceptance",
+            "testing/example_scripts/unittest",
+            "testing/io",
+            "testing/logging",
+            "testing/python"
+          ],
+          "sites": [
+            "bench/manyparam.py:6:2",
+            "doc/en/example/fixtures/test_fixtures_order_autouse.py:21:2",
+            "doc/en/example/multipython.py:16:2",
+            "testing/_py/test_local.py:1004:6",
+            "testing/conftest.py:166:2",
+            "testing/example_scripts/acceptance/fixture_mock_integration.py:14:2"
+          ],
+          "qualifies": true
+        },
+        {
+          "symbol": "_pytest._io.terminalwriter.TerminalWriter",
+          "defining_unit": "src/_pytest/_io",
+          "calls": 28,
+          "units": [
+            "src/_pytest",
+            "src/_pytest/_code",
+            "src/_pytest/config",
+            "testing/code",
+            "testing/io",
+            "testing/logging"
+          ],
+          "sites": [
+            "src/_pytest/_code/code.py:1281:14",
+            "src/_pytest/cacheprovider.py:624:10",
+            "src/_pytest/config/__init__.py:171:10",
+            "testing/code/test_excinfo.py:1379:14",
+            "testing/io/test_terminalwriter.py:160:10",
+            "testing/logging/test_formatter.py:182:10"
+          ],
+          "qualifies": true
+        },
+        {
+          "symbol": "_pytest._io.saferepr.saferepr",
+          "defining_unit": "src/_pytest/_io",
+          "calls": 38,
+          "units": [
+            "src/_pytest",
+            "src/_pytest/_code",
+            "src/_pytest/assertion",
+            "testing",
+            "testing/io"
+          ],
+          "sites": [
+            "src/_pytest/_code/code.py:1066:36",
+            "src/_pytest/assertion/_compare_mapping.py:41:29",
+            "src/_pytest/setuponly.py:86:22",
+            "testing/io/test_saferepr.py:102:12",
+            "testing/test_subtests.py:1070:45",
+            "src/_pytest/_code/code.py:179:16"
+          ],
+          "qualifies": true
+        }
+      ],
+      "c7": {
+        "prior_reads": [],
+        "organization_subjects": 1,
+        "fleet_index_exclusion": "unmeasured"
+      },
+      "screen": "retained draft"
+    }
+  ]
+}

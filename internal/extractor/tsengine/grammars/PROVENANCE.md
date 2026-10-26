@@ -1,8 +1,9 @@
 # Grammar blob provenance (ADR-021 §4, docs/plans/extraction-treesitter.md)
 
-Every `*.wasm.gz` file in this directory is built by `build.sh <blob>` from **official,
-upstream tree-sitter sources only** — tree-sitter's own core C runtime plus
-each grammar's own C parser — statically linked into one self-contained
+Every `*.wasm.gz` file in this directory is built by `build.sh <blob>` from
+verified upstream tree-sitter sources, with any ordered in-tree source patches
+declared and hash-pinned by the lock. Tree-sitter's core C runtime plus each
+grammar's C parser are statically linked into one self-contained
 `wasm32-wasi` module per language via `zig cc` (musl libc, no Emscripten). No
 third-party prebuilt `.wasm` artifact is vendored; no unverifiable blob is
 embedded.
@@ -11,7 +12,8 @@ embedded.
 
 `grammars.lock.json` (LB-F12, docs/design/language-breadth.md §8.1) is the record:
 for the core and every blob, the repository, tag, the commit the tag points at,
-the tarball's sha256 and the SPDX licence; for every blob, its entry points,
+the tarball's sha256 and the SPDX licence; for every blob, any ordered patch
+paths and sha256 digests, its entry points,
 grammar directories, ABI, the sha256 and size of the module and the size of the
 committed `.wasm.gz`. `TestGrammarLock` fails when a committed blob and its row
 disagree, when either exists without the other, or when a licence is off the
@@ -37,6 +39,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `cpp` | tree-sitter/tree-sitter-cpp | v0.23.4 | `f41e1a044c8a84ea9fa8577fdd2eab92ec96de02` | MIT | `tree_sitter_cpp` | `7a2c55afe3028f4105f25762ea58cc16537d1f5a1dcd9cca90410b3cd5d46051` |
 | `csharp` | tree-sitter/tree-sitter-c-sharp | v0.23.5 | `cac6d5fb595f5811a076336682d5d595ac1c9e85` | MIT | `tree_sitter_c_sharp` | `9628b164369071019368618bdefa446f0aab8acaac47b75d5dfb209e93b8903b` |
 | `css` | tree-sitter/tree-sitter-css | v0.25.0 | `dda5cfc5722c429eaba1c910ca32c2c0c5bb1a3f` | MIT | `tree_sitter_css` | `03965344d8c0435dc54fb45b281578420bb7db8b99df4d34e7e74105a274cb79` |
+| `cuda` | tree-sitter-grammars/tree-sitter-cuda | d58080a327756e4d1d16ec329ba7cb2048f6c6cd | `d58080a327756e4d1d16ec329ba7cb2048f6c6cd` | MIT | `tree_sitter_cuda` | `18f7bcaf6115c7b9ca57505653e787c565f4cdc7886caf76a004c36e8aa1548a` |
 | `dart` | UserNobody14/tree-sitter-dart | be07cf7118d3dba06236a3f19541685a68209934 | `be07cf7118d3dba06236a3f19541685a68209934` | MIT | `tree_sitter_dart` | `b126efb8dfeeba8b71f0c6ae1f0cd09cf8b205560786b31d44cc16b283e782f2` |
 | `dockerfile` | camdencheek/tree-sitter-dockerfile | v0.2.0 | `868e44ce378deb68aac902a9db68ff82d2299dd0` | MIT | `tree_sitter_dockerfile` | `8cbdf50838cc55e841aa9585a1a09e5b8c41454ae30ce0a93a7bd71adb140818` |
 | `elisp` | Wilfred/tree-sitter-elisp | 1.7.2 | `c0417c751a3dcc8724d1f2f6d1437a99dee1e090` | MIT | `tree_sitter_elisp` | `6a5c3df34b5bb1b4fbc1386fc0f24a205ddfff0720801899c3d1b3e3593fa670` |
@@ -44,10 +47,11 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `gotemplate` | ngalaiko/tree-sitter-go-template | aa71f63de226c5592dfbfc1f29949522d7c95fac | `aa71f63de226c5592dfbfc1f29949522d7c95fac` | MIT | `tree_sitter_helm` | `86bcd2cd462a2fdd94a60bb44b6f15e99b3d02177c5d631cbf45761bae482458` |
 | `graphql` | bkegley/tree-sitter-graphql | 5e66e961eee421786bdda8495ed1db045e06b5fe | `5e66e961eee421786bdda8495ed1db045e06b5fe` | MIT | `tree_sitter_graphql` | `ff542fddb51b1f1c110bb36fa16703d2212eeae0c0d12a2e1bf813c5f5db9507` |
 | `groovy` | murtaza64/tree-sitter-groovy | 2a6ddd558b6aa39c5b77d8db9fe9baf817486b2c | `2a6ddd558b6aa39c5b77d8db9fe9baf817486b2c` | MIT | `tree_sitter_groovy` | `00320c650fdf683337d8a1fffd2f2f36fd4606f26d77f154d3f0fb7b268a5892` |
+| `hlsl` | tree-sitter-grammars/tree-sitter-hlsl | 0400dd363f4e8142dcfa7b5a7d2d9db59c129c6e | `0400dd363f4e8142dcfa7b5a7d2d9db59c129c6e` | MIT | `tree_sitter_hlsl` | `0a40e0a1573fb4b6e7433f2be53464f20da6740455d6d5f08316cdd67ccd9dbf` |
 | `html` | tree-sitter/tree-sitter-html | v0.23.2 | `5a5ca8551a179998360b4a4ca2c0f366a35acc03` | MIT | `tree_sitter_html` | `21fa4f2d4dcb890ef12d09f4979a0007814f67f1c7294a9b17b0108a09e45ef7` |
 | `java` | tree-sitter/tree-sitter-java | v0.23.5 | `94703d5a6bed02b98e438d7cad1136c01a60ba2c` | MIT | `tree_sitter_java` | `cb199e0faae4b2c08425f88cbb51c1a9319612e7b96315a174a624db9bf3d9f0` |
 | `javascript` | tree-sitter/tree-sitter-javascript | v0.25.0 | `44c892e0be055ac465d5eeddae6d3e194424e7de` | MIT | `tree_sitter_javascript` | `9712fc283d3dc01d996d20b6392143445d05867a7aad76fdd723824468428b86` |
-| `jinja2` | cathaysia/tree-sitter-jinja | v0.5.0 | `687b1ff1d6a7eaae26df84560bb1c049f4f1b4c1` | Apache-2.0 | `tree_sitter_jinja` | `542ff7f3fc077f835e880984ff08701bb0fbd5d3c22b54e63c2b485bdd5d587b` |
+| `jinja2` | bennypowers/tree-sitter-jinja-dialects | 4f832fe6feeae8c9e5963d835bec0272a8331b47 | `4f832fe6feeae8c9e5963d835bec0272a8331b47` | MIT | `tree_sitter_jinja` | `89bc4e4b17985e66c61e2f91ffccbd5db11cfacdafdd23a1e65c280a6181b3ea` |
 | `kotlin` | fwcd/tree-sitter-kotlin | 1852ea17b7f60fb3f9d84e0b1555d56b46b39fb1 | `1852ea17b7f60fb3f9d84e0b1555d56b46b39fb1` | MIT | `tree_sitter_kotlin` | `61282c8d3d231fab7d6086d4d0c9ff284824f78d4a7a8d3993d49023fbb739c5` |
 | `lua` | tree-sitter-grammars/tree-sitter-lua | v0.5.0 | `10fe0054734eec83049514ea2e718b2a56acd0c9` | MIT | `tree_sitter_lua` | `cf01b93f4b61b96a6d27942cf28eeda4cbce7d503c3bef773a8930b3d778a2d9` |
 | `luau` | tree-sitter-grammars/tree-sitter-luau | a8914d6c1fc5131f8e1c13f769fa704c9f5eb02f | `a8914d6c1fc5131f8e1c13f769fa704c9f5eb02f` | MIT | `tree_sitter_luau` | `e60c16f73ee29f2e04f78e6c807a82c0b1de1794db01e2c92e6e59701c897eb0` |
@@ -80,6 +84,12 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `vue` | tree-sitter-grammars/tree-sitter-vue | ce8011a414fdf8091f4e4071752efc376f4afb08 | `ce8011a414fdf8091f4e4071752efc376f4afb08` | MIT | `tree_sitter_vue` | `e62913c5709ed1e68616bb85aedb2641a0c35c6b6709986ab71487d54b16ad0d` |
 | `wgsl` | include-yy/tree-sitter-wgsl | b58422ee34029f81ae8b7dd44fc14d043809b321 | `b58422ee34029f81ae8b7dd44fc14d043809b321` | MIT | `tree_sitter_wgsl` | `ad66d792d4c58c9e5d7bcd596c83a0b93c34b802b540a92c2f44da207be5fd2f` |
 
+### Applied source patches
+
+| Blob | Order | Patch | sha256 |
+|---|--:|---|---|
+| `jinja2` (patched) | 1 | `patches/jinja2/optional-else.patch` | `ac3e0825cd149da56ed02cac14ea2e7f96b92d8b8f10c1c0a3cc9e9f4410be86` |
+
 ### Committed blobs
 
 | Blob | Grammar dirs | Scanner | ABI | Module bytes | `.wasm.gz` bytes | Module sha256 |
@@ -94,6 +104,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `cpp` | (root) | yes | 14 | 1,935,648 | 420,154 | `b5ca4b0cd346bc1cd1060fdc2151125a11ad7695da595157667a5e8b30b03e34` |
 | `csharp` | (root) | yes | 15 | 3,056,786 | 603,861 | `b0700502f93f8e6fa577c47faa1dfcd53ae8b7467d16c621102238e75de8159f` |
 | `css` | (root) | yes | 15 | 250,838 | 74,133 | `e99413feca59f90b54899d5257f0068ea82fea71e30aeb55f6342a104c23fd2f` |
+| `cuda` | (root) | yes | 15 | 3,265,801 | 741,305 | `82344832ffd95a2335d30a37665cec8285e41bf18526d88792d3d25b2b5d0129` |
 | `dart` | (root) | yes | 15 | 914,734 | 205,433 | `50a95508f349684542905dae851d05c6833f7ff517b2db2ecd34bf91219ca4e8` |
 | `dockerfile` | (root) | yes | 14 | 171,375 | 69,325 | `81274400989b6ac9f9d9d0cc9618b0ca5045214742468279fdf089d214e5b6ac` |
 | `elisp` | (root) | no | 15 | 176,723 | 62,982 | `f207321d3e54d07838a585601113055624294da210c90c9de637cf31a2a6b397` |
@@ -101,10 +112,11 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `gotemplate` | dialects/helm | no | 15 | 189,463 | 68,230 | `b1a9b7c210be48df96ad4f0a0bec88f4aca1f30fe9cb4bb2e05c6e845181d61f` |
 | `graphql` | (root) | no | 13 | 178,965 | 66,018 | `2562a48542af5bdffed0ba53aa178e883828c124aca5b082b9be47f3aca83017` |
 | `groovy` | (root) | no | 15 | 761,792 | 171,362 | `9bfe78467984483569fd59a44dc85fba0f0115d1bb6a6466b32ab7106ece6bc3` |
+| `hlsl` | (root) | yes | 14 | 3,052,819 | 692,820 | `8cd650a354c697cbcbc564c36bad78997c550bd94744d85370618e4d6d339cc2` |
 | `html` | (root) | yes | 14 | 146,253 | 61,224 | `da122f8345c4c4a052cd71c55b7b34b5f4bde63cedfd6de3ad8aeb11c8099289` |
 | `java` | (root) | no | 14 | 401,009 | 113,109 | `335ca5db18443f9ff6bbb917bccd3c79425991bdf1d3474b62a64169c58405b4` |
 | `javascript` | (root) | yes | 15 | 458,741 | 114,833 | `7245ee58564f991827498e36b5ec14420b99759596490e3a74ed0993b24ed904` |
-| `jinja2` | tree-sitter-jinja | yes | 14 | 230,381 | 73,025 | `421b3f813557d124fdbb6630f028f03d1ba9906c7214c97584729e3f5a6147d9` |
+| `jinja2` | (root) | yes | 15 | 212,061 | 71,302 | `71680f5fead32c2881a5e486e8dc79a71656e3be60fff7b714667673b5f30e25` |
 | `kotlin` | (root) | yes | 14 | 3,054,455 | 567,216 | `5e672dfa0997692cea7aa6b0f19be4a26a846d6130264604a9a42fa6184652f6` |
 | `lua` | (root) | yes | 15 | 173,721 | 64,669 | `e43aedffa10b61ea16c0c30dc70d5daed934be28a8259b5bda56d7230a3713f2` |
 | `luau` | (root) | yes | 14 | 213,773 | 72,266 | `c80e039ffb082509ce038a4021ead4da3e2b55422d4770d272fa918fd089dc8f` |
@@ -184,11 +196,18 @@ exists.
 
 ## Build recipe (reproducible — `./build.sh <blob>`)
 
-`build.sh <blob> [outdir]` reads the blob's lock row, fetches the pinned core
+`build.sh <blob> [outdir]` selects the blob's lock row once, fetches the pinned core
 and grammar tarballs, refuses a tarball whose sha256 or embedded commit differs
 from the lock and a licence file (top level, `queries/`, `src/`) that does not
-state the lock's allowlisted licence, runs a pinned `tree-sitter-cli generate`
-for a `"generate": true` grammar, then:
+state the lock's allowlisted licence, copies each declared patch from `patches/`
+into private scratch, checks that copy's sha256, then checks and applies the same
+bytes with isolated Git settings.
+Patches cannot edit licence or attribution files, change file types or modes,
+or target files that generation would overwrite. Without generation, targets
+are limited to the selected C parser, scanner and headers. These checks require
+a source-byte change in an allowed input, but do not prove a semantic change in
+the binary. The build rechecks the licence, runs pinned
+`tree-sitter-cli generate` for a `"generate": true` grammar, then:
 
 ```
 zig cc --target=wasm32-wasi-musl -mexec-model=reactor \

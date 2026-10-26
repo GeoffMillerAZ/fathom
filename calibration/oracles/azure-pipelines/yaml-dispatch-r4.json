@@ -1,0 +1,160 @@
+{
+  "kind": "regression equivalence only; not independent language truth",
+  "fixture_files": 145,
+  "by_fixture_dialect": {
+    "alertmanager": {
+      "files": 3,
+      "identical": 3,
+      "new_azure": 0
+    },
+    "ansible": {
+      "files": 7,
+      "identical": 7,
+      "new_azure": 0
+    },
+    "argo": {
+      "files": 6,
+      "identical": 6,
+      "new_azure": 0
+    },
+    "aws-iam-policy": {
+      "files": 1,
+      "identical": 1,
+      "new_azure": 0
+    },
+    "checkov-policies": {
+      "files": 3,
+      "identical": 3,
+      "new_azure": 0
+    },
+    "circleci": {
+      "files": 5,
+      "identical": 5,
+      "new_azure": 0
+    },
+    "cloud-custodian": {
+      "files": 4,
+      "identical": 4,
+      "new_azure": 0
+    },
+    "cloudformation": {
+      "files": 7,
+      "identical": 7,
+      "new_azure": 0
+    },
+    "conan": {
+      "files": 1,
+      "identical": 1,
+      "new_azure": 0
+    },
+    "crossplane": {
+      "files": 6,
+      "identical": 6,
+      "new_azure": 0
+    },
+    "docker-compose": {
+      "files": 7,
+      "identical": 7,
+      "new_azure": 0
+    },
+    "envoy": {
+      "files": 7,
+      "identical": 7,
+      "new_azure": 0
+    },
+    "flux": {
+      "files": 5,
+      "identical": 5,
+      "new_azure": 0
+    },
+    "gatekeeper": {
+      "files": 5,
+      "identical": 5,
+      "new_azure": 0
+    },
+    "git-hooks-config": {
+      "files": 7,
+      "identical": 7,
+      "new_azure": 0
+    },
+    "github-actions": {
+      "files": 5,
+      "identical": 5,
+      "new_azure": 0
+    },
+    "gitlab-ci": {
+      "files": 5,
+      "identical": 5,
+      "new_azure": 0
+    },
+    "grafana-dashboard": {
+      "files": 3,
+      "identical": 3,
+      "new_azure": 0
+    },
+    "helm": {
+      "files": 8,
+      "identical": 8,
+      "new_azure": 0
+    },
+    "kong": {
+      "files": 3,
+      "identical": 3,
+      "new_azure": 0
+    },
+    "kubernetes": {
+      "files": 8,
+      "identical": 8,
+      "new_azure": 0
+    },
+    "kustomize": {
+      "files": 6,
+      "identical": 6,
+      "new_azure": 0
+    },
+    "kyverno": {
+      "files": 6,
+      "identical": 6,
+      "new_azure": 0
+    },
+    "openapi": {
+      "files": 4,
+      "identical": 4,
+      "new_azure": 0
+    },
+    "otel-collector": {
+      "files": 3,
+      "identical": 3,
+      "new_azure": 0
+    },
+    "prometheus": {
+      "files": 4,
+      "identical": 4,
+      "new_azure": 0
+    },
+    "pulumi-yaml": {
+      "files": 3,
+      "identical": 3,
+      "new_azure": 0
+    },
+    "serverless": {
+      "files": 4,
+      "identical": 4,
+      "new_azure": 0
+    },
+    "taskfile": {
+      "files": 5,
+      "identical": 5,
+      "new_azure": 0
+    },
+    "traefik": {
+      "files": 4,
+      "identical": 4,
+      "new_azure": 0
+    }
+  },
+  "changed_prior_claims": [],
+  "newly_classified_azure": [],
+  "baseline_snapshot_sha256": "b88d7ca1381e72b65d755b979ea6c6e5d1d3de7ce22351ae57c2cb56efddb384",
+  "candidate_snapshot_sha256": "b88d7ca1381e72b65d755b979ea6c6e5d1d3de7ce22351ae57c2cb56efddb384"
+}

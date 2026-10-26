@@ -28,6 +28,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -42,6 +43,7 @@ func cmdConserve(args []string, stdout, stderr io.Writer) int {
 	service := fs.String("service", "", "service ID (required)")
 	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db)")
 	jsonOut := fs.Bool("json", false, "emit the fathom.conserve/v1 JSON report instead of a text table")
+	concernDeltas := fs.String("concern-deltas", "", "write informational Kubernetes fact deltas as fathom.concern-deltas/v1 JSON to FILE")
 	strict := fs.Bool("strict", false, "exit 1 when any plane's verdict is \"losses\"")
 	strictPlane := fs.String("strict-plane", "", "exit 1 on one plane's blocking losses only; \"integrity\": a lost pin whose naming source still names it at head, or a retired pin with no decision cite in the range (a cited retirement is printed for review and passes)")
 	residueMax := fs.Int("residue-max", conserve.DefaultResidueMax, "cap on the reading set's item list ; the report says how many were cut")
@@ -85,6 +87,22 @@ func cmdConserve(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 2
+	}
+	if *concernDeltas != "" {
+		deltas, derr := conserve.ConcernDeltas(ctx, in)
+		if derr != nil {
+			fmt.Fprintf(stderr, "error: concern deltas: %v\n", derr)
+			return 2
+		}
+		rep.ConcernDeltas = &deltas
+		data, derr := json.MarshalIndent(deltas, "", "  ")
+		if derr == nil {
+			derr = os.WriteFile(*concernDeltas, append(data, '\n'), 0o600)
+		}
+		if derr != nil {
+			fmt.Fprintf(stderr, "error: write concern deltas: %v\n", derr)
+			return 2
+		}
 	}
 	residue := *rep.Residue
 	var pins []conserve.PinLoss

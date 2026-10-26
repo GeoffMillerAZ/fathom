@@ -1182,7 +1182,7 @@
     "file": "third_party/agentic-kit/CLAUDE.md",
     "harness": "claude-code",
     "line": 71,
-    "text": "The fleet index (throughline · agentic-kit · app-kit · fathom) lives in `../sextant/workspace/db/fleet.sqlite`",
+    "text": "The fleet index (svc-a · agentic-kit · app-kit · fathom) lives in `../sextant/workspace/db/fleet.sqlite`",
     "gold": "anchored-fresh",
     "votes": [
       "anchored-fresh",

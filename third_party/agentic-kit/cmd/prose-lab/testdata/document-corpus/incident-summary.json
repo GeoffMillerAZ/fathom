@@ -1,0 +1,259 @@
+{
+  "id": "incident-summary",
+  "type": "incident-summary",
+  "length_band": "short",
+  "min_words": 150,
+  "max_words": 250,
+  "purpose": "Explain a contained synthetic service incident to a decision maker, including impact, response, uncertainty, and next action.",
+  "facts": [
+    {
+      "id": "f-01",
+      "text": "At 09:10 UTC on 2026-03-04, the synthetic Cedar Queue status monitor first detected elevated delivery delay.",
+      "kind": "observed",
+      "required": true,
+      "occurred_at": "2026-03-04T09:10:00Z"
+    },
+    {
+      "id": "f-02",
+      "text": "The delay affected 18 of 240 test messages submitted between 09:05 and 09:24 UTC.",
+      "kind": "observed",
+      "required": true,
+      "occurred_at": "2026-03-04T09:24:00Z"
+    },
+    {
+      "id": "f-03",
+      "text": "All 18 affected test messages were eventually delivered by 09:41 UTC; none was lost.",
+      "kind": "observed",
+      "required": true,
+      "occurred_at": "2026-03-04T09:41:00Z"
+    },
+    {
+      "id": "f-04",
+      "text": "The maximum observed delivery delay was 27 minutes, compared with the five-minute test objective.",
+      "kind": "observed",
+      "required": true,
+      "occurred_at": "2026-03-04T09:41:00Z"
+    },
+    {
+      "id": "f-05",
+      "text": "A worker configuration change at 09:02 UTC reduced the synthetic queue polling concurrency from eight to two.",
+      "kind": "observed",
+      "required": true,
+      "occurred_at": "2026-03-04T09:02:00Z"
+    },
+    {
+      "id": "f-06",
+      "text": "The team restored polling concurrency to eight at 09:26 UTC; delivery delay returned below five minutes by 09:33 UTC.",
+      "kind": "observed",
+      "required": true,
+      "occurred_at": "2026-03-04T09:33:00Z"
+    },
+    {
+      "id": "f-07",
+      "text": "The configuration change and delay are temporally associated, but the available record does not prove sole causation.",
+      "kind": "observed",
+      "required": true,
+      "occurred_at": "2026-03-04T10:00:00Z"
+    },
+    {
+      "id": "f-08",
+      "text": "No production traffic or customer accounts were involved in this synthetic exercise.",
+      "kind": "observed",
+      "required": true,
+      "occurred_at": "2026-03-04T10:00:00Z"
+    },
+    {
+      "id": "f-09",
+      "text": "The synthetic on-call operator checked queue depth every five minutes until 10:00 UTC.",
+      "kind": "observed",
+      "required": false,
+      "occurred_at": "2026-03-04T10:00:00Z"
+    },
+    {
+      "id": "f-10",
+      "text": "Proposed: A proposed follow-up is to add a predeployment check that refuses polling concurrency below four.",
+      "kind": "proposed",
+      "required": false,
+      "occurred_at": "2026-03-04T10:00:00Z"
+    },
+    {
+      "id": "f-11",
+      "text": "The root cause remains unconfirmed pending a replay that varies concurrency while holding input volume fixed.",
+      "kind": "observed",
+      "required": true,
+      "occurred_at": "2026-03-04T10:00:00Z"
+    },
+    {
+      "id": "f-12",
+      "text": "The incident status was closed for response at 10:00 UTC, while cause investigation remained open.",
+      "kind": "observed",
+      "required": false,
+      "occurred_at": "2026-03-04T10:00:00Z"
+    }
+  ],
+  "sections": [
+    {
+      "id": "s-01",
+      "title": "Incident and impact",
+      "instruction": "Summarize timeline, scale, delay, and synthetic scope.",
+      "fact_ids": [
+        "f-01",
+        "f-02",
+        "f-03",
+        "f-04",
+        "f-08"
+      ],
+      "required_fact_ids": [
+        "f-01",
+        "f-02",
+        "f-03",
+        "f-04",
+        "f-08"
+      ]
+    },
+    {
+      "id": "s-02",
+      "title": "Response and status",
+      "instruction": "Describe configuration observation, response, restoration, and remaining causal uncertainty.",
+      "fact_ids": [
+        "f-05",
+        "f-06",
+        "f-07",
+        "f-09",
+        "f-11",
+        "f-12"
+      ],
+      "required_fact_ids": [
+        "f-05",
+        "f-06",
+        "f-07",
+        "f-11"
+      ]
+    },
+    {
+      "id": "s-03",
+      "title": "Next action",
+      "instruction": "Describe the proposed guard and the confirming replay without claiming completion.",
+      "fact_ids": [
+        "f-10",
+        "f-11"
+      ],
+      "required_fact_ids": [
+        "f-11"
+      ]
+    }
+  ],
+  "required_goals": [
+    {
+      "id": "g-fidelity",
+      "statement": "Preserve the exact scenario facts and their observed, proposed, assumed, or defined status.",
+      "acceptance": "Every factual assertion agrees with a relevant supplied fact; no changed actor, number, date, or status.",
+      "method": "Independent reviewer compares claims with the fixed fact ledger."
+    },
+    {
+      "id": "g-coverage",
+      "statement": "Cover all required facts and section purposes.",
+      "acceptance": "Each required fact appears accurately in an appropriate section and each section fulfills its instruction.",
+      "method": "Independent reviewer checks required fact IDs and section instructions against the output."
+    },
+    {
+      "id": "g-purpose",
+      "statement": "A reader can distinguish restored delivery from unresolved cause.",
+      "acceptance": "The document supports its stated reader decision or action within its declared scope.",
+      "method": "Independent reviewer assesses the fixed purpose and audience against the output."
+    },
+    {
+      "id": "g-no-invention",
+      "statement": "Do not add unsupported facts, outcomes, causal conclusions, or authority.",
+      "acceptance": "No material claim exceeds the supplied facts, including headings, lists, tables, and captions.",
+      "method": "Independent reviewer audits all factual text and planted negative assertions."
+    },
+    {
+      "id": "g-status",
+      "statement": "Keep observed results, proposed actions, assumptions, definitions, and unknowns distinct.",
+      "acceptance": "The output never presents a proposal as enacted, an assumption as observed, or an unresolved matter as settled.",
+      "method": "Independent reviewer classifies material assertions against source status and explicit unknowns."
+    }
+  ],
+  "negative_cases": [
+    {
+      "id": "n-01",
+      "fault": "wrong-valid-citation",
+      "target_fact_id": "f-02",
+      "mutated_assertion": "The monitor detected 18 delayed messages at 09:10 UTC and all were lost.",
+      "expected": "hold",
+      "criterion_ids": [
+        "g-fidelity",
+        "g-no-invention"
+      ]
+    },
+    {
+      "id": "n-02",
+      "fault": "number-mutation",
+      "target_fact_id": "f-02",
+      "mutated_assertion": "The delay affected 81 of 240 test messages.",
+      "expected": "hold",
+      "criterion_ids": [
+        "g-fidelity",
+        "g-no-invention"
+      ]
+    },
+    {
+      "id": "n-03",
+      "fault": "date-mutation",
+      "target_fact_id": "f-01",
+      "mutated_assertion": "The monitor first detected delay on 2026-03-05.",
+      "expected": "hold",
+      "criterion_ids": [
+        "g-fidelity",
+        "g-no-invention"
+      ]
+    },
+    {
+      "id": "n-04",
+      "fault": "unsupported-cause",
+      "target_fact_id": "f-07",
+      "mutated_assertion": "The concurrency reduction was the sole cause of the delay.",
+      "expected": "hold",
+      "criterion_ids": [
+        "g-fidelity",
+        "g-no-invention"
+      ]
+    },
+    {
+      "id": "n-05",
+      "fault": "conflict",
+      "target_fact_id": "f-03",
+      "mutated_assertion": "Nine affected test messages were permanently lost.",
+      "expected": "hold",
+      "criterion_ids": [
+        "g-fidelity",
+        "g-no-invention",
+        "g-status"
+      ]
+    },
+    {
+      "id": "n-06",
+      "fault": "heading-laundering",
+      "target_fact_id": "f-11",
+      "mutated_assertion": "Root cause confirmed: reduced polling concurrency.",
+      "expected": "hold",
+      "criterion_ids": [
+        "g-fidelity",
+        "g-no-invention"
+      ]
+    },
+    {
+      "id": "n-07",
+      "fault": "unknown-authority",
+      "target_fact_id": "f-10",
+      "mutated_assertion": "The follow-up concurrency guard is already mandatory policy.",
+      "expected": "hold",
+      "criterion_ids": [
+        "g-fidelity",
+        "g-no-invention",
+        "g-status"
+      ]
+    }
+  ]
+}

@@ -639,7 +639,7 @@ words, so no two gates can be compared; and a check that could not run — its
 binary absent, its input missing — exits 0 and reads as passed. Measured, not
 theoretical: the fourth consumer's end-to-end walk found a single default bar
 red-exiting a push on two unbaselined percentages, and its operator had
-learned to ignore the gate (racli `cmd/audit_cmd.go`, ADR-019 §3).
+learned to ignore the gate (consumer-c `cmd/audit_cmd.go`, ADR-019 §3).
 
 **The opinion.** A boundary names the ASSET it protects and takes its bar
 from that asset. Push protects the repository: only a finding that makes the
@@ -660,7 +660,7 @@ catalog, not a prose report, is the readiness answer.
 |---|---|
 | `cmd/constitution-lint` | the kit's own repository-boundary gate: one bar, because it guards exactly one asset; its `read-coverage` check (§17) is the skipped-is-not-passed half — an unreadable file fails the constitution rather than shrinking a count |
 | `foundations/quality/eval-gate` | what the kit has for a threshold today: `Gate{Threshold}` over weighted `Check{Passed, Weight}` — a score, not a severity, so it cannot carry two bars from one vocabulary, and it has no outcome for "did not run". Named so nobody reaches for it as this mechanism |
-| racli `cmd/audit`, `cmd/audit_cmd.go`, `lefthook.yml` | the mechanism as built, in the consumer: `Severity` (`fatal`/`major`/`data`/`improvement`) with `Blocking()` on the type; `Means` (`deterministic`/`model`); `Check.Fn` must return a finding when it cannot run; `TestCatalogAndImplementationsAgree` against a CUE catalog; `--fail-on` defaults by document — `fatal` for the base corpus (pre-push, `lefthook.yml`), `blocking` (`fatal` + `major`) for a tailored artifact (`--app`, the submission); a hook that cannot build the checker exits 1 |
+| consumer-c `cmd/audit`, `cmd/audit_cmd.go`, `lefthook.yml` | the mechanism as built, in the consumer: `Severity` (`fatal`/`major`/`data`/`improvement`) with `Blocking()` on the type; `Means` (`deterministic`/`model`); `Check.Fn` must return a finding when it cannot run; `TestCatalogAndImplementationsAgree` against a CUE catalog; `--fail-on` defaults by document — `fatal` for the base corpus (pre-push, `lefthook.yml`), `blocking` (`fatal` + `major`) for a tailored artifact (`--app`, the submission); a hook that cannot build the checker exits 1 |
 
 **STATUS: roadmap — consumer-carried.** Nothing in the kit carries the
 two-boundary shape; the row above is the consumer's, named by path. The

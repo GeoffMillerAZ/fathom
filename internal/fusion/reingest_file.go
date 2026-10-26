@@ -207,6 +207,11 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 		// there, not through the generic YAML extractor the extension names.
 		extExtractor, ok = p.toolExts[ToolGitLabCI]
 	}
+	if !ok {
+		if ae, _, aok := azurePipelineDispatch(relFile, content, idx); aok {
+			extExtractor, ok = ae, true
+		}
+	}
 	if !ok && (ext == ".yml" || ext == ".yaml") && connector.ClassifyDialect(dialectRules(), relFile, content).Dialect == "circleci" {
 		// .circleci/config.yml, as ingest's classifier sends it (LB-Q-circleci).
 		extExtractor, ok = p.toolExts[ToolCircleCI]

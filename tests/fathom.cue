@@ -1,4 +1,4 @@
-// SCAFFOLD — `surveyor init` wrote this #TestManifest for "fathom".
+// SCAFFOLD — the test kit's init command wrote this #TestManifest for "fathom".
 // It vets clean exactly as written, which is the point: adoption starts
 // from a declaration that PASSES and is not yet true, rather than a
 // template that fails until it is finished.
@@ -21,9 +21,9 @@ suites: {
 		runner: "go-test"
 
 		// inputs is this suite's TESTED BYTES and must be non-empty:
-		// ADR-0042's "tests are declared, never discovered" IS this floor,
+		// the testing standard's "tests are declared, never discovered" IS this floor,
 		// and a suite with no inputs fails `cue vet` rather than quietly
-		// globbing the tree. test-kit never looks inside — the shape is
+		// globbing the tree. The test kit never looks inside — the shape is
 		// whatever your executor keys on.
 		//
 		// Narrowed from the scaffold's "./..." to "./internal/..." (TC-M1,
@@ -41,7 +41,7 @@ suites: {
 
 		// tier "blocking" is the only default that cannot lie. An advisory
 		// suite nobody has to fix is a green gate proving nothing
-		// (ADR-0070) — and note #Tier has no "skipped" member: a test you
+		// (the test-first rule) — and note #Tier has no "skipped" member: a test you
 		// have stopped running is deleted, not hidden behind a vocabulary
 		// word that makes the manifest look complete.
 		tier: "blocking"
@@ -73,7 +73,7 @@ suites: {
 	}
 
 	// A conformance suite is reserved for PORT ADAPTERS, and it is where
-	// ADR-0003's "every port has a shared conformance suite" becomes
+	// the hexagonal rule "every port has a shared conformance suite" becomes
 	// machine-checkable: `port` is REQUIRED on class "conformance" and
 	// the file will not vet without it. Uncomment this block once this
 	// component has a port with more than one adapter behind it.

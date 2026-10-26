@@ -16,8 +16,8 @@ what is deployed and holds the deployed versions of each service's dependencies.
 instead of re-indexing, and expert knowledge is networked across services. He called it "fathom workspaces" and
 asked for names, a durable design, visuals, and a roadmap entry to prioritize later.
 
-How to read this file. Paths are repository-relative at fathom `1639b37c`. `pe:` is platform-engineering at
-`84f9d41`, and `rk:` is `pe:kits/review-kit/`. [J] marks a judgment. External facts carry a URL. Each diagram is
+How to read this file. Paths are repository-relative at fathom `1639b37c`. An adopting platform's records are
+cited by role, not by path. [J] marks a judgment. External facts carry a URL. Each diagram is
 mermaid and has a numbered prose reading under it, so the design reads without a renderer. This is the first
 mermaid in `docs/`: no `mermaid` fence exists at `1639b37c`. This file is the single glossary. The names rejected
 on 2026-10-11, and why, are in Appendix A, so they are not proposed again.
@@ -106,9 +106,9 @@ the daemon import its index as typed edges" (cmd/fathom/init.go:82). `fathom exp
 | basis **`unchecked`** | The caller named no expectation. The basis still names every `service@commit` served. The usual state for an agent over MCP | Untrustworthy data: the answer is exactly what the basis names |
 | basis **`uncommitted`** | A local daemon answered over bytes not yet committed. Same word as the anchor state (internal/receipt/anchor.go:42) | The binary's `dirty` build flag (cmd/fathom/version.go:85) |
 | **`behind N`** (caller side only) | The caller's git counts commits from the basis commit to the caller's commit (`git rev-list --count`) | A daemon-computed state. The daemon has no checkout, and listing a registry is a fetch (I56) |
-| **snapshot list** | An operator-named file listing the commits that have index snapshots. The caller uses it to pick the nearest one | A "catalog", which is taken twice (Review Kit's catalog; fathom's layer catalog, ADR.md:903) |
+| **snapshot list** | An operator-named file listing the commits that have index snapshots. The caller uses it to pick the nearest one | A "catalog", which is taken twice (the review kit's catalog; fathom's layer catalog, ADR.md:903) |
 | **`--cache-from` ingest** | Start a branch or PR index from an index snapshot. Files whose fingerprints match skip extraction, so a wrong cache costs time, never correctness, once IXS-M0b proves parity. Docker BuildKit's meaning (https://docs.docker.com/reference/cli/docker/buildx/build/) | A warm ingest (the measured 76 s same-checkout case). A cache-from ingest misses the stat gate and re-hashes every file |
-| **fact sheet** | Per service at one commit: its concern facts, stored as observations at ingest (WAE wave 2), plus joins computed at request time inside the one process that holds the snapshots (probe reaches DB, retry x timeout per hop, alert route, IAM reach), each with receipts and coverage. Nothing joined is stored. No grades | Precomputed joins (joins are computed at request time, ADR-058 decision 2). A risk score or a list of problems: Review Kit judges (ADR-055 decision 7); pe's `pdk/risk` owns tiers (pe:pdk/risk/model.go:10-15) |
+| **fact sheet** | Per service at one commit: its concern facts, stored as observations at ingest (WAE wave 2), plus joins computed at request time inside the one process that holds the snapshots (probe reaches DB, retry x timeout per hop, alert route, IAM reach), each with receipts and coverage. Nothing joined is stored. No grades | Precomputed joins (joins are computed at request time, ADR-058 decision 2). A risk score or a list of problems: the review kit judges (ADR-055 decision 7); the adopter's change-risk tierer owns tiers |
 | **registry** (the operator's) | The OCI registry or artifact store holding index snapshots | A fathom object. Not fathom's MCP tool registry (internal/mcp/server.go:121-122) |
 | **fleet** (unchanged) | Every service one daemon serves (domain.md:44-45) | The set of environment daemons. The `fleet` verbs do not apply to an environment daemon (section 1.1) |
 | **workspace** (unchanged) | Only the gitignored `workspace/` scratch convention | Anything in this feature |
@@ -172,7 +172,7 @@ operator (`oras push`/`oras pull`, cosign), per I56 and ADR-068 decision 7.
 | Auth inside fathom, or a non-loopback bind | the bearer path was built and deleted for zero use; auth is the operator's proxy (law 9 as amended, U1) | GKE-MH-7 (docs/plans/gke-module-host.md:94); SR-17 (docs/plans/surface-reckoning.md:33) |
 | Holding keys or verifying signatures | the operator's signer signs and verifies | ADR-068 decision 7 (ADR.md:4582-4586) |
 | Index snapshots as evidence | a point-in-time claim leaves as a receipt re-derived at that commit | ADR-068 (ADR.md:4617); section 4.4 |
-| A gate verb, a grade or a risk score | Review Kit admits; pdk/risk tiers | ADR-063 O2 (ADR.md:3976); ADR-055 decision 7 |
+| A gate verb, a grade or a risk score | the review kit admits; the adopter's change-risk tierer tiers | ADR-063 O2 (ADR.md:3976); ADR-055 decision 7 |
 | `publish`, `pull`, `push`, `sync`, `swap` or `reload` verbs | they over-claim what fathom does, or already mean something (section 9.3) | naming decision, 2026-10-11 |
 | A watch on the lineup file, a reload endpoint or a control socket | the dispatch non-goal: fathom "never watches, schedules, retries" | docs/intent/scope/non-goals.md:27 |
 | A name, registry or control plane for the set of daemons | nothing acts on the set | section 1.3 |
@@ -207,7 +207,7 @@ decision 7, with IM-X2's reopen clause cited. If the owner rules it attach, phas
 | Environment daemon | a Kubernetes Deployment, one per lineup; each pod runs the authenticating proxy beside the daemon | operator | `serve-http --read-only --lineup` |
 | Read-only sidecar | beside one job: a review runner or an incident agent | the job's owner | the same mode, loopback only |
 | Local daemon | a developer's machine | the developer | writable; own repo plus imported dependency snapshots |
-| CD gate | Review Kit `admit` (rk:README.md:57) | operator | answers with a basis, and receipts |
+| CD gate | the review kit `admit` | operator | answers with a basis, and receipts |
 
 One delivery owner: the init container in the pod that will serve the files. The deploy job never reaches inside
 a pod, and there is no control socket.
@@ -232,7 +232,7 @@ flowchart LR
     PX["authenticating proxy"]
     ED["environment daemon<br/>serve-http --read-only --lineup"]
   end
-  RK["Review Kit admit<br/>CD gate, prod side"]
+  RK["the review kit admit<br/>CD gate, prod side"]
   IR["incident responders<br/>and agents over MCP"]
   DEV["developer local daemon<br/>own repo plus imported snapshots"]
   R1 -->|merge| E
@@ -243,7 +243,7 @@ flowchart LR
   GO -->|"lineup change: rolling update"| INIT
   REG --> INIT
   INIT -->|"files on the pod volume"| ED
-  REG -->|"env-kit or oras pull"| DEV
+  REG -->|"the environment kit or oras pull"| DEV
   RK --> PX
   IR --> PX
   PX -->|loopback| ED
@@ -336,7 +336,7 @@ Reading:
 sequenceDiagram
   autonumber
   participant CI as Operator CI
-  participant RK as Review Kit admit
+  participant RK as the review kit admit
   participant PX as Proxy
   participant ED as fathom-prod
   Note over CI: candidate payments@c3c3c3, prod runs payments@d4e5f6
@@ -363,17 +363,17 @@ Reading:
 2. The prod side is the environment daemon: who calls the candidate's changed routes and contract keys at their
    deployed commits, and whether the routes the candidate calls exist in the dependencies prod runs. These are
    cross-service answers, so they need every prod service in one store.
-3. Review Kit learns L before it asks: it reads the lineup file at the GitOps commit the gate runs against and
+3. The review kit learns L before it asks: it reads the lineup file at the GitOps commit the gate runs against and
    hashes its bytes. It sends `X-Fathom-Expect-Lineup: prod@L` (section 4.3).
 4. If the daemon serves L, the basis is `exact`. If a lineup change happened mid-gate, the basis is `differs`, and
-   Review Kit compares per service: every `service@commit` the answer read against L's entry. A lineup change to
+   the review kit compares per service: every `service@commit` the answer read against L's entry. A lineup change to
    a service the answer did not read does not matter.
 5. At the organization illustration (50 services, 4 deploys a day each), prod sees about 200 lineup changes a
    workday, about one every 2.4 minutes. A whole-lineup comparison would fail open often. The per-service
    comparison fails open only when a service the answer read moved twice within one gate [J]; WAE-M7 counts it
    against a bar (section 11).
-6. Review Kit compares and judges. Fathom has no gate verb (ADR-063 O2). A rollback to an evaluated commit and a
-   pdk/risk T3 break-glass admit too (pe:pdk/risk/model.go:14).
+6. The review kit compares and judges. Fathom has no gate verb (ADR-063 O2). A rollback to an evaluated commit and the
+   change-risk tierer's break-glass tier admit too.
 
 ### 3.6 Incident investigation
 
@@ -415,7 +415,7 @@ Reading:
 flowchart TB
   LIN["prod.lineup.cue<br/>which commits prod runs"]
   REG[("Operator registry")]
-  PULL["env-kit devenv or oras pull<br/>operator tooling, never fathom"]
+  PULL["the environment kit devenv or oras pull<br/>operator tooling, never fathom"]
   LIN --> PULL
   REG --> PULL
   subgraph laptop["Developer machine"]
@@ -452,7 +452,7 @@ Reading:
 | TypedEdgeEpoch | `"5"` | internal/fusion/typedcalls.go:1565 | no: change 1 |
 | Format version | `PRAGMA user_version`, `1` for store format v0 | docs/spec/store-format-v0.md:81 | no: change 1 |
 | Config digest | sha256 over the repository's fathom configuration that changes extraction (`.fathom/` config and ignore files) [J] | | no: change 13 |
-| env.lock digest | sha256 of `.envkit/env.lock`, which names the fathom release and the toolchain the typed pass uses | pe:kits/env-kit/README.md:150 | no: `export snapshot --env-lock <path>` [J] |
+| env.lock digest | sha256 of the environment kit's `env.lock`, which names the fathom release and the toolchain the typed pass uses | the environment kit | no: `export snapshot --env-lock <path>` [J] |
 
 The cache key's value is the sha256 of the components as canonical JSON. Bases and logs show its first six hex
 digits (`cache key 9e41c2`) [J].
@@ -544,7 +544,7 @@ services: {
 
 Rules:
 - The lineup is the operator's file. Fathom reads it once, at start, and writes nothing back.
-- The lineup digest is the sha256 of the file's bytes as committed. Review Kit computes it from the GitOps commit
+- The lineup digest is the sha256 of the file's bytes as committed. The review kit computes it from the GitOps commit
   it gates against; the daemon computes it from the mounted file. Both read the same bytes [J].
 - Service names are the lineup's keys. They map repo identity to a local name, which fixes today's basename
   collisions across a fleet (cmd/fathom/serviceident.go:27-46).
@@ -578,8 +578,8 @@ Text form: `basis: exact payments@d4e5f6 (lineup prod@7b7b2c, cache key 9e41c2)`
 growth. Not through `as_of`, which names an instant for validity windows (internal/mcp/asof.go:3-9). Instead [J]:
 - **HTTP headers**, following the existing `X-Fathom-Origin` header, which "carries the caller's channel identity
   to the daemon" (cmd/fathom/origin.go:12-14; read at cmd/fathom/servehttp.go:467; CHANGELOG.md:1585):
-  `X-Fathom-Expect-Lineup: prod@<digest>` and `X-Fathom-Expect-Commit: payments@<commit>` (repeatable). Review
-  Kit's adapter sets them per request. The proxy passes them through (section 6.2).
+  `X-Fathom-Expect-Lineup: prod@<digest>` and `X-Fathom-Expect-Commit: payments@<commit>` (repeatable). The review
+  kit's adapter sets them per request. The proxy passes them through (section 6.2).
 - **A CLI flag** for the CLI's own calls, `--expect-commit <service@commit>`, beside the existing
   `review --expect-index-watermark` (cmd/fathom/review.go:64).
 - **Nothing**, for stdio MCP and for agents. Their answers read `unchecked`, with the basis naming what was
@@ -614,7 +614,7 @@ Reading:
 | Release tags | as deployed commits, below [J] | the operator's registry policy |
 | Deployed commits | any commit a current lineup names, always; 90 days after a later lineup moved off it; then one per service per month | the operator's registry policy (owner ruling D13) |
 | PR heads | never published; the CI run's scratch store | CI |
-| Developer imports | the developer's cache, same rule as main | env-kit or the developer |
+| Developer imports | the developer's cache, same rule as main | the environment kit or the developer |
 
 **What retention is for.** Two uses [J]:
 - Rollback gates. A rollback names an older commit; its snapshot must exist for the gate's prod side and for the
@@ -651,8 +651,8 @@ mismatch blocks publishing until fixed.
 | Level | Meaning | Check | Owner |
 |---|---|---|---|
 | exact | every service the answer read is at the commit the caller expected | the answer basis; `review --expect-index-watermark` (cmd/fathom/review.go:64) | fathom |
-| complete | every fact kind a bundle requires is present at a version it accepts | `version --json` plus the fact-kind list in the snapshot (changes 1, 8) | fathom reports; Review Kit decides |
-| evaluated | Review Kit recorded an evaluation at that commit | Review Kit | Review Kit |
+| complete | every fact kind a bundle requires is present at a version it accepts | `version --json` plus the fact-kind list in the snapshot (changes 1, 8) | fathom reports; the review kit decides |
+| evaluated | the review kit recorded an evaluation at that commit | the review kit | the review kit |
 | lineup-current | the daemon serves the lineup digest the caller named; otherwise the caller compares per service | the basis's lineup digest and per-service commits | fathom reports; the caller compares |
 | dependency-fresh | each dependency's entry is the commit its declaration names | the deploy job resolves entries from declarations; the freshness column shows each entry's age and `resolved_from` (change 12) | the operator's deploy job [J] |
 
@@ -664,11 +664,11 @@ lineup. Dependency freshness is the deploy job's contract, and the freshness col
 - ExtractorEpoch is `"62"` (internal/fusion/extractor_epoch.go:693). It was 39 at v0.9.0 and 52 at v0.10.0.
   29 commits since 2026-09-11 changed it, 22 of them since 2026-10-01 (`git log -G 'const ExtractorEpoch'` at
   `1639b37c`). Every bump re-extracts every file.
-- A cached snapshot helps only when producer and consumer run the same fathom release. env-kit's `env.lock` names
+- A cached snapshot helps only when producer and consumer run the same fathom release. The environment kit's `env.lock` names
   that release for CI and developers (owner ruling D7). Without it, IXS-M2's hit rate is near zero [J].
 - Fallback, only if IXS-M2 reads under 0.5 with the release locked: per-extractor epoch salts (F73).
 - Upgrading fathom on an environment daemon: snapshots in one lineup may come from different fathom releases.
-  Each answer's basis names its cache key, and Review Kit's `complete` check refuses a fact at a version it does
+  Each answer's basis names its cache key, and the review kit's `complete` check refuses a fact at a version it does
   not accept. The operator either re-exports every commit a lineup names on an `env.lock` bump (section 8 prices
   it) or serves mixed versions with bases naming them. Question 9.
 
@@ -754,8 +754,8 @@ any daemon serves a second team, they are keyed per lineup (change 7).
 
 | Failure | What callers see | Behaviour | Who acts |
 |---|---|---|---|
-| Environment daemon down during a deploy gate | no prod-side answer | fail-open: admit with a recorded `evidence: unavailable`, evaluation follows. A rollback to an evaluated commit and a pdk/risk T3 break-glass admit | the operator restarts the pod; WAE-M7 counts fail-open admissions |
-| A lineup change during a gate | basis `differs` | Review Kit compares per service; re-asks once if a service it read moved; fails open only if it moved again | Review Kit; WAE-M7 |
+| Environment daemon down during a deploy gate | no prod-side answer | fail-open: admit with a recorded `evidence: unavailable`, evaluation follows. A rollback to an evaluated commit and the change-risk tierer's break-glass tier admit | the operator restarts the pod; WAE-M7 counts fail-open admissions |
+| A lineup change during a gate | basis `differs` | the review kit compares per service; re-asks once if a service it read moved; fails open only if it moved again | the review kit; WAE-M7 |
 | Environment daemon down during an incident | MCP calls fail at the proxy | fall back to a read-only sidecar from the same lineup on any machine with the files (same answers, same basis), then a local daemon with imports, then the forge at the deployed commit. The daemon is stateless: a restart recomposes from files | operator |
 | Stale dependency: the lineup lags prod | answers `exact` against a lagging lineup | the freshness column shows each entry's age and `resolved_from`; fathom cannot see a missed deploy | the operator's deploy job |
 | A deployed commit has no snapshot | the deploy job keeps the previous entry for that service and logs it | the lineup lags for that service; the freshness column shows it | the operator republishes (a cold ingest at that commit) |
@@ -767,7 +767,7 @@ any daemon serves a second team, they are keyed per lineup (change 7).
 | Parity mismatch | publishing blocked | nothing is published until fixed (IXS-M0b) | fathom |
 | Registry unreachable | the operator's delivery fails | CI falls back to a cold ingest (299.3 s on fathom); the running pod keeps serving, and a new pod stays unready; developers keep their imports. Fathom never waits on the registry, because it never fetches | operator |
 | A new fathom release in `env.lock` | cache hits drop for one build per service | one cold-cost build per service, then hits return | the operator moves `env.lock` deliberately |
-| Mixed fathom releases in one lineup | older snapshots lack newer fact kinds | bases name each cache key; Review Kit's `complete` check refuses an unaccepted version | the operator re-exports |
+| Mixed fathom releases in one lineup | older snapshots lack newer fact kinds | bases name each cache key; the review kit's `complete` check refuses an unaccepted version | the operator re-exports |
 | A deploy during an incident | bases change lineup digest | the start log says `serving lineup prod@<digest>`; the operator may hold deploys (a freeze is the operator's) | operator |
 | Disk full during a compose | the new pod fails | the old pod keeps serving | the operator sizes the pod volume at the lineup's snapshots plus the composed store [J] |
 | Proxy misconfigured | exposure | IXS-M8 before launch; the mutating and spending routes are off in this mode | operator |
@@ -820,19 +820,19 @@ Changes 1 to 12 are assessment 2 section 9, renamed. Changes 13 to 15 are new he
 
 | Piece | Owner | Notes |
 |---|---|---|
-| Publisher job: clean-checkout ingest with `--cache-from`, `export snapshot`, sign, push | the operator's CI; a plain GitHub Actions job first | not ci-kit: "a library and a set of ports", `cmd/ci` deliberately empty (pe:kits/ci-kit/README.md:3-6). A move into ci-kit needs a pe-side scope record |
+| Publisher job: clean-checkout ingest with `--cache-from`, `export snapshot`, sign, push | the operator's CI; a plain GitHub Actions job first | not the CI kit: "a library and a set of ports", with no binary of its own. A move into the CI kit needs an adopter-side scope record |
 | Registry, retention policy, referrers | the operator | OCI referrers recommended |
 | Signing and signature verification | the operator's signer; the pod's init container verifies | ADR-068 decision 7 |
-| Delivery into the pod and onto developer machines | the operator: the pod's init container; env-kit devenv for developers | `oras pull` and verify |
+| Delivery into the pod and onto developer machines | the operator: the pod's init container; the environment kit devenv for developers | `oras pull` and verify |
 | The deploy job: resolve declarations, write the lineup into GitOps, keep a service's previous entry when its snapshot is missing | the operator | section 3.4 |
 | The rolling update, readiness probe and progress deadline | the operator's Kubernetes Deployment | section 3.4 |
 | Authenticating proxy | the operator | contract in section 6.2 |
-| Review Kit `admit`, the expect headers, the per-service comparison, the `index_commit` check and the `fathom-facts` adapter | Review Kit | pe records drafted as Proposed |
-| Image digest to commit | image-kit, bake path only; the apko path records no provenance (pe:docs/adr/0115-image-kit-ci-signs-keyless-or-by-key-without-a-public-log.md:51-56) | the lineup can come from GitOps declarations instead |
-| The fathom release lock | env-kit `env.lock` (pe:kits/env-kit/README.md:150) | owner ruling D7 |
-| Change-risk reasons | pe `pdk/risk` | fathom deltas become named reasons |
+| the review kit `admit`, the expect headers, the per-service comparison, the `index_commit` check and the `fathom-facts` adapter | the review kit | pe records drafted as Proposed |
+| Image digest to commit | the image kit, provenance-recording build path only; other paths record no provenance | the lineup can come from GitOps declarations instead |
+| The fathom release lock | the environment kit's `env.lock` | owner ruling D7 |
+| Change-risk reasons | the adopter's change-risk tierer | fathom deltas become named reasons |
 | A merge-ahead bot | the operator's CI, only on IXS-M6 KEEP | intersects `blast_radius` across open PRs; fathom stores nothing |
-| CI Kit | later, only after a pe-side scope record | |
+| the CI kit | later, only after an adopter-side scope record | |
 
 ### 9.3 Facts found while writing this design
 
@@ -855,7 +855,7 @@ Changes 1 to 12 are assessment 2 section 9, renamed. Changes 13 to 15 are new he
 - "Index snapshot" is already fathom's word for this concept (I56, F27, ADR-061 K5, ADR-068, vision 38:165), and
   "published" is the top expert-module readiness level (cmd/fathom/module_doctor.go:31).
 - Fathom has no CI runner: no `.github/workflows` at `1639b37c`, and docs/intent/scope/boundaries.md:39-40 says
-  so. The first producer is a platform-engineering repository, which has workflows, unless fathom adds one.
+  so. The first producer is an adopting platform's repository, which has workflows, unless fathom adds one.
   Question 5.
 - Line drift since the drafts were read at `c39875f3`: `newFleetAdapter` is now at
   cmd/fathom/servehttp_store.go:183; the refresh queue at :166-174; RT-M1 at docs/plans/responsible-tenant.md:251;
@@ -921,7 +921,7 @@ with a law 6 stamp file" means a consumer session whose activation step wrote a 
 |---|---|---|---|---|
 | IXS-M0 | In CI from a clean checkout, over 20 commits: wall time of cold, warm and cache-from (copy and remap of main's index, no code change) ingests; medians of cache-from over warm and over cold | cache-from median at most 0.6x cold | above 0.6x cold: F27 stays deferred, and phases 1 and 2 do not start | 0 |
 | IXS-M0b | Across 10 commits, a digest over the portable derived tables of a `--cache-from` ingest equals a cold ingest at the same commit | 10 of 10 equal | a mismatch unfixed after two waves: `--cache-from` and `export snapshot` are deleted under a `gone:` row | 1 |
-| IXS-M1 | `--cache-from` wall time over warm, median of 20 merges in the same CI environment, on fathom and one platform-engineering repository | at most 1.3x warm | above 0.6x cold: F27 stays unpromoted and the publish job stops | 2 |
+| IXS-M1 | `--cache-from` wall time over warm, median of 20 merges in the same CI environment, on fathom and one platform monorepo | at most 1.3x warm | above 0.6x cold: F27 stays unpromoted and the publish job stops | 2 |
 | IXS-M2 | Same-release cache hit rate over 30 days with the release locked in `env.lock` | at least 0.5 | under 0.2: sharing stops. Between 0.2 and 0.5: F73 is considered | 2 |
 | IXS-M3 | A hostile sweep of every MCP tool, bare `/rpc`, every named surface, the auto-refresh path, the observatory routes, and `/reload`, `/route` and the wiring apply and undo routes by name leaves the snapshot bytes unchanged and calls no provider; one consumer's read-only sidecar session is recorded with a law 6 stamp file | both | no such session within 60 days: `--read-only` and the recipe are deleted with a `gone:` row (the SR-17 precedent). A changed byte or a provider call is a defect that blocks | 3 |
 | IXS-M4 | A second team uses an environment daemon for four weeks | four weeks of use | no second team named within 90 days of phase 5's exit | 5 |
@@ -1003,7 +1003,7 @@ ADR-069 landed them as decision 11 (draft 7), 12 (draft 8), 7 (draft 9), 13 (dra
    `--cache-from` its merge-base's snapshot; a worktree stays its own service (I30 unchanged). An overlay store
    keyed by ref waits on IXS-M5.
 9. *Deploy state is a declaration.* A per-call `--deployed/--previous`, a GitOps repository indexed as a
-   service, an operator-named image provenance file (image-kit's bake path; the apko path records none), or a
+   service, an operator-named image provenance file (a provenance-recording build path; a path such as apko records none), or a
    lineup the operator's deploy job writes, which an environment daemon reads once at start. A lineup change is
    a new daemon start (a rolling update), not an event pushed into fathom. Nothing about a deploy is stored; the
    start log is an operational log, never a served timeline (IM-X4). Attach stays refused (IM-X2). Whether a
@@ -1174,11 +1174,11 @@ Index line:
 4. **Which environment first?** [J] Staging first proves lineup changes and the proxy with less at stake; prod is
    the owner's goal. Either way, one lineup first.
 5. **First producing repositories for phase 2.** Fathom has no CI runner (docs/intent/scope/boundaries.md:39-40).
-   Start with one platform-engineering repository, or add a GitHub Actions workflow to fathom first?
+   Start with one adopting platform's repository, or add a GitHub Actions workflow to fathom first?
 6. **`read_source` on an environment daemon.** Allow an operator-mounted read-only git mirror per service (full
    incident value, more exposure), or serve derived facts and anchors only?
 7. **Lineup schema home.** In fathom's `schema/lineup/` (recommended: the reader owns the contract), or in
-   platform-engineering?
+   the adopter's platform repository?
 8. **How a lineup change happens.** (a) A rolling update (recommended): no new verb, no socket, no endpoint; a full
    compose per change. (b) Only if IXS-M7's compose bar fails: an in-place change, the daemon composing the new
    lineup beside the old and switching; it needs a verb that is not `reload` (for example `fathom lineup apply`)
@@ -1292,20 +1292,20 @@ collided with a defined fathom term. Recorded so they are not proposed again:
   launchctl bootout plus bootstrap (cmd/fathom/daemon_lifecycle.go); serve-http already serves a `POST /reload`
   stub; SIGHUP is an exit signal (cmd/fathom/servehttp_lifecycle.go:268). No reload verb or signal is added.
 - **"published list"**: renamed snapshot list with the noun.
-- **"concern sheet"**: reads as a list of problems; fathom states facts, and judging is Review Kit's job. Also
+- **"concern sheet"**: reads as a list of problems; fathom states facts, and judging is the review kit's job. Also
   rejected: "risk sheet", "scorecard", "hazards", "shoals" (each claims a grade). "Fact sheet" was accepted
   despite SAP LeanIX's "Fact Sheet", an enterprise-architecture product term; the fallback is "facts" (question 3).
 - **"stations", "folio", "chartroom", "chart", "lightship"**: taken in the same domain or reads as Helm, which
   fathom extracts.
-- **sounding, datum, survey, muster, lighthouse, roster**: taken by platform-engineering's kits and records.
+- **six further nautical names**: taken by sibling tools' kits and records.
 - **harbor, atlas, tide, anchor, mirror, port**: CNCF Harbor, MongoDB Atlas, Prow Tide, fathom's receipt anchors,
   git mirrors, network ports and ports-and-adapters. Bare "snapshot" also stays rejected: always "index snapshot".
 - **"deployed indexes", "deployed index"**: omits CI sharing and cache-from, shares a name with Vertex AI's
   `DeployedIndex`, and an index is a file while the instance is a server.
 - **"shared indexes"**: a JetBrains feature, and fathom's brief already calls the local daemon "a shared index".
 - **"prebuilt indexes", "environment indexes", "release indexes"**: each covers only half the feature, or clashes
-  with env-kit or fathom's own releases.
-- **"lockfile", `fathom.lock`**: env-kit's `env.lock` already names the fathom release, and a lockfile implies a
+  with the environment kit or fathom's own releases.
+- **"lockfile", `fathom.lock`**: the environment kit's `env.lock` already names the fathom release, and a lockfile implies a
   resolver; fathom resolves nothing.
 - **"manifest", "workspace manifest"**: Kubernetes and OCI manifests (which fathom indexes), fathom's platform
   manifest (cmd/fathom/genmanifest.go) and the expert-module manifest. Chosen: lineup.
@@ -1321,8 +1321,8 @@ collided with a defined fathom term. Recorded so they are not proposed again:
 - **`--base`**: taken by `ingest-diff --base <ref>`.
 - **"index key"**: already a symbol's key (internal/testrun/candidates.go:35).
 - **`charted`, `uncharted`**: hides the no-expectation case. **`ancestor+n`**: git says "behind".
-- **"catalog"**: taken by Review Kit's catalog and fathom's layer catalog. Chosen: snapshot list.
+- **"catalog"**: taken by the review kit's catalog and fathom's layer catalog. Chosen: snapshot list.
 - **"operator host", "loopback sidecar"**: chosen instead: environment daemon and read-only sidecar.
 - **A name for the set of daemons**: there is no object to name (section 1.3).
-- **"lineup"** was accepted: no fathom or platform-engineering hits and no dev-tool product found; the nearest is
+- **"lineup"** was accepted: no fathom or sibling-tool hits and no dev-tool product found; the nearest is
   LineUp.js, a ranking visualization library in another domain.

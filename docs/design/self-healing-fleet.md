@@ -176,7 +176,7 @@ On `/observatory` and `/observatory/service`, each remedy currently renders
 as a command string. It becomes:
 
 ```
-┌─ planning · grade C ──────────────────────────────────────┐
+┌─ svc-m · grade C ──────────────────────────────────────────┐
 │  Missing: CLAUDE.md stanza, verify pre-push hook           │
 │                                                            │
 │  [ Preview changes ]                                       │

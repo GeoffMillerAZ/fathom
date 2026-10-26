@@ -178,3 +178,36 @@ func noteFor(notes []Note, key string) (Note, bool) {
 	}
 	return Note{}, false
 }
+
+func TestResolveBudget_FloorOnPressureNote(t *testing.T) {
+	for _, tc := range []struct {
+		config string
+		want   PressureLevel
+	}{
+		{"", PressureWarn},
+		{"normal", PressureNormal},
+		{"warn", PressureWarn},
+		{"critical", PressureCritical},
+	} {
+		t.Run(tc.config, func(t *testing.T) {
+			b, notes := ResolveBudget(Config{Host: HostConfig{FloorOnPressure: tc.config}}, HostFacts{RAM: 32 * GiB, Managed: true})
+			if b.Host.FloorOnPressure != tc.want {
+				t.Fatalf("floor_on_pressure = %s, want %s", b.Host.FloorOnPressure, tc.want)
+			}
+			n, ok := noteFor(notes, "floor_on_pressure")
+			if !ok || n.Value != tc.want.String() || !strings.Contains(n.Derivation, "[tenancy.host] floor_on_pressure") {
+				t.Fatalf("floor_on_pressure note = %+v, found %v", n, ok)
+			}
+		})
+	}
+}
+
+// TestResolveBudget_NormalIsFloorOnly: "normal" is a floor_on_pressure value
+// only; on shed_on_pressure or refuse_on_pressure it would hold a rung at any
+// pressure, so it resolves as an unknown name there (never triggers).
+func TestResolveBudget_NormalIsFloorOnly(t *testing.T) {
+	b, _ := ResolveBudget(Config{Host: HostConfig{ShedOnPressure: "normal", RefuseOnPressure: "normal"}}, HostFacts{RAM: 32 * GiB, Managed: true})
+	if b.Host.ShedOnPressure == PressureNormal || b.Host.RefuseOnPressure == PressureNormal {
+		t.Fatalf("shed %s, refuse %s: normal must not resolve outside floor_on_pressure", b.Host.ShedOnPressure, b.Host.RefuseOnPressure)
+	}
+}

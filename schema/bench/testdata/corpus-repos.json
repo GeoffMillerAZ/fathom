@@ -1,0 +1,37 @@
+[
+  {
+    "name": "KhronosGroup/SPIRV-Cross (shaders)",
+    "url": "https://github.com/KhronosGroup/SPIRV-Cross",
+    "ref": "vulkan-sdk-1.4.363.0",
+    "sha": "f11ba9f0b21ba8fc15153d50a2a1ae31ab1cf8f7",
+    "licence": "Apache-2.0",
+    "sparse": [
+      "/shaders/",
+      "!*.asm.*",
+      "!*.invalid.*"
+    ],
+    "idioms": [
+      "compiler regression shaders: every stage, #version 310 to 460, many extensions",
+      "subgroup, ray-query and buffer-reference code, preprocessor-heavy",
+      "user functions with in, out and inout parameters and array parameters"
+    ],
+    "notes": "The sparse pattern keeps shaders/ and drops the SPIR-V assembly (*.asm.*) and deliberately invalid (*.invalid.*) files; about 306 GLSL files remain, while 97 files under shaders/ are SPIR-V assembly that use the stage extensions (.asm.vert and the like), which no GLSL dialect reads and the pattern excludes (disclosed in the reading). LICENSE at the pin: Apache-2.0.\n"
+  },
+  {
+    "name": "ROCm/MIOpen",
+    "url": "https://github.com/ROCm/MIOpen",
+    "ref": "develop_deprecated",
+    "sha": "06977176afd94476c18d5290f21cb40745bb73a9",
+    "licence": "MIT",
+    "sparse": [
+      "/Jenkinsfile",
+      "/vars/"
+    ],
+    "only": [
+      "Jenkinsfile"
+    ],
+    "idioms": [
+      "a 727-line declarative pipeline that loads vars/utils.groovy (load \"vars/utils.groovy\" in a script block) and calls its methods on the returned object"
+    ]
+  }
+]

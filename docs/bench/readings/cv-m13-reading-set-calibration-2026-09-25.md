@@ -27,7 +27,7 @@ case that motivated this whole reading: it ran (72.7% of the function
 covered), but its three changed statements (`servehttp.go` lines 129-133,
 covering line 131, the O119 fix) never did — confirmed twice, once in the
 whole-suite merged profile and once in a `servehttp`-focused rerun. The
-weaker, less-tested sibling app `conjure` supplied the real negative
+weaker, less-tested sibling app `svc-f` supplied the real negative
 examples fathom's own diffs didn't have: of every disagreement its ablation
 table produced across three ranges (2 `attested`-but-uncovered items, 5
 `unreached` items — a complete hand-check, not a sample), both uncovered
@@ -37,12 +37,12 @@ hub test), and of the 5 `unreached` items, 2 were genuinely untested and 3
 were false negatives — dispatched through the standard library's
 `slog.Handler`, invisible to the graph. **For a reviewer, static reach alone was unreliable in both directions.**
 Its `unreached` verdict was wrong for 31 of 91 functions across the whole
-fathom head, and for 3 of the 5 items it flagged in conjure. Each of those
+fathom head, and for 3 of the 5 items it flagged in svc-f. Each of those
 functions ran, called by the standard library, the runtime or a package
 initializer, where the first-party graph cannot see. Its `attested` verdict
 says a passing test's call graph reaches the function, not that the run took
 that path: 168 of 4,534 never ran on fathom, and both of the two that never
-ran in conjure were false attestations through a hub test. That is why the
+ran in svc-f were false attestations through a hub test. That is why the
 reading set now prefers execution evidence (design §3.5; CV-M14 re-measured
 it).
 
@@ -67,7 +67,7 @@ never a shared store:
 1. **Fathom on itself**, two ranges chosen to match CV-M12's own dogfood
    ranges: `c75b70e8..4957b916` ("r1") and `5afeee42..78e508d3` ("r2"). Per
    range: `task tests:attest`'s exact shape (`go test -json ./...` piped
-   through test-kit's `surveyor go-test-json` adapter, commit-bound) for the
+   through the test kit's go-test-json adapter, commit-bound) for the
    attestation envelope
    (`method/attest.sh`); a second, separate `go test -json -coverpkg=./...
    -coverprofile=... ./...` run at the *same* head for execution truth
@@ -95,19 +95,19 @@ never a shared store:
    `cli-dispatcher-hop`) read off its nearest-attester path — the whole-head
    supplement below.
 
-2. **The `conjure` control**, a separate, less rigorously tested sibling app,
+2. **The `svc-f` control**, a separate, less rigorously tested sibling app,
    three ranges (`control/run_range.sh`, one call per range): `r1`
    `87ccb17..e9d0f2e`, `r2` `e9d0f2e..10efbe4`, `r3` `44fd5ae..e9d0f2e` (r3
    reuses r1's store, test run and coverage at their shared head e9d0f2e —
    `control/r3/README-reuse.txt`). Same attest-then-cover-then-conserve
-   shape, run with `GOFLAGS=-mod=vendor` (conjure commits `vendor/` and an
+   shape, run with `GOFLAGS=-mod=vendor` (svc-f commits `vendor/` and an
    older head's `replace => ../app-kit` doesn't resolve under `-mod=mod`).
    A second throwaway test, `TestCtlDumpClasses` (in a separate `ctl-fathom`
    checkout pinned to the same tool commit, `control/dump_ablate.sh`),
    dumps the baseline class per changed function plus five **edge-kind
    ablations** — the same classification with declared edge kinds excluded
    from the graph — each keyed to a fixed CLI-construction hub,
-   `conjure::internal/cli/app.app.newRoot`: `no_iface_dispatch`,
+   `svc-f::internal/cli/app.app.newRoot`: `no_iface_dispatch`,
    `no_func_value`, `no_dispatch_no_funcvalue` (both), `no_hub_out_edges`
    (the hub's own out-edges removed), and `no_hub_no_dispatch_no_funcvalue`
    (all three). `control/join_cover.py` joins each range's classes against
@@ -207,7 +207,7 @@ all) — every one reached through a mechanism outside the traced graph:
 | unconfirmed | 1 | `procRusageV2` (`cmd/fathom/rss_darwin.go:42`, darwin resource-usage probe, 75.0% covered, 0-hop) — the exact mechanism was not independently re-verified: its head commit is unreachable in the current checkout, and the file no longer exists under that name |
 | **total** | **31** | |
 
-## The conjure control
+## The svc-f control
 
 | range | raw changed | classified | attested | unreached | unindexed (vendor) |
 |---|---|---|---|---|---|
@@ -249,7 +249,7 @@ join — this reading did not re-query the (now-deleted) scratch store to
 confirm that inference directly.
 
 **Hub-test attribution.** In every range, one end-to-end CLI test attests
-nearly everything: `conjure::internal/cli/cli.TestAdoptBrew` is the
+nearly everything: `svc-f::internal/cli/cli.TestAdoptBrew` is the
 `attesting_test` for 53 of 54 attested functions in r1, 191 of 225 in r2,
 and 143 of 144 in r3 (`control/r{1,2,3}/classes-with-coverage.tsv`). r2's
 other 8 attesters carry single digits each (`TestScannerMetadataCannotIntroduceDeclarations`
@@ -349,7 +349,7 @@ the hub test are, structurally, the same story.
   This reading did not separately verify that none of the items above
   cross a process boundary.
 - **A weak control: few genuinely untested functions to catch.** Across
-  all three conjure ranges only 5 changed functions came back `unreached`
+  all three svc-f ranges only 5 changed functions came back `unreached`
   at all (0 in r1, 1 in r2, 4 in r3), against 54+225+144=423 `attested`.
   The 3-of-5 false-negative rate found by hand-checking those 5 is a
   small-sample result, not a broad-sample estimate of how often stdlib
@@ -388,7 +388,7 @@ count (CV-68), classifying each changed function `attested`/`partial`/
 (CV-69), falling back to static reach with a named reason when it isn't
 (CV-70), reconciling `changed` against classified-plus-`unanalyzed`
 (CV-71), joining test cases to symbols by package when a bare name is
-ambiguous (CV-72), and Review Kit's `refactoring.uncovered-behaviour`
+ambiguous (CV-72), and the review kit's `refactoring.uncovered-behaviour`
 gate reading the new classes (CV-73, cross-repo, skipped here). None of
 CV-67..73 is implemented; this reading measured the *current*
 static-reach-only classifier against coverage taken as a separate,
@@ -411,11 +411,11 @@ throwaway test-only script, not the production path.
 The scripts and result tables are committed beside this reading in
 [`cv-m13-method/`](cv-m13-method/README.md) (fathom side: `attest.sh`, `cover.sh`,
 `readingset.sh`, `join.py`, `wholejoin.py`, and the two throwaway
-`internal/conserve` dump tests as `.go.txt`; conjure side: `run_range.sh`,
+`internal/conserve` dump tests as `.go.txt`; svc-f side: `run_range.sh`,
 `dump_ablate.sh`, `join_cover.py`, `summarize.py`). Set `CVM13_DIR` to a scratch
 directory first. Per fathom range: `readingset.sh <clone> <base> <tag>`, `cover.sh
 <clone> <tag>`, `attest.sh <clone>`, then `join.py <tag> <base> <head>` / `wholejoin.py`.
-Per conjure range: `run_range.sh <tag> <base> <head>`, `dump_ablate.sh <tag> <base>
+Per svc-f range: `run_range.sh <tag> <base> <head>`, `dump_ablate.sh <tag> <base>
 <head> <storeTag>` per ablation variant, then `join_cover.py` and `summarize.py`
-(conjure needs `GOFLAGS=-mod=vendor`). On `operation not permitted` from the external
+(svc-f needs `GOFLAGS=-mod=vendor`). On `operation not permitted` from the external
 volume: `tccutil reset SystemPolicyRemovableVolumes com.mitchellh.ghostty`, then retry.

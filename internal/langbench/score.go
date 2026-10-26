@@ -48,6 +48,14 @@ const (
 	CntClangNotCalls       = "clang_not_calls"
 	CntScipDefsMacroNamed  = "scip_defs_macro_named"
 	CntClangBlindDefs      = "clang_blind_defs"
+	// Round 3 C (CUDA): compiler call sites written inside a #define body,
+	// left out as C's truth holds none, and the compiler's function
+	// definitions (clang-ast-defs' ranges, round 4 C4-R1) standing in for one
+	// the index writes no definition for, and of those the ones in an
+	// `extern "C"` linkage specification.
+	CntClangMacroBody      = "clang_calls_macro_body"
+	CntClangStandInDefs    = "clang_stand_in_defs"
+	CntClangStandInExternC = "clang_stand_in_extern_c"
 	// CntCallsInactive counts fathom's pairs written only on lines the build's
 	// preprocessor discards (SCIPOptions.ActiveLines, with ClangSites): left
 	// out of both counts, as a definition on such a line is.

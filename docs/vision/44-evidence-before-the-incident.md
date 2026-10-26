@@ -3,7 +3,7 @@
 Status: accepted 2026-10-11 (ADR-069) for the evidence plane, sections 2 to 4; the connection rule and the
 ports-and-adapters boundary, section 5, are accepted with it. Index snapshots are decided in shape and parked
 (`docs/design/index-snapshots.md`), and their environment daemon waits on the owner's answer to U1. The owner's note
-of 2026-10-11 asked for three things: fathom as the investigation and evidence engine behind Review Kit's
+of 2026-10-11 asked for three things: fathom as the investigation and evidence engine behind the review kit's
 well-architected, compliance and incident-prevention catalogs; fathom in real-time incident investigation, RCA and
 post-incident review, ultimately under an AI agent that mitigates; and indexes that CI/CD keeps fresh, that teams
 share instead of re-indexing, and that know about branches and deployments. A later question the same day asked
@@ -17,8 +17,8 @@ imported index snapshot (`import snapshot`), gated on a measurement and a named 
 
 Prevention and incident response are the same question at different commits: what does the code and config at
 commit C do on concern K? It is asked at PR time (the head), at deploy time (the deploying commit) and at page time
-(the deployed commit). Fathom answers it with facts and joins, anchored to git, with a coverage statement. Review
-Kit judges; pe's pdk/risk tiers the change; policy-kit owns resource and security rules. CI keeps the answer fresh
+(the deployed commit). Fathom answers it with facts and joins, anchored to git, with a coverage statement. The review
+kit judges; an adopting platform's change-risk tierer tiers the change; the policy kit owns resource and security rules. CI keeps the answer fresh
 by exporting an index snapshot per commit. An external agent acts.
 
 ## 2. What fathom does
@@ -42,15 +42,15 @@ by exporting an index snapshot per commit. An external agent acts.
 
 ## 3. What fathom does not do
 
-Grade, set severity, admit, tier a change, or hold the findings record (Review Kit, pdk/risk). Evaluate Kubernetes
-resource or security rules, or map frameworks (policy-kit, Kyverno until it ships). Fetch telemetry, cluster state,
+Grade, set severity, admit, tier a change, or hold the findings record (the review kit, the change-risk tierer). Evaluate Kubernetes
+resource or security rules, or map frameworks (the policy kit, Kyverno until it ships). Fetch telemetry, cluster state,
 deploy events or index snapshots. Execute, propose or record a mitigation. Operate a daemon for anyone, bind a
 non-loopback address, authenticate users, hold a key or verify a signature. Block a deploy when it is unavailable
 (the gate is fail-open). Build a second package graph, verifier or result format (ADR-063).
 
 ## 4. The loop that joins the three asks
 
-An incident's post-incident review produces a Review Kit requirement bound to a regression certificate
+An incident's post-incident review produces a review kit requirement bound to a regression certificate
 (`#FathomCertifyBinding kind: "incident"`) and, when the cause was invisible, a new fact kind. The next PR that would
 reintroduce the cause fails the ratchet. Prevention learns from incidents; incidents start from prevention's fact
 sheet.
@@ -89,9 +89,9 @@ under the two-wave limit.
 - **WAE wave 1** (war1): the $0 readings WAE-M0 and WAE-M1, and three defects: the findings importer hashes at the
   claimed revision (WAE-1), `version --json` carries the cache-key components (WAE-2), `read_source` reads at a
   commit (WAE-3).
-- **WAE wave 2** rides lf8 and starts only after Review Kit commits the bundle's requirements: concern facts
+- **WAE wave 2** rides lf8 and starts only after the review kit commits the bundle's requirements: concern facts
   stored and served, alert facts, the widened Kubernetes container facts with the planted-sentinel test.
-- **WAE waves 3 and 4** follow WAE-M2 KEEP: joins, fact receipts, proxy facts, and Review Kit's adapter as the
+- **WAE waves 3 and 4** follow WAE-M2 KEEP: joins, fact receipts, proxy facts, and the review kit's adapter as the
   consumer (WAE-M4).
 - **Index snapshots** are parked. Only the IXS-M0 timing reading and IXS-0 (the machine-local store fields, a
   defect fix) ride war1. The owner prioritizes the rest when ready, no earlier than war1 landing and RT-M1 reading;
@@ -136,3 +136,7 @@ Awaiting the owner (U1, a self-hosted, single-organization, read-only environmen
 narrowing, vision 38 section 7, the law 9 amendment with its vision 12 and vision 13 notes, P9's reinterpretation,
 F8's override and Q5's qualified answer. Their proposed texts are in `docs/assessments/2026-10-11-index-snapshots.md`
 section 10.2. Until U1 is answered, phase 5 (the environment daemon, F74) cannot start; phases 0 to 4 do not need it.
+
+Extended 2026-10-25 for platform engineering (GitHub issue #14): `docs/design/platform-engineering.md`, plan
+`docs/plans/platform-engineering.md` (PLT-), proposed: a per-subject fact receipt with a basis for a review kit and a
+readiness inventory, and a concern-delta file for a change-risk tierer, with no question map in fathom.

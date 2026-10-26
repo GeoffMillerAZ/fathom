@@ -1,0 +1,300 @@
+{
+  "version": "prose-lab.offline-support-review-qualification/1",
+  "date": "2026-10-25",
+  "base_commit": "307e7abca76727e66377307789ae356db0eb71bc",
+  "command_source_binding": "fa14dd8eb364294ae72b99c94650a9cf72cfd7ffc79df74b654df65aa9ca96ed",
+  "binding_rule": "SHA256 of UTF-8 compact JSON file array, sorted path order; keys path,sha256; no trailing newline",
+  "files": [
+    {
+      "path": "cmd/prose-lab/codec.go",
+      "sha256": "925459c2ba4da44317e557a7e8832597fde357e3041bf536c323500f06f9151f"
+    },
+    {
+      "path": "cmd/prose-lab/doc.go",
+      "sha256": "f1ec8da407e2a6802c6f01e87e035d60f07b75c779d219d773e5a7f71ea57fb3"
+    },
+    {
+      "path": "cmd/prose-lab/document_engine.go",
+      "sha256": "15515c1910c571057ebcfbcb1de572074a7b4f672f93d297add6ca993399dc32"
+    },
+    {
+      "path": "cmd/prose-lab/document_input.go",
+      "sha256": "995be4beec165094031a78488e349642aa93fab3f2a13cd28599bbc6713cb4b0"
+    },
+    {
+      "path": "cmd/prose-lab/document_length.go",
+      "sha256": "9677e052347e3fea4787eb84cc59f375c615a7e52c459f2e165e9156d6722d88"
+    },
+    {
+      "path": "cmd/prose-lab/document_length_oracle_test.go",
+      "sha256": "75868eafd8f4153107a320f79b850e9c9fb370f18d3d898ea5dee55cd57f8495"
+    },
+    {
+      "path": "cmd/prose-lab/document_length_test.go",
+      "sha256": "e4f5cf5022b3283478d105a22562e48e4f41d57b3c8bea73d276765ff7f5715c"
+    },
+    {
+      "path": "cmd/prose-lab/document_projection.go",
+      "sha256": "dde9af3160feef90fd5d365c85c05c628f035d57297e8c3755b4ec1e76279b52"
+    },
+    {
+      "path": "cmd/prose-lab/document_projection_test.go",
+      "sha256": "36b69ecbd946399b10c8a24cfb5ec280adb48ac35c6a78ddd5e39a03b3a762f3"
+    },
+    {
+      "path": "cmd/prose-lab/document_run.go",
+      "sha256": "22f907cbf1c7233d0baf8ff8b08b7ccbc0b72cb6a4079ff06e9d968f8fc800bc"
+    },
+    {
+      "path": "cmd/prose-lab/document_scope_acceptance_test.go",
+      "sha256": "9c81a0b0d108ba79992fd2c297ae4cc15f19cf7bc3dc0accb0d668de85aac4cb"
+    },
+    {
+      "path": "cmd/prose-lab/document_test.go",
+      "sha256": "3ccac684b3aa228a58437c35cdb6ac8b559d48d509dcb6faa746d7a850fa646e"
+    },
+    {
+      "path": "cmd/prose-lab/document_time_test.go",
+      "sha256": "15a6c4ac1d8d443f37a4ae868bed06026282cafe9219000963cbeb71147b48fc"
+    },
+    {
+      "path": "cmd/prose-lab/document_wire_compat_test.go",
+      "sha256": "83a771c552db35446eef851fc99f5a20550a38641de3b5f4571e969fe8fa6b7a"
+    },
+    {
+      "path": "cmd/prose-lab/ledger.go",
+      "sha256": "072cdd34eebf6d74b266e5d5b7483d3504f77a572c48b54e8e30a5796e2db66a"
+    },
+    {
+      "path": "cmd/prose-lab/ledger_test.go",
+      "sha256": "f71661dbd09daa75ba98553ded54f75fd16472df71e18bc389c6eebcf561bbeb"
+    },
+    {
+      "path": "cmd/prose-lab/main.go",
+      "sha256": "1b637717360be33b80e0a66bda3a23746f067cd2127041fadfdf09d035a92023"
+    },
+    {
+      "path": "cmd/prose-lab/main_test.go",
+      "sha256": "75f2326bc7156365f56edb24ebdf926cb0aa3c041ff84f01b50d20809a75b371"
+    },
+    {
+      "path": "cmd/prose-lab/provider.go",
+      "sha256": "dce3031c6f9946363841a69552be60f5a4e8e2424e28ab517d5a2a3e17e529a7"
+    },
+    {
+      "path": "cmd/prose-lab/provider_test.go",
+      "sha256": "1313afefb878e6cee6407ac539d741881ce1650b3840e2d487f1a8f388a425c6"
+    },
+    {
+      "path": "cmd/prose-lab/review.go",
+      "sha256": "62a7003b66c60c811f1dfe8182913b572d0db36c602d552cb678b051e698c069"
+    },
+    {
+      "path": "cmd/prose-lab/review_artifacts.go",
+      "sha256": "8d264d6e0f6adce8a8eae6d25a57a7265cc641f0213b086c3101c1940d78e857"
+    },
+    {
+      "path": "cmd/prose-lab/review_owner_test.go",
+      "sha256": "a54f3f479c6f925de624ce27a52d96ed74b126472e4cf34358c6e0b2e304be1d"
+    },
+    {
+      "path": "cmd/prose-lab/review_test.go",
+      "sha256": "89a20e1dff1d7eab3463fbb03b685fff771f4221a6774f8c2886f70d977bec24"
+    },
+    {
+      "path": "cmd/prose-lab/schema.cue",
+      "sha256": "5b45396e9c82f8695f886df95889fc5d9efeb6c3bee6220f89730102b2fa44a0"
+    },
+    {
+      "path": "cmd/prose-lab/schema_test.go",
+      "sha256": "a5041b5e814c07b2a308b4cb470fc7eb65917b8d2217dd6b8f9e9a7a8194b2a7"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/document-corpus/architecture-decision.json",
+      "sha256": "24cd254acb68fc83cb7be0f4a94b7ec7e8618dd1b86e966156310fbdc3129405"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/document-corpus/draft-service-agreement.json",
+      "sha256": "d6bdb30d84f91ff266568448b0224d4351edc88848ca4a4385c87934b1591010"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/document-corpus/freeform-brief.json",
+      "sha256": "2d834c244b49257fcf4ffa6357c994f0debd7e25338fb31dcfa1e2b840ddc4a1"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/document-corpus/incident-summary.json",
+      "sha256": "31d82d135d497595e3255893e4cfe13a7bba5a7d1d1428b7e1a71c18e91190f9"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/document-corpus/manifest.json",
+      "sha256": "f1d1f221e657b60aa0deebbf037ffa1d1d7bab6cfff6679e24b53d30d575b003"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/document-corpus/operational-runbook.json",
+      "sha256": "3bc6447dd6f63f68a1552a239d6047755750c196e03b20be35b690c5ab29c41e"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/document-corpus/technical-design.json",
+      "sha256": "07d8c50fba90b4919b113ddd6a4c6e415e931bfdb711151e0d91fc0778c1bd80"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/document-corpus-v2/architecture-decision.json",
+      "sha256": "4c69181f15ce6f71882d382d6e9b14f8011e09275b5073d78b2e2b0e1458fedb"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/document-corpus-v2/draft-service-agreement.json",
+      "sha256": "3af8dea670f27e7c718fd9a3ed6a51b1f49beb9f59a8e327daff006a82097a1b"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/document-corpus-v2/freeform-brief.json",
+      "sha256": "fa2badc3ddeeb9fdfe1b5cd1ff654bfad67950d645513bf9abc0bb082fb3941c"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/document-corpus-v2/incident-summary.json",
+      "sha256": "5d17443be186ca22b3fe7b001306890ffc045f86874b01dcd0a0a8fdef8a3299"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/document-corpus-v2/manifest.json",
+      "sha256": "1a73e75572a3b3c9668185d86848c6aaed78f8fd51a3e918144380fa101a5fa1"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/document-corpus-v2/operational-runbook.json",
+      "sha256": "e48443798221cd3bfb4525bf0f41be413ad30db307053c3c533fcaddb8d6eb65"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/document-corpus-v2/technical-design.json",
+      "sha256": "b6dc0c4fa61b217fd5784355f33a9d301f53c8a1dd4afa3a22edf3db7f288cf5"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/document-scopes/v2-length-goals.json",
+      "sha256": "41988f2f526415763d64faa7193e477f1370c56bfd2a0e269427dbbf0c004403"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/document-scopes/v2-support-review.json",
+      "sha256": "fe12741de1f91c0063a05172e4dd0e66bd580b40cf8afe937a4bd366086ecee8"
+    }
+  ],
+  "corpus_digest": "da99d1c025764c445967dd8d71c56e63992108feaa682d1ba81685155c0688bd",
+  "goal_scope_digest": "41988f2f526415763d64faa7193e477f1370c56bfd2a0e269427dbbf0c004403",
+  "review_scope_digest": "fe12741de1f91c0063a05172e4dd0e66bd580b40cf8afe937a4bd366086ecee8",
+  "cases": {
+    "total": 67,
+    "unsupported": 43,
+    "exact_supported": 12,
+    "paraphrase_supported": 6,
+    "synthesis_supported": 6
+  },
+  "fake_native": {
+    "calls": 67,
+    "local_synthetic_charge_micro_usd": 134,
+    "counterexamples": [
+      "false support",
+      "all-hold 24 false holds",
+      "inconclusive negative",
+      "missing final outcome full reservation",
+      "forged typed receipt retains known charge",
+      "reason write failure stops next call",
+      "wire mutation refuses before reservation or transport",
+      "settled failed and unknown outcomes remain distinct"
+    ]
+  },
+  "runner_provider_calls": 0,
+  "paid_cohort_frozen": false,
+  "independent_document_acceptance": false,
+  "publication_authority": false,
+  "ui_entry": false,
+  "exported_roots_changed": false,
+  "downstream_rerun": false,
+  "previous_consumer_evidence": "../2026-10-24-integration/receipt.json",
+  "focused_race": {
+    "command": "go test -race ./cmd/prose-lab -count=1",
+    "exit_code": 0,
+    "reported_package_seconds": 38.773,
+    "log_sha256": "bf8bebbc704f7b25c1295704fc47d86d9fe46cd6271e562f9b6c0ff58ec5be32"
+  },
+  "gate": {
+    "command": "task validate",
+    "exit_code": 0,
+    "elapsed_seconds": 67.889,
+    "log_sha256": "aee2c0439a0c8df4d9ece2233470b23f65482be6e1c7cd7dd1e8e82ba8cb7cce"
+  },
+  "native_coding_review": {
+    "model": "claude-opus-5-5",
+    "invocations": 2,
+    "cli_exit_codes": [
+      1,
+      1
+    ],
+    "cli_subtypes": [
+      "error_max_budget_usd",
+      "error_max_budget_usd"
+    ],
+    "ordinary_text_stop_reasons": [
+      "end_turn",
+      "end_turn"
+    ],
+    "ordinary_text_sha256": [
+      "98c4e7819daa5599d487ba9ecdfeee05b9236648b94e4f12723c07b0defaefae",
+      "f96a2b22c0f51cd528424340f83a594087cadb592323119c148286cb132db07e"
+    ],
+    "session_cumulative_usd": 0.8956596,
+    "invocation_deltas_usd": [
+      0.5236568,
+      0.3720028
+    ],
+    "scope": "partial source packets, static review only; completed ordinary text recovered separately from failed CLI invocations"
+  },
+  "fathom": {
+    "strict_gate_pass": true,
+    "indexed_commit": "b24369ab0c7c7f4199785e0dc42fe2d428e6b458",
+    "claimed_plan_rows": 2,
+    "total_plan_rows": 12,
+    "hp11_label": "verified",
+    "criteria": [
+      {
+        "detail": "runReviewWith at cmd/prose-lab/review.go:376",
+        "name": "symbol_present",
+        "status": "pass"
+      },
+      {
+        "detail": "verified (>= required verified)",
+        "name": "tier",
+        "status": "pass"
+      },
+      {
+        "detail": "5 test(s) statically reach it, e.g. agentic-kit::cmd/prose-lab/main.TestOwnerReviewFullNativeCohort",
+        "name": "test_reaches",
+        "status": "pass"
+      },
+      {
+        "detail": "no conflicting evidence",
+        "name": "no_contradiction",
+        "status": "pass"
+      },
+      {
+        "detail": "product entry point agentic-kit::cmd/prose-lab/main.main reaches it",
+        "name": "wired",
+        "status": "pass"
+      },
+      {
+        "detail": "no attested run in test_runs for TestOwnerReviewFullNativeCohort, TestOwnerReviewRefusesWeakerScopeBeforeEffects, TestReviewArtifactFailureStopsCohortAndReportsCharge, TestReviewCaptureNativeJournalOffline, TestReviewPrepareAndReportNoEffects (the tests that statically reach it); ingest a test-kit envelope with `fathom tests ingest --results`",
+        "name": "runtime_pass",
+        "status": "unknown"
+      }
+    ],
+    "runtime_attestation": "unknown; actual runtime evidence is the separately recorded task validate and race suite"
+  },
+  "precommit_gate": {
+    "command": "task validate",
+    "exit_code": 0,
+    "elapsed_seconds": 23.596,
+    "log_sha256": "cac89ec54eb4618f102b9ceed0e5d7fb31474c4c1f65ffda089eea87932f8319"
+  },
+  "implementation_commit": "b24369ab0c7c7f4199785e0dc42fe2d428e6b458",
+  "proof_record_gate": {
+    "command": "task validate",
+    "exit_code": 0,
+    "elapsed_seconds": 18.634,
+    "log_sha256": "bf29996d8b88bb330dc8dd5ba8ff409ca1eda81eae2a54fbe75c2600d8697937"
+  }
+}

@@ -317,6 +317,9 @@ type DialectImports struct {
 // default, which for relative-path and dotted-module is exactly the
 // pre-LB-F11 TypeScript/JavaScript and Python rule.
 type ImportParams struct {
+	// WholeBindings "namespace" keeps a whole-module import bound to its local
+	// prefix even for strategies whose default is to expose names unqualified.
+	WholeBindings string `json:"whole_bindings,omitempty"`
 	// SourceRoots are repo-relative directories a non-relative module is
 	// looked up under, in order ("" is the repo root).
 	SourceRoots []string `json:"source_roots,omitempty"`
@@ -646,6 +649,9 @@ func checkDialect(fsys fs.FS, dir string, d Dialect) error {
 		}
 		if l := im.Params.Labels; l != "" && l != "bazel" {
 			return fmt.Errorf("imports.labels %q: only \"bazel\"", l)
+		}
+		if w := im.Params.WholeBindings; w != "" && w != "namespace" {
+			return fmt.Errorf("imports.whole_bindings %q: only \"namespace\"", w)
 		}
 		if w := im.Params.TypeWildcard; w != "" && w != "members" {
 			return fmt.Errorf("imports.type_wildcard %q: only \"members\"", w)

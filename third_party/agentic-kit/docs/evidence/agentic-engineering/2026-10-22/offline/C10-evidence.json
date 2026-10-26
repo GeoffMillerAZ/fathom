@@ -1,0 +1,28 @@
+{
+  "id": "C10",
+  "axis": "component",
+  "acceptance": "Strict sourced export refuses unsupported generation claims",
+  "outcome": "pass",
+  "source": "kits/governed-prose-kit/sourced_test.go",
+  "source_sha256": "31a53dfd5c73a4382979d0071ec2382afc5aa5afd611419d5144b1df0a099517",
+  "test": "TestSourcedExportDoesNotTrustGenerationClaims",
+  "group": "hitl_prose",
+  "scope_note": "Component test does not prove consumer adoption, live model quality, or all entrypoints.",
+  "command": {
+    "name": "hitl_prose",
+    "argv": [
+      "go",
+      "test",
+      "-count=1",
+      "./kits/hitl",
+      "./kits/governed-prose-kit",
+      "./surfaces/forms/cueform",
+      "./foundations/security/tokenization/..."
+    ],
+    "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+    "exit_code": 0,
+    "duration_seconds": 0.37,
+    "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/hitl_prose.log"
+  },
+  "command_log_sha256": "9a82c5a961e3f6a3ad36af04733699a5712f19a224a2cb7c1852a9111c04aff3"
+}

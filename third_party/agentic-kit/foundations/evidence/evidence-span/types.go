@@ -204,7 +204,7 @@ func (s Span) Validate() error {
 	return nil
 }
 
-// ValidateAsEvidence enforces the full Throughline provenance invariant (#1):
+// ValidateAsEvidence enforces the full Consumer-a provenance invariant (#1):
 // "No provenance → not storable as evidence."
 //
 // It calls Validate() first (all existing rules apply), then additionally
@@ -219,7 +219,7 @@ func (s Span) Validate() error {
 //   - ObservedAt non-zero and >= OccurredAt. Evidence describes events that have
 //     already been observed; a record observed before the event it describes is
 //     physically impossible and a hallmark of tampering or data corruption
-//     (Throughline truthfulness invariant). Equal timestamps are permitted — a
+//     (Consumer-a truthfulness invariant). Equal timestamps are permitted — a
 //     simultaneous capture (e.g. live system telemetry) is a valid edge case.
 //   - Locator non-zero, valid, and not Kind=="none" (must be a real pointer).
 //   - Grade non-nil and valid (explicit epistemic tier required).

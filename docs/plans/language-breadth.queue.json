@@ -150,6 +150,7 @@
     "id": "dockerfile",
     "name": "Dockerfile / Containerfile",
     "kind": "tooling",
+    "tier": "T2",
     "target_level": "L3",
     "grammar_source": "camdencheek/tree-sitter-dockerfile",
     "licence": "Apache-2.0",
@@ -184,11 +185,12 @@
     "plan_row": "LB-Q-dockerfile",
     "worker_model": "sonnet",
     "port_of": "dockerextract.go (pure Go)",
-    "notes": "stages, ARG/ENV keys (env: inventory), FROM image refs, COPY --from stage edges, cross-file FROM <local image> edges"
+    "notes": "stages, ARG/ENV keys (env: inventory), FROM image refs, COPY --from stage edges, cross-file FROM <local image> edges",
+    "retargeted": "2026-10-26 (gap sweep GAP1, added at the owner's 2026-10-26 roadmap ask): tier T2 added"
   },
   {
     "id": "python",
-    "name": "Python (.py .pyi)",
+    "name": "Python (.py)",
     "kind": "language",
     "tier": "T1",
     "target_level": "L4",
@@ -223,7 +225,8 @@
     "engine": "tags",
     "plan_row": "LB-Q-python",
     "worker_model": "sonnet",
-    "notes": "upgrade: decorators keep def line within tolerance; properties, class attributes, type aliases"
+    "notes": "upgrade: decorators keep def line within tolerance; properties, class attributes, type aliases",
+    "retargeted": "2026-10-26 (gap sweep GAP1, board truthfulness): name lists only what the connector dispatches today; .pyi is not dispatched (connector.go classifies .py only) and is not disclosed; stub dispatch is plan row GAP1-3"
   },
   {
     "id": "html",
@@ -350,7 +353,7 @@
     "licence": "MIT",
     "oracle": [
       "ctags",
-      "sqlglot (C, FK call pairs)"
+      "sql-native-catalog (A, inline FK execution; PGlite 0.5.11 PostgreSQL 18.6, pgvector 0.0.12 and SQLite; calibration/oracles/sql-native)"
     ],
     "calibration_subjects": [
       "sqitchers/sqitch",
@@ -375,9 +378,9 @@
     "engine": "tags",
     "plan_row": "LB-Q-sql",
     "worker_model": "sonnet",
-    "retargeted": "2026-09-28 (owner decision D2, Opus triage): subjects restricted to the families the grammar supports (ANSI, SQLite, PostgreSQL) with lang-oracle -only; lerocha/chinook-database dropped (its SQLite/PostgreSQL files are 400-600 KB data dumps whose parse trees exceed the 64 MiB module cap, RT-107, and fault; its T-SQL/MySQL/Oracle/Db2 files are unsupported families), devrimgunduz/pagila added (PostgreSQL schema, MIT); sqitch keeps its SQLite and plain fixture files, not its psql-templated pg.sql. L2 oracle: sqlglot FK pairs, tier C (D5).",
+    "retargeted": "2026-09-28 (owner decision D2, Opus triage): subjects restricted to the families the grammar supports (ANSI, SQLite, PostgreSQL) with lang-oracle -only; lerocha/chinook-database dropped (its SQLite/PostgreSQL files are 400-600 KB data dumps whose parse trees exceed the 64 MiB module cap, RT-107, and fault; its T-SQL/MySQL/Oracle/Db2 files are unsupported families), devrimgunduz/pagila added (PostgreSQL schema, MIT); sqitch keeps its SQLite and plain fixture files, not its psql-templated pg.sql. L2 oracle was sqlglot FK pairs, tier C (D5); replaced 2026-10-25 under OL-R1 by native SQL catalog execution, with all 17 scoped inline pairs including the 3 temporal pairs sqlglot omitted.",
     "port_of": "sqlextract.go (regex)",
-    "notes": "port; tables, views, columns, functions, indexes; FK references as L2 edges; dialect variance disclosed"
+    "notes": "port; tables, views, columns, functions, indexes; FK references as L2 edges; dialect variance disclosed; native SQL L2 excellent on 17/17 pairs; original D2 scope unchanged, non-CREATE failures disclosed"
   },
   {
     "id": "package-json",
@@ -489,7 +492,7 @@
   },
   {
     "id": "python-packaging",
-    "name": "Python packaging (pyproject.toml, requirements*.txt, setup.cfg)",
+    "name": "Python packaging (pyproject.toml)",
     "kind": "tooling",
     "tier": "T2",
     "target_level": "L2",
@@ -514,7 +517,8 @@
     "engine": "doc",
     "plan_row": "LB-Q-python-packaging",
     "worker_model": "sonnet",
-    "notes": "new; project, entry points/scripts (cli: inventory keys), dependency groups, tool.* sections as keys"
+    "notes": "new; project, entry points/scripts (cli: inventory keys), dependency groups, tool.* sections as keys",
+    "retargeted": "2026-10-26 (gap sweep GAP1, board truthfulness): name lists only what the connector dispatches today; requirements*.txt and setup.cfg are not classified (the doc engine decodes only YAML, JSON, TOML and XML); they are queue entry python-manifests, plan row GAP1-27"
   },
   {
     "id": "csharp",
@@ -603,6 +607,7 @@
     "id": "terraform",
     "name": "Terraform / OpenTofu (.tf .tfvars .tf.json)",
     "kind": "tooling",
+    "tier": "T3",
     "target_level": "L3",
     "grammar_source": "native:github.com/hashicorp/hcl/v2",
     "licence": "MPL-2.0 (library dependency, unmodified)",
@@ -623,7 +628,8 @@
     "engine": "native",
     "plan_row": "LB-Q-terraform",
     "worker_model": "sonnet",
-    "notes": "upgrade hclextract.go: variables, outputs, locals, module sources (local path L3, registry refs recorded), .tfvars keys; resource reference edges"
+    "notes": "upgrade hclextract.go: variables, outputs, locals, module sources (local path L3, registry refs recorded), .tfvars keys; resource reference edges",
+    "retargeted": "2026-10-26 (gap sweep GAP1, added at the owner's 2026-10-26 roadmap ask): tier T3 added, matching the #Tier taxonomy and design section 18.3 where every IaC entry is T3; ruling I-R1 is amended from T2 to T3; Terraform/OpenTofu joins the excellence target set at T3 with target L3; its L3 cap is the two-hop module.m.o resolution in ResolveDocXrefs (LB-Q-terraform-rest), plan row GAP1-32"
   },
   {
     "id": "cpp",
@@ -1063,7 +1069,7 @@
   },
   {
     "id": "ruby",
-    "name": "Ruby (.rb, Rakefile, Gemfile by basename)",
+    "name": "Ruby (.rb .rake .ru, Rakefile by basename)",
     "kind": "language",
     "tier": "T1",
     "target_level": "L3",
@@ -1098,7 +1104,8 @@
     "engine": "tags",
     "plan_row": "LB-Q-ruby",
     "worker_model": "sonnet",
-    "notes": "upgrade; L4 only on a Sorbet-typed subject — out of target, disclosed"
+    "notes": "upgrade; L4 only on a Sorbet-typed subject — out of target, disclosed",
+    "retargeted": "2026-10-26 (gap sweep GAP1, board truthfulness): name lists only what the connector dispatches today; Gemfile, *.gemspec, Podfile and *.podspec are not claimed (connector.go); they are queue entry gemfile-podfile, plan row GAP1-6"
   },
   {
     "id": "maven",
@@ -1271,11 +1278,11 @@
     "kind": "language",
     "tier": "T1",
     "target_level": "L3",
-    "grammar_source": "tree-sitter-grammars/tree-sitter-scss",
-    "licence": "MIT (verify at pin)",
+    "grammar_source": "P233/tree-sitter-scss",
+    "licence": "MIT",
     "oracle": [
-      "ctags",
-      "dart-sass loadedUrls (A, the import graph)"
+      "sass-parser 0.4.57 (A, Dart Sass definitions and spans)",
+      "dart-sass 1.105.1 loadedUrls (A, compiled import graph)"
     ],
     "calibration_subjects": [
       "twbs/bootstrap",
@@ -1303,7 +1310,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-scss",
     "worker_model": "sonnet",
-    "notes": "new; fleet gap; mixins, functions, variables, placeholders; @use/@import/@forward edges",
+    "notes": "Measured L1-L3 excellent on the full discovered bootstrap v5.3.8 and primer/css v22.3.2 corpus (234 files, no -only): range_agreement 1, sym_precision .9649, call_precision .9741 and import/file precision and recall 1. The reference parser exposes exclusive source.end spans; the oracle converts them to inclusive ends and reads loop-variable token spans. Bootstrap test loads use its unchanged runner preamble with sass-true 9.0.0. Fresh foundation-sites v6.9.0 holdout, pinned before reading, reads L2: L1/L2 excellent, L3 unmet on file_edge_precision .8239 (25 of 142 file pairs unattested). LB-Q-scss-rest records the full-scope oracle ceiling; the earlier angular/components holdout remains historical evidence under the old oracle and restricted scope.",
     "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): oracle gains dart-sass loadedUrls (tier A, the import graph)"
   },
   {
@@ -1312,14 +1319,14 @@
     "kind": "language",
     "tier": "T1",
     "target_level": "L3",
-    "grammar_source": "none pinned: no tree-sitter grammar parses the indented syntax (O853)",
-    "licence": "n/a (no grammar pinned)",
+    "grammar_source": "bajrangCoder/tree-sitter-sass (candidate not pinned: 56.16% of files in error at fb280c41)",
+    "licence": "MIT (LICENSE read at fb280c41b070657e4ff4d4e5e6eea6cb19efd9b8)",
     "oracle": [
       "dart-sass loadedUrls (A, the import graph)"
     ],
     "calibration_subjects": [
-      "twbs/bootstrap",
-      "primer/css"
+      "jgthms/bulma",
+      "vuetifyjs/vuetify"
     ],
     "depends_on": [
       "LB-F1",
@@ -1343,7 +1350,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-sass",
     "worker_model": "sonnet",
-    "notes": "the indented syntax; disclosed unsupported until a grammar passes the 5% ERROR-file gate (O853). target L3 is SCSS's: the same Sass module graph (@use, @forward, @import) read by Dart Sass's loadedUrls, so the oracle and the level carry over; the tree-sitter-scss grammar parses SCSS only",
+    "notes": "Unsupported, no production grammar pinned. The latest upstream/editor pin fb280c41b070657e4ff4d4e5e6eea6cb19efd9b8 is MIT but fails the frozen native parse gate: 123 of 219 real .sass files in error (56.16%; bulma 53/91, vuetify source 70/128). Independent Dart Sass syntax cross-check accepts 213 files; the candidate errors in 117 of those (54.93%), so invalid inputs do not explain the refusal. No files trimmed and no support level claimed. calibration/corpus.d/sass.yaml replaces the prior SCSS-only subjects. Retry a newer licensed grammar under the <=5% complete-source gate, then production WASM and independent L1-L3 oracle. LB-Q-sass-rest records the measured refusal.",
     "retargeted": "2026-10-11 (wave lf6, owner ruling M5, O853): split from the scss entry, which named .sass beside .scss though no dialect parses it, so the generated unsupported table dropped it"
   },
   {
@@ -2682,7 +2689,7 @@
     "grammar_source": "pure-go:gopkg.in/yaml.v3",
     "licence": "n/a",
     "oracle": [
-      "az pipelines validation (network: unavailable) → reference parse (C)"
+      "independent PyYAML 6.0.3 entity/dependency walk (tier C); Microsoft language service inspected, no offline Azure execution oracle demonstrated"
     ],
     "calibration_subjects": [
       "microsoft/azure-pipelines-yaml",
@@ -2700,7 +2707,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-azure-pipelines",
     "worker_model": "sonnet",
-    "notes": "new; stages, jobs, dependsOn edges, template: file edges"
+    "notes": "T-R4: measured L2 good (L1 good, tier C), 227/228 definitions and 16/16 explicit dependency pairs on two pinned sparse subjects. No template expansion, runtime binding or L3 claim; target remains L3 and waits for D19/native template truth. Source identity and three-run timing recorded in azure-pipelines.json."
   },
   {
     "id": "cue",
@@ -2740,7 +2747,7 @@
     "grammar_source": "pure-go:gopkg.in/yaml.v3",
     "licence": "n/a",
     "oracle": [
-      "circleci config process (tier A, offline)"
+      "circleci config process 1.7.0 and vendor language server 0.54.0 references (tier A, T-R7)"
     ],
     "calibration_subjects": [
       "CircleCI-Public/circleci-cli",
@@ -2758,7 +2765,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-circleci",
     "worker_model": "sonnet",
-    "notes": "new; jobs, workflows, commands, executors; requires edges"
+    "notes": "T-R7/P-T1 r3: canonical L2 good, L1 good (48/49 defs, 74/82 truth refs, 75 emitted; recall .9024). Native answers add eight workflow executor-parameter pairs; all 20 declarations queried, 43 locations classified, one same-name workflow job oracle error compiler-adjudicated. Separate holdout remains 11/11 and 8/8, excellent. No extractor or parameter-matrix change."
   },
   {
     "id": "pascal",
@@ -3970,6 +3977,7 @@
     "id": "dotenv",
     "name": "Dotenv files (.env, .env.example, *.env)",
     "kind": "tooling",
+    "tier": "T2",
     "target_level": "L1",
     "grammar_source": "pure-go:line parser",
     "licence": "n/a",
@@ -3992,7 +4000,8 @@
     "engine": "doc",
     "plan_row": "LB-Q-dotenv",
     "worker_model": "sonnet",
-    "notes": "new; keys only (env: inventory keys), values never stored"
+    "notes": "new; keys only (env: inventory keys), values never stored",
+    "retargeted": "2026-10-26 (gap sweep GAP1, added at the owner's 2026-10-26 roadmap ask): tier T2 added"
   },
   {
     "id": "glsl",
@@ -4154,15 +4163,17 @@
     "id": "hlsl",
     "name": "HLSL shaders (.hlsl .hlsli .fx)",
     "kind": "language",
-    "target_level": "L1",
+    "target_level": "L3",
     "grammar_source": "tree-sitter-grammars/tree-sitter-hlsl",
     "licence": "MIT",
     "oracle": [
-      "tree-sitter-tags (C)"
+      "dxc -ast-dump (B)",
+      "clang-includes (B)"
     ],
     "calibration_subjects": [
       "microsoft/DirectX-Graphics-Samples",
-      "GPUOpen-Effects/FidelityFX-SDK"
+      "EmbarkStudios/kajiya",
+      "microsoft/DirectXTK12"
     ],
     "depends_on": [
       "LB-F1",
@@ -4182,12 +4193,14 @@
     "engine": "tags",
     "plan_row": "LB-Q-hlsl",
     "worker_model": "sonnet",
-    "notes": "new; functions, structs, cbuffers"
+    "notes": "new; functions, structs, cbuffers; round 5 (2026-10-25): methods scored, attribute calls excluded by position, the .fx sniff requires shader structure; the reading covers all 644 files (18 in error, 2.8%); L1 excellent, L2 good against dxc-ast (tier B, its 543-file scope), L3 good (file_edge_precision 0.9012 against include statements plus dxc-ast reference pairs); VM throughput median 0.73 MB/s, so level_met none until the development class re-measures (T2); see LB-Q-hlsl-rest",
+    "retargeted": "2026-10-24 (owner ruling): L1 -> L3, oracles DXC -ast-dump (L1, L2) and clang-includes over the shader roots (L3), subjects DirectX-Graphics-Samples, kajiya and DirectXTK12 (FidelityFX-SDK dropped); no source pre-pass"
   },
   {
     "id": "devcontainer",
     "name": "Dev containers (devcontainer.json, devcontainer-feature.json)",
     "kind": "tooling",
+    "tier": "T2",
     "target_level": "L2",
     "grammar_source": "pure-go:JSONC",
     "licence": "n/a",
@@ -4210,7 +4223,8 @@
     "engine": "doc",
     "plan_row": "LB-Q-devcontainer",
     "worker_model": "sonnet",
-    "notes": "new; features, image/dockerFile edges, postCreate commands"
+    "notes": "new; features, image/dockerFile edges, postCreate commands",
+    "retargeted": "2026-10-26 (gap sweep GAP1, added at the owner's 2026-10-26 roadmap ask): tier T2 added"
   },
   {
     "id": "envoy",
@@ -4390,6 +4404,7 @@
     "id": "dependency-bots",
     "name": "Renovate and Dependabot configs",
     "kind": "tooling",
+    "tier": "T2",
     "target_level": "L1",
     "grammar_source": "pure-go:JSON5 + gopkg.in/yaml.v3",
     "licence": "n/a",
@@ -4412,17 +4427,18 @@
     "engine": "doc",
     "plan_row": "LB-Q-dependency-bots",
     "worker_model": "sonnet",
-    "notes": "new; update ecosystems and directories as entities"
+    "notes": "new; update ecosystems and directories as entities",
+    "retargeted": "2026-10-26 (gap sweep GAP1, added at the owner's 2026-10-26 roadmap ask): tier T2 added"
   },
   {
     "id": "cuda",
     "name": "CUDA (.cu .cuh)",
     "kind": "language",
-    "target_level": "L3",
+    "target_level": "L4",
     "grammar_source": "tree-sitter-grammars/tree-sitter-cuda",
     "licence": "MIT",
     "oracle": [
-      "ctags (C++)",
+      "ctags",
       "scip-clang"
     ],
     "calibration_subjects": [
@@ -4451,12 +4467,14 @@
     "engine": "tags",
     "plan_row": "LB-Q-cuda",
     "worker_model": "sonnet",
-    "notes": "new; C++ kinds plus __global__/__device__ kernels"
+    "notes": "C++ kinds plus __global__/__device__ kernels; owner ruling C-R3 (2026-10-25): a function-like macro invocation is a call on both sides, C's convention (the oracle's ClangMacroCalls on, the dialect's all-capitals callee filter dropped; cpp unchanged); ruling C-R4: cuda-samples is measured as one subject and a .cu binds the headers its includes reach",
+    "retargeted": "2026-10-24 (owner ruling): target L3 -> L4, the plan row's pattern \"L4\" (cutlass as the library subject the L4 reading needs)"
   },
   {
     "id": "jsonnet",
     "name": "Jsonnet (.jsonnet .libsonnet)",
     "kind": "tooling",
+    "tier": "T3",
     "target_level": "L3",
     "grammar_source": "sourcegraph/tree-sitter-jsonnet",
     "licence": "MIT",
@@ -4488,7 +4506,8 @@
     "engine": "tags",
     "plan_row": "LB-Q-jsonnet",
     "worker_model": "sonnet",
-    "notes": "new; locals, object fields, functions; import/importstr file edges"
+    "notes": "new; locals, object fields, functions; import/importstr file edges",
+    "retargeted": "2026-10-26 (gap sweep GAP1, added at the owner's 2026-10-26 roadmap ask): tier T3 added"
   },
   {
     "id": "apex",
@@ -4968,6 +4987,7 @@
     "id": "dbt",
     "name": "dbt projects (dbt_project.yml, models/*.sql with ref(), schema.yml)",
     "kind": "tooling",
+    "tier": "T2",
     "target_level": "L3",
     "grammar_source": "DerekStride/tree-sitter-sql + pure-go:gopkg.in/yaml.v3",
     "licence": "MIT",
@@ -5002,7 +5022,8 @@
     "engine": "tags+doc",
     "plan_row": "LB-Q-dbt",
     "worker_model": "sonnet",
-    "notes": "new; models, sources, macros; ref()/source() edges — may need a strategy (report needs-strategy)"
+    "notes": "new; models, sources, macros; ref()/source() edges — may need a strategy (report needs-strategy)",
+    "retargeted": "2026-10-26 (gap sweep GAP1, added at the owner's 2026-10-26 roadmap ask): tier T2 added"
   },
   {
     "id": "sql-migrations",
@@ -5134,6 +5155,7 @@
     "id": "gemfile-podfile",
     "name": "Ruby DSL manifests (Gemfile, *.gemspec, Podfile, *.podspec)",
     "kind": "tooling",
+    "tier": "T2",
     "target_level": "L2",
     "grammar_source": "tree-sitter/tree-sitter-ruby",
     "licence": "MIT",
@@ -5163,7 +5185,8 @@
     "engine": "tags",
     "plan_row": "LB-Q-gemfile-podfile",
     "worker_model": "sonnet",
-    "notes": "new; gems/pods as entities, path: edges"
+    "notes": "new; gems/pods as entities, path: edges",
+    "retargeted": "2026-10-26 (gap sweep GAP1, added at the owner's 2026-10-26 roadmap ask): tier T2 added"
   },
   {
     "id": "latex",
@@ -5204,6 +5227,7 @@
     "id": "android-manifest",
     "name": "Android manifests (AndroidManifest.xml)",
     "kind": "tooling",
+    "tier": "T2",
     "target_level": "L2",
     "grammar_source": "pure-go:encoding/xml",
     "licence": "n/a",
@@ -5226,7 +5250,8 @@
     "engine": "doc",
     "plan_row": "LB-Q-android-manifest",
     "worker_model": "sonnet",
-    "notes": "new; activities, services, receivers, providers → class edges (Kotlin/Java)"
+    "notes": "new; activities, services, receivers, providers → class edges (Kotlin/Java)",
+    "retargeted": "2026-10-26 (gap sweep GAP1, added at the owner's 2026-10-26 roadmap ask): tier T2 added"
   },
   {
     "id": "typst",
@@ -5332,17 +5357,17 @@
   },
   {
     "id": "jinja2",
-    "name": "Jinja2 templates (.j2 .jinja .jinja2, templates/*.html by sniff)",
+    "name": "Jinja2 templates (.j2 .jinja .jinja2)",
     "kind": "language",
     "tier": "T1",
     "target_level": "L3",
-    "grammar_source": "a Jinja tree-sitter grammar (verify at pin, licence allowlist)",
-    "licence": "verify at pin",
+    "grammar_source": "bennypowers/tree-sitter-jinja-dialects 4f832fe with optional-else source patch",
+    "licence": "MIT",
     "oracle": [
       "jinja2.meta.find_referenced_templates (A, extends, include and import edges)"
     ],
     "calibration_subjects": [
-      "two public Flask or Ansible repositories with templates, pinned at row start"
+      "openstack/kolla 27e42412114c29669f70a298f89c54abc6a7f4ac (kolla/docker), openstack/kolla-ansible 4b493ef36ace2b90257ecf94feb00e2c6e8014c9 (ansible/roles)"
     ],
     "depends_on": [
       "LB-Q-html"
@@ -5351,7 +5376,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-jinja2",
     "worker_model": "sonnet",
-    "notes": "blocks, macros and the template graph, Ansible's templates/ directories are a common carrier"
+    "notes": "blocks, macros and the template graph; explicit .j2/.jinja/.jinja2 dispatched; templates/*.html by sniff remains deferred because .html dispatch and resolution belong to HTML"
   },
   {
     "id": "serverless",
@@ -5729,43 +5754,32 @@
   },
   {
     "id": "conftest",
-    "name": "Conftest policies (policy/*.rego, conftest.toml)",
+    "name": "Conftest configuration (conftest.toml; policies ride Rego)",
     "kind": "tooling",
     "tier": "T4",
-    "target_level": "L2",
-    "grammar_source": "rides LB-Q-rego's grammar + pure-go:go-toml/v2",
-    "licence": "verify at pin",
+    "target_level": "L1",
+    "grammar_source": "pure-go:github.com/pelletier/go-toml/v2",
+    "licence": "n/a",
     "oracle": [
-      "conftest verify / conftest parse (tier A)"
+      "Conftest native commands.readInConfig + viper.InConfig (tier A membership), independent tomli positions"
     ],
     "calibration_subjects": [
       "open-policy-agent/conftest"
     ],
     "depends_on": [
-      "LB-F1",
-      "LB-F12",
-      "LB-F13",
-      "LB-F15",
-      "LB-F16",
-      "LB-F17",
-      "LB-F2",
-      "LB-F20",
-      "LB-F21",
-      "LB-F22",
-      "LB-F3",
-      "LB-F4",
       "LB-F8",
       "LB-F9",
-      "LB-F5",
-      "LB-F7",
-      "LB-F11",
-      "LB-Q-rego"
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
     ],
     "wave": 6,
-    "engine": "tags+doc",
+    "engine": "doc",
     "plan_row": "LB-Q-conftest",
     "worker_model": "sonnet",
-    "notes": "new; excellence program T4; taken up by wave pc (2026-10-02) once LB-Q-rego proved [x]: the policies ride the native Rego dialect, and the L2 target has no truth in conftest.toml (no reference within the file); deferred for the owner's retarget (LB-Q-conftest-rest)"
+    "notes": "T-R1 (controller 2026-10-25): L1 configuration keys only; policies stay with oracle-langs. Q4 retains full-option ranges. Native key loader works; shared TOML value-end locator misses multiline spans and T-R2 forbids ENGINE work this wave. No dialect or canonical reading is integrated.",
+    "retargeted": "T-R1 (2026-10-25): L2 policies+configuration -> L1 configuration only; an intra-config reference target was unsupported by the domain. Policies stay with Rego."
   },
   {
     "id": "cedar",
@@ -5936,10 +5950,10 @@
     "kind": "language",
     "tier": "T4",
     "target_level": "L2",
-    "grammar_source": "none open (verify at pin)",
-    "licence": "verify at pin",
+    "grammar_source": "github.com/glennsarti/sentinel-parser@3a328c0dcfb9 (open Go parser; engine admission pending)",
+    "licence": "Apache-2.0",
     "oracle": [
-      "sentinel test / fmt as a separate process (licence to verify)"
+      "publishable independent oracle pending; OL-R6 forbids EULA-runtime-graded readings"
     ],
     "calibration_subjects": [
       "hashicorp/terraform-sentinel-policies"
@@ -5962,7 +5976,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-sentinel",
     "worker_model": "sonnet",
-    "notes": "new; excellence program T4; likely ceiling: no open grammar; next gap: an open Sentinel grammar or parser"
+    "notes": "OL-R8: open-parser trigger fired; glennsarti/sentinel-parser main 3a328c0dcfb9 measured 30/395 full-discovery files in error (7.59%), escaped quotes 28, keyword selector 1, missing final newline 1; repair general defects via upstream fix with maintainer approval or pinned fork/patch under P-R1, never path exclusion; parser availability is separate from full-scope admission and a publishable independent oracle (OL-R6); tags remains the unimplemented queue engine pending a governed reader admission; no level claimed"
   },
   {
     "id": "pgbouncer",
@@ -6181,5 +6195,483 @@
     "worker_model": "sonnet",
     "notes": "new, outside 18.3's tiers (owner ruling 2026-10-24 (a)); a .slx is read only through ADR-021 (1)'s 2026-10-24 amendment (match.container); block names hold spaces, line breaks and '/', so the dialect compares names whole (name_match identity); L3 tries resolve entity-name with to_kind before a new mode, same-named models in several directories ambiguous; tier C only (owner ruling (d)), which caps every level at good; MATLAB code a model calls is a handoff for the reading's notes, never an LB-Q-simulink-matlab row; throughput counts compressed bytes",
     "retargeted": "2026-10-25 (owner rulings S-R6, S-R7, round 2): L3 counts only with at least 20 resolvable model references across at least 2 subjects; the subjects hold 2 (one subject, 7 more ambiguous), and simulink/blog 2e4bde16 (BSD-3) would add 9, so the item reads L2 good and LB-Q-simulink-rest carries L3 deferred; the oracle text says what ran; PID_MATLAB_Learn dropped from the subjects: no repository of that name resolved to commit 0029fffe, so it was never measured"
+    },
+    {
+    "id": "python-manifests",
+    "name": "Python dependency manifests (requirements*.txt, constraints*.txt, setup.cfg, Pipfile, poetry.lock, uv.lock, environment.yml)",
+    "kind": "tooling",
+    "tier": "T2",
+    "target_level": "L2",
+    "grammar_source": "pure-go:line parser + github.com/pelletier/go-toml/v2 + gopkg.in/yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "packaging.requirements parse and pip install --dry-run --report (tier A)",
+      "setuptools read_configuration for setup.cfg (tier A)",
+      "pipenv Pipfile parse through plette (tier A)",
+      "poetry check / uv lock --check offline (tier A)",
+      "conda env create --dry-run --json (tier A)"
+    ],
+    "calibration_subjects": [
+      "pallets/flask",
+      "python-poetry/poetry"
+    ],
+    "depends_on": [
+      "language-breadth.md#LB-F8",
+      "language-breadth.md#LB-F9",
+      "language-breadth.md#LB-F16",
+      "language-breadth.md#LB-F17",
+      "language-breadth.md#LB-F21",
+      "language-breadth.md#LB-F22"
+    ],
+    "wave": 7,
+    "engine": "doc",
+    "plan_row": "LB-Q-python-manifests",
+    "worker_model": "sonnet",
+    "notes": "gap sweep GAP1 (A1 + S14): the most common Python manifest is not read; requirements*.txt and setup.cfg are not classified today (connector.go; LB-Q-python-packaging-rest). A line format needs a small Go parser, not the doc engine's decoders; requirement names are entities, -r/-c include lines are file edges, values and index URLs are never stored"
+  },
+  {
+    "id": "xcode-project",
+    "name": "Xcode project files (project.pbxproj, .xcconfig, Info.plist, .storyboard, .xib)",
+    "kind": "tooling",
+    "tier": "T2",
+    "target_level": "L2",
+    "grammar_source": "pure-go:old-style plist decoder (hand-written) + encoding/xml",
+    "licence": "n/a",
+    "oracle": [
+      "plutil -convert json (tier A)",
+      "xcodebuild -list -json (tier A)"
+    ],
+    "calibration_subjects": [
+      "Alamofire/Alamofire",
+      "pointfreeco/isowords"
+    ],
+    "depends_on": [
+      "language-breadth.md#LB-F8",
+      "language-breadth.md#LB-F9",
+      "language-breadth.md#LB-F16",
+      "language-breadth.md#LB-F17",
+      "language-breadth.md#LB-F21",
+      "language-breadth.md#LB-F22"
+    ],
+    "wave": 7,
+    "engine": "doc",
+    "plan_row": "LB-Q-xcode-project",
+    "worker_model": "sonnet",
+    "notes": "gap sweep GAP1 (A3): every Xcode app; target membership and build settings are unknown even once Swift reads. Targets, schemes, file membership and xcconfig include edges; pairs with the Swift parser decision (GAP1-30)"
+  },
+  {
+    "id": "razor",
+    "name": "Razor and Blazor (.cshtml .razor)",
+    "kind": "language",
+    "tier": "T1",
+    "target_level": "L2",
+    "grammar_source": "pure-go:hand-written Razor scanner on the shared template scanner (ADR-066)",
+    "licence": "n/a",
+    "oracle": [
+      "Razor source generator output, .g.cs (tier A)"
+    ],
+    "calibration_subjects": [
+      "dotnet/eShop",
+      "dotnet/blazor-samples"
+    ],
+    "depends_on": [
+      "language-breadth.md#LB-F16",
+      "language-breadth.md#LB-F17",
+      "language-breadth.md#LB-F21",
+      "language-breadth.md#LB-F22",
+      "language-breadth.md#LB-Q-csharp",
+      "language-breadth.md#LB-Q-html",
+      "GAP1-25"
+    ],
+    "wave": 7,
+    "engine": "native",
+    "plan_row": "LB-Q-razor",
+    "worker_model": "sonnet",
+    "notes": "gap sweep GAP1 (S3): absent and undisclosed before this queue entry; @using, @inject, @model and component tag references to C# types; C# itself is L4"
+  },
+  {
+    "id": "xaml",
+    "name": "XAML (.xaml)",
+    "kind": "language",
+    "target_level": "L2",
+    "grammar_source": "pure-go:encoding/xml",
+    "licence": "n/a",
+    "oracle": [
+      "XAML compiler .g.cs output (tier A)"
+    ],
+    "calibration_subjects": [
+      "dotnet/maui",
+      "AvaloniaUI/Avalonia"
+    ],
+    "depends_on": [
+      "language-breadth.md#LB-F16",
+      "language-breadth.md#LB-F17",
+      "language-breadth.md#LB-F21",
+      "language-breadth.md#LB-F22",
+      "language-breadth.md#LB-Q-csharp"
+    ],
+    "wave": 7,
+    "engine": "doc",
+    "plan_row": "LB-Q-xaml",
+    "worker_model": "sonnet",
+    "notes": "gap sweep GAP1 (A5): WPF, WinUI, MAUI and Avalonia; x:Class code-behind, resource and control-type references to C# types; XML through the doc engine"
+  },
+  {
+    "id": "erb",
+    "name": "ERB (.erb)",
+    "kind": "language",
+    "tier": "T1",
+    "target_level": "L2",
+    "grammar_source": "pure-go:hand-written ERB scanner on the shared template scanner (ADR-066)",
+    "licence": "n/a",
+    "oracle": [
+      "Ruby ERB#src and Ripper (tier A)",
+      "rails routes (tier A, route edges; later row)"
+    ],
+    "calibration_subjects": [
+      "mastodon/mastodon",
+      "rubygems/rubygems.org"
+    ],
+    "depends_on": [
+      "language-breadth.md#LB-F16",
+      "language-breadth.md#LB-F17",
+      "language-breadth.md#LB-F21",
+      "language-breadth.md#LB-F22",
+      "language-breadth.md#LB-Q-ruby",
+      "language-breadth.md#LB-Q-html",
+      "GAP1-16"
+    ],
+    "wave": 7,
+    "engine": "native",
+    "plan_row": "LB-Q-erb",
+    "worker_model": "sonnet",
+    "notes": "gap sweep GAP1 (S4): every Rails view; render and partial edges; the ERB scan alone is small, a Rails route reader (internal/analysis/routes) is a later row"
+  },
+  {
+    "id": "haml-slim",
+    "name": "Haml and Slim (.haml .slim)",
+    "kind": "language",
+    "target_level": "L2",
+    "grammar_source": "pure-go:hand-written indentation scanner on the shared template scanner (ADR-066)",
+    "licence": "n/a",
+    "oracle": [
+      "haml and slim gems' own parsers (tier A)"
+    ],
+    "calibration_subjects": [
+      "haml/haml",
+      "slim-template/slim"
+    ],
+    "depends_on": [
+      "language-breadth.md#LB-F16",
+      "language-breadth.md#LB-F17",
+      "language-breadth.md#LB-F21",
+      "language-breadth.md#LB-F22",
+      "language-breadth.md#LB-Q-ruby",
+      "GAP1-17"
+    ],
+    "wave": 7,
+    "engine": "native",
+    "plan_row": "LB-Q-haml-slim",
+    "worker_model": "sonnet",
+    "notes": "gap sweep GAP1 (A4): medium reach (Rails); render and partial edges"
+  },
+  {
+    "id": "ejs",
+    "name": "EJS (.ejs)",
+    "kind": "language",
+    "tier": "T1",
+    "target_level": "L2",
+    "grammar_source": "pure-go:hand-written EJS scanner on the shared template scanner (ADR-066)",
+    "licence": "n/a",
+    "oracle": [
+      "ejs compile and its own parser (tier A)"
+    ],
+    "calibration_subjects": [
+      "mde/ejs",
+      "expressjs/express"
+    ],
+    "depends_on": [
+      "language-breadth.md#LB-F16",
+      "language-breadth.md#LB-F17",
+      "language-breadth.md#LB-F21",
+      "language-breadth.md#LB-F22",
+      "language-breadth.md#LB-Q-javascript",
+      "language-breadth.md#LB-Q-html",
+      "GAP1-18"
+    ],
+    "wave": 7,
+    "engine": "native",
+    "plan_row": "LB-Q-ejs",
+    "worker_model": "sonnet",
+    "notes": "gap sweep GAP1 (S11): include edges; closes the EJS part of LB-F453's disclosure promise"
+  },
+  {
+    "id": "handlebars",
+    "name": "Handlebars and Mustache (.hbs .handlebars .mustache)",
+    "kind": "language",
+    "tier": "T1",
+    "target_level": "L2",
+    "grammar_source": "pure-go:hand-written mustache-family scanner on the shared template scanner (ADR-066)",
+    "licence": "n/a",
+    "oracle": [
+      "Handlebars.parse (tier A, .hbs and .handlebars)",
+      "mustache spec suite (tier A, .mustache)"
+    ],
+    "calibration_subjects": [
+      "handlebars-lang/handlebars.js",
+      "TryGhost/Casper"
+    ],
+    "depends_on": [
+      "language-breadth.md#LB-F16",
+      "language-breadth.md#LB-F17",
+      "language-breadth.md#LB-F21",
+      "language-breadth.md#LB-F22",
+      "language-breadth.md#LB-Q-html",
+      "GAP1-19"
+    ],
+    "wave": 7,
+    "engine": "native",
+    "plan_row": "LB-Q-handlebars",
+    "worker_model": "sonnet",
+    "notes": "gap sweep GAP1 (S11): partials, helpers and blocks; closes the Handlebars part of LB-F453's disclosure promise"
+  },
+  {
+    "id": "liquid",
+    "name": "Liquid (.liquid)",
+    "kind": "language",
+    "tier": "T1",
+    "target_level": "L2",
+    "grammar_source": "pure-go:hand-written Liquid scanner on the shared template scanner (ADR-066)",
+    "licence": "n/a",
+    "oracle": [
+      "Shopify liquid gem Liquid::Template.parse (tier A)",
+      "liquidjs parser (tier C)"
+    ],
+    "calibration_subjects": [
+      "Shopify/dawn",
+      "Shopify/liquid"
+    ],
+    "depends_on": [
+      "language-breadth.md#LB-F16",
+      "language-breadth.md#LB-F17",
+      "language-breadth.md#LB-F21",
+      "language-breadth.md#LB-F22",
+      "language-breadth.md#LB-Q-html",
+      "GAP1-20"
+    ],
+    "wave": 7,
+    "engine": "native",
+    "plan_row": "LB-Q-liquid",
+    "worker_model": "sonnet",
+    "notes": "gap sweep GAP1 (S11): render, include and section edges; closes the Liquid part of LB-F453's disclosure promise"
+  },
+  {
+    "id": "twig",
+    "name": "Twig (.twig)",
+    "kind": "language",
+    "tier": "T1",
+    "target_level": "L2",
+    "grammar_source": "pure-go:hand-written Twig scanner on the shared template scanner (ADR-066)",
+    "licence": "n/a",
+    "oracle": [
+      "twig/twig Lexer and Parser (tier A)"
+    ],
+    "calibration_subjects": [
+      "twigphp/Twig",
+      "symfony/demo"
+    ],
+    "depends_on": [
+      "language-breadth.md#LB-F16",
+      "language-breadth.md#LB-F17",
+      "language-breadth.md#LB-F21",
+      "language-breadth.md#LB-F22",
+      "language-breadth.md#LB-Q-php",
+      "language-breadth.md#LB-Q-html",
+      "GAP1-21"
+    ],
+    "wave": 7,
+    "engine": "native",
+    "plan_row": "LB-Q-twig",
+    "worker_model": "sonnet",
+    "notes": "gap sweep GAP1 (A4): the Symfony default and Drupal 8+; extends, include and embed edges"
+  },
+  {
+    "id": "pug",
+    "name": "Pug (.pug)",
+    "kind": "language",
+    "target_level": "L2",
+    "grammar_source": "pure-go:hand-written indentation scanner on the shared template scanner (ADR-066)",
+    "licence": "n/a",
+    "oracle": [
+      "pug-lexer and pug-parser (tier A)"
+    ],
+    "calibration_subjects": [
+      "pugjs/pug",
+      "expressjs/express"
+    ],
+    "depends_on": [
+      "language-breadth.md#LB-F16",
+      "language-breadth.md#LB-F17",
+      "language-breadth.md#LB-F21",
+      "language-breadth.md#LB-F22",
+      "language-breadth.md#LB-Q-javascript",
+      "GAP1-22"
+    ],
+    "wave": 7,
+    "engine": "native",
+    "plan_row": "LB-Q-pug",
+    "worker_model": "sonnet",
+    "notes": "gap sweep GAP1 (A4): extends, include and mixin edges"
+  },
+  {
+    "id": "nunjucks",
+    "name": "Nunjucks (.njk)",
+    "kind": "language",
+    "target_level": "L2",
+    "grammar_source": "pure-go:hand-written Nunjucks scanner on the shared template scanner (ADR-066)",
+    "licence": "n/a",
+    "oracle": [
+      "nunjucks parser (tier A)"
+    ],
+    "calibration_subjects": [
+      "mozilla/nunjucks",
+      "11ty/eleventy-base-blog"
+    ],
+    "depends_on": [
+      "language-breadth.md#LB-F16",
+      "language-breadth.md#LB-F17",
+      "language-breadth.md#LB-F21",
+      "language-breadth.md#LB-F22",
+      "language-breadth.md#LB-Q-html",
+      "GAP1-23"
+    ],
+    "wave": 7,
+    "engine": "native",
+    "plan_row": "LB-Q-nunjucks",
+    "worker_model": "sonnet",
+    "notes": "gap sweep GAP1 (A4): extends, include and import edges; syntax family of Jinja2"
+  },
+  {
+    "id": "go-template",
+    "name": "Go templates (.gohtml .gotmpl, .tmpl by sniff)",
+    "kind": "language",
+    "tier": "T1",
+    "target_level": "L2",
+    "grammar_source": "pure-go:text/template/parse (standard library)",
+    "licence": "BSD-3-Clause (Go standard library)",
+    "oracle": [
+      "text/template/parse (tier A, already the Helm oracle; it is also the product parser here, so the reading grades the extraction rules only)",
+      "pinned tree-sitter go-template grammar Helm uses (independent syntax check, tier C)"
+    ],
+    "calibration_subjects": [
+      "gohugoio/hugo",
+      "go-gitea/gitea"
+    ],
+    "depends_on": [
+      "language-breadth.md#LB-F16",
+      "language-breadth.md#LB-F17",
+      "language-breadth.md#LB-F21",
+      "language-breadth.md#LB-F22",
+      "language-breadth.md#LB-Q-go"
+    ],
+    "wave": 7,
+    "engine": "native",
+    "plan_row": "LB-Q-go-template",
+    "worker_model": "sonnet",
+    "notes": "gap sweep GAP1 (S12): Hugo and general Go; .tmpl is ambiguous, so a content sniff decides it; Helm .tpl already uses the go-template grammar (connector.go); the Go standard parser is both product parser and tier A oracle, so the reading grades the extraction rules only and the pinned tree-sitter grammar is the independent syntax check"
+  },
+  {
+    "id": "sql-dialects",
+    "name": "SQL dialect sniffing (.pks .pkb .pls .plb, .sql and .tsql by sniff)",
+    "kind": "language",
+    "tier": "T1",
+    "target_level": "L1",
+    "grammar_source": "none yet: sniff and per-file disclosure first; no pinned grammar covers T-SQL, MySQL or PL/SQL (DerekStride/tree-sitter-sql excludes these families)",
+    "licence": "n/a",
+    "oracle": [
+      "sqlglot per dialect (tier C)",
+      "Microsoft.SqlServer.TransactSql.ScriptDom (T-SQL, tier A)",
+      "ctags SQL (tier B)"
+    ],
+    "calibration_subjects": [
+      "microsoft/sql-server-samples",
+      "oracle-samples/db-sample-schemas",
+      "datacharmer/test_db"
+    ],
+    "depends_on": [
+      "language-breadth.md#LB-F16",
+      "language-breadth.md#LB-F17",
+      "language-breadth.md#LB-F21",
+      "language-breadth.md#LB-F22",
+      "language-breadth.md#LB-Q-sql"
+    ],
+    "wave": 7,
+    "engine": "tags",
+    "plan_row": "LB-Q-sql-dialects",
+    "worker_model": "sonnet",
+    "notes": "gap sweep GAP1 (S5): .sql reads with a grammar that excludes these families and nothing says so per file; dialect sniff and a per-file disclosure first, a dialect reading later; PL/SQL package extensions are absent today"
+  },
+  {
+    "id": "app-migrations",
+    "name": "Application migration frameworks (Alembic, Rails db/migrate, Django migrations, EF Core migrations)",
+    "kind": "tooling",
+    "target_level": "L2",
+    "grammar_source": "pure-go:reads the host language's reading (python, ruby, csharp)",
+    "licence": "n/a",
+    "oracle": [
+      "Django MigrationLoader(None) graph (tier A, offline)",
+      "Rails ActiveRecord::MigrationContext#migrations (tier A, offline)",
+      "dotnet ef migrations list --no-connect (tier A)",
+      "alembic heads and history (tier A, offline)"
+    ],
+    "calibration_subjects": [
+      "sqlalchemy/alembic",
+      "mastodon/mastodon",
+      "django/django",
+      "dotnet/efcore"
+    ],
+    "depends_on": [
+      "language-breadth.md#LB-F16",
+      "language-breadth.md#LB-F17",
+      "language-breadth.md#LB-F21",
+      "language-breadth.md#LB-F22",
+      "language-breadth.md#LB-Q-sql-migrations",
+      "language-breadth.md#LB-Q-python",
+      "language-breadth.md#LB-Q-ruby",
+      "language-breadth.md#LB-Q-csharp"
+    ],
+    "wave": 7,
+    "engine": "native",
+    "plan_row": "LB-Q-app-migrations",
+    "worker_model": "sonnet",
+    "notes": "gap sweep GAP1 (S9): Alembic, Rails, Django and EF were not queued (LB-Q-sql-migrations covers the SQL file frameworks); revision ordering edges (down_revision, dependencies, migration ids)"
+  },
+  {
+    "id": "arduino",
+    "name": "Arduino sketches (.ino)",
+    "kind": "language",
+    "target_level": "L2",
+    "grammar_source": "tree-sitter/tree-sitter-cpp (the cpp dialect, routed)",
+    "licence": "MIT",
+    "oracle": [
+      "arduino-cli compile --preprocess through clang (tier A)",
+      "universal-ctags (tier B)"
+    ],
+    "calibration_subjects": [
+      "arduino/arduino-examples",
+      "adafruit/Adafruit_NeoPixel"
+    ],
+    "depends_on": [
+      "language-breadth.md#LB-F16",
+      "language-breadth.md#LB-F17",
+      "language-breadth.md#LB-F21",
+      "language-breadth.md#LB-F22",
+      "language-breadth.md#LB-Q-cpp"
+    ],
+    "wave": 7,
+    "engine": "tags",
+    "plan_row": "LB-Q-arduino",
+    "worker_model": "sonnet",
+    "notes": "gap sweep GAP1 (A9): a sketch is C++ with an implicit prelude; first read is a route to the cpp dialect, no new grammar"
   }
 ]

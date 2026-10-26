@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"slices"
 	"sort"
+	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/langbench"
@@ -58,17 +60,37 @@ func clangSitesOf(paths []string) (map[string][]langbench.ClangSite, error) {
 	return out, nil
 }
 
-// clangSiteNotes discloses each compiler class a subject's scoring counted.
-func clangSiteNotes(name string, counts map[string]int) []string {
+// CUDA's text for the notes whose C++ examples (fmt, nlohmann, gtest) are not
+// its subject's (round 3 A4, F4).
+const (
+	noteClangMacroNamedCUDA = "of fathom's definitions are written by a macro the index defines under another name: the index's callables there are named by what is written, as fathom's extractor names them, so the calls in their bodies are measured; def_mapping does not count them"
+	noteClangMacroBody      = "of the build's own compiler's call sites are written inside a #define body (`#define checkKernelErrors(expr) ... abort()`, `#define UMUL(a, b) __umul24(a, b)`) and are left out of the call truth, as C's is: scip-clang references no token of a macro's body, and a macro is no caller (round 3 C)"
+	noteClangStandIn        = "of the compiler's function definitions (clang-ast-defs' ranges, the reading's ranges companion) stand in for a function the index writes no definition for, %d of them in an `extern \"C\"` linkage specification (scip-clang 0.4.0 writes none there, cuda-samples' host wrappers around a kernel launch), each over the compiler's own lines and name, never fathom's, its calls scored against the build's own compiler's call sites (round 3 C, round 4 C4-R1)"
+	noteClangBlindDefsCUDA  = "of fathom's definitions that make calls hold no occurrence of the index but a macro's (code scip-clang 0.4.0 does not index) and are scored against the build's own compiler's call sites alone"
+)
+
+// clangSiteNotes discloses each compiler class a subject's scoring counted,
+// naming the call-site oracle's own tier and the dialect's examples (round 3
+// A4, F4).
+func clangSiteNotes(name, dialect, tier string, counts map[string]int) []string {
+	dependent, macroNamed, blind := noteClangDependent, noteClangMacroNamed, noteClangBlindDefs
+	if tier != "A" {
+		dependent = strings.Replace(dependent, "(calibration/oracles/clang-calls, tier A)", "(calibration/oracles/clang-calls, tier "+tier+")", 1)
+	}
+	if dialect == "cuda" {
+		macroNamed, blind = noteClangMacroNamedCUDA, noteClangBlindDefsCUDA
+	}
 	var out []string
 	for _, c := range []struct{ key, note string }{
-		{langbench.CntClangCallsDependent, noteClangDependent},
+		{langbench.CntClangCallsDependent, dependent},
 		{langbench.CntClangCallsAdded, noteClangAdded},
 		{langbench.CntClangConstructs, noteClangConstructs},
 		{langbench.CntClangNotCalls, noteClangNotCalls},
-		{langbench.CntScipDefsMacroNamed, noteClangMacroNamed},
-		{langbench.CntClangBlindDefs, noteClangBlindDefs},
+		{langbench.CntScipDefsMacroNamed, macroNamed},
+		{langbench.CntClangBlindDefs, blind},
 		{langbench.CntCallsInactive, noteCallsInactive},
+		{langbench.CntClangMacroBody, noteClangMacroBody},
+		{langbench.CntClangStandInDefs, fmt.Sprintf(noteClangStandIn, counts[langbench.CntClangStandInExternC])},
 	} {
 		if n := counts[c.key]; n > 0 {
 			out = append(out, fmt.Sprintf("%s: %d %s", name, n, c.note))
@@ -92,4 +114,63 @@ func fileEdgesOracleBlind(raw []byte, truth map[[2]string]bool, edges []core.Edg
 	counts[langbench.CntFileEdgesOracleBlind] += len(blind)
 	*notes = append(*notes, fmt.Sprintf("%s: %d %s", name, len(blind), noteFileEdgesOracleBlind))
 	return kept, blind, nil
+}
+
+// feedTier is the weakest tier among the tool oracle files that carry any of
+// keys (each file's own "tier", required), A when no file does: a
+// metric is judged at the lowest tier of the oracles that feed it (owner ruling
+// C-R6, F5), so a clang CUDA translation's preprocessor or call sites lower
+// the index's tier-A metrics they settle.
+func feedTier(paths []string, keys ...string) (string, error) {
+	return feedTierFrom("A", paths, keys...)
+}
+
+// feedTierFrom is feedTier starting from tier rather than A: the index's own
+// (-scip-tier, round 3 A2), so a translated database's index lowers what it
+// feeds even when every file beside it is tier A.
+func feedTierFrom(tier string, paths []string, keys ...string) (string, error) {
+	for _, p := range paths {
+		b, err := os.ReadFile(p)
+		if err != nil {
+			return "", err
+		}
+		var probe map[string]json.RawMessage
+		if err := json.Unmarshal(b, &probe); err != nil {
+			return "", fmt.Errorf("%s: %w", p, err)
+		}
+		if !slices.ContainsFunc(keys, func(k string) bool { _, ok := probe[k]; return ok }) {
+			continue
+		}
+		var own string
+		if raw, ok := probe["tier"]; ok {
+			if err := json.Unmarshal(raw, &own); err != nil {
+				return "", fmt.Errorf("%s: tier: %w", p, err)
+			}
+		}
+		if !slices.Contains([]string{"A", "B", "C", "D"}, own) {
+			// Round 3 A3 (F3): an oracle that feeds a metric names its tier;
+			// an untiered file is refused, never read as tier A.
+			return "", fmt.Errorf("%s: feeds %v but names no tier A-D (%q)", p, keys, own)
+		}
+		tier = weakerTier(tier, own)
+	}
+	return tier, nil
+}
+
+// oracleFileTier is the tier an oracle file at path names, which feeds a
+// metric: one naming none A-D is refused, never read as tier A (round 3 A3,
+// round 4 C4-R2), as feedTierFrom refuses one.
+func oracleFileTier(path, tier string) (string, error) {
+	if !slices.Contains([]string{"A", "B", "C", "D"}, tier) {
+		return "", fmt.Errorf("%s: feeds a metric but names no tier A-D (%q)", path, tier)
+	}
+	return tier, nil
+}
+
+// weakerTier is the weaker of two oracle tiers (A strongest, D weakest).
+func weakerTier(a, b string) string {
+	if b > a {
+		return b
+	}
+	return a
 }

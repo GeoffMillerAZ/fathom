@@ -27,6 +27,7 @@
 // §10, §12) adds lang-probe (a file's tree and its dialect's captures),
 // lang-oracle (a dialect's reading against independent oracles),
 // lang-parity (a port's dialect against the incumbent it retires, §11),
+// lang-retime (design 1.9 T2: median CPU timing with extraction identity checks),
 // lang-regrade (a committed reading recomputed under changed harness rules) and
 // lang-tracker (docs/languages.md rendered from the queue and readings),
 // lang-next (the open queue items, eligible or blocked, §13.0 step 2),
@@ -83,6 +84,9 @@ func mainRun(args []string, stdout, stderr io.Writer) int {
 	}
 	if len(args) > 0 && args[0] == "lang-parity" {
 		return cmdLangParity(args[1:], stdout, stderr)
+	}
+	if len(args) > 0 && args[0] == "lang-retime" {
+		return cmdLangRetime(args[1:], stdout, stderr)
 	}
 	if len(args) > 0 && args[0] == "lang-regrade" {
 		return cmdLangRegrade(args[1:], stdout, stderr)

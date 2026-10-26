@@ -1,0 +1,199 @@
+{
+  "trust": "caller-declared",
+  "profile_digest": "3f0dc4bd7e52cc0469d7a1d47624c7820198cf828868c28ff26c59bc587541bb",
+  "subject_digest": "fd50567fb2809de3220cfd054c2902bef713cfc456e9100e087a1512986a8ba2",
+  "evidence_digest": "d659a8b25b10b5c68bad650de073936f6967142148b95ba6fe6de9b69528a4d3",
+  "evaluated_at": "2026-10-22T19:53:19Z",
+  "required_status": "fail",
+  "soft_score": null,
+  "trace": [
+    {
+      "criterion_id": "C01",
+      "definition_digest": "1a163703a46c54f7011972a64a27e816fbd2f5f3d89f00b6c8b91794777fa6ef",
+      "outcome": "pass",
+      "rule": "observed",
+      "reason": "Decision kinds and declined responses pass offline conformance verified only by named hermetic test and pinned source",
+      "artifact_digests": [
+        "9a749f8d6853a6685d0b6da84fa67f14c7f45b3c8cd80b5585fa6d8760bd2ec2"
+      ],
+      "observation_digest": "8ccb55d29bc10e6b4c36a8d4f1e4b1f564d228305b1927859c368419503f0785"
+    },
+    {
+      "criterion_id": "C02",
+      "definition_digest": "4adb6ba7aae00965d0d8129f87567a33b66cfc8ab4467526a529767b389f3995",
+      "outcome": "unknown",
+      "rule": "observed-unknown",
+      "reason": "Current source lacks a retained end-to-end criterion-specific adoption or measured-quality receipt.",
+      "artifact_digests": [],
+      "observation_digest": "66e9d338ce097a3743e6014317ff6bd2ad35c6a74ba6eafd3918e6734dc0eefd"
+    },
+    {
+      "criterion_id": "C03",
+      "definition_digest": "636fb0cba27c0e8fe9aae6bdb5527c7623253952bb21529f6cab8f43bc7dea28",
+      "outcome": "pass",
+      "rule": "observed",
+      "reason": "OpenAI Decisions wire maps supported answers/refusals and passes offline conformance verified only by named hermetic test and pinned source",
+      "artifact_digests": [
+        "675eb8eee955a9c18036b6ce63e8419eff8b9b6730144e28cbf8f807cf55af2d"
+      ],
+      "observation_digest": "f71a4934bf5e30c49916da0d9d2b4767b01665a6c148b3a3fecb774c8aa3c32b"
+    },
+    {
+      "criterion_id": "C04",
+      "definition_digest": "4b58d8f4ee4a29dffa2129c08e25a4b25320cac562d796c57122e26178498ca4",
+      "outcome": "fail",
+      "rule": "observed",
+      "reason": "Scope provider inventory names Anthropic, Bedrock, OpenAI, ClaudeCLI and CodexCLI; path scan found no Google adapter. No live verification attempted.",
+      "artifact_digests": [
+        "8aecacb527ac2605caa33859a955a93e2cfd613e078e5d0efbaca2b444b944ce"
+      ],
+      "observation_digest": "b6c420265c10499a90a8aa539f8b4ed09e626cb40641b727fc68fdd8556c26bc"
+    },
+    {
+      "criterion_id": "C05",
+      "definition_digest": "5e68cd48460cfa2c8a692de5587765a7795e6c3fa27b890604177e9c7d9e2a34",
+      "outcome": "pass",
+      "rule": "observed",
+      "reason": "Canonical spans reject missing provenance and invalid observation order verified only by named hermetic test and pinned source",
+      "artifact_digests": [
+        "efd600faa3624736282893a183343f6282d433e5a924ea246ade314393e0cb61"
+      ],
+      "observation_digest": "3171d23c42a5511595ba1c1bb966a6478ce2294ba45646e519dbf5779541d7fb"
+    },
+    {
+      "criterion_id": "C06",
+      "definition_digest": "fa9a9ebf8a67172c43fcc18b10606e2cfefe73653a35c38155a7d8bb00a60489",
+      "outcome": "pass",
+      "rule": "observed",
+      "reason": "Prepared catalog decision binds exact definition and evidence bytes; mismatch refuses verified only by named hermetic test and pinned source",
+      "artifact_digests": [
+        "217717b537fc4d714a5c1d4c9e59114e05d166ed86f299fce4e6695fdc34f5c4"
+      ],
+      "observation_digest": "fc4d2fbc6240e1f8dd2776cd9f1fa32368ea4fe4fef7c167ff0bbf8e41f752b4"
+    },
+    {
+      "criterion_id": "C07",
+      "definition_digest": "0d79655f86292b65a7cf68b5b1b61e962e76941d45c28ce70db39bb982d75f66",
+      "outcome": "pass",
+      "rule": "observed",
+      "reason": "Ambiguous remote outcome blocks further effects until reconciliation verified only by named hermetic test and pinned source",
+      "artifact_digests": [
+        "a781dfa40376f9cd04eb340bc54d5bad7230a5b3fab99972d1bc531ebc99aa74"
+      ],
+      "observation_digest": "7e1bc585c9f518795a756c4ba12d387060b314a492792f5ef9fc3f7483d42465"
+    },
+    {
+      "criterion_id": "C08",
+      "definition_digest": "1227f7f4986129047e2050f49682cbad5055b8604aacf4c57c733349ac193dd8",
+      "outcome": "unknown",
+      "rule": "observed-unknown",
+      "reason": "Current source lacks a retained end-to-end criterion-specific adoption or measured-quality receipt.",
+      "artifact_digests": [],
+      "observation_digest": "e48dfe01e4a87317d5507cbbfe70602aee414db6494b94cbaf7c5fa1896e498f"
+    },
+    {
+      "criterion_id": "C09",
+      "definition_digest": "185ecb37fa8995cb31192719cb0a69d8e66e113cc72cb5676db77f272cf6d17a",
+      "outcome": "pass",
+      "rule": "observed",
+      "reason": "Encrypted vault crypto-shred passes local conformance verified only by named hermetic test and pinned source",
+      "artifact_digests": [
+        "f710d018b8bbc555b577ca2482ea20e7c461c17cd1c70bc16b22424ee3ca880b"
+      ],
+      "observation_digest": "1fa6d7a985195b5c239632ffc83c5c518d224255faf5f5995a9d265991d2e57a"
+    },
+    {
+      "criterion_id": "C10",
+      "definition_digest": "8bba567ec7f76aa20a12b8d1e527937262c5db7beb13bae7f20e6cf3d8c3274c",
+      "outcome": "pass",
+      "rule": "observed",
+      "reason": "Strict sourced export refuses unsupported generation claims verified only by named hermetic test and pinned source",
+      "artifact_digests": [
+        "c09f6d65c64cae5beeb485310c5b38b4669d448a9696b07e333ebe84ecab5a73"
+      ],
+      "observation_digest": "ad115733055c74d37abed3eff8c9a589d8d0f8be0a777d3130576dde97977173"
+    },
+    {
+      "criterion_id": "C11",
+      "definition_digest": "783739fd1642c746ad4adc67b72fc1c0f130905088665ce1958356823a114828",
+      "outcome": "unknown",
+      "rule": "observed-unknown",
+      "reason": "Current source lacks a retained end-to-end criterion-specific adoption or measured-quality receipt.",
+      "artifact_digests": [],
+      "observation_digest": "f969f17fb5095c0a01a8748976e72527c042126babc301499357b44b103a2f47"
+    },
+    {
+      "criterion_id": "C12",
+      "definition_digest": "49ace952160122ba32cf8aa33a4628a054b7ea274616ca0e88fb659a77f4a417",
+      "outcome": "pass",
+      "rule": "observed",
+      "reason": "Contradictory evidence raises the investigation concern flag verified only by named hermetic test and pinned source",
+      "artifact_digests": [
+        "edf3cd553a34367a3ec9f277063b915f967006d91ff844ad8c3a51d15d28c8da"
+      ],
+      "observation_digest": "0ae61df451f17c70f6da5d68c4b3eb09b7495fae3f7a354d715e3f0e12357a05"
+    },
+    {
+      "criterion_id": "C13",
+      "definition_digest": "ed1f8df8dd2af65186b283594b28545444d844f82c7e4f3b3adaeb99c8246e9a",
+      "outcome": "pass",
+      "rule": "observed",
+      "reason": "Budget guard refuses a charge beyond the USD daily limit verified only by named hermetic test and pinned source",
+      "artifact_digests": [
+        "dd5f60e26b23d797a724945c9caf1c58ecbaacc1cb248164dd9e2dcedf414b0b"
+      ],
+      "observation_digest": "db7be88056dede535120f22b46f7033cc7b6c4246f0cc1b0f550fa5aee3c412c"
+    },
+    {
+      "criterion_id": "C14",
+      "definition_digest": "7255c11e401cd55d7aeb4d4551be57cd498bd19ec431fff8b66c7e02c728259d",
+      "outcome": "pass",
+      "rule": "observed",
+      "reason": "Decision cache binds template/content/model and never caches declined answers verified only by named hermetic test and pinned source",
+      "artifact_digests": [
+        "25000d0e9af583f7c597da64ae7fe1c744f5cc18de48219e4d0a15a307167640"
+      ],
+      "observation_digest": "a888fe4b16942f752715e47da7ed197aaf6c3dd6516077e2c807e6581739b7eb"
+    },
+    {
+      "criterion_id": "C15",
+      "definition_digest": "066f38c7a079c4cd57131a3a2b5facc30023fa151aba12849b6561c285a08233",
+      "outcome": "unknown",
+      "rule": "observed-unknown",
+      "reason": "Current source lacks a retained end-to-end criterion-specific adoption or measured-quality receipt.",
+      "artifact_digests": [],
+      "observation_digest": "f2641e1de11781f4ec6a49e57d191eeb3059e99874dfca0ee674565fe25f4639"
+    },
+    {
+      "criterion_id": "C16",
+      "definition_digest": "a2f26705e7bfdf9551eb6fc1f64e9319e634d8ebef0f85512b84ff291e13a215",
+      "outcome": "pass",
+      "rule": "observed",
+      "reason": "Adoption refuses a lesson without independent receiver boundary evidence verified only by named hermetic test and pinned source",
+      "artifact_digests": [
+        "9de3e7c57d2d4064104d0107f980cb31e3fe28fa1a3a7a01fd98cc89d782db8c"
+      ],
+      "observation_digest": "44213fc31b7bb2b7375dea407cd650cfae285ad050abaa48202b47f3dbd653ed"
+    },
+    {
+      "criterion_id": "C17",
+      "definition_digest": "8534bb99c665b66cabb328f68dc0f712e1892a4aa3d89697915276e08176cde9",
+      "outcome": "fail",
+      "rule": "observed",
+      "reason": "Repository path inventory found no GitHub ingestion adapter; no external connector was invoked.",
+      "artifact_digests": [
+        "d0fc244ae91455307d3a67fc8e7ff71acf09f33ede05f121b8a719ac2380a477"
+      ],
+      "observation_digest": "76b07a173567fc6ced9081c399e9e41ce24005f567704ad7350d814477b1d6d1"
+    },
+    {
+      "criterion_id": "C18",
+      "definition_digest": "0a20b841aa942c055a17fb2581fdca820556ad0821526fcacf915d2301034373",
+      "outcome": "unknown",
+      "rule": "observed-unknown",
+      "reason": "Historical native-host receipt is bounded to Claude/Codex versions; Codex live and Antigravity controls unproven.",
+      "artifact_digests": [],
+      "observation_digest": "bfab3541bda850e920f594ec98a0fd251d942a95d34b0ca1a78d271e114b74ac"
+    }
+  ]
+}

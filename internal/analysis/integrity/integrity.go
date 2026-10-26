@@ -10,7 +10,7 @@
 // never call time.Now() in query/analysis logic" and the repo's leaf-
 // analyzer convention — internal/analysis/review's own package doc comment
 // is the model this package follows). A caller that has git access, an
-// intent corpus, decoded test-kit manifests, or a call graph resolves those
+// intent corpus, decoded test kit manifests, or a call graph resolves those
 // facts itself and hands this package flattened data — the same
 // discipline internal/analysis/review.Input uses for ObligationRule/
 // CertificationRecord, so this package never grows an internal/intent,
@@ -34,7 +34,7 @@ const (
 	// immediately above its func declaration.
 	ReasonMarker GuardReason = "certifies_marker"
 	// ReasonManifest: the test is named by a #Certifies entry in a
-	// tests/*.cue suite manifest (test-kit's suite-level declaration).
+	// tests/*.cue suite manifest (the test kit's suite-level declaration).
 	ReasonManifest GuardReason = "manifest_entry"
 	// ReasonInvariant: the test is named in docs/intent/invariants.md's
 	// enforcement column.

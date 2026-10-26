@@ -99,11 +99,14 @@ import "struct"
 	// (O148). "cpp-macros" blanks C++ decorator macros by where they are
 	// written and reads try and catch macros as the keywords, at equal byte
 	// length, then also blanks the conditional directive lines (O455).
+	// "cuda-macros" blanks `__align__(N)` and explicit instantiations
+	// (`template class K<float>;`), reads `typeid` as `sizeof` (typeid of a
+	// builtin type), then runs the C++ step, at equal byte length (LB-Q-cuda).
 	// "objc-macros" reads `typedef NS_ENUM(T, Name)` and its siblings as
-	// `enum Name`, at equal byte length (LB-Q-objective-c). "jinja-templates"
-	// blanks a text line's `# ` and reads `in` / `not in` outside a for header
-	// as `==` / `!=`, at equal byte length (LB-Q-jinja2).
-	preprocess?: "csharp-conditionals" | "cpp-macros" | "objc-macros" | "tailwind-at-rules" | "jinja-templates"
+	// `enum Name`, at equal byte length (LB-Q-objective-c). "hlsl-macros"
+	// blanks a cbuffer or tbuffer header's register clause, at equal byte
+	// length (LB-Q-hlsl).
+	preprocess?: "csharp-conditionals" | "cpp-macros" | "cuda-macros" | "objc-macros" | "tailwind-at-rules" | "hlsl-macros"
 
 	// imports.strategy is from §6's closed set; the parameters are the
 	// closed set extractor.ImportParams decodes (LB-F11) — each strategy
@@ -116,15 +119,17 @@ import "struct"
 		// partial_prefix "_": relative-path also tries a file name with Sass's
 		// partial prefix (`@use "x"` loads `_x.scss`, LB-F465).
 		partial_prefix?: "_"
-		separator?:     string & !=""
+		separator?:      string & !=""
 		// dir_vars: variables naming the importing file's own directory
 		// (PowerShell's $PSScriptRoot); a file-symbol spec opening with one
 		// resolves against that directory (LB-Q-powershell, wave lf6).
 		dir_vars?: [...=~"^\\$[A-Za-z_][A-Za-z0-9_]*$"]
-		relative?:      bool
-		case?:          "snake"
-		labels?:        "bazel"
-		type_wildcard?: "members"
+		relative?: bool
+		case?:     "snake"
+		labels?:   "bazel"
+		// Whole imports can bind a prefix without changing path lookup.
+		whole_bindings?: "namespace"
+		type_wildcard?:  "members"
 		// package_scope "nested": a namespace's code sees its own and every
 		// enclosing namespace's names unqualified (C#); a namespace-dir dialect
 		// whose package is a clause (package.strategy "capture") sees its own
@@ -265,8 +270,8 @@ import "struct"
 // whose files open with a licence header longer than 1 KiB (Objective-C).
 #Sniff: {
 	extensions: [...=~"^\\.[A-Za-z0-9._+-]+$"] & [_, ...]
-	pattern:  string & !=""
-	priority: int & >=0
+	pattern:     string & !=""
+	priority:    int & >=0
 	scan_bytes?: int & >=1024 & <=65536
 }
 
@@ -289,11 +294,11 @@ import "struct"
 	id:          #ID
 	entry_point: =~"^tree_sitter_[a-z0-9_]+$"
 	extensions: [...=~"^\\.[A-Za-z0-9._+-]+$"]
-	sniff?:      string & !=""
+	sniff?: string & !=""
 	if len(extensions) == 0 {
 		sniff: string
 	}
-	preprocess?:  "tailwind-at-rules"
+	preprocess?: "tailwind-at-rules"
 	call_names?: "tailwind-candidate"
 	queries?: {
 		tags?: =~"\\.scm$"

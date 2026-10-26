@@ -533,7 +533,7 @@ the DAEMON, not the doctored repo — hooks were in fact firing live when
 this reported FAIL. `obligations_served` probed `CLAUDE.md` only, so a
 service whose compiled rules are code-scoped (`**/*.go`) reported FAIL
 despite serving real rules elsewhere (live: 6 rules on
-`cmd/conjure/main.go`, zero on `CLAUDE.md`).
+`cmd/svc-f/main.go`, zero on `CLAUDE.md`).
 
 - [x] `cmd/fathom/doctor.go`: `checkBinaryFresh` gains the `isFathomSourceTree` gate (root's `go.mod` must declare `github.com/geoffmilleraz/fathom`) — every other repo now SKIPs with an explanatory note instead of a guaranteed-wrong FAIL; the pre-existing git-revision-comparison logic (dirty-build note, nested/linked-worktree stamp-poisoning caveats) is unchanged and still runs, now gated behind the self-hosting check {id: O-34, symbol: checkBinaryFresh, package: cmd/fathom}
   - Checked for symbol/type collisions: no `type checkBinaryFresh` or

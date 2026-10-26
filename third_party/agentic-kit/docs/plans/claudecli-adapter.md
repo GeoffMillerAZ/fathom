@@ -7,7 +7,7 @@ and is the supported way to script it. This plan lands
 `foundations/llmclient/claudecli`, a new `llmclient.LLMClient` implementation
 that shells out to the `claude` binary instead of calling an HTTP API
 directly. fathom's compile path is the named consumer (wired in a companion
-change on the fathom side); throughline is a plausible second. This plan is
+change on the fathom side); consumer-a is a plausible second. This plan is
 gated by `fathom verify` at pre-push, same as every other `docs/plans/*.md`
 in this repo.
 

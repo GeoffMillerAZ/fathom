@@ -159,6 +159,21 @@
       "gz_bytes": 74133
     },
     {
+      "blob": "cuda",
+      "repo": "tree-sitter-grammars/tree-sitter-cuda",
+      "tag": "d58080a327756e4d1d16ec329ba7cb2048f6c6cd",
+      "commit": "d58080a327756e4d1d16ec329ba7cb2048f6c6cd",
+      "tarball_sha256": "18f7bcaf6115c7b9ca57505653e787c565f4cdc7886caf76a004c36e8aa1548a",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_cuda"],
+      "scanner": true,
+      "generate": false,
+      "abi": 15,
+      "blob_sha256": "82344832ffd95a2335d30a37665cec8285e41bf18526d88792d3d25b2b5d0129",
+      "blob_bytes": 3265801,
+      "gz_bytes": 741305
+    },
+    {
       "blob": "dart",
       "repo": "UserNobody14/tree-sitter-dart",
       "tag": "be07cf7118d3dba06236a3f19541685a68209934",
@@ -265,6 +280,21 @@
       "gz_bytes": 171362
     },
     {
+      "blob": "hlsl",
+      "repo": "tree-sitter-grammars/tree-sitter-hlsl",
+      "tag": "0400dd363f4e8142dcfa7b5a7d2d9db59c129c6e",
+      "commit": "0400dd363f4e8142dcfa7b5a7d2d9db59c129c6e",
+      "tarball_sha256": "0a40e0a1573fb4b6e7433f2be53464f20da6740455d6d5f08316cdd67ccd9dbf",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_hlsl"],
+      "scanner": true,
+      "generate": false,
+      "abi": 14,
+      "blob_sha256": "8cd650a354c697cbcbc564c36bad78997c550bd94744d85370618e4d6d339cc2",
+      "blob_bytes": 3052819,
+      "gz_bytes": 692820
+    },
+    {
       "blob": "html",
       "repo": "tree-sitter/tree-sitter-html",
       "tag": "v0.23.2",
@@ -311,23 +341,28 @@
     },
     {
       "blob": "jinja2",
-      "repo": "cathaysia/tree-sitter-jinja",
-      "tag": "v0.5.0",
-      "commit": "687b1ff1d6a7eaae26df84560bb1c049f4f1b4c1",
-      "tarball_sha256": "542ff7f3fc077f835e880984ff08701bb0fbd5d3c22b54e63c2b485bdd5d587b",
-      "licence": "Apache-2.0",
+      "repo": "bennypowers/tree-sitter-jinja-dialects",
+      "tag": "4f832fe6feeae8c9e5963d835bec0272a8331b47",
+      "commit": "4f832fe6feeae8c9e5963d835bec0272a8331b47",
+      "tarball_sha256": "89bc4e4b17985e66c61e2f91ffccbd5db11cfacdafdd23a1e65c280a6181b3ea",
+      "licence": "MIT",
       "entry_points": [
         "tree_sitter_jinja"
       ],
-      "subdirs": [
-        "tree-sitter-jinja"
-      ],
+      "subdirs": [],
       "scanner": true,
-      "generate": false,
-      "abi": 14,
-      "blob_sha256": "421b3f813557d124fdbb6630f028f03d1ba9906c7214c97584729e3f5a6147d9",
-      "blob_bytes": 230381,
-      "gz_bytes": 73025
+      "generate": true,
+      "abi": 15,
+      "blob_sha256": "71680f5fead32c2881a5e486e8dc79a71656e3be60fff7b714667673b5f30e25",
+      "blob_bytes": 212061,
+      "gz_bytes": 71302,
+      "predicate_export": true,
+      "patches": [
+        {
+          "path": "patches/jinja2/optional-else.patch",
+          "sha256": "ac3e0825cd149da56ed02cac14ea2e7f96b92d8b8f10c1c0a3cc9e9f4410be86"
+        }
+      ]
     },
     {
       "blob": "kotlin",

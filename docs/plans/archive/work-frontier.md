@@ -6,7 +6,7 @@
 > binding promotion). The dispatch boundary is normative: every row here
 > serves facts; none of them watches, schedules, or launches anything.
 >
-> **Covenant (ADR-0070 class):** failing test first, `task validate`
+> **Covenant (test-first class):** failing test first, `task validate`
 > green before commit, dated CHANGELOG entry, boxes flip only on
 > `fathom verify --service fathom --plan docs/plans/work-frontier.md`.
 >

@@ -26,7 +26,7 @@ is this design.
 2. Every computed fact is a join over existing assets, never a new engine.
 3. Implementation health is a published rule table (strongest reason, never summed).
 4. Verdicts are authored or decision-port-proposed under calibration; never auto-applied.
-5. Overrides are a Standard (Review Kit's job); a small local fallback ships in fathom.
+5. Overrides are a Standard (the review kit's job); a small local fallback ships in fathom.
 6. Surfaces: a CLI verb, a console page, an artifact-style export.
 
 ## 3. The `docs/features.md` grammar
@@ -134,9 +134,9 @@ same file is FM-M1's hand-built oracle (section 12).
 
 What counts as value, the health table's exact weights and thresholds, and any extra
 consideration beyond this design's defaults — that is a Standard, authored as a
-`product-portfolio` catalog, and authoring Standards is explicitly Review Kit's job (D3).
+`product-portfolio` catalog, and authoring Standards is explicitly the review kit's job (D3).
 Fathom ships a small `features` key of `#Project` (by convention `.fathom/features.cue`), read through the one loader (ADR-061 decision 2), as the local fallback, the same shape as `.fathom/risk.cue`,
-with defaults compiled into the binary so a repo with no Review Kit installed still gets a
+with defaults compiled into the binary so a repo with no review kit installed still gets a
 working feature map. `docs/features.md` itself — the authored rows and their citations — stays
 canonical either way; a Standard can change how a feature is scored, never which features
 exist or what they cite.
@@ -175,7 +175,7 @@ means it cannot start before those do either.
 
 - Feature-to-customer-ticket or CRM joins — the connector non-goal.
 - Feature-to-revenue — no source exists.
-- Feature-to-SLO/alerts/runbooks — Review Kit's ops domain; fathom supplies the code side only.
+- Feature-to-SLO/alerts/runbooks — the review kit's ops domain; fathom supplies the code side only.
 - Fathom deciding or auto-applying a verdict — verdicts are authored or proposed only
   (ADR-049 decision 12, ADR-040's authority boundary).
 - A hand-maintained feature list or status column — the same drift every hand-kept table in

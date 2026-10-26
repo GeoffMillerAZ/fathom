@@ -7,7 +7,7 @@
 // inputs always produce the same byte-identical projection (pure function,
 // stable sort).
 //
-// Primary consumer: Throughline UI (reads CaseFile to render proposition panels).
+// Primary consumer: Consumer-a UI (reads CaseFile to render proposition panels).
 // The projection is a read-only snapshot; it does not mutate any input.
 package casefile
 
@@ -173,7 +173,7 @@ _nonEmpty: string & !=""
 // Same inputs, byte-identical output (stable sort throughout). This is a
 // projection function result, not a ledger entry.
 //
-// Primary consumer: Throughline UI proposition panels.
+// Primary consumer: Consumer-a UI proposition panels.
 #CaseFile: {
 	// PropositionID is the stable identifier of the proposition this file
 	// summarises. Must be non-empty.

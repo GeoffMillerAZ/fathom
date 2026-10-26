@@ -1,0 +1,42 @@
+{
+  "id": "hlsl",
+  "display": "HLSL shaders (.hlsl .hlsli .fx .fxh)",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "hlsl",
+  "match": {
+    "extensions": [".hlsl", ".hlsli", ".fxh"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": {
+      "extensions": [".fx"],
+      "pattern": "^\\s*(cbuffer|tbuffer)\\s+\\w+|:\\s*SV_\\w+|\\bregister\\s*\\(\\s*[btsu]\\d+|^\\s*technique\\d*\\s+\\w+\\s*\\{",
+      "priority": 0,
+      "scan_bytes": 16384
+    }
+  },
+  "grammar": { "blob": "hlsl", "entry_point": "tree_sitter_hlsl" },
+  "variants": [],
+  "queries": { "tags": "tags.scm", "imports": "imports.scm", "references": "references.scm" },
+  "kinds": {
+    "function": { "source_kind": "HlslFunc",     "canonical": "function",   "callable": true },
+    "method":   { "source_kind": "HlslMethod",   "canonical": "method",     "callable": true },
+    "struct":   { "source_kind": "HlslStruct",   "canonical": "struct",     "container": true },
+    "cbuffer":  { "source_kind": "HlslCbuffer",  "canonical": "struct" },
+    "typedef":  { "source_kind": "HlslTypedef",  "canonical": "type_alias" },
+    "variable": { "source_kind": "HlslVariable", "canonical": "variable" },
+    "macro":    { "source_kind": "HlslMacro",    "canonical": "macro" }
+  },
+  "required_kinds": ["function", "struct", "cbuffer", "typedef", "variable"],
+  "oracle_kinds": {
+    "tool": { "function": "function", "method": "method", "struct": "struct", "cbuffer": "struct", "typedef": "type_alias", "variable": "variable" }
+  },
+  "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "imports": { "strategy": "include-path" },
+  "signature": { "max_chars": 200 },
+  "preprocess": "hlsl-macros",
+  "target_level": "L3",
+  "queue_id": "hlsl"
+}

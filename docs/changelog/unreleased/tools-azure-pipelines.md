@@ -1,0 +1,3 @@
+### Added
+
+- Azure Pipelines configurations and literal stage/job templates expose named jobs, stages, deployments and explicit dependsOn references. Runtime evaluation and template-file resolution remain unproven.

@@ -109,3 +109,5 @@ package dialect
 // 41. a matcher op off the list:      matchers: [{from: "package", select: "$.m", op: "==", edge: "e"}]
 // 42. a fact without a key:           facts: [{from: "package", select: "$.m"}]
 // 43. an empty signature field:       entities: [{select: "$", kind: "package", source_kind: "X", name: "$file", signature_fields: [""]}]
+
+// Whole-import binding off list: imports: {strategy: "include-path", whole_bindings: "all"}
