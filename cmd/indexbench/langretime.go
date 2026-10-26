@@ -162,7 +162,7 @@ func cmdLangRetime(args []string, stdout, stderr io.Writer) int {
 			kept = append(kept, note)
 		}
 	}
-	note := fmt.Sprintf("%s: %s; %s; median run %d: %.2f MB/CPU-s; every other field is the original measurement at its recorded fathom_commit %s", retimeNotePrefix, retimeMachineClass(), strings.Join(values, "; "), median.number, median.throughput, r.FathomCommit)
+	note := fmt.Sprintf("%s: %s; %s; median run %d: %.2f MB/CPU-s; every other field is the original measurement at its recorded fathom_commit %s", retimeNotePrefix, retimeMachineClass(ctx), strings.Join(values, "; "), median.number, median.throughput, r.FathomCommit)
 	if *tenancyOnly {
 		note += "; identity checked on the timing run's sha, clean tree, files, bytes, faults and parse errors only (-tenancy-only: the reading's counts come from a different scope than its tenancy block)"
 	}
@@ -261,9 +261,9 @@ func retimeIdentityDiff(recorded, measured langbench.Subject, tenancyOnly bool) 
 }
 
 // retimeMachineClass never includes machine identity or raw command output.
-func retimeMachineClass() string {
+func retimeMachineClass(ctx context.Context) string {
 	family := "CPU family unavailable"
-	if raw, err := exec.Command("sysctl", "-n", "machdep.cpu.brand_string").Output(); err == nil {
+	if raw, err := exec.CommandContext(ctx, "sysctl", "-n", "machdep.cpu.brand_string").Output(); err == nil {
 		if apple := regexp.MustCompile(`^Apple (M[0-9]+|A[0-9]+)\b`).FindString(strings.TrimSpace(string(raw))); apple != "" {
 			family = apple
 		}
