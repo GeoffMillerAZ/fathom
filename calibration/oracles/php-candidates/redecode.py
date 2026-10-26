@@ -7,7 +7,7 @@ from pathlib import Path
 import subprocess
 
 from fetch import ready
-from trace import decode
+from trace import write_collection
 
 
 def main():
@@ -29,7 +29,7 @@ def main():
         if original['files'] != syntax['files'] or original['sites'] != syntax['sites']:
             raise ValueError('original literal population changed; cannot reuse old traces')
         old = json.loads((out/'summary.json').read_text())
-        oracle, summary = decode(base/name, out, syntax, old['php'])
+        oracle, summary = write_collection(base/name, out, syntax, old['php'], old['driver_exit'])
         for k in ['driver', 'driver_exit', 'php', 'xdebug', 'trace_format', 'trace_bytes', 'trace_complete', 'trace_cap_mib']:
             summary[k] = old[k]
         (out/'syntax.json').write_text(json.dumps(syntax, sort_keys=True)+'\n')

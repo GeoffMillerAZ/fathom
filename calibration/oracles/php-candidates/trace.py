@@ -2,6 +2,7 @@
 """Xdebug's actual calls, attributed by PHP Reflection; syntax is denominator only."""
 import argparse
 from collections import Counter, defaultdict
+from dataclasses import dataclass
 import hashlib
 import json
 import os
@@ -13,11 +14,57 @@ import subprocess
 from fetch import ready
 
 
+@dataclass(frozen=True)
+class Limits:
+    trace_files: int = 64
+    reflection_files: int = 64
+    trace_bytes: int = 8 << 30
+    per_trace_bytes: int = 2 << 30
+    reflection_bytes: int = 64 << 20
+    line_bytes: int = 1 << 20
+    depth: int = 4096
+
+
+def bounded_lines(path, limit):
+    with path.open('rb') as source:
+        while True:
+            line = source.readline(limit+1)
+            if len(line) > limit:
+                raise ValueError('whole-unit refusal: trace line byte cap')
+            if not line:
+                return
+            yield line.decode('utf-8', errors='replace')
+
+
+def validate_collection(output, status, limits=Limits()):
+    traces = sorted(output.glob('trace.*.xt'))
+    if status == 'timeout' or isinstance(status, int) and status < 0:
+        raise ValueError('whole-unit refusal: timed out or signalled driver')
+    if not traces or len(traces) > limits.trace_files:
+        raise ValueError('whole-unit refusal: missing traces or trace file count cap')
+    if sum(p.stat().st_size for p in traces) > limits.trace_bytes:
+        raise ValueError('whole-unit refusal: total trace byte cap')
+    for path in traces:
+        if path.stat().st_size > limits.per_trace_bytes:
+            raise ValueError('whole-unit refusal: per-trace byte cap')
+        with path.open('rb') as source:
+            source.seek(max(0, path.stat().st_size-200))
+            tail = source.read().rstrip().splitlines()
+            if not tail or not tail[-1].startswith(b'TRACE END   [') or not tail[-1].endswith(b']'):
+                raise ValueError('whole-unit refusal: incomplete trace')
+    reflections = sorted(output.glob('reflection-*.json'))
+    if not reflections or len(reflections) > limits.reflection_files:
+        raise ValueError('whole-unit refusal: missing reflection or reflection file count cap')
+    if sum(p.stat().st_size for p in reflections) > limits.reflection_bytes:
+        raise ValueError('whole-unit refusal: missing reflection or reflection byte cap')
+    return traces
+
+
 def bare(name):
     return name.replace('->', '::').split('::')[-1].split('\\')[-1]
 
 
-def decode(root, output, syntax, php_version='8.5.8'):
+def decode(root, output, syntax, php_version='8.5.8', limits=Limits()):
     root = root.resolve()
     ranges = defaultdict(dict)
     for path in output.glob('reflection-*.json'):
@@ -34,9 +81,12 @@ def decode(root, output, syntax, php_version='8.5.8'):
     counts = Counter()
     for path in sorted(output.glob('trace.*.xt')):
         stack = {}
-        with path.open(errors='replace') as source:
+        source = bounded_lines(path, limits.line_bytes)
+        try:
             for line in source:
                 fields = line.rstrip('\n').split('\t')
+                if fields[0].isdigit() and int(fields[0]) > limits.depth:
+                    raise ValueError('whole-unit refusal: native stack depth cap')
                 if len(fields) >= 3 and fields[0].isdigit() and fields[2] == '1':
                     depth = int(fields[0])
                     stack = {d: fn for d, fn in stack.items() if d < depth}
@@ -83,6 +133,8 @@ def decode(root, output, syntax, php_version='8.5.8'):
                     attested.add(eligible[0])
                 else:
                     counts['ambiguous_same_line_entries'] += 1
+        finally:
+            source.close()
     oracle = {'tier': 'A', 'tool': 'Xdebug actual PHP calls + native PHP Reflection', 'version': '3.5.3 / PHP '+php_version,
               'calls': [{'path': p, 'from': f, 'to': t} for p, f, t in sorted(pairs)],
               'disclose': ['OL-R9: executed literal-call population only; unexecuted/ambiguous syntax sites are not native recall truth']}
@@ -97,12 +149,29 @@ def decode(root, output, syntax, php_version='8.5.8'):
                     'population_sha256': hashlib.sha256(json.dumps(syntax, sort_keys=True).encode()).hexdigest()}
 
 
+def write_collection(root, output, syntax, php_version, status, limits=Limits()):
+    """Fail closed: neither truncated input nor a cap can publish partial A truth."""
+    try:
+        traces = validate_collection(output, status, limits)
+        oracle, summary = decode(root, output, syntax, php_version, limits)
+    except (ValueError, OSError, KeyError, TypeError) as error:
+        # Do not preserve an earlier successful oracle during a failed re-decode.
+        (output/'oracle.json').unlink(missing_ok=True)
+        (output/'refusal.json').write_text(json.dumps({'refused': True, 'reason': str(error)})+'\n')
+        raise
+    (output/'oracle.json').write_text(json.dumps(oracle, indent=2, sort_keys=True)+'\n')
+    summary.update(trace_complete=True, trace_bytes=sum(p.stat().st_size for p in traces))
+    return oracle, summary
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--tools', required=True, type=Path)
     ap.add_argument('--subject', required=True, type=Path)
     ap.add_argument('--out', required=True, type=Path)
     ap.add_argument('--fixture', action='store_true')
+    ap.add_argument('--fixture-callee', choices=['strlen', 'strspn'], default='strlen',
+                    help='known native input-fact variant for the independence proof')
     ap.add_argument('--max-trace-mib', type=int, default=2048, help='bounded private trace file size')
     args = ap.parse_args()
     if not 1 <= args.max_trace_mib <= 2048:
@@ -155,20 +224,14 @@ def main():
                 os.killpg(process.pid, signal.SIGKILL)
                 process.wait()
     syntax = json.loads((out/'syntax.json').read_text())
-    oracle, summary = decode(subject, out, syntax, php_version)
-    traces = list(out.glob('trace.*.xt'))
-    def complete(path):
-        with path.open('rb') as source:
-            source.seek(max(0, path.stat().st_size-200))
-            return b'TRACE END' in source.read()
+    oracle, summary = write_collection(subject, out, syntax, php_version, status,
+                                        Limits(per_trace_bytes=args.max_trace_mib << 20))
     summary.update(driver='original vendor/bin/phpunit' if not args.fixture else 'original contract fixture',
                    driver_exit=status, php=php_version, xdebug='3.5.3', trace_format=1,
-                   trace_cap_mib=args.max_trace_mib,
-                   trace_bytes=sum(p.stat().st_size for p in traces),
-                   trace_complete=bool(traces) and all(complete(p) for p in traces))
+                   trace_cap_mib=args.max_trace_mib)
     if args.fixture:
         actual = {(p['path'], p['from'], p['to']) for p in oracle['calls']}
-        expected = {('native.php', 'driver', 'target'), ('native.php', 'target', 'strlen')}
+        expected = {('native.php', 'driver', 'target'), ('native.php', 'target', args.fixture_callee)}
         if actual != expected or summary['literal_sites'] != 4 or summary['attested_sites'] != 2 or status != 0:
             raise AssertionError('native fixture must leave alias and same-line dynamic sites unattested')
         summary['fixture_assertions_passed'] = True

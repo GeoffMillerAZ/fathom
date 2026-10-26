@@ -10,6 +10,7 @@ import subprocess
 import tarfile
 import time
 import sys
+import shutil
 
 SOURCES = {
     'callsite-fork': ('michalboryczko/scip-php', '40288605f28ea0111b42f81a8760ad5b79b8c3a0'),
@@ -21,7 +22,12 @@ SOURCES = {
 
 
 def ready():
-    while os.getloadavg()[0] > 6:
+    while True:
+        subprocess.run(['df', '-h', str(Path.home())], check=True)
+        if shutil.disk_usage(Path.home()).free < 20*(1 << 30):
+            raise RuntimeError('owner disk floor: need at least 20 GiB free')
+        if os.getloadavg()[0] <= 6:
+            return
         print('waiting for load <=6', flush=True)
         time.sleep(30)
 
@@ -37,6 +43,8 @@ def main():
         raise SystemExit('Python 3.13+ required before creating any output')
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--out', required=True, type=Path)
+    ap.add_argument('--only', action='append', choices=[*SOURCES, 'php', 'composer', 'mago_binary'],
+                    help='fetch only named entries; repeat for a minimal replay')
     args = ap.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     receipt_path = args.out/'fetch-receipt.json'
@@ -47,6 +55,8 @@ def main():
         receipt_path.write_text(json.dumps(receipt, indent=2, sort_keys=True)+'\n')
 
     for name, (repo, sha) in SOURCES.items():
+        if args.only and name not in args.only:
+            continue
         if receipt.get(name, {}).get('mode') == 'complete-git-checkout':
             continue
         target = args.out/name
@@ -60,7 +70,7 @@ def main():
         record(name, {'repository': repo, 'revision': sha, 'tree': tree, 'mode': 'complete-git-checkout'})
         print('fetched', name, flush=True)
 
-    if 'php' not in receipt:
+    if 'php' not in receipt and (not args.only or 'php' in args.only):
         content = download('https://dl.static-php.dev/static-php-cli/common/php-8.5.8-cli-macos-aarch64.tar.gz')
         if hashlib.sha256(content).hexdigest() != 'cba9bd8b38b51ef2c7cebf02af689e4481bbd07f65edc0b63d3a43b04e0c9db7':
             raise ValueError('PHP 8.5.8 runtime checksum mismatch')
@@ -69,14 +79,14 @@ def main():
         with tarfile.open(fileobj=io.BytesIO(content), mode='r:gz') as archive:
             archive.extractall(target, filter='data')
         record('php', {'version': '8.5.8', 'archive_sha256': hashlib.sha256(content).hexdigest()})
-    if 'composer' not in receipt:
+    if 'composer' not in receipt and (not args.only or 'composer' in args.only):
         content = download('https://getcomposer.org/download/2.10.3/composer.phar')
         expected = '7a2d379d5b8ffdaa028580ef26494c36d2feef4b178d3dd1473a4dbc5e17c8d6'
         if hashlib.sha256(content).hexdigest() != expected:
             raise ValueError('Composer checksum mismatch')
         (args.out/'composer.phar').write_bytes(content)
         record('composer', {'version': '2.10.3', 'sha256': expected})
-    if 'mago_binary' not in receipt:
+    if 'mago_binary' not in receipt and (not args.only or 'mago_binary' in args.only):
         content = download('https://github.com/ArtemisMucaj/scip-php/releases/download/v0.3.0/scip-php-macos-aarch64')
         expected = '27a4788b639a358235d77863231e715576ba91975954e539fdaf7bb5a2e78640'
         if hashlib.sha256(content).hexdigest() != expected:

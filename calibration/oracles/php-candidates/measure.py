@@ -6,9 +6,8 @@ import json
 import os
 from pathlib import Path
 import subprocess
-import time
 
-from fetch import SOURCES
+from fetch import SOURCES, ready
 
 
 def main():
@@ -33,9 +32,7 @@ def main():
 
     def run(cmd, cwd=None, stdout=None):
         nonlocal command_number
-        while os.getloadavg()[0] > 6:
-            print('waiting for load <=6', flush=True)
-            time.sleep(30)
+        ready()
         command_number += 1
         with (out/f'command-{command_number}.log').open('w') as log:
             subprocess.run([str(x) for x in cmd], cwd=cwd, env=env, check=True,

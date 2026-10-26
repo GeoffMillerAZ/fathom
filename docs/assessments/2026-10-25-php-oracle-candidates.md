@@ -127,7 +127,6 @@ The retry conditions are counted full-scope native coverage under LB-F175's 10%
 blind cap, or a native runtime driver covering at least 90% of the original written
 population with executed-only scoring preserved. No exclusion, new subject,
 C-to-A relabeling or tier amendment is used to obtain a passing result.
-The controller unions sibling assessment-index additions at integration.
 
 ## Provenance checks and remaining handoff work
 
@@ -137,16 +136,56 @@ subjects, SDK builds, downloads and private traces were discarded after the
 measurements. Public counts and hashes remain; dependency-lock snapshots are
 not published, so later constraint resolution may change replay bytes.
 
-Mutation: `trace.py`, substitute the syntax caller for the Reflection caller;
-`python3.13 -m unittest discover -s calibration/oracles/php-candidates -p test_native_trace.py`
-fails `test_native_caller_is_not_the_syntax_walk_pair`. Mutation: remove the
-same-line nonliteral-source guard; the same command fails
-`test_dynamic_call_on_same_line_cannot_attest_unexecuted_literal`. Both mutations
-were restored; `python3.13 -m unittest discover -s calibration/oracles/php-candidates -p 'test_*.py'`
-passes all four tests. These tests prove conservative attribution boundaries;
-they do not replace the newly required native truth-independence perturbation
-or exact tracked-set manifest replay.
+The subsequent proof replay rebuilt Xdebug 3.5.3 against PHP 8.5.8. Runnable
+command: `nice -n 10 python3.13 -B calibration/oracles/php-candidates/prove_native.py --tools workspace/tools/php-proof --indexbench workspace/tools/indexbench --out workspace/artifacts/lang-php/native-proof`.
+The [aggregate proof receipt](data/php-oracle-2026-10-26/native-proof.json)
+records the tool/code hashes. Replacing real `lang-probe` output with fake
+calls changes its digest but leaves the raw native oracle digest identical
+(`04aaad2b…820d6c`). Changing the known native fixture input from `strlen` to
+`strspn` changes exactly one native truth pair (`b42fe8bc…19285`). Both native
+collections assert two of four literal sites, leaving alias and same-line
+dynamic calls unattested. No extractor-output artifact is an oracle input.
 
-The merged worker checklist adds those replay/provenance checks and cap-refusal
-proofs before READY. They and the post-integration Go gates remain pending an
-adequate build environment; this assessment does not claim their completion.
+The [scope receipt](data/php-oracle-2026-10-26/scope-proof.json) comes from
+`nice -n 10 python3.13 -B calibration/oracles/php-candidates/prove_scope.py --tools workspace/tools/php-proof --out workspace/artifacts/lang-php/scope`.
+It runs the exact design section 13.3.1 manifest body before and after a fresh
+complete syntax-population audit on both original Git pins. Both tracked-set
+digests stay equal; canonical PHP counts/bytes and all 2,571/4,558 written pairs
+agree, with zero generated ignored/untracked paths. The manifest covers all
+tracked file kinds; non-PHP files explain its larger totals. Neither subject
+has a symlink or gitlink, and submodule contents are not claimed. Syntax skips
+`.git`, dot directories, `vendor` and `node_modules`; none hides an original
+eligible PHP file in these clean trees. This is a reconstruction at the same
+pins, not a retrospective manifest of the discarded native-suite runs.
+
+Mutation: `python3.13 -B calibration/oracles/php-candidates/prove_mutations.py`
+substitutes the syntax caller for the Reflection caller, removes the same-line
+nonliteral guard, bypasses whole-collection validation, then removes the
+unindexed-file population. Each has a focused `FAIL:` assertion: respectively
+`test_native_caller_is_not_the_syntax_walk_pair`,
+`test_dynamic_call_on_same_line_cannot_attest_unexecuted_literal`,
+`test_total_trace_byte_cap_plus_one`, and
+`test_omitted_documents_are_unattested_even_when_local_blind_share_is_small`.
+The committed driver restores each mutant in `finally` and reruns green.
+The final suite passes **16 tests**. Full output is kept privately at
+`workspace/artifacts/lang-php/mutation.log`.
+
+Caps: `python3.13 -B -m unittest discover -s calibration/oracles/php-candidates -p test_trace_caps.py`
+passes **12 tests**. Each resource cap has a reduced-limit cap+1 case: trace
+files 2/1, reflection files 2/1, total/per-file trace bytes and reflection JSON
+bytes (each actual input size / size minus one), a 34-byte line / 33-byte limit,
+and native stack depth 3/2. Each asserts whole-unit refusal, `refusal.json` and
+absence of even a stale `oracle.json`. Truncation, footer text inside a payload,
+timeout and signal also refuse; a completed failing suite remains disclosed.
+Production limits are 64/64 files, 8 GiB total trace, 2 GiB per trace, 64 MiB
+reflection JSON, 1 MiB per line and depth 4096. Full output is kept at
+`workspace/artifacts/lang-php/caps.log`. The collector no longer emits partial
+tier-A truth when collection is incomplete or over a cap.
+
+Post-integration handoff checks pass: focused `Queue|Plan|Disposition|Rest`
+tests under `-race`, release-notes `-check`, merge-debris in working-tree and
+staged modes, and `TestNoOrgSpecificNames`. The canonical reading remains
+unchanged; these supplementary measurements establish the counted limits above.
+All binding review findings are addressed: the three producers and actual
+runtime route are measured, Phan/phpactor are named, OL-R7 is identified, and
+the assessment index preserves the integrated sibling rows with normal spacing.

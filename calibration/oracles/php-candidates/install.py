@@ -6,13 +6,14 @@ import json
 import os
 from pathlib import Path
 import subprocess
-import time
+from fetch import ready
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--tools', required=True, type=Path)
     ap.add_argument('--runtime', action='store_true', help='restore and install the subjects complete declared test dependencies')
+    ap.add_argument('--only', action='append', choices=['callsite-fork', 'php84-fork', 'guzzle', 'monolog'])
     args = ap.parse_args()
     base = args.tools.resolve()
     php = base/'runtime/php'
@@ -34,9 +35,9 @@ def main():
     mode = 'runtime' if args.runtime else 'static'
     receipt = json.loads(receipt_path.read_text()) if receipt_path.exists() else {}
     for name, command in jobs:
-        while os.getloadavg()[0] > 6:
-            print('waiting for load <=6', flush=True)
-            time.sleep(30)
+        if args.only and name not in args.only:
+            continue
+        ready()
         root = base/name
         if args.runtime:
             original = subprocess.check_output(['git', 'show', 'HEAD:composer.json'], cwd=root)

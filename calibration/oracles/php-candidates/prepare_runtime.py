@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import shlex
 import subprocess
+from fetch import ready
 
 
 def main():
@@ -30,6 +31,7 @@ def main():
         return
 
     def scopes():
+        ready()
         return [subprocess.check_output([str(php), '-n', str(script), str(autoload), str(root), *extra])
                 for script, extra in [(here/'literal_sites.php', []),
                                       (here.parents[2]/'calibration/oracles/php-parser/PhpParserDump.php', ['definitions-only'])]]

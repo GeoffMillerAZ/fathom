@@ -1,0 +1,19 @@
+{
+  "changed_native_pairs": 1,
+  "extractor_after_sha256": "e8887a126d0c70ee7db098261f8c862b65d74f9090b0d1bcc5366ae5f142131d",
+  "extractor_before_sha256": "1f1e4194a0b75d849939a87375f510e04c03deb63e1f1d62b3007e23bec10714",
+  "input_change": "native function call strlen to strspn, original scope unchanged",
+  "native_fixture": "PASS: 2 of 4 literal sites; alias/dynamic gaps retained",
+  "oracle_code_sha256": {
+    "literal_sites.php": "1bd2ed6e3ac8b8758e059ac0a81fa8cd44ac464d6ee456f36e50200efc0cf979",
+    "prove_native.py": "efcdad05c4ea581cc2902447c73ac7dbdca9776b5f69304e2a1915d87d3ad8b1",
+    "reflect_shutdown.php": "f8f7b96f4f5a20b1bcd95b24493baa6edc970a3b8e3c6fd25bab7649046bbf69",
+    "trace.py": "76ab4e34e41285eefec5dd793905a54e9e9a7d0d4fbe9e8df5ac9af3d9342ff1"
+  },
+  "original_literal_sites": 4,
+  "php": "8.5.8",
+  "raw_truth_after_extractor_perturbation_sha256": "04aaad2b0ee1f437ebf3d584243fefbe3e252e8996ced98254119a59af820d6c",
+  "raw_truth_after_native_input_change_sha256": "b42fe8bca781440957484fee152a8241c268315328c96d11d90e1708e7319285",
+  "raw_truth_before_sha256": "04aaad2b0ee1f437ebf3d584243fefbe3e252e8996ced98254119a59af820d6c",
+  "xdebug": "3.5.3"
+}

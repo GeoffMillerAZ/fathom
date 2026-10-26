@@ -7,6 +7,8 @@ tools, SDKs, dependency caches, logs, traces and subjects belong under workspace
 or the worker's own cache. Set TMPDIR, GOTMPDIR, GOCACHE and GOMODCACHE there,
 GOWORK=off, GOMAXPROCS=2 and GOFLAGS=-p=2. Use one heavy job at a time, niceness 10,
 and start only at load <=6. Scripts wait before later heavy steps if load rises.
+Before every download/build/oracle step, `ready()` prints `df -h` and refuses
+to start below 20 GiB free. Delete measured subjects/builds after saving receipts.
 No global installation or shell configuration is required. Each --out is fresh.
 
 ## Static producer replay
@@ -112,3 +114,56 @@ never published as one. Only executed-native-pair recall is reported, never
 recall on unexecuted code. `publish.py` explicitly selects aggregate counts and
 hashes; raw source/file lists, traces, PID/host paths and diagnostic grades remain
 private. Public data has no raw subject text or copied file inventory.
+
+## Proof replay and bounded collection
+
+The minimal fixture replay needs only `fetch.py --only callsite-fork --only php
+--only composer`, `install.py --only callsite-fork`, `build_xdebug.py`, and the
+indexbench build above. It does not fetch the three subject/indexer trees that
+the fixture does not need. Then run:
+
+```sh
+nice -n 10 python3.13 -B calibration/oracles/php-candidates/prove_native.py \
+  --tools workspace/tools/php-proof --indexbench workspace/tools/indexbench \
+  --out workspace/artifacts/lang-php/native-proof
+python3.13 -B calibration/oracles/php-candidates/prove_mutations.py
+python3.13 -B -m unittest discover -s calibration/oracles/php-candidates -p test_trace_caps.py
+nice -n 10 python3.13 -B calibration/oracles/php-candidates/prove_scope.py \
+  --tools workspace/tools/php-proof --out workspace/artifacts/lang-php/scope
+```
+
+The native proof collects the committed fixture, changes real `lang-probe`
+output to fake calls and confirms the raw native oracle digest stays identical.
+Changing the fixture's native call from `strlen` to `strspn` must change exactly
+that native pair. Both collections assert 2/4 sites; the alias and same-line
+dynamic traps stay unattested. These are proof fixtures, never corpus members.
+
+`tracked_set.py` is the exact Python body of design recipe section 13.3.1.
+Run before and after measurement using identical subject/subpath inputs:
+
+```sh
+SUBJECT=workspace/tools/php-candidates/guzzle SUBPATH=. \
+  RECEIPT=workspace/artifacts/lang-php/guzzle-before \
+  python3.13 -B calibration/oracles/php-candidates/tracked_set.py
+# Repeat with RECEIPT ending in -after; repeat both for monolog.
+```
+
+The manifest includes all tracked kinds, not just PHP, and is a discovery
+approximation. `.untracked` includes ignored paths. Inspect it for generated
+language input, reconcile original PHP counts/bytes with the canonical reading,
+and publish only counts/hashes. Restore the disclosed runtime helper string and
+Composer metadata before taking the final original-source receipt. Dependencies
+remain excluded under `vendor/`, never removed from original source scope.
+`prove_scope.py` runs the exact manifest body around a fresh whole-population
+syntax audit and asserts canonical counts/bytes, the 2,571/4,558 original pairs
+and zero generated untracked/ignored paths. Fetch the two original subjects
+first with `fetch.py --only guzzle --only monolog`. This reconstructs the pinned
+source scope; it does not invent retrospective manifests for discarded suites.
+
+`trace.py` refuses the entire collection on missing footer/reflection, timeout,
+signal, more than 64 trace files or 64 reflection files, over 8 GiB total trace,
+over 2 GiB per trace, over 64 MiB reflection JSON, a trace line over 1 MiB or a
+native stack depth over 4096. It emits `refusal.json` and no `oracle.json`.
+`test_trace_caps.py` tests every cap at a reduced limit with limit+1 input,
+plus truncation, footer text inside payload, timeout and signal. Completed suite
+failures remain disclosed; they do not become a claim of passing tests.
