@@ -47,6 +47,7 @@ const languagesDocPath = "../../docs/languages.md"
 // to that row) — hand-maintained alongside the registry itself, the same
 // way the table's own rows are hand-maintained.
 var langRowHint = map[string]string{
+	"jinja":            "| Jinja2 |",
 	"go":               "| Go ",
 	"cue":              "| CUE ",
 	"ts":               "| TypeScript ",

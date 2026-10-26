@@ -124,7 +124,6 @@ type tsDialectRules struct {
 // parse as written (none when a rewrite would change nothing).
 var tsPreprocessors = map[string]func(src []byte) [][]byte{
 	"csharp-conditionals": csharpConditionalTexts,
-	"jinja-templates":     jinjaTexts,     // tsextract_jinja.go (LB-Q-jinja2)
 	"cpp-macros":          cppMacroTexts,  // tsextract_cppmacros.go (O455)
 	"cuda-macros":         cudaMacroTexts, // tsextract_cudamacros.go (LB-Q-cuda)
 	"hlsl-macros":         hlslMacroTexts, // tsextract_hlslmacros.go (LB-Q-hlsl)
