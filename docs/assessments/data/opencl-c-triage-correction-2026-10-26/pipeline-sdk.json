@@ -13,9 +13,15 @@
   "database_sha256": "458b759231c521785e7cece3e9a0886b1763a7cf21ae9c7bed25bb8731082128",
   "database_tree_sha256": "08c0c04d5f93eee51a3d61e09ca60a9f3d22379d6e82e43fb8c2d5de118c4ce1",
   "database_unchanged": true,
+  "digest_scope": "The named digests include absolute checkout/output/compiler/resource paths. They identify this diagnostic run and are not cross-host reproducibility checks.",
   "errored": 0,
   "function_ranges": 23,
   "minimal_resource_tree_unchanged": true,
+  "path_bound_digest_fields": [
+    "database_sha256",
+    "database_tree_sha256",
+    "capture_receipt_sha256"
+  ],
   "raw_output_sha256": {
     "clang-calls.json": "3229915f322dca75eb5b5cac45ec655b79ca9b1d76753e2c437c4b034d6d06ae",
     "preproc.json": "25749636b35e2bfedf7666f16420efb681f2dd771719738bd3e43f640ebd6831",

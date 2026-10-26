@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 
 
 MODULE_PATH = Path(__file__).with_name("replay-sdk.py")
@@ -119,18 +120,42 @@ class PreprocessorReceiptTests(unittest.TestCase):
 
 
 class PrivateLayoutTests(unittest.TestCase):
-    def test_every_non_summary_artifact_is_routed_below_private(self):
-        with tempfile.TemporaryDirectory() as temp:
-            work = Path(temp) / "replay"
-            work.mkdir()
+    def test_entrypoint_creates_fresh_nested_out_before_generation(self):
+        class GenerationReached(RuntimeError):
+            pass
 
-            layout = replay.make_private_layout(work)
+        workspace = replay.ROOT / "workspace"
+        with tempfile.TemporaryDirectory(dir=workspace) as temp:
+            root = Path(temp)
+            sdk = root / "sdk"
+            sdk.mkdir()
+            work = root / "fresh" / "nested" / "replay"
+            compiler_pin = "0" * 64
 
-            private = work / "private"
-            self.assertEqual(set(work.iterdir()), {private})
-            for path in layout.values():
-                self.assertTrue(path == private or private in path.parents)
-            self.assertFalse(layout["database"].exists())
+            def stop_after_layout(**kwargs):
+                self.assertEqual(kwargs["out"], work / "private" / "database")
+                self.assertTrue(work.is_dir())
+                raise GenerationReached("generate reached")
+
+            argv = [
+                "replay-sdk.py",
+                "--sdk", str(sdk),
+                "--clang", str(root / "clang"),
+                "--resource-dir", str(root / "resource"),
+                "--out", str(work),
+            ]
+            with (mock.patch.object(replay.sys, "argv", argv),
+                  mock.patch.object(replay.os, "getpriority", return_value=10),
+                  mock.patch.object(replay.compdb, "_load_compiler_pins",
+                                    return_value=(compiler_pin, {})),
+                  mock.patch.object(replay.compdb, "generate",
+                                    side_effect=stop_after_layout) as generate,
+                  mock.patch.object(replay.subprocess, "run") as subprocess_run):
+                with self.assertRaisesRegex(GenerationReached, "generate reached"):
+                    replay.main()
+
+            generate.assert_called_once()
+            subprocess_run.assert_not_called()
 
 
 if __name__ == "__main__":

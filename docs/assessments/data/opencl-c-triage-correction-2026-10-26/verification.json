@@ -22,7 +22,8 @@
     "test_replay_sdk.py": 7,
     "test_triage.py": 12
   },
-  "receipt_sha256": {
+  "historical_hash_scope": "These source and receipt hashes describe original bytes at the historical commit, before round2 metadata labels and replacements. Current corrected sources/receipts have their own verification in opencl-c-pool-2026-10-26.",
+  "historical_receipt_sha256": {
     "compdb-sdk.json": "1170b5aea076b583626564be086b85e8eb78015b75123476059269711c5dc73d",
     "native-arrayfire.json": "b16612040022815f98eab8737840fa296ce0e8d8aa6d3ffd6403bba69c8b0804",
     "native-clblas.json": "1c717b66e2b6d1003a1b08720fb70f86b7d774955a931fc875c851d85d4e838c",
@@ -36,13 +37,8 @@
     "pipeline-sdk.json": "155356ac42a3ba6e230fd69751704ca20e668c6116eac2aba4e02cf30f395b11",
     "subject-outcomes.json": "ba3ce771d6fff99dd974fbc11a4df2879cec15f61ac792afb9eb0ed98d5a63c2"
   },
-  "red_green": {
-    "pre_fix": "7 tests fail with missing validation helpers",
-    "restored": "7 tests pass",
-    "target": "replay-sdk.py"
-  },
-  "scope": "OpenCL C correction triage only, no language support",
-  "source_sha256": {
+  "historical_source_commit": "8d186389b27400bb0b493ad7bb1067bd3e4405c8",
+  "historical_source_sha256": {
     "calibration/oracles/opencl-c/compdb.py": "2933410a9f6eefa873388e6e750bd0a431ea8f5bfe877c6cb1a952342dbc0777",
     "calibration/oracles/opencl-c/compiler_probe.py": "55bca097457253311e1dce32bfa427ef0344e438550527534ccdaaa820890edb",
     "calibration/oracles/opencl-c/replay-sdk.py": "66b9bc913bc06988d854af365aedcf5b3e9cad1eb49a01f299473e7e90ba8501",
@@ -51,5 +47,11 @@
     "calibration/oracles/opencl-c/test_replay_sdk.py": "f45aa0e16781b88a8f2bba47db0f8c9e55e8ed746e254503f7028d4eb3a35bc7",
     "calibration/oracles/opencl-c/test_triage.py": "a584815c766d4be6e3bd28cde22056a6c0f40fec69d368e320978306cb42d239",
     "calibration/oracles/opencl-c/triage.py": "3e43fbd6cc7c9cd8cdbab9de969d7da00b997091bc01dd928aec6f34a83b542a"
-  }
+  },
+  "red_green": {
+    "pre_fix": "7 tests fail with missing validation helpers",
+    "restored": "7 tests pass",
+    "target": "replay-sdk.py"
+  },
+  "scope": "OpenCL C correction triage only, no language support"
 }

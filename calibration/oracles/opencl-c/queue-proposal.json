@@ -6,14 +6,20 @@
     "kind": "language",
     "tier": "T3",
     "target_level": "L2",
-    "grammar_source": "lefp/tree-sitter-opencl 8e1d24a (native candidate only); compare P-R1 patch over pinned tree-sitter-c before implementation selection",
+    "grammar_source": "P-R1 grammar repair required; both unmodified native candidates fail on the outcome-blind production pool. Compare general OpenCL fixes over pinned dedicated/C grammars on that same pool.",
     "licence": "MIT",
     "oracle": [
       "synthesized OpenCL compile database following cuda-compdb.py -> existing clang-calls + clang-ast-defs + scip-clang/preproc active_lines, tier B"
     ],
     "calibration_subjects": [
       "KhronosGroup/OpenCL-SDK@6090378a113db8dab20ae278c8fa57ab10b92300",
-      "HandsOnOpenCL/Exercises-Solutions@be2fb26d7c478627598ffba369014a4adb57b6f4"
+      "darktable-org/darktable@891e46cd57b64d67dbde183d5d3c0e430edd11d6",
+      "opencv/opencv@4d7924ebb501ae31d69820039d92a0d5fe7ee7dd",
+      "arrayfire/arrayfire@ab4a5063c92512dd65ab2b418cf81e4b3c46299b",
+      "clMathLibraries/clBLAS@cf9113982fdfc994297d372785ce76eb80911af2",
+      "yuhc/gpu-rodinia@9c10d3ea16ddba2ba057cc3951a9efc4c2cc18a4",
+      "vetter/shoc@00b25e2751dde4f1d7c595cadbb7fdb0873257b0",
+      "inducer/pyopencl@0c46357ef31474b1dfd2ec4000b4421fcf71193a"
     ],
     "depends_on": [
       "LB-Q-glsl"
@@ -21,29 +27,25 @@
     "engine": "tags",
     "plan_row": "LB-Q-opencl",
     "worker_model": "sonnet",
-    "notes": "Initial .cl-only OpenCL C target. Positive C/OpenCL sniff, Lisp/Cool negatives, ambiguous refusal. Keep every tracked .cl kernel/include fragment in tenancy. Proposed whole SDK+HandsOn pool is 1/26 native ERROR-or-MISSING (3.85%) versus C26/26; not a WASM gate or level. Use uniform reconstructed CL3.0/SPIR64 no-D tier-B context, filter BOTH oracle and extractor sites through preproc.active_lines. Publish every subject and pooled numerators/denominators. Hashcat remains diagnostic stress only. C++ for OpenCL, host strings and extra suffixes outside initial scope; L3/L4 unclaimed."
+    "notes": "Initial .cl-only proposal, no support claim. Membership is fixed by pool-rule.json using licence, whole-project pin and predeclared role, never parse outcomes. The seven previously screened OSI primary populations fail natively: dedicated133/378=35.19%. PyOpenCL enters under that same rule before its screen. HandsOn CC-BY-3.0 is diagnostic-only and cannot calibrate under design13.3step16. Preserve every .cl including fragments and duplicates in tenancy. Positive C/OpenCL sniff, Lisp/Cool negatives, ambiguous refusal, tier-B reconstructed CL3.0/SPIR64 context and shared active_lines filtering remain required. No L3/L4 claim. The full frozen eight-project pool now fails at138/386=35.75%, including PyOpenCL5/8; none of those results changes membership."
   },
   "ordering": "GLSL lands, then OpenCL C ships, then Slang starts",
   "activation": "The controller adds/proves the queue and plan rows; this file does not alter the canonical queue.",
   "diagnostic_subjects": [
     "hashcat/hashcat",
-    "darktable-org/darktable",
-    "opencv/opencv",
-    "arrayfire/arrayfire",
-    "clMathLibraries/clBLAS",
-    "yuhc/gpu-rodinia",
     "pocl/pocl",
-    "vetter/shoc",
+    "HandsOnOpenCL/Exercises-Solutions",
     "sschaetz/nvidia-opencl-examples"
   ],
   "implementation_gates": [
     "GLSL lands before implementation ships (G-R1).",
-    "Native candidate passes proposed pooled5%gate, but reproduce in product WASM and account every readable .cl before selecting a grammar.",
+    "Repair general OpenCL constructs under P-R1, then measure the unchanged complete preregistered primary pool in native and product WASM. Current unmodified dedicated grammar fails natively at133/378=35.19% before PyOpenCL; no gate pass or level is claimed. The complete eight-project baseline is138/386=35.75% dedicated and380/386=98.45% C, with386files/382distinctblobs; preserve duplicates in tenancy.",
     "Pin and verify official upstream LLVM archive from llvm-plan.json; regenerate compiler/header pins and replay all facts, no claimed Apple/LLVM parity.",
-    "Reconstruct and evidence HandsOn compiler context, retain every .cl in tenancy, meet required per-subject oracle coverage before grading. No oracle coverage measured for HandsOn in this triage.",
+    "Reconstruct and evidence each primary subject compiler context and meet per-subject oracle coverage without removing any file from tenancy. HandsOn and unresolved-EULA subjects are ineligible for calibration. Membership cannot change after patch results.",
     "Reuse written-site mapping, compiler-derived stand-ins and active_lines in existing clang tools; prove oracle independence and explicit zero-call scope before L2. Tier B caps good.",
     "Cheap next probe: scip-clang pinned0.4.0 with -x cl; current release0.4.1 is not silently substituted.",
     "For link-unit truth, use evidenced clCreateProgramWithSource/clBuildProgram source assembly as CUDA uses build link lines. Never infer one program per file. No L3 claim.",
     "Any hashcat prepass requires independently reconstructed compiler context and proof it removes nothing graded. No such prepass is authorized or claimed here."
-  ]
+  ],
+  "pool_rule": "calibration/oracles/opencl-c/pool-rule.json"
 }

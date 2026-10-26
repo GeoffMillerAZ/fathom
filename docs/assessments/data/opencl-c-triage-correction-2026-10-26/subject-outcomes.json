@@ -11,6 +11,14 @@
     "symlinks": 0,
     "tracked_regular_files": 7372
   },
+  "osi_primary_before_pyopencl": {
+    "c_error_or_missing": 373,
+    "c_error_rate": 0.9867724867724867,
+    "dedicated_error_or_missing": 133,
+    "dedicated_error_rate": 0.35185185185185186,
+    "files": 378,
+    "status": "Fails P-R1 natively; all eligible whole subjects retained."
+  },
   "outcomes": [
     {
       "bytes": 726693,
@@ -233,18 +241,7 @@
     "c3ab954d985b171fd28d11f0ffeb9b642c5fb38e",
     "ee60410a0"
   ],
-  "proposed_primary_pool": {
-    "c_error_or_missing": 26,
-    "c_error_rate": 1.0,
-    "dedicated_error_or_missing": 1,
-    "dedicated_error_rate": 0.038461538461538464,
-    "files": 26,
-    "status": "native pool passes5%; implementation still requires WASM and per-subject oracle coverage",
-    "subjects": [
-      "sdk",
-      "handson"
-    ]
-  },
+  "primary_pool_rule": "calibration/oracles/opencl-c/pool-rule.json",
   "retired_primary_pool": {
     "c_error_or_missing": 1354,
     "c_error_rate": 0.9963208241353937,
@@ -258,5 +255,17 @@
     ]
   },
   "schema": "opencl-c-subject-search-outcomes-v1",
-  "scope": "native diagnostics only; no canonical corpus, WASM validation or quality grade"
+  "scope": "native diagnostics only; no canonical corpus, WASM validation or quality grade",
+  "withdrawn_pairing": {
+    "c_error_or_missing": 26,
+    "c_error_rate": 1.0,
+    "dedicated_error_or_missing": 1,
+    "dedicated_error_rate": 0.038461538461538464,
+    "files": 26,
+    "status": "WITHDRAWN: outcome-selected pairing with non-OSI HandsOn; no gate pass or level follows.",
+    "subjects": [
+      "sdk",
+      "handson"
+    ]
+  }
 }

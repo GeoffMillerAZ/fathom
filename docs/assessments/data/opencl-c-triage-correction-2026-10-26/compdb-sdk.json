@@ -9,12 +9,16 @@
     "unchanged": true
   },
   "context": "uniform reconstructed OpenCL C context; runtime source grouping is not inferred",
+  "digest_scope": "The named digests include absolute checkout/output/compiler/resource paths. They identify this diagnostic run and are not cross-host reproducibility checks.",
   "expected_commit": "6090378a113db8dab20ae278c8fa57ab10b92300",
   "omitted": {
     "gitlinks": 3,
     "symlinks": 0
   },
   "oracle_tier": "B",
+  "path_bound_digest_fields": [
+    "compile_units.manifest_sha256"
+  ],
   "resource_headers": {
     "content_sha256": [
       "aedaac009c73aa9ce4fad770ebdddbf11bbce42effc4c40cb54330f31af49c50",

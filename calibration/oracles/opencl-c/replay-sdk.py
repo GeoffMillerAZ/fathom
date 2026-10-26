@@ -147,7 +147,7 @@ def main():
     if os.getpriority(os.PRIO_PROCESS, 0) < 10:
         parser.error('caller must enforce nice 10 or lower scheduling priority')
     work = compdb._validated_out(args.out, parser, args.sdk)
-    work.mkdir()
+    work.mkdir(parents=True)
     layout = make_private_layout(work)
     compiler = args.clang.resolve()
     pin, headers = compdb._load_compiler_pins()
@@ -220,12 +220,17 @@ def main():
                'minimal_resource_tree_unchanged': True,
                'compiler_and_minimal_resource_pins_checked_before_after_each_consumer': True,
                'snapshot_sha256': source_before, 'resource_tree_sha256': resource_before,
-               'database_tree_sha256': database_before, 'database_sha256': db_before,
                'raw_output_sha256': {
                    name: digest(layout['outputs'] / name)
                    for name in ('preproc.ranges.json', 'clang-calls.json', 'preproc.json')
                },
-               'capture_receipt_sha256': digest(database / 'summary.json')}
+               'path_bound_diagnostic_run_identity': {
+                   'scope': ('includes absolute checkout, output, compiler, and resource paths; '
+                             'not a cross-host reproducibility check'),
+                   'database_tree_sha256': database_before,
+                   'database_sha256': db_before,
+                   'capture_receipt_sha256': digest(database / 'summary.json'),
+               }}
     (work / 'summary.json').write_text(
         json.dumps(summary, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     print(json.dumps(summary, sort_keys=True))
