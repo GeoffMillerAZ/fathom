@@ -80,7 +80,7 @@ before `responsible-tenant.md#RT-M1` reads PASS.
 - [-] A tool per edge kind (`routes`, `topics`, `tables` …) {id: SG-X1, disposition: refused, reason: "law 4; one link model and three verbs (ADR-050 decision 3)"}
 - [-] The decision port in link matching {id: SG-X2, disposition: deferred, reason: "the route site failed calibration 45.7% at confidence at least 0.9 (2026-09-24)", trigger: "an adjudicated sample of at least 100 template candidates reads nine in ten at the shown confidence"}
 - [-] Downloading packages, advisories or docs to fill a gap {id: SG-X3, disposition: refused, reason: "I56; egress is an admission cost the operator never granted"}
-- [-] Building the depgraph engine in fathom {id: SG-X4, disposition: refused, reason: "vision 15 §3: ci-kit owns the engine; fathom consumes it through the DepGraph port"}
+- [-] Building the dependency-graph engine in fathom {id: SG-X4, disposition: refused, reason: "vision 15 §3: the CI kit owns the engine; fathom consumes it through the DepGraph port"}
 - [-] NuGet API indexing {id: SG-X5, disposition: deferred, reason: "reference assemblies need a metadata reader", trigger: "a fleet service pins NuGet packages and SG-M4 passes for the five G18 ecosystems"}
 
 ## Measurements (op)

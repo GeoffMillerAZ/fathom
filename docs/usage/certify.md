@@ -14,7 +14,7 @@ gap counts (a target is a declared-or-discovered invariant, incident, spec,
 rule or port) and the join rate. `certify gaps` lists every declared target
 with no live certificate, one line per gap with a remedy; `--kind` narrows
 to one target kind; `--json` emits the versioned `fathom.certify.gaps/v1`
-shape the Review Kit adapter's `fathom-certify` parses (schema string, field
+shape the review kit adapter's `fathom-certify` parses (schema string, field
 names, and sort order — kind then id — are the wire contract; do not change
 them without a version bump). Each target additionally carries `source`
 (`{"file":..., "line":...}`, omitempty) — where the target ITSELF is

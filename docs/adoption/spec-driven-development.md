@@ -123,7 +123,7 @@ long.
 **Honesty boundary.** `test_reaches` means a `Test*` function **statically
 reaches** the symbol via the call graph — never that the test passes or
 even runs. `runtime_pass` reads the newest attested run of a row's
-certifying tests (a test-kit envelope `fathom tests ingest` recorded): Pass
+certifying tests (a test kit envelope `fathom tests ingest` recorded): Pass
 or Fail with its commit and age, Unknown when none exists, informational and
 never changing a row's status (TC-29; verify never runs a command, so the
 `cmd` oracle class in §11 below is retired).

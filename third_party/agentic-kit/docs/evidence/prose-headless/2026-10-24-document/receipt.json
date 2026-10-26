@@ -1,0 +1,204 @@
+{
+  "version": "hp.document-observation/1",
+  "observed_date": "2026-10-24",
+  "synthetic": true,
+  "corpus_digest": "f85612aa226eb4418d2fa11b4023ea53f99979934bd56780dd005d1b8c796893",
+  "planned_positive_cells": 36,
+  "positive_cells_attempted": 1,
+  "positive_cells_unexecuted": 35,
+  "available_negative_cases": 43,
+  "negative_cases_evaluated": 0,
+  "first_attempt_accepts": 0,
+  "independently_accepted_documents": 0,
+  "cost_per_independently_accepted_document": null,
+  "cell": "freeform-brief-executive-r1",
+  "status": "failed_frozen_range_after_one_bounded_repair",
+  "ui_entry": false,
+  "publication_authority": false,
+  "attempts": [
+    {
+      "attempt": 1,
+      "source_snapshot_base": "1c0ceff3249a3de6901dc183d27b3b362416b81c",
+      "source_equivalent_commit": "988047b",
+      "binary_sha256": "b38153c48efc4b5a7643f1150c2c65e2b34793123f92e3a11bb8299f9fe11eb4",
+      "status": "held_before_support_review",
+      "reason": "recognized provider reasoning preserved as unknown content by ordinary adapter",
+      "observations": [
+        {
+          "sequence": 1,
+          "http_status": 200,
+          "status": "completed",
+          "model": "claude-haiku-5-5",
+          "input_tokens": 2034,
+          "output_tokens": 1162,
+          "thinking_tokens": 839,
+          "usage_priced_micro_usd": 785,
+          "stop_reason": "end_turn",
+          "latency_nanos": 6598593083
+        }
+      ]
+    },
+    {
+      "attempt": 2,
+      "repair_number": 1,
+      "source_commit": "d2f25aac1f29f2a9b52b4d0ff1b9958ae1a57f77",
+      "binary_sha256": "217f638d5cc1815e32db96fe71cf27496fa5b0b8869e14715f5e073caf0baa8a",
+      "status": "held_after_support_before_independent_goal_acceptance",
+      "reason": "word_count_below_frozen_minimum",
+      "observed_words": 86,
+      "required_min_words": 100,
+      "required_max_words": 200,
+      "required_facts": 8,
+      "required_fact_ids_cited": 8,
+      "model_support_decisions": 8,
+      "goal_semantics_assessed": false,
+      "document_digest": "1c711789ab03608ca74ead428f6a4c236411359bc7e43666bf59d881ba4678d0",
+      "observations": [
+        {
+          "sequence": 1,
+          "http_status": 200,
+          "status": "completed",
+          "model": "claude-sonnet-5-5",
+          "input_tokens": 2034,
+          "output_tokens": 319,
+          "thinking_tokens": 0,
+          "usage_priced_micro_usd": 7258,
+          "stop_reason": "end_turn",
+          "latency_nanos": 2897592333
+        },
+        {
+          "sequence": 2,
+          "http_status": 200,
+          "status": "completed",
+          "model": "claude-opus-5-5",
+          "input_tokens": 817,
+          "output_tokens": 90,
+          "thinking_tokens": 0,
+          "usage_priced_micro_usd": 5068,
+          "stop_reason": "end_turn",
+          "latency_nanos": 2922076208
+        },
+        {
+          "sequence": 3,
+          "http_status": 200,
+          "status": "completed",
+          "model": "claude-opus-5-5",
+          "input_tokens": 799,
+          "output_tokens": 113,
+          "thinking_tokens": 0,
+          "usage_priced_micro_usd": 5456,
+          "stop_reason": "end_turn",
+          "latency_nanos": 2243449083
+        },
+        {
+          "sequence": 4,
+          "http_status": 200,
+          "status": "completed",
+          "model": "claude-opus-5-5",
+          "input_tokens": 803,
+          "output_tokens": 60,
+          "thinking_tokens": 0,
+          "usage_priced_micro_usd": 4412,
+          "stop_reason": "end_turn",
+          "latency_nanos": 1569993500
+        },
+        {
+          "sequence": 5,
+          "http_status": 200,
+          "status": "completed",
+          "model": "claude-opus-5-5",
+          "input_tokens": 802,
+          "output_tokens": 77,
+          "thinking_tokens": 0,
+          "usage_priced_micro_usd": 4748,
+          "stop_reason": "end_turn",
+          "latency_nanos": 1962408375
+        },
+        {
+          "sequence": 6,
+          "http_status": 200,
+          "status": "completed",
+          "model": "claude-opus-5-5",
+          "input_tokens": 803,
+          "output_tokens": 66,
+          "thinking_tokens": 0,
+          "usage_priced_micro_usd": 4532,
+          "stop_reason": "end_turn",
+          "latency_nanos": 2607060584
+        },
+        {
+          "sequence": 7,
+          "http_status": 200,
+          "status": "completed",
+          "model": "claude-sonnet-5-5",
+          "input_tokens": 1929,
+          "output_tokens": 191,
+          "thinking_tokens": 0,
+          "usage_priced_micro_usd": 5768,
+          "stop_reason": "end_turn",
+          "latency_nanos": 2530696250
+        },
+        {
+          "sequence": 8,
+          "http_status": 200,
+          "status": "completed",
+          "model": "claude-opus-5-5",
+          "input_tokens": 804,
+          "output_tokens": 107,
+          "thinking_tokens": 0,
+          "usage_priced_micro_usd": 5356,
+          "stop_reason": "end_turn",
+          "latency_nanos": 2236968417
+        },
+        {
+          "sequence": 9,
+          "http_status": 200,
+          "status": "completed",
+          "model": "claude-opus-5-5",
+          "input_tokens": 801,
+          "output_tokens": 81,
+          "thinking_tokens": 0,
+          "usage_priced_micro_usd": 4824,
+          "stop_reason": "end_turn",
+          "latency_nanos": 2219017333
+        },
+        {
+          "sequence": 10,
+          "http_status": 200,
+          "status": "completed",
+          "model": "claude-opus-5-5",
+          "input_tokens": 805,
+          "output_tokens": 63,
+          "thinking_tokens": 0,
+          "usage_priced_micro_usd": 4480,
+          "stop_reason": "end_turn",
+          "latency_nanos": 1230602542
+        }
+      ]
+    }
+  ],
+  "direct_stage_accounting": {
+    "prior_transport_canaries_usage_priced_micro_usd": 29,
+    "document_first_usage_priced_micro_usd": 785,
+    "document_repair_usage_priced_micro_usd": 51902,
+    "all_direct_usage_priced_micro_usd": 52716,
+    "stage_budget_micro_usd": 10000000,
+    "remaining_known_direct_budget_micro_usd": 9947284,
+    "invoice": false
+  },
+  "coding_cli_accounting": {
+    "latest_session_estimate_usd": "10.3240892",
+    "scope": "session cumulative across phases0..5; do not sum restored totals",
+    "invoice": false
+  },
+  "qualification_limits": [
+    "one logical cell and one bounded repair, not complete36cell cohort",
+    "support model judgments are heuristic; source truth is authored fictionalworld",
+    "goals remain unassessed; source-like output provides limited synthesis/audience evidence",
+    "negative seeds unexecuted; Jev paired effectiveness unmeasured",
+    "new length decision prospective; original failures unchanged",
+    "raw native responses and full artifacts stay in private local evidence"
+  ],
+  "pricing_source": "https://platform.claude.com/docs/en/about-claude/pricing",
+  "thinking_contract_source": "https://platform.claude.com/docs/en/build-with-claude/thinking"
+}

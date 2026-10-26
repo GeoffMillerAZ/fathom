@@ -1,0 +1,57 @@
+{
+  "version": "prose-lab.observed-review-regressions/1",
+  "provenance": "Derived after this retained pilot, with independent blind agent heuristic and owner source review; not a held-out or human-labeled sample.",
+  "fixture_digest": "b6dc0c4fa61b217fd5784355f33a9d301f53c8a1dd4afa3a22edf3db7f288cf5",
+  "cases": [
+    {
+      "id": "lp-rhetorical-scope",
+      "assertion": "The defined design goal is therefore narrow: to preserve acknowledged readings across a receiver restart in the pilot.",
+      "fact_ids": [
+        "f-05"
+      ],
+      "facts": [
+        {
+          "id": "f-05",
+          "text": "Definition: The design goal is to preserve acknowledged readings across a receiver restart in the pilot.",
+          "kind": "definition",
+          "required": true,
+          "occurred_at": "2026-03-04T12:00:00Z"
+        }
+      ],
+      "observed_support_status": "unsupported",
+      "reference_judgment": "supported",
+      "method": "independent-agent-heuristic-and-owner-source-review",
+      "basis": "The sentence identifies the defined pilot goal; narrow is contextual scoping, without a changed actor, number, achieved result or production authority."
+    },
+    {
+      "id": "lp-document-absence",
+      "assertion": "The pilot itself is proposed for an isolated host with synthetic inputs and no production device connection, so nothing in this document describes enacted or production behavior.",
+      "fact_ids": [
+        "f-29"
+      ],
+      "facts": [
+        {
+          "id": "f-29",
+          "text": "Proposed: The pilot is proposed for an isolated host with synthetic inputs and no production device connection.",
+          "kind": "proposed",
+          "required": true,
+          "occurred_at": "2026-03-04T12:00:00Z"
+        },
+        {
+          "id": "f-04",
+          "text": "The current exercise receiver stores readings in a single process memory map and loses them on restart.",
+          "kind": "observed",
+          "required": true,
+          "occurred_at": "2026-03-04T12:00:00Z"
+        }
+      ],
+      "observed_support_status": "not_reached",
+      "reference_judgment": "unsupported",
+      "method": "independent-agent-heuristic-and-owner-source-review",
+      "basis": "A proposed isolated pilot does not entail that all document text avoids enacted behavior. The same node states the observed current receiver behavior."
+    }
+  ],
+  "human_labeling": false,
+  "changes_pilot_status": false,
+  "site_promotion": false
+}

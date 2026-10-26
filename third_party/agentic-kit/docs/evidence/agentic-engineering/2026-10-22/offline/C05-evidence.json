@@ -1,0 +1,29 @@
+{
+  "id": "C05",
+  "axis": "component",
+  "acceptance": "Canonical spans reject missing provenance and invalid observation order",
+  "outcome": "pass",
+  "source": "foundations/evidence/evidence-span/evidencespan_test.go",
+  "source_sha256": "2111d1bd20edc88d50884e356d4355240037c0510313c5e96cc3574811cec971",
+  "test": "TestValidateAsEvidenceRejectsMissingRecordHash",
+  "group": "evidence_catalog",
+  "scope_note": "Component test does not prove consumer adoption, live model quality, or all entrypoints.",
+  "command": {
+    "name": "evidence_catalog",
+    "argv": [
+      "go",
+      "test",
+      "-count=1",
+      "./foundations/evidence/evidence-span",
+      "./foundations/evidence/evidence-resolver",
+      "./foundations/evidence/evidence-signature",
+      "./foundations/quality/fitness-function-registry",
+      "./kits/catalog-kit"
+    ],
+    "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+    "exit_code": 0,
+    "duration_seconds": 0.53,
+    "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/evidence_catalog.log"
+  },
+  "command_log_sha256": "b3cfa85ecaef7c5fbda0e8a284d8a97fec5cc6352b40278f4f3e6519f75415e1"
+}

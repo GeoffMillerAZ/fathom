@@ -1541,12 +1541,12 @@ func TestCheckObligationsServed(t *testing.T) {
 	// service's compiled rules are code-scoped, but the SAME daemon serves
 	// real rules on a real indexed Go source file — checkObligationsServed
 	// must probe that file and PASS naming it, never FAIL for CLAUDE.md
-	// specifically. Live evidence: 6 rules served on cmd/conjure/main.go.
+	// specifically. Live evidence: 6 rules served on cmd/app/main.go.
 	t.Run("O23: dominant-language source-file probe passes when CLAUDE.md alone would fail", func(t *testing.T) {
 		srv := fakeDoctorDaemon(t, fakeDaemonCfg{
 			services:       []string{"alpha"},
-			sources:        []string{"cmd/conjure/main.go"},
-			obligFileRules: map[string]int{"cmd/conjure/main.go": 6},
+			sources:        []string{"cmd/app/main.go"},
+			obligFileRules: map[string]int{"cmd/app/main.go": 6},
 			watermark:      "wm",
 		})
 		defer srv.Close()
@@ -1555,7 +1555,7 @@ func TestCheckObligationsServed(t *testing.T) {
 		if got.Status != doctorPass {
 			t.Fatalf("got %+v, want pass via the source-file probe", got)
 		}
-		if !strings.Contains(got.Reason, "cmd/conjure/main.go") {
+		if !strings.Contains(got.Reason, "cmd/app/main.go") {
 			t.Errorf("pass must name the probe that actually answered: %s", got.Reason)
 		}
 		if strings.Contains(got.Reason, "file CLAUDE.md") {
@@ -1570,7 +1570,7 @@ func TestCheckObligationsServed(t *testing.T) {
 	t.Run("O23: compiled but no probe matches scope is a distinct warn, not a never-compiled fail", func(t *testing.T) {
 		srv := fakeDoctorDaemon(t, fakeDaemonCfg{
 			services:           []string{"alpha"},
-			sources:            []string{"cmd/conjure/main.go"},
+			sources:            []string{"cmd/app/main.go"},
 			obligFileRules:     map[string]int{}, // every probed file serves zero
 			obligLayerCompiled: true,
 		})
@@ -1583,7 +1583,7 @@ func TestCheckObligationsServed(t *testing.T) {
 		if !strings.Contains(got.Reason, "IS compiled") {
 			t.Errorf("warn reason must say the layer IS compiled: %s", got.Reason)
 		}
-		if !strings.Contains(got.Reason, "cmd/conjure/main.go") || !strings.Contains(got.Reason, "CLAUDE.md") || !strings.Contains(got.Reason, "AGENTS.md") {
+		if !strings.Contains(got.Reason, "cmd/app/main.go") || !strings.Contains(got.Reason, "CLAUDE.md") || !strings.Contains(got.Reason, "AGENTS.md") {
 			t.Errorf("warn reason must name every probe tried: %s", got.Reason)
 		}
 	})
@@ -1595,7 +1595,7 @@ func TestCheckObligationsServed(t *testing.T) {
 		setObligationsProvider(t, true)
 		srv := fakeDoctorDaemon(t, fakeDaemonCfg{
 			services: []string{"alpha"},
-			sources:  []string{"cmd/conjure/main.go"},
+			sources:  []string{"cmd/app/main.go"},
 			// obligFileRules unset (nil): falls back to the file-blind
 			// obligRules/watermark, both zero by default — "never compiled".
 		})
@@ -1940,7 +1940,7 @@ func TestCmdDoctor_AdopterRepoIsNotFathom(t *testing.T) {
 	// The daemon indexes BOTH the adopter and itself (service "fathom",
 	// path = fathomTree). This adopter's compiled obligations are
 	// code-scoped: a real Go source file serves rules, CLAUDE.md alone
-	// serves none — the live O23 repro (6 rules on cmd/conjure/main.go,
+	// serves none — the live O23 repro (6 rules on cmd/app/main.go,
 	// zero on CLAUDE.md).
 	srv := fakeDoctorDaemon(t, fakeDaemonCfg{
 		services:       []string{svc, "fathom"},

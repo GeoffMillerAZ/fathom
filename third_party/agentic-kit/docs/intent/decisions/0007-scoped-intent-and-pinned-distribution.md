@@ -6,7 +6,7 @@
 
 ## Context
 
-Platform-engineering has multiple independently useful kits and root-only review-kit
+Platform-repo has multiple independently useful kits and root-only review-kit
 intent. The owner requested a component product charter and reusable monorepo guidance.
 Routing by cwd can miss component intent; a global checkout-following skill install is
 not a reproducible team dependency. Decision 0005 already separates instructions from
@@ -38,7 +38,7 @@ tested workflow enforcement.
 
 The practice works in standalone repos and monorepos without duplicating policy or
 autoloading whole documentation trees. A small offline snapshot updater is maintained
-with the init skill for the named platform-engineering adopter; no runtime dependency,
+with the init skill for the named platform-repo adopter; no runtime dependency,
 global installation, remote fetch or new mandatory gate is introduced.
 
 ## Alternatives rejected

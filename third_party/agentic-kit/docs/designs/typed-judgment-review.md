@@ -74,10 +74,10 @@ subcriteria**, not shipped detectors or complete evaluations of those rules.
 | `agent.tokenomics.budget-bound` | Does the named retry path appear to omit the required reservation step? Code checks arithmetic and budgets; incomplete call coverage stays unknown. | Difficult control-flow stratum |
 
 Source packs:
-[deterministic practices](../../../platform-engineering/kits/review-kit/internal/catalog/assets/deterministic-practices/pack.cue),
-[organization](../../../platform-engineering/kits/review-kit/internal/catalog/assets/org-collaboration/pack.cue),
-[agent governance](../../../platform-engineering/kits/review-kit/internal/catalog/assets/agent-governance-tokenomics/pack.cue),
-[security](../../../platform-engineering/kits/review-kit/internal/catalog/assets/security-trust/pack.cue).
+[deterministic practices](../../../platform-repo/kits/review-consumer/internal/catalog/assets/deterministic-practices/pack.cue),
+[organization](../../../platform-repo/kits/review-consumer/internal/catalog/assets/org-collaboration/pack.cue),
+[agent governance](../../../platform-repo/kits/review-consumer/internal/catalog/assets/agent-governance-tokenomics/pack.cue),
+[security](../../../platform-repo/kits/review-consumer/internal/catalog/assets/security-trust/pack.cue).
 
 Start the pilot with the first six. Keep the last four as contrast/difficulty cases.
 Retain deterministic-only controls such as `security.dependency.integrity` digest

@@ -191,7 +191,7 @@ func (a Assertion) IsHearsay() bool {
 	return a.Knowledge == KnowledgeReported
 }
 
-// ValidateAsEvidence enforces the full Throughline provenance invariant (#1):
+// ValidateAsEvidence enforces the full Consumer-a provenance invariant (#1):
 // "No provenance → not storable as evidence."
 //
 // It calls Validate() first (all lenient rules apply), then additionally

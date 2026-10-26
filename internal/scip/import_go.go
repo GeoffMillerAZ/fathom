@@ -14,11 +14,19 @@ import "strings"
 // parameter target (LB-F239).
 const SkipNamespaceTarget = "namespace-target"
 
+// SkipTestFilePrefix prefixes the SkippedByClass key of an unmapped endpoint
+// whose reference sits in a _test.go document, beside its class key: a
+// subset, never a class of its own. It measures O673's first lever (a member
+// pass storing no field reference from a test file) against typed_recall.
+const SkipTestFilePrefix = "test-file:"
+
 // noteGoSkip counts an "unmapped-endpoint" occurrence by the class of the
-// symbol on the unmapped side (side is "from" or "to"), for a scip-go index.
-// A target that is a package is a namespace (K18): the occurrence the caller
-// has just counted as an unmapped endpoint moves to SkipNamespaceTarget.
-func (r *Report) noteGoSkip(side, sym string) {
+// symbol on the unmapped side (side is "from" or "to"), for a scip-go index,
+// and again under SkipTestFilePrefix when doc, the reference's document, is a
+// _test.go file. A target that is a package is a namespace (K18): the
+// occurrence the caller has just counted as an unmapped endpoint moves to
+// SkipNamespaceTarget.
+func (r *Report) noteGoSkip(side, sym, doc string) {
 	if r.Producer.Name != "scip-go" {
 		return
 	}
@@ -34,6 +42,9 @@ func (r *Report) noteGoSkip(side, sym string) {
 		return
 	}
 	r.SkippedByClass[side+":"+goSymbolClass(sym)]++
+	if strings.HasSuffix(doc, "_test.go") {
+		r.SkippedByClass[SkipTestFilePrefix+side+":"+goSymbolClass(sym)]++
+	}
 }
 
 // goSymbolClass is the class of a scip-go symbol by its last descriptor:

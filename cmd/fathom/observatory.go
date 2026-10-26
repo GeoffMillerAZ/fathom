@@ -588,7 +588,7 @@ func buildImpactModel(now time.Time) obsImpact {
 	// Claude Code's Stop event fires at every TURN boundary, not at session
 	// close, so a single long session appends a row each time the assistant
 	// finishes speaking. Measured on the live ledger: 200 rows, 8 distinct
-	// sessions — one resume_as_code session alone wrote 74 of them, several
+	// sessions — one adopter repository's session alone wrote 74 of them, several
 	// with identical turn counts. Counting rows inflated every denominator
 	// roughly 25x ("of 188 sessions" was of 8), and would have let the
 	// pre-registered "≥20 sessions per arm" criterion be satisfied by about

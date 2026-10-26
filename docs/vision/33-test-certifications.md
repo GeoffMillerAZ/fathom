@@ -5,7 +5,7 @@ Status: accepted 2026-09-23 (ADR-043); stages 0-3 landed 2026-09-23 (the
 `certify` verb family, receipts, fathom's own declarations — TC-1..24 except
 the TC-M op measurements). Assessment: the owner's question of 2026-09-23,
 "should fathom track test coverage, test kinds and what tests are for, on a
-standard defined in platform-engineering?" Plan:
+standard an adopting platform defines?" Plan:
 `docs/plans/test-certifications.md`. Design: `docs/design/test-certifications.md`.
 
 ## 1. The thesis
@@ -24,18 +24,18 @@ certificate is **live**: the test exists, reaches the symbols the target names,
 covers them in the layer the operator labelled, kills mutants in them when a
 report exists, and passed in the last attested run without flaking. It lists
 what has **no certificate at all**, with the remedy on the line. Adequacy is
-Review Kit's requirement, with the organization's own remedy text and
-enforcement; the vocabulary is the platform standard's (test-kit, ADR-0042).
+the review kit's requirement, with the organization's own remedy text and
+enforcement; the vocabulary is the platform standard's (the test kit's testing standard).
 
 ## 2. Why now, and why fathom
 
 Three repositories already hold two thirds of this and agree on the boundary:
 
-- **test-kit** declares suites (class, floors, tier, a required port on a
+- **The test kit** declares suites (class, floors, tier, a required port on a
   conformance suite) and attests results per case (pass, fail, skip, flake,
   attempts, coverage, artifact references). Its own open list says coverage is
   "carried but nothing measures it yet".
-- **Review Kit** judges requirements through evidence checks with adapters,
+- **The review kit** judges requirements through evidence checks with adapters,
   minimum tiers and enforcement, already calls fathom for impact, obligations,
   architecture and spec checks, and already publishes findings into fathom's
   findings layer.
@@ -61,7 +61,7 @@ claim-shaped, and fathom is the claim engine.
 - **State is computed, never stored by hand** (ADR-018, P17). The manifest
   artifact is regenerated from declarations and joins; a hand edit is a defect.
 - **fathom never runs tests** (scope non-goal: no dispatch loop). The attested
-  run is test-kit's record; fathom ingests it as an evidence producer.
+  run is the test kit's record; fathom ingests it as an evidence producer.
 - **A reached test is not a passing test.** Without an attested run a
   certificate is `unproven`, never `live`. A stranger's receipt says "pass:
   unverified (no run)" until they run it.
@@ -79,7 +79,7 @@ claim-shaped, and fathom is the claim engine.
    files that lost one.
 3. **The list.** `fathom certify gaps`: every declared target with no live
    certificate; `fathom certify manifest`: the regenerated artifact.
-4. **The judge.** A Review Kit requirement with a fathom evidence adapter, for
+4. **The judge.** A review kit requirement with a fathom evidence adapter, for
    example "every deny-severity invariant has a live certificate of strength at
    least `asserts`", decides and enforces.
 
@@ -96,7 +96,7 @@ kill criterion, not a default.
   "a test" checkable.
 - **Invariant to enforcement.** The intent audit's `test` label gains a
   certificate, a strength and a state.
-- **Port to conformance, fleet-wide.** test-kit requires a port on a
+- **Port to conformance, fleet-wide.** The test kit requires a port on a
   conformance suite; fathom lists an interface's implementers with evidence;
   the join names every adapter with no conformance certificate across every
   indexed repo.
@@ -108,9 +108,9 @@ kill criterion, not a default.
 
 Each stage carries one (P5): an envelope-to-symbol join rate under 80 percent
 kills stage 0's design; fewer than half of fathom's deny-severity invariants
-certified after two weeks of dogfood kills the declaration path; a Review Kit
+certified after two weeks of dogfood kills the declaration path; a review kit
 requirement that never fires deny on a real change in a month is theatre;
 suggested certificates accepted less than half the time are noise. (Amended
-2026-09-24, ADR-044: the Review Kit clause counts a requirement armed at warn — "never
+2026-09-24, ADR-044: the review kit clause counts a requirement armed at warn — "never
 fires at warn in a month where armed" — because an off requirement cannot fire; and
 liveness now binds to the commit a run exercised, O114.)

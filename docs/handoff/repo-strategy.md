@@ -44,7 +44,7 @@ be without fathom: a generic LLM reviewer with no call graph, no governing
 rules, and no memory of what it already said — i.e. the commodity product the
 whole program exists not to be.
 
-**Review UI / dashboards — `fathom-studio`, already separate, correctly.**
+**Review UI / dashboards — the studio repository, already separate, correctly.**
 This one *is* a renderer over a contract, and law 10 (verbs first) makes the
 boundary provable: the studio imports no fathom internals and reaches the
 engine only through verb JSON and public packages. That repo split works

@@ -45,7 +45,7 @@ func TestLostDeclarations_RemovedNotRetired(t *testing.T) {
 	}
 }
 
-// TestLostDeclarations_CarriesBaseMarkerLocation pins RK-36: a lost
+// TestLostDeclarations_CarriesBaseMarkerLocation pins the review kit's anchor ask: a lost
 // declaration names WHERE the base-side `// certifies:` marker lived —
 // the marker comment's own file:line, already parsed by
 // ScanCertifiesMarkers and threaded through rather than dropped.

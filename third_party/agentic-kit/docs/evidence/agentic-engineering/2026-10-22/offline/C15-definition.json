@@ -1,0 +1,11 @@
+{
+  "id": "C15",
+  "slug": "security-quality",
+  "axis": "composition",
+  "acceptance": "Composed entrypoint screens/effect-gates every declared path with heldout miss and false-refusal bounds",
+  "method": "source audit",
+  "source": "docs/threat-model.md",
+  "test": null,
+  "group": null,
+  "non_guarantee": "Component test does not prove consumer adoption, live model quality, or all entrypoints."
+}

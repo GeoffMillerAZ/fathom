@@ -25,10 +25,10 @@ lines; the spec file is normative. Table last verified against the repos
 | Spec | Mission (one line) | Trigger (verified 2026-07-16) | Size | Order |
 |---|---|---|---|---|
 | H1 `handoff-h1-proof-gate.md` | Fix fathom `verify` (4 root causes: index pollution, ambiguity poisoning, `package:` grammar gap, method-edge resolution) in ../sextant; re-arm the pre-push done-means-proven gate | **SATISFIED** — kit `85de56b` closes the tail (restart done, HTTP-mode 15/15); fathom-side fix `b7f6476` + O9 residue | M | **first — everything else's acceptance rested on it** |
-| H2 `handoff-h2-pull-queue.md` | Close TRACKING pull-queue rows D35-1…D35-5 incl. throughline donor deletions | **SATISFIED** — kit `3ea7c55`, D35-1..5 all `[x]`/`[-]`; non-negotiable #6's blocking clause is cleared | L | second — doctrine blocked new packages until closed |
-| H3 `handoff-h3-throughline.md` | Throughline adoption arc: guardrails chat, crypto-shred vault, case-file, document-domain Tier-2; full harness port trigger-gated (beware: throughline's "M18.1" tracker label names a DIFFERENT, done milestone — verify the code, not the label) | stages 0–4 **ready now** after Geoff commits its pending tree; stage 5 gated on a real multi-turn workload | XL (L w/o stage 5) | parallel with H4 after H2 |
+| H2 `handoff-h2-pull-queue.md` | Close TRACKING pull-queue rows D35-1…D35-5 incl. consumer-a donor deletions | **SATISFIED** — kit `3ea7c55`, D35-1..5 all `[x]`/`[-]`; non-negotiable #6's blocking clause is cleared | L | second — doctrine blocked new packages until closed |
+| H3 `handoff-h3-consumer-a.md` | Consumer-a adoption arc: guardrails chat, crypto-shred vault, case-file, document-domain Tier-2; full harness port trigger-gated (beware: consumer-a's "M18.1" tracker label names a DIFFERENT, done milestone — verify the code, not the label) | stages 0–4 **ready now** after Geoff commits its pending tree; stage 5 gated on a real multi-turn workload | XL (L w/o stage 5) | parallel with H4 after H2 |
 | H4 `handoff-h4-sextant.md` | Sextant governance stack, vector-store adoption, ladder Tier-1 adapter (Stage 5 parked 2026-07-16) + gap-log flywheel | **NOT fired** — its `feat/mcp-scoped-surfaces` branch still mid-flight & dirty; wait for merge + clean tree | L | after H1 (same repo), once trigger fires |
-| H5 `handoff-h5-eval-runner.md` | kits/eval-runner over the landed eval slice; judge stack + D7 as trigger-gated follow-ons | **Stage 1 done** (kit `149a570`); stages 2–3 parked (docs-only, verbatim triggers); **owner ratification open** (throughline-derived corpus redaction sign-off) | M | third, after H2 |
+| H5 `handoff-h5-eval-runner.md` | kits/eval-runner over the landed eval slice; judge stack + D7 as trigger-gated follow-ons | **Stage 1 done** (kit `149a570`); stages 2–3 parked (docs-only, verbatim triggers); **owner ratification open** (consumer-a-derived corpus redaction sign-off) | M | third, after H2 |
 | H6 `handoff-h6-protocol.md` | MCP Streamable HTTP (subscriber: fathom's hand-rolled serve-http, absorbed) + cross-process trace (#21, topology exists) | **EXECUTED** (kit `9c5f6e0`) for both stages; prompts/resources correctly unfired | M | independent |
 | H7 `handoff-h7-patterns-bench.md` | Bench of 9 subscriber-gated work orders (#2 #3 #4 #11 #13 #17 #22 #23, improvement-loop) | none fired by design; per-order trigger + Geoff-ratified pull-queue row is a blocking precondition. WO-4 (#11) adjudicated not-fired 2026-07-16 (substantive live-bulk-call condition unmet) | S bench; S–M per order | pick only when a trigger fires |
 | H8 `handoff-h8-public-candidacy.md` | Mechanical 1.0/public readiness (hygiene stage A + publication stage B) | stage A **ready now** (valuable even if D4 = no); stage B **blocked on Geoff ratifying D4 = YES** | L | stage A anytime; stage B last |
@@ -87,8 +87,8 @@ that used to gate new packages behind H2 is cleared.
 - **Git:** conventional-ish subjects (`feat(foundations): …`); co-author
   trailer on agent-authored commits; push with `env -u GITHUB_TOKEN` (the
   ambient token is the wrong identity). Tag only at green gates. Sibling
-  repos: **never** commit in ../throughline / ../sextant /
-  ../growing-gardens-bi unless the spec's write-scope says so, and never
+  repos: **never** commit in ../consumer-a / ../sextant /
+  ../consumer-b unless the spec's write-scope says so, and never
   touch files unrelated to the spec on a dirty checkout.
 - **Cassettes:** if `foundations/llmclient` types change shape, regenerate
   `examples/agent-cli/testdata/mock-session.jsonl` (`go generate
@@ -98,8 +98,8 @@ that used to gate new packages behind H2 is cleared.
 
 Stop and hand back — do not improvise — when: (a) a spec's trigger is
 ambiguous or appears not to have fired; (b) work requires committing in a
-sibling repo whose tree carries changes the spec didn't create (throughline
-and growing-gardens-bi currently hold uncommitted adoption changes pending
+sibling repo whose tree carries changes the spec didn't create (consumer-a
+and consumer-b currently hold uncommitted adoption changes pending
 his review); (c) a decision is marked D4/owner-ratification; (d) closing a
 deliverable would require weakening a proof requirement; (e) two specs
 collide on the same files. Everything else: decide, record the decision in

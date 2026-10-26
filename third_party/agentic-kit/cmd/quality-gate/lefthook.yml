@@ -1,0 +1,14 @@
+# Merge this fragment into an existing Lefthook config. Pin quality-gate from a
+# trusted installation outside incoming repository content. Keep existing jobs.
+# Lefthook's pre-commit runner skips empty commits before running commands.
+# Git invokes commit-msg for empty commits; the gate still checks the staged
+# index under the policy's pre-commit boundary. Existing pre-commit jobs stay.
+commit-msg:
+  commands:
+    quality-gate-snapshot:
+      run: 'quality-gate check --boundary pre-commit --staged --index-file "${GIT_INDEX_FILE:-}" --policy-ref HEAD --policy-path .quality-gate/policy.json'
+pre-push:
+  commands:
+    quality-gate-snapshot:
+      use_stdin: true
+      run: 'quality-gate pre-push --policy-ref HEAD --policy-path .quality-gate/policy.json'

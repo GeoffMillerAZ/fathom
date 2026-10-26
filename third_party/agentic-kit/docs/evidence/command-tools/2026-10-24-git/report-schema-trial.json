@@ -1,0 +1,197 @@
+[
+  {
+    "case": "controls-alternates-hold",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-ambient-helper-poison",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-bare-history",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-bare-status-hold",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-binary-hold",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-commondir-mismatch",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-conflict-status-hold",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-denied-selector",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-empty-message-history",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-filter-hold",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-fsmonitor-hold",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-gitfile-ignored",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-gitlink-diff-hold",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-history-bound",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-history-scanner",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-ignored-exclusion",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-include-hold",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-large-bounded-view",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-late-gitleaks-finding",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-late-rule-finding",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-linked-status",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-literal-selectors",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-missing-object-hold",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-ordinary-diff",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-ordinary-status",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-oversize-hold",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-packed-diff",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-packed-status",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-promisor-hold",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-replacement-hold",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-same-head-diff",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-secret-selector-empty",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-sha256-diff",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-signed-header-history",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-submodule-status-exclusion",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-symlink-mode-hold",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-terminal-control-history-hold",
+    "mode": "schema",
+    "pass": true
+  },
+  {
+    "case": "controls-tiny-output-hold",
+    "mode": "empty-output",
+    "pass": true
+  },
+  {
+    "case": "controls-unborn-status",
+    "mode": "schema",
+    "pass": true
+  }
+]

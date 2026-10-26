@@ -1,0 +1,28 @@
+{
+  "id": "C12",
+  "axis": "component",
+  "acceptance": "Contradictory evidence raises the investigation concern flag",
+  "outcome": "pass",
+  "source": "kits/investigation/investigation_test.go",
+  "source_sha256": "aabf65dc0f6b80cccc55dc705695d09cbb3ae5e8510c871d677312220894528c",
+  "test": "TestAddEvidence_ContradictionRaisesConcernFlag",
+  "group": "review_investigation",
+  "scope_note": "Component test does not prove consumer adoption, live model quality, or all entrypoints.",
+  "command": {
+    "name": "review_investigation",
+    "argv": [
+      "go",
+      "test",
+      "-count=1",
+      "./kits/investigation",
+      "./foundations/investigation/investigation-journal",
+      "./foundations/review/claim-lifecycle",
+      "./foundations/review/correction-ledger"
+    ],
+    "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+    "exit_code": 0,
+    "duration_seconds": 0.3,
+    "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/review_investigation.log"
+  },
+  "command_log_sha256": "618acf979f96189978b7ccecc98329b2fa1e12eec86f7cbe8677db3d55f022d6"
+}

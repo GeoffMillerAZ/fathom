@@ -31,7 +31,7 @@ func TestAgentHarnessUnknownCoverageCannotAdoptAsPass(t *testing.T) {
 			t.Fatalf("%s=%q; unrun strict control must remain unknown", control, result.Coverage.Controls[control])
 		}
 	}
-	receiver := lessontransfer.ReceiverSnapshot{Workload: "resume_as_code", Revision: digest("receiver-revision"), ConfigDigest: digest("receiver-config")}
+	receiver := lessontransfer.ReceiverSnapshot{Workload: "consumer-c", Revision: digest("receiver-revision"), ConfigDigest: digest("receiver-config")}
 	accept := lessontransfer.ReviewAcceptance(func(context.Context, lessontransfer.Bundle, lessontransfer.ReceiverSnapshot) error { return nil })
 	current := lessontransfer.CurrentReceiver(func(_ context.Context, want lessontransfer.ReceiverSnapshot) (lessontransfer.ReceiverSnapshot, error) {
 		return want, nil

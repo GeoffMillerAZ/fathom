@@ -21,7 +21,7 @@ long form; this is the vocabulary, the truths, and the assumptions a design must
   `-race`-clean tests pinning the central claim, docs stating non-guarantees, a named
   consumer or a bounded incubation (0004), the full gate green.
 - **consumer** — a downstream repo importing kit code. Named: fathom (on disk as
-  `../fathom` or `../sextant`), throughline, growing-gardens-bi, racli (`../resume_as_code`,
+  `../fathom` or `../sextant`), consumer-a, consumer-b, consumer-c (`$KIT_CONSUMER_C_DIR`,
   vendored). **subscriber** — the consumer pulling a capability. **Incubation** — a
   sponsored, review-bounded experiment with executable outcomes; it does not imply adoption.
 - **classification** — `stable` / `experimental` / `internal-ish` per package in
@@ -96,8 +96,8 @@ long form; this is the vocabulary, the truths, and the assumptions a design must
 - Go 1.26+, CUE 0.16+, go-task, lefthook on the machine. If false: the gate does not
   run and nothing lands.
 - Consumer compatibility can be checked without changing the consumer's tree. Current
-  sibling checks skip missing repos; a proposed vendoring check mutates one. If false:
-  use isolated checkouts and report every checked revision and skip (I21, G5).
+  sibling checks skip missing repos; consumer-c re-pins and re-vendors its consumer. Use
+  isolated checkouts and report every checked revision, prerequisite and skip (I21, G5).
 - Tests never need a key or the network. If false: the ladder in `practices.md` §6 is
   broken and cassettes are the fix, not a skip.
 - One owner (Geoff) ratifies promise-changing decisions; agents write almost all code.

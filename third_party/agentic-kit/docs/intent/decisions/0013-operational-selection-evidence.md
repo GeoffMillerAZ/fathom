@@ -15,7 +15,7 @@ nor a temporary consumer overlay establish adoption or live measurement. See the
 
 ## Decision
 
-- Continue the same bounded incubation with resume_as_code as the primary subscriber.
+- Continue the same bounded incubation with consumer-c as the primary subscriber.
   Its opt-in operations own deployment approval, materialized configuration, actual
   call collection, retained artifacts and selection/recovery policies. New CLI wiring
   stays thin over its existing ops layer; existing production defaults do not change.

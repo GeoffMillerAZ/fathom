@@ -1,0 +1,1145 @@
+{
+  "version": "command-guard.reuse-native-trial/1",
+  "host": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+  "machine": "arm64",
+  "corpus": "owned-synthetic-only",
+  "installed": false,
+  "guardSHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+  "baselineSHA256": "a02e69d47468f18aefcc32c8859597b5a12c43ae86ffb433f1c5e18ebc257eed",
+  "scannerSHA256": "ba52fb1bfabbcde42f032afad3d6e0b19dff8ed105229a16e7caa338bbc0e84f",
+  "cases": [
+    {
+      "case": "aba-json",
+      "status": "no-findings",
+      "code": "ok",
+      "externalScanner": {
+        "id": "gitleaks",
+        "profile": "gitleaks-stdin-8.30.1",
+        "status": "complete",
+        "code": "verified",
+        "expectedFiles": 3,
+        "attemptedFiles": 2,
+        "invokedFiles": 2,
+        "completedFiles": 2,
+        "bytesSubmitted": 2048,
+        "bytesObserved": 2048,
+        "findings": 0,
+        "reuse": {
+          "profile": "invocation-exact/1",
+          "files": 1,
+          "bytes": 1024
+        }
+      }
+    },
+    {
+      "case": "aba-compact",
+      "status": "no-findings",
+      "code": "ok",
+      "externalScanner": {
+        "id": "gitleaks",
+        "profile": "gitleaks-stdin-8.30.1",
+        "status": "complete",
+        "code": "verified",
+        "expectedFiles": 3,
+        "attemptedFiles": 2,
+        "invokedFiles": 2,
+        "completedFiles": 2,
+        "bytesSubmitted": 2048,
+        "bytesObserved": 2048,
+        "findings": 0,
+        "reuse": {
+          "profile": "invocation-exact/1",
+          "files": 1,
+          "bytes": 1024
+        }
+      }
+    },
+    {
+      "case": "independent-invocation-0",
+      "status": "no-findings",
+      "code": "ok",
+      "externalScanner": {
+        "id": "gitleaks",
+        "profile": "gitleaks-stdin-8.30.1",
+        "status": "complete",
+        "code": "verified",
+        "expectedFiles": 3,
+        "attemptedFiles": 2,
+        "invokedFiles": 2,
+        "completedFiles": 2,
+        "bytesSubmitted": 2048,
+        "bytesObserved": 2048,
+        "findings": 0,
+        "reuse": {
+          "profile": "invocation-exact/1",
+          "files": 1,
+          "bytes": 1024
+        }
+      }
+    },
+    {
+      "case": "independent-invocation-1",
+      "status": "no-findings",
+      "code": "ok",
+      "externalScanner": {
+        "id": "gitleaks",
+        "profile": "gitleaks-stdin-8.30.1",
+        "status": "complete",
+        "code": "verified",
+        "expectedFiles": 3,
+        "attemptedFiles": 2,
+        "invokedFiles": 2,
+        "completedFiles": 2,
+        "bytesSubmitted": 2048,
+        "bytesObserved": 2048,
+        "findings": 0,
+        "reuse": {
+          "profile": "invocation-exact/1",
+          "files": 1,
+          "bytes": 1024
+        }
+      }
+    },
+    {
+      "case": "empty",
+      "status": "no-findings",
+      "code": "ok",
+      "externalScanner": {
+        "id": "gitleaks",
+        "profile": "gitleaks-stdin-8.30.1",
+        "status": "complete",
+        "code": "verified",
+        "expectedFiles": 3,
+        "attemptedFiles": 2,
+        "invokedFiles": 2,
+        "completedFiles": 2,
+        "bytesSubmitted": 1024,
+        "bytesObserved": 1024,
+        "findings": 0,
+        "reuse": {
+          "profile": "invocation-exact/1",
+          "files": 1,
+          "bytes": 0
+        }
+      }
+    },
+    {
+      "case": "late-findings-no-positive-cache",
+      "status": "blocked",
+      "code": "scanner_finding",
+      "externalScanner": {
+        "id": "gitleaks",
+        "profile": "gitleaks-stdin-8.30.1",
+        "status": "finding",
+        "code": "finding",
+        "expectedFiles": 4,
+        "attemptedFiles": 3,
+        "invokedFiles": 3,
+        "completedFiles": 3,
+        "bytesSubmitted": 1126,
+        "bytesObserved": 1126,
+        "findings": 2,
+        "reuse": {
+          "profile": "invocation-exact/1",
+          "files": 1,
+          "bytes": 1024
+        }
+      }
+    },
+    {
+      "case": "mandatory-regex",
+      "status": "blocked",
+      "code": "rule",
+      "externalScanner": {
+        "id": "gitleaks",
+        "profile": "gitleaks-stdin-8.30.1",
+        "status": "not-invoked",
+        "code": "not_invoked",
+        "expectedFiles": 3,
+        "attemptedFiles": 0,
+        "invokedFiles": 0,
+        "completedFiles": 0,
+        "bytesSubmitted": 0,
+        "bytesObserved": 0,
+        "findings": 0
+      }
+    },
+    {
+      "case": "late-unsupported-after-hit",
+      "status": "incomplete",
+      "code": "scanner_incomplete",
+      "externalScanner": {
+        "id": "gitleaks",
+        "profile": "gitleaks-stdin-8.30.1",
+        "status": "incomplete",
+        "code": "coverage_mismatch",
+        "expectedFiles": 3,
+        "attemptedFiles": 2,
+        "invokedFiles": 2,
+        "completedFiles": 1,
+        "bytesSubmitted": 1061,
+        "bytesObserved": 1024,
+        "findings": 0,
+        "reuse": {
+          "profile": "invocation-exact/1",
+          "files": 1,
+          "bytes": 1024
+        }
+      }
+    },
+    {
+      "case": "wrong-hash",
+      "status": "incomplete",
+      "code": "scanner_incomplete",
+      "externalScanner": {
+        "id": "gitleaks",
+        "profile": "gitleaks-stdin-8.30.1",
+        "status": "incomplete",
+        "code": "hash_mismatch",
+        "expectedFiles": 3,
+        "attemptedFiles": 0,
+        "invokedFiles": 0,
+        "completedFiles": 0,
+        "bytesSubmitted": 0,
+        "bytesObserved": 0,
+        "findings": 0,
+        "reuse": {
+          "profile": "invocation-exact/1",
+          "files": 0,
+          "bytes": 0
+        }
+      }
+    },
+    {
+      "case": "tiny-json",
+      "exit": 2,
+      "bytes": 0
+    },
+    {
+      "case": "tiny-text",
+      "exit": 2,
+      "bytes": 0
+    },
+    {
+      "case": "tiny-compact",
+      "exit": 2,
+      "bytes": 0
+    }
+  ],
+  "benchmark": {
+    "duplicate": {
+      "pairs": [
+        {
+          "index": 0,
+          "ratio": 0.2787908086844899,
+          "disabled": {
+            "elapsedSeconds": 2.1717712921090424,
+            "scanner": {
+              "id": "gitleaks",
+              "profile": "gitleaks-stdin-8.30.1",
+              "status": "complete",
+              "code": "verified",
+              "expectedFiles": 8,
+              "attemptedFiles": 8,
+              "invokedFiles": 8,
+              "completedFiles": 8,
+              "bytesSubmitted": 8192,
+              "bytesObserved": 8192,
+              "findings": 0
+            }
+          },
+          "enabled": {
+            "elapsedSeconds": 0.6054698748048395,
+            "scanner": {
+              "id": "gitleaks",
+              "profile": "gitleaks-stdin-8.30.1",
+              "status": "complete",
+              "code": "verified",
+              "expectedFiles": 8,
+              "attemptedFiles": 1,
+              "invokedFiles": 1,
+              "completedFiles": 1,
+              "bytesSubmitted": 1024,
+              "bytesObserved": 1024,
+              "findings": 0,
+              "reuse": {
+                "profile": "invocation-exact/1",
+                "files": 7,
+                "bytes": 7168
+              }
+            }
+          }
+        },
+        {
+          "index": 1,
+          "ratio": 0.28610204222369884,
+          "enabled": {
+            "elapsedSeconds": 0.6097800829447806,
+            "scanner": {
+              "id": "gitleaks",
+              "profile": "gitleaks-stdin-8.30.1",
+              "status": "complete",
+              "code": "verified",
+              "expectedFiles": 8,
+              "attemptedFiles": 1,
+              "invokedFiles": 1,
+              "completedFiles": 1,
+              "bytesSubmitted": 1024,
+              "bytesObserved": 1024,
+              "findings": 0,
+              "reuse": {
+                "profile": "invocation-exact/1",
+                "files": 7,
+                "bytes": 7168
+              }
+            }
+          },
+          "disabled": {
+            "elapsedSeconds": 2.1313377500046045,
+            "scanner": {
+              "id": "gitleaks",
+              "profile": "gitleaks-stdin-8.30.1",
+              "status": "complete",
+              "code": "verified",
+              "expectedFiles": 8,
+              "attemptedFiles": 8,
+              "invokedFiles": 8,
+              "completedFiles": 8,
+              "bytesSubmitted": 8192,
+              "bytesObserved": 8192,
+              "findings": 0
+            }
+          }
+        },
+        {
+          "index": 2,
+          "ratio": 0.28950977387267574,
+          "disabled": {
+            "elapsedSeconds": 2.101396958110854,
+            "scanner": {
+              "id": "gitleaks",
+              "profile": "gitleaks-stdin-8.30.1",
+              "status": "complete",
+              "code": "verified",
+              "expectedFiles": 8,
+              "attemptedFiles": 8,
+              "invokedFiles": 8,
+              "completedFiles": 8,
+              "bytesSubmitted": 8192,
+              "bytesObserved": 8192,
+              "findings": 0
+            }
+          },
+          "enabled": {
+            "elapsedSeconds": 0.608374958159402,
+            "scanner": {
+              "id": "gitleaks",
+              "profile": "gitleaks-stdin-8.30.1",
+              "status": "complete",
+              "code": "verified",
+              "expectedFiles": 8,
+              "attemptedFiles": 1,
+              "invokedFiles": 1,
+              "completedFiles": 1,
+              "bytesSubmitted": 1024,
+              "bytesObserved": 1024,
+              "findings": 0,
+              "reuse": {
+                "profile": "invocation-exact/1",
+                "files": 7,
+                "bytes": 7168
+              }
+            }
+          }
+        },
+        {
+          "index": 3,
+          "ratio": 0.28995383473926245,
+          "enabled": {
+            "elapsedSeconds": 0.617735082982108,
+            "scanner": {
+              "id": "gitleaks",
+              "profile": "gitleaks-stdin-8.30.1",
+              "status": "complete",
+              "code": "verified",
+              "expectedFiles": 8,
+              "attemptedFiles": 1,
+              "invokedFiles": 1,
+              "completedFiles": 1,
+              "bytesSubmitted": 1024,
+              "bytesObserved": 1024,
+              "findings": 0,
+              "reuse": {
+                "profile": "invocation-exact/1",
+                "files": 7,
+                "bytes": 7168
+              }
+            }
+          },
+          "disabled": {
+            "elapsedSeconds": 2.1304601249285042,
+            "scanner": {
+              "id": "gitleaks",
+              "profile": "gitleaks-stdin-8.30.1",
+              "status": "complete",
+              "code": "verified",
+              "expectedFiles": 8,
+              "attemptedFiles": 8,
+              "invokedFiles": 8,
+              "completedFiles": 8,
+              "bytesSubmitted": 8192,
+              "bytesObserved": 8192,
+              "findings": 0
+            }
+          }
+        },
+        {
+          "index": 4,
+          "ratio": 0.24770302796275284,
+          "disabled": {
+            "elapsedSeconds": 2.411004374967888,
+            "scanner": {
+              "id": "gitleaks",
+              "profile": "gitleaks-stdin-8.30.1",
+              "status": "complete",
+              "code": "verified",
+              "expectedFiles": 8,
+              "attemptedFiles": 8,
+              "invokedFiles": 8,
+              "completedFiles": 8,
+              "bytesSubmitted": 8192,
+              "bytesObserved": 8192,
+              "findings": 0
+            }
+          },
+          "enabled": {
+            "elapsedSeconds": 0.5972130841109902,
+            "scanner": {
+              "id": "gitleaks",
+              "profile": "gitleaks-stdin-8.30.1",
+              "status": "complete",
+              "code": "verified",
+              "expectedFiles": 8,
+              "attemptedFiles": 1,
+              "invokedFiles": 1,
+              "completedFiles": 1,
+              "bytesSubmitted": 1024,
+              "bytesObserved": 1024,
+              "findings": 0,
+              "reuse": {
+                "profile": "invocation-exact/1",
+                "files": 7,
+                "bytes": 7168
+              }
+            }
+          }
+        }
+      ],
+      "medianEnabledOverDisabled": 0.28610204222369884,
+      "medianOverhead": -0.7138979577763012
+    },
+    "unique": {
+      "pairs": [
+        {
+          "index": 0,
+          "ratio": 0.9934552461054397,
+          "disabled": {
+            "elapsedSeconds": 2.136125707998872,
+            "scanner": {
+              "id": "gitleaks",
+              "profile": "gitleaks-stdin-8.30.1",
+              "status": "complete",
+              "code": "verified",
+              "expectedFiles": 8,
+              "attemptedFiles": 8,
+              "invokedFiles": 8,
+              "completedFiles": 8,
+              "bytesSubmitted": 8192,
+              "bytesObserved": 8192,
+              "findings": 0
+            }
+          },
+          "enabled": {
+            "elapsedSeconds": 2.122145290952176,
+            "scanner": {
+              "id": "gitleaks",
+              "profile": "gitleaks-stdin-8.30.1",
+              "status": "complete",
+              "code": "verified",
+              "expectedFiles": 8,
+              "attemptedFiles": 8,
+              "invokedFiles": 8,
+              "completedFiles": 8,
+              "bytesSubmitted": 8192,
+              "bytesObserved": 8192,
+              "findings": 0,
+              "reuse": {
+                "profile": "invocation-exact/1",
+                "files": 0,
+                "bytes": 0
+              }
+            }
+          }
+        },
+        {
+          "index": 1,
+          "ratio": 0.9706303264429883,
+          "enabled": {
+            "elapsedSeconds": 2.093036500038579,
+            "scanner": {
+              "id": "gitleaks",
+              "profile": "gitleaks-stdin-8.30.1",
+              "status": "complete",
+              "code": "verified",
+              "expectedFiles": 8,
+              "attemptedFiles": 8,
+              "invokedFiles": 8,
+              "completedFiles": 8,
+              "bytesSubmitted": 8192,
+              "bytesObserved": 8192,
+              "findings": 0,
+              "reuse": {
+                "profile": "invocation-exact/1",
+                "files": 0,
+                "bytes": 0
+              }
+            }
+          },
+          "disabled": {
+            "elapsedSeconds": 2.1563683340791613,
+            "scanner": {
+              "id": "gitleaks",
+              "profile": "gitleaks-stdin-8.30.1",
+              "status": "complete",
+              "code": "verified",
+              "expectedFiles": 8,
+              "attemptedFiles": 8,
+              "invokedFiles": 8,
+              "completedFiles": 8,
+              "bytesSubmitted": 8192,
+              "bytesObserved": 8192,
+              "findings": 0
+            }
+          }
+        },
+        {
+          "index": 2,
+          "ratio": 0.9772027260666996,
+          "disabled": {
+            "elapsedSeconds": 2.127288332907483,
+            "scanner": {
+              "id": "gitleaks",
+              "profile": "gitleaks-stdin-8.30.1",
+              "status": "complete",
+              "code": "verified",
+              "expectedFiles": 8,
+              "attemptedFiles": 8,
+              "invokedFiles": 8,
+              "completedFiles": 8,
+              "bytesSubmitted": 8192,
+              "bytesObserved": 8192,
+              "findings": 0
+            }
+          },
+          "enabled": {
+            "elapsedSeconds": 2.078791958047077,
+            "scanner": {
+              "id": "gitleaks",
+              "profile": "gitleaks-stdin-8.30.1",
+              "status": "complete",
+              "code": "verified",
+              "expectedFiles": 8,
+              "attemptedFiles": 8,
+              "invokedFiles": 8,
+              "completedFiles": 8,
+              "bytesSubmitted": 8192,
+              "bytesObserved": 8192,
+              "findings": 0,
+              "reuse": {
+                "profile": "invocation-exact/1",
+                "files": 0,
+                "bytes": 0
+              }
+            }
+          }
+        },
+        {
+          "index": 3,
+          "ratio": 0.9776518794564254,
+          "enabled": {
+            "elapsedSeconds": 2.10928816604428,
+            "scanner": {
+              "id": "gitleaks",
+              "profile": "gitleaks-stdin-8.30.1",
+              "status": "complete",
+              "code": "verified",
+              "expectedFiles": 8,
+              "attemptedFiles": 8,
+              "invokedFiles": 8,
+              "completedFiles": 8,
+              "bytesSubmitted": 8192,
+              "bytesObserved": 8192,
+              "findings": 0,
+              "reuse": {
+                "profile": "invocation-exact/1",
+                "files": 0,
+                "bytes": 0
+              }
+            }
+          },
+          "disabled": {
+            "elapsedSeconds": 2.1575043329503387,
+            "scanner": {
+              "id": "gitleaks",
+              "profile": "gitleaks-stdin-8.30.1",
+              "status": "complete",
+              "code": "verified",
+              "expectedFiles": 8,
+              "attemptedFiles": 8,
+              "invokedFiles": 8,
+              "completedFiles": 8,
+              "bytesSubmitted": 8192,
+              "bytesObserved": 8192,
+              "findings": 0
+            }
+          }
+        },
+        {
+          "index": 4,
+          "ratio": 1.1225617100277219,
+          "disabled": {
+            "elapsedSeconds": 2.1149213328026235,
+            "scanner": {
+              "id": "gitleaks",
+              "profile": "gitleaks-stdin-8.30.1",
+              "status": "complete",
+              "code": "verified",
+              "expectedFiles": 8,
+              "attemptedFiles": 8,
+              "invokedFiles": 8,
+              "completedFiles": 8,
+              "bytesSubmitted": 8192,
+              "bytesObserved": 8192,
+              "findings": 0
+            }
+          },
+          "enabled": {
+            "elapsedSeconds": 2.3741297079250216,
+            "scanner": {
+              "id": "gitleaks",
+              "profile": "gitleaks-stdin-8.30.1",
+              "status": "complete",
+              "code": "verified",
+              "expectedFiles": 8,
+              "attemptedFiles": 8,
+              "invokedFiles": 8,
+              "completedFiles": 8,
+              "bytesSubmitted": 8192,
+              "bytesObserved": 8192,
+              "findings": 0,
+              "reuse": {
+                "profile": "invocation-exact/1",
+                "files": 0,
+                "bytes": 0
+              }
+            }
+          }
+        }
+      ],
+      "medianEnabledOverDisabled": 0.9776518794564254,
+      "medianOverhead": -0.0223481205435746
+    }
+  },
+  "cueChecks": [
+    {
+      "version": "cue version v0.16.1",
+      "actualReportsChecked": 37,
+      "exit": 0
+    },
+    {
+      "version": "cue version v0.17.1",
+      "actualReportsChecked": 37,
+      "exit": 0
+    }
+  ],
+  "wires": [
+    {
+      "id": "000-legacy-json",
+      "sha256": "91c46399a53b7abd9062a2542a36b7a3af6e7dc492552ef09eebae5cbfde31d7",
+      "bytes": 3825,
+      "format": "json",
+      "enabled": false,
+      "binarySHA256": "a02e69d47468f18aefcc32c8859597b5a12c43ae86ffb433f1c5e18ebc257eed",
+      "policySHA256": "f5bf27f001184de3b7d2714cbfaab45238c743e95308e21128b89d13533eb1e8",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "8fee3186f5cc8a7175081722c05b53d5a9e1e6ab3614df45780cfb1dc1079135"
+    },
+    {
+      "id": "001-disabled-json",
+      "sha256": "91c46399a53b7abd9062a2542a36b7a3af6e7dc492552ef09eebae5cbfde31d7",
+      "bytes": 3825,
+      "format": "json",
+      "enabled": false,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "f5bf27f001184de3b7d2714cbfaab45238c743e95308e21128b89d13533eb1e8",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "8fee3186f5cc8a7175081722c05b53d5a9e1e6ab3614df45780cfb1dc1079135"
+    },
+    {
+      "id": "002-enabled-json",
+      "sha256": "45d8a9764dd20f26408f81c730f9e7137d747646adafa29071e03e6895d2ae02",
+      "bytes": 3889,
+      "format": "json",
+      "enabled": true,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "daead5c048e6a8cd06ee82287b1b8e19e1028f25d9c871ab844829c6fee161ac",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "8fee3186f5cc8a7175081722c05b53d5a9e1e6ab3614df45780cfb1dc1079135"
+    },
+    {
+      "id": "003-legacy-text",
+      "sha256": "e383ee9ffa7352031e3c3eb7f95d5a5bcace2af9beb9dbce5636735d7eb896c8",
+      "bytes": 4166,
+      "format": "text",
+      "enabled": false,
+      "binarySHA256": "a02e69d47468f18aefcc32c8859597b5a12c43ae86ffb433f1c5e18ebc257eed",
+      "policySHA256": "f5bf27f001184de3b7d2714cbfaab45238c743e95308e21128b89d13533eb1e8",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "8fee3186f5cc8a7175081722c05b53d5a9e1e6ab3614df45780cfb1dc1079135"
+    },
+    {
+      "id": "004-disabled-text",
+      "sha256": "e383ee9ffa7352031e3c3eb7f95d5a5bcace2af9beb9dbce5636735d7eb896c8",
+      "bytes": 4166,
+      "format": "text",
+      "enabled": false,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "f5bf27f001184de3b7d2714cbfaab45238c743e95308e21128b89d13533eb1e8",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "8fee3186f5cc8a7175081722c05b53d5a9e1e6ab3614df45780cfb1dc1079135"
+    },
+    {
+      "id": "005-enabled-text",
+      "sha256": "953cb9956973d283365c050059b6a01b5ed2fcf56be6879d4363677c2460bfc9",
+      "bytes": 4265,
+      "format": "text",
+      "enabled": true,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "daead5c048e6a8cd06ee82287b1b8e19e1028f25d9c871ab844829c6fee161ac",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "8fee3186f5cc8a7175081722c05b53d5a9e1e6ab3614df45780cfb1dc1079135"
+    },
+    {
+      "id": "006-legacy-compact",
+      "sha256": "8cae4048827a3343468f20c076acff392df64f7ea4314960dd92179427c440cf",
+      "bytes": 3738,
+      "format": "compact",
+      "enabled": false,
+      "binarySHA256": "a02e69d47468f18aefcc32c8859597b5a12c43ae86ffb433f1c5e18ebc257eed",
+      "policySHA256": "f5bf27f001184de3b7d2714cbfaab45238c743e95308e21128b89d13533eb1e8",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "8fee3186f5cc8a7175081722c05b53d5a9e1e6ab3614df45780cfb1dc1079135"
+    },
+    {
+      "id": "007-disabled-compact",
+      "sha256": "8cae4048827a3343468f20c076acff392df64f7ea4314960dd92179427c440cf",
+      "bytes": 3738,
+      "format": "compact",
+      "enabled": false,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "f5bf27f001184de3b7d2714cbfaab45238c743e95308e21128b89d13533eb1e8",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "8fee3186f5cc8a7175081722c05b53d5a9e1e6ab3614df45780cfb1dc1079135"
+    },
+    {
+      "id": "008-enabled-compact",
+      "sha256": "46d21b4d36f95c4a414f2240edc14c8c9b7e9e03e1c1ef30911b0743fcd105b8",
+      "bytes": 3802,
+      "format": "compact",
+      "enabled": true,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "daead5c048e6a8cd06ee82287b1b8e19e1028f25d9c871ab844829c6fee161ac",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "8fee3186f5cc8a7175081722c05b53d5a9e1e6ab3614df45780cfb1dc1079135"
+    },
+    {
+      "id": "009-independent-invocation-0",
+      "sha256": "45d8a9764dd20f26408f81c730f9e7137d747646adafa29071e03e6895d2ae02",
+      "bytes": 3889,
+      "format": "json",
+      "enabled": true,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "daead5c048e6a8cd06ee82287b1b8e19e1028f25d9c871ab844829c6fee161ac",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "8fee3186f5cc8a7175081722c05b53d5a9e1e6ab3614df45780cfb1dc1079135"
+    },
+    {
+      "id": "010-independent-invocation-1",
+      "sha256": "45d8a9764dd20f26408f81c730f9e7137d747646adafa29071e03e6895d2ae02",
+      "bytes": 3889,
+      "format": "json",
+      "enabled": true,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "daead5c048e6a8cd06ee82287b1b8e19e1028f25d9c871ab844829c6fee161ac",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "8fee3186f5cc8a7175081722c05b53d5a9e1e6ab3614df45780cfb1dc1079135"
+    },
+    {
+      "id": "011-empty",
+      "sha256": "f3c9e5a4eebed438f3f80b77d894efd5cd7ea6b61790c1547d3df5ec5be08adb",
+      "bytes": 1720,
+      "format": "json",
+      "enabled": true,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "daead5c048e6a8cd06ee82287b1b8e19e1028f25d9c871ab844829c6fee161ac",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "6e77ff57fdea526ec497f9a4331e954b4be00dfa656cc9b24da12d113be9a91a"
+    },
+    {
+      "id": "012-late-findings",
+      "sha256": "e1e8c62e45c25f5ea1958e427a30e1a7dd984465310f8ba4fd124c35fa10d5e3",
+      "bytes": 638,
+      "format": "json",
+      "enabled": true,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "daead5c048e6a8cd06ee82287b1b8e19e1028f25d9c871ab844829c6fee161ac",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "787f757084faf607341be2fe35e3bc5ee2b415ffca7e5f9a91ee643ee87684eb"
+    },
+    {
+      "id": "013-late-regex",
+      "sha256": "1ecbd6cb532ec09c0388927546ad66d99a0f3a7828b11a60e8540bd70aa607f8",
+      "bytes": 565,
+      "format": "json",
+      "enabled": true,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "daead5c048e6a8cd06ee82287b1b8e19e1028f25d9c871ab844829c6fee161ac",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "9d1d1ecdfa241a1d9b25f3946a4b5e3e6ed6923b902a12782543fe3a0bace2dd"
+    },
+    {
+      "id": "014-late-unsupported",
+      "sha256": "68bd1642d08479948f771d7d350e9324bbf3bb79c168e8d67ab907c5d64109c3",
+      "bytes": 657,
+      "format": "json",
+      "enabled": true,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "daead5c048e6a8cd06ee82287b1b8e19e1028f25d9c871ab844829c6fee161ac",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "e31e5dcefece5f787bd24e5123f060290e26470487dba5bf39e4248f6c507c26"
+    },
+    {
+      "id": "015-wrong-hash",
+      "sha256": "e902d4971da90e2cfea965e86020b4b935240de96ddbe5dff4c10ec7784f9413",
+      "bytes": 644,
+      "format": "json",
+      "enabled": true,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "de93f8369b82f6f00b5ac8fe1cd914e41c65ed243563b2177b49ccd7ce1c5035",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "8fee3186f5cc8a7175081722c05b53d5a9e1e6ab3614df45780cfb1dc1079135"
+    },
+    {
+      "id": "016-tiny-json",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "format": "json",
+      "enabled": true,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "ecc91e93ac705699e76b23a40b02d67e5f85467884a366619264404f1f29b13b",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "15741eb39745ce34b70bfc8cae47465eb1ac106ce8f130f2b85f782154d55da6"
+    },
+    {
+      "id": "017-tiny-text",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "format": "text",
+      "enabled": true,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "ecc91e93ac705699e76b23a40b02d67e5f85467884a366619264404f1f29b13b",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "15741eb39745ce34b70bfc8cae47465eb1ac106ce8f130f2b85f782154d55da6"
+    },
+    {
+      "id": "018-tiny-compact",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "format": "compact",
+      "enabled": true,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "ecc91e93ac705699e76b23a40b02d67e5f85467884a366619264404f1f29b13b",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "15741eb39745ce34b70bfc8cae47465eb1ac106ce8f130f2b85f782154d55da6"
+    },
+    {
+      "id": "019-warmup-duplicate-disabled",
+      "sha256": "15025d268c472e1a5610dc059a3cd634d57930c475291007acd553d944841096",
+      "bytes": 9242,
+      "format": "json",
+      "enabled": false,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "f5bf27f001184de3b7d2714cbfaab45238c743e95308e21128b89d13533eb1e8",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "caaa38802987392639952cbf57a364ee594ddd0ea65b1c8f1805f97f05afbb3c"
+    },
+    {
+      "id": "020-warmup-duplicate-enabled",
+      "sha256": "1a20af0bddf8d5130afb11d5f88f263f74346b85120d944ac012125f76c1bf0f",
+      "bytes": 9306,
+      "format": "json",
+      "enabled": true,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "daead5c048e6a8cd06ee82287b1b8e19e1028f25d9c871ab844829c6fee161ac",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "caaa38802987392639952cbf57a364ee594ddd0ea65b1c8f1805f97f05afbb3c"
+    },
+    {
+      "id": "021-bench-duplicate-0-False",
+      "sha256": "15025d268c472e1a5610dc059a3cd634d57930c475291007acd553d944841096",
+      "bytes": 9242,
+      "format": "json",
+      "enabled": false,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "f5bf27f001184de3b7d2714cbfaab45238c743e95308e21128b89d13533eb1e8",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "caaa38802987392639952cbf57a364ee594ddd0ea65b1c8f1805f97f05afbb3c"
+    },
+    {
+      "id": "022-bench-duplicate-0-True",
+      "sha256": "1a20af0bddf8d5130afb11d5f88f263f74346b85120d944ac012125f76c1bf0f",
+      "bytes": 9306,
+      "format": "json",
+      "enabled": true,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "daead5c048e6a8cd06ee82287b1b8e19e1028f25d9c871ab844829c6fee161ac",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "caaa38802987392639952cbf57a364ee594ddd0ea65b1c8f1805f97f05afbb3c"
+    },
+    {
+      "id": "023-bench-duplicate-1-True",
+      "sha256": "1a20af0bddf8d5130afb11d5f88f263f74346b85120d944ac012125f76c1bf0f",
+      "bytes": 9306,
+      "format": "json",
+      "enabled": true,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "daead5c048e6a8cd06ee82287b1b8e19e1028f25d9c871ab844829c6fee161ac",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "caaa38802987392639952cbf57a364ee594ddd0ea65b1c8f1805f97f05afbb3c"
+    },
+    {
+      "id": "024-bench-duplicate-1-False",
+      "sha256": "15025d268c472e1a5610dc059a3cd634d57930c475291007acd553d944841096",
+      "bytes": 9242,
+      "format": "json",
+      "enabled": false,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "f5bf27f001184de3b7d2714cbfaab45238c743e95308e21128b89d13533eb1e8",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "caaa38802987392639952cbf57a364ee594ddd0ea65b1c8f1805f97f05afbb3c"
+    },
+    {
+      "id": "025-bench-duplicate-2-False",
+      "sha256": "15025d268c472e1a5610dc059a3cd634d57930c475291007acd553d944841096",
+      "bytes": 9242,
+      "format": "json",
+      "enabled": false,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "f5bf27f001184de3b7d2714cbfaab45238c743e95308e21128b89d13533eb1e8",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "caaa38802987392639952cbf57a364ee594ddd0ea65b1c8f1805f97f05afbb3c"
+    },
+    {
+      "id": "026-bench-duplicate-2-True",
+      "sha256": "1a20af0bddf8d5130afb11d5f88f263f74346b85120d944ac012125f76c1bf0f",
+      "bytes": 9306,
+      "format": "json",
+      "enabled": true,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "daead5c048e6a8cd06ee82287b1b8e19e1028f25d9c871ab844829c6fee161ac",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "caaa38802987392639952cbf57a364ee594ddd0ea65b1c8f1805f97f05afbb3c"
+    },
+    {
+      "id": "027-bench-duplicate-3-True",
+      "sha256": "1a20af0bddf8d5130afb11d5f88f263f74346b85120d944ac012125f76c1bf0f",
+      "bytes": 9306,
+      "format": "json",
+      "enabled": true,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "daead5c048e6a8cd06ee82287b1b8e19e1028f25d9c871ab844829c6fee161ac",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "caaa38802987392639952cbf57a364ee594ddd0ea65b1c8f1805f97f05afbb3c"
+    },
+    {
+      "id": "028-bench-duplicate-3-False",
+      "sha256": "15025d268c472e1a5610dc059a3cd634d57930c475291007acd553d944841096",
+      "bytes": 9242,
+      "format": "json",
+      "enabled": false,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "f5bf27f001184de3b7d2714cbfaab45238c743e95308e21128b89d13533eb1e8",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "caaa38802987392639952cbf57a364ee594ddd0ea65b1c8f1805f97f05afbb3c"
+    },
+    {
+      "id": "029-bench-duplicate-4-False",
+      "sha256": "15025d268c472e1a5610dc059a3cd634d57930c475291007acd553d944841096",
+      "bytes": 9242,
+      "format": "json",
+      "enabled": false,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "f5bf27f001184de3b7d2714cbfaab45238c743e95308e21128b89d13533eb1e8",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "caaa38802987392639952cbf57a364ee594ddd0ea65b1c8f1805f97f05afbb3c"
+    },
+    {
+      "id": "030-bench-duplicate-4-True",
+      "sha256": "1a20af0bddf8d5130afb11d5f88f263f74346b85120d944ac012125f76c1bf0f",
+      "bytes": 9306,
+      "format": "json",
+      "enabled": true,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "daead5c048e6a8cd06ee82287b1b8e19e1028f25d9c871ab844829c6fee161ac",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "caaa38802987392639952cbf57a364ee594ddd0ea65b1c8f1805f97f05afbb3c"
+    },
+    {
+      "id": "031-warmup-unique-disabled",
+      "sha256": "e3cf1bafddcff9125513e832a565ee86843e1d88df12f344d74f4aaa7b05beae",
+      "bytes": 9242,
+      "format": "json",
+      "enabled": false,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "f5bf27f001184de3b7d2714cbfaab45238c743e95308e21128b89d13533eb1e8",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "bf3c6694e46a8e09612ee0c69071f787cdb5f8c75767b2d4d43f7ec79f646884"
+    },
+    {
+      "id": "032-warmup-unique-enabled",
+      "sha256": "01880211a0137a484d0003ca4b83d52da2f04add9abac6f75068996a89f745b8",
+      "bytes": 9303,
+      "format": "json",
+      "enabled": true,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "daead5c048e6a8cd06ee82287b1b8e19e1028f25d9c871ab844829c6fee161ac",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "bf3c6694e46a8e09612ee0c69071f787cdb5f8c75767b2d4d43f7ec79f646884"
+    },
+    {
+      "id": "033-bench-unique-0-False",
+      "sha256": "e3cf1bafddcff9125513e832a565ee86843e1d88df12f344d74f4aaa7b05beae",
+      "bytes": 9242,
+      "format": "json",
+      "enabled": false,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "f5bf27f001184de3b7d2714cbfaab45238c743e95308e21128b89d13533eb1e8",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "bf3c6694e46a8e09612ee0c69071f787cdb5f8c75767b2d4d43f7ec79f646884"
+    },
+    {
+      "id": "034-bench-unique-0-True",
+      "sha256": "01880211a0137a484d0003ca4b83d52da2f04add9abac6f75068996a89f745b8",
+      "bytes": 9303,
+      "format": "json",
+      "enabled": true,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "daead5c048e6a8cd06ee82287b1b8e19e1028f25d9c871ab844829c6fee161ac",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "bf3c6694e46a8e09612ee0c69071f787cdb5f8c75767b2d4d43f7ec79f646884"
+    },
+    {
+      "id": "035-bench-unique-1-True",
+      "sha256": "01880211a0137a484d0003ca4b83d52da2f04add9abac6f75068996a89f745b8",
+      "bytes": 9303,
+      "format": "json",
+      "enabled": true,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "daead5c048e6a8cd06ee82287b1b8e19e1028f25d9c871ab844829c6fee161ac",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "bf3c6694e46a8e09612ee0c69071f787cdb5f8c75767b2d4d43f7ec79f646884"
+    },
+    {
+      "id": "036-bench-unique-1-False",
+      "sha256": "e3cf1bafddcff9125513e832a565ee86843e1d88df12f344d74f4aaa7b05beae",
+      "bytes": 9242,
+      "format": "json",
+      "enabled": false,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "f5bf27f001184de3b7d2714cbfaab45238c743e95308e21128b89d13533eb1e8",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "bf3c6694e46a8e09612ee0c69071f787cdb5f8c75767b2d4d43f7ec79f646884"
+    },
+    {
+      "id": "037-bench-unique-2-False",
+      "sha256": "e3cf1bafddcff9125513e832a565ee86843e1d88df12f344d74f4aaa7b05beae",
+      "bytes": 9242,
+      "format": "json",
+      "enabled": false,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "f5bf27f001184de3b7d2714cbfaab45238c743e95308e21128b89d13533eb1e8",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "bf3c6694e46a8e09612ee0c69071f787cdb5f8c75767b2d4d43f7ec79f646884"
+    },
+    {
+      "id": "038-bench-unique-2-True",
+      "sha256": "01880211a0137a484d0003ca4b83d52da2f04add9abac6f75068996a89f745b8",
+      "bytes": 9303,
+      "format": "json",
+      "enabled": true,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "daead5c048e6a8cd06ee82287b1b8e19e1028f25d9c871ab844829c6fee161ac",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "bf3c6694e46a8e09612ee0c69071f787cdb5f8c75767b2d4d43f7ec79f646884"
+    },
+    {
+      "id": "039-bench-unique-3-True",
+      "sha256": "01880211a0137a484d0003ca4b83d52da2f04add9abac6f75068996a89f745b8",
+      "bytes": 9303,
+      "format": "json",
+      "enabled": true,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "daead5c048e6a8cd06ee82287b1b8e19e1028f25d9c871ab844829c6fee161ac",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "bf3c6694e46a8e09612ee0c69071f787cdb5f8c75767b2d4d43f7ec79f646884"
+    },
+    {
+      "id": "040-bench-unique-3-False",
+      "sha256": "e3cf1bafddcff9125513e832a565ee86843e1d88df12f344d74f4aaa7b05beae",
+      "bytes": 9242,
+      "format": "json",
+      "enabled": false,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "f5bf27f001184de3b7d2714cbfaab45238c743e95308e21128b89d13533eb1e8",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "bf3c6694e46a8e09612ee0c69071f787cdb5f8c75767b2d4d43f7ec79f646884"
+    },
+    {
+      "id": "041-bench-unique-4-False",
+      "sha256": "e3cf1bafddcff9125513e832a565ee86843e1d88df12f344d74f4aaa7b05beae",
+      "bytes": 9242,
+      "format": "json",
+      "enabled": false,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "f5bf27f001184de3b7d2714cbfaab45238c743e95308e21128b89d13533eb1e8",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "bf3c6694e46a8e09612ee0c69071f787cdb5f8c75767b2d4d43f7ec79f646884"
+    },
+    {
+      "id": "042-bench-unique-4-True",
+      "sha256": "01880211a0137a484d0003ca4b83d52da2f04add9abac6f75068996a89f745b8",
+      "bytes": 9303,
+      "format": "json",
+      "enabled": true,
+      "binarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+      "policySHA256": "daead5c048e6a8cd06ee82287b1b8e19e1028f25d9c871ab844829c6fee161ac",
+      "scopeSHA256": "f296432690dfac1aeeb7690e6c21eb8322487ead3d7da0baec1ec66838ff96b4",
+      "requestSHA256": "bf3c6694e46a8e09612ee0c69071f787cdb5f8c75767b2d4d43f7ec79f646884"
+    }
+  ],
+  "limits": [
+    "native macOS only",
+    "no production token/cost claim",
+    "no persistent cache or action authority"
+  ]
+}

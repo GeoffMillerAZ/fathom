@@ -88,7 +88,7 @@ unit_hash, tier: computed or judged, answer, p, band, template@v, calibration, c
 reasons, and cost `{calls, input_tokens, usd, source: reported | estimated | unknown}`.
 
 **Provider none.** Returns the computed rows, "judgment unavailable (no provider)" and the redacted request
-plan. `--plan-only` prints the redacted request bodies and sends nothing, so any harness (or Review Kit's
+plan. `--plan-only` prints the redacted request bodies and sends nothing, so any harness (or the review kit's
 typed-judgment lane) can make the call with its own key (deferred, F43, trigger: a named consumer asks).
 
 **Pruning rules.** A template prunes only at R3's pruning-and-gating bar. A free-form `--q` answer is shown

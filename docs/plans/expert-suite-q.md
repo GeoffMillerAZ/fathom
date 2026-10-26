@@ -567,7 +567,7 @@ implements):
   `not measurable` note (Q-12). **Trigger:** a documented case where an
   author needed this count and had no fallback (mirrors phase P's own
   deferred-item discipline).
-- **fathom-studio's four Charm boards + the web app** (design §8 items 7,
+- **The studio repository's four Charm boards + the web app** (design §8 items 7,
   §5) — explicitly out of scope for this plan per the design's own
   sequencing ("fathom's verbs land first ... studio's screens second") and
   the mission's own framing (Phase Q here is fathom-side only). **Trigger:**

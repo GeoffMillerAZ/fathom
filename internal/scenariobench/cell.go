@@ -156,7 +156,8 @@ func StoreScenarioCell(cellsDir string, r CellResult) error {
 }
 
 // removeStaleSiblingCells removes every OTHER top-level key directory's
-// own t<r.Trial>.json file whose (TaskID, Arm, RunID) match r exactly —
+// own t<r.Trial>.json file whose (TaskID, Arm, RunID) match r exactly, except
+// that a dry-run control's cell and another harness version's cell coexist —
 // r's own key directory is never touched here (StoreScenarioCell's
 // write-once check for it runs separately). Cheaper than a full recursive
 // walk (FindScenarioCellsByRun's own shape): only ONE filename per
@@ -192,6 +193,12 @@ func removeStaleSiblingCells(cellsDir string, r CellResult) error {
 			return fmt.Errorf("parsing %s: %w", path, uerr)
 		}
 		if sib.TaskID != r.TaskID || sib.Arm != r.Arm || sib.RunID != r.RunID {
+			continue
+		}
+		// The dry-run controls share one run id (BX-36): a control never
+		// replaces another harness version's cell, nor is replaced by one. Any
+		// other version change under the run is a stale re-run and is replaced.
+		if sib.HarnessVersion != r.HarnessVersion && (dryRunControlVersions[sib.HarnessVersion] || dryRunControlVersions[r.HarnessVersion]) {
 			continue
 		}
 		if rmErr := os.Remove(path); rmErr != nil {

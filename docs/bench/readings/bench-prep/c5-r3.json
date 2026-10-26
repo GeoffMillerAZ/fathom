@@ -1,0 +1,305 @@
+{
+  "method": "Non-merge test/non-test co-changes; committer date for filtering and recording, fixed UTC window; case-insensitive \\b(fix(es|ed)?|bugs?|regressions?)\\b; surrogate only, zero replayed fixes",
+  "candidates": [
+    {
+      "repository": "Textualize/rich",
+      "sha": "9d8f9a372cc5916fd4781fec207ced7ddac2f08f",
+      "language": "Python",
+      "full_history": true,
+      "c5_window": [
+        "2024-10-25T00:00:00Z",
+        "2026-10-26T00:00:00Z"
+      ],
+      "co_changes": 31,
+      "fix_message_co_changes": 12,
+      "primary_co_changes": 31,
+      "primary_fix_co_changes": 12,
+      "replayed": 0
+    },
+    {
+      "repository": "encode/starlette",
+      "sha": "8aa828ceaff764a2e57932fb42fdf105a47c4c83",
+      "language": "Python",
+      "full_history": true,
+      "c5_window": [
+        "2024-10-25T00:00:00Z",
+        "2026-10-26T00:00:00Z"
+      ],
+      "co_changes": 135,
+      "fix_message_co_changes": 7,
+      "primary_co_changes": 130,
+      "primary_fix_co_changes": 6,
+      "replayed": 0
+    },
+    {
+      "repository": "go-chi/chi",
+      "sha": "9f8adb1aabaa8a91180a821111d3f8e668d1c0bf",
+      "language": "Go",
+      "full_history": true,
+      "c5_window": [
+        "2024-10-25T00:00:00Z",
+        "2026-10-26T00:00:00Z"
+      ],
+      "co_changes": 42,
+      "fix_message_co_changes": 8,
+      "primary_co_changes": 41,
+      "primary_fix_co_changes": 8,
+      "replayed": 0
+    },
+    {
+      "repository": "immerjs/immer",
+      "sha": "75a290e44ba14bd723c8ef8546b6559c8ef3ae88",
+      "language": "TypeScript",
+      "full_history": true,
+      "c5_window": [
+        "2024-10-25T00:00:00Z",
+        "2026-10-26T00:00:00Z"
+      ],
+      "co_changes": 37,
+      "fix_message_co_changes": 30,
+      "primary_co_changes": 36,
+      "primary_fix_co_changes": 29,
+      "replayed": 0
+    },
+    {
+      "repository": "marshmallow-code/marshmallow",
+      "sha": "b762ea2d59ca52fe5df76b90de14bed7e5ec5607",
+      "language": "Python",
+      "full_history": true,
+      "c5_window": [
+        "2024-10-25T00:00:00Z",
+        "2026-10-26T00:00:00Z"
+      ],
+      "co_changes": 68,
+      "fix_message_co_changes": 17,
+      "primary_co_changes": 65,
+      "primary_fix_co_changes": 17,
+      "replayed": 0
+    },
+    {
+      "repository": "microsoft/tsyringe",
+      "sha": "78222334f49265ea2874fac2c73284345c1124d9",
+      "language": "TypeScript",
+      "full_history": true,
+      "c5_window": [
+        "2024-10-25T00:00:00Z",
+        "2026-10-26T00:00:00Z"
+      ],
+      "co_changes": 3,
+      "fix_message_co_changes": 0,
+      "primary_co_changes": 3,
+      "primary_fix_co_changes": 0,
+      "replayed": 0
+    },
+    {
+      "repository": "pallets/click",
+      "sha": "2247b35ea1c47c727d7a06e51fa280e12a863ff6",
+      "language": "Python",
+      "full_history": true,
+      "c5_window": [
+        "2024-10-25T00:00:00Z",
+        "2026-10-26T00:00:00Z"
+      ],
+      "co_changes": 135,
+      "fix_message_co_changes": 35,
+      "primary_co_changes": 132,
+      "primary_fix_co_changes": 35,
+      "replayed": 0
+    },
+    {
+      "repository": "pressly/goose",
+      "sha": "2d285d2249855c959765409c68b17a6634f0acb4",
+      "language": "Go",
+      "full_history": true,
+      "c5_window": [
+        "2024-10-25T00:00:00Z",
+        "2026-10-26T00:00:00Z"
+      ],
+      "co_changes": 21,
+      "fix_message_co_changes": 6,
+      "primary_co_changes": 20,
+      "primary_fix_co_changes": 5,
+      "replayed": 0
+    },
+    {
+      "repository": "python-attrs/attrs",
+      "sha": "c8bb9bfaa2843e7844b5bb13bed4370b51feec4f",
+      "language": "Python",
+      "full_history": true,
+      "c5_window": [
+        "2024-10-25T00:00:00Z",
+        "2026-10-26T00:00:00Z"
+      ],
+      "co_changes": 48,
+      "fix_message_co_changes": 9,
+      "primary_co_changes": 36,
+      "primary_fix_co_changes": 5,
+      "replayed": 0
+    },
+    {
+      "repository": "reduxjs/redux",
+      "sha": "61ebf8596654cf3c4b197e426e302fcb3c2bc13e",
+      "language": "TypeScript",
+      "full_history": true,
+      "c5_window": [
+        "2024-10-25T00:00:00Z",
+        "2026-10-26T00:00:00Z"
+      ],
+      "co_changes": 5,
+      "fix_message_co_changes": 3,
+      "primary_co_changes": 4,
+      "primary_fix_co_changes": 3,
+      "replayed": 0
+    },
+    {
+      "repository": "spf13/cobra",
+      "sha": "adbc8813901bba65827259daa8e22ff94ec1f30e",
+      "language": "Go",
+      "full_history": true,
+      "c5_window": [
+        "2024-10-25T00:00:00Z",
+        "2026-10-26T00:00:00Z"
+      ],
+      "co_changes": 15,
+      "fix_message_co_changes": 2,
+      "primary_co_changes": 13,
+      "primary_fix_co_changes": 2,
+      "replayed": 0
+    },
+    {
+      "repository": "stretchr/testify",
+      "sha": "87a7b9d57689f6579db2da795ab8deeab29cb724",
+      "language": "Go",
+      "full_history": true,
+      "c5_window": [
+        "2024-10-25T00:00:00Z",
+        "2026-10-26T00:00:00Z"
+      ],
+      "co_changes": 30,
+      "fix_message_co_changes": 5,
+      "primary_co_changes": 29,
+      "primary_fix_co_changes": 5,
+      "replayed": 0
+    },
+    {
+      "repository": "typestack/class-transformer",
+      "sha": "a2734a5d154c9b0beb9a10555a04416bc371de06",
+      "language": "TypeScript",
+      "full_history": true,
+      "c5_window": [
+        "2024-10-25T00:00:00Z",
+        "2026-10-26T00:00:00Z"
+      ],
+      "co_changes": 0,
+      "fix_message_co_changes": 0,
+      "primary_co_changes": 0,
+      "primary_fix_co_changes": 0,
+      "replayed": 0
+    },
+    {
+      "repository": "typestack/class-validator",
+      "sha": "2e1a5c27dbd65b80e27fe96b49bd6e6641fa3603",
+      "language": "TypeScript",
+      "full_history": true,
+      "c5_window": [
+        "2024-10-25T00:00:00Z",
+        "2026-10-26T00:00:00Z"
+      ],
+      "co_changes": 6,
+      "fix_message_co_changes": 1,
+      "primary_co_changes": 6,
+      "primary_fix_co_changes": 1,
+      "replayed": 0
+    },
+    {
+      "repository": "urfave/cli",
+      "sha": "89ad11673146784b702fb14ce1e29f2b864e51c2",
+      "language": "Go",
+      "full_history": true,
+      "c5_window": [
+        "2024-10-25T00:00:00Z",
+        "2026-10-26T00:00:00Z"
+      ],
+      "co_changes": 204,
+      "fix_message_co_changes": 134,
+      "primary_co_changes": 196,
+      "primary_fix_co_changes": 127,
+      "replayed": 0
+    },
+    {
+      "repository": "trpc/trpc",
+      "sha": "8d09833c76791b2ea7270af174fdab9f1408aeb8",
+      "language": "TypeScript",
+      "full_history": true,
+      "c5_window": [
+        "2024-10-25T00:00:00Z",
+        "2026-10-26T00:00:00Z"
+      ],
+      "co_changes": 278,
+      "fix_message_co_changes": 146,
+      "primary_co_changes": 150,
+      "primary_fix_co_changes": 82,
+      "replayed": 0
+    },
+    {
+      "repository": "remeda/remeda",
+      "sha": "d02c3bdb5e18cfa53e76f33f4ae525adce515379",
+      "language": "TypeScript",
+      "full_history": true,
+      "c5_window": [
+        "2024-10-25T00:00:00Z",
+        "2026-10-26T00:00:00Z"
+      ],
+      "co_changes": 56,
+      "fix_message_co_changes": 21,
+      "primary_co_changes": 55,
+      "primary_fix_co_changes": 21,
+      "replayed": 0
+    },
+    {
+      "repository": "reduxjs/redux-toolkit",
+      "sha": "0fd611cc79d44990ac9a040dec4d5cb446233440",
+      "language": "TypeScript",
+      "full_history": true,
+      "c5_window": [
+        "2024-10-25T00:00:00Z",
+        "2026-10-26T00:00:00Z"
+      ],
+      "co_changes": 96,
+      "fix_message_co_changes": 30,
+      "primary_co_changes": 92,
+      "primary_fix_co_changes": 30,
+      "replayed": 0
+    },
+    {
+      "repository": "go-git/go-git",
+      "sha": "bdae57cc427f94a6f7c627201bfe14508b5e19bd",
+      "language": "Go",
+      "full_history": true,
+      "c5_window": [
+        "2024-10-25T00:00:00Z",
+        "2026-10-26T00:00:00Z"
+      ],
+      "co_changes": 81,
+      "fix_message_co_changes": 15,
+      "primary_co_changes": 80,
+      "primary_fix_co_changes": 15,
+      "replayed": 0
+    },
+    {
+      "repository": "pytest-dev/pytest",
+      "sha": "082ed70e314ee8e1ab117763d17fe801648f7508",
+      "language": "Python",
+      "full_history": true,
+      "c5_window": [
+        "2024-10-25T00:00:00Z",
+        "2026-10-26T00:00:00Z"
+      ],
+      "co_changes": 320,
+      "fix_message_co_changes": 91,
+      "primary_co_changes": 299,
+      "primary_fix_co_changes": 80,
+      "replayed": 0
+    }
+  ]
+}

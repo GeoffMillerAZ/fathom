@@ -1,0 +1,19 @@
+# Seed: docs/design/feature-labs.md section 4.3. Kill: owner ruling L-R1.
+id: "lab-find-symbol"
+features: ["F-01"]
+surface: ["mcp:find_symbol"]
+firing:
+  should: "the next lookup is the definition of an identifier defined in the repository"
+  should_not: "a string literal, config value or log line"
+  grader: "tool_used"
+helped:
+  metric: "calls and tokens to the gold definition"
+  arm: "plugin-minus-find-symbol"
+  direction: "decrease"
+  minimum_effect_of_interest: 1
+quality: [{"instrument": "indexbench L0", "reading": "definition recall"}]
+fixtures: ["internal/connector/testdata/fauxtown"]
+harness: ["replay", "fork"]
+kill: [{"criterion": "K4: A knob that raises firing and leaves helped harmed, or inconclusive toward harm, is reverted.", "reading": "docs/bench/readings/labs/lab-find-symbol.md"}, {"criterion": "K1: A classifier surface with TPR or TNR Wilson lower bound under 0.80 on 40 labeled points per class reports counts only.", "reading": "docs/bench/readings/labs/lab-find-symbol.md"}]
+knobs: [{"name": "description", "kind": "text", "location": "internal/mcp"}]
+owners: []

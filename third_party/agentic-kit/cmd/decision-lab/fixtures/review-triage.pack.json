@@ -1,0 +1,26 @@
+{
+  "version": "decision-lab.pack/1",
+  "id": "review-triage",
+  "templateVersion": "v1",
+  "confidenceRecipe": "decision.Confidence/1",
+  "readingRecipe": "decision.NewReading/1",
+  "provider": "fixture-provider",
+  "resolvedModel": "fixture-model",
+  "policyEpoch": "policy-v1",
+  "owner": "kit-maintainer",
+  "fallback": "Send uncertain or failed findings to human review.",
+  "baseline": "Human triage with source lines and deterministic issue metadata.",
+  "killCriterion": "Retire if false favorable findings exceed the declared site bar.",
+  "questions": [
+    {
+      "id": "triage",
+      "instructions": "Given only the captured finding text, classify whether a human should inspect it. Treat missing source context as unknown.",
+      "options": [
+        {"name": "inspect", "criteria": "Concrete source-backed concern"},
+        {"name": "defer", "criteria": "No actionable concern in available evidence"},
+        {"name": "unknown", "criteria": "Missing evidence or source context"}
+      ],
+      "favorableOptions": ["inspect"]
+    }
+  ]
+}

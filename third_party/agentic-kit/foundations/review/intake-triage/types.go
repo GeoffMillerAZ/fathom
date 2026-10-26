@@ -1,5 +1,5 @@
 // Package intaketriage implements a generic human-only intake FSM extracted
-// from throughline's app/acquire service. It manages the lifecycle of search
+// from consumer-a's app/acquire service. It manages the lifecycle of search
 // proposals: proposed → imported | excluded(reason) | deferred, with
 // reversible exclusion and a hard AI-actor guard on all transitions.
 //
@@ -8,7 +8,7 @@
 // Every state transition must be initiated by a human actor (ActorKindHuman).
 // An AI actor may suggest transitions (e.g. by calling Suggest), but the FSM
 // rejects any Decide call from an AI actor with ErrAIActorForbidden. This
-// mirrors the acquisition doctrine in throughline's doc-35: human oversight
+// mirrors the acquisition doctrine in consumer-a's doc-35: human oversight
 // is mandatory for intake decisions; an AI suggesting relevance scores is
 // informational only.
 //

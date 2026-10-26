@@ -5,7 +5,7 @@
     "provenance": "production-derived-redacted",
     "decisive_eligible": true,
     "metadata": {
-      "donor_path": "../throughline/app/chat/prompt.go",
+      "donor_path": "../consumer-a/app/chat/prompt.go",
       "donor_commit": "055fa8433354fc90cf88ea2bd1bc64a5868b6a90",
       "donor_lines": "20-21 (IMPORTANT RULES 1)",
       "note": "Derived from the chat-system-prompt v1.3.0 citation rule; all case content invented/redacted (PARTY-A/PARTY-B placeholders, no production data). Redaction pending owner ratification (H5 hand-back item 4)."
@@ -33,7 +33,7 @@
     "provenance": "production-derived-redacted",
     "decisive_eligible": true,
     "metadata": {
-      "donor_path": "../throughline/app/chat/prompt.go",
+      "donor_path": "../consumer-a/app/chat/prompt.go",
       "donor_commit": "055fa8433354fc90cf88ea2bd1bc64a5868b6a90",
       "donor_lines": "22 (IMPORTANT RULES 2)",
       "note": "Derived from the chat-system-prompt v1.3.0 Reasoning-label rule; all case content invented/redacted. Redaction pending owner ratification (H5 hand-back item 4)."
@@ -60,7 +60,7 @@
     "provenance": "production-derived-redacted",
     "decisive_eligible": true,
     "metadata": {
-      "donor_path": "../throughline/app/chat/prompt.go",
+      "donor_path": "../consumer-a/app/chat/prompt.go",
       "donor_commit": "055fa8433354fc90cf88ea2bd1bc64a5868b6a90",
       "donor_lines": "24 (IMPORTANT RULES 5)",
       "note": "Derived from the chat-system-prompt v1.3.0 insufficient-evidence rule; all case content invented/redacted. Redaction pending owner ratification (H5 hand-back item 4)."
@@ -87,7 +87,7 @@
     "provenance": "synthetic-adversarial",
     "decisive_eligible": false,
     "metadata": {
-      "donor_path": "../throughline/app/chat/prompt.go",
+      "donor_path": "../consumer-a/app/chat/prompt.go",
       "donor_commit": "055fa8433354fc90cf88ea2bd1bc64a5868b6a90",
       "donor_lines": "25 (IMPORTANT RULES 6)",
       "note": "Adversarially crafted against the untrusted-content fence rule (hence synthetic-adversarial, never decisive); the fence syntax is quoted from the donor, the injected payload is invented."

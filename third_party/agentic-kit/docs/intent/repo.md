@@ -30,20 +30,22 @@ package maintenance and composition still have a cost. Live counts belong in the
 
 | Component | Kind | Intent | Consumers | Evolution |
 |---|---|---|---|---|
-| `foundations/**` | library | root | kits; fathom, throughline, growing-gardens-bi, resume_as_code directly | stays; review unused packages under 0004; extraction follows D8 |
-| `kits/agent-harness` | kit | root | `examples/agent-cli`, `scenarios/governed-docextract-hitl`, `cmd/kit-new` output; Conjure `heal` (future) | stays; flagship |
-| `kits/docextract` | kit | root | growing-gardens-bi | stays |
-| `kits/docextract/pdf`, `kits/docextract/xlsx` | kit (nested modules) | root | growing-gardens-bi via `docextract` | split when: a consumer outside the fleet pins either module independently, or its release cadence diverges from the root for two tags (`compat.md` §v1 record) |
+| `foundations/**` | library | root | kits; fathom, consumer-a, consumer-b, consumer-c directly | stays; review unused packages under 0004; extraction follows D8 |
+| `kits/catalog-kit` | kit | root | independent catalog-consumer example; bounded Review Kit/Env Kit pilots | stays experimental; independent-release trigger and domain ownership in 0023/0024 |
+| `kits/assignment-kit` | kit | root | offline command-qualification and investigation references | experimental W1 composition, 0036; no executor or new project-intent store |
+| `kits/agent-harness` | kit | root | `examples/agent-cli`, `scenarios/governed-docextract-hitl`, `cmd/kit-new` output; Consumer-d `heal` (future) | stays; flagship |
+| `kits/docextract` | kit | root | consumer-b | stays |
+| `kits/docextract/pdf`, `kits/docextract/xlsx` | kit (nested modules) | root | consumer-b via `docextract` | split when: a consumer outside the fleet pins either module independently, or its release cadence diverges from the root for two tags (`compat.md` §v1 record) |
 | `kits/endpoint-guard` | kit | root | `cmd/endpoint-guard` sidecar | stays |
 | `kits/eval-runner` | kit | root | this repo's own `task eval` (uplift D9) | stays; Stages 2–3 are `futures.md` F14 |
 | `kits/expertchat` | kit | root | `examples/expertchat-service`; gke-expertchat wave | stays; own intent when a second deployment names it |
-| `kits/hitl` | kit | root | `scenarios/governed-docextract-hitl`, `scenarios/sourced-prose`; growing-gardens-bi assessed | stays |
+| `kits/hitl` | kit | root | `scenarios/governed-docextract-hitl`, `scenarios/sourced-prose`; consumer-b assessed | stays |
 | `kits/investigation` | kit | root | `scenarios/governed-investigation` | stays |
-| `kits/guardrails-pipeline` | kit | root | throughline (`app/chat/untrusted.go`) | stays; pinned experimental risk accepted under 0010 |
-| `kits/governed-prose-kit` | kit | root | `scenarios/sourced-prose`, `cmd/kit-workflow`; no production prose adoption | stays; value review 2026-10-12 or next release |
-| `kits/lesson-transfer` | kit | root | strict-harness regression and resume_as_code provider-family receiver | stays; bounded transfer review 2026-10-12 or next release |
+| `kits/guardrails-pipeline` | kit | root | consumer-a (`app/chat/untrusted.go`) | stays; pinned experimental risk accepted under 0010 |
+| `kits/governed-prose-kit` | kit | root | `scenarios/sourced-prose`, `cmd/kit-workflow`; no production prose adoption | maintained; overdue review disposition in 0025 parks expansion pending bounded admission |
+| `kits/lesson-transfer` | kit | root | strict-harness regression and consumer-c provider-family receiver | maintained; overdue review disposition in 0025 parks expansion pending bounded admission |
 | `kits/command-center`, `kits/mcp-server` | kit | root | local tests; downstream composition not established by this assessment | stays; evidence review pending, no automatic demotion or retirement |
-| `runtimes/credresolve` | runtime | root | throughline (`adapters/claudeauth`) | stays |
+| `runtimes/credresolve` | runtime | root | consumer-a (`adapters/claudeauth`) | stays |
 | `runtimes/policy` | runtime | root | no consumer confirmed in this assessment | retire when: a bounded value review recommends it and compatibility policy permits |
 | `surfaces/forms/cueform`, `surfaces/editor` | surface | root | `surfaces/editor` ← `cueform`; app-kit adjacent | stays |
 | `toolchains/jsonschema`, `toolchains/materialization/*` | toolchain | root | `llmclient` (`OutputSchema`), each other | stays |
@@ -55,8 +57,8 @@ package maintenance and composition still have a cost. Live counts belong in the
 | `docs/project-intent/`, `.claude/skills/intent-*` | tooling | root | every repo in the fleet | stays; inbound from adopters when: an adopter's `refresh` finds a rule the practice lacks |
 
 Inbound: fathom doctrine laws become primitives here (heartbeat `CheckExistence` was
-"promoted from fathom doctrine law 7"). Conjure's CLI kit and structured-edit engine are
-named for app-kit, not here (Conjure ADR-010). Lessons may arrive from any workload;
+"promoted from fathom doctrine law 7"). Consumer-d's CLI kit and structured-edit engine are
+named for app-kit, not here (Consumer-d ADR-010). Lessons may arrive from any workload;
 ownership of its application code does not move with the lesson (0006).
 
 ## Dependency direction
@@ -84,8 +86,8 @@ library root; foundations still import only stdlib and sibling foundations.
 
 ## Ecosystem
 
-- Downstream: fathom, throughline, growing-gardens-bi, racli (`../resume_as_code`,
-  vendored — `racli-check` re-pins it), checked by `task downstream-check` against kit
+- Downstream: fathom, consumer-a, consumer-b, consumer-c (`$KIT_CONSUMER_C_DIR`,
+  vendored — `consumer-c-check` re-pins it), checked by `task downstream-check` against kit
   HEAD; missing siblings are skipped, and a skip is not a pass. Verification should use
   isolated checkouts when vendoring would mutate the consumer.
 - Upstream: fathom (doctrine laws → primitives; guards and layers ship back through

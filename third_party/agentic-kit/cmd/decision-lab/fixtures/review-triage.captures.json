@@ -1,0 +1,101 @@
+[
+  {
+    "version": "decision-lab.capture/1",
+    "caseId": "case-1",
+    "packDigest": "sha256:db7d7d69835b3c1088beb8f44d2ba77be24d6d07c6443f4ac8740e6269725de7",
+    "inputDigest": "sha256:c6f49d1ce0954dea1b8786cce00718a8572ba9b7fce40fa0cc70af020892741f",
+    "requestKey": "sha256:006383b17328b7b8951f4738c45ec193fde3c0b160eb713c8fb143a80b55b872",
+    "response": {
+      "Provider": "fixture-provider",
+      "Model": "fixture-model",
+      "Answers": {
+        "triage": {
+          "ID": "triage",
+          "Kind": "choice",
+          "Choice": "inspect",
+          "Probabilities": {
+            "inspect": 0.8,
+            "defer": 0.1,
+            "unknown": 0.1
+          },
+          "Confidence": 0.7
+        }
+      },
+      "Invalid": {},
+      "Declined": {},
+      "Usage": {
+        "InputTokens": 0,
+        "OutputTokens": 0
+      },
+      "Latency": 0
+    },
+    "attemptCount": 1,
+    "answerCacheHits": []
+  },
+  {
+    "version": "decision-lab.capture/1",
+    "caseId": "case-2",
+    "packDigest": "sha256:db7d7d69835b3c1088beb8f44d2ba77be24d6d07c6443f4ac8740e6269725de7",
+    "inputDigest": "sha256:577a921f3e42d408671caa010d828b9067b9267e1e1a216e08f255abba684887",
+    "requestKey": "sha256:03d3865c4e326ac0bbe5355291d1e5f07751474b953b2f58549b3d5bb0aff474",
+    "response": {
+      "Provider": "fixture-provider",
+      "Model": "fixture-model",
+      "Answers": {
+        "triage": {
+          "ID": "triage",
+          "Kind": "choice",
+          "Choice": "unknown",
+          "Probabilities": {
+            "inspect": 0.1,
+            "defer": 0.1,
+            "unknown": 0.8
+          },
+          "Confidence": 0.7
+        }
+      },
+      "Invalid": {},
+      "Declined": {},
+      "Usage": {
+        "InputTokens": 0,
+        "OutputTokens": 0
+      },
+      "Latency": 0
+    },
+    "attemptCount": 1,
+    "answerCacheHits": []
+  },
+  {
+    "version": "decision-lab.capture/1",
+    "caseId": "case-3",
+    "packDigest": "sha256:db7d7d69835b3c1088beb8f44d2ba77be24d6d07c6443f4ac8740e6269725de7",
+    "inputDigest": "sha256:5b0d636fa8a97fce94a0c9b651540b914bff72bc5404e6f00f9ac805686e782e",
+    "requestKey": "sha256:c920af4b1b94687bad62e2c808b8956bff408f234ddfcaf025e9d38fa1ba9911",
+    "response": {
+      "Provider": "fixture-provider",
+      "Model": "fixture-model",
+      "Answers": {
+        "triage": {
+          "ID": "triage",
+          "Kind": "choice",
+          "Choice": "inspect",
+          "Probabilities": {
+            "inspect": 0.8,
+            "defer": 0.1,
+            "unknown": 0.1
+          },
+          "Confidence": 0.7
+        }
+      },
+      "Invalid": {},
+      "Declined": {},
+      "Usage": {
+        "InputTokens": 0,
+        "OutputTokens": 0
+      },
+      "Latency": 0
+    },
+    "attemptCount": 1,
+    "answerCacheHits": []
+  }
+]

@@ -1,0 +1,33 @@
+{
+  "version": "decision-lab.capture/1",
+  "caseId": "case-1",
+  "packDigest": "sha256:db7d7d69835b3c1088beb8f44d2ba77be24d6d07c6443f4ac8740e6269725de7",
+  "inputDigest": "sha256:c6f49d1ce0954dea1b8786cce00718a8572ba9b7fce40fa0cc70af020892741f",
+  "requestKey": "sha256:006383b17328b7b8951f4738c45ec193fde3c0b160eb713c8fb143a80b55b872",
+  "response": {
+    "Provider": "fixture-provider",
+    "Model": "fixture-model",
+    "Answers": {
+      "triage": {
+        "ID": "triage",
+        "Kind": "choice",
+        "Choice": "inspect",
+        "Probabilities": {
+          "inspect": 0.8,
+          "defer": 0.1,
+          "unknown": 0.1
+        },
+        "Confidence": 0.7
+      }
+    },
+    "Invalid": {},
+    "Declined": {},
+    "Usage": {
+      "InputTokens": 0,
+      "OutputTokens": 0
+    },
+    "Latency": 0
+  },
+  "attemptCount": 1,
+  "answerCacheHits": []
+}

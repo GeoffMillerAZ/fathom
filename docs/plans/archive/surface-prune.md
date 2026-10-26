@@ -7,7 +7,7 @@
 > still at zero") and §5. The agent surface itself (16 tools) is NOT in
 > scope — this prunes the never-called expert registry behind it.
 >
-> **Covenant (ADR-0070 class):** failing test first, `task validate`
+> **Covenant (test-first class):** failing test first, `task validate`
 > green before commit, dated CHANGELOG entry, boxes flip only on
 > `fathom verify --service fathom --plan docs/plans/surface-prune.md`.
 >

@@ -1,0 +1,11 @@
+{
+  "id": "C14",
+  "slug": "decision-cache",
+  "axis": "component",
+  "acceptance": "Decision cache binds template/content/model and never caches declined answers",
+  "method": "deterministic source plus scoped test",
+  "source": "foundations/decision/cached_test.go",
+  "test": "TestCachedKeysByTemplateAndContentHashStampsModel",
+  "group": "decision",
+  "non_guarantee": "Component test does not prove consumer adoption, live model quality, or all entrypoints."
+}

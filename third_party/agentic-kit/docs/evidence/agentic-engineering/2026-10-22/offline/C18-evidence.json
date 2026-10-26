@@ -1,0 +1,26 @@
+{
+  "id": "C18",
+  "axis": "composition",
+  "acceptance": "Claude, Codex and Antigravity negative live host cases prove declared controls",
+  "outcome": "unknown",
+  "source": "docs/evidence/native-hosts/2026-09-13/README.md",
+  "source_sha256": "2219d476d4b0917bbe7a099a13e9e6c104b4dba25008d9261e50e131a93263d7",
+  "test": null,
+  "group": null,
+  "scope_note": "Component test does not prove consumer adoption, live model quality, or all entrypoints.",
+  "negative_scan": {
+    "name": "antigravity_host",
+    "argv": [
+      "rg",
+      "-n",
+      "Antigravity|antigravity",
+      "cmd/kit-new",
+      "cmd/agent-hooks"
+    ],
+    "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+    "exit_code": 1,
+    "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/antigravity_host-scan.log"
+  },
+  "scan_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "reason": "Historical native-host receipt is bounded to Claude/Codex versions; Codex live and Antigravity controls unproven."
+}

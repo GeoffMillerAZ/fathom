@@ -4,7 +4,7 @@ Design: `docs/design/evidence-plane.md` (panel-reviewed; §12 disposes every fin
 Grammar: `docs/plans/README.md`. Boxes flip to `[x]` only on
 `fathom verify --service fathom --plan docs/plans/evidence-plane.md` exit 0. Wave gate:
 `--require-all` per wave. The honesty fixes this plane forces ship first and separately:
-`docs/plans/archive/honesty-fixes.md`. Consumer population: fathom, conjure, agentic-kit.
+`docs/plans/archive/honesty-fixes.md`. Consumer population: fathom, svc-f, agentic-kit.
 
 Measured baselines (2026-08-26): post-edit payload p50 99 / p75 328 / p90 354 tokens
 (ceiling 150, I35); session primer p50 1,974 B / max 2,867 B (thread cap 2,400 B);

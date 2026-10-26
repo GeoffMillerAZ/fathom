@@ -215,7 +215,7 @@ func TestParseDumpFixture(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer f.Close()
-	files := map[string]bool{"fixture.hlsl": true, "fixture.hlsli": true}
+	files := map[string]bool{"fixture.hlsl": true, "fixture.hlsli": true, "fixture-tone.hlsli": true}
 	src, err := os.ReadFile(filepath.Join("testdata", "fixture.hlsl"))
 	if err != nil {
 		t.Fatal(err)
@@ -223,6 +223,7 @@ func TestParseDumpFixture(t *testing.T) {
 	defines := defineLines(src)
 	u := parseDump(f, files, func(p string, line int) bool { return p == "fixture.hlsl" && defines[line] })
 	wantDefs := []Def{
+		{"fixture-tone.hlsli", "exposure", "variable", 3, 3},
 		{"fixture.hlsl", "Frame", "cbuffer", 8, 11},
 		{"fixture.hlsl", "Index", "typedef", 13, 13},
 		{"fixture.hlsl", "Ray", "struct", 15, 21},
@@ -256,7 +257,168 @@ func TestParseDumpFixture(t *testing.T) {
 	}
 	// H5-R7: main names the header's type Material (line 28), its field
 	// rough and its function helper: one file pair, at its first reference.
-	if want := []Ref{{"fixture.hlsl", 28, "fixture.hlsli"}}; !reflect.DeepEqual(u.Refs, want) {
+	// H6-R3: main reads fixture-tone.hlsli's exposure by its address alone
+	// (a DeclRefExpr, line 31), the pair's one reference.
+	if want := []Ref{
+		{Path: "fixture.hlsl", Line: 31, ToPath: "fixture-tone.hlsli", Addr: true},
+		{Path: "fixture.hlsl", Line: 28, ToPath: "fixture.hlsli", Addr: true},
+	}; !reflect.DeepEqual(u.Refs, want) {
 		t.Errorf("refs %v, want %v", u.Refs, want)
+	}
+}
+
+// typeDump (H6-R2): a typedef MyAlias of Material in a.hlsli, struct Material
+// in b.hlsli, and a Light struct in each of two namespaces (c.hlsli, d.hlsli);
+// f.hlsl declares `MyAlias m` (sugared 'MyAlias', canonical 'Material'), a
+// `B::Light l`, and reads c.hlsli's variable gain through its address.
+const typeDump = `TranslationUnitDecl 0x1 <<invalid sloc>> <invalid sloc>
+|-TypedefDecl 0x2 <./a.hlsli:1:1, col:18> col:18 referenced MyAlias 'Material':'Material'
+|-CXXRecordDecl 0x3 <./b.hlsli:1:1, line:4:1> line:1:8 referenced struct Material definition
+| ` + "`" + `-FieldDecl 0x4 <line:3:5, col:11> col:11 rough 'float'
+|-NamespaceDecl 0x5 <./c.hlsli:1:1, line:5:1> line:1:11 A
+| |-CXXRecordDecl 0x6 <line:2:1, line:2:20> line:2:8 struct Light definition
+| ` + "`" + `-VarDecl 0x7 <line:3:1, col:7> col:7 used gain 'float'
+|-NamespaceDecl 0x8 <./d.hlsli:1:1, line:3:1> line:1:11 B
+| ` + "`" + `-CXXRecordDecl 0x9 <line:2:1, line:2:20> line:2:8 referenced struct Light definition
+` + "`" + `-FunctionDecl 0xa <./f.hlsl:3:1, line:8:1> line:3:7 main 'float ()'
+  ` + "`" + `-CompoundStmt 0xb <line:4:1, line:8:1>
+    |-DeclStmt 0xc <line:5:5, col:14>
+    | ` + "`" + `-VarDecl 0xd <col:5, col:13> col:13 used m 'MyAlias':'Material'
+    |-DeclStmt 0xe <line:6:5, col:15>
+    | ` + "`" + `-VarDecl 0xf <col:5, col:14> col:14 l 'B::Light'
+    ` + "`" + `-ReturnStmt 0x10 <line:7:5, col:19>
+      ` + "`" + `-DeclRefExpr 0x11 <col:12, col:15> 'float' lvalue Var 0x7 'gain' 'float'
+`
+
+// TestParseDumpTypeRefs (H6-R2, as clang-objc's TypeRef): a quoted type's
+// sugared half is the name written, so f.hlsl names a.hlsli's typedef and
+// never b.hlsli's Material; a name two type declarations of the unit share
+// (Light) is ambiguous, skipped and counted; each pair says how it resolved.
+func TestParseDumpTypeRefs(t *testing.T) {
+	files := map[string]bool{"a.hlsli": true, "b.hlsli": true, "c.hlsli": true, "d.hlsli": true, "f.hlsl": true}
+	u := parseDump(strings.NewReader(typeDump), files, func(string, int) bool { return false })
+	want := []Ref{
+		{Path: "a.hlsli", Line: 1, ToPath: "b.hlsli"}, // the typedef names Material
+		{Path: "f.hlsl", Line: 5, ToPath: "a.hlsli"},
+		{Path: "f.hlsl", Line: 7, ToPath: "c.hlsli", Addr: true},
+	}
+	if !reflect.DeepEqual(u.Refs, want) {
+		t.Errorf("refs %+v, want %+v", u.Refs, want)
+	}
+	if u.AmbiguousTypes != 1 || u.AmbiguousRefs != 1 {
+		t.Errorf("ambiguous types %d refs %d, want 1 and 1 (Light, declared in c.hlsli and d.hlsli)", u.AmbiguousTypes, u.AmbiguousRefs)
+	}
+}
+
+// H-3: a record and its same-name typedef have one file target, regardless
+// of declaration order. Only declarations in different files are ambiguous.
+func TestParseDumpSameFileTypeDeclarations(t *testing.T) {
+	record := "|-CXXRecordDecl 0x2 <./a.hlsli:1:1, col:30> col:16 struct X definition\n"
+	alias := "|-TypedefDecl 0x3 <./a.hlsli:1:1, col:32> col:32 X 'struct X':'X'\n"
+	use := "`-VarDecl 0x4 <./f.hlsl:2:1, col:3> col:3 value 'X':'X'\n"
+	for _, declarations := range []string{record + alias, alias + record} {
+		u := parseDump(strings.NewReader("TranslationUnitDecl 0x1 <<invalid sloc>> <invalid sloc>\n"+declarations+use),
+			map[string]bool{"a.hlsli": true, "f.hlsl": true}, func(string, int) bool { return false })
+		want := []Ref{{Path: "f.hlsl", Line: 2, ToPath: "a.hlsli"}}
+		if !reflect.DeepEqual(u.Refs, want) {
+			t.Errorf("refs %+v, want %+v", u.Refs, want)
+		}
+		if u.AmbiguousTypes != 0 || u.AmbiguousRefs != 0 {
+			t.Errorf("ambiguous types %d refs %d, want 0 and 0 for declarations in one file", u.AmbiguousTypes, u.AmbiguousRefs)
+		}
+	}
+}
+
+// refDump is ref.hlsl's unit (H6-R3): main reads inc.hlsli's gain through its
+// address, and out.hlsli, a measured file the unit's -M rule does not list
+// (and whose own unit errors), holds a definition and a call the scope
+// filters must drop.
+const refDump = `TranslationUnitDecl 0x1 <<invalid sloc>> <invalid sloc>
+|-VarDecl 0x2 <./inc.hlsli:1:1, col:7> col:7 used gain 'float'
+|-FunctionDecl 0x3 <./out.hlsli:1:1, line:3:1> line:1:7 other 'float ()'
+| ` + "`" + `-CompoundStmt 0x4 <line:2:1, line:3:1>
+|   ` + "`" + `-CallExpr 0x5 <line:2:5, col:12> 'float'
+|     ` + "`" + `-ImplicitCastExpr 0x6 <col:5> 'float (*)()' <FunctionToPointerDecay>
+|       ` + "`" + `-DeclRefExpr 0x7 <col:5> 'float ()' lvalue Function 0x8 'helper' 'float ()'
+` + "`" + `-FunctionDecl 0x9 <./ref.hlsl:2:1, line:4:1> line:2:7 main 'float ()'
+  ` + "`" + `-CompoundStmt 0xa <line:3:1, line:4:1>
+    ` + "`" + `-ReturnStmt 0xb <line:3:5, col:12>
+      ` + "`" + `-DeclRefExpr 0xc <col:12> 'float' lvalue Var 0x2 'gain' 'float'
+`
+
+// TestRunRefs (H6-R3): run() with -refs writes the reference pair as a tier-B
+// imports oracle's same_package entry and discloses it address-resolved; the
+// definition and call of out.hlsli, outside the scope, are not written.
+func TestRunRefs(t *testing.T) {
+	subject := t.TempDir()
+	for _, f := range []string{"ref.hlsl", "inc.hlsli", "out.hlsli"} {
+		if err := os.WriteFile(filepath.Join(subject, f), []byte("\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	bin := t.TempDir()
+	if err := os.WriteFile(filepath.Join(bin, "ref.dump"), []byte(refDump), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	dxc := filepath.Join(bin, "dxc")
+	script := `#!/bin/sh
+case "$*" in
+*--version*) echo "fake dxc 1.0" ;;
+*" -M "*) echo "ref.cso: ./ref.hlsl ./inc.hlsli" ;;
+*./out.hlsli) echo "./out.hlsli:1:1: error: unknown type name 'Foo'" >&2; exit 1 ;;
+*) cat "` + filepath.Join(bin, "ref.dump") + `" ;;
+esac
+`
+	if err := os.WriteFile(dxc, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	list := filepath.Join(t.TempDir(), "files")
+	if err := os.WriteFile(list, []byte("inc.hlsli\nout.hlsli\nref.hlsl\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	refsOut := filepath.Join(t.TempDir(), "refs.json")
+	var stdout, stderr bytes.Buffer
+	if err := run(subject, dxc, "lib_6_3", "lib_6_9", list, "", refsOut, nil, &stdout, &stderr); err != nil {
+		t.Fatal(err)
+	}
+	var out oracleFile
+	if err := json.Unmarshal(stdout.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"inc.hlsli", "ref.hlsl"}; !reflect.DeepEqual(out.Scope, want) {
+		t.Errorf("scope %v, want %v", out.Scope, want)
+	}
+	wantDefs := []Def{{"inc.hlsli", "gain", "variable", 1, 1}, {"ref.hlsl", "main", "function", 2, 4}}
+	if !reflect.DeepEqual(out.Definitions, wantDefs) {
+		t.Errorf("definitions %v, want %v (out.hlsli's other is outside the scope)", out.Definitions, wantDefs)
+	}
+	if len(out.Calls) != 0 {
+		t.Errorf("calls %v, want none (out.hlsli's other -> helper is outside the scope)", out.Calls)
+	}
+	b, err := os.ReadFile(refsOut)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var refs struct {
+		Tier    string `json:"tier"`
+		Imports []struct {
+			Path        string `json:"path"`
+			Line        int    `json:"line"`
+			ToPath      string `json:"to_path"`
+			SamePackage bool   `json:"same_package"`
+		} `json:"imports"`
+		Disclose []string `json:"disclose"`
+	}
+	if err := json.Unmarshal(b, &refs); err != nil {
+		t.Fatal(err)
+	}
+	if refs.Tier != "B" || len(refs.Imports) != 1 {
+		t.Fatalf("-refs wrote tier %q, %d imports, want B and 1:\n%s", refs.Tier, len(refs.Imports), b)
+	}
+	if e := refs.Imports[0]; e.Path != "ref.hlsl" || e.Line != 3 || e.ToPath != "inc.hlsli" || !e.SamePackage {
+		t.Errorf("-refs entry %+v, want ref.hlsl:3 -> inc.hlsli same_package", e)
+	}
+	if want := "1 (file, declaring file) pairs, 1 address-resolved"; len(refs.Disclose) != 1 || !strings.Contains(refs.Disclose[0], want) {
+		t.Errorf("-refs disclose %q lacks %q", refs.Disclose, want)
 	}
 }

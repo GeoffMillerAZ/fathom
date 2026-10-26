@@ -145,7 +145,7 @@ hooks and intent ledgers, `--auto-refresh=false`, `FATHOM_SELF_RESTART=off`).
 |---|---|---|---|
 | 1 | An unreadable intent corpus rendered "no intent corpus … a choice, not a defect" | the clean absence | `view.corpus` is an **error** naming the files and errno; the tab renders it (fixture test with the router and `ADR.md` at mode 000) |
 | 2 | File-resolved edges drawn solid and counted resolved | `console.announcer`: 1 resolved caller; app-kit `browser.check`: 11 resolved | 0 resolved / 1 heuristic; 0 resolved / 11 heuristic; the links `resolved: false` |
-| 3 | One global lock per tab memo held across the computation | a kept `cue-wasm` Intent tab took 28–35 s behind a cold `fathom` audit | 0.019 s during `fathom`'s 51.6 s cold audit; a kept `pulumi-eks` Index 0.043 s during `platform-engineering`'s cold read |
+| 3 | One global lock per tab memo held across the computation | a kept `cue-wasm` Intent tab took 28–35 s behind a cold `fathom` audit | 0.019 s during `fathom`'s 51.6 s cold audit; a kept `svc-i` Index 0.043 s during `platform`'s cold read |
 | 4 | `project.sessions` computed twice on the Activity tab | band 235 over "the newest 20 of 236" | one value: both said 235 before a ledger append and both 236 after the next model read; the appended session is listed only once it is counted |
 | 5 | "Updated — refresh this panel" re-served the memoized audit | `audited 04:04:10` before and after the refresh | a `fathom` verify row → `audit_at` 05:51:32 → 05:52:52, the probe plan's 3 rows present |
 | 6 | Wiring drift counted doctor summaries and their items | `fathom` 15 | `fathom` 13: 6 apply items (named on `hooks_installed`), 6 BLOCKED (named on `wiring_drift`), `skills_installed` |

@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "criteria": [
+    {
+      "stable_key": "review.evidence-integrity",
+      "version": "1",
+      "definition_digest": "18aa80f75b20301ec7eef4e55cb288ee18ce15a43c47dd8ea774ece919069961"
+    },
+    {
+      "stable_key": "review.bounded-work",
+      "version": "1",
+      "definition_digest": "2668e9be1b61ca49f1e010173077e18d21724d5480063ed6c8dcb81217d354dd"
+    },
+    {
+      "stable_key": "review.effect-scope",
+      "version": "1",
+      "definition_digest": "869f91dd8df04047300a11cbb6104523a901d558cddeed6c2a00134f5554de89"
+    }
+  ],
+  "subjects": [
+    {
+      "id": "review-alpha",
+      "revision": "rev-1",
+      "allowed_actions": [
+        "write-local-report"
+      ],
+      "criteria": [
+        "review.evidence-integrity",
+        "review.bounded-work",
+        "review.effect-scope"
+      ]
+    },
+    {
+      "id": "review-beta",
+      "revision": "rev-1",
+      "allowed_actions": [
+        "write-local-report"
+      ],
+      "criteria": [
+        "review.evidence-integrity",
+        "review.bounded-work",
+        "review.effect-scope"
+      ]
+    }
+  ]
+}

@@ -129,7 +129,7 @@ auto-refresh and self-restart off), by the page JSON and HTML:
   who-uses (`references`) lists 27 of 296, and literal (`search`) 50 of 301. what-breaks
   (`blast_radius`) is partial with a lower bound: it hit its symbol cap (500 of 1,070) and
   its depth cap.
-- **Stage status against the counts:** app-kit's serve stage, conjure's compile and serve
+- **Stage status against the counts:** app-kit's serve stage, svc-f's compile and serve
   stages, and agentic-kit's compile and serve stages now read "Working here — obligations
   (or layers) is off here: …". Each is shown beside its live counts (for example, 5,608
   rules served and 102 current claims), with no remedy pressed on a switch whose inputs

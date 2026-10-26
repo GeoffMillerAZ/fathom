@@ -192,6 +192,35 @@ func TestStoreScenarioCell_ReplacesStaleSiblingUnderDifferentKey(t *testing.T) {
 	}
 }
 
+// TestStoreScenarioCell_ControlsShareARunID: the dry-run controls (BX-36)
+// share one run id, so a null cell and an oracle cell for the same task, arm
+// and trial both survive, while a fresh oracle cell still replaces the stale
+// oracle one.
+func TestStoreScenarioCell_ControlsShareARunID(t *testing.T) {
+	dir := t.TempDir()
+	stale := CellResult{TaskID: "T1", Arm: "control", Trial: 1, CellKey: "stale", RunID: "run-1", HarnessVersion: "oracle-1"}
+	other := stale
+	other.CellKey, other.HarnessVersion = "other", "null-1"
+	for _, cell := range []CellResult{stale, other} {
+		if err := StoreScenarioCell(dir, cell); err != nil {
+			t.Fatal(err)
+		}
+	}
+	fresh := stale
+	fresh.CellKey = "fresh"
+	if err := StoreScenarioCell(dir, fresh); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(ScenarioCellPath(dir, stale.CellKey, 1)); !os.IsNotExist(err) {
+		t.Errorf("stale sibling remains: %v", err)
+	}
+	for _, cell := range []CellResult{fresh, other} {
+		if _, ok, err := BorrowScenarioCell(dir, cell.CellKey, 1); err != nil || !ok {
+			t.Errorf("independent cell %s missing: ok=%v err=%v", cell.CellKey, ok, err)
+		}
+	}
+}
+
 // TestStoreScenarioCell_NeverTouchesADifferentRunsSibling proves the
 // cleanup above is scoped to THIS run_id only: a sibling under a different
 // key that belongs to a DIFFERENT run must never be removed just because

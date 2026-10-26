@@ -1142,6 +1142,8 @@ func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[stri
 		})
 	}
 
+	applyPlatformExclusion(&v, t, ev)
+
 	if !checked {
 		// No acceptance contract to evaluate — don't pretend it's verified.
 		v.Status = Unknown

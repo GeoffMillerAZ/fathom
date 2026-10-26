@@ -8,8 +8,8 @@ as the routing study home.
 
 The owner subsequently authorized offline-first implementation and configurable
 provider support for clients with and without Jev. Review Kit now owns that delivery:
-[consumer work order](../../../platform-engineering/docs/plans/review-typed-judgment.md),
-[contract](../../../platform-engineering/kits/review-kit/docs/design/typed-judgment.md).
+[consumer work order](../../../platform-repo/docs/plans/review-typed-judgment.md),
+[contract](../../../platform-repo/kits/review-consumer/docs/design/typed-judgment.md).
 JEV-01/03–05/08 map to consumer TJ-01–07/09; JEV-02/09 map to TJ-08. Preserve the
 independent live-study rows below. Local consumer implementation does not by itself
 promote a shared agentic-kit API or prove model quality. This research-level checklist
@@ -18,7 +18,7 @@ implemented symbols and runtime proof.
 Decision [0014](../intent/decisions/0014-offline-delivery-live-study-followup.md)
 preserves the live-study deferral while allowing authorized offline delivery.
 The owner subsequently authorized OpenRouter access for a separate, two-request
-synthetic integration smoke. [Its receipt](../../../platform-engineering/kits/review-kit/docs/assessments/2026-09-22-openrouter-jev-smoke.md)
+synthetic integration smoke. [Its receipt](../../../platform-repo/kits/review-consumer/docs/assessments/2026-09-22-openrouter-jev-smoke.md)
 records API cost, a model-identity refusal and a missing-information error. It does
 not resume the earlier campaign or satisfy JEV-06/07. Further quality/routing studies
 require their own frozen scope and budget; retained earlier reservations are not a
@@ -196,8 +196,8 @@ park each track using its own evidence; elapsed time does not create a measured 
 
 Review Kit TJ-01–09 have runtime and static proof. The owner-approved portal dependency
 repair is applied; normal consumer tests, vet, build and dependency seams passed. The
-[delivery audit](../../../platform-engineering/kits/review-kit/docs/assessments/2026-09-22-typed-review-delivery.md)
-and [adoption guide](../../../platform-engineering/kits/review-kit/docs/design/typed-judgment-adoption.md)
+[delivery audit](../../../platform-repo/kits/review-consumer/docs/assessments/2026-09-22-typed-review-delivery.md)
+and [adoption guide](../../../platform-repo/kits/review-consumer/docs/design/typed-judgment-adoption.md)
 replace speculative implementation instructions for this consumer. Broader JEV rows
 remain open where they require held-out outcomes, other live provider profiles,
 invoice reconciliation, native hook certification or production routing. The later

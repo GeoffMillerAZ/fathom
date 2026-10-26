@@ -1,6 +1,6 @@
 package reviewkit
 
-// Optional: the judge's half of vision 33 / ADR-0105 (test-kit declares
+// Optional: the judge's half of vision 33 (the test kit declares
 // what a suite certifies; fathom joins the declaration against its own
 // index and computes whether it is live; this pack decides whether live
 // is enough). fathom asserts a fact — a target has, or has not, a live

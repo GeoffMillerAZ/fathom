@@ -1,11 +1,30 @@
 # App-kit adoption: evidence workspace
 
+CLI contribution review (BX-20, BX-21, BX-36): no candidate. Offline control
+identity and three-trial discrimination are benchmark domain policy. The
+`cli flags help` capability search (profile `cli`, catalog `3ee2c1f`)
+returned no items. Existing flag, text/JSON and diagnostic conventions remain
+in use, with fixture tests for discovery, PASS/FAIL and invalid evidence.
+No kit runtime, dependency or adoption pin changes.
+
+CLI contribution review (LAB-16): no candidate. Observation-to-case pointers and
+filing validation are fathom's domain policy. The `CLI flags validation errors`
+capability search returned no items at catalog revision `3ee2c1f`; existing flag
+help and plain diagnostics remain in use. Reader regressions cover linked entries,
+malformed pointers and refusals before writes. No kit runtime or pin changes.
+
 CLI contribution review (lang-retime): no candidate. Extraction identity, pooled CPU
 throughput and median-run selection are fathom's measurement semantics. Catalog
 `3ee2c1f`, query `cli output`, profile `cli`, returned `cli.output`; its status-table
 renderer does not fit the existing language-bench summary. No kit runtime or pin
 changes. `go test -race ./cmd/indexbench ./internal/langbench` covers the command's
 summary, refusals, scope preservation and dry-run behavior.
+
+CLI contribution review (BX-19): no candidate. The null harness and its
+zero-turn dry-run handling belong to the benchmark's domain policy. The
+`cli flags help` capability search (profile `cli`, catalog `3ee2c1f`) returned
+no items. Existing flag help and exit conventions remain in use; fixture
+tests prove help discovery and a graded failure without spend.
 
 CLI contribution review (2026-10-24, WR-9): no candidate. Writer-version grouping is
 fathom's evidence semantics and retains the gauge's existing text/JSON rendering.
@@ -1006,7 +1025,7 @@ inside mirror `d9dd789`:
 - **Origin / task:** console wave G renders the use-case guides, the glossary and the laws
   with `docs.RenderToCRail`, `docs.RenderToCPanel` and `prose.css` (`doc-prose`, the
   `doc-link--unresolved` treatment for a link with no page).
-- **Observed:** `docs` shipped with one consumer (platform-engineering's portal) under a
+- **Observed:** `docs` shipped with one consumer (a sibling platform's portal) under a
   named D17 exception; Fathom is the second. Heading ids stay the caller's (goldmark's
   auto ids, or `{#law-N}`/`{#term-N}` given explicitly), as the package requires.
 - **Disposition:** `evidence` for the kit's D17 two-consumer bar. Next action: app-kit
@@ -1231,3 +1250,17 @@ No candidate: receipt identity, two-key consent, pushed-ref checks and record-id
 policy belong to this app. Reviewed `cli.output` and the contribution-loop contract;
 these verbs retain plain scalar output and the existing doctor row renderer. No kit
 renderer, runtime, dependency or selected capability changed.
+
+## PLT-5 concern-delta file
+
+Contribution disposition: **no-candidate**. Discovery used `output`, profile `cli`,
+selecting `cli.output` at catalog revision
+`3ee2c1f02a6199c2e59361171c7f1fdb957a7a70f64e875a73969608314d7318`.
+Quality-work revision `7c2842f733cc32984cce29ceb707aa0c82b72e87b073bc0125e318a60cd0cc7b`
+has no authored item for this capability. The contribution-loop contract was
+reviewed. The flag writes an app-owned versioned JSON document, with the existing
+0/1/2 exit convention and plain diagnostics. Kubernetes comparison, basis and
+schema semantics stay local. No terminal renderer, runtime, dependency or kit pin
+changes. `TestCmdConserveConcernDeltas` covers the file, strict exit, decoding
+skips, basis and write failures. This is fixture proof, with no second-consumer
+propagation claimed.

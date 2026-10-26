@@ -4,7 +4,7 @@ Grounded by wf_d0588a59: 26 Store methods, 9 tables, JSON-as-TEXT
 throughout, five ON CONFLICT upserts that port verbatim, zero other
 dialect coupling. The only DDL divergence is DuckDB's `ADD COLUMN IF NOT
 EXISTS` migration cruft — the SQLite schema is written fresh with the
-final column set. modernc.org/sqlite (pure Go; throughline precedent).
+final column set. modernc.org/sqlite (pure Go; svc-a precedent).
 
 Design constraints (normative):
 - New `internal/store/sqlite.go` implementing the full Store interface;

@@ -1,0 +1,4 @@
+not json
+{"type":"user","message":{"content":[false]}}
+{"type":"user","message":{"content":{}}}
+{"cwd": "fixture-repo", "gitBranch": "fixture-branch", "timestamp": "2026-10-01T12:00:00Z", "type": "assistant", "message": {"content": [{"type": "tool_use", "id": "ok", "name": "Read", "input": {}}]}}

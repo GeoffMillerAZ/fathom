@@ -11,7 +11,7 @@ production-effectiveness claim. Authority: decision 0009 and decisions
 
 Transfer one **public synthetic** lesson: unknown or partial evidence must remain
 `unknown`/`fail`, never be promoted to `pass`. Its origin fixture is the strict
-engineering coverage defect; its named receiver fixture is resume_as_code's unknown
+engineering coverage defect; its named receiver fixture is consumer-c's unknown
 provider-family path. This is retrospective extraction from already repaired defects,
 not a claim that a lesson caused either fix. The evidence of transfer is independently
 seeded negatives prevented in both repositories, not a count of lessons or a claim of
@@ -134,7 +134,7 @@ status before later recommendation/use. Receipt bytes are not an authorization t
 All public fixtures are synthetic. The origin fixture seeds a coverage receipt with a
 required engineering control absent or unknown and expects non-pass in
 `kits/lesson-transfer/agent_harness_integration_test.go`. The receiver fixture seeds an unknown or
-partial provider family in `resume_as_code`'s kit-client/provider test and expects it
+partial provider family in `consumer-c`'s kit-client/provider test and expects it
 cannot qualify as an independent passing family. Each test must prove the seeded bad
 state fails before the remedy and passes only after the receiver-owned remedy; neither
 test may delegate its oracle to mutable bundle text.
@@ -163,6 +163,6 @@ Start as one bounded `experimental` `kits/lesson-transfer` package: validation a
 receiver-callback adoption only. Add CUE plus matched valid/invalid fixtures; do not
 add a service, dependency, background sync, command runner, signature system, or
 automatic remediation. The actual two-repository acceptance is independent seeded
-negative receivers in agentic-kit and resume_as_code. If a receiver needs authenticated
+negative receivers in agentic-kit and consumer-c. If a receiver needs authenticated
 producer identity or durable revocation delivery, that is a new authority/distribution
 decision, not a v1 field.
