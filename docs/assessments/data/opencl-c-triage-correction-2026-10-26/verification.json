@@ -1,0 +1,55 @@
+{
+  "checks": {
+    "TestNoOrgSpecificNames": "pass2.300s",
+    "X-R5": "37 changed/new files inspected;7 lexicalhits are2repository@pin identifiers,2syntheticinvalidemails,3syntheticpathseparationtestlines; no subject people or private paths in evidence",
+    "merge_debris_tracked": "pass",
+    "release_notes_check": "pass"
+  },
+  "compdb_tdd": {
+    "after": "10of10pass",
+    "before": "7 of10failed before isolatedheaders/override/path/privacy fixes"
+  },
+  "conditions": {
+    "GOFLAGS": "-p=2",
+    "GOMAXPROCS": 2,
+    "GOWORK": "off",
+    "nice": 10,
+    "start_load_one_max": 9
+  },
+  "focused_tests": {
+    "test_compdb.py": 10,
+    "test_compiler_probe.py": 4,
+    "test_replay_sdk.py": 7,
+    "test_triage.py": 12
+  },
+  "receipt_sha256": {
+    "compdb-sdk.json": "1170b5aea076b583626564be086b85e8eb78015b75123476059269711c5dc73d",
+    "native-arrayfire.json": "b16612040022815f98eab8737840fa296ce0e8d8aa6d3ffd6403bba69c8b0804",
+    "native-clblas.json": "1c717b66e2b6d1003a1b08720fb70f86b7d774955a931fc875c851d85d4e838c",
+    "native-darktable.json": "4c4856be69a4a1e9067af6fc8df971c5048f2cab6213804e38ce4f0297c41b24",
+    "native-handson.json": "e6d1525829dcdf9016055a23e161d1a1b844bee034c8f2ccfebedb1ecbc6d4d3",
+    "native-nvidia.json": "db1e59e6b54f98406930191d8e37a9b99477eadc0124eeff88f0113023cda120",
+    "native-opencv.json": "2bad5ff42b25da65476da2f25f377a1acc9e68430ffbd5b968f4cd1702f4ce3e",
+    "native-pocl.json": "75ea33fba010d8b0aa6fd801f9a146e6701dd41110824dc2e514aebc83fc771f",
+    "native-rodinia.json": "a1a1d8fa83414e4919e6e5c7d7864062f2b93b4487e4a38ed7279a1912a58d10",
+    "native-shoc.json": "e5534c09eb8c330e07d5f3267495a6bf7480656e3705c6309f57555546d85a2e",
+    "pipeline-sdk.json": "155356ac42a3ba6e230fd69751704ca20e668c6116eac2aba4e02cf30f395b11",
+    "subject-outcomes.json": "ba3ce771d6fff99dd974fbc11a4df2879cec15f61ac792afb9eb0ed98d5a63c2"
+  },
+  "red_green": {
+    "pre_fix": "7 tests fail with missing validation helpers",
+    "restored": "7 tests pass",
+    "target": "replay-sdk.py"
+  },
+  "scope": "OpenCL C correction triage only, no language support",
+  "source_sha256": {
+    "calibration/oracles/opencl-c/compdb.py": "2933410a9f6eefa873388e6e750bd0a431ea8f5bfe877c6cb1a952342dbc0777",
+    "calibration/oracles/opencl-c/compiler_probe.py": "55bca097457253311e1dce32bfa427ef0344e438550527534ccdaaa820890edb",
+    "calibration/oracles/opencl-c/replay-sdk.py": "66b9bc913bc06988d854af365aedcf5b3e9cad1eb49a01f299473e7e90ba8501",
+    "calibration/oracles/opencl-c/test_compdb.py": "1e5cd5f9d696d7b1754d7d4160e14b5369dd92ad92edd2c179ae58854b95c0ff",
+    "calibration/oracles/opencl-c/test_compiler_probe.py": "6b59c762242582820ef7829cfa4c7ade3c196a398d15e65119afbf0ee2dac3ec",
+    "calibration/oracles/opencl-c/test_replay_sdk.py": "f45aa0e16781b88a8f2bba47db0f8c9e55e8ed746e254503f7028d4eb3a35bc7",
+    "calibration/oracles/opencl-c/test_triage.py": "a584815c766d4be6e3bd28cde22056a6c0f40fec69d368e320978306cb42d239",
+    "calibration/oracles/opencl-c/triage.py": "3e43fbd6cc7c9cd8cdbab9de969d7da00b997091bc01dd928aec6f34a83b542a"
+  }
+}

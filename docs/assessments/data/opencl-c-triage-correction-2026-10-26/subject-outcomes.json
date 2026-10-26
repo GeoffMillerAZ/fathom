@@ -1,0 +1,262 @@
+{
+  "frozen_population": "every tracked regular lowercase .cl, no file exclusions",
+  "opencv_checkout": {
+    "all_raw_git_blob_ids_verified": true,
+    "canonical_clone": "separate local shared clone, checkout conversion disabled through private info attributes",
+    "case_collisions": 0,
+    "custom_filters": 0,
+    "gitlinks": 0,
+    "original_checkout_unchanged": true,
+    "original_clean_checkout_crlf_converted_files": 68,
+    "symlinks": 0,
+    "tracked_regular_files": 7372
+  },
+  "outcomes": [
+    {
+      "bytes": 726693,
+      "commit": "891e46cd57b64d67dbde183d5d3c0e430edd11d6",
+      "files": 46,
+      "grammar_counts": [
+        {
+          "both_count": 0,
+          "error_only_count": 1,
+          "error_or_missing_count": 3,
+          "fault_count": 0,
+          "id": "opencl",
+          "missing_only_count": 2
+        },
+        {
+          "both_count": 2,
+          "error_only_count": 44,
+          "error_or_missing_count": 46,
+          "fault_count": 0,
+          "id": "c",
+          "missing_only_count": 0
+        }
+      ],
+      "id": "darktable"
+    },
+    {
+      "bytes": 1215747,
+      "commit": "4d7924ebb501ae31d69820039d92a0d5fe7ee7dd",
+      "files": 110,
+      "grammar_counts": [
+        {
+          "both_count": 21,
+          "error_only_count": 49,
+          "error_or_missing_count": 75,
+          "fault_count": 0,
+          "id": "opencl",
+          "missing_only_count": 5
+        },
+        {
+          "both_count": 26,
+          "error_only_count": 84,
+          "error_or_missing_count": 110,
+          "fault_count": 0,
+          "id": "c",
+          "missing_only_count": 0
+        }
+      ],
+      "id": "opencv"
+    },
+    {
+      "bytes": 467821,
+      "commit": "ab4a5063c92512dd65ab2b418cf81e4b3c46299b",
+      "files": 103,
+      "grammar_counts": [
+        {
+          "both_count": 0,
+          "error_only_count": 8,
+          "error_or_missing_count": 8,
+          "fault_count": 0,
+          "id": "opencl",
+          "missing_only_count": 0
+        },
+        {
+          "both_count": 0,
+          "error_only_count": 98,
+          "error_or_missing_count": 98,
+          "fault_count": 0,
+          "id": "c",
+          "missing_only_count": 0
+        }
+      ],
+      "id": "arrayfire"
+    },
+    {
+      "bytes": 1133326,
+      "commit": "cf9113982fdfc994297d372785ce76eb80911af2",
+      "files": 40,
+      "grammar_counts": [
+        {
+          "both_count": 23,
+          "error_only_count": 17,
+          "error_or_missing_count": 40,
+          "fault_count": 0,
+          "id": "opencl",
+          "missing_only_count": 0
+        },
+        {
+          "both_count": 30,
+          "error_only_count": 10,
+          "error_or_missing_count": 40,
+          "fault_count": 0,
+          "id": "c",
+          "missing_only_count": 0
+        }
+      ],
+      "id": "clblas"
+    },
+    {
+      "bytes": 297447,
+      "commit": "9c10d3ea16ddba2ba057cc3951a9efc4c2cc18a4",
+      "files": 31,
+      "grammar_counts": [
+        {
+          "both_count": 0,
+          "error_only_count": 2,
+          "error_or_missing_count": 3,
+          "fault_count": 0,
+          "id": "opencl",
+          "missing_only_count": 1
+        },
+        {
+          "both_count": 2,
+          "error_only_count": 29,
+          "error_or_missing_count": 31,
+          "fault_count": 0,
+          "id": "c",
+          "missing_only_count": 0
+        }
+      ],
+      "id": "rodinia"
+    },
+    {
+      "bytes": 7663676,
+      "commit": "de1ef97242387b6e07d64633edb1573d7156bfee",
+      "files": 1016,
+      "grammar_counts": [
+        {
+          "both_count": 178,
+          "error_only_count": 394,
+          "error_or_missing_count": 793,
+          "fault_count": 0,
+          "id": "opencl",
+          "missing_only_count": 221
+        },
+        {
+          "both_count": 121,
+          "error_only_count": 501,
+          "error_or_missing_count": 847,
+          "fault_count": 0,
+          "id": "c",
+          "missing_only_count": 225
+        }
+      ],
+      "id": "pocl"
+    },
+    {
+      "bytes": 225778,
+      "commit": "00b25e2751dde4f1d7c595cadbb7fdb0873257b0",
+      "files": 38,
+      "grammar_counts": [
+        {
+          "both_count": 0,
+          "error_only_count": 3,
+          "error_or_missing_count": 3,
+          "fault_count": 0,
+          "id": "opencl",
+          "missing_only_count": 0
+        },
+        {
+          "both_count": 0,
+          "error_only_count": 38,
+          "error_or_missing_count": 38,
+          "fault_count": 0,
+          "id": "c",
+          "missing_only_count": 0
+        }
+      ],
+      "id": "shoc"
+    },
+    {
+      "bytes": 22100,
+      "commit": "be2fb26d7c478627598ffba369014a4adb57b6f4",
+      "files": 16,
+      "grammar_counts": [
+        {
+          "both_count": 0,
+          "error_only_count": 0,
+          "error_or_missing_count": 0,
+          "fault_count": 0,
+          "id": "opencl",
+          "missing_only_count": 0
+        },
+        {
+          "both_count": 0,
+          "error_only_count": 16,
+          "error_or_missing_count": 16,
+          "fault_count": 0,
+          "id": "c",
+          "missing_only_count": 0
+        }
+      ],
+      "id": "handson"
+    },
+    {
+      "bytes": 238306,
+      "commit": "4e919bdee11cbc134698c59c4fbec93665745246",
+      "files": 41,
+      "grammar_counts": [
+        {
+          "both_count": 0,
+          "error_only_count": 5,
+          "error_or_missing_count": 5,
+          "fault_count": 0,
+          "id": "opencl",
+          "missing_only_count": 0
+        },
+        {
+          "both_count": 0,
+          "error_only_count": 41,
+          "error_or_missing_count": 41,
+          "fault_count": 0,
+          "id": "c",
+          "missing_only_count": 0
+        }
+      ],
+      "id": "nvidia"
+    }
+  ],
+  "pin_commits": [
+    "c3ab954d985b171fd28d11f0ffeb9b642c5fb38e",
+    "ee60410a0"
+  ],
+  "proposed_primary_pool": {
+    "c_error_or_missing": 26,
+    "c_error_rate": 1.0,
+    "dedicated_error_or_missing": 1,
+    "dedicated_error_rate": 0.038461538461538464,
+    "files": 26,
+    "status": "native pool passes5%; implementation still requires WASM and per-subject oracle coverage",
+    "subjects": [
+      "sdk",
+      "handson"
+    ]
+  },
+  "retired_primary_pool": {
+    "c_error_or_missing": 1354,
+    "c_error_rate": 0.9963208241353937,
+    "dedicated_error_or_missing": 1345,
+    "dedicated_error_rate": 0.9896983075791023,
+    "files": 1359,
+    "status": "infeasible; hashcat diagnostic stress only, with no prepass or grade claimed",
+    "subjects": [
+      "sdk",
+      "hashcat"
+    ]
+  },
+  "schema": "opencl-c-subject-search-outcomes-v1",
+  "scope": "native diagnostics only; no canonical corpus, WASM validation or quality grade"
+}

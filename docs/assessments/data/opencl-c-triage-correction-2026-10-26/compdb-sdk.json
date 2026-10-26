@@ -1,0 +1,59 @@
+{
+  "compile_units": {
+    "files": 10,
+    "manifest_sha256": "45d97bd1ce32984e528d5702670d7ad0a825ef6e175c36c30aa36933106d8d29"
+  },
+  "compiler": {
+    "after_sha256": "1590ac950a3d627817d09ade5cb60b2115f17a72182a3141e010b4bcc482a0c9",
+    "before_sha256": "1590ac950a3d627817d09ade5cb60b2115f17a72182a3141e010b4bcc482a0c9",
+    "unchanged": true
+  },
+  "context": "uniform reconstructed OpenCL C context; runtime source grouping is not inferred",
+  "expected_commit": "6090378a113db8dab20ae278c8fa57ab10b92300",
+  "omitted": {
+    "gitlinks": 3,
+    "symlinks": 0
+  },
+  "oracle_tier": "B",
+  "resource_headers": {
+    "content_sha256": [
+      "aedaac009c73aa9ce4fad770ebdddbf11bbce42effc4c40cb54330f31af49c50",
+      "e0b5b97e38951211312bfe946c956927a78da52a9e31bc66ec426e17fa5c23c5"
+    ],
+    "files": 2,
+    "manifest_sha256": "fcb4cff1f3ea8e433b56ff850e3e22bab53760bcb1ba666b1dae1d827567c9f0"
+  },
+  "schema": "opencl-c-synthetic-compdb-v1",
+  "snapshot": {
+    "bytes": 2263956,
+    "files": 213,
+    "manifest_sha256": "4c4dc04bf65cb25f93aaf04d1b82904ef932bcb6768dfe7ddbd19a80331fb799"
+  },
+  "source": {
+    "after": {
+      "bytes": 2263956,
+      "entries": 216,
+      "gitlinks": 3,
+      "manifest_sha256": "bb6100e97616400fb4272507876ac4adf6fd15de5b0b115128867f0a785e46c7",
+      "regular_bytes": 2263956,
+      "regular_files": 213,
+      "stage_bytes": 17652,
+      "stage_sha256": "8eb841f156ff866332c1722095ba01e42b507f1e72adce8377b86b9161ca3b28",
+      "symlink_target_bytes": 0,
+      "symlinks": 0
+    },
+    "before": {
+      "bytes": 2263956,
+      "entries": 216,
+      "gitlinks": 3,
+      "manifest_sha256": "bb6100e97616400fb4272507876ac4adf6fd15de5b0b115128867f0a785e46c7",
+      "regular_bytes": 2263956,
+      "regular_files": 213,
+      "stage_bytes": 17652,
+      "stage_sha256": "8eb841f156ff866332c1722095ba01e42b507f1e72adce8377b86b9161ca3b28",
+      "symlink_target_bytes": 0,
+      "symlinks": 0
+    },
+    "unchanged": true
+  }
+}

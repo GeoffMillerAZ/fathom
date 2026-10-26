@@ -1,2 +1,2 @@
 ### Added
-- Developer probes for pinned OpenCL C native grammar parse rates and Clang CL3.0 AST capabilities.
+- Developer OpenCL C native grammar screens and a tier-B SDK replay through the existing clang oracle tools. No language support change.

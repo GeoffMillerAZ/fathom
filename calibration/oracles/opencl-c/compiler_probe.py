@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Pinned compiler capability probe, not a graded source-truth adapter."""
+"""Historical throwaway compiler capability check, never a grading oracle.
+
+Do not extend this JSON-AST reader. Use compdb.py with the existing clang-calls,
+clang-ast-defs and scip-clang/preproc tools, following the CUDA pipeline. Raw AST
+CallExpr counts below include repeated macro expansions, not written call sites.
+"""
 import argparse
 import hashlib
 import importlib.util

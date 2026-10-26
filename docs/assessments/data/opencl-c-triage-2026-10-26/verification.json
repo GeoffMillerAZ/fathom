@@ -39,5 +39,7 @@
     "Native triage is not a WASM gate or performance proof",
     "Compiler AST capabilities are not an independent grading adapter",
     "No ceiling or canonical corpus is added"
-  ]
+  ],
+  "historical_source_commit": "f682981fe367c4e34ba5d2e7e1ac11dd0a2626dc",
+  "source_hash_scope": "Historical source_sha256 values describe this commit, not later documentation labels or the replacement pipeline."
 }

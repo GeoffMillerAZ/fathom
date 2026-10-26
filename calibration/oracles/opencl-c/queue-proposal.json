@@ -6,16 +6,44 @@
     "kind": "language",
     "tier": "T3",
     "target_level": "L2",
-    "grammar_source": "lefp/tree-sitter-opencl (candidate; compare maintained C before selection)",
+    "grammar_source": "lefp/tree-sitter-opencl 8e1d24a (native candidate only); compare P-R1 patch over pinned tree-sitter-c before implementation selection",
     "licence": "MIT",
-    "oracle": ["clang-opencl-json-ast"],
-    "calibration_subjects": ["KhronosGroup/OpenCL-SDK", "hashcat/hashcat"],
-    "depends_on": ["LB-Q-glsl"],
+    "oracle": [
+      "synthesized OpenCL compile database following cuda-compdb.py -> existing clang-calls + clang-ast-defs + scip-clang/preproc active_lines, tier B"
+    ],
+    "calibration_subjects": [
+      "KhronosGroup/OpenCL-SDK@6090378a113db8dab20ae278c8fa57ab10b92300",
+      "HandsOnOpenCL/Exercises-Solutions@be2fb26d7c478627598ffba369014a4adb57b6f4"
+    ],
+    "depends_on": [
+      "LB-Q-glsl"
+    ],
     "engine": "tags",
     "plan_row": "LB-Q-opencl",
     "worker_model": "sonnet",
-    "notes": "Initial .cl-only OpenCL C target. Require a positive C/OpenCL sniff and Lisp/Cool negatives, keep every kernel and include fragment in tenancy, publish each subject separately, use reconstructed CL3.0 Clang AST at tier B. Native parse triage does not select or ship a grammar. Exclude C++ for OpenCL, embedded host strings and extra suffixes from this initial proposal. L3/L4 require their own oracle-backed measurements."
+    "notes": "Initial .cl-only OpenCL C target. Positive C/OpenCL sniff, Lisp/Cool negatives, ambiguous refusal. Keep every tracked .cl kernel/include fragment in tenancy. Proposed whole SDK+HandsOn pool is 1/26 native ERROR-or-MISSING (3.85%) versus C26/26; not a WASM gate or level. Use uniform reconstructed CL3.0/SPIR64 no-D tier-B context, filter BOTH oracle and extractor sites through preproc.active_lines. Publish every subject and pooled numerators/denominators. Hashcat remains diagnostic stress only. C++ for OpenCL, host strings and extra suffixes outside initial scope; L3/L4 unclaimed."
   },
   "ordering": "GLSL lands, then OpenCL C ships, then Slang starts",
-  "activation": "The controller adds/proves the queue and plan rows; this file does not alter the canonical queue."
+  "activation": "The controller adds/proves the queue and plan rows; this file does not alter the canonical queue.",
+  "diagnostic_subjects": [
+    "hashcat/hashcat",
+    "darktable-org/darktable",
+    "opencv/opencv",
+    "arrayfire/arrayfire",
+    "clMathLibraries/clBLAS",
+    "yuhc/gpu-rodinia",
+    "pocl/pocl",
+    "vetter/shoc",
+    "sschaetz/nvidia-opencl-examples"
+  ],
+  "implementation_gates": [
+    "GLSL lands before implementation ships (G-R1).",
+    "Native candidate passes proposed pooled5%gate, but reproduce in product WASM and account every readable .cl before selecting a grammar.",
+    "Pin and verify official upstream LLVM archive from llvm-plan.json; regenerate compiler/header pins and replay all facts, no claimed Apple/LLVM parity.",
+    "Reconstruct and evidence HandsOn compiler context, retain every .cl in tenancy, meet required per-subject oracle coverage before grading. No oracle coverage measured for HandsOn in this triage.",
+    "Reuse written-site mapping, compiler-derived stand-ins and active_lines in existing clang tools; prove oracle independence and explicit zero-call scope before L2. Tier B caps good.",
+    "Cheap next probe: scip-clang pinned0.4.0 with -x cl; current release0.4.1 is not silently substituted.",
+    "For link-unit truth, use evidenced clCreateProgramWithSource/clBuildProgram source assembly as CUDA uses build link lines. Never infer one program per file. No L3 claim.",
+    "Any hashcat prepass requires independently reconstructed compiler context and proof it removes nothing graded. No such prepass is authorized or claimed here."
+  ]
 }
