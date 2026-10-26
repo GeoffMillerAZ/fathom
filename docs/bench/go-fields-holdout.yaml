@@ -1,0 +1,17 @@
+# Q2 independent holdout, frozen before any candidate index or reading.
+# X-R1: never load this record into the canonical corpus.
+id: core-t1-go-fields-holdout
+holdout:
+  - name: gin-gonic/gin
+    url: https://github.com/gin-gonic/gin
+    ref: v1.10.0
+    sha: 75ccf94d605a05fe24817fc2f166f6f2959d5cea
+    licence: MIT
+    idioms:
+      - 'request context fields, embeddings and handler methods'
+      - 'router state, interfaces and table-driven tests'
+    notes: >
+      New independent subject, no -only filtering or source edits. Freeze the field-only
+      candidate before its first index/reading. No tuning after that reading. Success is
+      L1-L4 excellent under existing thresholds, zero faults and median-of-three throughput
+      at least 1 MB per CPU second. A miss is reported as a ceiling, not repaired on this holdout.
