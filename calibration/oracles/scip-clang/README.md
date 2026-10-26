@@ -158,9 +158,13 @@ the reading, so a re-timed clone can be proven to measure the same files.
 
 C-4: the selected clang database and all build output stay under `<work-dir>`; scip-clang, clang-calls and
 clang-ast-defs read `<work-dir>/compile_commands.json`. The subject contains no build directory. Fathom's include-path
-resolver currently discovers only databases within the subject, so a cloud re-measure must check import resolution,
-file-edge counts and the compile-database disclosure after this move. The committed measurements remain the earlier
-run's evidence until that re-measure. The measured `.cu`/`.cuh` inventory should stay identical.
+resolver discovers only databases within the subject, so after this move it reads none. The wave-3 re-measure (the
+driver end to end with `AST_DEFS_JOBS=1`, fathom 5d95ac2f) shows it: the compile-database disclosure reads 0 (round 5:
+1), import_resolution 1 -> .9722 (35 of 36) and file_edge_recall .8809 -> .3047 (318 -> 110 of 361),
+file_edge_precision 1 either way; the same lang-oracle run with that database copied to `<work-dir>/subject/build`
+reads 1 database, import_resolution 1 and file_edge_recall .8809. The measured `.cu`/`.cuh` inventory is identical
+(225 files, 2,518,750 bytes, the same sha256). That run's toolchain, every download's URL and sha256, is
+`cuda-toolchain-provenance.txt`.
 
 Driver note corrections without an oracle run use this documented notes-only path:
 
