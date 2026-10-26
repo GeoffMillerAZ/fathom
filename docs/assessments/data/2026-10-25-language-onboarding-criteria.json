@@ -1,171 +1,27 @@
 {
-  "experiment": "language-onboarding-replay-v2",
-  "inputs_frozen": false,
-  "status": "Q1 revision proposal; no scorer or runtime predicate implemented",
-  "source_cutoff": "743a914307baa286ccc5a6d8b92069910617b706",
-  "source_inventory": "docs/assessments/data/2026-10-25-language-onboarding-mechanical.json",
-  "supersedes": "v1 proposal had no replay outcomes; its public-review-only population is withdrawn",
-  "timed_stage": {
-    "name": "serial pre-submission pre-commit checks",
-    "start": "fresh serial check-process entry after oracle work and before commit",
-    "end": "all selected pre-commit commands return, before a commit object exists",
-    "baseline_commands": [
-      "merge-debris --staged",
-      "go-fmt-check on staged Go files",
-      "cue-vet on applicable staged CUE files"
-    ],
-    "exact_expanded_command_arrays": "must be frozen at Q1-approved input freeze; no added diff-check baseline",
-    "schedule": "same fixed serial order in B and N; N appends predicates; no claim about existing parallel hook runtime",
-    "warmup_pairs": 1,
-    "retained_alternating_pairs_per_control": 3,
-    "delta": "N_wall_seconds[i] - B_wall_seconds[i]",
-    "per_control_statistic": "median of its 3 paired deltas",
-    "gate": "every control median <= 10 seconds",
-    "excluded": [
-      "oracle execution",
-      "downloads",
-      "tool builds",
-      "warmup"
-    ],
-    "invalid": "missing applicable checker, skipped required input, index/worktree mismatch, or failed baseline control"
-  },
-  "mechanical_baseline_set": [
-    "pre-commit command set",
-    "TestNoOrgSpecificNames",
-    "TestCmdExportReceiptRedactGoldens",
-    "TestTenancyRules",
-    "changelog-check"
-  ],
-  "arms": {
-    "baseline": {
-      "role": "reference; execute timed baseline stage and separate frozen mechanical acceptance checks",
-      "case_slugs": [
-        "objective-c-oracle-host-path",
-        "pgbouncer-compiled-python-tracked"
-      ],
-      "evaluation": {
-        "criterion_id": "onboarding-baseline-validity-v2",
-        "verdict": "indeterminate",
-        "reason": "No replay receipts; missing frozen stage/index hashes and controls"
-      },
-      "decision": "NOT_MEASURED"
+  "status": "rejected-for-now",
+  "ruling": "LH-R2",
+  "replay_trials": 0,
+  "scorer_implemented": false,
+  "preflight_implemented": false,
+  "decisions": [
+    {
+      "candidate": "new onboarding preflight tooling",
+      "reason": "Pre-oracle reorder population is infeasible; staged-hygiene predicates were designed from the exact scored cases, so catch efficacy is held-in and does not justify a scorer/replay framework",
+      "wins_if": "After ordinary hygiene fixes land, at least 3 addition-specific mechanical escapes across at least 2 additions remain uncaught by existing checks, with public bad/fixed pairs and an independent held-out evaluation that can change the decision"
     },
-    "reordered": {
-      "role": "original pre-oracle scheduling hypothesis; no experiment is scheduled",
-      "case_slugs": [
-        "nix-strategy-table-format"
-      ],
-      "feasibility": {
-        "supported_eligible_ceiling": 1,
-        "supported_additions_ceiling": 1,
-        "minimum_defects": 3,
-        "minimum_additions": 2,
-        "feasible": false
-      },
-      "evaluation": {
-        "criterion_id": "onboarding-reorder-feasibility-v2",
-        "verdict": "fail",
-        "reason": "Supported ceiling 1 defects/1 additions is below 3/2; no replay trials"
-      },
-      "decision": "KILL_FEASIBILITY",
-      "trials": null,
-      "measured_catches": null,
-      "false_blockers": null,
-      "timing": null,
-      "wins_if": "At least 3 addition-specific defects across at least 2 additions, present before oracle work, with an existing required detector and public bad/fixed pair"
-    },
-    "new-predicates": {
-      "role": "independent pre-submission hygiene intervention; no inherited reordered checks",
-      "case_slugs": [
-        "objective-c-oracle-host-path",
-        "pgbouncer-compiled-python-tracked"
-      ],
-      "conditional_incremental_ceiling": 2,
-      "conditional_additions_ceiling": 2,
-      "criteria": {
-        "minimum_incremental_defects": 2,
-        "minimum_distinct_additions": 2,
-        "maximum_false_blockers": 0,
-        "minimum_pairs_per_control": 3,
-        "maximum_each_control_median_delta_seconds": 10
-      },
-      "predicates": [
-        {
-          "scope": "staged Python source under calibration/oracles/",
-          "shape": "os.environ.get or os.getenv constant fallback rooted in a personal-home or mounted-volume directory; no historical variable-name or literal matching",
-          "diagnostic": "repo-relative path, line and rule; omit literal value",
-          "coverage_limit": "standard roots, relative/default-free forms and dynamic expressions are not this rule"
-        },
-        {
-          "scope": "staged added/copied/modified index paths under calibration/oracles/",
-          "shape": "Python bytecode suffix .pyc or .pyo",
-          "coverage_limit": "deleted paths and filesystem artifacts absent from submitted index do not match"
-        }
-      ],
-      "controls": {
-        "paired_repairs": [
-          {
-            "slug": "objective-c-oracle-host-path",
-            "source_bad": "f3ff6f461fa6d7919ba68d80a0432ada24d2a3a7",
-            "source_fixed": "441b225e68dc5ad3443c599a026c99471c1b221a"
-          },
-          {
-            "slug": "pgbouncer-compiled-python-tracked",
-            "source_bad": "f1cf2dd0cfaf6afc36345a7df0647b138fc47755",
-            "source_fixed": "c62caefcf2f1d8514a9d5ba14548eb21b7b97d8b"
-          }
-        ],
-        "unaffected_addition_controls": 13,
-        "benign": [
-          "system-library fallback",
-          "relative/default-free fallback",
-          "dynamic fallback",
-          "deleted bytecode path"
-        ],
-        "required_total": 19,
-        "exact_index_and_checker_hashes": null,
-        "unaffected_control_policy": "Freeze exact cleaned revisions, staged paths and index hashes for 13 other additions. Do not assume first-reading or merge snapshots are clean. Nix format, Thrift merge defects and WGSL heading require their repairs; prefer cleaned reference-cutoff tree for other snapshots. Demonstrate B acceptance. A failed control invalidates the frozen run, not a post-result replacement."
-      },
-      "scoring": "valid complete receipts + all thresholds satisfied => pass/KEEP; valid complete threshold miss => fail/KILL; missing, skipped, invalid or non-isolatable input => indeterminate/NOT_MEASURED",
-      "evaluation": {
-        "criterion_id": "onboarding-submission-hygiene-v2",
-        "verdict": "indeterminate",
-        "reason": "No baseline, predicate, repaired-control, benign-control or timing replay has run"
-      },
-      "decision": "NOT_MEASURED"
+    {
+      "candidate": "general starter-query importer",
+      "reason": "Existing recipe, lang-draft and lang-probe already support reuse; measured review groups show no recurring conversion class justifying another importer",
+      "wins_if": "Repeated query-conversion failures remain beyond current draft/probe support, and an independent held-out comparison shows a reusable importer reduces work without reducing accuracy or provenance guarantees"
     }
-  },
-  "scorer_contract": {
-    "implementation": "after Q1 approval only; pure scorer over frozen criteria and immutable case receipts",
-    "existing_infrastructure": "reuse ledger JSONL envelope; existing verify does not compute this criterion",
-    "receipt_binding": [
-      "criterion hash",
-      "case slug",
-      "addition",
-      "source pair",
-      "common replay-base tree",
-      "isolated bad/fixed patch hash",
-      "index hash",
-      "checker revision",
-      "argv",
-      "exit",
-      "diagnostic class",
-      "wall seconds",
-      "CPU seconds"
-    ],
-    "functional_count": "distinct defects only; a repeated trial or second bytecode file is not a new defect",
-    "baseline_novelty": "N catch counts only when frozen mechanical baseline accepted the same bad case and N rejects it",
-    "control_rule": "all 19 frozen controls required; every counted bad case has a passing paired repair; N rejection of any B-passing control is a false blocker",
-    "ledger_trials": "minimum paired timing count across all required controls, never sum of subprocesses",
-    "rendering": "report, per-arm ledger evaluations and outcome count lines derived by scorer from same criteria/receipt digest",
-    "negative_tests": [
-      "forged KEEP despite missed threshold",
-      "missing repaired control",
-      "baseline-detected defect counted as new",
-      "omitted benign control",
-      "duplicate case counted twice",
-      "one slow control hidden by pooled median"
-    ],
-    "invalid_evidence_ledger_policy": "Indeterminate/NOT_MEASURED emits diagnostic report only and no claimable ledger row, even with three completed timing pairs. accept_verdict:any is reserved for fully observed pass/fail results."
-  }
+  ],
+  "retired_work": [
+    "LH-1 replay freeze",
+    "LH-2 baseline trials",
+    "LH-4 predicate trials",
+    "LH-5 scorer output"
+  ],
+  "evidence": "docs/assessments/data/2026-10-25-language-onboarding-mechanical.json",
+  "guidance": "docs/design/language-breadth.md#13-the-worker-recipe--one-queue-item-start-to-finish"
 }

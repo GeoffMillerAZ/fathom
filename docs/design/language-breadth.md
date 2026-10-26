@@ -1854,7 +1854,7 @@ worktree and your scratch directory.
 
 1. Read your entry: `id`, `name`, `kind`, `target_level`, `engine`, `grammar_source`,
    `licence`, `oracle`, `calibration_subjects`, `depends_on`, `port_of` (when present).
-2. Check `depends_on`: every id must be `[x]` or `[-]` in `docs/plans/language-breadth.md`
+2. Check `depends_on`: every foundation id must be `[x]` in `docs/plans/language-breadth.md`
    (`fathom plans status`) — except a dependency on another queue item (`LB-Q-<id>`: cpp on
    c, scss/less on css), which is satisfied once that item has a committed reading at L1 or
    better, even while its own row stays open for a higher target (D6, §1.5).
@@ -1888,6 +1888,20 @@ worktree and your scratch directory.
 4. Take the measurement lock before any heavy step (clone, indexer, harness):
    `mkdir <scratch>/lang-measure.lock` (retry every 60 s; remove it when the step
    ends). One heavy measurement runs machine-wide at a time.
+
+### 13.0.1 Search before a ceiling (X-R1)
+
+- [ ] Before claiming no grammar, oracle or resolver can meet a target, list named existing
+  candidates with pinned version/commit, primary source, license, available output and reason
+  each fits or fails this queue item's scope. Search the ecosystem's type checkers/indexers,
+  maintained forks, sibling packages/features of the current oracle, and tool-native/debug
+  builds as applicable. Use existing work before proposing a new adapter or declaring a ceiling.
+- [ ] Distinguish unavailable, untried, measured failure and out-of-scope. A search hit is not
+  a validated oracle. If an existing resolver serves another dialect/module format, record
+  that boundary and propose a neighbor item rather than changing this item's population.
+  A trigger cannot say "a tool appears" when the named tool already exists.
+- [ ] Keep the candidate list and evidence in an indexed assessment/provenance note. Give a
+  concrete wins-if/retry condition, missing input and exact reproduction command for a ceiling.
 
 ### 13.1 Pin the grammar (tags-engine items only; skip for doc-engine items)
 
@@ -1971,6 +1985,18 @@ worktree and your scratch directory.
 17. Clone with `task calibrate-clone -- <id>` (shallow, into `workspace/calibration/`).
     Check the clone's size; if over 500 MB, pick a `subpath` or another subject.
 
+### 13.3.1 Freeze the measured set and holdout
+
+- [ ] Record each subject pin, measured relative file paths, file/byte totals, discovery
+  exclusions and SHA-256 of a sorted manifest binding paths to content hashes. Recheck the
+  same manifest after oracle/build steps so generated outputs cannot silently enter the
+  measured set. Record evidence in existing notes or sidecars, not undeclared reading fields.
+- [ ] Pin holdout identity and criteria before measuring or tuning. Keep holdouts outside
+  `calibration/corpus.d/` canonical shards and canonical aggregation; store their separate
+  pin/reading per the applicable wave contract. Audit both timing and membership: pinning
+  first does not make a holdout in the canonical shard independent. Never move a hard file
+  out of the measured corpus without a justified, disclosed scope ruling.
+
 ### 13.4 Measure
 
 18. Oracle B: universal-ctags from `workspace/tools/ctags` (a pinned release; if absent,
@@ -1989,11 +2015,37 @@ worktree and your scratch directory.
     do offline in 20 minutes, record `oracle A unavailable: <why>` and continue with tier C
     for L2; L3/L4 then cannot be excellent. For tool formats, run the tool-native oracle
     named in your entry into `workspace/tmp/oracle/`.
-20. Run the harness (§10) for each subject into `docs/bench/readings/lang/<id>.json`.
+20. Run the harness (§10) for each subject into scratch output first; inspect it, then use
+    guarded `WRITE=1 task lang:loop -- <id>` to save a non-regressing committed reading.
 21. Read the reading's `level_met` and `grade`. Iterate queries while a metric misses the
     excellent threshold for a reason the queries can fix (missing kind, wrong containment,
     missed call shape). Each iteration adds or fixes a fixture first. Stop iterating after
     three rounds without movement.
+
+### 13.4.0 Measurement evidence checklist
+
+- [ ] Prove raw oracle truth is independent of fathom's extracted nodes: perturb/remove
+  extractor output on a fixed subject and verify the oracle's raw-truth digest stays fixed;
+  change a known oracle-input fact and verify that truth changes. Compiler definitions,
+  stand-ins and scope ranges must come from the compiler/tool, not from fathom as fallback.
+  Record the probe command and outcome; do not count a query used to draft the dialect as
+  an independent definitions oracle.
+- [ ] Disclose per-subject numerators, denominators and ratios alongside pooled results,
+  including thin, excluded and missing evidence. Keep each tier/grade cap visible. A pooled
+  pass does not explain a subject-specific miss; do not invent a new grading threshold.
+- [ ] Bind comparisons to metric definition, subject set, tool version, grammar blob and
+  extractor revision. For parse errors distinguish files with ERROR nodes, MISSING-only
+  files and the ERROR-or-MISSING union. A historical ERROR-only count can reproduce exactly
+  while the current union differs; different definitions are not a failed reproduction.
+- [ ] For changed oracle logic, demonstrate mutation sensitivity: intentionally break the
+  relevant tier default, truth scope, pairing/filter or identity behavior and show the
+  focused tests fail, then restore it and show green. Reuse existing E2 tests where they
+  cover the property; a passing test that survives the pertinent mutant is not proof.
+- [ ] For new format readers or expanded output, exercise adversarial count caps, fan-out,
+  long/repeated paths, attributes, nesting and compressed payloads as applicable. Assert
+  bounded work/output and whole-unit refusal above caps, without silent partial success.
+  Run existing heap/CPU stress tests in their intended non-race gate as well as the required
+  race tests; do not duplicate tests already supplied by the owning foundation lane.
 
 ### 13.4.1 Offline measure loop and gap reports
 
@@ -2055,21 +2107,48 @@ from this ratio-based shortlist because their units differ.
     `go run ./cmd/indexbench lang-tracker > docs/languages.md`.
 23. Plan row: in `docs/plans/language-breadth.md`, your row `LB-Q-<id>` already carries its
     contract (a lexical oracle on your reading's `level_met`). Do not edit the contract.
-    Mark it `[x]` only if `fathom verify --service fathom --plan docs/plans/language-breadth.md`
-    would pass it: your reading exists and its `level_met` meets the row's pattern. If you
+    Claim it only after `fathom verify --service fathom --plan docs/plans/language-breadth.md`
+    actually exits 0 for the row: the reading exists and its `level_met` meets the pattern.
+    A worker brief that forbids box flips leaves it for the controller. If you
     reached less than the target, see §14.2 — do not change the pattern.
-24. CHANGELOG: one line under `[Unreleased]` → `### Added` (new language) or `### Changed`
-    (a port): "`<Name>` extraction at <level> (<grade>), measured against <oracle> on
+24. Change note: add a unique fragment under `docs/changelog/unreleased/` with one
+    supported heading, `### Added` (new language) or `### Changed` (a port), per ADR-075.
+    Do not edit `CHANGELOG.md` directly. Write: "`<Name>` extraction at <level> (<grade>), measured against <oracle> on
     <subjects>". A port that changes output for already-indexed files also adds the wave's bump
     file `internal/fusion/epochs/<wave>.md` (what changed, why stored observations are stale).
 25. Delete your clones unless the next queued item shares a subject
     (`task calibrate-clean -- <id>`); delete your scratch dir.
 
+### 13.5.1 Before READY (X-R2)
+
+- [ ] Check every committed language reading recursively, including `holdout/` and `tuned/`,
+  through the existing strict decode/validate/marshal round-trip tests. Preserve measured
+  values and `required_kinds`; distinguish absent metrics from thin denominators. When a
+  grading rule changes, regrade every affected reading and disclose the scope, not just
+  top-level tracker inputs. Use #7's E2 round-2 coverage rather than adding another checker.
+  At the reference main `5b84aa5b4`, `TestCommittedReadingsRoundTrip` covers only top-level
+  files and JSON-value equality. Run it with
+  `go test -race ./internal/langbench -run TestCommittedReadingsRoundTrip -count=1`,
+  then manually audit nested holdout/tuned inputs and preservation until E2 round 2 lands.
+  E2-R1..R4 own recursive regrading, byte-canonical/value-preserving serialization, measured
+  kind preservation and absent-metric handling. Inspect the landed test names/coverage and
+  use them once available; do not reimplement them here or count a `-run` pattern matching
+  no tests as proof. A byte-format change alone is not a changed JSON value.
+- [ ] Run `go run ./third_party/agentic-kit/cmd/release-notes -check` and
+  `bash scripts/check-merge-debris.sh` before READY. Check staged/index content too with
+  `bash scripts/check-merge-debris.sh --staged` when preparing the commit. A required
+  integrator regeneration is not a worker defect; regenerate only through its generator.
+- [ ] Verify every `Verified:` line names actual runnable commands, required inputs and
+  results, with repo-relative paths. A list of checks or a claimed outcome alone is not
+  a command. Missing dependencies and skipped checks stay disclosed, never called green.
+
 ### 13.6 Commit and report
 
 26. One commit (two for a port: the dialect, then the incumbent's removal), conventional
     message `feat(lang): <name> at <level> (<grade>)`, with a `Verified:` line naming the
-    tests you ran, the reading's `level_met`, and the oracle tiers. No `Co-Authored-By` or
+    exact runnable command(s) you ran, with repo-relative paths and needed flags.
+    Put the reading's `level_met`, oracle tiers and command exit/result beside them;
+    prose such as "round-trip, privacy and counts passed" without commands is not verification. No `Co-Authored-By` or
     session trailers. Do not push; the coordinator merges.
 27. Report, in at most 12 lines: id, level met and grade per level, the metrics that missed
     excellent and why, oracle tiers, grammar blob size (gz), peak module pages, compiled

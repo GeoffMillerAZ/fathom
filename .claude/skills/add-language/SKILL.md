@@ -32,17 +32,44 @@ Oracle tiers: A is the language's own tools (SCIP indexer, type checker, the too
 
 1. Grammar (tags-engine items): `go run ./cmd/indexbench lang-pin -id <id>` drafts the lock row; check the licence at the pinned commit; build with `internal/extractor/tsengine/grammars/build.sh`.
 2. Dialect: manifest, 3-6 fixtures under 200 lines each, `tags.scm` (and `imports.scm` for L3). Iterate with `go run ./cmd/indexbench lang-probe -dialect <id> <fixture>` until every required kind is captured. Write the failing test first.
-3. Measure: `task lang:loop -- <id>` runs probe, oracle, regrade and tracker for the item and prints one bounded summary: level met with grade, the delta against the committed reading, and the top mismatch classes. It never writes the committed reading unless you pass `WRITE=1`, and it exits non-zero when any level regressed. It never installs or fetches an oracle: when one is missing it says which.
+3. Measure: `task lang:loop -- <id>` runs probe, oracle, regrade and tracker for the item and prints one bounded summary: level met with grade, the delta against the committed reading, and the top mismatch classes. It never writes the committed reading unless you pass `WRITE=1`, and it exits non-zero when any level regressed. It never installs or fetches an oracle: when one is missing it says which. Declare every non-ctags runner with `ORACLE_CONFIG=<runners.json>` per recipe §13.4.1; skipped runners are incomplete evidence, not a complete calibration.
 4. Iterate on the top mismatch class, re-running the loop, until the reading meets the target or a written ceiling explains why it cannot.
 5. Commit the reading with `WRITE=1 task lang:loop -- <id>`, then regenerate the tracker: `go run ./cmd/indexbench lang-tracker > docs/languages.md`. Never hand-edit the generated sections of `docs/languages.md`; `TestLanguagesTrackerIsGenerated` fails when you do.
 
+## 3.1 Evidence checklist before claiming support or READY
+
+Follow recipe §13.3.1, §13.4.0 and §13.5.1 for the full checks.
+
+- [ ] Freeze subject pins and a sorted measured-file/content digest with file/byte totals
+  and exclusions; recheck after builds/oracles so generated outputs cannot pollute the set.
+- [ ] Keep holdout pins/readings outside canonical `calibration/corpus.d/` shards and
+  aggregation. Freeze criteria before measurement; audit membership as well as pin timing.
+- [ ] Probe truth independence: perturb extractor output without changing raw oracle truth,
+  then change a known input fact and observe oracle truth change. Record commands/results.
+- [ ] Show per-subject numerators, denominators, ratios and tier caps beside pooled figures.
+- [ ] Compare the same metric definition, grammar blob, tool and measured set. Distinguish
+  ERROR-only, MISSING-only and ERROR-or-MISSING file counts before claiming non-reproduction.
+- [ ] Mutate changed oracle tier/scope/pairing logic and show its focused tests fail, then
+  restore and show green. Reuse the owning lane's tests rather than building another gate.
+- [ ] Exercise adversarial counts/fan-out/paths/nesting/compression where applicable; prove
+  bounded output and whole-unit refusal above caps. Reuse existing non-race stress tests.
+- [ ] Round-trip **all** readings recursively, including holdout/tuned, preserving values
+  and `required_kinds`; absent metrics are not thin evidence. Run existing E2 round-2 tests
+  from #7 where available. Recipe §13.5.1 names the baseline test and its coverage caveat.
+- [ ] Before READY run `go run ./third_party/agentic-kit/cmd/release-notes -check`,
+  `bash scripts/check-merge-debris.sh` and, for staged content, the same script `--staged`.
+- [ ] Give actual runnable commands and results in `Verified:`, with needed flags/inputs
+  and repo-relative paths. A prose list of checks is not verification; disclose skips.
+
 ## 4. Refusing honestly
 
-When no grammar parses real code with under 5% of files in error, or no oracle can measure the target, the item is refused, not forced: its `LB-Q-<id>` row takes a `[-]` disposition with the measurement and a trigger to retry (for example a newer grammar release). A refusal claims no level and stays disclosed. Do not lower a bar, trim a calibration corpus or hand-label results to pass.
+Before a ceiling, complete the named-candidate checklist in recipe §13.0.1 (X-R1): record existing tools/forks/sibling features, pinned version, source, license, output, scope and exact reason each cannot grade this item. Distinguish untried, unavailable, out-of-scope and measured failure. Existing nonstandard resolvers may need a neighbor item, not a changed population. Keep the search receipt in an indexed assessment and give a trigger that is not already satisfied.
+
+When no allowed grammar meets the at-most-5% ERROR-or-MISSING file gate, the item is refused, not forced: its `LB-Q-<id>` row takes a `[-]` disposition with the measurement and a trigger to retry (for example a newer grammar release). A refusal claims no level and stays disclosed. Do not lower a bar, trim a calibration corpus or hand-label results to pass. An unavailable oracle may instead defer the target or leave a measured partial level; follow recipe §14.2.
 
 ## 5. Proving the row
 
-Only `fathom verify --service fathom --plan docs/plans/language-breadth.md` flips the `LB-Q-<id>` box. Run the gate's language tests before pushing: `go test ./internal/extractor ./internal/connector ./internal/fusion -run '<id>'` plus the tracker test above.
+Require an actual successful `fathom verify --service fathom --plan docs/plans/language-breadth.md` result before a permitted controller claim. Verify does not flip the box itself; a brief forbidding worker box flips leaves it to the controller. Run the gate's language tests with `-race` and the tracker test before the handoff. Add one unique change-note fragment under `docs/changelog/unreleased/` per recipe step 24, not a direct `CHANGELOG.md` edit.
 
 ## 6. Many items at once
 

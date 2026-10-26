@@ -1,16 +1,18 @@
 {
   "cutoff": "743a914307baa286ccc5a6d8b92069910617b706",
   "since": "2026-10-19",
-  "counting": "One actual defect per row; shared epoch counted once with no per-addition attribution. Excludes required integration regeneration. No full-gate replay was run. S requires an existing required check to reject bad and accept repair before oracle; N requires the full frozen existing checkset to accept both and a new predicate to reject bad.",
+  "counting": "Expanded addition-history defects include 9 post-first-reading followups and 1 pre-first-reading MATLAB self-repair. Counts are defects, not reviewer rounds. Shared epoch counted once; required integrator regeneration excluded. No replay approved or performed.",
   "baseline": "743a914307baa286ccc5a6d8b92069910617b706",
   "totals": {
-    "distinct_in_window": 9,
-    "direct_addition_associations": 8,
+    "distinct_in_window": 10,
+    "direct_addition_associations": 9,
     "affected_additions": 7,
     "shared_unassigned": 1,
     "supplemental_outside_window": 1,
-    "mechanical_defects": 7,
-    "semantic_provenance_or_note_defects": 2
+    "mechanical_defects": 8,
+    "semantic_provenance_or_note_defects": 2,
+    "post_first_reading_defects": 9,
+    "pre_first_reading_self_repairs": 1
   },
   "defects": [
     {
@@ -35,8 +37,9 @@
       "effective_check_existed_at_bad": true,
       "named_check_existed_at_bad": true,
       "effective_check_existed_at_baseline": true,
-      "method_candidate": "none",
-      "mechanical": true
+      "method_candidate": "historical evidence; replay rejected by LH-R2",
+      "mechanical": true,
+      "phase": "post_first_reading_followup"
     },
     {
       "slug": "thrift-sed-backup-tracked",
@@ -60,8 +63,9 @@
       "effective_check_existed_at_bad": false,
       "named_check_existed_at_bad": false,
       "effective_check_existed_at_baseline": true,
-      "method_candidate": "none",
-      "mechanical": true
+      "method_candidate": "historical evidence; replay rejected by LH-R2",
+      "mechanical": true,
+      "phase": "post_first_reading_followup"
     },
     {
       "slug": "nix-strategy-table-format",
@@ -85,8 +89,9 @@
       "effective_check_existed_at_bad": true,
       "named_check_existed_at_bad": true,
       "effective_check_existed_at_baseline": true,
-      "method_candidate": "S",
-      "mechanical": true
+      "method_candidate": "historical evidence; replay rejected by LH-R2",
+      "mechanical": true,
+      "phase": "post_first_reading_followup"
     },
     {
       "slug": "objective-c-oracle-host-path",
@@ -110,9 +115,10 @@
       "effective_check_existed_at_bad": false,
       "named_check_existed_at_bad": true,
       "effective_check_existed_at_baseline": false,
-      "method_candidate": "N-conditional",
+      "method_candidate": "historical evidence; replay rejected by LH-R2",
       "mechanical": true,
-      "experiment_scope": "pre-submission staged-index hygiene, after oracle work"
+      "experiment_scope": "retired hypothesis; no experiment approved",
+      "phase": "post_first_reading_followup"
     },
     {
       "slug": "solidity-holdout-chronology-claim",
@@ -134,8 +140,9 @@
       "effective_check_existed_at_bad": false,
       "named_check_existed_at_bad": false,
       "effective_check_existed_at_baseline": false,
-      "method_candidate": "none",
-      "mechanical": false
+      "method_candidate": "historical evidence; replay rejected by LH-R2",
+      "mechanical": false,
+      "phase": "post_first_reading_followup"
     },
     {
       "slug": "pgbouncer-compiled-python-tracked",
@@ -159,9 +166,10 @@
       "effective_check_existed_at_bad": false,
       "named_check_existed_at_bad": true,
       "effective_check_existed_at_baseline": false,
-      "method_candidate": "N-conditional",
+      "method_candidate": "historical evidence; replay rejected by LH-R2",
       "mechanical": true,
-      "experiment_scope": "pre-submission staged-index hygiene, after oracle work"
+      "experiment_scope": "retired hypothesis; no experiment approved",
+      "phase": "post_first_reading_followup"
     },
     {
       "slug": "shared-epoch-receipt-goldens-stale",
@@ -182,8 +190,9 @@
       "effective_check_existed_at_bad": true,
       "named_check_existed_at_bad": true,
       "effective_check_existed_at_baseline": true,
-      "method_candidate": "none",
-      "mechanical": true
+      "method_candidate": "historical evidence; replay rejected by LH-R2",
+      "mechanical": true,
+      "phase": "post_first_reading_followup"
     },
     {
       "slug": "wgsl-invalid-change-note-heading",
@@ -207,8 +216,9 @@
       "effective_check_existed_at_bad": true,
       "named_check_existed_at_bad": true,
       "effective_check_existed_at_baseline": true,
-      "method_candidate": "none",
-      "mechanical": true
+      "method_candidate": "historical evidence; replay rejected by LH-R2",
+      "mechanical": true,
+      "phase": "post_first_reading_followup"
     },
     {
       "slug": "matlab-change-note-stale-after-retime",
@@ -230,8 +240,29 @@
       "effective_check_existed_at_bad": false,
       "named_check_existed_at_bad": true,
       "effective_check_existed_at_baseline": false,
-      "method_candidate": "none",
-      "mechanical": false
+      "method_candidate": "historical evidence; replay rejected by LH-R2",
+      "mechanical": false,
+      "phase": "post_first_reading_followup"
+    },
+    {
+      "slug": "matlab-compiled-python-self-repair",
+      "class": "stray_file",
+      "additions": [
+        "matlab"
+      ],
+      "bad": "76d49713d28e99891ca1900915cda18166c95776",
+      "fixed": "29b6419a5f4454dca3e7acc3feba992c444049f2",
+      "actual_diff": "Deletes one tracked Python bytecode file from the oracle cache",
+      "phase": "pre_first_reading_self_repair",
+      "mechanical": true,
+      "control_proof": "Read-only path screen: bad 1, repaired 0; repair sole parent is bad; self-repair before a64f5bcdd first reading",
+      "caught_when": "Self-repaired in-lane before first reading; no reviewer round attributed",
+      "method_candidate": "historical hygiene evidence; replay rejected by LH-R2",
+      "named_check": "Existing merge-debris suffix rule does not cover bytecode",
+      "effective_check_existed_at_bad": false,
+      "effective_check_existed_at_baseline": false,
+      "bad_url": "https://github.com/GeoffMillerAZ/fathom/commit/76d49713d28e99891ca1900915cda18166c95776",
+      "fixed_url": "https://github.com/GeoffMillerAZ/fathom/commit/29b6419a5f4454dca3e7acc3feba992c444049f2"
     }
   ],
   "supplemental": {
@@ -253,5 +284,67 @@
     "named_check_existed_at_bad": true,
     "effective_check_existed_at_baseline": true,
     "method_candidate": "none-outside-denominator"
+  },
+  "null_screen": {
+    "kind": "read-only shape screen; not prospective efficacy or a full gate replay",
+    "reference_main": "5b84aa5b4",
+    "revisions": [
+      {
+        "commit": "76d49713d28e99891ca1900915cda18166c95776",
+        "bytecode_paths": 1,
+        "host_root_files": 0
+      },
+      {
+        "commit": "29b6419a5f4454dca3e7acc3feba992c444049f2",
+        "bytecode_paths": 0,
+        "host_root_files": 0
+      },
+      {
+        "commit": "a64f5bcddfc99b7cff9303da0f3f33d5ad724c91",
+        "bytecode_paths": 0,
+        "host_root_files": 0
+      },
+      {
+        "commit": "f1cf2dd0cfaf6afc36345a7df0647b138fc47755",
+        "bytecode_paths": 2,
+        "host_root_files": 0
+      },
+      {
+        "commit": "c62caefcf2f1d8514a9d5ba14548eb21b7b97d8b",
+        "bytecode_paths": 0,
+        "host_root_files": 0
+      },
+      {
+        "commit": "e1824a50327bee3004d3d400029323a4fbbae2cc",
+        "bytecode_paths": 0,
+        "host_root_files": 2
+      },
+      {
+        "commit": "f3ff6f461fa6d7919ba68d80a0432ada24d2a3a7",
+        "bytecode_paths": 0,
+        "host_root_files": 2
+      },
+      {
+        "commit": "441b225e68dc5ad3443c599a026c99471c1b221a",
+        "bytecode_paths": 0,
+        "host_root_files": 0
+      },
+      {
+        "commit": "743a914307baa286ccc5a6d8b92069910617b706",
+        "bytecode_paths": 0,
+        "host_root_files": 0
+      },
+      {
+        "commit": "5b84aa5b4d179460a2f9b7a96973a89a6cd8b322",
+        "bytecode_paths": 0,
+        "host_root_files": 0
+      }
+    ],
+    "commands": {
+      "source": "docs/design/language-onboarding.md read-only screen code block",
+      "method": "Check tree exists; preserve ls-tree errors; distinguish grep no-match exit1 from operational exits; print counts only"
+    },
+    "precondition": "Resolve REV to an existing committed tree first; a missing/unreadable tree is operational, never zero hits",
+    "count_unit": "bytecode paths and matching calibration files, not defects or literal values"
   }
 }
