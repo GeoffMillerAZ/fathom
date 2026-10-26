@@ -70,3 +70,10 @@ unchanged frozen primary bytes and range entries with only their tier corrected
 to C. No browser/oracle rerun, population change or tuning is permitted. The
 spent Tachyons replay corrects classification retrospectively; it is not fresh
 validation. Original artifact hashes remain historical in the receipt.
+
+C2-F1 replay verification: all four frozen bundles reproduce every count and
+numeric metric. Range tier is C, so both L1 grades are good. Historical code,
+source and timing identities are preserved in the dated receipt. Twelve
+companion-reading scratch copies (22 subjects) regrade without any count,
+metric, tier, grade or subject change; originals remain untouched. This is a
+harness compatibility check, with no subject extraction or oracle execution.
