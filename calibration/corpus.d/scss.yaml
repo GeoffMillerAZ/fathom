@@ -36,3 +36,4 @@ repos:
         with `#{$variant}` interpolated selectors"
       - "nested `&` rules (`&::-webkit-scrollbar`, `.SelectMenu-list--borderless &`)
         and `@include breakpoint(...)` media wrappers"
+# Independent validation record: docs/bench/scss-spans-holdout.yaml, never canonical corpus input.

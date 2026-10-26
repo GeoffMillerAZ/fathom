@@ -1,0 +1,107 @@
+{
+  "filtered_precision_interpretation": "lower bound; unknown sites counted as misses",
+  "native_answered": 1945,
+  "native_distinct_pairs": 1270,
+  "native_sites": 2071,
+  "opaque_magic_lines": 34,
+  "pair_source": "Python AST written caller/callee names; not basedpyright target references",
+  "readings": {
+    "native-diagnostic": {
+      "counts": {
+        "callables": 54,
+        "callables_signed": 54,
+        "fathom_defs": 1012,
+        "kind_equal": 1005,
+        "matched": 1006,
+        "oracle_defs": 1006,
+        "range_eligible": 54,
+        "range_ok": 54,
+        "ref_fathom": 1173,
+        "ref_fathom_in_truth": 1094,
+        "ref_truth": 1094,
+        "ref_truth_found": 1094
+      },
+      "grade": {
+        "L1": "excellent",
+        "L2": "good",
+        "L3": "not-attempted",
+        "L4": "not-applicable"
+      },
+      "metric_tiers": {
+        "ref_precision": "C",
+        "ref_recall": "C",
+        "sym_precision": "B",
+        "sym_recall": "B"
+      },
+      "metrics": {
+        "ref_precision": 0.9327,
+        "ref_recall": 1,
+        "sym_precision": 0.9941,
+        "sym_recall": 1,
+        "xref_precision": null,
+        "xref_recall": null
+      },
+      "tenancy": {
+        "compiled_bytes": 0,
+        "faulting_files": [],
+        "faults": 0,
+        "max_file_ms": 7,
+        "peak_module_pages": 304,
+        "throughput_basis": "cpu",
+        "throughput_mb_s": 3.67,
+        "wall_throughput_mb_s": 4
+      }
+    },
+    "syntax": {
+      "counts": {
+        "callables": 54,
+        "callables_signed": 54,
+        "fathom_defs": 1012,
+        "kind_equal": 1005,
+        "matched": 1006,
+        "oracle_defs": 1006,
+        "range_eligible": 54,
+        "range_ok": 54,
+        "ref_fathom": 1173,
+        "ref_fathom_in_truth": 1166,
+        "ref_truth": 1166,
+        "ref_truth_found": 1166
+      },
+      "grade": {
+        "L1": "excellent",
+        "L2": "good",
+        "L3": "not-attempted",
+        "L4": "not-applicable"
+      },
+      "metric_tiers": {
+        "ref_precision": "C",
+        "ref_recall": "C",
+        "sym_precision": "B",
+        "sym_recall": "B"
+      },
+      "metrics": {
+        "ref_precision": 0.994,
+        "ref_recall": 1,
+        "sym_precision": 0.9941,
+        "sym_recall": 1,
+        "xref_precision": null,
+        "xref_recall": null
+      },
+      "tenancy": {
+        "compiled_bytes": 0,
+        "faulting_files": [],
+        "faults": 0,
+        "max_file_ms": 7,
+        "peak_module_pages": 304,
+        "throughput_basis": "cpu",
+        "throughput_mb_s": 3.69,
+        "wall_throughput_mb_s": 4.03
+      }
+    }
+  },
+  "resolved_target_truth": false,
+  "scanner_rejected_cells": 0,
+  "scope": "all notebooks; separate diagnostic holdout, never canonical corpus",
+  "subject_sha": "a892791ce5a3831134cfa2989033ecbb9289f1ea",
+  "unknown_sites": 126
+}

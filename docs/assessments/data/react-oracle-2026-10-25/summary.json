@@ -1,0 +1,80 @@
+{
+  "versions": {
+    "babel": "7.28.4",
+    "compiler": "1.0.0",
+    "typescript": "7.0.2",
+    "docgenTypescript": "2.4.0",
+    "docgen": "8.0.4"
+  },
+  "modes": {
+    "infer": [
+      {
+        "kind": "CompileSuccess",
+        "name": "FunctionComponent",
+        "line": 5
+      },
+      {
+        "kind": "CompileSuccess",
+        "name": "HiddenComponent",
+        "line": 11
+      }
+    ],
+    "annotation": [],
+    "all": [
+      {
+        "kind": "CompileSuccess",
+        "name": "FunctionComponent",
+        "line": 5
+      },
+      {
+        "kind": "CompileSuccess",
+        "name": "Utility",
+        "line": 8
+      },
+      {
+        "kind": "CompileSuccess",
+        "name": "HiddenComponent",
+        "line": 11
+      }
+    ]
+  },
+  "docgen_exported": [
+    {
+      "name": "ClassComponent",
+      "props": [
+        "label"
+      ]
+    },
+    {
+      "name": "FunctionComponent",
+      "props": [
+        "label"
+      ]
+    }
+  ],
+  "docgen_all": [
+    {
+      "name": "ClassComponent",
+      "props": [
+        "label"
+      ]
+    },
+    {
+      "name": "FunctionComponent",
+      "props": [
+        "label"
+      ]
+    },
+    {
+      "name": "HiddenComponent",
+      "props": [
+        "label"
+      ]
+    }
+  ],
+  "typescriptLegacyAPI": {
+    "createProgram": "undefined",
+    "createCompilerHost": "undefined"
+  },
+  "docgenTypescriptFailure": "Cannot read properties of undefined (reading 'React')"
+}

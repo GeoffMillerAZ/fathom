@@ -1,0 +1,27 @@
+[
+{
+  "diagnostics": [
+    {
+      "code": "unused",
+      "message": "unused is never used, if this is intentional, prefix it with an underscore: _unused",
+      "range": {
+        "end": {
+          "character": 21,
+          "line": 3
+        },
+        "start": {
+          "character": 15,
+          "line": 3
+        }
+      },
+      "severity": 4,
+      "source": "EmmyLua",
+      "tags": [
+        1
+      ]
+    }
+  ],
+  "file": "<probe>/probe.lua"
+}
+
+]
