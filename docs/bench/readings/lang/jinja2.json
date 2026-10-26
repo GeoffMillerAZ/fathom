@@ -61,9 +61,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 2,
-        "extract_ms": 541.148,
-        "extract_cpu_ms": 541.2580000000002,
-        "max_file_ms": 76,
+        "extract_ms": 205.47200000000015,
+        "extract_cpu_ms": 208.34000000000006,
+        "max_file_ms": 23,
         "peak_module_pages": 322,
         "compiled_bytes": 0
       }
@@ -109,9 +109,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 19,
-        "extract_ms": 1586.4309999999996,
-        "extract_cpu_ms": 1604.4879999999991,
-        "max_file_ms": 97,
+        "extract_ms": 578.2370000000002,
+        "extract_cpu_ms": 583.0250000000003,
+        "max_file_ms": 37,
         "peak_module_pages": 339,
         "compiled_bytes": 0
       }
@@ -188,10 +188,10 @@
     "faults": 0,
     "faulting_files": [],
     "files_with_error": 21,
-    "throughput_mb_s": 0.34,
+    "throughput_mb_s": 0.93,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 0.35,
-    "max_file_ms": 97,
+    "wall_throughput_mb_s": 0.94,
+    "max_file_ms": 37,
     "peak_module_pages": 339,
     "compiled_bytes": 0
   },
@@ -206,7 +206,8 @@
     "openstack/kolla-ansible: jinja2.meta.find_referenced_templates resolves none of fathom's imports to a file of the subject, so import_resolution has no denominator here",
     "openstack/kolla: 20 of 189 measured files hold an ERROR or MISSING node as written; the dialect's pre-parse step reads 18 of them clean, and files_with_error counts the 2 it cannot mend, the files the extractor reads with an error",
     "openstack/kolla: include-path resolution read 0 compile database(s); 0 quoted include(s) resolved only rooted at an ancestor directory of the includer; header-prototype binding bound 0 call(s) (caller file and name) to the one file defining the function (0 of them chosen among definers by the files the build compiles), left 0 unbound for two or more definers, 0 for no definer among the files read and 0 for definers the build does not compile",
-    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "throughput retake 2026-10-25 local (2026-10-26 UTC), darwin/arm64 Apple silicon, nice 10, GOMAXPROCS=2, GOFLAGS=-p=2, starting load below 9: full independent Jinja 3.1.6 oracle runs at 3b77ae9c4, same pinned corpus shard scope, 520 files and 734576 bytes, no -only exclusion. Runs 1/2/3: 0.93/0.93/0.93 MB/CPU-s (790.031/791.365/791.658 CPU ms); median by unrounded CPU throughput is run 2. All subject identities and accuracy counters match the original reading; only timing fields are refreshed, preserving the original accuracy measured_at and fathom_commit. The strict retimer cannot accept a shard subdirectory as a subject root (retimeCleanSubject accepts the enclosing SHA but subjectSHA returns none), so this is a full-oracle-validated timing refresh, not a bypass of identity checks."
   ],
-  "disposition": "refused (design section 14.2, tenancy): the dialect is built, tested and measured at L1, L2 and L3 excellent against Jinja's own parser and template lookup (jinja2 3.1.6, tier A: jinja2.meta.find_referenced_templates and the AST, calibration/oracles/jinja2-meta) on openstack/kolla 23.0.0 kolla/docker and openstack/kolla-ansible 23.0.0 ansible/roles (520 files, tags dialect, cathaysia/tree-sitter-jinja v0.5.0, Apache-2.0), but reads no level: throughput .34 MB per CPU-second against the 1.0 floor (tenancy is always required), so the dialect is not dispatched and .j2, .jinja and .jinja2 stay disclosed as unsupported. Cause: the grammar lexes template text one character per token (`_words` is a repeat of single-character regexes), so a text-only file parses at about .4 MB per CPU-second and an expression-heavy one at .25; the pre-parse step (a text line's `# ` blanked, `in` and `not in` read as `==` and `!=` outside a for header) mends 75 of the 96 files that error as written, so files_with_error is 21 of 520 (4.04%, under the 5% line; kolla-ansible alone 19 of 331, 5.74%). Trigger: a Jinja grammar that lexes text as one token or an engine change that parses this grammar above 1.0 MB per CPU-second on the two subjects; then dispatch (an ExtractorEpoch bump), add the sniff for templates/*.html (the pipeline dispatches .html by extension before any sniff), and re-measure."
+  "disposition": "refused (design section 14.2, tenancy): the dialect is built, tested and measured at L1, L2 and L3 excellent against Jinja's own parser and template lookup (jinja2 3.1.6, tier A: jinja2.meta.find_referenced_templates and the AST, calibration/oracles/jinja2-meta) on openstack/kolla 23.0.0 kolla/docker and openstack/kolla-ansible 23.0.0 ansible/roles (520 files, tags dialect, cathaysia/tree-sitter-jinja v0.5.0, Apache-2.0), but reads no level: throughput .93 MB per CPU-second (median of three full-oracle timing retakes on Apple silicon; historical .34) against the 1.0 floor (tenancy is always required), so the dialect is not dispatched and .j2, .jinja and .jinja2 stay disclosed as unsupported. Cause: the grammar lexes template text one character per token (`_words` is a repeat of single-character regexes), so a text-only file parses at about .4 MB per CPU-second and an expression-heavy one at .25; the pre-parse step (a text line's `# ` blanked, `in` and `not in` read as `==` and `!=` outside a for header) mends 75 of the 96 files that error as written, so files_with_error is 21 of 520 (4.04%, under the 5% line; kolla-ansible alone 19 of 331, 5.74%). Trigger: a Jinja grammar that lexes text as one token or an engine change that parses this grammar above 1.0 MB per CPU-second on the two subjects; then dispatch (an ExtractorEpoch bump), add the sniff for templates/*.html (the pipeline dispatches .html by extension before any sniff), and re-measure."
 }

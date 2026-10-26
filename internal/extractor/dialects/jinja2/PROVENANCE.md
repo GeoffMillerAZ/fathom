@@ -28,5 +28,6 @@ measured, **not dispatched**: see the plan row `LB-Q-jinja2-rest` and `refusedDi
 - `templates/*.html` by content sniff: the pipeline dispatches `.html` by extension before any sniff
   (`p.exts`), and a manifest sniff on `.html` would make every other `.html` file ambiguous and
   excluded unless the html dialect also sniffs. It waits for dispatch (see the plan row's trigger).
-- Dispatch itself: throughput .34 MB per CPU-second, under the 1.0 floor, from the grammar's
+- Dispatch itself: throughput .93 MB per CPU-second (median of three Apple-silicon
+  full-oracle timing retakes, 2026-10-25 local; historical .34), under the 1.0 floor, from the grammar's
   one-token-per-character text lexing.
