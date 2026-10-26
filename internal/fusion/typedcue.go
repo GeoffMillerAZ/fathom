@@ -128,12 +128,18 @@ func (p *Pipeline) enrichCUEEdges(ctx context.Context, svc core.ServiceRef, refs
 			return rep, hErr
 		}
 	case rep.PackagesFailed > 0:
-		fmt.Fprintf(os.Stderr, "fusion: CUE typed-edge pass %q: %d/%d package(s) failed typed loading\n", svc.ID, rep.PackagesFailed, rep.PackagesTotal)
+		fmt.Fprint(os.Stderr, cueFailedPackagesWarning(svc.ID, rep))
 		p.commitPartialPassState(ctx, svc.ID, cuePassStateKey) // RT-105: gates like a clean pass
 	default:
 		p.commitPassState(ctx, svc.ID, cuePassStateKey)
 	}
 	return rep, nil
+}
+
+// cueFailedPackagesWarning renders the partial-failure warning, naming the
+// failed packages and their causes the way the Go pass does.
+func cueFailedPackagesWarning(svcID string, rep TypedEdgeReport) string {
+	return fmt.Sprintf("fusion: CUE typed-edge pass %q: %d/%d package(s) failed typed loading%s\n", svcID, rep.PackagesFailed, rep.PackagesTotal, formatFailedTypedPackages(rep.FailedPackages))
 }
 
 // CUEPassTotal returns the process-lifetime count of CUE passes this

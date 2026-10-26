@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,6 +27,14 @@ func TestEnrichCUEEdges_ExternalDependencyNeverFetches(t *testing.T) {
 	for _, k := range []string{"HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"} {
 		t.Setenv(k, proxy.URL)
 	}
+	// Pin the default transport to the counting proxy so a regression cannot
+	// go direct through net/http's once-cached ProxyFromEnvironment.
+	prev := http.DefaultTransport
+	pinned := prev.(*http.Transport).Clone()
+	pu, _ := url.Parse(proxy.URL)
+	pinned.Proxy = http.ProxyURL(pu)
+	http.DefaultTransport = pinned
+	defer func() { http.DefaultTransport = prev }()
 	t.Setenv("NO_PROXY", "")
 	t.Setenv("no_proxy", "")
 	t.Setenv("CUE_REGISTRY", "")
