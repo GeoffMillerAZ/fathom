@@ -4,9 +4,9 @@
 L2 call precision .9701 / recall .9834 at tier C; L3 resolution and file-edge
 precision/recall 1 at tier B, over 1,351 in-repo import statements. The search was
 incomplete before review. LuaLS and EmmyLua are viable semantic candidates whose
-tier needs an owner ruling. Native Telescope tracing is feasible but the measured
-route covers 81.01%, below the 90% tier-A requirement. Kong tracing awaits an
-allowed native runtime environment. These are distinct limits, not proof that a
+resolved references remain tier C under owner OL-R2 (ADR-048 unchanged). Native Telescope tracing is feasible but the measured
+route covers 81.01%, below the 90% tier-A requirement. Kong tracing is deferred by owner OL-R3 until an
+environment installs entirely inside lane roots; Docker is forbidden on this shared machine. These are distinct limits, not proof that a
 stronger free oracle is impossible. ADR-048 and LB-Q-lua-rest govern the next work.
 
 ## Named candidates checked
@@ -17,12 +17,12 @@ stronger free oracle is impossible. ADR-048 and LB-Q-lua-rest govern the next wo
 | luaparse | 0.3.1, LuaJIT mode | Existing independent definition parser; a syntax call dump is at most tier B and cannot lift L2. Retained as a literal-import scanner. |
 | Upstream tree-sitter query | tree-sitter-lua v0.5.0, `10fe0054` (grammars.lock.json) | Existing L2 truth is tier C; names by syntax do not become native semantic truth. |
 | lua-require static lookup | Lua 5.4.7 + luaparse 0.3.1 | Operator-selected package.path agrees with fathom's configured lookup; it is not the subjects' actual runtime. Remains tier B. |
-| LuaLS doc/check/LSP | 3.19.2, source tag commit `b144c872` | `--doc` exports globals/documentation; module-local probe emits one config record and no definitions/fields/calls. `--check` emits diagnostics. LSP definition/reference is a viable resolver, but a third-party resolver is not automatically tier A under ADR-048. Owner classification precedes any lift. |
-| EmmyLua analyzer / check / doc CLI / LSP | 0.25.1, release commit `6f8b424` | MIT analyzer provides another LSP resolver. `emmylua_check --output-format json` emits file diagnostics (unused local in the committed probe), not call pairs; doc CLI exports documentation/AST, not a measured complete call graph. Same unresolved tier question as LuaLS, not a rejected resolver. |
+| LuaLS doc/check/LSP | 3.19.2, source tag commit `b144c872` | `--doc` exports globals/documentation; module-local probe emits one config record and no definitions/fields/calls. `--check` emits diagnostics. LSP definition/reference is a viable resolver, but a third-party resolver is not automatically tier A under ADR-048. OL-R2 classifies its references C; no L2 lift is allowed. |
+| EmmyLua analyzer / check / doc CLI / LSP | 0.25.1, release commit `6f8b424` | MIT analyzer provides another LSP resolver. `emmylua_check --output-format json` emits file diagnostics (unused local in the committed probe), not call pairs; doc CLI exports documentation/AST, not a measured complete call graph. OL-R2 keeps its references C, so it cannot lift L2; it remains a viable cross-check. |
 | luacheck | 1.2.0 | MIT linter's pinned CLI contract emits warning reports and formatter output; no resolved-call/reference or native import-trace export. It cannot attest the target population. |
 | Native Neovim + Telescope tests | Neovim 0.12.6; Telescope v0.2.2 at `5255aa27`; Plenary `74b06c6c` | Original Plenary test entrypoint exits 0. Its executed literal in-repo imports are 85/237 (35.86%); adding a separate native process loading every original Lua file raises this to 192/237 (81.01%). Below 90%, so no tier-A file is emitted. |
-| Kong resty/busted native trace | Kong 3.9.2 at `3666d50b`; Docker server 27.4.0 | Pinned developer guide requires Kong's patched OpenResty, dependencies and native test setup. Local full Xcode is absent (CLT-only, explicitly unsupported by that guide). Docker is reachable, but image/container artifacts need an exception to the lane's workspace/cache-only rule. Runtime execution and coverage remain unmeasured pending that ruling; no success or impossibility claimed. |
-| Maintained SCIP/LSIF producer search | SCIP producer registry inspected 2026-10-25; LuaLS 3.19.2 and EmmyLua 0.25.1 release interfaces | None of these checked interfaces names a Lua SCIP producer. This scoped negative search does not establish global absence. |
+| Kong resty/busted native trace | Kong 3.9.2 at `3666d50b`; Docker server 27.4.0 | Pinned developer guide requires Kong's patched OpenResty, dependencies and native test setup. Local full Xcode is absent (CLT-only, explicitly unsupported by that guide). Docker is reachable, but image/container artifacts need an exception to the lane's workspace/cache-only rule. OL-R3 denies Docker and keeps artifacts inside lane roots; native execution and coverage remain unmeasured until an allowed environment is available. No impossibility claimed. |
+| Maintained SCIP/LSIF producer search | SCIP producer registry `d556dd3c` inspected 2026-10-25; LuaLS 3.19.2 and EmmyLua 0.25.1 release interfaces | None of these checked interfaces names a Lua SCIP producer. This scoped negative search does not establish global absence. |
 
 **Measured, source inspection:** LuaLS's
 [provider](https://github.com/LuaLS/lua-language-server/blob/b144c872/script/provider/provider.lua),
@@ -87,17 +87,22 @@ several are inside UI/action functions. The subject itself skips its two picker
 integration suites on macOS; no platform guard was removed. A successful process
 exit does not imply full import coverage. The measured recipe is insufficient for
 tier A under design section 1.3; the 90% bar remains unchanged. No holdout enters
-the canonical corpus shard. Kong's separate native experiment remains pending,
+the canonical corpus shard. Kong's separate native experiment is deferred by OL-R3,
 under its [pinned setup](https://github.com/Kong/kong/blob/3666d50b/DEVELOPER.md).
 
 ## Independent retry conditions
 
-**Hypothesis:** an owner ADR-048 amendment may classify LuaLS/EmmyLua resolved
-references at tier A; only then can a corpus-measured adapter with unresolved and
-external sites counted lift L2. At B or C it cannot lift L2. This owner question is
-open, not silently decided by implementing an LSP client.
+**Measured, owner rulings:** OL-R2 retains tier C for LuaLS 3.19.2 and EmmyLua
+0.25.1 under ADR-048, without amendment. Their resolving-reference adapters cannot
+lift L2. A future maintained Lua SCIP producer would be a separate candidate,
+requiring a complete corpus comparison; none is claimed available here.
+
+**Measured, owner ruling:** OL-R3 keeps every runtime artifact inside lane roots
+and forbids Docker on this shared machine. Telescope's 81.01% trace stands; Kong
+can join later in an environment that installs inside those roots. No Docker
+image was pulled and no container was created.
 
 **Hypothesis:** independently, an actual subject-runtime require trace reaching
 90% of in-repo literal statements can lift that subject's L3 oracle tier, after a
-new reading. Telescope's current 81.01% does not meet it; Kong is unmeasured. Either
-condition may fire without the other. No existing numbers or grades were raised.
+new reading. Telescope's current 81.01% does not meet it; Kong is unmeasured. The
+L2 and L3 retry conditions are disjoint. No existing numbers or grades were raised.
