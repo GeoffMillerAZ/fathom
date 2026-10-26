@@ -23,7 +23,8 @@ Run, one subject at a time:
   is counted on stderr, never a pair.
 - `calls`: a call whose callee is a bare name (a macro, a global) or an attribute (`forms.input()`, `x.items()`), by the qualified AST callee name. Namespace aliases are retained (`forms.input`),
   as are chained attributes. Argument and index contents are omitted in receivers
-  (`factory().input`, `values[].input`). Unsupported receiver shapes fail the oracle
+  (`factory().input`, `values[].input`); a parenthesized filter result has no
+  static receiver name and is `().method`. Unsupported receiver shapes fail the oracle
   rather than dropping a call. Bare built-in globals are excluded, but a same-named
   member such as `forms.range()` is a call.
   The caller is `<module>`: a macro's body is not a definition range in the tags dialect.

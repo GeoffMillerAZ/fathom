@@ -60,6 +60,10 @@ def receiver_name(node):
         return receiver_name(node.node) + "[]"
     if isinstance(node, nodes.Call):
         return receiver_name(node.node) + "()"
+    if isinstance(node, nodes.Filter):
+        # A filter result needs parentheses before an attribute lookup. Its
+        # value has no static receiver name in the syntactic call unit.
+        return "()"
     raise ValueError("unsupported Jinja call receiver: " + type(node).__name__)
 
 

@@ -21,6 +21,7 @@ class CallNames(unittest.TestCase):
             (root / "calls.j2").write_text("""{{ direct() }}
 {{ forms.input() }} {{ other.input() }} {{ forms.group.input() }}
 {{ factory().input() }} {{ values[0].input() }} {{ forms.range() }}
+{{ (items|list).count(0) }}
 {{ range(3) }}
 """)
             result = subprocess.run([
@@ -30,7 +31,7 @@ class CallNames(unittest.TestCase):
             calls = json.loads(result.stdout)["calls"]
             self.assertEqual({call["to"] for call in calls}, {
                 "direct", "forms.input", "other.input", "forms.group.input",
-                "factory", "factory().input", "values[].input", "forms.range",
+                "factory", "factory().input", "values[].input", "forms.range", "().count",
             })
             self.assertTrue(all(call["from"] == "<module>" for call in calls))
 
