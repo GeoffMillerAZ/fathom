@@ -79,3 +79,15 @@ Strict rerun candidate: `4803e3d8b83b9ca132dcc75d5c27e12ff6250ea0`. The full fiv
 passed before freeze; only test files differ from 68ef51637 in internal/cmd/pkg.
 Build both arms with `-trimpath -buildvcs=false` under Go 1.27.3 darwin/arm64.
 The source snapshot remains main 5b84aa5b4, not either updated checkout.
+
+## Strict rerun result
+
+The unchanged committed collector reports PASS: median wall 78.565 to 87.693 seconds
+(+11.62%), store 205312000 to 218238976 bytes (+6.30%), work_equivalent=true and
+changed_field_work_executed=true. All six source manifests matched, all required
+typed work executed, and every post-manifest launch load was <=9. Candidate run 3
+encountered max load 16.29 and took 121.897 seconds; retain it unchanged. CPU medians
+84.419 to 91.963 seconds are diagnostic only. Full conditions and all raw emitted
+fields are in docs/bench/readings/go-fields-cost-2026-10-26.json; historical notes
+are under annotations. This reopens Go L4 for independent oracle readings. Runtime
+remains reverted in the review branch pending the serialized ENGINE wave.
