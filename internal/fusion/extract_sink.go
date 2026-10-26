@@ -109,7 +109,7 @@ func (s *extractSink) add(ctx context.Context, pf pendingFile) error {
 	// whether its path happens to match a registered extension (ADR-021
 	// §1 / LT-2). Record the fingerprint so it isn't re-sniffed on every
 	// ingest, but never hand binary bytes to an extractor.
-	if connector.IsBinary(pf.content) {
+	if binaryExcluded(pf.ref.Path, pf.content) {
 		if err := p.st.SetFingerprint(ctx, serviceID, pf.ref.Path, pf.hash); err != nil {
 			return fmt.Errorf("fusion: set fingerprint %q: %w", pf.ref.Path, err)
 		}
@@ -202,6 +202,14 @@ func (s *extractSink) add(ctx context.Context, pf pendingFile) error {
 		if errors.Is(extractErr, extractor.ErrTSEngineFault) {
 			stats.tsFaults++
 			fmt.Fprintf(os.Stderr, "fathom: fusion: tree-sitter engine fault on %s/%s (file fingerprinted, parser re-created): %v\n",
+				serviceID, pf.ref.Path, extractErr)
+		}
+		// A model the reader refused at a cap (I38): counted on
+		// Report.ModelsRefused with one stderr line, never an empty
+		// file stored without a trace.
+		if errors.Is(extractErr, extractor.ErrModelRefused) {
+			stats.modelsRefused++
+			fmt.Fprintf(os.Stderr, "fathom: fusion: model refused on %s/%s (file fingerprinted, no symbols stored): %v\n",
 				serviceID, pf.ref.Path, extractErr)
 		}
 		_ = p.st.SetFingerprint(ctx, serviceID, pf.ref.Path, pf.hash)

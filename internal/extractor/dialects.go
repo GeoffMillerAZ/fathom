@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"path"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -61,6 +62,9 @@ type Dialect struct {
 	Signature   DialectSignature `json:"signature"`
 	TargetLevel string           `json:"target_level"`
 	QueueID     string           `json:"queue_id"`
+	// L3Evidence is the harness's minimum-evidence bar for the dialect's L3 (S-R6); the
+	// extractor never reads it.
+	L3Evidence *DialectL3Evidence `json:"l3_evidence,omitempty"`
 	// Ctags names the dialect's own universal-ctags invocation (design
 	// §13.4 step 18) for a tags dialect the langbench harness's
 	// incumbents.json (the five pre-manifest languages) does not cover —
@@ -164,6 +168,16 @@ type DialectMatch struct {
 	Globs      []string      `json:"globs"`
 	Shebangs   []string      `json:"shebangs"`
 	Sniff      *DialectSniff `json:"sniff"`
+	// Container, when set, names the extensions whose files are a model container
+	// the dialect reads despite the binary sniff (ADR-021 (1), amended 2026-10-24).
+	Container *DialectContainer `json:"container,omitempty"`
+}
+
+// DialectContainer is a manifest's match.container: an OPC zip package (a Simulink .slx)
+// is extracted, not excluded as binary, only for these extensions of the dialect's own.
+type DialectContainer struct {
+	Format     string   `json:"format"` // "opc-zip", the one format
+	Extensions []string `json:"extensions"`
 }
 
 // DialectSniff splits an extension more than one dialect claims (§5).
@@ -382,6 +396,13 @@ var importStrategies = map[string]bool{
 	"relative-path": true, "dotted-module": true, "namespace-dir": true, "include-path": true,
 	"crate-mod": true, "swift-module": true, "file-symbol": true, "go-package": true,
 	"rego-package": true, "global-name": true, "cue-module": true,
+}
+
+// DialectL3Evidence is a manifest's l3_evidence: the fewest resolvable references, and the
+// fewest subjects holding them, a reading needs before its L3 counts.
+type DialectL3Evidence struct {
+	MinReferences int `json:"min_references"`
+	MinSubjects   int `json:"min_subjects"`
 }
 
 // DialectSignature caps Signature (§3.3).
@@ -656,6 +677,19 @@ func checkDialect(fsys fs.FS, dir string, d Dialect) error {
 		// not compile would silently never match.
 		if _, err := regexp.Compile("(?m)" + s.Pattern); err != nil {
 			return fmt.Errorf("match.sniff.pattern: %w", err)
+		}
+	}
+	if c := d.Match.Container; c != nil {
+		if c.Format != "opc-zip" {
+			return fmt.Errorf("match.container.format %q: only \"opc-zip\"", c.Format)
+		}
+		if len(c.Extensions) == 0 {
+			return fmt.Errorf("match.container.extensions: none listed")
+		}
+		for _, e := range c.Extensions {
+			if !slices.Contains(d.Match.Extensions, e) {
+				return fmt.Errorf("match.container.extensions: %q is not one of match.extensions", e)
+			}
 		}
 	}
 	for oracle, m := range d.OracleKinds {
