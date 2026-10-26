@@ -211,7 +211,7 @@ bin/fathom verify --service <svc> --plan docs/plans/<slug>.md
 ```
 
 Exit codes: 0 every claimed row proven, 1 a claimed row unproven, 2 operational (fail-open).
-An unproven row whose evidence could not be read (index-stale, graph fallback, unanswered) is
+An unproven row whose evidence could not be read (index-stale, graph fallback, unanswered, platform-excluded: a symbol declared only in Go files the index's build context excludes) is
 operational: exit 2 when every unproven row is one. The rows stay Unknown (I44). Index-stale:
 a `gone:` row held back by a dirty tree or a commit after the ingest, named by one `index-stale:`
 line (also `index_stale` in `--json` and the daemon's `verify_plan`) with the reason, the first
