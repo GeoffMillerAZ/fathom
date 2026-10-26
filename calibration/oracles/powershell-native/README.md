@@ -61,12 +61,20 @@ counts/bytes and asserts original tracked source remains unchanged.
 `ResolveCalls.ps1` parses every original tracked PowerShell source file, including
 UTF-16 input. The native AST supplies scope/caller declarations. Actual target
 names and aliases come from `$ExecutionContext.InvokeCommand.GetCommand`, never
-from Fathom output. Autoload is disabled; only the explicit subject manifest and
-recorded pinned-runtime baseline are loaded. Native loader-owned source files
+from Fathom output. Autoload is disabled before the preamble. Six explicit
+pinned-runtime modules are imported and asserted: Archive, Host, Management,
+Security, ThreadJob and Utility. The matching subject manifest and its original
+declared test harness are loaded. Pester uses Axiom, p and the exact TestHelpers
+body compiled from its original driver AST; PSScriptAnalyzer uses declared
+Pester 5.7.1. Dynamic TestHelpers metadata is captured directly from New-Module,
+which exports the functions without registering in Get-Module. No test body is
+dot-sourced or executed merely to satisfy a query. Native loader-owned source files
 use that module's session; ordinary test files use the global session, so private
 module functions cannot answer unrelated test-file queries. The receipt records
 module names/versions/code hashes, definition-origin counts/content hashes and
-all unresolved sites. External applications, undeclared state, unbound functions
+all unresolved sites partitioned into member, harness, same-file/BeforeAll,
+private-module, external-application and missing classes. These classes diagnose
+source context without inventing targets. External applications, undeclared state, unbound functions
 and literal member invocations remain unresolvable, never dropped or counted
 as hits. No fixture is dot-sourced to manufacture a successful binding.
 
@@ -110,6 +118,15 @@ occur without tracing; the separate declared phase exercises the remaining tests
 The union retains the same full population. Driver failures/skips are disclosed.
 Timeout/signal/missing output refuses the whole unit; only owned process groups
 are terminated. No runtime success is inferred from a passing process exit alone.
+`driver_outcome.py` parses original driver summaries into counts-only phase
+receipts; a zero-exit observer is separate from a driver that stopped after
+failed P tests. Each phase pins TraceFunctions.ps1 and trace_decode.py hashes.
+`score.py` writes private unmatched pairs and publishes their counts-only
+attribution: actual generated mock rebinding, other target rebinding, case-only
+and missing written pairs. Native targets and recall stay unchanged; neither
+GUID normalization nor dropping inconvenient misses is allowed. Decoder row
+rejections are counted separately by missing/ambiguous site, invocation spelling
+and caller mismatch. See the assessment for controller product routing.
 
 ## Proofs and limits
 
@@ -123,6 +140,17 @@ nice -n 10 python3.13 -B calibration/oracles/powershell-native/prove_mutations.p
   --out workspace/artifacts/lang-powershell/mutations
 ```
 
+```sh
+nice -n 10 python3.13 -B calibration/oracles/powershell-native/prove_harness.py \
+  --tools workspace/tools/powershell-native --indexbench workspace/tools/indexbench \
+  --out workspace/artifacts/lang-powershell/harness
+```
+
+This runs the complete native binder and asserts both original subjects' declared
+harness/load state and the complete unresolved partition. Run it while Pester's
+load-only bin still exists, before clean_score_scope.py. Its regression first
+fails against the reviewed narrow session, then passes with declared helpers.
+
 The real fixture proves module privacy, alias targets, unknown/member/external
 misses, disabled undeclared autoload and the New-Module regression. Real extractor
 output is placed in the subject and native output directories, then changed to
@@ -130,8 +158,9 @@ fabricated pairs; native truth digests must stay equal. Changing the native alia
 from NativeOne to NativeTwo changes exactly two known caller/target pairs in each
 route. No extractor pairs enter native truth.
 
-Ten mutants cover caller/alias pairing, callbacks, caps, both declared phases,
-native tier, private scope, autoload and script-qualified breakpoints. Each must
+Fourteen mutants cover caller/alias pairing, callbacks, caps, both declared phases,
+native tier, private scope, autoload, script-qualified breakpoints, omitted
+declared harness, explicit runtime baseline, stopped-phase status and mock attribution. Each must
 reach `FAIL:` and restore GREEN. Pure regressions cover exact-column ambiguity,
 unexecuted member retention, malformed JSON, wrong runtime, raw refusal and each
 cap at reduced-limit cap+1. Hard limits: 2,048 original files, 64 MiB source,

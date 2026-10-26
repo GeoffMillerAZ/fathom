@@ -53,5 +53,13 @@ class PhaseCombinationTests(unittest.TestCase):
         self.assertNotEqual(result['driver_status'],'completed')
         self.assertEqual(result['phase_exception_hashes'],[None,'0'*64])
 
+    def test_test_failures_are_not_completed_even_when_observer_returned(self):
+        row=json.loads(self.paths[0].read_text())
+        row['phase_statuses']=[{'status':'stopped-after-p-test-failures','process_exit':0,'test_results':{'failed':3}}]
+        self.paths[0].write_text(json.dumps(row))
+        result=combine(self.paths,self.population)
+        self.assertNotEqual(result['driver_status'],'completed')
+        self.assertEqual(result['phase_statuses'][0]['test_results']['failed'],3)
+
 
 if __name__=='__main__':unittest.main()

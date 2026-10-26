@@ -53,7 +53,8 @@ class OwnerToolTests(unittest.TestCase):
         self.assertGreater(population['receipt']['global_context_sites'],0)
         self.assertGreater(population['receipt']['module_context_sites'],0)
         self.assertEqual({x['name'] for x in population['receipt']['load_after']},
-                         {'Microsoft.PowerShell.Management','Microsoft.PowerShell.Utility','Probe'})
+                         {'Microsoft.PowerShell.Archive','Microsoft.PowerShell.Host','Microsoft.PowerShell.Management',
+                          'Microsoft.PowerShell.Security','Microsoft.PowerShell.ThreadJob','Microsoft.PowerShell.Utility','Probe'})
         def trace(label,pop):
             target=out/(label+'.json')
             command=[str(pwsh),'-NoLogo','-NoProfile','-NonInteractive','-File',str(here/'TraceFunctions.ps1'),
@@ -125,7 +126,7 @@ class OwnerToolTests(unittest.TestCase):
             known_input_change='native alias NativeOne to NativeTwo changes exactly two caller/target pairs in each route',
             fixture_literal_sites=site_count,caps=caps,
             declared_scope='private target resolves only inside native module-owned source; ordinary source does not inherit module privacy; external/unknown/member sites remain misses',
-            module_load_state='recorded runtime Management/Utility plus explicit Probe only; autoload disabled',
+            module_load_state='asserted explicit Archive/Host/Management/Security/ThreadJob/Utility runtime baseline plus Probe; undeclared autoload disabled',
             script_qualified_breakpoint_regression='global native breakpoint survives New-Module; script-qualified breakpoint mutant must fail')
 
 

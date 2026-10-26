@@ -28,14 +28,17 @@ def decode(path,population,limits=Limits()):
             lookup.setdefault((site['path'],site['line'],site['column']),[]).append((index,site))
     pairs,hits=set(),set()
     unpaired=0
+    dropped={'no_unique_site':0,'alias_spelling':0,'caller_mismatch':0}
     for path,line,column,caller,target,invoked in raw['calls']:
         candidates=lookup.get((path,line,column),[])
         if len(candidates)!=1:
+            dropped['no_unique_site']+=1
             unpaired+=1;continue
         index,site=candidates[0]
         # Alias invocation and actual target are distinct native fields. The
         # alias spelling scopes the site; only actual native target is truth.
         if invoked.casefold()!=site['written'].casefold() or bare(caller).casefold()!=bare(site['from']).casefold():
+            dropped['alias_spelling' if invoked.casefold()!=site['written'].casefold() else 'caller_mismatch']+=1
             unpaired+=1;continue
         pairs.add((path,bare(caller),bare(target)))
         hits.add(index)
@@ -47,4 +50,5 @@ def decode(path,population,limits=Limits()):
             'unattested_sites':len(population['sites'])-len(hits),'unpaired_native_rows':unpaired,
             'native_events':raw['native_events'],'original_breakpoints':raw['original_breakpoints'],
             'retained_breakpoints':raw['retained_breakpoints'],'driver_status':raw['driver_status'],
-            'exception_sha256':raw['exception_sha256']}
+            'exception_sha256':raw['exception_sha256'],'dropped_native_rows_by_reason':dropped,
+            'phase_statuses':raw.get('phase_statuses',[]),'phase_code_sha256':raw.get('phase_code_sha256',[])}

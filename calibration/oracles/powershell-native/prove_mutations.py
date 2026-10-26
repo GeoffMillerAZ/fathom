@@ -27,7 +27,8 @@ def main():
     ]
     owners=[
         ('ResolveCalls.ps1',"tier = 'A'","tier = 'C'",'tier'),
-        ('ResolveCalls.ps1',"$PSModuleAutoLoadingPreference = 'None'","$PSModuleAutoLoadingPreference = 'All'",'autoload'),
+        ('ResolveCalls.ps1',"$PSModuleAutoLoadingPreference = 'None'\n$before = @(Get-OracleModules)","$PSModuleAutoLoadingPreference = 'All'\n$before = @(Get-OracleModules)",'autoload'),
+        ('ResolveCalls.ps1',"@('Microsoft.PowerShell.Archive','Microsoft.PowerShell.Host','Microsoft.PowerShell.Management','Microsoft.PowerShell.Security','Microsoft.PowerShell.ThreadJob','Microsoft.PowerShell.Utility')", "@('Microsoft.PowerShell.Archive','Microsoft.PowerShell.Host','Microsoft.PowerShell.Management','Microsoft.PowerShell.ThreadJob','Microsoft.PowerShell.Utility')",'explicit-runtime-baseline'),
         ('ResolveCalls.ps1',"$scope = if ($moduleSources.Contains([IO.Path]::GetFullPath((Join-Path $root $relative)))) { 'module' } else { 'global' }","$scope = 'module'",'privacy'),
         ('ResolveCalls.ps1',"if ($sites.Count -gt $siteCap) { throw 'whole-unit refusal: site count cap' }",'# mutated cap bypass','site-cap'),
         ('TraceFunctions.ps1',"Set-PSBreakpoint -Command '*' -Action $action","Set-PSBreakpoint -Script @($files | Where-Object { [IO.Path]::GetExtension($_) -in '.ps1','.psm1' }) -Command '*' -Action $action",'script-qualified-breakpoint'),
@@ -51,9 +52,16 @@ def main():
         run_mutant('trace_decode.py',old,new,test,command,command)
     command=[sys.executable,'-B','-m','unittest','test_combine_runtime.PhaseCombinationTests.test_both_original_phases_retained']
     run_mutant('combine_runtime.py',"for item in original for row in item['calls']","for item in original[:1] for row in item['calls']",'drop-second-phase',command,command)
+    command=[sys.executable,'-B','-m','unittest','test_driver_outcome.DriverOutcomeTests.test_zero_exit_does_not_hide_stopped_default_phase']
+    run_mutant('driver_outcome.py',"status='stopped-after-p-test-failures'","status='tests-passed'",'stopped-phase-is-success',command,command)
+    command=[sys.executable,'-B','-m','unittest','test_analyze_misses.MissAttributionTests.test_generated_mock_requires_actual_written_capture']
+    run_mutant('analyze_misses.py',"if MOCK.fullmatch(pair[2]) and captured:","if MOCK.fullmatch(pair[2]):",'mock-without-written-capture',command,command)
     for filename,old,new,name in owners:
         common=[sys.executable,'-B',str(here/'prove_native.py'),'--tools',str(args.tools.resolve()),'--indexbench',str(args.indexbench.resolve())]
         run_mutant(filename,old,new,name,common+['--out',str(out/(name+'-mutant'))],common+['--out',str(out/(name+'-restored'))])
+    common=[sys.executable,'-B',str(here/'prove_harness.py'),'--tools',str(args.tools.resolve()),'--indexbench',str(args.indexbench.resolve())]
+    run_mutant('measure_binder.py',"'-Harness',name", "'-Harness','none'",'omit-declared-harness',
+               common+['--out',str(out/'harness-mutant')],common+['--out',str(out/'harness-restored')])
     subprocess.run([sys.executable,'-B','-m','unittest','discover','-s',str(here),'-p','test_*.py'],env=env,check=True)
     (out/'mutations.json').write_text(json.dumps(receipt,indent=2,sort_keys=True)+'\n')
 

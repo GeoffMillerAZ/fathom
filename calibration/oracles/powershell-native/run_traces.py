@@ -12,6 +12,7 @@ import sys
 
 from fetch import SUBJECTS, environment, ready
 from trace_decode import decode
+from driver_outcome import outcome
 
 
 def main():
@@ -63,6 +64,14 @@ def main():
         after=manifest('after')
         if before!=after:raise RuntimeError('whole-unit refusal: tracked source changed during runtime')
         oracle,summary=decode(raw,population)
+        phase=outcome((target/'driver.log').read_text(errors='replace'),status,summary['driver_status'])
+        summary.update(phase_statuses=[phase],phase_code_sha256=[{p:hashlib.sha256((here/p).read_bytes()).hexdigest()
+            for p in ['TraceFunctions.ps1','trace_decode.py','run_traces.py','driver_outcome.py']}])
+        # Preserve completion of the observer separately from the test outcome.
+        summary['driver_status']=phase['status']
+        native=json.loads(raw.read_text())
+        native.update(phase_statuses=summary['phase_statuses'],phase_code_sha256=summary['phase_code_sha256'])
+        raw.write_text(json.dumps(native,sort_keys=True)+'\n')
         (target/'oracle.json').write_text(json.dumps(oracle,indent=2,sort_keys=True)+'\n')
         public['subjects'][name]=dict(summary,declared_skip_ptests_phase=args.pester_main and name=='pester',tracked_before=before,tracked_after=after,driver_exit=status,revision=pin,subpath=subpath,
             oracle_sha256=hashlib.sha256((target/'oracle.json').read_bytes()).hexdigest(),

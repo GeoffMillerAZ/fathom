@@ -8,6 +8,7 @@ import subprocess
 
 from fetch import SUBJECTS, ready
 from trace_decode import decode
+from analyze_misses import analyze
 
 
 def scope_digest(population):
@@ -28,6 +29,8 @@ def main():
     out.mkdir(parents=True,exist_ok=False)
     binder=json.loads((args.binder/'summary.json').read_text())
     data={'binder':binder,'runtime':{'ruling':'OL-R11','subjects':{}},
+          'analysis_code_sha256':{p:hashlib.sha256((Path(__file__).parent/p).read_bytes()).hexdigest()
+              for p in ['score.py','analyze_misses.py','trace_decode.py','combine_runtime.py']},
           'benchmark_product_revision':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()}
     for name,(repository,pin,subpath) in SUBJECTS.items():
         population=json.loads((args.binder/name/'native-answers.json').read_text())
@@ -43,7 +46,8 @@ def main():
             with (out/(name+'-'+mode+'.log')).open('w') as log:
                 subprocess.run([str(args.indexbench.resolve()),'lang-oracle','-dialect','powershell',
                     '-subject',str((args.tools/name/subpath).resolve()),'-subject-name',repository,'-subject-sha',pin,
-                    '-tool-oracle',str(path.resolve()),'-out',str(reading)],stdout=log,stderr=log,check=True)
+                    '-tool-oracle',str(path.resolve()),'-out',str(reading),
+                    '-unmatched',str(out/(name+'-'+mode+'-unmatched.json'))],stdout=log,stderr=log,check=True)
             measured=json.loads(reading.read_text())
             if mode=='binder':
                 row=binder['subjects'][name]
@@ -63,6 +67,8 @@ def main():
                 summary['executed_pair_recall']=measured['counts']['call_truth_found']/summary['native_pairs']
                 summary['runtime_precision']='unmeasured: predictions include unexecuted calls'
                 summary['native_pairs_outside_product_scope']=summary['native_pairs']-measured['counts']['call_truth']
+                summary['miss_attribution']=analyze(json.loads((runtime/'native.json').read_text()),population,oracle,
+                    json.loads((out/(name+'-'+mode+'-unmatched.json')).read_text()))
         data['runtime']['subjects'][name]=summary
     (out/'summary.json').write_text(json.dumps(data,indent=2,sort_keys=True)+'\n')
     print(json.dumps(data,indent=2,sort_keys=True))

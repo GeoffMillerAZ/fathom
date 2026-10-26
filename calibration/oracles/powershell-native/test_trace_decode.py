@@ -79,5 +79,24 @@ class NativeFunctionTests(unittest.TestCase):
         self.path.write_text('{')
         with self.assertRaises(ValueError):decode(self.path,self.population)
 
+    def test_dropped_reason_partition_does_not_credit_rows(self):
+        self.raw['calls']=[['native.ps1',4,4,'ActualCaller','Target','writtenAlias'],
+                           ['native.ps1',3,4,'ActualCaller','Target','anotherAlias'],
+                           ['native.ps1',3,4,'AnotherCaller','Target','writtenAlias']]
+        self.save()
+        oracle,summary=decode(self.path,self.population)
+        self.assertEqual(oracle['calls'],[])
+        self.assertEqual(summary['unpaired_native_rows'],3)
+        self.assertEqual(summary['dropped_native_rows_by_reason'],
+                         dict(no_unique_site=1,alias_spelling=1,caller_mismatch=1))
+
+    def test_phase_metadata_survives_scoring_redecode(self):
+        self.raw['phase_statuses']=[{'status':'stopped-after-p-test-failures','test_results':{'failed':3}}]
+        self.raw['phase_code_sha256']=[{'TraceFunctions.ps1':'0'*64,'trace_decode.py':'1'*64}]
+        self.save()
+        _,summary=decode(self.path,self.population)
+        self.assertEqual(summary['phase_statuses'],self.raw['phase_statuses'])
+        self.assertEqual(summary['phase_code_sha256'],self.raw['phase_code_sha256'])
+
 
 if __name__=='__main__':unittest.main()

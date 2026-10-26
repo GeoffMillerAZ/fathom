@@ -17,8 +17,16 @@ from runtime coverage, including a 90% coverage threshold.
 
 The [committed recipe](../../calibration/oracles/powershell-native/README.md)
 runs PowerShell **7.6.9**, with profiles and module autoload disabled. It loads
-only the matching subject manifest and records the pinned-runtime Management /
-Utility baseline. Native module-loader source files use that module's private
+the matching subject manifest and the subjects' own declared test harness.
+Autoload is disabled before the preamble. The chosen pinned-runtime baseline is
+explicitly imported and asserted: Archive, Host, Management, Security, ThreadJob
+and Utility; package-management and interactive-editing modules are not part of
+that named baseline. Its membership no longer depends on preamble side effects.
+Pester loads its original Axiom and p modules, plus precisely the TestHelpers
+ScriptBlockAst from its original test driver; PSScriptAnalyzer loads its declared
+Pester 5.7.1. Each input has a content hash. Dynamic TestHelpers is recorded
+explicitly because Get-Module does not list a New-Module-only instance, although
+native CommandInfo reports that module on its exported functions. Native module-loader source files use that module's private
 session; ordinary test files use global resolution. A module's private functions
 cannot answer arbitrary test-file queries. No fixture is dot-sourced to make its
 functions resolvable. External applications, missing functions, undeclared state
@@ -33,22 +41,46 @@ holds full per-subject counts, module load state and recipe/product identities.
 
 | Original subject / pin | Full original PowerShell scope | Native resolved sites | Unresolved sites retained | Resolved-pair diagnostic P / R |
 |---|---:|---:|---:|---:|
-| Pester 6.2.0 `98e56d65da16` | 272 files / 2,713,762 bytes | 9,443/18,842 (50.12%) | 9,399 (49.88%) | 1,819/4,204 (.4327) / 1,819/1,836 (.9907) |
-| PSScriptAnalyzer 1.25.0 `f05704df81b2`, `Tests` | 241 files / 865,136 bytes | 1,371/5,838 (23.48%) | 4,467 (76.52%) | 274/1,320 (.2076) / 274/282 (.9716) |
+| Pester 6.2.0 `98e56d65da16` | 272 files / 2,713,762 bytes | 13,401/18,842 (71.12%) | 5,441 (28.88%) | 2,241/4,204 (.5331) / 2,241/2,262 (.9907) |
+| PSScriptAnalyzer 1.25.0 `f05704df81b2`, `Tests` | 241 files / 865,136 bytes | 4,586/5,838 (78.55%) | 1,252 (21.45%) | 798/1,331 (.5995) / 798/810 (.9852) |
 
 These pair diagnostics compare with the resolved native subset, not complete
 source truth. Predictions outside that subset may be unattested, not false
 calls. Resolved-only recall cannot hide the full unresolved-site counts above.
-The unresolved share is far beyond the blind cap; the current binder does not
+Loading the declared harness increases resolved sites by 3,958 / 3,215 over the
+reviewed narrow session. The old counts measured an omitted load state and are
+not an instrument ceiling. The remaining unresolved share exceeds 10% on each
+subject; this chosen declared-state probe does not
 establish an excellent whole-population L2 grade.
 
 Pester has 16,667 command sites and 2,175 member sites. Native loader metadata
 identifies 106 original source files belonging to its module; 1,486 command
 queries use module scope and 15,181 use global scope. Resolved definition origins
-are 8,555 site answers in original source and 888 in the pinned runtime, with
-100 distinct origin/content-hash entries. PSScriptAnalyzer has 5,551 commands /
-287 members, all global queries; 897 answers come from its matching released
-module and 474 from the runtime, with two distinct origin/content-hash entries.
+are 12,513 site answers in original source and 888 in the pinned runtime, with
+113 distinct origin/content-hash entries. PSScriptAnalyzer has 5,551 commands /
+287 members, all global queries; 4,112 answers come from its matching released
+module plus declared test dependency, and 474 from the runtime, with three
+distinct origin/content-hash entries. The harness supplies 3,958 / 3,215 resolved
+sites. No harness-export site remains unresolved.
+
+Unresolved classes partition all original unknown sites; these are diagnostic
+source-context classes, not fabricated native targets. Private-scope means the
+site is inside an InModuleScope/InPesterModuleScope AST ancestor. Same-file means
+a definition exists in that file, including BeforeAll-defined functions; it does
+not claim that the definition has executed or is visible in the clean session.
+Missing is the remainder, including unavailable platform commands, dynamic
+fixture state and definitions outside that chosen session. No test fixture is
+executed merely to make its static query succeed.
+
+| Unresolved class | Pester | PSScriptAnalyzer |
+|---|---:|---:|
+| Literal member | 2,175 | 287 |
+| Declared harness export | 0 | 0 |
+| Same-file / BeforeAll definition | 394 | 199 |
+| Private module scope | 750 | 0 |
+| External application (not admitted as a hit) | 16 | 5 |
+| Missing in declared session | 2,106 | 761 |
+| Total | 5,441 | 1,252 |
 
 The native population retains **17 original UTF-16/NUL-containing files** in
 PSScriptAnalyzer. Product discovery excludes them as binary: 224 files / 775,189
@@ -72,7 +104,7 @@ callbacks and child-process calls remain unattested in this hook.
 
 | Original subject / declared drivers | Attested full original sites | Executed native-pair recall | Driver result |
 |---|---:|---:|---|
-| Pester default plus its declared remaining phase | 13,332/18,842 (70.76%) | 1,922/2,134 (.9007) | default P tests stop after 3 ANSI-output failures, also reproduced untraced; remaining phase 2,928 passed / 0 failed / 3 skipped |
+| Pester default plus its declared remaining phase | 13,332/18,842 (70.76%) | 1,922/2,134 (.9007) | default P tests: 629 passed / 3 failed / 0 skipped, stop before remaining tests; same 3 ANSI failures untraced; remaining phase 2,928 passed / 0 failed / 3 skipped |
 | PSScriptAnalyzer's four declared test directories | 3,180/5,838 (54.47%) | 507/511 (.9922) | 1,944 passed / 0 failed / 162 skipped; exit 0 |
 
 Pester's default `test.ps1 -NoBuild` observes 6,117 sites; its own
@@ -82,7 +114,12 @@ PSScriptAnalyzer uses its explicitly declared **Pester 5.7.1**, not Pester 6.2;
 the latter's removed `-Pending` parameter caused two containers to fail in an
 earlier diagnostic run. Its full pinned documentation and compatibility profiles
 are restored for runtime tests, outside the unchanged graded `Tests` subtree.
-Those repaired-environment runs supply the published row.
+Those repaired-environment runs supply the published row. The fresh phase receipts record
+process exit, native-observer status, test counts, collector/decoder hashes and
+phase outcomes separately. Pester's union says a declared phase stopped after
+failures, even though both observer processes returned 0. PSScriptAnalyzer's
+phase passed with exit 0. The P-test count sums 23 original driver summaries;
+the remaining phase and PSScriptAnalyzer use their final test-driver summaries.
 
 An owner engine bug was isolated before publication: script-qualified command
 breakpoints in 7.6.9 dereference a null InvocationInfo.ScriptName during
@@ -101,6 +138,55 @@ stay in coverage counts and never enter executed-only recall. These are measured
 driver/instrument limits, not a claim that no broader trace can observe more.
 No runtime coverage percentage triggers a whole-written-population L2 grade.
 
+### Why .9007 differs from canonical .9949
+
+The canonical B oracle compares written syntax pairs over its whole population.
+The A runtime oracle compares actual engine targets only for observed executed
+functions. These are different target semantics and populations, so the two
+recalls are not interchangeable. The fresh run reproduces 1,922/2,134 and
+507/511; no native pair is removed to improve either ratio.
+
+| Cause of an executed pair miss | Pester | PSScriptAnalyzer |
+|---|---:|---:|
+| Generated mock target, with written pair present in product | 201 | 0 |
+| Other engine target differs from captured written invocation | 2 | 0 |
+| Case-only caller/target spelling | 3 | 4 |
+| Written pair absent from product output | 6 | 0 |
+| Total missed pairs | 212 | 4 |
+
+The subject's own mock implementation generates a PesterMock-prefixed function
+name with a new GUID and aliases the written command to it. The 201-row class
+requires that native target shape **and** actual product capture of the written
+caller/invocation pair. This is runtime rebinding, not 201 missing syntax calls.
+The two other rebindings are an ordinary alias and an external-script mock
+redirected to a generated function. GUID-bearing target identities and truth
+hashes vary across runs; pair counts and the cause classification are the
+reported comparison. All actual targets remain in the executed score.
+
+The six absent written pairs occur in six files with product ERROR/MISSING
+nodes (20, 12, 54, 2, 4 and 5 in the actual bounded lang-probe checks). Five
+are missing wrapper/invocation captures; the sixth is a call after an inline
+param(...) block, already covered by the existing recovery trigger. That sixth
+pair is also redirected to a generated mock, but is counted here because the
+written pair is absent. Native pairing does not explain these away.
+
+Controller product routing: the existing case-insensitive binding trigger owns
+the seven case-only misses. Broaden the existing grammar-recovery trigger to
+include the five lost wrapper/invocation captures (including a switch-value
+argument followed by a script block); keep the known inline-param case there.
+Separately, controller-serialized call-resolution work must decide whether
+executed alias/mock/script rebinding is a product claim before adding that
+resolution. The 203 otherwise-captured rebindings are explicit evidence for
+that decision, not a whole-written L2 syntax defect or an automatic ceiling.
+No shared engine change or new shared queue id is made on this lane.
+
+The decoder also rejects native rows before pairing: Pester 596 = 38 without
+a unique original site + 5 invocation-spelling disagreements + 553 caller
+mismatches; PSScriptAnalyzer 40 = 1 + 0 + 39. These remain unattested and are
+not the 212 / 4 accepted-pair misses. The aggregate receipt preserves both
+breakdowns and all per-phase test outcomes.
+
+
 ## Named candidates and concrete limits
 
 | Candidate / route | Version / revision checked | Outcome |
@@ -109,7 +195,7 @@ No runtime coverage percentage triggers a whole-written-population L2 grade.
 | Native function breakpoint tracing | Same released runtime; both original test drivers | A on actual observed executed functions only, with original-site coverage and unexecuted misses disclosed. Cannot grade whole-written L2 recall or precision under P-T1. |
 | Trace-Command CommandDiscovery / MemberResolution | PowerShell 7.6.9, actual generic contract probe | Owner providers emit lookup/selection/type-member diagnostics. The probe confirms both providers and actual events, but no structured caller-file/line/column reference table is exported. No complete corpus pairing or unexecuted recall is claimed; these may extend an executed-only adapter, not the whole-source grading rule. |
 | Set-PSDebug -Trace 2 | PowerShell 7.6.9, executed generic fixture | Emits source execution and variable diagnostics, not independently resolved targets. It cannot independently grade unexecuted references. Raw diagnostics stay private. |
-| Native .NET static member reflection | PowerShell 7.6.9 / its bundled .NET, actual Math.Abs fixture | Exposes static method/overload names. It cannot resolve arbitrary instance receivers or undeclared fixture state. Even granting every member site a perfect answer leaves at least 7,224/18,842 Pester and 4,180/5,838 PSScriptAnalyzer sites unresolved; this member-only route cannot close the current gap. |
+| Native .NET static member reflection | PowerShell 7.6.9 / its bundled .NET, actual Math.Abs fixture | Exposes static method/overload names. It cannot resolve arbitrary instance receivers or undeclared fixture state. Even granting every member site a perfect answer leaves at least 3,266/18,842 Pester and 965/5,838 PSScriptAnalyzer sites unresolved; this member-only route cannot close the current gap. |
 | PowerShell reference parser / AST dump | Existing 7.5.4; current 7.6.9 executed | Native syntax B supplies declarations and literal CommandAst/InvokeMemberExpressionAst scope; syntax alone does not lift L2. Current binder targets are independently obtained from the engine. |
 | PowerShellEditorServices reference/definition index | 4.7.0, release source inspected | ReferenceTable groups SymbolVisitor's written `fn ` and `mtd ` names; it has no receiver-resolving reference in these visitors. A custom name-index export is syntax evidence, not a native resolving answer. |
 | PSScriptAnalyzer | 1.25.0, actual module/subject and source contracts | Native rule diagnostics/AST access do not establish a complete resolved-call index. Its matching declared module supplies the actual engine session above; no diagnostic-to-reference promotion. |
@@ -168,12 +254,13 @@ module visibility, disabled undeclared autoload and unresolved external/member
 calls. The runtime source fixture's New-Module remains valid with the fixed hook.
 
 Mutation: `python3.13 -B calibration/oracles/powershell-native/prove_mutations.py --tools workspace/tools/powershell-native --indexbench workspace/tools/indexbench --out workspace/artifacts/lang-powershell/mutations-final`
-kills ten mutations: parser caller substitution, written-alias substitution,
+kills fourteen mutations: parser caller substitution, written-alias substitution,
 callback-guard removal, raw-byte-cap bypass, dropping the second declared phase,
 A-to-C tier, undeclared autoload, private-module scope leakage, static-site-cap
-bypass and script-qualified breakpoints. Each reaches a focused `FAIL:`; source
+bypass, script-qualified breakpoints, omitted declared harness, changed explicit
+runtime baseline, stopped phase mislabelled success and unsupported mock attribution. Each reaches a focused `FAIL:`; source
 is restored in `finally` and GREEN rerun. [Mutation summaries](data/powershell-oracle-2026-10-26/mutations.json)
-record each assertion. The pure decoder/phase-combination suite passes 17 tests.
+record each assertion. The pure decoder/phase-combination suite passes 26 tests.
 
 Caps: native file 3/2, source bytes N/(N-1), static sites N/(N-1) and unique native
 rows 2/1 all refuse the affected unit with no accepted partial oracle. Pure tests
@@ -189,12 +276,23 @@ raw logs, source, file lists and identity-bearing metadata remain private.
 Retain canonical grades. The named owner binder exists and is measured, but its
 clean declared state leaves original references unresolved; native function
 tracing is measured executed-only. Retry L2 when a released owner/maintained-SCIP
-producer independently enumerates materially broader full-source targets under
-the allowed declared state, counting unresolved references as misses, or when a
+producer independently answers enough full-source targets to leave at most 10% of
+original literal sites unresolved **on each subject**, with the recorded
+declared harness loaded and all unresolved sites retained as misses; then
+re-measure full-population metrics before any grade change. Also retry when a
 controller-serialized product repair is regraded against adequate native truth.
 A runtime coverage threshold is not a retry-to-excellent condition.
 Existing case-insensitive binding, UTF-16 ingestion, CWD/module resolution and
-grammar-recovery product triggers remain separate and require fresh permitted
+grammar-recovery product triggers (including the newly classified lost wrappers/
+invocations above) remain separate and require fresh permitted
 measurements. No engine/epoch change, generated file, canonical reading, corpus
 shard or plan checkbox changes here. All binding candidate omissions and minor
 index/spacing/registry/CodeQL findings are addressed.
+
+
+Round-three binding review: both majors and all four minors are addressed by
+fresh binder, scoring and runtime runs; declared harness/load-state hashes,
+resolved/unknown classes, all 212/4 miss causes, numeric retry threshold, phase
+results and dropped-row counts are committed as aggregate evidence. The
+collector hash in measurements.json now matches the committed wrapper exactly;
+per-phase runtime hashes identify the exact trace and decoder implementations.

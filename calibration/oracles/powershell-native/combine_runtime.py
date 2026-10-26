@@ -20,8 +20,11 @@ def combine(paths,population,limits=Limits()):
             'native_events':sum(item['native_events'] for item in original),
             'original_breakpoints':sum(item['original_breakpoints'] for item in original),
             'retained_breakpoints':sum(item['retained_breakpoints'] for item in original),
-            'driver_status':'completed' if all(item['driver_status']=='completed' for item in original) else 'one or more driver exceptions',
-            'phase_statuses':[item['driver_status'] for item in original],
+            'driver_status':'completed' if all(item['driver_status']=='completed' and
+                all(phase['status']=='tests-passed' for phase in item.get('phase_statuses',[])) for item in original)
+                else 'one or more declared phases failed or stopped',
+            'phase_statuses':[phase for item in original for phase in item.get('phase_statuses',[{'status':item['driver_status']}])],
+            'phase_code_sha256':[phase for item in original for phase in item.get('phase_code_sha256',[])],
             'phase_exception_hashes':[item['exception_sha256'] for item in original]}
 
 

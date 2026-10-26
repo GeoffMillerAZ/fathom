@@ -63,7 +63,8 @@ def main():
         with (target/'binder.log').open('w') as log:
             result=subprocess.run([str(base/'runtime/pwsh'),'-NoLogo','-NoProfile','-NonInteractive',
                 '-File',str(here/'ResolveCalls.ps1'),'-Subject',str(subject),'-FilesJson',str(files),
-                '-Manifest',str(manifest_path),'-Out',str(raw)],env=env,cwd=target,stdout=log,stderr=log,timeout=600)
+                '-Manifest',str(manifest_path),'-Harness',name,
+                '-TestDependencyManifest',str(base/'modules/Pester/5.7.1/Pester.psd1'),'-Out',str(raw)],env=env,cwd=target,stdout=log,stderr=log,timeout=600)
         if result.returncode!=0:raise RuntimeError('native binder refused; inspect private log for '+name)
         answers=json.loads(raw.read_text())
         oracle={key:answers[key] for key in ['tool','version','tier','calls']}
