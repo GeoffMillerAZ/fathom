@@ -321,7 +321,7 @@ per-repository operation and a fleet-wide purge button is an invitation to
 an accident.
 
 ```
-┌─ Scope — conjure ─────────────────────────────────────────────┐
+┌─ Scope — svc-f ───────────────────────────────────────────────┐
 │                                                               │
 │  Active suppressions                                          │
 │   • vendor/**            expires in 3 days   [remove]         │

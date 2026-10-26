@@ -237,7 +237,7 @@ untyped), `compat_surface_paths_resolve`; and `fathom changes impact` is **cut**
 
 ## 8. Kill criteria and their instruments (laws 5, 7, 8)
 
-Consumer population: repos with `docs/intent/` and fathom wired (fathom, conjure,
+Consumer population: repos with `docs/intent/` and fathom wired (fathom, svc-f,
 agentic-kit). The clock starts with a `{kind: clock, population, commit, at}` row written by
 the first `fathom intent audit` that sees ≥1 sibling repo (law 6); `intent audit` prints
 the clock's age and doctor names its absence.

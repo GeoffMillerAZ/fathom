@@ -502,11 +502,11 @@ Asking a model whether an unexecuted changed line is "safe" is refused under
 decision 8.
 
 **Kill criterion (CV-M14).** Re-run the CV-M13 ranges with coverage: fathom
-5afeee42..78e508d3 and conjure's three measured ranges (r1, r2, r3). By
+5afeee42..78e508d3 and svc-f's three measured ranges (r1, r2, r3). By
 construction, no `attested` item may be unexecuted and no flagged item may
 have executed. `runServeHTTP` must read `partial`, naming
 `cmd/fathom/servehttp.go` line 131. The `slog.Handler` methods (only present
-in conjure's r3, 44fd5ae..e9d0f2e) must read `attested`. `WithGroup` and
+in svc-f's r3, 44fd5ae..e9d0f2e) must read `attested`. `WithGroup` and
 `ParseError.Unwrap` must read `unexecuted`. This prediction is meaningful only
 against a bound, `passed: true` profile at the range's own head (I44: a
 profile whose run did not pass is refused globally, and every item in that
@@ -547,10 +547,10 @@ overlapping ranges.
   files. The function was a comment-only edit, which the amended rule in §3.4 no
   longer counts. The absence and resurrection planes cover the deleted files, so
   the reading set does not list them.
-- **A weaker-tested repository.** On conjure's r2 range (326 changed functions; 100
+- **A weaker-tested repository.** On svc-f's r2 range (326 changed functions; 100
   of them in vendored files the index excludes) the reading set flags 105 `partial`
   and 2 `unexecuted` of the 226 it classifies (CV-M14). Weaker tests make the
-  flagged set larger; they do not make the change look reviewed. Across conjure's
+  flagged set larger; they do not make the change look reviewed. Across svc-f's
   three ranges, CV-M13's hand check confirmed four changed functions never ran.
   Static reach called two of them `attested`: `jsonShapeError.Error` (r1 and r3)
   and `webui.handleAdoptStream` (r2, 163 reaching tests, 0.0% covered). It called
@@ -561,15 +561,15 @@ overlapping ranges.
   a supplementary reconstruction). CV-M14 does not name r2's second `unexecuted`
   item. CV-M13's r2 coverage join has exactly two functions at 0.0%,
   `ParseError.Unwrap` and `handleAdoptStream`
-  (`docs/bench/readings/cv-m13-method/conjure/r2-classes-with-coverage.tsv`), but
+  (`docs/bench/readings/cv-m13-method/svc-f/r2-classes-with-coverage.tsv`), but
   no reading records `handleAdoptStream`'s class under coverage.
 
 **Re-derivation.** A stranger can re-derive the numbers for this repository's
 ranges from the repository alone. Each reading carries its reproduce recipe, and
 CV-M13's scripts are committed under `docs/bench/readings/cv-m13-method/`. CV-M14
 cross-checked every named case against the raw `go tool cover` profile. The
-conjure numbers need that repository, which a stranger does not have. No 400-file
-range has been measured; the largest is conjure r2, with 326 changed functions.
+svc-f numbers need that repository, which a stranger does not have. No 400-file
+range has been measured; the largest is svc-f r2, with 326 changed functions.
 On this repository, the evidence that flagged items are real rests on one range
 (the 13 partial functions above). No seeded undertested range has been run here.
 
