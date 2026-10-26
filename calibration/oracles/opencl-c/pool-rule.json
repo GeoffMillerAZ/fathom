@@ -1,12 +1,12 @@
 {
   "schema": "opencl-c-pool-rule-v1",
   "registration": "Rule fixed after prior outcomes were published, before the new pyopencl parse and before any future grammar patch measurement. Historical outcomes do not establish a prospective gate pass.",
-  "selection_rule": "Every whole project in these closed pinned search records with a nonempty tracked regular lowercase .cl population and OSI-approved software licences enters the primary pool, except diagnostic roles recorded before its candidate screen. No error rate, clean count, throughput, compiler result, duplicate count or oracle result can include or exclude a subject or file.",
+  "selection_rule": "Every whole project in these closed pinned search records with a nonempty tracked regular lowercase .cl population and OSI-approved software licences enters the primary pool, except diagnostic roles recorded before its candidate screen and the named hashcat exception. Hashcat's diagnostic role was assigned after its round-1 screen because computed includes and qualifier macros require a compiler-evidenced context; round-1 review accepted that structural exception. No future subject may be reclassified after screening. No error rate, clean count, throughput, compiler result, duplicate count or oracle result can include or exclude any other subject or file.",
   "membership_inputs": [
     "repository identity",
     "full commit pin",
     "licence eligibility",
-    "previously recorded population role",
+    "previously recorded population role or the named hashcat structural exception",
     "nonempty exact-lowercase .cl population"
   ],
   "prohibited_membership_inputs": [
@@ -128,7 +128,7 @@
   "diagnostic_or_ineligible": [
     {
       "id": "hashcat",
-      "reason": "Macro/context stress role recorded in subject-search.json before the new production-candidate screens; no evidenced compiler context/prepass."
+      "reason": "Macro/context stress role assigned after its round-1 screen and accepted in round-1 review on structural grounds: computed includes and qualifier macros require a compiler-evidenced context. No evidenced compiler context or prepass exists. Applied without this named exception, the historical inclusive pool fails at 1,482/1,735 (85.42%) dedicated ERROR-or-MISSING files."
     },
     {
       "id": "pocl",
@@ -136,7 +136,7 @@
     },
     {
       "id": "handson",
-      "reason": "CC-BY-3.0 is not OSI-approved; diagnostic only, forbidden as calibration subject under design13.3step16 and corpus.d/vue.yaml precedent."
+      "reason": "CC-BY-3.0 is not OSI-approved; diagnostic only, forbidden as a calibration subject under design §13.3 step 16 and the corpus.d/vue.yaml precedent."
     },
     {
       "id": "nvidia",
@@ -155,7 +155,7 @@
     "dedicated_error_rate": 0.35185185185185186,
     "status": "Fails P-R1 natively. The withdrawn SDK+HandsOn pairing is invalid evidence and establishes no level."
   },
-  "future_evaluation": "P-R1 grammar repair must be measured on this unchanged complete primary pool, with per-subject and pooled counts. New candidates require another metadata-only preregistration before reading, not search-until-pass. No grammar patch implementation is started until G-R1 opens it.",
+  "future_evaluation": "P-R1 grammar repair must be measured on this unchanged complete primary pool, with per-subject and pooled counts. Every future patch measurement must also report hashcat's dedicated and C rates beside the fixed eight-project pool. New candidates require another metadata-only preregistration before reading, not search-until-pass. No grammar patch implementation is started until G-R1 opens it.",
   "license_evidence": {
     "rodinia": {
       "license": "BSD-3-Clause",
