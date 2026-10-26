@@ -17,3 +17,8 @@ holdout:
       throughput at least 1 MB per CPU second, with all oracle coverage gaps
       disclosed. A miss is reported, never tuned on this holdout. Keep outside
       calibration/corpus.d and never call Foundation fresh again.
+
+# SPENT at freeze 678269006119029000aa81d54d42dd3890727a00.
+# Primary parser rejected 5/76 tracked SCSS files; native composition refused
+# a dependency without a positioned primary statement. No composite reading
+# was produced, no source/oracle tuning occurred, and this pin is never reused.

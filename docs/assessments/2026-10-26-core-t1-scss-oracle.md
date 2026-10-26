@@ -110,6 +110,25 @@ meta.load-css URLs remain explicitly unpositioned and never get a fabricated
 line. Eight primary parser-rejected files remain counted against symbol
 precision. No extractor, discovery filter, production gate or source changed.
 
-The fresh Spectre pin was committed before any source access. Freeze these
-canonical results and the unchanged oracle before its first untuned reading;
-it remains outside the canonical corpus and must not reuse Foundation.
+The fresh Spectre pin was committed before any source access; the complete
+canonical/post-hoc evidence freeze is 678269006119029000aa81d54d42dd3890727a00.
+Its attempted first validation is recorded below.
+
+## Fresh Spectre validation: refused, now spent
+
+Measured: all 76 tracked SCSS files were supplied unchanged, without filters or
+compile setup. The frozen primary rejected five files, compiled 19 and failed
+57 standalone evaluations. The native composite then refused a dependency
+with no positioned primary statement; that file has no import entries in the
+primary. No composite oracle JSON or Fathom grade was produced. The
+[counts/hashes refusal receipt](data/2026-10-26-core-t1-scss-spectre-refusal.json)
+retains the failure, source inventory and frozen tool/build identities.
+
+Spectre is spent and remains outside the canonical corpus. No source, oracle,
+filter or rule was changed after its read. The canonical measurements and
+Foundation post-hoc repair remain valid, but do not establish fresh independent
+validation of the composite. A named next candidate is first-party sass-parser
+0.5.1, already identified by the registry audit: it is live and unmeasured,
+not evidence of a repair. A follow-up must measure it on the canonical corpus,
+freeze the new instrument, and preregister a different untouched holdout.
+No exhausted parser/oracle ceiling is claimed.
