@@ -235,7 +235,7 @@ owner's decisions, binding on the harness and every reading after them:
   compiler's own parser (`calibration/oracles/kotlin-psi`, tier B like JavaParser and Roslyn) — its
   definitions, ranges and call pairs, a call belonging to the smallest enclosing function or
   constructor as it does in the dialect. scip-java's Kotlin index was tried and cannot stand in: under
-  Kotlin 2.2.0 (its plugin refuses 2.3.20) it wrote 58,698 occurrences with no range at all, and
+  Kotlin 2.2.0 (its plugin refuses 2.3.20) the legacy-only reader returned 58,698 empty ranges (source-read correction 2026-10-26: the producer writes typed-only ranges absent from the bundled reader; this does not establish missing producer ranges), and
   okhttp's build needs an Android SDK. The grammar pin moved from fwcd 0.3.8 to commit `1852ea17`
   because 0.3.8 left 16.6% of the subject files with parse errors (over §14.2's 5% line) and 1852ea17
   leaves 1.1%.

@@ -8,8 +8,10 @@ object as `Companion`: on square/okhttp and JetBrains/Exposed (1,363 files) it l
 definitions against the dialect's 16,335 with 97% precision, so recall reads .26 for a reason
 no query can fix. A scip-java index cannot stand in for it either: scip-java 0.13.1's Kotlin plugin
 refuses Exposed's Kotlin 2.3.20, and under 2.2.0 (with four `Uuid.generateV4/V7` calls shimmed) it
-indexed only what Gradle compiled (Exposed's three main modules, 166 of 794 files) and wrote all
-58,698 occurrences without a range or a symbol kind; okhttp's Kotlin Multiplatform build needs an
+indexed only what Gradle compiled (Exposed's three main modules, 166 of 794 files).
+Fathom's reader returned 58,698 empty legacy ranges with no symbol kind. Source-read
+correction (2026-10-26): scip-java writes typed-only ranges absent from Fathom's
+bundled reader. Missing producer ranges were not established; okhttp's Kotlin Multiplatform build needs an
 Android SDK. What it does write speaks the JVM's vocabulary (a Kotlin property is a field plus
 `getX()`/`setX()`, a constructor is `<init>`), so even with ranges it would be the L3/L4 oracle,
 not the L1 one.
