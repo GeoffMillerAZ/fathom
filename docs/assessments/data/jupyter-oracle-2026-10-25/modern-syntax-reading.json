@@ -1,0 +1,127 @@
+{
+  "dialect": "jupyter",
+  "kind": "tooling",
+  "target_level": "L2",
+  "level_met": "L2",
+  "grade": {
+    "L1": "excellent",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-26",
+  "fathom_commit": "08def9e00",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "wesm/pydata-book (separate modern diagnostic holdout)",
+      "sha": "a892791ce5a3831134cfa2989033ecbb9289f1ea",
+      "files": 14,
+      "bytes": 278926,
+      "counts": {
+        "callables": 54,
+        "callables_signed": 54,
+        "fathom_defs": 1012,
+        "kind_equal": 1005,
+        "matched": 1006,
+        "oracle_defs": 1006,
+        "range_eligible": 54,
+        "range_ok": 54,
+        "ref_fathom": 1173,
+        "ref_fathom_in_truth": 1166,
+        "ref_truth": 1166,
+        "ref_truth_found": 1166
+      },
+      "families": {
+        "l1": "B",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "class",
+        "function",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "fathom:JupyterModule": 14,
+        "tool:namespace": 57
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 69.244,
+        "extract_cpu_ms": 75.575,
+        "max_file_ms": 7,
+        "peak_module_pages": 304,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "ctags on the exported cells, nbformat 5.11.1",
+      "version": "Universal Ctags 6.2.1, Copyright (C) 2015-2025 Universal Ctags Team"
+    },
+    {
+      "tier": "C",
+      "tool": "python ast on the exported cells, nbformat 5.11.1",
+      "version": "python 3.13.5"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 0.994,
+    "ref_recall": 1,
+    "sym_precision": 0.9941,
+    "sym_recall": 1,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "ref_precision": "C",
+    "ref_recall": "C",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "class",
+    "function"
+  ],
+  "kind_intersection": [
+    "class",
+    "function",
+    "variable"
+  ],
+  "counts": {
+    "callables": 54,
+    "callables_signed": 54,
+    "fathom_defs": 1012,
+    "kind_equal": 1005,
+    "matched": 1006,
+    "oracle_defs": 1006,
+    "range_eligible": 54,
+    "range_ok": 54,
+    "ref_fathom": 1173,
+    "ref_fathom_in_truth": 1166,
+    "ref_truth": 1166,
+    "ref_truth_found": 1166
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 3.69,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 4.03,
+    "max_file_ms": 7,
+    "peak_module_pages": 304,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:JupyterModule": 14,
+    "tool:namespace": 57
+  },
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "wesm/pydata-book (separate modern diagnostic holdout): OL-R4 modern subject; kept outside canonical corpus and reading; native subset is diagnostic, unknowns and scanner gaps forbid a full-population tier-A claim"
+  ],
+  "disposition": null
+}

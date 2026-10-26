@@ -1,0 +1,9 @@
+{
+  "pair_count": 14,
+  "pairs_sha256": "350167e12cdcf3daa53dd6fdab3b62ff85cf4cb80e8f270d4158d6ce41322171",
+  "publication": "sql-aggregate-v1",
+  "raw_json_sha256": "1ef30bbaa509f9fcca6211e3e7a836dbfb20149a77e5328d8318042031f2b528",
+  "tier": "A",
+  "tool": "sql-native-catalog",
+  "version": "SQLite 3.49.1; PGlite 0.5.11 PostgreSQL 18.6; pgvector 0.0.12"
+}

@@ -1,0 +1,102 @@
+{
+  "subject_sha": "7ddb3dc015d1440e8a0fb0bbafa2df9aaaa2669d",
+  "releases": [
+    {
+      "tag": "v3.0.9",
+      "target": "7ddb3dc015d1440e8a0fb0bbafa2df9aaaa2669d",
+      "assets": [
+        {
+          "name": "proxysql_3.0.9-dbg-ubuntu24_amd64.deb",
+          "url": "https://github.com/sysown/proxysql/releases/download/v3.0.9/proxysql_3.0.9-dbg-ubuntu24_amd64.deb",
+          "bytes": 27207804,
+          "digest": "sha256:3c13a463d89888f1a50735386f184917866856c684d3448b66e0bc6e6edc5d3e"
+        },
+        {
+          "name": "proxysql_3.0.9-ubuntu24-clang_amd64.deb",
+          "url": "https://github.com/sysown/proxysql/releases/download/v3.0.9/proxysql_3.0.9-ubuntu24-clang_amd64.deb",
+          "bytes": 15611880,
+          "digest": "sha256:fb3db1e5d2a73cadf595cf61b74f77c583795196dc94cb84a59729f5f7a9f87a"
+        },
+        {
+          "name": "proxysql_3.0.9-ubuntu24_amd64.deb",
+          "url": "https://github.com/sysown/proxysql/releases/download/v3.0.9/proxysql_3.0.9-ubuntu24_amd64.deb",
+          "bytes": 36198548,
+          "digest": "sha256:a20548b17ede6d9e014decb1eefb1cb0775f643932561388770d2f50c8d316ab"
+        }
+      ]
+    },
+    {
+      "tag": "v3.1.9",
+      "target": "7ddb3dc015d1440e8a0fb0bbafa2df9aaaa2669d",
+      "assets": [
+        {
+          "name": "proxysql_3.1.9-dbg-ubuntu24_amd64.deb",
+          "url": "https://github.com/sysown/proxysql/releases/download/v3.1.9/proxysql_3.1.9-dbg-ubuntu24_amd64.deb",
+          "bytes": 27871012,
+          "digest": "sha256:1c5b16454f9a2fec95900de501ad6a126f4228ac62fd70ea6b2f53c325f19532"
+        },
+        {
+          "name": "proxysql_3.1.9-ubuntu24-clang_amd64.deb",
+          "url": "https://github.com/sysown/proxysql/releases/download/v3.1.9/proxysql_3.1.9-ubuntu24-clang_amd64.deb",
+          "bytes": 15882188,
+          "digest": "sha256:0a1a9e2af645df8d24c314804d2988983fd05650b75691706497cf07abb6d689"
+        },
+        {
+          "name": "proxysql_3.1.9-ubuntu24_amd64.deb",
+          "url": "https://github.com/sysown/proxysql/releases/download/v3.1.9/proxysql_3.1.9-ubuntu24_amd64.deb",
+          "bytes": 37035912,
+          "digest": "sha256:e6bdf32b7a0f723283ab1c5ee5ccda6631335012f55363cdba51550c3f817c7d"
+        }
+      ]
+    },
+    {
+      "tag": "v4.0.8",
+      "target": "6ef036a00c6f1dbcf3f27fe7f6e07f3211d7d6f8",
+      "assets": [
+        {
+          "name": "proxysql_4.0.8-dbg-ubuntu24_amd64.deb",
+          "url": "https://github.com/sysown/proxysql/releases/download/v4.0.8/proxysql_4.0.8-dbg-ubuntu24_amd64.deb",
+          "bytes": 33500064,
+          "digest": "sha256:7e7cdb48f687ca84bcc76919aaea2f7146093aadf12d601db689f38927497d28"
+        },
+        {
+          "name": "proxysql_4.0.8-ubuntu24-clang_amd64.deb",
+          "url": "https://github.com/sysown/proxysql/releases/download/v4.0.8/proxysql_4.0.8-ubuntu24-clang_amd64.deb",
+          "bytes": 20184164,
+          "digest": "sha256:ecb86e698fa3991561170c0b1b2691bf435ebda36bf2eaec14b342893f6ea879"
+        },
+        {
+          "name": "proxysql_4.0.8-ubuntu24_amd64.deb",
+          "url": "https://github.com/sysown/proxysql/releases/download/v4.0.8/proxysql_4.0.8-ubuntu24_amd64.deb",
+          "bytes": 47117468,
+          "digest": "sha256:c6449c5e76db4d612fe418b6a7a4a82ea7d70ae36124e08c7ede10f414b63f49"
+        }
+      ]
+    },
+    {
+      "tag": "v4.0.10",
+      "target": "f5f1e148eab2ffd317babba66d283f0b5a6be7b0",
+      "assets": [
+        {
+          "name": "proxysql_4.0.10-dbg-ubuntu24_amd64.deb",
+          "url": "https://github.com/sysown/proxysql/releases/download/v4.0.10/proxysql_4.0.10-dbg-ubuntu24_amd64.deb",
+          "bytes": 43750956,
+          "digest": "sha256:80b567c6fa076c7a3911a5b647a2825b2db76c2d00049e9cf4a5e41eeeb991b6"
+        },
+        {
+          "name": "proxysql_4.0.10-ubuntu24-clang_amd64.deb",
+          "url": "https://github.com/sysown/proxysql/releases/download/v4.0.10/proxysql_4.0.10-ubuntu24-clang_amd64.deb",
+          "bytes": 25914384,
+          "digest": "sha256:e0c35db5fe69716ce37d04c506c6e1269f31bcab9385f7118ea16a09700ca2e6"
+        },
+        {
+          "name": "proxysql_4.0.10-ubuntu24_amd64.deb",
+          "url": "https://github.com/sysown/proxysql/releases/download/v4.0.10/proxysql_4.0.10-ubuntu24_amd64.deb",
+          "bytes": 58688652,
+          "digest": "sha256:90ecd7e1892fc5cc1cf1cdbad4f74344e65fb8e428f45d55679c825b6fbaacf6"
+        }
+      ]
+    }
+  ],
+  "source_build_image": "proxysql/packaging@sha256:c6bf0802f14349c00f3f935c237591f897d1a3c12ce3943cf8d7a6a2fc3067c5"
+}
