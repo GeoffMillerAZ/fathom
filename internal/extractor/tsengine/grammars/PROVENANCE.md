@@ -190,11 +190,17 @@ exists.
 
 ## Build recipe (reproducible — `./build.sh <blob>`)
 
-`build.sh <blob> [outdir]` reads the blob's lock row, fetches the pinned core
+`build.sh <blob> [outdir]` selects the blob's lock row once, fetches the pinned core
 and grammar tarballs, refuses a tarball whose sha256 or embedded commit differs
 from the lock and a licence file (top level, `queries/`, `src/`) that does not
-state the lock's allowlisted licence, verifies and applies any ordered
-hash-pinned patches from `patches/`, rechecks the licence, runs a pinned
+state the lock's allowlisted licence, copies each declared patch from `patches/`
+into private scratch, checks that copy's sha256, then checks and applies the same
+bytes with isolated Git settings.
+Patches cannot edit licence or attribution files, change file types or modes,
+or target files that generation would overwrite. Without generation, targets
+are limited to the selected C parser, scanner and headers. These checks require
+a source-byte change in an allowed input, but do not prove a semantic change in
+the binary. The build rechecks the licence, runs pinned
 `tree-sitter-cli generate` for a `"generate": true` grammar, then:
 
 ```
