@@ -53,10 +53,17 @@ func harnessNames() string {
 }
 
 func validateOfflineHarnessVersion(name, version string) error {
-	if factory, ok := offlineHarnesses[name]; ok {
-		expected := factory.new(offlineHarnessConfig{}).Version()
-		if version != expected {
-			return fmt.Errorf("-harness %s requires -harness-version %s", name, expected)
+	// Reserve the control versions in both directions, including built-in null.
+	versions := map[string]string{"null": "null-1"}
+	for control, factory := range offlineHarnesses {
+		versions[control] = factory.new(offlineHarnessConfig{}).Version()
+	}
+	if expected, ok := versions[name]; ok && version != expected {
+		return fmt.Errorf("-harness %s requires -harness-version %s", name, expected)
+	}
+	for _, control := range []string{"null", "oracle", "wrong-patch"} {
+		if version == versions[control] && name != control {
+			return fmt.Errorf("-harness-version %s is reserved for -harness %s", version, control)
 		}
 	}
 	return nil

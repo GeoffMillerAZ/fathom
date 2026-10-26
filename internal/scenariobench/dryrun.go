@@ -55,8 +55,8 @@ func DryRunVerdict(corpus Corpus, cells []CellResult) ([]DryRunTaskVerdict, erro
 		arms = append(arms, arm)
 	}
 	sort.Strings(arms)
-	if len(corpus.Tasks) == 0 || len(arms) == 0 {
-		return nil, fmt.Errorf("dryrun requires tasks and arms")
+	if len(ids) == 0 || len(arms) == 0 {
+		return nil, fmt.Errorf("dryrun requires selected tasks and arms")
 	}
 	verdicts := make([]DryRunTaskVerdict, 0, len(ids))
 	for _, id := range ids {
@@ -70,6 +70,9 @@ func DryRunVerdict(corpus Corpus, cells []CellResult) ([]DryRunTaskVerdict, erro
 				for trial := 1; trial <= 3; trial++ {
 					cell := trials[trial]
 					reason := cell.InstrumentDefect
+					if reason == "" {
+						reason = offlineControlDefect(cell)
+					}
 					if reason == "" {
 						reason = CellLost(cell.Sessions, NewNullHarness())
 					}
@@ -110,4 +113,24 @@ func DryRunVerdict(corpus Corpus, cells []CellResult) ([]DryRunTaskVerdict, erro
 		verdicts = append(verdicts, DryRunTaskVerdict{TaskID: id, Keep: reason == "", Reason: reason})
 	}
 	return verdicts, nil
+}
+
+// offlineControlDefect checks totals and sessions independently so inconsistent
+// stored aggregates cannot make an agent-backed cell look like a free control.
+func offlineControlDefect(cell CellResult) string {
+	if cell.Readings.TotalTurns > 0 {
+		return "control has positive total turns"
+	}
+	if cell.Readings.TotalCostUSD > 0 {
+		return "control has positive total cost"
+	}
+	for _, session := range cell.Sessions {
+		if session.Turns > 0 {
+			return "control has positive session turns"
+		}
+		if session.CostUSD > 0 {
+			return "control has positive session cost"
+		}
+	}
+	return ""
 }
