@@ -1,8 +1,11 @@
 # Well-architected evidence: concern facts, joins and fact receipts (WAE-)
 
 Design: `docs/vision/44-evidence-before-the-incident.md`. Decision: ADR-069. Goal: G37. Assessments:
-`docs/assessments/2026-10-11-*.md`. Fathom stores concern facts and computes joins with coverage; Review Kit judges,
-pe's `pdk/risk` tiers, policy-kit owns resource and security rules, and an external agent acts. Fathom never grades,
+`docs/assessments/2026-10-11-*.md`. Platform engineering extension (GitHub issue #14): `docs/plans/platform-engineering.md`
+(PLT-), which owns the concern-delta file a change-risk tierer reads (ADR-069 decision 5's ratchet), the per-subject
+fact receipt with a basis that a readiness inventory and a review kit's facts lane read, and the platform readings;
+fathom ships no question map. Fathom stores concern facts and computes joins with coverage; the review kit judges,
+an adopting platform's change-risk tierer tiers, the policy kit owns resource and security rules, and an external agent acts. Fathom never grades,
 admits, holds the findings record, or executes, proposes or records a mitigation.
 
 Gates: wave 0 is $0 readings, their bars fixed here before any run (K19: never moved after the data). Wave 1 rides

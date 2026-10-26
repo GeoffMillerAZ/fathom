@@ -403,6 +403,10 @@ Wave 1 derives on read and adds no table.
 
 Every machine serves its own checkouts through its own loopback fathom, with no central shared daemon or daemon-to-daemon calls; git moves code, attested receipts move evidence and index snapshots will move the index on existing operator carriers (ADR-078 D1–D3). The multi-machine guide and shipped `fathom-offload` skill ship now; receipt identity columns wait for RT-M1 PASS, and helper-machine cold start names an IXS phase 1 consumer after RT-M1 PASS and IXS-M0b parity, without unparking that plan.
 
+### 9.15 Amended 2026-10-25 (owner's ask, proposed): platform engineering support (GitHub issue #14)
+
+`docs/design/platform-engineering.md`, plan `docs/plans/platform-engineering.md` (PLT-): the fathom side of an adopting platform team's review-kit readings, readiness inventory and change-risk tiers, extending vision 44 and WAE- with no parallel program and no question map. P0 (the use-case guide, the platform prereg, the census and baseline readings, and a CLI-only concern-delta file over stored Kubernetes facts) runs now as fillers. P1 (a per-subject fact receipt with a commit basis, two skills, a feature-labs card) rides lf8 beside WAE wave 2. Measurement rides bench prep (9.13) and feature labs (9.14), which merge first; G37 is widened rather than a new goal opened. The two-wave limit and the swap-volume rule of section 9.4 still apply.
+
 ## 10. Corrections to the memo (the tree or the memo itself disagreed)
 
 1. **`tests:` is taken.** Plan grammar v2 already has `tests:` (a `gone: callers` modifier,
