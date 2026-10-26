@@ -11,7 +11,9 @@ Source inspection on 2026-10-25 covers standard WGSL as defined by the [dated 20
 | Candidate and pin | Concrete ceiling on the existing corpus |
 |---|---|
 | [Naga WGSL frontend 40f4a34e](https://github.com/gfx-rs/wgpu/blob/40f4a34ebaf56f9a046231f54125ad046239d3f3/naga/src/front/wgsl/mod.rs) | `parse_str` accepts one source string and returns one module without a source-file resolver. It cannot establish cross-file import truth for standard WGSL. |
+| [Dawn Tint 628398941dd5](https://dawn.googlesource.com/dawn/+/628398941dd561970ead2c924015d287b78e3fac/src/tint/lang/wgsl/reader/reader.cc) | `Parse` accepts one `Source::File` and resolves one program; `WgslToIR` lowers that program to one module. This entry point has no source-file resolver, so it supplies no cross-file import truth for standard WGSL. |
 | [wgsl-parse 0.6.0](https://docs.rs/crate/wgsl-parse/0.6.0) | The existing L2 oracle parses WGSL. Its sibling WESL compiler resolves imports, but this parser does not add imports to standard WGSL or supply native L3 truth. |
+| [wgsl-analyzer 2026-09-30](https://github.com/wgsl-analyzer/wgsl-analyzer/releases/tag/2026-09-30) | Its [README at this release](https://github.com/wgsl-analyzer/wgsl-analyzer/blob/2026-09-30/README.md) identifies WESL support as experimental. The release lists import-resolution and module-graph work, but standard WGSL has no imports and the pinned subjects contain none; WESL needs a separate population for L3 grading. |
 | [WESL 0.6.0](https://docs.rs/crate/wesl/0.6.0) | Its resolver handles imports in `.wesl`. That is a separate language population requiring its own queue item, pinned corpus and independent resolution truth. |
 | [naga_oil 0.23.0](https://docs.rs/crate/naga_oil/0.23.0) | Composer resolves `#import` and `#define_import_path` shader modules. Those directives are outside standard WGSL and absent from the pinned subjects, so they require a separate corpus and queue item. |
 
