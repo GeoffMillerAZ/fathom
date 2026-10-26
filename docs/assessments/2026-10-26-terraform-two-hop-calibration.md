@@ -71,26 +71,31 @@ plain-init attempts (16 ancestors plus one completion pass); a pure test forces
 every retry to restore a missing pinned link and proves whole-root refusal
 after exactly 17 failures.
 
-## Before and repaired binaries
+## Baseline and landing binaries
 
-**Measured:** both `indexbench` binaries were built from clean detached Git
-checkouts. Their embedded `vcs.revision` equals checkout HEAD and
-`vcs.modified=false`. The baseline is `6db920e72898abb20bf86c22652b401902e34598`;
-the repaired engine is `2ff8b2ac3d188268c52bff320eddf93242b8248a`. Each
-binary ran three full grades against the same native JSON and the full 87-file
-and 77-file subject sets. Counts, metrics and grades agreed across all three
-runs per binary. The selected readings are the median CPU-throughput runs;
-timing does not choose the grade. The public receipt hashes the unannotated
-selected outputs; the committed Terraform reading adds only provenance and
-limit notes, leaving every generated count, metric and grade unchanged.
+**Measured:** the baseline `indexbench` binary at
+`6db920e72898abb20bf86c22652b401902e34598` and landing binary at
+`df20b1f1810c96dde9c00d919166f44746376993` were built from clean
+Git checkouts. Their embedded `vcs.revision` equals checkout HEAD and
+`vcs.modified=false`. The original baseline and the landing engine each ran
+three full grades against the same native JSON and the full 87-file and 77-file
+subject sets. Counts, metrics and grades agreed across each engine's three runs.
+The selected readings are the median CPU-throughput runs; timing does not
+choose the grade. The public receipt hashes the unannotated selected outputs;
+the committed Terraform reading adds only provenance and limit notes, leaving
+every generated count, metric and grade unchanged. The first repaired engine
+`2ff8b2ac3d188268c52bff320eddf93242b8248a` was also graded earlier, but
+the committed reading now names the measured landing engine.
+
 These CPU-basis medians were measured on a shared Apple Silicon helper with
-Go 1.27.3, `nice 10`, `GOMAXPROCS=2`, and `GOFLAGS=-p=2`. The load guard was
-at most 9 at launch. Per-run load and concurrent jobs were not recorded, so
-the reported wall `extract_ms` values are not comparable and do not establish
-an extraction-cost regression. Selected CPU throughput is 8.53 MB/s for the
-baseline (runs: 8.53, 8.65, 8.14) and 8.44 MB/s for the repaired engine
-(runs: 8.44, 8.53, 8.41), with
-zero extractor faults in all six runs.
+Go 1.27.3, `nice 10`, `GOMAXPROCS=2`, and `GOFLAGS=-p=2`. The baseline load
+guard was at most 9 at launch; per-run load was not recorded. The landing
+engine's recorded 1-minute launch load was 5.7026 for each run. Concurrent jobs
+were not recorded for either engine. The reported wall `extract_ms` values are
+not comparable and do not establish an extraction-cost regression. Selected
+CPU throughput is 8.53 MB/s for the baseline (runs: 8.53, 8.65, 8.14) and
+8.04 MB/s for the landing engine (runs: 8.36, 7.97, 8.04), with zero extractor
+faults in all six runs.
 
 | Engine | EKS found / 866 | VPC found / 2,662 | Total recall | Precision | L3 |
 |---|---:|---:|---:|---:|---|

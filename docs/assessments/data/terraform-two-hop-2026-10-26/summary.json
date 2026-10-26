@@ -44,8 +44,8 @@
       "selected_run": 1
     },
     "repaired": {
-      "binary_sha256": "73e4a71fc12a11adb0f402af15dc0e51b11b39e8a71a53b6862ca925331165f8",
-      "commit": "2ff8b2ac3",
+      "binary_sha256": "39daeeda70b4e371f1a60fd7141c17c4f65095ff4e223e47fcc0c04845ecf571",
+      "commit": "df20b1f1810c96dde9c00d919166f44746376993",
       "counts": {
         "fathom_defs": 3111,
         "kind_equal": 3111,
@@ -76,19 +76,30 @@
         "xref_precision": 0.9963,
         "xref_recall": 1
       },
+      "run_conditions": {
+        "concurrent_jobs": "not recorded",
+        "goflags": "-p=2",
+        "gomaxprocs": "2",
+        "launch_load_1m": [
+          5.7026,
+          5.7026,
+          5.7026
+        ],
+        "nice_priority": 10
+      },
       "run_sha256": [
-        "1c49ebe123ba144ecb4cc0cdf9cc40aac60cb101f4b8718092ce37107b458651",
-        "a89ab28e455c9fbfbcb2fe26f559dbf5dc3a782b1803ae1a251740ad3d764466",
-        "6a419cf4b5224f849abd576d56ca8bc3e615c02f7b42f14899b223964739b006"
+        "6b994d71071ed21de8a02c4b099e6a5e16678309de5b64a179bce6585796c094",
+        "517ce80fbbfd226d51a08e6976e8eaf1cc752e8afdb3cb3dd57cdc53312f4d20",
+        "ad72e2fa96a6c2cd1de163e4ca0e039f6b8005e47ae1b61cc24e502613c13d41"
       ],
-      "selected_reading_sha256": "1c49ebe123ba144ecb4cc0cdf9cc40aac60cb101f4b8718092ce37107b458651",
-      "selected_run": 1
+      "selected_reading_sha256": "ad72e2fa96a6c2cd1de163e4ca0e039f6b8005e47ae1b61cc24e502613c13d41",
+      "selected_run": 3
     }
   },
   "native_tool": "OpenTofu 1.13.0",
   "oracle_binary_sha256": "6c4cb6fe34bd8ed236aff394fb72ff840e5063f90adfd7646998a6c0481a3890",
   "pin_manifest_sha256": "14397e8a99b5ec4ecaa04d073a042ab9bdf2d7e0b53124523ca5035d52470a46",
-  "repaired_full_commit": "2ff8b2ac3d188268c52bff320eddf93242b8248a",
+  "repaired_full_commit": "df20b1f1810c96dde9c00d919166f44746376993",
   "subjects": [
     {
       "baseline": {

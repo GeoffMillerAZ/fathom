@@ -20,15 +20,29 @@ def digest(path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cache", type=pathlib.Path, required=True)
+    parser.add_argument("--landing-report", type=pathlib.Path,
+                        help="clean landing-engine grade report; retains the original baseline")
     parser.add_argument("--out", type=pathlib.Path, required=True)
     args = parser.parse_args()
     cache = args.cache.resolve()
-    grades = json.loads((cache / "native" / "grades" / "comparison.json").read_text())
+    native = cache / "native"
+    comparison = json.loads((native / "grades" / "comparison.json").read_text())
+    grades = comparison.copy()
+    if args.landing_report:
+        landing = json.loads(args.landing_report.read_text())
+        if landing["date"] != comparison["date"]:
+            raise RuntimeError("landing/baseline grade dates differ")
+        if landing["native_raw_sha256"] != comparison["native_raw_sha256"]:
+            raise RuntimeError("landing/baseline native truth hashes differ")
+        if landing["repaired"]["commit"] != landing["repaired_full_commit"]:
+            raise RuntimeError("landing grade commit differs from full engine commit")
+        grades["repaired"] = landing["repaired"]
+        grades["repaired_full_commit"] = landing["repaired_full_commit"]
     subjects = []
     for pin in PINS["subjects"]:
         repo = pin["repository"]
         slug = repo.rsplit("-", 1)[-1]
-        receipts = [json.loads((cache / "native" / f"{slug}-{phase}-receipt.json").read_text())
+        receipts = [json.loads((native / f"{slug}-{phase}-receipt.json").read_text())
                     for phase in ("before", "after")]
         before, after = receipts
         identity = ("subject_sha", "tracked_manifest_sha256", "tracked_entries", "tracked_bytes",
@@ -42,8 +56,10 @@ def main():
         if before["subject_sha"] != pin["sha"]:
             raise RuntimeError("native evidence differs from pin: " + repo)
         for phase in ("before", "after"):
-            if digest(cache / "native" / f"{slug}-{phase}.json") != before["oracle_raw_sha256"]:
+            if digest(native / f"{slug}-{phase}.json") != before["oracle_raw_sha256"]:
                 raise RuntimeError("raw native JSON differs from receipt: " + repo)
+        if grades["native_raw_sha256"][repo] != before["oracle_raw_sha256"]:
+            raise RuntimeError("grade/native raw truth differs: " + repo)
         subject = {key: before[key] for key in identity}
         subject["repository"] = repo
         subject["raw_truth_unchanged"] = True
@@ -66,6 +82,8 @@ def main():
                          for label in ("baseline", "repaired")},
               "baseline_full_commit": grades["baseline_full_commit"],
               "repaired_full_commit": grades["repaired_full_commit"]}
+    if args.landing_report:
+        result["grades"]["repaired"]["run_conditions"] = grades["repaired"]["run_conditions"]
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
     print(json.dumps({"published": str(args.out), "subjects": len(subjects),

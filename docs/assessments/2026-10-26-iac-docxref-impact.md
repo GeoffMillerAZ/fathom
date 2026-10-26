@@ -42,9 +42,9 @@ reading therefore receives no new intents.
 fixtures twice, restoring the two original engine files for the before run.
 Every input digest, file/byte count and extraction-error count agrees across
 runs. The receipt contains only counts, hashes and dialect identifiers. The after replay
-was repeated on override-fix engine `eae9075bd`; its additional source-presence
-label changes only the Terraform extraction digest. The measured subjects contain
-no override files, so the original clean-engine regrade remains applicable.
+was measured on landing engine `df20b1f1810c96dde9c00d919166f44746376993`
+after the final override-order fix. Only the Terraform extraction digest changes.
+The same landing engine was graded against the full native subjects.
 
 - 311 fixture files, 192,875 bytes and zero extraction errors.
 - Only Terraform's extraction digest changes. Every other extraction and
@@ -64,11 +64,13 @@ Data: [counts and digest receipt](data/2026-10-26-iac-docxref-impact.json).
 
 ## Regraded reading deltas
 
-**Measured:** both binaries were built from clean detached checkouts. Binary VCS
-revision and clean state are checked by `grade.py`: baseline `6db920e72`, repaired
-`2ff8b2ac3`. Both engines use the same native truth and exact subject SHAs, files
-and byte counts. Three runs per engine agree on all counts and grades; tenancy
-uses the run with median CPU throughput.
+**Measured:** the baseline and landing binaries were built from clean Git
+checkouts. Binary VCS revision and clean state are checked by `grade.py`:
+baseline `6db920e72898abb20bf86c22652b401902e34598`, landing engine
+`df20b1f1810c96dde9c00d919166f44746376993`. Both engines use the same
+native truth and exact subject SHAs, files and byte counts. Three runs per
+engine agree on all counts and grades; tenancy uses the run with median CPU
+throughput. The public receipt records both binaries, run hashes and conditions.
 
 | Native subject | Files / bytes | Truth | Found before | Found after |
 |---|---:|---:|---:|---:|

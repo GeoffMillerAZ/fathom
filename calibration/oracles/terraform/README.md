@@ -92,26 +92,37 @@ and that a source fact can. It does not prove extractor independence; that
 requires an actual indexbench extractor-output perturbation against the same
 fixture and unchanged native truth digest.
 
-With clean, detached checkouts of baseline `6db920e72898abb20bf86c22652b401902e34598`
-and repaired `2ff8b2ac3d188268c52bff320eddf93242b8248a`, build each
-`cmd/indexbench` separately and run the three-sample grade:
+The original comparison used clean, detached checkouts of baseline
+`6db920e72898abb20bf86c22652b401902e34598` and the first repaired engine
+`2ff8b2ac3d188268c52bff320eddf93242b8248a`. Its baseline grade and native
+truth remain unchanged. Build the final engine commit
+`df20b1f1810c96dde9c00d919166f44746376993` in a clean Git checkout,
+then run the three-sample landing grade against the same native truth:
 
 ```sh
-(cd "$BASELINE_CHECKOUT" && go build -o "$CACHE/tools/indexbench-terraform-before" ./cmd/indexbench)
-(cd "$REPAIRED_CHECKOUT" && go build -o "$CACHE/tools/indexbench-terraform-after" ./cmd/indexbench)
+(cd "$LANDING_CHECKOUT" && go build -trimpath -o "$CACHE/tools/indexbench-terraform-landing-r3" ./cmd/indexbench)
 python3 calibration/oracles/terraform/grade.py \
-  --cache "$CACHE" \
-  --baseline-bin "$CACHE/tools/indexbench-terraform-before" \
-  --baseline-cwd "$BASELINE_CHECKOUT" \
-  --repaired-bin "$CACHE/tools/indexbench-terraform-after" \
-  --repaired-cwd "$REPAIRED_CHECKOUT" --runs 3
+  --cache "$CACHE" --landing-only \
+  --repaired-commit df20b1f1810c96dde9c00d919166f44746376993 \
+  --repaired-bin "$CACHE/tools/indexbench-terraform-landing-r3" \
+  --repaired-cwd "$LANDING_CHECKOUT" --runs 3
 ```
 
-`grade.py` checks embedded Go build VCS identity, runs each engine three times
+`grade.py` checks embedded Go build VCS identity, runs the landing engine three times
 against the same native JSON, requires 87/523029 and 77/453543 measured files
 and bytes and 866/2662 native cross-file denominators, and selects the median
-CPU-throughput run. Its `comparison.json` stays under `$CACHE/native/grades`.
+CPU-throughput run. The original `comparison.json` and the landing report stay
+under `$CACHE/native/grades`.
 After `run_native.py --phase after` confirms bytewise raw truth identity,
-`publish.py --cache "$CACHE" --out
-docs/assessments/data/terraform-two-hop-2026-10-26/summary.json` publishes
-only counts and hashes. The raw subject manifests and file lists stay private.
+publish the retained baseline, landing grade and final native installer receipts:
+
+```sh
+python3 calibration/oracles/terraform/publish.py \
+  --cache "$CACHE" \
+  --landing-report "$CACHE/native/grades/landing-df20b1f18.json" \
+  --out docs/assessments/data/terraform-two-hop-2026-10-26/summary.json
+```
+
+The publisher checks both phases' tracked sets, measured sets and raw truth
+against the grade hashes. It publishes only counts and hashes. The raw subject
+manifests and file lists stay private.
