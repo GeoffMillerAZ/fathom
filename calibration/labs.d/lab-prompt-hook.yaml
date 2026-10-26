@@ -1,7 +1,7 @@
 # Seed: docs/design/feature-labs.md section 4.3. Kill: owner ruling L-R1.
 id: "lab-prompt-hook"
 features: ["F-28"]
-surface: ["hook:prompt-hook"]
+surface: ["hook:prompt-hook [user-prompt-submit/prompt-obligations UserPromptSubmit matcher=]"]
 firing:
   should: "a prompt naming an indexed identifier"
   should_not: "a prompt naming none"

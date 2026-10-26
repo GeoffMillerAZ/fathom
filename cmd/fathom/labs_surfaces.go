@@ -1,17 +1,19 @@
 package main
 
 import (
+	"path/filepath"
 	"sort"
+	"strings"
 
 	skillsdist "github.com/geoffmilleraz/fathom/dist/agents/skills"
 	"github.com/geoffmilleraz/fathom/internal/decide"
 	"github.com/geoffmilleraz/fathom/internal/harness"
 )
 
-// shippedLabSurfaces derives MCP, hook and rendered-skill keys from their
+// shippedLabSurfaces derives MCP, hook, rendered-agent and skill keys from their
 // shipping registries. It also names the shipped stanza and concrete decision
 // sites so cards using those key families are checked against an inventory.
-// Hook keys are command verbs (including flags); shared bindings deduplicate.
+// Hook keys preserve event, capability, harness event and matcher identity.
 // Both default and opt-in tables count: enabling readouts folds the test-run
 // bindings, but those bindings still ship for installations without readouts.
 func shippedLabSurfaces() ([]string, error) {
@@ -19,20 +21,13 @@ func shippedLabSurfaces() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	keys := map[string]bool{"stanza:agents-md": true}
+	keys := map[string]bool{"stanza:agents-md": true, "agent:" + strings.TrimSuffix(filepath.Base(scoutAgentPath), ".md"): true}
 	for _, tool := range tools {
 		keys["mcp:"+tool] = true
 	}
 	for _, d := range harness.All() {
-		opts := []string{}
 		for _, binding := range d.Hooks {
-			if binding.OptIn != "" {
-				opts = append(opts, binding.OptIn)
-			}
-		}
-		specs := append(hookSpecsFor(d.ID), hookSpecsFor(d.ID, opts...)...)
-		for _, spec := range specs {
-			keys["hook:"+spec.sub] = true
+			keys[labHookSurface(binding)] = true
 		}
 	}
 	for _, name := range skillsdist.Names {
@@ -50,4 +45,10 @@ func shippedLabSurfaces() ([]string, error) {
 	}
 	sort.Strings(out)
 	return out, nil
+}
+
+// labHookSurface includes both the canonical and harness event: CwdChanged
+// and DirectoryAdded share a capability but are separate installed bindings.
+func labHookSurface(b harness.EventBinding) string {
+	return "hook:" + b.Verb + " [" + string(b.Event) + "/" + string(b.Capability) + " " + b.Harness + " matcher=" + b.Matcher + "]"
 }

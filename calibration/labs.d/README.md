@@ -20,8 +20,16 @@ or extra kill criteria. A future run must preregister the metric and its units.
 
 Owner ruling L-R1 supplies the same K4 and K1 wording in every card. Each points
 to `docs/bench/readings/labs/<lab-id>.md`. Those readings do not exist yet.
-Deterministic, always-loaded and configured-site rows use `n/a` with a reason.
-Quality readings and stage owners remain in their existing programs.
+Owner ruling L-R2 permits `n/a` only for stanza, decision-site and session-start
+surfaces. The subagent card includes conditional pre-tool delivery and has a
+firing rule. The stanza uses first-3-calls tool choice as its LAB-28 firing proxy.
+Quality readings and stage owners remain in their existing programs. EW-76 is
+a quality instrument for search and symbol-context, not a stage owner. Knobs
+with no verified text location stay empty until LAB-28 and LAB-29.
+
+Hook keys include canonical event, capability, harness event and matcher. The
+26 Claude bindings remain distinct, including both observe-only discovery
+bindings. `agent:fathom-scout` is explicitly outside the seed cards in no-lab.yaml.
 
 | Lab | Features | Surfaces | Stages owned elsewhere |
 |---|---|---|---|
@@ -31,13 +39,13 @@ Quality readings and stage owners remain in their existing programs.
 | [lab-read-source](lab-read-source.yaml) | F-08 | `mcp:read_source` |  |
 | [lab-blast-radius](lab-blast-radius.yaml) | F-12 | `mcp:blast_radius` | agent-level H2: bench-prep |
 | [lab-review-diff](lab-review-diff.yaml) | F-34 | `mcp:review_diff` |  |
-| [lab-verify-plan](lab-verify-plan.yaml) | F-36, F-37, F-39 | `mcp:verify_plan`, `hook:stop-hook` | agent-level H1: bench-prep |
-| [lab-obligations](lab-obligations.yaml) | F-26, F-27, F-64, F-65 | `mcp:obligations`, `hook:edit-hook` | AD-20, AD-21, AD-M1 to AD-M4 |
-| [lab-guards](lab-guards.yaml) | F-29 | `hook:edit-hook --pre` | RS-M1 to RS-M4 |
-| [lab-prompt-hook](lab-prompt-hook.yaml) | F-28 | `hook:prompt-hook` | ADR-076 |
-| [lab-session-brief](lab-session-brief.yaml) | F-48 | `hook:session-hook` |  |
-| [lab-subagent-brief](lab-subagent-brief.yaml) | F-48 | `hook:session-hook --event subagent-start` | AD-M2 |
-| [lab-readouts](lab-readouts.yaml) | (postdates the scorecard) | `hook:readout-hook --event post-tool`, `hook:readout-hook --event tool-failure` | RO-M1, RO-M4 to RO-M10 |
+| [lab-verify-plan](lab-verify-plan.yaml) | F-36, F-37, F-39 | `mcp:verify_plan`, `hook:stop-hook [stop/stop-verify Stop matcher=]` | agent-level H1: bench-prep |
+| [lab-obligations](lab-obligations.yaml) | F-26, F-27, F-64, F-65 | `mcp:obligations`, `hook:edit-hook [post-tool/obligations-post-edit PostToolUse matcher=Edit\|Write\|MultiEdit]`, `hook:edit-hook [post-tool/obligations-post-shell PostToolUse matcher=Bash]` | AD-20, AD-21, AD-M1 to AD-M4 |
+| [lab-guards](lab-guards.yaml) | F-29 | `hook:edit-hook --pre [pre-tool/guard-pre-edit PreToolUse matcher=Edit\|Write\|MultiEdit]`, `hook:edit-hook --pre [pre-tool/guard-pre-shell PreToolUse matcher=Bash]` | RS-M1 to RS-M4 |
+| [lab-prompt-hook](lab-prompt-hook.yaml) | F-28 | `hook:prompt-hook [user-prompt-submit/prompt-obligations UserPromptSubmit matcher=]` | ADR-076 |
+| [lab-session-brief](lab-session-brief.yaml) | F-48 | `hook:session-hook [session-start/prime SessionStart matcher=startup\|resume\|clear\|compact]` |  |
+| [lab-subagent-brief](lab-subagent-brief.yaml) | F-48 | `hook:session-hook --event subagent-start [subagent-start/subagent-prime SubagentStart matcher=]`, `hook:edit-hook --pre [pre-tool/subagent-prime PreToolUse matcher=^(Agent\|Task)$]` | AD-M2 |
+| [lab-readouts](lab-readouts.yaml) | (postdates the scorecard) | `hook:readout-hook --event post-tool [post-tool/readout PostToolUse matcher=Bash]`, `hook:readout-hook --event tool-failure [tool-failure/readout PostToolUseFailure matcher=Bash]` | RO-M1, RO-M4 to RO-M10 |
 | [lab-stanza](lab-stanza.yaml) | F-58, F-86 | `stanza:agents-md` | AG-OP1 |
 | [lab-skills](lab-skills.yaml) | F-60 | `skill:fathom-plan`, `skill:fathom-verify`, `skill:fathom-onboard`, `skill:fathom-feedback`, `skill:fathom-doctor`, `skill:fathom-impact`, `skill:fathom-rewire`, `skill:fathom-activate`, `skill:fathom-custodian`, `skill:fathom-findings`, `skill:fathom-offload` |  |
 | [lab-decision-port](lab-decision-port.yaml) | F-69, F-70, F-71 | `decide:route`, `decide:compile_prefilter`, `decide:obligations_rerank`, `decide:certify_suggest`, `decide:assess`, `decide:preflight`, `decide:readout_mode`, `decide:compact_advice` | DP, EXP, JF |

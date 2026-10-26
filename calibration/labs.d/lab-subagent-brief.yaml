@@ -1,10 +1,11 @@
 # Seed: docs/design/feature-labs.md section 4.3. Kill: owner ruling L-R1.
 id: "lab-subagent-brief"
 features: ["F-48"]
-surface: ["hook:session-hook --event subagent-start"]
+surface: ["hook:session-hook --event subagent-start [subagent-start/subagent-prime SubagentStart matcher=]", "hook:edit-hook --pre [pre-tool/subagent-prime PreToolUse matcher=^(Agent|Task)$]"]
 firing:
-  mode: "n/a"
-  reason: "Subagent spawn is deterministic: every spawn loads the brief; there is no should-not firing class."
+  should: "an indexed-repository subagent spawn with relevant live-map facts"
+  should_not: "a non-spawn tool call or a spawn with no relevant indexed facts"
+  grader: "hook_context"
 helped:
   metric: "the subagent's calls to its answer (map facts delivered, 0 of 1,841 today, is the delivered stage)"
   arm: "plugin-minus-subagent-brief"

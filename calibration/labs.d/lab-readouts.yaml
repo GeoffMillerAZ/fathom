@@ -1,7 +1,7 @@
 # Seed: docs/design/feature-labs.md section 4.3. Kill: owner ruling L-R1.
 id: "lab-readouts"
 features: []
-surface: ["hook:readout-hook --event post-tool", "hook:readout-hook --event tool-failure"]
+surface: ["hook:readout-hook --event post-tool [post-tool/readout PostToolUse matcher=Bash]", "hook:readout-hook --event tool-failure [tool-failure/readout PostToolUseFailure matcher=Bash]"]
 firing:
   should: "Bash output a rule matches"
   should_not: "output no rule matches"

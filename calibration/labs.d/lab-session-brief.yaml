@@ -1,7 +1,7 @@
 # Seed: docs/design/feature-labs.md section 4.3. Kill: owner ruling L-R1.
 id: "lab-session-brief"
 features: ["F-48"]
-surface: ["hook:session-hook"]
+surface: ["hook:session-hook [session-start/prime SessionStart matcher=startup|resume|clear|compact]"]
 firing:
   mode: "n/a"
   reason: "Session start is deterministic: every session start loads the brief; there is no should-not firing class."
