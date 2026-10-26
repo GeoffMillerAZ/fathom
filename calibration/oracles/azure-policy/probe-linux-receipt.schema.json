@@ -40,7 +40,7 @@
       "const": "53ab1997c413e02553a8f0b03225cfaed65b53fc7779ba003e10ec4ab67c1ac4"
     },
     "isolation": {
-      "const": "linux_user_net_pid_namespaces"
+      "const": "linux_user_net_pid_mount_namespaces"
     },
     "calibration_measured": {
       "const": false
@@ -56,6 +56,7 @@
         "userns",
         "netns",
         "pidns",
+        "mountns",
         "import",
         "loopback",
         "preparation",
@@ -302,6 +303,21 @@
       "type": "integer",
       "minimum": 0,
       "maximum": 9223372036854775807
+    },
+    "filesystem_readonly_outside_out": {
+      "const": true
+    },
+    "vendor_capabilities_dropped": {
+      "const": true
+    },
+    "filesystem_write_probes": {
+      "type": "integer",
+      "minimum": 3,
+      "maximum": 16
+    },
+    "filesystem_script_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
     }
   },
   "required": [
@@ -317,7 +333,8 @@
     "calibration_measured",
     "tier_granted",
     "failed_stage",
-    "kernel_capabilities"
+    "kernel_capabilities",
+    "filesystem_script_sha256"
   ],
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Closed Azure Policy authored probe receipt; no calibration claim",
@@ -423,6 +440,22 @@
             "const": 0
           }
         }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "native_executed": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "filesystem_readonly_outside_out",
+          "vendor_capabilities_dropped",
+          "filesystem_write_probes"
+        ]
       }
     }
   ]

@@ -49,7 +49,7 @@ tiers, L3 gate and X-R4 open work remain unchanged.
 M1/M2: refusal receipts carry fixed failure-class and failed-stage enums plus
 integer/null kernel capability flags. Raw argv, paths, exception text and
 preflight stderr stay private. Tests reproduce the old timeout/privacy defect.
-M3: a PID1 worker in user/network/PID namespaces measures loopback-only network
+M3: a PID 1 worker in user/network/PID/mount namespaces measures loopback-only network
 interfaces before vendor execution; normal and timeout group cleanup and PID
 namespace teardown prevent descendants from surviving. The outer process pins
 the closed schema/identities before execution, validates bounded regular-file
@@ -61,7 +61,7 @@ then full-population enumeration/positions; it no longer invites an ARM retry.
 Minor fixes m1-m9: closed recursive schema and typed native error codes; measured
 network/PID isolation; bounded readiness polling and independent evaluation
 variants; completion only after clean shutdown; parameterized disk/load floors
-on the cache/output filesystems; withdrawn PROVENANCE premise; dated protocolr2
+on the cache/output filesystems; withdrawn PROVENANCE premise; dated protocol r2
 Linux/PID-namespace amendment; committed main/preflight refusal controls; and
 explicitly unreceipted ARM observations in this record and host-candidate data.
 
@@ -73,14 +73,52 @@ launcher's separately validated receipt.json is uploaded; raw LSP, evaluation,
 stderr, preflight and launcher outputs never leave the runner. Private payload
 and diagnostics are deleted after publication. The controller imports only
 the reviewed receipt into a fresh clean checkout. Workflow action revisions
-are pinned to the official v5 checkout and v4 artifact-upload tags resolved
+are pinned to the official v5 checkout and v7 artifact-upload tags resolved
 with git ls-remote. No Linux vendor run or native success is claimed here.
 
-Review validation: 33 Python unit tests pass with zero skips, including main
+Round-1 review validation: 33 Python unit tests pass with zero skips, including main
 preflight failure/timeout before preparation, fixed-stage privacy, strict
 schema rejection, normal/timeout group cleanup, invalid worker receipt,
 loopback-only admission, continued evaluation after failure, shutdown timeout,
-and bounded regular-file receipt admission (symlink/FIFO/cap+1 refuse). All12
+and bounded regular-file receipt admission (symlink/FIFO/cap+1 refuse). All 12
 committed checksum entries and the workflow shell syntax check pass. Required
 release-notes, both merge-debris and ADR-011 checks pass. The workflow has not
 run here; kernel namespace behavior and vendor startup await the T-R11 runner.
+
+
+## Round-2 binding fixes (N-M1 and N-m1 to N-m4)
+
+The previous worker could write runner-owned actions, launcher code and file
+commands. The new mount namespace recursively makes every visible mount
+read-only except a fresh worker scratch directory. The pinned payload is
+copied there and reverified; its HOME and TMP are private. The worker drops
+vendor capabilities and sets no_new_privs. An authored process under the same
+restrictions must observe EROFS on deliberate writes to the checkout, runner
+HOME, RUNNER_TEMP, download cache and running launcher, with a positive write
+to scratch. Preflight and worker both check this before vendor execution.
+Native-executed receipts require the closed true readonly/capability flags
+and a write-probe count; the filesystem-helper hash is identity-bound.
+
+Outer logs and receipt publication are outside vendor-writable scratch. Logs
+use exclusive no-follow opens. Random exclusive receipt temporary names
+avoid planted fixed-name files, and tail exceptions publish an outer-generated
+receipt_invalid refusal. The entire shell launcher is parsed as a function
+before vendor startup. No later action or shell code is writable by the vendor.
+
+The push filter selects only tools/azure-policy-probe-run and excludes tags.
+Upload-artifact v7 is pinned by full SHA to a Node 24 action. T-R11 still uses
+ubuntu-22.04; its 2027-04-17 retirement and March/April brownouts require a
+controller revisit. The planned successor is ubuntu-24.04 x64 after namespace
+preflight and a ruling; no sysctl change or automatic label fallback is added.
+See LINUX-X64-PROBE.md for the primary source links and exact runner contract.
+Spaces in the plan, protocol and docs are restored and checksum pins refreshed.
+
+Local boundary validation is mocked: 45 Python tests, zero skips, and two
+FAIL-to-GREEN mutants cover disabled readonly enforcement and retained vendor
+privileges. The mount-table cap plus one refuses; symlink logs, poisoned
+receipts, publication-tail errors, private payload-copy drift and missing
+readonly receipt flags are exercised. The control summary explicitly records
+no Linux namespace or native execution. The cloud runner must still produce
+the actual measured write-denial flags before any vendor API result can be
+interpreted. No native evaluation, new tier, calibration reading, engine or
+epoch change is claimed. No model decision applies.

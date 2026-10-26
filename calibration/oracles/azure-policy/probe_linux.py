@@ -25,6 +25,7 @@ from pathlib import Path
 from audit_extension import HERE
 from prepare_native import prepare
 from receipt_contract import SCHEMA, read_receipt, validate, write_receipt
+from filesystem_isolation import isolate_filesystem, restricted_command
 
 CONTRACT = json.loads(SCHEMA.read_text())
 
@@ -102,9 +103,10 @@ def receipt_base():
     return dict(schema_version=2, candidate='AzurePolicy.azurepolicyextension/0.2.6',
                 rid='linux-x64', status='pending', native_executed=False,
                 script_sha256=digest(Path(__file__).read_bytes()),
+                filesystem_script_sha256=digest(Path(__file__).with_name('filesystem_isolation.py').read_bytes()),
                 inputs_sha256=digest(INPUT.read_bytes()),
                 payload_manifest_sha256=json.loads(PIN.read_text())['manifest_sha256'],
-                isolation='linux_user_net_pid_namespaces', failed_stage=None,
+                isolation='linux_user_net_pid_mount_namespaces', failed_stage=None,
                 kernel_capabilities=kernel_capabilities(),
                 calibration_measured=False, tier_granted=False)
 
@@ -230,10 +232,60 @@ def kill_group(process):
         pass
 
 
-def worker(payload, out):
+def private_log(path, data):
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(fd, 'wb') as target:
+        target.write(data)
+
+
+def log_error(out, error):
+    try:
+        private_log(out / 'probe-error.log', (repr(error) + '\n').encode())
+    except OSError:
+        # Log collisions must never divert the schema-validated refusal path.
+        pass
+
+
+def publish_receipt(receipt, out, publish, contract):
+    try:
+        private = out / 'preflight-stderr.log'
+        if private.exists():
+            fd = os.open(private, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+            with os.fdopen(fd, 'rb') as source:
+                import stat
+                if not stat.S_ISREG(os.fstat(source.fileno()).st_mode):
+                    raise ValueError('preflight log must be regular')
+                data = source.read(LIMIT + 1)
+            if len(data) > LIMIT:
+                raise ValueError('preflight log exceeds cap')
+            receipt.update(preflight_stderr_sha256=digest(data), preflight_stderr_bytes=len(data))
+        write_receipt(out / 'receipt.json', receipt, contract)
+        if publish:
+            write_receipt(publish, receipt, contract)
+    except Exception as error:
+        receipt.update(status='receipt_invalid', failure_class=failure_class(error), failed_stage='receipt')
+        log_error(out, error)
+        # Even a private-tail failure must publish an outer-generated refusal.
+        # Private and public locations are outside the writable worker mount.
+        try:
+            write_receipt(out / 'receipt.json', receipt, contract)
+        except OSError:
+            pass
+        if publish:
+            write_receipt(publish, receipt, contract)
+    return 0 if receipt['status'] == 'probe_complete_requires_analysis' else 2
+
+
+def copy_payload(payload, destination, pin):
+    shutil.copytree(payload, destination)
+    verify(destination, pin)
+
+
+def worker(payload, out, protected=None):
     # Measure isolation before any vendor byte executes, even for manual calls.
     if os.getpid() != 1 or socket.if_nameindex() != [(1, 'lo')]:
         raise ValueError('worker requires PID1 and loopback-only network namespace')
+    filesystem_flags = isolate_filesystem(out, protected)
     enable_loopback()
     resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
     resource.setrlimit(resource.RLIMIT_FSIZE, (LIMIT, LIMIT))
@@ -247,8 +299,9 @@ def worker(payload, out):
     receipt = receipt_base()
     receipt.update(status='native_probe_failed', netns_loopback_only=True,
                    measured_interfaces=1, shutdown_clean=False, failed_stage='execution')
+    receipt.update(filesystem_flags)
     with (out / 'native-stderr.log').open('wb') as stderr, (out / 'lsp-raw.jsonl').open('wb') as raw:
-        process = subprocess.Popen([str(payload / 'PolicyLanguageServer')], stdin=subprocess.PIPE,
+        process = subprocess.Popen(restricted_command([payload / 'PolicyLanguageServer']), stdin=subprocess.PIPE,
                                    stdout=subprocess.PIPE, stderr=stderr, cwd=home, env=env, start_new_session=True)
         receipt['native_executed'] = True
         lsp = None
@@ -329,21 +382,25 @@ def main():
     parser.add_argument('-max-load', type=float, default=6)
     parser.add_argument('-publish', type=Path, help='separate validated receipt destination')
     parser.add_argument('--namespace-worker', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument('--protected-dir', type=Path, action='append', help=argparse.SUPPRESS)
     args = parser.parse_args()
     cache, out = args.cache.resolve(), args.out.resolve()
     payload = cache / 'payload'
     if args.namespace_worker:
         if os.environ.get('FATHOM_PRIVATE_NETNS') != '1':
             raise SystemExit('namespace worker requires the isolated launcher')
-        return worker(payload, out)
+        return worker(payload, out, args.protected_dir)
     if (out.exists() or out == cache or cache in out.parents or out in cache.parents or
             args.min_free_gib < 1 or args.max_load <= 0):
         parser.error('fresh separate directories and valid positive resource floors required')
     out.mkdir(parents=True, mode=0o700)
+    scratch = out / 'worker'
+    scratch.mkdir(mode=0o700)
     receipt = receipt_base()
+    publish = None
     # Pin schema and identity in launcher memory before vendor execution.
     contract = copy.deepcopy(CONTRACT)
-    identity = {key: receipt[key] for key in ['schema_version', 'candidate', 'rid', 'script_sha256',
+    identity = {key: receipt[key] for key in ['schema_version', 'candidate', 'rid', 'script_sha256', 'filesystem_script_sha256',
                                             'inputs_sha256', 'payload_manifest_sha256', 'isolation',
                                             'calibration_measured', 'tier_granted']}
     stage = 'platform'
@@ -355,6 +412,12 @@ def main():
         if checkout == cache or checkout in cache.parents or checkout == out or checkout in out.parents:
             raise ValueError('execution data must be outside the checkout')
         cache.mkdir(parents=True, exist_ok=True, mode=0o700)
+        if args.publish:
+            candidate = args.publish.resolve()
+            if candidate == out or out in candidate.parents or candidate == cache or cache in candidate.parents:
+                raise ValueError('published receipt must be separate from private data')
+            candidate.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            publish = candidate
         if os.getloadavg()[0] > args.max_load:
             raise ValueError('load exceeds configured maximum')
         if min(shutil.disk_usage(cache).free, shutil.disk_usage(out).free) < args.min_free_gib * 1024**3:
@@ -364,24 +427,28 @@ def main():
         if not unshare:
             raise ValueError('util-linux unshare required')
         clean = dict(PATH='/usr/bin:/bin', LANG='C.UTF-8', FATHOM_PRIVATE_NETNS='1', PYTHONDONTWRITEBYTECODE='1')
+        protected = [checkout, Path.home().resolve(), Path(os.environ.get('RUNNER_TEMP', '/tmp')).resolve(), cache]
         userns = [unshare, '--user', '--map-root-user']
         netns = userns + ['--net']
-        namespace = netns + ['--pid', '--fork', '--kill-child']
-        with (out / 'preflight-stderr.log').open('wb') as stderr:
-            for stage, options in [('userns', userns), ('netns', netns), ('pidns', namespace)]:
+        pidns = netns + ['--pid', '--fork', '--kill-child']
+        namespace = pidns + ['--mount', '--mount-proc']
+        log_fd = os.open(out / 'preflight-stderr.log', os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(log_fd, 'wb') as stderr:
+            for stage, options in [('userns', userns), ('netns', netns), ('pidns', pidns)]:
                 result = subprocess.run(options + ['--', '/bin/true'], env=clean, stdout=subprocess.DEVNULL,
                                         stderr=stderr, timeout=10)
                 if result.returncode:
                     raise ValueError('namespace preflight refused')
-            stage = 'import'
+            stage = 'mountns'
             code = ("import sys;sys.path.insert(0,sys.argv[1]);"
-                    "exec(\"try:\\n from probe_linux import enable_loopback,socket\\nexcept Exception:\\n sys.exit(40)\\n"
+                    "exec(\"try:\\n from probe_linux import enable_loopback,socket,isolate_filesystem,Path\\nexcept Exception:\\n sys.exit(40)\\n"
+                    "try:\\n isolate_filesystem(Path(sys.argv[2]),[Path(p) for p in sys.argv[3:]])\\nexcept Exception:\\n sys.exit(42)\\n"
                     "try:\\n assert socket.if_nameindex()==[(1,'lo')]\\n enable_loopback()\\nexcept Exception:\\n sys.exit(41)\")")
-            result = subprocess.run(namespace + ['--', sys.executable, '-B', '-c', code, str(HERE)],
-                                    env=clean, stdout=subprocess.DEVNULL, stderr=stderr, timeout=10)
+            result = subprocess.run(namespace + ['--', sys.executable, '-B', '-c', code, str(HERE), str(scratch), *map(str, protected)],
+                                    env=clean, stdout=subprocess.DEVNULL, stderr=stderr, timeout=30)
             if result.returncode:
-                stage = 'loopback' if result.returncode == 41 else 'import'
-                raise ValueError('namespace import or loopback preflight refused')
+                stage = {40: 'import', 41: 'loopback'}.get(result.returncode, 'mountns')
+                raise ValueError('namespace import, filesystem or loopback preflight refused')
         current_nice = os.getpriority(os.PRIO_PROCESS, 0)
         if current_nice < 10:
             os.nice(10 - current_nice)
@@ -391,8 +458,11 @@ def main():
             prepare(cache, 'linux-x64', pin, min_free_gib=args.min_free_gib)
         stage = 'verification'
         verify(payload, pin)
+        copy_payload(payload, scratch / 'payload', pin)
         stage = 'worker'
-        command = namespace + ['--', sys.executable, '-B', str(Path(__file__).resolve()), '-cache', str(cache), '-out', str(out), '--namespace-worker']
+        command = namespace + ['--', sys.executable, '-B', str(Path(__file__).resolve()), '-cache', str(scratch), '-out', str(scratch), '--namespace-worker']
+        for directory in protected:
+            command += ['--protected-dir', str(directory)]
         process = subprocess.Popen(command, env=clean, start_new_session=True, stdout=subprocess.DEVNULL,
                                    stderr=subprocess.DEVNULL)
         try:
@@ -406,33 +476,22 @@ def main():
                            failed_stage='worker')
         finally:
             kill_group(process)
-        if receipt['status'] != 'probe_timeout' and (out / 'receipt.json').exists():
+        if receipt['status'] != 'probe_timeout' and (scratch / 'receipt.json').exists():
             stage = 'receipt'
             try:
-                if out.is_symlink():
+                if scratch.is_symlink():
                     raise ValueError('output directory symlink refused')
-                published = read_receipt(out / 'receipt.json', contract, identity)
+                published = read_receipt(scratch / 'receipt.json', contract, identity)
                 if (code == 0) != (published['status'] == 'probe_complete_requires_analysis'):
                     raise ValueError('worker status disagrees with exit')
                 receipt = published
             except Exception as error:
                 receipt.update(status='receipt_invalid', failure_class=failure_class(error), failed_stage='receipt')
-                (out / 'probe-error.log').write_text(repr(error) + '\n')
+                log_error(out, error)
     except Exception as error:
         receipt.update(status='probe_refused', failure_class=failure_class(error), failed_stage=stage)
-        (out / 'probe-error.log').write_text(repr(error) + '\n')
-    private = out / 'preflight-stderr.log'
-    if private.is_file():
-        data = private.read_bytes()
-        receipt.update(preflight_stderr_sha256=digest(data), preflight_stderr_bytes=len(data))
-    write_receipt(out / 'receipt.json', receipt, contract)
-    if args.publish:
-        publish = args.publish.resolve()
-        if publish == out or out in publish.parents or publish == cache or cache in publish.parents:
-            raise ValueError('published receipt must be separate from private data')
-        publish.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        write_receipt(publish, receipt, contract)
-    return 0 if receipt['status'] == 'probe_complete_requires_analysis' else 2
+        log_error(out, error)
+    return publish_receipt(receipt, out, publish, contract)
 
 
 if __name__ == '__main__':

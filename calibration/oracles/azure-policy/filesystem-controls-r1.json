@@ -1,0 +1,68 @@
+{
+  "tests": 45,
+  "skips": 0,
+  "mutations": [
+    {
+      "mutant": "require_readonly",
+      "restored_green": true
+    },
+    {
+      "mutant": "restricted_command",
+      "restored_green": true
+    }
+  ],
+  "linux_namespace_executed": false,
+  "native_executed": false,
+  "calibration_measured": false,
+  "tier_granted": false,
+  "sources": [
+    {
+      "path": "filesystem_isolation.py",
+      "sha256": "245f75b4ef092a66c77503a5f630734e07ac826c5b52db4bfbe2820130014bbd"
+    },
+    {
+      "path": "probe_linux.py",
+      "sha256": "b983df2a880414ae99d753b5aff91b6500fa501cd5657e3fcdfdd53de0df9f9e"
+    },
+    {
+      "path": "receipt_contract.py",
+      "sha256": "66e4354be3a7f4fba287500e5c4b22f11ee3cb0ce1ffb3fc324687d6f79ab6bc"
+    },
+    {
+      "path": "test_filesystem_isolation.py",
+      "sha256": "292faeb17de5c4bbe4407e522731185ddbc1a9049ab8cd2df02794a2516ecf20"
+    },
+    {
+      "path": "test_review_probe.py",
+      "sha256": "7d97e40ead1d722bd6a4820ed4a99b4fffa9a2f31bc2a645eb2a0e891ea4d37e"
+    },
+    {
+      "path": "test_probe_linux.py",
+      "sha256": "c52e06f17e242121bdf0552db8488c2635ff71632bab420d33b5250aa442227c"
+    },
+    {
+      "path": "probe_filesystem_controls.py",
+      "sha256": "8969a9299e21080ec4a3876ef500fc284669953298aacb3bd972dd072c8d4052"
+    },
+    {
+      "path": "probe-linux-receipt.schema.json",
+      "sha256": "7c777be725880d60e43d8f4a1b0530e7f61ba03c161c81ff9c1fa84de892f237"
+    },
+    {
+      "path": "probe-linux-x64.workflow.yml",
+      "sha256": "ccd7c3af7394dd699b8dc6d92a81fb39621311f4b67a0afed911b2b110bdb83d"
+    },
+    {
+      "path": "run_probe_workflow.sh",
+      "sha256": "f3e9bbeee8badf7ccdbb022f7de2dbe69fbf12ce0e18c1a5404b6e10ea1a9872"
+    },
+    {
+      "path": "native-protocol-r2.json",
+      "sha256": "c697bd2d655abb4b6d4b32a25d1bfbad3f2d71a83ffa893b45c707a7a256513b"
+    },
+    {
+      "path": "LINUX-X64-PROBE.md",
+      "sha256": "bc4cd758912f23ecaa94ea36ad5bfcc545de2d6f3594f4124d039bc9d4ce5129"
+    }
+  ]
+}

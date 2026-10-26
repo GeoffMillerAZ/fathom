@@ -101,3 +101,11 @@ outer-validated receipt.json is uploaded; raw native/LSP/evaluation/stderr
 outputs stay on the runner and are deleted. The ARM startup/PE-header reports
 are explicitly unreceipted local observations, not calibration proof. The
 current C reading and deferred whole-population work remain unchanged.
+
+Round-2 filesystem controls give the vendor a private verified payload copy,
+HOME and TMP under one writable scratch mount. Everything else is read-only,
+including the checkout, action cache, launcher, file-command files and public
+receipt. Capability dropping and deliberate EROFS controls precede execution;
+only their measured success sets filesystem_readonly_outside_out. The fixed
+run branch, Node 24 action pin and dated runner-successor condition are in
+LINUX-X64-PROBE.md. Local mocked tests grant no Linux isolation proof.

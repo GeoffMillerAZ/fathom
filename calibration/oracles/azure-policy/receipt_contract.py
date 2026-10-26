@@ -3,6 +3,7 @@ import json
 import os
 import re
 import stat
+import tempfile
 from pathlib import Path
 
 SCHEMA = Path(__file__).with_name('probe-linux-receipt.schema.json')
@@ -85,8 +86,8 @@ def read_receipt(path, schema, identity=None):
 
 def write_receipt(path, value, schema):
     validate(value, schema)
-    temporary = path.with_name('.receipt-validated.tmp')
-    fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    fd, name = tempfile.mkstemp(prefix='.receipt-validated.', suffix='.tmp', dir=path.parent)
+    temporary = Path(name)
     try:
         with os.fdopen(fd, 'w') as target:
             json.dump(value, target, indent=2)

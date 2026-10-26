@@ -1,45 +1,86 @@
 # T-R9 / T-R11: Azure Policy oracle pending an x64 run
 
-The controller copies `probe-linux-x64.workflow.yml` from this directory into
-`.github/workflows/` on a disposable **run branch that is never merged**. It
-runs on push only. T-R11 requires a GitHub-hosted `ubuntu-22.04` x64 job, with
-no `container:` job. Do not select `ubuntu-latest` or 24.04: its unprivileged
-user-namespace restriction can refuse this route. Do not change sysctls, use
-sudo, install system packages, authenticate to Azure or use Docker/Rosetta.
-Python3.9+, util-linux unshare and the ordinary .NET Linux system libraries
-must already exist; missing prerequisites produce a refusal, never a fallback.
-The self-contained payload does not use a global .NET installation.
+The controller copies `probe-linux-x64.workflow.yml` into `.github/workflows/`
+on the disposable branch **`tools/azure-policy-probe-run`**, which is never
+merged. Its push filter matches only that branch, including no tag pushes.
+T-R11 requires a GitHub-hosted `ubuntu-22.04` x64 job with no `container:` job.
+Do not use Docker/Rosetta, sudo, sysctl changes, system installs or Azure login.
+Python 3.9+, util-linux `unshare`, `mount` and `setpriv`, and the ordinary .NET
+Linux libraries must already exist. Missing prerequisites refuse without a
+fallback. The self-contained payload needs no global .NET installation.
 
-The job is ephemeral, has only contents:read permission and checks out with
-`persist-credentials: false`. Cache, private HOME and output are outside the
-checkout under RUNNER_TEMP. **Only the separate validated `receipt.json` is
-uploaded. Raw LSP, evaluation, stderr, preflight and launcher logs never leave
-the runner.** The private directory and downloaded payload are deleted on exit.
-The shell launcher records no raw output in public job logs. The upload step
-runs only after the launcher's validated-publication flag, never on a raw file
-left by a failed worker. No later script, git command or credentials should be
-used from the vendor-exposed checkout. The controller receives the artifact
-and, after review, copies only the validated receipt into a fresh clean checkout.
+## Runner lifetime and action pins
 
-## Pins and execution contract
+The current T-R11 label remains in place. GitHub's [runner retirement notice](https://github.com/actions/runner-images/issues/14254)
+sets its unsupported date to **2027-04-17**, with brownouts in March and April
+2027. Revisit T-R11 before those brownouts or on any label refusal. The planned
+successor is `ubuntu-24.04` x64; `ubuntu-26.04` x64 is another official option.
+Changing the mandated label needs a controller ruling: newer images restrict
+unprivileged user namespaces. The receipt's kernel capability values and
+`failed_stage` diagnose that restriction; do not disable it or auto-select
+`ubuntu-latest`.
 
-Microsoft's MIT AzurePolicy extension0.2.6 supplies 455 linux-x64 files,
-122,294,968 expanded bytes in two spans totaling52,578,398 bytes. The manifest
-SHA256 is `53ab1997c413e02553a8f0b03225cfaed65b53fc7779ba003e10ec4ab67c1ac4`;
-the apphost SHA256 is
+Checkout v5 and upload-artifact v7 are pinned by full SHA. The pinned [upload
+action source](https://github.com/actions/upload-artifact/blob/cf430e030ddbb5b0abf93d22962f4752f3646cd9/action.yml)
+declares Node 24. The job has only `contents: read` permission and uses
+`persist-credentials: false`. It has no login or secrets. Only the separate,
+outer-validated `receipt.json` is uploaded with one-day retention. Raw LSP,
+evaluation, stderr, preflight and launcher logs never leave the runner.
+
+## Payload and writable boundary
+
+Microsoft's MIT AzurePolicy extension 0.2.6 supplies 455 linux-x64 files,
+122,294,968 expanded bytes in two spans totaling 52,578,398 bytes. The manifest
+SHA-256 is `53ab1997c413e02553a8f0b03225cfaed65b53fc7779ba003e10ec4ab67c1ac4`;
+the apphost SHA-256 is
 `bb3603fa212f7444f86aae84e593654b8df9b7feebdd0e4d0b30085fa798f452`.
-All files are reverified before any vendor execution. Preparation alone uses
-network access; no vendor byte runs on a namespace-preflight refusal.
+All files are verified before execution. The launcher copies the payload into
+`out/worker/payload` and re-verifies the private copy. The download cache stays
+outside the worker's writable area.
 
-The defaults remain load<=6 and free>=20GiB for this lane. T-R11's ephemeral
-runner uses explicit `-max-load 6 -min-free-gib 1`: the payload needs far less
-than1GiB and the standard runner disk is smaller than the lane floor. Both
-cache and output filesystems are checked, including during download. Run one
-job at nice10. The workflow's launch command is equivalent to:
+Execution requires user, network, PID and mount namespaces:
+`unshare --user --map-root-user --net --pid --fork --kill-child --mount --mount-proc`.
+The worker is PID 1 and sees only loopback. Before any vendor byte runs,
+`filesystem_isolation.py` makes mount propagation private, bind-mounts the
+worker scratch, recursively clones the root view and remounts every other
+visible mount read-only. Root and cwd are reattached to this view. This covers
+the checkout, action cache, running launcher, runner file-command files,
+public output, download cache, `/tmp` and other mounted paths. Only
+`out/worker` stays writable, including the private payload, HOME, TMP and raw
+worker logs. The launcher's logs and final receipt are outside that mount.
+
+The vendor command uses util-linux `setpriv` to drop its bounding, inheritable
+and ambient capabilities and set `no_new_privs`. A separate authored process
+runs under the same restrictions and checks effective/permitted/bounding/
+inheritable/ambient capabilities are zero. It deliberately opens a new file
+for write in the launcher-supplied checkout, runner HOME, RUNNER_TEMP and
+cache, and opens the running shell launcher for write. **Every attempt must
+fail with EROFS**; EACCES alone is not accepted. A positive scratch write must
+succeed. Preflight and the real worker both run these controls before vendor
+Popen. Any success outside scratch refuses before vendor execution.
+
+Only measured success admits the schema-constant
+`filesystem_readonly_outside_out: true` and `vendor_capabilities_dropped: true`
+flags, plus a write-probe count. Any receipt asserting native execution must
+carry them. The receipt binds both the launcher and filesystem-helper hashes.
+The mount table has a 1,024-entry cap; cap + 1 refuses. No mount or privilege
+failure has an unisolated fallback. The [mount namespace contract](https://man7.org/linux/man-pages/man7/mount_namespaces.7.html)
+locks inherited read-only flags in less privileged child user namespaces;
+[setpriv](https://man7.org/linux/man-pages/man1/setpriv.1.html) prevents the vendor
+from retaining mount capabilities or gaining privileges at exec.
+
+## Launch and receipt contract
+
+Lane defaults remain load at most 6 and free space at least 20 GiB. T-R11's
+smaller ephemeral runner explicitly selects `-max-load 6 -min-free-gib 1`;
+the payload plus private copy needs less than 1 GiB. Check cache/output
+filesystems, including during download, and run one job at nice 10.
+Preparation alone uses the network. No vendor byte runs on preflight refusal.
 
 ```sh
 sha256sum -c calibration/oracles/azure-policy/probe-linux-checksums.sha256
 python3 -B -m unittest discover -s calibration/oracles/azure-policy -p 'test_*.py'
+python3 -B calibration/oracles/azure-policy/probe_filesystem_controls.py -out workspace/artifacts/azure-policy-filesystem-controls
 nice -n 10 python3 -B calibration/oracles/azure-policy/probe_linux.py \
   -cache "$RUNNER_TEMP/azure-policy-private/cache" \
   -out "$RUNNER_TEMP/azure-policy-private/out" \
@@ -47,38 +88,34 @@ nice -n 10 python3 -B calibration/oracles/azure-policy/probe_linux.py \
   -min-free-gib 1 -max-load 6
 ```
 
-Do not run the vendor on this ARM helper. The staged workflow redirects the
-commands' output privately; the example above describes the command, not a
-permission to publish stdout/stderr. See `run_probe_workflow.sh` for the exact
-public-runner procedure. The workflow itself stays under calibration/oracles
-until the controller copies it to the run branch.
+Do not run vendor code on the ARM helper. The staged `run_probe_workflow.sh`
+redirects all command output privately and deletes private data on exit. Its
+whole body is parsed as a shell function before vendor startup. The workflow
+stays under calibration/oracles until the controller copies it to the run
+branch. Local unit/mutation checks are mocked, never a Linux kernel receipt.
 
-Preflight distinguishes userns, netns, pidns, import and loopback failures.
-`kernel_capabilities` contains only integer/null values for
+Preflight distinguishes userns, netns, pidns, mountns, import and loopback
+failures. Kernel capability values are integer/null readings of
 apparmor_restrict_unprivileged_userns, unprivileged_userns_clone and
-max_user_namespaces. The fixed `failed_stage` enum identifies other failures;
-full exception text and preflight stderr remain private. The worker runs as
-PID1 inside `unshare --user --map-root-user --net --pid --fork --kill-child`,
-and measures exactly one network interface, loopback, before vendor Popen.
-When PID1 exits the kernel terminates every descendant, including setsid
-children. Normal and timeout paths also kill the launcher's process group.
+max_user_namespaces. Exceptions and stderr remain private. PID namespace exit
+kills all descendants, including detached processes. Normal and timeout
+paths also kill the launcher's process group.
 
-The launcher retains the closed schema and expected identities in memory
-before vendor execution. After the PID namespace exits it reads a bounded
-regular, nonsymlink receipt, checks allowed fields/types/enums/hashes, rejects
-invalid receipts as `receipt_invalid`, then rewrites and separately publishes
-only validated JSON. No free-form exception, path or vendor string is public.
-Known LSP capability flag names are allowlisted; unknown keys are counted.
-The schema is `probe-linux-receipt.schema.json`, enforced by the standard-library
-`receipt_contract.py`. No pip dependency is required.
+The outer launcher pins the closed schema and expected identities in memory
+before execution. After namespace teardown it reads a capped regular,
+nonsymlink worker receipt and checks its identity and exit/status agreement.
+It rewrites only validated JSON to a separate public path. Tail failures
+produce an outer-written `receipt_invalid` refusal and exit 2. Launcher logs
+use exclusive no-follow creation, and receipt temporary names are fresh and
+exclusive. The upload gate is set only after validated outer publication.
+No raw vendor string, path or exception is public. LSP capability names are
+allowlisted; unknown keys are only counted. No pip dependency is required.
 
-The probe waits up to10s for loopback evaluation readiness, records each of
-three authored controls independently, and attempts clean LSP shutdown. Only
-clean shutdown and all three evaluation responses can produce
-`probe_complete_requires_analysis` / exit0. Exit2 describes refusal, timeout,
-invalid receipt or native failure. A failed evaluation does not skip the next
-control. Unknown parameter and changed-fact variants keep an unused parameter.
-
-Startup and these controls grant no tier or calibration metric. The C reading
-is unchanged. A complete native population with positions and additional
-unused/namespace/range controls remains necessary. L3 still waits for D19.
+The worker waits up to 10 s for evaluation readiness and runs each of three
+authored variants independently. Only all responses and clean shutdown yield
+`probe_complete_requires_analysis` / exit 0. Exit 2 covers refusal, timeout,
+invalid receipt and native failure. Startup grants no tier or calibration
+metric. The C reading stays unchanged; a full native population and position,
+unused-declaration, namespace and range controls remain necessary. L3 waits
+for D19. The controller reviews the artifact and imports only that validated
+receipt into a fresh clean checkout.

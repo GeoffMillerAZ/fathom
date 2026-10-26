@@ -89,7 +89,7 @@ class ReviewProbeTest(unittest.TestCase):
         self.assertNotIn('/private/', json.dumps(rows))
 
     def test_import_and_loopback_refusals_are_distinct(self):
-        for last, stage in [(40,'import'),(41,'loopback')]:
+        for last, stage in [(40,'import'),(41,'loopback'),(42,'mountns')]:
             with self.subTest(stage=stage), tempfile.TemporaryDirectory() as d, ExitStack() as stack:
                 root=Path(d);out=root/'out'
                 stack.enter_context(patch('sys.argv',['probe','-cache',str(root/'cache'),'-out',str(out)]))
@@ -103,9 +103,10 @@ class ReviewProbeTest(unittest.TestCase):
                 self.assertEqual(2,probe.main())
                 prepare.assert_not_called()
                 self.assertEqual(stage,json.loads((out/'receipt.json').read_text())['failed_stage'])
-                code=run.call_args.args[0][-2]
+                argv=run.call_args.args[0];code=argv[argv.index('-c')+1]
+                self.assertIn('--mount',argv)
                 # Execute only our authored preflight with all OS operations mocked.
-                with patch.object(probe,'enable_loopback'), patch.object(probe.socket,'if_nameindex',return_value=[(1,'lo')]), patch('sys.argv',['preflight',str(probe.HERE)]):
+                with patch.object(probe,'enable_loopback'), patch.object(probe,'isolate_filesystem'), patch.object(probe.socket,'if_nameindex',return_value=[(1,'lo')]), patch('sys.argv',['preflight',str(probe.HERE),str(out/'worker'),str(root/'cache'),str(root)]):
                     exec(compile(code,'authored-preflight','exec'),{})
 
     def launched_worker(self, *, poison=False, timeout=False):
@@ -123,21 +124,23 @@ class ReviewProbeTest(unittest.TestCase):
             stack.enter_context(patch.object(probe.subprocess,'run',return_value=SimpleNamespace(returncode=0)))
             stack.enter_context(patch.object(probe,'prepare'))
             verify=stack.enter_context(patch.object(probe,'verify'))
+            copied=stack.enter_context(patch.object(probe,'copy_payload'))
             process=MagicMock(pid=12345)
             def finish(*args,**kwargs):
                 if timeout and kwargs.get('timeout'):
                     raise subprocess.TimeoutExpired(['/private/vendor'],180)
-                receipt=probe.receipt_base();receipt.update(status='native_probe_failed',failed_stage='initialize',native_executed=True)
+                receipt=probe.receipt_base();receipt.update(status='native_probe_failed',failed_stage='initialize',native_executed=True,filesystem_readonly_outside_out=True,vendor_capabilities_dropped=True,filesystem_write_probes=5)
                 if poison:receipt['arbitrary_vendor_field']='/private/person'
-                (out/'receipt.json').write_text(json.dumps(receipt))
+                (out/'worker'/'receipt.json').write_text(json.dumps(receipt))
                 return 2
             process.wait.side_effect=finish
             popen=stack.enter_context(patch.object(probe.subprocess,'Popen',return_value=process))
             kill=stack.enter_context(patch.object(probe.os,'killpg'))
             self.assertEqual(2,probe.main())
             self.assertTrue(verify.called)
+            self.assertEqual(out/'worker'/'payload',copied.call_args.args[1])
             command=popen.call_args.args[0]
-            for flag in ['--pid','--fork','--kill-child']:self.assertIn(flag,command)
+            for flag in ['--pid','--fork','--kill-child','--mount','--mount-proc']:self.assertIn(flag,command)
             self.assertTrue(popen.call_args.kwargs['start_new_session'])
             kill.assert_called_with(12345,probe.signal.SIGKILL)
             receipt=json.loads(public.read_text());validate(receipt,probe.CONTRACT)
@@ -171,6 +174,7 @@ class ReviewProbeTest(unittest.TestCase):
             stack.enter_context(patch.object(probe.os,'getpid',return_value=1))
             stack.enter_context(patch.object(probe.socket,'if_nameindex',return_value=[(1,'lo')]))
             stack.enter_context(patch.object(probe,'enable_loopback'))
+            stack.enter_context(patch.object(probe,'isolate_filesystem',return_value=dict(filesystem_readonly_outside_out=True,vendor_capabilities_dropped=True,filesystem_write_probes=5)))
             stack.enter_context(patch.object(probe.resource,'setrlimit'))
             stack.enter_context(patch.object(probe,'kill_group'))
             process=MagicMock(returncode=0)
@@ -193,7 +197,8 @@ class ReviewProbeTest(unittest.TestCase):
     def test_workflow_contract_uploads_only_receipt(self):
         here=probe.HERE
         workflow=(here/'probe-linux-x64.workflow.yml').read_text()
-        self.assertIn('on: [push]',workflow)
+        self.assertIn("on:\n  push:\n    branches: ['tools/azure-policy-probe-run']",workflow)
+        self.assertIn('actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7 (Node 24)',workflow)
         self.assertIn('runs-on: ubuntu-22.04',workflow)
         self.assertNotIn('container:',workflow)
         self.assertIn('persist-credentials: false',workflow)
@@ -203,12 +208,15 @@ class ReviewProbeTest(unittest.TestCase):
         self.assertIn('-min-free-gib 1 -max-load 6',script)
         self.assertIn('"$private/launcher.log" 2>&1',script)
         self.assertIn('validated=true',script)
+        self.assertIn('main() {',script)
+        self.assertTrue(script.endswith('main "$@"\nexit\n'))
 
     def test_closed_schema_accepts_complete_bounded_control_receipt(self):
         from receipt_contract import write_receipt, read_receipt
         receipt=probe.receipt_base()
         receipt.update(status='probe_complete_requires_analysis',native_executed=True,
                        shutdown_clean=True,netns_loopback_only=True,measured_interfaces=1,native_returncode=0,
+                       filesystem_readonly_outside_out=True,vendor_capabilities_dropped=True,filesystem_write_probes=5,
                        initialize=probe.summary({'result':{}}),cache_command=probe.summary({'result':None}),
                        definition=probe.summary({'result':[]}),references=probe.summary({'result':[]}),
                        evaluations=[dict(variant=v,http_status=200,sha256='0'*64,bytes=2) for v in

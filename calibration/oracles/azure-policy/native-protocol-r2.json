@@ -8,19 +8,24 @@
   ],
   "runner": {
     "platform": "GitHub-hosted ubuntu-22.04 x64",
-    "trigger": "push on controller-created disposable run branch, never merged",
+    "trigger": "push only on controller-created tools/azure-policy-probe-run, never merged or tag-triggered",
     "container": false,
     "global_install": false,
-    "checkout_persist_credentials": false
+    "checkout_persist_credentials": false,
+    "unsupported_after": "2027-04-17",
+    "brownout_revisit": "Before March/April 2027 or any label refusal, revisit T-R11 with controller",
+    "successor": "ubuntu-24.04 x64 (ubuntu-26.04 x64 also available), only after controller ruling and userns/mountns preflight"
   },
   "rules": [
-    "Stage linux-x64 instead of the measured non-working local ARM route; ARM observations are explicitly unreceipted and grant no metric. Verify the full pinned455file payload before vendor execution.",
-    "Use kernel user/network/PID namespaces with unshare --user --map-root-user --net --pid --fork --kill-child; measure PID1 and loopback-only interfaces; no unisolated fallback. Kill normal and timeout process groups; PID namespace exit kills detached descendants.",
-    "Preflight before download reports a fixed failed-stage enum and integer/null kernel capabilities; raw stderr and exception text remain private.",
-    "Keep payload, HOME and private outputs outside checkout on an ephemeral runner; no credentials or subsequent execution from the vendor-exposed checkout. Only a separately published schema-validated receipt.json may leave the runner.",
+    "Stage linux-x64 instead of the non-working local ARM route; ARM observations are explicitly unreceipted and grant no metric. Verify all 455 pinned payload files, copy them to worker scratch and reverify the copy before vendor execution.",
+    "Use kernel user/network/PID/mount namespaces with unshare --user --map-root-user --net --pid --fork --kill-child --mount --mount-proc; measure PID 1 and loopback-only interfaces. No unisolated fallback. Kill normal and timeout process groups; PID namespace exit kills detached descendants.",
+    "Before download, preflight imports, loopback and the same read-only mount/write controls used by the real worker. Report a fixed failed-stage enum (including mountns) and integer/null kernel capabilities; raw stderr and exceptions stay private.",
+    "Keep download cache, launcher logs and public receipt outside writable worker scratch. Make the complete filesystem view read-only except out/worker, containing the private payload copy, HOME, TMP and raw worker output. Drop vendor capabilities with setpriv and no_new_privs. Measure EROFS on deliberate checkout, runner HOME, RUNNER_TEMP, cache and running-launcher write attempts; require a successful scratch write. Only measured success admits the schema-constant filesystem_readonly_outside_out flag. Never write action code or runner file-command files.",
+    "Pin schema and identities before vendor execution, including the filesystem-helper hash. After PID namespace teardown, validate a bounded regular no-follow worker receipt and its exit/status agreement. Outer publication/log failures yield receipt_invalid and exit 2; use exclusive no-follow logs and fresh receipt temporary names. Parse the shell launcher body before execution. Only separately published schema-validated receipt.json may leave the runner.",
     "Run three authored API variants independently after bounded readiness polling; completion requires clean shutdown. Startup is not a calibration metric or complete native population proof.",
-    "Runner explicitly selects free>=1GiB on cache/output filesystems and load<=6, nice10; lane defaults remain20GiB/load6. No Docker, global install, Rosetta, paid call or Azure login.",
-    "The staged workflow remains calibration/oracles/azure-policy/probe-linux-x64.workflow.yml until the controller copies it to the run branch. L3 remains held by D19."
+    "Runner explicitly selects at least 1 GiB free on cache/output filesystems, load at most 6, nice 10; lane defaults remain 20 GiB and load 6. No Docker, global install, Rosetta, paid call or Azure login.",
+    "The staged workflow remains calibration/oracles/azure-policy/probe-linux-x64.workflow.yml until the controller copies it to the fixed run branch. Pin Node 24 actions by full SHA. Revisit the T-R11 runner before its 2027-04-17 retirement and March/April brownouts; successor is ubuntu-24.04 x64 after a controller ruling and namespace preflight. L3 remains held by D19."
   ],
-  "artifact": "receipt.json only; counts, hashes, fixed enums and flags; never raw LSP, evaluations or stderr"
+  "artifact": "receipt.json only; counts, hashes, fixed enums and flags; never raw LSP, evaluations or stderr",
+  "review_amendment": "Round 2 N-M1/N-m1..4, before any Linux vendor execution; adds a measured writable-scratch-only filesystem boundary"
 }
