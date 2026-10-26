@@ -6026,3 +6026,34 @@ reads below its threshold with its oracle available for two releases; the consum
 **Revisit when** Keep/kill bars not attributed to the baseline or an existing reading are set here, not measured results. Reopen when LE-M1 cannot accept a helper-produced receipt for an exact-tree real push with CI agreeing; identity mismatch can reuse a receipt; flake ranking mistakes an unbound run for same-tree evidence; candidate ranking cannot name missing reach; the explicit cross-plan grandfather list grows; a measured workload reaches the set-here contention threshold in O1.
 
 **Reads.** ADR-078 D2 and D4; ADR-049 d2; ADR-067 d11; ADR-068; I14, I56; `docs/intent/scope/non-goals.md`; `docs/plans/portable-receipts.md`; `internal/store/sqlite_testevidence.go`; `internal/readout/testdelta.go`; `cmd/fathom/gatepreflight.go`; `cmd/fathom/intentindex.go`; `internal/verify/lint.go`; the dated measurements named in Context.
+
+## ADR-082: Feature labs: a lab per feature measures its firing funnel, results are files with one ledger row per key, and the product verb never spends (2026-10-26)
+
+**Status.** Accepted 2026-10-26 (owner-architect). **Type.** process / measurement. Design: `docs/design/feature-labs.md`. Plan: `docs/plans/feature-labs.md` (LAB-). Roadmap: `docs/vision/38-proof-layer-roadmap.md` section 9.14. Companion: ADR-071's bench program through `docs/design/bench-prep.md` (BX-). Reads ADR-049 decision 2 (the table freeze), ADR-056, ADR-073 and I61 as constraints.
+
+**Context.** Every agent-facing feature can fail at five stages: eligible, fired, delivered, acted on and helped. Call logs, hook logs, readouts and AD-20/AD-21 cover fired, part of delivered and acted on for two channels. Nothing covers eligible for the choices an agent makes (which verb to call, which skill to invoke), so nothing can say what the agent missed, and no measurement says whether a feature helped rather than merely fired. Description text alone is known to swing tool use by an order of magnitude with flat success, so text changes need held-out, paired evidence.
+
+**Decision.**
+1. *Cards and results are files.* Lab cards (`schema/labs` `#Lab`), cases (`#Case`, the kit scenario bank's `#Scenario` plus lab fields), corpora and readings are committed files. No store table, column, cache or background job is added while the freeze holds.
+2. *One ledger row per key.* Lab and decision-experiment results go to one JSONL ledger, one row per (run, case or site, arm). The writer refuses a duplicate key, so the existing ledger oracle verifies plan rows with no gate change.
+3. *The product verb never spends.* `fathom labs` and the labs section of `fathom instrument --adoption` read local files and never spend or run an agent. Every spending run goes through the bench binary `cmd/labbench`, which refuses to start without `-max-usd`, a `spend_label` and a committed prereg.
+4. *Firing never counts as helping.* A feature's firing rates (recall at should-fire moments, false fires at should-not moments) and its helped metric are reported separately. A knob that raises firing and leaves helped harmed, or inconclusive toward harm, is reverted (K4).
+5. *Helped is the plugin minus one feature.* The helped arm compares the shipped plugin with the plugin minus that one feature, both with `--ablation none`, and fathom computes the difference.
+6. *Replay tunes no knob before K2 reads.* Replay of real sessions may rank where to look. It selects or keeps no knob until agreement between replay predictions and live forks from the same real prefixes reaches Cohen's kappa of at least 0.6 on at least 60 prefixes. Real prefixes are never committed.
+7. *A fix is proved by its own commit's test.* An observation's fix proof is a test its fix commit added, red at the parent and green at the fix, run once in a scratch worktree. No one writes a proof by hand.
+8. *The lab description override is refused by the managed daemon.* The lab-only tool-description override serves a scratch daemon only. The managed daemon and the user's own `FATHOM_HOME` refuse it.
+
+**Decision models.** The labs measure the decision port and are not a decision site. Every grader, label split, interval and verdict is computed with provider `none`. Three typed questions could enter later, none built here. (1) The residue predicate, "is `<verb>` eligible here?", over a decision point's tool names and shape classes, never transcript text. With `none` the point stays unclassified and is counted. It is absent from `[decide] sites` by default. It is kept only at a Wilson lower bound of at least 0.90 against the K1 labels, and built only if LAB-M1a shows the residue above 20% of points (LAB-D6). (2) A theme choice for observations is refused (F49). (3) A judged helped metric is deferred with F12. If proposed, it is a binary verdict through the kit's `eval-journal`, validated by TPR and TNR on at least 100 labeled cases, and never primary.
+
+**Alternatives rejected.** A labs table in the store (the freeze, and files already verify). Counting a fire as a success (it rewards noise). Tuning on replay alone (unproven to predict live). Hand-written fix proofs (they would let the controller count its own claims under K5).
+
+**Consequences.** Every shipped agent surface gets a card with a firing criterion and a helped metric, or a named reason it has none (`CheckLabClosure`). Text knobs change only under a paired, Holm-corrected test on held-out cases (K3). The adopter feedback loop ends in a regression case and a fix proof, not a closed ticket.
+
+**Revisit when.**
+- K1 fails for a surface (TPR or TNR Wilson lower bound under 0.80 on 40 labeled points per class): that surface reports counts only, never rates.
+- K2 reads under 0.6: replay stays a finder and never selects a knob.
+- K3 reads no movement after one rewrite round: "text is not the knob" is recorded and text tuning stops for that surface.
+- K5 reads under half of fixed observations with a fix proof 60 days after LAB-M1: the loop shrinks to what was used.
+- K6 reads no knob change holding on the confirm split, or has not read by 2027-01-31: the program stops at the P1 instruments and P3 is refused.
+- RT-M1 reads PASS: moving cards, cases or the ledger into the store needs a new ADR.
+- A Codex arm is needed: ADR-029 is amended first (cards already carry a `harness` field).
