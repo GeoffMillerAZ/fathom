@@ -16,8 +16,27 @@ import (
 )
 
 // A CUE module that declares an external dependency must ingest without any
-// network attempt, and the dependency must read as a counted, named failure.
+// network attempt, and the dependency must read as a counted, named failure,
+// whatever CUE_REGISTRY says: unset, empty, an inline empty registry, or a
+// registry that names a reachable host (the counting proxy itself).
 func TestEnrichCUEEdges_ExternalDependencyNeverFetches(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		set   bool
+		value func(proxyHost string) string
+	}{
+		{name: "unset"},
+		{name: "empty", set: true, value: func(string) string { return "" }},
+		{name: "inline-empty", set: true, value: func(string) string { return "inline:{}" }},
+		{name: "named-host", set: true, value: func(h string) string { return h + "+insecure" }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			testExternalDependencyNeverFetches(t, tc.set, tc.value)
+		})
+	}
+}
+
+func testExternalDependencyNeverFetches(t *testing.T, set bool, value func(string) string) {
 	var hits atomic.Int64
 	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hits.Add(1)
@@ -37,7 +56,12 @@ func TestEnrichCUEEdges_ExternalDependencyNeverFetches(t *testing.T) {
 	defer func() { http.DefaultTransport = prev }()
 	t.Setenv("NO_PROXY", "")
 	t.Setenv("no_proxy", "")
-	t.Setenv("CUE_REGISTRY", "")
+	if set {
+		t.Setenv("CUE_REGISTRY", value(pu.Host))
+	} else {
+		t.Setenv("CUE_REGISTRY", "")
+		os.Unsetenv("CUE_REGISTRY")
+	}
 	t.Setenv("CUE_CACHE_DIR", t.TempDir())
 
 	root := t.TempDir()
