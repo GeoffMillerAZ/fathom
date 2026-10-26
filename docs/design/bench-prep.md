@@ -97,15 +97,35 @@ here builds a Codex harness, a container spike or a judged grader.
 
 Correction 3 changes H4's strata: the primary stratum is defined by lexical overlap only. Hop distance from the
 named symbol to the cause is a covariate with a "no graph path" bucket, because a "2+ hops" stratum keeps only tasks
-whose cause is graph-connected to a named symbol, which is fathom's own mechanism. Two definitions are pre-declared
-and BX-42 measures their yield on LCA (40 tasks) and public-go (35) at $0; the controller picks one before any agent
-spend:
+whose cause is graph-connected to a named symbol, which is fathom's own mechanism. D22 fixes D-a as primary and
+D-a-code as a pre-declared secondary definition. BX-42 reports yield under both, plus the D-b alternative, on
+LCA (40 tasks) and public-go (35) at $0. These roles are fixed before any result is read or any agent spend:
 
-- **D-a.** Non-lexical when no issue identifier (3 or more characters, a fixed stopword list, camel and snake forms
-  kept whole) occurs in any gold file at the base commit.
-- **D-b.** Non-lexical when the gold file ranks outside the top 10 of a fixed BM25 over the issue's identifiers.
+- **D-a (primary).** Non-lexical when no issue word (3 or more characters after the fixed stopword list, including
+  prose, camel and snake forms kept whole) occurs in any gold file at the base commit. This conservative reading
+  admits a task as non-lexical only when grep on any eligible issue word could not find a gold file.
+- **D-a-code (secondary).** The same overlap test, corpus and word tokenization, restricted to code-like issue
+  tokens: tokens inside backticks, or tokens containing `_`, `.`, `/`, or an uppercase rune after the first rune.
+  An initial capital alone does not qualify. Backticked multiword spans contribute separate tokens, and an
+  unmatched opening backtick quotes the remainder. The same length, stopword and component-expansion rules apply.
+- **D-b (alternative).** Non-lexical when the gold file ranks outside the top 10 of a fixed BM25 over the primary
+  issue query. D22 does not change its scores or ranks.
 
-The BM25 rank (`lexical_rank`) is recorded on every F1 task whichever definition wins.
+**Signed: owner-architect, 2026-10-26 (D22).** The widened D-a is ADOPTED as primary; D-a-code is retained as
+the pre-declared secondary. `StratifyTask` returns both labels as `d_a` and `d_a_code` before BX-42 reads yield.
+The probe "Viewing a pull request shows the wrong title" against a gold file whose comment says "pull request
+title" is **lexical under D-a** and **non-lexical under D-a-code** (no code-like issue token).
+
+Lexical tokenization is pre-declared as follows: document words use `[\pL_][\pL\pN_]*`, folded to lowercase.
+Comments are included under both D-a definitions. For the primary, issue words in prose and backticks both
+qualify after the fixed length and stopword filters. Camel and snake
+forms stay whole. Qualified names and paths contribute component words, including the leaf, under those same
+filters. Gold files absent at base (created by the fix) are skipped; at least one participating base gold file
+is required. D-b requires a positive-score gold file in the top 10.
+
+The BM25 rank (`lexical_rank`) is the best positive-score gold rank using the primary query, and is absent
+when no gold file matches or the filtered query is empty. Zero-score files retain deterministic path-order
+ranks in the diagnostic ranking only.
 
 ## 4. Reuse versus build
 
