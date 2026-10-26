@@ -230,7 +230,7 @@ func buildOperateProjection(d *consoleDeps, m observatoryModel, resolved console
 	if resolved.Path == "" {
 		pre = nil
 	}
-	p.Adoption, _ = instrumentAdoption(adoptionQuery{Root: ".", BaseURL: d.selfURL, preread: pre}, ioDiscard{})
+	p.Adoption, _ = instrumentAdoption(adoptionQuery{Root: ".", BaseURL: d.selfURL, preread: pre, skipLabs: true}, ioDiscard{})
 	p.Remedy = buildRemedyReport(fleetSnapshotDir())
 	loaded, lerr := config.Load(config.DefaultUserPath(), config.DefaultProjectPath())
 	if lerr == nil {

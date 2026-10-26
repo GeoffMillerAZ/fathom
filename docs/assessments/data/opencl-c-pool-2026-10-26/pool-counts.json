@@ -1,0 +1,111 @@
+{
+  "diagnostic_totals": {
+    "bytes": 32686035,
+    "distinct_blobs": 2411,
+    "files": 2422,
+    "subjects": 5
+  },
+  "diagnostics": [
+    {
+      "bytes": 0,
+      "distinct_blobs": 0,
+      "files": 0,
+      "id": "clinfo",
+      "role": "diagnostic"
+    },
+    {
+      "bytes": 22100,
+      "distinct_blobs": 12,
+      "files": 16,
+      "id": "handson",
+      "role": "diagnostic"
+    },
+    {
+      "bytes": 24761953,
+      "distinct_blobs": 1347,
+      "files": 1349,
+      "id": "hashcat",
+      "role": "diagnostic"
+    },
+    {
+      "bytes": 238306,
+      "distinct_blobs": 41,
+      "files": 41,
+      "id": "nvidia",
+      "role": "diagnostic"
+    },
+    {
+      "bytes": 7663676,
+      "distinct_blobs": 1011,
+      "files": 1016,
+      "id": "pocl",
+      "role": "diagnostic"
+    }
+  ],
+  "policy_sha256": "75b1c6a9c13fc32d204201e23f1e1d4f2afe90a02d9567d978d672fc1a9772eb",
+  "primary": [
+    {
+      "bytes": 467821,
+      "distinct_blobs": 103,
+      "files": 103,
+      "id": "arrayfire",
+      "role": "primary"
+    },
+    {
+      "bytes": 1133326,
+      "distinct_blobs": 40,
+      "files": 40,
+      "id": "clblas",
+      "role": "primary"
+    },
+    {
+      "bytes": 726693,
+      "distinct_blobs": 46,
+      "files": 46,
+      "id": "darktable",
+      "role": "primary"
+    },
+    {
+      "bytes": 1215747,
+      "distinct_blobs": 110,
+      "files": 110,
+      "id": "opencv",
+      "role": "primary"
+    },
+    {
+      "bytes": 160335,
+      "distinct_blobs": 8,
+      "files": 8,
+      "id": "pyopencl",
+      "role": "primary"
+    },
+    {
+      "bytes": 297447,
+      "distinct_blobs": 28,
+      "files": 31,
+      "id": "rodinia",
+      "role": "primary"
+    },
+    {
+      "bytes": 29468,
+      "distinct_blobs": 9,
+      "files": 10,
+      "id": "sdk",
+      "role": "primary"
+    },
+    {
+      "bytes": 225778,
+      "distinct_blobs": 38,
+      "files": 38,
+      "id": "shoc",
+      "role": "primary"
+    }
+  ],
+  "primary_totals": {
+    "bytes": 4256615,
+    "distinct_blobs": 382,
+    "files": 386,
+    "subjects": 8
+  },
+  "schema": "opencl-c-pool-audit-v1"
+}

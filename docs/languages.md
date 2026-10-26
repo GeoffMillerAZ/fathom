@@ -131,7 +131,7 @@ item's target; the last column also needs every level up to the target graded ex
 | T1 | language | 41 | 0 | 3 | 14 | 10 | 1 | 5 | 0 | 8 | 24 | 11 |
 | T1 | tool format | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |
 | T2 | tool format | 32 | 0 | 8 | 15 | 0 | 1 | 0 | 0 | 8 | 20 | 15 |
-| T3 | tool format | 18 | 0 | 5 | 12 | 0 | 0 | 0 | 0 | 1 | 16 | 5 |
+| T3 | tool format | 18 | 0 | 5 | 12 | 0 | 0 | 0 | 0 | 1 | 16 | 6 |
 | T4 | language | 3 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 2 | 1 | 0 |
 | T4 | tool format | 7 | 0 | 4 | 2 | 0 | 0 | 0 | 0 | 1 | 6 | 5 |
 | T5 | tool format | 8 | 0 | 2 | 6 | 0 | 0 | 0 | 0 | 0 | 8 | 4 |
@@ -139,7 +139,7 @@ item's target; the last column also needs every level up to the target graded ex
 | T6 | tool format | 4 | 0 | 3 | 1 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
 | T7 | tool format | 4 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
 | **Total** | language | 45 | 0 | 3 | 16 | 10 | 1 | 5 | 0 | 10 | 25 | 11 |
-| **Total** | tool format | 74 | 0 | 23 | 40 | 0 | 1 | 0 | 0 | 10 | 59 | 33 |
+| **Total** | tool format | 74 | 0 | 23 | 40 | 0 | 1 | 0 | 0 | 10 | 59 | 34 |
 
 ### T1
 
@@ -229,7 +229,7 @@ item's target; the last column also needs every level up to the target graded ex
 
 | Item | Kind | Target | Level met | Next gap |
 |---|---|---|---|---|
-| Terraform / OpenTofu (.tf .tfvars .tf.json) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 good) | L3 good: xref_recall 0.6086 < 0.8 |
+| Terraform / OpenTofu (.tf .tfvars .tf.json) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | Kubernetes manifests (incl. CRDs) | tool format | L3 | L3 (L1 excellent, L2 good, L3 good) | L2 good: oracle tier C caps at good |
 | Helm charts (Chart.yaml, values.yaml, templates/*.yaml, *.tpl) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 good) | L3 good: oracle tier C caps at good |
 | Kustomize (kustomization.yaml) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
@@ -327,7 +327,7 @@ Milestone M2 progress: languages at L1 42/45, at L1 excellent 30/35, at L2 37/25
 | Python packaging (pyproject.toml) | tool format | doc | pure-go:github.com/pelletier/go-toml/v2 (n/a) | L2 | L2 (L1 good, L2 excellent) | A dependency-groups (PEP 735 reference implementation: DependencyGroupResolver.lookup) pyproject_hooks 1.3.3; dependency-groups 1.3.2; flit_core 3.12.0; pdm-backend 2.5.0; setuptools 84.0.0; python 3.14.7; C pyproject build backend (prepare_metadata_for_build_wheel via pyproject_hooks) + dependency-groups (PEP 735 reference implementation) + tomllib for [tool.*] tables pyproject_hooks 1.3.3; dependency-groups 1.3.2; flit_core 3.12.0; pdm-backend 2.5.0; setuptools 84.0.0; python 3.14.7 | syntax | 2026-10-02 | at target (LB-Q-python-packaging) |
 | C# (.cs) | language | tags | tree-sitter/tree-sitter-c-sharp (MIT) | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | A roslyn-semantic Microsoft.CodeAnalysis.CSharp 5.9.0 (MSBuildWorkspace); B roslyn-syntax Microsoft.CodeAnalysis.CSharp 5.9.0; A scip-dotnet 0.1.0-SNAPSHOT | — | 2026-10-09 | at target (LB-Q-csharp) |
 | C (.c, .h by sniff) | language | tags | tree-sitter/tree-sitter-c (MIT) | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | A clang-preprocessor Apple clang version 21.0.0 (clang-2100.3.34.2); A scip-clang 0.4.0 | scip:scip-clang | 2026-10-11 | at target (LB-Q-c) |
-| Terraform / OpenTofu (.tf .tfvars .tf.json) | tool format | native | native:github.com/hashicorp/hcl/v2 (MPL-2.0 (library dependency, unmodified)) | L3 | L3 (L1 excellent, L2 excellent, L3 good) | A opentofu (tofu show -json -config, tofu graph -type=plan) 1.13.0 | syntax | 2026-10-10 | at target (LB-Q-terraform) |
+| Terraform / OpenTofu (.tf .tfvars .tf.json) | tool format | native | native:github.com/hashicorp/hcl/v2 (MPL-2.0 (library dependency, unmodified)) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A opentofu (tofu show -json -config, tofu graph -type=plan) 1.13.0 | syntax | 2026-10-26 | at target (LB-Q-terraform) |
 | C++ (.cc .cpp .cxx .hpp .hh .hxx, .h by sniff) | language | tags | tree-sitter/tree-sitter-cpp (MIT) | L4 | L4 (L1 excellent, L2 excellent, L3 good, L4 good) | A clang-ast Apple clang version 21.0.0 (clang-2100.3.34.2); A clang-preprocessor Apple clang version 21.0.0 (clang-2100.3.34.2); A scip-clang 0.4.0; B universal-ctags 6.2.1 | scip:scip-clang | 2026-10-10 | at target (LB-Q-cpp) |
 | Go (.go) | language | native | native:go/parser+go/types (BSD-3-Clause) | L4 | L3 (L1 excellent, L2 excellent, L3 excellent) | A scip-go 0.2.7; B universal-ctags 6.2.1 | native | 2026-10-26 | LB-Q-go |
 | Kubernetes manifests (incl. CRDs) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 good, L3 good) | A kubectl annotate --local --dry-run=client -o json (lines: gopkg.in/yaml.v3) kubectl v1.36.1; C kubernetes-oracle (independent gopkg.in/yaml.v3 walk) gopkg.in/yaml.v3 v3.0.1; A kubernetes-oracle selectors (labels.ValidatedSelectorFromSet, Selector.Matches; apimachinery decode) k8s.io/apimachinery v0.37.0 | — | 2026-10-15 | at target (LB-Q-kubernetes) |
@@ -346,7 +346,7 @@ Milestone M2 progress: languages at L1 42/45, at L1 excellent 30/35, at L2 37/25
 | Cargo manifests (Cargo.toml, workspaces) | tool format | doc | pure-go:github.com/pelletier/go-toml/v2 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A cargo metadata (--no-deps, and --all-features for the resolved graph) cargo 1.98.1 (797e8a9bc 2026-08-05) | syntax | 2026-09-29 | at target (LB-Q-cargo) |
 | Swift (.swift) | language | tags | alex-pinkus/tree-sitter-swift (MIT) | L3 | refused; measured L2 (L1 excellent, L2 good) | B swiftc -frontend -dump-parse 6.4 | — | 2026-09-29 | re-plan (LB-Q-swift-rest refused) |
 | Go modules (go.mod, go.work) | tool format | native | native:golang.org/x/mod (BSD-3-Clause) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A go mod edit -json, go work edit -json, go list -e -m -json all go1.26.3 darwin/arm64 | syntax | 2026-09-29 | at target (LB-Q-go-mod) |
-| SCSS (.scss) | language | tags | P233/tree-sitter-scss (MIT) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A dart-sass sass 1.105.1, sass-parser 0.4.57 | file | 2026-10-26 | at target (LB-Q-scss) |
+| SCSS (.scss) | language | tags | P233/tree-sitter-scss (MIT) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A dart-sass sass 1.105.1, sass-parser 0.5.1; A dart-sass+native-resolver sass 1.105.1, sass-parser 0.5.1; sass_api 18.1.0 (sass 1.106.1) import resolver | file | 2026-10-26 | at target (LB-Q-scss) |
 | Sass (indented syntax) (.sass) | language | tags | bajrangCoder/tree-sitter-sass (candidate not pinned: 56.16% of files in error at fb280c41) (MIT (LICENSE read at fb280c41b070657e4ff4d4e5e6eea6cb19efd9b8)) | L3 | refused | — | — | — | re-plan (LB-Q-sass-rest refused) |
 | Tailwind CSS v4 at-rules and custom utilities (.css) | language | tags | tree-sitter/tree-sitter-css (the css dialect's grammar) (MIT) | L2 | L3 (L1 good, L2 excellent, L3 excellent) | A tailwindcss 4.3.2 | — | 2026-10-20 | at target (LB-Q-tailwind) |
 | Less (.less) | language | tags | jimliang/tree-sitter-less (verify at pin) | L3 | refused | — | — | — | re-plan (LB-Q-less-rest refused) |

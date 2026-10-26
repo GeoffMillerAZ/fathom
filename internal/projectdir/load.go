@@ -13,6 +13,8 @@ import (
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/cuecontext"
 	"cuelang.org/go/cue/load"
+
+	"github.com/geoffmilleraz/fathom/internal/cuerefuse"
 )
 
 // schemaFS holds verbatim copies of schema/{project,guard,binding,techpack,risk,
@@ -285,7 +287,7 @@ func compileSchemas(ctx *cue.Context) (map[string]cue.Value, error) {
 		}
 		overlay[filepath.Join(base, "schema", name, "schema.cue")] = load.FromBytes(data)
 	}
-	insts := load.Instances([]string{"./schema/project", "./schema/techpack", "./schema/risk", "./schema/learning"}, &load.Config{Dir: base, ModuleRoot: base, Overlay: overlay})
+	insts := load.Instances([]string{"./schema/project", "./schema/techpack", "./schema/risk", "./schema/learning"}, &load.Config{Dir: base, ModuleRoot: base, Overlay: overlay, Registry: cuerefuse.Registry{}, Env: []string{}})
 	out := map[string]cue.Value{}
 	for _, inst := range insts {
 		if inst.Err != nil {

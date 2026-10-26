@@ -1,0 +1,29 @@
+{
+  "all_declarations_partitioned": true,
+  "caps": [
+    {
+      "cap": "PWSH_ORACLE_HELPER_FILE_CAP",
+      "input_count": 8,
+      "limit": 7,
+      "whole_unit_refused": true
+    },
+    {
+      "cap": "PWSH_ORACLE_HELPER_BYTE_CAP",
+      "input_count": 1421,
+      "limit": 1420,
+      "whole_unit_refused": true
+    }
+  ],
+  "declared_not_loaded_targets": 2,
+  "executable_fixture_not_run": true,
+  "inventory_targets": 4,
+  "loaded_targets": 2,
+  "missing_helper_regression": true,
+  "module_variable_private_ancestor": true,
+  "native_declaration_discovery": true,
+  "oracle_code_sha256": {
+    "DiscoverHarness.ps1": "f1c889b0de312c8edff82a174a4587f57739e6622b3a88a313b5aaf4c05be9a9",
+    "ResolveCalls.ps1": "d66261253126900afbc0e600ef47b6ba99a00902fab39f74a612907e2308ce47",
+    "prove_inventory.py": "d5915a7e2a8a6239e0b637657cca4ef74da02f6eaec56e3d08720a91cfa8486a"
+  }
+}

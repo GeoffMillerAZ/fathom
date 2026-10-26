@@ -1,0 +1,11 @@
+{
+  "tool": "official Kong decK",
+  "version": "1.68.0",
+  "url": "https://github.com/Kong/deck/releases/download/v1.68.0/deck_1.68.0_darwin_all.tar.gz",
+  "archive_sha256": "78e1cc4b9257483e84ca7bc391cec9a0a0c47bffc47ed2f1266263205e4a585b",
+  "archive_bytes": 42678741,
+  "binary_sha256": "fa560e40045a63987968d18807af38ffe26476aa38b1fd8a6d7d1e1e479e8cc2",
+  "binary_bytes": 141615980,
+  "checksum_source": "https://github.com/Kong/deck/releases/tag/v1.68.0",
+  "executed": false
+}
