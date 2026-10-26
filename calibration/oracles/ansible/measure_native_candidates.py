@@ -108,7 +108,7 @@ def main():
     private = work / 'home'; private.mkdir(exist_ok=True)
     config = work / 'ansible.cfg'; config.write_text('[defaults]\nretry_files_enabled=False\n')
     os.environ.update(LC_ALL=utf8_locale(), LC_CTYPE=utf8_locale(), ANSIBLE_HOME=str(private), ANSIBLE_CONFIG=str(config),
-                      ANSIBLE_LOCAL_TEMP=str(work / 'tmp'),
+                      ANSIBLE_LOCAL_TEMP=str(work / 'tmp'), ANSIBLE_INVENTORY_ENABLED='ini',
                       ANSIBLE_INVENTORY_UNPARSED_IS_FAILED='true',
                       ANSIBLE_INVENTORY_ANY_UNPARSED_IS_FAILED='true',
                       ANSIBLE_GALAXY_CACHE_DIR=str(work / 'galaxy-cache'),
