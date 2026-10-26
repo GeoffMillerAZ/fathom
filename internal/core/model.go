@@ -37,7 +37,15 @@ const (
 	// named `<workload>#<key>` and signed with the value as written, at the
 	// key's line. An observation of the manifest's own file (the ADR-064
 	// precedent); never a definition, in no dialect's oracle_kinds.
-	KindK8sFact       SourceKind = "K8sFact"
+	KindK8sFact SourceKind = "K8sFact"
+	// KindEntityFact is one fact a dialect's doc spec declares for an
+	// entity (DocResult.Facts; WAE-4, ADR-069): a rule's `for` or label, a
+	// route's receiver or timer, named `<entity>#<key>`, signed with the
+	// value as written, at the fact's line, in the entity's package. An
+	// observation of the entity's own file (the ADR-064 precedent), apart
+	// from KindK8sFact, whose rows feed concern deltas; never a
+	// definition, in no dialect's oracle_kinds.
+	KindEntityFact    SourceKind = "EntityFact"
 	KindCUEDefinition SourceKind = "CUEDefinition"
 	KindCUEField      SourceKind = "CUEField"
 	// KindCUEImport marks an import declaration captured as a reference
