@@ -5994,7 +5994,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-pgbouncer",
     "worker_model": "sonnet",
-    "notes": "new; excellence program T5; rides a pure-Go INI parser; [databases] host/dbname become service_ref edges; next gap: the INI parser and those edges"
+    "notes": "native PgBouncer 1.26.1 auth_dbname ablation attests full canonical one-pair population (A): L2 excellent, 161/161 definitions C and 1/1 references A; source positions remain C; reproduce native_oracle.py and native-protocol-r1.json, never relabel the legacy scanner"
   },
   {
     "id": "proxysql",
