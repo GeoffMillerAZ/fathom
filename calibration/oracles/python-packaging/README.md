@@ -90,3 +90,18 @@ made that a tool is unavailable: native backend metadata already works. The
 mixed definitions tier and the setup.cfg decoder capability remain separate
 ceilings. Requirements files still need line/requirement grammar support; the
 Conan reader drops lines before a section, so it is not that decoder either.
+
+## X-R4 sources searched, 2026-10-25
+
+| Required source | Named candidate / concrete result |
+|---|---|
+| Owner toolchain / introspection | The pinned PEP 517 backends and PyPA dependency-groups above already run offline. PyPA's [pyproject specification](https://packaging.python.org/specifications/pyproject-toml/) reserves tool-specific tables for each tool owner. Native package metadata does not evaluate unrelated tool namespaces. |
+| SCIP and LSIF lists plus GitHub | Read [Sourcegraph supported indexers](https://sourcegraph.com/docs/code-navigation/precise-code-navigation), [SCIP list](https://github.com/sourcegraph/scip#tools-using-scip), and Sourcegraph-maintained [LSIF.dev](https://lsif.dev/). Python SCIP exists for Python code, not generic pyproject/setup.cfg table semantics. GitHub query `scip-python-packaging in:name` returned one SciPy packaging tutorial, not an indexer. No universal absence claim follows. |
+| Language servers | [Taplo CLI 0.10.0](https://github.com/tamasfe/taplo/tree/0.10.0) (MIT) and [terror/pyproject 0.2.1](https://github.com/terror/pyproject) (CC0-1.0) checked by published source/interface. Taplo supplies generic TOML syntax/schema service; pyproject advertises diagnostics, completions, hover and formatting, backed by Taplo/schema/rule validation. Neither is the owner evaluator of every tool namespace or a maintained packaging SCIP producer. Both are independent analyzers (C under P-T1); neither was installed or reported as a runtime failure. |
+| Registry parsers / type checkers / AST dumpers | PyPI metadata/source checked for validate-pyproject 0.27, pyproject-metadata 0.12.1, pyproject-parser 0.14.0 above, plus tomlkit 0.15.2 (MIT). A retained generic tool dictionary or TOML syntax tree does not promote all tool namespaces to owner evaluation. These tools can corroborate C syntax, which already measures 36/36. |
+| Runtime call / require tracing | CPython [sys.settrace/setprofile and import audit hooks](https://docs.python.org/3.13/library/sys.html) checked. They expose Python execution/imports of a selected backend, not a declaration/reference evaluation of arbitrary unexecuted TOML tables. Backend hooks and native group resolution already attest their families; no subject install or package application is executed to manufacture unrelated bindings. |
+
+The L2 target is already excellent (6/6 native references). Remaining L1 C and
+setup.cfg/requirements decoder limits are qualified instrument/product limits,
+not missing-binary claims. Extending the shared decoder stays held by T-R2.
+X-R3 publication retains counts, digests and repo-relative summaries only.
