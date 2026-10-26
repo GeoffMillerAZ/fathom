@@ -1,22 +1,17 @@
 package store
 
-// stmtspill.go — LB-F208 (wave lg, LB-M5): SQLite's statement journal stays in memory.
+// stmtspill.go — LB-F208 (wave lg, LB-M5): raise SQLite's statement-journal spill threshold.
 //
 // An INSERT into observations fires the call-index trigger (derived.go), so inside the
 // ingest's explicit transaction every row is a multi-write statement and SQLite opens a
 // statement journal for it: the original image of each page the statement touches, kept in
-// memory until it passes SQLITE_STMTJRNL_SPILL (64 KiB) and then spilled to a temporary
-// file. A function that calls thirty things writes about sixty random index pages through
-// observation_calls' two name indexes, so a row's journal is a few hundred KiB: each such
-// statement created, wrote (sixty pwrites) and deleted a temp file. On the polyglot set
-// that was 3.5 s of the 17 s base build's CPU and 3.5 s of the head's, 70% of
-// PutObservations, all of it system time (docs/bench/readings/lang/footprint.md, wave lg).
+// memory until it passes SQLITE_STMTJRNL_SPILL (64 KiB by default) and then spilled to a
+// temporary file. Raising the threshold avoids that file for small call-index updates.
 //
 // The spill threshold is a process-wide sqlite3_config option that only takes effect before
 // SQLite initializes, so it is set once, before the first connection of any store opens.
-// Memory is bounded by the largest single statement's journal (freed when it finishes) and
-// by the hard heap limit applyTenancyPragmas sets; nothing else about the journal changes,
-// so the rows written are the rows written before.
+// Keep that threshold within the driver's write-size limit so large statements can spill.
+// Memory remains bounded by the threshold and the hard heap limit applyTenancyPragmas sets.
 
 import (
 	"sync"
@@ -25,9 +20,12 @@ import (
 	sqlite3 "modernc.org/sqlite/lib"
 )
 
-// stmtJournalSpillBytes is the in-memory statement journal's size before it spills to a
-// temporary file: 4 MiB, 64 times SQLite's default.
-const stmtJournalSpillBytes int32 = 4 << 20
+// stmtJournalSpillBytes keeps small journals in memory, at almost twice SQLite's 64 KiB
+// default. modernc.org/sqlite v1.52.0's seekAndWriteFd masks write lengths with 0x1ffff.
+// SQLite flushes spill-sized chunks, so the former 4 MiB threshold became a zero-byte
+// write and SQLITE_FULL on spill, even with free disk. Stay at the largest safe chunk
+// size: larger journals spill to disk instead of aborting the observation transaction.
+const stmtJournalSpillBytes int32 = (128 << 10) - 1
 
 var (
 	stmtSpillOnce    sync.Once
