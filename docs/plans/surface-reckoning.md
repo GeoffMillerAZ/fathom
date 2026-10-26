@@ -125,6 +125,12 @@ LB-F367 proved no secret value is stored and that symbol_context withholds a sen
 
 - [x] A qualified exact query for an ordinary bare-stored name matches only when the qualifier ends the symbol's package or its file stem path, the rule `<module>` already has: `zzz.get_debug_flag` on flask 3.1.3 has no exact match, `helpers.get_debug_flag` still answers. `fathom verify --strict` over all 67 plans on one scratch ingest: 1856 verified, 370 unproven, 62 plans exit 0 and 5 exit 1 before and after, every plan's output identical {id: SR-77, symbol: symbolMatches, package: internal/query, reachable_from: TestSymbolMatchesQualifierMustNameTheSymbolsFile}
 
+## Follow-up: unsupported deletion-reference coverage
+
+Controller F8 (2026-10-26) keeps this pre-existing case separate from the Go field-only adoption branch. Owner: core-t1; no implementation is included here.
+
+- [ ] A missing target such as NoSuchSymbol, or a Go variable/constant whose reference edges are not indexed, never receives a proven-zero deletion receipt: retain recorded referents, name the missing target or unsupported reference coverage, and keep typed function/method zero-referent checks working. Add end-to-end regressions for all three cases before claiming the fix. {id: CT1-SD-1, symbol: safeDeleteCheckAnswer, package: internal/mcp, reachable_from: TestBlastRadiusDeleteUnknownOrGoValueIsNotProvenZero}
+
 ## Measurements
 
 - [x] SR-M1: `tools/list` schema bytes on `/rpc/agent` before (18,310, 25 tools) and after, and on bare `/rpc` before (34,246, 59 tools) and after; the default is at most 9,000 bytes {id: SR-M1, symbol: surfaceSchemaBytes, package: internal/mcp, reachable_from: TestDefaultSurfaceSchemaBytesBudget}
