@@ -1582,6 +1582,18 @@ query source (LB-F2) and a rebuild of them from the lock is then byte-identical 
 `npx --yes tree-sitter-cli@<pinned> generate` in scratch (never a global install).
 `PROVENANCE.md` becomes a generated rendering of the lock plus the prose that is there today.
 
+An optional `patches` array declares build-time source changes, in application order:
+`[{"path":"patches/<blob>/0001-description.patch","sha256":"<64 lowercase hex>"}]`.
+Paths are canonical relative paths below the lock directory's `patches/`, ending in
+`.patch`; missing files, symlinks, traversal and duplicate paths are refused. The
+builder verifies the upstream archive checksum, commit and licence first, then each
+patch's checksum and clean application before optional generation. A failed patch
+stops the build; no fuzz, reverse application or three-way merge is permitted. The
+patched tree is licence-checked again, and MPL-2.0 grammars cannot carry patches.
+`PROVENANCE.md` marks patched sources and lists every patch digest in application
+order. Patches are in-tree build inputs, never runtime downloads or embedded patch
+text; the final uncompressed blob checksum remains the runtime trust boundary (I55).
+
 ### 8.2 The licence allowlist
 
 Allowed for grammars, queries and fixtures: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause,
