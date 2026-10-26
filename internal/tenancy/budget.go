@@ -303,7 +303,7 @@ func ResolveBudget(cfg Config, host HostFacts) (Budget, []Note) {
 	b.Host = HostTriggers{
 		ShedOnPressure:     pressureTrigger(cfg.Host.ShedOnPressure, PressureWarn),
 		RefuseOnPressure:   pressureTrigger(cfg.Host.RefuseOnPressure, PressureCritical),
-		FloorOnPressure:    pressureTrigger(cfg.Host.FloorOnPressure, PressureWarn),
+		FloorOnPressure:    floorTrigger(cfg.Host.FloorOnPressure),
 		SwapGrowth:         orI(cfg.Host.RefuseOnSwapGrowth, defaultSwapGrowth),
 		SwapGrowthWindow:   orD(cfg.Host.SwapGrowthWindow, defaultSwapGrowthWindow),
 		MinSwapVolumeFree:  orI(cfg.Host.MinSwapVolumeFree, defaultMinSwapVolumeFree),
@@ -358,14 +358,23 @@ func pressureTrigger(s string, def PressureLevel) PressureLevel {
 	switch strings.ToLower(strings.TrimSpace(s)) {
 	case "":
 		return def
-	case "normal":
-		return PressureNormal
 	case "warn":
 		return PressureWarn
 	case "critical":
 		return PressureCritical
 	}
 	return PressureUnknown // "off": never triggers
+}
+
+// floorTrigger is pressureTrigger for floor_on_pressure, the one key that
+// also takes "normal" (the swap-volume floor at any pressure, the rule before
+// RT-194). shed_on_pressure and refuse_on_pressure never accept it: shedding
+// or refusing at normal pressure would hold a rung all day.
+func floorTrigger(s string) PressureLevel {
+	if strings.EqualFold(strings.TrimSpace(s), "normal") {
+		return PressureNormal
+	}
+	return pressureTrigger(s, PressureWarn)
 }
 
 func clamp(v, lo, hi int64) int64 {

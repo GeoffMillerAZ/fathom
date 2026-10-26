@@ -201,3 +201,13 @@ func TestResolveBudget_FloorOnPressureNote(t *testing.T) {
 		})
 	}
 }
+
+// TestResolveBudget_NormalIsFloorOnly: "normal" is a floor_on_pressure value
+// only; on shed_on_pressure or refuse_on_pressure it would hold a rung at any
+// pressure, so it resolves as an unknown name there (never triggers).
+func TestResolveBudget_NormalIsFloorOnly(t *testing.T) {
+	b, _ := ResolveBudget(Config{Host: HostConfig{ShedOnPressure: "normal", RefuseOnPressure: "normal"}}, HostFacts{RAM: 32 * GiB, Managed: true})
+	if b.Host.ShedOnPressure == PressureNormal || b.Host.RefuseOnPressure == PressureNormal {
+		t.Fatalf("shed %s, refuse %s: normal must not resolve outside floor_on_pressure", b.Host.ShedOnPressure, b.Host.RefuseOnPressure)
+	}
+}
