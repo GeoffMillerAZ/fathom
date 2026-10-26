@@ -1,0 +1,22 @@
+id: go
+language: Go
+# Go calibration subjects; pins match docs/bench/readings/lang/go.json.
+# Cobra v1.9.1: a655097f is the annotated tag object, 40b5bc14 its source commit.
+# Independent holdout: docs/bench/go-fields-holdout.yaml (outside the canonical corpus).
+repos:
+  - name: spf13/cobra
+    url: https://github.com/spf13/cobra
+    ref: v1.9.1
+    sha: 40b5bc1437a564fc795d388b23835e84f54cd1d1
+    licence: Apache-2.0
+    idioms:
+      - 'struct fields, embeddings and functional options'
+      - 'methods, closures, interfaces and build tags'
+  - name: cli/cli
+    url: https://github.com/cli/cli
+    ref: v2.69.0
+    sha: 45ffa3c668f7105e92089220d42aa64c9acbd11c
+    licence: MIT
+    idioms:
+      - 'multi-package layout, struct fields and embedded types'
+      - 'methods, interfaces, generated mocks and platform files'

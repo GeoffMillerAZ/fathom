@@ -1,0 +1,63 @@
+{
+  "controls": {
+    "components.blade.php": {
+      "ast_sha256": "66e4efc653bc16e126292a7f2b4afab8236944206dfc2eb57ccb83944f72fbef",
+      "exit_code": 0,
+      "node_types": {
+        "blade": 1,
+        "text": 1
+      },
+      "source_sha256": "28384dc71babaa115a72e9cf22baa74156a3b3b496639cc6b9d5c4666df7b96c"
+    },
+    "directives.blade.php": {
+      "ast_sha256": "03dc6aae4925a878a5e8666a2402f5fe3bb66ea8de256302447610a475a8b3ee",
+      "exit_code": 1,
+      "node_types": {
+        "MISSING": 1,
+        "blade": 1,
+        "bracket_end": 3,
+        "bracket_start": 3,
+        "conditional": 1,
+        "directive": 2,
+        "directive_end": 1,
+        "directive_start": 1,
+        "inlineSection": 1,
+        "parameter": 4,
+        "text": 2
+      },
+      "source_sha256": "4c80f6dd9c471f9e93b0976abaada94e36beac130d72844d8364f23d227ecebb"
+    }
+  },
+  "gate": {
+    "error_or_missing": 35,
+    "infrastructure_failure": 0,
+    "pass": 219,
+    "passes_error_ceiling": false,
+    "timeout": 0,
+    "total": 254
+  },
+  "grammar": {
+    "commit": "9067259bebeed6be0d87b82f7ef93f20b2126156",
+    "native_library_sha256": "afff2954d18ff55198d99093a118d67e6aa1609adcc62f4854e7df4c89a842df",
+    "sources_sha256": {
+      "parser.c": "34570b37b4f7582923a370fffd9a12822961a18b395fa05146aa8ee78c9cfed3"
+    }
+  },
+  "structural_review": "manual inspection required; low ERROR rate alone is insufficient",
+  "subjects": {
+    "breeze": {
+      "bytes": 126356,
+      "commit": "47f6b30a3bdf376a3f75cf9ad8e68ea3941048e2",
+      "files": 57,
+      "path_content_set_sha256": "4285ed9e64f706a0a3c29ad2fa204d4e19565b294a2636dca9fc687feb31e32b"
+    },
+    "filament": {
+      "bytes": 589903,
+      "commit": "85d51ef9e5c4e3db281c568315f535652639e09f",
+      "files": 197,
+      "path_content_set_sha256": "09771f10d2cb5caabe947fe7f63c5803bf614b590e6832c0aa5026e1c6859d4a"
+    }
+  },
+  "timeout_seconds_per_file": 10,
+  "tool": "tree-sitter 0.26.11"
+}
