@@ -183,5 +183,5 @@
     "webgpu/webgpu-samples: wgsl-parse rejects or times out on sample/cornell/tonemapper.wgsl",
     "throughput: three runs at one commit on an Apple-silicon development machine read 9.16, 9.14 and 8.42 MB/s (CPU basis, tenancy throughput_mb_s); the committed reading is the median run, 9.14 MB/s CPU (9.59 MB/s wall)"
   ],
-  "disposition": null
+  "disposition": "Native WGSL L3 ceiling (assessment 2026-10-25, docs/assessments/wgsl-native-l3-ceiling.md): standard WGSL has no source-file import relation and naga parses one source string into one module. Import resolution and file-edge metrics remain unmeasured, not perfect. The existing L2 good reading and target are unchanged. Retry when a standard import facility or separately scoped host module format has independent resolution truth and sufficient references under D19."
 }
