@@ -1,0 +1,38 @@
+{
+  "kind": "source interface audit only; no workflow execution or oracle grade",
+  "npm": [
+    {
+      "name": "@actions/languageservice",
+      "version": "0.3.61",
+      "sha256": "0c05556530e0bad449203ea984212baff961d309829b255865105e175f882d35"
+    },
+    {
+      "name": "@actions/languageserver",
+      "version": "0.3.61",
+      "sha256": "d152725064c64f862da5158cd630d4c67973edfb58bdabaa44054ffef03b9d03"
+    }
+  ],
+  "checks": {
+    "local_dot_reference_rejected_by_action_parser": true,
+    "native_self_repository_validation_uses_dollar_slash": true,
+    "definition_provider_advertised": false,
+    "reference_provider_advertised": false
+  },
+  "runner": {
+    "repo": "actions/runner",
+    "version": "2.332.0",
+    "sources": [
+      {
+        "path": "src/Runner.Worker/ActionManager.cs",
+        "url": "https://raw.githubusercontent.com/actions/runner/a153d802ff96c51ac1b8d72dd8a38ebe830398fc/src/Runner.Worker/ActionManager.cs",
+        "sha256": "6695af143d1eb5892313d075eb3023d7e9d06e36f5ca286cbc5468a5cb4e5b7b"
+      },
+      {
+        "path": "src/Runner.Worker/ActionManifestManager.cs",
+        "url": "https://raw.githubusercontent.com/actions/runner/a153d802ff96c51ac1b8d72dd8a38ebe830398fc/src/Runner.Worker/ActionManifestManager.cs",
+        "sha256": "c256c358c495517e7b8816be458f3060b5b221f710068b7ed0f9874f06eb7c82"
+      }
+    ]
+  },
+  "next_native_route": "runner ActionManager.LoadAction and ActionManifestManager.Load; full-population harness unmeasured, held for D19"
+}

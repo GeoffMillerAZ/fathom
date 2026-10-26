@@ -111,12 +111,12 @@ function isFile(p) {
 // good. It is disclosed by every subject that has a local-uses edge.
 export const CEILING =
   "L3 ceiling: the local-uses cross-references are one family at tier C, which caps L3 at good (§1.3): " +
-  "a job's reusable workflow is the converter's own load, but a step's `uses: ./dir` is resolved by no offline " +
-  "GitHub tool (@actions/workflow-parser does not resolve actions), so this oracle applies GitHub's documented " +
+  "a job's reusable workflow is the converter's own load, but a step's `uses: ./dir` is not resolved by this " +
+  "instrument (@actions/workflow-parser does not resolve actions); the native runner loader route remains unmeasured pending D19, so this oracle applies GitHub's documented " +
   "runner rule (dir/action.yml, else dir/action.yaml, a file parseAction accepts); actionlint 1.7.12's own " +
   "LocalActionsCache and LocalReusableWorkflowCache attest a subset at tier C (an independent parser library, " +
   "owner decision D4; it reads action.yaml before action.yml and refuses metadata whose input carries a `type` " +
-  "key; LB-F457); a run step's first-command edges (LB-F310) are a second family nothing evaluates, covered by " +
+  "key; LB-F457); a run step's first-command edges (LB-F310) are a second family this instrument does not evaluate, covered by " +
   "tests, not by this reading";
 
 export async function run({ tools, subject }) {
