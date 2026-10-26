@@ -1,0 +1,9 @@
+{
+  "version": "prose-lab.floor-review-normalization/1",
+  "source_input_sha256": "7443fff96d8093b495d44ad7b0264f114af8eeb300332c8f2f6db86215986414",
+  "reader_a_raw_sha256": "ee50171c2c4d4a64ff15c87fd7bb62d9b2bbbf49aebf6ca458692b93d79dc59f",
+  "reader_b_raw_sha256": "add628d0de1af527e569044ebdaea2095e3378889b042535dd7805f4e94c1c80",
+  "portable_basis_normalizations": 85,
+  "rule": "Remove redundant Sources suffix with absolute display links only. Preserve source fact IDs in structured premise/counter sets and prose basis. No source, criterion, assertion, case digest, judgment or review status changed. Raw reviewer output retained privately.",
+  "new_provider_generations": 0
+}

@@ -1,0 +1,32 @@
+{
+  "subject": {
+    "name": "pgbouncer/pgbouncer",
+    "sha": "f03e9bf263d7ccd5d1d152a61811bf3258dd6b87"
+  },
+  "version": "PgBouncer 1.26.1",
+  "binary_sha256": "9efe6556ff7ee085cf3879737515ae11b86536ac6a44509f00673c08b183a81a",
+  "definitions": 161,
+  "references": 1,
+  "backend_sql_executed": false,
+  "backend_endpoint": "nonexistent private local socket directory",
+  "configs": 6,
+  "membership_disagreements": 0,
+  "negative_controls": 1,
+  "protocol": "r2",
+  "native_databases_probed": 52,
+  "native_outcomes": {
+    "external-authentication-database": 1,
+    "no-auth-user": 49,
+    "no-external-authentication-database": 2
+  },
+  "native_scanner_population_agrees": true,
+  "native_population_sha256": "db1681e5a22e87fc02d647254b0cc819757b95cd256ccf86e9cb84efe0a6153a",
+  "native_evidence_sha256": "68771304cf196e10d6168c115d5ee48c9c834e6e2ac97bf337fe098eb3f40733",
+  "population_sha256": "5addb5ca9154c66fd18c949fb1ef1a3f0e6947871ec7a74f9241e970c29b75c4",
+  "native_error_sqlstates": [
+    "08P01"
+  ],
+  "control_error_sqlstates": [
+    "08P01"
+  ]
+}

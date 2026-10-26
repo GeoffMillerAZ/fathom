@@ -1,0 +1,110 @@
+{
+  "dialect": "nginx",
+  "fathom_commit": "c0bd1cdb8",
+  "counts": {
+    "fathom_defs": 71,
+    "kind_equal": 71,
+    "matched": 71,
+    "oracle_defs": 71,
+    "ref_fathom": 1,
+    "ref_fathom_in_truth": 1,
+    "ref_truth": 1,
+    "ref_truth_found": 1
+  },
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "ref_precision": "C",
+    "ref_recall": "C",
+    "sym_precision": "C",
+    "sym_recall": "C"
+  },
+  "grade": {
+    "L1": "good",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 9.91,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 9.99,
+    "max_file_ms": 0,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "kind": "L1/L2 diagnostic only; canonical L3 reading untouched",
+  "native_subjects": [
+    {
+      "kind": "native precision controls over independent pair population; recall C; no L3 measurement",
+      "subject_sha": "30f4b7f6a6c3b0c0ecf4d4efb0de203c48d11562",
+      "reference_tier": "C",
+      "population_origin": "independent crossplane walk; no native completeness proof",
+      "configs": 1,
+      "definitions": 4,
+      "references": 0,
+      "binary_sha256": "cef4bbe34f6c636bc7b13adcd653f7959d70bcae7c3228d7f4bb2a5594e6b407",
+      "scope_sha256": "2a374380c972397fa45d4fce801601b0b07db5510de50217b85630209524af7b",
+      "native_evidence_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "mutations": "target upstream declaration only; references untouched",
+      "server_started": false,
+      "backend_requests": 0
+    },
+    {
+      "kind": "native precision controls over independent pair population; recall C; no L3 measurement",
+      "subject_sha": "0a5db852e18d1c22c62a5ede1412ac3f416111a0",
+      "reference_tier": "C",
+      "population_origin": "independent crossplane walk; no native completeness proof",
+      "configs": 2,
+      "definitions": 5,
+      "references": 0,
+      "binary_sha256": "cef4bbe34f6c636bc7b13adcd653f7959d70bcae7c3228d7f4bb2a5594e6b407",
+      "scope_sha256": "023622df77d6d4ef0d018421ceb60f86f3dfb6f96252392b021399ede6a9d136",
+      "native_evidence_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "mutations": "target upstream declaration only; references untouched",
+      "server_started": false,
+      "backend_requests": 0
+    },
+    {
+      "kind": "native precision controls over independent pair population; recall C; no L3 measurement",
+      "subject_sha": "611fa05748a4031841e5607cd3069288b0aa9973",
+      "reference_tier": "C",
+      "population_origin": "independent crossplane walk; no native completeness proof",
+      "configs": 11,
+      "definitions": 30,
+      "references": 1,
+      "binary_sha256": "cef4bbe34f6c636bc7b13adcd653f7959d70bcae7c3228d7f4bb2a5594e6b407",
+      "scope_sha256": "ee2582e64492e334e8420b9205eeee8791ca3e3ce977cb4fa761010c607e4348",
+      "native_evidence_sha256": "f9468bf0fbf3686d7d9401b6edb243f72335a58b1450f01d4f97e07db1134235",
+      "mutations": "target upstream declaration only; references untouched",
+      "server_started": false,
+      "backend_requests": 0
+    },
+    {
+      "kind": "native precision controls over independent pair population; recall C; no L3 measurement",
+      "subject_sha": "ae3d567f871ea4b28a28a7f269f38030fe8157ba",
+      "reference_tier": "C",
+      "population_origin": "independent crossplane walk; no native completeness proof",
+      "configs": 33,
+      "definitions": 44,
+      "references": 0,
+      "binary_sha256": "cef4bbe34f6c636bc7b13adcd653f7959d70bcae7c3228d7f4bb2a5594e6b407",
+      "scope_sha256": "f1f6b4f60d36d2cc8a5e24de247bea5ec7609b8ce55bbac6cb71d9186e99b152",
+      "native_evidence_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "mutations": "target upstream declaration only; references untouched",
+      "server_started": false,
+      "backend_requests": 0
+    }
+  ],
+  "reading_sha256": "4cd63f6c2afb32522b48acd255e168bc69f2c2e536e5fa749875dc52073f8b4c",
+  "before_L2": "good",
+  "after_L2": "good"
+}

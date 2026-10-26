@@ -38,7 +38,8 @@ func NewReading(m Manifest, target string) Reading {
 }
 
 var familyMetrics = map[string][]string{
-	FamilyL1:        {MSymRecall, MSymPrecision, MKindAgreement, MRangeAgreement, MSignatureCoverage},
+	FamilyL1:        {MSymRecall, MSymPrecision, MKindAgreement, MSignatureCoverage},
+	FamilyRanges:    {MRangeAgreement},
 	FamilyCalls:     {MCallRecall, MCallPrecision},
 	FamilyDefMap:    {MDefMapping},
 	FamilyTyped:     {MTypedRecall},
@@ -162,7 +163,19 @@ func recompute(r *Reading) {
 	set(FamilyL1, MSymRecall, ratio(counts[CntMatched], counts[CntOracleDefs]))
 	set(FamilyL1, MSymPrecision, ratio(counts[CntMatched], counts[CntFathomDefs]-counts[CntAdjudicated]))
 	set(FamilyL1, MKindAgreement, ratio(counts[CntKindEqual], counts[CntMatched]))
-	set(FamilyL1, MRangeAgreement, ratio(counts[CntRangeOK], counts[CntRangeEligible]))
+	// A companion may contribute range counts alongside the legacy L1 oracle.
+	// Keep the old L1 tier as a conservative cap for legacy readings; the explicit
+	// ranges family can only lower the range metric's tier, never promote it.
+	rangeTier := tiers[FamilyL1]
+	if companionTier, ok := tiers[FamilyRanges]; ok && (!measured(FamilyL1) || tierRank[companionTier] < tierRank[rangeTier]) {
+		rangeTier = companionTier
+	}
+	if slices.Contains(keys, MRangeAgreement) && rangeTier != "" && counts[CntRangeEligible] > 0 {
+		all[MRangeAgreement] = ratio(counts[CntRangeOK], counts[CntRangeEligible])
+		if all[MRangeAgreement] != nil {
+			metricTiers[MRangeAgreement] = rangeTier
+		}
+	}
 	set(FamilyL1, MSignatureCoverage, ratio(counts[CntCallablesSigned], counts[CntCallables]))
 	set(FamilyCalls, MCallRecall, ratio(counts[CntCallTruthFound], counts[CntCallTruth]))
 	// LB-F203: the oracle-blind exclusion is a rule the harness computes, and

@@ -1,0 +1,22 @@
+{
+  "fathom_nodes_before": 2,
+  "fathom_nodes_after": 0,
+  "race_enabled": true,
+  "truth_before_sha256": "0df542c44a9da80beec68e1adc5d616512675c82b3e180c6709e983fbcbe4818",
+  "truth_after_output_removal_sha256": "0df542c44a9da80beec68e1adc5d616512675c82b3e180c6709e983fbcbe4818",
+  "truth_after_input_change_sha256": "7e328cd1cb7c699eecbd2008ae0124c8e5cf78495dba60c0c9e82356dd868022",
+  "mutation_file": "native_positions.py",
+  "mutant": "filter native callbacks by independent mutation sites",
+  "failure_line": "FAIL: test_native_population_cannot_be_selected_by_locator (test_native_positions.PositionReaderTest)",
+  "restored_green": true,
+  "locator_line_shift": {
+    "offset": 1,
+    "native_refused": true,
+    "reason": "native callback prefix does not bracket the proposed token line"
+  },
+  "line_bracket_mutation": {
+    "mutant": "disable native callback prefix requirements",
+    "failure_line": "FAIL: test_shifted_or_reversed_locator_lines_are_refused (test_native_positions.NativePositionTest) (shift=1)",
+    "restored_green": true
+  }
+}

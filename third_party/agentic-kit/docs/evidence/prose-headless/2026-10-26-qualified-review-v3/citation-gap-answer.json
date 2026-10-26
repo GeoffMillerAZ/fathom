@@ -1,0 +1,32 @@
+{
+  "case_id": "oq-c05-case-2",
+  "reference": "unsupported",
+  "response_contract": "prose-lab.support-review/3",
+  "ordinary_answer": {
+    "status": "unsupported",
+    "reason": "The cited fact f-01 only defines a procedure: the worker acknowledges a batch after storage confirms its flush. It says nothing about whether a flush was completed, or when, so it cannot supply a positive premise for the assertion. The assertion's content appears only in f-02, which was not cited. Only cited facts may supply positive premises, so this is a citation mismatch. No fact contradicts the assertion.",
+    "premise_fact_ids": [],
+    "counter_fact_ids": []
+  },
+  "contract_valid": false,
+  "native_usage": {
+    "input_tokens": 961,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+      "ephemeral_5m_input_tokens": 0,
+      "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 172,
+    "output_tokens_details": {
+      "thinking_tokens": 0
+    },
+    "service_tier": "standard",
+    "inference_geo": "global",
+    "speed": "standard"
+  },
+  "http_status": 200,
+  "hidden_thinking_text_read": false,
+  "native_outcome_sha256": "1365ca668610d4f127291f9fe003603bed4fdc99ed060770b0471716159be863",
+  "authority": false
+}

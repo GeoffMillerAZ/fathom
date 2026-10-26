@@ -1,0 +1,147 @@
+{
+  "holdout_commit": "38cada7a9458864265e25415ae61586d500ff5fc",
+  "archive_sha256": "cb8ee47813d93ff68ffd8efa579ef65d50ca2fc168fc70a7e6812b0f3b4a6d7a",
+  "product_commit": "85ee9a41cb79a25acbee625cce3d5402ad284840",
+  "product_binary_sha256": "8e215c9b313e23c347ffee2995c9d4a0ec56f59f22aa01009c47848ab42170df",
+  "compiler_sha256": "18c23a68d6f4a21e822a8dcee212a2a448a66494b8f58aaf1655ef6328543d11",
+  "baseline_catalog_sha256": "b0da4128d106468636a49f08889ef0412cae3fc7bbb450efda92dde0792a0bb5",
+  "core_catalog_sha256": "6f6681d1b422c5bb11c54c97fa2550f6c3893b9da1971aecb0a7b59e91bbd458",
+  "baseline_constructors_sha256": "86c330fb37b909e7c611ec1dac7e570ad4ed5381a2878c8822c8d5bd17d583ee",
+  "extension_catalog_sha256": "43e34f4c96a7ad9ce2aaae7cc1427e16e46d1a4a1f1bd996d5653b088cd1159d",
+  "manifest_sha256": "f22308833c5b3727cc80bed90dfa36b0dcfe76f74cf927317d24a4a5199c9258",
+  "population_by_extension": {
+    ".comp": 5,
+    ".frag": 361,
+    ".geom": 37,
+    ".glsl": 23,
+    ".mesh": 2,
+    ".task": 2,
+    ".vert": 342
+  },
+  "sniff_rejected_fs": 0,
+  "paired_comparison_claimable": true,
+  "validation_claimable": false,
+  "diagnostic_only": true,
+  "deltas": {
+    "core-plus-types_vs_baseline": {
+      "call_truth_found": 0,
+      "call_fathom": -1,
+      "call_missed": 0,
+      "call_extra": -1
+    },
+    "full-registry_vs_baseline": {
+      "call_truth_found": 0,
+      "call_fathom": -1,
+      "call_missed": 0,
+      "call_extra": -1
+    }
+  },
+  "modes": {
+    "baseline-core": {
+      "population": 772,
+      "oracle_scope": 656,
+      "oracle_scope_fraction": 0.8497409326424871,
+      "user_call_denominator": 63,
+      "validation_claimable": false,
+      "diagnostic_only": true,
+      "exclusion_entries": 158096,
+      "gap_statuses": {
+        "compile_failed": 71,
+        "unknown_stage": 23,
+        "unverified_source_origin": 22
+      },
+      "catalog_mode": "baseline-core",
+      "catalog_fingerprint_sha256": "cb8641d31bf437d635012c23f48b5ee948c6040aa96cd07c95aba811b948a1f9",
+      "score": {
+        "call_truth": 63,
+        "call_truth_found": 63,
+        "call_fathom": 67,
+        "call_fathom_in_truth": 63,
+        "call_missed": 0,
+        "call_extra": 4,
+        "call_recall": 1.0,
+        "call_precision": 0.9402985074626866,
+        "reading_sha256": "eee0171a588da8d009c7f00c6c2072747836b9aa936d5588c0914bf421c513de",
+        "unmatched_sha256": "ecf02713c7e9761ff0e64b789d8225718b478b6e2d38d6aa8e55a09ad5bc6bcc",
+        "oracle_truth_sha256": "7cb3b2fc8decb1ed1642ebcf0f2a88f0367110d4c11bdda6c14eb047db5b5482",
+        "subject_sha": "38cada7a9458864265e25415ae61586d500ff5fc",
+        "manifest_sha256": "f22308833c5b3727cc80bed90dfa36b0dcfe76f74cf927317d24a4a5199c9258",
+        "tenant_files": 772,
+        "exact_tenancy_files": 772,
+        "tenant_faults": 0
+      },
+      "complete_tenancy": true
+    },
+    "core-plus-types": {
+      "population": 772,
+      "oracle_scope": 656,
+      "oracle_scope_fraction": 0.8497409326424871,
+      "user_call_denominator": 63,
+      "validation_claimable": false,
+      "diagnostic_only": true,
+      "exclusion_entries": 211888,
+      "gap_statuses": {
+        "compile_failed": 71,
+        "unknown_stage": 23,
+        "unverified_source_origin": 22
+      },
+      "catalog_mode": "core-plus-types",
+      "catalog_fingerprint_sha256": "622c3c0fed5e0f7344099273698bdee219f9b546efcf0dfcc4b0bb09dc4a3126",
+      "score": {
+        "call_truth": 63,
+        "call_truth_found": 63,
+        "call_fathom": 66,
+        "call_fathom_in_truth": 63,
+        "call_missed": 0,
+        "call_extra": 3,
+        "call_recall": 1.0,
+        "call_precision": 0.9545454545454546,
+        "reading_sha256": "5c4c688a63b2b01ca63885107614d7a8d02dc8d9b0701c9b1f99f2123aaf6d70",
+        "unmatched_sha256": "aa98c7063619d65adc726db96b98c27d7fa4f9fa5d2529186fdbd227303d9eb9",
+        "oracle_truth_sha256": "7cb3b2fc8decb1ed1642ebcf0f2a88f0367110d4c11bdda6c14eb047db5b5482",
+        "subject_sha": "38cada7a9458864265e25415ae61586d500ff5fc",
+        "manifest_sha256": "f22308833c5b3727cc80bed90dfa36b0dcfe76f74cf927317d24a4a5199c9258",
+        "tenant_files": 772,
+        "exact_tenancy_files": 772,
+        "tenant_faults": 0
+      },
+      "complete_tenancy": true
+    },
+    "full-registry": {
+      "population": 772,
+      "oracle_scope": 656,
+      "oracle_scope_fraction": 0.8497409326424871,
+      "user_call_denominator": 63,
+      "validation_claimable": false,
+      "diagnostic_only": true,
+      "exclusion_entries": 764896,
+      "gap_statuses": {
+        "compile_failed": 71,
+        "unknown_stage": 23,
+        "unverified_source_origin": 22
+      },
+      "catalog_mode": "full-registry",
+      "catalog_fingerprint_sha256": "bc10197e4a50b121c13e56bee2f5536714515c3d94296cb260bc6922a658d6e5",
+      "score": {
+        "call_truth": 63,
+        "call_truth_found": 63,
+        "call_fathom": 66,
+        "call_fathom_in_truth": 63,
+        "call_missed": 0,
+        "call_extra": 3,
+        "call_recall": 1.0,
+        "call_precision": 0.9545454545454546,
+        "reading_sha256": "d3f210bd53c35a6334915598aed8449aabf0bf5deb84455111382537ef42c1f7",
+        "unmatched_sha256": "aa98c7063619d65adc726db96b98c27d7fa4f9fa5d2529186fdbd227303d9eb9",
+        "oracle_truth_sha256": "7cb3b2fc8decb1ed1642ebcf0f2a88f0367110d4c11bdda6c14eb047db5b5482",
+        "subject_sha": "38cada7a9458864265e25415ae61586d500ff5fc",
+        "manifest_sha256": "f22308833c5b3727cc80bed90dfa36b0dcfe76f74cf927317d24a4a5199c9258",
+        "tenant_files": 772,
+        "exact_tenancy_files": 772,
+        "tenant_faults": 0
+      },
+      "complete_tenancy": true
+    }
+  },
+  "disclosure": "All glslang invocations use suffix-inferred stages without native build flags; tier B at best."
+}

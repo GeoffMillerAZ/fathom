@@ -1,0 +1,55 @@
+{
+  "current_pure_suite": {
+    "result": "PASS",
+    "tests": 19
+  },
+  "log_sha256": "1089ad76ab4b89bb2a0178172631e1a53838919a341deb68103eb78e2f90b10d",
+  "mutants": [
+    {
+      "failure_assertion": "FAIL: test_native_caller_never_copies_syntax_pair (test_trace_decode.NativeTraceTests.test_native_caller_never_copies_syntax_pair)",
+      "mutant": "trace_decode.py test_native_caller_never_copies_syntax_pair",
+      "restored_result": "GREEN"
+    },
+    {
+      "failure_assertion": "FAIL: test_implicit_callback_is_unattested (test_trace_decode.NativeTraceTests.test_implicit_callback_is_unattested)",
+      "mutant": "trace_decode.py test_implicit_callback_is_unattested",
+      "restored_result": "GREEN"
+    },
+    {
+      "failure_assertion": "FAIL: test_reflective_dispatch_cannot_impersonate_literal (test_trace_decode.NativeTraceTests.test_reflective_dispatch_cannot_impersonate_literal)",
+      "mutant": "trace_decode.py test_reflective_dispatch_cannot_impersonate_literal",
+      "restored_result": "GREEN"
+    },
+    {
+      "failure_assertion": "FAIL: test_alias_is_unattested (test_trace_decode.NativeTraceTests.test_alias_is_unattested)",
+      "mutant": "trace_decode.py test_alias_is_unattested",
+      "restored_result": "GREEN"
+    },
+    {
+      "failure_assertion": "FAIL: test_rows_cap_plus_one (test_trace_decode.NativeTraceTests.test_rows_cap_plus_one)",
+      "mutant": "trace_decode.py test_rows_cap_plus_one",
+      "restored_result": "GREEN"
+    },
+    {
+      "failure_assertion": "FAIL: test_owner_answers_and_perturbations (__main__.OwnerToolTests.test_owner_answers_and_perturbations)",
+      "mutant": "typeprof_export.rb tier",
+      "restored_result": "GREEN"
+    },
+    {
+      "failure_assertion": "FAIL: test_owner_answers_and_perturbations (__main__.OwnerToolTests.test_owner_answers_and_perturbations)",
+      "mutant": "typeprof_export.rb target",
+      "restored_result": "GREEN"
+    },
+    {
+      "failure_assertion": "FAIL: test_owner_answers_and_perturbations (__main__.OwnerToolTests.test_owner_answers_and_perturbations)",
+      "mutant": "typeprof_export.rb unresolved",
+      "restored_result": "GREEN"
+    },
+    {
+      "failure_assertion": "FAIL: test_owner_answers_and_perturbations (__main__.OwnerToolTests.test_owner_answers_and_perturbations)",
+      "mutant": "typeprof_export.rb scope",
+      "restored_result": "GREEN"
+    }
+  ],
+  "scope": "observed native/decoder mutation runs; summaries reconstructed from private log before cleanup"
+}

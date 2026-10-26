@@ -1,0 +1,76 @@
+{
+  "command": "python3 calibration/oracles/cedar-grammar-screen/screen.py (see README)",
+  "candidate": "SwornSystems/tree-sitter-cedar",
+  "commit": "2e9f10824728b13d4c019774b32ca0a883e97f96",
+  "archive_sha256": "9b705cb86363982cf306139483a7b1cbcb01145f1e7b4d069c46481a95ac016c",
+  "licence": "MIT OR Apache-2.0",
+  "reference": "cedar-policy-cli 4.13.0",
+  "tree_sitter": "tree-sitter 0.27.0",
+  "native_compile": "cc -O0 -dynamiclib",
+  "parser_sources": {
+    "cedar": {
+      "parser.c": "684d17a7d069eff68b8a29b044a5694268c2d8bb25d645746967930ae261c5f3"
+    },
+    "cedarschema": {
+      "parser.c": "1464a086977d21435301388ecb86a5a02fbb90d09a0847a15d1343396fd959d1"
+    }
+  },
+  "timeout_seconds": 10,
+  "subjects": [
+    {
+      "subject": "cedar-examples",
+      "subject_commit": "c251f7d1ad171bd12dee5d1d7a1cceaec994518f",
+      "grammar": "cedar",
+      "files": 20,
+      "bytes": 36483,
+      "content_sha256": "36afb9b5e332f9a718659edd6dfea6ae26770cef471ad9a1e7994914e212b717",
+      "error_or_missing_files": 1,
+      "error_set_sha256": "8b8cafa077a7c2cbdaf3fb8dbd35b3d589bd623126b96ecaad023b2861d2c158",
+      "faults": 0,
+      "fault_set_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "reference_rejected_files": 0
+    },
+    {
+      "subject": "cedar-examples",
+      "subject_commit": "c251f7d1ad171bd12dee5d1d7a1cceaec994518f",
+      "grammar": "cedarschema",
+      "files": 14,
+      "bytes": 13168,
+      "content_sha256": "80272cbb79e84ec78794a805c73a5bf2a8965d6db79f47a2981fdc8b2e6c44cc",
+      "error_or_missing_files": 0,
+      "error_set_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "faults": 0,
+      "fault_set_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "reference_rejected_files": 0
+    },
+    {
+      "subject": "cedar-integration-tests",
+      "subject_commit": "1999ea249229e26cabb398a279fea721854a471d",
+      "grammar": "cedar",
+      "files": 22,
+      "bytes": 6722,
+      "content_sha256": "13c35e9fb11ade30cdcf3c63fad34d6cf0de3b03eddc69a7ee903799ce0460ba",
+      "error_or_missing_files": 0,
+      "error_set_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "faults": 0,
+      "fault_set_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "reference_rejected_files": 0
+    },
+    {
+      "subject": "cedar-integration-tests",
+      "subject_commit": "1999ea249229e26cabb398a279fea721854a471d",
+      "grammar": "cedarschema",
+      "files": 3,
+      "bytes": 3048,
+      "content_sha256": "2bf283e294e68c77b5571ea45657a7d4d2dcdebb10d450d1afb7a05ec6a4da60",
+      "error_or_missing_files": 0,
+      "error_set_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "faults": 0,
+      "fault_set_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "reference_rejected_files": 0
+    }
+  ],
+  "files": 59,
+  "error_or_missing_files": 1,
+  "faults": 0
+}

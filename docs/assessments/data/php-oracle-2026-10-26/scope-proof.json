@@ -1,0 +1,68 @@
+{
+  "canonical_reading_changed": false,
+  "scope": "fresh syntax-population audit at original pins; not retrospective manifests of discarded native suites",
+  "subjects": {
+    "guzzle": {
+      "after": {
+        "bytes": 1128920,
+        "entries": 116,
+        "files": 116,
+        "gitlinks": 0,
+        "sha256": "2da2ce58d3b9f7c00c3175798c78bdb617647416154202c5f4e992270c550f25",
+        "symlinks": 0
+      },
+      "before": {
+        "bytes": 1128920,
+        "entries": 116,
+        "files": 116,
+        "gitlinks": 0,
+        "sha256": "2da2ce58d3b9f7c00c3175798c78bdb617647416154202c5f4e992270c550f25",
+        "symlinks": 0
+      },
+      "exclusions": "non-PHP tracked files reconcile the manifest difference; .git, dot directories, vendor and node_modules skipped by syntax; no symlinks followed; submodule contents not covered",
+      "generated_untracked_or_ignored_paths": 0,
+      "literal_sites": 3189,
+      "matches_all_published_runtime_populations": true,
+      "original_php_bytes": 464048,
+      "population_sha256": "9ef8f0935f4fc24b2537c02e3ef78bb93aa129c9a0f9b97db8511bfdd2be3a84",
+      "reading_bytes": 464048,
+      "reading_files": 74,
+      "receipt_prefix": "workspace/artifacts/lang-php/scope/guzzle-{before,after}",
+      "revision": "7b2f29fe81dc4da0ca0ea7d42107a0845946ea77",
+      "subpath": ".",
+      "syntax_files": 74,
+      "unique_written_pairs": 2571
+    },
+    "monolog": {
+      "after": {
+        "bytes": 1703381,
+        "entries": 248,
+        "files": 248,
+        "gitlinks": 0,
+        "sha256": "97024036d026e1fd628d561a32d9b774e3782273d3ac8ad93d7b102c0e3e4d22",
+        "symlinks": 0
+      },
+      "before": {
+        "bytes": 1703381,
+        "entries": 248,
+        "files": 248,
+        "gitlinks": 0,
+        "sha256": "97024036d026e1fd628d561a32d9b774e3782273d3ac8ad93d7b102c0e3e4d22",
+        "symlinks": 0
+      },
+      "exclusions": "non-PHP tracked files reconcile the manifest difference; .git, dot directories, vendor and node_modules skipped by syntax; no symlinks followed; submodule contents not covered",
+      "generated_untracked_or_ignored_paths": 0,
+      "literal_sites": 5968,
+      "matches_all_published_runtime_populations": true,
+      "original_php_bytes": 862340,
+      "population_sha256": "3a95941d92c30e121a5a15b893ded221288044a721ed253915a54417c8397720",
+      "reading_bytes": 862340,
+      "reading_files": 217,
+      "receipt_prefix": "workspace/artifacts/lang-php/scope/monolog-{before,after}",
+      "revision": "10d85740180ecba7896c87e06a166e0c95a0e3b6",
+      "subpath": ".",
+      "syntax_files": 217,
+      "unique_written_pairs": 4558
+    }
+  }
+}
