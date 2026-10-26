@@ -238,6 +238,9 @@ func (r *importResolver) resolve(importer, module string) []string {
 // require, source, Swift's import) brings every top-level name of its
 // target into scope unqualified, rather than binding a prefix.
 func (r *importResolver) wholeIsWildcard() bool {
+	if r.params.WholeBindings == "namespace" {
+		return false
+	}
 	switch r.strategy {
 	case "include-path", "file-symbol", "swift-module":
 		return true

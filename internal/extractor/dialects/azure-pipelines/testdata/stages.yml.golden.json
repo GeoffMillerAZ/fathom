@@ -1,0 +1,39 @@
+[
+  {
+    "Name": "azure-pipelines.yml",
+    "Kind": "AzurePipelineFile",
+    "Line": 1,
+    "End": 11,
+    "Calls": null
+  },
+  {
+    "Name": "Build",
+    "Kind": "AzurePipelineStage",
+    "Line": 2,
+    "End": 5,
+    "Calls": null
+  },
+  {
+    "Name": "make",
+    "Kind": "AzurePipelineJob",
+    "Line": 4,
+    "End": 5,
+    "Calls": null
+  },
+  {
+    "Name": "Release",
+    "Kind": "AzurePipelineStage",
+    "Line": 6,
+    "End": 11,
+    "Calls": [
+      "Build"
+    ]
+  },
+  {
+    "Name": "ship",
+    "Kind": "AzurePipelineDeployment",
+    "Line": 9,
+    "End": 11,
+    "Calls": null
+  }
+]

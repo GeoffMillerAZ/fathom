@@ -151,6 +151,11 @@ var extClassMap = map[string]classification{
 	".html": {core.KindHTMLId, "html"},
 	".htm":  {core.KindHTMLId, "html"},
 
+	// Jinja templates (LB-Q-jinja2): explicit extensions only; .html stays HTML.
+	".j2":     {core.SourceKind("JinjaTemplate"), "jinja"},
+	".jinja":  {core.SourceKind("JinjaTemplate"), "jinja"},
+	".jinja2": {core.SourceKind("JinjaTemplate"), "jinja"},
+
 	// CSS (LB-Q-css, language-breadth: new — a fleet gap, no incumbent).
 	".css": {core.KindCSSSelector, "css"},
 

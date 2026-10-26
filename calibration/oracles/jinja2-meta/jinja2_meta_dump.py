@@ -46,6 +46,27 @@ for dp, dn, fn in os.walk(root):
         if f.endswith(EXTS):
             files.append(os.path.join(dp, f))
 
+def receiver_name(node):
+    """A qualified receiver from Jinja's AST, not the product parser.
+
+    Argument and index values are immaterial to a syntactic callee name.
+    Refuse an unsupported shape rather than silently excluding a call.
+    """
+    if isinstance(node, nodes.Name):
+        return node.name
+    if isinstance(node, nodes.Getattr):
+        return receiver_name(node.node) + "." + node.attr
+    if isinstance(node, nodes.Getitem):
+        return receiver_name(node.node) + "[]"
+    if isinstance(node, nodes.Call):
+        return receiver_name(node.node) + "()"
+    if isinstance(node, nodes.Filter):
+        # A filter result needs parentheses before an attribute lookup. Its
+        # value has no static receiver name in the syntactic call unit.
+        return "()"
+    raise ValueError("unsupported Jinja call receiver: " + type(node).__name__)
+
+
 defs, calls, imports = [], [], []
 unparsed = 0
 dynamic = 0
@@ -114,7 +135,9 @@ for p in files:
         if isinstance(n.node, nodes.Name):
             callee = n.node.name
         elif isinstance(n.node, nodes.Getattr):
-            callee = n.node.attr
+            callee = receiver_name(n.node)
+        else:
+            raise ValueError("unsupported Jinja direct call callee: " + type(n.node).__name__)
         if callee and callee not in (
             "super", "caller", "range", "dict", "lipsum", "cycler", "joiner", "namespace", "varargs", "kwargs"
         ):
