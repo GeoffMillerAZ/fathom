@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -92,7 +93,8 @@ func TestSimulinkDialectGoldens(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			rel, src := simulinkFixture(t, dir, name)
 			nodes, err := ex.Extract("svc", rel, src)
-			if err != nil {
+			// A text-package .mdl is disclosed as a refusal (I38) and yields no symbols.
+			if err != nil && !(strings.HasSuffix(rel, "textpkg.mdl") && errors.Is(err, ErrModelRefused)) {
 				t.Fatal(err)
 			}
 			got := []simulinkGoldenSymbol{}

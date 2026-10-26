@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 	"testing"
 
@@ -48,9 +50,22 @@ func TestIngest_RefusedSimulinkModelKeepsService(t *testing.T) {
 	p := New(connector.NewLocalConnector(), st, Config{})
 	t.Cleanup(p.Close)
 	ctx := context.Background()
+	// The refusal is disclosed on stderr, naming the service and file (I38).
+	oldErr := os.Stderr
+	pr, pw, perr := os.Pipe()
+	if perr != nil {
+		t.Fatal(perr)
+	}
+	os.Stderr = pw
 	rep, err := p.Ingest(ctx, core.ServiceRef{ID: "slxflood", Path: dir})
+	os.Stderr = oldErr
+	pw.Close()
+	captured, _ := io.ReadAll(pr)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if want := "fathom: fusion: model refused on slxflood/models/m.slx"; !strings.Contains(string(captured), want) {
+		t.Errorf("stderr %q lacks %q", captured, want)
 	}
 	if rep.ModelsRefused != 1 {
 		t.Errorf("ModelsRefused = %d; want 1 (a refused model is counted, never stored as an empty file)", rep.ModelsRefused)

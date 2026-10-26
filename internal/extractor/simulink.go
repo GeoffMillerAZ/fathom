@@ -177,9 +177,10 @@ func (b *simulinkBudget) take(name string, line int) error {
 }
 
 var (
-	// ErrModelRefused marks an Extract error as a model the reader refused at a cap: the file
-	// yields no symbols, and ingest counts it on Report.ModelsRefused with one stderr line.
-	ErrModelRefused = errors.New("model refused at a read cap")
+	// ErrModelRefused marks an Extract error as a model the reader did not read (over a cap,
+	// unparseable, not a zip package, or a text-package .mdl): the file yields no symbols, and
+	// ingest counts it on Report.ModelsRefused with one stderr line.
+	ErrModelRefused = errors.New("model refused by the reader")
 	// ErrSimulinkCap: a package over one of the caps, or a part that does not parse, read as
 	// nothing.
 	ErrSimulinkCap = errors.New("simulink: package over a read cap")
@@ -296,6 +297,8 @@ func ReadSimulinkModel(relPath string, src []byte) (SimulinkModel, error) {
 	var err error
 	if bytes.HasPrefix(src, []byte("PK\x03\x04")) {
 		err = m.readSLX(src)
+	} else if strings.EqualFold(path.Ext(relPath), ".slx") {
+		err = fmt.Errorf("simulink: %s is not a zip package", path.Base(relPath)) // e.g. a Git LFS pointer
 	} else {
 		err = m.readMDL(src)
 	}
@@ -1420,9 +1423,9 @@ const SimulinkModelRefEdge = "model_ref"
 var _ DocResulter = (*SimulinkExtractor)(nil)
 
 // Extract implements Extractor. A model the reader refuses at a cap (or a part that does not
-// parse) yields no symbols and an error matching ErrModelRefused and ErrSimulinkCap, so ingest
-// counts and discloses it instead of storing an empty file (I38). A text-package .mdl yields
-// no symbols and no error.
+// parse, is not a zip package, or is a text-package .mdl) yields no symbols and an error
+// matching ErrModelRefused (a cap error also ErrSimulinkCap), so ingest counts and discloses
+// it instead of storing an empty file (I38).
 func (x SimulinkExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
 	r, err := x.ExtractDoc(service, relPath, src)
 	return r.Nodes, err
@@ -1436,10 +1439,7 @@ func (x SimulinkExtractor) Extract(service, relPath string, src []byte) ([]core.
 func (SimulinkExtractor) ExtractDoc(service, relPath string, src []byte) (DocResult, error) {
 	m, err := ReadSimulinkModel(relPath, src)
 	if err != nil {
-		if errors.Is(err, ErrSimulinkCap) {
-			return DocResult{}, fmt.Errorf("%w: %w", ErrModelRefused, err)
-		}
-		return DocResult{}, nil
+		return DocResult{}, fmt.Errorf("%w: %w", ErrModelRefused, err)
 	}
 	pkg := pkgFromPath(relPath)
 	// calls[i] is canonical block i's destinations by index, size[i] their paths' bytes.

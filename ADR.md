@@ -897,7 +897,7 @@ path; at a 983 KB path refused by the path cap), short fan pairs (700 or 260 one
 every pair joined, refused by the signal count), duplicate sources (8,300 blocks named A, one line
 to 1,000 two-letter blocks, refused by the call count), refflood (878,537 model references, a 1.2
 MB package, refused by the reference count), hugeref (one 30 MiB BlockPath in a 1.9 MB package,
-refused by the value cap) and a `.mdl` property flood. Measured 2026-10-26, each shape 3 runs, the
+refused by the value cap) and a `.mdl` property flood. Measured 2026-10-26 on macOS arm64 (peak resident set from getrusage), each shape 3 runs, the
 maximum taken: the most any shape is 143 MiB over (the `.slx` fan pairs, refused, and the `.slx`
 hashburn at the cap); the `.mdl` maximum is 61 MiB (the block flood); refflood 66 MiB, hugeref 66
 MiB, short fan pairs 140 MiB (`.slx`), duplicate sources 9 MiB. Round 4's 195 MiB `.mdl` figure was
@@ -907,9 +907,7 @@ round 6's S5-R2 packages of 2.9 MB and 5.6 MB, which are past the fetch cap, not
 1.9 MB shapes above; re-measured on those committed shapes with the reader of 97eede986 (the commit
 before S5-R2), on macOS arm64 (peak resident set from getrusage), 3 runs each, the maximum taken,
 refflood is 481 MiB over an empty model's and 0.9 s of CPU and hugeref 127 MiB, against 66 MiB and
-67 MiB with the caps on the same machine (command: `go test -c ./internal/extractor`, then
-`FATHOM_SIMULINK_HEAP_INPUT=<shape> <test binary> -test.run '^TestReadSimulinkModelHeapBound$'`,
-the child mode the test runs, for each shape and for an empty `.mdl`). Also before these caps, short fan pairs 490,000 signals
+67 MiB with the caps on the same machine (command: `go test -c ./internal/extractor`, then, with no `FATHOM_SIMULINK_HEAP_INPUT` set, `<test binary> -test.run '^TestReadSimulinkModelHeapBound$' -test.v`: the test writes each shape from its builders to a temp file, runs the child mode on it (`FATHOM_SIMULINK_HEAP_INPUT=<that file>`) and logs the peak over an empty `.mdl`'s) at that commit. Also before these caps, short fan pairs 490,000 signals
 at 189 MiB, and duplicate sources 8.3M Call entries, which failed a whole service's ingest at the
 store; before round 4's signal caps, fan pairs reached 465 MiB and 19.6 GB of emitted Calls and
 the hashburn 361 MiB and 43 s of CPU. `TestSimulinkHashburnCPU` holds each hashburn within the
@@ -917,9 +915,10 @@ the hashburn 361 MiB and 43 s of CPU. `TestSimulinkHashburnCPU` holds each hashb
 `TestSimulinkResolveHashWork` resolves one line of 1,000,000 endpoints on a 16 KiB path within 2x
 (plus 50 ms) the CPU of a one-byte path, which a path-keyed dedupe fails (711 ms against a 125 ms
 bound; the reader 31 ms). These three run without the race detector in validate's
-`simulink-gate` step. A package over a cap, or one that does not parse, yields no
-symbols, never a partial model, and its extract returns `extractor.ErrModelRefused` wrapping the
-cap error, which ingest counts on the in-memory `Report.ModelsRefused` and names in one stderr line
+`simulink-gate` step. A package over a cap, one that does not parse, a `.slx` that is not a zip package (a Git LFS
+pointer) and a text-package `.mdl` yield no
+symbols, never a partial model, and their extract returns `extractor.ErrModelRefused` wrapping the
+reader's error, which ingest counts on `Report.ModelsRefused` (printed as `models-refused` and `models_refused` in `fathom ingest`) and names in one stderr line
 (I38: a refused model is never an empty file stored without a trace; no store change). Ingest's 2 MiB `MaxExtractSize` still applies, to the compressed bytes. Every other
 NUL-sniffed file stays excluded, a `.zip`, `.docx` or `.mlx` included, until a manifest claims
 its extension. Plan row: LB-F587 (`docs/plans/language-breadth.simulink.md`). **Decision

@@ -418,8 +418,16 @@ func TestSimulinkExtractorNodes(t *testing.T) {
 	if strings.Join(got, "\n") != strings.Join(want, "\n") {
 		t.Errorf("nodes\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
 	}
-	if nodes, err := NewSimulinkExtractor().Extract("svc", "big.slx", []byte("PK\x03\x04junk")); err != nil || len(nodes) != 0 {
-		t.Errorf("an unreadable package yields nothing and no error: %d nodes, %v", len(nodes), err)
+	// I38: every read failure is a counted refusal, never an empty file stored without a trace.
+	x := NewSimulinkExtractor()
+	for name, c := range map[string]struct{ rel, src string }{
+		"unreadable package": {"big.slx", "PK\x03\x04junk"},
+		"git lfs pointer":    {"model.slx", "version https://git-lfs.github.com/spec/v1\noid sha256:00\nsize 12\n"},
+		"text-package mdl":   {"new.mdl", "# Simulink Text Package\nModel {\n  Version 10.0\n}\n"},
+	} {
+		if nodes, err := x.Extract("svc", c.rel, []byte(c.src)); !errors.Is(err, ErrModelRefused) || len(nodes) != 0 {
+			t.Errorf("%s: %d nodes, %v; want none and ErrModelRefused", name, len(nodes), err)
+		}
 	}
 }
 
