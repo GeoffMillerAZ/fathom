@@ -1,6 +1,7 @@
 # Chromium CSS range companion (C-R7)
 
-The pinned browser's own declaration/property ranges are tier A under C-R7/P-T1.
+The pinned browser's own declaration/property ranges are tier A under
+[C-R7/P-T1, recorded in design §1.3](../../../docs/design/language-breadth.md#13-oracle-tiers-and-what-they-can-prove).
 The primary oracle remains Lightning CSS 1.33.0. This companion changes only range
 counts through the existing indexbench sidecar format, not definition/call/import
 truth, extraction, matching rules or denominators.
@@ -126,3 +127,33 @@ The measured candidate and holdout snapshots live outside canonical lang/css.jso
 under docs/bench/readings/css-browser*.json. Their excellent metric buckets do not
 override the canonical parser's 120/212 ERROR/MISSING count. See the dated CSS
 assessment and native grammar census before claiming support or full excellence.
+
+## Review corrections and exclusion census
+
+The definition population is Lightning CSS's. Chromium attests eligible ends and
+does not enumerate the population. The following diagnostic command reads the
+frozen primary, companion and source binding. It never changes range truth:
+
+```sh
+node calibration/oracles/chromium-css/exclusions.cjs --self-test
+node calibration/oracles/chromium-css/exclusions.cjs "$CSS_SUBJECTS/normalize-css" "$CSS_OUT/normalize.json" "$CSS_OUT/normalize.ranges.json"
+node calibration/oracles/chromium-css/exclusions.cjs "$CSS_SUBJECTS/pico" "$CSS_OUT/pico.json" "$CSS_OUT/pico.ranges.json" css
+node calibration/oracles/chromium-css/exclusions.cjs "$CSS_SUBJECTS/gitea" "$CSS_OUT/gitea.json" "$CSS_OUT/gitea.ranges.json" web_src/css
+```
+
+Its source-proposal categories do not reconstruct unrecorded native error messages.
+Before canonical adoption, an owner ruling must set any range-coverage floor. Before
+pinning or reading another CSS holdout, implement and verify the Lightning CSS
+`nesting` walk (O849). Tachyons was spent with the old walk, has no nesting, and
+cannot discharge that obligation. It and open-props must never be reused.
+
+For a timing repeat with per-trial loads, run `uptime` immediately before and after
+each subject's existing `indexbench lang-oracle` command above. Repeat the complete
+subject set three times into three fresh output reading files, using only the frozen
+primary/companion files. Verify all subject identities, counts and metrics equal the
+frozen reading; select the actual whole run at the median pooled CPU throughput.
+Keep the loads and all three outputs in scratch, publishing only the aggregate
+loads, throughput values and hashes. This reuses frozen truth to time extraction;
+it does not rerun or tune a holdout oracle. The earlier `lang-retime -runs 3` audit
+did not persist per-run loads, so its timing is not a controlled performance
+comparison with the historical canonical reading.

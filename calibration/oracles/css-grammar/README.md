@@ -30,12 +30,13 @@ have a two-second parse limit.
   --subject normalize=<normalize-clone>=<scratch>/normalize.source.json \
   --subject pico=<pico-clone>=<scratch>/pico.source.json \
   --subject gitea=<gitea-clone>=<scratch>/gitea.source.json \
+  --scope normalize=. --scope pico=css --scope gitea=web_src/css \
   --out <scratch>/css-grammar/candidate-census.json
 ```
 
 The sidecar must come from the committed Chromium CSS `primary.cjs` wrapper.
 For each subject, the gate requires a clean Git root at the sidecar's commit,
-the complete CSS list in the manifest's scope, and matching raw file hashes
+the complete CSS list in the explicitly declared corpus subpath (never a scope inferred from the remaining manifest paths), and matching raw file hashes
 before and after parsing. The output records library hash, runtime version,
 grammar ABI, source commit/digest, raw and production-eligible error counts,
 and up to three source-relative error locations. A valid style rule and an
@@ -56,3 +57,5 @@ done
 
 The receipt records archive hashes and input hashes, not subject file lists. A
 source-equivalent newer publication is not described as a separate native run.
+
+Scope regression controls: `<venv>/bin/python calibration/oracles/css-grammar/gate_test.py`.

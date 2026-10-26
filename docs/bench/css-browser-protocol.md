@@ -72,6 +72,16 @@ positive/negative controls establish that behavior for this audit's actual pin.
 
 ## Instrument result and source identity
 
+Erratum after source inspection (2026-10-26, commit `236d8c393`): the frozen
+source-function reference was corrected from `FindRuleByBodyRange` to
+`FindRuleByDeclarationsRange` at the actual pinned revision. No acceptance test,
+source-byte rule, range coordinate rule, or decision threshold changed.
+
+The Tachyons holdout was spent with the unchanged Lightning CSS nesting walk.
+It has no nesting and did not satisfy O849. Restore that prerequisite: implement
+and verify the oracle walks `nesting` rules before any replacement holdout is
+pinned or read. Never reuse Tachyons or open-props.
+
 The committed [controls receipt](../assessments/data/2026-10-26-core-t1-css-browser-controls.json)
 records the pinned binary's outcomes, not a corpus or language grade. Both corrupted
 start and end controls were rejected. Ordinary/comma, Unicode/CRLF, empty and inactive
@@ -121,7 +131,7 @@ existing candidates using `calibration/oracles/css-grammar/gate.py`:
 Fetch/checksum pinned source archives into scratch and read each licence before
 compilation. Build generated parser/scanner C serially at nice 10 after load <= 9.
 Use the already installed tree-sitter 0.25.2 Python runtime; do not install globally.
-Parse every raw file in the three frozen source sidecars with a two-second file
+Pass explicit declared scopes `--scope normalize=. --scope pico=css --scope gitea=web_src/css`; do not infer scope from listed files. Parse every raw file in the three frozen source sidecars with a two-second file
 limit, preserving source bytes and clean checkout hashes before/after. Report all
 raw files and, separately, the existing `*.min.css` production exclusion. Do not
 invent a new exclusion. Official-control disagreement must be explained before

@@ -55,8 +55,8 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 2,
-        "extract_ms": 69.17900000000002,
-        "extract_cpu_ms": 69.83600000000003,
+        "extract_ms": 67.86300000000001,
+        "extract_cpu_ms": 68.047,
         "max_file_ms": 13,
         "peak_module_pages": 284,
         "compiled_bytes": 0
@@ -127,9 +127,9 @@
     "faults": 0,
     "faulting_files": [],
     "files_with_error": 2,
-    "throughput_mb_s": 2.13,
+    "throughput_mb_s": 2.18,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 2.15,
+    "wall_throughput_mb_s": 2.19,
     "max_file_ms": 13,
     "peak_module_pages": 284,
     "compiled_bytes": 0
@@ -138,13 +138,15 @@
     "fathom:CSSModule": 60
   },
   "notes": [
+    "Population: Lightning CSS definitions; Chromium attests native ends and does not enumerate. Canonical attested coverage 97.62%; excluded 3,276 = 2,837 selectors + 439 keyframes. No coverage floor has been ruled; owner ruling required before canonical adoption. Tachyons used the unchanged nesting walk, has no nesting, and did not discharge O849; walk nesting before pinning/reading a new holdout, never reuse spent holdouts.",
+    "Timing correction 2026-10-26: three full extraction trials against unchanged frozen primary/companion files; each subject launched under nice 10 at one-minute load<=9. Throughputs [2.18, 2.12, 2.19] MB/CPU-s; actual median run 1: 2.18. Launch/end load by subject: run 1: tachyons 4.845/4.845; run 2: tachyons 4.845/4.845; run 3: tachyons 4.845/4.777. All original counts and metrics reproduced. Earlier timings did not persist individual loads and are not a controlled performance comparison.",
     "W2 (design 1.8): lightningcss attests no cascade, so a var() or animation-name pair is graded as a name reference: kept when its name is a custom property or @keyframes rule defined in the file or its @import closure, every other pair out of both sides, counted",
-    "import_resolution: 0 of 0 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 0 (0 of 56) and recall n/a (0 of 0); 56 of 56 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
+    "import_resolution: 0 of 0 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent >= 0.95, good >= 0.85); import edges precision 0 (0 of 56) and recall n/a (0 of 0); 56 of 56 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "tachyons: 289 oracle and 289 fathom name pairs name nothing defined in their file's @import closure (W2), out of both",
     "tachyons: lightningcss resolves none of fathom's imports to a file of the subject, so import_resolution has no denominator here",
-    "tachyons: range_agreement measured against Chromium DevTools Protocol CSS.setStyleTexts (tier A, 156.0.8078.47: 60 files, 0 it could not parse): Native-validated CSSStyle body ranges for eligible selectors and CSSProperty ranges for custom properties; nested-parent selectors and keyframes without a native range are unmeasured, 2498 of fathom's definitions paired (L1's own pairing: same file and name, |Δline| \u003c= 2); only the range counts are taken, so the L1 oracle is unchanged",
-    "throughput (design 1.9 T1, T2): darwin/arm64 Apple M2; run 1: 2.17 MB/CPU-s; run 2: 2.01 MB/CPU-s; run 3: 2.13 MB/CPU-s; median run 3: 2.13 MB/CPU-s; every other field is the original measurement at its recorded fathom_commit 9fe4f9c2c"
+    "tachyons: range_agreement measured against Chromium DevTools Protocol CSS.setStyleTexts (tier A, 156.0.8078.47: 60 files, 0 it could not parse): Native-validated CSSStyle body ranges for eligible selectors and CSSProperty ranges for custom properties; nested-parent selectors and keyframes without a native range are unmeasured, 2498 of fathom's definitions paired (L1's own pairing: same file and name, |\u0394line| <= 2); only the range counts are taken, so the L1 oracle is unchanged",
+    "C-R7/P-T1 tier ruling is recorded in docs/design/language-breadth.md section1.3, dated amendment2026-10-26; it attests native ranges only, without an automatic coverage floor."
   ],
   "disposition": null
 }

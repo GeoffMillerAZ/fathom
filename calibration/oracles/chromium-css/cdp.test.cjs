@@ -40,6 +40,17 @@ test('split and coalesced pipe frames correlate replies around events and expose
   await conn.close();
 });
 
+test('a frame larger than 64 MiB rejects pending work before JSON parsing', async () => {
+  const toBrowser = new PassThrough();
+  const fromBrowser = new PassThrough();
+  const conn = new CDPConnection({ write: toBrowser, read: fromBrowser, timeoutMs: 1000 });
+  const pending = conn.send('Browser.getVersion');
+  fromBrowser.write(Buffer.alloc(64 * 1024 * 1024 + 1, 0x78));
+  await assert.rejects(pending, /CDP frame exceeds 64 MiB/);
+  await assert.rejects(conn.send('Runtime.evaluate'), /connection closed/);
+  await conn.close();
+});
+
 test('browser launch uses pipe only; timeout and close reject pending work and reap child', async () => {
   const profileDir = mkdtempSync(path.join(tmpdir(), 'cdp-test-'));
   const stderr = new PassThrough();

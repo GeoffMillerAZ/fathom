@@ -103,6 +103,19 @@ counts as in-repo when the same lookup from the driver's load path names a subje
 ones an extractor of import statements can see. It counts a computed `require` it ran, and
 never writes one.
 
+**Dated amendment 2026-10-26, owner ruling C-R7 (P-T1).** P-T1 applies
+Tier A to a format's reference implementation. A pinned headless browser engine's
+own stylesheet ranges count as Tier A for the source/ranges it actually attests.
+Pin and checksum the browser under the assigned cache root. This includes native
+CSS declaration-body and property ranges returned for unchanged original bytes;
+it does not promote scanner proposals, unaccepted ends, keyframe whole-rule ends,
+or nested-parent ends the API cannot attest. Lightning CSS enumerates this audit's
+definition population; Chromium attests a conditional subset and does not enumerate
+it. No range-coverage floor was set by C-R7. Before adopting that candidate into the
+canonical reading, the owner must rule on a coverage floor as a shared harness
+ENGINE change. The audit's excellent metric buckets alone do not prove full
+coverage or override the parser gate. Record: [CSS assessment](../assessments/2026-10-26-core-t1-css-ceiling.md).
+
 ### 1.4 Matching rules
 
 - **Definitions**: key (path, name, line). A fathom definition matches an oracle definition

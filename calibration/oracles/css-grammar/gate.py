@@ -33,6 +33,25 @@ def subject_arg(value):
     return name, Path(root).resolve(), Path(sidecar).resolve()
 
 
+def scope_arg(value):
+    name, sep, scope = value.partition("=")
+    if not sep or not name or not scope:
+        raise argparse.ArgumentTypeError("expected NAME=SUBPATH (use NAME=. for repository root)")
+    return name, scope
+
+
+def checked_scope(root, scope):
+    if scope == ".":
+        scope = ""
+    elif scope.startswith("/") or "\\" in scope or str(PurePosixPath(scope)) != scope or \
+         any(part in ("", ".", "..") for part in scope.split("/")):
+        raise ValueError("CSS scope must be a canonical repository-relative directory")
+    target = root / scope
+    if target.is_symlink() or not target.is_dir() or not target.resolve().is_relative_to(root):
+        raise ValueError("CSS scope is not an in-tree directory")
+    return scope
+
+
 def git(root, *args):
     return subprocess.check_output(["git", "-C", str(root), *args], text=True).strip()
 
@@ -55,17 +74,7 @@ def css_files(root, rel):
     return sorted(found)
 
 
-def manifest_scope(paths):
-    """The deepest directory common to every listed file, or the file itself."""
-    if not paths:
-        return ""
-    if len(paths) == 1:
-        return paths[0]
-    common = os.path.commonpath(paths)
-    return "" if common == "." else common
-
-
-def check_manifest(root, sidecar):
+def check_manifest(root, sidecar, declared_scope):
     meta = json.loads(sidecar.read_text())
     manifest = meta.get("source_manifest")
     if not isinstance(manifest, dict):
@@ -97,9 +106,9 @@ def check_manifest(root, sidecar):
         paths.append(rel)
     if not paths or paths != sorted(set(paths)):
         raise ValueError("source manifest files must be nonempty, unique and sorted")
-    scope = manifest_scope(paths)
+    scope = checked_scope(root, declared_scope)
     if css_files(root, scope) != paths:
-        raise ValueError("source manifest does not cover complete CSS list in its scope")
+        raise ValueError("source manifest does not cover complete CSS list in declared scope")
     if git(root, "rev-parse", "HEAD") != commit or git(root, "status", "--porcelain", "--untracked-files=all"):
         raise ValueError("subject Git identity changed during source check")
     return {"commit": commit, "digest": digest, "files": files, "scope": scope or "."}
@@ -140,7 +149,17 @@ def main():
     ap.add_argument("--symbol", default="tree_sitter_css")
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--subject", action="append", type=subject_arg, required=True)
+    ap.add_argument("--scope", action="append", type=scope_arg, required=True,
+                    help="NAME=SUBPATH for each subject; use NAME=. for repository root")
     args = ap.parse_args()
+    scopes = {}
+    for name, scope in args.scope:
+        if name in scopes:
+            ap.error(f"duplicate scope name: {name}")
+        scopes[name] = scope
+    names = {name for name, _, _ in args.subject}
+    if set(scopes) != names:
+        ap.error("--scope names must match --subject names exactly")
     if not args.symbol.isidentifier():
         ap.error("--symbol must be a C identifier")
     library_bytes = args.library.read_bytes()
@@ -173,7 +192,7 @@ def main():
         if name in seen:
             raise ValueError(f"duplicate subject name: {name}")
         seen.add(name)
-        manifest = check_manifest(root, sidecar)
+        manifest = check_manifest(root, sidecar, scopes[name])
         raw_errors = eligible_errors = raw_bytes = timeouts = 0
         examples = []
         file_results = []
@@ -199,7 +218,7 @@ def main():
                     examples.extend(diagnostics(tree.root_node, rel, 3 - len(examples)))
             if sha256((root / rel).read_bytes()) != entry["sha256"]:
                 raise ValueError(f"CSS source changed after parse: {rel}")
-        check_manifest(root, sidecar)
+        check_manifest(root, sidecar, scopes[name])
         subjects.append({"name": name, "source_commit": manifest["commit"],
                          "source_digest": manifest["digest"], "scope": manifest["scope"],
                          "raw": {"files": len(manifest["files"]), "bytes": raw_bytes, "files_in_error": raw_errors,
