@@ -1,0 +1,1 @@
+{"type":"function_call","name":"functions.exec","arguments":"{\"code\":\"const r=await tools.exec_command({cmd: \\\"rg -n foo .\\\"});\"}"}

@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "scope": "configuration-only",
+  "evaluated_at": "2026-10-23T00:00:00Z",
+  "boundary": "pre-commit",
+  "state": "pass",
+  "policy_source": "local-untrusted",
+  "policy_id": "repository-quality",
+  "policy_sha256": "7fa2d236b3b0efba169ffee6fe3fd43992f640ef1135abe745b07d7fb680c6c8",
+  "caveats": [
+    "No candidate snapshot or enforcement verdict was checked.",
+    "Provider availability, cache, hook installation and CI invocation were not checked.",
+    "A calibration eligible for one clear confidence band does not prove that a future response or provider will pass.",
+    "Local policy is untrusted bootstrap configuration and cannot authorize enforcement."
+  ],
+  "checks": [{"id": "required-coverage", "state": "pass", "reason": "required-configuration-present", "action": "No action.", "ids": ["json-valid"]}]
+}

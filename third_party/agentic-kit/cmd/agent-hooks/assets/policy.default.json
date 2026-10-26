@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "tiers": [
+    {
+      "name": "fast",
+      "use_for": "locate code, search, read and extract, classify, summarize logs or diffs, mechanical edits from an exact spec",
+      "claude": ["haiku"],
+      "codex": [],
+      "effort": "low"
+    },
+    {
+      "name": "standard",
+      "use_for": "implement from a spec, write or fix tests, multi-file edits, gather research, review a small diff",
+      "claude": ["sonnet"],
+      "codex": [],
+      "effort": "medium"
+    },
+    {
+      "name": "deep",
+      "use_for": "adversarial review, verification, root-cause debugging, design tradeoffs, synthesis",
+      "claude": ["opus"],
+      "codex": [],
+      "effort": "high",
+      "marker": "[deep]"
+    },
+    {
+      "name": "frontier",
+      "use_for": "rare: the hardest long-horizon reasoning or the highest-stakes final judgment",
+      "claude": ["fable"],
+      "codex": [],
+      "effort": "high",
+      "marker": "[frontier]"
+    }
+  ],
+  "classes": {
+    "critic_pattern": "(?i)\\b(critic|critique|adversarial(ly)?|red[- ]team(ing)?|fact[- ]check(ing)?|second opinion|judge|audit|synthes(is|ize)|independent(ly)? (review|verif(y|ication)))\\b",
+    "worker_marker": "[worker]",
+    "critic_marker": "[critic]",
+    "worker": {"max_tier": "standard"},
+    "critic": {"max_tier": "deep"}
+  },
+  "spawn": {
+    "require_model": true,
+    "require_effort": ["codex"],
+    "fork": "marker",
+    "fork_marker": "[fork]",
+    "deny_loop_limit": 6
+  },
+  "advice": [
+    {
+      "id": "critic-uncompressed",
+      "when": "(?i)(/|\\$)caveman\\b",
+      "classes": ["critic"],
+      "message": "A critic's prose is its deliverable: compressed output drops the reasoning behind each finding. Leave caveman out of review, verification and synthesis briefs."
+    }
+  ],
+  "ledger": {
+    "enabled": true,
+    "max_bytes": 16777216,
+    "keep_rotated": 3,
+    "record_tool_output": true
+  },
+  "main_thread": {
+    "bash_max_chars": 10000,
+    "head_chars": 4000,
+    "tail_chars": 4000
+  }
+}

@@ -1,6 +1,6 @@
 # Test Certifications
 
-Say which test stands as evidence for which behaviour — an invariant, an incident, a spec, a governing rule, a port — and let fathom keep that claim honest: the test exists, reaches the code the target names, and passed in the last attested run. fathom asserts whether a certificate is **live**; a Review Kit requirement judges whether that is enough (vision 33, ADR-043).
+Say which test stands as evidence for which behaviour — an invariant, an incident, a spec, a governing rule, a port — and let fathom keep that claim honest: the test exists, reaches the code the target names, and passed in the last attested run. fathom asserts whether a certificate is **live**; a review kit requirement judges whether that is enough (vision 33, ADR-043).
 
 ---
 
@@ -11,7 +11,7 @@ Say which test stands as evidence for which behaviour — an invariant, an incid
 - You want a list of every declared target with no live certificate, each with the remedy on the line, for a review gate to consume.
 - You want every implementation of a port listed with or without a conformance test.
 
-Not for: a coverage percentage (see [test-coverage.md](test-coverage.md) for per-symbol coverage, which is a different fact), or running tests — fathom never runs them; it ingests test-kit's attested record.
+Not for: a coverage percentage (see [test-coverage.md](test-coverage.md) for per-symbol coverage, which is a different fact), or running tests — fathom never runs them; it ingests the test kit's attested record.
 
 ---
 
@@ -41,7 +41,7 @@ On the comment line above a Go test function:
 func TestRefund_Idempotent(t *testing.T) { … }
 ```
 
-Or per suite, in the test-kit manifest `tests/<component>.cue` (platform standard: test-kit `#Certifies`, ADR-0105 amending ADR-0042):
+Or per suite, in the test kit manifest `tests/<component>.cue` (platform standard: the test kit's `#Certifies`, an amendment to its testing standard):
 
 ```cue
 suites: "billing-invariants": certifies: [
@@ -88,16 +88,16 @@ invariant  I35                      yes   add "// certifies: invariant I35 (asse
 
 ## 5. Let the review kit judge
 
-fathom states facts; adequacy is a Review Kit requirement (`testing.certified-targets`) whose `fathom-certify` evidence adapter runs `fathom certify gaps --json --kind <kind>` and decides with the organization's own remedy text and enforcement. The JSON schema string, field names and sort order are the wire contract.
+fathom states facts; adequacy is a review kit requirement (`testing.certified-targets`) whose `fathom-certify` evidence adapter runs `fathom certify gaps --json --kind <kind>` and decides with the organization's own remedy text and enforcement. The JSON schema string, field names and sort order are the wire contract.
 
 ---
 
 ## Setup & notes
 
-- Test results come from test-kit's `#TestResult` envelope (plain JSON, NDJSON, or DSSE-wrapped; the digest is recorded as the run's identity). fathom verifies no signatures; that is test-kit's job.
+- Test results come from the test kit's `#TestResult` envelope (plain JSON, NDJSON, or DSSE-wrapped; the digest is recorded as the run's identity). fathom verifies no signatures; that is the test kit's job.
 - `docs/certifications.md` is generated. Commit it and run `fathom certify manifest --check` in CI; a hand edit is a defect.
 - `certify suggest` is the only verb that needs a decision provider. With `provider = none` it prints one line and exits 0. Suggestions land in `workspace/artifacts/certify-suggestions.jsonl` and appear as hints in `certify gaps`; a human adds the marker.
-- Open measurements (plan `docs/plans/test-certifications.md`): TC-M2 (half the deny-severity invariants live after two weeks), TC-M3 (the Review Kit requirement fires deny on a real change within a month), TC-M4 (half the first twenty suggestions accepted).
+- Open measurements (plan `docs/plans/test-certifications.md`): TC-M2 (half the deny-severity invariants live after two weeks), TC-M3 (the review kit's requirement fires deny on a real change within a month), TC-M4 (half the first twenty suggestions accepted).
 
 ---
 

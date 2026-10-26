@@ -1,0 +1,18 @@
+{
+  "version": "command-guard.compact-source-pins/1",
+  "baseline": "07e28b007891dfa9df2f936d0b933422217e1358",
+  "files": {
+    "cmd/command-guard/main.go": "28533638f66209ebe455db21ddaf62d96e48de32729a49a318de7349f4b48b9e",
+    "cmd/command-guard/git.go": "d8ba8ffb9292a3e42351e89805edbb924fe151e1e1960127162257f47b484fe5",
+    "cmd/command-guard/compact.go": "c4ef5d77aff2a1725c2bb6ba32cb0397e459b77789c5d28bae2b126bb38f6b2f",
+    "cmd/command-guard/schema.cue": "1858e392990316c48349f67d79cf5cf533f2525305b6ea41242111b6d3db3b48",
+    "cmd/command-guard/compact_test.go": "04eb5631fcbb19bfde5bec491c251ec1a5d59cef11e8c84f2d605b6d07f5dc01",
+    "cmd/command-guard/cap_test.go": "ecf9c5238c03b9d91005c12593b78d8bea1eb911d97b3769d79d878f9041b400",
+    "cmd/command-guard/testdata/compact.cue": "94c8b2a2ece727225a8d3394feab31fdd3bed49f3523a9375c781f059afb794f",
+    "cmd/command-guard/README.md": "3745ff192c36511714f0626e58b76047c7464b5359a53e3235606b034dfc9ce7",
+    "go.mod": "0daae43e2a34200303d53e3a627c0c272ff2d89cfbeb5e25dc23a3a7cd82dccd",
+    "docs/designs/command-compact.md": "5074584cbed1d51791ac1b5ee6d983e38fcafcec3590644a18efdb6518565981",
+    "docs/intent/decisions/0039-governed-command-tools-preserve-evidence-and-authority.md": "3c7a3a978998741459fa0730b7a7e9809207baf4b842b7d25fd3b7c4318b002d",
+    ".claude/skills/command-safety-audit/SKILL.md": "2be00319b1a5c8eaed92c92fb115dce3eddc229fc336fa860fa60f941b683e4f"
+  }
+}

@@ -1,0 +1,19 @@
+# Seed: docs/design/feature-labs.md section 4.3. Kill: owner ruling L-R1.
+id: "lab-skills"
+features: ["F-60"]
+surface: ["skill:fathom-plan", "skill:fathom-verify", "skill:fathom-onboard", "skill:fathom-feedback", "skill:fathom-doctor", "skill:fathom-impact", "skill:fathom-rewire", "skill:fathom-activate", "skill:fathom-custodian", "skill:fathom-findings", "skill:fathom-offload"]
+firing:
+  should: "a request inside a skill's description"
+  should_not: "near-miss requests that share its keywords"
+  grader: "skill_invoked"
+helped:
+  metric: "the skill's task outcome (the plugin minus that skill)"
+  arm: "plugin-minus-skill:{skill}"
+  direction: "increase"
+  minimum_effect_of_interest: 0.01
+quality: []
+fixtures: ["internal/connector/testdata/fauxtown"]
+harness: ["replay", "fork"]
+kill: [{"criterion": "K4: A knob that raises firing and leaves helped harmed, or inconclusive toward harm, is reverted.", "reading": "docs/bench/readings/labs/lab-skills.md"}, {"criterion": "K1: A classifier surface with TPR or TNR Wilson lower bound under 0.80 on 40 labeled points per class reports counts only.", "reading": "docs/bench/readings/labs/lab-skills.md"}]
+knobs: [{"name": "description", "kind": "text", "location": "dist/agents/skills"}]
+owners: []

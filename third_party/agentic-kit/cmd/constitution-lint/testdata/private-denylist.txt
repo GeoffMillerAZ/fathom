@@ -1,0 +1,4 @@
+# fake local denylist: fixed strings, case-insensitive
+
+ zorptastic holdings
+never-present-name

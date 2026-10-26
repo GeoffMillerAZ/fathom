@@ -1,0 +1,11 @@
+{
+  "id": "C08",
+  "slug": "rbac-adoption",
+  "axis": "target-gap",
+  "acceptance": "A consumer runs role/resource/action authorization with denied effect negative tests",
+  "method": "source audit",
+  "source": "docs/intent/assurance.md",
+  "test": null,
+  "group": null,
+  "non_guarantee": "Component test does not prove consumer adoption, live model quality, or all entrypoints."
+}

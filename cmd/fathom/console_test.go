@@ -1339,13 +1339,13 @@ func TestConsoleSearch_PageFragmentAndJSON(t *testing.T) {
 
 // A session ledger row names its repo by the directory label the Stop hook
 // derives ("sextant"), not by service ID ("fathom"), and a label may hold a
-// space ("2026 job hunt"). The session event maps the label to the service
+// space ("2026 side notes"). The session event maps the label to the service
 // whose recorded root it names, so the source key a project panel carries
 // (sessions:fathom) matches; a label that is not name-shaped still fires
 // the unscoped "sessions" source — an event is never silently dropped.
 func TestConsoleEvents_SessionEventsNameTheServiceAndNeverDrop(t *testing.T) {
 	roots := map[string]string{"fathom": "/code/sextant", "app-kit": "/code/app-kit"}
-	for label, want := range map[string]string{"sextant": "fathom", "app-kit": "app-kit", "Fathom": "fathom", "imbue": "imbue", "2026 job hunt": ""} {
+	for label, want := range map[string]string{"sextant": "fathom", "app-kit": "app-kit", "Fathom": "fathom", "svc-a": "svc-a", "2026 side notes": ""} {
 		if got := sessionEventService(label, roots); got != want {
 			t.Errorf("sessionEventService(%q) = %q, want %q", label, got, want)
 		}
@@ -1361,7 +1361,7 @@ func TestConsoleEvents_SessionEventsNameTheServiceAndNeverDrop(t *testing.T) {
 	src.warn = func(msg string) { warned = append(warned, msg) }
 	src.verify.Prime()
 	src.session.Prime()
-	appendLine(t, sessions, `{"session_id":"probe-space-1","repo":"2026 job hunt"}`)
+	appendLine(t, sessions, `{"session_id":"probe-space-1","repo":"2026 side notes"}`)
 	appendLine(t, sessions, `{"session_id":"probe-sextant-1","repo":"sextant"}`)
 	src.pollLedgers()
 	_, events, _ := bus.Subscribe(0)

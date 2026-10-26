@@ -115,7 +115,12 @@ func (e *verifyEvidence) goneEvidence() *goneev.Evidence {
 	}
 	if !e.metaRead {
 		e.metaRead = true
-		e.repoPath, e.indexedCommit, e.metaFound, e.metaErr = e.backend.ServiceMeta(e.ctx, e.service)
+		// The platform check (internal/verify/platform.go) reads Go files for any
+		// failing symbol row, not only gone: rows, so an evidence source built
+		// without a backend must answer "no service metadata", never panic.
+		if e.backend != nil {
+			e.repoPath, e.indexedCommit, e.metaFound, e.metaErr = e.backend.ServiceMeta(e.ctx, e.service)
+		}
 	}
 	plan := goneev.PlanTree{}
 	if e.planTree != nil {

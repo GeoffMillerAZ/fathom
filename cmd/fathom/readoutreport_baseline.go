@@ -14,7 +14,6 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -27,6 +26,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/ask"
 	"github.com/geoffmilleraz/fathom/internal/testrun"
+	"github.com/geoffmilleraz/fathom/internal/transcript"
 	heartbeat "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/heartbeat"
 )
 
@@ -274,27 +274,11 @@ func blReadFile(p string, wantID map[string]bool, invs [][]string) []*blCall {
 	var all, active []*blCall
 	byID := map[string]*blCall{}
 	seq := 0
-	br := bufio.NewReaderSize(f, 1<<20)
-	var buf []byte
-	over := false
-	for {
-		chunk, rerr := br.ReadSlice('\n')
-		if len(buf)+len(chunk) <= replayLineMax {
-			buf = append(buf, chunk...)
-		} else {
-			over = true
+	transcript.WalkLines(f, func(_ int, raw []byte) {
+		if bytes.Contains(raw, []byte(`"tool_`)) {
+			seq = blLine(raw, p, seq, wantID, invs, &all, &active, byID)
 		}
-		if errors.Is(rerr, bufio.ErrBufferFull) {
-			continue
-		}
-		if !over && bytes.Contains(buf, []byte(`"tool_`)) {
-			seq = blLine(buf, p, seq, wantID, invs, &all, &active, byID)
-		}
-		buf, over = buf[:0], false
-		if rerr != nil {
-			break
-		}
-	}
+	})
 	kept := all[:0]
 	for _, c := range all {
 		if !c.resultAt.IsZero() {
@@ -305,12 +289,8 @@ func blReadFile(p string, wantID map[string]bool, invs [][]string) []*blCall {
 }
 
 func blLine(raw []byte, p string, seq int, wantID map[string]bool, invs [][]string, all, active *[]*blCall, byID map[string]*blCall) int {
-	var l replayTranscriptLine
-	if json.Unmarshal(raw, &l) != nil || l.Message == nil || len(l.Message.Content) == 0 || l.Message.Content[0] != '[' {
-		return seq
-	}
-	var blocks []replayBlock
-	if json.Unmarshal(l.Message.Content, &blocks) != nil {
+	l, blocks, err := transcript.DecodeLine(raw)
+	if err != nil {
 		return seq
 	}
 	for i := range blocks {

@@ -1,0 +1,80 @@
+{
+  "head": "531e9c0e47e591cbf8b62c1c3972dbb8d7c2dd34",
+  "dirty": [
+    "M VISION.md",
+    " M docs/intent/scope.md",
+    "?? docs/designs/agentic-engineering/evidence-learning.md",
+    "?? docs/designs/agentic-engineering/human-workbench.md",
+    "?? docs/designs/agentic-engineering/practice-catalog.md",
+    "?? docs/designs/agentic-engineering/prose-harness.md",
+    "?? docs/intent/decisions/0025-agentic-engineering-uplift-composes-assured-workflows.md",
+    "?? docs/intent/decisions/0026-reject-model-only-authority-and-completeness.md",
+    "?? docs/intent/decisions/0027-human-workbench-and-prose-share-bound-transactions.md"
+  ],
+  "go_version": "go version go1.26.3 darwin/arm64",
+  "scope": "agentic-kit local components and explicitly listed composition targets; no provider or consumer calls",
+  "source_files": {
+    "foundations/decision/conformance_test.go": "a6fc6583c5f9fa6acaa90f5cda79981306b22a9e0457df77c316860978cde7cc",
+    "docs/fast-judgment.md": "160d646e1de6c8f3ed9d73e05852a06fcd1cf2588dbbb47f200907c4c33aa0a1",
+    "foundations/decision/openai/conformance_test.go": "e722a69572047229bb733992753511c1c586c01ee5bc6d57a9a9ab65127eb58a",
+    "docs/intent/scope.md": "3e4bb055f02ec91cb121fcaa60c77c83f940c7e203e3edf4e9f2587bbd6a483b",
+    "foundations/evidence/evidence-span/evidencespan_test.go": "2111d1bd20edc88d50884e356d4355240037c0510313c5e96cc3574811cec971",
+    "kits/catalog-kit/decision_test.go": "6ba3980ac1cecce7d694ef8e957b0c0524c551d68f7926c13ff561245e1ca38d",
+    "kits/hitl/delivery_test.go": "fa00cfb5b39f028608164aa715ff8c210f66405a7fde1cf01786ac55c25954b0",
+    "docs/intent/assurance.md": "5ff9500e015853a2f56a5c9706522a7b5eeed4e5ca9b48f4df429b93fe639244",
+    "foundations/security/tokenization/encrypted_vault_test.go": "d1fbdd2da8b5f24a1f55d853647a7f5e90da392e68cc9a55a4f2a0b7072c0382",
+    "kits/governed-prose-kit/sourced_test.go": "31a53dfd5c73a4382979d0071ec2382afc5aa5afd611419d5144b1df0a099517",
+    "docs/intent/decisions/0024-independent-kits-share-identity-not-authority.md": "cd36a96f6de940c0dc74ce6c4a21502499f02aa14d29e935434595cdf8bbd04e",
+    "kits/investigation/investigation_test.go": "aabf65dc0f6b80cccc55dc705695d09cbb3ae5e8510c871d677312220894528c",
+    "foundations/governance/budget-guard/budgetguard_test.go": "493ba351634f1c4e718d346c66f1a83393ba760d4d5233b7e198d7bb42e891b2",
+    "foundations/decision/cached_test.go": "fab60af1fcc3d14214b1da752846f1663abd2572e68dee21897e8ca727e0936b",
+    "docs/threat-model.md": "9da4c1bb2318d1c91234b305bea32943fd62daac2708bc6f52b606690585df74",
+    "kits/lesson-transfer/lesson_test.go": "8a26c71ba663897fd0eb1d26f0c47452354b96bb35de763646eb1e51c08b9dda",
+    "docs/intent/futures.md": "e53a1973db12668186c708da7195ab864ce53c75e5121d90d19f6478958cede4",
+    "docs/evidence/native-hosts/2026-09-13/README.md": "2219d476d4b0917bbe7a099a13e9e6c104b4dba25008d9261e50e131a93263d7",
+    "foundations/quality/fitness-function-registry/profile.go": "8f58982ffb234995923bd42086160613ca8fdf59aaf343885052c9acd01c435f"
+  },
+  "negative_scans": {
+    "google_provider": {
+      "name": "google_provider",
+      "argv": [
+        "rg",
+        "-n",
+        "Gemini|GenerativeLanguage|generativelanguage.googleapis.com|vertexai|google.*LLM",
+        "foundations/llmclient",
+        "foundations/decision"
+      ],
+      "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+      "exit_code": 1,
+      "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/google_provider-scan.log"
+    },
+    "github_issue_ingestion": {
+      "name": "github_issue_ingestion",
+      "argv": [
+        "rg",
+        "-n",
+        "api.github.com|/issues|GitHub.*(issue|ingest)|IssueEvent",
+        "foundations",
+        "kits",
+        "runtimes",
+        "cmd"
+      ],
+      "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+      "exit_code": 1,
+      "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/github_issue_ingestion-scan.log"
+    },
+    "antigravity_host": {
+      "name": "antigravity_host",
+      "argv": [
+        "rg",
+        "-n",
+        "Antigravity|antigravity",
+        "cmd/kit-new",
+        "cmd/agent-hooks"
+      ],
+      "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+      "exit_code": 1,
+      "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/antigravity_host-scan.log"
+    }
+  }
+}

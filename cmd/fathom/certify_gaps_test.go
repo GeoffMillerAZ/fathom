@@ -274,7 +274,7 @@ func TestCmdCertifyGaps_RemedyLinesAndJSON(t *testing.T) {
 	})
 }
 
-// TestCmdCertifyGaps_TargetsCarrySource pins RK-36: every target in this
+// TestCmdCertifyGaps_TargetsCarrySource pins the review kit's anchor ask: every target in this
 // fixture has a real declaration site, and each one's `source` names it —
 // a `// certifies:` marker's own comment line for a declared target
 // (I1, which wins over its OWN invariants.md row since decls are
@@ -322,7 +322,7 @@ func TestCmdCertifyGaps_TargetsCarrySource(t *testing.T) {
 // manifests found" case `certify status` and the doctor row already name
 // as a skip, not a pass — `certify gaps --json` had no equivalent field,
 // so a never-ingested service and a genuinely-checked-and-clean service
-// were indistinguishable in the wire contract the Review Kit adapter
+// were indistinguishable in the wire contract the review kit adapter
 // parses (that adapter treats zero targets as an outright pass). The
 // fix adds an additive, omitempty "skip" field to the SAME
 // fathom.certify.gaps/v1 shape — never a different payload shape, since

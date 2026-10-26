@@ -1,0 +1,24 @@
+{
+  "scope": "focused scaffold tests only, native macOS arm64",
+  "goVersion": "go version go1.27.3 darwin/arm64",
+  "archiveSHA256": "ef27d0be1c4011bf8d6404b01a68e6dced9035c9a1e8ba9e746881190b3a62e3",
+  "sourceFiles": 2109,
+  "steps": [
+    {
+      "name": "race",
+      "exitCode": 0,
+      "elapsedSeconds": 11.359
+    },
+    {
+      "name": "vet",
+      "exitCode": 0,
+      "elapsedSeconds": 1.21
+    }
+  ],
+  "sourcesUnchanged": true,
+  "doesNotQualify": [
+    "native Linux",
+    "native Windows",
+    "full repository gate"
+  ]
+}

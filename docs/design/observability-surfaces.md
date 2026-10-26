@@ -43,7 +43,7 @@ The distinction is the product: "rules delivered" is a fact about fathom;
 
 **Reframed: the location.** Building a second TUI plus a second web stack
 inside fathom would duplicate phases K and M and violate law 10. The screens
-belong in **fathom-studio**, which already is the Charm + app-kit renderer
+belong in **the studio repository**, which already is the Charm + app-kit renderer
 over a headless state machine. Fathom gains **verbs**; studio gains
 **screens**; the web version then costs almost nothing because it renders the
 same state. One UI codebase, two frontends, no third stack.
@@ -104,7 +104,7 @@ delete raw data implicitly.
 
 ## 5. Studio's side: the screens
 
-**Charm TUI** (`fathom-studio`, new screens over the metrics verbs):
+**Charm TUI** (the studio repository, new screens over the metrics verbs):
 sparklines and braille-cell bar charts (pure Go — the fleet's no-Node rule
 holds), a time-range selector (24h / 7d / 30d / custom), a project switcher
 driven by `list_services`, and four boards: **Spend**, **Traffic**,
@@ -176,7 +176,7 @@ third UI stack in fathom itself.
    advisor).
 6. `/statusz` on `serve-http` (loopback, read-only, allowlisted under
    hosted mode).
-7. **fathom-studio:** four TUI boards; then the web app with charts,
+7. **The studio repository:** four TUI boards; then the web app with charts,
    drill-downs, embedded docs, and the status board.
 8. Docs: a use-case guide for the metrics surfaces; adoption-guide section
    on turning `full` on for a tuning window and off after.

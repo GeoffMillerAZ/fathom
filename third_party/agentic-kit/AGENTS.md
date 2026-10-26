@@ -69,41 +69,54 @@ Skip `schema.cue` only for **behavioral-only** packages with no data contract (e
 
 ## fathom fleet index (code intelligence — use it first)
 
-The fleet index (throughline · agentic-kit · app-kit · fathom) lives in
+The fleet index (consumer-a · agentic-kit · app-kit · fathom) lives in
 `../sextant/workspace/db/fleet.sqlite` (that dir's on-disk rename to
 `../fathom` is pending — see the sibling's docs/rename-migration.md; scripts
 here resolve either name automatically), served to sessions via the
-user-scoped `fathom` MCP server. Resolve "where/what/who-calls" via its tools
-(`find_symbol`, `query_symbols`, `find_callers`, `outline`, `repo_map`,
-`pack_context`) before any Grep/Read sweep — read files to edit them, not to
-discover them. Cross-repo: check downstream impact on throughline/fathom
+user-scoped `fathom` MCP server. The generated stanza below routes questions
+to the current tool surface. Cross-repo: check downstream impact on consumer-a/fathom
 symbols before changing exported kit APIs (complements `task downstream-check`).
-Refresh via the MCP `ingest` tool (`{"service":"agentic-kit"}`) at session
-start and after commits (hash-gated, ~0.2 s; the daemon owns the SQLite
-store — refresh through it rather than a shell CLI ingest; a
-best-effort post-commit lefthook covers no-session commits). After heavy
-uncommitted edits run `staleness_report` before trusting results.
+The daemon owns the SQLite store. Use its extended `ingest` tool to refresh
+heavy uncommitted edits; HEAD drift queues refresh automatically. Use extended
+`staleness_report` before trusting stale answers. Do not write its store from
+a shell CLI ingest.
 
-<!-- fathom:begin -->
+<!-- fathom:begin v3 sha256:ee3cc97eae5403e2422d7b80ca29911d7150fdb164bc40fa0c6da763b548801a -->
 ## fathom code intelligence
 
-This repo is indexed by fathom as service "agentic-kit". Before any Grep/Read
-sweep, resolve where/what/who-calls via the fathom MCP tools:
-`find_symbol`, `references`, `symbol_context`, `outline`, `repo_map`,
-`pack_context`, `verify_plan`. Read files to *edit* them, not to discover
-them — the index replaces exploratory grep.
+This repo is indexed by fathom as service "agentic-kit". Route by
+question shape, on this session's default eight-tool MCP registration:
+where a symbol is defined is `find_symbol`; who-calls it, briefly
+(definition, a capped caller/callee list, tests) is `symbol_context`;
+what-breaks is `blast_radius`; a composed review verdict over a diff is
+`review_diff`; what-governs this repository is `obligations` with no
+path (the root conventions); is a plan's box proven is `verify_plan`;
+the current text at a cited line is `read_source`. A literal string, a
+config value, a log line, or a document-versus-document contradiction
+is `search`'s job (grep with a receipt), not the other tools'.
+Read files to *edit* them, not to discover them. The wider verb set
+(the full resolved caller graph, staleness and what-was-known, and
+more) lives one hop away at `/rpc/extended` (or its `/rpc/companion`
+alias); register that surface instead of `/rpc/agent` for a session
+that needs it.
 
-Refresh the index via the `ingest` MCP tool (`{"service":"agentic-kit"}`) at
-session start and after each commit; it is hash-gated, so a clean repo
-refreshes in well under a second.
+Opening moves by task shape (first 2-3 calls, then edit):
+- bug report / stack trace / failing test: search -> symbol_context -> read_source
+- feature/change: search -> obligations -> symbol_context
+- review/verify: review_diff -> obligations -> verify_plan
+- refactor/delete: blast_radius -> review_diff -> verify_plan
+
+The index refreshes itself: a read of a drifted service answers from
+what it has and queues a re-ingest in the background: nothing to call.
 
 Obligations — governing rules for the file you are about to touch — are
 injected automatically on every edit via the PostToolUse hook. Treat them
 as binding, not advisory.
 
-Continuity: run `fathom thread brief` at session start if your harness has
-no active SessionStart hook — it prints the open threads, or
-nothing. File what the next session must know: `fathom thread note "…"`.
+Continuity: run `fathom prime` at session start if your harness runs no
+SessionStart hook. It prints the same identity, freshness, live-example,
+thread-brief, and custodian primer this hook injects on Claude Code.
+File what the next session must know: `fathom thread note "…"`.
 
 Done means proven: a plan task is only "done" when the index proves it, not
 when it is claimed. Before checking off a `docs/plans/*.md` item, run:

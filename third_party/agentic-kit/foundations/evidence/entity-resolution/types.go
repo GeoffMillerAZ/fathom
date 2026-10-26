@@ -73,7 +73,7 @@ type Candidate struct {
 
 	// Grade is the epistemic strength of this candidate. It reflects the
 	// weakest tier of the evidence spans that were used to generate the
-	// candidate, in accordance with Throughline invariant 4.
+	// candidate, in accordance with Consumer-a invariant 4.
 	Grade evidencegrade.Grade
 
 	// SourceSpanIDs are the IDs of the evidence spans from which the two

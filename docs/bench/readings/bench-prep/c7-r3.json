@@ -1,0 +1,11 @@
+{
+  "repository": "spf13/cobra",
+  "c7": "fail",
+  "criterion": "already in fathom corpus",
+  "prior_reads": [
+    "calibration/corpus.yaml"
+  ],
+  "evidence_line": 268,
+  "split_if_ever_reconsidered": "dev",
+  "disposition": "refused on C7 and C6"
+}

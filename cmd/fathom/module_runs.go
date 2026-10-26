@@ -3,7 +3,7 @@ package main
 // module_runs.go — `fathom module runs`: compile-run history (dogfood gap
 // (c), phase-K studio bug hunt). Before this verb existed, only the
 // just-triggered `module compile` invocation's own result was visible to a
-// verb-JSON-only consumer (law 10, fathom-studio may only consume verb
+// verb-JSON-only consumer (law 10, the studio repository may only consume verb
 // JSON, never reach into the store directly) — every EARLIER compile_runs
 // row for the module's layer was invisible outside a direct SQLite query.
 //

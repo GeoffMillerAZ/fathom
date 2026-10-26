@@ -11,6 +11,88 @@ Release impact: minor
 
 ### Added
 
+- `reliability-stats` adds seeded Webb six-point `WildClusterBootstrapCI` for the equally weighted mean of task means, using optional `Observation.Cluster` for independent multiplier groups (defaulting to `Task`), reporting both task and cluster counts, refusing fewer than two clusters, distinguishing inconsistent task membership with `ErrInconsistentCluster`, and using overflow-safe percentile interpolation.
+- `reliability-stats` adds paired Student-t `EquivalenceTOST`, returning the `1 - 2*alpha` interval, an equivalent/harm/inconclusive `Verdict`, a fixed one-sided 95% upper bound, and `UnexpectedEffect` when `Low > margin`. Equivalence takes precedence, with the compatibility boolean retained and matching CUE contracts.
+- `reliability-stats` adds exact paired-binary `McNemarExact` and explicit `HolmAdjust` family correction, with matching CUE contracts. McNemar probabilities that underflow are clamped to the smallest positive float64.
+
+- Experimental `prose-lab review-oracle-prepare|review-oracle-report` binds all70 historical controls to exact source/citation/criterion evidence and reports declared review coverage with metadata-only defaults. Changed model/pricing trace does not invalidate unchanged semantic evidence. Missing, ambiguous or revised controls stay held; source/identity authentication, model qualification and publication remain separate.
+
+- Experimental `prose-lab review-pair-prepare|review-pair-capture|review-pair-report` compares two pinned support-review prompts over 70 controls and 140 ordered executions. One reservation ledger and exact native replay preserve unknown spend, stop rules and all missing positions. Metadata defaults require explicit content disclosure. Offline source qualification is separate from actual model/site qualification, document acceptance and publication.
+
+- Experimental `prose-lab document-review-prepare|document-review-report` binds retained v2 artifacts to canonical goal review, with metadata-only defaults and explicit content disclosure. Declared human/agent findings retain missing/stale/ineligible unknowns and required length holds. Identity, source revalidation, independent acceptance and publication authority remain separate.
+
+- Experimental `prose-lab review-prepare|review-capture|review-report` binds 67 independently authored assertion-support controls, checks native request identity before dispatch and verifies private captures offline against native responses and accounting. Missing, pending, failed, unknown and invalid observations cannot qualify. This proves runner behavior only until a separately frozen live cohort completes; document acceptance and publication authority remain separate.
+
+- Experimental `prose-lab document-prepare|document-capture` binds a 36-cell synthetic corpus and selected model lanes before opt-in positive generation. V2 adds a separately pinned goal scope, required/advisory length findings and a mandatory long-artifact floor; semantic quality remains unassessed. Distinct heuristic support review, authored event time, private immutable attempts and separate cell/cumulative costs preserve independent acceptance and unexecuted negative cases as explicit open evidence.
+
+- Experimental session-governed prose adds immutable document-type profiles and goals, controlled node context, Go-derived claim coordinates, exact source/review manifests and selective regeneration/rebinding. A [synthetic headless reference](scenarios/prose-headless/API.md) composes Catalog, Assignment and HITL under a cooperative in-memory host fence. This does not qualify realistic generation, production identity/publication or UI entry.
+
+- Experimental `prose-lab prepare|capture` validates predeclared synthetic cases and explicitly captures Anthropic/Jev transport observations with private reserve-before-attempt accounting, present-usage checks, fixed endpoint/response bounds and uncertain-spend holds. This is [HP transport evidence](cmd/prose-lab/README.md), not document quality, completed headless acceptance or publication authority.
+
+- Experimental strict `agent-hooks evaluate-spawn` and maintenance-build `harnessctl hooks evaluate|run` bind required spawn checks to protected policy/evaluator bytes and current HC8/HMT state. Required model/effort/tier/fork checks stay unsampled and never release after repeated denials. Only operator advice observations are sampled. [HSE](docs/harness-spawn-economics.md) preserves legacy hook behavior and separate native interception qualification.
+
+- Experimental `harnessctl` build tag `harness_maintenance` adds exact advisory prepare/enter/check/end and locked recovery for one protected receiver. Immutable bootstrap binding, consumed nonces, P-256 plan signatures, dual-clock leases and fault-tested local POSIX storage preserve mandatory floors. [HMT](docs/designs/harness-maintenance.md) includes a separately pinned macOS SDK helper and qualification guidance; synthetic tests and SDK compilation do not qualify live native approval or installed-hook control.
+
+- Experimental optional `command-guard` concern site, explicitly built with `-tags command_classifier`, runs one bounded loopback decision after mandatory file checks and independent input/policy disclosure pins. The lightweight ordinary build rejects selected classifier controls before source/scanner work. [0042/MC](docs/designs/command-concern-classifier.md) preserves uncertain/failing holds, context-bound replies, source-hidden receipts and the distinction between a client hop and qualified local inference. Includes a synthetic-only native fixture profile; no model-quality or private-input qualification.
+
+- Experimental `command-qualify` observes fixed native file/scanner rosters against hash-pinned, operator-trusted binaries and emits bounded sanitized receipts. [NQ](docs/designs/command-native-qualification.md) keeps actual host/profile evidence separate from broader platform, scanner, hook and authorization qualification.
+
+- Experimental opt-in `command-guard` scanner policy `reuseEqualInputs` reuses verified zero-finding observations for byte-identical inputs within one invocation. Private 8 MiB/256-entry copies, separate actual/reused counters and unchanged mandatory checks preserve the [OR contract](docs/designs/command-observation-reuse.md). No persistent cache or production cost claim.
+
+- Experimental `command-guard --format compact` selects lossless positional tuples only when shorter than ordinary JSON, preserving selected rows, source checks and coverage. [CV](docs/designs/command-compact.md) separates measured synthetic byte reduction from unbuilt observation caching and unmeasured production economics.
+
+- Experimental `harnessctl config check|explain` verifies protected multi-project registrations and exact DSSE/Ed25519 policy snapshots, composes restrictive mandatory controls and delegated advisory sample rates, and reports fixed diagnoses with truthful source coverage. Includes portable schemas, two-project toy fixtures and adoption guidance. [HC](docs/designs/harness-control.md) preserves separate native approval, maintenance leases and hook interception; no installation or action authority.
+
+- Experimental `command-guard` returns bounded read/search views of exact selected snapshots and registered Git status/object-diff/history observations after required checks. The Git profile pins protected metadata and executable/configuration, scans omitted source content, binds resolved commits and withholds source fields on failures. Optional pinned Gitleaks stdin qualification adds exact executable/version, independent scanner scope, bounded process/log/report witnesses and skipped-byte refusal. [Guidance](docs/designs/governed-command-tools.md) retains no arbitrary shell, installed hook, organizational authorization or proof of secret/PII absence.
+
+- Experimental [Assignment Kit](kits/assignment-kit/README.md) composes required/stretch goals, independently pinned scope, canonical Go/CUE assessment contracts, concerns, confidence bindings, finite budgets and explicit escalation/pivot/stop outcomes. Includes offline catalog-backed command-qualification and investigation examples; completion is scoped caller-declared acceptance, never execution authority.
+
+- Offline `command-lab` audits explicitly selected proposals with bounded intake and closed-category output, and assesses typed requests against independent restrictive layers plus optional captured classifier evidence with native model references. [Guidance](docs/command-safety.md) and an audit skill accompany the tool; it executes no proposed command, calls no model and installs no hooks.
+
+- Offline `decision-lab` prepares text-only choice packs, validates captured port results and reports independently scoped labeled studies, including per-question answer reuse, typed failures and duplicate-exposure guards. Includes complete synthetic review/retrieval recipes, [project opportunities and adoption guidance](docs/decision-sites.md), and a `decision-site-adopt` skill. No provider dispatch or action authority.
+
+- Experimental `quality-gate` checks immutable Git snapshots with strict versioned rules and optional calibrated decision-model holds; includes a Lefthook fragment, safe scaffold and adoption skill. Read-only `doctor` reports local configuration, actionable unknowns and calibration-band eligibility without provider calls; text reports name bounded unselected paths. [Boundary contract](docs/intent/decisions/0030-quality-boundaries-compose-hard-rules-and-calibrated-holds.md) keeps deterministic failures authoritative; [0032](docs/intent/decisions/0032-admit-offline-practice-review-and-local-diagnostics.md) scopes diagnosis separately from trusted CI/adoption.
+
+- Offline [practice-review example](examples/practice-review/README.md) composes exact Catalog Kit definitions, independently authored subject/criterion coverage and deterministic assessments for two synthetic workflows. Versioned fixtures and planted negatives cover work limits, evidence integrity and declared effects. This bounded W1 reference does not close whole AE-1/AE-2, external adoption or measured benefit.
+
+- Experimental Catalog Kit and `catalogctl`: explicit composition/profiles, audited overrides, exact definition/evidence binding, stable-key lookup and move-aware diffs, identity discovery and analytics exports. [The workflow](docs/designs/catalog-workflow.md) and [independent-adoption contract](docs/designs/kit-interoperability.md) distinguish executable Review/Env/external-module proofs from production migration and model quality.
+
+### Fixed
+
+- Document corpus CUE now checks calendar-valid canonical UTC event times against the same accepted/rejected boundary cases as Go intake.
+
+- The positive document lab projects only validated Anthropic reasoning metadata out of canonical answer content after native capture. Unknown/tool/refusal blocks remain held. Protocol-bound projection and selected review token caps support default reasoning without weakening the provider-neutral prose engine.
+
+- Prose-lab reservations include rounding headroom for separately priced input/cache buckets, preventing a valid split-token usage report from exceeding its pre-dispatch reservation by one or two microdollars.
+
+- Maintenance native/store and spawn evaluator preparation now return genuinely nil interfaces on failure, preserving fixed unavailable reports instead of a cleanup panic or overwritten diagnosis. `TestHookDefaultFactoriesDoNotReturnTypedNil` and the actual invalid-native-pin trial cover INC-25.
+
+- Scanner version/input completion requires an actual process-start witness. Plausible clean responses from an unstarted injected runner now hold; production Start failures already held. INC-24 records the counterexample and requalification.
+
+- `kit-new` failure rollback pins created objects through cleanup and preserves detected file edits instead of trusting a closed-file identity snapshot. Uncertain identity/content remains reported and retained; cleanup is not atomic against concurrent namespace writers.
+
+- Command-tool CUE contracts validate with CUE 0.16.1 and 0.17.1 without relaxing byte limits or mandatory-control floors. Integration regressions cover the actual fixture command, ASCII/multibyte boundaries and strict Go/CUE control parity. INC-22 records the local/CI version mismatch.
+
+- File inspection now carries its accepted effective output cap through failure reports and checks the final newline-inclusive write. If the fixed failure report cannot fit, it returns exit 2 without output. INC-21 records the previously oversized JSON/text failures.
+
+- `quality-gate` resolves Git outside candidate code, supports raw-OID push sources, preflights every ref before model dispatch, refuses omitted required model receipts and empty enforcement coverage, binds calibration to its full prompt/cohort, bounds error bodies and defaults to one provider batch per invocation. Existing model calibration hashes require genuine re-evaluation under the new recipe. [Decision](docs/intent/decisions/0031-bind-working-methods-to-deterministic-boundaries.md).
+
+- `kit-new` refuses existing output files/directories/symlinks before publication, uses exclusive creation and reports unresolved cleanup paths. `catalogctl` rejects unused flags and invalid command values before input I/O; bundle verification refuses malformed catalog structure and unencodable provenance.
+- `task fathom-check` now syncs the exact committed kit into Fathom's dependency mirror in disposable clones, then runs consumer-owned vendor, build, race and performance gates without modifying either source checkout. Race-test capacity is bounded separately from performance measurements.
+- `agent-hooks doctor`: on Codex one PostToolUse handler satisfies two wiring requirements and its trust line printed twice, reading as two handlers to approve; trust lines are now deduped per handler.
+
+### Changed
+
+- Docs: skills curation and triggering practice in `docs/tokenomics.md`, with the dated owner assessment, usage and adoption qualifications in `docs/evidence/tokenomics/2026-10-20/`.
+- `docs/tokenomics.md`: new section 6 "Companion tools" (ccusage, ccstatusline, ast-grep, difftastic, gitleaks, context7) and the subagent-driven pattern as rule 8; `docs/evidence/tokenomics/2026-10-19/tools-assessment.md` records the 24-tool assessment.
+
+## [0.9.0] — 2026-10-19
+
+Release impact: minor
+
+### Added
+
+- `cmd/agent-hooks`: token-economics hooks for Claude Code and Codex from one binary and one policy (decision 0022). Every subagent spawn names its model (and on Codex its reasoning effort), tiers cap by worker or critic class with explicit markers, forks need a marker, allowed spawns are silent, large main-thread Bash output is contained with the full text kept on disk, and a local ledger plus `report` and `doctor` measure and verify it; `wire` merges the registration into either host idempotently. Ships the cavecrew agents for both hosts, `scripts/agent-hooks-smoke.sh` (live, both hosts) and `docs/tokenomics.md`.
 - `release-notes -roll x.y.z -date D` folds change-note fragments into a released block (Breaking first, `Release impact:` computed, fragments deleted, a version the changelog already has refused), `release-notes Unreleased` prints the same fold, and `-check` lints fragments; a repo opts in by the fragments pointer line in `[Unreleased]`, and every other changelog behaves as before.
 - Change-note fragments: `changes.md` §4, `operating.md` §4 and the `intent-release`, `intent-doctor` and `intent-prune` skills describe an optional fragments directory, and `kit-new -package -apply` writes a fragment instead of an `[Unreleased]` line when the changelog's pointer line names one. A repo without fragments is unchanged.
 
@@ -107,7 +189,7 @@ Release impact: major (pre-1.0: breaking bumps minor)
   verdicts, families/lineage from model-catalog CUE data); judge stack probed
   before any run; every judge call budget-charged fail-closed and journaled;
   regression gate over eval-journal baselines; determinism variance probe;
-  provenance-gated scenario bank (committed corpus: throughline chat-prompt
+  provenance-gated scenario bank (committed corpus: consumer-a chat-prompt
   scenarios, donor commit-pinned and redacted, + agent-cli-derived; cassettes
   byte-stable, recorded offline). `task eval` runs the whole loop in replay
   mode — deterministic, free, no network. Judge pool/panel/escalation and
@@ -124,7 +206,7 @@ Release impact: major (pre-1.0: breaking bumps minor)
   subprocesses, proven end-to-end by `TestStreamableHTTPTraceRoundTrip`.
 
 - `foundations/security/token-lifecycle` (H2/D35-3, kit side) — pure OAuth
-  credential lifecycle extracted from throughline's proven `adapters/oauth`:
+  credential lifecycle extracted from consumer-a's proven `adapters/oauth`:
   `Classify`, `NextAction` (60s default refresh skew, boundary pinned ±1ns),
   `MergeRefreshed` (preserve-refresh-token rule), `RevocationTarget`.
   Storage, PKCE, and HTTP exchanges stay consumer-side by design.
@@ -141,21 +223,21 @@ Release impact: major (pre-1.0: breaking bumps minor)
 ### Removed
 
 - `foundations/communications/source-sync-checkpoint` (H2/D35-5 decision:
-  coverage wins) — zero consumers ever; throughline's doc-29 deviation proved
+  coverage wins) — zero consumers ever; consumer-a's doc-29 deviation proved
   checkpoint intent belongs on `coverage.SourceCoverage.Cursor`/`LastSync`,
   now documented there as the canonical mechanism. No migration needed.
 
 ### Changed
 
 - **Pull queue closed (H2 Wave B): extraction-done = donor-deleted, proven.**
-  Throughline (changes left uncommitted for owner review): `app/acquire`
+  Consumer-a (changes left uncommitted for owner review): `app/acquire`
   adopts `intaketriage` (ProposalState aliased; `Service.Decide` hydrates via
   `ResumeFSM`, routes through `FSM.Decide`/`Restore`; hand-rolled `ai:` guard
   and local state constants deleted) and `queryplanner` (new `gatedRefiner`
   adapter; `extractKeywords`/`stopwords`/`buildGmailQuery`/`extractEmails`/
   `llmRefineQueries` deleted); `adapters/oauth` rewires onto `tokenlifecycle`
   (four donor logic blocks deleted). Zero test-assertion changes across all
-  three parity canaries; throughline gate green with an identical pass set to
+  three parity canaries; consumer-a gate green with an identical pass set to
   the pre-change baseline; `task downstream-check` green.
 
 ### Fixed
@@ -187,7 +269,7 @@ Release impact: major (pre-1.0: breaking bumps minor)
 
 Wave 4 ("Prune & prove") of `docs/plans/2026-07-uplift.md` — the final wave.
 Kill-list sweep (D5/§6): 16 packages deleted, zero consumers verified across
-the repo + throughline + sextant + growing-gardens-bi. New on-ramp tooling:
+the repo + consumer-a + sextant + consumer-b. New on-ramp tooling:
 `cmd/kit-new`, `scenarios/governed-docextract-hitl`, `docs/first-agent.md`.
 Verified-claims plan files with `{symbol:}` anchors. Kit consumer annotations
 and honesty passes throughout. Gate green; catalog regenerated to 174 packages;
@@ -282,7 +364,7 @@ and honesty passes throughout. Gate green; catalog regenerated to 174 packages;
 - **`foundations/topology/live-graph`** — package doc: plan-only annotation
   added; does NOT spawn or execute; subscribe-when: real fan-out workload.
 - **`foundations/orchestration/operator-elicitation`** — package doc demoted
-  per D2: "composition unproven" language added (throughline's richer
+  per D2: "composition unproven" language added (consumer-a's richer
   elicitation shape is domain-specific; absorption would need org types).
 - **`kits/mcp-server`** — TRACKING annotation: "composition unproven —
   serving side has no in-fleet consumer yet."
@@ -298,7 +380,7 @@ and honesty passes throughout. Gate green; catalog regenerated to 174 packages;
 - **sextant→vector-store**: Deferred. Sextant's feature branch is mid-flight;
   kit side ready. Subscribe-when: the branch merges and the embedding pipeline
   is wire-tested.
-- **growing-gardens-bi→kits/hitl**: Not-yet — shape mismatch (no
+- **consumer-b→kits/hitl**: Not-yet — shape mismatch (no
   proposal/preview/approve cycle exists in its current code); adopt-worthy in
   principle; subscribe-when: a concrete human-approval change request is
   identified.
@@ -344,7 +426,7 @@ TRACKING.md updated; roadmap entries #10, #18, #19, #20, #24, #25 graduated.
 - **`foundations/evidence/case-file`** (roadmap #25) — pure deterministic
   projection: stance buckets by assertion type, tier-rank weighted
   support/against scores with documented math, net classification bands;
-  byte-identical golden-tested; throughline UI is the named subscriber. tests.
+  byte-identical golden-tested; consumer-a UI is the named subscriber. tests.
 
 **Eval slice (D8, D9, Update-2)**
 
@@ -401,7 +483,7 @@ TRACKING.md updated; roadmap entries #10, #18, #19, #20, #24, #25 graduated.
   (integrity→honesty→DLP→disclaimer); ONE `Decision` envelope
   `{Allowed, Stages[], Transformed}`; fail-closed on stage error; CUE chain
   config; sink seam; `llmegress` documented as the transport backstop.
-  Subscribers: throughline chat + governed-prose-kit (adoption sketches in
+  Subscribers: consumer-a chat + governed-prose-kit (adoption sketches in
   package doc). Roadmap #19 graduated.
 
 **Retention / crypto-shred (roadmap #18)**
@@ -468,12 +550,12 @@ TRACKING.md updated; roadmap entries #10, #18, #19, #20, #24, #25 graduated.
   migrated this wave, but `evidence-graph`'s own graph queries still use the
   legacy internal Span. Honest assessment recorded in `foundations/evidence/README.md`
   and roadmap #23. Marked `[~]` in TRACKING.md.
-- **D35-1 `intake-triage` donor deletion** — kit core landed; throughline donor
+- **D35-1 `intake-triage` donor deletion** — kit core landed; consumer-a donor
   (`app/acquire`) NOT deleted due to uuid/ledger entanglement. Honest note in
-  package doc. Full extraction closes when throughline wires the kit type.
-- **D35-2 `query-planner` donor deletion** — kit core landed; throughline donor
+  package doc. Full extraction closes when consumer-a wires the kit type.
+- **D35-2 `query-planner` donor deletion** — kit core landed; consumer-a donor
   (`app/acquire/planner.go`) NOT deleted; needs a `GatedClient`→`Refiner`
-  adapter on the throughline side. Honest note in package doc.
+  adapter on the consumer-a side. Honest note in package doc.
 
 ## [0.4.0] — 2026-07-10
 
@@ -562,9 +644,9 @@ gate green; TRACKING.md updated; roadmap entries #1 and #9 graduated.
 
 ### Changed
 
-- **throughline budget adoption** — throughline's hand-rolled `budgetClient`
+- **consumer-a budget adoption** — consumer-a's hand-rolled `budgetClient`
   (~62 lines in `adapters/llmclient/`) deleted; `llminstrument.WithBudget`
-  wired in its place; throughline gate green, vendor re-synced. Extraction
+  wired in its place; consumer-a gate green, vendor re-synced. Extraction
   complete per doctrine amendment §3.
 - **`kits/agent-harness`** `New` no longer returns an error for a nil
   `Registry` (previously rejected); callers using RunOnce-only harnesses
@@ -572,12 +654,12 @@ gate green; TRACKING.md updated; roadmap entries #1 and #9 graduated.
 
 ### Deferred (honest annotation)
 
-- **Oracle chat-loop port**: the Wave 2 plan called for porting throughline's
-  chat loop onto the harness. The oracle session found that throughline's
+- **Oracle chat-loop port**: the Wave 2 plan called for porting consumer-a's
+  chat loop onto the harness. The oracle session found that consumer-a's
   chat is a single-turn grounded completion, not an agentic loop; forcing
   the harness onto it would be fake complexity. The friction produced two
   real kit items instead (`RunOnce`/`RunOnceStream` + `ErrBudgetExceeded`),
-  both built this wave. Full harness-loop port awaits throughline's first
+  both built this wave. Full harness-loop port awaits consumer-a's first
   agentic workload (M18.1 per its roadmap).
 - **Sextant budget-stack wiring**: sextant's checkout was mid-flight on a
   feature branch with a dirty tree at Wave 2 close; wiring deferred to
@@ -731,7 +813,7 @@ restores ledger discipline (Wave 0.6 of `docs/plans/2026-07-uplift.md`).
   from reconstructed Update-2 scan. schema.cue · 16 tests.
 - `foundations/evidence/authenticity` — `MethodDKIM` and
   `MethodAuthResultsHeader` constants: two new `Method` values extracted
-  same-day from throughline's DKIM detector (doc-35 track, `cf40791`).
+  same-day from consumer-a's DKIM detector (doc-35 track, `cf40791`).
 - `foundations/quality/fitness-function-registry` — typed registry of named
   `FitnessFunction` values (`prototype`/`integration`/`apex` tiers, threshold
   0–1, injected runner `func() (float64, error)`); `Register` validates on
@@ -757,19 +839,19 @@ restores ledger discipline (Wave 0.6 of `docs/plans/2026-07-uplift.md`).
 - `docs/plans/2026-07-uplift.md` — 12-area adversarial audit findings + adopted
   uplift plan (Wave 0–4 roadmap, doctrine amendments, owner decisions D1–D10,
   Update-2 merge-map).
-- `docs/upgrades/throughline-v0.2-adoption-friction.md` — 6 consumer-proven
-  kit improvement asks from the throughline v0.2 adoption, plus doc-35
+- `docs/upgrades/consumer-a-v0.2-adoption-friction.md` — 6 consumer-proven
+  kit improvement asks from the consumer-a v0.2 adoption, plus doc-35
   acquisition addendum (5 extraction candidates). Drives TRACKING.md Pull queue.
 - `VISION.md` — the owner's vision statement: what the kit believes, what it refuses to be, the junk gate, and the practice-watch process. The arbiter for scope decisions.
 - `docs/practices.md` — agentic anti-pattern → kit-package mapping (which packages enforce which practice; honest about shipped vs partial vs roadmap).
 - `docs/roadmap.md` — 25 pre-thought patterns awaiting a subscriber, each with a "subscribe when" trigger; referenced from TRACKING.md's Deferred section.
 - anthropic client: bearer/OAuth auth (`Config.AuthScheme` + `BetaHeaders`, e.g. Claude Code OAuth credentials via `oauth-2025-04-20`) and a zero-token `Ping(ctx)` credential probe (GET /v1/models, typed error mapping). Key-never-in-errors tests cover both schemes.
 - `llmclient.Swappable` — late-bound/hot-swappable client for runtime-acquired credentials (`NewSwappable`, atomic `Swap`, `Available()`); new typed non-retryable `UnavailableError`.
-- `foundations/llmclient/egress` (package `llmegress`) — gate-before-egress middleware: `WithEgress` applies a fail-closed `Transformer` to every outbound text field (deep-copied, once per logical call under retry); `GateFromVault` (tokenization) and `GateFromDLP` adapters. Generalized from throughline's proven GatedClient.
+- `foundations/llmclient/egress` (package `llmegress`) — gate-before-egress middleware: `WithEgress` applies a fail-closed `Transformer` to every outbound text field (deep-copied, once per logical call under retry); `GateFromVault` (tokenization) and `GateFromDLP` adapters. Generalized from consumer-a's proven GatedClient.
 - `prose/evidence-citation` parse direction: `NewParser(tags...)`, `Parse` (byte offsets), `Validate` (anti-fabrication seam), offset-safe `Strip`/`Replace`; `Cite`→`Parse` lossless round-trip, fuzzed.
-- Taskfile: `throughline-check` (second downstream consumer, `-mod=readonly` to bypass its vendor dir) and `downstream-check` (both consumers).
-- `docs/adopting.md`: third consumption pattern documented (replace + vendor, no go.work — throughline's hermetic pattern); surfaces/ tier importability blessed (cueform doc + adopting note).
-- `docs/upgrades/throughline-v0.2-adoption.md` — paste-able adoption brief for the throughline project.
+- Taskfile: `consumer-a-check` (second downstream consumer, `-mod=readonly` to bypass its vendor dir) and `downstream-check` (both consumers).
+- `docs/adopting.md`: third consumption pattern documented (replace + vendor, no go.work — consumer-a's hermetic pattern); surfaces/ tier importability blessed (cueform doc + adopting note).
+- `docs/upgrades/consumer-a-v0.2-adoption.md` — paste-able adoption brief for the consumer-a project.
 
 ### Removed
 

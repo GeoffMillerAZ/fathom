@@ -19,6 +19,29 @@ remains proposed, not built: gate edits need the owner's call under autonomy pol
 
 ## Closed
 
+- INC-26 (2026-10-24) Pre-push fixtures assumed canonical temporary paths and one direct Git subprocess inherited caller routing. Controlled reproduction wrote a foreign unmerged test entry into the real index; the index was backed up and only that absent-from-HEAD entry removed, without changing HEAD or working files. Canonical fixture roots, shared Git command isolation, `TestToyTempAlias` and foreign-index conservation inside `TestSnapshotBoundsSymlinkAndUnmergedIndex` now pass red/green race and full normal-root gates. [Retained evidence](../evidence/prose-headless/2026-10-24-integration/README.md). No production control or hook was relaxed. Class: contract-broken.
+
+- INC-25 (2026-10-24) HMT native/store factories and HSE child preparation wrapped nil pointers in nonnil interfaces on errors. The actual invalid-native-pin CLI printed a panic, and `TestHookDefaultFactoriesDoNotReturnTypedNil` failed all three factories. Factories now return explicit nil interfaces on failure; red/green regressions and native negative retest preserve fixed unavailable diagnoses without cleanup calls on nonexistent resources. [HSE review](../evidence/command-tools/2026-10-24-spawn/security-review.md). No authority grant or source disclosure observed. Class: contract-broken.
+
+- INC-24 (2026-10-24) Plausible clean private-runner results with started=false passed version/input completion, counting one completed but zero invoked calls. `TestScannerUnstartedSuccessRejected` reproduced both failures; explicit start witnesses now hold, preserve deadline diagnoses and keep actual counters. Race/full gates, native pinned-scanner trial and strict source proof pass. [OR evidence](../evidence/command-tools/2026-10-24-reuse/README.md). Production Start errors already held; no repository-controlled bypass or secret disclosure demonstrated. Class: contract-broken.
+
+- INC-23 (2026-10-24) Linux CI removed a replacement during scaffold rollback after comparing closed-file metadata. Rooted handles now stay live through cleanup; mode/actual-byte checks preserve detected edits and unknown ownership. Original replacement regression plus new failure cases pass in native Linux run 40093730634 at `c7633a4`, both Mac lanes and full gates. [Evidence](../evidence/command-tools/2026-10-24-rollback/README.md). No atomic namespace or native Windows guarantee. Class: contract-broken.
+
+- INC-22 (2026-10-24) Local CUE 0.16.1 passed schemas that CI 0.17.1 rejected. Numeric byte constraints and explicit control unions preserve floors; concrete ASCII/UTF-8 bounds and strict Go/CUE regressions pass both versions. Native Linux run 40093730634 passed CUE 0.17.1, race and WASI/WASM. [Evidence](../evidence/command-tools/2026-10-24-cue/README.md). Class: contract-broken.
+
+- INC-21 (2026-10-24) Valid file inspection with a one-byte accepted cap emitted a 325-byte JSON or 382-byte text failure at `07e28b0`. Cap reset plus unchecked final emit caused the overrun. Effective cap now survives failures and includes newline; `TestInspectFailureOutputCaps`, `TestInspectFailureExactOutputBoundary` and success/writer regressions plus independent native json/text/compact probes pass. [Evidence](../evidence/command-tools/2026-10-24-compact/README.md). Class: contract-broken.
+
+- INC-20 (2026-10-23) Exploratory command discovery exceeded its metadata envelope; unmeasured discovery and open aggregate vocabulary invalidate bounded-audit claims. [Assessment](../assessments/2026-10-23-command-governance.md) retains the failure. 0035 ships explicit-source intake with no discovery; `TestAuditExactByteCaps`, `TestAuditCoverageBoundsPrivacy` and wrapper/native malformed cases prove byte caps, fixed output and partial coverage. Audit skill forbids private-history discovery. This closes the reference remedy, not a global agent-read boundary. Class: intent-violated.
+
+- INC-19 (2026-10-21) Fathom's rewritten dependency mirror made the sibling go.work check miss the candidate kit, while raw upstream mirror tests exercised unsupported scope. Owner authorized repair: `scripts/fathom-check.sh` clones committed inputs, syncs/verifies the candidate mirror and runs consumer-owned gates. Lifecycle regressions check isolation, ignored-data exclusion, failure propagation and cleanup. Class: contract-broken.
+
+### INC-18 2026-10-21 checked plan failed after its unclaimed version passed
+What: CK-5 was checked after an unclaimed-plan pass; strict verification then rejected its new library waiver, but a non-fail-fast shell sequence still committed b069ab5 on the topic branch. Main was not merged.
+Evidence: strict output named CK-5 library-only; the command chain continued after exit 1. The row was reopened immediately.
+Would have caught it: reverify the checked plan and stop the commit chain on a nonzero exit.
+Class: wrong-done-claim
+Outcome: router sensitive-surface evidence requirement for claimed plans and fail-fast chains; CLI prepare -identity now wires DecisionCacheKey with TestPrepareCommandBindsCurrentDefinition. No verification waiver remains.
+
 ### INC-17 2026-09-21 clean-worktree claim contradicted compiled VCS provenance
 What: RAC's study notes called an isolated-worktree executable clean; retained metadata said `vcs.modified=true`.
 Evidence: historical binary `177777b5…`; Go 1.26.2 Git trace inspected the outer repo, not the clean nested worktree. Independent checkout binary `344099e7…` records the intended revision and `vcs.modified=false`.

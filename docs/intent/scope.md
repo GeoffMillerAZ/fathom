@@ -40,7 +40,7 @@ doctrine` refuses it at load and names what it lacks (DP-4, ADR-026 amendment 20
 **G34. Stewardship facts earn their place, or are cut (ADR-060).** `scope/goals-2.md`\
 **G35. The `.fathom/` zones and tech packs v1: one format, three authors (ADR-061, proposed; F5 promoted).** `scope/goals-2.md`\
 **G36. Every file accounted for: the repository graph's facts earn their place, or are cut (ADR-067).** `scope/goals-2.md`\
-**G37. Concern facts earn a place in a Review Kit bundle, or are cut (ADR-069).** `scope/goals-2.md`\
+**G37. Concern facts earn a place in a review kit bundle, or are cut (ADR-069).** `scope/goals-2.md`\
 **G39. Readouts earn their place, or are cut (ADR-071).** `scope/goals-3.md`\
 **G40. Claude Code mods earn their place, or are cut (ADR-072).** `scope/goals-3.md`\
 **G41. Every interception seam rated Medium or higher works, or its own reading re-rates it (readouts design §20).** `scope/goals-3.md`\
@@ -69,7 +69,7 @@ migration note (`docs/rename-migration.md` is the precedent; new ones go to
   checkbox-line rule. Evidence: `docs/plans/README.md`, `schema/plan/schema.cue`,
   `internal/verify/markdown.go`.
 - `fathom verify` exit codes 0/1/2 and the `--strict`, `--require-all`, `--quiet` flags;
-  an unproven row whose evidence could not be read (index-stale, graph fallback, unanswered)
+  an unproven row whose evidence could not be read (index-stale, graph fallback, unanswered, platform-excluded: a symbol declared only in Go files the index's build context excludes)
   is operational: exit 2 when every unproven row is one;
   every wired repo's `lefthook.yml` depends on them. Evidence: `cmd/fathom/verify.go`.
 - Hook verbs and their stdin/stdout contracts: `session-hook` (`--event
@@ -94,7 +94,7 @@ migration note (`docs/rename-migration.md` is the precedent; new ones go to
 - The certification contracts (ADR-043): the `// certifies: <kind> <id> [(<strength>)]` marker
   grammar, the `certified_by:` plan key, and `fathom certify gaps --json`'s
   `fathom.certify.gaps/v1` shape (schema string, field names, kind-then-id sort order) that
-  Review Kit's `fathom-certify` adapter parses. Evidence: `docs/design/test-certifications.md`,
+  the review kit's `fathom-certify` adapter parses. Evidence: `docs/design/test-certifications.md`,
   `cmd/fathom/certify_gaps.go` (`TestCmdCertifyGaps_RemedyLinesAndJSON`).
 - Plan grammar v2's lexical oracle keys on plan rows (`oracle: lexical`, `path`,
   `pattern`). Evidence: ADR-030, `schema/plan/schema.cue`.

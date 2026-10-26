@@ -53,7 +53,7 @@ func TestTaskfileUnnamedContentDispatch(t *testing.T) {
 		path, src string
 		want      bool
 	}{
-		{"taskfiles/envkit.gen.yml", "version: '3'\ntasks:\n  check:\n    cmds: [echo ok]\n", true},
+		{"taskfiles/envgen.gen.yml", "version: '3'\ntasks:\n  check:\n    cmds: [echo ok]\n", true},
 		{"taskfiles/nested.yaml", "version: 3\nincludes:\n  child: ./child.yml\n", true},
 		{"taskfiles/quoted.yml", "\"version\": \"3\"\n\"tasks\":\n  check:\n    cmds: [echo ok]\n", true},
 		{"taskfiles/spaced.yml", "version : \"3\"\ntasks:\n  check:\n    cmds: [echo ok]\n", true},
@@ -81,8 +81,8 @@ func TestTaskfileUnnamedContentDispatch(t *testing.T) {
 func TestIngest_TaskfileUnnamedIncludeAndReingest(t *testing.T) {
 	dir := t.TempDir()
 	writeCorpus(t, dir, map[string]string{
-		"Taskfile.yml":             "version: '3'\nincludes:\n  env: ./taskfiles/envkit.gen.yml\n  missing: ./taskfiles/gone.yml\ntasks:\n  all:\n    cmds:\n      - task: env:check\n",
-		"taskfiles/envkit.gen.yml": "\"version\" : \"3\"\n\"tasks\":\n  check:\n    cmds: [echo ok]\n",
+		"Taskfile.yml":             "version: '3'\nincludes:\n  env: ./taskfiles/envgen.gen.yml\n  missing: ./taskfiles/gone.yml\ntasks:\n  all:\n    cmds:\n      - task: env:check\n",
+		"taskfiles/envgen.gen.yml": "\"version\" : \"3\"\n\"tasks\":\n  check:\n    cmds: [echo ok]\n",
 		"taskfiles/ordinary.yml":   "version: '3'\nname: ordinary\n",
 	})
 	st := store.NewMemoryStore()
@@ -103,7 +103,7 @@ func TestIngest_TaskfileUnnamedIncludeAndReingest(t *testing.T) {
 			if o.SourceRef == "taskfiles/ordinary.yml" && o.SourceKind == core.KindTaskfile {
 				t.Error("ordinary YAML became a Taskfile")
 			}
-			if o.SourceRef == "taskfiles/envkit.gen.yml" && o.SourceKind == "TaskfileTask" {
+			if o.SourceRef == "taskfiles/envgen.gen.yml" && o.SourceKind == "TaskfileTask" {
 				tasks = append(tasks, o.Symbol)
 			}
 		}
@@ -123,14 +123,14 @@ func TestIngest_TaskfileUnnamedIncludeAndReingest(t *testing.T) {
 		sort.Strings(edges)
 		var want []string
 		if wantEdge {
-			want = []string{"Taskfile.yml->tf::taskfiles/envkit.gen.envkit.gen.yml"}
+			want = []string{"Taskfile.yml->tf::taskfiles/envgen.gen.envgen.gen.yml"}
 		}
 		if !reflect.DeepEqual(edges, want) {
 			t.Errorf("include edges = %q, want %q", edges, want)
 		}
 	}
 	check("check", true)
-	rel := "taskfiles/envkit.gen.yml"
+	rel := "taskfiles/envgen.gen.yml"
 	if err := os.WriteFile(filepath.Join(dir, filepath.FromSlash(rel)), []byte("version: '3'\ntasks:\n  lint:\n    cmds: [echo ok]\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}

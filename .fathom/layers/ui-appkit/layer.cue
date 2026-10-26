@@ -7,8 +7,8 @@
 // stratum: "authored by the org... trusted via... on-disk eval evidence").
 //
 // Derived from fathom's shipped adr-rules pack (same engine, same prompt
-// shape, different corpus + stratum) — same lineage as this org's own
-// platform-standards pack (.fathom/layers/platform-standards/layer.cue).
+// shape, different corpus + stratum) — same lineage as an org's own
+// standards pack (a .fathom/layers/<standards>/layer.cue).
 name:    "ui-appkit"
 version: "v1"
 kind:    "adr-rule"

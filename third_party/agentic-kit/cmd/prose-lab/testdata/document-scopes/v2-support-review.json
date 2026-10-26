@@ -1,0 +1,275 @@
+{
+  "version": "prose-lab.review-scope/1",
+  "id": "headless-support-review-v2",
+  "corpus_digest": "da99d1c025764c445967dd8d71c56e63992108feaa682d1ba81685155c0688bd",
+  "goal_scope_digest": "41988f2f526415763d64faa7193e477f1370c56bfd2a0e269427dbbf0c004403",
+  "negative_case_ids": [
+    "architecture-decision--n-01",
+    "architecture-decision--n-02",
+    "architecture-decision--n-03",
+    "architecture-decision--n-04",
+    "architecture-decision--n-05",
+    "architecture-decision--n-06",
+    "architecture-decision--n-07",
+    "draft-service-agreement--n-01",
+    "draft-service-agreement--n-02",
+    "draft-service-agreement--n-03",
+    "draft-service-agreement--n-04",
+    "draft-service-agreement--n-05",
+    "draft-service-agreement--n-06",
+    "draft-service-agreement--n-07",
+    "freeform-brief--n-01",
+    "freeform-brief--n-02",
+    "freeform-brief--n-03",
+    "freeform-brief--n-04",
+    "freeform-brief--n-05",
+    "freeform-brief--n-06",
+    "freeform-brief--n-07",
+    "incident-summary--n-01",
+    "incident-summary--n-02",
+    "incident-summary--n-03",
+    "incident-summary--n-04",
+    "incident-summary--n-05",
+    "incident-summary--n-06",
+    "incident-summary--n-07",
+    "operational-runbook--n-01",
+    "operational-runbook--n-02",
+    "operational-runbook--n-03",
+    "operational-runbook--n-04",
+    "operational-runbook--n-05",
+    "operational-runbook--n-06",
+    "operational-runbook--n-07",
+    "technical-design--n-01",
+    "technical-design--n-02",
+    "technical-design--n-03",
+    "technical-design--n-04",
+    "technical-design--n-05",
+    "technical-design--n-06",
+    "technical-design--n-07",
+    "technical-design--n-08"
+  ],
+  "positive_controls": [
+    {
+      "id": "architecture-decision--p-01",
+      "document_id": "architecture-decision",
+      "kind": "exact",
+      "fact_ids": [
+        "f-01"
+      ],
+      "assertion": "The synthetic event relay currently writes accepted events to a local append-only log before acknowledging the caller."
+    },
+    {
+      "id": "architecture-decision--p-02",
+      "document_id": "architecture-decision",
+      "kind": "exact",
+      "fact_ids": [
+        "f-03"
+      ],
+      "assertion": "Definition: The exercise target is recovery after a single writer restart without losing acknowledged events."
+    },
+    {
+      "id": "architecture-decision--p-03",
+      "document_id": "architecture-decision",
+      "kind": "paraphrase",
+      "fact_ids": [
+        "f-01"
+      ],
+      "assertion": "The relay records an accepted event in its local append-only log before it acknowledges the caller."
+    },
+    {
+      "id": "architecture-decision--p-04",
+      "document_id": "architecture-decision",
+      "kind": "synthesis",
+      "fact_ids": [
+        "f-04",
+        "f-05"
+      ],
+      "assertion": "In the 10,000-event synthetic test, the acknowledged sequence was recovered after the writer restarted, with an observed replay time of 14 seconds on the exercise host."
+    },
+    {
+      "id": "draft-service-agreement--p-01",
+      "document_id": "draft-service-agreement",
+      "kind": "exact",
+      "fact_ids": [
+        "f-01"
+      ],
+      "assertion": "Proposed: This is a proposed draft only; neither party has signed or accepted it."
+    },
+    {
+      "id": "draft-service-agreement--p-02",
+      "document_id": "draft-service-agreement",
+      "kind": "exact",
+      "fact_ids": [
+        "f-02"
+      ],
+      "assertion": "Definition: The fictional parties are Harbor Lantern Cooperative as requester and Maple Bridge Studio as provider."
+    },
+    {
+      "id": "draft-service-agreement--p-03",
+      "document_id": "draft-service-agreement",
+      "kind": "paraphrase",
+      "fact_ids": [
+        "f-03"
+      ],
+      "assertion": "The draft proposes converting no more than 40 synthetic CSV files into a documented JSON schema."
+    },
+    {
+      "id": "draft-service-agreement--p-04",
+      "document_id": "draft-service-agreement",
+      "kind": "synthesis",
+      "fact_ids": [
+        "f-01",
+        "f-03"
+      ],
+      "assertion": "Neither party has accepted or signed the draft, which proposes conversion of up to 40 synthetic CSV files into a documented JSON schema."
+    },
+    {
+      "id": "freeform-brief--p-01",
+      "document_id": "freeform-brief",
+      "kind": "exact",
+      "fact_ids": [
+        "f-01"
+      ],
+      "assertion": "The fictional Orchard Reading Room tested a two-week reservation pilot with 12 invented participants."
+    },
+    {
+      "id": "freeform-brief--p-02",
+      "document_id": "freeform-brief",
+      "kind": "exact",
+      "fact_ids": [
+        "f-04"
+      ],
+      "assertion": "Definition: Participants could reserve one seat for at most two hours per day under the pilot rule."
+    },
+    {
+      "id": "freeform-brief--p-03",
+      "document_id": "freeform-brief",
+      "kind": "paraphrase",
+      "fact_ids": [
+        "f-02"
+      ],
+      "assertion": "During the pilot, nine participants made use of at least one reserved seat."
+    },
+    {
+      "id": "freeform-brief--p-04",
+      "document_id": "freeform-brief",
+      "kind": "synthesis",
+      "fact_ids": [
+        "f-01",
+        "f-03"
+      ],
+      "assertion": "The two-week fictional pilot involved 12 invented participants and logged 34 reservations and six no-shows."
+    },
+    {
+      "id": "incident-summary--p-01",
+      "document_id": "incident-summary",
+      "kind": "exact",
+      "fact_ids": [
+        "f-01"
+      ],
+      "assertion": "At 09:10 UTC on 2026-03-04, the synthetic Cedar Queue status monitor first detected elevated delivery delay."
+    },
+    {
+      "id": "incident-summary--p-02",
+      "document_id": "incident-summary",
+      "kind": "exact",
+      "fact_ids": [
+        "f-10"
+      ],
+      "assertion": "Proposed: A proposed follow-up is to add a predeployment check that refuses polling concurrency below four."
+    },
+    {
+      "id": "incident-summary--p-03",
+      "document_id": "incident-summary",
+      "kind": "paraphrase",
+      "fact_ids": [
+        "f-03"
+      ],
+      "assertion": "By 09:41 UTC, all 18 affected test messages had been delivered, and none had been lost."
+    },
+    {
+      "id": "incident-summary--p-04",
+      "document_id": "incident-summary",
+      "kind": "synthesis",
+      "fact_ids": [
+        "f-02",
+        "f-04"
+      ],
+      "assertion": "Eighteen of 240 test messages submitted from 09:05 to 09:24 UTC were affected. The maximum observed delay was 27 minutes against a five-minute test objective."
+    },
+    {
+      "id": "operational-runbook--p-01",
+      "document_id": "operational-runbook",
+      "kind": "exact",
+      "fact_ids": [
+        "f-01"
+      ],
+      "assertion": "Definition: This runbook applies only to the synthetic Ember Mail queue in the isolated exercise environment."
+    },
+    {
+      "id": "operational-runbook--p-02",
+      "document_id": "operational-runbook",
+      "kind": "exact",
+      "fact_ids": [
+        "f-02"
+      ],
+      "assertion": "Definition: The queue warning threshold is more than 200 pending test messages for five continuous minutes."
+    },
+    {
+      "id": "operational-runbook--p-03",
+      "document_id": "operational-runbook",
+      "kind": "paraphrase",
+      "fact_ids": [
+        "f-06"
+      ],
+      "assertion": "Within this exercise, an operator may restart one stalled worker only after confirming that its lease has expired."
+    },
+    {
+      "id": "operational-runbook--p-04",
+      "document_id": "operational-runbook",
+      "kind": "synthesis",
+      "fact_ids": [
+        "f-02",
+        "f-03"
+      ],
+      "assertion": "The exercise defines a warning above 200 pending test messages continuously for five minutes, and a critical condition above 500 continuously for ten minutes."
+    },
+    {
+      "id": "technical-design--p-01",
+      "document_id": "technical-design",
+      "kind": "exact",
+      "fact_ids": [
+        "f-01"
+      ],
+      "assertion": "The synthetic North Basin sensor fleet has 120 simulated devices that produce one reading per minute."
+    },
+    {
+      "id": "technical-design--p-02",
+      "document_id": "technical-design",
+      "kind": "exact",
+      "fact_ids": [
+        "f-02"
+      ],
+      "assertion": "Definition: Each reading has a device ID, sequence number, capture timestamp, temperature value, and checksum."
+    },
+    {
+      "id": "technical-design--p-03",
+      "document_id": "technical-design",
+      "kind": "paraphrase",
+      "fact_ids": [
+        "f-04"
+      ],
+      "assertion": "Restarting the current exercise receiver loses the readings it keeps in its single-process memory map."
+    },
+    {
+      "id": "technical-design--p-04",
+      "document_id": "technical-design",
+      "kind": "synthesis",
+      "fact_ids": [
+        "f-06",
+        "f-07"
+      ],
+      "assertion": "The proposed HTTPS endpoint would reject requests containing more than 100 readings before individual-reading parsing, and the proposed decoded-body cap is 256 KiB."
+    }
+  ]
+}

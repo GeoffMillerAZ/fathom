@@ -1,0 +1,28 @@
+{
+  "id": "C17",
+  "axis": "target-gap",
+  "acceptance": "GitHub issue ingestion retains external ID, cursor, permission and source provenance",
+  "outcome": "fail",
+  "source": "docs/intent/futures.md",
+  "source_sha256": "e53a1973db12668186c708da7195ab864ce53c75e5121d90d19f6478958cede4",
+  "test": null,
+  "group": null,
+  "scope_note": "Component test does not prove consumer adoption, live model quality, or all entrypoints.",
+  "negative_scan": {
+    "name": "github_issue_ingestion",
+    "argv": [
+      "rg",
+      "-n",
+      "api.github.com|/issues|GitHub.*(issue|ingest)|IssueEvent",
+      "foundations",
+      "kits",
+      "runtimes",
+      "cmd"
+    ],
+    "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+    "exit_code": 1,
+    "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/github_issue_ingestion-scan.log"
+  },
+  "scan_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "reason": "Repository path inventory found no GitHub ingestion adapter; no external connector was invoked."
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Adopt Catalog Kit"
+  short_description: "Adopt CUE catalogs with an offline verification path"
+  default_prompt: "Use $catalog-adopt to consolidate this project catalog."

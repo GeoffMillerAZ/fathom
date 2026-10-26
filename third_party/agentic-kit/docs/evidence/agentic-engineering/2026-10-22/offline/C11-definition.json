@@ -1,0 +1,11 @@
+{
+  "id": "C11",
+  "slug": "review-kit-exchange",
+  "axis": "composition",
+  "acceptance": "An actual Review Kit exchange preserves its criterion and finding authority",
+  "method": "source audit",
+  "source": "docs/intent/decisions/0024-independent-kits-share-identity-not-authority.md",
+  "test": null,
+  "group": null,
+  "non_guarantee": "Component test does not prove consumer adoption, live model quality, or all entrypoints."
+}

@@ -4,8 +4,8 @@ Status: accepted 2026-09-27 (ADR-050). Vision: `docs/vision/38-proof-layer-roadm
 Plan: `docs/plans/system-graph.md` (SG-). Goals G17 (the system graph), G18
 (dependencies) and G25 (the catalog, U10, ADR-051). Constraints carried in: ADR-044 (inventory keys, conservation), ADR-041
 (SQLite is the record, no graph database), ADR-047 and invariants I47 to I51 (tenancy),
-ADR-048 (dialects; the framework extractors ride on them), vision 15 §3 (ci-kit owns the
-depgraph engine), law 4 (no tool per edge kind), invariants I56 and I57.
+ADR-048 (dialects; the framework extractors ride on them), vision 15 §3 (the CI kit owns the
+dependency-graph engine), law 4 (no tool per edge kind), invariants I56 and I57.
 
 ## 1. Problem
 
@@ -23,7 +23,7 @@ calls. Nothing grades a cross-boundary link's evidence, so nothing can safely ga
 2. Four evidence tiers; links below `typed` never gate (I57).
 3. One source port, one key table, one link table, three verbs.
 4. Dependencies are the `pkg:` kind, indexed from local toolchain caches, never downloaded (I56).
-5. The lockfile graph arrives through a port whose engine is ci-kit's.
+5. The lockfile graph arrives through a port whose engine is the CI kit's.
 6. Measured on a fixture fleet per kind and tier; co-change history is an independent oracle.
 7. The decision port has no role in matching.
 
@@ -220,7 +220,7 @@ three land, `dep_drift` and `cross_repo_blast_radius` are retired (SG-13, SG-25)
 in-tree adapter (`internal/depplane/lockfile`) reads `go.mod`/`go.sum`, `package-lock.json`,
 `pnpm-lock.yaml`, `yarn.lock`, `uv.lock`, `poetry.lock`, pinned `requirements*.txt`,
 `Cargo.lock`, Gradle lockfiles and Maven `pom.xml` (declared-only tier when no lock
-exists). It is deleted when ci-kit ships the engine.
+exists). It is deleted when the CI kit ships the engine.
 
 ### 8.2 Reading what is already on disk
 
@@ -343,6 +343,6 @@ writes precision and recall per kind and tier to `docs/bench/readings/system-gra
 - A graph database for links (ADR-041).
 - Downloading packages, advisories or docs (I56).
 - Indexing private dependency bodies.
-- Building the depgraph engine in fathom (vision 15 §3).
+- Building the dependency-graph engine in fathom (vision 15 §3).
 - Letting `literal` or `template` links gate (I57).
 - Jev in link matching (§13).

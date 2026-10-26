@@ -657,13 +657,21 @@ func goSCIPNotes(name string, c map[string]int) []string {
 		return strings.Join(parts, ", ")
 	}
 	if defs := c[langbench.CntScipDefs]; defs > 0 {
-		notes = append(notes, fmt.Sprintf("%s: scip-go's %d named definitions, %d mapped to a fathom symbol; unmapped definitions by class: %s. A struct field, and an interface method (scip-go writes one as a term of its interface), has no fathom symbol: K17's member pass failed its cost gate and was reverted (wave lf2, O673)", name, defs, c[langbench.CntScipDefsMapped], orNone(list("scip_go_defs_unmapped_", c))))
+		unmeasured := ""
+		if n := c[langbench.CntScipGoDefsUnmeasured]; n > 0 {
+			unmeasured = fmt.Sprintf("; %d of them in a file the reading does not measure (a directory fathom's corpus prunes by name, RT-145's default list: no symbol to map to, still counted)", n)
+		}
+		notes = append(notes, fmt.Sprintf("%s: scip-go's %d named definitions, %d mapped to a fathom symbol; unmapped definitions by class: %s%s. A struct field, and an interface method (scip-go writes one as a term of its interface), has no fathom symbol: K17's member pass failed its cost gate and was reverted (wave lf2, O673)", name, defs, c[langbench.CntScipDefsMapped], orNone(list("scip_go_defs_unmapped_", c)), unmeasured))
 	}
 	if n := c[langbench.CntScipDefsNamespace]; n > 0 {
 		notes = append(notes, fmt.Sprintf("%s: %d package-clause definitions name a Go package, a namespace (K18): out of def_mapping, counted (scip_defs_namespace); a package is file granularity, graded at L3 by file edges, and never a fathom symbol (LB-F344)", name, n))
 	}
 	if edges := c[langbench.CntScipEdges]; edges > 0 {
-		notes = append(notes, fmt.Sprintf("%s: of scip-go's %d edges between definitions, %d import as typed edges; unmapped endpoints by class: %s; scip-go writes most parameters and locals as `local N` (the local rule, LB-F55: out of typed_recall) and a function literal's parameters in a package initializer as a term of a meta descriptor (`Options:c.`), a parameter (%d references, scip_edges_param_target, LB-F299)", name, edges, c[langbench.CntScipEdgesTyped], orNone(list("scip_go_unmapped_", c)), c[langbench.CntScipEdgesParamTarget]))
+		tests := ""
+		if t := list("scip_go_test_unmapped_", c); t != "" {
+			tests = fmt.Sprintf("; of those endpoints, a reference in a _test.go file: %s (a member pass storing no field reference from a test file, O673's first lever, would still miss them)", t)
+		}
+		notes = append(notes, fmt.Sprintf("%s: of scip-go's %d edges between definitions, %d import as typed edges; unmapped endpoints by class: %s%s; scip-go writes most parameters and locals as `local N` (the local rule, LB-F55: out of typed_recall) and a function literal's parameters in a package initializer as a term of a meta descriptor (`Options:c.`), a parameter (%d references, scip_edges_param_target, LB-F299)", name, edges, c[langbench.CntScipEdgesTyped], orNone(list("scip_go_unmapped_", c)), tests, c[langbench.CntScipEdgesParamTarget]))
 	}
 	if n := c[langbench.CntScipEdgesNamespaceTarget]; n > 0 {
 		notes = append(notes, fmt.Sprintf("%s: %d references to a Go package are a namespace's (K18): out of typed_recall, counted (scip_edges_namespace_target); a reference whose enclosing definition is itself unmapped stays an unmapped endpoint of its from class (LB-F344)", name, n))

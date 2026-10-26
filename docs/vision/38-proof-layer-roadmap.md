@@ -134,7 +134,7 @@ not read until 30 days of signal exist.
 
 | Note | Verdict | Serves | Shape |
 |---|---|---|---|
-| N1 dependencies | accept, reshaped | a | never download; read what the toolchain already fetched; index each (package, version) public API once per machine, content-addressed, shared by every service, lazily and under budget; upgrade impact, usage map, vuln reach (wave 4), version-exact docs. The lockfile graph comes through a port; ci-kit owns the engine (vision 15 §3). Dependency API is the `pkg:` kind of the system graph (ADR-050) |
+| N1 dependencies | accept, reshaped | a | never download; read what the toolchain already fetched; index each (package, version) public API once per machine, content-addressed, shared by every service, lazily and under budget; upgrade impact, usage map, vuln reach (wave 4), version-exact docs. The lockfile graph comes through a port; the CI kit owns the engine (vision 15 §3). Dependency API is the `pkg:` kind of the system graph (ADR-050) |
 | N2 progress | accept as views | c | status is derived by verify, never set. Optional row `weight:`; proof history is a projection of the existing verify ledger (about 17,000 readings), which gains per-row verdicts additively (schema 3) so burn-up and regressions are computed; views listed in `docs/design/progress-and-economics.md` |
 | N3 usage dashboard | accept narrowly | c | outcome economics only: cost per proven outcome, a projection joining the session ledger (3,359 sessions) and transcripts to verify readings. A generic token dashboard is refused |
 | N4 spec formats | accept (promotes F20) | b | a spec-dialect port with plan grammar v2 as the canonical model; read in place; converge report; `weight:` and `accept:` added; the test-tied tier is the existing `certified_by:`; Jev proposes anchors for unanchored foreign tasks behind a calibration gate |
@@ -289,7 +289,7 @@ from the repository alone.
 ### 9.5 Amended 2026-10-11 (ADR-069): evidence before the incident, and index snapshots
 
 Vision 44 adds no pillar. Its fact rows ride lf8 (ops formats, Kubernetes facts, observed-by) as WAE wave 2,
-after Review Kit commits the bundle's requirements; its joins and fact receipts follow WAE-M2 KEEP. Index
+after the review kit commits the bundle's requirements; its joins and fact receipts follow WAE-M2 KEEP. Index
 snapshots are parked under section 9.4's rule: only IXS-M0 and IXS-0 ride war1. Language excellence stays the
 main line. Instrument: WAE-M0 to WAE-M7 (WAE-M7 now with a fail-open bar) and IXS-M0 to IXS-M9, all $0 in model
 spend. RT-M1 PASS still gates SG-2 and with it F72. G37's kill date, 2027-01-31, covers the WAE waves only; index
@@ -402,6 +402,18 @@ Wave 1 derives on read and adds no table.
 ### 9.12 Amended 2026-10-22 (owner): multi-machine development
 
 Every machine serves its own checkouts through its own loopback fathom, with no central shared daemon or daemon-to-daemon calls; git moves code, attested receipts move evidence and index snapshots will move the index on existing operator carriers (ADR-078 D1–D3). The multi-machine guide and shipped `fathom-offload` skill ship now; receipt identity columns wait for RT-M1 PASS, and helper-machine cold start names an IXS phase 1 consumer after RT-M1 PASS and IXS-M0b parity, without unparking that plan.
+
+### 9.13 Amended 2026-10-25 (owner-architect): benchmark preparation
+
+Bench prep (`docs/design/bench-prep.md`, plan `docs/plans/bench-prep.md`, BX-) prepares the credible tier on vetted third-party subjects with dry-run harnesses and pre-registered three-outcome reads; P0 and P1 spend $0, and the first spend is an owner-approved shakedown.
+
+### 9.14 Amended 2026-10-25 (owner-architect): feature labs and experiments
+
+Feature labs (`docs/design/feature-labs.md`, plan `docs/plans/feature-labs.md`, LAB-, issue #13) give each fathom feature a card with its firing criterion, helped metric (the plugin against the plugin minus that one feature) and kill, read the firing funnel from replayed sessions at $0 and from capped live forks, keep lab and decision-port results in one ledger the ledger oracle reads, and prove each observation's fix by the test its fix commit added; P0 spends $0, P1 spends agent budget under the owner's 2026-10-26 lift on building the harness and a no-claim shakedown, and the component-level complement of bench prep runs no head-to-head.
+
+### 9.15 Amended 2026-10-25 (owner's ask, proposed): platform engineering support (GitHub issue #14)
+
+`docs/design/platform-engineering.md`, plan `docs/plans/platform-engineering.md` (PLT-): the fathom side of an adopting platform team's review-kit readings, readiness inventory and change-risk tiers, extending vision 44 and WAE- with no parallel program and no question map. P0 (the use-case guide, the platform prereg, the census and baseline readings, and a CLI-only concern-delta file over stored Kubernetes facts) runs now as fillers. P1 (a per-subject fact receipt with a commit basis, two skills, a feature-labs card) rides lf8 beside WAE wave 2. Measurement rides bench prep (9.13) and feature labs (9.14), which merge first; G37 is widened rather than a new goal opened. The two-wave limit and the swap-volume rule of section 9.4 still apply.
 
 ## 10. Corrections to the memo (the tree or the memo itself disagreed)
 

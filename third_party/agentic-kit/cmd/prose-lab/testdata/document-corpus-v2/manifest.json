@@ -1,0 +1,226 @@
+{
+  "version": 2,
+  "audiences": [
+    "executive",
+    "technical"
+  ],
+  "repeats": 3,
+  "cells": [
+    {
+      "id": "incident-summary-executive-r1",
+      "document_id": "incident-summary",
+      "audience": "executive",
+      "repeat": 1
+    },
+    {
+      "id": "incident-summary-executive-r2",
+      "document_id": "incident-summary",
+      "audience": "executive",
+      "repeat": 2
+    },
+    {
+      "id": "incident-summary-executive-r3",
+      "document_id": "incident-summary",
+      "audience": "executive",
+      "repeat": 3
+    },
+    {
+      "id": "incident-summary-technical-r1",
+      "document_id": "incident-summary",
+      "audience": "technical",
+      "repeat": 1
+    },
+    {
+      "id": "incident-summary-technical-r2",
+      "document_id": "incident-summary",
+      "audience": "technical",
+      "repeat": 2
+    },
+    {
+      "id": "incident-summary-technical-r3",
+      "document_id": "incident-summary",
+      "audience": "technical",
+      "repeat": 3
+    },
+    {
+      "id": "architecture-decision-executive-r1",
+      "document_id": "architecture-decision",
+      "audience": "executive",
+      "repeat": 1
+    },
+    {
+      "id": "architecture-decision-executive-r2",
+      "document_id": "architecture-decision",
+      "audience": "executive",
+      "repeat": 2
+    },
+    {
+      "id": "architecture-decision-executive-r3",
+      "document_id": "architecture-decision",
+      "audience": "executive",
+      "repeat": 3
+    },
+    {
+      "id": "architecture-decision-technical-r1",
+      "document_id": "architecture-decision",
+      "audience": "technical",
+      "repeat": 1
+    },
+    {
+      "id": "architecture-decision-technical-r2",
+      "document_id": "architecture-decision",
+      "audience": "technical",
+      "repeat": 2
+    },
+    {
+      "id": "architecture-decision-technical-r3",
+      "document_id": "architecture-decision",
+      "audience": "technical",
+      "repeat": 3
+    },
+    {
+      "id": "technical-design-executive-r1",
+      "document_id": "technical-design",
+      "audience": "executive",
+      "repeat": 1
+    },
+    {
+      "id": "technical-design-executive-r2",
+      "document_id": "technical-design",
+      "audience": "executive",
+      "repeat": 2
+    },
+    {
+      "id": "technical-design-executive-r3",
+      "document_id": "technical-design",
+      "audience": "executive",
+      "repeat": 3
+    },
+    {
+      "id": "technical-design-technical-r1",
+      "document_id": "technical-design",
+      "audience": "technical",
+      "repeat": 1
+    },
+    {
+      "id": "technical-design-technical-r2",
+      "document_id": "technical-design",
+      "audience": "technical",
+      "repeat": 2
+    },
+    {
+      "id": "technical-design-technical-r3",
+      "document_id": "technical-design",
+      "audience": "technical",
+      "repeat": 3
+    },
+    {
+      "id": "draft-service-agreement-executive-r1",
+      "document_id": "draft-service-agreement",
+      "audience": "executive",
+      "repeat": 1
+    },
+    {
+      "id": "draft-service-agreement-executive-r2",
+      "document_id": "draft-service-agreement",
+      "audience": "executive",
+      "repeat": 2
+    },
+    {
+      "id": "draft-service-agreement-executive-r3",
+      "document_id": "draft-service-agreement",
+      "audience": "executive",
+      "repeat": 3
+    },
+    {
+      "id": "draft-service-agreement-technical-r1",
+      "document_id": "draft-service-agreement",
+      "audience": "technical",
+      "repeat": 1
+    },
+    {
+      "id": "draft-service-agreement-technical-r2",
+      "document_id": "draft-service-agreement",
+      "audience": "technical",
+      "repeat": 2
+    },
+    {
+      "id": "draft-service-agreement-technical-r3",
+      "document_id": "draft-service-agreement",
+      "audience": "technical",
+      "repeat": 3
+    },
+    {
+      "id": "operational-runbook-executive-r1",
+      "document_id": "operational-runbook",
+      "audience": "executive",
+      "repeat": 1
+    },
+    {
+      "id": "operational-runbook-executive-r2",
+      "document_id": "operational-runbook",
+      "audience": "executive",
+      "repeat": 2
+    },
+    {
+      "id": "operational-runbook-executive-r3",
+      "document_id": "operational-runbook",
+      "audience": "executive",
+      "repeat": 3
+    },
+    {
+      "id": "operational-runbook-technical-r1",
+      "document_id": "operational-runbook",
+      "audience": "technical",
+      "repeat": 1
+    },
+    {
+      "id": "operational-runbook-technical-r2",
+      "document_id": "operational-runbook",
+      "audience": "technical",
+      "repeat": 2
+    },
+    {
+      "id": "operational-runbook-technical-r3",
+      "document_id": "operational-runbook",
+      "audience": "technical",
+      "repeat": 3
+    },
+    {
+      "id": "freeform-brief-executive-r1",
+      "document_id": "freeform-brief",
+      "audience": "executive",
+      "repeat": 1
+    },
+    {
+      "id": "freeform-brief-executive-r2",
+      "document_id": "freeform-brief",
+      "audience": "executive",
+      "repeat": 2
+    },
+    {
+      "id": "freeform-brief-executive-r3",
+      "document_id": "freeform-brief",
+      "audience": "executive",
+      "repeat": 3
+    },
+    {
+      "id": "freeform-brief-technical-r1",
+      "document_id": "freeform-brief",
+      "audience": "technical",
+      "repeat": 1
+    },
+    {
+      "id": "freeform-brief-technical-r2",
+      "document_id": "freeform-brief",
+      "audience": "technical",
+      "repeat": 2
+    },
+    {
+      "id": "freeform-brief-technical-r3",
+      "document_id": "freeform-brief",
+      "audience": "technical",
+      "repeat": 3
+    }
+  ]
+}

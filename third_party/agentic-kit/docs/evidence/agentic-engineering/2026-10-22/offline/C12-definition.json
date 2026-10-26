@@ -1,0 +1,11 @@
+{
+  "id": "C12",
+  "slug": "investigation-contradiction",
+  "axis": "component",
+  "acceptance": "Contradictory evidence raises the investigation concern flag",
+  "method": "deterministic source plus scoped test",
+  "source": "kits/investigation/investigation_test.go",
+  "test": "TestAddEvidence_ContradictionRaisesConcernFlag",
+  "group": "review_investigation",
+  "non_guarantee": "Component test does not prove consumer adoption, live model quality, or all entrypoints."
+}

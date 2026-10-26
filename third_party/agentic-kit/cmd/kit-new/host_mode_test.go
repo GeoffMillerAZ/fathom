@@ -25,12 +25,12 @@ func TestHostInstallPreservesModeUnderRestrictiveUmask(t *testing.T) {
 	}
 	f := newHostFixture(t, "claude")
 	f.write(t, ".claude/settings.json", []byte(`{"foreign":true}`))
-	if err := f.root.Chmod(".claude/settings.json", 0644); err != nil {
+	if err := f.root.Chmod(".claude/settings.json", 0o644); err != nil {
 		t.Fatal(err)
 	}
 	f.install(t)
 	info, err := f.root.Stat(".claude/settings.json")
-	if err != nil || info.Mode().Perm() != 0644 {
+	if err != nil || info.Mode().Perm() != 0o644 {
 		t.Fatalf("existing permissions changed: %v %v", info, err)
 	}
 }

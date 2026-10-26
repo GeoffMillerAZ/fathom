@@ -1,4 +1,4 @@
-// fathom's own Review Kit project config (ADR-0096 D5). CV-44 (vision 34 /
+// fathom's own review kit project config (the kit's catalog federation). CV-44 (vision 34 /
 // ADR-044 decision 7; ADR-043's 2026-09-24 amendment): arms the
 // refactoring-conservation and testing-certifications packs at warn on this
 // repository. No org-specific catalog beyond the local, empty starter

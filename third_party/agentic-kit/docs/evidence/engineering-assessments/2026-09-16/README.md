@@ -28,7 +28,7 @@ Design: [0012](../../../intent/decisions/0012-composable-engineering-assessments
 
 | Subject | Required outcome | Soft score | Reason |
 |---|---|---|---|
-| Retained resume_as_code synthetic benchmark receipt | unknown | null | three costs remain missing |
+| Retained consumer-c synthetic benchmark receipt | unknown | null | three costs remain missing |
 | Scripted screening plus strict effect gate | pass | 1 | blocked prompt cannot run; benign counter executes; destructive-marked counter is denied independently |
 | Same security profile with effect gate disabled | fail | null | the unauthorized counter runs, even though benign utility passes |
 
@@ -52,13 +52,13 @@ adoption is not claimed. This reruns the earlier [baseline comparison](../../ben
 
 | Consumer revision | Result |
 |---|---|
-| throughline `a007075fab6ac156be44de46df941cce4a0915ed` | build and tests pass, including architecture subprocesses |
+| consumer-a `a007075fab6ac156be44de46df941cce4a0915ed` | build and tests pass, including architecture subprocesses |
 | fathom `68a534854f1bb8d4e68b2377a2ff4d198e6bef48` | build passes; same `TestNarrowProfileSchemaBytes` failure: 34,821 exceeds 34,000 |
-| growing-gardens-bi `7503dd1c270bf6ceb72d42c742f507b9513db0dc` | build passes; same 14 finance failures from missing `../../tmp/financials.json` |
-| resume_as_code `7a6c56a26dd10a7cf80128d23ef13bab90377ae8` | `cmd/llm`, `cmd/redteam`, `cmd/ops` pass with `-race`; real red-team receipt overlay passes again |
+| consumer-b `7503dd1c270bf6ceb72d42c742f507b9513db0dc` | build passes; same 14 finance failures from missing `../../tmp/financials.json` |
+| consumer-c `7a6c56a26dd10a7cf80128d23ef13bab90377ae8` | `cmd/llm`, `cmd/redteam`, `cmd/ops` pass with `-race`; real red-team receipt overlay passes again |
 
 The first three used `/private/tmp/agentic-kit-compat.yvXkbz/modules/` with the candidate
-kit copy. Throughline inherited `GOFLAGS=-mod=readonly`; Fathom explicitly unset it
+kit copy. Consumer-a inherited `GOFLAGS=-mod=readonly`; Fathom explicitly unset it
 because its subprocess contract rejects that environment variable. Logs were retained
 as `new-*.assessment.*.log` in that disposable verification root.
 RAC used the existing temporary module override with pinned app-kit

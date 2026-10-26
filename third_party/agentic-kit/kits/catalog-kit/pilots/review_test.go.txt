@@ -1,0 +1,251 @@
+package standard
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"os"
+	"path/filepath"
+	"reflect"
+	"sort"
+	"testing"
+
+	"github.com/geoffmilleraz/agentic-kit/foundations/knowledge/catalog"
+	catalogkit "github.com/geoffmilleraz/agentic-kit/kits/catalog-kit"
+	"__REVIEW_MODULE__/internal/core"
+)
+
+type pilotReviewSidecar struct {
+	Kind       DefinitionKind
+	Source     DefinitionSource
+	Origin     CatalogOrigin
+	Definition any
+	Layers     []string
+}
+
+// Hex is injective over UTF-8 bytes and stays stable across insertions/order.
+func pilotReviewSlug(key string) string { return "k" + hex.EncodeToString([]byte(key)) }
+
+// The sidecar stays in Review Kit's stable-key space. Only discoverable
+// metadata enters the common catalog; typed definitions remain authoritative.
+func pilotReviewProjection(layers []Layer) (catalogkit.Bundle, map[string]pilotReviewSidecar, error) {
+	byKey := map[string]pilotReviewSidecar{}
+	common := make([]catalogkit.Layer, 0, len(layers))
+	for _, layer := range layers {
+		roots := []catalog.AuthoredNode{{Slug: "review", Title: "Review definitions", StableKey: "review-root", Source: "review-kit"}}
+		var children []catalog.AuthoredNode
+		definitions := map[string]struct {
+			kind  DefinitionKind
+			value any
+		}{}
+		for id, value := range layer.Std.Concepts {
+			definitions[id] = struct {
+				kind  DefinitionKind
+				value any
+			}{DefinitionConcept, value}
+		}
+		for id, value := range layer.Std.Requirements {
+			definitions[id] = struct {
+				kind  DefinitionKind
+				value any
+			}{DefinitionRequirement, value}
+		}
+		for id, value := range layer.Std.Findings {
+			definitions[id] = struct {
+				kind  DefinitionKind
+				value any
+			}{DefinitionFinding, value}
+		}
+		ids := make([]string, 0, len(definitions))
+		for id := range definitions {
+			ids = append(ids, id)
+		}
+		sort.Strings(ids)
+		for _, id := range ids {
+			value := definitions[id]
+			source, ok := layer.Definitions[id]
+			if !ok {
+				return catalogkit.Bundle{}, nil, fmt.Errorf("missing authored source for %s", id)
+			}
+			side := pilotReviewSidecar{Kind: value.kind, Source: source, Origin: layer.Origin, Definition: value.value}
+			if prior, exists := byKey[id]; exists {
+				if prior.Kind != side.Kind {
+					return catalogkit.Bundle{}, nil, fmt.Errorf("kind changed for %s", id)
+				}
+				side.Layers = append(side.Layers, prior.Layers...)
+			}
+			side.Layers = append(side.Layers, layer.Name)
+			byKey[id] = side
+			children = append(children, catalog.AuthoredNode{
+				Slug: pilotReviewSlug(id), Title: id,
+				StableKey: id, Source: source.Path, Extractor: "review-kit",
+				Facets: map[string][]string{"kind": {string(value.kind)}},
+			})
+		}
+		roots[0].Children = children
+		commonLayer := catalogkit.Layer{Name: layer.Name, Nodes: roots}
+		if len(common) > 0 {
+			commonLayer.Requires = []string{common[len(common)-1].Name}
+		}
+		common = append(common, commonLayer)
+	}
+	returnBundle, err := catalogkit.Resolve(catalogkit.Spec{Version: 1, Layers: common}, catalogkit.Policy{})
+	return returnBundle, byKey, err
+}
+
+func TestCatalogKitPilotReviewIdentityAndProvenance(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", "..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := filepath.Join(root, "__REVIEW_PATH__/internal/standard/testdata/standard-fixture")
+	loaded, loadedSources, err := LoadStandardWithSources(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The second layer is authored CUE and adds a distinct domain definition.
+	// It lives only in the archived replay tree, never in the consumer checkout.
+	overlayDir, err := os.MkdirTemp(root, ".catalog-pilot-overlay-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.RemoveAll(overlayDir) })
+	overlayCUE := []byte("package reviewkit\nstandard: #Standard & {\n version: \"1.0.1\"\n concepts: {\"pilot.added\": {title: \"Pilot layer addition\"}}\n}\n")
+	if err := os.WriteFile(filepath.Join(overlayDir, "standard.cue"), overlayCUE, 0600); err != nil {
+		t.Fatal(err)
+	}
+	overlay, overlaySources, err := LoadStandardWithSources(overlayDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	layers, err := FlattenCatalogs(core.ProjectConfig{Catalogs: []core.CatalogSource{{Name: "local", Dir: dir}, {Name: "team", Dir: overlayDir, Extends: []string{"local"}}}}, root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(layers) != 2 || !reflect.DeepEqual(layers[0].Std, loaded) || !reflect.DeepEqual(layers[1].Std, overlay) {
+		t.Fatal("FlattenCatalogs changed loaded typed definitions")
+	}
+	effective, err := BuildStandard(layers)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bundle, sidecars, err := pilotReviewProjection(layers)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := catalogkit.VerifyBundle(bundle); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(bundle.Order, []string{"local", "team"}) {
+		t.Fatalf("common precedence: %v", bundle.Order)
+	}
+	want := map[string]any{}
+	for id, v := range effective.Concepts {
+		want[id] = v
+	}
+	for id, v := range effective.Requirements {
+		want[id] = v
+	}
+	for id, v := range effective.Findings {
+		want[id] = v
+	}
+	if !reflect.DeepEqual(effective.Concepts["pilot.added"], overlay.Concepts["pilot.added"]) {
+		t.Fatal("domain addition missing from effective standard")
+	}
+	seen := map[string]bool{}
+	for _, row := range catalogkit.Rows(bundle) {
+		if row.StableKey == "review-root" {
+			continue
+		}
+		definition, ok := want[row.StableKey]
+		if !ok || seen[row.StableKey] {
+			t.Fatalf("extra or duplicate stable key %q", row.StableKey)
+		}
+		seen[row.StableKey] = true
+		side, ok := sidecars[row.StableKey]
+		// BuildStandard computes the effective exception intersection after
+		// choosing a requirement. The sidecar retains the authored definition.
+		if effectiveReq, isRequirement := definition.(core.Requirement); isRequirement && ok {
+			authoredReq := side.Definition.(core.Requirement)
+			effectiveReq.Exceptions = authoredReq.Exceptions
+			definition = effectiveReq
+		}
+		if !ok || !reflect.DeepEqual(side.Definition, definition) {
+			t.Fatalf("typed definition lost at %q", row.StableKey)
+		}
+		if !reflect.DeepEqual(row.Layers, effective.ProvenanceChain[row.StableKey]) || !reflect.DeepEqual(side.Layers, row.Layers) {
+			t.Fatalf("precedence mismatch for %q: common=%v domain=%v", row.StableKey, row.Layers, effective.ProvenanceChain[row.StableKey])
+		}
+		winner := 0
+		loadedSource := loadedSources[row.StableKey]
+		if row.StableKey == "pilot.added" {
+			winner, loadedSource = 1, overlaySources[row.StableKey]
+		}
+		if effective.Provenance[row.StableKey] != layers[winner].Name {
+			t.Fatalf("domain winner mismatch for %q", row.StableKey)
+		}
+		original := layers[winner].Definitions[row.StableKey]
+		if !reflect.DeepEqual(side.Source, original) || side.Origin != layers[winner].Origin || row.Source != original.Path || original.Kind != loadedSource.Kind || original.StartLine != loadedSource.StartLine || original.EndLine != loadedSource.EndLine || original.ContentHash != loadedSource.ContentHash {
+			t.Fatalf("source/origin lost for %q: %+v", row.StableKey, side)
+		}
+		if original.StartLine < 1 || original.EndLine < original.StartLine || original.ContentHash == "" || side.Origin.SourceKind != "local" {
+			t.Fatalf("incomplete provenance for %q: %+v", row.StableKey, side)
+		}
+		raw, err := os.ReadFile(filepath.Join(root, original.LocalPath))
+		if err != nil {
+			t.Fatal(err)
+		}
+		h := sha256.Sum256(raw)
+		if original.ContentHash != hex.EncodeToString(h[:]) {
+			t.Fatalf("content hash mismatch for %q", row.StableKey)
+		}
+	}
+	if len(seen) != len(want) || len(sidecars) != len(want) {
+		t.Fatalf("effective identity coverage rows=%d sidecars=%d want=%d", len(seen), len(sidecars), len(want))
+	}
+	// A new sibling and a permuted input leave every existing stable-key path intact.
+	permuted := append([]Layer(nil), layers...)
+	permuted[1].Std = overlay
+	permuted[1].Std.Concepts = make(map[string]core.Concept, len(overlay.Concepts)+1)
+	for k, v := range overlay.Concepts {
+		permuted[1].Std.Concepts[k] = v
+	}
+	permuted[1].Std.Concepts["added.before"] = core.Concept{Title: "Added sibling"}
+	permuted[1].Definitions = make(map[string]DefinitionSource, len(layers[1].Definitions)+1)
+	for k, v := range layers[1].Definitions {
+		permuted[1].Definitions[k] = v
+	}
+	permuted[1].Definitions["added.before"] = layers[1].Definitions["pilot.added"]
+	augmented, _, err := pilotReviewProjection(permuted)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids := map[string]string{}
+	for _, row := range catalogkit.Rows(bundle) {
+		ids[row.StableKey] = row.ID
+	}
+	for _, row := range catalogkit.Rows(augmented) {
+		if before, ok := ids[row.StableKey]; ok && before != row.ID {
+			t.Fatalf("insertion renamed %s: %s -> %s", row.StableKey, before, row.ID)
+		}
+	}
+	// Exercise every CatalogOrigin field as well as the actual local origin.
+	pinned := append([]Layer(nil), layers...)
+	pinned[1].Origin = CatalogOrigin{
+		SourceKind: "pinned-git", Repository: "https://example.invalid/catalog.git",
+		Revision: "reviewed-revision", CatalogDigest: "reviewed-digest",
+	}
+	_, pinnedSidecars, err := pilotReviewProjection(pinned)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for key, side := range pinnedSidecars {
+		wantOrigin := pinned[0].Origin
+		if key == "pilot.added" {
+			wantOrigin = pinned[1].Origin
+		}
+		if side.Origin != wantOrigin {
+			t.Fatalf("catalog origin fields lost for %q: %+v", key, side.Origin)
+		}
+	}
+}

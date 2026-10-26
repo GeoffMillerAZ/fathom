@@ -1,0 +1,40 @@
+# Historical timing metadata; round-3 runnable commands; preparation draft, not admission.
+{
+  "name": "pallets-click",
+  "url": "https://github.com/pallets/click",
+  "ref": "main",
+  "sha": "2247b35ea1c47c727d7a06e51fa280e12a863ff6",
+  "licence": "BSD-3-Clause",
+  "subpath": ".",
+  "bench": {
+    "toolchain": {
+      "versions": {
+        "python": "3.12.15",
+        "pip": "25.0.1",
+        "uv": "0.13.5"
+      },
+      "lockfile_sha256": "742507a6bbb80c093d2ebefc073357e3ef0cb504e9299def5348377f0d585d54"
+    },
+    "setup": [
+      "export TMPDIR=/work/tmp COREPACK_HOME=/work/corepack UV_PROJECT_ENVIRONMENT=/work/venv UV_CACHE_DIR=/work/uv-cache UV_PYTHON_DOWNLOADS=never PIP_CACHE_DIR=/work/pip-cache GIT_CONFIG_COUNT=3 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0=/subject GIT_CONFIG_KEY_1=safe.directory GIT_CONFIG_VALUE_1=/work/source GIT_CONFIG_KEY_2=safe.directory GIT_CONFIG_VALUE_2=/subject/.git GOTOOLCHAIN=local GOFLAGS=-mod=readonly GOMAXPROCS=4 GOMODCACHE=/work/gomodcache GOCACHE=/work/gocache GOPATH=/work/gopath && mkdir -p /work/tmp && (test -d /work/source/.git || ( mkdir -p /work/source && git -C /subject ls-files -z > /work/tracked-files && tar -C /subject --null -T /work/tracked-files -cf /work/source.tar && tar -C /work/source -xf /work/source.tar && cp -R /subject/.git /work/source/.git )) && cd /work/source && curl --fail --location --silent --show-error \"https://snapshot.debian.org/archive/debian/20261025T000000Z/pool/main/l/less/less_590-2.1~deb12u2_arm64.deb\" --output /work/less.deb && echo \"eb430d92921f98b163031ee3ac81a96110d1f20bd84f67faab06dad50c75d744  /work/less.deb\" | sha256sum -c - && mkdir -p /work/os-tools && dpkg-deb --fsys-tarfile /work/less.deb | tar --no-same-owner -x -C /work/os-tools && python -m venv /work/tools && /work/tools/bin/pip install --require-hashes -r /bench-inputs/uv-requirements.txt && /work/tools/bin/uv --version && /work/tools/bin/uv sync --frozen --no-default-groups --group tests"
+    ],
+    "test": [
+      "export TMPDIR=/work/tmp COREPACK_HOME=/work/corepack UV_PROJECT_ENVIRONMENT=/work/venv UV_CACHE_DIR=/work/uv-cache UV_PYTHON_DOWNLOADS=never PIP_CACHE_DIR=/work/pip-cache GIT_CONFIG_COUNT=3 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0=/subject GIT_CONFIG_KEY_1=safe.directory GIT_CONFIG_VALUE_1=/work/source GIT_CONFIG_KEY_2=safe.directory GIT_CONFIG_VALUE_2=/subject/.git GOTOOLCHAIN=local GOFLAGS=-mod=readonly GOMAXPROCS=4 GOMODCACHE=/work/gomodcache GOCACHE=/work/gocache GOPATH=/work/gopath GOPROXY=off PIP_NO_INDEX=1 UV_OFFLINE=1 npm_config_offline=true PNPM_CONFIG_OFFLINE=true pnpm_config_verify_deps_before_run=warn COREPACK_ENABLE_NETWORK=0 HTTP_PROXY= HTTPS_PROXY= ALL_PROXY= && cd /work/source && PATH=/work/os-tools/usr/bin:$PATH /work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/tmp/pytest-temp"
+    ],
+    "suite_seconds": 4.781,
+    "flake_runs": 3,
+    "l0_reading": "unmeasured: C4 awaits controller L0 runs",
+    "task_sources": [
+      {
+        "dataset": "upstream-git-history (candidate source; no admitted tasks)",
+        "revision": "2247b35ea1c47c727d7a06e51fa280e12a863ff6",
+        "licence": "BSD-3-Clause"
+      }
+    ],
+    "contamination": {
+      "age": 4567,
+      "popularity_band": "high"
+    }
+  },
+  "notes": "Frozen uv environment and hash-verified snapshot pager: docs/bench/readings/bench-prep/click-snapshot-r2.md. C4 unmeasured."
+}

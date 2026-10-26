@@ -207,7 +207,7 @@ suites: conf: {
 }
 
 // TestLoadManifests_DecodesSuiteCertifies pins TC-15/TC-17: now that
-// test-kit's #Suite.certifies has landed upstream (schema/testkit/manifest.cue
+// The test kit's #Suite.certifies has landed upstream (schema/testkit/manifest.cue
 // re-mirrored), decodeManifest must actually populate Suite.Certifies from a
 // manifest's declared `certifies` block — not leave it perpetually empty
 // (types.go's old comment: "always empty this round"). internal/certify's

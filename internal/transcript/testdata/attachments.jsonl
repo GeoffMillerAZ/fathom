@@ -1,0 +1,2 @@
+{"type":"attachment","attachment":{"type":"hook_additional_context","hookEvent":"PostToolUse","hookName":"PostToolUse:Bash","toolUseID":"a","content":["private-attachment"]}}
+{"type":"attachment","attachment":{"type":"hook_additional_context","hookEvent":"SessionStart","hookName":"SessionStart:startup","content":["private-attachment"]}}

@@ -19,6 +19,7 @@ import (
 	"sync"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
+	"github.com/geoffmilleraz/fathom/internal/filter"
 	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	toml "github.com/pelletier/go-toml/v2"
 )
@@ -166,21 +167,8 @@ func ExcludedFromCorpus(root, serviceID, rel string) (reason string, excluded bo
 		return "", false, err
 	}
 	include, gitMode := loadConnectorConfig(root)
-	segs := strings.Split(rel, "/")
-	for i := 0; i < len(segs)-1; i++ {
-		name := segs[i]
-		prefix := strings.Join(segs[:i+1], "/")
-		switch {
-		case skipDir(name):
-			return fmt.Sprintf("under always-skipped directory %s", prefix), true, nil
-		case defaultIgnoredDir(name, prefix, include):
-			return fmt.Sprintf("under default-ignored cache directory %s (re-include with [connector] include)", prefix), true, nil
-		case ignore != nil && ignore.Match(prefix+"/"):
-			return fmt.Sprintf("under ignored directory %s", prefix), true, nil
-		}
-	}
-	if ignore != nil && ignore.Match(rel) {
-		return "matched by an ignore file", true, nil
+	if reason := CorpusPathExclusion(rel, ignore, include); reason != "" {
+		return reason, true, nil
 	}
 	// RT-68: a corpus discovered through git excludes what .gitignore
 	// does (unless include re-includes its directory), so a refresh must
@@ -191,6 +179,31 @@ func ExcludedFromCorpus(root, serviceID, rel string) (reason string, excluded bo
 		}
 	}
 	return "", false, nil
+}
+
+// CorpusPathExclusion is Discover's pure directory and ignore gate. include
+// contains the corpus's validated connector includes. Gitignore is separate:
+// historical commit blobs are tracked, so git discovery always lists them.
+func CorpusPathExclusion(rel string, ignore *filter.Matcher, include map[string]bool) string {
+	rel = path.Clean(filepath.ToSlash(rel))
+	segs := strings.Split(rel, "/")
+	for i := 0; i < len(segs)-1; i++ {
+		name := segs[i]
+		prefix := strings.Join(segs[:i+1], "/")
+		switch {
+		case skipDir(name):
+			return fmt.Sprintf("under always-skipped directory %s", prefix)
+		case defaultIgnoredDir(name, prefix, include):
+			return fmt.Sprintf("under default-ignored cache directory %s (re-include with [connector] include)", prefix)
+		case ignore != nil && ignore.Match(prefix+"/"):
+			return fmt.Sprintf("under ignored directory %s", prefix)
+		}
+	}
+	if ignore != nil && ignore.Match(rel) {
+		return "matched by an ignore file"
+	}
+
+	return ""
 }
 
 // underInclude reports whether rel lies under a `[connector] include`

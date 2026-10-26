@@ -110,7 +110,7 @@ drops the id a `needs:` points at.
 "Who is working what" is a fact about the work — the same carve-out
 doctrine 4 already grants authored dispositions ("intent is not
 derivable from evidence"). Multi-agent-same-repo is lived reality
-(throughline commits landing between sextant commits; collisions avoided
+(svc-a commits landing between sextant commits; collisions avoided
 by luck), and no instrument measures a claim collision today.
 
 Adopted shape — the minimum that is also the missing instrument:
