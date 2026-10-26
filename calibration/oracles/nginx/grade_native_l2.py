@@ -16,6 +16,16 @@ def run(command):
     subprocess.run([str(x) for x in command], check=True)
 
 
+def original_scope(prior, name):
+    prefix = name + ': restricted to '
+    notes = [note for note in prior['notes'] if note.startswith(prefix)]
+    if not notes:
+        raise ValueError('no original scope receipt; do not invent a new exclusion')
+    # Retain every previously disclosed input. Conflicting historical receipts
+    # must never silently select the narrower last note to improve a reading.
+    return sorted({file for note in notes for file in note[len(prefix):].split(' (-only;', 1)[0].split(', ')})
+
+
 def prepare(repo, dest):
     if not dest.exists():
         dest.mkdir(parents=True)
@@ -58,11 +68,7 @@ if __name__ == '__main__':
         name = subject['name']
         checkout = (args.subjects / name).resolve()
         prepare(repo, checkout)
-        prefix = name + ': restricted to '
-        notes = [note for note in prior['notes'] if note.startswith(prefix)]
-        if not notes:
-            raise SystemExit('no original scope receipt; do not invent a new exclusion')
-        scope = notes[-1][len(prefix):].split(' (-only;', 1)[0].split(', ')
+        scope = original_scope(prior, name)
         files = args.out / (name + '-files.txt')
         files.write_text(''.join(f + '\n' for f in sorted(set(scope))))
         output = args.out / (name + '-native.json')
@@ -74,7 +80,7 @@ if __name__ == '__main__':
              '-subject-name', name, '-subject-sha', repo['sha'],
              '-tool-oracle', output.with_name(output.stem + '-defs.json'),
              '-tool-oracle', output.with_name(output.stem + '-refs.json'), '-only', ','.join(scope),
-             '-out', reading, '-note', 'Native nginx 1.31.6 target-only upstream ablation over every original canonical L2 pair; independent definition placement C, no L3 truth supplied. Complete one-pair population is small. No server, backend request or Docker. Original scope retained exactly; raw file inventory remains scratch.'])
+             '-out', reading, '-note', 'Native nginx 1.31.6 target-only ablation validates independently selected upstream pairs, not native recall completeness. Reference family and definition placement remain C. No L3 truth, server, backend request or Docker. Scope is the union of all historical disclosures; original count gate remains unchanged. Raw file inventory stays scratch.'])
         retime += ['-subject', name + '=' + str(checkout)]
     run(retime)
     result = json.loads(reading.read_text())

@@ -1,4 +1,8 @@
-"""Native target-only upstream-reference ablation, with no C fallback."""
+"""Native precision controls over an independently chosen reference population.
+
+Native ablation validates selected pairs, not recall completeness. The emitted
+reference family remains C until a native population instrument exists.
+"""
 import argparse
 import hashlib
 import json
@@ -7,6 +11,11 @@ import re
 import shutil
 import subprocess
 from pathlib import Path
+
+
+def reference_output(references, version):
+    return dict(tool='nginx native precision controls over crossplane-selected pairs; recall C',
+                version=version, tier='C', definitions=[], references=references)
 
 
 def rename_target(source, target, line):
@@ -122,13 +131,16 @@ if __name__ == '__main__':
         raise SystemExit('invalid original scope')
     definitions, references, audit = measure(subject, files, native, args.work)
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    for suffix, tier, defs, refs in [('defs', 'C', definitions, []), ('refs', 'A', [], references)]:
+    for suffix, tier, defs, refs in [('defs', 'C', definitions, []), ('refs', 'C', [], references)]:
         output = {'tool': 'nginx native target-only upstream ablation' if suffix == 'refs' else 'independent crossplane definition placement',
                   'version': receipt['version'], 'tier': tier, 'definitions': defs, 'references': refs}
+        if suffix == 'refs':
+            output = reference_output(refs, receipt['version'])
         args.out.with_name(args.out.stem + '-' + suffix + '.json').write_text(json.dumps(output, indent=2) + '\n')
     # Raw responses stay private; the committed summary is counts and hashes.
     args.out.with_name(args.out.stem + '-raw.json').write_text(json.dumps(audit, indent=2) + '\n')
-    summary = {'kind': 'native L2 reference ablation only; no L3 measurement', 'subject_sha': args.subject_sha,
+    summary = {'kind': 'native precision controls over independent pair population; recall C; no L3 measurement', 'subject_sha': args.subject_sha,
+               'reference_tier': 'C', 'population_origin': 'independent crossplane walk; no native completeness proof',
                'configs': len(files), 'definitions': len(definitions), 'references': len(references),
                'binary_sha256': receipt['binary_sha256'], 'scope_sha256': hashlib.sha256(args.files.read_bytes()).hexdigest(),
                'native_evidence_sha256': hashlib.sha256(json.dumps(audit, sort_keys=True).encode()).hexdigest(),

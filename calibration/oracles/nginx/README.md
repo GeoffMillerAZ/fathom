@@ -91,3 +91,22 @@ A subject set under 10 route pairs is too few to read the L3 level honestly (one
 calibration/corpus.d, and that is the threshold used.
 
 The route file is written but, as above, not scored.
+
+
+## L2 native ablation prototype, 2026-10-26
+
+The target-only ablation confirms one selected local upstream binding with
+native nginx 1.31.6. It does not establish recall: the pair population was
+chosen by the independent crossplane walk. P-T1 therefore keeps its emitted
+reference family C. There is no accepted L2 upgrade or native-completeness
+claim. Protocol r2 supersedes the r1 authority premise; a native parser or
+registry population instrument remains open work.
+
+The historical canonical reading has two conflicting scope disclosures for
+one subject. Both were added in 87ed927e1; selecting the last narrower one
+replayed 61 instead of the original 71 definitions, and the strict count gate
+correctly refused publication. The diagnostic now retains the union of all
+historical disclosures, with the same 71-definition/one-reference gate. It
+never hand-edits the canonical L3 reading. Full scope inventories remain in
+scratch, not in new committed assessment data. No Docker, server or backend
+request is part of these L1/L2 probes.
