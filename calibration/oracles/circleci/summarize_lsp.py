@@ -35,7 +35,7 @@ if __name__ == '__main__':
         raise SystemExit('diagnostic identity mismatch')
     differences = [s for f in diagnostic['files'] for s in f['sites'] if s['scope'] == 'local' and not s['definition_agrees']]
     report = {'tool': protocol['tool'], 'version': protocol['version'], 'protocol_commit': '3a7d13e34',
-              'diagnostic_commit': 'b4e4ba91d', 'measurement_commit': args.measurement_commit, 'tier': 'A for measured reference bindings (Q6/T-R7); definitions and external orbs ungraded',
+              'diagnostic_commit': 'b4e4ba91d', 'measurement_commit': args.measurement_commit, 'tier': 'Historical r2 containment only: not complete recall truth; use summarize_native_population.py with protocol r3',
               'totals': totals, 'subjects': subjects, 'definition_disagreement_diagnostic': differences}
     args.out.write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps(totals, sort_keys=True))

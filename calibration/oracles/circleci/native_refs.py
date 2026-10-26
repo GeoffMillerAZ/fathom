@@ -1,7 +1,7 @@
 """T-R7: run both vendor instruments on every registered subject.
 
-The existing independent walk supplies query positions; it supplies no fallback
-truth. Every local use must be returned by the pinned vendor references method.
+The independent walk supplies query positions and a disagreement check only.
+All declarations are queried and every native answer enters classified truth.
 Compiler workflow/job/requires pairs retain the compiler's native authority.
 """
 import argparse

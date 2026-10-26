@@ -1,72 +1,41 @@
-# CircleCI: native reference evidence under T-R7
+# CircleCI: native population and corrected L2 grade
 
-The canonical five-subject reading now measures L2 excellent (was good):
-48/49 definitions, 74/75 references, reference precision .9867 and recall 1.
-Counts and extraction are unchanged; the reference authority changes from C
-to A after Q6/T-R7. Canonical L1 remains good. The separate three-subject
-T-R3 holdout reads 11/11 definitions and 8/8 references, L1/L2 excellent.
-The holdout shard never enters the canonical shard. No extractor, shared
-engine, epoch, generated surface or plan checkbox changes.
+Protocol r3 corrects the earlier scanner-chosen denominator. Canonical L2 is
+**good**: 74/82 truth references found,75 emitted, precision .9867 and recall
+.9024. Definitions remain48/49, L1good. The separate T-R3 holdout remains11/11
+definitions and8/8 references, L1/L2excellent. The canonical/holdout shards and
+immutable parameter matrix are unchanged; valid disabled workflows remain.
 
-T-R3's immutable matrix was committed at f6e47f021 before native execution:
-default/false/true cron on cimg-python and cimg-node, default on scikit-learn.
-Every registered case succeeds. The adapter refuses dirty or wrong-pin source,
-missing/unregistered configs, parse failures and unsuccessful cases. Disabled
-workflows are preserved; no configuration, declaration or orb is replaced.
-Canonical cimg-base's monthly-release remains a valid declaration disabled
-by its original default input, explaining its one definition/reference extra.
-The fresh-subject union tests the input method without tuning the extractor
-on exposed subjects.
+The pinned official CircleCI YAML server0.54.0 is A for evaluated reference
+bindings under T-R7/P-T1. The instrument queries all20 command/executor
+declarations across all eight configurations, including unused declarations.
+It classifies every one of43 returned locations:34 direct uses,8 workflow
+executor arguments/matrix values, and1 namespace error. The workflow parameter
+owner is the invoked job declaration. Native truth includes every valid pair;
+it is not chosen from the YAML walk or fathom output. Unknown answers fail.
 
-## Native population and divergence
+The same-name defect affects both native methods. Definition points a command
+step to the same-name job; references on the command also return the workflow
+job entry. The compiler adjudicates command expansion, and that workflow
+entry is recorded as an oracle error. All eight newly found executor-parameter
+bindings are checked against compiled job instances too. Eleven compiler
+checks agree. This adjudication is required by the instrument, rather than
+being an optional sample. Two external orb uses remain unscored.
 
-The comparison protocol at 3a7d13e34 preceded all native queries. The final
-reference instrument was committed at 953c6b487 before the full rerun.
-CircleCI's own Apache-2.0 YAML language server 0.54.0 is pinned by source,
-release archive checksum and executable checksum in lsp-protocol-r2.json.
-Independent source positions exactly match the existing Go walk's local pairs
-in every file. They only locate queries; native misses never fall back to YAML.
-The wrapper fails on an incomplete population or a missing native reference.
+The eight missing parameter pairs are a real implementation gap. DocRef.From
+selects an enclosing entity, so the dialect cannot assign a workflow argument
+to its invoked job or join it to that job's executor-typed parameter. The
+required shared strategy work is held T-R2. The L1 extra remains the original
+valid default-disabled workflow; no source declaration is deleted.
 
-Across all five canonical and three holdout configurations, native references
-attest 34/34 local uses/pairs: 27 commands and seven executors. Native definition
-agrees on 33/34. Cypress's pack-workflows step (zero-based line 158) defines
-to the same-name job at line 148, rather than the command at line 74. Querying
-references on the command returns the correct use. All sanitized native
-definition and reference target ranges are committed in lsp-comparison-r2.json.
-Both readings disclose this divergence through the grade driver's `-note`.
-Two qualified orb uses resolve externally and remain outside local scoring.
+`native-population-r3.json` publishes counts and native-report hashes, while
+`compiler-crosscheck-t-r7.json` contains equality results, digests and byte
+counts without copied source fragments. Full answers stay in scratch. The r2
+receipt is historical containment evidence and explicitly superseded for recall.
+T-R3.md records the complete recipe and five X-R4 source searches.
 
-T-R7's compiler cross-check agrees on 3/3 representative bindings: check's
-linux executor fields, check's inlined store_results command, and Cypress's
-same-name pack-workflows command expansion. Full expected/actual fragments
-are in compiler-crosscheck-t-r7.json; compiler_crosscheck.py reproduces them.
-No pipeline, shell body, container or Docker executes. The server has an
-isolated home/cache and receives no token.
-
-## Candidate audit and reproducibility
-
-| Candidate | Version | Result |
-|---|---|---|
-| CircleCI CLI config process | 1.7.0 | All original and registered inputs run; native workflow/job/requires pairs. Commands/executors are inlined, so their source identity is measured with the vendor server. |
-| CircleCI CLI config validate | 1.7.0 | Help exposes validation, without the source identity pairs being measured. Acceptance alone is insufficient. |
-| CircleCI YAML language server | 0.54.0, source 9c9c4cedb448caa2444bc89672233e4dae66eeea | Full native population measured; reference bindings admitted A by Q6/T-R7. Definition's one namespace disagreement is disclosed, not used as fallback truth. |
-| Compiler ablation | 1.7.0 | Previously proposed but unimplemented; no longer necessary to attest these measured reference bindings. |
-| Independent yaml.v3 source walk | v3.0.1 | Position/pair cross-check only in the native instrument; by itself C under P-T1. |
-
-T-R3.md records exact build, native population, cross-check and grade commands.
-native_refs.py runs the full population; grade_native.py emits separate fresh
-readings and retimes both three times. Canonical timing is 11.43 MB/CPU-s
-(median of 11.43, 14.62, 10.15); holdout is 15.00 (15.00, 15.12, 14.04).
-These small, warm extractions do not establish dialect-wide throughput.
-All eight Python tests, bench adapter race tests, release-notes check and
-merge-debris check pass. X-R2 checks are repeated before READY.
-
-Decision models: none. Native bindings, input identity and deterministic
-comparisons require no model judgment.
-
-X-R4's five source searches, including bounded misses, are recorded in T-R3.md.
-The retained L1 coverage limit concerns the measured compiler inputs; the native
-reference ceiling is withdrawn. X-R3 replaces copied compiler fragments with
-canonical JSON digests and byte counts while preserving the three equality
-checks. No subject commands or full file inventories are published.
+Both readings are emitted by grade_native.py after the full native run at
+0fba13a42. Canonical three-run timing is19.65,18.66,17.93 MB/CPU-s (median18.66);
+holdout17.58,8.34,17.25 (median17.25). These tiny warm measurements support no
+general throughput claim. No extractor, epoch, generated tracker or checkbox
+changes. L3 remains behind D19. No model judgment is involved.

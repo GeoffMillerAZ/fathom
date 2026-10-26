@@ -5,12 +5,12 @@
   "level_met": "L2",
   "grade": {
     "L1": "good",
-    "L2": "excellent",
+    "L2": "good",
     "L3": "not-attempted",
     "L4": "not-applicable"
   },
   "measured_at": "2026-10-26",
-  "fathom_commit": "953c6b487",
+  "fathom_commit": "0fba13a42",
   "extractor": "dialect",
   "subjects": [
     {
@@ -42,8 +42,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.269,
-        "extract_cpu_ms": 0.269,
+        "extract_ms": 0.225,
+        "extract_cpu_ms": 0.225,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -61,7 +61,7 @@
         "oracle_defs": 10,
         "ref_fathom": 25,
         "ref_fathom_in_truth": 25,
-        "ref_truth": 25,
+        "ref_truth": 33,
         "ref_truth_found": 25
       },
       "families": {
@@ -79,8 +79,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.613,
-        "extract_cpu_ms": 0.623,
+        "extract_ms": 0.555,
+        "extract_cpu_ms": 0.555,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -115,8 +115,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.425,
-        "extract_cpu_ms": 0.425,
+        "extract_ms": 0.369,
+        "extract_cpu_ms": 0.369,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -148,9 +148,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 2.877,
-        "extract_cpu_ms": 3.804,
-        "max_file_ms": 3,
+        "extract_ms": 1.859,
+        "extract_cpu_ms": 1.866,
+        "max_file_ms": 1,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -184,8 +184,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.516,
-        "extract_cpu_ms": 0.531,
+        "extract_ms": 0.447,
+        "extract_cpu_ms": 0.447,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -206,7 +206,7 @@
   ],
   "metrics": {
     "ref_precision": 0.9867,
-    "ref_recall": 1,
+    "ref_recall": 0.9024,
     "sym_precision": 0.9796,
     "sym_recall": 1,
     "xref_precision": null,
@@ -233,16 +233,16 @@
     "oracle_defs": 48,
     "ref_fathom": 75,
     "ref_fathom_in_truth": 74,
-    "ref_truth": 74,
+    "ref_truth": 82,
     "ref_truth_found": 74
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 11.43,
+    "throughput_mb_s": 18.66,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 13.75,
-    "max_file_ms": 3,
+    "wall_throughput_mb_s": 18.7,
+    "max_file_ms": 1,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
@@ -251,13 +251,13 @@
     "fathom:CircleCIExecutor": 4
   },
   "notes": [
-    "cimg-base: T-R7/Q6: native CircleCI YAML language server 0.54.0, pinned by version/checksum, queried on the full five-canonical/three-holdout population: references agree 34/34 local uses. Definition agrees 33/34: cypress pack-workflows resolves to the same-name job; references on the command agree. Two external orb uses are unscored. Compiler cross-checks agree 3/3 (executor, command expansion, same-name command). No extractor or parameter-matrix change. Small-cohort timing is non-informative; no dialect-wide throughput claim.",
-    "circleci-cli: T-R7/Q6: native CircleCI YAML language server 0.54.0, pinned by version/checksum, queried on the full five-canonical/three-holdout population: references agree 34/34 local uses. Definition agrees 33/34: cypress pack-workflows resolves to the same-name job; references on the command agree. Two external orb uses are unscored. Compiler cross-checks agree 3/3 (executor, command expansion, same-name command). No extractor or parameter-matrix change. Small-cohort timing is non-informative; no dialect-wide throughput claim.",
-    "cypress: T-R7/Q6: native CircleCI YAML language server 0.54.0, pinned by version/checksum, queried on the full five-canonical/three-holdout population: references agree 34/34 local uses. Definition agrees 33/34: cypress pack-workflows resolves to the same-name job; references on the command agree. Two external orb uses are unscored. Compiler cross-checks agree 3/3 (executor, command expansion, same-name command). No extractor or parameter-matrix change. Small-cohort timing is non-informative; no dialect-wide throughput claim.",
-    "graphql-engine: T-R7/Q6: native CircleCI YAML language server 0.54.0, pinned by version/checksum, queried on the full five-canonical/three-holdout population: references agree 34/34 local uses. Definition agrees 33/34: cypress pack-workflows resolves to the same-name job; references on the command agree. Two external orb uses are unscored. Compiler cross-checks agree 3/3 (executor, command expansion, same-name command). No extractor or parameter-matrix change. Small-cohort timing is non-informative; no dialect-wide throughput claim.",
-    "openapi-generator: T-R7/Q6: native CircleCI YAML language server 0.54.0, pinned by version/checksum, queried on the full five-canonical/three-holdout population: references agree 34/34 local uses. Definition agrees 33/34: cypress pack-workflows resolves to the same-name job; references on the command agree. Two external orb uses are unscored. Compiler cross-checks agree 3/3 (executor, command expansion, same-name command). No extractor or parameter-matrix change. Small-cohort timing is non-informative; no dialect-wide throughput claim.",
+    "cimg-base: T-R7/P-T1: vendor CircleCI YAML language server 0.54.0, pinned by version/checksum, queries every command/executor declaration across all five canonical and three separate holdout configs. Every returned location is classified and all workflow executor parameter/matrix pairs enter recall truth. Same-name command/job defect: definition points to the job and references on the command also return its workflow job entry; the compiler adjudicates the command expansion, and the extra workflow entry is recorded as an oracle error. Two external orb uses remain unscored. Compiler cross-checks are required by the instrument for namespace errors. No extractor or parameter-matrix change. Small-cohort timing is non-informative; no dialect-wide throughput claim.",
+    "circleci-cli: T-R7/P-T1: vendor CircleCI YAML language server 0.54.0, pinned by version/checksum, queries every command/executor declaration across all five canonical and three separate holdout configs. Every returned location is classified and all workflow executor parameter/matrix pairs enter recall truth. Same-name command/job defect: definition points to the job and references on the command also return its workflow job entry; the compiler adjudicates the command expansion, and the extra workflow entry is recorded as an oracle error. Two external orb uses remain unscored. Compiler cross-checks are required by the instrument for namespace errors. No extractor or parameter-matrix change. Small-cohort timing is non-informative; no dialect-wide throughput claim.",
+    "cypress: T-R7/P-T1: vendor CircleCI YAML language server 0.54.0, pinned by version/checksum, queries every command/executor declaration across all five canonical and three separate holdout configs. Every returned location is classified and all workflow executor parameter/matrix pairs enter recall truth. Same-name command/job defect: definition points to the job and references on the command also return its workflow job entry; the compiler adjudicates the command expansion, and the extra workflow entry is recorded as an oracle error. Two external orb uses remain unscored. Compiler cross-checks are required by the instrument for namespace errors. No extractor or parameter-matrix change. Small-cohort timing is non-informative; no dialect-wide throughput claim.",
+    "graphql-engine: T-R7/P-T1: vendor CircleCI YAML language server 0.54.0, pinned by version/checksum, queries every command/executor declaration across all five canonical and three separate holdout configs. Every returned location is classified and all workflow executor parameter/matrix pairs enter recall truth. Same-name command/job defect: definition points to the job and references on the command also return its workflow job entry; the compiler adjudicates the command expansion, and the extra workflow entry is recorded as an oracle error. Two external orb uses remain unscored. Compiler cross-checks are required by the instrument for namespace errors. No extractor or parameter-matrix change. Small-cohort timing is non-informative; no dialect-wide throughput claim.",
+    "openapi-generator: T-R7/P-T1: vendor CircleCI YAML language server 0.54.0, pinned by version/checksum, queries every command/executor declaration across all five canonical and three separate holdout configs. Every returned location is classified and all workflow executor parameter/matrix pairs enter recall truth. Same-name command/job defect: definition points to the job and references on the command also return its workflow job entry; the compiler adjudicates the command expansion, and the extra workflow entry is recorded as an oracle error. Two external orb uses remain unscored. Compiler cross-checks are required by the instrument for namespace errors. No extractor or parameter-matrix change. Small-cohort timing is non-informative; no dialect-wide throughput claim.",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "throughput (design 1.9 T1, T2): darwin/arm64 Apple M4; run 1: 11.43 MB/CPU-s; run 2: 14.62 MB/CPU-s; run 3: 10.15 MB/CPU-s; median run 1: 11.43 MB/CPU-s; every other field is the original measurement at its recorded fathom_commit 953c6b487"
+    "throughput (design 1.9 T1, T2): darwin/arm64 Apple M4; run 1: 19.65 MB/CPU-s; run 2: 18.66 MB/CPU-s; run 3: 17.93 MB/CPU-s; median run 2: 18.66 MB/CPU-s; every other field is the original measurement at its recorded fathom_commit 0fba13a42"
   ],
   "disposition": null
 }

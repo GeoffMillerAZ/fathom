@@ -80,88 +80,77 @@ is sub-millisecond, the spread is 2.5 times, and this is not an informative
 throughput reading or comparable to canonical throughput.
 
 
-## Review follow-up: vendor language server
+## Review follow-up: complete vendor population (r3)
 
-The handwritten timing/adapter notes have been removed from the measured JSON;
-the disclosures stay here and in the assessment. Original instrument output is
-preserved. The native-LSP comparison protocol is `lsp-protocol-r2.json`, committed
-before querying the eight subject configurations. Vendor 0.54.0 resolves source
-command/executor names; the full-cohort comparison attests 34/34 local uses by references and
-33/34 by definition (one same-name job/command misresolution). Two orb uses
-resolve externally and remain unscored. Q6/T-R7 accepts tier A for measured
-reference bindings from the pinned vendor server queried over the full population.
-P-T1 keeps independent third-party analyzers at C. Definitions are not promoted:
-the same-name job/command divergence remains disclosed in every new reading.
+The r2 receipt contains the 34 source-walk use sites and their native answers.
+That containment check did not establish recall completeness. Its authority
+claim is superseded by `lsp-protocol-r3.json` and `native-population-r3.json`.
+The vendor server remains pinned at 0.54.0 with the same source/archive/binary
+identities, admitted A for the complete evaluated family by Q6/T-R7/P-T1.
 
+Every one of 20 command/executor declarations across all five canonical and
+three separate holdout configs is now queried, including unused declarations.
+All 43 returned locations are classified: 34 direct uses, eight workflow
+executor-parameter/matrix values, and one same-name namespace error. The owner
+of a workflow executor parameter is its invoked job declaration; owner-target
+pairs deduplicate. Unknown locations fail the whole instrument.
 
-To reproduce the comparison after building the existing adapter and installing
-verified `circleci-yaml-lsp` 0.54.0 at `workspace/tools/circleci-yaml-lsp`, use
-the eight registered names/pins/checkout paths in `lsp-protocol-r2.json`:
+Both vendor methods confuse the same-name command/job case: definition points
+the command step to the job, while references on the command also return the
+workflow job entry. Native compiler expansion adjudicates the command use;
+the workflow entry is recorded as an oracle error. Every newly retained
+executor-parameter binding is also checked against its compiled job instance.
+All 11 compiler checks agree (eight parameter bindings plus the earlier three).
+No pipeline, shell body, container or Docker runs. Two orb uses resolve
+externally and remain unscored.
 
-```sh
-mkdir -p workspace/tmp/circleci-lsp
-# For each registered subject, produce the old adapter's -refs JSON using the
-# original default input or T-R3 matrix (exact commands above), then:
-python3 calibration/oracles/circleci/lsp_compare.py -lsp workspace/tools/circleci-yaml-lsp \
-  -subject workspace/calibration/circleci-canonical/circleci-cli \
-  -work workspace/tmp/circleci-lsp/circleci-cli -yaml-refs workspace/tmp/circleci-lsp/circleci-cli-yaml-refs.json \
-  -out workspace/tmp/circleci-lsp/circleci-cli-lsp.json
-# Repeat for every protocol subject, and re-run cypress with the diagnostic
-# output name cypress-diagnostic.json; no request position or input is changed.
-python3 calibration/oracles/circleci/summarize_lsp.py -results workspace/tmp/circleci-lsp -out workspace/tmp/circleci-lsp/summary.json
-python3 -m unittest discover -s calibration/oracles/circleci -p test_lsp_compare.py
-```
+Canonical reference truth grows from 74 to 82 pairs. Fathom emits 75 and finds
+74: precision .9867, recall .9024, L2 good. L1 stays good at 48/49 definitions.
+The separate holdout stays 11/11 definitions and 8/8 references, excellent.
+The eight missing bindings are an implementation gap, not missing native
+oracle authority. DocRef.From selects the containing entity; joining a
+workflow argument to an executor-typed parameter of its invoked job requires
+shared strategy work held T-R2. No extractor, input matrix or shard changes.
+Valid default-disabled workflows remain intact.
 
-Python requires scratch-installed PyYAML 6.0.3. The client fails on a local
-pair-inventory discrepancy, dirty subject, missing native symbols or protocol
-failure; it never substitutes the YAML walk for a native answer. All native
-misses remain visible. No grade is emitted by this diagnostic instrument.
+## Native reference reproduction
 
-## T-R7 native reference recipe
-
-The native reference wrapper was committed before regrading. It checks the
-server checksum and subject pins, requires clean configuration content, runs
-all original compiler cases and queries every local use in all eight subjects.
-Any missed native reference or incomplete inventory fails the run; no YAML
-answer substitutes for a native response. The definition counterexample and
-external orb uses remain visible. No new extraction or input-matrix tuning uses
-these exposed holdouts.
-
-With the verified vendor binaries at the paths used above, and scratch Python
-with PyYAML 6.0.3:
+Use a private Python with PyYAML 6.0.3, the pinned subjects at the checkout paths
+in `lsp-protocol-r3.json`, and verified vendor binaries at these scratch paths:
 
 ```sh
+GOWORK=off go build -o workspace/tools/indexbench ./cmd/indexbench
+GOWORK=off go -C calibration/oracles/circleci build -o ../../../workspace/tools/circleci-oracle .
 python3 calibration/oracles/circleci/native_refs.py \
   -adapter workspace/tools/circleci-oracle -cli workspace/tools/circleci \
   -lsp workspace/tools/circleci-yaml-lsp -out-dir workspace/tmp/circleci-native
-python3 calibration/oracles/circleci/compiler_crosscheck.py \
-  -cli workspace/tools/circleci -work workspace/tmp/circleci-crosscheck \
-  -out workspace/tmp/circleci-native/compiler-crosscheck.json
-GOWORK=off go build -o workspace/tools/indexbench ./cmd/indexbench
+python3 calibration/oracles/circleci/summarize_native_population.py \
+  -results workspace/tmp/circleci-native -out workspace/tmp/circleci-native/population.json
 python3 calibration/oracles/circleci/grade_native.py \
   -indexbench workspace/tools/indexbench -native-dir workspace/tmp/circleci-native \
   -out-dir workspace/tmp/circleci-native-reading
 python3 -m unittest discover -s calibration/oracles/circleci -p 'test_*.py'
 ```
 
-The grade driver requires fresh output, measures every canonical and holdout
-subject separately, records the native definition divergence through `-note`,
-and retimes both cohorts three times. It leaves holdouts outside the canonical
-shard. Compiler cross-checks inspect executor fields and inlined command steps;
-no workflow or shell command body executes. The earlier mixed-C readings above
-remain historical comparisons, not the authority of the new instrument.
+The wrapper runs mandatory compiler adjudications before constructing truth.
+The grade driver requires fresh output, emits the namespace defect through
+`-note`, and retimes the separate cohorts three times. Canonical runs are
+19.65, 18.66, 17.93 MB/CPU-s (median18.66); holdout runs17.58,8.34,17.25
+(median17.25). These tiny warm measurements are non-informative for general
+throughput. Full native messages stay in scratch; committed receipts carry
+counts, identities and hashes. All 14 Python tests pass.
 
 ## X-R4 sources searched, 2026-10-25
 
 | Required source | Named candidate / search result |
 |---|---|
-| Owner toolchain / compiler dumps | CircleCI CLI 1.7.0 `config process` and the preregistered parameter matrix measured; compiler expansions corroborate three vendor bindings. The compiler evaluates one input environment at a time, so disabled definitions remain genuine L1 coverage misses; valid workflows are never deleted. |
+| Owner toolchain / compiler dumps | CircleCI CLI 1.7.0 `config process` and the preregistered parameter matrix measured; compiler expansions corroborate all eight new executor-parameter bindings and three earlier checks. The compiler evaluates one input environment at a time, so disabled definitions remain genuine L1 coverage misses; valid workflows are never deleted. |
 | SCIP and LSIF lists plus GitHub | Read [Sourcegraph's supported indexers](https://sourcegraph.com/docs/code-navigation/precise-code-navigation), [SCIP's list](https://github.com/sourcegraph/scip#tools-using-scip), and Sourcegraph-maintained [LSIF.dev](https://lsif.dev/). No CircleCI config producer was listed. GitHub repository query `scip-circleci in:name` returned zero. These bounded misses are not a proof of universal absence. |
-| Language servers | CircleCI's official Apache-2.0 server 0.54.0 at the pinned source/checksum above was queried over every canonical and holdout local binding. References attest all 34; definition disagrees on one same-name job/command target. No absent-native-binding ceiling remains. |
+| Language servers | CircleCI's official Apache-2.0 server 0.54.0 at the pinned source/checksum above was queried at every command/executor declaration across both separate cohorts; all 43 returned locations are classified. Both methods confuse the same-name namespaces; compiler adjudication records one oracle error. No absent-native-binding ceiling remains. |
 | Registry parsers / type checkers / AST dumpers | npm lookup of official `@circleci/circleci-config-sdk` 0.12.5 (MIT) describes construction of configs, not evaluation of existing source declarations. Lookup `@circleci/circleci-config-parser` returned 404; web npm query `circleci parser` supplied no additional native evaluator. PyYAML 6.0.3 and yaml.v3 remain independent/source-position instruments, with no new A label. |
 | Runtime call / require tracing | Read CircleCI's [local execution documentation](https://circleci.com/docs/guides/toolkit/how-to-use-the-circleci-local-cli/) and [troubleshooting](https://circleci.com/docs/reference/troubleshoot/): local job execution follows config processing and uses Docker. Docker is forbidden on this machine and running subject job bodies is unnecessary for the measured compiler/LSP binding family. No runtime trace was executed or claimed to attest disabled definitions. |
 
-X-R3 publication uses hashes and byte counts for the three compared compiler
+X-R3 publication uses hashes and byte counts for the eleven compared compiler
 fragments; subject source bodies and shell commands are not copied into the
 receipt. Equality is checked before summarization. Native LSP ranges remain
 semantic response evidence, with subject pins and no copied source bodies.

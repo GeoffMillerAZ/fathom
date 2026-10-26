@@ -4,7 +4,7 @@
   "protocol_commit": "3a7d13e34",
   "diagnostic_commit": "b4e4ba91d",
   "measurement_commit": "953c6b487",
-  "tier": "A for measured reference bindings (Q6/T-R7); definitions and external orbs ungraded",
+  "tier": "Historical r2 scanner-chosen population: native containment attests precision only, not complete recall; superseded by native-population-r3.json",
   "totals": {
     "local_sites": 34,
     "local_pairs": 34,

@@ -1,4 +1,4 @@
-"""T-R7 spot checks: compiler expansion corroborates three vendor bindings.
+"""T-R7 compiler adjudication: eight parameter bindings and three earlier checks.
 
 Only config process runs. No pipeline, shell body, container or Docker runs.
 The complete reference population is measured separately by native_refs.py.

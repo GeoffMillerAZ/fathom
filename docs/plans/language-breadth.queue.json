@@ -2758,7 +2758,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-circleci",
     "worker_model": "sonnet",
-    "notes": "T-R7: canonical L2 excellent, L1 good (48/49 defs, 74/75 refs); separate T-R3 holdout L1/L2 excellent (11/11, 8/8). Full pinned vendor reference population 34/34; same-name definition divergence disclosed."
+    "notes": "T-R7/P-T1 r3: canonical L2 good, L1 good (48/49 defs, 74/82 truth refs, 75 emitted; recall .9024). Native answers add eight workflow executor-parameter pairs; all 20 declarations queried, 43 locations classified, one same-name workflow job oracle error compiler-adjudicated. Separate holdout remains 11/11 and 8/8, excellent. No extractor or parameter-matrix change."
   },
   {
     "id": "pascal",
