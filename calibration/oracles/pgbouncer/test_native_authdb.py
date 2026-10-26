@@ -1,9 +1,38 @@
 import struct
 import unittest
+from unittest.mock import patch
 from native_authdb import error_fields, data_row, mutate_authdb, attested
+from native_authdb import enumerate_bindings
 
 
 class NativeAuthDBTest(unittest.TestCase):
+    def test_population_comes_from_native_sources_not_scanner_pairs(self):
+        class Native:
+            port = 1
+            work = None
+            def probe(self, owner):
+                return {'M': ('authentication database "auth" is disabled'
+                              if owner == 'app' else '"trust" authentication failed')}
+        commands = []
+        def console(port, sql):
+            commands.append(sql)
+            return [['app'], ['auth'], ['pgbouncer']] if sql == 'SHOW DATABASES' else []
+        with patch('native_authdb.query', side_effect=console):
+            pairs, audit = enumerate_bindings(Native())
+        self.assertEqual([{'from': 'app', 'to': 'auth'}], pairs)
+        self.assertEqual({'app', 'auth'}, {r['source'] for r in audit})
+        self.assertIn('DISABLE auth', commands)
+        self.assertIn('DISABLE app', commands)
+
+    def test_unknown_native_outcome_cannot_silently_drop_a_pair(self):
+        class Native:
+            port = 1
+            def probe(self, owner):
+                return {'M': 'unexpected native condition'}
+        with patch('native_authdb.query', return_value=[['app']]):
+            with self.assertRaisesRegex(RuntimeError, 'unclassified'):
+                enumerate_bindings(Native())
+
     def test_native_error_and_row_protocol(self):
         payload = b'SERROR\0C08P01\0Mauthentication database "authdb" is disabled\0\0'
         self.assertEqual('08P01', error_fields(payload)['C'])

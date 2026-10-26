@@ -96,6 +96,47 @@ def attested(target, error):
     return error.get('M') == 'authentication database "' + target + '" is disabled'
 
 
+def enumerate_bindings(instance):
+    """Sweep native database members, independently of source-scanner pairs.
+
+    The database being probed stays enabled; every other database is disabled.
+    An external authentication database is therefore named before backend SQL.
+    Every response must have a disclosed classification, including no binding.
+    """
+    names = sorted({row[0] for row in query(instance.port, 'SHOW DATABASES')} - {'pgbouncer'})
+    if any(not re.fullmatch('[A-Za-z0-9_-]+', name) for name in names):
+        raise RuntimeError('native database name needs a quoted-name enumeration protocol')
+    pairs, audit = [], []
+    for name in names:
+        query(instance.port, 'DISABLE ' + name)
+    try:
+        for owner in names:
+            query(instance.port, 'ENABLE ' + owner)
+            try:
+                error = instance.probe(owner)
+                message = error.get('M', '')
+                match = re.fullmatch(r'authentication database "([^"]+)" is disabled', message)
+                if match:
+                    target = match.group(1)
+                    if target not in names or target == owner:
+                        raise RuntimeError('native target is outside enumerated local members')
+                    pairs.append({'from': owner, 'to': target})
+                    outcome = 'external-authentication-database'
+                elif message in ('"trust" authentication failed', 'no such user'):
+                    outcome = 'no-auth-user'
+                elif message in ('query_wait_timeout', 'server login has been failing, try again later (server_login_retry)'):
+                    outcome = 'no-external-authentication-database'
+                else:
+                    raise RuntimeError('unclassified native startup outcome: ' + json.dumps(error))
+                audit.append(dict(source=owner, outcome=outcome, native_error=error))
+            finally:
+                query(instance.port, 'DISABLE ' + owner)
+    finally:
+        for name in names:
+            query(instance.port, 'ENABLE ' + name)
+    return pairs, audit
+
+
 def mutate_authdb(source, owner, target, replacement):
     entries = scan(source).get('databases', {}).get('entries', [])
     matches = [(line, value) for key, line, value in entries if key == owner]
@@ -134,7 +175,8 @@ class Instance:
         config = sanitized(isolate_backends(source, self.work)) + '\n\n[pgbouncer]\n'
         settings = dict(listen_addr='127.0.0.1', listen_port=str(self.port), unix_socket_dir='',
                         auth_type='trust', auth_file=str(self.work / 'userlist.txt'), admin_users='oracle',
-                        logfile=str(self.work / 'native.log'), pidfile=str(self.work / 'native.pid'))
+                        logfile=str(self.work / 'native.log'), pidfile=str(self.work / 'native.pid'),
+                        query_wait_timeout='1', server_connect_timeout='1')
         config += ''.join(k + ' = ' + v + '\n' for k, v in settings.items())
         file = self.work / 'pgbouncer.ini'
         file.write_text(config)
