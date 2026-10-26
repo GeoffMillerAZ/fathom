@@ -47,9 +47,12 @@ func testPutObservationsLargeCallLists(t *testing.T, shape string) {
 			t.Logf("TMPDIR free space after insert:\n%s", out)
 		}
 	}()
-	const count = 150_001
+	// With a 4 MiB spill threshold, these shapes fail just above 56k calls
+	// (many) and 57k calls (single, second batch). Keep a small margin.
+	count := 58_000
 	perObservation := count
 	if shape == "many" {
+		count = 57_000
 		perObservation = 1000
 	}
 	obs := []core.Observation{{ServiceID: "svc", SourceRef: "ordinary.go", SourceKind: core.KindGoFunc, Symbol: "Ordinary", Calls: []string{"pkg.Small"}}}

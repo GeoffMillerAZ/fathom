@@ -11,6 +11,12 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
+func TestStatementJournalSpillFitsUnixWrite(t *testing.T) {
+	if stmtJournalSpillBytes > 0x1ffff {
+		t.Fatalf("statement-journal spill = %d, exceeds SQLite's unix VFS write limit 0x1ffff", stmtJournalSpillBytes)
+	}
+}
+
 // TestStatementJournalSpillIsRaisedBeforeFirstOpen (LB-F208): SQLITE_CONFIG_STMTJRNL_SPILL
 // only takes effect before SQLite initializes, and this test binary has opened stores in
 // other tests, so a fresh process of the same binary opens one and reads the result. The

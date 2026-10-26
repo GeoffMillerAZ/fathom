@@ -10,7 +10,7 @@ package store
 //
 // The spill threshold is a process-wide sqlite3_config option that only takes effect before
 // SQLite initializes, so it is set once, before the first connection of any store opens.
-// Keep that threshold within the driver's write-size limit so large statements can spill.
+// Keep that threshold within SQLite's unix VFS write limit so large statements can spill.
 // Memory remains bounded by the threshold and the hard heap limit applyTenancyPragmas sets.
 
 import (
@@ -21,10 +21,19 @@ import (
 )
 
 // stmtJournalSpillBytes keeps small journals in memory, at almost twice SQLite's 64 KiB
-// default. modernc.org/sqlite v1.52.0's seekAndWriteFd masks write lengths with 0x1ffff.
-// SQLite flushes spill-sized chunks, so the former 4 MiB threshold became a zero-byte
-// write and SQLITE_FULL on spill, even with free disk. Stay at the largest safe chunk
-// size: larger journals spill to disk instead of aborting the observation transaction.
+// default. SQLite's own src/os_unix.c seekAndWriteFd asserts nBuf==(nBuf&0x1ffff),
+// then masks nBuf with 0x1ffff. memjrnlCreateFile flushes the in-memory journal in a
+// spill-threshold-sized chunk via one xWrite; at 131,072 bytes or more the unix VFS
+// short write yields SQLITE_FULL, even with free disk. This is the exact safe maximum
+// for every page size, on all unix targets (including Linux), also with cgo; Windows
+// is unaffected. A driver upgrade alone cannot justify raising it.
+//
+// Cost: LB-F208 raised this to 4 MiB to keep a typical row's roughly 60-page (246 KB)
+// journal in memory, avoiding a temp file per row (3.5 s of a 17 s polyglot build).
+// At 4 KiB pages this cap holds about 31 pages, so typical rows spill again. A noisy
+// review micro-benchmark saw system CPU of 3.4-5.0 s versus 1.6-2.3 s before, not a
+// stable performance estimate. LB-F208-bulk defers replacing the per-row call-index
+// trigger with one bulk statement per batch, measured before and after.
 const stmtJournalSpillBytes int32 = (128 << 10) - 1
 
 var (
