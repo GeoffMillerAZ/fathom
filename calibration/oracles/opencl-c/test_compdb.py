@@ -245,6 +245,7 @@ else:
     def test_explicit_profile_keeps_independent_cli_compiler_digest_assertion(self):
         path, _ = self.write_portable_pins()
         workspace = MODULE_PATH.resolve().parents[3] / "workspace"
+        workspace.mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(dir=workspace) as temp:
             argv = [
                 "--subject", str(self.subject), "--commit", self.commit,

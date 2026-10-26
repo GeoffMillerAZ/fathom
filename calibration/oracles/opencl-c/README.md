@@ -224,8 +224,14 @@ the failing 386-file primary gate and never enters canonical aggregation. Raw in
 The native gate remains unmet: patched 63/386 (16.32%) versus dedicated 138/386,
 with 75 error-to-clean and zero clean-to-error/fault transitions. The 137-case
 corpus passes. These are calibration-only native results; no product WASM,
-dialect, reading or support level is shipped. G-R6 bars the requested template
-prepass while 23 non-clBLAS failures alone exceed the gate's maximum 19.
+dialect, reading or support level is shipped. The original candidate has 23
+non-clBLAS failures. That count does not prove all 23 require macro expansion. The statement-level
+semicolonless-macro route below measures 53/386 (13.73%), including 13 non-clBLAS
+failures, 10 error-to-clean and zero regressions or faults. The G-R6 intermediate
+trigger of at most 19 non-clBLAS failures has fired. It does not authorize a
+prepass. Any later prepass must be runtime product
+behavior supported by a convention in two independent projects, retain every
+file, and receive the owner ruling required by G-R6.
 
 Focused proof:
 
@@ -233,3 +239,88 @@ Focused proof:
 workspace/tools/python/bin/python -I -B calibration/oracles/opencl-c/test_build_native.py
 workspace/tools/python/bin/python -I -B calibration/oracles/opencl-c/test_grammar_screen.py
 ```
+
+## Binding review follow-up
+
+The original 63-file baseline is preserved in `screen.json`, `builds.json` and
+`residual-labels.json`; no later candidate silently replaces that evidence.
+The 63-row residual receipt includes only the failing subset's subject-relative
+paths, labels, first ERROR/MISSING kind and line, pins and content identities.
+These paths are explicitly authorized by the binding review. Labels are a manual
+classification, not a claim that a raw grammar cannot handle a class.
+
+Reproduce the original residual receipt after the five-candidate build/screen
+commands above, using a fresh native build with the same pinned parser source:
+
+```sh
+workspace/tools/python/bin/python -I -B calibration/oracles/opencl-c/residual_audit.py \
+  --screen-dir workspace/opencl-c/screen \
+  --subjects-root workspace/opencl-c/subjects \
+  --grammar workspace/opencl-c/build/opencl-c-patched/native.dylib \
+  --build-receipt workspace/opencl-c/build/opencl-c-patched/build-receipt.json \
+  --out workspace/opencl-c/residual-reproduced.json
+workspace/tools/python/bin/python -I -B calibration/oracles/opencl-c/test_residual_audit.py
+```
+
+The generator verifies fresh screen population/policy/counts, subject pins,
+source Git blobs, the native hash and a build receipt with the same patch and
+parser source. Native linker identities may differ in a fresh build; a changed
+parser, source, count, pin or diagnostic subset is refused. Thus the command
+does not depend on the old ignored native binary.
+
+The separate `opencl-c-semicolonless` candidate adds an identifier-based macro
+statement only in statement/top-level positions, with an immediate physical
+newline and lower dynamic priority than a valid macro-typed declaration. Its
+corpus covers adjacent declarations/function heads, same- and split-line typed
+declarations, multiline arguments and malformed assignment/boundary negatives.
+A bare call followed by a newline is not semantically distinguishable from a
+macro invocation in raw syntax; no compiler-validity claim follows from accepting
+it. The final shared-identifier build passes 145 corpus cases. The new primary receipt
+measures 53/386, and the reused holdout remains 2/53. Because this route was tuned
+after the original holdout was read, its holdout result is diagnostic, not independent
+validation. The bounded five-project host-string convention search found no second
+independent match; GitHub code search returned 401, which proves no absence. No
+runtime prepass is implemented or authorized. See `template-convention-search.json`.
+
+Build the new candidate with the same pinned C archive and then remeasure the exact
+subject checkouts used above. All outputs are fresh and ignored:
+
+```sh
+workspace/tools/python/bin/python -I -B calibration/oracles/opencl-c/build_native.py \
+  --candidate opencl-c-semicolonless \
+  --archive workspace/opencl-c/archives/tree-sitter-c-b780e47f.tar.gz \
+  --tree-sitter tree-sitter \
+  --out workspace/opencl-c/build/opencl-c-semicolonless
+workspace/tools/python/bin/python -I -B calibration/oracles/opencl-c/grammar_screen.py \
+  --subject sdk=workspace/opencl-c/subjects/sdk \
+  --subject darktable=workspace/opencl-c/subjects/darktable \
+  --subject opencv=workspace/opencl-c/subjects/opencv \
+  --subject arrayfire=workspace/opencl-c/subjects/arrayfire \
+  --subject clblas=workspace/opencl-c/subjects/clblas \
+  --subject rodinia=workspace/opencl-c/subjects/rodinia \
+  --subject shoc=workspace/opencl-c/subjects/shoc \
+  --subject pyopencl=workspace/opencl-c/subjects/pyopencl \
+  --grammar opencl-patched=tree_sitter_opencl=workspace/opencl-c/build/opencl-c-patched/native.dylib \
+  --grammar opencl-semicolonless=tree_sitter_opencl=workspace/opencl-c/build/opencl-c-semicolonless/native.dylib \
+  --baseline opencl-patched \
+  --hashcat workspace/opencl-c/subjects/hashcat \
+  --hashcat-grammar opencl=tree_sitter_opencl=workspace/opencl-c/build/opencl-stock/native.dylib \
+  --hashcat-grammar c=tree_sitter_c=workspace/opencl-c/build/c-stock/native.dylib \
+  --hashcat-build-receipt opencl=workspace/opencl-c/build/opencl-stock/build-receipt.json \
+  --hashcat-build-receipt c=workspace/opencl-c/build/c-stock/build-receipt.json \
+  --out workspace/opencl-c/semicolonless-screen
+workspace/tools/python/bin/python -I -B calibration/oracles/opencl-c/triage.py \
+  --subject workspace/opencl-c/holdout/compute-samples \
+  --commit 1b2d5d2afff61cdc7370778849f848b76cee00a6 \
+  --grammar opencl-patched=tree_sitter_opencl=workspace/opencl-c/build/opencl-c-patched/native.dylib \
+  --grammar opencl-semicolonless=tree_sitter_opencl=workspace/opencl-c/build/opencl-c-semicolonless/native.dylib \
+  --out workspace/opencl-c/semicolonless-holdout
+```
+
+The patch-directory README marks both patches calibration-only and unregistered;
+no lock row or product grammar is added. The original eight X-R8 sites and exact
+public verification methods are in `xr8-sites.json` and `verification.json`.
+The two tag-API hashes use compact JSON serialization with preserved key order,
+default ASCII escaping and no trailing newline; they are not raw-wire hashes
+that every HTTP client must reproduce. OpenCLio source URLs consistently use
+`sniarchos/openclio`.

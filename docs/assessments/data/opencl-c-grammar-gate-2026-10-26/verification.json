@@ -25,19 +25,174 @@
     ],
     "subject_people_or_emails_retained": 0
   },
+  "route": {
+    "convention": "template-convention-search.json: bounded five-project search found no second independent exact match; code search 401 is no absence proof",
+    "gate": "G-R6 intermediate non-clBLAS <=19 fired; whole-pool <=19 native gate failed; runtime prepass and owner ruling remain pending",
+    "holdout": "semicolonless-holdout.json: 2/53, reused diagnostic after tuning, not independent validation",
+    "original_baseline": "screen.json, builds.json, holdout.json remain historical original candidate receipts; original five-build descriptor and four candidate metadata predate the sixth row",
+    "original_patch_rebuild": "baseline-review-build.json: fresh 137/137 baseline for direct comparison",
+    "primary": "semicolonless-screen.json: 53/386 (13.73%), 10 error-to-clean, zero regressions or faults, 13 non-clBLAS",
+    "semicolonless_build": "semicolonless-build.json: 145/145 corpus cases; parser.c SHA-256 a80b70ec3ff815bf6c80a2f86f2035ee2a0f1d838cc48c40f108a22fde4ef116"
+  },
   "scanner": {
-    "baseline_scope": "per-command only; exact eight findings; no global hook change or bypass",
+    "baseline_scope": "Historical original eight findings only; current follow-up scanner receipt is review_followup.",
+    "compact_json_method": "SHA-256 of json.dumps(json.loads(response_bytes), separators=(',', ':')).encode('utf-8') using Python's default ensure_ascii=True and insertion-preserved object key order. No key sorting or trailing newline.",
     "eligible_under": "X-R8",
+    "original_sites": [
+      {
+        "file": "calibration/oracles/opencl-c/SEARCH.md",
+        "line_at_original_head": 14,
+        "method": "Public commits API returns the exact full SHA in tree-sitter/tree-sitter-cpp.",
+        "rule": "sourcegraph-access-token"
+      },
+      {
+        "file": "calibration/oracles/opencl-c/parser-candidates.json",
+        "line_at_original_head": 18,
+        "method": "Public commits API returns the exact full SHA in inducer/pycparserext.",
+        "rule": "sourcegraph-access-token"
+      },
+      {
+        "file": "calibration/oracles/opencl-c/parser-candidates.json",
+        "line_at_original_head": 20,
+        "method": "Recomputed the compact JSON SHA-256 of the public tag API response and checked v2026.1 resolves to the pinned commit.",
+        "rule": "generic-api-key"
+      },
+      {
+        "file": "calibration/oracles/opencl-c/parser-candidates.json",
+        "line_at_original_head": 73,
+        "method": "Public commits API returns the exact full SHA in sniarchos/openclio.",
+        "rule": "sourcegraph-access-token"
+      },
+      {
+        "file": "calibration/oracles/opencl-c/parser-candidates.json",
+        "line_at_original_head": 75,
+        "method": "Recomputed the compact JSON SHA-256 of the public tag API response and checked v0.3-alpha resolves to the pinned commit. The prior zehanort URL redirects to the same repository, whose canonical name is sniarchos/openclio.",
+        "rule": "generic-api-key"
+      },
+      {
+        "file": "calibration/oracles/opencl-c/parser-candidates.json",
+        "line_at_original_head": 157,
+        "method": "Public commits API returns the exact full SHA in sourcegraph/scip-clang.",
+        "rule": "sourcegraph-access-token"
+      },
+      {
+        "file": "calibration/oracles/opencl-c/parser-candidates.json",
+        "line_at_original_head": 158,
+        "method": "Public commits API returns the exact full SHA in llvm/llvm-project.",
+        "rule": "sourcegraph-access-token"
+      },
+      {
+        "file": "calibration/oracles/opencl-c/parser-candidates.json",
+        "line_at_original_head": 203,
+        "method": "Public commits API returns the exact full SHA in sourcegraph/scip-clang.",
+        "rule": "sourcegraph-access-token"
+      }
+    ],
     "raw_findings": 8,
+    "review_followup": {
+      "baseline_scope": "exact findings verified under X-R8, per-command only; no hook bypass or global edit",
+      "raw_findings": 14,
+      "rules": {
+        "generic-api-key": 2,
+        "sourcegraph-access-token": 12
+      },
+      "sites": [
+        {
+          "file": "calibration/oracles/opencl-c/parser-candidates.json",
+          "line": 20,
+          "method": "recomputed named public tag API compact JSON SHA-256",
+          "rule": "generic-api-key"
+        },
+        {
+          "file": "calibration/oracles/opencl-c/parser-candidates.json",
+          "line": 75,
+          "method": "recomputed named public tag API compact JSON SHA-256",
+          "rule": "generic-api-key"
+        },
+        {
+          "file": "docs/assessments/data/opencl-c-grammar-gate-2026-10-26/xr8-sites.json",
+          "line": 13,
+          "method": "exact full SHA resolves through named public commits API",
+          "rule": "sourcegraph-access-token"
+        },
+        {
+          "file": "docs/assessments/data/opencl-c-grammar-gate-2026-10-26/xr8-sites.json",
+          "line": 14,
+          "method": "exact full SHA resolves through named public commits API",
+          "rule": "sourcegraph-access-token"
+        },
+        {
+          "file": "docs/assessments/data/opencl-c-grammar-gate-2026-10-26/xr8-sites.json",
+          "line": 22,
+          "method": "exact full SHA resolves through named public commits API",
+          "rule": "sourcegraph-access-token"
+        },
+        {
+          "file": "docs/assessments/data/opencl-c-grammar-gate-2026-10-26/xr8-sites.json",
+          "line": 23,
+          "method": "exact full SHA resolves through named public commits API",
+          "rule": "sourcegraph-access-token"
+        },
+        {
+          "file": "docs/assessments/data/opencl-c-grammar-gate-2026-10-26/xr8-sites.json",
+          "line": 40,
+          "method": "exact full SHA resolves through named public commits API",
+          "rule": "sourcegraph-access-token"
+        },
+        {
+          "file": "docs/assessments/data/opencl-c-grammar-gate-2026-10-26/xr8-sites.json",
+          "line": 41,
+          "method": "exact full SHA resolves through named public commits API",
+          "rule": "sourcegraph-access-token"
+        },
+        {
+          "file": "docs/assessments/data/opencl-c-grammar-gate-2026-10-26/xr8-sites.json",
+          "line": 58,
+          "method": "exact full SHA resolves through named public commits API",
+          "rule": "sourcegraph-access-token"
+        },
+        {
+          "file": "docs/assessments/data/opencl-c-grammar-gate-2026-10-26/xr8-sites.json",
+          "line": 59,
+          "method": "exact full SHA resolves through named public commits API",
+          "rule": "sourcegraph-access-token"
+        },
+        {
+          "file": "docs/assessments/data/opencl-c-grammar-gate-2026-10-26/xr8-sites.json",
+          "line": 67,
+          "method": "exact full SHA resolves through named public commits API",
+          "rule": "sourcegraph-access-token"
+        },
+        {
+          "file": "docs/assessments/data/opencl-c-grammar-gate-2026-10-26/xr8-sites.json",
+          "line": 68,
+          "method": "exact full SHA resolves through named public commits API",
+          "rule": "sourcegraph-access-token"
+        },
+        {
+          "file": "docs/assessments/data/opencl-c-grammar-gate-2026-10-26/xr8-sites.json",
+          "line": 76,
+          "method": "exact full SHA resolves through named public commits API",
+          "rule": "sourcegraph-access-token"
+        },
+        {
+          "file": "docs/assessments/data/opencl-c-grammar-gate-2026-10-26/xr8-sites.json",
+          "line": 77,
+          "method": "exact full SHA resolves through named public commits API",
+          "rule": "sourcegraph-access-token"
+        }
+      ]
+    },
     "rules": {
       "generic-api-key": 2,
       "sourcegraph-access-token": 6
     },
-    "verification": "Six full public git commits resolve in their named repositories; two named public API response SHA-256 values recomputed. Redacted file:line and verification methods are in private program LOG."
+    "verification": "Six full public git commits resolve through their named public commits APIs. The two tag-API checksums use the explicitly documented compact-JSON serialization, not a cross-client raw-wire byte claim. Public original sites and methods are below and in xr8-sites.json."
   },
   "schema": "opencl-c-native-gate-verification-v1",
-  "scope": "native-only refusal proposal; no support level or semantic ceiling",
+  "scope": "native-only refusal proposal; original 63/386 evidence retained, subsequent semicolonless route 53/386; G-R6 intermediate trigger fired, no prepass or support level",
   "tests": {
+    "local_review": "One replay-command portability minor corrected to match README paths and ignored output; no remaining findings.",
     "merge_debris": {
       "commands": [
         "bash scripts/check-merge-debris.sh",
@@ -48,7 +203,7 @@
     "org_agnostic": {
       "command": "bash scripts/fathom-go.sh test -count=1 -run TestNoOrgSpecificNames ./cmd/fathom",
       "result": "pass",
-      "seconds": 2.476
+      "seconds": 2.429
     },
     "patch_engine_race": {
       "command": "bash scripts/fathom-go.sh test -race -count=1 -run \"Test(Patch|ApplyPatches|BuildPatch|InTreePatch|VerifyGrammarPatch|PatchedProvenance)\" ./internal/extractor/tsengine",
@@ -58,8 +213,16 @@
     "python": {
       "command": "for test_file in calibration/oracles/opencl-c/test_*.py; do workspace/tools/python/bin/python -I -B \"$test_file\" || exit; done",
       "failed": 0,
-      "files": 7,
-      "passed": 83
+      "files": 8,
+      "fresh_checkout_after_m1": {
+        "clone": "no-hardlinks, no-local, depth-one, no initial workspace",
+        "command": "for test_file in calibration/oracles/opencl-c/test_*.py; do workspace/tools/python/bin/python -I -B \"$test_file\" || exit; done",
+        "failed": 0,
+        "note": "Interpreter was supplied from the existing external workspace environment so creating it did not pre-create workspace in the fresh test checkout.",
+        "passed": 83
+      },
+      "historical_scope": "Original 83-pass result required preexisting workspace; binding m1 reproduced 16 tests/1 FileNotFoundError in a fresh no-hardlinks checkout. One-line parent-directory fix then passed all original83 from a clone that began without workspace. New route tests and fresh 91-test verification are separate and not yet recorded as run in this receipt.",
+      "passed": 91
     },
     "release_notes": {
       "command": "bash scripts/fathom-go.sh run ./third_party/agentic-kit/cmd/release-notes -check",

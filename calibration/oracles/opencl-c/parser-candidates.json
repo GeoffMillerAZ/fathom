@@ -17,7 +17,7 @@
         "tag": "v2026.1",
         "commit": "b31efb8b18186c811670ccdc9c25e63caa9454d5",
         "tag_api": "https://api.github.com/repos/inducer/pycparserext/tags?per_page=100",
-        "tag_api_raw_sha256": "a9a4c971249353b1fea77c059ad800ddda0dadcdf8c4df630548fdff9b8be62d",
+        "tag_api_compact_json_sha256": "a9a4c971249353b1fea77c059ad800ddda0dadcdf8c4df630548fdff9b8be62d",
         "archive_url": "https://github.com/inducer/pycparserext/archive/b31efb8b18186c811670ccdc9c25e63caa9454d5.tar.gz",
         "archive_sha256": "98a06ff5bd00820dcca2b347f1d84a1683eb87856844f7fbeacded4c34f8f4ea",
         "inspection": "The tagged package sources and PyPI sdist package sources compare byte-for-byte."
@@ -71,9 +71,9 @@
         "repository": "https://github.com/sniarchos/openclio",
         "tag": "v0.3-alpha",
         "commit": "8c84eb2ebc90f27bf5569b00b32d3e21b268d69f",
-        "tag_api": "https://api.github.com/repos/zehanort/openclio/tags?per_page=100",
-        "tag_api_raw_sha256": "3b43960dc5fb17a54c05eef7d78408005d139897925692f8ec2a01c9ee5d451f",
-        "archive_url": "https://github.com/zehanort/openclio/archive/8c84eb2ebc90f27bf5569b00b32d3e21b268d69f.tar.gz",
+        "tag_api": "https://api.github.com/repos/sniarchos/openclio/tags?per_page=100",
+        "tag_api_compact_json_sha256": "3b43960dc5fb17a54c05eef7d78408005d139897925692f8ec2a01c9ee5d451f",
+        "archive_url": "https://github.com/sniarchos/openclio/archive/8c84eb2ebc90f27bf5569b00b32d3e21b268d69f.tar.gz",
         "archive_sha256": "bbc74be65a56188258febb2d8c1053a741cdf83d6b49d8d7703966e1d52b9089",
         "inspection": "The tagged package sources and PyPI sdist package sources compare byte-for-byte."
       },

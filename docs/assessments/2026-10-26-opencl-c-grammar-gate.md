@@ -1,9 +1,10 @@
 # OpenCL C native grammar gate
 
 The experimental OpenCL C patch improves the dedicated grammar from **138/386** to
-**63/386 ERROR-or-MISSING files**, but 16.32% remains above the unchanged 5% grammar gate.
+**63/386 ERROR-or-MISSING files**. A subsequent general semicolonless-macro grammar
+repair lowers that result to **53/386 (13.73%)**, still above the unchanged 5% grammar gate.
 The native candidate is proposed for refusal. This result adds no product WASM, dialect,
-reading, language level or canonical corpus, and it trims no subject or file. Relative to the dedicated grammar, 75 files become clean and none regress to errors or faults.
+reading, language level or canonical corpus, and it trims no subject or file. Relative to the original patch, 10 additional files become clean with zero regressions or faults. The original 75 dedicated-to-patch transitions remain historical.
 
 This is a grammar-gate disposition, not an oracle ceiling. Official LLVM 21.1.8 on macOS
 ARM64 has qualified the existing reconstructed compiler pipeline at tier B. Other semantic
@@ -14,22 +15,29 @@ but none can repair a raw syntax candidate that fails admission.
 
 The screen retained all eight fixed primary projects: **386 files, 382 distinct Git blobs
 and 4,256,615 bytes**. Every candidate parsed the same captured bytes. Duplicate blobs
-remain separate file observations, all checkouts stayed unchanged, and every one of the 40
-primary measurements completed with zero faults.
+remain separate file observations, all checkouts stayed unchanged, and the original
+40 measurements plus the later paired 16 measurements completed with zero faults.
 
 | Native candidate | Source pin | ERROR-or-MISSING | Rate | Disposition |
 |---|---|---:|---:|---|
+| OpenCL C patch plus semicolonless macro statements | tree-sitter-c v0.24.2 plus two pinned patches | 53/386 | 13.73% | Fails native gate |
 | Experimental OpenCL C patch over tree-sitter-c | tree-sitter-c v0.24.2, `b780e47fc780ddc8da13afa35a3f4ed5c157823d`, plus pinned patch | 63/386 | 16.32% | Fails native gate |
 | Dedicated tree-sitter-opencl | HEAD checked 2026-10-26, `8e1d24a57066b3cd1bb9685bbc1ca9de5c1b78fb` | 138/386 | 35.75% | Fails native gate |
 | tree-sitter-c | v0.24.2, `b780e47fc780ddc8da13afa35a3f4ed5c157823d` | 380/386 | 98.45% | Fails native gate |
 | tree-sitter-cpp | v0.23.4, `f41e1a044c8a84ea9fa8577fdd2eab92ec96de02` | 380/386 | 98.45% | Fails native gate |
 | tree-sitter-cpp | HEAD `8b5b49eb196bec7040441bee33b2c9a4838d6967` | 380/386 | 98.45% | Fails native gate |
 
-The patched builder also passed all **137 authored and inherited corpus cases** with a fresh
-generated parser. Passing that corpus does not override the complete-project gate. The
-public receipt targets are [screen.json](data/opencl-c-grammar-gate-2026-10-26/screen.json)
-and [builds.json](data/opencl-c-grammar-gate-2026-10-26/builds.json).
-[Verification](data/opencl-c-grammar-gate-2026-10-26/verification.json) records the 83
+The original patch passed **137** corpus cases; the semicolonless candidate passed
+**145** with a fresh generated parser (parser.c SHA-256
+`a80b70ec3ff815bf6c80a2f86f2035ee2a0f1d838cc48c40f108a22fde4ef116`).
+Passing that corpus does not override the complete-project gate. The
+original [screen.json](data/opencl-c-grammar-gate-2026-10-26/screen.json) and
+[builds.json](data/opencl-c-grammar-gate-2026-10-26/builds.json) preserve the historical
+five-build descriptor and four original candidate metadata. The added row above brings
+the named grammar candidates to six. New receipts: [primary screen](data/opencl-c-grammar-gate-2026-10-26/semicolonless-screen.json),
+[145-case build](data/opencl-c-grammar-gate-2026-10-26/semicolonless-build.json), and
+[fresh original-patch rebuild](data/opencl-c-grammar-gate-2026-10-26/baseline-review-build.json).
+[Verification](data/opencl-c-grammar-gate-2026-10-26/verification.json) records the 91
 focused Python tests, patch-engine race check, required gates and privacy checks.
 
 Hashcat remains diagnostic under the recorded structural exception. The pristine dedicated
@@ -38,29 +46,52 @@ was not included in that diagnostic comparison. The mandatory pristine dedicated
 measurements remain reported; no template or macro prepass was implemented. Hashcat's
 computed inputs would need independently evidenced compiler context for later semantic grading.
 
-## Why the patch still fails
+## Original residuals and the general-grammar route
 
-A manual audit of all 63 retained failing files assigns the following mutually exclusive
-classes. These labels explain the diagnostics; the mechanical gate counts every
-ERROR-or-MISSING file independently of the labels:
+The original 63-file candidate is a failing native screen, not proof that its
+raw grammar cannot admit every residual. The reproducible
+[63-row subset receipt](data/opencl-c-grammar-gate-2026-10-26/residual-labels.json)
+records each failing subject-relative path, first ERROR/MISSING kind and line,
+source hash, Git blob and subject pin. These paths are explicitly authorized by
+the binding review. Manual labels are separate from the mechanical failure count.
 
-| Residual class | Files | Why the raw grammar cannot admit them |
-|---|---:|---|
-| clBLAS host-string templates | 40 | The tracked `.cl` files are host-side template fragments rather than complete raw OpenCL C translation units. |
-| Macro expansion required | 11 | Parsing depends on macro-expanded syntax unavailable to the raw-byte grammar screen. |
-| Configuration fragments | 11 | The files require independently selected build configuration or assembly context. |
-| Conditional C++ linkage | 1 | Opening and closing C++ linkage braces are split across separate conditional directives; parsing needs the matching configuration context. |
+| Original residual class | Files |
+|---|---:|
+| clBLAS host-string templates | 40 |
+| Semicolonless macro invocations | 10 |
+| Macro-parameter fragments | 7 |
+| Conditional-branch fragments | 2 |
+| Macro-generated syntax | 2 |
+| Raw missing semicolon | 1 |
+| Conditional C++ linkage wrapper | 1 |
 
-Removing files would change the population and is prohibited. No template or macro
-preprocessing is implemented; G-R6 bars the requested clBLAS prepass at these counts. Even if the 40 clBLAS templates were set aside, the other
-23 failures still exceed the gate's maximum 19 failing files. OpenCL receives no exceptional
-threshold.
+The binding review identified a general statement/top-level-only macro route.
+The new candidate uses the existing identifier token, requires a physical newline
+after the argument list, and gives complete declarations higher dynamic priority.
+It passes 145 corpus cases, including malformed assignment/newline-boundary
+negatives and unchanged valid macro-typed declarations. One previous semicolonless
+negative now intentionally becomes a macro statement, not a function definition.
+Raw syntax cannot distinguish a bare ordinary call from a macro invocation with
+the same bytes; this extension is not a compiler-validity assertion.
+
+The route measures **53/386** on the whole frozen pool: 40 clBLAS and **13 non-clBLAS**
+failures, with 10 error-to-clean transitions and zero regressions or faults. Its new
+residual classes are 40 host-string templates, 7 macro-parameter fragments,
+1 semicolonless invocation, 2 conditional-branch fragments, 1 macro-generated
+syntax, 1 raw missing semicolon and 1 conditional C++ wrapper. The original 63-row
+labels above remain unchanged. The G-R6 intermediate trigger of at most **19**
+non-clBLAS failures has **fired**.
+That intermediate trigger does not require the whole pool already to pass 5%,
+and it does not itself authorize preprocessing. A later prepass must be runtime
+product behavior, recognize a convention used by two independent projects,
+preserve every file and receive the owner ruling required by G-R6.
 
 ## Named candidates and routes
 
 | Candidate or route | Version or pin | Concrete disposition |
 |---|---|---|
 | lefp/tree-sitter-opencl | `8e1d24a57066b3cd1bb9685bbc1ca9de5c1b78fb`, MIT | Complete fixed-pool screen fails 138/386. The PyPI 0.0.2 package is this grammar repackaged with bindings. |
+| Semicolonless tree-sitter-c patch | tree-sitter-c v0.24.2 / `b780e47f`, MIT, two pinned patches | 145/145 corpus cases pass; unchanged pool fails 53/386. No product grammar registered. |
 | Experimental tree-sitter-c patch | tree-sitter-c v0.24.2 / `b780e47f`, MIT, patch digest pinned in `grammar-candidates.json` | Fresh generation and 137/137 corpus cases pass, but the unchanged pool fails 63/386. |
 | tree-sitter-c | v0.24.2 / `b780e47f`, MIT | Stock C lacks OpenCL syntax and fails 380/386. |
 | tree-sitter-cpp | v0.23.4 / `f41e1a04`, MIT | Stock release fails 380/386 and adds no OpenCL-specific recovery. |
@@ -86,10 +117,17 @@ The Intel compute-samples holdout was pinned before tuning at
 The [holdout receipt](data/opencl-c-grammar-gate-2026-10-26/holdout.json) records
 its frozen rule, source identities and canonical-membership audit. No holdout
 file, pin or result enters a canonical corpus shard or the 386-file gate.
-Passing this separate holdout cannot rescue the failing primary pool, and no
-post-holdout grammar tuning is included. A final patch-format cleanup removed only
-empty context prefixes; exact grammar, corpus and generated parser bytes stayed
-unchanged, and the full primary/holdout rerun reproduced every count.
+The original 4a4f55c29 candidate included no post-holdout tuning; its final
+patch-format cleanup preserved exact grammar/corpus/parser bytes. The binding
+review now authorizes a new grammar route after this holdout was read. Its [remeasurement](data/opencl-c-grammar-gate-2026-10-26/semicolonless-holdout.json)
+remains **2/53**, zero faults and unchanged source, but is a **reused diagnostic after
+tuning**, not independent validation, and cannot rescue a failing primary pool.
+
+The [bounded convention search](../../calibration/oracles/opencl-c/template-convention-search.json)
+inspected five projects including clBLAS and found no second independent match for
+its exact host-string convention. Four unauthenticated GitHub code-search requests
+returned 401; that is no absence proof. The intermediate numeric trigger permits
+asking the prepass question but authorizes no runtime prepass.
 
 Retry native admission only when a new licensed grammar or an independently validated
 product-context solution clears the **whole unchanged fixed pool at no more than 5%
@@ -100,3 +138,18 @@ language server does not fire the trigger.
 
 ADR-048 and LB-Q-opencl govern the controller's queue disposition. This assessment proposes
 the native refusal only. It changes no queue row, plan checkbox, ADR or generated file.
+
+## Review corrections
+
+The fresh-checkout compdb test failed once because `workspace/` did not exist.
+The test now creates that parent, and all original 83 tests passed from a fresh
+no-hardlinks clone that began without `workspace/`. The residual-audit tests and
+fresh native replay are additional checks, not part of the original 83 count.
+
+[The public X-R8 receipt](data/opencl-c-grammar-gate-2026-10-26/xr8-sites.json)
+lists the eight original scanner sites and the methods actually used. The two
+API-response hashes explicitly use compact JSON serialization, not client-invariant
+raw bytes, and OpenCLio now uses one canonical repository owner. Verification
+contains the same public site/method list; it no longer requires a private LOG.
+The patch-directory README identifies both candidates as calibration-only, failed
+admission and unregistered. Nothing in that directory authorizes a product lock row.

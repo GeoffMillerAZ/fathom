@@ -1,0 +1,48 @@
+{
+  "candidate": {
+    "commit": "b780e47fc780ddc8da13afa35a3f4ed5c157823d",
+    "entry_point": "tree_sitter_opencl",
+    "generate": true,
+    "id": "opencl-c-patched",
+    "repository": "https://github.com/tree-sitter/tree-sitter-c",
+    "scanner": false,
+    "version": "v0.24.2 plus experimental OpenCL C patch"
+  },
+  "hashes": {
+    "archive_sha256": "dc3979e40fce678c27273ba8ab93b48b5acd6b91d1dfde6a4451222d366d689f",
+    "candidate_config_sha256": "a4906d829297179b76b33a922513f44e2a3c14641c3f5ce97bcd10e7a4a0137b",
+    "license_sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1",
+    "native_sha256": "97c90f43aad80b459173db745d8c60e1b3ef1044c4e86cb60fe16d6567e24f3c",
+    "original_parser_c_sha256": "f2883ff9b21f4a5bd5553c1b10366c418947d17a7bc6bf256124a7542f079dd2",
+    "parser_c_sha256": "36b98273c162efea7a74188fe2395f60b3dd1a96ff987655aea3424089a243f5",
+    "patches_sha256": "453fca08fb0dad535e5ddcf989860bccd2eb3ed8c56cdff597afdd76c38baa96",
+    "tool_versions_sha256": "efcd4729536bb5bf9848ced1e5cce8aa422ffb79e2629e63ab4543801551a73c"
+  },
+  "patches": [
+    {
+      "path": "patches/opencl/0001-opencl-c-syntax.patch",
+      "sha256": "3227529eaa2d1c2c19f0d4d99ca6e856a23f8092cde8cc06b249a833a9743677"
+    }
+  ],
+  "proof": {
+    "language": "openclproof36b98273c162",
+    "native_sha256": "dbbd64705d3e4dd01a6ef8f815b4317fef29c00a33f4e7212afa162734602235",
+    "original_parser_unchanged": true,
+    "parser_c_sha256": "93d9d751fb1682b182cd01c97b04cf614c8f4c24d5f1324b49d296cad9efcdb3"
+  },
+  "schema": "opencl-native-grammar-build-v1",
+  "scope": "calibration-only native grammar build; no product WASM",
+  "test": {
+    "exit_code": 0,
+    "failed": 0,
+    "passed": 137,
+    "skipped": 0,
+    "total": 137
+  },
+  "tool_versions": {
+    "cc": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+    "cxx": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+    "git": "git version 2.54.0 (Apple Git-157)",
+    "tree_sitter": "tree-sitter 0.26.11"
+  }
+}

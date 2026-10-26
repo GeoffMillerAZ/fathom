@@ -1,0 +1,553 @@
+{
+  "baseline": "opencl-patched",
+  "diagnostic": {
+    "builds": [
+      {
+        "candidate": "c-stock",
+        "id": "c",
+        "mode": "builder-receipt",
+        "native_sha256": "7554fed9ab2c67ff6d558e0bc3a310a96c6ee223b88a33d656dde23ace2e9354",
+        "receipt_sha256": "7ce294a4ce7ce8367b4791bc7783d71d69b4d3e623008bffe8bec9c421d3f6d6"
+      },
+      {
+        "candidate": "opencl-stock",
+        "id": "opencl",
+        "mode": "builder-receipt",
+        "native_sha256": "a8fae629b0030649dfe0d6bb26677179b2df6108dd120f109496d557317e2e6f",
+        "receipt_sha256": "455a7c3e60274eeae4941a57b889afc6067a50514d013c49c6d50924d6c8030f"
+      }
+    ],
+    "bytes": 24761953,
+    "checkout_unchanged": true,
+    "distinct_blobs": 1347,
+    "files": 1349,
+    "grammars": [
+      {
+        "abi_version": 15,
+        "both_count": 1257,
+        "clean_count": 5,
+        "clean_rate": 0.0037064492216456633,
+        "error_only_count": 87,
+        "error_or_missing_count": 1344,
+        "fault_count": 0,
+        "id": "c",
+        "library_sha256": "7554fed9ab2c67ff6d558e0bc3a310a96c6ee223b88a33d656dde23ace2e9354",
+        "missing_only_count": 0,
+        "parsed_count": 1349,
+        "population_count": 1349
+      },
+      {
+        "abi_version": 14,
+        "both_count": 1123,
+        "clean_count": 5,
+        "clean_rate": 0.0037064492216456633,
+        "error_only_count": 221,
+        "error_or_missing_count": 1344,
+        "fault_count": 0,
+        "id": "opencl",
+        "library_sha256": "a8fae629b0030649dfe0d6bb26677179b2df6108dd120f109496d557317e2e6f",
+        "missing_only_count": 0,
+        "parsed_count": 1349,
+        "population_count": 1349
+      }
+    ],
+    "id": "hashcat",
+    "role": "diagnostic",
+    "transitions": []
+  },
+  "instrument": {
+    "configuration_sha256": "3f4be9bf6addfc54842aa55769e65aef56868c91e62f9701897e124d8ae7a316",
+    "pool_audit_sha256": "91c1161c38faf82532b0ed1c6f707aa6eaf37d3e41655ebdb3de9ec7d5fccaa6",
+    "pool_rule_sha256": "2e6ebd4c74fb0d579c72b235d0c20ba12d290fd4ae32330235cd694fed83e108",
+    "source_records_sha256": "1c79c4c489c96466eb8141071ccf797f187500124a2e7ba6f296e44ad4925eaf",
+    "triage_sha256": "3e43fbd6cc7c9cd8cdbab9de969d7da00b997091bc01dd928aec6f34a83b542a",
+    "wrapper_sha256": "254729c0a32aac9f5e78551bce568ee0c38d982ced769d9407e8166ad5f21c75"
+  },
+  "primary": [
+    {
+      "bytes": 467821,
+      "checkout_unchanged": true,
+      "distinct_blobs": 103,
+      "files": 103,
+      "grammars": [
+        {
+          "abi_version": 15,
+          "both_count": 0,
+          "clean_count": 103,
+          "clean_rate": 1.0,
+          "error_only_count": 0,
+          "error_or_missing_count": 0,
+          "fault_count": 0,
+          "id": "opencl-patched",
+          "library_sha256": "97c90f43aad80b459173db745d8c60e1b3ef1044c4e86cb60fe16d6567e24f3c",
+          "missing_only_count": 0,
+          "parsed_count": 103,
+          "population_count": 103
+        },
+        {
+          "abi_version": 15,
+          "both_count": 0,
+          "clean_count": 103,
+          "clean_rate": 1.0,
+          "error_only_count": 0,
+          "error_or_missing_count": 0,
+          "fault_count": 0,
+          "id": "opencl-semicolonless",
+          "library_sha256": "877cd69ac1b3dc9b398fc594b5f943d6a180b0d0f3567bdb8d6913e19b5fc67f",
+          "missing_only_count": 0,
+          "parsed_count": 103,
+          "population_count": 103
+        }
+      ],
+      "id": "arrayfire",
+      "role": "primary",
+      "transitions": [
+        {
+          "baseline": "opencl-patched",
+          "clean_to_error_count": 0,
+          "clean_to_fault_count": 0,
+          "error_to_clean_count": 0,
+          "error_to_fault_count": 0,
+          "fault_count_delta": 0,
+          "fault_to_clean_count": 0,
+          "fault_to_error_count": 0,
+          "id": "opencl-semicolonless",
+          "population_count": 103,
+          "unchanged_count": 103
+        }
+      ]
+    },
+    {
+      "bytes": 1133326,
+      "checkout_unchanged": true,
+      "distinct_blobs": 40,
+      "files": 40,
+      "grammars": [
+        {
+          "abi_version": 15,
+          "both_count": 34,
+          "clean_count": 0,
+          "clean_rate": 0.0,
+          "error_only_count": 6,
+          "error_or_missing_count": 40,
+          "fault_count": 0,
+          "id": "opencl-patched",
+          "library_sha256": "97c90f43aad80b459173db745d8c60e1b3ef1044c4e86cb60fe16d6567e24f3c",
+          "missing_only_count": 0,
+          "parsed_count": 40,
+          "population_count": 40
+        },
+        {
+          "abi_version": 15,
+          "both_count": 34,
+          "clean_count": 0,
+          "clean_rate": 0.0,
+          "error_only_count": 6,
+          "error_or_missing_count": 40,
+          "fault_count": 0,
+          "id": "opencl-semicolonless",
+          "library_sha256": "877cd69ac1b3dc9b398fc594b5f943d6a180b0d0f3567bdb8d6913e19b5fc67f",
+          "missing_only_count": 0,
+          "parsed_count": 40,
+          "population_count": 40
+        }
+      ],
+      "id": "clblas",
+      "role": "primary",
+      "transitions": [
+        {
+          "baseline": "opencl-patched",
+          "clean_to_error_count": 0,
+          "clean_to_fault_count": 0,
+          "error_to_clean_count": 0,
+          "error_to_fault_count": 0,
+          "fault_count_delta": 0,
+          "fault_to_clean_count": 0,
+          "fault_to_error_count": 0,
+          "id": "opencl-semicolonless",
+          "population_count": 40,
+          "unchanged_count": 40
+        }
+      ]
+    },
+    {
+      "bytes": 726693,
+      "checkout_unchanged": true,
+      "distinct_blobs": 46,
+      "files": 46,
+      "grammars": [
+        {
+          "abi_version": 15,
+          "both_count": 0,
+          "clean_count": 44,
+          "clean_rate": 0.9565217391304348,
+          "error_only_count": 0,
+          "error_or_missing_count": 2,
+          "fault_count": 0,
+          "id": "opencl-patched",
+          "library_sha256": "97c90f43aad80b459173db745d8c60e1b3ef1044c4e86cb60fe16d6567e24f3c",
+          "missing_only_count": 2,
+          "parsed_count": 46,
+          "population_count": 46
+        },
+        {
+          "abi_version": 15,
+          "both_count": 0,
+          "clean_count": 46,
+          "clean_rate": 1.0,
+          "error_only_count": 0,
+          "error_or_missing_count": 0,
+          "fault_count": 0,
+          "id": "opencl-semicolonless",
+          "library_sha256": "877cd69ac1b3dc9b398fc594b5f943d6a180b0d0f3567bdb8d6913e19b5fc67f",
+          "missing_only_count": 0,
+          "parsed_count": 46,
+          "population_count": 46
+        }
+      ],
+      "id": "darktable",
+      "role": "primary",
+      "transitions": [
+        {
+          "baseline": "opencl-patched",
+          "clean_to_error_count": 0,
+          "clean_to_fault_count": 0,
+          "error_to_clean_count": 2,
+          "error_to_fault_count": 0,
+          "fault_count_delta": 0,
+          "fault_to_clean_count": 0,
+          "fault_to_error_count": 0,
+          "id": "opencl-semicolonless",
+          "population_count": 46,
+          "unchanged_count": 44
+        }
+      ]
+    },
+    {
+      "bytes": 1215747,
+      "checkout_unchanged": true,
+      "distinct_blobs": 110,
+      "files": 110,
+      "grammars": [
+        {
+          "abi_version": 15,
+          "both_count": 6,
+          "clean_count": 92,
+          "clean_rate": 0.8363636363636363,
+          "error_only_count": 4,
+          "error_or_missing_count": 18,
+          "fault_count": 0,
+          "id": "opencl-patched",
+          "library_sha256": "97c90f43aad80b459173db745d8c60e1b3ef1044c4e86cb60fe16d6567e24f3c",
+          "missing_only_count": 8,
+          "parsed_count": 110,
+          "population_count": 110
+        },
+        {
+          "abi_version": 15,
+          "both_count": 6,
+          "clean_count": 99,
+          "clean_rate": 0.9,
+          "error_only_count": 4,
+          "error_or_missing_count": 11,
+          "fault_count": 0,
+          "id": "opencl-semicolonless",
+          "library_sha256": "877cd69ac1b3dc9b398fc594b5f943d6a180b0d0f3567bdb8d6913e19b5fc67f",
+          "missing_only_count": 1,
+          "parsed_count": 110,
+          "population_count": 110
+        }
+      ],
+      "id": "opencv",
+      "role": "primary",
+      "transitions": [
+        {
+          "baseline": "opencl-patched",
+          "clean_to_error_count": 0,
+          "clean_to_fault_count": 0,
+          "error_to_clean_count": 7,
+          "error_to_fault_count": 0,
+          "fault_count_delta": 0,
+          "fault_to_clean_count": 0,
+          "fault_to_error_count": 0,
+          "id": "opencl-semicolonless",
+          "population_count": 110,
+          "unchanged_count": 103
+        }
+      ]
+    },
+    {
+      "bytes": 160335,
+      "checkout_unchanged": true,
+      "distinct_blobs": 8,
+      "files": 8,
+      "grammars": [
+        {
+          "abi_version": 15,
+          "both_count": 1,
+          "clean_count": 6,
+          "clean_rate": 0.75,
+          "error_only_count": 0,
+          "error_or_missing_count": 2,
+          "fault_count": 0,
+          "id": "opencl-patched",
+          "library_sha256": "97c90f43aad80b459173db745d8c60e1b3ef1044c4e86cb60fe16d6567e24f3c",
+          "missing_only_count": 1,
+          "parsed_count": 8,
+          "population_count": 8
+        },
+        {
+          "abi_version": 15,
+          "both_count": 1,
+          "clean_count": 7,
+          "clean_rate": 0.875,
+          "error_only_count": 0,
+          "error_or_missing_count": 1,
+          "fault_count": 0,
+          "id": "opencl-semicolonless",
+          "library_sha256": "877cd69ac1b3dc9b398fc594b5f943d6a180b0d0f3567bdb8d6913e19b5fc67f",
+          "missing_only_count": 0,
+          "parsed_count": 8,
+          "population_count": 8
+        }
+      ],
+      "id": "pyopencl",
+      "role": "primary",
+      "transitions": [
+        {
+          "baseline": "opencl-patched",
+          "clean_to_error_count": 0,
+          "clean_to_fault_count": 0,
+          "error_to_clean_count": 1,
+          "error_to_fault_count": 0,
+          "fault_count_delta": 0,
+          "fault_to_clean_count": 0,
+          "fault_to_error_count": 0,
+          "id": "opencl-semicolonless",
+          "population_count": 8,
+          "unchanged_count": 7
+        }
+      ]
+    },
+    {
+      "bytes": 297447,
+      "checkout_unchanged": true,
+      "distinct_blobs": 28,
+      "files": 31,
+      "grammars": [
+        {
+          "abi_version": 15,
+          "both_count": 0,
+          "clean_count": 30,
+          "clean_rate": 0.967741935483871,
+          "error_only_count": 0,
+          "error_or_missing_count": 1,
+          "fault_count": 0,
+          "id": "opencl-patched",
+          "library_sha256": "97c90f43aad80b459173db745d8c60e1b3ef1044c4e86cb60fe16d6567e24f3c",
+          "missing_only_count": 1,
+          "parsed_count": 31,
+          "population_count": 31
+        },
+        {
+          "abi_version": 15,
+          "both_count": 0,
+          "clean_count": 30,
+          "clean_rate": 0.967741935483871,
+          "error_only_count": 0,
+          "error_or_missing_count": 1,
+          "fault_count": 0,
+          "id": "opencl-semicolonless",
+          "library_sha256": "877cd69ac1b3dc9b398fc594b5f943d6a180b0d0f3567bdb8d6913e19b5fc67f",
+          "missing_only_count": 1,
+          "parsed_count": 31,
+          "population_count": 31
+        }
+      ],
+      "id": "rodinia",
+      "role": "primary",
+      "transitions": [
+        {
+          "baseline": "opencl-patched",
+          "clean_to_error_count": 0,
+          "clean_to_fault_count": 0,
+          "error_to_clean_count": 0,
+          "error_to_fault_count": 0,
+          "fault_count_delta": 0,
+          "fault_to_clean_count": 0,
+          "fault_to_error_count": 0,
+          "id": "opencl-semicolonless",
+          "population_count": 31,
+          "unchanged_count": 31
+        }
+      ]
+    },
+    {
+      "bytes": 29468,
+      "checkout_unchanged": true,
+      "distinct_blobs": 9,
+      "files": 10,
+      "grammars": [
+        {
+          "abi_version": 15,
+          "both_count": 0,
+          "clean_count": 10,
+          "clean_rate": 1.0,
+          "error_only_count": 0,
+          "error_or_missing_count": 0,
+          "fault_count": 0,
+          "id": "opencl-patched",
+          "library_sha256": "97c90f43aad80b459173db745d8c60e1b3ef1044c4e86cb60fe16d6567e24f3c",
+          "missing_only_count": 0,
+          "parsed_count": 10,
+          "population_count": 10
+        },
+        {
+          "abi_version": 15,
+          "both_count": 0,
+          "clean_count": 10,
+          "clean_rate": 1.0,
+          "error_only_count": 0,
+          "error_or_missing_count": 0,
+          "fault_count": 0,
+          "id": "opencl-semicolonless",
+          "library_sha256": "877cd69ac1b3dc9b398fc594b5f943d6a180b0d0f3567bdb8d6913e19b5fc67f",
+          "missing_only_count": 0,
+          "parsed_count": 10,
+          "population_count": 10
+        }
+      ],
+      "id": "sdk",
+      "role": "primary",
+      "transitions": [
+        {
+          "baseline": "opencl-patched",
+          "clean_to_error_count": 0,
+          "clean_to_fault_count": 0,
+          "error_to_clean_count": 0,
+          "error_to_fault_count": 0,
+          "fault_count_delta": 0,
+          "fault_to_clean_count": 0,
+          "fault_to_error_count": 0,
+          "id": "opencl-semicolonless",
+          "population_count": 10,
+          "unchanged_count": 10
+        }
+      ]
+    },
+    {
+      "bytes": 225778,
+      "checkout_unchanged": true,
+      "distinct_blobs": 38,
+      "files": 38,
+      "grammars": [
+        {
+          "abi_version": 15,
+          "both_count": 0,
+          "clean_count": 38,
+          "clean_rate": 1.0,
+          "error_only_count": 0,
+          "error_or_missing_count": 0,
+          "fault_count": 0,
+          "id": "opencl-patched",
+          "library_sha256": "97c90f43aad80b459173db745d8c60e1b3ef1044c4e86cb60fe16d6567e24f3c",
+          "missing_only_count": 0,
+          "parsed_count": 38,
+          "population_count": 38
+        },
+        {
+          "abi_version": 15,
+          "both_count": 0,
+          "clean_count": 38,
+          "clean_rate": 1.0,
+          "error_only_count": 0,
+          "error_or_missing_count": 0,
+          "fault_count": 0,
+          "id": "opencl-semicolonless",
+          "library_sha256": "877cd69ac1b3dc9b398fc594b5f943d6a180b0d0f3567bdb8d6913e19b5fc67f",
+          "missing_only_count": 0,
+          "parsed_count": 38,
+          "population_count": 38
+        }
+      ],
+      "id": "shoc",
+      "role": "primary",
+      "transitions": [
+        {
+          "baseline": "opencl-patched",
+          "clean_to_error_count": 0,
+          "clean_to_fault_count": 0,
+          "error_to_clean_count": 0,
+          "error_to_fault_count": 0,
+          "fault_count_delta": 0,
+          "fault_to_clean_count": 0,
+          "fault_to_error_count": 0,
+          "id": "opencl-semicolonless",
+          "population_count": 38,
+          "unchanged_count": 38
+        }
+      ]
+    }
+  ],
+  "primary_totals": {
+    "bytes": 4256615,
+    "distinct_blobs": 382,
+    "files": 386,
+    "grammars": [
+      {
+        "abi_version": 15,
+        "both_count": 41,
+        "clean_count": 323,
+        "clean_rate": 0.8367875647668394,
+        "error_only_count": 10,
+        "error_or_missing_count": 63,
+        "fault_count": 0,
+        "id": "opencl-patched",
+        "library_sha256": "97c90f43aad80b459173db745d8c60e1b3ef1044c4e86cb60fe16d6567e24f3c",
+        "missing_only_count": 12,
+        "parsed_count": 386,
+        "population_count": 386
+      },
+      {
+        "abi_version": 15,
+        "both_count": 41,
+        "clean_count": 333,
+        "clean_rate": 0.8626943005181347,
+        "error_only_count": 10,
+        "error_or_missing_count": 53,
+        "fault_count": 0,
+        "id": "opencl-semicolonless",
+        "library_sha256": "877cd69ac1b3dc9b398fc594b5f943d6a180b0d0f3567bdb8d6913e19b5fc67f",
+        "missing_only_count": 2,
+        "parsed_count": 386,
+        "population_count": 386
+      }
+    ],
+    "subjects": 8,
+    "transitions": [
+      {
+        "baseline": "opencl-patched",
+        "clean_to_error_count": 0,
+        "clean_to_fault_count": 0,
+        "error_to_clean_count": 10,
+        "error_to_fault_count": 0,
+        "fault_count_delta": 0,
+        "fault_to_clean_count": 0,
+        "fault_to_error_count": 0,
+        "id": "opencl-semicolonless",
+        "population_count": 386,
+        "unchanged_count": 376
+      }
+    ]
+  },
+  "schema": "opencl-c-native-grammar-screen-v1",
+  "scope": "native grammar measurement only",
+  "tree_sitter": "0.25.2",
+  "triage_facts": {
+    "checkout_unchanged": true,
+    "diagnostic_measurements": 2,
+    "fault_count": 0,
+    "primary_measurements": 16,
+    "primary_subjects": 8
+  }
+}
