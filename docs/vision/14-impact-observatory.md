@@ -266,7 +266,7 @@ of a verb that already works headless.
 ## 10. Activation order (each stamped, per law 6)
 
 1. Ops now (no code): the PATH shim; fix the `../geoffmiller-cloud`
-   consumer curl; `fathom remap` platform-engineering to its canonical
+   consumer curl; `fathom remap` the platform monorepo to its canonical
    root; registry surgery for the malformed twin + nested root per the O1
    playbook.
 2. Version stamps (§3) + arm/ledger fields (§2) — additive, small, they

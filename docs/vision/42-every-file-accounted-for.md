@@ -38,7 +38,7 @@ The owner asked, on 2026-10-10:
   token efficiency, correctness, exploration, agent coding capability, expert systems?
 - **N8.** Operational excellence: fathom will map well-architected reviews and help prevent incidents by finding the
   configuration or code gaps that cause outages. Could semantic layers track critical concerns such as memory
-  management, or Kubernetes practice (init containers, resource limits and so on)? Does that cross into Review Kit's
+  management, or Kubernetes practice (init containers, resource limits and so on)? Does that cross into the review kit's
   domain, or is there a synergy?
 - **N9.** Opt-in or default: probably opt-in, unless cost says otherwise. If Jev or other cheap decision APIs, and
   agent-driven decision agents that generate the decision-API inputs, can populate these layers for much less, some
@@ -67,10 +67,10 @@ The owner asked, on 2026-10-10:
   decision 2 (no new table, column, cache or background job until RT-M1 reads PASS), ADR-050 (one contract-key link
   model, the `pkg:` kind, dependencies from local caches), ADR-051 decision 1 (ingested coverage is read and joined
   at request time, never stored), ADR-055 decisions 4, 7 and 8 (feature verdicts are human, rule content and
-  dispositions stay in Review Kit), ADR-056 R1 to R8 (R1: a model never decides what is computable, every judged
+  dispositions stay in the review kit), ADR-056 R1 to R8 (R1: a model never decides what is computable, every judged
   site opt-in per repository, J0 before any model reads code), ADR-061 (tech packs, proposed), ADR-062 (telemetry
-  links, Stage B gated on census E), ADR-063 O1, O2, O4 and O6 (ci-kit owns the package closure, Review Kit judges
-  over fathom's facts through its bridge, test-kit envelopes are the test-fact source, generated files carry
+  links, Stage B gated on census E), ADR-063 O1, O2, O4 and O6 (the CI kit owns the package closure, the review kit judges
+  over fathom's facts through its bridge, the test kit envelopes are the test-fact source, generated files carry
   provenance), ADR-064 (an interim fact lives in its own file's observations).
 - *Owner rulings*: K15 (universal concepts in core, specifics in packs), K19 (the Stage A label-join kill stays fired,
   and a re-opened reading needs a rule committed before any holdout reading), K22 (fathom's automatic passes never
@@ -78,10 +78,10 @@ The owner asked, on 2026-10-10:
   K26 (a change over +20% store or +15% wall ships only with a recorded owner ruling). K22, K23 and K26 were recorded
   only in an operator note until now. The language lane commits them in `docs/design/language-breadth.md` section
   1.8 (LB-F455), since only that lane edits the language-breadth files.
-- *Records outside fathom that bind section 6*: platform-engineering ADR-0095 decision 5 ("A resource-shaped
-  requirement is refused at vet unless it joins policy-kit by canonId"), platform-engineering ADR-0015 (policy-kit:
-  CUE-authored, CEL-first policy, unbuilt), Review Kit future F5 ("Do not build: infrastructure scanners or a second
-  resource-policy evaluator").
+- *Records outside fathom that bind section 6*: the review kit's resource-rule boundary ("A resource-shaped
+  requirement is refused at vet unless it joins the policy kit by control id"), the policy kit's own record (unbuilt),
+  and the review kit's do-not-build rule ("Do not build: infrastructure scanners or a second resource-policy
+  evaluator").
 - *Refusal already on the record*: JP-X2 refuses computable labels as model work: generated or vendored files,
   config versus code, public API, ownership, I/O reach.
 - *Autonomy*: the bench and model spend hold of 2026-09-29 is in force (`docs/intent/autonomy.md`). A spending
@@ -91,7 +91,7 @@ The owner asked, on 2026-10-10:
   joins). None has fired. Census E reads .1451 against F66's .25 bar.
 - *Fired triggers*: none. No Revisit-when, Promote-when or Drop-if condition in the records above has fired.
 - *Record defects found while reading*, each corrected in the same change as this record:
-  1. ADR-055 decision 8(c) says Review Kit concern packs "compile into fathom obligations at the edit (packs already
+  1. ADR-055 decision 8(c) says the review kit's concern packs "compile into fathom obligations at the edit (packs already
      exist)", and its Consequences bullet repeats it ("its concern packs continue compiling into fathom obligations
      at the edit"). No such compiler exists in either repository. The only path to the edit is the findings outbox
      import. Both places are amended.
@@ -123,7 +123,7 @@ the rule it must keep. Fathom already holds four kinds of record for association
 | **Facts** | edges and observations a rule computes | the ingest | the content hash, at ingest | call edges, route-ref, image-ref, log templates |
 | **Claims** | what a governing document says, cited | the layer compiler | citation hashes, swept | obligations, ADR rules, spec bindings |
 | **Maps** | what an agent learned matters, anchored | the session, at forced moments | anchor hashes, re-resolved | exploration maps, handoff maps |
-| **Attested records** | what a producer outside the index attested, ingested or read as written | the producer (a runner, a kit, a hook) | the producer's commit binding and age | test-kit envelopes and `test_runs` (ADR-063 O4, ADR-043), coverage reports read at request time and never stored (ADR-051 decision 1, `cmd/fathom/coverage_ingest.go`), the findings outbox (ADR-040), the rule-outcome, session and hook ledgers |
+| **Attested records** | what a producer outside the index attested, ingested or read as written | the producer (a runner, a kit, a hook) | the producer's commit binding and age | the test kit envelopes and `test_runs` (ADR-063 O4, ADR-043), coverage reports read at request time and never stored (ADR-051 decision 1, `cmd/fathom/coverage_ingest.go`), the findings outbox (ADR-040), the rule-outcome, session and hook ledgers |
 
 **Rule: no new container.** A file's role is a fact. A rule about tests is a claim. "This upstream repository
 implements our spec FR-7 well" is a map entry. A test run, a coverage report or an imported finding is an attested
@@ -166,7 +166,7 @@ answers five questions deterministically, at $0, through the verbs agents alread
 A sixth answer comes from maps: what earlier sessions learned about it, and what reference implementation exists
 for the specification it implements (F68).
 
-Expert knowledge stays with its owner. Resource rules belong to policy-kit, review judgment belongs to Review Kit.
+Expert knowledge stays with its owner. Resource rules belong to the policy kit, review judgment belongs to the review kit.
 Fathom supplies the facts and the membership those rules select over, delivers their findings at the edit, and
 proves a fix through certifying tests. Judgment applies only to the residue a rule counts as unknown.
 
@@ -252,7 +252,7 @@ test and vendor rule in `internal/repofacts` (RF-2).
 - Test entries beyond Go: pytest `test_*` functions and `Test*` classes, jest, vitest and mocha `it`, `test` and
   `describe` blocks, JUnit `@Test`, xUnit `[Fact]` and `[Theory]`, NUnit `[Test]`, PHPUnit `test*` methods and
   `#[Test]` attributes, Rust `#[test]`. They feed `test_impact`, `related_tests` and `tests select`.
-- An ingested JUnit or test-kit envelope joins them through the existing join: `JoinCasesToSymbols`
+- An ingested JUnit or test kit envelope joins them through the existing join: `JoinCasesToSymbols`
   (`internal/testevidence/join.go:62`, TC-3) is extended past `KindGoFunc`, never duplicated. If a non-Go service
   then ingests an envelope, TC-26's trigger fires and is recorded. Until TC-26 lands, a non-Go test reaches and is
   selected, but it cannot certify a rule.
@@ -335,10 +335,10 @@ test and vendor rule in `internal/repofacts` (RF-2).
 ### D11. Operational excellence (N8): facts and membership in fathom, rules with their owners
 Section 6 holds the boundary. In one line: fathom supplies the facts that make an ops rule checkable, the membership
 of a workload in the policies and monitors that select it, delivery at the edit and proof by certifying tests.
-Resource-shaped rules belong to policy-kit (platform-engineering ADR-0015) or, until it ships, the upstream Kyverno
-policy library a repository already applies. Review Kit owns review judgment, severity and dispositions, refuses a
-resource-shaped requirement unless it joins policy-kit by canonId (ADR-0095 decision 5) and builds no
-infrastructure scanner (its F5). ADR-063 gains overlap O11 for policy-kit. Built now: Kubernetes per-container
+Resource-shaped rules belong to the policy kit or, until it ships, the upstream Kyverno
+policy library a repository already applies. The review kit owns review judgment, severity and dispositions, refuses a
+resource-shaped requirement unless it joins the policy kit by control id and builds no
+infrastructure scanner (its do-not-build rule). ADR-063 gains overlap O11 for the policy kit. Built now: Kubernetes per-container
 facts over all three pod paths (LB-F451) and the observed-by join (TL-15), the second ops arm. ADR-055 decision 8(c)
 is corrected in both places.
 
@@ -397,7 +397,7 @@ loses what it carries. Category: T tokens, C correctness, E exploration, A agent
 | J7 | Role plus `runs` plus non-Go entry points into `blast_radius`, `test_impact` and `wired` | A, C: impact and wiring answer for scripts, CI, TS, Python, PHP | the section 3.1 probes flip from 0, `wired` returns an informational verdict on TS, Python and Rust fixture rows | M | RF-1 to RF-10, TQ-27, TQ-28 |
 | J8 | `runs`, `configures` and role as `review_diff` dimensions | C: config and script diffs are reviewed instead of passing silently | review-recall corpus rises from 6 of 42 (`docs/bench/readings/review-recall-loop-2026-09-18.md`) toward the 30% bar, 0 false findings | S after J7 | RF-13, RF-16 |
 | J9 | The file passport at first touch, on SR-60's line | T, A: one line replaces several discovery reads, the governing rule arrives beside it | RF-M4 against its pre-ship base rate. VB-40 at 6 of 8 offline. The XM-M2-style A/B waits on the spend hold | M | RF-14, RF-17 |
-| J10 | Kubernetes per-container facts plus policy membership (`internal/fusion/policyref.go`) | X: "a workload no limits policy selects" becomes a membership join over facts, ready for policy-kit's rules | field parity with a structural YAML decode, 100% on the calibration manifests, all three pod paths | S now, the join later | LB-F451, F61 |
+| J10 | Kubernetes per-container facts plus policy membership (`internal/fusion/policyref.go`) | X: "a workload no limits policy selects" becomes a membership join over facts, ready for the policy kit's rules | field parity with a structural YAML decode, 100% on the calibration manifests, all three pod paths | S now, the join later | LB-F451, F61 |
 | J11 | Observed-by: the ServiceMonitor and PodMonitor that scrape a workload (the shipped selector joins in `internal/fusion/routeref_mesh.go`) served on the workload beside J10 | X: "a workload no monitor scrapes" becomes a join. The alert and metric half stays inside Prometheus' own entities (K19), and metric-to-emitter stays F66 | precision at least 0.95 against the side pass's tier C oracle on the kube-prometheus and istio subjects | S | TL-15, TL-16 |
 
 Joins outside the top eleven, recorded: co-change clusters into feature candidates (FM-15), findings near a failing
@@ -413,9 +413,9 @@ fleet-wide guard only after RF-M6's count, J7 before J8 and J9.
 | Who | Owns | Examples |
 |---|---|---|
 | **Fathom core** | code-grounded facts, membership, reach, delivery at the edit, proof by certifying tests | per-container requests, limits, liveness, readiness and startup probes, init containers as a fact of their own (today merged into one container list, `internal/extractor/k8sextract.go:149-152`, which also misses CronJob's `spec.jobTemplate`), replicas, read from all three pod paths. Kyverno and Gatekeeper membership (shipped, `policyref.go`). Monitor membership (shipped selector joins, served by TL-15). Imported findings at the edit (shipped). Later: the selector join from PodDisruptionBudget, HorizontalPodAutoscaler, Service and NetworkPolicy to the workload, reusing the policy-ref matcher (F61) |
-| **policy-kit** (platform-engineering ADR-0015, unbuilt) | resource-shaped rules | the control, its CEL assert, its Kyverno and VAP forms, its framework crosswalk and coverage. Until it ships, the upstream Kyverno policy library a repository already applies, which fathom reads as membership |
-| **Review Kit** | review judgment over practice, process and artifacts | concern packs, severity, dispositions, the well-architected taxonomy, typed criteria (with Jev) for the memory and leak residue. It refuses a resource-shaped requirement unless it joins policy-kit by canonId (ADR-0095 decision 5) and builds no infrastructure scanner or second resource-policy evaluator (its F5) |
-| **Tech packs** (ADR-061, once accepted) | the carrier for a kit's guards and formats | scoped guards, dialect data, generated-file provenance. Never a resource rule: that would be the second evaluator Review Kit F5 refuses |
+| **the policy kit** (unbuilt) | resource-shaped rules | the control, its CEL assert, its Kyverno and VAP forms, its framework crosswalk and coverage. Until it ships, the upstream Kyverno policy library a repository already applies, which fathom reads as membership |
+| **the review kit** | review judgment over practice, process and artifacts | concern packs, severity, dispositions, the well-architected taxonomy, typed criteria (with Jev) for the memory and leak residue. It refuses a resource-shaped requirement unless it joins the policy kit by control id and builds no infrastructure scanner or second resource-policy evaluator (its do-not-build rule) |
+| **Tech packs** (ADR-061, once accepted) | the carrier for a kit's guards and formats | scoped guards, dialect data, generated-file provenance. Never a resource rule: that would be the second evaluator the review kit's do-not-build rule refuses |
 
 - *The observability arm* (ADR-062). Stage A shipped: frames, telemetry identities, log templates, and Alertmanager
   and Grafana joins inside Prometheus' own entities. TL-15 adds observed-by on the workload. An alert or metric
@@ -424,16 +424,16 @@ fleet-wide guard only after RF-M6's count, J7 before J8 and J9.
   reading. Metric and span names to their emitters stay F66, gated on census E (.1451 against .25).
 - *Memory management.* The computable part is linters run as findings or certifying tests: `go vet` lostcancel,
   bodyclose, noctx, goleak in tests declared `certifies: rule:`. That proof is Go-only until TC-26 lands the marker
-  for other languages. The rest is judgment, in Review Kit's criteria lane, or in fathom only after J0.
+  for other languages. The rest is judgment, in the review kit's criteria lane, or in fathom only after J0.
 - *Semantic layers for critical concerns* are F52's concern scope, unchanged. The earlier draft's static-scope
   amendment is withdrawn (section 13).
 - *Consumer gate* (P20). No consumer with production manifests is named. Until one is, fathom builds only the
   per-container facts and TL-15, which earn their place as dialect quality and as a join over shipped edges. F59
   and F61 keep their clocks.
 - *Correction.* ADR-055 decision 8(c) and its Consequences bullet read "via the findings outbox now. A kit's guards
-  and formats may ride tech packs once ADR-061 is accepted. A resource-shaped rule stays policy-kit's."
+  and formats may ride tech packs once ADR-061 is accepted. A resource-shaped rule stays the policy kit's."
 - *Refused*: an ops kit (SV-X7), fathom-owned Kubernetes rule text (ADR-055 decision 7), fathom running scanners,
-  a resource predicate in a tech pack (Review Kit F5, ADR-0095 decision 5), generic SARIF-as-pass, vendored Semgrep
+  a resource predicate in a tech pack (the review kit's do-not-build rule and resource-rule boundary), generic SARIF-as-pass, vendored Semgrep
   rules (not OSI-licensed).
 
 ## 7. Reference implementations and dependency mapping
@@ -448,11 +448,11 @@ another service's code without losing the service (D9). Verdict: D9, deferred as
 
 | | State |
 |---|---|
-| Decided | ADR-050 (the `pkg:` kind, local caches only, I56), ADR-063 O1 (ci-kit's `depgraph` owns the package closure, fathom the symbol graph), SG-X4 (no second resolver) |
+| Decided | ADR-050 (the `pkg:` kind, local caches only, I56), ADR-063 O1 (the CI kit's package graph owns the package closure, fathom the symbol graph), SG-X4 (no second resolver) |
 | Roadmapped | SG-30 to SG-42 (the port, lockfile adapters, cache locator, dependency API index, usage map, upgrade impact, OSV reach), TQ-19 and TQ-20 (upgrade test reach), the feature map's dependency column |
 | Shipped | `ParseContractKey` (SG-1), the version-exact `search kind:docs pkg:` reader (KR-12, unchecked at landing because nothing in the product writes dependency docs until KR-11 is wired), migration declarations with `pkg:` versions (CX-9). Nothing an agent calls to ask "who uses this dependency" |
 | Blocked on | SG-2, the `contract_keys` and `system_links` tables, frozen until RT-M1 reads PASS |
-| Refused | a second package graph, an SBOM product (ci-kit's lane) |
+| Refused | a second package graph, an SBOM product (the CI kit's lane) |
 
 ## 8. Opt-in versus default-on
 
@@ -513,7 +513,7 @@ them (vision 40 section 4). No generator agent, no background job (the dispatch 
 **Jev, weighed** for every decision here. Role, `runs`, `configures`, entry points and test entries are exact or
 heuristic rules: no site. The passport's ordering when it overflows could be a re-rank site, and the obligations
 re-rank A/B read negative (paired mean -0.19), so no. Reference matching would be generation, the port's weak side.
-The ops residue is judgment, and it lives in Review Kit's criteria. What would admit Jev: RF-M1's unknown residue
+The ops residue is judgment, and it lives in the review kit's criteria. What would admit Jev: RF-M1's unknown residue
 above 5% of files on a subject while J0 reads PASS. Then F37's first template is "role among declared layers" for
 that residue, opt-in.
 
@@ -573,7 +573,7 @@ producer). Windows `.bat` and `.cmd`, Handlebars, EJS and Liquid are disclosed a
 | N6 | exploration maps (G30), F68 | XM-D10 |
 | N7, N10 | governance-learning, exploration-maps, served-not-kept, test-intelligence, test-certifications, incident-maps | GL-24, GL-M6, XM-36, XM-37, XM-M8, PR-13, TQ-26, TC-29, IM-M0 amended |
 | N10, N11 (test entries, D5) | test-intelligence (G23) | TQ-27, TQ-28 |
-| N8 | language-breadth (facts), telemetry-links (observed-by), ADR-063 O11, F61 (later), policy-kit and Review Kit (rules) | LB-F451, TL-15, TL-16 |
+| N8 | language-breadth (facts), telemetry-links (observed-by), ADR-063 O11, F61 (later), the policy kit and the review kit (rules) | LB-F451, TL-15, TL-16 |
 | N9 | I65, F69 | none |
 | N10 dependencies | system-graph, unchanged | none |
 
@@ -643,7 +643,7 @@ million tokens, which is not a total. Store growth from any row over +20% needs 
 | Reading the hook's 2.3% emission as a leak | 21,247 answers carry no reason. Unknown until GL-24 records reasons |
 | A `foreign-target` bar on the whole class (51% to 10%) | the class mixes clones, gitignored drops and scratch writes, and its rows log no path. The bar applies to the clone class after the beat records a class |
 | Counting reference research from the session ledger | the ledger has no URL or clone field. Transcripts do |
-| The F52 static-scope amendment for resource packs (a glob plus an entity kind such as `K8sWorkload`) | a pack predicate over resource facts is the second resource-policy evaluator Review Kit F5 refuses, and ADR-0095 decision 5 sends resource rules to policy-kit |
+| The F52 static-scope amendment for resource packs (a glob plus an entity kind such as `K8sWorkload`) | a pack predicate over resource facts is the second resource-policy evaluator the review kit's do-not-build rule refuses, and its resource-rule boundary sends resource rules to the policy kit |
 | A label join from an alert or metric to a workload | K19: the Stage A kill fired (label_join_recall .583). Prometheus' own entities and monitor selectors only |
 | Lua, Perl, Blade, Astro and Jinja2 at queue tier T2 | T2 is the build, package and CI tier. They are languages, T1 |
 | "No oracle resolves calls" as PHP's ceiling | scip-php is tier A. The ceiling is the 1,869 unexplained pairs |
@@ -654,8 +654,8 @@ million tokens, which is not a total. Store growth from any row over +20% needs 
 | Fathom fetching reference repositories or dependencies | I56 |
 | An in-repository "find similar existing code" finder | embeddings were removed under ADR-041 and lexical similarity is what `search` already does |
 | Business-capability joins to tickets, CRM or revenue | FM-X1 to FM-X3 |
-| An ops kit, fathom-owned Kubernetes rule text, fathom running scanners, SARIF-as-pass | SV-X7, ADR-055 decision 7, ADR-061 invariant (a), Review Kit F5 and F6 |
-| A second package graph or an SBOM product | ADR-063 O1, ci-kit's lane |
+| An ops kit, fathom-owned Kubernetes rule text, fathom running scanners, SARIF-as-pass | SV-X7, ADR-055 decision 7, ADR-061 invariant (a), the review kit's do-not-build futures |
+| A second package graph or an SBOM product | ADR-063 O1, the CI kit's lane |
 | Usage edges for every Tailwind core utility, fuzzy global class to selector matching | store cost without a proven gain, and silently wrong edges |
 | An "excellent" claim past a written ceiling | the oracle rule (ADR-048): a level is a committed reading |
 | Live maps built early to serve concern scopes | XM-D1 stays deferred |
