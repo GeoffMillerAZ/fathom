@@ -29,6 +29,7 @@ package main
 // reaches the output: a shape is a command head, everything else a count.
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -265,10 +266,14 @@ func (z *replaySizing) open(p string) *sizingFile {
 
 // line reads one transcript line.
 func (z *replaySizing) line(st *sizingFile, raw []byte) {
-	l, blocks, err := transcript.DecodeLine(raw)
-	if err != nil {
-		return
-	} // replay's corpus figures count the line
+	if !st.subagent || st.timed {
+		if !bytes.Contains(raw, []byte(`"tool_`)) && !bytes.Contains(raw, []byte(`"assistant"`)) && !bytes.Contains(raw, []byte(`"compact_boundary"`)) {
+			return
+		}
+	}
+	// DecodeLine retains a valid envelope on a block error. Timing and
+	// assistant turns belong to that envelope, before blocks are checked.
+	l, blocks, _ := transcript.DecodeLine(raw)
 	z.decodedLine(st, &l, blocks)
 }
 

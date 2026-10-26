@@ -16,6 +16,7 @@ package main
 // command text, output text, a path, a session id or a project name.
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -441,17 +442,24 @@ type replayWatch struct {
 
 // file streams one transcript; true when it counted a call.
 func (a *replayAgg) file(p string) bool {
-	st := &replayFile{pending: map[string]replayPending{}}
-	sz := a.sizing.open(p)
-	coverage := transcript.WalkFile(p, func(_ int, l *transcript.Line, blocks []transcript.Block) {
-		a.decodedLine(st, l, blocks)
-		a.sizing.decodedLine(sz, l, blocks)
-	})
-	if coverage.UnreadableFiles > 0 {
+	f, err := os.Open(p)
+	if err != nil {
 		return false
 	}
+	defer f.Close()
+	return a.readFile(p, f)
+}
+
+func (a *replayAgg) readFile(p string, r io.Reader) bool {
+	st := &replayFile{pending: map[string]replayPending{}}
+	sz := a.sizing.open(p)
+	coverage := transcript.WalkLines(r, func(_ int, raw []byte) {
+		a.line(st, raw)
+		a.sizing.line(sz, raw)
+	})
+	// A successful open counts even when reading later fails; retain and
+	// finalize all calls, sizing windows and pending uses already observed.
 	a.rep.Corpus.Files++
-	a.rep.Corpus.LinesUnparsed += coverage.MalformedLines
 	a.rep.Corpus.LinesOversize += coverage.OversizeLines
 	for _, s := range st.open {
 		a.finish(s)
@@ -471,8 +479,16 @@ type replayTranscriptLine = transcript.Line
 type replayBlock = transcript.Block
 
 func (a *replayAgg) line(st *replayFile, raw []byte) {
+	if !bytes.Contains(raw, []byte(`"tool_`)) {
+		return
+	}
 	l, blocks, err := transcript.DecodeLine(raw)
 	if err != nil {
+		// Historically, only invalid envelopes or block arrays were counted.
+		// An object-valued content is ignored even if it has a tool marker.
+		if l.Message != nil && len(l.Message.Content) > 0 && l.Message.Content[0] != '[' {
+			return
+		}
 		a.rep.Corpus.LinesUnparsed++
 		return
 	}
