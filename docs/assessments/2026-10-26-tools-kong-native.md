@@ -1,93 +1,88 @@
-# Kong: complete native written-field diagnostic; canonical unchanged
+# Kong: full native population, incomplete filename-selected comparison
 
-The pinned owner SDK now attests the complete typed population for all 1,803
-recorded selectors, representing 681 distinct source paths across nine pinned
-cohorts. All queries complete with zero native refusals and zero observed HTTP
-requests. All native queries finish before any Fathom comparison begins. The unique-source comparison finds 365/365 definition names and
-ranges at C and 4/4 semantic references at A, with zero extraction faults.
-Throughput and the performance-dependent grade are **unmeasured** under T-R10:
-the correctness replay began at load6.20/nice10/free36.81GiB, but the separate
-timing gate saw load7.61 and did not start a timing run. No L3 work occurred.
-The canonical reading remains 821/821 definitions, 10/10 references C and
-12/12 route pairs A; these historical counts are not a directly comparable
-before/after denominator.
+The owner SDK enumerates 37 distinct semantic pairs and 1,332 named definitions
+across 681 distinct upstream paths (1,803 recorded selectors including aliases).
+Fathom's filename ownership selects only four pairs, all `route.service`, and
+365 definitions on 231 files for comparison. Those subsets agree, but 33 pairs
+and 967 named definitions in decK-accepted files are not compared because the
+files are not name-owned (O348). **The four-pair subset grants no L2 tier-A
+recall, and the 365-definition subset grants no full-population L1 grade.**
+Independent positions remain C. The canonical C reference reading and held
+L3 grades remain unchanged; no product dispatch or shared selector is changed.
 
-## Scope and identity
+| Native field family | Resolved sites | Distinct pairs | Name-owned pairs compared | Uncompared pairs |
+|---|---:|---:|---:|---:|
+| route.service | 7 | 7 | 4 | 3 |
+| plugin.route | 31 | 29 | 0 | 29 |
+| plugin.service | 1 | 1 | 0 | 1 |
+| service.host to upstream | 0 | 0 | 0 | 0 |
+| Total | 39 | 37 | 4 | 33 |
 
-The old record contains repeated legacy scratch-root prefixes, including a
-prefix nested twice. Removing only the two disclosed roots maps 1,803 selectors
-to 681 distinct paths. The replay still executes every selector and requires
-identical projected native truth for aliases; comparison scores each actual
-source once. The historical record reports 568 scored files, whereas this
-reconstruction scores 231 unique files. Its synthetic copy SHA does not attest
-the old scratch-tree bytes. We cannot establish bit-for-bit identity with that
-unavailable historical tree; this is an explicitly identified reconstruction
-from the actual upstream shard pins and original path-renaming contract.
-Do not present the lower denominators as an extraction regression or a
-same-population improvement. No canonical reading or corpus shard is changed.
+The critic's 31 excluded plugin-route count is a site count: two repeated sites
+collapse to 29 semantic pairs under the unchanged `(path, from, to)` contract.
+Thus the excluded 35 sites are 31 plugin-route, one plugin-service and three
+route-service; the excluded 33 pairs are 29, one and three. The receipt reports
+both units by ordinal cohort. The corpus exercises no host-to-upstream binding;
+its 352 other written host fields are literals without a named upstream.
 
-The native population contains 1,340 entities (eight unnamed), 391 written
-fields: 39 resolved sites and 352 literal hosts without a named upstream.
-Resolved sites form 37 distinct semantic pairs. Existing ingest/discovery gates
-leave 33 pairs and 967 named definitions outside comparison scope; this is
-explicitly disclosed, not full 37-pair product recall. The C locator attaches
-ranges only after native enumeration and must match its whole named multiset.
+## Standing disclosures restored
 
-|Cohort|Native queries|Distinct paths|Scored files|Definitions found/truth C|Refs found/truth A|Native semantic pairs|
-|---|---:|---:|---:|---:|---:|---:|
-|1|1|1|1|2/2|0/0|0|
-|2|1358|454|116|154/154|2/2|34|
-|3|1|1|1|2/2|0/0|0|
-|4|437|219|107|154/154|2/2|3|
-|5|2|2|2|16/16|0/0|0|
-|6|1|1|1|9/9|0/0|0|
-|7|1|1|1|14/14|0/0|0|
-|8|1|1|1|6/6|0/0|0|
-|9|1|1|1|8/8|0/0|0|
+Supabase's DB-less input remains outside this replay. decK rejects its
+acls/credentials/comments; definitions are unattested and 14 tier-C route pairs
+are unscored. An accepting oracle, including the available but untried Kong
+runtime `kong config parse` route, remains a trigger. O347 parent binding is
+still held by T-R2. O348 filename coverage remains open. D19 still gates L3.
+These clauses remain in the deferral row; the native diagnostic retires none.
 
-## Oracle and controls
+Canonical 568 files / 821 definitions / 10 pairs count owned state files two or
+three times through nested scratch-root aliases. Distinct owned counts are
+231 files / 365 definitions / four pairs; ratios and canonical grades are
+unaffected. Deck's historical 347 owned of 1,358 is 116 of 454 distinct paths,
+with 338 unowned. GDR's 213 of 437 is 107 of 219, with 112 unowned. O348 is
+amended with these count corrections, without changing its open disposition.
+The old synthetic copy SHA does not attest scratch-tree bytes. This is an
+identified reconstruction from actual shard pins and the original YAML-only
+path-renaming contract; no canonical reading or corpus shard is changed.
 
-Kong's Apache-2.0 go-database-reconciler1.42.4 is the exact library pinned by
-decK1.68.0. GetContentFromReader enumerates typed content before independent
-location pairing; file.Get/state.Get evaluate service/route/upstream bindings.
-A byte-verified read-only source observer preserves typed Host/URL before the
-owner's normalization. Strict literal host/name equality rejects the native
-registry's additional ID alias. Nested containment is not a written reference.
-Original native control flow and source bytes are restored by the checked
-instrumenter. The owner SDK evaluates facts; no product output chooses truth.
+## Evaluation, protocol history and identity
 
-Two initially overbroad probe guards were reproduced and corrected: deployment
-routing metadata is preserved unchanged by the native Gateway path; _config
-looks up the in-file PluginConfigs map through native fillPluginConfig, rather
-than opening an external file. Missing config entries still produce the owner's
-error. Service packages remain a fail-closed unclassified scope; none refuses
-in the completed population. Auxiliary plugin configs do not change the
-existing service/route/upstream binding contract.
+Kong's Apache-2.0 GDR 1.42.4 is exactly what decK 1.68.0 pins. The typed reader
+chooses the whole population before independent C location pairing. A checked
+read-only observer preserves raw typed Host/URL before owner normalization;
+owner builder/registry evaluation supplies foreign-key outcomes. Strict literal
+host/name matching rejects the registry's additional ID alias. Native parser
+control flow and results remain unchanged. Unknown scopes/outcomes refuse
+whole units; no partial refusal becomes truth.
 
-Fourteen own-package Go race tests pass without skips. Raw Host and
-consumer/group population mutants fail then restore green. Six Python scope/
-projection tests and a locator-filtered-population mutation pass. Three official
-decK cross-checks run under OS network denial. Actual Fathom output removal is
-only a future hidden-read tripwire; changed input changes native truth. Exact
-source1MiB, population10000 and output8MiB cap+1 cases refuse whole units.
-Every pinned real source receives unchanged normative before/after tracked-set
-receipts; all subject clones and measured source builds are pruned.
+Protocol r3 records that two guard corrections were applied after results,
+rather than being preregistered in the old r2 snapshot. The combined guards
+refused 325 queries over 112 distinct inputs: cohort 2 had 303/101 and cohort 4
+had 22/11. Preserving unchanged Konnect deployment-routing metadata left four
+refused queries over two cohort-4 inputs. Correctly resolving `_config` from
+the owner's in-file PluginConfigs map removed those four. Missing native config
+entries and unsupported service packages still refuse. No guard relaxation
+changes the declared native field families or filename coverage.
 
-The X-R4 five-source ledger is candidate-search-r1.json. It records native SDK/
-runtime routes, SCIP/LSIF and GitHub searches, language servers, registry parser
-candidates, tracing candidates and access gaps. The old absent-reference-oracle
-premise is withdrawn. Independent yaml.v3 positions remain C; no absence
-ceiling or native position claim is asserted.
+The build now uses `-trimpath -buildvcs=false` and compares two independent
+scratch roots with the same Go compiler/target. Fresh native controls bind to
+the binary, the race-test source and the generator hashes. Nine Python tests
+and three FAIL-to-GREEN mutants protect locator independence, denial of
+subset-based grades, and site-versus-pair accounting. Fourteen native race
+tests, two native omission mutants and three network-denied official decK
+checks precede full replay. Output removal is a future hidden-read tripwire,
+not independence proof by itself; changing input changes native truth.
 
-## Reproduction and limits
+Caps are 1 MiB input, 10,000 entities plus fields, 8 MiB output and a 30-second
+child timeout; exact/cap-plus-one controls refuse whole units. Native HTTP is
+denied. Source tracked-set receipts are unchanged before/after each clone;
+raw names, paths, people, inventories and logs stay private. Measured clones
+and source builds are pruned. No Docker, backend, global install, paid call or
+subject task is used. The legacy Docker-dependent L3 test remains unverified;
+only the new focused location tests run here, and no test or golden is weakened.
 
-Commands are in calibration/oracles/kong/NATIVE.md. Script-emitted identities,
-authored controls and the full ordinal population receipt are adjacent JSON.
-The required release-notes check, both merge-debris checks and ADR-011
-TestNoOrgSpecificNames pass. The two new location tests pass with -race. The
-legacy Docker-dependent TestScanDeployedTiers is explicitly unverified on this
-helper: an earlier overbroad selection invoked docker compose config and failed;
-no container ran, and no test or golden was weakened. No Docker, backend,
-global install, paid call or subject task is used by the native replay.
-
-Wave C main6db920e72 is merged. No model decision applies.
+`calibration/oracles/kong/NATIVE.md` gives runnable fresh-control commands.
+`candidate-search-r1.json` records all five X-R4 source families and access
+gaps; no absence ceiling is asserted. Timing remains a separate T-R10 gate:
+load at most six for a sampled median of three, otherwise unmeasured. No valid
+throughput result can grant a support grade from the product-selected subset.
+No model decision applies.

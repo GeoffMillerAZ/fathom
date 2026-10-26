@@ -53,10 +53,11 @@ def build(out):
     overlay = out / 'overlay.json'
     overlay.write_text(json.dumps({'Replace': {str(original): str(observed)}}))
     run(['go', 'mod', 'tidy', '-modfile', str(modfile)])
-    run(['go', 'build', '-modfile', str(modfile), '-overlay', str(overlay), '-o', str(out / 'kong-native'), '.'])
+    run(['go', 'build', '-trimpath', '-buildvcs=false', '-modfile', str(modfile), '-overlay', str(overlay), '-o', str(out / 'kong-native'), '.'])
     receipt = dict(tool='Kong owner typed loader probe', version='go-database-reconciler v1.42.4',
                    deck_version='1.68.0', native_source_commit=pins['vendor_library_commit'],
                    go_version=run(['go', 'version'], text=True).strip(),
+                   build_flags=['-trimpath', '-buildvcs=false'],
                    module_sum=info['Sum'], module_go_mod_sum=info['GoModSum'],
                    binary_sha256=hashlib.sha256((out / 'kong-native').read_bytes()).hexdigest(),
                    original_types_sha256=hashlib.sha256(original.read_bytes()).hexdigest(),
@@ -71,5 +72,16 @@ def build(out):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-out', type=Path, required=True)
+    parser.add_argument('-verify-second-build', type=Path)
     args = parser.parse_args()
-    print(json.dumps(build(args.out.resolve()), sort_keys=True))
+    receipt = build(args.out.resolve())
+    if args.verify_second_build:
+        second = args.verify_second_build.resolve()
+        check = build(second)
+        if receipt['binary_sha256'] != check['binary_sha256']:
+            raise ValueError('independently located native builds differ')
+        receipt.update(reproducible_across_two_scratch_roots=True,
+                       second_binary_sha256=check['binary_sha256'])
+        (args.out / 'build-receipt.json').write_text(json.dumps(receipt, indent=2) + '\n')
+        shutil.rmtree(second)
+    print(json.dumps(receipt, sort_keys=True))

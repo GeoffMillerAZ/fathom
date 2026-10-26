@@ -173,7 +173,9 @@ def run(build, deck, deck_receipt, out):
                                  evaluated_projection_sha256=sha(json.dumps(projection, sort_keys=True).encode()),
                                  interpretation='URL-only native written-host population empty despite owner-rendered host' if index == 1 else 'owner evaluated host/bindings agree'))
     summary = dict(kind='authored prototype controls only; no calibration or metric/tier claim',
-                   native_binary_sha256=identity['binary_sha256'], official_deck_binary_sha256=official['binary_sha256'],
+                   native_binary_sha256=identity['binary_sha256'],
+                   native_test_source_sha256=sha((HERE / 'native/main_test.go').read_bytes()),
+                   control_script_sha256=sha(Path(__file__).read_bytes()), official_deck_binary_sha256=official['binary_sha256'],
                    race_tests=count, skips=0, mutations=mutations,
                    fathom_nodes_before=node_count, fathom_nodes_after=0,
                    output_removal_interpretation='future hidden-read tripwire; not proof by construction',

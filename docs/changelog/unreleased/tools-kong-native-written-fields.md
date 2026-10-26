@@ -1,2 +1,2 @@
 ### Changed
-- Add a bench-only Kong native written-field probe with pinned owner-library identity, authored controls and a full-population replay protocol. Canonical grades remain unchanged.
+- Add a bench-only Kong native population probe with reproducible owner-library builds, source-bound controls and explicit filename-selected comparison limits. The subset grants no tier-A recall or support grade; canonical grades remain unchanged.

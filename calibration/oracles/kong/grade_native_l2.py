@@ -1,4 +1,4 @@
-"""Full original Kong input replay; L1 positions C, native written fields A.
+"""Full native Kong enumeration, with a product-selected comparison subset.
 
 Canonical L3 and its reading remain untouched. Public receipts use cohort
 ordinals, counts and hashes; original subject names and inventories stay private.
@@ -17,6 +17,7 @@ from probe_native_controls import native_query, sha
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
 KINDS = dict(service='service', route='route', upstream='resource', target='element', plugin='policy')
+REFERENCE_FAMILIES = ('route.service', 'plugin.route', 'plugin.service', 'service.host')
 
 
 def run(command, **kwargs):
@@ -128,22 +129,75 @@ def project(rel, native, located):
     return definitions, [dict(path=p, **{'from': f, 'to': t}) for p, f, t in sorted(refs)], dict(outcomes)
 
 
+
+def reference_family_counts(rel, native, name_owned):
+    rows = {family: dict(written_sites=0, resolved_sites=0, semantic_pairs=0,
+                         name_owned_sites=0, name_owned_pairs=0) for family in REFERENCE_FAMILIES}
+    pairs = {family: set() for family in REFERENCE_FAMILIES}
+    for ref in native['native_written_fields']:
+        family = ref['from_kind'] + '.' + ref['field']
+        if family not in rows:
+            raise ValueError('unclassified native reference family')
+        row = rows[family]
+        row['written_sites'] += 1
+        if ref['outcome'] != 'owner_registry_resolved':
+            continue
+        row['resolved_sites'] += 1
+        if name_owned:
+            row['name_owned_sites'] += 1
+        if ref.get('from') and ref.get('to'):
+            pairs[family].add((rel, ref['from'], ref['to']))
+    for family, keys in pairs.items():
+        rows[family]['semantic_pairs'] = len(keys)
+        rows[family]['name_owned_pairs'] = len(keys) if name_owned else 0
+    return rows
+
+
+def public_subset_evidence(measured):
+    # The SUT's filename ownership selected this subset. Its passing metric
+    # and native fact authority cannot become an A-tier recall/support grade.
+    return dict(name_owned_subset_counts=measured['counts'],
+                l2_tier_a_recall_granted=False, support_grade_granted=False,
+                comparison_selection='product filename ownership (O348), not the full oracle population',
+                definition_position_authority='C',
+                per_cohort=[{key: row[key] for key in ('sha', 'files', 'bytes', 'counts')} for row in measured['subjects']])
+
+
+def validate_control_identity(identity, control):
+    if control.get('native_test_source_sha256') != sha((HERE / 'native/main_test.go').read_bytes()):
+        raise ValueError('native race test source identity mismatch')
+    if control.get('control_script_sha256') != sha((HERE / 'probe_native_controls.py').read_bytes()):
+        raise ValueError('native control script identity mismatch')
+    if control['native_binary_sha256'] != identity['binary_sha256']:
+        raise ValueError('native control binary identity mismatch')
+
 def measure(args):
     start = dict(load_1m=os.getloadavg()[0], nice=os.getpriority(os.PRIO_PROCESS, 0),
                  free_gib=shutil.disk_usage(Path.home()).free / 1024**3)
     if start['load_1m'] > 9 or start['nice'] < 10 or start['free_gib'] < 20:
         raise ValueError('T-R10 correctness start requires load<=9, nice>=10, free>=20 GiB')
     import yaml
-    protocol = json.loads((HERE / 'native-protocol-r2.json').read_text())
+    protocol_path = HERE / 'native-protocol-r3.json'
+    protocol = json.loads(protocol_path.read_text())
     identity = json.loads(args.build_receipt.read_text())
     control = json.loads(args.controls.read_text())
     projection_control = json.loads(args.projection_controls.read_text())
+    validate_control_identity(identity, control)
+    if (not identity.get('reproducible_across_two_scratch_roots') or
+            identity.get('second_binary_sha256') != identity['binary_sha256'] or
+            projection_control.get('grade_source_sha256') != sha(Path(__file__).read_bytes()) or
+            projection_control.get('control_script_sha256') != sha((HERE/'probe_projection_controls.py').read_bytes()) or
+            len(projection_control.get('mutations',[])) != 3 or
+            not all(row['restored_green'] for row in projection_control['mutations']) or
+            {row['path']:row['sha256'] for row in projection_control.get('python_test_sources',[])} !=
+            {name:sha((HERE/name).read_bytes()) for name in ('test_native_projection.py','test_native_population.py','test_native_scope.py')}):
+        raise ValueError('reproducible build and fresh coverage controls required')
     if (sha(args.native.read_bytes()) != identity['binary_sha256'] or
             sha((HERE / 'native/main.go').read_bytes()) != identity['probe_source_sha256'] or
             control['native_binary_sha256'] != identity['binary_sha256'] or control['race_tests'] != 14 or
             len(control['mutations']) != 2 or not all(row['restored_green'] for row in control['mutations']) or
             len(control['cli_cross_checks']) != 3 or control['native_http_requests'] or
-            not control['official_cli_network_denied'] or projection_control.get('tests') != 4 or
+            not control['official_cli_network_denied'] or projection_control.get('tests') != 9 or
             not projection_control.get('restored_green') or projection_control.get('skips') != 0):
         raise ValueError('fresh native identity and complete authored controls required')
     args.out.mkdir(parents=True, exist_ok=False)
@@ -175,6 +229,10 @@ def measure(args):
             mapping = shadow_copy(source, target)
         definitions, references, outcomes = [], [], Counter()
         raw_entities = raw_fields = unnamed = 0
+        named_owned_files = named_owned_definitions = 0
+        alias_owned = Counter(files=0, definitions=0, semantic_pairs=0)
+        multiplicities = Counter(scope)
+        families = {family: Counter(reference_family_counts('', dict(native_written_fields=[]), False)[family]) for family in REFERENCE_FAMILIES}
         observed = {}
         input_hashes = []
         for input_index, rel in enumerate(scope):
@@ -199,6 +257,18 @@ def measure(args):
                     raw_entities += len(native['native_entities']);raw_fields += len(native['native_written_fields'])
                     unnamed += sum(not node.get('name') for node in native['native_entities'])
                     definitions.extend(defs);references.extend(refs);outcomes.update(classified)
+                    # For this frozen corpus the harness-owned files are exactly
+                    # kong*-named. This classifies comparison coverage only;
+                    # every native input above still chooses the full population.
+                    owned = Path(rel).name.lower().startswith('kong')
+                    named_owned_files += int(owned)
+                    named_owned_definitions += len(defs) if owned else 0
+                    if owned:
+                        alias_owned.update(files=multiplicities[rel], definitions=len(defs)*multiplicities[rel],
+                                           semantic_pairs=len(refs)*multiplicities[rel])
+                    fields = reference_family_counts(rel, native, owned)
+                    for family, counts in fields.items():
+                        families[family].update(counts)
             except (ValueError, subprocess.SubprocessError, UnicodeError) as error:
                 refused.append(dict(cohort=ordinal, input_ordinal=input_index, source_sha256=sha(data),
                                     reason_class=type(error).__name__, reason_sha256=sha(str(error).encode())))
@@ -209,6 +279,9 @@ def measure(args):
                              native_queries=len(scope), distinct_native_inputs=len(set(scope)), alias_replays=len(scope)-len(set(scope)), native_entities=raw_entities, native_written_fields=raw_fields,
                              native_unnamed_entities=unnamed, named_definitions=len(definitions),
                              semantic_references=len(references), outcomes=dict(outcomes),
+                             reference_field_families={family:dict(counts) for family,counts in families.items()},
+                             name_owned_files=named_owned_files, name_owned_definitions=named_owned_definitions,
+                             alias_weighted_name_owned=dict(alias_owned),
                              input_manifest_sha256=sha(json.dumps(input_hashes, sort_keys=True).encode()),
                              original_tracked_before=before, original_tracked_after=after, shadow_copy=mapping))
         for suffix, tier, defs, refs in [('defs', 'C', definitions, []), ('refs', 'A', [], references)]:
@@ -216,11 +289,29 @@ def measure(args):
                     version='go-database-reconciler1.42.4', tier=tier, definitions=defs, references=refs)))
         comparisons.append((ordinal, target, repo['sha'], sorted(set(scope)), folder))
         mappings += ['-subject', 'cohort-' + str(ordinal) + '=' + str(target)]
-    summary = dict(kind='full original-population Kong L1/L2 diagnostic; canonical reading unchanged',
+    summary = dict(kind='full native population with product-selected name-owned diagnostic; no support grade',
+                   protocol=dict(path=protocol_path.name, sha256=sha(protocol_path.read_bytes())),
                    native_binary_sha256=identity['binary_sha256'], cohorts=all_rows, refusals=refused,
                    status='native_family_refused' if refused else 'native_population_complete',
                    canonical_counts_before=prior['counts'], canonical_grades_before=prior['grade'],
                    correctness_start_conditions=start)
+    summary['native_population'] = {key:sum(row[key] for row in all_rows) for key in
+                                    ('native_queries','distinct_native_inputs','native_entities','named_definitions',
+                                     'native_written_fields','semantic_references','name_owned_files','name_owned_definitions')}
+    summary['reference_field_families'] = {family:{key:sum(row['reference_field_families'][family][key] for row in all_rows)
+                                                 for key in all_rows[0]['reference_field_families'][family]}
+                                          for family in REFERENCE_FAMILIES}
+    population=summary['native_population']
+    owned_pairs=sum(row['name_owned_pairs'] for row in summary['reference_field_families'].values())
+    summary['comparison_coverage']=dict(semantic_pairs=dict(enumerated=population['semantic_references'],
+                                                          compared=owned_pairs,not_compared=population['semantic_references']-owned_pairs),
+                                        named_definitions=dict(enumerated=population['named_definitions'],
+                                                               compared=population['name_owned_definitions'],
+                                                               not_compared=population['named_definitions']-population['name_owned_definitions']))
+    summary['canonical_alias_projection']=dict(files=sum(row['alias_weighted_name_owned']['files'] for row in all_rows),
+                                               definitions=sum(row['alias_weighted_name_owned']['definitions'] for row in all_rows),
+                                               semantic_pairs=sum(row['alias_weighted_name_owned']['semantic_pairs'] for row in all_rows),
+                                               canonical_grades_changed=False)
     if not refused:
         # Complete every native input first; no partial family is graded.
         for ordinal, target, source_sha, scope, folder in comparisons:
@@ -258,14 +349,20 @@ def measure(args):
         # Keep their raw reading private, and omit them from public evidence.
 
         measured = json.loads(reading.read_text())
-        summary.update(counts=measured['counts'], metrics=measured['metrics'], metric_tiers=measured['metric_tiers'],
-                       grade=measured['grade'] if timed else 'unmeasured: performance gate not established',
-                       timing_conditions=timing, tenancy=measured['tenancy'] if timed else dict(faults=measured['tenancy']['faults']),
-                       per_cohort=[{key: row[key] for key in ('sha', 'files', 'bytes', 'counts', 'families')} for row in measured['subjects']],
-                       scope_exclusion_counts=dict(notes=sum('skipped by ingest' in note or 'tool-oracle entries on files' in note for note in measured['notes'])),
+        # Assert the reported filename partition describes the actual harness
+        # subset. No file-ownership rule or public grade is introduced here.
+        for native_row, measured_row in zip(all_rows, measured['subjects']):
+            owned_pairs = sum(row['name_owned_pairs'] for row in native_row['reference_field_families'].values())
+            if (measured_row['files'] != native_row['name_owned_files'] or
+                    measured_row['counts']['oracle_defs'] != native_row['name_owned_definitions'] or
+                    measured_row['counts'].get('ref_truth', 0) != owned_pairs):
+                raise ValueError('filename coverage partition differs from harness; refuse coverage claim')
+        summary.update(public_subset_evidence(measured))
+        summary.update(timing_conditions=timing,
+                       tenancy=measured['tenancy'] if timed else dict(faults=measured['tenancy']['faults']),
                        timing_notes=[note for note in measured['notes'] if note.startswith('throughput (design 1.9 T1, T2)')] if timed else ['Throughput unmeasured under T-R10; correctness replay only.'])
     summary['oracle_sources'] = [dict(path=name, sha256=sha((HERE / name).read_bytes())) for name in
-                                 ('native/main.go', 'instrument_native.py', 'probe_native_controls.py', 'grade_native_l2.py', 'locations.go', 'main.go')]
+                                 ('native/main.go', 'native/main_test.go', 'build_native.py', 'instrument_native.py', 'probe_native_controls.py', 'grade_native_l2.py', 'locations.go', 'main.go')]
     (args.out / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')
     # Private logs/inventories remain, but measured source clones/copies do not.
     for directory in args.subjects.iterdir():
