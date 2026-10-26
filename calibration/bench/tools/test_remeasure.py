@@ -36,7 +36,7 @@ class FailedPreparation(unittest.TestCase):
                 # Unexpected later phases are counted, never executed on the host.
                 if 'INSTALLER_REACHED' not in script:
                     return subprocess.CompletedProcess(argv, 7)
-                return real_run(['sh', '-c', 'uname() { printf \"aarch64\\n\"; }; ' + script], **kwargs)
+                return real_run(['sh', '-c', 'id() { printf \"1000\\n\"; }; uname() { printf \"aarch64\\n\"; }; ' + script], **kwargs)
 
             def git(argv, **kwargs):
                 return 'a' * 40 + '\n' if 'rev-parse' in argv else ''
@@ -83,7 +83,7 @@ class NativeUnprivilegedContainers(unittest.TestCase):
                 calls = []
                 def run(argv, **kwargs):
                     calls.append(argv)
-                    kwargs['stdout'].write(('BENCH_UNAME_M=' + uname + '\n').encode())
+                    kwargs['stdout'].write(('BENCH_UNAME_M=' + uname + '\nBENCH_UID=1000\n').encode())
                     return subprocess.CompletedProcess(argv, 7 if 'curl ' in argv[-1] else 0)
                 config = {'id': 'fixture', 'language': 'Go', 'source': str(source),
                           'lock': 'go.sum', 'setup': 'true', 'test': 'true'}
@@ -97,10 +97,14 @@ class NativeUnprivilegedContainers(unittest.TestCase):
                     self.assertNotIn('--privileged', argv)
                     self.assertEqual(argv[argv.index('--tmpfs')+1], '/work/tmp:rw,exec,mode=1777,uid=1000,gid=1000')
                     self.assertIn('uname -m', argv[-1])
+                    self.assertIn('id -u', argv[-1])
                     self.assertIn(str(job / 'builds' / 'fixture' / 'passwd') + ':/etc/passwd:ro', argv)
                 self.assertIn('fixture:x:1000:1000:', (job / 'builds' / 'fixture' / 'passwd').read_text())
                 self.assertEqual(result['uname_m'], uname)
                 self.assertEqual(result['warmup']['uname_m'], uname)
+                self.assertEqual(result['uid'], 1000)
+                for stage in [result['setup'], result['network_probe'], result['warmup'], *result['runs']]:
+                    self.assertEqual(stage['uid'], 1000)
 
 
 if __name__ == '__main__':
