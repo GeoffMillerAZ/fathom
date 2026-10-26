@@ -77,8 +77,8 @@
     },
     "count_field": "symbols",
     "budget_ms": 500,
-    "bytes": 1254,
-    "result_count": 7,
+    "bytes": 1757,
+    "result_count": 11,
     "displaced": 0
   },
   {
@@ -116,7 +116,7 @@
       "service": "ledger-service"
     },
     "budget_ms": 250,
-    "bytes": 564,
+    "bytes": 733,
     "result_count": 0,
     "displaced": 0
   },
@@ -129,8 +129,8 @@
     },
     "count_field": "symbols",
     "budget_ms": 250,
-    "bytes": 1320,
-    "result_count": 7,
+    "bytes": 2017,
+    "result_count": 11,
     "displaced": 0
   },
   {
