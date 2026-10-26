@@ -233,6 +233,11 @@ func TestDedupeStateErrorFailsOpen(t *testing.T) {
 					t.Fatal(err)
 				}
 			case "readonly":
+				if os.Geteuid() == 0 {
+					// Root ignores file mode bits, so a 0o400 state file stays writable and the
+					// fail-open path is never reached (cloud VMs run the gate as root).
+					t.Skip("root ignores file mode bits; a read-only state file is still writable")
+				}
 				if err := os.Chmod(path, 0o400); err != nil {
 					t.Fatal(err)
 				}
