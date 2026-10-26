@@ -88,7 +88,10 @@ if __name__ == '__main__':
     parser.add_argument('-subjects', type=Path, required=True)
     parser.add_argument('-out', type=Path, required=True)
     parser.add_argument('-native-population', action='store_true', help='require native observer identity and authored controls')
+    parser.add_argument('-native-definitions', action='store_true', help='require full native lexer definition/range population')
     args = parser.parse_args()
+    if args.native_definitions and not args.native_population:
+        raise SystemExit('native definitions require native population mode')
     args.out.mkdir(parents=True, exist_ok=True)
     reading = args.out / 'reading.json'
     if reading.exists():
@@ -118,15 +121,18 @@ if __name__ == '__main__':
         files.write_text(''.join(f + '\n' for f in sorted(set(scope))))
         output = args.out / (name + '-native.json')
         runner = 'native_population.py' if args.native_population else 'native_upstream.py'
-        run([args.python, HERE / runner, '-subject', checkout, '-subject-sha', repo['sha'],
-             '-files', files, '-nginx', args.nginx, '-build-receipt', args.build_receipt,
-             '-work', args.out / (name + '-work'), '-out', output])
+        native_command = [args.python, HERE / runner, '-subject', checkout, '-subject-sha', repo['sha'],
+                          '-files', files, '-nginx', args.nginx, '-build-receipt', args.build_receipt,
+                          '-work', args.out / (name + '-work'), '-out', output]
+        if args.native_definitions:
+            native_command.append('-native-definitions')
+        run(native_command)
         receipts.append(json.loads(output.read_text()))
         run([args.indexbench.resolve(), 'lang-oracle', '-dialect', 'nginx', '-subject', checkout,
              '-subject-name', name, '-subject-sha', repo['sha'],
              '-tool-oracle', output.with_name(output.stem + '-defs.json'),
              '-tool-oracle', output.with_name(output.stem + '-refs.json'), '-only', ','.join(scope),
-             '-out', reading, '-note', ('Native nginx1.31.6 parser enumerates the whole local upstream population before lexical owner classification; every local pair receives target-only ablation. Reference family A; definitions C. No L3 measurement.' if args.native_population else 'Native nginx 1.31.6 target-only ablation validates independently selected upstream pairs, not native recall completeness. Reference family and definition placement remain C.') + ' No server, backend request or Docker. Scope is the union of all historical disclosures; raw file inventory stays scratch.'])
+             '-out', reading, '-note', ('Native nginx1.31.6 parser enumerates the whole local upstream population before lexical owner classification; every local pair receives target-only ablation. Reference family A; definitions ' + ('A with native lexer ranges' if args.native_definitions else 'C') + '. No L3 measurement.' if args.native_population else 'Native nginx 1.31.6 target-only ablation validates independently selected upstream pairs, not native recall completeness. Reference family and definition placement remain C.') + ' No server, backend request or Docker. Scope is the union of all historical disclosures; raw file inventory stays scratch.'])
         after = tracked_receipt(checkout, subpath, args.out / 'manifests' / (name + '-after'))
         if before != after or before['untracked_entries']:
             raise SystemExit('tracked inputs or generated untracked inputs changed: ' + name)

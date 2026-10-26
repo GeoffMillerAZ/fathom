@@ -36,7 +36,7 @@ def verify_identity(binary, receipt):
         raise ValueError('native observer identity mismatch')
 
 
-def measure(subject, files, nginx, work):
+def measure(subject, files, nginx, work, native_definitions=False):
     import nginx_oracle as old
     subject, nginx, work = subject.resolve(), nginx.resolve(), work.resolve()
     if subject == work or subject in work.parents:
@@ -69,11 +69,20 @@ def measure(subject, files, nginx, work):
             raise ValueError('original input is no longer parseable: ' + rel + ': ' + error)
         walk = LocatedWalk(rel, parsed)
         capture = NativeCapture(rel)
-        ok, _, error, _, mode = old.attest(str(subject), rel, str(nginx), str(work / 'positive'), observer=capture)
+        definition_capture = None
+        if native_definitions:
+            from native_definitions import DefinitionCapture
+            definition_capture = DefinitionCapture(rel)
+        def observe(record):
+            capture(record)
+            if definition_capture is not None:
+                definition_capture(record)
+        ok, _, error, _, mode = old.attest(str(subject), rel, str(nginx), str(work / 'positive'), observer=observe)
         if not ok:
             raise ValueError('original native input no longer loads: ' + rel + ': ' + error)
         events = capture.selected()['events']
-        refs, counts = local_population(events, rel, walk.owner)
+        owner = definition_capture.owner if definition_capture is not None else walk.owner
+        refs, counts = local_population(events, rel, owner)
         native_set = {(r['path'], r['from'], r['to']) for r in refs}
         scanner_set = {(r['path'], r['from'], r['to']) for r in walk.refs}
         # Comparison follows native enumeration and never filters it.
@@ -84,7 +93,7 @@ def measure(subject, files, nginx, work):
             for event in events:
                 declaration = declarations.get((event['domain'], event['pointer']))
                 if (not event['flags'] & 1 and event['path'] == rel and declaration and
-                        declaration['path'] == rel and declaration['host'] == ref['to'] and walk.owner(event) == ref['from']):
+                        declaration['path'] == rel and declaration['host'] == ref['to'] and owner(event) == ref['from']):
                     sites.append((event, declaration))
             if not sites or len({d['line'] for _, d in sites}) != 1:
                 raise ValueError('native target declaration is ambiguous')
@@ -103,9 +112,11 @@ def measure(subject, files, nginx, work):
                 controls.append(dict(reference=ref, native_error=message))
             finally:
                 shutil.rmtree(probe)
-        definitions.extend(walk.defs)
+        positioned = definition_capture.selected() if definition_capture is not None else None
+        definitions.extend(positioned['definitions'] if positioned is not None else walk.defs)
         references.extend(refs)
         audit.append(dict(path=rel, mode=mode, native_events=events, classification=counts,
+                          native_positions={key: value for key, value in positioned.items() if key != 'definitions'} if positioned else None,
                           failed_contexts=capture.failed_contexts, negative_controls=controls,
                           native_only_pairs=sorted(native_set - scanner_set), scanner_only_pairs=sorted(scanner_set - native_set)))
     return definitions, references, audit
@@ -116,6 +127,7 @@ if __name__ == '__main__':
     for name in ('subject', 'files', 'nginx', 'build-receipt', 'work', 'out'):
         parser.add_argument('-' + name, type=Path, required=True)
     parser.add_argument('-subject-sha', required=True)
+    parser.add_argument('-native-definitions', action='store_true')
     args = parser.parse_args()
     if subprocess.check_output(['git', '-C', str(args.subject), 'rev-parse', 'HEAD'], text=True).strip() != args.subject_sha:
         raise SystemExit('subject pin mismatch')
@@ -131,19 +143,32 @@ if __name__ == '__main__':
     control_env = dict(os.environ, NGINX_OBSERVER=str(args.nginx.resolve()))
     subprocess.run([sys.executable, '-B', '-m', 'unittest', 'discover', '-s', str(HERE),
                     '-p', 'test_native_population.py'], env=control_env, check=True)
+    if args.native_definitions:
+        from instrument_tokens import SOURCE_SHA256
+        token_identity = receipt.get('native_token_observer', {})
+        if (token_identity.get('original_sha256') != SOURCE_SHA256 or
+                token_identity.get('shim_sha256') != hashlib.sha256((HERE / 'token_observer.c.in').read_bytes()).hexdigest()):
+            raise SystemExit('native lexer observer identity mismatch')
+        control_env['NGINX_TOKENS'] = str(args.nginx.resolve())
+        subprocess.run([sys.executable, '-B', '-m', 'unittest', 'discover', '-s', str(HERE),
+                        '-p', 'test_native_token*.py'], env=control_env, check=True)
+        subprocess.run([sys.executable, '-B', '-m', 'unittest', 'discover', '-s', str(HERE),
+                        '-p', 'test_native_definition_integration.py'], env=control_env, check=True)
     files = args.files.read_text().splitlines()
     if not files or files != sorted(set(files)) or any(Path(f).is_absolute() or '..' in Path(f).parts for f in files):
         raise SystemExit('invalid original input scope')
-    definitions, references, evidence = measure(args.subject, files, args.nginx, args.work)
+    definitions, references, evidence = measure(args.subject, files, args.nginx, args.work, args.native_definitions)
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    for suffix, tier, defs, refs in [('defs', 'C', definitions, []), ('refs', 'A', [], references)]:
-        output = dict(tool='nginx native parser upstream population' if suffix == 'refs' else 'independent crossplane definition placement',
+    for suffix, tier, defs, refs in [('defs', 'A' if args.native_definitions else 'C', definitions, []), ('refs', 'A', [], references)]:
+        output = dict(tool='nginx native parser upstream population' if suffix == 'refs' else 'native nginx lexer definition population and ranges' if args.native_definitions else 'independent crossplane definition placement',
                       version=receipt['version'], tier=tier, definitions=defs, references=refs)
         args.out.with_name(args.out.stem + '-' + suffix + '.json').write_text(json.dumps(output, indent=2) + '\n')
     raw = json.dumps(evidence, sort_keys=True).encode()
     args.out.with_name(args.out.stem + '-raw.json').write_bytes(raw + b'\n')
     summary = dict(kind='native whole-input parser population; same-file L2 only', subject_sha=args.subject_sha,
                    binary_sha256=receipt['binary_sha256'], reference_tier='A', configs=len(files),
+                   definition_tier='A' if args.native_definitions else 'C',
+                   native_position_tokens=sum(a['native_positions']['native_tokens_target'] for a in evidence) if args.native_definitions else 0,
                    definitions=len(definitions), references=len(references), native_events=sum(len(a['native_events']) for a in evidence),
                    classification={key: sum(a['classification'].get(key, 0) for a in evidence)
                                    for key in sorted({key for a in evidence for key in a['classification']})},

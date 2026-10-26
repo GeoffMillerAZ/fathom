@@ -90,3 +90,33 @@ availability ceiling. Remaining X-R4 candidates for a future L1 ceiling need
 complete versioned search receipts. The native L2 availability trigger has
 fired; L3/include work remains held until D19. No product, epoch, generated
 tracker or checkbox change is part of this diagnostic.
+
+
+## Open L1 native lexer follow-up
+
+The separate L1 branch adds `-observe-tokens` to the pinned build driver,
+alongside `-observe-upstreams`. `native-token-build-r1.json` freezes the measured
+binary and native lexer/shim identities before configuration queries.
+The observer reads the native first-word start line and block/file end counters;
+stripping its read-only hook and wrapper exactly restores the original parser.
+No independent parser chooses the token population. `native_tokens.py` refuses
+unknown/incomplete events, missing boundaries and cap overflows.
+
+Authored controls cover multiline/inline ranges, data blocks, unused entities,
+quotes, non-ASCII arguments and final-newline differences. Native definitions
+and owners survive omission by the independent walk. Caps are 10,000 tokens,
+64 arguments including the directive, 512 bytes per argument/path, and 8 MiB
+stderr; exact cap-plus-one controls refuse the entire profile. Native definition
+names changed by scratch-path rewriting also refuse instead of guessing an
+inverse. The canonical full-input measurement remains pending at this commit.
+
+```sh
+nice -n 10 python3 -B calibration/oracles/nginx/build_native.py -cache workspace/oracle/nginx-token-build -observe-upstreams -observe-tokens
+install -m700 workspace/oracle/nginx-token-build/nginx-1.31.6/objs/nginx workspace/oracle/nginx-tokens
+NGINX_TOKENS="$PWD/workspace/oracle/nginx-tokens" python3 -B -m unittest discover -s calibration/oracles/nginx -p 'test_native_token*.py'
+workspace/oracle/nginx-venv/bin/python -B calibration/oracles/nginx/grade_native_l2.py -native-population -native-definitions -indexbench workspace/tmp/indexbench -python workspace/oracle/nginx-venv/bin/python -nginx workspace/oracle/nginx-tokens -build-receipt workspace/oracle/nginx-token-build/build-receipt.json -subjects workspace/calibration/nginx-native -out workspace/tmp/nginx-native-positions
+```
+
+Use the same disk/load/serial guards and private caches as above. Package the
+build receipt and small binary, then prune completed source builds/downloads.
+No L3/canonical reading, extractor, engine, epoch or checkbox change follows.

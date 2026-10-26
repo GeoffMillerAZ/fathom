@@ -15,6 +15,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-cache', type=Path, required=True)
     parser.add_argument('-observe-upstreams', action='store_true', help='bench-only native parser population observer')
+    parser.add_argument('-observe-tokens', action='store_true', help='bench-only complete native lexer population observer')
     args = parser.parse_args()
     require_free_space('native source build')
     cache = args.cache.resolve()
@@ -50,6 +51,13 @@ if __name__ == '__main__':
                 (source / relative).write_bytes(archive.extractfile(versions['nginx'] + '/' + relative).read())
         from instrument_source import instrument
         observation = instrument(source)
+    token_observation = None
+    if args.observe_tokens:
+        with tarfile.open(cache / (versions['nginx'] + '.tar.gz'), 'r:gz') as archive:
+            relative = 'src/core/ngx_conf_file.c'
+            (source / relative).write_bytes(archive.extractfile(versions['nginx'] + '/' + relative).read())
+        from instrument_tokens import instrument as instrument_tokens
+        token_observation = instrument_tokens(source)
     features = ['--with-threads', '--with-pcre-jit', '--with-http_ssl_module', '--with-http_v2_module',
                 '--with-http_v3_module', '--with-http_realip_module', '--with-http_addition_module',
                 '--with-http_sub_module', '--with-http_dav_module', '--with-http_flv_module',
@@ -73,5 +81,7 @@ if __name__ == '__main__':
                'backend_requests_executed': False, 'server_started': False}
     if observation:
         receipt['native_population_observer'] = observation
+    if token_observation:
+        receipt['native_token_observer'] = token_observation
     (cache / 'build-receipt.json').write_text(json.dumps(receipt, indent=2) + '\n')
     print(protocol['version'], receipt['binary_sha256'])
