@@ -1,0 +1,45 @@
+{
+  "protocol": "tools-circleci-t-r3-v1",
+  "rule": "Union native compiler output across these inputs, fixed before the first oracle run; retain all source declarations, even when no case activates them. No runtime jobs execute. Fail the subject if any registered case fails. Never replace public orbs with stand-ins.",
+  "subjects": [
+    {
+      "name": "CircleCI-Public/cimg-python",
+      "sha": "a7418d2562d6bd288e953e4a7dbbda478cdf8525",
+      "configs": {
+        ".circleci/config.yml": [
+          {},
+          {
+            "cron": false
+          },
+          {
+            "cron": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "CircleCI-Public/cimg-node",
+      "sha": "bb5c7c6dc5e1b5e61172e0ac9dc1825cccdd3c5f",
+      "configs": {
+        ".circleci/config.yml": [
+          {},
+          {
+            "cron": false
+          },
+          {
+            "cron": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "scikit-learn/scikit-learn",
+      "sha": "bb9cefde592afccd276c5b2d75957dfde91d5b3e",
+      "configs": {
+        ".circleci/config.yml": [
+          {}
+        ]
+      }
+    }
+  ]
+}
