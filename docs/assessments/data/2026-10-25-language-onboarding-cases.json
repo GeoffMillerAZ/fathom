@@ -39,7 +39,7 @@
         "13.4:20-21"
       ],
       "replayability": {
-        "candidate_for_generic_preflight": true,
+        "candidate_for_generic_preflight": false,
         "bad_head_available_locally": true,
         "repaired_head_available_locally": false,
         "status": "not measured"
@@ -49,7 +49,7 @@
         "Pinned cuda-samples checkout and driver outputs; a measured-file manifest check.",
         "Public repaired head for a before/after replay."
       ],
-      "proposed_scope": "subject-file selection before measurement"
+      "proposed_scope": "CUDA-specific measured-set adapter; contextual, excluded from generic onboarding-arm catches"
     },
     {
       "owner_item": "C5-R3",
@@ -357,7 +357,7 @@
         "13.5:22-23"
       ],
       "replayability": {
-        "candidate_for_generic_preflight": true,
+        "candidate_for_generic_preflight": false,
         "bad_head_available_locally": true,
         "repaired_head_available_locally": false,
         "status": "not measured"
@@ -367,7 +367,7 @@
         "Tree-wide reading enumerator; expected before/after inventory.",
         "Public repaired head for a before/after replay."
       ],
-      "proposed_scope": "repository-wide reading acceptance"
+      "proposed_scope": "repository-wide harness rule change; excluded from onboarding-arm catches"
     },
     {
       "owner_item": "E2-R2",
@@ -382,7 +382,7 @@
         "13.5:22"
       ],
       "replayability": {
-        "candidate_for_generic_preflight": true,
+        "candidate_for_generic_preflight": false,
         "bad_head_available_locally": true,
         "repaired_head_available_locally": false,
         "status": "not measured"
@@ -392,7 +392,7 @@
         "Canonical serializer check and value-equality baseline.",
         "Public repaired head for a before/after replay."
       ],
-      "proposed_scope": "repository-wide reading acceptance"
+      "proposed_scope": "repository-wide harness rule change; excluded from onboarding-arm catches"
     },
     {
       "owner_item": "E2-R3",
@@ -406,7 +406,7 @@
         "13.4:20-21"
       ],
       "replayability": {
-        "candidate_for_generic_preflight": true,
+        "candidate_for_generic_preflight": false,
         "bad_head_available_locally": true,
         "repaired_head_available_locally": false,
         "status": "not measured"
@@ -416,7 +416,7 @@
         "Before/after reading comparison and manifest context for astro/dockerfile.",
         "Public repaired head for a before/after replay."
       ],
-      "proposed_scope": "repository-wide reading acceptance"
+      "proposed_scope": "repository-wide harness rule change; excluded from onboarding-arm catches"
     },
     {
       "owner_item": "E2-R4",
@@ -440,7 +440,7 @@
         "Focused grading test; owner-approved semantic rule.",
         "Public repaired head for a before/after replay."
       ],
-      "proposed_scope": "outside generic-preflight experiment"
+      "proposed_scope": "repository-wide harness rule change; excluded from onboarding-arm catches"
     },
     {
       "owner_item": "E2-R5",
@@ -454,7 +454,7 @@
         "13.5:22-23"
       ],
       "replayability": {
-        "candidate_for_generic_preflight": true,
+        "candidate_for_generic_preflight": false,
         "bad_head_available_locally": true,
         "repaired_head_available_locally": false,
         "status": "not measured"
@@ -464,15 +464,15 @@
         "Claim-to-reading mapping and rules for historical prose; proposed consistency check.",
         "Public repaired head for a before/after replay."
       ],
-      "proposed_scope": "repository-wide plan/reading acceptance; prose equivalence remains unmeasured"
+      "proposed_scope": "repository-wide harness rule change; excluded from onboarding-arm catches"
     },
     {
       "owner_item": "issue #3 gate comment",
       "slug": "lang-retime-exec-noctx-lint",
       "class": "test_gate_effectiveness",
       "source": "https://github.com/GeoffMillerAZ/fathom/issues/3#issuecomment-6405720667",
-      "bad_submission_head": null,
-      "repaired_head": "3b77ae9c4",
+      "bad_submission_head": "7e08e9651dfe8c6b1a9907d946ab3458336a2707",
+      "repaired_head": "3b77ae9c4015d0d3db52344ba283d3105dabc6c1",
       "repair_source": "https://github.com/GeoffMillerAZ/fathom/issues/3#issuecomment-6405720667",
       "recipe_steps": [
         "13.5:22",
@@ -480,13 +480,13 @@
       ],
       "replayability": {
         "candidate_for_generic_preflight": false,
-        "bad_head_available_locally": false,
-        "repaired_head_available_locally": false,
+        "bad_head_available_locally": true,
+        "repaired_head_available_locally": true,
         "status": "not measured"
       },
       "expected_preflight_result": "The existing validate gate fails a bare exec.Command in lang-retime and passes after correction.",
       "missing_inputs": [
-        "Exact pre-fix submission head; repaired commit is public but absent locally."
+        "No missing public revision pair; late integration case included in companion census; independent replay not run."
       ],
       "proposed_scope": "outside generic-preflight experiment"
     }
@@ -494,10 +494,12 @@
   "snapshot_date": "2026-10-25",
   "coverage": {
     "finding_groups": 20,
-    "generic_preflight_candidates": 5,
+    "generic_preflight_candidates": 0,
     "candidates_with_documented_repaired_head": 0,
     "replayed_cases": 0,
-    "time_savings": "unmeasured"
+    "time_savings": "unmeasured",
+    "prior_generic_preflight_candidates_withdrawn": 5,
+    "note": "GPU review sample supplies context, not the onboarding experiment population. See companion mechanical census for public bad/fixed pairs and arm feasibility."
   },
   "wave_rounds": {
     "definition": "Named submission/revision cycles including requested rounds awaiting outcomes; not individual reviewer passes or landed-round counts",
@@ -511,6 +513,59 @@
     },
     "total": 21,
     "source": "Controller-authorized aggregate wave evidence; private operational identifiers excluded",
-    "elapsed_time": "unmeasured"
+    "elapsed_time": "unmeasured",
+    "authorization": {
+      "ruling": "LH-R1",
+      "scope": "Aggregate rounds per lane, review outcomes, finding classes and readings with numbers, including historical per-round checkpoints. No operational identifiers or private source contents are reproduced."
+    }
+  },
+  "review_coverage": {
+    "retrieved_at_utc": "2026-10-26 02:15:36 UTC",
+    "pull_request_listing": "https://api.github.com/repos/GeoffMillerAZ/fathom/pulls?state=all&per_page=100",
+    "pagination": "No next page for listing or reviewed endpoints",
+    "pull_requests": [
+      {
+        "number": 12,
+        "channels": {
+          "reviews": {
+            "count": 0,
+            "sources": []
+          },
+          "inline-comments": {
+            "count": 0,
+            "sources": []
+          },
+          "discussion": {
+            "count": 2,
+            "sources": [
+              "https://github.com/GeoffMillerAZ/fathom/pull/12#issuecomment-6405896406",
+              "https://github.com/GeoffMillerAZ/fathom/pull/12#issuecomment-6406176127"
+            ]
+          }
+        },
+        "http_status": 200
+      },
+      {
+        "number": 23,
+        "channels": {
+          "reviews": {
+            "count": 0,
+            "sources": []
+          },
+          "inline-comments": {
+            "count": 0,
+            "sources": []
+          },
+          "discussion": {
+            "count": 2,
+            "sources": [
+              "https://github.com/GeoffMillerAZ/fathom/pull/23#issuecomment-6406305403",
+              "https://github.com/GeoffMillerAZ/fathom/pull/23#issuecomment-6406489003"
+            ]
+          }
+        },
+        "http_status": 200
+      }
+    ]
   }
 }
