@@ -1,0 +1,16 @@
+{
+  "version": "ansible-core 2.21.4",
+  "sources": [
+    {
+      "path": "lib/ansible/parsing/dataloader.py",
+      "url": "https://raw.githubusercontent.com/ansible/ansible/v2.21.4/lib/ansible/parsing/dataloader.py",
+      "sha256": "a4c513f32477be220711f1f7fabe38e2269bb3f8563233cfa69eb145412edb1d"
+    },
+    {
+      "path": "lib/ansible/playbook/__init__.py",
+      "url": "https://raw.githubusercontent.com/ansible/ansible/v2.21.4/lib/ansible/playbook/__init__.py",
+      "sha256": "e452a726c073df952f05bc3288bae7880c2476c7bc8d34738ceac8d112d4d391"
+    }
+  ],
+  "result": "Historical source-only receipt; see native-candidates-r2.json for later inventory/lint measurements. Full core Playbook/Role/handler harness remains open work: DataLoader is generic YAML/JSON loading; Playbook.load invokes native Play/PlaybookInclude loading, requiring real dependencies. Existing CLI acceptance is partial, not full positioned declaration/reference truth."
+}

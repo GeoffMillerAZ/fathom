@@ -50,6 +50,7 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 | C++ | tags dialect `cpp` | yes (tree-sitter-cpp v0.23.4) | fmt, nlohmann/json | **scip** via scip-clang | L2 call precision, L3 file edges (`import_resolution` reads 1 against the build's own preprocessor, tier A) and L4 (LB-Q-cpp-rest) |
 | CUDA | tags dialect `cuda` (a `.h` a CUDA file includes is C or C++'s through the header router; the CUDA file binds what it defines) | yes (tree-sitter-cuda, pinned by commit) | NVIDIA/cuda-samples as one subject, from the samples' own build database (NVIDIA/cutlass: LB-Q-cuda-rest) | **scip** via scip-clang over a clang translation of the nvcc database; nvcc's own preprocessor, device and host passes (tier A); the clang call and AST oracles tier B | L3 file-edge recall (scip-clang names a global of two samples alike: a link-unit scope is LB-Q-cuda-rest's) and L4 on cutlass |
 | Ruby | tags dialect `ruby` | yes | sinatra, jekyll | **scip** via scip-ruby, which needs a Sorbet-typed subject (on untyped code it sees only typed receivers); meanwhile **file**: `require`, `require_relative`, `load` and `autoload` resolve via the file-symbol strategy, and a constant is looked up lexically through its enclosing modules (LB-Q-ruby at L3 good, LB-F76) | L3 excellent and L4 need a Sorbet-typed subject for scip-ruby (tier B and C oracles grade good at most; LB-Q-ruby-rest) |
+| Jinja2 | tags dialect `jinja2` | yes (bennypowers/tree-sitter-jinja-dialects 4f832fe, MIT, pinned optional-else patch) | kolla, kolla-ansible | **file** — literal template imports and alias-qualified macro calls resolve through include-path | templates/*.html by sniff (HTML retains extension dispatch and resolution); splat/filter arguments and numeric dotted attributes |
 | HTML | tags dialect `html` | yes | html5-boilerplate, bootstrap (visual tests) | **file** — `src`/`href` resolve via the relative-path strategy (LB-F11); no SCIP producer exists for HTML, so this is the ceiling until one does | L1 range agreement (ctags writes no HTML end line); L2 is undefined for markup under §1.2 and L3 needs a tier-A link checker (LB-Q-html-rest, O799) |
 | CSS | tags dialect `css` | yes | normalize.css, pico, gitea (web_src/css) | **file** — `@import` resolves via the relative-path strategy (LB-F11) and is an edge between the sheets' module symbols; a `var()` or animation name binds a custom property or `@keyframes` an imported sheet declares (LB-F459); no SCIP producer exists for CSS, so this is the ceiling until one does | L1 range agreement (neither lightningcss nor ctags writes a CSS end line; LB-Q-css-rest); L2 graded as name references within the `@import` closure (W2) |
 | Vue single-file components | tags dialect `vue`; grammar tree-sitter-grammars/tree-sitter-vue ce8011a4 (0.09% of files in error); `<script>` read as TypeScript or JavaScript and `<style>` as CSS or SCSS, the file their host (F2) | yes | element-plus, vitepress | **file** — a `<script>`'s relative imports resolve via the relative-path strategy, and a component element binds the imported component file's module symbol; no SCIP producer reads `.vue` (vue-tsc writes none), so this is the ceiling until one does | L1 to L3 excellent against @vue/compiler-sfc (vue.json); a script's `let` is the script dialect's (O978), an import of a `.ts` module draws no file edge (the file resolver's universe is the host's own files, O979), and a host's script parsers churn the module pool on a mixed repository (O982) |
@@ -126,18 +127,18 @@ item's target; the last column also needs every level up to the target graded ex
 
 | Tier | Kind | Items | L1 | L2 | L3 | L4 | None | Refused | Tolerated | Unsupported | At target | At target, all excellent |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| T1 | language | 33 | 0 | 3 | 13 | 10 | 1 | 6 | 0 | 0 | 23 | 10 |
+| T1 | language | 41 | 0 | 3 | 14 | 10 | 1 | 5 | 0 | 8 | 24 | 11 |
 | T1 | tool format | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |
-| T2 | tool format | 23 | 0 | 6 | 15 | 0 | 1 | 0 | 0 | 1 | 20 | 15 |
-| T3 | tool format | 16 | 0 | 5 | 11 | 0 | 0 | 0 | 0 | 0 | 15 | 5 |
+| T2 | tool format | 32 | 0 | 8 | 15 | 0 | 1 | 0 | 0 | 8 | 20 | 15 |
+| T3 | tool format | 18 | 0 | 5 | 12 | 0 | 0 | 0 | 0 | 1 | 16 | 5 |
 | T4 | language | 3 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 1 | 1 | 0 |
 | T4 | tool format | 7 | 0 | 4 | 2 | 0 | 0 | 0 | 0 | 1 | 6 | 5 |
 | T5 | tool format | 8 | 0 | 2 | 6 | 0 | 0 | 0 | 0 | 0 | 8 | 3 |
 | T6 | language | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | T6 | tool format | 4 | 0 | 3 | 1 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
 | T7 | tool format | 4 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
-| **Total** | language | 37 | 0 | 3 | 15 | 10 | 1 | 7 | 0 | 1 | 24 | 10 |
-| **Total** | tool format | 63 | 0 | 21 | 39 | 0 | 1 | 0 | 0 | 2 | 58 | 32 |
+| **Total** | language | 45 | 0 | 3 | 16 | 10 | 1 | 6 | 0 | 9 | 25 | 11 |
+| **Total** | tool format | 74 | 0 | 23 | 40 | 0 | 1 | 0 | 0 | 10 | 59 | 32 |
 
 ### T1
 
@@ -147,7 +148,7 @@ item's target; the last column also needs every level up to the target graded ex
 | JavaScript (.js .jsx .mjs .cjs) | language | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 good) | L4 good: typed_recall 0.9376 < 0.95 |
 | React components, props, hooks and React Router routes (.tsx .jsx .ts .js) | language | L3 | L3 (L1 good, L2 good, L3 good) | L1 good: oracle tier C caps at good |
 | Angular components and templates (.component.ts, .component.html) | language | L3 | refused | re-plan (LB-Q-angular-rest refused) |
-| Python (.py .pyi) | language | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | excellent at target |
+| Python (.py) | language | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | excellent at target |
 | HTML (.html .htm) | language | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | CSS (.css) | language | L3 | L3 (L1 good, L2 excellent, L3 excellent) | L1 good: range_agreement not measured |
 | SQL (.sql; schema and migrations) | language | L2 | L2 (L1 excellent, L2 excellent) | excellent at target |
@@ -162,7 +163,7 @@ item's target; the last column also needs every level up to the target graded ex
 | Rust (.rs) | language | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | excellent at target |
 | Kotlin (.kt .kts) | language | L4 | L3 (L1 excellent, L2 good, L3 good) | L4 not met: def_mapping not measured |
 | Lua (.lua) | language | L3 | L3 (L1 excellent, L2 good, L3 good) | L2 good: oracle tier C caps at good |
-| Ruby (.rb, Rakefile, Gemfile by basename) | language | L3 | L3 (L1 excellent, L2 good, L3 good) | L2 good: oracle tier C caps at good |
+| Ruby (.rb .rake .ru, Rakefile by basename) | language | L3 | L3 (L1 excellent, L2 good, L3 good) | L2 good: oracle tier C caps at good |
 | Dart (.dart) | language | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | excellent at target |
 | Swift (.swift) | language | L3 | refused | re-plan (LB-Q-swift-rest refused) |
 | SCSS (.scss) | language | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
@@ -176,15 +177,24 @@ item's target; the last column also needs every level up to the target graded ex
 | Vue single-file components (.vue) | language | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | Svelte components (.svelte) | language | L3 | none (measured) | L1 not met: sym_precision 0.3816 < 0.9 |
 | Laravel Blade templates (.blade.php) | language | L3 | refused | re-plan (LB-Q-blade-rest refused) |
-| Jinja2 templates (.j2 .jinja .jinja2, templates/*.html by sniff) | language | L3 | refused | re-plan (LB-Q-jinja2-rest refused) |
+| Jinja2 templates (.j2 .jinja .jinja2) | language | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
+| Razor and Blazor (.cshtml .razor) | language | L2 | unsupported | no dialect (LB-Q-razor) |
+| ERB (.erb) | language | L2 | unsupported | no dialect (LB-Q-erb) |
+| EJS (.ejs) | language | L2 | unsupported | no dialect (LB-Q-ejs) |
+| Handlebars and Mustache (.hbs .handlebars .mustache) | language | L2 | unsupported | no dialect (LB-Q-handlebars) |
+| Liquid (.liquid) | language | L2 | unsupported | no dialect (LB-Q-liquid) |
+| Twig (.twig) | language | L2 | unsupported | no dialect (LB-Q-twig) |
+| Go templates (.gohtml .gotmpl, .tmpl by sniff) | language | L2 | unsupported | no dialect (LB-Q-go-template) |
+| SQL dialect sniffing (.pks .pkb .pls .plb, .sql and .tsql by sniff) | language | L1 | unsupported | no dialect (LB-Q-sql-dialects) |
 
 ### T2
 
 | Item | Kind | Target | Level met | Next gap |
 |---|---|---|---|---|
+| Dockerfile / Containerfile | tool format | L3 | L2 (L1 excellent, L2 excellent) | L3 not met: xref_precision not measured |
 | GitHub Actions workflows and composite actions | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 good) | L3 good: oracle tier C caps at good |
 | npm/pnpm/yarn package manifests (package.json, workspaces) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
-| Python packaging (pyproject.toml, requirements*.txt, setup.cfg) | tool format | L2 | L2 (L1 good, L2 excellent) | L1 good: oracle tier C caps at good |
+| Python packaging (pyproject.toml) | tool format | L2 | L2 (L1 good, L2 excellent) | L1 good: oracle tier C caps at good |
 | Makefile / GNU make (Makefile, *.mk, GNUmakefile) | tool format | L2 | L2 (L1 excellent, L2 excellent) | excellent at target |
 | GitLab CI (.gitlab-ci.yml, included files) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | Maven POMs (pom.xml) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
@@ -199,17 +209,26 @@ item's target; the last column also needs every level up to the target graded ex
 | JSON Schema documents | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | Taskfile (go-task: Taskfile.yml) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | Jenkins pipelines (Jenkinsfile, *.jenkinsfile) | tool format | L3 | L3 (L1 good, L2 good, L3 good) | L1 good: oracle tier C caps at good |
-| Azure Pipelines (azure-pipelines.yml, templates) | tool format | L3 | unsupported | no dialect (LB-Q-azure-pipelines) |
+| Azure Pipelines (azure-pipelines.yml, templates) | tool format | L3 | L2 (L1 good, L2 good) | L3 not met: xref_precision not measured |
 | CircleCI (.circleci/config.yml) | tool format | L2 | L2 (L1 good, L2 good) | L1 good: sym_precision 0.9796 < 0.98 |
+| Dotenv files (.env, .env.example, *.env) | tool format | L1 | unsupported | no dialect (LB-Q-dotenv) |
+| Dev containers (devcontainer.json, devcontainer-feature.json) | tool format | L2 | unsupported | no dialect (LB-Q-devcontainer) |
+| Renovate and Dependabot configs | tool format | L1 | unsupported | no dialect (LB-Q-dependency-bots) |
+| dbt projects (dbt_project.yml, models/*.sql with ref(), schema.yml) | tool format | L3 | unsupported | no dialect (LB-Q-dbt) |
+| Ruby DSL manifests (Gemfile, *.gemspec, Podfile, *.podspec) | tool format | L2 | unsupported | no dialect (LB-Q-gemfile-podfile) |
+| Android manifests (AndroidManifest.xml) | tool format | L2 | unsupported | no dialect (LB-Q-android-manifest) |
 | Conan recipes and lockfiles (conanfile.txt, conanfile.py, conan.lock, conandata.yml) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | vcpkg manifests (vcpkg.json, vcpkg-configuration.json) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | Meson builds (meson.build, meson.options, meson_options.txt) | tool format | L3 | L2 (L1 excellent, L2 excellent) | L3 not met: xref_precision not measured |
 | Clang compilation databases (compile_commands.json) | tool format | L2 | L2 (L1 excellent, L2 excellent) | excellent at target |
+| Python dependency manifests (requirements*.txt, constraints*.txt, setup.cfg, Pipfile, poetry.lock, uv.lock, environment.yml) | tool format | L2 | unsupported | no dialect (LB-Q-python-manifests) |
+| Xcode project files (project.pbxproj, .xcconfig, Info.plist, .storyboard, .xib) | tool format | L2 | unsupported | no dialect (LB-Q-xcode-project) |
 
 ### T3
 
 | Item | Kind | Target | Level met | Next gap |
 |---|---|---|---|---|
+| Terraform / OpenTofu (.tf .tfvars .tf.json) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 good) | L3 good: xref_recall 0.6086 < 0.8 |
 | Kubernetes manifests (incl. CRDs) | tool format | L3 | L3 (L1 excellent, L2 good, L3 good) | L2 good: oracle tier C caps at good |
 | Helm charts (Chart.yaml, values.yaml, templates/*.yaml, *.tpl) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 good) | L3 good: oracle tier C caps at good |
 | Kustomize (kustomization.yaml) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
@@ -220,6 +239,7 @@ item's target; the last column also needs every level up to the target graded ex
 | HashiCorp HCL tool configs (Packer *.pkr.hcl, Nomad jobspecs, docker-bake.hcl) | tool format | L2 | L2 (L1 good, L2 good) | L1 good: oracle tier C caps at good |
 | Pulumi YAML programs and project files (Pulumi.yaml, Pulumi.<stack>.yaml) | tool format | L2 | L2 (L1 excellent, L2 excellent) | excellent at target |
 | Crossplane compositions and XRDs | tool format | L3 | L3 (L1 excellent, L2 good, L3 good) | L2 good: oracle tier C caps at good |
+| Jsonnet (.jsonnet .libsonnet) | tool format | L3 | unsupported | no dialect (LB-Q-jsonnet) |
 | Serverless Framework (serverless.yml) | tool format | L2 | L2 (L1 excellent, L2 excellent) | excellent at target |
 | Azure Bicep (.bicep, .bicepparam) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | Azure Resource Manager templates (azuredeploy.json shape, by content) | tool format | L3 | L3 (L1 excellent, L2 good, L3 excellent) | L2 good: ref_recall 0.9448 < 0.95 |
@@ -274,7 +294,7 @@ item's target; the last column also needs every level up to the target graded ex
 | Grafana dashboards and provisioning (dashboard JSON, v2 resources, providers, datasources, alerting) | tool format | L3 | L3 (L1 good, L2 good, L3 good) | L1 good: oracle tier C caps at good |
 | OpenTelemetry Collector configuration (receivers, processors, exporters, connectors, extensions, pipelines) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 good) | L3 good: oracle tier C caps at good |
 
-Untiered entries (outside the excellence target set): 81 (abap, ada, android-manifest, apex, assembly, asyncapi, avro, buf, clojure, cobol, codeowners, commonlisp, crystal, cuda, d, dbt, dependency-bots, devcontainer, dhall, docker-compose, dockerfile, dotenv, earthfile, elixir, elm, emacs-lisp, erlang, fortran, fsharp, gdscript, gemfile-podfile, git-hooks-config, gleam, glsl, gradle, groovy, haskell, hlsl, json-yaml-toml, jsonnet, julia, justfile, kcl, latex, luau, markdown, matlab, mojo, nim, nix, nushell, objective-c, ocaml, odin, openapi, pascal, pkl, prisma, prolog, purescript, r, scheme-racket, skaffold, solidity, sql-migrations, systemd, tcl, tekton, templ, terraform, thrift, tiltfile, typst, unity-asmdef, vba, vbnet, verilog, vhdl, vimscript, wgsl, zig).
+Untiered entries (outside the excellence target set): 78 (abap, ada, apex, app-migrations, arduino, assembly, asyncapi, avro, buf, clojure, cobol, codeowners, commonlisp, crystal, cuda, d, dhall, docker-compose, earthfile, elixir, elm, emacs-lisp, erlang, fortran, fsharp, gdscript, git-hooks-config, gleam, glsl, gradle, groovy, haml-slim, haskell, hlsl, json-yaml-toml, julia, justfile, kcl, latex, luau, markdown, matlab, mojo, nim, nix, nunjucks, nushell, objective-c, ocaml, odin, openapi, pascal, pkl, prisma, prolog, pug, purescript, r, scheme-racket, skaffold, solidity, sql-migrations, systemd, tcl, tekton, templ, thrift, tiltfile, typst, unity-asmdef, vba, vbnet, verilog, vhdl, vimscript, wgsl, xaml, zig).
 
 ## Support levels (generated)
 
@@ -285,8 +305,8 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 reached (languages at L1 40, L1 excellent 29, L2 35, L3 28, L4 10; tool formats at target 67)
-Milestone M2 progress: languages at L1 40/45, at L1 excellent 29/35, at L2 35/25, at L3 28/14, at L4 10/10; tool formats at target 67/30
+Milestone M1 reached (languages at L1 41, L1 excellent 30, L2 36, L3 29, L4 10; tool formats at target 67)
+Milestone M2 progress: languages at L1 41/45, at L1 excellent 30/35, at L2 36/25, at L3 29/14, at L4 10/10; tool formats at target 67/30
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -295,7 +315,7 @@ Milestone M2 progress: languages at L1 40/45, at L1 excellent 29/35, at L2 35/25
 | React components, props, hooks and React Router routes (.tsx .jsx .ts .js) | language | tags | tree-sitter/tree-sitter-typescript, tree-sitter/tree-sitter-javascript (the TS/JS dialects' own kinds) (MIT) | L3 | L3 (L1 good, L2 good, L3 good) | C react-docgen-typescript (Parser.getComponentInfo, Storybook's options, every prop kept) + the TypeScript checker react-docgen-typescript 2.4.0, typescript 5.9.3 | — | 2026-10-10 | at target (LB-Q-react) |
 | Angular components and templates (.component.ts, .component.html) | language | tags | the typescript dialect's own kinds plus an Angular template grammar (verify at pin) (MIT (verify at pin)) | L3 | refused | — | — | — | re-plan (LB-Q-angular-rest refused) |
 | Dockerfile / Containerfile | tool format | tags | camdencheek/tree-sitter-dockerfile (Apache-2.0) | L3 | L2 (L1 excellent, L2 excellent) | A buildkit-dockerfile-parser github.com/moby/buildkit v0.33.0 frontend/dockerfile (docker buildx build --print=outline substitute — no Docker daemon in this sandbox) | syntax | 2026-09-28 | LB-Q-dockerfile |
-| Python (.py .pyi) | language | tags | tree-sitter/tree-sitter-python (MIT) | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | A scip-python 0.6.6; B universal-ctags 6.2.1 | scip:scip-python | 2026-10-10 | at target (LB-Q-python) |
+| Python (.py) | language | tags | tree-sitter/tree-sitter-python (MIT) | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | A scip-python 0.6.6; B universal-ctags 6.2.1 | scip:scip-python | 2026-10-10 | at target (LB-Q-python) |
 | HTML (.html .htm) | language | tags | tree-sitter/tree-sitter-html (MIT) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A lychee 0.24.2; A parse5 8.0.1; B universal-ctags 6.2.1 | file | 2026-10-11 | at target (LB-Q-html) |
 | GitHub Actions workflows and composite actions | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 good) | A @actions/workflow-parser (parseWorkflow + convertWorkflowTemplate; parseAction + convertActionTemplate) @actions/workflow-parser 0.3.61; C @actions/workflow-parser (parseWorkflow + convertWorkflowTemplate; parseAction + convertActionTemplate) + local uses: directory rule @actions/workflow-parser 0.3.61 | — | 2026-10-15 | at target (LB-Q-github-actions) |
 | CSS (.css) | language | tags | tree-sitter/tree-sitter-css (MIT) | L3 | L3 (L1 good, L2 excellent, L3 excellent) | A lightningcss 1.33.0 | file | 2026-10-10 | at target (LB-Q-css) |
@@ -303,7 +323,7 @@ Milestone M2 progress: languages at L1 40/45, at L1 excellent 29/35, at L2 35/25
 | npm/pnpm/yarn package manifests (package.json, workspaces) | tool format | doc | pure-go:encoding/json (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A npm query ':root' (each manifest as npm loads it) 11.19.1; A npm query (workspace members) + pnpm 10.33.0 ls -r --filter '{<project>}...' (one project's dependency maps at a time) npm 11.19.1; pnpm 10.33.0; A npm query (workspace members) + yarn 4.10.3 workspaces list -v (the subject's own release, .yarn/releases/yarn-4.10.3.cjs) npm 11.19.1; yarn 4.10.3 | syntax | 2026-10-02 | at target (LB-Q-package-json) |
 | Shell / Bash (.sh .bash, shebangs) | language | tags | tree-sitter/tree-sitter-bash (MIT) | L3 | L3 (L1 excellent, L2 good, L3 good) | B bash-source v3.14.1 (mvdan.cc/sh/v3 syntax, -ln bash); bash 5 lookup, cwd the script's directory then the subject root; checked by ShellCheck 0.11.0; C tree-sitter-tags:bash-tags.scm py-tree-sitter 0.25.2, tree-sitter-bash 0.25.1; B universal-ctags 6.2.1 | — | 2026-10-11 | at target (LB-Q-bash) |
 | Java (.java) | language | tags | tree-sitter/tree-sitter-java (MIT) | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | B javaparser 3.28.2; A scip-java 0.12.3 | scip:scip-java | 2026-10-10 | at target (LB-Q-java) |
-| Python packaging (pyproject.toml, requirements*.txt, setup.cfg) | tool format | doc | pure-go:github.com/pelletier/go-toml/v2 (n/a) | L2 | L2 (L1 good, L2 excellent) | A dependency-groups (PEP 735 reference implementation: DependencyGroupResolver.lookup) pyproject_hooks 1.3.3; dependency-groups 1.3.2; flit_core 3.12.0; pdm-backend 2.5.0; setuptools 84.0.0; python 3.14.7; C pyproject build backend (prepare_metadata_for_build_wheel via pyproject_hooks) + dependency-groups (PEP 735 reference implementation) + tomllib for [tool.*] tables pyproject_hooks 1.3.3; dependency-groups 1.3.2; flit_core 3.12.0; pdm-backend 2.5.0; setuptools 84.0.0; python 3.14.7 | syntax | 2026-10-02 | at target (LB-Q-python-packaging) |
+| Python packaging (pyproject.toml) | tool format | doc | pure-go:github.com/pelletier/go-toml/v2 (n/a) | L2 | L2 (L1 good, L2 excellent) | A dependency-groups (PEP 735 reference implementation: DependencyGroupResolver.lookup) pyproject_hooks 1.3.3; dependency-groups 1.3.2; flit_core 3.12.0; pdm-backend 2.5.0; setuptools 84.0.0; python 3.14.7; C pyproject build backend (prepare_metadata_for_build_wheel via pyproject_hooks) + dependency-groups (PEP 735 reference implementation) + tomllib for [tool.*] tables pyproject_hooks 1.3.3; dependency-groups 1.3.2; flit_core 3.12.0; pdm-backend 2.5.0; setuptools 84.0.0; python 3.14.7 | syntax | 2026-10-02 | at target (LB-Q-python-packaging) |
 | C# (.cs) | language | tags | tree-sitter/tree-sitter-c-sharp (MIT) | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | A roslyn-semantic Microsoft.CodeAnalysis.CSharp 5.9.0 (MSBuildWorkspace); B roslyn-syntax Microsoft.CodeAnalysis.CSharp 5.9.0; A scip-dotnet 0.1.0-SNAPSHOT | — | 2026-10-09 | at target (LB-Q-csharp) |
 | C (.c, .h by sniff) | language | tags | tree-sitter/tree-sitter-c (MIT) | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | A clang-preprocessor Apple clang version 21.0.0 (clang-2100.3.34.2); A scip-clang 0.4.0 | scip:scip-clang | 2026-10-11 | at target (LB-Q-c) |
 | Terraform / OpenTofu (.tf .tfvars .tf.json) | tool format | native | native:github.com/hashicorp/hcl/v2 (MPL-2.0 (library dependency, unmodified)) | L3 | L3 (L1 excellent, L2 excellent, L3 good) | A opentofu (tofu show -json -config, tofu graph -type=plan) 1.13.0 | syntax | 2026-10-10 | at target (LB-Q-terraform) |
@@ -319,7 +339,7 @@ Milestone M2 progress: languages at L1 40/45, at L1 excellent 29/35, at L2 35/25
 | Kotlin (.kt .kts) | language | tags | fwcd/tree-sitter-kotlin (MIT) | L4 | L3 (L1 excellent, L2 good, L3 good) | B kotlin-psi 2.3.20 | scip:scip-java | 2026-10-10 | LB-Q-kotlin |
 | Lua (.lua) | language | tags | tree-sitter-grammars/tree-sitter-lua (MIT) | L3 | L3 (L1 excellent, L2 good, L3 good) | B lua-require luaparse 0.3.1 (luaVersion LuaJIT) statements; Lua 5.4.7 package.searchpath lookup; B luaparse 0.3.1 (luaVersion LuaJIT); C tree-sitter-tags:lua-tags.scm py-tree-sitter 0.25.2, tree-sitter-lua 0.5.0 | syntax | 2026-10-19 | at target (LB-Q-lua) |
 | GitLab CI (.gitlab-ci.yml, included files) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A gitlab-ci-local --list-json gitlab-ci-local 4.75.1; A gitlab-ci-local --preview ablation (each written needs, dependencies and extends, and each cross-file target's declaration, removed in a scratch copy) gitlab-ci-local 4.75.1 | — | 2026-10-02 | at target (LB-Q-gitlab-ci) |
-| Ruby (.rb, Rakefile, Gemfile by basename) | language | tags | tree-sitter/tree-sitter-ruby (MIT) | L3 | L3 (L1 excellent, L2 good, L3 good) | B ruby-require ruby 2.6.10; C tree-sitter-tags:ruby-tags.scm py-tree-sitter 0.25.2, tree-sitter-ruby 0.23.1; B universal-ctags 6.2.1 | scip:scip-ruby | 2026-10-03 | at target (LB-Q-ruby) |
+| Ruby (.rb .rake .ru, Rakefile by basename) | language | tags | tree-sitter/tree-sitter-ruby (MIT) | L3 | L3 (L1 excellent, L2 good, L3 good) | B ruby-require ruby 2.6.10; C tree-sitter-tags:ruby-tags.scm py-tree-sitter 0.25.2, tree-sitter-ruby 0.23.1; B universal-ctags 6.2.1 | scip:scip-ruby | 2026-10-03 | at target (LB-Q-ruby) |
 | Maven POMs (pom.xml) | tool format | doc | pure-go:encoding/xml (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A mvn help:effective-pom Maven 3.9.16; maven-help-plugin 3.5.1; A mvn help:effective-pom -Dverbose (input locations) + <module> ablation Maven 3.9.16; maven-help-plugin 3.5.1 | syntax | 2026-10-02 | at target (LB-Q-maven) |
 | Dart (.dart) | language | tags | UserNobody14/tree-sitter-dart (MIT) | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | A scip-dart 1.7.0 | scip:scip-dart | 2026-10-10 | at target (LB-Q-dart) |
 | Cargo manifests (Cargo.toml, workspaces) | tool format | doc | pure-go:github.com/pelletier/go-toml/v2 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A cargo metadata (--no-deps, and --all-features for the resolved graph) cargo 1.98.1 (797e8a9bc 2026-08-05) | syntax | 2026-09-29 | at target (LB-Q-cargo) |
@@ -364,9 +384,9 @@ Milestone M2 progress: languages at L1 40/45, at L1 excellent 29/35, at L2 35/25
 | Vue single-file components (.vue) | language | tags | tree-sitter-grammars/tree-sitter-vue (MIT) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A @vue/compiler-sfc 3.5.43 | file | 2026-10-11 | at target (LB-Q-vue) |
 | Jenkins pipelines (Jenkinsfile, *.jenkinsfile) | tool format | tags | murtaza64/tree-sitter-groovy (MIT) | L3 | L3 (L1 good, L2 good, L3 good) | C groovy AST (CONVERSION) + jenkinsfile walk 4.0.33 | syntax | 2026-10-15 | at target (LB-Q-jenkinsfile) |
 | Svelte components (.svelte) | language | tags | tree-sitter-grammars/tree-sitter-svelte (MIT) | L3 | none (measured) | A svelte/compiler parse 5.57.2 | file | 2026-10-11 | LB-Q-svelte |
-| Azure Pipelines (azure-pipelines.yml, templates) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-azure-pipelines |
+| Azure Pipelines (azure-pipelines.yml, templates) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L2 (L1 good, L2 good) | C azure-pipelines independent PyYAML walk 6.0.3 | — | 2026-10-26 | LB-Q-azure-pipelines |
 | CUE (.cue) | language | native | native:cuelang.org/go (Apache-2.0) | L4 | L3 (L1 excellent, L2 excellent, L3 good) | A cue lsp (cue vet gate) v0.16.1 | syntax | 2026-10-20 | LB-Q-cue |
-| CircleCI (.circleci/config.yml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L2 | L2 (L1 good, L2 good) | A circleci config process circleci 1.7.0 (1df22bb0b7b6); C circleci config process (workflow jobs, requires) and a yaml.v3 walk of steps and executor (declared commands and executors only) circleci 1.7.0 (1df22bb0b7b6) | — | 2026-10-19 | at target (LB-Q-circleci) |
+| CircleCI (.circleci/config.yml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L2 | L2 (L1 good, L2 good) | A circleci config process circleci 1.7.0 (1df22bb0b7b6); A circleci config process and CircleCI vendor textDocument/references circleci 1.7.0 (1df22bb0b7b6); circleci-yaml-lsp 0.54.0 | — | 2026-10-26 | at target (LB-Q-circleci) |
 | Delphi / Object Pascal (.pas .dpr, .pp by sniff) | language | tags | Isopod/tree-sitter-pascal (MIT) | L1 | unsupported (disclosed) | — | — | — | LB-Q-pascal |
 | Fortran (.f90 .f95 .f03 .f .for) | language | tags | stadelmanma/tree-sitter-fortran (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-fortran |
 | AWS CloudFormation / SAM templates | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 good) | A cfn-lint 1.52.1; C cfn-lint (nested templates, identity joins and Lambda handlers resolved by the adapter) 1.52.1 | — | 2026-10-10 | at target (LB-Q-cloudformation) |
@@ -444,7 +464,7 @@ Milestone M2 progress: languages at L1 40/45, at L1 excellent 29/35, at L2 35/25
 | Typst (.typ) | language | tags | uben0/tree-sitter-typst (MIT (verify at pin)) | L1 | unsupported (disclosed) | — | — | — | LB-Q-typst |
 | CODEOWNERS (.github/CODEOWNERS, docs/CODEOWNERS) | tool format | doc | pure-go:line parser (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-codeowners |
 | Laravel Blade templates (.blade.php) | language | tags | EmranMR/tree-sitter-blade (MIT (verify at pin)) | L3 | refused | — | — | — | re-plan (LB-Q-blade-rest refused) |
-| Jinja2 templates (.j2 .jinja .jinja2, templates/*.html by sniff) | language | tags | a Jinja tree-sitter grammar (verify at pin, licence allowlist) (verify at pin) | L3 | refused; measured none (measured) | A jinja2.meta.find_referenced_templates 3.1.6 | — | 2026-10-24 | re-plan (LB-Q-jinja2-rest refused) |
+| Jinja2 templates (.j2 .jinja .jinja2) | language | tags | bennypowers/tree-sitter-jinja-dialects 4f832fe with optional-else source patch (MIT) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A jinja2.meta.find_referenced_templates 3.1.6 | file | 2026-10-26 | at target (LB-Q-jinja2) |
 | Serverless Framework (serverless.yml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L2 | L2 (L1 excellent, L2 excellent) | A serverless print 3.40.0 | syntax | 2026-10-09 | at target (LB-Q-serverless) |
 | Conan recipes and lockfiles (conanfile.txt, conanfile.py, conan.lock, conandata.yml) | tool format | tags+doc | tree-sitter/tree-sitter-python + pure-go:INI, encoding/json, gopkg.in/yaml.v3 (verify at pin) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A conan graph info --format json -nr (macOS, Linux, Windows and mingw host+build profiles; the versions of a recipe folder at default options; each option at each of its other values, and every boolean all True and all False, at the newest and oldest version) Conan version 2.33.0 | syntax | 2026-10-24 | at target (LB-Q-conan) |
 | vcpkg manifests (vcpkg.json, vcpkg-configuration.json) | tool format | doc | pure-go:encoding/json (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A vcpkg x-package-info --x-json vcpkg package management program version 2026-09-26-Homebrew; A vcpkg x-package-info --x-json (dependencies joined by name to the attested manifests of the subject) vcpkg package management program version 2026-09-26-Homebrew | syntax | 2026-10-02 | at target (LB-Q-vcpkg) |
@@ -463,7 +483,7 @@ Milestone M2 progress: languages at L1 40/45, at L1 excellent 29/35, at L2 35/25
 | Azure Policy definitions and initiatives (policyRule JSON) | tool format | doc | encoding/json (n/a) | L2 | L2 (L1 good, L2 good) | C azure-policy JSON walk (the definition schema's structure, an independent JSON reader) 1 | — | 2026-10-02 | at target (LB-Q-azure-policy) |
 | Cloud Custodian policies (policies YAML) | tool format | doc | yaml.v3 (n/a) | L2 | L2 (L1 excellent, L2 excellent) | A c7n (custodian validate's loader) 0.9.53 | — | 2026-10-02 | at target (LB-Q-cloud-custodian) |
 | Checkov custom policies (YAML graph checks, Python checks) | tool format | tags+doc | yaml.v3 + tree-sitter/tree-sitter-python (n/a) | L2 | L2 (L1 excellent, L2 excellent) | A checkov (--external-checks-dir loaders) 3.2.500 | — | 2026-10-24 | at target (LB-Q-checkov-policies) |
-| HashiCorp Sentinel policies (.sentinel) | language | tags | none open (verify at pin) (verify at pin) | L2 | unsupported (disclosed) | — | — | — | LB-Q-sentinel |
+| HashiCorp Sentinel policies (.sentinel) | language | tags | github.com/glennsarti/sentinel-parser@3a328c0dcfb9 (open Go parser; engine admission pending) (Apache-2.0) | L2 | unsupported (disclosed) | — | — | — | LB-Q-sentinel |
 | PgBouncer configuration (pgbouncer.ini) | tool format | doc | pure-go:INI parser (n/a) | L2 | L2 (L1 good, L2 good) | C pgbouncer PgBouncer 1.26.1 + line scanner | — | 2026-10-24 | at target (LB-Q-pgbouncer) |
 | ProxySQL configuration (proxysql.cnf) | tool format | doc | pure-go:libconfig parser (verify at pin) (n/a) | L2 | L2 (L1 good, L2 excellent) | A proxysql ProxySQL version 4.0.9-0-g7ddb3dc_DEBUG, codename Truls + line scanner | — | 2026-10-26 | at target (LB-Q-proxysql) |
 | fathom configuration (.fathom/config.toml) | tool format | doc | pure-go:go-toml/v2 (n/a) | L2 | L2 (L1 good, L2 good) | C python tomllib (TOML decode) + a line scanner of its own python 3.14.7 tomllib | — | 2026-10-03 | at target (LB-Q-fathom-config) |
@@ -471,3 +491,19 @@ Milestone M2 progress: languages at L1 40/45, at L1 excellent 29/35, at L2 35/25
 | fathom layer packs (.fathom/layers/*/layer.cue, .fathom/rules/*.cue) | tool format | native | native:cuelang.org/go (n/a) | L2 | L2 (L1 excellent, L2 excellent) | A cue export + cue lsp (layer-packs) v0.16.1 | — | 2026-10-24 | at target (LB-Q-fathom-layer-packs) |
 | fathom plan grammar v2 rows (docs/plans/*.md) | tool format | native | pure-go:plan row grammar (n/a) | L3 | L3 (L1 good, L2 good, L3 good) | C plan_rows_oracle.py: a line parser of docs/plans/README.md's row grammar python 3.14.7 | — | 2026-10-03 | at target (LB-Q-fathom-plan-rows) |
 | Unity assembly definitions and references | tool format | doc | doc:json (n/a) | L1 | tolerated | — | file | — | LB-Q-unity-asmdef |
+| Python dependency manifests (requirements*.txt, constraints*.txt, setup.cfg, Pipfile, poetry.lock, uv.lock, environment.yml) | tool format | doc | pure-go:line parser + github.com/pelletier/go-toml/v2 + gopkg.in/yaml.v3 (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-python-manifests |
+| Xcode project files (project.pbxproj, .xcconfig, Info.plist, .storyboard, .xib) | tool format | doc | pure-go:old-style plist decoder (hand-written) + encoding/xml (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-xcode-project |
+| Razor and Blazor (.cshtml .razor) | language | native | pure-go:hand-written Razor scanner on the shared template scanner (ADR-066) (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-razor |
+| XAML (.xaml) | language | doc | pure-go:encoding/xml (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-xaml |
+| ERB (.erb) | language | native | pure-go:hand-written ERB scanner on the shared template scanner (ADR-066) (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-erb |
+| Haml and Slim (.haml .slim) | language | native | pure-go:hand-written indentation scanner on the shared template scanner (ADR-066) (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-haml-slim |
+| EJS (.ejs) | language | native | pure-go:hand-written EJS scanner on the shared template scanner (ADR-066) (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-ejs |
+| Handlebars and Mustache (.hbs .handlebars .mustache) | language | native | pure-go:hand-written mustache-family scanner on the shared template scanner (ADR-066) (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-handlebars |
+| Liquid (.liquid) | language | native | pure-go:hand-written Liquid scanner on the shared template scanner (ADR-066) (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-liquid |
+| Twig (.twig) | language | native | pure-go:hand-written Twig scanner on the shared template scanner (ADR-066) (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-twig |
+| Pug (.pug) | language | native | pure-go:hand-written indentation scanner on the shared template scanner (ADR-066) (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-pug |
+| Nunjucks (.njk) | language | native | pure-go:hand-written Nunjucks scanner on the shared template scanner (ADR-066) (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-nunjucks |
+| Go templates (.gohtml .gotmpl, .tmpl by sniff) | language | native | pure-go:text/template/parse (standard library) (BSD-3-Clause (Go standard library)) | L2 | unsupported (disclosed) | — | — | — | LB-Q-go-template |
+| SQL dialect sniffing (.pks .pkb .pls .plb, .sql and .tsql by sniff) | language | tags | none yet: sniff and per-file disclosure first; no pinned grammar covers T-SQL, MySQL or PL/SQL (DerekStride/tree-sitter-sql excludes these families) (n/a) | L1 | unsupported (disclosed) | — | — | — | LB-Q-sql-dialects |
+| Application migration frameworks (Alembic, Rails db/migrate, Django migrations, EF Core migrations) | tool format | native | pure-go:reads the host language's reading (python, ruby, csharp) (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-app-migrations |
+| Arduino sketches (.ino) | language | tags | tree-sitter/tree-sitter-cpp (the cpp dialect, routed) (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-arduino |

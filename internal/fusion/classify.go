@@ -293,6 +293,8 @@ func isOpenAPI(relPath string, content []byte, idx *siblingIndex) bool {
 func (p *Pipeline) ContentDialect(relPath string, content []byte, refs []core.SourceRef) string {
 	_, tk, ok, _ := p.resolveExtractor(relPath, content, buildSiblingIndex(refs))
 	switch {
+	case ok && tk == ToolAzurePipelines:
+		return string(tk)
 	case ok && tk == ToolCloudFormation:
 		return string(ToolCloudFormation)
 	case ok && tk == ToolOpenAPI:
