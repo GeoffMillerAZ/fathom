@@ -13,7 +13,7 @@ package testevidence
 // packages): a bare name shared by Test* funcs in more than one package
 // used to stay unjoined outright, even when the CASE ITSELF names which
 // package it ran in. A go-test-json-derived case id carries its package's
-// full Go import path before the bare test name — surveyor's own
+// full Go import path before the bare test name — the test kit's own
 // convention, e.g. "github.com/geoffmilleraz/conjure/internal/canon.
 // TestDeleteJSONC" — so an otherwise-ambiguous bare name is disambiguated
 // by checking which candidate's own directory the case's import path ends
@@ -171,7 +171,7 @@ func disambiguateByPackage(caseID, caseName string, candidates []symbolCandidate
 }
 
 // packageFromCaseID returns the Go import path a case id names before its
-// own trailing ".<c.Name>" — surveyor's go-test-json id convention
+// own trailing ".<c.Name>" — the test kit's go-test-json id convention
 // (CV-M13's own control data, control/r1/envelope.json:
 // "github.com/geoffmilleraz/conjure/internal/canon.TestDeleteJSONC"), cut
 // by the case's OWN name rather than at id's last "." — a subtest name

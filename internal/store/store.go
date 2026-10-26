@@ -116,8 +116,8 @@ type TestSuite struct {
 	Tier      string
 	Port      string
 	// DeclaredCertifiesJSON is the suite's declared #Certifies entries
-	// (design doc §1), JSON-encoded — always "[]" this round: test-kit's
-	// #Suite.certifies field is a stage-1 ADR-0042 amendment (plan row
+	// (design doc §1), JSON-encoded — always "[]" this round: the test kit's
+	// #Suite.certifies field is a stage-1 testing-standard amendment (plan row
 	// TC-17) that has not landed upstream yet. The column exists now so
 	// stage 1 needs no migration to start reading it.
 	DeclaredCertifiesJSON string

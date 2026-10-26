@@ -358,7 +358,7 @@ func LoadVisions(c Corpus, now time.Time) (vp VisionPipeline) {
 						continue
 					}
 					if foreignNumbering(m[1], width) {
-						// "platform-engineering ADR-0098": another repository's
+						// "a sibling repository's ADR-0999": another repository's
 						// numbering (zero-padded to a different width than this
 						// home's ids). Out of scope, like a sibling-repo path —
 						// named below, never reported as missing here.
@@ -907,7 +907,7 @@ func decisionIDs(c Corpus, reads *readmanifest.Set) (map[int]bool, int, string) 
 }
 
 // foreignNumbering reports whether a cited id is zero-padded to a width this
-// home never uses — "ADR-0098" beside a home of "ADR-001…ADR-045" is another
+// home never uses — "ADR-0999" beside a home of "ADR-001…ADR-045" is another
 // repository's record, not a missing one of ours.
 func foreignNumbering(digits string, width int) bool {
 	return width > 0 && len(digits) != width && strings.HasPrefix(digits, "0")

@@ -93,7 +93,7 @@ type Finding struct {
 	// File/Line are the repo-relative location of the finding's SUBJECT —
 	// at HEAD when the subject still exists there, else at BASE (a
 	// deleted test's file and func line, for instance). Additive to the
-	// fathom.conserve/v1 wire contract (both omitempty): a Review Kit
+	// fathom.conserve/v1 wire contract (both omitempty): a review kit
 	// citation needs a real anchor, not the human-readable Base/Head
 	// citation strings above (which mix base and head, and are absent for
 	// several finding kinds). Empty is correct, and expected, when no
