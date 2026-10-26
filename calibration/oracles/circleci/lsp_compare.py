@@ -27,6 +27,49 @@ def scalar(node):
     return node.value if isinstance(node, yaml.ScalarNode) else ''
 
 
+def point(source, node):
+    mark = node.start_mark
+    prefix = source.splitlines()[mark.line][:mark.column]
+    return {'line': mark.line, 'character': len(prefix.encode('utf-16-le')) // 2}
+
+
+def candidate_declarations(source):
+    root = yaml.compose(source)
+    return [dict(target=key.value, family='command' if group == 'commands' else 'executor',
+                 position=point(source, key))
+            for group in ('commands', 'executors') for key, _ in entries(get(root, group))]
+
+
+def classify_reference(source, declaration, rng):
+    """Classify a native-returned location, never choose the native population."""
+    for site in candidate_sites(source):
+        if (site['target'], site['family']) == (declaration['target'], declaration['family']) and contains(rng, site['position']):
+            return dict(owner=site['owner'], target=declaration['target'], classification='local-use')
+    root = yaml.compose(source)
+    jobs = {key.value: body for key, body in entries(get(root, 'jobs'))}
+    for workflow, body in entries(get(root, 'workflows')):
+        invocations = get(body, 'jobs')
+        if not isinstance(invocations, yaml.SequenceNode):
+            continue
+        for invocation in invocations.value:
+            items = [(invocation, None)] if isinstance(invocation, yaml.ScalarNode) else entries(invocation)
+            for job, arguments in items:
+                if declaration['family'] == 'command' and job.value == declaration['target'] and job.value in jobs and contains(rng, point(source, job)):
+                    return dict(owner=workflow.value, target=job.value,
+                                classification='same-name-workflow-job-oracle-error')
+                parameters = get(jobs.get(job.value), 'parameters')
+                for parameter, spec in entries(parameters):
+                    if scalar(get(spec, 'type')) != 'executor' or declaration['family'] != 'executor':
+                        continue
+                    value = get(arguments, parameter.value)
+                    matrix_value = get(get(get(arguments, 'matrix'), 'parameters'), parameter.value)
+                    candidates = [value] + (matrix_value.value if isinstance(matrix_value, yaml.SequenceNode) else [])
+                    for candidate in candidates:
+                        if candidate is not None and scalar(candidate) == declaration['target'] and contains(rng, point(source, candidate)):
+                            return dict(owner=job.value, target=declaration['target'], classification='workflow-executor-parameter')
+    raise ValueError('unclassified native reference location: ' + json.dumps(dict(declaration=declaration, range=rng)))
+
+
 def candidate_sites(source, include_orbs=False):
     root = yaml.compose(source)
     lines = source.splitlines()
@@ -179,7 +222,7 @@ def compare_file(binary, file, work):
     if version != '0.54.0':
         raise ValueError('unexpected vendor LSP version: ' + version)
     uri = file.resolve().as_uri()
-    results = []
+    results, declarations = [], []
     with (work / 'lsp.log').open('w') as log:
         rpc = Rpc(binary, env, log)
         try:
@@ -191,6 +234,18 @@ def compare_file(binary, file, work):
             symbols = rpc.request('textDocument/documentSymbol', {'textDocument': {'uri': uri}})
             if sites and not symbols:
                 raise RuntimeError('native LSP returned no symbols for a document with candidate sites')
+            by_declaration = {}
+            for declaration in candidate_declarations(source):
+                refs = rpc.request('textDocument/references', {'textDocument': {'uri': uri}, 'position': declaration['position'],
+                                                               'context': {'includeDeclaration': False}})
+                classified = []
+                resolved_refs = locations(refs)
+                for target, rng in resolved_refs:
+                    if target != uri:
+                        raise ValueError('external native reference needs an explicit scope protocol')
+                    classified.append(dict(classify_reference(source, declaration, rng), range=rng))
+                declarations.append(dict(declaration, references=classified))
+                by_declaration[(declaration['family'], declaration['target'])] = resolved_refs
             for site in sites:
                 response = rpc.request('textDocument/definition', {'textDocument': {'uri': uri}, 'position': site['position']})
                 resolved = locations(response)
@@ -198,9 +253,7 @@ def compare_file(binary, file, work):
                 reference_match = False
                 reference_locations = []
                 if site['declaration'] is not None:
-                    refs = rpc.request('textDocument/references', {'textDocument': {'uri': uri}, 'position': site['declaration'],
-                                                                   'context': {'includeDeclaration': False}})
-                    reference_locations = locations(refs)
+                    reference_locations = by_declaration[(site['family'], site['target'])]
                     reference_match = any(target == uri and contains(rng, site['position']) for target, rng in reference_locations)
                 results.append(dict(site, definition_agrees=local_match, references_agree=reference_match,
                                     returned_locations=len(resolved), external_locations=sum(target != uri for target, _ in resolved),
@@ -208,7 +261,8 @@ def compare_file(binary, file, work):
                                     definition_targets=[{'scope': 'same-file' if target == uri else 'external', 'range': rng} for target, rng in resolved]))
         finally:
             rpc.close()
-    return {'version': version, 'server_info': initialized.get('serverInfo'), 'sites': results}
+    return {'version': version, 'server_info': initialized.get('serverInfo'), 'sites': results,
+            'declarations': declarations, 'all_declarations_queried': True}
 
 
 if __name__ == '__main__':

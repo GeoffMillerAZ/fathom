@@ -5,10 +5,12 @@ import subprocess
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-NOTE = ('T-R7/Q6: native CircleCI YAML language server 0.54.0, pinned by version/checksum, '
-        'queried on the full five-canonical/three-holdout population: references agree 34/34 local uses. '
-        'Definition agrees 33/34: cypress pack-workflows resolves to the same-name job; references on the command agree. '
-        'Two external orb uses are unscored. Compiler cross-checks agree 3/3 (executor, command expansion, same-name command). '
+NOTE = ('T-R7/P-T1: vendor CircleCI YAML language server 0.54.0, pinned by version/checksum, '
+        'queries every command/executor declaration across all five canonical and three separate holdout configs. '
+        'Every returned location is classified and all workflow executor parameter/matrix pairs enter recall truth. '
+        'Same-name command/job defect: definition points to the job and references on the command also return its workflow job entry; '
+        'the compiler adjudicates the command expansion, and the extra workflow entry is recorded as an oracle error. '
+        'Two external orb uses remain unscored. Compiler cross-checks are required by the instrument for namespace errors. '
         'No extractor or parameter-matrix change. Small-cohort timing is non-informative; no dialect-wide throughput claim.')
 
 if __name__ == '__main__':
@@ -17,7 +19,7 @@ if __name__ == '__main__':
     parser.add_argument('-native-dir', type=Path, required=True)
     parser.add_argument('-out-dir', type=Path, required=True)
     args = parser.parse_args()
-    protocol = json.loads((HERE / 'lsp-protocol-r2.json').read_text())
+    protocol = json.loads((HERE / 'lsp-protocol-r3.json').read_text())
     args.out_dir.mkdir(parents=True, exist_ok=True)
     for cohort in ('canonical', 'holdout'):
         output = args.out_dir / (cohort + '.json')
