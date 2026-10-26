@@ -407,6 +407,10 @@ Every machine serves its own checkouts through its own loopback fathom, with no 
 
 Bench prep (`docs/design/bench-prep.md`, plan `docs/plans/bench-prep.md`, BX-) prepares the credible tier on vetted third-party subjects with dry-run harnesses and pre-registered three-outcome reads; P0 and P1 spend $0, and the first spend is an owner-approved shakedown.
 
+### 9.14 Amended 2026-10-25 (owner-architect): feature labs and experiments
+
+Feature labs (`docs/design/feature-labs.md`, plan `docs/plans/feature-labs.md`, LAB-, issue #13) give each fathom feature a card with its firing criterion, helped metric (the plugin against the plugin minus that one feature) and kill, read the firing funnel from replayed sessions at $0 and from capped live forks, keep lab and decision-port results in one ledger the ledger oracle reads, and prove each observation's fix by the test its fix commit added; P0 spends $0, P1 spends agent budget under the owner's 2026-10-26 lift on building the harness and a no-claim shakedown, and the component-level complement of bench prep runs no head-to-head.
+
 ## 10. Corrections to the memo (the tree or the memo itself disagreed)
 
 1. **`tests:` is taken.** Plan grammar v2 already has `tests:` (a `gone: callers` modifier,
