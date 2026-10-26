@@ -71,16 +71,22 @@ type Unit struct {
 	MacroDefs  int   // definitions spelled on a #define line, not written
 	MacroCalls int   // calls spelled on a #define line, not written
 	Refs       []Ref // file pairs a reference draws (H5-R7), one per pair at its first line
+	// AmbiguousTypes are the type names two or more record, typedef or enum
+	// declarations of the unit share (H6-R2), AmbiguousRefs the type
+	// references naming one: skipped, never resolved to either declaration.
+	AmbiguousTypes, AmbiguousRefs int
 }
 
 // Ref is a reference written in Path (at Line) to a declaration another
 // measured file, ToPath, holds: a DeclRefExpr or MemberExpr resolved through
 // the dump's addresses, or a type a declaration or cast names, resolved by
-// the unit's one declaration of that name.
+// the unit's one declaration of that name. Addr: some reference drawing the
+// pair resolved through an address (else every one resolved by type name).
 type Ref struct {
 	Path   string `json:"path"`
 	Line   int    `json:"line"`
 	ToPath string `json:"to_path"`
+	Addr   bool   `json:"-"`
 }
 
 type oracleFile struct {
@@ -130,6 +136,7 @@ func parseDump(r io.Reader, files map[string]bool, macro func(string, int) bool)
 	var stack []frame
 	declFile := map[string]string{} // a declaration's address -> its file
 	typeFile := map[string]string{} // a record, typedef or enum name -> its file
+	typeDecls := map[string]int{}   // a record, typedef or enum name -> its declarations in the unit
 	var pending []pendingRef
 	cur := pos{}
 	sc := bufio.NewScanner(r)
@@ -291,6 +298,7 @@ func parseDump(r io.Reader, files map[string]bool, macro func(string, int) bool)
 				if (kind == "CXXRecordDecl" && strings.HasSuffix(rest, " definition")) || kind == "TypedefDecl" || kind == "EnumDecl" {
 					if n := typeDeclName(kind, rest); n != "" {
 						typeFile[n] = rp
+						typeDecls[n]++
 					}
 				}
 			}
@@ -299,6 +307,7 @@ func parseDump(r io.Reader, files map[string]bool, macro func(string, int) bool)
 					pending = append(pending, pendingRef{path: rp, line: at.line, addr: m[1]})
 				}
 				if typedKinds[kind] {
+					// the sugared half of 'Sugared':'Canonical' is the name written
 					for _, q := range reQuotedType.FindAllStringSubmatch(rest, -1) {
 						for _, w := range reWord.FindAllString(q[1], -1) {
 							pending = append(pending, pendingRef{path: rp, line: at.line, typ: w})
@@ -309,7 +318,21 @@ func parseDump(r io.Reader, files map[string]bool, macro func(string, int) bool)
 		}
 		stack = append(stack, fr)
 	}
-	u.Refs = resolveRefs(pending, declFile, typeFile, files)
+	for n, c := range typeDecls {
+		if c > 1 {
+			u.AmbiguousTypes++
+			delete(typeFile, n)
+		}
+	}
+	kept := pending[:0]
+	for _, p := range pending {
+		if p.typ != "" && typeDecls[p.typ] > 1 {
+			u.AmbiguousRefs++
+			continue
+		}
+		kept = append(kept, p)
+	}
+	u.Refs = resolveRefs(kept, declFile, typeFile, files)
 	return u
 }
 
@@ -326,7 +349,7 @@ var (
 	// a DeclRefExpr's declaration (`Function 0x.. 'helper'`, `Var 0x..`) or a
 	// MemberExpr's (`.rough 0x..`)
 	reRefAddr    = regexp.MustCompile(`(?:\b(?:Function|Var|CXXMethod|EnumConstant|Field) |\.[A-Za-z_][A-Za-z0-9_]* )(0x[0-9a-f]+)`)
-	reQuotedType = regexp.MustCompile(`'([^']*)'`)
+	reQuotedType = regexp.MustCompile(`'([^']*)'(?::'[^']*')?`)
 	reWord       = regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_]*`)
 )
 
@@ -349,6 +372,7 @@ func typeDeclName(kind, rest string) string {
 // holds, one per (file, declaring file) pair at its first line, sorted.
 func resolveRefs(pending []pendingRef, declFile, typeFile map[string]string, files map[string]bool) []Ref {
 	first := map[[2]string]int{}
+	addr := map[[2]string]bool{}
 	for _, p := range pending {
 		to := ""
 		if p.addr != "" {
@@ -363,10 +387,13 @@ func resolveRefs(pending []pendingRef, declFile, typeFile map[string]string, fil
 		if l, ok := first[k]; !ok || p.line < l {
 			first[k] = p.line
 		}
+		if p.addr != "" {
+			addr[k] = true
+		}
 	}
 	out := make([]Ref, 0, len(first))
 	for k, l := range first {
-		out = append(out, Ref{Path: k[0], Line: l, ToPath: k[1]})
+		out = append(out, Ref{Path: k[0], Line: l, ToPath: k[1], Addr: addr[k]})
 	}
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Path != out[j].Path {
@@ -608,7 +635,9 @@ func run(subject, dxc, target, retryTarget, filesList, scopeOut, refsOut string,
 	scope := map[string]bool{}
 	seenDef := map[Def]bool{}
 	seenCall := map[Pair]bool{}
-	refLine := map[[2]string]int{} // (file, declaring file) -> first line, over every unit read
+	refLine := map[[2]string]int{}  // (file, declaring file) -> first line, over every unit read
+	refAddr := map[[2]string]bool{} // a pair some unit resolved through an address
+	ambTypes, ambRefs := 0, 0
 	var out oracleFile
 	errored, macroDefs, macroCalls := 0, 0, 0
 	var excluded []unitError             // units no setting parses, with the first error of the run's setting
@@ -648,6 +677,8 @@ func run(subject, dxc, target, retryTarget, filesList, scopeOut, refsOut string,
 		u := parseDump(dump, files, macro)
 		macroDefs += u.MacroDefs
 		macroCalls += u.MacroCalls
+		ambTypes += u.AmbiguousTypes
+		ambRefs += u.AmbiguousRefs
 		for _, d := range u.Defs {
 			if !seenDef[d] {
 				seenDef[d] = true
@@ -658,6 +689,9 @@ func run(subject, dxc, target, retryTarget, filesList, scopeOut, refsOut string,
 			k := [2]string{r.Path, r.ToPath}
 			if l, ok := refLine[k]; !ok || r.Line < l {
 				refLine[k] = r.Line
+			}
+			if r.Addr {
+				refAddr[k] = true
 			}
 		}
 		for _, c := range u.Calls {
@@ -695,8 +729,16 @@ func run(subject, dxc, target, retryTarget, filesList, scopeOut, refsOut string,
 		out.Scope = append(out.Scope, k)
 	}
 	sort.Strings(out.Scope)
+	nAddr := 0
+	for k := range refLine {
+		if refAddr[k] {
+			nAddr++
+		}
+	}
+	refsLine := fmt.Sprintf("dxc-ast reference pairs: %d (file, declaring file) pairs, %d address-resolved (some DeclRefExpr or MemberExpr resolved through the dump to its declaration) and %d name-resolved only (a type a declaration or cast writes, its sugared spelling, resolved by the unit's one record, typedef or enum declaration of that name); %d type names ambiguous in their unit (two or more such declarations) and the %d type references naming one skipped, counted per reading unit", len(refLine), nAddr, len(refLine)-nAddr, ambTypes, ambRefs)
+	out.Disclose = append(out.Disclose, refsLine)
 	if refsOut != "" {
-		if err := writeRefs(refsOut, version, refLine); err != nil {
+		if err := writeRefs(refsOut, version, refsLine, refLine); err != nil {
 			return err
 		}
 	}
@@ -705,8 +747,8 @@ func run(subject, dxc, target, retryTarget, filesList, scopeOut, refsOut string,
 			return err
 		}
 	}
-	fmt.Fprintf(stderr, "files %d in_scope %d errored %d excluded %d admitted %d definitions %d calls %d macro_defs %d macro_calls %d\n",
-		len(list), len(scope), errored, len(excluded), len(admitted), len(out.Definitions), len(out.Calls), macroDefs, macroCalls)
+	fmt.Fprintf(stderr, "files %d in_scope %d errored %d excluded %d admitted %d definitions %d calls %d macro_defs %d macro_calls %d ref_pairs %d addr %d name %d ambiguous_types %d ambiguous_refs %d\n",
+		len(list), len(scope), errored, len(excluded), len(admitted), len(out.Definitions), len(out.Calls), macroDefs, macroCalls, len(refLine), nAddr, len(refLine)-nAddr, ambTypes, ambRefs)
 	enc := json.NewEncoder(stdout)
 	enc.SetIndent("", " ")
 	return enc.Encode(out)
@@ -831,7 +873,7 @@ func listSuffix(items []string) string {
 // writeRefs writes the reference file pairs as an imports oracle's
 // same_package entries: file-edge truth beside the include statements, never
 // an include statement import_resolution scores.
-func writeRefs(path, version string, refLine map[[2]string]int) error {
+func writeRefs(path, version, disclose string, refLine map[[2]string]int) error {
 	type entry struct {
 		Path        string `json:"path"`
 		Line        int    `json:"line"`
@@ -839,11 +881,12 @@ func writeRefs(path, version string, refLine map[[2]string]int) error {
 		SamePackage bool   `json:"same_package"`
 	}
 	out := struct {
-		Tool    string  `json:"tool"`
-		Version string  `json:"version"`
-		Tier    string  `json:"tier"`
-		Imports []entry `json:"imports"`
-	}{Tool: "dxc-ast", Version: version, Tier: "B", Imports: []entry{}}
+		Tool     string   `json:"tool"`
+		Version  string   `json:"version"`
+		Tier     string   `json:"tier"`
+		Imports  []entry  `json:"imports"`
+		Disclose []string `json:"disclose"`
+	}{Tool: "dxc-ast", Version: version, Tier: "B", Imports: []entry{}, Disclose: []string{disclose}}
 	for k, l := range refLine {
 		out.Imports = append(out.Imports, entry{Path: k[0], Line: l, ToPath: k[1], SamePackage: true})
 	}

@@ -256,7 +256,50 @@ func TestParseDumpFixture(t *testing.T) {
 	}
 	// H5-R7: main names the header's type Material (line 28), its field
 	// rough and its function helper: one file pair, at its first reference.
-	if want := []Ref{{"fixture.hlsl", 28, "fixture.hlsli"}}; !reflect.DeepEqual(u.Refs, want) {
+	if want := []Ref{{Path: "fixture.hlsl", Line: 28, ToPath: "fixture.hlsli", Addr: true}}; !reflect.DeepEqual(u.Refs, want) {
 		t.Errorf("refs %v, want %v", u.Refs, want)
+	}
+}
+
+// typeDump (H6-R2): a typedef MyAlias of Material in a.hlsli, struct Material
+// in b.hlsli, and a Light struct in each of two namespaces (c.hlsli, d.hlsli);
+// f.hlsl declares `MyAlias m` (sugared 'MyAlias', canonical 'Material'), a
+// `B::Light l`, and reads c.hlsli's variable gain through its address.
+const typeDump = `TranslationUnitDecl 0x1 <<invalid sloc>> <invalid sloc>
+|-TypedefDecl 0x2 <./a.hlsli:1:1, col:18> col:18 referenced MyAlias 'Material':'Material'
+|-CXXRecordDecl 0x3 <./b.hlsli:1:1, line:4:1> line:1:8 referenced struct Material definition
+| ` + "`" + `-FieldDecl 0x4 <line:3:5, col:11> col:11 rough 'float'
+|-NamespaceDecl 0x5 <./c.hlsli:1:1, line:5:1> line:1:11 A
+| |-CXXRecordDecl 0x6 <line:2:1, line:2:20> line:2:8 struct Light definition
+| ` + "`" + `-VarDecl 0x7 <line:3:1, col:7> col:7 used gain 'float'
+|-NamespaceDecl 0x8 <./d.hlsli:1:1, line:3:1> line:1:11 B
+| ` + "`" + `-CXXRecordDecl 0x9 <line:2:1, line:2:20> line:2:8 referenced struct Light definition
+` + "`" + `-FunctionDecl 0xa <./f.hlsl:3:1, line:8:1> line:3:7 main 'float ()'
+  ` + "`" + `-CompoundStmt 0xb <line:4:1, line:8:1>
+    |-DeclStmt 0xc <line:5:5, col:14>
+    | ` + "`" + `-VarDecl 0xd <col:5, col:13> col:13 used m 'MyAlias':'Material'
+    |-DeclStmt 0xe <line:6:5, col:15>
+    | ` + "`" + `-VarDecl 0xf <col:5, col:14> col:14 l 'B::Light'
+    ` + "`" + `-ReturnStmt 0x10 <line:7:5, col:19>
+      ` + "`" + `-DeclRefExpr 0x11 <col:12, col:15> 'float' lvalue Var 0x7 'gain' 'float'
+`
+
+// TestParseDumpTypeRefs (H6-R2, as clang-objc's TypeRef): a quoted type's
+// sugared half is the name written, so f.hlsl names a.hlsli's typedef and
+// never b.hlsli's Material; a name two type declarations of the unit share
+// (Light) is ambiguous, skipped and counted; each pair says how it resolved.
+func TestParseDumpTypeRefs(t *testing.T) {
+	files := map[string]bool{"a.hlsli": true, "b.hlsli": true, "c.hlsli": true, "d.hlsli": true, "f.hlsl": true}
+	u := parseDump(strings.NewReader(typeDump), files, func(string, int) bool { return false })
+	want := []Ref{
+		{Path: "a.hlsli", Line: 1, ToPath: "b.hlsli"}, // the typedef names Material
+		{Path: "f.hlsl", Line: 5, ToPath: "a.hlsli"},
+		{Path: "f.hlsl", Line: 7, ToPath: "c.hlsli", Addr: true},
+	}
+	if !reflect.DeepEqual(u.Refs, want) {
+		t.Errorf("refs %+v, want %+v", u.Refs, want)
+	}
+	if u.AmbiguousTypes != 1 || u.AmbiguousRefs != 1 {
+		t.Errorf("ambiguous types %d refs %d, want 1 and 1 (Light, declared in c.hlsli and d.hlsli)", u.AmbiguousTypes, u.AmbiguousRefs)
 	}
 }

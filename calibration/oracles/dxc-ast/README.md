@@ -29,7 +29,10 @@ throughput values, and how the parse errors split between the files DXC reads an
 
 `-refs <out>` writes L3's reference truth (H5-R7, the precedent `../clang-objc`'s): every `DeclRefExpr` and
 `MemberExpr` is resolved to its declaration through the dump's addresses, and every type a declaration or cast names
-(`VarDecl m 'Material'`) to the unit's one record, typedef or enum declaration of that name; whenever that declaration
+(`VarDecl m 'Material'`) to the unit's one record, typedef or enum declaration of that name. A quoted type is read by
+its sugared half alone (`'MyAlias':'Material'` names MyAlias, as written, as `../clang-objc`'s TypeRef does), and a name
+two or more such declarations of the unit share is ambiguous: skipped, and its type names and references counted in the
+`disclose` line, which also splits the pairs into address-resolved and name-resolved only (H6-R2). Whenever that declaration
 sits in another measured file, the pair (file, declaring file) is written once, at its first line, as an imports
 oracle's `same_package` entry. `reading.sh` joins those entries to `../clang-includes`' include statements, so
 `file_edge_precision` and `file_edge_recall` grade fathom's reference-derived file edges against the statements plus

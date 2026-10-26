@@ -36,7 +36,7 @@ mkdir -p "$tmp" "$tools"
   # L3's truth (H5-R7): file_edge_* against the include statements plus dxc-ast's
   # same_package reference pairs, import_resolution against the statements alone
   jq -s '.[0] + {imports: (.[0].imports + .[1].imports), disclose: [
-      "file-edge truth: clang-includes'"'"' include statements plus \(.[1].imports | length) dxc-ast reference pairs (a DeclRefExpr, MemberExpr or named type in a unit DXC reads, resolved through the dump to a declaration another measured file holds; written as same_package, so they grade file_edge_* and never import_resolution)"]}' \
+      "file-edge truth: clang-includes'"'"' include statements plus \(.[1].imports | length) dxc-ast reference pairs (a DeclRefExpr, MemberExpr or named type in a unit DXC reads, resolved through the dump to a declaration another measured file holds; written as same_package, so they grade file_edge_* and never import_resolution)"] + .[1].disclose}' \
     "$tmp/hlsl-$s-includes.json" "$tmp/hlsl-$s-refs.json" > "$tmp/hlsl-$s-imports.json"
   echo "$s: $(tail -1 "$tmp/hlsl-$s-dxc.err") | $(tail -1 "$tmp/hlsl-$s-includes.err")"
 done
