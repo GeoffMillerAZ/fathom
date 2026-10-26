@@ -62,6 +62,7 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-17 | [intent-practice](2026-10-17-intent-practice.md) | Keep the practice (cheap, read): delivery was the weak link, so v0.15.0 retires `INTENT.md` and generates edit-time intent from the router; seven alternatives rejected for now with wins-if lines; K1 to K6 are due 2026-11-17 and unread | ADR-074, IV-1 to IV-10, F86, F9, O1134 to O1137 |
 | 2026-10-26 | [core-t1-cpp-ceiling](2026-10-26-core-t1-cpp-ceiling.md) | C++ remains on the CUDA/HLSL integration hold; candidate limits are recorded. | LB-Q-cpp-rest |
 | 2026-10-26 | [core-t1-css-ceiling](2026-10-26-core-t1-css-ceiling.md) | A span parser exists, but a tier-A CSS rule-end oracle remains unproven. | LB-Q-css-rest |
+| 2026-10-26 | [core-t1-cue-ceiling](2026-10-26-core-t1-cue-ceiling.md) | The package-key file target limits recall; LSP definitions support a future SCIP writer. | LB-Q-cue-rest |
 
 ## Companion pages
 
