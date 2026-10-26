@@ -35,3 +35,18 @@ The result is a refused candidate and no support level. No production WASM blob,
 dispatch rule, generated board, epoch or plan checkbox changes. Retry only when a newer
 licensed pin passes the complete frozen corpus, then prove the production engine and L1-L3
 against Dart Sass. An upstream patch or fork remains a prepared proposal for the maintainer.
+
+## Named routes and reproduction (X-R1)
+
+| Candidate or route | Version/pin | Concrete disposition |
+|---|---|---|
+| bajrangCoder/tree-sitter-sass, also the Zed SCSS extension's selected grammar | fb280c41b070657e4ff4d4e5e6eea6cb19efd9b8 | Latest checked HEAD, no release tags, MIT. Native complete-corpus gate fails 123/219 files, far above 5%. |
+| P233/tree-sitter-scss | v1.0.1 / ee500b9c | SCSS braces grammar already used by Fathom, not an indented-Sass grammar. The queue's previous SCSS-only subjects could not validate indented syntax. |
+| Dart Sass first-party indented parser | sass-parser 0.4.57 | Accepts 213/219 files; the candidate still fails 117 of those. This is independent refusal evidence, not a tree-sitter engine replacement. |
+| Dart Sass compile / loadedUrls | 1.105.1 | Suitable later import-graph oracle, already used for SCSS. It cannot make a failed syntax grammar pass; no production dialect is admitted by this experiment. |
+| Upstream grammar patch/fork or source pre-pass | candidate fb280c41 | No validated patch or semantics-preserving pre-pass is available in this change. It requires a new candidate and the unchanged complete-source gate; never drop failing source. |
+
+The scripts and full setup commands now live in
+`calibration/oracles/sass-grammar/README.md`, `gate.py`, and `reference.cjs`.
+They check the frozen subject commits, clean trees and all 219 source files. No holdout was
+used: both subjects are syntax-gate calibration, never an excellent/support claim.
