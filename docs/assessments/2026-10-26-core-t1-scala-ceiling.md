@@ -20,7 +20,7 @@ Search date: 2026-10-26 UTC. The [Sourcegraph precise-navigation list](https://s
 
 | Source class | Searched source and disposition |
 |---|---|
-| Own toolchain / compiler | [SemanticDB guide](https://scalameta.org/docs/semanticdb/guide) names **semanticdb-scalac 4.17.4**. Its ranged occurrences are a direct **LIVE UNMEASURED** route even without SCIP conversion, subject to a successful bounded build. |
+| Own toolchain / compiler | [Scala 3 compiler SemanticDB](https://docs.scala-lang.org/scala3/reference/metaprogramming/semanticdb.html) emits SemanticDB with `-Xsemanticdb` without a plugin; [scala-cli v1.18.0](https://github.com/VirtusLab/scala-cli/releases/tag/v1.18.0) compiles with `--semanticdb`. [Coursier `cs launch`](https://get-coursier.io/docs/cli-installation) can run sbt without a system install. These routes are **LIVE UNMEASURED** under the one-JVM/1 GB budget; no successful subject build or ranged index is claimed. Scala 2 remains covered by [semanticdb-scalac 4.17.4](https://scalameta.org/docs/semanticdb/guide). |
 | SCIP / LSIF | [scip-java](https://github.com/sourcegraph/scip-java) via SemanticDB and historical [lsif-java](https://github.com/sourcegraph/lsif-java) were found; 0.13.2 has no successful Scala subject index under this lane. |
 | Language server | [Metals](https://scalameta.org/metals/docs/index.html), version **1.6.9**, exposes definitions/references but requires an imported build. **LIVE UNMEASURED** under one-JVM/1GB limits. |
 | Registry AST | [SemanticDB specification](https://scalameta.org/docs/semanticdb/specification.html) defines occurrence ranges; [Scalameta trees](https://scalameta.org/docs/trees/guide.html) can represent syntax spans, neither was produced on frozen subjects here. |
