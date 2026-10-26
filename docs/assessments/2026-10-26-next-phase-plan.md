@@ -42,7 +42,7 @@ not from `fathom verify`. Work order NP-W2 re-derives them with `fathom plans st
 - **PR #45** (oracle-call scope, held for an HLSL replay) reached main inside #61's history.
   - SQL and CUDA are cleared: their producers declare no scope, and a no-scope test plus a stored-count regrade show
     no change.
-  - The HLSL replay runs on a pinned Linux x64 runner and is in review.
+  - The [public HLSL replay](https://github.com/GeoffMillerAZ/fathom/actions/runs/40407275332) returned on Ubuntu 24.04 with pinned DXC v1.9.2602: call precision .9656 -> .956, recall .9859 unchanged, and L1/L2/L3 grades unchanged. The fresh reading and [scope assessment](../bench/readings/oracle-call-scope-compatibility.md) record the result.
   - The integration rules now include a stacked-PR check (section 7).
 
 ## 2. Priorities

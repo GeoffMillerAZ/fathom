@@ -50,12 +50,6 @@ Runnable regression and stored-count proof:
 go test -race ./cmd/indexbench -run 'TestScoreToolOracle(CallScope|DefinitionsOnlyBesideCalls)|TestCmdLangOracle(UnscopedEmptyCallsIgnored|DefinitionsOnlyBesideCalls)|TestCmdLangRegradeCallScopeUnaffectedReadings' -count=1
 ```
 
-## One open regrade: HLSL
+## HLSL fresh replay
 
-HLSL requires fresh DXC scope and pair output; stored counts cannot recover newly scored zero-call files. Run the exact replay with pinned DXC `1.9.0.5184`:
-
-```sh
-bash calibration/oracles/dxc-ast/reading.sh docs/bench/readings/lang/hlsl.json
-```
-
-This ENGINE change must not land before the HLSL result returns. No HLSL metric or level is asserted by this report.
+The [public Linux replay](https://github.com/GeoffMillerAZ/fathom/actions/runs/40407275332) ran on Ubuntu 24.04 with DXC v1.9.2602 across the pinned three-subject corpus. The #45-disabled control reproduced the committed semantic counters, metrics, scope and grades. The main harness measured the same 543 DXC-scoped files of 644 measured files. The only semantic metric change from control was call precision, 0.9656 to 0.956 (delta -0.0096): 39 additional false positives in explicitly scoped files with no oracle calls, 9 in directx-graphics-samples and 30 in kajiya. Fathom call pairs rose 3920 to 3959; matched pairs stayed 3785 and truth pairs stayed 3839, so call recall stayed 0.9859. L1 excellent, L2 good and L3 good remain unchanged. The [canonical HLSL reading](lang/hlsl.json) now contains the main-run values and its Linux timing, with a note linking the public run. Historical-to-fresh timing and note differences are environmental or producer-description drift, not effects attributed to #45.
