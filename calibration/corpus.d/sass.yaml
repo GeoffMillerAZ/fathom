@@ -1,0 +1,30 @@
+id: sass
+language: Sass (indented syntax)
+# The prior SCSS subjects contain no .sass files. These independent real-code subjects and
+# the editor-pinned candidate are frozen before the parse gate. No Sass definition/call rule
+# may be tuned against these files before the candidate's complete error-file census.
+# Candidate: bajrangCoder/tree-sitter-sass fb280c41b070657e4ff4d4e5e6eea6cb19efd9b8.
+# LICENSE at that commit is MIT. Editor provenance: bajrangCoder/zed-scss extension.toml.
+# Gate: pooled files with an ERROR or missing node <=5%, every tracked .sass file under the
+# declared scope. A failure keeps Sass unsupported. A pass permits the production WASM gate,
+# dialect fixtures and independent Dart Sass oracle; it alone claims no support level.
+repos:
+  - name: jgthms/bulma
+    url: https://github.com/jgthms/bulma
+    ref: 0.9.4
+    sha: 3e00a8e6d0d0e566d507328f0185ef84854effba
+    licence: MIT
+    idioms:
+      - 'indented framework partials joined by @charset and @import'
+      - 'mixin definitions and includes, variables, interpolation and nested selectors'
+      - 'responsive helpers, loops and conditional declarations'
+  - name: vuetifyjs/vuetify
+    url: https://github.com/vuetifyjs/vuetify
+    ref: v2.7.2
+    sha: b1cd40459b4a0801c021c0985ccd46fa65b9f579
+    licence: MIT
+    subpath: packages/vuetify/src
+    idioms:
+      - 'component styles with indentation-delimited blocks and nested selectors'
+      - 'shared settings, Sass variables and function calls'
+      - 'mixins, interpolation and media-query variants'
