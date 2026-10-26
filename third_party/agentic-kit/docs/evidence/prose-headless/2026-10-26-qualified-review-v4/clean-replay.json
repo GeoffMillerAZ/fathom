@@ -1,0 +1,12 @@
+{
+  "version": "prose-lab.clean-source-replay/1",
+  "source_commit": "eb70ecafd1871a230e8d4ecdc04e29a8013ff3b2",
+  "source_manifest_binding": "68bfbb135e8172d994dd04d05413019c46af5c25312da85c81b4cb2b88bfb703",
+  "source_files_matched": 58,
+  "binary_sha256": "12219e0adfe91bb035862f8accfa83736fad8eaf57271b73db3a4cce5ba8926b",
+  "binary_vcs_modified": false,
+  "key_free_preparations_reproduced": 85,
+  "provider_calls_during_replay": 0,
+  "ordinary_report_native_replay_exit": 0,
+  "report_sha256": "a5fab7c2d94c5581d74017e0bd70d1d03ffb5bb95077ccad1ef80a78a0473dce"
+}

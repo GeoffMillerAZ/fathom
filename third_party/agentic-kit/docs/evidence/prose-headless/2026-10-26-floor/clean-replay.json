@@ -1,0 +1,27 @@
+{
+  "version": "prose-lab.floor-clean-replay/1",
+  "source_commit": "67746a7e6b2e2e1de06865b23e0250c9f996c7be",
+  "source_clean_before_and_after": true,
+  "source_manifest_matched": true,
+  "command_source_binding": "59541b769107d6e1bdf07aac7d6df99d5b2891ac0a535a2d612522203533550b",
+  "binary_sha256": "e192b73d96a4842c0b327a120e0eff34abbe70260a1d3eba73e549b44269046c",
+  "binary_vcs_revision": "67746a7e6b2e2e1de06865b23e0250c9f996c7be",
+  "binary_vcs_modified": false,
+  "exit_code": 0,
+  "stdout_sha256": "4e00cfa9ab86e04b0a86524b32e37ed4b7313816bbeb4f9c708ba06a7f403013",
+  "stderr_bytes": 0,
+  "counts": {
+    "old_cases": 70,
+    "prospective_cases": 85,
+    "contrasts": 7,
+    "reviewers": 2,
+    "remaining_ambiguities": 0
+  },
+  "provider_keys_in_child_environment": false,
+  "new_provider_generations": 0,
+  "provider_qualified": false,
+  "identity_authenticated": false,
+  "publication_authority": false,
+  "new_study_admission": false,
+  "ui_entry": false
+}

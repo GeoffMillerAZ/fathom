@@ -121,3 +121,28 @@ observations total$0.052716 including earlier canaries, not an invoice.
 specifies prospective required/advisory length without rewriting that failure.
 HP-10 remains unimplemented. The long-artifact test and independent sufficiency
 review stay mandatory in the next study. UI entry remains closed.
+
+## Source gap recheck,2026-10-26
+
+The earlier implementation statements above describe their dated cutoff. HP-10,
+HP-19 and HP-20 subsequently landed at their bounded scopes; the [current work
+order](../plans/prose-headless-proof.md) owns delivery status. The 85-case declared
+source floor does not close the following product gaps.
+
+| Acceptance | Verified current gap | Owning boundary |
+|---|---|---|
+| HP-01 / HP-A01 | `DocumentSession` and `SessionInput` have no budget/deadline/escalation/stop binding | Immutable prose intent binds controls; Assignment remains the evaluator |
+| HP-01 / HP-A02 | `AssessGoals` creates a new 1000-assessment budget, `now+24h` deadline and empty progress per call | This is criterion assessment, not durable execution budget/deadline enforcement |
+| HP-A03 | Core `Fact` lacks the observed/proposed/assumed/inferred/definition status contract | Typed fact kind in the lab's oracle cannot be presented as product-wide classification |
+| HP-A02 / HP-A06 | Profile sections/goals/defaults exist, while explicit review-criteria/dependency-rule bindings remain incomplete | Preserve actual exposed context and conservative reuse invalidation |
+
+The source sites are `kits/governed-prose-kit/session_types.go`,
+`session_profile.go`, `schema.cue` and `scenarios/prose-headless/goals.go`.
+Existing Assignment `Assignment`/`Budget`/`Rule`/`Progress` and canonical
+`Fingerprint`/`Evaluate` already cover declared deadline/budget/pivot/stop
+assessment. Reimplementing those inside prose is rejected under 0045. Their
+evaluation is not resource reservation, routing or effect authority. Before
+headless acceptance, bind durable independently scoped controls and real usage/
+progress rather than treating the example wrapper's placeholders as enforcement.
+Detailed binding/source-status interfaces still need their bounded design and
+implementation under HP-01/03; no UI-entry claim follows from this recheck.

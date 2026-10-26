@@ -1,0 +1,36 @@
+{
+  "verdict": "accepted",
+  "accepted_candidate_sha256": "d076e9f3085480782b55bff1155490451e94676346809049dae91623f580cc4e",
+  "accepted_candidate_count": 3767,
+  "accepted_function_count": 791,
+  "source_pins": {
+    "glsl": {
+      "archive_sha256": "4ffb1bb817c970670644ea2d19168dc1127a1d5502eb6bbfeb6600859090a23d",
+      "revision": "0099bf83b0288469917fc2e2972cb0a2b74d6711",
+      "source_count": 96
+    },
+    "registry": {
+      "archive_sha256": "fa80b86e5c2d91c3088b67a128d4070f2520dac6bb823f0538f4870ec9e50942",
+      "revision": "6af574a14089ccfee87efe230ebcdd8742859813",
+      "source_count": 1025
+    }
+  },
+  "review_method": "Mechanical whole-source declaration scan plus independent syntax/prose challengers, source-bound adjudication, and an independent positive source-context check of all 791 names and 3767 occurrences. Root accepted the complete union after reviewing the source facts, including corrected normative fwidth citations. No measured corpus identifiers selected this union. Declaring specification name strings describe overlapping source families, not per-directive availability.",
+  "positive_source_facts_sha256": "80929536e39b3f8e2e573c490210fb41a614065444b47d78eb9f241847a6b4ff",
+  "positive_source_facts_full_sha256": "ed138b59b4e0c8dbd276d51f94bfa6aea41b05d118939c2c7a63a163a0a4c036",
+  "extension_catalog_sha256": "43e34f4c96a7ad9ce2aaae7cc1427e16e46d1a4a1f1bd996d5653b088cd1159d",
+  "accepted_extension_sources": [
+    {
+      "repository": "KhronosGroup/GLSL",
+      "revision": "0099bf83b0288469917fc2e2972cb0a2b74d6711",
+      "archive_sha256": "4ffb1bb817c970670644ea2d19168dc1127a1d5502eb6bbfeb6600859090a23d",
+      "source_count": 96
+    },
+    {
+      "repository": "KhronosGroup/OpenGL-Registry",
+      "revision": "6af574a14089ccfee87efe230ebcdd8742859813",
+      "archive_sha256": "fa80b86e5c2d91c3088b67a128d4070f2520dac6bb823f0538f4870ec9e50942",
+      "source_count": 1025
+    }
+  ]
+}

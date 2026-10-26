@@ -1,0 +1,1287 @@
+{
+  "version": "prose-lab.oracle-floor-review/1",
+  "packet_digest": "f5fc178e7fea3042e3e5ff8f70aa8b00046891b8f13f9961703a03908d198e65",
+  "criterion_id": "cited-entailment/1",
+  "criterion_sha256": "bb12ed77442b05cc9912247881fce489a35d5de4749fb1efe364c5c2011acaac",
+  "assessments_digest": "2b2a6d913db6e553b99ab76a5df4a4aa612ddc683abfbfe42015016137415a39",
+  "assessment_report_digest": "5d5db3e6a02aca2856b81a65dc0bb8c7a3220e6c87f8155dbdb9c4766c120572",
+  "future_scope_digest": "2779ca86b8f05c37acfd560d220b88895938e5db145fdd5f994ae44c1332c6ad",
+  "reviewers": [
+    {
+      "ref": "reader-a",
+      "kind": "agent",
+      "role": "independent-source-reviewer",
+      "exposure": "Separately instructed native agent source review, labels and peer results withheld. Same model family, prior own criterion1 review exposed before full85 criterion2 rereview. No authenticated identity or technically attested isolation. Raw source judgments and normalization receipts retained.",
+      "assessments_digest": "2b2a6d913db6e553b99ab76a5df4a4aa612ddc683abfbfe42015016137415a39",
+      "assessment_report_digest": "5d5db3e6a02aca2856b81a65dc0bb8c7a3220e6c87f8155dbdb9c4766c120572"
+    },
+    {
+      "ref": "reader-b",
+      "kind": "agent",
+      "role": "independent-source-reviewer",
+      "exposure": "Separately instructed native agent source review, labels and peer results withheld. Same model family, prior own criterion1 review exposed before full85 criterion2 rereview. No authenticated identity or technically attested isolation. Raw source judgments and normalization receipts retained.",
+      "assessments_digest": "7654d18e6e38c57da07868676b7792783778da777d13fb2c88f2421c9638dd23",
+      "assessment_report_digest": "65aa22d7f53cb74c07bf2353c26f9571898f2bc6b7ccabac1083c25028d8ecf3"
+    }
+  ],
+  "old_case_dispositions": [
+    {
+      "case_id": "architecture-decision--n-01",
+      "case_digest": "61bbd3a9382a2aa266d8c745791aa9018b9c6c1c6f510b992c6fc9a66e3682a4",
+      "disposition": "replace",
+      "prospective_ids": [
+        "architecture-decision--n-01"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-04 covers ordinary log recovery after one restart, not checkpoint corruption. f-18 leaves checkpoint corruption review pending. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "architecture-decision--n-02",
+      "case_digest": "9d599ddbfc5aea6fca050ed55da093c0523379647df9358e44a52500340cb397",
+      "disposition": "replace",
+      "prospective_ids": [
+        "architecture-decision--n-02"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-05 records an observed 14-second replay, not 41 seconds. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "architecture-decision--n-03",
+      "case_digest": "4c2c7dffd1c8c5e6d05e2b147ffca2cbaa41da9e23d31d002125fbd931250b9b",
+      "disposition": "replace",
+      "prospective_ids": [
+        "architecture-decision--n-03"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-02 describes one active writer and two read-only reporting processes, not three writers. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "architecture-decision--n-04",
+      "case_digest": "012f67b8dcdd7b5cd364ed4833f43d1a8bd9fb8d7411185f38ccf634ce910364",
+      "disposition": "replace",
+      "prospective_ids": [
+        "architecture-decision--n-04"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-09 assumes a network dependency for the database alternative. It supplies no premise that event loss is inevitable. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "architecture-decision--n-05",
+      "case_digest": "9dc6805e5cbf4f4590c718862ace15ce3b2e70138a43479db9a33bf03b048d24",
+      "disposition": "replace",
+      "prospective_ids": [
+        "architecture-decision--n-05"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-11 says retry IDs occur in 92 percent of the 10,000 requests, so not every request has one. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "architecture-decision--n-06",
+      "case_digest": "e7312d12ea3390b4a309ac01b4deeb85be0cb9282b574a3dcb6865ae2557306a",
+      "disposition": "replace",
+      "prospective_ids": [
+        "architecture-decision--n-06"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-18 says the decision is pending a three-restart pilot and corruption review. It is not approved for permanent production use. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "architecture-decision--n-07",
+      "case_digest": "23c798ee578108ae9b33ae68cc3ff7e1eb5e63475ce333b54ed9aa152db27808",
+      "disposition": "replace",
+      "prospective_ids": [
+        "architecture-decision--n-07"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-16 expressly says the checkpoint format is not yet approved as a durable public compatibility contract. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "architecture-decision--p-01",
+      "case_digest": "64f0dba9e1eec48c135f2de3d8b521a59a568dab7b8accbff4c5f408252f1544",
+      "disposition": "replace",
+      "prospective_ids": [
+        "architecture-decision--p-01"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-01 states the current local-log write-before-acknowledgment behavior exactly. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "architecture-decision--p-02",
+      "case_digest": "39bb85dbc4cf6e0375b42212759c7b86e2676353084d4a91785d666ae955eab3",
+      "disposition": "replace",
+      "prospective_ids": [
+        "architecture-decision--p-02"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-03 defines precisely this single-writer-restart recovery target. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "architecture-decision--p-03",
+      "case_digest": "a1b1b91d13c2bcee4393dbaa50d66d59d54de8d7ee39549a788c15d398dfa02d",
+      "disposition": "replace",
+      "prospective_ids": [
+        "architecture-decision--p-03"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-01 says accepted events go to the local append-only log before acknowledgment; the wording preserves this order and scope. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "architecture-decision--p-04",
+      "case_digest": "e9d1839e815e6c01acae700c609b0782a57203e9ee605772e137ac014ae6e894",
+      "disposition": "replace",
+      "prospective_ids": [
+        "architecture-decision--p-04"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-04 records acknowledged-sequence recovery in the 10,000-event test; f-05 records 14-second replay on that exercise host. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "draft-service-agreement--n-01",
+      "case_digest": "e9d067b328227f5eadf7354559e3fd521b8df11a108ed9fa58bf287a7c2917f6",
+      "disposition": "replace",
+      "prospective_ids": [
+        "draft-service-agreement--n-01"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-01 says the draft is unsigned and unaccepted. f-10 proposes payment only after written acceptance, and f-20 authorizes no real legal or payment obligation. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "draft-service-agreement--n-02",
+      "case_digest": "a813588ce64a1b4821caae6f9252bdb3483c6b24a4eaaf829278b52a0b8dbe13",
+      "disposition": "replace",
+      "prospective_ids": [
+        "draft-service-agreement--n-02"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-03 proposes up to 40 synthetic CSV files, not 400. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "draft-service-agreement--n-03",
+      "case_digest": "0d5a684f03e5317b0a8b4db73adf24e8cd80c237ceb26fa04c2e29daf5aeafca",
+      "disposition": "replace",
+      "prospective_ids": [
+        "draft-service-agreement--n-03"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-02 names Maple Bridge Studio as provider. f-06 proposes that the requester supply the input files. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "draft-service-agreement--n-04",
+      "case_digest": "5022e98a4d0adbc24193d1641d701a128097511e0309086abac894d94c754b55",
+      "disposition": "replace",
+      "prospective_ids": [
+        "draft-service-agreement--n-04"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-15 proposes deletion of provider working copies within 30 days after acceptance or termination. It gives no guarantee that every copy is covered or cannot survive. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "draft-service-agreement--n-05",
+      "case_digest": "1b8499df96a9c437ec85214b4b8a7873a851828dd5716cedbcfd16d66f15f052",
+      "disposition": "replace",
+      "prospective_ids": [
+        "draft-service-agreement--n-05"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-16 says governing law and dispute forum remain unagreed. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "draft-service-agreement--n-06",
+      "case_digest": "80c424f4d05937dc51cae8afd78831610ff9767fb2a1121d06fd1556b55c95aa",
+      "disposition": "replace",
+      "prospective_ids": [
+        "draft-service-agreement--n-06"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-17 says the parties have not agreed on a liability cap. The proposed 2,400-credit fee in f-10 is not an agreed cap. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "draft-service-agreement--n-07",
+      "case_digest": "ea67dfb839c28d7d27712463c601a6a49b088184d3eb62dd4970b6171b8164ef",
+      "disposition": "replace",
+      "prospective_ids": [
+        "draft-service-agreement--n-07"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-01 says neither party has signed or accepted the proposed draft; f-20 denies real legal obligation. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "draft-service-agreement--p-01",
+      "case_digest": "a3099448e099d5f17ad0e03a3abbe19dfe72f3db5ddc72189c0013d867ce058c",
+      "disposition": "replace",
+      "prospective_ids": [
+        "draft-service-agreement--p-01"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-01 states this proposed, unsigned, unaccepted status exactly. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "draft-service-agreement--p-02",
+      "case_digest": "33f8136caf9c9287c376133d6e96444c30140d5909675cbd2b8501ca44cd7162",
+      "disposition": "replace",
+      "prospective_ids": [
+        "draft-service-agreement--p-02"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-02 defines both fictional parties and their roles exactly. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "draft-service-agreement--p-03",
+      "case_digest": "59932869e610fae5334853ae11501ec153c5efcc6bfe82c4f56f337225d31a45",
+      "disposition": "replace",
+      "prospective_ids": [
+        "draft-service-agreement--p-03"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-03 proposes conversion of up to 40 synthetic CSV files into a documented JSON schema; the assertion retains draft modality. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "draft-service-agreement--p-04",
+      "case_digest": "7703f8d242ded2a27bba605ed8d94b93ecea4baa199c931a95bd04588b7e70a7",
+      "disposition": "replace",
+      "prospective_ids": [
+        "draft-service-agreement--p-04"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-01 establishes unsigned, unaccepted draft status; f-03 gives the proposed 40-file CSV-to-JSON service. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "freeform-brief--n-01",
+      "case_digest": "b7ca5e51c6aa625fd5ae132b408e536afe6291a8ab074dc2b2b8c965ac53a8c6",
+      "disposition": "replace",
+      "prospective_ids": [
+        "freeform-brief--n-01"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-02 counts seat use; f-08 says reading outcomes were not measured. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "freeform-brief--n-02",
+      "case_digest": "17e77e785a97e1b82cd22e1a52b9f58822dac3353e810dbfc19191bf150ef4e4",
+      "disposition": "replace",
+      "prospective_ids": [
+        "freeform-brief--n-02"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-03 reports 34 reservations, not 43. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "freeform-brief--n-03",
+      "case_digest": "f495f0c7d81265cc801686cd9d20751c97913f608fe6027640592ec92ff35d7b",
+      "disposition": "replace",
+      "prospective_ids": [
+        "freeform-brief--n-03"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-01 reports a two-week pilot. f-06 only proposes a future four-week extension. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "freeform-brief--n-04",
+      "case_digest": "99d9abc7657770b760fe76c70001b5ae3dd275536ab3285b95ca84abb44ae5bf",
+      "disposition": "replace",
+      "prospective_ids": [
+        "freeform-brief--n-04"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-10 says the six no-show reasons are unknown; seat discomfort is an invented cause. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "freeform-brief--n-05",
+      "case_digest": "89c8d0fd4ddb184f681bcce0520dd1db8a78d363b253d3ceebcae64e7882d06a",
+      "disposition": "replace",
+      "prospective_ids": [
+        "freeform-brief--n-05"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-07 says the extension is pending reviewer decision and has not started. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "freeform-brief--n-06",
+      "case_digest": "b9d9f3f82fc2766683179d511a90df9371fde765de3b3d24a1d2464cf3a33cdb",
+      "disposition": "replace",
+      "prospective_ids": [
+        "freeform-brief--n-06"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-08 explicitly states the pilot did not measure reading-outcome improvement. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "freeform-brief--n-07",
+      "case_digest": "e5b9867947ff339fc79423b38f43594a000cb05e3cc590a72bfc2f700816412e",
+      "disposition": "replace",
+      "prospective_ids": [
+        "freeform-brief--n-07"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-06 only proposes the extension; f-07 says reviewer decision is still pending. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "freeform-brief--p-01",
+      "case_digest": "4cf85bf68fff088f6f5985742f3a8c7b60ae83f217589f5cd510820d65615ff9",
+      "disposition": "replace",
+      "prospective_ids": [
+        "freeform-brief--p-01"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-01 states this two-week fictional pilot and participant count exactly. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "freeform-brief--p-02",
+      "case_digest": "1e4086f4cba9bd46ce063586e792f7d5479a982f87d906cd2ab123b1662b287f",
+      "disposition": "replace",
+      "prospective_ids": [
+        "freeform-brief--p-02"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-04 defines this one-seat, two-hour-per-day pilot rule exactly. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "freeform-brief--p-03",
+      "case_digest": "2d80bc0f125ba5357de386b8ffb62b30a6dfcb01c00f1bcda985d8b321ca8435",
+      "disposition": "replace",
+      "prospective_ids": [
+        "freeform-brief--p-03"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-02 observes that nine participants used at least one reserved seat during the pilot. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "freeform-brief--p-04",
+      "case_digest": "170a8b20ec0a5a4a2175475784f66b63f1779afa852fedf1686ac06b11933cd7",
+      "disposition": "replace",
+      "prospective_ids": [
+        "freeform-brief--p-04"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-01 gives two weeks and 12 invented participants; f-03 gives 34 reservations and six no-shows. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "incident-summary--n-01",
+      "case_digest": "5e5b90c978b9b3a8c9871086c96c87da54e2fd5b618d07a76a453fdd612dc181",
+      "disposition": "replace",
+      "prospective_ids": [
+        "incident-summary--n-01"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-02 gives 18 affected messages but no detection time or loss. f-01 gives 09:10 detection of elevated delay; f-03 says none was lost. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "incident-summary--n-02",
+      "case_digest": "c639249b4cea9f2f9756a7647ea11b165e152fdee93ecf677ad820b9a9f3dd7c",
+      "disposition": "replace",
+      "prospective_ids": [
+        "incident-summary--n-02"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-02 reports 18 of 240 affected test messages, not 81. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "incident-summary--n-03",
+      "case_digest": "a089b03bcda422f2d83342eb46c33834bee1527721ed49e4cd20ff61ec758516",
+      "disposition": "replace",
+      "prospective_ids": [
+        "incident-summary--n-03"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-01 dates first detection to 2026-03-04, not March 5. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "incident-summary--n-04",
+      "case_digest": "7c2ce70257866180ac92e13303f88680e810dead32d5a80a2b4fbfb805bb521e",
+      "disposition": "replace",
+      "prospective_ids": [
+        "incident-summary--n-04"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-07 establishes temporal association but explicitly denies proof of sole causation; f-11 says root cause remains unconfirmed. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "incident-summary--n-05",
+      "case_digest": "fa508a7c4a02532839200dc32238acfe82872d2d3462e56f0b4f8a71f493cc76",
+      "disposition": "replace",
+      "prospective_ids": [
+        "incident-summary--n-05"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-03 says all 18 affected messages were eventually delivered and none was lost. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "incident-summary--n-06",
+      "case_digest": "6c11131840f4e274a1fbe76c1cea690950c0c731ff2902e4e983808956084f59",
+      "disposition": "replace",
+      "prospective_ids": [
+        "incident-summary--n-06"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-11 says root cause remains unconfirmed, and f-07 limits the evidence to temporal association. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "incident-summary--n-07",
+      "case_digest": "33f17db3f729cec1a305ce3d6c1ef00349372c665370c21262a6b51adf406f4b",
+      "disposition": "replace",
+      "prospective_ids": [
+        "incident-summary--n-07"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-10 describes a proposed follow-up check. It does not enact a mandatory policy. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "incident-summary--p-01",
+      "case_digest": "7885bb07551f7034349845f94d40282920ca13385372aab8b9a58239e07a4c4f",
+      "disposition": "replace",
+      "prospective_ids": [
+        "incident-summary--p-01"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-01 states this detection timestamp, monitor, and elevated delay exactly. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "incident-summary--p-02",
+      "case_digest": "c68c176e1f65963d8ed11b8dd4f80902c395b4b84c7d0234f1b54800bff7efe5",
+      "disposition": "replace",
+      "prospective_ids": [
+        "incident-summary--p-02"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-10 states exactly this proposed predeployment check and threshold. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "incident-summary--p-03",
+      "case_digest": "400e686650fd94a8216c69673698fd5506b722d0669334d9728ac07f5fe9f841",
+      "disposition": "replace",
+      "prospective_ids": [
+        "incident-summary--p-03"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-03 states all 18 affected messages were delivered by 09:41 UTC and none was lost. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "incident-summary--p-04",
+      "case_digest": "efa6e410ad400636fdc98674009d38782258818f3cb4d4d9867a89741238fea6",
+      "disposition": "replace",
+      "prospective_ids": [
+        "incident-summary--p-04"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-02 gives the affected count, total, and submission window; f-04 gives the 27-minute maximum and five-minute objective. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "operational-runbook--n-01",
+      "case_digest": "41544bed0b95864d4d0266af04b432b0f56ea341ec1350ffb773b96052ecbad0",
+      "disposition": "replace",
+      "prospective_ids": [
+        "operational-runbook--n-01"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-17 reports one simulated backlog clearance. f-18 explicitly says this does not prove scaling resolves backlogs caused by delivery errors. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "operational-runbook--n-02",
+      "case_digest": "02f3a08af82634dfdeb1226e0f51d6e543d283dd4cf914dd724cd2557dd25c2a",
+      "disposition": "replace",
+      "prospective_ids": [
+        "operational-runbook--n-02"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-03 defines critical as more than 500 pending messages for ten continuous minutes, not 50. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "operational-runbook--n-03",
+      "case_digest": "898c7319da4c944a5e4cedca8c756870bc228a656e71e607f8d4feaaf56cb328",
+      "disposition": "replace",
+      "prospective_ids": [
+        "operational-runbook--n-03"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-14 assigns replay decisions to the exercise controller, not the operator. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "operational-runbook--n-04",
+      "case_digest": "289701dde7ceaff26047ed1456b6050bfe3b184bf77f689377400d24d564cb1f",
+      "disposition": "replace",
+      "prospective_ids": [
+        "operational-runbook--n-04"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-18 rejects generalizing one successful scaling trial to delivery-error backlogs. It provides no universal cause for a growing queue. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "operational-runbook--n-05",
+      "case_digest": "05e4ab8e6b010d66b8248996cab8fce645fb216686639100b31997b0beec133a",
+      "disposition": "replace",
+      "prospective_ids": [
+        "operational-runbook--n-05"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-07 expressly prohibits restarting a worker with an active lease because duplicate delivery is possible. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "operational-runbook--n-06",
+      "case_digest": "b711ef04729312ab5ec14fe220a1e81dc5c1c692bf2e70475451b3847d0bd9a9",
+      "disposition": "replace",
+      "prospective_ids": [
+        "operational-runbook--n-06"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-11 requires three measures below their limits for two consecutive checks. One pending-count check cannot establish recovery. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "operational-runbook--n-07",
+      "case_digest": "8b2c79f4b3ede50c4cbb7a589a0ab9a339b87c15d6a875d143a1fcb02e1c00cd",
+      "disposition": "replace",
+      "prospective_ids": [
+        "operational-runbook--n-07"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-09 expressly prohibits raising worker count above four without controller approval. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "operational-runbook--p-01",
+      "case_digest": "aba601bc10f6ab7d00631a3d5efbd0f91a32330ce322372d62ae27ecd2ffa18d",
+      "disposition": "replace",
+      "prospective_ids": [
+        "operational-runbook--p-01"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-01 defines exactly this synthetic queue and isolated-exercise scope. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "operational-runbook--p-02",
+      "case_digest": "af09762b8a10f1246831b9986898e231bf2f5db41274a22943c7caca815288dd",
+      "disposition": "replace",
+      "prospective_ids": [
+        "operational-runbook--p-02"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-02 defines the exact warning count and continuous duration. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "operational-runbook--p-03",
+      "case_digest": "82f2d287cc7121fd309a52694e0b418fc17bc486aa9832ed08eacca402d84a3f",
+      "disposition": "uncertainty",
+      "prospective_ids": [
+        "operational-runbook--p-03",
+        "oq-c07-replacement"
+      ],
+      "changed_fields": [
+        "label",
+        "assertion",
+        "criterion"
+      ],
+      "basis": "f-06 permits restart after confirming lease expiry. Its permission does not by itself establish that confirmation is the sole or necessary permission condition. f-07 separately forbids active-lease restart. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "operational-runbook--p-04",
+      "case_digest": "ef2527a1d5b37de78a28090d76a0c3c6c7cb6287932c1e459ff83899b0c722d6",
+      "disposition": "replace",
+      "prospective_ids": [
+        "operational-runbook--p-04"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-02 and f-03 define the stated warning and critical thresholds, including continuous durations. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "technical-design--lp-document-absence",
+      "case_digest": "9689cc5866b0f26dfe303175ba471fc172e56989236cbc43d2d8b4023ffb70e9",
+      "disposition": "replace",
+      "prospective_ids": [
+        "technical-design--lp-document-absence"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-29 supports the proposed isolated pilot, but the document also describes the current receiver behavior in f-04. The claim that nothing describes enacted behavior is too broad. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "technical-design--lp-rhetorical-scope",
+      "case_digest": "90f74024a9ffc73eac7d171dd818f98a439b7af4275ca2120a47f8ddfcd67e7b",
+      "disposition": "replace",
+      "prospective_ids": [
+        "technical-design--lp-rhetorical-scope"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-05 defines preservation of acknowledged readings across a receiver restart in the pilot as the design goal. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "technical-design--material-scope-exclusion",
+      "case_digest": "a10c52edb1d9bd0cdfff50717742af87a6d48a64fac4844707e7ef529b1aa0d0",
+      "disposition": "replace",
+      "prospective_ids": [
+        "technical-design--material-scope-exclusion"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-05 names the durability goal, but f-16 specifies validation behavior and f-27 requires duplicate and conflict handling for pilot acceptance. They are within the pilot scope. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "technical-design--n-01",
+      "case_digest": "064ea09e891c7ef9d22f3201150c23023d66d3c68a1f462d99b776fe69d93ca4",
+      "disposition": "replace",
+      "prospective_ids": [
+        "technical-design--n-01"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-13 proposes local durability before acknowledgment. f-37 says the bounded pilot does not specify replication or cross-host failover. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "technical-design--n-02",
+      "case_digest": "27ed60c68c3817bf0019eba782fd8589649efbbd3b3f65821f56b44a4cb9860f",
+      "disposition": "replace",
+      "prospective_ids": [
+        "technical-design--n-02"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-06 proposes at most 100 readings per request, not 1,000. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "technical-design--n-03",
+      "case_digest": "9a823696ac26ea922c17a90531b38e113412f02d83deb3494cbaef75b7582b3f",
+      "disposition": "replace",
+      "prospective_ids": [
+        "technical-design--n-03"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-20 assigns TLS termination and principal authentication to the host application, not the ingestion library. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "technical-design--n-04",
+      "case_digest": "899ebca48ba01fa1365a2bfaa29bc560d6b3935f2495ff364f8d626cb1f441ba",
+      "disposition": "replace",
+      "prospective_ids": [
+        "technical-design--n-04"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-31 explicitly says proposed durable-design p99 persistence latency has not been measured. It cannot support a sub-20-ms prediction. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "technical-design--n-05",
+      "case_digest": "8ef11be6852407097dc10e023290fe7af4947c6b19e0c1c369c1e1c19e54953d",
+      "disposition": "replace",
+      "prospective_ids": [
+        "technical-design--n-05"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-16 proposes whole-batch rejection when valid and invalid readings are mixed, specifically to avoid partial retry semantics. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "technical-design--n-06",
+      "case_digest": "78137e9d644bcbdbb15a59429da3fde0318a32fb3cd3ff2df2ac4481ccfb3688",
+      "disposition": "replace",
+      "prospective_ids": [
+        "technical-design--n-06"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-18 expressly says a 503 must not assert batch absence because a write may have completed. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "technical-design--n-07",
+      "case_digest": "7f9a7efcf744dd0b818672a851b504490535ac22340e881499c3a74c1d72f468",
+      "disposition": "replace",
+      "prospective_ids": [
+        "technical-design--n-07"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-29 proposes an isolated synthetic pilot with no production device connection. f-30 still requires owner review before broader deployment. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "technical-design--n-08",
+      "case_digest": "260841fd0875edfdee6a2fb98be1198a60539d9c48fee9ae5ceb2abc3dd0e166",
+      "disposition": "replace",
+      "prospective_ids": [
+        "technical-design--n-08"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-32 states that retention is unresolved. No approved 30-day period follows. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "technical-design--p-01",
+      "case_digest": "655edc7f457aa3eb48fc57b1736ad5f2cee405df5380dce677bd4465ad2326c8",
+      "disposition": "replace",
+      "prospective_ids": [
+        "technical-design--p-01"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-01 states this device count, simulation scope, and reading rate exactly. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "technical-design--p-02",
+      "case_digest": "56d6e5c7ef305a361e353812ef47aa60ccd5a2364f77ac84e2a5ca13aec01810",
+      "disposition": "replace",
+      "prospective_ids": [
+        "technical-design--p-02"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-02 defines exactly these five reading fields. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "technical-design--p-03",
+      "case_digest": "a353d5ba087f2a1efbf62f9eadd841e2ebe7100d0ba76ef4b4ad903519a5fbee",
+      "disposition": "replace",
+      "prospective_ids": [
+        "technical-design--p-03"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-04 observes that the current memory-map receiver loses its readings on restart. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "case_id": "technical-design--p-04",
+      "case_digest": "ba4b05dfd006d14adc0d8f53c5c21767293e7b91a377f9a75690e518df0d8290",
+      "disposition": "replace",
+      "prospective_ids": [
+        "technical-design--p-04"
+      ],
+      "changed_fields": [
+        "criterion"
+      ],
+      "basis": "f-06 proposes rejection above 100 readings before item parsing; f-07 proposes a 256-KiB decoded-body cap. Both remain proposed. Prospective criterion2 clarifies epistemic strengthening versus unresolved meaning/conflict; old criterion1 result is unchanged.",
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    }
+  ],
+  "contrasts": [
+    {
+      "id": "OQ-C01",
+      "cases": [
+        {
+          "case_id": "oq-c01-case-1",
+          "case_digest": "7c20b9aa005875a2dd42df45e4b8d9ffffe95ad8c3abe95ac913b4d66df89c6c"
+        },
+        {
+          "case_id": "oq-c01-case-2",
+          "case_digest": "7360e7f834412c90250107cd572b213d3ad8afc58e581a403eb76eea55cd7911"
+        },
+        {
+          "case_id": "oq-c01-case-3",
+          "case_digest": "886be0e80f74393a669d092e525b944855794ac4db9b4074d3932d0e211c2124"
+        }
+      ],
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "id": "OQ-C02",
+      "cases": [
+        {
+          "case_id": "oq-c02-case-1",
+          "case_digest": "a9cea29bebc6a2b58f7e343130eb0e0fa55a926d4d59d6abedd2dbae9065d869"
+        },
+        {
+          "case_id": "oq-c02-case-2",
+          "case_digest": "7be5991d31c416d070a556c6e4f09217353aa27386a8cc324936d22c763c3842"
+        }
+      ],
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "id": "OQ-C03",
+      "cases": [
+        {
+          "case_id": "oq-c03-case-1",
+          "case_digest": "bc60f0cb9a8a56b62b995dc4c6ba1f9c79fa340b0785597661d11faf69e45485"
+        },
+        {
+          "case_id": "oq-c03-case-2",
+          "case_digest": "0fdb5f806ba39b5d7290de6a4996fd37f6e8d4c6dfedf06f1a81fa71fb92e004"
+        }
+      ],
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "id": "OQ-C04",
+      "cases": [
+        {
+          "case_id": "oq-c04-case-1",
+          "case_digest": "c0e671a3be61cdf835293c571ece8543bf4179bf75388fbf490f84040973ddd4"
+        },
+        {
+          "case_id": "oq-c04-case-2",
+          "case_digest": "327734cc00c0c6d42ba31315bf86c1cfeed618c65efb4773b1c6db1a4bbc5a06"
+        },
+        {
+          "case_id": "oq-c04-conflicting-confirmation",
+          "case_digest": "39e8eade4d1b492caaa3448d9e0f422eeb1183e0b0a55f1e1ad457c8b83dbef8"
+        }
+      ],
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "id": "OQ-C05",
+      "cases": [
+        {
+          "case_id": "oq-c05-case-1",
+          "case_digest": "356546397e4d8a7ff7e64a70d84ee188d0f7fb4e905d838b2e2be5518487ac5d"
+        },
+        {
+          "case_id": "oq-c05-case-2",
+          "case_digest": "43bcb97dcacf56e51e161f3fd37d750cc71b824ff518cdbfa1cce9bb769bba7a"
+        }
+      ],
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "id": "OQ-C06",
+      "cases": [
+        {
+          "case_id": "oq-c06-case-1",
+          "case_digest": "43db7ba516ea6d5d41244ab0bc4d95d2d6750322a483265c2f548b820c29a281"
+        },
+        {
+          "case_id": "oq-c06-case-2",
+          "case_digest": "989a249b470c521fbb975087cc49e4acfb878c1d249a8b488da848c4839e699a"
+        }
+      ],
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    },
+    {
+      "id": "OQ-C07",
+      "cases": [
+        {
+          "case_id": "operational-runbook--p-03",
+          "case_digest": "69c7912bed066e85aae7306975b24a73f8ddd5473fc605252b28f5ab7796576f"
+        },
+        {
+          "case_id": "oq-c07-replacement",
+          "case_digest": "1c55cddaba9ebbc81e49f821f86217741880e766d4465dd4169eb2f84de09311"
+        }
+      ],
+      "reviewer_refs": [
+        "reader-a",
+        "reader-b"
+      ]
+    }
+  ],
+  "remaining_ambiguities": [],
+  "verdict": "ready-for-new-study-design",
+  "provider_qualified": false,
+  "identity_authenticated": false,
+  "publication_authority": false,
+  "new_study_admission": false
+}

@@ -1,0 +1,109 @@
+{
+  "all_request_costs_repriced": 85,
+  "audit_scope": "offline retained native records and key-free preparation replay",
+  "binary_sha256": "12219e0adfe91bb035862f8accfa83736fad8eaf57271b73db3a4cce5ba8926b",
+  "binary_vcs_modified": false,
+  "bound_markers": 85,
+  "bound_receipts": 85,
+  "candidate_cumulative_micro_usd": 1796634,
+  "completed": 85,
+  "confusion_matrix": {
+    "inconclusive": {
+      "inconclusive": 1,
+      "supported": 0,
+      "unsupported": 0
+    },
+    "supported": {
+      "inconclusive": 0,
+      "supported": 32,
+      "unsupported": 0
+    },
+    "unsupported": {
+      "inconclusive": 0,
+      "supported": 0,
+      "unsupported": 52
+    }
+  },
+  "critical_false_support": 0,
+  "cross_trial_spend_verified": false,
+  "declared_prior_micro_usd": 1152522,
+  "declared_stage_cap_micro_usd": 10000000,
+  "deviations": [],
+  "execution_sha256": "7b651ff49f778a6290c9c87689d515727756cbfc3116ed45de6ffda696dfcebe",
+  "failed": 0,
+  "freeze_sha256": "75666a96de6d16df7e4f338955f1dbd6f74f67a25589233ac62d176ce2c53d2b",
+  "frozen_file_hashes_checked": 64,
+  "hidden_thinking_text_read": false,
+  "identity_authenticated": false,
+  "independent_document_acceptance": false,
+  "independent_prior_receipt_completeness_verified": false,
+  "invalid": 0,
+  "invoked": 85,
+  "key_free_preparations_reproduced": 85,
+  "latency_nanos": 223889746128,
+  "latency_range_nanos": [
+    1372881333,
+    6443237750
+  ],
+  "limitations": [
+    "The old protocol 3 freeze and report match committed hashes; no baseline hashes for every old private native file were available to prove byte-for-byte immutability of the entire old journal.",
+    "The older 778690 micro-USD component remains owner-declared; the protocol 3 373832 micro-USD component matches its retained and committed report.",
+    "Native records and driver logs show one ordered attempt per case, but no independent provider transport log or bill was available.",
+    "A synthetic exact-match floor does not establish source truth, calibrated accuracy, document acceptance, or adoption."
+  ],
+  "matched": 85,
+  "mismatched": 0,
+  "missing": 0,
+  "model_site_adoption": false,
+  "native_content_block_types": {
+    "text": 85,
+    "thinking": 3
+  },
+  "native_requests": 85,
+  "network_account_authentication_verified": false,
+  "pending": 0,
+  "per_attempt_reserved_micro_usd": 4081922,
+  "planned": 85,
+  "protocol": "prose-lab.support-review/4",
+  "provider_invoice_reconciled": false,
+  "provider_spend_limit_enforced": false,
+  "publication_authority": false,
+  "reference_and_observed": {
+    "inconclusive": 1,
+    "supported": 32,
+    "unsupported": 52
+  },
+  "report_sha256": "a5fab7c2d94c5581d74017e0bd70d1d03ffb5bb95077ccad1ef80a78a0473dce",
+  "request_projection_excludes_oracle_and_reviewer_metadata": true,
+  "retained_protocol3": {
+    "charged_micro_usd": 373832,
+    "freeze_sha256": "59c40123f5272418b99a1c08b90b9f82f9a561729286215cb6cf2a844450e27f",
+    "invalid": 1,
+    "invoked": 67,
+    "matched": 66,
+    "qualified": false,
+    "report_sha256": "38dab7039a02150ab7f32f663009951fdd88e13797c69850c9a7aaa83e3e3f65",
+    "uninvoked": 18
+  },
+  "retry_or_fallback_observed": false,
+  "settled_reservations": 85,
+  "source_authenticated": false,
+  "source_clean_at_audit": true,
+  "source_commit": "eb70ecafd1871a230e8d4ecdc04e29a8013ff3b2",
+  "study_digest": "aa80cc148ecbd548ac88904f5e33143553e4c1c2b38ce13e3100d55ba16002e9",
+  "trial_cap_micro_usd": 5000000,
+  "trial_charged_micro_usd": 644112,
+  "ui_entry": false,
+  "uninvoked": 0,
+  "unique_native_response_ids": 85,
+  "unknown": 0,
+  "unsettled_reservations": 0,
+  "usage": {
+    "cache_read_tokens": 0,
+    "cache_write_tokens": 0,
+    "input_tokens": 229971,
+    "output_tokens": 18417
+  },
+  "verdict": "qualified-configured-synthetic-support-site-at-frozen-revision",
+  "version": "prose-lab.independent-qualified-review-audit/1"
+}

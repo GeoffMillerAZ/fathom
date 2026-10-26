@@ -14,5 +14,4 @@ A function's, struct's and macro's `end` is ctags' own `end:` field. Bench-only,
     # SaschaWillems/Vulkan shaders/glsl: 353 files, 580 definitions; SPIRV-Cross shaders: 306 files, 564;
     # Vulkan-Samples shaders: 309 files, 672
 
-The L2 half of the item (`glslang-ast`, glslang 16.6.0's AST dump, calls only) is not written: LB-Q-glsl stopped at
-the grammar gate (docs/bench/readings/lang/glsl-grammar.md).
+The calls-only L2 adapter is in [glslang-ast](../glslang-ast/README.md). It replays pinned native inputs with glslang 16.6.0 at tier B and requires at least 95% oracle coverage before publishing output. The historical unpatched grammar screen is [glsl-grammar.md](../../../docs/bench/readings/lang/glsl-grammar.md); it is not a current support reading.

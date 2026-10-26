@@ -1,0 +1,10 @@
+{
+  "prior": "native-position-protocol-r2.json",
+  "measured_failure": "The second canonical profile tries to open its absolute logfile during cfparser callbacks, before the terminal marker.",
+  "refinement": [
+    "Redirect every existing [pgbouncer] logfile value to that individual private profile directory before parsing. Preserve all keys, section names, physical lines and all other values. No logfile key is inserted or removed; logfile values are not graded fields.",
+    "Baseline means all original graded facts plus the disclosed logfile destination substitution; it still precedes any verbose observation override. Invalid numeric/verbose values must fail baseline, never be rescued.",
+    "Refuse an active syslog setting rather than emit global log messages. Every native callback remains mandatory; changed logfile callback values are reconciled against the exact private substitution.",
+    "Publish substitution counts, never literal subject paths. The terminal native parser failure still precedes daemon/listener/backend startup. The failed unmodified-path attempt supplies no complete population/tier claim."
+  ]
+}

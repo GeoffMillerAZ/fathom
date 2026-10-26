@@ -1,0 +1,726 @@
+{
+  "adapter_commit_at_reading": "9fe4f9c2c",
+  "browser_budget_seconds": 1200,
+  "browser_native_wall_seconds": 125.596,
+  "canonical_reading": "docs/bench/readings/css-browser-2026-10-26.json",
+  "canonical_reading_adopted": false,
+  "grammar_candidates": [
+    {
+      "abi": 15,
+      "archive_sha256": "c47392e483feb9137d8f0acf9ca6e916b820122c260324454a9980c75c98c3c5",
+      "archive_url": "https://codeload.github.com/tree-sitter/tree-sitter-css/tar.gz/dda5cfc5722c429eaba1c910ca32c2c0c5bb1a3f",
+      "commit": "dda5cfc5722c429eaba1c910ca32c2c0c5bb1a3f",
+      "eligible_error_files": 120,
+      "eligible_files": 212,
+      "library_sha256": "0c5a86f1bea1ef205946484f2c79ce0a9e094405abc11c4769d910e09c8fd9e1",
+      "license_sha256": "c5cfb43042b6b72045f4ba997834d0a7786d2793d91680868b5815b39f14fc78",
+      "name": "official",
+      "raw_error_files": 238,
+      "raw_files": 331,
+      "repository": "tree-sitter/tree-sitter-css",
+      "runtime": "0.25.2",
+      "subjects": [
+        {
+          "max_parse_ms": 0.283,
+          "name": "normalize",
+          "production_eligible": {
+            "error_rate": 0.0,
+            "exclusion": "*.min.css only",
+            "files": 1,
+            "files_in_error": 0
+          },
+          "raw": {
+            "bytes": 7546,
+            "error_rate": 0.0,
+            "files": 1,
+            "files_in_error": 0,
+            "timeouts": 0
+          },
+          "source_commit": "dafaf9ee60ff76173954aca755c78a6912a0ee6c",
+          "source_digest": "5417ab2835b36cfc009ba8eb107eed0cf5482a38efafc1499245e5cc84fdaa35"
+        },
+        {
+          "max_parse_ms": 7.04,
+          "name": "pico",
+          "production_eligible": {
+            "error_rate": 0.9915966386554622,
+            "exclusion": "*.min.css only",
+            "files": 119,
+            "files_in_error": 118
+          },
+          "raw": {
+            "bytes": 19350431,
+            "error_rate": 0.9915966386554622,
+            "files": 238,
+            "files_in_error": 236,
+            "timeouts": 0
+          },
+          "source_commit": "1039a4788d6abc368d5485ae6bac84a8f0e3096f",
+          "source_digest": "c8fdb58cf88ff34c6d4b32a96f64b58ea526e5b2ec1efb6f668b3f19fda51532"
+        },
+        {
+          "max_parse_ms": 2.491,
+          "name": "gitea",
+          "production_eligible": {
+            "error_rate": 0.021739130434782608,
+            "exclusion": "*.min.css only",
+            "files": 92,
+            "files_in_error": 2
+          },
+          "raw": {
+            "bytes": 353080,
+            "error_rate": 0.021739130434782608,
+            "files": 92,
+            "files_in_error": 2,
+            "timeouts": 0
+          },
+          "source_commit": "4ebd5e319b6a9e629bfd7a04292a6fe85b08dee9",
+          "source_digest": "4069e814b78a9c58b918ce63394f3618b8c0244e3e55be2f18a008fc8befe2c0"
+        }
+      ]
+    },
+    {
+      "abi": 15,
+      "archive_sha256": "fff9e36dca17fa4427ef62254ebb372f0b57ad1ae4e87bbb226a641124a32b3d",
+      "archive_url": "https://codeload.github.com/meloncholera/tree-sitter-css-strict/tar.gz/64d13f2f5b076233a631a5b922a73edcd7f7d45d",
+      "commit": "64d13f2f5b076233a631a5b922a73edcd7f7d45d",
+      "eligible_error_files": 120,
+      "eligible_files": 212,
+      "library_sha256": "e61a404975bf7e00c2b1812e8fdd641e8aff24e572a759b71e9408603dd57df9",
+      "license_sha256": "c5cfb43042b6b72045f4ba997834d0a7786d2793d91680868b5815b39f14fc78",
+      "name": "strict",
+      "raw_error_files": 238,
+      "raw_files": 331,
+      "repository": "meloncholera/tree-sitter-css-strict",
+      "runtime": "0.25.2",
+      "subjects": [
+        {
+          "max_parse_ms": 0.293,
+          "name": "normalize",
+          "production_eligible": {
+            "error_rate": 0.0,
+            "exclusion": "*.min.css only",
+            "files": 1,
+            "files_in_error": 0
+          },
+          "raw": {
+            "bytes": 7546,
+            "error_rate": 0.0,
+            "files": 1,
+            "files_in_error": 0,
+            "timeouts": 0
+          },
+          "source_commit": "dafaf9ee60ff76173954aca755c78a6912a0ee6c",
+          "source_digest": "5417ab2835b36cfc009ba8eb107eed0cf5482a38efafc1499245e5cc84fdaa35"
+        },
+        {
+          "max_parse_ms": 9.025,
+          "name": "pico",
+          "production_eligible": {
+            "error_rate": 0.9915966386554622,
+            "exclusion": "*.min.css only",
+            "files": 119,
+            "files_in_error": 118
+          },
+          "raw": {
+            "bytes": 19350431,
+            "error_rate": 0.9915966386554622,
+            "files": 238,
+            "files_in_error": 236,
+            "timeouts": 0
+          },
+          "source_commit": "1039a4788d6abc368d5485ae6bac84a8f0e3096f",
+          "source_digest": "c8fdb58cf88ff34c6d4b32a96f64b58ea526e5b2ec1efb6f668b3f19fda51532"
+        },
+        {
+          "max_parse_ms": 2.39,
+          "name": "gitea",
+          "production_eligible": {
+            "error_rate": 0.021739130434782608,
+            "exclusion": "*.min.css only",
+            "files": 92,
+            "files_in_error": 2
+          },
+          "raw": {
+            "bytes": 353080,
+            "error_rate": 0.021739130434782608,
+            "files": 92,
+            "files_in_error": 2,
+            "timeouts": 0
+          },
+          "source_commit": "4ebd5e319b6a9e629bfd7a04292a6fe85b08dee9",
+          "source_digest": "4069e814b78a9c58b918ce63394f3618b8c0244e3e55be2f18a008fc8befe2c0"
+        }
+      ]
+    }
+  ],
+  "holdout_import_diagnosis": {
+    "adapter_changed_after_holdout": false,
+    "appended_css_targets_exist": 56,
+    "extensionless_modules": 56,
+    "imports": 56,
+    "literal_targets_exist": 0,
+    "scope": "LightningCSS literal resolver reads are not physical files; no extension-appending truth was substituted"
+  },
+  "holdout_reading": "docs/bench/readings/css-browser-holdout-2026-10-26.json",
+  "newer_strict_source_equivalence": [
+    {
+      "archive_sha256": "ce2f381b05aabd893b1656c059ac5f8f580d188ef93a6aa2d14e8f46144e0c55",
+      "commit": "0c2f458ef14d5861d4ecd9195d38525e059b9df8",
+      "compilation_inputs_equal_measured_64d13f2f": {
+        "src/parser.c": true,
+        "src/scanner.c": true,
+        "src/tree_sitter/alloc.h": true,
+        "src/tree_sitter/array.h": true,
+        "src/tree_sitter/parser.h": true
+      },
+      "name": "strict-registry",
+      "package_version": "0.1.0"
+    },
+    {
+      "archive_sha256": "d519c6b92f8858db3ce4c4651a3382314a70b8769576465639d0f64dbc7baeec",
+      "commit": "7b938c7dcc7dfc3b2d8bf3a3a7c807a04ed3d1bf",
+      "compilation_inputs_equal_measured_64d13f2f": {
+        "src/parser.c": true,
+        "src/scanner.c": true,
+        "src/tree_sitter/alloc.h": true,
+        "src/tree_sitter/array.h": true,
+        "src/tree_sitter/parser.h": true
+      },
+      "name": "strict-head",
+      "package_version": "0.1.0"
+    }
+  ],
+  "protocol": "docs/bench/css-browser-protocol.md",
+  "reason": "Canonical parser ERROR/MISSING rate exceeds 5%; computed excellent metric buckets do not establish full excellence. Holdout L3 import truth is unattested.",
+  "review_corrections": {
+    "c2_f1_retier_replay": {
+      "candidate_reading_sha256": {
+        "css-browser-2026-10-26.json": "75717b4e08ee0c18057f8f77f3c4bff361adc9c0080f62290569f3c4cf76e371",
+        "css-browser-holdout-2026-10-26.json": "6cb37af8d0d9173cb57922706fd7c1de84d2cc43dd10b9db2e3ff49b1ac2e053"
+      },
+      "classification": "Chromium proposal companion tier A -> C; no browser/source rerun",
+      "classification_binary_sha256": "1d5e6157bad319a3e93e9bd85cb1cd7eda633bd5b3eb722f5da9273dfde8bd79",
+      "classification_copy_sha256": {
+        "gitea/gitea.json": "a1f92a350d71e08f95261eb7a23c9d6aaa88fadb183c2c7e6bff7690d4995ce8",
+        "gitea/gitea.ranges.json": "be94a68a9952825e0ad1ec93ed792b24897c110732e9bbb2525eb3a5526d2f11",
+        "gitea/gitea.source.json": "cd4ed257d7b399a82822bef8351ad9a96cb4922645518a6b232b2875e6d462ce",
+        "normalize-css/normalize.json": "25532bf62f7c4eb712d4770828ad0b67877ae2827aa0cc4dc574855a63ede371",
+        "normalize-css/normalize.ranges.json": "fa26e323dbe944613c6375889bb5c0126c9fc93f80f200ec374da94998ba8487",
+        "normalize-css/normalize.source.json": "3910a2f1c93758baed43fa12c0f968771c403ac95c028a36a2400c8e61efbaa4",
+        "pico/pico.json": "22611baea43858de55386c13146c64741af37abc2a62e78948259b4757331a17",
+        "pico/pico.ranges.json": "3c3bbeb20d8585f5cebd03abac97b1e26b90707451ed03e0fac98f7a4bdd67a8",
+        "pico/pico.source.json": "ad4d7b6b196c7ae9c9a2480b753b992267fb0b206db8346bba65705c5f8daf80",
+        "tachyons-css/tachyons.json": "1923d1ba5a189e1c7bba0f4519f2f4919168ca19a4e364237004743320c736a9",
+        "tachyons-css/tachyons.ranges.json": "1996f27eab6a61cc0712649b2082816cd2a50d4b58d9b89be5b82a652c241c77",
+        "tachyons-css/tachyons.source.json": "b463d94d06ac1677edb5f9d4945303acce80b1eba0bf17853df2bc50b4079124"
+      },
+      "classification_harness_commit": "43af9034cf1d42c1ce480ffb879077b8ba2f67b9",
+      "command_context": "Run from the repo root with CSS_INDEXBENCH (the binary whose SHA-256 is classification_binary_sha256), CSS_HARNESS_COMMIT=43af9034cf1d42c1ce480ffb879077b8ba2f67b9, CSS_SUBJECTS, CSS_CLASSIFIED and CSS_OUT set; source scopes and subject flags match the documented replay.",
+      "command_templates": [
+        "\"$CSS_INDEXBENCH\" lang-oracle -dialect css -commit \"$CSS_HARNESS_COMMIT\" -subject \"$CSS_SUBJECTS/normalize-css\" -subject-name normalize.css -tool-oracle \"$CSS_CLASSIFIED/normalize.json\" -out \"$CSS_OUT/candidate-reading.json\"",
+        "\"$CSS_INDEXBENCH\" lang-oracle -dialect css -commit \"$CSS_HARNESS_COMMIT\" -subject \"$CSS_SUBJECTS/pico\" -subject-name pico -only 'css/**' -tool-oracle \"$CSS_CLASSIFIED/pico.json\" -out \"$CSS_OUT/candidate-reading.json\"",
+        "\"$CSS_INDEXBENCH\" lang-oracle -dialect css -commit \"$CSS_HARNESS_COMMIT\" -subject \"$CSS_SUBJECTS/gitea\" -subject-name gitea -only 'web_src/css/**' -tool-oracle \"$CSS_CLASSIFIED/gitea.json\" -out \"$CSS_OUT/candidate-reading.json\"",
+        "\"$CSS_INDEXBENCH\" lang-oracle -dialect css -commit \"$CSS_HARNESS_COMMIT\" -subject \"$CSS_SUBJECTS/tachyons-css\" -subject-name tachyons -only 'src/**' -tool-oracle \"$CSS_CLASSIFIED/tachyons.json\" -out \"$CSS_OUT/holdout-reading.json\""
+      ],
+      "frozen_artifact_sha256": {
+        "gitea/gitea.json": "a1f92a350d71e08f95261eb7a23c9d6aaa88fadb183c2c7e6bff7690d4995ce8",
+        "gitea/gitea.ranges.json": "48aed1116a2f79ce1f60193c93977f54e7c39495457a40638a0e70b0f7bc4c77",
+        "gitea/gitea.source.json": "cd4ed257d7b399a82822bef8351ad9a96cb4922645518a6b232b2875e6d462ce",
+        "normalize-css/normalize.json": "25532bf62f7c4eb712d4770828ad0b67877ae2827aa0cc4dc574855a63ede371",
+        "normalize-css/normalize.ranges.json": "8dccd1a6a4fb0dd5c0afaf73388e04a26957c41eac78ee1868f4a8a4eccf3faf",
+        "normalize-css/normalize.source.json": "3910a2f1c93758baed43fa12c0f968771c403ac95c028a36a2400c8e61efbaa4",
+        "pico/pico.json": "22611baea43858de55386c13146c64741af37abc2a62e78948259b4757331a17",
+        "pico/pico.ranges.json": "b4252930b874a815d0547dd50adeb1357fd8d9acbc9f12cc5bc0afed62b84e28",
+        "pico/pico.source.json": "ad4d7b6b196c7ae9c9a2480b753b992267fb0b206db8346bba65705c5f8daf80",
+        "tachyons-css/tachyons.json": "1923d1ba5a189e1c7bba0f4519f2f4919168ca19a4e364237004743320c736a9",
+        "tachyons-css/tachyons.ranges.json": "1603507899f6a312c3e5e86c1d52307235935a9de432c949d421e483076dd471",
+        "tachyons-css/tachyons.source.json": "b463d94d06ac1677edb5f9d4945303acce80b1eba0bf17853df2bc50b4079124"
+      },
+      "historical_reading_identity": {
+        "candidate": {
+          "fathom_commit": "9fe4f9c2c",
+          "measured_at": "2026-10-26",
+          "timing_notes": [
+            "Timing correction 2026-10-26: three full extraction trials against unchanged frozen primary/companion files; each subject launched under nice 10 at one-minute load<=9. Throughputs [2.15, 2.1, 2.13] MB/CPU-s; actual median run 3: 2.13. Launch/end load by subject: run 1: normalize.css 4.034/4.034,pico 4.034/4.017,gitea 4.017/4.017; run 2: normalize.css 4.017/4.017,pico 4.017/4.482,gitea 4.482/4.482; run 3: normalize.css 4.482/4.482,pico 4.482/4.845,gitea 4.845/4.845. All original counts and metrics reproduced. Earlier timings did not persist individual loads and are not a controlled performance comparison."
+          ]
+        },
+        "holdout": {
+          "fathom_commit": "9fe4f9c2c",
+          "measured_at": "2026-10-26",
+          "timing_notes": [
+            "Timing correction 2026-10-26: three full extraction trials against unchanged frozen primary/companion files; each subject launched under nice 10 at one-minute load<=9. Throughputs [2.18, 2.12, 2.19] MB/CPU-s; actual median run 1: 2.18. Launch/end load by subject: run 1: tachyons 4.845/4.845; run 2: tachyons 4.845/4.845; run 3: tachyons 4.845/4.777. All original counts and metrics reproduced. Earlier timings did not persist individual loads and are not a controlled performance comparison."
+          ]
+        }
+      },
+      "historical_reading_sha256": {
+        "candidate": "749ec03d487f457aa3114471b3b2a5b14485aaa325729f299512b1110f51414d",
+        "holdout": "33a9b911d828255ce123723d2bc8af22ab90638a92de1cbf094737a81456a002"
+      },
+      "historical_timing_notes_preserved": true,
+      "historical_timing_preserved": true,
+      "legacy_companion_compatibility": {
+        "all_counts_metrics_tiers_grades_and_subjects_unchanged": true,
+        "comparison": "harness-only regrade of scratch copies, no extraction or oracle/source reads",
+        "input_set_sha256": "b21714f3378fb91c8711ee6642ad1503288ae21bc98780d8895c7ca617bb7e0c",
+        "reading_count": 12,
+        "source_readings_unchanged": true,
+        "subject_count": 22
+      },
+      "numeric_equality": "counts and numeric metrics match each historical reading exactly",
+      "postprocessing": "After lang-oracle replay, run postprocess_reading.py with each raw replay and its historical reading at commit 43af9034c. It verifies unchanged counts, numeric metrics, subjects and non-range families; restores historical fathom_commit, measured_at, tenancy and timing notes; and carries the new range classification and disclosed -only scopes. Then run indexbench lang-regrade -commit $CSS_HARNESS_COMMIT on each intermediate reading. That step recomputes grades from persisted subjects, adds its provenance note, and writes langbench.MarshalReading bytes. No source, browser, oracle or holdout rerun occurs in postprocessing.",
+      "published_readings": [
+        "css-browser-2026-10-26.json",
+        "css-browser-holdout-2026-10-26.json"
+      ],
+      "result": "verified; counts and numeric metrics unchanged; range tier and grades corrected, existing source scopes disclosed",
+      "tooling_regrade_compatibility": {
+        "all_metrics_tiers_grades_levels_unchanged": true,
+        "command": "bash scripts/fathom-go.sh test -race -count=1 -run TestCommittedToolingReadingsKeepMetricsOnRegrade ./internal/langbench",
+        "new_range_metrics": 0,
+        "reading_count": 41
+      }
+    },
+    "declared_scope_census_replay": {
+      "official": {
+        "output_sha256": "3cfd6cbace3819efe0e61cfff2a282009d3e3780b2afb0686fc7ac21b40c72ae",
+        "subjects": [
+          {
+            "name": "normalize",
+            "production_eligible": {
+              "error_rate": 0.0,
+              "exclusion": "*.min.css only",
+              "files": 1,
+              "files_in_error": 0
+            },
+            "raw": {
+              "bytes": 7546,
+              "error_rate": 0.0,
+              "files": 1,
+              "files_in_error": 0,
+              "timeouts": 0
+            },
+            "scope": ".",
+            "source_commit": "dafaf9ee60ff76173954aca755c78a6912a0ee6c",
+            "source_digest": "5417ab2835b36cfc009ba8eb107eed0cf5482a38efafc1499245e5cc84fdaa35"
+          },
+          {
+            "name": "pico",
+            "production_eligible": {
+              "error_rate": 0.9915966386554622,
+              "exclusion": "*.min.css only",
+              "files": 119,
+              "files_in_error": 118
+            },
+            "raw": {
+              "bytes": 19350431,
+              "error_rate": 0.9915966386554622,
+              "files": 238,
+              "files_in_error": 236,
+              "timeouts": 0
+            },
+            "scope": "css",
+            "source_commit": "1039a4788d6abc368d5485ae6bac84a8f0e3096f",
+            "source_digest": "c8fdb58cf88ff34c6d4b32a96f64b58ea526e5b2ec1efb6f668b3f19fda51532"
+          },
+          {
+            "name": "gitea",
+            "production_eligible": {
+              "error_rate": 0.021739130434782608,
+              "exclusion": "*.min.css only",
+              "files": 92,
+              "files_in_error": 2
+            },
+            "raw": {
+              "bytes": 353080,
+              "error_rate": 0.021739130434782608,
+              "files": 92,
+              "files_in_error": 2,
+              "timeouts": 0
+            },
+            "scope": "web_src/css",
+            "source_commit": "4ebd5e319b6a9e629bfd7a04292a6fe85b08dee9",
+            "source_digest": "4069e814b78a9c58b918ce63394f3618b8c0244e3e55be2f18a008fc8befe2c0"
+          }
+        ]
+      },
+      "strict": {
+        "output_sha256": "0dcd0aafbeebe1a38b4a363b00bede27ff4f754555fbf24ab5328570f4bbb54d",
+        "subjects": [
+          {
+            "name": "normalize",
+            "production_eligible": {
+              "error_rate": 0.0,
+              "exclusion": "*.min.css only",
+              "files": 1,
+              "files_in_error": 0
+            },
+            "raw": {
+              "bytes": 7546,
+              "error_rate": 0.0,
+              "files": 1,
+              "files_in_error": 0,
+              "timeouts": 0
+            },
+            "scope": ".",
+            "source_commit": "dafaf9ee60ff76173954aca755c78a6912a0ee6c",
+            "source_digest": "5417ab2835b36cfc009ba8eb107eed0cf5482a38efafc1499245e5cc84fdaa35"
+          },
+          {
+            "name": "pico",
+            "production_eligible": {
+              "error_rate": 0.9915966386554622,
+              "exclusion": "*.min.css only",
+              "files": 119,
+              "files_in_error": 118
+            },
+            "raw": {
+              "bytes": 19350431,
+              "error_rate": 0.9915966386554622,
+              "files": 238,
+              "files_in_error": 236,
+              "timeouts": 0
+            },
+            "scope": "css",
+            "source_commit": "1039a4788d6abc368d5485ae6bac84a8f0e3096f",
+            "source_digest": "c8fdb58cf88ff34c6d4b32a96f64b58ea526e5b2ec1efb6f668b3f19fda51532"
+          },
+          {
+            "name": "gitea",
+            "production_eligible": {
+              "error_rate": 0.021739130434782608,
+              "exclusion": "*.min.css only",
+              "files": 92,
+              "files_in_error": 2
+            },
+            "raw": {
+              "bytes": 353080,
+              "error_rate": 0.021739130434782608,
+              "files": 92,
+              "files_in_error": 2,
+              "timeouts": 0
+            },
+            "scope": "web_src/css",
+            "source_commit": "4ebd5e319b6a9e629bfd7a04292a6fe85b08dee9",
+            "source_digest": "4069e814b78a9c58b918ce63394f3618b8c0244e3e55be2f18a008fc8befe2c0"
+          }
+        ]
+      }
+    },
+    "eligible_range_exclusions": {
+      "gitea": {
+        "attested": 3955,
+        "by_kind": {
+          "keyframes": 5,
+          "selector": 3
+        },
+        "companion_sha256": "48aed1116a2f79ce1f60193c93977f54e7c39495457a40638a0e70b0f7bc4c77",
+        "excluded": 8,
+        "interpretation": "Retrospective source-proposal classes, not recorded native rejection causes. Flat proposals were not attested in the frozen output; native errors were not persisted. No ends or source files are changed.",
+        "primary": 3963,
+        "primary_sha256": "a1f92a350d71e08f95261eb7a23c9d6aaa88fadb183c2c7e6bff7690d4995ce8",
+        "selector_proposals": {
+          "flat_proposal_unattested": 3
+        },
+        "source_digest": "4069e814b78a9c58b918ce63394f3618b8c0244e3e55be2f18a008fc8befe2c0"
+      },
+      "normalize": {
+        "attested": 68,
+        "by_kind": {
+          "selector": 2
+        },
+        "companion_sha256": "8dccd1a6a4fb0dd5c0afaf73388e04a26957c41eac78ee1868f4a8a4eccf3faf",
+        "excluded": 2,
+        "interpretation": "Retrospective source-proposal classes, not recorded native rejection causes. Flat proposals were not attested in the frozen output; native errors were not persisted. No ends or source files are changed.",
+        "primary": 70,
+        "primary_sha256": "25532bf62f7c4eb712d4770828ad0b67877ae2827aa0cc4dc574855a63ede371",
+        "selector_proposals": {
+          "flat_proposal_unattested": 2
+        },
+        "source_digest": "5417ab2835b36cfc009ba8eb107eed0cf5482a38efafc1499245e5cc84fdaa35"
+      },
+      "pico": {
+        "attested": 130433,
+        "by_kind": {
+          "keyframes": 434,
+          "selector": 2832
+        },
+        "companion_sha256": "b4252930b874a815d0547dd50adeb1357fd8d9acbc9f12cc5bc0afed62b84e28",
+        "excluded": 3266,
+        "interpretation": "Retrospective source-proposal classes, not recorded native rejection causes. Flat proposals were not attested in the frozen output; native errors were not persisted. No ends or source files are changed.",
+        "primary": 133699,
+        "primary_sha256": "22611baea43858de55386c13146c64741af37abc2a62e78948259b4757331a17",
+        "selector_proposals": {
+          "flat_proposal_unattested": 2832
+        },
+        "source_digest": "c8fdb58cf88ff34c6d4b32a96f64b58ea526e5b2ec1efb6f668b3f19fda51532"
+      }
+    },
+    "nesting_obligation": "Tachyons was spent with unchanged walk; no nesting, O849 remains open. Fix/verify walk before pinning/reading new holdout. Never reuse spent holdouts.",
+    "original_individual_loads": "not persisted; no controlled comparison to historic 2.61 MB/CPU-s canonical timing",
+    "protocol_erratum_commit": "236d8c393",
+    "range_floor": "owner ruling required before canonical adoption; no floor invented here",
+    "tier_ruling_record": "docs/design/language-breadth.md section1.3 dated C-R7 amendment",
+    "timing_repeats": {
+      "canonical": {
+        "median_mb_cpu_s": 2.13,
+        "median_run": 3,
+        "published_reading_sha256": "749ec03d487f457aa3114471b3b2a5b14485aaa325729f299512b1110f51414d",
+        "runs": [
+          {
+            "loads": [
+              {
+                "end_load_1m": 4.0341796875,
+                "launch_load_1m": 4.0341796875,
+                "subject": "normalize.css"
+              },
+              {
+                "end_load_1m": 4.01708984375,
+                "launch_load_1m": 4.0341796875,
+                "subject": "pico"
+              },
+              {
+                "end_load_1m": 4.01708984375,
+                "launch_load_1m": 4.01708984375,
+                "subject": "gitea"
+              }
+            ],
+            "number": 1,
+            "sha256": "37159456144064881840659dd6442841e551122ccde2ad5077b63b35bee55c21",
+            "throughput_mb_cpu_s": 2.15,
+            "wall_s": 20.205
+          },
+          {
+            "loads": [
+              {
+                "end_load_1m": 4.01708984375,
+                "launch_load_1m": 4.01708984375,
+                "subject": "normalize.css"
+              },
+              {
+                "end_load_1m": 4.482421875,
+                "launch_load_1m": 4.01708984375,
+                "subject": "pico"
+              },
+              {
+                "end_load_1m": 4.482421875,
+                "launch_load_1m": 4.482421875,
+                "subject": "gitea"
+              }
+            ],
+            "number": 2,
+            "sha256": "9146b0ab3787652beef383c29f12ef15b5d6fa23c81da92b51abdf946343e349",
+            "throughput_mb_cpu_s": 2.1,
+            "wall_s": 20.554
+          },
+          {
+            "loads": [
+              {
+                "end_load_1m": 4.482421875,
+                "launch_load_1m": 4.482421875,
+                "subject": "normalize.css"
+              },
+              {
+                "end_load_1m": 4.84521484375,
+                "launch_load_1m": 4.482421875,
+                "subject": "pico"
+              },
+              {
+                "end_load_1m": 4.84521484375,
+                "launch_load_1m": 4.84521484375,
+                "subject": "gitea"
+              }
+            ],
+            "number": 3,
+            "sha256": "c975cd276e78110909a897b6441d169443b2449f33607b6ad31ea04a163bc1d9",
+            "throughput_mb_cpu_s": 2.13,
+            "wall_s": 20.254
+          }
+        ]
+      },
+      "holdout": {
+        "median_mb_cpu_s": 2.18,
+        "median_run": 1,
+        "published_reading_sha256": "33a9b911d828255ce123723d2bc8af22ab90638a92de1cbf094737a81456a002",
+        "runs": [
+          {
+            "loads": [
+              {
+                "end_load_1m": 4.84521484375,
+                "launch_load_1m": 4.84521484375,
+                "subject": "tachyons"
+              }
+            ],
+            "number": 1,
+            "sha256": "cc317e3d41ef35cd04b3419d19cfa616ca11a0f1ffc771c34249f1821ac4c6c3",
+            "throughput_mb_cpu_s": 2.18,
+            "wall_s": 0.437
+          },
+          {
+            "loads": [
+              {
+                "end_load_1m": 4.84521484375,
+                "launch_load_1m": 4.84521484375,
+                "subject": "tachyons"
+              }
+            ],
+            "number": 2,
+            "sha256": "7d963390bbf35d8400ab8ba9534c56e9de06e13b35c5c42e2108d89c2d926dee",
+            "throughput_mb_cpu_s": 2.12,
+            "wall_s": 0.431
+          },
+          {
+            "loads": [
+              {
+                "end_load_1m": 4.77734375,
+                "launch_load_1m": 4.84521484375,
+                "subject": "tachyons"
+              }
+            ],
+            "number": 3,
+            "sha256": "c57845bfb940839a9b6b39e482479c5fa5340485f0ddc1d337e09bde9b2d2cdf",
+            "throughput_mb_cpu_s": 2.19,
+            "wall_s": 0.435
+          }
+        ]
+      }
+    }
+  },
+  "sources": [
+    {
+      "artifact_sha256": {
+        "primary": "25532bf62f7c4eb712d4770828ad0b67877ae2827aa0cc4dc574855a63ede371",
+        "range_companion": "8dccd1a6a4fb0dd5c0afaf73388e04a26957c41eac78ee1868f4a8a4eccf3faf",
+        "source_sidecar": "3910a2f1c93758baed43fa12c0f968771c403ac95c028a36a2400c8e61efbaa4"
+      },
+      "browser_diagnostics": {
+        "accepted": 37,
+        "attested": {
+          "custom_property": 0,
+          "keyframes": 0,
+          "selector": 68
+        },
+        "candidates": 38,
+        "files": 1,
+        "rejected": 1,
+        "total": {
+          "custom_property": 0,
+          "keyframes": 0,
+          "selector": 70
+        },
+        "unattested": {
+          "custom_property": 0,
+          "keyframes": 0,
+          "selector": 2
+        }
+      },
+      "commit": "dafaf9ee60ff76173954aca755c78a6912a0ee6c",
+      "holdout": false,
+      "name": "normalize",
+      "source_digest": "5417ab2835b36cfc009ba8eb107eed0cf5482a38efafc1499245e5cc84fdaa35"
+    },
+    {
+      "artifact_sha256": {
+        "primary": "22611baea43858de55386c13146c64741af37abc2a62e78948259b4757331a17",
+        "range_companion": "b4252930b874a815d0547dd50adeb1357fd8d9acbc9f12cc5bc0afed62b84e28",
+        "source_sidecar": "ad4d7b6b196c7ae9c9a2480b753b992267fb0b206db8346bba65705c5f8daf80"
+      },
+      "browser_diagnostics": {
+        "accepted": 77166,
+        "attested": {
+          "custom_property": 110148,
+          "keyframes": 0,
+          "selector": 150718
+        },
+        "candidates": 85115,
+        "files": 238,
+        "rejected": 7949,
+        "total": {
+          "custom_property": 110148,
+          "keyframes": 868,
+          "selector": 156382
+        },
+        "unattested": {
+          "custom_property": 0,
+          "keyframes": 868,
+          "selector": 5664
+        }
+      },
+      "commit": "1039a4788d6abc368d5485ae6bac84a8f0e3096f",
+      "holdout": false,
+      "name": "pico",
+      "source_digest": "c8fdb58cf88ff34c6d4b32a96f64b58ea526e5b2ec1efb6f668b3f19fda51532"
+    },
+    {
+      "artifact_sha256": {
+        "primary": "a1f92a350d71e08f95261eb7a23c9d6aaa88fadb183c2c7e6bff7690d4995ce8",
+        "range_companion": "48aed1116a2f79ce1f60193c93977f54e7c39495457a40638a0e70b0f7bc4c77",
+        "source_sidecar": "cd4ed257d7b399a82822bef8351ad9a96cb4922645518a6b232b2875e6d462ce"
+      },
+      "browser_diagnostics": {
+        "accepted": 2690,
+        "attested": {
+          "custom_property": 686,
+          "keyframes": 0,
+          "selector": 3269
+        },
+        "candidates": 2696,
+        "files": 92,
+        "rejected": 6,
+        "total": {
+          "custom_property": 686,
+          "keyframes": 5,
+          "selector": 3272
+        },
+        "unattested": {
+          "custom_property": 0,
+          "keyframes": 5,
+          "selector": 3
+        }
+      },
+      "commit": "4ebd5e319b6a9e629bfd7a04292a6fe85b08dee9",
+      "holdout": false,
+      "name": "gitea",
+      "source_digest": "4069e814b78a9c58b918ce63394f3618b8c0244e3e55be2f18a008fc8befe2c0"
+    },
+    {
+      "artifact_sha256": {
+        "primary": "1923d1ba5a189e1c7bba0f4519f2f4919168ca19a4e364237004743320c736a9",
+        "range_companion": "1603507899f6a312c3e5e86c1d52307235935a9de432c949d421e483076dd471",
+        "source_sidecar": "b463d94d06ac1677edb5f9d4945303acce80b1eba0bf17853df2bc50b4079124"
+      },
+      "browser_diagnostics": {
+        "accepted": 2219,
+        "attested": {
+          "custom_property": 69,
+          "keyframes": 0,
+          "selector": 2429
+        },
+        "candidates": 2222,
+        "files": 60,
+        "rejected": 3,
+        "total": {
+          "custom_property": 69,
+          "keyframes": 0,
+          "selector": 2439
+        },
+        "unattested": {
+          "custom_property": 0,
+          "keyframes": 0,
+          "selector": 10
+        }
+      },
+      "commit": "ecb7ef08684fc96a4945d360102385c110d50de9",
+      "holdout": true,
+      "name": "tachyons",
+      "source_digest": "0733d6156df16b803c7237f4c21eba7aca8a6a0685d7f51960f22b592bc754f8"
+    }
+  ],
+  "strict_compilation_input_sha256": {
+    "src/parser.c": "0a0872415027360058c7390e5c3b79a6d6832e028c0e3ef5de2b2321900964d9",
+    "src/scanner.c": "92da0583c886fea89038345756f5da7ce2ee7674dcb601e7d5137afcda5e8150",
+    "src/tree_sitter/alloc.h": "b29c1c9fb7cc82f58c84b376df1297d6e2737a1d655fd356db0859e3c29c2fea",
+    "src/tree_sitter/array.h": "20e6ba85abb9d5b7e2e6dedf675c9424a057a06feee03aa3e2dd48a1cb4bf8a2",
+    "src/tree_sitter/parser.h": "180b893c8734778fd32f372dfbc27bd6ad1cd2221f26150b31256ff6716320d2"
+  }
+}

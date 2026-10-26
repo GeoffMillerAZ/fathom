@@ -369,7 +369,7 @@ source/criteria audit, not an arbitrary-project semantic validator.
 
 Use the same study/corpus/goal/base-scope/review-scope/regression binding flags from
 the paired example above. Replace its command with review-oracle-prepare and omit
---case/--variant. The result contains all70 IDs and per-case digests. Explicit
+--case/--variant. The result contains all 70 IDs and per-case digests. Explicit
 --include-content adds assertions, historical labels, all facts and their exact
 source pointers, and the embedded criterion text. Treat that projection as content.
 
@@ -396,7 +396,7 @@ new-study admission remain false even on exit0.
 Exit0 means70 structurally bound declared affirmations. Exit1 retains a declared
 ambiguity or revision, including any other unreviewed cases. Exit2 means missing
 coverage without a known issue, invalid input, cancellation or output failure.
-Every valid report retains all70 rows and counts. Invalid input cannot be converted
+Every valid report retains all 70 rows and counts. Invalid input cannot be converted
 to a partial success. Inputs are bounded regular leaf files; parent directories
 are operator-trusted, not a filesystem sandbox. Content is opt-in.
 
@@ -418,3 +418,73 @@ registered roster, source, cited premises and digests. Neither proves the declar
 basis is true. [0047 and the full contract](../../docs/designs/prose-oracle-qualification.md)
 keep HP-20's independent whole-floor review, modal contrasts and any future paid
 study separate. A valid schema, key availability or exit0 is not spending consent.
+
+## Independently reviewed prospective floor
+
+`review-floor-report` checks the [floor receipt contract](../../docs/designs/prose-oracle-floor.md).
+Use the same old-packet common flags as `review-oracle-report`, plus explicit
+`--packet-digest`, `--assessments`, `--floor-review`, `--future-scope`,
+`--future-scope-digest`, `--fixtures` and `--review-dir`. `--help` lists the complete
+key-free command. It reads only named bounded files and has no provider or effect path.
+
+The [reviewed synthetic inputs](testdata/oracle-floor-v2/README.md) contain all 70
+old dispositions, 85 prospective cases and seven modal contrasts. The historical
+packet/reports keep criterion /1. The prospective scope explicitly pins /2 and all
+new case reviews bind that profile. An unresolved reviewer holds the floor. Two
+determinate Inconclusive reviews can qualify an explicitly inconclusive reference
+case without qualifying its assertion for use. All old negative obligations remain.
+
+Default output contains only hashes, counts and false authority flags. Explicit
+`--include-content` includes source and declared reviewers. Exit0 means structurally
+ready to design a new study, exit1 a valid held receipt, exit2 invalid input or IO.
+Neither agreement nor exit0 establishes source truth, calibrated model performance,
+trusted human acceptance, permission to spend or publication authority. The old
+failed paired runner remains exact70 and cannot consume this revised roster.
+
+## Qualified support-site trials
+
+The experimental `review-qualified-prepare|review-qualified-capture|review-qualified-report`
+commands use the [QR contract](../../docs/designs/prose-qualified-review.md).
+They keep the 85-case criterion /2 floor separate from every old67/70 study.
+`--help` lists the common source/floor inputs and explicit trial, prior-accounting,
+case and private-root flags. No command is installed automatically.
+
+Trial `prose-lab.qualified-review-study/1` retains response protocol /3 unchanged.
+Trial /2 requires `review_protocol: "prose-lab.support-review/4"`; old trials refuse
+that field, even empty or null. [0048/ES](../../docs/designs/prose-examined-source-review.md)
+separates nonempty `examined_fact_ids` from actual cited `premise_fact_ids` and
+`counter_fact_ids`. A citation gap may have no premise or counter. All listed
+premises/counters must be examined; Supported still needs a cited positive premise.
+These are declared relationships, not proof of attention or source truth. Private
+reason artifacts and explicit full-content reports retain the lists. Default
+reports hide them. A protocol change requires a new frozen trial and prior receipt,
+never reinterpretation or resumption of an old failed journal.
+
+The new trial selects one configured Anthropic lane, exact 85 lexical case IDs,
+current documented prices, a trial cap and the existing direct-stage cap. A
+separately reviewed `--prior-spend` receipt and raw `--prior-spend-digest` must
+match its declared prior. Reconcile all previous journals, retaining uncertain
+reservations. Use a combined receipt once; do not also sum its included children.
+The receipt contains source digests and checked amounts, not private source paths.
+It is owner-reconciled accounting. `cross_trial_spend_verified` and
+`provider_spend_limit_enforced` stay false: the CLI cannot discover other tools'
+spend or authenticate account-wide completeness.
+
+Prepare every case without credentials or private state, then independently freeze
+source/binary/trial/prior/floor/preparation pins. Capture requires `--live`, that
+exact prepared digest, one private aggregate journal and a distinct artifact root.
+Resolve the authorized API key privately into the child process environment.
+Execute in the frozen order, stopping on any nonzero capture result. No retry,
+fallback, changed prompt or new root can erase a failed position or its charge.
+
+Report reads existing private files and replays the real encoder/decoder over
+native responses with no credentials or provider dispatch. It retains all 85
+positions and a 3x3 confusion matrix. A required Inconclusive reference can match;
+missing or invalid output cannot be invented as Inconclusive. A valid pre-dispatch
+failure reports one failed position, all remaining positions and known zero new
+dispatch charge, and blocks continuation. Uncertain dispatched spend retains its
+reservation. Default output hides source/model/control/reviewer content; inspect
+full content only explicitly. Exit0 qualifies this configured support site only
+when all 85 results exactly match with known validated usage. Known mismatch
+exits1; missing/unknown/invalid evidence exits2. Document acceptance, source truth,
+trusted human authority and UI entry remain separate.

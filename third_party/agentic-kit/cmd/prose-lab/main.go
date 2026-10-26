@@ -55,6 +55,12 @@ func main() {
 }
 
 func runLab(ctx context.Context, args []string, out, errOut io.Writer) int {
+	if len(args) > 0 && (args[0] == "review-qualified-prepare" || args[0] == "review-qualified-capture" || args[0] == "review-qualified-report") {
+		return runQualifiedReview(ctx, args, out, errOut)
+	}
+	if len(args) > 0 && args[0] == "review-floor-report" {
+		return runReviewFloor(ctx, args[1:], out, errOut)
+	}
 	if len(args) > 0 && (args[0] == "review-oracle-prepare" || args[0] == "review-oracle-report") {
 		return runReviewOracle(ctx, args, out, errOut)
 	}
@@ -75,7 +81,7 @@ func runLab(ctx context.Context, args []string, out, errOut io.Writer) int {
 
 func runCanary(ctx context.Context, args []string, out, errOut io.Writer) int {
 	if len(args) == 1 && (args[0] == "--help" || args[0] == "-h" || args[0] == "help") {
-		if _, err := fmt.Fprintln(out, "Usage: prose-lab prepare|capture --study PATH --lane ID --case ID --request PATH [--journal PRIVATE_DIR --live]\n       prose-lab document-prepare|document-capture --study PATH --corpus DIR --cell ID --generation-lane ID --review-lane ID [--prepared-digest SHA256 --journal PRIVATE_DIR --artifacts PRIVATE_DIR --live]\n       prose-lab review-prepare|review-capture|review-report --study PATH --corpus DIR --goal-scope PATH --goal-scope-digest SHA256 --review-scope PATH --review-scope-digest SHA256 --review-lane ID [--case ID --prepared-digest SHA256 --journal PRIVATE_DIR --artifacts PRIVATE_DIR --live]; report requires --journal and --artifacts\n       prose-lab review-pair-prepare|review-pair-capture|review-pair-report --help\n       prose-lab document-review-prepare|document-review-report --help\n       prose-lab review-oracle-prepare|review-oracle-report --help\nSynthetic transport, positive document candidates, or bounded support review only. Independent acceptance and publication authority remain separate. See cmd/prose-lab/README.md."); err != nil {
+		if _, err := fmt.Fprintln(out, "Usage: prose-lab prepare|capture --study PATH --lane ID --case ID --request PATH [--journal PRIVATE_DIR --live]\n       prose-lab document-prepare|document-capture --study PATH --corpus DIR --cell ID --generation-lane ID --review-lane ID [--prepared-digest SHA256 --journal PRIVATE_DIR --artifacts PRIVATE_DIR --live]\n       prose-lab review-prepare|review-capture|review-report --study PATH --corpus DIR --goal-scope PATH --goal-scope-digest SHA256 --review-scope PATH --review-scope-digest SHA256 --review-lane ID [--case ID --prepared-digest SHA256 --journal PRIVATE_DIR --artifacts PRIVATE_DIR --live]; report requires --journal and --artifacts\n       prose-lab review-pair-prepare|review-pair-capture|review-pair-report --help\n       prose-lab document-review-prepare|document-review-report --help\n       prose-lab review-oracle-prepare|review-oracle-report --help\n       prose-lab review-floor-report --help\n       prose-lab review-qualified-prepare|review-qualified-capture|review-qualified-report --help\nSynthetic transport, positive document candidates, or bounded support review only. Independent acceptance and publication authority remain separate. See cmd/prose-lab/README.md."); err != nil {
 			return 2
 		}
 		return 0
