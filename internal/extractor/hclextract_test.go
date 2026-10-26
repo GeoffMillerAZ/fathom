@@ -576,23 +576,33 @@ func TestHCLExtractor_ExtractDoc(t *testing.T) {
 		"aws_subnet.a terraform:stack map[terraform.address:aws_subnet.a terraform.module:stack]",
 		"aws_vpc.this terraform:stack map[terraform.address:aws_vpc.this terraform.module:stack]",
 		"local.tags terraform:stack map[terraform.address:local.tags terraform.module:stack]",
-		"module.net terraform:stack map[terraform.address:module.net terraform.module:stack]",
+		"module.net terraform:stack map[terraform.address:module.net terraform.local_source_dir:modules/net terraform.module:stack]",
 		"module.remote terraform:stack map[terraform.address:module.remote terraform.module:stack]",
 	}
 	if !reflect.DeepEqual(labels, wantLabels) {
 		t.Errorf("labels\n got %q\nwant %q", labels, wantLabels)
 	}
 
-	var cross []string
-	for _, c := range res.CrossFile {
+	formatCross := func(c extractor.DocCrossFileRef) string {
+		t.Helper()
+		if c.Strategy == "terraform-module-output" {
+			if c.Target != c.Labels["terraform.output"] || c.Raw != c.Labels["terraform.module_call"]+"."+strings.TrimPrefix(c.Labels["terraform.output"], "output.") {
+				t.Errorf("%+v: module output intent has inconsistent target or raw traversal", c)
+			}
+			return fmt.Sprintf("%s -%s/%s-> %s %s %s", c.From, c.Edge, c.Strategy, c.Scope, c.Labels["terraform.module_call"], c.Labels["terraform.output"])
+		}
 		if c.Strategy != "label-selector" || c.Target != "terraform.address="+c.Labels["terraform.address"] {
 			t.Errorf("%+v: want a label-selector on terraform.address", c)
 		}
-		cross = append(cross, fmt.Sprintf("%s -%s-> %s %s", c.From, c.Edge, c.Scope, c.Labels["terraform.address"]))
+		return fmt.Sprintf("%s -%s-> %s %s", c.From, c.Edge, c.Scope, c.Labels["terraform.address"])
+	}
+	var cross []string
+	for _, c := range res.CrossFile {
+		cross = append(cross, formatCross(c))
 	}
 	sort.Strings(cross)
 	wantCross := []string{
-		"aws_route.r -module-output-> terraform:modules/net output.gateway_id",
+		"aws_route.r -module-output/terraform-module-output-> terraform:stack module.net output.gateway_id",
 		"aws_vpc.this -references-> terraform:stack var.cidr",
 		"local.tags -references-> terraform:stack var.name",
 		"local.tags -references-> terraform:stack var.tags",
@@ -606,18 +616,19 @@ func TestHCLExtractor_ExtractDoc(t *testing.T) {
 		t.Errorf("cross-file\n got %q\nwant %q", cross, wantCross)
 	}
 
-	// outputs.tf names the module call, declared in another file: the call
-	// is the reference (its source is not this file's to know).
+	// outputs.tf names a module call declared in another file. It retains the
+	// call reference and emits a caller-scoped output intent for fusion's join.
 	res, err = x.ExtractDoc("svc", "stack/outputs.tf", []byte(hclDocCorpus()["stack/outputs.tf"]))
 	if err != nil {
 		t.Fatal(err)
 	}
 	cross = nil
 	for _, c := range res.CrossFile {
-		cross = append(cross, fmt.Sprintf("%s -%s-> %s %s", c.From, c.Edge, c.Scope, c.Labels["terraform.address"]))
+		cross = append(cross, formatCross(c))
 	}
 	sort.Strings(cross)
 	wantCross = []string{
+		"output.gateway_id -module-output/terraform-module-output-> terraform:stack module.net output.gateway_id",
 		"output.gateway_id -references-> terraform:stack module.net",
 		"output.vpc_id -references-> terraform:stack aws_vpc.this",
 	}
