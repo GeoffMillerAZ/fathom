@@ -29,11 +29,11 @@ func TestExtractLocationState(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []Def{
-		{"a.c", "helper", "function", 7, 9},
-		{"a.c", "wrapped", "function", 11, 11},
-		{"a.c", "Pt", "struct", 15, 18},
-		{"a.c", "Color", "enum", 20, 22},
-		{"a.c", "PtAlias", "type_alias", 24, 24},
+		{"a.c", "helper", "function", 7, 9, false},
+		{"a.c", "wrapped", "function", 11, 11, false},
+		{"a.c", "Pt", "struct", 15, 18, false},
+		{"a.c", "Color", "enum", 20, 22, false},
+		{"a.c", "PtAlias", "type_alias", 24, 24, false},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("Extract = %v\nwant %v", got, want)
@@ -153,5 +153,51 @@ func TestClangEndToEndInternalLinkage(t *testing.T) {
 	want := []Linked{{"h.h", "h_inline", 1}, {"t.c", "close_cb", 4}, {"t.c", "called", 5}}
 	if !reflect.DeepEqual(u.Internal, want) {
 		t.Errorf("internal = %v, want %v", u.Internal, want)
+	}
+}
+
+// TestTierFlag (ruling C-R6): the output's tier is the -tier flag's, never a
+// hand edit of the JSON; an unknown tier is refused.
+func TestTierFlag(t *testing.T) {
+	for _, s := range []string{"A", "B"} {
+		if got, err := tierFlag(s); err != nil || got != s {
+			t.Errorf("tierFlag(%q) = %q, %v", s, got, err)
+		}
+	}
+	if _, err := tierFlag("tier-a"); err == nil {
+		t.Error("tierFlag(tier-a): no error")
+	}
+}
+
+// TestClangEndToEndExternC (round 4 C4-R1): a function an `extern "C"` linkage
+// specification holds, braced or not, is a file-scope definition the AST nests
+// in a LinkageSpecDecl; it is reported, marked extern_c, so the harness can
+// take a stand-in's range from the compiler. A method a function's local class
+// defines is no file-scope definition and is not.
+func TestClangEndToEndExternC(t *testing.T) {
+	clang, err := exec.LookPath("clang++")
+	if err != nil {
+		t.Skip("no clang++")
+	}
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := "extern \"C\" {\nint wrap(int n) {\n  return n;\n}\n}\nextern \"C\" void launch(int n)\n{\n  wrap(n);\n}\nvoid outer() {\n  struct L { void inner() {\n  } };\n}\n"
+	file := filepath.Join(dir, "t.cpp")
+	if err := os.WriteFile(file, []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := dump(clang, entry{Directory: dir, Command: "c++ -c " + file, File: file}, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []Def{
+		{"t.cpp", "wrap", "function", 2, 4, true},
+		{"t.cpp", "launch", "function", 6, 9, true},
+		{"t.cpp", "outer", "function", 10, 13, false},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("definitions = %v, want %v", got, want)
 	}
 }

@@ -247,7 +247,8 @@ func measureReact(ctx context.Context, m langbench.Manifest, root, name string, 
 	pipe := fusion.New(nil, nil, fusion.Config{})
 	defer pipe.Close()
 	tsengine.ResetPeakModulePages()
-	sub := langbench.Subject{Name: name, SHA: gitOut(ctx, root, "rev-parse", "HEAD"), Counts: map[string]int{},
+	sha, _ := subjectSHA(ctx, root, "") // round 3 A1: never an enclosing repository's HEAD
+	sub := langbench.Subject{Name: name, SHA: sha, Counts: map[string]int{},
 		Families: map[string]string{}, ExcludedByKind: map[string]int{}, Tenancy: &langbench.SubjectTenancy{FaultingFiles: []string{}}}
 	var owned []core.SourceRef
 	for _, ref := range refs {

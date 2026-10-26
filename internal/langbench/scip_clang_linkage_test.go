@@ -145,7 +145,7 @@ func TestScoreSCIPClangInternalLinkage(t *testing.T) {
 // preprocessor oracle's `imports` (each #include and the subject file it entered) and its
 // clang-ast-defs companion's `internal_linkage` (the compiler AST's file-scope definitions
 // with internal linkage). A companion without them leaves ruling 3 standing, and the note
-// says so.
+// says so. Each companion names its own tier, which the note carries (round 4 C4-R3).
 func TestClangLinkageRead(t *testing.T) {
 	dir := t.TempDir()
 	pre := filepath.Join(dir, "libuv-preproc.json")
@@ -156,7 +156,7 @@ func TestClangLinkageRead(t *testing.T) {
 		}
 	}
 	write(pre, `{"tool":"clang-preprocessor","imports":[{"path":"test/a.c","line":1,"to_path":"test/task.h"},{"path":"test/task.h","line":3,"to_path":"include/unix.h"},{"path":"test/b.c","line":1,"to_path":"include/win.h"},{"path":"test/a.c","line":2,"to_path":"test/run.h"}]}`)
-	write(companion(pre), `{"tool":"clang-ast","ranges":[],"internal_linkage":[{"path":"include/unix.h","name":"fast_min","line":1},{"path":"include/win.h","name":"fast_min","line":1},{"path":"test/a.c","name":"close_cb","line":2},{"path":"test/b.c","name":"close_cb","line":2}]}`)
+	write(companion(pre), `{"tool":"clang-ast","tier":"B","ranges":[],"internal_linkage":[{"path":"include/unix.h","name":"fast_min","line":1},{"path":"include/win.h","name":"fast_min","line":1},{"path":"test/a.c","name":"close_cb","line":2},{"path":"test/b.c","name":"close_cb","line":2}]}`)
 	l := SCIPOptionsFor("c", nil).ClangLinkage
 	if err := l.Read([]string{pre}, companion); err != nil {
 		t.Fatal(err)
@@ -166,7 +166,13 @@ func TestClangLinkageRead(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	l.Finish("libuv/libuv", res.FileEdges, res.Counts)
+	ln := l.Finish("libuv/libuv", res.FileEdges, res.Counts)
+	if len(ln) != 1 || !strings.Contains(ln[0], "clang-ast-defs, tier B") || strings.Contains(ln[0], "tier A") {
+		t.Errorf("round 4 C4-R3: the note names the companion's own tier B: %q", ln)
+	}
+	if got := l.FeedTier("A"); got != "B" {
+		t.Errorf("FeedTier(A) = %q, want the companion's B", got)
+	}
 	if res.FileEdges[[2]string{"test/b.c", "test/a.c"}] || !res.FileEdges[[2]string{"test/a.c", "include/unix.h"}] || res.Counts[CntScipFileEdgesInternalLinkage] != 3 {
 		t.Errorf("read from the oracle files: %v %v", res.FileEdges, res.Counts)
 	}
@@ -174,7 +180,7 @@ func TestClangLinkageRead(t *testing.T) {
 	// A companion written before the oracle reported linkage (no internal_linkage).
 	old := filepath.Join(dir, "curl-preproc.json")
 	write(old, `{"imports":[]}`)
-	write(companion(old), `{"tool":"clang-ast","ranges":[]}`)
+	write(companion(old), `{"tool":"clang-ast","tier":"A","ranges":[]}`)
 	l2 := SCIPOptionsFor("c", nil).ClangLinkage
 	if err := l2.Read([]string{old}, companion); err != nil {
 		t.Fatal(err)
@@ -189,6 +195,20 @@ func TestClangLinkageRead(t *testing.T) {
 	}
 	if err := SCIPOptionsFor("c", nil).ClangLinkage.Read([]string{filepath.Join(dir, "missing.json")}, companion); err == nil {
 		t.Error("a missing oracle file is an error")
+	}
+	// round 4 C4-R3: a companion that names no tier is refused, never read as tier A,
+	// and so is a link-unit companion
+	untiered := filepath.Join(dir, "untiered-preproc.json")
+	write(untiered, `{"tier":"A","imports":[]}`)
+	write(companion(untiered), `{"tool":"clang-ast","ranges":[]}`)
+	if err := SCIPOptionsFor("c", nil).ClangLinkage.Read([]string{untiered}, companion); err == nil || !strings.Contains(err.Error(), "tier") {
+		t.Errorf("an untiered ranges companion: %v, want a refusal", err)
+	}
+	units := filepath.Join(dir, "units-preproc.json")
+	write(units, `{"tier":"A","imports":[]}`)
+	write(strings.TrimSuffix(units, ".json")+".units.json", `{"link_units":{"a":["a.cu"]}}`)
+	if err := SCIPOptionsFor("cuda", nil).ClangLinkage.Read([]string{units}, func(p string) string { return p + ".none" }); err == nil || !strings.Contains(err.Error(), "tier") {
+		t.Errorf("an untiered units companion: %v, want a refusal", err)
 	}
 }
 

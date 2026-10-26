@@ -29,6 +29,7 @@ import (
 const scipClangTool = "scip-clang"
 
 // noteScipClangNoImports discloses why a scip-clang index scores no imports.
+// scipClangNoImportsNote writes it at the file edges' own tier (round 3 A4).
 const noteScipClangNoImports = "scip-clang records no reference on an #include line and gives no occurrence the Import role, so its index is no imports oracle: import_resolution is an imports dump's (the build-flags preprocessor oracle at tier A, or clang-includes at tier B), and file edges stay the index's cross-file references (tier A)"
 
 // noteScipClangDefsScoped names the files L1 against scip-clang leaves out.
@@ -78,6 +79,7 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 	subjectName := fs.String("subject-name", "", "subject name recorded in the reading (default: the directory name)")
 	ctagsPath := fs.String("ctags", "", "universal-ctags binary (default: workspace/tools/ctags, then ctags on PATH; a non-universal ctags is reported unavailable)")
 	scipPath := fs.String("scip", "", "SCIP index of the subject (tier A; optional)")
+	scipTier := fs.String("scip-tier", "", "the -scip index's tier (round 3 A2): A when the subject's own build wrote the compile database it read untranslated, B for a translation (a clang database derived from nvcc's); every metric the index feeds starts at it; required for a scip-clang index (round 4 C4-R2), A for any other when not given")
 	scipDefs := fs.Bool("scip-defs", false, "score L1 against the -scip index's definitions (tier A) instead of universal-ctags (owner decision D2: a stronger oracle where ctags is deficient)")
 	var toolOracles multiFlag
 	fs.Var(&toolOracles, "tool-oracle", "oracle JSON in the neutral shape (definitions, calls, references; tier A unless it says otherwise; repeatable)")
@@ -86,6 +88,9 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 	callsFrom := fs.String("calls-from", "scip", "which oracle grades L2 beside -scip: scip (the index's call sites, tier A) or tool (the -tool-oracle files' calls at their own tier, the index still grading definitions, typed edges and imports; LB-F204, O264)")
 	adjudicate := fs.String("adjudicate", "", "oracle-deficiency disclosure JSON (owner decision D3): dialect-only definitions the L1 oracle is verified to miss, each admitted only by a deterministic file:line, name and module-scope check, listed in the reading and left out of sym_precision's denominator")
 	unmatched := fs.String("unmatched", "", "write this subject's L1 misses both ways (dialect_only, oracle_only) and its L2 call pairs both ways (calls.fathom_only, calls.oracle_only) as JSON — the worker's diagnosis and the source of D3 adjudication candidates; never part of the reading")
+	subjectSHAFlag := fs.String("subject-sha", "", "the subject's commit (a full 40-hex sha) when -subject is a copy with no .git of its own, as the CUDA driver's scratch subject is; without it the sha is the subject's own HEAD, and a subject that has none (not its repository's top level, no .git) is refused (round 4 C4-R7)")
+	var extraNotes multiFlag
+	fs.Var(&extraNotes, "note", "a disclosure the measurement driver writes into the reading's notes, prefixed with the subject's name (repeatable; round 3 A4: a driver's own record, never a hand edit)")
 	only := fs.String("only", "", "comma-separated globs (subject-relative, * within a segment, ** across): measure only these files — e.g. the SQL families a grammar supports (D2); the reading names the restriction")
 	out := fs.String("out", "", "reading to write; an existing reading of the same dialect is merged (required)")
 	queuePath := fs.String("queue", "docs/plans/language-breadth.queue.json", "the queue (for the dialect's target level)")
@@ -94,6 +99,23 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 	tq := tagsQueryFlags(fs) // a third-party definitions query as a tier-C L1 oracle (LB-F46, langoracle_tagsquery.go)
 	if err := fs.Parse(args); err != nil {
 		return 2
+	}
+	if *scipTier != "" && !slices.Contains([]string{"A", "B", "C", "D"}, *scipTier) {
+		fmt.Fprintf(stderr, "lang-oracle: -scip-tier %q: want A, B, C or D\n", *scipTier)
+		return 2
+	}
+	if *scipPath != "" && *scipTier == "" {
+		// round 4 C4-R2: a scip-clang index read a compile database the driver
+		// chose (the build's own, or a translation), so it names its tier
+		raw, err := os.ReadFile(*scipPath)
+		if err != nil {
+			fmt.Fprintf(stderr, "lang-oracle: %v\n", err)
+			return 2
+		}
+		if _, tool, err := langbench.SCIPDocuments(raw); err == nil && tool == scipClangTool {
+			fmt.Fprintf(stderr, "lang-oracle: -scip %s is a scip-clang index: -scip-tier is required (A for the build's own compile database, B for a translation)\n", *scipPath)
+			return 2
+		}
 	}
 	if *dialect == "" || *subject == "" || *out == "" || fs.NArg() != 0 {
 		fmt.Fprintln(stderr, "usage: indexbench lang-oracle -dialect <id> -subject <dir> -out <reading.json> [-ctags <bin>] [-scip <index>] [-tool-oracle <json>]")
@@ -216,7 +238,7 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 	}
-	m, err := measureSubject(ctx, spec, *subject, name, oracleOpts{ctags: *ctagsPath, scip: *scipPath, scipDefs: *scipDefs, callsFromTool: *callsFrom == "tool", tools: tools, only: onlyGlobs, adjudicate: *adjudicate, unmatched: *unmatched, baseNotes: baseNotes}, with)
+	m, err := measureSubject(ctx, spec, *subject, name, oracleOpts{ctags: *ctagsPath, scip: *scipPath, scipTier: *scipTier, scipDefs: *scipDefs, callsFromTool: *callsFrom == "tool", tools: tools, only: onlyGlobs, adjudicate: *adjudicate, unmatched: *unmatched, baseNotes: baseNotes, subjectSHA: *subjectSHAFlag, requireSHA: true}, with)
 	if err != nil {
 		fmt.Fprintln(stderr, "lang-oracle:", err)
 		return 1
@@ -232,6 +254,9 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 	r.FathomCommit = *commit
 	r.Extractor = source
 	r.Oracles = mergeOracles(r.Oracles, m.oracles)
+	for _, n := range extraNotes {
+		m.notes = append(m.notes, name+": "+n)
+	}
 	r.Notes = mergeNotes(r.Notes, append(append([]string(nil), spec.Notes...), m.notes...))
 	langbench.MergeSubject(&r, m.subject)
 	if err := r.Validate(); err != nil {
@@ -328,7 +353,8 @@ type subjectMeasurement struct {
 // oracleOpts are one subject's oracles and scope.
 type oracleOpts struct {
 	ctags    string // universal-ctags binary ("" = workspace/tools/ctags, then PATH)
-	scip     string // SCIP index (tier A)
+	scip     string // SCIP index
+	scipTier string // the index's tier (-scip-tier; "" is A)
 	scipDefs bool   // the SCIP index's definitions are the L1 oracle (D2)
 	// callsFromTool: the -tool-oracle files' calls grade L2 beside -scip
 	// (LB-F204, O264); the index's call truth, its call counts and its call
@@ -339,6 +365,8 @@ type oracleOpts struct {
 	only          []string // globs restricting the subject's files (D2, SQL)
 	adjudicate    string   // oracle-deficiency disclosure file (D3)
 	unmatched     string   // where to write the L1 and call-pair misses both ways (diagnosis)
+	subjectSHA    string   // the subject's commit when its checkout has no .git (round 3 A1)
+	requireSHA    bool     // lang-oracle: a subject with no commit is refused (round 4 C4-R7)
 }
 
 // unmatchedFile is -unmatched's JSON: the subject's L1 misses both ways when
@@ -696,7 +724,15 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 	defer pipe.Close()
 	tsengine.ResetPeakModulePages()
 
-	sub := langbench.Subject{Name: name, SHA: gitOut(ctx, root, "rev-parse", "HEAD"), Counts: map[string]int{},
+	sha, err := subjectSHA(ctx, root, opts.subjectSHA)
+	if err != nil {
+		return res, err
+	}
+	if sha == "" && opts.requireSHA && !allowUnpinnedSubject {
+		// round 4 C4-R7: a reading names the commit it measured
+		return res, fmt.Errorf("subject %s has no commit of its own (a copy with no .git, or a directory inside another repository): pass -subject-sha", name)
+	}
+	sub := langbench.Subject{Name: name, SHA: sha, Counts: map[string]int{},
 		Families: map[string]string{}, ExcludedByKind: map[string]int{}, Tenancy: &langbench.SubjectTenancy{FaultingFiles: []string{}}}
 	var files []string
 	var nodes []core.SymbolNode
@@ -851,7 +887,8 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 		// configuration's preprocessor keeps; the rest are disclosed.
 		scoped := nodes
 		clangIndex := false
-		var active map[string][][2]int // the build's kept lines (LB-F80), when an oracle gives them
+		indexTier := orDefault(opts.scipTier, "A") // round 3 A2: the index's tier is an input
+		var active map[string][][2]int             // the build's kept lines (LB-F80), when an oracle gives them
 		leftOut := "the callers L2 scores"
 		if opts.scipDefs {
 			leftOut = "L1 and of the callers L2 scores"
@@ -908,13 +945,36 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			addCounts(sub.Counts, l1.Counts)
 			addCounts(sub.ExcludedByKind, l1.Excluded)
 			sub.KindIntersection = l1.Intersection
-			sub.Families[langbench.FamilyL1] = "A"
+			sub.Families[langbench.FamilyL1] = indexTier
 		}
 		scipOpts := langbench.SCIPOptionsFor(spec.Manifest.ID, func(p string) []byte {
 			b, _ := os.ReadFile(filepath.Join(root, filepath.FromSlash(p)))
 			return b
 		})
+		// Ruling C-R6 (F5): a family the index grades is judged at the weakest
+		// tier of the oracle files that also feed it (the call sites and active
+		// lines below), not at the index's own tier.
+		// Round 3 A2 (F2): each starts at the index's own tier.
+		callsTier, defMapTier, fileEdgesTier := indexTier, indexTier, indexTier
 		if clangIndex {
+			if callsTier, err = feedTierFrom(indexTier, opts.tools, "call_sites", "active_lines"); err != nil {
+				return res, err
+			}
+			if defMapTier, err = feedTierFrom(indexTier, opts.tools, "active_lines"); err != nil {
+				return res, err
+			}
+			if fileEdgesTier, err = feedTierFrom(indexTier, opts.tools, "active_lines"); err != nil { // a dump's imports grade import_resolution, at its own tier
+				return res, err
+			}
+			if err := scipOpts.ClangLinkage.Read(opts.tools, rangeCompanionFile); err != nil { // owner ruling M3 (O863): the oracles' linkage and includes
+				return res, err
+			}
+			// round 4 C4-R3: the ranges and link-unit companions shape the
+			// file-edge truth, and the CUDA stand-ins (the ranges') the calls
+			fileEdgesTier = scipOpts.ClangLinkage.FeedTier(fileEdgesTier)
+			if scipOpts.ClangCUDA {
+				callsTier = scipOpts.ClangLinkage.RangesTier(callsTier)
+			}
 			// LB-F116: the build's own compiler's call sites, when an oracle
 			// file carries them, settle what the index cannot.
 			if scipOpts.ClangSites, err = clangSitesOf(opts.tools); err != nil {
@@ -925,9 +985,6 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			}
 			if scipOpts.ClangDefNames {
 				scipOpts.ClangScope = inScope // LB-F292: L4 over the files the reading measures
-			}
-			if err := scipOpts.ClangLinkage.Read(opts.tools, rangeCompanionFile); err != nil { // owner ruling M3 (O863): the oracles' linkage and includes
-				return res, err
 			}
 		}
 		if scipOpts.DefScoped {
@@ -960,21 +1017,14 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 		if spec.Manifest.ID == "csharp" {
 			res.notes = append(res.notes, csharpSiteNotes(name, sr.Counts, scipOpts.CSharp)...) // LB-F286, LB-F287
 		} else {
-			res.notes = append(res.notes, clangSiteNotes(name, sr.Counts)...)
+			siteTier, err := feedTierFrom(indexTier, opts.tools, "call_sites")
+			if err != nil {
+				return res, err
+			}
+			res.notes = append(res.notes, clangSiteNotes(name, spec.Manifest.ID, siteTier, sr.Counts)...)
 		}
 		if n := sr.Counts[langbench.CntScipCallsUnwritten]; n > 0 {
-			why := "an operator rust-analyzer resolves to its trait method: ?, ==, !x, *x, a[i], a + b"
-			switch spec.Manifest.ID {
-			case "dart":
-				why = "a tear-off such as `onError: c.addError`, an operator, the super(...) of an initializer"
-			case "python":
-				why = "a function or method referenced without a call: passed as a value, as in Depends(get_db), or a decorator applied by name"
-			case "c", "cpp":
-				why = "a function passed as a value (a callback argument), or a call a macro's expansion makes (abort and fprintf inside an ASSERT), which scip-clang references at the macro's own name"
-			case "typescript", "javascript":
-				why = "a function or method passed as a value (a callback argument), or an accessor read, which scip-typescript references as `<get>x`"
-			}
-			res.notes = append(res.notes, fmt.Sprintf("%s: %d callable references have no call written at their range (%s) and are left out of the call truth (L2 is call sites)", name, n, why))
+			res.notes = append(res.notes, fmt.Sprintf("%s: %d callable references have no call written at their range (%s) and are left out of the call truth (L2 is call sites)", name, n, unwrittenWhy(spec.Manifest.ID)))
 		}
 		if n := sr.Counts[langbench.CntScipCalledNames]; n > 0 {
 			why := "a reference the producer gives no callable descriptor"
@@ -1000,10 +1050,10 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 		addCounts(sub.Counts, sr.Counts)
 		if !opts.callsFromTool {
 			calls = &callDiff{oracle: orDefault(sr.Tool, "scip"), truth: sr.CallTruth, mine: sr.CallFound}
-			sub.Families[langbench.FamilyCalls] = "A"
+			sub.Families[langbench.FamilyCalls] = callsTier
 		}
-		sub.Families[langbench.FamilyDefMap] = "A"
-		sub.Families[langbench.FamilyTyped] = "A"
+		sub.Families[langbench.FamilyDefMap] = defMapTier
+		sub.Families[langbench.FamilyTyped] = defMapTier
 		if lang, ok := fileResolveLang[spec.Manifest.HostID()]; ok {
 			edges, rep := fusion.ResolveFileEdges(ctx, lang, root, srcFiles, nodes)
 			if rep.Skipped {
@@ -1012,20 +1062,30 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 				edges = edgesFromIndexed(edges, sr.Docs, name, &res.notes)
 				edges = scopeFileEdgesNote(edges, nodes, active, name, &res.notes)
 				truth := scopedFileEdgeTruth(sr.FileEdges, inScope)
+				edgeNodes := nodes
+				if len(rep.Borrowed) > 0 {
+					// Round 3 F5: a header borrower's reached headers are measured as
+					// the targets of its files' edges (the build's preprocessor says
+					// which its includes reach), so its header edges are scored.
+					reached := scipOpts.ClangLinkage.IncludeClosure(inScope)
+					edgeNodes = append(append([]core.SymbolNode(nil), nodes...), rep.Borrowed...)
+					truth = scopedFileEdgeTruthTo(sr.FileEdges, inScope, reached)
+					res.notes = append(res.notes, fmt.Sprintf("%s: %d headers the measured files' includes reach (by the build's preprocessor oracle) are measured as file-edge targets, the definitions fathom binds there borrowed as ingest binds them (ruling C-R4); an edge from a header is not measured", name, len(reached)))
+				}
 				if n := len(sr.FileEdges) - len(truth); n > 0 {
 					res.notes = append(res.notes, fmt.Sprintf("%s: %d index %s", name, n, noteFileEdgeTruthScoped))
 				}
 				var blindPairs [][2]string
 				if scipOpts.FileEdgesOracleBlind {
 					// LB-F296: the pairs the index cannot judge (langoracle_clang.go).
-					if edges, blindPairs, err = fileEdgesOracleBlind(raw, truth, edges, nodes, scipOpts.Source, name, sub.Counts, &res.notes); err != nil {
+					if edges, blindPairs, err = fileEdgesOracleBlind(raw, truth, edges, edgeNodes, scipOpts.Source, name, sub.Counts, &res.notes); err != nil {
 						return res, err
 					}
 				}
-				langbench.ScoreFileEdges(truth, edges, nodes, sub.Counts)
-				fileEdges = &fileEdgeDiff{truth: truth, mine: fileEdgePairs(edges, nodes), via: fileEdgeVia(edges, nodes), blind: blindPairs}
-				fileEdges.by = fileEdgeBy(edges, nodes)
-				sub.Families[langbench.FamilyFileEdges] = "A"
+				langbench.ScoreFileEdges(truth, edges, edgeNodes, sub.Counts)
+				fileEdges = &fileEdgeDiff{truth: truth, mine: fileEdgePairs(edges, edgeNodes), via: fileEdgeVia(edges, edgeNodes), blind: blindPairs}
+				fileEdges.by = fileEdgeBy(edges, edgeNodes)
+				sub.Families[langbench.FamilyFileEdges] = fileEdgesTier
 			}
 		} else if spec.Manifest.ID == goDialect {
 			// LB-F58: Go's cross-file edges are the typed pass's.
@@ -1048,22 +1108,22 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 				langbench.ScoreFileEdges(sr.FileEdges, edges, nodes, sub.Counts)
 				fileEdges = &fileEdgeDiff{truth: sr.FileEdges, mine: fileEdgePairs(edges, nodes), via: fileEdgeVia(edges, nodes), kinds: fileEdgeKinds(edges, nodes)}
 				fileEdges.by = fileEdgeBy(edges, nodes)
-				sub.Families[langbench.FamilyFileEdges] = "A"
+				sub.Families[langbench.FamilyFileEdges] = indexTier
 				res.notes = append(res.notes, noteGoTypedFileEdges)
 				if rep.PackagesFailed > 0 {
 					res.notes = append(res.notes, fmt.Sprintf("%s: %d of %d packages failed the typed pass and give no edge", name, rep.PackagesFailed, rep.PackagesTotal))
 				}
 			}
 		}
-		res.oracles = append(res.oracles, langbench.OracleRun{Tier: "A", Tool: orDefault(sr.Tool, "scip"), Version: sr.Version})
+		res.oracles = append(res.oracles, langbench.OracleRun{Tier: indexTier, Tool: orDefault(sr.Tool, "scip"), Version: sr.Version})
 		if imps != nil {
 			if sr.Tool == scipClangTool {
 				// LB-F80: scip-clang records no reference on an `#include` line
 				// and gives no occurrence the Import role, so the references it
 				// does carry coincide with an include's line only by accident:
 				// import_resolution is a dump's (clang-includes), never the index's.
-				res.notes = append(res.notes, noteScipClangNoImports)
-			} else if err := imps.score(sr.ImportRefs, "A", orDefault(sr.Tool, "scip"), &sub); err != nil {
+				res.notes = append(res.notes, scipClangNoImportsNote(fileEdgesTier))
+			} else if err := imps.score(sr.ImportRefs, indexTier, orDefault(sr.Tool, "scip"), &sub); err != nil {
 				return res, err
 			}
 		}
@@ -1515,6 +1575,68 @@ func orDefault(s, d string) string {
 	return s
 }
 
+// subjectSHA is the commit a subject is measured at (round 3 A1, F1): sha
+// when the caller names one (the driver passes the clone's, since its scratch
+// copy has no .git), else the subject's own HEAD, and none when root is not
+// its repository's top level (a copy inside the fathom checkout would
+// otherwise report fathom's own commit).
+func subjectSHA(ctx context.Context, root, sha string) (string, error) {
+	if sha != "" {
+		if !fullSHA.MatchString(sha) {
+			return "", fmt.Errorf("-subject-sha %q: want a full 40-hex commit", sha)
+		}
+		return sha, nil
+	}
+	top := gitOut(ctx, root, "rev-parse", "--show-toplevel")
+	if top == "" || !samePath(top, root) {
+		return "", nil
+	}
+	return gitOut(ctx, root, "rev-parse", "HEAD"), nil
+}
+
+var fullSHA = regexp.MustCompile(`^[0-9a-f]{40}$`)
+
+// allowUnpinnedSubject lets lang-oracle measure a subject with no commit of
+// its own; only the package's tests set it (their subjects are temporary
+// directories).
+var allowUnpinnedSubject = false
+
+// samePath reports whether two paths name one directory once symlinks are
+// resolved.
+func samePath(a, b string) bool {
+	ra, errA := filepath.EvalSymlinks(a)
+	rb, errB := filepath.EvalSymlinks(b)
+	if errA != nil || errB != nil {
+		return false
+	}
+	ra, _ = filepath.Abs(ra)
+	rb, _ = filepath.Abs(rb)
+	return ra == rb
+}
+
+// unwrittenWhy names, per dialect, what an index's callable reference with no
+// call written at its range is (scip_calls_unwritten): rust-analyzer's
+// operators are rust's, never another dialect's (round 3 A4, F4).
+func unwrittenWhy(dialect string) string {
+	switch dialect {
+	case "dart":
+		return "a tear-off such as `onError: c.addError`, an operator, the super(...) of an initializer"
+	case "python":
+		return "a function or method referenced without a call: passed as a value, as in Depends(get_db), or a decorator applied by name"
+	case "cuda":
+		return "a function passed as a value (a callback argument, a kernel passed to a launch or attribute API), or a call a macro's expansion makes (check inside checkCudaErrors), which scip-clang references at the macro's own name"
+	case "c", "cpp":
+		return "a function passed as a value (a callback argument), or a call a macro's expansion makes (abort and fprintf inside an ASSERT), which scip-clang references at the macro's own name"
+	case "typescript", "javascript":
+		return "a function or method passed as a value (a callback argument), or an accessor read, which scip-typescript references as `<get>x`"
+	}
+	return "an operator rust-analyzer resolves to its trait method: ?, ==, !x, *x, a[i], a + b"
+}
+
+func scipClangNoImportsNote(fileEdgesTier string) string {
+	return strings.Replace(noteScipClangNoImports, "cross-file references (tier A)", "cross-file references (tier "+fileEdgesTier+")", 1)
+}
+
 func gitOut(ctx context.Context, dir string, args ...string) string {
 	outb, err := exec.CommandContext(ctx, "git", append([]string{"-C", dir}, args...)...).Output()
 	if err != nil {
@@ -1570,6 +1692,19 @@ func lineActive(ranges [][2]int, line int) bool {
 }
 
 // scopedFileEdgeTruth keeps the index's cross-file edges between measured files.
+// scopedFileEdgeTruthTo is scopedFileEdgeTruth whose targets may also be the
+// reached headers (round 3 F5): a pair from a measured file to a measured file
+// or a reached one.
+func scopedFileEdgeTruthTo(truth map[[2]string]bool, inScope, reached map[string]bool) map[[2]string]bool {
+	out := make(map[[2]string]bool, len(truth))
+	for k := range truth {
+		if inScope[k[0]] && (inScope[k[1]] || reached[k[1]]) {
+			out[k] = true
+		}
+	}
+	return out
+}
+
 func scopedFileEdgeTruth(truth map[[2]string]bool, inScope map[string]bool) map[[2]string]bool {
 	out := make(map[[2]string]bool, len(truth))
 	for k := range truth {

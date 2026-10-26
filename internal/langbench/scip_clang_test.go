@@ -615,3 +615,15 @@ func TestScoreSCIPClangNamespaceDrawsNoFileEdge(t *testing.T) {
 		t.Errorf("another producer: every definer, nothing left out: %v %v", r2.FileEdges, r2.Counts)
 	}
 }
+
+// TestSCIPOptionsCUDAMacroCalls (owner ruling C-R3): CUDA counts a
+// function-like macro invocation as a call on both sides, as C does; C++
+// counts it on neither.
+func TestSCIPOptionsCUDAMacroCalls(t *testing.T) {
+	src := func(string) []byte { return nil }
+	for dialect, want := range map[string]bool{"c": true, "cuda": true, "cpp": false} {
+		if got := SCIPOptionsFor(dialect, src).ClangMacroCalls; got != want {
+			t.Errorf("SCIPOptionsFor(%q).ClangMacroCalls = %v, want %v", dialect, got, want)
+		}
+	}
+}

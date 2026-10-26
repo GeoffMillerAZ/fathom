@@ -33,6 +33,7 @@ var typedEdgeProducers = map[string]string{
 	"rust":   "scip:rust-analyzer",
 	"c":      "scip:scip-clang",
 	"cpp":    "scip:scip-clang",
+	"cuda":   "scip:scip-clang",
 	"ruby":   "scip:scip-ruby",
 	"dart":   "scip:scip-dart",
 	"cs":     "scip:scip-dotnet",
