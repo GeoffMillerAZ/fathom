@@ -92,9 +92,9 @@ func TestRenderLabEvalSuiteFilesAndCommands(t *testing.T) {
 	want := []LabEvalCommand{}
 	for _, arm := range []string{"minus", "with"} {
 		dir := "workspace/labs/runs/fixture/" + arm
-		args := []string{"claude", "plugin", "eval", "./" + dir, "--eval-dir", "evals", "--no-publish", "--ablation", "none", "--runs", "3", "--allow-tools", "Bash(git:*)", "Read"}
+		args := []string{"claude", "plugin", "eval", "./" + dir, "--eval-dir", "evals", "--no-publish", "--ablation", "none", "--runs", "3", "--allow-tools", "Bash(git:*)", "--allow-tools", "Read"}
 		if arm == "with" {
-			args = append(args, evalTool)
+			args = append(args, "--allow-tools", evalTool)
 		}
 		want = append(want, LabEvalCommand{Arm: arm, Directory: dir, Args: args})
 	}
@@ -262,5 +262,22 @@ func TestRenderLabEvalSuiteRefusals(t *testing.T) {
 				t.Fatalf("want %q error, got %v", tc.want, err)
 			}
 		})
+	}
+}
+
+// TestRenderLabEvalSuiteKeepsCommandlessHooks: a prompt, http or agent hook
+// has no command, so it is never the removed feature and must not fail the
+// render.
+func TestRenderLabEvalSuiteKeepsCommandlessHooks(t *testing.T) {
+	card, cases, opts := evalFixture(t)
+	writeLabObservation(t, opts.RenderedPlugin, "hooks/hooks.json", `{"hooks":{"PreToolUse":[{"matcher":"Edit","hooks":[{"type":"prompt","prompt":"keep me"},{"type":"command","command":"command -v fathom >/dev/null 2>&1 || exit 0; fathom edit-hook --pre"}]}]}}`)
+	opts.Feature = "hook:edit-hook --pre"
+	commands, err := RenderLabEvalSuite(card, cases, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	minus := evalRead(t, filepath.Join(opts.Root, commands[0].Directory, "hooks/hooks.json"))
+	if !strings.Contains(minus, "keep me") || strings.Contains(minus, "edit-hook --pre") {
+		t.Fatalf("minus copy hooks: %s", minus)
 	}
 }

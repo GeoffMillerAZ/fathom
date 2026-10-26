@@ -271,9 +271,10 @@ func RenderLabEvalSuite(card EvalLabCard, cases []LabEvalCase, opts LabEvalOptio
 		}
 		rel = filepath.ToSlash(rel)
 		args := []string{"claude", "plugin", "eval", "./" + rel, "--eval-dir", "evals", "--no-publish", "--ablation", "none", "--runs", "3"}
-		if len(grants) > 0 {
-			args = append(args, "--allow-tools")
-			args = append(args, grants...)
+		// One flag per grant: the CLI's help does not say whether --allow-tools
+		// is variadic, and a repeated flag reads the same either way.
+		for _, grant := range grants {
+			args = append(args, "--allow-tools", grant)
 		}
 		if opts.Helped {
 			args = append(args, "--mocks", "off")
@@ -450,8 +451,15 @@ func removeEvalHook(path, feature string) error {
 			}
 			var kept []map[string]json.RawMessage
 			for _, hook := range hooks {
+				raw, ok := hook["command"]
+				if !ok {
+					// A prompt, http or agent hook has no command: it is not this
+					// feature, so it stays.
+					kept = append(kept, hook)
+					continue
+				}
 				var command string
-				if err := json.Unmarshal(hook["command"], &command); err != nil {
+				if err := json.Unmarshal(raw, &command); err != nil {
 					return err
 				}
 				// Exact command from cmd/fathom hookCommand, not substring matching:
