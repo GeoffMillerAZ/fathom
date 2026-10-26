@@ -24,11 +24,15 @@ import (
 	sha!:     string & =~"^[0-9a-f]{40}$"
 	licence!: #Text
 	subpath?: string
+	idioms?: [...string]
+	sparse?: [...string]
+	notes?: string
+	only?: [...string]
 	bench!: {
 		toolchain!: {
 			// Map keys are tool names, not a fixed list of languages.
 			versions!: struct.MinFields(1) & {
-				[string]: string & =~"^v?[0-9]+\\.[0-9]+\\.[0-9]+([+-][0-9A-Za-z.-]+)?$"
+				[string]: string & =~"^v?[0-9]+\\.[0-9]+\\.[0-9]+((a|b|rc)[0-9]+|-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
 			}
 			lockfile_sha256!: #SHA256
 		}
@@ -44,7 +48,8 @@ import (
 			// Age in days at vetting; the band records popularity separately.
 			age!:             number & >=0
 			popularity_band!: "low" | "medium" | "high"
-			fresh_after!:     #Date
+			// Q2's pinned model sets this cutoff; omit it until then.
+			fresh_after?: #Date
 		}
 	}
 }
@@ -84,10 +89,12 @@ import (
 #Prereg: {
 	let Strata = strata
 	let Arms = arms
+	let Baseline = baseline_arm
 	let PrimaryIDs = [for h in hypotheses {h.id}]
 	id!: #Text
 	strata!: [#Text, ...#Text]
 	arms!: [#Text, ...#Text]
+	baseline_arm!: #Text & or(Arms)
 	hypotheses!: [#Hypothesis, ...#Hypothesis] & [...{
 		predictions: [...{
 			stratum: or(Strata)
@@ -96,6 +103,11 @@ import (
 		// Every declared stratum needs a prediction in each hypothesis.
 		for s in Strata {
 			predictions: list.MatchN(>=1, {stratum: s, ...})
+		}
+
+		// Baseline-relative predictions cover every comparison arm.
+		for a in Arms if a != Baseline {
+			predictions: list.MatchN(>=1, {arm: a, ...})
 		}
 	}]
 	alpha!: 0.05
@@ -113,6 +125,13 @@ import (
 		refuted!:      "upper_bound_below_mei"
 		inconclusive!: "otherwise"
 		tie!:          "refuted"
+		// Predicted nulls use TOST at alpha 0.05, not the win rule.
+		predicted_null!: {
+			equivalent!:   "90_percent_interval_inside_symmetric_margin"
+			harm!:         "95_percent_upper_bound_below_zero_counts_as_loss"
+			inconclusive!: "otherwise"
+			above_delta!:  "unexpected_effect_not_win"
+		}
 	}
 	turn_cap!:     int & >0
 	cost_cap_usd!: number & >=0

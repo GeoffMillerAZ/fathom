@@ -29,6 +29,7 @@ prereg: #Prereg & {
 	id: "localization-v1"
 	strata: ["non-lexical", "lexical"]
 	arms: ["A1", "A2"]
+	baseline_arm: "A1"
 	hypotheses: [{
 		id:        "H4"
 		statement: "The surface increases localization accuracy on non-lexical tasks."
@@ -48,6 +49,12 @@ prereg: #Prereg & {
 		refuted:      "upper_bound_below_mei"
 		inconclusive: "otherwise"
 		tie:          "refuted"
+		predicted_null: {
+			equivalent:   "90_percent_interval_inside_symmetric_margin"
+			harm:         "95_percent_upper_bound_below_zero_counts_as_loss"
+			inconclusive: "otherwise"
+			above_delta:  "unexpected_effect_not_win"
+		}
 	}
 	turn_cap:     30
 	cost_cap_usd: 100
