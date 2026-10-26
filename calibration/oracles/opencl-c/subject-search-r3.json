@@ -5,12 +5,6 @@
   "scope": "Metadata plus targeted upstream license, README, and one license-header inspection only. No clone, archive, build, parser, compiler, oracle, or grade was run.",
   "activation_gate": "Commit this record before parsing any candidate below.",
   "population_rule": "At the recorded full commit, measure every tracked regular file whose path ends exactly in lowercase .cl. No sampling, caps, exclusions, or outcome-based selection.",
-  "source_receipt": {
-    "kind": "historical metadata capture",
-    "bytes": 1319,
-    "sha256": "f78188540e6492367c46557d4168ac5c7830067f13ebc4d012b516a5748d45b5",
-    "verification": "not independently replayed; GitHub API rate limit was exhausted"
-  },
   "candidates": [
     {
       "name": "vetter/shoc",
@@ -80,19 +74,23 @@
     },
     {
       "name": "Oblomov/clinfo",
-      "outcome": "GitHub API HTTP 403 rate limit; no population or license inference"
+      "outcome": "Resolved by pinned metadata and transport checks in subject-search-r4.json; see that record for the exact result.",
+      "initial_outcome": "GitHub API HTTP 403 rate limit; no population or license inference"
     },
     {
       "name": "inducer/pyopencl",
-      "outcome": "GitHub API HTTP 403 rate limit; no population or license inference"
+      "outcome": "Resolved by pinned metadata and transport checks in subject-search-r4.json; see that record for the exact result.",
+      "initial_outcome": "GitHub API HTTP 403 rate limit; no population or license inference"
     },
     {
       "name": "KhronosGroup/OpenCL-Examples",
-      "outcome": "GitHub API HTTP 403 rate limit; no population or license inference"
+      "outcome": "Resolved by pinned metadata and transport checks in subject-search-r4.json; see that record for the exact result.",
+      "initial_outcome": "GitHub API HTTP 403 rate limit; no population or license inference"
     },
     {
       "name": "IntelOpenCLSamples/IntelOpenCLSamples",
-      "outcome": "GitHub API HTTP 403 rate limit; no population or license inference"
+      "outcome": "Resolved by pinned metadata and transport checks in subject-search-r4.json; see that record for the exact result.",
+      "initial_outcome": "GitHub API HTTP 403 rate limit; no population or license inference"
     }
   ],
   "claims": {
