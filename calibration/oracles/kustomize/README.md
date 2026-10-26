@@ -35,6 +35,7 @@ nice -n 10 python3 calibration/oracles/kustomize/grade.py --cache "$KUST_CACHE" 
 python3 calibration/oracles/kustomize/manifests.py --cache "$KUST_CACHE" --phase after
 nice -n 10 python3 calibration/oracles/kustomize/run_native.py --cache "$KUST_CACHE" --oracle-bin "$KUST_CACHE/tools/kustomize-oracle" --phase after
 python3 calibration/oracles/kustomize/publish.py --cache "$KUST_CACHE" --out docs/assessments/data/2026-10-26-kustomize-r1.json
+python3 calibration/oracles/kustomize/publish_reading.py --cache "$KUST_CACHE" --public docs/assessments/data/2026-10-26-kustomize-r1.json --reading docs/bench/readings/lang/kustomize.json
 ```
 
 The first `git` command must print the fixed full commit; the second must be
@@ -72,12 +73,25 @@ Run the driver identity tests and native oracle tests before measurement:
 
 ```sh
 python3 -m unittest calibration/oracles/kustomize/test_grade.py
+mkdir -p workspace/logs
+nice -n 10 go test -race ./internal/fusion -run '^TestKustomizeBaseDirectoryNeedsTheOneFileRule$' -count=1 > workspace/logs/kustomize-r1-directory-preference.log 2>&1
 KUSTOMIZE_BIN="$KUST_CACHE/tools/kustomize-5.8.1" nice -n 10 go -C calibration/oracles/kustomize test -race -count=1 ./...
 ```
 
 The CLI tests check native-invalid configuration accounting, a changed source
 fact, real Component content and whole-unit admission refusals with no partial
 truth or receipt. Binary identity accepts only the exact clean source revision.
+
+The product-side independence control runs the actual document extractor, then
+removes only its resource selectors in memory. It requires changed extractor
+output and unchanged pinned source bytes. The native after phase must still
+match before exactly. From the repository root:
+
+```sh
+mkdir -p workspace/tmp/kustomize-proof
+cat calibration/oracles/kustomize/product_ablation.go.txt > workspace/tmp/kustomize-proof/product_ablation.go
+nice -n 10 go run ./workspace/tmp/kustomize-proof/product_ablation.go -subject-file "$KUST_CACHE/git-subjects/argoproj--argocd-example-apps--8088f4c0d970/kustomize-guestbook/kustomization.yaml" > "$KUST_CACHE/kustomize-r1/product-control.json"
+```
 
 `publish.py` writes only org/repository IDs, fixed commit IDs, counts, metrics
 and hashes. It excludes subject source, file lists, raw oracle rows, log lines,
@@ -90,3 +104,11 @@ fixtures for that gate. Native build
 truth is limited to the fixed Kustomize version, exact selected commits and
 successfully built contexts; external resources, Helm rendering and controller
 execution remain outside this oracle.
+
+After the public receipt passes, `publish_reading.py` checks its unannotated
+median SHA256, all five pins and every pooled and per-subject measured value.
+It preserves all measured reading fields and the existing `required_kinds`,
+replacing only notes with counts, hashes, provenance and limits. Add `--check`
+to validate and print its receipt without writing the reading. The directory
+preference test log must be green; the writer does not infer that product
+behavior from the native oracle.

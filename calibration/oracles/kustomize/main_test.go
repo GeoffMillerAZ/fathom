@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -451,5 +452,99 @@ func TestOracleCLIPopulatesComponent(t *testing.T) {
 	changedContext := changedRec.Contexts[component]
 	if changedContext.Valid != 1 || changedContext.Noop != 1 || changedContext.Effective != 0 {
 		t.Fatalf("changed component context=%+v", changedContext)
+	}
+}
+
+func writeOracleFixture(t *testing.T, root, rel, body string) {
+	t.Helper()
+	p := filepath.Join(root, filepath.FromSlash(rel))
+	if err := os.MkdirAll(filepath.Dir(p), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(p, []byte(body), 0644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestOracleCLIAdmissionCaps(t *testing.T) {
+	bin := os.Getenv("KUSTOMIZE_BIN")
+	if bin == "" {
+		t.Skip("set KUSTOMIZE_BIN for native CLI admission")
+	}
+	if _, err := os.Stat(bin); err != nil {
+		t.Fatalf("explicit KUSTOMIZE_BIN unavailable: %v", err)
+	}
+	digest, err := fileSHA256(bin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct {
+		name, want string
+		fixture    func(*testing.T, string)
+	}{
+		{"recognized-files", "513 > 512", func(t *testing.T, root string) {
+			for i := 0; i < 513; i++ {
+				writeOracleFixture(t, root, fmt.Sprintf("file-%03d/kustomization.yaml", i), "namePrefix: x\n")
+			}
+		}},
+		{"typed-entries", "8193 > 8192", func(t *testing.T, root string) {
+			var b strings.Builder
+			b.WriteString("images:\n")
+			for i := 0; i < 8193; i++ {
+				fmt.Fprintf(&b, "  - name: image-%d\n    newTag: v2\n", i)
+			}
+			writeOracleFixture(t, root, "kustomization.yaml", b.String())
+		}},
+		{"component-contexts", "65 > 64", func(t *testing.T, root string) {
+			writeOracleFixture(t, root, "component/kustomization.yaml", "apiVersion: kustomize.config.k8s.io/v1alpha1\nkind: Component\nimages:\n  - name: old\n    newTag: v2\n")
+			for i := 0; i < 65; i++ {
+				writeOracleFixture(t, root, fmt.Sprintf("parent-%02d/kustomization.yaml", i), "components:\n  - ../component\n")
+			}
+		}},
+		{"planned-native-calls", "planned native calls", func(t *testing.T, root string) {
+			var component strings.Builder
+			component.WriteString("apiVersion: kustomize.config.k8s.io/v1alpha1\nkind: Component\nimages:\n")
+			for i := 0; i < 512; i++ {
+				fmt.Fprintf(&component, "  - name: image-%d\n    newTag: v2\n", i)
+			}
+			writeOracleFixture(t, root, "component-a/kustomization.yaml", component.String())
+			writeOracleFixture(t, root, "component-b/kustomization.yaml", component.String())
+			for i := 0; i < 64; i++ {
+				writeOracleFixture(t, root, fmt.Sprintf("parent-%02d/kustomization.yaml", i), "components:\n  - ../component-a\n  - ../component-b\n")
+			}
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			subject := t.TempDir()
+			scratch := t.TempDir()
+			tc.fixture(t, subject)
+			filesOut := filepath.Join(scratch, "files.txt")
+			receiptOut := filepath.Join(scratch, "receipt.json")
+			args := []string{"-subject", subject, "-kustomize", bin, "-kustomize-sha256", digest, "-scratch", scratch, "-files-out", filesOut, "-receipt-out", receiptOut}
+			argJSON, err := json.Marshal(args)
+			if err != nil {
+				t.Fatal(err)
+			}
+			cmd := exec.Command(os.Args[0], "-test.run=^TestOracleCLIHelper$")
+			cmd.Env = append(os.Environ(), "KUSTOMIZE_ORACLE_TEST_ARGS="+string(argJSON))
+			var stderr bytes.Buffer
+			cmd.Stderr = &stderr
+			stdout, err := cmd.Output()
+			if err == nil {
+				t.Fatalf("cap+1 subject admitted; stdout=%s", stdout)
+			}
+			if !strings.Contains(stderr.String(), tc.want) {
+				t.Fatalf("wrong refusal: %s; want %q", stderr.String(), tc.want)
+			}
+			if len(bytes.TrimSpace(stdout)) != 0 {
+				t.Fatalf("partial truth published: %s", stdout)
+			}
+			for _, p := range []string{filesOut, receiptOut} {
+				if _, err := os.Stat(p); !os.IsNotExist(err) {
+					t.Fatalf("partial artifact %s: %v", p, err)
+				}
+			}
+		})
 	}
 }
