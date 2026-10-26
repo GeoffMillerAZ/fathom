@@ -7,7 +7,7 @@ import hashlib
 import json
 import subprocess
 from pathlib import Path
-import yaml
+from resource_guard import require_free_space
 
 HERE = Path(__file__).resolve().parent
 
@@ -28,6 +28,7 @@ def original_scope(prior, name):
 
 def prepare(repo, dest):
     if not dest.exists():
+        require_free_space('calibration subject fetch')
         dest.mkdir(parents=True)
         run(['git', '-C', dest, 'init', '-q'])
         run(['git', '-C', dest, 'remote', 'add', 'origin', repo['url']])
@@ -45,6 +46,7 @@ def prepare(repo, dest):
 
 
 if __name__ == '__main__':
+    import yaml
     parser = argparse.ArgumentParser()
     parser.add_argument('-indexbench', type=Path, required=True)
     parser.add_argument('-python', type=Path, required=True)

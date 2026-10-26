@@ -110,3 +110,10 @@ historical disclosures, with the same 71-definition/one-reference gate. It
 never hand-edits the canonical L3 reading. Full scope inventories remain in
 scratch, not in new committed assessment data. No Docker, server or backend
 request is part of these L1/L2 probes.
+
+The private build and replay drivers refuse new subject fetches and source
+builds below 20 GiB free on the home filesystem. Check `df -h ~` before
+starting either driver. This guard does not authorize a build while the
+controller's load or serial-measurement limits are unmet. Completed measured
+subjects, source trees and downloaded tools are removed under disk pressure;
+the committed aggregate receipts preserve the diagnostic, not a runnable cache.

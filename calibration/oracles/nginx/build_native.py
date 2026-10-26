@@ -7,6 +7,7 @@ import subprocess
 import tarfile
 import urllib.request
 from pathlib import Path
+from resource_guard import require_free_space
 
 HERE = Path(__file__).resolve().parent
 
@@ -15,10 +16,12 @@ if __name__ == '__main__':
     parser.add_argument('-cache', type=Path, required=True)
     parser.add_argument('-observe-upstreams', action='store_true', help='bench-only native parser population observer')
     args = parser.parse_args()
+    require_free_space('native source build')
     cache = args.cache.resolve()
     cache.mkdir(parents=True, exist_ok=True)
     protocol = json.loads((HERE / 'native-protocol-r1.json').read_text())
     for item in protocol['build_inputs']:
+        require_free_space('source download/extraction')
         archive = cache / (item['name'] + '.tar.gz')
         if not archive.exists():
             archive.write_bytes(urllib.request.urlopen(item['url'], timeout=60).read())
@@ -57,6 +60,7 @@ if __name__ == '__main__':
                 '--with-stream_realip_module', '--with-stream_ssl_preread_module']
     command = ['./configure', '--prefix=' + str(cache / 'prefix'), '--with-pcre=' + str(cache / versions['pcre2']),
                '--with-openssl=' + str(cache / versions['openssl']), *features]
+    require_free_space('native configure/build')
     subprocess.run(command, cwd=source, check=True)
     subprocess.run(['make', '-j2'], cwd=source, check=True)
     binary = source / 'objs/nginx'
