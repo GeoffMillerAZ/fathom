@@ -24,6 +24,8 @@
 #      the dialect's extensions) is listed at <work-dir>/measured-files.txt, must agree with each reading's file count
 #      and bytes, and its count, bytes and the sha256 of the sorted list are a note of the reading (round 5 C5-R2), so
 #      a re-timed clone can be proven to measure the same files.
+# Memory (round 3 R3-1): one decoded translation-unit AST in the clang-ast-defs step peaks near 12.4 GB, so a host
+# under about 26 GB of memory needs AST_DEFS_JOBS=1 (default 2).
 set -euo pipefail
 clone=$(cd "$1" && pwd) cuda=$(cd "$2" && pwd) tools=$(cd "$3" && pwd) work=$4 runs=${5:-3}
 repo=$(cd "$(dirname "$0")/../../.." && pwd)
@@ -246,7 +248,7 @@ out["version"] = h.get("version", "") + " (clang CUDA host and device-only passe
 json.dump(out, open(os.path.join(w, "clang-calls.json"), "w"), indent=1)
 print("clang-calls:", len(h.get("call_sites", [])), "host,", len(d.get("call_sites", [])), "device,", len(out["call_sites"]), "unioned", file=sys.stderr)
 EOF
-( cd "$repo/calibration/oracles/clang-ast-defs" && go run . -subject "$subj" -compdb "$work/compile_commands.json" -jobs 2 -tier "$scip_tier" > "$work/preproc.ranges.json" )
+( cd "$repo/calibration/oracles/clang-ast-defs" && go run . -subject "$subj" -compdb "$work/compile_commands.json" -jobs "${AST_DEFS_JOBS:-2}" -tier "$scip_tier" > "$work/preproc.ranges.json" )
 
 # The driver's own record of how the subject was measured (round 3 A4): never a hand edit of the reading.
 note=$(python3 - "$work" "$scip_tier" <<'EOF'
