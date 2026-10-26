@@ -66,7 +66,6 @@ var candidatePaths = map[string]bool{
 	"calibration/oracles/scip-clang/cpp-report_test.py":                  true,
 	"internal/extractor/tsengine/grammar_audit.go":                       true,
 	"internal/extractor/tsengine/grammar_audit_test.go":                  true,
-	".fathom/observations/O1504.md":                                      true,
 }
 
 func gitBytes(root string, args ...string) ([]byte, error) {

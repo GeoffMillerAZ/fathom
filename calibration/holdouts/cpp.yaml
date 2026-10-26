@@ -1,0 +1,19 @@
+# Historical validation only. This pin was already spent before this audit.
+# It is outside corpus.d so canonical aggregation cannot select it.
+id: cpp-historical-holdout
+language: C++
+status: spent
+subject_commit: 56e3bb550c91fd7005566f19c079cb7a503223cf
+licence: MIT
+repository_url_sha256: e2b9115570124dcdf198642c8eb170521ed519790679430aef67548a4dbdc7be
+source_record:
+  commit: 6db920e72898abb20bf86c22652b401902e34598
+  path: calibration/corpus.d/cpp.yaml
+  key: holdout
+rule: LB-F473
+validation: LB-F474
+reading: docs/bench/readings/lang/holdout/cpp.json
+criterion:
+  file_edge_recall_min: 0.50
+  file_edge_precision_min: 0.95
+reuse: forbidden

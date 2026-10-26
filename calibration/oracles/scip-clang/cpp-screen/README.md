@@ -35,9 +35,9 @@ from the candidate product revision. The flag waives only those revisions'
 equality and the reading's optional grammar equality. It still checks the
 subject pin, exact population and bytes, caps, paths, hashes, and output
 confinement. The Git diff from baseline to candidate must contain only the
-C++ grammar lock row and blob, grammar provenance, this helper, and O1504;
+C++ grammar lock row and blob, grammar provenance, and this helper;
 all non-C++ lock rows and product parsing/routing code must stay unchanged.
-Helper/observation-only diffs are admitted for diagnostic reproduction. A
+Helper-only diffs are admitted for diagnostic reproduction. A
 candidate receipt cannot establish accuracy, adoption, or a new reading.
 Parser faults print phase, 1-based file ordinal, peak WASM pages, and safe
 engine error text to private stderr without a source path or source text.

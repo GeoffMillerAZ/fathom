@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"strings"
 	"testing"
 )
 
@@ -75,10 +76,22 @@ func TestGrammarAuditRefusesInvalidIdentityBeforeInstantiation(t *testing.T) {
 }
 
 func TestGrammarAuditWholeModuleCap(t *testing.T) {
-	raw := make([]byte, 32<<20+1)
-	spec := GrammarAuditSpec{Blob: "cpp", EntryPoint: "tree_sitter_cpp", ABI: 14, Bytes: len(raw), SHA256: "", Licence: "MIT"}
-	if p, err := NewGrammarAuditParser(context.Background(), raw, spec); err == nil {
-		p.Close()
-		t.Fatal("accepted module cap + 1")
+	for _, size := range []int{maxGrammarAuditBytes, maxGrammarAuditBytes + 1} {
+		raw := make([]byte, size)
+		sum := sha256.Sum256(raw)
+		spec := GrammarAuditSpec{Blob: "cpp", EntryPoint: "tree_sitter_cpp", ABI: 14, Bytes: len(raw), SHA256: hex.EncodeToString(sum[:]), Licence: "MIT"}
+		p, err := NewGrammarAuditParser(context.Background(), raw, spec)
+		if p != nil {
+			p.Close()
+		}
+		if err == nil {
+			t.Fatalf("invalid WASM accepted at size %d", size)
+		}
+		if size == maxGrammarAuditBytes && !strings.Contains(err.Error(), "audit compile:") {
+			t.Fatalf("equality must pass identity and reach compilation: %v", err)
+		}
+		if size > maxGrammarAuditBytes && !strings.Contains(err.Error(), "invalid C++ audit module identity") {
+			t.Fatalf("cap+1 must fail before compilation: %v", err)
+		}
 	}
 }

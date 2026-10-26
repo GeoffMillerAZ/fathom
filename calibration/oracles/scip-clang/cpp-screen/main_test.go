@@ -82,10 +82,10 @@ func TestExternalCandidateDiffRefusesEmbeddedGrammarDelta(t *testing.T) {
 		t.Fatalf("external audit refused helper-only delta: %v", err)
 	}
 }
-func TestCandidateDiffAdmitsHelperObservationOnly(t *testing.T) {
+func TestCandidateDiffAdmitsHelperOnly(t *testing.T) {
 	root, _, baseline := gitCandidateFixture(t)
 	writeFixtureFile(t, root, "calibration/oracles/scip-clang/cpp-screen/main.go", "diagnostic helper")
-	writeFixtureFile(t, root, ".fathom/observations/O1504.md", "parser observation")
+	writeFixtureFile(t, root, "calibration/oracles/scip-clang/cpp-screen/README.md", "parser diagnostic")
 	gitFixtureCommand(t, root, "add", ".")
 	gitFixtureCommand(t, root, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "helper")
 	if err := candidateDiffAllowed(root, baseline, gitFixtureCommand(t, root, "rev-parse", "HEAD")); err != nil {

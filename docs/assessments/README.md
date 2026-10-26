@@ -77,7 +77,7 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-25 | [sentinel-oracle-candidates](2026-10-25-sentinel-oracle-candidates.md) | Open parser pinned/measured: 30/395 full-discovery errors; policy-body split 2/90; runtime publication barred | LB-Q-sentinel-rest, OL-R6/OL-R8 |
 | 2026-10-25 | [tools-pgbouncer](2026-10-25-tools-pgbouncer.md) | Native auth database population and source audit; r4 position proof follows in the next assessment | LB-Q-pgbouncer |
 | 2026-10-26 | [core-t1-astro-ceiling](2026-10-26-core-t1-astro-ceiling.md) | Measured extractor gap has an existing oracle; serialize its shared-query repair and re-read language plus route consumers | C-R4 (#20), LB-Q-astro-rest, K29 |
-| 2026-10-26 | [core-t1-cpp-ceiling](2026-10-26-core-t1-cpp-ceiling.md) | C++ remains on the CUDA/HLSL integration hold; candidate limits are recorded. | LB-Q-cpp-rest |
+| 2026-10-26 | [core-t1-cpp-ceiling](2026-10-26-core-t1-cpp-ceiling.md) | Full-population producer audit completes; incumbent and three pinned parser alternatives fail admission, with no canonical adoption. | LB-Q-cpp-rest |
 | 2026-10-26 | [core-t1-css-ceiling](2026-10-26-core-t1-css-ceiling.md) | Browser-attested proposal ranges grade at tier C; parser errors and first-party population enumeration remain open. | LB-Q-css-rest |
 | 2026-10-26 | [core-t1-cue-ceiling](2026-10-26-core-t1-cue-ceiling.md) | The package-key file target limits recall; LSP definitions support a future SCIP writer. | LB-Q-cue-rest |
 | 2026-10-26 | [core-t1-go-cost-ceiling](2026-10-26-core-t1-go-cost-ceiling.md) | Field-only member symbols fail the wall gate; runtime reverted and no new grade claimed | C-R2, C-R5 (#20), LB-Q-go-rest |
