@@ -36,6 +36,25 @@ def verify_identity(binary, receipt):
         raise ValueError('native observer identity mismatch')
 
 
+def normalized_evidence(evidence):
+    """Preserve native object equality without publishing ASLR heap addresses."""
+    import copy
+    normalized = copy.deepcopy(evidence)
+    for profile in normalized:
+        events = profile['native_events']
+        identities = {}
+        for event in events:
+            key = event['domain'], event['pointer']
+            if event['flags'] & 1 and key not in identities:
+                identities[key] = 'declaration:' + str(len(identities) + 1)
+        for event in events:
+            key = event['domain'], event['pointer']
+            if key not in identities:
+                identities[key] = 'implicit:' + str(len(identities) + 1)
+            event['pointer'] = identities[key]
+    return normalized
+
+
 def measure(subject, files, nginx, work, native_definitions=False):
     import nginx_oracle as old
     subject, nginx, work = subject.resolve(), nginx.resolve(), work.resolve()
@@ -179,6 +198,7 @@ if __name__ == '__main__':
                    negative_controls=sum(len(a['negative_controls']) for a in evidence),
                    native_only_pairs=sum(len(a['native_only_pairs']) for a in evidence),
                    scanner_only_pairs=sum(len(a['scanner_only_pairs']) for a in evidence),
-                   native_evidence_sha256=hashlib.sha256(raw).hexdigest(), scope_sha256=hashlib.sha256(args.files.read_bytes()).hexdigest(),
+                   native_evidence_sha256=hashlib.sha256(json.dumps(normalized_evidence(evidence), sort_keys=True).encode()).hexdigest(),
+                   native_evidence_digest_format='pointer-normalized-v1', scope_sha256=hashlib.sha256(args.files.read_bytes()).hexdigest(),
                    server_started=False, backend_requests=0)
     args.out.write_text(json.dumps(summary, indent=2) + '\n')

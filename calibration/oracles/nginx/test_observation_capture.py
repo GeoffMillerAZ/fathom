@@ -15,7 +15,7 @@ class ObservationCaptureTest(unittest.TestCase):
             def refuse(record):
                 observed.append(Path(record['directory']))
                 raise ValueError('unknown native event')
-            with patch('nginx_oracle.subprocess.run', return_value=SimpleNamespace(returncode=0, stdout='', stderr='bad-event')):
+            with patch('nginx_oracle.observer_run', return_value=SimpleNamespace(returncode=0, stdout='', stderr='bad-event')):
                 with self.assertRaises(ValueError):
                     nginx_check(str(root), '', 'unused', str(Path(directory) / 'work'), 'main', 'nginx.conf', observer=refuse)
             self.assertFalse(observed[0].exists())
@@ -28,7 +28,7 @@ class ObservationCaptureTest(unittest.TestCase):
             def observe(record):
                 self.assertTrue(Path(record['directory']).is_dir())
                 captured.append(record)
-            with patch('nginx_oracle.subprocess.run', return_value=SimpleNamespace(returncode=0, stdout='', stderr='native-event')):
+            with patch('nginx_oracle.observer_run', return_value=SimpleNamespace(returncode=0, stdout='', stderr='native-event')):
                 result = nginx_check(str(root), '', 'unused', str(Path(directory) / 'work'), 'main', 'nginx.conf', observer=observe)
             self.assertTrue(result[0])
             self.assertEqual(4, len(result))

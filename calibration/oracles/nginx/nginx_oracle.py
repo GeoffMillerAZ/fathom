@@ -94,6 +94,8 @@ import posixpath
 import re
 import shutil
 import subprocess
+import resource
+import tempfile
 import sys
 
 import crossplane
@@ -275,6 +277,24 @@ WRAPPERS = {
 }
 
 
+MAX_OBSERVER_OUTPUT = 8 * 1024**2
+
+
+def observer_run(command, directory):
+    """Bound the child's actual files and parent reads before decoding truth."""
+    def limits():
+        resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
+        resource.setrlimit(resource.RLIMIT_FSIZE,
+                           (MAX_OBSERVER_OUTPUT + 1, MAX_OBSERVER_OUTPUT + 1))
+    with tempfile.TemporaryFile(dir=directory) as stdout, tempfile.TemporaryFile(dir=directory) as stderr:
+        result = subprocess.run(command, stdout=stdout, stderr=stderr, timeout=60, preexec_fn=limits)
+        stdout.seek(0); stderr.seek(0)
+        out, err = stdout.read(MAX_OBSERVER_OUTPUT + 1), stderr.read(MAX_OBSERVER_OUTPUT + 1)
+    if len(out) > MAX_OBSERVER_OUTPUT or len(err) > MAX_OBSERVER_OUTPUT:
+        raise ValueError('native observer output exceeds whole-profile budget')
+    return subprocess.CompletedProcess(command, result.returncode, out.decode('utf8'), err.decode('utf8'))
+
+
 def nginx_check(root, prefix, nginx, scratch, mode, target, observer=None):
     """Run nginx -T on a scratch copy of the prefix directory; return
     (ok, files read, message, {file: text nginx dumped}).
@@ -341,8 +361,13 @@ def nginx_check(root, prefix, nginx, scratch, mode, target, observer=None):
         with open(main, "w") as f:
             f.write(text)
     err = os.path.join(dst, "logs", "error.log")
-    r = subprocess.run([nginx, "-T", "-p", dst + "/", "-c", main, "-e", err],
-                       capture_output=True, text=True, timeout=60)
+    command = [nginx, "-T", "-p", dst + "/", "-c", main, "-e", err]
+    try:
+        r = (observer_run(command, dst) if observer is not None else
+             subprocess.run(command, capture_output=True, text=True, timeout=60))
+    except Exception:
+        shutil.rmtree(dst, ignore_errors=True)
+        raise
     if observer is not None:
         try:
             observer(dict(returncode=r.returncode, stderr=r.stderr, stdout=r.stdout,

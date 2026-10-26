@@ -38,7 +38,7 @@ python3 -B calibration/oracles/nginx/probe_controls.py -nginx workspace/oracle/n
 
 The helper executes the
 actual fathom extractor with `go run -race`; removing its 5 nodes preserves
-raw native truth, and changing the input binding changes native truth.
+raw native truth as a future-hidden-read tripwire, not proof by construction; the scanner-filter mutation and changed input binding are the discriminating evidence.
 
 Mutation: `native_population.py`, filter native refs by the scanner's refs;
 the focused `test_native_pair_survives_an_independent_scanner_omission` reports
@@ -48,6 +48,8 @@ FAIL, then restored green. The command above reproduces both runs; its
 Caps: `test_population.py` tests whole-profile refusal at 10,001 events and
 8,388,609 stderr bytes, each cap + 1. The same committed command reproduces
 these named controls and writes `caps.log`.
+
+This is the historical upstream-only diagnostic; the later tools-nginx-native-positions assessment and R2 population receipt supersede its open position work and unnamed timing conditions.
 
 The native L2 availability trigger has fired. Native definition positions
 remain open work, not an oracle-absence ceiling. Canonical integration and

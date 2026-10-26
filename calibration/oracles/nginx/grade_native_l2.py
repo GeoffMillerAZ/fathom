@@ -6,12 +6,21 @@ import argparse
 import hashlib
 import json
 import os
+import platform
 import subprocess
 import sys
 from pathlib import Path
 from resource_guard import require_free_space
 
 HERE = Path(__file__).resolve().parent
+
+
+def oracle_sources():
+    files = ('nginx_oracle.py', 'native_tokens.py', 'native_definitions.py',
+             'native_population.py', 'population.py', 'population_capture.py',
+             'instrument_tokens.py', 'token_observer.c.in', 'grade_native_l2.py')
+    return [dict(path=name, sha256=hashlib.sha256((HERE / name).read_bytes()).hexdigest())
+            for name in files]
 
 
 def run(command):
@@ -138,6 +147,10 @@ if __name__ == '__main__':
             raise SystemExit('tracked inputs or generated untracked inputs changed: ' + name)
         manifests.append(dict(subject=name, subpath=subpath, before=before, after=after))
         retime += ['-subject', name + '=' + str(checkout)]
+    timing_conditions = dict(start_load_1m=os.getloadavg()[0],
+                             nice=os.getpriority(os.PRIO_PROCESS, 0),
+                             machine_class=platform.system() + '/' + platform.machine(),
+                             serial_lane_job=True, shared_host_other_activity='uncontrolled')
     run(retime)
     result = json.loads(reading.read_text())
     # Native evidence cannot silently change the measured denominator.
@@ -153,7 +166,9 @@ if __name__ == '__main__':
                    tracked_set_receipts=manifests,
                    per_subject=[{key: s[key] for key in ('name', 'sha', 'files', 'bytes', 'counts', 'families')}
                                 for s in result['subjects']],
-                   before_L2=prior['grade']['L2'], after_L2=result['grade']['L2'])
+                   before_L2=prior['grade']['L2'], after_L2=result['grade']['L2'],
+                   oracle_sources=oracle_sources(), timing_conditions=timing_conditions,
+                   timing_reading_notes=[note for note in result['notes'] if note.startswith('throughput (design 1.9 T1, T2)')])
     if args.native_population:
         summary['scope_reconciliation'] = scope_summary(result, receipts)
     (args.out / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')

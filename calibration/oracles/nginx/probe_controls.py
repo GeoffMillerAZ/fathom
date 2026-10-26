@@ -1,4 +1,4 @@
-"""Reproduce native truth independence, population mutation and reader caps."""
+"""Reproduce hidden-read tripwire, input sensitivity, mutations and caps."""
 import argparse
 import hashlib
 import io
@@ -79,7 +79,7 @@ def run(native, receipt, out, native_definitions=False):
     (out / 'mutation.log').write_text('MUTANT: ' + mutant + '\n' + red_log + '\nRESTORED\n' + green_log)
     if red.wasSuccessful() or not red.failures or red.errors or not green.wasSuccessful() or green.skipped:
         raise ValueError('population mutation control did not show FAIL then restored green')
-    names = ['test_population.NativePopulationTest.test_event_cap_plus_one_refuses_whole_profile',
+    names = ['test_nginx_capture.CaptureLimitTest', 'test_population.NativePopulationTest.test_event_cap_plus_one_refuses_whole_profile',
              'test_population.NativePopulationTest.test_stderr_cap_plus_one_refuses_whole_profile']
     if native_definitions:
         names += ['test_native_tokens.NativeTokenReaderTest.test_all_reader_caps_refuse_whole_profile',
@@ -90,14 +90,29 @@ def run(native, receipt, out, native_definitions=False):
     (out / 'caps.log').write_text(log.getvalue())
     if not cap_result.wasSuccessful():
         raise ValueError('whole-profile cap controls failed')
+    # Remove only the OS file-size guard: the measurement boundary must fail
+    # its actual-file-size assertion rather than merely decode oversized data.
+    capture_test = 'test_nginx_capture.CaptureLimitTest.test_nginx_check_bounds_child_output_before_capture'
+    with patch('nginx_oracle.resource.setrlimit'):
+        capture_red, capture_red_log = focused(capture_test)
+    capture_green, capture_green_log = focused(capture_test)
+    if (capture_red.wasSuccessful() or not capture_red.failures or capture_red.errors or
+            not capture_green.wasSuccessful() or capture_green.skipped):
+        raise ValueError('capture kernel-limit mutation did not FAIL then GREEN')
+    (out / 'capture-mutation.log').write_text(capture_red_log + '\nRESTORED\n' + capture_green_log)
     summary = dict(native_binary_sha256=hashlib.sha256(native.read_bytes()).hexdigest(),
                    fathom_nodes_before=node_count, fathom_nodes_after=0,
                    fathom_output_race_enabled=True,
+                   output_removal_interpretation='tripwire against future hidden output reads; construction alone is not independence proof',
                    truth_before_sha256=before, truth_after_fathom_removal_sha256=perturbed,
                    truth_after_input_change_sha256=changed,
                    mutation=dict(mutant=mutant,
                                  failure_line=next(line for line in red_log.splitlines() if line.startswith('FAIL:')),
                                  restored_green=True, native_definitions=native_definitions),
+                   capture_mutation=dict(mutant='disable child RLIMIT_FSIZE',
+                                         failure_line=next(line for line in capture_red_log.splitlines() if line.startswith('FAIL:')),
+                                         restored_green=True,
+                                         actual_file_limit_bytes=MAX_STDERR_BYTES + 1),
                    caps=dict(events=MAX_EVENTS, event_refusal_input=MAX_EVENTS + 1,
                              stderr_bytes=MAX_STDERR_BYTES, stderr_refusal_input=MAX_STDERR_BYTES + 1,
                              whole_profile_refused=True))

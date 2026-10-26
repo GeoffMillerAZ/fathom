@@ -362,5 +362,6 @@
       "path": "token_observer.c.in",
       "sha256": "db9a785c160392f1b3eff1bbcd213b34d97f00a01767e24ec3d77e2b5a4d7b65"
     }
-  ]
+  ],
+  "historical_receipt_note": "Superseded by native-position-population-r2.json. This run hashes raw ASLR pointers; oracle_sources was appended after measurement and verified separately. R2 emits source identities and hashes pointer-normalized evidence from the committed drivers."
 }
