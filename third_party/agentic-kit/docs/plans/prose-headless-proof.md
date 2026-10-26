@@ -40,7 +40,10 @@ proof is structural evidence only; actual test/live receipts decide HP acceptanc
 - [~] Separately frozen real paired baseline/candidate support qualification with all140 denominators [SC-A04..07] {id: HP-17}
 - [ ] Prospective scope-bound generation guidance and new document study only after qualified review; preserve failed pilots [SC-A08] {id: HP-18}
 - [x] Offline source-bound oracle preparation/adjudication report with exact70 coverage, criterion/citation bindings and declared-identity limits [OQ-A01..07] {id: HP-19, symbol: runReviewOracle, package: cmd/prose-lab}
-- [ ] Independently assess every control and modal contrast; freeze complete old-to-new dispositions before new calibration [OQ-A08] {id: HP-20}
+- [x] Independently assess every control and modal contrast; freeze complete old-to-new dispositions before new calibration [OQ-A08] {id: HP-20, symbol: runReviewFloor, package: cmd/prose-lab}
+- [x] New 85-case criterion /2 review-site intake, real encoder/capture/native replay and retained tri-valued outcomes under a separately frozen trial [QR-A01..06] {id: HP-21, symbol: runQualifiedReviewWith, package: cmd/prose-lab}
+- [x] Separately frozen real85-case protocol4 configured support-site qualification; retain failed protocol3 and complete prior accounting [QR-A05] {id: HP-22, oracle: lexical, path: docs/evidence/prose-headless/2026-10-26-qualified-review-v4/receipt.json, pattern: "configured_support_site_qualified.*true", eq: 1}
+- [x] Versioned examined-source response /4 and trial /2 preserve old /3 replay and explicit positive/counter/source-basis semantics [ES-A01..04] {id: HP-23, symbol: qualifiedDecodeFor, package: cmd/prose-lab}
 
 ## Current evidence
 
@@ -49,7 +52,16 @@ binds clean98a0430 source, exact70 controls, held/incomplete reports, 72 CUE/Go
 reason combinations and unchanged historical replay. The full local gate passed.
 Fresh source verification proves HP-19's symbol, 28 statically reaching tests and
 entrypoint wiring after an initial graph rebuild. Runtime proof comes from the
-separate executed instruments. HP-20 semantic adjudication remains open.
+separate executed instruments. HP-20's [declared source-floor qualification](../evidence/prose-headless/2026-10-26-floor/README.md)
+covers all 70 old dispositions and85 prospective criterion /2 cases with two
+separately instructed source readers and seven contrasts. Their identity/isolation,
+source truth and calibrated accuracy remain unverified. HP-21's [new review
+protocol](../designs/prose-qualified-review.md) has [offline source qualification](../evidence/prose-headless/2026-10-26-qualified-review-offline/README.md).
+HP-22's [real protocol 3 trial](../evidence/prose-headless/2026-10-26-qualified-review-v3/README.md)
+failed at 67/85:66 valid matches, one invalid source-basis response and 18 unexecuted.
+All usage settled to $0.373832; cumulative direct charge $1.152522. No adoption.
+[0048/ES](../designs/prose-examined-source-review.md) specifies HP-23's separate
+examined-source contract now has [offline source qualification](../evidence/prose-headless/2026-10-26-examined-source-offline/README.md). The [fresh real protocol4 trial](../evidence/prose-headless/2026-10-26-qualified-review-v4/README.md) matched85/85, independently audited native usage $0.644112. Cumulative direct charge is $1.796634. Only this configured synthetic support-site floor is qualified; whole-document and UI gates remain open.
 
 HP-14 [one-cell pilot](../evidence/prose-headless/2026-10-25-long-pilot/README.md) and the original v1 cell remain failed. HP-16 [offline source](../evidence/prose-headless/2026-10-25-paired-review/README.md) preserves all67 old wires/replay. HP-17's [actual paired trial](../evidence/prose-headless/2026-10-25-paired-live/README.md) stopped at108/140: candidate53/54 and baseline54/54 matched fixed labels,32 positions unexecuted, $0.354276 new usage-priced cost. The mismatch exposes a strict-entailment oracle ambiguity; no retrospective relabel/retry or adoption. Qualification remains open. [0047](../intent/decisions/0047-qualify-oracle-semantics-before-prompt-tuning.md) requires HP-19/20's independently reviewed source floor before further calibration or generation. HP-18 remains unimplemented.
 
@@ -99,3 +111,15 @@ aggregate passed on prepared historical snapshots in602.413s; the
 [integration receipt](../evidence/prose-headless/2026-10-24-integration/README.md)
 records exact revisions, prerequisites, failed runs and exported-tree equivalence.
 This is not whole HP-A17 closure, native CI, workload acceptance or UI entry.
+
+## Renewed owner execution,2026-10-26
+
+The owner renewed the full prose/HITLMAN completion goal and Anthropic-key use.
+HP-20 completed first under 0047. [Floor receipt](../designs/prose-oracle-floor.md)
+fixes the command-local wire, independent declared source review and adversarial
+binding checks. HP-21/22 now track the revised support-site source and actual model
+qualification separately. Keep the existing$10 direct-experiment cap and aggregate historical
+spend; no new paid Claude coding invocation is admitted by the remaining coding
+budget. Existing native coding tools may implement the offline work. Headless
+HP-A01..18 precedes the app-kit workbench lane, and full UI/consumer qualification
+remains a separate required outcome rather than a mockup completion claim.

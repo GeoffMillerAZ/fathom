@@ -1,0 +1,41 @@
+/* Bench-only observer: native evaluation is unchanged. No server is started. */
+static ngx_str_t
+oracle_native_hex(ngx_conf_t *cf, ngx_str_t value)
+{
+    ngx_str_t result;
+    result.len = value.len * 2;
+    result.data = ngx_pnalloc(cf->pool, result.len ? result.len : 1);
+    if (result.data == NULL) {
+        result.len = 0;
+        return result;
+    }
+    ngx_hex_dump(result.data, value.data, value.len);
+    return result;
+}
+
+@TYPE@ *
+@FUNCTION@(ngx_conf_t *cf, ngx_url_t *u, ngx_uint_t flags)
+{
+    @TYPE@ *result;
+    ngx_str_t *arguments, file, command, argument, host;
+
+    result = @FUNCTION@_oracle_impl(cf, u, flags);
+    if (ngx_test_config) {
+        if (cf->conf_file == NULL || cf->args == NULL || cf->args->nelts < 2) {
+            ngx_log_stderr(0, "ORACLE_NGINX_UPSTREAM_ERROR missing native context");
+            return result;
+        }
+        arguments = cf->args->elts;
+        file = oracle_native_hex(cf, cf->conf_file->file.name);
+        command = oracle_native_hex(cf, arguments[0]);
+        argument = oracle_native_hex(cf, arguments[1]);
+        host = oracle_native_hex(cf, u->host);
+        if (file.data == NULL || command.data == NULL || argument.data == NULL || host.data == NULL) {
+            ngx_log_stderr(0, "ORACLE_NGINX_UPSTREAM_ERROR observer allocation");
+            return result;
+        }
+        ngx_log_stderr(0, "ORACLE_NGINX_UPSTREAM_V1 @DOMAIN@ %p %ui %ui %V %V %V %V",
+                       result, flags, cf->conf_file->line, &file, &command, &argument, &host);
+    }
+    return result;
+}
