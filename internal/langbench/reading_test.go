@@ -1,6 +1,7 @@
 package langbench
 
 import (
+	"bytes"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -302,5 +303,28 @@ func TestReadingMarshalShape(t *testing.T) {
 	b2, _ := MarshalReading(back)
 	if string(b2) != s {
 		t.Errorf("round trip not byte-identical")
+	}
+}
+
+// TestMarshalReadingWritesAngleBracketsRaw (owner ruling E2-R2): MarshalReading is the
+// canonical writer, so a note holding <, > or & is written as measured, not HTML-escaped.
+func TestMarshalReadingWritesAngleBracketsRaw(t *testing.T) {
+	r := baseReading("language")
+	r.Metrics = l1Metrics(0.97)
+	r.MetricTiers = tiers("A", r.Metrics)
+	r.LevelMet, r.Grade = LevelMet(r)
+	r.Notes = []string{"a <module> element & its </module> close"}
+	b, err := MarshalReading(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(b, []byte(`"a <module> element & its </module> close"`)) {
+		t.Errorf("MarshalReading escaped the note: %s", b)
+	}
+	if bytes.Contains(b, []byte(`\u00`)) {
+		t.Errorf("MarshalReading still escapes HTML: %s", b)
+	}
+	if !bytes.HasSuffix(b, []byte("}\n")) || bytes.HasSuffix(b, []byte("}\n\n")) {
+		t.Errorf("MarshalReading ends %q, want one trailing newline", b[len(b)-3:])
 	}
 }

@@ -3,6 +3,7 @@ package langbench
 import (
 	"bytes"
 	"encoding/json"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -48,8 +49,7 @@ func TestFilesWithErrorMerged(t *testing.T) {
 }
 
 // TestCommittedReadingsRoundTrip (LB-F59): every committed reading decodes
-// strictly, validates, and re-marshals to the same JSON value (a hand-edited
-// note may spell < or > where the encoder escapes it), so a field the
+// strictly, validates, and re-marshals to the same JSON value, so a field the
 // harness adds (files_with_error) leaves a reading measured before it
 // unchanged.
 func TestCommittedReadingsRoundTrip(t *testing.T) {
@@ -86,5 +86,47 @@ func TestCommittedReadingsRoundTrip(t *testing.T) {
 		if !reflect.DeepEqual(was, now) {
 			t.Errorf("%s: re-marshalled reading differs from the committed one", p)
 		}
+	}
+}
+
+// TestCommittedReadingsAreCanonical (owner ruling E2-R2): MarshalReading is the one writer,
+// so every committed reading, holdouts and tuned variants included, is byte-equal to its own
+// re-marshal — a reading's bytes carry no writer's dialect.
+func TestCommittedReadingsAreCanonical(t *testing.T) {
+	root := filepath.Join("..", "..", "docs", "bench", "readings", "lang")
+	seen := 0
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if d.IsDir() && d.Name() == "parity" {
+			return fs.SkipDir // a parity reading is langparity's own shape, not a Reading
+		}
+		if err != nil || d.IsDir() || filepath.Ext(path) != ".json" {
+			return err
+		}
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		var r Reading
+		dec := json.NewDecoder(bytes.NewReader(raw))
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(&r); err != nil {
+			t.Errorf("%s: %v", path, err)
+			return nil
+		}
+		b, err := MarshalReading(r)
+		if err != nil {
+			return err
+		}
+		if !bytes.Equal(raw, b) {
+			t.Errorf("%s: not MarshalReading's bytes (re-marshal it with lang-regrade)", path)
+		}
+		seen++
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if seen == 0 {
+		t.Fatal("no committed readings walked")
 	}
 }

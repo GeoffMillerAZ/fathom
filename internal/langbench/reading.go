@@ -1,6 +1,7 @@
 package langbench
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -538,13 +539,18 @@ func (r Reading) Validate() error {
 }
 
 // MarshalReading is the one writer of a reading's bytes (§10): two-space
-// indent, trailing newline, so `"level_met": "L3"` is always one line.
+// indent, trailing newline, so `"level_met": "L3"` is always one line. HTML
+// escaping is off, so a note's <, > and & are written as measured — every
+// committed reading is byte-equal to its own re-marshal.
 func MarshalReading(r Reading) ([]byte, error) {
-	b, err := json.MarshalIndent(r, "", "  ")
-	if err != nil {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(r); err != nil {
 		return nil, err
 	}
-	return append(b, '\n'), nil
+	return buf.Bytes(), nil
 }
 
 // GradeAt returns the grade recorded for level.
