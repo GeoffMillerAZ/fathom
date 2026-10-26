@@ -1,0 +1,23 @@
+{
+  "subject": {
+    "name": "pgbouncer/pgbouncer",
+    "sha": "f03e9bf263d7ccd5d1d152a61811bf3258dd6b87"
+  },
+  "version": "PgBouncer 1.26.1",
+  "binary_sha256": "9efe6556ff7ee085cf3879737515ae11b86536ac6a44509f00673c08b183a81a",
+  "definitions": 161,
+  "references": 1,
+  "backend_sql_executed": false,
+  "backend_endpoint": "nonexistent private local socket directory",
+  "configs": 6,
+  "membership_disagreements": 0,
+  "negative_controls": 1,
+  "native_evidence_sha256": "0ad659ba451fe2be8bf9b92edb9404a67763b135af088fa731e20478278bf381",
+  "population_sha256": "453132a7272fde0a9f6eb92b059cdd71cf9cf042488dcb61a0a40fb58a2ed86c",
+  "native_error_sqlstates": [
+    "08P01"
+  ],
+  "control_error_sqlstates": [
+    "08P01"
+  ]
+}

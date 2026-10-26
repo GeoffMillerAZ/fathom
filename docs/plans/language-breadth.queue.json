@@ -6004,7 +6004,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-pgbouncer",
     "worker_model": "sonnet",
-    "notes": "new; excellence program T5; rides a pure-Go INI parser; [databases] host/dbname become service_ref edges; next gap: the INI parser and those edges"
+    "notes": "Native PgBouncer 1.26.1 r4 enumerates every callback and brackets each token line with exact native prefixes before the token and after its line: all 161 definitions/ranges A. Shifted/reversed locator mutants refuse; disabling prefix checks FAILs then restores GREEN. Native SHOW DATABASES independently enumerates all 52 sources and attests 1/1 references A. L1/L2 excellent; median 43.48 MB/CPU-s at start load 1.79, nice10 on shared machine. Five logfile destinations private; unchanged keys/lines/kinds/populations. Explicit per-build receipt flags; no L3. One binding is thin evidence."
   },
   {
     "id": "proxysql",

@@ -1,35 +1,132 @@
-# pgbouncer oracle (LB-Q-pgbouncer)
+# PgBouncer oracle
 
-Bench-only; never a product dependency. Writes `indexbench lang-oracle`'s tool-oracle JSON for the pgbouncer doc dialect.
+Bench only, with separate evidence families. The legacy `pgbouncer_oracle.py`
+remains a historical C source-position/reference walk. Do not use its output
+to reproduce the new A position/reference reading.
 
-| Part | Tier | Tool |
+| Family | Instrument | Tier and scope |
 |---|---|---|
-| the entity set: databases (`*` included), peers, users, [pgbouncer] settings | A for membership | PgBouncer 1.26.1 itself, started on a scratch instance with the file's own sections and its machine-naming settings replaced; read over its admin console (`SHOW DATABASES`, `SHOW PEERS`, `SHOW USERS`, `SHOW CONFIG`) |
-| every line, and the `auth_dbname` pairs | C | a line scanner written in `pgbouncer_oracle.py` (never fathom's decode); the console does not show a per-database `auth_dbname` |
+| Definitions and ranges | Native cfparser callbacks enumerate all explicit tokens; native callback prefixes before and after each line bracket its exact token | A: 161/161 across the unchanged six configs; names/ranges retained through private logfile substitution |
+| auth_dbname references | Native SHOW DATABASES enumeration, every source startup, and missing-name control | A: 1/1, the entire canonical local pair population; no fallback |
 
-The file is labelled tier C because its pairs and lines are the scanner's: the level is capped at good (design §1.3). The
-agreement of the scanner's entity set with PgBouncer's is counted in the file's `disclose` and on stderr; a file PgBouncer
-refuses (a parameter its version does not know) is read by the scanner alone and counted.
+`native-protocol-r2.json` was committed before the population sweep. The earlier
+r1 pair probe did not establish recall completeness and is superseded. The format owner's
+runtime is pinned to the canonical subject version and checked against the
+build receipt's binary digest. All configs are original whole inputs with
+machine/global settings isolated in scratch; backend addresses are replaced by
+a nonexistent private Unix socket endpoint. No backend SQL, Docker or hosted
+service runs. Every native process terminates on exit. SHOW DATABASES supplies the 52 source
+databases before consulting scanner pairs: 49 have no auth user, two have no
+external authentication database, and one names a disabled authentication
+database. Every native outcome is classified; only then is the native pair set
+compared to the scanner. Both sets contain one pair, with zero disagreements. The harness refuses
+unattested configs/pairs, wildcard/self-reference controls and identity drift.
 
-## Install (scratch)
+## Reproduction
 
-PgBouncer 1.26.1 (ISC) built from the tag the subject is pinned at (`pgbouncer_1_26_1`, with its `lib/usual` submodule):
-`./autogen.sh && ./configure --prefix=<scratch>/pgbouncer-1.26.1 --without-cares --with-openssl && make && make install`
-(needs libevent, OpenSSL, autoconf, automake, libtool, pandoc). Debian and Ubuntu's `apt install pgbouncer` (1.22) also
-works but refuses a few parameters the 1.26 test configurations use. `psql` is needed on PATH (postgresql-client). As
-root the instance runs `-u postgres`. Python 3 standard library only.
-
-## Run
+Use a clean checkout of the corpus shard's pinned subject. Python 3 standard
+library, C compiler, make and the pinned release archives suffice. Install
+nothing globally. `build_native.py` builds PgBouncer 1.26.1 (ISC) and static
+libevent 2.1.12-stable (BSD-3-Clause) in a private directory, without TLS/c-ares.
+The release loader/client/admin sources must match canonical source hashes.
 
 ```sh
-python3 calibration/oracles/pgbouncer/pgbouncer_oracle.py -subject workspace/calibration/pgbouncer/pgbouncer \
-    -pgbouncer <scratch>/pgbouncer-1.26.1/bin/pgbouncer -out workspace/tmp/oracle/pgbouncer.json
+python3 calibration/oracles/pgbouncer/build_native.py -cache workspace/oracle/pgbouncer-native
+python3 calibration/oracles/pgbouncer/native_oracle.py \
+  -subject workspace/calibration/pgbouncer \
+  -pgbouncer workspace/oracle/pgbouncer-native/pgbouncer-1.26.1/pgbouncer \
+  -build-receipt workspace/oracle/pgbouncer-native/build-receipt.json \
+  -work workspace/tmp/pgbouncer-native -out-dir workspace/tmp/pgbouncer-native-results
+go build -o workspace/tmp/indexbench ./cmd/indexbench
+workspace/tmp/indexbench lang-oracle -dialect pgbouncer \
+  -subject workspace/calibration/pgbouncer -subject-name pgbouncer/pgbouncer \
+  -tool-oracle workspace/tmp/pgbouncer-native-results/defs.json \
+  -tool-oracle workspace/tmp/pgbouncer-native-results/refs.json \
+  -out workspace/tmp/pgbouncer-native-reading.json \
+  -note 'Native PgBouncer 1.26.1 protocol r2: SHOW DATABASES independently enumerates every native database; classify each unknown-user startup with all other databases disabled before comparing scanner pairs. Full native/scanner pair populations agree. Definitions/ranges remain C. Backend endpoints are nonexistent private sockets; no backend SQL or Docker. One reference is a small population, not broad operational coverage.'
+workspace/tmp/indexbench lang-retime -reading workspace/tmp/pgbouncer-native-reading.json \
+  -subject pgbouncer/pgbouncer=workspace/calibration/pgbouncer -runs 3 -write
+python3 calibration/oracles/pgbouncer/summarize_evidence.py \
+  -input workspace/tmp/pgbouncer-native-results/native-evidence.json \
+  -out workspace/tmp/pgbouncer-native-summary.json
+python3 -m unittest discover -s calibration/oracles/pgbouncer
 ```
 
-For `task lang:loop`, a `runners.json` keyed by the queue's oracle name:
+Full native responses and inventories are scratch artifacts; the committed
+summary carries counts and digests. The target remains L2; no L3 claim follows.
 
-```json
-{"pgbouncer config load on a scratch instance (tier A) or Python configparser (tier C)": {"command": "python3",
- "args": ["calibration/oracles/pgbouncer/pgbouncer_oracle.py", "-subject", "{subject}", "-out", "{out}", "-pgbouncer", "<scratch>/pgbouncer-1.26.1/bin/pgbouncer"],
- "format": "tool"}}
+## X-R4 sources searched, 2026-10-25
+
+These are bounded searches, not a universal assertion of tool absence.
+
+| Required source | Named candidate, version and concrete result |
+|---|---|
+| Own toolchain / dumps / introspection | PgBouncer 1.26.1 [admin interface](https://www.pgbouncer.org/usage.html), SHOW DATABASES/PEERS/USERS/CONFIG and `src/client.c` at f03e9bf: native auth_dbname error path found and measured, replacing the old reference ceiling. SHOW does not report per-database auth_dbname or source spans. |
+| SCIP and LSIF catalogs and GitHub | Read [Sourcegraph's supported indexers](https://sourcegraph.com/docs/code-navigation/precise-code-navigation), [SCIP list](https://github.com/sourcegraph/scip#tools-using-scip), and Sourcegraph-maintained [LSIF.dev](https://lsif.dev/) via its [LSIF guide](https://sourcegraph.com/blog/writing-an-lsif-indexer). No PgBouncer-config producer listed. GitHub repository search `scip-pgbouncer in:name` returned zero. SCIP C indexes the implementation, not runtime config spans. |
+| Language servers | GitHub/web query `pgbouncer language server config` and the [LSP server catalog](https://microsoft.github.io/language-server-protocol/implementors/servers/) supplied no dedicated PgBouncer-config server. SQL servers concern SQL, not this INI language. No unlocated binary was described as failing. |
+| Registry parsers / type checkers / AST dumpers | PyPI query `pgbouncer parser AST` and [pgbouncer 0.2.0](https://pypi.org/project/pgbouncer/) inspected: AGPL-3 runtime-fixture manager depending on native PgBouncer/psycopg2, not a source-span dump. npm search `pgbouncer parser` returned generic parsers (Babel 8.0.8 etc.), not a native PgBouncer evaluator. Its licence does not exclude bench-only use; the published manager interface is not an entity/source-position instrument. The independent scanner remains C. |
+| Runtime call / require tracing | Native 1.26.1 [verbose logging](https://www.pgbouncer.org/config.html) and `lib/usual/cfparser.c` inspected: debug logs include parsed section/key/value and acceptance, while line numbers occur on error paths, not a complete successful source-span API. Runtime auth errors plus controlled mutation provide the measured A pair. The r4 span harness now measures all 161 tokens: exact native callback prefixes before the token and after its line bracket each position. The initial line-only error check was vacuous and is superseded; the line-shift mutant now refuses. |
+
+The r2 summary records all 52 native sources, classifications, pair-set agreement
+and digests; full source identities and native messages stay in scratch.
+
+## Native source positions (protocol r3)
+
+The error-line follow-up is now measured, rather than an availability ceiling.
+The whole native parser first reaches a terminal invalid section appended after
+all original tokens. For native callback i at proposed line L, corrupt before its token and require
+error line L plus the complete logged prefix events[:i]. Insert an invalid
+line after L and require error L+1 plus events[:i+1]. Both observations must
+agree: an error at a locator-selected line alone is vacuous. All 161 before
+and 161 after prefixes pass on the unchanged canonical inputs. Five existing logfile
+values point to private scratch because their setters open the file while
+parsing. Every graded key/section/line remains present. Active syslog refuses.
+Baseline keeps original numeric/verbose values; observation verbosity changes
+only afterwards. Quoted/unused keys, repeated sections/keys and suppressed
+logging are authored controls. An independent locator only places mutations;
+missing or extra native callbacks refuse the whole family.
+
+`native-positions-summary-r4.json` records 161/161 A definitions/ranges,
+1/1 A references, zero faults and median 43.48 MB/CPU-s. Per-input native counts
+are 2, 9, 28, 28, 71 and 23; the single subject's ratios equal the pooled
+ratios, all 1. The complete original tracked approximation is 440 files with
+matching before/after hashes, zero generated/untracked inputs, symlinks or
+gitlinks. The reading covers six files/18,826 bytes, a thin population.
+
+After the stock build above, set private Go caches, check disk/load and use one
+serial nice run:
+
+```sh
+bash scripts/fathom-go.sh build -o workspace/tmp/indexbench ./cmd/indexbench
+nice -n 10 python3 -B calibration/oracles/pgbouncer/grade_native_positions.py -subject workspace/calibration/pgbouncer -pgbouncer workspace/oracle/pgbouncer-native/pgbouncer-1.26.1/pgbouncer -build-receipt workspace/oracle/pgbouncer-native/build-receipt.json -indexbench workspace/tmp/indexbench -out workspace/artifacts/pgbouncer-native-positions
+nice -n 10 python3 -B calibration/oracles/pgbouncer/probe_position_controls.py -pgbouncer workspace/oracle/pgbouncer-native/pgbouncer-1.26.1/pgbouncer -build-receipt workspace/oracle/pgbouncer-native/build-receipt.json -out workspace/artifacts/pgbouncer-position-controls
+PGB_POSITION_BIN=workspace/oracle/pgbouncer-native/pgbouncer-1.26.1/pgbouncer python3 -B -m unittest discover -s calibration/oracles/pgbouncer
 ```
+
+The measured binary checksum is in `native-position-build-r1.json`; binary
+SHA-256 is per-build and is not portable. A reviewer rebuilds from the pinned
+archives and passes that fresh `build-receipt.json` explicitly to both drivers.
+The verifier checks archive/source pins, actual version output and actual
+binary SHA against that per-build receipt. Never edit a historical receipt to
+reproduce another build. The CLI requires all native controls with zero skips.
+
+The r4 replay starts at 1-minute load 1.79, nice 10, under the lane serial guard
+on the shared machine; activity in other lanes is uncontrolled. Warm runs are
+47.07, 17.71 and 43.48 MB/CPU-s (median 43.48). These sub-millisecond, tiny-file
+samples vary; they establish the floor, not a comparative performance claim.
+
+Independence: the committed control driver runs the actual Fathom extractor
+under `-race`. Removing its two nodes leaves native truth unchanged; changing
+an input key changes truth. Mutation: filtering native callbacks by locator
+sites makes the native-population omission test FAIL, then restored green.
+The driver writes its log and count/hash-only receipt. Caps: the reader refuses
+1 MiB + 1 source bytes, 8 MiB + 1 native log bytes and 10,001 callbacks against
+10,000, as exercised by `test_all_caps_refuse_whole_input`. Unknown events,
+includes, identity drift or early native failure refuse the entire input.
+No scanner-selected population, fallback, backend SQL, Docker or L3 is used.
+Delete completed subjects/source builds after packaging the receipts.
+
+Line-position mutation: shifting locator lines +1, +2 or reversing them is
+refused by native callback prefixes. Disabling prefix requirements makes
+`test_shifted_or_reversed_locator_lines_are_refused` FAIL, then restored green.
+The r4 control receipt preserves both this FAIL line and the +1 refusal reason.
