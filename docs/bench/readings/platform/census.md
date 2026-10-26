@@ -32,7 +32,7 @@ pages. The WARP file at the pin below supplied the first extraction and carries 
 | Framework | Source read | Pin | Framework version | Retrieved | Licence as read at retrieval |
 |---|---|---|---|---|---|
 | AWS Well-Architected (`aws-well-architected`) | The six pillar whitepaper PDFs and a best-practice list (`ecs_fargate_app/well_architected_docs/`) in github.com/aws-samples/well-architected-iac-analyzer | `b933408f557fcda03baec11ca303bff77eeeec8a` | Each PDF: "Publication date: June 27, 2024"; URLs use the matching `wellarchitected/2024-06-27/framework/` path | 2026-10-26 | PDFs: "Copyright © 2024 Amazon Web Services, Inc. and/or its affiliates. All rights reserved." Mirror repository: MIT No Attribution (`LICENSE`); `wellarchitected_best_practices.csv` is under MIT-0 |
-| Azure Well-Architected (`azure-well-architected`) | The five live checklist pages under `learn.microsoft.com/azure/well-architected/<pillar>/checklist` (ids), the guide pages they link (URLs), and `WARP/Azure_Well_Architected_Review_Sample.csv` as a second extraction | Page `ms.date` values: reliability 2023-11-15, security 2023-11-14, cost-optimization 2023-11-15, performance-efficiency 2026-04-20, operational-excellence 2026-02-11. WARP file: github.com/Azure/WellArchitected-Tools at `cd7e629b230e78fd556170dd11265175b358d239` | Live checklist pages | 2026-10-26 | WARP repository: MIT (`LICENSE`, Microsoft Corporation). The learn.microsoft.com page licence was not read. |
+| Azure Well-Architected (`azure-well-architected`) | The five live checklist pages under `learn.microsoft.com/azure/well-architected/<pillar>/checklist` (ids), the guide pages named in the review sample (URLs, else the checklist page), and `WARP/Azure_Well_Architected_Review_Sample.csv` as a second extraction | Page `ms.date` values: reliability 2023-11-15, security 2023-11-14, cost-optimization 2023-11-15, performance-efficiency 2026-04-20, operational-excellence 2026-02-11. WARP file: github.com/Azure/WellArchitected-Tools at `cd7e629b230e78fd556170dd11265175b358d239` | Live checklist pages | 2026-10-26 | WARP repository: MIT (`LICENSE`, Microsoft Corporation). The learn.microsoft.com page licence was not read. |
 | Google Cloud Well-Architected Framework (`google-well-architected`) | The six live pillar pages under `docs.cloud.google.com/architecture/framework/<pillar>` and their principle links | none (no repository) | "Last updated" on each pillar page: reliability, security, cost-optimization, operational-excellence and sustainability 2026-10-13; performance-optimization 2026-10-22 | 2026-10-26 | CC BY 4.0 (code samples Apache-2.0), as stated on the page, read 2026-10-26 |
 | Google SRE production readiness review (`google-sre-prr`) | The live chapter 32, "The Evolving SRE Engagement Model", of the SRE book | none | The book as published; the page carries no last-updated date | 2026-10-26 | CC BY-NC-ND 4.0, as stated on the page, read 2026-10-26 |
 
@@ -41,7 +41,8 @@ Item granularity, per the brief:
 - **AWS**: one row per best practice (`REL05-BP03`). The URL is the best practice's own page. Its slug comes from
   the PDF's named destination at that best practice's heading.
 - **Azure**: one row per checklist recommendation (`RE:01`). The URL is the guide page the recommendation links to,
-  taken from the review sample. When the review sample does not name the id, the URL is the pillar's checklist page.
+  taken from the review sample. Where the review sample names no guide page, the URL is the pillar's checklist page,
+  except OE:08 and OE:09, which carry their live guide pages.
 - **Google**: one row per pillar principle page. The id is the pillar slug and the page slug
   (`reliability/set-targets`). The pillar index pages say they map their recommendations to these principles.
 - **PRR**: one row per review area, in source order. The id `PRR-<n>` is minted by this census and is not the
@@ -152,7 +153,7 @@ outside the index.
    is retitled. Titles for OE:02, OE:03, OE:04, OE:08 and OE:11 were also re-worded against the live text, and the
    URLs of OE:08 and OE:09 now point at their guide pages. RE, SE, CO and PE equal the live checklists. 13 live ids
    have no second extraction from the review sample: CO:06, CO:08, CO:09, CO:11, CO:12, CO:13, CO:14, OE:09, PE:02,
-   PE:08, PE:09, PE:10, RE:08. Their URL is the pillar checklist page where no guide page is linked.
+   PE:08, PE:09, PE:10, RE:08. Their URL is the pillar checklist page, except OE:09 (guide page). The live checklists do link guide pages for most of them, not recorded here.
 4. **Google, direct extraction.** Each of the six pillar pages was read directly and its principle links counted
    (reliability 9, security 7, cost 4, operational excellence 5, performance 4, sustainability 8), each principle page
    returning HTTP 200. Pages under a pillar path that the pillar does not list as a principle are excluded. For
