@@ -322,17 +322,16 @@ azure-well-architected,cost-optimization,CO:12,Scaling costs,https://learn.micro
 azure-well-architected,cost-optimization,CO:13,Personnel time,https://learn.microsoft.com/azure/well-architected/cost-optimization/checklist,unclassified,,2026-10-26
 azure-well-architected,cost-optimization,CO:14,Consolidation,https://learn.microsoft.com/azure/well-architected/cost-optimization/checklist,unclassified,,2026-10-26
 azure-well-architected,operational-excellence,OE:01,DevOps culture,https://learn.microsoft.com/azure/well-architected/operational-excellence/devops-culture,unclassified,,2026-10-26
-azure-well-architected,operational-excellence,OE:02,Task execution process,https://learn.microsoft.com/azure/well-architected/operational-excellence/formalize-operations-tasks,unclassified,,2026-10-26
-azure-well-architected,operational-excellence,OE:03,Software development practices,https://learn.microsoft.com/azure/well-architected/operational-excellence/formalize-development-practices,unclassified,,2026-10-26
-azure-well-architected,operational-excellence,OE:04,Tools processes and build velocity,https://learn.microsoft.com/azure/well-architected/operational-excellence/tools-processes,unclassified,,2026-10-26
+azure-well-architected,operational-excellence,OE:02,Standardized operations,https://learn.microsoft.com/azure/well-architected/operational-excellence/formalize-operations-tasks,unclassified,,2026-10-26
+azure-well-architected,operational-excellence,OE:03,Development lifecycle processes,https://learn.microsoft.com/azure/well-architected/operational-excellence/formalize-development-practices,unclassified,,2026-10-26
+azure-well-architected,operational-excellence,OE:04,Standard tools and processes,https://learn.microsoft.com/azure/well-architected/operational-excellence/tools-processes,unclassified,,2026-10-26
 azure-well-architected,operational-excellence,OE:05,Infrastructure as code,https://learn.microsoft.com/azure/well-architected/operational-excellence/infrastructure-as-code-design,unclassified,,2026-10-26
 azure-well-architected,operational-excellence,OE:06,Supply chain for workload development,https://learn.microsoft.com/azure/well-architected/operational-excellence/workload-supply-chain,unclassified,,2026-10-26
 azure-well-architected,operational-excellence,OE:07,Monitoring system and instrumentation,https://learn.microsoft.com/azure/well-architected/operational-excellence/observability,unclassified,,2026-10-26
-azure-well-architected,operational-excellence,OE:08,Emergency response,https://learn.microsoft.com/azure/well-architected/operational-excellence/emergency-response,unclassified,,2026-10-26
-azure-well-architected,operational-excellence,OE:09,Task automation,https://learn.microsoft.com/azure/well-architected/operational-excellence/checklist,unclassified,,2026-10-26
+azure-well-architected,operational-excellence,OE:08,Incident management process,https://learn.microsoft.com/azure/well-architected/operational-excellence/incident-response,unclassified,,2026-10-26
+azure-well-architected,operational-excellence,OE:09,Testing practices,https://learn.microsoft.com/azure/well-architected/operational-excellence/testing,unclassified,,2026-10-26
 azure-well-architected,operational-excellence,OE:10,Automation design,https://learn.microsoft.com/azure/well-architected/operational-excellence/enable-automation,unclassified,,2026-10-26
-azure-well-architected,operational-excellence,OE:11,Deployment practices,https://learn.microsoft.com/azure/well-architected/operational-excellence/safe-deployments,unclassified,,2026-10-26
-azure-well-architected,operational-excellence,OE:12,Failure mitigation,https://learn.microsoft.com/azure/well-architected/operational-excellence/checklist,unclassified,,2026-10-26
+azure-well-architected,operational-excellence,OE:11,Safe deployment practices,https://learn.microsoft.com/azure/well-architected/operational-excellence/safe-deployments,unclassified,,2026-10-26
 azure-well-architected,performance-efficiency,PE:01,Performance targets,https://learn.microsoft.com/azure/well-architected/performance-efficiency/performance-targets,unclassified,,2026-10-26
 azure-well-architected,performance-efficiency,PE:02,Capacity planning,https://learn.microsoft.com/azure/well-architected/performance-efficiency/checklist,unclassified,,2026-10-26
 azure-well-architected,performance-efficiency,PE:03,Selecting services,https://learn.microsoft.com/azure/well-architected/performance-efficiency/select-services,unclassified,,2026-10-26
