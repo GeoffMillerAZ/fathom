@@ -198,7 +198,8 @@ compiler/grade run. Its failed phase remains in the private audit trail.
 
 `holdout.py` binds a caller-supplied full source commit and clean, full
 instrument commit. It refuses Dancer2 and any existing scratch path, records
-spend both in a persistent ignored source-commit register and in scratch before
+spend both in a persistent source-commit register under Git's common directory
+(shared by all worktrees) and in scratch before
 clone, retains full tracked source snapshots, all phase start/end
 times and identities, pinned tool hashes, dependency lock and saved archive
 hashes, and invokes the committed collector after the completed reading or a
@@ -208,3 +209,19 @@ still refuses publication. The pre-retime record binds immutable input hashes.
 A coverage failure also produces false gates rather than suppressing the result. Synthetic orchestration controls do not read a subject. A future
 subject must be independently selected and pinned in this protocol, with its
 license and own dependency declaration reviewed, before its first clone.
+
+The next selection is a single `## Next holdout pin` section followed immediately
+by one fenced JSON object. It must be committed in the clean instrument commit
+before any run. The exact `subject`, full `source_commit`, and `remote` must match
+the runner arguments; `license` must be nonempty; `dependency_declaration` must
+be `none` or the tracked declaration (`cpanfile`, `Makefile.PL`, `Build.PL`,
+`META.json`, or `META.yml`). The runner checks that declaration after checkout.
+No next subject is selected here. A fresh clone lacks the common-directory spend
+register. After a real spend, commit its disposition here and add its source
+commit to `ALREADY_MEASURED_COMMITS` before using a fresh clone. A fresh clone
+of the old frozen commit cannot learn a later spend on its own. The load wait
+has a separate 600-second budget, and
+each phase's execution budget begins at launch. Every post-spend failed attempt
+records its phase and fixed failure label before a false-gate receipt is published.
+The collector executes committed instrument bytes from a scratch copy, even if
+the live instrument checkout changes during a run.
