@@ -361,7 +361,7 @@ func TestRetimeMovedDefinition(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	diff := strings.Join(retimeIdentityDiff(r.Subjects[0], measured.subject), "\n")
+	diff := strings.Join(retimeIdentityDiff(r.Subjects[0], measured.subject, false), "\n")
 	for _, want := range []string{"counts.fathom_defs", "counts.callables", "counts.callables_signed", "excluded_by_kind.fathom:MovedDefinition"} {
 		if !strings.Contains(diff, want) {
 			t.Errorf("missing %q in diff: %s", want, diff)
@@ -421,5 +421,40 @@ func TestRetimeImportCountsWithoutOracle(t *testing.T) {
 		if got := measured.subject.Counts[key]; got != want {
 			t.Errorf("no-oracle %s = %d, want %d", key, got, want)
 		}
+	}
+}
+
+// TestCmdLangRetimeTenancyOnly: a reading whose counts were scored on another
+// scope than its tenancy block refuses a plain re-time, and -tenancy-only
+// re-times it on the tenancy run's own facts and says so in the note.
+func TestCmdLangRetimeTenancyOnly(t *testing.T) {
+	root, path := retimeFixture(t)
+	r := readReading(t, path)
+	for i := range r.Subjects {
+		r.Subjects[i].Counts[langbench.CntFathomDefs] += 5
+	}
+	saveRetimeReading(t, path, r)
+	var out, errs bytes.Buffer
+	if code := mainRun(retimeArgs(root, path), &out, &errs); code != 1 || !strings.Contains(errs.String(), "counts.fathom_defs") {
+		t.Fatalf("plain re-time: exit %d, want 1 naming counts.fathom_defs: %s", code, errs.String())
+	}
+	out.Reset()
+	errs.Reset()
+	args := append(retimeArgs(root, path), "-tenancy-only", "-write")
+	if code := mainRun(args, &out, &errs); code != 0 {
+		t.Fatalf("-tenancy-only: exit %d: %s", code, errs.String())
+	}
+	after := readReading(t, path)
+	var note string
+	for _, n := range after.Notes {
+		if strings.HasPrefix(n, retimeNotePrefix) {
+			note = n
+		}
+	}
+	if !strings.Contains(note, "-tenancy-only") || !strings.Contains(note, "files, bytes, faults and parse errors only") {
+		t.Fatalf("note does not disclose the tenancy-only identity: %q", note)
+	}
+	if after.Subjects[0].Counts[langbench.CntFathomDefs] != r.Subjects[0].Counts[langbench.CntFathomDefs] {
+		t.Fatalf("-tenancy-only changed a count: %d", after.Subjects[0].Counts[langbench.CntFathomDefs])
 	}
 }

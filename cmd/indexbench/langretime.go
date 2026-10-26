@@ -26,6 +26,7 @@ func cmdLangRetime(args []string, stdout, stderr io.Writer) int {
 	path := fs.String("reading", "", "reading to re-time (required)")
 	runs := fs.Int("runs", 3, "number of runs (at least 3)")
 	write := fs.Bool("write", false, "save the re-timed reading")
+	tenancyOnly := fs.Bool("tenancy-only", false, "check identity on the timing run's own facts only (sha, a clean tree, files, bytes, faults, parse errors), for a reading whose counts were measured on a different scope than its tenancy block; the note says so")
 	var subjects multiFlag
 	fs.Var(&subjects, "subject", "recorded subject name=checkout directory (repeatable, required for every subject)")
 	fs.Usage = func() { fmt.Fprintln(stderr, retimeUsage); fs.PrintDefaults() }
@@ -127,7 +128,7 @@ func cmdLangRetime(args []string, stdout, stderr io.Writer) int {
 			if measured.subject.SHA != original.SHA {
 				return measurementRefusal(fmt.Errorf("sha changed during measurement"))
 			}
-			if diff := retimeIdentityDiff(original, measured.subject); len(diff) > 0 {
+			if diff := retimeIdentityDiff(original, measured.subject, *tenancyOnly); len(diff) > 0 {
 				return measurementRefusal(fmt.Errorf("\n  %s\nextraction changed; the reading needs a full re-measure, not a re-time", strings.Join(diff, "\n  ")))
 			}
 			t := measured.subject.Tenancy
@@ -162,6 +163,9 @@ func cmdLangRetime(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	note := fmt.Sprintf("%s: %s; %s; median run %d: %.2f MB/CPU-s; every other field is the original measurement at its recorded fathom_commit %s", retimeNotePrefix, retimeMachineClass(), strings.Join(values, "; "), median.number, median.throughput, r.FathomCommit)
+	if *tenancyOnly {
+		note += "; identity checked on the timing run's sha, clean tree, files, bytes, faults and parse errors only (-tenancy-only: the reading's counts come from a different scope than its tenancy block)"
+	}
 	if len(earlier) > 0 {
 		note += "; " + strings.Join(earlier, "; ")
 	}
@@ -200,7 +204,10 @@ func retimeCleanSubject(ctx context.Context, root string) error {
 
 // retimeIdentityDiff compares only facts measured before any oracle is read.
 // Oracle-scored counts cannot be reconstructed by a re-time.
-func retimeIdentityDiff(recorded, measured langbench.Subject) []string {
+// retimeIdentityDiff lists what differs between the recorded and the
+// re-measured extraction identity. tenancyOnly stops after the tenancy run's
+// own facts, for a reading whose counts were scored on another scope.
+func retimeIdentityDiff(recorded, measured langbench.Subject, tenancyOnly bool) []string {
 	var diff []string
 	compare := func(field string, a, b any) {
 		if fmt.Sprint(a) != fmt.Sprint(b) {
@@ -224,6 +231,9 @@ func retimeIdentityDiff(recorded, measured langbench.Subject) []string {
 		return fmt.Sprint(*p)
 	}
 	compare("files_with_error", parseErrors(recorded.Tenancy.FilesWithError), parseErrors(measured.Tenancy.FilesWithError))
+	if tenancyOnly {
+		return diff
+	}
 	// Include zero values absent from sparse maps, plus future extraction-only
 	// counters. Oracle-dependent counters in the reading stay untouched.
 	keys := map[string]bool{
