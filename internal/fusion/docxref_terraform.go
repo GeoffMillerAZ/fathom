@@ -207,12 +207,8 @@ func terraformOverrideFile(file string) bool {
 	return base == "override.tf" || strings.HasSuffix(base, "_override.tf")
 }
 
-// Terraform applies override.tf before the remaining override files in
-// lexical filename order, regardless of the DocFile input order.
+// Terraform applies all override files in lexical filename order, regardless
+// of the DocFile input order.
 func terraformOverrideLess(a, b string) bool {
-	aBase, bBase := path.Base(a), path.Base(b)
-	if aBase == "override.tf" || bBase == "override.tf" {
-		return aBase == "override.tf" && bBase != "override.tf"
-	}
-	return aBase < bBase
+	return path.Base(a) < path.Base(b)
 }

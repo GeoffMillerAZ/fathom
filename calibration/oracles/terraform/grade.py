@@ -4,6 +4,7 @@
 import argparse
 import hashlib
 import json
+import os
 import pathlib
 import shutil
 import subprocess
@@ -88,7 +89,9 @@ def measure(cache, binary, cwd, commit, label, runs):
     directory = cache / "native" / "grades" / label
     directory.mkdir(parents=True, exist_ok=True)
     readings = []
+    launch_loads = []
     for attempt in range(1, runs + 1):
+        launch_loads.append(round(os.getloadavg()[0], 4))
         path = directory / f"run-{attempt}.json"
         path.unlink(missing_ok=True)
         for pin in PINS["subjects"]:
@@ -109,6 +112,12 @@ def measure(cache, binary, cwd, commit, label, runs):
             "selected_run": middle + 1, "selected_reading_sha256": sha256(selected),
             "run_sha256": [sha256(directory / f"run-{i}.json") for i in range(1, runs + 1)],
             "metrics": readings[middle]["metrics"], "grade": readings[middle]["grade"],
+            "tenancy": readings[middle]["tenancy"],
+            "run_conditions": {"launch_load_1m": launch_loads,
+                               "nice_priority": os.getpriority(os.PRIO_PROCESS, 0),
+                               "gomaxprocs": os.environ.get("GOMAXPROCS"),
+                               "goflags": os.environ.get("GOFLAGS"),
+                               "concurrent_jobs": "not recorded"},
             "counts": readings[middle]["counts"],
             "subjects": {subject["name"]: {"files": subject["files"], "bytes": subject["bytes"],
                                           "counts": subject["counts"]}
@@ -118,22 +127,40 @@ def measure(cache, binary, cwd, commit, label, runs):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cache", type=pathlib.Path, required=True)
-    parser.add_argument("--baseline-bin", type=pathlib.Path, required=True)
-    parser.add_argument("--baseline-cwd", type=pathlib.Path, required=True)
+    parser.add_argument("--baseline-bin", type=pathlib.Path)
+    parser.add_argument("--baseline-cwd", type=pathlib.Path)
     parser.add_argument("--repaired-bin", type=pathlib.Path, required=True)
     parser.add_argument("--repaired-cwd", type=pathlib.Path, required=True)
     parser.add_argument("--runs", type=int, default=3)
+    parser.add_argument("--landing-only", action="store_true", help="grade the clean landing engine without repeating the unchanged baseline")
+    parser.add_argument("--repaired-commit", default="2ff8b2ac3", help="expected engine revision; landing-only requires its full commit")
     args = parser.parse_args()
     if args.runs < 3 or args.runs % 2 == 0:
         parser.error("--runs must be odd and at least 3")
     cache = args.cache.resolve()
     raw_hashes = check_inputs(cache)
+    if args.landing_only:
+        if len(args.repaired_commit) != 40 or any(c not in "0123456789abcdef" for c in args.repaired_commit):
+            parser.error("--landing-only requires the full --repaired-commit")
+        repaired_head = verify_binary(args.repaired_bin.resolve(), args.repaired_cwd.resolve(), args.repaired_commit)
+        repaired = measure(cache, args.repaired_bin.resolve(), args.repaired_cwd.resolve(),
+                           repaired_head, "landing-" + repaired_head[:9], args.runs)
+        report = {"date": DATE, "native_raw_sha256": raw_hashes,
+                  "repaired_full_commit": repaired_head, "repaired": repaired}
+        path = cache / "native" / "grades" / ("landing-" + repaired_head[:9] + ".json")
+        path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
+        print(json.dumps({"date": DATE, "commit": repaired_head,
+                          "xref_recall": repaired["metrics"]["xref_recall"],
+                          "xref_truth_found": repaired["counts"]["xref_truth_found"]}, sort_keys=True))
+        return
+    if args.baseline_bin is None or args.baseline_cwd is None:
+        parser.error("comparison mode requires --baseline-bin and --baseline-cwd")
     baseline_head = verify_binary(args.baseline_bin.resolve(), args.baseline_cwd.resolve(), "6db920e72")
-    repaired_head = verify_binary(args.repaired_bin.resolve(), args.repaired_cwd.resolve(), "2ff8b2ac3")
+    repaired_head = verify_binary(args.repaired_bin.resolve(), args.repaired_cwd.resolve(), args.repaired_commit)
     baseline = measure(cache, args.baseline_bin.resolve(), args.baseline_cwd.resolve(),
                        "6db920e72", "baseline", args.runs)
     repaired = measure(cache, args.repaired_bin.resolve(), args.repaired_cwd.resolve(),
-                       "2ff8b2ac3", "repaired", args.runs)
+                       args.repaired_commit, "repaired", args.runs)
     report = {"date": DATE, "native_raw_sha256": raw_hashes,
               "baseline_full_commit": baseline_head, "repaired_full_commit": repaired_head,
               "baseline": baseline, "repaired": repaired}

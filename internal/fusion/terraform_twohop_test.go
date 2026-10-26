@@ -504,28 +504,38 @@ func TestTerraformModuleOutputOverrides(t *testing.T) {
 }
 
 func TestTerraformModuleOutputOverrideOrder(t *testing.T) {
-	corpus := map[string]string{
-		"app/main.tf":              `module "net" { source = "../modules/net" }`,
-		"app/outputs.tf":           `output "result" { value = module.net.id }`,
-		"app/override.tf":          `module "net" { source = "../modules/other" }`,
-		"app/z_override.tf":        `module "net" { source = "../modules/last" }`,
-		"modules/net/outputs.tf":   `output "id" { value = 1 }`,
-		"modules/other/outputs.tf": `output "id" { value = 2 }`,
-		"modules/last/outputs.tf":  `output "id" { value = 3 }`,
-	}
-	files := terraformTwoHopFiles(t, corpus)
-	for i := 0; i < 2; i++ {
-		resolve := resolveTerraformModuleOutputs(files)
-		got, reason := resolve(extractor.DocCrossFileRef{Strategy: "terraform-module-output", Edge: "module-output", Scope: "terraform:app", Labels: map[string]string{"terraform.module_call": "module.net", "terraform.output": "output.id"}})
-		if reason != terraformOutputResolved || got.file != "modules/last/outputs.tf" {
-			t.Fatalf("pass %d: got %q / %v", i, got.file, reason)
-		}
-		slices.Reverse(files)
+	for _, tc := range []struct {
+		name, laterOverride, wantFile string
+	}{
+		{"after-override", "z_override.tf", "modules/c/outputs.tf"},
+		{"before-override", "main_override.tf", "modules/b/outputs.tf"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			corpus := map[string]string{
+				"app/main.tf":          `module "net" { source = "../modules/a" }`,
+				"app/outputs.tf":       `output "result" { value = module.net.id }`,
+				"app/override.tf":      `module "net" { source = "../modules/b" }`,
+				"modules/a/outputs.tf": `output "id" { value = "from-a" }`,
+				"modules/b/outputs.tf": `output "id" { value = "from-b" }`,
+				"modules/c/outputs.tf": `output "id" { value = "from-c" }`,
+			}
+			corpus["app/"+tc.laterOverride] = `module "net" { source = "../modules/c" }`
+			files := terraformTwoHopFiles(t, corpus)
+			for i := 0; i < 2; i++ {
+				resolve := resolveTerraformModuleOutputs(files)
+				got, reason := resolve(extractor.DocCrossFileRef{Strategy: "terraform-module-output", Edge: "module-output", Scope: "terraform:app", Labels: map[string]string{"terraform.module_call": "module.net", "terraform.output": "output.id"}})
+				if reason != terraformOutputResolved || got.file != tc.wantFile {
+					t.Fatalf("pass %d: got %q / %v, want %q / %v", i, got.file, reason, tc.wantFile, terraformOutputResolved)
+				}
+				slices.Reverse(files)
+			}
+		})
 	}
 }
 
-// An override block with no primary declaration is a new block. Its symbol
-// site is the earliest override; subsequent files can still change source.
+// OpenTofu rejects an override block without a primary declaration. The
+// resolver leniently uses the earliest override as its symbol site, then
+// applies later source overrides in lexical filename order.
 func TestTerraformModuleOutputOverrideOnly(t *testing.T) {
 	files := terraformTwoHopFiles(t, map[string]string{
 		"app/outputs.tf":            `output "result" { value = module.net.id }`,
@@ -538,7 +548,7 @@ func TestTerraformModuleOutputOverrideOnly(t *testing.T) {
 	ref := extractor.DocCrossFileRef{Strategy: "terraform-module-output", Edge: "module-output", Scope: "terraform:app", Labels: map[string]string{"terraform.module_call": "module.net", "terraform.output": "output.id"}}
 	for i := 0; i < 2; i++ {
 		got, reason := resolveTerraformModuleOutputs(files)(ref)
-		if reason != terraformOutputResolved || got.file != "modules/net/override.tf" {
+		if reason != terraformOutputResolved || got.file != "modules/other/outputs.tf" {
 			t.Fatalf("pass %d: got %q / %v", i, got.file, reason)
 		}
 		slices.Reverse(files)
