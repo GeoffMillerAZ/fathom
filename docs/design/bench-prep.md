@@ -170,8 +170,21 @@ A subject is kept only when it passes all seven. C3 is read on macOS (BX-3) and 
 | C3 suite | green 3 times at the pin on both systems, under 15 minutes on 12 cores, and runnable with **no network at all** from a pre-warmed cache (correction 7) |
 | C4 index | `find_callers` and resolved `blast_radius` precision and recall at least 0.95 against go/types or SCIP (ADR-032, section 1 item 3); gopls and Serena are measured on the same subject (BX-5); the refusal rate is published as a finding and every claim is scoped to "subjects passing C4" (correction 14) |
 | C5 yield | at least 30 fix commits whose tests fail before the fix and pass after it, at least 15 dated after the pinned model's training cutoff (the second half waits on Q2) |
-| C6 fan-in | at least 3 symbols with fan-in 5 or more across at least 3 caller units, from the truth graph, never from fathom. **D24:** one unit for every language: the import package, or the directory for Python and TypeScript. Merge a Go external test package (`<pkg>_test`) into its directory’s package. The defining package/directory never counts as a caller of its own symbol. |
+| C6 fan-in | at least 3 symbols with fan-in 5 or more across at least 3 caller units, from the truth graph, never from fathom. **D24:** one unit for every language: the import package, or the directory for Python and TypeScript. Merge a Go external test package (`<pkg>_test`) into its directory’s package. The defining package/directory never counts as a caller of its own symbol. **D26:** caller units and sites are product-only in every language: test, example, benchmark, sample, docs and tool directories never count; test files and the defining package’s own tests are excluded everywhere. C6 measures product fan-in on equal terms across languages. |
 | C7 independence | not fathom, not a repository fathom's own fleet indexes, at most 2 subjects per organization |
+
+**Preparation mount contract.** Containers mount the detached subject clone at
+`/subject:ro`, a fresh job-owned `workspace/` build directory at `/work:rw`,
+and `calibration/bench.d` at `/bench-inputs:ro`. `/work/tmp` is a writable,
+executable Linux tmpfs for native sockets and temporary files. Setup copies
+tracked files and Git metadata from `/subject` into `/work/source`; installation, node_modules, editable
+builds, caches and test output stay beneath `/work`. Test commands run from
+`/work/source`. Setup may fetch declared packages; warm-up and timed trials
+use `--network none --cpus 4`. Every manifest explicitly exports the environment
+its commands need, including uv's project environment and all offline flags.
+Rich stages its committed requirements export from `/bench-inputs` and verifies
+its hash before installation. A fresh `/work` is required for each setup;
+subsequent warm-up and timed processes reuse that prepared directory.
 
 A task from a dataset repository outside the kept subjects enters the bank only when that repository has its own C1
 and C4 receipts (correction 9).

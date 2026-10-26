@@ -1,4 +1,4 @@
-# Preparation draft; C4 unmeasured.
+# Historical timing metadata; round-3 runnable commands; preparation draft, not admission.
 {
   "name": "typestack-class-transformer",
   "url": "https://github.com/typestack/class-transformer",
@@ -15,10 +15,10 @@
       "lockfile_sha256": "ec5e36d2d39f273a946c5736b54fd14d4f7973f235b4ec426ebeed0ed049a551"
     },
     "setup": [
-      "corepack enable && node --version && corepack prepare npm@10.9.9 --activate && corepack npm --version && corepack npm ci --cache /work/npm-cache --legacy-peer-deps --ignore-scripts"
+      "export TMPDIR=/work/tmp COREPACK_HOME=/work/corepack UV_PROJECT_ENVIRONMENT=/work/venv UV_CACHE_DIR=/work/uv-cache UV_PYTHON_DOWNLOADS=never PIP_CACHE_DIR=/work/pip-cache GIT_CONFIG_COUNT=3 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0=/subject GIT_CONFIG_KEY_1=safe.directory GIT_CONFIG_VALUE_1=/work/source GIT_CONFIG_KEY_2=safe.directory GIT_CONFIG_VALUE_2=/subject/.git GOTOOLCHAIN=local GOFLAGS=-mod=readonly GOMAXPROCS=4 GOMODCACHE=/work/gomodcache GOCACHE=/work/gocache GOPATH=/work/gopath && mkdir -p /work/tmp && (test -d /work/source/.git || ( mkdir -p /work/source && git -C /subject ls-files -z > /work/tracked-files && tar -C /subject --null -T /work/tracked-files -cf /work/source.tar && tar -C /work/source -xf /work/source.tar && cp -R /subject/.git /work/source/.git )) && cd /work/source && corepack enable && node --version && corepack prepare npm@10.9.9 --activate && corepack npm --version && corepack npm ci --cache /work/npm-cache --legacy-peer-deps --ignore-scripts"
     ],
     "test": [
-      "corepack npm run test:ci -- --coverageDirectory=/work/coverage"
+      "export TMPDIR=/work/tmp COREPACK_HOME=/work/corepack UV_PROJECT_ENVIRONMENT=/work/venv UV_CACHE_DIR=/work/uv-cache UV_PYTHON_DOWNLOADS=never PIP_CACHE_DIR=/work/pip-cache GIT_CONFIG_COUNT=3 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0=/subject GIT_CONFIG_KEY_1=safe.directory GIT_CONFIG_VALUE_1=/work/source GIT_CONFIG_KEY_2=safe.directory GIT_CONFIG_VALUE_2=/subject/.git GOTOOLCHAIN=local GOFLAGS=-mod=readonly GOMAXPROCS=4 GOMODCACHE=/work/gomodcache GOCACHE=/work/gocache GOPATH=/work/gopath GOPROXY=off PIP_NO_INDEX=1 UV_OFFLINE=1 npm_config_offline=true PNPM_CONFIG_OFFLINE=true pnpm_config_verify_deps_before_run=warn COREPACK_ENABLE_NETWORK=0 HTTP_PROXY= HTTPS_PROXY= ALL_PROXY= && cd /work/source && corepack npm run test:ci -- --coverageDirectory=/work/coverage"
     ],
     "suite_seconds": 25.188,
     "flake_runs": 3,
