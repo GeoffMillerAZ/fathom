@@ -41,3 +41,15 @@ Run, one subject at a time:
 Independent adapter regression controls (Jinja 3.1.6 installed as above):
 
     python3 calibration/oracles/jinja2-meta/test_dump.py -pythonpath workspace/tools/jinja2pkg
+
+
+Grammar syntax controls (independent of the adapter controls):
+
+    python3 -I calibration/oracles/jinja2-meta/syntax_controls.py -pythonpath workspace/tools/jinja2pkg
+    go test -race -count=1 -run TestJinja2SyntaxControls ./internal/extractor
+
+`syntax_controls.py -write` regenerates only Jinja's verdicts. The Go test uses
+actual embedded WASM and the harness ERROR-or-MISSING query. The JSON explicitly
+records one pre-existing loop over-acceptance, instead of calling it oracle
+agreement. Full patched/unpatched parse-gate and authored stress reproduction
+are documented in [PATCH-PROOF.md](PATCH-PROOF.md).

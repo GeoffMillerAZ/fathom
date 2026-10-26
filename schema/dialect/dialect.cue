@@ -103,12 +103,10 @@ import "struct"
 	// (`template class K<float>;`), reads `typeid` as `sizeof` (typeid of a
 	// builtin type), then runs the C++ step, at equal byte length (LB-Q-cuda).
 	// "objc-macros" reads `typedef NS_ENUM(T, Name)` and its siblings as
-	// `enum Name`, at equal byte length (LB-Q-objective-c). "jinja-templates"
-	// blanks a text line's `# ` and reads `in` / `not in` outside a for header
-	// as `==` / `!=`, at equal byte length (LB-Q-jinja2). "hlsl-macros"
+	// `enum Name`, at equal byte length (LB-Q-objective-c). "hlsl-macros"
 	// blanks a cbuffer or tbuffer header's register clause, at equal byte
 	// length (LB-Q-hlsl).
-	preprocess?: "csharp-conditionals" | "cpp-macros" | "cuda-macros" | "objc-macros" | "tailwind-at-rules" | "jinja-templates" | "hlsl-macros"
+	preprocess?: "csharp-conditionals" | "cpp-macros" | "cuda-macros" | "objc-macros" | "tailwind-at-rules" | "hlsl-macros"
 
 	// imports.strategy is from §6's closed set; the parameters are the
 	// closed set extractor.ImportParams decodes (LB-F11) — each strategy
