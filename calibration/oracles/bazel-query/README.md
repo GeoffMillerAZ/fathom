@@ -81,3 +81,17 @@ Start with fresh output paths. The diagnostic's timing is not an independent
 three-run throughput reading. Canonical `bazel.json` is unchanged. The callee
 classifier reports unknowns instead of inventing a semantic classification;
 it only groups source mismatches and never removes or adjudicates a definition.
+
+## X-R4 sources searched, 2026-10-25
+
+| Required source | Named candidate / concrete result |
+|---|---|
+| Owner toolchain / introspection | Bazel 8.7.0 query, cquery/aquery documentation, rule generator attributes and native instantiation/definition stacks checked. The existing successful query supplies native target truth; the blocker is product classification, not absent native output. |
+| SCIP and LSIF lists plus GitHub | Read [Sourcegraph supported indexers](https://sourcegraph.com/docs/code-navigation/precise-code-navigation), [SCIP list](https://github.com/sourcegraph/scip#tools-using-scip), and Sourcegraph-maintained [LSIF.dev](https://lsif.dev/). No Starlark entity producer listed. GitHub queries `scip-bazel in:name` (one SCIP/SOPLEX optimization build) and `scip-starlark in:name` (zero) produced no applicable indexer. SCIP Java/Clang build integrations index their languages, not arbitrary Starlark macro target production. |
+| Language servers | [Starpls 0.1.22](https://github.com/withered-magic/starpls/tree/v0.1.22) (Apache-2.0) source/interface inspected, not run: navigation/type checking loads Bazel repository mappings and source definitions. An independent LSP is C under P-T1 and its existence does not add cross-file macro behavior to the product. Native query already supplies the relevant A truth. |
+| Registry parsers / type checkers / AST dumpers | Bazel Central Registry [buildifier_prebuilt 10.1.0](https://registry.bazel.build/modules/buildifier_prebuilt/) and [buildtools 10.1.0](https://github.com/bazelbuild/buildtools/tree/v10.1.0), plus Go package registry [Starlark syntax](https://pkg.go.dev/go.starlark.net/syntax) (4811d7e revision) checked. These expose parsing/formatting/linting; parsing a named call does not attest a generated target. No candidate was installed or called a failed native run. |
+| Runtime call / require tracing | Bazel 8.7.0 [Starlark CPU profiling](https://bazel.build/versions/8.7.0/reference/command-line-reference#flag--starlark_cpu_profile), query generator attributes and [macro stack tracing](https://bazel.build/extending/legacy-macros) checked. Native instantiation stacks are already the adapter's evidence. Profiling/print traces do not supply the missing product macro classifier; no subject macro was changed to force a diagnostic. |
+
+X-R3's mandatory repository-name scan passes separately; assessment publication
+contains grouped counts and repo-relative summaries, not subject bodies or a
+full file inventory. T-R2's shared ENGINE hold and D19's L3 gate remain binding.
