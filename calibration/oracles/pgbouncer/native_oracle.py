@@ -22,7 +22,7 @@ if __name__ == '__main__':
     sha = subprocess.check_output(['git', '-C', str(args.subject), 'rev-parse', 'HEAD'], text=True).strip()
     if sha != protocol['subject']['sha'] or subprocess.check_output(['git', '-C', str(args.subject), 'status', '--porcelain'], text=True).strip():
         raise SystemExit('subject identity/cleanliness mismatch')
-    version = subprocess.check_output([str(args.pgbouncer.resolve()), '-V'], text=True).strip()
+    version = subprocess.check_output([str(args.pgbouncer.resolve()), '-V'], text=True).strip().splitlines()[0]
     if version != protocol['version'] or receipt['version'] != version or hashlib.sha256(args.pgbouncer.read_bytes()).hexdigest() != receipt['binary_sha256']:
         raise SystemExit('native binary identity mismatch')
     definitions, references, audit = [], [], []

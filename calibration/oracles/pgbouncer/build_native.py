@@ -54,10 +54,11 @@ if __name__ == '__main__':
                LIBEVENT_LIBS=str(prefix / 'lib/libevent.a'), CFLAGS='-O2')
     run(['./configure', '--without-openssl', '--without-cares'], source, env)
     run(['make', '-j2', 'pgbouncer'], source, env)
-    version = subprocess.check_output([str(source / 'pgbouncer'), '-V'], text=True).strip()
+    version_output = subprocess.check_output([str(source / 'pgbouncer'), '-V'], text=True).strip()
+    version = version_output.splitlines()[0]
     if version != protocol['version']:
         raise SystemExit('wrong native version: ' + version)
-    receipt = {'version': version, 'binary_sha256': hashlib.sha256((source / 'pgbouncer').read_bytes()).hexdigest(),
+    receipt = {'version': version, 'version_output': version_output, 'binary_sha256': hashlib.sha256((source / 'pgbouncer').read_bytes()).hexdigest(),
                'native_source_sha256': protocol['native_source_sha256'], 'build_inputs': protocol['build_inputs'],
                'tls': False, 'libevent': '2.1.12-stable static'}
     (cache / 'build-receipt.json').write_text(json.dumps(receipt, indent=2) + '\n')
