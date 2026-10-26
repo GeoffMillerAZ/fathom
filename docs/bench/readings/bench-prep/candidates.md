@@ -1,8 +1,10 @@
 # Benchmark preparation: measured candidate subjects
 
-Measured on 2026-10-25 (America/Phoenix). Scope: issue #18 subject-preparation lane, the design’s subject criteria and manifest fields, and BX-1 through BX-5. This is a **draft candidate reading**, not BX-3/BX-4 vetting or BX-5 index acceptance. No plan boxes are checked.
+The [current round-2 reading index](README.md) supersedes this historical candidate table and its original C3/C6 results.
 
-Drafts kept: Go 3 kept / 2 refused, Python 5 kept / 0 refused, TypeScript 2 kept / 3 refused. “Kept” means retained for later vetting after this preparation pass; it does not mean all seven design criteria pass.
+Measured on 2026-10-26 (UTC; round-1 receipt labels used the previous date). Scope: issue #18 subject-preparation lane, the design’s subject criteria and manifest fields, and BX-1 through BX-5. This is a **draft candidate reading**, not BX-3/BX-4 vetting or BX-5 index acceptance. No plan boxes are checked.
+
+Drafts kept: Go 3 kept / 2 refused, Python 5 kept / 0 refused, TypeScript 2 retained for BX-M0 / 2 independent refusals / 1 C3 harness re-run pending. “Kept” means retained for later vetting after this preparation pass; it does not mean all seven design criteria pass.
 
 C4 was deliberately not run. C5 below is an estimate from history, with zero fail-before/pass-after replays and the post-cutoff half pending Q2. The fleet registry is unreachable, so the design’s additional C7 fleet-index exclusion is unknown. C7’s requested checks (not fathom; at most two per organization) pass for all 15 candidates. No agent or paid API was invoked.
 
@@ -28,17 +30,17 @@ python3 "$job/static.py"
 python3 "$job/issue_links.py"
 python3 "$job/c6_python.py"
 node "$job/c6_ts.cjs" "$subject"
-GOPROXY=off GOFLAGS=-mod=mod GOMODCACHE="$module_cache" "$job/builds/c6-typed" "$subject"
+GOPROXY=off GOFLAGS=-mod=readonly GOMODCACHE="$module_cache" "$job/builds/c6-typed" "$subject"
 python3 "$job/run_suites.py" "$subject_id"
 ```
 
 The initial Click clone failed with an HTTP/2 stream cancellation; a full `git -c http.version=HTTP/1.1 clone` succeeded. The other clones used the first command above. Public repository metadata was read from the REST representation of each repository page (source links below), not guessed from popularity. The observer fetched metadata without authentication.
 
-C1: read each root licence blob with `git show SHA:path`; the table names its SPDX identifier and path. C2: select tracked suffixes `.go`, `.py`, or `.ts/.tsx/.mts/.cts`, then sum LF bytes plus one for an unterminated nonempty final line from the pinned blobs. Counts include tests, generated files, declarations, fixtures and examples; no dependency install output is counted. Per-file counts are in the raw `*-lines.tsv` receipts. Bands here are descriptive: 5k–25k, 25k–75k, 75k–150k. No candidate reaches the largest band, so the design’s three-band spread remains unfilled.
+C1: read each root licence blob with `git show SHA:path`; the table names its SPDX identifier and path. C2: select tracked suffixes `.go`, `.py`, or `.ts/.tsx/.mts/.cts`, then sum LF bytes plus one for an unterminated nonempty final line from the pinned blobs. Counts include tests, generated files, declarations, fixtures and examples; no dependency install output is counted. Per-file counts are in the raw `*-lines.tsv` receipts. Bands here are descriptive: 5k–25k, 25k–75k, 75k–150k. No round-1 candidate reaches the largest band, so the design’s three-band spread remains unfilled until the round-2 search.
 
-C5: count non-merge commits in the stated two-year UTC window touching both any non-test file and a test path. A test path contains a `test`, `tests`, `spec`, `specs` or `__tests__` directory, or ends in `_test.go`, `test_*.py`, `*_test.py`, or `.test/.spec.[cm]?[jt]sx?`. The second count is the subset whose subject matches `fix|bug|regression`, case-insensitively. A separate, narrower count requires a non-test file in the primary language. Documentation/build-only co-changes can inflate the broad count; neither count proves a bug fix. Commits are counted once, irrespective of file count. Counts below 30 are a yield warning; they do not prove that older history cannot supply C5 tasks. Issue references are recovered from commit bodies and linked to the same commits’ test/source paths; PR references are not asserted to be issue closures.
+C5: count non-merge commits in the stated two-year UTC window touching both any non-test file and a test path. A test path contains a `test`, `tests`, `spec`, `specs` or `__tests__` directory, or ends in `_test.go`, `test_*.py`, `*_test.py`, or `.test/.spec.[cm]?[jt]sx?`. The second count is the subset whose subject matches `\b(fix|bug|regression)\b`, case-insensitively. A separate, narrower count requires a non-test file in the primary language. Documentation/build-only co-changes can inflate the broad count; neither count proves a bug fix. Commits are counted once, irrespective of file count. Counts below 30 are a yield warning; they do not prove that older history cannot supply C5 tasks. Issue references are recovered from commit bodies and linked to the same commits’ test/source paths; PR references are not asserted to be issue closures.
 
-C6: Go uses `go/types` via `golang.org/x/tools/go/packages` v0.52.0, loading `./...` with tests. Python uses `ast`, resolving direct imports, aliases and re-exports; dynamic method dispatch is not counted. TypeScript uses compiler 5.9.3 `getResolvedSignature`, excluding interface method and call signatures. Five or more static call sites across at least three caller packages/modules qualifies a symbol in this draft; counts include test callers and are not counts of distinct caller functions. The Python analysis is static import evidence, not a SCIP truth-graph certification. The formal design C6 graph gate remains for vetting. The Go AST-only exploratory counts were superseded by the typed counts.
+C6: Go uses `go/types` via `golang.org/x/tools/go/packages` v0.52.0, loading `./...` with tests. Python uses `ast`, resolving direct imports, aliases and re-exports; dynamic method dispatch is not counted. TypeScript uses compiler 5.9.3 `getResolvedSignature`, excluding interface method and call signatures. Round 1 incorrectly counted file modules in Python/TypeScript and distinct Go external test package names. Those C6 counts below are superseded by D24; a recount is pending. Five or more static call sites across at least three caller units qualifies a symbol; counts include test callers and are not counts of distinct caller functions. The Python analysis is static import evidence, not a SCIP truth-graph certification. The formal design C6 graph gate remains for vetting. The Go AST-only exploratory counts were superseded by the typed counts.
 
 The TypeScript oracle was installed separately with `npm install --prefix "$oracle_tools" --save-exact typescript@5.9.3`; subject dependencies were installed only by the setup commands below. Scratch Go measurement programs were formatted and `command gofmt -l` returned no paths. No Go file in this repository changed.
 
@@ -46,7 +48,7 @@ The TypeScript oracle was installed separately with `npm install --prefix "$orac
 
 Native `sandbox-exec` returned `sandbox_apply: Operation not permitted`. Instead, every warm-up and timed run used an operator-run disposable Linux arm64 container with `--network none --cpus 4`. This is preparation evidence, not a new product container runner or a BX-55 decision. Docker exposed four CPUs. Native macOS and the design’s exact 12-core condition were not measured; no extrapolated timing is reported.
 
-Dependency setup used network-enabled containers. Each successful setup was followed by one warm-up and exactly three fresh test-process runs with networking denied. Go also used `GOFLAGS=-mod=mod GOPROXY=off GOTOOLCHAIN=local GOMAXPROCS=4`, a warmed module cache, and `-count=1` to disable result caching. Python ran from a preinstalled local venv with `PIP_NO_INDEX=1`; TypeScript used `npm_config_offline=true` after `npm ci`. Timings use `time.monotonic()` around `docker run`, include startup overhead, exclude dependency setup and the warm-up, and ran one suite at a time. The harness timeout was 900 seconds; no run reached it.
+Dependency setup used network-enabled containers. Each successful setup was followed by one warm-up and exactly three fresh test-process runs with networking denied. Round-1 Go used a mutable module mode (a harness deviation); future trials and the commands above use `GOFLAGS=-mod=readonly GOPROXY=off GOTOOLCHAIN=local GOMAXPROCS=4`, a warmed module cache, and `-count=1` to disable result caching. Python ran from a preinstalled local venv with `PIP_NO_INDEX=1`; TypeScript used `npm_config_offline=true` after `npm ci`. Timings use `time.monotonic()` around `docker run`, include startup overhead, exclude dependency setup and the warm-up, and ran one suite at a time. The harness timeout was 900 seconds; no run reached it.
 
 ```sh
 docker run --rm --network none --cpus 4 "$image" sh -c 'curl --noproxy "*" -I --connect-timeout 2 --max-time 3 https://1.1.1.1; cat "$route_file"'
@@ -61,7 +63,7 @@ Pinned image digests and observed tools:
 - `python@sha256:14a4933e6cef421424f7a66d89a3f4eafcbd0d90e0a822251f298e05132dc735` (python:3.12-bookworm).
 - `node@sha256:63538dfe497cc29dfafdda25ada09b46db68a3f4cc205abf1f5d6bf0913f3384` (node:22-bookworm).
 
-Go: `go1.27.3`; Python: `3.12.15`, pip `25.0.1`; Node: `22.23.4`, npm `10.9.9`. Per-subject lockfile hashes and Python resolved dependency versions are recorded in the kept drafts. An upstream lockfile hash identifies a file; it does not imply every install used that lockfile. Python setup used the recorded venv dependencies; Rich’s runtime versions were taken from its Poetry lock.
+Go: `go1.27.3`; Python: `3.12.15`, pip `25.0.1`; Node: `22.23.4`, npm `10.9.9`. Per-subject lockfile hashes and Python resolved dependency versions are recorded in the kept drafts. An upstream lockfile hash identifies a file; it does not imply every install used that lockfile. Round-1 Python installs used live PyPI and did not use the recorded lockfiles. Until the Part B lock-bound remeasurement lands, `lockfile_sha256` identifies the upstream lock, not the timed environment. Rich’s selected runtime versions matched its Poetry lock, but that was not a full locked install. Historical resolved versions remain in `receipts-r1.json`.
 
 ## Candidates
 
@@ -69,21 +71,21 @@ Each row is one candidate, including refusals. C3 triples are wall seconds follo
 
 | Language | Candidate / immutable pin | C1 | C2 lines / band | C3 seconds (exit codes) | C5 estimate | C6 | C7 owner/count | Created / stars | Disposition and evidence |
 |---|---|---|---|---|---|---|---|---|---|
-| Go | [go-chi/chi](https://github.com/go-chi/chi/tree/9f8adb1aabaa8a91180a821111d3f8e668d1c0bf)<br>`9f8adb1aabaa8a91180a821111d3f8e668d1c0bf` | MIT `LICENSE` | 13,152 / 5k-25k | 28.652, 28.98, 29.098 (0,0,0) | 42 / 8 (41) | 3 | go-chi / 1 | 2015-10-15 / 22,997 (over 10k) | Kept draft |
+| Go | [go-chi/chi](https://github.com/go-chi/chi/tree/9f8adb1aabaa8a91180a821111d3f8e668d1c0bf)<br>`9f8adb1aabaa8a91180a821111d3f8e668d1c0bf` | MIT `LICENSE` | 13,152 / 5k-25k | 28.652, 28.98, 29.098 (0,0,0) | 42 / 7 (41) | 3 | go-chi / 1 | 2015-10-15 / 22,997 (over 10k) | Kept draft |
 | Go | [pressly/goose](https://github.com/pressly/goose/tree/2d285d2249855c959765409c68b17a6634f0acb4)<br>`2d285d2249855c959765409c68b17a6634f0acb4` | MIT `LICENSE` | 17,226 / 5k-25k | 15.508, 14.895, 15.144 (1,1,1) | 21 / 6 (20) | 3 | pressly / 1 | 2016-02-25 / 11,623 (over 10k) | Refused — C3: full suite did not pass three isolated trials |
-| Go | [spf13/cobra](https://github.com/spf13/cobra/tree/adbc8813901bba65827259daa8e22ff94ec1f30e)<br>`adbc8813901bba65827259daa8e22ff94ec1f30e` | Apache-2.0 `LICENSE.txt` | 16,765 / 5k-25k | 3.09, 2.254, 2.981 (0,0,0) | 15 / 3 (13) | 0 | spf13 / 1 | 2013-09-03 / 44,724 (over 10k) | Refused — C6: fewer than three qualifying symbols in measured call graph |
-| Go | [stretchr/testify](https://github.com/stretchr/testify/tree/87a7b9d57689f6579db2da795ab8deeab29cb724)<br>`87a7b9d57689f6579db2da795ab8deeab29cb724` | MIT `LICENSE` | 29,801 / 25k-75k | 10.73, 11.392, 10.568 (0,0,0) | 30 / 6 (29) | 3 | stretchr / 1 | 2012-10-16 / 26,233 (over 10k) | Kept draft |
-| Go | [urfave/cli](https://github.com/urfave/cli/tree/89ad11673146784b702fb14ce1e29f2b864e51c2)<br>`89ad11673146784b702fb14ce1e29f2b864e51c2` | MIT `LICENSE` | 30,858 / 25k-75k | 4.869, 3.722, 3.598 (0,0,0) | 204 / 135 (196) | 3 | urfave / 1 | 2013-07-13 / 24,306 (over 10k) | Kept draft |
-| Python | [encode/starlette](https://github.com/encode/starlette/tree/8aa828ceaff764a2e57932fb42fdf105a47c4c83)<br>`8aa828ceaff764a2e57932fb42fdf105a47c4c83` | BSD-3-Clause `LICENSE.md` | 22,681 / 5k-25k | 15.016, 14.93, 15.263 (0,0,0) | 135 / 10 (130) | 3 | encode / 1 | 2018-06-25 / 12,684 (over 10k) | Kept draft |
+| Go | [spf13/cobra](https://github.com/spf13/cobra/tree/adbc8813901bba65827259daa8e22ff94ec1f30e)<br>`adbc8813901bba65827259daa8e22ff94ec1f30e` | Apache-2.0 `LICENSE.txt` | 16,765 / 5k-25k | 3.09, 2.254, 2.981 (0,0,0) | 15 / 2 (13) | 0 | spf13 / 1 | 2013-09-03 / 44,724 (over 10k) | Refused — C6: fewer than three qualifying symbols in measured call graph |
+| Go | [stretchr/testify](https://github.com/stretchr/testify/tree/87a7b9d57689f6579db2da795ab8deeab29cb724)<br>`87a7b9d57689f6579db2da795ab8deeab29cb724` | MIT `LICENSE` | 29,801 / 25k-75k | 10.73, 11.392, 10.568 (0,0,0) | 30 / 5 (29) | 3 | stretchr / 1 | 2012-10-16 / 26,233 (over 10k) | Kept draft |
+| Go | [urfave/cli](https://github.com/urfave/cli/tree/89ad11673146784b702fb14ce1e29f2b864e51c2)<br>`89ad11673146784b702fb14ce1e29f2b864e51c2` | MIT `LICENSE` | 30,858 / 25k-75k | 4.869, 3.722, 3.598 (0,0,0) | 204 / 134 (196) | 3 | urfave / 1 | 2013-07-13 / 24,306 (over 10k) | Kept draft |
+| Python | [encode/starlette](https://github.com/encode/starlette/tree/8aa828ceaff764a2e57932fb42fdf105a47c4c83)<br>`8aa828ceaff764a2e57932fb42fdf105a47c4c83` | BSD-3-Clause `LICENSE.md` | 22,681 / 5k-25k | 15.016, 14.93, 15.263 (0,0,0) | 135 / 7 (130) | 3 | encode / 1 | 2018-06-25 / 12,684 (over 10k) | Kept draft |
 | Python | [marshmallow-code/marshmallow](https://github.com/marshmallow-code/marshmallow/tree/b762ea2d59ca52fe5df76b90de14bed7e5ec5607)<br>`b762ea2d59ca52fe5df76b90de14bed7e5ec5607` | MIT `LICENSE` | 15,722 / 5k-25k | 4.554, 4.518, 4.54 (0,0,0) | 68 / 17 (65) | 3 | marshmallow-code / 1 | 2013-11-10 / 7,246 (1k-10k) | Kept draft |
-| Python | [pallets/click](https://github.com/pallets/click/tree/2247b35ea1c47c727d7a06e51fa280e12a863ff6)<br>`2247b35ea1c47c727d7a06e51fa280e12a863ff6` | BSD-3-Clause `LICENSE.txt` | 30,378 / 25k-75k | 11.442, 11.386, 11.375 (0,0,0) | 135 / 36 (132) | 3 | pallets / 1 | 2014-04-24 / 17,801 (over 10k) | Kept draft |
-| Python | [python-attrs/attrs](https://github.com/python-attrs/attrs/tree/c8bb9bfaa2843e7844b5bb13bed4370b51feec4f)<br>`c8bb9bfaa2843e7844b5bb13bed4370b51feec4f` | MIT `LICENSE` | 21,026 / 5k-25k | 9.023, 9.021, 8.85 (0,0,0) | 48 / 9 (36) | 3 | python-attrs / 1 | 2015-01-27 / 5,861 (1k-10k) | Kept draft |
-| Python | [Textualize/rich](https://github.com/Textualize/rich/tree/9d8f9a372cc5916fd4781fec207ced7ddac2f08f)<br>`9d8f9a372cc5916fd4781fec207ced7ddac2f08f` | MIT `LICENSE` | 51,866 / 25k-75k | 8.077, 8.073, 7.887 (0,0,0) | 31 / 12 (31) | 3 | textualize / 1 | 2019-11-10 / 57,641 (over 10k) | Kept draft |
-| TypeScript | [immerjs/immer](https://github.com/immerjs/immer/tree/75a290e44ba14bd723c8ef8546b6559c8ef3ae88)<br>`75a290e44ba14bd723c8ef8546b6559c8ef3ae88` | MIT `LICENSE` | 5,422 / 5k-25k | setup 1.412s (exit 1) | 37 / 30 (36) | 3 | immerjs / 1 | 2017-12-29 / 28,994 (over 10k) | Refused — C3: dependency setup failed; no valid timed suite trials |
-| TypeScript | [microsoft/tsyringe](https://github.com/microsoft/tsyringe/tree/78222334f49265ea2874fac2c73284345c1124d9)<br>`78222334f49265ea2874fac2c73284345c1124d9` | MIT `LICENSE` | 3,809 / below 5k | setup 1.421s (exit 1) | 3 / 0 (3) | 3 | microsoft / 1 | 2017-11-17 / 6,014 (1k-10k) | Refused — C2: 3809 primary-language lines; below 5,000; C3: dependency setup failed; no valid timed suite trials |
-| TypeScript | [reduxjs/redux](https://github.com/reduxjs/redux/tree/61ebf8596654cf3c4b197e426e302fcb3c2bc13e)<br>`61ebf8596654cf3c4b197e426e302fcb3c2bc13e` | MIT `LICENSE.md` | 8,303 / 5k-25k | setup 1.467s (exit 1) | 5 / 3 (4) | 2 | reduxjs / 1 | 2015-05-29 / 61,446 (over 10k) | Refused — C3: dependency setup failed; no valid timed suite trials; C6: fewer than three qualifying symbols in measured call graph |
-| TypeScript | [typestack/class-transformer](https://github.com/typestack/class-transformer/tree/a2734a5d154c9b0beb9a10555a04416bc371de06)<br>`a2734a5d154c9b0beb9a10555a04416bc371de06` | MIT `LICENSE` | 8,125 / 5k-25k | 11.4, 11.449, 11.542 (0,0,0) | 0 / 0 (0) | 3 | typestack / 2 | 2016-02-09 / 7,339 (1k-10k) | Kept draft |
-| TypeScript | [typestack/class-validator](https://github.com/typestack/class-validator/tree/2e1a5c27dbd65b80e27fe96b49bd6e6641fa3603)<br>`2e1a5c27dbd65b80e27fe96b49bd6e6641fa3603` | MIT `LICENSE` | 14,455 / 5k-25k | 13.223, 13.158, 13.044 (0,0,0) | 6 / 1 (6) | 3 | typestack / 2 | 2015-10-03 / 11,850 (over 10k) | Kept draft |
+| Python | [pallets/click](https://github.com/pallets/click/tree/2247b35ea1c47c727d7a06e51fa280e12a863ff6)<br>`2247b35ea1c47c727d7a06e51fa280e12a863ff6` | BSD-3-Clause `LICENSE.txt` | 30,378 / 25k-75k | 11.442, 11.386, 11.375 (0,0,0) | 135 / 35 (132) | 3 | pallets / 1 | 2014-04-24 / 17,801 (over 10k) | Kept draft |
+| Python | [python-attrs/attrs](https://github.com/python-attrs/attrs/tree/c8bb9bfaa2843e7844b5bb13bed4370b51feec4f)<br>`c8bb9bfaa2843e7844b5bb13bed4370b51feec4f` | MIT `LICENSE` | 21,026 / 5k-25k | 9.023, 9.021, 8.85 (0,0,0) | 48 / 8 (36) | 3 | python-attrs / 1 | 2015-01-27 / 5,861 (1k-10k) | Kept draft |
+| Python | [Textualize/rich](https://github.com/Textualize/rich/tree/9d8f9a372cc5916fd4781fec207ced7ddac2f08f)<br>`9d8f9a372cc5916fd4781fec207ced7ddac2f08f` | MIT `LICENSE` | 51,866 / 25k-75k | 8.077, 8.073, 7.887 (0,0,0) | 31 / 10 (31) | 3 | textualize / 1 | 2019-11-10 / 57,641 (over 10k) | Kept draft |
+| TypeScript | [immerjs/immer](https://github.com/immerjs/immer/tree/75a290e44ba14bd723c8ef8546b6559c8ef3ae88)<br>`75a290e44ba14bd723c8ef8546b6559c8ef3ae88` | MIT `LICENSE` | 5,422 / 5k-25k | setup 1.412s (exit 1) | 37 / 30 (36) | 3 | immerjs / 1 | 2017-12-29 / 28,994 (over 10k) | C3 unmeasured — harness error; re-run pending |
+| TypeScript | [microsoft/tsyringe](https://github.com/microsoft/tsyringe/tree/78222334f49265ea2874fac2c73284345c1124d9)<br>`78222334f49265ea2874fac2c73284345c1124d9` | MIT `LICENSE` | 3,809 / below 5k | setup 1.421s (exit 1) | 3 / 0 (3) | 3 | microsoft / 1 | 2017-11-17 / 6,014 (1k-10k) | Refused — C2: 3809 primary-language lines; below 5,000; C3 unmeasured: harness error; re-run pending |
+| TypeScript | [reduxjs/redux](https://github.com/reduxjs/redux/tree/61ebf8596654cf3c4b197e426e302fcb3c2bc13e)<br>`61ebf8596654cf3c4b197e426e302fcb3c2bc13e` | MIT `LICENSE.md` | 8,303 / 5k-25k | setup 1.467s (exit 1) | 5 / 3 (4) | 2 | reduxjs / 1 | 2015-05-29 / 61,446 (over 10k) | C3 unmeasured — harness error; re-run pending; C6: fewer than three qualifying symbols in measured call graph |
+| TypeScript | [typestack/class-transformer](https://github.com/typestack/class-transformer/tree/a2734a5d154c9b0beb9a10555a04416bc371de06)<br>`a2734a5d154c9b0beb9a10555a04416bc371de06` | MIT `LICENSE` | 8,125 / 5k-25k | 11.4, 11.449, 11.542 (0,0,0) | 0 / 0 (0) | 3 | typestack / 2 | 2016-02-09 / 7,339 (1k-10k) | Kept BX-M0 draft; BX-44 refused on C5 |
+| TypeScript | [typestack/class-validator](https://github.com/typestack/class-validator/tree/2e1a5c27dbd65b80e27fe96b49bd6e6641fa3603)<br>`2e1a5c27dbd65b80e27fe96b49bd6e6641fa3603` | MIT `LICENSE` | 14,455 / 5k-25k | 13.223, 13.158, 13.044 (0,0,0) | 6 / 1 (6) | 3 | typestack / 2 | 2015-10-03 / 11,850 (over 10k) | Kept BX-M0 draft; BX-44 refused on C5 |
 
 ## Per-candidate commands and fan-in evidence
 
@@ -309,7 +311,7 @@ C2 extension receipt: `.ts`: 29 files / 5422 lines; `.tsx`: 0 files / 0 lines; `
 
 Setup: `node --version && npm --version && npm ci`. Test: `npm run test:ci -- --coverageDirectory=${coverage_dir}`.
 
-No warm-up or valid timed suite runs: dependency setup failed. The pinned tree has no `package-lock.json` or `npm-shrinkwrap.json`; `npm ci` returned EUSAGE.
+No valid C3 measurement: harness error, re-run pending. The harness ran `npm ci` and selected `npm run test:ci`, although this subject has no `test:ci` script. Immer and tsyringe ship `yarn.lock`; redux ships `pnpm-lock.yaml` and declares `packageManager: pnpm@11.23.0`. EUSAGE measures the wrong installer, not a subject failure. C2/C6 refusals, where recorded, stand independently.
 
 C6 method: TypeScript 5.9.3 getResolvedSignature; interfaces and call signatures excluded. Qualifying symbols:
 
@@ -330,7 +332,7 @@ C2 extension receipt: `.ts`: 62 files / 3809 lines; `.tsx`: 0 files / 0 lines; `
 
 Setup: `node --version && npm --version && npm ci`. Test: `npm run test:ci -- --coverageDirectory=${coverage_dir}`.
 
-No warm-up or valid timed suite runs: dependency setup failed. The pinned tree has no `package-lock.json` or `npm-shrinkwrap.json`; `npm ci` returned EUSAGE.
+No valid C3 measurement: harness error, re-run pending. The harness ran `npm ci` and selected `npm run test:ci`, although this subject has no `test:ci` script. Immer and tsyringe ship `yarn.lock`; redux ships `pnpm-lock.yaml` and declares `packageManager: pnpm@11.23.0`. EUSAGE measures the wrong installer, not a subject failure. C2/C6 refusals, where recorded, stand independently.
 
 C6 method: TypeScript 5.9.3 getResolvedSignature; interfaces and call signatures excluded. Qualifying symbols:
 
@@ -348,7 +350,7 @@ C2 extension receipt: `.ts`: 56 files / 6886 lines; `.tsx`: 15 files / 802 lines
 
 Setup: `node --version && npm --version && npm ci`. Test: `npm run test:ci -- --coverageDirectory=${coverage_dir}`.
 
-No warm-up or valid timed suite runs: dependency setup failed. The pinned tree has no `package-lock.json` or `npm-shrinkwrap.json`; `npm ci` returned EUSAGE.
+No valid C3 measurement: harness error, re-run pending. The harness ran `npm ci` and selected `npm run test:ci`, although this subject has no `test:ci` script. Immer and tsyringe ship `yarn.lock`; redux ships `pnpm-lock.yaml` and declares `packageManager: pnpm@11.23.0`. EUSAGE measures the wrong installer, not a subject failure. C2/C6 refusals, where recorded, stand independently.
 
 C6 method: TypeScript 5.9.3 getResolvedSignature; interfaces and call signatures excluded. No qualifying triple was established; strongest measured entries:
 
@@ -413,27 +415,46 @@ These failures remain in the raw `*-initial-*` receipts. They are not silently r
 
 - **typestack/class-transformer**: setup 2.589s/exit 1. npm 10 rejected eslint-plugin-jest’s optional peer dependency on typescript-eslint 5 against the lock’s version 4 (ERESOLVE). The final setup uses npm ci --legacy-peer-deps --ignore-scripts, preserving the lock and the upstream CI’s script suppression. This compatibility flag is explicit in the draft.
 
-Click’s intermediate --basetemp attempt still failed 24 pager cases because the base image lacked less: 11.386s/exit 1, 11.418s/exit 1, 11.366s/exit 1. Its logs and receipts remain under the tempfix prefix. The final system-package archive and checksum are in the Click draft.
+Click’s intermediate --basetemp attempt still failed 24 pager cases because the base image lacked less: 11.386s/exit 1, 11.418s/exit 1, 11.366s/exit 1. Its logs and receipts remain under the tempfix prefix. The historical system-package archive and checksum are in `receipts-r1.json`; Part B replaces the live mirror with a snapshot URL.
 
 Click’s first less extraction returned exit 2 because archive extraction attempted to change ownership on the shared mount. The final extraction uses tar --no-same-owner. This was a setup failure, with no timed trials; the systemprep receipts are retained.
 
 ## Limits and next evidence
 
-The drafted files contain the design’s repo-entry fields and `bench` block. `schema/bench` and `#Subject` are absent at this revision, so CUE validation and the future loader were not claimed. Drafts use null for the unmeasured L0 reading and `fresh_after`, `unassigned` for the split, and an empty task-source list. No held-out split or bank provenance was invented.
+The integrated `schema/bench` now defines `#Subject`. All ten manifests pass it, and `task cue-vet` vets them on every gate. Historical receipts and fields outside the schema moved to `receipts-r1.json`, keyed by manifest path. `suite_seconds` is the maximum of the three trials. `l0_reading` explicitly says C4 is unmeasured; it is not an L0 result. `task_sources` identifies candidate upstream history at its pin, not an admitted bank. `fresh_after` and unassigned `split` are omitted. Chi has no dependencies or go.sum; its dependency hash is its go.mod. Popularity uses D23 (GitHub stars at vetting: low <1,000; medium 1,000–10,000; high >10,000); exact counts remain in the reading and historical receipts.
 
 Before admission: run the implemented vetter; C4 accuracy and refusal rate; C5 fail-before/pass-after replay and post-cutoff count after Q2; formal C6 truth graphs; C7 live fleet exclusion; native macOS and the specified CPU condition. C4 refusal rate is unmeasured, not zero. Python-version skips and upstream default test selection remain part of each command’s scope; a green run is not every optional platform/type-check matrix.
 
 Slowest final timed suite attempt: go-chi/chi, 29.098s, exit 0. Slowest kept draft: go-chi/chi, 29.098s. No final run exceeded 15 minutes. Across all initial and final environments, the slowest timed attempt was Starlette’s initial run 1 at 32.164s (exit 1, temporary-directory ownership errors).
 
-Validation: see the verification receipt appended below. No public runtime behavior changed, so no release fragment was added.
+Validation: see the verification receipt appended below. No public runtime API changed; the existing bench schema release fragment records the file-contract and gate amendments.
 
 ## Verification receipt
 
-2026-10-25:
+2026-10-26:
 
 - Ruby `YAML.safe_load` parsed all 10 drafts; each filename equals its subject id.
 - `python3 "$job/verify.py"` passed: pinned SHAs and licence hashes, measured line counts, upstream lock hashes, 30 green isolated trials and their log hashes, three named fan-in examples per draft, organization cap, null/unassigned pending fields, 15 candidate rows, portable paths and whitespace.
 - All 15 clones report full history and no tracked-file difference from the measured SHA after preparation.
 - `task fmt-check` passed; `command gofmt -l` on the scratch Go measurement programs returned no paths. No repository Go source changed.
 - `GOMODCACHE="$module_cache" task validate` was attempted and blocked before any gate check: the sandbox denied opening the shared machine-wide gate lease. The lease was not bypassed and no global configuration changed. Full validation is **unverified**, not green.
-- The absent `schema/bench` package prevents CUE `#Subject` validation; these are explicitly drafts for that future contract. No C4 run, plan verification or claimed plan completion was substituted.
+- Round 2: `go test -race ./schema/bench` and `task cue-vet` pass, including all ten manifests. No C4 run, plan verification or claimed plan completion was substituted.
+
+## Round-2 conformance and review corrections (Part A)
+
+C7 method: grep every kept candidate's full repository name and distinctive short name, case-insensitively, through `calibration/`, `testdata/scenariobench/` and `docs/bench/` before split assignment:
+
+```sh
+rg -n -i --fixed-strings "$repository" calibration/ testdata/scenariobench/ docs/bench/
+rg -n -i --fixed-strings "$subject_name" calibration/ testdata/scenariobench/ docs/bench/
+```
+
+The current subject-preparation receipts are the vetting record, not a prior experimental read. Dependency mentions in go.mod/go.sum and imports in unrelated subjects' bank patches do not establish that a candidate itself was read as a subject. Testify has such imports in `public-go.json` and `reuse-go.json`; none of those tasks has Testify as its subject. No additional prior subject read was found for the other kept candidates. C7 fleet membership remains unverified; a prior read constrains split independently of that check.
+
+Rich is dev-forced: `testdata/scenariobench/lca/lca-bugloc.json` contains task `textualize/rich/2212/2197`, and `docs/bench/scenario-runs.md` and `docs/bench/scenarios-ledger.jsonl` record its pilots. Rich and marshmallow were both read in `docs/bench/readings/repository-facts/roles-r1.md`. Their manifests name these committed files in `contamination.prior_reads` and set `split: dev`; the schema refuses held-out with a nonempty prior-read list (D25). Held-out assignment otherwise belongs to the controller at BX-44 after Q2.
+
+F5: class-transformer has **0** qualifying co-change commits since 2025-01-17; class-validator has **6** in the entire window since 2024-10-25. Both fail C5's post-cutoff half (15 required) for any model cutoff after 2024-10-25. Neither can be a BX-44 subject at these pins. Both can still count toward BX-M0, which excludes C5. **TypeScript: no viable BX-44 subject yet**.
+
+F11: the word-bounded C5 recount gives urfave/cli **204 / 134** broad co-changes / fix-message matches, with 196 primary-language source co-changes and **127** primary-source fix-message matches. The old 135 broad fix-message count included substrings such as “prefix”. All 15 corrected counts are in `c5-corrections.json`; no fix replay was performed. Historical receipts retain their original values.
+
+All dates and timestamps in this reading use UTC; elapsed measurements are wall seconds. The Part B readings will report new measurements separately; the round-1 timings and C6 evidence above remain historical.

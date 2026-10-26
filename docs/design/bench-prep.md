@@ -170,7 +170,7 @@ A subject is kept only when it passes all seven. C3 is read on macOS (BX-3) and 
 | C3 suite | green 3 times at the pin on both systems, under 15 minutes on 12 cores, and runnable with **no network at all** from a pre-warmed cache (correction 7) |
 | C4 index | `find_callers` and resolved `blast_radius` precision and recall at least 0.95 against go/types or SCIP (ADR-032, section 1 item 3); gopls and Serena are measured on the same subject (BX-5); the refusal rate is published as a finding and every claim is scoped to "subjects passing C4" (correction 14) |
 | C5 yield | at least 30 fix commits whose tests fail before the fix and pass after it, at least 15 dated after the pinned model's training cutoff (the second half waits on Q2) |
-| C6 fan-in | at least 3 symbols with fan-in 5 or more across at least 3 packages, from the truth graph, never from fathom |
+| C6 fan-in | at least 3 symbols with fan-in 5 or more across at least 3 caller units, from the truth graph, never from fathom. **D24:** one unit for every language: the import package, or the directory for Python and TypeScript. Merge a Go external test package (`<pkg>_test`) into its directory’s package. The defining package/directory never counts as a caller of its own symbol. |
 | C7 independence | not fathom, not a repository fathom's own fleet indexes, at most 2 subjects per organization |
 
 A task from a dataset repository outside the kept subjects enters the bank only when that repository has its own C1
@@ -183,7 +183,7 @@ and Rust, 3 each.
 **Manifest.** `calibration/bench.d/<subject>.yaml`: the corpus.d repo entry unchanged (`name`, `url`, `ref`, `sha`,
 `licence`, `subpath`) plus a `bench:` block with `toolchain` (exact versions, lockfile sha256), `setup`, `test`,
 `suite_seconds`, `flake_runs`, `l0_reading`, `split`, `task_sources` (dataset, revision, licence each) and
-`contamination` (repository age, popularity band, `fresh_after`). `schema/bench` validates it (BX-1).
+`contamination` (repository age, popularity band, `fresh_after`, optional `prior_reads`). `schema/bench` validates it (BX-1). **D23:** popularity is GitHub stars at vetting: low <1,000, medium 1,000–10,000, high >10,000; the observed count belongs in the reading. **D25:** `split` is optional until the controller assigns held-out at BX-44 after Q2; each `prior_reads` entry names a committed fathom pilot, bank task or reading that already read the subject. A nonempty list forces dev.
 
 ## 6. Task families and graders
 
@@ -238,7 +238,7 @@ therefore off in every arm, and every reading says so.
 ## 8. Contamination control
 
 1. **No network inside a cell.** Package caches are pre-warmed outside the cell (`go mod download` at the base,
-   a pip wheelhouse, an npm cache). Inside it: `GOPROXY=off`, `GOFLAGS=-mod=readonly`, `PIP_NO_INDEX=1` with
+   a pip wheelhouse, an npm cache). Inside it: `GOPROXY=off`, `GOFLAGS=-mod=readonly` (never mutable module mode), `PIP_NO_INDEX=1` with
    `PIP_FIND_LINKS`, `npm_config_offline=true`, and all network denied to the agent's tool subprocesses except
    loopback to the cell's own scratch daemon. The harness process keeps its API connection. Package proxies are a
    leak path, because later releases of a subject contain the fix (correction 7). A spike (BX-55) picks the
