@@ -104,7 +104,9 @@ python3 calibration/oracles/scip-wire-census/run-producer.py \
 # Repeat with a different fresh scratch directory for --route prebuilt.
 ```
 
-The runner verifies the pinned subject and producer, waits for load <= 9, applies
+The runner verifies the pinned subject and producer, rejects a JDK whose release
+identity or executable version differs from Temurin 17.0.21+9 macOS aarch64,
+records the JDK distribution/version and java binary hash, waits for load <= 9, applies
 nice 10, a combined 1,200-second active-command timeout, two processors/workers,
 `JAVA_OPTS=-Xmx256m -XX:ActiveProcessorCount=2` for the launcher's JVM and the
 explicit 640 MB Gradle JVM argument. The pinned launcher header expands JAVA_OPTS.

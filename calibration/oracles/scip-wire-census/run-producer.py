@@ -20,6 +20,18 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def jdk_identity(jdk):
+    release = dict(line.split('=', 1) for line in (jdk/'release').read_text().splitlines() if '=' in line)
+    expected = {'IMPLEMENTOR': 'Eclipse Adoptium', 'IMPLEMENTOR_VERSION': 'Temurin-17.0.21+9', 'JAVA_RUNTIME_VERSION': '17.0.21+9', 'OS_ARCH': 'aarch64', 'OS_NAME': 'Darwin'}
+    actual = {key: release.get(key, '').strip('"') for key in expected}
+    if actual != expected:
+        raise ValueError('JDK distribution/version mismatch')
+    version = subprocess.run([str(jdk/'bin/java'), '-version'], capture_output=True, text=True, timeout=10, check=True)
+    if '17.0.21' not in version.stderr or 'Temurin-17.0.21+9' not in version.stderr:
+        raise ValueError('JDK executable version mismatch')
+    return {'release': actual, 'java_version': version.stderr.strip(), 'java_binary_sha256': sha(jdk/'bin/java')}
+
+
 def snapshot(subject):
     def git(*args):
         return subprocess.check_output(['git', '-C', str(subject), *args])
@@ -68,6 +80,13 @@ def self_test():
     import tempfile
     with tempfile.TemporaryDirectory() as scratch:
         root = Path(scratch)
+        (root/'release').write_text('JAVA_RUNTIME_VERSION=21\n')
+        try:
+            jdk_identity(root)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError('wrong JDK accepted')
         result = run([sys.executable, '-c', 'print("ok")'], root, os.environ.copy(), root/'ok.log', 5)
         assert result['exit_code'] == 0 and not result['timed_out']
         result = run([sys.executable, '-c', 'import time; time.sleep(30)'], root, os.environ.copy(), root/'timeout.log', .05)
@@ -95,6 +114,7 @@ def main():
     producer, jdk, subject, scratch = (p.resolve() for p in [args.producer, args.jdk, args.subject, args.scratch])
     if sha(producer) != PRODUCER_SHA:
         raise ValueError('producer checksum mismatch')
+    identity = jdk_identity(jdk)
     before = snapshot(subject)
     scratch.mkdir(parents=True, exist_ok=True)
     if (scratch/'index.scip').exists():
@@ -104,7 +124,7 @@ def main():
         env.pop(key, None)
     env.update(JAVA_HOME=str(jdk), PATH=str(jdk/'bin') + os.pathsep + env['PATH'], JAVA_TOOL_OPTIONS='-XX:ActiveProcessorCount=2', JAVA_OPTS='-Xmx256m -XX:ActiveProcessorCount=2', GRADLE_USER_HOME=str(scratch/'gradle'), COURSIER_CACHE=str(scratch/'coursier'), TMPDIR=str(scratch/'tmp'))
     (scratch/'tmp').mkdir(exist_ok=True)
-    receipt = {'route': args.route, 'source': before, 'producer_sha256': PRODUCER_SHA,
+    receipt = {'jdk': identity, 'route': args.route, 'source': before, 'producer_sha256': PRODUCER_SHA,
                'caps': {'timeout_seconds_combined': 1200, 'indexer_heap_mb': 256, 'gradle_heap_mb': 640, 'active_processors': 2, 'gradle_workers': 2, 'nice': 10}, 'phases': []}
     budget = 1200.0
     commands = []
