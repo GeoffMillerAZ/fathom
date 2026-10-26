@@ -38,3 +38,20 @@ compatibility gap requiring a separate ENGINE/K29 wave. Neither outcome promotes
 language level. No production bindings, engine, denominator, generated board, reading
 or canonical corpus changes are authorized by this audit. Existing spent holdouts
 stay outside it. Small synthetic codec self-tests prove the instrument only.
+
+## Preregistered second route after buildSrc failure
+
+The unmodified automatic route failed in57seconds at buildSrc:compileKotlin with
+NoClassDefFoundError for org.jetbrains.kotlin.extensions.ExtensionPointDescriptor,
+before any requested module compiled. The indexer injects its compiler plugin into
+the build-logic compiler too. No SCIP index was produced.
+
+One additional bounded route uses native Gradle init-script configuration, with no
+source, version-catalog or module-compiler edits. First run the pristine build's
+`gradlew help` to compile its original buildSrc normally. Then, only during indexing,
+an init script marks buildSrc's compileKotlin task `onlyIf { false }`, reusing those
+compiled build-logic classes while leaving all three requested module compilations
+active. This is an audit of those modules, not a full-corpus grade or buildSrc proof.
+Do not disable any requested module task or substitute source. Verify a clean subject
+before/after and retain a hash of tracked Kotlin sources. Stop the combined warm-up
+and producer attempt after20minutes. Any new failure stays a named route limit.
