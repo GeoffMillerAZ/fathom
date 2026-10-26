@@ -83,3 +83,21 @@ func TestProvenanceTablesCarryNoTotalRow(t *testing.T) {
 		t.Fatalf("rendering carries a total row:\n%s", out)
 	}
 }
+
+func TestPatchedProvenanceOrder(t *testing.T) {
+	l, _ := fixtureLock(t)
+	before := RenderProvenanceTables(l)
+	l.Grammars[0].Patches = []LockPatch{
+		{Path: "patches/first.patch", SHA256: strings.Repeat("a", 64)},
+		{Path: "patches/second.patch", SHA256: strings.Repeat("b", 64)},
+	}
+	out := RenderProvenanceTables(l)
+	a, b := strings.Index(out, "patches/first.patch"), strings.Index(out, "patches/second.patch")
+	if a < 0 || b <= a || !strings.Contains(out, strings.Repeat("a", 64)) || !strings.Contains(out, strings.Repeat("b", 64)) || !strings.Contains(out, "patched") {
+		t.Fatalf("patch provenance missing or reordered:\n%s", out)
+	}
+	l.Grammars[0].Patches = nil
+	if got := RenderProvenanceTables(l); got != before {
+		t.Fatal("unpatched rendering changed")
+	}
+}

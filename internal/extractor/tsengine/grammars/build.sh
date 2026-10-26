@@ -115,6 +115,11 @@ echo "fetching $REPO $TAG..."
 fetch "$REPO" "$TAG" "$(field .tarball_sha256)" "$(field .commit)" "$WORK/grammar"
 check_licence "$WORK/grammar" "$(field .licence)"
 
+# Apply only lock-declared, hash-verified source changes after upstream
+# archive/commit/licence checks and before optional parser generation.
+bash "$HERE/apply-patches.sh" "$LOCK" "$BLOB" "$WORK/grammar"
+check_licence "$WORK/grammar" "$(field .licence)"
+
 SUBDIRS=()
 while IFS= read -r d; do SUBDIRS+=("$d"); done < <(field '(.subdirs // []) | if length == 0 then ["."] else . end | .[]')
 

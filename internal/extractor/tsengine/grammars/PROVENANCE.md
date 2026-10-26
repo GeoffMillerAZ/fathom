@@ -1,8 +1,9 @@
 # Grammar blob provenance (ADR-021 §4, docs/plans/extraction-treesitter.md)
 
-Every `*.wasm.gz` file in this directory is built by `build.sh <blob>` from **official,
-upstream tree-sitter sources only** — tree-sitter's own core C runtime plus
-each grammar's own C parser — statically linked into one self-contained
+Every `*.wasm.gz` file in this directory is built by `build.sh <blob>` from
+verified upstream tree-sitter sources, with any ordered in-tree source patches
+declared and hash-pinned by the lock. Tree-sitter's core C runtime plus each
+grammar's C parser are statically linked into one self-contained
 `wasm32-wasi` module per language via `zig cc` (musl libc, no Emscripten). No
 third-party prebuilt `.wasm` artifact is vendored; no unverifiable blob is
 embedded.
@@ -11,7 +12,8 @@ embedded.
 
 `grammars.lock.json` (LB-F12, docs/design/language-breadth.md §8.1) is the record:
 for the core and every blob, the repository, tag, the commit the tag points at,
-the tarball's sha256 and the SPDX licence; for every blob, its entry points,
+the tarball's sha256 and the SPDX licence; for every blob, any ordered patch
+paths and sha256 digests, its entry points,
 grammar directories, ABI, the sha256 and size of the module and the size of the
 committed `.wasm.gz`. `TestGrammarLock` fails when a committed blob and its row
 disagree, when either exists without the other, or when a licence is off the
@@ -191,8 +193,9 @@ exists.
 `build.sh <blob> [outdir]` reads the blob's lock row, fetches the pinned core
 and grammar tarballs, refuses a tarball whose sha256 or embedded commit differs
 from the lock and a licence file (top level, `queries/`, `src/`) that does not
-state the lock's allowlisted licence, runs a pinned `tree-sitter-cli generate`
-for a `"generate": true` grammar, then:
+state the lock's allowlisted licence, verifies and applies any ordered
+hash-pinned patches from `patches/`, rechecks the licence, runs a pinned
+`tree-sitter-cli generate` for a `"generate": true` grammar, then:
 
 ```
 zig cc --target=wasm32-wasi-musl -mexec-model=reactor \
