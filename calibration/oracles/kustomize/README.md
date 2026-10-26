@@ -68,6 +68,17 @@ after counts, metrics and grades match across all three. The original subject
 SHA and cross-reference floors (12 and 1), and pooled floor (13), are conserved
 as explicit gates; no outcome-based file removal is permitted.
 
+Run the driver identity tests and native oracle tests before measurement:
+
+```sh
+python3 -m unittest calibration/oracles/kustomize/test_grade.py
+KUSTOMIZE_BIN="$KUST_CACHE/tools/kustomize-5.8.1" nice -n 10 go -C calibration/oracles/kustomize test -race -count=1 ./...
+```
+
+The CLI tests check native-invalid configuration accounting, a changed source
+fact, real Component content and whole-unit admission refusals with no partial
+truth or receipt. Binary identity accepts only the exact clean source revision.
+
 `publish.py` writes only org/repository IDs, fixed commit IDs, counts, metrics
 and hashes. It excludes subject source, file lists, raw oracle rows, log lines,
 unmatched details and any personal namespace. The public record states each

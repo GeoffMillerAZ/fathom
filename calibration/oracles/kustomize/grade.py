@@ -20,8 +20,9 @@ def source_binary(binary):
     settings = {}
     for line in details.splitlines():
         fields = line.split()
-        if len(fields) == 3 and fields[0] == "build":
-            settings[fields[1]] = fields[2]
+        if len(fields) == 2 and fields[0] == "build" and "=" in fields[1]:
+            key, value = fields[1].split("=", 1)
+            settings[key] = value
     if settings.get("vcs.revision") != BASE_COMMIT or settings.get("vcs.modified") != "false":
         raise RuntimeError("indexbench is not a clean build of the fixed source commit")
     return digest(binary)
