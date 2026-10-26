@@ -153,3 +153,45 @@ func TestScoreSCIPCUDAStandInsInScope(t *testing.T) {
 		t.Errorf("clang_stand_in_defs %d, clang_stand_in_extern_c %d; want 1, 1", res.Counts[CntClangStandInDefs], res.Counts[CntClangStandInExternC])
 	}
 }
+
+// TestScoreSCIPCUDABlindDefsFromCompiler (round 5 C5-R3): under ClangCUDA, with
+// a ranges companion read, a caller the index holds no occurrence in is the
+// compiler's function range, never a fathom node. extern "C" outer() spans
+// lines 1-6 with no occurrence of the index's; fathom also extracts a nested
+// inner() over lines 2-4; the compiler's one site, g at line 3, is outer's.
+func TestScoreSCIPCUDABlindDefsFromCompiler(t *testing.T) {
+	src := "extern \"C\" void outer(int n) {\n" + // 1
+		"  struct L { void inner() {\n" + // 2
+		"    g();\n" + // 3
+		"  } };\n" + // 4
+		"  (void)n;\n" + // 5
+		"}\n" + // 6
+		"int h() { return 0; }\n" // 7
+	idx := &scippb.Index{Metadata: &scippb.Metadata{ToolInfo: &scippb.ToolInfo{Name: "scip-clang", Version: "0.4.0"}},
+		Documents: []*scippb.Document{{RelativePath: "k.cu", Occurrences: []*scippb.Occurrence{
+			scipCallsiteDef("cxx . . $ h(3333333333333333).", nil, 6, 4, 5),
+		}}}}
+	raw, err := proto.Marshal(idx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nodes := []core.SymbolNode{
+		{Service: "s", Name: "outer", Kind: "CudaFunc", FilePath: "k.cu", Line: 1, EndLine: 6, Calls: []string{"g"}},
+		{Service: "s", Name: "inner", Kind: "CudaFunc", FilePath: "k.cu", Line: 2, EndLine: 4, Calls: []string{"g"}},
+		{Service: "s", Name: "h", Kind: "CudaFunc", FilePath: "k.cu", Line: 7, EndLine: 7},
+	}
+	opts := SCIPOptionsFor("cuda", func(string) []byte { return []byte(src) })
+	opts.ClangCUDA = true
+	opts.ClangLinkage.Function("k.cu", "outer", 1, 6, true)
+	opts.ClangSites = map[string][]ClangSite{"k.cu": {{Line: 3, Col: 5, Name: "g", Class: ClangResolved}}}
+	res, err := ScoreSCIPWith(raw, "s", nodes, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.CallTruth[CallPair{"k.cu", "outer", "g"}] || len(res.CallTruth) != 1 {
+		t.Errorf("call truth = %v, want only outer -> g (a fathom node never shapes the truth)", res.CallTruth)
+	}
+	if got := res.Counts[CntClangBlindDefs] + res.Counts[CntClangStandInDefs]; got != 1 {
+		t.Errorf("clang_blind_defs %d + clang_stand_in_defs %d, want one compiler range", res.Counts[CntClangBlindDefs], res.Counts[CntClangStandInDefs])
+	}
+}

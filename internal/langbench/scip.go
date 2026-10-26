@@ -3,6 +3,7 @@ package langbench
 import (
 	"bytes"
 	"fmt"
+	"maps"
 	"regexp"
 	"slices"
 	"sort"
@@ -688,20 +689,30 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 		}
 	}
 	if sites != nil {
-		if blind := clangBlindDefs(nodes, occLines, sites); len(blind) > 0 {
+		// round 4 C4-R1: the compiler's definitions, never fathom's, stand in,
+		// in the documents the compiler covered and the index holds, and
+		// only those the reading measures (round 5 C5-R1: a header the
+		// dialect does not own adds pairs fathom can never find)
+		covered := func(doc string) bool {
+			return sites.covers(doc) && occLines[doc] != nil && (opts.ClangScope == nil || opts.ClangScope[doc])
+		}
+		indexDefs := maps.Clone(defsByDoc) // the index's own definitions (round 5 C5-R3)
+		var blind []*scipDef
+		if opts.ClangCUDA && opts.ClangLinkage.readRanges() {
+			// round 5 C5-R3: a caller the index holds no occurrence in is the
+			// compiler's function range, never a fathom node
+			blind = opts.ClangLinkage.clangBlindRanges(occLines, covered)
+		} else {
+			blind = clangBlindDefs(nodes, occLines, sites)
+		}
+		if len(blind) > 0 {
 			for _, def := range blind {
 				defsByDoc[def.doc] = append(defsByDoc[def.doc], def)
 			}
 			res.Counts[CntClangBlindDefs] += len(blind)
 		}
 		if opts.ClangCUDA {
-			// round 4 C4-R1: the compiler's definitions, never fathom's, stand in,
-			// in the documents the compiler covered and the index holds, and
-			// only those the reading measures (round 5 C5-R1: a header the
-			// dialect does not own adds pairs fathom can never find)
-			standIns, externC := opts.ClangLinkage.clangStandIns(defsByDoc, func(doc string) bool {
-				return sites.covers(doc) && occLines[doc] != nil && (opts.ClangScope == nil || opts.ClangScope[doc])
-			})
+			standIns, externC := opts.ClangLinkage.clangStandIns(indexDefs, blind, covered)
 			for _, def := range standIns {
 				defsByDoc[def.doc] = append(defsByDoc[def.doc], def)
 			}
