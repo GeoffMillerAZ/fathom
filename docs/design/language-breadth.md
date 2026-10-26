@@ -1776,6 +1776,21 @@ oracle output stays under `workspace/`.
 level is never higher than its reading's `level_met`, and a registered dialect without a
 reading is listed as `tolerated`.
 
+**Tool-oracle call scope.** A neutral oracle's nonempty `scope` names every measured
+file it read, including files where it found no calls. Call precision counts fathom's
+pairs on all those files; an empty truth set in one file cannot hide false positives.
+The oracle's `call_exclusions` still remove the named callees on both sides, with counts.
+A nonempty `scope` asserts complete call coverage over the named files, even when
+`calls` is empty, null or omitted: zero calls there is truth. An empty call list
+without scope does not assert coverage or contribute a calls family; producers may
+emit it after a parse fallback or for definitions-only output. Nonempty legacy
+call dumps without an explicit scope retain their calls-derived file coverage.
+This coverage is independent of definitions. In the current reading inventory,
+`dxc-ast` is the only producer of a top-level call `scope`, and HLSL is the
+only affected reading. Its raw call pairs require remeasurement, not merely
+regrading stored counts. SQL's unscoped empty call lists remain unasserted;
+PHP's current nonempty unscoped calls retain their calls-derived coverage.
+
 **Producer-specific rules (LB-Q-rust, 2026-09-28).** A SCIP producer's own vocabulary is read
 by the harness where it would otherwise score a definition or a call no source text spells:
 rust-analyzer's `impl#[Type]name().` members (`]` closes a descriptor), its macro-expanded

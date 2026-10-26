@@ -1183,7 +1183,11 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 				res.notes = append(res.notes, toolOracleDisclosures(spec.Manifest, name, tf)...) // wave lf5: the oracle's own counts
 				if len(tf.Scope) > 0 {
 					in, _ := toolOracleScope(tf.Scope, inScope, nil)
-					res.notes = append(res.notes, fmt.Sprintf(noteToolOracleScope, name, tf.Tool, len(in), len(inScope)))
+					families := "calls"
+					if l1 != nil {
+						families = "definitions and calls"
+					}
+					res.notes = append(res.notes, fmt.Sprintf(noteToolOracleScope, name, tf.Tool, families, len(in), len(inScope)))
 				}
 			}
 		}
@@ -1402,8 +1406,8 @@ type oraclePair struct {
 // inScope is the file list fathom read (§1.4 Scope): an oracle entry on
 // any other file is dropped and counted, never scored as a miss.
 //
-// The *callDiff, non-nil when the file carries calls, is the L2 comparison
-// -unmatched writes (LB-F64).
+// The *callDiff, non-nil when the file asserts call coverage, is the L2
+// comparison -unmatched writes (LB-F64).
 func scoreToolOracle(path string, m langbench.Manifest, nodes []core.SymbolNode, sub *langbench.Subject, inScope map[string]bool) (langbench.OracleRun, int, *langbench.L1Result, *callDiff, error) {
 	fail := func(err error) (langbench.OracleRun, int, *langbench.L1Result, *callDiff, error) {
 		return langbench.OracleRun{}, 0, nil, nil, err
@@ -1447,12 +1451,19 @@ func scoreToolOracle(path string, m langbench.Manifest, nodes []core.SymbolNode,
 		sub.KindIntersection = l1.Intersection
 		sub.Families[langbench.FamilyL1] = tier
 	}
-	if len(tf.Calls) > 0 {
+	if len(tf.Calls) > 0 || len(tf.Scope) > 0 {
 		if _, done := sub.Families[langbench.FamilyCalls]; done {
 			return fail(fmt.Errorf("%s: calls given alongside another calls oracle (a SCIP index or an earlier file); measure one per subject", path))
 		}
 		truth := map[langbench.CallPair]bool{}
 		files := map[string]bool{}
+		if len(tf.Scope) > 0 {
+			// Explicit scope covers files with zero oracle calls. Legacy
+			// nonempty calls without scope cover only their named files.
+			for f := range inScope {
+				files[f] = true
+			}
+		}
 		for _, c := range tf.Calls {
 			if !inScope[c.Path] {
 				dropped++
@@ -1507,7 +1518,7 @@ func toolOracleScope(scope []string, inScope map[string]bool, nodes []core.Symbo
 }
 
 // noteToolOracleScope discloses a tool oracle's scope (H5-R4).
-const noteToolOracleScope = "%s: %s grades definitions and calls on its scope, %d of %d measured files (the files it reads); a file outside is neither a recall nor a precision miss, while tenancy and file edges cover every measured file"
+const noteToolOracleScope = "%s: %s grades %s on its scope, %d of %d measured files (the files it reads); a file outside is neither a recall nor a precision miss, while tenancy and file edges cover every measured file"
 
 var universalCtagsRE = regexp.MustCompile(`Universal Ctags ([0-9][^,( ]*)`)
 
