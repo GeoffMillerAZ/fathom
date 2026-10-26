@@ -35,6 +35,13 @@ python3 -I calibration/oracles/sqlglot/sql_refs_oracle.py workspace/calibration/
 go run ./cmd/indexbench lang-oracle -dialect sql -subject workspace/calibration/scope-compat/sql/pagila -subject-name devrimgunduz/pagila -only pagila-schema.sql,pagila-schema-jsonb.sql,pagila-temporal-setup.sql -ctags workspace/tmp/absent-ctags -tool-oracle workspace/tmp/sql-pagila-calls.json -out workspace/tmp/sql-pagila-compatibility.json
 ```
 
+A second real sqlglot replay used Sqitch `ce0550c45ade3527d0c7f981c934e1ea4bdd6c19` and the existing 28-file SQLite measurement set. It preserves the nonempty calls family: 14 truth pairs and 14 Fathom pairs, all matched, at tier C. The harness discloses 22 oracle entries outside the measured files. Together the two subjects reproduce the existing SQL call counts without treating Pagila’s empty list as an assertion. This is a call-only control, not a full SQL remeasurement.
+
+```sh
+python3 -I calibration/oracles/sqlglot/sql_refs_oracle.py --dialect '*sqlite*=sqlite' workspace/calibration/scope-compat/sql/sqitch > workspace/tmp/sql-sqitch-calls.json
+go run ./cmd/indexbench lang-oracle -dialect sql -subject workspace/calibration/scope-compat/sql/sqitch -subject-name sqitchers/sqitch -only 'lib/App/Sqitch/Engine/sqlite.sql,lib/App/Sqitch/Engine/Upgrade/sqlite-*.sql,t/lib/upgradable_registries/sqlite.sql,t/engine/**/*.sql,t/sql/**/*.sql' -ctags workspace/tmp/absent-ctags -tool-oracle workspace/tmp/sql-sqitch-calls.json -out workspace/tmp/sql-pagila-compatibility.json
+```
+
 The command-level regressions also pass a nonempty calls oracle followed by a PHP-style definitions-only `calls: []` file. The second file neither triggers the duplicate-family refusal nor changes call counts or metrics. The current PHP reading uses nonempty php-parser calls at tier B, whose unscoped coverage remains calls-derived. No PHP executable, Composer environment or pinned SCIP indexes were available here, so no complete PHP producer/extraction replay is claimed.
 
 Runnable regression and stored-count proof:
