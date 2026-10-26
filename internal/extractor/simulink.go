@@ -948,16 +948,29 @@ func (m *SimulinkModel) jsonModelRefs(b []byte, budget *simulinkBudget) error {
 		}
 		return fmt.Errorf("%w: line %d: %w", ErrSimulinkCap, line(), err)
 	}
+	// end refuses data after the top-level value, as a decode of the whole part does.
+	end := func() error {
+		if _, err := d.Token(); err != io.EOF {
+			if err == nil {
+				err = errors.New("data after the top-level value")
+			}
+			return syntax(err)
+		}
+		return nil
+	}
 	if open, err := jsonOpens(d, '{'); err != nil {
 		return syntax(err)
 	} else if !open {
-		return nil
+		return end()
 	}
 	if err := object(&top, false); err != nil {
 		return syntax(err)
 	}
 	if _, err := d.Token(); err != nil { // the closing brace
 		return syntax(err)
+	}
+	if err := end(); err != nil {
+		return err
 	}
 	refs := top
 	if hasInner {

@@ -76,6 +76,12 @@ func simulinkHashburn(depth int, name string, dsts int, mdl bool) string {
 // them to 1,000 just under the byte cap in a model named m. A .mdl when mdl, else a
 // .slx system part.
 func simulinkDupSources(dups, dsts int, mdl bool) string {
+	return simulinkDupSourcesPlus(dups, dsts, mdl, false)
+}
+
+// simulinkDupSourcesPlus is simulinkDupSources and, when extra, one more block B with one
+// line to the first two-letter block: exactly one more emitted call.
+func simulinkDupSourcesPlus(dups, dsts int, mdl, extra bool) string {
 	var b strings.Builder
 	const set = "abcdefghijklmnopqrstuvwxyz0123456789" // 1,296 two-letter names
 	name := func(i int) string { return string(set[i/36%36]) + string(set[i%36]) }
@@ -85,11 +91,18 @@ func simulinkDupSources(dups, dsts int, mdl bool) string {
 		for i := 0; i < dsts; i++ {
 			fmt.Fprintf(&b, "Block {\nName \"%s\"\n}\n", name(i))
 		}
+		if extra {
+			b.WriteString("Block {\nName \"B\"\n}\n")
+		}
 		b.WriteString("Line {\nSrcBlock \"A\"\n")
 		for i := 0; i < dsts; i++ {
 			fmt.Fprintf(&b, "Branch {\nDstBlock \"%s\"\n}\n", name(i))
 		}
-		b.WriteString("}\n }\n}\n")
+		b.WriteString("}\n")
+		if extra {
+			fmt.Fprintf(&b, "Line {\nSrcBlock \"B\"\nDstBlock \"%s\"\n}\n", name(0))
+		}
+		b.WriteString(" }\n}\n")
 		return b.String()
 	}
 	b.WriteString(`<System>`)
@@ -99,11 +112,18 @@ func simulinkDupSources(dups, dsts int, mdl bool) string {
 	for i := 0; i < dsts; i++ {
 		fmt.Fprintf(&b, `<Block Name="%s"/>`, name(i))
 	}
+	if extra {
+		b.WriteString(`<Block Name="B"/>`)
+	}
 	b.WriteString(`<Line><P Name="SrcBlock">A</P>`)
 	for i := 0; i < dsts; i++ {
 		fmt.Fprintf(&b, `<P Name="DstBlock">%s</P>`, name(i))
 	}
-	b.WriteString(`</Line></System>`)
+	b.WriteString(`</Line>`)
+	if extra {
+		fmt.Fprintf(&b, `<Line><P Name="SrcBlock">B</P><P Name="DstBlock">%s</P></Line>`, name(0))
+	}
+	b.WriteString(`</System>`)
 	return b.String()
 }
 
@@ -137,19 +157,25 @@ func TestReadSimulinkModelCountCaps(t *testing.T) {
 		if m, r, err := read(simulinkDupSources(65, 1000, mdl)); err != nil || len(m.Signals) != 1000 || len(r.Nodes) != 1066 {
 			t.Errorf("mdl=%v: 65 sources: %d signals, %d nodes, %v; want 1,000 and 1,066", mdl, len(m.Signals), len(r.Nodes), err)
 		}
-		for name, src := range map[string]string{
-			"257 short children":   simulinkFanPairs(257, "p", mdl),
-			"700 short children":   simulinkFanPairs(700, "p", mdl),
-			"66 sources named A":   simulinkDupSources(66, 1000, mdl),
-			"8300 sources named A": simulinkDupSources(8300, 1000, mdl),
+		// 64 sources named A, 1,024 destinations: exactly 65,536 emitted calls, read in full.
+		if m, r, err := read(simulinkDupSources(64, 1024, mdl)); err != nil || len(m.Signals) != 1024 || len(r.Nodes) != 64+1024+1 {
+			t.Errorf("mdl=%v: 64 sources x 1,024: %d signals, %d nodes, %v; want 1,024 and 1,089", mdl, len(m.Signals), len(r.Nodes), err)
+		}
+		for _, c := range []struct{ name, src, why string }{
+			{"257 short children", simulinkFanPairs(257, "p", mdl), "past 65536 signals"},
+			{"700 short children", simulinkFanPairs(700, "p", mdl), "past 65536 signals"},
+			{"66 sources named A", simulinkDupSources(66, 1000, mdl), "past 65536 emitted calls"},
+			{"8300 sources named A", simulinkDupSources(8300, 1000, mdl), "past 65536 emitted calls"},
+			// one past the cap: the 64 x 1,024 model above and one more line of one call.
+			{"65,537 calls", simulinkDupSourcesPlus(64, 1024, mdl, true), "past 65536 emitted calls"},
 		} {
-			if name == "700 short children" && mdl {
+			if c.name == "700 short children" && mdl {
 				continue // 12 MB of .mdl; the heap test's shape is 260 children
 			}
-			m, r, err := read(src)
-			if !errors.Is(err, ErrSimulinkCap) || len(m.Blocks) != 0 || len(m.Signals) != 0 || len(r.Nodes) != 0 {
-				t.Errorf("mdl=%v: %s: %d blocks, %d signals, %d nodes, %v; want ErrSimulinkCap and nothing",
-					mdl, name, len(m.Blocks), len(m.Signals), len(r.Nodes), err)
+			m, r, err := read(c.src)
+			if !errors.Is(err, ErrSimulinkCap) || !strings.Contains(err.Error(), c.why) || len(m.Blocks) != 0 || len(m.Signals) != 0 || len(r.Nodes) != 0 {
+				t.Errorf("mdl=%v: %s: %d blocks, %d signals, %d nodes, %v; want ErrSimulinkCap (%s) and nothing",
+					mdl, c.name, len(m.Blocks), len(m.Signals), len(r.Nodes), err, c.why)
 			}
 		}
 	}
@@ -386,13 +412,35 @@ func TestReadSimulinkModelRefsPartRefused(t *testing.T) {
 		t.Fatalf("the model alone: %d blocks, %v; want it read", len(m.Blocks), err)
 	}
 	for name, part := range map[string][2]string{
-		"xml over the element budget": {"simulink/graphicalInterface.xml", slxNoise(SimulinkMaxElements, `<P Name="x">%s</P>`, false)},
-		"xml not well formed":         {"simulink/graphicalInterface.xml", `<GraphicalInterface><ModelReference>`},
-		"json not well formed":        {"simulink/graphicalInterface.json", `{"ModelReferences": [{"BlockPath": "a/b", "ModelName": `},
+		"xml over the element budget":  {"simulink/graphicalInterface.xml", slxNoise(SimulinkMaxElements, `<P Name="x">%s</P>`, false)},
+		"xml not well formed":          {"simulink/graphicalInterface.xml", `<GraphicalInterface><ModelReference>`},
+		"json not well formed":         {"simulink/graphicalInterface.json", `{"ModelReferences": [{"BlockPath": "a/b", "ModelName": `},
+		"json data after the object":   {"simulink/graphicalInterface.json", `{"ModelReferences":[{"BlockPath":"$bdroot/K","ModelName":"a"}]} garbage`},
+		"json second value":            {"simulink/graphicalInterface.json", `{}{`},
+		"json data after a non-object": {"simulink/graphicalInterface.json", `[1] garbage`},
 	} {
 		m, err := ReadSimulinkModel("m.slx", slxPackage(t, sys, block, part[0], part[1]))
 		if !errors.Is(err, ErrSimulinkCap) || !strings.Contains(err.Error(), path.Base(part[0])) || len(m.Blocks) != 0 {
 			t.Errorf("%s: %d blocks, %v; want ErrSimulinkCap naming %s and nothing read", name, len(m.Blocks), err, path.Base(part[0]))
+		}
+	}
+}
+
+// TestReadSimulinkModelJSONRefsSpendElementBudget is S5-R2: each reference in
+// graphicalInterface.json spends an element of the budget the package's XML parts share, so
+// a system part that leaves room for two references reads with two and refuses with three.
+func TestReadSimulinkModelJSONRefsSpendElementBudget(t *testing.T) {
+	sys := "simulink/systems/system_root.xml"
+	// n elements and the <System> root: SimulinkMaxElements-2 spent, two left.
+	noise := slxNoise(SimulinkMaxElements-3, `<P Name="x">%s</P>`, false)
+	for refs, wantErr := range map[int]bool{2: false, 3: true} {
+		m, err := ReadSimulinkModel("m.slx", slxPackage(t, sys, noise, "simulink/graphicalInterface.json", simulinkRefsJSON(refs, "$bdroot/K")))
+		if wantErr {
+			if !errors.Is(err, ErrSimulinkCap) || !strings.Contains(err.Error(), "past 524288 elements") || len(m.ModelRefs) != 0 {
+				t.Errorf("%d references: %d model refs, %v; want ErrSimulinkCap past 524288 elements", refs, len(m.ModelRefs), err)
+			}
+		} else if err != nil || len(m.ModelRefs) != refs {
+			t.Errorf("%d references: %d model refs, %v; want them read", refs, len(m.ModelRefs), err)
 		}
 	}
 }
