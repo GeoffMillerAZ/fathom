@@ -222,5 +222,15 @@
     "probe.py": "ab688a58409a328d0fb12c00e407a7a28673f2ef2043ab98727eb90ca4c2631f",
     "replay.py": "81a8b6667dfad275f749c242d1dbcaed7fba242b49e3a1543b8a498e379e7a76",
     "roundtrip.py": "05c2f7cce1952bc084edd9087c173b809c81f1299e92af1af2e42bf13a0ef5f8"
+  },
+  "review_tier_correction": {
+    "client_metadata_only_sha256": "c391ccbd5c997d84092f0334f58e33166e525d890adf1e02b85184d0f4fbad9c",
+    "code_sha256": {
+      "compare_native.py": "9d26a99da048026cddbbd18fffb6df419599b470ca059c978c5f290f718e8234",
+      "retier_diagnostic.py": "00fbfb1abd6e4d56322dc63ba1b90ae3a976cb13282a43a42670eac06f253951",
+      "test_comparison.py": "37031dd984ce96938cbb0d029ad3ee9874fde9446efb3d234e391a10ea47c7fa"
+    },
+    "fresh_lsp_or_environment_run": false,
+    "operation": "unchanged written pair content; retained recorded counts; tier-C regrade only"
   }
 }

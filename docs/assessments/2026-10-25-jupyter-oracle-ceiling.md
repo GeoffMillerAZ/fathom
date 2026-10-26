@@ -16,7 +16,7 @@ apply; a translated Python export is at most tier B, never tier A.
 | scip-python direct batch | 0.6.8; source `3b50a0697bdd` | Exact notebook/control probe indexes Total Project Files 0/1. Batch FileMatcher accepts .py/.pyi; its Pyright cell analysis is a separate entrypoint. |
 | scip-python over cell export | 0.6.8 | Viable translated-input route, at most B. No tier-A promise follows from independent position mapping. |
 | basedpyright native CLI | 1.40.2, source `344759687c2f` | Exact notebook/control probe reports one analyzed file for each. JSON contains diagnostics/summary, not call/reference pairs. Native notebook discovery works. |
-| basedpyright native notebook LSP | 1.40.2 | Scripted notebookDocument/didOpen with unchanged cell texts resolves both probe calls. All 51 nontranslation ML notebooks checked: 893/1,120 enumerable call sites receive definitions after declared ML packages are installed; 227 unresolved sites and six scanner-rejected cells and eight opaque magic lines remain explicit. Not complete reference truth. |
+| basedpyright native notebook LSP | 1.40.2 | Scripted notebookDocument/didOpen with unchanged cell texts resolves both probe calls. All 51 nontranslation ML notebooks checked: 893/1,120 enumerable call sites receive definitions after declared ML packages are installed; 227 unresolved sites and six scanner-rejected cells and eight opaque magic lines remain explicit. Coverage only; not resolved pair content. Direct notebook input removes translation, but the independent analyzer remains C under P-T1/OL-R2/OL-R7. |
 | Pylance | 2026.4.101 prerelease (public changelog, 2026-10-15); no binary installed | Excluded from the free redistributable offline oracle route. Its proprietary code is unnecessary because basedpyright implements native notebook support. No execution claim. |
 | jupytext py:percent | 1.19.6 | Full roundtrip check across both pinned subjects: 113/187 pass; 74 fail (four empty invalid notebooks, 70 readable differences). Cell markers offer a mapping route, but code-source equality fails on 30 readable notebooks. Not asserted lossless or tier A. |
 
@@ -100,10 +100,11 @@ contract is imposed on the handbook. The separate modern experiment below now pr
 Holdouts stay outside canonical shards.
 
 **Hypothesis:** independently source-mapped scip-python over exported Python can
-improve the evidence to B at most. Native untranslated notebook definition answers
-from basedpyright can supply tier A only for the population they attest; every call
-site, unknown result, scanner loss and dependency gap must be accounted for in the
-comparison. Neither route authorizes a tier promotion from an unmeasured adapter.
+improve the evidence to B at most. basedpyright answers remain tier C under
+P-T1, as OL-R2/OL-R7; direct notebook reading removes translation but does not
+change ownership or tier. L2 can be lifted only by a maintained SCIP indexer
+reading untranslated notebooks or an explicit owner ruling. Complete population,
+cell/magic and environment accounting would still be required.
 
 
 ## OL-R4 modern-subject measurement
@@ -121,23 +122,32 @@ The native notebook LSP receives unchanged cells. It returns definitions at
 **1,945/2,071** enumerated call sites; **126** remain unknown. No cell is rejected;
 34 magic lines remain opaque under the declared scanner policy. These are
 [full-site receipts](data/jupyter-oracle-2026-10-25/native-modern-results.json), not
-an inference from a tiny probe. The adapter projects native-answered sites to 1,270
-raw qualified-name pairs; the existing manifest's name normalization produces
-1,094 distinct scored truth pairs. All 14 notebooks enter the harness.
+an inference from a tiny probe. The old receipts retained only answer category/range, not target URI/name. The
+1,270 raw pairs (1,094 normalized) instead come from the tier-C AST walk's written
+caller/callee names, filtered by answer presence. That filter supplies no resolved
+target truth. An external os.path.join answer may contradict a notebook-local
+join edge with the same written name; a nonempty answer cannot confirm it.
 
 The [diagnostic comparison](data/jupyter-oracle-2026-10-25/modern-comparison-summary.json)
-reads native-answered reference precision **.9327** (1,094/1,173), recall **1**;
-the same-scope syntax comparison reads **.9940/1** (1,166/1,173). Both computed
-artifacts stay L2 good. The 72-pair difference in truth, plus the seven syntax-only
-fathom pairs, is disclosed rather than waived through an oracle-blind rule. A
-native answer subset is tier A for what it attests, but cannot establish complete
-call-population truth. These diagnostic readings do not promote canonical support
-or claim a new performance ceiling. The committed replay emits both readings and
-all unknown sites; no held-out file enters the canonical corpus.
+contains two **tier-C syntax** readings. The answered-site filter reads
+**.9327** (1,094/1,173), recall **1**, explicitly a **lower bound; unknown sites
+counted as misses**. It is not native binding precision or an error rate. The
+complete written-syntax comparison reads **.9940/1** (1,166/1,173). Both stay L2
+good. The 72-pair syntax-filter difference and seven other syntax mismatches are
+explicit; no unknown is waived by an oracle-blind rule. Legacy native filenames
+remain for receipt continuity, with pair source/tier and the absence of resolved
+target truth now stated in the JSON. No held-out file enters the canonical corpus.
 
-**Hypothesis:** a native notebook analyzer that supplies the missing binding
-answers, with complete cell/magic and environment coverage, can support the next
-canonical comparison. The current basedpyright route is real and measured, but its
-unknown answers and preserved handbook environment prevent claiming a complete
-new tier-A canonical oracle today. The translated scip-python alternative remains
-at most B, independent of this native route.
+**Hypothesis:** basedpyright can improve coverage diagnostics, but its custom
+exports remain C even if every answer is known. A maintained SCIP indexer reading
+untranslated notebooks, or a documented owner amendment, is the retry trigger for
+lifting L2. The translated alternative remains at most B. The handbook's declared
+environment is preserved, and the modern subject remains a separate diagnostic.
+
+**Review correction:** the earlier A labels were invalid. This change takes the
+controller's C option; it does not claim a new resolved-reference oracle. The
+[regression](data/jupyter-oracle-2026-10-25/test_comparison.py) prevents the shadowed
+name example from becoming an A claim. The pair content is re-emitted from the committed coverage receipt and asserted
+unchanged; lang-regrade recomputes the C tier/grade consequences from recorded
+counts. The original full LSP/environment probes, extraction and timing are not
+claimed as freshly rerun.

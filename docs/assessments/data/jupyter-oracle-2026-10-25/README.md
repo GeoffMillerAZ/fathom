@@ -36,7 +36,7 @@ npm install --prefix workspace/tools/jupyter-scip --ignore-scripts --no-audit --
   @sourcegraph/scip-python@0.6.8
 nice -n 10 go build -o workspace/tools/indexbench ./cmd/indexbench
 # Install/build universal-ctags 6.2.1 locally as the existing corpus recipe requires.
-# Check uptime and run one job at a time; the replay refuses load above6.
+# Check uptime and run one job at a time; the replay refuses load above 6.
 nice -n 10 workspace/tools/jupyter-python/bin/python \
   docs/assessments/data/jupyter-oracle-2026-10-25/replay.py \
   --server workspace/tools/jupyter-python/bin/basedpyright-langserver \
@@ -61,9 +61,37 @@ and written-name projection, never fathom's extractor or guesses about unknown
 native answers. The existing manifest's name normalization collapses duplicate
 qualified-name pairs; the raw and scored pair populations are both recorded.
 
-`compare_native.py` produces a **diagnostic** reading against native-answered pairs,
-alongside a syntax comparison on the same complete modern subject. Unknown answers
-remain in the full native receipt and in fathom's precision denominator. This does
-not turn a partial native truth population into complete tier-A support or apply
-an oracle-blind exclusion rule. No canonical grade is changed. The one-run timing
+`compare_native.py` produces two **tier-C syntax diagnostics**: the complete
+written-name population and a subset filtered by basedpyright answer presence.
+Both ends of every pair come from the existing AST walk; no resolved target URI
+or name was retained in the old coverage receipts. The legacy native-pairs and
+native-diagnostic filenames do not designate native reference truth. A nonempty
+external answer can contradict a written local name (the shadowed join case); the
+filter must never be cited as native binding agreement. basedpyright itself is C
+under P-T1/OL-R2/OL-R7, even with untranslated notebooks.
+
+Unknown answers stay in the full receipt and the precision denominator. The
+filtered .9327 is a **lower bound; unknown sites counted as misses**, not a native
+binding error rate. No answered-site accuracy is claimed. No oracle-blind rule is
+applied. `test_comparison.py` guards the tier and the shadowing interpretation. No canonical grade is changed. The one-run timing
 fields are diagnostic, not a performance-ceiling claim. No holdout enters the shard.
+
+## Review tier correction
+
+The original `oracle_code_sha256` entries in manifest.json identify the historical
+full probes. The separate `review_tier_correction` records the correction scripts
+actually rerun; the client header-only update has a separate hash and was not
+rerun against the server. Pair content, recorded extraction counts and timing are unchanged;
+`lang-regrade` recomputes only the tier/grade consequences. No scientific stack or
+LSP rerun is needed to correct the invalid A label. To repeat the correction:
+
+```sh
+python3 -B docs/assessments/data/jupyter-oracle-2026-10-25/test_comparison.py
+nice -n 10 python3 -B docs/assessments/data/jupyter-oracle-2026-10-25/retier_diagnostic.py \
+  --data docs/assessments/data/jupyter-oracle-2026-10-25 \
+  --indexbench workspace/tools/indexbench
+```
+
+The helper refuses any pair-content change; a content change needs a fresh
+`lang-oracle` run. The test covers the shadowed local/imported `join` example:
+an external answer does not turn the written name into a native binding proof.

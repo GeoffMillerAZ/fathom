@@ -34,7 +34,7 @@
       },
       "families": {
         "l1": "B",
-        "refs": "A"
+        "refs": "C"
       },
       "kind_intersection": [
         "class",
@@ -58,9 +58,9 @@
   ],
   "oracles": [
     {
-      "tier": "A",
-      "tool": "basedpyright native notebook definitions (answered subset; diagnostic only)",
-      "version": "basedpyright 1.40.2"
+      "tier": "C",
+      "tool": "Python AST written pairs filtered by basedpyright answer presence (diagnostic C)",
+      "version": "basedpyright 1.40.2; Python 3.13.5 AST, existing jupyter_oracle.CallWalker written-name projection"
     },
     {
       "tier": "B",
@@ -77,8 +77,8 @@
     "xref_recall": null
   },
   "metric_tiers": {
-    "ref_precision": "A",
-    "ref_recall": "A",
+    "ref_precision": "C",
+    "ref_recall": "C",
     "sym_precision": "B",
     "sym_recall": "B"
   },
@@ -120,9 +120,10 @@
     "tool:namespace": 57
   },
   "notes": [
+    "Review correction only: original pair content, counts, extraction and timing retained; no new native target truth or performance run.",
+    "Tier-C syntax filter, not resolved-reference truth: 1945/2071 enumerable sites answered; 126 unknown; 0 scanner-rejected cells; 34 opaque magic lines. Pair content comes from the AST walk, not definition targets. basedpyright remains C under P-T1/OL-R2/OL-R7. Precision is a lower bound with unknown sites counted as misses, not a native binding error rate.",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "wesm/pydata-book (separate modern diagnostic holdout): Diagnostic holdout, not a canonical support promotion: 1945/2071 enumerable sites answered; 126 unknown; 0 scanner-rejected cells; 34 opaque magic lines; all gaps retained in native receipt. Only native-answered pairs enter this diagnostic truth.",
-    "wesm/pydata-book (separate modern diagnostic holdout): OL-R4 modern subject; kept outside canonical corpus and reading; native subset is diagnostic, unknowns and scanner gaps forbid a full-population tier-A claim"
+    "regraded at 6e33b33df from the recorded subject counts (harness rules only; extraction as measured at 08def9e00)"
   ],
   "disposition": null
 }

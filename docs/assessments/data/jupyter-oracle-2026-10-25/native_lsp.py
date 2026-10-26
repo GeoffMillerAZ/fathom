@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Headless native notebook LSP probe; cell text is sent unchanged, never exported."""
+"""Headless direct-notebook LSP coverage probe; independent analyzer tier C."""
 import argparse
 import ast
 import json
@@ -95,7 +95,8 @@ def call_sites(text):
             lines[index] = line[:len(line)-len(stripped)] + 'pass'
     tree = ast.parse('\n'.join(lines))
     # Reuse the existing public benchmark's declared caller/name projection only;
-    # native definition answers, never this walk, determine resolved truth.
+    # these written pairs remain tier C. Answer presence measures coverage only,
+    # never resolved target truth or agreement with the written callee name.
     sys.dont_write_bytecode = True
     recipe = Path(__file__).resolve().parents[4] / 'calibration/oracles/jupyter/jupyter_oracle.py'
     spec = importlib.util.spec_from_file_location('notebook_projection', recipe)
@@ -173,7 +174,10 @@ def main():
               'files':len(records), 'calls':len(calls), 'resolved_calls':sum(bool(c['definitions']) for c in calls),
               'rejected_cells':sum(len(r['rejected_cells']) for r in records),
               'opaque_magic_lines':sum(r['opaque_magic_lines'] for r in records), 'records':records,
-              'claim':'native LSP feasibility, not complete call-population truth or a grade'}
+              'analyzer_tier':'C',
+              'written_pair_source':'Python AST caller/callee names, not definition target references',
+              'resolved_target_truth':False,
+              'claim':'direct notebook LSP coverage only; independent analyzer C; no resolved target-pair truth or grade'}
     out.write_text(json.dumps(result, indent=2, sort_keys=True)+'\n')
     print(json.dumps({k:v for k,v in result.items() if k!='records'}, sort_keys=True))
 

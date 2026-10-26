@@ -1,7 +1,8 @@
 {
   "disclose": [
-    "Diagnostic holdout, not a canonical support promotion: 1945/2071 enumerable sites answered; 126 unknown; 0 scanner-rejected cells; 34 opaque magic lines; all gaps retained in native receipt. Only native-answered pairs enter this diagnostic truth."
+    "Tier-C syntax filter, not resolved-reference truth: 1945/2071 enumerable sites answered; 126 unknown; 0 scanner-rejected cells; 34 opaque magic lines. Pair content comes from the AST walk, not definition targets. basedpyright remains C under P-T1/OL-R2/OL-R7. Precision is a lower bound with unknown sites counted as misses, not a native binding error rate."
   ],
+  "pair_source": "Python AST written caller/callee names; not basedpyright target references",
   "references": [
     {
       "from": "<module>",
@@ -6354,7 +6355,8 @@
       "to": "pd.read_table"
     }
   ],
-  "tier": "A",
-  "tool": "basedpyright native notebook definitions (answered subset; diagnostic only)",
-  "version": "basedpyright 1.40.2"
+  "resolved_target_truth": false,
+  "tier": "C",
+  "tool": "Python AST written pairs filtered by basedpyright answer presence (diagnostic C)",
+  "version": "basedpyright 1.40.2; Python 3.13.5 AST, existing jupyter_oracle.CallWalker written-name projection"
 }

@@ -1,7 +1,8 @@
 {
   "analysis_python": "Python 3.13.5",
+  "analyzer_tier": "C",
   "calls": 2,
-  "claim": "native LSP feasibility, not complete call-population truth or a grade",
+  "claim": "direct notebook LSP coverage only; independent analyzer C; no resolved target-pair truth or grade",
   "files": 1,
   "native_notebook_sync": {
     "notebookSelector": [
@@ -78,5 +79,7 @@
   ],
   "rejected_cells": 0,
   "resolved_calls": 2,
-  "server": "basedpyright 1.40.2"
+  "resolved_target_truth": false,
+  "server": "basedpyright 1.40.2",
+  "written_pair_source": "Python AST caller/callee names, not definition target references"
 }

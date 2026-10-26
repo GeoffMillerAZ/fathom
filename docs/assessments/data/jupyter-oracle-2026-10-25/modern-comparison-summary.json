@@ -1,8 +1,10 @@
 {
+  "filtered_precision_interpretation": "lower bound; unknown sites counted as misses",
   "native_answered": 1945,
   "native_distinct_pairs": 1270,
   "native_sites": 2071,
   "opaque_magic_lines": 34,
+  "pair_source": "Python AST written caller/callee names; not basedpyright target references",
   "readings": {
     "native-diagnostic": {
       "counts": {
@@ -24,6 +26,12 @@
         "L2": "good",
         "L3": "not-attempted",
         "L4": "not-applicable"
+      },
+      "metric_tiers": {
+        "ref_precision": "C",
+        "ref_recall": "C",
+        "sym_precision": "B",
+        "sym_recall": "B"
       },
       "metrics": {
         "ref_precision": 0.9327,
@@ -65,6 +73,12 @@
         "L3": "not-attempted",
         "L4": "not-applicable"
       },
+      "metric_tiers": {
+        "ref_precision": "C",
+        "ref_recall": "C",
+        "sym_precision": "B",
+        "sym_recall": "B"
+      },
       "metrics": {
         "ref_precision": 0.994,
         "ref_recall": 1,
@@ -85,6 +99,7 @@
       }
     }
   },
+  "resolved_target_truth": false,
   "scanner_rejected_cells": 0,
   "scope": "all notebooks; separate diagnostic holdout, never canonical corpus",
   "subject_sha": "a892791ce5a3831134cfa2989033ecbb9289f1ea",
