@@ -1,29 +1,429 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Azure Policy Linux x64 authored probe receipt, never a calibration reading",
   "type": "object",
-  "required": ["schema_version", "candidate", "rid", "status", "native_executed", "script_sha256", "inputs_sha256", "payload_manifest_sha256", "isolation", "calibration_measured", "tier_granted"],
+  "additionalProperties": false,
   "properties": {
-    "schema_version": {"const": 1},
-    "candidate": {"const": "AzurePolicy.azurepolicyextension/0.2.6"},
-    "rid": {"const": "linux-x64"},
-    "status": {"enum": ["probe_refused", "namespace_worker_failed", "probe_timeout", "native_probe_failed", "probe_complete_requires_analysis"]},
-    "native_executed": {"type": ["boolean", "null"]},
-    "script_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
-    "inputs_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
-    "payload_manifest_sha256": {"const": "53ab1997c413e02553a8f0b03225cfaed65b53fc7779ba003e10ec4ab67c1ac4"},
-    "isolation": {"type": "string"},
-    "calibration_measured": {"const": false},
-    "tier_granted": {"const": false},
-    "initialize": {"type": "object"},
-    "capability_keys": {"type": "array", "items": {"type": "string"}},
-    "reference_provider": {"type": "boolean"},
-    "definition_provider": {"type": "boolean"},
-    "cache_command": {"type": "object"},
-    "definition": {"type": "object"},
-    "references": {"type": "object"},
-    "evaluations": {"type": "array", "items": {"type": "object", "required": ["variant", "http_status", "sha256", "bytes"]}},
-    "native_returncode": {"type": "integer"}
+    "schema_version": {
+      "const": 2
+    },
+    "candidate": {
+      "const": "AzurePolicy.azurepolicyextension/0.2.6"
+    },
+    "rid": {
+      "const": "linux-x64"
+    },
+    "status": {
+      "enum": [
+        "pending",
+        "probe_refused",
+        "namespace_worker_failed",
+        "probe_timeout",
+        "native_probe_failed",
+        "probe_complete_requires_analysis",
+        "receipt_invalid"
+      ]
+    },
+    "native_executed": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "script_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "inputs_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "payload_manifest_sha256": {
+      "const": "53ab1997c413e02553a8f0b03225cfaed65b53fc7779ba003e10ec4ab67c1ac4"
+    },
+    "isolation": {
+      "const": "linux_user_net_pid_namespaces"
+    },
+    "calibration_measured": {
+      "const": false
+    },
+    "tier_granted": {
+      "const": false
+    },
+    "failed_stage": {
+      "enum": [
+        "platform",
+        "resources",
+        "unshare",
+        "userns",
+        "netns",
+        "pidns",
+        "import",
+        "loopback",
+        "preparation",
+        "verification",
+        "worker",
+        "receipt",
+        "initialize",
+        "cache",
+        "bindings",
+        "evaluations",
+        "shutdown",
+        "execution",
+        null
+      ]
+    },
+    "failure_class": {
+      "enum": [
+        "ValueError",
+        "OSError",
+        "PermissionError",
+        "TimeoutExpired",
+        "TimeoutError",
+        "ConnectionRefusedError",
+        "JSONDecodeError",
+        "FileNotFoundError",
+        "EOFError",
+        "Empty",
+        "ImportError",
+        "ModuleNotFoundError",
+        "HTTPException",
+        "BrokenPipeError",
+        "ConnectionError",
+        "RuntimeError",
+        "OverflowError",
+        "OtherError"
+      ]
+    },
+    "kernel_capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "apparmor_restrict_unprivileged_userns": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "unprivileged_userns_clone": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "max_user_namespaces": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
+      },
+      "required": [
+        "apparmor_restrict_unprivileged_userns",
+        "unprivileged_userns_clone",
+        "max_user_namespaces"
+      ]
+    },
+    "netns_loopback_only": {
+      "type": "boolean"
+    },
+    "measured_interfaces": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9223372036854775807
+    },
+    "shutdown_clean": {
+      "type": "boolean"
+    },
+    "initialize": {
+      "$ref": "#/$defs/summary"
+    },
+    "cache_command": {
+      "$ref": "#/$defs/summary"
+    },
+    "definition": {
+      "$ref": "#/$defs/summary"
+    },
+    "references": {
+      "$ref": "#/$defs/summary"
+    },
+    "capability_keys": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$",
+        "enum": [
+          "textDocumentSync",
+          "notebookDocumentSync",
+          "completionProvider",
+          "hoverProvider",
+          "signatureHelpProvider",
+          "declarationProvider",
+          "definitionProvider",
+          "typeDefinitionProvider",
+          "implementationProvider",
+          "referencesProvider",
+          "documentHighlightProvider",
+          "documentSymbolProvider",
+          "workspaceSymbolProvider",
+          "codeActionProvider",
+          "codeLensProvider",
+          "documentLinkProvider",
+          "colorProvider",
+          "documentFormattingProvider",
+          "documentRangeFormattingProvider",
+          "documentOnTypeFormattingProvider",
+          "renameProvider",
+          "foldingRangeProvider",
+          "selectionRangeProvider",
+          "executeCommandProvider",
+          "callHierarchyProvider",
+          "linkedEditingRangeProvider",
+          "semanticTokensProvider",
+          "monikerProvider",
+          "typeHierarchyProvider",
+          "inlineValueProvider",
+          "inlayHintProvider",
+          "diagnosticProvider",
+          "positionEncoding",
+          "workspace",
+          "experimental"
+        ]
+      }
+    },
+    "unknown_capability_keys": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9223372036854775807
+    },
+    "reference_provider": {
+      "type": "boolean"
+    },
+    "definition_provider": {
+      "type": "boolean"
+    },
+    "evaluations": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "variant": {
+            "enum": [
+              "valid",
+              "unknown_parameter",
+              "changed_input_fact"
+            ]
+          },
+          "http_status": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 599
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9223372036854775807
+          },
+          "failure_class": {
+            "enum": [
+              "ValueError",
+              "OSError",
+              "PermissionError",
+              "TimeoutExpired",
+              "TimeoutError",
+              "ConnectionRefusedError",
+              "JSONDecodeError",
+              "FileNotFoundError",
+              "EOFError",
+              "Empty",
+              "ImportError",
+              "ModuleNotFoundError",
+              "HTTPException",
+              "BrokenPipeError",
+              "ConnectionError",
+              "RuntimeError",
+              "OverflowError",
+              "OtherError"
+            ]
+          }
+        },
+        "required": [
+          "variant"
+        ]
+      }
+    },
+    "native_returncode": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": -2147483648,
+      "maximum": 9223372036854775807
+    },
+    "worker_returncode": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": -2147483648,
+      "maximum": 9223372036854775807
+    },
+    "stderr_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "stderr_bytes": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9223372036854775807
+    },
+    "lsp_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "lsp_bytes": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9223372036854775807
+    },
+    "preflight_stderr_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "preflight_stderr_bytes": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9223372036854775807
+    }
   },
-  "allOf": [{"if": {"properties": {"status": {"const": "probe_complete_requires_analysis"}}}, "then": {"required": ["initialize", "capability_keys", "definition", "references", "evaluations", "native_returncode"]}}]
+  "required": [
+    "schema_version",
+    "candidate",
+    "rid",
+    "status",
+    "native_executed",
+    "script_sha256",
+    "inputs_sha256",
+    "payload_manifest_sha256",
+    "isolation",
+    "calibration_measured",
+    "tier_granted",
+    "failed_stage",
+    "kernel_capabilities"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Closed Azure Policy authored probe receipt; no calibration claim",
+  "$defs": {
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9223372036854775807
+        },
+        "result_type": {
+          "enum": [
+            "dict",
+            "list",
+            "str",
+            "int",
+            "bool",
+            "float",
+            "NoneType"
+          ]
+        },
+        "error_code": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": -2147483648,
+          "maximum": 9223372036854775807
+        },
+        "result_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
+      },
+      "required": [
+        "sha256",
+        "bytes",
+        "result_type",
+        "error_code",
+        "result_count"
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "probe_complete_requires_analysis"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "initialize",
+          "cache_command",
+          "definition",
+          "references",
+          "evaluations",
+          "native_returncode",
+          "shutdown_clean",
+          "netns_loopback_only",
+          "measured_interfaces"
+        ],
+        "properties": {
+          "shutdown_clean": {
+            "const": true
+          },
+          "netns_loopback_only": {
+            "const": true
+          },
+          "measured_interfaces": {
+            "const": 1
+          },
+          "failed_stage": {
+            "const": null
+          },
+          "evaluations": {
+            "minItems": 3,
+            "items": {
+              "required": [
+                "variant",
+                "http_status",
+                "sha256",
+                "bytes"
+              ]
+            }
+          },
+          "native_executed": {
+            "const": true
+          },
+          "native_returncode": {
+            "const": 0
+          }
+        }
+      }
+    }
+  ]
 }

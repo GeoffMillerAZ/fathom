@@ -88,3 +88,16 @@ The command also checks the 20 GiB disk floor internally. Tests exercise a
 bad CRC, escaping path, absent apphost, 513 entries against the 512-entry cap,
 64 MiB + 1 single-file expansion and 160 MiB + 1 total expansion. A preparation
 receipt proves neither native evaluation nor reference completeness.
+
+
+## T-R11 staged runner (binding review fixes)
+
+The current startup protocol is native-protocol-r2.json and
+[LINUX-X64-PROBE.md](LINUX-X64-PROBE.md). The controller copies the staged
+probe-linux-x64.workflow.yml to a disposable push-triggered run branch, never
+merged. It requires a GitHub-hosted ubuntu-22.04 x64 job, no container, no
+persisted checkout credentials and cache/output outside checkout. Only the
+outer-validated receipt.json is uploaded; raw native/LSP/evaluation/stderr
+outputs stay on the runner and are deleted. The ARM startup/PE-header reports
+are explicitly unreceipted local observations, not calibration proof. The
+current C reading and deferred whole-population work remain unchanged.

@@ -1,48 +1,84 @@
-# T-R9: Azure Policy oracle pending an x64 run
+# T-R9 / T-R11: Azure Policy oracle pending an x64 run
 
-This is a staged probe for the controller's Linux x64 runner. Python 3.9+ and
-util-linux `unshare` are required; no pip package, global install, Rosetta,
-Docker, Azure login, credential or paid service is used. The runner needs
-working unprivileged user/network namespaces and the normal native .NET Linux
-system libraries. A namespace or native dependency refusal is a useful receipt;
-there is no unisolated execution fallback or automatic system installation.
+The controller copies `probe-linux-x64.workflow.yml` from this directory into
+`.github/workflows/` on a disposable **run branch that is never merged**. It
+runs on push only. T-R11 requires a GitHub-hosted `ubuntu-22.04` x64 job, with
+no `container:` job. Do not select `ubuntu-latest` or 24.04: its unprivileged
+user-namespace restriction can refuse this route. Do not change sysctls, use
+sudo, install system packages, authenticate to Azure or use Docker/Rosetta.
+Python3.9+, util-linux unshare and the ordinary .NET Linux system libraries
+must already exist; missing prerequisites produce a refusal, never a fallback.
+The self-contained payload does not use a global .NET installation.
 
-The source is Microsoft's MIT AzurePolicy extension 0.2.6. The pinned ZIP
-directory selects all 455 Linux x64 files (122,294,968 expanded bytes), fetched
-through two native-only spans totaling 52,578,398 bytes. The complete manifest
-SHA-256 is `53ab1997c413e02553a8f0b03225cfaed65b53fc7779ba003e10ec4ab67c1ac4`;
-the apphost SHA-256 is `bb3603fa212f7444f86aae84e593654b8df9b7feebdd0e4d0b30085fa798f452`.
-The archive, directory and source identities are in `extension-source-r1.json`;
-`native-linux-payload-r1.json` records preparation only, performed without
-execution on this lane. No archive member inventory is committed.
+The job is ephemeral, has only contents:read permission and checks out with
+`persist-credentials: false`. Cache, private HOME and output are outside the
+checkout under RUNNER_TEMP. **Only the separate validated `receipt.json` is
+uploaded. Raw LSP, evaluation, stderr, preflight and launcher logs never leave
+the runner.** The private directory and downloaded payload are deleted on exit.
+The shell launcher records no raw output in public job logs. The upload step
+runs only after the launcher's validated-publication flag, never on a raw file
+left by a failed worker. No later script, git command or credentials should be
+used from the vendor-exposed checkout. The controller receives the artifact
+and, after review, copies only the validated receipt into a fresh clean checkout.
 
-From the branch checkout, use fresh output/cache directories under workspace:
+## Pins and execution contract
+
+Microsoft's MIT AzurePolicy extension0.2.6 supplies 455 linux-x64 files,
+122,294,968 expanded bytes in two spans totaling52,578,398 bytes. The manifest
+SHA256 is `53ab1997c413e02553a8f0b03225cfaed65b53fc7779ba003e10ec4ab67c1ac4`;
+the apphost SHA256 is
+`bb3603fa212f7444f86aae84e593654b8df9b7feebdd0e4d0b30085fa798f452`.
+All files are reverified before any vendor execution. Preparation alone uses
+network access; no vendor byte runs on a namespace-preflight refusal.
+
+The defaults remain load<=6 and free>=20GiB for this lane. T-R11's ephemeral
+runner uses explicit `-max-load 6 -min-free-gib 1`: the payload needs far less
+than1GiB and the standard runner disk is smaller than the lane floor. Both
+cache and output filesystems are checked, including during download. Run one
+job at nice10. The workflow's launch command is equivalent to:
 
 ```sh
-df -h ~
-uptime
 sha256sum -c calibration/oracles/azure-policy/probe-linux-checksums.sha256
 python3 -B -m unittest discover -s calibration/oracles/azure-policy -p 'test_*.py'
-nice -n 10 python3 -B calibration/oracles/azure-policy/probe_linux.py -cache workspace/oracle/azure-policy-linux -out workspace/artifacts/azure-policy-linux-r1
+nice -n 10 python3 -B calibration/oracles/azure-policy/probe_linux.py \
+  -cache "$RUNNER_TEMP/azure-policy-private/cache" \
+  -out "$RUNNER_TEMP/azure-policy-private/out" \
+  -publish "$RUNNER_TEMP/azure-policy-public/receipt.json" \
+  -min-free-gib 1 -max-load 6
 ```
 
-Run one heavy job at a time, with load at most 6 and at least 20 GiB free.
-The driver checks both limits and the full pinned payload before executing.
-Preparation alone uses the network. Vendor execution runs in a fresh network
-namespace with loopback enabled, a clean environment and an empty private HOME.
-No external route exists there. It captures the LSP initialize response, cache
-command, definition/use queries, and the documented loopback evaluation API on
-three authored controls: valid, unknown parameter and changed input fact.
-An unused parameter remains in every control. There is no calibration clone.
+Do not run the vendor on this ARM helper. The staged workflow redirects the
+commands' output privately; the example above describes the command, not a
+permission to publish stdout/stderr. See `run_probe_workflow.sh` for the exact
+public-runner procedure. The workflow itself stays under calibration/oracles
+until the controller copies it to the run branch.
 
-The expected receipt shape is `probe-linux-receipt.schema.json`. Read
-`workspace/artifacts/azure-policy-linux-r1/receipt.json` after either exit 0
-(probe completed, analysis still required) or exit 2 (refusal/failure/timeout).
-The receipt contains counts, response hashes and capability flags, not raw
-native messages. Raw LSP, evaluation and stderr outputs stay private alongside
-it. Preserve those for diagnosis; do not commit them without X-R3/X-R5 review.
-Delete the downloaded payload after the receipt and diagnostics are packaged.
+Preflight distinguishes userns, netns, pidns, import and loopback failures.
+`kernel_capabilities` contains only integer/null values for
+apparmor_restrict_unprivileged_userns, unprivileged_userns_clone and
+max_user_namespaces. The fixed `failed_stage` enum identifies other failures;
+full exception text and preflight stderr remain private. The worker runs as
+PID1 inside `unshare --user --map-root-user --net --pid --fork --kill-child`,
+and measures exactly one network interface, loopback, before vendor Popen.
+When PID1 exits the kernel terminates every descendant, including setsid
+children. Normal and timeout paths also kill the launcher's process group.
 
-Startup and these controls cannot establish tier A recall. A complete native
-population, unused/namespace/range controls and full canonical measurement
-remain required. The current C reading is unchanged. L3 remains held by D19.
+The launcher retains the closed schema and expected identities in memory
+before vendor execution. After the PID namespace exits it reads a bounded
+regular, nonsymlink receipt, checks allowed fields/types/enums/hashes, rejects
+invalid receipts as `receipt_invalid`, then rewrites and separately publishes
+only validated JSON. No free-form exception, path or vendor string is public.
+Known LSP capability flag names are allowlisted; unknown keys are counted.
+The schema is `probe-linux-receipt.schema.json`, enforced by the standard-library
+`receipt_contract.py`. No pip dependency is required.
+
+The probe waits up to10s for loopback evaluation readiness, records each of
+three authored controls independently, and attempts clean LSP shutdown. Only
+clean shutdown and all three evaluation responses can produce
+`probe_complete_requires_analysis` / exit0. Exit2 describes refusal, timeout,
+invalid receipt or native failure. A failed evaluation does not skip the next
+control. Unknown parameter and changed-fact variants keep an unused parameter.
+
+Startup and these controls grant no tier or calibration metric. The C reading
+is unchanged. A complete native population with positions and additional
+unused/namespace/range controls remains necessary. L3 still waits for D19.

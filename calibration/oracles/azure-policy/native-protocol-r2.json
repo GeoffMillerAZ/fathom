@@ -1,0 +1,26 @@
+{
+  "candidate": "AzurePolicy.azurepolicyextension/0.2.6",
+  "date": "2026-10-26",
+  "amends": "native-protocol-r1.json startup platform and isolation only; full-population measurement remains future gated work",
+  "rulings": [
+    "T-R9",
+    "T-R11"
+  ],
+  "runner": {
+    "platform": "GitHub-hosted ubuntu-22.04 x64",
+    "trigger": "push on controller-created disposable run branch, never merged",
+    "container": false,
+    "global_install": false,
+    "checkout_persist_credentials": false
+  },
+  "rules": [
+    "Stage linux-x64 instead of the measured non-working local ARM route; ARM observations are explicitly unreceipted and grant no metric. Verify the full pinned455file payload before vendor execution.",
+    "Use kernel user/network/PID namespaces with unshare --user --map-root-user --net --pid --fork --kill-child; measure PID1 and loopback-only interfaces; no unisolated fallback. Kill normal and timeout process groups; PID namespace exit kills detached descendants.",
+    "Preflight before download reports a fixed failed-stage enum and integer/null kernel capabilities; raw stderr and exception text remain private.",
+    "Keep payload, HOME and private outputs outside checkout on an ephemeral runner; no credentials or subsequent execution from the vendor-exposed checkout. Only a separately published schema-validated receipt.json may leave the runner.",
+    "Run three authored API variants independently after bounded readiness polling; completion requires clean shutdown. Startup is not a calibration metric or complete native population proof.",
+    "Runner explicitly selects free>=1GiB on cache/output filesystems and load<=6, nice10; lane defaults remain20GiB/load6. No Docker, global install, Rosetta, paid call or Azure login.",
+    "The staged workflow remains calibration/oracles/azure-policy/probe-linux-x64.workflow.yml until the controller copies it to the run branch. L3 remains held by D19."
+  ],
+  "artifact": "receipt.json only; counts, hashes, fixed enums and flags; never raw LSP, evaluations or stderr"
+}

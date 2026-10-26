@@ -16,9 +16,9 @@ MAX_TOTAL_BYTES = 160 * 1024**2
 MAX_SPAN_BYTES = 80 * 1024**2
 
 
-def disk_floor():
-    if shutil.disk_usage(Path.home()).free < 20 * 1024**3:
-        raise ValueError('native preparation requires at least 20 GiB free')
+def disk_floor(cache, min_free_gib=20):
+    if shutil.disk_usage(cache).free < min_free_gib * 1024**3:
+        raise ValueError('native preparation below configured disk floor')
 
 
 def native_ranges(rows, central_offset, prefix=PREFIX):
@@ -100,12 +100,12 @@ def unpack_span(data, start, rows, destination, prefix=PREFIX):
                 apphost_sha256=hashlib.sha256(contents['PolicyLanguageServer']).hexdigest())
 
 
-def prepare(cache, rid="osx-arm64", expected=None):
+def prepare(cache, rid="osx-arm64", expected=None, min_free_gib=20):
     if rid not in ("osx-arm64", "linux-x64"):
         raise ValueError("unsupported pinned runtime")
     prefix = "extension/out/artifacts/" + rid + "/"
-    disk_floor()
     cache.mkdir(parents=True, exist_ok=True)
+    disk_floor(cache, min_free_gib)
     destination = cache / 'payload'
     if destination.exists():
         raise ValueError('fresh native payload directory required')
@@ -124,7 +124,7 @@ def prepare(cache, rid="osx-arm64", expected=None):
     for group in groups:
         parts = []
         for offset in range(group['start'], group['end'], LIMIT):
-            disk_floor()
+            disk_floor(cache, min_free_gib)
             parts.append(fetch_range(offset, min(LIMIT, group['end'] - offset)))
         block = b''.join(parts)
         for index, row in enumerate(group['rows']):

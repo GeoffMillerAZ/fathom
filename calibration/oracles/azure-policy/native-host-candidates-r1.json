@@ -9,18 +9,26 @@
   },
   "candidate": "official Microsoft .NET9.0.12 macOS ARM64 standard CLI host",
   "license": "MIT",
-  "state": "pinned, not yet downloaded or executed",
+  "state": "local ARM routes attempted; observations unreceipted, artifacts pruned; Linux x64 execution pending",
   "prior_routes": [
     {
       "name": "vendor ARM64 apphost",
       "version": "extension0.2.6",
-      "result": "process SIGKILL before output; codesign reports apphost unsigned; no native capabilities or evaluations measured"
+      "result": "process SIGKILL before output; codesign reports apphost unsigned; no native capabilities or evaluations measured",
+      "evidence_status": "unreceipted local observation; no committed failure-output hash"
     },
     {
       "name": "bundled signed hostfxr called from isolated Python",
       "version": "9.0.12",
       "result": "initial path-metadata denial corrected to permit ancestor metadata; process then SIGKILL before output; cause unconfirmed; not a supported self-contained hosting claim",
-      "source": "https://learn.microsoft.com/en-us/dotnet/core/tutorials/netcore-hosting"
+      "source": "https://learn.microsoft.com/en-us/dotnet/core/tutorials/netcore-hosting",
+      "evidence_status": "unreceipted local observation; no committed failure-output hash"
+    },
+    {
+      "name": "official ARM64 .NET CLI host with policy assemblies",
+      "version": "9.0.12",
+      "result": "observed managed Main then Common load failure; policy assemblies observed AMD64 PE headers",
+      "evidence_status": "unreceipted observation; no committed PE-header or failure-output receipt; not calibration proof"
     }
   ]
 }
