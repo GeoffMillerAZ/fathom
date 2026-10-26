@@ -1,0 +1,13 @@
+{
+  "scope": "Authored feasibility controls only; no scored public subjects, holdout, reading or L4 grade",
+  "selection": "Use cached OpenTofu1.13.0 and AWS6.67.0; Azure/GCP each highest stable SemVer from official release index frozen before opening provider archives",
+  "providers": ["hashicorp/aws", "hashicorp/azurerm", "hashicorp/google"],
+  "commands": ["init -backend=false -get=false -input=false", "providers schema -json", "show -json -config", "validate -json"],
+  "fields_per_provider": ["default resource id", "aliased resource id", "data-source field", "resource map element"],
+  "mutations": ["rename each observed field separately to a nonexistent sentinel", "repeat original schema export and original native show after mutations"],
+  "population": "Every authored output expression, including native extra address references and all mutation diagnostics; no filtered invalid controls",
+  "bounds": {"command_seconds": 180, "export_bytes": 134217728, "other_output_bytes": 16777216, "commands_serial": true, "nice_min": 10, "launch_load_max": 9},
+  "network": "Require OS outbound-IP denial before native commands; fresh HOME, no inherited credentials, filesystem-only mirror, dead proxies, no backend/state/plan/apply",
+  "representation": "Count native namespaces, declarations, bytes and anchor lines; report only estimated referenced-closure serialization, not actual store bytes; SG37 is absent",
+  "authority": "design and probe only; no product engine, persisted schema declaration, policy amendment, reading, queue or checkbox change"
+}
