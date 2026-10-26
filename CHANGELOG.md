@@ -1776,7 +1776,7 @@ budgeted answers. Detail: `docs/changelog/0.4.0.md`.
 ### 2026-08-09
 
 **Session-count measurement bug inflated denominators 25x (MI-1..3)**
-- Claude Code's `Stop` event fires per turn, not per session close, so 200 ledger rows were only 8 distinct session ids; one resume_as_code session wrote 74 rows alone, inflating 'of 188 sessions' denominators roughly 25x.
+- Claude Code's `Stop` event fires per turn, not per session close, so 200 ledger rows were only 8 distinct session ids; one svc-c session wrote 74 rows alone, inflating 'of 188 sessions' denominators roughly 25x.
 - `discovery_actions_total` is a per-session cumulative, so summing rows double-counted: 17,727 collapsed to 1,038 after fix; the pre-registered '>=20 sessions per arm' floor would have been met by about one real session.
 - Fixed by deduping at read time, keeping the LAST row per session id, while still reporting the raw stop count alongside for auditability (MI-1).
 - New `fathom rate <1-5> [--note]` command instruments the self-rated outcome half of the criterion, joined to the ledger by session id at read time; an unjoinable rating is refused rather than stored.
@@ -1943,7 +1943,7 @@ budgeted answers. Detail: `docs/changelog/0.4.0.md`.
 
 **Registry surgery: two verbs, one-root-one-service enforced (O1, IO-1, IO-2, IO-3)**
 - `remove_service` (idempotent every-row deletion, claim_events cascaded through claims) and `rename_service` (atomic re-key across eleven service_id tables, typed refusals, claim ids stay minted as historical evidence) both delegate store to client to AutoRefresh to tool and bust the identity cache on success.
-- The ingest handler now enforces ValidServiceID at the daemon (the geoffmiller-cloud twin was re-fed for seven weeks past the client fix), plus EvalSymlinks canonicalization, duplicate-root and nested-root refusal.
+- The ingest handler now enforces ValidServiceID at the daemon (the svc-b twin was re-fed for seven weeks past the client fix), plus EvalSymlinks canonicalization, duplicate-root and nested-root refusal.
 - With IO-1's deterministic resolution, every O1 fix (a)-(d) is now landed.
 
 **Adoption gauge: scoped to any repo, agent-surface aware (O6, IO-10)**
@@ -2248,7 +2248,7 @@ under its pre-registered bar, then fathom winning its home turf 13/13 vs
 - `ingest` tool onboards new services via optional `path` (absolute corpus root), ingesting a repo the index has never seen through the live daemon, no single-writer lock dance.
 - Session-hook's "add this repo" guidance now names the exact call; capability forwarded through the auto-refresh wrapper (the O7 lesson) with a through-the-wrapper test.
 - Subdirectory-rooted projects resolve their service: both hooks try the project dir's basename, then the enclosing git repo's basename, so `<repo>/deploy` no longer resolves to service "deploy".
-- Edit-hook resolves file paths against whichever root matched; `reingest-fleet.sh` gains nested-path support plus three fleet repos (growing-gardens-bi, car-assistant, crossplane-platform).
+- Edit-hook resolves file paths against whichever root matched; `reingest-fleet.sh` gains nested-path support plus three fleet repos (svc-d, svc-e, crossplane-platform).
 
 **Done-means-proven verify gate (H1.2, O6)**
 - Checkbox semantics: `[x]` in a plan is a claim; `verify.Gate` fails any claimed task whose contract fails (`--strict` also gates Unknown); `[ ]` open and `[-]` skipped never gate.
@@ -2286,7 +2286,7 @@ under its pre-registered bar, then fathom winning its home turf 13/13 vs
 
 ## [0.2.0] — 2026-06-16
 
-Enhancements driven by mining throughline's real Claude Code sessions (841 sextant calls,
+Enhancements driven by mining svc-a's real Claude Code sessions (841 sextant calls,
 1666 shell greps, a heavy manual freshness loop).
 
 ### Added
@@ -2297,7 +2297,7 @@ Enhancements driven by mining throughline's real Claude Code sessions (841 sexta
 - **`verify_plan` accepts a Markdown checklist** (`plan_markdown`), and `gen-status-cue`
   accepts a `.md` plan file: each `- [ ]/[x] title [SPEC-ID] {symbol: Foo}` line becomes a
   verifiable task. A `/verify` slash command runs the loop — surfacing `[x]`-but-not-verified
-  items before "done" is trusted. (throughline's sessions were hand-rolling this.)
+  items before "done" is trusted. (svc-a's sessions were hand-rolling this.)
 
 ### Changed
 - **`serve-mcp --auto-refresh` (default on)** — a query for a service whose git HEAD has
@@ -2357,7 +2357,7 @@ server, a language-agnostic cross-repo graph, and an evidence-backed verificatio
 - **`outline` honors its repo-relative contract.** `symbolnav.Outline` matched the stored
   absolute `FilePath` against the `file` arg by exact string, so a repo-relative path —
   the documented contract — returned `{"symbols":[]}`. Now resolves a relative query by
-  path-segment suffix (absolute still exact). Found via fleet dogfooding (throughline).
+  path-segment suffix (absolute still exact). Found via fleet dogfooding (svc-a).
   (O1.)
 
 ### Changed
