@@ -1,0 +1,64 @@
+{
+  "base_commit": "6db920e72898abb20bf86c22652b401902e34598",
+  "criteria": {
+    "D19": "each L3 metric own denominator at least20; thin or missing data named",
+    "components": "only unchanged real components through all actual non-Component parent closures; no synthetic wrappers in canonical evidence",
+    "discovery": "all native-recognized filenames; original two subject scopes preserved; all build failures and unsupported basename/field counts disclosed",
+    "freeze": "subject membership and exact commits fixed before this canonical measurement; prior private exploratory probes are disclosed, not blind evidence",
+    "grading": "existing build-ablation semantics, per-subject counts and denominator floors; unevidenced entries remain precision costs; no excellent outcome promised",
+    "network": "native build uses scrubbed environment and dead proxies; no cloud commands, plugins or Helm enablement",
+    "population": "native types.Kustomization.Unmarshal plus native kyaml positions; full typed-field inventory; every candidate reconciled or whole decode refused",
+    "product_engine": "no engine edit while Terraform ENGINE review pending",
+    "publication": "counts/hashes only, no subject identities or source-file lists; required_kinds and all other readings conserved",
+    "shard": "calibration/corpus.d/kustomize.yaml only"
+  },
+  "date": "2026-10-26",
+  "native": {
+    "api_module": "sigs.k8s.io/kustomize/api",
+    "api_version": "v0.21.1",
+    "archive_sha256": "8886f8a78474e608cc81234f729fda188a9767da23e28925802f00ece2bab288",
+    "checksums_url": "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.8.1/checksums.txt",
+    "kyaml_module": "sigs.k8s.io/kustomize/kyaml",
+    "kyaml_version": "v0.21.1",
+    "url": "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.8.1/kustomize_v5.8.1_darwin_arm64.tar.gz",
+    "version": "v5.8.1"
+  },
+  "subjects": [
+    {
+      "licence": "Apache-2.0",
+      "membership": "original",
+      "ref": "kustomize/v5.8.1",
+      "repository": "kubernetes-sigs/kustomize",
+      "sha": "9790a1c3efd2fd35f1b768d495112834176581c1",
+      "subpath": "examples"
+    },
+    {
+      "licence": "Apache-2.0",
+      "membership": "original",
+      "ref": "historical committed subject",
+      "repository": "argoproj/argocd-example-apps",
+      "sha": "8088f4c0d970abb09e250248cc97e35623447cb5"
+    },
+    {
+      "licence": "Apache-2.0",
+      "membership": "expanded",
+      "ref": "pinned exploratory subject",
+      "repository": "fluxcd/flux2-kustomize-helm-example",
+      "sha": "4f1a5b1051b469108d1bdf0ebec6c814427e3834"
+    },
+    {
+      "licence": "Apache-2.0",
+      "membership": "expanded",
+      "ref": "pinned exploratory subject",
+      "repository": "fluxcd/flux2-multi-tenancy",
+      "sha": "16752eb2929feb1d0e7de6ad4fa0a2e1972825ac"
+    },
+    {
+      "licence": "Apache-2.0",
+      "membership": "expanded",
+      "ref": "pinned exploratory subject",
+      "repository": "GoogleCloudPlatform/microservices-demo",
+      "sha": "38e7348eb289eb5b87c0c6e8cb19ced0449dc389"
+    }
+  ]
+}
