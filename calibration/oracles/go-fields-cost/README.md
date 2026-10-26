@@ -25,7 +25,7 @@ python3 calibration/oracles/go-fields-cost/cost.py \
   --source-commit "$SOURCE_COMMIT" --candidate-commit "$CANDIDATE_COMMIT"
 ```
 
-The candidate is the frozen experiment commit, not this branch HEAD after its runtime rollback. The CLI binaries must be built from the two named commits. Keep the generated receipt and logs together. Existing paths in `--stores` or `--log-dir` cause a refusal so a rerun cannot mix evidence.
+The candidate is the frozen experiment commit, not this branch HEAD after its runtime rollback. The CLI binaries must be built from the two named commits. Keep the generated receipt and logs together. Existing per-run store or log files cause a refusal so a rerun cannot mix evidence; existing empty directories are allowed.
 
 The Go reading is a separate oracle measurement, using the committed `indexbench` implementation and independent `universal-ctags 6.2.1` and `scip-go 0.2.7` outputs. Clone the two pinned reading subjects into scratch, outside the canonical repository, and run `scip-go index ./...` in each checkout to produce its `index.scip`. The subject SHAs in the committed `docs/bench/readings/lang/go.json` are `45ffa3c668f7105e92089220d42aa64c9acbd11c` for `cli/cli` and `40b5bc1437a564fc795d388b23835e84f54cd1d1` for `spf13/cobra`.
 
