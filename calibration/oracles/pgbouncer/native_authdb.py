@@ -126,6 +126,10 @@ class Instance:
         self.work = work.resolve()
         self.work.mkdir(parents=True, exist_ok=True)
         self.port = free_port()
+        # Native logs are evidence: never accept a marker left by an earlier run.
+        (self.work / 'native.log').write_text('')
+        if (self.work / 'no-backend').exists():
+            raise ValueError('isolated backend endpoint must not exist')
         (self.work / 'userlist.txt').write_text('"oracle" ""\n')
         config = sanitized(isolate_backends(source, self.work)) + '\n\n[pgbouncer]\n'
         settings = dict(listen_addr='127.0.0.1', listen_port=str(self.port), unix_socket_dir='',
