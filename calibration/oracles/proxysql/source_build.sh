@@ -11,4 +11,7 @@ if ! pkg-config --exists protobuf; then
 fi
 # Bind mounts cannot preserve arbitrary archive owners. Source files stay unmodified.
 export TAR_OPTIONS=--no-same-owner
-exec nice -n 10 make PROXYSQL40=1 debug -j2
+# Shallow release clones have lightweight tags; upstream's default git describe
+# ignores them and falls back to a hash, which cannot derive CURVER.
+version=$(git describe --tags --long --abbrev=7)
+exec nice -n 10 make GIT_VERSION_BASE="$version" PROXYSQL40=1 debug -j2
