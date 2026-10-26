@@ -23,16 +23,28 @@ and the original reading. No files were excluded.
 
 The original 2026-09-29 reading at 765a6502 explicitly says ERROR nodes and has
 no files_with_error field. LB-F59 (0b604d7e8, 2026-10-01) introduced the harness's
-ERROR-or-MISSING count. A scratch screen of the same committed blob ran both
-queries on each file: `(ERROR) @error` and `[(ERROR) (MISSING)] @error`. A file in
+ERROR-or-MISSING count. The committed screen in
+`calibration/oracles/swift-parse/grammar-screen` runs both queries on each file: `(ERROR) @error` and `[(ERROR) (MISSING)] @error`. A file in
 the second set but not the first is MISSING-only. This retake reproduces both
-measures, including the original ERROR-only 1/35 subject split.
+measures, including the original ERROR-node 1/35 subject split.
+
+Reproduce the split from the repository root with the two corpus subjects at
+the pins above:
+
+```sh
+go run ./calibration/oracles/swift-parse/grammar-screen
+```
+
+The command emits file/byte counts and both measures for each subject, then
+writes the per-file sets to `workspace/artifacts/swift-error-measures.json`.
+ERROR includes files that also hold MISSING; MISSING-only is the union minus
+the ERROR set.
 
 The production harness independently reports the ERROR-or-MISSING total:
 
 ```sh
-indexbench lang-oracle -dialect swift -subject workspace/calibration/alamofire -subject-name Alamofire/Alamofire -out workspace/artifacts/swift-parse-screen.json
-indexbench lang-oracle -dialect swift -subject workspace/calibration/swift-nio -subject-name apple/swift-nio -out workspace/artifacts/swift-parse-screen.json
+go run ./cmd/indexbench lang-oracle -dialect swift -subject workspace/calibration/alamofire -subject-name Alamofire/Alamofire -out workspace/artifacts/swift-parse-screen.json
+go run ./cmd/indexbench lang-oracle -dialect swift -subject workspace/calibration/swift-nio -subject-name apple/swift-nio -out workspace/artifacts/swift-parse-screen.json
 ```
 
 These commands are parse/tenancy screens without an oracle input. Their scratch
@@ -67,7 +79,7 @@ kept distinct from candidates actually run:
 | Swift compiler parser, Apple Swift 6.4, `swiftc -frontend -parse-as-library -dump-parse` | Existing validated tier-B L1/L2 oracle. Its syntax dump is not resolved import or typed-edge truth, and invoking a compiler is not the admitted WASM product parser. |
 | SourceKit-LSP / IndexStoreDB, Swift 6.4 toolchain route | Inspected build-index route, not run on these subjects here. It needs a compatible toolchain and subject build/index store. No L3 or L4 grade is claimed from inspection, and this route does not change the product grammar's 123/642 gate. |
 | jarvis-intelligence/scip-swift 4ad1ce9e4826785604aed5fd529913efb1733df7, Apache-2.0 | Inspected README and licence, not run. macOS 14+, compatible pinned toolchain and a subject build with index-store data are required. This is an existing candidate to evaluate after the parse gate, not a missing producer or a failed oracle measurement. |
-| In-tree grammar patch route, P-R1 mechanism 50675f4564032d4a2c1d6fbaaa362bd95e2a0b65 | Admitted route, no Swift patch has been measured. It must clear at least 91 current gate-error files, including at least four ERROR-node files, as derived below. No untested patch is claimed to fail or pass. |
+| In-tree grammar patch route: [owner ruling P-R1 (#15)](https://github.com/GeoffMillerAZ/fathom/issues/15#issuecomment-6406376301), mechanism in review as `gpu-sci/grammar-patches-r1` | Authorized route; the mechanism is still under review, not a published dependency. No Swift patch has been measured. A patch must leave at most floor(0.05 * 642) = 32 gate-error files: at least 123 - 32 = 91 must clear overall. Clearing all 87 MISSING-only files leaves 36 ERROR files, so at least 36 - 32 = 4 ERROR-node files must also clear. Use the mechanism after publication; no unpublished implementation commit is cited. |
 
 No holdout was added to the canonical Swift corpus shard.
 
