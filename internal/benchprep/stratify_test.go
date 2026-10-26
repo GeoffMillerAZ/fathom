@@ -1,10 +1,13 @@
 package benchprep
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
 	"math"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 	"testing/fstest"
@@ -19,8 +22,8 @@ func TestExtractIdentifiers(t *testing.T) {
 		{"backticks", "the `lookup` and `cache key` fail", []string{"cache", "key", "lookup"}},
 		{"length and stopwords", "`a` `id` `the` `func` `true` `nil` `Fix` `Read`", []string{"Read"}},
 		{"deduplicate and sort", "`zebra` CacheEntry `zebra` CacheEntry", []string{"CacheEntry", "zebra"}},
-		{"no prose", "the request fails when opening a file", []string{}},
-		{"punctuation", "Call `Reader.Read()` or `cache_key`, then CacheEntry.", []string{"CacheEntry", "Reader.Read", "cache_key"}},
+		{"prose names", "the request fails when opening a file", []string{"opening", "request"}},
+		{"punctuation", "Call `Reader.Read()` or `cache_key`, then CacheEntry.", []string{"CacheEntry", "Call", "Reader.Read", "cache_key"}},
 		{"unicode", "`读取值` `éé`", []string{"读取值"}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -44,7 +47,7 @@ func TestStratifyTask(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.DefinitionA != "non-lexical" || got.DefinitionB != "lexical" || got.LexicalRank != 3 {
+	if got.DefinitionA != "non-lexical" || got.DefinitionB != "non-lexical" || got.LexicalRank != 0 {
 		t.Fatalf("strata = %+v", got)
 	}
 	if len(got.Ranking) != 3 || got.Ranking[0].Path != "b.go" || got.Ranking[1].Path != "a.go" {
@@ -106,9 +109,9 @@ func TestStratifyTaskLengthNormalizationAndWholeTokens(t *testing.T) {
 	if math.Abs(got.Ranking[0].Score-want) > 1e-12 {
 		t.Fatalf("length normalization = %g, want %g", got.Ranking[0].Score, want)
 	}
-	got, err = StratifyTask(tree, "only ordinary prose", []string{"gold.go"})
-	if err != nil || got.DefinitionA != "non-lexical" || got.LexicalRank != 3 {
-		t.Fatalf("empty query uses path ties = %+v, %v", got, err)
+	got, err = StratifyTask(tree, "the and `nil`", []string{"gold.go"})
+	if err != nil || got.DefinitionA != "non-lexical" || got.DefinitionB != "non-lexical" || got.LexicalRank != 0 {
+		t.Fatalf("empty query has no lexical rank = %+v, %v", got, err)
 	}
 }
 
@@ -127,3 +130,66 @@ func TestStratifyTaskRefusesInvalidTruth(t *testing.T) {
 type failingFS struct{}
 
 func (failingFS) Open(string) (fs.File, error) { return nil, fs.ErrPermission }
+
+func TestStratifyTaskOrdinaryQualifiedUses(t *testing.T) {
+	for _, tt := range []struct{ name, issue, path, text string }{
+		{"qualified use", "`DoRequest` hangs", "client.go", "func run(c *Client) { c.DoRequest() }"},
+		{"prose identifier", "the uploader retry hangs forever", "uploader.go", "package uploader"},
+		{"qualified query leaf", "`Client.DoRequest` hangs", "client.go", "func DoRequest() {}"},
+		{"qualified query component", "`Client.DoRequest` hangs", "client.go", "type Client struct{}"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := StratifyTask(fstest.MapFS{tt.path: {Data: []byte(tt.text)}}, tt.issue, []string{tt.path})
+			if err != nil || got.DefinitionA != "lexical" || got.DefinitionB != "lexical" || got.LexicalRank != 1 || got.Ranking[0].Score <= 0 {
+				t.Fatalf("ordinary lexical use = %+v, %v", got, err)
+			}
+		})
+	}
+}
+
+func TestStratifyTaskAbsentLexicalRank(t *testing.T) {
+	for _, issue := range []string{"the and `nil`", "`Unmatched`"} {
+		t.Run(issue, func(t *testing.T) {
+			got, err := StratifyTask(fstest.MapFS{"a.go": {Data: []byte("other")}}, issue, []string{"a.go"})
+			if err != nil || got.DefinitionB != "non-lexical" || got.LexicalRank != 0 {
+				t.Errorf("zero-score gold = %+v, %v", got, err)
+			}
+			data, err := json.Marshal(got)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var fields map[string]json.RawMessage
+			if err := json.Unmarshal(data, &fields); err != nil {
+				t.Fatal(err)
+			}
+			if _, ok := fields["lexical_rank"]; ok {
+				t.Fatalf("unmatched rank must be absent: %s", data)
+			}
+		})
+	}
+}
+
+func TestStratifyTaskSkipsGoldCreatedByFix(t *testing.T) {
+	tree := fstest.MapFS{"gold.go": {Data: []byte("CacheEntry")}, "other.go": {Data: []byte("unrelated")}}
+	want, err := StratifyTask(tree, "`CacheEntry`", []string{"gold.go"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := StratifyTask(tree, "`CacheEntry`", []string{"new.go", "gold.go", "new.go"})
+	if err != nil || !reflect.DeepEqual(got, want) {
+		t.Fatalf("base-existing gold = %+v, %v; want %+v", got, err, want)
+	}
+}
+
+func TestStratifyTaskRefusesDanglingGold(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "gold.go"), []byte("CacheEntry"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("absent.go", filepath.Join(root, "link.go")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := StratifyTask(os.DirFS(root), "CacheEntry", []string{"gold.go", "link.go"}); err == nil {
+		t.Fatal("accepted existing dangling symlink as absent base gold")
+	}
+}

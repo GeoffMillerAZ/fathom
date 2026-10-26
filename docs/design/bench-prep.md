@@ -105,7 +105,15 @@ spend:
   kept whole) occurs in any gold file at the base commit.
 - **D-b.** Non-lexical when the gold file ranks outside the top 10 of a fixed BM25 over the issue's identifiers.
 
-The BM25 rank (`lexical_rank`) is recorded on every F1 task whichever definition wins.
+Lexical tokenization is pre-declared as follows: document words use `[\pL_][\pL\pN_]*`, folded to lowercase.
+Issue words in prose and backticks both qualify after the fixed length and stopword filters. Camel and snake
+forms stay whole. Qualified names and paths contribute component words, including the leaf, under those same
+filters. Gold files absent at base (created by the fix) are skipped; at least one participating base gold file
+is required. D-b requires a positive-score gold file in the top 10.
+
+The BM25 rank (`lexical_rank`) is the best positive-score gold rank whichever definition wins, and is absent
+when no gold file matches or the filtered query is empty. Zero-score files retain deterministic path-order
+ranks in the diagnostic ranking only.
 
 ## 4. Reuse versus build
 
