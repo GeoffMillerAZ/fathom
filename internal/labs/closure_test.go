@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"cuelang.org/go/cue/cuecontext"
 )
 
 func TestCheckLabClosure(t *testing.T) {
@@ -61,5 +63,65 @@ func TestCheckLabClosureRefuses(t *testing.T) {
 	writeLabJSON(t, dir, "no-lab.yaml", map[string]any{"surfaces": []any{}})
 	if err := CheckLabClosure(dir, []string{"mcp:search"}); err == nil || !strings.Contains(err.Error(), "unknown surface") {
 		t.Fatalf("unknown card surface: %v", err)
+	}
+}
+
+func TestCheckLabClosureExclusiveOwnership(t *testing.T) {
+	for _, kind := range []string{"cards", "exemption"} {
+		t.Run(kind, func(t *testing.T) {
+			dir := t.TempDir()
+			writeLabJSON(t, dir, "lab-find-symbol.yaml", labFixture())
+			if kind == "cards" {
+				other := labFixture()
+				other["id"] = "lab-search"
+				other["helped"].(map[string]any)["arm"] = "plugin-minus-search"
+				writeLabJSON(t, dir, "lab-search.yaml", other)
+			} else {
+				writeLabJSON(t, dir, "no-lab.yaml", map[string]any{"surfaces": []any{map[string]any{"surface": "mcp:find_symbol", "instrument": "none", "reason": "test conflict"}}})
+			}
+			if err := CheckLabClosure(dir, []string{"mcp:find_symbol"}); err == nil || !strings.Contains(err.Error(), "already claimed") {
+				t.Fatalf("shared feature accepted: %v", err)
+			}
+		})
+	}
+}
+
+// An exemption names an instrument that reads this surface, or an explicit
+// reason measurement is absent. Plans for a future reader are not a reader.
+func TestLabNoLabInstrumentEvidence(t *testing.T) {
+	var data struct {
+		Surfaces []NoLabSurface `json:"surfaces"`
+	}
+	dir := filepath.Join("..", "..", "calibration", "labs.d")
+	if err := loadLabYAML(filepath.Join(dir, "no-lab.yaml"), cuecontext.New().CompileString("{...}"), &data); err != nil {
+		t.Fatal(err)
+	}
+	readers := map[string]string{
+		"indexbench L0": "internal/indexbench/oracle.go",
+		"indexbench L1": "internal/indexbench/testdata/l1-replay.json",
+	}
+	for _, entry := range data.Surfaces {
+		if strings.TrimSpace(entry.Reason) == "" {
+			t.Errorf("%s has no reason", entry.Surface)
+		}
+		if strings.Contains(entry.Surface, "--harness ") && entry.Instrument != "none" {
+			t.Errorf("%s is outside Claude-only measurement", entry.Surface)
+		}
+		if entry.Instrument == "none" {
+			continue
+		}
+		reader, ok := readers[entry.Instrument]
+		if !ok {
+			t.Errorf("%s: unproven reader %s", entry.Surface, entry.Instrument)
+			continue
+		}
+		source, err := os.ReadFile(filepath.Join("..", "..", reader))
+		if err != nil {
+			t.Fatal(err)
+		}
+		tool := strings.TrimPrefix(entry.Surface, "mcp:")
+		if !strings.HasPrefix(entry.Surface, "mcp:") || !strings.Contains(string(source), `"`+tool+`"`) {
+			t.Errorf("%s does not read %s", reader, entry.Surface)
+		}
 	}
 }
