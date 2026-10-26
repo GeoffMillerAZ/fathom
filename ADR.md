@@ -4954,6 +4954,27 @@ owner's bar; below either, the site stays unbuilt.
 - IXS-M5 reads KEEP: an overlay-store ADR (F70). RT-M1 reads PASS: SG-2 and versioned cross-repo joins (F72).
 - A second organization asks in writing to share one daemon: the multi-tenant non-goal is reconsidered.
 
+**Amended 2026-10-26 (platform engineering, PLT).** Fathom is the evidence side of the readiness records an
+adopting platform team already keeps: its readiness inventory, its review kit's facts lane, its change-risk tierer
+and its observability coverage. Design `docs/design/platform-engineering.md` (decisions 1 to 8), plan
+`docs/plans/platform-engineering.md` (PLT-).
+- Fathom ships no question map. Lens mappings stay the review kit's, and framework crosswalks stay the policy kit's
+  under decision 5. A question map waits until an adopter without a review kit asks in writing (PLT-D9).
+- The inventory is a fact receipt per subject with a commit basis. It is not a readiness reading, and nothing rolls
+  subjects up to a service.
+- The concern-delta file (`fathom conserve --since B --concern-deltas FILE`) is decision 5's ratchet delivery. It is
+  information only: never a loss, never counted by `--strict`, never a registered plane, so it is never a second gate.
+- TX-4's consumer half is met when a review kit's facts lane reads fathom's facts, promoted through WAE-.
+- Investigations and reviews use the existing verbs through two shipped skills, and a feature-labs card measures them
+  before any new output is built. The fact at the edit rides platform modules and guarded edits, with no code.
+- Measurement joins bench prep (subjects tagged `platform`, bars in a prereg) and feature labs (`lab-platform-skills`,
+  rows in the labs ledger). The goal is G37, widened, and there is no new goal.
+- **Decision models.** One site runs, in a lab and not in the product: PLT-M0's census classification, kind `choice`
+  through the hexagonal port, with OpenAI Decisions or Jev named in the reading. With provider `none` there is no
+  classification, and the census reads only the owner-audited sample and says so. The opt-out is `[decide] provider =
+  none`, and ADR-073's user kill beats every layer. The measurement is Cohen's kappa against the 20% owner audit;
+  under 0.6 the census is void. The clause-answer judgment (PLT-D5) stays unbuilt while a review kit answers.
+
 ## ADR-070: fathom is one self-contained module; the kit mirrors are internal packages by import-path rewrite (2026-10-16)
 
 **Status.** Accepted 2026-10-16 (owner decision Q1, delegated to the owner-architect: "do what you recommend, as

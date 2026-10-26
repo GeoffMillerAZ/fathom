@@ -90,7 +90,12 @@ removing what it killed in the same change, and `docs/plans/index-snapshots.md` 
 this bet beyond IXS-M0; they get their own goal (provisionally G38) when the owner starts their phase 1. Every
 reading is $0 in model spend; the owner's labelling and adjudication is the real cost; agent outcomes are not part
 of this bet (the spend hold).
-{bet: evidence-before-the-incident, instrument: "fathom plans status", threshold: "WAE-M2, WAE-M3 and WAE-M4 each read KEEP or CUT, a CUT removing what it killed; IXS-M0 recorded", review: 2027-01-31}
+Widened 2026-10-26 (platform engineering, PLT): done when also needs `docs/plans/platform-engineering.md` PLT-M2,
+PLT-M3 and PLT-M4 each reading KEEP or CUT, a CUT removing what it killed in the same change. The kill adds: on
+2027-01-31, a PLT-M4 that is unread or CUT removes PLT-7's multi-kind mode and PLT-5's delta file. PLT-M4 is the
+external bet, in which an adopting platform team's consumer reads a PLT output on a real repository by that date.
+No new goal (ADR-069, amended 2026-10-26).
+{bet: evidence-before-the-incident, instrument: "fathom plans status", threshold: "WAE-M2, WAE-M3, WAE-M4, PLT-M2, PLT-M3 and PLT-M4 each read KEEP or CUT, a CUT removing what it killed; IXS-M0 recorded", review: 2027-01-31}
 
 **G11. A reading, a hand-off and an answer carry their evidence (ADR-034).** The first
 round's 74 rows were voided by an instrument defect (the wired arm never had the tools; O41
