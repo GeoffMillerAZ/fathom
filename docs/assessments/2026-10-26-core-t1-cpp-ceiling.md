@@ -26,10 +26,20 @@ Source-search recovery on 2026-10-26: public requests to `GET /search/repositori
 
 1. Reserve the single heavy slot at the shared scratch path `workspace/tmp/lang-measure.lock`, per recipe §13.0; release it after the heavy phase. The private setup helper `workspace/tmp/core-t1/cpp-baseline-setup.py` completed the clone, pin, manifest and CMake preparation; its count/hash summary is retained under ignored `workspace/artifacts/lang-cpp/setup-summary.json`. The six producer runs completed; native companions and grading remain unmeasured. Confirm the three subject SHAs, isolated CMake 3.31.6 and oracle versions and hashes. CMake configure with the existing subject options in `cpp.yaml`, export `compile_commands.json` to external build dirs, and record entry counts, unique source units, missing units and out-of-subject entries. A later compiler probe must record failed compilation units. A subject-root `compile_commands.json` symlink exposes the same database to Fathom's resolver; it is an untracked non-language file and is disclosed in the after receipt. The prior spdlog database kept 34 subject entries after filtering; do not turn that filter into a file-population limit.
 2. Run the exact §13.3.1 tracked-set receipts around configuration. Compare the full tracked C++ set to harness discovery and the historical `-only` sets. Record ERROR-only, MISSING-only and union file counts. Keep receipts, compiler logs, databases, indexes and raw oracle files under ignored `workspace/`.
-3. Replay the 0.4.0 baseline on the identical legacy scope; then measure the full population with 0.4.0 and, after SHA/license verification, 0.4.1. Use the same compilation database, clang-calls, preprocessor, AST ranges, ctags, grammar blob and extractor revision. Report per-subject numerators/denominators and tier caps for definition mapping, typed recall, file-edge precision/recall, calls, imports and ranges. Classify unmapped definitions and blind file pairs by cause; do not commit filenames, subject content or wholesale file lists.
+3. Compare the legacy file scope and full population with 0.4.0 and, after SHA/license verification, 0.4.1. All four comparisons use the same full compilation databases, clang-calls, preprocessor, AST ranges, ctags, grammar blob and extractor revision. This is not an exact replay of the historical baseline. Report per-subject numerators/denominators and tier caps for definition mapping, typed recall, file-edge precision/recall, calls, imports and ranges. Classify unmapped definitions and blind file pairs by cause; do not commit filenames, subject content or wholesale file lists.
 4. Only after those comparisons, decide whether extractor changes or an independent producer are needed. Before any ceiling, complete the missing source searches, independent-truth perturbation, cap/mutation checks and a criterion-frozen holdout under recipe §§13.0.1, 13.4.0 and 13.5.1. No holdout is selected or read in this preparation.
 
 The next claim can be made only against a named population, immutable pins and exact runnable commands. `Verified:` must eventually cite committed recipe/tests and their results, not this workspace preparation.
+
+The historical `cpp.json` at landing base `6db920e72` has SHA-256
+`4d4949cddb6fe4f95c6b8aa49e18c31ad9555af18e98a6e344f5a38c0262348b`.
+Its latest producer note names 34 filtered spdlog compilation entries; notes
+about 141 entries describe older measurements. The new `legacy` comparison
+retains its file globs but uses the full 141-entry database and the current
+extractor. Label it **legacy file scope / full compiler database**. A delta
+against the historical reading cannot be attributed solely to a producer
+version or extractor change. The controlled comparison is between the four
+new readings, whose populations and inputs are recorded separately.
 
 
 ## Completed preparation, no new grade
@@ -114,9 +124,13 @@ left the old index stamp unchanged. Receipt-round-trip and manifest-boundary
 controls also reproduced the tuple/list and missing-entry-cap failures. After
 repair, all 17 Python controls pass, including outside source/header mutation,
 legacy receipt refusal, JSON replay, entry/byte/fanout caps and metadata paths.
-The independent final review found no remaining material issue. No new
-source-frozen index, native receipt or grade has been produced by the repaired
-collector yet. These controls validate the method, not a language level.
+The independent final review found no remaining material issue. The repaired
+collector has now completed six source-frozen indexes, with 51, 93 and 141
+units per producer and zero errored units. The generated index receipt has
+SHA-256 `37e56bfa12b722bb7f34b2dcb9d59a37b2355e82d32ddea1218d63182f40b3ad`.
+Both versions attest identical build-input identities for each subject.
+Fresh native collection is complete; grading remains pending. These controls
+and producer results do not establish a language level.
 
 The directory-fanout control also verifies streaming refusal: with a cap of
 two entries and seven available, the old walk consumed all seven before
@@ -126,3 +140,54 @@ control attempt detected its output cap and then received a process-group
 permission denial during cleanup; the full committed suite subsequently
 passes. This is retained as a failed diagnostic, not claimed as an oracle
 production result. No unsupported signal-handling change was made.
+
+## Fresh native collection and population controls
+
+The repaired collector's native receipt is complete, SHA-256
+`dc00874f991b6a460c9cbf0e1aaf3252e6aa297d32daf9626c4b5f57b5b42754`.
+It binds the same dependency-attested indexes and input bytes before and after
+collection. Every command uses a 1,200-second execution cap, starts only at
+one-minute load at most 9, and runs at nice 10. Load waiting is outside the
+execution cap. No stopped or errored unit was accepted.
+
+| Subject | Preprocessor commands / stopped | Call commands / stopped | Range dumps / repeated entries skipped / errors |
+|---|---:|---:|---:|
+| fmt | 36 / 0 | 36 / 0 | 31 / 20 / 0 |
+| json | 93 / 0 | 93 / 0 | 78 / 15 / 0 |
+| spdlog | 141 / 0 | 141 / 0 | 141 / 0 / 0 |
+
+The [C++ population screen](../../calibration/oracles/scip-clang/cpp-screen/README.md)
+consumes each reading's private `tenancy_files` population and verifies its
+file and byte counts. It counts ERROR and MISSING separately, their exclusive
+parts, intersection and union, both as written and on the tree selected by
+the product's `ProbeParse`. It is a parser diagnostic, not another oracle or
+accuracy grade. Candidate receipts require the reading's full extractor
+commit to match the clean compiled screen and live checkout, and the
+subject's full pin to match its checkout. The embedded grammar lock binds
+the actual grammar; optional reading grammar fields are checked when present.
+Fresh harness readings omit those optional fields, so none is invented.
+The source digest attests probe-time bytes; grade-time identities must be
+cross-checked separately before publishing a comparison.
+
+Controls: all 11 screen race tests pass. The exact synthetic population
+contains three files with ERROR-or-MISSING as written and two after preparse,
+including a MISSING-only file. Streaming JSON stops before consuming a path
+beyond the file cap; tests accept equality and refuse cap + 1 for JSON bytes,
+file count, source bytes, total bytes, token budget and nesting depth. The
+production caps are 256 MiB per JSON, 20,000 files, 16 MiB per source, 512 MiB
+total source, 2,000,000 JSON tokens and depth 64. Traversal, symlinks,
+duplicate keys/paths, revision mismatch and receipt replacement are refused.
+
+Truth independence: `TestSCIPTruthIndependentOfExtractorNodes` changes real
+SCIP definition mapping from one to zero by removing extractor nodes while
+the canonical raw-definition digest stays unchanged. Changing a SCIP
+definition then changes that digest. This is a synthetic control, not a
+claim that the subject measurement has already been graded.
+
+Mutation: in `calibration/oracles/scip-clang/cpp-screen/main.go`, replacing
+the `ProbeParse` target with an empty `ProbeTarget` bypasses C++ preparse.
+`bash scripts/fathom-go.sh test -race -count=1 -run
+'^TestExactPopulationAndSyntaxPartitions$'
+./calibration/oracles/scip-clang/cpp-screen` fails: selected union becomes
+three and `PreprocessSelected` becomes zero. Original bytes were restored;
+the unmutated screen suite passes. No subject or holdout was modified.
