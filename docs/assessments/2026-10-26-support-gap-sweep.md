@@ -17,8 +17,8 @@ readings under `docs/bench/readings/lang/`, never held here (ADR-054, I54).
 
 Four passes, in order.
 
-1. **Eight domain sweeps** (measured, 2026-10-26): web templates, mobile and platform, data and database, build and
-   packaging, infrastructure and CI, legacy enterprise, documents and diagrams, game and embedded. Each sweep listed
+1. **Eight domain sweeps** (measured, 2026-10-26): general-purpose languages, data and scientific, enterprise and
+   legacy, web templates and frameworks, build and CI, infrastructure and config, API and schema, docs and other artifacts. Each sweep listed
    candidate formats and a dated reach source. Sources were the Stack Overflow Developer Survey 2025 (secondhand
    figures), the TIOBE index (search-engine based, so it measures attention, not repository share), npm weekly
    download counts quoted by a package-security vendor and one blog (ejs about 26.7 million, handlebars about 12
@@ -72,8 +72,8 @@ runtime table for basename, glob and sniff formats is GAP1-2.
 Demoted by the critic: dotenv and Dependabot/Renovate (top reach, little code-graph value; fixing S0 makes them honest
 and they fit the cheap-dispatch lane), SQL migrations, Azure Pipelines and dev containers (lower reach times gap).
 Other additions filed as rows: F# `.fs` (silent, rides GAP1-2), game engines (GAP1-38), workflow DAGs (GAP1-39), the
-Svelte 5 runes symbol rule (GAP1-40; the critic read the Svelte board number backwards, 0.3816 is the newer reading and
-a re-time will not fix it). Lockfiles (A12) are a note only: top reach, low code-graph value.
+Svelte let reading (GAP1-40, deferred to LB-Q-svelte-rest; the synthesis read the board number backwards, W4: 0.3816 is
+the newer reading and a re-time will not fix it). Lockfiles (A12) are a note only: top reach, low code-graph value.
 
 ## Supported well (people assume these are missing)
 
