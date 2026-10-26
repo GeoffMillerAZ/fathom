@@ -96,3 +96,21 @@ exact asset from `candidates-t-r2.json` into the scratch root mounted at
 `/probe`, then invoke `linux_probe.sh measure LABEL PACKAGE` in that offline
 image. The script verifies the published SHA256 before unpacking or execution.
 Native 3.0.9 regular reports 356 definitions; debug reports 357, both 10 references.
+
+## X-R4 sources searched, 2026-10-25
+
+The retained limitation is the product's literal variable classification, not
+availability of native truth. Native full-population evidence already reaches
+L2 excellent. This search does not authorize alias normalization or ENGINE work.
+
+| Required source | Named candidate / result |
+|---|---|
+| Owner toolchain / introspection | Matching 3.0.9 regular/debug packages and 7ddb3dc PROXYSQL40 debug build actually measured above. Native initial configuration DB plus runtime MCP/GenAI name registries replace the rejected binary-availability premise. [Official configuration](https://proxysql.com/documentation/configuring-proxysql/) distinguishes config, memory, runtime and disk; none makes unknown literal keys native variables. |
+| SCIP and LSIF lists plus GitHub | Read [Sourcegraph supported indexers](https://sourcegraph.com/docs/code-navigation/precise-code-navigation), [SCIP list](https://github.com/sourcegraph/scip#tools-using-scip), and Sourcegraph-maintained [LSIF.dev](https://lsif.dev/). No ProxySQL config indexer listed. GitHub repository query `scip-proxysql in:name` returned zero. C/C++ SCIP concerns the implementation, not the loaded configuration registry. |
+| Language servers | GitHub/web query `proxysql language server config` supplied no dedicated config server. Generic SQL navigation does not attest libconfig variable membership. No unlocated tool is reported as a failed native run. |
+| Registry parsers / type checkers / AST dumpers | [PyPI libconf 2.0.1](https://pypi.org/project/libconf/) is an independent libconfig reader/writer, not ProxySQL evaluation, hence C. [libconfig 1.8.2](https://hyperrealm.github.io/libconfig/) exposes config_setting_source_line and tree walking, but it is LGPL and its syntax acceptance does not validate ProxySQL plugin variable identities. The native full registry remains the applicable membership instrument. |
+| Runtime call / require tracing | The measured debug binary, native admin SAVE FROM RUNTIME/SELECT and [debug/runtime admin schemas](https://proxysql.com/documentation/the-admin-schemas/) were checked. Only native variable names are queried; no backend workload, model endpoint or plugin service is called. Runtime membership plus strict literal comparison leaves 14 MCP mismatches and two GenAI placeholders under Q5. |
+
+X-R3 publication replaces the 16-row copied literal inventory with group counts
+and a comparison digest. `compare_registry.py` reproduces that summary from the
+pinned clean source plus committed native registry; scratch retains detail.

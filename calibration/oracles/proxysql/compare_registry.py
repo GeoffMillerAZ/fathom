@@ -1,5 +1,6 @@
 """Compare literal configuration keys with native registry names; never adjudicates."""
 import argparse
+import hashlib
 import json
 import subprocess
 from pathlib import Path
@@ -27,4 +28,10 @@ if __name__ == '__main__':
                                 'literal_native_name': literal, 'literal_in_registry': literal in names,
                                 'after_underscore_prefix_removal': shortened,
                                 'shortened_in_registry': shortened in names})
-    print(json.dumps({'source_sha': pin, 'comparisons': comparisons}, indent=2))
+    summary = {}
+    for prefix in ('mcp', 'genai'):
+        rows = [row for row in comparisons if row['group'] == prefix]
+        summary[prefix] = {'literals': len(rows), 'literal_matches': sum(row['literal_in_registry'] for row in rows),
+                           'hypothetical_shortened_matches': sum(row['shortened_in_registry'] for row in rows)}
+    print(json.dumps({'source_sha': pin, 'groups': summary,
+                      'comparisons_sha256': hashlib.sha256(json.dumps(comparisons, sort_keys=True).encode()).hexdigest()}, indent=2))
