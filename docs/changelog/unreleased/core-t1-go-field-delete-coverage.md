@@ -1,2 +1,2 @@
 ### Fixed
-- Mark deletion checks on Go fields as incomplete because field references are not indexed.
+- Resolve Go field deletion targets through symbol lookup name matching, including bare names and field/method collisions, and disclose that field references are not indexed.

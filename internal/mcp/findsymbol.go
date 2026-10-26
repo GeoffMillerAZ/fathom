@@ -17,6 +17,46 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
+// symbolMatchResult carries the first successful find_symbol tier. All is
+// retained only for fallback suggestions; fuzzy suggestions are never targets.
+type symbolMatchResult struct {
+	Nodes []core.SymbolNode
+	All   []core.SymbolNode
+	Via   string
+	Total int
+}
+
+// resolveSymbolMatches shares find_symbol's exact and fallback resolution with
+// consumers that must inspect the resolved kinds. A coverage decision needs all
+// candidates, even when find_symbol's display cap elides a field.
+func resolveSymbolMatches(ctx context.Context, backend QueryInterface, service, name string, loadAll func() ([]core.SymbolNode, error), uncapped bool) (symbolMatchResult, error) {
+	nodes, err := backend.FindSymbol(ctx, service, name)
+	if err != nil {
+		return symbolMatchResult{}, err
+	}
+	if len(nodes) > 0 {
+		return symbolMatchResult{Nodes: nodes, Via: "exact", Total: len(nodes)}, nil
+	}
+	all, err := loadAll()
+	if err != nil {
+		// find_symbol has always treated fallback-list errors as no match.
+		return symbolMatchResult{Via: "none"}, nil
+	}
+	if nodes, total := caseFoldMatches(all, name); len(nodes) > 0 {
+		if uncapped && total > len(nodes) {
+			nodes = caseFoldCandidates(all, name)
+		}
+		return symbolMatchResult{Nodes: nodes, All: all, Via: "case_insensitive", Total: total}, nil
+	}
+	if nodes, total := substringMatches(all, name); len(nodes) > 0 {
+		if uncapped && total > len(nodes) {
+			nodes = substringCandidates(all, name)
+		}
+		return symbolMatchResult{Nodes: nodes, All: all, Via: "substring", Total: total}, nil
+	}
+	return symbolMatchResult{All: all, Via: "none"}, nil
+}
+
 // maxSubstringMatches caps the substring tier so a short query ("get") cannot
 // flood the response; truncation is reported explicitly.
 const maxSubstringMatches = 20
@@ -56,6 +96,15 @@ const maxSuggestions = 5
 // tier already uses), with total returned so the caller can disclose the
 // same way substringMatches already does.
 func caseFoldMatches(all []core.SymbolNode, name string) (nodes []core.SymbolNode, total int) {
+	nodes = caseFoldCandidates(all, name)
+	total = len(nodes)
+	if len(nodes) > maxSubstringMatches {
+		return nodes[:maxSubstringMatches], total
+	}
+	return nodes, total
+}
+
+func caseFoldCandidates(all []core.SymbolNode, name string) []core.SymbolNode {
 	q := strings.ToLower(name)
 	type ranked struct {
 		node  core.SymbolNode
@@ -81,15 +130,11 @@ func caseFoldMatches(all []core.SymbolNode, name string) (nodes []core.SymbolNod
 		}
 		return nodeLess(out[i].node, out[j].node)
 	})
-	nodes = make([]core.SymbolNode, len(out))
+	nodes := make([]core.SymbolNode, len(out))
 	for i, r := range out {
 		nodes[i] = r.node
 	}
-	total = len(nodes)
-	if len(nodes) > maxSubstringMatches {
-		return nodes[:maxSubstringMatches], total
-	}
-	return nodes, total
+	return nodes
 }
 
 // substringMatches returns nodes whose name contains name case-insensitively,
@@ -97,6 +142,16 @@ func caseFoldMatches(all []core.SymbolNode, name string) (nodes []core.SymbolNod
 // the pre-cap match count, so a caller can disclose what was elided
 // (BA-1/BA-2) — total == len(nodes) when nothing was cut.
 func substringMatches(all []core.SymbolNode, name string) (nodes []core.SymbolNode, total int) {
+	nodes = substringCandidates(all, name)
+	total = len(nodes)
+	if len(nodes) > maxSubstringMatches {
+		return nodes[:maxSubstringMatches], total
+	}
+	return nodes, total
+}
+
+func substringCandidates(all []core.SymbolNode, name string) []core.SymbolNode {
+	var nodes []core.SymbolNode
 	q := strings.ToLower(name)
 	for _, n := range all {
 		if n.IsModuleSymbol() {
@@ -112,11 +167,7 @@ func substringMatches(all []core.SymbolNode, name string) (nodes []core.SymbolNo
 		}
 		return nodeLess(nodes[i], nodes[j])
 	})
-	total = len(nodes)
-	if len(nodes) > maxSubstringMatches {
-		return nodes[:maxSubstringMatches], total
-	}
-	return nodes, total
+	return nodes
 }
 
 // nodeLess is the deterministic total order for equal-priority nodes:

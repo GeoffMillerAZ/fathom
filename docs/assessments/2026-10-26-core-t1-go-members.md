@@ -140,11 +140,20 @@ tracker assertion was excluded. Wave C focused reading/SCIP controls, X-R2,
 X-R3 and merge-debris checks passed. No new production change followed the regrade.
 
 
-## F8 deletion coverage
+## Go field deletion coverage
 
-The reader-backed deletion regression reproduced the false proven-zero answer
-for T.n using its bare, package-qualified and canonical keys. Deletion checks
-now preserve recorded referents, report field_references_indexed false and
-say field references are not indexed. This query-only correction changes no
-full-ingest reading or cost path. The pre-existing missing-target and Go
-variable/constant cases are filed separately as CT1-SD-1, outside this branch.
+The initial regression covered the stored name T.n, the service-less key
+p/T.T.n and the canonical key; it did not cover a bare field identifier.
+Expanded reader-backed controls reproduce and fix n, Inner, p.T.n, r.S.Name
+and field/method collisions under n and Name. They also retain the stored
+names, owner/key suffixes and canonical keys, while U.Name remains an ordinary
+method query. The Name collision preserves its recorded ReadName caller.
+
+Deletion checks and find_symbol now share exact, case-insensitive and
+substring target resolution. The guard inspects the resolved node kind,
+including candidates beyond the lookup's display cap, instead of recognizing
+selected spellings. If any target is a GoField it preserves recorded referents,
+reports field_references_indexed false and says field references are not indexed.
+This query-only correction changes no full-ingest reading or cost path. The
+pre-existing missing-target and Go variable/constant cases remain separately
+filed as CT1-SD-1; that row also preserves the field-spelling controls.

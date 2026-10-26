@@ -211,13 +211,18 @@ func safeDeleteCheckAnswer(ctx context.Context, s *Server, backend QueryInterfac
 		}
 		return withSummary(moduleSymbolDeleteSummary(symbol, moduleFile, referents), resp), nil
 	}
-	// Fields stay out of the call-target indexes. Also check a canonical
-	// package-qualified key supplied without its service prefix.
-	targets := append(callgraph.CandidateKeys(navs.Both, symbol), service+"::"+symbol)
-	for _, key := range targets {
-		if target, ok := byKey[key]; ok && target.Kind == core.KindGoField {
-			// The field-only pass records definitions, not their readers or
-			// writers. Keep any referents found, but never prove absence.
+	// Resolve kinds through the same tiers as find_symbol, without its
+	// display cap: an elided field is still missing reference coverage.
+	targets, err := resolveSymbolMatches(ctx, backend, service, symbol, func() ([]core.SymbolNode, error) {
+		return navs.Nodes, nil
+	}, true)
+	if err != nil {
+		return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
+	}
+	for _, target := range targets.Nodes {
+		if target.Kind == core.KindGoField {
+			// Keep every referent already found, including non-field
+			// candidates when a bare name names both a field and a method.
 			resp["field_references_indexed"] = false
 			summary := fmt.Sprintf("field references are not indexed; %d recorded referent%s for %s", len(referents), pluralS(len(referents)), symbol)
 			return withSummary(capSummary(summary), resp), nil
