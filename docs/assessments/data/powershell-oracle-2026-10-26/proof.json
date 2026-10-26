@@ -1,0 +1,66 @@
+{
+  "binder_after_extractor_perturbation_sha256": "1b6b86a02058f166327341c95828af8069f0f3833ccec45b6af4bdac2eedea1e",
+  "binder_after_native_input_change_sha256": "c2df5578dd0e8c720be05075685f2f727803b87c29badb880a1c400106e4fbc4",
+  "binder_before_sha256": "1b6b86a02058f166327341c95828af8069f0f3833ccec45b6af4bdac2eedea1e",
+  "caps": [
+    {
+      "cap": "PWSH_ORACLE_FILE_CAP",
+      "input_count": 3,
+      "limit": 2,
+      "whole_unit_refused": true
+    },
+    {
+      "cap": "PWSH_ORACLE_BYTE_CAP",
+      "input_count": 875,
+      "limit": 874,
+      "whole_unit_refused": true
+    },
+    {
+      "cap": "PWSH_ORACLE_SITE_CAP",
+      "input_count": 19,
+      "limit": 18,
+      "whole_unit_refused": true
+    },
+    {
+      "cap": "PWSH_TRACE_ROW_CAP",
+      "input_count_at_refusal": 2,
+      "limit": 1,
+      "whole_unit_refused": true
+    }
+  ],
+  "declared_scope": "private target resolves only inside native module-owned source; ordinary source does not inherit module privacy; external/unknown/member sites remain misses",
+  "fixture_literal_sites": 19,
+  "known_input_change": "native alias NativeOne to NativeTwo changes exactly two caller/target pairs in each route",
+  "module_load_state": "asserted explicit Archive/Host/Management/Security/ThreadJob/Utility runtime baseline plus Probe; undeclared autoload disabled",
+  "oracle_code_sha256": {
+    "DiscoverHarness.ps1": "f1c889b0de312c8edff82a174a4587f57739e6622b3a88a313b5aaf4c05be9a9",
+    "ProbeContracts.ps1": "58ea13f384af5d2de0cd26c074129c133095bab61dcb0c5e36618155fc718778",
+    "README.md": "cd8a847777131cabae6d88796f178418ed828bf8751d328e25325cb41b3606f0",
+    "ResolveCalls.ps1": "d66261253126900afbc0e600ef47b6ba99a00902fab39f74a612907e2308ce47",
+    "TraceFunctions.ps1": "8991946f9742e2eb2f8b6905663fc1393c278079a94206c729f5ed3d21122df9",
+    "analyze_misses.py": "f75103563429ebca948a1570f2172c00fc55f4d480b685ec8d0c5c954a6f88cd",
+    "clean_score_scope.py": "84e276aa861c4ce490a5951f7b34193182e1694737e3e7cdc37b0dfac6084cc5",
+    "combine_runtime.py": "58391633f440c890331dfbae3c31e02a2a2c4101e998838ca1a4f466724b193c",
+    "complete_runtime_inputs.py": "096f9fb872ca9ccce8f3f5600e9e27f26a7b218aa3013890eeedd63626b0e054",
+    "driver_outcome.py": "05074d10469aa89bc340ba65a46c0a12d6d0818bee648c56bd53df7e55198129",
+    "fetch.py": "dda66042cd2767512ad66633aadb8b0bf741bb0d23c9a2123cd30e561476bedb",
+    "measure_binder.py": "84806d08c815e9be4f3173a562a29e20d4ddff25e55d549529298c8e4ffe79b4",
+    "prepare_runtime.py": "2786161e274398aadf15544990f3d655e45cb001b1c250190f5c85330ce05da5",
+    "prove_harness.py": "f279381217b06e7c286dbbaf599b1e6e09a56e12f88eda276c20658c5c13c1b6",
+    "prove_inventory.py": "d5915a7e2a8a6239e0b637657cca4ef74da02f6eaec56e3d08720a91cfa8486a",
+    "prove_mutations.py": "0d02ccbb78b92d72f6163b4200a7ec1dfd0a04126f9f4bf7b92429a5563709d9",
+    "prove_native.py": "e6a4e9e85a2e581c512e589b0b2531a734c45ff589e1cbbdd8f784628c53ad7b",
+    "run_traces.py": "6a714e020d754fca646dfd6b9d6c4722342a0dd65dd96b83c8c916e7f81751cf",
+    "score.py": "adc6f2cee28cc16fdc7ba3d1ccb57a53797e2e3d02d1dcee9de39be437f2745d",
+    "test_analyze_misses.py": "20dcbfdfb9ba4ac208e5d0192d196d112bf401d6cd502bb88f5d6a5f2663c9e4",
+    "test_combine_runtime.py": "d2e4269b1e2d1869b36ae165280d89622c533d22a2a08375f3853acc2e016a96",
+    "test_driver_outcome.py": "32486bf35da3f9afbd99bb7b5e70978f0aebc63413a598cf0d6686891dd02910",
+    "test_trace_decode.py": "c14488b8305900870170d672be68ec016b2a889408e899c7853a97d21126606e",
+    "trace_decode.py": "d556e7e5812413dc23c05b61e5018d303d3bb6628e07abf94f1b659faf6a9e1c",
+    "tracked_set.py": "26b5bfca3744d2e37bd8e82eb3d9c37b2229ac0c6124b9e42370a49ce433aeb1"
+  },
+  "script_qualified_breakpoint_regression": "global native breakpoint survives New-Module; script-qualified breakpoint mutant must fail",
+  "trace_after_extractor_perturbation_sha256": "5ac2a82870b8f21ebea9a21207a8142c22240eb0f3b5ce8dce6cf8b9109ecccd",
+  "trace_after_native_input_change_sha256": "c6579b399d9726eee65807d7126ba80c14b56d9e07ee8c24f391f4d7165c3119",
+  "trace_before_sha256": "5ac2a82870b8f21ebea9a21207a8142c22240eb0f3b5ce8dce6cf8b9109ecccd"
+}

@@ -1,0 +1,103 @@
+{
+  "schema": "opencl-r3-subject-search-v1",
+  "researched_at": "2026-10-26",
+  "status": "pins-frozen-before-parse",
+  "scope": "Metadata plus targeted upstream license, README, and one license-header inspection only. No clone, archive, build, parser, compiler, oracle, or grade was run.",
+  "activation_gate": "Commit this record before parsing any candidate below.",
+  "population_rule": "At the recorded full commit, measure every tracked regular file whose path ends exactly in lowercase .cl. No sampling, caps, exclusions, or outcome-based selection.",
+  "candidates": [
+    {
+      "name": "vetter/shoc",
+      "repository": "https://github.com/vetter/shoc",
+      "pin": "00b25e2751dde4f1d7c595cadbb7fdb0873257b0",
+      "role": "candidate whole-project heterogeneous-computing benchmark suite",
+      "license": "BSD-3-Clause",
+      "repository_metadata_license": "NOASSERTION",
+      "license_source": "https://github.com/vetter/shoc/blob/00b25e2751dde4f1d7c595cadbb7fdb0873257b0/LICENSE.txt",
+      "license_source_sha256": "a6ff41bf55d10b1f4e49eabd27269ec6af858180963d7d34e84e86f19cfc46f3",
+      "use_scope": "external measurement only; do not vendor or ship from this metadata record",
+      "cl_population": {
+        "blob_count": 38,
+        "count_rule": "all tracked regular lowercase .cl files; no exclusions",
+        "tree_source": "https://api.github.com/repos/vetter/shoc/git/trees/00b25e2751dde4f1d7c595cadbb7fdb0873257b0?recursive=1",
+        "truncated": false,
+        "parsed": false
+      }
+    },
+    {
+      "name": "HandsOnOpenCL/Exercises-Solutions",
+      "repository": "https://github.com/HandsOnOpenCL/Exercises-Solutions",
+      "pin": "be2fb26d7c478627598ffba369014a4adb57b6f4",
+      "role": "candidate whole-project OpenCL exercises and solutions",
+      "license": "CC-BY-3.0",
+      "repository_metadata_license": "NOASSERTION",
+      "license_source": "https://github.com/HandsOnOpenCL/Exercises-Solutions/blob/be2fb26d7c478627598ffba369014a4adb57b6f4/License",
+      "license_source_sha256": "821a4df307b34e5dad137f30751fdb42821d4fa221aa323c867df2bc545821a1",
+      "use_scope": "external measurement only; do not vendor or ship from this metadata record",
+      "cl_population": {
+        "blob_count": 16,
+        "count_rule": "all tracked regular lowercase .cl files; no exclusions",
+        "tree_source": "https://api.github.com/repos/HandsOnOpenCL/Exercises-Solutions/git/trees/be2fb26d7c478627598ffba369014a4adb57b6f4?recursive=1",
+        "truncated": false,
+        "parsed": false
+      }
+    },
+    {
+      "name": "sschaetz/nvidia-opencl-examples",
+      "repository": "https://github.com/sschaetz/nvidia-opencl-examples",
+      "pin": "4e919bdee11cbc134698c59c4fbec93665745246",
+      "role": "candidate whole-project legacy OpenCL sample suite",
+      "license": "NVIDIA EULA reference; exact agreement unavailable at this pin",
+      "repository_metadata_license": null,
+      "license_resolution": "NOASSERTION because the referenced agreement is absent",
+      "license_source": "https://github.com/sschaetz/nvidia-opencl-examples/blob/4e919bdee11cbc134698c59c4fbec93665745246/OpenCL/src/oclMatVecMul/oclMatVecMul.cl",
+      "license_source_sha256": "584ed41abcaec3dad0e2cd4bc0c2eb5d4eacc6f45faef816eacfa0f2821229e6",
+      "license_note": "No root license file was present. The pinned source header refers to an associated NVIDIA EULA without including or linking the agreement.",
+      "use_scope": "external measurement only; do not vendor or ship",
+      "cl_population": {
+        "blob_count": 41,
+        "count_rule": "all tracked regular lowercase .cl files; no exclusions",
+        "tree_source": "https://api.github.com/repos/sschaetz/nvidia-opencl-examples/git/trees/4e919bdee11cbc134698c59c4fbec93665745246?recursive=1",
+        "truncated": false,
+        "parsed": false
+      }
+    }
+  ],
+  "other_query_outcomes": [
+    {
+      "name": "ROCm/ROCclr",
+      "pin": "52639fe5285b746ea087d1269f471e2472bddecb",
+      "repository_metadata_license": null,
+      "cl_blob_count": 0,
+      "tree_truncated": false,
+      "outcome": "zero-population miss under the frozen lowercase .cl rule"
+    },
+    {
+      "name": "Oblomov/clinfo",
+      "outcome": "Resolved by pinned metadata and transport checks in subject-search-r4.json; see that record for the exact result.",
+      "initial_outcome": "GitHub API HTTP 403 rate limit; no population or license inference"
+    },
+    {
+      "name": "inducer/pyopencl",
+      "outcome": "Resolved by pinned metadata and transport checks in subject-search-r4.json; see that record for the exact result.",
+      "initial_outcome": "GitHub API HTTP 403 rate limit; no population or license inference"
+    },
+    {
+      "name": "KhronosGroup/OpenCL-Examples",
+      "outcome": "Resolved by pinned metadata and transport checks in subject-search-r4.json; see that record for the exact result.",
+      "initial_outcome": "GitHub API HTTP 403 rate limit; no population or license inference"
+    },
+    {
+      "name": "IntelOpenCLSamples/IntelOpenCLSamples",
+      "outcome": "Resolved by pinned metadata and transport checks in subject-search-r4.json; see that record for the exact result.",
+      "initial_outcome": "GitHub API HTTP 403 rate limit; no population or license inference"
+    }
+  ],
+  "claims": {
+    "parsed_candidates": 0,
+    "graded_candidates": 0,
+    "candidate_whole_populations": 3,
+    "candidate_cl_files": 95,
+    "quality_or_ceiling_claim": false
+  }
+}

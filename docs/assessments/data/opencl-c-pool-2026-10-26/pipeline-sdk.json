@@ -1,0 +1,35 @@
+{
+  "active_line_files": 10,
+  "active_line_ranges": 89,
+  "active_lines": 546,
+  "classes": {
+    "declaration": 26,
+    "resolved": 147
+  },
+  "commit": "6090378a113db8dab20ae278c8fa57ab10b92300",
+  "compile_units": 10,
+  "compiler_and_minimal_resource_pins_checked_before_after_each_consumer": true,
+  "database_unchanged": true,
+  "errored": 0,
+  "function_ranges": 23,
+  "minimal_resource_tree_unchanged": true,
+  "path_bound_diagnostic_run_identity": {
+    "capture_receipt_sha256": "1d50f55da5a7938cf923c1815823b387506ac6b3e02f24c64b8eaa052979b2bd",
+    "database_sha256": "4b2aa1d525b4f4c75746352ddc563f511e0ae2c758ae78ff3bb24d9f637716b6",
+    "database_tree_sha256": "9312d6aa83858564ff56aefbc264642f32d1cf5a65cf86a7c08f7ff7de076012",
+    "scope": "includes absolute checkout, output, compiler, and resource paths; not a cross-host reproducibility check"
+  },
+  "raw_output_sha256": {
+    "clang-calls.json": "3229915f322dca75eb5b5cac45ec655b79ca9b1d76753e2c437c4b034d6d06ae",
+    "preproc.json": "25749636b35e2bfedf7666f16420efb681f2dd771719738bd3e43f640ebd6831",
+    "preproc.ranges.json": "ec54513e760ac5b72c89b071786b36a6f8b31a7d120036bb25f905456baf3ccd"
+  },
+  "resource_tree_sha256": "470e69dbf869cd30f884c00246950480b9dbce8c151e21791abe58d5c6c8d655",
+  "schema": "opencl-c-sdk-pipeline-replay-v1",
+  "scope": "triage only; no extraction grade or runtime configuration union",
+  "skipped": 0,
+  "snapshot_sha256": "260c6778e05b9a16f925847e7f2392350db3b6d05239bb2602433f99c35df2aa",
+  "subject_snapshot_unchanged": true,
+  "tier": "B",
+  "written_sites": 173
+}

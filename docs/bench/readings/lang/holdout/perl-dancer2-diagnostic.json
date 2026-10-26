@@ -1,0 +1,140 @@
+{
+  "dialect": "perl",
+  "kind": "language",
+  "target_level": "L2",
+  "level_met": "L2",
+  "grade": {
+    "L1": "excellent",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-10-26",
+  "fathom_commit": "500a867de528dfe651b3ec5b61d1779625c6e595",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "Dancer2",
+      "sha": "90b6e651c1f1a7c576072fdd039ef15afecb67a5",
+      "files": 332,
+      "bytes": 1085480,
+      "counts": {
+        "call_fathom": 1971,
+        "call_fathom_in_truth": 1949,
+        "call_truth": 1954,
+        "call_truth_found": 1949,
+        "callables": 677,
+        "callables_signed": 677,
+        "fathom_defs": 1057,
+        "kind_equal": 1054,
+        "matched": 1054,
+        "oracle_defs": 1058,
+        "range_eligible": 623,
+        "range_ok": 623
+      },
+      "families": {
+        "calls": "C",
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "function",
+        "package"
+      ],
+      "excluded_by_kind": {
+        "ctags:constant": 1,
+        "ctags:format": 6,
+        "ctags:label": 21
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 10,
+        "extract_ms": 470.784,
+        "extract_cpu_ms": 473.66999999999996,
+        "max_file_ms": 27,
+        "peak_module_pages": 448,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "C",
+      "tool": "ppi-calls",
+      "version": "PPI 1.270"
+    },
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": 0.9888,
+    "call_recall": 0.9974,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": 1,
+    "signature_coverage": 1,
+    "sym_precision": 0.9972,
+    "sym_recall": 0.9962,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "C",
+    "call_recall": "C",
+    "kind_agreement": "B",
+    "range_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "function",
+    "package"
+  ],
+  "kind_intersection": [
+    "function",
+    "package"
+  ],
+  "counts": {
+    "call_fathom": 1971,
+    "call_fathom_in_truth": 1949,
+    "call_truth": 1954,
+    "call_truth_found": 1949,
+    "callables": 677,
+    "callables_signed": 677,
+    "fathom_defs": 1057,
+    "kind_equal": 1054,
+    "matched": 1054,
+    "oracle_defs": 1058,
+    "range_eligible": 623,
+    "range_ok": 623
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 10,
+    "throughput_mb_s": 2.29,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 2.31,
+    "max_file_ms": 27,
+    "peak_module_pages": 448,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:constant": 1,
+    "ctags:format": 6,
+    "ctags:label": 21
+  },
+  "notes": [
+    "Dancer2: 5 files skipped by ingest's gates (ambiguous)",
+    "Dancer2: range_agreement measured against perl-DB-sub-compile (tier A, v5.34.1: 343 files, 64 it could not parse): Tier A only for the actual compiled population. Named subroutines compiled in their own source file have end lines from compiler %DB::sub. Name and declaration line join to independent Universal Ctags Perl subroutine tags in the same file, within two lines, only when reciprocal unique. Anonymous/eval/imported-outside-source and ambiguous joins excluded. Units include every tracked source file; any file that cannot compile remains unresolved against coverage and is counted in errored. No network access; only subject-declared dependencies are permitted. -c omits program body but BEGIN/CHECK/use may execute., 623 of fathom's definitions paired (L1's own pairing: same file and name, |Δline| \u003c= 2); only the range counts are taken, so the L1 oracle is unchanged",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "throughput (design 1.9 T1, T2): darwin/arm64 Apple M2; run 1: 2.29 MB/CPU-s; run 2: 2.31 MB/CPU-s; run 3: 2.27 MB/CPU-s; median run 1: 2.29 MB/CPU-s; every other field is the original measurement at its recorded fathom_commit 500a867de528dfe651b3ec5b61d1779625c6e595"
+  ],
+  "disposition": null
+}

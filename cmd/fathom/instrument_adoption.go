@@ -250,6 +250,11 @@ type AdoptionReport struct {
 	// project reaches once every filed observation is resolved).
 	OpenObservationCount *int   `json:"open_observation_count"`
 	ObservationsPath     string `json:"observations_path"`
+
+	// Labs is the labs section (LAB-6), read from files under --root. Nil
+	// only when the caller skipped it (the console's Operate page); never
+	// omitted, so an empty section is explicit.
+	Labs *AdoptionLabs `json:"labs"`
 }
 
 // cmdInstrumentAdoption implements `fathom instrument --adoption` (FW-1).
@@ -287,6 +292,9 @@ type adoptionQuery struct {
 	// preread, when set, is a read of the resolved log the caller already
 	// made (the console's Operate page reads it once for every section).
 	preread *adoptionPreread
+	// skipLabs leaves Labs nil: the console's Operate page renders no labs
+	// section, so it loads no cards and walks no observations per render.
+	skipLabs bool
 }
 
 // adoptionPreread is one read of the call log: its usage rows' fold, the
@@ -388,6 +396,11 @@ func instrumentAdoption(q adoptionQuery, stderr io.Writer) (AdoptionReport, cons
 	// than claiming every agent-surface tool is zero-call too.
 	if !realReadErr {
 		report.ZeroCallAgentTools, report.RegisteredNotOnAgent = partitionZeroCalls(toolNames, mcp.AgentSurfaceTools(), fold.toolCallCounts())
+	}
+	if !q.skipLabs {
+		shipped, shippedErr := shippedLabSurfaces()
+		section := adoptionLabsSection(q.Root, shipped, shippedErr)
+		report.Labs = &section
 	}
 
 	return report, resolved
@@ -813,6 +826,9 @@ func renderAdoptionReport(w io.Writer, r AdoptionReport) {
 		fmt.Fprintf(w, "  no %s yet (fathom observe creates it on first use)\n", r.ObservationsPath)
 	} else {
 		fmt.Fprintf(w, "  %d open (%s)\n", *r.OpenObservationCount, r.ObservationsPath)
+	}
+	if r.Labs != nil {
+		renderAdoptionLabs(w, r.Labs)
 	}
 }
 
