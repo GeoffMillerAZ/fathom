@@ -36,3 +36,55 @@ The preview route is a future native instrument if the owner supplies approved
 service context and a bounded input protocol; it is not run under the current
 no-paid-API brief. No candidate is described as a runtime failure when only
 its source interface or required service inputs were checked.
+
+## X-R4 source search, 2026-10-25
+
+This bounded search records sources even when they produced no applicable
+instrument. A negative search does not establish that no instrument exists.
+
+| Required source | Search and observed result |
+|---|---|
+| Owner toolchain / introspection | The pinned Microsoft agent parser, service 0.9.2 and Preview REST 7.1 above were inspected. The documented native Preview route is usable with owner-supplied service context; the legacy agent parser does not accept the measured modern syntax. |
+| SCIP and LSIF catalogs plus GitHub | Read [Sourcegraph supported indexers](https://sourcegraph.com/docs/code-navigation/precise-code-navigation), the [SCIP indexer list](https://github.com/sourcegraph/scip#tools-using-scip), Sourcegraph's [LSIF indexer guide and linked catalog](https://sourcegraph.com/blog/writing-an-lsif-indexer), and [LSIF.dev](https://lsif.dev/). No Azure pipeline entity indexer was listed. GitHub repository search `scip-azure-pipelines in:name` returned zero; web GitHub searches for that literal found unrelated SCIP optimization feeds, not an indexer. TypeScript SCIP indexes implementation code, not pipeline YAML evaluation. |
+| Language servers | Microsoft's pinned service above and its published npm server 0.9.3 (MIT) are the named owner candidates. The server packages the service rather than adding a pipeline execution engine. The LSP server catalog was also checked; it supplied no additional pipeline evaluator. No package was installed or runtime failure claimed. |
+| Registry parsers / type checkers / AST dumpers | npm search `azure pipelines parser` and direct package metadata for `azure-pipelines-language-service` 0.9.2, `azure-pipelines-language-server` 0.9.3, `yaml-language-server` 2.0.0 (all MIT) checked. Search also surfaced task-lib 5.281.2, a task authoring library, not a pipeline compiler. Generic YAML ASTs do not supply owner evaluation; the measured independent AST instrument is PyYAML 6.0.3 (C). |
+| Runtime call / require tracing | Read Microsoft's [pipeline diagnostic logs](https://learn.microsoft.com/en-us/azure/devops/pipelines/troubleshooting/review-logs?view=azure-devops): `system.debug`/agent diagnostics describe executed jobs and tasks after a service run. They require a configured pipeline and agent/service context, and are not a local template-binding dump. No workflow was executed. Preview remains the concrete native route to investigate when approved context is supplied. |
+
+The ceiling is specifically the current offline syntax measurement and missing
+service context, together with the retained duplicate-key decoder miss; it is
+not a claim that Azure lacks native compilation or diagnostics.
+
+## Dispatch review reproduction
+
+`review_regrade.py` replays the complete canonical OpenAPI and CloudFormation
+shards against two indexbench binaries using identical oracle output. It checks
+pinned clean subjects and native tool versions. Install swagger-parser 13.1.0
+and yaml 2.8.1 under a private npm prefix and cfn-lint 1.52.1 in a private Python
+environment (Python 3.13 was used). With baseline and candidate binaries built
+from the identities in `cross-item-regrade-r4.json`, run:
+
+```sh
+python3 calibration/oracles/azure-pipelines/review_regrade.py \
+  -baseline workspace/tools/indexbench-main -baseline-commit c86095291 \
+  -candidate workspace/tools/indexbench-candidate -candidate-commit 56529ac87 \
+  -subjects workspace/calibration/azure-review -npm-prefix workspace/oracle/openapi \
+  -cfn-python workspace/oracle/cfn/bin/python -out workspace/tmp/yaml-review-fresh
+```
+
+For every existing YAML fixture, build `dispatchsnapshot/main.go` once with the
+baseline module and once with this branch's module. The source uses no new
+product API. Feed both binaries the same candidate fixture tree:
+
+```sh
+go build -o workspace/tools/dispatch-candidate ./calibration/oracles/azure-pipelines/dispatchsnapshot
+python3 calibration/oracles/azure-pipelines/compare_snapshots.py \
+  -baseline workspace/tools/dispatch-baseline -candidate workspace/tools/dispatch-candidate \
+  -root . -out workspace/tmp/yaml-dispatch-review/comparison.json
+```
+
+`cross-item-regrade-r4.json` and `yaml-dispatch-r4.json` retain aggregate counts,
+subject identities and digests; raw native output and per-file inventories stay
+in scratch. These checks establish regression equivalence, not new oracle
+authority or a program L3 grade. The own reading is reproduced with
+`regrade_azure.py -indexbench workspace/tools/indexbench-candidate -subjects
+workspace/calibration/azure-pipelines -out workspace/tmp/azure-reading-fresh`.
