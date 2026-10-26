@@ -270,3 +270,21 @@ No shared presentation candidate: shared-ledger accounting, native replay,
 qualification and disclosure are domain-owned semantics. No dependencies, app-kit
 source, global configuration or UI acceptance changed. Short writes return 2 but
 cannot revoke stdout bytes already delivered; this is an I/O boundary, not a renderer fix.
+
+
+HP-20 retains AK-CLI-02 for bounded read-only floor receipts and explicit0/1/2
+exits. The2026-10-26 CLI-profile discovery, pinned cli.output lookup and guarded
+all-scope quality lookup returned the same catalog/capability/inventory revisions
+as HP-16. Quality coverage remains untracked. General guidance still lacks its
+kit root; routed intent/CLI/contribution guides were readable. No shared renderer
+candidate: source/profile binding, uncertainty and authority flags are domain-owned.
+Actual entrypoint tests cover privacy, cancellation, output failure and false-literal
+refusals. No app-kit dependency/source/global setup or UI acceptance changed.
+
+HP-21 retains AK-CLI-02 and the same pinned CLI/output/contribution guidance for
+opt-in qualified support trials. No new shared rendering candidate was found:
+native study replay, tri-valued reference labels and owner-reconciled prior spend
+are domain contracts. Actual injected-native 85-case tests cover complete replay,
+critical false-support stopping and retained unexecuted positions. These are
+synthetic transport/refusal tests, not provider or UI acceptance. No app-kit source,
+dependency or global registration changed; HP-A18 still gates the workbench lane.

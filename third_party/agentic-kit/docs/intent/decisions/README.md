@@ -66,6 +66,7 @@ Status: proposed · accepted · rejected · deferred · superseded by <id> · de
 
 | [0046](0046-separate-document-sufficiency-from-length-targets.md) | accepted | domain | Length targets default advisory; explicit mandatory criteria and separate long-artifact proof preserve sufficiency and failed-study history | waived required range, hidden insufficiency, omitted stress, relabeled sample or next study/release/2026-11-21 |
 | [0047](0047-qualify-oracle-semantics-before-prompt-tuning.md) | accepted | data | Qualify source/citation semantics and the entire oracle floor before more prompt tuning; preserve failed studies | surviving oracle ambiguity, dropped negative, truth overclaim, missing old-to-new disposition or0045 review |
+| [0048](0048-separate-examined-sources-from-premises.md) | accepted | data | Separate examined-source provenance from supporting premises/counters; version the new response contract and preserve failed native studies | unrepresentable basis, false support, changed replay, second consumer or0045 review |
 
 `0004`–`0014` came from `docs/intent-excellence-assessment`, which landed after
 `0015`–`0016` were recorded; decision 0015 was renumbered on its own merge
