@@ -10,12 +10,12 @@
 // one in turn — the subject root, examples/*, and every module and wrapper,
 // which a caller also reaches. Per root:
 //
-//   - `tofu init -backend=false -input=false`, providers from the shared
+//   - `tofu init -backend=false -get=false -input=false`, providers from the shared
 //     offline filesystem mirror only (a CLI configuration with one
 //     filesystem_mirror and no direct installation; TF_DATA_DIR and the
 //     plugin cache under -scratch). A registry module a root calls is
-//     downloaded by init; it is not a file of the subject and leaves the
-//     measurement.
+//     preseeded from an exact pinned Git checkout; init cannot select or
+//     download a newer registry module.
 //   - `tofu show -json -config`: the tool's own reading of the configuration
 //     tree (every module call's configuration nested in its caller's): the
 //     resources, data sources, variables, outputs and module calls each module
@@ -58,13 +58,12 @@
 //     called module's directory. A module instance reached from several roots
 //     is one set of files: every entry is deduplicated.
 //
-// A root the tool cannot initialize or graph contributes nothing and is named
-// on stderr; -files-out lists the .tf files of the modules the measured roots
-// reached, for lang-oracle -only.
+// Any root that cannot initialize or graph fails the whole measurement.
+// -files-out lists the .tf files of every measured module, for lang-oracle -only.
 //
-// Bench-only; never a product dependency. The scratch directory (a copy of
-// the subject, TF_DATA_DIR per root, the unpacked provider cache) is deleted
-// after measuring; the mirror is kept for the next terraform measurement.
+// Bench-only; never a product dependency. The cache-owned scratch directory
+// holds a subject copy and TF_DATA_DIR per root across before/after readings;
+// the provider mirror is retained for repeatable measurement.
 package main
 
 import (
@@ -146,15 +145,23 @@ func main() {
 // ── running the tool ──────────────────────────────────────────────────────
 
 func tofuEnv(cliConfig, dataDir string) []string {
-	var env []string
-	for _, e := range os.Environ() {
-		k, _, _ := strings.Cut(e, "=")
-		if strings.HasPrefix(k, "TF_") {
-			continue
-		}
-		env = append(env, e)
+	scratch := filepath.Dir(cliConfig)
+	deadProxy := "http://localhost:9"
+	return []string{
+		"HOME=" + filepath.Join(scratch, "home"),
+		"TMPDIR=" + filepath.Join(scratch, "tmp"),
+		"XDG_CONFIG_HOME=" + filepath.Join(scratch, "home", ".config"),
+		"XDG_CACHE_HOME=" + filepath.Join(scratch, "home", ".cache"),
+		"XDG_DATA_HOME=" + filepath.Join(scratch, "home", ".local", "share"),
+		"PATH=/usr/bin:/bin:/usr/sbin:/sbin",
+		"LANG=C", "LC_ALL=C",
+		"HTTP_PROXY=" + deadProxy, "HTTPS_PROXY=" + deadProxy, "ALL_PROXY=" + deadProxy,
+		"http_proxy=" + deadProxy, "https_proxy=" + deadProxy, "all_proxy=" + deadProxy,
+		"NO_PROXY=", "no_proxy=",
+		"AWS_EC2_METADATA_DISABLED=true",
+		"TF_CLI_CONFIG_FILE=" + cliConfig, "TF_DATA_DIR=" + dataDir,
+		"TF_IN_AUTOMATION=1", "TF_INPUT=0", "CHECKPOINT_DISABLE=1",
 	}
-	return append(env, "TF_CLI_CONFIG_FILE="+cliConfig, "TF_DATA_DIR="+dataDir, "TF_IN_AUTOMATION=1", "TF_INPUT=0", "CHECKPOINT_DISABLE=1")
 }
 
 // run runs the tool, up to three times: init, show and graph are idempotent,
@@ -264,6 +271,11 @@ func measure(ctx context.Context, subject, scratch, mirror, tofu string) (out, [
 	if err := os.MkdirAll(cache, 0o755); err != nil {
 		return out{}, nil, err
 	}
+	for _, dir := range []string{"home", "tmp"} {
+		if err := os.MkdirAll(filepath.Join(scratch, dir), 0o700); err != nil {
+			return out{}, nil, err
+		}
+	}
 	rc := fmt.Sprintf("provider_installation {\n  filesystem_mirror {\n    path    = %q\n    include = [\"*/*/*\"]\n  }\n}\nplugin_cache_dir = %q\n", mirror, cache)
 	if err := os.WriteFile(cliConfig, []byte(rc), 0o644); err != nil {
 		return out{}, nil, err
@@ -288,7 +300,7 @@ func measure(ctx context.Context, subject, scratch, mirror, tofu string) (out, [
 		dataDir := filepath.Join(scratch, "data", fmt.Sprintf("%03d", i))
 		env := tofuEnv(cliConfig, dataDir)
 		wd := filepath.Join(src, filepath.FromSlash(root))
-		if _, err := run(ctx, tofu, wd, env, "init", "-backend=false", "-input=false", "-no-color"); err != nil {
+		if _, err := run(ctx, tofu, wd, env, "init", "-backend=false", "-get=false", "-input=false", "-no-color"); err != nil {
 			failed++
 			fmt.Fprintf(os.Stderr, "root %s: init failed: %v\n", root, err)
 			continue
@@ -317,6 +329,9 @@ func measure(ctx context.Context, subject, scratch, mirror, tofu string) (out, [
 			continue
 		}
 	}
+	if err := checkCompleteness(len(roots), failed, 0); err != nil {
+		return out{}, nil, err
+	}
 
 	o := out{Tool: "opentofu (tofu show -json -config, tofu graph -type=plan)", Version: version, Tier: "A"}
 	where := map[string]map[string]located{} // dir → name → position
@@ -338,6 +353,9 @@ func measure(ctx context.Context, subject, scratch, mirror, tofu string) (out, [
 			continue
 		}
 		o.Definitions = append(o.Definitions, def{Path: l.path, Name: e.name, Line: l.line, End: l.end, Kind: kind})
+	}
+	if err := checkCompleteness(len(roots), failed, unlocated); err != nil {
+		return out{}, nil, err
 	}
 	refSet := map[ref]bool{}
 	xrefSet := map[xref]bool{}
@@ -398,7 +416,10 @@ func measure(ctx context.Context, subject, scratch, mirror, tofu string) (out, [
 	})
 	var files []string
 	for d := range c.dirs {
-		ents, _ := readDir(filepath.Join(src, filepath.FromSlash(d)))
+		ents, err := readDir(filepath.Join(src, filepath.FromSlash(d)))
+		if err != nil {
+			return out{}, nil, fmt.Errorf("list measured module %s: %w", d, err)
+		}
 		for _, e := range ents {
 			if !e.IsDir() && strings.HasSuffix(e.Name(), ".tf") {
 				files = append(files, path.Join(d, e.Name()))
@@ -412,6 +433,15 @@ func measure(ctx context.Context, subject, scratch, mirror, tofu string) (out, [
 	fmt.Fprintf(os.Stderr, "terraform-oracle: opentofu %s: %d roots (%d failed), %d module dirs, %d definitions (%d unlocated), %d references, %d cross-references, %d references only the plan graph gave a resource, data source, output or module call\n",
 		version, len(roots), failed, len(c.dirs), len(o.Definitions), unlocated, len(o.References), len(o.CrossReferences), c.graphRef)
 	return o, files, nil
+}
+
+// Incomplete native runs cannot be used as tier-A truth. A skipped root or an
+// unlocated definition silently lowers the denominator in the emitted JSON.
+func checkCompleteness(roots, failed, unlocated int) error {
+	if roots == 0 || failed != 0 || unlocated != 0 {
+		return fmt.Errorf("incomplete native oracle: %d roots, %d failed, %d unlocated definitions", roots, failed, unlocated)
+	}
+	return nil
 }
 
 // tfDirs is every directory of the tree holding a .tf file (slash paths,
