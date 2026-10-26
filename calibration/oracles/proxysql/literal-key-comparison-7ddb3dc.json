@@ -1,0 +1,149 @@
+{
+  "source_sha": "7ddb3dc015d1440e8a0fb0bbafa2df9aaaa2669d",
+  "comparisons": [
+    {
+      "group": "mcp",
+      "key": "mcp_enabled",
+      "line": 62,
+      "literal_native_name": "mcp-mcp_enabled",
+      "literal_in_registry": false,
+      "after_underscore_prefix_removal": "mcp-enabled",
+      "shortened_in_registry": true
+    },
+    {
+      "group": "mcp",
+      "key": "mcp_port",
+      "line": 63,
+      "literal_native_name": "mcp-mcp_port",
+      "literal_in_registry": false,
+      "after_underscore_prefix_removal": "mcp-port",
+      "shortened_in_registry": true
+    },
+    {
+      "group": "mcp",
+      "key": "mcp_use_ssl",
+      "line": 64,
+      "literal_native_name": "mcp-mcp_use_ssl",
+      "literal_in_registry": false,
+      "after_underscore_prefix_removal": "mcp-use_ssl",
+      "shortened_in_registry": true
+    },
+    {
+      "group": "mcp",
+      "key": "mcp_config_endpoint_auth",
+      "line": 65,
+      "literal_native_name": "mcp-mcp_config_endpoint_auth",
+      "literal_in_registry": false,
+      "after_underscore_prefix_removal": "mcp-config_endpoint_auth",
+      "shortened_in_registry": true
+    },
+    {
+      "group": "mcp",
+      "key": "mcp_stats_endpoint_auth",
+      "line": 66,
+      "literal_native_name": "mcp-mcp_stats_endpoint_auth",
+      "literal_in_registry": false,
+      "after_underscore_prefix_removal": "mcp-stats_endpoint_auth",
+      "shortened_in_registry": true
+    },
+    {
+      "group": "mcp",
+      "key": "mcp_query_endpoint_auth",
+      "line": 67,
+      "literal_native_name": "mcp-mcp_query_endpoint_auth",
+      "literal_in_registry": false,
+      "after_underscore_prefix_removal": "mcp-query_endpoint_auth",
+      "shortened_in_registry": true
+    },
+    {
+      "group": "mcp",
+      "key": "mcp_admin_endpoint_auth",
+      "line": 68,
+      "literal_native_name": "mcp-mcp_admin_endpoint_auth",
+      "literal_in_registry": false,
+      "after_underscore_prefix_removal": "mcp-admin_endpoint_auth",
+      "shortened_in_registry": true
+    },
+    {
+      "group": "mcp",
+      "key": "mcp_cache_endpoint_auth",
+      "line": 69,
+      "literal_native_name": "mcp-mcp_cache_endpoint_auth",
+      "literal_in_registry": false,
+      "after_underscore_prefix_removal": "mcp-cache_endpoint_auth",
+      "shortened_in_registry": true
+    },
+    {
+      "group": "mcp",
+      "key": "mcp_ai_endpoint_auth",
+      "line": 70,
+      "literal_native_name": "mcp-mcp_ai_endpoint_auth",
+      "literal_in_registry": false,
+      "after_underscore_prefix_removal": "mcp-ai_endpoint_auth",
+      "shortened_in_registry": true
+    },
+    {
+      "group": "mcp",
+      "key": "mcp_rag_endpoint_auth",
+      "line": 71,
+      "literal_native_name": "mcp-mcp_rag_endpoint_auth",
+      "literal_in_registry": false,
+      "after_underscore_prefix_removal": "mcp-rag_endpoint_auth",
+      "shortened_in_registry": true
+    },
+    {
+      "group": "mcp",
+      "key": "mcp_timeout_ms",
+      "line": 72,
+      "literal_native_name": "mcp-mcp_timeout_ms",
+      "literal_in_registry": false,
+      "after_underscore_prefix_removal": "mcp-timeout_ms",
+      "shortened_in_registry": true
+    },
+    {
+      "group": "mcp",
+      "key": "mcp_stats_show_queries_max_rows",
+      "line": 73,
+      "literal_native_name": "mcp-mcp_stats_show_queries_max_rows",
+      "literal_in_registry": false,
+      "after_underscore_prefix_removal": "mcp-stats_show_queries_max_rows",
+      "shortened_in_registry": true
+    },
+    {
+      "group": "mcp",
+      "key": "mcp_stats_show_processlist_max_rows",
+      "line": 74,
+      "literal_native_name": "mcp-mcp_stats_show_processlist_max_rows",
+      "literal_in_registry": false,
+      "after_underscore_prefix_removal": "mcp-stats_show_processlist_max_rows",
+      "shortened_in_registry": true
+    },
+    {
+      "group": "mcp",
+      "key": "mcp_stats_enable_debug_tools",
+      "line": 75,
+      "literal_native_name": "mcp-mcp_stats_enable_debug_tools",
+      "literal_in_registry": false,
+      "after_underscore_prefix_removal": "mcp-stats_enable_debug_tools",
+      "shortened_in_registry": true
+    },
+    {
+      "group": "genai",
+      "key": "var1",
+      "line": 82,
+      "literal_native_name": "genai-var1",
+      "literal_in_registry": false,
+      "after_underscore_prefix_removal": "genai-var1",
+      "shortened_in_registry": false
+    },
+    {
+      "group": "genai",
+      "key": "var2",
+      "line": 84,
+      "literal_native_name": "genai-var2",
+      "literal_in_registry": false,
+      "after_underscore_prefix_removal": "genai-var2",
+      "shortened_in_registry": false
+    }
+  ]
+}
