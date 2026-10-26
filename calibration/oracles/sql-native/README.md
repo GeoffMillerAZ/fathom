@@ -56,10 +56,11 @@ this attests the written L2 reference, not L3 resolution or validated data.
 The scanners preserve original statement bytes (including CRLF and dollar quotes).
 pglast supplies PostgreSQL boundaries, not FK truth. SQLite uses its own
 `complete_statement`, including compound triggers. Every source file and statement
-has a digest and source line in the report; no subject source code is copied into
-this repository. Failed CREATE TABLE statements refuse the oracle rather than
-promote a subset. Other failures are counted and named with source line and native
-error code. Reports are separate from the strict neutral oracle JSON.
+has a digest and source line in the raw workspace report. Published summaries
+contain aggregate counts/digests and failure path hashes, never subject file lists
+or source text. Failed CREATE TABLE statements refuse the oracle rather than
+promote a subset. Other failures are counted and identified by path digest, source line and native
+error code in published summaries. Reports are separate from the strict neutral oracle JSON.
 
 Pagila's main schema runs before its temporal file, with pgvector and btree_gist
 available. Each file starts with fresh-session settings (`RESET ALL` over the same
@@ -83,3 +84,19 @@ section 1.3 90% runtime-import-trace precedent is not a new SQL coverage thresho
 no FK-declaring CREATE TABLE is missing here. Successful execution of every data
 statement is not asserted. No L3, resolved-data or general SQL-execution grade is
 claimed.
+
+## Publishing receipts
+
+Keep raw oracle/report JSON in workspace. Export summaries before copying receipts
+to docs; the publisher replaces all subject path/name populations with counts and
+canonical JSON SHA-256 digests, preserving native failure code/kind/line with a
+hashed source path. Measurement summary counts/metrics can be copied separately.
+
+```sh
+python calibration/oracles/sql-native/publish.py \
+  --input workspace/tmp/sql-native-replay --out workspace/tmp/sql-native-public
+```
+
+Historical candidate/whole-file receipts use the same publisher. Published JSON
+is a receipt summary, not a `-tool-oracle` input; replay produces the raw strict
+inputs afresh. No fresh runtime measurement is implied by republishing a receipt.

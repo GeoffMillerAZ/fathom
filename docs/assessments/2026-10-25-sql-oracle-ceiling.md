@@ -35,12 +35,13 @@ with native execution available. No parser's names were relabelled native truth.
 
 **Measured:** Sqitch `ce0550c45ade3527d0c7f981c934e1ea4bdd6c19` contributes the same
 28 files and Pagila `9baf49c4149e43229f6021e6218d6b2ac8ef4f34` the same three files.
-Their Git blob hashes were checked against the immutable source trees. File and statement SHA-256 digests, source lines and native outcomes
+Their Git blob hashes were checked against the immutable source trees. Aggregate file/statement digests, counts and native failures identified by hashed path, line and code
 are retained in the [Sqitch report](data/sql-oracle-2026-10-25/sqitch-native-report.json)
 and [Pagila report](data/sql-oracle-2026-10-25/pagila-native-report.json).
-The two [strict](data/sql-oracle-2026-10-25/sqitch-native.json)
-[oracle files](data/sql-oracle-2026-10-25/pagila-native.json) contain only the harness
-contract. No holdout was added to the canonical corpus shard.
+The two [oracle summaries](data/sql-oracle-2026-10-25/sqitch-native.json)
+[and pair digests](data/sql-oracle-2026-10-25/pagila-native.json) record the full pair population. Raw strict
+oracles and per-file reports stay in workspace; the committed publisher emits no
+subject file lists or source text. No holdout was added to the canonical corpus shard.
 
 Every original statement is attempted separately. PostgreSQL catalog deltas after
 CREATE TABLE supply local inline keys; ALTER-added keys (37 in the main schema)
@@ -56,7 +57,7 @@ turned into a SQL rule.
 Six Sqitch failures remain: missing legacy data for INSERTs and missing old tables
 for DROPs in the upgrade scenarios. Six Pagila failures remain: four INSERTs need
 out-of-scope data (23503); UPDATE and DELETE FOR PORTION OF fail (42601). Each is
-named by path, line and code in the reports. All PostgreSQL deploy/verify/revert
+identified by path digest, line and code in the published reports. All PostgreSQL deploy/verify/revert
 fixtures are now run on PostgreSQL in a hand-ordered deploy/verify/revert/rework
 scenario following each script's `-- requires:` header; the verify script belongs
 to the separate t/sql project, and the order is not derived from sqitch.plan. Files retain fresh
@@ -85,10 +86,10 @@ nice -n 10 python calibration/oracles/sql-native/replay.py \
   --indexbench workspace/tools/indexbench --out workspace/tmp/sql-native-replay
 ```
 
-**Measured:** seven Python and four native PostgreSQL tests pass. The
+**Measured:** nine Python and four native PostgreSQL tests pass. The
 [summary](data/sql-oracle-2026-10-25/measurement-summary.json) records equal counts,
 metrics and grades across all three full runs and hashes the oracle sources.
-Historic whole-file probes and outputs are committed beside it under `original_*`
+Historic whole-file probe scripts and aggregate receipts are committed beside it under `original_*`
 and `original-*`; they reproduce the superseded experiment, not the new grade.
 No general data-execution, L3 or L4 improvement is claimed. Controller regeneration
 of the computed tracker is required after integrating the changed reading. Both
@@ -106,3 +107,13 @@ count, metric, tier, grade and oracle identity from the accepted native reading;
 the latest median run and source hashes replace the timing receipt. Native oracle
 and statement-report JSON remain identical. The committed replay command in the
 recipe works for either full checkouts or verified scoped copies.
+
+## Publication correction (X-R3)
+
+The published receipts now contain aggregate counts and hashes rather than raw
+subject file lists or table-pair names. The raw JSON hash uses canonical sorted-key,
+compact JSON; pair and statement digests use the same encoding. Native failures
+retain their source-path hash, line, statement kind and engine error code.
+`calibration/oracles/sql-native/publish.py` reproduces these summaries from raw
+receipts without changing the oracle inputs or the measured reading. This is a
+publication-only correction; the native executions and timing were not rerun.

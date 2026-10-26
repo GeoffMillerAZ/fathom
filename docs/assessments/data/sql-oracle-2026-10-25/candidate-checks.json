@@ -1,83 +1,16 @@
 {
   "pagila": {
     "command_fallback_warnings": 194,
-    "pairs": [],
+    "pair_count": 0,
+    "pairs_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
     "sqlglot_version": "27.8.0"
   },
+  "publication": "sql-aggregate-v1",
+  "raw_json_sha256": "49fb97162780771f1577386220adb35d24356260c750518ef4ef560f6de36fba",
   "sqitch": {
     "command_fallback_warnings": 0,
-    "pairs": [
-      {
-        "from": "new_changes",
-        "path": "lib/App/Sqitch/Engine/Upgrade/sqlite-1.0.sql",
-        "to": "projects"
-      },
-      {
-        "from": "new_events",
-        "path": "lib/App/Sqitch/Engine/Upgrade/sqlite-1.0.sql",
-        "to": "projects"
-      },
-      {
-        "from": "new_changes",
-        "path": "lib/App/Sqitch/Engine/Upgrade/sqlite-1.1.sql",
-        "to": "projects"
-      },
-      {
-        "from": "changes",
-        "path": "lib/App/Sqitch/Engine/sqlite.sql",
-        "to": "projects"
-      },
-      {
-        "from": "dependencies",
-        "path": "lib/App/Sqitch/Engine/sqlite.sql",
-        "to": "changes"
-      },
-      {
-        "from": "events",
-        "path": "lib/App/Sqitch/Engine/sqlite.sql",
-        "to": "projects"
-      },
-      {
-        "from": "tags",
-        "path": "lib/App/Sqitch/Engine/sqlite.sql",
-        "to": "changes"
-      },
-      {
-        "from": "tags",
-        "path": "lib/App/Sqitch/Engine/sqlite.sql",
-        "to": "projects"
-      },
-      {
-        "from": "widgets",
-        "path": "t/engine/deploy/widgets.sql",
-        "to": "users"
-      },
-      {
-        "from": "changes",
-        "path": "t/lib/upgradable_registries/sqlite.sql",
-        "to": "projects"
-      },
-      {
-        "from": "dependencies",
-        "path": "t/lib/upgradable_registries/sqlite.sql",
-        "to": "changes"
-      },
-      {
-        "from": "events",
-        "path": "t/lib/upgradable_registries/sqlite.sql",
-        "to": "projects"
-      },
-      {
-        "from": "tags",
-        "path": "t/lib/upgradable_registries/sqlite.sql",
-        "to": "changes"
-      },
-      {
-        "from": "tags",
-        "path": "t/lib/upgradable_registries/sqlite.sql",
-        "to": "projects"
-      }
-    ],
+    "pair_count": 14,
+    "pairs_sha256": "350167e12cdcf3daa53dd6fdab3b62ff85cf4cb80e8f270d4158d6ce41322171",
     "sqlglot_version": "27.8.0"
   },
   "sqlfluff": {
