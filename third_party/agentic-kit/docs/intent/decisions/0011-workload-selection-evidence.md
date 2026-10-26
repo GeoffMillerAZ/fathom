@@ -32,7 +32,7 @@ solution configurations to comparable outcome measurements. See the
 - Keep existing stable schemas compatible. Rich provider/deployment contracts require
   a separately reviewed schema evolution and consumer adapter, not silent defaults.
 - Admit one bounded evidence-comparison incubation under 0004. First consumer design:
-  resume_as_code's existing red-team workflow. First code: input binding, portable
+  consumer-c's existing red-team workflow. First code: input binding, portable
   receipts, honest summaries and paired acceptance differences. No paid campaign or
   production model change is authorized by this record.
 

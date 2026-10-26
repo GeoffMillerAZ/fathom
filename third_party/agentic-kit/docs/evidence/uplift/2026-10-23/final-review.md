@@ -1,0 +1,13 @@
+# UP-1..6 final independent review (2026-10-23)
+
+**Verdict: no new blocking finding in this bounded review.** Reviewed the working-tree diff from `1aca786` against `docs/designs/uplift-2026-10-23.md` and decision 0032, including doctor, bounded text coverage, the practice-review example, fixtures, tests, adoption guidance, tracking and claims. Earlier doctor F1-F3 and practice-review F1-F4 in the two prior review records are resolved in the current source and focused tests; this review did not reopen them without a new counterexample.
+
+## Evidence
+
+- `quality-gate doctor` keeps its configuration-only scope in the report and exit behavior. It checks external Git with bounded repository plumbing, treats local policy as untrusted, requires explicit trusted policy ref for CI/publish, validates required boundary coverage, separates requested and returned model identities, and tests reachable clear calibration bands at one evaluation time. No provider call is on this route. Required missing inputs remain unknown; shadows are advisory. Text coverage quotes and bounds named unselected paths.
+- Practice-review reads three explicit files at 1 MiB each, rejects ambiguous or malformed JSON, and compares loaded definitions and subjects against a separate expected scope. Definition pins include behavior and meaning fields while allowing catalog path moves. Per-subject packets bind the subject, revision, check and independently allowed actions. Missing subjects or criteria yield unknown; mismatched evidence, excess work or undeclared actions yield failure. The supplied tests exercise these negatives, order invariance, writer failure and CUE-invalid values.
+- Independent commands passed: focused `go test -race` for doctor/text coverage and all of `./examples/practice-review`; three practice-review `cue vet` fixtures and the doctor report fixture. The earlier guide trial records a 25-second agent-assisted path to a useful synthetic result and planted exits 0/1/2. The root agent owns the full `task validate` result.
+
+## Limits and claim check
+
+The Fathom `review_diff` returned only 3/8 dimensions checked and cited stale index data; obligations were raw/incomplete. Current source, executable tests and CUE fixtures are authoritative for this review. The checks prove local configuration and synthetic supplied-byte properties, not a model's accuracy, source authenticity, actual effect authorization, hook/CI adoption, human usability, Review Kit exchange, consumer migration or measured benefit. README, adoption guide, decision 0032, TRACKING and the AE plan retain those limits and leave whole AE rows open. UP-1..6 completion remained root-owned; the subsequent full gate and reconciliation are recorded in the [delivery evidence](README.md).

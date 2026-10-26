@@ -65,7 +65,7 @@ paused all non-fathom work to strengthen fathom/agentic-kit first; most of
 his development happens on a work machine this log never sees. The only
 interactive sessions in the window were agent sessions building fathom
 itself. Therefore the pulled-channel zero-call findings prove **zero
-exposure, not zero demand** — the intended consumers (throughline, app-kit,
+exposure, not zero demand** — the intended consumers (svc-a, app-kit,
 work-machine sessions) have never seen these tools. The supply-side findings
 above (packs never compiled, levers never wired, verbs never composed) are
 untouched by this caveat: they are activation debt, not demand signals. The

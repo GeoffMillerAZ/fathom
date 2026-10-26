@@ -89,6 +89,11 @@ tasks:
           found=1; d=$(dirname "$schema"); echo "cue vet: $d"
           (cd "$d" && cue vet ./...) || exit 1
         done
+        # BX-1: every benchmark candidate manifest conforms to #Subject.
+        for manifest in calibration/bench.d/*.yaml; do
+          [ -e "$manifest" ] || continue
+          cue vet -d '#Subject' ./schema/bench/schema.cue "$manifest" || { echo "cue vet FAILED: $manifest"; exit 1; }
+        done
         # RP-2 (docs/plans/reach-parity.md): every shipped skill's SKILL.md
         # frontmatter vets against the vendored Agent Skills schema — the
         # standard is a schema under this gate, never a hand-written check.
@@ -211,9 +216,9 @@ tasks:
       (CV-6, design doc §1.1, O114), plus a bound Go coverage profile for
       the reading set's execution evidence (CV-67, design doc §3.5): ONE
       `go test -json -coverpkg=<own> -coverprofile=<out>/coverage.out
-      <own>` run (<own>: every package but third_party/'s, ADR-070), its JSON output converted by test-kit's go-test-json
-      adapter (env TESTKIT_GO_JSON — the path to a built test-kit
-      `surveyor` binary; a clear skip, never a failure, when unset),
+      <own>` run (<own>: every package but third_party/'s, ADR-070), its JSON output converted by the test kit's go-test-json
+      adapter (env TESTKIT_GO_JSON — the path to a built test kit
+      binary; a clear skip, never a failure, when unset),
       written under `[tests] results_dir`
       (workspace/artifacts/test-results/ — set it in .fathom/config.toml
       if this checkout predates it). This task never ingests the envelope
@@ -231,7 +236,7 @@ tasks:
       - |
         set -eu
         if [ -z "${TESTKIT_GO_JSON:-}" ]; then
-          echo "tests:attest: TESTKIT_GO_JSON is unset (path to a built test-kit 'surveyor' binary) — skipping. Build one from a platform-engineering checkout: go build -o /path/to/surveyor ./kits/test-kit/cmd/surveyor, then export TESTKIT_GO_JSON=/path/to/surveyor."
+          echo "tests:attest: TESTKIT_GO_JSON is unset (path to a built test kit binary) — skipping. Build the test kit's CLI from its checkout, then export TESTKIT_GO_JSON=/path/to/that/binary."
           exit 0
         fi
         [ -x "$TESTKIT_GO_JSON" ] || { echo "tests:attest: TESTKIT_GO_JSON=$TESTKIT_GO_JSON is not an executable file" >&2; exit 1; }
@@ -263,7 +268,7 @@ tasks:
         testrc=0
         {{.GO}} test -json $raceflag $coverflags $own > "$out/go-test.jsonl" || testrc=$?
         # coverage.meta.json is written HERE, right after go test itself
-        # exits and BEFORE the surveyor ingest step below — never after
+        # exits and BEFORE the test kit ingest step below — never after
         # it. Under `set -eu`, an ingest failure aborts the script; if
         # the meta write happened only after ingest succeeded, that
         # abort would leave THIS run's freshly-overwritten coverage.out
@@ -334,6 +339,7 @@ tasks:
         bash scripts/prepush-receipts_test.sh
         bash scripts/test-shards_test.sh
         bash scripts/scratch-home_test.sh
+        bash scripts/fleet-services_test.sh
         bash scripts/gdev/cold-arm_test.sh
         bash scripts/tenancy-stress_test.sh
         bash scripts/pipefail-grep_test.sh
@@ -441,7 +447,7 @@ tasks:
     cmds: ["bash scripts/vendor-check.sh"]
 
   testkit-schema-check:
-    desc: "Drift guard (vision 33 / ADR-043 stage 0, TC-1) — assert schema/testkit/{manifest,result}.cue match the commit schema/testkit/.vendor-commit pins from platform-engineering/kits/test-kit (skips gracefully without the sibling)"
+    desc: "Drift guard (vision 33 / ADR-043 stage 0, TC-1) — assert schema/testkit/{manifest,result}.cue match the commit schema/testkit/.vendor-commit pins from the test kit's own schema/ directory (skips gracefully without a test kit checkout)"
     cmds: ["bash scripts/testkit-schema-check.sh"]
 
   stranger-check:

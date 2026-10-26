@@ -1,0 +1,82 @@
+[
+  {
+    "name": "decision",
+    "argv": [
+      "go",
+      "test",
+      "-count=1",
+      "./foundations/decision/..."
+    ],
+    "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+    "exit_code": 0,
+    "duration_seconds": 0.52,
+    "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/decision.log"
+  },
+  {
+    "name": "evidence_catalog",
+    "argv": [
+      "go",
+      "test",
+      "-count=1",
+      "./foundations/evidence/evidence-span",
+      "./foundations/evidence/evidence-resolver",
+      "./foundations/evidence/evidence-signature",
+      "./foundations/quality/fitness-function-registry",
+      "./kits/catalog-kit"
+    ],
+    "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+    "exit_code": 0,
+    "duration_seconds": 0.53,
+    "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/evidence_catalog.log"
+  },
+  {
+    "name": "hitl_prose",
+    "argv": [
+      "go",
+      "test",
+      "-count=1",
+      "./kits/hitl",
+      "./kits/governed-prose-kit",
+      "./surfaces/forms/cueform",
+      "./foundations/security/tokenization/..."
+    ],
+    "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+    "exit_code": 0,
+    "duration_seconds": 0.37,
+    "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/hitl_prose.log"
+  },
+  {
+    "name": "review_investigation",
+    "argv": [
+      "go",
+      "test",
+      "-count=1",
+      "./kits/investigation",
+      "./foundations/investigation/investigation-journal",
+      "./foundations/review/claim-lifecycle",
+      "./foundations/review/correction-ledger"
+    ],
+    "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+    "exit_code": 0,
+    "duration_seconds": 0.3,
+    "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/review_investigation.log"
+  },
+  {
+    "name": "security_budget_lessons_hosts",
+    "argv": [
+      "go",
+      "test",
+      "-count=1",
+      "./foundations/security/injection-detector",
+      "./foundations/security/pre-llm-dlp-gate",
+      "./foundations/governance/budget-guard",
+      "./kits/lesson-transfer",
+      "./cmd/kit-new",
+      "./cmd/agent-hooks"
+    ],
+    "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+    "exit_code": 0,
+    "duration_seconds": 4.55,
+    "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/security_budget_lessons_hosts.log"
+  }
+]

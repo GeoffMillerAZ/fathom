@@ -1,0 +1,29 @@
+{
+  "id": "C06",
+  "axis": "component",
+  "acceptance": "Prepared catalog decision binds exact definition and evidence bytes; mismatch refuses",
+  "outcome": "pass",
+  "source": "kits/catalog-kit/decision_test.go",
+  "source_sha256": "6ba3980ac1cecce7d694ef8e957b0c0524c551d68f7926c13ff561245e1ca38d",
+  "test": "TestPrepareDecisionBindsExactDefinition",
+  "group": "evidence_catalog",
+  "scope_note": "Component test does not prove consumer adoption, live model quality, or all entrypoints.",
+  "command": {
+    "name": "evidence_catalog",
+    "argv": [
+      "go",
+      "test",
+      "-count=1",
+      "./foundations/evidence/evidence-span",
+      "./foundations/evidence/evidence-resolver",
+      "./foundations/evidence/evidence-signature",
+      "./foundations/quality/fitness-function-registry",
+      "./kits/catalog-kit"
+    ],
+    "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+    "exit_code": 0,
+    "duration_seconds": 0.53,
+    "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/evidence_catalog.log"
+  },
+  "command_log_sha256": "b3cfa85ecaef7c5fbda0e8a284d8a97fec5cc6352b40278f4f3e6519f75415e1"
+}

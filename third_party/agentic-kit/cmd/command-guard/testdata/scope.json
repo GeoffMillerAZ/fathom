@@ -1,0 +1,9 @@
+{
+  "version": "command-guard.scope/1",
+  "requiredLayerIds": [
+    "demo"
+  ],
+  "requiredRuleIds": [
+    "demo-secret"
+  ]
+}

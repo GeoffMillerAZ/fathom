@@ -375,7 +375,7 @@ operator-run pilot itself.
 
 Vision 30 / ADR-040's own bench claim (§6): does an open, externally-sourced
 finding served at the point of work change the fix the way a compiled
-obligation does (`guards-fathom.json`'s M1 claim), or does a review-kit
+obligation does (`guards-fathom.json`'s M1 claim), or does a review kit
 finding need its own measurement? Four tasks, each a real, currently
 unaddressed gap this repo's own tree carries — a bare `return err` with no
 step named (`recordPurge`, error-handling), a map-derived field with no sort
@@ -393,7 +393,7 @@ imported review finding instead of a compiled rule.
 
 `subject.setup` (shared by every task, since `Subject.Setup` runs before
 either arm's own `Arm.Setup` — `subject.go`) appends a `[findings]` section
-to this repo's own `.fathom/config.toml` and writes a five-event review-kit
+to this repo's own `.fathom/config.toml` and writes a five-event review kit
 projection outbox to `.reviewkit/outbox/projection.json` (schema
 `schemaVersion`/`kind`/`outcome`/`producer`/`subject`/`visibility`/
 `sourceId`/`sourceVersion`/`payloadDigest`/`findingId`/`observedAt`/

@@ -1,6 +1,6 @@
 // Package queryplanner turns a Brief + known entities + date ranges into
 // provider-agnostic query plans with per-query provenance. It is extracted
-// from throughline's app/acquire/planner.go and generalized for reuse.
+// from consumer-a's app/acquire/planner.go and generalized for reuse.
 //
 // # Two-phase planning
 //

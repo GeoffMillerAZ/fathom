@@ -1,0 +1,25 @@
+{
+  "id": "C01",
+  "axis": "component",
+  "acceptance": "Decision kinds and declined responses pass offline conformance",
+  "outcome": "pass",
+  "source": "foundations/decision/conformance_test.go",
+  "source_sha256": "a6fc6583c5f9fa6acaa90f5cda79981306b22a9e0457df77c316860978cde7cc",
+  "test": "TestFallbackPassesConformanceWithRefusals",
+  "group": "decision",
+  "scope_note": "Component test does not prove consumer adoption, live model quality, or all entrypoints.",
+  "command": {
+    "name": "decision",
+    "argv": [
+      "go",
+      "test",
+      "-count=1",
+      "./foundations/decision/..."
+    ],
+    "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+    "exit_code": 0,
+    "duration_seconds": 0.52,
+    "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/decision.log"
+  },
+  "command_log_sha256": "7523ef22b46dbb8a212b041a69682f2834548813ab5ee02875c6eb7d3b8ff294"
+}

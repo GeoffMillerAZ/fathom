@@ -4,7 +4,7 @@ package lessontransfer
 import lesson "github.com/geoffmilleraz/agentic-kit/kits/lesson-transfer:lessontransfer"
 
 receiverData: lesson.#Receiver & {
-	workload: "resume_as_code"
+	workload: "consumer-c"
 	revision: "1111111111111111111111111111111111111111111111111111111111111111"
 	config_digest: "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
 }

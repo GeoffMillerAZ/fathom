@@ -711,3 +711,37 @@ func TestWalkWithManifestSkipsDirectorySymlinks(t *testing.T) {
 		t.Fatal("a directory symlink is a fact, not blindness")
 	}
 }
+
+// TestCheckOrgAgnosticLocalDenylist covers the optional ORG_AGNOSTIC_DENYLIST
+// file: fixed strings, case-insensitive, hits named by file:line and the
+// denylist's own line number, never by the pattern text.
+func TestCheckOrgAgnosticLocalDenylist(t *testing.T) {
+	const root = "testdata/orgagnostic-private"
+	const list = "testdata/private-denylist.txt"
+
+	t.Run("hit names file:line and denylist line, not the pattern", func(t *testing.T) {
+		t.Setenv("ORG_AGNOSTIC_DENYLIST", list)
+		findings := findingsFor(t, checkOrgAgnostic, root)
+		assertAnyFail(t, findings, "README.md:3: contains local-denylist pattern (denylist line 3)")
+		for _, f := range findings {
+			if strings.Contains(strings.ToLower(f.Message), "zorptastic") {
+				t.Errorf("finding leaks the pattern text: %s", f.Message)
+			}
+		}
+	})
+
+	t.Run("env unset behaves as before", func(t *testing.T) {
+		t.Setenv("ORG_AGNOSTIC_DENYLIST", "")
+		assertAllPass(t, findingsFor(t, checkOrgAgnostic, root))
+	})
+
+	t.Run("unreadable file behaves as before", func(t *testing.T) {
+		t.Setenv("ORG_AGNOSTIC_DENYLIST", "testdata/does-not-exist.txt")
+		assertAllPass(t, findingsFor(t, checkOrgAgnostic, root))
+	})
+
+	t.Run("no hit on a clean tree", func(t *testing.T) {
+		t.Setenv("ORG_AGNOSTIC_DENYLIST", list)
+		assertAllPass(t, findingsFor(t, checkOrgAgnostic, "testdata/orgagnostic-clean"))
+	})
+}

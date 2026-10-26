@@ -26,20 +26,20 @@ is required. `fathom verify` proves static wiring; `task validate` proves execut
 
 ## Operational acceptance — GW-14
 
-Completed 2026-09-13: pinned consumer checks, actual Throughline/resume_as_code
+Completed 2026-09-13: pinned consumer checks, actual Consumer-a/consumer-c
 delivery, native observations, setup/cost measurements and intent refresh are recorded
 in the [delivery assessment](../assessments/2026-09-13-governed-workflows.md), with
 [offline-verifiable native evidence](../evidence/native-hosts/2026-09-13/README.md).
 This non-code work is not a symbol-backed checkbox: static reachability cannot prove
 an external command ran. No unrelated symbol is substituted for that evidence.
-Throughline and resume_as_code gates pass; Fathom and growing-gardens-bi build but
+Consumer-a and consumer-c gates pass; Fathom and consumer-b build but
 retain the documented pre-existing test failures. Main remains protected; unsupported
 native controls and unmeasured production effectiveness remain explicitly unproven.
 
 ## Boundaries
 
-Owner approval on 2026-09-13 includes necessary changes in `throughline` and
-`resume_as_code`, their project-local Claude/Codex configuration, and synthetic live
+Owner approval on 2026-09-13 includes necessary changes in `consumer-a` and
+`consumer-c`, their project-local Claude/Codex configuration, and synthetic live
 verification capped at $10 total. Preserve existing work. No tags/public release,
 tier demotion, global configuration changes, or new dependencies are authorized.
 Other consumer trees remain read-only; compatibility checks use isolated copies.

@@ -76,8 +76,8 @@ rerun live commands without fresh spend authorization.**
 
 ## Machine-local ownership and reversal
 
-Installed roots are `/Volumes/m2ext/code/geoffmilleraz/throughline` and
-`/Volumes/m2ext/code/geoffmilleraz/resume_as_code`. Each has generated portions in
+Installed roots are `/Volumes/m2ext/code/geoffmilleraz/consumer-a` and
+`/Volumes/m2ext/code/geoffmilleraz/consumer-c`. Each has generated portions in
 `.claude/settings.json`, `.codex/hooks.json`, appended host-specific stanzas in
 `CLAUDE.md`/`AGENTS.md`, and `.agentic-kit/hosts/{claude,codex}/{policy,ownership}.json`.
 Policy has empty deny lists and requires configuration/runtime only. Original

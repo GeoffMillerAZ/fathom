@@ -1,0 +1,321 @@
+{
+  "version": "prose-lab.fixture/2",
+  "id": "operational-runbook",
+  "type": "operational-runbook",
+  "length_band": "medium",
+  "purpose": "Guide a synthetic on-call operator through a safe queue backlog response with checks, escalation, and recovery evidence.",
+  "facts": [
+    {
+      "id": "f-01",
+      "text": "Definition: This runbook applies only to the synthetic Ember Mail queue in the isolated exercise environment.",
+      "kind": "definition",
+      "required": true,
+      "occurred_at": "2026-03-03T08:00:00Z"
+    },
+    {
+      "id": "f-02",
+      "text": "Definition: The queue warning threshold is more than 200 pending test messages for five continuous minutes.",
+      "kind": "definition",
+      "required": true,
+      "occurred_at": "2026-03-03T08:00:00Z"
+    },
+    {
+      "id": "f-03",
+      "text": "Definition: The queue critical threshold is more than 500 pending test messages for ten continuous minutes.",
+      "kind": "definition",
+      "required": true,
+      "occurred_at": "2026-03-03T08:00:00Z"
+    },
+    {
+      "id": "f-04",
+      "text": "Definition: The synthetic dashboard shows pending count, oldest message age, worker count, and delivery error rate.",
+      "kind": "definition",
+      "required": true,
+      "occurred_at": "2026-03-03T08:00:00Z"
+    },
+    {
+      "id": "f-05",
+      "text": "Definition: The operator must record the observation time and all four dashboard measures before changing a worker setting.",
+      "kind": "definition",
+      "required": true,
+      "occurred_at": "2026-03-03T08:00:00Z"
+    },
+    {
+      "id": "f-06",
+      "text": "Definition: The exercise allows the operator to restart one stalled worker after confirming its lease is expired.",
+      "kind": "definition",
+      "required": true,
+      "occurred_at": "2026-03-03T08:00:00Z"
+    },
+    {
+      "id": "f-07",
+      "text": "Definition: The operator must not restart a worker with an active lease because duplicate delivery is possible.",
+      "kind": "definition",
+      "required": true,
+      "occurred_at": "2026-03-03T08:00:00Z"
+    },
+    {
+      "id": "f-08",
+      "text": "Definition: The operator may raise worker count from two to four only when the pending count is above warning threshold and error rate is below one percent.",
+      "kind": "definition",
+      "required": true,
+      "occurred_at": "2026-03-03T08:00:00Z"
+    },
+    {
+      "id": "f-09",
+      "text": "Definition: The operator must not raise worker count above four without the exercise controller approval.",
+      "kind": "definition",
+      "required": true,
+      "occurred_at": "2026-03-03T08:00:00Z"
+    },
+    {
+      "id": "f-10",
+      "text": "Definition: After an allowed change, the operator checks all four measures every five minutes for 20 minutes.",
+      "kind": "definition",
+      "required": true,
+      "occurred_at": "2026-03-03T08:00:00Z"
+    },
+    {
+      "id": "f-11",
+      "text": "Definition: Recovery requires pending count below 50, oldest message age below five minutes, and error rate below one percent for two consecutive checks.",
+      "kind": "definition",
+      "required": true,
+      "occurred_at": "2026-03-03T08:00:00Z"
+    },
+    {
+      "id": "f-12",
+      "text": "Definition: If the critical threshold is crossed or errors reach one percent, the operator pauses changes and contacts the exercise controller.",
+      "kind": "definition",
+      "required": true,
+      "occurred_at": "2026-03-03T08:00:00Z"
+    },
+    {
+      "id": "f-13",
+      "text": "Definition: If a delivery result is uncertain, the operator preserves message IDs and does not resend blindly.",
+      "kind": "definition",
+      "required": true,
+      "occurred_at": "2026-03-03T08:00:00Z"
+    },
+    {
+      "id": "f-14",
+      "text": "Definition: The exercise controller, not the operator, decides whether to replay uncertain messages.",
+      "kind": "definition",
+      "required": true,
+      "occurred_at": "2026-03-03T08:00:00Z"
+    },
+    {
+      "id": "f-15",
+      "text": "Definition: The synthetic audit note records initial measures, action, authorization if any, each follow-up check, and unresolved message IDs.",
+      "kind": "definition",
+      "required": true,
+      "occurred_at": "2026-03-03T08:00:00Z"
+    },
+    {
+      "id": "f-16",
+      "text": "Definition: The runbook has no authority to affect production queues or real accounts.",
+      "kind": "definition",
+      "required": true,
+      "occurred_at": "2026-03-03T08:00:00Z"
+    },
+    {
+      "id": "f-17",
+      "text": "A simulated trial on 2026-03-03 cleared a backlog of 260 test messages after scaling from two to four workers.",
+      "kind": "observed",
+      "required": false,
+      "occurred_at": "2026-03-03T12:00:00Z"
+    },
+    {
+      "id": "f-18",
+      "text": "The trial does not prove the same action will resolve a backlog caused by delivery errors.",
+      "kind": "observed",
+      "required": true,
+      "occurred_at": "2026-03-03T12:05:00Z"
+    }
+  ],
+  "sections": [
+    {
+      "id": "s-01",
+      "title": "Trigger and scope",
+      "instruction": "State exercise boundary, thresholds, and required first observation.",
+      "fact_ids": [
+        "f-01",
+        "f-02",
+        "f-03",
+        "f-04",
+        "f-05",
+        "f-16"
+      ],
+      "required_fact_ids": [
+        "f-01",
+        "f-02",
+        "f-03",
+        "f-04",
+        "f-05",
+        "f-16"
+      ]
+    },
+    {
+      "id": "s-02",
+      "title": "Safe response",
+      "instruction": "Present lease check, allowed scaling, limits, uncertainty, and escalation.",
+      "fact_ids": [
+        "f-06",
+        "f-07",
+        "f-08",
+        "f-09",
+        "f-12",
+        "f-13",
+        "f-14",
+        "f-17",
+        "f-18"
+      ],
+      "required_fact_ids": [
+        "f-06",
+        "f-07",
+        "f-08",
+        "f-09",
+        "f-12",
+        "f-13",
+        "f-14",
+        "f-18"
+      ]
+    },
+    {
+      "id": "s-03",
+      "title": "Verification and record",
+      "instruction": "Define follow-up cadence, recovery criteria, and audit note.",
+      "fact_ids": [
+        "f-04",
+        "f-10",
+        "f-11",
+        "f-15",
+        "f-18"
+      ],
+      "required_fact_ids": [
+        "f-10",
+        "f-11",
+        "f-15"
+      ]
+    }
+  ],
+  "required_goals": [
+    {
+      "id": "g-fidelity",
+      "statement": "Preserve the exact scenario facts and their observed, proposed, assumed, or defined status.",
+      "acceptance": "Every factual assertion agrees with a relevant supplied fact; no changed actor, number, date, or status.",
+      "method": "Independent reviewer compares claims with the fixed fact ledger."
+    },
+    {
+      "id": "g-coverage",
+      "statement": "Cover all required facts and section purposes.",
+      "acceptance": "Each required fact appears accurately in an appropriate section and each section fulfills its instruction.",
+      "method": "Independent reviewer checks required fact IDs and section instructions against the output."
+    },
+    {
+      "id": "g-purpose",
+      "statement": "An operator can decide when to act, stop, escalate, and declare synthetic recovery using explicit criteria.",
+      "acceptance": "The document supports its stated reader decision or action within its declared scope.",
+      "method": "Independent reviewer assesses the fixed purpose and audience against the output."
+    },
+    {
+      "id": "g-no-invention",
+      "statement": "Do not add unsupported facts, outcomes, causal conclusions, or authority.",
+      "acceptance": "No material claim exceeds the supplied facts, including headings, lists, tables, and captions.",
+      "method": "Independent reviewer audits all factual text and planted negative assertions."
+    },
+    {
+      "id": "g-status",
+      "statement": "Keep observed results, proposed actions, assumptions, definitions, and unknowns distinct.",
+      "acceptance": "The output never presents a proposal as enacted, an assumption as observed, or an unresolved matter as settled.",
+      "method": "Independent reviewer classifies material assertions against source status and explicit unknowns."
+    }
+  ],
+  "negative_cases": [
+    {
+      "id": "n-01",
+      "fault": "wrong-valid-citation",
+      "target_fact_id": "f-17",
+      "mutated_assertion": "The trial proves scaling fixes delivery-error backlogs.",
+      "expected": "hold",
+      "criterion_ids": [
+        "g-fidelity",
+        "g-no-invention"
+      ]
+    },
+    {
+      "id": "n-02",
+      "fault": "number-mutation",
+      "target_fact_id": "f-03",
+      "mutated_assertion": "The critical threshold is 50 pending messages for ten minutes.",
+      "expected": "hold",
+      "criterion_ids": [
+        "g-fidelity",
+        "g-no-invention"
+      ]
+    },
+    {
+      "id": "n-03",
+      "fault": "actor-mutation",
+      "target_fact_id": "f-14",
+      "mutated_assertion": "The operator decides to replay uncertain messages.",
+      "expected": "hold",
+      "criterion_ids": [
+        "g-fidelity",
+        "g-no-invention"
+      ]
+    },
+    {
+      "id": "n-04",
+      "fault": "unsupported-cause",
+      "target_fact_id": "f-18",
+      "mutated_assertion": "A growing queue is always caused by too few workers.",
+      "expected": "hold",
+      "criterion_ids": [
+        "g-fidelity",
+        "g-no-invention"
+      ]
+    },
+    {
+      "id": "n-05",
+      "fault": "conflict",
+      "target_fact_id": "f-07",
+      "mutated_assertion": "Restart a worker even when its lease is active.",
+      "expected": "hold",
+      "criterion_ids": [
+        "g-fidelity",
+        "g-no-invention",
+        "g-status"
+      ]
+    },
+    {
+      "id": "n-06",
+      "fault": "list-laundering",
+      "target_fact_id": "f-11",
+      "mutated_assertion": "- Recovery is complete after one check below 50 pending messages.",
+      "expected": "hold",
+      "criterion_ids": [
+        "g-fidelity",
+        "g-no-invention"
+      ]
+    },
+    {
+      "id": "n-07",
+      "fault": "unknown-authority",
+      "target_fact_id": "f-09",
+      "mutated_assertion": "Operators may scale above four workers without approval.",
+      "expected": "hold",
+      "criterion_ids": [
+        "g-fidelity",
+        "g-no-invention",
+        "g-status"
+      ]
+    }
+  ],
+  "length_goal": {
+    "criterion_id": "g-length-operational-runbook",
+    "class": "advisory",
+    "min_words": 400,
+    "max_words": 650,
+    "reason": "Operators need accurate actions, prerequisites and stopping rules; the suggested length is guidance and cannot replace independent operational review."
+  }
+}

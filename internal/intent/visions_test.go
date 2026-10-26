@@ -48,7 +48,7 @@ func visionFixture(t *testing.T) string {
 			"| 03 | [Planned](03-planned.md) | accepted 2026-09-20 (ADR-099) — planned |\n" +
 			"- [04](04-bare.md) the bare one, rejected / accepted asks inside prose\n" +
 			"- **[05](05-archived.md)** — see [the plan](../plans/work-gone.md)\n",
-		"docs/vision/01-accepted.md": "# 01 — Accepted\n\nThe preamble; relates to platform-engineering ADR-0098.\n\n## 1. Section\n\n" +
+		"docs/vision/01-accepted.md": "# 01 — Accepted\n\nThe preamble; relates to a sibling repository's ADR-0999.\n\n## 1. Section\n\n" +
 			"A body [link](../plans/alpha.md) and a [bad one](../design/missing.md) and [web](https://example.com).\n",
 		"docs/vision/02-review.md":  "# 02 — Review\n\n> Status: FOR REVIEW · Date: 2026-06-01\n\n## 1\n",
 		"docs/vision/03-planned.md": "# 03 — Planned\n\nStatus: accepted 2026-09-20. Plan: `docs/plans/alpha.md`.\n\n## 1\n",
@@ -122,10 +122,10 @@ func TestVisionPipeline_StatusPlansLinksAndStaleness(t *testing.T) {
 	if got := findingsFor(vp, "docs/vision/01-accepted.md", "broken-link"); len(got) != 1 || !strings.Contains(got[0].Detail, "../design/missing.md") {
 		t.Errorf("01: want exactly one broken-link finding for ../design/missing.md, got %+v", got)
 	}
-	// "platform-engineering ADR-0098" is another repository's numbering
+	// "a sibling repository's ADR-0999" is another repository's numbering
 	// (zero-padded wider than this home's ids): named as not checked, never
 	// reported as a missing record of ours.
-	if !strings.Contains(strings.Join(vp.Uncomputable, " "), "ADR-0098") {
+	if !strings.Contains(strings.Join(vp.Uncomputable, " "), "ADR-0999") {
 		t.Errorf("a foreign-numbered decision id must be named as unchecked, got %v", vp.Uncomputable)
 	}
 

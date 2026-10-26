@@ -1,7 +1,7 @@
 # exploration-ledger — vision 19 promoted: the 90x measured, the dashboard readable
 
 > Governing source: docs/vision/19-exploration-ledger.md. **Covenant
-> (ADR-0070 class):** failing test first; `task validate` green before
+> (test-first class):** failing test first; `task validate` green before
 > commit; dated CHANGELOG entry; boxes flip only on `fathom verify`.
 
 ## A — The instrument
@@ -24,7 +24,7 @@
 
 - [x] the wiring grade stops reading invisible-from-here as absent: signals that cannot be seen leave the denominator and the chip says what it could not see {id: EX-8, symbol: wiringGrade, package: cmd/fathom, reachable_from: TestWiringGradeUnknowns}
 
-## F — Field report 2026-08-08 (the resume_as_code session; each row is a filed defect or its fix)
+## F — Field report 2026-08-08 (the svc-c session; each row is a filed defect or its fix)
 
 - [x] one store: CLI verbs that read (verify, plans, query, instrument) fall back to the daemon's registered store when no cwd-local store exists, loudly naming which store answered — the cwd-relative default silently proved nothing from consumer repos {id: FR-1, symbol: discoverPlansForServiceRoot, package: cmd/fathom, reachable_from: TestResolveReadStore}
 - [x] the verify-catch aggregate stops double-counting: the 264,487-catches artifact is found and fixed; gate-shaped folds count events, never cumulative re-reads {id: FR-2, symbol: gateCatchStatsFromLedger, package: cmd/fathom, reachable_from: TestAdoptionVerifyFigureMatchesLedger}

@@ -1,0 +1,102 @@
+{
+  "version": "prose-lab.goal-scope/1",
+  "id": "headless-six-types-length-v2",
+  "corpus_digest": "da99d1c025764c445967dd8d71c56e63992108feaa682d1ba81685155c0688bd",
+  "documents": [
+    {
+      "document_id": "architecture-decision",
+      "required_semantic_goal_ids": [
+        "g-fidelity",
+        "g-coverage",
+        "g-purpose",
+        "g-no-invention",
+        "g-status"
+      ],
+      "length_criterion_id": "g-length-architecture-decision",
+      "length_class": "advisory",
+      "min_words": 400,
+      "max_words": 650,
+      "reason_digest": "e9310d43e5cb36d13aece97f73bf8a6f58fd57cac260111319ec9c780425d99e"
+    },
+    {
+      "document_id": "draft-service-agreement",
+      "required_semantic_goal_ids": [
+        "g-fidelity",
+        "g-coverage",
+        "g-purpose",
+        "g-no-invention",
+        "g-status"
+      ],
+      "length_criterion_id": "g-length-draft-service-agreement",
+      "length_class": "advisory",
+      "min_words": 500,
+      "max_words": 750,
+      "reason_digest": "2ed43a4dff54eb74cf136295bba935471bfcd101b9316bc04f0cde4a719793e9"
+    },
+    {
+      "document_id": "freeform-brief",
+      "required_semantic_goal_ids": [
+        "g-fidelity",
+        "g-coverage",
+        "g-purpose",
+        "g-no-invention",
+        "g-status"
+      ],
+      "length_criterion_id": "g-length-freeform-brief",
+      "length_class": "advisory",
+      "min_words": 100,
+      "max_words": 200,
+      "reason_digest": "220a402c29dae3ed0b58fb0030843853b7ce2ac2b3f2ce7e105f4b1d97a8043c"
+    },
+    {
+      "document_id": "incident-summary",
+      "required_semantic_goal_ids": [
+        "g-fidelity",
+        "g-coverage",
+        "g-purpose",
+        "g-no-invention",
+        "g-status"
+      ],
+      "length_criterion_id": "g-length-incident-summary",
+      "length_class": "advisory",
+      "min_words": 150,
+      "max_words": 250,
+      "reason_digest": "6345d6254510ba62a17453e05c0de68811e951f54cd3d20ee23e3912699c89d0"
+    },
+    {
+      "document_id": "operational-runbook",
+      "required_semantic_goal_ids": [
+        "g-fidelity",
+        "g-coverage",
+        "g-purpose",
+        "g-no-invention",
+        "g-status"
+      ],
+      "length_criterion_id": "g-length-operational-runbook",
+      "length_class": "advisory",
+      "min_words": 400,
+      "max_words": 650,
+      "reason_digest": "5677ff24d4ddddf74c7b96e796999f14fd1407d7f11cc86738f8095037dcf674"
+    },
+    {
+      "document_id": "technical-design",
+      "required_semantic_goal_ids": [
+        "g-fidelity",
+        "g-coverage",
+        "g-purpose",
+        "g-no-invention",
+        "g-status"
+      ],
+      "length_criterion_id": "g-length-technical-design",
+      "length_class": "required",
+      "min_words": 1200,
+      "max_words": 1600,
+      "reason_digest": "e4f57e1317399b4be44650225f5aba2424bcbfae6e191d965bf378cfae5e8b6f"
+    }
+  ],
+  "long_artifact": {
+    "document_id": "technical-design",
+    "criterion_id": "g-length-technical-design",
+    "min_words": 1200
+  }
+}

@@ -222,7 +222,7 @@ func TestBuildResearchReport_Golden(t *testing.T) {
 	}
 
 	obsContent := observationsHeader + "\n" +
-		formatObservationEntry(1, "confusing error", "find_symbol", "", "", "") +
+		formatObservationEntry(1, "confusing error", "find_symbol", "", "", "", "") +
 		"\n" + formatObservationEntryWithStatus(2, "slow query", "query_symbols", "resolved")
 
 	r := buildResearchReport(researchReportInputs{
@@ -372,6 +372,6 @@ func TestBuildResearchReport_BenchArms(t *testing.T) {
 // writes "open", so tests that need a "resolved" entry patch it here rather
 // than hand-writing the whole entry shape.
 func formatObservationEntryWithStatus(id int, symptom, tool, status string) string {
-	entry := formatObservationEntry(id, symptom, tool, "", "", "")
+	entry := formatObservationEntry(id, symptom, tool, "", "", "", "")
 	return strings.Replace(entry, "- **Status:** open", "- **Status:** "+status, 1)
 }

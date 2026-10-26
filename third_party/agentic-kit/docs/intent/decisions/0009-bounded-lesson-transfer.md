@@ -24,7 +24,7 @@ Receiver-owned review acceptance, reproduction, current-snapshot and revocation
 callbacks are mandatory for a reproduced adoption receipt. Copy values across callback
 boundaries and recheck freshness; callback errors and unknown evidence cannot pass.
 
-The initial transfer links the kit's engineering coverage defect to resume_as_code's
+The initial transfer links the kit's engineering coverage defect to consumer-c's
 unknown-provider-family failure. Both receivers seed a regression and use independent
 local oracles. This is retrospective extraction, not a claim that sharing caused the
 already-made repairs. Imported labels, files and receipts grant no execution authority.

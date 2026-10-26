@@ -20,7 +20,7 @@ type Source struct {
 // current set (e.g. to report "what does this repo guard today") passes
 // head-side Sources instead. Every field beyond Sources is flattened data
 // a caller already resolved elsewhere (an intent.Corpus, a decoded
-// test-kit manifest, a call graph) — this package does no I/O and imports
+// The test kit manifest, a call graph) — this package does no I/O and imports
 // none of those packages itself (see the package doc comment).
 type GuardedInput struct {
 	// Sources is the Go source to scan for Test* functions and their

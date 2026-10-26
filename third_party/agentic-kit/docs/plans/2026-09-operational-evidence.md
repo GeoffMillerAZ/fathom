@@ -14,7 +14,7 @@ authority. No universal score, parallel registry/router/evaluator/store, new roo
 dependency, unrelated consumer repair, gate weakening, release, tag or main merge.
 Existing owners and methodology: [benchmark design](../designs/benchmark-evidence.md),
 [assessments](../designs/engineering-assessments.md), decisions 0011/0012.
-Necessary opt-in changes to resume_as_code/throughline are explicitly authorized by
+Necessary opt-in changes to consumer-c/consumer-a are explicitly authorized by
 the new objective; their local rules still apply. Prior dirty files remain untouched.
 
 ## Requirements → gaps → proof
@@ -73,7 +73,7 @@ the new objective; their local rules still apply. Prior dirty files remain untou
 
 OE-01–09 are cross-repository operational requirements, not kit-symbol proxies.
 Following GW-14's precedent, their delivery evidence is recorded below; consumer
-symbols are independently verified in Fathom's `resume_as_code` service.
+symbols are independently verified in Fathom's `consumer-c` service.
 
 ## Execution and token economics
 
@@ -88,7 +88,7 @@ Retain exact artifacts/grades where valid; no made-up savings or sample multipli
 
 Consumer code is committed at `d233b5359f7cfcd5f46d6670a40385ca272f4618`;
 shared kit code at `335c8fc40f1f57c746092de0af850d6a7d9c6642` is consumed through
-the normal vendor pin. [Consumer delivery and exact artifacts](../../../resume_as_code/docs/evaluation/2026-09-21/README.md)
+the normal vendor pin. [Consumer delivery and exact artifacts](../../../consumer-c/docs/evaluation/2026-09-21/README.md)
 own the commands, identities, limits and reproducible analysis. Original live receipts
 remain private/create-once, with public projections; no original run was rewritten.
 
@@ -116,7 +116,7 @@ this offline delivery. Campaign `operational-evidence-20260916` remains $0.04087
 usage-calculated cost plus $0.395 unknown reservations = $0.435875 against its original
 $5 cap; authority expired 2026-09-18. Original stages include failed OpenAI and Anthropic
 calls, plain-JSON development holds, structured development and heldout, and no-model
-controls. Complete details: [historical study](../../../resume_as_code/docs/evaluation/2026-09-16/README.md).
+controls. Complete details: [historical study](../../../consumer-c/docs/evaluation/2026-09-16/README.md).
 
 ## Verification and remaining boundaries
 
@@ -126,13 +126,13 @@ controls. Complete details: [historical study](../../../resume_as_code/docs/eval
 - Review repairs: exact deployment/model/provider/role/endpoint binding; invalid recovery
   bounds; JSON-decoded decision requests; canceled no-leaf CUE shape; historical
   derivation versus pending execution. Removed-control tests detect the bypasses.
-- [Fathom evidence](../../../resume_as_code/docs/evaluation/2026-09-21/fathom-verification.json):
+- [Fathom evidence](../../../consumer-c/docs/evaluation/2026-09-21/fathom-verification.json):
   eight consumer and two shared-kit static anchors pass. No runtime pass is inferred
   from static reachability. The unannotated operational list initially yielded unknown,
   not proof; this ledger now separates the symbol-backed kit row from external evidence.
-- Throughline `a007075fab6ac156be44de46df941cce4a0915ed`: build stops at readonly
+- Consumer-a `a007075fab6ac156be44de46df941cce4a0915ed`: build stops at readonly
   module drift, as in the earlier checkpoint; no compatibility pass.
-- Growing Gardens BI `7503dd1c270bf6ceb72d42c742f507b9513db0dc`: build stops at
+- Consumer-b `7503dd1c270bf6ceb72d42c742f507b9513db0dc`: build stops at
   app-kit's missing `uniseg` checksum, also previously observed; no compatibility pass.
 - Fathom/sextant `c58adaa2bf865e41c52eb00df92987cc96a089b1`: current build stops
   at an unrequired replaced evidence-producer module and a missing temporary embedded
@@ -149,7 +149,7 @@ controls. Complete details: [historical study](../../../resume_as_code/docs/eval
 No gate is waived: `TRACKING.md` stays partial for fleet-wide readiness and main remains
 protected. This does not defer required scoped implementation: those exits above pass.
 Further empirical work alone is the owner's explicit
-[study TODO](../../../resume_as_code/docs/evaluation/live-study-todo.md), reviewed
+[study TODO](../../../consumer-c/docs/evaluation/live-study-todo.md), reviewed
 2026-10-16/next release or before a production/changed-solution claim. Cross-provider,
 live red-team, new final holdouts and optimization remain unexecuted. No automatic model
 watcher, new retrieval engine, worker platform or universal catalog was introduced.

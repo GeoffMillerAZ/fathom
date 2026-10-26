@@ -93,7 +93,7 @@ type Finding struct {
 	// File/Line are the repo-relative location of the finding's SUBJECT —
 	// at HEAD when the subject still exists there, else at BASE (a
 	// deleted test's file and func line, for instance). Additive to the
-	// fathom.conserve/v1 wire contract (both omitempty): a Review Kit
+	// fathom.conserve/v1 wire contract (both omitempty): a review kit
 	// citation needs a real anchor, not the human-readable Base/Head
 	// citation strings above (which mix base and head, and are absent for
 	// several finding kinds). Empty is correct, and expected, when no
@@ -193,6 +193,8 @@ type Report struct {
 	// Report.Residue itself. Never a plane: it carries no Verdict of its
 	// own and is never consulted by planeVerdict or --strict's exit.
 	Residue *ResidueReport `json:"residue,omitempty"`
+	// ConcernDeltas is populated only by the CLI flag, never by Run or a plane.
+	ConcernDeltas *ConcernDeltaReport `json:"concern_deltas,omitempty"`
 }
 
 // Plane is one family of conservation checks (ADR-044 §0: integrity,

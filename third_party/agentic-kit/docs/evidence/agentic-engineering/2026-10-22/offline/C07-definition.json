@@ -1,0 +1,11 @@
+{
+  "id": "C07",
+  "slug": "hitl-remote-ambiguity",
+  "axis": "component",
+  "acceptance": "Ambiguous remote outcome blocks further effects until reconciliation",
+  "method": "deterministic source plus scoped test",
+  "source": "kits/hitl/delivery_test.go",
+  "test": "TestUnknownRemoteBlocksFurtherEffectsUntilReconciled",
+  "group": "hitl_prose",
+  "non_guarantee": "Component test does not prove consumer adoption, live model quality, or all entrypoints."
+}

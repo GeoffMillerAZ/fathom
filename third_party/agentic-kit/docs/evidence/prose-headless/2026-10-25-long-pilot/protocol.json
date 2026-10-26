@@ -1,0 +1,223 @@
+{
+  "version": "prose-lab.long-pilot-protocol/1",
+  "id": "hp14-long-pilot-065636c",
+  "question": "Can the existing five-node factual synthesis produce a useful required 1200..1600-word technical design under unchanged source and semantic floors?",
+  "execution_roster": [
+    "technical-design-technical-r1"
+  ],
+  "eligible_universe": 36,
+  "unexecuted_eligible_cells": 35,
+  "available_negative_cases": 43,
+  "negative_cases_executed": 0,
+  "repeats": 1,
+  "repairs": 0,
+  "retry_or_fallback": false,
+  "required_length": {
+    "criterion_id": "g-length-technical-design",
+    "min_words": 1200,
+    "max_words": 1600,
+    "count_rule": "markdown-whitespace-fields/v1"
+  },
+  "required_goals": [
+    {
+      "id": "g-fidelity",
+      "statement": "Preserve the exact scenario facts and their observed, proposed, assumed, or defined status.",
+      "acceptance": "Every factual assertion agrees with a relevant supplied fact; no changed actor, number, date, or status.",
+      "method": "Independent reviewer compares claims with the fixed fact ledger."
+    },
+    {
+      "id": "g-coverage",
+      "statement": "Cover all required facts and section purposes.",
+      "acceptance": "Each required fact appears accurately in an appropriate section and each section fulfills its instruction.",
+      "method": "Independent reviewer checks required fact IDs and section instructions against the output."
+    },
+    {
+      "id": "g-purpose",
+      "statement": "A design reviewer can assess the proposed isolated pilot, distinguish selected hypotheses from proven behavior, and identify decisions still required before implementation or production use.",
+      "acceptance": "The document supports its stated reader decision or action within its declared scope.",
+      "method": "Independent reviewer assesses the fixed purpose and audience against the output."
+    },
+    {
+      "id": "g-no-invention",
+      "statement": "Do not add unsupported facts, outcomes, causal conclusions, or authority.",
+      "acceptance": "No material claim exceeds the supplied facts, including headings, lists, tables, and captions.",
+      "method": "Independent reviewer audits all factual text and planted negative assertions."
+    },
+    {
+      "id": "g-status",
+      "statement": "Keep observed results, proposed actions, assumptions, definitions, and unknowns distinct.",
+      "acceptance": "The output never presents a proposal as enacted, an assumption as observed, or an unresolved matter as settled.",
+      "method": "Independent reviewer classifies material assertions against source status and explicit unknowns."
+    }
+  ],
+  "sections": [
+    {
+      "id": "s-01",
+      "title": "Context and scope",
+      "instruction": "Explain workload, input contract, current gap, pilot objective, and non-goals.",
+      "fact_ids": [
+        "f-01",
+        "f-02",
+        "f-03",
+        "f-04",
+        "f-05",
+        "f-20",
+        "f-29",
+        "f-37",
+        "f-38",
+        "f-39"
+      ],
+      "required_fact_ids": [
+        "f-01",
+        "f-02",
+        "f-03",
+        "f-04",
+        "f-05",
+        "f-37"
+      ]
+    },
+    {
+      "id": "s-02",
+      "title": "API and validation",
+      "instruction": "Specify proposed endpoint, auth boundary, parsing, duplicate semantics, and response classes.",
+      "fact_ids": [
+        "f-06",
+        "f-07",
+        "f-08",
+        "f-09",
+        "f-10",
+        "f-11",
+        "f-12",
+        "f-15",
+        "f-16",
+        "f-17",
+        "f-18",
+        "f-19",
+        "f-20",
+        "f-21",
+        "f-40",
+        "f-41"
+      ],
+      "required_fact_ids": [
+        "f-06",
+        "f-07",
+        "f-08",
+        "f-09",
+        "f-10",
+        "f-11",
+        "f-12",
+        "f-15",
+        "f-16",
+        "f-17",
+        "f-18",
+        "f-20"
+      ]
+    },
+    {
+      "id": "s-03",
+      "title": "Durability and recovery",
+      "instruction": "Explain append, acknowledgment, replay, ambiguous outcomes, corruption, and finite capacity.",
+      "fact_ids": [
+        "f-13",
+        "f-14",
+        "f-18",
+        "f-19",
+        "f-31",
+        "f-32",
+        "f-33",
+        "f-34",
+        "f-35",
+        "f-36",
+        "f-37",
+        "f-42",
+        "f-43"
+      ],
+      "required_fact_ids": [
+        "f-13",
+        "f-14",
+        "f-18",
+        "f-31",
+        "f-32"
+      ]
+    },
+    {
+      "id": "s-04",
+      "title": "Operations and pilot",
+      "instruction": "Specify observability, synthetic fixture, acceptance, rollout gate, and unresolved latency.",
+      "fact_ids": [
+        "f-22",
+        "f-23",
+        "f-24",
+        "f-25",
+        "f-26",
+        "f-27",
+        "f-28",
+        "f-29",
+        "f-30",
+        "f-31",
+        "f-34",
+        "f-35",
+        "f-44",
+        "f-45"
+      ],
+      "required_fact_ids": [
+        "f-25",
+        "f-26",
+        "f-27",
+        "f-28",
+        "f-29",
+        "f-30",
+        "f-31"
+      ]
+    },
+    {
+      "id": "s-05",
+      "title": "Open decisions",
+      "instruction": "Separate pending rotation, retention, and multi-host questions from current proposal.",
+      "fact_ids": [
+        "f-30",
+        "f-31",
+        "f-32",
+        "f-33",
+        "f-37",
+        "f-38",
+        "f-46"
+      ],
+      "required_fact_ids": [
+        "f-31",
+        "f-32",
+        "f-37"
+      ]
+    }
+  ],
+  "review_dimensions": [
+    {
+      "id": "clarity",
+      "bar": "Section purposes are fulfilled with decision-useful synthesis. Repeated padding or an unstructured wall of text is a hold or explicit limitation, even when length and cited IDs pass."
+    },
+    {
+      "id": "technical-audience",
+      "bar": "The reader can inspect the proposed interfaces, failure/recovery semantics, unresolved prerequisites and isolated pilot. No invented measurements or settled open choices."
+    },
+    {
+      "id": "locality",
+      "bar": "This pilot measures generation only, not regeneration, dependency closure, document editing or HITL effects."
+    }
+  ],
+  "structural_representation": "Five paragraph leaves. No headings, lists, tables or caption qualification inferred. Record whether this prevents usefulness.",
+  "generation_lane": "generation",
+  "review_lane": "review",
+  "pricing_checked_at": "2026-10-25T19:29:27.231818+00:00",
+  "pricing_sources": [
+    "https://platform.claude.com/docs/en/models/opus-5-5/overview",
+    "https://platform.claude.com/docs/en/models/sonnet-5-5/overview",
+    "https://platform.claude.com/docs/en/about-claude/pricing"
+  ],
+  "cache_policy": "No cache selected; unexpected cache usage remains unqualified and retains reservation if usage cannot be priced.",
+  "thinking_policy": "Provider defaults unchanged; native reasoning metadata retained privately, no hidden reasoning read or published.",
+  "stop_rule": "One document-capture invocation only. Any terminal result, cancellation, timeout, absent artifact, held section or unknown spend ends this pilot without retry, repair, alternate root or model fallback. Preserve every attempt and missing cell.",
+  "accounting": "Journal reserves full context/output at worst input category before dispatch; unavailable or uncertain usage retains reservation. Prior + new maximum <= direct-stage cap; not an invoice or account balance.",
+  "review_intake": "If all four artifacts exist, prepare bound packet and no-observation report, then independent agent heuristic review without relabeling human. Required human profiles remain unknown; no actual human review is invented. Early hold yields unavailable packet and retained refusal.",
+  "acceptance": "At most a generated long-artifact witness and agent observations. No independent document acceptance, source truth, publication, HP-A14/18 or UI entry. Failed v1 cell remains failed with exhausted repair.",
+  "child_environment": "Only PATH=os.defpath, LANG=C, TZ=UTC and the explicitly loaded ANTHROPIC_API_KEY; no ambient proxies, SSLKEYLOGFILE or other credentials."
+}

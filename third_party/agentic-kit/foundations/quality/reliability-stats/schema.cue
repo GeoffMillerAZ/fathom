@@ -4,11 +4,11 @@
 // `cue vet ./...`.
 package reliabilitystats
 
-// #Observation is one paired trial: the task (cluster) it belongs to and
+// #Observation is one paired trial: the task it belongs to and
 // the treatment-minus-baseline difference for that trial. All trials of
 // one task resample together.
 #Observation: {
-	// task is the cluster id; non-empty.
+	// task is the task id; non-empty.
 	task: string & !=""
 
 	// diff is treatment minus baseline for this trial.
@@ -27,7 +27,7 @@ package reliabilitystats
 	// point is the statistic on the observed sample.
 	point: number
 
-	// tasks is the number of distinct clusters resampled; at least one.
+	// tasks is the number of distinct tasks in the estimator; at least one.
 	tasks: int & >=1
 }
 
@@ -55,4 +55,13 @@ package reliabilitystats
 	// exact is true when p came from the enumerated null distribution
 	// (n <= 25), false when from the normal approximation.
 	exact: bool
+}
+
+// #TOSTResult mirrors TOSTResult: verdict and paired mean interval.
+#TOSTResult: {
+	equivalent: bool
+	// unexpected_effect reports Low > the caller's margin; verdict stays inconclusive.
+	unexpected_effect: bool
+	low:               number
+	high:              number & >=low
 }

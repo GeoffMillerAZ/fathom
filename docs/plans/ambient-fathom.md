@@ -6,7 +6,7 @@
 > `budgeted-answers.md`, `realization-grade.md`, `assess-lanes.md` (DO-3,
 > IR-3..5; ADR-046) under `docs/design/`.
 >
-> **Covenant (ADR-0070 class):** failing test first, `task validate` green
+> **Covenant (test-first class):** failing test first, `task validate` green
 > before commit, dated CHANGELOG entry, boxes flip only on
 > `fathom verify --service fathom --plan docs/plans/ambient-fathom.md`.
 >

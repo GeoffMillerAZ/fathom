@@ -8,8 +8,8 @@ Status: implemented optional Review Kit lane; OpenRouter connectivity demonstrat
 ## Implementation follow-through
 
 The owner has authorized implementation for clients with and without Jev. Review Kit's
-[owning design](../../../platform-engineering/kits/review-kit/docs/design/typed-judgment.md)
-and [delivery ledger](../../../platform-engineering/docs/plans/review-typed-judgment.md)
+[owning design](../../../platform-repo/kits/review-consumer/docs/design/typed-judgment.md)
+and [delivery ledger](../../../platform-repo/docs/plans/review-typed-judgment.md)
 now distinguish available code, offline protocol proof and remaining live evaluation.
 The research recommendation below remains conditional on measured quality/economics;
 provider access does not block implementing or fixture-testing the optional adapters.
@@ -22,7 +22,7 @@ the actual Review Kit CLI reached OpenRouter's alpha Decisions API. Requested
 by exact-model validation, then the adapter gained explicit requested/returned pins.
 The second call produced a valid advisory report, inspection and no-call reuse.
 OpenRouter reported $0.000062244 across both requests. The
-[retained evidence](../../../platform-engineering/kits/review-kit/docs/assessments/2026-09-22-openrouter-jev-smoke.md)
+[retained evidence](../../../platform-repo/kits/review-consumer/docs/assessments/2026-09-22-openrouter-jev-smoke.md)
 includes both attempts and the complete report; the key and repository source were
 not transmitted as prompt content or retained in artifacts.
 
@@ -108,21 +108,21 @@ investigation, not a claim of production review accuracy.
 ## Actual repository fit
 
 Inspected: agentic-kit `6c21e29` plus the pre-existing dirty intent edits, and
-platform-engineering `6c1f9d7`. Fathom located definitions; targeted source reads
+platform-repo `6c1f9d7`. Fathom located definitions; targeted source reads
 established the shapes below at the initial inspection. Agentic-kit's `task validate`
 passed then. Subsequent Review Kit implementation and the narrow live smoke are
 recorded above and in the delivery audit; the table is the original fit analysis.
 
 | Existing surface | What it actually supplies | Proposed use / missing piece |
 |---|---|---|
-| [Review Kit core](../../../platform-engineering/kits/review-kit/internal/core/core.go) | Requirements have a check adapter and binding; finding definitions carry rationale, remedy, class and enforcement | Add a versioned semantic binding/profile under this owner. Existing finding rows are not already executable Jev questions. |
-| [Review Kit finding events](../../../platform-engineering/kits/review-kit/internal/findings/findings.go) | Model producer kind, anchored source, payload digest, outcome, coverage, rule text/remedy/closure and history | Reference a retained rich decision receipt. Preserve model producer/tier; a content digest is not authority. |
+| [Review Kit core](../../../platform-repo/kits/review-consumer/internal/core/core.go) | Requirements have a check adapter and binding; finding definitions carry rationale, remedy, class and enforcement | Add a versioned semantic binding/profile under this owner. Existing finding rows are not already executable Jev questions. |
+| [Review Kit finding events](../../../platform-repo/kits/review-consumer/internal/findings/findings.go) | Model producer kind, anchored source, payload digest, outcome, coverage, rule text/remedy/closure and history | Reference a retained rich decision receipt. Preserve model producer/tier; a content digest is not authority. |
 | [Assessment profiles](../../foundations/quality/fitness-function-registry/profile.go) | Criterion definition digests, admissible methods, pass/fail/unknown/N/A and artifact references | Map evaluated results to heuristic observations; retain probability vectors and input lineage in the referenced receipt. |
 | [Knowledge catalog](../../foundations/knowledge/catalog/schema.cue) | Authored taxonomy, stable keys, facets and source metadata | Preserve taxonomy integrity. Attach domain-owned criterion definitions; do not replace identity/merge validation with a model. |
 | [LLMClient](../../foundations/llmclient/types.go) | Generative Complete and Stream request/response contract | A native decision call has different semantics. Propose a small local typed decision port, with Jev and structured-LLM adapters; review a shared export separately. |
 | [Ladder](../../foundations/llmclient/ladder.go) | Caller-ordered escalation driven by a caller signal | Jev can inform the signal or task features; existing consumer policy retains eligibility and selection. Ladder is not a learned router. |
-| [Review economics](../../../platform-engineering/kits/review-kit/docs/design/economics.md) | Manifest selection, freshness, reuse rules, measured work; no enabled paid model lane | Extend the optional lane with reservation, usage, cancellation and complete decision dependencies. |
-| [Fathom integration](../../../platform-engineering/kits/review-kit/docs/design/fathom.md) | Code intelligence, report import, finding projection and contextual retrieval | Supply bounded packets and serve results. The real projection/edit-hook/recurrence tracer remains a separate proof obligation. |
+| [Review economics](../../../platform-repo/kits/review-consumer/docs/design/economics.md) | Manifest selection, freshness, reuse rules, measured work; no enabled paid model lane | Extend the optional lane with reservation, usage, cancellation and complete decision dependencies. |
+| [Fathom integration](../../../platform-repo/kits/review-consumer/docs/design/fathom.md) | Code intelligence, report import, finding projection and contextual retrieval | Supply bounded packets and serve results. The real projection/edit-hook/recurrence tracer remains a separate proof obligation. |
 
 Cross-repository links assume the sibling checkouts. Review Kit's leaf-module boundary
 forbids casually importing the whole agentic-kit engine. Start with a local adapter
@@ -273,7 +273,7 @@ egress policy, bounded attempt receipts, exact reuse, journal/outbox integration
 shared workbench artifact compatibility, bounded edit batches, and separate offline
 review/routing studies. Twelve example criteria have 48 development cases.
 
-The [delivery audit](../../../platform-engineering/kits/review-kit/docs/assessments/2026-09-22-typed-review-delivery.md)
+The [delivery audit](../../../platform-repo/kits/review-consumer/docs/assessments/2026-09-22-typed-review-delivery.md)
 records the actual gates, native loopback workflow and consumer proof. The approved
 portal dependency repair is applied and its normal tests, vet, build and dependency
 seams passed. The subsequent OpenRouter smoke establishes that narrow live path;

@@ -195,7 +195,7 @@ The same service sequence as wave A (`MODE=symctx`), cold then a warm repeat:
 | Call | Wave-A head | Waves C–F |
 |---|---|---|
 | `symbol_context` app-kit, cold | 22.1 s, 5,281 MiB | **0.67 s, 245 MiB** |
-| `symbol_context` platform-engineering, cold | 4.5 s, 2,454 MiB | **0.82 s, 260 MiB** |
+| `symbol_context` platform, cold | 4.5 s, 2,454 MiB | **0.82 s, 260 MiB** |
 | `symbol_context` fathom, cold | 15.4 s, 9,782 MiB | **1.28 s, 331 MiB** |
 | ×20 repeat burst | p50 76.7 s, 4,595 MiB per call, 5.21 GiB peak | **20/20, p50 159 ms, 22.7 MiB per call, 0.78 GiB peak** |
 
@@ -234,8 +234,8 @@ from refusing work, not from answering it cheaply.
 **Setup:**
 
 - **Store:** a store copy in which the `indexed_commit` of seven registered services was
-  set to zeros so they read as drifted: car-assistant, geoffmiller-cloud, iam_horcrux,
-  planning, pulumi_eks_component, study and agentic-kit.
+  set to zeros so they read as drifted: svc-e, svc-b, iam-repo,
+  svc-m, svc-h, study and agentic-kit.
 - **Daemon:** `--auto-refresh=true`, `--lifecycle-id rtc-storm`, a 4 GiB budget.
 - **Trigger:** after warm-up, 21 concurrent `find_symbol` reads, 3 per service, then
   continued reads every 2 s.
@@ -247,8 +247,8 @@ from refusing work, not from answering it cheaply.
   requested`). Each read answered at once from the index as it stood: 20 said `queued (index_stale)`
   and one said `refreshing`.
 - **The queue ran them one after another:** study (about 25 s), agentic-kit (5 s),
-  pulumi_eks_component (0.5 s), planning (1.5 s), iam_horcrux (21 s), geoffmiller-cloud
-  (2.5 s) and car-assistant (about 19 s). Durations are to the 0.5 s sampling interval. All seven were refreshed in 77 s.
+  svc-h (0.5 s), svc-m (1.5 s), iam-repo (21 s), svc-b
+  (2.5 s) and svc-e (about 19 s). Durations are to the 0.5 s sampling interval. All seven were refreshed in 77 s.
 - **Serial:** 150 samples, and at most **1** ingest in progress at any time.
 - **Reads during the drain:** 266 calls, p50 2 ms, p95 6 ms, max 10 ms. None waited for
   an ingest.
@@ -263,11 +263,11 @@ into a store copy. The most file content any of them held at once:
 
 | Service | Files discovered | Peak content in flight | CLI peak `phys_footprint` |
 |---|---|---|---|
-| car-assistant | 104 | 0.42 MiB | 138 MiB |
-| geoffmiller-cloud | 300 | 0.94 MiB | 161 MiB |
-| iam_horcrux | 383 | 0.10 MiB | 169 MiB |
-| planning | 588 | 2.11 MiB | 183 MiB |
-| pulumi_eks_component | 116 | 1.34 MiB | 26 MiB |
+| svc-e | 104 | 0.42 MiB | 138 MiB |
+| svc-b | 300 | 0.94 MiB | 161 MiB |
+| iam-repo | 383 | 0.10 MiB | 169 MiB |
+| svc-m | 588 | 2.11 MiB | 183 MiB |
+| svc-h | 116 | 1.34 MiB | 26 MiB |
 | study | 782 | **12.9 MiB** | 211 MiB |
 | agentic-kit | 1,213 | 0.22 MiB | 369 MiB |
 

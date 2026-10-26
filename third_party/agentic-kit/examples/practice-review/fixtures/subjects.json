@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "subjects": [
+    {
+      "id": "review-alpha",
+      "revision": "rev-1",
+      "checks": [
+        {
+          "stable_key": "review.evidence-integrity",
+          "evidence": {
+            "subject_id": "review-alpha",
+            "source": "synthetic://review-alpha",
+            "revision": "rev-1",
+            "text": "Captured synthetic result for review-alpha and evidence-integrity",
+            "observed_at": "2026-10-20T00:00:00Z",
+            "valid_until": "2026-11-20T00:00:00Z",
+            "digest": "fb6f1b44b64d91196252ad6acb5e75bf08657876ff9c88eb4aea14f6cab1ab73"
+          }
+        },
+        {
+          "stable_key": "review.bounded-work",
+          "evidence": {
+            "subject_id": "review-alpha",
+            "source": "synthetic://review-alpha",
+            "revision": "rev-1",
+            "text": "Captured synthetic result for review-alpha and bounded-work",
+            "observed_at": "2026-10-20T00:00:00Z",
+            "valid_until": "2026-11-20T00:00:00Z",
+            "digest": "3b2906118753bf9e0df222649f4d337d48e95f4a15d56cda26b8742672f713ec"
+          },
+          "work": {
+            "steps": 2
+          }
+        },
+        {
+          "stable_key": "review.effect-scope",
+          "evidence": {
+            "subject_id": "review-alpha",
+            "source": "synthetic://review-alpha",
+            "revision": "rev-1",
+            "text": "Captured synthetic result for review-alpha and effect-scope",
+            "observed_at": "2026-10-20T00:00:00Z",
+            "valid_until": "2026-11-20T00:00:00Z",
+            "digest": "58b62e904bb676ed580d9f5295a1779b654fe06a5d6842cd02b5918eeea797e3"
+          },
+          "requested_actions": [
+            "write-local-report"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "review-beta",
+      "revision": "rev-1",
+      "checks": [
+        {
+          "stable_key": "review.evidence-integrity",
+          "evidence": {
+            "subject_id": "review-beta",
+            "source": "synthetic://review-beta",
+            "revision": "rev-1",
+            "text": "Captured synthetic result for review-beta and evidence-integrity",
+            "observed_at": "2026-10-20T00:00:00Z",
+            "valid_until": "2026-11-20T00:00:00Z",
+            "digest": "5dd0d3b006db8790f72649e53aff75407ad4333605a2d32919710c905c6d78bd"
+          }
+        },
+        {
+          "stable_key": "review.bounded-work",
+          "evidence": {
+            "subject_id": "review-beta",
+            "source": "synthetic://review-beta",
+            "revision": "rev-1",
+            "text": "Captured synthetic result for review-beta and bounded-work",
+            "observed_at": "2026-10-20T00:00:00Z",
+            "valid_until": "2026-11-20T00:00:00Z",
+            "digest": "3af2513ccd6c66bff79a1ce69c6ea43f6ff974747f63729557cb10e4fb83467f"
+          },
+          "work": {
+            "steps": 2
+          }
+        },
+        {
+          "stable_key": "review.effect-scope",
+          "evidence": {
+            "subject_id": "review-beta",
+            "source": "synthetic://review-beta",
+            "revision": "rev-1",
+            "text": "Captured synthetic result for review-beta and effect-scope",
+            "observed_at": "2026-10-20T00:00:00Z",
+            "valid_until": "2026-11-20T00:00:00Z",
+            "digest": "2f3f9c4620753073220a03e65513e74e815f8ee0d836dffaf88f7a95f1c515fc"
+          },
+          "requested_actions": [
+            "write-local-report"
+          ]
+        }
+      ]
+    }
+  ]
+}

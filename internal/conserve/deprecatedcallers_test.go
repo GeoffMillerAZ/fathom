@@ -83,7 +83,7 @@ func OldFunc() int { return 1 }
 	if f.Head == "" {
 		t.Errorf("Head citation is empty")
 	}
-	// RK-36: File/Line names the new call site itself, matching Head's
+	// Anchor ask: File/Line names the new call site itself, matching Head's
 	// own citation exactly.
 	if got := fmt.Sprintf("%s:%d", f.File, f.Line); got != f.Head {
 		t.Errorf("File/Line = %s, want it to match Head citation %s", got, f.Head)

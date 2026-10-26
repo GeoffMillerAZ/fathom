@@ -1,0 +1,389 @@
+{
+  "version": "command-guard.compact-schema-trial/1",
+  "schemaSHA256": "1858e392990316c48349f67d79cf5cf533f2525305b6ea41242111b6d3db3b48",
+  "actualReports": [
+    {
+      "case": "bytes-1000-compact.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "bytes-1000-json.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "bytes-1500-compact.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "bytes-1500-json.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "bytes-3000-compact.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "bytes-3000-json.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "bytes-500-compact.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "bytes-500-json.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "denied-path-compact.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "denied-path-json.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "diff-sides-compact.json",
+      "definition": "#OutputGitReport",
+      "exit": 0
+    },
+    {
+      "case": "diff-sides-json.json",
+      "definition": "#OutputGitReport",
+      "exit": 0
+    },
+    {
+      "case": "git-bytes-1000-compact.json",
+      "definition": "#OutputGitReport",
+      "exit": 0
+    },
+    {
+      "case": "git-bytes-1000-json.json",
+      "definition": "#OutputGitReport",
+      "exit": 0
+    },
+    {
+      "case": "git-bytes-1500-compact.json",
+      "definition": "#OutputGitReport",
+      "exit": 0
+    },
+    {
+      "case": "git-bytes-1500-json.json",
+      "definition": "#OutputGitReport",
+      "exit": 0
+    },
+    {
+      "case": "git-bytes-3000-compact.json",
+      "definition": "#OutputGitReport",
+      "exit": 0
+    },
+    {
+      "case": "git-bytes-3000-json.json",
+      "definition": "#OutputGitReport",
+      "exit": 0
+    },
+    {
+      "case": "git-bytes-496-compact.json",
+      "definition": "#OutputGitReport",
+      "exit": 0
+    },
+    {
+      "case": "git-bytes-496-json.json",
+      "definition": "#OutputGitReport",
+      "exit": 0
+    },
+    {
+      "case": "git-bytes-500-compact.json",
+      "definition": "#OutputGitReport",
+      "exit": 0
+    },
+    {
+      "case": "git-bytes-500-json.json",
+      "definition": "#OutputGitReport",
+      "exit": 0
+    },
+    {
+      "case": "git-denied-compact.json",
+      "definition": "#OutputGitReport",
+      "exit": 0
+    },
+    {
+      "case": "git-denied-json.json",
+      "definition": "#OutputGitReport",
+      "exit": 0
+    },
+    {
+      "case": "git-wrong-binary-compact.json",
+      "definition": "#OutputGitReport",
+      "exit": 0
+    },
+    {
+      "case": "git-wrong-binary-json.json",
+      "definition": "#OutputGitReport",
+      "exit": 0
+    },
+    {
+      "case": "hidden-finding-compact.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "hidden-finding-json.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "history-all-compact.json",
+      "definition": "#OutputGitReport",
+      "exit": 0
+    },
+    {
+      "case": "history-all-json.json",
+      "definition": "#OutputGitReport",
+      "exit": 0
+    },
+    {
+      "case": "history-more-compact.json",
+      "definition": "#OutputGitReport",
+      "exit": 0
+    },
+    {
+      "case": "history-more-json.json",
+      "definition": "#OutputGitReport",
+      "exit": 0
+    },
+    {
+      "case": "history-root-compact.json",
+      "definition": "#OutputGitReport",
+      "exit": 0
+    },
+    {
+      "case": "history-root-json.json",
+      "definition": "#OutputGitReport",
+      "exit": 0
+    },
+    {
+      "case": "inspection-400-compact.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "inspection-400-json.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "inspection-crlf-compact.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "inspection-crlf-json.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "inspection-empty-compact.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "inspection-empty-json.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "inspection-unicode-compact.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "inspection-unicode-json.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "invalid-control-compact.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "invalid-control-json.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "results-1-compact.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "results-1-json.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "results-10-compact.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "results-10-json.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "results-100-compact.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "results-100-json.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "results-3-compact.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "results-3-json.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "results-9-compact.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "results-9-json.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "results-99-compact.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "results-99-json.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "search-400-compact.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "search-400-json.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "status-30-compact.json",
+      "definition": "#OutputGitReport",
+      "exit": 0
+    },
+    {
+      "case": "status-30-json.json",
+      "definition": "#OutputGitReport",
+      "exit": 0
+    },
+    {
+      "case": "status-40-limit-compact.json",
+      "definition": "#OutputGitReport",
+      "exit": 0
+    },
+    {
+      "case": "status-40-limit-json.json",
+      "definition": "#OutputGitReport",
+      "exit": 0
+    },
+    {
+      "case": "status-empty-compact.json",
+      "definition": "#OutputGitReport",
+      "exit": 0
+    },
+    {
+      "case": "status-empty-json.json",
+      "definition": "#OutputGitReport",
+      "exit": 0
+    },
+    {
+      "case": "wrong-pin-compact.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    },
+    {
+      "case": "wrong-pin-json.json",
+      "definition": "#OutputReport",
+      "exit": 0
+    }
+  ],
+  "negativeShapes": [
+    {
+      "case": "extra-inspection-cell",
+      "definition": "#OutputReport",
+      "exit": 1
+    },
+    {
+      "case": "missing-inspection-cell",
+      "definition": "#OutputReport",
+      "exit": 1
+    },
+    {
+      "case": "wrong-inspection-position",
+      "definition": "#OutputReport",
+      "exit": 1
+    },
+    {
+      "case": "unknown-header",
+      "definition": "#OutputReport",
+      "exit": 1
+    },
+    {
+      "case": "wrong-layout",
+      "definition": "#OutputGitReport",
+      "exit": 1
+    },
+    {
+      "case": "wrong-status-kind",
+      "definition": "#OutputGitReport",
+      "exit": 1
+    },
+    {
+      "case": "wrong-object-id",
+      "definition": "#OutputGitReport",
+      "exit": 1
+    },
+    {
+      "case": "wrong-operation",
+      "definition": "#OutputGitReport",
+      "exit": 1
+    },
+    {
+      "case": "null-parents",
+      "definition": "#OutputGitReport",
+      "exit": 1
+    },
+    {
+      "case": "wrong-tuple-list",
+      "definition": "#OutputGitReport",
+      "exit": 1
+    }
+  ],
+  "passed": true
+}

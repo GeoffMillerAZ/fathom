@@ -371,7 +371,7 @@ func CatchTimeline(in CatchInputs, f CatchFilter, page, perPage int) CatchTimeli
 	}
 
 	// The scope in words, for a lane whose instrument recorded nothing in
-	// it: "" (everything), " for conjure", " in this window", or both.
+	// it: "" (everything), " for svc-a", " in this window", or both.
 	scope, there := "", ""
 	if f.Service != "" {
 		scope += " for " + f.Service

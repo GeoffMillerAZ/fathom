@@ -1,0 +1,190 @@
+[
+  {
+    "case": "bad-signature",
+    "pass": true
+  },
+  {
+    "case": "base64-stdraw",
+    "pass": true
+  },
+  {
+    "case": "base64-url",
+    "pass": true
+  },
+  {
+    "case": "base64-urlraw",
+    "pass": true
+  },
+  {
+    "case": "candidate-registration-case-alias",
+    "pass": true
+  },
+  {
+    "case": "check-view",
+    "pass": true
+  },
+  {
+    "case": "conflicting-ranges",
+    "pass": true
+  },
+  {
+    "case": "default-outside-intersection",
+    "pass": true
+  },
+  {
+    "case": "duplicate-case-root",
+    "pass": true
+  },
+  {
+    "case": "duplicate-priority",
+    "pass": true
+  },
+  {
+    "case": "expired-registration",
+    "pass": true
+  },
+  {
+    "case": "expired-source",
+    "pass": true
+  },
+  {
+    "case": "five-authority-project-a",
+    "pass": true
+  },
+  {
+    "case": "future-registration",
+    "pass": true
+  },
+  {
+    "case": "future-source",
+    "pass": true
+  },
+  {
+    "case": "ghost-signed-tuner",
+    "pass": true
+  },
+  {
+    "case": "ignored-key-hint",
+    "pass": true
+  },
+  {
+    "case": "incomplete-signed-coverage",
+    "pass": true
+  },
+  {
+    "case": "invalid-calendar-time",
+    "pass": true
+  },
+  {
+    "case": "losing-invalid-preference",
+    "pass": true
+  },
+  {
+    "case": "malformed-base64",
+    "pass": true
+  },
+  {
+    "case": "mandatory-weakening",
+    "pass": true
+  },
+  {
+    "case": "missing-declared-org-layer",
+    "pass": true
+  },
+  {
+    "case": "missing-key-hint",
+    "pass": true
+  },
+  {
+    "case": "missing-required-source",
+    "pass": true
+  },
+  {
+    "case": "old-source",
+    "pass": true
+  },
+  {
+    "case": "payload-hash-mismatch",
+    "pass": true
+  },
+  {
+    "case": "registered-org-cache-in-repo",
+    "pass": true
+  },
+  {
+    "case": "registered-project-source-in-repo",
+    "pass": true
+  },
+  {
+    "case": "revoked-key",
+    "pass": true
+  },
+  {
+    "case": "second-signature-unsupported",
+    "pass": true
+  },
+  {
+    "case": "shared-project-b",
+    "pass": true
+  },
+  {
+    "case": "signed-case-alias-field",
+    "pass": true
+  },
+  {
+    "case": "signed-duplicate-field",
+    "pass": true
+  },
+  {
+    "case": "signed-invalid-unicode",
+    "pass": true
+  },
+  {
+    "case": "signed-null-preferences",
+    "pass": true
+  },
+  {
+    "case": "signed-unknown-field",
+    "pass": true
+  },
+  {
+    "case": "symlink-source",
+    "pass": true
+  },
+  {
+    "case": "tampered-org-cache-in-repo",
+    "pass": true
+  },
+  {
+    "case": "tampered-project-source-in-repo",
+    "pass": true
+  },
+  {
+    "case": "unauthorized-personal",
+    "pass": true
+  },
+  {
+    "case": "unselected-empty-organization",
+    "pass": true
+  },
+  {
+    "case": "unselected-invalid-layer-kind",
+    "pass": true
+  },
+  {
+    "case": "wrong-payload-type",
+    "pass": true
+  },
+  {
+    "case": "wrong-revision",
+    "pass": true
+  },
+  {
+    "case": "wrong-target",
+    "pass": true
+  },
+  {
+    "case": "zero-registration-epoch",
+    "pass": true
+  }
+]

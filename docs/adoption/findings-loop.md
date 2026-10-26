@@ -24,12 +24,12 @@ this loop with anything you can't afford to lose.
 
 ## The two variants
 
-**CI.** A GitHub Action step runs `leadsman review` (the review kit's own
-CLI — a peer process, never a fathom dependency, ADR-040 §2) and commits its
+**CI.** A GitHub Action step runs the review kit's review command (its own
+CLI, written `$REVIEW_KIT` below — a peer process, never a fathom dependency, ADR-040 §2) and commits its
 projection outbox back to the branch:
 
 ```sh
-leadsman review --target fathom --outbox .reviewkit/outbox/projection.json
+$REVIEW_KIT review --target fathom --outbox .reviewkit/outbox/projection.json
 git add .reviewkit/outbox/projection.json && git commit -m "chore(reviewkit): update findings outbox" && git push
 ```
 
@@ -40,7 +40,7 @@ does not by itself import anything.
 **Local.** Run the review kit directly, then import — no CI required:
 
 ```sh
-leadsman review --target fathom --outbox .reviewkit/outbox/projection.json
+$REVIEW_KIT review --target fathom --outbox .reviewkit/outbox/projection.json
 fathom findings import --store PATH --service S \
   --subject org/repo/component --producer reviewkit.system-review \
   --file .reviewkit/outbox/projection.json --json
@@ -133,7 +133,7 @@ just check its exit code:
   brief with the reason, never silently skipped.
 - **fathom does not become the organizational record.** Retention,
   revocation, restore drills, access isolation across trust boundaries, and
-  named operational owners remain the review kit's own (ADR-0098). The
+  named operational owners remain the review kit's own (its record decision). The
   receipts and cursors here are what would let that review happen — they
   are not a claim that it has.
 - **No model sits in this path.** Import, serve, `candidates`, and
@@ -146,10 +146,10 @@ just check its exit code:
 
 ## What fathom never does
 
-fathom never approves, disputes, tailors, or closes a review-kit finding
-on its own authority. A review-kit acceptance is never translated into a
+fathom never approves, disputes, tailors, or closes a review kit finding
+on its own authority. A review kit acceptance is never translated into a
 fathom `refute`; `fathom claim refute|corroborate` stays a human verdict
-recorded against fathom's own claim, never a proxy for a review-kit
+recorded against fathom's own claim, never a proxy for a review kit
 disposition. Authority never flows backwards: a projected finding cannot
 re-enter the review kit as independent evidence, and a fathom-native
 finding the review kit imported into ITS journal cannot be projected back
@@ -195,9 +195,9 @@ glance.
 but a DIFFERENT `payloadDigest` — the review kit's own archive and this
 repo's cursor disagree about what that version's content was. Rejected
 (exit 1), never silently overwritten: re-derive which payload is actually
-current (the review kit's own archive is authoritative — ADR-0098) and
+current (the review kit's own archive is authoritative) and
 re-import from there. This is the shape a hand-edited or corrupted outbox
-file produces; it should never happen from an untouched `leadsman review`
+file produces; it should never happen from an untouched review kit
 output.
 
 **A disagreement (not a rejection).** Two producers reporting opposite

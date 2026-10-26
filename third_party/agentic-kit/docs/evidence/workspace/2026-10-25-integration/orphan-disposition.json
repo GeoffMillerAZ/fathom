@@ -1,0 +1,758 @@
+{
+  "base_main": "307e7abca76727e66377307789ae356db0eb71bc",
+  "entries": [
+    {
+      "disposition": "integrated-or-superseded",
+      "main_evidence": "27150aa",
+      "note": "Current runner retains unexpected/duplicate output rejection and complete producer equality.",
+      "parents": 1,
+      "subject": "fix(eval-runner): bind outputs exactly to scenarios",
+      "tip": "87003725767ffb010beeac285377803f1811aba3",
+      "tip_delta_absent_paths": [],
+      "tip_delta_exact_blob_on_main": 2,
+      "tip_delta_paths": 3
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "index_blobs_absent_from_tip_and_main": [
+        "TRACKING.md",
+        "CHANGELOG.md"
+      ],
+      "main_evidence": "9dc18e4",
+      "parents": 2,
+      "stash_index_delta_paths": 39,
+      "subject": "WIP on docs/intent-excellence-assessment: e675c1f fix(governed-prose): validate actual JSON against the CUE contract",
+      "tip": "4901fa7073daf993424d885de3fce458c30410be",
+      "tip_delta_absent_paths": [
+        ".agents/skills/intent-audit/SKILL.md",
+        ".agents/skills/intent-design/SKILL.md",
+        ".agents/skills/intent-doctor/SKILL.md",
+        ".agents/skills/intent-init/SKILL.md",
+        "CLAUDE.md"
+      ],
+      "tip_delta_exact_blob_on_main": 40,
+      "tip_delta_paths": 55
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "index_blobs_absent_from_tip_and_main": [
+        "TRACKING.md",
+        "CHANGELOG.md"
+      ],
+      "main_evidence": "46486ad",
+      "parents": 2,
+      "stash_index_delta_paths": 9,
+      "subject": "WIP on docs/intent-excellence-assessment: 233448f docs(intent): close bounded workflow delivery with evidence",
+      "tip": "14021f884a74a53f9e54d1422695bf03e7f823ef",
+      "tip_delta_absent_paths": [
+        ".agents/skills/intent-audit/SKILL.md",
+        ".agents/skills/intent-design/SKILL.md",
+        ".agents/skills/intent-doctor/SKILL.md",
+        ".agents/skills/intent-init/SKILL.md",
+        "CLAUDE.md"
+      ],
+      "tip_delta_exact_blob_on_main": 3,
+      "tip_delta_paths": 20
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "main_evidence": "0ca8823",
+      "note": "Current workflow CLI includes the earlier front door, with later help and Unicode fixes.",
+      "parents": 1,
+      "subject": "feat(cli): add governed prose workflow front door",
+      "tip": "2406857ed553c5f65d94bbd1a04650758c3b6d5b",
+      "tip_delta_absent_paths": [],
+      "tip_delta_exact_blob_on_main": 3,
+      "tip_delta_paths": 7
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "index_blobs_absent_from_tip_and_main": [
+        "TRACKING.md"
+      ],
+      "main_evidence": "605730a",
+      "parents": 2,
+      "stash_index_delta_paths": 6,
+      "subject": "WIP on docs/intent-excellence-assessment: 335c8fc fix(eval): retain historical derivatives with rerun proposals",
+      "tip": "a6946dbab319cfbef5e626cc4681ea67034c1baa",
+      "tip_delta_absent_paths": [
+        ".agents/skills/intent-audit/SKILL.md",
+        ".agents/skills/intent-design/SKILL.md",
+        ".agents/skills/intent-doctor/SKILL.md",
+        ".agents/skills/intent-init/SKILL.md",
+        "CLAUDE.md"
+      ],
+      "tip_delta_exact_blob_on_main": 1,
+      "tip_delta_paths": 18
+    },
+    {
+      "disposition": "exact-patch-on-main",
+      "main_evidence": "1db1782",
+      "parents": 1,
+      "patch_equivalent_commit": "1db1782",
+      "subject": "feat(review): capped-confidence \u2014 CUE ceilings, bands, unscored state",
+      "tip": "3b15c4b8feeb96e64ee17a35555930f9758afe7b",
+      "tip_delta_absent_paths": [],
+      "tip_delta_exact_blob_on_main": 7,
+      "tip_delta_paths": 13
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "index_blobs_absent_from_tip_and_main": [
+        "docs/intent/decisions/README.md",
+        "TRACKING.md",
+        "CHANGELOG.md"
+      ],
+      "main_evidence": "825d74f",
+      "parents": 2,
+      "stash_index_delta_paths": 24,
+      "subject": "WIP on docs/intent-excellence-assessment: 2e1b1bb fix(workflows): reject malformed Unicode before JSON decoding",
+      "tip": "9d1782c28e9000653a04caf2e459cf6849051c2b",
+      "tip_delta_absent_paths": [
+        ".agents/skills/intent-audit/SKILL.md",
+        ".agents/skills/intent-design/SKILL.md",
+        ".agents/skills/intent-doctor/SKILL.md",
+        ".agents/skills/intent-init/SKILL.md",
+        "CLAUDE.md"
+      ],
+      "tip_delta_exact_blob_on_main": 14,
+      "tip_delta_paths": 34
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "main_evidence": "27150aa",
+      "note": "Current benchmark contract and tests are later revisions of this receipt work.",
+      "parents": 1,
+      "subject": "fix(eval-runner): harden benchmark evidence receipts",
+      "tip": "fe9918916d1fd9a1dd2a2a2a95d89ae676ebb2f9",
+      "tip_delta_absent_paths": [],
+      "tip_delta_exact_blob_on_main": 1,
+      "tip_delta_paths": 4
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "index_blobs_absent_from_tip_and_main": [
+        "docs/intent/decisions/README.md",
+        "TRACKING.md",
+        "CHANGELOG.md"
+      ],
+      "main_evidence": "2014555",
+      "parents": 2,
+      "stash_index_delta_paths": 28,
+      "subject": "WIP on docs/intent-excellence-assessment: 335bab3 feat(hosts): add reversible and coverage-aware native adapters",
+      "tip": "3b9d9c4183ac9e7e8b9325033a4c5000e10d08ee",
+      "tip_delta_absent_paths": [
+        ".agents/skills/intent-audit/SKILL.md",
+        ".agents/skills/intent-design/SKILL.md",
+        ".agents/skills/intent-doctor/SKILL.md",
+        ".agents/skills/intent-init/SKILL.md",
+        "CLAUDE.md"
+      ],
+      "tip_delta_exact_blob_on_main": 15,
+      "tip_delta_paths": 46
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "main_evidence": "5809c1f",
+      "note": "Current bounded engineering profile retains strict control observation.",
+      "parents": 1,
+      "subject": "fix(agent-harness): observe strict controls truthfully",
+      "tip": "db2085da35e30c284c813f59d4ce8689d562a8b0",
+      "tip_delta_absent_paths": [],
+      "tip_delta_exact_blob_on_main": 2,
+      "tip_delta_paths": 4
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "main_evidence": "e951967",
+      "note": "Current lesson CLI retains observed coverage receipt binding.",
+      "parents": 1,
+      "subject": "fix(lessons): bind observed coverage receipts",
+      "tip": "75223ede2c23dcc793c701e035652f1bfb14cc17",
+      "tip_delta_absent_paths": [],
+      "tip_delta_exact_blob_on_main": 1,
+      "tip_delta_paths": 3
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "index_blobs_absent_from_tip_and_main": [],
+      "main_evidence": "aa7bf96,1c2c7f9",
+      "note": "Temporary dependency overlay; current sourced prose and HITL implementations contain its contract.",
+      "parents": 2,
+      "stash_index_delta_paths": 19,
+      "subject": "On worktree-gw-sourced-scenario: temporary prose and HITL dependency overlays",
+      "tip": "9ea3c77ec2940dae5ea2797d251c527e30de9e54",
+      "tip_delta_absent_paths": [],
+      "tip_delta_exact_blob_on_main": 14,
+      "tip_delta_paths": 19
+    },
+    {
+      "both_merge_parents_ancestors_of_main": true,
+      "disposition": "integrated-or-superseded",
+      "main_evidence": "a3b1f6c",
+      "note": "Ordinary merge, not stash. Both parents are ancestors of main; current reliability stats and eval-runner retain the functionality.",
+      "parents": 2,
+      "subject": "merge(fb/reliability-stats): pass@k, pass^k, clustered bootstrap CI, Wilcoxon, A12; eval-runner pass^3",
+      "tip": "b424a95e2400c7526f8e810d7efb5ee65ac358e4",
+      "tip_delta_absent_paths": [],
+      "tip_delta_exact_blob_on_main": 8,
+      "tip_delta_paths": 18
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "index_blobs_absent_from_tip_and_main": [
+        "docs/intent/decisions/README.md",
+        "TRACKING.md",
+        "CHANGELOG.md"
+      ],
+      "main_evidence": "54fc36d",
+      "parents": 2,
+      "stash_index_delta_paths": 10,
+      "subject": "WIP on docs/intent-excellence-assessment: a72939b docs(jev): assess review and routing opportunities",
+      "tip": "f8a7e6f630ef6d476b263719a3633ed2cd0024cb",
+      "tip_delta_absent_paths": [
+        ".agents/skills/intent-audit/SKILL.md",
+        ".agents/skills/intent-design/SKILL.md",
+        ".agents/skills/intent-doctor/SKILL.md",
+        ".agents/skills/intent-init/SKILL.md",
+        "CLAUDE.md"
+      ],
+      "tip_delta_exact_blob_on_main": 4,
+      "tip_delta_paths": 20
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "index_blobs_absent_from_tip_and_main": [
+        "docs/intent/decisions/README.md"
+      ],
+      "main_evidence": "212b12e",
+      "parents": 2,
+      "stash_index_delta_paths": 33,
+      "subject": "WIP on docs/intent-excellence-assessment: 387a7e8 fix(workflow-cli): expose complete input-free help",
+      "tip": "1ab02d3788d5f2a0bcefa64c36497983c049a663",
+      "tip_delta_absent_paths": [
+        ".agents/skills/intent-audit/SKILL.md",
+        ".agents/skills/intent-design/SKILL.md",
+        ".agents/skills/intent-doctor/SKILL.md",
+        ".agents/skills/intent-init/SKILL.md",
+        "CLAUDE.md"
+      ],
+      "tip_delta_exact_blob_on_main": 21,
+      "tip_delta_paths": 45
+    },
+    {
+      "disposition": "exact-tip-blobs-on-main",
+      "main_evidence": "current exact source blobs",
+      "parents": 1,
+      "subject": "feat(llmclient)!: support first-class Anthropic effort",
+      "tip": "e9330a7a517408db2b60ce530c8b6cb3a351cb89",
+      "tip_delta_absent_paths": [],
+      "tip_delta_exact_blob_on_main": 11,
+      "tip_delta_paths": 11
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "index_blobs_absent_from_tip_and_main": [
+        "docs/intent/decisions/README.md",
+        "CHANGELOG.md"
+      ],
+      "main_evidence": "5d9139e",
+      "parents": 2,
+      "stash_index_delta_paths": 23,
+      "subject": "WIP on docs/intent-excellence-assessment: 188c53c feat(llmclient)!: add governed provider identity and Responses transport",
+      "tip": "e8b82ab5921e34485d5e73c83dd58394befdee0e",
+      "tip_delta_absent_paths": [
+        ".agents/skills/intent-audit/SKILL.md",
+        ".agents/skills/intent-design/SKILL.md",
+        ".agents/skills/intent-doctor/SKILL.md",
+        ".agents/skills/intent-init/SKILL.md",
+        "CLAUDE.md"
+      ],
+      "tip_delta_exact_blob_on_main": 17,
+      "tip_delta_paths": 39
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "main_evidence": "d7e71e3",
+      "note": "Five of seven touched blobs exact; remaining changelog and tracking text advanced.",
+      "parents": 1,
+      "subject": "feat(foundations): add evidence-producer catalog for findings/claims producers",
+      "tip": "26392123d1bd099ff837ee77ec50fd304bbd30e2",
+      "tip_delta_absent_paths": [],
+      "tip_delta_exact_blob_on_main": 5,
+      "tip_delta_paths": 7
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "index_blobs_absent_from_tip_and_main": [
+        "CHANGELOG.md"
+      ],
+      "main_evidence": "1c2c7f9",
+      "parents": 2,
+      "stash_index_delta_paths": 4,
+      "subject": "WIP on docs/intent-excellence-assessment: 8e8964a feat(hitl): bind approvals to atomic commits and delivery recovery",
+      "tip": "5c42bcff851af36d4a137124cf1b84819ddf6083",
+      "tip_delta_absent_paths": [
+        ".agents/skills/intent-audit/SKILL.md",
+        ".agents/skills/intent-design/SKILL.md",
+        ".agents/skills/intent-doctor/SKILL.md",
+        ".agents/skills/intent-init/SKILL.md",
+        "CLAUDE.md"
+      ],
+      "tip_delta_exact_blob_on_main": 19,
+      "tip_delta_paths": 36
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "index_blobs_absent_from_tip_and_main": [
+        "TRACKING.md",
+        "CHANGELOG.md"
+      ],
+      "main_evidence": "cf05ad8",
+      "parents": 2,
+      "stash_index_delta_paths": 10,
+      "subject": "WIP on docs/intent-excellence-assessment: 1b29451 feat(tokenization)!: persist authenticated deterministic records",
+      "tip": "19c559404c376b290bd86a30d3da82f27a9e4736",
+      "tip_delta_absent_paths": [
+        ".agents/skills/intent-audit/SKILL.md",
+        ".agents/skills/intent-design/SKILL.md",
+        ".agents/skills/intent-doctor/SKILL.md",
+        ".agents/skills/intent-init/SKILL.md",
+        "CLAUDE.md"
+      ],
+      "tip_delta_exact_blob_on_main": 8,
+      "tip_delta_paths": 22
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "index_blobs_absent_from_tip_and_main": [
+        "CHANGELOG.md"
+      ],
+      "main_evidence": "0ca8823",
+      "parents": 2,
+      "stash_index_delta_paths": 8,
+      "subject": "WIP on docs/intent-excellence-assessment: 9a9832c feat(workflows): compose sourced publication and a portable prose CLI",
+      "tip": "08c67ad7efa7ad0a42d9f85ce07ec2b4216286fb",
+      "tip_delta_absent_paths": [
+        ".agents/skills/intent-audit/SKILL.md",
+        ".agents/skills/intent-design/SKILL.md",
+        ".agents/skills/intent-doctor/SKILL.md",
+        ".agents/skills/intent-init/SKILL.md",
+        "CLAUDE.md"
+      ],
+      "tip_delta_exact_blob_on_main": 6,
+      "tip_delta_paths": 21
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "index_blobs_absent_from_tip_and_main": [
+        "docs/intent/decisions/README.md",
+        "TRACKING.md",
+        "CHANGELOG.md"
+      ],
+      "main_evidence": "27150aa",
+      "parents": 2,
+      "stash_index_delta_paths": 37,
+      "subject": "WIP on docs/intent-excellence-assessment: 32c5f81 feat(eval-runner): add versioned workload benchmark evidence",
+      "tip": "0ec683372234e4bfca11a87e5507348e65383fba",
+      "tip_delta_absent_paths": [
+        ".agents/skills/intent-audit/SKILL.md",
+        ".agents/skills/intent-design/SKILL.md",
+        ".agents/skills/intent-doctor/SKILL.md",
+        ".agents/skills/intent-init/SKILL.md",
+        "CLAUDE.md"
+      ],
+      "tip_delta_exact_blob_on_main": 19,
+      "tip_delta_paths": 47
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "index_blobs_absent_from_tip_and_main": [],
+      "main_evidence": "8af2939",
+      "note": "Stash index empty. Main has buildRevision and its CLI test.",
+      "parents": 2,
+      "stash_index_delta_paths": 0,
+      "subject": "WIP on agent-tokenomics: 8af2939 feat(agent-hooks): token-economics hooks for Claude Code and Codex",
+      "tip": "04cc5403787f4cb832efd22742ba1881013c4b3c",
+      "tip_delta_absent_paths": [],
+      "tip_delta_exact_blob_on_main": 1,
+      "tip_delta_paths": 2
+    },
+    {
+      "disposition": "retain-historical-ledger-if-needed",
+      "index_blobs_absent_from_tip_and_main": [],
+      "main_evidence": "current Fathom hooks and skill",
+      "note": "Third parent contains .claude/settings.json (now evolved), exact fathom-findings skill, and ignored .fathom/owned.json (absent on main). Ownership ledger is historical generated state, not a source contribution; retain object if that provenance is needed.",
+      "parents": 3,
+      "stash_index_delta_paths": 0,
+      "subject": "On main: integration-2026-10-21-preserve-fathom-wiring",
+      "tip": "47cdaa8cf9d90831721e7bda9b1daa9b99998c63",
+      "tip_delta_absent_paths": [],
+      "tip_delta_exact_blob_on_main": 0,
+      "tip_delta_paths": 9,
+      "untracked_parent_paths": [
+        ".claude/settings.json",
+        ".claude/skills/fathom-findings/SKILL.md",
+        ".fathom/owned.json"
+      ]
+    },
+    {
+      "disposition": "exact-patch-on-main",
+      "main_evidence": "9364b4e",
+      "parents": 1,
+      "patch_equivalent_commit": "9364b4e",
+      "subject": "feat(quality): structural-refusal \u2014 refusal in the value, not a renderer",
+      "tip": "b1ce097f021e95132329448a14dceca78787c75c",
+      "tip_delta_absent_paths": [],
+      "tip_delta_exact_blob_on_main": 7,
+      "tip_delta_paths": 13
+    },
+    {
+      "disposition": "exact-tip-blobs-on-main",
+      "main_evidence": "current exact tree blobs",
+      "parents": 1,
+      "subject": "docs(evidence): preserve sanitized native host adoption proof",
+      "tip": "fbcef44fa7df818446a1aff0344bea887b591992",
+      "tip_delta_absent_paths": [],
+      "tip_delta_exact_blob_on_main": 17,
+      "tip_delta_paths": 17
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "index_blobs_absent_from_tip_and_main": [
+        "docs/intent/decisions/README.md",
+        "TRACKING.md",
+        "CHANGELOG.md"
+      ],
+      "main_evidence": "afb4dc5",
+      "parents": 2,
+      "stash_index_delta_paths": 14,
+      "subject": "WIP on docs/intent-excellence-assessment: 3b5b3c8 feat(quality): compose evidence profiles and prompt screening",
+      "tip": "6bd018dba24bb79e1da70ad6acba470b79581578",
+      "tip_delta_absent_paths": [
+        ".agents/skills/intent-audit/SKILL.md",
+        ".agents/skills/intent-design/SKILL.md",
+        ".agents/skills/intent-doctor/SKILL.md",
+        ".agents/skills/intent-init/SKILL.md",
+        "CLAUDE.md"
+      ],
+      "tip_delta_exact_blob_on_main": 4,
+      "tip_delta_paths": 24
+    },
+    {
+      "disposition": "exact-tip-blobs-on-main",
+      "index_blobs_absent_from_tip_and_main": [],
+      "main_evidence": "f4f0076",
+      "parents": 2,
+      "stash_index_delta_paths": 0,
+      "subject": "WIP on fix/doctor-trust-dedupe: f4f0076 release: 0.9.0 - token-economics hooks for Claude Code and Codex (cmd/agent-hooks)",
+      "tip": "01d24ac3b2edba253302bb0639db92d373a3b69f",
+      "tip_delta_absent_paths": [],
+      "tip_delta_exact_blob_on_main": 9,
+      "tip_delta_paths": 9
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "index_blobs_absent_from_tip_and_main": [
+        "CHANGELOG.md"
+      ],
+      "main_evidence": "5809c1f",
+      "parents": 2,
+      "stash_index_delta_paths": 16,
+      "subject": "WIP on docs/intent-excellence-assessment: f8e9b46 feat(agent-harness): enforce a bounded engineering profile",
+      "tip": "e25261cfeb6d7eca79d5e9c23cbada89ce11ec73",
+      "tip_delta_absent_paths": [
+        ".agents/skills/intent-audit/SKILL.md",
+        ".agents/skills/intent-design/SKILL.md",
+        ".agents/skills/intent-doctor/SKILL.md",
+        ".agents/skills/intent-init/SKILL.md",
+        "CLAUDE.md"
+      ],
+      "tip_delta_exact_blob_on_main": 3,
+      "tip_delta_paths": 28
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "main_evidence": "1c2c7f9",
+      "note": "Current HITL Committer preserves atomic local commit and recovery contract.",
+      "parents": 1,
+      "subject": "feat(hitl)!: bind durable approval to commit and recovery",
+      "tip": "23d6ce6a6700c8f93699196f6ce1e5aa12e32010",
+      "tip_delta_absent_paths": [],
+      "tip_delta_exact_blob_on_main": 7,
+      "tip_delta_paths": 8
+    },
+    {
+      "disposition": "exact-tip-blobs-on-main",
+      "main_evidence": "current exact tree blobs",
+      "parents": 1,
+      "subject": "feat(scenarios): compose sourced prose with durable approval",
+      "tip": "5256950985fa1b667b0613aa97ec99123ba6336d",
+      "tip_delta_absent_paths": [],
+      "tip_delta_exact_blob_on_main": 6,
+      "tip_delta_paths": 6
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "index_blobs_absent_from_tip_and_main": [
+        "TRACKING.md",
+        "CHANGELOG.md"
+      ],
+      "main_evidence": "f7e2673",
+      "parents": 2,
+      "stash_index_delta_paths": 9,
+      "subject": "WIP on docs/intent-excellence-assessment: e115d0b feat(eval): plan conservative benchmark evidence reuse",
+      "tip": "3f5ddcf91d514464d47f1e2a6ed4a1e07164fcf6",
+      "tip_delta_absent_paths": [
+        ".agents/skills/intent-audit/SKILL.md",
+        ".agents/skills/intent-design/SKILL.md",
+        ".agents/skills/intent-doctor/SKILL.md",
+        ".agents/skills/intent-init/SKILL.md",
+        "CLAUDE.md"
+      ],
+      "tip_delta_exact_blob_on_main": 5,
+      "tip_delta_paths": 20
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "main_evidence": "e951967",
+      "note": "Current lesson-transfer design retains attestation binding and retrospective evidence limits, with later wording.",
+      "parents": 1,
+      "subject": "docs(design): harden lesson transfer attestations",
+      "tip": "cedebaec2dff6d1472cf139e3f1534c5077ad1cb",
+      "tip_delta_absent_paths": [],
+      "tip_delta_exact_blob_on_main": 0,
+      "tip_delta_paths": 1
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "index_blobs_absent_from_tip_and_main": [],
+      "main_evidence": "0ca8823",
+      "note": "Third-parent seven CLI files: three exact blobs and four evolved files on main. Worktree/index trees have no separate delta.",
+      "parents": 3,
+      "stash_index_delta_paths": 0,
+      "subject": "On worktree-gw-workflow-cli: gw13-cli-only-before-baseline",
+      "tip": "ade08f0b894c7b0ac27f16e45d063e9bc2ce581e",
+      "tip_delta_absent_paths": [],
+      "tip_delta_exact_blob_on_main": 0,
+      "tip_delta_paths": 0,
+      "untracked_parent_paths": [
+        "cmd/kit-workflow/doc.go",
+        "cmd/kit-workflow/main.go",
+        "cmd/kit-workflow/main_test.go",
+        "cmd/kit-workflow/schema.cue",
+        "cmd/kit-workflow/testdata/invalid.cue",
+        "cmd/kit-workflow/testdata/valid.cue",
+        "docs/adopting-workflows.md"
+      ]
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "index_blobs_absent_from_tip_and_main": [
+        "docs/intent/decisions/README.md",
+        "TRACKING.md",
+        "CHANGELOG.md"
+      ],
+      "main_evidence": "aa7bf96",
+      "parents": 2,
+      "stash_index_delta_paths": 15,
+      "subject": "WIP on docs/intent-excellence-assessment: 2cd5606 feat(governed-prose): bind claims to versioned source evidence",
+      "tip": "f866c2d139b9eee6810fee9c80d15e44aa4e4a02",
+      "tip_delta_absent_paths": [
+        ".agents/skills/intent-audit/SKILL.md",
+        ".agents/skills/intent-design/SKILL.md",
+        ".agents/skills/intent-doctor/SKILL.md",
+        ".agents/skills/intent-init/SKILL.md",
+        "CLAUDE.md"
+      ],
+      "tip_delta_exact_blob_on_main": 21,
+      "tip_delta_paths": 37
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "index_blobs_absent_from_tip_and_main": [
+        "TRACKING.md",
+        "CHANGELOG.md"
+      ],
+      "main_evidence": "70d8ab8",
+      "parents": 2,
+      "stash_index_delta_paths": 18,
+      "subject": "WIP on docs/intent-excellence-assessment: 964c23d fix(governed-prose): reject lossy UTF-8 identity normalization",
+      "tip": "2e67c9d83e08fb4a0ccec1f263d0455901383622",
+      "tip_delta_absent_paths": [
+        ".agents/skills/intent-audit/SKILL.md",
+        ".agents/skills/intent-design/SKILL.md",
+        ".agents/skills/intent-doctor/SKILL.md",
+        ".agents/skills/intent-init/SKILL.md",
+        "CLAUDE.md"
+      ],
+      "tip_delta_exact_blob_on_main": 12,
+      "tip_delta_paths": 29
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "index_blobs_absent_from_tip_and_main": [
+        "TRACKING.md",
+        "CHANGELOG.md"
+      ],
+      "main_evidence": "ad75450",
+      "parents": 2,
+      "stash_index_delta_paths": 17,
+      "subject": "WIP on docs/intent-excellence-assessment: 5b878fe feat(guardrails): retain structured findings and explicit policy",
+      "tip": "b9e8b6c8c15c8d7bce6b13eb65c5556dc88047d2",
+      "tip_delta_absent_paths": [
+        ".agents/skills/intent-audit/SKILL.md",
+        ".agents/skills/intent-design/SKILL.md",
+        ".agents/skills/intent-doctor/SKILL.md",
+        ".agents/skills/intent-init/SKILL.md",
+        "CLAUDE.md"
+      ],
+      "tip_delta_exact_blob_on_main": 14,
+      "tip_delta_paths": 29
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "index_blobs_absent_from_tip_and_main": [
+        "CHANGELOG.md"
+      ],
+      "main_evidence": "e951967",
+      "parents": 2,
+      "stash_index_delta_paths": 6,
+      "subject": "WIP on docs/intent-excellence-assessment: 8b25230 feat(lessons): transfer bounded receiver-verified regressions",
+      "tip": "da686f8152e24dd456c8fb26bed859b311bab62c",
+      "tip_delta_absent_paths": [
+        ".agents/skills/intent-audit/SKILL.md",
+        ".agents/skills/intent-design/SKILL.md",
+        ".agents/skills/intent-doctor/SKILL.md",
+        ".agents/skills/intent-init/SKILL.md",
+        "CLAUDE.md"
+      ],
+      "tip_delta_exact_blob_on_main": 7,
+      "tip_delta_paths": 30
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "index_blobs_absent_from_tip_and_main": [
+        "TRACKING.md",
+        "CHANGELOG.md"
+      ],
+      "main_evidence": "73c53cf",
+      "parents": 2,
+      "stash_index_delta_paths": 15,
+      "subject": "WIP on docs/intent-excellence-assessment: 7fd044b feat(mcp-client): verify metadata before guarded dispatch",
+      "tip": "786bed6316312fdfac6fc594d52a075c2ab15940",
+      "tip_delta_absent_paths": [
+        ".agents/skills/intent-audit/SKILL.md",
+        ".agents/skills/intent-design/SKILL.md",
+        ".agents/skills/intent-doctor/SKILL.md",
+        ".agents/skills/intent-init/SKILL.md",
+        "CLAUDE.md"
+      ],
+      "tip_delta_exact_blob_on_main": 19,
+      "tip_delta_paths": 39
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "main_evidence": "212b12e",
+      "note": "Current CLI contains input-free workflow help.",
+      "parents": 1,
+      "subject": "fix(workflow): make prose and lesson help discoverable",
+      "tip": "086c40c253bafd5c5d1b452512269002c24ad8af",
+      "tip_delta_absent_paths": [],
+      "tip_delta_exact_blob_on_main": 2,
+      "tip_delta_paths": 3
+    },
+    {
+      "disposition": "exact-patch-on-main",
+      "main_evidence": "77aeeb4",
+      "parents": 1,
+      "patch_equivalent_commit": "77aeeb4",
+      "subject": "docs(practices): add orchestrating-agents guide and ledger entry 26",
+      "tip": "2aec2dc1ba5e78013329ba2b91bdccefae0d8335",
+      "tip_delta_absent_paths": [],
+      "tip_delta_exact_blob_on_main": 0,
+      "tip_delta_paths": 5
+    },
+    {
+      "disposition": "exact-tip-blobs-on-main",
+      "main_evidence": "current exact tree blobs",
+      "parents": 1,
+      "subject": "fix(cli): validate actual workflow JSON against CUE",
+      "tip": "f8ec57feb6ef5a13347c9e15b2081896742d3902",
+      "tip_delta_absent_paths": [],
+      "tip_delta_exact_blob_on_main": 2,
+      "tip_delta_paths": 2
+    },
+    {
+      "disposition": "exact-patch-on-main",
+      "main_evidence": "2108c19",
+      "parents": 1,
+      "patch_equivalent_commit": "2108c19",
+      "subject": "feat(quality): check-catalog \u2014 checks as rows, reconciled both ways",
+      "tip": "d4f2e7aeb5116843bdafdf74eeb194d41cd84a0a",
+      "tip_delta_absent_paths": [],
+      "tip_delta_exact_blob_on_main": 7,
+      "tip_delta_paths": 19
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "index_blobs_absent_from_tip_and_main": [],
+      "main_evidence": "32b1786,e7bd923",
+      "note": "Third-parent intent decision is exact; vendor_intent code/tests moved to .claude/skills and expanded. Worktree/index trees have no separate delta.",
+      "parents": 3,
+      "stash_index_delta_paths": 0,
+      "subject": "On docs/intent-excellence-assessment: intent-excellence working tree, landed on main in 32b1786 (2026-09-25)",
+      "tip": "91f35f5871691f61e1bb2318f537360c25419d61",
+      "tip_delta_absent_paths": [
+        ".agents/skills/intent-audit/SKILL.md",
+        ".agents/skills/intent-design/SKILL.md",
+        ".agents/skills/intent-doctor/SKILL.md",
+        ".agents/skills/intent-init/SKILL.md",
+        "CLAUDE.md"
+      ],
+      "tip_delta_exact_blob_on_main": 2,
+      "tip_delta_paths": 15,
+      "untracked_parent_paths": [
+        ".agents/skills/intent-init/scripts/vendor_intent.go",
+        ".agents/skills/intent-init/scripts/vendor_intent_test.go",
+        "docs/intent/decisions/0007-scoped-intent-and-pinned-distribution.md"
+      ]
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "main_evidence": "2014555",
+      "note": "Current host guardrails include later reversible adapters and coverage checks.",
+      "parents": 1,
+      "subject": "feat(kit-new): add evidence-aware native host guardrails",
+      "tip": "c177f0d3365ea9d5ab58ca2b464dfa10ce4e409a",
+      "tip_delta_absent_paths": [],
+      "tip_delta_exact_blob_on_main": 1,
+      "tip_delta_paths": 10
+    },
+    {
+      "disposition": "integrated-or-superseded",
+      "main_evidence": "b069ab5,1ee09f4,3f55473",
+      "note": "Current catalog-kit, catalogctl and decision preparation are later revisions; b069ab5 and subsequent commits carry the integrated work.",
+      "parents": 1,
+      "subject": "feat(catalog): add governed composition and decision preparation",
+      "tip": "89fbe33acc4efd6d29de34357f6353cb13d3ca08",
+      "tip_delta_absent_paths": [],
+      "tip_delta_exact_blob_on_main": 16,
+      "tip_delta_paths": 40
+    }
+  ],
+  "limits": [
+    "Tree/blob and patch equivalence are source-history evidence, not a fresh test gate.",
+    "Changed docs and tracking text may retain intermediate historical phrasing; they are not independently merged.",
+    "The analysis cannot prove whether the ignored Fathom ownership ledger exists in some external cache."
+  ],
+  "method": [
+    "Fathom indexed-doc search for prior orphan audit returned no hits.",
+    "Inspect parent shape and first-parent tree delta for every tip; compare every touched blob with main.",
+    "Check stable patch IDs for single-parent commits against main history; four exact matches.",
+    "Inspect stash index parent separately from worktree and third untracked parent; compare unique paths with main and successor locations.",
+    "Use main history and current source to establish integrated behavior where blob IDs differ."
+  ],
+  "result": "No missing source feature found in the 46 tips. Tip 47cdaa8... has an ignored historical Fathom ownership ledger in its untracked parent; preserve that object if historical install provenance is wanted. No object deletion authorized or performed.",
+  "scope": "46 supplied unreachable tips only; current dirty worktree untouched"
+}

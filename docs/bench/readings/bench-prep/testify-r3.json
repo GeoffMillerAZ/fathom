@@ -1,0 +1,80 @@
+{
+  "id": "stretchr--testify",
+  "language": "Go",
+  "lock": "go.sum",
+  "setup": {
+    "command": "(test -d /work/source/.git || ( mkdir -p /work/source && git -C /subject ls-files -z > /work/tracked-files && tar -C /subject --null -T /work/tracked-files -cf /work/source.tar && tar -C /work/source -xf /work/source.tar && cp -R /subject/.git /work/source/.git )) && cd /work/source && export TMPDIR=/work/tmp COREPACK_HOME=/work/corepack UV_PROJECT_ENVIRONMENT=/work/venv UV_CACHE_DIR=/work/uv-cache UV_PYTHON_DOWNLOADS=never PIP_CACHE_DIR=/work/pip-cache GIT_CONFIG_COUNT=3 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0=/subject GIT_CONFIG_KEY_1=safe.directory GIT_CONFIG_VALUE_1=/work/source GIT_CONFIG_KEY_2=safe.directory GIT_CONFIG_VALUE_2=/subject/.git GOTOOLCHAIN=local GOFLAGS=-mod=readonly GOMAXPROCS=4 GOMODCACHE=/work/gomodcache GOCACHE=/work/gocache GOPATH=/work/gopath && mkdir -p /work/tmp && (test -d /work/source/.git || ( mkdir -p /work/source && git -C /subject ls-files -z > /work/tracked-files && tar -C /subject --null -T /work/tracked-files -cf /work/source.tar && tar -C /work/source -xf /work/source.tar && cp -R /subject/.git /work/source/.git )) && cd /work/source && go version && go mod download",
+    "seconds": 1.381,
+    "started_at": "2026-10-26T06:57:12.322674Z",
+    "exit_code": 0,
+    "network": "bridge",
+    "log": "stretchr--testify-setup.log",
+    "log_sha256": "89097cdf07b76b2c4ea6ce2879fb9d849449c537c82b2b6422cbe1254f8e984c"
+  },
+  "test": "export TMPDIR=/work/tmp COREPACK_HOME=/work/corepack UV_PROJECT_ENVIRONMENT=/work/venv UV_CACHE_DIR=/work/uv-cache UV_PYTHON_DOWNLOADS=never PIP_CACHE_DIR=/work/pip-cache GIT_CONFIG_COUNT=3 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0=/subject GIT_CONFIG_KEY_1=safe.directory GIT_CONFIG_VALUE_1=/work/source GIT_CONFIG_KEY_2=safe.directory GIT_CONFIG_VALUE_2=/subject/.git GOTOOLCHAIN=local GOFLAGS=-mod=readonly GOMAXPROCS=4 GOMODCACHE=/work/gomodcache GOCACHE=/work/gocache GOPATH=/work/gopath GOPROXY=off PIP_NO_INDEX=1 UV_OFFLINE=1 npm_config_offline=true PNPM_CONFIG_OFFLINE=true pnpm_config_verify_deps_before_run=warn COREPACK_ENABLE_NETWORK=0 HTTP_PROXY= HTTPS_PROXY= ALL_PROXY= && cd /work/source && go test -count=1 -timeout=14m ./...",
+  "sha": "87a7b9d57689f6579db2da795ab8deeab29cb724",
+  "image": "golang@sha256:972b4110ba0f47539a975c31e52c64765e1ff19f2d74469ae4a595c6676e80a5",
+  "platform": "linux/arm64",
+  "cpus": 4,
+  "lockfile_sha256": "e54560a8bfa3f8b7b319a2d41ead9f2b0663a9fa567b33bccc16c20e5ed5e1f0",
+  "runs": [
+    {
+      "command": "cd /work/source && export TMPDIR=/work/tmp COREPACK_HOME=/work/corepack UV_PROJECT_ENVIRONMENT=/work/venv UV_CACHE_DIR=/work/uv-cache UV_PYTHON_DOWNLOADS=never PIP_CACHE_DIR=/work/pip-cache GIT_CONFIG_COUNT=3 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0=/subject GIT_CONFIG_KEY_1=safe.directory GIT_CONFIG_VALUE_1=/work/source GIT_CONFIG_KEY_2=safe.directory GIT_CONFIG_VALUE_2=/subject/.git GOTOOLCHAIN=local GOFLAGS=-mod=readonly GOMAXPROCS=4 GOMODCACHE=/work/gomodcache GOCACHE=/work/gocache GOPATH=/work/gopath GOPROXY=off PIP_NO_INDEX=1 UV_OFFLINE=1 npm_config_offline=true PNPM_CONFIG_OFFLINE=true pnpm_config_verify_deps_before_run=warn COREPACK_ENABLE_NETWORK=0 HTTP_PROXY= HTTPS_PROXY= ALL_PROXY= && cd /work/source && go test -count=1 -timeout=14m ./...",
+      "seconds": 13.679,
+      "started_at": "2026-10-26T06:57:41.583901Z",
+      "exit_code": 0,
+      "network": "none",
+      "log": "stretchr--testify-run1.log",
+      "log_sha256": "03f90b28dc0f5a138acf9b40807075a125078248f967dcc01c55bc6ac6769315"
+    },
+    {
+      "command": "cd /work/source && export TMPDIR=/work/tmp COREPACK_HOME=/work/corepack UV_PROJECT_ENVIRONMENT=/work/venv UV_CACHE_DIR=/work/uv-cache UV_PYTHON_DOWNLOADS=never PIP_CACHE_DIR=/work/pip-cache GIT_CONFIG_COUNT=3 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0=/subject GIT_CONFIG_KEY_1=safe.directory GIT_CONFIG_VALUE_1=/work/source GIT_CONFIG_KEY_2=safe.directory GIT_CONFIG_VALUE_2=/subject/.git GOTOOLCHAIN=local GOFLAGS=-mod=readonly GOMAXPROCS=4 GOMODCACHE=/work/gomodcache GOCACHE=/work/gocache GOPATH=/work/gopath GOPROXY=off PIP_NO_INDEX=1 UV_OFFLINE=1 npm_config_offline=true PNPM_CONFIG_OFFLINE=true pnpm_config_verify_deps_before_run=warn COREPACK_ENABLE_NETWORK=0 HTTP_PROXY= HTTPS_PROXY= ALL_PROXY= && cd /work/source && go test -count=1 -timeout=14m ./...",
+      "seconds": 17.072,
+      "started_at": "2026-10-26T06:57:55.263625Z",
+      "exit_code": 0,
+      "network": "none",
+      "log": "stretchr--testify-run2.log",
+      "log_sha256": "1820824d82a5a287be70b72d146e3aec195d6a935978bfdb0c0c3e20d109d2bb"
+    },
+    {
+      "command": "cd /work/source && export TMPDIR=/work/tmp COREPACK_HOME=/work/corepack UV_PROJECT_ENVIRONMENT=/work/venv UV_CACHE_DIR=/work/uv-cache UV_PYTHON_DOWNLOADS=never PIP_CACHE_DIR=/work/pip-cache GIT_CONFIG_COUNT=3 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0=/subject GIT_CONFIG_KEY_1=safe.directory GIT_CONFIG_VALUE_1=/work/source GIT_CONFIG_KEY_2=safe.directory GIT_CONFIG_VALUE_2=/subject/.git GOTOOLCHAIN=local GOFLAGS=-mod=readonly GOMAXPROCS=4 GOMODCACHE=/work/gomodcache GOCACHE=/work/gocache GOPATH=/work/gopath GOPROXY=off PIP_NO_INDEX=1 UV_OFFLINE=1 npm_config_offline=true PNPM_CONFIG_OFFLINE=true pnpm_config_verify_deps_before_run=warn COREPACK_ENABLE_NETWORK=0 HTTP_PROXY= HTTPS_PROXY= ALL_PROXY= && cd /work/source && go test -count=1 -timeout=14m ./...",
+      "seconds": 12.643,
+      "started_at": "2026-10-26T06:58:12.336294Z",
+      "exit_code": 0,
+      "network": "none",
+      "log": "stretchr--testify-run3.log",
+      "log_sha256": "eda0288dcb6827853f9b161d3e61987677474cfbbae18f22afc8660882defc7e"
+    }
+  ],
+  "network_probe": {
+    "command": "curl --noproxy \"*\" -I --connect-timeout 2 --max-time 3 https://1.1.1.1",
+    "seconds": 0.198,
+    "started_at": "2026-10-26T06:57:13.704570Z",
+    "exit_code": 7,
+    "network": "none",
+    "log": "stretchr--testify-network-probe.log",
+    "log_sha256": "f9cf55b50dba65ca08df39180414f845e67c0f97277b46e404c346152653260d"
+  },
+  "warmup": {
+    "command": "cd /work/source && export TMPDIR=/work/tmp COREPACK_HOME=/work/corepack UV_PROJECT_ENVIRONMENT=/work/venv UV_CACHE_DIR=/work/uv-cache UV_PYTHON_DOWNLOADS=never PIP_CACHE_DIR=/work/pip-cache GIT_CONFIG_COUNT=3 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0=/subject GIT_CONFIG_KEY_1=safe.directory GIT_CONFIG_VALUE_1=/work/source GIT_CONFIG_KEY_2=safe.directory GIT_CONFIG_VALUE_2=/subject/.git GOTOOLCHAIN=local GOFLAGS=-mod=readonly GOMAXPROCS=4 GOMODCACHE=/work/gomodcache GOCACHE=/work/gocache GOPATH=/work/gopath GOPROXY=off PIP_NO_INDEX=1 UV_OFFLINE=1 npm_config_offline=true PNPM_CONFIG_OFFLINE=true pnpm_config_verify_deps_before_run=warn COREPACK_ENABLE_NETWORK=0 HTTP_PROXY= HTTPS_PROXY= ALL_PROXY= && cd /work/source && go test -count=1 -timeout=14m ./...",
+    "seconds": 27.679,
+    "started_at": "2026-10-26T06:57:13.903687Z",
+    "exit_code": 0,
+    "network": "none",
+    "log": "stretchr--testify-warmup.log",
+    "log_sha256": "221947dc33033b487fe84ced09637d6a846398e3663a117e7c015963491b9224"
+  },
+  "tracked_diff": [],
+  "instrument_sha256": {
+    "remeasure.py": "da1c7d51fc431f8447ab234774667bcd1e2559c6f9216e806f54d7e2eb56a80c",
+    "bench_paths.py": "3330e0a9a8e405f44417d4c813d6bdc8a2593ee2b9fc6e6d6230b791efa919b6"
+  },
+  "instrument_status": "edited after round-2 trials; executed in round 3; round-1 mutable-module timings are historical",
+  "subject_mount": "read-only /subject; writable tracked source and Git metadata staged under /work/source",
+  "staged_tracked_diff": [],
+  "archive": {
+    "path": "raw/bench-subjects-r3-testify-logs.tar.gz",
+    "sha256": "8db72686ada18197128d8aa7a5e051e7715a04279de90a79a8ce378760580c19",
+    "members": 6
+  }
+}

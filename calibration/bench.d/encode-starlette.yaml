@@ -1,0 +1,40 @@
+# Historical timing metadata; round-3 runnable commands; preparation draft, not admission.
+{
+  "name": "encode-starlette",
+  "url": "https://github.com/encode/starlette",
+  "ref": "main",
+  "sha": "8aa828ceaff764a2e57932fb42fdf105a47c4c83",
+  "licence": "BSD-3-Clause",
+  "subpath": ".",
+  "bench": {
+    "toolchain": {
+      "versions": {
+        "python": "3.12.15",
+        "pip": "25.0.1",
+        "uv": "0.13.5"
+      },
+      "lockfile_sha256": "796d45e1e449f7e70e9290fbc1bfd9394d9182fdaf66e5059f42f8b1df7196ed"
+    },
+    "setup": [
+      "export TMPDIR=/work/tmp COREPACK_HOME=/work/corepack UV_PROJECT_ENVIRONMENT=/work/venv UV_CACHE_DIR=/work/uv-cache UV_PYTHON_DOWNLOADS=never PIP_CACHE_DIR=/work/pip-cache GIT_CONFIG_COUNT=3 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0=/subject GIT_CONFIG_KEY_1=safe.directory GIT_CONFIG_VALUE_1=/work/source GIT_CONFIG_KEY_2=safe.directory GIT_CONFIG_VALUE_2=/subject/.git GOTOOLCHAIN=local GOFLAGS=-mod=readonly GOMAXPROCS=4 GOMODCACHE=/work/gomodcache GOCACHE=/work/gocache GOPATH=/work/gopath && mkdir -p /work/tmp && (test -d /work/source/.git || ( mkdir -p /work/source && git -C /subject ls-files -z > /work/tracked-files && tar -C /subject --null -T /work/tracked-files -cf /work/source.tar && tar -C /work/source -xf /work/source.tar && cp -R /subject/.git /work/source/.git )) && cd /work/source && python -m venv /work/tools && /work/tools/bin/pip install --require-hashes -r /bench-inputs/uv-requirements.txt && /work/tools/bin/uv --version && /work/tools/bin/uv sync --frozen --no-default-groups --group dev"
+    ],
+    "test": [
+      "export TMPDIR=/work/tmp COREPACK_HOME=/work/corepack UV_PROJECT_ENVIRONMENT=/work/venv UV_CACHE_DIR=/work/uv-cache UV_PYTHON_DOWNLOADS=never PIP_CACHE_DIR=/work/pip-cache GIT_CONFIG_COUNT=3 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0=/subject GIT_CONFIG_KEY_1=safe.directory GIT_CONFIG_VALUE_1=/work/source GIT_CONFIG_KEY_2=safe.directory GIT_CONFIG_VALUE_2=/subject/.git GOTOOLCHAIN=local GOFLAGS=-mod=readonly GOMAXPROCS=4 GOMODCACHE=/work/gomodcache GOCACHE=/work/gocache GOPATH=/work/gopath GOPROXY=off PIP_NO_INDEX=1 UV_OFFLINE=1 npm_config_offline=true PNPM_CONFIG_OFFLINE=true pnpm_config_verify_deps_before_run=warn COREPACK_ENABLE_NETWORK=0 HTTP_PROXY= HTTPS_PROXY= ALL_PROXY= && cd /work/source && /work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/pytest-temp"
+    ],
+    "suite_seconds": 16.943,
+    "flake_runs": 3,
+    "l0_reading": "unmeasured: C4 awaits controller L0 runs",
+    "task_sources": [
+      {
+        "dataset": "upstream-git-history (candidate source; no admitted tasks)",
+        "revision": "8aa828ceaff764a2e57932fb42fdf105a47c4c83",
+        "licence": "BSD-3-Clause"
+      }
+    ],
+    "contamination": {
+      "age": 3044,
+      "popularity_band": "high"
+    }
+  },
+  "notes": "Frozen-lock C3 preparation reading: docs/bench/readings/bench-prep/python-r2.md. C4 unmeasured; no subject admission claimed."
+}

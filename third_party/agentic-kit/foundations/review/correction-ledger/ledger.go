@@ -19,7 +19,7 @@ import (
 //
 // # Clock injection
 //
-// Throughline invariant 3 demands deterministic replay: given the same event
+// Consumer-a invariant 3 demands deterministic replay: given the same event
 // sequence, Replay must always produce the same state. A hard-wired wall clock
 // makes replay non-deterministic because timestamps are generated at call time
 // rather than being stored in the event. NewWithClock injects a deterministic

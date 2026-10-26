@@ -24,12 +24,16 @@ then reports pre/post hook-install totals and a per-ISO-week baseline.
 
 ```bash
 bash scripts/fathom-adoption.sh fathom
-bash scripts/fathom-adoption.sh app-kit throughline fathom
+bash scripts/fathom-adoption.sh app-kit agentic-kit fathom
 HOOK_DATE=2026-06-17 bash scripts/fathom-adoption.sh
 ```
 
 Read-only — only parses `~/.claude/projects/*/*.jsonl` and
 `workspace/logs/mcp-calls.jsonl`. Nothing is written.
+
+With no names it reads the fleet from the gitignored `workspace/fleet-services`
+(one name per line, `#` comments), the same list `recompile-fleet.sh` and
+`reingest-fleet.sh` read; without that file it measures fathom alone.
 
 ### What it does
 

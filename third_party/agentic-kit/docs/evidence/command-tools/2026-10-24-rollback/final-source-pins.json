@@ -1,0 +1,8 @@
+{
+  "baseline": "c7633a428d4203418b24313436a626be4506a06a",
+  "changes": "test-only: clear owner-write bit on all target OSes; restore mode for temporary cleanup",
+  "files": {
+    "cmd/kit-new/main.go": "8c3b4838a251a3afc8bcf2f4b739773273ddae190614e9c391300548bcfc4f7a",
+    "cmd/kit-new/main_test.go": "2b0820edc9f5ec5a6707ade7fd7e5589916b50d2c768bbf5125e7683005969cd"
+  }
+}

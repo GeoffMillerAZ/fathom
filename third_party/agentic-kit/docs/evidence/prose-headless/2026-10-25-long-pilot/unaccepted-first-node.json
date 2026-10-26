@@ -1,0 +1,103 @@
+{
+  "segments": [
+    {
+      "kind": "assertion",
+      "text": "The workload for this design is the synthetic North Basin sensor fleet, which has 120 simulated devices that each produce one reading per minute.",
+      "fact_ids": [
+        "f-01"
+      ],
+      "contradictions": [],
+      "reason": ""
+    },
+    {
+      "kind": "assertion",
+      "text": "By definition, each reading carries a device ID, a sequence number, a capture timestamp, a temperature value, and a checksum, and these fields form the input contract that the ingestion path must accept.",
+      "fact_ids": [
+        "f-02"
+      ],
+      "contradictions": [],
+      "reason": ""
+    },
+    {
+      "kind": "assertion",
+      "text": "The contract also defines sender behavior: the simulated sender may retry a batch after an ambiguous response, so duplicate submissions are expected rather than exceptional and the receiver must be designed to encounter them.",
+      "fact_ids": [
+        "f-03"
+      ],
+      "contradictions": [],
+      "reason": ""
+    },
+    {
+      "kind": "assertion",
+      "text": "The pilot workload specification is proposed to separate the event capture timestamp from receiver observation time, because a capture timestamp describes what the simulated device reported and does not prove freshness, device identity, sequence ordering, or permission to write.",
+      "fact_ids": [
+        "f-39"
+      ],
+      "contradictions": [],
+      "reason": ""
+    },
+    {
+      "kind": "assertion",
+      "text": "Under that proposal, the host supplies a verified principal independently of all payload fields, and a device identity mismatch would hold the whole request instead of silently rewriting the payload.",
+      "fact_ids": [
+        "f-39"
+      ],
+      "contradictions": [],
+      "reason": ""
+    },
+    {
+      "kind": "assertion",
+      "text": "By definition, the host application, not the ingestion library, owns TLS termination and principal authentication.",
+      "fact_ids": [
+        "f-20"
+      ],
+      "contradictions": [],
+      "reason": ""
+    },
+    {
+      "kind": "assertion",
+      "text": "The current gap is that the existing exercise receiver stores readings in a single process memory map and loses them on restart.",
+      "fact_ids": [
+        "f-04"
+      ],
+      "contradictions": [],
+      "reason": ""
+    },
+    {
+      "kind": "assertion",
+      "text": "The defined design goal is therefore narrow: to preserve acknowledged readings across a receiver restart in the pilot.",
+      "fact_ids": [
+        "f-05"
+      ],
+      "contradictions": [],
+      "reason": ""
+    },
+    {
+      "kind": "assertion",
+      "text": "The pilot itself is proposed for an isolated host with synthetic inputs and no production device connection, so nothing in this document describes enacted or production behavior.",
+      "fact_ids": [
+        "f-29"
+      ],
+      "contradictions": [],
+      "reason": ""
+    },
+    {
+      "kind": "assertion",
+      "text": "As a stated non-goal, the design does not specify replication or cross-host failover for the bounded pilot.",
+      "fact_ids": [
+        "f-37"
+      ],
+      "contradictions": [],
+      "reason": ""
+    },
+    {
+      "kind": "assertion",
+      "text": "A later multi-host requirement would require a new decision and fresh authority review, and it should not be read as an implied property of this design.",
+      "fact_ids": [
+        "f-38"
+      ],
+      "contradictions": [],
+      "reason": ""
+    }
+  ]
+}

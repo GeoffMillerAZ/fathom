@@ -1,0 +1,70 @@
+{
+  "id": "pallets--click-snapshot",
+  "language": "Python",
+  "lock": "uv.lock",
+  "setup": {
+    "command": "curl --fail --location --silent --show-error \"https://snapshot.debian.org/archive/debian/20261025T000000Z/pool/main/l/less/less_590-2.1~deb12u2_arm64.deb\" --output /work/less.deb && echo \"eb430d92921f98b163031ee3ac81a96110d1f20bd84f67faab06dad50c75d744  /work/less.deb\" | sha256sum -c - && mkdir -p /work/os-tools && dpkg-deb --fsys-tarfile /work/less.deb | tar --no-same-owner -x -C /work/os-tools && python -m venv /work/tools && /work/tools/bin/pip install uv==0.13.5 && /work/tools/bin/uv --version && /work/tools/bin/uv sync --frozen --no-default-groups --group tests",
+    "seconds": 4.758,
+    "started_at": "2026-10-26T05:44:54.429932Z",
+    "exit_code": 0,
+    "network": "bridge",
+    "log": "pallets--click-snapshot-setup.log",
+    "log_sha256": "54292723bdd1563b48aff6cd7431a26a81cc1688989ddafc7a9d255f294a5cca"
+  },
+  "test": "PATH=/work/os-tools/usr/bin:$PATH /work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/tmp/pytest-temp",
+  "sha": "2247b35ea1c47c727d7a06e51fa280e12a863ff6",
+  "image": "python@sha256:14a4933e6cef421424f7a66d89a3f4eafcbd0d90e0a822251f298e05132dc735",
+  "platform": "linux/arm64",
+  "cpus": 4,
+  "lockfile_sha256": "742507a6bbb80c093d2ebefc073357e3ef0cb504e9299def5348377f0d585d54",
+  "runs": [
+    {
+      "command": "PATH=/work/os-tools/usr/bin:$PATH /work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/tmp/pytest-temp",
+      "seconds": 4.781,
+      "started_at": "2026-10-26T05:45:44.394706Z",
+      "exit_code": 0,
+      "network": "none",
+      "log": "pallets--click-snapshot-run1.log",
+      "log_sha256": "fbd006278fc6d09c7fef9adf235542159c1ef4758500e8152d9a230d9b5744e7"
+    },
+    {
+      "command": "PATH=/work/os-tools/usr/bin:$PATH /work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/tmp/pytest-temp",
+      "seconds": 3.944,
+      "started_at": "2026-10-26T05:46:09.275043Z",
+      "exit_code": 0,
+      "network": "none",
+      "log": "pallets--click-snapshot-run2.log",
+      "log_sha256": "aa953435609193e6f39cc5f73b2b919e0fb9a1a9ab3b49c208fd7022305f1569"
+    },
+    {
+      "command": "PATH=/work/os-tools/usr/bin:$PATH /work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/tmp/pytest-temp",
+      "seconds": 3.424,
+      "started_at": "2026-10-26T05:46:18.373099Z",
+      "exit_code": 0,
+      "network": "none",
+      "log": "pallets--click-snapshot-run3.log",
+      "log_sha256": "19c4f695f89c312b8e2a7a6c65aaec5048a208492c39080767b2dffa0a6c977c"
+    }
+  ],
+  "network_probe": {
+    "command": "curl --noproxy \"*\" -I --connect-timeout 2 --max-time 3 https://1.1.1.1",
+    "seconds": 0.19,
+    "started_at": "2026-10-26T05:45:13.299088Z",
+    "exit_code": 7,
+    "network": "none",
+    "log": "pallets--click-snapshot-network-probe.log",
+    "log_sha256": "f9cf55b50dba65ca08df39180414f845e67c0f97277b46e404c346152653260d"
+  },
+  "warmup": {
+    "command": "PATH=/work/os-tools/usr/bin:$PATH /work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/tmp/pytest-temp",
+    "seconds": 3.685,
+    "started_at": "2026-10-26T05:45:26.109225Z",
+    "exit_code": 0,
+    "network": "none",
+    "log": "pallets--click-snapshot-warmup.log",
+    "log_sha256": "e74fe3a92f72e7a344e2e6c44a00674b0ea60c214ac472a2f4987c784904da46"
+  },
+  "tracked_diff": [],
+  "less_snapshot_url": "https://snapshot.debian.org/archive/debian/20261025T000000Z/pool/main/l/less/less_590-2.1~deb12u2_arm64.deb",
+  "less_sha256": "eb430d92921f98b163031ee3ac81a96110d1f20bd84f67faab06dad50c75d744"
+}

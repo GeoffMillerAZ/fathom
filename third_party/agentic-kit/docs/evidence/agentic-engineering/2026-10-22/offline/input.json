@@ -1,0 +1,417 @@
+{
+  "profile": {
+    "version": 1,
+    "id": "agentic-kit-uplift-20261022",
+    "domain": "agentic-kit",
+    "criteria": [
+      {
+        "id": "C01",
+        "definition_digest": "1a163703a46c54f7011972a64a27e816fbd2f5f3d89f00b6c8b91794777fa6ef",
+        "kind": "required",
+        "allowed_methods": [
+          "deterministic"
+        ],
+        "allow_not_applicable": false,
+        "weight": 0
+      },
+      {
+        "id": "C02",
+        "definition_digest": "4adb6ba7aae00965d0d8129f87567a33b66cfc8ab4467526a529767b389f3995",
+        "kind": "required",
+        "allowed_methods": [
+          "deterministic"
+        ],
+        "allow_not_applicable": false,
+        "weight": 0
+      },
+      {
+        "id": "C03",
+        "definition_digest": "636fb0cba27c0e8fe9aae6bdb5527c7623253952bb21529f6cab8f43bc7dea28",
+        "kind": "required",
+        "allowed_methods": [
+          "deterministic"
+        ],
+        "allow_not_applicable": false,
+        "weight": 0
+      },
+      {
+        "id": "C04",
+        "definition_digest": "4b58d8f4ee4a29dffa2129c08e25a4b25320cac562d796c57122e26178498ca4",
+        "kind": "required",
+        "allowed_methods": [
+          "deterministic"
+        ],
+        "allow_not_applicable": false,
+        "weight": 0
+      },
+      {
+        "id": "C05",
+        "definition_digest": "5e68cd48460cfa2c8a692de5587765a7795e6c3fa27b890604177e9c7d9e2a34",
+        "kind": "required",
+        "allowed_methods": [
+          "deterministic"
+        ],
+        "allow_not_applicable": false,
+        "weight": 0
+      },
+      {
+        "id": "C06",
+        "definition_digest": "fa9a9ebf8a67172c43fcc18b10606e2cfefe73653a35c38155a7d8bb00a60489",
+        "kind": "required",
+        "allowed_methods": [
+          "deterministic"
+        ],
+        "allow_not_applicable": false,
+        "weight": 0
+      },
+      {
+        "id": "C07",
+        "definition_digest": "0d79655f86292b65a7cf68b5b1b61e962e76941d45c28ce70db39bb982d75f66",
+        "kind": "required",
+        "allowed_methods": [
+          "deterministic"
+        ],
+        "allow_not_applicable": false,
+        "weight": 0
+      },
+      {
+        "id": "C08",
+        "definition_digest": "1227f7f4986129047e2050f49682cbad5055b8604aacf4c57c733349ac193dd8",
+        "kind": "required",
+        "allowed_methods": [
+          "deterministic"
+        ],
+        "allow_not_applicable": false,
+        "weight": 0
+      },
+      {
+        "id": "C09",
+        "definition_digest": "185ecb37fa8995cb31192719cb0a69d8e66e113cc72cb5676db77f272cf6d17a",
+        "kind": "required",
+        "allowed_methods": [
+          "deterministic"
+        ],
+        "allow_not_applicable": false,
+        "weight": 0
+      },
+      {
+        "id": "C10",
+        "definition_digest": "8bba567ec7f76aa20a12b8d1e527937262c5db7beb13bae7f20e6cf3d8c3274c",
+        "kind": "required",
+        "allowed_methods": [
+          "deterministic"
+        ],
+        "allow_not_applicable": false,
+        "weight": 0
+      },
+      {
+        "id": "C11",
+        "definition_digest": "783739fd1642c746ad4adc67b72fc1c0f130905088665ce1958356823a114828",
+        "kind": "required",
+        "allowed_methods": [
+          "deterministic"
+        ],
+        "allow_not_applicable": false,
+        "weight": 0
+      },
+      {
+        "id": "C12",
+        "definition_digest": "49ace952160122ba32cf8aa33a4628a054b7ea274616ca0e88fb659a77f4a417",
+        "kind": "required",
+        "allowed_methods": [
+          "deterministic"
+        ],
+        "allow_not_applicable": false,
+        "weight": 0
+      },
+      {
+        "id": "C13",
+        "definition_digest": "ed1f8df8dd2af65186b283594b28545444d844f82c7e4f3b3adaeb99c8246e9a",
+        "kind": "required",
+        "allowed_methods": [
+          "deterministic"
+        ],
+        "allow_not_applicable": false,
+        "weight": 0
+      },
+      {
+        "id": "C14",
+        "definition_digest": "7255c11e401cd55d7aeb4d4551be57cd498bd19ec431fff8b66c7e02c728259d",
+        "kind": "required",
+        "allowed_methods": [
+          "deterministic"
+        ],
+        "allow_not_applicable": false,
+        "weight": 0
+      },
+      {
+        "id": "C15",
+        "definition_digest": "066f38c7a079c4cd57131a3a2b5facc30023fa151aba12849b6561c285a08233",
+        "kind": "required",
+        "allowed_methods": [
+          "deterministic"
+        ],
+        "allow_not_applicable": false,
+        "weight": 0
+      },
+      {
+        "id": "C16",
+        "definition_digest": "a2f26705e7bfdf9551eb6fc1f64e9319e634d8ebef0f85512b84ff291e13a215",
+        "kind": "required",
+        "allowed_methods": [
+          "deterministic"
+        ],
+        "allow_not_applicable": false,
+        "weight": 0
+      },
+      {
+        "id": "C17",
+        "definition_digest": "8534bb99c665b66cabb328f68dc0f712e1892a4aa3d89697915276e08176cde9",
+        "kind": "required",
+        "allowed_methods": [
+          "deterministic"
+        ],
+        "allow_not_applicable": false,
+        "weight": 0
+      },
+      {
+        "id": "C18",
+        "definition_digest": "0a20b841aa942c055a17fb2581fdca820556ad0821526fcacf915d2301034373",
+        "kind": "required",
+        "allowed_methods": [
+          "deterministic"
+        ],
+        "allow_not_applicable": false,
+        "weight": 0
+      }
+    ]
+  },
+  "subject_digest": "fd50567fb2809de3220cfd054c2902bef713cfc456e9100e087a1512986a8ba2",
+  "observations": [
+    {
+      "criterion_id": "C01",
+      "definition_digest": "1a163703a46c54f7011972a64a27e816fbd2f5f3d89f00b6c8b91794777fa6ef",
+      "subject_digest": "fd50567fb2809de3220cfd054c2902bef713cfc456e9100e087a1512986a8ba2",
+      "outcome": "pass",
+      "method": "deterministic",
+      "reason": "Decision kinds and declined responses pass offline conformance verified only by named hermetic test and pinned source",
+      "artifact_digests": [
+        "9a749f8d6853a6685d0b6da84fa67f14c7f45b3c8cd80b5585fa6d8760bd2ec2"
+      ],
+      "observed_at": "2026-10-22T19:53:19Z",
+      "valid_until": "2026-10-23T19:53:19Z"
+    },
+    {
+      "criterion_id": "C02",
+      "definition_digest": "4adb6ba7aae00965d0d8129f87567a33b66cfc8ab4467526a529767b389f3995",
+      "subject_digest": "fd50567fb2809de3220cfd054c2902bef713cfc456e9100e087a1512986a8ba2",
+      "outcome": "unknown",
+      "method": "deterministic",
+      "reason": "Current source lacks a retained end-to-end criterion-specific adoption or measured-quality receipt.",
+      "artifact_digests": [],
+      "observed_at": "2026-10-22T19:53:19Z",
+      "valid_until": "2026-10-23T19:53:19Z"
+    },
+    {
+      "criterion_id": "C03",
+      "definition_digest": "636fb0cba27c0e8fe9aae6bdb5527c7623253952bb21529f6cab8f43bc7dea28",
+      "subject_digest": "fd50567fb2809de3220cfd054c2902bef713cfc456e9100e087a1512986a8ba2",
+      "outcome": "pass",
+      "method": "deterministic",
+      "reason": "OpenAI Decisions wire maps supported answers/refusals and passes offline conformance verified only by named hermetic test and pinned source",
+      "artifact_digests": [
+        "675eb8eee955a9c18036b6ce63e8419eff8b9b6730144e28cbf8f807cf55af2d"
+      ],
+      "observed_at": "2026-10-22T19:53:19Z",
+      "valid_until": "2026-10-23T19:53:19Z"
+    },
+    {
+      "criterion_id": "C04",
+      "definition_digest": "4b58d8f4ee4a29dffa2129c08e25a4b25320cac562d796c57122e26178498ca4",
+      "subject_digest": "fd50567fb2809de3220cfd054c2902bef713cfc456e9100e087a1512986a8ba2",
+      "outcome": "fail",
+      "method": "deterministic",
+      "reason": "Scope provider inventory names Anthropic, Bedrock, OpenAI, ClaudeCLI and CodexCLI; path scan found no Google adapter. No live verification attempted.",
+      "artifact_digests": [
+        "8aecacb527ac2605caa33859a955a93e2cfd613e078e5d0efbaca2b444b944ce"
+      ],
+      "observed_at": "2026-10-22T19:53:19Z",
+      "valid_until": "2026-10-23T19:53:19Z"
+    },
+    {
+      "criterion_id": "C05",
+      "definition_digest": "5e68cd48460cfa2c8a692de5587765a7795e6c3fa27b890604177e9c7d9e2a34",
+      "subject_digest": "fd50567fb2809de3220cfd054c2902bef713cfc456e9100e087a1512986a8ba2",
+      "outcome": "pass",
+      "method": "deterministic",
+      "reason": "Canonical spans reject missing provenance and invalid observation order verified only by named hermetic test and pinned source",
+      "artifact_digests": [
+        "efd600faa3624736282893a183343f6282d433e5a924ea246ade314393e0cb61"
+      ],
+      "observed_at": "2026-10-22T19:53:19Z",
+      "valid_until": "2026-10-23T19:53:19Z"
+    },
+    {
+      "criterion_id": "C06",
+      "definition_digest": "fa9a9ebf8a67172c43fcc18b10606e2cfefe73653a35c38155a7d8bb00a60489",
+      "subject_digest": "fd50567fb2809de3220cfd054c2902bef713cfc456e9100e087a1512986a8ba2",
+      "outcome": "pass",
+      "method": "deterministic",
+      "reason": "Prepared catalog decision binds exact definition and evidence bytes; mismatch refuses verified only by named hermetic test and pinned source",
+      "artifact_digests": [
+        "217717b537fc4d714a5c1d4c9e59114e05d166ed86f299fce4e6695fdc34f5c4"
+      ],
+      "observed_at": "2026-10-22T19:53:19Z",
+      "valid_until": "2026-10-23T19:53:19Z"
+    },
+    {
+      "criterion_id": "C07",
+      "definition_digest": "0d79655f86292b65a7cf68b5b1b61e962e76941d45c28ce70db39bb982d75f66",
+      "subject_digest": "fd50567fb2809de3220cfd054c2902bef713cfc456e9100e087a1512986a8ba2",
+      "outcome": "pass",
+      "method": "deterministic",
+      "reason": "Ambiguous remote outcome blocks further effects until reconciliation verified only by named hermetic test and pinned source",
+      "artifact_digests": [
+        "a781dfa40376f9cd04eb340bc54d5bad7230a5b3fab99972d1bc531ebc99aa74"
+      ],
+      "observed_at": "2026-10-22T19:53:19Z",
+      "valid_until": "2026-10-23T19:53:19Z"
+    },
+    {
+      "criterion_id": "C08",
+      "definition_digest": "1227f7f4986129047e2050f49682cbad5055b8604aacf4c57c733349ac193dd8",
+      "subject_digest": "fd50567fb2809de3220cfd054c2902bef713cfc456e9100e087a1512986a8ba2",
+      "outcome": "unknown",
+      "method": "deterministic",
+      "reason": "Current source lacks a retained end-to-end criterion-specific adoption or measured-quality receipt.",
+      "artifact_digests": [],
+      "observed_at": "2026-10-22T19:53:19Z",
+      "valid_until": "2026-10-23T19:53:19Z"
+    },
+    {
+      "criterion_id": "C09",
+      "definition_digest": "185ecb37fa8995cb31192719cb0a69d8e66e113cc72cb5676db77f272cf6d17a",
+      "subject_digest": "fd50567fb2809de3220cfd054c2902bef713cfc456e9100e087a1512986a8ba2",
+      "outcome": "pass",
+      "method": "deterministic",
+      "reason": "Encrypted vault crypto-shred passes local conformance verified only by named hermetic test and pinned source",
+      "artifact_digests": [
+        "f710d018b8bbc555b577ca2482ea20e7c461c17cd1c70bc16b22424ee3ca880b"
+      ],
+      "observed_at": "2026-10-22T19:53:19Z",
+      "valid_until": "2026-10-23T19:53:19Z"
+    },
+    {
+      "criterion_id": "C10",
+      "definition_digest": "8bba567ec7f76aa20a12b8d1e527937262c5db7beb13bae7f20e6cf3d8c3274c",
+      "subject_digest": "fd50567fb2809de3220cfd054c2902bef713cfc456e9100e087a1512986a8ba2",
+      "outcome": "pass",
+      "method": "deterministic",
+      "reason": "Strict sourced export refuses unsupported generation claims verified only by named hermetic test and pinned source",
+      "artifact_digests": [
+        "c09f6d65c64cae5beeb485310c5b38b4669d448a9696b07e333ebe84ecab5a73"
+      ],
+      "observed_at": "2026-10-22T19:53:19Z",
+      "valid_until": "2026-10-23T19:53:19Z"
+    },
+    {
+      "criterion_id": "C11",
+      "definition_digest": "783739fd1642c746ad4adc67b72fc1c0f130905088665ce1958356823a114828",
+      "subject_digest": "fd50567fb2809de3220cfd054c2902bef713cfc456e9100e087a1512986a8ba2",
+      "outcome": "unknown",
+      "method": "deterministic",
+      "reason": "Current source lacks a retained end-to-end criterion-specific adoption or measured-quality receipt.",
+      "artifact_digests": [],
+      "observed_at": "2026-10-22T19:53:19Z",
+      "valid_until": "2026-10-23T19:53:19Z"
+    },
+    {
+      "criterion_id": "C12",
+      "definition_digest": "49ace952160122ba32cf8aa33a4628a054b7ea274616ca0e88fb659a77f4a417",
+      "subject_digest": "fd50567fb2809de3220cfd054c2902bef713cfc456e9100e087a1512986a8ba2",
+      "outcome": "pass",
+      "method": "deterministic",
+      "reason": "Contradictory evidence raises the investigation concern flag verified only by named hermetic test and pinned source",
+      "artifact_digests": [
+        "edf3cd553a34367a3ec9f277063b915f967006d91ff844ad8c3a51d15d28c8da"
+      ],
+      "observed_at": "2026-10-22T19:53:19Z",
+      "valid_until": "2026-10-23T19:53:19Z"
+    },
+    {
+      "criterion_id": "C13",
+      "definition_digest": "ed1f8df8dd2af65186b283594b28545444d844f82c7e4f3b3adaeb99c8246e9a",
+      "subject_digest": "fd50567fb2809de3220cfd054c2902bef713cfc456e9100e087a1512986a8ba2",
+      "outcome": "pass",
+      "method": "deterministic",
+      "reason": "Budget guard refuses a charge beyond the USD daily limit verified only by named hermetic test and pinned source",
+      "artifact_digests": [
+        "dd5f60e26b23d797a724945c9caf1c58ecbaacc1cb248164dd9e2dcedf414b0b"
+      ],
+      "observed_at": "2026-10-22T19:53:19Z",
+      "valid_until": "2026-10-23T19:53:19Z"
+    },
+    {
+      "criterion_id": "C14",
+      "definition_digest": "7255c11e401cd55d7aeb4d4551be57cd498bd19ec431fff8b66c7e02c728259d",
+      "subject_digest": "fd50567fb2809de3220cfd054c2902bef713cfc456e9100e087a1512986a8ba2",
+      "outcome": "pass",
+      "method": "deterministic",
+      "reason": "Decision cache binds template/content/model and never caches declined answers verified only by named hermetic test and pinned source",
+      "artifact_digests": [
+        "25000d0e9af583f7c597da64ae7fe1c744f5cc18de48219e4d0a15a307167640"
+      ],
+      "observed_at": "2026-10-22T19:53:19Z",
+      "valid_until": "2026-10-23T19:53:19Z"
+    },
+    {
+      "criterion_id": "C15",
+      "definition_digest": "066f38c7a079c4cd57131a3a2b5facc30023fa151aba12849b6561c285a08233",
+      "subject_digest": "fd50567fb2809de3220cfd054c2902bef713cfc456e9100e087a1512986a8ba2",
+      "outcome": "unknown",
+      "method": "deterministic",
+      "reason": "Current source lacks a retained end-to-end criterion-specific adoption or measured-quality receipt.",
+      "artifact_digests": [],
+      "observed_at": "2026-10-22T19:53:19Z",
+      "valid_until": "2026-10-23T19:53:19Z"
+    },
+    {
+      "criterion_id": "C16",
+      "definition_digest": "a2f26705e7bfdf9551eb6fc1f64e9319e634d8ebef0f85512b84ff291e13a215",
+      "subject_digest": "fd50567fb2809de3220cfd054c2902bef713cfc456e9100e087a1512986a8ba2",
+      "outcome": "pass",
+      "method": "deterministic",
+      "reason": "Adoption refuses a lesson without independent receiver boundary evidence verified only by named hermetic test and pinned source",
+      "artifact_digests": [
+        "9de3e7c57d2d4064104d0107f980cb31e3fe28fa1a3a7a01fd98cc89d782db8c"
+      ],
+      "observed_at": "2026-10-22T19:53:19Z",
+      "valid_until": "2026-10-23T19:53:19Z"
+    },
+    {
+      "criterion_id": "C17",
+      "definition_digest": "8534bb99c665b66cabb328f68dc0f712e1892a4aa3d89697915276e08176cde9",
+      "subject_digest": "fd50567fb2809de3220cfd054c2902bef713cfc456e9100e087a1512986a8ba2",
+      "outcome": "fail",
+      "method": "deterministic",
+      "reason": "Repository path inventory found no GitHub ingestion adapter; no external connector was invoked.",
+      "artifact_digests": [
+        "d0fc244ae91455307d3a67fc8e7ff71acf09f33ede05f121b8a719ac2380a477"
+      ],
+      "observed_at": "2026-10-22T19:53:19Z",
+      "valid_until": "2026-10-23T19:53:19Z"
+    },
+    {
+      "criterion_id": "C18",
+      "definition_digest": "0a20b841aa942c055a17fb2581fdca820556ad0821526fcacf915d2301034373",
+      "subject_digest": "fd50567fb2809de3220cfd054c2902bef713cfc456e9100e087a1512986a8ba2",
+      "outcome": "unknown",
+      "method": "deterministic",
+      "reason": "Historical native-host receipt is bounded to Claude/Codex versions; Codex live and Antigravity controls unproven.",
+      "artifact_digests": [],
+      "observed_at": "2026-10-22T19:53:19Z",
+      "valid_until": "2026-10-23T19:53:19Z"
+    }
+  ],
+  "evaluated_at": "2026-10-22T19:53:19Z"
+}

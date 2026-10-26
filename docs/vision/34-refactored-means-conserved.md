@@ -18,7 +18,7 @@ Go surface delta is a textual diff, not type-identity-aware, measured
 (`docs/bench/readings/cv-m4-apidiff-calibration-2026-09-24.md`); CV-M5
 found `conserve.Resurrected` over-fires on a genuine large removal
 (`docs/bench/readings/cv-m5-blindness-replay-2026-09-24.md`); the decision
-port's narrow role (§3, decision 8) and the cross-repo test-kit/Review Kit
+port's narrow role (§3, decision 8) and the cross-repo test kit and review kit
 rows stay `(op)`/unclaimed in the plan.
 
 **Wave 3 status (2026-09-25, gap-closing).** Both wave-2 kill-criterion
@@ -53,11 +53,11 @@ re-compile, so CV-41's newly-activated `adr-rules`/`spec-bindings` layers
 could actually start. The fleet recompile these fixes unblocked then ran
 clean (**CV-M8**, `docs/bench/readings/cv-m8-fleet-recompile-2026-09-25.md`).
 **CV-44** (the refactoring pack armed and firing on this repository,
-cross-repo platform-engineering): measured PASS with a caveat —
+cross-repo with the review kit): measured PASS with a caveat —
 `.reviewkit/` arms `refactoring-conservation`/`testing-certifications` at
-warn, and a historical `leadsman sound` demonstration made the two
+warn, and a historical review kit run made the two
 `fathom-conserve`-backed requirements genuinely fire on a real finding;
-`testing.certified-targets` reads a false pass here because review-kit's
+`testing.certified-targets` reads a false pass here because the review kit's
 `fathom-certify` adapter does not yet thread `--service`
 (`docs/bench/readings/cv-44-reviewkit-armed-2026-09-25.md`) — the vision's
 own "fires at warn within a month" clause needs the arming to stand for a
@@ -69,8 +69,8 @@ placeholder; **CV-M11** (the decision port's calibration check) measured
 FAIL on the `route` site (45.7% at confidence ≥0.9, non-monotonic — no
 threshold fixes it) and was handled by policy, not code, in ADR-042's own
 amendment, not this wave. Still `(op)`/unclaimed: CV-M3 (the 30-day
-real-session window) and CV-43 (test-kit's envelope, cross-repo
-platform-engineering).
+real-session window) and CV-43 (the test kit's envelope, cross-repo
+with the test kit).
 
 ## 1. The thesis
 
@@ -109,7 +109,7 @@ not grading their own work:
 
 - **fathom proves; it never writes the change.** The transformation engine stays
   a permanent non-goal.
-- **fathom asserts facts; Review Kit judges.** No safety grade, no score, no
+- **fathom asserts facts; the review kit judges.** No safety grade, no score, no
   ordinal ladder. Planes and missing inputs, stated plainly.
 - **Missing input means unproven.** A stale index, failed typed packages, an
   unbound test run or an unsupported language makes a plane `unproven`, never
