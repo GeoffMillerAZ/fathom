@@ -1,73 +1,96 @@
-# Ansible oracle and qualified ceilings
+# Ansible native candidates and remaining work
 
-The committed 2026-10-02 reading remains 694/694 definitions, 9/9 same-file
-handler pairs and 60/60 cross-file edges, all C. This audit changes no metric,
-product extractor, oracle output or L3 grade. T-R4 still holds new L3 work.
+The canonical reading remains 694/694 definitions, 9/9 local references and
+60/60 cross-file edges, all C. The old absent-native-position/binding premise
+is withdrawn. Native instruments exist; constructing the complete L1/L2
+reading is work, rather than a ceiling waiting for a tool to appear. L3
+remeasurement remains held by D19/T-R4.
 
-## Named candidates checked (X-R1 / P-T1)
+## Measured candidate results
 
-| Candidate | Version | Concrete result / limitation |
-|---|---|---|
-| Ansible's `ansible-playbook --syntax-check` and `--list-tasks` | ansible-core 2.21.4, recorded by the original oracle run | Original canonical cross-check: 27/63 playbooks accepted; 36 need roles/collections absent from those checkouts. List-tasks prints 294 play/task names, 292 non-template, 289 present in the walk. This is partial native name/acceptance evidence, not the complete positioned declaration or handler-reference population. No full-population A claim follows. |
-| Ansible YAML language server | `@ansible/ansible-language-server` 26.6.0, MIT, checksum in lsp-candidate-26.6.0.json | Published source inspected, not installed/run. Its advertised semantic provider is definition on module keys to module implementation files. No document-symbol or reference provider is advertised. This does not attest plays/tasks/variables or notify-to-handler pairs. The audit script verifies the archive and the exact compiled/provider source contracts. |
-| Ansible native DataLoader / Playbook loader APIs | ansible-core 2.21.4 | Source inspected, not a new API runtime experiment: DataLoader.load delegates to generic YAML/JSON parsing; Playbook.load invokes Play/PlaybookInclude semantic loading and real dependencies (same dependency issue observed by the CLI). Native parser source positions alone do not establish the full Ansible declaration/reference family. Source URLs/hashes are in native-loader-sources-2.21.4.json. An installed-role native API harness remains a possible reopening route; it is not described as an absent API. |
-| universal-ctags AnsiblePlaybook subparser | 6.2.1 | Original canonical run produced zero tags; its single play kind does not cover the required declaration family. No tier-B reading resulted. |
-| Independent YAML walk | gopkg.in/yaml.v3 v3.0.1 | Existing oracle covers the measured syntax family; independent third-party parsing remains C under P-T1. Native acceptance does not promote its unmatched fields. |
+`native-candidates-r2.json` records a fresh run of ansible-core 2.21.4,
+ansible-lint 26.10.1 and ansible-runner 2.4.3 on all three pinned subjects.
+Every YAML file and inventory candidate is considered; non-task native kinds
+remain counted. There is no extractor input and no task execution.
 
-The official server's [documentation](https://github.com/ansible/vscode-ansible/blob/main/docs/README.md#jump-to-module-code)
-also describes module-code navigation. The bounded maintained-SCIP catalogue
-search ([SCIP](https://github.com/scip-code/scip), 2026-10-26) identified no
-Ansible producer; this is a search result, not proof that none exists.
+| Subject | INI accepted/candidates | Native lint task files/YAML candidates | Positioned tasks | Unnamed | Existing child links |
+|---|---|---|---|---|---|
+| mac-dev-playbook | 2/2 | 6/13 | 24 | 5 | 30 |
+| ansible-role-docker | 0/0 | 9/22 | 57 | 6 | 5 |
+| ansible-for-devops | 10/11 | 81/122 | 257 | 17 | 49 |
 
-Reproduce the source contract check without executing the server or any AI
-feature (standard-library Python only):
+Native INI inventory interpretation is A. The 12 accepted inputs yield per-file
+sums of 34 groups, 27 hosts, 42 child relationships and 28 memberships. These
+include implicit groups and duplicates across files; they are not unique
+repository totals. The rejected candidate is a dynamic inventory client's
+settings file, not host/group inventory. It is retained as a rejection, not
+silently removed. The previous count of ten considered extensionless files
+named inventory/hosts only; this measure also tests all .ini files. Only the
+built-in INI plugin is enabled, so executable inventory scripts do not run.
+
+The lint loader supplies 338 positioned task objects, including 28 without a
+name, and 84 existing child links. All 338 core Origin line tags agree with
+lint annotations. Core evaluates 335 module actions; three block markers are
+synthetic lint actions and carry no native action-authority claim. No dependencies
+were installed. Native classifications cover all 157 YAML candidates; the
+96 task/playbook/handler files are a bounded loader family, not the entire
+694-entity canonical vocabulary. Dynamic includes, templated names and
+requirements must be accounted for in a complete semantic reading.
+
+T-R8 admits A **for fields ansible-core's loader evaluates**. Module/action
+normalisation uses core ModuleArgsParser; lint's task line annotations use
+AnsibleLoader parser marks. Neither supplies an end-range measurement here.
+A raw HandleChildren traversal is not silently promoted to core Playbook/Role
+binding evaluation. No complete-family tier or canonical grade is changed.
+
+## Named candidates and all five X-R4 sources
+
+| Required source | Named/versioned candidate and concrete result |
+|---|---|
+| Own toolchain, dumps and introspection | ansible-core 2.21.4 `ansible-inventory --list` measured on all 13 candidates above, including native INI groups, ranges and children. The earlier `ansible-playbook --syntax-check` accepted 27/63 **without installing the subjects' requirements.yml**; this does not mean dependencies are unavailable. Core `Playbook.load`/`Role.load`, `Base.get_path()` and `StrategyBase.search_handlers_by_notification` are real positioned-declaration/notify-binding APIs. Their full-population harness, with pinned subject dependencies, remains concrete work. |
+| SCIP/LSIF catalogs and GitHub | Read [Sourcegraph supported indexers](https://sourcegraph.com/docs/code-navigation/precise-code-navigation), [SCIP list](https://github.com/sourcegraph/scip#tools-using-scip), and [LSIF.dev](https://lsif.dev/). No Ansible YAML producer listed. GitHub `scip-ansible in:name` returned five SciPy/ordinary-script substring hits, no semantic indexer. Python SCIP indexes Python implementation files. These are bounded search results. |
+| Language servers | Official MIT `@ansible/ansible-language-server` 26.6.0 source/checksum audit: module-code definitions, no symbol/reference provider for the measured play/task/notify family. Its module navigation is not that family. `audit_lsp_candidate.py` reproduces the source check; this is not a runtime failure claim. |
+| Registry parsers, type checkers and AST dumpers | Ansible's own ansible-lint 26.10.1 (GPL-3.0-or-later) installed and measured above. Bench subprocess licences are not the grammar/fixture allowlist; GPL is no exclusion here. `Task`, `parse_yaml_linenumbers` and `Runner.find_children`/`HandleChildren` produce the measured fields, subject to T-R8. ansible-compat 26.10.0 (MIT, installed dependency) provisions runtimes; ansible-runner 2.4.3 (Apache-2.0, installed) exposes execution events. Neither is dismissed because a prior harness was absent. Universal-ctags 6.2.1 originally emitted zero AnsiblePlaybook tags on the subjects. |
+| Runtime call/require tracing | Read [core callback documentation](https://docs.ansible.com/ansible/latest/plugins/callback.html) and [runner event interface](https://ansible.readthedocs.io/projects/runner/en/stable/intro/). Core `v2_playbook_on_notify(handler, host)` and task-start callbacks expose native objects with `get_path()`. They require executing tasks with roles/collections and environment context. No subject task was executed; Docker/Molecule is prohibited here. Under P-T1, traces attest visited tasks only, never complete recall, so static core loading/handler lookup is the preferred complete-population route. |
+
+## Fired triggers and concrete follow-up
+
+The Conan-shaped INI decoder is not an Ansible inventory strategy. The native
+inventory oracle is available now; implementing its host/group grammar is
+shared strategy work held T-R2. No golden is weakened. No group_vars/host_vars
+instance was found in the pinned subjects, so the old unmeasured joining
+limitation is not presented as a measured miss.
+
+`not_has_key` also exists: its old absence claim is withdrawn. The unchanged
+dialect still needs a play/task split and dynamic module naming for unnamed
+tasks. Native full-family work is: load all original playbook/role entry points
+with their requirements pinned; collect `Base.get_path()` declarations and
+core handler lookup results; explicitly count unresolved/dynamic cases and
+compare the native population before grading. L1/L2 work is open now. This is
+a deferral of unbuilt work, not an oracle-availability ceiling.
+
+## Reproduce the candidate measurement
+
+Use private Python 3.13.5 with ansible-core==2.21.4,
+ansible-lint==26.10.1, ansible-runner==2.4.3 and PyYAML==6.0.3 installed.
+Put clean corpus subjects at the named subdirectories of the subjects path.
+All config/cache paths are under the scratch work directory. The driver
+selects an available UTF-8 locale and never executes inventory scripts.
 
 ```sh
+FATHOM_ORACLE_ANSIBLE_INVENTORY=workspace/oracle/bin/ansible-inventory \
+  python3 -m unittest discover -s calibration/oracles/ansible -p test_native_candidates.py
+python3 calibration/oracles/ansible/measure_native_candidates.py \
+  -subjects workspace/calibration/ansible-r2 -work workspace/tmp/ansible-native-r2 \
+  -out workspace/tmp/ansible-native-candidates-r2.json
 python3 calibration/oracles/ansible/audit_lsp_candidate.py -download \
   -archive workspace/tmp/ansible-language-server-26.6.0.tgz \
   -out workspace/tmp/ansible-lsp-candidate.json
 ```
 
-The checked archive is SHA512-pinned, version 26.6.0, and declares MIT. Selected
-source SHA256s and exact capability counts are in the committed audit receipt.
-The script refuses changed identities/contracts; a source-only check is never
-reported as a runtime failure.
-
-## Fired triggers, qualified
-
-The generic INI decoder now exists, but `docdecode_ini.go` implements Conan's
-physical option lines, not Ansible inventory grammar (host variables, host
-ranges, group `:children` / `:vars`, and native inventory interpretation).
-Its existence does not satisfy the original inventory trigger. Ten INI
-inventories remain outside the measured YAML scope; the source has no YAML
-inventory on which the old `ansible-inventory --list` cross-check could run.
-Inventory decode/strategy work remains held by T-R2. No golden is weakened.
-
-`not_has_key` also exists now, so its old absence is withdrawn. It can help
-separate plays from task items; it does not supply native positioned declaration
-or handler-binding truth, dynamic module-key naming, collection lookup, or
-inventory semantics. Neither primitive is a new oracle authority. The current
-play-as-task / unnamed-task coverage limitations remain disclosed; no new
-coverage is claimed. A complete native instrument could reopen L1/L2 now,
-without waiting for D19; L3 re-evaluation still waits for its controller gate.
-
-## X-R4 source search, 2026-10-25
-
-| Required source | Search / concrete result |
-|---|---|
-| Own toolchain / introspection | ansible-core 2.21.4 CLI and native DataLoader/Playbook APIs above inspected. Partial list-tasks acceptance is measured, not called a complete oracle failure. [ansible-inventory](https://docs.ansible.com/ansible/latest/cli/ansible-inventory.html) exposes list/graph/export, but the original claimed scope contains no YAML inventory and INI inventory is outside its decoder. |
-| SCIP and LSIF lists plus GitHub | Read [Sourcegraph supported indexers](https://sourcegraph.com/docs/code-navigation/precise-code-navigation), [SCIP list](https://github.com/sourcegraph/scip#tools-using-scip), and Sourcegraph-maintained [LSIF.dev](https://lsif.dev/). No Ansible YAML producer listed. GitHub repository query `scip-ansible in:name` returned five substring hits for SciPy/ordinary script repositories, no Ansible semantic indexer. Python SCIP indexes implementation modules rather than play/task/handler YAML bindings. |
-| Language servers | Official MIT `@ansible/ansible-language-server` 26.6.0 source/checksum audit above, plus official vscode-ansible module navigation docs. It supplies module-code definition, with no advertised symbol/reference provider. |
-| Registry parsers / type checkers / AST dumpers | PyPI metadata queried for ansible-runner, ansible-compat and ansible-lint, and npm metadata for the pinned server. Runner is an execution/event interface; compat provisions runtime dependencies; lint validates Ansible conventions. None of those published interfaces claims a complete positioned task/handler-binding dump. Exact newly searched metadata versions are recorded below. No candidate was installed or described as a failed runtime experiment. |
-| Runtime call / require tracing | Read [official callback plugin documentation](https://docs.ansible.com/ansible/latest/plugins/callback.html) and [runner event interface](https://ansible.readthedocs.io/projects/runner/en/stable/intro/). Native task callbacks/event data are a real candidate, requiring execution context and roles/collections; they report paths actually visited, not automatically the full disabled/static population. Subject tasks were not executed. A bounded native loader/event harness remains a reopening route, not an absent capability. |
-
-The L1/L2 instrument limit is provisional on a full-population native loader or
-bounded event experiment with required dependencies. L3 stays behind D19; this
-source audit changes no reading. The independent parser is not promoted by the
-existence of a native API or linter.
-
-Registry identities queried: ansible-runner 2.4.3 (Apache-2.0), ansible-compat
-26.10.0 (MIT), ansible-lint 26.10.1 (GPL-3.0-or-later); only metadata/interfaces
-were inspected. The lint package's license also excludes it as the requested
-permissively licensed oracle. Runner remains a concrete native-event route,
-not a rejected parser merely because it requires an experiment.
+Only counts, versions, identities and hashes are committed. Source inventories,
+task content and diagnostics remain in scratch. The initial probe used the
+reserved ANSIBLE_INVENTORY environment variable for its test CLI path, causing
+recursive CLI startup inside lint runtime initialisation. That run was stopped
+and discarded. The task-specific variable above and built-in-only inventory
+plugin fix that collision; the fresh native control and corpus run pass.

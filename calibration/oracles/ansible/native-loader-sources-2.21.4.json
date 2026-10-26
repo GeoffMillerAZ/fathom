@@ -12,5 +12,5 @@
       "sha256": "e452a726c073df952f05bc3288bae7880c2476c7bc8d34738ceac8d112d4d391"
     }
   ],
-  "result": "Source interfaces only, no new runtime API experiment: DataLoader is generic YAML/JSON loading; Playbook.load invokes native Play/PlaybookInclude loading, requiring real dependencies. Existing CLI acceptance is partial, not full positioned declaration/reference truth."
+  "result": "Historical source-only receipt; see native-candidates-r2.json for later inventory/lint measurements. Full core Playbook/Role/handler harness remains open work: DataLoader is generic YAML/JSON loading; Playbook.load invokes native Play/PlaybookInclude loading, requiring real dependencies. Existing CLI acceptance is partial, not full positioned declaration/reference truth."
 }

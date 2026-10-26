@@ -23,7 +23,7 @@ CI, OpenAPI and CloudFormation files, and a file under `.github/workflows/`, are
   YAML **sequence of maps under a `tasks/` or `handlers/` directory** (the task files a playbook imports).
 
 An INI inventory is outside this YAML dialect. The existing INI decoder models Conan physical option
-lines, not Ansible host/group inventory semantics; ten source inventories remain unread (LB-Q-ansible-rest; T-R2). The signal is the ToolKind `ansible`; ingest reaches the dialect
+lines, not Ansible host/group inventory semantics; the original ten extensionless source inventories remain unread by the product (LB-Q-ansible-rest; T-R2). The native candidate audit also covers .ini: 12 of 13 candidates are accepted by ansible-inventory, so no missing-native-inventory premise remains. The signal is the ToolKind `ansible`; ingest reaches the dialect
 through `toolExts`, ReingestFile through the same decision.
 
 ## What it models
@@ -67,7 +67,7 @@ through `toolExts`, ReingestFile through the same decision.
   top-level `name:` or `hosts:` key is also read as a task; none of the subjects has one.
 - **Tier C for entities and edges.** `ansible-playbook --syntax-check` and `--list-tasks -i localhost,` and
   `ansible-inventory --list` (ansible-core, offline, no play is run) are the tier-A acceptance and name
-  cross-check, run by the oracle and never scored: neither prints a line or an include edge.
+  cross-check, run by the legacy oracle and never scored. The native core APIs behind the CLIs do expose positions and handler bindings; a complete instrument is open work, not an unavailable tool. T-R8 applies only to core-loader-evaluated lint fields.
 
 ## Calibration
 
@@ -81,3 +81,6 @@ it tags nothing: no tier-B reading could be taken, and the tier-C walk stands.
 The 2026-10-26 source audit of official language server 26.6.0 is recorded in
 `calibration/oracles/ansible/README.md`: module-code definition only, no declaration-symbol or
 reference provider for this measured family. No native full-population tier is claimed.
+
+The measured native inventory/lint follow-up is in calibration/oracles/ansible/README.md
+and native-candidates-r2.json. It changes no extractor or canonical grade.

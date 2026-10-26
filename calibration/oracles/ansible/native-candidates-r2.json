@@ -1,0 +1,116 @@
+{
+  "versions": {
+    "ansible-core": "2.21.4",
+    "ansible-lint": "26.10.1",
+    "ansible-runner": "2.4.3"
+  },
+  "subjects": [
+    {
+      "subject": "geerlingguy/mac-dev-playbook",
+      "sha": "be45b8f180f995c1165cb24541d0f9429f4fefe4",
+      "inventory_candidates": 2,
+      "inventory_accepted": 2,
+      "inventory_rejected": 0,
+      "inventory_totals": {
+        "groups": 4,
+        "hosts": 2,
+        "children": 3,
+        "memberships": 2
+      },
+      "yaml_candidates": 13,
+      "lint_files": 6,
+      "native_kind_counts": {
+        "playbook": 1,
+        "requirements": 1,
+        "tasks": 5,
+        "yaml": 6
+      },
+      "tasks": 24,
+      "positioned_tasks": 24,
+      "unnamed_tasks": 5,
+      "core_position_disagreements": 0,
+      "core_evaluated_actions": 23,
+      "synthetic_block_actions": 1,
+      "normalization_errors": 0,
+      "children": 30,
+      "existing_children": 30,
+      "lint_file_errors": 0,
+      "evidence_sha256": "062ee9dda7def3d8fcdca64c5d023c79143c19ca4f0b8f8493082fe3b628d72e"
+    },
+    {
+      "subject": "geerlingguy/ansible-role-docker",
+      "sha": "1d3968dbf0df48515ffda0f6561cbd25206f502a",
+      "inventory_candidates": 0,
+      "inventory_accepted": 0,
+      "inventory_rejected": 0,
+      "inventory_totals": {
+        "groups": 0,
+        "hosts": 0,
+        "children": 0,
+        "memberships": 0
+      },
+      "yaml_candidates": 22,
+      "lint_files": 9,
+      "native_kind_counts": {
+        "handlers": 1,
+        "meta": 1,
+        "playbook": 2,
+        "tasks": 6,
+        "vars": 7,
+        "yaml": 5
+      },
+      "tasks": 57,
+      "positioned_tasks": 57,
+      "unnamed_tasks": 6,
+      "core_position_disagreements": 0,
+      "core_evaluated_actions": 55,
+      "synthetic_block_actions": 2,
+      "normalization_errors": 0,
+      "children": 5,
+      "existing_children": 5,
+      "lint_file_errors": 0,
+      "evidence_sha256": "ff4c3032c74dd818a6811e1bd6c1db47f01926a544b7158457bbbed21d078e2d"
+    },
+    {
+      "subject": "geerlingguy/ansible-for-devops",
+      "sha": "86e1bf80098239cd995d54217585e8d61117d2e7",
+      "inventory_candidates": 11,
+      "inventory_accepted": 10,
+      "inventory_rejected": 1,
+      "inventory_totals": {
+        "groups": 30,
+        "hosts": 25,
+        "children": 39,
+        "memberships": 26
+      },
+      "yaml_candidates": 122,
+      "lint_files": 81,
+      "native_kind_counts": {
+        "galaxy": 1,
+        "handlers": 1,
+        "meta": 2,
+        "playbook": 69,
+        "requirements": 14,
+        "tasks": 11,
+        "vars": 7,
+        "yaml": 17
+      },
+      "tasks": 257,
+      "positioned_tasks": 257,
+      "unnamed_tasks": 17,
+      "core_position_disagreements": 0,
+      "core_evaluated_actions": 257,
+      "synthetic_block_actions": 0,
+      "normalization_errors": 0,
+      "children": 49,
+      "existing_children": 49,
+      "lint_file_errors": 0,
+      "evidence_sha256": "e32bd610f3fd5d146431273e5c9df2bbb09396547f981c21f7810a82a5cbd188"
+    }
+  ],
+  "tasks_executed": false,
+  "dependencies_installed": false,
+  "inventory_authority": "A for native groups/hosts/children; source ranges not measured",
+  "lint_authority": "T-R8: A only for fields ansible-core loader evaluates; raw lint traversal is not promoted; no whole-family grade change",
+  "raw_sha256": "114f53200fef0486bd3586e22ccdc2fe187380d829d98d480f4cc0aeb2638be3"
+}
