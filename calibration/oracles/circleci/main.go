@@ -374,6 +374,11 @@ func main() {
 			fmt.Fprintln(os.Stderr, "matrix checkout identity:", err)
 			os.Exit(2)
 		}
+		dirty, err := exec.Command("git", "-C", *subject, "status", "--porcelain", "--", ".circleci").Output()
+		if err != nil || len(dirty) != 0 {
+			fmt.Fprintln(os.Stderr, "matrix checkout dirty or unreadable .circleci content")
+			os.Exit(2)
+		}
 		registered, err = readParameterProtocol(*matrix, *subjectName, strings.TrimSpace(string(sha)))
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "matrix:", err)
@@ -418,20 +423,25 @@ func main() {
 	var accepted []string
 	rejected := 0
 	for _, rel := range cfgs {
+		if registered != nil {
+			if _, ok := registered[rel]; !ok {
+				fmt.Fprintln(os.Stderr, "unregistered configuration:", rel)
+				os.Exit(2)
+			}
+		}
 		root, perr := parseFile(filepath.Join(*subject, filepath.FromSlash(rel)))
 		if perr != nil {
+			if registered != nil {
+				fmt.Fprintf(os.Stderr, "matrix configuration %s failed to parse: %v\n", rel, perr)
+				os.Exit(1)
+			}
 			fmt.Fprintf(os.Stderr, "skip %s: %v\n", rel, perr)
 			rejected++
 			continue
 		}
 		cases := []map[string]any{{}}
 		if registered != nil {
-			var ok bool
-			cases, ok = registered[rel]
-			if !ok {
-				fmt.Fprintln(os.Stderr, "unregistered configuration:", rel)
-				os.Exit(2)
-			}
+			cases = registered[rel]
 		}
 		c := &compiled{jobs: map[string]bool{}, workflows: map[string][]cwjob{}}
 		var terr error
