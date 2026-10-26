@@ -1,0 +1,18 @@
+id: azure-pipelines
+language: Azure Pipelines
+repos:
+  - name: microsoft/azure-pipelines-yaml
+    url: https://github.com/microsoft/azure-pipelines-yaml.git
+    ref: master
+    sha: 5d433fcad43a32789a968179469c1e6271cb2fc7
+    licence: MIT
+    sparse: ["templates/**", ".pipelines/**", "azure-pipelines.yml", "LICENSE"]
+    idioms: ["named jobs and deployments in reusable templates", "parameters and runtime expressions remain syntax only"]
+  - name: dotnet/runtime
+    url: https://github.com/dotnet/runtime.git
+    ref: main
+    sha: 3734b6da84340b26e07301263c173a3ffe32442a
+    licence: MIT
+    subpath: eng/pipelines
+    sparse: ["eng/pipelines/**", "LICENSE.TXT"]
+    idioms: ["multi-stage pipelines", "explicit dependsOn job and stage names", "template expansion left unmeasured"]

@@ -1,0 +1,6 @@
+jobs:
+  - job: build
+    steps: []
+  - job: test
+    dependsOn: [build]
+    steps: []

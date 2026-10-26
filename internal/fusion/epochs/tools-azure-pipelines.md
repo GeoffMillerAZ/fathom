@@ -1,0 +1,1 @@
+Azure Pipelines files and literal stage/job templates now dispatch to the Azure Pipelines document dialect. Re-extract previously unclassified files to record named jobs, stages, deployments and explicit local dependencies.

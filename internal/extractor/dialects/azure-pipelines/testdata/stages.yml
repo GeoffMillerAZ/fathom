@@ -1,0 +1,11 @@
+stages:
+  - stage: Build
+    jobs:
+      - job: make
+        steps: []
+  - stage: Release
+    dependsOn: Build
+    jobs:
+      - deployment: ship
+        environment: staging
+        strategy: {}
