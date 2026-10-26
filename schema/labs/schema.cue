@@ -9,7 +9,7 @@ package labs
 #Lab: {
 	id!: #LabID
 	features!: [...#Text]
-	surface!: [string & =~"^(mcp:|hook:|skill:|stanza:|decide:)\\S.*$", ...string & =~"^(mcp:|hook:|skill:|stanza:|decide:)\\S.*$"]
+	surface!: [string & =~"^(mcp:|hook:|skill:|agent:|stanza:|decide:)\\S.*$", ...string & =~"^(mcp:|hook:|skill:|agent:|stanza:|decide:)\\S.*$"]
 	firing!: {
 		should!:     #Text
 		should_not!: #Text
