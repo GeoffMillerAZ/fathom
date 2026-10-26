@@ -28,8 +28,12 @@ See [architecture.md](architecture.md) for how the tool groups map to the three-
 For Well-Architected and production-readiness evidence, inventory consumers and
 review/investigation packets, see [platform engineering](use-cases/platform-engineering.md).
 It records scratch-store demonstrations of the lookup, source, obligations,
-localization and change-review tools, and distinguishes source evidence from the
-unserved Kubernetes concern facts and unbuilt fact receipts. It adds no MCP tool
+localization and change-review tools. Kubernetes `K8sFact` rows are reachable as
+symbols named `<workload>#<key>`, with the value in `signature`; a search hit can
+name that fact symbol. A fact sheet with anchors and coverage (WAE-5) and fact
+receipts remain unbuilt. A missing `#readinessProbe` symbol is unknown, never
+absent; documents that fail decoding, including Helm templates, are silently
+skipped by the Kubernetes extractor. It adds no MCP tool
 or readiness verdict.
 
 ---
