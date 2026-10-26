@@ -369,9 +369,12 @@ type oracleOpts struct {
 // an L1 oracle ran, and its L2 call pairs both ways when a calls oracle ran
 // (LB-F64). Diagnosis only; never part of the reading.
 type unmatchedFile struct {
-	DialectOnly *[]langbench.OracleDef `json:"dialect_only,omitempty"`
-	OracleOnly  *[]langbench.OracleDef `json:"oracle_only,omitempty"`
-	Calls       *unmatchedCalls        `json:"calls,omitempty"`
+	// TenancyFiles names the actual measured files, including zero-call files.
+	// Keep this diagnostic list out of canonical readings.
+	TenancyFiles []string               `json:"tenancy_files"`
+	DialectOnly  *[]langbench.OracleDef `json:"dialect_only,omitempty"`
+	OracleOnly   *[]langbench.OracleDef `json:"oracle_only,omitempty"`
+	Calls        *unmatchedCalls        `json:"calls,omitempty"`
 	// FileEdges are the file edges on either side of the file-edge scoring
 	// (LB-F234): drawn by fathom and not in the truth, and in the truth and not
 	// drawn, each as [from, to] sorted.
@@ -1264,7 +1267,8 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 		res.notes = append(res.notes, imps.notes...)
 	}
 	if opts.unmatched != "" && (l1res != nil || calls != nil || fileEdges != nil || (imps != nil && len(imps.misses) > 0)) {
-		var u unmatchedFile
+		u := unmatchedFile{TenancyFiles: append([]string{}, files...)}
+		sort.Strings(u.TenancyFiles)
 		if l1res != nil {
 			u.DialectOnly, u.OracleOnly = &l1res.DialectOnly, &l1res.OracleOnly
 		}

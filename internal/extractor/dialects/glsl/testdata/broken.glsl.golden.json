@@ -1,0 +1,42 @@
+{
+  "symbols": [
+    {
+      "name": "before",
+      "kind": "GlslFunc",
+      "package": "broken",
+      "line": 3,
+      "end_line": 5,
+      "signature": "float before(float x)",
+      "tier": "verified"
+    },
+    {
+      "name": "incomplete",
+      "kind": "GlslFunc",
+      "package": "broken",
+      "line": 7,
+      "end_line": 9,
+      "signature": "float incomplete(float x)",
+      "tier": "verified"
+    },
+    {
+      "name": "Survivor",
+      "kind": "GlslStruct",
+      "package": "broken",
+      "line": 11,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "after",
+      "kind": "GlslFunc",
+      "package": "broken",
+      "line": 15,
+      "end_line": 17,
+      "signature": "float after(float y)",
+      "calls": [
+        "before"
+      ],
+      "tier": "verified"
+    }
+  ]
+}
