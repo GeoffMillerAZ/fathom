@@ -141,4 +141,27 @@ those CPU summaries. No new cost run or holdout tuning was performed.
 C-R13 landing dependency: issue #17's classification branch lands first. This
 branch must then merge main, never rebase or merge that topic branch directly,
 and regrade the canonical and independent readings from the same frozen SCIP
-indexes using the combined harness. Those regrades remain pending.
+indexes using the combined harness.
+
+## C-R13 merged-tree regrade
+
+The combined tree d28ff1d94ae56b86f271a35c70367cf03a96bd5c includes
+issue #17's a1c183658 classification proof and the ca483d4e field-refresh
+correction. A clean build of `cmd/indexbench` from that tree graded canonical
+and independent cli/cli and cobra readings from their four frozen SCIP indexes,
+then regraded the already spent Gin holdout from its frozen index. No SCIP
+producer, subject pin, oracle rule or field scope changed. The
+[merged-tree receipt](../assessments/data/2026-10-26-core-t1-go-members-merged-regrade.json)
+records input and binary hashes, phase loads/times and the three median-of-three
+throughput results. Every phase exited 0 with launch load below 9.
+
+Canonical and independent counts, metrics and grades agree: L4 good,
+def_mapping .9345 and typed_recall .9889, with L1-L3 excellent. Their median
+extraction rates are 20.56 and 20.31 MB/CPU-s. Gin remains L4 excellent and L3
+good, with file-edge precision .9235 and recall .6255; its median is 15.68
+MB/CPU-s. This is a K29 regrade of a spent holdout, not a new validation or
+tuning pass. The canonical denominator still includes three definitions from
+cli/cli's tracked internal/build package, which RT-145's default directory
+filter leaves unmeasured (issue #17 class 2). The O1237 L2 dispatch shift
+predates the field pass; same-oracle metrics remain unchanged. No interface
+methods or field-reference edges entered this field-only implementation.

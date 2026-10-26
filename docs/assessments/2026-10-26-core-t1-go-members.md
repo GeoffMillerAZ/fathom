@@ -85,3 +85,30 @@ The canonical L4-good limit and Gin L3-good miss are recorded as measured
 limits of this field-only wave. Broader member or file-edge work requires a
 separate owner-authorized wave and fresh validation, without reclassifying
 issue #17 here. C-R11's field-symbol-only implementation remains unchanged.
+
+## C-R13 merged-tree reading
+
+The merged implementation and issue #17 classification at
+d28ff1d94ae56b86f271a35c70367cf03a96bd5c were regraded from the same
+frozen canonical and independently produced SCIP indexes. Counts, metrics and
+grades agree between the two readings: L4 good, def_mapping .9345 (9,877 of
+10,569) and typed_recall .9889; L1-L3 remain excellent. Median-of-three
+extraction rates are 20.56 and 20.31 MB/CPU-s. The [append-only regrade
+receipt](data/2026-10-26-core-t1-go-members-merged-regrade.json) records the
+merged binary, source and index identities, each phase's load and duration,
+and the published reading hashes. All phases exited 0 below launch load 9.
+
+Issue #17 class 2 remains in scope: cli/cli's tracked internal/build package
+is pruned by RT-145's default cache-directory filter, leaving three SCIP
+definitions unmeasured and counted. The merged reading has 689 unmapped
+field-category definitions across cli/cli and cobra, which include interface
+methods outside this field-only pass; the three class-2 definitions bring the
+unmapped total to 692. This measured limit keeps L4 below excellent's .95
+definition-mapping bar. The O1237 standard-library interface dispatch shift
+predates this pass, and the same-oracle L2 metrics did not change.
+
+The already spent Gin holdout was regraded under the merged harness from its
+frozen SCIP index. L1/L2/L4 remain excellent and L3 good; file-edge precision
+is .9235, recall .6255, and median throughput 15.68 MB/CPU-s. No producer
+rerun, criterion change or tuning occurred. The field-only scope and its
+remaining excellence limits are unchanged.

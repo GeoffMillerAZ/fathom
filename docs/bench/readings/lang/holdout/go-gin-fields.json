@@ -10,7 +10,7 @@
     "L4": "excellent"
   },
   "measured_at": "2026-10-26",
-  "fathom_commit": "5b8d6a2a6124ec5cf84f3909c1ffa0231f8b1511",
+  "fathom_commit": "d28ff1d94ae56b86f271a35c70367cf03a96bd5c",
   "extractor": "incumbent",
   "subjects": [
     {
@@ -61,6 +61,7 @@
         "scip_go_defs_type": 140,
         "scip_go_defs_unmapped_field": 41,
         "scip_go_docs_outside": 4,
+        "scip_go_test_unmapped_to_field": 123,
         "scip_go_unmapped_to_field": 130
       },
       "families": {
@@ -88,8 +89,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 28.66799999999999,
-        "extract_cpu_ms": 34.548,
+        "extract_ms": 27.558000000000003,
+        "extract_cpu_ms": 34.324000000000005,
         "max_file_ms": 6,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -194,14 +195,15 @@
     "scip_go_defs_type": 140,
     "scip_go_defs_unmapped_field": 41,
     "scip_go_docs_outside": 4,
+    "scip_go_test_unmapped_to_field": 123,
     "scip_go_unmapped_to_field": 130
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 15.58,
+    "throughput_mb_s": 15.68,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 18.78,
+    "wall_throughput_mb_s": 19.53,
     "max_file_ms": 6,
     "peak_module_pages": 0,
     "compiled_bytes": 0
@@ -226,13 +228,14 @@
     "gin-gonic/gin: Go file edges by the kinds of typed edge that draw them: direct 79 (66 in the truth); direct+iface-dispatch 1 (1 in the truth); direct+iface-dispatch+instantiates 28 (28 in the truth); direct+instantiates 60 (60 in the truth); func-value 2 (2 in the truth); iface-dispatch 70 (2 in the truth); iface-dispatch+instantiates 19 (16 in the truth); instantiates 97 (35 in the truth)",
     "gin-gonic/gin: Go file edges drawn only by an interface-dispatch edge (one per implementer; the call names the interface method, in the interface's file) or an instantiation fact (a held value's type, written or inferred) are not references the source writes to a definition in another file (design §1.2, amendment F.34) and are left out of file_edge_precision: 186 of the typed pass's 356 file edges, 53 of them in the truth (cost to recall, counted); the edges stay in the store and in every served graph",
     "gin-gonic/gin: Go typed_recall is graded on the SCIP import (design §1.2); the native go/types typed pass covers its edges between mapped definitions so: of 5344 unique (from, to) pairs, 2502 are edges of the native typed pass (.4682; by kind: direct 1823, direct+iface-dispatch 1, func-value 17, iface-dispatch 54, instantiates 607), and of 4397 non-self pairs, 2484 of them native (.5649); the native pass is a call graph and stores no reference to a type or a variable but an instantiation fact (a held type), so this is a coverage figure, not a graded one (LB-F300)",
-    "gin-gonic/gin: of scip-go's 11682 edges between definitions, 11552 import as typed edges; unmapped endpoints by class: to_field 130; scip-go writes most parameters and locals as `local N` (the local rule, LB-F55: out of typed_recall) and a function literal's parameters in a package initializer as a term of a meta descriptor (`Options:c.`), a parameter (21 references, scip_edges_param_target, LB-F299)",
-    "gin-gonic/gin: scip-go's 1600 named definitions, 1559 mapped to a fathom symbol; unmapped definitions by class: field 41. A struct field, and an interface method (scip-go writes one as a term of its interface), has no fathom symbol: K17's member pass failed its cost gate and was reverted (wave lf2, O673)",
+    "gin-gonic/gin: of scip-go's 11682 edges between definitions, 11552 import as typed edges; unmapped endpoints by class: to_field 130; of those endpoints, a reference in a _test.go file: to_field 123 (a member pass storing no field reference from a test file, O673's first lever, would still miss them); scip-go writes most parameters and locals as `local N` (the local rule, LB-F55: out of typed_recall) and a function literal's parameters in a package initializer as a term of a meta descriptor (`Options:c.`), a parameter (21 references, scip_edges_param_target, LB-F299)",
+    "gin-gonic/gin: scip-go's 1600 named definitions, 1559 mapped to a fathom symbol; unmapped definitions by class: field 41. A struct field, and an interface method (scip-go writes one as a term of its interface), has no fathom symbol: the earlier full member pass failed its historical cost gate and was reverted (wave lf2, O673); the current field-symbol-only pass leaves interface methods and field references out",
     "gin-gonic/gin: typed edges read as pairs: 2750 direct, 1638 interface dispatch (1638 edges, one per implementer, collapse to 287 pairs by method name, where scip-go writes one interface-method term), 24 function values, 150 unresolved (a function value names no callee: no pair), 3648 instantiations (a fact, not a call); 0 edges have a caller with no node in the measured files; 0 of 2009 truth pairs name a callee the subject does not define (the standard library or a dependency) and are left out of the servable truth, counted here",
     "go: file_edge_precision and file_edge_recall score the typed go/packages pass's edges (fusion.EnrichTypedEdges, the cross-file edges ingest stores for Go, run in process into an in-memory store), and import_resolution each import spec resolved by Go's own loader (go/packages, the typed pass's environment) to the measured files of the package it names; Go has no tags dialect and no file resolver (LB-F58)",
-    "import_resolution: 6 of 6 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 0.0435 (6 of 138) and recall 1 (6 of 6); 15 of 429 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured; 15 oracle references on import statements left out because their symbol is defined in more than one file",
+    "import_resolution: 6 of 6 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent >= 0.95, good >= 0.85); import edges precision 0.0435 (6 of 138) and recall 1 (6 of 6); 15 of 429 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured; 15 oracle references on import statements left out because their symbol is defined in more than one file",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "throughput (design 1.9 T1, T2): darwin/arm64 Apple M2; run 1: 16.10 MB/CPU-s; run 2: 15.37 MB/CPU-s; run 3: 15.58 MB/CPU-s; median run 3: 15.58 MB/CPU-s; every other field is the original measurement at its recorded fathom_commit 5b8d6a2a6124ec5cf84f3909c1ffa0231f8b1511"
+    "throughput (design 1.9 T1, T2): darwin/arm64 Apple M2; run 1: 17.14 MB/CPU-s; run 2: 14.08 MB/CPU-s; run 3: 15.68 MB/CPU-s; median run 3: 15.68 MB/CPU-s; every other field is the original measurement at its recorded fathom_commit d28ff1d94ae56b86f271a35c70367cf03a96bd5c",
+    "K29 regrade of the already spent Gin v1.10.0 holdout on the C-R13 merged harness at d28ff1d94ae56b86f271a35c70367cf03a96bd5c using its frozen SCIP index; no new producer execution, criterion change or tuning. L1/L2/L4 remain excellent, L3 good (file-edge precision .9235, recall .6255)."
   ],
   "disposition": null
 }
