@@ -1,0 +1,26 @@
+{
+  "version": "PgBouncer 1.26.1",
+  "version_output": "PgBouncer 1.26.1\nlibevent 2.1.12-stable\nadns: evdns2\ntls: unsupported",
+  "binary_sha256": "19573035a4619533c6255704c6524a618ee39ca5908bb771bff27eaca3d54f90",
+  "native_source_sha256": {
+    "src/admin.c": "e21bf4f7893176ba4a10afc69d269fd7b50bd190b60b9bc2610c0439c6d55d4f",
+    "src/loader.c": "26ef0c7f99943d2d89303803ef24e04bda8dd35d48c4d0d6012b906341d6a78c",
+    "src/client.c": "baa2fb5acf5b837fe127fa1549b1589be7ae47832d5e99728b6383ca0f458882"
+  },
+  "build_inputs": [
+    {
+      "name": "pgbouncer-1.26.1",
+      "url": "https://www.pgbouncer.org/downloads/files/1.26.1/pgbouncer-1.26.1.tar.gz",
+      "sha256": "00886a2994b4844cd37110970df777772cfc42a74c400522c82fba509a3f42d9",
+      "licence": "ISC"
+    },
+    {
+      "name": "libevent-2.1.12-stable",
+      "url": "https://github.com/libevent/libevent/releases/download/release-2.1.12-stable/libevent-2.1.12-stable.tar.gz",
+      "sha256": "92e6de1be9ec176428fd2367677e61ceffc2ee1cb119035037a27d346b0403bb",
+      "licence": "BSD-3-Clause"
+    }
+  ],
+  "tls": false,
+  "libevent": "2.1.12-stable static"
+}

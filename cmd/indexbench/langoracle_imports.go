@@ -420,10 +420,33 @@ func scoreRangeCompanion(toolOracle string, si *subjectImports, sub *langbench.S
 	res := langbench.ScoreL1(m, rangeCompanionOracle, si.nodes, defs)
 	sub.Counts[langbench.CntRangeEligible] += res.Counts[langbench.CntRangeEligible]
 	sub.Counts[langbench.CntRangeOK] += res.Counts[langbench.CntRangeOK]
+	if res.Counts[langbench.CntRangeEligible] > 0 {
+		if sub.Families == nil {
+			sub.Families = map[string]string{}
+		}
+		if current, ok := sub.Families[langbench.FamilyRanges]; !ok || rangeTierRank(tier) < rangeTierRank(current) {
+			sub.Families[langbench.FamilyRanges] = tier
+		}
+	}
 	if rc.Scope == "" {
 		si.notes = append(si.notes, fmt.Sprintf("%s: "+noteRangeCompanion, si.name, orDefault(rc.Tool, "clang"), tier, orDefault(rc.Version, "unversioned"), rc.Units, rc.Errored, res.Counts[langbench.CntRangeEligible]))
 		return nil
 	}
 	si.notes = append(si.notes, fmt.Sprintf("%s: "+noteRangeCompanionScoped, si.name, orDefault(rc.Tool, "unnamed"), tier, orDefault(rc.Version, "unversioned"), rc.Units, rc.Errored, rc.Scope, res.Counts[langbench.CntRangeEligible]))
 	return nil
+}
+
+func rangeTierRank(tier string) int {
+	switch tier {
+	case "A":
+		return 4
+	case "B":
+		return 3
+	case "C":
+		return 2
+	case "D":
+		return 1
+	default:
+		return 0
+	}
 }

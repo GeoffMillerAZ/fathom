@@ -1,0 +1,294 @@
+{
+  "version": "prose-lab.qualified-review-offline-proof/1",
+  "source_base": "67746a7e6b2e2e1de06865b23e0250c9f996c7be",
+  "source_manifest": [
+    {
+      "path": "cmd/prose-lab/codec.go",
+      "sha256": "925459c2ba4da44317e557a7e8832597fde357e3041bf536c323500f06f9151f"
+    },
+    {
+      "path": "cmd/prose-lab/doc.go",
+      "sha256": "f1ec8da407e2a6802c6f01e87e035d60f07b75c779d219d773e5a7f71ea57fb3"
+    },
+    {
+      "path": "cmd/prose-lab/document_adjudication.go",
+      "sha256": "7bb40f375fd1f6d55361f1011123ffa6edf0435c422f9f055638026aca7d8ba1"
+    },
+    {
+      "path": "cmd/prose-lab/document_adjudication_flags_other.go",
+      "sha256": "5e92fba4dbbd9206b8d6cb76521fedf681dca3190d3a1bc323d53d00d0c5974c"
+    },
+    {
+      "path": "cmd/prose-lab/document_adjudication_flags_unix.go",
+      "sha256": "e955487c56cee78bc51409f7e7656eea013cc5003ea8eaac2dec746185b0f9b7"
+    },
+    {
+      "path": "cmd/prose-lab/document_adjudication_input.go",
+      "sha256": "c71ca665362df1f2b95bfd2dc1eb5e0a89b38dfea4af9967dcd72330e98b5d62"
+    },
+    {
+      "path": "cmd/prose-lab/document_adjudication_owner_test.go",
+      "sha256": "d162c94646b6cbc712dd5b0d6fc0febf6c720b4acc67cc378e8e181bfa0a7b63"
+    },
+    {
+      "path": "cmd/prose-lab/document_adjudication_test.go",
+      "sha256": "35dee849c7d4a1461d0e81e94a3be7bcb49d2731698721a2751ca4b04610da7b"
+    },
+    {
+      "path": "cmd/prose-lab/document_engine.go",
+      "sha256": "edaf6ab7818f4bd41253504ca389af0b738619a1532106d6115521f04615df6f"
+    },
+    {
+      "path": "cmd/prose-lab/document_input.go",
+      "sha256": "995be4beec165094031a78488e349642aa93fab3f2a13cd28599bbc6713cb4b0"
+    },
+    {
+      "path": "cmd/prose-lab/document_length.go",
+      "sha256": "9677e052347e3fea4787eb84cc59f375c615a7e52c459f2e165e9156d6722d88"
+    },
+    {
+      "path": "cmd/prose-lab/document_length_oracle_test.go",
+      "sha256": "75868eafd8f4153107a320f79b850e9c9fb370f18d3d898ea5dee55cd57f8495"
+    },
+    {
+      "path": "cmd/prose-lab/document_length_test.go",
+      "sha256": "e4f5cf5022b3283478d105a22562e48e4f41d57b3c8bea73d276765ff7f5715c"
+    },
+    {
+      "path": "cmd/prose-lab/document_projection.go",
+      "sha256": "dde9af3160feef90fd5d365c85c05c628f035d57297e8c3755b4ec1e76279b52"
+    },
+    {
+      "path": "cmd/prose-lab/document_projection_test.go",
+      "sha256": "36b69ecbd946399b10c8a24cfb5ec280adb48ac35c6a78ddd5e39a03b3a762f3"
+    },
+    {
+      "path": "cmd/prose-lab/document_run.go",
+      "sha256": "22f907cbf1c7233d0baf8ff8b08b7ccbc0b72cb6a4079ff06e9d968f8fc800bc"
+    },
+    {
+      "path": "cmd/prose-lab/document_scope_acceptance_test.go",
+      "sha256": "9c81a0b0d108ba79992fd2c297ae4cc15f19cf7bc3dc0accb0d668de85aac4cb"
+    },
+    {
+      "path": "cmd/prose-lab/document_test.go",
+      "sha256": "3ccac684b3aa228a58437c35cdb6ac8b559d48d509dcb6faa746d7a850fa646e"
+    },
+    {
+      "path": "cmd/prose-lab/document_time_test.go",
+      "sha256": "15a6c4ac1d8d443f37a4ae868bed06026282cafe9219000963cbeb71147b48fc"
+    },
+    {
+      "path": "cmd/prose-lab/document_wire_compat_test.go",
+      "sha256": "83a771c552db35446eef851fc99f5a20550a38641de3b5f4571e969fe8fa6b7a"
+    },
+    {
+      "path": "cmd/prose-lab/ledger.go",
+      "sha256": "072cdd34eebf6d74b266e5d5b7483d3504f77a572c48b54e8e30a5796e2db66a"
+    },
+    {
+      "path": "cmd/prose-lab/ledger_test.go",
+      "sha256": "f71661dbd09daa75ba98553ded54f75fd16472df71e18bc389c6eebcf561bbeb"
+    },
+    {
+      "path": "cmd/prose-lab/main.go",
+      "sha256": "765b43ebadcd9de90f82cf71754cdf87a2cc608bdeb631e2711f5ef680e1ade4"
+    },
+    {
+      "path": "cmd/prose-lab/main_test.go",
+      "sha256": "75f2326bc7156365f56edb24ebdf926cb0aa3c041ff84f01b50d20809a75b371"
+    },
+    {
+      "path": "cmd/prose-lab/oracle-criteria/cited-entailment-v1.txt",
+      "sha256": "bb12ed77442b05cc9912247881fce489a35d5de4749fb1efe364c5c2011acaac"
+    },
+    {
+      "path": "cmd/prose-lab/oracle-criteria/cited-entailment-v2.txt",
+      "sha256": "ecdecdb37fac788f2d95919c540c397d547c14f353d76d9df55ae4fac2ed4e2d"
+    },
+    {
+      "path": "cmd/prose-lab/oracle.go",
+      "sha256": "9ed473f5a82b02b2d0cfb280802d3d0f119839b21511ea94ddc4b6975cf8df05"
+    },
+    {
+      "path": "cmd/prose-lab/oracle_floor.go",
+      "sha256": "0e97b106abb417b1f8dc22233d5683648347e2846b15ac2ec536f5459834d056"
+    },
+    {
+      "path": "cmd/prose-lab/oracle_floor_owner_test.go",
+      "sha256": "501eee9fc55d84829ab2c819cd486cc141c5a205fb6364b9ac30e5c53e24d197"
+    },
+    {
+      "path": "cmd/prose-lab/oracle_floor_schema.cue",
+      "sha256": "6983c7811127719f9ce4c6f1d5e1f29cacaf53eb44484857ace5acffe240a08a"
+    },
+    {
+      "path": "cmd/prose-lab/oracle_floor_test.go",
+      "sha256": "563e002fbb5e46e27b516d1655b90fdc63170db4f441c0f8f7658a0c38389807"
+    },
+    {
+      "path": "cmd/prose-lab/oracle_owner_test.go",
+      "sha256": "ca3711030a7b7582c1b68f60ad5fa91d272985cea1f51bee6e1fc8f7d4465f2b"
+    },
+    {
+      "path": "cmd/prose-lab/oracle_test.go",
+      "sha256": "ea364594a525b4db6be55a474a733560f8e9312baef1c2f5912a87d3cfafae4d"
+    },
+    {
+      "path": "cmd/prose-lab/paired_inputs.go",
+      "sha256": "45dbe6b911673e6215839b48ed08a77e94414191a6a20d1e6e28223a1fa9aa21"
+    },
+    {
+      "path": "cmd/prose-lab/paired_inputs_test.go",
+      "sha256": "27c8cb2448a7e5d83d0ce6b79df036c7bee5d51d3dcde5035b5be69efff28185"
+    },
+    {
+      "path": "cmd/prose-lab/paired_legacy_owner_test.go",
+      "sha256": "d1ab3c146430d344ca8985dc9a7cb91d087890dd7a8201f5fbad0310d44f4d87"
+    },
+    {
+      "path": "cmd/prose-lab/paired_owner_test.go",
+      "sha256": "0474d86b7b4a01937343730422d9544734300668c706f9f5c502262df2cf42b1"
+    },
+    {
+      "path": "cmd/prose-lab/paired_run.go",
+      "sha256": "d11d5c2b22f67e27b07304d93405f63cd468502dc544674ad5176c5869324c4c"
+    },
+    {
+      "path": "cmd/prose-lab/provider.go",
+      "sha256": "dce3031c6f9946363841a69552be60f5a4e8e2424e28ab517d5a2a3e17e529a7"
+    },
+    {
+      "path": "cmd/prose-lab/provider_test.go",
+      "sha256": "1313afefb878e6cee6407ac539d741881ce1650b3840e2d487f1a8f388a425c6"
+    },
+    {
+      "path": "cmd/prose-lab/qualified_review_inputs.go",
+      "sha256": "49502999060f6beca2b278aa6360f1f40077571a66eab11337fa5c5633fb0ae8"
+    },
+    {
+      "path": "cmd/prose-lab/qualified_review_owner_test.go",
+      "sha256": "a8e485f9a87984fb1ebff4bdea0c2258d446ac94ff57fc6e0f554dc2cc1c36db"
+    },
+    {
+      "path": "cmd/prose-lab/qualified_review_run.go",
+      "sha256": "38ed994c01e9f3abb75ebab6a8144fe9735a19708dadbc509a1b41fd01969c6e"
+    },
+    {
+      "path": "cmd/prose-lab/qualified_review_schema.cue",
+      "sha256": "4a243043268fd3cfb6a57a09753a16bce111de6a5b57740eadc85dd1b70c51d5"
+    },
+    {
+      "path": "cmd/prose-lab/qualified_review_test.go",
+      "sha256": "126b12fbb6d8fb777dd410bd3a8f59c202e50953d1e0cddd9d7ae08157b4daae"
+    },
+    {
+      "path": "cmd/prose-lab/review.go",
+      "sha256": "62a7003b66c60c811f1dfe8182913b572d0db36c602d552cb678b051e698c069"
+    },
+    {
+      "path": "cmd/prose-lab/review_artifacts.go",
+      "sha256": "8d264d6e0f6adce8a8eae6d25a57a7265cc641f0213b086c3101c1940d78e857"
+    },
+    {
+      "path": "cmd/prose-lab/review_owner_test.go",
+      "sha256": "a54f3f479c6f925de624ce27a52d96ed74b126472e4cf34358c6e0b2e304be1d"
+    },
+    {
+      "path": "cmd/prose-lab/review_test.go",
+      "sha256": "89a20e1dff1d7eab3463fbb03b685fff771f4221a6774f8c2886f70d977bec24"
+    },
+    {
+      "path": "cmd/prose-lab/schema.cue",
+      "sha256": "1f2d7c90e56742f0562a4ddaa425d35df10a5d0eb0a9a04779c549a37f387f70"
+    },
+    {
+      "path": "cmd/prose-lab/schema_test.go",
+      "sha256": "a5041b5e814c07b2a308b4cb470fc7eb65917b8d2217dd6b8f9e9a7a8194b2a7"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/oracle-floor-v2/fixtures/review-floor-v1.json",
+      "sha256": "7d4774cebaf072f4911ec5a5cb2ccb1652edf3b1c3cc28227502a16843e18ba4"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/oracle-floor-v2/floor-review.json",
+      "sha256": "f51039c640df148425be37d603ab7b23f0551e953899742b199ba9ba66579a5d"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/oracle-floor-v2/reviewers/reader-a.json",
+      "sha256": "2b2a6d913db6e553b99ab76a5df4a4aa612ddc683abfbfe42015016137415a39"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/oracle-floor-v2/reviewers/reader-b.json",
+      "sha256": "7654d18e6e38c57da07868676b7792783778da777d13fb2c88f2421c9638dd23"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/oracle-floor-v2/scope.json",
+      "sha256": "2779ca86b8f05c37acfd560d220b88895938e5db145fdd5f994ae44c1332c6ad"
+    }
+  ],
+  "source_binding": "8ebfba33fccd2232e660dfdd2c2bc54bbb365928a587a6e5a1e0444b24e6e02b",
+  "binding_rule": "SHA256 compact sorted path/sha256 entries, UTF8 without final LF",
+  "binary_sha256": "47ed856cf5292491a9b0b2a0c33e75d6844885cc5d3c2d1bc1b61b4edabc9a07",
+  "binary_vcs_attestation": false,
+  "binary_scope": "Reviewed uncommitted isolated worktree source, exact manifest, no clean-commit build claimed",
+  "full_gate": {
+    "command": "task validate",
+    "exit_code": 0,
+    "elapsed_seconds": 522.133
+  },
+  "gate_log_sha256": "439c8720a90d174b6d69e56c6470e770e7ce03e0b45feffe9d7ef0c222b8fe96",
+  "independent_code_review": "Four findings repaired and numeric CUE/file-based counterexamples replayed; identity-relocation repair independently skimmed",
+  "fake_native_complete_cohort": {
+    "planned": 85,
+    "matched": 85,
+    "supported": 32,
+    "unsupported": 52,
+    "inconclusive": 1,
+    "real_provider_calls": 0,
+    "evidence": "TestOwnerQRCompleteNativeReplayAndInconclusive under full race gate"
+  },
+  "critical_mismatch": {
+    "native_attempts": 1,
+    "mismatched": 1,
+    "missing": 84,
+    "continuation_refused": true,
+    "evidence": "TestOwnerQRCriticalMismatchStopsAndRetainsDenominator"
+  },
+  "actual_native_no_key": {
+    "prepare_exit": 0,
+    "capture_exit": 2,
+    "report_exit": 2,
+    "failed": 1,
+    "missing": 84,
+    "planned": 85,
+    "charged_micro_usd": 0,
+    "provider_keys_in_child_environment": false,
+    "provider_calls": 0,
+    "report_sha256": "4e7982f66e1bfb7c73daef978afb32c4cdc3f63dd1c5f7276a969d8350df02a7",
+    "cohort_status": "Expected negative pre-dispatch source qualification. Not an admitted model-quality trial; retain separately from future live trial."
+  },
+  "source_proof": {
+    "fresh_private_index": true,
+    "strict_gate_passed": true,
+    "statically_reaching_tests": 40,
+    "runtime_attestation": false
+  },
+  "cross_trial_spend_verified": false,
+  "provider_spend_limit_enforced": false,
+  "model_qualified": false,
+  "source_authenticated": false,
+  "identity_authenticated": false,
+  "independent_document_acceptance": false,
+  "publication_authority": false,
+  "ui_entry": false,
+  "new_provider_generations": 0,
+  "retained_direct_micro_usd": 778690,
+  "retained_findings": [
+    "Unpinned prior spend could be reset by a new trial. Bind an independently reviewed owner receipt and keep account completeness unauthenticated.",
+    "A pre-dispatch failed marker/receipt could become unreportable. Exact bound terminal failure now preserves one failed and84 missing positions.",
+    "Examined premise/counter overlap for composite facts was incorrectly rejected. Lists remain unique individually.",
+    "CUE decision and numeric accounting constraints were wider than Go. File-based parity counterexamples now reject.",
+    "Nonsemantic file paths changed study identity after relocation. Owner test failed before correction and passes with all semantic bytes still bound."
+  ]
+}
