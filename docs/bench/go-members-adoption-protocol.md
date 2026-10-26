@@ -101,3 +101,19 @@ isolated fields reduced 3,580,568 to 1,483,416 bytes/op and 8,254 to 4,158
 allocations/op; those microbenchmark timings are not the wall gate. The three
 L0 payload fixtures include four newly visible ledger fields, with byte/count
 expectations updated and all timing budgets and tolerances unchanged.
+
+## Wave B optimized gate result
+
+Frozen implementation 5b8d6a2a6124ec5cf84f3909c1ffa0231f8b1511 passes against
+main de6c46e2456f5131b4b6d5287d75157c1d3930bc. Baseline wall trials
+76.599/76.618/76.585s, candidate 87.653/89.662/86.632s; medians
+76.599 -> 87.653s (+14.431%). Store 205312000 -> 218238976 bytes
+(+6.296%). Complete work and typed-edge controls match; all launches <=9.
+Candidate trial 2 reached active-run load 14.20 and remains included. CPU
+medians 81.931 -> 91.709s are diagnostic. Every candidate trial's 84,101
+normalized centrality rows hash to the failed candidate's unchanged semantic
+hash ff28cb5b75e07b3d9d200dd595de7b8b938388198d74f2cc8947277e3fd0556f.
+The first failed run remains recorded. The committed collector is unchanged.
+The raw six-trial schema is preserved in go-members-cost-2026-10-26-r2.json;
+only annotations add build identities, CPU summaries and semantic controls.
+Canonical and independent oracle grading precede the frozen Gin validation.
