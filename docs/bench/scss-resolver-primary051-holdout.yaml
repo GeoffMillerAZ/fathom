@@ -33,3 +33,7 @@ holdout:
 # First reading: docs/bench/readings/lang/holdout/scss-bourbon-native.json.
 # Counts/hash receipt: docs/assessments/data/2026-10-26-core-t1-scss-bourbon-native.json.
 # All preregistered gates passed. This holdout cannot be reused for fresh validation.
+# Scope correction after review: the frozen no-load-path run inherited all 45
+# graded pairs from primary compiles; native-only gain was 0. The subject runner
+# resolves 40 additional in-repo imports with -I . and its fixture-directory
+# load path. Fresh native-only validation remains open on a new preregistration.

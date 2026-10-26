@@ -37,6 +37,15 @@ counts mean unique URLs per source and dependency kind, not syntactic occurrence
 A `meta.load-css()` URL remains unpositioned even when a positioned family uses
 the same URL.
 
+A parser-rejected file with a native dependency can therefore refuse the whole
+composite even when other files have primary compile attestations. Record this
+as a composition refusal separately from the primary parser-rejection count.
+The completed Bourbon first read validated the registered 45-pair population
+but added no native-only pairs. Its runner load paths resolve 40 further in-repo
+imports that the preregistration excluded. Fresh native-only validation remains
+open and needs a new preregistered subject using its runner load paths, with a
+strictly positive native-only pair gain.
+
 The output preserves every semantic primary field and tier. The sole declared
 metadata exception names both producers: `tool` is exactly
 `dart-sass+native-resolver`; `version` is exactly the primary version followed
@@ -82,7 +91,8 @@ python3 /path/to/provenance-checkout/calibration/oracles/dart-sass-resolver/coll
 ```
 
 `collect.py --selftest` exercises clean scoped and full inventory, dirty subject,
-tracked and untracked SCSS symlink, and primary hash controls without Dart,
+tracked and untracked SCSS symlink, primary hash controls, and live stdout/stderr
+size-bomb refusals without Dart,
 package setup, or corpus reads. Synthetic adapter behavior belongs to
 `test/synthetic.dart`; it also runs only against synthetic inputs.
 

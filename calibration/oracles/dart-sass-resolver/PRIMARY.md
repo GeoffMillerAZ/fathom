@@ -32,6 +32,35 @@ NODE_PATH="$SCRATCH/npm/node_modules" node \
   > "$SCRATCH/primary.json"
 ```
 
+That plain command applies to subjects without runner setup, such as Primer.
+The canonical Bootstrap 0.5.1 primary used the subject runner's sass-true
+9.0.0 Sass load path and its unchanged preamble. In the private canonical
+output, 122 parser inputs had 3 rejections; 44 standalone compiles succeeded,
+78 failed, and 6 of 84 fallback attempts succeeded with this setup. Reproduce
+the setup with the pinned subject, using the same package version:
+
+```sh
+npm install --prefix "$SCRATCH/sass-true" sass-true@9.0.0 \
+  --ignore-scripts --no-audit --no-fund --package-lock=true \
+  --registry=https://registry.npmjs.org
+printf '%s' '$true-terminal-output: false; @import "true";' \
+  > "$SCRATCH/bootstrap-preamble.scss"
+test "$(shasum -a 256 "$SCRATCH/bootstrap-preamble.scss" | cut -d ' ' -f 1)" = \
+  8574bf7e82ae2e6057d0a2d76363eb1246a2535a0ed3d2dcf6dcb94fb913f7a8
+NODE_PATH="$SCRATCH/npm/node_modules" node \
+  "$ROOT/calibration/oracles/dart-sass/sass_oracle.cjs" \
+  "$SCSS_SUBJECT" "$SCRATCH/all-tracked-scss.txt" \
+  -preamble "$SCRATCH/bootstrap-preamble.scss" \
+  -load-path "$SCRATCH/sass-true/node_modules/sass-true/sass" \
+  > "$SCRATCH/bootstrap-primary.json"
+```
+
+The historical canonical run used an already pinned sass-true 9.0.0 package
+in private workspace tools. Its primary diagnostics report one load path,
+the preamble above, 6 successful fallback compiles and 78 failed fallback
+attempts. The committed counts/hash receipt records these setup facts without
+publishing source file lists.
+
 Check the generated lockfile before measuring. Its `node_modules/sass-parser`
 entry must be 0.5.1, MIT, from
 `https://registry.npmjs.org/sass-parser/-/sass-parser-0.5.1.tgz`, integrity

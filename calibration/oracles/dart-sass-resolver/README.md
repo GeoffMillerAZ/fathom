@@ -28,6 +28,18 @@ external, CSS, and out-of-scope targets do not assert negative file edges. The
 source SHA-256 map is captured before and after; source inventory or content
 changes fail the run.
 
+A primary parser rejection is recorded by the primary and remains in its file
+denominator. If that rejected file declares a native dependency, the missing
+positioned primary statement makes strict composition refuse the entire subject.
+Spectre demonstrated this mode: its primary attested 76/80 statements, but the
+composite produced no grade. This refusal is distinct from the parser rejection
+count and requires a separate primary-only reading if the subject must be graded.
+
+Native-only resolved-pair gains in the committed measurements are Bootstrap 0,
+Primer 0, and Bourbon 0; Foundation gained 25 post hoc. Bourbon's preregistered
+run excluded its runner load paths, leaving 40 in-repo targets outside the graded
+population. A fresh validation of the native-only route remains open.
+
 Native family counts represent unique URLs per source and dependency kind, not
 syntactic occurrences. In particular, `findDependencies` does not traverse
 `@include` content blocks, so its URL sets are not a complete import inventory.

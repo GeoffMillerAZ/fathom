@@ -82,7 +82,7 @@ Search date: 2026-10-26 UTC. The [Sourcegraph precise-navigation list](https://s
 | Registry AST / resolver | [sass-parser 0.5.1](https://registry.npmjs.org/sass-parser/0.5.1) postdates canonical 0.4.57 and is now measured in the separate canonical-only comparison below. [`sass_api` 18.1.0](https://pub.dev/packages/sass_api/versions/18.1.0) exposes AST spans, [`findDependencies`](https://pub.dev/documentation/sass_api/18.1.0/sass_api/findDependencies.html) returns declared URLs, and [`ImportCache.canonicalize`](https://pub.dev/documentation/sass_api/18.1.0/sass_api/ImportCache/canonicalize.html) resolves a URL using Dart Sass's own resolver. Combined, `findDependencies` plus `ImportCache.canonicalize` can attest resolved (importer, imported) pairs without evaluating the stylesheet, including files that fail evaluation. This owner-resolution route is now **MEASURED**, tier A under P-T1; it attests all 25 previously missing pairs in the post-hoc Foundation comparison. It needs the same load paths and importers as a compile, so missing-load-path failures remain unresolved. |
 | Runtime/load tracing | [Dart Sass compile API](https://sass-lang.com/documentation/js-api/) reports loads for successful compiles only. A custom JS importer hook can observe explicit `load` callbacks, but does not establish coverage of built-in loads. The `sass_api` resolver measurement below retains every parse and resolution gap. |
 
-The original frozen Foundation result remains historical. The controller authorizes the format-owner resolver as tier A under P-T1; its measured result below supersedes the missing-resolver premise without treating a spent subject as fresh validation.
+The original frozen Foundation result remains historical. The controller's exact binding was: "F1 major: the SCSS audit misreads sass_api. The same package exports Dart Sass’s own import resolver, which is exactly the route for the 25 unattested pairs, so measure it (P-T1 tier A, the format owner’s own resolver)." The measured result below supersedes the missing-resolver premise without treating a spent subject as fresh validation.
 
 ## Native resolver measurement after binding X-R4 F1
 
@@ -119,8 +119,10 @@ Its attempted first validation is recorded below.
 Measured: all 76 tracked SCSS files were supplied unchanged, without filters or
 compile setup. The frozen primary rejected five files, compiled 19 and failed
 57 standalone evaluations. The native composite then refused a dependency
-with no positioned primary statement; that file has no import entries in the
-primary. No composite oracle JSON or Fathom grade was produced. The
+with no positioned primary statement; that primary-rejected file has no import
+entries in the primary. A parser rejection is a counted primary coverage gap;
+the composite's whole-subject refusal is a separate pairing rule, not another
+parser error. No composite oracle JSON or Fathom grade was produced. The
 [counts/hashes refusal receipt](data/2026-10-26-core-t1-scss-spectre-refusal.json)
 retains the failure, source inventory and frozen tool/build identities.
 
@@ -170,21 +172,37 @@ meets L1, L2 and L3 at excellent. All 318 symbols and 54 call pairs agree;
 all 45 in-repository import and file pairs agree. Primary parser rejections,
 Fathom ERROR-or-MISSING files and faulting files are each 0/86. Median of
 three throughput runs is 2.29 MB/CPU-s (2.24, 2.29, 2.35); maximum per-file
-extraction is 1 ms. All preregistered gates pass. The native inventory retains
-40 unresolved dependencies; these do not erase the 45 resolved in-repository
-pairs or imply resolution of unavailable targets. No source, tool, adapter,
-filter, load path or rule was tuned after first read. Bourbon is now spent.
+extraction is 1 ms. All preregistered gates pass for their declared scope,
+but the native resolver added zero pairs: all 45 graded pairs were inherited
+from successful primary compiles. The 40 unresolved dependencies are in-repo
+targets resolved by the subject runner's `-I .` and fixture-directory load
+paths, which the preregistration excluded. They are 39 fixture setup imports
+and one setup-to-library import. With those paths the native resolver finds
+85/85 in-repo imports; the existing Fathom reading resolves only 45/85, at
+most .53 under that broader truth. This is an inference from the runner and
+resolver measurements, pending a separately labelled post-hoc grade. No
+source, tool, adapter, filter, load path or rule was tuned after first read.
+Bourbon is now spent and does not validate a native-only gain.
 The [public counts/hash receipt](data/2026-10-26-core-t1-scss-bourbon-native.json)
 records freeze and source identities, before/after inventories, tool pins,
 phase loads, gate results and the reading digest without source file lists.
 
 The frozen 0.5.1 candidate is now the [canonical SCSS reading](../bench/readings/lang/scss.json),
-byte-identical to the separate candidate above. Its pooled counts and numeric
+with added disclosure notes; its pooled counts and numeric
 metrics equal the former canonical reading, and it remains L1-L3 excellent at
 2.31 MB/CPU-s median with zero faults. Bootstrap's three and Primer's five
 primary parser rejections, the one retained Bootstrap primary attestation, and
-one plus sixteen native unresolved URLs remain disclosed. Foundation and
+one plus sixteen native unresolved URLs remain disclosed. Native-only gains
+are Bootstrap 0, Primer 0 and Bourbon 0; Foundation's 25 are post hoc only.
+The canonical 0.5.1 adoption rests on its identical-count comparison, while
+fresh validation of a native-only contribution remains open. A new holdout
+must be preregistered with its subject runner's load paths and attest more
+than zero pairs that the primary compiles do not. The composite can also
+refuse a whole subject when a primary-rejected file declares a dependency,
+as Spectre demonstrated. Foundation and
 Spectre are historical spent attempts; the preceding statements that Bourbon
 was unread and fresh validation was pending describe the state before this
-independent read. Controller verification of the adopted reading and plan
+independent read. The receipts retain the frozen first-read SHA-256 values and
+add separate annotated-reading digests for these disclosure-only note changes.
+Controller verification of the adopted reading and plan
 remains pending; the SCSS follow-up box stays open.
