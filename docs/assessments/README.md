@@ -62,6 +62,7 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-17 | [intent-practice](2026-10-17-intent-practice.md) | Keep the practice (cheap, read): delivery was the weak link, so v0.15.0 retires `INTENT.md` and generates edit-time intent from the router; seven alternatives rejected for now with wins-if lines; K1 to K6 are due 2026-11-17 and unread | ADR-074, IV-1 to IV-10, F86, F9, O1134 to O1137 |
 | 2026-10-25 | [matlab-free-oracle-ceiling](2026-10-25-matlab-free-oracle-ceiling.md) | Reviewed free tools do not yet supply independent call and resolution truth across the unchanged MATLAB corpus | LB-Q-matlab-rest |
 | 2026-10-25 | [wgsl-native-l3-ceiling](2026-10-25-wgsl-native-l3-ceiling.md) | Standard WGSL has no native import denominator; existing WESL and naga_oil resolvers need separately ruled queue populations | LB-Q-wgsl-rest |
+| 2026-10-25 | [refused-swift](2026-10-25-refused-swift.md) | Measured: the 36/642 ERROR-node count reproduces the original reading; the current ERROR-or-MISSING gate is 123/642, so the refusal holds | LB-Q-swift-rest reconciliation and P-R1 retry route under ADR-048 |
 
 ## Companion pages
 
