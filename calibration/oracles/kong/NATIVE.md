@@ -22,7 +22,7 @@ Independent source positions remain C.
 | Total | 39 | 37 | 4 | 33 |
 
 The 352 other written host fields are literals without a named upstream.
-The critic's 31 plugin-route figure counts sites; two repeated sites collapse
+The earlier 31-site plugin-route figure counts sites; two repeated sites collapse
 under the existing `(path, from, to)` semantic-pair key. Receipt field-family
 counts preserve both units. No service-host binding is exercised by the corpus.
 

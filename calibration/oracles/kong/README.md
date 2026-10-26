@@ -9,7 +9,9 @@ compared. This grants no L2 tier-A recall or full-population L1 grade. The
 excluded 35 resolved sites comprise 31 `plugin.route`, one `plugin.service`
 and three `route.service` sites; deduplication yields 29, one and three pairs.
 There is no host-to-upstream pair in the native population. Independent ranges
-stay C; throughput remains unmeasured. Historical 568 files / 821 definitions /
+stay C; canonical range authority still needs audit: its tier-A L1 reading
+uses yaml.v3 source positions that decK does not report. This concern remains
+open, and no canonical regrade is performed here. Throughput remains unmeasured. Historical 568 files / 821 definitions /
 10 pairs count nested scratch-root aliases: the distinct owned counts are
 231 files / 365 definitions / four pairs. Ratios and canonical grades are
 unchanged. O347 parent binding, O348 filename coverage and the Supabase DB-less

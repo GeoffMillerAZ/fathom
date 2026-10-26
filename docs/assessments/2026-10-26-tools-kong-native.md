@@ -18,7 +18,7 @@ L3 grades remain unchanged; no product dispatch or shared selector is changed.
 | service.host to upstream | 0 | 0 | 0 | 0 |
 | Total | 39 | 37 | 4 | 33 |
 
-The critic's 31 excluded plugin-route count is a site count: two repeated sites
+The earlier 31-site excluded plugin-route count is a site count: two repeated sites
 collapse to 29 semantic pairs under the unchanged `(path, from, to)` contract.
 Thus the excluded 35 sites are 31 plugin-route, one plugin-service and three
 route-service; the excluded 33 pairs are 29, one and three. The receipt reports
