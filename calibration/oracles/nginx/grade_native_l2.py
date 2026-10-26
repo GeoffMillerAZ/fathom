@@ -35,6 +35,20 @@ def tracked_receipt(subject, subpath, receipt):
     return summary
 
 
+def scope_summary(result, receipts):
+    raw_refs = sum(receipt['references'] for receipt in receipts)
+    scored_refs = result['counts'].get('ref_truth', 0)
+    if raw_refs != scored_refs:
+        raise ValueError('native references were excluded by harness gates; no full-population upgrade')
+    return dict(native_inputs=sum(receipt['configs'] for receipt in receipts),
+                harness_files=sum(subject['files'] for subject in result['subjects']),
+                raw_definition_entries=sum(receipt['definitions'] for receipt in receipts),
+                scored_definitions=result['counts']['oracle_defs'],
+                native_references_all_inputs=raw_refs, scored_reference_truth=scored_refs,
+                harness_exclusion_notes=[note for note in result.get('notes', [])
+                                         if 'skipped by ingest' in note or 'tool-oracle entries on files' in note])
+
+
 def original_scope(prior, name):
     prefix = name + ': restricted to '
     notes = [note for note in prior['notes'] if note.startswith(prefix)]
@@ -134,4 +148,6 @@ if __name__ == '__main__':
                    per_subject=[{key: s[key] for key in ('name', 'sha', 'files', 'bytes', 'counts', 'families')}
                                 for s in result['subjects']],
                    before_L2=prior['grade']['L2'], after_L2=result['grade']['L2'])
+    if args.native_population:
+        summary['scope_reconciliation'] = scope_summary(result, receipts)
     (args.out / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')

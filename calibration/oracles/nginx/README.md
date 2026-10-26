@@ -1,151 +1,92 @@
-# nginx oracle (LB-Q-nginx)
+# nginx native upstream population oracle
 
-Bench-only; never a product dependency. Writes `indexbench lang-oracle`'s tool-oracle JSON for the
-nginx native dialect, and the route targets in a file of their own.
+Bench-only; no product dependency, server, backend request or Docker.
+The completed r3 diagnostic measures L2 excellent: 1/1 references at A.
+Definitions remain C (71/71 scored); L1 good. The canonical L3 reading is
+unchanged and awaits the controller's D19 gate.
 
-| Part | Tier | Tool |
+| Field | Authority | Source |
 |---|---|---|
-| definitions, references, cross_references (includes) | B (C without `-nginx`) | nginxinc crossplane 0.5.8 (Apache-2.0), NGINX Inc's parser tool, cross-checked against nginx itself (below) |
-| scope and cross-check | A (nginx's verdict on a file) | `nginx -T` (nginx 1.31.6, `brew install nginx`) on a scratch copy of each file's prefix directory: a file is in scope only where nginx loads it |
-| route targets: the compose side | A (C for a version-1 file) | `docker compose config --format json --no-consistency` (Docker Compose 5.1.4) on every compose file of the nearest project directory; PyYAML 6.0.3 for a version-1 file Compose 5 refuses |
+| Same-file literal upstream bindings | A | nginx 1.31.6 native HTTP/stream registration object identities, full-input parsing and target-only negative controls |
+| Definition names/positions and enclosing owner labels | C | independent crossplane 0.5.8 walk; no native position claim |
+| Configuration acceptance | A | native `nginx -T` on an isolated profile |
+| Cross-file/include/route grading | unchanged | legacy canonical reading; not regraded by this experiment |
 
-## Why crossplane is tier B, not C (LB-F170)
+The observer wraps `ngx_http_upstream_add` and `ngx_stream_upstream_add`
+without changing their original bodies or return values. It captures every
+registration during successful configuration testing, including unused and
+forward declarations. Native returned-object identity selects bindings before
+comparison with scanner references. The walk labels lexical owners only;
+native-only pairs are retained. Unknown events or ambiguous ownership refuse
+the whole profile. This enumerates literal configuration bindings, not visited
+request traces. Each local pair must survive the original profile and fail a
+target-only declaration rename at the original source location. Native
+zero-default-port passes report `no port in upstream`; ordinary HTTP passes
+report `host not found in upstream`. Both must name the original target.
 
-The relabel from C to B, with its reason. On the ladder in calibration/oracles/envoy/README.md (the format's
-reference parser is A, a widely used third-party parser tool is B, an independent library written against the
-format is C), crossplane is NGINX Inc's own parser tool for the format and emits nginx's directive tree with its
-lines. Design §1.5 D2 also places an independent parser's syntax dump at B (php-parser, luaparse), where §1.3's
-table lists "an independent parser library" under C: this oracle is the tool and the dump, so D2's B is the
-definition it meets. It is not A because crossplane reads text; nginx's configuration loader is the reference.
-The relabel is earned by a cross-check against nginx itself, not claimed: `nginx -T` on a scratch copy of each
-prefix must load each file in scope, and crossplane must parse the same directives from nginx's own dump of the
-file; a file nginx does not load, or whose dump parses differently, is excluded and counted (stderr and
-`-summary-out`). Tier B proves L1 excellent (sym_precision >= .98) and L2 and L3 good (`langbench.tierCeiling`).
+## Population and exclusions
 
-Measured 2026-10-02 (nginx 1.31.6, crossplane 0.5.8): nginx loaded 47 of the 86 files crossplane parses in the
-four subjects (h5bp/server-configs-nginx 33 of 38, nginx/nginx conf 2 of 2, docker/awesome-compose 1 of 8,
-nginxinc/NGINX-Demos 11 of 38); the rest name a compose service nginx cannot resolve here, a certificate, a module
-or an NGINX Plus directive the repository or this build lacks, and are counted out. No dump disagreed with its
-file. L1 reads sym_precision 1 and sym_recall 1 (71 definitions) at tier B: excellent.
+All 47 historically disclosed native inputs load. The unchanged ingest gates
+score 35 files: 12 inputs and their 12 raw definition entries are refused as
+ambiguous content. These are existing exclusions, not a new scope reduction.
+Native enumeration covers them too; none contains a local upstream reference.
+The raw independent definition output has 83 entries; 71 are scored. The
+original 71-definition gate remains unchanged. Full inventories stay scratch.
 
-The route pairs (a `proxy_pass` host joined to a compose service) are not scored: the reading is taken with
-`lang-oracle`, never `lang-routes`, because the pairs stay tier C (crossplane's text joined to Compose) and would
-hold the xref family below B; the include edges are the reading's only xref truth (13 pairs).
-Stretch toward A, not built (LB-Q-nginx-rest): an include edge attested by ablation (remove the `include`, `nginx -T`
-drops exactly the files the oracle says it loads) and a proxy_pass-to-upstream reference attested by removing the
-upstream block (`nginx -t` then reports `host not found in upstream "<name>" in <file>:<line>`).
+| Cohort | Native inputs | Scored files | Scored definitions found/truth | Native/scored local references |
+|---|---:|---:|---:|---:|
+| awesome-compose |1|1|4/4|0/0, no reference evidence|
+| nginx |2|2|5/5|0/0, no reference evidence|
+| nginx-demos |11|11|30/30|1/1 A|
+| server-configs-nginx |33|21|32/32|0/0, no reference evidence|
 
-## Install (scratch, on the external volume)
+The diagnostic keeps the union of conflicting historical scope disclosures;
+selecting the narrower one previously hit 61 definitions and failed the gate.
+`native-population-r1.json` records all per-subject counts and exact normative
+tracked-set before/after hashes. They agree, with zero generated/untracked
+inputs, symlinks or gitlinks. The tracked approximation includes other formats
+and files outside the historical native scope; it is not a measured-file list.
+Three warm timings are 9.58, 9.64, 9.86 MB/CPU-s (median 9.64), zero faults.
+One genuine binding and about 34 KB support no broad operational coverage claim.
 
-```sh
-python3 -m venv <scratch>/venv && <scratch>/venv/bin/pip install -r calibration/oracles/nginx/requirements.txt
-# nginx 1.31.6 (the cross-check that earns tier B): brew install nginx (nginx 1.31.6)
-```
+## Reproduce
 
-## Run
-
-```sh
-<scratch>/venv/bin/python calibration/oracles/nginx/nginx_oracle.py -subject <checkout> \
-    -out workspace/tmp/oracle/nginx-<subject>.json -routes-out workspace/tmp/oracle/nginx-<subject>-routes.json \
-    -nginx /opt/homebrew/bin/nginx -scratch <scratch dir> -files-out workspace/tmp/oracle/nginx-<subject>-files.txt \
-    [-summary-out <file>]
-go run ./cmd/indexbench lang-oracle -dialect nginx -subject <checkout> \
-    -tool-oracle workspace/tmp/oracle/nginx-<subject>.json -only "$(paste -sd, <files.txt>)" -out docs/bench/readings/lang/nginx.json
-```
-
-`-routes-out` holds `route_references` (`path`, `from`, `to_path`, `to`, `raw`) and
-`route_unresolved` (`path`, `from`, `raw`, `reason`: variable, unix-socket, ip-literal, ambiguous,
-external, undeclared). lang-oracle's tool-oracle decoder refuses unknown fields, so these are not in
-the main file; LB-F98's route measurement reads them.
-
-## What the truth is
-
-The module docstring (`nginx_oracle.py`) states each rule: the naming contract is the dialect's
-(`internal/extractor/dialects/nginx/PROVENANCE.md`); includes resolve against the nearest nginx.conf
-at or above the including file (nginx's configuration prefix), `/etc/nginx/` mapped onto it, globs
-expanded as glob(3) does. `nginx -T` cannot load a configuration that names a host this machine
-cannot resolve (a compose service: "host not found in upstream") or a dynamic module or a variable
-only an image defines; the summary names each failure. On the measured subjects it passed on
-h5bp/server-configs-nginx (8 of 8 files agree with the oracle's include closure), nginx/nginx's conf/
-(2 of 2) and awesome-compose's react-nginx; it failed on the compose samples (host not found) as
-expected.
-
-## Index row (calibration/oracles/README.md)
-
-| `nginx` | B (definitions, references, cross_references; C without `-nginx`); A (nginx's verdict on a file, the compose side of routes) | crossplane 0.5.8 `parse(single=True)` per file; `nginx -T` 1.31.6 on a scratch copy of each prefix; `docker compose config` 5.1.4 | definitions (a `package` per file, a `service` per server and upstream, a `route` per location, a `target` per upstream server), `references` (a pass to an upstream of the file), `cross_references` (an include, prefix-relative, file granularity); `-routes-out`: route_references/route_unresolved | `<venv>/bin/python calibration/oracles/nginx/nginx_oracle.py -subject <checkout> -out <json> -routes-out <json> [-nginx <bin> -scratch <dir>]` |
-
-## The route rule and what a route pair is scored at (wave ox, LB-F168 and LB-F169)
-
-`-routes-out` pairs a route's target host with the service that declares it, under one rule: a compose project
-is a directory, so a route joins the declarations of its nearest project that declares the host (the route
-file's own directory, then each ancestor), one pair for every compose file of that directory that declares the
-service (an override file is the same service: compose merges them). Compose files are read by `docker compose config --format json --no-consistency` (Docker Compose 5.1.4: the flag lets an override file's partial service through), tier A; a version-1 file Compose refuses is read with PyYAML, tier C. A name no ancestor declares is `undeclared` (`external` when dotted), several services behind one name `ambiguous`.
-
-Where fathom's resolver and this rule disagree the oracle is the truth and the disagreement is a resolver
-finding (`.fathom/observations/O435.md`): the resolver falls back from the route's directory to every
-declaration in the repository, so a service named in one sandbox's route joins the same-named service of every
-other sandbox.
-
-A subject set under 10 route pairs is too few to read the L3 level honestly (one miss moves xref_precision by
-10 points or more): where the corpus joined fewer, public subjects were added, licence recorded in
-calibration/corpus.d, and that is the threshold used.
-
-The route file is written but, as above, not scored.
-
-
-## L2 native ablation prototype, 2026-10-26
-
-The target-only ablation confirms one selected local upstream binding with
-native nginx 1.31.6. It does not establish recall: the pair population was
-chosen by the independent crossplane walk. P-T1 therefore keeps its emitted
-reference family C. There is no accepted L2 upgrade or native-completeness
-claim. Protocol r2 supersedes the r1 authority premise; a native parser or
-registry population instrument remains open work.
-
-The historical canonical reading has two conflicting scope disclosures for
-one subject. Both were added in 87ed927e1; selecting the last narrower one
-replayed 61 instead of the original 71 definitions, and the strict count gate
-correctly refused publication. The diagnostic now retains the union of all
-historical disclosures, with the same 71-definition/one-reference gate. It
-never hand-edits the canonical L3 reading. Full scope inventories remain in
-scratch, not in new committed assessment data. No Docker, server or backend
-request is part of these L1/L2 probes.
-
-The private build and replay drivers refuse new subject fetches and source
-builds below 20 GiB free on the home filesystem. Check `df -h ~` before
-starting either driver. This guard does not authorize a build while the
-controller's load or serial-measurement limits are unmet. Completed measured
-subjects, source trees and downloaded tools are removed under disk pressure;
-the committed aggregate receipts preserve the diagnostic, not a runnable cache.
-
-## Native population experiment
-
-Protocol r3 observes all native HTTP/stream upstream registration calls, including
-unused and forward declarations, before looking at the independent scanner's
-reference set. Returned native object identities determine bindings; the source
-walk labels enclosing owners only. Unknown events or ambiguous locations refuse
-the profile. The full original 47-input scope remains fixed. Each local pair
-must pass target-only declaration ablation. Native stream/zero-default-port
-passes report `no port in upstream` after that mutation; ordinary HTTP passes
-report `host not found in upstream`. Both must name the original target and
-queried source line, and the unchanged native profile must first load.
-
-`native-observer-build-r1.json` records the source archives, original/observed
-native source hashes, observer shim and binary SHA-256. All 41 authored tests
-passed with native tests enabled; there were no skips. These include HTTP and
-stream, forward references, unused declarations, scanner omission, identity
-refusal and scratch cleanup on unknown output. Canonical corpus replay remains
-required before an A reading is accepted.
-
-With the private built observer exposed at `workspace/oracle/nginx-observer`,
-and the documented Python requirements installed:
+Set private TMPDIR/GOTMPDIR/GOCACHE/GOMODCACHE, keep GOWORK=off, check
+`df -h ~` and `uptime`, require 20 GiB free and load<=6, and use one serial
+nice -n 10 run. Install requirements only in a private venv. The committed build
+driver pins nginx 1.31.6, OpenSSL3.6.2 and PCRE2-10.47 archives/checksums.
 
 ```sh
-NGINX_OBSERVER=$PWD/workspace/oracle/nginx-observer NGINX_NATIVE=$PWD/workspace/oracle/nginx-observer NGINX_BIN=$PWD/workspace/oracle/nginx-observer python3 -B -m unittest discover -s calibration/oracles/nginx
+python3 -m venv workspace/oracle/nginx-venv
+workspace/oracle/nginx-venv/bin/pip install --only-binary=:all: -r calibration/oracles/nginx/requirements.txt
+nice -n 10 python3 -B calibration/oracles/nginx/build_native.py -cache workspace/oracle/nginx-build -observe-upstreams
+install -m700 workspace/oracle/nginx-build/nginx-1.31.6/objs/nginx workspace/oracle/nginx-observer
+bash scripts/fathom-go.sh build -o workspace/tmp/indexbench ./cmd/indexbench
+workspace/oracle/nginx-venv/bin/python -B calibration/oracles/nginx/grade_native_l2.py -native-population -indexbench workspace/tmp/indexbench -python workspace/oracle/nginx-venv/bin/python -nginx workspace/oracle/nginx-observer -build-receipt workspace/oracle/nginx-build/build-receipt.json -subjects workspace/calibration/nginx-native -out workspace/tmp/nginx-population
+workspace/oracle/nginx-venv/bin/python -B calibration/oracles/nginx/probe_controls.py -nginx workspace/oracle/nginx-observer -build-receipt workspace/oracle/nginx-build/build-receipt.json -out workspace/artifacts/lang-nginx/native-controls
 ```
 
-The measurement driver `grade_native_l2.py -native-population` invokes native
-controls on its exact checksum-verified binary before producing A reference
-output. It freezes inputs with the exact normative tracked-set recipe, refuses
-changed/generated inputs and retains native-only pairs. Definitions remain C.
-L3 is not measured or changed by this experiment.
+Keep the receipt, then remove source builds/archives after packaging and delete
+subjects once measured. This lane already pruned both. A rebuilt binary gets
+its own measured checksum; `native-observer-build-r1.json` records this run's
+source, shim and binary identities. No system installation or daemon is used.
+
+## Control evidence and remaining work
+
+All 42 authored tests passed with native tests enabled, zero skips. HTTP and
+stream, unused/forward declarations, scanner omission, exact identity and
+scratch cleanup are covered. `probe_controls.py` runs the actual fathom
+extractor under `-race`; deleting all 5 emitted nodes leaves raw native truth
+unchanged, while changing the input binding changes truth. Filtering native
+pairs through scanner refs makes the focused omission test FAIL; restored
+code passes. `native-controls-r1.json` records hashes and the FAIL line.
+
+Caps: `test_population.py` refuses the whole profile at 10,001 events against
+10,000 and 8,388,609 stderr bytes against 8,388,608. The native CLI always runs
+fresh authored controls on its exact checksum-verified binary before A output.
+
+Source positions are still an open native-parser instrument, not an
+availability ceiling. Remaining X-R4 candidates for a future L1 ceiling need
+complete versioned search receipts. The native L2 availability trigger has
+fired; L3/include work remains held until D19. No product, epoch, generated
+tracker or checkbox change is part of this diagnostic.
