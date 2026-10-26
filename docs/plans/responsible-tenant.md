@@ -271,6 +271,33 @@ shed minutes entered at combined ≥ allowance: the trigger is not the lever, fa
 The swap-volume floor is unchanged this wave (it refuses at normal pressure too); a second RT-M1 FAIL on the floor
 is the trigger to make it refuse only at pressure `warn` or above, its minutes still counted on the host-starved bar.
 
+## H. The resident graph across a watermark move (2026-10-26, #71)
+
+Design §18 (2026-10-26), from O1504: RT-M14's K2 fired on its watermark branch, with 170 of 254 graphstore evictions
+in 40.3 h being watermark evictions. Reading: `docs/bench/readings/tenancy/graph-patch-2026-10-26.md`, which covers
+this repository at 24 consecutive commits of `main`. On that reading the constructor-scoped scan is 96–97% of
+every cold `Build` (17.1–25.3 s, against 0.56–0.93 s with an index). An exact scoped patch is identical to a rebuild
+on 24 of 24 commits but costs 0.82–1.53 s, and SU-4's `ReplacePackage` differs from a rebuild on 13 of 24. So the
+wave indexes the build, re-warms on a watermark move what the move evicted, and makes the one-file patch exact. The
+row-level patch waits on RT-M15. None of these rows changes the ladder, a mark, a host trigger or the cache budget,
+so their deploy does not restart RT-M1's window.
+
+- [ ] `callgraph.Build` resolves a constructor-scoped call (`<import-path>#.Method`) through a directory → `.Method` → keys index built once per build and not kept on the graph, never a scan of every node: the same rule (one match an edge, none or several nothing), the old scan kept as the test's oracle over seeded generated node sets (colliding directories, nested import paths, same-named methods) and fauxtown; a cold syntax build of this repository reads ≤ 1/10 of the scan's on the same snapshot (§18.4.1, reading 0.56–0.93 s vs 17.1–25.3 s) {id: RT-195, symbol: buildCtorScopeIndex, package: internal/analysis/callgraph, reachable_from: TestCtorScopeIndexMatchesScan}
+- [ ] The refresh job re-warms what its eviction removed: it records the service's resident snapshot, typed edges, graph kinds and product-reach kinds before the ingest, and after a successful ingest and the eviction, at level normal only, loads exactly those at the new scope on the worker with no deadline (ordinary single-flighted Gets, so readers join them); nothing a reader never built is loaded, a failed ingest, shed or refuse re-warms nothing, and fathom_cache_events_total gains rewarmed, rewarm_skipped{reason} and rewarm_failed; the test ingests a fixture, reads the graphs, applies a change that adds a same-named function in another package and deletes a file, runs the job, and asserts each entry is resident at the new scope without a reader building it and equals a cold build there (§18.4.2, §18.6) {id: RT-196, symbol: rewarmEvicted, package: internal/mcp, reachable_from: TestRefreshRewarmsEvictedEntriesAtNewWatermark, needs: RT-195}
+- [ ] A one-file refresh's patch equals a rebuild: `memo.PatchPackage` patches the snapshot in the store's node order and rebuilds the syntax and both graphs from it (or applies §18.3's scoped patch if the rebuild measurably lengthens `/refresh-file`), and `Graph.ReplacePackage` goes; the test refreshes a file that hits each of the reading's three defects (a duplicate-key `init`, two `package main` directories, a same-key build-tagged pair) and asserts the patched snapshot equals a fresh `ListAllSymbols` and every graph equals a cold build over it (§18.4.3; the reading: `ReplacePackage` differed on 13 of 24 commits and took up to 54 s) {id: RT-197, symbol: PatchPackage, package: internal/memo, reachable_from: TestPatchPackageGraphsEqualColdBuild, needs: RT-195}
+- [ ] The row-level patch, built only if RT-M15 reads under 50% answered with the declined hook calls inside re-warm windows (K8): `(*Graph).PatchFiles` re-resolves only the callers a change can reach (callers in changed files, and callers whose call strings read a touched key, a changed index entry or a touched `.Method` suffix) with incrementally kept indexes and a call-string → callers index counted in EstimatedBytes; a seeded property test draws node sets and file-level edit sequences (add, delete, rename, change calls, a same-named symbol elsewhere) and asserts PatchFiles equals Build after every edit; I21 is amended in the same commit; kept only if its median on the reading's 24-commit series is under the indexed rebuild's (K9), otherwise refused with that reading (§18.4.4) {id: RT-198, symbol: PatchFiles, package: internal/analysis/callgraph, reachable_from: TestPatchFilesEqualsBuildProperty, needs: RT-M15}
+- [ ] ADR-041 decision 3's "the call-graph cache invalidated per package instead of per watermark" is amended to what is built: a watermark move evicts and the refresh job re-warms the evicted entries at the new watermark, and the one-file refresh's patch must equal a cold build (§18.1) {id: RT-199, oracle: lexical, path: ADR.md, pattern: "re-warms the evicted entries at the new watermark", needs: "RT-196,RT-197"}
+
+Kill criteria, pre-registered with the rows (§18.8):
+- **(K6)** RT-195's indexed build differs from the scan on any generated or fauxtown input. The index is wrong: fix the
+  index, never the oracle.
+- **(K7)** During RT-M15, a shed entry starts within 10 s after a re-warm started. The re-warm then runs only below
+  0.6 × the shed mark. A second such entry reverts RT-196 to evict-only, keeping its counters.
+- **(K8)** RT-M15 reads under 50% answered. If the declined calls fall in re-warm windows, build RT-198. If they fall
+  outside them, read `evictions{reason}` as K2 does: the re-warm is not the lever.
+- **(K9)** RT-198 costs more than the indexed rebuild at the median of the 24-commit series. Refuse it, and record
+  the reading.
+
 ## Measurements (op)
 
 Pre-registered in vision 36 §6. Each closes with its committed reading as the contract.
@@ -291,6 +318,7 @@ Every harness run is gated on the operator's go-ahead and runs on a quiet machin
 - [ ] (op) RT-M12: seven days, disk bytes written by the managed daemon ≤ 2 GiB/day outside explicit ingest {id: RT-M12, needs: RT-162}
 - [ ] (op) RT-M13: seven days, time in shed or above ≤ 2% with no host-trigger rung entry while pressure is normal; otherwise retune the host triggers {id: RT-M13, needs: RT-154}
 - [ ] (op) RT-M14: after RT-188, RT-190, RT-191 and RT-192 deploy, the EW-76 re-reading with hook-path-harness.py on the managed daemon puts blast_radius, verify_plan and obligations abandonment each < 5%, graphstore abandoned does not rise during the run, and ≥ 50% of hook graph calls return an answer (neither declined nor building), all shares disclosed; over the same seven complete UTC days the operator call log shows agent-origin graph-backed calls on the largest service at p50 ≤ 1 s {id: RT-M14, needs: "RT-188,RT-190,RT-191,RT-192"}
+- [ ] (op) RT-M15: after RT-195 and RT-196 deploy, RT-M14's harness (`hook-path-harness.py` on the managed daemon) runs again during commit traffic on the measured service, with at least ten watermark moves of it in the run. It reads ≥ 50% of hook graph calls answered (neither declined nor building), and graphstore watermark evictions left without a re-warm (evictions{watermark} − rewarmed) at ≤ 10% of the graphstore evictions in the run and over the seven complete UTC days after the deploy on `/metrics`; O1504 read 67% watermark evictions over 40.3 h with no re-warm. The shares, the moves and the declined calls inside re-warm windows are disclosed, and no shed entry starts within 10 s after a re-warm starts (K7) {id: RT-M15, needs: "RT-195,RT-196"}
 
 RT-M1 read FAIL on 2026-10-19 (`docs/bench/readings/tenancy/rt-m1-2026-10-19.md`): the availability bar, 216
 host-starved refuse minutes on 2026-10-13 (136 on 10-14, 547 on 10-15), every window entered on the swap-volume floor
