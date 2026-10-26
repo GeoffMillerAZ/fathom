@@ -49,7 +49,7 @@ not from `fathom verify`. Work order NP-W2 re-derives them with `fathom plans st
 
 | Id | Work | Why first | Exit test |
 |---|---|---|---|
-| NP-P0 | Land the built work: the open drafts #72 to #84, GDEV-01 to GDEV-08 with O1014 and O1446, and a triage of the 27-patch game-development contribution series (24 of its 27 subjects are absent from main) | Deadline abandons inflate tokens and failed cells, so every measurement before this fix would measure the bug | Rows proven by `fathom verify`; issue #9 closed; each series patch landed, superseded or refused with a reason |
+| NP-P0 | Land the built work: the open drafts #72 to #84, GDEV-01 to GDEV-08 with O1014 and O1446, and the slices left from the game-development contribution series (of its 31 inputs, 20 are already on main in another form, 8 are adapted in slices, 1 lands unchanged and 2 are refused: `docs/assessments/2026-10-26-gdev-series-triage.md`) | Deadline abandons inflate tokens and failed cells, so every measurement before this fix would measure the bug | Rows proven by `fathom verify`; issue #9 closed; each series patch landed, superseded or refused with a reason |
 | NP-P1 | Bench honesty in code (section 3) | Without it every number is prose | BX-M0 and BX-M1 exits met |
 | NP-P2 | The flywheel A/B, OP-1 (G2), run as registered or under a dated amendment made before session 1 | The only experiment measured in real working sessions | At least 20 admissible units per arm, then keep or retract |
 | NP-P3 | Responsible tenant: the RT-M1 ruling, the floor-change row, and the O1014 wave | Every table, cache and daemon-backed seam waits on it | RT-M1 PASS, or the ruled bar |
@@ -197,7 +197,7 @@ the language share grows.
 |---|---|---|---|---|---|
 | NP-W1 | Land wave D (#78, #79, #80, #82), the other controller's batch (#72, bench round two, plan flips), then v0.23.0 | local integrator | Linux CI green on the tag | none | $0 |
 | NP-W2 | Records refresh: remove G7, close G9 met-with-FAIL, fix the spend text and boundaries line, hold the overdue reviews, re-derive counts with `--store` | local | `intent-doctor` clean, and one review entry per goal | NP-Q6 | $0 |
-| NP-W3 | GDEV-01 to GDEV-08 with O1014 and O1446; triage of the 27-patch series | helper and local, ENGINE serialized | Rows proven; #9 closed | NP-W1 | $0 |
+| NP-W3 | GDEV-01 to GDEV-08 with O1014 and O1446; the series' adapt slices | the other controller, ENGINE serialized | Rows proven; #9 closed | NP-W1 | $0 |
 | NP-W4 | NP-B9 ledger key and NP-B10 drift test | helper | Uniqueness and drift tests green | none | $0 |
 | NP-W5 | NP-B1 and NP-B5 | helper, Opus critic | Refusal fixtures pass | none | $0 |
 | NP-W6 | NP-B6 | helper | Over-cap and interleave fixtures pass | none | $0 |
