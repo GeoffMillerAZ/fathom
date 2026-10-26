@@ -1,0 +1,2 @@
+FROM proxysql/packaging@sha256:c6bf0802f14349c00f3f935c237591f897d1a3c12ce3943cf8d7a6a2fc3067c5
+RUN nice -n 10 sh -c 'apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3 libprotobuf-dev'

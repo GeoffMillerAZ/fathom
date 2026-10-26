@@ -2,6 +2,7 @@
 # Run only inside a disposable Ubuntu 24.04 container; /probe is lane scratch.
 # The subject and this repository are mounted read-only at /repo.
 set -eu
+[ -f /.dockerenv ] || { echo "disposable Docker container required" >&2; exit 2; }
 case "${1:-}" in
 install)
   apt-get update
@@ -28,5 +29,15 @@ PYVERIFY
     -subject /repo/workspace/calibration/proxysql/proxysql \
     -proxysql "$binary" -work "/probe/work-$label" -out "/probe/$label-oracle.json"
   ;;
-*) echo 'usage: linux_probe.sh install | measure LABEL PACKAGE' >&2; exit 2 ;;
+source-measure)
+  label=source-4.0.9-debug
+  mkdir -p /usr/lib/proxysql "/probe/work-$label"
+  ln -s /probe/source40/plugins/genai/ProxySQL_GenAI_Plugin.so /usr/lib/proxysql/ProxySQL_GenAI_Plugin.so
+  ln -s /probe/source40/plugins/mysqlx/ProxySQL_MySQLX_Plugin.so /usr/lib/proxysql/ProxySQL_MySQLX_Plugin.so
+  /probe/source40/src/proxysql --version
+  python3 /repo/calibration/oracles/proxysql/proxysql_oracle.py \
+    -subject /repo/workspace/calibration/proxysql/proxysql \
+    -proxysql /probe/source40/src/proxysql -work "/probe/work-$label" -out "/probe/$label-oracle.json"
+  ;;
+*) echo 'usage: linux_probe.sh install | measure LABEL PACKAGE | source-measure' >&2; exit 2 ;;
 esac
