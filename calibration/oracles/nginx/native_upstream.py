@@ -122,7 +122,7 @@ if __name__ == '__main__':
     definitions, references, audit = measure(subject, files, native, args.work)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     for suffix, tier, defs, refs in [('defs', 'C', definitions, []), ('refs', 'A', [], references)]:
-        output = {'tool': 'nginx native target-only upstream ablation' if refs else 'independent crossplane definition placement',
+        output = {'tool': 'nginx native target-only upstream ablation' if suffix == 'refs' else 'independent crossplane definition placement',
                   'version': receipt['version'], 'tier': tier, 'definitions': defs, 'references': refs}
         args.out.with_name(args.out.stem + '-' + suffix + '.json').write_text(json.dumps(output, indent=2) + '\n')
     # Raw responses stay private; the committed summary is counts and hashes.
