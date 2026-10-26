@@ -188,7 +188,7 @@
   },
   {
     "id": "python",
-    "name": "Python (.py .pyi)",
+    "name": "Python (.py)",
     "kind": "language",
     "tier": "T1",
     "target_level": "L4",
@@ -223,7 +223,8 @@
     "engine": "tags",
     "plan_row": "LB-Q-python",
     "worker_model": "sonnet",
-    "notes": "upgrade: decorators keep def line within tolerance; properties, class attributes, type aliases"
+    "notes": "upgrade: decorators keep def line within tolerance; properties, class attributes, type aliases",
+    "retargeted": "2026-10-26 (gap sweep GAP1, board truthfulness): name lists only what the connector dispatches today; .pyi is not dispatched (connector.go classifies .py only) and is not disclosed; stub dispatch is plan row GAP1-3"
   },
   {
     "id": "html",
@@ -489,7 +490,7 @@
   },
   {
     "id": "python-packaging",
-    "name": "Python packaging (pyproject.toml, requirements*.txt, setup.cfg)",
+    "name": "Python packaging (pyproject.toml)",
     "kind": "tooling",
     "tier": "T2",
     "target_level": "L2",
@@ -514,7 +515,8 @@
     "engine": "doc",
     "plan_row": "LB-Q-python-packaging",
     "worker_model": "sonnet",
-    "notes": "new; project, entry points/scripts (cli: inventory keys), dependency groups, tool.* sections as keys"
+    "notes": "new; project, entry points/scripts (cli: inventory keys), dependency groups, tool.* sections as keys",
+    "retargeted": "2026-10-26 (gap sweep GAP1, board truthfulness): name lists only what the connector dispatches today; requirements*.txt and setup.cfg are not classified (the doc engine decodes only YAML, JSON, TOML and XML); they are queue entry python-manifests, plan row GAP1-27"
   },
   {
     "id": "csharp",
@@ -1063,7 +1065,7 @@
   },
   {
     "id": "ruby",
-    "name": "Ruby (.rb, Rakefile, Gemfile by basename)",
+    "name": "Ruby (.rb .rake .ru, Rakefile by basename)",
     "kind": "language",
     "tier": "T1",
     "target_level": "L3",
@@ -1098,7 +1100,8 @@
     "engine": "tags",
     "plan_row": "LB-Q-ruby",
     "worker_model": "sonnet",
-    "notes": "upgrade; L4 only on a Sorbet-typed subject — out of target, disclosed"
+    "notes": "upgrade; L4 only on a Sorbet-typed subject — out of target, disclosed",
+    "retargeted": "2026-10-26 (gap sweep GAP1, board truthfulness): name lists only what the connector dispatches today; Gemfile, *.gemspec, Podfile and *.podspec are not claimed (connector.go); they are queue entry gemfile-podfile, plan row GAP1-6"
   },
   {
     "id": "maven",
