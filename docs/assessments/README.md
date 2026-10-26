@@ -91,6 +91,7 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-26 | [core-t1-tailwind-ceiling](2026-10-26-core-t1-tailwind-ceiling.md) | The pinned compiler parser has no full source rule ends. | LB-Q-tailwind-rest |
 | 2026-10-26 | [core-t1-typescript-ceiling](2026-10-26-core-t1-typescript-ceiling.md) | Object-literal method extraction remains the concrete route. | LB-Q-typescript-rest |
 | 2026-10-26 | [support-gap-sweep](2026-10-26-support-gap-sweep.md) | The board overstates runtime support: Python and Ruby manifests, Swift with Xcode, SQL dialects and the template engines are the top gaps, and formats the board calls disclosed are silent at runtime | GAP1-1 to GAP1-40 (language-breadth.gap1.md), LB-F453 |
+| 2026-10-26 | [opencl-c-compiler](2026-10-26-opencl-c-compiler.md) | Pinned upstream LLVM SDK replay and compiler-profile refusal/privacy tests; instrument only, no language level | ADR-048; existing tier-B compiler-reuse path |
 | 2026-10-26 | [opencl-c-triage](2026-10-26-opencl-c-triage.md) | Pinned native grammar rates and compiler diagnostics; proposal only, no support level | none; LB-Q-opencl activation is controller-owned |
 | 2026-10-26 | [tools-pgbouncer-native-positions](2026-10-26-tools-pgbouncer-native-positions.md) | Native callback brackets attest all 161 definition lines/ranges; L1/L2 excellent | LB-Q-pgbouncer |
 | 2026-10-26 | [tools-nginx-native](2026-10-26-tools-nginx-native.md) | Native full upstream population diagnostic; canonical L3 unchanged | LB-Q-nginx-rest |

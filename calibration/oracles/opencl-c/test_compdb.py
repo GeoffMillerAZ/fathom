@@ -148,6 +148,115 @@ else:
         with self.assertRaisesRegex(ValueError, "resource header SHA-256"):
             compdb.hash_resource_headers(self.resource, bad)
 
+    def write_portable_pins(self, **updates):
+        data = {
+            "schema": "opencl-c-compiler-pins-v1",
+            "profile": "llvm-21.1.8-test-arm64",
+            "platform": {"os": "testos", "arch": "arm64"},
+            "archive": {
+                "name": "LLVM-21.1.8-test-arm64.tar.xz",
+                "url": "https://example.invalid/LLVM-21.1.8-test-arm64.tar.xz",
+                "sha256": "a" * 64,
+            },
+            "compiler": {
+                "version": "clang version 21.1.8",
+                "binary_sha256": self.clang_hash,
+                "archive_member": "LLVM-test/bin/clang",
+                "resource_header_sha256": self.header_pins,
+            },
+        }
+        data.update(updates)
+        path = self.base / "compiler-pins.json"
+        path.write_text(json.dumps(data), encoding="utf-8")
+        return path, data
+
+    def test_loads_explicit_portable_profile_and_retains_historical_default(self):
+        path, data = self.write_portable_pins()
+
+        binary, headers, identity = compdb._load_compiler_pins(path)
+
+        self.assertEqual(binary, self.clang_hash)
+        self.assertEqual(headers, self.header_pins)
+        self.assertEqual(identity["schema"], data["schema"])
+        self.assertEqual(identity["profile"], data["profile"])
+        self.assertEqual(identity["platform"], data["platform"])
+        self.assertEqual(identity["archive"]["name"], data["archive"]["name"])
+        self.assertEqual(identity["archive"]["sha256"], data["archive"]["sha256"])
+        self.assertRegex(identity["pin_file_sha256"], r"^[0-9a-f]{64}$")
+        self.assertNotIn("path", identity)
+
+        historical_binary, historical_headers, historical_identity = compdb._load_compiler_pins()
+        self.assertRegex(historical_binary, r"^[0-9a-f]{64}$")
+        self.assertEqual(set(historical_headers), set(compdb.PINNED_RESOURCE_HEADERS))
+        self.assertEqual(historical_identity["schema"], "opencl-c-triage-pins-v1")
+        self.assertEqual(historical_identity["profile"], "historical-apple-clang")
+
+    def test_explicit_portable_profile_refuses_bad_schema_and_incomplete_identity(self):
+        cases = [
+            ({"schema": "wrong"}, "schema"),
+            ({"platform": {"os": "testos"}}, "platform"),
+            ({"archive": {"name": "x", "url": "https://example.invalid/x", "sha256": "bad"}},
+             "archive"),
+        ]
+        for updates, message in cases:
+            with self.subTest(message=message):
+                path, data = self.write_portable_pins()
+                data.update(updates)
+                path.write_text(json.dumps(data), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, message):
+                    compdb._load_compiler_pins(path)
+
+    def test_explicit_portable_profile_refuses_compiler_and_header_mismatch(self):
+        path, _ = self.write_portable_pins()
+        binary, headers, _ = compdb._load_compiler_pins(path)
+
+        with self.assertRaisesRegex(ValueError, "compiler SHA-256"):
+            compdb.verify_sha256(self.clang, "0" * 64, "compiler")
+        bad_headers = dict(headers)
+        bad_headers["opencl-c.h"] = "0" * 64
+        with self.assertRaisesRegex(ValueError, "resource header SHA-256"):
+            compdb.hash_resource_headers(self.resource, bad_headers)
+        self.assertEqual(binary, self.clang_hash)
+
+    def test_public_pin_identity_omits_archive_url_credentials(self):
+        path, data = self.write_portable_pins()
+        data["archive"]["url"] = (
+            "https://fixture:fixture@downloads.example.invalid/archive"
+            "?signature=fixture#fixture"
+        )
+        path.write_text(json.dumps(data), encoding="utf-8")
+        _, _, identity = compdb._load_compiler_pins(path)
+        self.assertNotIn("url", identity["archive"])
+        self.assertNotIn("fixture", json.dumps(identity))
+
+    def test_portable_profile_requires_canonical_compiler_archive_member(self):
+        for member in (None, "../clang", "/bin/clang", "root/./clang", "root\\clang"):
+            with self.subTest(member=member):
+                path, data = self.write_portable_pins()
+                data["compiler"]["archive_member"] = member
+                path.write_text(json.dumps(data), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "archive member"):
+                    compdb._load_compiler_pins(path)
+        path, data = self.write_portable_pins()
+        _, _, identity = compdb._load_compiler_pins(path)
+        self.assertEqual(identity["compiler_archive_member"],
+                         data["compiler"]["archive_member"])
+
+    def test_explicit_profile_keeps_independent_cli_compiler_digest_assertion(self):
+        path, _ = self.write_portable_pins()
+        workspace = MODULE_PATH.resolve().parents[3] / "workspace"
+        with tempfile.TemporaryDirectory(dir=workspace) as temp:
+            argv = [
+                "--subject", str(self.subject), "--commit", self.commit,
+                "--clang", str(self.clang), "--clang-sha256", "0" * 64,
+                "--resource-dir", str(self.resource), "--compiler-pins", str(path),
+                "--out", str(Path(temp) / "out"),
+            ]
+            with (self.assertRaisesRegex(ValueError, "does not match"),
+                  mock.patch.object(compdb, "generate") as generate):
+                compdb.main(argv)
+            generate.assert_not_called()
+
     def test_resource_header_pin_set_must_be_exact(self):
         (self.resource / "include" / "stddef.h").write_bytes(b"stddef")
         bad = dict(self.header_pins)

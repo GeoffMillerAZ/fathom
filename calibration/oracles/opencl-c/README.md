@@ -92,3 +92,42 @@ workspace/tools/python/bin/python -I -B calibration/oracles/opencl-c/test_replay
 ```
 
 The complete preregistered eight-project native pool fails at **138/386 (35.75%)** for the dedicated grammar and **380/386 (98.45%)** for C, with zero faults. Its386files/382distinctblobs are never deduplicated for the gate. [The counts receipt](../../../docs/assessments/data/opencl-c-pool-2026-10-26/pool-counts.json) separates primary and diagnostic counts. Use the committed `pool_audit.py --subject id=checkout` once for every primary ID in `pool-rule.json`, optionally adding `--diagnostic id=checkout=full-pin`, with `--out workspace/triage/opencl-r3/pool-counts.json`. The CLI requires every and only the frozen primary set, verifies source identities and emits counts plus the policy digest. All checkout paths and raw inventories remain private.
+
+## Explicit upstream LLVM replay
+
+The historical commands above still default to the unchanged Apple compiler pin.
+For implementation qualification, `--compiler-pins` selects an explicit
+`opencl-c-compiler-pins-v1` profile. It binds the compiler and exactly two OpenCL
+resource headers, records the pin-file digest plus platform/archive identity, and
+keeps the reconstructed database at tier B. The independent `--clang-sha256`
+assertion on `compdb.py` must still match the selected profile. A version label
+alone is never accepted in place of byte pins.
+
+[The macOS ARM64 profile](llvm-21.1.8-macos-arm64.json) was qualified from the
+official archive in `llvm-plan.json`: its SHA-256 was checked before extraction
+and again before recording compiler/header hashes. Only `bin/clang`, its
+`bin/clang-21` target and the two OpenCL headers were extracted. No global
+installation is required. Other planned platforms remain unqualified.
+
+```sh
+printf '%s  %s\n' \
+  b95bdd32a33a81ee4d40363aaeb26728a26783fcef26a4d80f65457433ea4669 \
+  workspace/tools/llvm-21.1.8/LLVM-21.1.8-macOS-ARM64.tar.xz | shasum -a 256 -c -
+compiler=workspace/tools/llvm-21.1.8/LLVM-21.1.8-macOS-ARM64/bin/clang
+workspace/tools/python/bin/python -I -B calibration/oracles/opencl-c/replay-sdk.py \
+  --sdk workspace/triage/opencl-r1/subjects/sdk \
+  --clang "$compiler" --resource-dir "$("$compiler" -print-resource-dir)" \
+  --compiler-pins calibration/oracles/opencl-c/llvm-21.1.8-macos-arm64.json \
+  --out workspace/oracle-llvm-sdk-reviewed/deep/replay
+```
+
+Use a fresh output directory and the same nice/load/cache controls as above. The
+[SDK receipt](../../../docs/assessments/data/opencl-c-implementation-2026-10-26/llvm-sdk.json)
+reports 10 units, zero errors/skips, 23 function ranges, 147 resolved written
+sites plus 26 declarations, and 89 active-line ranges covering 546 lines. These
+are actual upstream LLVM results, not inferred Apple/LLVM parity. The receipt's
+path-bound run hashes do not assert cross-host reproducibility. This proves a
+measurement instrument only, not a passing grammar gate or an OpenCL level.
+
+Public compiler identity omits fetch URLs, which can carry credentials, and records
+the canonical compiler archive member. The selected profile retains its source URL.
