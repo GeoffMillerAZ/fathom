@@ -51,8 +51,9 @@
 //     collection's role, a templated path, a task file no signal claims) is
 //     counted on stderr and is in no truth.
 //
-// An INI inventory is not YAML and no dialect decodes it: its groups and hosts
-// are counted on stderr as a disclosed gap.
+// An INI inventory is outside this YAML dialect; the generic INI decoder models
+// Conan physical lines, not Ansible inventory grammar. Its groups and hosts are
+// counted on stderr as a disclosed gap (shared strategy work held by T-R2).
 //
 // Bench-only; never a product dependency.
 package main

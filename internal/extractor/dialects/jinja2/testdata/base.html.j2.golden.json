@@ -8,7 +8,7 @@
       "end_line": 27,
       "calls": [
         "button",
-        "input",
+        "forms.input",
         "nav_item"
       ],
       "tier": "verified"
@@ -27,7 +27,7 @@
       "package": "base.html",
       "line": 5,
       "end_line": 5,
-      "signature": "{%",
+      "signature": "{% macro nav_item(href, label, active=false) %}",
       "tier": "verified"
     },
     {
@@ -85,7 +85,6 @@
       "line": 3
     },
     {
-      "local": "partials/meta.html",
       "module": "partials/meta.html",
       "kind": "whole",
       "line": 13
