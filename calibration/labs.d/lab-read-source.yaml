@@ -1,0 +1,19 @@
+# Seed: docs/design/feature-labs.md section 4.3. Kill: owner ruling L-R1.
+id: "lab-read-source"
+features: ["F-08"]
+surface: ["mcp:read_source"]
+firing:
+  should: "re-reading a cited line range"
+  should_not: "open discovery"
+  grader: "tool_used"
+helped:
+  metric: "bytes read per correct answer (Read stays available)"
+  arm: "plugin-minus-read-source"
+  direction: "decrease"
+  minimum_effect_of_interest: 1
+quality: []
+fixtures: ["internal/connector/testdata/fauxtown"]
+harness: ["replay", "fork"]
+kill: [{"criterion": "K4: A knob that raises firing and leaves helped harmed, or inconclusive toward harm, is reverted.", "reading": "docs/bench/readings/labs/lab-read-source.md"}, {"criterion": "K1: A classifier surface with TPR or TNR Wilson lower bound under 0.80 on 40 labeled points per class reports counts only.", "reading": "docs/bench/readings/labs/lab-read-source.md"}]
+knobs: [{"name": "description", "kind": "text", "location": "internal/mcp"}]
+owners: []
