@@ -66,6 +66,7 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-26 | [core-t1-javascript-ceiling](2026-10-26-core-t1-javascript-ceiling.md) | The public C-R3 ruling retains the denominator and cost rules. | LB-Q-javascript-rest |
 | 2026-10-26 | [core-t1-kotlin-ceiling](2026-10-26-core-t1-kotlin-ceiling.md) | The reader/producer range cause remains unproved; C-R5 schedules the bounded audit. | LB-Q-kotlin-rest |
 | 2026-10-26 | [core-t1-perl-ceiling](2026-10-26-core-t1-perl-ceiling.md) | B::Xref attests compiler calls but not reliable source ends. | LB-Q-perl-rest |
+| 2026-10-26 | [core-t1-scala-ceiling](2026-10-26-core-t1-scala-ceiling.md) | The end-line repair and SemanticDB build remain shared-engine and build routes. | LB-Q-scala-rest |
 
 ## Companion pages
 
