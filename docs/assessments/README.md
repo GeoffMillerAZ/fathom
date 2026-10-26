@@ -63,6 +63,16 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-25 | [matlab-free-oracle-ceiling](2026-10-25-matlab-free-oracle-ceiling.md) | Reviewed free tools do not yet supply independent call and resolution truth across the unchanged MATLAB corpus | LB-Q-matlab-rest |
 | 2026-10-25 | [wgsl-native-l3-ceiling](2026-10-25-wgsl-native-l3-ceiling.md) | Standard WGSL has no native import denominator; existing WESL and naga_oil resolvers need separately ruled queue populations | LB-Q-wgsl-rest |
 | 2026-10-25 | [refused-swift](2026-10-25-refused-swift.md) | Measured: the 36/642 ERROR-node count reproduces the original reading; the current ERROR-or-MISSING gate is 123/642, so the refusal holds | LB-Q-swift-rest reconciliation and P-R1 retry route under ADR-048 |
+| 2026-10-26 | [core-t1-cpp-ceiling](2026-10-26-core-t1-cpp-ceiling.md) | C++ remains on the CUDA/HLSL integration hold; candidate limits are recorded. | LB-Q-cpp-rest |
+| 2026-10-26 | [core-t1-css-ceiling](2026-10-26-core-t1-css-ceiling.md) | A span parser exists, but a tier-A CSS rule-end oracle remains unproven. | LB-Q-css-rest |
+| 2026-10-26 | [core-t1-cue-ceiling](2026-10-26-core-t1-cue-ceiling.md) | The package-key file target limits recall; LSP definitions support a future SCIP writer. | LB-Q-cue-rest |
+| 2026-10-26 | [core-t1-javascript-ceiling](2026-10-26-core-t1-javascript-ceiling.md) | The public C-R3 ruling retains the denominator and cost rules. | LB-Q-javascript-rest |
+| 2026-10-26 | [core-t1-kotlin-ceiling](2026-10-26-core-t1-kotlin-ceiling.md) | The reader/producer range cause remains unproved; C-R5 schedules the bounded audit. | LB-Q-kotlin-rest |
+| 2026-10-26 | [core-t1-perl-ceiling](2026-10-26-core-t1-perl-ceiling.md) | B::Xref attests compiler calls but not reliable source ends. | LB-Q-perl-rest |
+| 2026-10-26 | [core-t1-scala-ceiling](2026-10-26-core-t1-scala-ceiling.md) | The end-line repair and SemanticDB build remain shared-engine and build routes. | LB-Q-scala-rest |
+| 2026-10-26 | [core-t1-svelte-ceiling](2026-10-26-core-t1-svelte-ceiling.md) | The public C-R1 ruling retains the component kind ceiling. | LB-Q-svelte-rest |
+| 2026-10-26 | [core-t1-tailwind-ceiling](2026-10-26-core-t1-tailwind-ceiling.md) | The pinned compiler parser has no full source rule ends. | LB-Q-tailwind-rest |
+| 2026-10-26 | [core-t1-typescript-ceiling](2026-10-26-core-t1-typescript-ceiling.md) | Object-literal method extraction remains the concrete route. | LB-Q-typescript-rest |
 
 ## Companion pages
 
