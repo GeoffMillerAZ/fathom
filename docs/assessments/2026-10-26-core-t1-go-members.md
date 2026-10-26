@@ -18,8 +18,8 @@ and [the preregistered protocol](../bench/go-members-adoption-protocol.md).
 
 PR #52's earlier +11.62%/+6.30% critic-reproduced pass remains valid historical
 evidence for its named base and candidate; it does not satisfy this run's
-failed wall gate. This failed run claimed no new grade or adoption. Gin remains unspent
-outside the canonical corpus. No issue #17 classification changes.
+failed wall gate. This failed run claimed no new grade or adoption. Gin was still unspent at that failed run; its later frozen result is recorded below
+and remains outside the canonical corpus. No issue #17 classification changes.
 
 K29 scope correction: only lang/go.json actively consumes the affected Go
 symbols. The Node route reading's fauxtown statement is a historical control,
@@ -62,3 +62,20 @@ toolchain drift, not member-pass regressions. The harness reports 692
 unmapped definitions, including 689 field-category terms; this records its
 counts without reclassifying issue #17. No interface methods or reference
 edges were added. No L4-excellent claim follows from the cost pass.
+
+## Frozen Gin validation
+
+Measured once after evidence freeze 85ee60563031bba3fb1da2cc9f22bc0a8bcf72fa:
+Gin v1.10.0 at 75ccf94d605a05fe24817fc2f166f6f2959d5cea reads L4 with
+L1/L2/L4 excellent, def_mapping .9744 and typed_recall .9889; L3 is good,
+file_edge_precision .9235 and recall .6255. Import resolution is 1, zero
+faults, median-of-three throughput 15.58 MB/CPU-s. The [holdout reading](../bench/readings/lang/holdout/go-gin-fields.json)
+and [counts/hashes receipt](data/2026-10-26-core-t1-go-members-gin.json) preserve
+the result. All three phase launches were <=9. No source or oracle rule changed.
+
+The preregistered criterion was excellent at every level; it **fails** at L3.
+Gin is spent, stays outside the canonical shard, and is not a tuning corpus.
+The canonical L4-good limit and Gin L3-good miss are recorded as measured
+limits of this field-only wave. Broader member or file-edge work requires a
+separate owner-authorized wave and fresh validation, without reclassifying
+issue #17 here. C-R11's field-symbol-only implementation remains unchanged.
