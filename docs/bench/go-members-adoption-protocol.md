@@ -13,8 +13,9 @@ anchors. Adopt its fixture-derived test count corrections. The epoch fragment
 is flagged for controller numbering; never edit generated epoch/board files.
 
 Before measurements freeze a green implementation commit after the full
-core/extractor/callgraph/fusion/langbench race suite. Build both main 2b6f341e
-and the candidate using the same Go 1.27.3 flags/caches, -trimpath
+core/extractor/callgraph/fusion/langbench race suite. The first run used main
+2b6f341e; after the controller's Wave B merge, build main de6c46e24
+and the optimized candidate using the same Go 1.27.3 flags/caches, -trimpath
 -buildvcs=false, GOWORK=off, GOFLAGS=-p=2, GOMAXPROCS=2. Repeat K17 through the
 committed go-fields-cost/cost.py collector on the same frozen 5b84aa5b source
 snapshot used by the reviewed experiment, outside ignored workspace ancestry.
@@ -75,3 +76,28 @@ python3 calibration/oracles/go-fields-cost/cost.py \
   --source-commit 5b84aa5b4d179460a2f9b7a96973a89a6cd8b322 \
   --candidate-commit c975fbbe38e9244bca839029cce58d483613c3ed
 ```
+
+## Cost-directed empty-reach optimization preregistration
+
+The retained pass_times identify centrality: baseline/candidate median CPU
+6.831/13.755s, +6.924s; extract +0.717s and typed_go -0.198s. On the first
+complete store pair, all 62,537 existing centrality rows are identical; the
+21,564 added rows have zero callers. Their inclusion must remain unchanged.
+
+Optimize only allocation of empty SCC reach sets. Preserve every graph node,
+edge, field symbol, caller count and normalized centrality row. Empty reach
+sets use nil; unions accept empty inputs; a multi-node SCC still adds its own
+component to forward reach. Independent BFS tests, source/sink/self/cycle
+controls and an allocation benchmark precede a full race suite and freeze.
+Then repeat the identical preregistered six-ingest gate with fresh stores,
+current-main baseline binary and the new green candidate. Retain the failed
+run, do not alter thresholds or exclude trials. Compare semantic centrality
+rows against the failed-run candidate independently of watermark metadata.
+No Gin reading while this cost gate is unresolved.
+
+Wave B main de6c46e2456f5131b4b6d5287d75157c1d3930bc is the next baseline.
+The post-merge seven-package race suite passes. The allocation control at 4,096
+isolated fields reduced 3,580,568 to 1,483,416 bytes/op and 8,254 to 4,158
+allocations/op; those microbenchmark timings are not the wall gate. The three
+L0 payload fixtures include four newly visible ledger fields, with byte/count
+expectations updated and all timing budgets and tolerances unchanged.
