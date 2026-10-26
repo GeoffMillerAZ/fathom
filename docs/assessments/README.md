@@ -76,6 +76,7 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-26 | [core-t1-svelte-ceiling](2026-10-26-core-t1-svelte-ceiling.md) | The public C-R1 ruling retains the component kind ceiling. | LB-Q-svelte-rest |
 | 2026-10-26 | [core-t1-tailwind-ceiling](2026-10-26-core-t1-tailwind-ceiling.md) | The pinned compiler parser has no full source rule ends. | LB-Q-tailwind-rest |
 | 2026-10-26 | [core-t1-typescript-ceiling](2026-10-26-core-t1-typescript-ceiling.md) | Object-literal method extraction remains the concrete route. | LB-Q-typescript-rest |
+| 2026-10-25 | [sql-native-oracle](2026-10-25-sql-oracle-ceiling.md), [data](data/sql-oracle-2026-10-25/measurement-summary.json) | Native catalogs cover all 17 inline FK pairs; PostgreSQL 18 and matching pgvector remove the false ceiling | ADR-048, LB-Q-sql-rest; OL-R1 correction |
 
 ## Companion pages
 
