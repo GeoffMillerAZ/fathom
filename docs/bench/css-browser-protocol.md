@@ -96,3 +96,40 @@ The strict neutral loader accepts no added metadata field. Source manifests and 
 primary-byte hash therefore live in a sibling .source.json file; the primary schema
 and the existing harness remain unchanged. The initial metadata-in-primary attempt
 was rejected before any baseline reading and supplies no grade evidence.
+
+## Bounded grammar follow-up before any full-excellence claim
+
+The native-range audit leaves the existing CSS parse error count unchanged:
+120 of 212 production-eligible canonical files. This exceeds the design's 5%
+refusal threshold, despite excellent harness metric buckets. No legacy exemption
+is assumed. The Tachyons holdout has been consumed once and is excluded from
+candidate selection or tuning.
+
+Before implementing a pre-pass, compare the current official grammar with named
+existing candidates using `calibration/oracles/css-grammar/gate.py`:
+
+- tree-sitter/tree-sitter-css v0.25.0, commit
+  `dda5cfc5722c429eaba1c910ca32c2c0c5bb1a3f`, MIT; latest official release/HEAD
+  checked at audit. This is the native control for the current WASM reading.
+- meloncholera/tree-sitter-css-strict commit
+  `64d13f2f5b076233a631a5b922a73edcd7f7d45d`, MIT; stricter URL/comment grammar,
+  unmeasured before this registration.
+- WillBooster/tree-sitter-css commit
+  `1bb2c737dd41dcb2577c3b5219a14ec91a4f7eaf`, MIT; custom ABI `0x5742000b`
+  is incompatible with the upstream runtime, so it is not a drop-in candidate.
+
+Fetch/checksum pinned source archives into scratch and read each licence before
+compilation. Build generated parser/scanner C serially at nice 10 after load <= 9.
+Use the already installed tree-sitter 0.25.2 Python runtime; do not install globally.
+Parse every raw file in the three frozen source sidecars with a two-second file
+limit, preserving source bytes and clean checkout hashes before/after. Report all
+raw files and, separately, the existing `*.min.css` production exclusion. Do not
+invent a new exclusion. Official-control disagreement must be explained before
+comparing the fork. Commit only counts, hashes and repo-relative summaries, never
+the subject file list or source content (X-R3).
+
+A candidate must fall below 5% pooled production-eligible files in error. Passing
+this parse census is not a language grade or adoption: a grammar change still
+needs ENGINE/K29 impact analysis, the actual Fathom reading and all affected
+readings before integration. Failure is a named candidate result, not proof that
+no further grammar or lossless pre-pass can work.
