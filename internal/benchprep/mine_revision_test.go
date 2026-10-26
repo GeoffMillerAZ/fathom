@@ -32,6 +32,61 @@ func TestGoTestRunnerPackageSelections(t *testing.T) {
 	}
 }
 
+func TestGoTestRunnerSelectionWithTestLikeSubtest(t *testing.T) {
+	dir := t.TempDir()
+	mineWrite(t, dir, "go.mod", "module example.invalid/fixture\n\ngo 1.26.0\n")
+	mineWrite(t, dir, "answer_test.go", `package fixture
+import "testing"
+func TestA(t *testing.T) {
+	t.Run("case.TestB", func(t *testing.T) {})
+	t.Run("case.ExampleB", func(t *testing.T) {})
+	t.Run("case.FuzzB", func(t *testing.T) {})
+	t.Run("unselected", func(t *testing.T) { t.Fatal("must not run") })
+}
+
+func TestUnselected(t *testing.T) { t.Fatal("must not run") }
+`)
+	for _, name := range []string{"case.TestB", "case.ExampleB", "case.FuzzB"} {
+		t.Run(name, func(t *testing.T) {
+			parent := "example.invalid/fixture.TestA"
+			id := parent + "/" + name
+			got, err := GoTestRunner(t.Context(), dir, "fixture", []string{id})
+			want := map[string]string{parent: "pass", id: "pass"}
+			if err != nil || !reflect.DeepEqual(got, want) {
+				t.Fatalf("subtest selection outcomes = %v, %v; want %v", got, err, want)
+			}
+		})
+	}
+}
+
+func TestGoTestRunnerSelectionWithDottedPackage(t *testing.T) {
+	dir := t.TempDir()
+	mineWrite(t, dir, "go.mod", "module example.invalid/fixture.TestA\n\ngo 1.26.0\n")
+	mineWrite(t, dir, "answer_test.go", "package fixture\nimport \"testing\"\nfunc TestB(t *testing.T) {}\nfunc TestUnselected(t *testing.T) { t.Fatal(\"must not run\") }\n")
+	id := "example.invalid/fixture.TestA.TestB"
+	got, err := GoTestRunner(t.Context(), dir, "fixture", []string{id})
+	want := map[string]string{id: "pass"}
+	if err != nil || !reflect.DeepEqual(got, want) {
+		t.Fatalf("dotted package selection outcomes = %v, %v; want %v", got, err, want)
+	}
+}
+
+func TestGoTestRunnerSelectionWithTestLikePackageDirectory(t *testing.T) {
+	dir := t.TempDir()
+	mineWrite(t, dir, "go.mod", "module example.invalid/fixture\n\ngo 1.26.0\n")
+	sub := filepath.Join(dir, "foo.TestA", "bar")
+	if err := os.MkdirAll(sub, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	mineWrite(t, sub, "answer_test.go", "package fixture\nimport \"testing\"\nfunc TestB(t *testing.T) {}\nfunc TestUnselected(t *testing.T) { t.Fatal(\"must not run\") }\n")
+	id := "example.invalid/fixture/foo.TestA/bar.TestB"
+	got, err := GoTestRunner(t.Context(), dir, "fixture", []string{id})
+	want := map[string]string{id: "pass"}
+	if err != nil || !reflect.DeepEqual(got, want) {
+		t.Fatalf("test-like package directory outcomes = %v, %v; want %v", got, err, want)
+	}
+}
+
 func TestMineFixCommitsModuleAndTestdataOverlay(t *testing.T) {
 	for _, mode := range []string{"root-testdata", "nested-module", "no-root-module"} {
 		t.Run(mode, func(t *testing.T) {

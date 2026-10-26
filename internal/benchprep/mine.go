@@ -301,12 +301,11 @@ func GoTestRunner(ctx context.Context, checkout, commit string, selection []stri
 	results := map[string]string{}
 	groups := map[string][]string{}
 	for _, id := range selection {
-		// The delimiter precedes the test name, not the package's dots.
-		match := regexp.MustCompile(`^(.+)\.((?:Test|Example|Fuzz)[^/]*)(/.*)?$`).FindStringSubmatch(id)
-		if match == nil {
-			return nil, fmt.Errorf("invalid Go test ID %q", id)
+		pkg, name, err := splitGoTestID(id, modules)
+		if err != nil {
+			return nil, err
 		}
-		groups[match[1]] = append(groups[match[1]], match[2]+match[3])
+		groups[pkg] = append(groups[pkg], name)
 	}
 	var packages []string
 	for pkg := range groups {
@@ -378,6 +377,37 @@ func GoTestRunner(ctx context.Context, checkout, commit string, selection []stri
 }
 
 type goModule struct{ dir, path string }
+
+func splitGoTestID(id string, modules []goModule) (string, string, error) {
+	match := regexp.MustCompile(`^(.+?)\.((?:Test|Example|Fuzz)[^/.]*)(/.*)?$`).FindStringSubmatch(id)
+	if match == nil {
+		return "", "", fmt.Errorf("invalid Go test ID %q", id)
+	}
+	// Package directories may themselves contain .Test, .Example or .Fuzz.
+	// Prefer the longest package prefix that exists in the selected checkout,
+	// so a test-like subtest name cannot invent a nonexistent package.
+	boundaries := regexp.MustCompile(`\.(?:Test|Example|Fuzz)`).FindAllStringIndex(id, -1)
+	namePattern := regexp.MustCompile(`^(?:Test|Example|Fuzz)[^/.]*(/.*)?$`)
+	for i := len(boundaries) - 1; i >= 0; i-- {
+		pkg, name := id[:boundaries[i][0]], id[boundaries[i][0]+1:]
+		if !namePattern.MatchString(name) {
+			continue
+		}
+		var dir, owner string
+		for _, module := range modules {
+			if (pkg == module.path || strings.HasPrefix(pkg, module.path+"/")) && len(module.path) > len(owner) {
+				owner = module.path
+				dir = filepath.Join(module.dir, filepath.FromSlash(strings.TrimPrefix(strings.TrimPrefix(pkg, owner), "/")))
+			}
+		}
+		if dir != "" {
+			if info, err := os.Stat(dir); err == nil && info.IsDir() {
+				return pkg, name, nil
+			}
+		}
+	}
+	return match[1], match[2] + match[3], nil
+}
 
 func goModules(checkout string) ([]goModule, error) {
 	var modules []goModule
