@@ -1,0 +1,57 @@
+# Controller workflow. Copy this file to .github/workflows/ on a run branch.
+# The source checkout remains pinned to the exact main commit being replayed.
+name: hlsl-scope-replay
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  replay:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - name: Check out controller scripts
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.sha }}
+          path: controller
+          persist-credentials: false
+
+      - name: Check out exact main source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: 6db920e72898abb20bf86c22652b401902e34598
+          path: main
+          persist-credentials: false
+
+      - name: Select Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: 1.27.3
+          cache: true
+          cache-dependency-path: main/go.sum
+
+      - name: Verify runner tools
+        env:
+          REPLAY_LIBRARY_ONLY: "1"
+        run: |
+          source controller/calibration/oracles/dxc-ast/scope-replay/replay.sh
+          check_runner_tools
+          yq --version
+          jq --version
+
+      - name: Replay the committed HLSL reading
+        run: controller/calibration/oracles/dxc-ast/scope-replay/replay.sh "$GITHUB_WORKSPACE/main"
+
+      - name: Upload sanitized public evidence only
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: hlsl-scope-replay-${{ github.run_id }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            main/workspace/artifacts/hlsl-scope-replay/regenerated-reading.json
+            main/workspace/artifacts/hlsl-scope-replay/reading-diff.json
