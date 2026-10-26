@@ -120,3 +120,20 @@ discloses the missing preregistered floor and legacy per-phase provenance.
 A future completed failure remains publishable: coverage misses, Ctags-unknown
 files and incomplete harness populations produce false acceptance criteria.
 No oracle or extractor was tuned against Dancer2, and the canonical reading is unchanged.
+
+
+## R3 spent-failure receipts
+
+The collector publishes nonzero exits, timeouts and load failures as phase
+outcomes with a false acceptance result. Missing or incomplete artifacts keep
+unknown counts null and retain raw hashes; readable identity or consistency
+drift still refuses. A load-only retime retry must bind the actual frozen
+source manifest, primary and range truth, grading binary and immutable reading.
+Compiler and grade failures remain published spent failures, never fresh trials.
+
+The collector self-test passes controls for a failed grade, compiler timeout,
+truncated artifacts, failed checkout, missing provenance and stale retime input
+hashes. Re-projecting the existing Dancer2 artifacts with this collector keeps
+every measured count and old acceptance criterion unchanged and adds phase
+outcomes. It does not rerun a subject, oracle or grade, and Dancer2 remains
+spent and diagnostic only. The canonical reading is unchanged.

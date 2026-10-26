@@ -42,7 +42,9 @@ X-R4; it does not assert that other Perl tooling has been exhausted.
   (Artistic-1.0-Perl OR GPL-1.0-or-later), checked in the pinned
   [LICENSE](https://github.com/PerlDancer/Dancer2/blob/90b6e651c1f1a7c576072fdd039ef15afecb67a5/LICENSE)
   and `dist.ini`. It is unspent until the canonical adapter is frozen, then
-  runs once without tuning. A failed or incomplete audit can leave it unspent.
+  runs once without tuning. The earlier allowance that a failed or incomplete
+  audit could remain unspent is **SUPERSEDED for all future holdouts**: first
+  source read spends the subject, regardless of phase outcome.
 - Publish only counts, hashes and repo-relative summaries. Raw source manifests,
   native keys, compiler diagnostics and per-file failures stay in scratch.
   Commit a dated assessment and actual measured reading separately from the
@@ -91,7 +93,7 @@ run, acceptance rule, source pin, install cap, or holdout decision changed.
 ## C-R9 environment freeze before compliant measurements
 
 C-R9 controller ruling as recorded in the project status history:
-> compiler5.34.1 nativeends/B::Xref1.07 tierA only actuallycompiledpopulation; networkdenied and subjectdeclareddependencies only; every uncompiled unit unresolved againstcoverage.
+> Perl’s %DB::sub and B::Xref from the pinned interpreter are tier A for the population that interpreter actually compiles. Conditions: run it with no network and the subject’s own declared dependencies only (compilation executes BEGIN and use); report every file it cannot compile as unresolved, counted against coverage and never silently dropped.
 
 C-R9 assigns `%DB::sub` and B::Xref tier A only for the population the pinned
 interpreter actually compiles. Earlier range trials lacked verified network
@@ -184,3 +186,10 @@ undeclared setup gives no borrowed dependencies. Every failed unit and every
 unpaired tag remains in the denominator. Preserve the existing >=.90 range
 agreement and all L1, timing and fault gates. No further holdout is pinned by
 this amendment.
+
+A nonzero or timed-out compiler or grade phase is a published spent failure,
+including when the reading or retime artifact does not exist. The receipt
+reports phase exit, timeout and launch load; unknown counts stay unknown.
+Only a load-invalid retime may be repeated, and only over the same frozen
+source, oracle artifacts, grading binary and rule, with no new source read or
+compiler/grade run. Its failed phase remains in the private audit trail.

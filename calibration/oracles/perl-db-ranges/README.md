@@ -192,7 +192,13 @@ counts, binary hashes and three retimings. Its frozen-instrument file hashes
 come from Git object `500a867...`, not the later working-tree files. Dancer2's
 legacy phases lack per-phase instrument/source/binary identity, which the
 receipt discloses; a future holdout must bind those identities on each phase.
-Coverage failures still produce count/hash receipts:
+Coverage failures still produce count/hash receipts.
+
+The collector also publishes a spent phase failure if compiler, grade or
+retime stops early. It records each phase's exit, timeout and launch load;
+missing reading, timing or compiler counts are null rather than successes.
+Source and instrument identity checks remain binding on all available inputs.
+For a complete reading, collect the count/hash receipt with:
 
 ```sh
 python3 calibration/oracles/perl-db-ranges/holdout_receipt.py --self-test
