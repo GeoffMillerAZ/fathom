@@ -32,6 +32,8 @@ def parse_mountinfo(text):
             raise ValueError('invalid mount table')
         mounts[ident]=(parent,path,fields[5])
         latest[parent,path]=ident
+    if any(path==Path('/') and parent in mounts for parent,path,_ in mounts.values()):
+        raise ValueError('mount stacked on namespace root')
     # A child stacked on its parent's mount root hides that parent and all
     # other children, including old /proc submounts after --mount-proc.
     covered={parent:ident for ident,(parent,path,_) in mounts.items()

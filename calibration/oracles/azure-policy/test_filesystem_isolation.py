@@ -90,6 +90,16 @@ class FilesystemIsolationTest(unittest.TestCase):
               '30 10 0:3 / /opt ro - tmpfs tmpfs ro\n')
         self.assertEqual([(Path('/'),'rw'),(Path('/opt'),'ro')],fs.parse_mountinfo(data))
 
+    def test_stacked_namespace_root_refuses_instead_of_hiding_real_submounts(self):
+        import filesystem_isolation as fs
+        data=('10 1 8:1 / / rw - ext4 root rw\n'
+              '11 10 0:1 / /run rw - tmpfs tmpfs rw\n'
+              '12 10 0:2 / /dev/shm rw - tmpfs tmpfs rw\n'
+              '20 10 8:1 / / ro - ext4 root rw\n'
+              '21 20 0:1 / /run ro - tmpfs tmpfs rw\n')
+        with self.assertRaisesRegex(ValueError,'mount stacked on namespace root'):
+            fs.parse_mountinfo(data)
+
     def test_write_controls_preserve_dot_dot_spellings(self):
         import filesystem_isolation as fs
         protected=[Path('/authored/checkout'),Path('/authored/temp')]

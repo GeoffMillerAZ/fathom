@@ -148,3 +148,28 @@ stderr line is `runner-userns-ubuntu-24.04.stderr.txt`; a replay verifies refusa
 at userns before preparation or vendor startup, with only stderr count/hash
 in the receipt. This is a captured negative-control replay, not a local Linux
 execution. Neither observation grants a calibration metric or a tier.
+
+## First actual probe: run 40407284519 (T-R13)
+
+The controller imported the unchanged, counts/flags-only
+`probe-receipt-run40407284519.json` from public
+[run 40407284519](https://github.com/GeoffMillerAZ/fathom/actions/runs/40407284519),
+on the disposable `tools/azure-policy-probe-run` branch, ubuntu-22.04 x64.
+That run branch is never merged. The receipt SHA-256 is
+`ac6dee711f8f4e7dab06b242ea55f2361d95a3e38219838590e3c201c75d626c`.
+Its launcher, filesystem helper and input hashes match reviewed source
+`d938ba273`. Its original closed v2 schema is frozen separately as
+`probe-receipt-run40407284519.schema.json`; newer schemas do not rewrite history.
+
+The vendor executed after measured namespace/write controls (15 EROFS denials,
+capabilities dropped, loopback only). Initialization then failed with EOFError,
+native return code -25 and zero stderr/LSP bytes. Linux signal 25 is SIGXFSZ.
+The 8 MiB process file-size bound is the working hypothesis; this receipt has
+no file-attribution evidence, so neither the failing path nor a sufficient new
+bound is measured. T-R13 requires diagnostics on the rerun. No API completion,
+calibration metric or tier follows from this isolated startup failure.
+
+N3-m1: a mount stacked directly on the namespace root now refuses before any
+remount. The previous reachability algorithm could hide the real submounts in
+that shape. An authored regression covers this latent case; it is distinct from
+the unchanged real runner fixture, which has no stacked root.
