@@ -1,5 +1,12 @@
 # App-kit adoption: evidence workspace
 
+CLI contribution review (BX-20, BX-21, BX-36): no candidate. Offline control
+identity and three-trial discrimination are benchmark domain policy. The
+`cli flags help` capability search (profile `cli`, catalog `3ee2c1f`)
+returned no items. Existing flag, text/JSON and diagnostic conventions remain
+in use, with fixture tests for discovery, PASS/FAIL and invalid evidence.
+No kit runtime, dependency or adoption pin changes.
+
 CLI contribution review (LAB-16): no candidate. Observation-to-case pointers and
 filing validation are fathom's domain policy. The `CLI flags validation errors`
 capability search returned no items at catalog revision `3ee2c1f`; existing flag

@@ -156,39 +156,31 @@ func TestStoreScenarioCell_FirstWriterWins(t *testing.T) {
 // TestStoreScenarioCell_ReplacesStaleSiblingUnderDifferentKey is wave N14
 // item 6's other half (guards-i31/control, guards-pilot-6 second reading):
 // a mid-session worktree reset can leave a STALE record for the SAME
-// logical (task, arm, trial, run_id) filed under a DIFFERENT cell key
-// (e.g. the harness version drifted between the aborted pre-reset attempt
-// and the real post-reset one) — StoreScenarioCell's own write-once
-// contract only ever protects the path it is about to write, so both
-// records used to survive side by side as two "independently-scored
-// cell_key directories". Storing a fresh cell must now REPLACE — not
-// leave appended — any sibling under this exact same (TaskID, Arm, Trial,
-// RunID) filed under some OTHER key, so the raw store never carries more
-// than one authoritative record for one logical cell.
+// logical (task, arm, trial, run_id) filed under a DIFFERENT cell key.
+// A scoring or model change under the same harness version replaces the old
+// key. A different harness version is independent evidence, even in one run.
 func TestStoreScenarioCell_ReplacesStaleSiblingUnderDifferentKey(t *testing.T) {
 	dir := t.TempDir()
-	staleKey := ScenarioCellKey(CellInvariants{CorpusSHA256: "abc123", TaskID: "T1", Arm: "control", ModelID: "sonnet", HarnessVersion: "2.1.270 (Claude Code)", Scoring: "oracle-v1", PromptSubject: "x"})
-	freshKey := ScenarioCellKey(CellInvariants{CorpusSHA256: "abc123", TaskID: "T1", Arm: "control", ModelID: "sonnet", HarnessVersion: "2.1.273 (Claude Code)", Scoring: "oracle-v1", PromptSubject: "x"})
-
-	stale := CellResult{TaskID: "T1", Arm: "control", Trial: 1, CellKey: staleKey, RunID: "run-1", HarnessVersion: "2.1.270 (Claude Code)"}
-	if err := StoreScenarioCell(dir, stale); err != nil {
-		t.Fatalf("storing stale: %v", err)
+	stale := CellResult{TaskID: "T1", Arm: "control", Trial: 1, CellKey: "stale", RunID: "run-1", HarnessVersion: "oracle-1"}
+	other := stale
+	other.CellKey, other.HarnessVersion = "other", "null-1"
+	for _, cell := range []CellResult{stale, other} {
+		if err := StoreScenarioCell(dir, cell); err != nil {
+			t.Fatal(err)
+		}
 	}
-	stalePath := ScenarioCellPath(dir, staleKey, 1)
-	if _, err := os.Stat(stalePath); err != nil {
-		t.Fatalf("expected the stale cell on disk before the fresh write: %v", err)
-	}
-
-	fresh := CellResult{TaskID: "T1", Arm: "control", Trial: 1, CellKey: freshKey, RunID: "run-1", HarnessVersion: "2.1.273 (Claude Code)"}
+	fresh := stale
+	fresh.CellKey = "fresh"
 	if err := StoreScenarioCell(dir, fresh); err != nil {
-		t.Fatalf("storing fresh: %v", err)
+		t.Fatal(err)
 	}
-
-	if _, err := os.Stat(stalePath); !os.IsNotExist(err) {
-		t.Errorf("expected the stale sibling under the OLD key removed once the fresh cell was filed, err=%v", err)
+	if _, err := os.Stat(ScenarioCellPath(dir, stale.CellKey, 1)); !os.IsNotExist(err) {
+		t.Errorf("stale sibling remains: %v", err)
 	}
-	if _, ok, err := BorrowScenarioCell(dir, freshKey, 1); err != nil || !ok {
-		t.Fatalf("expected the fresh cell to be stored under its own key: ok=%v err=%v", ok, err)
+	for _, cell := range []CellResult{fresh, other} {
+		if _, ok, err := BorrowScenarioCell(dir, cell.CellKey, 1); err != nil || !ok {
+			t.Errorf("independent cell %s missing: ok=%v err=%v", cell.CellKey, ok, err)
+		}
 	}
 }
 

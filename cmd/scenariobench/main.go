@@ -12,7 +12,7 @@
 //	    automatically (docs/bench/scenarios.md "External corpus (LCA bug
 //	    localization)") — instead of reading a committed corpus file.
 //
-//	scenariobench run -corpus <path|lca> [-dataset <path.jsonl>] -root <fathom repo root> [-cells <dir>] [-raw-dir <dir>] [-model-id <id>] [-harness-version <v>] [-scoring <id>] [-fathom-commit <sha>] [-trials N] [-model <name>] [-only <task id>] [-arm <name>] [-arms <name,name,...>] [-arm-clone <new>=<base>]... [-arm-setup <arm>=<shell line>]... [-harness claude|fake|null] [-fake-streams-dir <dir>] [-fake-streams <json>] [-parallel-arms] [-rescore-lost [-rescore-reason <text>]]
+//	scenariobench run -corpus <path|lca> [-dataset <path.jsonl>] -root <fathom repo root> [-cells <dir>] [-raw-dir <dir>] [-model-id <id>] [-harness-version <v>] [-scoring <id>] [-fathom-commit <sha>] [-trials N] [-model <name>] [-only <task id>] [-arm <name>] [-arms <name,name,...>] [-arm-clone <new>=<base>]... [-arm-setup <arm>=<shell line>]... [-harness <name>] [-fake-streams-dir <dir>] [-fake-streams <json>] [-parallel-arms] [-rescore-lost [-rescore-reason <text>]]
 //	    For each selected cell not already in the cell store: PrepareSubject,
 //	    RunSessions, RunOracle, stores the scored CellResult. `-harness fake`
 //	    (with -fake-streams-dir / -fake-streams, a JSON map of lookup key to
@@ -126,7 +126,7 @@ func main() {
 
 func run(args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: scenariobench <plan|run|score|ledger|void> [flags]")
+		fmt.Fprintln(os.Stderr, "usage: scenariobench <"+commandUsage()+"> [flags]")
 		return 2
 	}
 	switch args[0] {
@@ -141,7 +141,10 @@ func run(args []string) int {
 	case "void":
 		return cmdVoid(args[1:])
 	default:
-		fmt.Fprintf(os.Stderr, "unknown subcommand %q (want plan, run, score, ledger, or void)\n", args[0])
+		if command, ok := offlineCommands[args[0]]; ok {
+			return command(args[1:])
+		}
+		fmt.Fprintf(os.Stderr, "unknown subcommand %q (want %s)\n", args[0], commandUsage())
 		return 2
 	}
 }
@@ -512,7 +515,12 @@ func cmdRun(args []string) int {
 	var armSetups armSetupFlag
 	fs.Var(&armSetups, "arm-setup", "ARM=<shell line> (repeatable): append a setup line to arm ARM's worktree setup (runs before session 1), applied after every -arm-clone and before the corpus hash is computed (DP-14)")
 	runID := fs.String("run-id", "", "this run's id (required; stamps CellResult.RunID)")
-	harnessName := fs.String("harness", "claude", "harness to run sessions with: claude (real spend), fake (replays committed transcripts, no spend), or null (no edits or answer, no spend)")
+	harnessName := fs.String("harness", "claude", harnessHelp())
+	fs.Usage = func() {
+		fmt.Fprintf(fs.Output(), "usage: scenariobench run [-harness %s] [flags]\n", harnessNames())
+		fs.PrintDefaults()
+	}
+	goldPatchDir := fs.String("gold-patch-dir", "", "-harness oracle: offline directory of <patch sha256>.patch files (never fetched over the network)")
 	fakeStreamsDir := fs.String("fake-streams-dir", "", "-harness fake: directory holding the committed stream fixtures")
 	fakeStreams := fs.String("fake-streams", "", "-harness fake: JSON map of \"<task>/<arm>[/<role>]\" to a file name under -fake-streams-dir")
 	parallelArms := fs.Bool("parallel-arms", false, "run one task's arms concurrently (RC-16) — each cell prepares its own worktree and, when wired, its own scratch daemon on an independently allocated port, so nothing is shared between them; default off")
@@ -530,10 +538,20 @@ func cmdRun(args []string) int {
 		fmt.Fprintln(os.Stderr, "scenariobench run: -harness-version is required")
 		return 2
 	}
+	if err := validateOfflineHarnessVersion(*harnessName, *cf.harnessVersion); err != nil {
+		fmt.Fprintf(os.Stderr, "scenariobench run: %v\n", err)
+		return 2
+	}
 	corpus, sha, err := loadCorpusOrLCA(*corpusPath, *datasetPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "scenariobench run: %v\n", err)
 		return 2
+	}
+	if *harnessName == "oracle" {
+		if err := validateOracleCorpus(corpus); err != nil {
+			fmt.Fprintf(os.Stderr, "scenariobench run: %v\n", err)
+			return 2
+		}
 	}
 	// DP-14: -arm-clone/-arm-setup build a corpus VARIANT in memory —
 	// applied after load/generation and before the corpus hash (and thus
@@ -628,7 +646,7 @@ func cmdRun(args []string) int {
 				if *rescoreLost {
 					return rescoreCellForReport(ctx, *root, cp, corpus, *cellsDir, absRawDir, *runID, *rescoreReason)
 				}
-				return runCellForReport(ctx, *root, cp, corpus, *harnessName, *fakeStreamsDir, *fakeStreams, *cellsDir, absRawDir, *model, *runID)
+				return runCellForReport(ctx, *root, cp, corpus, *harnessName, *fakeStreamsDir, *fakeStreams, *cellsDir, absRawDir, *model, *runID, offlineHarnessConfig{Corpus: corpus, PatchDir: *goldPatchDir, CacheDir: filepath.Join(*root, "workspace", "scenariobench", "gold-patches")})
 			}
 		}
 
@@ -748,7 +766,7 @@ type cellOutcome struct {
 // store it — returning the outcome as data rather than printing anything
 // itself, so the caller can print cells in a fixed order even when several
 // ran concurrently (RC-16).
-func runCellForReport(ctx context.Context, root string, cp cellPlan, corpus scenariobench.Corpus, harnessName, fakeStreamsDir, fakeStreams, cellsDir, rawDir, model, runID string) (cellOutcome, error) {
+func runCellForReport(ctx context.Context, root string, cp cellPlan, corpus scenariobench.Corpus, harnessName, fakeStreamsDir, fakeStreams, cellsDir, rawDir, model, runID string, offline ...offlineHarnessConfig) (cellOutcome, error) {
 	if _, borrowed, err := scenariobench.BorrowScenarioCell(cellsDir, cp.key, cp.trial); err != nil {
 		return cellOutcome{cp: cp}, fmt.Errorf("checking cell store for %s/%s/t%d: %w", cp.task.ID, cp.arm, cp.trial, err)
 	} else if borrowed {
@@ -756,7 +774,7 @@ func runCellForReport(ctx context.Context, root string, cp cellPlan, corpus scen
 	}
 
 	arm := corpus.Arms[cp.arm]
-	harness, herr := resolveHarness(harnessName, fakeStreamsDir, fakeStreams, cp.task.ID, cp.arm)
+	harness, herr := resolveHarness(harnessName, fakeStreamsDir, fakeStreams, cp.task.ID, cp.arm, offline...)
 	if herr != nil {
 		return cellOutcome{cp: cp}, herr
 	}
@@ -1286,7 +1304,7 @@ func driftOrNotMeasurable(planMD []byte, tree, coverprofile string) scenariobenc
 	return scenariobench.ContractDrift(planMD, tree, coverprofile)
 }
 
-func resolveHarness(name, streamsDir, streamsJSON, taskID, armName string) (scenariobench.Harness, error) {
+func resolveHarness(name, streamsDir, streamsJSON, taskID, armName string, offline ...offlineHarnessConfig) (scenariobench.Harness, error) {
 	switch name {
 	case "claude":
 		return scenariobench.ClaudeHarness{}, nil
@@ -1304,7 +1322,14 @@ func resolveHarness(name, streamsDir, streamsJSON, taskID, armName string) (scen
 		}
 		return &scenariobench.FakeHarness{StreamsDir: streamsDir, Streams: streams, TaskID: taskID, ArmName: armName}, nil
 	default:
-		return nil, fmt.Errorf("unknown -harness %q (want claude, fake or null)", name)
+		if factory, ok := offlineHarnesses[name]; ok {
+			cfg := offlineHarnessConfig{}
+			if len(offline) > 0 {
+				cfg = offline[0]
+			}
+			return factory.new(cfg), nil
+		}
+		return nil, fmt.Errorf("unknown -harness %q (%s)", name, harnessHelp())
 	}
 }
 
