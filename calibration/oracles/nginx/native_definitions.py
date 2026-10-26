@@ -82,8 +82,10 @@ class DefinitionCapture:
             raise ValueError('native population never parsed the original target')
         native = located[self.target]
         self.result = dict(definitions=definitions(self.target, native, str(directory), self.owner_sites),
-                           native_tokens_all_sources=sum(row['token_count'] for row in parsed.values()),
+                           native_tokens_all_sources=sum(row['token_count'] * row['evaluations'] for row in parsed.values()),
                            native_tokens_target=native['token_count'], native_sources=len(parsed),
+                           native_source_evaluations=sum(row['evaluations'] for row in parsed.values()),
+                           native_target_evaluations=native['evaluations'],
                            native_target_file_end=native['file_end'], mode=record['mode'])
 
     def owner(self, event):

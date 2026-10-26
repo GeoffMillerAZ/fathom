@@ -15,7 +15,7 @@ def log_limit():
 
 @unittest.skipUnless(os.environ.get('NGINX_TOKENS'), 'set NGINX_TOKENS to the pinned native lexer observer')
 class NativeLexerControl(unittest.TestCase):
-    def observe(self, source, path_bytes=None):
+    def observe(self, source, path_bytes=None, extras=None):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / 'logs').mkdir()
@@ -35,6 +35,8 @@ class NativeLexerControl(unittest.TestCase):
             if path_bytes:
                 self.assertEqual(path_bytes, len(str(path).encode()))
             path.write_text(source)
+            for name, value in (extras or {}).items():
+                (root / name).write_text(value)
             with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
                 process = subprocess.run([os.environ['NGINX_TOKENS'], '-T', '-p', str(root) + '/',
                                           '-c', str(path), '-e', str(root / 'error.log')],
@@ -92,3 +94,11 @@ class NativeLexerControl(unittest.TestCase):
         raw, _ = self.observe(source)
         with self.assertRaisesRegex(ValueError, 'refused'):
             decode(raw)
+
+    def test_identical_native_duplicate_includes_share_source_positions_only(self):
+        raw, path = self.observe('events {}\nhttp { include headers.conf; include headers.conf; }\n',
+                                 extras={'headers.conf':'add_header X-Probe yes;\n'})
+        result = trees(decode(raw))[str(Path(path).parent / 'headers.conf')]
+        self.assertEqual(2,result['evaluations'])
+        self.assertEqual(1,len(result['tree']))
+        self.assertEqual((1,1),(result['tree'][0]['line'],result['tree'][0]['end']))

@@ -59,3 +59,5 @@ After merging Wave B, all 42 authored tests pass with native controls enabled
 and zero skips. The release-notes, merge-debris, ADR-011 and strict reading
 round-trip checks pass. The X-R5 scan of branch-added evidence found no subject
 people, emails or attribution lists; receipts contain counts and hashes.
+
+The subsequent [native position assessment](2026-10-26-tools-nginx-native-positions.md) completes the L1 source-position follow-up at A on the same original inputs. This earlier C-definition diagnostic remains historical evidence.

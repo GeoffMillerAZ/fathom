@@ -39,3 +39,18 @@ class NativeTokenReaderTest(unittest.TestCase):
                     emit(1, 'block', 1, 1, ['http']) + emit(2, 'file', 0, 1)]:
             with self.assertRaises(ValueError):
                 trees(decode(raw))
+
+    def test_identical_repeats_retain_all_evaluation_counts(self):
+        raw = emit(1,'simple',1,1,['x']) + emit(2,'file',0,1) + emit(3,'simple',1,1,['x']) + emit(4,'file',0,1)
+        result = trees(decode(raw))['authored.conf']
+        self.assertEqual(2,result['evaluations'])
+        self.assertEqual(2,result['token_count'])
+        self.assertEqual(1,len(result['tree']))
+        changed = raw.replace(b'ORACLE_NGINX_ARG_V1 3 0 78',b'ORACLE_NGINX_ARG_V1 3 0 79')
+        with self.assertRaisesRegex(ValueError,'identity'):
+            trees(decode(changed))
+
+    def test_unknown_protocol_record_cannot_be_ignored_beside_valid_population(self):
+        raw = emit(1,'file',0,1) + b'ORACLE_NGINX_TOKEN_V2 unknown\n'
+        with self.assertRaisesRegex(ValueError,'protocol'):
+            decode(raw)

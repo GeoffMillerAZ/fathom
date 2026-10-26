@@ -46,6 +46,8 @@ def decode(data):
             if int(ident) != token['id'] or int(index) != len(token['args']) or int(index) >= token['argc']:
                 raise ValueError('native argument identity/order mismatch')
             token['args'].append(word(value))
+        elif 'ORACLE_NGINX_TOKEN_' in line or 'ORACLE_NGINX_ARG_' in line:
+            raise ValueError('unknown native token protocol record')
     if not tokens or len(tokens[-1]['args']) != tokens[-1]['argc']:
         raise ValueError('empty/incomplete native token population')
     return tokens
@@ -56,8 +58,6 @@ def trees(tokens):
     active, complete = {}, {}
     for token in tokens:
         path = token['path']
-        if path in complete:
-            raise ValueError('repeated native source evaluation needs explicit identity treatment')
         if path not in active:
             active[path] = dict(root=[], stack=[], token_count=0)
         state = active[path]
@@ -80,8 +80,14 @@ def trees(tokens):
         else:
             if state['stack']:
                 raise ValueError('native file ended with an open block')
-            complete[path] = dict(tree=state['root'], file_end=max(1, token['end'] - token['last_lf']),
-                                  token_count=state['token_count'])
+            current = dict(tree=state['root'], file_end=max(1, token['end'] - token['last_lf']),
+                           token_count=state['token_count'])
+            if path in complete:
+                if any(complete[path][key] != value for key, value in current.items()):
+                    raise ValueError('repeated native source tree identity differs')
+                complete[path]['evaluations'] += 1
+            else:
+                complete[path] = dict(current, evaluations=1)
             del active[path]
     if active:
         raise ValueError('native source lacks file-end event')

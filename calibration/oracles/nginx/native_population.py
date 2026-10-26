@@ -165,10 +165,14 @@ if __name__ == '__main__':
         args.out.with_name(args.out.stem + '-' + suffix + '.json').write_text(json.dumps(output, indent=2) + '\n')
     raw = json.dumps(evidence, sort_keys=True).encode()
     args.out.with_name(args.out.stem + '-raw.json').write_bytes(raw + b'\n')
-    summary = dict(kind='native whole-input parser population; same-file L2 only', subject_sha=args.subject_sha,
+    summary = dict(kind='native whole-input lexer definitions/ranges and upstream population; L1/L2 only' if args.native_definitions else 'native whole-input parser population; same-file L2 only', subject_sha=args.subject_sha,
                    binary_sha256=receipt['binary_sha256'], reference_tier='A', configs=len(files),
                    definition_tier='A' if args.native_definitions else 'C',
                    native_position_tokens=sum(a['native_positions']['native_tokens_target'] for a in evidence) if args.native_definitions else 0,
+                   native_tokens_all_evaluations=sum(a['native_positions']['native_tokens_all_sources'] for a in evidence) if args.native_definitions else 0,
+                   native_source_evaluations=sum(a['native_positions']['native_source_evaluations'] for a in evidence) if args.native_definitions else 0,
+                   native_sources_summed_per_profile=sum(a['native_positions']['native_sources'] for a in evidence) if args.native_definitions else 0,
+                   native_target_evaluations=sum(a['native_positions']['native_target_evaluations'] for a in evidence) if args.native_definitions else 0,
                    definitions=len(definitions), references=len(references), native_events=sum(len(a['native_events']) for a in evidence),
                    classification={key: sum(a['classification'].get(key, 0) for a in evidence)
                                    for key in sorted({key for a in evidence for key in a['classification']})},
