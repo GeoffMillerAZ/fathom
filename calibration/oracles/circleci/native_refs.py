@@ -41,6 +41,11 @@ def native_output(raw, report, protocol, sha, compiler_checks=()):
                     if not any(c['sha'] == sha and c['family'] == 'command' and c['target'] == ref['target'] and c['agrees'] for c in compiler_checks):
                         raise ValueError('namespace error lacks native compiler adjudication')
                 elif classification in ('local-use', 'workflow-executor-parameter'):
+                    if classification == 'workflow-executor-parameter' and not any(
+                            c['sha'] == sha and c['family'] == 'executor-parameter' and
+                            c['owner'] == ref['owner'] and c['target'] == ref['target'] and c['agrees']
+                            for c in compiler_checks):
+                        raise ValueError('executor parameter lacks native compiler cross-check')
                     native_pairs.add((file['path'], ref['owner'], ref['target']))
                 else:
                     raise ValueError('unclassified native location')

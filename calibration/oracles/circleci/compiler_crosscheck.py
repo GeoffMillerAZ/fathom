@@ -13,6 +13,39 @@ import yaml
 
 HERE = Path(__file__).resolve().parent
 
+
+def executor_parameter_checks(source, compiled, subject):
+    checks = []
+    for body in source.get('workflows', {}).values():
+        if not isinstance(body, dict):
+            continue
+        for invocation in body.get('jobs', []):
+            if not isinstance(invocation, dict):
+                continue
+            for owner, arguments in invocation.items():
+                if not isinstance(arguments, dict):
+                    continue
+                parameters = source.get('jobs', {}).get(owner, {}).get('parameters', {})
+                for parameter, spec in parameters.items():
+                    if spec.get('type') != 'executor':
+                        continue
+                    matrix = arguments.get('matrix', {}).get('parameters', {})
+                    if parameter in matrix:
+                        if len(matrix) != 1 or 'name' in arguments:
+                            raise ValueError('matrix compiler identity needs an additional protocol')
+                        candidates = [(owner + '-' + str(value), value) for value in matrix[parameter]]
+                    elif parameter in arguments:
+                        candidates = [(arguments.get('name', owner), arguments[parameter])]
+                    else:
+                        continue
+                    for instance, target in candidates:
+                        expected = source['executors'][target]
+                        actual = {key: compiled['jobs'][instance].get(key) for key in expected}
+                        checks.append(dict(subject=subject['name'], sha=subject['sha'], owner=owner,
+                                           target=target, family='executor-parameter',
+                                           expected=expected, actual=actual, agrees=expected == actual))
+    return checks
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-cli', type=Path, required=True)
@@ -36,6 +69,7 @@ if __name__ == '__main__':
         compiled = yaml.safe_load(compiled_text)
         source = yaml.safe_load((checkout / '.circleci/config.yml').read_text())
         if name.endswith('/circleci-cli'):
+            checks.extend(executor_parameter_checks(source, compiled, subject))
             expected = source['executors']['linux']
             actual = {k: compiled['jobs']['check'].get(k) for k in expected}
             checks.append(dict(subject=name, sha=subject['sha'], owner='check', target='linux', family='executor', expected=expected, actual=actual, agrees=expected == actual))

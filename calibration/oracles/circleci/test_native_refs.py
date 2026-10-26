@@ -45,7 +45,10 @@ class NativeEvidenceTest(unittest.TestCase):
     def test_native_extra_pairs_are_kept_in_recall_truth(self):
         self.report['files'][0]['declarations'].append({'target': 'linux', 'family': 'executor', 'references': [
             {'owner': 'build', 'target': 'linux', 'classification': 'workflow-executor-parameter'}]})
-        result = native_output(self.raw, self.report, self.protocol, 'pin')
+        with self.assertRaisesRegex(ValueError, 'compiler cross-check'):
+            native_output(self.raw, self.report, self.protocol, 'pin')
+        result = native_output(self.raw, self.report, self.protocol, 'pin', [
+            {'sha': 'pin', 'family': 'executor-parameter', 'owner': 'build', 'target': 'linux', 'agrees': True}])
         self.assertIn({'path': '.circleci/config.yml', 'from': 'build', 'to': 'linux'}, result['references'])
 
     def test_namespace_error_requires_compiler_adjudication(self):
