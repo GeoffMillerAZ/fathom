@@ -1,0 +1,43 @@
+[
+  {
+    "name": "google_provider",
+    "argv": [
+      "rg",
+      "-n",
+      "Gemini|GenerativeLanguage|generativelanguage.googleapis.com|vertexai|google.*LLM",
+      "foundations/llmclient",
+      "foundations/decision"
+    ],
+    "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+    "exit_code": 1,
+    "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/google_provider-scan.log"
+  },
+  {
+    "name": "github_issue_ingestion",
+    "argv": [
+      "rg",
+      "-n",
+      "api.github.com|/issues|GitHub.*(issue|ingest)|IssueEvent",
+      "foundations",
+      "kits",
+      "runtimes",
+      "cmd"
+    ],
+    "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+    "exit_code": 1,
+    "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/github_issue_ingestion-scan.log"
+  },
+  {
+    "name": "antigravity_host",
+    "argv": [
+      "rg",
+      "-n",
+      "Antigravity|antigravity",
+      "cmd/kit-new",
+      "cmd/agent-hooks"
+    ],
+    "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+    "exit_code": 1,
+    "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/antigravity_host-scan.log"
+  }
+]

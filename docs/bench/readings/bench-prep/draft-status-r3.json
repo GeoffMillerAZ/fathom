@@ -1,0 +1,65 @@
+{
+  "scope": "The twelve historical or newly retained preparation drafts before the D26 screen; identical D23 admission-manifest reason for every row. D26 dispositions are separate.",
+  "drafts": [
+    {
+      "repository": "go-chi/chi",
+      "admission_manifest": "deferred",
+      "reason": "D23 admission-manifest deferral: star/age metadata must be observed at controller vetting; preparation observations and historical draft files do not establish admission."
+    },
+    {
+      "repository": "stretchr/testify",
+      "admission_manifest": "deferred",
+      "reason": "D23 admission-manifest deferral: star/age metadata must be observed at controller vetting; preparation observations and historical draft files do not establish admission."
+    },
+    {
+      "repository": "urfave/cli",
+      "admission_manifest": "deferred",
+      "reason": "D23 admission-manifest deferral: star/age metadata must be observed at controller vetting; preparation observations and historical draft files do not establish admission."
+    },
+    {
+      "repository": "encode/starlette",
+      "admission_manifest": "deferred",
+      "reason": "D23 admission-manifest deferral: star/age metadata must be observed at controller vetting; preparation observations and historical draft files do not establish admission."
+    },
+    {
+      "repository": "marshmallow-code/marshmallow",
+      "admission_manifest": "deferred",
+      "reason": "D23 admission-manifest deferral: star/age metadata must be observed at controller vetting; preparation observations and historical draft files do not establish admission."
+    },
+    {
+      "repository": "pallets/click",
+      "admission_manifest": "deferred",
+      "reason": "D23 admission-manifest deferral: star/age metadata must be observed at controller vetting; preparation observations and historical draft files do not establish admission."
+    },
+    {
+      "repository": "python-attrs/attrs",
+      "admission_manifest": "deferred",
+      "reason": "D23 admission-manifest deferral: star/age metadata must be observed at controller vetting; preparation observations and historical draft files do not establish admission."
+    },
+    {
+      "repository": "Textualize/rich",
+      "admission_manifest": "deferred",
+      "reason": "D23 admission-manifest deferral: star/age metadata must be observed at controller vetting; preparation observations and historical draft files do not establish admission."
+    },
+    {
+      "repository": "pytest-dev/pytest",
+      "admission_manifest": "deferred",
+      "reason": "D23 admission-manifest deferral: star/age metadata must be observed at controller vetting; preparation observations and historical draft files do not establish admission."
+    },
+    {
+      "repository": "typestack/class-transformer",
+      "admission_manifest": "deferred",
+      "reason": "D23 admission-manifest deferral: star/age metadata must be observed at controller vetting; preparation observations and historical draft files do not establish admission."
+    },
+    {
+      "repository": "typestack/class-validator",
+      "admission_manifest": "deferred",
+      "reason": "D23 admission-manifest deferral: star/age metadata must be observed at controller vetting; preparation observations and historical draft files do not establish admission."
+    },
+    {
+      "repository": "reduxjs/redux-toolkit",
+      "admission_manifest": "deferred",
+      "reason": "D23 admission-manifest deferral: star/age metadata must be observed at controller vetting; preparation observations and historical draft files do not establish admission."
+    }
+  ]
+}

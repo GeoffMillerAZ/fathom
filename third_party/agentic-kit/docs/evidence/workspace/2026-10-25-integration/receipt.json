@@ -1,0 +1,85 @@
+{
+  "version": "workspace-contribution-audit/1",
+  "date": "2026-10-25",
+  "audit_base": "307e7abca76727e66377307789ae356db0eb71bc",
+  "integration_commit": "b24369ab0c7c7f4199785e0dc42fe2d428e6b458",
+  "initial_open_prs": 0,
+  "initial_stashes": 0,
+  "initial_unique_live_branch_commits": 0,
+  "closed_prs_checked": 11,
+  "closed_unmerged_prs": [
+    {
+      "headRefOid": "89fbe33acc4efd6d29de34357f6353cb13d3ca08",
+      "mergedAt": null,
+      "number": 11,
+      "state": "CLOSED",
+      "url": "https://github.com/GeoffMillerAZ/agentic-kit/pull/11"
+    },
+    {
+      "headRefOid": "b1ce097f021e95132329448a14dceca78787c75c",
+      "mergedAt": null,
+      "number": 5,
+      "state": "CLOSED",
+      "url": "https://github.com/GeoffMillerAZ/agentic-kit/pull/5"
+    },
+    {
+      "headRefOid": "3b15c4b8feeb96e64ee17a35555930f9758afe7b",
+      "mergedAt": null,
+      "number": 4,
+      "state": "CLOSED",
+      "url": "https://github.com/GeoffMillerAZ/agentic-kit/pull/4"
+    },
+    {
+      "headRefOid": "d4f2e7aeb5116843bdafdf74eeb194d41cd84a0a",
+      "mergedAt": null,
+      "number": 3,
+      "state": "CLOSED",
+      "url": "https://github.com/GeoffMillerAZ/agentic-kit/pull/3"
+    }
+  ],
+  "unreachable_tips_checked": 46,
+  "orphan_dispositions": {
+    "integrated-or-superseded": 36,
+    "exact-patch-on-main": 4,
+    "exact-tip-blobs-on-main": 5,
+    "retain-historical-ledger-if-needed": 1
+  },
+  "orphan_audit_sha256": "0400ec9f91ab7063220f2f8991c06692086c5339b01e9e79c1a0710e4f46321c",
+  "historical_ownership_ledger": {
+    "source": "47cdaa8cf9d90831721e7bda9b1daa9b99998c63^3:.fathom/owned.json",
+    "sha256": "819cd1a1ada2f164ce7b3daa3f14620ee2f9f499af727e439474364e4deb4e20",
+    "bytes": 10650,
+    "restored_into_active_configuration": false
+  },
+  "completed_worker": {
+    "branch": "worktree-prose-review",
+    "archive_sha256": "a52a6773a672973e8ac2d012acf48723af5c5ff3bf93a6a9e6c2cfcf84355475",
+    "regular_files_verified": 2323,
+    "symlinks_verified": 1,
+    "selected_contribution_files_verified_equal": 8
+  },
+  "worker_worktree_removed": true,
+  "worker_branch_removed": true,
+  "worktree_metadata_pruned": true,
+  "codex_sessions": [
+    {
+      "id": "01a16a7d-d820-7512-8bb4-0a1d3325eb62",
+      "title": "Resolved: agentic-kit inventory and evidence design review",
+      "archived": true
+    },
+    {
+      "id": "01a169c3-a058-7db0-9614-60ea89ff0cb3",
+      "title": "Resolved: agentic-kit command safety architecture review",
+      "archived": true
+    }
+  ],
+  "active_codex_title": "Active: agentic-kit integration and headless prose proof",
+  "retained_lane": {
+    "worktree": ".claude/worktrees/prose-proof-claude",
+    "branch": "worktree-prose-proof-claude",
+    "head": "892b9f50fe772945b0d7ffe1e3f364cf97d97d8f",
+    "reason": "HERDR_ENV is absent in current execution environment; current pane/process custody cannot be verified through authorized Herdr control. Prior context identifies this as the retained native Claude lane. No unique branch commit or dirty source."
+  },
+  "herdr_control_performed": false,
+  "git_objects_pruned": false
+}

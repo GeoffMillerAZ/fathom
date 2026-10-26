@@ -18,7 +18,7 @@ The owner asked six things on 2026-09-30:
    agent trash, perhaps with nudges before or after compaction or at stop.
 4. SRE as code: SLOs and error budgets tied to features and business processes, observability hygiene (alerts on
    metrics no code emits, dashboards on dead metrics, routes with no SLO), readiness levels 1 to 5 per service,
-   failure-mode playbooks, one cross-project compliance dashboard; perhaps Review Kit grows into it, or a separate
+   failure-mode playbooks, one cross-project compliance dashboard; perhaps the review kit grows into it, or a separate
    Reliability Kit uses fathom as its evidence.
 5. Minimal vendoring: vendor only the parts of a dependency that are used. The concrete case is app-kit with
    components derived from a licensed commercial catalog (TailwindPlus), which must never ship publicly as a
@@ -41,10 +41,10 @@ The owner asked six things on 2026-09-30:
 - *Decisions*: ADR-049 decision 1 (every item names the letter it serves and its instrument, or goes to futures);
   ADR-050 decision 4 (dependencies are the `pkg:` kind read from local caches; the usage map is `links`, upgrade
   impact is `contract_drift`); ADR-053 (the surface reckoning); ADR-055 decisions 7 and 8 (review is one family:
-  standards, dispositions and the non-code domains stay in Review Kit, joined by a versioned evidence contract);
+  standards, dispositions and the non-code domains stay in the review kit, joined by a versioned evidence contract);
   ADR-058 (incident maps are committed declarations; no connector).
 - *Autonomy*: deleting a branch or worktree and rewriting history are ask-first; model spend is held.
-- *Futures*: F50 (durable live maps), F52 (Review Kit concern packs scoped by live-map queries), F56 and F57
+- *Futures*: F50 (durable live maps), F52 (the review kit's concern packs scoped by live-map queries), F56 and F57
   (incident maps and probes). None of their Promote-when conditions has fired.
 - *A corrected premise*: note 2 says `dep_drift` exists. It does not: the feature scorecard verdict DITCH (F-18,
   zero lifetime calls) removed it under ADR-053, and ADR-050 names its replacement (upgrade impact over a
@@ -61,7 +61,7 @@ Around the code at HEAD lie four kinds of things nobody is looking after:
 | Lines | work not landed: branches, linked worktrees, stashes, scratch clones | git (`branch --merged`, `cherry`), manual harvests | which open plan rows would this line prove? |
 | Leftovers | files nothing owns: strays outside declared homes, binaries in the tree, finished plans, documents nothing live cites | `fathom gc` (fathom's own files), `git clean`, `fathom plans archive` | what sits outside every declared home, and what does nothing live cite? |
 | Inheritance | code we did not write: vendored mirrors and pinned modules | Renovate and Dependabot (new versions), `go mod vendor` (package pruning), `task vendor-check` | what of this dependency does our product reach, did upstream change that part, and did a licensed unit cross a boundary? |
-| Promises | what a service says it keeps: SLOs, alerts, dashboards, runbooks | Prometheus, Grafana and SLO tools (live values), Review Kit (standards, the reliability domain) | is every promise wired to code that still keeps it? |
+| Promises | what a service says it keeps: SLOs, alerts, dashboards, runbooks | Prometheus, Grafana and SLO tools (live values), the review kit (standards, the reliability domain) | is every promise wired to code that still keeps it? |
 
 Each existing tool misses the same thing: it does not know what the code is for. Fathom holds plan rows, reach from
 product entry points (the wired check, ADR-018 as amended), contract keys (ADR-050) and conservation planes
@@ -141,7 +141,7 @@ nothing is downloaded.
   planning documents is refused too: whether a live plan, ADR or router cites a document already answers it, with
   no authoring cost.
 
-### 4.4 SRE as code: promises as code, framed bigger; the fathom half deferred, the standards in Review Kit
+### 4.4 SRE as code: promises as code, framed bigger; the fathom half deferred, the standards in the review kit
 
 The bigger frame is a chain of promises, each link a fact: a feature (ADR-055) is served by a route or RPC (ADR-050
 keys); the route's handler reaches the code that emits an SLI metric; an SLO spec, an alert rule and a dashboard
@@ -155,15 +155,15 @@ what happens when the budget burns. Fathom can prove the code-grounded links and
   reported at review by the conservation planes (ADR-044), exactly like a lost route.
 - **Readiness facts, not grades**: per service, the facts a readiness level needs (routes inventoried, SLI emitted
   on the handler's reach, SLO declared, alert wired, runbook declared). Which facts make level 1 to 5 is a Standard,
-  and a Standard is Review Kit's (ADR-055 decision 7; its review domains already include "Reliability and
+  and a Standard is the review kit's (ADR-055 decision 7; its review domains already include "Reliability and
   operations": recovery, rollback, alerting, SLOs, dependencies). A level renders only from a committed reading
   (ADR-054's rule).
 
 What stays out of fathom: live SLI values, burn rates and alert state (the ops system's data; a rendered link at
-most, ADR-058); an organization-wide compliance dashboard (hosted: Review Kit's DATUM, a fathom non-goal); failure-mode
+most, ADR-058); an organization-wide compliance dashboard (hosted: the review kit's hosted view, a fathom non-goal); failure-mode
 playbooks beyond incident declarations (already F56). A separate Reliability Kit is refused now: the domain already
-lives in Review Kit, and a third tool would split the family without an enforced boundary (P21). What works today
-with no fathom build: a Review Kit concern pack can compile a reliability convention ("every HTTP handler records a
+lives in the review kit, and a third tool would split the family without an enforced boundary (P21). What works today
+with no fathom build: a review kit concern pack can compile a reliability convention ("every HTTP handler records a
 latency histogram") into obligations served at the edit (ADR-055 decision 8c).
 
 The build is deferred (F59, SV-D5). A census on 2026-09-30 found no alert-rule, SLO-spec or dashboard files in the

@@ -1,6 +1,6 @@
 package reviewkit
 
-// Review Kit's half of vision 34 / ADR-044 (docs/design/refactor-conservation.md
+// The review kit's half of vision 34 / ADR-044 (docs/design/refactor-conservation.md
 // §7): fathom computes, per plane, what a change kept and what it lost, and
 // whether a declaration excuses a loss — never an adequacy verdict of its own
 // (I43/I44). fathom asserts a fact; this pack is what makes an undeclared loss
@@ -54,7 +54,7 @@ pack: #Pack & {
 		}
 		"refactoring.uncovered-behaviour": {
 			class:          "test-gap"
-			why:            "Beyond what a compiler or a certificate can prove, the typed-judgment lane (ADR-0104) asks whether the residue of a refactor — behaviour no test reaches — was preserved; the answer is satisfied, violated or unknown, advisory only, and this class alone never fails a gate (Review Kit's severity ladder is not wired to it)."
+			why:            "Beyond what a compiler or a certificate can prove, the typed-judgment lane asks whether the residue of a refactor — behaviour no test reaches — was preserved; the answer is satisfied, violated or unknown, advisory only, and this class alone never fails a gate (the review kit's severity ladder is not wired to it)."
 			remedy:         "add a test or a certifies declaration that reaches the residual behaviour, or accept the finding with a reason if the residue is genuinely out of scope."
 			requiresExpiry: true
 			fixLane:        "unrepresentable"

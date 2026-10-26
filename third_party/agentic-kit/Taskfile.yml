@@ -3,6 +3,8 @@ version: '3'
 # Uniform command runner for agentic-kit. No Makefile fragmentation.
 # `task validate` is the full gate (also run by lefthook pre-push).
 
+dotenv: ['.kit-consumers.env']
+
 vars:
   GO: go
 
@@ -78,7 +80,7 @@ tasks:
       - task: test
 
   scripts-check:
-    desc: bash -n every shipped shell script, then run the fathom-pack push-gate tests and the intent-stale review test over temp repositories and the intent-skill installer test under a temporary HOME (no network)
+    desc: bash -n every shipped shell script, then run the Fathom downstream lifecycle, fathom-pack push-gate and intent-stale review tests over temp repositories and the intent-skill installer test under a temporary HOME (no network)
     cmds:
       - |
         rc=0
@@ -91,6 +93,8 @@ tasks:
         # hermetic under a hook: git exports GIT_DIR to hooks, so run both again with the real one set
         GIT_DIR="$(git rev-parse --absolute-git-dir)" bash fathom-pack/scripts/push-check_test.sh
         GIT_DIR="$(git rev-parse --absolute-git-dir)" bash fathom-pack/scripts/push-http_test.sh
+        bash scripts/fathom-check_test.sh
+        GIT_DIR="$(git rev-parse --absolute-git-dir)" bash scripts/fathom-check_test.sh
         bash scripts/install-intent_test.sh
         bash scripts/intent-stale_test.sh
         GIT_DIR="$(git rev-parse --absolute-git-dir)" bash scripts/intent-stale_test.sh
@@ -122,34 +126,27 @@ tasks:
         cd examples/agent-cli && {{.GO}} run . -mode live -max-turns 4 -prompt "How many words are in testdata/sample.txt? Use your tools."
 
   fathom-check:
-    desc: "Build+test the first real downstream consumer (fathom, dir ../fathom or, pre-rename, ../sextant) against kit HEAD via its go.work; skips if neither is checked out"
+    desc: "Build and test committed kit HEAD through Fathom's mirror and owned gates in disposable clones; skips if neither consumer checkout is present"
+    cmds:
+      - bash scripts/fathom-check.sh
+
+  consumer-a-check:
+    desc: "Build+test the second real downstream consumer ($KIT_CONSUMER_A_DIR) against kit HEAD; skips if not checked out. consumer-a VENDORS its deps, so its default build uses the vendored kit snapshot — -mod=readonly bypasses vendor/ and resolves its replace directive to the sibling kit checkout at HEAD, which is the entire point of this check."
     cmds:
       - |
-        if [ -d ../fathom ]; then
-          (cd ../fathom && {{.GO}} build ./... && {{.GO}} test ./...)
-        elif [ -d ../sextant ]; then
-          (cd ../sextant && {{.GO}} build ./... && {{.GO}} test ./...)
+        if [ -d "${KIT_CONSUMER_A_DIR:-}" ]; then
+          (cd "$KIT_CONSUMER_A_DIR" && {{.GO}} build -mod=readonly ./... && {{.GO}} test -mod=readonly ./...)
         else
-          echo "fathom/sextant not present — skipping"
+          echo "consumer-a-check: KIT_CONSUMER_A_DIR not set or not a directory — skipping"
         fi
 
-  throughline-check:
-    desc: "Build+test the second real downstream consumer (../throughline) against kit HEAD; skips if not checked out. throughline VENDORS its deps, so its default build uses the vendored kit snapshot — -mod=readonly bypasses vendor/ and resolves its replace directive to the sibling kit checkout at HEAD, which is the entire point of this check."
+  consumer-c-check:
+    desc: "Re-pin, re-vendor and build the fourth downstream consumer (`$KIT_CONSUMER_C_DIR`) against kit HEAD; skips if not checked out. consumer-c vendors the kit and its go.mod names the exact commit vendored (a pseudo-version, or the tag when HEAD is tagged), with tests/lint/kit_vendor_test.go failing on any skew between the two — so unlike consumer-a-check this task MUTATES the sibling: it rewrites consumer-c's require to HEAD, runs go mod vendor, then builds and runs consumer-c's vendor guards with -mod=vendor. The consumer-c diff it leaves is the re-vendor commit; a kit API break fails the build here, at kit time, not at consumer-c's next re-vendor. Refuses on a dirty kit tree, because the bytes it vendors must be a commit's."
     cmds:
       - |
-        if [ -d ../throughline ]; then
-          (cd ../throughline && {{.GO}} build -mod=readonly ./... && {{.GO}} test -mod=readonly ./...)
-        else
-          echo "throughline not present — skipping"
-        fi
-
-  racli-check:
-    desc: "Re-pin, re-vendor and build the fourth downstream consumer (../resume_as_code, racli) against kit HEAD; skips if not checked out. racli vendors the kit and its go.mod names the exact commit vendored (a pseudo-version, or the tag when HEAD is tagged), with tests/lint/kit_vendor_test.go failing on any skew between the two — so unlike throughline-check this task MUTATES the sibling: it rewrites racli's require to HEAD, runs go mod vendor, then builds and runs racli's vendor guards with -mod=vendor. The racli diff it leaves is the re-vendor commit; a kit API break fails the build here, at kit time, not at racli's next re-vendor. Refuses on a dirty kit tree, because the bytes it vendors must be a commit's."
-    cmds:
-      - |
-        if [ ! -d ../resume_as_code ]; then echo "resume_as_code not present — skipping"; exit 0; fi
+        if [ ! -d "${KIT_CONSUMER_C_DIR:-}" ]; then echo "consumer-c-check: KIT_CONSUMER_C_DIR not set or not a directory — skipping"; exit 0; fi
         if [ -n "$(git status --porcelain)" ]; then
-          echo "racli-check: agentic-kit working tree is dirty — commit first; racli pins a commit, and the vendored bytes must be that commit's"
+          echo "consumer-c-check: agentic-kit working tree is dirty — commit first; consumer-c pins a commit, and the vendored bytes must be that commit's"
           exit 1
         fi
         ver=$(git describe --tags --exact-match HEAD 2>/dev/null || true)
@@ -159,34 +156,34 @@ tasks:
           # write for the same commit, so the require stays resolvable if the
           # replace is ever dropped.
           base=$(git describe --tags --abbrev=0 HEAD)
-          echo "$base" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$' || { echo "racli-check: nearest tag '$base' is not vX.Y.Z; cannot form a pseudo-version"; exit 1; }
+          echo "$base" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$' || { echo "consumer-c-check: nearest tag '$base' is not vX.Y.Z; cannot form a pseudo-version"; exit 1; }
           next=$(echo "$base" | awk -F. '{printf "%s.%s.%d", $1, $2, $3+1}')
           ts=$(TZ=UTC git show -s --format=%cd --date=format-local:%Y%m%d%H%M%S HEAD)
           ver="$next-0.$ts-$(git rev-parse --short=12 HEAD)"
         fi
-        echo "racli-check: pinning github.com/geoffmilleraz/agentic-kit@$ver"
-        cd ../resume_as_code
+        echo "consumer-c-check: pinning github.com/geoffmilleraz/agentic-kit@$ver"
+        cd "$KIT_CONSUMER_C_DIR"
         {{.GO}} mod edit -require=github.com/geoffmilleraz/agentic-kit@"$ver"
         {{.GO}} mod vendor
         {{.GO}} build -mod=vendor ./... && {{.GO}} test -mod=vendor ./tests/lint/ -run 'TestKitVendor|TestNoGoWork|TestVendorTree'
 
-  growing-gardens-bi-check:
-    desc: Build+test the third downstream consumer (../growing-gardens-bi) against kit HEAD; skips if not checked out
+  consumer-b-check:
+    desc: Build+test the third downstream consumer ($KIT_CONSUMER_B_DIR) against kit HEAD; skips if not checked out
     cmds:
       - |
-        if [ -d ../growing-gardens-bi ]; then
-          (cd ../growing-gardens-bi && {{.GO}} build ./... && {{.GO}} test ./...)
+        if [ -d "${KIT_CONSUMER_B_DIR:-}" ]; then
+          (cd "$KIT_CONSUMER_B_DIR" && {{.GO}} build ./... && {{.GO}} test ./...)
         else
-          echo "growing-gardens-bi not present — skipping"
+          echo "consumer-b-check: KIT_CONSUMER_B_DIR not set or not a directory — skipping"
         fi
 
   downstream-check:
-    desc: Run every downstream consumer check (fathom-check + throughline-check + growing-gardens-bi-check + racli-check) against kit HEAD
+    desc: Run every downstream consumer check (fathom-check + consumer-a-check + consumer-b-check + consumer-c-check) against kit HEAD
     cmds:
       - task: fathom-check
-      - task: throughline-check
-      - task: growing-gardens-bi-check
-      - task: racli-check
+      - task: consumer-a-check
+      - task: consumer-b-check
+      - task: consumer-c-check
 
   fuzz:
     desc: "Run the seed corpora of every fuzz target (go test -run=Fuzz per package). Go permits only one -fuzz target per invocation, so this generic loop executes seeds only — for real coverage-guided fuzzing of a single target use fuzz-long."

@@ -4,8 +4,8 @@ package main
 // declared certification target, invariant row and incident record with
 // no live certificate, each with a remedy line naming the marker or
 // manifest field to add. --json emits the versioned
-// fathom.certify.gaps/v1 shape the Review Kit adapter (platform-
-// engineering's internal/evidence/certify.go) parses — the schema
+// fathom.certify.gaps/v1 shape the review kit adapter (its certify evidence
+// adapter) parses — the schema
 // string, field names and sort order (kind then id) are a contract, not
 // a rendering choice: changing any of them breaks that adapter.
 import (
@@ -21,7 +21,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
-// certifyGapsSchema is the Review Kit adapter's exact schema string.
+// certifyGapsSchema is the review kit adapter's exact schema string.
 // Bumping it is a breaking change to that adapter's contract.
 const certifyGapsSchema = "fathom.certify.gaps/v1"
 
@@ -30,7 +30,7 @@ func cmdCertifyGaps(args []string, stdout, stderr io.Writer) int {
 	service := fs.String("service", "", "service ID (default: resolved from the repo directory name)")
 	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db)")
 	kind := fs.String("kind", "", "filter to one target kind: invariant|incident|spec|port|rule|behaviour")
-	jsonOut := fs.Bool("json", false, "emit the versioned fathom.certify.gaps/v1 JSON shape (the Review Kit adapter's contract) instead of a table")
+	jsonOut := fs.Bool("json", false, "emit the versioned fathom.certify.gaps/v1 JSON shape (the review kit adapter's contract) instead of a table")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -78,7 +78,7 @@ func cmdCertifyGaps(args []string, stdout, stderr io.Writer) int {
 		return renderCertifyGapsJSON(stdout, svc, indexCommit, certifyGapsNow(), report)
 	}
 	// Suggestions (TC-24) are advisory only and never touch the versioned
-	// fathom.certify.gaps/v1 JSON the Review Kit adapter parses — read and
+	// fathom.certify.gaps/v1 JSON the review kit adapter parses — read and
 	// rendered ONLY on the table path, best effort (a missing file means
 	// certify suggest has simply never run here).
 	renderCertifyGapsTable(stdout, report, loadCertifySuggestions(workspacePath("artifacts/certify-suggestions.jsonl")))
@@ -104,7 +104,7 @@ type certifyGapsPayload struct {
 	// status --json`'s and the doctor row's own "no manifests found"
 	// skip (never a silent pass): without this, a never-ingested service
 	// and a checked, zero-gap one both serialize to an empty `targets`
-	// array, and the Review Kit adapter treats empty targets as an
+	// array, and the review kit adapter treats empty targets as an
 	// outright pass. Additive and omitempty — the schema string, field
 	// names and sort order stay exactly what that adapter parses.
 	Skip string `json:"skip,omitempty"`
@@ -123,7 +123,7 @@ type certifyGapsTarget struct {
 	Certificates []certifyGapsCert `json:"certificates"`
 	// Source names where the target itself is declared (a certifies
 	// marker, an invariant row, a port interface's declaration, an
-	// incident heading) — nil when Gaps could not place it (RK-36
+	// incident heading) — nil when Gaps could not place it (review kit span
 	// anchors: additive, omitempty, never invented).
 	Source *certifyGapsSource `json:"source,omitempty"`
 }

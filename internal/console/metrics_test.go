@@ -110,17 +110,17 @@ func TestDistinctSessionsIn_CountsTheWindowOnly(t *testing.T) {
 func TestVerifyRunsIn_CountsRunsNotPlanRows(t *testing.T) {
 	at := func(d, h int) time.Time { return time.Date(2026, 9, d, h, 0, 0, 0, time.UTC) }
 	runs := []console.LedgerRun{
-		{At: at(20, 9), Service: "conjure", Plan: "docs/plans/a.md"},
-		{At: at(20, 9), Service: "conjure", Plan: "docs/plans/b.md"},
-		{At: at(20, 9), Service: "conjure", Plan: "docs/plans/c.md"},
-		{At: at(22, 9), Service: "Conjure", Plan: "docs/plans/a.md"},
-		{At: at(1, 9), Service: "conjure", Plan: "docs/plans/a.md"},  // before the window
-		{At: at(26, 1), Service: "conjure", Plan: "docs/plans/a.md"}, // after it
+		{At: at(20, 9), Service: "svc-a", Plan: "docs/plans/a.md"},
+		{At: at(20, 9), Service: "svc-a", Plan: "docs/plans/b.md"},
+		{At: at(20, 9), Service: "svc-a", Plan: "docs/plans/c.md"},
+		{At: at(22, 9), Service: "SVC-A", Plan: "docs/plans/a.md"},
+		{At: at(1, 9), Service: "svc-a", Plan: "docs/plans/a.md"},  // before the window
+		{At: at(26, 1), Service: "svc-a", Plan: "docs/plans/a.md"}, // after it
 		{At: at(21, 9), Service: "agentic-kit", Plan: "docs/plans/x.md"},
-		{At: time.Time{}, Service: "conjure", Plan: "docs/plans/a.md"}, // no timestamp
+		{At: time.Time{}, Service: "svc-a", Plan: "docs/plans/a.md"}, // no timestamp
 	}
 	got := console.VerifyRunsIn(runs, strings.ToLower, at(12, 0), at(26, 0))
-	if got["conjure"] != 2 || got["agentic-kit"] != 1 || len(got) != 2 {
-		t.Errorf("verify runs in the window = %v, want conjure 2, agentic-kit 1", got)
+	if got["svc-a"] != 2 || got["agentic-kit"] != 1 || len(got) != 2 {
+		t.Errorf("verify runs in the window = %v, want svc-a 2, agentic-kit 1", got)
 	}
 }

@@ -1,0 +1,65 @@
+{
+  "sourceRevision": "996cb5e403595b5ff6a3088f11f9d1e310726b0e",
+  "runId": 40132941681,
+  "url": "https://github.com/GeoffMillerAZ/agentic-kit/actions/runs/40132941681",
+  "conclusion": "success",
+  "observations": [
+    {
+      "hostedLabel": "macos-latest",
+      "goos": "darwin",
+      "goarch": "arm64",
+      "profile": "files-core/1",
+      "required": 18,
+      "passed": 18,
+      "failed": 0,
+      "unknown": 0,
+      "rosterSHA256": "12e1c94081dc4a4bf6bda89f5f82079df3aca19d5238a4a6167b138b21106dfc",
+      "runnerSHA256": "428596ad9f325cc0764b3033898bb1cf501f14189a2979e14dca07c380843e75",
+      "guardSHA256": "572e07b9d48ff62a807e1973e2449cc300ae22231d8e492d50841d8033e4b30a",
+      "artifactReceiptSHA256": "6f0a474b91082a06f1496527cf324408c89414b586c0fcded4ae96698e1c0bb3",
+      "publishedReceiptSHA256": "6f0a474b91082a06f1496527cf324408c89414b586c0fcded4ae96698e1c0bb3",
+      "artifactSourceSHA256": "1a6bc4782c7d070b27298af58bbffbef75304ede978226457b181d8b9280fa55",
+      "publishedSourceSHA256": "1a6bc4782c7d070b27298af58bbffbef75304ede978226457b181d8b9280fa55"
+    },
+    {
+      "hostedLabel": "ubuntu-latest",
+      "goos": "linux",
+      "goarch": "amd64",
+      "profile": "files-core/1",
+      "required": 18,
+      "passed": 18,
+      "failed": 0,
+      "unknown": 0,
+      "rosterSHA256": "12e1c94081dc4a4bf6bda89f5f82079df3aca19d5238a4a6167b138b21106dfc",
+      "runnerSHA256": "750df1380f6b73b7d95f56efb88ccfe2c625cfc3fa632860a1e9343eff87fc48",
+      "guardSHA256": "3c017c522c1864031f8f4f7bc6326cbb3ba65e4707ab21ea290559a39742d995",
+      "artifactReceiptSHA256": "6a6b5c6d12ac4ac8e89427ba2d8e478700246378de6d4547ef07ca577c43ba22",
+      "publishedReceiptSHA256": "6a6b5c6d12ac4ac8e89427ba2d8e478700246378de6d4547ef07ca577c43ba22",
+      "artifactSourceSHA256": "39fe805fc34ca6693390078f78df17cc848e0f33b0854bf7bb0ce0ca684548a4",
+      "publishedSourceSHA256": "39fe805fc34ca6693390078f78df17cc848e0f33b0854bf7bb0ce0ca684548a4"
+    },
+    {
+      "hostedLabel": "windows-latest",
+      "goos": "windows",
+      "goarch": "amd64",
+      "profile": "files-core/1",
+      "required": 18,
+      "passed": 18,
+      "failed": 0,
+      "unknown": 0,
+      "rosterSHA256": "12e1c94081dc4a4bf6bda89f5f82079df3aca19d5238a4a6167b138b21106dfc",
+      "runnerSHA256": "d6f1e6e6adf94d51e314ae6e7cd6aba37f500e6146a975467ad5cb0f76ddacf2",
+      "guardSHA256": "28624bcc137879dace4dfc47933897f1c6050ca504f3f53c06e5578d2edf8651",
+      "artifactReceiptSHA256": "a811180d1aab6c04ead9d5b4781e046e5701f509559a3e2a3714b9896d6bdb67",
+      "publishedReceiptSHA256": "f7106d489778315163542fe1ded144658b4c2cb60c95588f529e3d7a3c9e017f",
+      "artifactSourceSHA256": "a14bad9d9a5549653f6177256c740b0c6db87432f28e2c45455d01287d83f4c0",
+      "publishedSourceSHA256": "bf7916c254afba822b9f8fff1b0194e19187b52f044fff22696c85ccd3b02ba6"
+    }
+  ],
+  "cueVersionsValidated": [
+    "0.16.1",
+    "0.17.1"
+  ],
+  "scope": "files-core/1 on actual listed hosted OS/architecture; built byte identities are not independent trust or signed attestation",
+  "publicationTransform": "CRLF to LF only; decoded JSON is unchanged. Original artifact bytes and hashes retained privately."
+}

@@ -1,8 +1,8 @@
 # Product reach across nested Go modules (EW-59, EW-60, EW-61, EW-64)
 
 **Verdict: keep the fix. The owner ruled ACCEPT at +17% fathom wall (K26 RULING, 2026-10-10), and
-wave h5 re-landed it.** The typed pass now loads a repository's nested Go modules. In platform-engineering, every env-kit and image-kit plan row that
-names a symbol now reads wired: 22 of 22 env-kit rows (0 before) and 3 of 3 image-kit rows (0
+wave h5 re-landed it.** The typed pass now loads a repository's nested Go modules. In a platform monorepo, every environment kit and image kit plan row that
+names a symbol now reads wired: 22 of 22 environment kit rows (0 before) and 3 of 3 image kit rows (0
 before).
 
 On fathom, the cost is over the K26 bar. Loading every nested module took the ingest from 70.1 s to
@@ -21,7 +21,7 @@ accepted it. The wall excess is serial per-module load latency, not work: the ty
 stayed flat, and no verdict on fathom's 66 plans changed. What the cost buys is the `wired` criterion
 holding for every multi-module Go repository, which "done means wired" rests on.
 
-platform-engineering's ingest went from 12.2 s to 67.7 s. Under K27 that is disclosed as **previously
+The platform monorepo's ingest went from 12.2 s to 67.7 s. Under K27 that is disclosed as **previously
 skipped**, never as a regression: the baseline did no typed work for any of its 22 nested modules,
 and a baseline that did nothing is not a cost baseline. The cost is read on fathom, where the root
 module's pass already worked.
@@ -39,7 +39,7 @@ and met the ruling's four conditions:
   the pass-level gate skipped it before, so epoch 5 would never have reached a service whose Go files
   did not change).
 
-EW-61 reading: platform-engineering 70d88ddb, fathom fb7d9f3f -> e0da3f75: env-kit 22/22 rows wired (was 0/22), `verify --strict` 3 claimed verified (was 0); image-kit 3/3 wired (was 0/3), 2 verified (was 0); PE typed_edges 2,819 -> 33,394, warm ingest 12.2 -> 67.7 s (previously skipped, K27: not a regression); fathom warm ingest 53.3 -> 62.5 s (+17%), typed pass 22.0 -> 29.5 s, store +0.26%, 0 verdict changes over 66 plans.
+EW-61 reading: platform monorepo 70d88ddb, fathom fb7d9f3f -> e0da3f75: environment kit 22/22 rows wired (was 0/22), `verify --strict` 3 claimed verified (was 0); image kit 3/3 wired (was 0/3), 2 verified (was 0); monorepo typed_edges 2,819 -> 33,394, warm ingest 12.2 -> 67.7 s (previously skipped, K27: not a regression); fathom warm ingest 53.3 -> 62.5 s (+17%), typed pass 22.0 -> 29.5 s, store +0.26%, 0 verdict changes over 66 plans.
 
 ## The wall lever: overlapped module loads (EW-64, K26 condition c)
 
@@ -87,21 +87,21 @@ The typed pass was one `packages.Load(cfg, "./...")` with `Dir` at the repositor
 (`internal/fusion/typedcalls.go`). `./...` never enters a directory that holds its own go.mod.
 `loadableByRootPattern` and `zeroPackagesDisclosed` excluded nested modules by design.
 
-The syntax pass could not make up for it. `bosun`'s main calls `cmd.NewRoot`, and four kits (docs,
+The syntax pass could not make up for it. The environment kit's main calls `cmd.NewRoot`, and four kits (docs,
 env, image, test) each declare `internal/cmd.NewRoot`. `callgraph.resolve`'s `pkg.Name`, `dir.Name`
 and suffix lookups are all ambiguous there, and ambiguity binds nothing. So each of those mains is a
-product entry that reaches itself and its own `execute`, and nothing else. review-kit's main calls
-uniquely named functions (`cli.RunWithContext`, `cli.NewGitHost`), so its syntax edges resolved. That
-is why review-kit and ci-kit had edges and env-kit did not.
+product entry that reaches itself and its own `execute`, and nothing else. The review kit's main calls
+uniquely named functions, so its syntax edges resolved. That
+is why the review kit and the CI kit had edges and the environment kit did not.
 
 Ruled out:
 
-- Entry detection: `bosun`'s main is one of the 16 entries.
+- Entry detection: the environment kit's main is one of the 16 entries.
 - The replace directives: no nested module was ever attempted.
 - The go directive: 1.26.3 against a local go 1.26.3.
 - The syntax pass's import mapping: no ExtractorEpoch bump is needed for this fix.
 
-## platform-engineering, per nested module
+## The platform monorepo, per nested module
 
 Ingested with fathom fb7d9f3f (before) and e0da3f75 (after), warm GOCACHE. Go functions and methods,
 non-test files. "Syntax-only" means an out-edge the typed pass did not confirm.
@@ -109,55 +109,55 @@ non-test files. "Syntax-only" means an out-edge the typed pass did not confirm.
 | Module | Go funcs | typed out-edges before → after | syntax-only out-edges before → after | product-reached before → after |
 |---|---:|---:|---:|---:|
 | `.` | 258 | 337 → 356 | 60 → 46 | 211 → 211 |
-| `capstan` | 417 | 0 → 509 | 338 → 60 | 9 → 47 |
-| `capstan/witness` | 35 | 0 → 9 | 10 → 0 | 1 → 18 |
-| `kits/ci-kit` | 430 | 0 → 561 | 426 → 40 | 59 → 118 |
-| `kits/ci-kit/apiclient` | 13 | 0 → 11 | 5 → 0 | 0 → 0 |
-| `kits/ci-kit/depgraph` | 62 | 0 → 61 | 53 → 11 | 2 → 11 |
-| `kits/ci-kit/lint` | 9 | 0 → 6 | 3 → 2 | 0 → 2 |
-| `kits/docs-kit` | 166 | 0 → 240 | 220 → 26 | 3 → 138 |
-| `kits/env-kit` | 436 | 0 → 890 | 625 → 50 | 2 → 392 |
-| `kits/env-kit/doctorreport` | 9 | 0 → 2 | 2 → 0 | 6 → 9 |
-| `kits/env-kit/fingerprint` | 6 | 0 → 6 | 2 → 0 | 0 → 6 |
-| `kits/env-kit/policyengine` | 27 | 0 → 30 | 22 → 0 | 1 → 27 |
-| `kits/env-kit/scaffold` | 8 | 0 → 0 | 3 → 0 | 2 → 5 |
-| `kits/image-kit` | 199 | 0 → 342 | 235 → 21 | 2 → 145 |
-| `kits/review-kit` | 695 | 0 → 1472 | 1463 → 157 | 516 → 687 |
-| `kits/test-kit` | 187 | 0 → 309 | 250 → 44 | 2 → 156 |
-| `kits/test-kit/examples/runnable` | 3 | 0 → 0 | 0 → 0 | 0 → 0 |
-| `label` | 10 | 0 → 4 | 3 → 0 | 2 → 9 |
-| `pdk/gen/addons` | 19 | 0 → 18 | 14 → 0 | 12 → 18 |
-| `pdk/substrates/functions/fn-platform-defaults` | 9 | 0 → 8 | 8 → 0 | 1 → 1 |
-| `pdk/substrates/functions/fn-secure-service` | 5 | 0 → 3 | 3 → 0 | 1 → 1 |
-| `platform` | 56 | 0 → 48 | 34 → 0 | 3 → 6 |
-| `portal` | 1464 | 0 → 779 | 2557 → 2073 | 179 → 178 |
+| coordination module | 417 | 0 → 509 | 338 → 60 | 9 → 47 |
+| coordination module, sub-module | 35 | 0 → 9 | 10 → 0 | 1 → 18 |
+| CI kit | 430 | 0 → 561 | 426 → 40 | 59 → 118 |
+| CI kit, sub-module 1 | 13 | 0 → 11 | 5 → 0 | 0 → 0 |
+| CI kit, sub-module 2 | 62 | 0 → 61 | 53 → 11 | 2 → 11 |
+| CI kit, sub-module 3 | 9 | 0 → 6 | 3 → 2 | 0 → 2 |
+| docs kit | 166 | 0 → 240 | 220 → 26 | 3 → 138 |
+| environment kit | 436 | 0 → 890 | 625 → 50 | 2 → 392 |
+| environment kit, sub-module 1 | 9 | 0 → 2 | 2 → 0 | 6 → 9 |
+| environment kit, sub-module 2 | 6 | 0 → 6 | 2 → 0 | 0 → 6 |
+| environment kit, sub-module 3 | 27 | 0 → 30 | 22 → 0 | 1 → 27 |
+| environment kit, sub-module 4 | 8 | 0 → 0 | 3 → 0 | 2 → 5 |
+| image kit | 199 | 0 → 342 | 235 → 21 | 2 → 145 |
+| review kit | 695 | 0 → 1472 | 1463 → 157 | 516 → 687 |
+| test kit | 187 | 0 → 309 | 250 → 44 | 2 → 156 |
+| test kit, example module | 3 | 0 → 0 | 0 → 0 | 0 → 0 |
+| labelling module | 10 | 0 → 4 | 3 → 0 | 2 → 9 |
+| platform kit, generator module | 19 | 0 → 18 | 14 → 0 | 12 → 18 |
+| platform kit, function module 1 | 9 | 0 → 8 | 8 → 0 | 1 → 1 |
+| platform kit, function module 2 | 5 | 0 → 3 | 3 → 0 | 1 → 1 |
+| deployable-reference module | 56 | 0 → 48 | 34 → 0 | 3 → 6 |
+| portal module | 1464 | 0 → 779 | 2557 → 2073 | 179 → 178 |
 
 Product entries: 16 → 47. Functions reached: 1,225 → 2,599.
 
-`kits/test-kit/examples/runnable` (`example.com/cart`) is not loaded. Its module path is not the
+The test kit's example module (`example.com/cart`) is not loaded. Its module path is not the
 repository's, and the pass discloses it in one line. The cobra and pflag copies under
-`kits/*/third_party/` fall under the same rule, and discovery ignores them anyway.
+the kits' `third_party/` directories fall under the same rule, and discovery ignores them anyway.
 
-`portal` is not a clean comparison in a clone. Its go.mod replaces app-kit with `../../app-kit`, a
+The portal module is not a clean comparison in a clone. Its go.mod replaces app-kit with `../../app-kit`, a
 sibling checkout outside the repository, so 10 portal packages fail typed loading in a clone and the
 ingest reads degraded. With the caller packages failing, typed edges cover only part of the module.
-The resulting change is 7 functions gained and 14 lost (GitCatalog's walk and its domain types),
+The resulting change is 7 functions gained and 14 lost (a catalog walk and its domain types),
 which reaches 179 → 178. Under the owner's checkout, where `../../app-kit` exists, those packages
 load.
 
-## platform-engineering, verify
+## The platform monorepo, verify
 
-`verify --strict` run before and after on the same tree (`docs/plans/env-kit.md`,
-`docs/plans/image-kit.md`):
+`verify --strict` run before and after on the same tree (the environment kit's and the image kit's
+plans):
 
 | Plan | Summary before | Summary after | rows reading wired, before → after |
 |---|---|---|---|
-| env-kit | 80 tasks total; 46 claimed: 0 verified, 46 failing | 80 tasks total; 46 claimed: 3 verified, 43 failing | 0 → 22 (22 library-only → 0) |
-| image-kit | 47 tasks total; 22 claimed: 0 verified, 22 failing | 47 tasks total; 22 claimed: 2 verified, 20 failing | 0 → 3 (3 library-only → 0) |
+| environment kit | 80 tasks total; 46 claimed: 0 verified, 46 failing | 80 tasks total; 46 claimed: 3 verified, 43 failing | 0 → 22 (22 library-only → 0) |
+| image kit | 47 tasks total; 22 claimed: 0 verified, 22 failing | 47 tasks total; 22 claimed: 2 verified, 20 failing | 0 → 3 (3 library-only → 0) |
 
-EK-121, EK-124, EK-125 and EK-126 read `wired` and `pass` under `--require-all`. The plans'
+Four of the environment kit's rows read `wired` and `pass` under `--require-all`. The plans'
 remaining unknowns are their own: `skip_test` waivers read no-contract, and runtime_pass has no
-CI evidence ingested. Those are platform-engineering's proof items.
+CI evidence ingested. Those are the monorepo's own proof items.
 
 ## Cost
 
@@ -169,10 +169,10 @@ a load average of 4 to 8 from other waves. Values are medians.
 | fathom | fb7d9f3f (rounds 7–11) | 22.0 s | 21.2 s | 53.3 s | 1.95–2.06 GB | 151.24 MB | 161,028 |
 | fathom | e0da3f75, own modules only (rounds 7–11) | 29.5 s | 22.5 s | 62.5 s (+17%) | 1.97–2.05 GB | 151.63 MB (+0.26%) | 161,876 |
 | fathom | 4bf63e3a, every nested module (rounds 3–5) | 56.2 s (vs 22.8 s) | 26.4 s | 89.0 s (vs 70.1 s, +27%) | 2.00–2.05 GB | 153.06 MB (+1.2%) | 165,360 |
-| platform-engineering | fb7d9f3f | 1.2–3.5 s | 0.13–0.17 s | 10.8–12.2 s | 0.48–0.50 GB | 41.7 MB | 2,819 |
-| platform-engineering | e0da3f75 | 58.2 s | 4.1 s | 67.7 s | 0.48 GB | 62.9 MB | 33,394 |
+| platform monorepo | fb7d9f3f | 1.2–3.5 s | 0.13–0.17 s | 10.8–12.2 s | 0.48–0.50 GB | 41.7 MB | 2,819 |
+| platform monorepo | e0da3f75 | 58.2 s | 4.1 s | 67.7 s | 0.48 GB | 62.9 MB | 33,394 |
 
-platform-engineering's rows are not a cost comparison: fb7d9f3f skipped the typed pass for all 22 of
+The platform monorepo's rows are not a cost comparison: fb7d9f3f skipped the typed pass for all 22 of
 its nested modules, so its 12.2 s is the price of work not done (K27, "previously skipped").
 
 - Per-pair ingest ratios, own modules only: 1.113, 1.172, 1.186, 1.219 and 1.138.
@@ -185,7 +185,7 @@ its nested modules, so its 12.2 s is the price of work not done (K27, "previousl
 - First ingest on a GOCACHE without the nested modules' dependency graphs:
   - fathom with every nested module: typed pass 1008 s, against 128 s for fb7d9f3f's first run.
     The cause is kyverno's, prometheus's and helm's trees.
-  - platform-engineering: typed pass 636 s.
+  - The platform monorepo: typed pass 636 s.
   - After that, the build cache answers.
 - Cold cache against a managed budget (O812, wave h5): stranger-check's throwaway daemon (4 GiB)
   halted the re-landed pass at refuse on every attempt. fathom's prometheus oracle compiles
@@ -224,15 +224,15 @@ syntax edges.
 |---|---|
 | fathom before | fb7d9f3f (origin/main at the start of wave h4) |
 | fathom after | 4bf63e3a (every nested module), e0da3f75 (own modules only) |
-| platform-engineering | 70d88ddb, an https clone in the wave's scratch directory, deleted after |
+| platform monorepo | 70d88ddb, an https clone in the wave's scratch directory, deleted after |
 | Go | go1.26.3 darwin/arm64, GOTOOLCHAIN=local, GOWORK=off, GOFLAGS -p=2 |
 
 ## Commands
 
 ```sh
 lockf -k <ingest.lock> <fathom> ingest --store <scratch>.sqlite --service fathom --path <tree>
-lockf -k <ingest.lock> <fathom> ingest --store <scratch>.sqlite --service platform-engineering --path <pe-clone>
-<fathom> verify --strict [--require-all --json] --store <scratch>.sqlite --service platform-engineering --plan docs/plans/env-kit.md
+lockf -k <ingest.lock> <fathom> ingest --store <scratch>.sqlite --service platform --path <platform-clone>
+<fathom> verify --strict [--require-all --json] --store <scratch>.sqlite --service platform --plan docs/plans/<environment-kit-plan>.md
 <fathom> verify --strict --require-all --json --store <scratch>.sqlite --service fathom --plan docs/plans/<each>.md ...
 sqlite3 <scratch>.sqlite "select count(*) from typed_edges where pkg_path like 'gomod:%'"
 ```

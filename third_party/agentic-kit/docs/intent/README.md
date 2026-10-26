@@ -1,14 +1,11 @@
 # agentic-kit — project intent (router)
 
-Durable intent for agentic-kit: why it exists, what must never break, what is in and out
-of scope, what may come later, what has been decided and when to reopen it, who may do
-what. Practice: `../project-intent/` (this repo is the canonical home of the practice and
-its first self-adopter). Skills: `intent-design` before design work, then
-`intent-decide`, `intent-doctor`, `intent-audit`, `intent-prune`, `intent-release`,
-`intent-incident`. This directory routes; good existing documents are pointed to.
+Durable intent: mission, invariants, scope, decisions, futures and agent authority.
+Practice: `../project-intent/` (the kit is its canonical home and first adopter).
+Use `intent-design` before material design, then the relevant `intent-*` procedure.
+This router points to existing authority instead of duplicating it.
 
 ## Docs map
-
 | Question | Read |
 |---|---|
 | Mission, one-sentence test, core beliefs, incubation boundary | [`VISION.md`](../../VISION.md) |
@@ -25,8 +22,11 @@ its first self-adopter). Skills: `intent-design` before design work, then
 | What we do not know yet | [`questions.md`](questions.md) |
 | What changed for consumers since the last release | [`CHANGELOG.md`](../../CHANGELOG.md) |
 | Package classification and the compatibility promise | [`docs/compat.md`](../compat.md) |
-| Anti-pattern ledger and practice guides ([fast-judgment models](../fast-judgment.md) and its [catalog](../fast-judgment-catalog.md); [orchestrating agents](../orchestrating-agents.md); [incident readiness](../incident-readiness.md); [serving rules](../serving-rules.md); [measuring tools](../measuring-tools.md)) | [`docs/practices.md`](../practices.md) |
+| Anti-pattern ledger and practice guides ([decision-site utilities](../decision-sites.md); [fast judgment](../fast-judgment.md) and [catalog](../fast-judgment-catalog.md); [orchestration](../orchestrating-agents.md); [incident readiness](../incident-readiness.md); [serving rules](../serving-rules.md); [measuring tools](../measuring-tools.md); [token economics](../tokenomics.md)) | [`docs/practices.md`](../practices.md) |
+| Catalogs, assignments, observed inventory and evidence-driven reviews | [Catalog Kit](../../kits/catalog-kit/README.md), 0023/0024; [Assignment Kit](../../kits/assignment-kit/README.md), 0036; [IER contracts](../designs/inventory-evidence-review.md), [EDR workflows](../designs/evidence-driven-reviews.md), 0037 |
 | Capability backlog, admission triggers and what graduated | [`docs/roadmap.md`](../roadmap.md) |
+| Agentic engineering uplift, human workbench, prose and learning | [Program](../designs/agentic-engineering/README.md), [prose/HITLMAN priority](../designs/agentic-engineering/prose-hitl-priority.md), [headless live proof](../designs/prose-headless-proof.md), [AAIF/G15](../designs/aaif-alignment.md), [coverage](../designs/agentic-engineering/request-coverage.md), 0025-0028/0034/0038/0045 |
+| Git/Lefthook/CI quality boundaries, command safety, hook controls and optional judgment | [Quality adoption](../quality-boundaries.md), [working methods](../designs/deterministic-workflows.md), [command safety](../command-safety.md), [CG](../designs/command-governance.md)/[GT delivery](../designs/governed-command-tools.md)/[Git reads](../designs/command-git.md)/[compact](../designs/command-compact.md)/[harness config](../designs/harness-control.md)/[maintenance](../designs/harness-maintenance.md)/[spawn economics](../designs/harness-spawn-economics.md)/[concern site](../designs/command-concern-classifier.md), 0030-0035/0039-0044 |
 | Build status, every capability with a checkbox | [`TRACKING.md`](../../TRACKING.md) |
 | Work orders and their proof; how the kit uses fathom and stays compatible with its evidence plane | [`docs/plans/`](../plans/) ([fathom](../plans/fathom.md)), [`docs/designs/`](../designs/) |
 | Current delivery, baseline assessment and composed-workflow design | [`delivery`](../assessments/2026-09-13-governed-workflows.md), [`baseline`](../assessments/2026-09-12-agentic-kit.md), [`design`](../designs/governed-workflows.md) |
@@ -45,7 +45,6 @@ its first self-adopter). Skills: `intent-design` before design work, then
 | Roadmap, public-readiness, 1.0 | everything |
 
 ## Sensitive surfaces and the evidence "done" needs
-
 | Surface | Why | Done needs |
 |---|---|---|
 | `go.mod` | stdlib-only is constitution (I1) | `lint empty-require`; a `require` line is a decision |
@@ -55,6 +54,7 @@ its first self-adopter). Skills: `intent-design` before design work, then
 | `foundations/governance/**` | must stay WASM-safe (I9) | `task wasm-build` |
 | `foundations/llmclient/**` | encodes external CLI/API behavior (tripwires) | adapter `Ping` green; `Verified against` line updated |
 | `TRACKING.md`, `docs/compat.md`, `docs/catalog.md`, `README.md` count | lint-coupled docs | `lint tracking-coverage`, `compat-coverage`, `catalog-fresh`, `readme-count` |
+| `docs/plans/*.md` completion claims | unclaimed rows can pass before a claimed row fails | strict verification after checking boxes; fail-fast shell chains stop before commit on nonzero exit (INC-18) |
 | `fathom-pack/**` | pre-edit guards consumers inherit | cite the incident; ≤ 4 rules per entry; measure or retire |
 | Governed workflow/profile claims | optional wiring or skipped checks can look healthy | `assurance.md`; entry-point failure scenarios and a versioned, scoped coverage receipt |
 

@@ -231,7 +231,7 @@ func TestCorpusLoadsAndValidates(t *testing.T) {
 
 	redacted := bank.Filter(scenariobank.FilterOptions{Provenance: scenariobank.ProductionDerivedRedacted})
 	if len(redacted) != 3 {
-		t.Errorf("production-derived-redacted scenarios = %d, want 3 (the throughline-derived set)", len(redacted))
+		t.Errorf("production-derived-redacted scenarios = %d, want 3 (the consumer-a-derived set)", len(redacted))
 	}
 	for _, s := range bank.Filter(scenariobank.FilterOptions{Provenance: scenariobank.SyntheticAdversarial}) {
 		if s.DecisiveEligible {

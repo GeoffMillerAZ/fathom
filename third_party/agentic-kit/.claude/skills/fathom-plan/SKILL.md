@@ -26,14 +26,16 @@ any convention beyond what's below.
 2. Ground every claimed symbol BEFORE it goes in a contract — don't guess
    package paths or symbol names from memory. Use the fathom MCP tools (or
    the equivalent CLI if MCP isn't registered in this session):
-   - `find_symbol` / `pack_context` to confirm a symbol exists and see its
-     real package directory.
-   - `test_impact` (or `references`) to see whether a `Test*` already
-     statically reaches it — this tells you up front whether `skip_test: true`
-     will be honest or a cover-up.
-3. If the plan implements/verifies a spec, get the spec's bracketed ID(s)
-   (`[US-042]`, `[EP-013]`, `[FR-7]`, or a milestone form like `M18.2`) —
-   `spec_refs` or `traceability` will confirm the ID is real.
+   - `find_symbol` to confirm a symbol exists and see its real package
+     directory.
+   - `symbol_context` to see its callers and the tests that reach it. This
+     tells you up front whether `skip_test: true` will be honest or a
+     cover-up.
+   Both are on the default eight-tool surface (`/rpc/agent`).
+3. If the plan implements or verifies a spec, get the spec's bracketed
+   ID(s) (`[US-042]`, `[EP-013]`, `[FR-7]`, or a milestone form like
+   `M18.2`). Given `file`, `obligations` returns a `spec_refs` section with
+   that file's own citations.
 
 ## Checklist format
 
@@ -46,10 +48,12 @@ any convention beyond what's below.
   (exempt — needs `disposition:`). Never hand-write a `[x]` for something
   you have not actually grounded against the index.
 - **Title**: human description of the work — keep it, spec IDs, and the
-  `{…}` annotation ALL on one line. The parser is line-based: an annotation
-  on a wrapped/continuation line is silently ignored and the task verifies as
-  `no-contract` instead of carrying its intended contract. However long the
-  line gets, keep it one line.
+  `{…}` annotation on one line where you can. A wrapped row is read only when
+  its continuation lines are INDENTED under the checkbox and the checkbox
+  line itself carries no `{…}` block; an annotation on an unindented line is
+  not read (lint names it) and the task verifies as `no-contract`. Older
+  fathom builds read the checkbox line alone, so one line is the portable
+  form.
 - **Spec IDs**: bracketed references tying the task to its governing spec,
   e.g. `[US-042]`. Omit only for genuinely spec-less housekeeping tasks.
 
@@ -60,12 +64,14 @@ Every gated (`[ ]`/`[x]`) line gets its own annotation with, at minimum:
 | Key | Meaning | Default |
 |-----|---------|---------|
 | `id` | Author-owned **stable** task ID (`T-1`, `OP-3`, …) — never rely on the positional `md-NNN` fallback, which renumbers when lines are inserted above it. Pick a scheme once per plan, keep it monotonic, never reuse or renumber. | positional |
-| `symbol` | Exact symbol name the task claims to touch, as it actually exists in the index (confirm via `find_symbol`/`pack_context` — don't invent it) | — |
+| `symbol` | Exact symbol name the task claims to touch, as it actually exists in the index (confirm with `find_symbol`; don't invent it) | — |
 | `package` | Repo-relative directory the symbol's file lives under. Required whenever the bare symbol name could exist in more than one package — disambiguates instead of leaving the claim to first-match luck (a still-ambiguous name after filtering resolves to nothing, honestly, never a guess) | unset (no filter) |
 | `reachable_from` | An entrypoint the symbol must be statically reachable from | unset |
 | `min_tier` | Minimum evidence tier (`verified`, `pre-scan`, `doc-claimed`, `sme-stated`, `assumed`) | `verified` |
 | `skip_test` | `true` exempts the symbol from the test-reaches requirement | `false` |
 | `allow_contradiction` | `true` lets contradictions on the symbol pass | `false` |
+| `ctx` | Space-separated discovery pointers (symbol ids, file paths, concern ids, thread ids) — non-gating; rendered by `fathom plans context --row <id>`; an empty value lints as malformed | unset |
+| `needs` | Stable row id(s) this row waits on — `needs: "A-1, A-2"` (double-quote multi-id values); lint errors on an unknown id, a self-reference, or a cycle; `fathom plans next --eligible-only` hides rows whose `needs:` are unmet | unset |
 
 The zero value of every key is the **strictest** contract — loosen defaults
 explicitly.
@@ -99,9 +105,16 @@ its test criterion most of the time is a demo, not a product. Every
 - [ ] Prompt v3 rewrite {id: OP-1, symbol: obligationsPromptVersion, package: internal/semantic, skip_test: true, skip: "prompt text change; identity rotation is the test"}
 ```
 
-Never add `skip_test: true` just to make a claim pass — if in doubt, run
-`test_impact` first and only skip if it's genuinely untestable by call-graph
-reachability.
+Never add `skip_test: true` just to make a claim pass — if in doubt, check
+reachability first (`symbol_context` lists the tests that reach a symbol)
+and only skip if it's genuinely untestable by call-graph reachability.
+Reachability is wider than it looks: a function referenced as a *value* — a mux handler,
+a route-table entry, `http.HandlerFunc(h)`, middleware, a method value —
+is an edge, and a call inside `t.Run`/`defer`/a goroutine counts for the
+enclosing test; the "call it at the test's top level" rule is retired and
+a direct wire test is optional. `skip_test` is for rows with no test at
+all, never for "the wiring is indirect". A method name shared by two
+receivers needs `package:`.
 
 ## Before checking any box
 
@@ -111,19 +124,40 @@ A `[ ]` becomes `[x]` only after this passes for the plan's service:
 fathom verify --service <svc> --plan docs/plans/<slug>.md
 ```
 
-(CI additionally runs `--strict --store <tmpstore>`, which also fails
-`Unknown`/no-contract claimed tasks — write contracts as if `--strict` is
-always watching.) Read the per-task output before flipping a checkbox: a
-`fail` means the claim is wrong, not the gate. Fix the claim (or the code),
+(CI adds `--strict --store <tmpstore>`, which also fails `Unknown` and
+no-contract claimed tasks, so write contracts as if `--strict` is always
+watching.) Read
+the per-task output before flipping a checkbox: a `fail` means the claim is
+wrong, not the gate. Fix the claim (or the code),
 never the checkbox alone. See the `fathom-verify` skill for interpreting the
 gate's exit codes and the fail-open convention.
+
+## Picking up work: the frontier
+
+`fathom plans next --service <svc> [--eligible-only] [--free]` lists open
+and claimed-unproven rows in authored order; `--eligible-only` drops rows
+blocked on an unmet `needs:`, `--free` drops rows under a fresh advisory
+lease. Take a row with `fathom plans lease <row-id> --plan <file> [--ttl 2h]`
+(`--release` to give it back; `fathom plans leases` lists them; the file is
+`.fathom/leases.jsonl`, advisory only). Render its `ctx:` pack with
+`fathom plans context --row <row-id> --service <svc>`.
+
+A plan with no open and no claimed-unproven row is archivable: `fathom plans
+status` names its `fathom plans archive` command (`--json`: `archivable`,
+`archive_command`), and the archive is the operator's call. Before cleaning up
+after a wave, `fathom plans lines` classes the repo's branches, worktrees and
+stashes as landed, at risk, idle or active and prints the removal command it
+would take, never run.
 
 ## Worked skeleton
 
 ```markdown
 # <slug> — one-line purpose
 
+Request (<requester>, <YYYY-MM-DD>): "<the requester's words, verbatim; org names as [org]>"
+
 - [ ] First unit of work [US-042] {id: T-1, symbol: DoTheThing, package: internal/thing}
 - [ ] Second unit, non-Go deliverable {id: T-2, symbol: cmdSomething, package: cmd/yourtool, skip_test: true, skip: "shell-script glue, no Test* can reach it"}
-- [-] Nice-to-have, not this wave {id: T-3, disposition: deferred, reason: "needs design review", trigger: "design doc lands"}
+- [ ] Third unit, waits on the first {id: T-3, symbol: UseTheThing, package: internal/thing, needs: T-1, ctx: DoTheThing internal/thing/thing.go}
+- [-] Nice-to-have, not this wave {id: T-4, disposition: deferred, reason: "needs design review", trigger: "design doc lands"}
 ```

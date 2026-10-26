@@ -4,7 +4,7 @@
 
 > Governing source: docs/vision/17-observatory-ui.md (this plan is its
 > binding promotion) — IO-28's successor after its trigger fired
-> 2026-08-08. **Covenant (ADR-0070 class):** failing test first,
+> 2026-08-08. **Covenant (test-first class):** failing test first,
 > `task validate` green before commit, dated CHANGELOG entry, boxes flip
 > only on `fathom verify`.
 

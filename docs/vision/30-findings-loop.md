@@ -13,15 +13,15 @@ becomes a candidate rule a human lifts into `CLAUDE.md` or `guard.cue`, where
 ADR-038 enforcement makes the lesson permanent. Review teaches the store, the
 store governs the edit, enforcement retires the class of mistake. The
 organizational record of findings stays where its authority lives — the
-review kit's portable journal (platform-engineering ADR-0098) — and fathom is
+review kit's portable journal (the review kit's own record decision) — and fathom is
 its first projection adapter, never its only home. This document is the
-fathom half of one contract; the review-kit half is
-`kits/review-kit/docs/design/fathom.md` and ADR-0103 in that repository.
+fathom half of one contract; the review kit half is its own fathom design note
+and projection-port decision, in the review kit's repository.
 
 Status: ACCEPTED 2026-09-18 (ADR-040). Plan: `docs/plans/findings-loop.md`.
 Supersedes nothing; it closes the trigger `docs/plans/findings-tracer.md`
 FT-8 named ("first external consumer of a findings store") and delivers the
-review kit's uplift brief P0–P4 (`kits/review-kit/docs/design/fathom-uplifts.md`).
+review kit's fathom uplift brief.
 
 ## 1. What already exists — the loop is mostly substrate
 
@@ -31,9 +31,9 @@ review kit's uplift brief P0–P4 (`kits/review-kit/docs/design/fathom-uplifts.m
 | fathom | closed failure-class vocabulary, deterministic pattern derivation, resolution outcomes on supersede, one-tier promotion behind the layer's eval gate, call-graph neighborhood (`findings near`), entry-condition status | `internal/core/findingclass.go`, `internal/analysis/findings`, phase R (`docs/plans/expert-suite-r.md`) |
 | fathom | native review findings persisted deterministically at tier `verified`, reconciled as `superseded` when a later review no longer emits them, refutation durable across re-review | `internal/analysis/review/claims.go`, `cmd/fathom/review.go` |
 | fathom | governing rules served at PreToolUse/PostToolUse, prompt-scoped rules, session brief, enforcement of `enforce: true` rules | ADR-036, ADR-037, ADR-038 |
-| review kit | portable finding identity `LogicalID(producer, subject, sourceId, ruleId)`, append-only journal, monotonic `sourceVersion`, event kinds observation/closure/annotation/revocation, exact-subject visibility, archive export/restore | `internal/findings`, `schema/findings.cue` |
-| review kit | report-only bridge over `fathom review --no-persist --json`, native-finding import into the journal, a **pending projection outbox** waiting for a governed importer | `internal/fathombridge`, `leadsman fathom-review`, `schema/fathom_bridge.cue` |
-| review kit | evidence adapters as ports (fathom is a shell-out adapter), a `Digester` port, ADR-0099 cache keys over all influential inputs | `internal/evidence/adapters.go` |
+| review kit | portable finding identity `LogicalID(producer, subject, sourceId, ruleId)`, append-only journal, monotonic `sourceVersion`, event kinds observation/closure/annotation/revocation, exact-subject visibility, archive export/restore | the review kit's findings package and schema |
+| review kit | report-only bridge over `fathom review --no-persist --json`, native-finding import into the journal, a **pending projection outbox** waiting for a governed importer | the review kit's fathom bridge, its `fathom-review` command and bridge schema |
+| review kit | evidence adapters as ports (fathom is a shell-out adapter), a `Digester` port, cache keys over all influential inputs | the review kit's evidence adapters |
 | agentic-kit | evidence span/locator/anchor, evidence grade with floor tier and independent-corroboration promotion, AI/human authorship provenance, read manifests | `foundations/evidence/*`, `foundations/provenance/ai-provenance`, `foundations/telemetry/read-manifest` |
 
 The two sides already share one tier ladder — `verified > pre-scan >
@@ -51,8 +51,8 @@ introduces a second vocabulary for either.
 - **fathom owns** code facts (symbols, edges, fingerprints, watermarks), the
   claims store as a *projection* of findings anchored to those facts, the
   drift machinery, decision-time serving, and the derived promotion report.
-  fathom never approves, disputes, tailors, or closes a review-kit finding on
-  its own authority; a review-kit acceptance is never translated into a
+  fathom never approves, disputes, tailors, or closes a review kit finding on
+  its own authority; a review kit acceptance is never translated into a
   fathom `refute`.
 - **Authority never flows backwards.** A projected finding cannot re-enter
   the review kit as independent evidence, and a fathom-native finding that the
@@ -122,7 +122,7 @@ what it could not see:
 Rules: a missing or unreadable path never hashes as an empty file (it is an
 `unknown` entry); an incomplete closure makes `complete: false` and the key
 still computes, so the consumer may reuse *narrower* results or refuse — the
-review kit's ADR-0099 policy decides, fathom only reports. Identical inputs
+review kit's own reuse policy decides, fathom only reports. Identical inputs
 give an identical key across runs and machines. The review kit consumes it
 through its existing `Digester` port for the code-closure component and
 keeps its own key for non-code inputs; fathom's typed import graph is the
@@ -208,7 +208,7 @@ kit's archive; the receipt makes the repair auditable.
 `ReviewKey(ctx, req) (Key, error)`; both marshal the same JSON the CLI emits.
 Conformance fixtures (`testdata/contracts/findings-import/*.json`,
 `testdata/contracts/review-key/*.json`) are run by one test through the CLI
-and the client; a review-kit fixture copy of the same bytes runs in that repo.
+and the client; a review kit fixture copy of the same bytes runs in that repo.
 Unknown fields refuse; an unsupported `schema_version` refuses with the
 supported list.
 
@@ -239,7 +239,7 @@ When `outbox` is set, the session hook (SessionStart, SubagentStart) runs
 `findings import` against it if the file's digest differs from the cursor
 under the state dir, bounded to one attempt per session, and reports the
 receipt in the brief. A CI review that commits its outbox, or a local
-`leadsman review`, therefore reaches the next coding session without a
+review kit run, therefore reaches the next coding session without a
 service in between. `fathom findings import` remains the explicit form.
 
 ## 4. Provenance and confidence — structural, not decorative
@@ -299,7 +299,7 @@ foundation as `evidence-producer`, and fathom consumes it.
   brief with the reason.
 - fathom does not become the organizational record. Retention, revocation,
   restore drills, access isolation across trust boundaries, and named
-  operational owners remain the review kit's (ADR-0098 "Revisit when") —
+  operational owners remain the review kit's (its record decision's "Revisit when") —
   the receipts and cursors here are what would let that review happen, not
   a claim that it has.
 - No model in this path. Import, serve, candidates, review-key: all
@@ -323,12 +323,12 @@ before any number is cited (docs/bench/README.md).
 `fathom-onboard` skill gains the loop as step 7 (review kit outbox →
 import → served); a new `fathom-findings` skill covers import, inspect,
 candidates, refute. `docs/adoption/findings-loop.md` is the end-to-end guide
-(CI variant: the GitHub Action commits the outbox; local variant: `leadsman
-review` then `fathom findings import`). `docs/use-cases/change-review.md`
+(CI variant: the GitHub Action commits the outbox; local variant: a local
+review kit run, then `fathom findings import`). `docs/use-cases/change-review.md`
 gains the loop; `docs/mcp-tools.md` records that no agent-surface tool grew.
 
 ## 8. Deliverables
 
 The plan rows in `docs/plans/findings-loop.md` (FL-1 … FL-24) derive from
-§3, §4, §6 and §7 one-to-one; the review-kit rows (RP-1 … RP-9) live in
-platform-engineering `docs/plans/findings-projection.md`.
+§3, §4, §6 and §7 one-to-one; the review kit's own rows live in
+its repository's findings-projection plan.

@@ -1,0 +1,113 @@
+{
+  "conclusion": "success",
+  "createdAt": "2026-10-24T12:23:32Z",
+  "databaseId": 40093730634,
+  "headSha": "c7633a428d4203418b24313436a626be4506a06a",
+  "jobs": [
+    {
+      "completedAt": "2026-10-24T12:31:59Z",
+      "conclusion": "success",
+      "databaseId": 120871538786,
+      "name": "validate",
+      "startedAt": "2026-10-24T12:23:35Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-24T12:23:36Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-24T12:23:35Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-24T12:23:38Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v4",
+          "number": 2,
+          "startedAt": "2026-10-24T12:23:36Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-24T12:23:38Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-go@v5",
+          "number": 3,
+          "startedAt": "2026-10-24T12:23:38Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-24T12:25:40Z",
+          "conclusion": "success",
+          "name": "Install Task",
+          "number": 4,
+          "startedAt": "2026-10-24T12:23:38Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-24T12:26:13Z",
+          "conclusion": "success",
+          "name": "Install CUE (required \u2014 cue-vet skips silently without it)",
+          "number": 5,
+          "startedAt": "2026-10-24T12:25:40Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-24T12:31:39Z",
+          "conclusion": "success",
+          "name": "Full gate (fmt-check, vet, cue-vet, test -race)",
+          "number": 6,
+          "startedAt": "2026-10-24T12:26:13Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-24T12:31:49Z",
+          "conclusion": "success",
+          "name": "WASI build (governance foundations)",
+          "number": 7,
+          "startedAt": "2026-10-24T12:31:39Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-24T12:31:57Z",
+          "conclusion": "success",
+          "name": "WASM example build (GOOS=js)",
+          "number": 8,
+          "startedAt": "2026-10-24T12:31:49Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-24T12:31:58Z",
+          "conclusion": "success",
+          "name": "Post Run actions/setup-go@v5",
+          "number": 15,
+          "startedAt": "2026-10-24T12:31:57Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-24T12:31:58Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v4",
+          "number": 16,
+          "startedAt": "2026-10-24T12:31:58Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-24T12:31:58Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 17,
+          "startedAt": "2026-10-24T12:31:58Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/GeoffMillerAZ/agentic-kit/actions/runs/40093730634/job/120871538786"
+    }
+  ],
+  "status": "completed",
+  "updatedAt": "2026-10-24T12:31:59Z",
+  "url": "https://github.com/GeoffMillerAZ/agentic-kit/actions/runs/40093730634",
+  "scope": "native Ubuntu full task validate with race, required CUE install, WASI governance build and WASM example build",
+  "logSHA256": "ad5853554f683121f04ef6af7ca51d6d104b2942297bf46bbc9de449aae02cfe",
+  "limits": "Native macOS observations and Windows cross-builds are separate. No native Windows or production rollout qualification."
+}

@@ -117,5 +117,11 @@ func quantile(sorted []float64, q float64) float64 {
 		return sorted[n-1]
 	}
 	frac := pos - float64(lo)
-	return sorted[lo] + float64(frac*(sorted[hi]-sorted[lo]))
+	span := sorted[hi] - sorted[lo]
+	if math.IsInf(span, 0) {
+		// Opposite-sign finite bounds can overflow their difference.
+		// Their convex combination still lies between the bounds.
+		return float64((1-frac)*sorted[lo]) + float64(frac*sorted[hi])
+	}
+	return sorted[lo] + float64(frac*span)
 }

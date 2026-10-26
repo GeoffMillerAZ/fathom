@@ -29,7 +29,7 @@ mechanism-labeled interventions — plus a daemon status page at
   existing `serve-http` listener.
 
 This is a **CLI-only** feature (plus the one HTTP status page) — no new MCP
-tool exists for any of it (law 10, "verb-first surfaces": fathom-studio,
+tool exists for any of it (law 10, "verb-first surfaces": the studio repository,
 not fathom, gets the interactive screens — see
 `docs/vision/13-expert-suite.md` §9 row Q).
 

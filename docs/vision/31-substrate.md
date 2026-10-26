@@ -234,7 +234,7 @@ scope, Bito's three-dismissal auto-suppression, Greptile's tone parsing), and
 LLM-judged dedup or a single summed score as the headline. For the
 organizational side, borrow sequential floors, expiring human attestations,
 retained certification history and exemptions with an approval trail into
-marks and soundings; keep the portable journal as the record, never a vendor
+the review kit's records; keep the portable journal as the record, never a vendor
 store.
 
 ## 4. Sequencing, each round gated by a measurement

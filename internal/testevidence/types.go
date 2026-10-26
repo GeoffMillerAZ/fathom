@@ -1,14 +1,14 @@
-// Package testevidence loads and ingests test-kit evidence (vision 33 /
+// Package testevidence loads and ingests the test kit evidence (vision 33 /
 // ADR-043 stage 0): declared manifests (tests/*.cue, validated against
 // the mirrored schema/testkit schema), attested #TestResult result
 // envelopes (plain or DSSE-wrapped), the case-to-symbol join, and the
 // additive store tables both land in. fathom never runs a test — it
-// ingests test-kit's own record (design doc §2's "fathom asserts a fact,
+// ingests the test kit's own record (design doc §2's "fathom asserts a fact,
 // never adequacy").
 package testevidence
 
 // Suite is one declared suite from a tests/<component>.cue manifest
-// (test-kit's #Suite, the fields fathom's stage-0 facts need — TC-2).
+// (the test kit's #Suite, the fields fathom's stage-0 facts need — TC-2).
 type Suite struct {
 	Name string
 	// Class mirrors #SuiteClass: unit | integration | e2e | conformance |
@@ -17,7 +17,7 @@ type Suite struct {
 	// Tier mirrors #Tier: blocking | advisory | quarantined.
 	Tier string
 	// Port is "" unless Class is "conformance" (the schema requires it
-	// there — ADR-0003's "every port has a shared conformance suite").
+	// there — the hexagonal rule "every port has a shared conformance suite").
 	Port string
 	// Certifies is decoded from the manifest's `certifies` block (TC-17
 	// landed upstream, schema/testkit/manifest.cue re-mirrored, TC-15):
@@ -109,7 +109,7 @@ type Run struct {
 	// "local" | "cosign-keyless") when the run arrived wrapped, "" for a
 	// bare envelope. fathom records this as a fact and never attempts
 	// signature verification itself (design doc §2: "signature
-	// verification is test-kit's job").
+	// verification is the test kit's job").
 	SignerTier string `json:"-"`
 	// SourceFile is the file this run was read from.
 	SourceFile string `json:"-"`

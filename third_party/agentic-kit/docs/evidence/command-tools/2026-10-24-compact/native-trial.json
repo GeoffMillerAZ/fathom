@@ -1,0 +1,811 @@
+{
+  "version": "command-guard.compact-trial/1",
+  "executedAt": "2026-10-24T10:47:05.827008+00:00",
+  "platform": "Darwin",
+  "architecture": "arm64",
+  "binarySHA256": "acdea56bc680817ac4e178405f7b793965b39da1315efe4e548034ee46428091",
+  "runnerSHA256": "4a8ca834477768e2d9faaa25d4c7ac5b2ad6316fd50ba93d9b564f6e311f1b03",
+  "frozenFixtureSHA256": "b291ee2efc9174ff8cbf7f2f43abcef040dbbc419ea675fa7dce6d27d9f81b92",
+  "cases": [
+    {
+      "name": "inspection-400",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "lossless": true,
+        "never-larger": true,
+        "output-cap": true,
+        "marker-at-289": true,
+        "baseline-saving": true
+      },
+      "json": {
+        "exit": 0,
+        "bytes": 30229,
+        "seconds": 0.08422024990431964,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 0,
+        "bytes": 21868,
+        "seconds": 0.008501417003571987,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "name": "inspection-empty",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "lossless": true,
+        "never-larger": true,
+        "output-cap": true
+      },
+      "json": {
+        "exit": 0,
+        "bytes": 316,
+        "seconds": 0.004253916908055544,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 0,
+        "bytes": 316,
+        "seconds": 0.0038129158783704042,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "name": "inspection-unicode",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "lossless": true,
+        "never-larger": true,
+        "output-cap": true
+      },
+      "json": {
+        "exit": 0,
+        "bytes": 403,
+        "seconds": 0.003921374911442399,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 0,
+        "bytes": 403,
+        "seconds": 0.0041776669677346945,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "name": "inspection-crlf",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "lossless": true,
+        "never-larger": true,
+        "output-cap": true
+      },
+      "json": {
+        "exit": 0,
+        "bytes": 431,
+        "seconds": 0.0040738750249147415,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 0,
+        "bytes": 407,
+        "seconds": 0.0039713329169899225,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "name": "search-400",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "lossless": true,
+        "never-larger": true,
+        "output-cap": true
+      },
+      "json": {
+        "exit": 0,
+        "bytes": 30229,
+        "seconds": 0.00467841699719429,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 0,
+        "bytes": 21868,
+        "seconds": 0.007327500032261014,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "name": "results-1",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "lossless": true,
+        "never-larger": true,
+        "output-cap": true
+      },
+      "json": {
+        "exit": 0,
+        "bytes": 409,
+        "seconds": 0.004228250123560429,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 0,
+        "bytes": 409,
+        "seconds": 0.004382875049486756,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "name": "results-3",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "lossless": true,
+        "never-larger": true,
+        "output-cap": true
+      },
+      "json": {
+        "exit": 0,
+        "bytes": 555,
+        "seconds": 0.004407207947224379,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 0,
+        "bytes": 531,
+        "seconds": 0.003927707904949784,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "name": "results-9",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "lossless": true,
+        "never-larger": true,
+        "output-cap": true
+      },
+      "json": {
+        "exit": 0,
+        "bytes": 993,
+        "seconds": 0.004402999999001622,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 0,
+        "bytes": 843,
+        "seconds": 0.004260458052158356,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "name": "results-10",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "lossless": true,
+        "never-larger": true,
+        "output-cap": true
+      },
+      "json": {
+        "exit": 0,
+        "bytes": 1068,
+        "seconds": 0.004326583119109273,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 0,
+        "bytes": 897,
+        "seconds": 0.004266415955498815,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "name": "results-99",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "lossless": true,
+        "never-larger": true,
+        "output-cap": true
+      },
+      "json": {
+        "exit": 0,
+        "bytes": 7654,
+        "seconds": 0.0048059578984975815,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 0,
+        "bytes": 5614,
+        "seconds": 0.0058549579698592424,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "name": "results-100",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "lossless": true,
+        "never-larger": true,
+        "output-cap": true
+      },
+      "json": {
+        "exit": 0,
+        "bytes": 7730,
+        "seconds": 0.004363874904811382,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 0,
+        "bytes": 5669,
+        "seconds": 0.0046797499526292086,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "name": "bytes-500",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "lossless": true,
+        "never-larger": true,
+        "output-cap": true
+      },
+      "json": {
+        "exit": 0,
+        "bytes": 482,
+        "seconds": 0.004343375097960234,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 0,
+        "bytes": 479,
+        "seconds": 0.008792666019871831,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "name": "bytes-1000",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "longer-checked-prefix": true,
+        "header-fidelity": true,
+        "output-cap": true
+      },
+      "json": {
+        "exit": 0,
+        "bytes": 993,
+        "seconds": 0.0049916659481823444,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 0,
+        "bytes": 950,
+        "seconds": 0.006652833893895149,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "name": "bytes-1500",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "longer-checked-prefix": true,
+        "header-fidelity": true,
+        "output-cap": true
+      },
+      "json": {
+        "exit": 0,
+        "bytes": 1438,
+        "seconds": 0.004842582857236266,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 0,
+        "bytes": 1480,
+        "seconds": 0.00492758397012949,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "name": "bytes-3000",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "longer-checked-prefix": true,
+        "header-fidelity": true,
+        "output-cap": true
+      },
+      "json": {
+        "exit": 0,
+        "bytes": 2992,
+        "seconds": 0.004482832970097661,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 0,
+        "bytes": 2964,
+        "seconds": 0.0048609168734401464,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "name": "hidden-finding",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "lossless": true,
+        "never-larger": true,
+        "output-cap": true,
+        "failure-privacy": true
+      },
+      "json": {
+        "exit": 1,
+        "bytes": 320,
+        "seconds": 0.0044295829720795155,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 1,
+        "bytes": 320,
+        "seconds": 0.0038742912001907825,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "name": "denied-path",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "lossless": true,
+        "never-larger": true,
+        "output-cap": true,
+        "failure-privacy": true
+      },
+      "json": {
+        "exit": 1,
+        "bytes": 316,
+        "seconds": 0.004091665847226977,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 1,
+        "bytes": 316,
+        "seconds": 0.003913334105163813,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "name": "wrong-pin",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "lossless": true,
+        "never-larger": true,
+        "output-cap": true,
+        "failure-privacy": true
+      },
+      "json": {
+        "exit": 2,
+        "bytes": 324,
+        "seconds": 0.004607500042766333,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 2,
+        "bytes": 324,
+        "seconds": 0.004196458961814642,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "name": "invalid-control",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "lossless": true,
+        "never-larger": true,
+        "output-cap": true,
+        "failure-privacy": true
+      },
+      "json": {
+        "exit": 2,
+        "bytes": 320,
+        "seconds": 0.0036346670240163803,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 2,
+        "bytes": 320,
+        "seconds": 0.003445291891694069,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "name": "tiny-output",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "empty-small-cap": true
+      },
+      "json": {
+        "exit": 2,
+        "bytes": 0,
+        "seconds": 0.004433374851942062,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 2,
+        "bytes": 0,
+        "seconds": 0.004141791956499219,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "name": "status-40-limit",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "lossless": true,
+        "never-larger": true,
+        "output-cap": true,
+        "failure-privacy": true
+      },
+      "json": {
+        "exit": 2,
+        "bytes": 465,
+        "seconds": 0.13738570897839963,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 2,
+        "bytes": 465,
+        "seconds": 0.13238829094916582,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "name": "status-30",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "lossless": true,
+        "never-larger": true,
+        "output-cap": true,
+        "status-task": true,
+        "baseline-saving": true
+      },
+      "json": {
+        "exit": 0,
+        "bytes": 2347,
+        "seconds": 0.13874912494793534,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 0,
+        "bytes": 1808,
+        "seconds": 0.14585966616868973,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "name": "status-empty",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "lossless": true,
+        "never-larger": true,
+        "output-cap": true
+      },
+      "json": {
+        "exit": 0,
+        "bytes": 483,
+        "seconds": 0.13576766615733504,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 0,
+        "bytes": 483,
+        "seconds": 0.16487629106268287,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "name": "diff-sides",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "lossless": true,
+        "never-larger": true,
+        "output-cap": true
+      },
+      "json": {
+        "exit": 0,
+        "bytes": 1327,
+        "seconds": 0.31857187510468066,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 0,
+        "bytes": 1148,
+        "seconds": 0.3129523328971118,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "name": "history-root",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "lossless": true,
+        "never-larger": true,
+        "output-cap": true
+      },
+      "json": {
+        "exit": 0,
+        "bytes": 747,
+        "seconds": 0.33265624986961484,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 0,
+        "bytes": 731,
+        "seconds": 0.21672149980440736,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "name": "history-all",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "lossless": true,
+        "never-larger": true,
+        "output-cap": true
+      },
+      "json": {
+        "exit": 0,
+        "bytes": 3380,
+        "seconds": 0.4331300419289619,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 0,
+        "bytes": 2860,
+        "seconds": 0.5343637501355261,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "name": "history-more",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "lossless": true,
+        "never-larger": true,
+        "output-cap": true
+      },
+      "json": {
+        "exit": 0,
+        "bytes": 1471,
+        "seconds": 0.2636531249154359,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 0,
+        "bytes": 1314,
+        "seconds": 0.2715899581089616,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "name": "git-bytes-496",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "lossless": true,
+        "never-larger": true,
+        "output-cap": true,
+        "failure-privacy": true
+      },
+      "json": {
+        "exit": 2,
+        "bytes": 467,
+        "seconds": 0.17355054221116006,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 2,
+        "bytes": 467,
+        "seconds": 0.2943024169653654,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "name": "git-bytes-500",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "lossless": true,
+        "never-larger": true,
+        "output-cap": true
+      },
+      "json": {
+        "exit": 0,
+        "bytes": 497,
+        "seconds": 0.1514097498729825,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 0,
+        "bytes": 497,
+        "seconds": 0.5722364580724388,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "name": "git-bytes-1000",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "longer-checked-prefix": true,
+        "header-fidelity": true,
+        "output-cap": true
+      },
+      "json": {
+        "exit": 0,
+        "bytes": 970,
+        "seconds": 0.14875050005503,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 0,
+        "bytes": 967,
+        "seconds": 0.15811620792374015,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "name": "git-bytes-1500",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "longer-checked-prefix": true,
+        "header-fidelity": true,
+        "output-cap": true
+      },
+      "json": {
+        "exit": 0,
+        "bytes": 1493,
+        "seconds": 0.16669945907779038,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 0,
+        "bytes": 1464,
+        "seconds": 0.1415418330579996,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "name": "git-bytes-3000",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "lossless": true,
+        "never-larger": true,
+        "output-cap": true
+      },
+      "json": {
+        "exit": 0,
+        "bytes": 2347,
+        "seconds": 0.16479037492536008,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 0,
+        "bytes": 1808,
+        "seconds": 0.16936945891939104,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "name": "git-wrong-binary",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "lossless": true,
+        "never-larger": true,
+        "output-cap": true,
+        "failure-privacy": true
+      },
+      "json": {
+        "exit": 2,
+        "bytes": 420,
+        "seconds": 0.0075378750916570425,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 2,
+        "bytes": 420,
+        "seconds": 0.007422334048897028,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "name": "git-denied",
+      "passed": true,
+      "checks": {
+        "exit": true,
+        "stderr": true,
+        "lossless": true,
+        "never-larger": true,
+        "output-cap": true,
+        "failure-privacy": true
+      },
+      "json": {
+        "exit": 1,
+        "bytes": 410,
+        "seconds": 0.004243124974891543,
+        "stderrBytes": 0
+      },
+      "compact": {
+        "exit": 1,
+        "bytes": 410,
+        "seconds": 0.004501749994233251,
+        "stderrBytes": 0
+      }
+    }
+  ],
+  "sourcesUnchanged": true,
+  "claims": {
+    "measuredTokens": false,
+    "productionEconomics": false,
+    "nativeOtherOS": false,
+    "cache": false
+  },
+  "passed": true
+}

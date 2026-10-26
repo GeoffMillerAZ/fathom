@@ -2,7 +2,7 @@ package tokenization_test
 
 // RunShredConformance's real implementation now lives in the importable
 // foundations/security/tokenization/vaulttest package (H3 Stage 2, agentic-kit
-// handoff-h3-throughline.md) so downstream adapters (e.g. throughline's
+// handoff-h3-consumer-a.md) so downstream adapters (e.g. consumer-a's
 // SQLite-backed vault) can import it from their own test files. The previous
 // doc comment here claimed this _test.go file itself was "exported so
 // downstream consumers can run it" — that was wrong: a _test.go file compiles

@@ -1,0 +1,1 @@
+{"version":"decision-lab.input/1","caseId":"case-1","subjectId":"finding-1","revision":"r1","capturedState":"A changed access check returns allowed before checking tenant ownership. Source excerpt is included."}

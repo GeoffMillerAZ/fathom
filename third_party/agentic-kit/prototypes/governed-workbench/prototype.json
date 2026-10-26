@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "id": "governed-workbench",
+  "title": "Governed workbench design lab",
+  "status": "exploratory",
+  "owner": "agentic-kit maintainer",
+  "purpose": "Explore shared review and prose workbench layouts before choosing a production UI implementation.",
+  "questions": [
+    "Can review and prose share context and evidence without losing task-specific semantics?",
+    "Can the same subject move from inline assistance to a full workspace without losing selection?",
+    "Are blocks, uncertainty, exact consent and safe recovery understandable with minimal human effort?"
+  ],
+  "backend": "none",
+  "data": "synthetic",
+  "entry": "index.html",
+  "files": [
+    "index.html",
+    "style.css",
+    "app.js",
+    "scenarios.js",
+    "README.md"
+  ],
+  "scenarios": [
+    {
+      "id": "prose-conflict",
+      "title": "Resolve a disputed sentence"
+    },
+    {
+      "id": "prose-variants",
+      "title": "Compare audience variants"
+    },
+    {
+      "id": "agent-suggestion",
+      "title": "Review a proposed agent change"
+    },
+    {
+      "id": "review-queue",
+      "title": "Triage the ordered review queue"
+    },
+    {
+      "id": "evidence-gap",
+      "title": "Diagnose evidence gaps"
+    },
+    {
+      "id": "investigation-ladder",
+      "title": "Choose the next investigation step"
+    },
+    {
+      "id": "privacy-review",
+      "title": "Inspect a redacted reference"
+    },
+    {
+      "id": "delivery-unknown",
+      "title": "Reconcile an uncertain delivery"
+    },
+    {
+      "id": "clarification",
+      "title": "Clarify a disputed premise"
+    },
+    {
+      "id": "stale-approval",
+      "title": "Rebuild after source correction"
+    },
+    {
+      "id": "model-catalog",
+      "title": "Trace model selection"
+    },
+    {
+      "id": "learning-flywheel",
+      "title": "Promote a reviewed lesson"
+    }
+  ],
+  "review": {
+    "on": "2026-11-21",
+    "promoteWhen": "A named consumer task and attended evidence justify a separately scoped owning-layer implementation.",
+    "retireWhen": "The design question is answered, a successor replaces it, or no owner renews the review."
+  }
+}

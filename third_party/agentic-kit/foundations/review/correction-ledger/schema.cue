@@ -6,7 +6,7 @@ package correctionledger
 #AuthorKind: "human" | "ai"
 
 // #Author carries the provenance of the entity that produced a Correction or
-// Dismissal. Throughline invariant 1: every evidence span must be traceable to
+// Dismissal. Consumer-a invariant 1: every evidence span must be traceable to
 // its exact producer.
 //
 // For human authors, IdentityID is the reviewer's identity (e.g. email or UUID).
@@ -56,7 +56,7 @@ package correctionledger
 	// Confidence is the corrector's certainty on a scale of 1–5.
 	Confidence: >=1 & <=5 & int
 	// Author optionally carries the full provenance of who or what produced this
-	// correction (Throughline invariant 1). Omit if not recorded.
+	// correction (Consumer-a invariant 1). Omit if not recorded.
 	Author?:     #Author
 	// SourceHash is the content hash of the source document supporting this
 	// correction. Optional; used for click-to-source traceability.
@@ -74,6 +74,6 @@ package correctionledger
 	Reason:      string & !=""
 	DismissedAt: string // RFC 3339 timestamp
 	// Author optionally carries the full provenance of who or what produced this
-	// dismissal (Throughline invariant 1). Omit if not recorded.
+	// dismissal (Consumer-a invariant 1). Omit if not recorded.
 	Author?: #Author
 }

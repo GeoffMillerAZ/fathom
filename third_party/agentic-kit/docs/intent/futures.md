@@ -33,6 +33,9 @@ its two-repository evidence and limits are in the delivery assessment. It does n
 - Confidence: plausible. Horizon: later. Do not build: before a second workload self-audits.
 - Preserve: `quality/agentic-practices-evaluator` keeps the checklist as caller data.
 - Promote when: "the second workload wants the same self-audit the first hand-wrote." Drop if: never; the ledger is the seed.
+- Reviewed 2026-10-22: the second-workload trigger is unproven. Owner-sponsored G9
+  accepts a design and bounded reference proposal under 0025/0004; it does not admit
+  a new foundation or assert this trigger fired. Implementation admission remains queued.
 
 ## F6. Batch API support (#11)
 - Confidence: plausible. Horizon: later. Do not build: a batch abstraction over the `LLMClient` contract.
@@ -133,3 +136,10 @@ descriptive, not a measured remote dry run. Production effectiveness remains unm
 - Do not build: a receipt or result format of the kit's own (fathom ADR-063); a Merkle tree over facts; an import of fathom code.
 - Preserve: `Span` grows only by optional fields (backward compatible); `RecordHash` stays sha256; the two vocabularies stay separate types under the naming audit.
 - Promote when: "two consumers commit to reading it: fathom ships `export receipt` (its EVX-9) and the review tool swaps `SpanRef` for `evidence-span`" (D13). Drop if: the review tool keeps `SpanRef` at its next release and fathom names no kit consumer for its receipts, or at the 2027-09-12 audit.
+
+## F21. Optional AAIF runtime and external-host profiles (0034)
+- Confidence: plausible. Horizon: later. Evidence: [ten-project source assessment](../assessments/2026-10-23-aaif-alignment.md), not installed interoperability or a receiver commitment.
+- Do not build: an RL trainer, sandbox runtime, embedded gateway, worker executor or mandatory all-project stack. OpenEnv/OpenSandbox/A2A adapters and goose/proxy pilots remain receiver-admitted; F7/F8/F10 still apply independently.
+- Preserve: existing host, LLMClient/decision, MCP, evaluator and effect/reconciliation ports; explicit native/unsupported profiles and independent domain authority. No new shared type without a demonstrated seam.
+- Promote when: a named receiver selects the exact task/profile and peer, establishes its baseline and runtime/resource/disclosure bounds, and admits the applicable [AF row](../plans/aaif-alignment.md) within a free slot or bounded maintenance scope.
+- Drop if: the existing path meets the need or upstream retires the relevant seam at review; review by 2026-11-21 or next release, then park without new evidence. Hosting the kit itself also requires public-readiness D4 ratification.

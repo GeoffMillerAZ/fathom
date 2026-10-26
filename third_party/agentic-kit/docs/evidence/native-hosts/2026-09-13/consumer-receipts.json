@@ -1,6 +1,6 @@
 [
   {
-    "consumer": "throughline",
+    "consumer": "consumer-a",
     "kind": "configuration-only receipt summary",
     "receipt": {
       "version": 1,
@@ -87,7 +87,7 @@
     "deny_paths": []
   },
   {
-    "consumer": "throughline",
+    "consumer": "consumer-a",
     "kind": "configuration-only receipt summary",
     "receipt": {
       "version": 1,
@@ -174,7 +174,7 @@
     "deny_paths": []
   },
   {
-    "consumer": "resume_as_code",
+    "consumer": "consumer-c",
     "kind": "configuration-only receipt summary",
     "receipt": {
       "version": 1,
@@ -261,7 +261,7 @@
     "deny_paths": []
   },
   {
-    "consumer": "resume_as_code",
+    "consumer": "consumer-c",
     "kind": "configuration-only receipt summary",
     "receipt": {
       "version": 1,

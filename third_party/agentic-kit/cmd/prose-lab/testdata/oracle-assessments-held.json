@@ -1,0 +1,27 @@
+{
+  "version": "prose-lab.oracle-assessments/1",
+  "packet_digest": "f5fc178e7fea3042e3e5ff8f70aa8b00046891b8f13f9961703a03908d198e65",
+  "criterion_id": "cited-entailment/1",
+  "criterion_sha256": "bb12ed77442b05cc9912247881fce489a35d5de4749fb1efe364c5c2011acaac",
+  "rows": [
+    {
+      "case_id": "operational-runbook--p-03",
+      "case_digest": "82f2d287cc7121fd309a52694e0b418fc17bc486aa9832ed08eacca402d84a3f",
+      "disposition": "ambiguous",
+      "interpretation": "unresolved",
+      "reason_code": "modality-ambiguity",
+      "premise_fact_ids": [
+        "f-06"
+      ],
+      "counter_fact_ids": [
+        "f-07"
+      ],
+      "basis": "Synthetic workflow example, not an independent floor adjudication: permission after confirmation leaves only-after ambiguous under strict entailment. The active-lease prohibition does not settle expired-but-unconfirmed leases. Proposed f-07 is for investigation, not silent positive support.",
+      "assessor_kind": "agent",
+      "assessor_ref": "example-agent-unverified",
+      "proposed_fact_ids": [
+        "f-07"
+      ]
+    }
+  ]
+}

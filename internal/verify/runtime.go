@@ -3,7 +3,7 @@ package verify
 // runtime.go — runtime_pass (TC-29; I8 and ADR-023 as amended by ADR-067,
 // 2026-10-10). "Static" means verify never executes a test or a command;
 // it may read attested evidence. runtime_pass reads the newest attested
-// run in test_runs (a test-kit envelope `fathom tests ingest` wrote,
+// run in test_runs (a test kit envelope `fathom tests ingest` wrote,
 // internal/testevidence) for a row's certifying tests: Pass or Fail with
 // the run's commit and age, Unknown only when no run exists. It is
 // informational: it never changes a row's status, never names a gate
@@ -116,7 +116,7 @@ func evalRuntimePass(tests []string, from string, ev Evidence) Criterion {
 			names[i] = bareTestName(t)
 		}
 		return Criterion{Name: runtimeCriterion, Status: Unknown, Detail: fmt.Sprintf(
-			"no attested run in test_runs for %s (%s); ingest a test-kit envelope with `fathom tests ingest --results`",
+			"no attested run in test_runs for %s (%s); ingest a test kit envelope with `fathom tests ingest --results`",
 			strings.Join(dedupSorted(names), ", "), from)}
 	}
 	newest := newestRun(runs)

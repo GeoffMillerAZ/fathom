@@ -28,7 +28,7 @@ running it was exactly the fix.
 
 ## Bug 3 (MEDIUM) — three verb-JSON gaps the phase-K studio hit
 
-`fathom-studio` (law 10: it may only consume verb JSON, never reach into
+The studio repository (law 10: it may only consume verb JSON, never reach into
 fathom's internals) correctly refused to work around three gaps instead of
 reaching past them: (a) no manifest summary in any verb JSON — a consumer
 could not show a module's description/license/tier_profile/provenance; (b)

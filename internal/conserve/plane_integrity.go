@@ -4,7 +4,7 @@ package conserve
 // wraps internal/analysis/integrity's Check (CV-9, over guarded tests),
 // GeneratedHandEdits (CV-11), fed by GuardedTests' (CV-7) context — the
 // one place in the package that resolves the intent corpus, decoded
-// test-kit manifests, the index/call graph, and a source-path listing
+// The test kit manifests, the index/call graph, and a source-path listing
 // integrity's leaf functions need, then hands them flattened data, the
 // same discipline internal/analysis/review's own callers use for
 // ObligationRule/CertificationRecord.

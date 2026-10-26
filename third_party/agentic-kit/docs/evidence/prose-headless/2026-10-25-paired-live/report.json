@@ -1,0 +1,1048 @@
+{
+  "version": "prose-lab.review-pair-report/1",
+  "study_digest": "07d5089d9213f9b7c000ef7fc44d7930bfcda34813a5adc338e2abe4ca82e521",
+  "corpus_digest": "da99d1c025764c445967dd8d71c56e63992108feaa682d1ba81685155c0688bd",
+  "goal_scope_digest": "41988f2f526415763d64faa7193e477f1370c56bfd2a0e269427dbbf0c004403",
+  "review_scope_digest": "f8d86a5366e2317f2a5dd6bc90fae074452a5d3c2176dccf9b1e589043ac6a49",
+  "total": {
+    "planned": 140,
+    "complete": 108,
+    "missing": 32,
+    "false_support": 0,
+    "false_hold": 1,
+    "inconclusive": 0,
+    "pending": 0,
+    "failed": 0,
+    "unknown": 0,
+    "invalid": 0,
+    "input_tokens": 126688,
+    "output_tokens": 10090,
+    "cache_write_tokens": 0,
+    "cache_read_tokens": 0,
+    "charged_micro_usd": 354276,
+    "latency_nanos": 227350453541
+  },
+  "baseline": {
+    "planned": 70,
+    "complete": 54,
+    "missing": 16,
+    "false_support": 0,
+    "false_hold": 0,
+    "inconclusive": 0,
+    "pending": 0,
+    "failed": 0,
+    "unknown": 0,
+    "invalid": 0,
+    "input_tokens": 59699,
+    "output_tokens": 5062,
+    "cache_write_tokens": 0,
+    "cache_read_tokens": 0,
+    "charged_micro_usd": 170018,
+    "latency_nanos": 82590845082
+  },
+  "candidate": {
+    "planned": 70,
+    "complete": 54,
+    "missing": 16,
+    "false_support": 0,
+    "false_hold": 1,
+    "inconclusive": 0,
+    "pending": 0,
+    "failed": 0,
+    "unknown": 0,
+    "invalid": 0,
+    "input_tokens": 66989,
+    "output_tokens": 5028,
+    "cache_write_tokens": 0,
+    "cache_read_tokens": 0,
+    "charged_micro_usd": 184258,
+    "latency_nanos": 144759608459
+  },
+  "rows": [
+    {
+      "position": 1,
+      "case_id": "architecture-decision--n-01",
+      "variant": "baseline",
+      "execution_id": "baseline--architecture-decision--n-01",
+      "state": "unsupported"
+    },
+    {
+      "position": 2,
+      "case_id": "architecture-decision--n-01",
+      "variant": "candidate",
+      "execution_id": "candidate--architecture-decision--n-01",
+      "state": "unsupported"
+    },
+    {
+      "position": 3,
+      "case_id": "architecture-decision--n-02",
+      "variant": "baseline",
+      "execution_id": "baseline--architecture-decision--n-02",
+      "state": "unsupported"
+    },
+    {
+      "position": 4,
+      "case_id": "architecture-decision--n-02",
+      "variant": "candidate",
+      "execution_id": "candidate--architecture-decision--n-02",
+      "state": "unsupported"
+    },
+    {
+      "position": 5,
+      "case_id": "architecture-decision--n-03",
+      "variant": "baseline",
+      "execution_id": "baseline--architecture-decision--n-03",
+      "state": "unsupported"
+    },
+    {
+      "position": 6,
+      "case_id": "architecture-decision--n-03",
+      "variant": "candidate",
+      "execution_id": "candidate--architecture-decision--n-03",
+      "state": "unsupported"
+    },
+    {
+      "position": 7,
+      "case_id": "architecture-decision--n-04",
+      "variant": "baseline",
+      "execution_id": "baseline--architecture-decision--n-04",
+      "state": "unsupported"
+    },
+    {
+      "position": 8,
+      "case_id": "architecture-decision--n-04",
+      "variant": "candidate",
+      "execution_id": "candidate--architecture-decision--n-04",
+      "state": "unsupported"
+    },
+    {
+      "position": 9,
+      "case_id": "architecture-decision--n-05",
+      "variant": "baseline",
+      "execution_id": "baseline--architecture-decision--n-05",
+      "state": "unsupported"
+    },
+    {
+      "position": 10,
+      "case_id": "architecture-decision--n-05",
+      "variant": "candidate",
+      "execution_id": "candidate--architecture-decision--n-05",
+      "state": "unsupported"
+    },
+    {
+      "position": 11,
+      "case_id": "architecture-decision--n-06",
+      "variant": "baseline",
+      "execution_id": "baseline--architecture-decision--n-06",
+      "state": "unsupported"
+    },
+    {
+      "position": 12,
+      "case_id": "architecture-decision--n-06",
+      "variant": "candidate",
+      "execution_id": "candidate--architecture-decision--n-06",
+      "state": "unsupported"
+    },
+    {
+      "position": 13,
+      "case_id": "architecture-decision--n-07",
+      "variant": "baseline",
+      "execution_id": "baseline--architecture-decision--n-07",
+      "state": "unsupported"
+    },
+    {
+      "position": 14,
+      "case_id": "architecture-decision--n-07",
+      "variant": "candidate",
+      "execution_id": "candidate--architecture-decision--n-07",
+      "state": "unsupported"
+    },
+    {
+      "position": 15,
+      "case_id": "architecture-decision--p-01",
+      "variant": "baseline",
+      "execution_id": "baseline--architecture-decision--p-01",
+      "state": "supported"
+    },
+    {
+      "position": 16,
+      "case_id": "architecture-decision--p-01",
+      "variant": "candidate",
+      "execution_id": "candidate--architecture-decision--p-01",
+      "state": "supported"
+    },
+    {
+      "position": 17,
+      "case_id": "architecture-decision--p-02",
+      "variant": "baseline",
+      "execution_id": "baseline--architecture-decision--p-02",
+      "state": "supported"
+    },
+    {
+      "position": 18,
+      "case_id": "architecture-decision--p-02",
+      "variant": "candidate",
+      "execution_id": "candidate--architecture-decision--p-02",
+      "state": "supported"
+    },
+    {
+      "position": 19,
+      "case_id": "architecture-decision--p-03",
+      "variant": "baseline",
+      "execution_id": "baseline--architecture-decision--p-03",
+      "state": "supported"
+    },
+    {
+      "position": 20,
+      "case_id": "architecture-decision--p-03",
+      "variant": "candidate",
+      "execution_id": "candidate--architecture-decision--p-03",
+      "state": "supported"
+    },
+    {
+      "position": 21,
+      "case_id": "architecture-decision--p-04",
+      "variant": "baseline",
+      "execution_id": "baseline--architecture-decision--p-04",
+      "state": "supported"
+    },
+    {
+      "position": 22,
+      "case_id": "architecture-decision--p-04",
+      "variant": "candidate",
+      "execution_id": "candidate--architecture-decision--p-04",
+      "state": "supported"
+    },
+    {
+      "position": 23,
+      "case_id": "draft-service-agreement--n-01",
+      "variant": "baseline",
+      "execution_id": "baseline--draft-service-agreement--n-01",
+      "state": "unsupported"
+    },
+    {
+      "position": 24,
+      "case_id": "draft-service-agreement--n-01",
+      "variant": "candidate",
+      "execution_id": "candidate--draft-service-agreement--n-01",
+      "state": "unsupported"
+    },
+    {
+      "position": 25,
+      "case_id": "draft-service-agreement--n-02",
+      "variant": "baseline",
+      "execution_id": "baseline--draft-service-agreement--n-02",
+      "state": "unsupported"
+    },
+    {
+      "position": 26,
+      "case_id": "draft-service-agreement--n-02",
+      "variant": "candidate",
+      "execution_id": "candidate--draft-service-agreement--n-02",
+      "state": "unsupported"
+    },
+    {
+      "position": 27,
+      "case_id": "draft-service-agreement--n-03",
+      "variant": "baseline",
+      "execution_id": "baseline--draft-service-agreement--n-03",
+      "state": "unsupported"
+    },
+    {
+      "position": 28,
+      "case_id": "draft-service-agreement--n-03",
+      "variant": "candidate",
+      "execution_id": "candidate--draft-service-agreement--n-03",
+      "state": "unsupported"
+    },
+    {
+      "position": 29,
+      "case_id": "draft-service-agreement--n-04",
+      "variant": "baseline",
+      "execution_id": "baseline--draft-service-agreement--n-04",
+      "state": "unsupported"
+    },
+    {
+      "position": 30,
+      "case_id": "draft-service-agreement--n-04",
+      "variant": "candidate",
+      "execution_id": "candidate--draft-service-agreement--n-04",
+      "state": "unsupported"
+    },
+    {
+      "position": 31,
+      "case_id": "draft-service-agreement--n-05",
+      "variant": "baseline",
+      "execution_id": "baseline--draft-service-agreement--n-05",
+      "state": "unsupported"
+    },
+    {
+      "position": 32,
+      "case_id": "draft-service-agreement--n-05",
+      "variant": "candidate",
+      "execution_id": "candidate--draft-service-agreement--n-05",
+      "state": "unsupported"
+    },
+    {
+      "position": 33,
+      "case_id": "draft-service-agreement--n-06",
+      "variant": "baseline",
+      "execution_id": "baseline--draft-service-agreement--n-06",
+      "state": "unsupported"
+    },
+    {
+      "position": 34,
+      "case_id": "draft-service-agreement--n-06",
+      "variant": "candidate",
+      "execution_id": "candidate--draft-service-agreement--n-06",
+      "state": "unsupported"
+    },
+    {
+      "position": 35,
+      "case_id": "draft-service-agreement--n-07",
+      "variant": "baseline",
+      "execution_id": "baseline--draft-service-agreement--n-07",
+      "state": "unsupported"
+    },
+    {
+      "position": 36,
+      "case_id": "draft-service-agreement--n-07",
+      "variant": "candidate",
+      "execution_id": "candidate--draft-service-agreement--n-07",
+      "state": "unsupported"
+    },
+    {
+      "position": 37,
+      "case_id": "draft-service-agreement--p-01",
+      "variant": "baseline",
+      "execution_id": "baseline--draft-service-agreement--p-01",
+      "state": "supported"
+    },
+    {
+      "position": 38,
+      "case_id": "draft-service-agreement--p-01",
+      "variant": "candidate",
+      "execution_id": "candidate--draft-service-agreement--p-01",
+      "state": "supported"
+    },
+    {
+      "position": 39,
+      "case_id": "draft-service-agreement--p-02",
+      "variant": "baseline",
+      "execution_id": "baseline--draft-service-agreement--p-02",
+      "state": "supported"
+    },
+    {
+      "position": 40,
+      "case_id": "draft-service-agreement--p-02",
+      "variant": "candidate",
+      "execution_id": "candidate--draft-service-agreement--p-02",
+      "state": "supported"
+    },
+    {
+      "position": 41,
+      "case_id": "draft-service-agreement--p-03",
+      "variant": "baseline",
+      "execution_id": "baseline--draft-service-agreement--p-03",
+      "state": "supported"
+    },
+    {
+      "position": 42,
+      "case_id": "draft-service-agreement--p-03",
+      "variant": "candidate",
+      "execution_id": "candidate--draft-service-agreement--p-03",
+      "state": "supported"
+    },
+    {
+      "position": 43,
+      "case_id": "draft-service-agreement--p-04",
+      "variant": "baseline",
+      "execution_id": "baseline--draft-service-agreement--p-04",
+      "state": "supported"
+    },
+    {
+      "position": 44,
+      "case_id": "draft-service-agreement--p-04",
+      "variant": "candidate",
+      "execution_id": "candidate--draft-service-agreement--p-04",
+      "state": "supported"
+    },
+    {
+      "position": 45,
+      "case_id": "freeform-brief--n-01",
+      "variant": "baseline",
+      "execution_id": "baseline--freeform-brief--n-01",
+      "state": "unsupported"
+    },
+    {
+      "position": 46,
+      "case_id": "freeform-brief--n-01",
+      "variant": "candidate",
+      "execution_id": "candidate--freeform-brief--n-01",
+      "state": "unsupported"
+    },
+    {
+      "position": 47,
+      "case_id": "freeform-brief--n-02",
+      "variant": "baseline",
+      "execution_id": "baseline--freeform-brief--n-02",
+      "state": "unsupported"
+    },
+    {
+      "position": 48,
+      "case_id": "freeform-brief--n-02",
+      "variant": "candidate",
+      "execution_id": "candidate--freeform-brief--n-02",
+      "state": "unsupported"
+    },
+    {
+      "position": 49,
+      "case_id": "freeform-brief--n-03",
+      "variant": "baseline",
+      "execution_id": "baseline--freeform-brief--n-03",
+      "state": "unsupported"
+    },
+    {
+      "position": 50,
+      "case_id": "freeform-brief--n-03",
+      "variant": "candidate",
+      "execution_id": "candidate--freeform-brief--n-03",
+      "state": "unsupported"
+    },
+    {
+      "position": 51,
+      "case_id": "freeform-brief--n-04",
+      "variant": "baseline",
+      "execution_id": "baseline--freeform-brief--n-04",
+      "state": "unsupported"
+    },
+    {
+      "position": 52,
+      "case_id": "freeform-brief--n-04",
+      "variant": "candidate",
+      "execution_id": "candidate--freeform-brief--n-04",
+      "state": "unsupported"
+    },
+    {
+      "position": 53,
+      "case_id": "freeform-brief--n-05",
+      "variant": "baseline",
+      "execution_id": "baseline--freeform-brief--n-05",
+      "state": "unsupported"
+    },
+    {
+      "position": 54,
+      "case_id": "freeform-brief--n-05",
+      "variant": "candidate",
+      "execution_id": "candidate--freeform-brief--n-05",
+      "state": "unsupported"
+    },
+    {
+      "position": 55,
+      "case_id": "freeform-brief--n-06",
+      "variant": "baseline",
+      "execution_id": "baseline--freeform-brief--n-06",
+      "state": "unsupported"
+    },
+    {
+      "position": 56,
+      "case_id": "freeform-brief--n-06",
+      "variant": "candidate",
+      "execution_id": "candidate--freeform-brief--n-06",
+      "state": "unsupported"
+    },
+    {
+      "position": 57,
+      "case_id": "freeform-brief--n-07",
+      "variant": "baseline",
+      "execution_id": "baseline--freeform-brief--n-07",
+      "state": "unsupported"
+    },
+    {
+      "position": 58,
+      "case_id": "freeform-brief--n-07",
+      "variant": "candidate",
+      "execution_id": "candidate--freeform-brief--n-07",
+      "state": "unsupported"
+    },
+    {
+      "position": 59,
+      "case_id": "freeform-brief--p-01",
+      "variant": "baseline",
+      "execution_id": "baseline--freeform-brief--p-01",
+      "state": "supported"
+    },
+    {
+      "position": 60,
+      "case_id": "freeform-brief--p-01",
+      "variant": "candidate",
+      "execution_id": "candidate--freeform-brief--p-01",
+      "state": "supported"
+    },
+    {
+      "position": 61,
+      "case_id": "freeform-brief--p-02",
+      "variant": "baseline",
+      "execution_id": "baseline--freeform-brief--p-02",
+      "state": "supported"
+    },
+    {
+      "position": 62,
+      "case_id": "freeform-brief--p-02",
+      "variant": "candidate",
+      "execution_id": "candidate--freeform-brief--p-02",
+      "state": "supported"
+    },
+    {
+      "position": 63,
+      "case_id": "freeform-brief--p-03",
+      "variant": "baseline",
+      "execution_id": "baseline--freeform-brief--p-03",
+      "state": "supported"
+    },
+    {
+      "position": 64,
+      "case_id": "freeform-brief--p-03",
+      "variant": "candidate",
+      "execution_id": "candidate--freeform-brief--p-03",
+      "state": "supported"
+    },
+    {
+      "position": 65,
+      "case_id": "freeform-brief--p-04",
+      "variant": "baseline",
+      "execution_id": "baseline--freeform-brief--p-04",
+      "state": "supported"
+    },
+    {
+      "position": 66,
+      "case_id": "freeform-brief--p-04",
+      "variant": "candidate",
+      "execution_id": "candidate--freeform-brief--p-04",
+      "state": "supported"
+    },
+    {
+      "position": 67,
+      "case_id": "incident-summary--n-01",
+      "variant": "baseline",
+      "execution_id": "baseline--incident-summary--n-01",
+      "state": "unsupported"
+    },
+    {
+      "position": 68,
+      "case_id": "incident-summary--n-01",
+      "variant": "candidate",
+      "execution_id": "candidate--incident-summary--n-01",
+      "state": "unsupported"
+    },
+    {
+      "position": 69,
+      "case_id": "incident-summary--n-02",
+      "variant": "baseline",
+      "execution_id": "baseline--incident-summary--n-02",
+      "state": "unsupported"
+    },
+    {
+      "position": 70,
+      "case_id": "incident-summary--n-02",
+      "variant": "candidate",
+      "execution_id": "candidate--incident-summary--n-02",
+      "state": "unsupported"
+    },
+    {
+      "position": 71,
+      "case_id": "incident-summary--n-03",
+      "variant": "baseline",
+      "execution_id": "baseline--incident-summary--n-03",
+      "state": "unsupported"
+    },
+    {
+      "position": 72,
+      "case_id": "incident-summary--n-03",
+      "variant": "candidate",
+      "execution_id": "candidate--incident-summary--n-03",
+      "state": "unsupported"
+    },
+    {
+      "position": 73,
+      "case_id": "incident-summary--n-04",
+      "variant": "baseline",
+      "execution_id": "baseline--incident-summary--n-04",
+      "state": "unsupported"
+    },
+    {
+      "position": 74,
+      "case_id": "incident-summary--n-04",
+      "variant": "candidate",
+      "execution_id": "candidate--incident-summary--n-04",
+      "state": "unsupported"
+    },
+    {
+      "position": 75,
+      "case_id": "incident-summary--n-05",
+      "variant": "baseline",
+      "execution_id": "baseline--incident-summary--n-05",
+      "state": "unsupported"
+    },
+    {
+      "position": 76,
+      "case_id": "incident-summary--n-05",
+      "variant": "candidate",
+      "execution_id": "candidate--incident-summary--n-05",
+      "state": "unsupported"
+    },
+    {
+      "position": 77,
+      "case_id": "incident-summary--n-06",
+      "variant": "baseline",
+      "execution_id": "baseline--incident-summary--n-06",
+      "state": "unsupported"
+    },
+    {
+      "position": 78,
+      "case_id": "incident-summary--n-06",
+      "variant": "candidate",
+      "execution_id": "candidate--incident-summary--n-06",
+      "state": "unsupported"
+    },
+    {
+      "position": 79,
+      "case_id": "incident-summary--n-07",
+      "variant": "baseline",
+      "execution_id": "baseline--incident-summary--n-07",
+      "state": "unsupported"
+    },
+    {
+      "position": 80,
+      "case_id": "incident-summary--n-07",
+      "variant": "candidate",
+      "execution_id": "candidate--incident-summary--n-07",
+      "state": "unsupported"
+    },
+    {
+      "position": 81,
+      "case_id": "incident-summary--p-01",
+      "variant": "baseline",
+      "execution_id": "baseline--incident-summary--p-01",
+      "state": "supported"
+    },
+    {
+      "position": 82,
+      "case_id": "incident-summary--p-01",
+      "variant": "candidate",
+      "execution_id": "candidate--incident-summary--p-01",
+      "state": "supported"
+    },
+    {
+      "position": 83,
+      "case_id": "incident-summary--p-02",
+      "variant": "baseline",
+      "execution_id": "baseline--incident-summary--p-02",
+      "state": "supported"
+    },
+    {
+      "position": 84,
+      "case_id": "incident-summary--p-02",
+      "variant": "candidate",
+      "execution_id": "candidate--incident-summary--p-02",
+      "state": "supported"
+    },
+    {
+      "position": 85,
+      "case_id": "incident-summary--p-03",
+      "variant": "baseline",
+      "execution_id": "baseline--incident-summary--p-03",
+      "state": "supported"
+    },
+    {
+      "position": 86,
+      "case_id": "incident-summary--p-03",
+      "variant": "candidate",
+      "execution_id": "candidate--incident-summary--p-03",
+      "state": "supported"
+    },
+    {
+      "position": 87,
+      "case_id": "incident-summary--p-04",
+      "variant": "baseline",
+      "execution_id": "baseline--incident-summary--p-04",
+      "state": "supported"
+    },
+    {
+      "position": 88,
+      "case_id": "incident-summary--p-04",
+      "variant": "candidate",
+      "execution_id": "candidate--incident-summary--p-04",
+      "state": "supported"
+    },
+    {
+      "position": 89,
+      "case_id": "operational-runbook--n-01",
+      "variant": "baseline",
+      "execution_id": "baseline--operational-runbook--n-01",
+      "state": "unsupported"
+    },
+    {
+      "position": 90,
+      "case_id": "operational-runbook--n-01",
+      "variant": "candidate",
+      "execution_id": "candidate--operational-runbook--n-01",
+      "state": "unsupported"
+    },
+    {
+      "position": 91,
+      "case_id": "operational-runbook--n-02",
+      "variant": "baseline",
+      "execution_id": "baseline--operational-runbook--n-02",
+      "state": "unsupported"
+    },
+    {
+      "position": 92,
+      "case_id": "operational-runbook--n-02",
+      "variant": "candidate",
+      "execution_id": "candidate--operational-runbook--n-02",
+      "state": "unsupported"
+    },
+    {
+      "position": 93,
+      "case_id": "operational-runbook--n-03",
+      "variant": "baseline",
+      "execution_id": "baseline--operational-runbook--n-03",
+      "state": "unsupported"
+    },
+    {
+      "position": 94,
+      "case_id": "operational-runbook--n-03",
+      "variant": "candidate",
+      "execution_id": "candidate--operational-runbook--n-03",
+      "state": "unsupported"
+    },
+    {
+      "position": 95,
+      "case_id": "operational-runbook--n-04",
+      "variant": "baseline",
+      "execution_id": "baseline--operational-runbook--n-04",
+      "state": "unsupported"
+    },
+    {
+      "position": 96,
+      "case_id": "operational-runbook--n-04",
+      "variant": "candidate",
+      "execution_id": "candidate--operational-runbook--n-04",
+      "state": "unsupported"
+    },
+    {
+      "position": 97,
+      "case_id": "operational-runbook--n-05",
+      "variant": "baseline",
+      "execution_id": "baseline--operational-runbook--n-05",
+      "state": "unsupported"
+    },
+    {
+      "position": 98,
+      "case_id": "operational-runbook--n-05",
+      "variant": "candidate",
+      "execution_id": "candidate--operational-runbook--n-05",
+      "state": "unsupported"
+    },
+    {
+      "position": 99,
+      "case_id": "operational-runbook--n-06",
+      "variant": "baseline",
+      "execution_id": "baseline--operational-runbook--n-06",
+      "state": "unsupported"
+    },
+    {
+      "position": 100,
+      "case_id": "operational-runbook--n-06",
+      "variant": "candidate",
+      "execution_id": "candidate--operational-runbook--n-06",
+      "state": "unsupported"
+    },
+    {
+      "position": 101,
+      "case_id": "operational-runbook--n-07",
+      "variant": "baseline",
+      "execution_id": "baseline--operational-runbook--n-07",
+      "state": "unsupported"
+    },
+    {
+      "position": 102,
+      "case_id": "operational-runbook--n-07",
+      "variant": "candidate",
+      "execution_id": "candidate--operational-runbook--n-07",
+      "state": "unsupported"
+    },
+    {
+      "position": 103,
+      "case_id": "operational-runbook--p-01",
+      "variant": "baseline",
+      "execution_id": "baseline--operational-runbook--p-01",
+      "state": "supported"
+    },
+    {
+      "position": 104,
+      "case_id": "operational-runbook--p-01",
+      "variant": "candidate",
+      "execution_id": "candidate--operational-runbook--p-01",
+      "state": "supported"
+    },
+    {
+      "position": 105,
+      "case_id": "operational-runbook--p-02",
+      "variant": "baseline",
+      "execution_id": "baseline--operational-runbook--p-02",
+      "state": "supported"
+    },
+    {
+      "position": 106,
+      "case_id": "operational-runbook--p-02",
+      "variant": "candidate",
+      "execution_id": "candidate--operational-runbook--p-02",
+      "state": "supported"
+    },
+    {
+      "position": 107,
+      "case_id": "operational-runbook--p-03",
+      "variant": "baseline",
+      "execution_id": "baseline--operational-runbook--p-03",
+      "state": "supported"
+    },
+    {
+      "position": 108,
+      "case_id": "operational-runbook--p-03",
+      "variant": "candidate",
+      "execution_id": "candidate--operational-runbook--p-03",
+      "state": "unsupported"
+    },
+    {
+      "position": 109,
+      "case_id": "operational-runbook--p-04",
+      "variant": "baseline",
+      "execution_id": "baseline--operational-runbook--p-04",
+      "state": "missing"
+    },
+    {
+      "position": 110,
+      "case_id": "operational-runbook--p-04",
+      "variant": "candidate",
+      "execution_id": "candidate--operational-runbook--p-04",
+      "state": "missing"
+    },
+    {
+      "position": 111,
+      "case_id": "technical-design--lp-document-absence",
+      "variant": "baseline",
+      "execution_id": "baseline--technical-design--lp-document-absence",
+      "state": "missing"
+    },
+    {
+      "position": 112,
+      "case_id": "technical-design--lp-document-absence",
+      "variant": "candidate",
+      "execution_id": "candidate--technical-design--lp-document-absence",
+      "state": "missing"
+    },
+    {
+      "position": 113,
+      "case_id": "technical-design--lp-rhetorical-scope",
+      "variant": "baseline",
+      "execution_id": "baseline--technical-design--lp-rhetorical-scope",
+      "state": "missing"
+    },
+    {
+      "position": 114,
+      "case_id": "technical-design--lp-rhetorical-scope",
+      "variant": "candidate",
+      "execution_id": "candidate--technical-design--lp-rhetorical-scope",
+      "state": "missing"
+    },
+    {
+      "position": 115,
+      "case_id": "technical-design--material-scope-exclusion",
+      "variant": "baseline",
+      "execution_id": "baseline--technical-design--material-scope-exclusion",
+      "state": "missing"
+    },
+    {
+      "position": 116,
+      "case_id": "technical-design--material-scope-exclusion",
+      "variant": "candidate",
+      "execution_id": "candidate--technical-design--material-scope-exclusion",
+      "state": "missing"
+    },
+    {
+      "position": 117,
+      "case_id": "technical-design--n-01",
+      "variant": "baseline",
+      "execution_id": "baseline--technical-design--n-01",
+      "state": "missing"
+    },
+    {
+      "position": 118,
+      "case_id": "technical-design--n-01",
+      "variant": "candidate",
+      "execution_id": "candidate--technical-design--n-01",
+      "state": "missing"
+    },
+    {
+      "position": 119,
+      "case_id": "technical-design--n-02",
+      "variant": "baseline",
+      "execution_id": "baseline--technical-design--n-02",
+      "state": "missing"
+    },
+    {
+      "position": 120,
+      "case_id": "technical-design--n-02",
+      "variant": "candidate",
+      "execution_id": "candidate--technical-design--n-02",
+      "state": "missing"
+    },
+    {
+      "position": 121,
+      "case_id": "technical-design--n-03",
+      "variant": "baseline",
+      "execution_id": "baseline--technical-design--n-03",
+      "state": "missing"
+    },
+    {
+      "position": 122,
+      "case_id": "technical-design--n-03",
+      "variant": "candidate",
+      "execution_id": "candidate--technical-design--n-03",
+      "state": "missing"
+    },
+    {
+      "position": 123,
+      "case_id": "technical-design--n-04",
+      "variant": "baseline",
+      "execution_id": "baseline--technical-design--n-04",
+      "state": "missing"
+    },
+    {
+      "position": 124,
+      "case_id": "technical-design--n-04",
+      "variant": "candidate",
+      "execution_id": "candidate--technical-design--n-04",
+      "state": "missing"
+    },
+    {
+      "position": 125,
+      "case_id": "technical-design--n-05",
+      "variant": "baseline",
+      "execution_id": "baseline--technical-design--n-05",
+      "state": "missing"
+    },
+    {
+      "position": 126,
+      "case_id": "technical-design--n-05",
+      "variant": "candidate",
+      "execution_id": "candidate--technical-design--n-05",
+      "state": "missing"
+    },
+    {
+      "position": 127,
+      "case_id": "technical-design--n-06",
+      "variant": "baseline",
+      "execution_id": "baseline--technical-design--n-06",
+      "state": "missing"
+    },
+    {
+      "position": 128,
+      "case_id": "technical-design--n-06",
+      "variant": "candidate",
+      "execution_id": "candidate--technical-design--n-06",
+      "state": "missing"
+    },
+    {
+      "position": 129,
+      "case_id": "technical-design--n-07",
+      "variant": "baseline",
+      "execution_id": "baseline--technical-design--n-07",
+      "state": "missing"
+    },
+    {
+      "position": 130,
+      "case_id": "technical-design--n-07",
+      "variant": "candidate",
+      "execution_id": "candidate--technical-design--n-07",
+      "state": "missing"
+    },
+    {
+      "position": 131,
+      "case_id": "technical-design--n-08",
+      "variant": "baseline",
+      "execution_id": "baseline--technical-design--n-08",
+      "state": "missing"
+    },
+    {
+      "position": 132,
+      "case_id": "technical-design--n-08",
+      "variant": "candidate",
+      "execution_id": "candidate--technical-design--n-08",
+      "state": "missing"
+    },
+    {
+      "position": 133,
+      "case_id": "technical-design--p-01",
+      "variant": "baseline",
+      "execution_id": "baseline--technical-design--p-01",
+      "state": "missing"
+    },
+    {
+      "position": 134,
+      "case_id": "technical-design--p-01",
+      "variant": "candidate",
+      "execution_id": "candidate--technical-design--p-01",
+      "state": "missing"
+    },
+    {
+      "position": 135,
+      "case_id": "technical-design--p-02",
+      "variant": "baseline",
+      "execution_id": "baseline--technical-design--p-02",
+      "state": "missing"
+    },
+    {
+      "position": 136,
+      "case_id": "technical-design--p-02",
+      "variant": "candidate",
+      "execution_id": "candidate--technical-design--p-02",
+      "state": "missing"
+    },
+    {
+      "position": 137,
+      "case_id": "technical-design--p-03",
+      "variant": "baseline",
+      "execution_id": "baseline--technical-design--p-03",
+      "state": "missing"
+    },
+    {
+      "position": 138,
+      "case_id": "technical-design--p-03",
+      "variant": "candidate",
+      "execution_id": "candidate--technical-design--p-03",
+      "state": "missing"
+    },
+    {
+      "position": 139,
+      "case_id": "technical-design--p-04",
+      "variant": "baseline",
+      "execution_id": "baseline--technical-design--p-04",
+      "state": "missing"
+    },
+    {
+      "position": 140,
+      "case_id": "technical-design--p-04",
+      "variant": "candidate",
+      "execution_id": "candidate--technical-design--p-04",
+      "state": "missing"
+    }
+  ],
+  "charge_basis": "journal-usage-priced-or-reserved-local-accounting",
+  "qualified": false,
+  "independent_acceptance": false,
+  "publication_authority": false,
+  "model_site_adoption": false
+}

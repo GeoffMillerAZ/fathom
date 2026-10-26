@@ -38,7 +38,7 @@ instrumentation and rendering over the wedge, not new perimeter.
   than the deployed one, the CLI on nobody's PATH, and two registry
   anomalies (a malformed duplicate service still fed by a consumer's
   post-commit curl; a nested corpus root) that required manual archaeology.
-- The strongest un-designed win: **planning-as-a-remote-corpus** — 792
+- The strongest un-designed win: **a sibling repository as a remote corpus** — 792
   read_source calls in four days against a repo with zero local wiring.
   Cross-repo reading is a killer app nobody wired for.
 - Every telemetry record type except the research bundle carries **no
@@ -167,7 +167,7 @@ continuously what the audit did by hand:
    containing service named, and `remove_service`/`rename_service`
    shipped so registry surgery stops being sqlite archaeology.
 4. **Third-party wiring lint** — crawl lefthook.yml/taskfiles/CLAUDE.md
-   stanzas that mention fathom; flag stale names (the `../geoffmiller-cloud`
+   stanzas that mention fathom; flag stale names (the `../svc-b`
    curl, the "sextant"-branded stanza) and non-resolvable invocations
    (the non-interactive-shell PATH failure that made a dead gate look
    green).
@@ -219,7 +219,7 @@ of a verb that already works headless.
 - **Rung 1**: the fleet fold verb (§4) + `fathom narrate report` — the
   data plane of every screen, consumable as markdown/JSON with no UI at
   all.
-- **Rung 2 — `fathom-observatory`** (in the fathom-studio repo, a second
+- **Rung 2 — `fathom-observatory`** (in the studio repository, a second
   binary): the web app observability-surfaces.md already commissions —
   Go server-rendered, app-kit path A, ui/viz SVG charts, loopback-first
   with the same optional bearer gate as /rpc/modules. Four boards:
@@ -265,8 +265,8 @@ of a verb that already works headless.
 
 ## 10. Activation order (each stamped, per law 6)
 
-1. Ops now (no code): the PATH shim; fix the `../geoffmiller-cloud`
-   consumer curl; `fathom remap` platform-engineering to its canonical
+1. Ops now (no code): the PATH shim; fix the `../svc-b`
+   consumer curl; `fathom remap` the platform monorepo to its canonical
    root; registry surgery for the malformed twin + nested root per the O1
    playbook.
 2. Version stamps (§3) + arm/ledger fields (§2) — additive, small, they

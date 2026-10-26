@@ -85,9 +85,9 @@ After the verdicts arrived, all 142 plan pages were fetched once. Every page is 
 | Plan | Before | Now | Remaining rows now |
 |---|---|---|---|
 | fathom · ambient-fathom (the largest page) | 202 KB | 205 KB | 6 |
-| platform-engineering · phase-3b-ci-kit (the most rows, 117) | 184 KB | 188 KB | 13 |
+| platform · a CI kit plan (the most rows, 117) | 184 KB | 188 KB | 13 |
 | fathom · observatory-console | 133 KB | 137 KB | 43 |
-| platform-engineering · env-kit (the most remaining) | not measured | 132 KB | 53 |
+| platform · the environment kit (the most remaining) | not measured | 132 KB | 53 |
 
 Each row sits in exactly one table, either the Remaining table or the board's
 disclosure, so a page grows by the panel and not per row. Listing the remaining rows a

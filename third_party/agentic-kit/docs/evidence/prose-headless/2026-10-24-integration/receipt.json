@@ -1,0 +1,103 @@
+{
+  "exit": 0,
+  "elapsed_seconds": 602.413,
+  "prepared_snapshots": true,
+  "live_consumers_mutated": false,
+  "version": "hp.integration/1",
+  "source_candidate": "1c0ceff3249a3de6901dc183d27b3b362416b81c",
+  "consumer_sources": [
+    {
+      "consumer": "sextant",
+      "source_commit": "787c146237199ff3eda69ae1fee49d0b9ea624cf"
+    },
+    {
+      "consumer": "consumer-a",
+      "source_commit": "a007075fab6ac156be44de46df941cce4a0915ed"
+    },
+    {
+      "consumer": "consumer-b",
+      "source_commit": "8b8620936afd2ebcff6810baec1ef37528699c1a"
+    },
+    {
+      "consumer": "consumer-c",
+      "source_commit": "04be1238bae18e9542b135060233412b4abd72ca"
+    },
+    {
+      "consumer": "app-kit",
+      "source_commit": "9d3da97554ae9202b0240fb6ef076181d7121219"
+    }
+  ],
+  "coverage": {
+    "fathom": "exact mirror, vendor-check, CLI/all-package builds, owned race suite, separate performance guard",
+    "consumer-a": "all-package build/test -mod=readonly with synchronized scratch vendor for nested go list",
+    "consumer-b": "all-package build/test with exact private local financial/student/marketing fixture copies",
+    "consumer-c": "exact kit pseudo-version re-pin/re-vendor, build and KitVendor/NoGoWork/VendorTree guards"
+  },
+  "preparation": [
+    {
+      "consumer": "consumer-a",
+      "tidy_exit": 0,
+      "before_mod_sha256": "bbfaadd294cffb152637303916e7aff2692878c7f5e2a2244dc3d3d1f958ebbf",
+      "prepared_mod_sha256": "9a4d4a33f3dea31332528d356cd7c58c9ad57f6ec94c3de0e5baf937420de8e0",
+      "scope": "scratch-only current app-kit graph prerequisites; live checkout unchanged"
+    },
+    {
+      "consumer": "consumer-b",
+      "tidy_exit": 0,
+      "before_mod_sha256": "210c227dea5fb6ad23d41240e3e018e910a840d40dd98aa6c4ff45eb41642188",
+      "prepared_mod_sha256": "1cb3470a1e36fc4d32de190764c15f70f80b6e3ad796b06892bfbe1a1c5a4e40",
+      "scope": "scratch-only current app-kit graph prerequisites; live checkout unchanged"
+    },
+    {
+      "consumer": "consumer-c",
+      "tidy_exit": 0,
+      "before_mod_sha256": "66f8ac82de3406d9e4d0b308b931e47eeaeb31fe6437a8b2fe557be2b5270b73",
+      "prepared_mod_sha256": "d78c2b0f4109eacf7d8f5c078a2f10831934e1966664db5797215c38ec027a92",
+      "scope": "scratch-only current app-kit graph prerequisites; live checkout unchanged"
+    }
+  ],
+  "prior_failures": [
+    "initial aggregate passed Fathom then stopped because historical consumer-a module graph required updates",
+    "prepared consumer-a tests stopped on stale vendor metadata used by nested go list; synchronized scratch vendor; no gate assertion changed"
+  ],
+  "live_consumer_upgrades": false,
+  "hosted_ci": "not_qualified: prior published-head jobs refused to start on account billing or spending restriction",
+  "proof_limits": [
+    "prepared historical snapshots, not unmodified canonical consumers",
+    "app-kit is a dependency prerequisite, not a fifth downstream-check consumer",
+    "Fathom optional app-kit reverse check is unconfigured and explicitly skipped",
+    "no production prose, provider quality, publication or UI acceptance"
+  ],
+  "library_tree_equivalence": [
+    {
+      "root": "foundations",
+      "tested_tree": "d1a6e3f94908f1ec8ec8606ce617f9da6bcbd167",
+      "current_tree": "d1a6e3f94908f1ec8ec8606ce617f9da6bcbd167",
+      "equal": true
+    },
+    {
+      "root": "kits",
+      "tested_tree": "326df64d06271d890dcfff023e22831ce73b266c",
+      "current_tree": "326df64d06271d890dcfff023e22831ce73b266c",
+      "equal": true
+    },
+    {
+      "root": "runtimes",
+      "tested_tree": "d0895aa24a293e5c9380860fe3e740e17858366e",
+      "current_tree": "d0895aa24a293e5c9380860fe3e740e17858366e",
+      "equal": true
+    },
+    {
+      "root": "surfaces",
+      "tested_tree": "0b3cd9e4124e08240f65681cbb9fac4eb6059f16",
+      "current_tree": "0b3cd9e4124e08240f65681cbb9fac4eb6059f16",
+      "equal": true
+    },
+    {
+      "root": "toolchains",
+      "tested_tree": "4f33024515842a36ce0b8ae2a6f66db4696e7959",
+      "current_tree": "4f33024515842a36ce0b8ae2a6f66db4696e7959",
+      "equal": true
+    }
+  ]
+}

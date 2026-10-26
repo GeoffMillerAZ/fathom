@@ -4,7 +4,7 @@
 // # Composition status
 //
 // Composition unproven — no consumer has wired this package into a kit or
-// application workflow. The known real-world consumer (throughline) built its
+// application workflow. The known real-world consumer (consumer-a) built its
 // own elicitation layer (app/elicitation) with typed card kinds, form field
 // validation, criticality ordering, and a ledger-backed status FSM. That shape
 // is domain-specific and imports kit foundations directly, so absorbing it here

@@ -1,0 +1,27 @@
+{
+  "version": "command-guard.policy/1",
+  "layers": [
+    {
+      "id": "demo",
+      "allowedOperations": [
+        "read-range",
+        "search-literal"
+      ],
+      "limits": {
+        "maxFileBytes": 4096,
+        "maxTotalBytes": 8192,
+        "maxOutputBytes": 4096,
+        "maxResults": 10
+      },
+      "deniedPathPrefixes": [
+        "private"
+      ]
+    }
+  ],
+  "rules": [
+    {
+      "id": "demo-secret",
+      "pattern": "SECRET"
+    }
+  ]
+}

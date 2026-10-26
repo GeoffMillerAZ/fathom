@@ -208,7 +208,7 @@ the change risk receipt (reading XM-M5). Two are deferred until live maps exist:
 and undocumented-territory coverage. Design section 3b; rows XM-17 to XM-22, XM-D7, XM-D8.
 
 **Concern scopes and incident maps (design section 3c, amended by ADR-058).** Findings are not maps: a finding is a
-point claim under Review Kit's authority and a map is a working set. A concern's scope may be a live-map query (rows
+point claim under the review kit's authority and a map is a working set. A concern's scope may be a live-map query (rows
 XM-23 to XM-25, F52). Incident maps are a different kind and not a member of the map family: a committed declaration
 (`.fathom/incidents.cue`: symptoms, footprint, window, runbook path, links, blind spots), written ahead of time by a
 team and reviewed like code, served through `localize`, one prompt-hook line and one CLI verb, with a suspect list

@@ -47,8 +47,8 @@ no member defines, and one defined twice.
 | F29 | A Rust-compiled wasm grammar or query module under wazero | `futures/f23-f32.md` |
 | F30 | An onboarding path for a newcomer | `futures/f23-f32.md` |
 | F31 | Capability reach (network, filesystem, exec) and capability drift on upgrade | `futures/f23-f32.md` |
-| F32 | Review Kit merges into fathom | `futures/f23-f32.md` |
-| F33 | Review Kit moves into its own repository beside fathom | `futures/f33-f44.md` |
+| F32 | The review kit merges into fathom | `futures/f23-f32.md` |
+| F33 | The review kit moves into its own repository beside fathom | `futures/f33-f44.md` |
 | F34 | `fathom ask`: judged predicates over spans the graph selects (promoted in part 2026-10-16: the spine at provider none) | `futures/f33-f44.md` |
 | F35 | Tier 2 of the test-run hook: a failure-kind judgment | `futures/f33-f44.md` |
 | F36 | Question-directed traversal (`localize kind: question`) | `futures/f33-f44.md` |
@@ -67,7 +67,7 @@ no member defines, and one defined twice.
 | F49 | Friction episode classification and product feedback | `futures/f45-f53.md` |
 | F50 | Durable live maps: saved queries in the layers' vocabulary | `futures/f45-f53.md` |
 | F51 | Model proposals for feature-map verdicts | `futures/f45-f53.md` |
-| F52 | Review Kit concern packs declare their scope as live-map queries | `futures/f45-f53.md` |
+| F52 | The review kit's concern packs declare their scope as live-map queries | `futures/f45-f53.md` |
 | F53 | `propose_check`: a typed choice over the closed check kinds for a prose rule | `futures/f45-f53.md` |
 | F54 | Orchestrator constraints on a sub-agent | `futures/f54-f61.md` |
 | F55 | Fathom as the code engine under an agent-memory tool | `futures/f54-f61.md` |

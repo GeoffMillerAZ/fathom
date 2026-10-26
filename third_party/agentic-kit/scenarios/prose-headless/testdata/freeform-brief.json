@@ -1,0 +1,9 @@
+{
+  "key": "freeform-brief",
+  "version": "1",
+  "freeform": true,
+  "sections": [{"id": "body", "title": "Body", "required": true, "fact_families": ["brief"], "guidance": "short plain statements"}],
+  "goals": [{"id": "g-support", "class": "required", "statement": "Only supported facts", "scope": "document", "method": "exact-support", "acceptance": "every claim is supported by a cited current fact", "origin": "profile"}],
+  "defaults": {"audience": "team", "voice": "plain", "technical_level": "low"},
+  "permit_extra_sections": false
+}

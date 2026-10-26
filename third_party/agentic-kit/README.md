@@ -4,7 +4,7 @@
 
 A layered, org-agnostic platform for **governed agentic work** — developed
 almost entirely by AI agents. CUE owns the *shape* of data; Go owns
-*behavior* — drift between them is a bug. The tree is **207 Go packages, zero
+*behavior* — drift between them is a bug. The tree is **223 Go packages, zero
 external dependencies** (`go.mod` has no `require` block) — a generated count,
 not a hand-maintained one: see [`docs/catalog.md`](docs/catalog.md) (`task
 docs-index` regenerates it, `constitution-lint`'s `catalog-fresh` check
@@ -38,6 +38,8 @@ TRACKING.md    Single source of truth for build/test status
 
 ## What can it do today
 
+- **Independent catalog composition** ([Catalog Kit](kits/catalog-kit/README.md)): explicit layers, stable-key lookup and move-aware diffs, audited overrides, evidence-bound requests and exports. Try the [offline external-module example](examples/catalog-consumer/README.md) without a harness or provider. Experimental; production consumer migrations remain planned.
+- **Repository quality boundaries** ([guide](docs/quality-boundaries.md)): immutable Git checks, optional calibrated judgments and local-only configuration diagnostics. Hooks provide feedback; trusted required CI and consumer adoption need their own proof.
 - **Real Anthropic client** (`foundations/llmclient/anthropic`) — Messages API
   with SSE streaming — plus an exported **conformance suite**
   (`foundations/llmclient/llm-test`) that any `LLMClient` implementation runs.
@@ -64,7 +66,8 @@ TRACKING.md    Single source of truth for build/test status
 - **Evidence-linked assessments and prompt screening** — required criteria cannot
   be outweighed by soft scores; optional small-model screening applies configurable
   refusal standards before a protected continuation. [Offline example](examples/engineering-assessments/README.md),
-  [screening configuration](kits/guardrails-pipeline/README.md); live quality is unmeasured.
+  [independently scoped practice review](examples/practice-review/README.md),
+  [screening configuration](kits/guardrails-pipeline/README.md); the practice reference is synthetic and live quality is unmeasured.
 
 ## Start here
 
@@ -78,6 +81,10 @@ TRACKING.md    Single source of truth for build/test status
 | [`docs/measuring-tools.md`](docs/measuring-tools.md) | Grading a tool against a reference: audit the oracle, tier it and cap the grade, disclose blind spots without inflating the score, record the instrument |
 | [`docs/incident-readiness.md`](docs/incident-readiness.md) | Preparing for incidents: pre-shaped declarations, "what changed" first, facets that say "not computed", links and typed parameters instead of connectors, nothing executed or mitigated, a replay before any build |
 | [`docs/fast-judgment.md`](docs/fast-judgment.md) | Using cheap typed-judgment models (Jev and its kind) safely: primitives, calibration-first method, cost, privacy, anti-patterns; [use-case catalog](docs/fast-judgment-catalog.md) |
+| [`docs/decision-sites.md`](docs/decision-sites.md) | Source-backed project opportunities and offline `decision-lab` preparation, capture checks and labeled studies |
+| [`docs/assignment-kit.md`](docs/assignment-kit.md) | Required/stretch goals, evidence acceptance, concerns, confidence bars, budgets and explicit pivot/stop outcomes |
+| [`docs/command-safety.md`](docs/command-safety.md) | Offline command audit, restrictive policy assessment and coding-harness safety review without installation |
+| [`docs/designs/aaif-alignment.md`](docs/designs/aaif-alignment.md) | Goal G15: AAIF adoption choices, versioned compatibility profiles, negative acceptance cases and queued implementation |
 | [`docs/adopting.md`](docs/adopting.md) | Build a new project on the kit |
 | [`docs/roadmap.md`](docs/roadmap.md) | Pre-thought patterns awaiting a subscriber — check here when starting a workload |
 | [`docs/catalog.md`](docs/catalog.md) | Every package, one line (generated — `task docs-index`) |
@@ -106,12 +113,24 @@ repair the cause within the [autonomy policy](docs/intent/autonomy.md); gate edi
 
 Also useful: `task smoke-live` (end-to-end live agent smoke; needs
 `ANTHROPIC_API_KEY`, skips cleanly without it) and `task downstream-check`
-(builds + tests all four real consumers — fathom (`../fathom`, or
-pre-rename `../sextant` — either resolves automatically), `../throughline`,
-`../growing-gardens-bi`, and `../resume_as_code`, which it re-pins and
-re-vendors to kit HEAD — against kit HEAD; each skips cleanly if that sibling
-isn't checked out). Run it before tagging or whenever an exported API
-changes.
+(builds + tests all four real consumers against kit HEAD: fathom (`../fathom`, or
+pre-rename `../sextant` — either resolves automatically) and three more whose
+checkouts are configuration, not names. Set `KIT_CONSUMER_A_DIR`, `KIT_CONSUMER_B_DIR`
+and `KIT_CONSUMER_C_DIR` (consumer C is re-pinned and re-vendored to kit HEAD) in
+the environment or in a gitignored `.kit-consumers.env` (copy
+`.kit-consumers.env.example`); the catalog-kit pilots read `KIT_PLATFORM_*` the same
+way. An unset or missing directory prints "<task>: <VAR> not set or not a directory
+— skipping" and exits 0). Run it before tagging or whenever an exported API
+changes. A missing consumer is untested, not a compatibility pass.
+
+Fathom checks require a clean, committed kit tree. They clone committed kit and
+consumer revisions, sync the exact kit mirror, then run Fathom-owned vendor, build,
+race and performance gates. Both source checkouts stay unchanged; `TMPDIR` must be
+outside them. The race suite defaults to `FATHOM_TEST_GOMAXPROCS=2`; vendor,
+build and performance checks retain caller concurrency. `FATHOM_CHECK_KEEP=1`
+retains scratch artifacts for diagnosis. Other
+consumer tasks keep their documented behavior, including consumer-c re-vendoring; use
+disposable sibling checkouts when preserving active consumer work.
 
 Requires: Go 1.26+, [CUE](https://cuelang.org) 0.16+, [go-task](https://taskfile.dev), [lefthook](https://github.com/evilmartians/lefthook).
 

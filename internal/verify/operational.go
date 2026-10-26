@@ -69,7 +69,7 @@ func OperationalRow(tv TaskVerdict) bool {
 	operational := false
 	for _, c := range tv.Criteria {
 		switch {
-		case IsIndexStaleCriterion(c) || IsGraphFallbackCriterion(c):
+		case IsIndexStaleCriterion(c) || IsGraphFallbackCriterion(c) || IsPlatformCriterion(c):
 			operational = true
 		case c.Name == runtimeCriterion:
 		case c.Status == Fail || c.Status == Unknown:

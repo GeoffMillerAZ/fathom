@@ -1,0 +1,25 @@
+{
+  "atSourceCommit": "c7633a428d4203418b24313436a626be4506a06a",
+  "scope": "local and fetched origin refs; registered worktrees; stashes; open GitHub PRs; unreachable Git objects",
+  "unreachableObjects": 767,
+  "unreachableKinds": {
+    "tree": 377,
+    "commit": 117,
+    "blob": 273
+  },
+  "actualTips": 46,
+  "sameObjectSetAsReviewed2026_10_23": true,
+  "addedObjects": 0,
+  "removedObjects": 0,
+  "openPullRequests": 0,
+  "stashes": 0,
+  "removedCompletedWorktree": "scaffold-rollback",
+  "removedMergedBranches": [
+    "worktree-scaffold-rollback",
+    "fix/cue-byte-constraints",
+    "fix/scaffold-rollback"
+  ],
+  "completedHelperJobCountRemovedAfterRetention": 3,
+  "retainedActiveBranch": "docs/ci-qualification-closure",
+  "limits": "No new tip/body review was needed because object IDs exactly match the previously reviewed and privately preserved inventory. No Git objects pruned."
+}
