@@ -201,8 +201,10 @@ instrument commit. It refuses Dancer2 and any existing scratch path, records
 spend both in a persistent ignored source-commit register and in scratch before
 clone, retains full tracked source snapshots, all phase start/end
 times and identities, pinned tool hashes, dependency lock and saved archive
-hashes, and invokes the committed collector after the completed reading. A
-coverage failure produces a receipt with false gates rather than suppressing
-the result. Synthetic orchestration controls do not read a subject. A future
+hashes, and invokes the committed collector after the completed reading or a
+post-spend phase failure. Failure publication keeps a nonzero runner exit and
+false acceptance; unknown counts stay null. Identity or consistency drift
+still refuses publication. The pre-retime record binds immutable input hashes.
+A coverage failure also produces false gates rather than suppressing the result. Synthetic orchestration controls do not read a subject. A future
 subject must be independently selected and pinned in this protocol, with its
 license and own dependency declaration reviewed, before its first clone.

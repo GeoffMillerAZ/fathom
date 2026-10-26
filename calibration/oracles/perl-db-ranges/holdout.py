@@ -78,7 +78,7 @@ def stop_group(proc):
 
 
 def phase(name, argv, cwd, out, env, seconds=MAX_SECONDS, stdout=None,
-          load_reader=os.getloadavg):
+          load_reader=os.getloadavg, retime_input_sha256=None):
     nice = shutil.which("nice")
     need(nice is not None, "nice executable required")
     started = time.monotonic()
@@ -115,6 +115,10 @@ def phase(name, argv, cwd, out, env, seconds=MAX_SECONDS, stdout=None,
         binary = out / "indexbench"
         if binary.is_file():
             row["binary_sha256"] = sha(binary)
+    if retime_input_sha256 is not None:
+        need(name == "retime-three" and re.fullmatch(r"[0-9a-f]{64}", retime_input_sha256),
+             "retime input digest placement malformed")
+        row["retime_input_sha256"] = retime_input_sha256
     phases = out / "phases.json"
     existing = json.loads(phases.read_text()) if phases.exists() else []
     existing.append(row)
@@ -205,6 +209,27 @@ def spend(scratch, source_commit, instrument_commit, registry=None):
         stream.write(contents)
 
 
+def collect_receipt(scratch, repo, instrument_commit, subject, source_commit, env):
+    receipt_path = scratch / "holdout-receipt.json"
+    need(not receipt_path.exists(), "holdout receipt already exists")
+    subprocess.run([sys.executable, str(repo / "calibration/oracles/perl-db-ranges/holdout_receipt.py"),
+                    "--scratch", str(scratch), "--instrument-repo", str(repo),
+                    "--instrument-commit", instrument_commit,
+                    "--subject", subject, "--source-commit", source_commit,
+                    "--coverage-floor", ".95", "--output", str(receipt_path)],
+                   cwd=repo, env=env, check=True, timeout=30)
+    return receipt_path
+
+
+def publish_failed_receipt(scratch, repo, instrument_commit, subject, source_commit, env):
+    receipt_path = collect_receipt(scratch, repo, instrument_commit,
+                                   subject, source_commit, env)
+    receipt = json.loads(receipt_path.read_text())
+    need(receipt["criteria"]["coverage_and_existing_gates_pass"] is False,
+         "failed phase produced a passing receipt")
+    return receipt_path
+
+
 def run(args):
     repo = Path(args.instrument_repo).resolve(strict=True)
     need(re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]*", args.subject) and
@@ -273,93 +298,108 @@ def run(args):
     }, sort_keys=True, indent=2) + "\n")
     spend(scratch, args.source_commit, args.instrument_commit,
           repo / "workspace/tmp/perl-holdout-spent")
-    phase("clone-once", ["git", "clone", "--no-checkout", args.remote, root], scratch,
-          scratch, env)
-    phase("checkout-pin", ["git", "-C", root, "checkout", "--detach", args.source_commit], scratch,
-          scratch, env)
-    before = runner.snapshot(root)
-    need(before["commit"] == args.source_commit, "holdout source pin mismatch")
-    deps = install_dependencies(args, root, scratch, env, range_dir)
-    primary = scratch / (args.subject + ".json")
-    phase("ppi-primary", [args.perl, ppi, root], scratch, scratch, env, stdout=primary)
-    primary_data = json.loads(primary.read_text())
-    need(primary_data["tool"] == "ppi-calls" and primary_data["version"] == "PPI 1.270" and
-         primary_data["tier"] == "C", "primary oracle contract mismatch")
-    range_argv = [sys.executable, range_dir / "runner.py", "--perl", args.perl,
-                  "--ctags", args.ctags, "--subject", args.subject + "=" + str(root),
-                  "--out", scratch / (args.subject + ".ranges.json"),
-                  "--log-dir", scratch / "range-raw"]
-    if deps:
-        range_argv += ["--perl-lib", deps["prefix"] / "lib/perl5",
-                       "--dependency-lock", deps["lock"],
-                       "--declared-dependencies", deps["declaration"]]
-    phase("compiler-ranges", range_argv, scratch, scratch, env)
-    bench = scratch / "indexbench"
-    phase("build-indexbench", ["go", "build", "-trimpath", "-buildvcs=false", "-o",
-          bench, "./cmd/indexbench"], repo, scratch, env)
-    phase("grade-holdout", [bench, "lang-oracle", "-dialect", "perl", "-subject", root,
-          "-subject-name", args.subject, "-ctags", args.ctags, "-tool-oracle", primary,
-          "-out", scratch / "reading.json", "-commit", args.instrument_commit],
-          repo, scratch, env)
-    phase("retime-three", [bench, "lang-retime", "-reading", scratch / "reading.json",
-          "-subject", args.subject + "=" + str(root), "-runs", "3", "-write"],
-          repo, scratch, env)
-    need(runner.snapshot(root) == before, "holdout source changed")
-    ranges = json.loads((scratch / (args.subject + ".ranges.json")).read_text())
-    meta = json.loads((scratch / (args.subject + ".ranges.meta.json")).read_text())
-    reading = json.loads((scratch / "reading.json").read_text())
-    need(ranges["units"] == len(before["files"]) and
-         meta["compiled_files"] + meta["unresolved_files"] == ranges["units"] and
-         ranges["errored"] == meta["unresolved_files"], "unresolved range units lost")
-    need(meta["source_manifest"] == before, "range source manifest mismatch")
-    need(reading["fathom_commit"] == args.instrument_commit and
-         len(reading["subjects"]) == 1 and reading["subjects"][0]["sha"] == args.source_commit,
-         "reading identity mismatch")
-    runs = re.findall(r"^run ([0-9]+): ([0-9]+\.[0-9]+) MB/CPU-s$",
-                      (scratch / "retime-three.log").read_text(), re.M)
-    need([label for label, _ in runs] == ["1", "2", "3"],
-         "retime did not produce exactly three numbered runs")
-    run_values = [float(value) for _, value in runs]
-    measured = {"holdout_source_commit": args.source_commit, "instrument_commit": args.instrument_commit,
-                "dependency_declaration": deps["declaration"] if deps else None,
-                "dependency_install_attempted": deps is not None,
-                "source_manifest_sha256": before["digest"], "source_units": len(before["files"]),
-                "range_compiled": meta["compiled_files"],
-                "range_unresolved": meta["unresolved_files"],
-                "range_tag_total": meta["joining"]["tag_total"],
-                "range_paired": meta["joining"]["paired"],
-                "range_eligible": reading["counts"]["range_eligible"],
-                "range_ok": reading["counts"]["range_ok"],
-                "grade": reading["grade"], "metric_tiers": reading["metric_tiers"],
-                "metrics": reading["metrics"], "counts": reading["counts"],
-                "throughput_mb_s": reading["tenancy"]["throughput_mb_s"],
-                "throughput_three_runs_mb_cpu_s": run_values,
-                "throughput_median_mb_cpu_s": statistics.median(run_values),
-                "range_agreement_at_least_0_90":
-                    reading["metrics"]["range_agreement"] is not None and
-                    reading["metrics"]["range_agreement"] >= .90,
-                "l1_excellent": reading["grade"].get("L1") == "excellent",
-                "throughput_median_at_least_1_mb_cpu_s": statistics.median(run_values) >= 1,
-                "max_file_at_most_2_seconds": reading["tenancy"]["max_file_ms"] <= 2000,
-                "fault_rate_at_most_0_1_percent":
-                    reading["tenancy"]["faults"] / max(1, reading["subjects"][0]["files"]) <= .001,
-                "ppi_sha256": sha(primary), "ranges_sha256": sha(scratch / (args.subject + ".ranges.json")),
-                "reading_sha256": sha(scratch / "reading.json"),
-                "binary_sha256": sha(bench), "ctags_binary_sha256": ctags["binary_sha256"]}
-    measured["all_preregistered_excellence_gates"] = all(measured[key] for key in
-        ("range_agreement_at_least_0_90", "l1_excellent",
-         "throughput_median_at_least_1_mb_cpu_s", "max_file_at_most_2_seconds",
-         "fault_rate_at_most_0_1_percent"))
-    (scratch / "measured.private.json").write_text(json.dumps(measured, sort_keys=True, indent=2) + "\n")
-    receipt_path = scratch / "holdout-receipt.json"
-    subprocess.run([sys.executable, str(range_dir / "holdout_receipt.py"),
-                    "--scratch", str(scratch), "--instrument-repo", str(repo),
-                    "--instrument-commit", args.instrument_commit,
-                    "--subject", args.subject, "--source-commit", args.source_commit,
-                    "--coverage-floor", ".95", "--output", str(receipt_path)],
-                   cwd=repo, env=env, check=True, timeout=30)
-    return {"measured": measured, "receipt_sha256": sha(receipt_path),
-            "receipt": json.loads(receipt_path.read_text())}
+    try:
+        phase("clone-once", ["git", "clone", "--no-checkout", args.remote, root], scratch,
+              scratch, env)
+        phase("checkout-pin", ["git", "-C", root, "checkout", "--detach", args.source_commit], scratch,
+              scratch, env)
+        before = runner.snapshot(root)
+        need(before["commit"] == args.source_commit, "holdout source pin mismatch")
+        deps = install_dependencies(args, root, scratch, env, range_dir)
+        primary = scratch / (args.subject + ".json")
+        phase("ppi-primary", [args.perl, ppi, root], scratch, scratch, env, stdout=primary)
+        primary_data = json.loads(primary.read_text())
+        need(primary_data["tool"] == "ppi-calls" and primary_data["version"] == "PPI 1.270" and
+             primary_data["tier"] == "C", "primary oracle contract mismatch")
+        range_argv = [sys.executable, range_dir / "runner.py", "--perl", args.perl,
+                      "--ctags", args.ctags, "--subject", args.subject + "=" + str(root),
+                      "--out", scratch / (args.subject + ".ranges.json"),
+                      "--log-dir", scratch / "range-raw"]
+        if deps:
+            range_argv += ["--perl-lib", deps["prefix"] / "lib/perl5",
+                           "--dependency-lock", deps["lock"],
+                           "--declared-dependencies", deps["declaration"]]
+        phase("compiler-ranges", range_argv, scratch, scratch, env)
+        bench = scratch / "indexbench"
+        phase("build-indexbench", ["go", "build", "-trimpath", "-buildvcs=false", "-o",
+              bench, "./cmd/indexbench"], repo, scratch, env)
+        phase("grade-holdout", [bench, "lang-oracle", "-dialect", "perl", "-subject", root,
+              "-subject-name", args.subject, "-ctags", args.ctags, "-tool-oracle", primary,
+              "-out", scratch / "reading.json", "-commit", args.instrument_commit],
+              repo, scratch, env)
+        import holdout_receipt
+        immutable_reading = json.loads((scratch / "reading.json").read_text())
+        retime_digest = holdout_receipt.retime_input_digest(
+            before["digest"], sha(primary),
+            sha(scratch / (args.subject + ".ranges.json")), sha(bench), immutable_reading)
+        phase("retime-three", [bench, "lang-retime", "-reading", scratch / "reading.json",
+              "-subject", args.subject + "=" + str(root), "-runs", "3", "-write"],
+              repo, scratch, env, retime_input_sha256=retime_digest)
+        need(runner.snapshot(root) == before, "holdout source changed")
+        ranges = json.loads((scratch / (args.subject + ".ranges.json")).read_text())
+        meta = json.loads((scratch / (args.subject + ".ranges.meta.json")).read_text())
+        reading = json.loads((scratch / "reading.json").read_text())
+        need(ranges["units"] == len(before["files"]) and
+             meta["compiled_files"] + meta["unresolved_files"] == ranges["units"] and
+             ranges["errored"] == meta["unresolved_files"], "unresolved range units lost")
+        need(meta["source_manifest"] == before, "range source manifest mismatch")
+        need(reading["fathom_commit"] == args.instrument_commit and
+             len(reading["subjects"]) == 1 and reading["subjects"][0]["sha"] == args.source_commit,
+             "reading identity mismatch")
+        runs = re.findall(r"^run ([0-9]+): ([0-9]+\.[0-9]+) MB/CPU-s$",
+                          (scratch / "retime-three.log").read_text(), re.M)
+        need([label for label, _ in runs] == ["1", "2", "3"],
+             "retime did not produce exactly three numbered runs")
+        run_values = [float(value) for _, value in runs]
+        measured = {"holdout_source_commit": args.source_commit, "instrument_commit": args.instrument_commit,
+                    "dependency_declaration": deps["declaration"] if deps else None,
+                    "dependency_install_attempted": deps is not None,
+                    "source_manifest_sha256": before["digest"], "source_units": len(before["files"]),
+                    "range_compiled": meta["compiled_files"],
+                    "range_unresolved": meta["unresolved_files"],
+                    "range_tag_total": meta["joining"]["tag_total"],
+                    "range_paired": meta["joining"]["paired"],
+                    "range_eligible": reading["counts"]["range_eligible"],
+                    "range_ok": reading["counts"]["range_ok"],
+                    "grade": reading["grade"], "metric_tiers": reading["metric_tiers"],
+                    "metrics": reading["metrics"], "counts": reading["counts"],
+                    "throughput_mb_s": reading["tenancy"]["throughput_mb_s"],
+                    "throughput_three_runs_mb_cpu_s": run_values,
+                    "throughput_median_mb_cpu_s": statistics.median(run_values),
+                    "range_agreement_at_least_0_90":
+                        reading["metrics"]["range_agreement"] is not None and
+                        reading["metrics"]["range_agreement"] >= .90,
+                    "l1_excellent": reading["grade"].get("L1") == "excellent",
+                    "throughput_median_at_least_1_mb_cpu_s": statistics.median(run_values) >= 1,
+                    "max_file_at_most_2_seconds": reading["tenancy"]["max_file_ms"] <= 2000,
+                    "fault_rate_at_most_0_1_percent":
+                        reading["tenancy"]["faults"] / max(1, reading["subjects"][0]["files"]) <= .001,
+                    "ppi_sha256": sha(primary), "ranges_sha256": sha(scratch / (args.subject + ".ranges.json")),
+                    "reading_sha256": sha(scratch / "reading.json"),
+                    "binary_sha256": sha(bench), "ctags_binary_sha256": ctags["binary_sha256"]}
+        measured["all_preregistered_excellence_gates"] = all(measured[key] for key in
+            ("range_agreement_at_least_0_90", "l1_excellent",
+             "throughput_median_at_least_1_mb_cpu_s", "max_file_at_most_2_seconds",
+             "fault_rate_at_most_0_1_percent"))
+        (scratch / "measured.private.json").write_text(json.dumps(measured, sort_keys=True, indent=2) + "\n")
+        receipt_path = collect_receipt(scratch, repo, args.instrument_commit,
+                                       args.subject, args.source_commit, env)
+        return {"measured": measured, "receipt_sha256": sha(receipt_path),
+                "receipt": json.loads(receipt_path.read_text())}
+    except Exception as failure:
+        receipt_path = scratch / "holdout-receipt.json"
+        if receipt_path.exists():
+            raise
+        try:
+            receipt_path = publish_failed_receipt(scratch, repo, args.instrument_commit,
+                                                  args.subject, args.source_commit, env)
+        except Exception as publication_failure:
+            raise RuntimeError("spent holdout failed and partial receipt publication failed") from publication_failure
+        print(json.dumps({"spent_failure": True,
+                          "partial_receipt_sha256": sha(receipt_path)}, sort_keys=True),
+              file=sys.stderr)
+        raise
+
 
 
 def self_test():
@@ -442,9 +482,43 @@ def self_test():
              not failed["harness_population_complete"], "failed coverage accepted")
         holdout_receipt.public_shape({"criteria": failed, "units": 100,
                                       "harness_files": 89, "native_minus_harness_files": 11})
+        failure_scratch = base / "synthetic-grade-failure"
+        failure_scratch.mkdir()
+        instrument = git(HERE, "rev-parse", "HEAD")
+        source_commit = "b" * 40
+        failure_env = dict(env, FATHOM_INSTRUMENT_COMMIT=instrument,
+                           FATHOM_SOURCE_COMMIT=source_commit)
+        spend(failure_scratch, source_commit, instrument)
+        (failure_scratch / "indexbench").write_bytes(b"synthetic binary")
+        prefix = []
+        for label, exit_code in (("clone-once", 0), ("checkout-pin", 1),
+                                 ("ppi-primary", 0), ("compiler-ranges", 0),
+                                 ("build-indexbench", 0)):
+            row = {"phase": label, "exit": exit_code, "timed_out": False,
+                   "launch_load": 1, "seconds": 0, "instrument_commit": instrument,
+                   "source_commit": source_commit}
+            if label == "build-indexbench":
+                row["binary_sha256"] = sha(failure_scratch / "indexbench")
+            prefix.append(row)
+        (failure_scratch / "phases.json").write_text(json.dumps(prefix))
+        try:
+            phase("grade-holdout", [sys.executable, "-c", "import sys; sys.exit(2)"],
+                  failure_scratch, failure_scratch, failure_env,
+                  seconds=5, load_reader=lambda: (1.0,))
+        except ValueError:
+            receipt_path = publish_failed_receipt(
+                failure_scratch, Path(git(HERE, "rev-parse", "--show-toplevel")),
+                instrument, "Synthetic", source_commit, failure_env)
+            receipt = json.loads(receipt_path.read_text())
+            need(receipt["phase_outcomes"][-1]["exit"] == 2 and
+                 receipt["criteria"]["coverage_and_existing_gates_pass"] is False,
+                 "nonzero grade did not publish false-gate receipt")
+        else:
+            raise AssertionError("synthetic grade failure was accepted")
     return {"spent_before_read": "pass", "dependency_selection": "pass",
             "phase_identity": "pass", "timeout": "rejected",
-            "failed_coverage_receipt": "publishable"}
+            "failed_coverage_receipt": "publishable",
+            "nonzero_grade_receipt": "published_false_gate"}
 
 
 def main():

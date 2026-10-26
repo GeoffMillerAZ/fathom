@@ -219,8 +219,12 @@ It uses the pinned Perl/PPI/Ctags inputs, installs only the subject's own
 tracked CPAN declaration into an isolated prefix when one exists, then runs
 the unchanged PPI primary, native range companion, fresh indexbench build,
 grade and three retimings. Compiler network and write restrictions remain in
-`runner.py`. It calls `holdout_receipt.py` after a completed run; a missed
-coverage or population gate yields a count/hash receipt with a false criterion.
+`runner.py`. It calls `holdout_receipt.py` after a completed run or a
+post-spend failure. A failed phase still exits nonzero after publishing its
+count/hash receipt with false acceptance and unknown counts left null.
+Identity or consistency mismatches still refuse publication. Retime records
+bind the immutable source, oracle, binary and reading digest before launch;
+a missed coverage or population gate also remains a false criterion.
 No replacement subject has been selected or run by this instrument addition.
 
 ```sh
