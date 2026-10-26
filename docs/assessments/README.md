@@ -79,7 +79,7 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-26 | [core-t1-go-cost-ceiling](2026-10-26-core-t1-go-cost-ceiling.md) | Field-only member symbols fail the wall gate; runtime reverted and no new grade claimed | C-R2, C-R5 (#20), LB-Q-go-rest |
 | 2026-10-26 | [core-t1-javascript-ceiling](2026-10-26-core-t1-javascript-ceiling.md) | The public C-R3 ruling retains the denominator and cost rules. | LB-Q-javascript-rest |
 | 2026-10-26 | [core-t1-kotlin-ceiling](2026-10-26-core-t1-kotlin-ceiling.md) | Two pinned 0.13.2 producer routes fail before emitting an index; the typed-range reader cause remains unproved. | LB-Q-kotlin-rest |
-| 2026-10-26 | [core-t1-perl-ceiling](2026-10-26-core-t1-perl-ceiling.md) | B::Xref attests compiler calls but not reliable source ends. | LB-Q-perl-rest |
+| 2026-10-26 | [core-t1-perl-ceiling](2026-10-26-core-t1-perl-ceiling.md) | C-R9 native ranges: 2,870 exact ends, L1 excellent/L2 C good candidate; stock call census and literal-method control retain population gaps. | LB-Q-perl-rest |
 | 2026-10-26 | [core-t1-sass-grammar](2026-10-26-core-t1-sass-grammar.md) | Measured licensed candidate fails the complete-source grammar gate; refusal has concrete syntax causes | LB-Q-sass-rest, X-R1 |
 | 2026-10-26 | [core-t1-scala-ceiling](2026-10-26-core-t1-scala-ceiling.md) | The end-line repair and SemanticDB build remain shared-engine and build routes. | LB-Q-scala-rest |
 | 2026-10-26 | [core-t1-scss-oracle](2026-10-26-core-t1-scss-oracle.md) | Native resolver attests all 25 previously missing Foundation pairs post hoc; fresh composite-oracle validation remains required | LB-Q-scss-rest, W5, X-R1 |

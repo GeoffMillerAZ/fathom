@@ -1,28 +1,87 @@
-# perl named ceiling routes (X-R1)
+# Perl native ranges and remaining call-oracle limits
 
-Measured baseline: [perl reading](../bench/readings/lang/perl.json). No new reading is claimed.
+The [canonical reading](../bench/readings/lang/perl.json) remains unchanged.
+A [separate native-range candidate](../bench/readings/perl-native-c9-2026-10-26.json)
+measures L1 excellent and L2 good: range agreement 1 over 2,870 paired ends.
+PPI calls remain tier C. This is a measured partial result, pending the frozen
+Dancer2 validation, and makes no exhausted-tooling claim.
 
-| Candidate or route | Version / rule | Checked evidence and concrete limit |
+| Candidate or route | Pinned version | Evidence and concrete limit |
 |---|---|---|
-| Universal Ctags Perl parser | 6.2.1 | Existing tier-B L1 reading supplies no complete subroutine-end ranges, leaving range_agreement null. |
-| PPI syntax tree / ppi-calls adapter | PPI 1.270, Perl 5.34.1 | The existing independent-parser call adapter is tier C and heuristic around barewords/block calls. PPI token locations are a possible end-span route, but that does not remove its tier-C excellent cap. |
-| B::Xref compiler cross-reference and `%DB::sub` | B::Xref 1.07, Perl 5.34.1 | `%DB::sub` records `file:start-end` when compile bit `0x10` is enabled; paired with B::Xref caller-to-callee records, Perl's compiler supplies the oracle for definition ends and calls. Under public ruling C-R9, tier A applies only to the actual compiled population: no network access, subject-declared dependencies only, and every file that cannot compile remains unresolved against coverage. |
-| Perl B::Deparse compiler dump | B::Deparse 1.57 (local system Perl) | It reconstructs source from op trees and may emit line directives, rather than original declaration closing spans. Reconstructed output is not an exact source-end oracle; no fabricated range reading is produced. |
-
-The `LB-Q-perl-rest` oracle route is `%DB::sub` plus B::Xref under public ruling C-R9: tier A covers only the actual compiled population, with no network access and subject-declared dependencies only; every file that cannot compile remains unresolved against coverage. Isolated CPAN dependency setup succeeded in 28.574s. The pre-ruling trial compared 1,329 paired definition ends and reported 39.72% all matched, with Mojo 10/280 and Perl::Critic 251/263 compile failures. Because no-network compliance was not verified for that trial, these are conditional diagnostic results, not a C-R9 grade. Rerun the pinned corpus without network access using only subject-declared dependencies, then report paired-end agreement and compiled/unresolved population counts with fresh independent validation. No exhausted-ceiling claim is supported.
-
-Governing row: `LB-Q-perl-rest`. No extractor, reading, corpus, holdout, epoch, or generated board changes.
+| Universal Ctags Perl parser | 6.2.1 | Supplies independent names and declaration lines, but not complete subroutine ends. The range metric retains its conservative primary tier-B cap. |
+| PPI call adapter | PPI 1.270, Perl 5.34.1 | Existing independent-parser truth, tier C. Call precision .9822 and recall .9993 are unchanged; this route cannot establish L2 excellent under the tier rule. |
+| Compiler debugger table | Perl 5.34.1, `%DB::sub` | Measured under C-R9: 527/543 units compile; 2,870/2,922 named subroutine ends pair uniquely. All sixteen uncompiled units remain unresolved against coverage. Native ends are tier A only for the actual compiled population. |
+| Stock compiler cross-reference | B::Xref 1.07, Perl 5.34.1 | Complete-subject census records 7,747 direct-call records and 11,408 non-direct target-unknown records. No modern method target is emitted. Repeated compilation records are not unique edge counts. This incomplete census is not a call grade. |
+| Named METHOP derivative | FathomPerlNamedMethodXref 0.01-probe over B::Xref 1.07 | Fixed control exposes two literal method names, two direct calls and one dynamic unknown. One anonymous-closure method and one optimized constant source call remain absent/unresolved. This is a bounded synthetic control, not a complete source-call oracle. |
+| Compiler op-tree renderer | B::Concise 1.004, Perl 5.34.1 | Installed source was inspected: it can render METHOP names. Its named-stash traversal and optimized op tree do not establish complete original-source call enumeration. The method control above demonstrates the anonymous-CV and optimized-call gaps; no full-corpus Concise grade is claimed. |
+| Compiler deparser | B::Deparse 1.57, Perl 5.34.1 | Reconstructs source from optimized op trees. Reconstructed text is not an exact original declaration-end or complete original-source call oracle. |
+| Language server | PLS 0.906 | Navigation exists, but complete original-source range/call coverage is unmeasured. It is an independent analyzer, tier C under P-T1, so availability alone does not lift L2 excellent. |
+| Newer independent parser | PPI 1.291 | Newer than the measured 1.270; remains tier C. No compiler authority follows from a registry version. |
+| Runtime call profiler | Devel::NYTProf 6.16, Perl-5 license | Observes executed calls only. No complete static source-call population follows from an execution trace; ordinary subject bodies are not executed in this audit. |
 
 ## X-R4 five-source audit
 
-Search date: 2026-10-26 UTC. The [Sourcegraph precise-navigation list](https://sourcegraph.com/docs/code-navigation/precise-code-navigation), [SCIP indexer catalog](https://github.com/scip-code/scip#readme), legacy LSIF repository searches ([TS/JS example](https://github.com/sourcegraph/lsif-node), [Go example](https://github.com/sourcegraph/lsif-go)), and GitHub repository searches for `scip-<language>` were checked. These are bounded catalogs, not evidence that an indexer cannot exist. Runtime traces cover executed paths only and cannot substitute for complete static source truth. No new subject or oracle was run here.
+Searched 2026-10-26. The source ledger records routes and misses, rather than
+asserting that an unobserved tool cannot exist.
 
-| Source class | Searched source and disposition |
+| Source class | Sources searched and result |
 |---|---|
-| Own toolchain / compiler | [Perl 5.34 debugger internals](https://perldoc.perl.org/5.34.2/perldebguts) document `%DB::sub` values as `filename:startline-endline`; paired with [B::Xref](https://perldoc.perl.org/5.34.2/B%3A%3AXref), this is the `LB-Q-perl-rest` oracle route under public ruling C-R9. Tier A applies only to the actual compiled population, with no network access, subject-declared dependencies only, and every uncompiled file unresolved against coverage. **LIVE UNMEASURED** pending a C-R9-compliant pinned-corpus rerun and fresh independent validation. The pre-ruling trial compared 1,329 paired definition ends and reported 39.72% all matched, with Mojo 10/280 and Perl::Critic 251/263 compile failures; no-network compliance was not verified, so these remain conditional diagnostics, not a grade. Isolated dependency setup succeeded in 28.574s. Next measurement: rerun without network access using only subject-declared dependencies, then report paired-end agreement and compiled/unresolved population counts. No exhausted-ceiling claim. |
-| SCIP / LSIF | Shared catalogs and [GitHub `scip-perl` search](https://github.com/search?q=scip-perl&type=repositories) yielded no measured Perl indexer. |
-| Language server | [PLS 0.906](https://fastapi.metacpan.org/v1/release/PLS), [Perl Navigator v0.8.20](https://github.com/bscan/PerlNavigator/tree/v0.8.20), and [Perl::LanguageServer 2.6.2](https://metacpan.org/release/Perl-LanguageServer) offer navigation; exact original subroutine-end coverage is **LIVE UNMEASURED**. |
-| Registry AST / parser | [Perl::Tidy 20260826](https://metacpan.org/release/Perl-Tidy) `--dump-block-summary` (`-dbs`) reports each sub's opening-brace line and line count through its closing brace, yielding end lines directly. This independent parser is tier C and **LIVE UNMEASURED**, a cross-check for the compiler route. [PPI 1.291](https://fastapi.metacpan.org/v1/release/PPI) is newer than measured 1.270 but remains tier C; [B::Deparse](https://perldoc.perl.org/B::Deparse) reconstructs output rather than original ends. |
-| Runtime tracing | [Devel::NYTProf](https://metacpan.org/pod/Devel%3A%3ANYTProf) observes executed calls; [perlrun -c](https://perldoc.perl.org/5.34.2/perlrun) still executes BEGIN/CHECK/use while omitting the program body. |
+| Own compiler/runtime | [perldebguts](https://perldoc.perl.org/5.34.2/perldebguts), [perlrun](https://perldoc.perl.org/5.34.2/perlrun), installed B::Xref 1.07, B::Concise 1.004 and B::Deparse 1.57. `%DB::sub` and stock Xref are now measured under C-R9. Installed source and the committed synthetic derivative expose the limits above. Attempts to retrieve exact 5.34.1 B::Concise/Xref pages and tagged GitHub source through the web reader failed; the pinned installed core sources supplied the inspection. |
+| SCIP / LSIF | [Sourcegraph navigation catalog](https://sourcegraph.com/docs/code-navigation/precise-code-navigation), [SCIP catalog](https://github.com/scip-code/scip#readme), legacy Sourcegraph LSIF repositories and [GitHub scip-perl search](https://github.com/search?q=scip-perl&type=repositories). No measured Perl producer was identified. Catalog misses are bounded search results. |
+| Language servers | [PLS release metadata](https://fastapi.metacpan.org/v1/release/PLS), 0.906: navigation candidate, no measured complete native call oracle. |
+| Package registry / AST dumpers | [PPI metadata](https://fastapi.metacpan.org/v1/release/PPI), 1.291, and the core B backend sources above. PPI remains independent-parser tier C; the compiler routes have the measured limits above. |
+| Runtime tracing | [NYTProf metadata](https://fastapi.metacpan.org/v1/release/Devel-NYTProf), 6.16, and perlrun compile-only behavior. Tracing covers executed paths; `-c` still executes BEGIN/CHECK/use, so compile safety and coverage must be controlled. |
 
-The prior measured reading remains unchanged pending the C-R9-compliant pinned-corpus rerun; no C-R9 grade or exhausted ceiling is claimed.
+## C-R9 compliant canonical measurement
+
+Both full pinned subjects compile unchanged, with network operations denied
+and only core, subject-owned paths and each subject's own declared dependencies.
+The loopback negative control fails EPERM. Mojo uses no borrowed dependency
+prefix. Perl-Critic uses its cpanfile-backed isolated library, whose before/after
+fingerprint is identical. Every failed or timed-out unit remains unresolved.
+The old debugger-mode Xref census is withdrawn because `dbstate` does not update
+stock Xref's source attribution; the corrected census uses non-debugger COPs.
+
+| Subject | Range-compiled units | Unresolved | Paired named ends | Paired-end agreement | Xref-compiled units | Direct / unknown records |
+|---|---:|---:|---:|---:|---:|---:|
+| Mojo | 270/280 (96.43%) | 10 | 1,286/1,308 (98.32%) | 1,286/1,286 | 270/280 | 4,812 / 8,316 |
+| Perl-Critic | 257/263 (97.72%) | 6 | 1,584/1,614 (98.14%) | 1,584/1,584 | 255/263 | 2,935 / 3,092 |
+
+Pooled: 2,870/2,922 named ends (98.22%), or 2,870/3,346 all matched
+definitions (85.77%). Anonymous/eval/outside-source entries and ambiguous
+joins receive no invented ends. All non-range counts and numeric metrics equal
+the canonical reading. Native evidence is A only for its compiled population;
+the actual reading's range metric is B under the independent Ctags tier cap.
+Median-of-three throughput is 2.43 MB/CPU-s (2.45, 2.43, 2.42), zero faults.
+
+The [committed collector receipt](data/2026-10-26-core-t1-perl-native-c9.json)
+was generated by `calibration/oracles/perl-db-ranges/receipt.py`. It validates
+all phase identities, exact timing labels, source/count accounting, EPERM and
+dependency fingerprints, and publishes counts and hashes only. The native compiler instrument commit is `2fefe5d424`; the harness-only
+repeat uses `c234acd6c2`. Their full Git object IDs are retained in the
+receipt, with the grading binary hash on every phase.
+The [synthetic method-control result](data/2026-10-26-core-t1-perl-method-control.json)
+is explicitly a derivative, not stock Xref output. B::Concise's installed
+module SHA256 is `c86db93c6a0aa92d36aea7d01089d9e875303cbf1d85ec727befff38148696c8`;
+B::Deparse's is `e6c84651dbafdce6793b73bbbff67a65a06c55cb9e8375891d8ec3838d07f371`.
+
+## Disposition and next trigger
+
+The prior absent-native-oracle premise is withdrawn. The native range route
+is measured and passes its conditional range comparison; fresh independent
+validation on the preregistered, still-unread Dancer2 remains required before
+canonical adoption. The remaining L2 ceiling applies to the current PPI oracle.
+A future native call adapter must enumerate anonymous CVs and account for
+compiler-elided source calls, retain dynamic unknowns, and grade the full
+compiled population with every failed unit unresolved. The committed method
+control exposes one unresolved closure and one unresolved constant call today.
+A literal-name renderer alone does not satisfy that trigger.
+
+Verification commands and input requirements are in
+[the committed instrument README](../../calibration/oracles/perl-db-ranges/README.md).
+The receipt self-test rejects source/unit/fingerprint/network contradictions,
+duplicate timing labels, grade-commit drift and accidental private-array
+publication. Disabling the literal-name callback fails the fixed native method
+control; restoring it passes. The output-cap control refuses limit plus one.
+Governing row: `LB-Q-perl-rest`. No extractor, corpus shard, canonical reading,
+epoch or generated board changes.

@@ -1,0 +1,134 @@
+{
+  "collector_sha256": "da2abc62e5e7445936b429e0ce0dd2e49e0ed19ab8b69ffdce975cad6ecfefb7",
+  "grade": {
+    "L1": "excellent",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "harness_commit": "c234acd6c25269a23edd65f7cedd5c62bd651d60",
+  "inputs_sha256": {
+    "Perl-Critic.ranges.json": "2ddfa2f83f380781a94bb7715523e5be01d87b62e781ae14c5a189523a22c741",
+    "Perl-Critic.ranges.meta.json": "5a1330c811fa6960aa2dc29ffdcb65ea72b9ed2e71b8b43c5a27dfb09905e42b",
+    "Perl-Critic.xref.json": "2371cbf631af6afd6396336ae5090ada22e9a1b24f0524fdc2a927d2a6b63aad",
+    "baseline.json": "e601a551bb985c56079a7b21c26aec3b7018b9b67ee54871f996ffdbd9006135",
+    "grade-phases.json": "6ea66f8ab619c6e835a43263177ed40fdfab310aeb212bc79ecd95c287f89215",
+    "grade.meta.json": "d1221ad713b52d11d9d1563b202eeda0d14586b4cdcfffff871cbc4a0a9cd6bf",
+    "mojo.ranges.json": "17b349fa8afda6f9e0659b26ba437777f06b2d72e41d2334910fb0c70ff5761e",
+    "mojo.ranges.meta.json": "7209d79db7c870a2bd4e437f87c77b6ade31612a025ec046dae576527ac8787a",
+    "mojo.xref.json": "b12e8202b798735b49129f7d64e65738b04eb2b1b436d5bd63dcacc0abdaae90",
+    "phases.json": "04d59b0f958eb6f0b52d12bc2eabdaef9b527066ce43fc497dbd4392984b77c3",
+    "reading.json": "665add5589094417551c3ac66eb799558970df3db346f04aad543040c8ccd5fa",
+    "retime.log": "9a2e07f5adac7e565652917d4297d5b490fec2e130f0d38dff2c00de182ded54"
+  },
+  "instrument_commit": "2fefe5d42420761f5d36509129e6f08592adbb8b",
+  "level_met": "L2",
+  "metric_tiers": {
+    "call_precision": "C",
+    "call_recall": "C",
+    "kind_agreement": "B",
+    "range_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "range_agreement": 1,
+  "range_eligible": 2870,
+  "range_ok": 2870,
+  "subjects": [
+    {
+      "ctags_binary_sha256": "9b836bce8bc0065bf34dbf437edb8fd69ea6960a7e1e2c1efe462774a3660830",
+      "ctags_raw_version_sha256": "9110c02ee4c1ff1dc1c1b18b0742b290d226bdf084acb66dd0c42448bb50ee54",
+      "ctags_version": "Universal Ctags 6.2.1",
+      "dependency_lock_sha256": "dacd08e7b986b5e4933b16b051c41b49098e75faed4241d5710f199047195102",
+      "local_library_sha256": "813d85859267129be8cd18b274d9f54f220892831b5ca53460cc8153ed1afa04",
+      "native_ranges": 1825,
+      "network_denial": "EPERM",
+      "paired": 1584,
+      "paired_tag_coverage": 0.981413,
+      "perl_binary_sha256": "85e5621137742a37be052f58800372b2005f91f609ad55019832214b5d9e61bc",
+      "range_compiled": 257,
+      "range_compiled_coverage": 0.977186,
+      "range_unresolved": 6,
+      "reading_range_agreement": 1.0,
+      "reading_range_eligible": 1584,
+      "reading_range_ok": 1584,
+      "source_commit": "382d701fd1129822c98fdcdb08403a733a24dc08",
+      "source_manifest_sha256": "ae0ca3c025e2a66bd41cc85e70ee4e31604782af98855a2060cfd3956a08c36f",
+      "subject": "Perl-Critic",
+      "tags": 1614,
+      "units": 263,
+      "xref_compiled": 255,
+      "xref_direct_call_records": 2935,
+      "xref_method_target_records": 0,
+      "xref_module_sha256": "adbb5535cb333dc3d78025f95618d218e92015d880bee559ceb6277cd0042539",
+      "xref_unknown_target_records": 3092,
+      "xref_unresolved": 8
+    },
+    {
+      "ctags_binary_sha256": "9b836bce8bc0065bf34dbf437edb8fd69ea6960a7e1e2c1efe462774a3660830",
+      "ctags_raw_version_sha256": "9110c02ee4c1ff1dc1c1b18b0742b290d226bdf084acb66dd0c42448bb50ee54",
+      "ctags_version": "Universal Ctags 6.2.1",
+      "dependency_lock_sha256": null,
+      "local_library_sha256": null,
+      "native_ranges": 1615,
+      "network_denial": "EPERM",
+      "paired": 1286,
+      "paired_tag_coverage": 0.98318,
+      "perl_binary_sha256": "85e5621137742a37be052f58800372b2005f91f609ad55019832214b5d9e61bc",
+      "range_compiled": 270,
+      "range_compiled_coverage": 0.964286,
+      "range_unresolved": 10,
+      "reading_range_agreement": 1.0,
+      "reading_range_eligible": 1286,
+      "reading_range_ok": 1286,
+      "source_commit": "7b99f4adce82a45fd0965ef4dd56550b4f5ee89b",
+      "source_manifest_sha256": "5ae0a1426bdc0f260f634f2ad4547acb27f77b3a63b8c096526acf1c15990cc3",
+      "subject": "mojo",
+      "tags": 1308,
+      "units": 280,
+      "xref_compiled": 270,
+      "xref_direct_call_records": 4812,
+      "xref_method_target_records": 0,
+      "xref_module_sha256": "adbb5535cb333dc3d78025f95618d218e92015d880bee559ceb6277cd0042539",
+      "xref_unknown_target_records": 8316,
+      "xref_unresolved": 10
+    }
+  ],
+  "timing": {
+    "grade_phase_launch_load": [
+      5.59521484375,
+      5.62744140625,
+      5.7373046875,
+      5.7373046875
+    ],
+    "grade_phase_seconds": [
+      3.115,
+      3.257,
+      1.294,
+      10.788
+    ],
+    "harness_binary_sha256": "0b822f93cb1676e2b4afdab8cb4d04273b58e679fcaa1b71e166bc8b5bb8f3a8",
+    "median_mb_per_cpu_second": 2.43,
+    "native_phase_launch_load": [
+      8.315,
+      8.315,
+      5.679,
+      4.288,
+      6.712
+    ],
+    "native_phase_seconds": [
+      0.182,
+      45.197,
+      103.51,
+      56.07,
+      481.287
+    ],
+    "three_runs_mb_per_cpu_second": [
+      2.45,
+      2.43,
+      2.42
+    ]
+  },
+  "tool": "C-R9 Perl native count/hash receipt"
+}
