@@ -191,3 +191,26 @@ the `ProbeParse` target with an empty `ProbeTarget` bypasses C++ preparse.
 ./calibration/oracles/scip-clang/cpp-screen` fails: selected union becomes
 three and `PreprocessSelected` becomes zero. Original bytes were restored;
 the unmutated screen suite passes. No subject or holdout was modified.
+
+## Grade-validator compatibility correction
+
+The first three-subject legacy-file comparison stopped before retiming or
+publication. The current shared harness adds `ranges: A` for subjects with
+eligible native range pairs; it added that family for fmt and spdlog but not
+json, which had zero eligible pairs. The collector incorrectly required an
+exact six-family map and rejected the additional family. Required metrics,
+pins and tiers were present. This is a collector validation failure, not a
+producer or native-unit failure, and supplies no completed new grade.
+
+The focused control reproduced that refusal before the correction. The
+validator now allows precisely the six required families plus optional
+`ranges: A`, rejects unrelated families and wrong tiers, and still requires
+`range_agreement` at tier B. Failed receipts now distinguish reading and
+retime validation from subprocess execution. All 17 collector tests pass,
+including both validation-failure paths with no successful publication.
+
+The complete index and native receipts above remain immutable records of
+the earlier committed collector. The correction changes its whole-file
+identity, so the next comparison will repeat index and native production
+from the corrected committed collector in fresh output directories. No
+receipt is rewritten to make old output appear newly produced.

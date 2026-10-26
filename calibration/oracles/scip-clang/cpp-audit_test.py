@@ -264,6 +264,23 @@ class DriverTest(unittest.TestCase):
             "metric_tiers": {**{name: "A" for name in tier_a},
                              "sym_precision": "B", "sym_recall": "B", "range_agreement": "B"}}
         audit.validate_cpp_reading(reading, "v0.4.0")
+        # Current harness output adds a native range family only for subjects
+        # with eligible companion pairs; the range metric retains its B cap.
+        for index in (0, 2):
+            reading["subjects"][index]["families"]["ranges"] = "A"
+        audit.validate_cpp_reading(reading, "v0.4.0")
+        reading["subjects"][0]["families"]["ranges"] = "B"
+        with self.assertRaises(audit.Refusal):
+            audit.validate_cpp_reading(reading, "v0.4.0")
+        reading["subjects"][0]["families"]["ranges"] = "A"
+        reading["subjects"][1]["families"]["unexpected"] = "A"
+        with self.assertRaises(audit.Refusal):
+            audit.validate_cpp_reading(reading, "v0.4.0")
+        reading["subjects"][1]["families"].pop("unexpected")
+        reading["metric_tiers"]["range_agreement"] = "A"
+        with self.assertRaises(audit.Refusal):
+            audit.validate_cpp_reading(reading, "v0.4.0")
+        reading["metric_tiers"]["range_agreement"] = "B"
         reading["subjects"][0]["families"].pop("imports")
         with self.assertRaises(audit.Refusal):
             audit.validate_cpp_reading(reading, "v0.4.0")
@@ -477,6 +494,23 @@ class DriverTest(unittest.TestCase):
             self.assertTrue(all(value["median_run"] == 3 for value in data["readings"].values()))
             self.assertTrue(all(len(json.loads((args.readings_dir / name).read_text())["subjects"]) == 3
                                 for name in data["readings"]))
+            for phase, outcomes in (
+                    ("reading_validation", [audit.Refusal("synthetic validation failure")]),
+                    ("retime_validation", [None, audit.Refusal("synthetic validation failure")])):
+                with self.subTest(phase=phase):
+                    args.readings_dir = root / (phase + "-published")
+                    args.work_dir = root / (phase + "-work")
+                    with mock.patch.object(audit, "git", return_value="a" * 40), \
+                            mock.patch.object(audit, "grade_inputs", return_value={"safe_sha256": "b" * 64}), \
+                            mock.patch.object(audit, "grade_command_stamp", return_value=("frozen",)), \
+                            mock.patch.object(audit, "run", side_effect=fake_run), \
+                            mock.patch.object(audit, "validate_cpp_reading", side_effect=outcomes), \
+                            self.assertRaises(audit.Refusal):
+                        audit.grade(args, found)
+                    failed = json.loads((args.readings_dir / "cpp-audit-receipt.json").read_text())
+                    self.assertEqual(failed["reason"], phase)
+                    self.assertEqual(failed["status"], "failed")
+                    self.assertTrue(all(value is None for value in failed["readings"].values()))
 
     def test_native_errors_write_failed_receipt_with_counts(self):
         with tempfile.TemporaryDirectory() as tmp:

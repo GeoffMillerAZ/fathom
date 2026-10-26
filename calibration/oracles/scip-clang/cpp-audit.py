@@ -845,10 +845,16 @@ def validate_cpp_reading(reading, version):
     for subject in subjects:
         if not isinstance(subject, dict):
             raise Refusal("reading subject identity or coverage mismatch")
+        # A native companion adds its family only when this subject pairs an
+        # eligible range. L1 still caps the aggregate range metric at B below.
+        families = subject.get("families")
+        allowed_families = dict(expected_families)
+        if isinstance(families, dict) and "ranges" in families:
+            allowed_families["ranges"] = "A"
         name = subject.get("name")
         slug = next((key for key, pin in PINS.items() if pin[1] == name), None)
         if slug is None or slug in seen or subject.get("sha") != PINS[slug][0] or \
-                subject.get("families") != expected_families or any(
+                families != allowed_families or any(
                     isinstance(subject.get(field), bool) or
                     not isinstance(subject.get(field), int) or subject[field] <= 0
                     for field in ("files", "bytes")):
@@ -934,6 +940,7 @@ def grade(args, found):
                         args.timeout, LOG_CAP, load_limit=args.load_limit)
                     if stamp != grade_command_stamp(args, slug, subject, compdb, index):
                         raise Refusal("grade inputs changed during command")
+                published["reason"] = "reading_validation"
                 result = load_json(reading, READING_CAP)
                 if {s.get("name") for s in result.get("subjects", [])} != {pin[1] for pin in PINS.values()} or \
                         len(result["subjects"]) != 3:
@@ -949,6 +956,7 @@ def grade(args, found):
                     args.timeout, LOG_CAP, load_limit=args.load_limit)
                 if before != grade_inputs(args, found):
                     raise Refusal("retime inputs changed during command")
+                published["reason"] = "retime_validation"
                 retimed = load_json(reading, READING_CAP)
                 if {s.get("name") for s in retimed.get("subjects", [])} != {pin[1] for pin in PINS.values()} or \
                         len(retimed["subjects"]) != 3:
