@@ -76,7 +76,7 @@ def native_query(binary, source, directory):
 def go_test(build, overlay, pattern, out):
     command = ['go', 'test', '-race', '-count=1', '-v', '-modfile', str(build / 'probe.mod'),
                '-overlay', str(overlay), '-run', pattern, '.']
-    process = subprocess.run(command, cwd=HERE / 'native', stdout=subprocess.PIPE,
+    process = subprocess.run(command, cwd=build, stdout=subprocess.PIPE,
                              stderr=subprocess.STDOUT, timeout=180)
     out.write_bytes(process.stdout)
     return process.returncode, process.stdout.decode()
@@ -88,7 +88,9 @@ def run(build, deck, deck_receipt, out):
     native = build / 'kong-native'
     if (sha(native.read_bytes()) != identity['binary_sha256'] or
             sha((HERE / 'native/main.go').read_bytes()) != identity['probe_source_sha256'] or
-            sha((HERE / 'instrument_native.py').read_bytes()) != identity['instrument_sha256']):
+            sha((HERE / 'instrument_native.py').read_bytes()) != identity['instrument_sha256'] or
+            sha((build / 'main.go').read_bytes()) != identity['probe_source_sha256'] or
+            sha((build / 'main_test.go').read_bytes()) != sha((HERE / 'native/main_test.go').read_bytes())):
         raise ValueError('native build/source identity mismatch')
     official = json.loads(deck_receipt.read_text())
     if sha(deck.read_bytes()) != official['binary_sha256'] or official['version'] != '1.68.0':
@@ -123,7 +125,7 @@ def run(build, deck, deck_receipt, out):
     start = native_source.index('\n\tfor _, consumer := range content.Consumers {')
     end = native_source.index('\n\tfor _, upstream := range content.Upstreams {', start)
     mutant = out / 'main-no-consumer-scopes.go'; mutant.write_text(native_source[:start] + native_source[end:])
-    mapping = dict(overlay['Replace']); mapping[str(HERE / 'native/main.go')] = str(mutant)
+    mapping = dict(overlay['Replace']); mapping[str(build / 'main.go')] = str(mutant)
     modified = out / 'no-scopes-overlay.json'; modified.write_text(json.dumps({'Replace': mapping}))
     code, red = go_test(build, modified, 'TestNativePluginScopesUnderConsumerAndGroupAreEnumerated', out / 'no-scopes-red.log')
     if not code or '--- FAIL:' not in red:

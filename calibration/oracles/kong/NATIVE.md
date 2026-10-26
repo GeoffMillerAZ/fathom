@@ -99,7 +99,9 @@ bash scripts/fathom-go.sh build -o workspace/tmp/indexbench ./cmd/indexbench
 nice -n 10 python3 -B calibration/oracles/kong/grade_native_l2.py -native workspace/oracle/kong-native/kong-native -build-receipt workspace/oracle/kong-native/build-receipt.json -controls workspace/artifacts/kong-native-controls/summary.json -projection-controls workspace/artifacts/kong-projection-controls/summary.json -locator workspace/oracle/kong-locations -indexbench workspace/tmp/indexbench -subjects workspace/calibration/kong-native -out workspace/artifacts/kong-native-population
 ```
 
-The build uses `-trimpath -buildvcs=false` and checks two independently located
+The build uses `-trimpath -buildvcs=false` and a private probe module with a
+stable `./native-source` replacement. Absolute replacements otherwise survive
+in Go build metadata even with trimpath. It checks two independently located
 builds with the same target, Go compiler and flags. The second scratch build is
 removed after matching. Per-build identity receipts remain necessary across
 different compilers or targets. The Verified replay must use freshly generated

@@ -63,7 +63,9 @@ the owner's in-file PluginConfigs map removed those four. Missing native config
 entries and unsupported service packages still refuse. No guard relaxation
 changes the declared native field families or filename coverage.
 
-The build now uses `-trimpath -buildvcs=false` and compares two independent
+The build uses `-trimpath -buildvcs=false` and a private probe module with a
+stable `./native-source` replacement; trimpath alone retains absolute local
+replacement names in Go build metadata. It compares two independent
 scratch roots with the same Go compiler/target. Fresh native controls bind to
 the binary, the race-test source and the generator hashes. Nine Python tests
 and three FAIL-to-GREEN mutants protect locator independence, denial of
