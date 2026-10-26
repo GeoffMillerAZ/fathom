@@ -30,7 +30,8 @@ runtime behavior, support level, threshold, reading schema or generated file cha
 
 The census stores public revision identities, commands and counts. Resolve the named revision
 to an existing tree before running these count-only commands. Missing/unreadable source is
-operational, never a zero. Replace `REV` with an existing commit from the census:
+operational, never a zero. Pass an existing census commit as the first argument to this
+shell block (the default is `743a91430`):
 
 ```sh
 revision=${1:-743a91430}  # choose a commit from the census
@@ -57,6 +58,9 @@ The path screen is broader than the proposed AST predicate. These are shape prev
 counts, not execution of the full gate, proof of runtime cost, or review-round savings.
 Ordinary bytecode ignores/debris checks and the existing hygiene scanner are the appropriate
 seams for any separately authorized hygiene code. LH-R2 authorizes no such code in this lane.
+The [controller-owned hygiene follow-up](../plans/language-onboarding.md#controller-owned-hygiene-follow-up)
+tracks the required ignore/debris and calibration literal-scan units under issue #16;
+filing their implementation brief and assigning its worker remain controller actions.
 
 ## Governing intent and the cheap deliverable
 
@@ -68,27 +72,35 @@ query reuse remains the default. No new applicable revisit trigger justifies a s
 The approved changes to [recipe §13](language-breadth.md#13-the-worker-recipe--one-queue-item-start-to-finish)
 and `.claude/skills/add-language/SKILL.md` add checklist items for measured-file identity,
 truth independence, per-subject evidence, mutation sensitivity, adversarial count caps,
-recursive reading preservation, named ceiling candidates, runnable verification, holdout
+scoped reading preservation, named ceiling candidates, runnable verification, holdout
 isolation and release-note/debris checks before READY. Stale dependency, write, verify and
 step-24 changelog instructions are aligned with current rules.
 
 Issue #7 E2 round 2 owns recursive regrading, canonical/value-preserving reading serialization,
-measured-kind preservation and missing-metric grading tests. At reference main `5b84aa5b4`,
-those changes are not yet merged; the existing round-trip test covers top-level JSON values.
-The recipe points to existing tests with a coverage caveat and requires manual nested evidence
-until E2 lands. This lane adds no duplicate checker and does not claim an absent test passed.
+measured-kind preservation and missing-metric grading tests. At reference main `c86095291`,
+those changes are not yet merged; the existing strict round-trip covers top-level JSON values.
+The recipe names that passing command, excludes different-schema parity and frozen baseline
+regrading, and specifies sorted-JSON before/after receipts for touched nested readings until
+E2 lands. E2-R2 will require canonical bytes as well as values. This lane adds no duplicate
+checker and does not claim an absent test passed.
 
 ## Rejected-for-now conditions
 
-**Preflight wins if:** after ordinary hygiene fixes land, at least three addition-specific
-mechanical escapes across at least two additions remain uncaught by existing checks, with
-public bad/fixed pairs and an independent held-out evaluation that can change the decision.
-A broader existing gate or guidance step should be preferred when it already covers them.
+**Preflight wins if:** with the ordinary hygiene fixes in place (tracked in the
+[controller-owned follow-up](../plans/language-onboarding.md#controller-owned-hygiene-follow-up)
+under #16), at least three addition-specific mechanical escapes across at least two additions
+remain uncaught by existing checks, with public bad/fixed pairs and an independent held-out
+evaluation that can change the decision. The controller owns checking that the prerequisite
+has landed before evaluating this trigger. Prefer an existing gate/guidance step if it covers
+the class.
 
-**Importer wins if:** recurring query-conversion failures remain beyond the current draft/probe
-path, with permissive pinned sources and an independent held-out comparison demonstrating
-less work without weaker extraction or provenance. A catalog of available queries alone is
-not evidence that an importer pays.
+**Importer wins if:** at least three additions across at least two waves each need hand
+conversion of five or more query patterns beyond `lang-draft`/`lang-probe` support. Count
+changed patterns from each saved draft-versus-committed `tags.scm` diff in provenance, not
+changed lines. Sources must be permissively licensed and pinned. An independent held-out
+comparison must show fewer hands-on conversion minutes per addition (record baseline and
+importer minutes for each), without weaker extraction or provenance. These are future
+revisit requirements, not measurements made here; a query catalog alone does not qualify.
 
 ## Decision models
 

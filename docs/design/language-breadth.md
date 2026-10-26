@@ -1988,15 +1988,60 @@ worktree and your scratch directory.
 
 ### 13.3.1 Freeze the measured set and holdout
 
-- [ ] Record each subject pin, measured relative file paths, file/byte totals, discovery
-  exclusions and SHA-256 of a sorted manifest binding paths to content hashes. Recheck the
-  same manifest after oracle/build steps so generated outputs cannot silently enter the
-  measured set. Record evidence in existing notes or sidecars, not undeclared reading fields.
+- [ ] Freeze each subject with the receipt below before and after oracle/build steps.
+  This is a **tracked-set approximation**, not the harness's measured-file list: the harness
+  does not emit that list today. In `internal/extractor/dialects/<id>/PROVENANCE.md` (or the
+  indexed assessment for a doc engine), record the subject commit, subpath, both manifest
+  digests, counts/bytes and receipt paths. Separately copy the reading's per-subject `files`
+  and `bytes`, list every discovery exclusion rule and reconcile differences from this
+  tracked superset. Review added untracked/ignored paths for generated language inputs;
+  an unchanged tracked digest alone cannot prove measured-set stability. An exact harness
+  discovery receipt needs a separate brief, not another hand-written discovery algorithm.
 - [ ] Pin holdout identity and criteria before measuring or tuning. Keep holdouts outside
   `calibration/corpus.d/` canonical shards and canonical aggregation; store their separate
   pin/reading per the applicable wave contract. Audit both timing and membership: pinning
   first does not make a holdout in the canonical shard independent. Never move a hard file
   out of the measured corpus without a justified, disclosed scope ruling.
+
+Run this exact manifest recipe from the fathom root, replacing the input placeholders.
+Use the same `SUBJECT` and `SUBPATH` twice, changing only the `RECEIPT` suffix from `before`
+to `after`. It hashes current file contents in tracked, subject-relative paths under the
+subpath, sorted by path bytes. Each UTF-8 JSON line is `[path,content_sha256]`, with ASCII
+escapes and no spaces; the final newline is part of the manifest digest. A missing checkout,
+non-root `SUBJECT`, empty tracked set or missing file fails the command. The NUL-delimited
+`.untracked` receipt includes ignored files too.
+Keep these artifacts until review; commit the commands and summary values in provenance,
+not local artifact paths outside the repo or new reading fields.
+
+```sh
+SUBJECT=workspace/calibration/<subject> SUBPATH=. RECEIPT=workspace/artifacts/lang-<id>/<subject>-before python3 - <<'PY'
+import hashlib, json, os, pathlib, subprocess
+root = pathlib.Path(os.environ['SUBJECT']).resolve()
+scope = os.environ['SUBPATH']
+out = pathlib.Path(os.environ['RECEIPT'])
+top = subprocess.check_output(['git', '-C', str(root), 'rev-parse', '--show-toplevel'])
+if pathlib.Path(os.fsdecode(top).rstrip('\n')).resolve() != root:
+    raise SystemExit('SUBJECT must be the subject Git checkout root')
+def paths(*args):
+    return subprocess.check_output(['git', '-C', str(root), 'ls-files', '-z', *args, '--', scope])
+names = sorted(set(paths('--cached').split(b'\0')) - {b''})
+if not names:
+    raise SystemExit('empty tracked set: check SUBJECT and SUBPATH')
+lines, size = [], 0
+for name in names:
+    data = (root / os.fsdecode(name)).read_bytes()
+    size += len(data)
+    lines.append(json.dumps([os.fsdecode(name), hashlib.sha256(data).hexdigest()],
+                           ensure_ascii=True, separators=(',', ':')) + '\n')
+manifest = ''.join(lines).encode('utf-8')
+out.parent.mkdir(parents=True, exist_ok=True)
+pathlib.Path(str(out) + '.manifest').write_bytes(manifest)
+pathlib.Path(str(out) + '.untracked').write_bytes(paths('--others'))
+summary = dict(sha256=hashlib.sha256(manifest).hexdigest(), files=len(names), bytes=size)
+pathlib.Path(str(out) + '.json').write_text(json.dumps(summary, sort_keys=True) + '\n')
+print(json.dumps(summary, sort_keys=True))
+PY
+```
 
 ### 13.4 Measure
 
@@ -2040,13 +2085,22 @@ worktree and your scratch directory.
   while the current union differs; different definitions are not a failed reproduction.
 - [ ] For changed oracle logic, demonstrate mutation sensitivity: intentionally break the
   relevant tier default, truth scope, pairing/filter or identity behavior and show the
-  focused tests fail, then restore it and show green. Reuse existing E2 tests where they
-  cover the property; a passing test that survives the pertinent mutant is not proof.
+  focused tests fail, then restore it and show green. Add a `Mutation:` line to the report:
+  changed repo-relative file and one-line mutant (or committed patch receipt), exact
+  focused `go test -run '^<TestName>$'` command, observed FAIL line and restored green rerun.
+  Keep full red/green output under `workspace/artifacts/lang-<id>/mutation.log`; put the
+  reproducible command, mutant and results in provenance or the indexed assessment so the
+  receipt survives scratch cleanup. Reuse existing E2 tests where they cover the property;
+  a passing test that survives the pertinent mutant is not proof.
 - [ ] For new format readers or expanded output, exercise adversarial count caps, fan-out,
   long/repeated paths, attributes, nesting and compressed payloads as applicable. Assert
   bounded work/output and whole-unit refusal above caps, without silent partial success.
-  Run existing heap/CPU stress tests in their intended non-race gate as well as the required
-  race tests; do not duplicate tests already supplied by the owning foundation lane.
+  For each cap, name at least one test feeding cap + 1 and asserting whole-unit refusal;
+  reuse a covering test from the owning lane. Record `Caps:` in provenance/assessment with
+  the resource, cap, input count, repo-relative test file, test name, exact command and
+  refusal result; keep full output under `workspace/artifacts/lang-<id>/caps.log` for review.
+  If a touched package has tests that skip under `-race`, name and run those once without
+  `-race` too. Otherwise run the named tests with `-race`; no unnamed stress gate is implied.
 
 ### 13.4.1 Offline measure loop and gap reports
 
@@ -2118,43 +2172,67 @@ from this ratio-based shortlist because their units differ.
     <subjects>". A port that changes output for already-indexed files also adds the wave's bump
     file `internal/fusion/epochs/<wave>.md` (what changed, why stored observations are stale).
 25. Delete your clones unless the next queued item shares a subject
-    (`task calibrate-clean -- <id>`); delete your scratch dir.
+    (`task calibrate-clean -- <id>`); delete unneeded scratch. Retain review receipts under
+    `workspace/artifacts/` until review, with a named cleanup owner in the report.
 
 ### 13.5.1 Before READY (X-R2)
 
-- [ ] Check every committed language reading recursively, including `holdout/` and `tuned/`,
-  through the existing strict decode/validate/marshal round-trip tests. Preserve measured
-  values and `required_kinds`; distinguish absent metrics from thin denominators. When a
-  grading rule changes, regrade every affected reading and disclose the scope, not just
-  top-level tracker inputs. Use #7's E2 round-2 coverage rather than adding another checker.
-  At the reference main `5b84aa5b4`, `TestCommittedReadingsRoundTrip` covers only top-level
-  files and JSON-value equality. Run it with
-  `go test -race ./internal/langbench -run TestCommittedReadingsRoundTrip -count=1`,
-  then manually audit nested holdout/tuned inputs and preservation until E2 round 2 lands.
+- [ ] Reading-schema scope is `docs/bench/readings/lang/*.json`, `holdout/*.json`,
+  `tuned/*.json` and `tuned/lf3/*.json`. `parity/` has a different schema and is excluded.
+  `baseline/` is frozen LB-M1 evidence; do not regrade it without an explicit owner scope
+  ruling under E2-R1/D20. Preserve measured values and `required_kinds`; distinguish
+  absent metrics from thin denominators. For a grading-rule change, list and regrade every
+  affected reading in this scope, including untouched nested inputs, and disclose the list.
+  At reference main `c86095291`, run the passing baseline command
+  `go test -race ./internal/langbench -run '^TestCommittedReadingsRoundTrip$' -count=1`.
+  It strictly decodes, validates and marshals **top-level** Reading JSON and compares JSON
+  values; it does not cover nested paths or require canonical bytes. Until #7 E2 round 2
+  lands, list each nested reading touched and capture sorted before/after JSON with the
+  commands below; explain each intentional changed measured field in provenance/assessment.
+  New nested files have no base: record that fact and review their full sorted JSON.
+  This interim diff checks value preservation, not strict nested schema validation.
   E2-R1..R4 own recursive regrading, byte-canonical/value-preserving serialization, measured
-  kind preservation and absent-metric handling. Inspect the landed test names/coverage and
-  use them once available; do not reimplement them here or count a `-run` pattern matching
-  no tests as proof. A byte-format change alone is not a changed JSON value.
+  kind preservation and absent-metric tests. Use their landed tests once available; do not
+  build a duplicate checker or count a pattern matching no tests as proof. Today a byte-only
+  diff is not a changed JSON value; once E2-R2 lands, canonical byte equality is required
+  **in addition** to value preservation, and a byte-only test failure must be fixed.
+
+  For each existing nested path, set `BASE` to the pre-edit commit and `p` to that reading.
+  Run from the repo root. A failed `git show`/`jq` is operational, not an unchanged value.
+  Keep the diff (exit 0 unchanged, 1 changed, greater than 1 operational) with the receipt.
+
+  ```sh
+  BASE=<pre-edit-commit> p=docs/bench/readings/lang/holdout/<reading>.json
+  receipt=workspace/artifacts/lang-<id>/readings
+  mkdir -p "$receipt/$(dirname "$p")"
+  git show "$BASE:$p" > "$receipt/$p.base" &&
+    jq -S . "$receipt/$p.base" > "$receipt/$p.before" &&
+    jq -S . "$p" > "$receipt/$p.after" &&
+    diff -u "$receipt/$p.before" "$receipt/$p.after" > "$receipt/$p.diff"
+  ```
 - [ ] Run `go run ./third_party/agentic-kit/cmd/release-notes -check` and
   `bash scripts/check-merge-debris.sh` before READY. Check staged/index content too with
   `bash scripts/check-merge-debris.sh --staged` when preparing the commit. A required
   integrator regeneration is not a worker defect; regenerate only through its generator.
 - [ ] Verify every `Verified:` line names actual runnable commands, required inputs and
-  results, with repo-relative paths. A list of checks or a claimed outcome alone is not
-  a command. Missing dependencies and skipped checks stay disclosed, never called green.
+  results, with repo-relative paths to committed files, not local scratch helpers. A list
+  of checks or a claimed outcome alone is not a command. Missing dependencies and skipped
+  checks stay disclosed, never called green.
 
 ### 13.6 Commit and report
 
 26. One commit (two for a port: the dialect, then the incumbent's removal), conventional
     message `feat(lang): <name> at <level> (<grade>)`, with a `Verified:` line naming the
-    exact runnable command(s) you ran, with repo-relative paths and needed flags.
+    exact runnable command(s) you ran, with repo-relative paths to committed files and
+    needed flags (no scratch helpers).
     Put the reading's `level_met`, oracle tiers and command exit/result beside them;
     prose such as "round-trip, privacy and counts passed" without commands is not verification. No `Co-Authored-By` or
     session trailers. Do not push; the coordinator merges.
 27. Report, in at most 12 lines: id, level met and grade per level, the metrics that missed
     excellent and why, oracle tiers, grammar blob size (gz), peak module pages, compiled
     bytes, faults, anything flagged for Opus review (§9's thresholds, `needs-strategy`,
-    licence doubt), and disk you left behind (should be none).
+    licence doubt), `Mutation:` and `Caps:` receipt references when applicable, and disk
+    left for review with its cleanup owner. Remove unneeded artifacts after review.
 
 ## 14. Definition of done, and when a level is out of reach
 
@@ -2166,7 +2244,7 @@ from this ratio-based shortlist because their units differ.
 | L2 | L1 done; call pairs measured against tier A (excellent/good) or tier C (good) |
 | L3 | L2 done; `imports.scm` + a strategy (Go: its loader and typed pass, LB-F58); `import_resolution` and file-edge metrics measured against SCIP, or both against a language-native import dump at its tier (§10, LB-F40, LB-F57: the dump's statements, not references, are the file-edge truth); a tool format's `xref_precision`/`xref_recall` against its oracle's `cross_references`, from the doc engine's references or a tags-engine format's file-resolved edges (LB-F30, LB-F56) |
 | L4 | L3 done; a SCIP producer run on ≥ 1 subject, imported with `fathom ingest --scip` into a scratch store, `def_mapping` and `typed_recall` measured; the tracker names the producer and version |
-| any | tenancy numbers inside §1.2's floor; tracker regenerated; CHANGELOG line; no disk left behind |
+| any | tenancy numbers inside §1.2's floor; tracker regenerated; change-note fragment (step 24); review artifacts have a cleanup owner, no unneeded disk left behind |
 
 ### 14.2 When the target is not reachable
 

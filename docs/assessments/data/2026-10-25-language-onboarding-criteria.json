@@ -8,12 +8,13 @@
     {
       "candidate": "new onboarding preflight tooling",
       "reason": "Pre-oracle reorder population is infeasible; staged-hygiene predicates were designed from the exact scored cases, so catch efficacy is held-in and does not justify a scorer/replay framework",
-      "wins_if": "After ordinary hygiene fixes land, at least 3 addition-specific mechanical escapes across at least 2 additions remain uncaught by existing checks, with public bad/fixed pairs and an independent held-out evaluation that can change the decision"
+      "wins_if": "With ordinary hygiene fixes in place (tracked in docs/plans/language-onboarding.md#controller-owned-hygiene-follow-up under issue #16), at least 3 addition-specific mechanical escapes across at least 2 additions remain uncaught by existing checks, with public bad/fixed pairs and an independent held-out evaluation that can change the decision",
+      "prerequisite_owner": "Controller: file the separate hygiene implementation brief, assign a worker and confirm both units have landed before evaluating the trigger; filing and implementation remain pending"
     },
     {
       "candidate": "general starter-query importer",
       "reason": "Existing recipe, lang-draft and lang-probe already support reuse; measured review groups show no recurring conversion class justifying another importer",
-      "wins_if": "Repeated query-conversion failures remain beyond current draft/probe support, and an independent held-out comparison shows a reusable importer reduces work without reducing accuracy or provenance guarantees"
+      "wins_if": "At least 3 additions across at least 2 waves each need hand conversion of 5 or more query patterns beyond lang-draft/lang-probe support, counted from saved draft-versus-committed tags.scm diffs in provenance (patterns, not lines); require pinned permissive sources and an independent held-out comparison showing fewer hands-on conversion minutes per addition, with baseline/importer minutes recorded for each and no weaker extraction or provenance"
     }
   ],
   "retired_work": [

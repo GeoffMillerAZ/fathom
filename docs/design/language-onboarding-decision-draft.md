@@ -25,12 +25,18 @@ Reject **a general starter-query importer** for now. Retain grammar/Aider/Neovim
 
 ## Wins if
 
-- Preflight: after ordinary hygiene fixes land, at least three addition-specific mechanical
-  escapes across at least two additions remain uncaught by existing checks, with public
-  bad/fixed pairs and an independent held-out evaluation that can change the decision.
-- Importer: recurring query-conversion failures remain beyond the draft/probe path, and an
-  independent held-out comparison shows a reusable importer reduces work without reducing
-  accuracy or provenance guarantees. Source availability alone is insufficient.
+- Preflight: with ordinary hygiene fixes in place, tracked in the
+  [controller-owned #16 follow-up](../plans/language-onboarding.md#controller-owned-hygiene-follow-up),
+  at least three addition-specific mechanical escapes across at least two additions remain
+  uncaught by existing checks, with public bad/fixed pairs and an independent held-out
+  evaluation that can change the decision. The controller owns filing/assigning the hygiene
+  brief and checking it has landed before evaluating this trigger.
+- Importer: at least three additions across at least two waves each need hand conversion
+  of five or more query patterns beyond `lang-draft`/`lang-probe` support, counted from saved
+  draft-versus-committed `tags.scm` diffs in provenance (patterns, not lines). Require pinned,
+  permissively licensed sources and an independent held-out comparison showing fewer
+  hands-on conversion minutes per addition, with baseline/importer minutes recorded for
+  each and no weaker extraction or provenance. Source availability alone is insufficient.
 
 ## Consequences and limits
 

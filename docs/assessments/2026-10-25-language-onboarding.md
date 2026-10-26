@@ -132,10 +132,13 @@ authorization; this lane changes guidance and records only.
 
 The cheap deliverable addresses the measured oracle/test/resource evidence gaps: file digests,
 truth independence, per-subject ratios, mutation sensitivity, adversarial count caps and a
-recursive all-readings audit. X-R1/X-R2 add named candidate searches, runnable verification,
+scoped reading-preservation check. X-R1/X-R2 add named candidate searches, runnable verification,
 canonical/holdout isolation and release-note/debris checks before READY. #7 E2 round 2 owns
-relevant recursive/canonical/kind/metric tests and is not duplicated here. At reference main,
-its new tests are still unmerged; current round-trip coverage is top-level JSON values only.
+relevant recursive/canonical/kind/metric tests and is not duplicated here. At reference main
+`c86095291`, its new tests are still unmerged; current strict round-trip coverage is top-level
+JSON values only. The recipe names sorted-JSON receipts for touched nested Reading files,
+excludes different-schema parity records and leaves frozen baseline regrading to an explicit
+owner scope ruling. The controller-owned hygiene follow-up is tracked in the work order.
 
 ## Evidence limits
 

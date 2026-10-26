@@ -344,7 +344,7 @@
       "source": "docs/design/language-onboarding.md read-only screen code block",
       "method": "Check tree exists; preserve ls-tree errors; distinguish grep no-match exit1 from operational exits; print counts only"
     },
-    "precondition": "Resolve REV to an existing committed tree first; a missing/unreadable tree is operational, never zero hits",
+    "precondition": "Pass an existing census commit as the first argument to the design shell block (default 743a91430); a missing/unreadable tree is operational, never zero",
     "count_unit": "bytecode paths and matching calibration files, not defects or literal values"
   }
 }

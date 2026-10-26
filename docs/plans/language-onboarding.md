@@ -22,3 +22,15 @@ records rejection, not an executable criterion.
 LH-R2's authorized deliverable is checklist guidance in recipe §13 and the existing
 add-language skill, reusing #7 E2 tests where landed and disclosing coverage gaps. It creates
 no new gated implementation work, support level, runtime behavior or record identifier.
+
+## Controller-owned hygiene follow-up
+
+Tracked here under issue #16, pending a separate controller-filed implementation brief.
+The controller owns filing and assigning the following units, and confirming they land
+before the preflight wins-if condition is evaluated. No worker is assigned by this document,
+no external issue has been filed by this lane, and LH-R2 does not authorize implementation here.
+
+| Unit | Required existing seam and proof | Owner / state |
+|---|---|---|
+| Bytecode hygiene | Add `__pycache__/` and `*.py[co]` to `.gitignore`; cover force-added bytecode in `scripts/check-merge-debris.sh` with red/green cases in `scripts/check-merge-debris_test.sh`. | Controller: file brief and assign worker; pending. |
+| Calibration literal hygiene | Cover home/volume-rooted literal shapes under `calibration/` in the existing `internal/guardspec` scan, with neutral red fixtures and a green whole-tracked-tree run. | Controller: file brief and assign worker; pending. |

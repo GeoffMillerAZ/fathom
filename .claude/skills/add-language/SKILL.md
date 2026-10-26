@@ -41,26 +41,35 @@ Oracle tiers: A is the language's own tools (SCIP indexer, type checker, the too
 
 Follow recipe §13.3.1, §13.4.0 and §13.5.1 for the full checks.
 
-- [ ] Freeze subject pins and a sorted measured-file/content digest with file/byte totals
-  and exclusions; recheck after builds/oracles so generated outputs cannot pollute the set.
+- [ ] Run recipe §13.3.1's exact before/after tracked-set manifest command. Record digests,
+  counts, exclusions and reading totals in provenance/assessment. It approximates discovery;
+  reconcile differences and inspect generated untracked/ignored inputs after builds/oracles.
 - [ ] Keep holdout pins/readings outside canonical `calibration/corpus.d/` shards and
   aggregation. Freeze criteria before measurement; audit membership as well as pin timing.
-- [ ] Probe truth independence: perturb extractor output without changing raw oracle truth,
-  then change a known input fact and observe oracle truth change. Record commands/results.
+- [ ] Probe truth independence: perturb extractor output and confirm the raw oracle-truth
+  digest is unchanged, then change a known input fact and observe oracle truth change.
+  Record commands/results.
 - [ ] Show per-subject numerators, denominators, ratios and tier caps beside pooled figures.
 - [ ] Compare the same metric definition, grammar blob, tool and measured set. Distinguish
   ERROR-only, MISSING-only and ERROR-or-MISSING file counts before claiming non-reproduction.
 - [ ] Mutate changed oracle tier/scope/pairing logic and show its focused tests fail, then
-  restore and show green. Reuse the owning lane's tests rather than building another gate.
+  restore and show green. Report `Mutation:` with file, mutant, test command, FAIL line and
+  green rerun; preserve these in provenance/assessment per §13.4.0. Reuse owning-lane tests.
 - [ ] Exercise adversarial counts/fan-out/paths/nesting/compression where applicable; prove
-  bounded output and whole-unit refusal above caps. Reuse existing non-race stress tests.
-- [ ] Round-trip **all** readings recursively, including holdout/tuned, preserving values
-  and `required_kinds`; absent metrics are not thin evidence. Run existing E2 round-2 tests
-  from #7 where available. Recipe §13.5.1 names the baseline test and its coverage caveat.
+  whole-unit refusal at cap + 1 per cap. Record `Caps:` with cap/input count, test file/name,
+  command and refusal result in provenance/assessment. If touched tests skip under `-race`,
+  name/run them once without it too; otherwise run the named tests with `-race` (§13.4.0).
+- [ ] Check Reading-schema files in top-level `lang/`, `holdout/`, `tuned/`, `tuned/lf3/` per
+  §13.5.1. Exclude different-schema `parity/`; frozen `baseline/` needs an owner E2-R1/D20
+  scope ruling before regrading. Run the named top-level strict value round-trip and capture
+  the specified sorted-JSON before/after diff for each touched nested reading. Preserve
+  `required_kinds`; absent metrics are not thin evidence. Once #7 E2 tests land, use their
+  recursive coverage and require E2-R2 canonical byte equality as well as value preservation.
 - [ ] Before READY run `go run ./third_party/agentic-kit/cmd/release-notes -check`,
   `bash scripts/check-merge-debris.sh` and, for staged content, the same script `--staged`.
 - [ ] Give actual runnable commands and results in `Verified:`, with needed flags/inputs
-  and repo-relative paths. A prose list of checks is not verification; disclose skips.
+  and repo-relative paths to committed files, not scratch helpers. A prose list of checks
+  is not verification; disclose skips.
 
 ## 4. Refusing honestly
 
