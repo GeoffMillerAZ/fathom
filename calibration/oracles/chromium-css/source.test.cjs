@@ -6,7 +6,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
-const { snapshot, requireSameSource } = require('./source.cjs');
+const { snapshot, requireSameSource, readBoundPrimary, sidecarFile, writeBoundPrimary } = require('./source.cjs');
 const { attestFile } = require('./ranges.cjs');
 const { lineStarts, point, scanBlocks } = require('./blocks.cjs');
 
@@ -81,4 +81,31 @@ test('native property end uses last occupied UTF-16 source position across lines
     } }] } },
   ], stats);
   assert.deepEqual(ranges.map(r => [r.line, r.end]), [[2, 3]]);
+});
+
+test('primary remains neutral and sidecar rejects mismatched primary bytes before JSON parsing', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'css-primary-source-'));
+  const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'css-primary-output-'));
+  try {
+    git(root, 'init', '-q');
+    git(root, 'config', 'user.name', 'Test');
+    git(root, 'config', 'user.email', 'test@example.invalid');
+    fs.writeFileSync(path.join(root, 'a.css'), '.same {}\n');
+    git(root, 'add', '.');
+    git(root, 'commit', '-qm', 'source');
+    const manifest = snapshot(root);
+    const file = path.join(outputDir, 'primary.json');
+    const neutral = { tool: 'lightningcss', tier: 'A', version: 'test', definitions: [], calls: [], imports: [] };
+    writeBoundPrimary(file, neutral, manifest);
+    assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), neutral);
+    assert.equal(Object.hasOwn(JSON.parse(fs.readFileSync(file, 'utf8')), 'source_manifest'), false);
+    assert.deepEqual(readBoundPrimary(file, root).oracle, neutral);
+    assert.ok(fs.existsSync(sidecarFile(file)));
+    assert.throws(() => writeBoundPrimary(file, neutral, manifest), /already exists/);
+    fs.writeFileSync(file, '{ invalid json');
+    assert.throws(() => readBoundPrimary(file, root), /bytes differ/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+    fs.rmSync(outputDir, { recursive: true, force: true });
+  }
 });

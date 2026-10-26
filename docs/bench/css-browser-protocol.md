@@ -91,3 +91,8 @@ with matching pre/post hashes. A changed source or file list invalidates the run
 The raw Pico source includes 119 generated minified files the existing ingest gate
 already skips. Keep those in both oracle passes and disclose the gate unchanged;
 212 is the expected ingested-file count, not a reason to remove raw source files.
+
+The strict neutral loader accepts no added metadata field. Source manifests and the
+primary-byte hash therefore live in a sibling .source.json file; the primary schema
+and the existing harness remain unchanged. The initial metadata-in-primary attempt
+was rejected before any baseline reading and supplies no grade evidence.

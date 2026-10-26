@@ -5,7 +5,7 @@
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
-const { snapshot, requireSameSource } = require('./source.cjs');
+const { snapshot, requireSameSource, sidecarFile, writeBoundPrimary } = require('./source.cjs');
 
 async function lightning(subject, dirs) {
   const script = path.resolve(__dirname, '../lightningcss/lightningcss_oracle.cjs');
@@ -42,18 +42,13 @@ async function lightning(subject, dirs) {
 async function main(args) {
   const [subject, output, ...dirs] = args;
   if (!subject || !output) throw new Error('usage: node primary.cjs SUBJECT OUTPUT_JSON [DIR...]');
-  if (fs.existsSync(output)) throw new Error('output already exists; remove stale oracle before run');
+  if (fs.existsSync(output) || fs.existsSync(sidecarFile(output))) {
+    throw new Error('output or source sidecar already exists; remove stale files before run');
+  }
   const before = snapshot(subject, dirs);
   const oracle = await lightning(subject, dirs);
   requireSameSource(before, subject, dirs);
-  oracle.source_manifest = before;
-  const temp = output + '.tmp-' + process.pid;
-  try {
-    fs.writeFileSync(temp, JSON.stringify(oracle, null, 2) + '\n', { flag: 'wx' });
-    fs.renameSync(temp, output);
-  } finally {
-    fs.rmSync(temp, { force: true });
-  }
+  writeBoundPrimary(output, oracle, before);
   process.stderr.write(JSON.stringify({ source_commit: before.commit, source_digest: before.digest,
     source_files: before.files.length }) + '\n');
 }

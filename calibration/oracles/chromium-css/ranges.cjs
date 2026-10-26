@@ -7,7 +7,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { startBrowser } = require('./cdp.cjs');
 const { scanBlocks, lineStarts, lineOf, point } = require('./blocks.cjs');
-const { listCSS, requireSameSource, binaryCompare } = require('./source.cjs');
+const { listCSS, requireSameSource, readBoundPrimary, binaryCompare } = require('./source.cjs');
 
 const TIME_LIMIT_MS = 20 * 60 * 1000;
 const key = (kind, name, line) => JSON.stringify([kind, name, line]);
@@ -91,11 +91,11 @@ function attestFile(source, rel, primary, acceptedStyles, stats) {
   return ranges;
 }
 
-async function rangeCompanion(binary, pin, subject, primary, scratch, dirs = []) {
+async function rangeCompanion(binary, pin, subject, primary, scratch, dirs = [], sourceManifest) {
   if (!Array.isArray(primary.definitions) || primary.tool !== 'lightningcss') {
     throw new Error('PRIMARY_ORACLE_JSON must be a LightningCSS definitions oracle');
   }
-  requireSameSource(primary.source_manifest, subject, dirs);
+  requireSameSource(sourceManifest, subject, dirs);
   const files = listCSS(subject, dirs);
   const { byPath, totals } = indexDefinitions(primary.definitions, files);
   assert.equal(require('node:crypto').createHash('sha256').update(fs.readFileSync(binary)).digest('hex'),
@@ -201,7 +201,7 @@ async function rangeCompanion(binary, pin, subject, primary, scratch, dirs = [])
     try { if (browser) await browser.close(); }
     finally { fs.rmSync(profile, { recursive: true, force: true }); }
   }
-  requireSameSource(primary.source_manifest, subject, dirs);
+  requireSameSource(sourceManifest, subject, dirs);
   return result;
 }
 
@@ -212,8 +212,8 @@ async function main(args) {
   }
   if (fs.existsSync(outputFile)) throw new Error('output already exists; remove stale companion before run');
   const pin = JSON.parse(fs.readFileSync(pinFile, 'utf8'));
-  const primary = JSON.parse(fs.readFileSync(primaryFile, 'utf8'));
-  const { companion, diagnostics } = await rangeCompanion(binary, pin, subject, primary, scratch, dirs);
+  const { oracle, manifest } = readBoundPrimary(primaryFile, subject, dirs);
+  const { companion, diagnostics } = await rangeCompanion(binary, pin, subject, oracle, scratch, dirs, manifest);
   const temp = outputFile + '.tmp-' + process.pid;
   try {
     fs.writeFileSync(temp, JSON.stringify(companion, null, 2) + '\n', { flag: 'wx' });

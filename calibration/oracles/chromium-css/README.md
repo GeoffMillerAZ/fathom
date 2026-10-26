@@ -31,7 +31,10 @@ node calibration/oracles/chromium-css/probe.cjs "$CSS_BROWSER" calibration/oracl
 
 Run heavy phases serially under nice 10, after waiting for one-minute load <=9.
 Install Lightning CSS 1.33.0 into scratch and set NODE_PATH as its README directs.
-Then produce primary truth and companions from the same clean source manifests:
+Then produce primary truth and companions from the same clean source manifests.
+The primary JSON keeps its strict neutral schema. Each primary has a sibling
+.source.json containing its byte hash and the source manifest; the companion
+requires both to match before launching the browser:
 
 ```sh
 node calibration/oracles/chromium-css/primary.cjs "$CSS_SUBJECTS/normalize-css" "$CSS_OUT/normalize.json"
@@ -58,6 +61,8 @@ native declaration range and return that same CSSStyle.range while an identical
 body is written into a disposable in-memory stylesheet. Exact text is checked before
 and after all edits. Source files are never edited. A full-source manifest binds
 primary and companion to the same clean commit and file bytes before/after execution.
+Source metadata lives in a sibling .source.json file and binds the exact primary bytes;
+the primary neutral-oracle JSON schema is unchanged.
 Wrong starts/ends are rejected in the pinned controls, including UTF-16 and CRLF.
 
 At pinned revision 1d17a2e2ee147bb7d6ae2ab6abdb3a2510c17775,

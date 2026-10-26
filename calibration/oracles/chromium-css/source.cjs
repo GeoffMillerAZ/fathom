@@ -62,4 +62,51 @@ function requireSameSource(expected, root, dirs = []) {
   return current;
 }
 
-module.exports = { listCSS, snapshot, requireSameSource, binaryCompare };
+function sidecarFile(primaryFile) {
+  if (!primaryFile.endsWith('.json')) throw new Error('primary oracle output must end in .json');
+  return primaryFile.slice(0, -5) + '.source.json';
+}
+
+function writeBoundPrimary(output, oracle, manifest) {
+  if (Object.hasOwn(oracle, 'source_manifest')) throw new Error('primary oracle must retain neutral schema');
+  const sidecar = sidecarFile(output);
+  if (fs.existsSync(output) || fs.existsSync(sidecar)) throw new Error('primary output or source sidecar already exists');
+  const primaryBytes = Buffer.from(JSON.stringify(oracle, null, 2) + '\n');
+  const metadata = Buffer.from(JSON.stringify({ source_manifest: manifest, primary_sha256: sha256(primaryBytes) }, null, 2) + '\n');
+  const temporaryPrimary = output + '.tmp-' + process.pid;
+  const temporarySidecar = sidecar + '.tmp-' + process.pid;
+  let linkedPrimary = false, linkedSidecar = false;
+  try {
+    fs.writeFileSync(temporaryPrimary, primaryBytes, { flag: 'wx' });
+    fs.writeFileSync(temporarySidecar, metadata, { flag: 'wx' });
+    // Same-directory hard links create each final name without replacing a
+    // concurrent file. Roll both back if either link fails.
+    fs.linkSync(temporaryPrimary, output);
+    linkedPrimary = true;
+    fs.linkSync(temporarySidecar, sidecar);
+    linkedSidecar = true;
+  } catch (error) {
+    if (linkedSidecar) fs.rmSync(sidecar, { force: true });
+    if (linkedPrimary) fs.rmSync(output, { force: true });
+    throw error;
+  } finally {
+    fs.rmSync(temporaryPrimary, { force: true });
+    fs.rmSync(temporarySidecar, { force: true });
+  }
+}
+
+function readBoundPrimary(primaryFile, root, dirs = []) {
+  const primaryBytes = fs.readFileSync(primaryFile);
+  const metadata = JSON.parse(fs.readFileSync(sidecarFile(primaryFile), 'utf8'));
+  if (!metadata || metadata.primary_sha256 !== sha256(primaryBytes)) {
+    throw new Error('primary oracle bytes differ from source sidecar');
+  }
+  requireSameSource(metadata.source_manifest, root, dirs);
+  const oracle = JSON.parse(primaryBytes.toString('utf8'));
+  if (oracle.tool !== 'lightningcss' || Object.hasOwn(oracle, 'source_manifest')) {
+    throw new Error('primary oracle must have unchanged LightningCSS neutral schema');
+  }
+  return { oracle, manifest: metadata.source_manifest };
+}
+
+module.exports = { listCSS, snapshot, requireSameSource, binaryCompare, sidecarFile, writeBoundPrimary, readBoundPrimary };
