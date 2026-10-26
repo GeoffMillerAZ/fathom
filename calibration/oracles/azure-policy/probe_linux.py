@@ -383,6 +383,7 @@ def main():
     parser.add_argument('-publish', type=Path, help='separate validated receipt destination')
     parser.add_argument('--namespace-worker', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--protected-dir', type=Path, action='append', help=argparse.SUPPRESS)
+    parser.add_argument('--controls-failed', action='store_true', help=argparse.SUPPRESS)
     args = parser.parse_args()
     cache, out = args.cache.resolve(), args.out.resolve()
     payload = cache / 'payload'
@@ -449,6 +450,9 @@ def main():
             if result.returncode:
                 stage = {40: 'import', 41: 'loopback'}.get(result.returncode, 'mountns')
                 raise ValueError('namespace import, filesystem or loopback preflight refused')
+        stage = 'filesystem_controls'
+        if args.controls_failed:
+            raise ValueError('required authored kernel controls failed')
         current_nice = os.getpriority(os.PRIO_PROCESS, 0)
         if current_nice < 10:
             os.nice(10 - current_nice)

@@ -41,28 +41,31 @@ outside the worker's writable area.
 Execution requires user, network, PID and mount namespaces:
 `unshare --user --map-root-user --net --pid --fork --kill-child --mount --mount-proc`.
 The worker is PID 1 and sees only loopback. Before any vendor byte runs,
-`filesystem_isolation.py` makes mount propagation private, bind-mounts the
-worker scratch, recursively clones the root view and remounts every other
-visible mount read-only. Root and cwd are reattached to this view. This covers
-the checkout, action cache, running launcher, runner file-command files,
-public output, download cache, `/tmp` and other mounted paths. Only
-`out/worker` stays writable, including the private payload, HOME, TMP and raw
-worker logs. The launcher's logs and final receipt are outside that mount.
+`filesystem_isolation.py` makes mount propagation private and bind-mounts
+only the worker scratch. It selects reachable, topmost mounts using mount/parent IDs and remounts those
+outside scratch read-only, deepest first. Hidden mounts and descendants of
+covered mounts are not remounted. There is no root-on-root bind or chroot:
+round 2's stacked-root design exposed a writable `/..` route and is withdrawn.
+The worker cwd is scratch. Its private payload, HOME, TMP and raw logs are
+writable there; outer logs, publication, checkout and action code are outside
+that writable mount and included in the protected-path checks.
 
 The vendor command uses util-linux `setpriv` to drop its bounding, inheritable
 and ambient capabilities and set `no_new_privs`. A separate authored process
 runs under the same restrictions and checks effective/permitted/bounding/
 inheritable/ambient capabilities are zero. It deliberately opens a new file
 for write in the launcher-supplied checkout, runner HOME, RUNNER_TEMP and
-cache, and opens the running shell launcher for write. **Every attempt must
-fail with EROFS**; EACCES alone is not accepted. A positive scratch write must
-succeed. Preflight and the real worker both run these controls before vendor
+cache, and opens the running shell launcher for write. Every path is tested with
+plain, `/..`-prefixed and `/proc/..`-prefixed spellings without normalizing
+away `..`. **Every attempt must fail with EROFS**; EACCES alone is not
+accepted. A positive scratch write must succeed. Preflight and the real worker both run these controls before vendor
 Popen. Any success outside scratch refuses before vendor execution.
 
 Only measured success admits the schema-constant
 `filesystem_readonly_outside_out: true` and `vendor_capabilities_dropped: true`
-flags, plus a write-probe count. Any receipt asserting native execution must
-carry them. The receipt binds both the launcher and filesystem-helper hashes.
+flags plus `filesystem_dotdot_writes_refused: true` and a write-probe count
+(15 with the four configured directories and launcher, three spellings each).
+Any receipt asserting native execution must carry them. The receipt binds both the launcher and filesystem-helper hashes.
 The mount table has a 1,024-entry cap; cap + 1 refuses. No mount or privilege
 failure has an unisolated fallback. The [mount namespace contract](https://man7.org/linux/man-pages/man7/mount_namespaces.7.html)
 locks inherited read-only flags in less privileged child user namespaces;
@@ -92,10 +95,16 @@ Do not run vendor code on the ARM helper. The staged `run_probe_workflow.sh`
 redirects all command output privately and deletes private data on exit. Its
 whole body is parsed as a shell function before vendor startup. The workflow
 stays under calibration/oracles until the controller copies it to the run
-branch. Local unit/mutation checks are mocked, never a Linux kernel receipt.
+branch. The suite includes one real Linux namespace regression, skipped only off
+Linux. It independently attempts persistent writes through all three path
+spellings, both with and without an old proc submount hidden by fresh procfs.
+`probe_filesystem_controls.py` requires that test on Linux and rejects every
+skip there. A control failure invokes only the diagnostic refusal path; it
+cannot download or start the vendor. Local ARM checks are not a Linux receipt.
 
 Preflight distinguishes userns, netns, pidns, mountns, import and loopback
-failures. Kernel capability values are integer/null readings of
+failures; filesystem_controls identifies failed required regressions after
+preflight otherwise succeeds. Kernel capability values are integer/null readings of
 apparmor_restrict_unprivileged_userns, unprivileged_userns_clone and
 max_user_namespaces. Exceptions and stderr remain private. PID namespace exit
 kills all descendants, including detached processes. Normal and timeout
@@ -119,3 +128,12 @@ metric. The C reading stays unchanged; a full native population and position,
 unused-declaration, namespace and range controls remain necessary. L3 waits
 for D19. The controller reviews the artifact and imports only that validated
 receipt into a fresh clean checkout.
+
+## Outstanding runner fixture
+
+The stacked-proc parser tests currently use authored mount topology examples.
+They are not a captured runner fixture. A fixture grounded in a real runner
+mountinfo capture, with source identity and privacy-safe projection, is still
+required by the binding round-3 controller finding. The branch is not READY
+and the workflow must not execute the vendor until that requirement and review
+are complete. This does not waive the mandatory Linux kernel control.

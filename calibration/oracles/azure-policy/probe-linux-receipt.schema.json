@@ -59,6 +59,7 @@
         "mountns",
         "import",
         "loopback",
+        "filesystem_controls",
         "preparation",
         "verification",
         "worker",
@@ -312,12 +313,15 @@
     },
     "filesystem_write_probes": {
       "type": "integer",
-      "minimum": 3,
-      "maximum": 16
+      "minimum": 9,
+      "maximum": 15
     },
     "filesystem_script_sha256": {
       "type": "string",
       "pattern": "^[a-f0-9]{64}$"
+    },
+    "filesystem_dotdot_writes_refused": {
+      "const": true
     }
   },
   "required": [
@@ -454,7 +458,8 @@
         "required": [
           "filesystem_readonly_outside_out",
           "vendor_capabilities_dropped",
-          "filesystem_write_probes"
+          "filesystem_write_probes",
+          "filesystem_dotdot_writes_refused"
         ]
       }
     }

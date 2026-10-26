@@ -11,11 +11,11 @@ import probe_linux as probe
 
 
 class ReviewProbeTest(unittest.TestCase):
-    def launch_refusal(self, error=None):
+    def launch_refusal(self, error=None, controls_failed=False):
         with tempfile.TemporaryDirectory() as directory, ExitStack() as stack:
             root = Path(directory)
             out, cache = root / 'out', root / 'cache'
-            stack.enter_context(patch('sys.argv', ['probe', '-cache', str(cache), '-out', str(out)]))
+            stack.enter_context(patch('sys.argv', ['probe', '-cache', str(cache), '-out', str(out)]+(['--controls-failed'] if controls_failed else [])))
             stack.enter_context(patch.object(probe.platform, 'system', return_value='Linux'))
             stack.enter_context(patch.object(probe.platform, 'machine', return_value='x86_64'))
             stack.enter_context(patch.object(probe.os, 'getloadavg', return_value=(0, 0, 0)))
@@ -24,19 +24,24 @@ class ReviewProbeTest(unittest.TestCase):
             stack.enter_context(patch.object(probe.shutil, 'which', return_value='/usr/bin/unshare'))
             prepare = stack.enter_context(patch.object(probe, 'prepare'))
             run = stack.enter_context(patch.object(probe.subprocess, 'run', side_effect=error,
-                                                   return_value=SimpleNamespace(returncode=1)))
+                                                   return_value=SimpleNamespace(returncode=0 if controls_failed else 1)))
+            popen=stack.enter_context(patch.object(probe.subprocess,'Popen'))
             code = probe.main()
             receipt = json.loads((out / 'receipt.json').read_text())
             self.assertEqual(2, code)
             probe.validate(receipt, probe.CONTRACT)
             prepare.assert_not_called()
-            self.assertEqual('userns', receipt['failed_stage'])
+            popen.assert_not_called()
+            self.assertEqual('filesystem_controls' if controls_failed else 'userns', receipt['failed_stage'])
             self.assertNotIn(directory, json.dumps(receipt))
             self.assertIn('kernel_capabilities', receipt)
             return receipt
 
     def test_preflight_failure_refuses_before_prepare(self):
         self.launch_refusal()
+
+    def test_required_kernel_control_failure_refuses_before_prepare(self):
+        self.launch_refusal(controls_failed=True)
 
     def test_preflight_timeout_never_publishes_argv_or_path(self):
         error = subprocess.TimeoutExpired(['/private/identity/probe', '/private/identity/input'], 10)
@@ -113,7 +118,7 @@ class ReviewProbeTest(unittest.TestCase):
         from unittest.mock import MagicMock
         from receipt_contract import validate
         with tempfile.TemporaryDirectory() as d, ExitStack() as stack:
-            root=Path(d);out=root/'out';public=root/'public'/'receipt.json'
+            root=Path(d).resolve();out=root/'out';public=root/'public'/'receipt.json'
             stack.enter_context(patch('sys.argv',['probe','-cache',str(root/'cache'),'-out',str(out),'-publish',str(public)]))
             stack.enter_context(patch.object(probe.platform,'system',return_value='Linux'))
             stack.enter_context(patch.object(probe.platform,'machine',return_value='x86_64'))
@@ -129,7 +134,7 @@ class ReviewProbeTest(unittest.TestCase):
             def finish(*args,**kwargs):
                 if timeout and kwargs.get('timeout'):
                     raise subprocess.TimeoutExpired(['/private/vendor'],180)
-                receipt=probe.receipt_base();receipt.update(status='native_probe_failed',failed_stage='initialize',native_executed=True,filesystem_readonly_outside_out=True,vendor_capabilities_dropped=True,filesystem_write_probes=5)
+                receipt=probe.receipt_base();receipt.update(status='native_probe_failed',failed_stage='initialize',native_executed=True,filesystem_readonly_outside_out=True,vendor_capabilities_dropped=True,filesystem_dotdot_writes_refused=True,filesystem_write_probes=15)
                 if poison:receipt['arbitrary_vendor_field']='/private/person'
                 (out/'worker'/'receipt.json').write_text(json.dumps(receipt))
                 return 2
@@ -174,7 +179,7 @@ class ReviewProbeTest(unittest.TestCase):
             stack.enter_context(patch.object(probe.os,'getpid',return_value=1))
             stack.enter_context(patch.object(probe.socket,'if_nameindex',return_value=[(1,'lo')]))
             stack.enter_context(patch.object(probe,'enable_loopback'))
-            stack.enter_context(patch.object(probe,'isolate_filesystem',return_value=dict(filesystem_readonly_outside_out=True,vendor_capabilities_dropped=True,filesystem_write_probes=5)))
+            stack.enter_context(patch.object(probe,'isolate_filesystem',return_value=dict(filesystem_readonly_outside_out=True,vendor_capabilities_dropped=True,filesystem_dotdot_writes_refused=True,filesystem_write_probes=15)))
             stack.enter_context(patch.object(probe.resource,'setrlimit'))
             stack.enter_context(patch.object(probe,'kill_group'))
             process=MagicMock(returncode=0)
@@ -216,7 +221,7 @@ class ReviewProbeTest(unittest.TestCase):
         receipt=probe.receipt_base()
         receipt.update(status='probe_complete_requires_analysis',native_executed=True,
                        shutdown_clean=True,netns_loopback_only=True,measured_interfaces=1,native_returncode=0,
-                       filesystem_readonly_outside_out=True,vendor_capabilities_dropped=True,filesystem_write_probes=5,
+                       filesystem_readonly_outside_out=True,vendor_capabilities_dropped=True,filesystem_dotdot_writes_refused=True,filesystem_write_probes=15,
                        initialize=probe.summary({'result':{}}),cache_command=probe.summary({'result':None}),
                        definition=probe.summary({'result':[]}),references=probe.summary({'result':[]}),
                        evaluations=[dict(variant=v,http_status=200,sha256='0'*64,bytes=2) for v in

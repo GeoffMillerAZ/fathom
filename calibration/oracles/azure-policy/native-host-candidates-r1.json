@@ -13,7 +13,7 @@
   "prior_routes": [
     {
       "name": "vendor ARM64 apphost",
-      "version": "extension0.2.6",
+      "version": "0.2.6",
       "result": "process SIGKILL before output; codesign reports apphost unsigned; no native capabilities or evaluations measured",
       "evidence_status": "unreceipted local observation; no committed failure-output hash"
     },

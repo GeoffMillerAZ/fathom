@@ -89,9 +89,10 @@ run here; kernel namespace behavior and vendor startup await the T-R11 runner.
 ## Round-2 binding fixes (N-M1 and N-m1 to N-m4)
 
 The previous worker could write runner-owned actions, launcher code and file
-commands. The new mount namespace recursively makes every visible mount
-read-only except a fresh worker scratch directory. The pinned payload is
-copied there and reverified; its HOME and TMP are private. The worker drops
+commands. The attempted stacked-root mount design was refuted by the round-3 kernel
+review: `/..` reached a writable clone, so its readonly flag was not proof.
+That design and claim are withdrawn; the replacement is described below. The pinned payload is
+copied into worker scratch and reverified; its HOME and TMP are private. The worker drops
 vendor capabilities and sets no_new_privs. An authored process under the same
 restrictions must observe EROFS on deliberate writes to the checkout, runner
 HOME, RUNNER_TEMP, download cache and running launcher, with a positive write
@@ -103,7 +104,7 @@ Outer logs and receipt publication are outside vendor-writable scratch. Logs
 use exclusive no-follow opens. Random exclusive receipt temporary names
 avoid planted fixed-name files, and tail exceptions publish an outer-generated
 receipt_invalid refusal. The entire shell launcher is parsed as a function
-before vendor startup. No later action or shell code is writable by the vendor.
+before vendor startup. The protected action/launcher paths must pass the revised denial controls.
 
 The push filter selects only tools/azure-policy-probe-run and excludes tags.
 Upload-artifact v7 is pinned by full SHA to a Node 24 action. T-R11 still uses
@@ -122,3 +123,32 @@ no Linux namespace or native execution. The cloud runner must still produce
 the actual measured write-denial flags before any vendor API result can be
 interpreted. No native evaluation, new tier, calibration reading, engine or
 epoch change is claimed. No model decision applies.
+
+
+## Round-3 binding fixes (N2-M1/N2-M2 and N2-m1/N2-m2)
+
+Remove the root-on-root recursive bind and chroot. Remount the existing private
+namespace's reachable mounts, retaining only worker scratch as writable. The
+parser uses mount and parent IDs to exclude earlier same-parent/same-path
+mounts, covered parent roots, their other children and all hidden descendants.
+This prevents remounting an inherited binfmt_misc child hidden by fresh procfs.
+The write controls preserve plain, /.. and /proc/.. spellings for all four
+protected directories and the launcher. Only 15 EROFS denials plus a positive
+scratch write admit the readonly/dot-dot/capability flags before vendor Popen.
+
+One Linux-only regression runs the real helper under unshare, including a
+hidden old-proc tmpfs case, and independently attempts persistent dot-dot
+writes after flags are returned. On Linux it cannot skip; a failed required
+control permits only a diagnostic refusal receipt, before download or vendor
+execution. On this ARM helper it is explicitly skipped, never called proven.
+Four mutants protect denied writes, capability removal, hidden-mount selection
+and preserved dot-dot spellings. Temporary paths in launcher tests are resolved,
+including under a symlinked TMPDIR. The candidate version is corrected to 0.2.6.
+No vendor execution, native metric, tier or canonical reading changes here.
+
+Local round-3 validation ran 50 tests: 49 passed and the single real Linux
+namespace regression skipped explicitly off Linux. The four mutants fail then
+restore GREEN. All 14 source hashes in the control summary are regenerated.
+The overmount unit inputs are authored topology examples, not a captured runner
+fixture. The controller-required real runner mountinfo fixture remains pending;
+this branch is not READY until that evidence requirement is satisfied.

@@ -1,6 +1,6 @@
 {
-  "tests": 45,
-  "skips": 0,
+  "tests": 50,
+  "skips": 1,
   "mutations": [
     {
       "mutant": "require_readonly",
@@ -9,20 +9,29 @@
     {
       "mutant": "restricted_command",
       "restored_green": true
+    },
+    {
+      "mutant": "parse_mountinfo",
+      "restored_green": true
+    },
+    {
+      "mutant": "path_variants",
+      "restored_green": true
     }
   ],
   "linux_namespace_executed": false,
+  "linux_control_required_on_runner": true,
   "native_executed": false,
   "calibration_measured": false,
   "tier_granted": false,
   "sources": [
     {
       "path": "filesystem_isolation.py",
-      "sha256": "245f75b4ef092a66c77503a5f630734e07ac826c5b52db4bfbe2820130014bbd"
+      "sha256": "064c41832b53e722e9229f1a0063db11a3dd44494116400f34fe821a7fb40df5"
     },
     {
       "path": "probe_linux.py",
-      "sha256": "b983df2a880414ae99d753b5aff91b6500fa501cd5657e3fcdfdd53de0df9f9e"
+      "sha256": "6fda9aa9a7bb6b563301ce2294057ceb0ee162dcf1d7298b5682d5d6b4017f49"
     },
     {
       "path": "receipt_contract.py",
@@ -30,11 +39,11 @@
     },
     {
       "path": "test_filesystem_isolation.py",
-      "sha256": "292faeb17de5c4bbe4407e522731185ddbc1a9049ab8cd2df02794a2516ecf20"
+      "sha256": "c68daa122bcf169cc1c5ff066e7aa0495ceef2a22411723d9648e0a898a2e722"
     },
     {
       "path": "test_review_probe.py",
-      "sha256": "7d97e40ead1d722bd6a4820ed4a99b4fffa9a2f31bc2a645eb2a0e891ea4d37e"
+      "sha256": "0de4ce4ac7f4a75eae0c90581177886d440a1ed5713adaf64dd1b0e93bab608b"
     },
     {
       "path": "test_probe_linux.py",
@@ -42,11 +51,11 @@
     },
     {
       "path": "probe_filesystem_controls.py",
-      "sha256": "8969a9299e21080ec4a3876ef500fc284669953298aacb3bd972dd072c8d4052"
+      "sha256": "0c011f86a93309daa88cd704c45fe321d2a339de912c75d727ffcd185f8dbd43"
     },
     {
       "path": "probe-linux-receipt.schema.json",
-      "sha256": "7c777be725880d60e43d8f4a1b0530e7f61ba03c161c81ff9c1fa84de892f237"
+      "sha256": "49356b12641d6116378154f172d22bc33c952b49c6dc2de632493492b743412c"
     },
     {
       "path": "probe-linux-x64.workflow.yml",
@@ -54,15 +63,23 @@
     },
     {
       "path": "run_probe_workflow.sh",
-      "sha256": "f3e9bbeee8badf7ccdbb022f7de2dbe69fbf12ce0e18c1a5404b6e10ea1a9872"
+      "sha256": "50bf1dd13a13b9eb6c2f367f932e92d21646f060942b0301368ea8a699f62bfe"
     },
     {
       "path": "native-protocol-r2.json",
-      "sha256": "c697bd2d655abb4b6d4b32a25d1bfbad3f2d71a83ffa893b45c707a7a256513b"
+      "sha256": "c3212d4c3b13a08c213d372ac8488fdd10324102056ce0f7894e5702d73f65e0"
     },
     {
       "path": "LINUX-X64-PROBE.md",
-      "sha256": "bc4cd758912f23ecaa94ea36ad5bfcc545de2d6f3594f4124d039bc9d4ce5129"
+      "sha256": "cec8e0225da12025324ddab2f00bdb76ad303645b52721fa093311ce7301aef3"
+    },
+    {
+      "path": "kernel_filesystem_control.py",
+      "sha256": "83af177623c23efa71b559178fed8776e8f754a839e7761687506e96d67400ba"
+    },
+    {
+      "path": "test_filesystem_kernel.py",
+      "sha256": "ce5ead7d11aae1f7b8f9d18c6b3e856f0c49162c4c3087f431d078b9982fd563"
     }
   ]
 }

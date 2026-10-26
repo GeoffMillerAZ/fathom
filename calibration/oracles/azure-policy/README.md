@@ -103,9 +103,12 @@ are explicitly unreceipted local observations, not calibration proof. The
 current C reading and deferred whole-population work remain unchanged.
 
 Round-2 filesystem controls give the vendor a private verified payload copy,
-HOME and TMP under one writable scratch mount. Everything else is read-only,
-including the checkout, action cache, launcher, file-command files and public
-receipt. Capability dropping and deliberate EROFS controls precede execution;
-only their measured success sets filesystem_readonly_outside_out. The fixed
+HOME and TMP under one writable scratch mount. Reachable mounts outside scratch are remounted read-only. Capability dropping
+and EROFS checks of the checkout, runner directories, cache and launcher use
+plain, `/..` and `/proc/..` spellings before execution. Only successful checks
+set the readonly and dot-dot-denial receipt flags. Round 2's root clone and
+chroot claim is withdrawn: it allowed a writable `/..` route. No root clone or
+chroot remains. A real namespace regression is required on the Linux runner;
+local ARM tests skip that one test and establish no Linux execution proof. The fixed
 run branch, Node 24 action pin and dated runner-successor condition are in
 LINUX-X64-PROBE.md. Local mocked tests grant no Linux isolation proof.

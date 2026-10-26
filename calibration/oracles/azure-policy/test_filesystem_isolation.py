@@ -34,15 +34,44 @@ class FilesystemIsolationTest(unittest.TestCase):
         scratch=Path('/authored/scratch')
         mounts=[(Path('/'),'rw'),(Path('/home'),'rw'),(Path('/tmp'),'rw'),
                 (Path('/proc'),'ro'),(scratch,'rw')]
-        with patch.object(fs,'mount_table',return_value=mounts),patch.object(fs.os,'chroot'),patch.object(fs.os,'chdir'),patch.object(fs.subprocess,'run') as run:
+        with patch.object(fs,'mount_table',return_value=mounts),patch.object(fs.os,'chroot') as chroot,patch.object(fs.os,'chdir'),patch.object(fs.subprocess,'run') as run:
             fs.mount_readonly(scratch)
         commands=[call.args[0] for call in run.call_args_list]
         self.assertIn(['/usr/bin/mount','--bind',str(scratch),str(scratch)],commands)
-        self.assertIn(['/usr/bin/mount','--rbind','/','/'],commands)
+        self.assertNotIn(['/usr/bin/mount','--rbind','/','/'],commands)
+        chroot.assert_not_called()
         remounted=[c[-1] for c in commands if 'remount,bind,ro' in c]
         self.assertEqual({'/','/home','/tmp'},set(remounted))
         self.assertNotIn(str(scratch),remounted)
         self.assertEqual('/',remounted[-1])
+
+    def test_overmounted_proc_hides_its_inherited_children(self):
+        import filesystem_isolation as fs
+        data=('10 1 8:1 / / rw - ext4 root rw\n'
+              '20 10 0:1 / /proc rw - proc proc rw\n'
+              '21 20 0:2 / /proc/sys/fs/binfmt_misc rw - autofs systemd-1 rw\n'
+              '22 21 0:3 / /proc/sys/fs/binfmt_misc rw - binfmt_misc binfmt_misc rw\n'
+              '30 20 0:4 / /proc rw - proc proc rw\n')
+        self.assertEqual([(Path('/'),'rw'),(Path('/proc'),'rw')],fs.parse_mountinfo(data))
+
+    def test_last_sibling_mount_hides_earlier_mount_and_descendants(self):
+        import filesystem_isolation as fs
+        data=('10 1 8:1 / / rw - ext4 root rw\n'
+              '20 10 0:1 / /opt rw - tmpfs tmpfs rw\n'
+              '21 20 0:2 / /opt/hidden rw - tmpfs tmpfs rw\n'
+              '30 10 0:3 / /opt ro - tmpfs tmpfs ro\n')
+        self.assertEqual([(Path('/'),'rw'),(Path('/opt'),'ro')],fs.parse_mountinfo(data))
+
+    def test_write_controls_preserve_dot_dot_spellings(self):
+        import filesystem_isolation as fs
+        protected=[Path('/authored/checkout'),Path('/authored/temp')]
+        with patch.object(fs,'require_no_privileges'),patch.object(fs,'require_readonly') as readonly,patch.object(fs.os,'open',side_effect=OSError(errno.EROFS,'authored')),patch.object(fs.tempfile,'TemporaryFile'):
+            result=fs.write_controls(Path('/scratch'),protected)
+        self.assertEqual([str(c.args[0]) for c in readonly.call_args_list],
+                         ['/authored/checkout','/../authored/checkout','/proc/../authored/checkout',
+                          '/authored/temp','/../authored/temp','/proc/../authored/temp'])
+        self.assertEqual(9,result['filesystem_write_probes'])
+        self.assertTrue(result['filesystem_dotdot_writes_refused'])
 
     def test_vendor_command_cannot_retain_mount_privileges(self):
         import filesystem_isolation as fs
@@ -56,7 +85,7 @@ class FilesystemIsolationTest(unittest.TestCase):
 
     def test_write_boundary_measured_in_restricted_child(self):
         import filesystem_isolation as fs
-        flags=dict(filesystem_readonly_outside_out=True,vendor_capabilities_dropped=True,filesystem_write_probes=3)
+        flags=dict(filesystem_readonly_outside_out=True,vendor_capabilities_dropped=True,filesystem_dotdot_writes_refused=True,filesystem_write_probes=9)
         with patch.object(fs.os,'getpid',return_value=1),patch.object(fs,'mount_readonly'),patch.object(fs.subprocess,'run',return_value=subprocess.CompletedProcess([],0,json.dumps(flags).encode())) as run:
             self.assertEqual(flags,fs.isolate_filesystem(Path('/scratch'),[Path('/checkout'),Path('/runner-temp')]))
         command=run.call_args.args[0]
@@ -94,7 +123,7 @@ class FilesystemIsolationTest(unittest.TestCase):
         import probe_linux as probe
         base=probe.receipt_base();base.update(status='native_probe_failed',native_executed=True)
         with self.assertRaises(ValueError):probe.validate(base,probe.CONTRACT)
-        base.update(filesystem_readonly_outside_out=True,vendor_capabilities_dropped=True,filesystem_write_probes=5)
+        base.update(filesystem_readonly_outside_out=True,vendor_capabilities_dropped=True,filesystem_dotdot_writes_refused=True,filesystem_write_probes=15)
         probe.validate(base,probe.CONTRACT)
         with self.assertRaises(ValueError):probe.validate(dict(base,filesystem_readonly_outside_out=False),probe.CONTRACT)
 
