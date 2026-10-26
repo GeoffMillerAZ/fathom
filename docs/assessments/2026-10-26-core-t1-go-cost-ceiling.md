@@ -1,11 +1,11 @@
 # Go field-only cost ceiling, C-R5 and X-R1
 
-Owner Q2 selected struct-field definitions without native reference edges. The measured
+Ruling C-R2 (#20) selected struct-field definitions without native reference edges. The measured
 experiment emits owner-qualified top-level fields, no interface-method definitions, and
 excludes fields from call-target lookup. A plan-anchor collision found during work-equivalence
 auditing was repaired before the completed sequence below. All experimental runtime, tests
-and epoch changes are reverted in the final branch. Existing Go grades remain L3 excellent,
-def_mapping .5891 and typed_recall .6713. No new language grade is claimed.
+and epoch changes are reverted in the final branch. The [canonical Go reading](../bench/readings/lang/go.json) holds the unchanged grades.
+No new language grade is claimed.
 
 | Three-run control | Baseline | Field-only |
 |---|---:|---:|
@@ -15,7 +15,7 @@ def_mapping .5891 and typed_recall .6713. No new language grade is claimed.
 | Observed symbols, each run | 63329 | 84893 |
 | Typed packages / native edges | 330 /150810 | 330 /150810 |
 
-Both arms ingest the same archived main source5b84aa5b4 into fresh direct CLI stores with
+Both arms ingest the same archived main source 5b84aa5b4 into fresh direct CLI stores with
 GOMAXPROCS2, GOFLAGS-p2, nice10 and decisions off. Discovery/extraction, exclusions, read
 failures, typed package/edge counts and every persisted edge-kind count match. No source
 changed. All six ingests succeeded with zero read or typed-package failures.
@@ -31,10 +31,10 @@ consumed after rejection, preserving independent validation for a viable later c
 | Named candidate or route | Version / pin | Concrete outcome |
 |---|---|---|
 | Earlier full member pass | 5b49d9774 / O673 | L4 excellent historically, but self-ingest +30% wall/+34% store; reverted. Exported-only variant +26%/+22% also failed. |
-| Struct fields, no native reference edges | measured original fe42b1e0d; source-equivalent review68ef5163780197afde9346bddad720b6076677d9 | Completed equivalent-work receipt above misses wall gate. Its launch-load caveat is explicit. C-R5 rejects runtime adoption; no L4 uplift inferred. |
+| Struct fields, no native reference edges | measured original fe42b1e0d; source-equivalent review 68ef5163780197afde9346bddad720b6076677d9 | Completed equivalent-work receipt above misses wall gate. Its launch-load caveat is explicit. C-R5 rejects runtime adoption; no L4 uplift inferred. |
 | Go semantic oracle | scip-go0.2.7 | Installed for the planned measurement; no new index run after cost rejection. Existing main reading already uses this version. It is not declared unavailable. |
 | Go syntax oracle | Universal Ctags6.2.1 | Available independently. It cannot make an over-cost runtime lever acceptable; no unnecessary fresh holdout is spent. |
-| Other O673 levers | skip test references; call-only centrality; interface methods alone | Not authorized as the selected Q2 lever and not measured here. They remain explicit future experiments, not failed candidates or nonexistent tools. |
+| Other O673 levers | skip test references; call-only centrality; interface methods alone | Not authorized as the selected C-R2 lever and not measured here. They remain explicit future experiments, not failed candidates or nonexistent tools. |
 
 Reproduction lives in `calibration/oracles/go-fields-cost/README.md` and `cost.py`, with a
 post-manifest launch guard. The receipt preserves the actual binary hashes and measured

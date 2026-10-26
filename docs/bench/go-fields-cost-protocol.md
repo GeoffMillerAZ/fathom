@@ -1,6 +1,6 @@
 # Go field-only Q2 cost and calibration protocol
 
-Owner Q2 authorizes top-level struct field definitions without native reference edges.
+Ruling C-R2 (#20) authorizes top-level struct field definitions without native reference edges.
 The field extractor is 61131a969, built on main 5b84aa5b4. The measured candidate also
 excludes fields from bare plan-anchor matching while retaining exact Owner.Field lookup. Interface-method definitions and native
 field read/write/reference edges are unchanged. I54 governs level claims, I23 call truth,
