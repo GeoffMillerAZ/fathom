@@ -1,0 +1,17 @@
+{
+  "source_sha": "7ddb3dc015d1440e8a0fb0bbafa2df9aaaa2669d",
+  "build_command": "make GIT_VERSION_BASE=3.0.9-0-g7ddb3dc PROXYSQL40=1 debug -j2",
+  "platform": "linux/arm64",
+  "image": "proxysql/packaging@sha256:c6bf0802f14349c00f3f935c237591f897d1a3c12ce3943cf8d7a6a2fc3067c5",
+  "native_version": "ProxySQL version 4.0.9-0-g7ddb3dc_DEBUG, codename Truls",
+  "artifacts_sha256": {
+    "src/proxysql": "3e94f86ab306461fbbec03fcf61fdb939f403c0374d858ec1c9da9e306263d69",
+    "plugins/genai/ProxySQL_GenAI_Plugin.so": "78c1e00b555c483ab6ed49e7e112d32ac0e9838a65c73d4c0f66baf8755c47a0",
+    "plugins/mysqlx/ProxySQL_MySQLX_Plugin.so": "93302b570c20a357d34b1372ab09a130aa971e731cfc406ab5a6af24a32f4bec"
+  },
+  "tracked_source_clean_after_build": true,
+  "network_during_measurement": "none",
+  "oracle_wrapper_commit": "a4237859e",
+  "product_reading_commit": "a4237859e",
+  "native_registry_probe_commit": "1b38ece90"
+}

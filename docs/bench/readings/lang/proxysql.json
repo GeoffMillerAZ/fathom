@@ -9,8 +9,8 @@
     "L3": "not-attempted",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-10-24",
-  "fathom_commit": "4ea6f25",
+  "measured_at": "2026-10-26",
+  "fathom_commit": "a4237859e",
   "extractor": "dialect",
   "subjects": [
     {
@@ -20,11 +20,11 @@
       "bytes": 31981,
       "counts": {
         "fathom_defs": 373,
-        "kind_equal": 356,
-        "matched": 356,
-        "oracle_defs": 356,
-        "range_eligible": 356,
-        "range_ok": 356,
+        "kind_equal": 357,
+        "matched": 357,
+        "oracle_defs": 357,
+        "range_eligible": 357,
+        "range_ok": 357,
         "ref_fathom": 10,
         "ref_fathom_in_truth": 10,
         "ref_truth": 10,
@@ -49,8 +49,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 2.333,
-        "extract_cpu_ms": 2.3430000000000004,
+        "extract_ms": 1.2140000000000002,
+        "extract_cpu_ms": 1.2190000000000003,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -61,13 +61,13 @@
     {
       "tier": "A",
       "tool": "proxysql",
-      "version": "ProxySQL version 3.0.9-618-g7ddb3dc, codename Truls + line scanner"
+      "version": "ProxySQL version 4.0.9-0-g7ddb3dc_DEBUG, codename Truls + line scanner"
     }
   ],
   "metrics": {
     "ref_precision": 1,
     "ref_recall": 1,
-    "sym_precision": 0.9544,
+    "sym_precision": 0.9571,
     "sym_recall": 1,
     "xref_precision": null,
     "xref_recall": null
@@ -98,11 +98,11 @@
   ],
   "counts": {
     "fathom_defs": 373,
-    "kind_equal": 356,
-    "matched": 356,
-    "oracle_defs": 356,
-    "range_eligible": 356,
-    "range_ok": 356,
+    "kind_equal": 357,
+    "matched": 357,
+    "oracle_defs": 357,
+    "range_eligible": 357,
+    "range_ok": 357,
     "ref_fathom": 10,
     "ref_fathom_in_truth": 10,
     "ref_truth": 10,
@@ -111,9 +111,9 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 13.65,
+    "throughput_mb_s": 26.24,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 13.71,
+    "wall_throughput_mb_s": 26.34,
     "max_file_ms": 0,
     "peak_module_pages": 0,
     "compiled_bytes": 0
@@ -121,7 +121,9 @@
   "excluded_by_kind": {},
   "notes": [
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "sysown/proxysql: proxysql loaded 18 of 19 files into its database (1 refused and left out); 96 top-level sections and settings are the scanner's alone (the database holds no row of them); 17 entries the scanner read and the database did not hold were left out"
+    "sysown/proxysql: Source-matched 7ddb3dc PROXYSQL40=1 debug built in official pinned Linux arm64 packaging image; real GenAI/MySQLX plugin paths supplied inside offline disposable instrument; unchanged corpus and required kinds. Unknown variables retained as misses, no adjudication.",
+    "sysown/proxysql: proxysql loaded 18 of 19 files into its database (1 refused and left out); 96 top-level sections and settings are the scanner's alone (the database holds no row of them); 16 entries the scanner read and the database did not hold were left out",
+    "throughput (design 1.9 T1, T2): darwin/arm64 Apple M4; run 1: 26.24 MB/CPU-s; run 2: 26.74 MB/CPU-s; run 3: 25.85 MB/CPU-s; median run 1: 26.24 MB/CPU-s; every other field is the original measurement at its recorded fathom_commit a4237859e"
   ],
   "disposition": null
 }
