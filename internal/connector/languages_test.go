@@ -77,6 +77,7 @@ var langRowHint = map[string]string{
 	"lua":              "| Lua ",
 	"luau":             "| Luau ",
 	"wgsl":             "| WGSL ",
+	"glsl":             "| GLSL shaders ",
 	"solidity":         "| Solidity ",
 	"hlsl":             "| HLSL shaders ",
 	"r":                "| R ",

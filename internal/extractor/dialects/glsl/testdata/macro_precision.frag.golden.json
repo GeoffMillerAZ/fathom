@@ -1,0 +1,74 @@
+{
+  "symbols": [
+    {
+      "name": "CUSTOM_PRECISION",
+      "kind": "GlslMacro",
+      "package": "macro_precision",
+      "line": 2,
+      "end_line": 2,
+      "tier": "verified"
+    },
+    {
+      "name": "fragColor",
+      "kind": "GlslVariable",
+      "package": "macro_precision",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "Sample",
+      "kind": "GlslStruct",
+      "package": "macro_precision",
+      "line": 7,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "sizedConstructor",
+      "kind": "GlslFunc",
+      "package": "macro_precision",
+      "line": 9,
+      "end_line": 12,
+      "signature": "float sizedConstructor(Sample first, Sample second)",
+      "calls": [
+        "Sample"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "unsizedConstructor",
+      "kind": "GlslFunc",
+      "package": "macro_precision",
+      "line": 14,
+      "end_line": 17,
+      "signature": "float unsizedConstructor(Sample first, Sample second)",
+      "calls": [
+        "Sample"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "shade",
+      "kind": "GlslFunc",
+      "package": "macro_precision",
+      "line": 19,
+      "end_line": 21,
+      "signature": "float shade(float value)",
+      "tier": "verified"
+    },
+    {
+      "name": "main",
+      "kind": "GlslFunc",
+      "package": "macro_precision",
+      "line": 23,
+      "end_line": 25,
+      "signature": "void main()",
+      "calls": [
+        "shade",
+        "vec4"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

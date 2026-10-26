@@ -94,6 +94,7 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-26 | [tools-pgbouncer-native-positions](2026-10-26-tools-pgbouncer-native-positions.md) | Native callback brackets attest all 161 definition lines/ranges; L1/L2 excellent | LB-Q-pgbouncer |
 | 2026-10-26 | [tools-nginx-native](2026-10-26-tools-nginx-native.md) | Native full upstream population diagnostic; canonical L3 unchanged | LB-Q-nginx-rest |
 | 2026-10-26 | [tools-nginx-native-positions](2026-10-26-tools-nginx-native-positions.md) | Complete native lexer population attests 71/71 names/ranges and 1/1 references; canonical L3 unchanged | LB-Q-nginx-rest |
+| 2026-10-26 | [glsl-registered-extensions](2026-10-26-glsl-registered-extensions.md), [paired data](data/glsl-g-r3-2026-10-26/canonical-baseline-core-to-full-registry-deltas.json) | Corrected macro precision and array trees retain L2 good; digest-only rejected candidates and fresh pinned statement/extension holdouts | G-R3/G-R4/G-R5, LB-Q-glsl |
 
 ## Companion pages
 
