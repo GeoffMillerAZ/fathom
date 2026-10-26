@@ -32,3 +32,17 @@ The [protocol](../bench/go-fields-cost-protocol.md) retains three alternating ru
 | Other O673 levers | skip test references; call-only centrality; interface methods alone | Not selected by C-R2 and unmeasured; remain future experiments. |
 
 This records a measured uncertainty, not an exhausted-tool ceiling. Governing rows `LB-F342` and `LB-Q-go-rest` identify field-only as already measured under C-R2 and link this audit. Runtime adoption remains subject to the cost and language-proof gates.
+
+## X-R4 source searches (2026-10-26 UTC)
+
+| Required source searched | Named candidate / result | Concrete scope limit |
+|---|---|---|
+| Own compiler/toolchain | [go/ast](https://pkg.go.dev/go/ast), [go/types Info](https://pkg.go.dev/go/types#Info), frozen Go extractor at 68ef51637 | Defs/Uses/Selections expose exact typed objects. The selected lever is already implemented against native Go information; an alternative oracle cannot settle its runtime cost. |
+| Sourcegraph SCIP list and GitHub search | [SCIP list](https://github.com/scip-code/scip#readme), [Sourcegraph recommendations](https://sourcegraph.com/docs/code-navigation/writing-an-indexer#sourcegraph-recommended-indexers); query `scip-go` | Maintained scip-go 0.2.7 is the existing independent oracle. No producer absence is claimed. |
+| LSIF lineage | Query `sourcegraph lsif indexers Go`; [lsif-go](https://github.com/sourcegraph/lsif-go) | Archived predecessor; current recommendation is scip-go. Switching export formats does not reduce the field implementation's node/scan cost. |
+| Language server | [gopls navigation](https://go.dev/gopls/features/navigation), registry gopls v0.24.0 | Build-configuration-scoped definitions/references/call hierarchy exist. No corpus export measured here; neither this interface nor a SCIP producer substitutes for self-ingest cost proof. |
+| Package registry / typechecker | Direct lookup `proxy.golang.org/golang.org/x/tools/gopls/@latest` returned v0.24.0; standard go/ast and go/types APIs above | The language's maintained semantic tools are available; cost profiling and implementation choice remain separate questions. |
+| Runtime call tracing | [Go diagnostics](https://go.dev/doc/diagnostics), pprof and runtime/trace | Suitable for profiling the delta; dynamic execution omits unexecuted static call sites, so tracing is not replacement whole-corpus oracle truth. Profiling remains an unmeasured next route. |
+
+No Git history is rewritten to remove old private experiment labels; current records
+use public C-R2/C-R5 ids and distinguish the stop rule from the owner's closure.
