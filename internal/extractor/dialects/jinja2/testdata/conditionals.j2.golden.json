@@ -1,0 +1,40 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "JinjaTemplate",
+      "package": "conditionals",
+      "line": 1,
+      "end_line": 6,
+      "calls": [
+        "choose"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "choose",
+      "kind": "JinjaMacro",
+      "package": "conditionals",
+      "line": 1,
+      "end_line": 1,
+      "signature": "{% macro choose(value) %}",
+      "tier": "verified"
+    },
+    {
+      "name": "label",
+      "kind": "JinjaVariable",
+      "package": "conditionals",
+      "line": 2,
+      "end_line": 2,
+      "tier": "verified"
+    },
+    {
+      "name": "nested",
+      "kind": "JinjaVariable",
+      "package": "conditionals",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    }
+  ]
+}

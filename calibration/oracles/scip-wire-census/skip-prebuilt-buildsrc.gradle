@@ -1,0 +1,9 @@
+gradle.beforeProject { project ->
+    if (project.name == 'buildSrc') {
+        project.tasks.configureEach { task ->
+            if (task.name == 'compileKotlin') {
+                task.onlyIf { false }
+            }
+        }
+    }
+}

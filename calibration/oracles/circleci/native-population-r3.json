@@ -1,0 +1,108 @@
+{
+  "protocol": "r3",
+  "tool": "CircleCI-Public/circleci-yaml-language-server",
+  "version": "0.54.0",
+  "binary_sha256": "edd2e5ab79bc302fddf19f59919997f8ee81dcfa167d7df01b3867e5d353601f",
+  "totals": {
+    "declarations": 20,
+    "returned_locations": 43,
+    "local-use": 34,
+    "workflow-executor-parameter": 8,
+    "same-name-workflow-job-oracle-error": 1
+  },
+  "subjects": [
+    {
+      "subject": "CircleCI-Public/circleci-cli",
+      "sha": "2053bcbdd62e744f05b76b1e263c54febea34804",
+      "source_shard": "circleci.yaml",
+      "counts": {
+        "declarations": 9,
+        "returned_locations": 24,
+        "local-use": 16,
+        "workflow-executor-parameter": 8
+      },
+      "native_report_sha256": "bff2d1d6d39078ed0443df48c9a87a062a7a3867d4d8b234a369debeff4c7ec1"
+    },
+    {
+      "subject": "CircleCI-Public/cimg-base",
+      "sha": "0ff85f18597d595f9440eca8387789a26a39fc30",
+      "source_shard": "circleci.yaml",
+      "counts": {
+        "declarations": 1,
+        "returned_locations": 2,
+        "local-use": 2
+      },
+      "native_report_sha256": "c13caf13db062576f73d9c1e6beb22a0c554beec96dc0be32df1fd338fef77b1"
+    },
+    {
+      "subject": "hasura/graphql-engine",
+      "sha": "037916c890f776dc71375f0adf61a51e0d4b57b1",
+      "source_shard": "circleci.yaml",
+      "counts": {
+        "declarations": 0,
+        "returned_locations": 0
+      },
+      "native_report_sha256": "cbbbb88b7f8d714e3ba6ad3fba8516449cd1e497b2b84a6634addfacce7a1fd6"
+    },
+    {
+      "subject": "cypress-io/cypress",
+      "sha": "30a4d03221676dc8ede0aa55e63560f38fa78a93",
+      "source_shard": "circleci.yaml",
+      "counts": {
+        "declarations": 7,
+        "returned_locations": 11,
+        "local-use": 10,
+        "same-name-workflow-job-oracle-error": 1
+      },
+      "native_report_sha256": "22bd3abdc07a95712d01d45d67469f42d43bcc59ca8d21c0c6f824c1ddf3c327"
+    },
+    {
+      "subject": "OpenAPITools/openapi-generator",
+      "sha": "c5e769be1e428f794ff51237bae5a50de47bc1ce",
+      "source_shard": "circleci.yaml",
+      "counts": {
+        "declarations": 2,
+        "returned_locations": 4,
+        "local-use": 4
+      },
+      "native_report_sha256": "4ac4db69d09be4dd57a20fcd5de929fac22f26da432c4e52e505b9f56dcfb42b"
+    },
+    {
+      "subject": "CircleCI-Public/cimg-python",
+      "sha": "a7418d2562d6bd288e953e4a7dbbda478cdf8525",
+      "source_shard": "circleci-holdout-t-r3.yaml",
+      "counts": {
+        "declarations": 0,
+        "returned_locations": 0
+      },
+      "native_report_sha256": "0c35375a91a08b2044c7c97354fde923266e5461baaafaf60744c9f2eb488c15"
+    },
+    {
+      "subject": "CircleCI-Public/cimg-node",
+      "sha": "bb5c7c6dc5e1b5e61172e0ac9dc1825cccdd3c5f",
+      "source_shard": "circleci-holdout-t-r3.yaml",
+      "counts": {
+        "declarations": 0,
+        "returned_locations": 0
+      },
+      "native_report_sha256": "75098161b3e47de131837eb2d8965bae322a431879e3bdc7f0cd361fbd9a9b6e"
+    },
+    {
+      "subject": "scikit-learn/scikit-learn",
+      "sha": "bb9cefde592afccd276c5b2d75957dfde91d5b3e",
+      "source_shard": "circleci-holdout-t-r3.yaml",
+      "counts": {
+        "declarations": 1,
+        "returned_locations": 2,
+        "local-use": 2
+      },
+      "native_report_sha256": "0ef47c30ae9444c9bb82a54234fdc68a35f0af4b927c0371ab8ade2961a501a7"
+    }
+  ],
+  "compiler_checks": 11,
+  "compiler_agreements": 11,
+  "compiler_report_sha256": "d7bc3dbcce0a5287bef99e5b9e7adecd0ed3de6c37f9779857cc020a51e49141",
+  "owner_rule": "workflow executor parameter belongs to the invoked job declaration; deduplicate owner-target pairs",
+  "namespace_error": "vendor command references also return the same-name workflow job entry; compiler adjudicates",
+  "tier": "A for the complete evaluated reference family, T-R7/P-T1"
+}
