@@ -4325,7 +4325,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-kong",
     "worker_model": "sonnet",
-    "notes": "px wave; services, routes, upstreams, targets, plugins; route->service, service->upstream references; service hosts and upstream targets as route-host targets (route_ref)"
+    "notes": "px wave; services, routes, upstreams, targets, plugins; route->service, service->upstream references; service hosts and upstream targets as route-host targets (route_ref). Canonical alias-weighted counts remain 568 files / 821 definitions / 10 references C / 12 route pairs A; distinct owned counts are 231 / 365 / 4, ratios and canonical grades unaffected. Native GDR 1.42.4 enumerates 37 pairs and 1,332 named definitions. Filename ownership (O348) chooses only 4 route.service pairs and 365 definitions for comparison, all found; 33 pairs and 967 named definitions in accepted, unowned files are not compared. No tier-A L2 recall or full-population L1 grade is granted. Unowned 35 resolved sites include 31 plugin.route, 1 plugin.service and 3 route.service; their 33 semantic pairs are 29, 1 and 3. Host-to-upstream population is zero. Fourteen fresh native race controls bind to test-source hashes; reproducible-build and protocol amendments are documented. Preserve O347 parent-selection (T-R2), O348 filename coverage, and Supabase DB-less rejection (14 unscored C route pairs, definitions unattested); Kong runtime acceptance remains an untried trigger. Independent ranges stay C; throughput is unmeasured; no Docker or D19-held L3 work."
   },
   {
     "id": "traefik",

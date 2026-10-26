@@ -71,16 +71,16 @@ func ResolveDocXrefs(files []DocFile) []DocXref {
 	return xs
 }
 
-// imageRefStats is what the image-ref half of a resolution read and
-// skipped, for the pass's disclosure.
-type imageRefStats struct {
+// docXrefStats records bounded resolver outcomes for ingest diagnostics.
+type docXrefStats struct {
 	Sites, TemplatedBuilds, Ambiguous, TemplatedRefs int
+	Terraform                                        terraformOutputStats
 }
 
 // resolveDocXrefs is ResolveDocXrefs with the image-ref half's disclosure;
 // passes times the image-tag index as the ingest's "image_ref" sub-pass
 // (EW-48), nil outside an ingest.
-func resolveDocXrefs(files []DocFile, passes *passRecorder) ([]DocXref, imageRefStats) {
+func resolveDocXrefs(files []DocFile, passes *passRecorder) ([]DocXref, docXrefStats) {
 	byPath := map[string]*DocFile{}
 	byDir := map[string][]string{}
 	type fk struct{ file, name string }
@@ -187,7 +187,8 @@ func resolveDocXrefs(files []DocFile, passes *passRecorder) ([]DocXref, imageRef
 	stopImg()
 	cueIx := newCUEXrefIndex(files)           // LB-Q-cue: cue-import and cue-package (cuexref.go)
 	mdSlugs := map[string]map[string]string{} // Markdown file -> heading slug -> heading name, built on first use (LB-Q-markdown)
-	stats := imageRefStats{Sites: img.Sites, TemplatedBuilds: img.TemplatedBuilds, Ambiguous: img.Ambiguous}
+	terraformOutput := resolveTerraformModuleOutputs(files)
+	stats := docXrefStats{Sites: img.Sites, TemplatedBuilds: img.TemplatedBuilds, Ambiguous: img.Ambiguous}
 	for _, f := range files {
 		origin := func(name string) (fk, bool) {
 			if name == "" {
@@ -222,6 +223,12 @@ func resolveDocXrefs(files []DocFile, passes *passRecorder) ([]DocXref, imageRef
 				continue // the policy-ref pass resolves these (policyref.go, LB-F135)
 			}
 			switch c.Strategy {
+			case "terraform-module-output":
+				to, reason := terraformOutput(c)
+				stats.Terraform.record(reason)
+				if reason == terraformOutputResolved {
+					add(from, fk{to.file, to.name}, c)
+				}
 			case "image-ref":
 				if templated(c.Raw) {
 					stats.TemplatedRefs++
@@ -478,6 +485,11 @@ func (p *Pipeline) enrichDocXrefEdges(ctx context.Context, svc core.ServiceRef, 
 	if st.TemplatedBuilds > 0 || st.TemplatedRefs > 0 || st.Ambiguous > 0 {
 		p.diagInfo("fusion: doc-xref pass %q: image-tag index: %d build sites; %d build sites and %d image references skipped as templated (${X}, $(X), $X); %d tags ambiguous (two Dockerfiles build them)\n",
 			svc.ID, st.Sites, st.TemplatedBuilds, st.TemplatedRefs, st.Ambiguous)
+	}
+	if st.Terraform.Intents > 0 {
+		tf := st.Terraform
+		p.diagInfo("fusion: doc-xref pass %q: terraform module outputs: %d intents, %d resolved, %d unresolved (missing call %d, ambiguous call %d, nonlocal or nonliteral source %d, missing output %d, ambiguous output %d)\n",
+			svc.ID, tf.Intents, tf.Resolved, tf.unresolved(), tf.MissingCall, tf.AmbiguousCall, tf.NonlocalSource, tf.MissingOutput, tf.AmbiguousOutput)
 	}
 	if len(runs) > 0 {
 		xs = append(xs, p.ghaRunXrefs(ctx, svc, files, refs, idx, runs)...) // a run step's first command: a make target, task, script or file (LB-F310)

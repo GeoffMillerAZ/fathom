@@ -1,0 +1,49 @@
+{
+  "candidate": "Kong decK v1.68.0 with its pinned go-database-reconciler v1.42.4",
+  "license": "Apache-2.0",
+  "vendor_library_commit": "3e9e2aa4a799494cd8824a27867e366745c091fd",
+  "deck_commit": "34b752ef8dbf5befefb45c2abb72f50e289ee952",
+  "native_executed": false,
+  "calibration_measured": false,
+  "observations": [
+    "Official v1.68.0 module pins go-database-reconciler v1.42.4; the native GetContentFromReader returns typed Content before Get builds and resolves native state.",
+    "Native FService/FRoute/FPlugin retain typed relationships before rendering nests entities; Get uses intermediate Services.Get/Routes.Get to resolve references.",
+    "Native FService copyFromService unwraps URL into Host and does not retain original URL/Host presence. A whole-population raw typed-field observer before normalization is required for the strict written-field contract; no scanner-selected pair denominator.",
+    "Existing L1 line/end pairing uses independent yaml.v3, the same decoder family as the product. Its field authority needs explicit audit; no new A position claim or canonical L3 regrade.",
+    "No SDK install, native execution, calibration clone, Docker or backend request has occurred. Full native harness and authored controls remain work, not an availability ceiling."
+  ],
+  "sources": [
+    {
+      "path": "reader.go",
+      "sha256": "55abbafa40b6c6e88a734ba8f2159db97c85ab9cafbaef9dcba7f4c716b39d17"
+    },
+    {
+      "path": "types.go",
+      "sha256": "ced094953139c76d0162a9b1109f836c5e5470ae22f20d0e0d7ec274016e8f4a"
+    },
+    {
+      "path": "readfile.go",
+      "sha256": "b456ea5c526b6470143568deb58d745d7b56c287e9d58f9bdcf61fa548ab141c"
+    },
+    {
+      "path": "builder.go",
+      "sha256": "c43fb2f00b273bd2f02e8c5c7f88c512a6092b18e57d2ff3b08a733c5b14b78b"
+    },
+    {
+      "path": "file_render.go",
+      "sha256": "037d987af65eb58b6014de6b0c1154ba2140e79bde0dc199a26397287691d203"
+    },
+    {
+      "path": "module.mod",
+      "sha256": "f1a762ddcddfb4a4d2f8b22829e3572007d759edd48bb549d07a37ac64bf173f"
+    },
+    {
+      "path": "deck.mod",
+      "sha256": "2784fe7088f1c5146acb1f2a03567009fbfb553c360e2fd5ebdbd31b37838234"
+    },
+    {
+      "path": "vendor.LICENSE",
+      "sha256": "f4ee64d5d6ea14c5330e8462c27ba28cece53a5166a250490d2170e93c705f67"
+    }
+  ]
+}
