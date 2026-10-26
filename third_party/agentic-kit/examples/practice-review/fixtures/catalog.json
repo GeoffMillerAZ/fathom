@@ -1,0 +1,86 @@
+{
+  "spec": {
+    "version": 1,
+    "layers": [
+      {
+        "name": "synthetic",
+        "nodes": [
+          {
+            "slug": "review",
+            "title": "Review",
+            "stable_key": "review",
+            "source": "synthetic-catalog",
+            "children": [
+              {
+                "slug": "evidence-integrity",
+                "title": "Evidence Integrity",
+                "stable_key": "review.evidence-integrity",
+                "source": "synthetic-catalog"
+              },
+              {
+                "slug": "bounded-work",
+                "title": "Bounded Work",
+                "stable_key": "review.bounded-work",
+                "source": "synthetic-catalog"
+              },
+              {
+                "slug": "effect-scope",
+                "title": "Effect Scope",
+                "stable_key": "review.effect-scope",
+                "source": "synthetic-catalog"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "practices": [
+    {
+      "stable_key": "review.evidence-integrity",
+      "version": "1",
+      "path": "review/evidence-integrity",
+      "title": "Evidence Integrity",
+      "failure_mode": "An unchecked evidence-integrity property can mislead a review.",
+      "benefit": "A bounded deterministic review receipt.",
+      "remedy": "Correct the fixture and rerun the local check.",
+      "sources": [
+        "synthetic://practice-review/evidence-integrity"
+      ],
+      "negative_case": "A planted evidence-integrity violation must fail.",
+      "kind": "evidence-integrity",
+      "definition": "Evidence text has a source, subject revision and matching SHA-256 digest."
+    },
+    {
+      "stable_key": "review.bounded-work",
+      "version": "1",
+      "path": "review/bounded-work",
+      "title": "Bounded Work",
+      "failure_mode": "An unchecked bounded-work property can mislead a review.",
+      "benefit": "A bounded deterministic review receipt.",
+      "remedy": "Correct the fixture and rerun the local check.",
+      "sources": [
+        "synthetic://practice-review/bounded-work"
+      ],
+      "negative_case": "A planted bounded-work violation must fail.",
+      "kind": "bounded-work",
+      "definition": "Recorded steps stay within the positive declared maximum.",
+      "max_steps": 3
+    },
+    {
+      "stable_key": "review.effect-scope",
+      "version": "1",
+      "path": "review/effect-scope",
+      "title": "Effect Scope",
+      "failure_mode": "An unchecked effect-scope property can mislead a review.",
+      "benefit": "A bounded deterministic review receipt.",
+      "remedy": "Correct the fixture and rerun the local check.",
+      "sources": [
+        "synthetic://practice-review/effect-scope"
+      ],
+      "negative_case": "A planted effect-scope violation must fail.",
+      "kind": "effect-scope",
+      "definition": "Requested actions are contained in the separately trusted allowed action set."
+    }
+  ]
+}

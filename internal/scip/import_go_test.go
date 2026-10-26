@@ -66,6 +66,26 @@ func TestImportIndexGoSkippedByClass(t *testing.T) {
 	}
 }
 
+// TestImportIndexGoSkippedFromTestFile (O673's first lever measured): an
+// unmapped endpoint in a _test.go document is also counted under
+// SkipTestFilePrefix and its class, a subset of the class count, so the
+// reading says how much of typed_recall's field miss a member pass storing
+// no field reference from a test file would leave. A non-test document
+// counts none.
+func TestImportIndexGoSkippedFromTestFile(t *testing.T) {
+	idx, nodes := goFieldFixture()
+	idx.Documents[0].RelativePath = "a_test.go"
+	for i := range nodes {
+		nodes[i].FilePath = "a_test.go"
+	}
+	got := importOf(t, idx, nodes).Report.SkippedByClass
+	want := map[string]int{"from:field": 1, "to:field": 1, SkipNamespaceTarget: 1,
+		SkipTestFilePrefix + "from:field": 1, SkipTestFilePrefix + "to:field": 1}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("SkippedByClass = %v, want %v", got, want)
+	}
+}
+
 // TestImportIndexGoNamespaceTarget (K18, wave lf2, LB-F344): a Go package is
 // a namespace, never a fathom symbol (file granularity, graded at L3 by file
 // edges), so a reference to the package symbol scip-go defines at every

@@ -7,6 +7,11 @@ the vendor's public documentation, IndyDevDan's open-source demonstrations, and 
 consumer's field readings. Use cases and how to calibrate each are in the
 [catalog](fast-judgment-catalog.md); the ledger entry is [practices §25](practices.md).
 
+For current runnable site preparation and labeled studies, start with
+[decision-site utilities](decision-sites.md). Its [dated project/API survey](assessments/2026-10-23-decision-sites.md)
+updates OpenAI's API status without treating historical prices or demonstrations as
+current guarantees. Other dated provider claims below retain their stated observation dates.
+
 **Evidence tags used below.** [vendor] is the provider's own claim. [demo] is what a
 public demonstration showed, not a measurement we reproduced. [kit] is verified in this
 repository. [reading] is a measurement by a consuming project on its own data, small N,
@@ -54,7 +59,7 @@ and four deciders that swap by construction: `None` (always "no provider", in th
 `llm.LLM` (a generic completion asked to emulate the contract, in
 `foundations/decision/llm`), `typesafe.TypeSafe` (Jev's native endpoint, or the same wire
 through OpenRouter's alpha Decisions router, in `foundations/decision/typesafe`) and
-`openai.OpenAI` (OpenAI's Decisions API, a public beta that also takes images and can
+`openai.OpenAI` (OpenAI's Decisions API, generally available as checked 2026-10-23, which takes images and can
 refuse a question, in `foundations/decision/openai`). The core imports no adapter package,
 so the port carries no vendor code. Swappable is not interchangeable: each provider and
 route gets its own calibration reading
@@ -487,7 +492,7 @@ spoken claims; recompute against current prices before relying on them.
   [legal and retention](https://docs.typesafe.ai/legal).
   The vendor says Jev is not a coding-agent LLM and is meant to be called from code you
   write. The docs move; reread them before relying on a limit or a price.
-- Vendor documentation (OpenAI and OpenRouter, checked 2026-10-09): OpenAI's
+- Historical vendor documentation (OpenAI and OpenRouter, checked 2026-10-09): OpenAI's
   [Decisions guide](https://developers.openai.com/api/docs/guides/decisions) (public beta;
   `gpt-6-luna` only; predicate, choice and score questions, images as base64 data URLs, a
   `refusal` answer type; US$0.10 per million input tokens and no output charge; no

@@ -10,7 +10,7 @@ import (
 // Doc is the indexed text for one node: what Search matches against.
 type Doc struct {
 	NodeID string
-	Terms  []string // tokenized Title + Synopsis + facet values, lowercased
+	Terms  []string // tokenized ID + StableKey + Title + Synopsis + facet values, lowercased
 }
 
 // tokenPattern splits indexed text into lowercase word tokens.
@@ -20,7 +20,7 @@ func tokenize(s string) []string {
 	return tokenPattern.FindAllString(strings.ToLower(s), -1)
 }
 
-// BuildDocs derives one Doc per node from Title, Synopsis, and every
+// BuildDocs derives one Doc per node from ID, StableKey, Title, Synopsis, and every
 // facet value (never facet axis names, which are structural, not
 // content). Facet values are visited in sorted (axis, value) order, so
 // BuildDocs never depends on map iteration order.
@@ -28,6 +28,8 @@ func BuildDocs(cat Catalog) []Doc {
 	docs := make([]Doc, 0, len(cat.Nodes))
 	for _, n := range cat.Nodes {
 		var terms []string
+		terms = append(terms, tokenize(n.ID())...)
+		terms = append(terms, tokenize(n.StableKey)...)
 		terms = append(terms, tokenize(n.Title)...)
 		terms = append(terms, tokenize(n.Synopsis)...)
 

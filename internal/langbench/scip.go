@@ -3,6 +3,7 @@ package langbench
 import (
 	"bytes"
 	"fmt"
+	"maps"
 	"regexp"
 	"slices"
 	"sort"
@@ -388,7 +389,9 @@ type SCIPOptions struct {
 	TypeLiteralMembers bool
 	// DefScope is the documents the reading measures (lang-oracle's inScope:
 	// the dialect's files, a variant's included, inside -only, that ingest's
-	// gates keep), handed over when DefScoped; nil scopes nothing.
+	// gates keep). It scopes def_mapping only when DefScoped; scip-go counts a
+	// miss in another document by it (scip_go_defs_unmeasured). nil scopes
+	// nothing.
 	DefScope map[string]bool
 	// FileEdgesOracleBlind: lang-oracle leaves out of the file-edge comparison
 	// a pair the truth lacks whose every written site has no occurrence of the
@@ -652,7 +655,7 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 				continue
 			}
 			_, mappedOK := mapTo(name, true)
-			goDefs.count(o.GetSymbol(), mappedOK) // scip_go.go: Go's def_mapping misses by descriptor class (LB-F299)
+			goDefs.count(o.GetSymbol(), mappedOK, opts.DefScope == nil || opts.DefScope[def.doc]) // scip_go.go: Go's def_mapping misses by descriptor class (LB-F299)
 			if mappedOK {
 				if !generated && !namespace && !objectLiteral && !outOfScope && !typeLiteral {
 					res.Counts[CntScipDefsMapped]++
@@ -688,18 +691,30 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 		}
 	}
 	if sites != nil {
-		if blind := clangBlindDefs(nodes, occLines, sites); len(blind) > 0 {
+		// round 4 C4-R1: the compiler's definitions, never fathom's, stand in,
+		// in the documents the compiler covered and the index holds, and
+		// only those the reading measures (round 5 C5-R1: a header the
+		// dialect does not own adds pairs fathom can never find)
+		covered := func(doc string) bool {
+			return sites.covers(doc) && occLines[doc] != nil && (opts.ClangScope == nil || opts.ClangScope[doc])
+		}
+		indexDefs := maps.Clone(defsByDoc) // the index's own definitions (round 5 C5-R3)
+		var blind []*scipDef
+		if opts.ClangCUDA && opts.ClangLinkage.readRanges() {
+			// round 5 C5-R3: a caller the index holds no occurrence in is the
+			// compiler's function range, never a fathom node
+			blind = opts.ClangLinkage.clangBlindRanges(occLines, covered)
+		} else {
+			blind = clangBlindDefs(nodes, occLines, sites)
+		}
+		if len(blind) > 0 {
 			for _, def := range blind {
 				defsByDoc[def.doc] = append(defsByDoc[def.doc], def)
 			}
 			res.Counts[CntClangBlindDefs] += len(blind)
 		}
 		if opts.ClangCUDA {
-			// round 4 C4-R1: the compiler's definitions, never fathom's, stand in,
-			// in the documents the compiler covered and the index holds
-			standIns, externC := opts.ClangLinkage.clangStandIns(defsByDoc, func(doc string) bool {
-				return sites.covers(doc) && occLines[doc] != nil
-			})
+			standIns, externC := opts.ClangLinkage.clangStandIns(indexDefs, blind, covered)
 			for _, def := range standIns {
 				defsByDoc[def.doc] = append(defsByDoc[def.doc], def)
 			}

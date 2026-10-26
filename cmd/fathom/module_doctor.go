@@ -62,7 +62,7 @@ type Criterion struct {
 
 // ManifestSummary is the human-relevant subset of a loaded module.cue
 // manifest, surfaced on DoctorReport so a verb-JSON-only consumer (e.g.
-// fathom-studio, law 10: it may only consume verb JSON, never reach into
+// the studio repository, law 10: it may only consume verb JSON, never reach into
 // module.cue's CUE internals itself) can render a module's identity
 // without a manifest dump verb of its own. `module doctor --json` is the
 // ONE place this lives (docs/mcp-tools.md's verb catalog is CLI-verb-only

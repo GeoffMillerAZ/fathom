@@ -176,7 +176,7 @@ func RunExternalCorpus(ctx context.Context, opts RunExternalCorpusOptions) (RunE
 					if err != nil {
 						return RunExternalCorpusResult{}, fmt.Errorf("%s/%s/t%d: %w", task.ID, armName, trial, err)
 					}
-					if reason := CellLost(cell.Sessions); reason != "" {
+					if reason := CellLost(cell.Sessions, opts.Harness); reason != "" {
 						result.Lost = append(result.Lost, LostCell{TaskID: task.ID, Arm: armName, Trial: trial, Reason: reason})
 						continue
 					}

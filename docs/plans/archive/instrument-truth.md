@@ -7,7 +7,7 @@
 > `docs/design/intervention-outcomes.md` §3 (the honesty rule),
 > 2026-08-21 flywheel audit (12-agent evaluation; DQ-1..6).
 >
-> **Covenant (ADR-0070 class):** failing test first, `task validate`
+> **Covenant (test-first class):** failing test first, `task validate`
 > green before commit, dated CHANGELOG entry, boxes flip only on
 > `fathom verify --service fathom --plan docs/plans/instrument-truth.md`.
 >

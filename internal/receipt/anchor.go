@@ -87,8 +87,8 @@ type Anchor struct {
 	// BlobID is the git blob id of Path at Commit; "" when the commit
 	// holds no such file, or the anchor is withheld.
 	BlobID string `json:"blob_id,omitempty"`
-	// ExcerptSHA256 is the excerpt's digest (verify.ExcerptSHA256, Review
-	// Kit's SpanRef.ContentHash formula) over the checkout's bytes; ""
+	// ExcerptSHA256 is the excerpt's digest (verify.ExcerptSHA256, the review
+	// kit's SpanRef.ContentHash formula) over the checkout's bytes; ""
 	// when uncommitted or withheld, or the checkout's bytes are unknown.
 	ExcerptSHA256 string `json:"excerpt_sha256,omitempty"`
 	// FathomFingerprint is fusion.FingerprintHash of the checkout's bytes:

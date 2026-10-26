@@ -71,10 +71,10 @@ SCIP index, which any SCIP reader can load. This design does not rebuild that.
   - ADR-034 and vision 28 section 3.6: "a receipt a stranger can check without fathom".
   - ADR-035 decision 4: every answer carries a tier and an anchor.
   - ADR-040 decision 6: one review key over every input, "without a second bespoke hashing API".
-  - ADR-043 decision 5: fathom never verifies a test-kit signature.
+  - ADR-043 decision 5: fathom never verifies a test kit signature.
   - ADR-049 decision 2, the table freeze: no new table, column, cache or background job.
   - ADR-051 U7 and U8.
-  - ADR-063: no second result format. Under O4, the test-kit envelope is the source. Under O9, the words
+  - ADR-063: no second result format. Under O4, the test kit envelope is the source. Under O9, the words
     evidence, claim and pack are shared with agentic-kit and audited under K10.
   - ADR-065: a secret-bearing source is never stored or served.
 - *Owner decisions*:
@@ -101,12 +101,12 @@ SCIP index, which any SCIP reader can load. This design does not rebuild that.
   - The index stores fingerprints, not bytes. `FingerprintHash` is the sha256 of the raw working-tree bytes,
     salted with the extractor epoch (`internal/fusion/extractor_epoch.go:662`). A git blob holds the clean bytes.
     With autocrlf, eol, ident, working-tree-encoding or LFS, the two differ even on a clean tree.
-  - Review Kit's bridge takes seven source-binding inputs, not five: `SourceRevision`, `SourceWatermark`,
+  - The review kit's bridge takes seven source-binding inputs, not five: `SourceRevision`, `SourceWatermark`,
     `IndexedWatermark`, `ProducerBuildVersion`, `InputDigest`, `SourceFingerprints` and `SourceVersion`
-    (`review-kit internal/fathombridge/bridge.go:45-67`). Its `SourceFingerprints` are `FingerprintHash` values
+    (the review kit's fathom bridge). Its `SourceFingerprints` are `FingerprintHash` values
     (FT-6).
-  - Review Kit's `SpanRef` is shaped to be swapped for agentic-kit's `evidence-span` (`review-kit
-    internal/core/core.go:289`, ADR-0096 D8).
+  - The review kit's `SpanRef` is shaped to be swapped for agentic-kit's `evidence-span` (the review kit's
+    core types, its own catalog decision).
   - Fathom's own inbound test-evidence reader expects the subject name `gitCommit` with a digest key `sha1`
     (`internal/testevidence/envelopes.go:104-113`).
   - MCP serves no per-request `_meta` (`internal/mcp/protocol.go:14`). `handleToolsCallMeta` unmarshals only
@@ -134,7 +134,7 @@ SCIP index, which any SCIP reader can load. This design does not rebuild that.
 |---|---|---|---|
 | `core.Receipt` and `fathom receipt verify` | callers, references, symbol location, certification reach (Go) | `index_commit`, a file and line for a location | yes, with the fathom binary and git (VB-20, VB-21 50 of 50) |
 | `reviewkey.Key` (`fathom review-key`, `pkg/client.ReviewKey`) | one token over six component digests (manifest, closure, rules, plans, tooling, index), `Complete` and `Unknown`, and `ChangedSincePrior` through `Diff` | per-component digests | only with fathom |
-| `FingerprintHash` | the stored per-file fingerprint, epoch-salted. These are the values Review Kit's `SourceFingerprints` carry | per file | yes, given the formula and the epoch |
+| `FingerprintHash` | the stored per-file fingerprint, epoch-salted. These are the values the review kit's `SourceFingerprints` carry | per file | yes, given the formula and the epoch |
 | `fathom export scip` (VB-32) | symbols and typed edges as a SCIP index with the resolution tier, round-tripped against scip-go | file and range | yes, with any SCIP reader. This is the standard "mapping" export |
 | `fathom certify manifest` | the certifications artifact. `--check` exits 1 when the committed file differs | the committed file | yes, by diff |
 | MCP reply envelope | tier mix, `index_commit`, refresh, staleness, elision, and a `budget` partial that depends on load | the watermark | no |
@@ -142,7 +142,7 @@ SCIP index, which any SCIP reader can load. This design does not rebuild that.
 | SARIF (one emitter, seven callers, two duplicate risk converters) | verify refusals, obligations, rules replay, config and intent audit, risk receipt (CLI and `review_diff`) | path and start line | readable, but nothing to check it against |
 | `fathom review --json` | dimensions, coverage honesty, input digests (`ReviewInputs`, `ProducerInfo`) | input digests | only by reimplementing fathom's input selection |
 | Trace pack (`trace export`, `trace verify`) | requirement to code, test, certificate, run and decision | `COMMIT`, `digests.json`, `MANIFEST.sha256` | the file digests with coreutils, not the cells |
-| Test evidence ingest | inbound DSSE and in-toto test-kit envelopes | run digest, commit subject | n/a (fathom emits none) |
+| Test evidence ingest | inbound DSSE and in-toto test kit envelopes | run digest, commit subject | n/a (fathom emits none) |
 
 What is missing:
 
@@ -189,7 +189,7 @@ verb, no MCP tool and nothing stored.
 ### D2. The record is an in-toto Statement v1 with one fathom predicate, deferred to wave 3 by P20: adopted
 
 No standard records "the query that produced this". ADR-063 forbids a second result format, so the fathom-owned
-part is a predicate inside an existing envelope, the way test-kit does it. A general predicate also needs a second
+part is a predicate inside an existing envelope, the way the test kit does it. A general predicate also needs a second
 consumer (P20). It therefore waits until EVX-G3 records two consumers, or one the owner did not write. Until then a
 receipt is the existing `core.Receipt` JSON with additive anchors (D3).
 
@@ -212,9 +212,9 @@ An anchor carries:
 - the commit and the object format (`sha1` or `sha256`)
 - the repo-relative path and a 1-based inclusive line range
 - the git blob id
-- the excerpt sha256, using Review Kit's `SpanRef.ContentHash` formula
+- the excerpt sha256, using the review kit's `SpanRef.ContentHash` formula
 - a bounded excerpt
-- the file's `fathom_fingerprint`, which is the `FingerprintHash` value Review Kit already binds
+- the file's `fathom_fingerprint`, which is the `FingerprintHash` value the review kit already binds
 
 The anchor has four states:
 
@@ -228,8 +228,8 @@ The anchor has four states:
   path. A reader with no clone can then check blob-at-path with `git hash-object --stdin -t <type>` outside any
   repository.
 
-The anchor maps one to one onto `SpanRef` and onto `evidence-span`'s location fields. Review Kit's planned swap
-(ADR-0096 D8) therefore needs no change in fathom. Fathom fills no `Author` or `Grade`.
+The anchor maps one to one onto `SpanRef` and onto `evidence-span`'s location fields. The review kit's planned swap
+therefore needs no change in fathom. Fathom fills no `Author` or `Grade`.
 
 ### D4. Every fact says who can re-derive it: adopted
 
@@ -312,7 +312,7 @@ In order:
 
 1. All seven SARIF callers, with the duplicate risk converters merged into one in wave 1.
 2. `fathom export receipt` for the four Go kinds in wave 2.
-3. `fathom review` and the change risk receipt as records in wave 3. Review Kit binds them.
+3. `fathom review` and the change risk receipt as records in wave 3. The review kit binds them.
 4. Any agent-surface tool through the recipe in wave 4.
 5. The trace pack in wave 5.
 
@@ -394,7 +394,7 @@ Field rules:
 ### 6.2 The anchor (waves 1 and 2)
 
 - *Excerpt bytes*: from the first byte of `start_line` through the last byte of `end_line`, including that line's
-  newline when it has one. There is no normalization. A test vector shared with Review Kit pins the bytes,
+  newline when it has one. There is no normalization. A test vector shared with the review kit pins the bytes,
   including a file with no final newline.
 - *States*: `committed`, `uncommitted`, `filtered` or `withheld`, as defined in D3. `--require-clean` exits 1 on any
   anchor that is not `committed`.
@@ -482,15 +482,15 @@ git cat-file blob "$blob" | head -n "$end" | tail -n "+$start" | sha256sum   # m
 
 ### 6.8 Consumers
 
-- *Review Kit* (the owner's kit). One record carries all seven bridge inputs under one digest, and its anchors are
-  `SpanRef`s. A fathom-origin item that comes back through Review Kit and `findings import` is refused as a second
+- *The review kit* (the owner's kit). One record carries all seven bridge inputs under one digest, and its anchors are
+  `SpanRef`s. A fathom-origin item that comes back through the review kit and `findings import` is refused as a second
   witness.
 - *Forges and CI*.
   - The SARIF sinks are code scanning, reviewdog, Jenkins Warnings NG and the check-run payload. GitHub code
     scanning on a private repository needs a paid licence.
   - JUnit is a conditional projection (D8).
   - Fathom posts nothing.
-- *Compliance*. The trace pack carries the test-kit envelopes it cites, because certificate states come from
+- *Compliance*. The trace pack carries the test kit envelopes it cites, because certificate states come from
   ingested envelopes. `trace verify` replays at the pack's commit through a scratch ingest of the pack. OSCAL waits.
 - *Incident reviews*. A person carries the file, and IM-X4 holds.
 - *Not consumers*:
@@ -556,7 +556,7 @@ provider none, everything above holds. This is the Jev check: considered, with n
 | The record in wave 2 | dropped for P20. A general predicate waits for a second consumer (EVX-G3) |
 | The recipe as a parallel set of inputs | dropped. It now reuses `reviewkey` (ADR-040 decision 6) |
 | "`jq -cS` matches the canonical form" | dropped as an unpinned claim. Use an RFC 8785 library |
-| Rejecting `evidence-span` alignment (old D12) | withdrawn. Review Kit's own plan swaps `SpanRef` for it |
+| Rejecting `evidence-span` alignment (old D12) | withdrawn. The review kit's own plan swaps `SpanRef` for it |
 | A git rung for filtered paths, and an excerpt digest for secret files | dropped. The rung would always fail, and the digest is guessable |
 | Replay `--scratch` for an epoch or version change at the same commit | dropped. A scratch ingest cannot rebuild an old epoch |
 | "Replay uses fathom's scratch directory, as `receipt verify` does" | dropped as false. Both use `os.MkdirTemp` |
@@ -587,4 +587,4 @@ provider none, everything above holds. This is the Jev check: considered, with n
 | Size (wave 2 onward) | the median receipt for one `fathom review` on this repository is at most 256 KB, and export takes at most 2 s on a warm index | excerpts become opt-in |
 | EVX-M3 (wave 3) | within 60 days of wave 3, a consumer the owner did not write, or two distinct consumers, each read a record and act on a named fact | waves 4 and 5 move to futures. The record stays as `receipt verify`'s input |
 | EVX-M2 (wave 4) | pre-registered frame: 50 calls drawn from the daemon call log with seed 20261010, at least 5 per agent tool, exported then replayed at equal commit, fathom version and extractor epoch. At least 48 of 50 read `same`, and zero read `changed, unexplained`. Fixtures: an epoch bump names the epoch, an unreachable commit exits 2, a shifted anchor reads `same, moved`. One fix round | replay for each failing tool, which then renders "replay unreliable for <tool>", plus an observation per defect |
-| A kit ships a code-evidence predicate, or Review Kit asks for its own | n/a | fathom adopts it and retires its own (ADR-063's revisit) |
+| A kit ships a code-evidence predicate, or the review kit asks for its own | n/a | fathom adopts it and retires its own (ADR-063's revisit) |

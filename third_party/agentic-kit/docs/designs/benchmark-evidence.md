@@ -340,7 +340,7 @@ or output check. Existing effect/HITL paths govern commits and ambiguous recover
 
 ## 11. Prospective consumer integration and offline proof
 
-Chosen consumer: resume_as_code `7a6c56a26dd10a7cf80128d23ef13bab90377ae8`, inspected on disk.
+Chosen consumer: consumer-c `7a6c56a26dd10a7cf80128d23ef13bab90377ae8`, inspected on disk.
 `cmd/generate.go:buildRedTeamPanel`, `cmd/ops.RedTeam` and `cmd/redteam` already have
 CUE-configured model roles, a two-round bound, structured critics, per-lane usage and
 request-scoped provider-family checks. Preserve these, including UNVERIFIED results.

@@ -5,7 +5,7 @@ package main
 // Claude Code's Stop event fires at every turn boundary, not at session
 // close, so a long session appends a ledger row each time the assistant
 // finishes speaking. Measured on the live ledger 2026-08-09: 200 rows
-// across 8 distinct sessions — one resume_as_code session wrote 74 of
+// across 8 distinct sessions — one adopter repository's session wrote 74 of
 // them, several with identical turn counts.
 //
 // Counting rows inflated every denominator ~25x ("of 188 sessions" was of

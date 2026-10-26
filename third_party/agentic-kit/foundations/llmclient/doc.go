@@ -157,7 +157,7 @@
 //
 // WithRetry retries RateLimitError and ServerError with exponential backoff
 // (plus optional seeded jitter); InvalidRequestError, AuthError,
-// UnavailableError (an unconfigured Swappable — retrying cannot conjure a
+// UnavailableError (an unconfigured Swappable — retrying cannot produce a
 // credential), and every other error type fail fast. A nil error is always success: in particular, a
 // Response with StopReason == StopToolUse is a successful completion — it is
 // never retried. When a RateLimitError carries a RetryAfter hint (> 0), that

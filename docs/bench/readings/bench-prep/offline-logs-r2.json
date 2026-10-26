@@ -1,0 +1,8 @@
+{
+  "artifact": "bench-subjects-r2-offline-logs.tar.gz",
+  "sha256": "2fce30cec9ed7d581df7865312e8d345b322cf3f94add4d0185afc64eb9e1cc7",
+  "members": 73,
+  "timed_trials": 42,
+  "green_trials": 39,
+  "scope": "Final raw offline trials, warm-ups and denial probes; includes the partial refused Go warm-up. Setup/clone logs remain in the job."
+}

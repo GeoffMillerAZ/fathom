@@ -221,7 +221,7 @@ out-of-scope by design. And the classifier has no notion of a build-time
 or gitignored directory that is *supposed* to be absent in a fresh
 checkout: *"installed copy at `` `~/.local/libexec/fathom/fathom` ``,
 HTTP MCP `` `localhost:7575/rpc/agent` `` (16-tool surface), store
-`` `workspace/db/fleet.sqlite` ``."* (platform-engineering auto-memory)
+`` `workspace/db/fleet.sqlite` ``."* (platform auto-memory)
 — `workspace/` does not exist at all in a fresh clone, so the top-level
 segment pre-check in `resolveRepoPath` treats the whole path as foreign
 rather than checking it, landing on `unanchorable` instead of the real

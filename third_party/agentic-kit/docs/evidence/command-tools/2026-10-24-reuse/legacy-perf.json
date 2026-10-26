@@ -1,0 +1,215 @@
+{
+  "protocol": {
+    "question": "current default and enabled unique-input overhead against pre-implementation binary",
+    "inputs": 8,
+    "bytesPerInput": 1048576,
+    "selectedBytes": 8388608,
+    "pairs": 3,
+    "order": "rotating triples after one untimed triple",
+    "metric": "median current/legacy elapsed ratio minus one",
+    "engineeringCeiling": 0.25,
+    "scope": "additional synthetic macOS probe, no general savings claim"
+  },
+  "status": "passed",
+  "samples": [
+    {
+      "index": 0,
+      "legacy": {
+        "elapsedSeconds": 2.300143500091508,
+        "scanner": {
+          "id": "gitleaks",
+          "profile": "gitleaks-stdin-8.30.1",
+          "status": "complete",
+          "code": "verified",
+          "expectedFiles": 8,
+          "attemptedFiles": 8,
+          "invokedFiles": 8,
+          "completedFiles": 8,
+          "bytesSubmitted": 8388608,
+          "bytesObserved": 8388608,
+          "findings": 0
+        },
+        "policySHA256": "7870aa4c02e1eaa9fb61d1743f5a7d14ff76bd9f6a1b49a7bc5b15742c3d15b5",
+        "wireSHA256": "50070d81cfed59ed7757842fec6d785ab1f17faefa1eadf2ddffa9f0d960b89b"
+      },
+      "default": {
+        "elapsedSeconds": 2.3508516668807715,
+        "scanner": {
+          "id": "gitleaks",
+          "profile": "gitleaks-stdin-8.30.1",
+          "status": "complete",
+          "code": "verified",
+          "expectedFiles": 8,
+          "attemptedFiles": 8,
+          "invokedFiles": 8,
+          "completedFiles": 8,
+          "bytesSubmitted": 8388608,
+          "bytesObserved": 8388608,
+          "findings": 0
+        },
+        "policySHA256": "7870aa4c02e1eaa9fb61d1743f5a7d14ff76bd9f6a1b49a7bc5b15742c3d15b5",
+        "wireSHA256": "50070d81cfed59ed7757842fec6d785ab1f17faefa1eadf2ddffa9f0d960b89b"
+      },
+      "enabled": {
+        "elapsedSeconds": 2.349161291960627,
+        "scanner": {
+          "id": "gitleaks",
+          "profile": "gitleaks-stdin-8.30.1",
+          "status": "complete",
+          "code": "verified",
+          "expectedFiles": 8,
+          "attemptedFiles": 8,
+          "invokedFiles": 8,
+          "completedFiles": 8,
+          "bytesSubmitted": 8388608,
+          "bytesObserved": 8388608,
+          "findings": 0,
+          "reuse": {
+            "profile": "invocation-exact/1",
+            "files": 0,
+            "bytes": 0
+          }
+        },
+        "policySHA256": "9c2bfcd2ecc451207db58e54fff79ce7f2ad698ef728e2eee696ef13b073d0cf",
+        "wireSHA256": "549a5aee05bb4f7743f6cfbf696cc2ec8c840e4fa43dac5da82d2cc972aed64c"
+      },
+      "defaultRatio": 1.022045653580851,
+      "enabledRatio": 1.021310753814781
+    },
+    {
+      "index": 1,
+      "default": {
+        "elapsedSeconds": 2.3191838341299444,
+        "scanner": {
+          "id": "gitleaks",
+          "profile": "gitleaks-stdin-8.30.1",
+          "status": "complete",
+          "code": "verified",
+          "expectedFiles": 8,
+          "attemptedFiles": 8,
+          "invokedFiles": 8,
+          "completedFiles": 8,
+          "bytesSubmitted": 8388608,
+          "bytesObserved": 8388608,
+          "findings": 0
+        },
+        "policySHA256": "7870aa4c02e1eaa9fb61d1743f5a7d14ff76bd9f6a1b49a7bc5b15742c3d15b5",
+        "wireSHA256": "50070d81cfed59ed7757842fec6d785ab1f17faefa1eadf2ddffa9f0d960b89b"
+      },
+      "enabled": {
+        "elapsedSeconds": 2.3525229159276932,
+        "scanner": {
+          "id": "gitleaks",
+          "profile": "gitleaks-stdin-8.30.1",
+          "status": "complete",
+          "code": "verified",
+          "expectedFiles": 8,
+          "attemptedFiles": 8,
+          "invokedFiles": 8,
+          "completedFiles": 8,
+          "bytesSubmitted": 8388608,
+          "bytesObserved": 8388608,
+          "findings": 0,
+          "reuse": {
+            "profile": "invocation-exact/1",
+            "files": 0,
+            "bytes": 0
+          }
+        },
+        "policySHA256": "9c2bfcd2ecc451207db58e54fff79ce7f2ad698ef728e2eee696ef13b073d0cf",
+        "wireSHA256": "549a5aee05bb4f7743f6cfbf696cc2ec8c840e4fa43dac5da82d2cc972aed64c"
+      },
+      "legacy": {
+        "elapsedSeconds": 2.3396877909544855,
+        "scanner": {
+          "id": "gitleaks",
+          "profile": "gitleaks-stdin-8.30.1",
+          "status": "complete",
+          "code": "verified",
+          "expectedFiles": 8,
+          "attemptedFiles": 8,
+          "invokedFiles": 8,
+          "completedFiles": 8,
+          "bytesSubmitted": 8388608,
+          "bytesObserved": 8388608,
+          "findings": 0
+        },
+        "policySHA256": "7870aa4c02e1eaa9fb61d1743f5a7d14ff76bd9f6a1b49a7bc5b15742c3d15b5",
+        "wireSHA256": "50070d81cfed59ed7757842fec6d785ab1f17faefa1eadf2ddffa9f0d960b89b"
+      },
+      "defaultRatio": 0.9912364560332315,
+      "enabledRatio": 1.0054858280762202
+    },
+    {
+      "index": 2,
+      "enabled": {
+        "elapsedSeconds": 2.368171124951914,
+        "scanner": {
+          "id": "gitleaks",
+          "profile": "gitleaks-stdin-8.30.1",
+          "status": "complete",
+          "code": "verified",
+          "expectedFiles": 8,
+          "attemptedFiles": 8,
+          "invokedFiles": 8,
+          "completedFiles": 8,
+          "bytesSubmitted": 8388608,
+          "bytesObserved": 8388608,
+          "findings": 0,
+          "reuse": {
+            "profile": "invocation-exact/1",
+            "files": 0,
+            "bytes": 0
+          }
+        },
+        "policySHA256": "9c2bfcd2ecc451207db58e54fff79ce7f2ad698ef728e2eee696ef13b073d0cf",
+        "wireSHA256": "549a5aee05bb4f7743f6cfbf696cc2ec8c840e4fa43dac5da82d2cc972aed64c"
+      },
+      "legacy": {
+        "elapsedSeconds": 2.3096159580163658,
+        "scanner": {
+          "id": "gitleaks",
+          "profile": "gitleaks-stdin-8.30.1",
+          "status": "complete",
+          "code": "verified",
+          "expectedFiles": 8,
+          "attemptedFiles": 8,
+          "invokedFiles": 8,
+          "completedFiles": 8,
+          "bytesSubmitted": 8388608,
+          "bytesObserved": 8388608,
+          "findings": 0
+        },
+        "policySHA256": "7870aa4c02e1eaa9fb61d1743f5a7d14ff76bd9f6a1b49a7bc5b15742c3d15b5",
+        "wireSHA256": "50070d81cfed59ed7757842fec6d785ab1f17faefa1eadf2ddffa9f0d960b89b"
+      },
+      "default": {
+        "elapsedSeconds": 2.3586531670298427,
+        "scanner": {
+          "id": "gitleaks",
+          "profile": "gitleaks-stdin-8.30.1",
+          "status": "complete",
+          "code": "verified",
+          "expectedFiles": 8,
+          "attemptedFiles": 8,
+          "invokedFiles": 8,
+          "completedFiles": 8,
+          "bytesSubmitted": 8388608,
+          "bytesObserved": 8388608,
+          "findings": 0
+        },
+        "policySHA256": "7870aa4c02e1eaa9fb61d1743f5a7d14ff76bd9f6a1b49a7bc5b15742c3d15b5",
+        "wireSHA256": "50070d81cfed59ed7757842fec6d785ab1f17faefa1eadf2ddffa9f0d960b89b"
+      },
+      "defaultRatio": 1.0212317588312791,
+      "enabledRatio": 1.0253527720625202
+    }
+  ],
+  "binarySHA256": {
+    "legacy": "a02e69d47468f18aefcc32c8859597b5a12c43ae86ffb433f1c5e18ebc257eed",
+    "default": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+    "enabled": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1"
+  },
+  "medianDefaultOverhead": 0.021231758831279146,
+  "medianEnabledOverhead": 0.02131075381478098
+}

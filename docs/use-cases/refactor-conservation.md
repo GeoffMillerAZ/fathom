@@ -5,7 +5,7 @@ keep (the capability inventory, certified behaviour, the rules bound to the
 moved code), proves that the proof itself was not tampered with, and reports
 what was lost, what was declared, and what could not be checked. fathom
 never writes the change and never grades it — planes and missing inputs,
-stated plainly; a Review Kit requirement judges adequacy (vision 34,
+stated plainly; a review kit requirement judges adequacy (vision 34,
 ADR-044).
 
 ---
@@ -145,16 +145,16 @@ row proves only when the index is at HEAD, the typed pass has zero failed
 packages in scope, and no build-tag-excluded file references the target —
 otherwise `Unknown`, never a false "gone" from a stale or partial index.
 
-## 6. The pre-push warning and the Review Kit pack
+## 6. The pre-push warning and the review kit pack
 
 `lefthook.yml`'s `refactor-conserve` step runs `fathom conserve --since
 "$since"` (the branch's own upstream, falling back to `origin/main`) on
 every push, **as a warning only** — it never blocks (`fathom verify` above
 is the gate). CI runs the same command with `--strict` to actually fail the
-build. Review Kit's `refactoring-conservation` pack (adapter
+build. The review kit's `refactoring-conservation` pack (adapter
 `fathom-conserve`, over `fathom conserve --json --since <base> --service
 <service>` — `--service` is required, so the adapter is built with the
-sounding's own configured Service rather than left to a directory-name
+review run's own configured Service rather than left to a directory-name
 guess) is armed at **warn** on this repository — its `refactoring.no-undeclared-loss`
 requirement fails on any finding whose `declared` is not `prior`; the
 `refactoring.uncovered-behaviour` requirement is advisory (typed-judgment
@@ -162,7 +162,7 @@ lane, never a gate by itself).
 
 The arming itself (CV-44) lives entirely in `.reviewkit/` at this
 repository's root: `.reviewkit/packs/{refactoring-conservation,testing-certifications}/pack.cue`
-(the shipped catalog bytes, installed by `leadsman catalog install`, every
+(the shipped catalog bytes, installed by the review kit's catalog install, every
 finding still `severity: "off"`), `.reviewkit/config.cue` (enables both
 packs plus a minimal local catalog — this repository has no Standard of
 its own), and `.reviewkit/dispositions/refactoring-conservation.cue` (the
@@ -170,11 +170,11 @@ its own), and `.reviewkit/dispositions/refactoring-conservation.cue` (the
 `refactoring.proof-integrity` and `testing.certified-targets` from that
 shipped `off` to `warn`; tailoring only ever raises severity, never
 lowers it). A disposition under `.reviewkit/dispositions/` is honored only
-when this repository's `CODEOWNERS` covers that path (ADR-0096 D3) —
-`leadsman sound` refuses to load it otherwise, loudly. `leadsman sound
---since <ref>` (run with `fathom` on `PATH`) writes the rendered posture
+when this repository's `CODEOWNERS` covers that path (the review kit's authority rule) —
+the review kit refuses to load it otherwise, loudly. A review kit run with
+`--since <ref>` (run with `fathom` on `PATH`) writes the rendered posture
 to `docs/review/`; see `docs/bench/readings/cv-44-reviewkit-armed-2026-09-25.md`
-for a real sounding against this repository's own history, including one
+for a real review run against this repository's own history, including one
 open finding (`testing.certified-targets` needs the `fathom-certify`
 adapter to thread `--service` the way `fathom-conserve` already does,
 before its warn-severity firing can be trusted from the real checkout's
@@ -197,7 +197,7 @@ tooling is not "conserved better").
 
 `review_diff --since <ref>` (or `fathom review --since <ref>`) folds the
 same `integrity` and `conservation` findings into the review a change
-already gets, so a reviewer — human or Review Kit — sees guarded-test
+already gets, so a reviewer — human or the review kit — sees guarded-test
 losses and conservation planes beside blast radius, obligations, and
 architecture in one pass instead of a second invocation.
 
@@ -240,8 +240,8 @@ architecture in one pass instead of a second invocation.
 - **`fathom refactor plan`/`status` and `gone:` row proving are the newest
   surfaces here** — read `docs/plans/refactor-conservation.md` for exactly
   which rows are proven versus still open (stage 4's `(op)` measurement
-  rows, the decision-port rows in §G, and the cross-repo test-kit/Review
-  Kit rows in §H are tracked there, not claimed here).
+  rows, the decision-port rows in §G, and the cross-repo test kit and review
+  kit rows in §H are tracked there, not claimed here).
 
 ---
 

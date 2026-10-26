@@ -56,7 +56,7 @@ directly still sees `declared: "prior"`.
 
 Every finding also carries `file`/`line` (both `omitempty`) — the
 repo-relative location of the finding's SUBJECT, at HEAD when it still
-exists there, else at BASE — for a Review Kit citation that needs a real
+exists there, else at BASE — for a review kit citation that needs a real
 source anchor rather than the human-readable `base`/`head` strings above.
 Empty when no plane could place the subject at a location cheaply (a
 `governance` claim's own scope glob names no single file, for instance);
@@ -103,6 +103,76 @@ and a line only moved is not added. A cited retirement is printed for
 review with its cite and exits 0. An input the check could not read exits
 2, like any other operational failure; the pre-push step fails open on it.
 It combines with `--strict` (either can exit 1).
+
+#### Kubernetes concern deltas
+
+```sh
+fathom conserve --since BASE --service SERVICE --concern-deltas workspace/artifacts/concern-deltas.json
+```
+
+`--concern-deltas FILE` writes experimental `fathom.concern-deltas/v1` JSON for
+Kubernetes manifests in the touched set. This schema remains experimental until
+PLT-M4 and is not yet part of the compatibility surface. The touched set combines
+the committed range with `in.ChangedFiles`, which includes uncommitted worktree
+files (staged edits and untracked files included). Create the destination
+directory first. Head
+`K8sFact` values come from scoped reads of the service's store and require stored
+`tool_kind` of `k8s` or `k8s-crd`. Base blobs from `git show BASE:<path>` pass
+through ingest's extractor dispatch with base sibling-path context and the
+connector's corpus exclusions and size cap, inside the CLI process without store
+writes. Helm chart templates use `HelmTemplateYAML`, and JSON manifests use the
+JSON extractor, so neither is compared as Kubernetes. Ignored paths, including
+`testdata/`, `vendor/` and `.fathomignore` matches, and oversized files are skipped.
+Base uses its committed project ignore and connector configuration with current
+user/service exclusions. A missing service index is an operational error
+(exit 2), as is an unwritable destination.
+
+The file's fields are `schema`, `service`, `base` (resolved commit), `head` (HEAD
+commit), `basis`, `deltas`, and `skipped`. Each delta carries:
+
+- `workload`: Kubernetes `<kind>/<name>`, plus separate `namespace` and `container`.
+- `key`: the extractor's fact key, including its container prefix when applicable.
+- `fact_kind`: `K8sFact`, and `fact_version`: `v1` (the fact key/value contract,
+  independent of Kubernetes `apiVersion`).
+- `change`: `added`, `removed`, or `changed`, with `before` and `after` values.
+- `base_anchor` and `head_anchor`: relative `file:line` locations at each side.
+- `basis` and `head_commit`.
+
+A missing side is `null`, with an empty anchor. Unchanged facts emit no delta.
+Facts pair by workload and key across all touched manifests, so identical moves
+and document splits emit no deltas. If a fact name appears in multiple files on
+either side (for example kustomize patches), pairing also requires the same path.
+A move plus edit retains each side's own file and line. A namespace change reads
+as removed under the old namespace plus added under the new one.
+Renaming a container removes its old fact keys and adds its new ones, and changes
+the container-list fact. Only facts the extractor supports are compared. Env
+values, arg values and probe exec commands are withheld by the extractor and
+never reconstructed for this file. An env removal that emits no `K8sFact` emits
+no delta.
+
+`basis` carries `state`, `index_commit` and `head_commit`. Its state is `exact`
+when the index commit equals HEAD, no compared file is dirty and each stored
+fingerprint matches the epoch-salted hash of its HEAD blob. `differs` means the
+commits differ (both are named) while those file checks still agree.
+`uncommitted` means a compared file is dirty (including staged changes), its
+fingerprint is absent or differs from HEAD, or a stored fingerprint exists for a
+path absent at HEAD. This catches dirty-ingest-then-revert and extractor skew.
+Uncommitted evidence takes precedence over commit skew. Values still come from the store in the latter two states. Consumers needing exact
+commit evidence should use only `exact`.
+
+Undecodable YAML, including undecodable Helm templates, emits no deltas for that
+file. Ingest dispatch exclusions also emit no deltas. `skipped` names every
+excluded touched `path`, its `commit` and `reason`. This includes
+both commits if both fail decoding. Partially undecodable multi-document files
+are skipped as a whole. Both lists are sorted. Deltas sort by workload, namespace,
+key, base anchor, head anchor and change. Skips sort by path and commit. Repeated
+runs over the same inputs produce identical bytes.
+
+These deltas are information, with no direction rule or verdict. They appear in
+`Report.ConcernDeltas` (`concern_deltas` under `--json`), beside `residue`, and never
+affect `--strict`. They are not a registered plane and do not run in the daemon's
+`review_diff` path. Replicas going from 3 to 1 is a reported change for the consumer
+to judge.
 
 #### The reading set (design §3.4, ADR-044 amended 2026-09-25, Q22)
 

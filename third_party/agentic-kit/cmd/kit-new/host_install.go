@@ -175,7 +175,7 @@ func planHostInstall(root *os.Root, rootPath, host, binary string, policy hostPo
 		return hostPlan{}, err
 	}
 	info, err := os.Stat(binary)
-	if err != nil || info == nil || !info.Mode().IsRegular() || info.Mode()&0111 == 0 {
+	if err != nil || info == nil || !info.Mode().IsRegular() || info.Mode()&0o111 == 0 {
 		return hostPlan{}, errors.New("-binary must name an existing regular executable")
 	}
 	binaryBytes, err := hostReadExternal(binary, hostMaxBinaryBytes)
@@ -408,6 +408,7 @@ func hostJSONEqual(a, b []byte) bool {
 	}
 	return bytes.Equal(hostJSON(x), hostJSON(y))
 }
+
 func sealHostPlan(plan hostPlan) hostPlan {
 	plan.Digest = ""
 	plan.Digest = hostHash(hostJSON(plan))
@@ -462,10 +463,10 @@ func writeHostChange(root *os.Root, change hostFileChange) error {
 		}
 		return root.Remove(change.Path)
 	}
-	if err := root.MkdirAll(filepath.Dir(change.Path), 0700); err != nil {
+	if err := root.MkdirAll(filepath.Dir(change.Path), 0o700); err != nil {
 		return err
 	}
-	mode := os.FileMode(0600)
+	mode := os.FileMode(0o600)
 	if info, err := root.Stat(change.Path); err == nil {
 		mode = info.Mode().Perm()
 	}

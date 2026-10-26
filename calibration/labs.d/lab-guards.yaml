@@ -1,0 +1,19 @@
+# Seed: docs/design/feature-labs.md section 4.3. Kill: owner ruling L-R1.
+id: "lab-guards"
+features: ["F-29"]
+surface: ["hook:edit-hook --pre [pre-tool/guard-pre-edit PreToolUse matcher=Edit|Write|MultiEdit]", "hook:edit-hook --pre [pre-tool/guard-pre-shell PreToolUse matcher=Bash]"]
+firing:
+  should: "a pre-edit on a guarded path"
+  should_not: "any other path"
+  grader: "hook_context"
+helped:
+  metric: "governing rule at first touch"
+  arm: "plugin-minus-guards"
+  direction: "increase"
+  minimum_effect_of_interest: 0.01
+quality: []
+fixtures: ["internal/connector/testdata/fauxtown"]
+harness: ["hook-path", "scenario"]
+kill: [{"criterion": "K4: A knob that raises firing and leaves helped harmed, or inconclusive toward harm, is reverted.", "reading": "docs/bench/readings/labs/lab-guards.md"}, {"criterion": "K1: A classifier surface with TPR or TNR Wilson lower bound under 0.80 on 40 labeled points per class reports counts only.", "reading": "docs/bench/readings/labs/lab-guards.md"}]
+knobs: [{"name": "guard note", "kind": "text", "location": ".fathom/guard.cue:guards[].note"}, {"name": "hook text", "kind": "text", "location": "cmd/fathom/edithook_pre.go:renderPreEdit"}]
+owners: ["rule-selection.md#RS-M1", "rule-selection.md#RS-M2", "rule-selection.md#RS-M3", "rule-selection.md#RS-M4"]

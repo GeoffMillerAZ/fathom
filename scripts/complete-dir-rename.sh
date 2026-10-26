@@ -20,7 +20,7 @@
 #      — a GUI click only a human at the machine can make.
 #
 # ⚠️ CLOSE other Claude Code / editor sessions working in this directory first
-#   (e.g. the Throughline session that also commits here) — their cwd breaks on
+#   (e.g. a sibling project's session that also commits here) — their cwd breaks on
 #   the move.
 #
 # Idempotent: safe to re-run. If the directory is already renamed it just

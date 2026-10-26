@@ -1,0 +1,435 @@
+[
+  {
+    "id": "C01",
+    "axis": "component",
+    "acceptance": "Decision kinds and declined responses pass offline conformance",
+    "outcome": "pass",
+    "source": "foundations/decision/conformance_test.go",
+    "source_sha256": "a6fc6583c5f9fa6acaa90f5cda79981306b22a9e0457df77c316860978cde7cc",
+    "test": "TestFallbackPassesConformanceWithRefusals",
+    "group": "decision",
+    "scope_note": "Component test does not prove consumer adoption, live model quality, or all entrypoints.",
+    "command": {
+      "name": "decision",
+      "argv": [
+        "go",
+        "test",
+        "-count=1",
+        "./foundations/decision/..."
+      ],
+      "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+      "exit_code": 0,
+      "duration_seconds": 0.52,
+      "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/decision.log"
+    },
+    "command_log_sha256": "7523ef22b46dbb8a212b041a69682f2834548813ab5ee02875c6eb7d3b8ff294"
+  },
+  {
+    "id": "C02",
+    "axis": "composition",
+    "acceptance": "A named decision site has labelled holdout calibration and provider-none authority bounds",
+    "outcome": "unknown",
+    "source": "docs/fast-judgment.md",
+    "source_sha256": "160d646e1de6c8f3ed9d73e05852a06fcd1cf2588dbbb47f200907c4c33aa0a1",
+    "test": null,
+    "group": null,
+    "scope_note": "Component test does not prove consumer adoption, live model quality, or all entrypoints.",
+    "reason": "Current source lacks a retained end-to-end criterion-specific adoption or measured-quality receipt."
+  },
+  {
+    "id": "C03",
+    "axis": "component",
+    "acceptance": "OpenAI Decisions wire maps supported answers/refusals and passes offline conformance",
+    "outcome": "pass",
+    "source": "foundations/decision/openai/conformance_test.go",
+    "source_sha256": "e722a69572047229bb733992753511c1c586c01ee5bc6d57a9a9ab65127eb58a",
+    "test": "TestOpenAIPassesConformance",
+    "group": "decision",
+    "scope_note": "Component test does not prove consumer adoption, live model quality, or all entrypoints.",
+    "command": {
+      "name": "decision",
+      "argv": [
+        "go",
+        "test",
+        "-count=1",
+        "./foundations/decision/..."
+      ],
+      "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+      "exit_code": 0,
+      "duration_seconds": 0.52,
+      "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/decision.log"
+    },
+    "command_log_sha256": "7523ef22b46dbb8a212b041a69682f2834548813ab5ee02875c6eb7d3b8ff294"
+  },
+  {
+    "id": "C04",
+    "axis": "target-gap",
+    "acceptance": "A native Google LLM adapter implements the common port with conformance",
+    "outcome": "fail",
+    "source": "docs/intent/scope.md",
+    "source_sha256": "3e4bb055f02ec91cb121fcaa60c77c83f940c7e203e3edf4e9f2587bbd6a483b",
+    "test": null,
+    "group": null,
+    "scope_note": "Component test does not prove consumer adoption, live model quality, or all entrypoints.",
+    "negative_scan": {
+      "name": "google_provider",
+      "argv": [
+        "rg",
+        "-n",
+        "Gemini|GenerativeLanguage|generativelanguage.googleapis.com|vertexai|google.*LLM",
+        "foundations/llmclient",
+        "foundations/decision"
+      ],
+      "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+      "exit_code": 1,
+      "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/google_provider-scan.log"
+    },
+    "scan_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "reason": "Scope provider inventory names Anthropic, Bedrock, OpenAI, ClaudeCLI and CodexCLI; path scan found no Google adapter. No live verification attempted."
+  },
+  {
+    "id": "C05",
+    "axis": "component",
+    "acceptance": "Canonical spans reject missing provenance and invalid observation order",
+    "outcome": "pass",
+    "source": "foundations/evidence/evidence-span/evidencespan_test.go",
+    "source_sha256": "2111d1bd20edc88d50884e356d4355240037c0510313c5e96cc3574811cec971",
+    "test": "TestValidateAsEvidenceRejectsMissingRecordHash",
+    "group": "evidence_catalog",
+    "scope_note": "Component test does not prove consumer adoption, live model quality, or all entrypoints.",
+    "command": {
+      "name": "evidence_catalog",
+      "argv": [
+        "go",
+        "test",
+        "-count=1",
+        "./foundations/evidence/evidence-span",
+        "./foundations/evidence/evidence-resolver",
+        "./foundations/evidence/evidence-signature",
+        "./foundations/quality/fitness-function-registry",
+        "./kits/catalog-kit"
+      ],
+      "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+      "exit_code": 0,
+      "duration_seconds": 0.53,
+      "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/evidence_catalog.log"
+    },
+    "command_log_sha256": "b3cfa85ecaef7c5fbda0e8a284d8a97fec5cc6352b40278f4f3e6519f75415e1"
+  },
+  {
+    "id": "C06",
+    "axis": "component",
+    "acceptance": "Prepared catalog decision binds exact definition and evidence bytes; mismatch refuses",
+    "outcome": "pass",
+    "source": "kits/catalog-kit/decision_test.go",
+    "source_sha256": "6ba3980ac1cecce7d694ef8e957b0c0524c551d68f7926c13ff561245e1ca38d",
+    "test": "TestPrepareDecisionBindsExactDefinition",
+    "group": "evidence_catalog",
+    "scope_note": "Component test does not prove consumer adoption, live model quality, or all entrypoints.",
+    "command": {
+      "name": "evidence_catalog",
+      "argv": [
+        "go",
+        "test",
+        "-count=1",
+        "./foundations/evidence/evidence-span",
+        "./foundations/evidence/evidence-resolver",
+        "./foundations/evidence/evidence-signature",
+        "./foundations/quality/fitness-function-registry",
+        "./kits/catalog-kit"
+      ],
+      "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+      "exit_code": 0,
+      "duration_seconds": 0.53,
+      "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/evidence_catalog.log"
+    },
+    "command_log_sha256": "b3cfa85ecaef7c5fbda0e8a284d8a97fec5cc6352b40278f4f3e6519f75415e1"
+  },
+  {
+    "id": "C07",
+    "axis": "component",
+    "acceptance": "Ambiguous remote outcome blocks further effects until reconciliation",
+    "outcome": "pass",
+    "source": "kits/hitl/delivery_test.go",
+    "source_sha256": "fa00cfb5b39f028608164aa715ff8c210f66405a7fde1cf01786ac55c25954b0",
+    "test": "TestUnknownRemoteBlocksFurtherEffectsUntilReconciled",
+    "group": "hitl_prose",
+    "scope_note": "Component test does not prove consumer adoption, live model quality, or all entrypoints.",
+    "command": {
+      "name": "hitl_prose",
+      "argv": [
+        "go",
+        "test",
+        "-count=1",
+        "./kits/hitl",
+        "./kits/governed-prose-kit",
+        "./surfaces/forms/cueform",
+        "./foundations/security/tokenization/..."
+      ],
+      "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+      "exit_code": 0,
+      "duration_seconds": 0.37,
+      "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/hitl_prose.log"
+    },
+    "command_log_sha256": "9a82c5a961e3f6a3ad36af04733699a5712f19a224a2cb7c1852a9111c04aff3"
+  },
+  {
+    "id": "C08",
+    "axis": "target-gap",
+    "acceptance": "A consumer runs role/resource/action authorization with denied effect negative tests",
+    "outcome": "unknown",
+    "source": "docs/intent/assurance.md",
+    "source_sha256": "5ff9500e015853a2f56a5c9706522a7b5eeed4e5ca9b48f4df429b93fe639244",
+    "test": null,
+    "group": null,
+    "scope_note": "Component test does not prove consumer adoption, live model quality, or all entrypoints.",
+    "reason": "Current source lacks a retained end-to-end criterion-specific adoption or measured-quality receipt."
+  },
+  {
+    "id": "C09",
+    "axis": "component",
+    "acceptance": "Encrypted vault crypto-shred passes local conformance",
+    "outcome": "pass",
+    "source": "foundations/security/tokenization/encrypted_vault_test.go",
+    "source_sha256": "d1fbdd2da8b5f24a1f55d853647a7f5e90da392e68cc9a55a4f2a0b7072c0382",
+    "test": "TestEncryptedVaultShredConformance",
+    "group": "hitl_prose",
+    "scope_note": "Component test does not prove consumer adoption, live model quality, or all entrypoints.",
+    "command": {
+      "name": "hitl_prose",
+      "argv": [
+        "go",
+        "test",
+        "-count=1",
+        "./kits/hitl",
+        "./kits/governed-prose-kit",
+        "./surfaces/forms/cueform",
+        "./foundations/security/tokenization/..."
+      ],
+      "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+      "exit_code": 0,
+      "duration_seconds": 0.37,
+      "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/hitl_prose.log"
+    },
+    "command_log_sha256": "9a82c5a961e3f6a3ad36af04733699a5712f19a224a2cb7c1852a9111c04aff3"
+  },
+  {
+    "id": "C10",
+    "axis": "component",
+    "acceptance": "Strict sourced export refuses unsupported generation claims",
+    "outcome": "pass",
+    "source": "kits/governed-prose-kit/sourced_test.go",
+    "source_sha256": "31a53dfd5c73a4382979d0071ec2382afc5aa5afd611419d5144b1df0a099517",
+    "test": "TestSourcedExportDoesNotTrustGenerationClaims",
+    "group": "hitl_prose",
+    "scope_note": "Component test does not prove consumer adoption, live model quality, or all entrypoints.",
+    "command": {
+      "name": "hitl_prose",
+      "argv": [
+        "go",
+        "test",
+        "-count=1",
+        "./kits/hitl",
+        "./kits/governed-prose-kit",
+        "./surfaces/forms/cueform",
+        "./foundations/security/tokenization/..."
+      ],
+      "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+      "exit_code": 0,
+      "duration_seconds": 0.37,
+      "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/hitl_prose.log"
+    },
+    "command_log_sha256": "9a82c5a961e3f6a3ad36af04733699a5712f19a224a2cb7c1852a9111c04aff3"
+  },
+  {
+    "id": "C11",
+    "axis": "composition",
+    "acceptance": "An actual Review Kit exchange preserves its criterion and finding authority",
+    "outcome": "unknown",
+    "source": "docs/intent/decisions/0024-independent-kits-share-identity-not-authority.md",
+    "source_sha256": "cd36a96f6de940c0dc74ce6c4a21502499f02aa14d29e935434595cdf8bbd04e",
+    "test": null,
+    "group": null,
+    "scope_note": "Component test does not prove consumer adoption, live model quality, or all entrypoints.",
+    "reason": "Current source lacks a retained end-to-end criterion-specific adoption or measured-quality receipt."
+  },
+  {
+    "id": "C12",
+    "axis": "component",
+    "acceptance": "Contradictory evidence raises the investigation concern flag",
+    "outcome": "pass",
+    "source": "kits/investigation/investigation_test.go",
+    "source_sha256": "aabf65dc0f6b80cccc55dc705695d09cbb3ae5e8510c871d677312220894528c",
+    "test": "TestAddEvidence_ContradictionRaisesConcernFlag",
+    "group": "review_investigation",
+    "scope_note": "Component test does not prove consumer adoption, live model quality, or all entrypoints.",
+    "command": {
+      "name": "review_investigation",
+      "argv": [
+        "go",
+        "test",
+        "-count=1",
+        "./kits/investigation",
+        "./foundations/investigation/investigation-journal",
+        "./foundations/review/claim-lifecycle",
+        "./foundations/review/correction-ledger"
+      ],
+      "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+      "exit_code": 0,
+      "duration_seconds": 0.3,
+      "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/review_investigation.log"
+    },
+    "command_log_sha256": "618acf979f96189978b7ccecc98329b2fa1e12eec86f7cbe8677db3d55f022d6"
+  },
+  {
+    "id": "C13",
+    "axis": "component",
+    "acceptance": "Budget guard refuses a charge beyond the USD daily limit",
+    "outcome": "pass",
+    "source": "foundations/governance/budget-guard/budgetguard_test.go",
+    "source_sha256": "493ba351634f1c4e718d346c66f1a83393ba760d4d5233b7e198d7bb42e891b2",
+    "test": "TestGuard_TripsOnUSDPerDay",
+    "group": "security_budget_lessons_hosts",
+    "scope_note": "Component test does not prove consumer adoption, live model quality, or all entrypoints.",
+    "command": {
+      "name": "security_budget_lessons_hosts",
+      "argv": [
+        "go",
+        "test",
+        "-count=1",
+        "./foundations/security/injection-detector",
+        "./foundations/security/pre-llm-dlp-gate",
+        "./foundations/governance/budget-guard",
+        "./kits/lesson-transfer",
+        "./cmd/kit-new",
+        "./cmd/agent-hooks"
+      ],
+      "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+      "exit_code": 0,
+      "duration_seconds": 4.55,
+      "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/security_budget_lessons_hosts.log"
+    },
+    "command_log_sha256": "f04dc417ee27f5f0b63b377aab3ac6cc87fa39bbd3ae2eb375805f9a46e743dd"
+  },
+  {
+    "id": "C14",
+    "axis": "component",
+    "acceptance": "Decision cache binds template/content/model and never caches declined answers",
+    "outcome": "pass",
+    "source": "foundations/decision/cached_test.go",
+    "source_sha256": "fab60af1fcc3d14214b1da752846f1663abd2572e68dee21897e8ca727e0936b",
+    "test": "TestCachedKeysByTemplateAndContentHashStampsModel",
+    "group": "decision",
+    "scope_note": "Component test does not prove consumer adoption, live model quality, or all entrypoints.",
+    "command": {
+      "name": "decision",
+      "argv": [
+        "go",
+        "test",
+        "-count=1",
+        "./foundations/decision/..."
+      ],
+      "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+      "exit_code": 0,
+      "duration_seconds": 0.52,
+      "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/decision.log"
+    },
+    "command_log_sha256": "7523ef22b46dbb8a212b041a69682f2834548813ab5ee02875c6eb7d3b8ff294"
+  },
+  {
+    "id": "C15",
+    "axis": "composition",
+    "acceptance": "Composed entrypoint screens/effect-gates every declared path with heldout miss and false-refusal bounds",
+    "outcome": "unknown",
+    "source": "docs/threat-model.md",
+    "source_sha256": "9da4c1bb2318d1c91234b305bea32943fd62daac2708bc6f52b606690585df74",
+    "test": null,
+    "group": null,
+    "scope_note": "Component test does not prove consumer adoption, live model quality, or all entrypoints.",
+    "reason": "Current source lacks a retained end-to-end criterion-specific adoption or measured-quality receipt."
+  },
+  {
+    "id": "C16",
+    "axis": "component",
+    "acceptance": "Adoption refuses a lesson without independent receiver boundary evidence",
+    "outcome": "pass",
+    "source": "kits/lesson-transfer/lesson_test.go",
+    "source_sha256": "8a26c71ba663897fd0eb1d26f0c47452354b96bb35de763646eb1e51c08b9dda",
+    "test": "TestCheckAdoptionRequiresIndependentReceiverBoundaries",
+    "group": "security_budget_lessons_hosts",
+    "scope_note": "Component test does not prove consumer adoption, live model quality, or all entrypoints.",
+    "command": {
+      "name": "security_budget_lessons_hosts",
+      "argv": [
+        "go",
+        "test",
+        "-count=1",
+        "./foundations/security/injection-detector",
+        "./foundations/security/pre-llm-dlp-gate",
+        "./foundations/governance/budget-guard",
+        "./kits/lesson-transfer",
+        "./cmd/kit-new",
+        "./cmd/agent-hooks"
+      ],
+      "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+      "exit_code": 0,
+      "duration_seconds": 4.55,
+      "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/security_budget_lessons_hosts.log"
+    },
+    "command_log_sha256": "f04dc417ee27f5f0b63b377aab3ac6cc87fa39bbd3ae2eb375805f9a46e743dd"
+  },
+  {
+    "id": "C17",
+    "axis": "target-gap",
+    "acceptance": "GitHub issue ingestion retains external ID, cursor, permission and source provenance",
+    "outcome": "fail",
+    "source": "docs/intent/futures.md",
+    "source_sha256": "e53a1973db12668186c708da7195ab864ce53c75e5121d90d19f6478958cede4",
+    "test": null,
+    "group": null,
+    "scope_note": "Component test does not prove consumer adoption, live model quality, or all entrypoints.",
+    "negative_scan": {
+      "name": "github_issue_ingestion",
+      "argv": [
+        "rg",
+        "-n",
+        "api.github.com|/issues|GitHub.*(issue|ingest)|IssueEvent",
+        "foundations",
+        "kits",
+        "runtimes",
+        "cmd"
+      ],
+      "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+      "exit_code": 1,
+      "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/github_issue_ingestion-scan.log"
+    },
+    "scan_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "reason": "Repository path inventory found no GitHub ingestion adapter; no external connector was invoked."
+  },
+  {
+    "id": "C18",
+    "axis": "composition",
+    "acceptance": "Claude, Codex and Antigravity negative live host cases prove declared controls",
+    "outcome": "unknown",
+    "source": "docs/evidence/native-hosts/2026-09-13/README.md",
+    "source_sha256": "2219d476d4b0917bbe7a099a13e9e6c104b4dba25008d9261e50e131a93263d7",
+    "test": null,
+    "group": null,
+    "scope_note": "Component test does not prove consumer adoption, live model quality, or all entrypoints.",
+    "negative_scan": {
+      "name": "antigravity_host",
+      "argv": [
+        "rg",
+        "-n",
+        "Antigravity|antigravity",
+        "cmd/kit-new",
+        "cmd/agent-hooks"
+      ],
+      "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+      "exit_code": 1,
+      "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/antigravity_host-scan.log"
+    },
+    "scan_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "reason": "Historical native-host receipt is bounded to Claude/Codex versions; Codex live and Antigravity controls unproven."
+  }
+]

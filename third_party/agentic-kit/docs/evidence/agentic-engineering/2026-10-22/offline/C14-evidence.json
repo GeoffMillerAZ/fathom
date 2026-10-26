@@ -1,0 +1,25 @@
+{
+  "id": "C14",
+  "axis": "component",
+  "acceptance": "Decision cache binds template/content/model and never caches declined answers",
+  "outcome": "pass",
+  "source": "foundations/decision/cached_test.go",
+  "source_sha256": "fab60af1fcc3d14214b1da752846f1663abd2572e68dee21897e8ca727e0936b",
+  "test": "TestCachedKeysByTemplateAndContentHashStampsModel",
+  "group": "decision",
+  "scope_note": "Component test does not prove consumer adoption, live model quality, or all entrypoints.",
+  "command": {
+    "name": "decision",
+    "argv": [
+      "go",
+      "test",
+      "-count=1",
+      "./foundations/decision/..."
+    ],
+    "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+    "exit_code": 0,
+    "duration_seconds": 0.52,
+    "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/decision.log"
+  },
+  "command_log_sha256": "7523ef22b46dbb8a212b041a69682f2834548813ab5ee02875c6eb7d3b8ff294"
+}

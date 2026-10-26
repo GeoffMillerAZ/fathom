@@ -10,3 +10,5 @@ float helper(float x)
 {
     return saturate(x);
 }
+
+#include "fixture-tone.hlsli"

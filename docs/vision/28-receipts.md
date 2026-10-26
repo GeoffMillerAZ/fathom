@@ -158,7 +158,7 @@ repo-declared, open-vocabulary config (default: `_test.go` is `unit`,
 build tags and directory names as declared). Judgments — is the test
 meaningful, is the mock honest, is the floor right — stay in the review
 kit (it already models fathom as one adapter and parks coverage as
-context) and in test-kit (declared suites, floors, attestations). First
+context) and in the test kit (declared suites, floors, attestations). First
 slice: `fathom tests coverage --profile` and a coverage block on
 `review_diff`/`fathom review --json`, which is the one surface the review
 kit consumes. An obligation of the shape "a change to X needs a test at

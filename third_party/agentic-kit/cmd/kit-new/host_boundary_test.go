@@ -43,7 +43,7 @@ func TestHostGuardRejectsRawParentTraversal(t *testing.T) {
 			f := newHostFixture(t, host)
 			f.install(t)
 			f.write(t, "private/secret", []byte("synthetic"))
-			if err := f.root.MkdirAll("private/sub", 0700); err != nil {
+			if err := f.root.MkdirAll("private/sub", 0o700); err != nil {
 				t.Fatal(err)
 			}
 			if err := os.Symlink(filepath.Join(f.dir, "private/sub"), filepath.Join(f.dir, "alias")); err != nil {
@@ -74,7 +74,7 @@ func TestHostGuardProtectsExecutableAndHardlinks(t *testing.T) {
 			if local {
 				f.write(t, "bin/kit-new", []byte("synthetic executable"))
 				f.binary = filepath.Join(f.dir, "bin/kit-new")
-				if err := os.Chmod(f.binary, 0700); err != nil {
+				if err := os.Chmod(f.binary, 0o700); err != nil {
 					t.Fatal(err)
 				}
 			}

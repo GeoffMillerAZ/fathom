@@ -1,0 +1,21 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Agent|Task",
+        "hooks": [{"type": "command", "command": "{{BIN}} hook --host claude", "timeout": 5}]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Agent|Task|Bash|Read|WebFetch",
+        "hooks": [{"type": "command", "command": "{{BIN}} hook --host claude", "timeout": 5}]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [{"type": "command", "command": "{{BIN}} hook --host claude", "timeout": 5}]
+      }
+    ]
+  }
+}

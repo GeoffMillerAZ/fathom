@@ -37,7 +37,8 @@ Rationale: `agentic-kit/docs/project-intent/operating.md` §1.
   another service's layers (a dry run under-reported one compile 25× and $0.64).
 - Run a judgment-program bench that spends provider or agent budget (ADR-056): J0 and the I3 smoke test
   (about $0.25 of provider spend), the level 10 cell ($90 to $360 of agent spend), any later `ask` or
-  traversal bench, and the served-not-kept bench PR-M2 (ADR-057; about $76 of agent spend, 40 cells).
+  traversal bench, and the served-not-kept bench PR-M2 (ADR-057; about $76 of agent spend, 40 cells),
+  unless a lift under Held covers it.
   Enabling a new decision-port site in a repository's `[decide] sites` is the operator's call.
 - Add a dependency; bump the `agentic-kit` pin (then `task sync-kit`); change anything on
   the compatibility surface (`scope.md`).
@@ -47,19 +48,28 @@ Rationale: `agentic-kit/docs/project-intent/operating.md` §1.
 
 ## Held (owner answers)
 
-- **Bench and model spend: declined for now (owner, 2026-09-29).** No bench and no
-  reading that spends provider or agent budget runs until the owner lifts this hold, and
-  none is asked for meanwhile; an approval given before this date (PR-M2's $76) is
-  suspended. The rows waiting on a spend decision: XM-M2 (`docs/plans/exploration-maps.md`),
-  PR-M2 (`served-not-kept.md`, ADR-057), TR-M1 (`test-run-hook.md`), CA-M2
-  (`carry-across.md`), WS-M2 (`work-signals.md`) and OP-1 (`ambient-fathom.md`), with J0
-  and the level 10 cell above; any other row that spends (the `operator spend` rows among
-  them) is held by the same rule. $0 replays, fixtures and scratch stores are not spend and
-  go on. Lift: the owner says so; record the date and delete this entry. **Lifted in part 2026-10-16 (owner):** up to
-  $10 in all on OpenRouter for Jev, through the decision port only (ADR-073): stage 0 of
-  `docs/plans/agentic-decisions.md` at most $2, stage 1 at most $8 and only when EXP-M4 opens it; the key read through
-  `api_key_file` only and never printed; every reading records its spend. OpenAI Decisions spend, agent-budget
-  benches (stage 2 among them) and every row named above stay held.
+- **Bench and model spend: declined (owner, 2026-09-29), lifted in the parts below.** No
+  bench and no reading that spends provider or agent budget runs unless a lift below covers
+  it; an approval given before 2026-09-29 (PR-M2's $76) is suspended. The rows that waited on
+  a spend decision: XM-M2 (`docs/plans/exploration-maps.md`), PR-M2 (`served-not-kept.md`,
+  ADR-057), TR-M1 (`test-run-hook.md`), CA-M2 (`carry-across.md`), WS-M2 (`work-signals.md`)
+  and OP-1 (`ambient-fathom.md`), with J0 and the level 10 cell above; any other row that
+  spends (the `operator spend` rows among them) follows the same rule. $0 replays, fixtures
+  and scratch stores are not spend and go on. Each lift is recorded with its date; delete
+  this entry when none is left to record.
+  - **2026-10-16 (owner):** up to $10 in all on OpenRouter for Jev, through the decision port
+    only (ADR-073): stage 0 of `docs/plans/agentic-decisions.md` at most $2, stage 1 at most
+    $8 and only when EXP-M4 opens it; the key read through `api_key_file` only and never
+    printed; every reading records its spend.
+  - **2026-10-22 (owner):** decision-model experiments through the port (OpenAI Decisions,
+    Jev and similar cheap classifiers, small agentic workflows of them included) need no
+    ask. Each reading records its spend, keys are read from files and never printed, and
+    every product use stays opt-in with provider `none` as the default.
+  - **2026-10-26 (owner):** agent sessions, experiments and benchmark sessions may spend
+    agent budget, in the order: development sessions that build a program's harness, then
+    its no-claim shakedown, then preregistered runs (a benchmark run before its harness
+    passes its dry runs is waste); every reading records its spend; keys are read from files
+    and never printed.
 
 ## Never
 

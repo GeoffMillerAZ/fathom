@@ -118,7 +118,7 @@ func portGaps(ctx context.Context, st store.Store, service, corpusRoot string, r
 // remedy carries the SAME "keep each implementation's evidence tier"
 // detail the plan row asks for without any change to the fixed
 // GapTarget/GapCertificate wire shape (design doc's own contract for
-// the Review Kit adapter).
+// the review kit adapter).
 func portRemedy(id string, impls []PortImplementation) string {
 	if len(impls) == 0 {
 		// Should not happen (PortGaps never sources a zero-implementer

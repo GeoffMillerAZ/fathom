@@ -1,0 +1,75 @@
+{
+  "observedOn": "2026-10-24",
+  "runs": [
+    {
+      "runId": 40141845632,
+      "url": "https://github.com/GeoffMillerAZ/agentic-kit/actions/runs/40141845632",
+      "sourceRevision": "7299f5d3f36518cf9db60f6124e98eeb32d81311",
+      "observedConclusion": "failure",
+      "qualificationStatus": "unknown",
+      "reason": "hosted_jobs_not_started",
+      "jobs": [
+        {
+          "jobId": 121015049266,
+          "name": "validate",
+          "executedSteps": 0,
+          "observedConclusion": "failure",
+          "qualificationStatus": "unknown"
+        }
+      ]
+    },
+    {
+      "runId": 40141845568,
+      "url": "https://github.com/GeoffMillerAZ/agentic-kit/actions/runs/40141845568",
+      "sourceRevision": "7299f5d3f36518cf9db60f6124e98eeb32d81311",
+      "observedConclusion": "failure",
+      "qualificationStatus": "unknown",
+      "reason": "hosted_jobs_not_started",
+      "jobs": [
+        {
+          "jobId": 121015048919,
+          "name": "files-observation (macos-latest, files-core/1)",
+          "executedSteps": 0,
+          "observedConclusion": "failure",
+          "qualificationStatus": "unknown"
+        },
+        {
+          "jobId": 121015049053,
+          "name": "files-observation (windows-latest, files-core/1)",
+          "executedSteps": 0,
+          "observedConclusion": "failure",
+          "qualificationStatus": "unknown"
+        },
+        {
+          "jobId": 121015049066,
+          "name": "files-observation (ubuntu-latest, files-core/1)",
+          "executedSteps": 0,
+          "observedConclusion": "failure",
+          "qualificationStatus": "unknown"
+        },
+        {
+          "jobId": 121015049091,
+          "name": "files-observation (ubuntu-latest, files-loopback-fixture/1)",
+          "executedSteps": 0,
+          "observedConclusion": "failure",
+          "qualificationStatus": "unknown"
+        },
+        {
+          "jobId": 121015049132,
+          "name": "files-observation (macos-latest, files-loopback-fixture/1)",
+          "executedSteps": 0,
+          "observedConclusion": "failure",
+          "qualificationStatus": "unknown"
+        },
+        {
+          "jobId": 121015049141,
+          "name": "files-observation (windows-latest, files-loopback-fixture/1)",
+          "executedSteps": 0,
+          "observedConclusion": "failure",
+          "qualificationStatus": "unknown"
+        }
+      ]
+    }
+  ],
+  "limitation": "No hosted job executed steps or emitted qualification receipts. These are service startup failures, not test outcomes. Detailed account-service diagnostics are retained privately."
+}

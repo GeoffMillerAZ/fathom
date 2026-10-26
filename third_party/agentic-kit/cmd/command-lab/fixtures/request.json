@@ -1,0 +1,1 @@
+{"version":"command-lab.request/1","id":"sample","kind":"read-range","path":"docs/intent/README.md","maxBytes":1024,"maxResults":1}

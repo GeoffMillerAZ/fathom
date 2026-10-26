@@ -1,0 +1,119 @@
+{
+  "scope": "Current committed copies are labeled against the round-2 commit, not asserted to be exact source snapshots of historical runs. Round-3 Testify binds the harness/helper it executed.",
+  "instruments": [
+    {
+      "path": "calibration/bench/tools/bench_paths.py",
+      "round2_committed_sha256": null,
+      "current_sha256": "3330e0a9a8e405f44417d4c813d6bdc8a2593ee2b9fc6e6d6230b791efa919b6",
+      "status": "new round-3 instrument"
+    },
+    {
+      "path": "calibration/bench/tools/c6_python.py",
+      "round2_committed_sha256": "2e142c9627865ddf9fb83f4a4e11c75ccf6fa688fb0258efb9a1932ed1160e67",
+      "current_sha256": "a17d7a8afb64e1910670d6df9f64442260ed8ba8c9e025d6f03c26adbfdc6dd0",
+      "status": "edited after round-2 trials"
+    },
+    {
+      "path": "calibration/bench/tools/c6_ts.cjs",
+      "round2_committed_sha256": "990f172c5c81a2648e26746a089ebfd169672ec21af20ec9321b33d5c64d65cb",
+      "current_sha256": "990f172c5c81a2648e26746a089ebfd169672ec21af20ec9321b33d5c64d65cb",
+      "status": "unchanged committed copy; execution-source provenance for round 2 not newly established"
+    },
+    {
+      "path": "calibration/bench/tools/c6_ts_project.cjs",
+      "round2_committed_sha256": "ad21333155a9f8499c43eb1b31a890f7b64efa40b2a0ce6a6cb5268777e8fc9e",
+      "current_sha256": "ad21333155a9f8499c43eb1b31a890f7b64efa40b2a0ce6a6cb5268777e8fc9e",
+      "status": "unchanged committed copy; execution-source provenance for round 2 not newly established"
+    },
+    {
+      "path": "calibration/bench/tools/check_c6.py",
+      "round2_committed_sha256": null,
+      "current_sha256": "c9646a6e28e6f609a169bdfbd4784bca6f1271543fb7016ce1d03fa8aa31b68f",
+      "status": "new round-3 instrument"
+    },
+    {
+      "path": "calibration/bench/tools/check_manifests.py",
+      "round2_committed_sha256": null,
+      "current_sha256": "621099528dc8f03d4e6626f856214fe1b4ac56062562cea79cca60dce73fe1c5",
+      "status": "new round-3 instrument"
+    },
+    {
+      "path": "calibration/bench/tools/check_part_a.py",
+      "round2_committed_sha256": null,
+      "current_sha256": "500c4116813ab37bfb15fa4a9de8d5b36fc39f4534f2d09c262dbfe88c95af43",
+      "status": "new round-3 instrument"
+    },
+    {
+      "path": "calibration/bench/tools/check_testify.py",
+      "round2_committed_sha256": null,
+      "current_sha256": "01b6d74a0b75cf890c49187cf42d1159f4a5f449bfbab50cfaaab83fdec7f832",
+      "status": "new round-3 instrument"
+    },
+    {
+      "path": "calibration/bench/tools/inventory.py",
+      "round2_committed_sha256": "17e98868ed6a5e1a8d54dfbe1332c62535fe7e6a03cc6be04c86889c4f8de18f",
+      "current_sha256": "1c11c8003f7d96bc4007b5db8ac90b33ed281612a852bfdbb9f563d3b3e8c714",
+      "status": "edited after round-2 trials"
+    },
+    {
+      "path": "calibration/bench/tools/issue_links.py",
+      "round2_committed_sha256": "7529fcb76016757a88aaabfc2f9c23c8a8ec74a1a4c573e1cd3df295fb1d1124",
+      "current_sha256": "a18a0d0658818445cf9e698676974e77327b89a16d1800008da4dffedac8457f",
+      "status": "edited after round-2 trials"
+    },
+    {
+      "path": "calibration/bench/tools/prepare.py",
+      "round2_committed_sha256": "265f624cafd2ee782dec95ab578331c0f0a774610ae96df3f148e65b81df1de0",
+      "current_sha256": "bfe31383c749f04f014ebe2d42db92c688f42336ee9115dca77593f2e3788584",
+      "status": "edited after round-2 trials"
+    },
+    {
+      "path": "calibration/bench/tools/recount.py",
+      "round2_committed_sha256": "ba7c2ca8a223fec7d491be4064ed03c597d8f0801b04a2c4a8bd00d0ec752cde",
+      "current_sha256": "2f01b55555ca4b689f0d1632e82a8567a0541626c7d77c4280dd1856628a900b",
+      "status": "edited after round-2 trials"
+    },
+    {
+      "path": "calibration/bench/tools/remeasure.py",
+      "round2_committed_sha256": "9cdc1f027108378b3af1887c2d020e1c9f7f9af884edb15232cf58cc1738ee39",
+      "current_sha256": "da1c7d51fc431f8447ab234774667bcd1e2559c6f9216e806f54d7e2eb56a80c",
+      "status": "edited after round-2 trials"
+    },
+    {
+      "path": "calibration/bench/tools/run_suites.py",
+      "round2_committed_sha256": "245414fb13db0755991978ed15e2a6a973c420642e884dd0da9defbddd8f5c52",
+      "current_sha256": "e057132810aa5ab11a9cc21acf8ff0f29cea58d3508d1522c7cc9bc328b82923",
+      "status": "edited after round-2 trials"
+    },
+    {
+      "path": "calibration/bench/tools/static.py",
+      "round2_committed_sha256": "becfea3f5bdd708cfaf60da663acf3de2503ec13f684e970232a4f0f0d8805fe",
+      "current_sha256": "dd834f0152746a8018f64a786536fb880d1a6bb757820dd953d9e8c0cd6e78aa",
+      "status": "edited after round-2 trials"
+    },
+    {
+      "path": "calibration/bench/tools/test_recount.py",
+      "round2_committed_sha256": null,
+      "current_sha256": "3a525e16664c742d430a2d3e3e51ddf9196a7462e29d57e34e1a9dff3bd78e61",
+      "status": "new round-3 instrument"
+    },
+    {
+      "path": "calibration/bench/tools/verify.py",
+      "round2_committed_sha256": "fa9b4a813146cd1b98614139acf3bc8a76a3dd260b37655b46397174bbdabce8",
+      "current_sha256": "fa9b4a813146cd1b98614139acf3bc8a76a3dd260b37655b46397174bbdabce8",
+      "status": "unchanged committed copy; execution-source provenance for round 2 not newly established"
+    },
+    {
+      "path": "calibration/bench/tools/verify_logs.py",
+      "round2_committed_sha256": "2258254b42b5ad97d125ea1d46130a6cc54efeac5899582d682d452a957111b7",
+      "current_sha256": "2258254b42b5ad97d125ea1d46130a6cc54efeac5899582d682d452a957111b7",
+      "status": "unchanged committed copy; execution-source provenance for round 2 not newly established"
+    },
+    {
+      "path": "calibration/bench/tools/verify_r2.py",
+      "round2_committed_sha256": "97f0f006dfb77f18638b521b424a3628fa70f0116c729f53dd4181294e6177a8",
+      "current_sha256": "97f0f006dfb77f18638b521b424a3628fa70f0116c729f53dd4181294e6177a8",
+      "status": "unchanged committed copy; execution-source provenance for round 2 not newly established"
+    }
+  ]
+}

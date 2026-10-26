@@ -905,6 +905,7 @@ type tsDef struct {
 	callable   bool
 	signed     bool // a signature.kinds kind: signed like a callable (LB-F290)
 	titled     bool // the kind's titled (TQ-27): a quoted title, nested under an enclosing titled def of its kind
+	macro      bool // a @definition.macro: the preprocessor has no scope, so no @local.scope drops it
 	name       string
 	start, end uint32
 	line       int
@@ -1257,6 +1258,7 @@ func splitTSMatchesWith(matches []tsengine.Match, kinds map[string]tsDefKind, sr
 			name = strconv.Quote(name)
 		}
 		d := &tsDef{
+			macro:     defSuffix == "macro",
 			kind:      dk.Kind,
 			container: dk.Container,
 			callable:  dk.Callable,
@@ -1306,7 +1308,7 @@ func splitTSMatchesWith(matches []tsengine.Match, kinds map[string]tsDefKind, sr
 	if locals != nil {
 		kept := defs[:0]
 		for _, d := range defs {
-			if !slices.ContainsFunc(locals, func(l span) bool { return d.start >= l.start && d.end <= l.end }) {
+			if d.macro || !slices.ContainsFunc(locals, func(l span) bool { return d.start >= l.start && d.end <= l.end }) {
 				kept = append(kept, d)
 			}
 		}
@@ -1333,7 +1335,9 @@ func splitTSMatchesWith(matches []tsengine.Match, kinds map[string]tsDefKind, sr
 //     never by a list of its names;
 //   - @local.scope, a range that holds locals (a function's body): a
 //     definition inside it is dropped, so a query may name a declaration under
-//     a preprocessor conditional at any depth and still keep only the file's.
+//     a preprocessor conditional at any depth and still keep only the file's;
+//     a @definition.macro is never dropped (a #define inside a body is the
+//     file's: the preprocessor has no scope).
 func tsCaptureOf(m tsengine.Match, name string) (tsengine.Node, bool) {
 	for i := range m.Captures {
 		if m.Captures[i].Name == name {

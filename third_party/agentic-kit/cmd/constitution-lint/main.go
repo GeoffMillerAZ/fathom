@@ -24,7 +24,14 @@
 //     cmd/constitution-lint/org-denylist.txt (waivable in
 //     cmd/constitution-lint/org-agnostic-waivers.txt), and no hardcoded
 //     model-ID literals outside testdata/, cassettes, and provider-adapter
-//     default packages.
+//     default packages. Optional local denylist: if the environment variable
+//     ORG_AGNOSTIC_DENYLIST names a readable file (one fixed string per
+//     line, "#" comment and blank lines ignored, leading spaces significant),
+//     every swept file is also matched case-insensitively against those
+//     strings. A hit fails with file:line and the pattern's line number in
+//     that file, never the pattern text, so the report is safe to publish.
+//     Unset or unreadable: the check behaves as without it. Keep that file
+//     out of any repository.
 //  10. secret-scan: the on-disk tree (excluding .git/, workspace/, tmp/,
 //     and _test.go files; git is not consulted) contains no matches for the
 //     well-known secret shapes in cmd/constitution-lint/secret-patterns.txt.
@@ -1080,7 +1087,7 @@ func isUnderTestdata(rel string) bool {
 //  1. Org-specific tokens: case-sensitive exact substring matches against
 //     the literal tokens in cmd/constitution-lint/org-denylist.txt (one
 //     token per line, # comments). Legitimate lowercase sibling-repo names
-//     (sextant, throughline, growing-gardens-bi) are never denylisted —
+//     (sextant, consumer-a, consumer-b) are never denylisted —
 //     they are required architecture (task downstream-check's three real
 //     consumers), not org leaks.
 //  2. Hardcoded model-ID literals (modelIDPatterns) in Go source, outside
@@ -1121,6 +1128,8 @@ func checkOrgAgnostic(root string) []Finding {
 		return []Finding{{Check: "org-agnostic", Message: fmt.Sprintf("cannot read org-agnostic-waivers.txt: %v", err)}}
 	}
 
+	local := loadLocalDenylist(os.Getenv(localDenylistEnv))
+
 	var findings []Finding
 	hits := 0
 
@@ -1158,6 +1167,15 @@ func checkOrgAgnostic(root string) []Finding {
 				for _, dt := range denylist {
 					if dt.re.MatchString(line) {
 						report(rel, lineNum, fmt.Sprintf("contains denylisted org-specific token %q", dt.tok))
+					}
+				}
+			}
+
+			if len(local) > 0 {
+				lower := strings.ToLower(line)
+				for _, lp := range local {
+					if strings.Contains(lower, lp.lower) {
+						report(rel, lineNum, fmt.Sprintf("contains local-denylist pattern (denylist line %d)", lp.line))
 					}
 				}
 			}
@@ -1201,6 +1219,37 @@ func checkOrgAgnostic(root string) []Finding {
 type denyToken struct {
 	tok string
 	re  *regexp.Regexp
+}
+
+// localDenylistEnv names the optional local denylist file (see check 9).
+const localDenylistEnv = "ORG_AGNOSTIC_DENYLIST"
+
+// localPattern is one fixed string from the local denylist plus its 1-based
+// line number in that file (reported instead of the string itself).
+type localPattern struct {
+	lower string
+	line  int
+}
+
+// loadLocalDenylist reads path; "" or any read error yields no patterns so
+// the check behaves exactly as without a local denylist.
+func loadLocalDenylist(path string) []localPattern {
+	if path == "" {
+		return nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil
+	}
+	var out []localPattern
+	for i, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimRight(line, "\r")
+		if strings.TrimSpace(line) == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		out = append(out, localPattern{lower: strings.ToLower(line), line: i + 1})
+	}
+	return out
 }
 
 func loadDenylist(path string) ([]denyToken, error) {

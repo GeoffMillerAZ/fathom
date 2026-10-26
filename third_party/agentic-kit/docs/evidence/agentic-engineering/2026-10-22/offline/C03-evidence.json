@@ -1,0 +1,25 @@
+{
+  "id": "C03",
+  "axis": "component",
+  "acceptance": "OpenAI Decisions wire maps supported answers/refusals and passes offline conformance",
+  "outcome": "pass",
+  "source": "foundations/decision/openai/conformance_test.go",
+  "source_sha256": "e722a69572047229bb733992753511c1c586c01ee5bc6d57a9a9ab65127eb58a",
+  "test": "TestOpenAIPassesConformance",
+  "group": "decision",
+  "scope_note": "Component test does not prove consumer adoption, live model quality, or all entrypoints.",
+  "command": {
+    "name": "decision",
+    "argv": [
+      "go",
+      "test",
+      "-count=1",
+      "./foundations/decision/..."
+    ],
+    "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+    "exit_code": 0,
+    "duration_seconds": 0.52,
+    "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/decision.log"
+  },
+  "command_log_sha256": "7523ef22b46dbb8a212b041a69682f2834548813ab5ee02875c6eb7d3b8ff294"
+}

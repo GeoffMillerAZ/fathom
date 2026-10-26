@@ -1,0 +1,39 @@
+{
+  "phase": "complete",
+  "goVersion": "go version go1.27.3 darwin/arm64",
+  "sourceManifest": {
+    "files": {
+      "cmd/harnessctl/README.md": "b8bf62d5a14f70bf7ca20230be022eb5081029a1d14833dd0c053abc8b5b3bb6",
+      "cmd/harnessctl/compose.go": "3a0552e39ecfd651f4c6e4593d8f892e6a8b47151509956601988e162a6bf663",
+      "cmd/harnessctl/main.go": "68b4a543422ebfbc71ea75991adf393d8f174e1900a21028aea191691651d61f",
+      "cmd/harnessctl/main_test.go": "e56c37ff74dc94d1206ac96eaec9b1eeda51be32b3aae0c6e751ac7e8473c193",
+      "cmd/harnessctl/multi_test.go": "2be0b69ec6dcc68c6e57725b0adde6cc8bdf51da3fb68499713e1e6ffb763967",
+      "cmd/harnessctl/nonblock_unix.go": "e852157b0109e779c33533c4c23145b96cdd916dcbbccaed398b1d117108e845",
+      "cmd/harnessctl/nonblock_windows.go": "c1edb4d9f5163828139787241c24309b78a6fb6b281990cb2b922aa329395547",
+      "cmd/harnessctl/schema.cue": "12cc7c46b3f35fa435000359abe74f26588da5cde9b3581bb05956adbdef93af",
+      "cmd/harnessctl/testdata/cue-counterexamples.md": "0dfdb17168b4f84a011f333e4ebc713990f30d0b12438c84582c0d876877f76f",
+      "cmd/harnessctl/testdata/generate.go": "eceaf31981589fc92425156fdb78a9a2bf3575e33b78b6ea871ff271f0f5dfb1",
+      "cmd/harnessctl/testdata/valid.cue": "1aea87ed6e5d61782f47c325d60109d057ff13eccec25668a4ead91939226d39",
+      "cmd/harnessctl/types.go": "015381e5a9f407df973fbbadc4cdb66004b94c801f8fb32b5e062e0f518d51e0",
+      "cmd/harnessctl/verify.go": "8c6201752b366681751318c61ac1ba64d40c4c155f3477055beddcbdbb31b471",
+      "cmd/harnessctl/wire.go": "7fb9d01fefe63551b32b1af4b5f7874e1c53fec9c69c2e1ff4f17ecad90f15c4",
+      "go.mod": "0daae43e2a34200303d53e3a627c0c272ff2d89cfbeb5e25dc23a3a7cd82dccd",
+      "internal/jsonwire/unicode.go": "533bdc000aebb78676f7e4cbfa5851c24a4ce280044f02465b5af601e7707443",
+      "internal/jsonwire/unicode_test.go": "50f069612c0dd86920ea4b94e4b423f75b581beb43c701997bec8e2d1dd1813c"
+    },
+    "archiveSHA256": "c789febbf05f81a0867a3952c47cac309620bd81f9fa8af5fcdd0a2851693a07"
+  },
+  "steps": [
+    {
+      "name": "race",
+      "exitCode": 0,
+      "elapsedSeconds": 2.187
+    },
+    {
+      "name": "vet",
+      "exitCode": 0,
+      "elapsedSeconds": 0.212
+    }
+  ],
+  "sourcesUnchanged": true
+}

@@ -1,0 +1,1 @@
+{"type":"function_call","name":"functions.exec","arguments":"{\"code\":\"const x=dynamicCommand;\"}"}

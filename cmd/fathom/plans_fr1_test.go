@@ -11,7 +11,7 @@ import (
 // service-aware plan discovery. Explicit --plan flags always win with no
 // note; a service with no registered path reachable from here falls back
 // to the CURRENT directory loudly — the note names the fallback, so the
-// resume_as_code failure (one repo's plans silently verified against
+// adopter field-report failure (one repo's plans silently verified against
 // another repo's index, 2026-08-08) cannot recur unannounced.
 func TestResolveReadStore(t *testing.T) {
 	// (a) explicit flags win: no discovery, no note.

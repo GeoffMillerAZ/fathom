@@ -61,8 +61,8 @@ verbs.
    of those 5 whole, oversized corpora compiled completely in one call.
    This pass is the most expensive of the three: the 5 forced whole-corpus
    layers are exactly the fleet's biggest (`fathom spec-bindings` at 622
-   claims, `app-kit adr-rules` at 323, `throughline adr-rules` at 242,
-   `fathom adr-rules` at 227, `platform-engineering spec-bindings` at 429 —
+   claims, `app-kit adr-rules` at 323, `svc-a adr-rules` at 242,
+   `fathom adr-rules` at 227, `platform spec-bindings` at 429 —
    the five largest rows in the table below).
 4. **Third pass ($0.75).** The 2 layers still incomplete after pass 2 (a
    partial resume can itself budget-stop again on a large enough remaining
@@ -82,27 +82,27 @@ verbs.
 | app-kit | adr-rules | 323 | $0.958 |
 | app-kit | obligations | 8 | $0.012 |
 | app-kit | spec-bindings | 39 | $0.060 |
-| car-assistant | obligations | 3 | $0.008 |
-| conjure | obligations | 19 | $0.020 |
-| conjure | spec-bindings | 95 | $0.113 |
+| svc-e | obligations | 3 | $0.008 |
+| svc-f | obligations | 19 | $0.020 |
+| svc-f | spec-bindings | 95 | $0.113 |
 | cue-wasm | adr-rules | 6 | $0.021 |
 | fathom | adr-rules | 227 | $0.690 |
 | fathom | obligations | 188 | $0.161 |
 | fathom | spec-bindings | 622 | $0.866 |
-| geoffmiller-cloud | adr-rules | 42 | $0.956 |
-| geoffmiller-cloud | obligations | 12 | $0.015 |
-| geoffmiller-cloud | spec-bindings | 24 | $0.508 |
-| growing-gardens-bi | adr-rules | 7 | $0.035 |
-| growing-gardens-bi | obligations | 3 | $0.003 |
-| imbue | adr-rules | 6 | $0.116 |
-| imbue | obligations | 5 | $0.074 |
-| platform-engineering | obligations | 107 | $0.088 |
-| platform-engineering | spec-bindings | 429 | $0.528 |
-| resume_as_code | obligations | 1 | $0.008 |
-| resume_as_code | spec-bindings | 177 | $0.118 |
+| svc-b | adr-rules | 42 | $0.956 |
+| svc-b | obligations | 12 | $0.015 |
+| svc-b | spec-bindings | 24 | $0.508 |
+| svc-d | adr-rules | 7 | $0.035 |
+| svc-d | obligations | 3 | $0.003 |
+| svc-g | adr-rules | 6 | $0.116 |
+| svc-g | obligations | 5 | $0.074 |
+| platform | obligations | 107 | $0.088 |
+| platform | spec-bindings | 429 | $0.528 |
+| svc-c | obligations | 1 | $0.008 |
+| svc-c | spec-bindings | 177 | $0.118 |
 | study | obligations | 22 | $0.018 |
-| throughline | adr-rules | 242 | $0.805 |
-| throughline | obligations | 3 | $0.015 |
+| svc-a | adr-rules | 242 | $0.805 |
+| svc-a | obligations | 3 | $0.015 |
 | **total** | | **2798** | **$7.05** |
 
 26 rows, 12 services, every row cross-checked against the sum: claims
@@ -126,9 +126,9 @@ verbs.
 ## Reproduce
 
 ```sh
-for svc in agentic-kit app-kit car-assistant conjure cue-wasm fathom \
-           geoffmiller-cloud growing-gardens-bi imbue platform-engineering \
-           resume_as_code study throughline; do
+for svc in agentic-kit app-kit svc-e svc-f cue-wasm fathom \
+           svc-b svc-d svc-g platform \
+           svc-c study svc-a; do
   bin/fathom compile --service "$svc" --dry-run          # price first
   bin/fathom compile --service "$svc" --dry-run=false     # spend
 done

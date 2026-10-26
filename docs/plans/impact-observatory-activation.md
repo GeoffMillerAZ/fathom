@@ -6,7 +6,7 @@
 > observations.md — each a bug spec with a repro). Owner directive
 > 2026-08-07: "implement everything until fully implemented."
 >
-> **Covenant (ADR-0070 class, applies here):** tests assert behavior,
+> **Covenant (test-first class, applies here):** tests assert behavior,
 > never a stub's own constants; completion claims exist only as verified
 > boxes; a diff weakening a gate file is its own justified commit.
 > Discipline: TDD, `task validate` green before every commit, dated

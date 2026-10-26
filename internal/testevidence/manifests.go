@@ -1,7 +1,7 @@
 package testevidence
 
 // manifests.go — LoadManifests (TC-2): loads and schema-validates every
-// tests/*.cue file under a service's root against the mirrored test-kit
+// tests/*.cue file under a service's root against the mirrored test kit
 // #TestManifest definition (schema/testkit/manifest.cue, embedded here
 // byte-identical to that mirror — TestTestKitManifestSchemaMatchesSource
 // proves it).
@@ -30,7 +30,7 @@ var testKitManifestSchema []byte
 // WARNING naming the file, never a hard error: one malformed manifest must
 // not block every other suite's evidence from loading. Manifests are
 // compiled standalone (cuecontext.CompileBytes), not through cue/load's
-// module resolution: test-kit's own manifests are plain data literals with
+// module resolution: the test kit's own manifests are plain data literals with
 // no imports (component/suites fields only — see
 // examples/runnable/tests/cart.cue), so there is nothing a real module
 // load would resolve that CompileBytes cannot, and this way root need not
@@ -84,7 +84,7 @@ func LoadManifestsFromContents(files map[string][]byte) ([]Manifest, []string, e
 	cctx := cuecontext.New()
 	schema := cctx.CompileBytes(testKitManifestSchema)
 	if schema.Err() != nil {
-		return nil, nil, fmt.Errorf("compile embedded test-kit manifest schema: %w", schema.Err())
+		return nil, nil, fmt.Errorf("compile embedded test kit manifest schema: %w", schema.Err())
 	}
 	def := schema.LookupPath(cue.ParsePath("#TestManifest"))
 	if def.Err() != nil {
@@ -119,7 +119,7 @@ func LoadManifestsFromContents(files map[string][]byte) ([]Manifest, []string, e
 // (component, and per suite: class/tier/port) from a validated,
 // concrete #TestManifest value — not a full Decode into a matching Go
 // struct, since most #Suite fields (inputs, runner, needs, runtime,
-// flake) are executor concerns test-kit itself never inspects either
+// flake) are executor concerns the test kit itself never inspects either
 // (schema/testkit/manifest.cue's own doc comment on #Suite.inputs).
 func decodeManifest(v cue.Value, file string) (Manifest, error) {
 	component, err := v.LookupPath(cue.ParsePath("component")).String()
@@ -156,7 +156,7 @@ func decodeManifest(v cue.Value, file string) (Manifest, error) {
 }
 
 // decodeCertifies decodes a validated, concrete `certifies: [...#Certifies]`
-// list (TC-17, landed upstream in test-kit and re-mirrored at
+// list (TC-17, landed upstream in the test kit and re-mirrored at
 // schema/testkit/manifest.cue) into the CertifyRef slice
 // IngestTestEvidence writes to test_suites.declared_certifies_json for
 // internal/certify's CompileCertifications to join against the index.
