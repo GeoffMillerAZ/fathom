@@ -9,8 +9,9 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
-	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"gopkg.in/yaml.v3"
 )
@@ -43,7 +44,7 @@ type ConcernDelta struct {
 	HeadCommit  string          `json:"head_commit"`
 }
 
-// ConcernSkipped names a file excluded because its YAML could not decode.
+// ConcernSkipped names a file excluded by ingest dispatch or YAML decoding.
 // Commit identifies which side was unreadable, even when both sides failed.
 type ConcernSkipped struct {
 	Path   string `json:"path"`
@@ -87,16 +88,6 @@ func ConcernDeltas(ctx context.Context, in Input) (ConcernDeltaReport, error) {
 		basis.State = "exact"
 	}
 	rep := ConcernDeltaReport{Schema: "fathom.concern-deltas/v1", Service: in.Service, Base: in.Base, Head: head, Basis: basis, Deltas: []ConcernDelta{}, Skipped: []ConcernSkipped{}}
-	obs, err := in.Store.QueryObservations(ctx, in.Service, "")
-	if err != nil {
-		return ConcernDeltaReport{}, err
-	}
-	byFile := map[string][]core.SymbolNode{}
-	for _, o := range obs {
-		if o.SourceKind == core.KindK8sFact {
-			byFile[o.SourceRef] = append(byFile[o.SourceRef], core.SymbolNode{Name: o.Symbol, Kind: o.SourceKind, FilePath: o.SourceRef, Line: o.Line, Signature: o.Claim})
-		}
-	}
 	// Include the committed range even if a dirty edit happens to restore Base.
 	changed, err := gitro.Output(ctx, in.Root, "diff", "--no-renames", "--relative", "--name-only", "-z", in.Base, head, "--")
 	if err != nil {
@@ -116,15 +107,68 @@ func ConcernDeltas(ctx context.Context, in Input) (ConcernDeltaReport, error) {
 		sorted = append(sorted, p)
 	}
 	sort.Strings(sorted)
-	x := extractor.NewK8sExtractor()
+	// K8sExtractor labels packages by file stem. Query just the touched
+	// packages, then retain only the requested sources (RT-81/RT-85).
+	packages := map[string]bool{}
+	for _, p := range sorted {
+		switch filepath.Ext(p) {
+		case ".yaml", ".yml":
+			packages[strings.TrimSuffix(filepath.Base(p), filepath.Ext(p))] = true
+		}
+	}
+	pkgs := make([]string, 0, len(packages))
+	for pkg := range packages {
+		pkgs = append(pkgs, pkg)
+	}
+	sort.Strings(pkgs)
+	obs, err := in.Store.PackageObservations(ctx, in.Service, pkgs)
+	if err != nil {
+		return ConcernDeltaReport{}, err
+	}
+	byFile := map[string][]core.SymbolNode{}
+	headK8s := map[string]bool{}
+	for _, o := range obs {
+		if !paths[o.SourceRef] {
+			continue
+		}
+		if o.ToolKind == string(fusion.ToolK8sManifest) || o.ToolKind == string(fusion.ToolK8sCRD) {
+			headK8s[o.SourceRef] = true
+			if o.SourceKind == core.KindK8sFact {
+				byFile[o.SourceRef] = append(byFile[o.SourceRef], core.SymbolNode{Name: o.Symbol, Kind: o.SourceKind, FilePath: o.SourceRef, Line: o.Line, Signature: o.Claim})
+			}
+		}
+	}
+	// Sibling classification needs only the base tree's path metadata, never
+	// unrelated file content (notably Chart.yaml ancestors for Helm templates).
+	basePaths, err := gitro.Output(ctx, in.Root, "ls-tree", "-r", "--name-only", "-z", in.Base)
+	if err != nil {
+		return ConcernDeltaReport{}, err
+	}
+	projectIgnore, _, err := in.BaseFile(connector.IgnoreFileName)
+	if err != nil {
+		return ConcernDeltaReport{}, err
+	}
+	projectConfig, _, err := in.BaseFile(".fathom/config.toml")
+	if err != nil {
+		return ConcernDeltaReport{}, err
+	}
+	scopedPatterns, err := connector.ScopedIgnorePatterns(in.Service)
+	if err != nil {
+		return ConcernDeltaReport{}, err
+	}
+	basePolicy := connector.NewBlobCorpusPolicy(projectIgnore, projectConfig, scopedPatterns)
+	var refs []core.SourceRef
+	for _, p := range strings.Split(string(basePaths), "\x00") {
+		if p != "" && basePolicy.Exclusion(p) == "" {
+			refs = append(refs, core.SourceRef{Service: in.Service, Path: p})
+		}
+	}
+	x := fusion.New(nil, nil, fusion.Config{})
+	defer x.Close()
+	var allBase, allHead []core.SymbolNode
 	for _, p := range sorted {
 		if err := ctx.Err(); err != nil {
 			return ConcernDeltaReport{}, err
-		}
-		switch strings.ToLower(filepath.Ext(p)) {
-		case ".yaml", ".yml", ".json":
-		default:
-			continue
 		}
 		base, baseOK, err := in.BaseFile(p)
 		if err != nil {
@@ -138,15 +182,6 @@ func ConcernDeltas(ctx context.Context, in Input) (ConcernDeltaReport, error) {
 		// let it downgrade the next run's basis merely by being present.
 		if !baseOK && !headOK && len(byFile[p]) == 0 {
 			continue
-		}
-		// Status is scoped to files we read, so unrelated dirty files do not
-		// downgrade an otherwise exact manifest comparison. Includes staged edits.
-		dirty, err := gitro.Output(ctx, in.Root, "status", "--porcelain", "--untracked-files=all", "--", p)
-		if err != nil {
-			return ConcernDeltaReport{}, err
-		}
-		if len(dirty) > 0 {
-			rep.Basis.State = "uncommitted"
 		}
 		skip := false
 		for _, side := range []struct {
@@ -162,61 +197,105 @@ func ConcernDeltas(ctx context.Context, in Input) (ConcernDeltaReport, error) {
 		if skip {
 			continue
 		}
+		reason, excluded, err := connector.ExcludedFromCorpus(in.Root, in.Service, p)
+		if err != nil {
+			return ConcernDeltaReport{}, err
+		}
+		if !excluded {
+			reason = ""
+		}
 		var before []core.SymbolNode
 		if baseOK {
-			before, err = x.Extract(in.Service, p, base)
+			extracted, err := x.ExtractKubernetesBlob(in.Service, refs, p, base, basePolicy)
 			if err != nil {
 				return ConcernDeltaReport{}, err
 			}
+			if extracted.Skipped != "" {
+				rep.Skipped = append(rep.Skipped, ConcernSkipped{Path: p, Commit: in.Base, Reason: extracted.Skipped})
+				skip = true
+			}
+			before = extracted.Nodes
 		}
-		baseFacts, headFacts := concernFacts(before), concernFacts(byFile[p])
-		keys := map[string]bool{}
-		for k := range baseFacts {
-			keys[k] = true
+		if headOK && (reason != "" || !headK8s[p]) {
+			if reason == "" {
+				reason = "stored observations do not identify Kubernetes (tool_kind k8s or k8s-crd required)"
+			}
+			rep.Skipped = append(rep.Skipped, ConcernSkipped{Path: p, Commit: head, Reason: reason})
+			skip = true
 		}
-		for k := range headFacts {
-			keys[k] = true
+		if skip {
+			continue
 		}
-		for k := range keys {
-			b, bok := baseFacts[k]
-			h, hok := headFacts[k]
-			if bok && hok && b.Signature == h.Signature {
-				continue
-			}
-			n := h
-			if !hok {
-				n = b
-			}
-			subject, key, _ := strings.Cut(n.Name, "#")
-			parts := strings.Split(subject, "/")
-			if len(parts) < 2 {
-				return ConcernDeltaReport{}, fmt.Errorf("invalid K8sFact subject %q", subject)
-			}
-			namespace := ""
-			if len(parts) > 2 {
-				namespace = parts[1]
-			}
-			d := ConcernDelta{Workload: parts[0] + "/" + parts[len(parts)-1], Namespace: namespace, Key: key, FactKind: core.KindK8sFact, FactVersion: "v1", Change: "changed", HeadCommit: head}
-			fields := strings.Split(key, ".")
-			if len(fields) > 2 && (fields[0] == "containers" || fields[0] == "initContainers") {
-				d.Container = fields[1]
-			}
-			if bok {
-				v := b.Signature
-				d.Before = &v
-				d.BaseAnchor = fmt.Sprintf("%s:%d", p, b.Line)
-			} else {
-				d.Change = "added"
-			}
-			if hok {
-				v := h.Signature
-				d.After = &v
-				d.HeadAnchor = fmt.Sprintf("%s:%d", p, h.Line)
-			} else {
-				d.Change = "removed"
-			}
-			rep.Deltas = append(rep.Deltas, d)
+		// Status is scoped to files we read, so unrelated dirty files do not
+		// downgrade an otherwise exact manifest comparison. Includes staged edits.
+		dirty, err := gitro.Output(ctx, in.Root, "status", "--porcelain", "--untracked-files=all", "--", p)
+		if err != nil {
+			return ConcernDeltaReport{}, err
 		}
+		if len(dirty) > 0 {
+			rep.Basis.State = "uncommitted"
+		}
+		// Metadata alone cannot prove an index represents a commit: ingest may
+		// have read a dirty worktree that was subsequently restored. The
+		// epoch-salted digest also refuses values from an older extractor.
+		fingerprint, stored, err := in.Store.Fingerprint(ctx, in.Service, p)
+		if err != nil {
+			return ConcernDeltaReport{}, err
+		}
+		if (headOK && (!stored || fingerprint != fusion.FingerprintHash(committed))) || (!headOK && stored) {
+			rep.Basis.State = "uncommitted"
+		}
+		allBase = append(allBase, before...)
+		allHead = append(allHead, byFile[p]...)
+	}
+	duplicates := concernDuplicateFacts(allBase, allHead)
+	baseFacts, headFacts := concernFacts(allBase, duplicates), concernFacts(allHead, duplicates)
+	keys := map[string]bool{}
+	for k := range baseFacts {
+		keys[k] = true
+	}
+	for k := range headFacts {
+		keys[k] = true
+	}
+	for k := range keys {
+		b, bok := baseFacts[k]
+		h, hok := headFacts[k]
+		if bok && hok && b.Signature == h.Signature {
+			continue
+		}
+		n := h
+		if !hok {
+			n = b
+		}
+		subject, key, _ := strings.Cut(n.Name, "#")
+		parts := strings.Split(subject, "/")
+		if len(parts) < 2 {
+			return ConcernDeltaReport{}, fmt.Errorf("invalid K8sFact subject %q", subject)
+		}
+		namespace := ""
+		if len(parts) > 2 {
+			namespace = parts[1]
+		}
+		d := ConcernDelta{Workload: parts[0] + "/" + parts[len(parts)-1], Namespace: namespace, Key: key, FactKind: core.KindK8sFact, FactVersion: "v1", Change: "changed", HeadCommit: head}
+		fields := strings.Split(key, ".")
+		if len(fields) > 2 && (fields[0] == "containers" || fields[0] == "initContainers") {
+			d.Container = fields[1]
+		}
+		if bok {
+			v := b.Signature
+			d.Before = &v
+			d.BaseAnchor = fmt.Sprintf("%s:%d", b.FilePath, b.Line)
+		} else {
+			d.Change = "added"
+		}
+		if hok {
+			v := h.Signature
+			d.After = &v
+			d.HeadAnchor = fmt.Sprintf("%s:%d", h.FilePath, h.Line)
+		} else {
+			d.Change = "removed"
+		}
+		rep.Deltas = append(rep.Deltas, d)
 	}
 	for i := range rep.Deltas {
 		rep.Deltas[i].Basis = rep.Basis
@@ -242,11 +321,34 @@ func ConcernDeltas(ctx context.Context, in Input) (ConcernDeltaReport, error) {
 	return rep, nil
 }
 
-func concernFacts(nodes []core.SymbolNode) map[string]core.SymbolNode {
+// Duplicate names use paths on BOTH sides if either side has more than one
+// file for that name. Otherwise moves and document splits keep fact identity.
+func concernDuplicateFacts(sides ...[]core.SymbolNode) map[string]bool {
+	duplicates := map[string]bool{}
+	for _, nodes := range sides {
+		files := map[string]string{}
+		for _, n := range nodes {
+			if n.Kind != core.KindK8sFact {
+				continue
+			}
+			if p, ok := files[n.Name]; ok && p != n.FilePath {
+				duplicates[n.Name] = true
+			}
+			files[n.Name] = n.FilePath
+		}
+	}
+	return duplicates
+}
+
+func concernFacts(nodes []core.SymbolNode, duplicates map[string]bool) map[string]core.SymbolNode {
 	out := map[string]core.SymbolNode{}
 	for _, n := range nodes {
 		if n.Kind == core.KindK8sFact {
-			out[n.Name] = n
+			key := n.Name
+			if duplicates[key] {
+				key = n.FilePath + "\x00" + key
+			}
+			out[key] = n
 		}
 	}
 	return out

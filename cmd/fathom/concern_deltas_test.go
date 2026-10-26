@@ -75,9 +75,14 @@ func TestCmdConserveConcernDeltas(t *testing.T) {
 			index := head
 			switch mode {
 			case "differs", "dirty-skew":
-				// The clean HEAD differs from the stored manifest. Values must
-				// still come from the index, with the skew named in the basis.
-				repo.writePlan("deploy/api.yaml", strings.Replace(headText, "replicas: 1", "replicas: 9", 1))
+				// The clean HEAD differs from the indexed commit. Values still
+				// come from the index, with content skew taking precedence.
+				if mode == "dirty-skew" {
+					repo.writePlan("deploy/api.yaml", strings.Replace(headText, "replicas: 1", "replicas: 9", 1))
+				} else {
+					// A metadata-only skew can still have exact file bytes.
+					repo.writePlan("notes.txt", "later\n")
+				}
 				repo.commitAll("later")
 				head = headSHAOf(t, repo.root)
 				if mode == "dirty-skew" {
@@ -152,12 +157,15 @@ func TestCmdConserveConcernDeltas(t *testing.T) {
 					t.Fatalf("Helm deltas: %+v", deltas)
 				}
 				skipped := doc["skipped"].([]any)
-				if len(skipped) != 2 {
+				if len(skipped) != 4 {
 					t.Fatalf("skipped: %+v", skipped)
 				}
 				var commits []string
 				for _, raw := range skipped {
 					s := raw.(map[string]any)
+					if s["path"] == "notes.txt" {
+						continue
+					}
 					assertConcernKeys(t, s, "commit,path,reason")
 					if s["path"] != "deploy/api.yaml" || s["reason"] == "" {
 						t.Fatalf("skipped provenance: %+v", s)
@@ -171,7 +179,7 @@ func TestCmdConserveConcernDeltas(t *testing.T) {
 				}
 				return
 			}
-			if len(doc["skipped"].([]any)) != 0 {
+			if len(doc["skipped"].([]any)) != 2 {
 				t.Fatalf("skipped: %+v", doc["skipped"])
 			}
 			var shapes []string
@@ -258,7 +266,7 @@ func TestCmdConserveConcernDeltas(t *testing.T) {
 					t.Fatalf("shapes = %v, want %v", shapes, want)
 				}
 			}
-			if strings.Contains(string(data), "withheld-sentinel") || strings.Contains(string(data), "notes.txt") || (mode != "added" && mode != "deleted" && strings.Contains(string(data), "containers.web.resources.requests.cpu")) {
+			if strings.Contains(string(data), "withheld-sentinel") || (mode != "added" && mode != "deleted" && strings.Contains(string(data), "containers.web.resources.requests.cpu")) {
 				t.Fatalf("unchanged/withheld/non-manifest leaked: %s", data)
 			}
 			var report map[string]any
