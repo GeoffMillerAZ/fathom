@@ -22,6 +22,28 @@ def disk_floor():
         raise ValueError('native preparation requires at least 20 GiB free')
 
 
+def native_ranges(rows, central_offset):
+    ordered = sorted(rows, key=lambda row: row['offset'])
+    if len({row['offset'] for row in ordered}) != len(ordered):
+        raise ValueError('duplicate local ZIP offsets')
+    groups = []
+    for index, row in enumerate(ordered):
+        if not row['name'].startswith(PREFIX):
+            continue
+        end = ordered[index + 1]['offset'] if index + 1 < len(ordered) else central_offset
+        overhead = end - row['offset'] - row['compressed']
+        if overhead < 30 or overhead > 30 + len(row['name'].encode()) + 65535 + 24:
+            raise ValueError('native ZIP entry boundary is invalid')
+        if groups and groups[-1]['end'] == row['offset']:
+            groups[-1]['end'] = end
+            groups[-1]['rows'].append(row)
+        else:
+            groups.append(dict(start=row['offset'], end=end, rows=[row]))
+    if sum(group['end'] - group['start'] for group in groups) > MAX_SPAN_BYTES:
+        raise ValueError('native compressed span exceeds budget')
+    return groups
+
+
 def unpack_span(data, start, rows, destination):
     if not rows or len(rows) > MAX_FILES:
         raise ValueError('native payload file count exceeds budget')
@@ -40,17 +62,18 @@ def unpack_span(data, start, rows, destination):
                 mode & 0o170000 == 0o120000 or relative.casefold() in folded):
             raise ValueError('unsafe or duplicate native payload path')
         folded.add(relative.casefold())
-        offset = row['offset'] - start
-        if offset < 0 or offset + 30 > len(data):
+        local = data.get(row['offset']) if isinstance(data, dict) else data
+        offset = 0 if isinstance(data, dict) else row['offset'] - start
+        if local is None or offset < 0 or offset + 30 > len(local):
             raise ValueError('native local header outside bounded span')
-        fields = struct.unpack_from('<4s5H3I2H', data, offset)
+        fields = struct.unpack_from('<4s5H3I2H', local, offset)
         begin = offset + 30 + fields[9] + fields[10]
         end = begin + row['compressed']
         if (fields[0] != b'PK\x03\x04' or fields[3] != row['method'] or row['flags'] & 1 or
-                row['method'] not in (0, 8) or end > len(data) or
-                data[offset + 30:offset + 30 + fields[9]].decode('utf8') != name):
+                row['method'] not in (0, 8) or end > len(local) or
+                local[offset + 30:offset + 30 + fields[9]].decode('utf8') != name):
             raise ValueError('native local/central ZIP metadata mismatch')
-        raw = data[begin:end]
+        raw = local[begin:end]
         if row['method'] == 8:
             inflater = zlib.decompressobj(-15)
             value = inflater.decompress(raw, row['uncompressed'] + 1)
@@ -89,26 +112,29 @@ def prepare(cache):
     raw = fetch_range(directory['offset'], directory['bytes'])
     if hashlib.sha256(raw).hexdigest() != directory['sha256']:
         raise ValueError('native archive directory identity mismatch')
-    rows = [row for row in directory_rows(raw, directory['entries']) if row['name'].startswith(PREFIX)]
+    all_rows = directory_rows(raw, directory['entries'])
+    rows = [row for row in all_rows if row['name'].startswith(PREFIX)]
     rows.sort(key=lambda row: row['offset'])
     if len(rows) != 455:
         raise ValueError('native architecture entry population changed')
-    last = rows[-1]
-    header = struct.unpack('<4s5H3I2H', fetch_range(last['offset'], 30))
-    start = rows[0]['offset']
-    end = last['offset'] + 30 + header[9] + header[10] + last['compressed']
-    if end - start > MAX_SPAN_BYTES:
-        raise ValueError('native compressed span exceeds budget')
-    parts = []
-    for offset in range(start, end, LIMIT):
-        disk_floor()
-        parts.append(fetch_range(offset, min(LIMIT, end - offset)))
+    groups = native_ranges(all_rows, directory['offset'])
+    entries = {}
+    for group in groups:
+        parts = []
+        for offset in range(group['start'], group['end'], LIMIT):
+            disk_floor()
+            parts.append(fetch_range(offset, min(LIMIT, group['end'] - offset)))
+        block = b''.join(parts)
+        for index, row in enumerate(group['rows']):
+            end = group['rows'][index + 1]['offset'] if index + 1 < len(group['rows']) else group['end']
+            entries[row['offset']] = block[row['offset'] - group['start']:end - group['start']]
     try:
-        receipt = unpack_span(b''.join(parts), start, rows, destination)
+        receipt = unpack_span(entries, 0, rows, destination)
     except Exception:
         shutil.rmtree(destination, ignore_errors=True)
         raise
     receipt.update(version=pin['version'], archive_directory_sha256=directory['sha256'],
+                   fetched_native_ranges=len(groups), fetched_native_bytes=sum(g['end'] - g['start'] for g in groups),
                    kind='native preparation only; not executed', native_executed=False)
     (cache / 'preparation-receipt.json').write_text(json.dumps(receipt, indent=2) + '\n')
     return receipt

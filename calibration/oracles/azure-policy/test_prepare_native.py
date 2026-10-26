@@ -3,7 +3,7 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
-from prepare_native import unpack_span, PREFIX, MAX_FILES, MAX_SINGLE_BYTES, MAX_TOTAL_BYTES
+from prepare_native import unpack_span, native_ranges, PREFIX, MAX_FILES, MAX_SINGLE_BYTES, MAX_TOTAL_BYTES
 
 
 class NativePreparationTest(unittest.TestCase):
@@ -27,6 +27,24 @@ class NativePreparationTest(unittest.TestCase):
             self.assertEqual(50, receipt['bytes'])
             self.assertTrue((out / 'PolicyLanguageServer').is_file())
             self.assertEqual(64, len(receipt['manifest_sha256']))
+
+    def test_interleaved_architecture_is_never_downloaded_or_extracted(self):
+        data, rows = self.archive([PREFIX + 'PolicyLanguageServer',
+                                   'extension/out/artifacts/linux-x64/foreign.dll',
+                                   PREFIX + 'runtime.dll'])
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+            groups = native_ranges(rows, archive.start_dir)
+        self.assertEqual(2, len(groups))
+        self.assertEqual(rows[1]['offset'], groups[0]['end'])
+        entries = {}
+        for group in groups:
+            for row in group['rows']:
+                entries[row['offset']] = data[row['offset']:group['end']]
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory) / 'payload'
+            receipt = unpack_span(entries, 0, [rows[0], rows[2]], out)
+            self.assertEqual(2, receipt['files'])
+            self.assertFalse((out / 'foreign.dll').exists())
 
     def test_bad_crc_or_escaping_path_refuses_before_writing_any_file(self):
         for names in [[PREFIX + 'PolicyLanguageServer', PREFIX + '../escape'],
