@@ -1,0 +1,208 @@
+# Draft subject; schema/bench is not implemented at this revision.
+name: "encode-starlette"
+url: "https://github.com/encode/starlette"
+ref: "main"
+sha: "8aa828ceaff764a2e57932fb42fdf105a47c4c83"
+licence: "BSD-3-Clause"
+subpath: "."
+bench:
+  toolchain:
+    container_image: "python@sha256:14a4933e6cef421424f7a66d89a3f4eafcbd0d90e0a822251f298e05132dc735"
+    platform: "linux/arm64"
+    cpu_limit: 4
+    lockfile_sha256:
+      uv.lock: "796d45e1e449f7e70e9290fbc1bfd9394d9182fdaf66e5059f42f8b1df7196ed"
+    dependency_manifest_sha256:
+      pyproject.toml: "6bfda59d023e472bc91a064860c6b4ee20099d3056a5eab38fbb52e678fec324"
+    python: "3.12.15"
+    pip: "25.0.1"
+    resolved_dependencies:
+      - "anyio==4.15.1"
+      - "attrs==26.1.0"
+      - "backports.zstd==1.8.0"
+      - "blockbuster==1.5.29"
+      - "certifi==2026.10.23"
+      - "forbiddenfruit==0.1.4"
+      - "h11==0.16.0"
+      - "httpcore==1.0.9"
+      - "httpcore2==2.16.0"
+      - "httpx==0.28.1"
+      - "httpx2==2.16.0"
+      - "idna==3.20"
+      - "importlib_metadata==10.1.0"
+      - "iniconfig==2.3.1"
+      - "itsdangerous==2.2.0"
+      - "Jinja2==3.1.6"
+      - "markdown-it-py==4.2.0"
+      - "MarkupSafe==3.0.4"
+      - "mdurl==0.1.2"
+      - "opentelemetry-api==1.45.1"
+      - "opentelemetry-sdk==1.45.1"
+      - "opentelemetry-semantic-conventions==0.66b1"
+      - "outcome==1.3.0.post0"
+      - "packaging==26.3"
+      - "pluggy==1.7.0"
+      - "Pygments==2.21.0"
+      - "pytest==9.1.1"
+      - "pytest-codspeed==5.0.3"
+      - "python-multipart==0.0.32"
+      - "PyYAML==6.0.3"
+      - "rich==15.0.0"
+      - "sniffio==1.3.1"
+      - "sortedcontainers==2.4.0"
+      - "trio==0.34.0"
+      - "truststore==0.10.5"
+      - "typing_extensions==4.16.0"
+      - "zipp==4.1.2"
+    resolved_dependencies_sha256: "7438c7397a51568f79902a056df3d8c02ab74a73fbfc04d08b2473a18e84700f"
+  setup:
+    - "python --version && python -m venv ${venv} && ${venv}/bin/pip install -e . pytest pytest-codspeed anyio[trio] httpx httpx2[zstd] blockbuster opentelemetry-sdk importlib-metadata python-multipart jinja2 itsdangerous pyyaml typing_extensions && ${venv}/bin/pip freeze > ${resolved_requirements}"
+  test: "${venv}/bin/python -m pytest -q -o cache_dir=${pytest_cache} --basetemp=${pytest_temp}"
+  suite_seconds:
+    - 15.016
+    - 14.93
+    - 15.263
+  flake_runs: 3
+  l0_reading: null
+  split: "unassigned"
+  task_sources: []
+  contamination:
+    created_at: "2018-06-25T13:16:21Z"
+    age_days: 3044
+    stars_observed: 12684
+    popularity_band: "over 10k"
+    fresh_after: null
+    metadata_source: "https://api.github.com/repos/encode/starlette"
+    observed_on: "2026-10-25"
+  draft: true
+  evidence:
+    measured_on: "2026-10-25"
+    primary_language: "Python"
+    licence_file: "LICENSE.md"
+    licence_sha256: "dcb95677a02240243187e964f941847d19b17821cf99e5afae684fab328c19bf"
+    primary_language_lines:
+      extensions:
+        ".py":
+          files: 84
+          lines: 22681
+      total: 22681
+      method: "tracked files at sha, including tests, fixtures and generated files; LF count plus unterminated final line"
+    size_band: "5k-25k"
+    suite:
+      network: "Docker --network=none; no external route; direct HTTPS probe exits 7"
+      timing: "host monotonic wall time, including container startup; one suite at a time"
+      warmup:
+        seconds: 18.004
+        exit_code: 0
+      runs:
+        -
+          seconds: 15.016
+          exit_code: 0
+          log_sha256: "cd6875def3a3a30688d2f128cd86dbfde033e95fdc0e1ebed63dbcf2712e145d"
+        -
+          seconds: 14.93
+          exit_code: 0
+          log_sha256: "89f33732e000a01b332615e62aeec5aad79d9a561a8b1b3835bb5e1f4c046fde"
+        -
+          seconds: 15.263
+          exit_code: 0
+          log_sha256: "b9ffd2408f39223519ec8a4730c4dd9064e1f1427c86d68c336de7990c120c21"
+      environment:
+        PIP_NO_INDEX: "1"
+      process_local_git_safe_directory: true
+    fix_yield_estimate:
+      since: "2024-10-25T00:00:00Z"
+      until: "2026-10-26T00:00:00Z"
+      test_and_non_test_commits: 135
+      fix_message_subset: 10
+      primary_language_source_commits: 130
+      primary_language_source_fix_message_subset: 9
+      replayed: 0
+    issue_link_examples:
+      -
+        sha: "9eea41ad3c26ad21b9bdfe4578c1cdad6c9b9ac2"
+        closing_references: []
+        references:
+          - "3130"
+        test_paths:
+          - "tests/test_testclient.py"
+        source_paths:
+          - "starlette/testclient.py"
+      -
+        sha: "37309255b4c1b9c381a2d24a1eaf83100984a16a"
+        closing_references: []
+        references:
+          - "3193"
+        test_paths:
+          - "tests/test_staticfiles.py"
+        source_paths:
+          - "starlette/staticfiles.py"
+      -
+        sha: "1a2f97293966f3e6549e4da3d00d526915b03b3b"
+        closing_references: []
+        references:
+          - "3317"
+        test_paths:
+          - "tests/test_datastructures.py"
+        source_paths:
+          - "starlette/datastructures.py"
+    fan_in:
+      method: "Python ast import and re-export resolution; direct calls only"
+      units: "distinct static call sites and caller packages/modules, including tests; not distinct caller functions"
+      qualifying_symbols:
+        -
+          symbol: "starlette.responses.PlainTextResponse"
+          call_sites: 103
+          caller_modules: 23
+          module_examples:
+            - "benchmarks.routing_benchmark"
+            - "starlette.endpoints"
+            - "starlette.middleware.authentication"
+          site_examples:
+            - "benchmarks/routing_benchmark.py:13:12"
+            - "starlette/endpoints.py:56:16"
+            - "starlette/middleware/authentication.py:52:16"
+            - "starlette/middleware/body_limit.py:119:28"
+            - "starlette/middleware/body_limit.py:93:24"
+            - "starlette/middleware/cors.py:143:20"
+        -
+          symbol: "starlette.routing.Route"
+          call_sites: 258
+          caller_modules: 22
+          module_examples:
+            - "benchmarks.response_benchmark"
+            - "benchmarks.routing_benchmark"
+            - "starlette.routing"
+          site_examples:
+            - "benchmarks/response_benchmark.py:44:28"
+            - "benchmarks/response_benchmark.py:45:50"
+            - "benchmarks/routing_benchmark.py:21:17"
+            - "benchmarks/routing_benchmark.py:22:17"
+            - "benchmarks/routing_benchmark.py:23:17"
+            - "benchmarks/routing_benchmark.py:24:17"
+        -
+          symbol: "starlette.applications.Starlette"
+          call_sites: 184
+          caller_modules: 19
+          module_examples:
+            - "benchmarks.response_benchmark"
+            - "tests.middleware.test_base"
+            - "tests.middleware.test_body_limit"
+          site_examples:
+            - "benchmarks/response_benchmark.py:45:32"
+            - "tests/middleware/test_base.py:1049:20"
+            - "tests/middleware/test_base.py:1096:11"
+            - "tests/middleware/test_base.py:1273:11"
+            - "tests/middleware/test_base.py:1326:11"
+            - "tests/middleware/test_base.py:1374:11"
+    independence:
+      not_fathom: true
+      organization: "encode"
+      subjects_from_organization: 1
+      fleet_index_exclusion: "unverified"
+    reading: "docs/bench/readings/bench-prep/candidates.md"
+    limitations:
+      - "Draft candidate only: C4 unmeasured; C5 fix replay and post-cutoff yield pending; split not assigned."
+      - "C3 measured on Linux arm64 with four CPUs; native macOS and 12-core runs unmeasured."
+      - "C7 fleet-index exclusion unverified because the service registry is unavailable."
+      - "Recorded lock hashes identify the upstream files; setup uses the listed resolved venv dependencies, not a full lockfile sync."

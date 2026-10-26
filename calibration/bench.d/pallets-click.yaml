@@ -1,0 +1,185 @@
+# Draft subject; schema/bench is not implemented at this revision.
+name: "pallets-click"
+url: "https://github.com/pallets/click"
+ref: "main"
+sha: "2247b35ea1c47c727d7a06e51fa280e12a863ff6"
+licence: "BSD-3-Clause"
+subpath: "."
+bench:
+  toolchain:
+    container_image: "python@sha256:14a4933e6cef421424f7a66d89a3f4eafcbd0d90e0a822251f298e05132dc735"
+    platform: "linux/arm64"
+    cpu_limit: 4
+    lockfile_sha256:
+      uv.lock: "742507a6bbb80c093d2ebefc073357e3ef0cb504e9299def5348377f0d585d54"
+    dependency_manifest_sha256:
+      pyproject.toml: "327b296ab1fc9280c106c71efea961f71dffa5d8f69d85a88eba758e0f440636"
+    python: "3.12.15"
+    pip: "25.0.1"
+    resolved_dependencies:
+      - "iniconfig==2.3.1"
+      - "packaging==26.3"
+      - "pluggy==1.7.0"
+      - "Pygments==2.21.0"
+      - "pytest==9.1.1"
+    system_packages:
+      -
+        archive: "less_590-2.1~deb12u2_arm64.deb"
+        sha256: "eb430d92921f98b163031ee3ac81a96110d1f20bd84f67faab06dad50c75d744"
+    resolved_dependencies_sha256: "9710ed3b0e27adb43c70e91608735cf6c90fc1ee3e757b3cde22ef8a9f18a999"
+  setup:
+    - "apt-get update && (cd ${work} && apt-get download less) && mkdir -p ${work}/os-tools && dpkg-deb --fsys-tarfile ${work}/less_*.deb | tar --no-same-owner -x -C ${work}/os-tools && ${work}/os-tools/usr/bin/less --version && python --version && python -m venv ${venv} && ${venv}/bin/pip install -e . pytest && ${venv}/bin/pip freeze > ${resolved_requirements}"
+  test: "PATH=${work}/os-tools/usr/bin:$PATH ${venv}/bin/python -m pytest -q -o cache_dir=${pytest_cache} --basetemp=${pytest_temp}"
+  suite_seconds:
+    - 11.442
+    - 11.386
+    - 11.375
+  flake_runs: 3
+  l0_reading: null
+  split: "unassigned"
+  task_sources: []
+  contamination:
+    created_at: "2014-04-24T09:52:19Z"
+    age_days: 4567
+    stars_observed: 17801
+    popularity_band: "over 10k"
+    fresh_after: null
+    metadata_source: "https://api.github.com/repos/pallets/click"
+    observed_on: "2026-10-25"
+  draft: true
+  evidence:
+    measured_on: "2026-10-25"
+    primary_language: "Python"
+    licence_file: "LICENSE.txt"
+    licence_sha256: "9a8ad106a394e853bfe21f42f4e72d592819a22805d991b5f3275029292b658d"
+    primary_language_lines:
+      extensions:
+        ".py":
+          files: 91
+          lines: 30378
+      total: 30378
+      method: "tracked files at sha, including tests, fixtures and generated files; LF count plus unterminated final line"
+    size_band: "25k-75k"
+    suite:
+      network: "Docker --network=none; no external route; direct HTTPS probe exits 7"
+      timing: "host monotonic wall time, including container startup; one suite at a time"
+      warmup:
+        seconds: 12.354
+        exit_code: 0
+      runs:
+        -
+          seconds: 11.442
+          exit_code: 0
+          log_sha256: "73a32d9736df3fe2fd3413fd3d67ac1a1d70af29e07efc96b5b74853c7594ba9"
+        -
+          seconds: 11.386
+          exit_code: 0
+          log_sha256: "82f4807ac51d69740a98c13dc73a23088e6e3f379f6dd8e485566165f54366b4"
+        -
+          seconds: 11.375
+          exit_code: 0
+          log_sha256: "3f90cdf820a5e1b958bcdf9e4e864fea431ca2ccfb7f9121ac8f7ff745b65c86"
+      environment:
+        PIP_NO_INDEX: "1"
+      process_local_git_safe_directory: true
+    fix_yield_estimate:
+      since: "2024-10-25T00:00:00Z"
+      until: "2026-10-26T00:00:00Z"
+      test_and_non_test_commits: 135
+      fix_message_subset: 36
+      primary_language_source_commits: 132
+      primary_language_source_fix_message_subset: 36
+      replayed: 0
+    issue_link_examples:
+      -
+        sha: "fc518e41218b447e875fe27244ae692c269bcb77"
+        closing_references:
+          - "3802"
+        references:
+          - "3802"
+        test_paths:
+          - "tests/test_abort_interrupt.py"
+        source_paths:
+          - "src/click/core.py"
+      -
+        sha: "bec59289d8cf9b9b4010642b2fee483e5f8eeefc"
+        closing_references: []
+        references:
+          - "1884"
+          - "2331"
+          - "3125"
+        test_paths:
+          - "tests/test_basic.py"
+        source_paths:
+          - "src/click/decorators.py"
+      -
+        sha: "7eb57cff7cd292fbd526eaf861c8f945ddeb07a3"
+        closing_references: []
+        references:
+          - "2899"
+          - "3470"
+        test_paths:
+          - "tests/test_stream_lifecycle.py"
+          - "tests/test_utils.py"
+        source_paths:
+          - "src/click/_compat.py"
+    fan_in:
+      method: "Python ast import and re-export resolution; direct calls only"
+      units: "distinct static call sites and caller packages/modules, including tests; not distinct caller functions"
+      qualifying_symbols:
+        -
+          symbol: "click.decorators.command"
+          call_sites: 348
+          caller_modules: 33
+          module_examples:
+            - "click.decorators"
+            - "examples.aliases.aliases"
+            - "examples.colors.colors"
+          site_examples:
+            - "examples/aliases/aliases.py:89:2"
+            - "examples/colors/colors.py:24:2"
+            - "examples/complex/complex/cli.py:48:2"
+            - "examples/complex/complex/commands/cmd_init.py:6:2"
+            - "examples/complex/complex/commands/cmd_status.py:6:2"
+            - "examples/inout/inout.py:4:2"
+        -
+          symbol: "click.decorators.option"
+          call_sites: 280
+          caller_modules: 25
+          module_examples:
+            - "click.decorators"
+            - "examples.aliases.aliases"
+            - "examples.completion.completion"
+          site_examples:
+            - "examples/aliases/aliases.py:136:2"
+            - "examples/aliases/aliases.py:90:2"
+            - "examples/completion/completion.py:13:2"
+            - "examples/complex/complex/cli.py:49:2"
+            - "examples/complex/complex/cli.py:54:2"
+            - "examples/imagepipe/imagepipe.py:102:2"
+        -
+          symbol: "click.decorators.argument"
+          call_sites: 145
+          caller_modules: 21
+          module_examples:
+            - "examples.aliases.aliases"
+            - "examples.completion.completion"
+            - "examples.complex.complex.commands.cmd_init"
+          site_examples:
+            - "examples/aliases/aliases.py:134:2"
+            - "examples/aliases/aliases.py:135:2"
+            - "examples/completion/completion.py:25:2"
+            - "examples/completion/completion.py:51:2"
+            - "examples/complex/complex/commands/cmd_init.py:7:2"
+            - "examples/inout/inout.py:5:2"
+    independence:
+      not_fathom: true
+      organization: "pallets"
+      subjects_from_organization: 1
+      fleet_index_exclusion: "unverified"
+    reading: "docs/bench/readings/bench-prep/candidates.md"
+    limitations:
+      - "Draft candidate only: C4 unmeasured; C5 fix replay and post-cutoff yield pending; split not assigned."
+      - "C3 measured on Linux arm64 with four CPUs; native macOS and 12-core runs unmeasured."
+      - "C7 fleet-index exclusion unverified because the service registry is unavailable."
+      - "Recorded lock hashes identify the upstream files; setup uses the listed resolved venv dependencies, not a full lockfile sync."

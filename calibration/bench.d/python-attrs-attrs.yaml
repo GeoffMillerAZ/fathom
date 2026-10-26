@@ -1,0 +1,183 @@
+# Draft subject; schema/bench is not implemented at this revision.
+name: "python-attrs-attrs"
+url: "https://github.com/python-attrs/attrs"
+ref: "main"
+sha: "c8bb9bfaa2843e7844b5bb13bed4370b51feec4f"
+licence: "MIT"
+subpath: "."
+bench:
+  toolchain:
+    container_image: "python@sha256:14a4933e6cef421424f7a66d89a3f4eafcbd0d90e0a822251f298e05132dc735"
+    platform: "linux/arm64"
+    cpu_limit: 4
+    lockfile_sha256:
+      uv.lock: "617977f3b91f711e94b46bd6a61c879109631c8dab54150b2fb1af376dbe292d"
+    dependency_manifest_sha256:
+      pyproject.toml: "85fc28e1975ed5172862679343f0cbffde913c98386bdc2897f089e2e2b7a266"
+    python: "3.12.15"
+    pip: "25.0.1"
+    resolved_dependencies:
+      - "cloudpickle==3.1.2"
+      - "execnet==2.1.2"
+      - "hypothesis==6.170.11"
+      - "iniconfig==2.3.1"
+      - "packaging==26.3"
+      - "pluggy==1.7.0"
+      - "Pygments==2.21.0"
+      - "Pympler==1.1"
+      - "pytest==9.1.1"
+      - "pytest-xdist==3.8.0"
+      - "sortedcontainers==2.4.0"
+    resolved_dependencies_sha256: "651cb9eb4036d12a01912d9ef26174899eb8e17809398c11fc23f2e2bab7fe13"
+  setup:
+    - "python --version && python -m venv ${venv} && ${venv}/bin/pip install -e . pytest hypothesis pympler cloudpickle pytest-xdist && ${venv}/bin/pip freeze > ${resolved_requirements}"
+  test: "${venv}/bin/python -m pytest -q -o cache_dir=${pytest_cache}"
+  suite_seconds:
+    - 9.023
+    - 9.021
+    - 8.85
+  flake_runs: 3
+  l0_reading: null
+  split: "unassigned"
+  task_sources: []
+  contamination:
+    created_at: "2015-01-27T15:01:01Z"
+    age_days: 4289
+    stars_observed: 5861
+    popularity_band: "1k-10k"
+    fresh_after: null
+    metadata_source: "https://api.github.com/repos/python-attrs/attrs"
+    observed_on: "2026-10-25"
+  draft: true
+  evidence:
+    measured_on: "2026-10-25"
+    primary_language: "Python"
+    licence_file: "LICENSE"
+    licence_sha256: "882115c95dfc2af1eeb6714f8ec6d5cbcabf667caff8729f42420da63f714e9f"
+    primary_language_lines:
+      extensions:
+        ".py":
+          files: 56
+          lines: 21026
+      total: 21026
+      method: "tracked files at sha, including tests, fixtures and generated files; LF count plus unterminated final line"
+    size_band: "5k-25k"
+    suite:
+      network: "Docker --network=none; no external route; direct HTTPS probe exits 7"
+      timing: "host monotonic wall time, including container startup; one suite at a time"
+      warmup:
+        seconds: 10.617
+        exit_code: 0
+      runs:
+        -
+          seconds: 9.023
+          exit_code: 0
+          log_sha256: "d23184af3286dd3dced4bd07f188cb525fa04cc402a70834c50ea1131333684a"
+        -
+          seconds: 9.021
+          exit_code: 0
+          log_sha256: "3245a1ba970b59cb51028933bdb1b82a18ec341cfcf63bd7d7f158a9dab2336c"
+        -
+          seconds: 8.85
+          exit_code: 0
+          log_sha256: "a69b12cbca9b9742afbd52eb54445bbdfdc494613eee10a2d0a8e3682d412c55"
+      environment:
+        PIP_NO_INDEX: "1"
+      process_local_git_safe_directory: true
+    fix_yield_estimate:
+      since: "2024-10-25T00:00:00Z"
+      until: "2026-10-26T00:00:00Z"
+      test_and_non_test_commits: 48
+      fix_message_subset: 9
+      primary_language_source_commits: 36
+      primary_language_source_fix_message_subset: 5
+      replayed: 0
+    issue_link_examples:
+      -
+        sha: "97f8d175656bc03c373a1c9038048a4d312c307c"
+        closing_references: []
+        references:
+          - "1593"
+        test_paths:
+          - "tests/test_annotations.py"
+        source_paths:
+          - "src/attr/_make.py"
+      -
+        sha: "af9c510912ce604a94896cc35c27368d5baf6ae6"
+        closing_references: []
+        references:
+          - "1513"
+        test_paths:
+          - "tests/test_validators.py"
+        source_paths:
+          - "src/attr/validators.py"
+      -
+        sha: "ce89f5d11feb0805da9ed10bb165238cc959f1bb"
+        closing_references:
+          - "1514"
+        references:
+          - "1514"
+        test_paths:
+          - "tests/test_functional.py"
+        source_paths:
+          - "src/attr/exceptions.py"
+    fan_in:
+      method: "Python ast import and re-export resolution; direct calls only"
+      units: "distinct static call sites and caller packages/modules, including tests; not distinct caller functions"
+      qualifying_symbols:
+        -
+          symbol: "attr._make.attrib"
+          call_sites: 522
+          caller_modules: 17
+          module_examples:
+            - "attr._make"
+            - "attr._next_gen"
+            - "attr._version_info"
+          site_examples:
+            - "src/attr/_make.py:3314:24"
+            - "src/attr/_make.py:3374:19"
+            - "src/attr/_make.py:419:21"
+            - "src/attr/_next_gen.py:609:12"
+            - "src/attr/_version_info.py:33:12"
+            - "src/attr/_version_info.py:34:13"
+        -
+          symbol: "attr._make.fields"
+          call_sites: 137
+          caller_modules: 17
+          module_examples:
+            - "attr._funcs"
+            - "attr._make"
+            - "tests.test_annotations"
+          site_examples:
+            - "src/attr/_funcs.py:272:13"
+            - "src/attr/_funcs.py:415:13"
+            - "src/attr/_funcs.py:486:22"
+            - "src/attr/_funcs.py:78:13"
+            - "src/attr/_make.py:1956:16"
+            - "src/attr/_make.py:2016:14"
+        -
+          symbol: "attr._make.attrs"
+          call_sites: 244
+          caller_modules: 14
+          module_examples:
+            - "attr._make"
+            - "attr._next_gen"
+            - "attr._version_info"
+          site_examples:
+            - "src/attr/_make.py:3356:11"
+            - "src/attr/_make.py:3368:2"
+            - "src/attr/_next_gen.py:363:16"
+            - "src/attr/_version_info.py:11:2"
+            - "src/attr/validators.py:131:2"
+            - "src/attr/validators.py:201:2"
+    independence:
+      not_fathom: true
+      organization: "python-attrs"
+      subjects_from_organization: 1
+      fleet_index_exclusion: "unverified"
+    reading: "docs/bench/readings/bench-prep/candidates.md"
+    limitations:
+      - "Draft candidate only: C4 unmeasured; C5 fix replay and post-cutoff yield pending; split not assigned."
+      - "C3 measured on Linux arm64 with four CPUs; native macOS and 12-core runs unmeasured."
+      - "C7 fleet-index exclusion unverified because the service registry is unavailable."
+      - "Recorded lock hashes identify the upstream files; setup uses the listed resolved venv dependencies, not a full lockfile sync."

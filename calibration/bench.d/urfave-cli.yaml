@@ -1,0 +1,174 @@
+# Draft subject; schema/bench is not implemented at this revision.
+name: "urfave-cli"
+url: "https://github.com/urfave/cli"
+ref: "main"
+sha: "89ad11673146784b702fb14ce1e29f2b864e51c2"
+licence: "MIT"
+subpath: "."
+bench:
+  toolchain:
+    container_image: "golang@sha256:972b4110ba0f47539a975c31e52c64765e1ff19f2d74469ae4a595c6676e80a5"
+    platform: "linux/arm64"
+    cpu_limit: 4
+    lockfile_sha256:
+      go.sum: "d4583181c1c7ec5ab4db5c02abf3f94aa4d4e20caf1f5b7793789f94cf1cbee3"
+    dependency_manifest_sha256:
+      go.mod: "80e2b4a68a8bb72ab7bb6c4cf0293597bf8264ad21296678ebfba2653318307f"
+    go: "go1.27.3"
+  setup:
+    - "go version && go mod download"
+  test: "go test -count=1 -timeout=14m ./..."
+  suite_seconds:
+    - 4.869
+    - 3.722
+    - 3.598
+  flake_runs: 3
+  l0_reading: null
+  split: "unassigned"
+  task_sources: []
+  contamination:
+    created_at: "2013-07-13T19:32:06Z"
+    age_days: 4852
+    stars_observed: 24306
+    popularity_band: "over 10k"
+    fresh_after: null
+    metadata_source: "https://api.github.com/repos/urfave/cli"
+    observed_on: "2026-10-25"
+  draft: true
+  evidence:
+    measured_on: "2026-10-25"
+    primary_language: "Go"
+    licence_file: "LICENSE"
+    licence_sha256: "85695dfe027cabaf97c7fea77c45a01a36c0815e52df9219894b1ba031ee72f0"
+    primary_language_lines:
+      extensions:
+        ".go":
+          files: 79
+          lines: 30858
+      total: 30858
+      method: "tracked files at sha, including tests, fixtures and generated files; LF count plus unterminated final line"
+    size_band: "25k-75k"
+    suite:
+      network: "Docker --network=none; no external route; direct HTTPS probe exits 7"
+      timing: "host monotonic wall time, including container startup; one suite at a time"
+      warmup:
+        seconds: 9.734
+        exit_code: 0
+      runs:
+        -
+          seconds: 4.869
+          exit_code: 0
+          log_sha256: "c253c810009aa0ba461e325ecf65626919c679fac565eee5b1e3a36a4d1a7006"
+        -
+          seconds: 3.722
+          exit_code: 0
+          log_sha256: "6372c456de424faf376d41630c9f85c3e96d456922a88dd3da6b4354a2e18add"
+        -
+          seconds: 3.598
+          exit_code: 0
+          log_sha256: "59d05ade4a9af7aab9d5ca21a19d721a4519415951b13b40347770c080a530dc"
+      environment:
+        GOPROXY: "off"
+        GOFLAGS: "-mod=mod"
+        GOTOOLCHAIN: "local"
+        GOMAXPROCS: "4"
+      process_local_git_safe_directory: true
+    fix_yield_estimate:
+      since: "2024-10-25T00:00:00Z"
+      until: "2026-10-26T00:00:00Z"
+      test_and_non_test_commits: 204
+      fix_message_subset: 135
+      primary_language_source_commits: 196
+      primary_language_source_fix_message_subset: 128
+      replayed: 0
+    issue_link_examples:
+      -
+        sha: "89fb848895a5a2687f70d1c40f0634f9daff3db1"
+        closing_references: []
+        references:
+          - "1540"
+        test_paths:
+          - "flag_ext_test.go"
+          - "flag_int_test.go"
+          - "flag_uint_test.go"
+        source_paths:
+          - "command_setup.go"
+          - "flag_ext.go"
+      -
+        sha: "bd73abc74526e2f10eac2c64743f8dad85915e46"
+        closing_references: []
+        references:
+          - "1540"
+        test_paths:
+          - "flag_ext_test.go"
+          - "flag_schema_type_test.go"
+        source_paths:
+          - "flag_ext.go"
+      -
+        sha: "73419bcf83b461cc21e38d70f284c8b32087ddb8"
+        closing_references: []
+        references:
+          - "2475"
+        test_paths:
+          - "fish_test.go"
+        source_paths:
+          - "fish.go"
+    fan_in:
+      method: "go/types through x/tools/go/packages v0.52.0 (Tests=true, ./...)"
+      units: "distinct static call sites and caller packages/modules, including tests; not distinct caller functions"
+      qualifying_symbols:
+        -
+          symbol: "github.com/urfave/cli/v3.*Command.Run"
+          call_sites: 486
+          caller_modules: 4
+          module_examples:
+            - "github.com/urfave/cli/v3"
+            - "github.com/urfave/cli/v3/examples/example-cli"
+            - "github.com/urfave/cli/v3/scripts"
+          site_examples:
+            - "args_test.go:108:9"
+            - "args_test.go:121:10"
+            - "args_test.go:136:9"
+            - "args_test.go:144:10"
+            - "args_test.go:159:9"
+            - "args_test.go:169:10"
+        -
+          symbol: "github.com/urfave/cli/v3.*Command.String"
+          call_sites: 58
+          caller_modules: 3
+          module_examples:
+            - "github.com/urfave/cli/v3"
+            - "github.com/urfave/cli/v3/scripts"
+            - "github.com/urfave/cli/v3_test"
+          site_examples:
+            - "command_test.go:1136:21"
+            - "command_test.go:1223:23"
+            - "command_test.go:1327:12"
+            - "command_test.go:1399:14"
+            - "command_test.go:1639:10"
+            - "command_test.go:1697:13"
+        -
+          symbol: "github.com/urfave/cli/v3.*Command.Bool"
+          call_sites: 50
+          caller_modules: 3
+          module_examples:
+            - "github.com/urfave/cli/v3"
+            - "github.com/urfave/cli/v3/scripts"
+            - "github.com/urfave/cli/v3_test"
+          site_examples:
+            - "command_test.go:1397:13"
+            - "command_test.go:1398:12"
+            - "command_test.go:1637:9"
+            - "command_test.go:1638:9"
+            - "command_test.go:1664:19"
+            - "command_test.go:1665:19"
+    independence:
+      not_fathom: true
+      organization: "urfave"
+      subjects_from_organization: 1
+      fleet_index_exclusion: "unverified"
+    reading: "docs/bench/readings/bench-prep/candidates.md"
+    limitations:
+      - "Draft candidate only: C4 unmeasured; C5 fix replay and post-cutoff yield pending; split not assigned."
+      - "C3 measured on Linux arm64 with four CPUs; native macOS and 12-core runs unmeasured."
+      - "C7 fleet-index exclusion unverified because the service registry is unavailable."
