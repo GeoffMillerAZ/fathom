@@ -18,6 +18,7 @@
     "whole_run_seconds": 1800
   },
   "date": "2026-10-26",
+  "integration_base_commit": "12aa23eee7f819c6c7967a8651b0953a27e0abc6",
   "lane_final_gates_complete": true,
   "native_before_after_byte_identity": true,
   "oracle_build_flags": [
@@ -62,17 +63,17 @@
     "subject_unchanged": true
   },
   "reading_conservation": {
-    "after_inventory_sha256": "a870cf879c65318744f004efeafdf4a058cbd38c3ec5343514121758c77e19e4",
-    "base": "6db920e72",
-    "before_inventory_sha256": "be9a3350211b5c573fc27e42d9897f932c7f640c45979646a60f993a019bac47",
+    "after_inventory_sha256": "695d4a2ae66804273af11fec42112203a7ffbb8a00142d3e82d68e64e8154fb0",
+    "base": "12aa23eee7f819c6c7967a8651b0953a27e0abc6",
+    "before_inventory_sha256": "ab6e9d69eec4bc6843f8af4cf24e5c5ac37532161268273484c18bee8ef35606",
     "changed_values": [
       "kustomize.json"
     ],
-    "eligible": 154,
-    "files": 185,
+    "eligible": 156,
+    "files": 187,
     "protected_byte_identical": 31,
     "required_kinds_preserved": true,
-    "unchanged_bytes": 184
+    "unchanged_bytes": 186
   },
   "review_fixes": [
     "F1",
@@ -88,7 +89,7 @@
     "D19_guard": {
       "command": "python3 calibration/oracles/kustomize/publish.py --self-test",
       "exit_code": 0,
-      "private_log_sha256": "bb2dbcd547bfd810d2b9d5c0fe3787e48e8f3a012115947d3e40af80b17ddae1"
+      "private_log_sha256": "9b9a3598a259ca582b3c3c570197a43b8ba3380dfffe2232e0b9360de3445b4b"
     },
     "directory_preference": {
       "command": "go test -race ./internal/fusion -run '^TestKustomizeBaseDirectoryNeedsTheOneFileRule$' -count=1",
@@ -100,10 +101,15 @@
       "exit_code": 0,
       "private_log_sha256": "cbe4b84d897ac017db0552ccb3a31855ff0fb172bc344c967c4c4c92eb19e624"
     },
+    "indexbench_identity": {
+      "command": "go version -m \"$KUST_CACHE/tools/indexbench-kustomize-base\"",
+      "exit_code": 0,
+      "private_log_sha256": "e8495fa203b5a25e6ac1023c7db693c998331faf0d5035d4c9247d5a8221b23d"
+    },
     "landing_publication": {
       "command": "python3 calibration/oracles/kustomize/publish.py --cache \"$KUST_CACHE\" --out docs/assessments/data/2026-10-26-kustomize-r1.json",
       "exit_code": 0,
-      "private_log_sha256": "8fd4c293b04c99f188f871fa9003d8f9a5a89d015f9c1373eff0382710795b36"
+      "private_log_sha256": "fa362ef3fd40457903568a981f2ab08d28bfc2ced7bbd91792b8ff5054c53d96"
     },
     "merge_debris": {
       "command": "bash scripts/check-merge-debris.sh",
@@ -111,39 +117,50 @@
       "private_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     "native_after": {
-      "command": "python3 calibration/oracles/kustomize/run_native.py --cache \"$KUST_CACHE\" --oracle-bin \"$KUST_CACHE/tools/kustomize-oracle\" --phase after",
+      "command": "python3 calibration/oracles/kustomize/run_native.py --cache \"$KUST_CACHE\" --oracle-bin \"$KUST_CACHE/tools/kustomize-oracle-r2\" --phase after",
       "exit_code": 0,
-      "private_log_sha256": "a7d61f5798616aa31c5a62b021d1f5ad89b692412269869862cf881db72a0b6d"
+      "private_log_sha256": "35c9bd27bf639b9ac322bebb4aaf8c0b328157121abb5d10384bd6e0a1ebbf38"
     },
     "native_before": {
-      "command": "python3 calibration/oracles/kustomize/run_native.py --cache \"$KUST_CACHE\" --oracle-bin \"$KUST_CACHE/tools/kustomize-oracle\" --phase before",
+      "command": "python3 calibration/oracles/kustomize/run_native.py --cache \"$KUST_CACHE\" --oracle-bin \"$KUST_CACHE/tools/kustomize-oracle-r2\" --phase before",
       "exit_code": 0,
-      "private_log_sha256": "a7d61f5798616aa31c5a62b021d1f5ad89b692412269869862cf881db72a0b6d"
+      "private_log_sha256": "290af0591c19d03c618398ebba9913c12e486876cb555465d4cb415b4546f66e"
     },
     "native_oracle_race": {
-      "command": "go -C calibration/oracles/kustomize test -race -count=1 ./...",
+      "command": "go -C calibration/oracles/kustomize test -mod=readonly -race -count=1 ./...",
+      "environment": "KUSTOMIZE_BIN points to the pinned native v5.8.1 binary",
       "exit_code": 0,
-      "private_log_sha256": "a7d61f5798616aa31c5a62b021d1f5ad89b692412269869862cf881db72a0b6d"
+      "private_log_sha256": "6cd4b8a1da164526795f31549c7734c7c4547b552a2df65a6d7227268a3e16ea"
     },
     "org_names": {
       "command": "bash scripts/fathom-go.sh test -count=1 -run TestNoOrgSpecificNames ./cmd/fathom",
       "exit_code": 0,
-      "private_log_sha256": "35f6aa27f0a34b4cdfa61c43d94c61c451b6faed62144cf8ed0767949d0227cc"
+      "private_log_sha256": "d57a986c694af7f6d872b3c02e5ece44ee5fa7fa9a9ab13a81e790ff47e00873"
     },
     "product_control": {
       "command": "go run ./workspace/tmp/kustomize-proof/product_ablation.go -subject-file \"$PINNED_KUSTOMIZATION\"",
       "exit_code": 0,
       "private_log_sha256": "e835354686d6c2e65d8160190621252c3aefdc8058192804147ff12e4446f2eb"
     },
+    "publication_tests": {
+      "command": "python3 -m unittest calibration/oracles/kustomize/test_publish.py calibration/oracles/kustomize/test_grade.py",
+      "exit_code": 0,
+      "private_log_sha256": "69d3092e799b33eb7dca64bf94a3536ab4fa9fc5969f0629675edb863629b707"
+    },
+    "reading_publication": {
+      "command": "python3 calibration/oracles/kustomize/publish_reading.py --cache \"$KUST_CACHE\" --public docs/assessments/data/2026-10-26-kustomize-r1.json --reading docs/bench/readings/lang/kustomize.json",
+      "exit_code": 0,
+      "private_log_sha256": "ae8370d2e18ea8b2ecfe7a4d5e736e2bf57da510d9f608f69c0d3613610848b6"
+    },
     "reading_roundtrip": {
       "command": "go test -race ./internal/langbench -run ^TestCommittedReadingsRoundTrip$ -count=1",
       "exit_code": 0,
-      "private_log_sha256": "035473124f7f71a0ba3559fccef326acf92cf8abff536fd80bed5e8ae7940cf1"
+      "private_log_sha256": "fb9aea112385b4e99e78c10f28515bd4c1f12fc68f586129917520490551ae67"
     },
     "release_notes": {
       "command": "go run ./third_party/agentic-kit/cmd/release-notes -check",
       "exit_code": 0,
-      "private_log_sha256": "3f27e1cde4f31c0fc36085f0ac8fb8ba254aac01e55950daff317ac7787c338a"
+      "private_log_sha256": "2f9986fb717af9af0552dd1077d6ac8ad445f93c0b33c1fe5b1657b86d3bf3e9"
     }
   }
 }

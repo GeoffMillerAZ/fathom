@@ -151,7 +151,8 @@ class PublicationTests(unittest.TestCase):
                        "component_context_counts": {"valid": 0, "tried": 0,
                                                     "effective_entries": 0},
                        "native_excluded": {"remote": 1},
-                       "native_cross_references": 2, "native_stats": {"noop": 1},
+                       "native_cross_references": 25, "native_yaml_target_cross_references": 4,
+                       "native_stats": {"noop": 1},
                        "graded_counts": {"matched": 9, "fathom_defs": 10,
                                          "xref_fathom": 19, "xref_truth": 20}}],
                   "throughput_mb_per_cpu_second": [1.0, 2.0, 3.0],
@@ -163,6 +164,10 @@ class PublicationTests(unittest.TestCase):
         self.assertIn("3 of 4", " ".join(notes))
         self.assertNotIn("35/35", " ".join(notes))
         self.assertIn("symbol precision 1.0, level_met none", " ".join(notes))
+        self.assertIn("4 YAML-target references outside dialect file scope (manifests and patches). "
+                      "Manifest-target edges resolve to nothing at ingest until the kubernetes dialect is dispatched",
+                      " ".join(notes))
+        self.assertNotIn("This is the lane's guard pending D19's lang-regrade", " ".join(notes))
         public["original_population_conservation_failed"] = True
         held_notes = " ".join(publish_reading.notes(public))
         self.assertIn("conservation failed; lane held", held_notes)

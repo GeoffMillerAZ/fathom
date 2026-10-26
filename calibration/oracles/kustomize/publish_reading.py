@@ -71,6 +71,12 @@ def verify(median_path, public_path, current_path, cache):
             "unannotated median SHA256 differs from public receipt")
     require(public["base_commit"] == frozen["base_commit"] == median["fathom_commit"],
             "product source commit differs")
+    require(public["indexbench_source_identity"] ==
+            {"vcs_revision": frozen["base_commit"], "vcs_modified": False},
+            "indexbench clean source identity differs")
+    require(public["indexbench_local_artifact_sha256"] ==
+            read(cache / "kustomize-r1" / "grade" / "summary.json")["indexbench_sha256"],
+            "indexbench local artifact hash differs from grade summary")
     require(median["dialect"] == current["dialect"] == "kustomize", "dialect differs")
     for key in ("kind", "target_level", "required_kinds"):
         require(median[key] == current[key], "existing reading contract changed: " + key)
@@ -133,6 +139,9 @@ def notes(public):
     context = lambda key: sum(row["component_context_counts"][key] for row in subjects)
     excluded = lambda key: sum(row["native_excluded"].get(key, 0) for row in subjects)
     counts = public["counts"]
+    yaml_targets = total("native_yaml_target_cross_references")
+    require(0 <= yaml_targets <= total("native_cross_references"),
+            "YAML-target count exceeds native population")
     d19 = public["D19_xref_denominators"]
     rates = public["throughput_mb_per_cpu_second"]
     rate = rates[public["median_run"] - 1]
@@ -159,8 +168,11 @@ def notes(public):
         f"{context('effective_entries')} effective entries; {excluded('component-no-valid-context')} without valid context.",
         f"Native truth has {total('native_cross_references')} raw cross-file references; "
         f"the unchanged dialect scores {counts['xref_truth']} after file/target scope. "
+        f"Native cross-file references include {yaml_targets} YAML-target references outside "
+        "dialect file scope (manifests and patches). Manifest-target edges resolve to nothing "
+        "at ingest until the kubernetes dialect is dispatched. "
         f"D19 (#7) is not on main: precision denominator {d19['precision']}, recall denominator {d19['recall']}; "
-        f"{disposition}. This is the lane's guard pending D19's lang-regrade.",
+        f"{disposition}.",
         "Leave-one-subject-out under current harness rules, in frozen pin order: "
         + "; ".join(omitted) + ". The assessment identifies the subjects and limits.",
         f"Fathom/native definitions {counts['fathom_defs']}/{counts['oracle_defs']}; "

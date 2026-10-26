@@ -98,7 +98,7 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-26 | [tools-nginx-native](2026-10-26-tools-nginx-native.md) | Native full upstream population diagnostic; canonical L3 unchanged | LB-Q-nginx-rest |
 | 2026-10-26 | [tools-nginx-native-positions](2026-10-26-tools-nginx-native-positions.md) | Complete native lexer population attests 71/71 names/ranges and 1/1 references; canonical L3 unchanged | LB-Q-nginx-rest |
 | 2026-10-26 | [glsl-registered-extensions](2026-10-26-glsl-registered-extensions.md), [paired data](data/glsl-g-r3-2026-10-26/canonical-baseline-core-to-full-registry-deltas.json) | Corrected macro precision and array trees retain L2 good; digest-only rejected candidates and fresh pinned statement/extension holdouts | G-R3/G-R4/G-R5, LB-Q-glsl |
-| 2026-10-26 | [kustomize-d19-evidence](2026-10-26-kustomize-d19-evidence.md) | Current grader reports 35/35; D19 L3 regrade held, and one preselected subject carries the count and L1 floors. Native identity and no-op costs recorded | LB-Q-kustomize-rest, D19, P-T1 |
+| 2026-10-26 | [kustomize-d19-evidence](2026-10-26-kustomize-d19-evidence.md) | Current grader reports 35/35; D19 L3 regrade held. The count floor depends on microservices-demo; L1 good and level_met need it and the kustomize examples. Native identity and no-op costs recorded | LB-Q-kustomize-rest, D19, P-T1 |
 
 ## Companion pages
 

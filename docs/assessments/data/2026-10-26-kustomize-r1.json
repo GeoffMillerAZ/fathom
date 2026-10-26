@@ -32,7 +32,11 @@
     "L3": "excellent",
     "L4": "not-applicable"
   },
-  "indexbench_sha256": "468adb446cafaa3f771a0691ee066f1825256bb5c49c7f72696ec405acd45f16",
+  "indexbench_local_artifact_sha256": "468adb446cafaa3f771a0691ee066f1825256bb5c49c7f72696ec405acd45f16",
+  "indexbench_source_identity": {
+    "vcs_modified": false,
+    "vcs_revision": "6db920e72898abb20bf86c22652b401902e34598"
+  },
   "lane_disposition": "count_guard_met_pending_D19",
   "leave_one_subject_out": [
     {
@@ -362,6 +366,7 @@
         "variant-builds": 36
       },
       "native_typed_entries": 49,
+      "native_yaml_target_cross_references": 20,
       "oracle_sha256": "8a514aeb5efcb61fa626d1c909cd8b369ee501d16afe17c9b1ff3fe542a4c406",
       "repository": "kubernetes-sigs/kustomize",
       "subject_sha": "9790a1c3efd2fd35f1b768d495112834176581c1",
@@ -428,6 +433,7 @@
         "variant-builds": 34
       },
       "native_typed_entries": 34,
+      "native_yaml_target_cross_references": 33,
       "oracle_sha256": "69b4da99173574f69fba10d66de33eb5eabaa7e804249439f98183bd29f08f71",
       "repository": "argoproj/argocd-example-apps",
       "subject_sha": "8088f4c0d970abb09e250248cc97e35623447cb5",
@@ -498,6 +504,7 @@
         "variant-builds": 15
       },
       "native_typed_entries": 19,
+      "native_yaml_target_cross_references": 9,
       "oracle_sha256": "bbe8b880670d2d771a3c06626a22add1b690d0e6493198f6d5e7ef4a3f43b544",
       "repository": "fluxcd/flux2-kustomize-helm-example",
       "subject_sha": "4f1a5b1051b469108d1bdf0ebec6c814427e3834",
@@ -568,6 +575,7 @@
         "variant-builds": 17
       },
       "native_typed_entries": 29,
+      "native_yaml_target_cross_references": 9,
       "oracle_sha256": "d6308fe6bba11079109cf9e4da941bba6d933761d22a2e3398eed5f16febfe36",
       "repository": "fluxcd/flux2-multi-tenancy",
       "subject_sha": "16752eb2929feb1d0e7de6ad4fa0a2e1972825ac",
@@ -637,6 +645,7 @@
         "variant-builds": 82
       },
       "native_typed_entries": 117,
+      "native_yaml_target_cross_references": 38,
       "oracle_sha256": "1c6df75fddc5096f5fa0b9f691849d4fe656786dfd3c0cfc46d41e6eb46224b5",
       "repository": "GoogleCloudPlatform/microservices-demo",
       "subject_sha": "38e7348eb289eb5b87c0c6e8cb19ced0449dc389",

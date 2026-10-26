@@ -42,7 +42,11 @@ python3 calibration/oracles/kustomize/publish_reading.py --cache "$KUST_CACHE" -
 
 The `rev-parse` command must print the fixed full commit; `status` must be
 empty. `go version -m` must report that same `vcs.revision` and
-`vcs.modified=false`. For a fresh cache, run `prepare.py --cache "$KUST_CACHE"
+`vcs.modified=false`. The public `indexbench_local_artifact_sha256` records the
+binary used in this run, not a portable source identity: this build omits
+`-trimpath`, so the checkout's absolute path can change its hash. A rebuild
+must match the `go version -m` revision and clean state; its binary hash need
+not match the recorded local artifact. For a fresh cache, run `prepare.py --cache "$KUST_CACHE"
 --step tool --step subjects` before the shown sequence. Use one heavy job at a
 time and niceness 10. Both
 drivers wait and recheck while one-minute load exceeds 9 before each subject.
@@ -51,9 +55,8 @@ subject commits and the pinned native archive and verifies its SHA256. The
 same official v5.8.1 `checksums.txt` pins darwin_arm64
 (`8886f8a7...`), linux_amd64 (`029a7f0f...`) and linux_arm64
 (`0953ea3e...`) archives in `pins.json`; `prepare.py` selects by host.
-The previously recorded oracle binary hash identifies that local build artifact;
-the reproducible recipe now uses `-trimpath -buildvcs=false`, so a new receipt
-records its rebuilt hash. The
+The oracle recipe uses `-trimpath -buildvcs=false`, and the receipt records
+the resulting oracle binary hash. The
 native oracle runs with scrubbed environment and dead proxies; it does not
 contact cloud services, enable plugins, or invoke Helm.
 

@@ -184,6 +184,11 @@ def main():
                                 "native_definitions": b["definitions"],
                                 "native_references": b["references"],
                                 "native_cross_references": b["cross_references"],
+                                "native_yaml_target_cross_references": sum(
+                                    Path(ref["to_path"]).name not in
+                                    ("kustomization.yaml", "kustomization.yml", "Kustomization")
+                                    and Path(ref["to_path"]).suffix in (".yaml", ".yml")
+                                    for ref in truth["cross_references"]),
                                 "graded_files": g["files"], "graded_bytes": g["bytes"],
                                 "unsupported_native_basename": g["unsupported_native_basename"],
                                 "graded_counts": numeric_map(g["counts"]),
@@ -195,7 +200,9 @@ def main():
               "pins_sha256": digest(PINS_PATH),
               "oracle_bin_sha256": before["oracle_bin_sha256"],
               "native_bin_sha256": before["native_bin_sha256"],
-              "indexbench_sha256": scored["indexbench_sha256"],
+              "indexbench_local_artifact_sha256": scored["indexbench_sha256"],
+              "indexbench_source_identity": {"vcs_revision": fixed["base_commit"],
+                                             "vcs_modified": False},
               "median_reading_sha256": scored["reading_sha256"],
               "median_run": scored["median_run"],
               "throughput_mb_per_cpu_second": scored["runs_mb_per_cpu_second"],

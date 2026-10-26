@@ -136,8 +136,10 @@ current harness rules gives:
 | fluxcd/flux2-multi-tenancy | 31 / 31 | 173/177 = 0.9774 | L3 |
 | GoogleCloudPlatform/microservices-demo | 19 / 19 | 128/136 = 0.9412 | none |
 
-The privately preselected GCP subject supplies 16 of 35 scored edges and is
-necessary for both the D19 count floor and L1's 0.95 good floor. Pooled L1
+The privately preselected microservices-demo subject supplies 16 of 35 scored
+edges and is necessary for the D19 count floor. L1 good and `level_met` depend
+on both microservices-demo and the kubernetes-sigs/kustomize examples: omitting
+either drops L1 below its 0.95 good floor. Pooled L1
 symbol precision is 194/202: two additional unmatched definitions still meet
 0.95, while a third does not. Twelve of GCP's 16 edges come from three nearly
 identical test configurations. All 35 scored edges use the simplest directory
@@ -227,8 +229,9 @@ GOFLAGS=-p=2. Per-subject launch loads in all three runs are recorded and at
 most 9. Concurrent jobs were not recorded. The median uses CPU throughput;
 wall time and the changed-population throughput are not regression comparisons.
 The strict reading round-trip, identity/D19 tests, release/debris and X-R3
-checks pass. Conservation covers all 185 reading files: only Kustomize changes,
-184 files and all 31 frozen/parity files remain byte-identical, and all 154
+checks pass. After merging main `12aa23eee`, conservation covers all 187 reading files:
+only Kustomize changes, 186 files and all 31 frozen/parity files remain byte-identical,
+and all 156
 eligible readings preserve required kinds. No metric key is removed. The X-R5
 scan finds only benign syntax, package names and guard patterns; no subject
 identities, name/email shapes or local home paths. Counts and log digests are in
