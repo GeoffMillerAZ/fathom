@@ -1,0 +1,39 @@
+{
+  "python": "3.13.5",
+  "runs": {
+    "notebook": {
+      "basedpyright_keys": [
+        "generalDiagnostics",
+        "summary",
+        "version"
+      ],
+      "basedpyright_summary": {
+        "errorCount": 0,
+        "filesAnalyzed": 1,
+        "informationCount": 0,
+        "timeInSec": 0.107,
+        "warningCount": 0
+      },
+      "basedpyright_version": "1.40.2",
+      "scip_command": "scip-python index . --project-name notebook-oracle-probe --project-version 0 --environment environment.json --output index.scip",
+      "scip_total_project_files": 0
+    },
+    "python": {
+      "basedpyright_keys": [
+        "generalDiagnostics",
+        "summary",
+        "version"
+      ],
+      "basedpyright_summary": {
+        "errorCount": 0,
+        "filesAnalyzed": 1,
+        "informationCount": 0,
+        "timeInSec": 0.107,
+        "warningCount": 1
+      },
+      "basedpyright_version": "1.40.2",
+      "scip_command": "scip-python index . --project-name notebook-oracle-probe --project-version 0 --environment environment.json --output index.scip",
+      "scip_total_project_files": 1
+    }
+  }
+}

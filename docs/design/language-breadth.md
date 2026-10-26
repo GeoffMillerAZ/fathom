@@ -1595,6 +1595,18 @@ query source (LB-F2) and a rebuild of them from the lock is then byte-identical 
 `npx --yes tree-sitter-cli@<pinned> generate` in scratch (never a global install).
 `PROVENANCE.md` becomes a generated rendering of the lock plus the prose that is there today.
 
+An optional `patches` array declares build-time source changes, in application order:
+`[{"path":"patches/<blob>/0001-description.patch","sha256":"<64 lowercase hex>"}]`.
+Paths are canonical relative paths below the lock directory's `patches/`, ending in
+`.patch`; missing files, symlinks, traversal and duplicate paths are refused. The
+builder verifies the upstream archive checksum, commit and licence first, then each
+patch's checksum and clean application before optional generation. A failed patch
+stops the build; no fuzz, reverse application or three-way merge is permitted. The
+patched tree is licence-checked again, and MPL-2.0 grammars cannot carry patches.
+`PROVENANCE.md` marks patched sources and lists every patch digest in application
+order. Patches are in-tree build inputs, never runtime downloads or embedded patch
+text; the final uncompressed blob checksum remains the runtime trust boundary (I55).
+
 ### 8.2 The licence allowlist
 
 Allowed for grammars, queries and fixtures: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause,
@@ -1868,7 +1880,7 @@ worktree and your scratch directory.
 
 1. Read your entry: `id`, `name`, `kind`, `target_level`, `engine`, `grammar_source`,
    `licence`, `oracle`, `calibration_subjects`, `depends_on`, `port_of` (when present).
-2. Check `depends_on`: every id must be `[x]` or `[-]` in `docs/plans/language-breadth.md`
+2. Check `depends_on`: every foundation id must be `[x]` in `docs/plans/language-breadth.md`
    (`fathom plans status`) — except a dependency on another queue item (`LB-Q-<id>`: cpp on
    c, scss/less on css), which is satisfied once that item has a committed reading at L1 or
    better, even while its own row stays open for a higher target (D6, §1.5).
@@ -1902,6 +1914,33 @@ worktree and your scratch directory.
 4. Take the measurement lock before any heavy step (clone, indexer, harness):
    `mkdir <scratch>/lang-measure.lock` (retry every 60 s; remove it when the step
    ends). One heavy measurement runs machine-wide at a time.
+
+### 13.0.1 Search before writing or keeping a ceiling (X-R1, X-R4)
+
+- [ ] Before writing or keeping a ceiling, search all five source groups below. Record each
+  source searched in the indexed assessment/provenance note: date, URL or exact command/query,
+  result (including no hits), and any access failure. Recording only candidates found is
+  incomplete; an inaccessible or unsearched source is a disclosed gap, not evidence of absence.
+
+  | Source group | Minimum search |
+  |---|---|
+  | Own toolchain | Compiler/runtime dump flags, introspection and tracing hooks in the language/tool itself. |
+  | SCIP/LSIF producers | Sourcegraph's SCIP and LSIF indexer lists, plus GitHub search for `scip-<lang>`. |
+  | Language servers | The language/tool's language-server ecosystem, including maintained forks and sibling features. |
+  | Package registry | The ecosystem's registry for parsers, type checkers and AST dumpers. |
+  | Runtime tracing | Call/require tracing, including runtime hooks or adapters, as Lua and Ruby already used. |
+
+- [ ] Before claiming no grammar, oracle or resolver can meet a target, list named existing
+  candidates with pinned version/commit, primary source, license, available output and reason
+  each fits or fails this queue item's scope. Search the ecosystem's type checkers/indexers,
+  maintained forks, sibling packages/features of the current oracle, and tool-native/debug
+  builds as applicable. Use existing work before proposing a new adapter or declaring a ceiling.
+- [ ] Distinguish unavailable, untried, measured failure and out-of-scope. A search hit is not
+  a validated oracle. If an existing resolver serves another dialect/module format, record
+  that boundary and propose a neighbor item rather than changing this item's population.
+  A trigger cannot say "a tool appears" when the named tool already exists.
+- [ ] Keep the candidate list and evidence in an indexed assessment/provenance note. Give a
+  concrete wins-if/retry condition, missing input and exact reproduction command for a ceiling.
 
 ### 13.1 Pin the grammar (tags-engine items only; skip for doc-engine items)
 
@@ -1985,6 +2024,94 @@ worktree and your scratch directory.
 17. Clone with `task calibrate-clone -- <id>` (shallow, into `workspace/calibration/`).
     Check the clone's size; if over 500 MB, pick a `subpath` or another subject.
 
+### 13.3.1 Freeze the measured set and holdout
+
+- [ ] Freeze each subject with the receipt below before and after oracle/build steps.
+  This is a **tracked-set approximation**, not the harness's measured-file list: the harness
+  does not emit that list today. In `internal/extractor/dialects/<id>/PROVENANCE.md` (or the
+  indexed assessment for a doc engine), record the subject commit, subpath, both manifest
+  digests, counts/bytes and receipt paths. Separately copy the reading's per-subject `files`
+  and `bytes`, list every discovery exclusion rule and reconcile differences from this
+  tracked-set approximation. Review added untracked/ignored paths for generated language inputs;
+  an unchanged tracked digest alone cannot prove measured-set stability. An exact harness
+  discovery receipt needs a separate brief, not another hand-written discovery algorithm.
+- [ ] Pin holdout identity and criteria before measuring or tuning. Keep holdouts outside
+  `calibration/corpus.d/` canonical shards and canonical aggregation; store their separate
+  pin/reading per the applicable wave contract. Audit both timing and membership: pinning
+  first does not make a holdout in the canonical shard independent. Never move a hard file
+  out of the measured corpus without a justified, disclosed scope ruling.
+
+Run this exact manifest recipe from the fathom root, replacing the input placeholders.
+Use the same `SUBJECT` and `SUBPATH` twice, changing only the `RECEIPT` suffix from `before`
+to `after`. It hashes current file contents in tracked, subject-relative paths under the
+subpath, sorted by path bytes. Each UTF-8 JSON line is `[path,kind,identity]`, with ASCII
+escapes and no spaces; the final newline is part of the manifest digest. Kind `file` hashes
+current regular-file bytes with SHA-256; `symlink` hashes link-target bytes without following
+the link; `gitlink` records the index's submodule commit, not a SHA-256 or its worktree contents.
+Summary `files`/`bytes` count regular files only; `symlinks`/`gitlinks` count the other entries.
+A missing checkout, non-root `SUBJECT`, empty/unmerged index set, missing regular file or
+regular-file/symlink type mismatch fails the command. The NUL-delimited `.untracked` receipt
+includes ignored files too. The reading harness skips symlink entries and may measure eligible
+regular files inside checked-out submodules, subject to connector exclusions and language
+ownership (`cmd/indexbench/langoracle.go`, `internal/connector/local.go` and `gitdiscover.go`).
+Reconcile those differences explicitly; this manifest does not cover submodule contents.
+Keep manifests and subject file lists locally under ignored `workspace/artifacts/` until review.
+Commit only commands, counts, hashes and repo-relative receipt summaries in provenance, never
+subject content or wholesale file lists (X-R3), local absolute paths or new reading fields.
+
+```sh
+SUBJECT=workspace/calibration/<subject> SUBPATH=. RECEIPT=workspace/artifacts/lang-<id>/<subject>-before python3 - <<'PY'
+import hashlib, json, os, pathlib, stat, subprocess
+root = pathlib.Path(os.environ['SUBJECT']).resolve()
+scope = os.environ['SUBPATH']
+out = pathlib.Path(os.environ['RECEIPT'])
+top = subprocess.check_output(['git', '-C', str(root), 'rev-parse', '--show-toplevel'])
+if pathlib.Path(os.fsdecode(top).rstrip('\n')).resolve() != root:
+    raise SystemExit('SUBJECT must be the subject Git checkout root')
+def paths(*args):
+    return subprocess.check_output(['git', '-C', str(root), 'ls-files', '-z', *args, '--', scope])
+entries = []
+for record in paths('-s', '--cached').split(b'\0'):
+    if not record:
+        continue
+    meta, name = record.split(b'\t', 1)
+    mode, oid, stage = meta.split()
+    if stage != b'0':
+        raise SystemExit('unmerged index: resolve conflicts first')
+    entries.append((name, mode, oid))
+if not entries:
+    raise SystemExit('empty tracked set: check SUBJECT and SUBPATH')
+lines, size = [], 0
+counts = dict(files=0, symlinks=0, gitlinks=0)
+for name, mode, oid in sorted(entries):
+    path = root / os.fsdecode(name)
+    if mode in (b'100644', b'100755'):
+        if not stat.S_ISREG(path.lstat().st_mode):
+            raise SystemExit('tracked regular file has changed type')
+        data = path.read_bytes()
+        kind, identity = 'file', hashlib.sha256(data).hexdigest()
+        counts['files'] += 1
+        size += len(data)
+    elif mode == b'120000':
+        kind, identity = 'symlink', hashlib.sha256(os.readlink(os.fsencode(path))).hexdigest()
+        counts['symlinks'] += 1
+    elif mode == b'160000':
+        kind, identity = 'gitlink', oid.decode('ascii')
+        counts['gitlinks'] += 1
+    else:
+        raise SystemExit('unsupported Git index mode')
+    lines.append(json.dumps([os.fsdecode(name), kind, identity],
+                           ensure_ascii=True, separators=(',', ':')) + '\n')
+manifest = ''.join(lines).encode('utf-8')
+out.parent.mkdir(parents=True, exist_ok=True)
+pathlib.Path(str(out) + '.manifest').write_bytes(manifest)
+pathlib.Path(str(out) + '.untracked').write_bytes(paths('--others'))
+summary = dict(sha256=hashlib.sha256(manifest).hexdigest(), entries=len(entries), bytes=size, **counts)
+pathlib.Path(str(out) + '.json').write_text(json.dumps(summary, sort_keys=True) + '\n')
+print(json.dumps(summary, sort_keys=True))
+PY
+```
+
 ### 13.4 Measure
 
 18. Oracle B: universal-ctags from `workspace/tools/ctags` (a pinned release; if absent,
@@ -2003,11 +2130,46 @@ worktree and your scratch directory.
     do offline in 20 minutes, record `oracle A unavailable: <why>` and continue with tier C
     for L2; L3/L4 then cannot be excellent. For tool formats, run the tool-native oracle
     named in your entry into `workspace/tmp/oracle/`.
-20. Run the harness (§10) for each subject into `docs/bench/readings/lang/<id>.json`.
+20. Run the harness (§10) for each subject into scratch output first; inspect it, then use
+    guarded `WRITE=1 task lang:loop -- <id>` to save a non-regressing committed reading.
 21. Read the reading's `level_met` and `grade`. Iterate queries while a metric misses the
     excellent threshold for a reason the queries can fix (missing kind, wrong containment,
     missed call shape). Each iteration adds or fixes a fixture first. Stop iterating after
     three rounds without movement.
+
+### 13.4.0 Measurement evidence checklist
+
+- [ ] Prove raw oracle truth is independent of fathom's extracted nodes: perturb/remove
+  extractor output on a fixed subject and verify the oracle's raw-truth digest stays fixed;
+  change a known oracle-input fact and verify that truth changes. Compiler definitions,
+  stand-ins and scope ranges must come from the compiler/tool, not from fathom as fallback.
+  Record the probe command and outcome; do not count a query used to draft the dialect as
+  an independent definitions oracle.
+- [ ] Disclose per-subject numerators, denominators and ratios alongside pooled results,
+  including thin, excluded and missing evidence. Keep each tier/grade cap visible. A pooled
+  pass does not explain a subject-specific miss; do not invent a new grading threshold.
+- [ ] Bind comparisons to metric definition, subject set, tool version, grammar blob and
+  extractor revision. For parse errors distinguish files with ERROR nodes, MISSING-only
+  files and the ERROR-or-MISSING union. A historical ERROR-only count can reproduce exactly
+  while the current union differs; different definitions are not a failed reproduction.
+- [ ] For changed oracle logic, demonstrate mutation sensitivity: intentionally break the
+  relevant tier default, truth scope, pairing/filter or identity behavior and show the
+  focused tests fail, then restore it and show green. Add a `Mutation:` line to the report:
+  changed repo-relative file and one-line mutant (or committed patch receipt), exact
+  focused `go test -run '^<TestName>$'` command, observed FAIL line and restored green rerun.
+  Keep full red/green output under `workspace/artifacts/lang-<id>/mutation.log`; put the
+  reproducible command, mutant and results in provenance or the indexed assessment so the
+  receipt survives scratch cleanup. Reuse existing E2 tests where they cover the property;
+  a passing test that survives the pertinent mutant is not proof.
+- [ ] For new format readers or expanded output, exercise adversarial count caps, fan-out,
+  long/repeated paths, attributes, nesting and compressed payloads as applicable. Assert
+  bounded work/output and whole-unit refusal above caps, without silent partial success.
+  For each cap, name at least one test feeding cap + 1 and asserting whole-unit refusal;
+  reuse a covering test from the owning lane. Record `Caps:` in provenance/assessment with
+  the resource, cap, input count, repo-relative test file, test name, exact command and
+  refusal result; keep full output under `workspace/artifacts/lang-<id>/caps.log` for review.
+  If a touched package has tests that skip under `-race`, name and run those once without
+  `-race` too. Otherwise run the named tests with `-race`; no unnamed stress gate is implied.
 
 ### 13.4.1 Offline measure loop and gap reports
 
@@ -2069,26 +2231,87 @@ from this ratio-based shortlist because their units differ.
     `go run ./cmd/indexbench lang-tracker > docs/languages.md`.
 23. Plan row: in `docs/plans/language-breadth.md`, your row `LB-Q-<id>` already carries its
     contract (a lexical oracle on your reading's `level_met`). Do not edit the contract.
-    Mark it `[x]` only if `fathom verify --service fathom --plan docs/plans/language-breadth.md`
-    would pass it: your reading exists and its `level_met` meets the row's pattern. If you
+    Claim it only after `fathom verify --service fathom --plan docs/plans/language-breadth.md`
+    actually exits 0 for the row: the reading exists and its `level_met` meets the pattern.
+    A worker brief that forbids box flips leaves it for the controller. If you
     reached less than the target, see §14.2 — do not change the pattern.
-24. CHANGELOG: one line under `[Unreleased]` → `### Added` (new language) or `### Changed`
-    (a port): "`<Name>` extraction at <level> (<grade>), measured against <oracle> on
+24. Change note: add a unique fragment under `docs/changelog/unreleased/` with one
+    supported heading, `### Added` (new language) or `### Changed` (a port), per ADR-075.
+    Do not edit `CHANGELOG.md` directly. Write: "`<Name>` extraction at <level> (<grade>), measured against <oracle> on
     <subjects>". A port that changes output for already-indexed files also adds the wave's bump
     file `internal/fusion/epochs/<wave>.md` (what changed, why stored observations are stale).
 25. Delete your clones unless the next queued item shares a subject
-    (`task calibrate-clean -- <id>`); delete your scratch dir.
+    (`task calibrate-clean -- <id>`); delete unneeded scratch. Retain review receipts under
+    `workspace/artifacts/` until review, with a named cleanup owner in the report.
+
+### 13.5.1 Before READY (X-R2, X-R3)
+
+- [ ] Reading-schema scope is `docs/bench/readings/lang/*.json`, `holdout/*.json`,
+  `tuned/*.json` and `tuned/lf3/*.json`. `parity/` has a different schema and is excluded.
+  `baseline/` is frozen LB-M1 evidence; do not regrade it without an explicit owner scope
+  ruling under E2-R1/D20. Preserve measured values and `required_kinds`; distinguish
+  absent metrics from thin denominators. For a grading-rule change, list and regrade every
+  affected reading in this scope, including untouched nested inputs, and disclose the list.
+  At reference main `c86095291`, run the passing baseline command
+  `go test -race ./internal/langbench -run '^TestCommittedReadingsRoundTrip$' -count=1`.
+  It strictly decodes, validates and marshals **top-level** Reading JSON and compares JSON
+  values; it does not cover nested paths or require canonical bytes. Until #7 E2 round 2
+  lands, list each nested reading touched and capture sorted before/after JSON with the
+  commands below; explain each intentional changed measured field in provenance/assessment.
+  New nested files have no base: record that fact and review their full sorted JSON.
+  This interim sorted-JSON diff supports preservation review, not strict nested schema
+  validation or automatic semantic equality. `jq -S` may preserve number spellings: list
+  number-literal-only hunks (for example `0.50` versus `0.5`) separately as serialization
+  differences, rather than claiming a changed measurement; review other hunks by field.
+  E2-R1..R4 own recursive regrading, byte-canonical/value-preserving serialization, measured
+  kind preservation and absent-metric tests. Use their landed tests once available; do not
+  build a duplicate checker or count a pattern matching no tests as proof. Today a byte-only
+  diff is not a changed JSON value; once E2-R2 lands, canonical byte equality is required
+  **in addition** to value preservation, and a byte-only test failure must be fixed.
+
+  For each existing nested path, set `BASE` to the pre-edit commit and `p` to that reading.
+  Run from the repo root. A failed `git show`/`jq` is operational, not an unchanged value.
+  Keep the diff (exit 0 identical sorted JSON, 1 differences requiring review, greater than
+  1 operational) with the receipt.
+
+  ```sh
+  BASE=<pre-edit-commit> p=docs/bench/readings/lang/holdout/<reading>.json
+  receipt=workspace/artifacts/lang-<id>/readings
+  mkdir -p "$receipt/$(dirname "$p")"
+  git show "$BASE:$p" > "$receipt/$p.base" &&
+    jq -S . "$receipt/$p.base" > "$receipt/$p.before" &&
+    jq -S . "$p" > "$receipt/$p.after" &&
+    diff -u "$receipt/$p.before" "$receipt/$p.after" > "$receipt/$p.diff"
+  ```
+- [ ] Run `go run ./third_party/agentic-kit/cmd/release-notes -check` and
+  `bash scripts/check-merge-debris.sh` before READY. Check staged/index content too with
+  `bash scripts/check-merge-debris.sh --staged` when preparing the commit. A required
+  integrator regeneration is not a worker defect; regenerate only through its generator.
+- [ ] Before READY, run
+  `bash scripts/fathom-go.sh test -count=1 -run TestNoOrgSpecificNames ./cmd/fathom`
+  (X-R3, ADR-011). Commit counts, hashes and repo-relative summaries; never copy subject
+  content or wholesale file lists into assessment data/provenance. Even public subject
+  filenames can resemble addresses and fail the org-name gate. Keep raw receipts local
+  and ignored; a public upstream source does not exempt copied data from this check.
+- [ ] Verify every `Verified:` line names actual runnable commands, required inputs and
+  results, with repo-relative paths to committed files, not local scratch helpers. A list
+  of checks or a claimed outcome alone is not a command. Missing dependencies and skipped
+  checks stay disclosed, never called green.
 
 ### 13.6 Commit and report
 
 26. One commit (two for a port: the dialect, then the incumbent's removal), conventional
     message `feat(lang): <name> at <level> (<grade>)`, with a `Verified:` line naming the
-    tests you ran, the reading's `level_met`, and the oracle tiers. No `Co-Authored-By` or
+    exact runnable command(s) you ran, with repo-relative paths to committed files and
+    needed flags (no scratch helpers).
+    Put the reading's `level_met`, oracle tiers and command exit/result beside them;
+    prose such as "round-trip, privacy and counts passed" without commands is not verification. No `Co-Authored-By` or
     session trailers. Do not push; the coordinator merges.
 27. Report, in at most 12 lines: id, level met and grade per level, the metrics that missed
     excellent and why, oracle tiers, grammar blob size (gz), peak module pages, compiled
     bytes, faults, anything flagged for Opus review (§9's thresholds, `needs-strategy`,
-    licence doubt), and disk you left behind (should be none).
+    licence doubt), `Mutation:` and `Caps:` receipt references when applicable, and disk
+    left for review with its cleanup owner. Remove unneeded artifacts after review.
 
 ## 14. Definition of done, and when a level is out of reach
 
@@ -2100,7 +2323,7 @@ from this ratio-based shortlist because their units differ.
 | L2 | L1 done; call pairs measured against tier A (excellent/good) or tier C (good) |
 | L3 | L2 done; `imports.scm` + a strategy (Go: its loader and typed pass, LB-F58); `import_resolution` and file-edge metrics measured against SCIP, or both against a language-native import dump at its tier (§10, LB-F40, LB-F57: the dump's statements, not references, are the file-edge truth); a tool format's `xref_precision`/`xref_recall` against its oracle's `cross_references`, from the doc engine's references or a tags-engine format's file-resolved edges (LB-F30, LB-F56) |
 | L4 | L3 done; a SCIP producer run on ≥ 1 subject, imported with `fathom ingest --scip` into a scratch store, `def_mapping` and `typed_recall` measured; the tracker names the producer and version |
-| any | tenancy numbers inside §1.2's floor; tracker regenerated; CHANGELOG line; no disk left behind |
+| any | tenancy numbers inside §1.2's floor; tracker regenerated; change-note fragment (step 24); review artifacts have a cleanup owner, no unneeded disk left behind |
 
 ### 14.2 When the target is not reachable
 

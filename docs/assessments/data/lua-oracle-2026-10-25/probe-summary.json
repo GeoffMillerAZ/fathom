@@ -1,0 +1,10 @@
+{
+  "defines": 0,
+  "doc_records": 1,
+  "emmy_exit": 0,
+  "emmy_output_keys": "list",
+  "emmy_version": "emmylua_check 0.25.1",
+  "fields": 0,
+  "luals_version": "3.19.2",
+  "scope": "instrument contract only; no subject grade or resolver coverage"
+}
