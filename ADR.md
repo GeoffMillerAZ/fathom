@@ -866,26 +866,51 @@ so each attribute carries the `=` the check counts; `TestSimulinkDecoderStrict` 
 `SimulinkMaxPath` 16 KiB per block path; and `SimulinkMaxPathBytes` 32 MiB three times over per
 model: of block paths, of its distinct signals' endpoint paths (`len(Src)+len(Dst)` summed), and
 of the Calls the extractor emits for it (blocks sharing a path each carry its calls), the first
-two an `ErrSimulinkCap`, the third a file that yields nothing. An endpoint resolves to a block
-index and a signal is deduped on its pair of indexes, so no path is hashed per endpoint and each
-is built once; and `.mdl` lines of at most `MaxSimulinkLine` 4 MiB, a longer one a cap error,
-never a partial model. The calibration corpus's largest model sits far inside each (depth 38,
-96,366 elements, 5,801 blocks, a 411-byte value, 24.7:1, a 244-byte start tag, 13 attributes, a
-304-byte path, 569,136 bytes of paths, 1,316,079 bytes of signal endpoints, 660,200 bytes of
-Calls). `TestReadSimulinkModelHeapBound` runs the extractor (`ExtractDoc`, which reads the model
-and emits its rows) on each adversarial shape, for `.slx` and `.mdl`, in a child process and
-holds its peak resident set (the kernel's high-water mark) within 8x the inflated budget, 256 MiB,
-of an empty model's (4x that under `-race`): an element flood and a block flood to their caps, an
-attribute flood (one start tag of 3.9M attributes, refused) and 15,000 tags at the attribute cap,
-deep long names (200 nested blocks of one 16 KiB name, refused) and long names at the path-bytes
-cap (2,040 children of a 16,000-byte name), endpoint fan-out (100,000 branches at depth 6), fan
-pairs (700 children of a 16,000- or 40,000-byte name, every pair joined, refused; 32 children
-inside the caps), hashburn (500,000 destinations of one leaf, at a 983 KB path, refused, and at a
-16,000-byte one), and a `.mdl` property flood. The most any shape measured (2026-10-25) is 195 MiB
-over (the `.mdl` hashburn at the cap); the `.slx` maximum is 133 MiB (fan pairs, refused). Before
-the signal caps, fan pairs reached 465 MiB and 19.6 GB of emitted Calls and the hashburn 361 MiB
-and 43 s of CPU; `TestSimulinkHashburnCPU` holds each hashburn within the 2,000 ms `max_file_ms`
-bar of process CPU (1.4 s at most measured). A package over a cap, or one that does not parse, yields no
+two an `ErrSimulinkCap`, the third a file that yields nothing. Short names pass a byte cap, so
+counts are capped beside them (2026-10-26): `SimulinkMaxSignals` 65,536 distinct signals and
+`SimulinkMaxCalls` 65,536 emitted Call entries per model, and `SimulinkMaxModelRefs` 4,096 model
+references per model from any of `graphicalInterface.json`, its `.xml`, the inline
+`GraphicalInterface` or a `.mdl`'s; the `.json` is decoded as a token stream, never a tree, no
+string in it past `SimulinkMaxValue` (checked on its bytes first), no value nested past
+`SimulinkMaxDepth`, each reference one element of the shared budget. Each is an
+`ErrSimulinkCap`, never a truncated list, and a model-references part over a cap or not parsing
+refuses the whole model as a system part does. An endpoint resolves to a block index and a
+signal is deduped on its pair of indexes, so no path is hashed per endpoint and each is built
+once; and `.mdl` lines of at most `MaxSimulinkLine` 4 MiB, a longer one a cap error, never a
+partial model. The calibration corpus's largest model sits far inside each (depth 38, 96,366
+elements, 5,801 blocks, a 411-byte value, 24.7:1, a 244-byte start tag, 13 attributes, a 304-byte
+path, 569,136 bytes of paths, 1,316,079 bytes of signal endpoints, 660,200 bytes of Calls, 6,665
+distinct signals, 6,665 Call entries, 4 model references). `TestReadSimulinkModelHeapBound` runs
+the extractor (`ExtractDoc`, which reads the model and emits its rows) on each adversarial shape,
+for `.slx` and `.mdl`, in a child process and holds its peak resident set (the kernel's high-water
+mark) within 8x the inflated budget, 256 MiB, of an empty model's, and checks each refused shape
+ends in the cap it is named for; a shape that models ingestible input fits the 2 MiB fetch cap
+(the `.mdl` element flood and the `.slx` attribute flood, 3.1 and 10.7 MB, are read only by a
+direct caller). The shapes: an element flood and a block flood to their caps, an attribute flood
+(one start tag of 3.9M attributes, refused) and 15,000 tags at the attribute cap, deep long names
+(200 or 120 nested blocks of one 16 KiB name, refused by the path cap) and long names at the
+path-bytes cap (2,040 children of a 16,000-byte name), endpoint fan-out (100,000 or 75,000
+branches at depth 6), fan pairs (children of a 16,000-byte name, every pair joined: 700 or 64
+refused by the signal bytes, 32 inside the caps; a 40,000-byte parent refused by the path cap),
+hashburn (one leaf the destination of 500,000 or, in a `.mdl`, 80,000 endpoints at a 16,000-byte
+path; at a 983 KB path refused by the path cap), short fan pairs (700 or 260 one-letter children,
+every pair joined, refused by the signal count), duplicate sources (8,300 blocks named A, one line
+to 1,000 two-letter blocks, refused by the call count), refflood (878,537 model references, a 1.2
+MB package, refused by the reference count), hugeref (one 30 MiB BlockPath in a 1.9 MB package,
+refused by the value cap) and a `.mdl` property flood. Measured 2026-10-26, each shape 3 runs, the
+maximum taken: the most any shape is 143 MiB over (the `.slx` fan pairs, refused, and the `.slx`
+hashburn at the cap); the `.mdl` maximum is 61 MiB (the block flood); refflood 66 MiB, hugeref 66
+MiB, short fan pairs 140 MiB (`.slx`), duplicate sources 9 MiB. Round 4's 195 MiB `.mdl` figure was
+a hashburn of 500,000 endpoints, an 11 MB file ingest's fetch cap never reads. Before these caps,
+refflood reached 456 MiB over and 5.7 s of CPU, hugeref 130 MiB, short fan pairs 490,000 signals
+at 189 MiB, and duplicate sources 8.3M Call entries, which failed a whole service's ingest at the
+store; before round 4's signal caps, fan pairs reached 465 MiB and 19.6 GB of emitted Calls and
+the hashburn 361 MiB and 43 s of CPU. `TestSimulinkHashburnCPU` holds each hashburn within the
+2,000 ms `max_file_ms` bar of process CPU (1.2 s at most measured), and
+`TestSimulinkResolveHashWork` resolves one line of 1,000,000 endpoints on a 16 KiB path within 2x
+(plus 50 ms) the CPU of a one-byte path, which a path-keyed dedupe fails (711 ms against a 125 ms
+bound; the reader 31 ms). These three run without the race detector in validate's
+`simulink-gate` step. A package over a cap, or one that does not parse, yields no
 symbols, never a partial model. Ingest's 2 MiB `MaxExtractSize` still applies, to the compressed bytes. Every other
 NUL-sniffed file stays excluded, a `.zip`, `.docx` or `.mlx` included, until a manifest claims
 its extension. Plan row: LB-F587 (`docs/plans/language-breadth.simulink.md`). **Decision
@@ -895,8 +920,11 @@ provider `none` the rule runs whole, and there is no opt-out beyond the manifest
 dialect that drops `match.container` withdraws. Measurement: the dialect's reading
 (LB-Q-simulink), whose throughput counts compressed bytes, `TestReadSimulinkModelCaps`, `TestReadSimulinkModelRealRatio`, `TestReadSimulinkModelAdversarial`,
 `TestReadSimulinkModelSignalBytes`, `TestSimulinkExtractDocOutputBound`, and
-`TestSimulinkCalibrationIdentity` (with `CALIBRATION_DIR` set, the 194 calibration models' per-model
-counts against their golden). **Revisit
+`TestReadSimulinkModelCountCaps`, `TestReadSimulinkModelRefCaps`,
+`TestReadSimulinkModelRefsPartRefused`, and `TestSimulinkCalibrationIdentity` (with
+`CALIBRATION_DIR` set, the 194 calibration models' per-model counts and two digests, sha256 over
+the sorted `Src\x00Dst` signal lines and over each emitted node's name and sorted Calls, against
+their golden). **Revisit
 when** a claimed container's caps refuse a real calibration model (raise them with the
 measurement), a second container format (a `.mlx`, an `.sldd`) is claimed (the format list
 grows), or a serving surface needs a package's parts as text.

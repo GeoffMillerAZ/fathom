@@ -9,8 +9,8 @@
     "L3": "unmet",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-10-25",
-  "fathom_commit": "9a59b3ab",
+  "measured_at": "2026-10-26",
+  "fathom_commit": "01b45866",
   "extractor": "dialect",
   "subjects": [
     {
@@ -46,9 +46,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 1228.6390000000001,
-        "extract_cpu_ms": 1539.4989999999998,
-        "max_file_ms": 353,
+        "extract_ms": 1154.475,
+        "extract_cpu_ms": 1416.7010000000002,
+        "max_file_ms": 264,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -84,9 +84,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 225.00799999999998,
-        "extract_cpu_ms": 290.721,
-        "max_file_ms": 22,
+        "extract_ms": 166.30899999999997,
+        "extract_cpu_ms": 239.0229999999999,
+        "max_file_ms": 18,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -122,9 +122,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 7.933,
-        "extract_cpu_ms": 7.864,
-        "max_file_ms": 1,
+        "extract_ms": 8.151,
+        "extract_cpu_ms": 14.116000000000001,
+        "max_file_ms": 2,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -160,9 +160,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 198.89900000000003,
-        "extract_cpu_ms": 278.96700000000004,
-        "max_file_ms": 100,
+        "extract_ms": 137.52400000000003,
+        "extract_cpu_ms": 205.395,
+        "max_file_ms": 84,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -198,9 +198,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 441.88500000000005,
-        "extract_cpu_ms": 572.2740000000005,
-        "max_file_ms": 58,
+        "extract_ms": 334.05800000000005,
+        "extract_cpu_ms": 446.295,
+        "max_file_ms": 45,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -256,10 +256,10 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 8.22,
+    "throughput_mb_s": 9.53,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 10.52,
-    "max_file_ms": 353,
+    "wall_throughput_mb_s": 12.28,
+    "max_file_ms": 264,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
@@ -267,7 +267,8 @@
   "notes": [
     "WEC-Sim/WEC-Sim: 1 files skipped by ingest's gates (oversize)",
     "WEC-Sim/WEC-Sim: 999 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
-    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "throughput: the median of 3 runs on 2026-10-26 at 01b45866, 9.69, 9.53 and 9.48 MB/s on the cpu basis (wall 12.52, 12.28 and 12.04; max_file_ms 320, 264 and 296), this file the median run; round 4 recorded 8.22 against round 3's 11.78, and round 3's and round 4's readers took the same time in one VM over the 194 models, so the VM, not the reader, moved that figure"
   ],
   "disposition": null,
   "l3_evidence": {
