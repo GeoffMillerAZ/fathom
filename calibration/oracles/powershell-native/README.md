@@ -76,9 +76,12 @@ Pester dependency remains pinned at 5.7.1 for PSScriptAnalyzer.
 Every enumerated target is either loaded with its code hash or retained in
 `declared_not_loaded` with a stable declaration id, concrete reason and affected
 unresolved-site count. The private inventory holds paths; public receipts hold
-counts and hashes. Original definition-only preambles may be dot-sourced;
-definition-file conditionals may only read Get-Variable and dot-source support
-files. Surrounding test bodies are never executed. Original top-level module
+counts and hashes. For admitted definition files, only top-level native
+FunctionDefinitionAst bodies are compiled into functions, preserving their
+original source metadata. Conditional preambles and transitive support scripts
+never execute; types and other preamble statements are not imported by this
+function-only route. Executable test/fixture targets are still refused.
+Surrounding test bodies are never executed. Original top-level module
 bodies are compiled from their ScriptBlockAst. Missing targets, undeclared CWD or
 PSDrive paths, and executable test/fixture bodies are refused and retained.
 Refused-helper classes apply only in declaring files or the refused source,
@@ -91,8 +94,15 @@ including per-file private product utility preambles. Native loader-owned source
 files use their module's private session; ordinary test files use global lookup
 with that union. This can answer private helper queries outside their declaring
 files; the receipt counts those sites explicitly. It does not model each test
-file's isolated load order. The assessment discloses the resulting 13 Pester
-sites, including all 12 identified in review. The receipt records
+file's isolated load order. The follow-up census links every native function
+identity to its loading declarations and compares them with each query file's
+transitive declaring closure. Pester's test.ps1 and
+tst/Pester.BeforeContainer.ps1 are explicit runner-global sources; the matching
+root manifest is implicit declared state. Native module-owned definitions are
+also legitimate in that module's private context. The census records 17 Pester
+and four PSScriptAnalyzer crossings, including three/two shadowed origins.
+The older product-private-only counter remains 13/0 and is a subset diagnostic.
+The receipt records
 module names/versions/code hashes, definition-origin counts/content hashes and
 all unresolved sites partitioned into member, harness, same-file/BeforeAll,
 private-module, declared-not-loaded, external-application, found-but-not-admitted and missing classes. These classes diagnose
@@ -213,3 +223,40 @@ This authored native fixture fails if a declared module is omitted, checks that
 an executable fixture is refused, and proves helper-inventory file/byte caps at
 reduced-limit cap+1 without accepting partial output. It also checks an
 `& $subjectModule { ... }` private-scope ancestor and per-file refusal attribution.
+
+## Deferred-minor follow-up
+
+Private scope also recognises `& (Get-Module Probe) { ... }`, dot invocation and
+variable handles without a naming convention. Only a command with a scriptblock
+argument has this diagnostic classification; no native target is invented.
+The transitive-preamble regression attempts to write a marker through two support
+files. Function-only compilation loads the declared function without running
+either support file; the native definition file hash remains the original one.
+
+Crossing receipts retain both actual and shadowed declaration ids privately.
+The public evidence contains counts/hashes only. Of PSScriptAnalyzer's four
+crossings, two native answers disappear without another file's helper and two
+retain the same name but bind to the file's own helper instead of the union's
+shadowing helper. Four fresh declared-session probes verify this. Its margin is
+three sites below 583 in the union (580 unresolved), or one below after removing
+the two union-only answers (582). This sensitivity is not a simulated isolated
+whole-suite run. Pester has 14 union-only answers and three shadowed origins;
+its corresponding sensitivity is 3,140 unresolved, already above the cap.
+
+With the same pinned tools and original load-only wrapper prepared above:
+
+```sh
+nice -n 10 python3 -B calibration/oracles/powershell-native/prove_followups.py --tools workspace/tools/powershell-followups --out workspace/artifacts/powershell-followups/fixtures-publish
+nice -n 10 python3 -B calibration/oracles/powershell-native/prove_inventory.py --tools workspace/tools/powershell-followups --out workspace/artifacts/powershell-followups/inventory-proof
+nice -n 10 python3 -B calibration/oracles/powershell-native/prove_harness.py --tools workspace/tools/powershell-followups --indexbench workspace/tools/indexbench --out workspace/artifacts/powershell-followups/binder-publish
+nice -n 10 python3 -B calibration/oracles/powershell-native/prove_mutations.py --followups-only --tools workspace/tools/powershell-followups --indexbench workspace/tools/indexbench --out workspace/artifacts/powershell-followups/mutations
+python3 -B calibration/oracles/powershell-native/followup_evidence.py --capture workspace/artifacts/powershell-followups
+python3 -B calibration/oracles/powershell-native/followup_evidence.py --check docs/assessments/data/powershell-oracle-2026-10-26/followups.json
+```
+
+Use fresh output roots; use `--out workspace/tools/powershell-followups` for the
+fetch/prepare prerequisites. The four focused native tests and six new mutants
+are current. The existing 21-mutant proof, runtime executions and product scores
+remain historical at the revision recorded in followups.json. They are not
+relabelled as fresh runs. Full native pair digests and original population hashes
+are byte-identical to those historical measurements; canonical grades are unchanged.
