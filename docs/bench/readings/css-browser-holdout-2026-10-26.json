@@ -1,0 +1,150 @@
+{
+  "dialect": "css",
+  "kind": "language",
+  "target_level": "L3",
+  "level_met": "L2",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-10-26",
+  "fathom_commit": "9fe4f9c2c",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "tachyons",
+      "sha": "ecb7ef08684fc96a4945d360102385c110d50de9",
+      "files": 60,
+      "bytes": 148555,
+      "counts": {
+        "call_fathom": 448,
+        "call_fathom_in_truth": 448,
+        "call_truth": 448,
+        "call_truth_found": 448,
+        "css_w2_fathom_outside_closure": 289,
+        "css_w2_oracle_outside_closure": 289,
+        "fathom_defs": 2508,
+        "import_edges_fathom": 56,
+        "import_edges_truth": 0,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "imports": 56,
+        "imports_unattested": 56,
+        "kind_equal": 2508,
+        "matched": 2508,
+        "oracle_defs": 2508,
+        "range_eligible": 2498,
+        "range_ok": 2498
+      },
+      "families": {
+        "calls": "A",
+        "imports": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "rule",
+        "selector",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "fathom:CSSModule": 60
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 2,
+        "extract_ms": 69.17900000000002,
+        "extract_cpu_ms": 69.83600000000003,
+        "max_file_ms": 13,
+        "peak_module_pages": 284,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "lightningcss",
+      "version": "1.33.0"
+    }
+  ],
+  "metrics": {
+    "call_precision": 1,
+    "call_recall": 1,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": 1,
+    "signature_coverage": null,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "A",
+    "call_recall": "A",
+    "kind_agreement": "A",
+    "range_agreement": "A",
+    "sym_precision": "A",
+    "sym_recall": "A"
+  },
+  "not_applicable": [
+    "signature_coverage"
+  ],
+  "required_kinds": [
+    "selector"
+  ],
+  "kind_intersection": [
+    "rule",
+    "selector",
+    "variable"
+  ],
+  "counts": {
+    "call_fathom": 448,
+    "call_fathom_in_truth": 448,
+    "call_truth": 448,
+    "call_truth_found": 448,
+    "css_w2_fathom_outside_closure": 289,
+    "css_w2_oracle_outside_closure": 289,
+    "fathom_defs": 2508,
+    "import_edges_fathom": 56,
+    "import_edges_truth": 0,
+    "import_oracle_out_of_scope": 0,
+    "import_oracle_unpaired": 0,
+    "imports": 56,
+    "imports_unattested": 56,
+    "kind_equal": 2508,
+    "matched": 2508,
+    "oracle_defs": 2508,
+    "range_eligible": 2498,
+    "range_ok": 2498
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 2,
+    "throughput_mb_s": 2.13,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 2.15,
+    "max_file_ms": 13,
+    "peak_module_pages": 284,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:CSSModule": 60
+  },
+  "notes": [
+    "W2 (design 1.8): lightningcss attests no cascade, so a var() or animation-name pair is graded as a name reference: kept when its name is a custom property or @keyframes rule defined in the file or its @import closure, every other pair out of both sides, counted",
+    "import_resolution: 0 of 0 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 0 (0 of 56) and recall n/a (0 of 0); 56 of 56 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "tachyons: 289 oracle and 289 fathom name pairs name nothing defined in their file's @import closure (W2), out of both",
+    "tachyons: lightningcss resolves none of fathom's imports to a file of the subject, so import_resolution has no denominator here",
+    "tachyons: range_agreement measured against Chromium DevTools Protocol CSS.setStyleTexts (tier A, 156.0.8078.47: 60 files, 0 it could not parse): Native-validated CSSStyle body ranges for eligible selectors and CSSProperty ranges for custom properties; nested-parent selectors and keyframes without a native range are unmeasured, 2498 of fathom's definitions paired (L1's own pairing: same file and name, |Δline| \u003c= 2); only the range counts are taken, so the L1 oracle is unchanged",
+    "throughput (design 1.9 T1, T2): darwin/arm64 Apple M2; run 1: 2.17 MB/CPU-s; run 2: 2.01 MB/CPU-s; run 3: 2.13 MB/CPU-s; median run 3: 2.13 MB/CPU-s; every other field is the original measurement at its recorded fathom_commit 9fe4f9c2c"
+  ],
+  "disposition": null
+}

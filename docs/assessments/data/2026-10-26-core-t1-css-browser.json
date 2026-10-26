@@ -1,0 +1,333 @@
+{
+  "protocol": "docs/bench/css-browser-protocol.md",
+  "adapter_commit_at_reading": "9fe4f9c2c",
+  "canonical_reading": "docs/bench/readings/css-browser-2026-10-26.json",
+  "holdout_reading": "docs/bench/readings/css-browser-holdout-2026-10-26.json",
+  "canonical_reading_adopted": false,
+  "reason": "Canonical parser ERROR/MISSING rate exceeds 5%; computed excellent metric buckets do not establish full excellence. Holdout L3 import truth is unattested.",
+  "browser_native_wall_seconds": 125.596,
+  "browser_budget_seconds": 1200,
+  "sources": [
+    {
+      "name": "normalize",
+      "commit": "dafaf9ee60ff76173954aca755c78a6912a0ee6c",
+      "source_digest": "5417ab2835b36cfc009ba8eb107eed0cf5482a38efafc1499245e5cc84fdaa35",
+      "artifact_sha256": {
+        "primary": "25532bf62f7c4eb712d4770828ad0b67877ae2827aa0cc4dc574855a63ede371",
+        "source_sidecar": "3910a2f1c93758baed43fa12c0f968771c403ac95c028a36a2400c8e61efbaa4",
+        "range_companion": "8dccd1a6a4fb0dd5c0afaf73388e04a26957c41eac78ee1868f4a8a4eccf3faf"
+      },
+      "browser_diagnostics": {
+        "files": 1,
+        "candidates": 38,
+        "accepted": 37,
+        "rejected": 1,
+        "total": {
+          "selector": 70,
+          "custom_property": 0,
+          "keyframes": 0
+        },
+        "attested": {
+          "selector": 68,
+          "custom_property": 0,
+          "keyframes": 0
+        },
+        "unattested": {
+          "selector": 2,
+          "custom_property": 0,
+          "keyframes": 0
+        }
+      },
+      "holdout": false
+    },
+    {
+      "name": "pico",
+      "commit": "1039a4788d6abc368d5485ae6bac84a8f0e3096f",
+      "source_digest": "c8fdb58cf88ff34c6d4b32a96f64b58ea526e5b2ec1efb6f668b3f19fda51532",
+      "artifact_sha256": {
+        "primary": "22611baea43858de55386c13146c64741af37abc2a62e78948259b4757331a17",
+        "source_sidecar": "ad4d7b6b196c7ae9c9a2480b753b992267fb0b206db8346bba65705c5f8daf80",
+        "range_companion": "b4252930b874a815d0547dd50adeb1357fd8d9acbc9f12cc5bc0afed62b84e28"
+      },
+      "browser_diagnostics": {
+        "files": 238,
+        "candidates": 85115,
+        "accepted": 77166,
+        "rejected": 7949,
+        "total": {
+          "selector": 156382,
+          "custom_property": 110148,
+          "keyframes": 868
+        },
+        "attested": {
+          "selector": 150718,
+          "custom_property": 110148,
+          "keyframes": 0
+        },
+        "unattested": {
+          "selector": 5664,
+          "custom_property": 0,
+          "keyframes": 868
+        }
+      },
+      "holdout": false
+    },
+    {
+      "name": "gitea",
+      "commit": "4ebd5e319b6a9e629bfd7a04292a6fe85b08dee9",
+      "source_digest": "4069e814b78a9c58b918ce63394f3618b8c0244e3e55be2f18a008fc8befe2c0",
+      "artifact_sha256": {
+        "primary": "a1f92a350d71e08f95261eb7a23c9d6aaa88fadb183c2c7e6bff7690d4995ce8",
+        "source_sidecar": "cd4ed257d7b399a82822bef8351ad9a96cb4922645518a6b232b2875e6d462ce",
+        "range_companion": "48aed1116a2f79ce1f60193c93977f54e7c39495457a40638a0e70b0f7bc4c77"
+      },
+      "browser_diagnostics": {
+        "files": 92,
+        "candidates": 2696,
+        "accepted": 2690,
+        "rejected": 6,
+        "total": {
+          "selector": 3272,
+          "custom_property": 686,
+          "keyframes": 5
+        },
+        "attested": {
+          "selector": 3269,
+          "custom_property": 686,
+          "keyframes": 0
+        },
+        "unattested": {
+          "selector": 3,
+          "custom_property": 0,
+          "keyframes": 5
+        }
+      },
+      "holdout": false
+    },
+    {
+      "name": "tachyons",
+      "commit": "ecb7ef08684fc96a4945d360102385c110d50de9",
+      "source_digest": "0733d6156df16b803c7237f4c21eba7aca8a6a0685d7f51960f22b592bc754f8",
+      "artifact_sha256": {
+        "primary": "1923d1ba5a189e1c7bba0f4519f2f4919168ca19a4e364237004743320c736a9",
+        "source_sidecar": "b463d94d06ac1677edb5f9d4945303acce80b1eba0bf17853df2bc50b4079124",
+        "range_companion": "1603507899f6a312c3e5e86c1d52307235935a9de432c949d421e483076dd471"
+      },
+      "browser_diagnostics": {
+        "files": 60,
+        "candidates": 2222,
+        "accepted": 2219,
+        "rejected": 3,
+        "total": {
+          "selector": 2439,
+          "custom_property": 69,
+          "keyframes": 0
+        },
+        "attested": {
+          "selector": 2429,
+          "custom_property": 69,
+          "keyframes": 0
+        },
+        "unattested": {
+          "selector": 10,
+          "custom_property": 0,
+          "keyframes": 0
+        }
+      },
+      "holdout": true
+    }
+  ],
+  "grammar_candidates": [
+    {
+      "name": "official",
+      "repository": "tree-sitter/tree-sitter-css",
+      "commit": "dda5cfc5722c429eaba1c910ca32c2c0c5bb1a3f",
+      "archive_url": "https://codeload.github.com/tree-sitter/tree-sitter-css/tar.gz/dda5cfc5722c429eaba1c910ca32c2c0c5bb1a3f",
+      "archive_sha256": "c47392e483feb9137d8f0acf9ca6e916b820122c260324454a9980c75c98c3c5",
+      "license_sha256": "c5cfb43042b6b72045f4ba997834d0a7786d2793d91680868b5815b39f14fc78",
+      "library_sha256": "0c5a86f1bea1ef205946484f2c79ce0a9e094405abc11c4769d910e09c8fd9e1",
+      "runtime": "0.25.2",
+      "abi": 15,
+      "subjects": [
+        {
+          "name": "normalize",
+          "source_commit": "dafaf9ee60ff76173954aca755c78a6912a0ee6c",
+          "source_digest": "5417ab2835b36cfc009ba8eb107eed0cf5482a38efafc1499245e5cc84fdaa35",
+          "raw": {
+            "files": 1,
+            "bytes": 7546,
+            "files_in_error": 0,
+            "error_rate": 0.0,
+            "timeouts": 0
+          },
+          "production_eligible": {
+            "files": 1,
+            "files_in_error": 0,
+            "error_rate": 0.0,
+            "exclusion": "*.min.css only"
+          },
+          "max_parse_ms": 0.283
+        },
+        {
+          "name": "pico",
+          "source_commit": "1039a4788d6abc368d5485ae6bac84a8f0e3096f",
+          "source_digest": "c8fdb58cf88ff34c6d4b32a96f64b58ea526e5b2ec1efb6f668b3f19fda51532",
+          "raw": {
+            "files": 238,
+            "bytes": 19350431,
+            "files_in_error": 236,
+            "error_rate": 0.9915966386554622,
+            "timeouts": 0
+          },
+          "production_eligible": {
+            "files": 119,
+            "files_in_error": 118,
+            "error_rate": 0.9915966386554622,
+            "exclusion": "*.min.css only"
+          },
+          "max_parse_ms": 7.04
+        },
+        {
+          "name": "gitea",
+          "source_commit": "4ebd5e319b6a9e629bfd7a04292a6fe85b08dee9",
+          "source_digest": "4069e814b78a9c58b918ce63394f3618b8c0244e3e55be2f18a008fc8befe2c0",
+          "raw": {
+            "files": 92,
+            "bytes": 353080,
+            "files_in_error": 2,
+            "error_rate": 0.021739130434782608,
+            "timeouts": 0
+          },
+          "production_eligible": {
+            "files": 92,
+            "files_in_error": 2,
+            "error_rate": 0.021739130434782608,
+            "exclusion": "*.min.css only"
+          },
+          "max_parse_ms": 2.491
+        }
+      ],
+      "raw_error_files": 238,
+      "raw_files": 331,
+      "eligible_error_files": 120,
+      "eligible_files": 212
+    },
+    {
+      "name": "strict",
+      "repository": "meloncholera/tree-sitter-css-strict",
+      "commit": "64d13f2f5b076233a631a5b922a73edcd7f7d45d",
+      "archive_url": "https://codeload.github.com/meloncholera/tree-sitter-css-strict/tar.gz/64d13f2f5b076233a631a5b922a73edcd7f7d45d",
+      "archive_sha256": "fff9e36dca17fa4427ef62254ebb372f0b57ad1ae4e87bbb226a641124a32b3d",
+      "license_sha256": "c5cfb43042b6b72045f4ba997834d0a7786d2793d91680868b5815b39f14fc78",
+      "library_sha256": "e61a404975bf7e00c2b1812e8fdd641e8aff24e572a759b71e9408603dd57df9",
+      "runtime": "0.25.2",
+      "abi": 15,
+      "subjects": [
+        {
+          "name": "normalize",
+          "source_commit": "dafaf9ee60ff76173954aca755c78a6912a0ee6c",
+          "source_digest": "5417ab2835b36cfc009ba8eb107eed0cf5482a38efafc1499245e5cc84fdaa35",
+          "raw": {
+            "files": 1,
+            "bytes": 7546,
+            "files_in_error": 0,
+            "error_rate": 0.0,
+            "timeouts": 0
+          },
+          "production_eligible": {
+            "files": 1,
+            "files_in_error": 0,
+            "error_rate": 0.0,
+            "exclusion": "*.min.css only"
+          },
+          "max_parse_ms": 0.293
+        },
+        {
+          "name": "pico",
+          "source_commit": "1039a4788d6abc368d5485ae6bac84a8f0e3096f",
+          "source_digest": "c8fdb58cf88ff34c6d4b32a96f64b58ea526e5b2ec1efb6f668b3f19fda51532",
+          "raw": {
+            "files": 238,
+            "bytes": 19350431,
+            "files_in_error": 236,
+            "error_rate": 0.9915966386554622,
+            "timeouts": 0
+          },
+          "production_eligible": {
+            "files": 119,
+            "files_in_error": 118,
+            "error_rate": 0.9915966386554622,
+            "exclusion": "*.min.css only"
+          },
+          "max_parse_ms": 9.025
+        },
+        {
+          "name": "gitea",
+          "source_commit": "4ebd5e319b6a9e629bfd7a04292a6fe85b08dee9",
+          "source_digest": "4069e814b78a9c58b918ce63394f3618b8c0244e3e55be2f18a008fc8befe2c0",
+          "raw": {
+            "files": 92,
+            "bytes": 353080,
+            "files_in_error": 2,
+            "error_rate": 0.021739130434782608,
+            "timeouts": 0
+          },
+          "production_eligible": {
+            "files": 92,
+            "files_in_error": 2,
+            "error_rate": 0.021739130434782608,
+            "exclusion": "*.min.css only"
+          },
+          "max_parse_ms": 2.39
+        }
+      ],
+      "raw_error_files": 238,
+      "raw_files": 331,
+      "eligible_error_files": 120,
+      "eligible_files": 212
+    }
+  ],
+  "holdout_import_diagnosis": {
+    "imports": 56,
+    "literal_targets_exist": 0,
+    "appended_css_targets_exist": 56,
+    "extensionless_modules": 56,
+    "adapter_changed_after_holdout": false,
+    "scope": "LightningCSS literal resolver reads are not physical files; no extension-appending truth was substituted"
+  },
+  "newer_strict_source_equivalence": [
+    {
+      "name": "strict-registry",
+      "commit": "0c2f458ef14d5861d4ecd9195d38525e059b9df8",
+      "archive_sha256": "ce2f381b05aabd893b1656c059ac5f8f580d188ef93a6aa2d14e8f46144e0c55",
+      "compilation_inputs_equal_measured_64d13f2f": {
+        "src/parser.c": true,
+        "src/scanner.c": true,
+        "src/tree_sitter/parser.h": true,
+        "src/tree_sitter/alloc.h": true,
+        "src/tree_sitter/array.h": true
+      },
+      "package_version": "0.1.0"
+    },
+    {
+      "name": "strict-head",
+      "commit": "7b938c7dcc7dfc3b2d8bf3a3a7c807a04ed3d1bf",
+      "archive_sha256": "d519c6b92f8858db3ce4c4651a3382314a70b8769576465639d0f64dbc7baeec",
+      "compilation_inputs_equal_measured_64d13f2f": {
+        "src/parser.c": true,
+        "src/scanner.c": true,
+        "src/tree_sitter/parser.h": true,
+        "src/tree_sitter/alloc.h": true,
+        "src/tree_sitter/array.h": true
+      },
+      "package_version": "0.1.0"
+    }
+  ],
+  "strict_compilation_input_sha256": {
+    "src/parser.c": "0a0872415027360058c7390e5c3b79a6d6832e028c0e3ef5de2b2321900964d9",
+    "src/scanner.c": "92da0583c886fea89038345756f5da7ce2ee7674dcb601e7d5137afcda5e8150",
+    "src/tree_sitter/parser.h": "180b893c8734778fd32f372dfbc27bd6ad1cd2221f26150b31256ff6716320d2",
+    "src/tree_sitter/alloc.h": "b29c1c9fb7cc82f58c84b376df1297d6e2737a1d655fd356db0859e3c29c2fea",
+    "src/tree_sitter/array.h": "20e6ba85abb9d5b7e2e6dedf675c9424a057a06feee03aa3e2dd48a1cb4bf8a2"
+  }
+}

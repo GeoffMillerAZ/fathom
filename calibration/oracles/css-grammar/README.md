@@ -41,3 +41,18 @@ grammar ABI, source commit/digest, raw and production-eligible error counts,
 and up to three source-relative error locations. A valid style rule and an
 unclosed block are controls for the instrument only. Do not use the Tachyons
 holdout while selecting a grammar candidate.
+
+At the audit, newer css-strict registry 0.1.1 (`gitHead`
+0c2f458ef14d5861d4ecd9195d38525e059b9df8) and repository HEAD
+7b938c7dcc7dfc3b2d8bf3a3a7c807a04ed3d1bf had identical compilation inputs to
+measured commit 64d13f2f5b076233a631a5b922a73edcd7f7d45d. Reproduce this source
+comparison with the separately pinned checkouts:
+
+```sh
+for source in src/parser.c src/scanner.c src/tree_sitter/parser.h src/tree_sitter/alloc.h src/tree_sitter/array.h; do
+  cmp "$CSS_GRAMMAR_MEASURED/$source" "$CSS_GRAMMAR_CANDIDATE/$source" || exit 1
+done
+```
+
+The receipt records archive hashes and input hashes, not subject file lists. A
+source-equivalent newer publication is not described as a separate native run.

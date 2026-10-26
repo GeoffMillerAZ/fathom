@@ -91,3 +91,38 @@ For a pooled audit, all subjects share the protocol's 20-minute actual-execution
 budget. Set CSS_BROWSER_TIMEOUT_MS to the remaining positive milliseconds before
 each invocation (maximum 1200000), subtract completed native invocation wall time,
 and stop when no budget remains. Time waiting for the load gate is excluded.
+
+## Reproduce the harness readings
+
+Use an empty output reading for each pass, the complete pinned clones above, and
+an indexbench binary built from this branch into scratch. Primary/companion names
+must stay siblings. The commands below express the complete declared subpaths;
+the actual audit used sparse clones containing those same complete subpaths.
+
+```sh
+: "${CSS_INDEXBENCH:?set to scratch indexbench binary}"
+"$CSS_INDEXBENCH" lang-oracle -dialect css -subject "$CSS_SUBJECTS/normalize-css" -subject-name normalize.css -tool-oracle "$CSS_OUT/normalize.json" -out "$CSS_OUT/candidate-reading.json"
+"$CSS_INDEXBENCH" lang-oracle -dialect css -subject "$CSS_SUBJECTS/pico" -subject-name pico -only 'css/**' -tool-oracle "$CSS_OUT/pico.json" -out "$CSS_OUT/candidate-reading.json"
+"$CSS_INDEXBENCH" lang-oracle -dialect css -subject "$CSS_SUBJECTS/gitea" -subject-name gitea -only 'web_src/css/**' -tool-oracle "$CSS_OUT/gitea.json" -out "$CSS_OUT/candidate-reading.json"
+"$CSS_INDEXBENCH" lang-retime -reading "$CSS_OUT/candidate-reading.json" -subject "normalize.css=$CSS_SUBJECTS/normalize-css" -subject "pico=$CSS_SUBJECTS/pico" -subject "gitea=$CSS_SUBJECTS/gitea" -runs 3 -write
+```
+
+For the original baseline, run the same lang-oracle commands before creating any
+.ranges.json companion, writing a separate baseline-reading.json. Confirm that
+its counts and metrics equal the existing canonical lang/css.json before admitting
+range truth. The actual audit made this equality check; no other metric changed.
+
+The independent Tachyons pin is now spent. Reproduction is a regression replay,
+never permission to tune against it or copy it into the canonical shard:
+
+```sh
+node calibration/oracles/chromium-css/primary.cjs "$CSS_SUBJECTS/tachyons-css" "$CSS_OUT/tachyons.json" src
+node calibration/oracles/chromium-css/ranges.cjs "$CSS_BROWSER" calibration/oracles/chromium-css/pin-mac-arm64.json "$CSS_SUBJECTS/tachyons-css" "$CSS_OUT/tachyons.json" "$CSS_OUT/tachyons.ranges.json" "$CSS_BROWSER_CACHE/profiles" src
+"$CSS_INDEXBENCH" lang-oracle -dialect css -subject "$CSS_SUBJECTS/tachyons-css" -subject-name tachyons -only 'src/**' -tool-oracle "$CSS_OUT/tachyons.json" -out "$CSS_OUT/holdout-reading.json"
+"$CSS_INDEXBENCH" lang-retime -reading "$CSS_OUT/holdout-reading.json" -subject "tachyons=$CSS_SUBJECTS/tachyons-css" -runs 3 -write
+```
+
+The measured candidate and holdout snapshots live outside canonical lang/css.json
+under docs/bench/readings/css-browser*.json. Their excellent metric buckets do not
+override the canonical parser's 120/212 ERROR/MISSING count. See the dated CSS
+assessment and native grammar census before claiming support or full excellence.
