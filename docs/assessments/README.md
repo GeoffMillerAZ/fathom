@@ -46,6 +46,7 @@ and `graphify-comparison.html`); they may move in later with link updates.
 
 | Date | File | The verdict in one line | Decisions it drove |
 |---|---|---|---|
+| 2026-10-25 | [matlab-free-oracle-ceiling](2026-10-25-matlab-free-oracle-ceiling.md) | Reviewed free tools do not yet supply independent call and resolution truth across the unchanged MATLAB corpus | LB-Q-matlab-rest |
 | 2026-09-27 | [agentic-coding-landscape](2026-09-27-agentic-coding-landscape.md) | The market has many ways to find code and describe work and almost none to prove things about code; keep building and point at that gap, with reach before new engines | ADR-049, ADR-050, ADR-051, vision 38 sections 5 to 7 |
 | 2026-09-27 | [fathom-and-claude-os](2026-09-27-fathom-and-claude-os.md) | Neighbours, not competitors (about 25 percent overlap at session-start context); keep building with a sharper focus; one embedded file, many indexes, no extra servers | ADR-049 amendment 2026-09-29, F55, RH-11, RH-12, GL-23, SR-X1, RH-X4 |
 | 2026-09-27 | [peer-stacks-and-rust](2026-09-27-peer-stacks-and-rust.md), [data](data/2026-09-27-peer-stacks.json) | Fathom's stack is among the leanest in the field and Go is not the bottleneck; do not rewrite in Rust | ADR-049 decision 11, vision 38 section 8, F29, RH-M5 |
