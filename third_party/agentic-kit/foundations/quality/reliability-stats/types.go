@@ -14,6 +14,11 @@
 //   - PassPowK(p, k): the probability that ALL k independent attempts
 //     pass, p^k (τ-bench, Yao et al. 2024) — the reliability number an
 //     operator cares about when an agent must succeed every time.
+//   - PassHatK(n, c, k): the unbiased finite-sample pass^k from n trials
+//     with c passes, C(c,k)/C(n,k) — k draws without replacement all pass.
+//   - RoganGladen(observed, tpr, tnr, n, seed, resamples, level): corrects
+//     an observed positive rate for a judge's sensitivity and specificity,
+//     with a seeded parametric bootstrap interval over the n judged items.
 //   - PairedBootstrapCI: a percentile bootstrap interval for the mean
 //     paired difference, resampling TASKS (clusters), not trials, so
 //     repeated trials of one task cannot masquerade as independent

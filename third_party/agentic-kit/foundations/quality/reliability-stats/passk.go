@@ -39,3 +39,27 @@ func PassPowK(p float64, k int) float64 {
 	}
 	return math.Pow(p, float64(k))
 }
+
+// PassHatK returns the unbiased pass^k estimate for n sampled attempts of
+// which c passed: C(c, k)/C(n, k), the probability that k attempts drawn
+// without replacement from the n all pass. It is the finite-sample
+// counterpart of PassPowK(c/n, k): PassPowK plugs in the observed rate and
+// is biased upward for small n, while PassHatK is exact for the n trials
+// seen. Computed as the stable product ∏_{i=0}^{k−1} (c−i)/(n−i), so n in
+// the thousands does not overflow. When c < k the estimate is exactly 0.
+//
+// Undefined inputs — n < 1, k < 1, k > n, c < 0, c > n — return NaN, the
+// same convention as PassAtK (k = 0 is NaN here, unlike PassPowK).
+func PassHatK(n, c, k int) float64 {
+	if n < 1 || k < 1 || k > n || c < 0 || c > n {
+		return math.NaN()
+	}
+	if c < k {
+		return 0
+	}
+	prod := 1.0
+	for i := 0; i < k; i++ {
+		prod *= float64(c-i) / float64(n-i)
+	}
+	return prod
+}
