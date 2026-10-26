@@ -1,0 +1,488 @@
+{
+  "D19_xref_denominators": {
+    "precision": 35,
+    "recall": 35
+  },
+  "D19_xref_thin": false,
+  "base_commit": "6db920e72898abb20bf86c22652b401902e34598",
+  "counts": {
+    "fathom_defs": 202,
+    "kind_equal": 194,
+    "matched": 194,
+    "oracle_defs": 194,
+    "ref_fathom": 148,
+    "ref_fathom_in_truth": 148,
+    "ref_truth": 148,
+    "ref_truth_found": 148,
+    "xref_fathom": 35,
+    "xref_fathom_in_truth": 35,
+    "xref_truth": 35,
+    "xref_truth_found": 35
+  },
+  "date": "2026-10-26",
+  "go_runtime_env": {
+    "GOFLAGS": "-p=2",
+    "GOMAXPROCS": "2",
+    "GOTOOLCHAIN": "go1.27.3",
+    "GOWORK": "off"
+  },
+  "grade": {
+    "L1": "good",
+    "L2": "excellent",
+    "L3": "excellent",
+    "L4": "not-applicable"
+  },
+  "indexbench_sha256": "0724ee15ea809de346496b3937dee4d9aeb57fab6929a9c6a233ebbf85c9403c",
+  "level_met": "L3",
+  "load_at_launch_by_run": [
+    [
+      {
+        "load_at_launch": 8.17041015625,
+        "repository": "kubernetes-sigs/kustomize"
+      },
+      {
+        "load_at_launch": 8.17041015625,
+        "repository": "argoproj/argocd-example-apps"
+      },
+      {
+        "load_at_launch": 8.17041015625,
+        "repository": "fluxcd/flux2-kustomize-helm-example"
+      },
+      {
+        "load_at_launch": 8.17041015625,
+        "repository": "fluxcd/flux2-multi-tenancy"
+      },
+      {
+        "load_at_launch": 8.17041015625,
+        "repository": "GoogleCloudPlatform/microservices-demo"
+      }
+    ],
+    [
+      {
+        "load_at_launch": 8.17041015625,
+        "repository": "kubernetes-sigs/kustomize"
+      },
+      {
+        "load_at_launch": 8.17041015625,
+        "repository": "argoproj/argocd-example-apps"
+      },
+      {
+        "load_at_launch": 8.17041015625,
+        "repository": "fluxcd/flux2-kustomize-helm-example"
+      },
+      {
+        "load_at_launch": 8.17041015625,
+        "repository": "fluxcd/flux2-multi-tenancy"
+      },
+      {
+        "load_at_launch": 8.17041015625,
+        "repository": "GoogleCloudPlatform/microservices-demo"
+      }
+    ],
+    [
+      {
+        "load_at_launch": 8.17041015625,
+        "repository": "kubernetes-sigs/kustomize"
+      },
+      {
+        "load_at_launch": 8.17041015625,
+        "repository": "argoproj/argocd-example-apps"
+      },
+      {
+        "load_at_launch": 8.17041015625,
+        "repository": "fluxcd/flux2-kustomize-helm-example"
+      },
+      {
+        "load_at_launch": 8.17041015625,
+        "repository": "fluxcd/flux2-multi-tenancy"
+      },
+      {
+        "load_at_launch": 8.17041015625,
+        "repository": "GoogleCloudPlatform/microservices-demo"
+      }
+    ]
+  ],
+  "median_reading_sha256": "614784ea75b6db8c49890b94d813a7fab779b8f049aef44a554595d21136364f",
+  "median_run": 3,
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A",
+    "xref_precision": "A",
+    "xref_recall": "A"
+  },
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 0.9604,
+    "sym_recall": 1,
+    "xref_precision": 1,
+    "xref_recall": 1
+  },
+  "native_bin_sha256": "bc77e3505fbd414551cf7b15d1e772a288bc5afd97e31e49655b10524d1888e9",
+  "niceness": 10,
+  "oracle_bin_sha256": "34260c16ccc609d9bcde7186e8a41f4b23c13010633c4fe82d1da29da5cb627d",
+  "original_xref_truth": {
+    "argoproj/argocd-example-apps": 1,
+    "kubernetes-sigs/kustomize": 12
+  },
+  "pins_sha256": "e6d1316c984954eb725f40c84f8e07fc88d3d7f22cc8bfb9a06e5326cea97b7e",
+  "subjects": [
+    {
+      "built_file_list_sha256": "5fdfea8ea6efcda7db4a86ace603656fbb107ac0579d130b673d1e4ed2716c1f",
+      "component_context_counts": {
+        "effective_entries": 0,
+        "excluded": 0,
+        "noop_entries": 0,
+        "tried": 0,
+        "valid": 0
+      },
+      "component_contexts": 0,
+      "graded_bytes": 1848,
+      "graded_counts": {
+        "fathom_defs": 52,
+        "kind_equal": 52,
+        "matched": 52,
+        "oracle_defs": 52,
+        "ref_fathom": 36,
+        "ref_fathom_in_truth": 36,
+        "ref_truth": 36,
+        "ref_truth_found": 36,
+        "xref_fathom": 12,
+        "xref_fathom_in_truth": 12,
+        "xref_truth": 12,
+        "xref_truth_found": 12
+      },
+      "graded_files": 16,
+      "graded_ratios": {
+        "ref_precision": 1.0,
+        "ref_recall": 1.0,
+        "sym_precision": 1.0,
+        "sym_recall": 1.0,
+        "xref_precision": 1.0,
+        "xref_recall": 1.0
+      },
+      "membership": "original",
+      "native_built_roots": 16,
+      "native_cross_references": 32,
+      "native_definitions": 52,
+      "native_excluded": {
+        "native-build-failed": 1,
+        "native-decode-rejected": 0,
+        "remote": 1
+      },
+      "native_files": 18,
+      "native_inventory": {
+        "control:apiVersion": 2,
+        "control:kind": 2,
+        "control:metadata": 1,
+        "graded:configMapGenerator": 4,
+        "graded:images": 4,
+        "graded:patches": 8,
+        "graded:resources": 29,
+        "inline:patches": 1,
+        "unsupported:commonLabels": 2,
+        "unsupported:configurations": 1,
+        "unsupported:namePrefix": 10,
+        "unsupported:symlinks": 0,
+        "unsupported:vars": 3
+      },
+      "native_receipt_sha256": "a567813d924b659847d8d5a18530bee6a172d419dc4e62af4632aaa2a56aca8a",
+      "native_references": 36,
+      "native_stats": {
+        "effective": 36,
+        "entries": 36,
+        "variant-builds": 36
+      },
+      "native_typed_entries": 49,
+      "oracle_sha256": "8a514aeb5efcb61fa626d1c909cd8b369ee501d16afe17c9b1ff3fe542a4c406",
+      "repository": "kubernetes-sigs/kustomize",
+      "subject_sha": "9790a1c3efd2fd35f1b768d495112834176581c1",
+      "tracked_bytes": 288614,
+      "tracked_entries": 106,
+      "tracked_manifest_sha256": "6973105b92da3f48ddcc86b0eba23969feeb1c20c6f515cbd4bb6b3ee7d8c8ec",
+      "unsupported_native_basename": 0
+    },
+    {
+      "built_file_list_sha256": "ac26cb9ce0c5f2a48098f7a56774b15e5e32e82b0d55ae75ce9c85f368ec28bf",
+      "component_context_counts": {
+        "effective_entries": 0,
+        "excluded": 0,
+        "noop_entries": 0,
+        "tried": 0,
+        "valid": 0
+      },
+      "component_contexts": 0,
+      "graded_bytes": 1070,
+      "graded_counts": {
+        "fathom_defs": 37,
+        "kind_equal": 37,
+        "matched": 37,
+        "oracle_defs": 37,
+        "ref_fathom": 34,
+        "ref_fathom_in_truth": 34,
+        "ref_truth": 34,
+        "ref_truth_found": 34,
+        "xref_fathom": 1,
+        "xref_fathom_in_truth": 1,
+        "xref_truth": 1,
+        "xref_truth_found": 1
+      },
+      "graded_files": 3,
+      "graded_ratios": {
+        "ref_precision": 1.0,
+        "ref_recall": 1.0,
+        "sym_precision": 1.0,
+        "sym_recall": 1.0,
+        "xref_precision": 1.0,
+        "xref_recall": 1.0
+      },
+      "membership": "original",
+      "native_built_roots": 3,
+      "native_cross_references": 34,
+      "native_definitions": 37,
+      "native_excluded": {
+        "native-decode-rejected": 1
+      },
+      "native_files": 4,
+      "native_inventory": {
+        "control:apiVersion": 1,
+        "control:kind": 1,
+        "graded:bases": 1,
+        "graded:resources": 33,
+        "unsupported:namePrefix": 2,
+        "unsupported:symlinks": 0
+      },
+      "native_receipt_sha256": "a39d83a53f44f1b68207928fe2757bd4873b55fbc918db17b4bbaa89e3cdf689",
+      "native_references": 34,
+      "native_stats": {
+        "effective": 34,
+        "entries": 34,
+        "variant-builds": 34
+      },
+      "native_typed_entries": 34,
+      "oracle_sha256": "69b4da99173574f69fba10d66de33eb5eabaa7e804249439f98183bd29f08f71",
+      "repository": "argoproj/argocd-example-apps",
+      "subject_sha": "8088f4c0d970abb09e250248cc97e35623447cb5",
+      "tracked_bytes": 86416,
+      "tracked_entries": 95,
+      "tracked_manifest_sha256": "4b64260b4e9caae304fa128c3fff423951f04ef2ca384864f5a072dcad2ebe93",
+      "unsupported_native_basename": 0
+    },
+    {
+      "built_file_list_sha256": "177342e72c31a1bf92e3e2ea02663a59934f41ad0b9ba572d5cdcfdece3cad1c",
+      "component_context_counts": {
+        "effective_entries": 0,
+        "excluded": 0,
+        "noop_entries": 0,
+        "tried": 0,
+        "valid": 0
+      },
+      "component_contexts": 0,
+      "graded_bytes": 1761,
+      "graded_counts": {
+        "fathom_defs": 22,
+        "kind_equal": 18,
+        "matched": 18,
+        "oracle_defs": 18,
+        "ref_fathom": 11,
+        "ref_fathom_in_truth": 11,
+        "ref_truth": 11,
+        "ref_truth_found": 11,
+        "xref_fathom": 2,
+        "xref_fathom_in_truth": 2,
+        "xref_truth": 2,
+        "xref_truth_found": 2
+      },
+      "graded_files": 7,
+      "graded_ratios": {
+        "ref_precision": 1.0,
+        "ref_recall": 1.0,
+        "sym_precision": 0.8181818181818182,
+        "sym_recall": 1.0,
+        "xref_precision": 1.0,
+        "xref_recall": 1.0
+      },
+      "membership": "expanded",
+      "native_built_roots": 7,
+      "native_cross_references": 11,
+      "native_definitions": 18,
+      "native_excluded": {
+        "native-decode-rejected": 0
+      },
+      "native_files": 7,
+      "native_inventory": {
+        "control:apiVersion": 7,
+        "control:kind": 7,
+        "graded:patches": 4,
+        "graded:resources": 13,
+        "inline:patches": 2,
+        "unsupported:labels": 2,
+        "unsupported:namespace": 1,
+        "unsupported:symlinks": 0
+      },
+      "native_receipt_sha256": "73120fd7570fbd25dce6efcd4e08ab70efe9ea357029cd20d486d6cb47acf153",
+      "native_references": 11,
+      "native_stats": {
+        "effective": 11,
+        "entries": 15,
+        "noop": 4,
+        "noop:resources": 4,
+        "variant-builds": 15
+      },
+      "native_typed_entries": 19,
+      "oracle_sha256": "bbe8b880670d2d771a3c06626a22add1b690d0e6493198f6d5e7ef4a3f43b544",
+      "repository": "fluxcd/flux2-kustomize-helm-example",
+      "subject_sha": "4f1a5b1051b469108d1bdf0ebec6c814427e3834",
+      "tracked_bytes": 56099,
+      "tracked_entries": 34,
+      "tracked_manifest_sha256": "d93bbc0c61cdd554aa57a70c4347bb231564432a150b02b0e58757d4198dd894",
+      "unsupported_native_basename": 0
+    },
+    {
+      "built_file_list_sha256": "99f3b4af0b3e1bcd9067f4805d8025dd3eefbdce35398e12303473a0a52c60c8",
+      "component_context_counts": {
+        "effective_entries": 0,
+        "excluded": 0,
+        "noop_entries": 0,
+        "tried": 0,
+        "valid": 0
+      },
+      "component_contexts": 0,
+      "graded_bytes": 3091,
+      "graded_counts": {
+        "fathom_defs": 25,
+        "kind_equal": 21,
+        "matched": 21,
+        "oracle_defs": 21,
+        "ref_fathom": 13,
+        "ref_fathom_in_truth": 13,
+        "ref_truth": 13,
+        "ref_truth_found": 13,
+        "xref_fathom": 4,
+        "xref_fathom_in_truth": 4,
+        "xref_truth": 4,
+        "xref_truth_found": 4
+      },
+      "graded_files": 8,
+      "graded_ratios": {
+        "ref_precision": 1.0,
+        "ref_recall": 1.0,
+        "sym_precision": 0.84,
+        "sym_recall": 1.0,
+        "xref_precision": 1.0,
+        "xref_recall": 1.0
+      },
+      "membership": "expanded",
+      "native_built_roots": 8,
+      "native_cross_references": 13,
+      "native_definitions": 21,
+      "native_excluded": {
+        "native-decode-rejected": 0
+      },
+      "native_files": 8,
+      "native_inventory": {
+        "control:apiVersion": 8,
+        "control:kind": 8,
+        "graded:patches": 10,
+        "graded:resources": 17,
+        "inline:patches": 10,
+        "unsupported:labels": 2,
+        "unsupported:namespace": 3,
+        "unsupported:symlinks": 0
+      },
+      "native_receipt_sha256": "ae426d7b4b4318e547ff7b2ad2cd4ccacfe0f8bfa57d89cd70cadb143759ca33",
+      "native_references": 13,
+      "native_stats": {
+        "effective": 13,
+        "entries": 17,
+        "noop": 4,
+        "noop:resources": 4,
+        "variant-builds": 17
+      },
+      "native_typed_entries": 29,
+      "oracle_sha256": "d6308fe6bba11079109cf9e4da941bba6d933761d22a2e3398eed5f16febfe36",
+      "repository": "fluxcd/flux2-multi-tenancy",
+      "subject_sha": "16752eb2929feb1d0e7de6ad4fa0a2e1972825ac",
+      "tracked_bytes": 90466,
+      "tracked_entries": 33,
+      "tracked_manifest_sha256": "38cc4b51ea022a22d3b589a6da50140fd6bd3c5a0100217f36384f93601a6469",
+      "unsupported_native_basename": 0
+    },
+    {
+      "built_file_list_sha256": "a5eee188b09c28130aa8e2718eb86a4badf2a9f7c9e8146a8eaec17b8c7819da",
+      "component_context_counts": {
+        "effective_entries": 17,
+        "excluded": 0,
+        "noop_entries": 0,
+        "tried": 12,
+        "valid": 12
+      },
+      "component_contexts": 15,
+      "graded_bytes": 16894,
+      "graded_counts": {
+        "fathom_defs": 66,
+        "kind_equal": 66,
+        "matched": 66,
+        "oracle_defs": 66,
+        "ref_fathom": 54,
+        "ref_fathom_in_truth": 54,
+        "ref_truth": 54,
+        "ref_truth_found": 54,
+        "xref_fathom": 16,
+        "xref_fathom_in_truth": 16,
+        "xref_truth": 16,
+        "xref_truth_found": 16
+      },
+      "graded_files": 12,
+      "graded_ratios": {
+        "ref_precision": 1.0,
+        "ref_recall": 1.0,
+        "sym_precision": 1.0,
+        "sym_recall": 1.0,
+        "xref_precision": 1.0,
+        "xref_recall": 1.0
+      },
+      "membership": "expanded",
+      "native_built_roots": 6,
+      "native_cross_references": 54,
+      "native_definitions": 66,
+      "native_excluded": {
+        "component-no-valid-context": 9,
+        "native-decode-rejected": 0
+      },
+      "native_files": 21,
+      "native_inventory": {
+        "control:apiVersion": 21,
+        "control:kind": 21,
+        "graded:components": 12,
+        "graded:images": 34,
+        "graded:patches": 28,
+        "graded:resources": 43,
+        "inline:patches": 27,
+        "unsupported:symlinks": 0
+      },
+      "native_receipt_sha256": "6e7890dbb30948d4b1565c4ac13e531c782e6f039a04d75827d3c884dad1e6b2",
+      "native_references": 54,
+      "native_stats": {
+        "effective": 54,
+        "entries": 54,
+        "variant-builds": 82
+      },
+      "native_typed_entries": 117,
+      "oracle_sha256": "1c6df75fddc5096f5fa0b9f691849d4fe656786dfd3c0cfc46d41e6eb46224b5",
+      "repository": "GoogleCloudPlatform/microservices-demo",
+      "subject_sha": "38e7348eb289eb5b87c0c6e8cb19ced0449dc389",
+      "tracked_bytes": 12744777,
+      "tracked_entries": 364,
+      "tracked_manifest_sha256": "b68858bf21de7fa17976b8d1f08ce572b007f5c21bee42e6081fed12dffa3fda",
+      "unsupported_native_basename": 0
+    }
+  ],
+  "throughput_mb_per_cpu_second": [
+    11,
+    12.74,
+    12.36
+  ]
+}

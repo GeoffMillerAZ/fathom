@@ -1,0 +1,133 @@
+{
+  "caps": {
+    "CLI_refusal_inputs": {
+      "component_parent_contexts": 65,
+      "planned_native_calls": 65729,
+      "recognized_files": 513,
+      "typed_entries": 8193
+    },
+    "CLI_refusal_publishes_no_partial_truth": true,
+    "component_parent_contexts": 64,
+    "output_bytes_per_command": 16777216,
+    "planned_native_calls": 65536,
+    "recognized_files": 512,
+    "source_admission_actual_helper_test_uses_reduced_budgets": true,
+    "source_bytes": 268435456,
+    "source_files": 100000,
+    "typed_entries": 8192,
+    "whole_run_seconds": 1800
+  },
+  "date": "2026-10-26",
+  "lane_final_gates_complete": true,
+  "native_before_after_byte_identity": true,
+  "oracle_scope_mutation": {
+    "expected_exit_code": 1,
+    "file": "calibration/oracles/kustomize/main.go",
+    "mutant": "omit real Component from built-file population",
+    "refusal": "component missing from files-out",
+    "restored": {
+      "command": "go -C calibration/oracles/kustomize test -race -run '^TestOracleCLIPopulatesComponent$' -count=1 .",
+      "exit_code": 0,
+      "private_log_sha256": "022ecac9ea34b986482fc669faf9f3e1a9a379b72bada9e2ce7a506d9f2a954e"
+    },
+    "result": {
+      "command": "go -C calibration/oracles/kustomize test -race -overlay workspace/tmp/kustomize-component-files-overlay.json -run '^TestOracleCLIPopulatesComponent$' -count=1 .",
+      "exit_code": 1,
+      "private_log_sha256": "a43d3f7c0faf3d62720d7b76e2cebb5a5769fd33ce1d6ddd085c4e8425244dcf"
+    }
+  },
+  "privacy": {
+    "benign_generic_path_guard": 1,
+    "benign_syntax_package_guard_matches": 10,
+    "candidate_files": 23,
+    "local_home_paths": 0,
+    "name_email_shapes": 0,
+    "subject_identities": 0
+  },
+  "product_control": {
+    "baseline_counts": {
+      "Kustomization": 1,
+      "KustomizeResource": 2
+    },
+    "mutant_counts": {
+      "Kustomization": 1
+    },
+    "mutated_spec_sha256": "73833c3c0542adec63a24951c839c4df508c62f6f39a7a5745dbd24425c33346",
+    "product_output_changed": true,
+    "product_spec_sha256": "0f8df993645d0f26f0d6903dcc214f5663823b010dbe73f22a18c72f0c08fe8b",
+    "subject_sha256": "8808d2bf82acb2342d11c093a8485841d7a379a05d1c7740c6941713f11710b0",
+    "subject_unchanged": true
+  },
+  "reading_conservation": {
+    "after_inventory_sha256": "31f9fd96f658048d7356a7aa9a9d7261ec26756137d06131dc2de1dd047bc3ba",
+    "base": "6db920e72",
+    "before_inventory_sha256": "be9a3350211b5c573fc27e42d9897f932c7f640c45979646a60f993a019bac47",
+    "changed_values": [
+      "kustomize.json"
+    ],
+    "eligible": 154,
+    "files": 185,
+    "protected_byte_identical": 31,
+    "required_kinds_preserved": true,
+    "unchanged_bytes": 184
+  },
+  "scope": "Kustomize calibration only; product engine unchanged",
+  "source_tracked_sets_unchanged": true,
+  "verification": {
+    "D19_guard": {
+      "command": "python3 calibration/oracles/kustomize/publish.py --self-test",
+      "exit_code": 0,
+      "private_log_sha256": "bb2dbcd547bfd810d2b9d5c0fe3787e48e8f3a012115947d3e40af80b17ddae1"
+    },
+    "directory_preference": {
+      "command": "go test -race ./internal/fusion -run '^TestKustomizeBaseDirectoryNeedsTheOneFileRule$' -count=1",
+      "exit_code": 0,
+      "private_log_sha256": "8f48914c0e3aa861902da894690821be0ce0ee540714a0ce6d6e1b631a8a73b3"
+    },
+    "driver_identity": {
+      "command": "python3 -m unittest calibration/oracles/kustomize/test_grade.py",
+      "exit_code": 0,
+      "private_log_sha256": "cbe4b84d897ac017db0552ccb3a31855ff0fb172bc344c967c4c4c92eb19e624"
+    },
+    "merge_debris": {
+      "command": "bash scripts/check-merge-debris.sh",
+      "exit_code": 0,
+      "private_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "native_after": {
+      "command": "python3 calibration/oracles/kustomize/run_native.py --cache \"$KUST_CACHE\" --oracle-bin \"$KUST_CACHE/tools/kustomize-oracle\" --phase after",
+      "exit_code": 0,
+      "private_log_sha256": "84d8da47ae38c04d23e5e8c89e4a080399ec61906f807832dd5e2861deb689af"
+    },
+    "native_before": {
+      "command": "python3 calibration/oracles/kustomize/run_native.py --cache \"$KUST_CACHE\" --oracle-bin \"$KUST_CACHE/tools/kustomize-oracle\" --phase before",
+      "exit_code": 0,
+      "private_log_sha256": "7c39418765d63f8327d51480308ea2e875f7571636e9493f5ca7ec734b543568"
+    },
+    "native_oracle_race": {
+      "command": "go -C calibration/oracles/kustomize test -race -count=1 ./...",
+      "exit_code": 0,
+      "private_log_sha256": "5d5302c9f54baf0a8acdcd2b9b072c3d4ebd5c1aa4d36e52a650304e3db029bf"
+    },
+    "org_names": {
+      "command": "bash scripts/fathom-go.sh test -count=1 -run TestNoOrgSpecificNames ./cmd/fathom",
+      "exit_code": 0,
+      "private_log_sha256": "15f8341a48ddc4d227c9316d9a00781ca05976f8f545533879ca439635114c89"
+    },
+    "product_control": {
+      "command": "go run ./workspace/tmp/kustomize-proof/product_ablation.go -subject-file \"$PINNED_KUSTOMIZATION\"",
+      "exit_code": 0,
+      "private_log_sha256": "e835354686d6c2e65d8160190621252c3aefdc8058192804147ff12e4446f2eb"
+    },
+    "reading_roundtrip": {
+      "command": "go test -race ./internal/langbench -run '^TestCommittedReadingsRoundTrip$' -count=1",
+      "exit_code": 0,
+      "private_log_sha256": "948f5abde2fb9e588fad548801b402d743b8a059d2e1e8019da1e76f2379e068"
+    },
+    "release_notes": {
+      "command": "go run ./third_party/agentic-kit/cmd/release-notes -check",
+      "exit_code": 0,
+      "private_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

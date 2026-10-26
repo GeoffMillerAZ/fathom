@@ -3,7 +3,7 @@
 LB-Q-kustomize, design `docs/design/language-breadth.md` §4, §13. A doc-engine dialect (no
 `tags.scm`, no upstream grammar) that ports `internal/extractor/kustomizeextract.go`: this
 file records the port decisions, what the dialect deliberately does not do and why, and where
-the calibration oracle comes from. The decode is `gopkg.in/yaml.v3` through the doc engine.
+the calibration oracle comes from. The product uses the doc engine's YAML reader.
 The manifest claims a file by basename, `kustomization.yaml` or `kustomization.yml`, at any
 depth. A bare `Kustomization` file (kustomize reads it, and it has no extension) and every
 other YAML file stay with the Kubernetes dialect's extension claim or unclassified, as before.
@@ -26,9 +26,9 @@ What the dialect adds to what the incumbent read:
 
 - **The kustomization itself** (`Kustomization`, canonical `package`): one entity per file,
   named by the file (`$file`, so `kustomization.yaml` and `kustomization.yml` read as written),
-  at the file's first key, signed by its `kind` when it writes one (`Component`). Most
-  kustomizations carry no `apiVersion` or `kind` at all (both argocd-example-apps subjects and
-  most of the tool's examples), so the root is selected by shape, not by a key. It is the entity
+  at the file's first key, signed by its `kind` when it writes one (`Component`). Some
+  kustomizations in the historical subjects omit `apiVersion` or `kind`, so the
+  root is selected by shape rather than requiring either key. It is the entity
   the entries hang from and the one a base or overlay reference resolves to: without a root
   entity `fusion.ResolveDocXrefs` has nothing to join a file-level reference to
   (`docker-compose` is deferred for that).
@@ -42,8 +42,8 @@ What the dialect adds to what the incumbent read:
 - **Cross-file edges** (`fusion.ResolveDocXrefs`, file-tier, entity to entity): a `resources:`,
   `bases:`, `components:` or patch entry that names another kustomization or the directory that
   holds one resolves by `repo-path` to that file's kustomization entity; an entry that names a
-  file the doc engine reads resolves to its first root entity (a Kubernetes manifest is not one
-  today, below).
+  file the doc engine reads resolves to its first root entity (Kubernetes manifest destinations are outside this dialect reading's
+  owned-file scope).
 
 ## Divergences from the incumbent, all forced by §4's selector subset
 
@@ -71,59 +71,58 @@ What the dialect adds to what the incumbent read:
   repository, and crossing repositories is the `service_ref` layer's job (§1.1). The
   reference's `Target` is the URL taken as a relative path, which no repository file has.
 - **`vars`, `replacements`, `replicas`, `commonLabels`, `namePrefix`, `transformers`,
-  `generators`, `validators`, `configurations`, `crds`, `helmCharts`, `openapi`** are not
-  entities and not references: none is a file the dialect names an edge to (or, for a plugin
-  file, none of the subjects writes one), and a name that selects a resource by kind and name
-  in another file (`patches[].target`, `replicas[].name`) needs a join the engine has for
-  Services only.
-- **A directory resolves to the one doc file in it** (design §4), and this is the format's
-  main edge (`resources: - ../base`). Today an ingest dispatches a Kubernetes manifest to the
-  incumbent `K8sExtractor`, which is not a doc-engine extractor, so a base holds one doc file, its
-  kustomization, and resolves (12 edges on `kubernetes-sigs/kustomize` examples and 1 on
-  argocd-example-apps, the 13 the reading scores). **The day the kubernetes dialect is
-  dispatched**, every base that holds a manifest holds two doc files and no longer resolves,
-  unless `fusion.ResolveDocXrefs` learns to prefer the file the referring dialect owns.
-  `TestKustomizeBaseDirectoryNeedsTheOneFileRule` pins today's rule and fails when it changes;
-  that is `LB-Q-kustomize-rest`'s trigger, and `internal/fusion/docxref.go` was not this item's
-  to edit.
-- **A resource that names a manifest** (`resources: - deployment.yaml`) is a cross-file
-  reference the dialect records, but the harness scores only edges between the files the
-  dialect owns (`langbench` scope, §1.4): the oracle's 53 edges to manifests are counted as out
-  of scope in the reading's notes, and an ingest resolves none of them yet because no manifest
-  has a root entity in the store until the kubernetes dialect is dispatched.
+  `generators`, `validators`, `configurations`, `crds`, `helmCharts`, `openapi`**
+  are not mapped to entities or references by this dialect. The expanded native
+  population includes one `configurations` entry; the assessment inventories
+  the other populated families. File-valued families can express additional
+  paths, and selectors such as `replicas[].name` need format-specific joins.
+  This reading does not certify those paths or selector bindings.
+- **Directory references prefer the referring dialect's file.** The Kubernetes
+  dialect is dispatched, so a base can contain several document files.
+  `fusion.ResolveDocXrefs`' `oneDocFile` first selects a unique file owned by the
+  referring dialect, then uses the unique-document fallback. This preserves a
+  Kustomize base's edge when that directory also contains Kubernetes manifests.
+  `TestKustomizeBaseDirectoryNeedsTheOneFileRule` exercises this fired trigger.
+  No resolver change is needed for this evidence lane.
+- **References to Kubernetes manifests** are emitted and can resolve at ingest.
+  This dialect reading scores only destinations in the files it owns
+  (`langbench` scope, §1.4). Native manifest-target edges outside that scope
+  remain counted separately; this reading does not certify their resolution.
 - **YAML merge keys and multi-document files.** A kustomization is one document; a second
   document is not read (`multi_document` is off).
 
 ## The calibration oracle
 
-Tier A, and the tool the queue entry names: Kustomize itself, through `kubectl kustomize`
-(kubectl v1.36.1 embeds Kustomize v5.8.1, the version the subject's tag is; recorded as
-`kustomize (kubectl-embedded) v5.8.1`). `calibration/oracles/kustomize/` builds every
-`kustomization.yaml` and `kustomization.yml` of a scratch copy of the subject, each as its own
-root, with a dead proxy so that no remote is fetched.
+The current calibration uses the pinned official Kustomize v5.8.1 binary and its
+matching API/kyaml v0.21.1, in `calibration/oracles/kustomize/`. Native typed
+configuration loading enumerates candidates and fields; native kyaml supplies
+source positions. Reconciliation errors stop the whole subject. Native-invalid
+configurations and every other excluded candidate remain counted in the receipt.
 
-Kustomize lists nothing of what a file declares, and its `originAnnotations` name the file a
-resource came from but not the kustomization that named it (an overlay of an overlay of a base
-looks like the base's resources), so the oracle asks the tool one question of each entry: **does
-the build change when this entry is removed?** Entries are proposed by an independent decode
-(`yq`, which is its own YAML reader with line numbers; not the doc engine's walk) and disposed by
-the tool: an entry is in the truth when the build fails without it or its output differs
-(`buildMetadata: [originAnnotations]` is set on the copy). Every entry of both subjects was
-evidenced (70 of 70), so no truth entry was withheld and the dialect was not helped by the
-filter; an entry the tool does not evidence would be counted on stderr and would cost the
-dialect precision. Definitions, references and cross-references all come from those entries.
+The CLI grades an entry by removing it from a scratch copy and comparing the
+native build. Entries that change the output or cause native rejection are
+truth; no-ops stay outside truth and can cost the dialect precision. Every real
+non-Component parent closure that reaches a Component supplies its context.
+No synthetic wrapper enters canonical evidence. Build, mutation, restore,
+timeout and population failures have explicit whole-unit refusal rules.
 
-A kustomization the tool cannot build contributes nothing and is left out of the measured
-files (`-only`), counted, with its reason: `examples/loadHttp` (remote bases and a remote
-patch), `examples/transformerconfigs/images` (`kustomizeconfig/mykind.yaml`, written by the
-tool's documentation), `plugins/kustomized-helm` (`all.yaml`, written by helm at render time).
-A Component is not a root the tool builds (none in the subjects); it would be wrapped. The
-reading's `lang-parity` runs on copies of the subjects without those three files, because
-`lang-parity` has no `-only`.
+The environment is scrubbed, plugins and Helm are disabled, and reachable remote
+or absolute path inputs are excluded before builds. Source copies, native-call
+fan-out, output and whole-run duration are bounded. Private receipts reconcile
+all candidates, typed fields, contexts, exclusions and selected files. Public
+records contain counts and hashes, not source or file lists.
 
-## Subjects
+## Subjects and measurement
 
-`kubernetes-sigs/kustomize` at `kustomize/v5.8.1`, `examples` only (Apache-2.0; 18
-kustomization files, 16 built by the tool) and `argoproj/argocd-example-apps` at `master`
-8088f4c (Apache-2.0; 4 files, 3 built). Between them 19 files, 70 entries and 13 base or
-overlay edges: a small measure, and the reading says so.
+The original `kubernetes-sigs/kustomize` examples and
+`argoproj/argocd-example-apps` root scopes remain pinned. I-R4 adds the pinned
+Flux Helm and multi-tenancy repositories and GCP microservices-demo, all in the
+single `calibration/corpus.d/kustomize.yaml` shard. Membership was frozen before
+canonical measurement; earlier exploratory selection is disclosed and is not a
+blind holdout. Exact pins and criteria are in the oracle's `pins.json`.
+
+The historical 13/13 cross-file result is thin evidence under D19. Each L3
+metric requires at least 20 references in its own denominator. The dated
+[assessment](../../../../docs/assessments/2026-10-26-kustomize-d19-evidence.md)
+records the canonical result, per-subject populations, exclusions, controls and
+remaining scope. The committed reading is the computed support result.
