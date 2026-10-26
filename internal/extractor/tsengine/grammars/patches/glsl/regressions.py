@@ -38,6 +38,8 @@ ARRAY_CONSTRUCTORS = {
 # upstream HEAD. They isolate the constructor callee tree from the separate
 # type-first T[N] x declarator correction exercised above.
 C_STYLE_ARRAY_CONSTRUCTORS = {
+    'keyword_sized': 'void main() { float x[3] = float[3](1.0, 2.0, 3.0); }',
+    'int_corpus': 'void main() { int x[2] = int[2](1, 2); }',
     'vector_sized': 'void main() { vec4 x[2] = vec4[2](vec4(1), vec4(2)); }',
     'vector_sized_alt': 'void main() { vec3 x[3] = vec3[3](vec3(1), vec3(2), vec3(3)); }',
     'matrix_sized': 'void main() { mat4 x[2] = mat4[2](mat4(1), mat4(2)); }',

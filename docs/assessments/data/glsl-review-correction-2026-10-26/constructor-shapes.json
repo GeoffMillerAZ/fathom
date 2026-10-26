@@ -1,26 +1,26 @@
 {
-  "scope": "Four authored sized identifier-typed constructors with C-style declarators; no subject code",
-  "cases": 4,
+  "scope": "Six authored sized keyword- and identifier-typed constructors with C-style declarators; no subject code",
+  "cases": 6,
   "command_test": "internal/extractor/tsengine/grammars/patches/glsl/regressions.py GLSLRegressions.test_c_style_constructor_callee_shape",
   "grammars": {
     "committed_head": {
       "library_sha256": "50308ddbae46eb262cbfbbfb510106a2945d48d6f01eb5e6b54096a5c4263021",
-      "root_error_free": 4,
-      "declarator_error_free": 4,
-      "constructor_error_free": 4,
-      "callee_error_free": 4,
+      "root_error_free": 6,
+      "declarator_error_free": 6,
+      "constructor_error_free": 6,
+      "callee_error_free": 6,
       "callee_types": {
-        "subscript_expression": 4
+        "subscript_expression": 6
       }
     },
     "corrected": {
       "library_sha256": "3e11c2849118b15a30d297098290bb101169f7fdc6583ef16cf453e6626725f4",
-      "root_error_free": 4,
-      "declarator_error_free": 4,
-      "constructor_error_free": 4,
-      "callee_error_free": 4,
+      "root_error_free": 6,
+      "declarator_error_free": 6,
+      "constructor_error_free": 6,
+      "callee_error_free": 6,
       "callee_types": {
-        "array_type_specifier": 4
+        "array_type_specifier": 6
       }
     }
   }

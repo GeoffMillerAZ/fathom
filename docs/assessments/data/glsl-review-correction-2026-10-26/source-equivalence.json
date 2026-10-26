@@ -8,7 +8,8 @@
     "compared_entries": 11283,
     "historical_sha256": "b8b9ea67096028e76abb7bbb6c42909f407bf4d34225b233012eb57c624a8cab",
     "clean_sha256": "b8b9ea67096028e76abb7bbb6c42909f407bf4d34225b233012eb57c624a8cab",
-    "identical": true
+    "identical": true,
+    "digest_method": "SHA-256 of the concatenation of complete NUL-terminated git ls-tree -r -z <commit> records, preserving git output order, excluding the exact path calibration/oracles/glslang-ast/test_extract_extensions.py. Each included record ends in one NUL byte."
   },
   "unchanged_artifacts": [
     {
@@ -42,5 +43,5 @@
     "85ee9a41cb79a25acbee625cce3d5402ad284840",
     "04fa6298a17a02b8fc1bfeb59adca59a6cb0ea2d"
   ],
-  "notes": "The only source-tree difference is synthetic oracle unit-test data and additional raw-token rejection assertions. The separate follow-up changes documentation and native regression tests only. Accepted historical measurements and artifact bytes are preserved."
+  "notes": "The only source-tree difference is synthetic oracle unit-test data and additional raw-token rejection assertions. The separate follow-up changes documentation and native regression tests only. Accepted historical measurements and artifact bytes are preserved. This is the historical feature comparison at72b283011, not a promise that later documentation/test commits or a refreshed canonical reading retain those hashes."
 }
