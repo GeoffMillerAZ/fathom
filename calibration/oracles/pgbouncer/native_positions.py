@@ -18,6 +18,9 @@ KINDS = dict(databases='target', peers='service', users='element', pgbouncer='ke
 
 
 def verify(binary, receipt):
+    pin = json.loads((HERE / 'native-position-build-r1.json').read_text())
+    if any(receipt.get(key) != pin[key] for key in ['version', 'build_inputs', 'native_source_sha256']):
+        raise ValueError('native source/archive identity mismatch')
     if hashlib.sha256(binary.read_bytes()).hexdigest() != receipt['binary_sha256']:
         raise ValueError('native binary identity mismatch')
     actual = subprocess.check_output([str(binary), '--version'], text=True, timeout=10)
@@ -47,7 +50,7 @@ def candidates(source):
     return found
 
 
-def decode(log):
+def decode(log, terminal=True):
     if len(log) > MAX_LOG:
         raise ValueError('native log cap exceeded')
     events = []
@@ -70,9 +73,35 @@ def decode(log):
             raise ValueError('unknown native callback')
         if len(events) > MAX_EVENTS + int(events[-1] == dict(kind='section', name=STOP)):
             raise ValueError('native event cap exceeded')
-    if not events or events[-1] != dict(kind='section', name=STOP):
-        raise ValueError('native population lacks terminal boundary')
-    return events[:-1]
+    if terminal:
+        if not events or events[-1] != dict(kind='section', name=STOP):
+            raise ValueError('native population lacks terminal boundary')
+        return events[:-1]
+    if any(event == dict(kind='section', name=STOP) for event in events):
+        raise ValueError('unexpected terminal boundary in native prefix')
+    return events
+
+
+def prefix_identity(events, private_log):
+    section = None
+    result = []
+    for event in events:
+        row = dict(event)
+        if row['kind'] == 'section':
+            section = row['name']
+        elif section == 'pgbouncer' and row['name'] == 'logfile':
+            if row['value'] != str(private_log):
+                raise ValueError('native prefix logfile destination differs from private profile')
+            row['value'] = '<private-logfile>'
+        result.append(row)
+    return result
+
+
+def require_prefix(raw, expected, directory, baseline):
+    actual = prefix_identity(decode(raw, terminal=False), directory / 'private.log')
+    wanted = prefix_identity(expected, baseline / 'private.log')
+    if actual != wanted:
+        raise ValueError('native callback prefix does not bracket the proposed token line')
 
 
 def reconcile(events, sites):
@@ -124,6 +153,7 @@ def native(binary, source, directory, expected_line=None):
 
 
 def measure(source, rel, binary, directory):
+    binary, directory = binary.resolve(), directory.resolve()
     sites = candidates(source)
     if any(site['kind'] == 'key' and site['section'] == 'pgbouncer' and site['name'] == 'syslog' for site in sites):
         raise ValueError('global syslog setting is unsupported by private position protocol')
@@ -151,7 +181,16 @@ def measure(source, rel, binary, directory):
         line = mutated[site['line'] - 1]
         start = len(line) - len(line.lstrip(' \t'))
         mutated[site['line'] - 1] = line[:start] + '?' + line[start:]
-        native(binary, ''.join(mutated), directory / ('token-%d' % index), site['line'])
+        before = directory / ('token-%d-before' % index)
+        raw = native(binary, ''.join(mutated), before, site['line'])
+        require_prefix(raw, events[:index], before, directory / 'observation')
+        after_lines = list(observed_lines)
+        if not after_lines[site['line'] - 1].endswith('\n'):
+            after_lines[site['line'] - 1] += '\n'
+        after_lines.insert(site['line'], '?\n')
+        after = directory / ('token-%d-after' % index)
+        raw = native(binary, ''.join(after_lines), after, site['line'] + 1)
+        require_prefix(raw, events[:index + 1], after, directory / 'observation')
         if event['kind'] == 'section':
             section = sections.setdefault(event['name'], dict(header=site['line'], last=site['line'], keys={}))
         else:
@@ -166,6 +205,7 @@ def measure(source, rel, binary, directory):
             definitions.append(dict(path=rel, name=key, kind=KINDS[name], line=line, end=line))
     return definitions, dict(native_callbacks=len(events), positioned_callbacks=len(events),
                              definitions=len(definitions), verbosity_values_observed=changed,
+                             native_before_prefixes=len(events), native_after_prefixes=len(events),
                              logfile_destinations_redirected=sum(site['kind'] == 'key' and site['section'] == 'pgbouncer' and site['name'] == 'logfile' for site in sites),
                              source_sha256=hashlib.sha256(source.encode()).hexdigest())
 
@@ -174,9 +214,10 @@ def main():
     parser = argparse.ArgumentParser()
     for key in ['subject', 'pgbouncer', 'work', 'out']:
         parser.add_argument('-' + key, type=Path, required=True)
+    parser.add_argument('-build-receipt', type=Path, default=HERE / 'native-position-build-r1.json')
     args = parser.parse_args()
     binary = args.pgbouncer.resolve()
-    verify(binary, json.loads((HERE / 'native-position-build-r1.json').read_text()))
+    verify(binary, json.loads(args.build_receipt.read_text()))
     # Native controls are mandatory before A output, not optional environment skips.
     import unittest
     os.environ['PGB_POSITION_BIN'] = str(binary)
@@ -197,6 +238,8 @@ def main():
     summary = dict(files=len(receipts), definitions=len(definitions),
                    native_callbacks=sum(r['native_callbacks'] for r in receipts),
                    positioned_callbacks=sum(r['positioned_callbacks'] for r in receipts),
+                   native_before_prefixes=sum(r['native_before_prefixes'] for r in receipts),
+                   native_after_prefixes=sum(r['native_after_prefixes'] for r in receipts),
                    per_input=receipts, binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest())
     (args.out / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')
     print(json.dumps(summary, sort_keys=True))

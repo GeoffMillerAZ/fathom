@@ -10,7 +10,7 @@
     "L4": "not-applicable"
   },
   "measured_at": "2026-10-26",
-  "fathom_commit": "355546edd",
+  "fathom_commit": "faa72fd93",
   "extractor": "dialect",
   "subjects": [
     {
@@ -44,8 +44,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.452,
-        "extract_cpu_ms": 0.47000000000000003,
+        "extract_ms": 0.43,
+        "extract_cpu_ms": 0.433,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -105,9 +105,9 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 40.06,
+    "throughput_mb_s": 43.48,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 41.65,
+    "wall_throughput_mb_s": 43.78,
     "max_file_ms": 0,
     "peak_module_pages": 0,
     "compiled_bytes": 0
@@ -116,8 +116,8 @@
   "notes": [
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "pgbouncer/pgbouncer: 1 files skipped by ingest's gates (ambiguous)",
-    "pgbouncer/pgbouncer: Native PgBouncer 1.26.1 cfparser enumerates every explicit token before comparison; each token line is attested by syntax ablation. Five existing logfile values point to private scratch; graded keys and lines are unchanged. Native SHOW DATABASES enumerates all sources for auth_dbname bindings. Full six-file canonical population; no backend SQL, Docker or L3.",
-    "throughput (design 1.9 T1, T2): darwin/arm64 Apple M4; run 1: 43.48 MB/CPU-s; run 2: 25.51 MB/CPU-s; run 3: 40.06 MB/CPU-s; median run 3: 40.06 MB/CPU-s; every other field is the original measurement at its recorded fathom_commit 355546edd"
+    "pgbouncer/pgbouncer: Native PgBouncer 1.26.1 cfparser enumerates every explicit token before comparison; each token line is attested by syntax ablation. Exact native callback prefixes before and after each token line bracket all 161 positions. Five existing logfile values point to private scratch; graded keys and lines are unchanged. Native SHOW DATABASES enumerates all sources for auth_dbname bindings. Full six-file canonical population; no backend SQL, Docker or L3.",
+    "throughput (design 1.9 T1, T2): darwin/arm64 Apple M4; run 1: 47.07 MB/CPU-s; run 2: 17.71 MB/CPU-s; run 3: 43.48 MB/CPU-s; median run 3: 43.48 MB/CPU-s; every other field is the original measurement at its recorded fathom_commit faa72fd93"
   ],
   "disposition": null
 }

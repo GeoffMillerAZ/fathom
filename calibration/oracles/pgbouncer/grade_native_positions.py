@@ -36,25 +36,28 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     for name in ['subject', 'pgbouncer', 'indexbench', 'out']:
         parser.add_argument('-' + name, type=Path, required=True)
+    parser.add_argument('-build-receipt', type=Path, default=HERE / 'native-position-build-r1.json')
     args = parser.parse_args()
     args.subject = args.subject.resolve()
     args.out = args.out.resolve()
     if args.out.exists():
         raise ValueError('fresh output directory required')
     args.out.mkdir(parents=True)
+    conditions = dict(load_start=os.getloadavg()[0], nice=os.getpriority(os.PRIO_PROCESS, 0),
+                      serial_lane_guard=True, other_lanes='shared machine; other lanes may be active')
     before = tracked_receipt(args.subject, '.', args.out / 'tracked-before')
     native = args.out / 'positions'
     pairs = args.out / 'pairs'
     run([sys.executable, '-B', HERE / 'native_positions.py', '-subject', args.subject,
-         '-pgbouncer', args.pgbouncer.resolve(), '-work', args.out / 'position-work', '-out', native])
+         '-pgbouncer', args.pgbouncer.resolve(), '-build-receipt', args.build_receipt.resolve(), '-work', args.out / 'position-work', '-out', native])
     run([sys.executable, '-B', HERE / 'native_oracle.py', '-subject', args.subject,
-         '-pgbouncer', args.pgbouncer.resolve(), '-build-receipt', HERE / 'native-position-build-r1.json',
+         '-pgbouncer', args.pgbouncer.resolve(), '-build-receipt', args.build_receipt.resolve(),
          '-work', args.out / 'pair-work', '-out-dir', pairs])
     reading = args.out / 'reading.json'
     run([args.indexbench.resolve(), 'lang-oracle', '-dialect', 'pgbouncer',
          '-subject', args.subject, '-subject-name', 'pgbouncer/pgbouncer',
          '-tool-oracle', native / 'defs.json', '-tool-oracle', pairs / 'refs.json', '-out', reading,
-         '-note', 'Native PgBouncer 1.26.1 cfparser enumerates every explicit token before comparison; each token line is attested by syntax ablation. Five existing logfile values point to private scratch; graded keys and lines are unchanged. Native SHOW DATABASES enumerates all sources for auth_dbname bindings. Full six-file canonical population; no backend SQL, Docker or L3.'])
+         '-note', 'Native PgBouncer 1.26.1 cfparser enumerates every explicit token before comparison; each token line is attested by syntax ablation. Exact native callback prefixes before and after each token line bracket all 161 positions. Five existing logfile values point to private scratch; graded keys and lines are unchanged. Native SHOW DATABASES enumerates all sources for auth_dbname bindings. Full six-file canonical population; no backend SQL, Docker or L3.'])
     run([args.indexbench.resolve(), 'lang-retime', '-reading', reading, '-subject',
          'pgbouncer/pgbouncer=' + str(args.subject), '-runs', '3', '-write'])
     after = tracked_receipt(args.subject, '.', args.out / 'tracked-after')
@@ -65,7 +68,7 @@ if __name__ == '__main__':
     if result['counts']['oracle_defs'] != population['definitions']:
         raise ValueError('native population excluded by harness gates')
     summary = dict(subject=result['subjects'][0]['name'], sha=result['subjects'][0]['sha'],
-                   counts=result['counts'], grade=result['grade'], metrics=result['metrics'], metric_tiers=result['metric_tiers'],
+                   conditions=conditions, counts=result['counts'], grade=result['grade'], metrics=result['metrics'], metric_tiers=result['metric_tiers'],
                    subjects=[{key: subject[key] for key in ['name','sha','files','bytes','counts','families']}
                              for subject in result['subjects']],
                    native_positions=population, tracked_before=before, tracked_after=after,

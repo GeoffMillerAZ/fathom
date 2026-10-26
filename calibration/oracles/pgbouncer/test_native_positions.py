@@ -79,3 +79,33 @@ class NativePositionTest(unittest.TestCase):
     def test_syslog_profile_refuses_before_global_side_effects(self):
         with self.assertRaisesRegex(ValueError, 'syslog'):
             self.run_native('[pgbouncer]\nsyslog=1\n')
+
+    def test_shifted_or_reversed_locator_lines_are_refused(self):
+        source = '# prefix\n[pgbouncer]\n\n# pad\nmax_client_conn=101\n\n# tail\n\n'
+        original = positions.candidates
+        for shift in (1, 2, 'reverse'):
+            def misplaced(value):
+                sites = original(value)
+                line_numbers = [row['line'] for row in sites]
+                for index, row in enumerate(sites):
+                    row['line'] = line_numbers[-1-index] if shift == 'reverse' else row['line'] + shift
+                return sites
+            with self.subTest(shift=shift), patch.object(positions, 'candidates', misplaced):
+                with self.assertRaisesRegex(ValueError, 'prefix'):
+                    self.run_native(source)
+
+
+class PerBuildIdentityTest(unittest.TestCase):
+    def test_new_build_receipt_pins_its_observed_binary_without_editing_history(self):
+        import hashlib
+        import json
+        pin = json.loads((positions.HERE / 'native-position-build-r1.json').read_text())
+        with tempfile.TemporaryDirectory() as directory:
+            binary = Path(directory) / 'authored-binary'
+            binary.write_bytes(b'authored per-build identity fixture')
+            receipt = dict(pin, binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest())
+            with patch('native_positions.subprocess.check_output', return_value=pin['version_output']):
+                positions.verify(binary, receipt)
+            broken = dict(receipt, native_source_sha256={})
+            with self.assertRaisesRegex(ValueError,'source/archive'):
+                positions.verify(binary, broken)

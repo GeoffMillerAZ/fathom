@@ -6,7 +6,7 @@ to reproduce the new A position/reference reading.
 
 | Family | Instrument | Tier and scope |
 |---|---|---|
-| Definitions and ranges | Native cfparser callbacks enumerate all explicit tokens; syntax ablation attests every line | A: 161/161 across the unchanged six configs; names/ranges retained through private logfile substitution |
+| Definitions and ranges | Native cfparser callbacks enumerate all explicit tokens; native callback prefixes before and after each line bracket its exact token | A: 161/161 across the unchanged six configs; names/ranges retained through private logfile substitution |
 | auth_dbname references | Native SHOW DATABASES enumeration, every source startup, and missing-name control | A: 1/1, the entire canonical local pair population; no fallback |
 
 `native-protocol-r2.json` was committed before the population sweep. The earlier
@@ -65,7 +65,7 @@ These are bounded searches, not a universal assertion of tool absence.
 | SCIP and LSIF catalogs and GitHub | Read [Sourcegraph's supported indexers](https://sourcegraph.com/docs/code-navigation/precise-code-navigation), [SCIP list](https://github.com/sourcegraph/scip#tools-using-scip), and Sourcegraph-maintained [LSIF.dev](https://lsif.dev/) via its [LSIF guide](https://sourcegraph.com/blog/writing-an-lsif-indexer). No PgBouncer-config producer listed. GitHub repository search `scip-pgbouncer in:name` returned zero. SCIP C indexes the implementation, not runtime config spans. |
 | Language servers | GitHub/web query `pgbouncer language server config` and the [LSP server catalog](https://microsoft.github.io/language-server-protocol/implementors/servers/) supplied no dedicated PgBouncer-config server. SQL servers concern SQL, not this INI language. No unlocated binary was described as failing. |
 | Registry parsers / type checkers / AST dumpers | PyPI query `pgbouncer parser AST` and [pgbouncer 0.2.0](https://pypi.org/project/pgbouncer/) inspected: AGPL-3 runtime-fixture manager depending on native PgBouncer/psycopg2, not a source-span dump. npm search `pgbouncer parser` returned generic parsers (Babel 8.0.8 etc.), not a native PgBouncer evaluator. Its licence does not exclude bench-only use; the published manager interface is not an entity/source-position instrument. The independent scanner remains C. |
-| Runtime call / require tracing | Native 1.26.1 [verbose logging](https://www.pgbouncer.org/config.html) and `lib/usual/cfparser.c` inspected: debug logs include parsed section/key/value and acceptance, while line numbers occur on error paths, not a complete successful source-span API. Runtime auth errors plus controlled mutation provide the measured A pair. A future native span-ablation harness is not claimed impossible or tested here. |
+| Runtime call / require tracing | Native 1.26.1 [verbose logging](https://www.pgbouncer.org/config.html) and `lib/usual/cfparser.c` inspected: debug logs include parsed section/key/value and acceptance, while line numbers occur on error paths, not a complete successful source-span API. Runtime auth errors plus controlled mutation provide the measured A pair. The r4 span harness now measures all 161 tokens: exact native callback prefixes before the token and after its line bracket each position. The initial line-only error check was vacuous and is superseded; the line-shift mutant now refuses. |
 
 The r2 summary records all 52 native sources, classifications, pair-set agreement
 and digests; full source identities and native messages stay in scratch.
@@ -74,8 +74,11 @@ and digests; full source identities and native messages stay in scratch.
 
 The error-line follow-up is now measured, rather than an availability ceiling.
 The whole native parser first reaches a terminal invalid section appended after
-all original tokens. Each enumerated token is then corrupted alone, requiring
-a native syntax error at exactly its original line. Five existing logfile
+all original tokens. For native callback i at proposed line L, corrupt before its token and require
+error line L plus the complete logged prefix events[:i]. Insert an invalid
+line after L and require error L+1 plus events[:i+1]. Both observations must
+agree: an error at a locator-selected line alone is vacuous. All 161 before
+and 161 after prefixes pass on the unchanged canonical inputs. Five existing logfile
 values point to private scratch because their setters open the file while
 parsing. Every graded key/section/line remains present. Active syslog refuses.
 Baseline keeps original numeric/verbose values; observation verbosity changes
@@ -83,8 +86,8 @@ only afterwards. Quoted/unused keys, repeated sections/keys and suppressed
 logging are authored controls. An independent locator only places mutations;
 missing or extra native callbacks refuse the whole family.
 
-`native-positions-summary-r1.json` records 161/161 A definitions/ranges,
-1/1 A references, zero faults and median 40.06 MB/CPU-s. Per-input native counts
+`native-positions-summary-r4.json` records 161/161 A definitions/ranges,
+1/1 A references, zero faults and median 43.48 MB/CPU-s. Per-input native counts
 are 2, 9, 28, 28, 71 and 23; the single subject's ratios equal the pooled
 ratios, all 1. The complete original tracked approximation is 440 files with
 matching before/after hashes, zero generated/untracked inputs, symlinks or
@@ -95,15 +98,22 @@ serial nice run:
 
 ```sh
 bash scripts/fathom-go.sh build -o workspace/tmp/indexbench ./cmd/indexbench
-nice -n 10 python3 -B calibration/oracles/pgbouncer/grade_native_positions.py -subject workspace/calibration/pgbouncer -pgbouncer workspace/oracle/pgbouncer-native/pgbouncer-1.26.1/pgbouncer -indexbench workspace/tmp/indexbench -out workspace/artifacts/pgbouncer-native-positions
-nice -n 10 python3 -B calibration/oracles/pgbouncer/probe_position_controls.py -pgbouncer workspace/oracle/pgbouncer-native/pgbouncer-1.26.1/pgbouncer -out workspace/artifacts/pgbouncer-position-controls
+nice -n 10 python3 -B calibration/oracles/pgbouncer/grade_native_positions.py -subject workspace/calibration/pgbouncer -pgbouncer workspace/oracle/pgbouncer-native/pgbouncer-1.26.1/pgbouncer -build-receipt workspace/oracle/pgbouncer-native/build-receipt.json -indexbench workspace/tmp/indexbench -out workspace/artifacts/pgbouncer-native-positions
+nice -n 10 python3 -B calibration/oracles/pgbouncer/probe_position_controls.py -pgbouncer workspace/oracle/pgbouncer-native/pgbouncer-1.26.1/pgbouncer -build-receipt workspace/oracle/pgbouncer-native/build-receipt.json -out workspace/artifacts/pgbouncer-position-controls
 PGB_POSITION_BIN=workspace/oracle/pgbouncer-native/pgbouncer-1.26.1/pgbouncer python3 -B -m unittest discover -s calibration/oracles/pgbouncer
 ```
 
-The measured binary checksum is in `native-position-build-r1.json`; a rebuild
-must freeze its new identity before querying. Adjust the receipt only for a
-new reproducible build, never to bypass identity refusal. The position CLI
-runs all native authored controls with zero skips before any A output.
+The measured binary checksum is in `native-position-build-r1.json`; binary
+SHA-256 is per-build and is not portable. A reviewer rebuilds from the pinned
+archives and passes that fresh `build-receipt.json` explicitly to both drivers.
+The verifier checks archive/source pins, actual version output and actual
+binary SHA against that per-build receipt. Never edit a historical receipt to
+reproduce another build. The CLI requires all native controls with zero skips.
+
+The r4 replay starts at 1-minute load 1.79, nice 10, under the lane serial guard
+on the shared machine; activity in other lanes is uncontrolled. Warm runs are
+47.07, 17.71 and 43.48 MB/CPU-s (median 43.48). These sub-millisecond, tiny-file
+samples vary; they establish the floor, not a comparative performance claim.
 
 Independence: the committed control driver runs the actual Fathom extractor
 under `-race`. Removing its two nodes leaves native truth unchanged; changing
@@ -115,3 +125,8 @@ The driver writes its log and count/hash-only receipt. Caps: the reader refuses
 includes, identity drift or early native failure refuse the entire input.
 No scanner-selected population, fallback, backend SQL, Docker or L3 is used.
 Delete completed subjects/source builds after packaging the receipts.
+
+Line-position mutation: shifting locator lines +1, +2 or reversing them is
+refused by native callback prefixes. Disabling prefix requirements makes
+`test_shifted_or_reversed_locator_lines_are_refused` FAIL, then restored green.
+The r4 control receipt preserves both this FAIL line and the +1 refusal reason.

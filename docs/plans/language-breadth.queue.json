@@ -6004,7 +6004,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-pgbouncer",
     "worker_model": "sonnet",
-    "notes": "Native PgBouncer 1.26.1 cfparser callbacks enumerate the full six-file population; syntax-line ablations attest all 161 definition names/ranges A. SHOW DATABASES independently enumerates all 52 sources and attests 1/1 references A. L1/L2 excellent, median 40.06 MB/CPU-s. Five logfile destinations redirected privately without changing keys/lines. Required kinds unchanged; no L3. One canonical binding is thin evidence. Reproduce grade_native_positions.py and protocols native-position-r1/r2/r3 plus native-protocol-r2; never relabel the legacy scanner."
+    "notes": "Native PgBouncer 1.26.1 r4 enumerates every callback and brackets each token line with exact native prefixes before the token and after its line: all 161 definitions/ranges A. Shifted/reversed locator mutants refuse; disabling prefix checks FAILs then restores GREEN. Native SHOW DATABASES independently enumerates all 52 sources and attests 1/1 references A. L1/L2 excellent; median 43.48 MB/CPU-s at start load 1.79, nice10 on shared machine. Five logfile destinations private; unchanged keys/lines/kinds/populations. Explicit per-build receipt flags; no L3. One binding is thin evidence."
   },
   {
     "id": "proxysql",
