@@ -5940,10 +5940,10 @@
     "kind": "language",
     "tier": "T4",
     "target_level": "L2",
-    "grammar_source": "none open (verify at pin)",
-    "licence": "verify at pin",
+    "grammar_source": "github.com/glennsarti/sentinel-parser@3a328c0dcfb9 (open Go parser; engine admission pending)",
+    "licence": "Apache-2.0",
     "oracle": [
-      "sentinel test / fmt as a separate process (licence to verify)"
+      "publishable independent oracle pending; OL-R6 forbids EULA-runtime-graded readings"
     ],
     "calibration_subjects": [
       "hashicorp/terraform-sentinel-policies"
@@ -5966,7 +5966,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-sentinel",
     "worker_model": "sonnet",
-    "notes": "new; excellence program T4; likely ceiling: no open grammar; next gap: an open Sentinel grammar or parser"
+    "notes": "OL-R8: open-parser trigger fired; glennsarti/sentinel-parser main 3a328c0dcfb9 measured 30/395 full-discovery files in error (7.59%), including 2/90 outside mock paths (2.22%); no scope narrowed; parser availability is separate from full-scope admission and a publishable independent oracle (OL-R6); tags remains the unimplemented queue engine pending a governed reader admission; no level claimed"
   },
   {
     "id": "pgbouncer",

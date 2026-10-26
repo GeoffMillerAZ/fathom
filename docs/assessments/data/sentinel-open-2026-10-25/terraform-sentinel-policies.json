@@ -1,0 +1,40 @@
+{
+  "classification": "open product-parser feasibility only; not independent oracle accuracy",
+  "groups": {
+    "all": {
+      "bad_nodes": 8028,
+      "bytes": 2892181,
+      "call_nodes": 1584,
+      "error_diagnostics": 10940,
+      "files": 386,
+      "files_in_error": 30,
+      "panics": 0
+    },
+    "mock_paths": {
+      "bad_nodes": 8023,
+      "bytes": 2612519,
+      "call_nodes": 300,
+      "error_diagnostics": 10932,
+      "files": 299,
+      "files_in_error": 28,
+      "panics": 0
+    },
+    "other_paths": {
+      "bad_nodes": 5,
+      "bytes": 279662,
+      "call_nodes": 1284,
+      "error_diagnostics": 8,
+      "files": 87,
+      "files_in_error": 2,
+      "panics": 0
+    }
+  },
+  "parser": "glennsarti/sentinel-parser",
+  "parser_version": "v0.0.4-0.20260211131028-3a328c0dcfb9",
+  "probe_sha256": "b3963dbf9013b1c0cf04f62fb813757471168afe94945240fdbd3afd6eb91fa3",
+  "runtime_used": false,
+  "scope": "every original .sentinel file, no rewriting or exclusions",
+  "source_manifest_sha256": "392f735f566ce53096b076d092bc2d9ee446273632d77908c38c1f10a75e8954",
+  "spec": "latest supported by pinned parser",
+  "subject": "hashicorp/terraform-sentinel-policies@b0bd9902f1db35f922f7d33ff10c35e88c380f0e"
+}

@@ -1,0 +1,40 @@
+{
+  "classification": "open product-parser feasibility only; not independent oracle accuracy",
+  "groups": {
+    "all": {
+      "bad_nodes": 0,
+      "bytes": 24537,
+      "call_nodes": 4,
+      "error_diagnostics": 0,
+      "files": 9,
+      "files_in_error": 0,
+      "panics": 0
+    },
+    "mock_paths": {
+      "bad_nodes": 0,
+      "bytes": 20472,
+      "call_nodes": 0,
+      "error_diagnostics": 0,
+      "files": 6,
+      "files_in_error": 0,
+      "panics": 0
+    },
+    "other_paths": {
+      "bad_nodes": 0,
+      "bytes": 4065,
+      "call_nodes": 4,
+      "error_diagnostics": 0,
+      "files": 3,
+      "files_in_error": 0,
+      "panics": 0
+    }
+  },
+  "parser": "glennsarti/sentinel-parser",
+  "parser_version": "v0.0.4-0.20260211131028-3a328c0dcfb9",
+  "probe_sha256": "b3963dbf9013b1c0cf04f62fb813757471168afe94945240fdbd3afd6eb91fa3",
+  "runtime_used": false,
+  "scope": "every original .sentinel file, no rewriting or exclusions",
+  "source_manifest_sha256": "b56877c70c9b729f385811c74e144dc1013719c2375ff4f97556fce7647175cd",
+  "spec": "latest supported by pinned parser",
+  "subject": "hashicorp/policy-library-gcp-databases-terraform@6f779b6ddc3329c967c2bf7a22807f3a16fee9ac"
+}
