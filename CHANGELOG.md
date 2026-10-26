@@ -24,6 +24,25 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Unreleased changes wait as fragments under docs/changelog/unreleased/; the release ritual folds them here.
 
+## [0.21.0] — 2026-10-26
+
+Release impact: minor
+
+### Added
+
+- CUDA (`.cu`, `.cuh`) extraction, measured against universal-ctags, scip-clang, clang and nvcc's preprocessor on NVIDIA/cuda-samples v12.9: its metrics grade L1 excellent and L2 to L4 good (capped by tier-B oracles), and a `.cu` file's edges into the headers its includes reach are drawn and measured. The committed reading claims no level yet: its throughput was measured in a cloud VM under the 1 MB/s floor, and the re-time on the development-machine class follows the next CUDA round.
+- `indexbench lang-oracle -scip-tier` (an index's tier is an input), `-subject-sha` and `-note`; the clang oracles' `-tier` is required.
+- HLSL (`.hlsl`, `.hlsli`, `.fxh`, and `.fx` files with shader structure: a `cbuffer` block, an `SV_` semantic, a register binding or a technique) extraction on tree-sitter-hlsl (the head of upstream pull request 82): functions, structs, cbuffers and tbuffers, typedefs, file-scope variables and macros, the calls a definition makes (intrinsics and member calls included; vector constructors, attributes and register clauses are not calls) and `#include` imports. A cbuffer header's register clause, a file-scope binding macro with no semicolon and a statement head split across `#if`/`#else` are read through an equal-length pre-parse step; 18 of the 644 calibration files still hold a parse error. HLSL is proven at L3: against DXC's AST (tier B) L1 grades excellent and L2 good on the 543 files DXC reads, and L3 good against the include statements plus the references DXC resolves across files; throughput on the development-machine class is 2.33 MB/s per CPU-second (median of three runs; the cloud VM read 0.73). These extensions are no longer listed as unsupported languages.
+- WGSL (`.wgsl`) extraction at L2 (L1 excellent, L2 good), measured against wgsl-parse 0.6.0 (an independent syntactic parser, tier B) on gfx-rs/wgpu and webgpu-samples: functions, structs, global variables, constants (`const` and `override`) and type aliases, and the calls a function or a global's initializer makes (a builtin or a type constructor is a call, named without its template arguments). Imports do not exist in WGSL, so the level stops at L2. A template nested thousands deep (wgpu's `deep-template.wgsl`, a negative test its own front end rejects) takes 6 to 8 s to parse, inside the 10 s per-file budget, so it is outside the measured set.
+- `indexbench lang-retime` re-times a committed language reading on the current machine (design 1.9 T2): it refuses unless each subject sits at its recorded commit with a clean tree and the extraction reproduces the reading's fathom-side counts, then keeps every oracle measurement, replaces only the timing with the median of at least three runs, and names every run's pooled CPU throughput and the machine class in the reading's notes. `-tenancy-only` limits the identity check to the timing run's own facts for a reading whose counts were scored on another scope, and the note says so.
+
+### Changed
+
+- `indexbench lang-oracle` requires `-scip-tier` for a scip-clang index, refuses any oracle file or companion (imports, ranges, link units) that names no tier, and refuses a subject with no commit of its own unless `-subject-sha` names one; `calibration/oracles/scip-clang/run.sh` takes the index's tier as an argument.
+- CUDA's call truth takes its stand-in definitions (functions scip-clang writes none for, such as `extern "C"` wrappers) from the compiler's AST ranges, never from fathom's own definitions; `clang-ast-defs` reports the definitions an `extern "C"` block holds, marked `extern_c`.
+- MATLAB (`.m`) extraction is proven at L1: against a MISS_HIT parser dump (tier B) instead of universal-ctags, classes, functions, methods and properties all grade excellent on export_fig, chebfun and matlab2tikz, at 2.22 MB/CPU-s (median of three runs; design 1.9).
+- The tenancy ladder's swap-volume floor now refuses work only while host memory pressure is at `warn` or above. `[tenancy.host] floor_on_pressure` sets the level (`normal` restores the old behavior, refusing at any pressure), and `fathom resources` shows it under host triggers.
+
 ## [0.20.0] — 2026-10-23
 
 Release impact: minor
