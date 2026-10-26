@@ -1,0 +1,21 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "spawn_agent|collaborationspawn_agent",
+        "hooks": [{"type": "command", "command": "{{BIN}} hook --host codex", "timeout": 5}]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "spawn_agent|collaborationspawn_agent|Bash",
+        "hooks": [{"type": "command", "command": "{{BIN}} hook --host codex", "timeout": 5}]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [{"type": "command", "command": "{{BIN}} hook --host codex", "timeout": 5}]
+      }
+    ]
+  }
+}

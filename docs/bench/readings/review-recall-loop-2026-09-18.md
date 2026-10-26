@@ -105,7 +105,7 @@ scoped for next.** The task named this "the highest-value fix" if the
 misses are that class. `.fathom/observations.md` O39/O40 describe a real,
 open defect (selector-method call edges disappearing, receiver names
 duplicating in canonical targets) — but both are filed against a DIFFERENT
-repo's corpus (`platform-engineering`/`review-kit`), root cause marked
+repo's corpus (`platform`/the review kit), root cause marked
 `TODO`, and root-causing it for THIS corpus's 5 pure misses would mean
 re-ingesting each miss pair with store access retained (this session
 deleted every throwaway store immediately after scoring, by design, to

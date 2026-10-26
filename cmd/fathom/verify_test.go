@@ -298,7 +298,7 @@ func TestCmdVerify_Store_JSON(t *testing.T) {
 }
 
 // TestCmdVerify_Store_RuntimePassReadsAttestedRun is TC-29 end to end in
-// store mode: a test-kit envelope `fathom tests ingest` wrote for a row's
+// store mode: a test kit envelope `fathom tests ingest` wrote for a row's
 // certifying test is what runtime_pass reads — Pass with the run's commit
 // and age; a later failing run reads Fail and the row still verifies,
 // exit 0 under --strict (informational, I8). Nothing is executed.

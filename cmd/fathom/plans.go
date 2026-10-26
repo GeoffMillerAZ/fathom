@@ -357,7 +357,7 @@ func overlayPlanReport(rep *verify.Report, lp verify.Plan, files verify.FileEvid
 // docs/plans/exploration-ledger.md): explicit --plan flags win; otherwise
 // discovery runs in the SERVICE's registered corpus path — never blindly in
 // the cwd, which silently verified one repo's plans against another repo's
-// index (the resume_as_code field report, 2026-08-08). The note names the
+// index (an adopter repository's field report, 2026-08-08). The note names the
 // directory actually scanned, so a wrong resolution is loud. Discovery
 // scope stays activePlanFiles' (non-recursive, README excluded — READMEs
 // describe, plans claim).

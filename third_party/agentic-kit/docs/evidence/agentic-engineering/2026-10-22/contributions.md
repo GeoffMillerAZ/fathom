@@ -1,0 +1,11 @@
+# agentic-kit uplift contribution audit
+
+Read-only audit, 2026-10-22. Compared with `docs/evidence/kit-interoperability/2026-10-21/cleanup.md` and its backup at `/Volumes/m2ext/backups/agentic-kit/2026-10-21-workspace-cleanup-8xkoq2p9` (manifest, bundle, four worktree archives, cleanup receipt). That cleanup already verified 27 refs, four stash commits, 84 unreachable commits, and independently found no useful inactive delta.
+
+Coverage/commands:
+- Fresh remote sync: `git fetch --prune origin`; local status/branches: `git status --short --branch; git branch -avv`; worktrees/stashes: `git worktree list --porcelain; git stash list`; remote refs: `git ls-remote --heads origin`.
+- GitHub PR inventory: `gh pr list --state all --json number,state,headRefName,headRefOid,title --limit 100`. Eleven PRs, zero open. Reviewed closed catalog PR #11 at `89fbe33`; its changes are superseded/integrated per cleanup evidence.
+- Unreachable/reflog inspection: `git reflog --all --oneline -30`; `git fsck --no-reflogs --unreachable`. Heads: local and remote `main` = `531e9c0e47e591cbf8b62c1c3972dbb8d7c2dd34`; only registered worktree is the primary checkout; no stashes. No sibling `agentic-kit*` directories found under `/Volumes/m2ext/code/geoffmilleraz` beyond this checkout. This bounds sibling coverage to that parent.
+- Fathom discovery: `find_symbol(name="Scenario")` returned `foundations/quality/scenario-bank/types.go:120`; exact binding source then confirmed in current checkout.
+
+One distinctive unreachable commit: `87003725767ffb010beeac285377803f1811aba3`, dated 2026-09-16, `fix(eval-runner): bind outputs exactly to scenarios`. Its focused 3-file patch hardens output preflight. Current `kits/eval-runner/runner.go:271-302` retains exact scenario binding: rejects empty/foreign/duplicate IDs, requires every scenario output, and matches the full producer identity before side effects. `kits/eval-runner/evalrunner_test.go:356-395` retains regression cases for missing, duplicate, foreign, empty-ID, and producer-hash mismatch inputs. Thus this valuable delta is integrated; no missing contribution identified. Other unreachable objects correspond to cleanup-preserved historical/stash/worktree material; no safe active refs/worktrees remain to prune. No GC or mutation performed.

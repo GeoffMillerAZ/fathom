@@ -52,7 +52,7 @@ they return only after J0 passes and a calibration against the owner's 86 labele
 
 - [-] Feature-to-customer-ticket or CRM joins {id: FM-X1, disposition: refused, reason: "the connector non-goal (D2)"}
 - [-] Feature-to-revenue {id: FM-X2, disposition: refused, reason: "no source exists (D2)"}
-- [-] Feature-to-SLO/alerts/runbooks {id: FM-X3, disposition: refused, reason: "Review Kit's ops domain; fathom supplies the code side only (D2)"}
+- [-] Feature-to-SLO/alerts/runbooks {id: FM-X3, disposition: refused, reason: "the review kit's ops domain; fathom supplies the code side only (D2)"}
 - [-] Fathom deciding or auto-applying a verdict {id: FM-X4, disposition: refused, reason: "ADR-049 decision 12; ADR-040's authority boundary"}
 
 ## Measurements (op)

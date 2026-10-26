@@ -1,0 +1,119 @@
+{
+  "version": "decision-lab.manifest/1",
+  "datasetKind": "synthetic",
+  "packDigest": "sha256:96527aae7d109d94e817d5a5736e1dc2a85c1bb4afa33b0f8156c3ef11b32b31",
+  "cases": [
+    {
+      "input": {
+        "version": "decision-lab.input/1",
+        "caseId": "retrieval-1",
+        "subjectId": "claim-1",
+        "revision": "r1",
+        "capturedState": "Claim: Workflow W7 requires approval before release.\nSource: Workflow W7 requires approval before release."
+      },
+      "independentUnitId": "retrieval-unit-1",
+      "labels": {
+        "support": {
+          "choice": "supported",
+          "provenance": "frontier"
+        }
+      }
+    },
+    {
+      "input": {
+        "version": "decision-lab.input/1",
+        "caseId": "retrieval-2",
+        "subjectId": "claim-2",
+        "revision": "r1",
+        "capturedState": "Claim: Workflow W7 requires approval before release.\nSource: Workflow W7 releases without approval."
+      },
+      "independentUnitId": "retrieval-unit-2",
+      "labels": {
+        "support": {
+          "choice": "contradicted",
+          "provenance": "frontier"
+        }
+      }
+    },
+    {
+      "input": {
+        "version": "decision-lab.input/1",
+        "caseId": "retrieval-3",
+        "subjectId": "claim-3",
+        "revision": "r1",
+        "capturedState": "Claim: Workflow W7 requires approval before release.\nSources: Policy A says W7 requires approval. Policy B says W7 may release without approval."
+      },
+      "independentUnitId": "retrieval-unit-3",
+      "labels": {
+        "support": {
+          "choice": "mixed",
+          "provenance": "frontier"
+        }
+      }
+    },
+    {
+      "input": {
+        "version": "decision-lab.input/1",
+        "caseId": "retrieval-4",
+        "subjectId": "claim-4",
+        "revision": "r1",
+        "capturedState": "Claim: Workflow W7 requires approval before release.\nSource: The document discusses only W8 logging."
+      },
+      "independentUnitId": "retrieval-unit-4",
+      "labels": {
+        "support": {
+          "choice": "unsupported",
+          "provenance": "frontier"
+        }
+      }
+    },
+    {
+      "input": {
+        "version": "decision-lab.input/1",
+        "caseId": "retrieval-5",
+        "subjectId": "claim-5",
+        "revision": "r1",
+        "capturedState": "Claim: Workflow W7 requires approval before release.\nSource: No source text was supplied."
+      },
+      "independentUnitId": "retrieval-unit-5",
+      "labels": {
+        "support": {
+          "choice": "unknown",
+          "provenance": "frontier"
+        }
+      }
+    },
+    {
+      "input": {
+        "version": "decision-lab.input/1",
+        "caseId": "retrieval-6",
+        "subjectId": "claim-6",
+        "revision": "r1",
+        "capturedState": "Claim: Workflow W7 requires approval before release.\nSource: W7 explicitly permits release without approval."
+      },
+      "independentUnitId": "retrieval-unit-6",
+      "labels": {
+        "support": {
+          "choice": "contradicted",
+          "provenance": "frontier"
+        }
+      }
+    },
+    {
+      "input": {
+        "version": "decision-lab.input/1",
+        "caseId": "retrieval-7",
+        "subjectId": "claim-7",
+        "revision": "r1",
+        "capturedState": "Claim: Workflow W7 requires approval before release.\nSource: The W7 release checklist requires approval before release."
+      },
+      "independentUnitId": "retrieval-unit-7",
+      "labels": {
+        "support": {
+          "choice": "supported",
+          "provenance": "frontier"
+        }
+      }
+    }
+  ]
+}

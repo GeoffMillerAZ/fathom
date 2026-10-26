@@ -297,7 +297,7 @@ func TestLocatorValidateRejectsNegativeEnd(t *testing.T) {
 // TestValidateAsEvidenceRejectsObservedBeforeOccurred — Finding 2: ObservedAt
 // must be >= OccurredAt. A span where the record was supposedly observed before
 // the event it describes occurred is physically impossible and a hallmark of
-// tampering or data corruption (Throughline invariant: truthfulness).
+// tampering or data corruption (Consumer-a invariant: truthfulness).
 //
 // Exception documented in ValidateAsEvidence: equal timestamps are permitted
 // (simultaneous observation; e.g. live system telemetry).

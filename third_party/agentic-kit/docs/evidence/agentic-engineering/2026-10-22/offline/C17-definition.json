@@ -1,0 +1,11 @@
+{
+  "id": "C17",
+  "slug": "github-ingestion",
+  "axis": "target-gap",
+  "acceptance": "GitHub issue ingestion retains external ID, cursor, permission and source provenance",
+  "method": "source audit",
+  "source": "docs/intent/futures.md",
+  "test": null,
+  "group": null,
+  "non_guarantee": "Component test does not prove consumer adoption, live model quality, or all entrypoints."
+}

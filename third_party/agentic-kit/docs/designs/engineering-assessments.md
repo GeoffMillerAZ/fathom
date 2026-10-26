@@ -160,7 +160,7 @@ Synthetic tests prove wiring and decision semantics, not production classificati
 
 ## First compositions and acceptance
 
-1. Consume the retained resume_as_code synthetic benchmark receipt through the actual
+1. Consume the retained consumer-c synthetic benchmark receipt through the actual
    benchmark summarizer. Missing cost or non-live evidence stays visible; no model winner.
 2. Exercise a security entry point with blocked and benign prompts, exact callback/handler
    counters, malformed responses and classifier failure. No blocked/reviewed request may

@@ -1,0 +1,12 @@
+{
+  "version": "command-guard.request/1",
+  "files": [
+    {
+      "path": "sample.txt",
+      "sha256": "05cb9d7a279bdf0bfbe8ff166efb93ce5fbebc990a909e73090a10f464b1ce11"
+    }
+  ],
+  "kind": "read-range",
+  "startLine": 1,
+  "endLine": 2
+}

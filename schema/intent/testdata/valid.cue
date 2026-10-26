@@ -18,7 +18,7 @@ full: #Future & {
 	}
 	conditions: [
 		{label: "Promote when", text: "the owner asks fathom to audit or plan a monorepo component"},
-		{label: "Drop if", text: "platform-engineering consolidates to one intent scope"},
+		{label: "Drop if", text: "the platform monorepo consolidates to one intent scope"},
 	]
 }
 

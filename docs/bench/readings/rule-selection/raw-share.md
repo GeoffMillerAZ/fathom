@@ -12,10 +12,10 @@ At most 4,775 of the 12,249 rule rows the edit hook served from 2026-10-08 02:17
 |---|---:|---:|---:|
 | fathom | 3,040 | 3,821 | 55.7% |
 | app-kit | 2,827 | 1,762 | 38.4% |
-| platform-engineering | 58 | 290 | 83.3% |
-| workstation_as_code | 3 | 185 | 98.4% |
+| platform | 58 | 290 | 83.3% |
+| svc-j | 3 | 185 | 98.4% |
 | agentic-kit | 106 | 148 | 58.3% |
-| conjure | 5 | 4 | 44.4% |
+| svc-f | 5 | 4 | 44.4% |
 | all | 6,039 | 6,210 | 50.7% |
 
 Unresolved rows per call: 0 in 446 calls, 1 in 167, 2 in 1,773, 3 to 7 in 531. A call with three or more holds at least one compiled row the store no longer names, so the per-service shares above overstate raw.

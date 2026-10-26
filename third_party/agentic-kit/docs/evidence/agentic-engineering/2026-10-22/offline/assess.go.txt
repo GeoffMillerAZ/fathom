@@ -1,0 +1,27 @@
+package main
+
+import (
+ "encoding/json"
+ "fmt"
+ "os"
+ "time"
+ ffr "github.com/geoffmilleraz/agentic-kit/foundations/quality/fitness-function-registry"
+)
+
+type Input struct {
+ Profile ffr.Profile `json:"profile"`
+ SubjectDigest string `json:"subject_digest"`
+ Observations []ffr.Observation `json:"observations"`
+ EvaluatedAt time.Time `json:"evaluated_at"`
+}
+func main() {
+ if len(os.Args)!=3 { panic("usage: assess input.json assessment.json") }
+ raw,err:=os.ReadFile(os.Args[1]); if err!=nil {panic(err)}
+ var in Input
+ if err=json.Unmarshal(raw,&in);err!=nil {panic(err)}
+ result,err:=ffr.AssessProfile(in.Profile,in.SubjectDigest,in.Observations,in.EvaluatedAt)
+ if err!=nil {panic(err)}
+ body,err:=json.MarshalIndent(result,"","  ");if err!=nil {panic(err)}
+ if err=os.WriteFile(os.Args[2],append(body,'\n'),0600);err!=nil {panic(err)}
+ fmt.Printf("required_status=%s criteria=%d soft_score=%v\n",result.RequiredStatus,len(result.Trace),result.SoftScore)
+}

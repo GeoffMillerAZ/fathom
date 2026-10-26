@@ -1,0 +1,4 @@
+interface:
+  display_name: "Declare Catalog Entries"
+  short_description: "Author catalog entries and evidence-bound questions"
+  default_prompt: "Use $catalog-declare to add a team catalog extension."

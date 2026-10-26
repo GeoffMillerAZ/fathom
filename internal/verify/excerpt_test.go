@@ -43,8 +43,8 @@ func loadExcerptVectors(t *testing.T) []excerptVector {
 }
 
 // TestExcerptFingerprint_SharedVectors pins the excerpt bytes and their
-// digest: Review Kit's SpanRef.ContentHash formula (lowercase hex SHA-256 of
-// the raw bytes, review-kit internal/evidence contentHash) over the bytes
+// digest: the review kit's SpanRef.ContentHash formula (lowercase hex SHA-256 of
+// the raw bytes, the review kit internal/evidence contentHash) over the bytes
 // from the first byte of start_line through the last byte of end_line, its
 // newline included when it has one. A file with no final newline is covered.
 func TestExcerptFingerprint_SharedVectors(t *testing.T) {

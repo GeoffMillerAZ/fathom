@@ -1,0 +1,1 @@
+{"version":"decision-lab.input/1","caseId":"case-3","subjectId":"finding-3","revision":"r1","capturedState":"The reported branch is dead code; the source excerpt shows the caller returns earlier."}

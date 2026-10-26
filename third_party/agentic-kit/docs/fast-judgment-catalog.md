@@ -5,6 +5,10 @@ Companion to [Using fast judgment models effectively](fast-judgment.md); read it
 the idea, the question and options, the deterministic baseline it must beat, how to
 calibrate, the kill criterion, and what authority the answer may have. Written 2026-09-29.
 
+Current source-backed project candidates and executable offline tools:
+[decision-site guide](decision-sites.md), [2026-10-23 survey](assessments/2026-10-23-decision-sites.md).
+This catalog's dated bars are examples to evaluate, not universal policy defaults.
+
 **Evidence tags.** [vendor] provider claim. [demo] shown in IndyDevDan's public
 demonstrations, not reproduced here (attribution in the guide, section 10). [reading] a
 consuming project's measurement on its own data, small N. [plan] a bar or budget one

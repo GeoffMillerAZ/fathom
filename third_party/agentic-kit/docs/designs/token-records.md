@@ -1,7 +1,7 @@
 # Encrypted token records, version 1
 
 GW-04 supplies a persistence port in `foundations/security/tokenization`, pulled by
-throughline's restart-stable token requirement (TRACKING F9). The kit ships a memory
+consumer-a's restart-stable token requirement (TRACKING F9). The kit ships a memory
 reference store; consumers supply durable adapters. Existing `Vault`, `KeyStore`,
 `ShreddableVault`, and `NewEncryptedVault` signatures remain valid.
 

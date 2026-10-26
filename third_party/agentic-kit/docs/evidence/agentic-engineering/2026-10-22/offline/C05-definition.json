@@ -1,0 +1,11 @@
+{
+  "id": "C05",
+  "slug": "evidence-span-validation",
+  "axis": "component",
+  "acceptance": "Canonical spans reject missing provenance and invalid observation order",
+  "method": "deterministic source plus scoped test",
+  "source": "foundations/evidence/evidence-span/evidencespan_test.go",
+  "test": "TestValidateAsEvidenceRejectsMissingRecordHash",
+  "group": "evidence_catalog",
+  "non_guarantee": "Component test does not prove consumer adoption, live model quality, or all entrypoints."
+}

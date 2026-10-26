@@ -32,7 +32,7 @@ func fixtureBytes(t *testing.T) ([]byte, []byte, []byte) {
 	payload := Payload{
 		Version: Version, ID: "unknown-evidence", Revision: 1, Status: "reviewed", Classification: "public-synthetic",
 		Origin:        Origin{Workload: "kits/agent-harness", SnapshotDigest: originSnapshot, IncidentDigest: originIncident, ScenarioDigest: originScenario},
-		Applicability: Applicability{Workloads: []string{"resume_as_code"}, ConfigDigests: []string{}},
+		Applicability: Applicability{Workloads: []string{"consumer-c"}, ConfigDigests: []string{}},
 		Exclusions:    []string{},
 		Reproducer:    ReproducerRef{Schema: "lesson-reproducer/v1", Version: 1, File: "reproducer.json", RawDigest: digest(reproducerDigestDomain, reproducer), Expected: "unknown", MaxBytes: maxReproducerBytes},
 		Remedies:      []RemedyRef{{ID: "coverage-gate", Revision: 1, Digest: remedyDigest, TestDigest: regressionTest}},
@@ -93,7 +93,7 @@ func alteredBundle(t *testing.T, change func(*Payload), changeAtt func(*Attestat
 }
 
 func receiver() ReceiverSnapshot {
-	return ReceiverSnapshot{Workload: "resume_as_code", Revision: digestFill("1"), ConfigDigest: digestFill("d")}
+	return ReceiverSnapshot{Workload: "consumer-c", Revision: digestFill("1"), ConfigDigest: digestFill("d")}
 }
 
 func activeCurrent(_ context.Context, want ReceiverSnapshot) (ReceiverSnapshot, error) {
@@ -206,8 +206,8 @@ func TestValidateReceiverSnapshotRequiresCanonicalDigests(t *testing.T) {
 	t.Parallel()
 	for _, snapshot := range []ReceiverSnapshot{
 		{},
-		{Workload: "resume_as_code", Revision: "not-a-digest", ConfigDigest: digestFill("d")},
-		{Workload: "resume_as_code", Revision: strings.ToUpper(digestFill("a")), ConfigDigest: digestFill("d")},
+		{Workload: "consumer-c", Revision: "not-a-digest", ConfigDigest: digestFill("d")},
+		{Workload: "consumer-c", Revision: strings.ToUpper(digestFill("a")), ConfigDigest: digestFill("d")},
 	} {
 		if err := ValidateReceiverSnapshot(snapshot); !errors.Is(err, ErrInvalid) {
 			t.Fatalf("snapshot=%+v err=%v", snapshot, err)

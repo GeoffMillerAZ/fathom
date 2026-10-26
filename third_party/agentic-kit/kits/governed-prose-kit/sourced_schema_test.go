@@ -38,7 +38,7 @@ func TestSourcedMarshaledValuesMatchCUE(t *testing.T) {
 			t.Fatal(err)
 		}
 		path := filepath.Join(t.TempDir(), "actual.json")
-		if err := os.WriteFile(path, raw, 0600); err != nil {
+		if err := os.WriteFile(path, raw, 0o600); err != nil {
 			t.Fatal(err)
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

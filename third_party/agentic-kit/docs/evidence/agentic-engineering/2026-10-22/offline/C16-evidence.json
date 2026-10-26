@@ -1,0 +1,30 @@
+{
+  "id": "C16",
+  "axis": "component",
+  "acceptance": "Adoption refuses a lesson without independent receiver boundary evidence",
+  "outcome": "pass",
+  "source": "kits/lesson-transfer/lesson_test.go",
+  "source_sha256": "8a26c71ba663897fd0eb1d26f0c47452354b96bb35de763646eb1e51c08b9dda",
+  "test": "TestCheckAdoptionRequiresIndependentReceiverBoundaries",
+  "group": "security_budget_lessons_hosts",
+  "scope_note": "Component test does not prove consumer adoption, live model quality, or all entrypoints.",
+  "command": {
+    "name": "security_budget_lessons_hosts",
+    "argv": [
+      "go",
+      "test",
+      "-count=1",
+      "./foundations/security/injection-detector",
+      "./foundations/security/pre-llm-dlp-gate",
+      "./foundations/governance/budget-guard",
+      "./kits/lesson-transfer",
+      "./cmd/kit-new",
+      "./cmd/agent-hooks"
+    ],
+    "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+    "exit_code": 0,
+    "duration_seconds": 4.55,
+    "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/security_budget_lessons_hosts.log"
+  },
+  "command_log_sha256": "f04dc417ee27f5f0b63b377aab3ac6cc87fa39bbd3ae2eb375805f9a46e743dd"
+}

@@ -18,7 +18,7 @@
 // Callers MUST compute agreement only from findings whose evidence grade meets
 // or exceeds the minimum required grade for the investigation. Passing an
 // agreement value derived from low-grade (e.g. AI-inferred) findings without
-// filtering violates Throughline Invariant 4 — a claim's confidence grade must
+// filtering violates Consumer-a Invariant 4 — a claim's confidence grade must
 // not exceed the weakest tier of its necessary evidence.
 //
 // CUE contracts live in schema.cue; this file is the Go counterpart and must

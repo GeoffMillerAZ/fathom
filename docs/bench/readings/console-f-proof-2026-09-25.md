@@ -79,7 +79,7 @@ Each page's own control, by keyboard alone from the top of the page:
 | `/impact` | Tab ×23 to the "verify refusals" kind chip, Enter | `?kind=verify-refusal`; the table reads "20 of 538" |
 | `/sessions` | Tab ×18 to the Arm select, type "off", Tab to Filter, Enter | `?arm=off`; 11 of 1,888 sessions match |
 | `/sessions/{id}` | Tab ×19 to the first channel chip, Enter | `?channel=custodian`; "window 1 of 1 · 3 events of 3" |
-| `/operate` | Tab ×34 to the capabilities Project select, type "conjure", Tab to Show, Enter | `?svc=conjure#capabilities` |
+| `/operate` | Tab ×34 to the capabilities Project select, type "svc-f", Tab to Show, Enter | `?svc=svc-f#capabilities` |
 | `/decide` | Tab ×21 to the `certify_suggest` site chip, Enter | `?site=certify_suggest#rulings` |
 
 Arrow keys did not change a closed native select in headless Chromium on macOS (the kit's
@@ -127,9 +127,9 @@ What the real data now says:
   `hooks.jsonl.1`; `fathom metrics catches` lists the same 8. The lane's source names
   both generations. Totals: 538 verify refusals, 55 conserve losses, 2 integrity
   catches (the call log grew since the first run).
-- **Filters scope every lane.** `?svc=conjure`: 17 refusals of conjure's own 190 verify
+- **Filters scope every lane.** `?svc=svc-f`: 17 refusals of svc-f's own 190 verify
   runs (was "of 15,361"); with `&days=7`, 2 of 71. Conserve and integrity lanes read
-  "not instrumented for conjure" instead of a zero. `?svc=no-such-project` is the
+  "not instrumented for svc-f" instead of a zero. `?svc=no-such-project` is the
   shell's 404 (HTML and JSON).
 - **Unreadable sources are errors, never idle or empty.** With the hooks log, call log
   and decisions log copies at mode 000 (and, by accident, the external volume's TCC

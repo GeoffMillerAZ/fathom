@@ -184,6 +184,7 @@ tokens for nothing.
 
 Track multi-step work with a task list so held items stay visible, and default
 mechanical fan-out to the cheaper tier, reserving the strongest for the foundation fix.
+The tiers, the spawn rules and the hooks that enforce them: [tokenomics.md](tokenomics.md).
 
 **Depend on the level you need, not on the row being closed.** An item that builds on
 another (a dialect on its parent) is eligible once the parent has a committed reading at

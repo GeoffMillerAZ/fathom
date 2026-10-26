@@ -2,7 +2,7 @@
 
 # Package catalog
 
-207 Go packages. One line each: module-relative import path, package name, doc synopsis.
+223 Go packages. One line each: module-relative import path, package name, doc synopsis.
 Counted from source, so build-tagged packages the host `go list ./...` cannot see (e.g. the js/wasm-only `examples/governance-wasm`) are included — this total can run one higher than TRACKING.md's go-list count.
 
 ## foundations/agent (5)
@@ -214,7 +214,7 @@ Counted from source, so build-tagged packages the host `go list ./...` cannot se
 - `foundations/review/confidence-scoring` (`confidencescoring`) — Package confidencescoring provides a ConfidenceScore type (1..5) with a deterministic derivation from evidence count and agreement.
 - `foundations/review/correction-ledger` (`correctionledger`) — Package correctionledger provides an append-only ledger for recording finding corrections and dismissals, with a finite state machine that governs the lifecycle of each finding through human review.
 - `foundations/review/correction-ledger-analytical` (`correctionledgeranalytical`) — Package correctionledgeranalytical provides a Parquet-export-eligible projection of the correction ledger.
-- `foundations/review/intake-triage` (`intaketriage`) — Package intaketriage implements a generic human-only intake FSM extracted from throughline's app/acquire service.
+- `foundations/review/intake-triage` (`intaketriage`) — Package intaketriage implements a generic human-only intake FSM extracted from consumer-a's app/acquire service.
 - `foundations/review/review-queue` (`reviewqueue`) — Package reviewqueue provides a FIFO/priority queue of items needing review, ordered by severity (critical first) then by insertion order for determinism.
 - `foundations/review/run-audit-record` (`runauditrecord`) — Package runauditrecord provides an append-only audit record for a run, capturing each step with detail and timestamp for immutable replay.
 - `foundations/review/run-report` (`runreport`) — Package runreport renders a deterministic Markdown run-report from the inputs captured during one agent-harness run: the investigation-journal entries (what happened, in words), telemetry events (per-turn timing, tool names, injection / compaction flags), and the cost-tracker report (aggregate token spend).
@@ -255,9 +255,11 @@ Counted from source, so build-tagged packages the host `go list ./...` cannot se
 - `foundations/topology/live-graph` (`livegraph`) — Package livegraph provides a deployment/dependency graph with cycle detection, critical-path analysis, and wave-based rollout planning.
 - `foundations/topology/workspace-materialization` (`workspacematerialization`) — Package workspacematerialization computes the minimal transitive dependency set required to materialize a target node from a live-graph topology.
 
-## kits (15)
+## kits (17)
 
 - `kits/agent-harness` (`agentharness`) — Package agentharness is the governed tool-calling agent loop — the kit that composes the platform's foundations into one Run(ctx, input) call: model turn → tool dispatch → governance screens → repeat, until a stop condition.
+- `kits/assignment-kit` (`assignmentkit`) — Package assignmentkit evaluates bounded, caller-declared assignments.
+- `kits/catalog-kit` (`catalogkit`) — Package catalogkit composes the catalog and decision foundations into an offline catalog workflow.
 - `kits/command-center` (`commandcenter`) — Package commandcenter composes workflow-engine, review-queue, and telemetry foundations into a cross-workflow command surface.
 - `kits/docextract` (`docextract`) — Package docextract pulls plain text out of attached documents so an agent can read them.
 - `kits/docextract/pdf` (`pdf`) — Package pdf provides a docextract.Handler for PDF documents.
@@ -290,32 +292,46 @@ Counted from source, so build-tagged packages the host `go list ./...` cannot se
 - `toolchains/materialization/workspace-query-builder` (`workspacequerybuilder`) — Package workspacequerybuilder provides a fluent Go DSL for constructing workspace queries that compile to deterministic DuckDB-compatible SQL.
 - `toolchains/schemas` (`schemas`) — Package schemas is the canonical CUE schema root for agentic-kit.
 
-## cmd (9)
+## cmd (18)
 
+- `cmd/agent-hooks` (`main`) — Command agent-hooks is the token-economics hook pack for Claude Code and Codex CLI: one stdlib binary that both hosts call as a command hook, plus the doctor, policy and report commands that prove it is wired.
+- `cmd/catalogctl` (`main`) — Command catalogctl resolves, explains and compares catalogs and prepares decisions.
+- `cmd/command-guard` (`main`) — Command command-guard inspects selected files with optional pinned scanner checks.
+- `cmd/command-lab` (`main`) — Command command-lab is an offline, advisory command governance reference.
+- `cmd/command-qualify` (`main`) — Command command-qualify checks a fixed synthetic file-inspection roster against an operator-supplied executable.
 - `cmd/constitution-lint` (`main`) — Command constitution-lint mechanically enforces agentic-kit's constitutional promises.
+- `cmd/decision-lab` (`main`) — Command decision-lab is an offline decision-site authoring aid without application effects.
 - `cmd/endpoint-guard` (`main`) — Command endpoint-guard is a self-contained, in-pod HTTP server that puts the endpoint-guard kit in front of an LLM-answer backend.
 - `cmd/eval-runner` (`main`) — Command eval-runner is the `task eval` entrypoint (H5 Stage 1, first subscriber per uplift D9: the kit's own agent-driven development process).
+- `cmd/harnessctl` (`main`) — Command harnessctl checks protected signed configuration.
 - `cmd/internal/catalog` (`catalog`) — Package catalog provides the shared generation core for docs/catalog.md: collecting Go package entries from a module tree and rendering them as Markdown.
 - `cmd/jsonschema-gen` (`main`) — Command jsonschema-gen derives a JSON Schema (draft 2020-12) document from a CUE package directory and writes it to an output file (or stdout).
 - `cmd/kit-catalog` (`main`) — Command kit-catalog generates docs/catalog.md — a one-line-per-package index of every Go package in the module, grouped by area (foundations by category, then kits, runtimes, surfaces, toolchains, cmd, examples, scenarios), from package doc comments.
 - `cmd/kit-new` (`main`) — Command kit-new scaffolds a new consumer module from the agent-cli blueprint with governance ON by default, or — with -package — a new kit package in this repository's six-file shape together with the ledger lines it owes.
 - `cmd/kit-workflow` (`main`) — Command kit-workflow provides a bounded JSON front door for local governed workflow checks.
+- `cmd/prose-lab` (`main`) — Command prose-lab runs explicitly selected synthetic prose experiments.
+- `cmd/quality-gate` (`main`) — Command quality-gate evaluates versioned repository boundary policies against immutable Git objects.
 - `cmd/release-notes` (`main`) — Command release-notes prints one version's section of CHANGELOG.md verbatim, for pasting into a GitHub Release body or a release announcement.
 
-## examples (5)
+## examples (8)
 
 - `examples/agent-cli` (`main`) — Command agent-cli is the hello-world agent for agentic-kit: a small, runnable CLI that proves the whole stack end-to-end and is meant to be COPIED as the starting point for new projects (see README.md and docs/adopting.md).
+- `examples/assignment-kit` (`main`) — Two synthetic, offline reference workflows.
+- `examples/catalog-consumer` (`main`) — The runner copies this program into a separate temporary Go module.
 - `examples/catalog-demo` (`main`) — Command catalog-demo is a worked example for foundations/knowledge/catalog: it scans a small directory tree into a Catalog, loads a previously "published" catalog from a fixture, and gates the two with Verify — design deliverable #8 ("a worked example building a small catalog from a directory scan and gating it").
 - `examples/engineering-assessments` (`main`) — Command engineering-assessments demonstrates two domain collectors sharing an evidence-linked assessment contract.
 - `examples/expertchat-service` (`main`) — Command expertchat-service is a thin, runnable example wiring kits/expertchat to a fathom module host.
 - `examples/governance-wasm` (`main`) — Package main is a thin WASM shim that registers governance primitives as JS-callable functions.
+- `examples/practice-review` (`main`) — Command practice-review checks a bounded synthetic review fixture offline.
 
-## scenarios (3)
+## scenarios (4)
 
 - `scenarios/governed-docextract-hitl` (`governeddocextracthitl`) — Package governeddocextracthitl is an end-to-end scenario blueprint proving that docextract + agent-harness + hitl compose into a governed document-analysis workflow where the agent proposes a change, a human approves it, and the state mutates ONLY through the hitl engine.
 - `scenarios/governed-investigation` (`governedinvestigation`) — Package governedinvestigation is an end-to-end scenario blueprint that wires evidence-span, evidence-graph, investigation-journal, hypothesis-ranker, and dad-investigator into a seeded, deterministic governed investigation, then proposes the one irreversible remediation the finding implies through agent-harness under the strict effect gate — a human approval (seeded) sits between the model's tool call and its dispatch.
+- `scenarios/prose-headless` (`proseheadless`) — Package proseheadless composes the session-governed prose engine with the existing Catalog Kit, Assignment Kit and HITL commit/delivery machinery for a headless consumer.
 - `scenarios/sourced-prose` (`sourcedprose`) — Package sourcedprose is a synthetic, offline composition of strict sourced prose and durable HITL approval.
 
-## internal (1)
+## internal (2)
 
+- `internal/hookeval` (`hookeval`) — Package hookeval defines the private, pure spawn evaluator wire.
 - `internal/jsonwire` (`jsonwire`) — Package jsonwire supplies private wire checks shared by strict kit decoders.

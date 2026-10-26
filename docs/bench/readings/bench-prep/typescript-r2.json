@@ -1,0 +1,1376 @@
+{
+  "scope": "Linux arm64, four CPUs, source pins unchanged; package fetch setup then network-denied warm-up and three fresh timed test processes; C4 unrun",
+  "candidates": [
+    {
+      "sha": "75a290e44ba14bd723c8ef8546b6559c8ef3ae88",
+      "language": "TypeScript",
+      "primary_lines": 5422,
+      "files": 29,
+      "licences": [
+        {
+          "path": "LICENSE",
+          "spdx": "MIT",
+          "sha256": "99cf22f6960a6fe228ec84ea9aefb0d75b27999ece83a3a9801e1c2081fa270b"
+        }
+      ],
+      "full_history": true,
+      "c5_window": [
+        "2024-10-25T00:00:00Z",
+        "2026-10-26T00:00:00Z"
+      ],
+      "co_changes": 37,
+      "fix_message_co_changes": 30,
+      "primary_co_changes": 36,
+      "primary_fix_co_changes": 29,
+      "replayed": 0,
+      "locks": {
+        "yarn.lock": "d96f305ae21b1e4b307f8650dad862978a2c2bff79933100427785e812e04045"
+      },
+      "repository": "immerjs/immer",
+      "suite": {
+        "id": "immerjs--immer",
+        "language": "TypeScript",
+        "lock": "yarn.lock",
+        "setup": {
+          "command": "corepack enable && node --version && corepack --version && corepack prepare yarn@1.22.22 --activate && corepack yarn install --frozen-lockfile",
+          "seconds": 0.73,
+          "started_at": "2026-10-26T05:46:34.379583Z",
+          "exit_code": 0,
+          "network": "bridge",
+          "log": "immerjs--immer-setup.log",
+          "log_sha256": "add3e9ff4bb9282b7ebb08156cc16174f90bfdf656078fd1d21a4d0d99eef06e"
+        },
+        "test": "corepack yarn test",
+        "sha": "75a290e44ba14bd723c8ef8546b6559c8ef3ae88",
+        "image": "node@sha256:63538dfe497cc29dfafdda25ada09b46db68a3f4cc205abf1f5d6bf0913f3384",
+        "platform": "linux/arm64",
+        "cpus": 4,
+        "lockfile_sha256": "d96f305ae21b1e4b307f8650dad862978a2c2bff79933100427785e812e04045",
+        "runs": [
+          {
+            "command": "corepack enable && corepack yarn test",
+            "seconds": 14.473,
+            "started_at": "2026-10-26T05:46:54.738774Z",
+            "exit_code": 1,
+            "network": "none",
+            "log": "immerjs--immer-run1.log",
+            "log_sha256": "3c8ff3780e7ef64b6d802c7cae035342706c128fcec1ab797e4e10692cf2daf2"
+          },
+          {
+            "command": "corepack enable && corepack yarn test",
+            "seconds": 14.658,
+            "started_at": "2026-10-26T05:47:09.213368Z",
+            "exit_code": 1,
+            "network": "none",
+            "log": "immerjs--immer-run2.log",
+            "log_sha256": "8e2278be57d40e35a96987c315f56b74f4ee7fdf7ccaff4040eeb55604db97f4"
+          },
+          {
+            "command": "corepack enable && corepack yarn test",
+            "seconds": 16.141,
+            "started_at": "2026-10-26T05:47:23.871905Z",
+            "exit_code": 1,
+            "network": "none",
+            "log": "immerjs--immer-run3.log",
+            "log_sha256": "e357a829ee9aff798d854a982448f400b07d61ff240a23672388426559e37b9f"
+          }
+        ],
+        "network_probe": {
+          "command": "corepack enable && curl --noproxy \"*\" -I --connect-timeout 2 --max-time 3 https://1.1.1.1",
+          "seconds": 0.19,
+          "started_at": "2026-10-26T05:46:35.111504Z",
+          "exit_code": 7,
+          "network": "none",
+          "log": "immerjs--immer-network-probe.log",
+          "log_sha256": "f9cf55b50dba65ca08df39180414f845e67c0f97277b46e404c346152653260d"
+        },
+        "warmup": {
+          "command": "corepack enable && corepack yarn test",
+          "seconds": 19.436,
+          "started_at": "2026-10-26T05:46:35.301796Z",
+          "exit_code": 1,
+          "network": "none",
+          "log": "immerjs--immer-warmup.log",
+          "log_sha256": "884c6fac5ae513bd9c92b09b3b66c6b9f87e53fc551f12b0e0d3ba30f97d39da"
+        },
+        "tracked_diff": []
+      },
+      "c6_qualifying": 0,
+      "c6_examples": [
+        {
+          "symbol": "src/utils/common.ts#latest",
+          "defining_unit": "src/utils",
+          "calls": 25,
+          "units": [
+            "src/core",
+            "src/plugins"
+          ],
+          "sites": [
+            "src/core/finalize.ts:126:21",
+            "src/plugins/arrayMethods.ts:255:38",
+            "src/core/finalize.ts:241:23",
+            "src/core/proxy.ts:125:18",
+            "src/core/proxy.ts:164:18",
+            "src/core/proxy.ts:167:26"
+          ],
+          "qualifies": false
+        },
+        {
+          "symbol": "src/utils/errors.ts#die",
+          "defining_unit": "src/utils",
+          "calls": 17,
+          "units": [
+            "src/core",
+            "src/plugins"
+          ],
+          "sites": [
+            "src/core/current.ts:18:23",
+            "src/plugins/mapset.ts:351:23",
+            "src/core/finalize.ts:35:4",
+            "src/core/immerClass.ts:100:66",
+            "src/core/immerClass.ts:134:10",
+            "src/core/immerClass.ts:153:27"
+          ],
+          "qualifies": false
+        },
+        {
+          "symbol": "src/utils/common.ts#isDraftable",
+          "defining_unit": "src/utils",
+          "calls": 12,
+          "units": [
+            "src/core",
+            "src/plugins"
+          ],
+          "sites": [
+            "src/core/current.ts:23:7",
+            "src/plugins/mapset.ts:127:29",
+            "src/core/finalize.ts:238:13",
+            "src/core/finalize.ts:290:4",
+            "src/core/finalize.ts:311:14",
+            "src/core/finalize.ts:37:7"
+          ],
+          "qualifies": false
+        }
+      ],
+      "c7": {
+        "not_fathom": true,
+        "owner": "immerjs",
+        "owner_subjects": 1,
+        "prior_reads_found": [],
+        "fleet_index_exclusion": "unmeasured"
+      },
+      "screen_refusals": [
+        "C3",
+        "C6"
+      ],
+      "bx44": "not admitted: C4, C5 fix replay and Q2, and live C7 exclusion unmeasured"
+    },
+    {
+      "sha": "78222334f49265ea2874fac2c73284345c1124d9",
+      "language": "TypeScript",
+      "primary_lines": 3809,
+      "files": 62,
+      "licences": [
+        {
+          "path": "LICENSE",
+          "spdx": "MIT",
+          "sha256": "27ebda9d51f0a56b7e281ccd8230a27236dcb51c05f64b07869ecf6e965d68b0"
+        }
+      ],
+      "full_history": true,
+      "c5_window": [
+        "2024-10-25T00:00:00Z",
+        "2026-10-26T00:00:00Z"
+      ],
+      "co_changes": 3,
+      "fix_message_co_changes": 0,
+      "primary_co_changes": 3,
+      "primary_fix_co_changes": 0,
+      "replayed": 0,
+      "locks": {
+        "yarn.lock": "5b8da495574396bc720b52623e1e049c2d16fd6098c5a797f485a32870381cdb"
+      },
+      "repository": "microsoft/tsyringe",
+      "suite": {
+        "id": "microsoft--tsyringe",
+        "language": "TypeScript",
+        "lock": "yarn.lock",
+        "setup": {
+          "command": "corepack enable && node --version && corepack --version && corepack prepare yarn@1.22.22 --activate && corepack yarn install --frozen-lockfile",
+          "seconds": 0.639,
+          "started_at": "2026-10-26T05:47:40.078399Z",
+          "exit_code": 0,
+          "network": "bridge",
+          "log": "microsoft--tsyringe-setup.log",
+          "log_sha256": "38d9956ed4c875cb4f52c4aebf870584906879381a0f606885eebb554aae2b7e"
+        },
+        "test": "corepack yarn test",
+        "sha": "78222334f49265ea2874fac2c73284345c1124d9",
+        "image": "node@sha256:63538dfe497cc29dfafdda25ada09b46db68a3f4cc205abf1f5d6bf0913f3384",
+        "platform": "linux/arm64",
+        "cpus": 4,
+        "lockfile_sha256": "5b8da495574396bc720b52623e1e049c2d16fd6098c5a797f485a32870381cdb",
+        "runs": [
+          {
+            "command": "corepack enable && corepack yarn test",
+            "seconds": 11.467,
+            "started_at": "2026-10-26T05:48:07.443384Z",
+            "exit_code": 0,
+            "network": "none",
+            "log": "microsoft--tsyringe-run1.log",
+            "log_sha256": "8d4036d2809bb2fe6b8852c4c4497fe2c721549ad500b748809a3c07561c6b6b"
+          },
+          {
+            "command": "corepack enable && corepack yarn test",
+            "seconds": 11.6,
+            "started_at": "2026-10-26T05:48:18.912099Z",
+            "exit_code": 0,
+            "network": "none",
+            "log": "microsoft--tsyringe-run2.log",
+            "log_sha256": "d57ace3a80ba842a2f461c78abd569fc9382637ff1662457282ea1683fa711b2"
+          },
+          {
+            "command": "corepack enable && corepack yarn test",
+            "seconds": 11.782,
+            "started_at": "2026-10-26T05:48:30.513843Z",
+            "exit_code": 0,
+            "network": "none",
+            "log": "microsoft--tsyringe-run3.log",
+            "log_sha256": "ec9723273c7ce0c91083081130d6bcfc05feb2a5c487b5a5e8bba5711ea674bf"
+          }
+        ],
+        "network_probe": {
+          "command": "corepack enable && curl --noproxy \"*\" -I --connect-timeout 2 --max-time 3 https://1.1.1.1",
+          "seconds": 0.182,
+          "started_at": "2026-10-26T05:47:40.718366Z",
+          "exit_code": 7,
+          "network": "none",
+          "log": "microsoft--tsyringe-network-probe.log",
+          "log_sha256": "f9cf55b50dba65ca08df39180414f845e67c0f97277b46e404c346152653260d"
+        },
+        "warmup": {
+          "command": "corepack enable && corepack yarn test",
+          "seconds": 26.541,
+          "started_at": "2026-10-26T05:47:40.900930Z",
+          "exit_code": 0,
+          "network": "none",
+          "log": "microsoft--tsyringe-warmup.log",
+          "log_sha256": "ffbd26fb1d282062849d437f95e7af15343c27abf4fc79e74430adb112eb21f0"
+        },
+        "tracked_diff": []
+      },
+      "c6_qualifying": 0,
+      "c6_examples": [
+        {
+          "symbol": "src/decorators/injectable.ts#injectable",
+          "defining_unit": "src/decorators",
+          "calls": 66,
+          "units": [
+            "src/__tests__",
+            "src/__tests__/fixtures"
+          ],
+          "sites": [
+            "src/__tests__/auto-injectable.test.ts:102:4",
+            "src/__tests__/fixtures/01-test-case-A01-injects-B01.ts:4:2",
+            "src/__tests__/auto-injectable.test.ts:150:4",
+            "src/__tests__/errors.test.ts:12:4",
+            "src/__tests__/errors.test.ts:17:4",
+            "src/__tests__/errors.test.ts:22:4"
+          ],
+          "qualifies": false
+        },
+        {
+          "symbol": "src/decorators/registry.ts#registry",
+          "defining_unit": "src/decorators",
+          "calls": 12,
+          "units": [
+            "src/__tests__",
+            "src/__tests__/fixtures"
+          ],
+          "sites": [
+            "src/__tests__/fixtures/03-test-case-A03-lazy-injects-B03-interface.ts:10:2",
+            "src/__tests__/global-container.test.ts:577:4",
+            "src/__tests__/fixtures/03-test-case-B03-lazy-injects-A03-interface.ts:10:2",
+            "src/__tests__/global-container.test.ts:588:4",
+            "src/__tests__/global-container.test.ts:606:4",
+            "src/__tests__/global-container.test.ts:620:4"
+          ],
+          "qualifies": false
+        },
+        {
+          "symbol": "src/decorators/inject.ts#inject",
+          "defining_unit": "src/decorators",
+          "calls": 9,
+          "units": [
+            "src/__tests__",
+            "src/__tests__/fixtures"
+          ],
+          "sites": [
+            "src/__tests__/errors.test.ts:42:18",
+            "src/__tests__/fixtures/02-test-case-A02-lazy-injects-B02.ts:7:16",
+            "src/__tests__/fixtures/02-test-case-B02-lazy-injects-A02.ts:11:16",
+            "src/__tests__/fixtures/03-test-case-A03-lazy-injects-B03-interface.ts:18:16",
+            "src/__tests__/fixtures/03-test-case-B03-lazy-injects-A03-interface.ts:18:16",
+            "src/__tests__/global-container.test.ts:713:18"
+          ],
+          "qualifies": false
+        }
+      ],
+      "c7": {
+        "not_fathom": true,
+        "owner": "microsoft",
+        "owner_subjects": 1,
+        "prior_reads_found": [],
+        "fleet_index_exclusion": "unmeasured"
+      },
+      "screen_refusals": [
+        "C2",
+        "C6"
+      ],
+      "bx44": "not admitted: C4, C5 fix replay and Q2, and live C7 exclusion unmeasured"
+    },
+    {
+      "sha": "61ebf8596654cf3c4b197e426e302fcb3c2bc13e",
+      "language": "TypeScript",
+      "primary_lines": 8303,
+      "files": 77,
+      "licences": [
+        {
+          "path": "LICENSE-logo.md",
+          "spdx": null,
+          "sha256": "aee8f609f067c8705cdd4612bf031a751a2403ea8def0f545fc2446c59b9fd3d"
+        },
+        {
+          "path": "LICENSE.md",
+          "spdx": "MIT",
+          "sha256": "f2da73c752c6b87624755edacf927cbd915fa76555d383e74494bad4a5155ab3"
+        }
+      ],
+      "full_history": true,
+      "c5_window": [
+        "2024-10-25T00:00:00Z",
+        "2026-10-26T00:00:00Z"
+      ],
+      "co_changes": 5,
+      "fix_message_co_changes": 3,
+      "primary_co_changes": 4,
+      "primary_fix_co_changes": 3,
+      "replayed": 0,
+      "locks": {
+        "pnpm-lock.yaml": "c0c73d37cfc56d198694ffddb40ff8eae7ac705f4429eca474d72ddbeca8435c"
+      },
+      "repository": "reduxjs/redux",
+      "suite": {
+        "id": "reduxjs--redux",
+        "language": "TypeScript",
+        "lock": "pnpm-lock.yaml",
+        "setup": {
+          "command": "corepack enable && node --version && corepack --version && corepack prepare pnpm@11.23.0 --activate && corepack pnpm install --frozen-lockfile",
+          "seconds": 0.957,
+          "started_at": "2026-10-26T05:48:42.341633Z",
+          "exit_code": 0,
+          "network": "bridge",
+          "log": "reduxjs--redux-setup.log",
+          "log_sha256": "c437f60f57c61c85dbfdcb3095666d6d725a00101063a2a32262fa58f192051d"
+        },
+        "test": "corepack pnpm test",
+        "sha": "61ebf8596654cf3c4b197e426e302fcb3c2bc13e",
+        "image": "node@sha256:63538dfe497cc29dfafdda25ada09b46db68a3f4cc205abf1f5d6bf0913f3384",
+        "platform": "linux/arm64",
+        "cpus": 4,
+        "lockfile_sha256": "c0c73d37cfc56d198694ffddb40ff8eae7ac705f4429eca474d72ddbeca8435c",
+        "runs": [
+          {
+            "command": "corepack enable && corepack pnpm test",
+            "seconds": 7.482,
+            "started_at": "2026-10-26T05:48:50.048416Z",
+            "exit_code": 0,
+            "network": "none",
+            "log": "reduxjs--redux-run1.log",
+            "log_sha256": "23e079f8539039dbce8b83868f970ea1c2ad2998bf16a2752b83fe47c9b1fd6e"
+          },
+          {
+            "command": "corepack enable && corepack pnpm test",
+            "seconds": 4.173,
+            "started_at": "2026-10-26T05:48:57.531984Z",
+            "exit_code": 0,
+            "network": "none",
+            "log": "reduxjs--redux-run2.log",
+            "log_sha256": "7520a662102bcbdcbb469d1f288ba93fc2b346f70eb30e23965ec806631e1a00"
+          },
+          {
+            "command": "corepack enable && corepack pnpm test",
+            "seconds": 4.238,
+            "started_at": "2026-10-26T05:49:01.705786Z",
+            "exit_code": 0,
+            "network": "none",
+            "log": "reduxjs--redux-run3.log",
+            "log_sha256": "45782140571d014df06199d30a3115dc620920f99004bd7bb9ba9a820a9bf0e9"
+          }
+        ],
+        "network_probe": {
+          "command": "corepack enable && curl --noproxy \"*\" -I --connect-timeout 2 --max-time 3 https://1.1.1.1",
+          "seconds": 0.199,
+          "started_at": "2026-10-26T05:48:43.300283Z",
+          "exit_code": 7,
+          "network": "none",
+          "log": "reduxjs--redux-network-probe.log",
+          "log_sha256": "f9cf55b50dba65ca08df39180414f845e67c0f97277b46e404c346152653260d"
+        },
+        "warmup": {
+          "command": "corepack enable && corepack pnpm test",
+          "seconds": 6.547,
+          "started_at": "2026-10-26T05:48:43.500133Z",
+          "exit_code": 0,
+          "network": "none",
+          "log": "reduxjs--redux-warmup.log",
+          "log_sha256": "671f48ade93cf94c59bee75ef213495a23be8c27d87af2d4b8e05ca8e12e8c28"
+        },
+        "tracked_diff": []
+      },
+      "c6_qualifying": 0,
+      "c6_examples": [
+        {
+          "symbol": "test/helpers/actionCreators.ts#unknownAction",
+          "defining_unit": "test/helpers",
+          "calls": 22,
+          "units": [
+            "test"
+          ],
+          "sites": [
+            "test/createStore.spec.ts:104:20",
+            "test/createStore.spec.ts:212:20",
+            "test/createStore.spec.ts:217:20",
+            "test/createStore.spec.ts:226:20",
+            "test/createStore.spec.ts:235:20",
+            "test/createStore.spec.ts:244:20"
+          ],
+          "qualifies": false
+        },
+        {
+          "symbol": "test/helpers/actionCreators.ts#addTodo",
+          "defining_unit": "test/helpers",
+          "calls": 19,
+          "units": [
+            "test"
+          ],
+          "sites": [
+            "test/applyMiddleware.spec.ts:11:22",
+            "test/applyMiddleware.spec.ts:33:20",
+            "test/applyMiddleware.spec.ts:34:20",
+            "test/applyMiddleware.spec.ts:86:20",
+            "test/bindActionCreators.spec.ts:29:20",
+            "test/bindActionCreators.spec.ts:30:28"
+          ],
+          "qualifies": false
+        },
+        {
+          "symbol": "src/compose.ts#compose",
+          "defining_unit": "src",
+          "calls": 16,
+          "units": [
+            "test"
+          ],
+          "sites": [
+            "test/compose.spec.ts:10:14",
+            "test/compose.spec.ts:19:14",
+            "test/compose.spec.ts:20:14",
+            "test/compose.spec.ts:21:14",
+            "test/compose.spec.ts:30:9",
+            "test/compose.spec.ts:33:20"
+          ],
+          "qualifies": false
+        }
+      ],
+      "c7": {
+        "not_fathom": true,
+        "owner": "reduxjs",
+        "owner_subjects": 2,
+        "prior_reads_found": [],
+        "fleet_index_exclusion": "unmeasured"
+      },
+      "screen_refusals": [
+        "C6"
+      ],
+      "bx44": "not admitted: C4, C5 fix replay and Q2, and live C7 exclusion unmeasured"
+    },
+    {
+      "sha": "a2734a5d154c9b0beb9a10555a04416bc371de06",
+      "language": "TypeScript",
+      "primary_lines": 8125,
+      "files": 69,
+      "licences": [
+        {
+          "path": "LICENSE",
+          "spdx": "MIT",
+          "sha256": "40fb2182a242493ce32f6211c3400f2dcf6787c9c68cd261bfb61461d69780ef"
+        }
+      ],
+      "full_history": true,
+      "c5_window": [
+        "2024-10-25T00:00:00Z",
+        "2026-10-26T00:00:00Z"
+      ],
+      "co_changes": 0,
+      "fix_message_co_changes": 0,
+      "primary_co_changes": 0,
+      "primary_fix_co_changes": 0,
+      "replayed": 0,
+      "locks": {
+        "package-lock.json": "ec5e36d2d39f273a946c5736b54fd14d4f7973f235b4ec426ebeed0ed049a551"
+      },
+      "repository": "typestack/class-transformer",
+      "suite": {
+        "id": "typestack--class-transformer",
+        "language": "TypeScript",
+        "lock": "package-lock.json",
+        "setup": {
+          "command": "corepack enable && node --version && corepack prepare npm@10.9.9 --activate && corepack npm --version && corepack npm ci --cache /work/npm-cache --legacy-peer-deps --ignore-scripts",
+          "seconds": 38.737,
+          "started_at": "2026-10-26T05:04:57.243038Z",
+          "exit_code": 0,
+          "network": "bridge",
+          "log": "typestack--class-transformer-setup.log",
+          "log_sha256": "3d5d0a3eaf82491278126684cd9ea64a59c7898e639a6b406a050d282961ac42"
+        },
+        "test": "corepack npm run test:ci -- --coverageDirectory=/work/coverage",
+        "sha": "a2734a5d154c9b0beb9a10555a04416bc371de06",
+        "image": "node@sha256:63538dfe497cc29dfafdda25ada09b46db68a3f4cc205abf1f5d6bf0913f3384",
+        "platform": "linux/arm64",
+        "cpus": 4,
+        "lockfile_sha256": "ec5e36d2d39f273a946c5736b54fd14d4f7973f235b4ec426ebeed0ed049a551",
+        "runs": [
+          {
+            "command": "corepack enable && corepack npm run test:ci -- --coverageDirectory=/work/coverage",
+            "seconds": 20.106,
+            "started_at": "2026-10-26T05:19:55.574283Z",
+            "exit_code": 0,
+            "network": "none",
+            "log": "typestack--class-transformer-run1.log",
+            "log_sha256": "1d848044ecb83c353c90c3577d58e7838edf27f83d27189fa92bbd73cbd55514"
+          },
+          {
+            "command": "corepack enable && corepack npm run test:ci -- --coverageDirectory=/work/coverage",
+            "seconds": 25.188,
+            "started_at": "2026-10-26T05:25:29.935004Z",
+            "exit_code": 0,
+            "network": "none",
+            "log": "typestack--class-transformer-run2.log",
+            "log_sha256": "389f41cad6f8552dc38b0352f3c9cd40635dad35c1eba1445218f6652869afbf"
+          },
+          {
+            "command": "corepack enable && corepack npm run test:ci -- --coverageDirectory=/work/coverage",
+            "seconds": 21.01,
+            "started_at": "2026-10-26T05:30:03.005910Z",
+            "exit_code": 0,
+            "network": "none",
+            "log": "typestack--class-transformer-run3.log",
+            "log_sha256": "6ecd7f50b6bc451190f809741527175409b93ee474f6679054572d62a47662c3"
+          }
+        ],
+        "network_probe": {
+          "command": "corepack enable && curl --noproxy \"*\" -I --connect-timeout 2 --max-time 3 https://1.1.1.1",
+          "seconds": 0.19,
+          "started_at": "2026-10-26T05:10:14.646068Z",
+          "exit_code": 7,
+          "network": "none",
+          "log": "typestack--class-transformer-network-probe.log",
+          "log_sha256": "f9cf55b50dba65ca08df39180414f845e67c0f97277b46e404c346152653260d"
+        },
+        "warmup": {
+          "command": "corepack enable && corepack npm run test:ci -- --coverageDirectory=/work/coverage",
+          "seconds": 22.562,
+          "started_at": "2026-10-26T05:18:07.152697Z",
+          "exit_code": 0,
+          "network": "none",
+          "log": "typestack--class-transformer-warmup.log",
+          "log_sha256": "90b77d5bbd50915a72c65a154d708ea4f90edbe2ded9c10eeeee3e1ed23d71af"
+        },
+        "tracked_diff": []
+      },
+      "c6_qualifying": 4,
+      "c6_examples": [
+        {
+          "symbol": "src/decorators/type.decorator.ts#Type",
+          "defining_unit": "src/decorators",
+          "calls": 79,
+          "units": [
+            "sample/sample1-simple-usage",
+            "sample/sample2-iheritance",
+            "sample/sample3-custom-arrays",
+            "sample/sample4-generics",
+            "sample/sample5-custom-transformer",
+            "test/functional"
+          ],
+          "sites": [
+            "sample/sample1-simple-usage/Album.ts:10:4",
+            "sample/sample2-iheritance/Album.ts:11:4",
+            "sample/sample3-custom-arrays/Photo.ts:14:4",
+            "sample/sample4-generics/SuperCollection.ts:7:4",
+            "sample/sample5-custom-transformer/User.ts:9:4",
+            "test/functional/basic-functionality.spec.ts:1015:8"
+          ],
+          "qualifies": true
+        },
+        {
+          "symbol": "src/decorators/exclude.decorator.ts#Exclude",
+          "defining_unit": "src/decorators",
+          "calls": 53,
+          "units": [
+            "sample/sample1-simple-usage",
+            "sample/sample2-iheritance",
+            "sample/sample4-generics",
+            "test/functional"
+          ],
+          "sites": [
+            "sample/sample1-simple-usage/Album.ts:7:4",
+            "sample/sample2-iheritance/Album.ts:8:4",
+            "sample/sample4-generics/SuperCollection.ts:4:4",
+            "test/functional/basic-functionality.spec.ts:126:8",
+            "sample/sample2-iheritance/Authorable.ts:7:4",
+            "sample/sample2-iheritance/Photo.ts:12:4"
+          ],
+          "qualifies": true
+        },
+        {
+          "symbol": "src/index.ts#classToPlain",
+          "defining_unit": "src",
+          "calls": 6,
+          "units": [
+            "sample/sample1-simple-usage",
+            "sample/sample2-iheritance",
+            "sample/sample3-custom-arrays",
+            "sample/sample5-custom-transformer"
+          ],
+          "sites": [
+            "sample/sample1-simple-usage/app.ts:35:20",
+            "sample/sample2-iheritance/app.ts:38:20",
+            "sample/sample3-custom-arrays/app.ts:33:20",
+            "sample/sample5-custom-transformer/app.ts:19:13",
+            "sample/sample1-simple-usage/app.ts:90:21",
+            "sample/sample2-iheritance/app.ts:93:21"
+          ],
+          "qualifies": true
+        }
+      ],
+      "c7": {
+        "not_fathom": true,
+        "owner": "typestack",
+        "owner_subjects": 2,
+        "prior_reads_found": [],
+        "fleet_index_exclusion": "unmeasured"
+      },
+      "screen_refusals": [],
+      "bx44": "refuse C5: post-cutoff yield cannot reach 15 for any cutoff after 2024-10-25"
+    },
+    {
+      "sha": "2e1a5c27dbd65b80e27fe96b49bd6e6641fa3603",
+      "language": "TypeScript",
+      "primary_lines": 14455,
+      "files": 176,
+      "licences": [
+        {
+          "path": "LICENSE",
+          "spdx": "MIT",
+          "sha256": "ef7c4bc854ad6f0ee0ea4bdae8dee790ed65edd22713d2806d423b8e0727328a"
+        }
+      ],
+      "full_history": true,
+      "c5_window": [
+        "2024-10-25T00:00:00Z",
+        "2026-10-26T00:00:00Z"
+      ],
+      "co_changes": 6,
+      "fix_message_co_changes": 1,
+      "primary_co_changes": 6,
+      "primary_fix_co_changes": 1,
+      "replayed": 0,
+      "locks": {
+        "package-lock.json": "90f2e49844770dfd5fbd9358385dd0cf723d047482a2bfe391abb75871de61d5"
+      },
+      "repository": "typestack/class-validator",
+      "suite": {
+        "id": "typestack--class-validator",
+        "language": "TypeScript",
+        "lock": "package-lock.json",
+        "setup": {
+          "command": "corepack enable && node --version && corepack prepare npm@10.9.9 --activate && corepack npm --version && corepack npm ci --cache /work/npm-cache",
+          "seconds": 30.706,
+          "started_at": "2026-10-26T05:30:24.045251Z",
+          "exit_code": 0,
+          "network": "bridge",
+          "log": "typestack--class-validator-setup.log",
+          "log_sha256": "65500c5bfba8e0951804a470ef6da2ee3fc02def8e6b847284d8cf7bd05b74eb"
+        },
+        "test": "corepack npm run test:ci -- --coverageDirectory=/work/coverage",
+        "sha": "2e1a5c27dbd65b80e27fe96b49bd6e6641fa3603",
+        "image": "node@sha256:63538dfe497cc29dfafdda25ada09b46db68a3f4cc205abf1f5d6bf0913f3384",
+        "platform": "linux/arm64",
+        "cpus": 4,
+        "lockfile_sha256": "90f2e49844770dfd5fbd9358385dd0cf723d047482a2bfe391abb75871de61d5",
+        "runs": [
+          {
+            "command": "corepack enable && corepack npm run test:ci -- --coverageDirectory=/work/coverage",
+            "seconds": 24.944,
+            "started_at": "2026-10-26T05:42:51.319697Z",
+            "exit_code": 0,
+            "network": "none",
+            "log": "typestack--class-validator-run1.log",
+            "log_sha256": "211b680dc2d990e1c26be01231ec0cab9cc7da5c39c58ace6839d6e38b91ab62"
+          },
+          {
+            "command": "corepack enable && corepack npm run test:ci -- --coverageDirectory=/work/coverage",
+            "seconds": 14.961,
+            "started_at": "2026-10-26T05:43:16.564263Z",
+            "exit_code": 0,
+            "network": "none",
+            "log": "typestack--class-validator-run2.log",
+            "log_sha256": "e8356b5f0f41c6e50eee9fc06d3618b22bdb9c392ee71ed6ca43e2fc62d4ef70"
+          },
+          {
+            "command": "corepack enable && corepack npm run test:ci -- --coverageDirectory=/work/coverage",
+            "seconds": 17.528,
+            "started_at": "2026-10-26T05:43:42.738438Z",
+            "exit_code": 0,
+            "network": "none",
+            "log": "typestack--class-validator-run3.log",
+            "log_sha256": "e16af2805bed37f0a94805bac5228a4ba99fe65b15fba7f94944dff6d2221e44"
+          }
+        ],
+        "network_probe": {
+          "command": "corepack enable && curl --noproxy \"*\" -I --connect-timeout 2 --max-time 3 https://1.1.1.1",
+          "seconds": 0.187,
+          "started_at": "2026-10-26T05:34:36.833216Z",
+          "exit_code": 7,
+          "network": "none",
+          "log": "typestack--class-validator-network-probe.log",
+          "log_sha256": "f9cf55b50dba65ca08df39180414f845e67c0f97277b46e404c346152653260d"
+        },
+        "warmup": {
+          "command": "corepack enable && corepack npm run test:ci -- --coverageDirectory=/work/coverage",
+          "seconds": 20.754,
+          "started_at": "2026-10-26T05:38:41.378642Z",
+          "exit_code": 0,
+          "network": "none",
+          "log": "typestack--class-validator-warmup.log",
+          "log_sha256": "066e49cd26652a6669b6504bb7b31c497f7dc2bf292b43994b954fc56f6507c0"
+        },
+        "tracked_diff": []
+      },
+      "c6_qualifying": 12,
+      "c6_examples": [
+        {
+          "symbol": "src/validation/Validator.ts#validate",
+          "defining_unit": "src/validation",
+          "calls": 143,
+          "units": [
+            "sample/sample2-using-groups",
+            "sample/sample3-nested-objects",
+            "sample/sample4-custom-validator",
+            "sample/sample6-custom-decorator",
+            "sample/sample8-es6-maps",
+            "sample/sample9-es6-sets",
+            "src",
+            "test/functional"
+          ],
+          "sites": [
+            "sample/sample2-using-groups/app.ts:14:1",
+            "sample/sample3-nested-objects/app.ts:17:1",
+            "sample/sample4-custom-validator/app.ts:16:1",
+            "sample/sample6-custom-decorator/app.ts:16:1",
+            "sample/sample8-es6-maps/app.ts:19:1",
+            "sample/sample9-es6-sets/app.ts:19:1"
+          ],
+          "qualifies": true
+        },
+        {
+          "symbol": "src/decorator/common/ValidateBy.ts#buildMessage",
+          "defining_unit": "src/decorator/common",
+          "calls": 97,
+          "units": [
+            "src/decorator/array",
+            "src/decorator/date",
+            "src/decorator/number",
+            "src/decorator/object",
+            "src/decorator/string",
+            "src/decorator/typechecker",
+            "test/functional"
+          ],
+          "sites": [
+            "src/decorator/array/ArrayContains.ts:27:25",
+            "src/decorator/date/MaxDate.ts:23:25",
+            "src/decorator/number/IsDivisibleBy.ts:24:25",
+            "src/decorator/object/IsInstance.ts:28:25",
+            "src/decorator/string/Contains.ts:26:25",
+            "src/decorator/typechecker/IsArray.ts:22:25"
+          ],
+          "qualifies": true
+        },
+        {
+          "symbol": "src/decorator/common/ValidateBy.ts#ValidateBy",
+          "defining_unit": "src/decorator/common",
+          "calls": 96,
+          "units": [
+            "src/decorator/array",
+            "src/decorator/date",
+            "src/decorator/number",
+            "src/decorator/object",
+            "src/decorator/string",
+            "src/decorator/typechecker"
+          ],
+          "sites": [
+            "src/decorator/array/ArrayContains.ts:21:10",
+            "src/decorator/date/MaxDate.ts:17:10",
+            "src/decorator/number/IsDivisibleBy.ts:18:10",
+            "src/decorator/object/IsInstance.ts:22:10",
+            "src/decorator/string/Contains.ts:20:10",
+            "src/decorator/typechecker/IsArray.ts:17:10"
+          ],
+          "qualifies": true
+        }
+      ],
+      "c7": {
+        "not_fathom": true,
+        "owner": "typestack",
+        "owner_subjects": 2,
+        "prior_reads_found": [],
+        "fleet_index_exclusion": "unmeasured"
+      },
+      "screen_refusals": [],
+      "bx44": "refuse C5: post-cutoff yield cannot reach 15 for any cutoff after 2024-10-25"
+    },
+    {
+      "sha": "8d09833c76791b2ea7270af174fdab9f1408aeb8",
+      "language": "TypeScript",
+      "primary_lines": 129355,
+      "files": 1033,
+      "licences": [
+        {
+          "path": "LICENSE",
+          "spdx": "MIT",
+          "sha256": "e714dd84c8fa242600844b05d317a31003423723178c1f1603dbfad1bc68d906"
+        }
+      ],
+      "full_history": true,
+      "c5_window": [
+        "2024-10-25T00:00:00Z",
+        "2026-10-26T00:00:00Z"
+      ],
+      "co_changes": 278,
+      "fix_message_co_changes": 145,
+      "primary_co_changes": 150,
+      "primary_fix_co_changes": 81,
+      "replayed": 0,
+      "locks": {
+        "pnpm-lock.yaml": "b8e65cb6360601db5cebed7ce36cfb928d24d74eaa89d727f71f60f9538f54f5"
+      },
+      "repository": "trpc/trpc",
+      "suite": {
+        "id": "trpc--trpc",
+        "language": "TypeScript",
+        "lock": "pnpm-lock.yaml",
+        "setup": {
+          "command": "corepack enable && node --version && corepack --version && corepack prepare pnpm@12.4.1 --activate && npm_config_nodedir=/usr/local PLAYWRIGHT_BROWSERS_PATH=/work/browsers corepack pnpm install --frozen-lockfile",
+          "seconds": 36.62,
+          "started_at": "2026-10-26T05:14:14.531491Z",
+          "exit_code": 0,
+          "network": "bridge",
+          "log": "trpc--trpc-setup.log",
+          "log_sha256": "7222c4f3d1eebeb86d7e55cc7adcf8909cd664507856e4398ceb2aec4c9f4042"
+        },
+        "test": "PLAYWRIGHT_BROWSERS_PATH=/work/browsers CI=1 corepack pnpm test --run",
+        "image": "node@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0",
+        "required_node": "^24.0.0 (source .nvmrc 24.21.0)",
+        "stop_on_failed_warmup": true,
+        "sha": "8d09833c76791b2ea7270af174fdab9f1408aeb8",
+        "platform": "linux/arm64",
+        "cpus": 4,
+        "lockfile_sha256": "b8e65cb6360601db5cebed7ce36cfb928d24d74eaa89d727f71f60f9538f54f5",
+        "runs": [],
+        "network_probe": {
+          "command": "corepack enable && curl --noproxy \"*\" -I --connect-timeout 2 --max-time 3 https://1.1.1.1",
+          "seconds": 0.19,
+          "started_at": "2026-10-26T05:18:29.715941Z",
+          "exit_code": 7,
+          "network": "none",
+          "log": "trpc--trpc-network-probe.log",
+          "log_sha256": "f9cf55b50dba65ca08df39180414f845e67c0f97277b46e404c346152653260d"
+        },
+        "warmup": {
+          "command": "corepack enable && PLAYWRIGHT_BROWSERS_PATH=/work/browsers CI=1 corepack pnpm test --run",
+          "seconds": 295.65,
+          "started_at": "2026-10-26T05:20:15.675324Z",
+          "exit_code": 1,
+          "network": "none",
+          "log": "trpc--trpc-warmup.log",
+          "log_sha256": "c82821bb6372868f8b53804e771117a5e8aee7c4499858a2070fd3680013a3bd"
+        },
+        "stopped_after_failed_warmup": true,
+        "tracked_diff": []
+      },
+      "c6_qualifying": 13,
+      "c6_examples": [
+        {
+          "symbol": "packages/server/src/unstable-core-do-not-import/utils.ts#run",
+          "defining_unit": "packages/server/src/unstable-core-do-not-import",
+          "calls": 32,
+          "units": [
+            "packages/server/src/__tests__",
+            "packages/server/src/adapters",
+            "packages/server/src/adapters/node-http",
+            "packages/server/src/unstable-core-do-not-import/http",
+            "packages/server/src/unstable-core-do-not-import/stream",
+            "packages/server/src/unstable-core-do-not-import/stream/utils"
+          ],
+          "sites": [
+            "packages/server/src/__tests__/fetchServerResource.ts:15:5",
+            "packages/server/src/adapters/express.ts:30:5",
+            "packages/server/src/adapters/node-http/nodeHTTPRequestHandler.ts:85:7",
+            "packages/server/src/unstable-core-do-not-import/http/resolveResponse.ts:277:57",
+            "packages/server/src/unstable-core-do-not-import/stream/jsonl.test.ts:37:21",
+            "packages/server/src/unstable-core-do-not-import/stream/utils/mergeAsyncIterables.test.ts:120:5"
+          ],
+          "qualifies": true
+        },
+        {
+          "symbol": "packages/server/src/unstable-core-do-not-import/error/TRPCError.ts#getTRPCErrorFromUnknown",
+          "defining_unit": "packages/server/src/unstable-core-do-not-import/error",
+          "calls": 20,
+          "units": [
+            "packages/server/src/adapters",
+            "packages/server/src/adapters/next-app-dir",
+            "packages/server/src/adapters/node-http",
+            "packages/server/src/unstable-core-do-not-import",
+            "packages/server/src/unstable-core-do-not-import/http",
+            "packages/server/src/unstable-core-do-not-import/stream"
+          ],
+          "sites": [
+            "packages/server/src/adapters/next-app-dir/nextAppDirCaller.ts:65:21",
+            "packages/server/src/adapters/node-http/nodeHTTPRequestHandler.ts:103:24",
+            "packages/server/src/adapters/ws.ts:162:23",
+            "packages/server/src/unstable-core-do-not-import/http/resolveResponse.ts:203:17",
+            "packages/server/src/unstable-core-do-not-import/middleware.ts:261:37",
+            "packages/server/src/unstable-core-do-not-import/stream/sse.ts:192:21"
+          ],
+          "qualifies": true
+        },
+        {
+          "symbol": "packages/server/src/unstable-core-do-not-import/error/TRPCError.ts#TRPCError.constructor",
+          "defining_unit": "packages/server/src/unstable-core-do-not-import/error",
+          "calls": 42,
+          "units": [
+            "packages/server/src/adapters",
+            "packages/server/src/adapters/next-app-dir",
+            "packages/server/src/adapters/node-http",
+            "packages/server/src/unstable-core-do-not-import",
+            "packages/server/src/unstable-core-do-not-import/http"
+          ],
+          "sites": [
+            "packages/server/src/adapters/next-app-dir/nextAppDirCaller.ts:128:15",
+            "packages/server/src/adapters/next.ts:47:15",
+            "packages/server/src/adapters/node-http/incomingMessageToRequest.ts:109:11",
+            "packages/server/src/unstable-core-do-not-import/http/contentType.ts:113:13",
+            "packages/server/src/unstable-core-do-not-import/middleware.ts:204:15",
+            "packages/server/src/adapters/next-app-dir/nextAppDirCaller.ts:55:21"
+          ],
+          "qualifies": true
+        }
+      ],
+      "c7": {
+        "not_fathom": true,
+        "owner": "trpc",
+        "owner_subjects": 1,
+        "prior_reads_found": [],
+        "fleet_index_exclusion": "unmeasured"
+      },
+      "screen_refusals": [
+        "C3"
+      ],
+      "bx44": "not admitted: C4, C5 fix replay and Q2, and live C7 exclusion unmeasured"
+    },
+    {
+      "sha": "d02c3bdb5e18cfa53e76f33f4ae525adce515379",
+      "language": "TypeScript",
+      "primary_lines": 65796,
+      "files": 635,
+      "licences": [
+        {
+          "path": "LICENSE",
+          "spdx": "MIT",
+          "sha256": "acf30083045d768ce20640237313ee31a45d548d66ef76df5bb5fb0745479535"
+        }
+      ],
+      "full_history": true,
+      "c5_window": [
+        "2024-10-25T00:00:00Z",
+        "2026-10-26T00:00:00Z"
+      ],
+      "co_changes": 56,
+      "fix_message_co_changes": 21,
+      "primary_co_changes": 55,
+      "primary_fix_co_changes": 21,
+      "replayed": 0,
+      "locks": {
+        "package-lock.json": "ad248e83635c9c0f021df65bee42285b502787b78196a5a414e193531edb1b29"
+      },
+      "repository": "remeda/remeda",
+      "suite": {
+        "id": "remeda--remeda",
+        "language": "TypeScript",
+        "lock": "package-lock.json",
+        "setup": {
+          "command": "corepack enable && node --version && corepack prepare npm@10.9.9 --activate && corepack npm --version && corepack npm ci --cache /work/npm-cache",
+          "seconds": 38.034,
+          "started_at": "2026-10-26T05:44:00.305281Z",
+          "exit_code": 0,
+          "network": "bridge",
+          "log": "remeda--remeda-setup.log",
+          "log_sha256": "f8ff0b9bad3a63b59c4cbbf4f9f7ddace6301044ce4d0aa60bbb61ae4f3807c6"
+        },
+        "test": "CI=1 corepack npm run test --workspace=packages/remeda -- --run",
+        "sha": "d02c3bdb5e18cfa53e76f33f4ae525adce515379",
+        "image": "node@sha256:63538dfe497cc29dfafdda25ada09b46db68a3f4cc205abf1f5d6bf0913f3384",
+        "platform": "linux/arm64",
+        "cpus": 4,
+        "lockfile_sha256": "ad248e83635c9c0f021df65bee42285b502787b78196a5a414e193531edb1b29",
+        "runs": [
+          {
+            "command": "corepack enable && CI=1 corepack npm run test --workspace=packages/remeda -- --run",
+            "seconds": 12.62,
+            "started_at": "2026-10-26T05:45:13.489227Z",
+            "exit_code": 0,
+            "network": "none",
+            "log": "remeda--remeda-run1.log",
+            "log_sha256": "19b1fdaa4c20e72bb12bc70942c1291efe86c709f0ba41efbf1cd1cf747b85dc"
+          },
+          {
+            "command": "corepack enable && CI=1 corepack npm run test --workspace=packages/remeda -- --run",
+            "seconds": 14.416,
+            "started_at": "2026-10-26T05:45:29.794742Z",
+            "exit_code": 0,
+            "network": "none",
+            "log": "remeda--remeda-run2.log",
+            "log_sha256": "51f86aa54cec355ad15c1af0c35df9dffd21d5579efc1f1322e1341d4695f178"
+          },
+          {
+            "command": "corepack enable && CI=1 corepack npm run test --workspace=packages/remeda -- --run",
+            "seconds": 13.375,
+            "started_at": "2026-10-26T05:45:49.176329Z",
+            "exit_code": 0,
+            "network": "none",
+            "log": "remeda--remeda-run3.log",
+            "log_sha256": "6ac20fc434e4c61189e1684adce67a845e766822d37084a190afe1ff4734163a"
+          }
+        ],
+        "network_probe": {
+          "command": "corepack enable && curl --noproxy \"*\" -I --connect-timeout 2 --max-time 3 https://1.1.1.1",
+          "seconds": 0.306,
+          "started_at": "2026-10-26T05:44:53.634352Z",
+          "exit_code": 7,
+          "network": "none",
+          "log": "remeda--remeda-network-probe.log",
+          "log_sha256": "f9cf55b50dba65ca08df39180414f845e67c0f97277b46e404c346152653260d"
+        },
+        "warmup": {
+          "command": "corepack enable && CI=1 corepack npm run test --workspace=packages/remeda -- --run",
+          "seconds": 12.506,
+          "started_at": "2026-10-26T05:45:00.792148Z",
+          "exit_code": 0,
+          "network": "none",
+          "log": "remeda--remeda-warmup.log",
+          "log_sha256": "614a57d099e87a4b1acd83df829518d4ac530b8ab7db510939dc2df84f76add5"
+        },
+        "tracked_diff": []
+      },
+      "c6_qualifying": 0,
+      "c6_examples": [
+        {
+          "symbol": "packages/docs/src/lib/sort-categories.ts#sortByCategories",
+          "defining_unit": "packages/docs/src/lib",
+          "calls": 4,
+          "units": [
+            "packages/docs/src/lib/articles",
+            "packages/docs/src/lib/functions",
+            "packages/docs/src/lib/mapping",
+            "packages/docs/src/lib/v1"
+          ],
+          "sites": [
+            "packages/docs/src/lib/articles/entries.ts:39:5",
+            "packages/docs/src/lib/functions/entries.ts:18:5",
+            "packages/docs/src/lib/mapping/entries.ts:30:5",
+            "packages/docs/src/lib/v1/entries.ts:14:5"
+          ],
+          "qualifies": false
+        },
+        {
+          "symbol": "packages/remeda/test/$typed.ts#$typed",
+          "defining_unit": "packages/remeda/test",
+          "calls": 468,
+          "units": [
+            "packages/remeda/src",
+            "packages/remeda/src/internal/types"
+          ],
+          "sites": [
+            "packages/remeda/src/constant.test-d.ts:45:21",
+            "packages/remeda/src/internal/types/ArrayAt.test-d.ts:12:35",
+            "packages/remeda/src/defaultTo.test-d.ts:232:11",
+            "packages/remeda/src/defaultTo.test-d.ts:239:55",
+            "packages/remeda/src/defaultTo.test-d.ts:275:21",
+            "packages/remeda/src/defaultTo.test-d.ts:284:21"
+          ],
+          "qualifies": false
+        },
+        {
+          "symbol": "packages/remeda/test/$missingPropertyType.ts#$missingPropertyType",
+          "defining_unit": "packages/remeda/test",
+          "calls": 5,
+          "units": [
+            "packages/remeda/src",
+            "packages/remeda/src/internal/types"
+          ],
+          "sites": [
+            "packages/remeda/src/filter.test-d.ts:273:25",
+            "packages/remeda/src/internal/types/TupleParts.test-d.ts:310:29",
+            "packages/remeda/src/filter.test-d.ts:279:23",
+            "packages/remeda/src/partialBind.test-d.ts:103:20",
+            "packages/remeda/src/partialLastBind.test-d.ts:103:20"
+          ],
+          "qualifies": false
+        }
+      ],
+      "c7": {
+        "not_fathom": true,
+        "owner": "remeda",
+        "owner_subjects": 1,
+        "prior_reads_found": [],
+        "fleet_index_exclusion": "unmeasured"
+      },
+      "screen_refusals": [
+        "C6"
+      ],
+      "bx44": "not admitted: C4, C5 fix replay and Q2, and live C7 exclusion unmeasured"
+    },
+    {
+      "sha": "0fd611cc79d44990ac9a040dec4d5cb446233440",
+      "language": "TypeScript",
+      "primary_lines": 86935,
+      "files": 572,
+      "licences": [
+        {
+          "path": "LICENSE",
+          "spdx": "MIT",
+          "sha256": "49784961ec6c4941437b7a2c54d8977d0528076a9e7c73dd40f7d0942b8f106d"
+        }
+      ],
+      "full_history": true,
+      "c5_window": [
+        "2024-10-25T00:00:00Z",
+        "2026-10-26T00:00:00Z"
+      ],
+      "co_changes": 96,
+      "fix_message_co_changes": 30,
+      "primary_co_changes": 92,
+      "primary_fix_co_changes": 30,
+      "replayed": 0,
+      "locks": {
+        "pnpm-lock.yaml": "61b35c283add696511e854367fa77008c6128493d96c798914595413fff7692b"
+      },
+      "repository": "reduxjs/redux-toolkit",
+      "suite": {
+        "id": "reduxjs--redux-toolkit",
+        "language": "TypeScript",
+        "lock": "pnpm-lock.yaml",
+        "setup": {
+          "command": "corepack enable && node --version && corepack --version && corepack prepare pnpm@11.23.0 --activate && corepack pnpm install --frozen-lockfile",
+          "seconds": 3.541,
+          "started_at": "2026-10-26T05:19:50.828270Z",
+          "exit_code": 0,
+          "network": "bridge",
+          "log": "reduxjs--redux-toolkit-setup.log",
+          "log_sha256": "682ce5973029944c76d051f36b4308a9e54a8582702ac0b438e10a1dbbe4d1d3"
+        },
+        "test": "CI=1 corepack pnpm test",
+        "image": "node@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0",
+        "runtime_selection": "Node 24.21.0 matches upstream CI node: 24.x",
+        "sha": "0fd611cc79d44990ac9a040dec4d5cb446233440",
+        "platform": "linux/arm64",
+        "cpus": 4,
+        "lockfile_sha256": "61b35c283add696511e854367fa77008c6128493d96c798914595413fff7692b",
+        "runs": [
+          {
+            "command": "corepack enable && CI=1 corepack pnpm test",
+            "seconds": 92.494,
+            "started_at": "2026-10-26T05:33:04.154707Z",
+            "exit_code": 0,
+            "network": "none",
+            "log": "reduxjs--redux-toolkit-run1.log",
+            "log_sha256": "5e5332dbf6be90dcf5c3869a007d94f928d19f0841a27c5eda48fe9a2544662a"
+          },
+          {
+            "command": "corepack enable && CI=1 corepack pnpm test",
+            "seconds": 73.5,
+            "started_at": "2026-10-26T05:37:22.943819Z",
+            "exit_code": 0,
+            "network": "none",
+            "log": "reduxjs--redux-toolkit-run2.log",
+            "log_sha256": "1e975fd53eef22e7cb59a478574d34cca30b9cf15f9a283af93b7ddce4cb3ff7"
+          },
+          {
+            "command": "corepack enable && CI=1 corepack pnpm test",
+            "seconds": 78.397,
+            "started_at": "2026-10-26T05:41:32.922089Z",
+            "exit_code": 0,
+            "network": "none",
+            "log": "reduxjs--redux-toolkit-run3.log",
+            "log_sha256": "e854220b0b8ea513e1a18e02d7abd0aa6278c8c2d01be2ffe7dbd34c8275c360"
+          }
+        ],
+        "network_probe": {
+          "command": "corepack enable && curl --noproxy \"*\" -I --connect-timeout 2 --max-time 3 https://1.1.1.1",
+          "seconds": 0.188,
+          "started_at": "2026-10-26T05:25:28.422171Z",
+          "exit_code": 7,
+          "network": "none",
+          "log": "reduxjs--redux-toolkit-network-probe.log",
+          "log_sha256": "f9cf55b50dba65ca08df39180414f845e67c0f97277b46e404c346152653260d"
+        },
+        "warmup": {
+          "command": "corepack enable && CI=1 corepack pnpm test",
+          "seconds": 73.182,
+          "started_at": "2026-10-26T05:28:48.244129Z",
+          "exit_code": 0,
+          "network": "none",
+          "log": "reduxjs--redux-toolkit-warmup.log",
+          "log_sha256": "faf4fcb320a4c81eae701e0ce975210b95800a81c10a49ed0e9c6bf33d3dbcf4"
+        },
+        "tracked_diff": []
+      },
+      "c6_qualifying": 26,
+      "c6_examples": [
+        {
+          "symbol": "packages/toolkit/src/configureStore.ts#configureStore@121",
+          "defining_unit": "packages/toolkit/src",
+          "calls": 213,
+          "units": [
+            "examples/action-listener/counter/src",
+            "examples/action-listener/counter/src/services/counter/tests",
+            "examples/publish-ci/expo/src/app",
+            "examples/publish-ci/next/src/app",
+            "examples/publish-ci/next/src/app-core",
+            "examples/publish-ci/react-native",
+            "examples/publish-ci/react-native/src/app",
+            "examples/publish-ci/vite/src/app-core",
+            "examples/query/react/authentication/src/app",
+            "examples/query/react/basic/src",
+            "examples/query/react/infinite-queries/src/app",
+            "examples/query/react/kitchen-sink/src/app",
+            "examples/query/react/mutations/src",
+            "examples/type-portability/bundler/src/app",
+            "examples/type-portability/nodenext-cjs/src/app",
+            "examples/type-portability/nodenext-esm/src/app",
+            "packages/toolkit/src/dynamicMiddleware/tests",
+            "packages/toolkit/src/entities/tests",
+            "packages/toolkit/src/listenerMiddleware/tests",
+            "packages/toolkit/src/query/react",
+            "packages/toolkit/src/query/tests",
+            "packages/toolkit/src/tests",
+            "packages/toolkit/src/tests/utils"
+          ],
+          "sites": [
+            "examples/action-listener/counter/src/services/counter/tests/listener.test.ts:25:12",
+            "examples/action-listener/counter/src/store.ts:17:15",
+            "examples/publish-ci/expo/src/app/store.ts:16:17",
+            "examples/publish-ci/next/src/app-core/store.ts:7:3",
+            "examples/publish-ci/next/src/app/ServerApiInfo.tsx:9:17",
+            "examples/publish-ci/react-native/App.test.tsx:204:17"
+          ],
+          "qualifies": true
+        },
+        {
+          "symbol": "packages/toolkit/src/createSlice.ts#createSlice@572",
+          "defining_unit": "packages/toolkit/src",
+          "calls": 115,
+          "units": [
+            "examples/action-listener/counter/src/services/counter",
+            "examples/action-listener/counter/src/services/theme",
+            "examples/publish-ci/expo/src/features/counter",
+            "examples/publish-ci/next/src/features/counter",
+            "examples/publish-ci/react-native/src/features/counter",
+            "examples/publish-ci/vite/src/features/counter",
+            "examples/query/react/authentication/src/features/auth",
+            "examples/query/react/kitchen-sink/src/features/auth",
+            "examples/query/react/kitchen-sink/src/features/polling",
+            "examples/type-portability/bundler/src/features/auth",
+            "examples/type-portability/bundler/src/features/polling",
+            "examples/type-portability/nodenext-cjs/src/features/auth",
+            "examples/type-portability/nodenext-cjs/src/features/polling",
+            "examples/type-portability/nodenext-esm/src/features/auth",
+            "examples/type-portability/nodenext-esm/src/features/polling",
+            "packages/rtk-codemods/transforms/createSliceBuilder/__testfixtures__",
+            "packages/rtk-codemods/transforms/createSliceReducerBuilder/__testfixtures__",
+            "packages/toolkit/src/entities/tests",
+            "packages/toolkit/src/listenerMiddleware/tests",
+            "packages/toolkit/src/query/core",
+            "packages/toolkit/src/query/tests",
+            "packages/toolkit/src/tests"
+          ],
+          "sites": [
+            "examples/action-listener/counter/src/services/counter/slice.ts:16:29",
+            "examples/action-listener/counter/src/services/theme/slice.ts:10:27",
+            "examples/publish-ci/expo/src/features/counter/counterSlice.ts:17:29",
+            "examples/publish-ci/next/src/features/counter/counterSlice.ts:23:29",
+            "examples/publish-ci/react-native/src/features/counter/counterSlice.ts:17:29",
+            "examples/publish-ci/vite/src/features/counter/counterSlice.ts:23:29"
+          ],
+          "qualifies": true
+        },
+        {
+          "symbol": "packages/toolkit/src/nanoid.ts#nanoid@11",
+          "defining_unit": "packages/toolkit/src",
+          "calls": 41,
+          "units": [
+            "examples/action-listener/counter/src/services/counter",
+            "examples/query/react/authentication/src/mocks",
+            "examples/query/react/graphql-codegen/src/mocks",
+            "examples/query/react/graphql/src/mocks",
+            "examples/query/react/kitchen-sink/src/features/counter",
+            "examples/query/react/kitchen-sink/src/features/time",
+            "examples/query/react/kitchen-sink/src/mocks",
+            "examples/query/react/mutations/src/mocks",
+            "examples/query/react/prefetching/src/mocks",
+            "examples/type-portability/bundler/src/features/counter",
+            "examples/type-portability/bundler/src/features/time",
+            "examples/type-portability/nodenext-cjs/src/features/counter",
+            "examples/type-portability/nodenext-cjs/src/features/time",
+            "examples/type-portability/nodenext-esm/src/features/counter",
+            "examples/type-portability/nodenext-esm/src/features/time",
+            "packages/rtk-codemods/transforms/createSliceReducerBuilder/__testfixtures__",
+            "packages/toolkit/src/dynamicMiddleware",
+            "packages/toolkit/src/entities/tests",
+            "packages/toolkit/src/listenerMiddleware",
+            "packages/toolkit/src/query",
+            "packages/toolkit/src/query/core"
+          ],
+          "sites": [
+            "examples/action-listener/counter/src/services/counter/slice.ts:28:13",
+            "examples/query/react/authentication/src/mocks/handlers.ts:4:15",
+            "examples/query/react/graphql-codegen/src/mocks/db.ts:36:9",
+            "examples/query/react/graphql/src/mocks/db.ts:27:9",
+            "examples/query/react/kitchen-sink/src/features/counter/CounterList.tsx:14:66",
+            "examples/query/react/kitchen-sink/src/features/time/TimeList.tsx:120:6"
+          ],
+          "qualifies": true
+        }
+      ],
+      "c7": {
+        "not_fathom": true,
+        "owner": "reduxjs",
+        "owner_subjects": 2,
+        "prior_reads_found": [],
+        "fleet_index_exclusion": "unmeasured"
+      },
+      "screen_refusals": [],
+      "bx44": "not admitted: C4, C5 fix replay and Q2, and live C7 exclusion unmeasured"
+    }
+  ]
+}

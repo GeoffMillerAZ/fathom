@@ -73,7 +73,7 @@ conforming stores) and the **multi-expert chat** capability
 modules')... orchestration composes above the engine over federated
 stores"*) forward from H3, ahead of its external-adoption entry condition,
 scoped **internally** — across the fleet's own conforming stores
-(fathom, agentic-kit, app-kit, throughline), not for an external audience.
+(fathom, agentic-kit, app-kit, svc-a), not for an external audience.
 This is a deliberate schedule override, not a claim that the evidence bar
 fired. It is recorded here, not silently, because doctrine law 8 ("kill
 clocks require a consumer population") exists precisely to prevent

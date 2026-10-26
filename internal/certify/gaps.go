@@ -29,9 +29,9 @@ import (
 )
 
 // GapCertificate is one compiled certifications-layer claim served on a
-// GapTarget — the Review Kit adapter's own certificate shape (the fixed
-// field set docs/design/test-certifications.md's consumer, platform-
-// engineering's review-kit, parses).
+// GapTarget — the review kit adapter's own certificate shape (the fixed
+// field set docs/design/test-certifications.md's consumer, the
+// review kit, parses).
 type GapCertificate struct {
 	Test      string
 	Suite     string
@@ -59,7 +59,7 @@ type GapTarget struct {
 	// marker's own position, an invariant row, a port interface's
 	// declaration, or an incident heading — when Gaps could place it
 	// cheaply from data it already read. Zero value (File == "") when no
-	// source names a location for this target's kind (RK-36 anchors: a
+	// source names a location for this target's kind (review kit span anchors: a
 	// caller must never invent one).
 	Source Source
 }
@@ -74,7 +74,7 @@ type Source struct {
 // GapSummary totals GapReport's own targets and the service-wide
 // case-to-symbol join rate (TestSuiteStatuses' own fact, TC-3/TC-4).
 // Declared here means "targets considered" (Live + Gaps), matching the
-// Review Kit adapter's schema — not "targets with at least one
+// The review kit adapter's schema — not "targets with at least one
 // certificate declared" (a target sourced only from the intent corpus,
 // with nothing ever declared for it, still counts, and is a Gap).
 type GapSummary struct {

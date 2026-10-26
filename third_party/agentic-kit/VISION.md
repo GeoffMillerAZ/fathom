@@ -5,6 +5,12 @@ verify, and improve across workloads and providers.** It turns recurring enginee
 lessons into reusable contracts, deterministic controls, composed workflows, and
 regression tests. A lesson learned by one workload should improve the next.
 
+The next horizon is **composable agentic engineering**: versioned knowledge and
+practice catalogs feed evidence-backed decisions; decisions feed authorized,
+bounded actions; observed outcomes feed reviewed improvements. A small application
+can adopt one contract. A larger system can compose investigation, review, human
+interaction and document production without surrendering its domain authority.
+
 This file states what the kit believes, what it protects you from, what it
 refuses to be, and how it stays current. If a change to the kit contradicts this
 file, either the change is wrong or the intent must be amended deliberately with a
@@ -21,6 +27,59 @@ Every addition is judged against that sentence. The product is the working path 
 setup to verified outcome: library compositions, CLI/MCP adapters, native Claude Code
 and Codex integrations, and executable examples. Importable foundations serve that path.
 Success criteria: [workflow assurance](docs/intent/assurance.md).
+
+## Where we are taking it
+
+These are strategic outcomes, not claims of shipped features. The
+[uplift program](docs/designs/agentic-engineering/README.md) owns the designs,
+sequencing, research basis and acceptance criteria. Current goals and admission
+limits remain in [scope](docs/intent/scope.md).
+
+1. **Practices that can be checked.** Catalog beneficial patterns and failure modes
+   together, with applicability, source provenance, detection methods, remedies and
+   counterexamples. Review data quality, agent architecture, security, determinism,
+   kit adoption and agent configuration against scoped profiles. Missing evidence
+   stays visible. Neither an attractive checklist nor a global score proves quality.
+2. **Evidence that stays useful.** Connect sources, facts, conflicting claims,
+   judgments, policies, approvals and outputs through versioned dependencies.
+   Freshness, uncertainty, access and deletion obligations travel with the data.
+   Prefer a smaller authoritative retrieval over repeated processing of raw context.
+3. **Decisions that earn their cost.** Use deterministic computation first, then
+   calibrated small-model judgments and progressively stronger investigation when
+   justified. Catalog deployments, capability requirements, thresholds and escalation
+   reasons. Preserve provider strengths through explicit native capabilities; reject
+   silent downgrade. OpenAI, Anthropic and Google are the portability target, not a
+   statement of current adapter parity.
+4. **One authority path for people and agents.** A proposal carries exact changes,
+   evidence and consequences. Policy selects autonomous execution, human review or
+   refusal. Human workbenches make ambiguity easy to resolve, authorization hard to
+   misunderstand, and stale consent impossible to reuse on a controlled path.
+   Accessible interaction and least disclosure matter as much as the model loop.
+5. **Prose as a governed build.** Facts, annotations, policy, audience and document
+   structure are inputs; generated prose is a versioned projection. Inspect a claim
+   at sentence, paragraph, section or document scope, correct the inputs, rebuild the
+   affected dependency closure and review changes before publication. Explain with
+   evidence and criterion traces, never a claim to expose hidden model reasoning.
+6. **Learning that improves another workload.** Turn sampled failures, human
+   corrections, issue reports and successful practices into sanitized, reviewed
+   candidate lessons and regression cases. Measure accepted outcomes, missed defects,
+   cost and human effort. Promote knowledge through local authority; external issues,
+   popularity and benchmark wins never become automatic policy updates.
+
+Build reusable contracts below composed workflows, and compose those workflows into
+larger capabilities only when their actual seams are proven. Keep adoption useful
+without Fathom, paid decision services, a mandatory UI stack or a central control
+plane. Integrations with Fathom, Catalog Kit, Review Kit and app-kit should remove
+duplicated work while each remains independently useful and independently governed.
+
+**Open-ecosystem interoperability is a cross-cutting outcome.** Work with the open
+agent stack, including AAIF projects, through versioned formats, explicit adapters
+and tested profiles. Carry evidence, uncertainty, budgets and authority across a
+boundary without flattening provider strengths or requiring every upstream system.
+Contribute reproducible, reusable fixes where the owning project can benefit; keep
+domain policy here. [G15 and its alignment design](docs/designs/aaif-alignment.md)
+name the ten-project assessment, adoption choices and proof still required. This
+extends the six outcomes above rather than creating a competing platform program.
 
 ## Core beliefs (the opinions baked in)
 

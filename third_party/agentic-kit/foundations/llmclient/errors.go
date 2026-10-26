@@ -72,7 +72,7 @@ func (e *AuthError) Error() string {
 // late-bound Swappable has not (yet) been wired with a real provider client,
 // typically because credentials arrive at runtime (e.g. a Settings page) and
 // the user has not entered them. WithRetry treats this as NON-retryable —
-// retrying cannot conjure a credential. Callers should surface a "configure
+// retrying cannot produce a credential. Callers should surface a "configure
 // your API key" prompt, never a retry loop.
 type UnavailableError struct {
 	Message string

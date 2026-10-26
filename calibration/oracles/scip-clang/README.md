@@ -134,7 +134,7 @@ device pass is `nvcc -E` at the lowest architecture the entry's target names (so
 not excluded) and the host pass is the `gcc -E` line `nvcc --dryrun` prints for the entry; their active lines and
 includes are unioned (tier A). scip-clang 0.4.0 reads no nvcc entry, so each `.cu` entry is translated to a clang CUDA
 host-only compile over the entry's own `-I`, `-isystem` and `-D` (`cuda-compdb.py`'s flags) at
-`<subject>/build/compile_commands.json`; the index reads it, and `clang-calls` and `clang-ast-defs` over it are run at
+`<work-dir>/compile_commands.json`; the index reads it, and `clang-calls` and `clang-ast-defs` over it are run at
 `-tier B`, so the calls family is judged at tier B (the harness takes a family's tier from the weakest oracle that
 feeds it). `cuda-compdb.py` writes the same translation from a directory walk, for a subject with no CMake build.
 
@@ -150,7 +150,29 @@ the target's CMake architectures that compiles (`-Xclang -target-sdk-version=12.
 reads no toolkit version and wants the pre-9.2 launch API). `preproc.units.json` maps each CMake executable to its
 sources from the build's own link lines (the link-unit companion of preproc.json). The driver writes its measurement
 record and the median-of-runs throughput into `<work-dir>/reading.json` (no hand edit), and passes the clone's commit
-as `-subject-sha` (the scratch copy has no .git).
+as `-subject-sha` (the scratch copy has no .git). Round 5 (C5-R2): both CMake build trees are configured under
+`<work-dir>`, never in the subject copy (a build tree there adds CMake's two CompilerIdCUDA sources to the measured
+set), and the measured set, the subject's `.cu` and `.cuh` files, is listed at `<work-dir>/measured-files.txt`; every
+run's file count and bytes must agree with it, and its count, bytes and the sha256 of the sorted list are a note of
+the reading, so a re-timed clone can be proven to measure the same files.
+
+C-4: the selected clang database and all build output stay under `<work-dir>`; scip-clang, clang-calls and
+clang-ast-defs read `<work-dir>/compile_commands.json`. The subject contains no build directory. Fathom's include-path
+resolver currently discovers only databases within the subject, so a cloud re-measure must check import resolution,
+file-edge counts and the compile-database disclosure after this move. The committed measurements remain the earlier
+run's evidence until that re-measure. The measured `.cu`/`.cuh` inventory should stay identical.
+
+Driver note corrections without an oracle run use this documented notes-only path:
+
+    python3 calibration/oracles/scip-clang/cuda-reading-notes.py --refresh-notes docs/bench/readings/lang/cuda.json
+
+It preserves every field outside `notes`, checks the disclosed throughput runs against the committed median, and
+uses the same note generator as the driver. Equal recorded CPU rates retain run order before selecting zero-based
+position `runs // 2`. For the round-5 record that selects run 3 (0.96 per core, wall 0.97). The pinned subject's
+stand-in note explains why the predicted 38th extern "C" function, in `eigenvalues/util.h`, is outside the dialect.
+Offline regression tests invoke no oracle:
+
+    PYTHONDONTWRITEBYTECODE=1 python3 calibration/oracles/scip-clang/cuda-samples_test.py
 
 Two samples that define the same global name (`iDivUp`, `main`, a kernel) are one SCIP symbol, since scip-clang
 names a global by no file or translation unit, so the index's file-edge truth over the whole set draws an edge to

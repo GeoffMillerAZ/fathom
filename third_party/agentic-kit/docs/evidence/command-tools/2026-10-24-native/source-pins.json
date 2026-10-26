@@ -1,0 +1,32 @@
+{
+  "baseRevision": "1cf9aa52fa1a0239d00ac1b696639ffd4ae89415",
+  "sourceForm": "base Git archive plus exact new command files; no embedded clean-VCS claim",
+  "goVersion": "go1.27.3",
+  "nativeHost": {
+    "goos": "darwin",
+    "goarch": "arm64"
+  },
+  "qualifiedFiles": {
+    "nonblock_unix.go": "e852157b0109e779c33533c4c23145b96cdd916dcbbccaed398b1d117108e845",
+    "cases.go": "12e0d9a5ef9162d72f55f94cf9305cb5c26fd29afc160bebbb5825a709290ac9",
+    "schema.cue": "b1b2675090540d49ad20d5db8e422e927961d2206db622c43484ece4b8bdf86e",
+    "nonblock_windows.go": "c1edb4d9f5163828139787241c24309b78a6fb6b281990cb2b922aa329395547",
+    "main.go": "a23e3f8aba24c642ad3292be00fcaabdd71ac9380935e24397e1366f22f1a753",
+    "main_test.go": "25cbe82f4295365c899292756fbdb67cf2362a165725a7b777c1fad27904f50a"
+  },
+  "binaries": {
+    "command-guard": "54afdaf562bb7e4b75cb462c25ed940d5f7eaa3c51d42b510293924497e435d3",
+    "command-qualify": "24adf8d23bdd02fd94dbee76b13ad5b01b634a4e27661f659094f68a6e0592bd"
+  },
+  "scannerSHA256": "ba52fb1bfabbcde42f032afad3d6e0b19dff8ed105229a16e7caa338bbc0e84f",
+  "cue17SHA256": "a0b0685605dea83443aa2f0e91da25de72ed4e9768c80a821fbe94891c7badfe",
+  "checks": {
+    "tests": 0,
+    "cue16Native": 0,
+    "vet": 0,
+    "core": 0,
+    "scanner": 0,
+    "linuxCrossBuild": 0,
+    "windowsCrossBuild": 0
+  }
+}

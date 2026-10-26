@@ -51,11 +51,11 @@ func TestJoinCasesToSymbols_ExactNameAndSubtest(t *testing.T) {
 }
 
 // TestJoinCasesToSymbols_SubtestNameContainingADot pins the real
-// surveyor id shape a dotted subtest name produces: "<import path>.
+// test kit id shape a dotted subtest name produces: "<import path>.
 // <TestFunc>/<subtest>", where <subtest> itself commonly contains a "."
 // (a version string "v1.2", a table test keyed by a file path
 // "internal/b.go" — both real shapes found in this repository's and
-// conjure's own control envelopes). Cutting the id at its LAST "."
+// an adopter's own control envelopes). Cutting the id at its LAST "."
 // lands inside the subtest name, matching no candidate at all, or —
 // worse — suffix-matching the WRONG package when the subtest ends in
 // "internal/<otherpkg>.go". Cutting by the case's own Name fixes both.
@@ -157,7 +157,7 @@ func TestJoinCasesToSymbols_EmptyCasesOrSymbols(t *testing.T) {
 
 // TestJoinCasesToSymbols_DisambiguatesByPackage pins CV-72 (design §3.5,
 // CV-M13's control measurement: "34 of 566 cases" never joined because a
-// bare name was shared across packages). Case ids use surveyor's real
+// bare name was shared across packages). Case ids use the test kit's real
 // go-test-json shape (control/r1/envelope.json: "<module import
 // path>/<dir>.<TestFunc>") — the fixture reuses that exact id from the
 // calibration data.
@@ -168,17 +168,17 @@ func TestJoinCasesToSymbols_DisambiguatesByPackage(t *testing.T) {
 	}
 
 	cases := []Case{
-		// A real surveyor-shaped id (CV-M13 control/r1/envelope.json's own
+		// A real test-kit-shaped id (CV-M13 control/r1/envelope.json's own
 		// convention): unambiguously names the "canon" package.
-		{ID: "github.com/geoffmilleraz/conjure/internal/canon.TestParse", Name: "TestParse", Status: "pass"},
+		{ID: "github.com/example/svc-a/internal/canon.TestParse", Name: "TestParse", Status: "pass"},
 		// Same bare name, the OTHER package.
-		{ID: "github.com/geoffmilleraz/conjure/internal/widgets.TestParse", Name: "TestParse", Status: "pass"},
+		{ID: "github.com/example/svc-a/internal/widgets.TestParse", Name: "TestParse", Status: "pass"},
 		// A subtest under the widgets package's TestParse still resolves
 		// to the SAME symbol, by its own (parent) id's package.
-		{ID: "github.com/geoffmilleraz/conjure/internal/widgets.TestParse", Name: "TestParse/sub", Status: "pass"},
+		{ID: "github.com/example/svc-a/internal/widgets.TestParse", Name: "TestParse/sub", Status: "pass"},
 		// An id naming a package neither candidate's directory matches —
 		// stays unjoined, never guessed.
-		{ID: "github.com/geoffmilleraz/conjure/internal/other.TestParse", Name: "TestParse", Status: "pass"},
+		{ID: "github.com/example/svc-a/internal/other.TestParse", Name: "TestParse", Status: "pass"},
 		// An id with no "." at all (no package to read) — stays unjoined.
 		{ID: "TestParse", Name: "TestParse", Status: "pass"},
 	}

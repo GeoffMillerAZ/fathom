@@ -69,9 +69,13 @@ INSTALL_DIR="$HOME/.local/libexec/fathom"
 GO_BIN_DIR="$(dirname "$(command -v go || echo /usr/local/bin/go)")"
 TS="$(date +%Y%m%d-%H%M%S)"
 
-SERVICES=(fathom agentic-kit app-kit throughline geoffmiller-cloud resume_as_code growing-gardens-bi car-assistant crossplane-platform)
+# The fleet list: the gitignored workspace/fleet-services (one service per
+# line), where the operator's own repositories are named; without it, fathom.
+# shellcheck source=scripts/lib/fleet-services.sh
+source "$FATHOM_REPO/scripts/lib/fleet-services.sh"
+fathom_fleet_services "$FATHOM_REPO"
 declare -A SERVICE_PATHS=(
-  [crossplane-platform]="$FLEET_BASE/planning/projects/pdk/substrates/timoni/crossplane-platform"
+  [crossplane-platform]="${FATHOM_CROSSPLANE_PLATFORM_DIR:-$FLEET_BASE/crossplane-platform}"
 )
 
 echo "==> [1/8] preflight"

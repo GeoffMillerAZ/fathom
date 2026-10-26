@@ -3,7 +3,7 @@
 **Status:** accepted
 **Type:** architecture
 **Date:** 2026-09-09
-**DIVERGENCE:** consumer `resume_as_code` (racli) ADR-016 §4 against `docs/why-cue.md` §2 and §3.2 and invariant I5. The kit rule stands; the consumer's departure is recorded here, neither absorbed nor papered over.
+**DIVERGENCE:** consumer `consumer-c` ADR-016 §4 against `docs/why-cue.md` §2 and §3.2 and invariant I5. The kit rule stands; the consumer's departure is recorded here, neither absorbed nor papered over.
 
 ## Context
 
@@ -13,8 +13,8 @@ hard-coded Go (§3.3); `schema.cue` is canonical and `types.go` its mirror —
 "one definition, many projections" (§3.2). A projection, which destination
 sees which fields at which depth, is configuration, and configuration is CUE.
 
-racli's ADR-016 "one corpus, many projections"
-(`resume_as_code/.agents/adr/016-one-corpus-many-projections.md`, code
+consumer-c's ADR-016 "one corpus, many projections"
+(`consumer-c/.agents/adr/016-one-corpus-many-projections.md`, code
 `cmd/corpus`) keeps one CUE corpus and makes every destination a projection
 of it — and its §4 puts the projections in Go, not CUE. Its reasons are
 measured, not aesthetic: (1) `TestATSDesignDropsNothing` pins the projection
@@ -75,5 +75,5 @@ consumer's tests. The kit gains no code; `why-cue.md` gains one sentence.
   `cue vet` plus a Go mirror test cannot pin it, this record is reopened.
 - A Go test that asserts over a `cue`-exported fixture lands in the kit —
   the consumer's reason (1) is answered and the divergence may collapse.
-- racli's ADR-016 §3 falsifier fires (a `depth` value naming an audience):
+- consumer-c's ADR-016 §3 falsifier fires (a `depth` value naming an audience):
   the consumer re-cuts its model and this record's description is stale.

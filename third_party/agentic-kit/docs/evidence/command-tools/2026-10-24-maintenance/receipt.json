@@ -1,0 +1,95 @@
+{
+  "version": "harness-maintenance-observation/1",
+  "sourceCommit": "a95225f9481013aeffd885ac9c4985a63237d6d4",
+  "profile": "selected-synthetic-receiver-and-sdk-syntax/1",
+  "host": "darwin/arm64",
+  "go": "1.26.3",
+  "cue": [
+    "0.16.1",
+    "0.17.1"
+  ],
+  "swift": "Apple Swift 6.1",
+  "receiverBinarySHA256": "46f2cf3479a33e085d1444b01cdd08972750c401ef108abe5710b5c83f443479",
+  "nativeSourceSHA256": "1bf207ebe6d27996c86f2a549a3a847eb50c08dc747b6fc34464be1c673e267a",
+  "nativeBinarySHA256": "fdeaa95f1f325e1cd22d4de299f2c99564274c72f97aee16c7238ebbcaeddbe2",
+  "selectedSourceManifestFiles": 22,
+  "receiverCases": {
+    "required": 20,
+    "passed": 20
+  },
+  "actualCUEChecks": {
+    "required": 60,
+    "passed": 60
+  },
+  "sdkSyntaxCases": {
+    "required": 16,
+    "passed": 16
+  },
+  "nativeStamps": {
+    "attempted": 40,
+    "invoked": 40,
+    "completed": 40
+  },
+  "stateTransitions": {
+    "attempted": 15,
+    "committed": 14
+  },
+  "nativeApprovals": {
+    "attempted": 0,
+    "invoked": 0,
+    "completed": 0,
+    "verified": 0
+  },
+  "armedCheckTiming": {
+    "n": 9,
+    "p50Millis": 163.296,
+    "p95Millis": 241.406,
+    "maxMillis": 241.406,
+    "nativeStampProcessesPerCall": 2
+  },
+  "ordinaryConfigRegression": {
+    "formsByteEqual": 4,
+    "alternatingPairs": 9,
+    "medianRatio": 1.05316147369169,
+    "limitRatio": 1.25,
+    "pass": true
+  },
+  "fullGate": {
+    "ordinaryExit": 0,
+    "combinedFeatureExit": 0
+  },
+  "isolatedStrictPlan": {
+    "claimed": 9,
+    "verified": 9,
+    "failing": 0
+  },
+  "qualification": {
+    "nativeEnrollment": "unqualified",
+    "nativeAuthentication": "unqualified",
+    "visualAccessibility": "unqualified",
+    "installedDispatch": "unobserved",
+    "physicalPowerLossDurability": "unqualified",
+    "hostedExecution": "startup-refused-before-steps"
+  },
+  "hostedRuns": [
+    {
+      "name": "Harness maintenance observations",
+      "id": 40149714071,
+      "status": "startup-refused",
+      "executedSteps": 0
+    },
+    {
+      "name": "CI",
+      "id": 40149714136,
+      "status": "startup-refused",
+      "executedSteps": 0
+    },
+    {
+      "name": "Command native observations",
+      "id": 40149714057,
+      "status": "startup-refused",
+      "jobs": 6,
+      "executedSteps": 0
+    }
+  ]
+}

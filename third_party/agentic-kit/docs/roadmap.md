@@ -1,9 +1,11 @@
 # Roadmap — composed workflows and capability backlog
 
-The next product investment is verified workflow composition: governed setup for
-Claude Code and Codex, precisely sourced prose, durable human approval, and shared
-lessons. [Current goals](intent/scope.md) own admission and completion criteria;
-[the workflow design](designs/governed-workflows.md) owns the delivery sequence.
+The next product investment is the [agentic engineering uplift](designs/agentic-engineering/README.md):
+practice/data assurance catalogs, portable decisions and economical investigation,
+human/prose workbenches and reviewed learning. [Current goals](intent/scope.md) own
+admission and completion criteria; the [work order](plans/agentic-engineering-uplift.md)
+owns the queued implementation sequence. Existing [workflow delivery](designs/governed-workflows.md)
+remains historical implementation evidence, not a second open portfolio.
 The numbered entries below retain the capability backlog and graduation history.
 
 **How to use this doc when starting a new workload:** scan the entries. If
@@ -62,8 +64,10 @@ and trust boundaries. A shared central memory service is outside this direction 
 a shared memory service. Candidate lessons cannot change another workload's authority.
 **Exists today:** knowledge-card-generation, investigation-journal sinks,
 ai-provenance, improvement-flywheel as the loop shape.
-**Status:** admitted as scope G7; queued after an incubation slot opens. Acceptance
-requires a demonstrated transfer to a second consumer, not merely a generated card.
+**Status:** the bounded G7 lesson-transfer protocol shipped with retrospective
+synthetic two-repository evidence. Prospective benefit is unmeasured. G14 now owns
+read-only intake and measured follow-through; new implementation admission follows
+0025/0004, not this historical backlog entry.
 
 ## Evaluation & regression
 
@@ -201,7 +205,7 @@ redaction-executor); exported APIs of those four packages are unchanged.
 + post-LLM (integrity→honesty→DLP→disclaimer) chains with one `Decision`
 envelope `{Allowed, Stages[], Transformed}`, fail-closed on stage error, CUE
 chain config, and a sink seam; `llmegress` is documented as the transport
-backstop. Subscribers: throughline chat + governed-prose-kit (adoption sketches
+backstop. Subscribers: consumer-a chat + governed-prose-kit (adoption sketches
 in package doc). See TRACKING.md §1.4 and §2.
 
 ## Observability
@@ -226,7 +230,7 @@ checks, delete semantics) with an exported conformance suite (like llm-test)
 so persistent backends — sqlite-vec, HNSW, pgvector — are drop-in consumer
 adapters that provably match MemoryVectorStore semantics. The backends
 themselves stay consumer-side (dependency-heavy; kit stays stdlib-only).
-**Subscribe when:** the first persistent semantic index (throughline's
+**Subscribe when:** the first persistent semantic index (consumer-a's
 semantic search is the likely subscriber).
 
 ### 23. evidence-graph migration to canonical Span
@@ -256,7 +260,7 @@ modes re-derived from first principles. See TRACKING.md §1.17.
 **✅ Graduated — Wave 3 (v0.5.0).** Landed as `foundations/evidence/case-file`
 (package `casefile`): pure deterministic projection over assertions by type
 (stance buckets), tier-rank weighted support/against scores with documented
-math, net classification bands; byte-identical golden-tested. Throughline UI
+math, net classification bands; byte-identical golden-tested. Consumer-a UI
 is the named subscriber. See TRACKING.md §1.5.
 
 ## Parked from Update-2 / H5 (subscribe-when, verbatim from uplift plan §7)

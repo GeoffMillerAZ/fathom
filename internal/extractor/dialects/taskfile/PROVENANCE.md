@@ -12,7 +12,7 @@ the decoded top-level mapping has version `3` (including a quoted key or spaced 
 mapping under `tasks` or `includes`, after earlier YAML dialects decline it. A bare version, a
 comment, a scalar lookalike, duplicate root keys, multiple YAML documents, invalid YAML,
 and other versions remain unclassified. This also reaches an included file such as
-`taskfiles/envkit.gen.yml`. The content claim does not prove that a parent includes the file;
+`taskfiles/envgen.gen.yml`. The content claim does not prove that a parent includes the file;
 standalone files with that Taskfile shape are read too. The old reading in
 `docs/bench/readings/lang/taskfile.json` measured only the eight basenames; the new content
 path has no revised corpus-level grade yet.
