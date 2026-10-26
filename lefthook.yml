@@ -135,8 +135,20 @@ pre-push:
         mkdir -p workspace/tmp
         verify_err=$(mktemp workspace/tmp/gate-verify-stderr.XXXXXX) || verify_err=/dev/null
         trap '[ "$verify_err" = /dev/null ] || rm -f "$verify_err"' EXIT
-        if [ ! -x bin/fathom ]; then
-          echo "fathom verify: bin/fathom missing -- building it"
+        # RT-161 (#71): a bin/fathom stamped with another commit is rebuilt, never
+        # trusted: a cloud VM keeps its snapshot's binary for days, and the
+        # post-commit rebuild skips a commit whose own diff has no Go file (a merge
+        # brings Go changes in without one). The stamp is `fathom version`'s
+        # "@ <12-hex revision>"; a binary without one runs as before.
+        stale_rev=""
+        if [ -x bin/fathom ]; then
+          stale_rev=$(bin/fathom version 2>/dev/null | sed -n 's/.* @ \([0-9a-f]\{12\}\).*/\1/p')
+          case "$(git rev-parse HEAD 2>/dev/null)" in "$stale_rev"*) stale_rev="" ;; esac
+        fi
+        if [ ! -x bin/fathom ] || [ -n "$stale_rev" ]; then
+          what="missing -- building it"
+          [ -z "$stale_rev" ] || what="was built from $stale_rev, not HEAD -- rebuilding it"
+          echo "fathom verify: bin/fathom $what"
           if ! (
             if [ "$(uname -s)" != Darwin ]; then export CGO_ENABLED=0; fi
             GOWORK=off bash scripts/gate-lease.sh bash scripts/fathom-go.sh build -o bin/fathom ./cmd/fathom
@@ -292,12 +304,20 @@ pre-push:
         mkdir -p workspace/tmp
         err_log=$(mktemp workspace/tmp/review-stderr.XXXXXX) || err_log=/dev/null
         trap '[ "$err_log" = /dev/null ] || rm -f "$err_log"' EXIT
-        if [ ! -x bin/fathom ]; then
+        # A bin/fathom stamped with another commit is rebuilt, as in verify (RT-161).
+        stale_rev=""
+        if [ -x bin/fathom ]; then
+          stale_rev=$(bin/fathom version 2>/dev/null | sed -n 's/.* @ \([0-9a-f]\{12\}\).*/\1/p')
+          case "$(git rev-parse HEAD 2>/dev/null)" in "$stale_rev"*) stale_rev="" ;; esac
+        fi
+        if [ ! -x bin/fathom ] || [ -n "$stale_rev" ]; then
           if [ -f scripts/prepush-refs.sh ] && bash scripts/prepush-refs.sh skipped; then
             echo "fathom review: skipped: no commit is new to the remote"
             exit 0
           fi
-          echo "fathom review: bin/fathom missing -- building it"
+          what="missing -- building it"
+          [ -z "$stale_rev" ] || what="was built from $stale_rev, not HEAD -- rebuilding it"
+          echo "fathom review: bin/fathom $what"
           if ! (
             if [ "$(uname -s)" != Darwin ]; then export CGO_ENABLED=0; fi
             GOWORK=off bash scripts/gate-lease.sh bash scripts/fathom-go.sh build -o bin/fathom ./cmd/fathom
@@ -343,12 +363,20 @@ pre-push:
         mkdir -p workspace/tmp
         err_log=$(mktemp workspace/tmp/conserve-stderr.XXXXXX) || err_log=/dev/null
         trap '[ "$err_log" = /dev/null ] || rm -f "$err_log"' EXIT
-        if [ ! -x bin/fathom ]; then
+        # A bin/fathom stamped with another commit is rebuilt, as in verify (RT-161).
+        stale_rev=""
+        if [ -x bin/fathom ]; then
+          stale_rev=$(bin/fathom version 2>/dev/null | sed -n 's/.* @ \([0-9a-f]\{12\}\).*/\1/p')
+          case "$(git rev-parse HEAD 2>/dev/null)" in "$stale_rev"*) stale_rev="" ;; esac
+        fi
+        if [ ! -x bin/fathom ] || [ -n "$stale_rev" ]; then
           if [ -f scripts/prepush-refs.sh ] && bash scripts/prepush-refs.sh skipped; then
             echo "fathom conserve: skipped: no commit is new to the remote"
             exit 0
           fi
-          echo "fathom conserve: bin/fathom missing -- building it"
+          what="missing -- building it"
+          [ -z "$stale_rev" ] || what="was built from $stale_rev, not HEAD -- rebuilding it"
+          echo "fathom conserve: bin/fathom $what"
           if ! (
             if [ "$(uname -s)" != Darwin ]; then export CGO_ENABLED=0; fi
             GOWORK=off bash scripts/gate-lease.sh bash scripts/fathom-go.sh build -o bin/fathom ./cmd/fathom
