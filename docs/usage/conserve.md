@@ -104,6 +104,57 @@ review with its cite and exits 0. An input the check could not read exits
 2, like any other operational failure; the pre-push step fails open on it.
 It combines with `--strict` (either can exit 1).
 
+#### Kubernetes concern deltas
+
+```sh
+fathom conserve --since BASE --service SERVICE --concern-deltas workspace/artifacts/concern-deltas.json
+```
+
+`--concern-deltas FILE` writes `fathom.concern-deltas/v1` JSON for the Kubernetes
+manifests touched by the range. Create the destination directory first. Head
+`K8sFact` values come from the service's store. Base values are re-extracted from
+`git show BASE:<path>` with the same Kubernetes extractor, inside the CLI process,
+without writing to the store. A missing service index is an operational error
+(exit 2), as is an unwritable destination.
+
+The file's fields are `schema`, `service`, `base` (resolved commit), `head` (HEAD
+commit), `basis`, `deltas`, and `skipped`. Each delta carries:
+
+- `workload`: Kubernetes `<kind>/<name>`, plus separate `namespace` and `container`.
+- `key`: the extractor's fact key, including its container prefix when applicable.
+- `fact_kind`: `K8sFact`, and `fact_version`: `v1` (the fact key/value contract,
+  independent of Kubernetes `apiVersion`).
+- `change`: `added`, `removed`, or `changed`, with `before` and `after` values.
+- `base_anchor` and `head_anchor`: relative `file:line` locations at each side.
+- `basis` and `head_commit`.
+
+A missing side is `null`, with an empty anchor. Unchanged facts emit no delta.
+Renaming a container removes its old fact keys and adds its new ones, and changes
+the container-list fact. Only facts the extractor supports are compared. Env
+values, arg values and probe exec commands are withheld by the extractor and
+never reconstructed for this file. An env removal that emits no `K8sFact` emits
+no delta.
+
+`basis` carries `state`, `index_commit` and `head_commit`. Its state is `exact`
+when the index commit equals HEAD and no read file is dirty, `differs` when the
+commits differ (both are named), or `uncommitted` when a read file is dirty,
+including staged changes. Dirty input takes precedence over commit skew. Values
+still come from the store in the latter two states. Consumers needing exact
+commit evidence should use only `exact`.
+
+Undecodable YAML, including unrendered Helm templates, emits no deltas for that
+file. `skipped` names each affected `path`, `commit` and `reason`. This includes
+both commits if both fail decoding. Partially undecodable multi-document files
+are skipped as a whole. Both lists are sorted. Deltas sort by workload, namespace,
+key, base anchor, head anchor and change. Skips sort by path and commit. Repeated
+runs over the same inputs produce identical bytes.
+
+These deltas are information, with no direction rule or verdict. They appear in
+`Report.ConcernDeltas` (`concern_deltas` under `--json`), beside `residue`, and never
+affect `--strict`. They are not a registered plane and do not run in the daemon's
+`review_diff` path. Replicas going from 3 to 1 is a reported change for the consumer
+to judge.
+
 #### The reading set (design §3.4, ADR-044 amended 2026-09-25, Q22)
 
 `fathom conserve` prints a `reading set` section AFTER every plane's own

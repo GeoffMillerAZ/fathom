@@ -193,6 +193,8 @@ type Report struct {
 	// Report.Residue itself. Never a plane: it carries no Verdict of its
 	// own and is never consulted by planeVerdict or --strict's exit.
 	Residue *ResidueReport `json:"residue,omitempty"`
+	// ConcernDeltas is populated only by the CLI flag, never by Run or a plane.
+	ConcernDeltas *ConcernDeltaReport `json:"concern_deltas,omitempty"`
 }
 
 // Plane is one family of conservation checks (ADR-044 §0: integrity,

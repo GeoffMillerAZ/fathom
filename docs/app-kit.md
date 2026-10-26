@@ -1243,3 +1243,17 @@ No candidate: receipt identity, two-key consent, pushed-ref checks and record-id
 policy belong to this app. Reviewed `cli.output` and the contribution-loop contract;
 these verbs retain plain scalar output and the existing doctor row renderer. No kit
 renderer, runtime, dependency or selected capability changed.
+
+## PLT-5 concern-delta file
+
+Contribution disposition: **no-candidate**. Discovery used `output`, profile `cli`,
+selecting `cli.output` at catalog revision
+`3ee2c1f02a6199c2e59361171c7f1fdb957a7a70f64e875a73969608314d7318`.
+Quality-work revision `7c2842f733cc32984cce29ceb707aa0c82b72e87b073bc0125e318a60cd0cc7b`
+has no authored item for this capability. The contribution-loop contract was
+reviewed. The flag writes an app-owned versioned JSON document, with the existing
+0/1/2 exit convention and plain diagnostics. Kubernetes comparison, basis and
+schema semantics stay local. No terminal renderer, runtime, dependency or kit pin
+changes. `TestCmdConserveConcernDeltas` covers the file, strict exit, decoding
+skips, basis and write failures. This is fixture proof, with no second-consumer
+propagation claimed.
