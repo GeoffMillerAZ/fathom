@@ -350,7 +350,7 @@ type oracleOpts struct {
 	noOracles     bool     // return the extraction identity before reading or discovering any oracle
 	ctags         string   // universal-ctags binary ("" = workspace/tools/ctags, then PATH)
 	scip          string   // SCIP index
-	scipTier      string   // the index's tier (-scip-tier; "" is A)
+	scipTier      string   // the index's tier (-scip-tier; "" is A, refused for a scip-clang index)
 	scipDefs      bool     // the SCIP index's definitions are the L1 oracle (D2)
 	// callsFromTool: the -tool-oracle files' calls grade L2 beside -scip
 	// (LB-F204, O264); the index's call truth, its call counts and its call
@@ -933,6 +933,12 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 		if docs, tool, err := langbench.SCIPDocuments(raw); err != nil {
 			return res, err
 		} else if tool == scipClangTool {
+			if opts.scipTier == "" {
+				// round 4 C4-R2, round 5 C5-R4: a scip-clang index read a compile
+				// database the driver chose, so it names its tier, here as at
+				// lang-oracle's flags (lang-parity reads it through here)
+				return res, fmt.Errorf("%s: %s is a scip-clang index: -scip-tier is required (A for the build's own compile database, B for a translation)", name, opts.scip)
+			}
 			clangIndex = true
 			scoped = nil
 			for _, n := range nodes {
@@ -1012,6 +1018,8 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			if scipOpts.ClangCUDA {
 				callsTier = scipOpts.ClangLinkage.RangesTier(callsTier)
 			}
+			// round 5 C5-R4: each companion is an oracle of the reading's own
+			res.oracles = append(res.oracles, scipOpts.ClangLinkage.Oracles()...)
 			// LB-F116: the build's own compiler's call sites, when an oracle
 			// file carries them, settle what the index cannot.
 			if scipOpts.ClangSites, err = clangSitesOf(opts.tools); err != nil {
@@ -1200,12 +1208,8 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 		if spec.Manifest.LangTag == "css" && cd != nil {
 			res.notes = append(res.notes, cssNameScopeNotes(name, run.Tool, sub.Counts)...) // design 1.8 W2 (LB-F460)
 		}
-		if imps != nil {
-			if err := scoreImportsOracle(toolOracle, imps, &sub); err != nil {
-				return res, err
-			}
-		}
 		// LB-F57: no SCIP index, so a dump's imports are the file-edge truth.
+		// Validate it before import resolution so the refusal identifies that feed.
 		if lang, ok := fileResolveLang[spec.Manifest.HostID()]; ok && opts.scip == "" && spec.Manifest.Kind != "tooling" {
 			notes, diff, err := scoreImportFileEdges(ctx, toolOracle, lang, root, name, srcFiles, nodes, &sub, inScope)
 			if err != nil {
@@ -1214,6 +1218,11 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			res.notes = append(res.notes, notes...)
 			if diff != nil {
 				fileEdges = diff
+			}
+		}
+		if imps != nil {
+			if err := scoreImportsOracle(toolOracle, imps, &sub); err != nil {
+				return res, err
 			}
 		}
 		// ── LB-F30: cross-file references (langoracle_xref.go) ──
