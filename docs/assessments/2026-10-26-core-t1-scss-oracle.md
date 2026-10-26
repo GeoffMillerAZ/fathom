@@ -158,3 +158,33 @@ The new [Bourbon preregistration](../bench/scss-resolver-primary051-holdout.yaml
 is outside the canonical corpus; only its tag and license metadata have been
 read. Freeze this complete candidate and its toolchain before fetching the
 source, then run once without tuning. No fresh-validation success is claimed.
+
+## Bourbon first read and canonical adoption
+
+The preregistered Bourbon v7.3.0 commit `c3551e46f4` was first read after
+freeze commit `5599fcb40e`. Both full Git identities remain in the receipt
+and frozen preregistration. The complete 86-file
+tracked SCSS inventory was unchanged before and after the read. The
+[independent reading](../bench/readings/lang/holdout/scss-bourbon-native.json)
+meets L1, L2 and L3 at excellent. All 318 symbols and 54 call pairs agree;
+all 45 in-repository import and file pairs agree. Primary parser rejections,
+Fathom ERROR-or-MISSING files and faulting files are each 0/86. Median of
+three throughput runs is 2.29 MB/CPU-s (2.24, 2.29, 2.35); maximum per-file
+extraction is 1 ms. All preregistered gates pass. The native inventory retains
+40 unresolved dependencies; these do not erase the 45 resolved in-repository
+pairs or imply resolution of unavailable targets. No source, tool, adapter,
+filter, load path or rule was tuned after first read. Bourbon is now spent.
+The [public counts/hash receipt](data/2026-10-26-core-t1-scss-bourbon-native.json)
+records freeze and source identities, before/after inventories, tool pins,
+phase loads, gate results and the reading digest without source file lists.
+
+The frozen 0.5.1 candidate is now the [canonical SCSS reading](../bench/readings/lang/scss.json),
+byte-identical to the separate candidate above. Its pooled counts and numeric
+metrics equal the former canonical reading, and it remains L1-L3 excellent at
+2.31 MB/CPU-s median with zero faults. Bootstrap's three and Primer's five
+primary parser rejections, the one retained Bootstrap primary attestation, and
+one plus sixteen native unresolved URLs remain disclosed. Foundation and
+Spectre are historical spent attempts; the preceding statements that Bourbon
+was unread and fresh validation was pending describe the state before this
+independent read. Controller verification of the adopted reading and plan
+remains pending; the SCSS follow-up box stays open.

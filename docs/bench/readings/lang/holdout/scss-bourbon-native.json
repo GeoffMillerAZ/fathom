@@ -1,0 +1,166 @@
+{
+  "dialect": "scss",
+  "kind": "language",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "excellent",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-10-26",
+  "fathom_commit": "7775a770864950c2456822d675de2ba37fd404e1",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "thoughtbot/bourbon",
+      "sha": "c3551e46f41738681216a7f957bc88bc79155b16",
+      "files": 86,
+      "bytes": 62683,
+      "counts": {
+        "call_fathom": 54,
+        "call_fathom_in_truth": 54,
+        "call_pairs_excluded_fathom": 73,
+        "call_truth": 54,
+        "call_truth_found": 54,
+        "callables": 44,
+        "callables_signed": 44,
+        "fathom_defs": 318,
+        "file_edges_agree": 45,
+        "file_edges_fathom": 45,
+        "file_edges_truth": 45,
+        "import_edges_agree": 45,
+        "import_edges_fathom": 45,
+        "import_edges_truth": 45,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "imports": 85,
+        "imports_in_repo": 45,
+        "imports_resolved_agree": 45,
+        "kind_equal": 318,
+        "matched": 318,
+        "oracle_defs": 318,
+        "range_eligible": 318,
+        "range_ok": 318
+      },
+      "families": {
+        "calls": "A",
+        "file_edges": "A",
+        "imports": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "function",
+        "rule",
+        "selector",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "fathom:SCSSModule": 86
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 26.313000000000006,
+        "extract_cpu_ms": 27.39199999999999,
+        "max_file_ms": 1,
+        "peak_module_pages": 309,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "dart-sass+native-resolver",
+      "version": "sass 1.105.1, sass-parser 0.5.1; sass_api 18.1.0 (sass 1.106.1) import resolver"
+    }
+  ],
+  "metrics": {
+    "call_precision": 1,
+    "call_recall": 1,
+    "def_mapping": null,
+    "file_edge_precision": 1,
+    "file_edge_recall": 1,
+    "import_resolution": 1,
+    "kind_agreement": 1,
+    "range_agreement": 1,
+    "signature_coverage": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "A",
+    "call_recall": "A",
+    "file_edge_precision": "A",
+    "file_edge_recall": "A",
+    "import_resolution": "A",
+    "kind_agreement": "A",
+    "range_agreement": "A",
+    "signature_coverage": "A",
+    "sym_precision": "A",
+    "sym_recall": "A"
+  },
+  "required_kinds": [
+    "function",
+    "selector",
+    "variable"
+  ],
+  "kind_intersection": [
+    "function",
+    "rule",
+    "selector",
+    "variable"
+  ],
+  "counts": {
+    "call_fathom": 54,
+    "call_fathom_in_truth": 54,
+    "call_pairs_excluded_fathom": 73,
+    "call_truth": 54,
+    "call_truth_found": 54,
+    "callables": 44,
+    "callables_signed": 44,
+    "fathom_defs": 318,
+    "file_edges_agree": 45,
+    "file_edges_fathom": 45,
+    "file_edges_truth": 45,
+    "import_edges_agree": 45,
+    "import_edges_fathom": 45,
+    "import_edges_truth": 45,
+    "import_oracle_out_of_scope": 0,
+    "import_oracle_unpaired": 0,
+    "imports": 85,
+    "imports_in_repo": 45,
+    "imports_resolved_agree": 45,
+    "kind_equal": 318,
+    "matched": 318,
+    "oracle_defs": 318,
+    "range_eligible": 318,
+    "range_ok": 318
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 0,
+    "throughput_mb_s": 2.29,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 2.38,
+    "max_file_ms": 1,
+    "peak_module_pages": 309,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:SCSSModule": 86
+  },
+  "notes": [
+    "file_edge_precision and file_edge_recall measured against an import dump's (file, imported file) pairs, there being no SCIP index: the truth is what each file's import statements name, not the files its references reach as a SCIP index's cross-file edges are, so a file reached without an import of its own (a file another one required, an autoloaded constant) is outside the truth and a resolved edge to it counts against precision, while a file imported and never referenced is in it (LB-F57)",
+    "import_resolution: 45 of 45 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 1 (45 of 45) and recall 1 (45 of 45); 0 of 85 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "thoughtbot/bourbon: W5 (design 1.8): L2 is name references over the @use/@forward/@import closure, walked from sass-parser's tree (tier A for the tree, the binding the harness's own walk): 700 references read, 186 resolve to a definition in the referring file's closure, 0 name a sass: built-in module member, 0 name a package outside the subject, 199 read a parameter (no definition), 315 name nothing the closure defines; every name no read of a file resolves leaves both sides, counted",
+    "throughput (design 1.9 T1, T2): darwin/arm64 Apple M2; run 1: 2.24 MB/CPU-s; run 2: 2.29 MB/CPU-s; run 3: 2.35 MB/CPU-s; median run 2: 2.29 MB/CPU-s; every other field is the original measurement at its recorded fathom_commit 7775a770864950c2456822d675de2ba37fd404e1"
+  ],
+  "disposition": null
+}

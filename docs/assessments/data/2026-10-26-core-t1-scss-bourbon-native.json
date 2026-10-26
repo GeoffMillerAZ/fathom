@@ -1,0 +1,249 @@
+{
+  "date": "2026-10-26",
+  "digest_representation": "Native package_manifest_sha256 and all receipt SHA-256 values use the sha256: prefix; this is representation normalization of the same 64 hex digits, not a new hash.",
+  "format": "scss-bourbon-native-counts-hashes-only",
+  "gates": {
+    "fathom_error_or_missing": {
+      "denominator": 86,
+      "numerator": 0,
+      "pass": true,
+      "ratio": 0.0
+    },
+    "faulting_files": {
+      "denominator": 86,
+      "numerator": 0,
+      "pass": true,
+      "ratio": 0.0
+    },
+    "grades": {
+      "grade": {
+        "L1": "excellent",
+        "L2": "excellent",
+        "L3": "excellent",
+        "L4": "not-attempted"
+      },
+      "level_met": "L3",
+      "pass": true
+    },
+    "max_file_ms": {
+      "pass": true,
+      "value": 1
+    },
+    "median_mb_per_cpu_s": {
+      "median": 2.29,
+      "pass": true,
+      "runs": [
+        2.24,
+        2.29,
+        2.35
+      ]
+    },
+    "primary_parser_rejections": {
+      "denominator": 86,
+      "numerator": 0,
+      "pass": true,
+      "ratio": 0.0
+    }
+  },
+  "phases": [
+    {
+      "exit": 0,
+      "launch_load_1m": 8.591,
+      "phase": "clone",
+      "timeout_seconds": 600,
+      "wall_seconds": 0.921
+    },
+    {
+      "exit": 0,
+      "launch_load_1m": 8.591,
+      "phase": "checkout",
+      "timeout_seconds": 120,
+      "wall_seconds": 0.046
+    },
+    {
+      "exit": 0,
+      "launch_load_1m": 8.591,
+      "phase": "primary",
+      "timeout_seconds": 900,
+      "wall_seconds": 0.537
+    },
+    {
+      "exit": 0,
+      "launch_load_1m": 8.591,
+      "phase": "native",
+      "timeout_seconds": 660,
+      "wall_seconds": 4.829
+    },
+    {
+      "exit": 0,
+      "launch_load_1m": 8.384,
+      "phase": "grade",
+      "timeout_seconds": 900,
+      "wall_seconds": 0.582
+    },
+    {
+      "exit": 0,
+      "launch_load_1m": 8.384,
+      "phase": "retime",
+      "timeout_seconds": 900,
+      "wall_seconds": 0.934
+    }
+  ],
+  "prior_canonical": {
+    "frozen_candidate_sha256": "sha256:29cfa5cf22fdb986da71fdfce1c30c72bd0246c08422b844cefc7444f8a6532c",
+    "historical_prior_canonical_sha256": "sha256:6ee270ce825bc573735d5ac68c330beee6ad04cbc3e64e3dd6646d66658a02bd"
+  },
+  "provenance": {
+    "adapter_sha256": "sha256:196e71a86d584e80de09a60c7ea5690aebfd6988ccd5738b06f80edd48c59d73",
+    "composite_sha256": "sha256:ab8231091c27c61055b801c920386c435932869bff1103cc99b3f853afc5e5a2",
+    "dart_binary_sha256": "sha256:5f36d10cbdb3206fd6951e3090975d23b2f9659c41c2d17a7c8e183888f3f08d",
+    "load_path_source_count": 0,
+    "load_path_source_sha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "metadata_sha256": "sha256:9a83022b8b82a3890fa0dff9c8bf1d90eab257fcb616adb956a8440f0ebcfcbf",
+    "native_counts": {
+      "ambiguous_native_dependencies": 0,
+      "declared_dependencies": 85,
+      "failure_records": 0,
+      "inherited_primary_attestations": 45,
+      "missing_native_statement_count": 0,
+      "parse_failures": 0,
+      "primary_unresolved_coverage_count": 40,
+      "resolved_dependencies": 45,
+      "skipped": {
+        "builtin": 0,
+        "css": 0,
+        "external": 0,
+        "out_of_scope": 0
+      },
+      "source_files": 86,
+      "unmapped_native_by_kind": {},
+      "unmapped_native_dependencies": 0,
+      "unpositioned_native_by_kind": {},
+      "unpositioned_native_count": 0,
+      "unpositioned_native_resolved_count": 0,
+      "unpositioned_native_unresolved_count": 0,
+      "unresolved_dependencies": 40,
+      "unresolved_native_dependencies": 40
+    },
+    "native_version": "sass_api 18.1.0 (sass 1.106.1)",
+    "package_config_sha256": "sha256:ee489675b234cec7b1c1d48bda17a1e37084bec35b02dfb3d1a19db97379ca52",
+    "package_manifest_sha256": {
+      "sass": "sha256:6c91f2367dfff6fa05f311b13e0ad530bed7ab91e2444a8aa6875fa19d2d2efc",
+      "sass_api": "sha256:03788f8a0f309c866218104ee83d22b3cf17b0c28ecc90f1f483ae7431efcdff"
+    },
+    "primary_counts": {
+      "imports": 85,
+      "resolved_to_path": 45
+    },
+    "primary_sha256": "sha256:52cf7094418bb2b9b6eaaa85501ad50f757a170d1e1daba6ba6e6682ec76a07c",
+    "primary_version": "sass 1.105.1, sass-parser 0.5.1",
+    "tool_pins_sha256": {
+      "candidate-canonical.json": "sha256:29cfa5cf22fdb986da71fdfce1c30c72bd0246c08422b844cefc7444f8a6532c",
+      "collect.py": "sha256:66f03ca72dcb8ca1d4614f4bc1c06f7cd7c1ff9f82e91ea520e306a3c7caa7a7",
+      "dart": "sha256:5f36d10cbdb3206fd6951e3090975d23b2f9659c41c2d17a7c8e183888f3f08d",
+      "indexbench-scss-native-wave-b": "sha256:0b822f93cb1676e2b4afdab8cb4d04273b58e679fcaa1b71e166bc8b5bb8f3a8",
+      "package-lock.json": "sha256:eda8c83ec143a8be0583c60f79657cd435bab2eb7d978cbbccdedb72e5ba9cb9",
+      "package.json": "sha256:c7404b8a34b0c01d8a802a9d1c1e1c7ed0f160596cf6bd75535d2750593e30ad",
+      "package_config.json": "sha256:ee489675b234cec7b1c1d48bda17a1e37084bec35b02dfb3d1a19db97379ca52",
+      "pubspec.lock": "sha256:f0b8a8e6ff1c1584ab1d96f954a9f7044e6f83f3bff7496b848004c56112ee59",
+      "resolver.dart": "sha256:196e71a86d584e80de09a60c7ea5690aebfd6988ccd5738b06f80edd48c59d73",
+      "sass_oracle.cjs": "sha256:4b751d59b41942e885c898983f34fa1a520a4eb87b6c5e158be55b75b6e9599e",
+      "scss-resolver-primary051-holdout.yaml": "sha256:a5b36793a7ffa5f00a08e8a4b6405ca64f2f42595a71769cd00014c0f6ba4f59",
+      "w5_refs.cjs": "sha256:28946055221aa22790b4a865ef72f475e9bd52cb5d2930673f80bf4c33dd401d"
+    }
+  },
+  "reading": {
+    "counts": {
+      "call_fathom": 54,
+      "call_fathom_in_truth": 54,
+      "call_pairs_excluded_fathom": 73,
+      "call_truth": 54,
+      "call_truth_found": 54,
+      "callables": 44,
+      "callables_signed": 44,
+      "fathom_defs": 318,
+      "file_edges_agree": 45,
+      "file_edges_fathom": 45,
+      "file_edges_truth": 45,
+      "import_edges_agree": 45,
+      "import_edges_fathom": 45,
+      "import_edges_truth": 45,
+      "import_oracle_out_of_scope": 0,
+      "import_oracle_unpaired": 0,
+      "imports": 85,
+      "imports_in_repo": 45,
+      "imports_resolved_agree": 45,
+      "kind_equal": 318,
+      "matched": 318,
+      "oracle_defs": 318,
+      "range_eligible": 318,
+      "range_ok": 318
+    },
+    "grade": {
+      "L1": "excellent",
+      "L2": "excellent",
+      "L3": "excellent",
+      "L4": "not-attempted"
+    },
+    "level_met": "L3",
+    "metrics": {
+      "call_precision": 1,
+      "call_recall": 1,
+      "def_mapping": null,
+      "file_edge_precision": 1,
+      "file_edge_recall": 1,
+      "import_resolution": 1,
+      "kind_agreement": 1,
+      "range_agreement": 1,
+      "signature_coverage": 1,
+      "sym_precision": 1,
+      "sym_recall": 1,
+      "typed_recall": null
+    },
+    "sha256": "sha256:30899a338ddffe9467c5efe7bdc3d1f625b2725d1c74a3193ffe62f67a8d30ea",
+    "tenancy": {
+      "compiled_bytes": 0,
+      "faults": 0,
+      "files_with_error": 0,
+      "max_file_ms": 1,
+      "throughput_basis": "cpu",
+      "throughput_mb_s": 2.29
+    }
+  },
+  "subject": {
+    "after": {
+      "gitlinks_uncovered": 0,
+      "license_bytes": 1120,
+      "license_sha256": "sha256:a319c0f308378daee9d0e79260b86624f763a7b9308a2b080826b6ba56e5ad77",
+      "manifest_sha256": "sha256:0c8856ab5f67482383c06e648588afc54615af1b23eeab30f84006f0cc850f67",
+      "scss_bytes": 62683,
+      "scss_count": 86,
+      "scss_list_sha256": "sha256:1f95595e3905b354def44b01621598e12cd66e68db0962578e18a60b12d540a9",
+      "status_bytes": 0,
+      "status_sha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tracked_bytes": 374156,
+      "tracked_count": 161,
+      "tracked_set_sha256": "sha256:2389f415014252916d3be3d99b44875ad2010131c7d59c8d568cb78305878ae9"
+    },
+    "before": {
+      "gitlinks_uncovered": 0,
+      "license_bytes": 1120,
+      "license_sha256": "sha256:a319c0f308378daee9d0e79260b86624f763a7b9308a2b080826b6ba56e5ad77",
+      "manifest_sha256": "sha256:0c8856ab5f67482383c06e648588afc54615af1b23eeab30f84006f0cc850f67",
+      "scss_bytes": 62683,
+      "scss_count": 86,
+      "scss_list_sha256": "sha256:1f95595e3905b354def44b01621598e12cd66e68db0962578e18a60b12d540a9",
+      "status_bytes": 0,
+      "status_sha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tracked_bytes": 374156,
+      "tracked_count": 161,
+      "tracked_set_sha256": "sha256:2389f415014252916d3be3d99b44875ad2010131c7d59c8d568cb78305878ae9"
+    },
+    "before_after_identical": true,
+    "commit": "c3551e46f41738681216a7f957bc88bc79155b16",
+    "freeze_commit": "5599fcb40e72d301745a94eb6cf6f344634a8eeb",
+    "name": "thoughtbot/bourbon",
+    "ref": "v7.3.0",
+    "tag_object": "0087b08902d61219072855c68c61bf5260a1ad53"
+  }
+}
