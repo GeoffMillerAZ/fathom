@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
+
+	"github.com/geoffmilleraz/fathom/internal/extractor/tsengine"
 )
 
 // ProbeTarget is what `indexbench lang-probe` (LB-F20) needs to show a
@@ -18,6 +20,24 @@ type ProbeTarget struct {
 	// Preprocess is the dialect's pre-parse step (the manifest's preprocess), nil
 	// when it names none: the texts a file that does not parse as written is read as.
 	Preprocess func(src []byte) [][]byte
+	// PreprocessLenient is the manifest's lenient pre-parse reading: a text
+	// with fewer errors than the file as written is read too.
+	PreprocessLenient bool
+}
+
+// ProbeParse parses src as the extractor reads it: as written, or, when that
+// holds an error and the dialect names a pre-parse step, the first of the
+// step's texts the extractor would take (tsPreprocessed). The caller closes
+// the result's Tree.
+func ProbeParse(p *tsengine.Parser, target ProbeTarget, src []byte) (ProbeParseResult, error) {
+	tree, err := p.Parse(src)
+	if err != nil {
+		return ProbeParseResult{}, err
+	}
+	if target.Preprocess == nil {
+		return ProbeParseResult{Tree: tree, Text: src}, nil
+	}
+	return tsPreprocessedAt(p, tree, src, target.Preprocess, target.PreprocessLenient)
 }
 
 // TagsDialects returns the sorted ids of every dialect on the tags engine —
@@ -52,7 +72,7 @@ func ProbeTargetForSource(dialect, relPath string, src []byte) (ProbeTarget, err
 		return ProbeTarget{}, fmt.Errorf("unknown tags dialect %q (known: %v)", dialect, TagsDialects())
 	}
 	v := (&TSExtractor{spec: spec}).variantFor(relPath, src)
-	return ProbeTarget{Dialect: dialect, Blob: v.blob, EntryPoint: v.entryPoint, QueryFile: v.rules.queryFile, Query: v.rules.query, Preprocess: v.rules.preprocess}, nil
+	return ProbeTarget{Dialect: dialect, Blob: v.blob, EntryPoint: v.entryPoint, QueryFile: v.rules.queryFile, Query: v.rules.query, Preprocess: v.rules.preprocess, PreprocessLenient: v.rules.preprocessLenient}, nil
 }
 
 // VariantSniff is the content sniff of the dialect's variant id (DialectVar.
