@@ -21,7 +21,7 @@ dependencies before it loads a package (O1347), so the first run per workspace d
 | `references` | the same call | `(BUILD file, x, callee)` for the rule or macro the call names, and `(BUILD file, x, y)` for each label spelled `":y"` in the call that is a `rule_input` of a rule it created |
 | `cross_references` | `instantiation_stack` and `definition_stack` | `(file, the target or function making the call, the .bzl file defining what it calls)`: consecutive frames of the instantiation stack (the BUILD call, the macro's frames) and the last frame to the stack of the `rule()` call. File granularity (`to` empty). A frame outside the workspace (`@rules_cc`) is dropped and counted |
 
-L1 has no other oracle: ctags has no Bazel parser. A rule's `location` is the BUILD call, so the oracle's end line is
+This adapter uses the native loading phase for L1, rather than treating a source parser as native target truth. A rule's `location` is the BUILD call, so the oracle's end line is
 the call's closing parenthesis, found by scanning the text with strings and comments skipped.
 
 What the oracle leaves out, counted on stderr per subject: a call whose `name` is computed or whose macro creates no
@@ -48,3 +48,36 @@ mode with bounded JVM/loading concurrency, a scratch output root and a scratch
 repository cache. The version wrapper must pass `--version` directly, since
 combining it with startup options makes Bazel reject it. L1 diagnostic readings
 keep only the native definitions; they do not regrade L3 before D19.
+
+## T-R4 L1 audit and X-R1 candidates
+
+| Candidate / route | Version / identity | Concrete result |
+|---|---|---|
+| Native `bazel query` plus instantiation/definition stacks | Bazel 8.7.0; grpc 3252a89f | Query exits 0 and attests rule-producing calls. It does not turn package metadata or ignored WORKSPACE declarations into configured targets. Available native truth, not an oracle ceiling. |
+| Existing query adapter | This directory; native 8.7.0 | Previously emitted tier A after query/version failure. Tests now require refusal, including partial exit 3. Native successful output is unchanged. |
+| Existing source query | tree-sitter-starlark v1.3.0, as recorded in the dialect query provenance | A literal `name=` call is syntax, not proof of a generated target; the query does not evaluate an arbitrary macro body. Removing a subject-specific callee or every `_package` suffix would hide valid declarations elsewhere. |
+| Cross-file macro-body evaluation | fathom 5b84aa5b4 | No such product evaluation exists in this dialect. Requires shared capability/design and affected-item regrades; T-R2 excludes ENGINE work this wave. Native measurement cannot supply that capability to the product. |
+
+The native executable's published SHA256 is
+`575f20fb23955e02f73519befd180df635b4ed0960c60f0e70fcc8d74014a713`.
+The L1-only diagnostic intentionally discards the native oracle's reference and
+cross-reference fields before invoking the recipe; L3 remains held for D19.
+Use the existing native workspace-boundary scope receipt, with no new exclusion.
+
+After building `workspace/tools/indexbench`, with Bazel 8.7.0 at
+`workspace/tools/bazel` (batch mode is recommended on a shared machine):
+
+```sh
+mkdir -p workspace/tmp/bazel-l1
+python3 calibration/oracles/bazel-query/bazel_oracle.py -subject workspace/calibration/bazel/grpc -bazel "$PWD/workspace/tools/bazel" -output-user-root "$PWD/workspace/tmp/bazel-output" > workspace/tmp/bazel-l1/native.json
+python3 -c 'import json; p="workspace/tmp/bazel-l1/"; d=json.load(open(p+"native.json")); json.dump({k:d[k] for k in ("tool","version","tier","definitions")},open(p+"definitions.json","w"))'
+scope=$(python3 calibration/oracles/bazel-query/bazel_oracle.py -subject workspace/calibration/bazel/grpc -scope-globs)
+workspace/tools/indexbench lang-oracle -dialect bazel -subject workspace/calibration/bazel/grpc -subject-name grpc/grpc -tool-oracle workspace/tmp/bazel-l1/definitions.json -only "$scope" -out workspace/tmp/bazel-l1/reading.json -unmatched workspace/tmp/bazel-l1/unmatched.json
+python3 calibration/oracles/bazel-query/audit_l1.py -subject workspace/calibration/bazel/grpc -unmatched workspace/tmp/bazel-l1/unmatched.json
+python3 -m unittest discover -s calibration/oracles/bazel-query
+```
+
+Start with fresh output paths. The diagnostic's timing is not an independent
+three-run throughput reading. Canonical `bazel.json` is unchanged. The callee
+classifier reports unknowns instead of inventing a semantic classification;
+it only groups source mismatches and never removes or adjudicates a definition.

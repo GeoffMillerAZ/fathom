@@ -323,8 +323,6 @@ def main():
     sys.stdout.write("\n")
     sys.stderr.write("bazel_oracle: %d rules in %d BUILD call sites; %d definitions, %d references, %d cross_references; dropped %s\n"
                      % (len(rules), len(sites), len(defs), len(refs), len(xrefs), json.dumps(drop, sort_keys=True)))
-    if p.returncode not in (0, 3):
-        sys.stderr.write("bazel_oracle: bazel exited %d (3 = some packages did not load, --keep_going)\n" % p.returncode)
 
 
 if __name__ == "__main__":
