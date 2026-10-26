@@ -47,17 +47,20 @@ func TestLoadSubjectManifestsAcceptsFixture(t *testing.T) {
 	dir := t.TempDir()
 	data := manifestFixture(t, "subject")
 	writeManifest(t, dir, "sample-subject", data)
-	other := manifestFixture(t, "subject")
-	other["name"] = "a-subject"
-	writeManifest(t, dir, "a-subject", other)
+	// a-b.yaml sorts before a.yaml, but the name a sorts before a-b.
+	for _, name := range []string{"a", "a-b"} {
+		other := manifestFixture(t, "subject")
+		other["name"] = name
+		writeManifest(t, dir, name, other)
+	}
 	subjects, err := LoadSubjectManifests(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(subjects) != 2 || subjects[0].Name != "a-subject" || subjects[1].Name != "sample-subject" {
+	if len(subjects) != 3 || subjects[0].Name != "a" || subjects[1].Name != "a-b" || subjects[2].Name != "sample-subject" {
 		t.Fatalf("subjects not sorted by name: %+v", subjects)
 	}
-	s := subjects[1]
+	s := subjects[2]
 	if s.SHA != "0123456789abcdef0123456789abcdef01234567" || s.Licence != "MIT" || s.Bench.Toolchain.Versions["go"] != "1.26.2" || s.Bench.FlakeRuns != 3 || s.Bench.Contamination.FreshAfter != "2026-01-01" {
 		t.Fatalf("decoded subject: %+v", s)
 	}
@@ -69,7 +72,7 @@ func TestLoadSubjectManifestsRefusals(t *testing.T) {
 		mutate           func(map[string]any)
 	}{
 		{"stem differs from name", "other-name", "file stem", func(map[string]any) {}},
-		{"missing sha", "sample-subject", "sha", func(d map[string]any) { delete(d, "sha") }},
+		{"missing sha", "sample-subject", "missing sha", func(d map[string]any) { delete(d, "sha") }},
 		{"licence off the C1 list", "sample-subject", "licence", func(d map[string]any) { d["licence"] = "GPL-3.0-only" }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -142,13 +145,44 @@ func TestLoadSubjectManifestsRefusesSchemaNegatives(t *testing.T) {
 			}
 			dir := t.TempDir()
 			writeManifest(t, dir, "sample-subject", data)
-			if _, err := LoadSubjectManifests(dir); err == nil {
+			_, err := LoadSubjectManifests(dir)
+			if err == nil {
 				t.Fatal("invalid manifest accepted")
+			}
+			if key := parts[len(parts)-1]; !strings.Contains(err.Error(), key) {
+				t.Fatalf("refusal does not name %s: %v", key, err)
 			}
 		})
 	}
 	if seen == 0 {
 		t.Fatal("invalid.cue has no subject negatives")
+	}
+}
+
+func TestLoadSubjectManifestsRefusesMissingOrEmptyDir(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := LoadSubjectManifests(filepath.Join(dir, "does-not-exist")); err == nil || !strings.Contains(err.Error(), "reading manifests") {
+		t.Fatalf("missing dir: %v", err)
+	}
+	if _, err := LoadSubjectManifests(dir); err == nil || !strings.Contains(err.Error(), "no *.yaml subject manifests") {
+		t.Fatalf("empty dir: %v", err)
+	}
+}
+
+// Values the schema computes survive: prior reads force the dev split.
+func TestLoadSubjectManifestsDecodesSchemaValue(t *testing.T) {
+	dir := t.TempDir()
+	data := manifestFixture(t, "subject")
+	bench := data["bench"].(map[string]any)
+	delete(bench, "split")
+	bench["contamination"].(map[string]any)["prior_reads"] = []string{"docs/bench/scenario-runs.md"}
+	writeManifest(t, dir, "sample-subject", data)
+	subjects, err := LoadSubjectManifests(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if subjects[0].Bench.Split != "dev" {
+		t.Fatalf("split = %q, want dev from the schema", subjects[0].Bench.Split)
 	}
 }
 

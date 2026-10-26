@@ -237,7 +237,7 @@ func vetC1(ctx context.Context, s Subject, clone string, files []string, git Git
 			found = append(found, f+": unrecognised")
 			continue
 		}
-		if !C1Licences[spdx] {
+		if !c1Licences[spdx] {
 			return VetFail, fmt.Sprintf("%s reads %s, off the C1 list", f, spdx), nil
 		}
 		if spdx != s.Licence {

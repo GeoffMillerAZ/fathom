@@ -14,8 +14,8 @@ import (
 	"github.com/geoffmilleraz/fathom/schema/bench"
 )
 
-// C1Licences are the SPDX ids subject vetting admits (bench-prep section 5).
-var C1Licences = map[string]bool{"MIT": true, "Apache-2.0": true, "BSD-2-Clause": true, "BSD-3-Clause": true, "CC0-1.0": true}
+// c1Licences are the SPDX ids subject vetting admits (bench-prep section 5).
+var c1Licences = map[string]bool{"MIT": true, "Apache-2.0": true, "BSD-2-Clause": true, "BSD-3-Clause": true, "CC0-1.0": true}
 
 // Subject mirrors schema/bench's #Subject: the corpus.d repo entry plus bench.
 type Subject struct {
@@ -78,9 +78,15 @@ type ExcludedTest struct {
 // sorted by name. A file stem other than the subject name, a missing sha and
 // a licence off the C1 list are refused before the schema is consulted.
 func LoadSubjectManifests(dir string) ([]Subject, error) {
+	if _, err := os.ReadDir(dir); err != nil {
+		return nil, fmt.Errorf("reading manifests: %w", err)
+	}
 	paths, err := filepath.Glob(filepath.Join(dir, "*.yaml"))
 	if err != nil {
 		return nil, err
+	}
+	if len(paths) == 0 {
+		return nil, fmt.Errorf("%s: no *.yaml subject manifests", dir)
 	}
 	sort.Strings(paths)
 	ctx := cuecontext.New()
@@ -111,11 +117,16 @@ func LoadSubjectManifests(dir string) ([]Subject, error) {
 			return nil, fmt.Errorf("%s: file stem %q is not the subject name %q", path, stem, s.Name)
 		case s.SHA == "":
 			return nil, fmt.Errorf("%s: missing sha", path)
-		case !C1Licences[s.Licence]:
+		case !c1Licences[s.Licence]:
 			return nil, fmt.Errorf("%s: licence %q is off the C1 list", path, s.Licence)
 		}
 		value := def.Unify(ctx.CompileString(source.String()))
 		if err := value.Validate(cue.Concrete(true)); err != nil {
+			return nil, fmt.Errorf("%s: %w", path, err)
+		}
+		// Decode the validated value so fields the schema computes survive.
+		s = Subject{}
+		if err := value.Decode(&s); err != nil {
 			return nil, fmt.Errorf("%s: %w", path, err)
 		}
 		subjects = append(subjects, s)
