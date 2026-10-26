@@ -1,0 +1,155 @@
+{
+  "selection": "Preserve original three canonical subject scopes. Add legacy AWS patch-and-transform and public Azure/GCP platform compositions/XRDs, each fixed before inspection. Keep all native refusals and opaque function inputs counted. Calibration-only provider source CRDs, no OCI equivalence claim. No holdout claim; exploratory selection.",
+  "subjects": [
+    {
+      "repo": "crossplane/crossplane",
+      "sha": "bf8ffd4048a0bb1b408b8b745e31960c717009cb",
+      "scope": [
+        "cluster/composition/**",
+        "test/e2e/manifests/**/*.yaml"
+      ],
+      "prior": true,
+      "archive_sha256": "df441abc366960aea6a74ed1f065219fcb3f082dd11d83a4655ccc85f164e7ea",
+      "archive_bytes": 14998578,
+      "licence": "Apache-2.0"
+    },
+    {
+      "repo": "upbound/platform-ref-aws",
+      "sha": "be065e6afe89e656080557bacf1732168502e325",
+      "prior": true,
+      "archive_sha256": "949e85810f1b0e88cfdb59c991572f529fe810399044152cc1bb07142aee8ad3",
+      "archive_bytes": 16836,
+      "licence": "Apache-2.0"
+    },
+    {
+      "repo": "upbound/configuration-aws-network",
+      "sha": "4631cb7ca7b4cecd4a54b8d64b061cc4e7f19c7d",
+      "prior": true,
+      "archive_sha256": "9cfd40edc7fb70dcab6357bc4460ed34b81bc43a841d7bfe6a65d2c678dd7613",
+      "archive_bytes": 15296,
+      "licence": "Apache-2.0"
+    },
+    {
+      "repo": "upbound/platform-ref-aws",
+      "sha": "e5d15551795ebde328c443c5da22d8e25c485831",
+      "ref": "v0.9.0",
+      "prior_probe": true,
+      "archive_sha256": "63b927fec8deeab661f66aad0c5f0071b3dcfdf98eb25551eff2fd4606698ad1",
+      "archive_bytes": 15086,
+      "licence": "Apache-2.0",
+      "tag_object": "ac16dd220d7ec7c67849e62ef13338fff88b6434"
+    },
+    {
+      "repo": "upbound/platform-ref-azure",
+      "sha": "779d9f11b513235b742afda59b7d3ddc0b98c271",
+      "ref": "HEAD pinned before inspection",
+      "archive_sha256": "559fff62e9a72c4bf3f115a98a37ad1eda4e9d32261634f616cf6d6c9e75b335",
+      "archive_bytes": 90467,
+      "licence": "Apache-2.0"
+    },
+    {
+      "repo": "upbound/platform-ref-gcp",
+      "sha": "c0c14f604bd8c8d39bdf558527c8ca4f76625878",
+      "ref": "HEAD pinned before inspection",
+      "archive_sha256": "28d2bb39cdffe1d6fcf5f42cd8dd7f410f13b1f9540cdd54bee642099351aa41",
+      "archive_bytes": 19343,
+      "licence": "Apache-2.0"
+    },
+    {
+      "id": "upbound/platform-ref-aws-network-resources",
+      "repo": "upbound/platform-ref-aws",
+      "ref": "v0.6.0",
+      "sha": "35b8fe68dee1d838017b98e803e9246fdd1d2905",
+      "scope": [
+        "package/cluster/network/**"
+      ],
+      "licence": "Apache-2.0",
+      "selection": "Added after first six-subject probe found no Upbound managed-base matches; release commit pinned before raw content inspection; legacy network composition plus its XRD only; existing six remain unchanged. Exploration, not holdout."
+    },
+    {
+      "id": "upbound/platform-ref-azure-network-resources",
+      "repo": "upbound/platform-ref-azure",
+      "ref": "v0.5.0",
+      "sha": "f220bbc67937fc004966c47c4327e7a3abbb331f",
+      "scope": [
+        "package/cluster/network/**"
+      ],
+      "licence": "Apache-2.0",
+      "selection": "Added after first six-subject probe found no Upbound managed-base matches; release commit pinned before raw content inspection; legacy network composition plus its XRD only; existing six remain unchanged. Exploration, not holdout."
+    },
+    {
+      "id": "upbound/platform-ref-gcp-network-resources",
+      "repo": "upbound/platform-ref-gcp",
+      "ref": "v0.1.0",
+      "sha": "816daa642508a21d44870042c040c0525f43d191",
+      "scope": [
+        "cluster/network/**"
+      ],
+      "licence": "Apache-2.0",
+      "selection": "Added after first six-subject probe found no Upbound managed-base matches; release commit pinned before raw content inspection; legacy network composition plus its XRD only; existing six remain unchanged. Exploration, not holdout."
+    }
+  ],
+  "providers": [
+    {
+      "repo": "upbound/provider-aws",
+      "version": "v2.0.0",
+      "sha": "44afb1a357e36a32e939f79a34e92ecb1cd06beb",
+      "archive_sha256": "af3679f99446d3f9550cd2057ed6b4f77c0a510933a359a4042b4ad7f838ae07",
+      "archive_bytes": 18874239,
+      "licence": "Apache-2.0",
+      "crd_sha256": "7f2c9466cd07287e3fffba6ce599b10b639ce237043db42eb291d27eb1f95d25",
+      "crd_files": 1911,
+      "crd_bytes": 89765997
+    },
+    {
+      "repo": "upbound/provider-azure",
+      "version": "v1.10.0",
+      "sha": "3738e5c7725cb15decd238a1126b50a5be799235",
+      "archive_sha256": "66666db0fe1bbd7c5c077856c6ee11e56efc38df34ad7391ae358b65d4f5fa14",
+      "archive_bytes": 9602372,
+      "licence": "Apache-2.0",
+      "crd_sha256": "25893b01d3007a53e5c7834c45041b8d0b875a8e0a579da09107f90fd4504908",
+      "crd_files": 744,
+      "crd_bytes": 52267000
+    },
+    {
+      "repo": "upbound/provider-gcp",
+      "version": "v1.10.0",
+      "sha": "de7a486ad63acbc9f571777fbc6d0f123ad8e50b",
+      "archive_sha256": "a79cfd19af123c8a3733493baa50f4f587fad3d61c8cade04da16f2354c932f2",
+      "archive_bytes": 8302449,
+      "licence": "Apache-2.0",
+      "crd_sha256": "7167cdf9d76b16eec45145e21442908f1a981469b82c7ebc4d4268e8cd81df83",
+      "crd_files": 364,
+      "crd_bytes": 35077620
+    }
+  ],
+  "cli": {
+    "version": "v2.5.0",
+    "sha256": "6e0e00370fce82299b931fabee8559eed8a79446172ceb2c24c6d1d76f76fb8c",
+    "url": "https://cli.crossplane.io/stable/v2.5.0/bin/darwin_arm64/crossplane"
+  },
+  "grading_contract": "Calibration-only provider schema results and tier-C directional field-path diagnostics remain distinct from the unchanged historical reading metrics. No native reference-binding or nested-definition enumeration claim.",
+  "controls": [
+    {
+      "provider": "upbound/provider-aws",
+      "document_index": 0,
+      "source_sha256": "342d12c500e15d7166951a96621175e51008ee83962cdb8aecb4d90d80b75768"
+    },
+    {
+      "provider": "upbound/provider-azure",
+      "document_index": 0,
+      "source_sha256": "cf01cc4350681ec33f2ac1015883ca451cd50b93150e8ae507bdc0c696f4dd75"
+    },
+    {
+      "provider": "upbound/provider-gcp",
+      "document_index": 0,
+      "source_sha256": "9b3f13886f3deb1ba3a7dcac10c33fd388c70b7b9dbd2b40d0ce2983dddeaee7"
+    }
+  ],
+  "yq": {
+    "version": "4.47.1",
+    "sha256": "99aae3a7c9ddfe76bb339f0e7acd8224324b6527436fb6a5d890079bf5fcc590",
+    "url": "https://github.com/mikefarah/yq/releases/download/v4.47.1/yq_darwin_arm64"
+  }
+}

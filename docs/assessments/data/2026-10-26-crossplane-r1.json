@@ -1,0 +1,662 @@
+{
+  "calibration_only": true,
+  "conditions": {
+    "GOFLAGS": "-p=2",
+    "GOMAXPROCS": 2,
+    "concurrent_host_jobs_recorded": false,
+    "go": "1.27.3",
+    "maximum_launch_load": 9,
+    "nice_priority": 10,
+    "one_lane_heavy_job_at_a_time": true,
+    "throughput_remeasured": false
+  },
+  "directional_schema_walk_tier": "C",
+  "engine_commit": "6db920e72898abb20bf86c22652b401902e34598",
+  "format": "crossplane-calibration-review-v1",
+  "measured_at": "2026-10-26",
+  "native_independence": {
+    "after_receipt_sha256": "ea5c6ec1acc366b60f1d50e2e78dbe230734ac0f7305ac56d549620c35ff1abb",
+    "before_after_equal": true,
+    "before_receipt_sha256": "ea5c6ec1acc366b60f1d50e2e78dbe230734ac0f7305ac56d549620c35ff1abb",
+    "product_control": {
+      "baseline_counts": {
+        "CrossplaneComposedResource": 7,
+        "CrossplaneResource": 1,
+        "CrossplaneStep": 1
+      },
+      "mutant_counts": {
+        "CrossplaneComposedResource": 7,
+        "CrossplaneResource": 1
+      },
+      "mutated_spec_sha256": "9c1d00f8a23c6b6fddc781224f639996f592a9e1e4c35edba90e82dcae8edeef",
+      "product_output_changed": true,
+      "product_spec_sha256": "4ae1ec15b2f0650f829157addb52a6565284f07bab4dcb1e351c6169074d5112",
+      "subject_sha256": "ff44007f7eada1e65ffdd9ca566c23ce7472073116c725e4e3c35fee79480f3a",
+      "subject_unchanged": true
+    },
+    "raw_truth_sha256": "53dd0996bdb4ae29986960997bcdf050acde1bda527e0999ce3ec71c09ca3dd2"
+  },
+  "native_probe": {
+    "aggregate": {
+      "bases": 36,
+      "compositions": 42,
+      "crossplaneFiles": 261,
+      "fieldPaths": {
+        "declared": 33,
+        "notDeclared": 1,
+        "unmodeled": 7
+      },
+      "native": {
+        "extraRows": 22,
+        "invalid": 29,
+        "missingSchemas": 54,
+        "valid": 241
+      },
+      "nativeCalls": 282,
+      "nativeProviderBases": {
+        "extraRows": 0,
+        "invalid": 0,
+        "missingSchemas": 0,
+        "valid": 21
+      },
+      "patches": 63,
+      "xrds": 42,
+      "yamlFiles": 393
+    },
+    "calibrationOnly": true,
+    "controlSourceSha256": [
+      "342d12c500e15d7166951a96621175e51008ee83962cdb8aecb4d90d80b75768",
+      "cf01cc4350681ec33f2ac1015883ca451cd50b93150e8ae507bdc0c696f4dd75",
+      "9b3f13886f3deb1ba3a7dcac10c33fd388c70b7b9dbd2b40d0ce2983dddeaee7"
+    ],
+    "controls": {
+      "examples": 3,
+      "mutationInvalid": 3,
+      "mutationOther": 0,
+      "nativeCalls": 6,
+      "originalInvalid": 0,
+      "originalMissingSchemas": 0,
+      "originalValid": 3
+    },
+    "coreCrds": {
+      "files": 21,
+      "sha256": "d92dd726c4bc5d4cfbd624be434e0f53348a3977c8279dc7eef71186c2ef3979"
+    },
+    "exclusions": {
+      "baseWithoutName": 34,
+      "basesAmbiguousSchema": 0,
+      "basesWithoutSchema": 15,
+      "mixedFiles": 2,
+      "nonCompositionDocuments": 197,
+      "nonCrossplaneFiles": 130,
+      "patchSetDefinitions": 1,
+      "unsupportedPatches": 22
+    },
+    "format": "crossplane-schema-probe-v1",
+    "limits": {
+      "bases": 512,
+      "fileBytes": 2097152,
+      "nativeCalls": 4096,
+      "patches": 512,
+      "providerFiles": 10000,
+      "subjectBytes": 33554432,
+      "subjectFiles": 1000,
+      "toolOutputBytes": 16777216
+    },
+    "providerCrdFiles": 3019,
+    "providerPins": [
+      {
+        "crdFiles": 1911,
+        "crdSha256": "7f2c9466cd07287e3fffba6ce599b10b639ce237043db42eb291d27eb1f95d25",
+        "id": "upbound/provider-aws",
+        "sha": "44afb1a357e36a32e939f79a34e92ecb1cd06beb"
+      },
+      {
+        "crdFiles": 744,
+        "crdSha256": "25893b01d3007a53e5c7834c45041b8d0b875a8e0a579da09107f90fd4504908",
+        "id": "upbound/provider-azure",
+        "sha": "3738e5c7725cb15decd238a1126b50a5be799235"
+      },
+      {
+        "crdFiles": 364,
+        "crdSha256": "7167cdf9d76b16eec45145e21442908f1a981469b82c7ebc4d4268e8cd81df83",
+        "id": "upbound/provider-gcp",
+        "sha": "de7a486ad63acbc9f571777fbc6d0f123ad8e50b"
+      }
+    ],
+    "rawTruthSha256": "53dd0996bdb4ae29986960997bcdf050acde1bda527e0999ce3ec71c09ca3dd2",
+    "scannedProviderCrdsSha256": "4ca91eca8c9084a902543ad4d58379263ed8bd4347d9e980e3fb7a9286825513",
+    "subjects": [
+      {
+        "contentSha256": "bc113ba7e65bdf4ee9d77b45810eaf1ab1dab1194d896ef39c32809f0c08e8e6",
+        "counts": {
+          "bases": 8,
+          "compositions": 34,
+          "crossplaneFiles": 238,
+          "fieldPaths": {
+            "declared": 0,
+            "notDeclared": 0,
+            "unmodeled": 0
+          },
+          "native": {
+            "extraRows": 21,
+            "invalid": 26,
+            "missingSchemas": 52,
+            "valid": 201
+          },
+          "nativeCalls": 238,
+          "nativeProviderBases": {
+            "extraRows": 0,
+            "invalid": 0,
+            "missingSchemas": 0,
+            "valid": 0
+          },
+          "patches": 6,
+          "xrds": 34,
+          "yamlFiles": 316
+        },
+        "id": "crossplane/crossplane",
+        "sha": "bf8ffd4048a0bb1b408b8b745e31960c717009cb"
+      },
+      {
+        "contentSha256": "7940ed3a3d0dbcedcea470f82348baef62275c90aff48af68331de1c7fa49de1",
+        "counts": {
+          "bases": 0,
+          "compositions": 1,
+          "crossplaneFiles": 3,
+          "fieldPaths": {
+            "declared": 0,
+            "notDeclared": 0,
+            "unmodeled": 0
+          },
+          "native": {
+            "extraRows": 0,
+            "invalid": 0,
+            "missingSchemas": 0,
+            "valid": 3
+          },
+          "nativeCalls": 3,
+          "nativeProviderBases": {
+            "extraRows": 0,
+            "invalid": 0,
+            "missingSchemas": 0,
+            "valid": 0
+          },
+          "patches": 0,
+          "xrds": 1,
+          "yamlFiles": 15
+        },
+        "id": "upbound/platform-ref-aws",
+        "sha": "be065e6afe89e656080557bacf1732168502e325"
+      },
+      {
+        "contentSha256": "cdb746a0e76b1d7a5cb9b48b2fdd8848d96806b07be0c2fb61fcb2966cac1440",
+        "counts": {
+          "bases": 0,
+          "compositions": 1,
+          "crossplaneFiles": 3,
+          "fieldPaths": {
+            "declared": 0,
+            "notDeclared": 0,
+            "unmodeled": 0
+          },
+          "native": {
+            "extraRows": 0,
+            "invalid": 0,
+            "missingSchemas": 0,
+            "valid": 3
+          },
+          "nativeCalls": 3,
+          "nativeProviderBases": {
+            "extraRows": 0,
+            "invalid": 0,
+            "missingSchemas": 0,
+            "valid": 0
+          },
+          "patches": 0,
+          "xrds": 1,
+          "yamlFiles": 11
+        },
+        "id": "upbound/configuration-aws-network",
+        "sha": "4631cb7ca7b4cecd4a54b8d64b061cc4e7f19c7d"
+      },
+      {
+        "contentSha256": "459afdd2997fc54bbb3fd5f8574614b13ee19733353f67ad8f69b12b0834630a",
+        "counts": {
+          "bases": 7,
+          "compositions": 1,
+          "crossplaneFiles": 5,
+          "fieldPaths": {
+            "declared": 24,
+            "notDeclared": 1,
+            "unmodeled": 2
+          },
+          "native": {
+            "extraRows": 1,
+            "invalid": 0,
+            "missingSchemas": 2,
+            "valid": 4
+          },
+          "nativeCalls": 5,
+          "nativeProviderBases": {
+            "extraRows": 0,
+            "invalid": 0,
+            "missingSchemas": 0,
+            "valid": 0
+          },
+          "patches": 27,
+          "xrds": 1,
+          "yamlFiles": 14
+        },
+        "id": "upbound/platform-ref-aws-legacy",
+        "sha": "e5d15551795ebde328c443c5da22d8e25c485831"
+      },
+      {
+        "contentSha256": "86631cbe0947680efa68bd90890df7087c43bc35d415deba5fe8d6887e385290",
+        "counts": {
+          "bases": 0,
+          "compositions": 1,
+          "crossplaneFiles": 3,
+          "fieldPaths": {
+            "declared": 0,
+            "notDeclared": 0,
+            "unmodeled": 0
+          },
+          "native": {
+            "extraRows": 0,
+            "invalid": 0,
+            "missingSchemas": 0,
+            "valid": 3
+          },
+          "nativeCalls": 3,
+          "nativeProviderBases": {
+            "extraRows": 0,
+            "invalid": 0,
+            "missingSchemas": 0,
+            "valid": 0
+          },
+          "patches": 0,
+          "xrds": 1,
+          "yamlFiles": 15
+        },
+        "id": "upbound/platform-ref-azure",
+        "sha": "779d9f11b513235b742afda59b7d3ddc0b98c271"
+      },
+      {
+        "contentSha256": "ac1bf1d993b64addbedda145b98b9a2eb5b9ba936dd7b37b2bb7a64eb31c9479",
+        "counts": {
+          "bases": 0,
+          "compositions": 1,
+          "crossplaneFiles": 3,
+          "fieldPaths": {
+            "declared": 0,
+            "notDeclared": 0,
+            "unmodeled": 0
+          },
+          "native": {
+            "extraRows": 0,
+            "invalid": 0,
+            "missingSchemas": 0,
+            "valid": 3
+          },
+          "nativeCalls": 3,
+          "nativeProviderBases": {
+            "extraRows": 0,
+            "invalid": 0,
+            "missingSchemas": 0,
+            "valid": 0
+          },
+          "patches": 0,
+          "xrds": 1,
+          "yamlFiles": 16
+        },
+        "id": "upbound/platform-ref-gcp",
+        "sha": "c0c14f604bd8c8d39bdf558527c8ca4f76625878"
+      },
+      {
+        "contentSha256": "f61485bd5079cdbcaddfd35e05d8c610bdb5a8201e1eaba216647bb93d64fb2f",
+        "counts": {
+          "bases": 16,
+          "compositions": 1,
+          "crossplaneFiles": 2,
+          "fieldPaths": {
+            "declared": 0,
+            "notDeclared": 0,
+            "unmodeled": 5
+          },
+          "native": {
+            "extraRows": 0,
+            "invalid": 1,
+            "missingSchemas": 0,
+            "valid": 17
+          },
+          "nativeCalls": 18,
+          "nativeProviderBases": {
+            "extraRows": 0,
+            "invalid": 0,
+            "missingSchemas": 0,
+            "valid": 16
+          },
+          "patches": 21,
+          "xrds": 1,
+          "yamlFiles": 2
+        },
+        "id": "upbound/platform-ref-aws-network-resources",
+        "sha": "35b8fe68dee1d838017b98e803e9246fdd1d2905"
+      },
+      {
+        "contentSha256": "a9579e23609d4529e5f34b5859d4aa9ad984425ab998457d98053015b729874f",
+        "counts": {
+          "bases": 3,
+          "compositions": 1,
+          "crossplaneFiles": 2,
+          "fieldPaths": {
+            "declared": 7,
+            "notDeclared": 0,
+            "unmodeled": 0
+          },
+          "native": {
+            "extraRows": 0,
+            "invalid": 1,
+            "missingSchemas": 0,
+            "valid": 4
+          },
+          "nativeCalls": 5,
+          "nativeProviderBases": {
+            "extraRows": 0,
+            "invalid": 0,
+            "missingSchemas": 0,
+            "valid": 3
+          },
+          "patches": 7,
+          "xrds": 1,
+          "yamlFiles": 2
+        },
+        "id": "upbound/platform-ref-azure-network-resources",
+        "sha": "f220bbc67937fc004966c47c4327e7a3abbb331f"
+      },
+      {
+        "contentSha256": "4b1585cc3196bf30edd64ea65ffa9aeb43c8d597b95875c04d4f150bd972e97b",
+        "counts": {
+          "bases": 2,
+          "compositions": 1,
+          "crossplaneFiles": 2,
+          "fieldPaths": {
+            "declared": 2,
+            "notDeclared": 0,
+            "unmodeled": 0
+          },
+          "native": {
+            "extraRows": 0,
+            "invalid": 1,
+            "missingSchemas": 0,
+            "valid": 3
+          },
+          "nativeCalls": 4,
+          "nativeProviderBases": {
+            "extraRows": 0,
+            "invalid": 0,
+            "missingSchemas": 0,
+            "valid": 2
+          },
+          "patches": 2,
+          "xrds": 1,
+          "yamlFiles": 2
+        },
+        "id": "upbound/platform-ref-gcp-network-resources",
+        "sha": "816daa642508a21d44870042c040c0525f43d191"
+      }
+    ],
+    "tier": "C",
+    "toolSha256": {
+      "crossplane": "6e0e00370fce82299b931fabee8559eed8a79446172ceb2c24c6d1d76f76fb8c",
+      "yq": "99aae3a7c9ddfe76bb339f0e7acd8224324b6527436fb6a5d890079bf5fcc590"
+    },
+    "usedProviderCrdSha256": [
+      "0dfaad9e019d2d00cd8be47600c9046e6a22822b13ccf49d5fb7f303acd428c2",
+      "30f164a1d1398639dce01e3674fd55e2b1c5534de43ead1c210d02773d052d6c",
+      "349c303a345d09d7545f3c7f70aa3a8609e2df8e35cbb64fc866e4eccf0d7d28",
+      "4803be4bd9f968f29b1e4badc86a61f8b736f6978f4cdb72dd791b52d14f91b2",
+      "53e42938aa744fcf4beb674fb400d64e371c5e4f0b8f5f85bad5466a9073db8b",
+      "795253a64668ea18451fca0d5e5750c4cd998b07f4bfc8b0abac950336e4a3d6",
+      "8212c1208de6493ae0d76d053d08b58241e94ff4d71a8559c9a11ec7f824ea31",
+      "8fd8a7d330c7ec630e368007f0c5e68f703e3dab8cc41fe45e787c5e84b63c89",
+      "a0c234990440d02cf7cc6445d3feb4c4e6c457ce25fece566e2f13cf15b30606",
+      "a28ed442947e98f582242223d948434f3400c1db59772d9bd0fa9e69e6e23b30",
+      "c8de0082f611fd752f338a88d097cee462c01b0e69115acd3f1bdd01fe7cda41",
+      "d3d401eccf6c582a784456b92cd62eb67df0698a6e07030380d8d0091f1932ab",
+      "db6449dc5109ce815c38ea0cd76a77ad2bdc89b9d6cbe62e70f4280d859063c5",
+      "e173505077e1bb824283136cc3448d7c886c62aea7a19faa0fd29bd1163ac2c1",
+      "f0d7060618b6bbe5a6b7c39c9572fc69402358eb01577ac2042cedc7e66d9fbf",
+      "fc27f7a9e4015f1eb43700b964f8e6a917541d637b3b833ba022609558128488"
+    ]
+  },
+  "privacy": {
+    "at_sign_or_heading_keyword_matches": 13,
+    "benign_code_or_version_or_instruction_matches": 13,
+    "candidate_files": 14,
+    "local_home_paths": 0,
+    "name_email_shapes": 0,
+    "subject_identity_metadata": 0
+  },
+  "provider_archive_proof": [
+    {
+      "archive_sha256": "af3679f99446d3f9550cd2057ed6b4f77c0a510933a359a4042b4ad7f838ae07",
+      "crd_bytes": 89765997,
+      "crd_files": 1911,
+      "crd_sha256": "7f2c9466cd07287e3fffba6ce599b10b639ce237043db42eb291d27eb1f95d25",
+      "id": "upbound/provider-aws",
+      "sha": "44afb1a357e36a32e939f79a34e92ecb1cd06beb"
+    },
+    {
+      "archive_sha256": "66666db0fe1bbd7c5c077856c6ee11e56efc38df34ad7391ae358b65d4f5fa14",
+      "crd_bytes": 52267000,
+      "crd_files": 744,
+      "crd_sha256": "25893b01d3007a53e5c7834c45041b8d0b875a8e0a579da09107f90fd4504908",
+      "id": "upbound/provider-azure",
+      "sha": "3738e5c7725cb15decd238a1126b50a5be799235"
+    },
+    {
+      "archive_sha256": "a79cfd19af123c8a3733493baa50f4f587fad3d61c8cade04da16f2354c932f2",
+      "crd_bytes": 35077620,
+      "crd_files": 364,
+      "crd_sha256": "7167cdf9d76b16eec45145e21442908f1a981469b82c7ebc4d4268e8cd81df83",
+      "id": "upbound/provider-gcp",
+      "sha": "de7a486ad63acbc9f571777fbc6d0f123ad8e50b"
+    }
+  ],
+  "reading_conservation": {
+    "after_inventory_sha256": "e225b707689d03d31406d42dce5c4b9309e40cc83312494f13df6caef412fe20",
+    "base": "6db920e72898abb20bf86c22652b401902e34598",
+    "before_inventory_sha256": "be9a3350211b5c573fc27e42d9897f932c7f640c45979646a60f993a019bac47",
+    "changed_values": [
+      "crossplane.json"
+    ],
+    "eligible": 154,
+    "files": 185,
+    "historical_crossplane_measurements_preserved": true,
+    "protected_byte_identical": 31,
+    "required_kinds_preserved": true,
+    "unchanged_bytes": 184
+  },
+  "schema_validation_tier": "native instance validation; no definition or binding population certificate",
+  "source_conservation": [
+    {
+      "before_after_equal": true,
+      "id": "crossplane/crossplane",
+      "tracked": {
+        "bytes": 22755464,
+        "entries": 950,
+        "files": 950,
+        "gitlinks": 0,
+        "sha256": "8439ddcda9c5eaede26b3d4ffe1d98ca83d2581902e34d7a706b682fb3ba8db2",
+        "symlinks": 0
+      },
+      "untracked_and_ignored_count": 0
+    },
+    {
+      "before_after_equal": true,
+      "id": "upbound/configuration-aws-network",
+      "tracked": {
+        "bytes": 84173,
+        "entries": 32,
+        "files": 28,
+        "gitlinks": 0,
+        "sha256": "032663fe2837635347e668e146ac4db45ca4825833673743c3a513952f79bbbd",
+        "symlinks": 4
+      },
+      "untracked_and_ignored_count": 0
+    },
+    {
+      "before_after_equal": true,
+      "id": "upbound/platform-ref-aws",
+      "tracked": {
+        "bytes": 78780,
+        "entries": 37,
+        "files": 34,
+        "gitlinks": 0,
+        "sha256": "7be093edd30cef84d816ce509dc87b3571ec125d99547a4ceec2ccd64f639b95",
+        "symlinks": 3
+      },
+      "untracked_and_ignored_count": 0
+    },
+    {
+      "before_after_equal": true,
+      "id": "upbound/platform-ref-aws-legacy",
+      "tracked": {
+        "bytes": 53014,
+        "entries": 23,
+        "files": 22,
+        "gitlinks": 1,
+        "sha256": "718b73aca97c93bf3ef3e84da87a54cbdafe650f1c75d76076df5478b762abb3",
+        "symlinks": 0
+      },
+      "untracked_and_ignored_count": 0
+    },
+    {
+      "before_after_equal": true,
+      "id": "upbound/platform-ref-aws-network-resources",
+      "tracked": {
+        "bytes": 71161,
+        "entries": 32,
+        "files": 31,
+        "gitlinks": 1,
+        "sha256": "305ac95eb21b4ecd1f973ee9b4323bdca912b97828f15f1361b18b78f6e23813",
+        "symlinks": 0
+      },
+      "untracked_and_ignored_count": 0
+    },
+    {
+      "before_after_equal": true,
+      "id": "upbound/platform-ref-azure",
+      "tracked": {
+        "bytes": 156292,
+        "entries": 38,
+        "files": 35,
+        "gitlinks": 0,
+        "sha256": "07c9e6896e7ca40450f8a8b1a7b4a5dba57aab8b75b09255a9e693b4e198cf20",
+        "symlinks": 3
+      },
+      "untracked_and_ignored_count": 0
+    },
+    {
+      "before_after_equal": true,
+      "id": "upbound/platform-ref-azure-network-resources",
+      "tracked": {
+        "bytes": 1259228,
+        "entries": 37,
+        "files": 36,
+        "gitlinks": 1,
+        "sha256": "4235decddec9674c5f70a90117bf92e85484b48ad306c269df5e01210615dd95",
+        "symlinks": 0
+      },
+      "untracked_and_ignored_count": 0
+    },
+    {
+      "before_after_equal": true,
+      "id": "upbound/platform-ref-gcp",
+      "tracked": {
+        "bytes": 72013,
+        "entries": 39,
+        "files": 36,
+        "gitlinks": 0,
+        "sha256": "1d990fcc00cc8fdf627860ce48a9368552ac42246e2724f2d242a80c96350cf5",
+        "symlinks": 3
+      },
+      "untracked_and_ignored_count": 0
+    },
+    {
+      "before_after_equal": true,
+      "id": "upbound/platform-ref-gcp-network-resources",
+      "tracked": {
+        "bytes": 44019,
+        "entries": 19,
+        "files": 19,
+        "gitlinks": 0,
+        "sha256": "bea2dbd2d095cb1f365c670abb967f36b4f9ad6400a22a6578273e4c20845ca2",
+        "symlinks": 0
+      },
+      "untracked_and_ignored_count": 0
+    }
+  ],
+  "verification": {
+    "identity_mutation_red": {
+      "command": "python3 -m unittest calibration.oracles.crossplane.probe_test.ProbeTest.test_report_requires_identity_and_reconciles",
+      "exit_code": 1,
+      "mutation": "required report identity guard disabled",
+      "private_log_sha256": "4239af4b4ce15cfe4193aad93470bded7b00e3424455303f2134782ebf77993b"
+    },
+    "merge_debris": {
+      "command": "bash scripts/check-merge-debris.sh",
+      "exit_code": 0,
+      "private_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "native_after": {
+      "command": "python3 calibration/oracles/crossplane/probe.py --manifest workspace/artifacts/crossplane-r1/manifest.json --out workspace/artifacts/crossplane-r1/final-after.json --scratch workspace/tmp/crossplane-r1-final-after --crossplane \"$TOOLS/crossplane\" --yq \"$TOOLS/yq\"",
+      "exit_code": 0,
+      "private_log_sha256": "e6e37ee2038c3e714f20b7313e6163659fbb5512b92c598c5f56cb578472f78c"
+    },
+    "native_before": {
+      "command": "python3 calibration/oracles/crossplane/probe.py --manifest workspace/artifacts/crossplane-r1/manifest.json --out workspace/artifacts/crossplane-r1/final-before.json --scratch workspace/tmp/crossplane-r1-final-before --crossplane \"$TOOLS/crossplane\" --yq \"$TOOLS/yq\"",
+      "exit_code": 0,
+      "private_log_sha256": "e6e37ee2038c3e714f20b7313e6163659fbb5512b92c598c5f56cb578472f78c"
+    },
+    "oracle_race": {
+      "command": "go -C calibration/oracles/crossplane test -race -count=1 ./...",
+      "environment": "PATH includes pinned CLI; OX_CROSSPLANE_CRDS points to pinned core CRDs; offline integration test enabled",
+      "exit_code": 0,
+      "private_log_sha256": "612eba86ec284bb13a9e28d3d5a5729a1c2403d88dd8dd3f359ebe69e0522948"
+    },
+    "oracle_tier_red": {
+      "command": "go -C calibration/oracles/crossplane test -race -run TestWriteTierAReportsFilteredWalkAsTierC -count=1 ./...",
+      "exit_code": 1,
+      "mutation": "before tier correction",
+      "private_log_sha256": "7d905bf4c1d8c045c377f46e62788833f17651031edc619948638bc13c9e1e7c"
+    },
+    "org_names": {
+      "command": "bash scripts/fathom-go.sh test -count=1 -run TestNoOrgSpecificNames ./cmd/fathom",
+      "exit_code": 0,
+      "private_log_sha256": "6a0824a25a016bb25950b9898364665b30e9c85b960703c2087e9da7c7e6f025"
+    },
+    "product_control": {
+      "command": "go run ./workspace/tmp/crossplane-proof/product_ablation.go -subject-file \"$LEGACY_AWS_CHECKOUT/apis/cluster/composition.yaml\"",
+      "exit_code": 0,
+      "private_log_sha256": "e6e37ee2038c3e714f20b7313e6163659fbb5512b92c598c5f56cb578472f78c"
+    },
+    "python_tests": {
+      "command": "python3 -m unittest calibration.oracles.crossplane.probe_test",
+      "exit_code": 0,
+      "private_log_sha256": "45d0f11b3fbcec641c7bf4de6d768c1e7afcf53e971f2c31e74dd2f13ddb9fd0"
+    },
+    "reading_roundtrip": {
+      "command": "go test -race ./internal/langbench -run ^TestCommittedReadingsRoundTrip$ -count=1",
+      "exit_code": 0,
+      "private_log_sha256": "3c37cf085397547cf676c08fd3c573811f2284473f308f81b3309dc67cc8be1d"
+    },
+    "release_notes": {
+      "command": "go run ./third_party/agentic-kit/cmd/release-notes -check",
+      "exit_code": 0,
+      "private_log_sha256": "091752538679d0f6ba6bda966c2b00a254cf52897a724dbfe280dfb2ffa0aead"
+    }
+  }
+}

@@ -79,6 +79,7 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-26 | [core-t1-astro-ceiling](2026-10-26-core-t1-astro-ceiling.md) | Measured extractor gap has an existing oracle; serialize its shared-query repair and re-read language plus route consumers | C-R4 (#20), LB-Q-astro-rest, K29 |
 | 2026-10-26 | [core-t1-cpp-ceiling](2026-10-26-core-t1-cpp-ceiling.md) | C++ remains on the CUDA/HLSL integration hold; candidate limits are recorded. | LB-Q-cpp-rest |
 | 2026-10-26 | [core-t1-css-ceiling](2026-10-26-core-t1-css-ceiling.md) | Browser-attested proposal ranges grade at tier C; parser errors and first-party population enumeration remain open. | LB-Q-css-rest |
+| 2026-10-26 | [crossplane-provider-crds](2026-10-26-crossplane-provider-crds.md) | Nine-subject native before/after probe validates 21 matched provider bases; historical definition tier corrected to C under P-T1, with binding candidates still open | GAP1-34, LB-Q-crossplane-rest, P-T1 |
 | 2026-10-26 | [core-t1-cue-ceiling](2026-10-26-core-t1-cue-ceiling.md) | The package-key file target limits recall; LSP definitions support a future SCIP writer. | LB-Q-cue-rest |
 | 2026-10-26 | [core-t1-go-cost-ceiling](2026-10-26-core-t1-go-cost-ceiling.md) | Field-only member symbols fail the wall gate; runtime reverted and no new grade claimed | C-R2, C-R5 (#20), LB-Q-go-rest |
 | 2026-10-26 | [core-t1-javascript-ceiling](2026-10-26-core-t1-javascript-ceiling.md) | The public C-R3 ruling retains the denominator and cost rules. | LB-Q-javascript-rest |

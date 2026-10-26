@@ -37,13 +37,18 @@ its example XR is MIXED and stays Kubernetes (`fusion.CRMixed`).
 - **A claim or composite resource to its XRD stays Kubernetes.** It needs a shared Kubernetes-dialect
   join from a group and kind to the CRD or XRD declaring it, coordinated with wave pc's constraint to
   ConstraintTemplate join (LB-Q-crossplane-rest, LB-X row).
-- **Managed-resource patches** (`fromFieldPath`, `toFieldPath`) are not read (L2 at most; they name fields
-  of resources this dialect does not model).
-- **`crossplane beta validate` did not run.** It needs provider and function schemas pulled from a
-  registry, which this wave never fetches (it asks first), so no metric reaches tier A: every metric
-  caps at good.
+- **Managed-resource patches** (`fromFieldPath`, `toFieldPath`) are not read by the product dialect
+  (L2 at most; they name fields of resources this dialect does not model). A separate calibration
+  probe walks directional field paths at tier C; it creates no product reference or binding edge.
+- **Native validation ran in the 2026-10-26 calibration probe.** The official Crossplane CLI 2.5.0
+  validated local core and pinned Upbound source CRDs without fetching images. It checked 21
+  provider-matched literal bases, all valid, but did not enumerate the nested definition population
+  or bind patches. P-T1 therefore places the historical definition oracle at C; reference and
+  cross-file reference tiers remain C. The old registry-fetch refusal is superseded by the owner's
+  calibration-only provider-schema fetch authorization. The product still has no downloader.
 
 ## Calibration
 
 Subjects in `calibration/corpus.d/crossplane.yaml`; the oracle is `calibration/oracles/crossplane` (an
-independent `gopkg.in/yaml.v3` walk).
+independent `gopkg.in/yaml.v3` walk). Native probe method and nine-subject assessment:
+`docs/assessments/2026-10-26-crossplane-provider-crds.md`.
