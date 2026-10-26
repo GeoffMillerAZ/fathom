@@ -136,3 +136,7 @@ Awaiting the owner (U1, a self-hosted, single-organization, read-only environmen
 narrowing, vision 38 section 7, the law 9 amendment with its vision 12 and vision 13 notes, P9's reinterpretation,
 F8's override and Q5's qualified answer. Their proposed texts are in `docs/assessments/2026-10-11-index-snapshots.md`
 section 10.2. Until U1 is answered, phase 5 (the environment daemon, F74) cannot start; phases 0 to 4 do not need it.
+
+Extended 2026-10-25 for platform engineering (GitHub issue #14): `docs/design/platform-engineering.md`, plan
+`docs/plans/platform-engineering.md` (PLT-), proposed: a per-subject fact receipt with a basis for a review kit and a
+readiness inventory, and a concern-delta file for a change-risk tierer, with no question map in fathom.

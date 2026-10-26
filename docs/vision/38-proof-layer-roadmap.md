@@ -411,6 +411,10 @@ Bench prep (`docs/design/bench-prep.md`, plan `docs/plans/bench-prep.md`, BX-) p
 
 Feature labs (`docs/design/feature-labs.md`, plan `docs/plans/feature-labs.md`, LAB-, issue #13) give each fathom feature a card with its firing criterion, helped metric (the plugin against the plugin minus that one feature) and kill, read the firing funnel from replayed sessions at $0 and from capped live forks, keep lab and decision-port results in one ledger the ledger oracle reads, and prove each observation's fix by the test its fix commit added; P0 spends $0, P1 spends agent budget under the owner's 2026-10-26 lift on building the harness and a no-claim shakedown, and the component-level complement of bench prep runs no head-to-head.
 
+### 9.15 Amended 2026-10-25 (owner's ask, proposed): platform engineering support (GitHub issue #14)
+
+`docs/design/platform-engineering.md`, plan `docs/plans/platform-engineering.md` (PLT-): the fathom side of an adopting platform team's review-kit readings, readiness inventory and change-risk tiers, extending vision 44 and WAE- with no parallel program and no question map. P0 (the use-case guide, the platform prereg, the census and baseline readings, and a CLI-only concern-delta file over stored Kubernetes facts) runs now as fillers. P1 (a per-subject fact receipt with a commit basis, two skills, a feature-labs card) rides lf8 beside WAE wave 2. Measurement rides bench prep (9.13) and feature labs (9.14), which merge first; G37 is widened rather than a new goal opened. The two-wave limit and the swap-volume rule of section 9.4 still apply.
+
 ## 10. Corrections to the memo (the tree or the memo itself disagreed)
 
 1. **`tests:` is taken.** Plan grammar v2 already has `tests:` (a `gone: callers` modifier,
