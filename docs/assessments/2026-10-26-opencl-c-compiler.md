@@ -55,3 +55,15 @@ inventories and tool logs stay in ignored workspace.
 
 This implements the existing compiler-reuse path under ADR-048. No new design
 decision, plan checkbox, canonical corpus or generated tracker is changed.
+
+## Whole-pool context work still required
+
+[The pinned host-source audit](../../calibration/oracles/opencl-c/contexts-r1.json)
+records each primary project's program assembly and compiler-option sources.
+The SDK baseline does not stand in for the other seven projects. OpenCV and SHOC
+use source-specific option variants; ArrayFire prepends generated source;
+PyOpenCL's tracked `.cl` files are consumer headers; clBLAS contains host-string
+templates. Those facts affect oracle coverage, not membership in the frozen pool.
+The exact variant manifest must be fixed from host source before measuring
+compiler coverage. This audit implements no transform and claims no additional
+compiler run. General grammar repair remains the next implementation step.
