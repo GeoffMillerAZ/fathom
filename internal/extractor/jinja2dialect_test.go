@@ -13,7 +13,7 @@ import (
 	"testing"
 )
 
-var jinja2Fixtures = []string{"base.html.j2", "page.html.j2", "broken.jinja"}
+var jinja2Fixtures = []string{"base.html.j2", "page.html.j2", "broken.jinja", "conditionals.j2"}
 
 // TestJinja2DialectGoldens runs every named dialects/jinja2/testdata/*
 // fixture through NewTSExtractor("jinja2") and compares symbols against its
