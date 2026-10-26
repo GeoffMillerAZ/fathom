@@ -49,7 +49,8 @@ Before/after syntax dumps prove identical definition names/ranges and call pairs
 all original literal call sites stay in the denominator. The string is the only
 PHP source instrumentation change, and is disclosed rather than claimed byte-identical.
 Composer plugins/scripts are off; ignored platform requirements, resolved package
-versions and lock hashes are retained privately. Missing optional integrations
+versions and lock hashes were retained privately during collection, then discarded.
+The historical rows cannot now be pinned to resolved dependency versions. Missing optional integrations
 and test failures are disclosed in aggregate; a completed trace does not imply
 a passing test suite.
 
@@ -68,8 +69,11 @@ attribution traps, including a fake syntax caller that must never enter truth.
 | PHP 8.5.8 / Guzzle | 2,472/3,189 (77.52%) | 2,065/2,065 | 566 tests; 111 errors, 9 skipped |
 | PHP 8.5.8 / Monolog | 4,615/5,968 (77.33%) | 3,558/3,563 (.9986) | 1,153 tests; 2 errors, 1 failure, 26 skipped |
 
-All four native traces have their completion marker and stay below the 2 GiB
-per-file cap. PHP 8.4.23 is the corrected compatible-runtime replay: it removes
+All four native traces were collected under `996bc6635`, with identical
+attribution but a weaker footer-substring completion check and without the
+later line/depth/count/total caps. They stayed below the 2 GiB per-file cap;
+the discarded traces were not revalidated under the fail-closed collector.
+The aggregate receipt now records the three collection-code hashes. PHP 8.4.23 is the corrected compatible-runtime replay: it removes
 PHP 8.5 deprecation interruptions and the two missing-private-PHP PATH errors
 in the earlier Monolog run. Guzzle still encounters dependency/API and CA-bundle
 test errors; Monolog retains an error-handler assertion failure and optional
@@ -123,10 +127,14 @@ Producer evidence: [call-site fork](https://github.com/michalboryczko/scip-php/t
 The named static candidates do not establish excellent L2 over both complete
 subjects. The current native test drivers also leave original written sites
 unattested; their actual executed pairs are A, with coverage and failures retained.
-The retry conditions are counted full-scope native coverage under LB-F175's 10%
-blind cap, or a native runtime driver covering at least 90% of the original written
-population with executed-only scoring preserved. No exclusion, new subject,
-C-to-A relabeling or tier amendment is used to obtain a passing result.
+Retry requires a released maintained indexer independently enumerating resolved
+references on both complete subjects, with unattested **unique written
+caller/callee pairs** below LB-F175's 10% cap and explicit PHP blind-site opt-in.
+Pairs in unindexed files remain unattested. The site-coverage percentages in the
+runtime table use a different unit: original **literal call sites**, not unique
+pairs. Under P-T1/OL-R9, broader runtime coverage remains an executed-population
+supplement and cannot trigger a whole-population L2 grade or establish its
+precision. No tier amendment is requested.
 
 ## Provenance checks and remaining handoff work
 
@@ -134,14 +142,22 @@ The supplementary measurements used product revision `51254ab4f`; they precede
 the subsequent main integration and do not claim a new support level. Raw
 subjects, SDK builds, downloads and private traces were discarded after the
 measurements. Public counts and hashes remain; dependency-lock snapshots are
-not published, so later constraint resolution may change replay bytes.
+not published and were discarded, so these historical rows cannot be pinned to
+resolved dependency versions after the fact. Later constraint resolution may
+change replay bytes. Future collections must retain sanitized package-version
+provenance and lock hashes before deleting their environments (X-R5 forbids
+subject people, usernames, names/emails and other identity metadata).
 
 The subsequent proof replay rebuilt Xdebug 3.5.3 against PHP 8.5.8. Runnable
 command: `nice -n 10 python3.13 -B calibration/oracles/php-candidates/prove_native.py --tools workspace/tools/php-proof --indexbench workspace/tools/indexbench --out workspace/artifacts/lang-php/native-proof`.
 The [aggregate proof receipt](data/php-oracle-2026-10-26/native-proof.json)
-records the tool/code hashes. Replacing real `lang-probe` output with fake
-calls changes its digest but leaves the raw native oracle digest identical
-(`04aaad2b…820d6c`). Changing the known native fixture input from `strlen` to
+records the historical tool/code hashes. Re-decoding identical native events
+and syntax scope is deterministic (`04aaad2b…820d6c`). The isolated
+`lang-probe` output file was changed to fake calls, but it was outside the
+collector inputs: this equality does **not** constitute an adversarial
+independence test. Independence is established structurally: `decode()` reads
+only `trace.*.xt`, `reflection-*.json` and explicit php-parser syntax scope;
+no extractor pairs or artifact are inputs. Changing the known fixture input from `strlen` to
 `strspn` changes exactly one native truth pair (`b42fe8bc…19285`). Both native
 collections assert two of four literal sites, leaving alias and same-line
 dynamic calls unattested. No extractor-output artifact is an oracle input.
@@ -156,7 +172,10 @@ tracked file kinds; non-PHP files explain its larger totals. Neither subject
 has a symlink or gitlink, and submodule contents are not claimed. Syntax skips
 `.git`, dot directories, `vendor` and `node_modules`; none hides an original
 eligible PHP file in these clean trees. This is a reconstruction at the same
-pins, not a retrospective manifest of the discarded native-suite runs.
+pins, not a retrospective manifest of the discarded native-suite runs. A fresh
+reconstruction also hashes the sorted-JSON literal-site population and asserts
+equality with each historical runtime row's `population_sha256`; both subjects
+match in both environments.
 
 Mutation: `python3.13 -B calibration/oracles/php-candidates/prove_mutations.py`
 substitutes the syntax caller for the Reflection caller, removes the same-line
@@ -167,7 +186,11 @@ unindexed-file population. Each has a focused `FAIL:` assertion: respectively
 `test_total_trace_byte_cap_plus_one`, and
 `test_omitted_documents_are_unattested_even_when_local_blind_share_is_small`.
 The committed driver restores each mutant in `finally` and reruns green.
-The final suite passes **16 tests**. Full output is kept privately at
+The final suite passes **17 tests**, including an isolated fresh-tree replay
+that starts without `workspace/` and runs all 16 attribution/scope/cap tests.
+`NativeAnswerTests.setUp` creates its scratch parent for every test; ordering
+and a pre-existing workspace are no longer prerequisites. Runnable fresh-tree
+command: `python3.13 -B -m unittest discover -s calibration/oracles/php-candidates -p test_fresh_checkout.py`. Full output is kept privately at
 `workspace/artifacts/lang-php/mutation.log`.
 
 Caps: `python3.13 -B -m unittest discover -s calibration/oracles/php-candidates -p test_trace_caps.py`

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Freeze the original subjects around a fresh complete syntax-population audit."""
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -26,6 +27,7 @@ def main():
     reading = json.loads((repo/'docs/bench/readings/lang/php.json').read_text())
     public = {'scope': 'fresh syntax-population audit at original pins; not retrospective manifests of discarded native suites',
               'canonical_reading_changed': False, 'subjects': {}}
+    published = json.loads((repo/'docs/assessments/data/php-oracle-2026-10-26/candidates.json').read_text())
     for name, expected_sites in [('guzzle', 3189), ('monolog', 5968)]:
         root = base/name
         pin = subprocess.check_output(['git', '-C', str(root), 'rev-parse', 'HEAD'], text=True).strip()
@@ -44,6 +46,9 @@ def main():
         autoload = base/'callsite-fork/vendor/autoload.php'
         ready()
         sites = json.loads(subprocess.check_output([str(php), '-n', str(here/'literal_sites.php'), str(autoload), str(root)]))
+        population_sha256 = hashlib.sha256(json.dumps(sites, sort_keys=True).encode()).hexdigest()
+        for environment in published['runtime_environments'].values():
+            assert population_sha256 == environment[name]['population_sha256'], 'runtime population differs from pinned clean reconstruction'
         ready()
         dump = json.loads(subprocess.check_output([str(php), '-n', str(repo/'calibration/oracles/php-parser/PhpParserDump.php'),
                                                  str(autoload), str(root)]))
@@ -61,7 +66,7 @@ def main():
         assert len(php_paths) == canonical['files'] and php_bytes == canonical['bytes']
         public['subjects'][name] = dict(revision=pin, subpath='.', before=before, after=after,
             reading_files=canonical['files'], reading_bytes=canonical['bytes'], syntax_files=sites['files'],
-            original_php_bytes=php_bytes, literal_sites=len(sites['sites']), unique_written_pairs=len(pairs),
+            original_php_bytes=php_bytes, literal_sites=len(sites['sites']), population_sha256=population_sha256, matches_all_published_runtime_populations=True, unique_written_pairs=len(pairs),
             generated_untracked_or_ignored_paths=0,
             exclusions='non-PHP tracked files reconcile the manifest difference; .git, dot directories, vendor and node_modules skipped by syntax; no symlinks followed; submodule contents not covered',
             receipt_prefix='workspace/artifacts/lang-php/scope/'+name+'-{before,after}')

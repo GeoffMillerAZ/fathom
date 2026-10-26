@@ -3,6 +3,9 @@
   "canonical_reading_changed": false,
   "measurement_phase": "supplementary before wave-A integration; canonical support unchanged",
   "ruling": "OL-R9",
+  "runtime_collection_limitations": "Attribution matches the fail-closed collector, but completion used a weaker footer substring check and lacked subsequent line/depth/count/total caps. Discarded raw traces were not revalidated under the later collector.",
+  "runtime_collector_revision": "996bc6635",
+  "runtime_dependencies": "Resolved package versions and lock snapshots were discarded before publication; historical runtime rows cannot be pinned to dependency versions after the fact. Future collection must preserve sanitized version/lock provenance.",
   "runtime_environments": {
     "PHP 8.4.23": {
       "guzzle": {
@@ -185,6 +188,11 @@
         "xdebug": "3.5.3"
       }
     }
+  },
+  "runtime_oracle_code_sha256": {
+    "literal_sites.php": "1bd2ed6e3ac8b8758e059ac0a81fa8cd44ac464d6ee456f36e50200efc0cf979",
+    "reflect_shutdown.php": "f8f7b96f4f5a20b1bcd95b24493baa6edc970a3b8e3c6fd25bab7649046bbf69",
+    "trace.py": "e0d0398a3538638c032e16b35df2bc998845627022da1715715fe3465a0dc0b5"
   },
   "scip_candidates": {
     "callsite-fork": {

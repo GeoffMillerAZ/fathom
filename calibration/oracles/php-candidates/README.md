@@ -132,8 +132,11 @@ nice -n 10 python3.13 -B calibration/oracles/php-candidates/prove_scope.py \
   --tools workspace/tools/php-proof --out workspace/artifacts/lang-php/scope
 ```
 
-The native proof collects the committed fixture, changes real `lang-probe`
-output to fake calls and confirms the raw native oracle digest stays identical.
+The native proof collects the committed fixture and confirms deterministic
+re-decoding of identical native inputs. Its isolated extractor-output artifact
+is outside collector inputs, so changing it is not an adversarial independence
+probe. Independence is structural: only native trace/reflection files and
+explicit php-parser syntax scope enter `decode()`; no extractor pairs do.
 Changing the fixture's native call from `strlen` to `strspn` must change exactly
 that native pair. Both collections assert 2/4 sites; the alias and same-line
 dynamic traps stay unattested. These are proof fixtures, never corpus members.
@@ -156,7 +159,9 @@ Composer metadata before taking the final original-source receipt. Dependencies
 remain excluded under `vendor/`, never removed from original source scope.
 `prove_scope.py` runs the exact manifest body around a fresh whole-population
 syntax audit and asserts canonical counts/bytes, the 2,571/4,558 original pairs
-and zero generated untracked/ignored paths. Fetch the two original subjects
+and zero generated untracked/ignored paths. It also hashes the sorted-JSON
+literal-site population and asserts equality with every published runtime
+`population_sha256` for that subject. Fetch the two original subjects
 first with `fetch.py --only guzzle --only monolog`. This reconstructs the pinned
 source scope; it does not invent retrospective manifests for discarded suites.
 
@@ -167,3 +172,16 @@ native stack depth over 4096. It emits `refusal.json` and no `oracle.json`.
 `test_trace_caps.py` tests every cap at a reduced limit with limit+1 input,
 plus truncation, footer text inside payload, timeout and signal. Completed suite
 failures remain disclosed; they do not become a claim of passing tests.
+
+Fresh-tree regression (creates a temporary recipe tree with no workspace):
+
+```sh
+python3.13 -B -m unittest discover -s calibration/oracles/php-candidates -p test_fresh_checkout.py
+```
+
+Historical runtime rows used the `996bc6635` collector, before strict completion
+and whole-collection limits. Attribution is unchanged; discarded traces were
+not revalidated. Their resolved package-version maps and lock snapshots were
+discarded before publication and cannot be reconstructed retrospectively. Future
+collections must retain sanitized dependency versions and lock hashes, without
+subject people or identity metadata (X-R5).

@@ -1,7 +1,10 @@
 {
   "changed_native_pairs": 1,
+  "collection_recipe_revision": "356c2598cc92d54ad85fc450cf0a833874e69c32",
   "extractor_after_sha256": "e8887a126d0c70ee7db098261f8c862b65d74f9090b0d1bcc5366ae5f142131d",
   "extractor_before_sha256": "1f1e4194a0b75d849939a87375f510e04c03deb63e1f1d62b3007e23bec10714",
+  "extractor_perturbation_scope": "isolated artifact only; equality demonstrates deterministic re-decode, not adversarial independence",
+  "independence_basis": "structural: decode reads only trace.*.xt, reflection-*.json and explicit php-parser syntax; the isolated extractor file is not an input",
   "input_change": "native function call strlen to strspn, original scope unchanged",
   "native_fixture": "PASS: 2 of 4 literal sites; alias/dynamic gaps retained",
   "oracle_code_sha256": {
@@ -12,7 +15,7 @@
   },
   "original_literal_sites": 4,
   "php": "8.5.8",
-  "raw_truth_after_extractor_perturbation_sha256": "04aaad2b0ee1f437ebf3d584243fefbe3e252e8996ced98254119a59af820d6c",
+  "raw_truth_after_deterministic_redecode_sha256": "04aaad2b0ee1f437ebf3d584243fefbe3e252e8996ced98254119a59af820d6c",
   "raw_truth_after_native_input_change_sha256": "b42fe8bca781440957484fee152a8241c268315328c96d11d90e1708e7319285",
   "raw_truth_before_sha256": "04aaad2b0ee1f437ebf3d584243fefbe3e252e8996ced98254119a59af820d6c",
   "xdebug": "3.5.3"

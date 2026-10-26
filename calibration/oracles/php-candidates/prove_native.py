@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Real Xdebug fixture, extractor-output perturbation and native-input change."""
+"""Real Xdebug fixture, deterministic re-decode and native-input change."""
 import argparse
 import hashlib
 import json
@@ -68,8 +68,10 @@ def main():
                    oracle_code_sha256={p: hashlib.sha256((here/p).read_bytes()).hexdigest()
                        for p in ['trace.py', 'literal_sites.php', 'reflect_shutdown.php', 'prove_native.py']},
                    extractor_before_sha256=original_extract, extractor_after_sha256=changed_extract,
-                   raw_truth_before_sha256=digest(baseline), raw_truth_after_extractor_perturbation_sha256=digest(fixed),
+                   raw_truth_before_sha256=digest(baseline), raw_truth_after_deterministic_redecode_sha256=digest(fixed),
                    raw_truth_after_native_input_change_sha256=digest(changed),
+                   independence_basis='structural: decode reads only trace.*.xt, reflection-*.json and explicit php-parser syntax; the isolated extractor file is not an input',
+                   extractor_perturbation_scope='isolated artifact only; equality demonstrates deterministic re-decode, not adversarial independence',
                    input_change='native function call strlen to strspn, original scope unchanged',
                    changed_native_pairs=1, original_literal_sites=summary['literal_sites'])
     (out/'proof.json').write_text(json.dumps(receipt, indent=2, sort_keys=True)+'\n')

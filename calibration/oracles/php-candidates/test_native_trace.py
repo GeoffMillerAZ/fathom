@@ -7,10 +7,12 @@ from trace import decode
 
 
 class NativeAnswerTests(unittest.TestCase):
+    def setUp(self):
+        self.workspace = Path(__file__).resolve().parents[3]/'workspace/tmp'
+        self.workspace.mkdir(parents=True, exist_ok=True)
+
     def test_native_caller_is_not_the_syntax_walk_pair(self):
-        workspace = Path(__file__).resolve().parents[3]/'workspace/tmp'
-        workspace.mkdir(parents=True, exist_ok=True)
-        with tempfile.TemporaryDirectory(dir=workspace) as temp:
+        with tempfile.TemporaryDirectory(dir=self.workspace) as temp:
             output = Path(temp)
             root = output/'subject'
             root.mkdir()
@@ -30,8 +32,7 @@ class NativeAnswerTests(unittest.TestCase):
             self.assertEqual(summary['native_counts']['unpaired_native_entries'], 1)
 
     def test_implicit_callback_does_not_attest_a_coincident_literal_name(self):
-        workspace = Path(__file__).resolve().parents[3]/'workspace/tmp'
-        with tempfile.TemporaryDirectory(dir=workspace) as temp:
+        with tempfile.TemporaryDirectory(dir=self.workspace) as temp:
             output = Path(temp)
             root = output/'subject'
             root.mkdir()
@@ -48,8 +49,7 @@ class NativeAnswerTests(unittest.TestCase):
             self.assertEqual(summary['attested_sites'], 0)
 
     def test_dynamic_call_on_same_line_cannot_attest_unexecuted_literal(self):
-        workspace = Path(__file__).resolve().parents[3]/'workspace/tmp'
-        with tempfile.TemporaryDirectory(dir=workspace) as temp:
+        with tempfile.TemporaryDirectory(dir=self.workspace) as temp:
             output = Path(temp)
             root = output/'subject'
             root.mkdir()
