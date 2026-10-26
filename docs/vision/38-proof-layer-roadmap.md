@@ -403,6 +403,10 @@ Wave 1 derives on read and adds no table.
 
 Every machine serves its own checkouts through its own loopback fathom, with no central shared daemon or daemon-to-daemon calls; git moves code, attested receipts move evidence and index snapshots will move the index on existing operator carriers (ADR-078 D1–D3). The multi-machine guide and shipped `fathom-offload` skill ship now; receipt identity columns wait for RT-M1 PASS, and helper-machine cold start names an IXS phase 1 consumer after RT-M1 PASS and IXS-M0b parity, without unparking that plan.
 
+### 9.13 Amended 2026-10-25 (owner-architect): benchmark preparation
+
+Bench prep (`docs/design/bench-prep.md`, plan `docs/plans/bench-prep.md`, BX-) prepares the credible tier on vetted third-party subjects with dry-run harnesses and pre-registered three-outcome reads; P0 and P1 spend $0, and the first spend is an owner-approved shakedown.
+
 ## 10. Corrections to the memo (the tree or the memo itself disagreed)
 
 1. **`tests:` is taken.** Plan grammar v2 already has `tests:` (a `gone: callers` modifier,
