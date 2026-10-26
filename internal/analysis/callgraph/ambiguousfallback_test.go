@@ -64,8 +64,19 @@ func TestBuildEdges_FauxtownGolden(t *testing.T) {
 	if !reflect.DeepEqual(edges, want) {
 		t.Errorf("Build(fauxtown).edges = %v, want %v", edges, want)
 	}
-	if got, wantN := len(merged), 17; got != wantN {
+	// The fixture has five payment fields and four ledger fields. They are
+	// graph nodes, but none may become a callable target in the edge golden.
+	if got, wantN := len(merged), 26; got != wantN {
 		t.Errorf("fauxtown node count = %d, want %d (fixture changed under this test)", got, wantN)
+	}
+	fields := 0
+	for _, n := range merged {
+		if n.Kind == core.KindGoField {
+			fields++
+		}
+	}
+	if fields != 9 {
+		t.Errorf("fauxtown Go field count = %d, want 9", fields)
 	}
 	if got, wantN := g.EdgeCount(), len(want); got != wantN {
 		t.Errorf("Build(fauxtown).EdgeCount() = %d, want %d", got, wantN)
