@@ -173,6 +173,14 @@ A subject is kept only when it passes all seven. C3 is read on macOS (BX-3) and 
 | C6 fan-in | at least 3 symbols with fan-in 5 or more across at least 3 caller units, from the truth graph, never from fathom. **D24:** one unit for every language: the import package, or the directory for Python and TypeScript. Merge a Go external test package (`<pkg>_test`) into its directory’s package. The defining package/directory never counts as a caller of its own symbol. **D26:** caller units and sites are product-only in every language: test, example, benchmark, sample, docs and tool directories never count; test files and the defining package’s own tests are excluded everywhere. C6 measures product fan-in on equal terms across languages. |
 | C7 independence | not fathom, not a repository fathom's own fleet indexes, at most 2 subjects per organization |
 
+**D27, applications before libraries (2026-10-26).** Under D26 the first 17 public candidates kept one Python and
+one or two TypeScript subjects and no Go subject: a popular library's cross-package fan-in comes almost entirely from
+its own tests, while blast radius and find_callers earn their keep in code whose product packages call each other.
+Candidates for BX-44 are sourced first from applications and services (a CLI, a server, a monorepo of internal
+packages) with at least 10 product packages or directories in the primary language, and a library is a candidate only
+when its product fan-in is shown at screening. Revisit when: application candidates fail C3 or C5 at a higher rate
+than libraries did, or the kept pool reaches six per language from libraries alone.
+
 **Preparation mount contract.** Containers mount the detached subject clone at
 `/subject:ro`, a fresh job-owned `workspace/` build directory at `/work:rw`,
 and `calibration/bench.d` at `/bench-inputs:ro`. `/work/tmp` is a writable,
