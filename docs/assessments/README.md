@@ -89,16 +89,20 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-26 | [core-t1-sass-grammar](2026-10-26-core-t1-sass-grammar.md) | Measured licensed candidate fails the complete-source grammar gate; refusal has concrete syntax causes | LB-Q-sass-rest, X-R1 |
 | 2026-10-26 | [core-t1-scala-ceiling](2026-10-26-core-t1-scala-ceiling.md) | The end-line repair and SemanticDB build remain shared-engine and build routes. | LB-Q-scala-rest |
 | 2026-10-26 | [core-t1-scss-oracle](2026-10-26-core-t1-scss-oracle.md) | Native-only gains: canonical subjects 0, original Bourbon 0, Foundation 25 post hoc; full Bourbon L3 unmet (.5294) post hoc; canonical 0.5.1 counts preserved | LB-Q-scss-rest, W5, X-R1 |
-| 2026-10-26 | [core-t1-scss-load-path-gap](2026-10-26-core-t1-scss-load-path-gap.md) | Draft ENGINE finding owned by core-t1: configured in-repo load paths, Bourbon 45/85; separate from fresh native-oracle validation | LB-Q-scss, LB-Q-scss-rest, R3-F4 |
+| 2026-10-26 | [core-t1-scss-load-path-gap](2026-10-26-core-t1-scss-load-path-gap.md) | Draft ENGINE finding owned by core-t1: configured in-repo load paths, Bourbon 45/85; separate from fresh native-oracle validation | LB-Q-scss, LB-Q-scss-rest |
 | 2026-10-26 | [core-t1-svelte-ceiling](2026-10-26-core-t1-svelte-ceiling.md) | The public C-R1 ruling retains the component kind ceiling. | LB-Q-svelte-rest |
 | 2026-10-26 | [core-t1-tailwind-ceiling](2026-10-26-core-t1-tailwind-ceiling.md) | The pinned compiler parser has no full source rule ends. | LB-Q-tailwind-rest |
 | 2026-10-26 | [core-t1-typescript-ceiling](2026-10-26-core-t1-typescript-ceiling.md) | Object-literal method extraction remains the concrete route. | LB-Q-typescript-rest |
 | 2026-10-26 | [support-gap-sweep](2026-10-26-support-gap-sweep.md) | The board overstates runtime support: Python and Ruby manifests, Swift with Xcode, SQL dialects and the template engines are the top gaps, and formats the board calls disclosed are silent at runtime | GAP1-1 to GAP1-40 (language-breadth.gap1.md), LB-F453 |
 | 2026-10-26 | [opencl-c-triage](2026-10-26-opencl-c-triage.md) | Pinned native grammar rates and compiler diagnostics; proposal only, no support level | none; LB-Q-opencl activation is controller-owned |
+| 2026-10-26 | [tools-kong-native](2026-10-26-tools-kong-native.md) | Native 37-pair/1,332-definition population; filename-selected four-pair/365-definition subset grants no support grade | LB-Q-kong-rest |
 | 2026-10-26 | [tools-pgbouncer-native-positions](2026-10-26-tools-pgbouncer-native-positions.md) | Native callback brackets attest all 161 definition lines/ranges; L1/L2 excellent | LB-Q-pgbouncer |
 | 2026-10-26 | [tools-nginx-native](2026-10-26-tools-nginx-native.md) | Native full upstream population diagnostic; canonical L3 unchanged | LB-Q-nginx-rest |
 | 2026-10-26 | [tools-nginx-native-positions](2026-10-26-tools-nginx-native-positions.md) | Complete native lexer population attests 71/71 names/ranges and 1/1 references; canonical L3 unchanged | LB-Q-nginx-rest |
 | 2026-10-26 | [glsl-registered-extensions](2026-10-26-glsl-registered-extensions.md), [paired data](data/glsl-g-r3-2026-10-26/canonical-baseline-core-to-full-registry-deltas.json) | Corrected macro precision and array trees retain L2 good; digest-only rejected candidates and fresh pinned statement/extension holdouts | G-R3/G-R4/G-R5, LB-Q-glsl |
+| 2026-10-26 | [terraform-two-hop-calibration](2026-10-26-terraform-two-hop-calibration.md), [data](data/terraform-two-hop-2026-10-26/summary.json) | Exact pinned native truth stays at 3,528 pairs before and after; the repaired engine finds all 3,528 | GAP1-32, LB-Q-terraform-rest, ADR-048 |
+| 2026-10-26 | [iac-docxref-impact](2026-10-26-iac-docxref-impact.md), [data](data/2026-10-26-iac-docxref-impact.json) | Two-hop engine restores 1,381 native Terraform pairs; other doc strategies are isolated and fixture-replayed | IAC-5, IAC-6, IAC-9, IAC-11, GAP1-32, ADR-048, ADR-075 |
+| 2026-10-26 | [next-phase-plan](2026-10-26-next-phase-plan.md) | Fathom cannot yet prove it helps: land the P0 fixes and drafts, move bench honesty into code, then run four preregistered experiments with written predictions | vision 38 §9.16, NP-Q1 to NP-Q6 |
 
 ## Companion pages
 

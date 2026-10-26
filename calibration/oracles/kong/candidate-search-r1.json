@@ -1,0 +1,108 @@
+{
+  "date": "2026-10-26",
+  "purpose": "Five-source native-route audit; no absence ceiling",
+  "sources": [
+    {
+      "source_id": "kongfig-readme",
+      "sha256": "f967f0d82c24137e16edb23fb48f5908a5fcc2662f483027f05436459272fbf7",
+      "bytes": 10328
+    },
+    {
+      "source_id": "kongfig",
+      "sha256": "d659c66f6f397d7dd665ebb05e1c7ab8358e7ee3119bf1a95bad0dbac1b6e9bc",
+      "bytes": 2325
+    },
+    {
+      "source_id": "lsp-query",
+      "sha256": "4af480b8ee5b87b369a76c49bd22c9a783908272ebffbe97898f8ab0f0772a5f",
+      "bytes": 55
+    },
+    {
+      "source_id": "runtime-config-3.9.1",
+      "sha256": "768feb6c06cae38f31b65bf73b0db6550a9fab73e7f28584a40476a2520c16b7",
+      "bytes": 4988
+    },
+    {
+      "source_id": "runtime-license-3.9.1",
+      "sha256": "dcda1a461d765198a8f962bcb19d21bace04009a4409d2f79825725ec1a83279",
+      "bytes": 11345
+    },
+    {
+      "source_id": "scip-query",
+      "sha256": "4af480b8ee5b87b369a76c49bd22c9a783908272ebffbe97898f8ab0f0772a5f",
+      "bytes": 55
+    },
+    {
+      "source_id": "yaml-lsp-readme",
+      "sha256": "9d96e0d7041d1c5c65bf9e0a965949f2235ffe4472cbd0c2f3c09a24c78cda8a",
+      "bytes": 23375
+    },
+    {
+      "source_id": "yaml-lsp",
+      "sha256": "9178fec659ca6d0d3a59d611526af4a70786010c21ce5397ab24d90a030d4b27",
+      "bytes": 3619
+    }
+  ],
+  "results": [
+    {
+      "category": "owner_toolchain",
+      "candidate": "Kong decK / go-database-reconciler",
+      "version": "1.68.0 / 1.42.4",
+      "license": "Apache-2.0",
+      "sources": [
+        "https://developer.konghq.com/deck/file/validate/",
+        "https://github.com/Kong/deck/blob/v1.68.0/convert/convert.go",
+        "https://github.com/Kong/go-database-reconciler/blob/v1.42.4/pkg/file/reader.go"
+      ],
+      "result": "Native typed reader, before-normalization service fields, owner state builder and native registry evaluated in authored controls. Three network-denied official CLI renders agree on tested fields. Full original population remains to measure."
+    },
+    {
+      "category": "SCIP_LSIF",
+      "candidate": "Sourcegraph indexer lists and GitHub scip-kong query",
+      "version": "queried 2026-10-26",
+      "license": "documentation search; no producer candidate found",
+      "sources": [
+        "https://sourcegraph.com/docs/code-navigation/writing-an-indexer",
+        "https://docs.sourcegraph.com/code_intelligence/references/indexers",
+        "https://api.github.com/search/repositories?q=scip-kong"
+      ],
+      "result": "Current Sourcegraph list read: no Kong indexer. Legacy LSIF URL redirects to the current list; old-version and direct HTTP403 access gaps recorded in this session. GitHub repository query returned zero. Later shared unauthenticated GitHub API requests rate-limited; no global nonexistence claim."
+    },
+    {
+      "category": "language_servers",
+      "candidate": "YAML Language Server; dedicated Kong search",
+      "version": "2.0.0, git6301340c3dd5386a801605bde244486cc24581e0",
+      "license": "MIT",
+      "sources": [
+        "https://registry.npmjs.org/yaml-language-server/latest",
+        "https://github.com/redhat-developer/yaml-language-server/blob/6301340c3dd5386a801605bde244486cc24581e0/README.md",
+        "https://api.github.com/search/repositories?q=kong+language-server"
+      ],
+      "result": "Generic schema validation/completion/hover/symbols; no Kong owner foreign-key evaluation claimed. Third-party C; not installed. Dedicated GitHub query returned zero; web search found generic YAML/VSCode references, not a named Kong-specific resolver. Search result is limited, not an absence ceiling."
+    },
+    {
+      "category": "registry_parsers_AST",
+      "candidate": "kongfig / native owner typed parser / independent yaml.v3",
+      "version": "1.5.3 git3c9d032a180bd44311c2eebf8fcd43ecae10b2b5 / GDR1.42.4 / yaml.v3 3.0.1",
+      "license": "MIT / Apache-2.0 / Apache-2.0+MIT",
+      "sources": [
+        "https://registry.npmjs.org/kongfig/latest",
+        "https://github.com/mybuilder/kongfig/blob/3c9d032a180bd44311c2eebf8fcd43ecae10b2b5/README.md",
+        "https://pkg.go.dev/github.com/kong/go-database-reconciler/pkg/file"
+      ],
+      "result": "kongfig applies/dumps its legacy apis/consumers/config schema through a live Admin API, and can accept JS; not this offline format oracle, not installed/executed. Owner GDR is the stronger available typed parser. Independent yaml.v3 only supplies C locations and never selects native population."
+    },
+    {
+      "category": "runtime_tracing",
+      "candidate": "Kong runtime declarative parser and decK typed callbacks",
+      "version": "Kong3.9.1 / decK1.68.0 GDR1.42.4",
+      "license": "Apache-2.0",
+      "sources": [
+        "https://developer.konghq.com/gateway/cli/reference/",
+        "https://github.com/Kong/kong/blob/3.9.1/kong/cmd/config.lua",
+        "https://github.com/Kong/kong/blob/3.9.1/LICENSE"
+      ],
+      "result": "Native kong config parse calls declarative.new_config and dc:parse_file, then reports parse successful; db_import is a separate mutating route, never invoked. Runtime parser/tracing is an available untried route requiring the Kong/OpenResty runtime; no install/build/Docker run. Version3.14.0 raw-source attempts404; actual pinned3.9.1 source/license read. Read-only decK typed callbacks are measured on authored controls; L3 remains held by D19."
+    }
+  ]
+}

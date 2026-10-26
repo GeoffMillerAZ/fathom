@@ -24,6 +24,38 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Unreleased changes wait as fragments under docs/changelog/unreleased/; the release ritual folds them here.
 
+## [0.23.0] — 2026-10-26
+
+Release impact: minor
+
+### Added
+
+- Benchmark subject manifests can record leaf-test suite counts and named exclusions with reasons and log witnesses; nonempty exclusions require a count and cannot exceed two percent of the suite.
+- Extract definitions and call references from GLSL shader files, with a patched grammar for layout declarations, precision qualifiers and array types.
+- Measure GLSL syntax calls at L2 good using pinned Khronos core and registered-extension declarations, with unchanged canonical shader tenancy.
+- Include the sorted measured file paths in indexbench lang-oracle diagnostic receipts, allowing paired oracle checks to verify the exact population, including files with no calls. Canonical readings keep counts and hashes.
+- `fathom instrument --adoption` has a labs section, in the text report and as the `labs` key of `--json`: the cards under `calibration/labs.d` with their surface counts, the closure gap verbatim, the newest `docs/bench/labs-ledger.jsonl` row per lab, case counts by split, the fixed observations (fix proof `not measured (LAB-24 unbuilt)`), and the observations with no Lab link by open, fixed or other status. It reads files only. A card, ledger, case or observation read failure is printed, never shown as zero; the text lists the first 20 observation ids and how many more, and `--json` lists every id. The console's Operate page does not compute the section.
+- Developer OpenCL C native grammar screens and a tier-B SDK replay through the existing clang oracle tools. No language support change.
+
+### Changed
+
+- PHP oracle replay recipes reject incomplete or oversized native traces and include runnable truth-independence, full-subject scope and mutation proofs; the canonical language grade is unchanged.
+- Make PHP oracle regressions replay on a fresh checkout; constrain the L2 retry to independent static reference evidence and disclose historical runtime provenance limits.
+- Measure PowerShell native command discovery with parser-derived declared helpers, hashed loads and explicit refusals; disclose session-wide private-helper answers, unresolved classes and executed-pair limits.
+- Measure released Ruby TypeProf and native TracePoint on complete original subjects, disclose unresolved and unexecuted populations, and retain the canonical grades and shared-repair trigger.
+- Add a bench-only Kong native population probe with reproducible owner-library builds, source-bound controls and explicit filename-selected comparison limits. The subset grants no tier-A recall or support grade; canonical grades remain unchanged.
+- nginx's native diagnostic now measures complete definition names and ranges against its lexer, reaching L1/L2 excellent on the original scoped inputs. The canonical board stays L2 good; its regrade and canonical L3 work remain pending.
+- PgBouncer definition ranges now require native callback prefixes before and after each token line. All 161 ranges and the complete one-reference canonical population grade excellent at L2; shifted locator positions are refused.
+
+### Fixed
+
+- The CUE typed pass and the embedded schema loader no longer build the default module registry, so ingesting a CUE module with external dependencies cannot contact the public registry. Such imports report as failed packages, and the warning names the failing package and the dependency.
+- Known limit: one unresolvable external import fails the CUE typed pass for the whole module, not only the importing package, so modules whose external dependencies used to be fetched lose their CUE typed edges (syntax-only edges remain, and the failure is counted).
+- Language calibration regrades retain a range companion's weaker oracle tier instead of promoting it to the primary definitions tier.
+- Accept GLSL precision macros and give sized and unsized array constructors a consistent syntax tree while preserving array indexing.
+- Language calibration counts call false positives in every file an independent tool oracle explicitly scoped, including files with no oracle calls. Unscoped empty call dumps continue to leave the calls family unasserted.
+- Terraform and OpenTofu references to local module outputs resolve across sibling files, including indexed module calls. Valid override files merge with their primary declarations in lexical filename order. Ambiguous ordinary calls or outputs remain unresolved, and existing local-source bounds still apply.
+
 ## [0.22.0] — 2026-10-26
 
 Release impact: minor
