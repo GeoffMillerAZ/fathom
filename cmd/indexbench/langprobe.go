@@ -67,17 +67,24 @@ func probeLines(target extractor.ProbeTarget, src []byte) ([]string, error) {
 		return nil, fmt.Errorf("%s: %w", target.QueryFile, err)
 	}
 	defer q.Close()
-	var note string
-	if target.Preprocess != nil {
-		if texts := target.Preprocess(src); len(texts) > 0 {
-			src, note = texts[0], "; preprocess: the dialect's pre-parse step rewrote the file (blanked spans, same lines)"
-		}
-	}
-	tree, err := p.Parse(src)
+	// The text the extractor reads (extractor.ProbeParse): as written, or
+	// the pre-parse candidate it takes for a file in error.
+	res, err := extractor.ProbeParse(p, target, src)
 	if err != nil {
 		return nil, err
 	}
+	tree := res.Tree
 	defer tree.Close()
+	src = res.Text
+	var note string
+	switch {
+	case res.WrittenErrors == 0:
+		note = "; parse: read as written (no error)"
+	case res.Candidate > 0:
+		note = fmt.Sprintf("; parse: pre-parse candidate %d of %d (the file holds %d ERROR or MISSING nodes as written; the dialect's pre-parse step blanked spans, same lines)", res.Candidate, res.Candidates, res.WrittenErrors)
+	default:
+		note = fmt.Sprintf("; parse: read as written, in error (%d ERROR or MISSING nodes; none of the %d pre-parse candidates parses clean)", res.WrittenErrors, res.Candidates)
+	}
 	matches, err := q.Run(tree)
 	if err != nil {
 		return nil, err

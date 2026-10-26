@@ -401,12 +401,14 @@ func TestGrammars(t *testing.T) {
 	want["solidity"] = true              // LB-Q-solidity (wave lang6, JoranHonig/tree-sitter-solidity)
 	want["luau"] = true                  // LB-Q-luau (wave lang1, tree-sitter-grammars/tree-sitter-luau)
 	want["wgsl"] = true                  // LB-Q-wgsl (include-yy/tree-sitter-wgsl b58422ee)
+	want["hlsl"] = true                  // LB-Q-hlsl (tree-sitter-grammars/tree-sitter-hlsl, upstream PR 82 head 0400dd36)
 	want["perl"], want["r"] = true, true // LB-Q-perl, LB-Q-r (wave lang3, tree-sitter-perl 2.0.0, tree-sitter-r 1.3.0)
 	want["objective-c"] = true           // LB-Q-objective-c (wave lang6, tree-sitter-grammars/tree-sitter-objc)
 	want["graphql"] = true               // LB-Q-graphql (wave lang1, bkegley/tree-sitter-graphql)
 	want["prisma"] = true                // LB-Q-prisma (wave lang6, victorhqc/tree-sitter-prisma)
 	want["thrift"] = true                // LB-Q-thrift (wave lang7, duskmoon314/tree-sitter-thrift v0.5.0)
 	want["jinja2"] = true                // LB-Q-jinja2 (cathaysia/tree-sitter-jinja v0.5.0)
+	want["cuda"] = true                  // LB-Q-cuda (tree-sitter-grammars/tree-sitter-cuda v0.21.2)
 	if len(names) != len(want) {
 		t.Fatalf("Grammars() = %v, want %d entries", names, len(want))
 	}

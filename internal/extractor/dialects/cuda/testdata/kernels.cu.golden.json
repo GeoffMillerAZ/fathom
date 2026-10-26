@@ -1,0 +1,193 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "CudaModule",
+      "package": "kernels",
+      "line": 1,
+      "end_line": 51,
+      "tier": "verified"
+    },
+    {
+      "name": "BLOCK",
+      "kind": "CudaMacro",
+      "package": "kernels",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "CHECK",
+      "kind": "CudaMacro",
+      "package": "kernels",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "kern",
+      "kind": "CudaNamespace",
+      "package": "kernels",
+      "line": 7,
+      "end_line": 51,
+      "tier": "verified"
+    },
+    {
+      "name": "kern.real",
+      "kind": "CudaTypedef",
+      "package": "kernels",
+      "line": 9,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "kern.index_t",
+      "kind": "CudaTypedef",
+      "package": "kernels",
+      "line": 10,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "kern.mode",
+      "kind": "CudaEnum",
+      "package": "kernels",
+      "line": 12,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "kern.mode.fast",
+      "kind": "CudaEnumerator",
+      "package": "kernels",
+      "line": 12,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "kern.mode.safe",
+      "kind": "CudaEnumerator",
+      "package": "kernels",
+      "line": 12,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "kern.Params",
+      "kind": "CudaStruct",
+      "package": "kernels",
+      "line": 14,
+      "end_line": 17,
+      "tier": "verified"
+    },
+    {
+      "name": "kern.Params.alpha",
+      "kind": "CudaField",
+      "package": "kernels",
+      "line": 15,
+      "end_line": 15,
+      "tier": "verified"
+    },
+    {
+      "name": "kern.Params.n",
+      "kind": "CudaField",
+      "package": "kernels",
+      "line": 16,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
+      "name": "kern.square",
+      "kind": "CudaFunc",
+      "package": "kernels",
+      "line": 19,
+      "end_line": 19,
+      "signature": "__device__ real square(real v)",
+      "tier": "verified"
+    },
+    {
+      "name": "kern.clamp01",
+      "kind": "CudaFunc",
+      "package": "kernels",
+      "line": 21,
+      "end_line": 23,
+      "signature": "__host__ __device__ inline real clamp01(real v)",
+      "tier": "verified"
+    },
+    {
+      "name": "kern.scale",
+      "kind": "CudaFunc",
+      "package": "kernels",
+      "line": 25,
+      "end_line": 30,
+      "signature": "__global__ void scale(real *out, const real *in, Params p)",
+      "calls": [
+        "square"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "kern.fill",
+      "kind": "CudaFunc",
+      "package": "kernels",
+      "line": 33,
+      "end_line": 39,
+      "signature": "__global__ void __launch_bounds__(BLOCK, 2) fill( T *dst, T value, int count)",
+      "tier": "verified"
+    },
+    {
+      "name": "kern.Reducer",
+      "kind": "CudaClass",
+      "package": "kernels",
+      "line": 41,
+      "end_line": 49,
+      "tier": "verified"
+    },
+    {
+      "name": "kern.Reducer.Reducer",
+      "kind": "CudaFunc",
+      "package": "kernels",
+      "line": 43,
+      "end_line": 43,
+      "signature": "__device__ Reducer() : acc_(0)",
+      "tier": "verified"
+    },
+    {
+      "name": "kern.Reducer.add",
+      "kind": "CudaFunc",
+      "package": "kernels",
+      "line": 44,
+      "end_line": 44,
+      "signature": "__device__ void add(real v)",
+      "calls": [
+        "clamp01"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "kern.Reducer.total",
+      "kind": "CudaFunc",
+      "package": "kernels",
+      "line": 45,
+      "end_line": 45,
+      "signature": "__host__ real total() const",
+      "tier": "verified"
+    },
+    {
+      "name": "kern.Reducer.acc_",
+      "kind": "CudaField",
+      "package": "kernels",
+      "line": 48,
+      "end_line": 48,
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "<cuda_runtime.h>",
+      "module": "<cuda_runtime.h>",
+      "kind": "whole",
+      "line": 2
+    }
+  ]
+}

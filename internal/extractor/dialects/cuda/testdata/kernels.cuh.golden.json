@@ -1,0 +1,70 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "CudaModule",
+      "package": "kernels",
+      "line": 1,
+      "end_line": 21,
+      "tier": "verified"
+    },
+    {
+      "name": "BLOCK",
+      "kind": "CudaMacro",
+      "package": "kernels",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "kern",
+      "kind": "CudaNamespace",
+      "package": "kernels",
+      "line": 7,
+      "end_line": 21,
+      "tier": "verified"
+    },
+    {
+      "name": "kern.Box",
+      "kind": "CudaStruct",
+      "package": "kernels",
+      "line": 14,
+      "end_line": 17,
+      "tier": "verified"
+    },
+    {
+      "name": "kern.Box.v",
+      "kind": "CudaField",
+      "package": "kernels",
+      "line": 15,
+      "end_line": 15,
+      "tier": "verified"
+    },
+    {
+      "name": "kern.Box.get",
+      "kind": "CudaFunc",
+      "package": "kernels",
+      "line": 16,
+      "end_line": 16,
+      "signature": "__host__ __device__ T get() const",
+      "tier": "verified"
+    },
+    {
+      "name": "kern.lane",
+      "kind": "CudaFunc",
+      "package": "kernels",
+      "line": 19,
+      "end_line": 19,
+      "signature": "__device__ __forceinline__ int lane()",
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "<cuda_runtime.h>",
+      "module": "<cuda_runtime.h>",
+      "kind": "whole",
+      "line": 3
+    }
+  ]
+}

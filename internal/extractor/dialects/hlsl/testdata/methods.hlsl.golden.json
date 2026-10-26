@@ -1,0 +1,60 @@
+{
+  "symbols": [
+    {
+      "name": "Light",
+      "kind": "HlslStruct",
+      "package": "methods",
+      "line": 3,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
+      "name": "Light.make",
+      "kind": "HlslMethod",
+      "package": "methods",
+      "line": 8,
+      "end_line": 8,
+      "signature": "static Light make(float3 c)",
+      "tier": "verified"
+    },
+    {
+      "name": "Light.radiance",
+      "kind": "HlslMethod",
+      "package": "methods",
+      "line": 10,
+      "end_line": 13,
+      "signature": "float3 radiance(float d)",
+      "calls": [
+        "max",
+        "rcp"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Light::luminance",
+      "kind": "HlslMethod",
+      "package": "methods",
+      "line": 18,
+      "end_line": 21,
+      "signature": "float Light::luminance()",
+      "calls": [
+        "dot"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Shade",
+      "kind": "HlslFunc",
+      "package": "methods",
+      "line": 23,
+      "end_line": 27,
+      "signature": "float3 Shade(float3 c, float d)",
+      "calls": [
+        "luminance",
+        "make",
+        "radiance"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

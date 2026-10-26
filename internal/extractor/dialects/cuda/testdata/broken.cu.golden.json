@@ -1,0 +1,21 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "CudaModule",
+      "package": "broken",
+      "line": 1,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "ok",
+      "kind": "CudaFunc",
+      "package": "broken",
+      "line": 2,
+      "end_line": 2,
+      "signature": "__global__ void ok(int *p)",
+      "tier": "verified"
+    }
+  ]
+}

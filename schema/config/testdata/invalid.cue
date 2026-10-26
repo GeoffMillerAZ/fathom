@@ -311,3 +311,8 @@ package config
 
 // gateConsent: #Config & {gate: {allow_receipt_acceptance: "yes"}} // bool required
 // badSubagentFacts: #Config & {hooks: subagent_map_facts: "on"}
+
+// The swap-volume floor requires a pressure level, never "off".
+// badFloorOnPressure: #Config & {
+// 	tenancy: host: floor_on_pressure: "off"
+// }

@@ -25,7 +25,7 @@ inside a type (an array bound, a `decltype` in a declarator): a call written the
 
 ## Run
 
-    cd calibration/oracles/clang-calls && go run . -subject <checkout> -compdb <build>/compile_commands.json -jobs 5 > clang-calls.json
+    cd calibration/oracles/clang-calls && go run . -subject <checkout> -compdb <build>/compile_commands.json -tier A -jobs 5 > clang-calls.json
 
 then pass the file to `indexbench lang-oracle` as a `-tool-oracle` beside the scip-clang index and the preproc
 oracle (whose `active_lines` also leave out a call written only on a line the build discards). A unit the compiler

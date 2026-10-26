@@ -51,7 +51,7 @@ OS=$(uname -s | tr A-Z a-z); ARCH=$(uname -m | sed 's/x86_64/amd64/; s/aarch64/a
 curl -fsSLO "https://github.com/GeoffMillerAZ/fathom/releases/download/v$V/fathom_${V}_${OS}_${ARCH}.tar.gz"
 curl -fsSL "https://github.com/GeoffMillerAZ/fathom/releases/download/v$V/checksums.txt" | grep "fathom_${V}_${OS}_${ARCH}.tar.gz" | shasum -a 256 -c -
 mkdir -p ~/.local/bin && tar -xzf "fathom_${V}_${OS}_${ARCH}.tar.gz" -C ~/.local/bin fathom
-export PATH="$HOME/.local/bin:$PATH" && fathom version    # fathom v0.20.0 @ <commit>
+export PATH="$HOME/.local/bin:$PATH" && fathom version    # fathom v0.21.0 @ <commit>
 ```
 
 The binaries are not signed or notarized. A macOS browser download carries a quarantine
@@ -67,7 +67,7 @@ Command Line Tools for cgo; read end to end against v0.13.0 in
 git clone https://github.com/GeoffMillerAZ/fathom.git && cd fathom
 CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go build -o bin/fathom ./cmd/fathom  # macOS (Xcode CLT)
 CGO_ENABLED=0 go build -o bin/fathom ./cmd/fathom                                # Linux (no C compiler)
-export PATH="$PWD/bin:$PATH" && fathom version    # fathom v0.20.0 @ <commit>
+export PATH="$PWD/bin:$PATH" && fathom version    # fathom v0.21.0 @ <commit>
 ```
 
 *Then add the Claude Code plugin* (the skills, the hooks, the MCP registration and the

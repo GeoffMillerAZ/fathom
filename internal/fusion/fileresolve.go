@@ -112,6 +112,10 @@ type FileResolveReport struct {
 	// files of the scope define it.
 	GlobalNameBound     int
 	GlobalNameAmbiguous int
+	// Borrowed are the definitions a header borrower (CUDA, headerBorrowers)
+	// bound from the headers its includes reach on the measurement path
+	// (ResolveFileEdges, round 3 F5): the targets of its edges into them.
+	Borrowed []core.SymbolNode
 }
 
 // hasScipIndex reports whether repoPath already carries a SCIP index this
@@ -155,6 +159,10 @@ func ResolveFileEdges(ctx context.Context, lang, repoPath string, files []core.S
 	defer ext.Close() // RT-107: its grammar modules are released, never leaked
 	return resolveFileEdgesWith(ctx, ext, lang, repoPath, files, symbols)
 }
+
+// readRepoFile reads a header the measurement path's include-path pass
+// reaches (a variable so a test can count the reads, round 4 C4-R6).
+var readRepoFile = os.ReadFile
 
 // diskManifestReader reads a repo manifest (a strategy's composer.json,
 // Cargo.toml, …) from repoPath, bounded by maxManifestBytes.
@@ -275,19 +283,31 @@ func resolveFileEdgesWith(ctx context.Context, ext extractor.FileSpecExtractor, 
 	if r.strategy == "include-path" {
 		// Headers the router sent to the other language (cproto.go).
 		extra := foreignHeaders(repoPath, r.env.set)
-		var hs []foreignHeader
-		for _, p := range extra {
-			b, err := os.ReadFile(filepath.Join(repoPath, filepath.FromSlash(p)))
-			if err != nil || len(b) > MaxExtractSize {
-				continue
-			}
-			hs = append(hs, foreignHeader{p, b})
+		readHeader := func(p string) ([]byte, bool) {
+			b, err := readRepoFile(filepath.Join(repoPath, filepath.FromSlash(p)))
+			return b, err == nil && len(b) <= MaxExtractSize
 		}
-		for _, h := range reachableForeign(specs, hs) {
+		var borrowed []core.SymbolNode
+		for _, h := range reachableForeignRead(specs, extra, readHeader) {
 			if sp, ierr := ext.ExtractFileSpecs(h.path, h.src); ierr == nil {
 				specs[h.path] = sp
 				r.env.addForeign([]string{h.path})
+				// A borrower binds the reached headers' definitions here as
+				// resolveLang does at ingest (ruling C-R4, round 3 F5).
+				if headerBorrowers[lang] && len(symbols) > 0 {
+					if nodes, eerr := ext.Extract(symbols[0].Service, h.path, h.src); eerr == nil {
+						borrowed = append(borrowed, nodes...)
+					}
+				}
 			}
+		}
+		if len(borrowed) > 0 {
+			symbols = append(append([]core.SymbolNode(nil), symbols...), borrowed...)
+			edges, report := resolveImports(r, paths, specs, symbols)
+			report.Faults = len(faults)
+			report.FaultFiles = firstN(faults, 5)
+			report.Borrowed = borrowed
+			return edges, report
 		}
 	}
 	edges, report := resolveImports(r, paths, specs, symbols)
@@ -1091,10 +1111,14 @@ func (p *Pipeline) enrichFileResolvedEdges(ctx context.Context, svc core.Service
 	// the extractor did, as the measurement harness does. A header the router
 	// sent to another language is still read by an include-path language for
 	// its includes and prototypes.
+	//
+	// CUDA is a consumer too, though the router sends no .h to it: every
+	// header is foreign to it, and it binds the definitions of the ones its
+	// includes reach (headerBorrowers, ruling C-R4).
 	foreign := map[string][]core.SourceRef{}
-	cLang, cppLang, objcLang := headerLangs()
-	if cLang != "" || cppLang != "" || objcLang != "" {
-		langOf := map[string]string{"c": cLang, "cpp": cppLang, "objective-c": objcLang}
+	cLang, cppLang, objcLang, cudaLang := headerLangs()
+	if cLang != "" || cppLang != "" || objcLang != "" || cudaLang != "" {
+		langOf := map[string]string{"c": cLang, "cpp": cppLang, "objective-c": objcLang, "cuda": cudaLang}
 		for _, r := range headers {
 			b, err := p.conn.Fetch(ctx, r)
 			if err != nil || len(b) > MaxExtractSize || connector.IsBinary(b) {
@@ -1333,20 +1357,47 @@ func (p *Pipeline) resolveLang(ctx context.Context, svc core.ServiceRef, r *impo
 	if r.strategy == "include-path" {
 		// Headers the router sent to the other language (cproto.go): read
 		// for their includes and prototypes, never persisted, never bound.
-		var hs []foreignHeader
+		refOf := make(map[string]core.SourceRef, len(foreign))
+		fpaths := make([]string, 0, len(foreign))
 		for _, fr := range foreign {
-			b, ferr := p.conn.Fetch(ctx, fr)
-			if ferr != nil || len(b) > MaxExtractSize {
-				continue
+			if _, dup := refOf[fr.Path]; !dup {
+				fpaths = append(fpaths, fr.Path)
 			}
-			hs = append(hs, foreignHeader{fr.Path, b})
+			refOf[fr.Path] = fr
 		}
-		// Only the headers an include can reach are parsed (LB-F179): the
-		// rest bind nothing and change no include's resolution.
-		for _, h := range reachableForeign(specs, hs) {
+		fetchHeader := func(path string) ([]byte, bool) {
+			b, ferr := p.conn.Fetch(ctx, refOf[path])
+			return b, ferr == nil && len(b) <= MaxExtractSize
+		}
+		// Only the headers an include can reach are read and parsed (LB-F179,
+		// round 3 F6: pruned by base name before the read): the rest bind
+		// nothing and change no include's resolution.
+		var bound []string
+		for _, h := range reachableForeignRead(specs, fpaths, fetchHeader) {
 			if sp, ierr := extractImports(ext, h.path, h.src); ierr == nil {
 				specs[h.path] = sp
 				r.env.addForeign([]string{h.path})
+				if headerBorrowers[lang] {
+					bound = append(bound, h.path)
+					if fis == nil {
+						if nodes, eerr := ext.Extract(svc.ID, h.path, h.src); eerr == nil {
+							symbols = append(symbols, nodes...)
+						}
+					}
+				}
+			}
+		}
+		// A borrower binds the reached headers' definitions as the language
+		// the router sent them to stored them; its edges stay its own files'.
+		if len(bound) > 0 && fis != nil {
+			obs, err := fis.SourceObservations(ctx, svc.ID, bound)
+			if err != nil {
+				if h := haltError(ctx, err); h != nil {
+					return nil, rep, h
+				}
+			}
+			for _, o := range obs {
+				symbols = append(symbols, o.ToSymbolNode())
 			}
 		}
 	}
@@ -1406,12 +1457,19 @@ func isHeaderPath(relPath string) bool { return strings.EqualFold(path.Ext(relPa
 // Objective-C dialect claims only through match.sniff (MATLAB's too).
 func isObjCSourcePath(relPath string) bool { return strings.EqualFold(path.Ext(relPath), ".m") }
 
-// headerLangs is the file-resolve languages a .h can be routed to: "c", "cpp"
-// and "objective-c", each "" when no dialect of that name resolves files.
-func headerLangs() (c, cpp, objc string) {
+// headerBorrowers are the file-resolve languages no .h is routed to whose
+// files include headers and call what they define: CUDA, whose .cu and .cuh
+// include C and C++ headers (cuda-samples' helper_cuda.h). Such a language
+// binds the definitions of the headers its includes reach.
+var headerBorrowers = map[string]bool{"cuda": true}
+
+// headerLangs is the file-resolve languages that read a .h: "c", "cpp" and
+// "objective-c", which the router can send one to, and "cuda", which borrows
+// them; each "" when no dialect of that name resolves files.
+func headerLangs() (c, cpp, objc, cuda string) {
 	langs, err := extractor.FileResolveLangs()
 	if err != nil {
-		return "", "", ""
+		return "", "", "", ""
 	}
 	for _, l := range langs {
 		switch l.Lang {
@@ -1421,9 +1479,11 @@ func headerLangs() (c, cpp, objc string) {
 			cpp = "cpp"
 		case "objective-c":
 			objc = "objective-c"
+		case "cuda":
+			cuda = "cuda"
 		}
 	}
-	return c, cpp, objc
+	return c, cpp, objc, cuda
 }
 
 // fileResolveInput reports whether path is an input of the file resolver: a
@@ -1435,11 +1495,11 @@ func fileResolveInput(path string) bool {
 		return true
 	}
 	if isHeaderPath(path) {
-		c, cpp, objc := headerLangs()
-		return c != "" || cpp != "" || objc != ""
+		c, cpp, objc, cuda := headerLangs()
+		return c != "" || cpp != "" || objc != "" || cuda != ""
 	}
 	if isObjCSourcePath(path) {
-		_, _, objc := headerLangs()
+		_, _, objc, _ := headerLangs()
 		return objc != ""
 	}
 	return false

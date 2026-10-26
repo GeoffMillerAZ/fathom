@@ -24,9 +24,11 @@ to the entry's directory). One database then serves the index, the preprocessor 
 harness's own file edges and imports, so they all see the flags the build used:
 
     cmake -S <subject> -B <subject>/build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON [options]   # nothing is built
-    run.sh <tools>/bin/scip-clang <subject> <subject>/build <out.scip> [jobs]
+    run.sh <tools>/bin/scip-clang <subject> <subject>/build <out.scip> <tier> [jobs]   # tier A: the build's own database
 
-The scratch copy is deleted when the readings are taken. `run.sh` refuses any release but 0.4.0, warns when the database
+The scratch copy is deleted when the readings are taken. `run.sh` takes the index's tier (A for the build's own
+database, B for a translation) and `indexbench lang-oracle` refuses a scip-clang index without `-scip-tier` (round 4
+C4-R2: no tier is read as A by default, nor any oracle file's that names none). `run.sh` refuses any release but 0.4.0, warns when the database
 is not at `<subject>/build`, and runs scip-clang from the subject root, so document paths are subject-relative. libuv
 indexes in 4 s, curl in 5 s, fmt in 1 s, json in 2 s. The other two oracle files of a reading are written the same way
 (`preproc/` below, and `../clang-ast-defs`, which runs `clang -Xclang -ast-dump=json` per entry for the definition end
@@ -73,7 +75,7 @@ The harness (`indexbench lang-oracle -scip`, internal/langbench/scip*.go) reads 
 `preproc/` (its own Go module, never imported by fathom) runs each compilation database entry with `-E -dD -w` and
 the entry's own flags, and writes a neutral oracle file with two things the index does not say:
 
-    cd preproc && go run . -subject <subject> -compdb <scratch-build-dir>/compile_commands.json > preproc.json
+    cd preproc && go run . -subject <subject> -compdb <scratch-build-dir>/compile_commands.json -tier A > preproc.json
 
 - `imports`: each `#include` written in a subject file and the subject file it entered, from the preprocessor's line
   markers (a guarded re-include writes no marker and is no import, as for ../clang-includes, whose tier-B dump this
@@ -85,10 +87,10 @@ the entry's own flags, and writes a neutral oracle file with two things the inde
   in files the index holds and on lines the preprocessor keeps, and the callers of the L2 calls the same way; the
   counts are disclosed in the reading's notes.
 
-    indexbench lang-oracle -dialect c -subject <libuv> -subject-name libuv/libuv -scip libuv.scip -scip-defs \
+    indexbench lang-oracle -dialect c -subject <libuv> -subject-name libuv/libuv -scip libuv.scip -scip-tier A -scip-defs \
         -tool-oracle preproc.json -unmatched unmatched.json -out docs/bench/readings/lang/c.json
 
-`../clang-ast-defs` writes `preproc.ranges.json` for the same subject (`go run . -subject <subject> -compdb
+`../clang-ast-defs` writes `preproc.ranges.json` for the same subject (`go run . -subject <subject> -tier A -compdb
 <subject>/build/compile_commands.json > preproc.ranges.json`). The harness reads it as the companion of the tool oracle
 named `preproc.json` (a sibling `<name>.ranges.json`) and scores range_agreement from it alone: the index stays L1's
 oracle, and a missing companion leaves range_agreement not measured, as before.
@@ -112,3 +114,44 @@ What L3 and L4 read from the index (wave lf1, `internal/langbench/scip_clang.go`
   index writes no occurrence (a type in a template argument or return type, `std::shared_ptr<logger>`), is
   `file_edges_oracle_blind`, out of file_edge_precision under LB-F203's 10% cap and listed under -unmatched's
   `oracle_blind` (LB-F296); a name on a line where a macro is invoked is judged at the macro.
+
+## CUDA (LB-Q-cuda): the samples' own CMake database, nvcc's preprocessor (tier A), a clang translation for the index
+
+`cuda-samples.sh` is the driver (F12) that builds every database, index and run of the reading:
+
+    cuda-samples.sh <shared-clone> <cuda-root> <tools-dir> <work-dir> [runs]
+    # cuda-root: CUDA 12.9 from conda-forge (cuda-nvcc-tools, cuda-nvvm-tools and cuda-crt 12.9.86, which carry the
+    # nvcc driver and cicc the pip wheels lack, plus the -dev header packages: cudart, cccl, cublas, cufft, curand,
+    # cusolver, cusparse, npp, nvjpeg, nvrtc, cupti, nvtx, cuda-driver-dev for cuda.h, and cuda-profiler-api for
+    # cuda_profiler_api.h, which asyncAPI.cu and matrixMul.cu include: round 3's toolkit lacked it and dropped both
+    # units from the clang translation, 97 of 114 where round 2 and round 4 compile 99); measurement only, under
+    # workspace/tools, never committed. tools-dir/ctags is universal-ctags 6.2.1 built with jansson (its JSON output).
+
+It measures cuda-samples as ONE subject, the way a user indexes it (owner ruling C-R4): CMake configures the samples
+with nvcc (sources and static libraries the sparse clone or the toolkit lacks get an empty stand-in; nothing is
+built), and that database is the build's own. The preprocessor oracle is nvcc's, both passes (owner ruling C-R6): the
+device pass is `nvcc -E` at the lowest architecture the entry's target names (so `__CUDA_ARCH__` branches are judged,
+not excluded) and the host pass is the `gcc -E` line `nvcc --dryrun` prints for the entry; their active lines and
+includes are unioned (tier A). scip-clang 0.4.0 reads no nvcc entry, so each `.cu` entry is translated to a clang CUDA
+host-only compile over the entry's own `-I`, `-isystem` and `-D` (`cuda-compdb.py`'s flags) at
+`<subject>/build/compile_commands.json`; the index reads it, and `clang-calls` and `clang-ast-defs` over it are run at
+`-tier B`, so the calls family is judged at tier B (the harness takes a family's tier from the weakest oracle that
+feeds it). `cuda-compdb.py` writes the same translation from a directory walk, for a subject with no CMake build.
+
+Round 3 (A2, B, C): the driver first configures the samples with clang++ as their CUDA compiler and compiles each unit
+as written (clang-native.json): an index is tier A only when the subject's own build wrote its database untranslated,
+at 90% of the units; cuda-samples v12.9 configures 114 and compiles 0 (its CMake flags carry nvcc's
+`--extended-lambda` and sm_100, sm_101 and sm_120, which clang 18 rejects), so the index reads the translation and
+lang-oracle runs at `-scip-tier B` (round 4 C4-R5: the 90% gate counts the nvcc database's 114 .cu units, never the
+clang configure's own count, and `-DCMAKE_CUDA_ARCHITECTURES=52` has no effect: the samples' CMakeLists set it
+themselves). Each unit the translation drops is listed in clang-skipped.json, its first clang error in
+clang-skipped-errors.json (round 4 C4-R4). clang-calls unions the host pass with a `--cuda-device-only` pass at the first of
+the target's CMake architectures that compiles (`-Xclang -target-sdk-version=12.3`: with -nocudalib clang otherwise
+reads no toolkit version and wants the pre-9.2 launch API). `preproc.units.json` maps each CMake executable to its
+sources from the build's own link lines (the link-unit companion of preproc.json). The driver writes its measurement
+record and the median-of-runs throughput into `<work-dir>/reading.json` (no hand edit), and passes the clone's commit
+as `-subject-sha` (the scratch copy has no .git).
+
+Two samples that define the same global name (`iDivUp`, `main`, a kernel) are one SCIP symbol, since scip-clang
+names a global by no file or translation unit, so the index's file-edge truth over the whole set draws an edge to
+every definer: the truth is scoped to link units (per CMake executable, round 3 B, scip_file_edges_link_unit).

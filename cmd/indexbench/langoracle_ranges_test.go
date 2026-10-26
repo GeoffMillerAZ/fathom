@@ -38,7 +38,7 @@ func TestCmdLangOracleScipClangRangesFromCompanion(t *testing.T) {
 	run := func(tool string) (langbench.Reading, []byte) {
 		out := filepath.Join(t.TempDir(), "c.json")
 		args := []string{"-dialect", "c", "-manifest", filepath.Join("..", "..", "internal", "extractor", "dialects", "c", "dialect.json"), "-subject", subject,
-			"-ctags", filepath.Join(t.TempDir(), "none"), "-scip", clangFixtureIndex(t), "-scip-defs", "-tool-oracle", tool,
+			"-ctags", filepath.Join(t.TempDir(), "none"), "-scip", clangFixtureIndex(t), "-scip-tier", "A", "-scip-defs", "-tool-oracle", tool,
 			"-out", out, "-queue", filepath.Join("..", "..", "docs", "plans", "language-breadth.queue.json")}
 		var stdout, stderr bytes.Buffer
 		if code := cmdLangOracle(args, &stdout, &stderr); code != 0 {

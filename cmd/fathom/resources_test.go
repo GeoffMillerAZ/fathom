@@ -225,3 +225,41 @@ func TestResourcesRendersFromRingWhenDaemonDown(t *testing.T) {
 		}
 	})
 }
+
+func TestResourcesHostTriggersFloorOnPressure(t *testing.T) {
+	for _, value := range []string{"", "normal", "warn", "critical"} {
+		t.Run(value, func(t *testing.T) {
+			f := newResourcesFixture(t)
+			f.writeRing(t, tenancy.GiB, tenancy.LevelNormal, false)
+			env := f.env()
+			env.budget = func() (tenancy.Budget, []tenancy.Note, error) {
+				b, notes := tenancy.ResolveBudget(tenancy.Config{Host: tenancy.HostConfig{FloorOnPressure: value}}, tenancy.HostFacts{})
+				return b, notes, nil
+			}
+			want := value
+			if want == "" {
+				want = "warn"
+			}
+			var out bytes.Buffer
+			if code := runResources([]string{"--json"}, &out, &out, env); code != 0 {
+				t.Fatalf("--json exit %d: %s", code, out.String())
+			}
+			var rep struct {
+				Triggers map[string]any `json:"host_triggers"`
+			}
+			if err := json.Unmarshal(out.Bytes(), &rep); err != nil {
+				t.Fatal(err)
+			}
+			if got := rep.Triggers["floor_on_pressure"]; got != want {
+				t.Errorf("host_triggers.floor_on_pressure = %v, want %s", got, want)
+			}
+			out.Reset()
+			if code := runResources(nil, &out, &out, env); code != 0 {
+				t.Fatalf("text exit %d: %s", code, out.String())
+			}
+			if !strings.Contains(out.String(), "floor_on_pressure "+want) {
+				t.Errorf("text report lacks floor_on_pressure %s:\n%s", want, out.String())
+			}
+		})
+	}
+}

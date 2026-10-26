@@ -517,6 +517,7 @@ admission    = "observe" # "observe" (default) | "enforce" | "off"; env FATHOM_T
 [tenancy.host]
 shed_on_pressure      = "warn"      # "warn" | "critical" | "off"
 refuse_on_pressure    = "critical"
+floor_on_pressure     = "warn"      # "normal" | "warn" | "critical"; swap-volume floor applies at or above it; "normal" restores refusal at any pressure
 refuse_on_swap_growth = "2GiB"      # swap grew this much in the window while fathom ≥ the shed mark
 swap_growth_window    = "5m"
 min_swap_volume_free  = "5GiB"      # /System/Volumes/VM
@@ -558,7 +559,7 @@ free space, and steps a ladder:
 | Level | Entered when (two consecutive samples; a sample ≥ 6 s late counts twice) | What happens |
 |---|---|---|
 | `shed` | footprint + children ≥ `shed_at`, or host pressure warn while footprint + children ≥ `[tenancy.host] allowance` | console and fleet memos dropped, console feeders and auto-refresh paused (reads answer from the index as it stands), memory returned to the OS |
-| `refuse` | footprint + children ≥ `refuse_at`; pressure critical; swap grew > 2 GiB in 5 min while fathom ≥ the shed mark; swap volume < 5 GiB free | every cache dropped; every in-flight tree and fleet tool call cancelled, youngest first (`abandoned-by-governor`); whole-tree, fleet and ingest reads stop within one file or 1,000 rows; a heap profile captured |
+| `refuse` | footprint + children ≥ `refuse_at`; pressure critical; swap grew > 2 GiB in 5 min while fathom ≥ the shed mark; swap volume < 5 GiB free while pressure ≥ `[tenancy.host] floor_on_pressure` (default warn) | every cache dropped; every in-flight tree and fleet tool call cancelled, youngest first (`abandoned-by-governor`); whole-tree, fleet and ingest reads stop within one file or 1,000 rows; a heap profile captured |
 | `exit` | own footprint ≥ the exit mark, or pressure critical for 60 s with footprint over budget | an in-flight ingest is halted first and its service **quarantined**; if the next sample is still over (or nothing was in flight), the child tree is killed, `heap.pb.gz` and `inflight.json` written under `~/.fathom/daemon/<id>/diag/`, an `exit` row (`reason: over_budget`) appended to `lifecycle.jsonl`, and the process exits **70** at once |
 
 Step-down: 60 s below 0.6 × the current rung's mark with its host triggers

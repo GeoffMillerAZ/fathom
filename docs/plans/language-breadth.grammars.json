@@ -367,15 +367,13 @@
     },
     "hlsl": {
       "catalogue": "hlsl",
-      "repo": "theHamsta/tree-sitter-hlsl",
+      "repo": "tree-sitter-grammars/tree-sitter-hlsl",
       "commit": "bab9111922d53d43668fabb61869bec51bbcb915",
       "abi": 14,
       "generate": false,
       "licence": "MIT",
       "licence_basis": "catalogue",
-      "flags": [
-        "grammar-differs:tree-sitter-grammars/tree-sitter-hlsl"
-      ]
+      "flags": []
     },
     "jenkinsfile": {
       "catalogue": "groovy",

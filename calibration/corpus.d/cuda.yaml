@@ -1,0 +1,56 @@
+id: cuda
+language: CUDA
+# Measurement conventions (docs/bench/readings/lang/cuda.json). Linux x86_64 only. cuda-samples is measured as ONE
+# subject from its own CMake build with nvcc (owner ruling C-R4), by calibration/oracles/scip-clang/cuda-samples.sh
+# (see the README beside it): 114 .cu translation units configure, 99 compile under the clang translation the index reads (round 4).
+# NVIDIA/cuda-samples is cloned sparse (Samples/ is mostly data): its .cu/.cuh/.h sources,
+# CMakeLists.txt and cmake/** and Common/**. The repository's LICENSE is BSD-3 text plus a pointer
+# to the CUDA EULA (the redistributable headers the oracles read): FLAGGED for the owner, measurement only.
+# NVIDIA/cutlass is cloned sparse (examples, include, tools/util, cmake); the measured example
+# translation units are capped at 40 (the build's own compilation database is filtered to them).
+# NVIDIA/cutlass is NOT measured yet (LB-Q-cuda-rest): 5 of 40 sampled example translation units do not
+# compile under clang 18 CUDA host-only mode, and its clang-calls and clang-ast-defs runs did not finish in the lane.
+# The CUDA headers the oracles read are downloaded under workspace/tools and never committed.
+repos:
+  - name: NVIDIA/cuda-samples
+    url: https://github.com/NVIDIA/cuda-samples
+    ref: v12.9
+    sha: cab7c66b4fcf35b09ea8fbc4c3c1a9272e92d997
+    licence: BSD-3-Clause
+    sparse:
+      - "/LICENSE"
+      - "/CMakeLists.txt"
+      - "/cmake/**"
+      - "/Common/**"
+      - "/Samples/**/*.cu"
+      - "/Samples/**/*.cuh"
+      - "/Samples/**/*.h"
+      - "/Samples/**/*.hpp"
+      - "/Samples/**/*.cpp"
+      - "/Samples/**/CMakeLists.txt"
+    idioms:
+      - __global__ kernels launched with the k<<<grid, block>>>(args) triple-chevron syntax
+      - __device__ and __host__ __device__ helper functions and template kernels over element types
+      - shared memory (extern __shared__, __shared__ arrays) and __launch_bounds__ qualifiers
+      - helper headers (helper_cuda.h, helper_string.h) included through a Common/ include path
+      - cooperative_groups and cuda_fp16 usage, with .cuh headers included from .cu files
+  - name: NVIDIA/cutlass
+    url: https://github.com/NVIDIA/cutlass
+    ref: v4.8.1
+    sha: 2c85f497547eb441f0fe80bfb0fb2e6f9add1719
+    licence: BSD-3-Clause
+    sparse:
+      - "/LICENSE.txt"
+      - "/CMakeLists.txt"
+      - "/cmake/**"
+      - "/include/**"
+      - "/tools/util/**"
+      - "/examples/**/*.cu"
+      - "/examples/**/*.cuh"
+      - "/examples/**/*.h"
+    idioms:
+      - deeply nested class templates in cutlass:: namespaces with __host__ __device__ members
+      - CUTLASS_DEVICE and CUTLASS_HOST_DEVICE macro-decorated functions
+      - kernel entry points as __global__ function templates taking a Params struct by value
+      - cute:: tensor-layout templates and constexpr variable templates
+      - example translation units that include headers from include/ and tools/util/include
