@@ -11,10 +11,11 @@ def registry(binary, plugin, client, work):
     work = work.resolve()
     work.mkdir(parents=True, exist_ok=True)
     config = work / 'registry.cfg'
-    socket = work / 'admin.sock'
+    # Runtime sockets must live on the container filesystem, not a host bind mount.
+    socket = Path('/tmp/fathom-tools-registry-admin.sock')
     config.write_text('plugins=("' + str(plugin.resolve()) + '")\n'
                       'admin_variables={admin_credentials="bench:bench";mysql_ifaces="' + str(socket) + '";}\n'
-                      'mysql_variables={threads=1;interfaces="' + str(work / 'mysql.sock') + '";monitor_enabled=false;}\n')
+                      'mysql_variables={threads=1;interfaces="' + '/tmp/fathom-tools-registry-mysql.sock' + '";monitor_enabled=false;}\n')
     args = [str(client), '--protocol=SOCKET', '--socket=' + str(socket), '-u', 'bench', '-N', '-s', '--batch']
     env = dict(os.environ, MYSQL_PWD='bench')
     with (work / 'native.log').open('w') as log:
@@ -26,7 +27,7 @@ def registry(binary, plugin, client, work):
                 if ready.returncode == 0:
                     break
                 if process.poll() is not None or time.monotonic() > deadline:
-                    raise RuntimeError('native registry unavailable; inspect scratch native.log')
+                    raise RuntimeError('native registry unavailable: ' + ready.stderr.strip() + '; inspect scratch native.log')
                 time.sleep(.2)
             result = {}
             for prefix in ('mcp', 'genai'):
