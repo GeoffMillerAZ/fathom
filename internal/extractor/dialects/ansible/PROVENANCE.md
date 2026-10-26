@@ -22,8 +22,8 @@ CI, OpenAPI and CloudFormation files, and a file under `.github/workflows/`, are
   does; a sibling-index fact, which ReingestFile reads from the disk) reads like a role under roles/, and a
   YAML **sequence of maps under a `tasks/` or `handlers/` directory** (the task files a playbook imports).
 
-An INI inventory is not YAML and the doc engine has no INI decoder (wave cx owns the decode enum): it is
-read by nothing (LB-Q-ansible-rest). The signal is the ToolKind `ansible`; ingest reaches the dialect
+An INI inventory is outside this YAML dialect. The existing INI decoder models Conan physical option
+lines, not Ansible host/group inventory semantics; ten source inventories remain unread (LB-Q-ansible-rest; T-R2). The signal is the ToolKind `ansible`; ingest reaches the dialect
 through `toolExts`, ReingestFile through the same decision.
 
 ## What it models
@@ -77,3 +77,7 @@ The queue names ctags' Ansible subparser as a tier-B oracle. Universal-ctags 6.2
 AnsiblePlaybook subparser, but it has one kind (`play`) and, run as `--languages=Yaml,AnsiblePlaybook`
 or alone over the subjects' playbooks (ansible-for-devops `security/main.yml`, `first-ansible-playbook`),
 it tags nothing: no tier-B reading could be taken, and the tier-C walk stands.
+
+The 2026-10-26 source audit of official language server 26.6.0 is recorded in
+`calibration/oracles/ansible/README.md`: module-code definition only, no declaration-symbol or
+reference provider for this measured family. No native full-population tier is claimed.
