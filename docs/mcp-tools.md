@@ -25,6 +25,13 @@ named omissions and logged elision counts; small results are unchanged. See
 See [usage.md](usage.md) for how to connect a client and select a surface.
 See [architecture.md](architecture.md) for how the tool groups map to the three-layer design.
 
+For Well-Architected and production-readiness evidence, inventory consumers and
+review/investigation packets, see [platform engineering](use-cases/platform-engineering.md).
+It records scratch-store demonstrations of the lookup, source, obligations,
+localization and change-review tools, and distinguishes source evidence from the
+unserved Kubernetes concern facts and unbuilt fact receipts. It adds no MCP tool
+or readiness verdict.
+
 ---
 
 ## Where each part lives
