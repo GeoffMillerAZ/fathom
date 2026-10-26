@@ -6004,7 +6004,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-pgbouncer",
     "worker_model": "sonnet",
-    "notes": "native PgBouncer 1.26.1 r2 SHOW DATABASES sweep probes all 52 sources and attests the full canonical one-pair population (A): L2 excellent, 161/161 definitions C and 1/1 references A; source positions remain C; reproduce native_oracle.py and native-protocol-r2.json, never relabel the legacy scanner"
+    "notes": "Native PgBouncer 1.26.1 cfparser callbacks enumerate the full six-file population; syntax-line ablations attest all 161 definition names/ranges A. SHOW DATABASES independently enumerates all 52 sources and attests 1/1 references A. L1/L2 excellent, median 40.06 MB/CPU-s. Five logfile destinations redirected privately without changing keys/lines. Required kinds unchanged; no L3. One canonical binding is thin evidence. Reproduce grade_native_positions.py and protocols native-position-r1/r2/r3 plus native-protocol-r2; never relabel the legacy scanner."
   },
   {
     "id": "proxysql",

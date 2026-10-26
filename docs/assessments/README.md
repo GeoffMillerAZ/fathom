@@ -88,6 +88,8 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-26 | [core-t1-typescript-ceiling](2026-10-26-core-t1-typescript-ceiling.md) | Object-literal method extraction remains the concrete route. | LB-Q-typescript-rest |
 | 2026-10-26 | [support-gap-sweep](2026-10-26-support-gap-sweep.md) | The board overstates runtime support: Python and Ruby manifests, Swift with Xcode, SQL dialects and the template engines are the top gaps, and formats the board calls disclosed are silent at runtime | GAP1-1 to GAP1-40 (language-breadth.gap1.md), LB-F453 |
 
+| 2026-10-26 | [tools-pgbouncer-native-positions](2026-10-26-tools-pgbouncer-native-positions.md) | Native parser population and exact line ablations attest all 161 definitions; L1/L2 excellent | LB-Q-pgbouncer |
+
 ## Companion pages
 
 The owner keeps private companion pages for several of these readings; they are not linked here

@@ -1,0 +1,141 @@
+{
+  "subject": "pgbouncer/pgbouncer",
+  "sha": "f03e9bf263d7ccd5d1d152a61811bf3258dd6b87",
+  "counts": {
+    "fathom_defs": 161,
+    "kind_equal": 161,
+    "matched": 161,
+    "oracle_defs": 161,
+    "range_eligible": 161,
+    "range_ok": 161,
+    "ref_fathom": 1,
+    "ref_fathom_in_truth": 1,
+    "ref_truth": 1,
+    "ref_truth_found": 1
+  },
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A"
+  },
+  "subjects": [
+    {
+      "name": "pgbouncer/pgbouncer",
+      "sha": "f03e9bf263d7ccd5d1d152a61811bf3258dd6b87",
+      "files": 6,
+      "bytes": 18826,
+      "counts": {
+        "fathom_defs": 161,
+        "kind_equal": 161,
+        "matched": 161,
+        "oracle_defs": 161,
+        "range_eligible": 161,
+        "range_ok": 161,
+        "ref_fathom": 1,
+        "ref_fathom_in_truth": 1,
+        "ref_truth": 1,
+        "ref_truth_found": 1
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A"
+      }
+    }
+  ],
+  "native_positions": {
+    "files": 6,
+    "definitions": 161,
+    "native_callbacks": 161,
+    "positioned_callbacks": 161,
+    "per_input": [
+      {
+        "native_callbacks": 2,
+        "positioned_callbacks": 2,
+        "definitions": 2,
+        "verbosity_values_observed": 0,
+        "logfile_destinations_redirected": 0,
+        "source_sha256": "fb47a9adcd3fa3b6cf93279927f72ae9082c3c9b40d1701f10aae8ce2ff10c44"
+      },
+      {
+        "native_callbacks": 9,
+        "positioned_callbacks": 9,
+        "definitions": 9,
+        "verbosity_values_observed": 0,
+        "logfile_destinations_redirected": 1,
+        "source_sha256": "49a7ae069b1dcad7a193f609f6ca3b23eb162e8452b3021f27a065005df7f51b"
+      },
+      {
+        "native_callbacks": 28,
+        "positioned_callbacks": 28,
+        "definitions": 28,
+        "verbosity_values_observed": 0,
+        "logfile_destinations_redirected": 1,
+        "source_sha256": "1db5efb67bc0f2876b4e7f002d5e1eefa46aaeaccc80d38c874bda7b51c2220c"
+      },
+      {
+        "native_callbacks": 28,
+        "positioned_callbacks": 28,
+        "definitions": 28,
+        "verbosity_values_observed": 0,
+        "logfile_destinations_redirected": 1,
+        "source_sha256": "daf2d2816c9e2b963137398c41bf596bab5bbe55e5d8a583cb76626da1adf266"
+      },
+      {
+        "native_callbacks": 71,
+        "positioned_callbacks": 71,
+        "definitions": 71,
+        "verbosity_values_observed": 0,
+        "logfile_destinations_redirected": 1,
+        "source_sha256": "7fbbc4a7ebd937a456d50a4116b45b7705c6c63a6799236a12f8ea7eaf2e90b3"
+      },
+      {
+        "native_callbacks": 23,
+        "positioned_callbacks": 23,
+        "definitions": 23,
+        "verbosity_values_observed": 0,
+        "logfile_destinations_redirected": 1,
+        "source_sha256": "f7f197a4012286661bc9ccb87e5a08b071d7d4dc3a55a317004b2caf962b2d62"
+      }
+    ],
+    "binary_sha256": "19573035a4619533c6255704c6524a618ee39ca5908bb771bff27eaca3d54f90"
+  },
+  "tracked_before": {
+    "bytes": 3339789,
+    "entries": 440,
+    "files": 440,
+    "gitlinks": 0,
+    "sha256": "d417ab6bf169ab72009d9a35f7af372a5507f33e363fc435ee5740ddee32aa76",
+    "symlinks": 0,
+    "untracked_entries": 0,
+    "untracked_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "normative_recipe_sha256": "de1f63135629703372f6a68361a49d8f85951d30422b8b8b9e048c6f9c9b315e"
+  },
+  "tracked_after": {
+    "bytes": 3339789,
+    "entries": 440,
+    "files": 440,
+    "gitlinks": 0,
+    "sha256": "d417ab6bf169ab72009d9a35f7af372a5507f33e363fc435ee5740ddee32aa76",
+    "symlinks": 0,
+    "untracked_entries": 0,
+    "untracked_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "normative_recipe_sha256": "de1f63135629703372f6a68361a49d8f85951d30422b8b8b9e048c6f9c9b315e"
+  },
+  "submodule_contents": "No gitlinks in tracked approximation; no submodule contents graded.",
+  "reading_sha256": "93685ca7e4c7003b8a69170adee80f907737a201fc7f88efc686b5aa4e434b5d"
+}

@@ -1,12 +1,12 @@
 # PgBouncer oracle
 
 Bench only, with separate evidence families. The legacy `pgbouncer_oracle.py`
-remains a C source-position/reference walk. Do not use its output to reproduce
-the new A reference reading.
+remains a historical C source-position/reference walk. Do not use its output
+to reproduce the new A position/reference reading.
 
 | Family | Instrument | Tier and scope |
 |---|---|---|
-| Definitions and ranges | Independent scanner, every membership checked by native SHOW DATABASES/PEERS/USERS/CONFIG | C: 161/161 across six configs; membership alone does not attest source positions |
+| Definitions and ranges | Native cfparser callbacks enumerate all explicit tokens; syntax ablation attests every line | A: 161/161 across the unchanged six configs; names/ranges retained through private logfile substitution |
 | auth_dbname references | Native SHOW DATABASES enumeration, every source startup, and missing-name control | A: 1/1, the entire canonical local pair population; no fallback |
 
 `native-protocol-r2.json` was committed before the population sweep. The earlier
@@ -70,12 +70,48 @@ These are bounded searches, not a universal assertion of tool absence.
 The r2 summary records all 52 native sources, classifications, pair-set agreement
 and digests; full source identities and native messages stay in scratch.
 
-The only retained L1 limitation is the measured instrument's independently
-scanned ranges. Native population enumeration and runtime reference evidence reach this item's L2
-target. The small canonical reference population remains explicitly disclosed.
+## Native source positions (protocol r3)
 
-The concrete L1 follow-up is an error-line ablation using PgBouncer 1.26.1
-`lib/usual/cfparser.c`: inject one invalid line after each of the 161 entries
-and compare the native error line against its source position. This instrument
-has not been built or measured; its existence is an open work item, not a claim
-that no native source-position route exists.
+The error-line follow-up is now measured, rather than an availability ceiling.
+The whole native parser first reaches a terminal invalid section appended after
+all original tokens. Each enumerated token is then corrupted alone, requiring
+a native syntax error at exactly its original line. Five existing logfile
+values point to private scratch because their setters open the file while
+parsing. Every graded key/section/line remains present. Active syslog refuses.
+Baseline keeps original numeric/verbose values; observation verbosity changes
+only afterwards. Quoted/unused keys, repeated sections/keys and suppressed
+logging are authored controls. An independent locator only places mutations;
+missing or extra native callbacks refuse the whole family.
+
+`native-positions-summary-r1.json` records 161/161 A definitions/ranges,
+1/1 A references, zero faults and median 40.06 MB/CPU-s. Per-input native counts
+are 2, 9, 28, 28, 71 and 23; the single subject's ratios equal the pooled
+ratios, all 1. The complete original tracked approximation is 440 files with
+matching before/after hashes, zero generated/untracked inputs, symlinks or
+gitlinks. The reading covers six files/18,826 bytes, a thin population.
+
+After the stock build above, set private Go caches, check disk/load and use one
+serial nice run:
+
+```sh
+bash scripts/fathom-go.sh build -o workspace/tmp/indexbench ./cmd/indexbench
+nice -n 10 python3 -B calibration/oracles/pgbouncer/grade_native_positions.py -subject workspace/calibration/pgbouncer -pgbouncer workspace/oracle/pgbouncer-native/pgbouncer-1.26.1/pgbouncer -indexbench workspace/tmp/indexbench -out workspace/artifacts/pgbouncer-native-positions
+nice -n 10 python3 -B calibration/oracles/pgbouncer/probe_position_controls.py -pgbouncer workspace/oracle/pgbouncer-native/pgbouncer-1.26.1/pgbouncer -out workspace/artifacts/pgbouncer-position-controls
+PGB_POSITION_BIN=workspace/oracle/pgbouncer-native/pgbouncer-1.26.1/pgbouncer python3 -B -m unittest discover -s calibration/oracles/pgbouncer
+```
+
+The measured binary checksum is in `native-position-build-r1.json`; a rebuild
+must freeze its new identity before querying. Adjust the receipt only for a
+new reproducible build, never to bypass identity refusal. The position CLI
+runs all native authored controls with zero skips before any A output.
+
+Independence: the committed control driver runs the actual Fathom extractor
+under `-race`. Removing its two nodes leaves native truth unchanged; changing
+an input key changes truth. Mutation: filtering native callbacks by locator
+sites makes the native-population omission test FAIL, then restored green.
+The driver writes its log and count/hash-only receipt. Caps: the reader refuses
+1 MiB + 1 source bytes, 8 MiB + 1 native log bytes and 10,001 callbacks against
+10,000, as exercised by `test_all_caps_refuse_whole_input`. Unknown events,
+includes, identity drift or early native failure refuse the entire input.
+No scanner-selected population, fallback, backend SQL, Docker or L3 is used.
+Delete completed subjects/source builds after packaging the receipts.
