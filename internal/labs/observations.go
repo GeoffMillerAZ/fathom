@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/projectdir"
@@ -32,11 +33,13 @@ func ValidObservationLabLink(text string) bool { return labLinkPattern.MatchStri
 
 // ParseObservationLabLinks reads both observation formats. Missing files and
 // absent bullets are unlinked, while read failures and malformed bullets are
-// named. Results and diagnostics are ordered by relative file, then line.
+// named. Results and diagnostics put the legacy log first, then per-entry files
+// by numeric observation ID (filename breaks ties), then line.
 // Markdown examples inside fenced blocks are not entry metadata.
 func ParseObservationLabLinks(root string) ([]ObservationLabLink, error) {
 	base := projectdir.Dir
-	files := []string{filepath.Join(base, string(projectdir.ObservationLog))}
+	legacy := filepath.Join(base, string(projectdir.ObservationLog))
+	files := []string{legacy}
 	dir := filepath.Join(base, string(projectdir.Observations))
 	entries, err := os.ReadDir(filepath.Join(root, dir))
 	if err != nil && !os.IsNotExist(err) {
@@ -44,15 +47,28 @@ func ParseObservationLabLinks(root string) ([]ObservationLabLink, error) {
 	}
 	for _, entry := range entries {
 		if !entry.IsDir() && labObservationFile.MatchString(entry.Name()) {
+			if _, err := strconv.Atoi(strings.TrimSuffix(strings.TrimPrefix(entry.Name(), "O"), ".md")); err != nil {
+				continue
+			}
 			files = append(files, filepath.Join(dir, entry.Name()))
 		}
 	}
-	sort.Strings(files)
+	sort.Slice(files[1:], func(i, j int) bool {
+		a, b := files[i+1], files[j+1]
+		id := func(file string) int {
+			n, _ := strconv.Atoi(strings.TrimSuffix(strings.TrimPrefix(filepath.Base(file), "O"), ".md"))
+			return n
+		}
+		if ai, bi := id(a), id(b); ai != bi {
+			return ai < bi
+		}
+		return a < b
+	})
 	var out []ObservationLabLink
 	var problems []error
 	for _, file := range files {
 		data, err := os.ReadFile(filepath.Join(root, file))
-		if os.IsNotExist(err) && file == files[0] {
+		if os.IsNotExist(err) && file == legacy {
 			continue
 		}
 		if err != nil {
@@ -90,7 +106,7 @@ func ParseObservationLabLinks(root string) ([]ObservationLabLink, error) {
 				current = len(out) - 1
 				continue
 			}
-			if !strings.HasPrefix(trim, "- **Lab") {
+			if !strings.HasPrefix(trim, "- **Lab:**") {
 				continue
 			}
 			value, ok := strings.CutPrefix(trim, "- **Lab:** ")

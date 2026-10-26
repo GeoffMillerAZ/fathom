@@ -4,6 +4,10 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp/syntax"
+
+	"cuelang.org/go/cue"
+	"cuelang.org/go/cue/cuecontext"
 	"strings"
 	"testing"
 )
@@ -32,8 +36,8 @@ func TestParseObservationLabLinks(t *testing.T) {
 	want := []ObservationLabLink{
 		{Observation: "O2", Lab: "lab-search", Case: "near-miss", File: ".fathom/observations.md", Line: 4},
 		{Observation: "O3", File: ".fathom/observations.md", Line: 5},
-		{Observation: "O12", Lab: "lab-find-symbol", Case: "find-definition", File: ".fathom/observations/O12.md", Line: 2},
 		{Observation: "O4", File: ".fathom/observations/O4.md", Line: 1},
+		{Observation: "O12", Lab: "lab-find-symbol", Case: "find-definition", File: ".fathom/observations/O12.md", Line: 2},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %+v, want %+v", got, want)
@@ -86,5 +90,86 @@ func TestParseObservationLabLinksReadFailure(t *testing.T) {
 	_, err := ParseObservationLabLinks(root)
 	if err == nil || !strings.Contains(err.Error(), ".fathom/observations.md") {
 		t.Fatalf("read failure hidden: %v", err)
+	}
+}
+
+func TestParseObservationLabLinksLabels(t *testing.T) {
+	root := t.TempDir()
+	writeLabObservation(t, root, ".fathom/observations/O1.md", "### O1 labels\n- **Labels:** flaky\n- **Lab:** lab-search/case\n")
+	got, err := ParseObservationLabLinks(root)
+	if err != nil || len(got) != 1 || got[0].Lab != "lab-search" {
+		t.Fatalf("Labels must not be parsed as Lab: %+v, %v", got, err)
+	}
+}
+
+// Compare normalized regex syntax, rather than a finite sample of identifiers.
+func TestLabLinkPatternMatchesLabID(t *testing.T) {
+	schema, err := os.ReadFile("../../schema/labs/schema.cue")
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := cuecontext.New().CompileBytes(schema).LookupPath(cue.ParsePath("#LabID"))
+	if err := id.Err(); err != nil {
+		t.Fatal(err)
+	}
+	var pattern string
+	var findPattern func(cue.Value)
+	findPattern = func(v cue.Value) {
+		op, args := v.Expr()
+		if op == cue.RegexMatchOp {
+			pattern, err = args[0].String()
+			if err != nil {
+				t.Fatal(err)
+			}
+		} else if op == cue.AndOp {
+			for _, arg := range args {
+				findPattern(arg)
+			}
+		}
+	}
+	findPattern(id)
+	if pattern == "" {
+		t.Fatal("#LabID has no regex constraint")
+	}
+	link, err := syntax.Parse(labLinkPattern.String(), syntax.Perl)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var lab *syntax.Regexp
+	var findLab func(*syntax.Regexp)
+	findLab = func(r *syntax.Regexp) {
+		if r.Op == syntax.OpCapture && r.Cap == 1 {
+			lab = r.Sub[0]
+		}
+		for _, sub := range r.Sub {
+			findLab(sub)
+		}
+	}
+	findLab(link)
+	if lab == nil {
+		t.Fatal("link pattern has no lab capture")
+	}
+	want, err := syntax.Parse(pattern, syntax.Perl)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := syntax.Parse("^"+lab.String()+"$", syntax.Perl)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Captures do not change which identifiers the regex accepts.
+	var withoutCaptures func(*syntax.Regexp) *syntax.Regexp
+	withoutCaptures = func(r *syntax.Regexp) *syntax.Regexp {
+		if r.Op == syntax.OpCapture {
+			return withoutCaptures(r.Sub[0])
+		}
+		for i, sub := range r.Sub {
+			r.Sub[i] = withoutCaptures(sub)
+		}
+		return r
+	}
+	got, want = withoutCaptures(got), withoutCaptures(want)
+	if got.String() != want.String() {
+		t.Fatalf("lab link ID pattern %s differs from #LabID %s", got, want)
 	}
 }
