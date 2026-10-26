@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"syscall"
 
 	"cuelang.org/go/cue"
@@ -27,7 +28,8 @@ type labResultKey struct {
 // retain the funnel, and evaluation.criterion_id names the single criterion
 // the run was preregistered to decide. Verdicts are pass, fail or indeterminate.
 // An exclusive lock on the ledger serializes duplicate checks and appends
-// across writers. Existing malformed rows are refused without appending.
+// across writers. Past rows require valid JSON and their nonempty key fields,
+// so later #Result changes cannot invalidate historical non-key payloads.
 // Future callers fathom labs fire --write and labbench do not exist yet.
 func AppendLabResult(path string, row any) error {
 	data, err := json.Marshal(row)
@@ -77,11 +79,8 @@ func AppendLabResult(path string, row any) error {
 			if e := json.Unmarshal(b, &existing); e != nil {
 				return fmt.Errorf("labs ledger line %d: %w", n, e)
 			}
-			if existing.RunID == "" || existing.TaskID == "" || existing.Arm == "" {
+			if strings.TrimSpace(existing.RunID) == "" || strings.TrimSpace(existing.TaskID) == "" || strings.TrimSpace(existing.Arm) == "" {
 				return fmt.Errorf("labs ledger line %d: missing run_id, task_id or arm", n)
-			}
-			if e := def.Unify(def.Context().CompileBytes(b)).Validate(cue.Concrete(true)); e != nil {
-				return fmt.Errorf("labs ledger line %d: invalid #Result: %s", n, errors.Details(e, nil))
 			}
 			if existing == key {
 				return fmt.Errorf("duplicate lab result (%s, %s, %s)", key.RunID, key.TaskID, key.Arm)

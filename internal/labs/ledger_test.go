@@ -140,7 +140,12 @@ func TestAppendLabResultSchemaRefusals(t *testing.T) {
 }
 
 func TestAppendLabResultExistingLedger(t *testing.T) {
-	for _, existing := range []string{"{bad\n", "{}\n", "null\n", `{ "run_id":"old", "task_id":"task", "arm":"replay" }` + "\n"} {
+	for _, existing := range []string{"{bad\n", "{}\n", "null\n",
+		`{"run_id":" ","task_id":"task","arm":"replay"}`,
+		`{"run_id":"old","task_id":" ","arm":"replay"}`,
+		`{"run_id":"old","task_id":"task","arm":" "}`,
+		`{"run_id":42,"task_id":"task","arm":"replay"}`,
+	} {
 		t.Run(existing, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "ledger.jsonl")
 			if err := os.WriteFile(path, []byte(existing), 0600); err != nil {
@@ -207,5 +212,34 @@ func TestAppendLabResultConcurrentDuplicate(t *testing.T) {
 	}
 	if successes != 1 {
 		t.Fatal(fmt.Sprintf("want exactly one successful append, got %d", successes))
+	}
+}
+
+func TestAppendLabResultHistoricalKeysOnly(t *testing.T) {
+	// Simulate a row written before the current #Result required fields.
+	// Unknown historical metadata also must not be reinterpreted by that schema.
+	for _, suffix := range []string{"", "\n"} {
+		t.Run(fmt.Sprintf("newline-%t", suffix != ""), func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "ledger.jsonl")
+			old := `{"run_id":"old","task_id":"task","arm":"replay","stages":"retired format","future_metadata":true}` + suffix
+			if err := os.WriteFile(path, []byte(old), 0600); err != nil {
+				t.Fatal(err)
+			}
+			if err := AppendLabResult(path, resultFixture(t)); err != nil {
+				t.Fatalf("historical keys must suffice: %v", err)
+			}
+			got, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.HasPrefix(string(got), strings.TrimSuffix(old, "\n")+"\n") {
+				t.Fatal("historical row changed")
+			}
+			duplicate := resultFixture(t)
+			duplicate["run_id"], duplicate["task_id"], duplicate["arm"] = "old", "task", "replay"
+			if err := AppendLabResult(path, duplicate); err == nil || !strings.Contains(err.Error(), "duplicate") {
+				t.Fatalf("historical duplicate accepted: %v", err)
+			}
+		})
 	}
 }
