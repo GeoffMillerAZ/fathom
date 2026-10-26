@@ -167,7 +167,7 @@ A subject is kept only when it passes all seven. C3 is read on macOS (BX-3) and 
 |---|---|
 | C1 licence | MIT, Apache-2.0, BSD or CC0, read from `LICENSE` at the pinned sha; copyleft and source-available subjects are never used for task derivation |
 | C2 size | 5k to 150k lines of the primary language, spread over three size bands |
-| C3 suite | green 3 times at the pin on both systems, under 15 minutes on 12 cores, and runnable with **no network at all** from a pre-warmed cache (correction 7) |
+| C3 suite | green 3 times at the pin on both systems, under 15 minutes on 12 cores, and runnable with **no network at all** from a pre-warmed cache (correction 7); **D28:** as an unprivileged user on the native architecture, with at most 2% of leaf tests excluded by name for a logged network, privilege, date or missing-service cause (a timing failure refuses the subject), and a task dropped when it needs an excluded test |
 | C4 index | `find_callers` and resolved `blast_radius` precision and recall at least 0.95 against go/types or SCIP (ADR-032, section 1 item 3); gopls and Serena are measured on the same subject (BX-5); the refusal rate is published as a finding and every claim is scoped to "subjects passing C4" (correction 14) |
 | C5 yield | at least 30 fix commits whose tests fail before the fix and pass after it, at least 15 dated after the pinned model's training cutoff (the second half waits on Q2) |
 | C6 fan-in | at least 3 symbols with fan-in 5 or more across at least 3 caller units, from the truth graph, never from fathom. **D24:** one unit for every language: the import package, or the directory for Python and TypeScript. Merge a Go external test package (`<pkg>_test`) into its directory’s package. The defining package/directory never counts as a caller of its own symbol. **D26:** caller units and sites are product-only in every language: test, example, benchmark, sample, docs and tool directories never count; test files and the defining package’s own tests are excluded everywhere. C6 measures product fan-in on equal terms across languages. |
@@ -188,6 +188,18 @@ Linux isolation setup; root permissions, fixture warming and a short cache TTL
 confound an intrinsic application-versus-library comparison. The application-first
 policy is unchanged pending review. The [application reading](../bench/readings/bench-prep/apps-r1.md)
 records the refusals and the retained preparation candidate; C4 remains unrun.
+
+**D28, C3 reads the suite a grader runs (2026-10-26).** apps-r1 fired D27's C3 revisit, but its witnesses are the
+preparation environment, not applications: a root container that writes through permission bits, tests that resolve
+a hostname, download a fixture or dial a database service the harness never started. D27 stands, and C3 changes in
+two ways. Preparation runs as an unprivileged user, on the host's native architecture. A manifest may name excluded
+leaf tests (a Go subtest, a pytest node id, a vitest full name), each with a reason and a quoted log line, when the
+test fails in the warm-up and in all three timed runs for one cause: network, privilege, calendar date or a missing
+host service. A timing failure is a flake and refuses the subject. `suite_tests` counts leaf tests from a
+machine-readable run, and the exclusions are at most floor(2% of `suite_tests`). A task drops, not the subject, when
+its failing or passing tests name an excluded test or its gold patch edits a file that defines one. Every exclusion
+is listed in the reading and counted per language (BX-83, BX-84). Revisit when: exclusions average above 1% of tests
+over the kept subjects, or they cost a subject more than a fifth of its mined tasks.
 
 **Preparation mount contract.** Containers mount the detached subject clone at
 `/subject:ro`, a fresh job-owned `workspace/` build directory at `/work:rw`,
