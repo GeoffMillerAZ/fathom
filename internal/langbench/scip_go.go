@@ -63,7 +63,15 @@ func (g goMultiDefRefs) finish(fileEdges map[[2]string]bool, counts map[string]i
 type goDefClasses struct {
 	kinds         map[string]scippb.SymbolInformation_Kind // the current document's symbol kinds
 	defined, miss map[string]int
+	unmeasured    int // misses in a document the reading does not measure
 }
+
+// CntScipGoDefsUnmeasured counts the unmapped scip-go definitions, a package
+// clause's aside, in a document outside the files the reading measures (a
+// directory fathom's corpus prunes by name, RT-145): a subset of the
+// scip_go_defs_unmapped_<class> counts, still in def_mapping's denominator
+// (only an owner ruling narrows it, L5 for TypeScript and JavaScript).
+const CntScipGoDefsUnmeasured = "scip_go_defs_unmeasured"
 
 // newGoDefClasses is the counter for a producer, nil unless scip-go.
 func newGoDefClasses(tool string) *goDefClasses {
@@ -85,8 +93,9 @@ func (g *goDefClasses) document(d *scippb.Document) {
 	}
 }
 
-// count notes one named definition and whether fathom has a node for it.
-func (g *goDefClasses) count(sym string, mapped bool) {
+// count notes one named definition, whether fathom has a node for it, and
+// whether its document is one the reading measures.
+func (g *goDefClasses) count(sym string, mapped, measured bool) {
 	if g == nil {
 		return
 	}
@@ -94,6 +103,9 @@ func (g *goDefClasses) count(sym string, mapped bool) {
 	g.defined[c]++
 	if !mapped {
 		g.miss[c]++
+		if !measured && c != "package" {
+			g.unmeasured++
+		}
 	}
 }
 
@@ -129,6 +141,9 @@ func (g *goDefClasses) finish(counts map[string]int) {
 	}
 	for c, n := range g.miss {
 		counts["scip_go_defs_unmapped_"+c] = n
+	}
+	if g.unmeasured > 0 {
+		counts[CntScipGoDefsUnmeasured] = g.unmeasured
 	}
 }
 
@@ -203,13 +218,18 @@ func goWithoutOutsideDocs(idx *scippb.Index, raw []byte, counts map[string]int) 
 
 // goSkipCounts writes the unmapped-endpoint references scip-go's import
 // counted by class (scip.Report.SkippedByClass) as scip_go_unmapped_<side>_<class>
-// counts: typed_recall's misses, classified (LB-F299). The references to a
+// counts: typed_recall's misses, classified (LB-F299), and those of them in a
+// _test.go document as scip_go_test_unmapped_<side>_<class>, a subset. The references to a
 // namespace (fscip.SkipNamespaceTarget, K18) are out of typed_recall and
 // counted as scip_edges_namespace_target.
 func goSkipCounts(byClass map[string]int, counts map[string]int) {
 	for k, n := range byClass {
 		if k == fscip.SkipNamespaceTarget {
 			counts[CntScipEdgesNamespaceTarget] = n
+			continue
+		}
+		if sub, ok := strings.CutPrefix(k, fscip.SkipTestFilePrefix); ok {
+			counts["scip_go_test_unmapped_"+strings.ReplaceAll(sub, ":", "_")] = n
 			continue
 		}
 		counts["scip_go_unmapped_"+strings.ReplaceAll(k, ":", "_")] = n
