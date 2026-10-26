@@ -147,7 +147,7 @@ def main():
     summary = dict(versions={name: importlib.metadata.version(name) for name in ('ansible-core', 'ansible-lint', 'ansible-runner')},
                    subjects=summaries, tasks_executed=False, dependencies_installed=False,
                    inventory_authority='A for native groups/hosts/children; source ranges not measured',
-                   lint_authority='A for the owner-evaluated fields under Q7; bounded candidate measurement, no whole-family grade change',
+                   lint_authority='T-R8: A only for fields ansible-core loader evaluates; raw lint traversal is not promoted; no whole-family grade change',
                    raw_sha256=digest(raw))
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(summary, indent=2)+'\n')

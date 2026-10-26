@@ -17,7 +17,7 @@ class NativeInventoryTest(unittest.TestCase):
             file.write_text('[workers]\nnode[1:2]\n[prod:children]\nworkers\n')
             env = dict(os.environ, LC_ALL=utf8_locale(), LC_CTYPE=utf8_locale(), ANSIBLE_HOME=str(work / 'home'), ANSIBLE_CONFIG=str(work / 'absent.cfg'),
                        ANSIBLE_LOCAL_TEMP=str(work / 'tmp'), ANSIBLE_INVENTORY_ENABLED='ini', ANSIBLE_INVENTORY_UNPARSED_IS_FAILED='true')
-            result = subprocess.run([env['FATHOM_ORACLE_ANSIBLE_INVENTORY'], '-i', str(file), '--list'],
+            result = subprocess.run([str(Path(env['FATHOM_ORACLE_ANSIBLE_INVENTORY']).resolve()), '-i', str(file), '--list'],
                                     cwd=work, env=env, capture_output=True, text=True, timeout=30)
             self.assertEqual(0, result.returncode, result.stderr)
             document = json.loads(result.stdout)
