@@ -120,3 +120,15 @@ Regression tests cover its topmost binfmt mount and a clearly authored fresh
 procfs overmount. A captured ubuntu-24.04 uid_map refusal is replayed as a
 negative control. Source, scope and limits are in LINUX-X64-PROBE.md; full
 Linux kernel regression and vendor startup still await the controller run.
+
+T-R13 follow-up: the first actual T-R11 run **40407284519** passed isolation
+and executed the vendor, then failed initialization with SIGXFSZ (-25), empty
+stderr/LSP and no file attribution. Its unchanged receipt and v2 schema are
+committed; it grants no API, calibration or tier result. The preceding pending-run
+statements describe earlier checkpoints. T-R13a stages one 256 MiB vendor-child
+rerun, preserving 8 MiB output captures and a 128 KiB receipt bound. It adds
+scratch-relative HOME/TMP write metadata, the largest final file, exact
+EFBIG/SIGXFSZ attribution where observed, and a mandatory authored Linux
+tracing regression. N3-m1 refuses a stacked namespace root. See
+[the current runner contract](LINUX-X64-PROBE.md#t-r13a-rerun-finite-child-bound-and-write-attribution).
+No new native API success, reading or tier is claimed before that rerun.

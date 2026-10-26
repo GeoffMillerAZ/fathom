@@ -171,9 +171,9 @@ class FilesystemIsolationTest(unittest.TestCase):
             root=Path(directory);out=root/'private';out.mkdir();public=root/'public';public.mkdir()
             base=probe.receipt_base();base.update(status='probe_refused',failed_stage='mountns')
             original=probe.write_receipt
-            def fail_private(path,*args):
+            def fail_private(path,*args,**kwargs):
                 if path.parent==out:raise OSError('authored private tail refusal')
-                return original(path,*args)
+                return original(path,*args,**kwargs)
             with patch.object(probe,'write_receipt',side_effect=fail_private):
                 self.assertEqual(2,probe.publish_receipt(base,out,public/'receipt.json',probe.CONTRACT))
             result=json.loads((public/'receipt.json').read_text())

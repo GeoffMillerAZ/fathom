@@ -169,3 +169,49 @@ and admits only its count/hash to the receipt. These controller observations
 are narrower than the mandatory real Linux PID/mount/write regression. That
 regression and vendor execution still await the T-R11 run after review. This
 fixture closes the prior READY evidence gap; no tier or reading changes.
+
+## T-R13/T-R13a receipt follow-up and N3-m1
+
+Actual public run 40407284519 on ubuntu-22.04 executed the vendor after all
+isolation checks, including 15 write denials. Initialization failed with
+EOFError, native -25 (SIGXFSZ), zero stderr and zero LSP bytes. Preserve the
+original receipt and original v2 schema; their replay test binds the receipt
+hash. Launcher, filesystem-helper and authored-input hashes match d938ba273.
+The first failing file and a sufficient bound are unknown; 8 MiB FSIZE is a
+working hypothesis. Canonical C counts remain 55,711/55,714 definitions and
+21,137/21,137 references. No native grade, ENGINE, EPOCH or L3 change follows.
+
+T-R13a authorizes one rerun with vendor-child FSIZE 256 MiB, launcher/trace/
+stderr/LSP outputs 8 MiB and receipt 128 KiB. Preparation retains its existing
+pinned download/member bounds. Raw trace is collected outside writable scratch;
+the tracer stays outside the vendor's nested PID/proc view and no trace writer
+is inherited. An authored PID1 preserves ordinary vendor signal semantics.
+Private scratch remains the sole writable filesystem area, with capabilities
+dropped. The outer parser publishes only bounded HOME/TMP relative filenames,
+sizes and successful syscall byte counts, hashes for other targets, the largest
+final private file and the exact EFBIG-plus-SIGXFSZ target when identifiable.
+A final size/request above 8 MiB identifies rerun candidates; it does not prove
+the original untraced cause. Mmap stores, successful write bytes, requested
+allocation extent and final logical size remain separate. See LINUX-X64-PROBE.md
+for source links, caps, privacy and the complete v3 field contract.
+
+N3-m1 now refuses a stacked namespace root; its authored regression protects
+against hiding real submounts. New controls also cover unfinished/resumed trace
+calls, deleted memfd targets, signal-only ambiguity, relative path allowlists,
+symlink snapshots and oversized/replaced logs. File/directory 256+1, relative
+path 512+1, generic capture cap+1 and receipt read/write cap overflow refuse
+whole units. The new real Linux regression runs the production child chain on
+an authored five-byte TMP file, then requires exact EFBIG/SIGXFSZ attribution
+after lowering only that process's limit. Both Linux controls must run with no
+skips on the runner; local ARM skips exactly those two and grants no Linux proof.
+Nine mutants fail then restore GREEN: read-only enforcement, capabilities,
+hidden mounts, dot-dot spellings, stacked-root refusal, lost limit attribution,
+lost byte counts, absent nested PID isolation and an 8 MiB vendor bound.
+
+Local T-R13a validation: 81 Python tests, 79 passed and the two designated
+Linux kernel tests skipped off Linux; all nine FAIL-to-GREEN mutants pass.
+The control summary binds 26 source files, and the launcher manifest verifies
+32 checksums. Release-note, staged/unstaged merge-debris and ADR-011 checks pass.
+No Linux vendor rerun occurred locally. Reproduce the suite and mutations with
+`python3 -B calibration/oracles/azure-policy/probe_filesystem_controls.py -out workspace/artifacts/azure-policy-t13-controls`.
+The controller reviews this follow-up before running the instrumented probe.

@@ -129,7 +129,7 @@ class ReviewProbeTest(unittest.TestCase):
                 with patch.object(probe,'enable_loopback'), patch.object(probe,'isolate_filesystem'), patch.object(probe.socket,'if_nameindex',return_value=[(1,'lo')]), patch('sys.argv',['preflight',str(probe.HERE),str(out/'worker'),str(root/'cache'),str(root)]):
                     exec(compile(code,'authored-preflight','exec'),{})
 
-    def launched_worker(self, *, poison=False, timeout=False):
+    def launched_worker(self, *, poison=False, timeout=False, invalid_trace=False):
         from unittest.mock import MagicMock
         from receipt_contract import validate
         with tempfile.TemporaryDirectory() as d, ExitStack() as stack:
@@ -140,11 +140,18 @@ class ReviewProbeTest(unittest.TestCase):
             stack.enter_context(patch.object(probe.os,'getloadavg',return_value=(0,0,0)))
             stack.enter_context(patch.object(probe.os,'nice'))
             stack.enter_context(patch.object(probe.shutil,'disk_usage',return_value=SimpleNamespace(free=30*1024**3)))
+            stack.enter_context(patch.object(probe,'trace_identity',return_value=dict(sha256='0'*64,version=[5,16])))
+            stack.enter_context(patch.object(probe.resource,'setrlimit'))
+            original_is_file=Path.is_file
+            stack.enter_context(patch.object(Path,'is_file',lambda p: True if str(p)=='/usr/bin/strace' else original_is_file(p)))
             stack.enter_context(patch.object(probe.shutil,'which',return_value='/usr/bin/unshare'))
             stack.enter_context(patch.object(probe.subprocess,'run',return_value=SimpleNamespace(returncode=0)))
             stack.enter_context(patch.object(probe,'prepare'))
             verify=stack.enter_context(patch.object(probe,'verify'))
             copied=stack.enter_context(patch.object(probe,'copy_payload'))
+            if timeout: stack.enter_context(patch.object(probe,'TIMEOUT',0.001))
+            if invalid_trace: stack.enter_context(patch.object(probe,'diagnostics',side_effect=ValueError('authored incomplete trace')))
+            else: stack.enter_context(patch.object(probe,'diagnostics',return_value=dict(files=[],largest_private_file=None,files_over_previous_limit=0,sigxfsz_observed=False,limit_file=None,correlated_limit_files=0,vendor_exec_observed=True,native_returncode=0)))
             process=MagicMock(pid=12345)
             def finish(*args,**kwargs):
                 if timeout and kwargs.get('timeout'):
@@ -198,6 +205,7 @@ class ReviewProbeTest(unittest.TestCase):
             stack.enter_context(patch.object(probe.resource,'setrlimit'))
             stack.enter_context(patch.object(probe,'kill_group'))
             process=MagicMock(returncode=0)
+            process.stderr=__import__('io').BytesIO(b'')
             stack.enter_context(patch.object(probe.subprocess,'Popen',return_value=process))
             lsp=MagicMock()
             def response(ident,*args):
@@ -207,7 +215,10 @@ class ReviewProbeTest(unittest.TestCase):
             stack.enter_context(patch.object(probe,'LSP',return_value=lsp))
             evaluations=[dict(variant=v,http_status=200,sha256='0'*64,bytes=2) for v in ['valid','unknown_parameter','changed_input_fact']]
             stack.enter_context(patch.object(probe,'evaluate_controls',return_value=evaluations))
-            self.assertEqual(2,probe.worker(Path(d)/'payload',out))
+            reader,writer=probe.os.pipe()
+            try:
+                self.assertEqual(2,probe.worker(Path(d)/'payload',out,trace_fd=writer))
+            finally:probe.os.close(reader)
             receipt=json.loads((out/'receipt.json').read_text())
             self.assertEqual('native_probe_failed',receipt['status'])
             self.assertEqual('shutdown',receipt['failed_stage'])
@@ -260,3 +271,26 @@ class ReviewProbeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             path=Path(d)/'receipt.json';path.write_bytes(b' '*(MAX_RECEIPT+1))
             with self.assertRaisesRegex(ValueError,'cap'):read_receipt(path,probe.CONTRACT)
+
+    def test_invalid_trace_refuses_public_native_claim(self):
+        receipt=self.launched_worker(invalid_trace=True)
+        self.assertEqual('probe_refused',receipt['status'])
+        self.assertEqual('tracing',receipt['failed_stage'])
+        self.assertIsNone(receipt['native_executed'])
+        self.assertNotIn('write_diagnostics',receipt)
+
+    def test_missing_strace_refuses_before_prepare(self):
+        with tempfile.TemporaryDirectory() as directory,ExitStack() as stack:
+            root=Path(directory).resolve();out=root/'out'
+            stack.enter_context(patch('sys.argv',['probe','-cache',str(root/'cache'),'-out',str(out)]))
+            stack.enter_context(patch.object(probe.platform,'system',return_value='Linux'))
+            stack.enter_context(patch.object(probe.platform,'machine',return_value='x86_64'))
+            stack.enter_context(patch.object(probe.os,'getloadavg',return_value=(0,0,0)))
+            stack.enter_context(patch.object(probe.shutil,'disk_usage',return_value=SimpleNamespace(free=30*1024**3)))
+            stack.enter_context(patch.object(probe.shutil,'which',return_value='/usr/bin/unshare'))
+            stack.enter_context(patch.object(probe.subprocess,'run',return_value=SimpleNamespace(returncode=0)))
+            stack.enter_context(patch.object(Path,'is_file',return_value=False))
+            prepare=stack.enter_context(patch.object(probe,'prepare'))
+            self.assertEqual(2,probe.main());prepare.assert_not_called()
+            receipt=json.loads((out/'receipt.json').read_text())
+            self.assertEqual('tracing',receipt['failed_stage']);self.assertIsNone(receipt['native_executed'])

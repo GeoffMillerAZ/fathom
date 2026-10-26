@@ -173,3 +173,79 @@ N3-m1: a mount stacked directly on the namespace root now refuses before any
 remount. The previous reachability algorithm could hide the real submounts in
 that shape. An authored regression covers this latent case; it is distinct from
 the unchanged real runner fixture, which has no stacked root.
+
+## T-R13a rerun: finite child bound and write attribution
+
+T-R13a admits **one instrumented 256 MiB rerun**, with no separate 8 MiB
+trace-only run. `RLIMIT_FSIZE` is a process limit, not a per-directory quota
+([Linux getrlimit](https://man7.org/linux/man-pages/man2/getrlimit.2.html)).
+The private scratch remains the only writable filesystem subtree. After the
+separately size-bounded preparation/copy, launcher and worker soft FSIZE limits
+are 8 MiB, with a finite 256 MiB inherited hard ceiling. Only the restricted
+vendor child raises its soft limit to 256 MiB. This is a provisional diagnostic
+bound, not a measured sufficient size or a statement about the first failing file.
+There is no unlimited fallback. A second SIGXFSZ is useful evidence, not success.
+
+Stderr and LSP are pipes with 8 MiB capture/protocol bounds; the vendor never
+inherits a direct writable launcher-output descriptor. Bounded no-follow regular
+log reads also refuse oversized, replaced, symlink or FIFO logs. Trace capture
+has a separate 8 MiB bound outside writable scratch. The receipt remains at
+its stricter **128 KiB** read **and write** cap, below the 8 MiB output budget.
+Caps refuse whole diagnostics/receipts; they never silently truncate a public result.
+
+`/usr/bin/strace` must already exist on the runner. Its binary hash and numeric
+version are recorded. No apt/global install or untraced fallback occurs. The
+[Ubuntu 22.04 strace 5.16 manual](https://manpages.ubuntu.com/manpages/jammy/man1/strace.1.html)
+documents the used flags: follow forks, decode descriptor paths, zero buffer
+string length, and one quiet flag (retain exit/signal records). Only write,
+pwrite/writev, truncate/allocation, copy/send/splice and exec calls are selected.
+Raw trace paths, argv, buffers, LSP, evaluation and stderr remain private and are
+deleted by the shell launcher. The raw trace is never an artifact.
+
+The tracer runs outside a nested vendor PID namespace. An authored launcher
+closes all extra descriptors before creating that PID/mount/proc view, which
+remounts everything outside the same scratch read-only. The vendor cannot see
+the outer tracer through procfs and inherits no trace-pipe writer. An authored
+PID1 waits for the zero-cap vendor child; the vendor has ordinary process signal
+semantics, rather than PID1's special semantics. The existing full outer
+user/network/PID/mount isolation and 15 EROFS controls remain required.
+
+After the complete worker namespace dies, the outer launcher parses the
+protected trace and snapshots HOME/TMP without following symlinks. Current
+closed schema **v3** includes `write_diagnostics`:
+
+- `files`: scratch-relative HOME/TMP paths, hashes, successful write-family
+  return-byte totals, final logical sizes/types and largest requested allocation
+  or explicit-offset write extent. Other paths and memfd labels are hashed;
+  the single known `dotnet_doublemapper` kind is a fixed enum.
+- `largest_private_file`: largest final regular file in HOME/TMP, including
+  its relative path and size; null when none exists. Unlinked/memfd targets
+  remain in the trace-derived rows even though no directory entry survives.
+- `exceeds_previous_limit` and `files_over_previous_limit`: observed final
+  size or requested extent above 8 MiB. These are rerun observations, not proof
+  that a particular file caused the earlier, uninstrumented death.
+- `limit_file`: the exact hashed target (and relative path for HOME/TMP) only
+  when EFBIG is followed by SIGXFSZ on that same thread and there is one distinct
+  correlated target. Signal alone or multiple distinct targets yield null;
+  their presence/count remains explicit. `native_returncode` comes from the
+  vendor exec/exit trace, separately from the tracer's return code.
+
+T-R13a explicitly permits these bounded relative path names in the sole receipt
+artifact; no file contents or absolute paths are included. Components admit only
+ASCII letters, digits, dot, underscore and hyphen, excluding dot/dot-dot; 128 bytes
+per component and 512 per path. Unsafe names refuse the diagnostic. At most 256
+file records and 256 directories are inspected. Missing descriptor paths,
+unresolved watched syscalls, incomplete trace, cap overflow or a changed receipt
+identity refuse; publication cannot assert native execution without the outer
+exec/exit evidence and matching diagnostics. Allocation extent is not bytes
+written. Mmap stores, overwritten bytes and final logical sizes are not conflated.
+
+The runner suite now requires **two** Linux kernel tests with zero skips. The
+new authored control uses the production tracer/namespace/child chain, proves
+no extra descriptor reaches the child and the outer tracer is absent from its
+PID view, checks the inherited 256 MiB bound, lowers only the authored process
+to 16 KiB and deliberately extends a TMP file to 32 KiB. It must attribute five
+written bytes and the exact EFBIG/SIGXFSZ target. It executes no vendor code.
+Off Linux exactly these two tests skip; missing strace or a namespace/control
+failure on Linux blocks preparation/vendor execution. Local mocked controls
+are not a successful Linux run. Canonical readings and tiers remain unchanged.
