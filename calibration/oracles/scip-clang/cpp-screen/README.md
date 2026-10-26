@@ -28,6 +28,20 @@ The embedded grammar lock binds the grammar blob hash and upstream commit to
 the compiled product revision. A reading's optional grammar fields must agree
 with that lock when present; fresh `indexbench` readings omit them.
 
+`-candidate` is an audit-only diagnostic for a clean, newly compiled C++
+grammar candidate measured against an older reading. Its receipt says
+`candidate-diagnostic` and records the baseline reading revision separately
+from the candidate product revision. The flag waives only those revisions'
+equality and the reading's optional grammar equality. It still checks the
+subject pin, exact population and bytes, caps, paths, hashes, and output
+confinement. The Git diff from baseline to candidate must contain only the
+C++ grammar lock row and blob, grammar provenance, this helper, and O1504;
+all non-C++ lock rows and product parsing/routing code must stay unchanged.
+Helper/observation-only diffs are admitted for diagnostic reproduction. A
+candidate receipt cannot establish accuracy, adoption, or a new reading.
+Parser faults print phase, 1-based file ordinal, peak WASM pages, and safe
+engine error text to private stderr without a source path or source text.
+
 Inputs are bounded at 256 MiB per JSON, 20,000 files, 16 MiB per source,
 and 512 MiB total source. JSON traversal also stops at depth 64 or two
 million tokens. Equality is accepted; cap + 1 fails the whole run.

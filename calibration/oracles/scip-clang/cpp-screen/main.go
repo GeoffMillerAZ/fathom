@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -16,6 +17,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"reflect"
 	"runtime/debug"
 	"sort"
 	"strings"
@@ -43,7 +45,121 @@ type config struct {
 	Limits                                        *limits // tests inject small bounds; nil uses production caps
 	ProductRevision                               string  // tests supply a synthetic identity; production reads build VCS
 	SubjectRevision                               string  // tests supply a synthetic pin; production reads checkout HEAD
+	Candidate                                     bool
+	ProductRoot                                   string // tests supply an isolated Git repo; production uses this checkout
 }
+
+var candidatePaths = map[string]bool{
+	"internal/extractor/tsengine/grammars/grammars.lock.json": true,
+	"internal/extractor/tsengine/grammars/cpp.wasm.gz":        true,
+	"internal/extractor/tsengine/grammars/PROVENANCE.md":      true,
+	"calibration/oracles/scip-clang/cpp-screen/main.go":       true,
+	"calibration/oracles/scip-clang/cpp-screen/main_test.go":  true,
+	"calibration/oracles/scip-clang/cpp-screen/README.md":     true,
+	".fathom/observations/O1504.md":                           true,
+}
+
+func gitBytes(root string, args ...string) ([]byte, error) {
+	return exec.Command("git", append([]string{"-C", root}, args...)...).Output()
+}
+func candidateDiffAllowed(root, baseline, candidate string) error {
+	if !fullSHA(baseline) || !fullSHA(candidate) || baseline == candidate {
+		return errors.New("candidate_revisions")
+	}
+	head, err := git(root, "rev-parse", "HEAD")
+	if err != nil || head != candidate {
+		return errors.New("candidate_stale")
+	}
+	dirty, err := git(root, "status", "--porcelain", "--untracked-files=all")
+	if err != nil || dirty != "" {
+		return errors.New("candidate_dirty")
+	}
+	if err := exec.Command("git", "-C", root, "merge-base", "--is-ancestor", baseline, candidate).Run(); err != nil {
+		return errors.New("candidate_not_descendant")
+	}
+	raw, err := gitBytes(root, "diff", "--name-only", "--no-renames", "-z", baseline, candidate, "--")
+	if err != nil || len(raw) == 0 {
+		return errors.New("candidate_no_diff")
+	}
+	changed := map[string]bool{}
+	for _, name := range bytes.Split(bytes.TrimSuffix(raw, []byte{0}), []byte{0}) {
+		p := string(name)
+		if !candidatePaths[p] {
+			return errors.New("candidate_unrelated_change")
+		}
+		changed[p] = true
+	}
+	lockPath := "internal/extractor/tsengine/grammars/grammars.lock.json"
+	blobPath := "internal/extractor/tsengine/grammars/cpp.wasm.gz"
+	if changed[lockPath] != changed[blobPath] {
+		return errors.New("candidate_lock_blob_pair")
+	}
+	if changed[lockPath] {
+		old, err := gitBytes(root, "show", baseline+":"+lockPath)
+		if err != nil {
+			return errors.New("candidate_old_lock")
+		}
+		newLock, err := gitBytes(root, "show", candidate+":"+lockPath)
+		if err != nil {
+			return errors.New("candidate_new_lock")
+		}
+		if err := onlyCppLockChanged(old, newLock); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func onlyCppLockChanged(old, newLock []byte) error {
+	decode := func(b []byte) (map[string]any, map[string]map[string]any, error) {
+		var whole map[string]any
+		if err := json.Unmarshal(b, &whole); err != nil {
+			return nil, nil, err
+		}
+		rows, ok := whole["grammars"].([]any)
+		if !ok {
+			return nil, nil, errors.New("candidate_lock_shape")
+		}
+		delete(whole, "grammars")
+		byBlob := map[string]map[string]any{}
+		for _, v := range rows {
+			row, ok := v.(map[string]any)
+			if !ok {
+				return nil, nil, errors.New("candidate_lock_shape")
+			}
+			blob, ok := row["blob"].(string)
+			if !ok || blob == "" || byBlob[blob] != nil {
+				return nil, nil, errors.New("candidate_lock_shape")
+			}
+			byBlob[blob] = row
+		}
+		if byBlob["cpp"] == nil {
+			return nil, nil, errors.New("candidate_missing_cpp")
+		}
+		return whole, byBlob, nil
+	}
+	oldTop, oldRows, err := decode(old)
+	if err != nil {
+		return errors.New("candidate_old_lock_invalid")
+	}
+	newTop, newRows, err := decode(newLock)
+	if err != nil {
+		return errors.New("candidate_new_lock_invalid")
+	}
+	if !reflect.DeepEqual(oldTop, newTop) || len(oldRows) != len(newRows) {
+		return errors.New("candidate_other_lock_change")
+	}
+	for blob, row := range oldRows {
+		if blob != "cpp" && !reflect.DeepEqual(row, newRows[blob]) {
+			return errors.New("candidate_other_grammar")
+		}
+	}
+	if reflect.DeepEqual(oldRows["cpp"], newRows["cpp"]) {
+		return errors.New("candidate_cpp_lock_unchanged")
+	}
+	return nil
+}
+
 type partition struct {
 	Error   int `json:"error_containing"`
 	Missing int `json:"missing_containing"`
@@ -55,6 +171,8 @@ type partition struct {
 }
 type receipt struct {
 	Status              string    `json:"status"`
+	Mode                string    `json:"mode,omitempty"`
+	BaselineRevision    string    `json:"baseline_revision,omitempty"`
 	FailureCode         string    `json:"failure_code,omitempty"`
 	CountsComplete      bool      `json:"counts_complete"`
 	Files               int       `json:"files"`
@@ -112,6 +230,31 @@ func failure(r receipt, code string) (receipt, error) {
 	r.FailureCode = code
 	r.CountsComplete = false
 	return r, errors.New(code)
+}
+
+type parserFailure struct {
+	Code, Phase string
+	Ordinal     int
+	PeakPages   uint32
+	Cause       error
+}
+
+func (e parserFailure) Unwrap() error { return e.Cause }
+func (e parserFailure) Error() string {
+	message := strings.TrimSuffix(strings.SplitN(e.Cause.Error(), "\n", 2)[0], "\r")
+	// tsengine errors describe parser/runtime state. Any other text, or an
+	// engine error containing path-like text, is reduced to its type. Guest
+	// stack traces after the first line never enter stderr.
+	if !strings.HasPrefix(message, "tsengine:") || strings.ContainsAny(message, "/\\\r\n") || len(message) > 512 {
+		message = fmt.Sprintf("%T (detail redacted)", e.Cause)
+	}
+	return fmt.Sprintf("%s phase=%s ordinal=%d peak_pages=%d cause=%s", e.Code, e.Phase, e.Ordinal, e.PeakPages, message)
+}
+func parserFault(r receipt, code, phase string, ordinal int, cause error) (receipt, error) {
+	r.Status = "failed"
+	r.FailureCode = code
+	r.CountsComplete = false
+	return r, parserFailure{Code: code, Phase: phase, Ordinal: ordinal, PeakPages: tsengine.PeakModulePages(), Cause: cause}
 }
 
 // jsonValue rejects duplicate object keys and excessive nesting before the
@@ -364,6 +507,9 @@ func productIdentity(c config) (string, string, error) {
 }
 func measure(c config) (receipt, error) {
 	r := receipt{Status: "failed"}
+	if c.Candidate {
+		r.Mode = "candidate-diagnostic"
+	}
 	lim := bounds(c)
 	if c.Subject == "" || c.SubjectName == "" || c.Reading == "" || c.Unmatched == "" || lim.JSONBytes < 0 || lim.Files < 0 || lim.SourceBytes < 0 || lim.TotalBytes < 0 {
 		return failure(r, "arguments")
@@ -388,6 +534,9 @@ func measure(c config) (receipt, error) {
 	}
 	if read.Dialect != "cpp" || selected < 0 || !fullSHA(read.FathomCommit) || read.Subjects[selected].Files <= 0 || read.Subjects[selected].Bytes <= 0 || len(match.TenancyFiles) != read.Subjects[selected].Files || len(match.TenancyFiles) > lim.Files {
 		return failure(r, "population_mismatch")
+	}
+	if c.Candidate {
+		r.BaselineRevision = read.FathomCommit
 	}
 	subject := read.Subjects[selected]
 	st, err := os.Lstat(c.Subject)
@@ -423,7 +572,18 @@ func measure(c config) (receipt, error) {
 	if err != nil {
 		return failure(r, "product_identity")
 	}
-	if !fullSHA(r.ProductRevision) || r.ProductRevision != read.FathomCommit {
+	if !fullSHA(r.ProductRevision) {
+		return failure(r, "product_revision_mismatch")
+	}
+	if c.Candidate {
+		root := c.ProductRoot
+		if root == "" {
+			root = "."
+		}
+		if err := candidateDiffAllowed(root, read.FathomCommit, r.ProductRevision); err != nil {
+			return failure(r, "candidate_diff_refused")
+		}
+	} else if r.ProductRevision != read.FathomCommit {
 		return failure(r, "product_revision_mismatch")
 	}
 	lock, err := tsengine.LoadGrammarLock()
@@ -431,6 +591,7 @@ func measure(c config) (receipt, error) {
 		return failure(r, "grammar_lock")
 	}
 	var parser *tsengine.Parser
+	tsengine.ResetPeakModulePages()
 	var errorQ, missingQ *tsengine.Query
 	defer func() {
 		if missingQ != nil {
@@ -446,7 +607,7 @@ func measure(c config) (receipt, error) {
 	sourceHash := sha256.New()
 	fileHashes := make([]string, 0, len(match.TenancyFiles))
 	var total int64
-	for _, p := range match.TenancyFiles {
+	for index, p := range match.TenancyFiles {
 		src, err := safeFile(c.Subject, p, lim.SourceBytes)
 		if err != nil {
 			r.Written.Faults++
@@ -465,7 +626,7 @@ func measure(c config) (receipt, error) {
 		}
 		if parser == nil {
 			row, ok := lock.Row(target.Blob)
-			if !ok || row.BlobSHA256 == "" || (read.Grammar.Blob != "" && read.Grammar.Blob != target.Blob) || (read.Grammar.BlobSHA256 != "" && read.Grammar.BlobSHA256 != row.BlobSHA256) {
+			if !ok || row.BlobSHA256 == "" || (!c.Candidate && ((read.Grammar.Blob != "" && read.Grammar.Blob != target.Blob) || (read.Grammar.BlobSHA256 != "" && read.Grammar.BlobSHA256 != row.BlobSHA256))) {
 				return failure(r, "grammar_mismatch")
 			}
 			r.GrammarBlobSHA256 = row.BlobSHA256
@@ -474,15 +635,15 @@ func measure(c config) (receipt, error) {
 			r.Preprocess = target.Preprocess != nil
 			parser, err = tsengine.NewParser(context.Background(), target.Blob, target.EntryPoint)
 			if err != nil {
-				return failure(r, "parser_fault")
+				return parserFault(r, "parser_fault", "raw", index+1, err)
 			}
 			errorQ, err = parser.CompileQuery("(ERROR) @error")
 			if err != nil {
-				return failure(r, "query_fault")
+				return parserFault(r, "query_fault", "raw", index+1, err)
 			}
 			missingQ, err = parser.CompileQuery("(MISSING) @missing")
 			if err != nil {
-				return failure(r, "query_fault")
+				return parserFault(r, "query_fault", "raw", index+1, err)
 			}
 		} else if target.Blob != readBlob(lock, r.GrammarBlobSHA256) || target.EntryPoint != r.GrammarEntryPoint || (target.Preprocess != nil) != r.Preprocess {
 			return failure(r, "grammar_variant")
@@ -491,7 +652,7 @@ func measure(c config) (receipt, error) {
 		if err != nil {
 			r.Written.Faults++
 			r.Selected.Faults++
-			return failure(r, "parse_fault")
+			return parserFault(r, "parse_fault", "raw", index+1, err)
 		}
 		e1, eerr := has(errorQ, raw)
 		m1, merr := has(missingQ, raw)
@@ -499,19 +660,19 @@ func measure(c config) (receipt, error) {
 		if eerr != nil || merr != nil {
 			r.Written.Faults++
 			r.Selected.Faults++
-			return failure(r, "query_fault")
+			return parserFault(r, "query_fault", "raw", index+1, errors.Join(eerr, merr))
 		}
 		selected, err := extractor.ProbeParse(parser, target, src)
 		if err != nil {
 			r.Selected.Faults++
-			return failure(r, "parse_fault")
+			return parserFault(r, "parse_fault", "selected", index+1, err)
 		}
 		e2, eerr := has(errorQ, selected.Tree)
 		m2, merr := has(missingQ, selected.Tree)
 		selected.Tree.Close()
 		if eerr != nil || merr != nil {
 			r.Selected.Faults++
-			return failure(r, "query_fault")
+			return parserFault(r, "query_fault", "selected", index+1, errors.Join(eerr, merr))
 		}
 		add(&r.Written, e1, m1)
 		add(&r.Selected, e2, m2)
@@ -708,6 +869,7 @@ func main() {
 	flag.StringVar(&c.Reading, "reading", "", "private JSON reading")
 	flag.StringVar(&c.Unmatched, "unmatched", "", "private JSON unmatched receipt")
 	flag.StringVar(&c.Out, "out", "", "ignored workspace receipt path")
+	flag.BoolVar(&c.Candidate, "candidate", false, "audit-only candidate parser diagnostic against a baseline reading")
 	flag.Parse()
 	if err := run(c); err != nil {
 		fmt.Fprintln(os.Stderr, "cpp-screen:", err)

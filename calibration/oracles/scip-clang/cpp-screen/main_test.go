@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -15,6 +17,152 @@ import (
 	scippb "github.com/geoffmilleraz/fathom/third_party/scip"
 	"google.golang.org/protobuf/proto"
 )
+
+func gitFixtureCommand(t *testing.T, root string, args ...string) string {
+	t.Helper()
+	cmd := exec.Command("git", append([]string{"-C", root}, args...)...)
+	b, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git %v: %s: %v", args, b, err)
+	}
+	return strings.TrimSpace(string(b))
+}
+func writeFixtureFile(t *testing.T, root, name, value string) {
+	t.Helper()
+	p := filepath.Join(root, name)
+	if err := os.MkdirAll(filepath.Dir(p), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(p, []byte(value), 0600); err != nil {
+		t.Fatal(err)
+	}
+}
+func gitCandidateFixture(t *testing.T) (root, baseline, candidate string) {
+	t.Helper()
+	root = t.TempDir()
+	gitFixtureCommand(t, root, "init", "-q")
+	lock := "internal/extractor/tsengine/grammars/grammars.lock.json"
+	writeFixtureFile(t, root, lock, `{"core":{},"toolchain":{},"grammars":[{"blob":"c","blob_sha256":"c"},{"blob":"cpp","blob_sha256":"old"}]}`)
+	writeFixtureFile(t, root, "internal/extractor/tsengine/grammars/cpp.wasm.gz", "old blob")
+	gitFixtureCommand(t, root, "add", ".")
+	gitFixtureCommand(t, root, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "baseline")
+	baseline = gitFixtureCommand(t, root, "rev-parse", "HEAD")
+	writeFixtureFile(t, root, lock, `{"core":{},"toolchain":{},"grammars":[{"blob":"c","blob_sha256":"c"},{"blob":"cpp","blob_sha256":"new"}]}`)
+	writeFixtureFile(t, root, "internal/extractor/tsengine/grammars/cpp.wasm.gz", "new blob")
+	writeFixtureFile(t, root, "internal/extractor/tsengine/grammars/PROVENANCE.md", "new pinned C++ grammar")
+	gitFixtureCommand(t, root, "add", ".")
+	gitFixtureCommand(t, root, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "candidate")
+	candidate = gitFixtureCommand(t, root, "rev-parse", "HEAD")
+	return
+}
+
+func TestCandidateDiffAdmitsOnlyCppGrammarDelta(t *testing.T) {
+	root, baseline, candidate := gitCandidateFixture(t)
+	if err := candidateDiffAllowed(root, baseline, candidate); err != nil {
+		t.Fatalf("refused isolated C++ grammar delta: %v", err)
+	}
+	writeFixtureFile(t, root, "internal/extractor/tsextract_cppmacros.go", "changed product preparse")
+	gitFixtureCommand(t, root, "add", ".")
+	gitFixtureCommand(t, root, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "unrelated")
+	if err := candidateDiffAllowed(root, baseline, gitFixtureCommand(t, root, "rev-parse", "HEAD")); err == nil {
+		t.Fatal("accepted changed product preprocessing")
+	}
+}
+func TestCandidateDiffAdmitsHelperObservationOnly(t *testing.T) {
+	root, _, baseline := gitCandidateFixture(t)
+	writeFixtureFile(t, root, "calibration/oracles/scip-clang/cpp-screen/main.go", "diagnostic helper")
+	writeFixtureFile(t, root, ".fathom/observations/O1504.md", "parser observation")
+	gitFixtureCommand(t, root, "add", ".")
+	gitFixtureCommand(t, root, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "helper")
+	if err := candidateDiffAllowed(root, baseline, gitFixtureCommand(t, root, "rev-parse", "HEAD")); err != nil {
+		t.Fatalf("refused narrow diagnostic changes: %v", err)
+	}
+}
+func TestCandidateDiffRejectsOtherGrammarAndStaleOrDirtySource(t *testing.T) {
+	root, baseline, candidate := gitCandidateFixture(t)
+	writeFixtureFile(t, root, "internal/extractor/tsengine/grammars/grammars.lock.json", `{"core":{},"toolchain":{},"grammars":[{"blob":"c","blob_sha256":"changed"},{"blob":"cpp","blob_sha256":"new"}]}`)
+	gitFixtureCommand(t, root, "add", ".")
+	gitFixtureCommand(t, root, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "other grammar")
+	if err := candidateDiffAllowed(root, baseline, gitFixtureCommand(t, root, "rev-parse", "HEAD")); err == nil {
+		t.Fatal("accepted other grammar lock change")
+	}
+	if err := candidateDiffAllowed(root, baseline, candidate); err == nil {
+		t.Fatal("accepted stale candidate binary revision")
+	}
+	root2, base2, cand2 := gitCandidateFixture(t)
+	writeFixtureFile(t, root2, "internal/extractor/tsengine/grammars/PROVENANCE.md", "dirty")
+	if err := candidateDiffAllowed(root2, base2, cand2); err == nil {
+		t.Fatal("accepted dirty candidate source")
+	}
+}
+
+func TestCandidateModeLabelsBaselineAndKeepsPopulationChecks(t *testing.T) {
+	root, baseline, candidate := gitCandidateFixture(t)
+	cfg := fixture(t, map[string]string{"a.cpp": "int a;\n"})
+	cfg.ProductRoot = root
+	cfg.ProductRevision = candidate
+	b, err := os.ReadFile(cfg.Reading)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var reading map[string]any
+	if err := json.Unmarshal(b, &reading); err != nil {
+		t.Fatal(err)
+	}
+	reading["fathom_commit"] = baseline
+	reading["grammar"] = map[string]any{"blob": "cpp", "blob_sha256": "baseline-grammar-hash"}
+	b, err = json.Marshal(reading)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cfg.Reading, b, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := measure(cfg); err == nil {
+		t.Fatal("strict mode accepted different product revision")
+	}
+	cfg.Candidate = true
+	r, err := measure(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Mode != "candidate-diagnostic" || r.BaselineRevision != baseline || r.ProductRevision != candidate || !r.CountsComplete {
+		t.Fatalf("candidate receipt lost provenance/diagnostic label: %+v", r)
+	}
+	reading["subjects"].([]any)[0].(map[string]any)["bytes"] = 8
+	b, err = json.Marshal(reading)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cfg.Reading, b, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := measure(cfg); err == nil || got.CountsComplete {
+		t.Fatal("candidate mode waived reading byte mismatch")
+	}
+}
+
+func TestParserFailurePrivateDiagnostic(t *testing.T) {
+	cause := errors.New("tsengine: parse aborted after 2s budget (pathological input?)")
+	e := parserFailure{Code: "parse_fault", Phase: "selected", Ordinal: 7, PeakPages: 93, Cause: cause}
+	message := e.Error()
+	for _, part := range []string{"phase=selected", "ordinal=7", "peak_pages=93", cause.Error()} {
+		if !strings.Contains(message, part) {
+			t.Fatalf("lost diagnostic %q: %s", part, message)
+		}
+	}
+	if !errors.Is(e, cause) {
+		t.Fatal("lost underlying parser error")
+	}
+	private := parserFailure{Code: "parse_fault", Phase: "raw", Ordinal: 1, Cause: errors.New("tsengine: /private/subject/a.cpp: secret source")}.Error()
+	if strings.Contains(private, "/private/") || strings.Contains(private, "secret source") {
+		t.Fatalf("leaked private input: %s", private)
+	}
+	stack := parserFailure{Code: "parse_fault", Phase: "raw", Ordinal: 2, Cause: errors.New("tsengine: call parse: wasm error: unreachable\nwasm stack trace: private details")}.Error()
+	if !strings.Contains(stack, "wasm error: unreachable") || strings.Contains(stack, "wasm stack trace") || strings.Contains(stack, "private details") {
+		t.Fatalf("lost class or leaked stack: %s", stack)
+	}
+}
 
 func fixture(t *testing.T, files map[string]string) config {
 	t.Helper()
