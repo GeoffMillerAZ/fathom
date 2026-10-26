@@ -1,0 +1,25 @@
+{
+  "version": "command-guard.scanner-source-pins/1",
+  "baseline": "bae835fb9ca8a6b3b449872930ba0bd9f39030ca",
+  "files": {
+    "cmd/command-guard/README.md": "770e0859b885c3e9ca50979fb82a70fbe6138279d4cdc915f8ef4f5e0ef5e483",
+    "cmd/command-guard/codec.go": "c474f75498be1c266be18296f497692bdab757a63191545afe2bc141b7a21c94",
+    "cmd/command-guard/hardening_test.go": "5c43847e7b4a0a1e8a4c29935393771ee41c042ea04ec32f2dc1545332f88031",
+    "cmd/command-guard/main.go": "fa4dad3128f05e63568cfca926873688d99ea76fe5b785cd7bd9e75fb4f3e4f2",
+    "cmd/command-guard/main_test.go": "41715cfc10e8e5f9602b07507961e192fd382dd80fa82e618c826763420afd29",
+    "cmd/command-guard/nonblock_unix.go": "e852157b0109e779c33533c4c23145b96cdd916dcbbccaed398b1d117108e845",
+    "cmd/command-guard/nonblock_windows.go": "c1edb4d9f5163828139787241c24309b78a6fb6b281990cb2b922aa329395547",
+    "cmd/command-guard/scanner.go": "03b5a86c4a5654c2ef34b07356e5568c0de33d6ea40adf56842d07fb994e87c0",
+    "cmd/command-guard/scanner_test.go": "7e9915ff83560a969ad13cd1a75c7fde63caeb6d03c7ab300e1cbc22d01b06a0",
+    "cmd/command-guard/schema.cue": "eb3d282c22e62f7ce8f97099dabaf2c0d518e1a648aeae159c8da0d8b3ce93f2",
+    "cmd/command-guard/special_unix_test.go": "d980c9c3fd0ec184b584318fe18aad378297f9ce53e436140d0dc01c76b01a22",
+    "cmd/command-guard/testdata/policy.json": "de450b01a9fe3ff20baa773af6d0a2eb7d354e1e3a55fe59ae54db951a8bd76f",
+    "cmd/command-guard/testdata/report-read.json": "926d63f757153ac6c48c862e45032019af0a7e92df62e93f3590e3d6eeb658eb",
+    "cmd/command-guard/testdata/request-read.json": "9565b394060262a7a1489940d2f7f960ec57b64adeff28f5ae33a75c3223b191",
+    "cmd/command-guard/testdata/request-search.json": "4dbf06e9c29ca6712402062afea4229c3af60ccf53b88552e4d92e71cbae0a63",
+    "cmd/command-guard/testdata/sample.txt": "05cb9d7a279bdf0bfbe8ff166efb93ce5fbebc990a909e73090a10f464b1ce11",
+    "cmd/command-guard/testdata/scanner-canary.go": "6aa3e4249fce1c943ddc02811722d708d27ad82424dd38077414ef53c343e712",
+    "cmd/command-guard/testdata/scope.json": "1f3ce22cd218173631aae81cf10b4af2aea30bb80475189f20f78ce021507f4c",
+    "cmd/command-guard/testdata/valid.cue": "2fbfbdea70cf73eba7a1f1cc14b7fadf0ec03d042d9f5cf94dbed02042eeb218"
+  }
+}

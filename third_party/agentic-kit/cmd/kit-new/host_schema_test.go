@@ -23,15 +23,17 @@ func TestHostMarshaledContractsMatchCUE(t *testing.T) {
 			name  string
 			value any
 		}{
-			{"#Policy", f.policy}, {"#Policy", hostPolicy{Version: 1}},
-			{"#Plan", plan}, {"#Receipt", receipt},
+			{"#Policy", f.policy},
+			{"#Policy", hostPolicy{Version: 1}},
+			{"#Plan", plan},
+			{"#Receipt", receipt},
 		} {
 			raw, err := json.Marshal(tc.value)
 			if err != nil {
 				t.Fatal(err)
 			}
 			path := filepath.Join(t.TempDir(), "actual.json")
-			if err := os.WriteFile(path, raw, 0600); err != nil {
+			if err := os.WriteFile(path, raw, 0o600); err != nil {
 				t.Fatal(err)
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

@@ -1,7 +1,7 @@
 package main
 
 // certify_orphans.go — "fathom certify orphans" (TC-22, design doc §5): a
-// list, never an action (test-kit's own rule is that a test you stop
+// list, never an action (the test kit's own rule is that a test you stop
 // running is deleted, not hidden — this command only surfaces the
 // candidates for a human to look at). A Test* symbol is an orphan when
 // ALL THREE hold:

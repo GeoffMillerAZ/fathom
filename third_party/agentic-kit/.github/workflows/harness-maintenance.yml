@@ -1,0 +1,67 @@
+# Additive synthetic receiver and real SDK syntax observations.
+# Never calls approve/preview, enrolls keys or installs hooks. Not native-consent proof.
+name: Harness maintenance observations
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '**/*.go'
+      - go.mod
+      - cmd/harnessctl/**
+      - .github/workflows/harness-maintenance.yml
+  pull_request:
+    paths:
+      - '**/*.go'
+      - go.mod
+      - cmd/harnessctl/**
+      - .github/workflows/harness-maintenance.yml
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-receiver-and-sdk-syntax:
+    runs-on: macos-latest
+    timeout-minutes: 15
+    env:
+      GOMAXPROCS: '2'
+      GOFLAGS: -p=1
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Install CUE for required shape observations
+        run: go install cuelang.org/go/cmd/cue@v0.17.1
+      - name: Compile SDK and exercise synthetic receiver and plan syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          trial_root="$(python3 -c 'import os,pathlib; print(pathlib.Path(os.environ["RUNNER_TEMP"]).resolve() / "hmt")')"
+          mkdir -p "$trial_root/tmp" "$trial_root/output"
+          export TMPDIR="$trial_root/tmp" GOTMPDIR="$trial_root/tmp"
+          command -v cue >/dev/null
+          go version > "$trial_root/output/tools.txt"
+          cue version >> "$trial_root/output/tools.txt"
+          xcrun swiftc --version >> "$trial_root/output/tools.txt"
+          xcrun swiftc -O cmd/harnessctl/native/darwin/main.swift -o "$trial_root/native-helper"
+          export HARNESSCTL_NATIVE_PLAN_CHECK_PATH="$trial_root/native-helper"
+          export HARNESSCTL_NATIVE_PLAN_CHECK_SHA256="$(shasum -a 256 "$trial_root/native-helper" | cut -d ' ' -f 1)"
+          printf '{"sourceRevision":"%s","helperSHA256":"%s","profile":"synthetic-receiver-and-sdk-syntax/1","nativeApprovalInvocations":0}\n' "$GITHUB_SHA" "$HARNESSCTL_NATIVE_PLAN_CHECK_SHA256" > "$trial_root/output/source.json"
+          go test -race -count=1 ./cmd/harnessctl 2>&1 | tee "$trial_root/output/default-tests.log"
+          go test -race -tags harness_maintenance -count=1 -v ./cmd/harnessctl 2>&1 | tee "$trial_root/output/maintenance-tests.log"
+          go vet -tags harness_maintenance ./cmd/harnessctl
+          cue vet ./cmd/harnessctl/...
+      - name: Retain observations and failures
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: harness-maintenance-synthetic
+          path: ${{ runner.temp }}/hmt/output/
+          if-no-files-found: warn
+          retention-days: 14

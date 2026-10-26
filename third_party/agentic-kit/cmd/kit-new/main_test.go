@@ -14,6 +14,8 @@ package main
 
 import (
 	"bytes"
+	"errors"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -348,6 +350,462 @@ func TestRefusesExistingGoMod(t *testing.T) {
 	}
 	if !strings.Contains(stderr, "go.mod already exists") {
 		t.Errorf("stderr missing 'go.mod already exists': %s", stderr)
+	}
+}
+
+func TestScaffoldRefusesEveryExistingOutputBeforeWriting(t *testing.T) {
+	for _, name := range []string{"go.mod", "go.work", "main.go", ".gitignore", "README.md", "workspace"} {
+		for _, kind := range []string{"file", "directory", "symlink", "dangling-symlink"} {
+			t.Run(name+"/"+kind, func(t *testing.T) {
+				dir := t.TempDir()
+				path := filepath.Join(dir, name)
+				unrelated := filepath.Join(dir, "keep.txt")
+				if err := os.WriteFile(unrelated, []byte("keep"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				switch kind {
+				case "file":
+					if err := os.WriteFile(path, []byte("original"), 0o600); err != nil {
+						t.Fatal(err)
+					}
+				case "directory":
+					if err := os.Mkdir(path, 0o700); err != nil {
+						t.Fatal(err)
+					}
+				case "symlink", "dangling-symlink":
+					target := unrelated
+					if kind == "dangling-symlink" {
+						target = filepath.Join(dir, "absent")
+					}
+					if err := os.Symlink(target, path); err != nil {
+						t.Fatal(err)
+					}
+				}
+				before, err := os.Lstat(path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				code, _, stderr := runNew(t, "-name", "myagent", "-dir", dir)
+				if code != 1 {
+					t.Errorf("exit %d, want 1: %s", code, stderr)
+				}
+				after, err := os.Lstat(path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !os.SameFile(before, after) {
+					t.Errorf("existing output replaced: %s", path)
+				}
+				for _, output := range []string{"go.mod", "go.work", "main.go", ".gitignore", "README.md", "workspace"} {
+					if output == name {
+						continue
+					}
+					if _, err := os.Lstat(filepath.Join(dir, output)); !os.IsNotExist(err) {
+						t.Errorf("created %s before refusing %s: %v", output, name, err)
+					}
+				}
+				if got, err := os.ReadFile(unrelated); err != nil || string(got) != "keep" {
+					t.Errorf("unrelated file changed: %q, %v", got, err)
+				}
+				if kind == "file" {
+					got, err := os.ReadFile(path)
+					if err != nil || string(got) != "original" {
+						t.Errorf("existing bytes changed: %q, %v", got, err)
+					}
+				}
+			})
+		}
+	}
+}
+
+func TestScaffoldExclusiveCreateAndOwnedRollback(t *testing.T) {
+	t.Run("late collision", func(t *testing.T) {
+		dir := t.TempDir()
+		want := []byte("arrived after preflight")
+		err := generateWithStep(scaffold{name: "myagent", dir: dir, kitVersion: "v0.0.0", kitPath: "../agentic-kit"}, func(name string) error {
+			if name == "workspace" {
+				return os.WriteFile(filepath.Join(dir, "go.mod"), want, 0o600)
+			}
+			return nil
+		})
+		if err == nil {
+			t.Fatal("late collision succeeded")
+		}
+		got, err := os.ReadFile(filepath.Join(dir, "go.mod"))
+		if err != nil || !bytes.Equal(got, want) {
+			t.Fatalf("late file changed: %q, %v", got, err)
+		}
+		if _, err := os.Lstat(filepath.Join(dir, "workspace")); !errors.Is(err, os.ErrNotExist) {
+			t.Errorf("owned workspace survived: %v", err)
+		}
+	})
+	t.Run("replacement and unrelated", func(t *testing.T) {
+		dir := t.TempDir()
+		unrelated := filepath.Join(dir, "keep")
+		if err := os.WriteFile(unrelated, []byte("keep"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		err := generateWithStep(scaffold{name: "myagent", dir: dir, kitVersion: "v0.0.0", kitPath: "../agentic-kit"}, func(name string) error {
+			if name != "main.go" {
+				return nil
+			}
+			path := filepath.Join(dir, name)
+			if err := os.Remove(path); err != nil {
+				return err
+			}
+			if err := os.WriteFile(path, []byte("replacement"), 0o600); err != nil {
+				return err
+			}
+			return errors.New("injected write failure")
+		})
+		if err == nil {
+			t.Fatal("injected failure succeeded")
+		}
+		for name, want := range map[string]string{"main.go": "replacement", "keep": "keep"} {
+			got, readErr := os.ReadFile(filepath.Join(dir, name))
+			if readErr != nil || string(got) != want {
+				t.Errorf("%s changed: %q, %v", name, got, readErr)
+			}
+		}
+		for _, name := range []string{"go.mod", "go.work", "workspace"} {
+			if _, err := os.Lstat(filepath.Join(dir, name)); !errors.Is(err, os.ErrNotExist) {
+				t.Errorf("owned %s survived: %v", name, err)
+			}
+		}
+	})
+}
+
+func TestScaffoldRollbackRetainsChangedOutputs(t *testing.T) {
+	for _, stage := range []string{"same-byte replacement", "workspace replacement", "in-place edit", "chmod"} {
+		t.Run(stage, func(t *testing.T) {
+			dir := t.TempDir()
+			target := "main.go"
+			if stage == "workspace replacement" {
+				target = "workspace"
+			}
+			var replacement []byte
+			stop := errors.New("stop")
+			err := generateWithStep(scaffold{name: "myagent", dir: dir, kitVersion: "v0.0.0", kitPath: "../agentic-kit"}, func(name string) error {
+				if name != target {
+					return nil
+				}
+				path := filepath.Join(dir, name)
+				switch stage {
+				case "same-byte replacement":
+					var readErr error
+					replacement, readErr = os.ReadFile(path)
+					if readErr != nil {
+						return readErr
+					}
+					if err := os.Remove(path); err != nil {
+						return err
+					}
+					if err := os.WriteFile(path, replacement, 0o644); err != nil {
+						return err
+					}
+				case "workspace replacement":
+					if err := os.Remove(path); err != nil {
+						return err
+					}
+					if err := os.Mkdir(path, 0o755); err != nil {
+						return err
+					}
+				case "in-place edit":
+					f, err := os.OpenFile(path, os.O_WRONLY, 0)
+					if err != nil {
+						return err
+					}
+					_, err = f.WriteAt([]byte("changed"), 0)
+					return errors.Join(err, f.Close(), stop)
+				case "chmod":
+					// Windows observes only the owner-write bit, so clear it too.
+					if err := os.Chmod(path, 0o400); err != nil {
+						return err
+					}
+					t.Cleanup(func() {
+						if err := os.Chmod(path, 0o600); err != nil {
+							t.Errorf("restore output mode: %v", err)
+						}
+					})
+				}
+				return stop
+			})
+			if !errors.Is(err, stop) || !strings.Contains(err.Error(), "retained "+filepath.Join(dir, target)) {
+				t.Fatalf("missing retained-path error: %v", err)
+			}
+			if _, err := os.Lstat(filepath.Join(dir, target)); err != nil {
+				t.Fatalf("changed output removed: %v", err)
+			}
+			if stage == "same-byte replacement" {
+				got, err := os.ReadFile(filepath.Join(dir, target))
+				if err != nil || !bytes.Equal(got, replacement) {
+					t.Fatalf("replacement bytes changed: %v", err)
+				}
+			}
+		})
+	}
+}
+
+func TestScaffoldPinFailureRetainsUnknownOutput(t *testing.T) {
+	for _, target := range []string{"workspace", "go.work"} {
+		t.Run(target, func(t *testing.T) {
+			dir := t.TempDir()
+			failure := errors.New("pin unavailable")
+			hooks := scaffoldHooks{}
+			if target == "workspace" {
+				hooks.openDirPin = func(*os.Root, string) (*os.Root, error) { return nil, failure }
+			} else {
+				hooks.openFilePin = func(root *os.Root, name string) (*os.File, error) {
+					if name == target {
+						return nil, failure
+					}
+					return root.Open(name)
+				}
+			}
+			err := generateWithHooks(scaffold{name: "myagent", dir: dir, kitVersion: "v0.0.0", kitPath: "../agentic-kit"}, hooks)
+			if !errors.Is(err, failure) || !strings.Contains(err.Error(), "retained "+filepath.Join(dir, target)) {
+				t.Fatalf("missing retained-path error: %v", err)
+			}
+			if _, err := os.Lstat(filepath.Join(dir, target)); err != nil {
+				t.Fatalf("unknown output removed: %v", err)
+			}
+		})
+	}
+}
+
+func TestScaffoldInvalidAndShortWriteCounts(t *testing.T) {
+	for _, stage := range []string{"negative", "excess", "short"} {
+		t.Run(stage, func(t *testing.T) {
+			dir := t.TempDir()
+			hooks := scaffoldHooks{write: func(f *os.File, data []byte) (int, error) {
+				switch stage {
+				case "negative":
+					return -1, nil
+				case "excess":
+					return len(data) + 1, nil
+				default:
+					return f.Write(data[:len(data)-1])
+				}
+			}}
+			err := generateWithHooks(scaffold{name: "myagent", dir: dir, kitVersion: "v0.0.0", kitPath: "../agentic-kit"}, hooks)
+			if err == nil {
+				t.Fatal("invalid write succeeded")
+			}
+			if stage == "short" {
+				if !errors.Is(err, io.ErrShortWrite) {
+					t.Fatalf("missing short write: %v", err)
+				}
+				if _, statErr := os.Lstat(filepath.Join(dir, "go.mod")); !errors.Is(statErr, os.ErrNotExist) {
+					t.Fatalf("known short write survived: %v", statErr)
+				}
+			} else if _, statErr := os.Lstat(filepath.Join(dir, "go.mod")); statErr != nil {
+				t.Fatalf("unknown write count removed: %v", statErr)
+			}
+		})
+	}
+}
+
+func TestScaffoldPinsCloseAfterSuccessAndRollback(t *testing.T) {
+	for _, fail := range []bool{false, true} {
+		t.Run(map[bool]string{false: "success", true: "rollback"}[fail], func(t *testing.T) {
+			dir := t.TempDir()
+			var files []*os.File
+			var dirs []*os.Root
+			hooks := scaffoldHooks{
+				openFilePin: func(root *os.Root, name string) (*os.File, error) {
+					f, err := root.Open(name)
+					if err == nil {
+						files = append(files, f)
+					}
+					return f, err
+				},
+				openDirPin: func(root *os.Root, name string) (*os.Root, error) {
+					r, err := root.OpenRoot(name)
+					if err == nil {
+						dirs = append(dirs, r)
+					}
+					return r, err
+				},
+			}
+			if fail {
+				hooks.afterCreate = func(name string) error {
+					if name == "main.go" {
+						return errors.New("stop")
+					}
+					return nil
+				}
+			}
+			err := generateWithHooks(scaffold{name: "myagent", dir: dir, kitVersion: "v0.0.0", kitPath: "../agentic-kit"}, hooks)
+			if (err != nil) != fail {
+				t.Fatalf("unexpected result: %v", err)
+			}
+			wantFiles := 5
+			if fail {
+				wantFiles = 3
+			}
+			if len(files) != wantFiles || len(dirs) != 1 {
+				t.Fatalf("pins files=%d dirs=%d", len(files), len(dirs))
+			}
+			for _, f := range files {
+				if _, err := f.Stat(); !errors.Is(err, os.ErrClosed) {
+					t.Errorf("file pin still open: %v", err)
+				}
+			}
+			for _, r := range dirs {
+				if _, err := r.Stat("."); !errors.Is(err, os.ErrClosed) {
+					t.Errorf("directory pin still open: %v", err)
+				}
+			}
+		})
+	}
+}
+
+func TestScaffoldMetadataFailureRetainsUnknownIdentity(t *testing.T) {
+	for _, target := range []string{"workspace", "go.work"} {
+		t.Run(target, func(t *testing.T) {
+			dir := t.TempDir()
+			failure := errors.New("injected metadata failure")
+			hooks := scaffoldHooks{}
+			if target == "workspace" {
+				hooks.workspaceInfo = func(*os.Root) (os.FileInfo, error) { return nil, failure }
+			} else {
+				calls := 0
+				hooks.fileInfo = func(f *os.File) (os.FileInfo, error) {
+					calls++
+					if calls == 2 {
+						return nil, failure
+					}
+					return f.Stat()
+				}
+			}
+			err := generateWithHooks(scaffold{name: "myagent", dir: dir, kitVersion: "v0.0.0", kitPath: "../agentic-kit"}, hooks)
+			if !errors.Is(err, failure) || !strings.Contains(err.Error(), "retained "+filepath.Join(dir, target)) {
+				t.Fatalf("missing retained-path error: %v", err)
+			}
+			if _, err := os.Lstat(filepath.Join(dir, target)); err != nil {
+				t.Fatalf("unknown-identity output removed: %v", err)
+			}
+			for _, name := range []string{"go.mod", "go.work", "main.go", ".gitignore", "README.md", "workspace"} {
+				if name == target {
+					continue
+				}
+				if _, err := os.Lstat(filepath.Join(dir, name)); !errors.Is(err, os.ErrNotExist) {
+					t.Errorf("unexpected %s: %v", name, err)
+				}
+			}
+		})
+	}
+}
+
+func TestScaffoldWriteAndCloseFailureRollBackKnownOutputs(t *testing.T) {
+	for _, stage := range []string{"write", "close"} {
+		t.Run(stage, func(t *testing.T) {
+			dir := t.TempDir()
+			failure := errors.New("injected " + stage + " failure")
+			hooks := scaffoldHooks{}
+			calls := 0
+			if stage == "write" {
+				hooks.write = func(f *os.File, data []byte) (int, error) {
+					calls++
+					if calls == 2 {
+						return 0, failure
+					}
+					return f.Write(data)
+				}
+			} else {
+				hooks.close = func(f *os.File) error {
+					calls++
+					err := f.Close()
+					if calls == 2 && err == nil {
+						return failure
+					}
+					return err
+				}
+			}
+			err := generateWithHooks(scaffold{name: "myagent", dir: dir, kitVersion: "v0.0.0", kitPath: "../agentic-kit"}, hooks)
+			if !errors.Is(err, failure) {
+				t.Fatalf("missing failure: %v", err)
+			}
+			for _, name := range []string{"go.mod", "go.work", "main.go", ".gitignore", "README.md", "workspace"} {
+				if _, err := os.Lstat(filepath.Join(dir, name)); !errors.Is(err, os.ErrNotExist) {
+					t.Errorf("owned %s survived: %v", name, err)
+				}
+			}
+		})
+	}
+}
+
+func TestScaffoldSetupFailureReportsRetainedDestination(t *testing.T) {
+	for _, stage := range []string{"parent", "dir-stat", "open-root"} {
+		t.Run(stage, func(t *testing.T) {
+			dir := filepath.Join(t.TempDir(), "nested", "scaffold")
+			failure := errors.New("injected " + stage + " failure")
+			hooks := scaffoldHooks{}
+			switch stage {
+			case "parent":
+				hooks.mkdirParent = func(parent string) error {
+					if err := os.MkdirAll(parent, 0o755); err != nil {
+						return err
+					}
+					return failure
+				}
+			case "dir-stat":
+				hooks.dirInfo = func(string) (os.FileInfo, error) { return nil, failure }
+			case "open-root":
+				hooks.openRoot = func(string) (*os.Root, error) { return nil, failure }
+			}
+			err := generateWithHooks(scaffold{name: "myagent", dir: dir, kitVersion: "v0.0.0", kitPath: "../agentic-kit"}, hooks)
+			if !errors.Is(err, failure) {
+				t.Fatalf("missing failure: %v", err)
+			}
+			wantPath := dir
+			if stage == "parent" {
+				wantPath = filepath.Dir(dir)
+			}
+			if !strings.Contains(err.Error(), wantPath) {
+				t.Errorf("missing absolute path %s: %v", wantPath, err)
+			}
+			if _, statErr := os.Lstat(wantPath); statErr != nil {
+				t.Errorf("injected retained path missing: %v", statErr)
+			}
+		})
+	}
+}
+
+func TestScaffoldCleanupFailureReportsRetainedPath(t *testing.T) {
+	for _, stage := range []string{"output", "root-dir"} {
+		t.Run(stage, func(t *testing.T) {
+			dir := filepath.Join(t.TempDir(), "scaffold")
+			failure := errors.New("injected cleanup failure")
+			hooks := scaffoldHooks{afterCreate: func(name string) error {
+				if stage == "output" && name == "go.mod" {
+					return errors.New("stop")
+				}
+				if stage == "root-dir" && name == "workspace" {
+					return errors.New("stop")
+				}
+				return nil
+			}}
+			wantPath := dir
+			if stage == "output" {
+				wantPath = filepath.Join(dir, "go.mod")
+				hooks.removeOutput = func(root *os.Root, name string) error {
+					if name == "go.mod" {
+						return failure
+					}
+					return root.Remove(name)
+				}
+			} else {
+				hooks.removeDir = func(string) error { return failure }
+			}
+			err := generateWithHooks(scaffold{name: "myagent", dir: dir, kitVersion: "v0.0.0", kitPath: "../agentic-kit"}, hooks)
+			if !errors.Is(err, failure) || !strings.Contains(err.Error(), "retained "+wantPath) {
+				t.Fatalf("missing retained path %s: %v", wantPath, err)
+			}
+			if _, statErr := os.Lstat(wantPath); statErr != nil {
+				t.Errorf("retained path missing: %v", statErr)
+			}
+		})
 	}
 }
 

@@ -390,12 +390,12 @@ func TestConsoleNow_SincePagesEveryChange(t *testing.T) {
 // line wraps anywhere, so a long path never runs off the card.
 func TestConsoleSince_UnreadableReposAreOneBoundedWrappingLine(t *testing.T) {
 	var u unreadRepos
-	for _, svc := range []string{"fathom", "platform-engineering", "resume_as_code", "app-kit", "conjure", "imbue"} {
+	for _, svc := range []string{"fathom", "platform", "svc-a", "app-kit", "svc-b", "svc-c"} {
 		root := "/Volumes/m2ext/code/geoffmilleraz/" + svc
 		u.add(svc, &fs.PathError{Op: "open", Path: root + "/.git/logs/refs/remotes/origin/main", Err: syscall.EPERM}, root)
 	}
 	r := u.reason()
-	if len(r) > 200 || !strings.Contains(r, "fathom, platform-engineering, resume_as_code and 3 more") ||
+	if len(r) > 200 || !strings.Contains(r, "fathom, platform, svc-a and 3 more") ||
 		strings.Count(r, "operation not permitted") != 1 || strings.Contains(r, "/Volumes/") {
 		t.Errorf("reason (%d chars) = %q", len(r), r)
 	}

@@ -1,0 +1,11 @@
+{
+  "id": "C02",
+  "slug": "site-calibration-authority",
+  "axis": "composition",
+  "acceptance": "A named decision site has labelled holdout calibration and provider-none authority bounds",
+  "method": "source audit",
+  "source": "docs/fast-judgment.md",
+  "test": null,
+  "group": null,
+  "non_guarantee": "Component test does not prove consumer adoption, live model quality, or all entrypoints."
+}

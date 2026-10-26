@@ -1,0 +1,222 @@
+{
+  "historical_scratch_root": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022",
+  "retained_directory": "docs/evidence/agentic-engineering/2026-10-22/offline",
+  "artifacts": {
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C01-definition.json": {
+      "retained": "C01-definition.json",
+      "sha256": "5028cc9c13fe06c88a103f82e17d9481d4c1641e77e92d5383a6bffc168338a3"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C01-evidence.json": {
+      "retained": "C01-evidence.json",
+      "sha256": "9a749f8d6853a6685d0b6da84fa67f14c7f45b3c8cd80b5585fa6d8760bd2ec2"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C02-definition.json": {
+      "retained": "C02-definition.json",
+      "sha256": "fcc373af075418e2d2fcd5132920cf234b2df068990462c346469028e3477180"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C02-evidence.json": {
+      "retained": "C02-evidence.json",
+      "sha256": "76673388379ff090531ecb3c2078aa230300f8f168305775bb74f0fbecbdeb68"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C03-definition.json": {
+      "retained": "C03-definition.json",
+      "sha256": "bc727d9c32573554998bfd9f703e28e3fc9a3b6b7e086ee427136cb008247890"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C03-evidence.json": {
+      "retained": "C03-evidence.json",
+      "sha256": "675eb8eee955a9c18036b6ce63e8419eff8b9b6730144e28cbf8f807cf55af2d"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C04-definition.json": {
+      "retained": "C04-definition.json",
+      "sha256": "febd6f7af477a5f3bb2e12678ac9ab8c1975a64e91215ada2c17def52a02535a"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C04-evidence.json": {
+      "retained": "C04-evidence.json",
+      "sha256": "8aecacb527ac2605caa33859a955a93e2cfd613e078e5d0efbaca2b444b944ce"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C05-definition.json": {
+      "retained": "C05-definition.json",
+      "sha256": "52e212ca841f4f64c5eb193e279427904f45781f416cfaea991aacb08a4b5178"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C05-evidence.json": {
+      "retained": "C05-evidence.json",
+      "sha256": "efd600faa3624736282893a183343f6282d433e5a924ea246ade314393e0cb61"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C06-definition.json": {
+      "retained": "C06-definition.json",
+      "sha256": "3e0a7868edf3c3ee5730f4eaf1d2197edfa3fc3dacbaec7f2389c7fd94098240"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C06-evidence.json": {
+      "retained": "C06-evidence.json",
+      "sha256": "217717b537fc4d714a5c1d4c9e59114e05d166ed86f299fce4e6695fdc34f5c4"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C07-definition.json": {
+      "retained": "C07-definition.json",
+      "sha256": "1ad997b964007d25235c2e8dee077d9db5d021404fca7cc44850afe712b12741"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C07-evidence.json": {
+      "retained": "C07-evidence.json",
+      "sha256": "a781dfa40376f9cd04eb340bc54d5bad7230a5b3fab99972d1bc531ebc99aa74"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C08-definition.json": {
+      "retained": "C08-definition.json",
+      "sha256": "240dad3eb39c709c0c2d082a5972c58464902733d08a7d64f785454e56bbe9c6"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C08-evidence.json": {
+      "retained": "C08-evidence.json",
+      "sha256": "8cc8eedf11c7087a31318c1c3c3ef707113b59d1c3eddd9d3c05f1267ac0c275"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C09-definition.json": {
+      "retained": "C09-definition.json",
+      "sha256": "8f8e92da7e07889e6afdb5aa1884842332a93081a1524a1bd92fe1bab5890177"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C09-evidence.json": {
+      "retained": "C09-evidence.json",
+      "sha256": "f710d018b8bbc555b577ca2482ea20e7c461c17cd1c70bc16b22424ee3ca880b"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C10-definition.json": {
+      "retained": "C10-definition.json",
+      "sha256": "a708655dde43e34529edcb88c6d62d822494e4612f3ade763daf2c247294c1ba"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C10-evidence.json": {
+      "retained": "C10-evidence.json",
+      "sha256": "c09f6d65c64cae5beeb485310c5b38b4669d448a9696b07e333ebe84ecab5a73"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C11-definition.json": {
+      "retained": "C11-definition.json",
+      "sha256": "cca569c6942224b754fb423ac92c819cfd82eb1257ac77994288f1b81045e9bf"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C11-evidence.json": {
+      "retained": "C11-evidence.json",
+      "sha256": "0b588490fef187fbcf82fe696512a5a65711aadee53fdfda395a766b2ad74f5c"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C12-definition.json": {
+      "retained": "C12-definition.json",
+      "sha256": "7152dd2b39e8f865232eb7008adcccc64374493e6c41a256a65783de72b22370"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C12-evidence.json": {
+      "retained": "C12-evidence.json",
+      "sha256": "edf3cd553a34367a3ec9f277063b915f967006d91ff844ad8c3a51d15d28c8da"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C13-definition.json": {
+      "retained": "C13-definition.json",
+      "sha256": "0e69f75722d536803152c4d69e32e3ce2c0ef9cea0ab9237e526ece69051646c"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C13-evidence.json": {
+      "retained": "C13-evidence.json",
+      "sha256": "dd5f60e26b23d797a724945c9caf1c58ecbaacc1cb248164dd9e2dcedf414b0b"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C14-definition.json": {
+      "retained": "C14-definition.json",
+      "sha256": "d6010932e94a1f916bc3af221e450f22d63ac7df5d8956601d081e8696a38e13"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C14-evidence.json": {
+      "retained": "C14-evidence.json",
+      "sha256": "25000d0e9af583f7c597da64ae7fe1c744f5cc18de48219e4d0a15a307167640"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C15-definition.json": {
+      "retained": "C15-definition.json",
+      "sha256": "3b2f21998261e1802aa779947b86fb9997217ce0e0c65dde29c47e94616cdf39"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C15-evidence.json": {
+      "retained": "C15-evidence.json",
+      "sha256": "c3933fa2a21e67a4861033903c4912949c270e4221eb1f5e60e505294546f94b"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C16-definition.json": {
+      "retained": "C16-definition.json",
+      "sha256": "15ca496fa9fea2d02097b32c500546b93cd37478b274c813c23c60b853c8e320"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C16-evidence.json": {
+      "retained": "C16-evidence.json",
+      "sha256": "9de3e7c57d2d4064104d0107f980cb31e3fe28fa1a3a7a01fd98cc89d782db8c"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C17-definition.json": {
+      "retained": "C17-definition.json",
+      "sha256": "edf19fe31c3db2b49c4a0030575beb24c7f7ef36356d6c5945e1168ba967e277"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C17-evidence.json": {
+      "retained": "C17-evidence.json",
+      "sha256": "d0fc244ae91455307d3a67fc8e7ff71acf09f33ede05f121b8a719ac2380a477"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C18-definition.json": {
+      "retained": "C18-definition.json",
+      "sha256": "11117cf737af05a2b99b56ae225b693cd564a9c23dcb9dc5450aa6f3859af519"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/C18-evidence.json": {
+      "retained": "C18-evidence.json",
+      "sha256": "c1c6d59944a78277437bc58eea6d0940b9fe0d1aa04c139bc85377abe706f065"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/REPORT.md": {
+      "retained": "REPORT.md",
+      "sha256": "a67a1327e84f25f7d2e47c58d614569ec1ea2220e5a41c56f3388ad2b235c511"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/antigravity_host-scan.log": {
+      "retained": "antigravity_host-scan.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/assessment.json": {
+      "retained": "assessment.json",
+      "sha256": "4d41edcd0aeeff72d14997d2111255c31ecbe38d56b1cf4f9ca4c6acde4530f7"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/commands.json": {
+      "retained": "commands.json",
+      "sha256": "85df97bd8231533b3ceffb120a62a4864dcf4527759505121b2db6912f588449"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/decision.log": {
+      "retained": "decision.log",
+      "sha256": "7523ef22b46dbb8a212b041a69682f2834548813ab5ee02875c6eb7d3b8ff294"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/evidence_catalog.log": {
+      "retained": "evidence_catalog.log",
+      "sha256": "b3cfa85ecaef7c5fbda0e8a284d8a97fec5cc6352b40278f4f3e6519f75415e1"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/evidence_index.json": {
+      "retained": "evidence_index.json",
+      "sha256": "4414da0b09f3425945f60ae3296c5dd58f801a40a51c51bf16881ecc1552efd3"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/execution.json": {
+      "retained": "execution.json",
+      "sha256": "099d2d44a625bed765795295d91bfff6c9447b3564bee133714d9210ff7898f8"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/github_issue_ingestion-scan.log": {
+      "retained": "github_issue_ingestion-scan.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/google_provider-scan.log": {
+      "retained": "google_provider-scan.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/hitl_prose.log": {
+      "retained": "hitl_prose.log",
+      "sha256": "9a82c5a961e3f6a3ad36af04733699a5712f19a224a2cb7c1852a9111c04aff3"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/input.json": {
+      "retained": "input.json",
+      "sha256": "8a7ba8eb58e1031bfda3cce1460449a8e16bdc31744d765fe101eb947de85da6"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/negative_scans.json": {
+      "retained": "negative_scans.json",
+      "sha256": "95461523102b84ba6894ba38d7c3a289f13d50749a06f8c61ae41536e24f600b"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/profile.json": {
+      "retained": "profile.json",
+      "sha256": "321ea7dd16fdde0aa0640ec44bc2434f8eaa787db2295a5e96306ec9d334f8c4"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/provider_ingestion_path_scan.log": {
+      "retained": "provider_ingestion_path_scan.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/review_investigation.log": {
+      "retained": "review_investigation.log",
+      "sha256": "618acf979f96189978b7ccecc98329b2fa1e12eec86f7cbe8677db3d55f022d6"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/security_budget_lessons_hosts.log": {
+      "retained": "security_budget_lessons_hosts.log",
+      "sha256": "f04dc417ee27f5f0b63b377aab3ac6cc87fa39bbd3ae2eb375805f9a46e743dd"
+    },
+    "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/subject_manifest.json": {
+      "retained": "subject_manifest.json",
+      "sha256": "fd50567fb2809de3220cfd054c2902bef713cfc456e9100e087a1512986a8ba2"
+    }
+  }
+}

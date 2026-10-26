@@ -1,0 +1,11 @@
+{
+  "id": "C01",
+  "slug": "decision-kind-conformance",
+  "axis": "component",
+  "acceptance": "Decision kinds and declined responses pass offline conformance",
+  "method": "deterministic source plus scoped test",
+  "source": "foundations/decision/conformance_test.go",
+  "test": "TestFallbackPassesConformanceWithRefusals",
+  "group": "decision",
+  "non_guarantee": "Component test does not prove consumer adoption, live model quality, or all entrypoints."
+}

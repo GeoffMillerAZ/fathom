@@ -1,0 +1,187 @@
+{
+  "version": 1,
+  "id": "agentic-kit-uplift-20261022",
+  "domain": "agentic-kit",
+  "criteria": [
+    {
+      "id": "C01",
+      "definition_digest": "1a163703a46c54f7011972a64a27e816fbd2f5f3d89f00b6c8b91794777fa6ef",
+      "kind": "required",
+      "allowed_methods": [
+        "deterministic"
+      ],
+      "allow_not_applicable": false,
+      "weight": 0
+    },
+    {
+      "id": "C02",
+      "definition_digest": "4adb6ba7aae00965d0d8129f87567a33b66cfc8ab4467526a529767b389f3995",
+      "kind": "required",
+      "allowed_methods": [
+        "deterministic"
+      ],
+      "allow_not_applicable": false,
+      "weight": 0
+    },
+    {
+      "id": "C03",
+      "definition_digest": "636fb0cba27c0e8fe9aae6bdb5527c7623253952bb21529f6cab8f43bc7dea28",
+      "kind": "required",
+      "allowed_methods": [
+        "deterministic"
+      ],
+      "allow_not_applicable": false,
+      "weight": 0
+    },
+    {
+      "id": "C04",
+      "definition_digest": "4b58d8f4ee4a29dffa2129c08e25a4b25320cac562d796c57122e26178498ca4",
+      "kind": "required",
+      "allowed_methods": [
+        "deterministic"
+      ],
+      "allow_not_applicable": false,
+      "weight": 0
+    },
+    {
+      "id": "C05",
+      "definition_digest": "5e68cd48460cfa2c8a692de5587765a7795e6c3fa27b890604177e9c7d9e2a34",
+      "kind": "required",
+      "allowed_methods": [
+        "deterministic"
+      ],
+      "allow_not_applicable": false,
+      "weight": 0
+    },
+    {
+      "id": "C06",
+      "definition_digest": "fa9a9ebf8a67172c43fcc18b10606e2cfefe73653a35c38155a7d8bb00a60489",
+      "kind": "required",
+      "allowed_methods": [
+        "deterministic"
+      ],
+      "allow_not_applicable": false,
+      "weight": 0
+    },
+    {
+      "id": "C07",
+      "definition_digest": "0d79655f86292b65a7cf68b5b1b61e962e76941d45c28ce70db39bb982d75f66",
+      "kind": "required",
+      "allowed_methods": [
+        "deterministic"
+      ],
+      "allow_not_applicable": false,
+      "weight": 0
+    },
+    {
+      "id": "C08",
+      "definition_digest": "1227f7f4986129047e2050f49682cbad5055b8604aacf4c57c733349ac193dd8",
+      "kind": "required",
+      "allowed_methods": [
+        "deterministic"
+      ],
+      "allow_not_applicable": false,
+      "weight": 0
+    },
+    {
+      "id": "C09",
+      "definition_digest": "185ecb37fa8995cb31192719cb0a69d8e66e113cc72cb5676db77f272cf6d17a",
+      "kind": "required",
+      "allowed_methods": [
+        "deterministic"
+      ],
+      "allow_not_applicable": false,
+      "weight": 0
+    },
+    {
+      "id": "C10",
+      "definition_digest": "8bba567ec7f76aa20a12b8d1e527937262c5db7beb13bae7f20e6cf3d8c3274c",
+      "kind": "required",
+      "allowed_methods": [
+        "deterministic"
+      ],
+      "allow_not_applicable": false,
+      "weight": 0
+    },
+    {
+      "id": "C11",
+      "definition_digest": "783739fd1642c746ad4adc67b72fc1c0f130905088665ce1958356823a114828",
+      "kind": "required",
+      "allowed_methods": [
+        "deterministic"
+      ],
+      "allow_not_applicable": false,
+      "weight": 0
+    },
+    {
+      "id": "C12",
+      "definition_digest": "49ace952160122ba32cf8aa33a4628a054b7ea274616ca0e88fb659a77f4a417",
+      "kind": "required",
+      "allowed_methods": [
+        "deterministic"
+      ],
+      "allow_not_applicable": false,
+      "weight": 0
+    },
+    {
+      "id": "C13",
+      "definition_digest": "ed1f8df8dd2af65186b283594b28545444d844f82c7e4f3b3adaeb99c8246e9a",
+      "kind": "required",
+      "allowed_methods": [
+        "deterministic"
+      ],
+      "allow_not_applicable": false,
+      "weight": 0
+    },
+    {
+      "id": "C14",
+      "definition_digest": "7255c11e401cd55d7aeb4d4551be57cd498bd19ec431fff8b66c7e02c728259d",
+      "kind": "required",
+      "allowed_methods": [
+        "deterministic"
+      ],
+      "allow_not_applicable": false,
+      "weight": 0
+    },
+    {
+      "id": "C15",
+      "definition_digest": "066f38c7a079c4cd57131a3a2b5facc30023fa151aba12849b6561c285a08233",
+      "kind": "required",
+      "allowed_methods": [
+        "deterministic"
+      ],
+      "allow_not_applicable": false,
+      "weight": 0
+    },
+    {
+      "id": "C16",
+      "definition_digest": "a2f26705e7bfdf9551eb6fc1f64e9319e634d8ebef0f85512b84ff291e13a215",
+      "kind": "required",
+      "allowed_methods": [
+        "deterministic"
+      ],
+      "allow_not_applicable": false,
+      "weight": 0
+    },
+    {
+      "id": "C17",
+      "definition_digest": "8534bb99c665b66cabb328f68dc0f712e1892a4aa3d89697915276e08176cde9",
+      "kind": "required",
+      "allowed_methods": [
+        "deterministic"
+      ],
+      "allow_not_applicable": false,
+      "weight": 0
+    },
+    {
+      "id": "C18",
+      "definition_digest": "0a20b841aa942c055a17fb2581fdca820556ad0821526fcacf915d2301034373",
+      "kind": "required",
+      "allowed_methods": [
+        "deterministic"
+      ],
+      "allow_not_applicable": false,
+      "weight": 0
+    }
+  ]
+}

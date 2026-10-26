@@ -1,0 +1,11 @@
+{
+  "id": "C13",
+  "slug": "budget-charge",
+  "axis": "component",
+  "acceptance": "Budget guard refuses a charge beyond the USD daily limit",
+  "method": "deterministic source plus scoped test",
+  "source": "foundations/governance/budget-guard/budgetguard_test.go",
+  "test": "TestGuard_TripsOnUSDPerDay",
+  "group": "security_budget_lessons_hosts",
+  "non_guarantee": "Component test does not prove consumer adoption, live model quality, or all entrypoints."
+}

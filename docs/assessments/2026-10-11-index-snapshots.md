@@ -1,7 +1,7 @@
 # Index snapshots and environment daemons
 
 Owner-architect assessment, 2026-10-11, revised after critique and renamed by the naming decision of the same day;
-summarized into the repository 2026-10-11. Read at fathom `c39875f3` and platform-engineering `84f9d41`; adapted to
+summarized into the repository 2026-10-11. Read at fathom `c39875f3` and an adopting platform's records (kept private); adapted to
 the records at `65e5acfa`. Companions: `2026-10-11-reviews-and-incidents.md` and
 `2026-10-11-making-the-vision-happen.md`. The design, with its glossary, diagrams, data model and phases, is
 `docs/design/index-snapshots.md`; this file is the reading that led to it.
@@ -9,8 +9,8 @@ Decisions it drove: ADR-069 decisions 7, 9 and 10 (accepted) and 11 to 15 (decid
 amended triggers, F27's edits, F70, F72, F73, F74, G37's IXS-M0 clause and the provisional G38, the scope
 boundary for index snapshots, plan `docs/plans/index-snapshots.md` (IXS-). The owner-gated items are in section 10.2.
 
-Conventions as in `2026-10-11-reviews-and-incidents.md`: plain paths = fathom; `pe:` = platform-engineering; `rk:` =
-`pe:kits/review-kit/`; [J] marks a judgment (a *hypothesis*); sourced rows without [J] are *measured* at the read
+Conventions as in `2026-10-11-reviews-and-incidents.md`: plain paths = fathom; the adopter's records are cited by
+role, not by path; [J] marks a judgment (a *hypothesis*); sourced rows without [J] are *measured* at the read
 commit; external facts carry a URL. Measurement ids are the plan's `IXS-` ids. Phases 0 to 8 are the design's
 (`docs/design/index-snapshots.md` section 12). Section 14 lists the architect disagreements decided here.
 
@@ -104,7 +104,7 @@ the lineup maps root-commit id to a local service name.
 | PR head | PR CI | `--cache-from` the merge-base's index snapshot, ingest head; changed files re-extract | scratch store, never published | the CI run |
 | Local branch or worktree | developer daemon | its own service (I30 unchanged; `CheckReroot`, internal/worktree/worktree.go:61), `--cache-from` the merge-base's index snapshot | local store | developer |
 | Uncommitted bytes | developer daemon | ADR-041 decision 4 unchanged (ADR.md:2286-2292); anchors read `uncommitted` (internal/receipt/anchor.go:33-50) | local store | session |
-| Deployed commit per environment | not fathom | typed `--deployed/--previous` per call (ADR-058 decision 4); a GitOps repository indexed as a service (flux L3, docs/languages.md:194; Argo L3, :302); image digest to commit from an operator-named SLSA provenance file on image-kit's **bake path only**: the apko path "records no build provenance" (pe:docs/adr/0115-image-kit-ci-signs-keyless-or-by-key-without-a-public-log.md:51-56); a lineup the deploy job writes; I56 | nothing stored | request, or one daemon's life |
+| Deployed commit per environment | not fathom | typed `--deployed/--previous` per call (ADR-058 decision 4); a GitOps repository indexed as a service (flux L3, docs/languages.md:194; Argo L3, :302); image digest to commit from an operator-named SLSA provenance file on a **provenance-recording build path only**: a build path that "records no build provenance"; a lineup the deploy job writes; I56 | nothing stored | request, or one daemon's life |
 | Release preview | tag CI | `review --since <deployed>` over `deployed..candidate` | report | run |
 
 Why no ref column now [J]: a `--cache-from` ingest already reuses everything the fingerprint gate can reuse. A
@@ -153,8 +153,8 @@ accepts `exact`, or `differs` when its own per-service comparison passes; explor
 3. Incident suspects exclude merged-but-undeployed commits (the `--deployed` range already does this).
 
 (2) and (3) need no new state. (1) is a forge bot that intersects `blast_radius` across open PRs; fathom stores
-nothing. It lives in the operator's CI (a plain job), not in ci-kit, whose scope is "a library and a set of ports",
-`cmd/ci` deliberately empty (pe:kits/ci-kit/README.md:3-6). Gate (1) on **IXS-M6**: at least 3 reverts per 100 PRs
+nothing. It lives in the operator's CI (a plain job), not in the CI kit, whose scope is "a library and a set of ports",
+with no binary of its own. Gate (1) on **IXS-M6**: at least 3 reverts per 100 PRs
 traced to concurrently open PRs with intersecting blast radius. Not worth building: an index of every branch.
 
 ## 4. Which serving mode, for whom
@@ -181,13 +181,13 @@ loopback-only admission (cmd/fathom/admission_http.go:141-155) the target must b
    copies it with `VACUUM INTO`, clears machine-local fields (change 11) and records the cache key; the operator
    publishes and signs it (ADR-068 decision 7: fathom holds no key). Interim publisher: a plain GitHub Actions job
    (`2026-10-11-making-the-vision-happen.md` section 2).
-3. **Image build.** On image-kit's bake path, SLSA provenance binds image digest to commit (pe ADR-0115 D4); the
-   apko path has no provenance, so its deploy commit comes from the GitOps declaration. The index snapshot can ride
+3. **Image build.** On a provenance-recording build path, SLSA provenance binds image digest to commit; a build
+   path with no provenance (for example apko) leaves the deploy commit to the GitOps declaration. The index snapshot can ride
    as an OCI referrer of the image digest
    (https://github.com/opencontainers/distribution-spec/blob/main/spec.md#listing-referrers).
-4. **CD gate.** Review Kit `admit` checks the four conditions in `2026-10-11-reviews-and-incidents.md` section 5.
+4. **CD gate.** The review kit `admit` checks the four conditions in `2026-10-11-reviews-and-incidents.md` section 5.
    No fathom gate verb (ADR-063 O2). Fail-open on any fathom operational failure, with a recorded exception for a
-   rollback to an already-evaluated commit and for a pdk/risk T3 break-glass (pe:pdk/risk/model.go:14); WAE-M7
+   rollback to an already-evaluated commit and for the change-risk tierer's break-glass tier; WAE-M7
    reads the latency the gate adds per deploy and counts fail-open admissions.
 5. **Post-deploy.** The GitOps commit that moved prod is itself an indexed fact. When an environment daemon
    exists (phase 5), the deploy job also writes the lineup, and a lineup change rolls the daemon to a new pod.
@@ -199,7 +199,7 @@ loopback-only admission (cmd/fathom/admission_http.go:141-155) the target must b
 |---|---|---|
 | exact | every service the answer read is at the commit the caller expected | the answer basis; `review --expect-index-watermark` (cmd/fathom/review.go:64) |
 | complete | every required fact kind at a version the bundle accepts | `version --json` plus a fact-kind list in the index snapshot (new) |
-| evaluated | Review Kit recorded an evaluation at that commit | Review Kit |
+| evaluated | the review kit recorded an evaluation at that commit | the review kit |
 | dependency-fresh | each dependency's lineup entry is the commit its declaration names | the deploy job resolves entries from declarations. GKE-MH-6's per-module staleness library exists (internal/modulehost), but its `module_staleness` tool was removed by SR-17 (docs/plans/surface-reckoning.md:33), so a freshness column needs new wiring (change 12) |
 
 The pre-push gate builds a scratch store on every push (lefthook.yml:110-114), but it ingests the working tree
@@ -218,11 +218,11 @@ timing reading only.
 | Machine-local fields | **spec drift, a defect to fix before any index snapshot is exported.** The spec says `service_meta.path` is the only machine-local field (docs/spec/store-format-v0.md:160-163), but `ingest_state.path` is absolute (internal/store/ingeststate.go:49-52) and `file_stats` carries `mtime_ns` and `ino` (internal/store/derived.go:165-171) | change 11 (IXS-0): the spec lists them and `export snapshot` clears them; `fathom remap` (cmd/fathom/remap.go:19) re-points the root |
 | `$HOME` state | suppressions, call logs, ledgers live outside the store | internal/store/scoped.go:16-24; keyed per lineup before any daemon serves a second team (change 7) |
 | Invalidation | any key component changes: a new index snapshot; consumers fall back to the newest one with a matching fathom version | |
-| Release lock | env-kit `env.lock` names the fathom release for CI and developers | without it, IXS-M2's hit rate is near zero [J] |
+| Release lock | the environment kit `env.lock` names the fathom release for CI and developers | without it, IXS-M2's hit rate is near zero [J] |
 | Fallback lever | per-extractor epoch salts (a TypeScript change stops invalidating Go) | only if IXS-M2 fails (F73) |
 
 Format: one file per service. Transport is the operator's: an OCI registry with referrers is the recommended
-recipe, since image-kit already signs. Fathom never fetches (I56, docs/intent/invariants.md:85); a `--cache-from`
+recipe, since the image kit already signs. Fathom never fetches (I56, docs/intent/invariants.md:85); a `--cache-from`
 file or an imported index snapshot is read only from a path the operator names in that invocation.
 
 ### 6.2 Costly layers
@@ -276,7 +276,7 @@ process holding the imported snapshots cannot run, and a reading shows the preco
    commit, never as the snapshot file (ADR-068 rejects "exporting the store or an index snapshot as evidence";
    ADR-069 decision 15).
 2. **Upgrade and CVE reach per deployed image** [J]: ADR-050 decision 4 already reads `pkg:` facts locally and
-   vulnerability reach from an OSV file the user supplies (ADR.md:2927); an image-kit SBOM as that input per
+   vulnerability reach from an OSV file the user supplies (ADR.md:2927); an image kit SBOM as that input per
    deployed image is new and unbuilt.
 3. **Deprecation campaigns**: who still calls X across the organization's services at deployed commits (needs
    change 10).
@@ -285,7 +285,7 @@ process holding the imported snapshots cannot run, and a reading shows the preco
 6. **Chaos targeting** [J]: the fact sheet names where to inject (pods whose liveness reaches a database);
    Gremlin or LitmusChaos executes.
 7. **Agent handoff**: a background agent starts from the same commit-pinned index snapshot the reviewer used.
-8. **Test selection** at test-function level inside depgraph packages (cmd/fathom/tests_select.go:75).
+8. **Test selection** at test-function level inside the CI kit's packages (cmd/fathom/tests_select.go:75).
 
 ## 9. What fathom must change, and what is new
 
@@ -308,7 +308,7 @@ process holding the imported snapshots cannot run, and a reading shows the preco
 | 15 | The lineup schema, `schema/lineup/` (fathom is the reader) | schema/ | XS |
 
 New outside fathom: the publish job (a plain GitHub Actions job first, `2026-10-11-making-the-vision-happen.md`
-section 2), the deploy job that writes the lineup, the environment-daemon recipe (docs only), and Review Kit's
+section 2), the deploy job that writes the lineup, the environment-daemon recipe (docs only), and the review kit's
 `index_commit` check.
 
 ## 10. Intent conflicts: what landed, and what awaits the owner
@@ -358,7 +358,7 @@ no earlier than war1 landing and RT-M1 reading.
 |---|---|---|---|---|
 | 0 | **IXS-M0** reading only: on 20 commits in CI from a clean checkout, wall time of cold, warm and cache-from ingests | IXS-M0 recorded | cache-from median above 0.6x cold: F27 stays deferred, phases 1 and 2 do not start | no |
 | 1 | changes 5 and 13 (war1 brings 1, 2, 6 and IXS-0) | **IXS-M0b**: across 10 commits, a digest over the portable derived tables of a cache-from ingest equals a cold ingest | a mismatch unfixed after two waves: `--cache-from` and `export snapshot` deleted under a `gone:` row | no |
-| 2 | the publish recipe (a plain GitHub Actions job); `env.lock` names the fathom release | **IXS-M1** (cache-from at most 1.3x warm, median of 20 merges, same CI, fathom and one platform-engineering repository); **IXS-M2** (same-release hit rate at least 0.5 over 30 days); **IXS-M5**; IXS-M7's CI cells | cache-from above 0.6x cold, or hit rate under 0.2: F27 stays unpromoted, the job stops | no |
+| 2 | the publish recipe (a plain GitHub Actions job); `env.lock` names the fathom release | **IXS-M1** (cache-from at most 1.3x warm, median of 20 merges, same CI, fathom and one platform monorepo); **IXS-M2** (same-release hit rate at least 0.5 over 30 days); **IXS-M5**; IXS-M7's CI cells | cache-from above 0.6x cold, or hit rate under 0.2: F27 stays unpromoted, the job stops | no |
 | 3 | changes 3, 4, 8, 15, and 14 for a one-entry lineup | **IXS-M3**: the hostile sweep leaves snapshot bytes unchanged and calls no provider; one read-only sidecar session recorded with a law 6 stamp file | no such session within 60 days: deleted with a `gone:` row, the SR-17 precedent | no |
 | 4 | change 10, `import snapshot` | a named consumer's session reads an imported service with its basis | no such session within 60 days of change 10 landing: deleted under a `gone:` row | no |
 | 5 | the environment daemon: change 14 for several entries, changes 7 and 12, the recipe | **IXS-M8** (every unauthenticated request through the proxy-plus-daemon pair refused), **IXS-M9** (a gate or incident session recorded with a law 6 stamp file within 60 days of first deploy), **IXS-M4** (a second team for four weeks) | IXS-M8 fails, IXS-M9 CUT, or no second team within 90 days: F74 drops | **yes** |
@@ -409,12 +409,12 @@ than fathom cost less, unmeasured.
 | 1 | Non-goal | replace with "no multi-tenant SaaS operated by fathom" | append a note: a shared index is not hosting | the narrowing goes to the owner (U1, section 10.2); build order sidecar first, environment daemon after U1, IXS-M3, IXS-M8 and a named service | the owner's ask cannot fire the old trigger, and a note alone leaves vision 38 refusing it |
 | 2 | Refs | overlay store plus a `ref:` resolver | per-ref ingest from a cache, no ref column | `--cache-from` now, parity proven; overlay gated on IXS-M5 and IXS-M1 | a ref column touches the compatibility surface before anyone measured the cheap path |
 | 3 | Answer label | exact / ancestor+n / overlay / dirty | watermark only | the answer basis `exact` / `differs` / `unchecked` / `uncommitted`; `behind N` caller-side with a snapshot list | a daemon has no git graph and may not list a registry (I56); an agent cannot name an expectation through `_meta` |
-| 4 | Deploy state | a CD-attested record ingested; ADR-058 amended | not fathom; per-call parameter, GitOps, provenance | per-call parameter, GitOps service, operator-named provenance file (bake path), or a lineup read at start; nothing stored | a stored deploy record is IM-X2's attach under another name |
+| 4 | Deploy state | a CD-attested record ingested; ADR-058 amended | not fathom; per-call parameter, GitOps, provenance | per-call parameter, GitOps service, operator-named provenance file (provenance-recording build path), or a lineup read at start; nothing stored | a stored deploy record is IM-X2's attach under another name |
 | 5 | Worktrees | overlay; amend I30 | own service, I30 kept | I30 kept | no measured need, and INC-3 is why I30 exists |
 | 6 | Repository identity | forge URL plus path | root-commit id | root-commit id plus subpath; the forge URL is configuration | host-free (ADR-011) and survives renames and mirrors |
-| 7 | Transport | OCI referrers, image-kit signs | CI artifact | the operator's publish job owns it; OCI referrers is the recommended recipe | fathom stays transport-agnostic and fetch-free (I56) |
+| 7 | Transport | OCI referrers, the image kit signs | CI artifact | the operator's publish job owns it; OCI referrers is the recommended recipe | fathom stays transport-agnostic and fetch-free (I56) |
 | 8 | Per-extractor epochs | now, as mitigation | only if IXS-M2 fails | measure first (F73) | a locked release may suffice; salts are a cross-cutting change |
-| 9 | Merge-ahead | overlay notices | a bot gated on IXS-M6 | a plain CI bot outside ci-kit, gated | no stored state for an unmeasured benefit; ci-kit's scope is library and ports |
+| 9 | Merge-ahead | overlay notices | a bot gated on IXS-M6 | a plain CI bot outside the CI kit, gated | no stored state for an unmeasured benefit; the CI kit's scope is library and ports |
 | 10 | Across services | a list of services plus cross-repo joins early | gated on RT-M1 and SG-2 | `import snapshot` when a consumer names a cross-repo read; versioned links after RT-M1; no query-time RPC until F3's triggers | mounted stores federate obligations only; code reads need the import |
 | 11 | A UI for this | freshness board, incident views | no UI | a freshness column in the existing observatory only (change 12) | the staleness library exists but its tool is gone; an incident view is the command-center non-goal |
 | 12 | F27 promote | the owner names a team consumer | IXS-M1 and IXS-M2 KEEP | naming opens the measurement; IXS-M1 KEEP promotes | demand plus proof, both recorded |

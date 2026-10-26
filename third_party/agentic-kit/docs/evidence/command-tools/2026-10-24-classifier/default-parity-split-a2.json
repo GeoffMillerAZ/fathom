@@ -1,0 +1,487 @@
+{
+  "contract": "MC-A10",
+  "kind": "native-default-mode-observation",
+  "goos": "darwin",
+  "goarch": "arm64",
+  "profile": "classifier-absent/scanner-absent",
+  "pairs": [
+    {
+      "pair": 1,
+      "order": [
+        "baseline",
+        "candidate"
+      ],
+      "baseline": 16645916,
+      "candidate": 12937542
+    },
+    {
+      "pair": 2,
+      "order": [
+        "candidate",
+        "baseline"
+      ],
+      "candidate": 10910750,
+      "baseline": 9713792
+    },
+    {
+      "pair": 3,
+      "order": [
+        "baseline",
+        "candidate"
+      ],
+      "baseline": 8977416,
+      "candidate": 8532042
+    },
+    {
+      "pair": 4,
+      "order": [
+        "candidate",
+        "baseline"
+      ],
+      "candidate": 7992000,
+      "baseline": 8143166
+    },
+    {
+      "pair": 5,
+      "order": [
+        "baseline",
+        "candidate"
+      ],
+      "baseline": 8145418,
+      "candidate": 8119583
+    },
+    {
+      "pair": 6,
+      "order": [
+        "candidate",
+        "baseline"
+      ],
+      "candidate": 8099125,
+      "baseline": 8187084
+    },
+    {
+      "pair": 7,
+      "order": [
+        "baseline",
+        "candidate"
+      ],
+      "baseline": 7827875,
+      "candidate": 8100792
+    },
+    {
+      "pair": 8,
+      "order": [
+        "candidate",
+        "baseline"
+      ],
+      "candidate": 7790500,
+      "baseline": 7973166
+    },
+    {
+      "pair": 9,
+      "order": [
+        "baseline",
+        "candidate"
+      ],
+      "baseline": 7944666,
+      "candidate": 8120626
+    }
+  ],
+  "runs": [
+    {
+      "version": "baseline",
+      "elapsedNanos": 16645916,
+      "formats": {
+        "json": {
+          "elapsedNanos": 5896708,
+          "bytes": 5469,
+          "sha256": "e1354755d9657f83f72f4772a79471af620fac45c2658e2c1d192581fcb4bdcd"
+        },
+        "text": {
+          "elapsedNanos": 5249625,
+          "bytes": 8797,
+          "sha256": "6a667f4010385a2b36cbdf589ec9ada845d1fe3cc181c98c43c8d9f61aa7d03d"
+        },
+        "compact": {
+          "elapsedNanos": 5499583,
+          "bytes": 3492,
+          "sha256": "cb69cb4f3a86d993f17f410eb8cf1212d67be6732d65c2be57a0255f7b90ede1"
+        }
+      }
+    },
+    {
+      "version": "candidate",
+      "elapsedNanos": 12937542,
+      "formats": {
+        "json": {
+          "elapsedNanos": 4312334,
+          "bytes": 5469,
+          "sha256": "e1354755d9657f83f72f4772a79471af620fac45c2658e2c1d192581fcb4bdcd"
+        },
+        "text": {
+          "elapsedNanos": 3978166,
+          "bytes": 8797,
+          "sha256": "6a667f4010385a2b36cbdf589ec9ada845d1fe3cc181c98c43c8d9f61aa7d03d"
+        },
+        "compact": {
+          "elapsedNanos": 4647042,
+          "bytes": 3492,
+          "sha256": "cb69cb4f3a86d993f17f410eb8cf1212d67be6732d65c2be57a0255f7b90ede1"
+        }
+      }
+    },
+    {
+      "version": "candidate",
+      "elapsedNanos": 10910750,
+      "formats": {
+        "json": {
+          "elapsedNanos": 3626125,
+          "bytes": 5469,
+          "sha256": "e1354755d9657f83f72f4772a79471af620fac45c2658e2c1d192581fcb4bdcd"
+        },
+        "text": {
+          "elapsedNanos": 3511917,
+          "bytes": 8797,
+          "sha256": "6a667f4010385a2b36cbdf589ec9ada845d1fe3cc181c98c43c8d9f61aa7d03d"
+        },
+        "compact": {
+          "elapsedNanos": 3772708,
+          "bytes": 3492,
+          "sha256": "cb69cb4f3a86d993f17f410eb8cf1212d67be6732d65c2be57a0255f7b90ede1"
+        }
+      }
+    },
+    {
+      "version": "baseline",
+      "elapsedNanos": 9713792,
+      "formats": {
+        "json": {
+          "elapsedNanos": 3234167,
+          "bytes": 5469,
+          "sha256": "e1354755d9657f83f72f4772a79471af620fac45c2658e2c1d192581fcb4bdcd"
+        },
+        "text": {
+          "elapsedNanos": 3066041,
+          "bytes": 8797,
+          "sha256": "6a667f4010385a2b36cbdf589ec9ada845d1fe3cc181c98c43c8d9f61aa7d03d"
+        },
+        "compact": {
+          "elapsedNanos": 3413584,
+          "bytes": 3492,
+          "sha256": "cb69cb4f3a86d993f17f410eb8cf1212d67be6732d65c2be57a0255f7b90ede1"
+        }
+      }
+    },
+    {
+      "version": "baseline",
+      "elapsedNanos": 8977416,
+      "formats": {
+        "json": {
+          "elapsedNanos": 2879833,
+          "bytes": 5469,
+          "sha256": "e1354755d9657f83f72f4772a79471af620fac45c2658e2c1d192581fcb4bdcd"
+        },
+        "text": {
+          "elapsedNanos": 2896625,
+          "bytes": 8797,
+          "sha256": "6a667f4010385a2b36cbdf589ec9ada845d1fe3cc181c98c43c8d9f61aa7d03d"
+        },
+        "compact": {
+          "elapsedNanos": 3200958,
+          "bytes": 3492,
+          "sha256": "cb69cb4f3a86d993f17f410eb8cf1212d67be6732d65c2be57a0255f7b90ede1"
+        }
+      }
+    },
+    {
+      "version": "candidate",
+      "elapsedNanos": 8532042,
+      "formats": {
+        "json": {
+          "elapsedNanos": 2912167,
+          "bytes": 5469,
+          "sha256": "e1354755d9657f83f72f4772a79471af620fac45c2658e2c1d192581fcb4bdcd"
+        },
+        "text": {
+          "elapsedNanos": 2695041,
+          "bytes": 8797,
+          "sha256": "6a667f4010385a2b36cbdf589ec9ada845d1fe3cc181c98c43c8d9f61aa7d03d"
+        },
+        "compact": {
+          "elapsedNanos": 2924834,
+          "bytes": 3492,
+          "sha256": "cb69cb4f3a86d993f17f410eb8cf1212d67be6732d65c2be57a0255f7b90ede1"
+        }
+      }
+    },
+    {
+      "version": "candidate",
+      "elapsedNanos": 7992000,
+      "formats": {
+        "json": {
+          "elapsedNanos": 2445125,
+          "bytes": 5469,
+          "sha256": "e1354755d9657f83f72f4772a79471af620fac45c2658e2c1d192581fcb4bdcd"
+        },
+        "text": {
+          "elapsedNanos": 2571875,
+          "bytes": 8797,
+          "sha256": "6a667f4010385a2b36cbdf589ec9ada845d1fe3cc181c98c43c8d9f61aa7d03d"
+        },
+        "compact": {
+          "elapsedNanos": 2975000,
+          "bytes": 3492,
+          "sha256": "cb69cb4f3a86d993f17f410eb8cf1212d67be6732d65c2be57a0255f7b90ede1"
+        }
+      }
+    },
+    {
+      "version": "baseline",
+      "elapsedNanos": 8143166,
+      "formats": {
+        "json": {
+          "elapsedNanos": 2686250,
+          "bytes": 5469,
+          "sha256": "e1354755d9657f83f72f4772a79471af620fac45c2658e2c1d192581fcb4bdcd"
+        },
+        "text": {
+          "elapsedNanos": 2506458,
+          "bytes": 8797,
+          "sha256": "6a667f4010385a2b36cbdf589ec9ada845d1fe3cc181c98c43c8d9f61aa7d03d"
+        },
+        "compact": {
+          "elapsedNanos": 2950458,
+          "bytes": 3492,
+          "sha256": "cb69cb4f3a86d993f17f410eb8cf1212d67be6732d65c2be57a0255f7b90ede1"
+        }
+      }
+    },
+    {
+      "version": "baseline",
+      "elapsedNanos": 8145418,
+      "formats": {
+        "json": {
+          "elapsedNanos": 2598917,
+          "bytes": 5469,
+          "sha256": "e1354755d9657f83f72f4772a79471af620fac45c2658e2c1d192581fcb4bdcd"
+        },
+        "text": {
+          "elapsedNanos": 2561417,
+          "bytes": 8797,
+          "sha256": "6a667f4010385a2b36cbdf589ec9ada845d1fe3cc181c98c43c8d9f61aa7d03d"
+        },
+        "compact": {
+          "elapsedNanos": 2985084,
+          "bytes": 3492,
+          "sha256": "cb69cb4f3a86d993f17f410eb8cf1212d67be6732d65c2be57a0255f7b90ede1"
+        }
+      }
+    },
+    {
+      "version": "candidate",
+      "elapsedNanos": 8119583,
+      "formats": {
+        "json": {
+          "elapsedNanos": 2621917,
+          "bytes": 5469,
+          "sha256": "e1354755d9657f83f72f4772a79471af620fac45c2658e2c1d192581fcb4bdcd"
+        },
+        "text": {
+          "elapsedNanos": 2553333,
+          "bytes": 8797,
+          "sha256": "6a667f4010385a2b36cbdf589ec9ada845d1fe3cc181c98c43c8d9f61aa7d03d"
+        },
+        "compact": {
+          "elapsedNanos": 2944333,
+          "bytes": 3492,
+          "sha256": "cb69cb4f3a86d993f17f410eb8cf1212d67be6732d65c2be57a0255f7b90ede1"
+        }
+      }
+    },
+    {
+      "version": "candidate",
+      "elapsedNanos": 8099125,
+      "formats": {
+        "json": {
+          "elapsedNanos": 2572834,
+          "bytes": 5469,
+          "sha256": "e1354755d9657f83f72f4772a79471af620fac45c2658e2c1d192581fcb4bdcd"
+        },
+        "text": {
+          "elapsedNanos": 2592833,
+          "bytes": 8797,
+          "sha256": "6a667f4010385a2b36cbdf589ec9ada845d1fe3cc181c98c43c8d9f61aa7d03d"
+        },
+        "compact": {
+          "elapsedNanos": 2933458,
+          "bytes": 3492,
+          "sha256": "cb69cb4f3a86d993f17f410eb8cf1212d67be6732d65c2be57a0255f7b90ede1"
+        }
+      }
+    },
+    {
+      "version": "baseline",
+      "elapsedNanos": 8187084,
+      "formats": {
+        "json": {
+          "elapsedNanos": 2660042,
+          "bytes": 5469,
+          "sha256": "e1354755d9657f83f72f4772a79471af620fac45c2658e2c1d192581fcb4bdcd"
+        },
+        "text": {
+          "elapsedNanos": 2525667,
+          "bytes": 8797,
+          "sha256": "6a667f4010385a2b36cbdf589ec9ada845d1fe3cc181c98c43c8d9f61aa7d03d"
+        },
+        "compact": {
+          "elapsedNanos": 3001375,
+          "bytes": 3492,
+          "sha256": "cb69cb4f3a86d993f17f410eb8cf1212d67be6732d65c2be57a0255f7b90ede1"
+        }
+      }
+    },
+    {
+      "version": "baseline",
+      "elapsedNanos": 7827875,
+      "formats": {
+        "json": {
+          "elapsedNanos": 2426000,
+          "bytes": 5469,
+          "sha256": "e1354755d9657f83f72f4772a79471af620fac45c2658e2c1d192581fcb4bdcd"
+        },
+        "text": {
+          "elapsedNanos": 2511708,
+          "bytes": 8797,
+          "sha256": "6a667f4010385a2b36cbdf589ec9ada845d1fe3cc181c98c43c8d9f61aa7d03d"
+        },
+        "compact": {
+          "elapsedNanos": 2890167,
+          "bytes": 3492,
+          "sha256": "cb69cb4f3a86d993f17f410eb8cf1212d67be6732d65c2be57a0255f7b90ede1"
+        }
+      }
+    },
+    {
+      "version": "candidate",
+      "elapsedNanos": 8100792,
+      "formats": {
+        "json": {
+          "elapsedNanos": 2643375,
+          "bytes": 5469,
+          "sha256": "e1354755d9657f83f72f4772a79471af620fac45c2658e2c1d192581fcb4bdcd"
+        },
+        "text": {
+          "elapsedNanos": 2562208,
+          "bytes": 8797,
+          "sha256": "6a667f4010385a2b36cbdf589ec9ada845d1fe3cc181c98c43c8d9f61aa7d03d"
+        },
+        "compact": {
+          "elapsedNanos": 2895209,
+          "bytes": 3492,
+          "sha256": "cb69cb4f3a86d993f17f410eb8cf1212d67be6732d65c2be57a0255f7b90ede1"
+        }
+      }
+    },
+    {
+      "version": "candidate",
+      "elapsedNanos": 7790500,
+      "formats": {
+        "json": {
+          "elapsedNanos": 2472666,
+          "bytes": 5469,
+          "sha256": "e1354755d9657f83f72f4772a79471af620fac45c2658e2c1d192581fcb4bdcd"
+        },
+        "text": {
+          "elapsedNanos": 2500584,
+          "bytes": 8797,
+          "sha256": "6a667f4010385a2b36cbdf589ec9ada845d1fe3cc181c98c43c8d9f61aa7d03d"
+        },
+        "compact": {
+          "elapsedNanos": 2817250,
+          "bytes": 3492,
+          "sha256": "cb69cb4f3a86d993f17f410eb8cf1212d67be6732d65c2be57a0255f7b90ede1"
+        }
+      }
+    },
+    {
+      "version": "baseline",
+      "elapsedNanos": 7973166,
+      "formats": {
+        "json": {
+          "elapsedNanos": 2578708,
+          "bytes": 5469,
+          "sha256": "e1354755d9657f83f72f4772a79471af620fac45c2658e2c1d192581fcb4bdcd"
+        },
+        "text": {
+          "elapsedNanos": 2521250,
+          "bytes": 8797,
+          "sha256": "6a667f4010385a2b36cbdf589ec9ada845d1fe3cc181c98c43c8d9f61aa7d03d"
+        },
+        "compact": {
+          "elapsedNanos": 2873208,
+          "bytes": 3492,
+          "sha256": "cb69cb4f3a86d993f17f410eb8cf1212d67be6732d65c2be57a0255f7b90ede1"
+        }
+      }
+    },
+    {
+      "version": "baseline",
+      "elapsedNanos": 7944666,
+      "formats": {
+        "json": {
+          "elapsedNanos": 2420208,
+          "bytes": 5469,
+          "sha256": "e1354755d9657f83f72f4772a79471af620fac45c2658e2c1d192581fcb4bdcd"
+        },
+        "text": {
+          "elapsedNanos": 2583542,
+          "bytes": 8797,
+          "sha256": "6a667f4010385a2b36cbdf589ec9ada845d1fe3cc181c98c43c8d9f61aa7d03d"
+        },
+        "compact": {
+          "elapsedNanos": 2940916,
+          "bytes": 3492,
+          "sha256": "cb69cb4f3a86d993f17f410eb8cf1212d67be6732d65c2be57a0255f7b90ede1"
+        }
+      }
+    },
+    {
+      "version": "candidate",
+      "elapsedNanos": 8120626,
+      "formats": {
+        "json": {
+          "elapsedNanos": 2570042,
+          "bytes": 5469,
+          "sha256": "e1354755d9657f83f72f4772a79471af620fac45c2658e2c1d192581fcb4bdcd"
+        },
+        "text": {
+          "elapsedNanos": 2626084,
+          "bytes": 8797,
+          "sha256": "6a667f4010385a2b36cbdf589ec9ada845d1fe3cc181c98c43c8d9f61aa7d03d"
+        },
+        "compact": {
+          "elapsedNanos": 2924500,
+          "bytes": 3492,
+          "sha256": "cb69cb4f3a86d993f17f410eb8cf1212d67be6732d65c2be57a0255f7b90ede1"
+        }
+      }
+    }
+  ],
+  "warmupRuns": 2,
+  "formats": [
+    "json",
+    "text",
+    "compact"
+  ],
+  "wireParity": true,
+  "baselineSHA256": "54afdaf562bb7e4b75cb462c25ed940d5f7eaa3c51d42b510293924497e435d3",
+  "candidateSHA256": "478a797166da7bbca2cb7890f7dcea19319f0d2f7847c6a1e76c19a9219a5ff1",
+  "inputFiles": 8,
+  "inputBytes": 2328,
+  "baselineMedianNanos": 8145418,
+  "candidateMedianNanos": 8119583,
+  "medianRatio": 0.9968282781804445,
+  "maximumRatio": 1.25,
+  "withinDeclaredBar": true,
+  "limitation": "One owned synthetic corpus and host; no model, general performance, cost or token claim."
+}

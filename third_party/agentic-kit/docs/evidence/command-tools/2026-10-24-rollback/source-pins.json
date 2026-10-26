@@ -1,0 +1,7 @@
+{
+  "baseline": "3e23005b619011ccc9a0ad01808a57ea72b74387",
+  "files": {
+    "cmd/kit-new/main.go": "8c3b4838a251a3afc8bcf2f4b739773273ddae190614e9c391300548bcfc4f7a",
+    "cmd/kit-new/main_test.go": "b649571c8b221652fc4cb229c729cfd566d8a6ff5e088013a0d6bba564d29086"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "id": "C15",
+  "axis": "composition",
+  "acceptance": "Composed entrypoint screens/effect-gates every declared path with heldout miss and false-refusal bounds",
+  "outcome": "unknown",
+  "source": "docs/threat-model.md",
+  "source_sha256": "9da4c1bb2318d1c91234b305bea32943fd62daac2708bc6f52b606690585df74",
+  "test": null,
+  "group": null,
+  "scope_note": "Component test does not prove consumer adoption, live model quality, or all entrypoints.",
+  "reason": "Current source lacks a retained end-to-end criterion-specific adoption or measured-quality receipt."
+}

@@ -119,7 +119,7 @@ func TestSurfacePlane_RemovedKeyIsLossesUnlessDeclared(t *testing.T) {
 			if f.Declared != DeclaredNone {
 				t.Errorf("Declared = %q, want none", f.Declared)
 			}
-			// RK-36: File/Line names the removed item's own (base-only)
+			// Anchor ask: File/Line names the removed item's own (base-only)
 			// declaration site.
 			if f.File != "widgets/w.go" || f.Line == 0 {
 				t.Errorf("File/Line = %s:%d, want widgets/w.go:<n> (the removed declaration's base site)", f.File, f.Line)
@@ -161,7 +161,7 @@ func TestSurfacePlane_ChangedKeyReportsBothCitations(t *testing.T) {
 			if f.Base == "" || f.Head == "" {
 				t.Errorf("changed finding missing a citation: %+v", f)
 			}
-			// RK-36: File/Line names the changed item's HEAD site — it
+			// Anchor ask: File/Line names the changed item's HEAD site — it
 			// still exists there, in its changed form.
 			if f.File != "widgets/w.go" || f.Line == 0 {
 				t.Errorf("File/Line = %s:%d, want widgets/w.go:<n> (the changed declaration's head site)", f.File, f.Line)
@@ -307,7 +307,7 @@ func fetchWidget(id string) {
 	if f.Detail == "" || f.Head == "" {
 		t.Errorf("finding missing detail/citation: %+v", f)
 	}
-	// RK-36: File/Line names the still-calling client code's own site,
+	// Anchor ask: File/Line names the still-calling client code's own site,
 	// matching Head's own citation exactly.
 	if got := f.File; got == "" || fmt.Sprintf("%s:%d", f.File, f.Line) != f.Head {
 		t.Errorf("File/Line = %s:%d, want it to match Head citation %s (the consumer's own call site)", f.File, f.Line, f.Head)

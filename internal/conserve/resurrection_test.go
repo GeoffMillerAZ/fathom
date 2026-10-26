@@ -76,7 +76,7 @@ func TestResurrected_DeletedBodyReappears(t *testing.T) {
 	if f.Base == "" || f.Head == "" {
 		t.Errorf("finding must name BOTH old.go's base site and new.go's head site: %+v", f)
 	}
-	// RK-36: File/Line names the REAPPEARING function's own location —
+	// Anchor ask: File/Line names the REAPPEARING function's own location —
 	// the reappeared body at head, matching Head's own citation exactly.
 	if got := fmt.Sprintf("%s:%d", f.File, f.Line); got != f.Head {
 		t.Errorf("File/Line = %s, want it to match Head citation %s (the reappearing body's own location)", got, f.Head)

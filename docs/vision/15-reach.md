@@ -5,7 +5,7 @@
 > deferred with triggers, and IO-26's app-kit pack), `docs/plans/cpp-toolchain.md`
 > (IO-27's trigger, fired 2026-08-08 — Conan stays deferred). ADR-041 later
 > adopted SCIP import outright (the IO-29 spike row stays deferred), and §3's
-> depgraph library is ci-kit's, in platform-engineering.
+> dependency-graph library is the CI kit's, in an adopting platform's monorepo.
 > Drafted for review 2026-08-07 · Non-binding, companion to 14.
 > Answers three owner directives: (1) make agents actually follow UI/house
 > standards at edit time (the CLAUDE.md-is-ignored problem); (2) excellent
@@ -24,7 +24,7 @@ survives**. The mechanism exists end to end today: the PostToolUse edit-hook
 injects glob-scoped obligations at the moment a matching file is touched;
 the PreToolUse guard can *refuse* (a `package.json` under a no-Node surface
 is a refusal, not advice); layer packs under `.fathom/layers/` serve rules
-now (platform-engineering serves 4 from its platform-standards pack today).
+now (a sibling platform monorepo serves 4 from its standards pack today).
 
 What's missing is the **product form: obligation packs as first-class
 shippables** — `fathom layers install ui-appkit`:
@@ -96,20 +96,20 @@ or adopt Bazel/kin?
   (ADR-050): the `pkg:` contract-key kind reads what the toolchain already
   fetched, and `system_impact`/`contract_drift` are the verbs, not a
   revived tool pair.
-- **What the platform side already decided** (platform-engineering): ci-kit
-  specs the depgraph engine + canonical input hashing (`DeriveKey`,
-  type-tagged length-prefixed, keyEpoch) and already adopted **bazel-remote
-  as the $0 REAPI cache** — the Bazel *ecosystem* is in use at the protocol
+- **What the platform side already decided** (an adopting platform): the CI kit
+  specs the dependency-graph engine + canonical input hashing (type-tagged,
+  length-prefixed, epoch-keyed) and already adopted **a $0 REAPI
+  cache** — the Bazel *ecosystem* is in use at the protocol
   layer, which is the correct reuse.
 - **The decision, recommended**: one shared library, **born where its first
-  paying consumer is** — the depgraph/input-hash engine lands inside ci-kit
+  paying consumer is** — the dependency-graph/input-hash engine lands inside the CI kit
   per its existing spec, built kit-first (D13) behind a clean port:
   `DepGraph(ecosystem, root) → nodes + edges + lockDigests` and
   `InputKey(node) → canonical hash`, with per-ecosystem adapters (go.mod,
   npm/pnpm, pip/uv, cargo, **conan**, maven/gradle, vcpkg). fathom becomes
   its second consumer (dep-aware impact + ingest keys); when a third
   appears, it graduates to its own repo. Building it "in fathom first"
-  would invert ownership: fathom needs the *answers*, ci-kit needs the
+  would invert ownership: fathom needs the *answers*, the CI kit needs the
   *engine*.
 - **Bazel verdict: reference semantics and protocol reuse, never a
   dependency.** Bazel is open source but Java (Buck2 is Rust) and is a
@@ -122,7 +122,7 @@ or adopt Bazel/kin?
   three of our products need.
 - **Adjacent concepts worth naming now**: Nix derivation hashing as the
   hermetic-env reference (devbox is already Nix-backed); SLSA provenance
-  predicates (image-kit has them); tree-sitter as the universal parse
+  predicates (the image kit has them); tree-sitter as the universal parse
   plane (taken, §2); **SCIP/LSIF emission as a watch row** — emitting SCIP
   would make fathom's index consumable by other tools while governance
   stays ours (differentiation-compatible; evaluate, don't commit);
@@ -155,8 +155,8 @@ or adopt Bazel/kin?
 8. C++ language pack behind the calibration gate, Conan adapter first;
    the external shop as design partner — their observations feed the
    fixtures.
-9. Depgraph/input-hash library kickoff inside ci-kit's phase-3 plan
-   (platform-engineering), port-first, with fathom's dep-aware impact
+9. Dependency-graph/input-hash library kickoff inside the CI kit's own plan
+   (the adopter's repository), port-first, with fathom's dep-aware impact
    tools as consumer #2.
 10. SCIP emission spike: one week, emit-and-diff against an SCIP indexer
     on the calibration corpus; adopt or file the refusal with reasons.

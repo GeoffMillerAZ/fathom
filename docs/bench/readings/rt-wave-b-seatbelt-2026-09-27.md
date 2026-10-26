@@ -51,7 +51,7 @@ event.** The live run also found gaps that the unit tests do not reach; §5 list
   `fathom_tenancy_level` and footprint.
 - **Workload:** rtA's `workload.json`. That is 20 edit-hook `obligations` calls on the
   three largest services, per round, and 20 `symbol_context` calls across app-kit,
-  platform-engineering and fathom.
+  platform and fathom.
 - **Ladder runs:** `[tenancy] admission = "enforce"`, `[tenancy.breaker] warmup = "5s"`
   (shortened so warm-up does not mask the ladder), and `[tenancy.unmanaged] budget =
   "128MiB"`. The marks were shed 96 MiB, refuse 128 MiB, exit 256 MiB. The breaker runs

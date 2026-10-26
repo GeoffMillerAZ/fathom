@@ -104,7 +104,7 @@ func (s *consoleEventSources) publish(e console.Event) {
 // the service a panel keys on (sessions:fathom): the service named exactly
 // by the label, else the one service whose recorded root has that base
 // name, else the label itself when it is a name. A label that is not a
-// name ("2026 job hunt") maps to "": the event still fires, for the
+// name ("2026 side notes") maps to "": the event still fires, for the
 // unscoped "sessions" source only.
 func sessionEventService(label string, roots map[string]string) string {
 	l := strings.ToLower(strings.TrimSpace(label))

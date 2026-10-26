@@ -15,8 +15,8 @@
 // (conformance_test.go) — invisible to every consumer outside that package
 // (agentic-kit TRACKING.md doctrine: "consumers CANNOT import it today", and a
 // _test.go file is not importable across modules at all regardless). H3
-// Stage 2 (agentic-kit handoff-h3-throughline.md) extracts it here so
-// throughline's SQLite-backed vault (adapters/sqlitevault) can prove
+// Stage 2 (agentic-kit handoff-h3-consumer-a.md) extracts it here so
+// consumer-a's SQLite-backed vault (adapters/sqlitevault) can prove
 // conformance without depending on tokenization's internal test package.
 //
 // # Shape deviations from the rest of the kit (documented, deliberate)

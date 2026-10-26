@@ -12,7 +12,7 @@ import (
 
 // TestScoreCeiling pins the RFC-protocol ceilings: 0.95 for dkim, 0.55 for
 // auth_results_header, 1.0 for every other method. These exact values are a
-// contract (throughline friction addendum item 4) — changing them is a
+// contract (consumer-a friction addendum item 4) — changing them is a
 // breaking change, not a tweak.
 func TestScoreCeiling(t *testing.T) {
 	tests := []struct {

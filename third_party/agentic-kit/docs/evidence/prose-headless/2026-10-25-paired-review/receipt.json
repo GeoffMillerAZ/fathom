@@ -1,0 +1,332 @@
+{
+  "version": "prose-lab.offline-paired-review-qualification/1",
+  "base_commit": "05c713186ab87f27eaf3425faca30d8b7a7c53ce",
+  "command_source_binding": "804fbcdaba817db69baf17c52293bf037a68a961185f0d6debb5ab41db926fb1",
+  "binding_rule": "SHA256 compact UTF8 JSON array sorted path; keys path,sha256; no trailing newline",
+  "files": [
+    {
+      "path": "cmd/prose-lab/codec.go",
+      "sha256": "925459c2ba4da44317e557a7e8832597fde357e3041bf536c323500f06f9151f"
+    },
+    {
+      "path": "cmd/prose-lab/doc.go",
+      "sha256": "f1ec8da407e2a6802c6f01e87e035d60f07b75c779d219d773e5a7f71ea57fb3"
+    },
+    {
+      "path": "cmd/prose-lab/document_adjudication.go",
+      "sha256": "7bb40f375fd1f6d55361f1011123ffa6edf0435c422f9f055638026aca7d8ba1"
+    },
+    {
+      "path": "cmd/prose-lab/document_adjudication_flags_other.go",
+      "sha256": "5e92fba4dbbd9206b8d6cb76521fedf681dca3190d3a1bc323d53d00d0c5974c"
+    },
+    {
+      "path": "cmd/prose-lab/document_adjudication_flags_unix.go",
+      "sha256": "e955487c56cee78bc51409f7e7656eea013cc5003ea8eaac2dec746185b0f9b7"
+    },
+    {
+      "path": "cmd/prose-lab/document_adjudication_input.go",
+      "sha256": "c71ca665362df1f2b95bfd2dc1eb5e0a89b38dfea4af9967dcd72330e98b5d62"
+    },
+    {
+      "path": "cmd/prose-lab/document_adjudication_owner_test.go",
+      "sha256": "d162c94646b6cbc712dd5b0d6fc0febf6c720b4acc67cc378e8e181bfa0a7b63"
+    },
+    {
+      "path": "cmd/prose-lab/document_adjudication_test.go",
+      "sha256": "35dee849c7d4a1461d0e81e94a3be7bcb49d2731698721a2751ca4b04610da7b"
+    },
+    {
+      "path": "cmd/prose-lab/document_engine.go",
+      "sha256": "edaf6ab7818f4bd41253504ca389af0b738619a1532106d6115521f04615df6f"
+    },
+    {
+      "path": "cmd/prose-lab/document_input.go",
+      "sha256": "995be4beec165094031a78488e349642aa93fab3f2a13cd28599bbc6713cb4b0"
+    },
+    {
+      "path": "cmd/prose-lab/document_length.go",
+      "sha256": "9677e052347e3fea4787eb84cc59f375c615a7e52c459f2e165e9156d6722d88"
+    },
+    {
+      "path": "cmd/prose-lab/document_length_oracle_test.go",
+      "sha256": "75868eafd8f4153107a320f79b850e9c9fb370f18d3d898ea5dee55cd57f8495"
+    },
+    {
+      "path": "cmd/prose-lab/document_length_test.go",
+      "sha256": "e4f5cf5022b3283478d105a22562e48e4f41d57b3c8bea73d276765ff7f5715c"
+    },
+    {
+      "path": "cmd/prose-lab/document_projection.go",
+      "sha256": "dde9af3160feef90fd5d365c85c05c628f035d57297e8c3755b4ec1e76279b52"
+    },
+    {
+      "path": "cmd/prose-lab/document_projection_test.go",
+      "sha256": "36b69ecbd946399b10c8a24cfb5ec280adb48ac35c6a78ddd5e39a03b3a762f3"
+    },
+    {
+      "path": "cmd/prose-lab/document_run.go",
+      "sha256": "22f907cbf1c7233d0baf8ff8b08b7ccbc0b72cb6a4079ff06e9d968f8fc800bc"
+    },
+    {
+      "path": "cmd/prose-lab/document_scope_acceptance_test.go",
+      "sha256": "9c81a0b0d108ba79992fd2c297ae4cc15f19cf7bc3dc0accb0d668de85aac4cb"
+    },
+    {
+      "path": "cmd/prose-lab/document_test.go",
+      "sha256": "3ccac684b3aa228a58437c35cdb6ac8b559d48d509dcb6faa746d7a850fa646e"
+    },
+    {
+      "path": "cmd/prose-lab/document_time_test.go",
+      "sha256": "15a6c4ac1d8d443f37a4ae868bed06026282cafe9219000963cbeb71147b48fc"
+    },
+    {
+      "path": "cmd/prose-lab/document_wire_compat_test.go",
+      "sha256": "83a771c552db35446eef851fc99f5a20550a38641de3b5f4571e969fe8fa6b7a"
+    },
+    {
+      "path": "cmd/prose-lab/ledger.go",
+      "sha256": "072cdd34eebf6d74b266e5d5b7483d3504f77a572c48b54e8e30a5796e2db66a"
+    },
+    {
+      "path": "cmd/prose-lab/ledger_test.go",
+      "sha256": "f71661dbd09daa75ba98553ded54f75fd16472df71e18bc389c6eebcf561bbeb"
+    },
+    {
+      "path": "cmd/prose-lab/main.go",
+      "sha256": "5b195ffe87a3b522bba0b41c276c11ff9e1d602f597ab9ee527a3055f834ef61"
+    },
+    {
+      "path": "cmd/prose-lab/main_test.go",
+      "sha256": "75f2326bc7156365f56edb24ebdf926cb0aa3c041ff84f01b50d20809a75b371"
+    },
+    {
+      "path": "cmd/prose-lab/paired_inputs.go",
+      "sha256": "45dbe6b911673e6215839b48ed08a77e94414191a6a20d1e6e28223a1fa9aa21"
+    },
+    {
+      "path": "cmd/prose-lab/paired_inputs_test.go",
+      "sha256": "27c8cb2448a7e5d83d0ce6b79df036c7bee5d51d3dcde5035b5be69efff28185"
+    },
+    {
+      "path": "cmd/prose-lab/paired_legacy_owner_test.go",
+      "sha256": "d1ab3c146430d344ca8985dc9a7cb91d087890dd7a8201f5fbad0310d44f4d87"
+    },
+    {
+      "path": "cmd/prose-lab/paired_owner_test.go",
+      "sha256": "0474d86b7b4a01937343730422d9544734300668c706f9f5c502262df2cf42b1"
+    },
+    {
+      "path": "cmd/prose-lab/paired_run.go",
+      "sha256": "d11d5c2b22f67e27b07304d93405f63cd468502dc544674ad5176c5869324c4c"
+    },
+    {
+      "path": "cmd/prose-lab/provider.go",
+      "sha256": "dce3031c6f9946363841a69552be60f5a4e8e2424e28ab517d5a2a3e17e529a7"
+    },
+    {
+      "path": "cmd/prose-lab/provider_test.go",
+      "sha256": "1313afefb878e6cee6407ac539d741881ce1650b3840e2d487f1a8f388a425c6"
+    },
+    {
+      "path": "cmd/prose-lab/review.go",
+      "sha256": "62a7003b66c60c811f1dfe8182913b572d0db36c602d552cb678b051e698c069"
+    },
+    {
+      "path": "cmd/prose-lab/review_artifacts.go",
+      "sha256": "8d264d6e0f6adce8a8eae6d25a57a7265cc641f0213b086c3101c1940d78e857"
+    },
+    {
+      "path": "cmd/prose-lab/review_owner_test.go",
+      "sha256": "a54f3f479c6f925de624ce27a52d96ed74b126472e4cf34358c6e0b2e304be1d"
+    },
+    {
+      "path": "cmd/prose-lab/review_test.go",
+      "sha256": "89a20e1dff1d7eab3463fbb03b685fff771f4221a6774f8c2886f70d977bec24"
+    },
+    {
+      "path": "cmd/prose-lab/schema.cue",
+      "sha256": "d434f29c319e3ebe06ff88525e09635cfa30d85e087391d2b6defd7f8f4eff8f"
+    },
+    {
+      "path": "cmd/prose-lab/schema_test.go",
+      "sha256": "a5041b5e814c07b2a308b4cb470fc7eb65917b8d2217dd6b8f9e9a7a8194b2a7"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/document-corpus/architecture-decision.json",
+      "sha256": "24cd254acb68fc83cb7be0f4a94b7ec7e8618dd1b86e966156310fbdc3129405"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/document-corpus/draft-service-agreement.json",
+      "sha256": "d6bdb30d84f91ff266568448b0224d4351edc88848ca4a4385c87934b1591010"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/document-corpus/freeform-brief.json",
+      "sha256": "2d834c244b49257fcf4ffa6357c994f0debd7e25338fb31dcfa1e2b840ddc4a1"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/document-corpus/incident-summary.json",
+      "sha256": "31d82d135d497595e3255893e4cfe13a7bba5a7d1d1428b7e1a71c18e91190f9"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/document-corpus/manifest.json",
+      "sha256": "f1d1f221e657b60aa0deebbf037ffa1d1d7bab6cfff6679e24b53d30d575b003"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/document-corpus/operational-runbook.json",
+      "sha256": "3bc6447dd6f63f68a1552a239d6047755750c196e03b20be35b690c5ab29c41e"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/document-corpus/technical-design.json",
+      "sha256": "07d8c50fba90b4919b113ddd6a4c6e415e931bfdb711151e0d91fc0778c1bd80"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/document-corpus-v2/architecture-decision.json",
+      "sha256": "4c69181f15ce6f71882d382d6e9b14f8011e09275b5073d78b2e2b0e1458fedb"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/document-corpus-v2/draft-service-agreement.json",
+      "sha256": "3af8dea670f27e7c718fd9a3ed6a51b1f49beb9f59a8e327daff006a82097a1b"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/document-corpus-v2/freeform-brief.json",
+      "sha256": "fa2badc3ddeeb9fdfe1b5cd1ff654bfad67950d645513bf9abc0bb082fb3941c"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/document-corpus-v2/incident-summary.json",
+      "sha256": "5d17443be186ca22b3fe7b001306890ffc045f86874b01dcd0a0a8fdef8a3299"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/document-corpus-v2/manifest.json",
+      "sha256": "1a73e75572a3b3c9668185d86848c6aaed78f8fd51a3e918144380fa101a5fa1"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/document-corpus-v2/operational-runbook.json",
+      "sha256": "e48443798221cd3bfb4525bf0f41be413ad30db307053c3c533fcaddb8d6eb65"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/document-corpus-v2/technical-design.json",
+      "sha256": "b6dc0c4fa61b217fd5784355f33a9d301f53c8a1dd4afa3a22edf3db7f288cf5"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/document-scopes/v2-length-goals.json",
+      "sha256": "41988f2f526415763d64faa7193e477f1370c56bfd2a0e269427dbbf0c004403"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/document-scopes/v2-paired-support-review.json",
+      "sha256": "f8d86a5366e2317f2a5dd6bc90fae074452a5d3c2176dccf9b1e589043ac6a49"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/document-scopes/v2-support-review.json",
+      "sha256": "fe12741de1f91c0063a05172e4dd0e66bd580b40cf8afe937a4bd366086ecee8"
+    },
+    {
+      "path": "cmd/prose-lab/testdata/paired-review-study.json",
+      "sha256": "d6328fad9aef15406cf60ad0f8315b4342e90fba61e7a2905fd12805597a3b6d"
+    }
+  ],
+  "offline_cli": {
+    "preparations": 140,
+    "common_study_digest": "aaeb2cec765ae3a969bfab00ae046a461c9cc474c53729637935c1498dc86b4d",
+    "old_native_wire_matches": 67,
+    "legacy_replay_exit": 0,
+    "legacy_actual_native_outcomes": 67,
+    "legacy_report_equal_published": true,
+    "new_provider_calls": 0,
+    "new_spend_micro_usd": 0,
+    "binary_sha256": "18c3c0037e190ffe2bb3eb42212b20c79472e7cfcfca3bf8693f3fe272de2dc1"
+  },
+  "preparations_manifest_sha256": "27a87914725816252ad501dbf5301dd4fb69cb6e6445f292b1c0bd8852fd3002",
+  "legacy_retained_report_sha256": "3e418238973bfc1ee9fcc8938715ad9324b84e87c201a75e9d7978213f0c9035",
+  "legacy_replay_claim": "67 existing native outcomes replayed offline; no fresh trial or provider-history authentication",
+  "fake_cohort": {
+    "logical_controls": 70,
+    "ordered_executions": 140,
+    "native_calls": 140,
+    "baseline_complete": 70,
+    "candidate_complete": 70,
+    "baseline_false_hold": 1,
+    "candidate_false_hold": 0,
+    "candidate_false_support": 0,
+    "synthetic_charge_micro_usd": 280,
+    "meaning": "parent-owned fake native responses prove transport/replay/accounting/control flow, not model quality"
+  },
+  "new_provider_calls": 0,
+  "new_direct_stage_micro_usd": 0,
+  "combined_direct_stage_micro_usd_unchanged": 424414,
+  "known_direct_calls_unchanged": 89,
+  "coding_stage_estimate_usd_unchanged": "11.2197488",
+  "model_site_adoption": false,
+  "independent_acceptance": false,
+  "publication_authority": false,
+  "document_acceptance": false,
+  "ui_entry": false,
+  "identity_or_source_authentication": false,
+  "full_gate": {
+    "command": "task validate",
+    "exit_code": 0,
+    "cmd_prose_lab_package_seconds": 128.825,
+    "log_sha256": "263025b9be63f5fdc8c4cb9f866d07ade0fdbbacf61899dbffe8d2bc36aa37fc"
+  },
+  "focused_owner_before_final_all_facts_selection_assertions": {
+    "command": "go test -race ./cmd/prose-lab -run ^TestOwnerPaired -count=1",
+    "exit_code": 0,
+    "package_seconds": 87.118,
+    "log_sha256": "ffcb1b1c599a30332d6e9cdc3d8aad33fcbe652824c9bc8c5d27f56319b6b3d0",
+    "limit": "full gate above includes final added assertions; this earlier run is supporting evidence only"
+  },
+  "final_selection_owner": {
+    "exit_code": 0,
+    "package_seconds": 2.638,
+    "log_sha256": "e7aacbbb755e04967393351b9b86a0e39afd939ddd58776cfc209d68a039c886"
+  },
+  "retained_reds": {
+    "false_qualified_cue": "5f41758b436dc8952be676db866b5e17b5700509396bc621ce413ba0a2e5e034",
+    "latency_overflow": "01a81da53b4f2f289935774f881711ec05f350710f111e818971a4843e479014",
+    "unknown_cost_test_oracle_corrected": "a225a9c650083a3050e22c8489e97ebf3a66719536445ff3df88fa7e9138c7f1"
+  },
+  "cross_builds": {
+    "windows_amd64": {
+      "exit_code": 0,
+      "cgo_enabled": false,
+      "binary_sha256": "ffa2e483a3225c3271eef1e782b34d3a10acefb728c107405d3721c39ef5b96b"
+    },
+    "linux_amd64": {
+      "exit_code": 0,
+      "cgo_enabled": false,
+      "binary_sha256": "cbe6e3a203bfe0e29aec93f2847784e5aaae17ca802ced29bc9d44047b776864"
+    }
+  },
+  "cross_build_claim": "compiler evidence only; no native Windows/Linux permission/runtime qualification",
+  "native_build": {
+    "binary_sha256": "18c3c0037e190ffe2bb3eb42212b20c79472e7cfcfca3bf8693f3fe272de2dc1",
+    "build_info": "/Volumes/m2ext/tmp/prose-headless-proof-20261024/paired-review/prose-lab-precommit: go1.26.3\n\tpath\tgithub.com/geoffmilleraz/agentic-kit/cmd/prose-lab\n\tmod\tgithub.com/geoffmilleraz/agentic-kit\tv0.9.1-0.20261025194925-05c713186ab8+dirty\t\n\tbuild\t-buildmode=exe\n\tbuild\t-compiler=gc\n\tbuild\t-trimpath=true\n\tbuild\tCGO_ENABLED=1\n\tbuild\tGOARCH=arm64\n\tbuild\tGOOS=darwin\n\tbuild\tGOARM64=v8.0\n\tbuild\tvcs=git\n\tbuild\tvcs.revision=05c713186ab87f27eaf3425faca30d8b7a7c53ce\n\tbuild\tvcs.time=2026-10-25T19:49:25Z\n\tbuild\tvcs.modified=true\n",
+    "claim": "working-tree source build, vcs.modified=true, not a clean release or paid-dispatch binary"
+  },
+  "library_roots_changed": false,
+  "downstream_rerun": false,
+  "fathom": {
+    "command": "fathom verify --service agentic-kit --plan docs/plans/prose-headless-proof.md --strict --json",
+    "exit_code": 0,
+    "hp16_claimed": true,
+    "hp16_static_status": "pass",
+    "static_reaching_tests": 20,
+    "source_index_commit": "dec53f3edc846f436702162c336b116ee7459fd8",
+    "report_sha256": "4105f9a16663c3a724dfed252f7b92338456edad66c07ff7f51196005cc03b3d",
+    "runtime_attestation": "unknown; actual runtime evidence recorded separately"
+  },
+  "source_commit": "dec53f3edc846f436702162c336b116ee7459fd8",
+  "worker_preservation": {
+    "private_receipt": "/Volumes/m2ext/backups/agentic-kit/2026-10-25-integration-cleanup/prose-scope-review-receipt.json",
+    "regular_files_verified": 2362,
+    "symlinks_verified": 1,
+    "worktree_and_branch_removed": true,
+    "native_lane_preserved": true
+  },
+  "proof_document_gate": {
+    "command": "task validate",
+    "exit_code": 0,
+    "log_sha256": "9f8391b2cc6e3e48828aabfa4ae41d302a9b7178a64b0c0002a260cbaa5b5451",
+    "source_binding_unchanged": true
+  }
+}

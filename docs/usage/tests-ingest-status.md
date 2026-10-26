@@ -1,4 +1,4 @@
-### `tests ingest` / `tests status` — test-kit evidence (vision 33 / ADR-043 stage 0)
+### `tests ingest` / `tests status` — test kit evidence (vision 33 / ADR-043 stage 0)
 
 ```sh
 fathom tests ingest --manifest <dir> --results <file|dir> \
@@ -8,7 +8,7 @@ fathom tests status [--service <id>] [--store <path>] [--json]
 ```
 
 `tests ingest` loads a service's declared `<dir>/tests/*.cue` manifests
-(validated against the mirrored test-kit schema, `schema/testkit/`) and
+(validated against the mirrored test kit schema, `schema/testkit/`) and
 attested `#TestResult` envelopes from `--results` (a single file, a
 directory of `*.json` files, plain JSON, NDJSON, or a DSSE/in-toto-wrapped
 envelope — the payload is decoded and its digest recorded as the run's
@@ -28,7 +28,7 @@ with no declared suites prints "no manifests found" instead of an empty
 table.
 
 fathom never runs a test itself (design doc §2): both verbs ingest
-test-kit's own record. A run's `env.commit`/`env.dirty`/`env.race` (vision
+the test kit's own record. A run's `env.commit`/`env.dirty`/`env.race` (vision
 34 / ADR-044 stage 1, O114) bind the run to the commit it was attested
 against — the commit-blind half of `internal/certify`'s state ladder that
 let a certificate read `live` after the code it certified had already
@@ -39,8 +39,8 @@ a commit-bound envelope for this repository's own suite — see below.
 
 **`task tests:attest`** re-attests this repository's own suite with a
 commit-bound envelope: `go test -json ./...`, converted to a `#TestResult`
-envelope by test-kit's go-test-json adapter (env `TESTKIT_GO_JSON` — the
-path to a built test-kit `surveyor` binary; the task prints a clear skip,
+envelope by the test kit's go-test-json adapter (env `TESTKIT_GO_JSON` — the
+path to a built test kit binary; the task prints a clear skip,
 never a failure, when it is unset), bound to `git rev-parse HEAD` / `git
 status --porcelain`, and written under `[tests] results_dir`
 (`docs/configuration.md`). The task never ingests the envelope itself — a

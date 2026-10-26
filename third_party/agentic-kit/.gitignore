@@ -18,3 +18,4 @@ coverage.*
 /endpoint-guard
 workspace/wasm/*.wasm
 /kit-new
+/.kit-consumers.env

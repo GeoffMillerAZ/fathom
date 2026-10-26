@@ -1,0 +1,19 @@
+# Seed: docs/design/feature-labs.md section 4.3. Kill: owner ruling L-R1.
+id: "lab-blast-radius"
+features: ["F-12"]
+surface: ["mcp:blast_radius"]
+firing:
+  should: "before changing an exported symbol with fan-in of 3 or more"
+  should_not: "a private helper with no callers"
+  grader: "tool_used"
+helped:
+  metric: "broken callers at the final tree"
+  arm: "plugin-minus-blast-radius"
+  direction: "decrease"
+  minimum_effect_of_interest: 1
+quality: []
+fixtures: ["internal/connector/testdata/fauxtown"]
+harness: ["replay", "fork"]
+kill: [{"criterion": "K4: A knob that raises firing and leaves helped harmed, or inconclusive toward harm, is reverted.", "reading": "docs/bench/readings/labs/lab-blast-radius.md"}, {"criterion": "K1: A classifier surface with TPR or TNR Wilson lower bound under 0.80 on 40 labeled points per class reports counts only.", "reading": "docs/bench/readings/labs/lab-blast-radius.md"}]
+knobs: [{"name": "description", "kind": "text", "location": "internal/mcp"}]
+owners: ["bench-prep.md#H2"]

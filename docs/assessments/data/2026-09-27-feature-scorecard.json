@@ -73,7 +73,7 @@
   {
    "name": "Findings loop",
    "why": "Tracer passed; 0 findings in the live store.",
-   "fix": "Arm Review Kit publishing on one real repository."
+   "fix": "Arm the review kit publishing on one real repository."
   },
   {
    "name": "SCIP import",
@@ -532,7 +532,7 @@
    "usage": "0 external findings in the live store; findings_near 0 calls",
    "evidence": "Tracer passed end to end (2026-09-18); findings-loop runs r1-r3 lost to instrument faults (O103-O107).",
    "verdict": "IMPROVE",
-   "better": "Arm Review Kit publishing on one real repo so findings actually flow.",
+   "better": "Arm the review kit publishing on one real repo so findings actually flow.",
    "roadmap": "N8"
   },
   {

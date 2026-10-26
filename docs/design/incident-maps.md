@@ -426,7 +426,7 @@ the answer enters an agent that holds private data and tools.
 
 ## 9. Readiness: facts, never grades
 
-A doctor row and `fathom incident --readiness`, not a verb of its own. Review Kit owns the standard of "ready"
+A doctor row and `fathom incident --readiness`, not a verb of its own. The review kit owns the standard of "ready"
 (XM-30's split stands). Facts per declaration:
 
 - **Anchors resolve.** Every symbol key exists, every glob matches at least one file, every contract key exists.

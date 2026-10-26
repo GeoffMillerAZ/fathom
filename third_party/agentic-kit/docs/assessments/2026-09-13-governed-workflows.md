@@ -46,21 +46,21 @@ checks structural wiring separately from the content audit and executed gates.
 
 | Consumer snapshot | Result against the new kit |
 |---|---|
-| Throughline `a007075`, pinned/vendored kit `188c53c` | Actual default-vendor full gate and focused race tests pass; structured findings and SQLite encrypted records use the kit. Other vendor dependencies are unchanged. |
-| resume_as_code `7a6c56a`, pinned/vendored kit `8b25230` | Actual default-vendor `test:all`, `go:lint`, focused race and receipt CUE pass; frozen-pin vendor freshness passes. First-class effort/schema and request-scoped family replace duplicated glue; the independent lesson receiver records adoption and refuses late drift/revocation. |
+| Consumer-a `a007075`, pinned/vendored kit `188c53c` | Actual default-vendor full gate and focused race tests pass; structured findings and SQLite encrypted records use the kit. Other vendor dependencies are unchanged. |
+| consumer-c `7a6c56a`, pinned/vendored kit `8b25230` | Actual default-vendor `test:all`, `go:lint`, focused race and receipt CUE pass; frozen-pin vendor freshness passes. First-class effort/schema and request-scoped family replace duplicated glue; the independent lesson receiver records adoption and refuses late drift/revocation. |
 | Fathom `68a5348`, kit `8b25230` | Build passes; full tests fail only `TestNarrowProfileSchemaBytes` (34,821 bytes vs upper bound 34,000). Same failure/value with baseline kit `3db571b`. |
-| growing-gardens-bi `7503dd1`, kit `8b25230` | Build passes; 14 finance tests require ignored `tmp/financials.json`. Same missing-fixture failures with baseline kit `3db571b`; other reached packages pass. No private financial data was copied. |
+| consumer-b `7503dd1`, kit `8b25230` | Build passes; 14 finance tests require ignored `tmp/financials.json`. Same missing-fixture failures with baseline kit `3db571b`; other reached packages pass. No private financial data was copied. |
 
-Fathom and growing-gardens-bi were checked in disposable clean clones, not modified.
+Fathom and consumer-b were checked in disposable clean clones, not modified.
 Their failures are pre-existing dispositions, not compatibility passes. No gate was
 relaxed; no new dependency, public release, tag or deployment was made.
 
-Throughline is delivered on actual branch `feat/governed-kit-delivery`;
-resume_as_code on `kit-governed-adoption`. Their main branches are unchanged.
-Consumer evidence lives in Throughline's `docs/upgrades/governed-kit-delivery.md` and
-resume_as_code's `cmd/llm/testdata/lesson-transfer/README.md` / ADR-021. The latter's
+Consumer-a is delivered on actual branch `feat/governed-kit-delivery`;
+consumer-c on `kit-governed-adoption`. Their main branches are unchanged.
+Consumer evidence lives in Consumer-a's `docs/upgrades/governed-kit-delivery.md` and
+consumer-c's `cmd/llm/testdata/lesson-transfer/README.md` / ADR-021. The latter's
 receipt binds the actual adapter, test and receiver policy bytes. In agentic-kit and
-resume_as_code, the seeded false-pass regression fails when only the classification check is removed
+consumer-c, the seeded false-pass regression fails when only the classification check is removed
 in a disposable snapshot; valid evidence cannot conceal a wrong outcome.
 
 ## Native observation and cost
@@ -112,6 +112,6 @@ normal trust and bounded live observations. Reuse the first lesson in a genuinel
 failure before claiming reduced recurrence. Production persistence adapters should be
 pulled by an actual transactional store, not prebuilt as a generic framework.
 
-Compatibility stays explicit: throughline's experimental guardrails risk is accepted
+Compatibility stays explicit: consumer-a's experimental guardrails risk is accepted
 under [0010](../intent/decisions/0010-pinned-experimental-adoption.md); public release,
 1.0 and corpus-provenance ratification remain separate owner decisions.

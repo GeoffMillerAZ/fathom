@@ -1,0 +1,38 @@
+# Historical timing metadata; round-3 runnable commands; preparation draft, not admission.
+{
+  "name": "urfave-cli",
+  "url": "https://github.com/urfave/cli",
+  "ref": "main",
+  "sha": "89ad11673146784b702fb14ce1e29f2b864e51c2",
+  "licence": "MIT",
+  "subpath": ".",
+  "bench": {
+    "toolchain": {
+      "versions": {
+        "go": "1.27.3"
+      },
+      "lockfile_sha256": "d4583181c1c7ec5ab4db5c02abf3f94aa4d4e20caf1f5b7793789f94cf1cbee3"
+    },
+    "setup": [
+      "export TMPDIR=/work/tmp COREPACK_HOME=/work/corepack UV_PROJECT_ENVIRONMENT=/work/venv UV_CACHE_DIR=/work/uv-cache UV_PYTHON_DOWNLOADS=never PIP_CACHE_DIR=/work/pip-cache GIT_CONFIG_COUNT=3 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0=/subject GIT_CONFIG_KEY_1=safe.directory GIT_CONFIG_VALUE_1=/work/source GIT_CONFIG_KEY_2=safe.directory GIT_CONFIG_VALUE_2=/subject/.git GOTOOLCHAIN=local GOFLAGS=-mod=readonly GOMAXPROCS=4 GOMODCACHE=/work/gomodcache GOCACHE=/work/gocache GOPATH=/work/gopath && mkdir -p /work/tmp && (test -d /work/source/.git || ( mkdir -p /work/source && git -C /subject ls-files -z > /work/tracked-files && tar -C /subject --null -T /work/tracked-files -cf /work/source.tar && tar -C /work/source -xf /work/source.tar && cp -R /subject/.git /work/source/.git )) && cd /work/source && go version && go mod download"
+    ],
+    "test": [
+      "export TMPDIR=/work/tmp COREPACK_HOME=/work/corepack UV_PROJECT_ENVIRONMENT=/work/venv UV_CACHE_DIR=/work/uv-cache UV_PYTHON_DOWNLOADS=never PIP_CACHE_DIR=/work/pip-cache GIT_CONFIG_COUNT=3 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0=/subject GIT_CONFIG_KEY_1=safe.directory GIT_CONFIG_VALUE_1=/work/source GIT_CONFIG_KEY_2=safe.directory GIT_CONFIG_VALUE_2=/subject/.git GOTOOLCHAIN=local GOFLAGS=-mod=readonly GOMAXPROCS=4 GOMODCACHE=/work/gomodcache GOCACHE=/work/gocache GOPATH=/work/gopath GOPROXY=off PIP_NO_INDEX=1 UV_OFFLINE=1 npm_config_offline=true PNPM_CONFIG_OFFLINE=true pnpm_config_verify_deps_before_run=warn COREPACK_ENABLE_NETWORK=0 HTTP_PROXY= HTTPS_PROXY= ALL_PROXY= && cd /work/source && go test -count=1 -timeout=14m ./..."
+    ],
+    "suite_seconds": 4.869,
+    "flake_runs": 3,
+    "l0_reading": "unmeasured: C4 awaits controller L0 runs",
+    "task_sources": [
+      {
+        "dataset": "upstream-git-history (candidate source; no admitted tasks)",
+        "revision": "89ad11673146784b702fb14ce1e29f2b864e51c2",
+        "licence": "MIT"
+      }
+    ],
+    "contamination": {
+      "age": 4852,
+      "popularity_band": "high"
+    }
+  },
+  "notes": "Refused on C6 under D24: fewer than three qualifying symbols; retained only as a historical preparation manifest. See docs/bench/readings/bench-prep/c6-r2.md."
+}

@@ -36,7 +36,7 @@ target — with the binary as reference implementation. Becoming a platform is a
 
 **Widened 2026-10-10 (ADR-067, vision 42).** "Code" means every file a repository carries, not only its symbols:
 each file answers what it is, what runs it, what configures it, what proves it and what governs it, computed at
-$0. Expert knowledge stays with its owner (resource rules in policy-kit, review judgment in Review Kit). Fathom
+$0. Expert knowledge stays with its owner (resource rules in the policy kit, review judgment in the review kit). Fathom
 supplies the facts and membership those rules select over, delivers them at the edit, and proves a fix through
 certifying tests, with judgment only on the residue a rule counts as unknown.
 

@@ -1,0 +1,11 @@
+{
+  "id": "C18",
+  "slug": "native-host-parity",
+  "axis": "composition",
+  "acceptance": "Claude, Codex and Antigravity negative live host cases prove declared controls",
+  "method": "source audit",
+  "source": "docs/evidence/native-hosts/2026-09-13/README.md",
+  "test": null,
+  "group": null,
+  "non_guarantee": "Component test does not prove consumer adoption, live model quality, or all entrypoints."
+}

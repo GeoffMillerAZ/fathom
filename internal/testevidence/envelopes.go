@@ -3,12 +3,12 @@ package testevidence
 // envelopes.go — LoadEnvelopes (TC-2): reads one attested #TestResult
 // envelope file, or every *.json file in a directory. Each file may hold
 // a single JSON object, an NDJSON stream (one object per line — what
-// `surveyor run --json` emits), or a JSON array; every top-level value is
+// the test kit's `run --json` emits), or a JSON array; every top-level value is
 // decoded independently. A value may be a bare #TestResult object or a
 // DSSE envelope wrapping an in-toto Statement whose predicate IS the
 // #TestResult (design doc §2, ADR-043 decision 5) — fathom decodes the
 // payload and records its digest as the run's identity, but never
-// attempts signature verification itself (that is test-kit's job; the
+// attempts signature verification itself (that is the test kit's job; the
 // DSSE envelope's own `tier` field is carried through as a fact).
 
 import (

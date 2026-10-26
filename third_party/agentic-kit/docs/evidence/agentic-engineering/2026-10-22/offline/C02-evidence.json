@@ -1,0 +1,12 @@
+{
+  "id": "C02",
+  "axis": "composition",
+  "acceptance": "A named decision site has labelled holdout calibration and provider-none authority bounds",
+  "outcome": "unknown",
+  "source": "docs/fast-judgment.md",
+  "source_sha256": "160d646e1de6c8f3ed9d73e05852a06fcd1cf2588dbbb47f200907c4c33aa0a1",
+  "test": null,
+  "group": null,
+  "scope_note": "Component test does not prove consumer adoption, live model quality, or all entrypoints.",
+  "reason": "Current source lacks a retained end-to-end criterion-specific adoption or measured-quality receipt."
+}

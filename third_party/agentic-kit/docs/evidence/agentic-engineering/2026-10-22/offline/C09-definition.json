@@ -1,0 +1,11 @@
+{
+  "id": "C09",
+  "slug": "vault-shred",
+  "axis": "component",
+  "acceptance": "Encrypted vault crypto-shred passes local conformance",
+  "method": "deterministic source plus scoped test",
+  "source": "foundations/security/tokenization/encrypted_vault_test.go",
+  "test": "TestEncryptedVaultShredConformance",
+  "group": "hitl_prose",
+  "non_guarantee": "Component test does not prove consumer adoption, live model quality, or all entrypoints."
+}

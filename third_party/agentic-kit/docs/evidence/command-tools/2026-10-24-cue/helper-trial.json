@@ -1,0 +1,46 @@
+{
+  "version": "agentic-kit.cue-compat-helper/1",
+  "baseline": "dd2e47fcfd716da4edd73b95e88c6960c189485e",
+  "goVersion": "go version go1.27.3 darwin/arm64",
+  "cueVersions": {
+    "16": {
+      "sha256": "1beeaa386ae3a8872382ce2af0f8a5e912a6f487c491e48d2be9aeb1d61c84ad",
+      "version": "cue version v0.16.1"
+    },
+    "17": {
+      "sha256": "a0b0685605dea83443aa2f0e91da25de72ed4e9768c80a821fbe94891c7badfe",
+      "version": "cue version v0.17.1"
+    }
+  },
+  "sourceArchiveSHA256": "f09529f1720857661867f096dc26d844334c5b283a1b1e05eb3dfe824e3395c7",
+  "sourceFiles": 468,
+  "steps": [
+    {
+      "name": "race17",
+      "exitCode": 0,
+      "elapsedSeconds": 7.387
+    },
+    {
+      "name": "schema16",
+      "exitCode": 0,
+      "elapsedSeconds": 2.887
+    },
+    {
+      "name": "vet",
+      "exitCode": 0,
+      "elapsedSeconds": 0.697
+    },
+    {
+      "name": "control16",
+      "exitCode": 0,
+      "subtestsPassed": 15,
+      "elapsedSeconds": 1.519
+    }
+  ],
+  "cueMatrix": {
+    "checks": 295,
+    "failures": []
+  },
+  "sourcesUnchanged": true,
+  "claim": "source-snapshot-focused-tests-and-cue-matrix; not-full-repository-gate-or-Linux-runtime"
+}

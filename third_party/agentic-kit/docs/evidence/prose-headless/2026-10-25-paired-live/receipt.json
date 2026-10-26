@@ -1,0 +1,119 @@
+{
+  "version": "prose-lab.paired-live-receipt/1",
+  "source_commit": "9036e94175f6fae611cf6f91338f9274a75a3948",
+  "command_source_binding": "804fbcdaba817db69baf17c52293bf037a68a961185f0d6debb5ab41db926fb1",
+  "source_manifest": "../2026-10-25-paired-review/receipt.json",
+  "binary_sha256": "9b36b83d19bdc9f0b33dda9b9ef2f26f6c75772425068b5ef80a0c421ea4a45e",
+  "binary_build": "/Volumes/m2ext/tmp/prose-headless-proof-20261024/paired-live-9036e94/prose-lab: go1.26.3\n\tpath\tgithub.com/geoffmilleraz/agentic-kit/cmd/prose-lab\n\tmod\tgithub.com/geoffmilleraz/agentic-kit\tv0.9.1-0.20261025205424-9036e94175f6\t\n\tbuild\t-buildmode=exe\n\tbuild\t-compiler=gc\n\tbuild\t-trimpath=true\n\tbuild\tCGO_ENABLED=1\n\tbuild\tGOARCH=arm64\n\tbuild\tGOOS=darwin\n\tbuild\tGOARM64=v8.0\n\tbuild\tvcs=git\n\tbuild\tvcs.revision=9036e94175f6fae611cf6f91338f9274a75a3948\n\tbuild\tvcs.time=2026-10-25T20:54:24Z\n\tbuild\tvcs.modified=false\n",
+  "freeze_sha256": "39ed12a03e887d8dca98ee41eefe7e8ea3ac8cc237c785d0908a3ed90b082242",
+  "protocol_sha256": "937aaa1cc9d2ccaaa556f442b7571b6eceb716f8c9d9463863b29faa9ff7c33e",
+  "study_sha256": "a28abde5ec838e13a671dc9c278d9cbc2934c2100fccbe0dd11b6459d6ca046e",
+  "preparations_sha256": "242ac808efa164be567dd9e6ae0e993fd21f7b775c31347e63ce3e6b93ed29f6",
+  "driver_sha256": "9eef8a71485cd8a0f446ddaf45230a57df3a0be27e59262e955e76149487f6fb",
+  "driver_test_sha256": "e45b5a863328b3853a1c65df8fd94fa27e6ce5d670158f26b210bc4715de7718",
+  "owner_labels_sha256": "a5bd3aacf200dabfc5a9518b3dc85097c1bf95e2c50dfc5bbab55fc1507ba23e",
+  "pre_dispatch_note": "th-c9caac2c",
+  "pre_dispatch_source_and_offline_review": {
+    "owner_tests": 12,
+    "independent_tests": 12,
+    "real_preflight_provider_calls": 0,
+    "reviewer_kind": "independent-agent-source-review",
+    "model": "gpt-6-sol",
+    "reasoning_effort": "high"
+  },
+  "driver_exit": 2,
+  "capture_stop_exit": 1,
+  "report_exit": 1,
+  "stop_class": "semantic_stop",
+  "planned_executions": 140,
+  "logical_cases": 70,
+  "executed": 108,
+  "unexecuted": 32,
+  "variant_completed": {
+    "baseline": 54,
+    "candidate": 54
+  },
+  "variant_oracle_matches": {
+    "baseline": 54,
+    "candidate": 53
+  },
+  "fixed_oracle_mismatches": [
+    {
+      "position": 108,
+      "execution_id": "candidate--operational-runbook--p-03",
+      "predeclared_expected": "supported",
+      "observed": "unsupported"
+    }
+  ],
+  "candidate_qualified": false,
+  "hypothesis_extensions_executed": 0,
+  "invalid": 0,
+  "unknown": 0,
+  "inconclusive": 0,
+  "input_tokens": 126688,
+  "output_tokens": 10090,
+  "cache_write_tokens": 0,
+  "cache_read_tokens": 0,
+  "new_direct_micro_usd": 354276,
+  "prior_direct_micro_usd": 424414,
+  "combined_direct_micro_usd": 778690,
+  "new_known_native_calls": 108,
+  "prior_known_native_calls": 89,
+  "combined_known_native_calls": 197,
+  "charge_basis": "locally captured native usage priced at pinned rates; not invoice/account balance",
+  "new_cap_micro_usd": 5000000,
+  "direct_stage_cap_micro_usd": 10000000,
+  "reservation_per_call_micro_usd": 4040960,
+  "native_categories_qualified": true,
+  "stop_and_accounting_audit": "owner and independent agent independently reconciled all native request/response/receipt metadata and all140 positions",
+  "label_adjudication": "post-run blind independent agent + owner review found strict-entailment ambiguity; historical labels and failure unchanged; not human-authenticated truth",
+  "source_or_provider_authentication": false,
+  "independent_acceptance": false,
+  "publication_authority": false,
+  "model_site_adoption": false,
+  "document_acceptance": false,
+  "ui_entry": false,
+  "provider_calls_replayed": false,
+  "runtime_proof_scope": "this single tuned public-synthetic paired development cohort",
+  "library_roots_changed": false,
+  "downstream_rerun": false,
+  "source_manifest_field": "files",
+  "next_criterion_sha256": "bb12ed77442b05cc9912247881fce489a35d5de4749fb1efe364c5c2011acaac",
+  "next_criterion_status": "versioned bytes recorded; not embedded or executed by current commands",
+  "full_gate": {
+    "command": "task validate",
+    "exit_code": 0,
+    "log_sha256": "1e85d6ee105de3335162ffcc258579278c738368ade354bfe2445e3e2347b303",
+    "cmd_prose_lab_race_seconds": 129.988
+  },
+  "fathom": {
+    "command": "fathom verify --service agentic-kit --plan docs/plans/prose-headless-proof.md --strict --json",
+    "exit_code": 0,
+    "index_commit": "9036e94175f6fae611cf6f91338f9274a75a3948",
+    "summary": {
+      "fail": 0,
+      "pass": 6,
+      "total": 20,
+      "unknown": 14
+    },
+    "gate_pass": true,
+    "scope": "claimed structural assertions only; runtime attestation remains unknown",
+    "log_sha256": "5ec833eec9e56a3dd404d95d7f70ca0f2f7580870f550909a41b3c91df995e32"
+  },
+  "actual_json_cue_validation": {
+    "study": "#PairedStudy",
+    "report": "#PairedReport",
+    "exit_codes": [
+      0,
+      0
+    ]
+  },
+  "keyfree_native_replay": {
+    "version": "prose-lab.paired-keyfree-replay/1",
+    "exit_code": 1,
+    "identical_report_sha256": "5f38636ccc1fcc6dc77419228e6d75e3598f3529aa6b6109cc7230276a402b48",
+    "new_provider_calls": 0,
+    "new_independent_cases": 0,
+    "source_binary_sha256": "9b36b83d19bdc9f0b33dda9b9ef2f26f6c75772425068b5ef80a0c421ea4a45e"
+  }
+}

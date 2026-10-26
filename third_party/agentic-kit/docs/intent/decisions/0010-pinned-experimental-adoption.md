@@ -6,7 +6,7 @@
 
 ## Context
 
-Throughline already consumes experimental `kits/guardrails-pipeline`. The owner's
+Consumer-a already consumes experimental `kits/guardrails-pipeline`. The owner's
 delegated architecture/implementation work now replaces its findings workaround and
 validates the actual vendored upgrade (`a007075`, kit `188c53c`). A production import
 does not prove a stable public contract; neither does a green synthetic suite.
@@ -14,7 +14,7 @@ does not prove a stable public contract; neither does a green synthetic suite.
 ## Decision
 
 Keep the classification experimental and accept the existing consumer's upgrade risk
-for this bounded pilot. Throughline pins a specific module revision and tracked vendor
+for this bounded pilot. Consumer-a pins a specific module revision and tracked vendor
 snapshot; upgrades remain deliberate changes with its full default gate, structured
 finding/advisory regressions and documented rollback to the preceding pin. No live
 deployment, silent dependency update or broader compatibility promise is authorized.

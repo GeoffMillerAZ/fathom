@@ -1,0 +1,1 @@
+Release notes may omit the evidence used for the release decision.

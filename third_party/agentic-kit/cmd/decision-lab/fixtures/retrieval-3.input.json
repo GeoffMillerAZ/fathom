@@ -1,0 +1,7 @@
+{
+  "version": "decision-lab.input/1",
+  "caseId": "retrieval-3",
+  "subjectId": "claim-3",
+  "revision": "r1",
+  "capturedState": "Claim: Workflow W7 requires approval before release.\nSources: Policy A says W7 requires approval. Policy B says W7 may release without approval."
+}

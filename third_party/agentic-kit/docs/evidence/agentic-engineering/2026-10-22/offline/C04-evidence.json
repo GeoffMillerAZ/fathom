@@ -1,0 +1,26 @@
+{
+  "id": "C04",
+  "axis": "target-gap",
+  "acceptance": "A native Google LLM adapter implements the common port with conformance",
+  "outcome": "fail",
+  "source": "docs/intent/scope.md",
+  "source_sha256": "3e4bb055f02ec91cb121fcaa60c77c83f940c7e203e3edf4e9f2587bbd6a483b",
+  "test": null,
+  "group": null,
+  "scope_note": "Component test does not prove consumer adoption, live model quality, or all entrypoints.",
+  "negative_scan": {
+    "name": "google_provider",
+    "argv": [
+      "rg",
+      "-n",
+      "Gemini|GenerativeLanguage|generativelanguage.googleapis.com|vertexai|google.*LLM",
+      "foundations/llmclient",
+      "foundations/decision"
+    ],
+    "cwd": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+    "exit_code": 1,
+    "log": "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/google_provider-scan.log"
+  },
+  "scan_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "reason": "Scope provider inventory names Anthropic, Bedrock, OpenAI, ClaudeCLI and CodexCLI; path scan found no Google adapter. No live verification attempted."
+}

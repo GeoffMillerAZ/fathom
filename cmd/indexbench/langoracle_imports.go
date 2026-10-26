@@ -313,7 +313,7 @@ func scoreImportFileEdges(ctx context.Context, path, lang, root, name string, fi
 	}
 	tier, err := oracleFileTier(path, tf.Tier) // round 4 C4-R2
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("file-edge truth: %w", err)
 	}
 	edges, rep := fusion.ResolveFileEdges(ctx, lang, root, files, nodes)
 	if rep.Skipped {

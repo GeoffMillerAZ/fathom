@@ -53,7 +53,7 @@ stop-gap if wave B slips.
 |---|---|---|
 | The edit path reads no whole tree's contents | head `obligations`: no `Sources` and no `ReadFile` of the tree in the allocation profile; baseline: 3.30 GB in use under `RawFallbackObligations` → `Sources` → `os.ReadFile` | **yes** |
 | `list_services` loads no symbol row | head: `ServiceSymbolAggregates` (SQL) and `SourcePaths`, with no `ListAllSymbols`; baseline: 4.01 GB in use under `UnsupportedLanguagesFor` → `Sources` → `os.ReadFile` | **yes** |
-| `obligations` allocates ≤ 2 MiB per call (§4.3) | sequential and warm: app-kit 1.7–2.5 MiB, platform-engineering 6.9–7.5 MiB, fathom 21.3–21.6 MiB; under 20-way concurrency 9.0–10.1 MiB | **no** for two of the three services (see §4) |
+| `obligations` allocates ≤ 2 MiB per call (§4.3) | sequential and warm: app-kit 1.7–2.5 MiB, platform 6.9–7.5 MiB, fathom 21.3–21.6 MiB; under 20-way concurrency 9.0–10.1 MiB | **no** for two of the three services (see §4) |
 | `obligations` p50 ≤ 60 ms (§4.3) | sequential and warm: p50 12 ms, max 41 ms; 20-way concurrent: p50 80–113 ms, max 217 ms | **yes** sequentially; the target does not cover a 20-way burst |
 | Inline ingests run one at a time (RT-149) | not exercised: `--auto-refresh=false`, as the replay rules require | not measured |
 
@@ -75,7 +75,7 @@ fresh copy of the store.
 | obligations, sequential ×20 (warm) | 20/20 | — | 12 / 41 / 41 ms | median 7.3 MiB | — |
 | symbol_context ×20, run 1 | 1/20 | killed at +30.7 s | — | — | **6.06 / 5.88 GiB (killed)** |
 | symbol_context ×20, run 2 | 20/20 | 124 s | 76.7 s / 124 s | 4.59 GB | 5.78 / 5.21 GiB |
-| symbol_context, one call each: app-kit / platform-engineering / fathom | 3/3 | 22.1 / 4.5 / 15.4 s | — | 5.28 / 2.45 / 9.78 GB | 1.16 / 1.11 GiB |
+| symbol_context, one call each: app-kit / platform / fathom | 3/3 | 22.1 / 4.5 / 15.4 s | — | 5.28 / 2.45 / 9.78 GB | 1.16 / 1.11 GiB |
 
 After the `list_services` and `obligations` phases, the steady state was 0.06 GiB RSS
 (0.03 GiB footprint) and 0.10 GiB RSS (0.08 GiB footprint).
@@ -149,7 +149,7 @@ faster than that.
     abandonment.
 - **Workload:** chosen by a fixed seed.
   - `obligations`: 100 distinct source files present on disk, each round split 7
-    app-kit / 7 platform-engineering / 6 fathom. Vendored `.tools/`, `node_modules`,
+    app-kit / 7 platform / 6 fathom. Vendored `.tools/`, `node_modules`,
     `target/`, `dist/` and `vendor/` paths were excluded.
   - `symbol_context`: 20 function or type symbols, split the same way.
 - **Safety:** a sampler thread sent SIGKILL the moment RSS or phys_footprint exceeded

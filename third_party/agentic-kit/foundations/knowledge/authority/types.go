@@ -198,7 +198,7 @@ type Treatment struct {
 }
 
 // Justification grounds a legal conclusion in both factual evidence and legal
-// authority. It is the citation link that Throughline's outputs trace back to
+// authority. It is the citation link that Consumer-a's outputs trace back to
 // sources.
 //
 // Design note: a conclusion's strength is bounded by BOTH its weakest

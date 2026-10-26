@@ -1,0 +1,26 @@
+{
+  "version": "decision-lab.pack/1",
+  "id": "human-clarification",
+  "templateVersion": "v1",
+  "confidenceRecipe": "decision.Confidence/1",
+  "readingRecipe": "decision.NewReading/1",
+  "provider": "fixture-provider",
+  "resolvedModel": "fixture-model",
+  "policyEpoch": "policy-v1",
+  "owner": "kit-maintainer",
+  "fallback": "Ask the human for the missing detail.",
+  "baseline": "Human prose review against required fields.",
+  "killCriterion": "Retire if unclear prose is marked clear above the site bar.",
+  "questions": [
+    {
+      "id": "clarity",
+      "instructions": "Decide whether the captured request is clear enough for a human to review. Do not infer missing authorization or scope.",
+      "options": [
+        {"name": "clear", "criteria": "Scope and intended action explicit"},
+        {"name": "ask", "criteria": "Material clarification needed"},
+        {"name": "unknown", "criteria": "Cannot assess from captured text"}
+      ],
+      "favorableOptions": ["clear"]
+    }
+  ]
+}

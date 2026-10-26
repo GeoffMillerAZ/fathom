@@ -79,7 +79,7 @@ stratum today.
 | `findings` | `finding` | `sme-stated` | `concern` | `findings/**` | **yes** | pass — CV-M10 (2026-09-24): precision 1.00 / recall 1.00, 2 consecutive production-model runs, after fixing the eval harness's own scope-fp fingerprint gap (`schema/semantic/layers/findings/eval/RESULTS.md` — the 2026-07-30 run was blocked before scoring, not a precision failure) | `fathom layers list --store PATH --service NAME` |
 | `adr-rules` | `adr-rule` | `doc-claimed` | `concern` | `ADR.md`, `docs/design/*.md` | no | pass — precision 1.00 / recall 1.00, 7 rules + 2 traps, production model pinned | `fathom layers list --store PATH --service NAME` |
 | `spec-bindings` | `spec-binding` | `doc-claimed` | `concern` | `docs/plans/**` excl. `README.md` | no | pass — precision 1.00 / recall 1.00, 6 rules + 2 traps, production model pinned | `fathom layers list --store PATH --service NAME` |
-| `certifications` | `certification` | `doc-claimed` → `pre-scan` → `verified` | `concern` | `// certifies:` markers, `tests/*.cue` manifests, attested test-kit runs | swept on every ingest | n/a — compiled deterministically, no model (ADR-043) | `fathom certify status\|gaps\|manifest` |
+| `certifications` | `certification` | `doc-claimed` → `pre-scan` → `verified` | `concern` | `// certifies:` markers, `tests/*.cue` manifests, attested test kit runs | swept on every ingest | n/a — compiled deterministically, no model (ADR-043) | `fathom certify status\|gaps\|manifest` |
 
 ### `obligations` — every edit
 

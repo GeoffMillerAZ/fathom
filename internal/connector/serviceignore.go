@@ -184,6 +184,25 @@ func serviceIgnoreLines(serviceID string) ([]string, int, string) {
 func combinedIgnoreLines(root, serviceID string) ([]string, IgnoreCounts, error) {
 	projectLines, projectN := ignoreLines(filepath.Join(root, IgnoreFileName))
 
+	scoped, counts, err := scopedIgnoreLines(serviceID)
+	if err != nil {
+		return nil, IgnoreCounts{}, err
+	}
+	counts.Project = projectN
+	if projectN == 0 && counts.User == 0 && counts.Service == 0 {
+		return nil, counts, nil
+	}
+	return append(scoped, projectLines...), counts, nil
+}
+
+// ScopedIgnorePatterns returns user and service exclusions in ingest's union
+// order, without project rules. Historical blobs supply their own project rules.
+func ScopedIgnorePatterns(serviceID string) ([]string, error) {
+	lines, _, err := scopedIgnoreLines(serviceID)
+	return lines, err
+}
+
+func scopedIgnoreLines(serviceID string) ([]string, IgnoreCounts, error) {
 	userPath := UserIgnorePath()
 	var userLines []string
 	var userN int
@@ -201,15 +220,7 @@ func combinedIgnoreLines(root, serviceID string) ([]string, IgnoreCounts, error)
 		}
 	}
 
-	counts := IgnoreCounts{Project: projectN, User: userN, Service: svcN}
-	if projectN == 0 && userN == 0 && svcN == 0 {
-		return nil, counts, nil
-	}
-	combined := make([]string, 0, len(userLines)+len(svcLines)+len(projectLines))
-	combined = append(combined, userLines...)
-	combined = append(combined, svcLines...)
-	combined = append(combined, projectLines...)
-	return combined, counts, nil
+	return append(userLines, svcLines...), IgnoreCounts{User: userN, Service: svcN}, nil
 }
 
 // LoadIgnoreScopedFor unions root's project-scope .fathomignore with the

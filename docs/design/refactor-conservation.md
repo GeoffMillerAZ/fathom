@@ -10,7 +10,7 @@ anti-Blindness) landed and are proven. §4 (refactors as programs) and §5 (the
 typed floor) shipped their CLI verbs (`fathom refactor plan`/`status`,
 `fathom report evidence`). §6's pre-push wiring and the `review`/`review_diff`
 `conservation` dimension are wired. §7's decision-port sites and §7a's
-cross-repo test-kit/Review Kit rows remain `(op)`/unclaimed in the plan.
+cross-repo test kit and review kit rows remain `(op)`/unclaimed in the plan.
 **CV-M6 (the dogfood refactor program) passes**, but only after fixing a
 real gap it found: `fathom verify --store` had never wired a
 `verify.GoneEvidence` adapter, so a `gone:` row (§3.1) could never be
@@ -115,7 +115,7 @@ Field names and plane/kind strings are the wire contract; sort order is plane,
 then kind, then key. Every Finding additionally carries `file`/`line` (both
 `omitempty`) — the finding's SUBJECT's own repo-relative location, at HEAD
 when it still exists there, else at BASE — for a citation-grounded caller
-(the Review Kit adapters) that needs a real source anchor and not just the
+(the review kit adapters) that needs a real source anchor and not just the
 human-readable `base`/`head` strings. Populated wherever a plane already has
 the location at hand or cheaply parsed (a guarded test's file:line, a
 reappeared function's head site, a capability inventory item's declaration,
@@ -127,7 +127,7 @@ never a single file).
 
 ### 1.1 Commit-bound runs (fixes O114)
 
-- test-kit `#EnvInfo` gains optional `commit` (40-hex), `dirty` (bool) and
+- The test kit `#EnvInfo` gains optional `commit` (40-hex), `dirty` (bool) and
   `race` (bool) — the commit the suite ran against, whether the tree had
   uncommitted changes, and whether the race detector was on. The go-test-json
   adapter fills them from `git rev-parse HEAD` and `git status --porcelain`. An
@@ -149,7 +149,7 @@ never a single file).
   certificate (the half of TC-8 that O114 found missing).
 - Consequence: existing certificates read `unproven` until runs are re-attested
   with a commit. `task tests:attest` does that for this repository (runs
-  `go test -json`, converts with test-kit's adapter when it is installed, and
+  `go test -json`, converts with the test kit's adapter when it is installed, and
   ingests with `fathom tests ingest`).
 
 ### 1.2 Guarded tests
@@ -362,7 +362,7 @@ deterministic Blindness detector.
 
 ### 3.4 The reading set (the residue, Q22)
 
-Decision 7 hands Review Kit "the residue no test covers" and decision 1 lets the
+Decision 7 hands the review kit "the residue no test covers" and decision 1 lets the
 decision port order attention over it, but nothing computed the residue, so
 `refactoring.uncovered-behaviour` had no evidence to judge. The reading set is
 that computation: the changed functions in `base..head` whose behaviour no
@@ -397,7 +397,7 @@ Then:
 class by resolved caller count descending, then symbol. The list is capped
 (default 200, `--residue-max`); the report says how many were cut. No
 percentage, ratio or threshold is computed (I43): counts and lists only, and
-Review Kit judges.
+the review kit judges.
 
 **Honesty.** The reading set is `unproven`, with its missing inputs listed and
 no function classified, when the index is not at HEAD, typed packages failed, or
@@ -410,7 +410,7 @@ instead of implying they were checked.
 `unanalyzed`, `missing`); it is not a plane and never changes a plane's verdict
 or `--strict`'s exit. `fathom conserve` prints the reading set after the planes.
 The review `conservation` dimension carries the counts and the first five
-`unreached` items. Review Kit's `fathom-conserve` adapter reports the residue as
+`unreached` items. The review kit's `fathom-conserve` adapter reports the residue as
 the evidence for `refactoring.uncovered-behaviour`: fail when any item is
 `unreached` or `unattested` (citing the first item's file and line), ok when
 none, not-yet-checked when the residue is unproven. That requirement stays
@@ -502,11 +502,11 @@ Asking a model whether an unexecuted changed line is "safe" is refused under
 decision 8.
 
 **Kill criterion (CV-M14).** Re-run the CV-M13 ranges with coverage: fathom
-5afeee42..78e508d3 and conjure's three measured ranges (r1, r2, r3). By
+5afeee42..78e508d3 and svc-f's three measured ranges (r1, r2, r3). By
 construction, no `attested` item may be unexecuted and no flagged item may
 have executed. `runServeHTTP` must read `partial`, naming
 `cmd/fathom/servehttp.go` line 131. The `slog.Handler` methods (only present
-in conjure's r3, 44fd5ae..e9d0f2e) must read `attested`. `WithGroup` and
+in svc-f's r3, 44fd5ae..e9d0f2e) must read `attested`. `WithGroup` and
 `ParseError.Unwrap` must read `unexecuted`. This prediction is meaningful only
 against a bound, `passed: true` profile at the range's own head (I44: a
 profile whose run did not pass is refused globally, and every item in that
@@ -547,10 +547,10 @@ overlapping ranges.
   files. The function was a comment-only edit, which the amended rule in §3.4 no
   longer counts. The absence and resurrection planes cover the deleted files, so
   the reading set does not list them.
-- **A weaker-tested repository.** On conjure's r2 range (326 changed functions; 100
+- **A weaker-tested repository.** On svc-f's r2 range (326 changed functions; 100
   of them in vendored files the index excludes) the reading set flags 105 `partial`
   and 2 `unexecuted` of the 226 it classifies (CV-M14). Weaker tests make the
-  flagged set larger; they do not make the change look reviewed. Across conjure's
+  flagged set larger; they do not make the change look reviewed. Across svc-f's
   three ranges, CV-M13's hand check confirmed four changed functions never ran.
   Static reach called two of them `attested`: `jsonShapeError.Error` (r1 and r3)
   and `webui.handleAdoptStream` (r2, 163 reaching tests, 0.0% covered). It called
@@ -561,15 +561,15 @@ overlapping ranges.
   a supplementary reconstruction). CV-M14 does not name r2's second `unexecuted`
   item. CV-M13's r2 coverage join has exactly two functions at 0.0%,
   `ParseError.Unwrap` and `handleAdoptStream`
-  (`docs/bench/readings/cv-m13-method/conjure/r2-classes-with-coverage.tsv`), but
+  (`docs/bench/readings/cv-m13-method/svc-f/r2-classes-with-coverage.tsv`), but
   no reading records `handleAdoptStream`'s class under coverage.
 
 **Re-derivation.** A stranger can re-derive the numbers for this repository's
 ranges from the repository alone. Each reading carries its reproduce recipe, and
 CV-M13's scripts are committed under `docs/bench/readings/cv-m13-method/`. CV-M14
 cross-checked every named case against the raw `go tool cover` profile. The
-conjure numbers need that repository, which a stranger does not have. No 400-file
-range has been measured; the largest is conjure r2, with 326 changed functions.
+svc-f numbers need that repository, which a stranger does not have. No 400-file
+range has been measured; the largest is svc-f r2, with 326 changed functions.
 On this repository, the evidence that flagged items are real rests on one range
 (the 13 partial functions above). No seeded undertested range has been run here.
 
@@ -625,18 +625,18 @@ Q28).
   site.
 - Frontier ordering and same-concept questions stay futures with triggers (F23).
 
-## 7a. Review Kit and test-kit
+## 7a. The review kit and the test kit
 
-- test-kit: the envelope fields in 1.1, the adapter filling them, an ADR in its
+- The test kit: the envelope fields in 1.1, the adapter filling them, an ADR in its
   own repository.
-- Review Kit: pack `refactoring-conservation` with requirements
+- The review kit: pack `refactoring-conservation` with requirements
   `refactoring.no-undeclared-loss` (adapter `fathom-conserve` over
   `fathom conserve --json --since <base> --service <service>` — `--service`
   is required (cmd/fathom's conserve subcommand has no default-from-
   repo-directory fallback the way `certify gaps`/`certify manifest`/
   `certify status`/`certify orphans` do), so the adapter is constructed
-  with the sounding's own configured Service, the same value
-  `NewFathomAdapterAtRoot` already threads through for `fathom verify`
+  with the review run's own configured Service, the same value
+  the review kit's fathom adapter constructor already threads through for `fathom verify`
   bindings — fails on a finding with `declared` other than `prior`),
   `refactoring.proof-integrity` (integrity
   findings of kind `deleted`, `weakened`, `skipped`, `golden_changed`,

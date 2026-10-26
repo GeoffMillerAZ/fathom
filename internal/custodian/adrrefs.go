@@ -45,7 +45,7 @@ func checkADRReferencesResolve(root string, c Concern) Finding {
 	// Only citations written in THIS repo's id shape are checked. A repo
 	// numbering ADR-001..ADR-026 does not write ADR-0070: that four-digit
 	// form is a SIBLING repo's record (this repo's plans cite
-	// platform-engineering's ADR-0070 by name), and reporting it as missing
+	// another repository's four-digit record by name), and reporting it as missing
 	// would be the tool claiming another repo's tree is broken — the same
 	// overreach F18 refuses.
 	widths := map[int]bool{}
