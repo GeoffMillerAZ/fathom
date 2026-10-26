@@ -1,0 +1,3 @@
+### Added
+
+- `symbol_context` serves an entity's stored facts under the additive `facts` field: a Kubernetes workload's `K8sFact` rows and, newly stored by ingest as `EntityFact` observations of the entity's own file, the facts a Prometheus rule or Alertmanager route declares (labels, receiver, `continue`). Each row carries `key`, `value`, `kind` and an `anchor` (path, line, and the file's `citation_status` when not clean), sorted by line then key; `coverage` names `state` (`complete`, or `incomplete` once the file differs from the index), `extractor`, `tier` and `read_set`. The field is omitted for an entity with no stored fact. Re-ingest to store the new rows.

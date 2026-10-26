@@ -354,6 +354,12 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 			}
 		}
 
+		// Facts (WAE-5): a dialect entity's stored EntityFact rows, or a
+		// Kubernetes workload's K8sFact rows, anchored, with coverage.
+		if facts, ok := entityFactsSection(ctx, backend, p.Service, sctx.Def, nodes); ok {
+			result["facts"] = facts
+		}
+
 		// Cross-service callers/callees (P1-2, closing O12(a)): g/sctx above
 		// are built from p.Service's own nodes only, so a call crossing a
 		// service boundary — e.g. fathom's cmdInstrument calling agentic-
