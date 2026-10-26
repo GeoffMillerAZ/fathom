@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -113,7 +114,7 @@ func TestSimulinkCalibrationIdentity(t *testing.T) {
 		rel = filepath.ToSlash(rel)
 		m, _ := ReadSimulinkModel(rel, src)
 		r, err := NewSimulinkExtractor().ExtractDoc("svc", rel, src)
-		if err != nil {
+		if err != nil && !errors.Is(err, ErrModelRefused) { // a refused model counts as nothing, as before
 			return err
 		}
 		c := simulinkCounts{Blocks: len(m.Blocks), Signals: len(m.Signals), ModelRefs: len(m.ModelRefs), CrossFile: len(r.CrossFile),

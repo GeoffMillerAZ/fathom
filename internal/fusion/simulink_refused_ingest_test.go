@@ -52,6 +52,9 @@ func TestIngest_RefusedSimulinkModelKeepsService(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if rep.ModelsRefused != 1 {
+		t.Errorf("ModelsRefused = %d; want 1 (a refused model is counted, never stored as an empty file)", rep.ModelsRefused)
+	}
 	if rep.SkippedGenerated != 0 {
 		t.Fatalf("%d files skipped as generated; the model must reach the reader", rep.SkippedGenerated)
 	}

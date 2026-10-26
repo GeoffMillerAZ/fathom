@@ -406,6 +406,7 @@ func (p *Pipeline) ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	report.Oversize += stats.oversize
 	report.ClassifiedZero = stats.classifiedZero
 	report.TSEngineFaults = stats.tsFaults
+	report.ModelsRefused = stats.modelsRefused
 	report.UnsupportedLanguages = stats.unsupportedLang
 	report.SkippedGenerated = stats.skippedGenerated
 	report.AmbiguousUnclassified = stats.ambiguous

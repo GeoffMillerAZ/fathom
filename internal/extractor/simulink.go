@@ -177,6 +177,9 @@ func (b *simulinkBudget) take(name string, line int) error {
 }
 
 var (
+	// ErrModelRefused marks an Extract error as a model the reader refused at a cap: the file
+	// yields no symbols, and ingest counts it on Report.ModelsRefused with one stderr line.
+	ErrModelRefused = errors.New("model refused at a read cap")
 	// ErrSimulinkCap: a package over one of the caps, or a part that does not parse, read as
 	// nothing.
 	ErrSimulinkCap = errors.New("simulink: package over a read cap")
@@ -1403,8 +1406,10 @@ const SimulinkModelRefEdge = "model_ref"
 
 var _ DocResulter = (*SimulinkExtractor)(nil)
 
-// Extract implements Extractor. A model the reader refuses (a cap, a corrupt package, a
-// text-package .mdl) yields no symbols and no error, as the doc engine reads malformed input.
+// Extract implements Extractor. A model the reader refuses at a cap (or a part that does not
+// parse) yields no symbols and an error matching ErrModelRefused and ErrSimulinkCap, so ingest
+// counts and discloses it instead of storing an empty file (I38). A text-package .mdl yields
+// no symbols and no error.
 func (x SimulinkExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
 	r, err := x.ExtractDoc(service, relPath, src)
 	return r.Nodes, err
@@ -1418,6 +1423,9 @@ func (x SimulinkExtractor) Extract(service, relPath string, src []byte) ([]core.
 func (SimulinkExtractor) ExtractDoc(service, relPath string, src []byte) (DocResult, error) {
 	m, err := ReadSimulinkModel(relPath, src)
 	if err != nil {
+		if errors.Is(err, ErrSimulinkCap) {
+			return DocResult{}, fmt.Errorf("%w: %w", ErrModelRefused, err)
+		}
 		return DocResult{}, nil
 	}
 	pkg := pkgFromPath(relPath)
@@ -1431,7 +1439,7 @@ func (SimulinkExtractor) ExtractDoc(service, relPath string, src []byte) (DocRes
 	left := SimulinkMaxPathBytes
 	for i := range m.Blocks {
 		if left -= size[m.canon[i]]; left < 0 {
-			return DocResult{}, nil
+			return DocResult{}, fmt.Errorf("%w: %w: emitted calls hold past %d bytes of paths", ErrModelRefused, ErrSimulinkCap, SimulinkMaxPathBytes)
 		}
 	}
 	sorted := make([][]string, len(m.Blocks)) // a canonical block's calls, each path built once

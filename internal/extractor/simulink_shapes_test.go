@@ -123,8 +123,9 @@ func TestReadSimulinkModelCountCaps(t *testing.T) {
 			}
 			m, err := ReadSimulinkModel(rel, b)
 			r, xerr := NewSimulinkExtractor().ExtractDoc("svc", rel, b)
-			if xerr != nil {
-				t.Fatal(xerr)
+			// a refusal is the same on both paths: Extract's error wraps the reader's
+			if (err != nil) != (xerr != nil) || (err != nil && !errors.Is(xerr, ErrModelRefused)) {
+				t.Fatalf("reader err %v, ExtractDoc err %v; want a refusal on both or neither", err, xerr)
 			}
 			return m, r, err
 		}
@@ -226,8 +227,8 @@ func TestSimulinkExtractDocOutputBound(t *testing.T) {
 			calls += len(c)
 		}
 	}
-	if err != nil || len(many.Nodes) != 0 {
-		t.Errorf("3 sources sharing a path: %d nodes, %d bytes of calls, %v; want none", len(many.Nodes), calls, err)
+	if !errors.Is(err, ErrModelRefused) || len(many.Nodes) != 0 {
+		t.Errorf("3 sources sharing a path: %d nodes, %d bytes of calls, %v; want none and ErrModelRefused", len(many.Nodes), calls, err)
 	}
 }
 

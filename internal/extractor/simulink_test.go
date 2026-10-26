@@ -512,8 +512,8 @@ func TestReadSimulinkModelStrayEndTags(t *testing.T) {
 				if !errors.Is(err, ErrSimulinkCap) {
 					t.Errorf("%s: err = %v, want an ErrSimulinkCap syntax error", entry, err)
 				}
-				if r, err := (SimulinkExtractor{}).ExtractDoc("svc", "m.slx", src); err != nil || len(r.Nodes) != 0 {
-					t.Errorf("%s: ExtractDoc = %d nodes, %v; want none, nil", entry, len(r.Nodes), err)
+				if r, err := (SimulinkExtractor{}).ExtractDoc("svc", "m.slx", src); !errors.Is(err, ErrModelRefused) || !errors.Is(err, ErrSimulinkCap) || len(r.Nodes) != 0 {
+					t.Errorf("%s: ExtractDoc = %d nodes, %v; want none and ErrModelRefused wrapping ErrSimulinkCap", entry, len(r.Nodes), err)
 				}
 			}
 		})

@@ -204,6 +204,14 @@ func (s *extractSink) add(ctx context.Context, pf pendingFile) error {
 			fmt.Fprintf(os.Stderr, "fathom: fusion: tree-sitter engine fault on %s/%s (file fingerprinted, parser re-created): %v\n",
 				serviceID, pf.ref.Path, extractErr)
 		}
+		// A model the reader refused at a cap (I38): counted on
+		// Report.ModelsRefused with one stderr line, never an empty
+		// file stored without a trace.
+		if errors.Is(extractErr, extractor.ErrModelRefused) {
+			stats.modelsRefused++
+			fmt.Fprintf(os.Stderr, "fathom: fusion: model refused on %s/%s (file fingerprinted, no symbols stored): %v\n",
+				serviceID, pf.ref.Path, extractErr)
+		}
 		_ = p.st.SetFingerprint(ctx, serviceID, pf.ref.Path, pf.hash)
 		return nil
 	}
