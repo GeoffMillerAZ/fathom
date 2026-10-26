@@ -5,11 +5,16 @@
 Tier A resolver measurement uses the native Dart Sass adapter at
 `calibration/oracles/dart-sass-resolver/bin/resolver.dart`. The independent
 primary remains `sass-parser` 0.4.57 with Sass 1.105.1. The adapter may add
-resolved `to_path` values to matching primary imports. It must preserve primary
-imports, fields, and counts, and must not invent source lines. Record every
-parse and unresolved failure and report total primary coverage. Empty resolution
-does not imply a negative file edge. Fathom output is never an oracle input, and
-this work adds no canonical corpus shard.
+resolved `to_path` values to matching primary imports whose path is empty. It
+preserves an existing nonempty primary `to_path` when native evidence is absent
+or unresolved; a contradictory resolved target fails explicitly. It preserves
+primary fields and counts and must not invent source lines. `findDependencies`
+does not traverse `@include` content blocks, so its per-kind URL sets are not a
+complete import enumeration. Record inherited primary attestations, missing
+native statements, unresolved primary coverage, and every parse/unresolved
+failure. Empty native resolution does not erase an existing primary file edge.
+Fathom output is never an oracle input, and this work adds no canonical corpus
+shard.
 
 ## Freeze and preregistration
 
@@ -31,6 +36,13 @@ statements remain a hard error. `DependencyReport` uses URL sets, so family
 counts mean unique URLs per source and dependency kind, not syntactic occurrences.
 A `meta.load-css()` URL remains unpositioned even when a positioned family uses
 the same URL.
+
+The output preserves every semantic primary field and tier. The sole declared
+metadata exception names both producers: `tool` is exactly
+`dart-sass+native-resolver`; `version` is exactly the primary version followed
+by `; sass_api 18.1.0 (sass 1.106.1) import resolver`. No other non-import
+primary field may change. Synthetic controls assert the composite identity,
+the unchanged tier, and rejection of altered non-import fields.
 
 Registered native tier: Dart SDK 3.13.7, `sass_api` 18.1.0, and `sass` 1.106.1.
 The run record includes the primary JSON SHA-256, adapter SHA-256, Dart and

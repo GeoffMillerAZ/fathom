@@ -8,10 +8,16 @@ a stylesheet, so a file with an undefined variable can still resolve. Only
 `@import` sets `forImport: true`.
 
 The adapter requires an independent primary JSON file. It preserves that file's
-non-import fields and every positioned import, then fills `to_path` only where a
-unique native `(path, normalized URL)` resolution matches. Stdout uses the
-primary oracle's neutral schema. Native diagnostics, skips, failures, unmapped
-URLs, and resolved file pairs go to a separate `--metadata` file.
+non-import fields and every positioned import. A unique native resolution fills
+an empty `to_path`; an existing nonempty primary path survives when native
+resolution is absent or unresolved. A contradictory resolved native target is a
+hard conflict. Stdout uses the primary oracle's schema. Native diagnostics,
+skips, failures, coverage counts, unmapped URLs, and resolved file pairs go to
+a separate `--metadata` file.
+The only non-import metadata change is producer attribution: `tool` becomes
+`dart-sass+native-resolver`, and `version` becomes the primary version followed
+by `; sass_api 18.1.0 (sass 1.106.1) import resolver`. Tier A and all other
+primary fields remain unchanged, so both producers are explicit in the result.
 `DependencyReport` exposes URL sets rather than spans, so this adapter never
 invents line numbers. An absent primary statement for `@use`, `@forward`, or
 `@import` fails composition, even when unresolved. `meta.load-css()` has no
@@ -23,8 +29,12 @@ source SHA-256 map is captured before and after; source inventory or content
 changes fail the run.
 
 Native family counts represent unique URLs per source and dependency kind, not
-syntactic occurrences. A `meta.load-css()` URL remains in unpositioned coverage
-even when a positioned `@use` for the same URL is present.
+syntactic occurrences. In particular, `findDependencies` does not traverse
+`@include` content blocks, so its URL sets are not a complete import inventory.
+The independent primary compiler's existing `to_path` attestation is retained
+for such gaps; the adapter reports inherited attestations, missing native
+statements, and unresolved primary coverage. A `meta.load-css()` URL remains in
+unpositioned coverage even when a positioned `@use` for the same URL is present.
 
 Pinned toolchain: Dart SDK 3.13.7, `sass_api` 18.1.0, and its matching `sass`
 dependency 1.106.1. `sass_api` 18.1.0 archive SHA-256:

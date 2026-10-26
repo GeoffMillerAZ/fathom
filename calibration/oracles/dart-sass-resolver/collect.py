@@ -215,7 +215,14 @@ def normalize_module(value: str) -> str:
 def validate_primary_enrichment(primary: dict, output: object, native_dependencies: object) -> dict:
     if not isinstance(output, dict) or set(output) != set(primary):
         raise Refusal("adapter output changed the primary top-level schema")
-    if {k: v for k, v in output.items() if k != "imports"} != {k: v for k, v in primary.items() if k != "imports"}:
+    if primary.get("tier") != "A" or not isinstance(primary.get("version"), str):
+        raise Refusal("primary must identify its tier-A producer and version")
+    expected_version = f"{primary['version']}; sass_api {PINNED_SASS_API} (sass {PINNED_SASS}) import resolver"
+    if output.get("tool") != "dart-sass+native-resolver" or output.get("version") != expected_version:
+        raise Refusal("adapter producer identity does not name both primary and native resolver")
+    if output.get("tier") != "A":
+        raise Refusal("adapter changed the primary tier")
+    if {k: v for k, v in output.items() if k not in {"imports", "tool", "version"}} != {k: v for k, v in primary.items() if k not in {"imports", "tool", "version"}}:
         raise Refusal("adapter altered primary fields outside imports")
     original_imports = primary["imports"]
     result_imports = output.get("imports")
@@ -230,17 +237,28 @@ def validate_primary_enrichment(primary: dict, output: object, native_dependenci
             raise Refusal("adapter changed primary import schema")
         if not isinstance(enriched.get("to_path"), str):
             raise Refusal("adapter to_path must be a string")
+        original_to_path = original.get("to_path", "")
+        if not isinstance(original_to_path, str):
+            raise Refusal("primary to_path must be a string when present")
         if any(enriched.get(key) != value for key, value in original.items() if key != "to_path"):
             raise Refusal("adapter altered a primary import field")
+        if original_to_path and enriched["to_path"] != original_to_path:
+            raise Refusal("adapter altered an inherited primary to_path attestation")
+        native_targets = {
+            item.get("to_path") for item in native_dependencies
+            if item.get("kind") != "meta.load-css"
+            and item.get("resolution") == "resolved"
+            and item.get("path") == original.get("path")
+            and normalize_module(str(item.get("module", ""))) == normalize_module(str(original.get("module", "")))
+            and isinstance(item.get("to_path"), str)
+            and item.get("to_path")
+        }
+        if original_to_path and any(target != original_to_path for target in native_targets):
+            raise Refusal("conflict: native resolved target contradicts inherited primary to_path")
         if enriched["to_path"]:
-            attested = any(
-                item.get("resolution") == "resolved"
-                and item.get("path") == original.get("path")
-                and normalize_module(str(item.get("module", ""))) == normalize_module(str(original.get("module", "")))
-                and item.get("to_path") == enriched["to_path"]
-                for item in native_dependencies
-            )
-            if not attested:
+            if original_to_path:
+                continue
+            if enriched["to_path"] not in native_targets:
                 raise Refusal("adapter to_path lacks matching native resolver attestation")
     return output
 
@@ -291,15 +309,20 @@ def selftest() -> None:
         primary.write_text('{"imports":[1]}\n')
         if primary_hash(primary) == frozen:
             raise AssertionError("primary hash failed to detect change")
-        base = {"files": 4, "imports": [{"path": "a.scss", "line": 1, "module": "b", "to_path": ""}]}
+        base = {"files": 4, "tool": "independent", "version": "1.0", "tier": "A", "imports": [{"path": "a.scss", "line": 1, "module": "b", "to_path": ""}]}
+        composite = {**base, "tool": "dart-sass+native-resolver", "version": f"1.0; sass_api {PINNED_SASS_API} (sass {PINNED_SASS}) import resolver"}
         native_fixture = [{"path": "a.scss", "module": "b", "to_path": "b.scss", "resolution": "resolved"}]
-        validate_primary_enrichment(base, {"files": 4, "imports": [{**base["imports"][0], "to_path": "b.scss"}]}, native_fixture)
+        validate_primary_enrichment(base, {**composite, "imports": [{**base["imports"][0], "to_path": "b.scss"}]}, native_fixture)
+        inherited = {**base, "imports": [{"path": "a.scss", "line": 1, "module": "old", "to_path": "old.scss"}]}
+        inherited_output = {**inherited, "tool": "dart-sass+native-resolver", "version": composite["version"]}
+        validate_primary_enrichment(inherited, inherited_output, [])
         invalid = [
-            {"files": 5, "imports": [{**base["imports"][0], "to_path": "b.scss"}]},
-            {"files": 4, "invented": True, "imports": [{**base["imports"][0], "to_path": "b.scss"}]},
-            {"files": 4, "imports": [{**base["imports"][0], "to_path": "b.scss", "metadata": "invented"}]},
-            {"files": 4, "imports": [{**base["imports"][0], "path": "bogus.scss", "to_path": "b.scss"}]},
-            {"files": 4, "imports": [{**base["imports"][0], "to_path": "bogus.scss"}]},
+            {**composite, "files": 5, "imports": [{**base["imports"][0], "to_path": "b.scss"}]},
+            {**composite, "invented": True, "imports": [{**base["imports"][0], "to_path": "b.scss"}]},
+            {**composite, "imports": [{**base["imports"][0], "to_path": "b.scss", "metadata": "invented"}]},
+            {**composite, "imports": [{**base["imports"][0], "path": "bogus.scss", "to_path": "b.scss"}]},
+            {**composite, "imports": [{**base["imports"][0], "to_path": "bogus.scss"}]},
+            {**base, "imports": [{**base["imports"][0], "to_path": "b.scss"}]},
         ]
         for candidate in invalid:
             try:
@@ -307,6 +330,11 @@ def selftest() -> None:
                 raise AssertionError("invalid primary enrichment accepted")
             except Refusal:
                 pass
+        try:
+            validate_primary_enrichment(inherited, inherited_output, [{"path": "a.scss", "module": "old", "to_path": "new.scss", "resolution": "resolved", "kind": "use"}])
+            raise AssertionError("conflicting native attestation accepted")
+        except Refusal:
+            pass
     with tempfile.TemporaryDirectory(prefix="sass-package-selftest-") as tmp:
         base = Path(tmp)
         packages = []
@@ -440,6 +468,8 @@ def main() -> int:
             "unmapped_native_by_kind", "unpositioned_native_count",
             "unpositioned_native_by_kind",
             "unpositioned_native_resolved_count", "unpositioned_native_unresolved_count",
+            "inherited_primary_attestations", "missing_native_statement_count",
+            "primary_unresolved_coverage_count",
         ):
             if key in native:
                 native_counts[key] = native[key]

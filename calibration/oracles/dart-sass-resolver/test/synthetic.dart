@@ -29,6 +29,12 @@ void main() {
 .dynamic-container {
   @include meta.load-css("same");
 }
+@mixin include-compile-only {
+  @content;
+}
+@include include-compile-only {
+  @include meta.load-css("compile-only");
+}
 ''');
     File('${src.path}${Platform.pathSeparator}partials${Platform.pathSeparator}_card.scss')
         .writeAsStringSync('.card { color: red; }\n');
@@ -39,16 +45,21 @@ void main() {
         .writeAsStringSync(r'$value: $undefinedAtEvaluation;');
     File('${src.path}${Platform.pathSeparator}_same.scss')
         .writeAsStringSync('.same { color: purple; }\n');
+    File('${src.path}${Platform.pathSeparator}_compile-only.scss')
+        .writeAsStringSync('.compile-only { color: teal; }\n');
     File('${support.path}${Platform.pathSeparator}_load-path-only.scss')
         .writeAsStringSync('.support { color: green; }\n');
 
     final withoutLoadPath = resolveSubject(root: root, directory: 'src');
     _check(withoutLoadPath['native_dependencies'] is List, 'native diagnostics missing');
-    _check((withoutLoadPath['metadata']! as Map)['source_files'] == 6, 'source count');
+    _check((withoutLoadPath['metadata']! as Map)['source_files'] == 7, 'source count');
     final primary = _primaryFixture();
     final composedWithout = composePrimary(primary, withoutLoadPath);
     final neutralWithout = composedWithout['primary']! as Map<String, Object?>;
     final importsWithout = (neutralWithout['imports']! as List).cast<Map<String, Object?>>();
+    _check(neutralWithout['tool'] == 'dart-sass+native-resolver', 'composite producer identity names both producers');
+    _check(neutralWithout['version'] == 'synthetic; sass_api 18.1.0 (sass 1.106.1) import resolver', 'composite producer versions are exact');
+    _check(neutralWithout['tier'] == 'A', 'primary tier preserved');
     _check(neutralWithout['definitions'] == primary['definitions'], 'primary fields preserved');
     _check(importsWithout.length == (primary['imports']! as List).length, 'all primary imports preserved');
     _check(importsWithout.every((entry) =>
@@ -71,6 +82,27 @@ void main() {
     _check(unpositioned.single['module'] == 'same' && unpositioned.single['to_path'] == 'src/_same.scss', 'same-URL unpositioned native resolution retained');
     _check(((nativeMetadata['file_resolved_edges']! as List).cast<Map<String, String>>())
         .any((pair) => pair['to_path'] == 'src/_same.scss'), 'direct native pair retained');
+    final primaryWithNativeGap = _primaryFixture();
+    (primaryWithNativeGap['imports']! as List).add(<String, Object?>{
+      'path': 'src/main.scss',
+      'line': 19,
+      'module': 'compile-only',
+      'to_path': 'src/_compile-only.scss',
+      'primary_marker': 'primary-19',
+    });
+    final composedGap = composePrimary(primaryWithNativeGap, withoutLoadPath);
+    final gapMetadata = composedGap['metadata']! as Map;
+    final retained = ((composedGap['primary']! as Map)['imports']! as List)
+        .cast<Map<String, Object?>>()
+        .singleWhere((entry) => entry['module'] == 'compile-only');
+    _check(retained['to_path'] == 'src/_compile-only.scss', 'old primary attestation survives missing native statement');
+    _check(gapMetadata['inherited_primary_attestations'] == 1, 'inherited primary attestation count');
+    _check(gapMetadata['missing_native_statement_count'] == 1, 'missing native statement count');
+    _check((gapMetadata['primary_unresolved_coverage_count'] as int) > 0, 'primary unresolved coverage reported');
+    final conflictPrimary = _primaryFixture();
+    ((conflictPrimary['imports']! as List).cast<Map<String, Object?>>())
+        .singleWhere((entry) => entry['module'] == 'same')['to_path'] = 'src/_broken.scss';
+    _throws(() => composePrimary(conflictPrimary, withoutLoadPath), 'conflicting native and primary attestations must fail');
     final incompletePrimary = _primaryFixture();
     (incompletePrimary['imports']! as List).removeWhere((entry) => (entry as Map)['module'] == 'partials/card');
     _throws(() => composePrimary(incompletePrimary, withoutLoadPath), 'resolved native URL missing from primary must fail');
@@ -129,7 +161,7 @@ Map<String, dynamic> _primaryFixture() => {
             'path': 'src/main.scss',
             'line': entry.$1,
             'module': entry.$2,
-            'to_path': 'primary-placeholder',
+            'to_path': '',
             'primary_marker': 'primary-${entry.$1}',
           },
       ],

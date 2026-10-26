@@ -239,6 +239,8 @@ Map<String, Object?> composePrimary(Map<String, dynamic> primary, Map<String, Ob
 
   var unmapped = 0;
   var ambiguous = 0;
+  var inheritedPrimaryAttestations = 0;
+  var missingNativeStatementCount = 0;
   final unmappedByKind = <String, int>{};
   final outputImports = <Map<String, Object?>>[];
   for (final raw in importsValue) {
@@ -247,21 +249,31 @@ Map<String, Object?> composePrimary(Map<String, dynamic> primary, Map<String, Ob
     final path = sourceEntry['path'];
     final module = sourceEntry['module'];
     final line = sourceEntry['line'];
-    if (path is! String || module is! String || line is! int) {
-      throw FormatException('primary imports require path, line, and module');
+    final originalToPath = sourceEntry['to_path'] ?? '';
+    if (path is! String || module is! String || line is! int || originalToPath is! String) {
+      throw FormatException('primary imports require path, line, module, and a string to_path when present');
     }
     final entry = Map<String, Object?>.from(sourceEntry.cast<String, Object?>());
-    entry['to_path'] = '';
+    entry['to_path'] = originalToPath;
+    if (originalToPath.isNotEmpty) inheritedPrimaryAttestations++;
     final key = '$path\u0000${_normalizedUrl(module)}';
     final matches = (byKey[key] ?? const <Map<String, Object?>>[])
         .where((match) => match['kind'] != 'meta.load-css')
         .toList();
+    if (matches.isEmpty) missingNativeStatementCount++;
     final signatures = matches.map((match) => '${match['resolution']}\u0000${match['to_path']}').toSet();
-    if (signatures.length == 1 && matches.isNotEmpty) {
-      final match = matches.first;
-      entry['to_path'] = match['to_path'];
-    } else if (signatures.length > 1) {
-      ambiguous++;
+    final nativeTargets = matches
+        .where((match) => match['resolution'] == 'resolved' && (match['to_path'] as String).isNotEmpty)
+        .map((match) => match['to_path']! as String)
+        .toSet();
+    if (signatures.length > 1) ambiguous++;
+    if (originalToPath.isNotEmpty) {
+      if (nativeTargets.any((target) => target != originalToPath)) {
+        throw StateError('conflict: primary to_path $originalToPath contradicts native target(s) ${nativeTargets.toList()..sort()} for $path $module');
+      }
+      entry['to_path'] = originalToPath;
+    } else if (nativeTargets.length == 1 && signatures.length == 1) {
+      entry['to_path'] = nativeTargets.single;
     }
     outputImports.add(entry);
   }
@@ -294,6 +306,8 @@ Map<String, Object?> composePrimary(Map<String, dynamic> primary, Map<String, Ob
 
   final composite = Map<String, Object?>.from(primary.cast<String, Object?>());
   composite['imports'] = outputImports;
+  composite['tool'] = 'dart-sass+native-resolver';
+  composite['version'] = '${primary['version']}; sass_api $_sassApiVersion (sass $_sassVersion) import resolver';
   final metadata = Map<String, Object?>.from(native);
   metadata['unmapped_native_dependencies'] = unmapped;
   metadata['unmapped_native_by_kind'] = unmappedByKind;
@@ -304,6 +318,9 @@ Map<String, Object?> composePrimary(Map<String, dynamic> primary, Map<String, Ob
   metadata['unpositioned_native_unresolved_count'] = unpositionedNative.where((item) => item['resolution'] == 'unresolved' || item['resolution'] == 'error').length;
   metadata['ambiguous_native_dependencies'] = ambiguous;
   metadata['unresolved_native_dependencies'] = unresolvedNative;
+  metadata['inherited_primary_attestations'] = inheritedPrimaryAttestations;
+  metadata['missing_native_statement_count'] = missingNativeStatementCount;
+  metadata['primary_unresolved_coverage_count'] = outputImports.where((item) => (item['to_path'] as String).isEmpty).length;
   return {'primary': composite, 'metadata': metadata};
 }
 
