@@ -59,3 +59,27 @@ following it, because the real target's tracked source files are already listed.
 Source-file, outside-root and broken symlinks still reject. Added synthetic controls
 cover each case. Re-freeze and rerun both complete canonical subjects; do not use
 the first partial sequence as the final measurement. Dancer2 remains unspent.
+
+## Preregistered isolated-dependency follow-up
+
+The no-install canonical trial produced 1,329 exact paired ends, but only 39.72%
+of 3,346 matched definitions. Mojo had 10/280 compilation failures; Perl-Critic
+had 251/263. It is a conditional candidate reading, never a canonical adoption.
+
+Before claiming a compiler ceiling, try the subject's declared CPAN dependencies
+in an isolated local library. Copy only its cpanfile into scratch, not back into
+the subject. App::cpanminus 1.7048, Perl-5 license, archive SHA256
+`59b60907ab9fa4f72ca2004fbe6054911439ae9a906890b4d842a87b25f20f3c`,
+from `https://cpan.metacpan.org/authors/id/M/MI/MIYAGAWA/App-cpanminus-1.7048.tar.gz`,
+runs with its own cache root, `--local-lib-contained`, HTTPS mirror-only,
+`--installdeps --with-test --notest`, and retained distribution archives. Bound the
+whole install to 600 seconds, nice10 after load<=9, TERM/KILL on timeout. Never
+install globally, edit the subject, or apply dependency patches. Fingerprint the
+local library before/after compiler runs and publish archive names/checksums.
+
+If installation succeeds, rerun both full canonical compiler companions under
+that explicit PERL5LIB, leaving the PPI 1.270 primary call oracle unchanged.
+Record all remaining failures and coverage. If installation fails, record the
+concrete failure and retain the partial no-install reading separately. No
+canonical adoption from a conditional 1.0 range score. The Dancer2 holdout remains
+unspent until this instrument/environment is frozen; no tuning on a spent subject.
