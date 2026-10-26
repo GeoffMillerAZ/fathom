@@ -117,18 +117,25 @@ func withinCap(n, max int) error {
 	}
 	return nil
 }
+
+type nativeConfigError struct{ cause error }
+
+func (e nativeConfigError) Error() string { return e.cause.Error() }
+func (e nativeConfigError) Unwrap() error { return e.cause }
+func isNativeConfigError(err error) bool  { var e nativeConfigError; return errors.As(err, &e) }
+
 func decode(rel string, src []byte) (kfile, error) {
 	k := kfile{rel: rel, base: path.Base(rel), raw: src, inventory: map[string]int{}}
 	if err := k.typed.Unmarshal(src); err != nil {
-		return k, err
+		return k, nativeConfigError{err}
 	}
 	checked := k.typed
 	checked.FixKustomization()
 	if err := checked.CheckEmpty(); err != nil {
-		return k, err
+		return k, nativeConfigError{err}
 	}
 	if es := checked.EnforceFields(); len(es) > 0 {
-		return k, errors.New(strings.Join(es, "; "))
+		return k, nativeConfigError{errors.New(strings.Join(es, "; "))}
 	}
 	k.kind = k.typed.Kind
 	node, err := kyaml.Parse(string(src))
@@ -148,16 +155,9 @@ func decode(rel string, src []byte) (kfile, error) {
 		if n == 0 {
 			continue
 		}
-		m := node.Field(f.name)
-		if m == nil || m.Value == nil {
-			return k, fmt.Errorf("%s: typed field has no source node", f.name)
-		}
-		elems, err := m.Value.Elements()
+		elems, err := reconcileField(node, f, n)
 		if err != nil {
-			return k, fmt.Errorf("%s: %w", f.name, err)
-		}
-		if len(elems) != n {
-			return k, fmt.Errorf("%s: typed/source count mismatch %d/%d", f.name, n, len(elems))
+			return k, err
 		}
 		for i, e := range elems {
 			value := typedValue(k.typed, f.name, i)
@@ -218,6 +218,20 @@ func decode(rel string, src []byte) (kfile, error) {
 		k.inventory[category+name] = n
 	}
 	return k, nil
+}
+func reconcileField(node *kyaml.RNode, f field, n int) ([]*kyaml.RNode, error) {
+	m := node.Field(f.name)
+	if m == nil || m.Value == nil {
+		return nil, fmt.Errorf("%s: typed field has no source node", f.name)
+	}
+	elems, err := m.Value.Elements()
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", f.name, err)
+	}
+	if len(elems) != n {
+		return nil, fmt.Errorf("%s: typed/source count mismatch %d/%d", f.name, n, len(elems))
+	}
+	return elems, nil
 }
 func typedEntryCount(k types.Kustomization) int {
 	v := reflect.ValueOf(k)
@@ -531,7 +545,7 @@ func closureUnsafeReason(root string, graph map[string][]string, files map[strin
 		seen[p] = true
 		k, ok := files[p]
 		if !ok {
-			return ""
+			return "native-decode-closure"
 		}
 		for _, value := range nativePathValues(k.typed) {
 			if value == "" {
@@ -748,6 +762,7 @@ func main() {
 	}
 	known := map[string]bool{}
 	decoded := map[string]kfile{}
+	rejected := map[string]bool{}
 	for _, p := range kpaths {
 		known[p] = true
 	}
@@ -763,6 +778,10 @@ func main() {
 		rawHash.Write(b)
 		k, err := decode(p, b)
 		if err != nil {
+			if isNativeConfigError(err) {
+				rejected[p] = true
+				continue
+			}
 			fatal(fmt.Errorf("%s: %w", p, err))
 		}
 		decoded[p] = k
@@ -779,7 +798,10 @@ func main() {
 	// resources, bases or components edge connects it to the component.
 	graph := map[string][]string{}
 	for _, p := range kpaths {
-		k := decoded[p]
+		k, ok := decoded[p]
+		if !ok {
+			continue
+		}
 		for i, e := range k.entries {
 			f := k.fieldOf[i]
 			if f.name != "resources" && f.name != "bases" && f.name != "components" {
@@ -793,7 +815,7 @@ func main() {
 	}
 	roots := []string{}
 	for _, p := range kpaths {
-		if decoded[p].kind != "Component" {
+		if k, ok := decoded[p]; ok && k.kind != "Component" {
 			roots = append(roots, p)
 		}
 	}
@@ -819,7 +841,8 @@ func main() {
 	}
 	contexts := map[string][]string{}
 	for _, p := range kpaths {
-		if decoded[p].kind != "Component" {
+		k, ok := decoded[p]
+		if !ok || k.kind != "Component" {
 			continue
 		}
 		for _, root := range roots {
@@ -840,7 +863,7 @@ func main() {
 		unsafeRoots[p] = closureUnsafeReason(p, graph, decoded)
 	}
 	result := out{Tool: "kustomize", Version: version, Tier: "A", Definitions: []def{}, References: []ref{}, CrossReferences: []xref{}}
-	rec := receipt{Version: version, BinaryHash: actualSHA, KustomizationsHash: hex.EncodeToString(rawHash.Sum(nil)), Files: len(kpaths), Entries: totalEntries, Excluded: map[string]int{}, Inventory: inventory, Contexts: map[string]contextCounts{}, Stats: map[string]int{}}
+	rec := receipt{Version: version, BinaryHash: actualSHA, KustomizationsHash: hex.EncodeToString(rawHash.Sum(nil)), Files: len(kpaths), Entries: totalEntries, Excluded: map[string]int{"native-decode-rejected": len(rejected)}, Inventory: inventory, Contexts: map[string]contextCounts{}, Stats: map[string]int{}}
 	baselines := map[string][]byte{}
 	var built []string
 	for _, p := range roots {
@@ -875,7 +898,10 @@ func main() {
 		rec.Built++
 	}
 	for _, p := range kpaths {
-		k := decoded[p]
+		k, ok := decoded[p]
+		if !ok {
+			continue
+		}
 		targets := []string{}
 		if k.kind == "Component" {
 			for _, root := range contexts[p] {

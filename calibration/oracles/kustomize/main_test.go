@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	kyaml "sigs.k8s.io/kustomize/kyaml/yaml"
 	"strings"
 	"testing"
 	"time"
@@ -281,6 +282,26 @@ func TestActualAdmissionCaps(t *testing.T) {
 
 // TestOracleCLIHelper enters the same flag parsing and output path as the CLI.
 // The parent test passes only local fixture paths through this private env value.
+func TestNativeInvalidDecodeVsOracleMismatch(t *testing.T) {
+	_, err := decode("invalid/kustomization.yaml", []byte("patches:\n  - legacy.yaml\n"))
+	if err == nil || !isNativeConfigError(err) {
+		t.Fatalf("native-invalid patch was not classified: %v", err)
+	}
+	node, err := kyaml.Parse("resources:\n  - a.yaml\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = reconcileField(node, fields[0], 2)
+	if err == nil || isNativeConfigError(err) {
+		t.Fatalf("typed/source mismatch must refuse the oracle: %v", err)
+	}
+	files := map[string]kfile{"parent/kustomization.yaml": {rel: "parent/kustomization.yaml"}}
+	graph := map[string][]string{"parent/kustomization.yaml": {"invalid/kustomization.yaml"}}
+	if reason := closureUnsafeReason("parent/kustomization.yaml", graph, files); reason != "native-decode-closure" {
+		t.Fatalf("parent of invalid file: %q", reason)
+	}
+}
+
 func TestOracleCLIHelper(t *testing.T) {
 	raw := os.Getenv("KUSTOMIZE_ORACLE_TEST_ARGS")
 	if raw == "" {
@@ -310,9 +331,11 @@ func TestOracleCLIPopulatesComponent(t *testing.T) {
 	subject := t.TempDir()
 	scratch := t.TempDir()
 	fixture := map[string]string{
-		"parent/kustomization.yaml":    "resources:\n  - pod.yaml\ncomponents:\n  - ../component\n",
-		"parent/pod.yaml":              "apiVersion: v1\nkind: Pod\nmetadata:\n  name: test\nspec:\n  containers:\n    - name: web\n      image: old:v1\n",
-		"component/kustomization.yaml": "apiVersion: kustomize.config.k8s.io/v1alpha1\nkind: Component\nimages:\n  - name: old\n    newTag: v2\n",
+		"parent/kustomization.yaml":        "resources:\n  - pod.yaml\ncomponents:\n  - ../component\n",
+		"parent/pod.yaml":                  "apiVersion: v1\nkind: Pod\nmetadata:\n  name: test\nspec:\n  containers:\n    - name: web\n      image: old:v1\n",
+		"component/kustomization.yaml":     "apiVersion: kustomize.config.k8s.io/v1alpha1\nkind: Component\nimages:\n  - name: old\n    newTag: v2\n",
+		"invalid/kustomization.yaml":       "patches:\n  - legacy.yaml\n",
+		"broken-parent/kustomization.yaml": "resources:\n  - ../invalid\n",
 	}
 	for name, body := range fixture {
 		p := filepath.Join(subject, filepath.FromSlash(name))
@@ -376,8 +399,57 @@ func TestOracleCLIPopulatesComponent(t *testing.T) {
 	if err := json.Unmarshal(receiptBytes, &rec); err != nil {
 		t.Fatal(err)
 	}
+	if rec.Files != 4 || rec.Excluded["native-decode-rejected"] != 1 || rec.Excluded["native-decode-closure"] != 1 {
+		t.Fatalf("native rejection accounting: files=%d excluded=%v", rec.Files, rec.Excluded)
+	}
 	cc := rec.Contexts[component]
 	if cc.Valid != 1 || cc.Effective != 1 {
 		t.Fatalf("component context=%+v", cc)
+	}
+
+	// Change only the input fact. The same real parent still builds, but the
+	// component image selector no longer matches its Pod.
+	changed := strings.Replace(fixture[component], "name: old", "name: absent", 1)
+	if err := os.WriteFile(filepath.Join(subject, filepath.FromSlash(component)), []byte(changed), 0644); err != nil {
+		t.Fatal(err)
+	}
+	cmd = exec.Command(os.Args[0], "-test.run=^TestOracleCLIHelper$")
+	cmd.Env = append(os.Environ(), "KUSTOMIZE_ORACLE_TEST_ARGS="+string(argJSON))
+	stderr.Reset()
+	cmd.Stderr = &stderr
+	changedStdout, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("oracle CLI after source change: %v; stderr=%s", err, stderr.String())
+	}
+	if bytes.Equal(stdout, changedStdout) {
+		t.Fatal("raw oracle truth did not respond to changed source fact")
+	}
+	var changedTruth out
+	if err := json.NewDecoder(bytes.NewReader(changedStdout)).Decode(&changedTruth); err != nil {
+		t.Fatalf("decode changed oracle stdout: %v", err)
+	}
+	packageKept := false
+	for _, d := range changedTruth.Definitions {
+		if d.Path == component && d.Kind == "package" {
+			packageKept = true
+		}
+		if d.Path == component && d.Kind == "data_source" {
+			t.Fatalf("native-noop component image remained effective: %+v", d)
+		}
+	}
+	if !packageKept {
+		t.Fatal("component package disappeared after image selector became a no-op")
+	}
+	changedReceiptBytes, err := os.ReadFile(receiptOut)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var changedRec receipt
+	if err := json.Unmarshal(changedReceiptBytes, &changedRec); err != nil {
+		t.Fatal(err)
+	}
+	changedContext := changedRec.Contexts[component]
+	if changedContext.Valid != 1 || changedContext.Noop != 1 || changedContext.Effective != 0 {
+		t.Fatalf("changed component context=%+v", changedContext)
 	}
 }
