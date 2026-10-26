@@ -178,3 +178,26 @@ func noteFor(notes []Note, key string) (Note, bool) {
 	}
 	return Note{}, false
 }
+
+func TestResolveBudget_FloorOnPressureNote(t *testing.T) {
+	for _, tc := range []struct {
+		config string
+		want   PressureLevel
+	}{
+		{"", PressureWarn},
+		{"normal", PressureNormal},
+		{"warn", PressureWarn},
+		{"critical", PressureCritical},
+	} {
+		t.Run(tc.config, func(t *testing.T) {
+			b, notes := ResolveBudget(Config{Host: HostConfig{FloorOnPressure: tc.config}}, HostFacts{RAM: 32 * GiB, Managed: true})
+			if b.Host.FloorOnPressure != tc.want {
+				t.Fatalf("floor_on_pressure = %s, want %s", b.Host.FloorOnPressure, tc.want)
+			}
+			n, ok := noteFor(notes, "floor_on_pressure")
+			if !ok || n.Value != tc.want.String() || !strings.Contains(n.Derivation, "[tenancy.host] floor_on_pressure") {
+				t.Fatalf("floor_on_pressure note = %+v, found %v", n, ok)
+			}
+		})
+	}
+}

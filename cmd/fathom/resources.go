@@ -165,6 +165,7 @@ type resourcesHost struct {
 type resourcesTriggers struct {
 	ShedOnPressure    string `json:"shed_on_pressure"`   // warn | critical | off
 	RefuseOnPressure  string `json:"refuse_on_pressure"` // warn | critical | off
+	FloorOnPressure   string `json:"floor_on_pressure"`  // normal | warn | critical
 	MinSwapVolumeFree int64  `json:"min_swap_volume_free"`
 	// Allowance is the footprint + children at or above which pressure at
 	// shed_on_pressure sheds; 0 = off: pressure sheds at any footprint.
@@ -183,7 +184,7 @@ func triggersOf(h tenancy.HostTriggers, source string) resourcesTriggers {
 		return p.String()
 	}
 	return resourcesTriggers{
-		ShedOnPressure: name(h.ShedOnPressure), RefuseOnPressure: name(h.RefuseOnPressure),
+		ShedOnPressure: name(h.ShedOnPressure), RefuseOnPressure: name(h.RefuseOnPressure), FloorOnPressure: name(h.FloorOnPressure),
 		MinSwapVolumeFree: h.MinSwapVolumeFree, Allowance: h.Allowance, Source: source, shed: h.ShedOnPressure, refuse: h.RefuseOnPressure,
 	}
 }
@@ -889,6 +890,7 @@ func renderResources(w io.Writer, rep resourcesReport, now time.Time) {
 	}
 	h := rep.Host
 	fmt.Fprintf(w, "host       pressure %s · swap %s/%s · store volume %s free · swap volume %s free\n", h.Pressure, fb(h.SwapUsed), fb(h.SwapTotal), fb(h.StoreFree), fb(h.SwapVolumeFree))
+	fmt.Fprintf(w, "           host_triggers: shed_on_pressure %s · refuse_on_pressure %s · floor_on_pressure %s · min_swap_volume_free %s\n", rep.Triggers.ShedOnPressure, rep.Triggers.RefuseOnPressure, rep.Triggers.FloorOnPressure, fb(rep.Triggers.MinSwapVolumeFree))
 	if len(h.Unknowns) > 0 {
 		fmt.Fprintf(w, "           unknown: %s\n", strings.Join(h.Unknowns, "; "))
 	}
