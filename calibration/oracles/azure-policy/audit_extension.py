@@ -43,7 +43,8 @@ def directory_rows(data, expected):
             raise ValueError('invalid ZIP directory record')
         name = data[offset + 46:offset + 46 + fields[10]].decode('utf8')
         rows.append(dict(name=name, flags=fields[3], method=fields[4], crc=fields[7],
-                         compressed=fields[8], uncompressed=fields[9], offset=fields[16]))
+                         compressed=fields[8], uncompressed=fields[9], offset=fields[16],
+                         external_attributes=fields[15]))
         offset = end
     if len(rows) != expected or len({row['name'] for row in rows}) != len(rows):
         raise ValueError('unexpected ZIP entry population')

@@ -65,3 +65,21 @@ controls. A native success/error on pairs chosen by this JSON walk alone can
 attest validity, but cannot prove A recall. Keep every original subject and
 family in scope, and classify native refusals explicitly. Whole-population
 measurement remains open; ARM/Bicep cross-file work awaits D19 authorization.
+
+## Prepared native experiment
+
+`native-protocol-r1.json` is preregistered before native extraction/execution.
+`prepare_native.py` retrieves only the bounded ARM64 archive span, verifies the
+whole extracted unit before publishing it, and records its manifest/apphost
+SHA-256. It executes no vendor code. Commit that preparation identity before
+the separately isolated startup/API probe. Under the serial/load guard, after
+checking `df -h ~` and `uptime`:
+
+```sh
+nice -n 10 python3 -B calibration/oracles/azure-policy/prepare_native.py -cache workspace/oracle/azure-policy-native
+```
+
+The command also checks the 20 GiB disk floor internally. Tests exercise a
+bad CRC, escaping path, absent apphost, 513 entries against the 512-entry cap,
+64 MiB + 1 single-file expansion and 160 MiB + 1 total expansion. A preparation
+receipt proves neither native evaluation nor reference completeness.
