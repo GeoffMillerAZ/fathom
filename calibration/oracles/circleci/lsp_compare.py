@@ -196,12 +196,15 @@ def compare_file(binary, file, work):
                 resolved = locations(response)
                 local_match = site['declaration'] is not None and any(target == uri and contains(rng, site['declaration']) for target, rng in resolved)
                 reference_match = False
+                reference_locations = []
                 if site['declaration'] is not None:
                     refs = rpc.request('textDocument/references', {'textDocument': {'uri': uri}, 'position': site['declaration'],
                                                                    'context': {'includeDeclaration': False}})
-                    reference_match = any(target == uri and contains(rng, site['position']) for target, rng in locations(refs))
+                    reference_locations = locations(refs)
+                    reference_match = any(target == uri and contains(rng, site['position']) for target, rng in reference_locations)
                 results.append(dict(site, definition_agrees=local_match, references_agree=reference_match,
                                     returned_locations=len(resolved), external_locations=sum(target != uri for target, _ in resolved),
+                                    reference_targets=[{'scope': 'same-file' if target == uri else 'external', 'range': rng} for target, rng in reference_locations],
                                     definition_targets=[{'scope': 'same-file' if target == uri else 'external', 'range': rng} for target, rng in resolved]))
         finally:
             rpc.close()

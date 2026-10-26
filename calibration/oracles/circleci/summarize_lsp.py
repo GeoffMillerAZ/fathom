@@ -7,6 +7,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-results', type=Path, required=True)
     parser.add_argument('-out', type=Path, required=True)
+    parser.add_argument('-measurement-commit', default='fa47c676c')
     args = parser.parse_args()
     protocol = json.loads(Path(__file__).with_name('lsp-protocol-r2.json').read_text())
     subjects = []
@@ -26,12 +27,15 @@ if __name__ == '__main__':
         for key in totals:
             totals[key] += counts[key]
         subjects.append({'name': subject['name'], 'source_shard': subject['source_shard'], 'counts': counts, 'native_report': data})
-    diagnostic = json.loads((args.results / 'cypress-diagnostic.json').read_text())
+    diagnostic_path = args.results / 'cypress-diagnostic.json'
+    if not diagnostic_path.exists():
+        diagnostic_path = args.results / 'cypress-lsp.json'
+    diagnostic = json.loads(diagnostic_path.read_text())
     if diagnostic['subject_sha'] != next(s['sha'] for s in protocol['subjects'] if s['name'] == 'cypress-io/cypress'):
         raise SystemExit('diagnostic identity mismatch')
     differences = [s for f in diagnostic['files'] for s in f['sites'] if s['scope'] == 'local' and not s['definition_agrees']]
     report = {'tool': protocol['tool'], 'version': protocol['version'], 'protocol_commit': '3a7d13e34',
-              'diagnostic_commit': 'b4e4ba91d', 'tier': 'A for measured reference bindings (Q6/T-R7); definitions and external orbs ungraded',
+              'diagnostic_commit': 'b4e4ba91d', 'measurement_commit': args.measurement_commit, 'tier': 'A for measured reference bindings (Q6/T-R7); definitions and external orbs ungraded',
               'totals': totals, 'subjects': subjects, 'definition_disagreement_diagnostic': differences}
     args.out.write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps(totals, sort_keys=True))
