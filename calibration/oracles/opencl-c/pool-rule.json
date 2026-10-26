@@ -1,6 +1,6 @@
 {
   "schema": "opencl-c-pool-rule-v1",
-  "registration": "Rule fixed after prior outcomes were published, before the new pyopencl parse and before any future grammar patch measurement. Historical outcomes do not establish a prospective gate pass.",
+  "registration": "The initial membership rule was registered at 3e56917af after seven outcomes and before PyOpenCL. This amendment clarifies the named hashcat exception after those baselines and the first implementation trials; it changes no member. The amended bytes govern future patch measurements. Earlier receipts remain bound to their original rule digest and are not retroactively rewritten.",
   "selection_rule": "Every whole project in these closed pinned search records with a nonempty tracked regular lowercase .cl population and OSI-approved software licences enters the primary pool, except diagnostic roles recorded before its candidate screen and the named hashcat exception. Hashcat's diagnostic role was assigned after its round-1 screen because computed includes and qualifier macros require a compiler-evidenced context; round-1 review accepted that structural exception. No future subject may be reclassified after screening. No error rate, clean count, throughput, compiler result, duplicate count or oracle result can include or exclude any other subject or file.",
   "membership_inputs": [
     "repository identity",
@@ -136,7 +136,7 @@
     },
     {
       "id": "handson",
-      "reason": "CC-BY-3.0 is not OSI-approved; diagnostic only, forbidden as a calibration subject under design §13.3 step 16 and the corpus.d/vue.yaml precedent."
+      "reason": "CC-BY-3.0 is not OSI-approved; diagnostic only, forbidden as a calibration subject under design \u00a713.3 step 16 and the corpus.d/vue.yaml precedent."
     },
     {
       "id": "nvidia",
