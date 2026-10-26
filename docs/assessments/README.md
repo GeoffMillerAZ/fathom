@@ -64,6 +64,7 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-26 | [core-t1-css-ceiling](2026-10-26-core-t1-css-ceiling.md) | A span parser exists, but a tier-A CSS rule-end oracle remains unproven. | LB-Q-css-rest |
 | 2026-10-26 | [core-t1-cue-ceiling](2026-10-26-core-t1-cue-ceiling.md) | The package-key file target limits recall; LSP definitions support a future SCIP writer. | LB-Q-cue-rest |
 | 2026-10-26 | [core-t1-javascript-ceiling](2026-10-26-core-t1-javascript-ceiling.md) | The public C-R3 ruling retains the denominator and cost rules. | LB-Q-javascript-rest |
+| 2026-10-26 | [core-t1-kotlin-ceiling](2026-10-26-core-t1-kotlin-ceiling.md) | The reader/producer range cause remains unproved; C-R5 schedules the bounded audit. | LB-Q-kotlin-rest |
 
 ## Companion pages
 
