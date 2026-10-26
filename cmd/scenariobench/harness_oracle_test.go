@@ -21,6 +21,34 @@ func TestCmdRun_OracleHarness(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Missing and ambiguous source pins must fail before creating run state.
+	for _, sources := range [][]scenariobench.SourcePin{nil, {{Name: "one", Revision: "pin"}, {Name: "two", Revision: "pin"}}} {
+		corpus.Sources = sources
+		data, err := json.Marshal(corpus)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, data, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		root := filepath.Join(dir, "refused-root")
+		stderr := captureStderr(t, func() {
+			captureStdout(t, func() {
+				if rc := run([]string{"run", "-corpus", path, "-root", root, "-cells", filepath.Join(dir, "refused-cells"), "-raw-dir", filepath.Join(dir, "refused-raw"), "-run-id", "refused", "-trials", "3", "-harness", "oracle", "-harness-version", "oracle-1"}); rc != 2 {
+					t.Errorf("%d pins: exit=%d", len(sources), rc)
+				}
+			})
+		})
+		if strings.Count(stderr, "oracle needs exactly one source pin") != 1 {
+			t.Errorf("expected one preflight refusal: %s", stderr)
+		}
+		for _, name := range []string{"refused-root", "refused-cells", "refused-raw"} {
+			if _, err := os.Stat(filepath.Join(dir, name)); !os.IsNotExist(err) {
+				t.Errorf("refused run created %s: %v", name, err)
+			}
+		}
+	}
+	corpus.Sources = []scenariobench.SourcePin{{Name: "fixture", Revision: "fixture-pin"}}
 	corpus.Tasks[0].Category = scenariobench.CategoryLocalization
 	corpus.Tasks[0].Oracle = scenariobench.Oracle{Localization: true}
 	corpus.Tasks[0].Gold = scenariobench.Gold{Files: []string{"thing.go"}}

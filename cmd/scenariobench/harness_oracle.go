@@ -15,7 +15,7 @@ func init() {
 		help: "verified gold patch or gold files, no spend",
 		new: func(cfg offlineHarnessConfig) scenariobench.Harness {
 			var source scenariobench.SourcePin
-			// Multiple pins cannot be guessed. FetchGoldPatch refuses an absent pin on F2.
+			// cmdRun validates the source count before any cells are prepared.
 			if len(cfg.Corpus.Sources) == 1 {
 				source = cfg.Corpus.Sources[0]
 			}
@@ -39,4 +39,11 @@ func init() {
 			}
 			return scenariobench.NewOracleHarness(source, cfg.CacheDir, fetch)
 		}}
+}
+
+func validateOracleCorpus(corpus scenariobench.Corpus) error {
+	if len(corpus.Sources) != 1 {
+		return fmt.Errorf("oracle needs exactly one source pin")
+	}
+	return nil
 }

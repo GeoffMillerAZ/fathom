@@ -28,13 +28,17 @@ func (h *WrongPatchHarness) RunSession(req SessionRequest) (SessionResult, error
 	}
 	if h.task.Oracle.Localization {
 		// Use visible tracked paths: dot directories contain the rendered arm settings.
-		out, err := runIn(h.ctx, req.Worktree, "git", "ls-files", "-z")
+		out, err := runIn(h.ctx, req.Worktree, "git", "ls-files", "-t", "-z")
 		if err != nil {
 			return result, err
 		}
 		var files []string
-		for _, file := range dedupSorted(strings.Split(out, "\x00")) {
-			if file == "" || strings.HasPrefix(file, ".") {
+		for _, entry := range dedupSorted(strings.Split(out, "\x00")) {
+			if len(entry) < 3 || entry[0] == 'S' {
+				continue
+			}
+			file := entry[2:] // git ls-files -t prefixes each path with a tag and space.
+			if strings.HasPrefix(file, ".") {
 				continue
 			}
 			gold := false

@@ -547,6 +547,12 @@ func cmdRun(args []string) int {
 		fmt.Fprintf(os.Stderr, "scenariobench run: %v\n", err)
 		return 2
 	}
+	if *harnessName == "oracle" {
+		if err := validateOracleCorpus(corpus); err != nil {
+			fmt.Fprintf(os.Stderr, "scenariobench run: %v\n", err)
+			return 2
+		}
+	}
 	// DP-14: -arm-clone/-arm-setup build a corpus VARIANT in memory —
 	// applied after load/generation and before the corpus hash (and thus
 	// every cell key) is computed, so a variant is a genuinely different
