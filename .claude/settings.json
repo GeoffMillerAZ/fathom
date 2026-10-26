@@ -73,6 +73,11 @@
             "command": "command -v fathom >/dev/null 2>&1 || exit 0; fathom edit-hook",
             "timeout": 5,
             "type": "command"
+          },
+          {
+            "command": "command -v fathom >/dev/null 2>&1 || exit 0; fathom readout-hook --event post-tool",
+            "timeout": 5,
+            "type": "command"
           }
         ],
         "matcher": "Bash"
@@ -114,6 +119,11 @@
         "hooks": [
           {
             "command": "command -v fathom >/dev/null 2>&1 || exit 0; fathom session-hook --event failed-test-run",
+            "timeout": 5,
+            "type": "command"
+          },
+          {
+            "command": "command -v fathom >/dev/null 2>&1 || exit 0; fathom readout-hook --event tool-failure",
             "timeout": 5,
             "type": "command"
           }
@@ -184,6 +194,16 @@
           }
         ],
         "matcher": "WebFetch|WebSearch"
+      },
+      {
+        "hooks": [
+          {
+            "command": "command -v fathom >/dev/null 2>&1 || exit 0; fathom readout-hook --event pre-read",
+            "timeout": 2,
+            "type": "command"
+          }
+        ],
+        "matcher": "Read"
       }
     ],
     "SessionEnd": [
@@ -237,6 +257,17 @@
           {
             "command": "command -v fathom >/dev/null 2>&1 || exit 0; fathom session-hook --event subagent-start",
             "timeout": 5,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "command": "command -v fathom >/dev/null 2>&1 || exit 0; fathom stop-hook --event subagent-stop",
+            "timeout": 2,
             "type": "command"
           }
         ]
