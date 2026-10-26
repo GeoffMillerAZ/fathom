@@ -784,10 +784,7 @@ func runCellForReport(ctx context.Context, root string, cp cellPlan, corpus scen
 		}
 		return cellOutcome{cp: cp, lostReason: reason}, nil
 	}
-	// The null harness deliberately produces no turns. Keep that dry-run
-	// reading for the existing grader, while retaining every other LOST
-	// check (including absent sessions and instrument errors).
-	if reason := scenariobench.CellLost(result.Sessions); reason != "" && !(harness.Name() == "null" && reason == "no session produced a turn") {
+	if reason := scenariobench.CellLost(result.Sessions, harness); reason != "" {
 		return cellOutcome{cp: cp, lostReason: reason}, nil
 	}
 	if err := scenariobench.StoreScenarioCell(cellsDir, result); err != nil {

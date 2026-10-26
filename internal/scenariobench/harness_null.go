@@ -10,6 +10,9 @@ func NewNullHarness() *NullHarness { return &NullHarness{} }
 func (NullHarness) Name() string    { return "null" }
 func (NullHarness) Version() string { return "null-1" }
 
+// ExpectsNoTurns lets the shared LOST gate retain intentional dry-run readings.
+func (NullHarness) ExpectsNoTurns() bool { return true }
+
 func (NullHarness) RunSession(req SessionRequest) (SessionResult, error) {
 	return SessionResult{Index: req.Index, Role: req.Role, RowID: req.RowID}, nil
 }

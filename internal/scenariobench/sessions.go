@@ -779,8 +779,11 @@ func hooksInstrumentError(wired bool, res SessionResult) string {
 // ever produced a turn. A single such session voids the whole cell
 // regardless of how the other sessions in it went — unlike a session that
 // merely errored in-band, which only loses the cell when EVERY session
-// did. A lost cell is never stored or scored.
-func CellLost(sessions []SessionResult) string {
+// did. A lost cell is never stored or scored. A caller running a harness
+// may supply it so an optional ExpectsNoTurns() bool capability can waive
+// only the zero-turn check. Without a harness (including raw rescoring),
+// the gate remains strict; missing sessions and all defects always lose.
+func CellLost(sessions []SessionResult, harness ...Harness) string {
 	if len(sessions) == 0 {
 		return "no sessions ran"
 	}
@@ -816,6 +819,11 @@ func CellLost(sessions []SessionResult) string {
 		return "every session errored: " + sessions[0].Error
 	}
 	if turns == 0 {
+		if len(harness) == 1 {
+			if h, ok := harness[0].(interface{ ExpectsNoTurns() bool }); ok && h.ExpectsNoTurns() {
+				return ""
+			}
+		}
 		return "no session produced a turn"
 	}
 	return ""
