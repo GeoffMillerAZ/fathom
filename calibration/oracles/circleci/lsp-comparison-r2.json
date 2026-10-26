@@ -3,6 +3,7 @@
   "version": "0.54.0",
   "protocol_commit": "3a7d13e34",
   "diagnostic_commit": "b4e4ba91d",
+  "measurement_commit": "953c6b487",
   "tier": "A for measured reference bindings (Q6/T-R7); definitions and external orbs ungraded",
   "totals": {
     "local_sites": 34,
@@ -55,7 +56,128 @@
                 "definition_agrees": true,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 103,
+                        "character": 4
+                      },
+                      "end": {
+                        "line": 103,
+                        "character": 19
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 278,
+                        "character": 10
+                      },
+                      "end": {
+                        "line": 278,
+                        "character": 25
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 318,
+                        "character": 18
+                      },
+                      "end": {
+                        "line": 318,
+                        "character": 23
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 167,
+                        "character": 4
+                      },
+                      "end": {
+                        "line": 167,
+                        "character": 19
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 86,
+                        "character": 4
+                      },
+                      "end": {
+                        "line": 86,
+                        "character": 19
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 217,
+                        "character": 18
+                      },
+                      "end": {
+                        "line": 217,
+                        "character": 23
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 173,
+                        "character": 4
+                      },
+                      "end": {
+                        "line": 173,
+                        "character": 19
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 190,
+                        "character": 4
+                      },
+                      "end": {
+                        "line": 190,
+                        "character": 19
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 64,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 70,
+                        "character": 66
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "owner": "check",
@@ -73,7 +195,102 @@
                 "definition_agrees": true,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 192,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 192,
+                        "character": 13
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 88,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 88,
+                        "character": 13
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 98,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 98,
+                        "character": 13
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 169,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 169,
+                        "character": 13
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 115,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 115,
+                        "character": 13
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 175,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 175,
+                        "character": 13
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 6,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 12,
+                        "character": 92
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "owner": "check",
@@ -91,7 +308,50 @@
                 "definition_agrees": true,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 100,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 100,
+                        "character": 21
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 90,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 90,
+                        "character": 21
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 58,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 61,
+                        "character": 30
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "owner": "test",
@@ -109,7 +369,102 @@
                 "definition_agrees": true,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 115,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 115,
+                        "character": 13
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 169,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 169,
+                        "character": 13
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 175,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 175,
+                        "character": 13
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 88,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 88,
+                        "character": 13
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 98,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 98,
+                        "character": 13
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 192,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 192,
+                        "character": 13
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 6,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 12,
+                        "character": 92
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "owner": "test",
@@ -127,7 +482,50 @@
                 "definition_agrees": true,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 90,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 90,
+                        "character": 21
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 100,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 100,
+                        "character": 21
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 58,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 61,
+                        "character": 30
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "owner": "deploy",
@@ -145,7 +543,128 @@
                 "definition_agrees": true,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 167,
+                        "character": 4
+                      },
+                      "end": {
+                        "line": 167,
+                        "character": 19
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 86,
+                        "character": 4
+                      },
+                      "end": {
+                        "line": 86,
+                        "character": 19
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 217,
+                        "character": 18
+                      },
+                      "end": {
+                        "line": 217,
+                        "character": 23
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 318,
+                        "character": 18
+                      },
+                      "end": {
+                        "line": 318,
+                        "character": 23
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 173,
+                        "character": 4
+                      },
+                      "end": {
+                        "line": 173,
+                        "character": 19
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 190,
+                        "character": 4
+                      },
+                      "end": {
+                        "line": 190,
+                        "character": 19
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 103,
+                        "character": 4
+                      },
+                      "end": {
+                        "line": 103,
+                        "character": 19
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 278,
+                        "character": 10
+                      },
+                      "end": {
+                        "line": 278,
+                        "character": 25
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 64,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 70,
+                        "character": 66
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "owner": "deploy",
@@ -163,7 +682,102 @@
                 "definition_agrees": true,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 192,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 192,
+                        "character": 13
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 88,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 88,
+                        "character": 13
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 169,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 169,
+                        "character": 13
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 175,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 175,
+                        "character": 13
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 98,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 98,
+                        "character": 13
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 115,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 115,
+                        "character": 13
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 6,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 12,
+                        "character": 92
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "owner": "deploy",
@@ -181,7 +795,37 @@
                 "definition_agrees": true,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 117,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 117,
+                        "character": 20
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 32,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 56,
+                        "character": 105
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "owner": "release-pr",
@@ -199,7 +843,128 @@
                 "definition_agrees": true,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 167,
+                        "character": 4
+                      },
+                      "end": {
+                        "line": 167,
+                        "character": 19
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 190,
+                        "character": 4
+                      },
+                      "end": {
+                        "line": 190,
+                        "character": 19
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 103,
+                        "character": 4
+                      },
+                      "end": {
+                        "line": 103,
+                        "character": 19
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 318,
+                        "character": 18
+                      },
+                      "end": {
+                        "line": 318,
+                        "character": 23
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 173,
+                        "character": 4
+                      },
+                      "end": {
+                        "line": 173,
+                        "character": 19
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 86,
+                        "character": 4
+                      },
+                      "end": {
+                        "line": 86,
+                        "character": 19
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 217,
+                        "character": 18
+                      },
+                      "end": {
+                        "line": 217,
+                        "character": 23
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 278,
+                        "character": 10
+                      },
+                      "end": {
+                        "line": 278,
+                        "character": 25
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 64,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 70,
+                        "character": 66
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "owner": "release-pr",
@@ -217,7 +982,102 @@
                 "definition_agrees": true,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 175,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 175,
+                        "character": 13
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 192,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 192,
+                        "character": 13
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 88,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 88,
+                        "character": 13
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 98,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 98,
+                        "character": 13
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 115,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 115,
+                        "character": 13
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 169,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 169,
+                        "character": 13
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 6,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 12,
+                        "character": 92
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "owner": "docs",
@@ -235,7 +1095,128 @@
                 "definition_agrees": true,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 173,
+                        "character": 4
+                      },
+                      "end": {
+                        "line": 173,
+                        "character": 19
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 190,
+                        "character": 4
+                      },
+                      "end": {
+                        "line": 190,
+                        "character": 19
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 103,
+                        "character": 4
+                      },
+                      "end": {
+                        "line": 103,
+                        "character": 19
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 278,
+                        "character": 10
+                      },
+                      "end": {
+                        "line": 278,
+                        "character": 25
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 86,
+                        "character": 4
+                      },
+                      "end": {
+                        "line": 86,
+                        "character": 19
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 217,
+                        "character": 18
+                      },
+                      "end": {
+                        "line": 217,
+                        "character": 23
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 318,
+                        "character": 18
+                      },
+                      "end": {
+                        "line": 318,
+                        "character": 23
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 167,
+                        "character": 4
+                      },
+                      "end": {
+                        "line": 167,
+                        "character": 19
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 64,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 70,
+                        "character": 66
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "owner": "docs",
@@ -253,7 +1234,102 @@
                 "definition_agrees": true,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 115,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 115,
+                        "character": 13
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 98,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 98,
+                        "character": 13
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 169,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 169,
+                        "character": 13
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 175,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 175,
+                        "character": 13
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 192,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 192,
+                        "character": 13
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 88,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 88,
+                        "character": 13
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 6,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 12,
+                        "character": 92
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "owner": "docs-publish",
@@ -271,7 +1347,128 @@
                 "definition_agrees": true,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 217,
+                        "character": 18
+                      },
+                      "end": {
+                        "line": 217,
+                        "character": 23
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 103,
+                        "character": 4
+                      },
+                      "end": {
+                        "line": 103,
+                        "character": 19
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 278,
+                        "character": 10
+                      },
+                      "end": {
+                        "line": 278,
+                        "character": 25
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 318,
+                        "character": 18
+                      },
+                      "end": {
+                        "line": 318,
+                        "character": 23
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 167,
+                        "character": 4
+                      },
+                      "end": {
+                        "line": 167,
+                        "character": 19
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 173,
+                        "character": 4
+                      },
+                      "end": {
+                        "line": 173,
+                        "character": 19
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 190,
+                        "character": 4
+                      },
+                      "end": {
+                        "line": 190,
+                        "character": 19
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 86,
+                        "character": 4
+                      },
+                      "end": {
+                        "line": 86,
+                        "character": 19
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 64,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 70,
+                        "character": 66
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "owner": "docs-publish",
@@ -289,7 +1486,102 @@
                 "definition_agrees": true,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 88,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 88,
+                        "character": 13
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 115,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 115,
+                        "character": 13
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 175,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 175,
+                        "character": 13
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 98,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 98,
+                        "character": 13
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 169,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 169,
+                        "character": 13
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 192,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 192,
+                        "character": 13
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 6,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 12,
+                        "character": 92
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "owner": "setup",
@@ -307,7 +1599,37 @@
                 "definition_agrees": true,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 9,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 9,
+                        "character": 18
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 13,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 20,
+                        "character": 23
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "owner": "setup",
@@ -325,7 +1647,37 @@
                 "definition_agrees": true,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 10,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 10,
+                        "character": 20
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 22,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 31,
+                        "character": 64
+                      }
+                    }
+                  }
+                ]
               }
             ],
             "yaml_v3_pairs": 16,
@@ -374,7 +1726,50 @@
                 "definition_agrees": true,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 94,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 94,
+                        "character": 25
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 131,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 131,
+                        "character": 25
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 79,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 85,
+                        "character": 67
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "owner": "publish-monthly",
@@ -392,7 +1787,50 @@
                 "definition_agrees": true,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 131,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 131,
+                        "character": 25
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 94,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 94,
+                        "character": 25
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 79,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 85,
+                        "character": 67
+                      }
+                    }
+                  }
+                ]
               }
             ],
             "yaml_v3_pairs": 2,
@@ -471,7 +1909,50 @@
                 "definition_agrees": true,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 167,
+                        "character": 12
+                      },
+                      "end": {
+                        "line": 167,
+                        "character": 28
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 153,
+                        "character": 10
+                      },
+                      "end": {
+                        "line": 153,
+                        "character": 26
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 113,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 145,
+                        "character": 30
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "owner": "pack-workflows",
@@ -489,7 +1970,37 @@
                 "definition_agrees": true,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 156,
+                        "character": 10
+                      },
+                      "end": {
+                        "line": 156,
+                        "character": 36
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 97,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 104,
+                        "character": 34
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "owner": "pack-workflows",
@@ -507,7 +2018,37 @@
                 "definition_agrees": true,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 157,
+                        "character": 10
+                      },
+                      "end": {
+                        "line": 157,
+                        "character": 45
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 50,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 73,
+                        "character": 14
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "owner": "pack-workflows",
@@ -525,7 +2066,50 @@
                 "definition_agrees": false,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 9,
+                        "character": 14
+                      },
+                      "end": {
+                        "line": 9,
+                        "character": 28
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 158,
+                        "character": 10
+                      },
+                      "end": {
+                        "line": 158,
+                        "character": 24
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 148,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 160,
+                        "character": 17
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "owner": "pack-workflows",
@@ -543,7 +2127,37 @@
                 "definition_agrees": true,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 159,
+                        "character": 10
+                      },
+                      "end": {
+                        "line": 159,
+                        "character": 33
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 105,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 111,
+                        "character": 30
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "owner": "pack-workflows",
@@ -561,7 +2175,50 @@
                 "definition_agrees": true,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 160,
+                        "character": 10
+                      },
+                      "end": {
+                        "line": 160,
+                        "character": 17
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 64,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 64,
+                        "character": 15
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 44,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 49,
+                        "character": 30
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "owner": "launch-primary-workflow",
@@ -579,7 +2236,50 @@
                 "definition_agrees": true,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 167,
+                        "character": 12
+                      },
+                      "end": {
+                        "line": 167,
+                        "character": 28
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 153,
+                        "character": 10
+                      },
+                      "end": {
+                        "line": 153,
+                        "character": 26
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 113,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 145,
+                        "character": 30
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "owner": "launch-primary-workflow",
@@ -594,7 +2294,23 @@
                 "definition_agrees": false,
                 "references_agree": false,
                 "returned_locations": 1,
-                "external_locations": 1
+                "external_locations": 1,
+                "reference_targets": [],
+                "definition_targets": [
+                  {
+                    "scope": "external",
+                    "range": {
+                      "start": {
+                        "line": 7,
+                        "character": 4
+                      },
+                      "end": {
+                        "line": 93,
+                        "character": 41
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "owner": "persist-to-workspace-and-exit-early",
@@ -612,7 +2328,50 @@
                 "definition_agrees": true,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 160,
+                        "character": 10
+                      },
+                      "end": {
+                        "line": 160,
+                        "character": 17
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 64,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 64,
+                        "character": 15
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 44,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 49,
+                        "character": 30
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "owner": "pack-workflows",
@@ -627,7 +2386,23 @@
                 "definition_agrees": false,
                 "references_agree": false,
                 "returned_locations": 1,
-                "external_locations": 1
+                "external_locations": 1,
+                "reference_targets": [],
+                "definition_targets": [
+                  {
+                    "scope": "external",
+                    "range": {
+                      "start": {
+                        "line": 1,
+                        "character": 4
+                      },
+                      "end": {
+                        "line": 45,
+                        "character": 42
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "owner": "restore-src-checksum-cache",
@@ -645,7 +2420,50 @@
                 "definition_agrees": true,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 99,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 99,
+                        "character": 25
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 107,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 107,
+                        "character": 25
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 84,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 96,
+                        "character": 54
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "owner": "save-src-checksum-cache",
@@ -663,7 +2481,50 @@
                 "definition_agrees": true,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 99,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 99,
+                        "character": 25
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 107,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 107,
+                        "character": 25
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 84,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 96,
+                        "character": 54
+                      }
+                    }
+                  }
+                ]
               }
             ],
             "yaml_v3_pairs": 10,
@@ -712,7 +2573,76 @@
                 "definition_agrees": true,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 170,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 170,
+                        "character": 30
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 183,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 183,
+                        "character": 30
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 196,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 196,
+                        "character": 30
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 209,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 209,
+                        "character": 30
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 2,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 123,
+                        "character": 42
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "owner": "node1",
@@ -730,7 +2660,76 @@
                 "definition_agrees": true,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 196,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 196,
+                        "character": 30
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 209,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 209,
+                        "character": 30
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 170,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 170,
+                        "character": 30
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 183,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 183,
+                        "character": 30
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 2,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 123,
+                        "character": 42
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "owner": "node2",
@@ -748,7 +2747,76 @@
                 "definition_agrees": true,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 170,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 170,
+                        "character": 30
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 183,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 183,
+                        "character": 30
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 196,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 196,
+                        "character": 30
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 209,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 209,
+                        "character": 30
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 2,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 123,
+                        "character": 42
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "owner": "node3",
@@ -766,7 +2834,76 @@
                 "definition_agrees": true,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 170,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 170,
+                        "character": 30
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 183,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 183,
+                        "character": 30
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 196,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 196,
+                        "character": 30
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 209,
+                        "character": 8
+                      },
+                      "end": {
+                        "line": 209,
+                        "character": 30
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 2,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 123,
+                        "character": 42
+                      }
+                    }
+                  }
+                ]
               }
             ],
             "yaml_v3_pairs": 4,
@@ -875,7 +3012,50 @@
                 "definition_agrees": true,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 49,
+                        "character": 4
+                      },
+                      "end": {
+                        "line": 49,
+                        "character": 23
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 97,
+                        "character": 4
+                      },
+                      "end": {
+                        "line": 97,
+                        "character": 23
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 6,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 21,
+                        "character": 80
+                      }
+                    }
+                  }
+                ]
               },
               {
                 "owner": "doc",
@@ -893,7 +3073,50 @@
                 "definition_agrees": true,
                 "references_agree": true,
                 "returned_locations": 1,
-                "external_locations": 0
+                "external_locations": 0,
+                "reference_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 49,
+                        "character": 4
+                      },
+                      "end": {
+                        "line": 49,
+                        "character": 23
+                      }
+                    }
+                  },
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 97,
+                        "character": 4
+                      },
+                      "end": {
+                        "line": 97,
+                        "character": 23
+                      }
+                    }
+                  }
+                ],
+                "definition_targets": [
+                  {
+                    "scope": "same-file",
+                    "range": {
+                      "start": {
+                        "line": 6,
+                        "character": 2
+                      },
+                      "end": {
+                        "line": 21,
+                        "character": 80
+                      }
+                    }
+                  }
+                ]
               }
             ],
             "yaml_v3_pairs": 2,
@@ -921,6 +3144,34 @@
       "references_agree": true,
       "returned_locations": 1,
       "external_locations": 0,
+      "reference_targets": [
+        {
+          "scope": "same-file",
+          "range": {
+            "start": {
+              "line": 9,
+              "character": 14
+            },
+            "end": {
+              "line": 9,
+              "character": 28
+            }
+          }
+        },
+        {
+          "scope": "same-file",
+          "range": {
+            "start": {
+              "line": 158,
+              "character": 10
+            },
+            "end": {
+              "line": 158,
+              "character": 24
+            }
+          }
+        }
+      ],
       "definition_targets": [
         {
           "scope": "same-file",

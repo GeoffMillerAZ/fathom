@@ -88,8 +88,10 @@ preserved. The native-LSP comparison protocol is `lsp-protocol-r2.json`, committ
 before querying the eight subject configurations. Vendor 0.54.0 resolves source
 command/executor names; the full-cohort comparison attests 34/34 local uses by references and
 33/34 by definition (one same-name job/command misresolution). Two orb uses
-resolve externally and remain unscored; W4 ruling Q6 is pending.
-The former native-ablation-only ceiling is reopened. No tier has changed.
+resolve externally and remain unscored. Q6/T-R7 accepts tier A for measured
+reference bindings from the pinned vendor server queried over the full population.
+P-T1 keeps independent third-party analyzers at C. Definitions are not promoted:
+the same-name job/command divergence remains disclosed in every new reading.
 
 
 To reproduce the comparison after building the existing adapter and installing
@@ -114,3 +116,37 @@ Python requires scratch-installed PyYAML 6.0.3. The client fails on a local
 pair-inventory discrepancy, dirty subject, missing native symbols or protocol
 failure; it never substitutes the YAML walk for a native answer. All native
 misses remain visible. No grade is emitted by this diagnostic instrument.
+
+## T-R7 native reference recipe
+
+The native reference wrapper was committed before regrading. It checks the
+server checksum and subject pins, requires clean configuration content, runs
+all original compiler cases and queries every local use in all eight subjects.
+Any missed native reference or incomplete inventory fails the run; no YAML
+answer substitutes for a native response. The definition counterexample and
+external orb uses remain visible. No new extraction or input-matrix tuning uses
+these exposed holdouts.
+
+With the verified vendor binaries at the paths used above, and scratch Python
+with PyYAML 6.0.3:
+
+```sh
+python3 calibration/oracles/circleci/native_refs.py \
+  -adapter workspace/tools/circleci-oracle -cli workspace/tools/circleci \
+  -lsp workspace/tools/circleci-yaml-lsp -out-dir workspace/tmp/circleci-native
+python3 calibration/oracles/circleci/compiler_crosscheck.py \
+  -cli workspace/tools/circleci -work workspace/tmp/circleci-crosscheck \
+  -out workspace/tmp/circleci-native/compiler-crosscheck.json
+GOWORK=off go build -o workspace/tools/indexbench ./cmd/indexbench
+python3 calibration/oracles/circleci/grade_native.py \
+  -indexbench workspace/tools/indexbench -native-dir workspace/tmp/circleci-native \
+  -out-dir workspace/tmp/circleci-native-reading
+python3 -m unittest discover -s calibration/oracles/circleci -p 'test_*.py'
+```
+
+The grade driver requires fresh output, measures every canonical and holdout
+subject separately, records the native definition divergence through `-note`,
+and retimes both cohorts three times. It leaves holdouts outside the canonical
+shard. Compiler cross-checks inspect executor fields and inlined command steps;
+no workflow or shell command body executes. The earlier mixed-C readings above
+remain historical comparisons, not the authority of the new instrument.

@@ -5,12 +5,12 @@
   "level_met": "L2",
   "grade": {
     "L1": "good",
-    "L2": "good",
+    "L2": "excellent",
     "L3": "not-attempted",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-10-19",
-  "fathom_commit": "350f2597",
+  "measured_at": "2026-10-26",
+  "fathom_commit": "953c6b487",
   "extractor": "dialect",
   "subjects": [
     {
@@ -30,7 +30,7 @@
       },
       "families": {
         "l1": "A",
-        "refs": "C"
+        "refs": "A"
       },
       "kind_intersection": [
         "job",
@@ -42,8 +42,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.34,
-        "extract_cpu_ms": 0.339,
+        "extract_ms": 0.269,
+        "extract_cpu_ms": 0.269,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -66,7 +66,7 @@
       },
       "families": {
         "l1": "A",
-        "refs": "C"
+        "refs": "A"
       },
       "kind_intersection": [
         "job",
@@ -79,8 +79,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.713,
-        "extract_cpu_ms": 0.713,
+        "extract_ms": 0.613,
+        "extract_cpu_ms": 0.623,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -103,7 +103,7 @@
       },
       "families": {
         "l1": "A",
-        "refs": "C"
+        "refs": "A"
       },
       "kind_intersection": [
         "job",
@@ -115,9 +115,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.948,
-        "extract_cpu_ms": 1.638,
-        "max_file_ms": 1,
+        "extract_ms": 0.425,
+        "extract_cpu_ms": 0.425,
+        "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -139,7 +139,7 @@
       },
       "families": {
         "l1": "A",
-        "refs": "C"
+        "refs": "A"
       },
       "kind_intersection": [
         "job",
@@ -148,9 +148,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 2.989,
-        "extract_cpu_ms": 2.899,
-        "max_file_ms": 2,
+        "extract_ms": 2.877,
+        "extract_cpu_ms": 3.804,
+        "max_file_ms": 3,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -172,7 +172,7 @@
       },
       "families": {
         "l1": "A",
-        "refs": "C"
+        "refs": "A"
       },
       "kind_intersection": [
         "job",
@@ -184,8 +184,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.515,
-        "extract_cpu_ms": 0.514,
+        "extract_ms": 0.516,
+        "extract_cpu_ms": 0.531,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -199,9 +199,9 @@
       "version": "circleci 1.7.0 (1df22bb0b7b6)"
     },
     {
-      "tier": "C",
-      "tool": "circleci config process (workflow jobs, requires) and a yaml.v3 walk of steps and executor (declared commands and executors only)",
-      "version": "circleci 1.7.0 (1df22bb0b7b6)"
+      "tier": "A",
+      "tool": "circleci config process and CircleCI vendor textDocument/references",
+      "version": "circleci 1.7.0 (1df22bb0b7b6); circleci-yaml-lsp 0.54.0"
     }
   ],
   "metrics": {
@@ -213,8 +213,8 @@
     "xref_recall": null
   },
   "metric_tiers": {
-    "ref_precision": "C",
-    "ref_recall": "C",
+    "ref_precision": "A",
+    "ref_recall": "A",
     "sym_precision": "A",
     "sym_recall": "A"
   },
@@ -239,10 +239,10 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 10.59,
+    "throughput_mb_s": 11.43,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 11.74,
-    "max_file_ms": 2,
+    "wall_throughput_mb_s": 13.75,
+    "max_file_ms": 3,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
@@ -251,12 +251,13 @@
     "fathom:CircleCIExecutor": 4
   },
   "notes": [
-    "cimg-base: restricted to .circleci/config.yml (-only; the files outside are a disclosed gap, not measured)",
-    "circleci-cli: restricted to .circleci/config.yml (-only; the files outside are a disclosed gap, not measured)",
-    "cypress: restricted to .circleci/config.yml (-only; the files outside are a disclosed gap, not measured)",
-    "graphql-engine: restricted to .circleci/config.yml (-only; the files outside are a disclosed gap, not measured)",
-    "openapi-generator: restricted to .circleci/config.yml (-only; the files outside are a disclosed gap, not measured)",
-    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+    "cimg-base: T-R7/Q6: native CircleCI YAML language server 0.54.0, pinned by version/checksum, queried on the full five-canonical/three-holdout population: references agree 34/34 local uses. Definition agrees 33/34: cypress pack-workflows resolves to the same-name job; references on the command agree. Two external orb uses are unscored. Compiler cross-checks agree 3/3 (executor, command expansion, same-name command). No extractor or parameter-matrix change. Small-cohort timing is non-informative; no dialect-wide throughput claim.",
+    "circleci-cli: T-R7/Q6: native CircleCI YAML language server 0.54.0, pinned by version/checksum, queried on the full five-canonical/three-holdout population: references agree 34/34 local uses. Definition agrees 33/34: cypress pack-workflows resolves to the same-name job; references on the command agree. Two external orb uses are unscored. Compiler cross-checks agree 3/3 (executor, command expansion, same-name command). No extractor or parameter-matrix change. Small-cohort timing is non-informative; no dialect-wide throughput claim.",
+    "cypress: T-R7/Q6: native CircleCI YAML language server 0.54.0, pinned by version/checksum, queried on the full five-canonical/three-holdout population: references agree 34/34 local uses. Definition agrees 33/34: cypress pack-workflows resolves to the same-name job; references on the command agree. Two external orb uses are unscored. Compiler cross-checks agree 3/3 (executor, command expansion, same-name command). No extractor or parameter-matrix change. Small-cohort timing is non-informative; no dialect-wide throughput claim.",
+    "graphql-engine: T-R7/Q6: native CircleCI YAML language server 0.54.0, pinned by version/checksum, queried on the full five-canonical/three-holdout population: references agree 34/34 local uses. Definition agrees 33/34: cypress pack-workflows resolves to the same-name job; references on the command agree. Two external orb uses are unscored. Compiler cross-checks agree 3/3 (executor, command expansion, same-name command). No extractor or parameter-matrix change. Small-cohort timing is non-informative; no dialect-wide throughput claim.",
+    "openapi-generator: T-R7/Q6: native CircleCI YAML language server 0.54.0, pinned by version/checksum, queried on the full five-canonical/three-holdout population: references agree 34/34 local uses. Definition agrees 33/34: cypress pack-workflows resolves to the same-name job; references on the command agree. Two external orb uses are unscored. Compiler cross-checks agree 3/3 (executor, command expansion, same-name command). No extractor or parameter-matrix change. Small-cohort timing is non-informative; no dialect-wide throughput claim.",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "throughput (design 1.9 T1, T2): darwin/arm64 Apple M4; run 1: 11.43 MB/CPU-s; run 2: 14.62 MB/CPU-s; run 3: 10.15 MB/CPU-s; median run 1: 11.43 MB/CPU-s; every other field is the original measurement at its recorded fathom_commit 953c6b487"
   ],
   "disposition": null
 }

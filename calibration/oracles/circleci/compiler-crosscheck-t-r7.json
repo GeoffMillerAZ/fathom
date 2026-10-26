@@ -1,0 +1,65 @@
+{
+  "tool": "circleci config process",
+  "version": "circleci 1.7.0 (1df22bb0b7b6)",
+  "checks": [
+    {
+      "subject": "CircleCI-Public/circleci-cli",
+      "sha": "2053bcbdd62e744f05b76b1e263c54febea34804",
+      "owner": "check",
+      "target": "linux",
+      "family": "executor",
+      "expected": {
+        "machine": {
+          "image": "ubuntu-2604:current"
+        },
+        "resource_class": "large.gen3"
+      },
+      "actual": {
+        "machine": {
+          "image": "ubuntu-2604:current"
+        },
+        "resource_class": "large.gen3"
+      },
+      "agrees": true
+    },
+    {
+      "subject": "CircleCI-Public/circleci-cli",
+      "sha": "2053bcbdd62e744f05b76b1e263c54febea34804",
+      "owner": "check",
+      "target": "store_results",
+      "family": "command",
+      "expected": {
+        "store_test_results": {
+          "path": "./test-reports"
+        }
+      },
+      "actual": {
+        "store_test_results": {
+          "path": "./test-reports"
+        }
+      },
+      "agrees": true
+    },
+    {
+      "subject": "cypress-io/cypress",
+      "sha": "30a4d03221676dc8ede0aa55e63560f38fa78a93",
+      "owner": "pack-workflows",
+      "target": "pack-workflows",
+      "family": "command",
+      "expected": {
+        "run": {
+          "name": "Pack workflows",
+          "command": "./scripts/pack-ci.sh --all\n"
+        }
+      },
+      "actual": {
+        "run": {
+          "name": "Pack workflows",
+          "command": "./scripts/pack-ci.sh --all\n"
+        }
+      },
+      "agrees": true
+    }
+  ],
+  "agreements": 3
+}

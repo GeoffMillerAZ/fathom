@@ -2740,7 +2740,7 @@
     "grammar_source": "pure-go:gopkg.in/yaml.v3",
     "licence": "n/a",
     "oracle": [
-      "circleci config process (tier A, offline)"
+      "circleci config process 1.7.0 and vendor language server 0.54.0 references (tier A, T-R7)"
     ],
     "calibration_subjects": [
       "CircleCI-Public/circleci-cli",
@@ -2758,7 +2758,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-circleci",
     "worker_model": "sonnet",
-    "notes": "new; jobs, workflows, commands, executors; requires edges"
+    "notes": "T-R7: canonical L2 excellent, L1 good (48/49 defs, 74/75 refs); separate T-R3 holdout L1/L2 excellent (11/11, 8/8). Full pinned vendor reference population 34/34; same-name definition divergence disclosed."
   },
   {
     "id": "pascal",

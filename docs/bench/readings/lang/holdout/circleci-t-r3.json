@@ -5,12 +5,12 @@
   "level_met": "L2",
   "grade": {
     "L1": "excellent",
-    "L2": "good",
+    "L2": "excellent",
     "L3": "not-attempted",
     "L4": "not-applicable"
   },
   "measured_at": "2026-10-26",
-  "fathom_commit": "f6e47f021",
+  "fathom_commit": "953c6b487",
   "extractor": "dialect",
   "subjects": [
     {
@@ -30,7 +30,7 @@
       },
       "families": {
         "l1": "A",
-        "refs": "C"
+        "refs": "A"
       },
       "kind_intersection": [
         "job",
@@ -39,8 +39,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.211,
-        "extract_cpu_ms": 0.211,
+        "extract_ms": 0.189,
+        "extract_cpu_ms": 0.189,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -63,7 +63,7 @@
       },
       "families": {
         "l1": "A",
-        "refs": "C"
+        "refs": "A"
       },
       "kind_intersection": [
         "job",
@@ -72,8 +72,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.214,
-        "extract_cpu_ms": 0.215,
+        "extract_ms": 0.251,
+        "extract_cpu_ms": 0.252,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -96,7 +96,7 @@
       },
       "families": {
         "l1": "A",
-        "refs": "C"
+        "refs": "A"
       },
       "kind_intersection": [
         "job",
@@ -108,8 +108,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.36,
-        "extract_cpu_ms": 0.36,
+        "extract_ms": 0.408,
+        "extract_cpu_ms": 0.409,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -123,9 +123,9 @@
       "version": "circleci 1.7.0 (1df22bb0b7b6)"
     },
     {
-      "tier": "C",
-      "tool": "circleci config process (workflow jobs, requires) and a yaml.v3 walk of steps and executor (declared commands and executors only)",
-      "version": "circleci 1.7.0 (1df22bb0b7b6)"
+      "tier": "A",
+      "tool": "circleci config process and CircleCI vendor textDocument/references",
+      "version": "circleci 1.7.0 (1df22bb0b7b6); circleci-yaml-lsp 0.54.0"
     }
   ],
   "metrics": {
@@ -137,8 +137,8 @@
     "xref_recall": null
   },
   "metric_tiers": {
-    "ref_precision": "C",
-    "ref_recall": "C",
+    "ref_precision": "A",
+    "ref_recall": "A",
     "sym_precision": "A",
     "sym_recall": "A"
   },
@@ -163,9 +163,9 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 16.22,
+    "throughput_mb_s": 15,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 16.24,
+    "wall_throughput_mb_s": 15.03,
     "max_file_ms": 0,
     "peak_module_pages": 0,
     "compiled_bytes": 0
@@ -174,11 +174,11 @@
     "fathom:CircleCIExecutor": 1
   },
   "notes": [
-    "CircleCI-Public/cimg-node: T-R3 fresh-subject holdout: preregistered input union in parameters-t-r3.json, committed at f6e47f021 before any oracle execution; earlier canonical corpus remains unchanged.",
-    "CircleCI-Public/cimg-python: T-R3 fresh-subject holdout: preregistered input union in parameters-t-r3.json, committed at f6e47f021 before any oracle execution; earlier canonical corpus remains unchanged.",
+    "CircleCI-Public/cimg-node: T-R7/Q6: native CircleCI YAML language server 0.54.0, pinned by version/checksum, queried on the full five-canonical/three-holdout population: references agree 34/34 local uses. Definition agrees 33/34: cypress pack-workflows resolves to the same-name job; references on the command agree. Two external orb uses are unscored. Compiler cross-checks agree 3/3 (executor, command expansion, same-name command). No extractor or parameter-matrix change. Small-cohort timing is non-informative; no dialect-wide throughput claim.",
+    "CircleCI-Public/cimg-python: T-R7/Q6: native CircleCI YAML language server 0.54.0, pinned by version/checksum, queried on the full five-canonical/three-holdout population: references agree 34/34 local uses. Definition agrees 33/34: cypress pack-workflows resolves to the same-name job; references on the command agree. Two external orb uses are unscored. Compiler cross-checks agree 3/3 (executor, command expansion, same-name command). No extractor or parameter-matrix change. Small-cohort timing is non-informative; no dialect-wide throughput claim.",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "scikit-learn/scikit-learn: T-R3 fresh-subject holdout: preregistered input union in parameters-t-r3.json, committed at f6e47f021 before any oracle execution; earlier canonical corpus remains unchanged.",
-    "throughput (design 1.9 T1, T2): darwin/arm64 Apple M4; run 1: 6.65 MB/CPU-s; run 2: 16.22 MB/CPU-s; run 3: 17.00 MB/CPU-s; median run 2: 16.22 MB/CPU-s; every other field is the original measurement at its recorded fathom_commit f6e47f021"
+    "scikit-learn/scikit-learn: T-R7/Q6: native CircleCI YAML language server 0.54.0, pinned by version/checksum, queried on the full five-canonical/three-holdout population: references agree 34/34 local uses. Definition agrees 33/34: cypress pack-workflows resolves to the same-name job; references on the command agree. Two external orb uses are unscored. Compiler cross-checks agree 3/3 (executor, command expansion, same-name command). No extractor or parameter-matrix change. Small-cohort timing is non-informative; no dialect-wide throughput claim.",
+    "throughput (design 1.9 T1, T2): darwin/arm64 Apple M4; run 1: 15.00 MB/CPU-s; run 2: 15.12 MB/CPU-s; run 3: 14.04 MB/CPU-s; median run 1: 15.00 MB/CPU-s; every other field is the original measurement at its recorded fathom_commit 953c6b487"
   ],
   "disposition": null
 }
