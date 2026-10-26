@@ -61,6 +61,7 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-16 | [decision-models](2026-10-16-decision-models.md) | Decision models pay now only as $0 scaffolding (kill, consent, disclosure, a fitted table, the `ask` spine at provider none); whether a fast model reads code is a stage-gated experiment, at most $2 then $8; the port is hexagonal | ADR-073, I66, G42, Q37, F34 in part, F80, F81, KS-, EXP-, AQ-, RJ-, JG- |
 | 2026-10-17 | [intent-practice](2026-10-17-intent-practice.md) | Keep the practice (cheap, read): delivery was the weak link, so v0.15.0 retires `INTENT.md` and generates edit-time intent from the router; seven alternatives rejected for now with wins-if lines; K1 to K6 are due 2026-11-17 and unread | ADR-074, IV-1 to IV-10, F86, F9, O1134 to O1137 |
 | 2026-10-25 | [matlab-free-oracle-ceiling](2026-10-25-matlab-free-oracle-ceiling.md) | Reviewed free tools do not yet supply independent call and resolution truth across the unchanged MATLAB corpus | LB-Q-matlab-rest |
+| 2026-10-25 | [wgsl-native-l3-ceiling](2026-10-25-wgsl-native-l3-ceiling.md) | Standard WGSL has no native import denominator; existing WESL and naga_oil resolvers need separately ruled queue populations | LB-Q-wgsl-rest |
 
 ## Companion pages
 
