@@ -1,0 +1,88 @@
+{
+  "fixture_literal_sites": 8,
+  "fixture_native_unresolved_sites": 2,
+  "iseq_contract": {
+    "dump_sha256": "6263223d1272f61e121601c8eb6bc5854cfb8d09d6b33c4099cd101e87266db5",
+    "receiver_target_binding": "absent: compile/disassembly contains a written send, no evaluated receiver",
+    "ruby": "3.3.8",
+    "written_send_target_present": true
+  },
+  "native_input_change": "length to bytesize; exactly one native pair changes in each route",
+  "oracle_code_sha256": {
+    "README.md": "fcdabe6ffdf78b10d2e5afa9071a91420e16870ac344f5d560eed4fa61c0f69c",
+    "audit_runtime.py": "ca38bbe1a87e3032599706fb722f7fcf280878e86d81e35fe4930e7de295d527",
+    "bootstrap.py": "b8b2cae19d50ed70f84ec6ee04ba710ea96ef2ad5d483ba8d50e966b8ab0322f",
+    "build_openssl.py": "afd377ec88f8948c764d1396bb020ca6b160c3e38ffe5d17d37a9dbda24320b3",
+    "install_bundles.py": "1a25596e7c543c0712dd9cb22df7aa9646a2b200bc5709a112dcccda343dd4af",
+    "measure_typeprof.py": "6b8b5e490c3db6c0b666290d63b839c5925c4bb12febf7962a2cc03049d4da72",
+    "prove_hook.py": "55f32b0926351da0a8336bcc7e3c05c8c7f0b515b19e91836bae4c15318ee480",
+    "prove_mutations.py": "dea50e5342cfb756bb922f6da46949851ca5961b9f33bc1351289e7cdd4e9d47",
+    "prove_native.py": "9fe1265f4698ed1afc40c8fbb8c71c7debcebe8c875591a26020348ad7e7b653",
+    "run_traces.py": "b1ddc78db81861d24462da0652f45ed63984a525b820a15e9f2af0a1277e15bb",
+    "score_runtime.py": "06ce3bf99232ac9771d741e84f15bf4a32f15c7f3094bb3eddd0672f3927cb60",
+    "syntax_sites.py": "4064bf483a92aa9553d07c15efc416942c04fcd10979544d664f615e3d190505",
+    "test_trace_decode.py": "08eb116e92ab00c885654a62d89923f5081a7657f97d3715658fe6f689df1c74",
+    "test_trace_driver.py": "6bc968996e611db9f2964bf02c31c3bd5962aa70d10a39dc8eca5af375329f2b",
+    "trace_decode.py": "9ed1a298f5087a690fdceb5d7be4a635d415c514528106598a531493c67fb509",
+    "trace_hook.rb": "a65596b2c46e87f31bd3b722fb2402aa8711b348e9bb41bb36ae34da02dec225",
+    "tracked_set.py": "26b5bfca3744d2e37bd8e82eb3d9c37b2229ac0c6124b9e42370a49ce433aeb1",
+    "typeprof_export.rb": "2b262b196e24fc35d2c1796cf9820eb1e222acc41f621259dd7a1d160bf37db9"
+  },
+  "owner_caps": [
+    {
+      "cap": "TYPEPROF_FILE_CAP",
+      "input_count_at_least": 2,
+      "limit": 1,
+      "whole_unit_refused": true
+    },
+    {
+      "cap": "TYPEPROF_BYTE_CAP",
+      "input_count_at_least": 297,
+      "limit": 296,
+      "whole_unit_refused": true
+    },
+    {
+      "cap": "TYPEPROF_PAIR_CAP",
+      "input_count_at_least": 4,
+      "limit": 3,
+      "whole_unit_refused": true
+    },
+    {
+      "cap": "RUBY_SITE_FILE_CAP",
+      "input_count": 2,
+      "limit": 1,
+      "whole_unit_refused": true
+    },
+    {
+      "cap": "RUBY_SITE_BYTE_CAP",
+      "input_count": 297,
+      "limit": 296,
+      "whole_unit_refused": true
+    },
+    {
+      "cap": "RUBY_SITE_SITE_CAP",
+      "input_count": 8,
+      "limit": 7,
+      "whole_unit_refused": true
+    },
+    {
+      "cap": "RUBY_ORACLE_ROW_CAP",
+      "input_count_at_least": 2,
+      "limit": 1,
+      "whole_unit_refused": true
+    },
+    {
+      "cap": "RUBY_ORACLE_FUNCTION_CAP",
+      "input_count_at_least": 2,
+      "limit": 1,
+      "whole_unit_refused": true
+    }
+  ],
+  "perturbation_locations": "inside native input directory and original subject root; no extractor file is a native input",
+  "tracepoint_after_extractor_perturbation_sha256": "237abea6d7d1dc961d06ac95ef9a99a3313a5833bb33c894e206355c414fb828",
+  "tracepoint_after_native_input_change_sha256": "16892cde20f0fd0ae4dcd5f86ac0bd40ccab98687521a4ac02dc590cfb6186b2",
+  "tracepoint_truth_before_sha256": "237abea6d7d1dc961d06ac95ef9a99a3313a5833bb33c894e206355c414fb828",
+  "typeprof_after_extractor_perturbation_sha256": "f82425ed7ed543f67ff5cf0fdceb85a97657d903e2e28ade5755c00c2a8a5770",
+  "typeprof_after_native_input_change_sha256": "85819e50b2594cd00f2d37c27f106d1c44cf4f55d074d9a98fd522a1babe4b46",
+  "typeprof_truth_before_sha256": "f82425ed7ed543f67ff5cf0fdceb85a97657d903e2e28ade5755c00c2a8a5770"
+}
