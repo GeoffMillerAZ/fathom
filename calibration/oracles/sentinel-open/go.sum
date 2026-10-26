@@ -1,0 +1,4 @@
+github.com/glennsarti/sentinel-parser v0.0.4-0.20260211131028-3a328c0dcfb9 h1:wJCrzB/bVLUQGB1vr4js6f7Y1QPrNhkpG64Fexh8ZMA=
+github.com/glennsarti/sentinel-parser v0.0.4-0.20260211131028-3a328c0dcfb9/go.mod h1:GEbIJnlPzPPP1V4rRNRqqxjLmnSlK7+0Oap5E8o2IvI=
+golang.org/x/mod v0.33.0 h1:tHFzIWbBifEmbwtGz65eaWyGiGZatSrT9prnU8DbVL8=
+golang.org/x/mod v0.33.0/go.mod h1:swjeQEj+6r7fODbD2cqrnje9PnziFuw4bmLbBZFrQ5w=

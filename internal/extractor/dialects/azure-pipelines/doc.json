@@ -1,0 +1,83 @@
+{
+  "decode": "yaml",
+  "detect": {
+    "basenames": [
+      "azure-pipelines.yml",
+      "azure-pipelines.yaml"
+    ],
+    "content_sniff": "(?m)^\\s*-\\s*(stage|job|deployment)\\s*:"
+  },
+  "entities": [
+    {
+      "select": "$",
+      "where": {
+        "is_map": true
+      },
+      "kind": "package",
+      "source_kind": "AzurePipelineFile",
+      "name": "$file"
+    },
+    {
+      "select": "$..stages[*]",
+      "where": {
+        "is_map": true
+      },
+      "kind": "section",
+      "source_kind": "AzurePipelineStage",
+      "name": ".stage"
+    },
+    {
+      "select": "$..jobs[*]",
+      "where": {
+        "is_map": true
+      },
+      "kind": "job",
+      "source_kind": "AzurePipelineJob",
+      "name": ".job"
+    },
+    {
+      "select": "$..jobs[*]",
+      "where": {
+        "is_map": true
+      },
+      "kind": "job",
+      "source_kind": "AzurePipelineDeployment",
+      "name": ".deployment"
+    }
+  ],
+  "references": [
+    {
+      "from": "section",
+      "select": "$.dependsOn",
+      "value": "$",
+      "to_kind": "section",
+      "edge": "depends_on",
+      "declared_only": true
+    },
+    {
+      "from": "section",
+      "select": "$.dependsOn[*]",
+      "value": "$",
+      "to_kind": "section",
+      "edge": "depends_on",
+      "declared_only": true
+    },
+    {
+      "from": "job",
+      "select": "$.dependsOn",
+      "value": "$",
+      "to_kind": "job",
+      "edge": "depends_on",
+      "declared_only": true
+    },
+    {
+      "from": "job",
+      "select": "$.dependsOn[*]",
+      "value": "$",
+      "to_kind": "job",
+      "edge": "depends_on",
+      "declared_only": true
+    }
+  ],
+  "cross_file": []
+}

@@ -1,0 +1,138 @@
+{
+  "dialect": "azure-pipelines",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L2",
+  "grade": {
+    "L1": "good",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-26",
+  "fathom_commit": "56529ac87",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "dotnet/runtime",
+      "sha": "3734b6da84340b26e07301263c173a3ffe32442a",
+      "files": 76,
+      "bytes": 403350,
+      "counts": {
+        "fathom_defs": 161,
+        "kind_equal": 161,
+        "matched": 161,
+        "oracle_defs": 162
+      },
+      "families": {
+        "l1": "C"
+      },
+      "kind_intersection": [
+        "job",
+        "package",
+        "section"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 115.56000000000003,
+        "extract_cpu_ms": 124.96499999999997,
+        "max_file_ms": 21,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "microsoft/azure-pipelines-yaml",
+      "sha": "5d433fcad43a32789a968179469c1e6271cb2fc7",
+      "files": 15,
+      "bytes": 37759,
+      "counts": {
+        "fathom_defs": 66,
+        "kind_equal": 66,
+        "matched": 66,
+        "oracle_defs": 66,
+        "ref_fathom": 16,
+        "ref_fathom_in_truth": 16,
+        "ref_truth": 16,
+        "ref_truth_found": 16
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "job",
+        "package",
+        "section"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 15.035000000000004,
+        "extract_cpu_ms": 15.051,
+        "max_file_ms": 2,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "C",
+      "tool": "azure-pipelines independent PyYAML walk",
+      "version": "6.0.3"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 0.9956,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "ref_precision": "C",
+    "ref_recall": "C",
+    "sym_precision": "C",
+    "sym_recall": "C"
+  },
+  "required_kinds": [
+    "job",
+    "package"
+  ],
+  "kind_intersection": [
+    "job",
+    "package",
+    "section"
+  ],
+  "counts": {
+    "fathom_defs": 227,
+    "kind_equal": 227,
+    "matched": 227,
+    "oracle_defs": 228,
+    "ref_fathom": 16,
+    "ref_fathom_in_truth": 16,
+    "ref_truth": 16,
+    "ref_truth_found": 16
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 3.15,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 3.38,
+    "max_file_ms": 21,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "dotnet/runtime: Azure review: all 16 literal same-file dependsOn pairs are from microsoft/azure-pipelines-yaml; dotnet/runtime contributes no such pairs. The original 227/228 includes 91 pipeline file entities selected by a shared file rule; independent stage/job/deployment declarations match 136/137. PyYAML rejects templates/deploy-to-existing-kubernetes-cluster.yml (mustache starter). Duplicate extends occurrences remain in truth; decoder work is held by T-R2. Earlier YAML claims win before Azure dispatch; ENGINE regression validation is recorded separately.",
+    "microsoft/azure-pipelines-yaml: Azure review: all 16 literal same-file dependsOn pairs are from microsoft/azure-pipelines-yaml; dotnet/runtime contributes no such pairs. The original 227/228 includes 91 pipeline file entities selected by a shared file rule; independent stage/job/deployment declarations match 136/137. PyYAML rejects templates/deploy-to-existing-kubernetes-cluster.yml (mustache starter). Duplicate extends occurrences remain in truth; decoder work is held by T-R2. Earlier YAML claims win before Azure dispatch; ENGINE regression validation is recorded separately.",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "throughput (design 1.9 T1, T2): darwin/arm64 Apple M4; run 1: 3.15 MB/CPU-s; run 2: 3.20 MB/CPU-s; run 3: 2.53 MB/CPU-s; median run 1: 3.15 MB/CPU-s; every other field is the original measurement at its recorded fathom_commit 56529ac87"
+  ],
+  "disposition": null
+}
