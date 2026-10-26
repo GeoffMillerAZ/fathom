@@ -36,7 +36,7 @@ No rule was changed after that reading. Its computed grades are in the [independ
 range agreement 1 (2,972/2,972), symbol recall .9927 and precision .9987, call recall .9985 and
 precision .9559, import resolution 1, file-edge recall 1 and precision .8239 (117/142). Twenty-five
 counted file pairs lack successful compile attestation. Median throughput is 2.74 MB per
-CPU-second (2.76, 2.73, 2.74), zero faults. This is the remaining written oracle ceiling, not
+CPU-second (2.76, 2.73, 2.74), zero faults. This was the original measured oracle limit, not
 proof that those file-resolver edges are wrong. A future pass needs subject-native compile
 configuration frozen before another independent holdout. The older Angular holdout remains
 historical under the old oracle and restricted source scope.
@@ -72,14 +72,44 @@ ruby -r yaml -e 'ARGV.each { |p| YAML.safe_load(File.read(p)) }' calibration/cor
 
 ## X-R4 five-source audit
 
-Search date: 2026-10-26 UTC. The [Sourcegraph precise-navigation list](https://sourcegraph.com/docs/code-navigation/precise-code-navigation), [SCIP indexer catalog](https://github.com/scip-code/scip#readme), legacy LSIF repository searches ([TS/JS example](https://github.com/sourcegraph/lsif-node), [Go example](https://github.com/sourcegraph/lsif-go)), and GitHub repository searches for `scip-<language>` were checked. These are bounded catalogs, not evidence that an indexer cannot exist. Runtime traces cover executed paths only and cannot substitute for complete static source truth. No new subject or oracle was run here.
+Search date: 2026-10-26 UTC. The [Sourcegraph precise-navigation list](https://sourcegraph.com/docs/code-navigation/precise-code-navigation), [SCIP indexer catalog](https://github.com/scip-code/scip#readme), legacy LSIF repository searches ([TS/JS example](https://github.com/sourcegraph/lsif-node), [Go example](https://github.com/sourcegraph/lsif-go)), and GitHub repository searches for `scip-<language>` were checked. These are bounded catalogs, not evidence that an indexer cannot exist. Runtime traces cover executed paths only and cannot substitute for complete static source truth. The source-ledger lookup itself was read-only; the dated native resolver measurement below records subsequent execution.
 
 | Source class | Searched source and disposition |
 |---|---|
 | Own toolchain / compiler | [Dart Sass](https://sass-lang.com/documentation/js-api/) is measured at 1.105.1 for successful `loadedUrls`; [registry 1.106.1](https://registry.npmjs.org/sass/latest) is newer but does not automatically attest failed Foundation compiles. |
 | SCIP / LSIF | Shared catalogs and [GitHub `scip-scss` search](https://github.com/search?q=scip-scss&type=repositories) yielded no measured SCSS indexer. |
 | Language server | [VS Code CSS/SCSS language service](https://github.com/microsoft/vscode-css-languageservice) has navigation services. [`some-sass-language-server` 2.3.8](https://www.npmjs.com/package/some-sass-language-server) supports SCSS and indented Sass with `@use`/`@forward`; it is third-party tier C and **LIVE UNMEASURED** against Foundation's 25 unattested file pairs. |
-| Registry AST / resolver | [sass-parser 0.5.1](https://registry.npmjs.org/sass-parser/latest) postdates measured 0.4.57. [`sass_api` 18.1.0](https://pub.dev/packages/sass_api/versions/18.1.0) exposes AST spans, [`findDependencies`](https://pub.dev/documentation/sass_api/18.1.0/sass_api/findDependencies.html) returns declared URLs, and [`ImportCache.canonicalize`](https://pub.dev/documentation/sass_api/18.1.0/sass_api/ImportCache/canonicalize.html) resolves a URL using Dart Sass's own resolver. Combined, `findDependencies` plus `ImportCache.canonicalize` can attest resolved (importer, imported) pairs without evaluating the stylesheet, including files that fail evaluation. This owner-resolution route is **LIVE UNMEASURED**, tier A under P-T1; it may cover some or all of the 25 pairs. It needs the same load paths and importers as a compile, so missing-load-path failures remain unresolved. |
-| Runtime/load tracing | [Dart Sass compile API](https://sass-lang.com/documentation/js-api/) reports loads for successful compiles only. A custom JS importer hook can observe explicit `load` callbacks, but does not establish coverage of built-in loads. The `sass_api` resolver route above is unmeasured; failed individual files remain counted pending measurement. |
+| Registry AST / resolver | [sass-parser 0.5.1](https://registry.npmjs.org/sass-parser/latest) postdates measured 0.4.57. [`sass_api` 18.1.0](https://pub.dev/packages/sass_api/versions/18.1.0) exposes AST spans, [`findDependencies`](https://pub.dev/documentation/sass_api/18.1.0/sass_api/findDependencies.html) returns declared URLs, and [`ImportCache.canonicalize`](https://pub.dev/documentation/sass_api/18.1.0/sass_api/ImportCache/canonicalize.html) resolves a URL using Dart Sass's own resolver. Combined, `findDependencies` plus `ImportCache.canonicalize` can attest resolved (importer, imported) pairs without evaluating the stylesheet, including files that fail evaluation. This owner-resolution route is now **MEASURED**, tier A under P-T1; it attests all 25 previously missing pairs in the post-hoc Foundation comparison. It needs the same load paths and importers as a compile, so missing-load-path failures remain unresolved. |
+| Runtime/load tracing | [Dart Sass compile API](https://sass-lang.com/documentation/js-api/) reports loads for successful compiles only. A custom JS importer hook can observe explicit `load` callbacks, but does not establish coverage of built-in loads. The `sass_api` resolver measurement below retains every parse and resolution gap. |
 
-The measured reading is unchanged pending the native resolver measurement. LB-Q-scss-rest now includes ImportCache.canonicalize over every file's declared dependencies. The controller authorizes this format-owner resolver as tier A under P-T1; no successful measurement or new grade is claimed here.
+The original frozen Foundation result remains historical. The controller authorizes the format-owner resolver as tier A under P-T1; its measured result below supersedes the missing-resolver premise without treating a spent subject as fresh validation.
+
+## Native resolver measurement after binding X-R4 F1
+
+Measured: pinned Dart 3.13.7, sass_api 18.1.0 and Dart Sass 1.106.1 resolve
+the complete declared dependency inventory while preserving the primary
+sass-parser 0.4.57/Sass 1.105.1 non-import truth. The composite tool identity
+names both producers. The [canonical reading](../bench/readings/lang/scss.json)
+retains every non-import count, metric and family and remains L1-L3 excellent;
+median-of-three throughput is 2.36 MB/CPU-s, zero faults.
+
+Post hoc only: the [separate Foundation comparison](../bench/readings/scss-native-foundation-posthoc-2026-10-26.json)
+attests all 25 formerly missing counted file pairs, moving file-edge precision
+from .8239 (117/142) to 1 (142/142), with every non-import count/metric unchanged.
+Its median throughput is 2.87 MB/CPU-s. Foundation is spent: this does
+not replace its original untuned reading or provide independent validation.
+The [counts/hashes receipt](data/2026-10-26-core-t1-scss-native-resolver.json)
+records original and derived identities, source inventories and all gaps.
+
+Native resolution reports one, sixteen and eleven unresolved unique URLs
+across the three complete subjects; nine Foundation URLs are builtins. The
+primary retains one successful Bootstrap content-block compile attestation
+that findDependencies does not enumerate. Unresolved native evidence never
+erases successful primary evidence; conflicting resolved targets fail.
+meta.load-css URLs remain explicitly unpositioned and never get a fabricated
+line. Eight primary parser-rejected files remain counted against symbol
+precision. No extractor, discovery filter, production gate or source changed.
+
+The fresh Spectre pin was committed before any source access. Freeze these
+canonical results and the unchanged oracle before its first untuned reading;
+it remains outside the canonical corpus and must not reuse Foundation.
