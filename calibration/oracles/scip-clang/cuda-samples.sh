@@ -17,7 +17,7 @@
 #      architecture the build names; the host pass is the gcc -E line nvcc --dryrun prints for the entry (no
 #      __CUDA_ARCH__); the two runs' active lines and includes are unioned into preproc.json;
 #   4. a clang CUDA host-only translation of each .cu entry (cuda-compdb.py's flags over the entry's own -I, -isystem
-#      and -D) at <work-dir>/subject/build/compile_commands.json: scip-clang 0.4.0 does not read nvcc entries, so the
+#      and -D) at <work-dir>/compile_commands.json: scip-clang 0.4.0 does not read nvcc entries, so the
 #      index, clang-calls and clang-ast-defs read it, and the last two are written at -tier B;
 #   5. indexbench lang-oracle over the one subject, <runs> times (default 3) at one commit, readings kept apart
 #      (ruling C-R5: the median throughput is the one committed); the measured set (the subject's .cu and .cuh files,
@@ -198,13 +198,12 @@ json.dump(sorted(os.path.relpath(c["file"], subj) for c, k, h in zip(clang_dev, 
 json.dump(sorted(os.path.relpath(c["file"], subj) for c, k in zip(clang, ok) if not k), open(os.path.join(work, "clang-skipped.json"), "w"), indent=1)
 json.dump({f: first_error.get(f, "") for f in sorted(os.path.relpath(c["file"], subj) for c, k in zip(clang, ok) if not k)},
           open(os.path.join(work, "clang-skipped-errors.json"), "w"), indent=1)
-os.makedirs(os.path.join(subj, "build"), exist_ok=True)
-json.dump([{k: v for k, v in c.items() if k != "archs"} for c in kept], open(os.path.join(subj, "build", "compile_commands.json"), "w"), indent=1)
+json.dump([{k: v for k, v in c.items() if k != "archs"} for c in kept], open(os.path.join(work, "compile_commands.json"), "w"), indent=1)
 print(len(nv), "cu entries;", len(host), "host passes;", len(kept), "clang compiles; lowest archs", sorted({c["archs"][0] for c in clang}), file=sys.stderr)
 EOF
 
 if [ "$scip_tier" = A ]; then # the samples' own clang build compiles: its database, untranslated, is the index's
-  cp "$work/build-clang/compile_commands.json" "$subj/build/compile_commands.json"
+  cp "$work/build-clang/compile_commands.json" "$work/compile_commands.json"
 fi
 export PATH="$cuda/bin:$PATH"
 ( cd "$here/preproc" && go run . -subject "$subj" -compdb "$work/nvcc-device.json" -tier A > "$work/preproc-device.json" )
@@ -232,8 +231,8 @@ out["imports"] = [json.loads(i) for i in sorted(imps)]
 out["version"] = a.get("version", "") + " (nvcc device and host passes, unioned)"
 json.dump(out, open(os.path.join(w, "preproc.json"), "w"), indent=1)
 EOF
-bash "$here/run.sh" "$tools/bin/scip-clang" "$subj" "$subj/build" "$work/index.scip" "$scip_tier" 4
-( cd "$repo/calibration/oracles/clang-calls" && go run . -subject "$subj" -compdb "$subj/build/compile_commands.json" -jobs 4 -tier "$scip_tier" > "$work/clang-calls-host.json" )
+bash "$here/run.sh" "$tools/bin/scip-clang" "$subj" "$work" "$work/index.scip" "$scip_tier" 4
+( cd "$repo/calibration/oracles/clang-calls" && go run . -subject "$subj" -compdb "$work/compile_commands.json" -jobs 4 -tier "$scip_tier" > "$work/clang-calls-host.json" )
 ( cd "$repo/calibration/oracles/clang-calls" && go run . -subject "$subj" -compdb "$work/clang-device.json" -jobs 4 -tier "$scip_tier" > "$work/clang-calls-device.json" )
 python3 - "$work" <<'EOF'
 import json, os, sys
@@ -247,7 +246,7 @@ out["version"] = h.get("version", "") + " (clang CUDA host and device-only passe
 json.dump(out, open(os.path.join(w, "clang-calls.json"), "w"), indent=1)
 print("clang-calls:", len(h.get("call_sites", [])), "host,", len(d.get("call_sites", [])), "device,", len(out["call_sites"]), "unioned", file=sys.stderr)
 EOF
-( cd "$repo/calibration/oracles/clang-ast-defs" && go run . -subject "$subj" -compdb "$subj/build/compile_commands.json" -jobs 2 -tier "$scip_tier" > "$work/preproc.ranges.json" )
+( cd "$repo/calibration/oracles/clang-ast-defs" && go run . -subject "$subj" -compdb "$work/compile_commands.json" -jobs 2 -tier "$scip_tier" > "$work/preproc.ranges.json" )
 
 # The driver's own record of how the subject was measured (round 3 A4): never a hand edit of the reading.
 note=$(python3 - "$work" "$scip_tier" <<'EOF'
@@ -289,8 +288,9 @@ for i in $(seq 1 "$runs"); do
     -note "$note" -unmatched "$work/unmatched-$i.json" -out "$work/reading-$i.json" > "$work/lang-oracle-$i.log" 2>&1
 done
 # The throughput record (ruling C-R5): the median run is the reading, written with the record to <work-dir>/reading.json.
-python3 - "$work" "$runs" <<'EOF'
-import json, os, shutil, sys
+python3 - "$work" "$runs" "$here/cuda-reading-notes.py" <<'EOF'
+import json, os, runpy, shutil, sys
+notes = runpy.run_path(sys.argv[3])
 w, n = sys.argv[1], int(sys.argv[2])
 rs = [json.load(open(os.path.join(w, "reading-%d.json" % i))) for i in range(1, n + 1)]
 cpu = [r["tenancy"]["throughput_mb_s"] for r in rs]
@@ -307,13 +307,10 @@ for i, x in enumerate(rs):
     if (s["files"], s["bytes"]) != (len(paths), size):
         sys.exit("run %d measured %d files, %d bytes; measured-files.txt lists %d, %d bytes" % (i + 1, s["files"], s["bytes"], len(paths), size))
 digest = hashlib.sha256(listing).hexdigest()
-f = lambda xs: (", ".join("%.2f" % x for x in xs[:-1]) + " and " if len(xs) > 1 else "") + "%.2f" % xs[-1]
 r["notes"] = sorted(r["notes"] + ["%s: the measured set is the subject's %d .cu and .cuh files, %d bytes; the sha256 of their sorted path list (one per line, LF-terminated) is %s (round 5 C5-R2: both CMake build trees are configured outside the subject)"
                                   % (r["subjects"][0]["name"], len(paths), size, digest),
-                                  "%s: throughput read %d times at fathom %s in one VM, one subject (owner ruling C-R5): %s MB/s per core (wall %s); the median run, %.2f, is this reading"
-                                  % (r["subjects"][0]["name"], n, r["fathom_commit"], f(cpu), f(wall), cpu[med])])
-with open(os.path.join(w, "reading.json"), "w") as fh: # byte for byte what langbench.MarshalReading writes
-    fh.write(json.dumps(r, indent=2, ensure_ascii=False).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026") + "\n")
+                                  notes["median_note"](r["subjects"][0]["name"], r["fathom_commit"], cpu, wall)])
+notes["write_reading"](os.path.join(w, "reading.json"), notes["refresh_notes"](r))
 shutil.copy(os.path.join(w, "unmatched-%d.json" % (med + 1)), os.path.join(w, "unmatched.json"))
 print("throughput", cpu, "median run", med + 1, file=sys.stderr)
 EOF

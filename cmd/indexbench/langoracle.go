@@ -1208,12 +1208,8 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 		if spec.Manifest.LangTag == "css" && cd != nil {
 			res.notes = append(res.notes, cssNameScopeNotes(name, run.Tool, sub.Counts)...) // design 1.8 W2 (LB-F460)
 		}
-		if imps != nil {
-			if err := scoreImportsOracle(toolOracle, imps, &sub); err != nil {
-				return res, err
-			}
-		}
 		// LB-F57: no SCIP index, so a dump's imports are the file-edge truth.
+		// Validate it before import resolution so the refusal identifies that feed.
 		if lang, ok := fileResolveLang[spec.Manifest.HostID()]; ok && opts.scip == "" && spec.Manifest.Kind != "tooling" {
 			notes, diff, err := scoreImportFileEdges(ctx, toolOracle, lang, root, name, srcFiles, nodes, &sub, inScope)
 			if err != nil {
@@ -1222,6 +1218,11 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			res.notes = append(res.notes, notes...)
 			if diff != nil {
 				fileEdges = diff
+			}
+		}
+		if imps != nil {
+			if err := scoreImportsOracle(toolOracle, imps, &sub); err != nil {
+				return res, err
 			}
 		}
 		// ── LB-F30: cross-file references (langoracle_xref.go) ──

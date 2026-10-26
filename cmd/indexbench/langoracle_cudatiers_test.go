@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -12,6 +13,16 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/langbench"
 	scippb "github.com/geoffmilleraz/fathom/third_party/scip"
 )
+
+// TestCUDADriverOffline keeps the driver regressions in the Go test gate.
+// Its compiler and oracle processes are local stubs.
+func TestCUDADriverOffline(t *testing.T) {
+	cmd := exec.Command("python3", filepath.Join("..", "..", "calibration", "oracles", "scip-clang", "cuda-samples_test.py"))
+	cmd.Env = append(os.Environ(), "PYTHONDONTWRITEBYTECODE=1")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("offline CUDA driver regressions: %v\n%s", err, out)
+	}
+}
 
 // cudaTiersSubject writes a two-file CUDA subject (k.cu includes u.cuh and
 // calls its helper), its scip-clang index, a tier-A preprocessor file with
@@ -111,32 +122,46 @@ func TestCmdLangOracleCUDACompanionTiers(t *testing.T) {
 	}
 }
 
-// TestCmdLangOracleCUDAUntieredImportDump (round 5 C5-R4): with no index, an
-// imports dump is the file-edge truth, and one that names no tier is refused,
-// never read as tier A.
+// TestCmdLangOracleCUDAUntieredImportDump (round 5 C5-R4): an imports
+// dump naming no tier is refused both as import-resolution truth (with an
+// index) and file-edge truth (without one). The latter diagnostic proves
+// scoreImportFileEdges runs, rather than the earlier imports check hiding it.
 func TestCmdLangOracleCUDAUntieredImportDump(t *testing.T) {
-	dir, args := cudaTiersSubject(t, "")
-	pre := filepath.Join(dir, "preproc.json")
-	if err := os.WriteFile(pre, []byte(`{"tool": "clang-preprocessor", "version": "test", "imports": [{"path": "k.cu", "line": 1, "to_path": "u.cuh"}]}`), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	var kept []string
-	for i := 0; i < len(args); i++ {
-		switch args[i] {
-		case "-scip", "-scip-tier":
-			i++
-			continue
-		case "-tool-oracle":
-			if args[i+1] != pre {
-				i++
-				continue
+	for _, tc := range []struct {
+		name      string
+		withIndex bool
+		want      string
+	}{
+		{"imports", true, "names no tier A-D"},
+		{"file-edges", false, "file-edge truth"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir, args := cudaTiersSubject(t, "")
+			pre := filepath.Join(dir, "preproc.json")
+			if err := os.WriteFile(pre, []byte(`{"tool": "clang-preprocessor", "version": "test", "imports": [{"path": "k.cu", "line": 1, "to_path": "u.cuh"}]}`), 0o644); err != nil {
+				t.Fatal(err)
 			}
-		}
-		kept = append(kept, args[i])
-	}
-	var stdout, stderr bytes.Buffer
-	if code := cmdLangOracle(kept, &stdout, &stderr); code == 0 || !strings.Contains(stderr.String(), pre) {
-		t.Errorf("an untiered imports dump with no index: exit %d, want a refusal naming it: %s", code, stderr.String())
+			var kept []string
+			for i := 0; i < len(args); i++ {
+				switch args[i] {
+				case "-scip", "-scip-tier":
+					if !tc.withIndex {
+						i++
+						continue
+					}
+				case "-tool-oracle":
+					if args[i+1] != pre {
+						i++
+						continue
+					}
+				}
+				kept = append(kept, args[i])
+			}
+			var stdout, stderr bytes.Buffer
+			if code := cmdLangOracle(kept, &stdout, &stderr); code == 0 || !strings.Contains(stderr.String(), pre) || !strings.Contains(stderr.String(), tc.want) {
+				t.Errorf("untiered imports dump: exit %d, want a refusal naming it and %q: %s", code, tc.want, stderr.String())
+			}
+		})
 	}
 }
 
