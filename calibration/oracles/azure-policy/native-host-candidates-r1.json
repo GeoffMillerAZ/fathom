@@ -1,0 +1,26 @@
+{
+  "source": "https://builds.dotnet.microsoft.com/dotnet/release-metadata/9.0/releases.json",
+  "version": "9.0.12",
+  "runtime": {
+    "name": "dotnet-runtime-osx-arm64.tar.gz",
+    "rid": "osx-arm64",
+    "url": "https://builds.dotnet.microsoft.com/dotnet/Runtime/9.0.12/dotnet-runtime-9.0.12-osx-arm64.tar.gz",
+    "hash": "fab776a85b8a4abbdd86466f684146e4fbf479b26e5706ec917fa819c5f9b6258868f3fd8c9cbd103984257d6d1c9689ca5263e183310502d1200841553435c1"
+  },
+  "candidate": "official Microsoft .NET9.0.12 macOS ARM64 standard CLI host",
+  "license": "MIT",
+  "state": "pinned, not yet downloaded or executed",
+  "prior_routes": [
+    {
+      "name": "vendor ARM64 apphost",
+      "version": "extension0.2.6",
+      "result": "process SIGKILL before output; codesign reports apphost unsigned; no native capabilities or evaluations measured"
+    },
+    {
+      "name": "bundled signed hostfxr called from isolated Python",
+      "version": "9.0.12",
+      "result": "initial path-metadata denial corrected to permit ancestor metadata; process then SIGKILL before output; cause unconfirmed; not a supported self-contained hosting claim",
+      "source": "https://learn.microsoft.com/en-us/dotnet/core/tutorials/netcore-hosting"
+    }
+  ]
+}
