@@ -8,10 +8,14 @@ import pathlib
 
 
 NOTES = [
-    "Native oracle: OpenTofu 1.13.0 show -json -config and graph -type=plan on every .tf directory (19 roots per subject), after init -backend=false -get=false. All roots succeeded, all 3,111 definitions were located, and the two raw truth JSON files were byte-identical before and after the engine fix. The exact Git tracked sets, measured file lists and pinned module manifests also match. Providers came only from a private filesystem mirror, modules from exact pinned Git checkouts; no plan, apply or cloud API was run. AWS 6.67.0 was identified in the previous reading; seven ancillary provider versions and ten registry module versions are newly pinned compatible inputs, not proven copies of the old mirror. Counts and digests: docs/assessments/data/terraform-two-hop-2026-10-26/summary.json.",
+    "Native oracle: OpenTofu 1.13.0 show -json -config and graph -type=plan on every .tf directory (19 roots per subject), after init -backend=false -get=false. Preparation checks scratch .tf paths and bytes, strips all cached local records, and preseeds exact registry pins. Plain native init installs local entries; bounded retries retain native locals and restore only missing pinned registry descendants. Every native local key and source agrees with the separate scanner proposal; subject-local destinations agree lexically. Physical checkout paths for local children under registry modules pass only when their resolved target equals the pinned cache alias, with a separate alias count in the receipt. Native Dir values are never rewritten. All roots succeeded. Positions come from an independent line reader: 0 definitions unlocated, range_agreement 1.0 across 3,111 definitions. Registry module files are outside the measured subject. Providers came only from a private filesystem mirror; no plan, apply or cloud API was run. AWS 6.67.0 was identified previously; seven ancillary provider versions and ten registry module versions are newly pinned compatible inputs. See docs/assessments/data/terraform-two-hop-2026-10-26/summary.json.",
     "Independence: a provider-free fixture's native raw truth changes when a source fact changes. A separate document-fixture replay changes real Terraform extractor output while the raw native truth remains identical before and after; other exercised document extraction and mixed-dialect fixture results stay stable. The replay is fixture coverage, not full-subject regrading of other document dialects. See docs/assessments/2026-10-26-iac-docxref-impact.md.",
-    "Per-file times exclude the one-time grammar compile; an untimed warm-up extraction precedes timing.",
+    "Timing: CPU-throughput median of three on a shared Apple Silicon helper, Go 1.27.3, nice 10, GOMAXPROCS=2, GOFLAGS=-p=2, load guard <=9 at launch. Per-run load and concurrent jobs were not recorded. Wall extract_ms is not comparable, and this reading makes no extraction-cost regression claim.",
 ]
+
+HISTORICAL_NOTES = json.loads(pathlib.Path(__file__).with_name("historical_notes.json").read_text())
+if len(HISTORICAL_NOTES) != 7:
+    raise RuntimeError("historical Terraform adjudication notes changed")
 
 
 def sha256(path):
@@ -31,11 +35,12 @@ def grade_notes(comparison):
                        f'precision {grade["metrics"]["xref_precision"]:.4f}')
     gain = repaired["counts"]["xref_truth_found"] - baseline["counts"]["xref_truth_found"]
     extras = repaired["counts"]["xref_fathom"] - repaired["counts"]["xref_fathom_in_truth"]
-    notes = [NOTES[0],
+    notes = [HISTORICAL_NOTES[0],
              "L3: " + "; ".join(details) + ". Both clean binaries were graded three times against the same raw native truth and the full 87-file/523029-byte and 77-file/453543-byte measured sets; counts, metrics and grades agreed. The reading uses the median CPU-throughput run. L1 and L2 grades are " +
              f'{repaired["grade"]["L1"]} and {repaired["grade"]["L2"]}, respectively.',
-             f"L3 limits: the repaired engine emits {extras} cross-file pairs beyond the native set. The earlier reading attributed beyond-tool references to local values and dynamic blocks missing from OpenTofu's reduced plan graph or configuration JSON; this rerun did not individually re-adjudicate those {extras}. The native oracle scores file-granularity destinations, not typed attribute binding. The recovered {gain} pairs show the repair's measured effect; this aggregate result does not itself classify every historical miss by cause. Registry, remote, escaping, caller-directory and nonliteral module sources remain outside the repaired two-hop strategy.",
-             *NOTES[1:]]
+             f"L3 limits: the repaired engine emits {extras} cross-file pairs beyond the native set. Historical adjudication: the 13 beyond the tool are the L2 blind spots, a local or a data source's dynamic block referring to variables.tf. This rerun did not individually re-adjudicate them. The native oracle scores file-granularity destinations, not typed attribute binding. The recovered {gain} pairs show the repair's measured effect; this aggregate result does not itself classify every historical miss by cause. Registry, remote, escaping, caller-directory and nonliteral module sources remain outside the repaired two-hop strategy.",
+             HISTORICAL_NOTES[2], NOTES[0], HISTORICAL_NOTES[4],
+             HISTORICAL_NOTES[5], HISTORICAL_NOTES[6], NOTES[1], NOTES[2]]
     return notes
 
 
@@ -62,6 +67,8 @@ def main():
                           "data" / "terraform-two-hop-2026-10-26" / "summary.json").read_text())
     if not all(subject["raw_truth_unchanged"] for subject in receipt["subjects"]):
         raise RuntimeError("native after identity not proven")
+    if not all(subject.get("native_local_agreements", 0) > 0 for subject in receipt["subjects"]):
+        raise RuntimeError("native installer local destinations not proven")
     if (receipt["baseline_full_commit"] != comparison["baseline_full_commit"]
             or receipt["repaired_full_commit"] != comparison["repaired_full_commit"]):
         raise RuntimeError("public receipt still names a different engine comparison")

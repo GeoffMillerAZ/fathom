@@ -41,7 +41,10 @@ reading therefore receives no new intents.
 **Measured:** the committed replay instrument extracts repository-owned dialect
 fixtures twice, restoring the two original engine files for the before run.
 Every input digest, file/byte count and extraction-error count agrees across
-runs. The receipt contains only counts, hashes and dialect identifiers.
+runs. The receipt contains only counts, hashes and dialect identifiers. The after replay
+was repeated on override-fix engine `eae9075bd`; its additional source-presence
+label changes only the Terraform extraction digest. The measured subjects contain
+no override files, so the original clean-engine regrade remains applicable.
 
 - 311 fixture files, 192,875 bytes and zero extraction errors.
 - Only Terraform's extraction digest changes. Every other extraction and
