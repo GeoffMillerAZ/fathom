@@ -12,33 +12,35 @@ they are not blind holdout evidence.
 Run these commands from the repository root. Set `KUST_CACHE` to a caller-owned
 directory under `workspace/` or an allowed external cache; raw truth, logs,
 files and unmatched diagnostics stay there. The commands deliberately do not
-change the product engine. The prepared `indexbench-terraform-before` binary
+change the product engine. The baseline `indexbench` binary
 must identify itself as a clean build from
 `6db920e72898abb20bf86c22652b401902e34598` through `go version -m`.
 
 ```sh
-KUST_CACHE="${KUST_CACHE:?set to the prepared caller-owned cache}"
-BASE_CHECKOUT="$PWD/workspace/tmp/terraform-baseline"
+KUST_CACHE="${KUST_CACHE:-$PWD/workspace/tmp/kustomize-cache}"
+BASE_CHECKOUT="$PWD/workspace/tmp/kustomize-base-checkout"
 mkdir -p "$KUST_CACHE"/go-build "$KUST_CACHE"/go-tmp "$KUST_CACHE"/go-mod "$KUST_CACHE"/tmp "$KUST_CACHE"/tools
 export GOCACHE="$KUST_CACHE/go-build" GOTMPDIR="$KUST_CACHE/go-tmp" GOMODCACHE="$KUST_CACHE/go-mod" TMPDIR="$KUST_CACHE/tmp"
 export GOWORK=off GOMAXPROCS=2 GOFLAGS=-p=2 GOTOOLCHAIN=go1.27.3 PYTHONDONTWRITEBYTECODE=1
+git worktree add --detach "$BASE_CHECKOUT" 6db920e72898abb20bf86c22652b401902e34598
+nice -n 10 go -C "$BASE_CHECKOUT" build -o "$KUST_CACHE/tools/indexbench-kustomize-base" ./cmd/indexbench
 git -C "$BASE_CHECKOUT" rev-parse HEAD
 git -C "$BASE_CHECKOUT" status --porcelain --untracked-files=all
-go version -m "$KUST_CACHE/tools/indexbench-terraform-before"
+go version -m "$KUST_CACHE/tools/indexbench-kustomize-base"
 cd calibration/oracles/kustomize
 nice -n 10 go mod download
-nice -n 10 go build -o "$KUST_CACHE/tools/kustomize-oracle" .
+nice -n 10 go build -trimpath -buildvcs=false -o "$KUST_CACHE/tools/kustomize-oracle" .
 cd -
 python3 calibration/oracles/kustomize/manifests.py --cache "$KUST_CACHE" --phase before
 nice -n 10 python3 calibration/oracles/kustomize/run_native.py --cache "$KUST_CACHE" --oracle-bin "$KUST_CACHE/tools/kustomize-oracle" --phase before
-nice -n 10 python3 calibration/oracles/kustomize/grade.py --cache "$KUST_CACHE" --indexbench "$KUST_CACHE/tools/indexbench-terraform-before" --checkout "$BASE_CHECKOUT"
+nice -n 10 python3 calibration/oracles/kustomize/grade.py --cache "$KUST_CACHE" --indexbench "$KUST_CACHE/tools/indexbench-kustomize-base" --checkout "$BASE_CHECKOUT"
 python3 calibration/oracles/kustomize/manifests.py --cache "$KUST_CACHE" --phase after
 nice -n 10 python3 calibration/oracles/kustomize/run_native.py --cache "$KUST_CACHE" --oracle-bin "$KUST_CACHE/tools/kustomize-oracle" --phase after
 python3 calibration/oracles/kustomize/publish.py --cache "$KUST_CACHE" --out docs/assessments/data/2026-10-26-kustomize-r1.json
 python3 calibration/oracles/kustomize/publish_reading.py --cache "$KUST_CACHE" --public docs/assessments/data/2026-10-26-kustomize-r1.json --reading docs/bench/readings/lang/kustomize.json
 ```
 
-The first `git` command must print the fixed full commit; the second must be
+The `rev-parse` command must print the fixed full commit; `status` must be
 empty. `go version -m` must report that same `vcs.revision` and
 `vcs.modified=false`. For a fresh cache, run `prepare.py --cache "$KUST_CACHE"
 --step tool --step subjects` before the shown sequence. Use one heavy job at a
@@ -46,6 +48,12 @@ time and niceness 10. Both
 drivers wait and recheck while one-minute load exceeds 9 before each subject.
 `prepare.py` is the only subject/tool acquisition step: it fetches fixed
 subject commits and the pinned native archive and verifies its SHA256. The
+same official v5.8.1 `checksums.txt` pins darwin_arm64
+(`8886f8a7...`), linux_amd64 (`029a7f0f...`) and linux_arm64
+(`0953ea3e...`) archives in `pins.json`; `prepare.py` selects by host.
+The previously recorded oracle binary hash identifies that local build artifact;
+the reproducible recipe now uses `-trimpath -buildvcs=false`, so a new receipt
+records its rebuilt hash. The
 native oracle runs with scrubbed environment and dead proxies; it does not
 contact cloud services, enable plugins, or invoke Helm.
 
@@ -97,10 +105,10 @@ nice -n 10 go run ./workspace/tmp/kustomize-proof/product_ablation.go -subject-f
 and hashes. It excludes subject source, file lists, raw oracle rows, log lines,
 unmatched details and any personal namespace. The public record states each
 L3 cross-reference metric's own denominator and whether D19's minimum 20
-holds. Publication refuses when either denominator is below 20; retain those
-results privately and publish an honest partial disposition separately.
+holds. A thin result is published with `D19_xref_thin=true` and a held reading
+note; publication does not select on the grade or denominator.
 `python3 calibration/oracles/kustomize/publish.py --self-test` runs synthetic
-fixtures for that gate. Native build
+fixtures for that disclosure. Native build
 truth is limited to the fixed Kustomize version, exact selected commits and
 successfully built contexts; external resources, Helm rendering and controller
 execution remain outside this oracle.
@@ -108,7 +116,8 @@ execution remain outside this oracle.
 After the public receipt passes, `publish_reading.py` checks its unannotated
 median SHA256, all five pins and every pooled and per-subject measured value.
 It preserves all measured reading fields and the existing `required_kinds`,
-replacing only notes with counts, hashes, provenance and limits. Add `--check`
+merging the median's scope notes with receipt-derived counts, provenance and
+limits. Add `--check`
 to validate and print its receipt without writing the reading. The directory
 preference test log must be green; the writer does not infer that product
 behavior from the native oracle.

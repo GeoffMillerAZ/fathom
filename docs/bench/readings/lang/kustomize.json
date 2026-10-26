@@ -45,8 +45,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 1.0219999999999998,
-        "extract_cpu_ms": 1.025,
+        "extract_ms": 0.96,
+        "extract_cpu_ms": 0.9650000000000001,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -84,8 +84,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.139,
-        "extract_cpu_ms": 0.142,
+        "extract_ms": 0.137,
+        "extract_cpu_ms": 0.136,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -123,8 +123,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.20199999999999999,
-        "extract_cpu_ms": 0.206,
+        "extract_ms": 0.189,
+        "extract_cpu_ms": 0.192,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -162,8 +162,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.25899999999999995,
-        "extract_cpu_ms": 0.26399999999999996,
+        "extract_ms": 0.24399999999999994,
+        "extract_cpu_ms": 0.24799999999999994,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -201,8 +201,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.34099999999999997,
-        "extract_cpu_ms": 0.359,
+        "extract_ms": 0.3650000000000001,
+        "extract_cpu_ms": 0.3700000000000001,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -259,20 +259,37 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 12.36,
+    "throughput_mb_s": 12.91,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 12.56,
+    "wall_throughput_mb_s": 13.02,
     "max_file_ms": 0,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {},
   "notes": [
-    "Native provenance: official Kustomize v5.8.1 archive SHA256 8886f8a78474e608cc81234f729fda188a9767da23e28925802f00ece2bab288, binary SHA256 bc77e3505fbd414551cf7b15d1e772a288bc5afd97e31e49655b10524d1888e9; typed API and kyaml v0.21.1; fixed five-subject selection followed private exploration, so it is not a blind holdout.",
-    "Native full population: 58 recognized Kustomizations, 46 built files, 15 Components; six Components have valid real parents across 12 contexts and 17 effective entries; nine have no valid context and are excluded. No synthetic Component wrapper, Helm renderer, plugin or cloud execution.",
-    "Native truth has 144 raw cross-file references; the unchanged dialect owns 35 scored cross-file references after file/target scope. D19 precision denominator 35 and recall denominator 35, each at its own metric; original subject xref floors remain 12 and 1.",
-    "Fathom has 202 definitions against 194 native definitions; eight extra definitions are native resource no-ops and remain precision costs. Measured grade: L1 good, L2 excellent, L3 excellent; references 148/148 and cross-file references 35/35.",
-    "Shared Apple Silicon, GOTOOLCHAIN=go1.27.3, nice 10, GOMAXPROCS=2, GOFLAGS=-p=2: three full-pool CPU throughput runs 11, 12.74 and 12.36 MB/s with stable counts, metrics and grades; median 12.36 MB/CPU-s, zero faults, max_file_ms 0. Per-launch one-minute load was recorded at or below 9; concurrent jobs were not recorded and wall throughput is not comparable across machines.",
+    "GoogleCloudPlatform/microservices-demo: 38 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
+    "GoogleCloudPlatform/microservices-demo: Native built-file scope; unsupported native basename counted separately; three serialized full-pool runs",
+    "GoogleCloudPlatform/microservices-demo: restricted to kubernetes-manifests/kustomization.yaml, kustomize/base/kustomization.yaml, kustomize/components/cymbal-branding/kustomization.yaml, kustomize/components/google-cloud-operations/kustomization.yaml, kustomize/components/memorystore/kustomization.yaml, kustomize/components/network-policies/kustomization.yaml, kustomize/components/service-mesh-istio/kustomization.yaml, kustomize/components/spanner/kustomization.yaml, kustomize/kustomization.yaml, kustomize/tests/memorystore-with-all-components/kustomization.yaml, kustomize/tests/service-mesh-istio-with-all-components/kustomization.yaml, kustomize/tests/spanner-with-all-components/kustomization.yaml (-only; the files outside are a disclosed gap, not measured)",
+    "argoproj/argocd-example-apps: 33 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
+    "argoproj/argocd-example-apps: Native built-file scope; unsupported native basename counted separately; three serialized full-pool runs",
+    "argoproj/argocd-example-apps: restricted to kustomize-guestbook/kustomization.yaml, pre-post-sync/kustomization.yaml, sock-shop/kustomization.yaml (-only; the files outside are a disclosed gap, not measured)",
+    "fluxcd/flux2-kustomize-helm-example: 9 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
+    "fluxcd/flux2-kustomize-helm-example: Native built-file scope; unsupported native basename counted separately; three serialized full-pool runs",
+    "fluxcd/flux2-kustomize-helm-example: restricted to apps/base/podinfo/kustomization.yaml, apps/production/kustomization.yaml, apps/staging/kustomization.yaml, clusters/production/flux-system/kustomization.yaml, clusters/staging/flux-system/kustomization.yaml, infrastructure/configs/kustomization.yaml, infrastructure/controllers/kustomization.yaml (-only; the files outside are a disclosed gap, not measured)",
+    "fluxcd/flux2-multi-tenancy: 9 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
+    "fluxcd/flux2-multi-tenancy: Native built-file scope; unsupported native basename counted separately; three serialized full-pool runs",
+    "fluxcd/flux2-multi-tenancy: restricted to clusters/production/flux-system/kustomization.yaml, clusters/staging/flux-system/kustomization.yaml, policies/base/kustomization.yaml, policies/production/kustomization.yaml, policies/staging/kustomization.yaml, tenants/base/dev-team/kustomization.yaml, tenants/production/kustomization.yaml, tenants/staging/kustomization.yaml (-only; the files outside are a disclosed gap, not measured)",
+    "kubernetes-sigs/kustomize: 20 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
+    "kubernetes-sigs/kustomize: Native built-file scope; unsupported native basename counted separately; three serialized full-pool runs",
+    "kubernetes-sigs/kustomize: restricted to helloWorld/kustomization.yaml, ldap/base/kustomization.yaml, ldap/overlays/production/kustomization.yaml, ldap/overlays/staging/kustomization.yaml, multibases/base/kustomization.yaml, multibases/dev/kustomization.yaml, multibases/kustomization.yaml, multibases/production/kustomization.yaml, multibases/staging/kustomization.yaml, springboot/base/kustomization.yaml, springboot/overlays/production/kustomization.yaml, springboot/overlays/staging/kustomization.yaml, transformerconfigs/crd/kustomization.yaml, wordpress/kustomization.yaml, wordpress/mysql/kustomization.yaml, wordpress/wordpress/kustomization.yaml (-only; the files outside are a disclosed gap, not measured)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "Native provenance: official Kustomize v5.8.1 binary SHA256 bc77e3505fbd414551cf7b15d1e772a288bc5afd97e31e49655b10524d1888e9; platform archive checksums are pinned in pins.json; typed API and kyaml v0.21.1; fixed 5-subject selection followed private exploration, so it is not a blind holdout.",
+    "Measured files: native built-file scope via -only, 46 of 58 recognized; 12 excluded with reasons in the assessment. Real Component contexts: 12 valid / 12 tried, 17 effective entries; 9 without valid context.",
+    "Native truth has 144 raw cross-file references; the unchanged dialect scores 35 after file/target scope. D19 (#7) is not on main: precision denominator 35, recall denominator 35; clears the lane's count guard; L3 held pending D19 lang-regrade. This is the lane's guard pending D19's lang-regrade.",
+    "Leave-one-subject-out under current harness rules, in frozen pin order: pin 1: xref 23/23, symbol precision 0.9467, level_met none; pin 2: xref 34/34, symbol precision 0.9515, level_met L3; pin 3: xref 33/33, symbol precision 0.9778, level_met L3; pin 4: xref 31/31, symbol precision 0.9774, level_met L3; pin 5: xref 19/19, symbol precision 0.9412, level_met none. The assessment identifies the subjects and limits.",
+    "Fathom/native definitions 202/194; matched 194. Measured grade: L1 good, L2 excellent, L3 excellent, L4 not-applicable; references 148/148 and cross-file references 35/35.",
+    "CPU throughput runs 11.06, 12.92, 12.91 MB/CPU-s; median 12.91. Settings: nice 10, GOFLAGS=-p=2, GOMAXPROCS=2, GOTOOLCHAIN=go1.27.3, GOWORK=off; launch loads are in the public receipt. Wall throughput is not comparable across machines.",
     "Product engine unchanged at clean source commit 6db920e72898abb20bf86c22652b401902e34598; existing directory-preference test green. Public counts/hash evidence: docs/assessments/2026-10-26-kustomize-d19-evidence.md and docs/assessments/data/2026-10-26-kustomize-r1.json."
   ],
   "disposition": null

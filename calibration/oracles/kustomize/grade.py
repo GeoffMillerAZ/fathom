@@ -2,11 +2,13 @@
 """Grade the fixed native Kustomize population three complete times."""
 
 import argparse
+import copy
 import json
 import os
 from pathlib import Path
 import shutil
 import subprocess
+import tempfile
 
 from run_native import PINS_PATH, checkout, digest, paths_file, pins, slug, wait_for_load
 
@@ -63,6 +65,30 @@ def ratios(counts):
              "xref_recall": ("xref_truth_found", "xref_truth")}
     return {name: (counts.get(num, 0) / counts[den] if counts.get(den, 0) else None)
             for name, (num, den) in pairs.items()}
+
+
+def regrade_leave_one_out(binary, source, out, median, subject_pins):
+    """Use the pinned harness to regrade each recorded four-subject population."""
+    names = [pin["repository"] for pin in subject_pins]
+    if len(names) != len(set(names)) or {row["name"] for row in median["subjects"]} != set(names):
+        raise RuntimeError("leave-one-out population differs from pins")
+    results = []
+    with tempfile.TemporaryDirectory(dir=out, prefix="leave-one-out-") as scratch:
+        for index, omitted in enumerate(names):
+            candidate = copy.deepcopy(median)
+            candidate["subjects"] = [row for row in median["subjects"] if row["name"] != omitted]
+            path = Path(scratch) / f"omit-{index}.json"
+            path.write_text(json.dumps(candidate, indent=2) + "\n")
+            subprocess.run([str(binary), "lang-regrade", "-commit", BASE_COMMIT, str(path)],
+                           check=True, cwd=source, stdout=subprocess.DEVNULL,
+                           stderr=subprocess.PIPE)
+            regraded = json.loads(path.read_text())
+            if {row["name"] for row in regraded["subjects"]} != set(names) - {omitted}:
+                raise RuntimeError("regraded leave-one-out population changed")
+            results.append({"omitted_repository": omitted,
+                            **{key: regraded[key] for key in
+                               ("counts", "metrics", "grade", "level_met")}})
+    return results
 
 
 def main():
@@ -138,6 +164,8 @@ def main():
     rates = [r["reading"]["tenancy"]["throughput_mb_s"] for r in runs]
     median = sorted(range(3), key=lambda i: (rates[i], i))[1]
     shutil.copyfile(out / ("run-" + str(median + 1) + ".json"), out / "median.json")
+    leave_one_subject_out = regrade_leave_one_out(binary, source, out,
+                                                  runs[median]["reading"], pins()["subjects"])
     original = {p["repository"]: p for p in pins()["subjects"] if p["membership"] == "original"}
     original_counts = {name: next(s for s in runs[median]["subjects"] if s["repository"] == name)["counts"].get("xref_truth", 0)
                        for name in original}
@@ -151,6 +179,7 @@ def main():
                "metric_tiers": runs[median]["reading"].get("metric_tiers", {}),
                "grade": runs[median]["reading"]["grade"], "level_met": runs[median]["reading"]["level_met"],
                "subjects": runs[median]["subjects"], "original_xref_truth": original_counts,
+               "leave_one_subject_out": leave_one_subject_out,
                "original_xref_floor_met": all(original_counts[n] >= (12 if n == "kubernetes-sigs/kustomize" else 1)
                                              for n in original_counts),
                "pool_xref_floor_met": runs[median]["reading"]["counts"].get("xref_truth", 0) >= 13,

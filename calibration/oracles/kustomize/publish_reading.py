@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 
 from run_native import PINS_PATH, digest, pins
+from publish import checked_leave_one_out, population_disposition
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -50,6 +51,18 @@ def check_subjects(median, public, frozen):
     return measured, published
 
 
+def verify_operational_conditions(public, subject_names):
+    niceness = public["niceness"]
+    require(type(niceness) is int and niceness >= 10 and public["go_runtime_env"],
+            "recorded execution settings missing or niceness below 10")
+    launches = public["load_at_launch_by_run"]
+    require(len(launches) == 3 and all(len(run) == len(subject_names) for run in launches)
+            and all(set(row["repository"] for row in run) == set(subject_names)
+                    and all(type(row["load_at_launch"]) in (int, float)
+                            and 0 <= row["load_at_launch"] <= 9 for row in run)
+                    for run in launches), "per-launch load records missing or above 9")
+
+
 def verify(median_path, public_path, current_path, cache):
     frozen = pins()
     median, public, current = read(median_path), read(public_path), read(current_path)
@@ -64,6 +77,13 @@ def verify(median_path, public_path, current_path, cache):
     for key in ("counts", "metrics", "metric_tiers", "grade", "level_met"):
         require(median[key] == public[key], "measured reading differs from public receipt: " + key)
     measured, published = check_subjects(median, public, frozen)
+    require(checked_leave_one_out({"counts": public["counts"],
+                                   "subjects": [{"repository": row["repository"],
+                                                 "counts": row["graded_counts"]}
+                                                for row in public["subjects"]],
+                                   "leave_one_subject_out": public["leave_one_subject_out"]},
+                                  frozen["subjects"]) == public["leave_one_subject_out"],
+            "leave-one-out receipt differs from measured subjects")
     require(median["measured_at"] == public["date"], "measurement date differs")
     require(median["oracles"] == [{"tier": "A", "tool": "kustomize", "version": "v5.8.1"}],
             "median tool oracle identity differs")
@@ -72,19 +92,20 @@ def verify(median_path, public_path, current_path, cache):
     require("ok  \tgithub.com/geoffmilleraz/fathom/internal/fusion" in preference
             and "FAIL" not in preference, "directory-preference check is not green")
     counts = median["counts"]
-    require(counts["xref_fathom"] == public["D19_xref_denominators"]["precision"] >= 20,
-            "D19 precision denominator below 20 or inconsistent")
-    require(counts["xref_truth"] == public["D19_xref_denominators"]["recall"] >= 20,
-            "D19 recall denominator below 20 or inconsistent")
-    require(not public["D19_xref_thin"], "public D19 receipt says thin")
+    require(counts["xref_fathom"] == public["D19_xref_denominators"]["precision"]
+            and counts["xref_truth"] == public["D19_xref_denominators"]["recall"],
+            "D19 denominators differ from measured counts")
+    require(public["D19_xref_thin"] == (min(counts["xref_fathom"], counts["xref_truth"]) < 20),
+            "D19 thin disposition differs from measured counts")
+    require({key: public[key] for key in ("original_xref_floor_met", "pool_xref_floor_met",
+                                        "original_population_conservation_failed", "lane_disposition")}
+            == population_disposition(public, public["D19_xref_thin"]),
+            "population disposition differs from public conservation results")
     originals = {pin["repository"] for pin in frozen["subjects"] if pin["membership"] == "original"}
     require(len(originals) == 2, "original subject membership differs")
     for name in originals:
         require(public["original_xref_truth"][name] == measured[name]["counts"]["xref_truth"],
                 "original xref count differs: " + name)
-    require(public["original_xref_truth"] == {"kubernetes-sigs/kustomize": 12,
-                                               "argoproj/argocd-example-apps": 1},
-            "original subject xref floors changed")
     runs = [read(cache / "kustomize-r1" / "grade" / f"run-{n}.json") for n in (1, 2, 3)]
     for run in runs:
         for key in ("counts", "metrics", "metric_tiers", "grade", "level_met", "required_kinds"):
@@ -96,74 +117,70 @@ def verify(median_path, public_path, current_path, cache):
     require(chosen + 1 == public["median_run"] and runs[chosen] == median,
             "median selection or exact reading differs")
     require(median["tenancy"]["throughput_basis"] == "cpu"
-            and median["tenancy"]["throughput_mb_s"] == 12.36
-            and median["tenancy"]["max_file_ms"] == 0,
-            "median CPU/fault timing differs")
-    require(public["niceness"] >= 10 and public["go_runtime_env"] == {
-        "GOMAXPROCS": "2", "GOFLAGS": "-p=2", "GOWORK": "off", "GOTOOLCHAIN": "go1.27.3"},
-        "recorded execution settings differ")
-    launches = public["load_at_launch_by_run"]
-    require(len(launches) == 3 and all(len(run) == 5 for run in launches)
-            and all(set(row["repository"] for row in run) == set(measured)
-                    and all(0 <= row["load_at_launch"] <= 9 for row in run)
-                    for run in launches), "per-launch load records missing or above 9")
-    subjects = list(published.values())
-    require(sum(row["native_files"] for row in subjects) == 58
-            and sum(row["graded_files"] for row in subjects) == 46
-            and sum(row["component_contexts"] for row in subjects) == 15
-            and sum(row["component_context_counts"]["valid"] for row in subjects) == 12
-            and sum(row["component_context_counts"]["tried"] for row in subjects) == 12
-            and sum(row["component_context_counts"]["effective_entries"] for row in subjects) == 17
-            and sum(row["native_excluded"].get("component-no-valid-context", 0)
-                    for row in subjects) == 9, "native population summary differs")
-    require(sum(row["native_cross_references"] for row in subjects) == 144
-            and counts["xref_truth"] == 35, "raw/scoped cross-reference counts differ")
-    require(counts["fathom_defs"] - counts["oracle_defs"] == 8
-            and counts["matched"] == counts["oracle_defs"] == 194,
-            "eight extra definitions or native coverage changed")
-    flux = {"fluxcd/flux2-kustomize-helm-example", "fluxcd/flux2-multi-tenancy"}
-    for name, row in published.items():
-        extra = row["graded_counts"]["fathom_defs"] - row["graded_counts"]["oracle_defs"]
-        require(extra == (4 if name in flux else 0), "extra definitions moved: " + name)
-    require(sum(row["native_stats"].get("noop:resources", 0) for row in subjects) == 8
-            and sum(row["native_stats"].get("noop", 0) for row in subjects) == 8,
-            "native resource no-op count differs")
+            and median["tenancy"]["throughput_mb_s"] == rates[chosen],
+            "median CPU rate differs")
+    verify_operational_conditions(public, measured)
     native_pin = frozen["native"]
-    require(native_pin["version"] == "v5.8.1"
-            and native_pin["api_version"] == native_pin["kyaml_version"] == "v0.21.1"
-            and public["native_bin_sha256"] == "bc77e3505fbd414551cf7b15d1e772a288bc5afd97e31e49655b10524d1888e9",
-            "pinned native provenance differs")
-    require(median["grade"] == {"L1": "good", "L2": "excellent", "L3": "excellent",
-                                "L4": "not-applicable"} and median["level_met"] == "L3",
-            "expected measured grade differs")
+    require(native_pin["version"] == median["oracles"][0]["version"],
+            "pinned native version differs")
     return median, public
 
 
 def notes(public):
     native = pins()["native"]
+    subjects = public["subjects"]
+    total = lambda key: sum(row[key] for row in subjects)
+    context = lambda key: sum(row["component_context_counts"][key] for row in subjects)
+    excluded = lambda key: sum(row["native_excluded"].get(key, 0) for row in subjects)
+    counts = public["counts"]
+    d19 = public["D19_xref_denominators"]
+    rates = public["throughput_mb_per_cpu_second"]
+    rate = rates[public["median_run"] - 1]
+    if public["original_population_conservation_failed"]:
+        disposition = "original-subject or pooled cross-reference conservation failed; lane held"
+    elif public["D19_xref_thin"]:
+        disposition = "thin; lane held"
+    else:
+        disposition = "clears the lane's count guard; L3 held pending D19 lang-regrade"
+    omitted = []
+    for index, row in enumerate(public["leave_one_subject_out"], 1):
+        measured = row["counts"]
+        omitted.append(f"pin {index}: xref {measured['xref_fathom']}/{measured['xref_truth']}, "
+                       f"symbol precision {row['metrics']['sym_precision']}, "
+                       f"level_met {row['level_met']}")
     return [
-        "Native provenance: official Kustomize v5.8.1 archive SHA256 "
-        + native["archive_sha256"] + ", binary SHA256 " + public["native_bin_sha256"]
-        + "; typed API and kyaml v0.21.1; fixed five-subject selection followed private exploration, so it is not a blind holdout.",
-        "Native full population: 58 recognized Kustomizations, 46 built files, 15 Components; "
-        "six Components have valid real parents across 12 contexts and 17 effective entries; "
-        "nine have no valid context and are excluded. No synthetic Component wrapper, Helm renderer, plugin or cloud execution.",
-        "Native truth has 144 raw cross-file references; the unchanged dialect owns 35 scored "
-        "cross-file references after file/target scope. D19 precision denominator 35 and recall "
-        "denominator 35, each at its own metric; original subject xref floors remain 12 and 1.",
-        "Fathom has 202 definitions against 194 native definitions; eight extra definitions "
-        "are native resource no-ops and remain precision costs. Measured grade: L1 good, "
-        "L2 excellent, L3 excellent; references 148/148 and cross-file references 35/35.",
-        "Shared Apple Silicon, GOTOOLCHAIN=go1.27.3, nice 10, GOMAXPROCS=2, GOFLAGS=-p=2: "
-        "three full-pool CPU throughput runs 11, 12.74 and 12.36 MB/s with stable counts, "
-        "metrics and grades; median 12.36 MB/CPU-s, zero faults, max_file_ms 0. "
-        "Per-launch one-minute load was recorded at or below 9; concurrent jobs were not "
-        "recorded and wall throughput is not comparable across machines.",
+        "Native provenance: official Kustomize " + native["version"] + " binary SHA256 "
+        + public["native_bin_sha256"] + "; platform archive checksums are pinned in pins.json"
+        + "; typed API and kyaml " + native["api_version"]
+        + f"; fixed {len(subjects)}-subject selection followed private exploration, so it is not a blind holdout.",
+        f"Measured files: native built-file scope via -only, {total('graded_files')} of {total('native_files')} recognized; "
+        f"{total('native_files') - total('graded_files')} excluded with reasons in the assessment. "
+        f"Real Component contexts: {context('valid')} valid / {context('tried')} tried, "
+        f"{context('effective_entries')} effective entries; {excluded('component-no-valid-context')} without valid context.",
+        f"Native truth has {total('native_cross_references')} raw cross-file references; "
+        f"the unchanged dialect scores {counts['xref_truth']} after file/target scope. "
+        f"D19 (#7) is not on main: precision denominator {d19['precision']}, recall denominator {d19['recall']}; "
+        f"{disposition}. This is the lane's guard pending D19's lang-regrade.",
+        "Leave-one-subject-out under current harness rules, in frozen pin order: "
+        + "; ".join(omitted) + ". The assessment identifies the subjects and limits.",
+        f"Fathom/native definitions {counts['fathom_defs']}/{counts['oracle_defs']}; "
+        f"matched {counts['matched']}. Measured grade: "
+        + ", ".join(f"{level} {value}" for level, value in public["grade"].items())
+        + f"; references {counts['ref_truth_found']}/{counts['ref_truth']} and "
+        f"cross-file references {counts['xref_truth_found']}/{counts['xref_truth']}.",
+        "CPU throughput runs " + ", ".join(str(value) for value in rates)
+        + f" MB/CPU-s; median {rate}. Settings: nice {public['niceness']}, "
+        + ", ".join(f"{key}={value}" for key, value in sorted(public["go_runtime_env"].items()))
+        + "; launch loads are in the public receipt. Wall throughput is not comparable across machines.",
         "Product engine unchanged at clean source commit " + public["base_commit"]
         + "; existing directory-preference test green. Public counts/hash evidence: "
         "docs/assessments/2026-10-26-kustomize-d19-evidence.md and "
         "docs/assessments/data/2026-10-26-kustomize-r1.json.",
     ]
+
+
+def merge_notes(have, add):
+    return list(dict.fromkeys([*have, *add]))
 
 
 def main():
@@ -177,8 +194,9 @@ def main():
     median_path = cache / "kustomize-r1" / "grade" / "median.json"
     median, public = verify(median_path, args.public, args.reading, cache)
     written = copy.deepcopy(median)
-    written["notes"] = notes(public)
-    require(not any(bad in note for note in written["notes"] for bad in
+    lane_notes = notes(public)
+    written["notes"] = merge_notes(median.get("notes", []), lane_notes)
+    require(not any(bad in note for note in lane_notes for bad in
                     (".yaml", ".yml", "/Users/", "CODEOWNERS", "copyright", "@")),
             "private source identity appeared in public notes")
     require({key: value for key, value in written.items() if key != "notes"}

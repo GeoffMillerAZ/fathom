@@ -2,9 +2,11 @@
 
 ## Verdict
 
-**Measured:** the five fixed subjects grade L1 good and L2/L3 excellent.
-Cross-file precision and recall are both 35/35, so each metric clears D19's
-20-reference floor. All three pooled runs agree. Native truth, built-file lists,
+**Measured:** the five fixed subjects grade L1 good and L2/L3 excellent under
+the current grader. Cross-file precision and recall are both 35/35; this clears
+the lane's D19 count guard through one privately preselected subject, not broad
+evidence. D19 (#7) is not on main; L3 remains held for its lang-regrade. All three
+pooled runs agree. Native truth, built-file lists,
 receipts and tracked sources match before and after byte for byte. The eight
 native resource no-ops remain in Fathom's definition precision denominator.
 This evidence addresses [LB-Q-kustomize-rest](../plans/language-breadth.md),
@@ -123,6 +125,25 @@ precision/recall are each 1. D19's **metric-own** L3 denominators are
 reader reports L1 good, L2 excellent and L3 excellent; the public reading
 copies the selected median without changing any measured field.
 
+Removing one subject at a time and recomputing the pooled counts under the
+current harness rules gives:
+
+| Omitted subject | Xref precision / recall denominator | Symbol precision | Current level_met |
+|---|---:|---:|---|
+| kubernetes-sigs/kustomize | 23 / 23 | 142/150 = 0.9467 | none |
+| argoproj/argocd-example-apps | 34 / 34 | 157/165 = 0.9515 | L3 |
+| fluxcd/flux2-kustomize-helm-example | 33 / 33 | 176/180 = 0.9778 | L3 |
+| fluxcd/flux2-multi-tenancy | 31 / 31 | 173/177 = 0.9774 | L3 |
+| GoogleCloudPlatform/microservices-demo | 19 / 19 | 128/136 = 0.9412 | none |
+
+The privately preselected GCP subject supplies 16 of 35 scored edges and is
+necessary for both the D19 count floor and L1's 0.95 good floor. Pooled L1
+symbol precision is 194/202: two additional unmatched definitions still meet
+0.95, while a third does not. Twelve of GCP's 16 edges come from three nearly
+identical test configurations. All 35 scored edges use the simplest directory
+form; no subject exercises transformers. This evidence clears D19 by count
+through one subject and leaves generality unproven.
+
 The eight extra Fathom definitions are four in each Flux subject. The private
 unmatched records locate all eight on unchanged `resources` source lines; none
 appears in native truth. Both complete native subject receipts record exactly
@@ -130,16 +151,18 @@ four `resources` no-ops and no other no-ops, with all files in those subjects
 built. This reconciles the eight precision costs to native ablation no-ops;
 no definition is discarded or adjudicated away.
 
-Three full-pool CPU throughput readings are 11, 12.74 and 12.36 MB/s. The
-median is run 3 at 12.36 MB/CPU-s; it reports zero faults and 0 ms maximum
+Three full-pool CPU throughput readings are 11.06, 12.92 and 12.91 MB/s. The
+median is run 3 at 12.91 MB/CPU-s; it reports zero faults and 0 ms maximum
 per-file time at the reading's precision. The three runs have identical
 counts, metrics and grades. Timings are a floor check on this machine, not a
 cross-machine benchmark.
 
 ## Controls and whole-unit bounds
 
-**Measured independence:** the committed product-side control removes only the
-actual document extractor's resource selectors in memory. KustomizeResource
+**Oracle independence:** the oracle module's `go.mod` requires only Kustomize's
+API and kyaml modules, with no Fathom dependency. The product-side control
+shows responsiveness only: it removes the actual document extractor's resource
+selectors in memory. KustomizeResource
 output changes from two to zero while the Kustomization root stays one and
 pinned source bytes stay unchanged. The native after phase retains every raw
 truth digest. The source-fact control in `TestOracleCLIPopulatesComponent`
@@ -184,8 +207,9 @@ admission tests. Binary identity regression tests prove a clean exact revision
 is admitted while dirty, wrong or missing revisions refuse. The existing
 `TestKustomizeBaseDirectoryNeedsTheOneFileRule` passes: when a directory also
 contains Kubernetes documents, its unique Kustomize file remains preferred.
-The old provenance's deferred trigger had already fired and is corrected here;
-no resolver change is needed.
+Only the directory-preference half of the deferred trigger fired with O165.
+The manifest-root-entity half waits for Kubernetes dialect dispatch; manifest
+target edges resolve to nothing at ingest today.
 
 ## Reproduction and handoff
 

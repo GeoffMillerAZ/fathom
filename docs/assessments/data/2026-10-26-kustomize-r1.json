@@ -32,77 +32,240 @@
     "L3": "excellent",
     "L4": "not-applicable"
   },
-  "indexbench_sha256": "0724ee15ea809de346496b3937dee4d9aeb57fab6929a9c6a233ebbf85c9403c",
+  "indexbench_sha256": "468adb446cafaa3f771a0691ee066f1825256bb5c49c7f72696ec405acd45f16",
+  "lane_disposition": "count_guard_met_pending_D19",
+  "leave_one_subject_out": [
+    {
+      "counts": {
+        "fathom_defs": 150,
+        "kind_equal": 142,
+        "matched": 142,
+        "oracle_defs": 142,
+        "ref_fathom": 112,
+        "ref_fathom_in_truth": 112,
+        "ref_truth": 112,
+        "ref_truth_found": 112,
+        "xref_fathom": 23,
+        "xref_fathom_in_truth": 23,
+        "xref_truth": 23,
+        "xref_truth_found": 23
+      },
+      "grade": {
+        "L1": "unmet",
+        "L2": "excellent",
+        "L3": "excellent",
+        "L4": "not-applicable"
+      },
+      "level_met": "none",
+      "metrics": {
+        "ref_precision": 1,
+        "ref_recall": 1,
+        "sym_precision": 0.9467,
+        "sym_recall": 1,
+        "xref_precision": 1,
+        "xref_recall": 1
+      },
+      "omitted_repository": "kubernetes-sigs/kustomize"
+    },
+    {
+      "counts": {
+        "fathom_defs": 165,
+        "kind_equal": 157,
+        "matched": 157,
+        "oracle_defs": 157,
+        "ref_fathom": 114,
+        "ref_fathom_in_truth": 114,
+        "ref_truth": 114,
+        "ref_truth_found": 114,
+        "xref_fathom": 34,
+        "xref_fathom_in_truth": 34,
+        "xref_truth": 34,
+        "xref_truth_found": 34
+      },
+      "grade": {
+        "L1": "good",
+        "L2": "excellent",
+        "L3": "excellent",
+        "L4": "not-applicable"
+      },
+      "level_met": "L3",
+      "metrics": {
+        "ref_precision": 1,
+        "ref_recall": 1,
+        "sym_precision": 0.9515,
+        "sym_recall": 1,
+        "xref_precision": 1,
+        "xref_recall": 1
+      },
+      "omitted_repository": "argoproj/argocd-example-apps"
+    },
+    {
+      "counts": {
+        "fathom_defs": 180,
+        "kind_equal": 176,
+        "matched": 176,
+        "oracle_defs": 176,
+        "ref_fathom": 137,
+        "ref_fathom_in_truth": 137,
+        "ref_truth": 137,
+        "ref_truth_found": 137,
+        "xref_fathom": 33,
+        "xref_fathom_in_truth": 33,
+        "xref_truth": 33,
+        "xref_truth_found": 33
+      },
+      "grade": {
+        "L1": "good",
+        "L2": "excellent",
+        "L3": "excellent",
+        "L4": "not-applicable"
+      },
+      "level_met": "L3",
+      "metrics": {
+        "ref_precision": 1,
+        "ref_recall": 1,
+        "sym_precision": 0.9778,
+        "sym_recall": 1,
+        "xref_precision": 1,
+        "xref_recall": 1
+      },
+      "omitted_repository": "fluxcd/flux2-kustomize-helm-example"
+    },
+    {
+      "counts": {
+        "fathom_defs": 177,
+        "kind_equal": 173,
+        "matched": 173,
+        "oracle_defs": 173,
+        "ref_fathom": 135,
+        "ref_fathom_in_truth": 135,
+        "ref_truth": 135,
+        "ref_truth_found": 135,
+        "xref_fathom": 31,
+        "xref_fathom_in_truth": 31,
+        "xref_truth": 31,
+        "xref_truth_found": 31
+      },
+      "grade": {
+        "L1": "good",
+        "L2": "excellent",
+        "L3": "excellent",
+        "L4": "not-applicable"
+      },
+      "level_met": "L3",
+      "metrics": {
+        "ref_precision": 1,
+        "ref_recall": 1,
+        "sym_precision": 0.9774,
+        "sym_recall": 1,
+        "xref_precision": 1,
+        "xref_recall": 1
+      },
+      "omitted_repository": "fluxcd/flux2-multi-tenancy"
+    },
+    {
+      "counts": {
+        "fathom_defs": 136,
+        "kind_equal": 128,
+        "matched": 128,
+        "oracle_defs": 128,
+        "ref_fathom": 94,
+        "ref_fathom_in_truth": 94,
+        "ref_truth": 94,
+        "ref_truth_found": 94,
+        "xref_fathom": 19,
+        "xref_fathom_in_truth": 19,
+        "xref_truth": 19,
+        "xref_truth_found": 19
+      },
+      "grade": {
+        "L1": "unmet",
+        "L2": "excellent",
+        "L3": "excellent",
+        "L4": "not-applicable"
+      },
+      "level_met": "none",
+      "metrics": {
+        "ref_precision": 1,
+        "ref_recall": 1,
+        "sym_precision": 0.9412,
+        "sym_recall": 1,
+        "xref_precision": 1,
+        "xref_recall": 1
+      },
+      "omitted_repository": "GoogleCloudPlatform/microservices-demo"
+    }
+  ],
   "level_met": "L3",
   "load_at_launch_by_run": [
     [
       {
-        "load_at_launch": 8.17041015625,
+        "load_at_launch": 7.3525390625,
         "repository": "kubernetes-sigs/kustomize"
       },
       {
-        "load_at_launch": 8.17041015625,
+        "load_at_launch": 7.3525390625,
         "repository": "argoproj/argocd-example-apps"
       },
       {
-        "load_at_launch": 8.17041015625,
+        "load_at_launch": 7.3525390625,
         "repository": "fluxcd/flux2-kustomize-helm-example"
       },
       {
-        "load_at_launch": 8.17041015625,
+        "load_at_launch": 7.3525390625,
         "repository": "fluxcd/flux2-multi-tenancy"
       },
       {
-        "load_at_launch": 8.17041015625,
+        "load_at_launch": 7.3525390625,
         "repository": "GoogleCloudPlatform/microservices-demo"
       }
     ],
     [
       {
-        "load_at_launch": 8.17041015625,
+        "load_at_launch": 7.3525390625,
         "repository": "kubernetes-sigs/kustomize"
       },
       {
-        "load_at_launch": 8.17041015625,
+        "load_at_launch": 7.3525390625,
         "repository": "argoproj/argocd-example-apps"
       },
       {
-        "load_at_launch": 8.17041015625,
+        "load_at_launch": 7.3525390625,
         "repository": "fluxcd/flux2-kustomize-helm-example"
       },
       {
-        "load_at_launch": 8.17041015625,
+        "load_at_launch": 7.3525390625,
         "repository": "fluxcd/flux2-multi-tenancy"
       },
       {
-        "load_at_launch": 8.17041015625,
+        "load_at_launch": 7.3525390625,
         "repository": "GoogleCloudPlatform/microservices-demo"
       }
     ],
     [
       {
-        "load_at_launch": 8.17041015625,
+        "load_at_launch": 7.3525390625,
         "repository": "kubernetes-sigs/kustomize"
       },
       {
-        "load_at_launch": 8.17041015625,
+        "load_at_launch": 7.3525390625,
         "repository": "argoproj/argocd-example-apps"
       },
       {
-        "load_at_launch": 8.17041015625,
+        "load_at_launch": 7.3525390625,
         "repository": "fluxcd/flux2-kustomize-helm-example"
       },
       {
-        "load_at_launch": 8.17041015625,
+        "load_at_launch": 7.3525390625,
         "repository": "fluxcd/flux2-multi-tenancy"
       },
       {
-        "load_at_launch": 8.17041015625,
+        "load_at_launch": 7.3525390625,
         "repository": "GoogleCloudPlatform/microservices-demo"
       }
     ]
   ],
-  "median_reading_sha256": "614784ea75b6db8c49890b94d813a7fab779b8f049aef44a554595d21136364f",
+  "median_reading_sha256": "77777f83a0829457fb4e8efaad7920e952ec83ce9af036beb05fdb55f591a882",
   "median_run": 3,
   "metric_tiers": {
     "ref_precision": "A",
@@ -122,12 +285,15 @@
   },
   "native_bin_sha256": "bc77e3505fbd414551cf7b15d1e772a288bc5afd97e31e49655b10524d1888e9",
   "niceness": 10,
-  "oracle_bin_sha256": "34260c16ccc609d9bcde7186e8a41f4b23c13010633c4fe82d1da29da5cb627d",
+  "oracle_bin_sha256": "876951097fb406483ed159674026bf9f960d1904be90c50cc4d7fbde9cf714a4",
+  "original_population_conservation_failed": false,
+  "original_xref_floor_met": true,
   "original_xref_truth": {
     "argoproj/argocd-example-apps": 1,
     "kubernetes-sigs/kustomize": 12
   },
-  "pins_sha256": "e6d1316c984954eb725f40c84f8e07fc88d3d7f22cc8bfb9a06e5326cea97b7e",
+  "pins_sha256": "6ba73a24ecad244a766df49b5a2045b3f108aef1c3ba1e06de754030d83c39f6",
+  "pool_xref_floor_met": true,
   "subjects": [
     {
       "built_file_list_sha256": "5fdfea8ea6efcda7db4a86ace603656fbb107ac0579d130b673d1e4ed2716c1f",
@@ -481,8 +647,8 @@
     }
   ],
   "throughput_mb_per_cpu_second": [
-    11,
-    12.74,
-    12.36
+    11.06,
+    12.92,
+    12.91
   ]
 }

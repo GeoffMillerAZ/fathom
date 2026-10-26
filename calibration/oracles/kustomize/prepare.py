@@ -6,6 +6,7 @@ import hashlib
 import io
 import json
 import pathlib
+import platform
 import subprocess
 import tarfile
 
@@ -36,14 +37,26 @@ def checkout(cache, pin):
             "directory": str(directory), "subpath": pin.get("subpath", ".")}
 
 
+def native_asset(pin, system, machine):
+    os_name = {"Darwin": "darwin", "Linux": "linux"}.get(system)
+    arch = {"arm64": "arm64", "aarch64": "arm64", "x86_64": "amd64"}.get(machine)
+    if (os_name, arch) not in (("darwin", "arm64"), ("linux", "amd64"), ("linux", "arm64")):
+        raise RuntimeError("unsupported native Kustomize platform")
+    asset = f"kustomize_{pin['version']}_{os_name}_{arch}.tar.gz"
+    checksum = pin["archive_sha256"] if os_name == "darwin" else pin[f"{os_name}_{arch}_archive_sha256"]
+    url = pin["url"].rsplit("/", 1)[0] + "/" + asset
+    return asset, checksum, url
+
+
 def tool(cache):
     pin = PINS["native"]
-    archive = cache / "tools" / "kustomize-v5.8.1-darwin-arm64.tar.gz"
+    asset, checksum, url = native_asset(pin, platform.system(), platform.machine())
+    archive = cache / "tools" / asset
     archive.parent.mkdir(parents=True, exist_ok=True)
     if not archive.exists():
-        subprocess.run(("curl", "-fL", "--retry", "2", pin["url"], "-o", str(archive)), check=True)
+        subprocess.run(("curl", "-fL", "--retry", "2", url, "-o", str(archive)), check=True)
     data = archive.read_bytes()
-    if hashlib.sha256(data).hexdigest() != pin["archive_sha256"]:
+    if hashlib.sha256(data).hexdigest() != checksum:
         raise RuntimeError("native Kustomize archive checksum differs")
     binary = cache / "tools" / "kustomize-5.8.1"
     with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as source:
@@ -56,7 +69,7 @@ def tool(cache):
     if version != pin["version"]:
         raise RuntimeError("native Kustomize version differs: " + version)
     return {"version": version, "binary_sha256": hashlib.sha256(binary.read_bytes()).hexdigest(),
-            "archive_sha256": pin["archive_sha256"]}
+            "archive_sha256": checksum}
 
 
 def main():

@@ -18,36 +18,72 @@ def numeric_map(value):
     return value
 
 
-def require_d19_xref(counts, claimed_denominators):
-    """D19 applies to each L3 metric's own observed denominator."""
+def d19_xref_disposition(counts, claimed_denominators):
+    """Report each metric's observed denominator without selecting on outcome."""
     actual = {"precision": counts.get("xref_fathom", 0),
               "recall": counts.get("xref_truth", 0)}
     if actual != claimed_denominators:
         raise RuntimeError("D19 cross-reference denominators differ from measured counts")
-    if any(not isinstance(value, int) or isinstance(value, bool) or value < 20
+    if any(not isinstance(value, int) or isinstance(value, bool) or value < 0
            for value in actual.values()):
-        raise RuntimeError("D19: L3 cross-reference precision/recall not measured; "
-                           "each metric needs its own denominator >=20, got "
-                           f"precision={actual['precision']}, recall={actual['recall']}. "
-                           "Keep raw results private and publish an honest partial disposition.")
-    return actual
+        raise RuntimeError("invalid D19 cross-reference denominator")
+    return {"denominators": actual, "thin": any(value < 20 for value in actual.values())}
+
+
+def population_disposition(scored, d19_thin):
+    """Keep conservation floors as promotion criteria, never publication gates."""
+    original_floors = {"kubernetes-sigs/kustomize": 12,
+                       "argoproj/argocd-example-apps": 1}
+    originals = scored.get("original_xref_truth", {})
+    if set(originals) != set(original_floors):
+        raise RuntimeError("original subject conservation counts missing")
+    expected = {"original_xref_floor_met": all(originals[name] >= floor
+                for name, floor in original_floors.items()),
+                "pool_xref_floor_met": scored["counts"]["xref_truth"] >= 13}
+    for key in ("original_xref_floor_met", "pool_xref_floor_met"):
+        if type(scored.get(key)) is not bool:
+            raise RuntimeError("missing or invalid conservation result: " + key)
+        if scored[key] != expected[key]:
+            raise RuntimeError("conservation result differs from measured counts: " + key)
+    failed = not (scored["original_xref_floor_met"] and scored["pool_xref_floor_met"])
+    return {"original_xref_floor_met": scored["original_xref_floor_met"],
+            "pool_xref_floor_met": scored["pool_xref_floor_met"],
+            "original_population_conservation_failed": failed,
+            "lane_disposition": "held" if failed or d19_thin else "count_guard_met_pending_D19"}
+
+
+def checked_leave_one_out(scored, subject_pins):
+    names = [pin["repository"] for pin in subject_pins]
+    rows = scored["leave_one_subject_out"]
+    if len(rows) != len(names) or [row.get("omitted_repository") for row in rows] != names:
+        raise RuntimeError("leave-one-out rows differ from pinned subject order")
+    subjects = {row["repository"]: row["counts"] for row in scored["subjects"]}
+    if set(subjects) != set(names):
+        raise RuntimeError("leave-one-out subject counts differ from pins")
+    public = []
+    for row in rows:
+        omitted = row["omitted_repository"]
+        expected = {key: value - subjects[omitted].get(key, 0)
+                    for key, value in scored["counts"].items()}
+        if row["counts"] != expected:
+            raise RuntimeError("leave-one-out counts differ from measured subjects: " + omitted)
+        if not isinstance(row["metrics"], dict) or not isinstance(row["grade"], dict) or not isinstance(row["level_met"], str):
+            raise RuntimeError("leave-one-out harness result incomplete: " + omitted)
+        public.append({key: row[key] for key in
+                       ("omitted_repository", "counts", "metrics", "grade", "level_met")})
+    return public
 
 
 def self_test():
-    """Small synthetic fixtures for the publication gate; no subject data."""
+    """Small synthetic fixtures for publication disclosure; no subject data."""
     for p, r in ((19, 20), (20, 19), (0, 0)):
-        try:
-            require_d19_xref({"xref_fathom": p, "xref_truth": r},
-                             {"precision": p, "recall": r})
-        except RuntimeError as error:
-            assert "not measured" in str(error)
-        else:
-            raise AssertionError("thin D19 fixture passed")
-    assert require_d19_xref({"xref_fathom": 20, "xref_truth": 21},
-                            {"precision": 20, "recall": 21}) == {"precision": 20, "recall": 21}
+        assert d19_xref_disposition({"xref_fathom": p, "xref_truth": r},
+                                    {"precision": p, "recall": r})["thin"]
+    assert not d19_xref_disposition({"xref_fathom": 20, "xref_truth": 21},
+                                    {"precision": 20, "recall": 21})["thin"]
     try:
-        require_d19_xref({"xref_fathom": 20, "xref_truth": 21},
-                         {"precision": 21, "recall": 21})
+        d19_xref_disposition({"xref_fathom": 20, "xref_truth": 21},
+                             {"precision": 21, "recall": 21})
     except RuntimeError as error:
         assert "differ" in str(error)
     else:
@@ -63,7 +99,7 @@ def main():
     args = ap.parse_args()
     if args.self_test:
         self_test()
-        print("D19 publication guard fixtures passed")
+        print("D19 publication disclosure fixtures passed")
         return
     if args.cache is None or args.out is None:
         ap.error("--cache and --out are required for publication")
@@ -152,9 +188,9 @@ def main():
                                 "unsupported_native_basename": g["unsupported_native_basename"],
                                 "graded_counts": numeric_map(g["counts"]),
                                 "graded_ratios": g["ratios"]})
-    if not scored["original_xref_floor_met"] or not scored["pool_xref_floor_met"]:
-        raise RuntimeError("original subject or pooled xref conservation floor failed")
-    d19 = require_d19_xref(scored["counts"], scored["D19_xref_denominators"])
+    d19 = d19_xref_disposition(scored["counts"], scored["D19_xref_denominators"])
+    disposition = population_disposition(scored, d19["thin"])
+    leave_one_subject_out = checked_leave_one_out(scored, fixed["subjects"])
     public = {"date": fixed["date"], "base_commit": fixed["base_commit"],
               "pins_sha256": digest(PINS_PATH),
               "oracle_bin_sha256": before["oracle_bin_sha256"],
@@ -167,12 +203,14 @@ def main():
               "metric_tiers": scored["metric_tiers"], "grade": scored["grade"],
               "level_met": scored["level_met"],
               "original_xref_truth": scored["original_xref_truth"],
-              "D19_xref_denominators": d19,
-              "D19_xref_thin": False,
+              "D19_xref_denominators": d19["denominators"],
+              "D19_xref_thin": d19["thin"],
               "niceness": scored["niceness"],
               "go_runtime_env": scored["go_runtime_env"],
               "load_at_launch_by_run": scored["load_at_launch_by_run"],
-              "subjects": public_subjects}
+              "subjects": public_subjects,
+              "leave_one_subject_out": leave_one_subject_out,
+              **disposition}
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(public, indent=2, sort_keys=True) + "\n")
     print(json.dumps({"subjects": len(public_subjects), "level_met": public["level_met"],

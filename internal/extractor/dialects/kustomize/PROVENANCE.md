@@ -77,14 +77,16 @@ What the dialect adds to what the incumbent read:
   the other populated families. File-valued families can express additional
   paths, and selectors such as `replicas[].name` need format-specific joins.
   This reading does not certify those paths or selector bindings.
-- **Directory references prefer the referring dialect's file.** The Kubernetes
-  dialect is dispatched, so a base can contain several document files.
-  `fusion.ResolveDocXrefs`' `oneDocFile` first selects a unique file owned by the
-  referring dialect, then uses the unique-document fallback. This preserves a
-  Kustomize base's edge when that directory also contains Kubernetes manifests.
-  `TestKustomizeBaseDirectoryNeedsTheOneFileRule` exercises this fired trigger.
-  No resolver change is needed for this evidence lane.
-- **References to Kubernetes manifests** are emitted and can resolve at ingest.
+- **Directory references prefer the referring dialect's file when needed.** Today
+  an ingest dispatches Kubernetes manifests to the incumbent `K8sExtractor`,
+  not the Kubernetes document dialect. `fusion.ResolveDocXrefs`' `oneDocFile`
+  selects a lone document file first, then a unique file owned by the referring
+  dialect when several document files exist. O165 added the latter preference;
+  `TestKustomizeBaseDirectoryNeedsTheOneFileRule` exercises it with manually
+  supplied Kubernetes document files. It protects the future dispatch, which
+  has not happened on main.
+- **References to Kubernetes manifests** are emitted but resolve to nothing at ingest:
+  the incumbent extractor stores no manifest root entity for this resolver.
   This dialect reading scores only destinations in the files it owns
   (`langbench` scope, §1.4). Native manifest-target edges outside that scope
   remain counted separately; this reading does not certify their resolution.

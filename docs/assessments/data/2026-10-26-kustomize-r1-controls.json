@@ -20,6 +20,10 @@
   "date": "2026-10-26",
   "lane_final_gates_complete": true,
   "native_before_after_byte_identity": true,
+  "oracle_build_flags": [
+    "-trimpath",
+    "-buildvcs=false"
+  ],
   "oracle_scope_mutation": {
     "expected_exit_code": 1,
     "file": "calibration/oracles/kustomize/main.go",
@@ -37,9 +41,8 @@
     }
   },
   "privacy": {
-    "benign_generic_path_guard": 1,
-    "benign_syntax_package_guard_matches": 10,
-    "candidate_files": 23,
+    "benign_syntax_package_guard_matches": 12,
+    "candidate_files": 24,
     "local_home_paths": 0,
     "name_email_shapes": 0,
     "subject_identities": 0
@@ -59,7 +62,7 @@
     "subject_unchanged": true
   },
   "reading_conservation": {
-    "after_inventory_sha256": "31f9fd96f658048d7356a7aa9a9d7261ec26756137d06131dc2de1dd047bc3ba",
+    "after_inventory_sha256": "a870cf879c65318744f004efeafdf4a058cbd38c3ec5343514121758c77e19e4",
     "base": "6db920e72",
     "before_inventory_sha256": "be9a3350211b5c573fc27e42d9897f932c7f640c45979646a60f993a019bac47",
     "changed_values": [
@@ -71,6 +74,14 @@
     "required_kinds_preserved": true,
     "unchanged_bytes": 184
   },
+  "review_fixes": [
+    "F1",
+    "F2",
+    "F3",
+    "F4",
+    "F5",
+    "F6"
+  ],
   "scope": "Kustomize calibration only; product engine unchanged",
   "source_tracked_sets_unchanged": true,
   "verification": {
@@ -82,12 +93,17 @@
     "directory_preference": {
       "command": "go test -race ./internal/fusion -run '^TestKustomizeBaseDirectoryNeedsTheOneFileRule$' -count=1",
       "exit_code": 0,
-      "private_log_sha256": "8f48914c0e3aa861902da894690821be0ce0ee540714a0ce6d6e1b631a8a73b3"
+      "private_log_sha256": "65843c2cabc09a7c0875ed7b16acea73049e85bc6aa06817a53cef33ec2ae30e"
     },
     "driver_identity": {
       "command": "python3 -m unittest calibration/oracles/kustomize/test_grade.py",
       "exit_code": 0,
       "private_log_sha256": "cbe4b84d897ac017db0552ccb3a31855ff0fb172bc344c967c4c4c92eb19e624"
+    },
+    "landing_publication": {
+      "command": "python3 calibration/oracles/kustomize/publish.py --cache \"$KUST_CACHE\" --out docs/assessments/data/2026-10-26-kustomize-r1.json",
+      "exit_code": 0,
+      "private_log_sha256": "8fd4c293b04c99f188f871fa9003d8f9a5a89d015f9c1373eff0382710795b36"
     },
     "merge_debris": {
       "command": "bash scripts/check-merge-debris.sh",
@@ -97,22 +113,22 @@
     "native_after": {
       "command": "python3 calibration/oracles/kustomize/run_native.py --cache \"$KUST_CACHE\" --oracle-bin \"$KUST_CACHE/tools/kustomize-oracle\" --phase after",
       "exit_code": 0,
-      "private_log_sha256": "84d8da47ae38c04d23e5e8c89e4a080399ec61906f807832dd5e2861deb689af"
+      "private_log_sha256": "a7d61f5798616aa31c5a62b021d1f5ad89b692412269869862cf881db72a0b6d"
     },
     "native_before": {
       "command": "python3 calibration/oracles/kustomize/run_native.py --cache \"$KUST_CACHE\" --oracle-bin \"$KUST_CACHE/tools/kustomize-oracle\" --phase before",
       "exit_code": 0,
-      "private_log_sha256": "7c39418765d63f8327d51480308ea2e875f7571636e9493f5ca7ec734b543568"
+      "private_log_sha256": "a7d61f5798616aa31c5a62b021d1f5ad89b692412269869862cf881db72a0b6d"
     },
     "native_oracle_race": {
       "command": "go -C calibration/oracles/kustomize test -race -count=1 ./...",
       "exit_code": 0,
-      "private_log_sha256": "5d5302c9f54baf0a8acdcd2b9b072c3d4ebd5c1aa4d36e52a650304e3db029bf"
+      "private_log_sha256": "a7d61f5798616aa31c5a62b021d1f5ad89b692412269869862cf881db72a0b6d"
     },
     "org_names": {
       "command": "bash scripts/fathom-go.sh test -count=1 -run TestNoOrgSpecificNames ./cmd/fathom",
       "exit_code": 0,
-      "private_log_sha256": "15f8341a48ddc4d227c9316d9a00781ca05976f8f545533879ca439635114c89"
+      "private_log_sha256": "35f6aa27f0a34b4cdfa61c43d94c61c451b6faed62144cf8ed0767949d0227cc"
     },
     "product_control": {
       "command": "go run ./workspace/tmp/kustomize-proof/product_ablation.go -subject-file \"$PINNED_KUSTOMIZATION\"",
@@ -120,14 +136,14 @@
       "private_log_sha256": "e835354686d6c2e65d8160190621252c3aefdc8058192804147ff12e4446f2eb"
     },
     "reading_roundtrip": {
-      "command": "go test -race ./internal/langbench -run '^TestCommittedReadingsRoundTrip$' -count=1",
+      "command": "go test -race ./internal/langbench -run ^TestCommittedReadingsRoundTrip$ -count=1",
       "exit_code": 0,
-      "private_log_sha256": "948f5abde2fb9e588fad548801b402d743b8a059d2e1e8019da1e76f2379e068"
+      "private_log_sha256": "035473124f7f71a0ba3559fccef326acf92cf8abff536fd80bed5e8ae7940cf1"
     },
     "release_notes": {
       "command": "go run ./third_party/agentic-kit/cmd/release-notes -check",
       "exit_code": 0,
-      "private_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "private_log_sha256": "3f27e1cde4f31c0fc36085f0ac8fb8ba254aac01e55950daff317ac7787c338a"
     }
   }
 }

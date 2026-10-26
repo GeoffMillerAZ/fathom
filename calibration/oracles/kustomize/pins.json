@@ -20,6 +20,8 @@
     "checksums_url": "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.8.1/checksums.txt",
     "kyaml_module": "sigs.k8s.io/kustomize/kyaml",
     "kyaml_version": "v0.21.1",
+    "linux_amd64_archive_sha256": "029a7f0f4e1932c52a0476cf02a0fd855c0bb85694b82c338fc648dcb53a819d",
+    "linux_arm64_archive_sha256": "0953ea3e476f66d6ddfcd911d750f5167b9365aa9491b2326398e289fef2c142",
     "url": "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.8.1/kustomize_v5.8.1_darwin_arm64.tar.gz",
     "version": "v5.8.1"
   },
