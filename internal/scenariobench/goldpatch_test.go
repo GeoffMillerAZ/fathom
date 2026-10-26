@@ -186,7 +186,7 @@ func TestFetchGoldPatchRefusesInvalidInputsAndFetcherErrors(t *testing.T) {
 }
 
 func TestFetchGoldPatchRefusesWorktreeCaches(t *testing.T) {
-	for _, mode := range []string{"missing", "existing", "symlink", "cache-hit"} {
+	for _, mode := range []string{"missing", "existing", "symlink", "ignored-symlink", "cache-hit"} {
 		t.Run(mode, func(t *testing.T) {
 			task, source, cache, patch := goldPatchFixture(t)
 			fetch := func(context.Context, SourcePin, string) ([]byte, error) { return patch, nil }
@@ -212,13 +212,75 @@ func TestFetchGoldPatchRefusesWorktreeCaches(t *testing.T) {
 				}
 				cache = filepath.Join(link, "nested")
 			}
+			if mode == "ignored-symlink" {
+				if err := os.MkdirAll(cache, 0o700); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(root, ".gitignore"), []byte("/workspace/cache-link\n"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				link := filepath.Join(root, "workspace", "cache-link")
+				if err := os.Symlink(cache, link); err != nil {
+					t.Fatal(err)
+				}
+				cache = link
+			}
 			called := false
+			writtenCache := cache
+			if mode == "ignored-symlink" {
+				var err error
+				writtenCache, err = filepath.EvalSymlinks(cache)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
 			got, err := FetchGoldPatch(t.Context(), task, source, cache, func(context.Context, SourcePin, string) ([]byte, error) { called = true; return patch, nil })
 			if err == nil || !strings.Contains(err.Error(), "git work tree") || got != nil || called {
 				t.Fatalf("worktree cache accepted: %q, %v, fetched=%v", got, err, called)
 			}
-			if mode != "cache-hit" && len(goldCacheFiles(t, cache)) != 0 {
+			if mode != "cache-hit" && len(goldCacheFiles(t, writtenCache)) != 0 {
 				t.Fatal("rejected cache wrote files")
+			}
+		})
+	}
+}
+
+func TestFetchGoldPatchAllowsIgnoredWorktreeCache(t *testing.T) {
+	for _, mode := range []string{"missing", "existing", "cache-hit"} {
+		t.Run(mode, func(t *testing.T) {
+			task, source, _, patch := goldPatchFixture(t)
+			root := t.TempDir()
+			cache := filepath.Join(root, "workspace", "scenariobench", "gold")
+			calls := 0
+			fetch := func(context.Context, SourcePin, string) ([]byte, error) {
+				calls++
+				return patch, nil
+			}
+			if mode == "existing" {
+				if err := os.MkdirAll(cache, 0o700); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if mode == "cache-hit" {
+				if _, err := FetchGoldPatch(t.Context(), task, source, cache, fetch); err != nil {
+					t.Fatal(err)
+				}
+			}
+			cmd := exec.CommandContext(t.Context(), "git", "init", "-q", root)
+			if out, err := cmd.CombinedOutput(); err != nil {
+				t.Fatalf("git init: %v: %s", err, out)
+			}
+			if err := os.WriteFile(filepath.Join(root, ".gitignore"), []byte("/workspace/\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			for range 2 {
+				got, err := FetchGoldPatch(t.Context(), task, source, cache, fetch)
+				if err != nil || string(got) != string(patch) {
+					t.Fatalf("ignored cache patch = %q, %v", got, err)
+				}
+			}
+			if calls != 1 || len(goldCacheFiles(t, cache)) != 1 {
+				t.Fatalf("ignored cache was not reused: fetch calls = %d", calls)
 			}
 		})
 	}

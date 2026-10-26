@@ -20,7 +20,7 @@ import (
 type GoldPatchFetcher func(ctx context.Context, source SourcePin, taskID string) ([]byte, error)
 
 // FetchGoldPatch returns verified patch bytes and caches them only in cacheDir,
-// which the operator places under workspace/ outside any git work tree. source
+// which the operator places under ignored workspace/ or outside any git work tree. source
 // is the task's dataset pin
 // (the existing corpus SourcePin until per-task provenance is available). It is
 // mandatory even on a cache hit. The key includes the complete source pin, task
@@ -115,6 +115,7 @@ func goldCacheOutsideWorktree(ctx context.Context, cacheDir string) error {
 	if err != nil {
 		return err
 	}
+	cachePath := dir
 	for {
 		info, err := os.Stat(dir)
 		if err == nil {
@@ -149,7 +150,24 @@ func goldCacheOutsideWorktree(ctx context.Context, cacheDir string) error {
 		return fmt.Errorf("checking gold patch cache location: %w: %s", err, stderr.String())
 	}
 	if strings.TrimSpace(string(out)) == "true" {
-		return fmt.Errorf("gold patch cache must be outside a git work tree")
+		resolved, err := filepath.EvalSymlinks(dir)
+		if err != nil {
+			return err
+		}
+		suffix, err := filepath.Rel(dir, cachePath)
+		if err != nil {
+			return err
+		}
+		cachePath = filepath.Join(resolved, suffix)
+		cmd := exec.CommandContext(ctx, "git", "check-ignore", "-q", "--", cachePath)
+		cmd.Dir = resolved
+		cmd.Env = append(os.Environ(), "LC_ALL=C")
+		if out, err := cmd.CombinedOutput(); err != nil {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			return fmt.Errorf("gold patch cache in a git work tree must be untracked and ignored: %w: %s", err, out)
+		}
 	}
 	return nil
 }
