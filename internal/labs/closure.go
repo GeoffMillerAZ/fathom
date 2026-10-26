@@ -29,10 +29,13 @@ func CheckLabClosure(dir string, shipped []string) error {
 		return err
 	}
 	known := surfaceSet(shipped)
-	covered := map[string]bool{}
+	covered := map[string]string{}
 	for _, card := range cards {
 		for _, key := range card.Surface {
-			covered[key] = true
+			if owner := covered[key]; owner != "" {
+				return fmt.Errorf("%s: surface %q already claimed by %s", card.ID, key, owner)
+			}
+			covered[key] = card.ID
 		}
 	}
 	var exemptions struct {
@@ -56,11 +59,14 @@ func CheckLabClosure(dir string, shipped []string) error {
 		if (instrument == "" || instrument == "none") && reason == "" {
 			return fmt.Errorf("no-lab.yaml: %s needs an instrument or a reason", entry.Surface)
 		}
-		covered[entry.Surface] = true
+		if owner := covered[entry.Surface]; owner != "" {
+			return fmt.Errorf("no-lab.yaml: surface %q already claimed by %s", entry.Surface, owner)
+		}
+		covered[entry.Surface] = "no-lab.yaml"
 	}
 	missing := []string{}
 	for key := range known {
-		if !covered[key] {
+		if covered[key] == "" {
 			missing = append(missing, key)
 		}
 	}

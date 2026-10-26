@@ -60,6 +60,7 @@ func TestLoadLabsRefuses(t *testing.T) {
 		{"should-not", "lab-find-symbol.yaml", "should_not", func(m map[string]any) { delete(m["firing"].(map[string]any), "should_not") }},
 		{"broad-arm", "lab-find-symbol.yaml", "helped arm", func(m map[string]any) { m["helped"].(map[string]any)["arm"] = "plugin-minus-find-symbol-and-search" }},
 		{"whole-plugin", "lab-find-symbol.yaml", "helped arm", func(m map[string]any) { m["helped"].(map[string]any)["arm"] = "no-plugin" }},
+		{"kill-missing", "lab-find-symbol.yaml", "kill", func(m map[string]any) { delete(m, "kill") }},
 		{"kill", "lab-find-symbol.yaml", "kill", func(m map[string]any) { m["kill"] = []any{} }},
 		{"unknown-field", "lab-find-symbol.yaml", "field not allowed", func(m map[string]any) { m["typo"] = true }},
 		{"na-reason", "lab-find-symbol.yaml", "reason", func(m map[string]any) { m["firing"] = map[string]any{"mode": "n/a"} }},
@@ -78,13 +79,41 @@ func TestLoadLabsRefuses(t *testing.T) {
 }
 
 func TestLoadLabsNAAndInvalidYAML(t *testing.T) {
-	dir := t.TempDir()
-	m := labFixture()
-	m["firing"] = map[string]any{"mode": "n/a", "reason": "always loaded"}
-	writeLabJSON(t, dir, "lab-find-symbol.yaml", m)
-	if _, err := LoadLabs(dir, []string{"mcp:find_symbol"}); err != nil {
-		t.Fatal(err)
+	for _, tc := range []struct {
+		surface string
+		allowed bool
+	}{
+		{"stanza:agents-md", true}, {"decide:route", true},
+		{"hook:session-hook [session-start/prime SessionStart matcher=startup|resume|clear|compact]", true},
+		{"hook:session-hook --harness codex [session-start/prime SessionStart matcher=startup|resume|clear|compact]", true},
+		{"hook:session-hook --event subagent-start [subagent-start/subagent-prime SubagentStart matcher=]", false},
+		{"agent:fathom-scout", false},
+		{"mcp:find_symbol", false}, {"skill:fathom-plan", false},
+		{"hook:edit-hook --pre [pre-tool/guard-pre-edit PreToolUse matcher=Edit|Write|MultiEdit]", false},
+		{"hook:session-hook --event tool-failure [tool-failure/tool-failure-advice PostToolUseFailure matcher=mcp__fathom__.*]", false},
+	} {
+		t.Run(tc.surface, func(t *testing.T) {
+			dir := t.TempDir()
+			m := labFixture()
+			m["surface"] = []string{tc.surface}
+			if strings.HasPrefix(tc.surface, "skill:") {
+				m["helped"].(map[string]any)["arm"] = "plugin-minus-skill:{skill}"
+			}
+			if strings.HasPrefix(tc.surface, "decide:") {
+				m["helped"].(map[string]any)["arm"] = "plugin-minus-decide:{site}"
+			}
+			m["firing"] = map[string]any{"mode": "n/a", "reason": "deterministic configuration"}
+			writeLabJSON(t, dir, "lab-find-symbol.yaml", m)
+			_, err := LoadLabs(dir, []string{tc.surface})
+			if tc.allowed && err != nil {
+				t.Fatal(err)
+			}
+			if !tc.allowed && (err == nil || !strings.Contains(err.Error(), "n/a firing")) {
+				t.Fatalf("want n/a refusal, got %v", err)
+			}
+		})
 	}
+	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "lab-find-symbol.yaml"), []byte("id: [broken"), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -101,8 +130,8 @@ func TestLoadLabsSingleMemberArms(t *testing.T) {
 		id, arm  string
 		surfaces []string
 	}{
-		{"lab-skills", "plugin-minus-skill:{skill}", []string{"skill:fathom-plan", "skill:fathom-verify"}},
-		{"lab-decision-port", "plugin-minus-decide:{site}", []string{"decide:route", "decide:assess"}},
+		{"lab-renamed-skills", "plugin-minus-skill:{skill}", []string{"skill:fathom-plan", "skill:fathom-verify"}},
+		{"lab-renamed-decisions", "plugin-minus-decide:{site}", []string{"decide:route", "decide:assess"}},
 	} {
 		t.Run(tc.id, func(t *testing.T) {
 			dir := t.TempDir()
@@ -122,5 +151,41 @@ func TestLoadLabsSingleMemberArms(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestLoadLabsSingleMemberFamily(t *testing.T) {
+	for _, tc := range []struct {
+		arm      string
+		surfaces []string
+	}{
+		{"plugin-minus-skill:{skill}", []string{"skill:fathom-plan", "mcp:find_symbol"}},
+		{"plugin-minus-skill:{skill}", []string{"mcp:find_symbol", "skill:fathom-plan"}},
+		{"plugin-minus-decide:{site}", []string{"decide:route", "mcp:find_symbol"}},
+		{"plugin-minus-decide:{site}", []string{"skill:fathom-plan", "decide:route"}},
+		{"plugin-minus-skill:{skill}", []string{"decide:route", "skill:fathom-plan"}},
+	} {
+		t.Run(strings.Join(tc.surfaces, ","), func(t *testing.T) {
+			dir := t.TempDir()
+			m := labFixture()
+			m["surface"] = tc.surfaces
+			m["helped"].(map[string]any)["arm"] = tc.arm
+			writeLabJSON(t, dir, "lab-find-symbol.yaml", m)
+			if _, err := LoadLabs(dir, tc.surfaces); err == nil || !strings.Contains(err.Error(), "singular helped arm") {
+				t.Fatalf("mixed family accepted: %v", err)
+			}
+		})
+	}
+}
+
+func TestLoadLabsAgentSurface(t *testing.T) {
+	dir := t.TempDir()
+	m := labFixture()
+	m["id"] = "lab-scout"
+	m["surface"] = []string{"agent:fathom-scout"}
+	m["helped"].(map[string]any)["arm"] = "plugin-minus-scout"
+	writeLabJSON(t, dir, "lab-scout.yaml", m)
+	if _, err := LoadLabs(dir, []string{"agent:fathom-scout"}); err != nil {
+		t.Fatal(err)
 	}
 }

@@ -119,13 +119,23 @@ func LoadLabs(dir string, knownSurfaces []string) ([]Lab, error) {
 				return nil, fmt.Errorf("%s: unknown surface %q", name, key)
 			}
 		}
+		if card.Firing.Mode == "n/a" {
+			for _, key := range card.Surface {
+				if !strings.HasPrefix(key, "stanza:") && !strings.HasPrefix(key, "decide:") &&
+					!(strings.HasPrefix(key, "hook:") && strings.Contains(key, " [session-start/")) {
+					return nil, fmt.Errorf("%s: n/a firing is only allowed for stanza, decision and session-start surfaces", name)
+				}
+			}
+		}
 		arm := "plugin-minus-" + strings.TrimPrefix(card.ID, "lab-")
 		family := ""
-		switch card.ID {
-		case "lab-skills":
-			arm, family = "plugin-minus-skill:{skill}", "skill:"
-		case "lab-decision-port":
-			arm, family = "plugin-minus-decide:{site}", "decide:"
+		for _, key := range card.Surface {
+			switch {
+			case strings.HasPrefix(key, "skill:"):
+				arm, family = "plugin-minus-skill:{skill}", "skill:"
+			case strings.HasPrefix(key, "decide:"):
+				arm, family = "plugin-minus-decide:{site}", "decide:"
+			}
 		}
 		if card.Helped.Arm != arm {
 			return nil, fmt.Errorf("%s: helped arm must remove only this feature (%s)", name, arm)
