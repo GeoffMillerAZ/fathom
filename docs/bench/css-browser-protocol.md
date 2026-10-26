@@ -65,5 +65,29 @@ reading timing three times. The controller owns generated boards and plan boxes.
 The official [Chrome for Testing manifest](https://googlechromelabs.github.io/chrome-for-testing/)
 provides the versioned artifact. The [DevTools CSS domain](https://chromedevtools.github.io/devtools-protocol/tot/CSS/)
 defines the range and edit APIs. An upstream source inspection found exact
-FindRuleByBodyRange validation before SetStyleText; only the pinned binary's
+FindRuleByDeclarationsRange validation before SetStyleText at the pinned binary's
+revision 1d17a2e2ee147bb7d6ae2ab6abdb3a2510c17775; the pinned binary's
 positive/negative controls establish that behavior for this audit's actual pin.
+
+
+## Instrument result and source identity
+
+The committed [controls receipt](../assessments/data/2026-10-26-core-t1-css-browser-controls.json)
+records the pinned binary's outcomes, not a corpus or language grade. Both corrupted
+start and end controls were rejected. Ordinary/comma, Unicode/CRLF, empty and inactive
+media declaration ranges were accepted without changing source. A nested parent's
+full body was rejected: the native API exposes its declaration section, not its entire
+rule. Its whole-selector end remains unattested. No candidate scanner end is admitted
+for a rejected range.
+
+At the [pinned Chromium source](https://chromium.googlesource.com/chromium/src/+/1d17a2e2ee147bb7d6ae2ab6abdb3a2510c17775/third_party/blink/renderer/core/inspector/inspector_style_sheet.cc),
+FindRuleByDeclarationsRange compares both native declaration start and end;
+SetStyleText rejects a mismatch. BuildObjectForStyle returns range/cssText from
+that same native declaration range. This explains the positive and negative controls.
+
+A shared complete-source manifest must bind the unchanged Lightning CSS primary
+oracle and browser companion to the same clean subject commit and file bytes,
+with matching pre/post hashes. A changed source or file list invalidates the run.
+The raw Pico source includes 119 generated minified files the existing ingest gate
+already skips. Keep those in both oracle passes and disclose the gate unchanged;
+212 is the expected ingested-file count, not a reason to remove raw source files.
