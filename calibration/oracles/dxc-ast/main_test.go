@@ -310,6 +310,25 @@ func TestParseDumpTypeRefs(t *testing.T) {
 	}
 }
 
+// H-3: a record and its same-name typedef have one file target, regardless
+// of declaration order. Only declarations in different files are ambiguous.
+func TestParseDumpSameFileTypeDeclarations(t *testing.T) {
+	record := "|-CXXRecordDecl 0x2 <./a.hlsli:1:1, col:30> col:16 struct X definition\n"
+	alias := "|-TypedefDecl 0x3 <./a.hlsli:1:1, col:32> col:32 X 'struct X':'X'\n"
+	use := "`-VarDecl 0x4 <./f.hlsl:2:1, col:3> col:3 value 'X':'X'\n"
+	for _, declarations := range []string{record + alias, alias + record} {
+		u := parseDump(strings.NewReader("TranslationUnitDecl 0x1 <<invalid sloc>> <invalid sloc>\n"+declarations+use),
+			map[string]bool{"a.hlsli": true, "f.hlsl": true}, func(string, int) bool { return false })
+		want := []Ref{{Path: "f.hlsl", Line: 2, ToPath: "a.hlsli"}}
+		if !reflect.DeepEqual(u.Refs, want) {
+			t.Errorf("refs %+v, want %+v", u.Refs, want)
+		}
+		if u.AmbiguousTypes != 0 || u.AmbiguousRefs != 0 {
+			t.Errorf("ambiguous types %d refs %d, want 0 and 0 for declarations in one file", u.AmbiguousTypes, u.AmbiguousRefs)
+		}
+	}
+}
+
 // refDump is ref.hlsl's unit (H6-R3): main reads inc.hlsli's gain through its
 // address, and out.hlsli, a measured file the unit's -M rule does not list
 // (and whose own unit errors), holds a definition and a call the scope

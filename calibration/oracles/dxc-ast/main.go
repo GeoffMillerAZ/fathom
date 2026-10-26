@@ -134,9 +134,9 @@ var fileScope = map[string]bool{"TranslationUnitDecl": true, "NamespaceDecl": tr
 func parseDump(r io.Reader, files map[string]bool, macro func(string, int) bool) Unit {
 	var u Unit
 	var stack []frame
-	declFile := map[string]string{} // a declaration's address -> its file
-	typeFile := map[string]string{} // a record, typedef or enum name -> its file
-	typeDecls := map[string]int{}   // a record, typedef or enum name -> its declarations in the unit
+	declFile := map[string]string{}           // a declaration's address -> its file
+	typeFile := map[string]string{}           // a record, typedef or enum name -> its file
+	typeDecls := map[string]map[string]bool{} // a type name -> its declaring files in the unit
 	var pending []pendingRef
 	cur := pos{}
 	sc := bufio.NewScanner(r)
@@ -298,7 +298,10 @@ func parseDump(r io.Reader, files map[string]bool, macro func(string, int) bool)
 				if (kind == "CXXRecordDecl" && strings.HasSuffix(rest, " definition")) || kind == "TypedefDecl" || kind == "EnumDecl" {
 					if n := typeDeclName(kind, rest); n != "" {
 						typeFile[n] = rp
-						typeDecls[n]++
+						if typeDecls[n] == nil {
+							typeDecls[n] = map[string]bool{}
+						}
+						typeDecls[n][rp] = true
 					}
 				}
 			}
@@ -319,14 +322,14 @@ func parseDump(r io.Reader, files map[string]bool, macro func(string, int) bool)
 		stack = append(stack, fr)
 	}
 	for n, c := range typeDecls {
-		if c > 1 {
+		if len(c) > 1 {
 			u.AmbiguousTypes++
 			delete(typeFile, n)
 		}
 	}
 	kept := pending[:0]
 	for _, p := range pending {
-		if p.typ != "" && typeDecls[p.typ] > 1 {
+		if p.typ != "" && len(typeDecls[p.typ]) > 1 {
 			u.AmbiguousRefs++
 			continue
 		}
@@ -735,7 +738,7 @@ func run(subject, dxc, target, retryTarget, filesList, scopeOut, refsOut string,
 			nAddr++
 		}
 	}
-	refsLine := fmt.Sprintf("dxc-ast reference pairs: %d (file, declaring file) pairs, %d address-resolved (some DeclRefExpr or MemberExpr resolved through the dump to its declaration) and %d name-resolved only (a type a declaration or cast writes, its sugared spelling, resolved by the unit's one record, typedef or enum declaration of that name); %d type names ambiguous in their unit (two or more such declarations) and the %d type references naming one skipped, counted per reading unit", len(refLine), nAddr, len(refLine)-nAddr, ambTypes, ambRefs)
+	refsLine := fmt.Sprintf("dxc-ast reference pairs: %d (file, declaring file) pairs, %d address-resolved (some DeclRefExpr or MemberExpr resolved through the dump to its declaration) and %d name-resolved only (a type a declaration or cast writes, its sugared spelling, resolved by the unit's record, typedef or enum declarations of that name in exactly one file); %d type names ambiguous in their unit (such declarations in two or more files) and the %d type references naming one skipped, counted per reading unit", len(refLine), nAddr, len(refLine)-nAddr, ambTypes, ambRefs)
 	out.Disclose = append(out.Disclose, refsLine)
 	if refsOut != "" {
 		if err := writeRefs(refsOut, version, refsLine, refLine); err != nil {

@@ -29,11 +29,12 @@ throughput values, and how the parse errors split between the files DXC reads an
 
 `-refs <out>` writes L3's reference truth (H5-R7, the precedent `../clang-objc`'s): every `DeclRefExpr` and
 `MemberExpr` is resolved to its declaration through the dump's addresses, and every type a declaration or cast names
-(`VarDecl m 'Material'`) to the unit's one record, typedef or enum declaration of that name. A quoted type is read by
-its sugared half alone (`'MyAlias':'Material'` names MyAlias, as written, as `../clang-objc`'s TypeRef does), and a name
-two or more such declarations of the unit share is ambiguous: skipped, and its type names and references counted in the
-`disclose` line, which also splits the pairs into address-resolved and name-resolved only (H6-R2). Whenever that declaration
-sits in another measured file, the pair (file, declaring file) is written once, at its first line, as an imports
+(`VarDecl m 'Material'`) to the one file holding the unit's record, typedef or enum declarations of that name.
+A quoted type is read by its sugared half alone (`'MyAlias':'Material'` names MyAlias, as written, as `../clang-objc`'s TypeRef does), and a name
+declared in two or more files of the unit is ambiguous: skipped, and its type names and references counted in the
+`disclose` line, which also splits the pairs into address-resolved and name-resolved only (H6-R2). A record and a
+same-name typedef in one file share a file target and remain resolvable (H-3). Whenever that declaration sits in
+another measured file, the pair (file, declaring file) is written once, at its first line, as an imports
 oracle's `same_package` entry. `reading.sh` joins those entries to `../clang-includes`' include statements, so
 `file_edge_precision` and `file_edge_recall` grade fathom's reference-derived file edges against the statements plus
 the references, while `import_resolution` grades the statements alone. Only units DXC reads give reference pairs; a
@@ -58,3 +59,8 @@ DXC is the release asset of microsoft/DirectXShaderCompiler, unpacked under `wor
 committed. Measured 2026-10-25 with v1.9.2602 (`linux_dxc_2026_02_20.x86_64.tar.gz`, sha256
 a1d3e3b5e1c5685b3eb27d5e8890e41d87df45def05112a2d6f1a63a931f7d60; `dxc --version`
 `libdxcompiler.so: 1.9(5184-21d28f72)(1.9.0.5184)`). Bench-only; never a product dependency.
+
+The H-3 ambiguity fix has not been re-measured here. The committed round-6 reading retains its original
+declaration-count disclosure and all measured fields. The next `reading.sh` run will write the distinct-file
+disclosure and recheck reference-pair counts and L3 metrics; the recorded run had zero ambiguous type names.
+H-1 and H-2 are corrections in `LB-Q-hlsl-rest`, so no reading edit or driver-note injection is needed.
