@@ -29,15 +29,19 @@ func fixture(t *testing.T, name string) (cue.Value, map[string]any) {
 		t.Fatalf("positive fixtures: %v", err)
 	}
 	var data map[string]any
-	if err := v.LookupPath(cue.ParsePath(name)).Decode(&data); err != nil {
+	value := v.LookupPath(cue.ParsePath(name))
+	if !value.Exists() {
+		t.Fatalf("missing positive fixture %s", name)
+	}
+	if err := value.Decode(&data); err != nil {
 		t.Fatal(err)
 	}
-	definition := map[string]string{"lab": "#Lab", "scenario": "#Case", "result": "#Result"}[name]
+	definition := map[string]string{"lab": "#Lab", "scenario": "#Case", "result": "#Result", "labNA": "#Lab", "scenarioRedacted": "#Case", "resultDecision": "#Result", "resultDecisionOther": "#Result"}[name]
 	return v.LookupPath(cue.ParsePath(definition)), data
 }
 
 func TestLabSchemaValid(t *testing.T) {
-	for _, name := range []string{"lab", "scenario", "result"} {
+	for _, name := range []string{"lab", "scenario", "result", "labNA", "scenarioRedacted", "resultDecision", "resultDecisionOther"} {
 		t.Run(name, func(t *testing.T) { fixture(t, name) })
 	}
 }
