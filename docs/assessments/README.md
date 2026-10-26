@@ -75,6 +75,7 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-25 | [php-oracle-candidates](2026-10-25-php-oracle-candidates.md) | Three SCIP alternatives and native Xdebug traces measured over both full subjects; complete-population gaps disclosed | ADR-048, LB-Q-php-rest, OL-R7/OL-R9 |
 | 2026-10-25 | [ruby-oracle-candidates](2026-10-25-ruby-oracle-candidates.md) | Released TypeProf A full-population and TracePoint A executed-only measured; unresolved references count as misses; canonical grades unchanged | ADR-048, LB-Q-ruby-rest |
 | 2026-10-25 | [sentinel-oracle-candidates](2026-10-25-sentinel-oracle-candidates.md) | Open parser pinned/measured: 30/395 full-discovery errors; policy-body split 2/90; runtime publication barred | LB-Q-sentinel-rest, OL-R6/OL-R8 |
+| 2026-10-25 | [tools-pgbouncer](2026-10-25-tools-pgbouncer.md) | Native auth database population and source audit; r4 position proof follows in the next assessment | LB-Q-pgbouncer |
 | 2026-10-26 | [core-t1-astro-ceiling](2026-10-26-core-t1-astro-ceiling.md) | Measured extractor gap has an existing oracle; serialize its shared-query repair and re-read language plus route consumers | C-R4 (#20), LB-Q-astro-rest, K29 |
 | 2026-10-26 | [core-t1-cpp-ceiling](2026-10-26-core-t1-cpp-ceiling.md) | C++ remains on the CUDA/HLSL integration hold; candidate limits are recorded. | LB-Q-cpp-rest |
 | 2026-10-26 | [core-t1-css-ceiling](2026-10-26-core-t1-css-ceiling.md) | Browser-attested proposal ranges grade at tier C; parser errors and first-party population enumeration remain open. | LB-Q-css-rest |
@@ -90,7 +91,6 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-26 | [core-t1-tailwind-ceiling](2026-10-26-core-t1-tailwind-ceiling.md) | The pinned compiler parser has no full source rule ends. | LB-Q-tailwind-rest |
 | 2026-10-26 | [core-t1-typescript-ceiling](2026-10-26-core-t1-typescript-ceiling.md) | Object-literal method extraction remains the concrete route. | LB-Q-typescript-rest |
 | 2026-10-26 | [support-gap-sweep](2026-10-26-support-gap-sweep.md) | The board overstates runtime support: Python and Ruby manifests, Swift with Xcode, SQL dialects and the template engines are the top gaps, and formats the board calls disclosed are silent at runtime | GAP1-1 to GAP1-40 (language-breadth.gap1.md), LB-F453 |
-| 2026-10-25 | [tools-pgbouncer](2026-10-25-tools-pgbouncer.md) | Native auth database population and source audit; r4 position proof follows in the next assessment | LB-Q-pgbouncer |
 | 2026-10-26 | [tools-pgbouncer-native-positions](2026-10-26-tools-pgbouncer-native-positions.md) | Native callback brackets attest all 161 definition lines/ranges; L1/L2 excellent | LB-Q-pgbouncer |
 | 2026-10-26 | [tools-nginx-native](2026-10-26-tools-nginx-native.md) | Native full upstream population diagnostic; canonical L3 unchanged | LB-Q-nginx-rest |
 | 2026-10-26 | [tools-nginx-native-positions](2026-10-26-tools-nginx-native-positions.md) | Complete native lexer population attests 71/71 names/ranges and 1/1 references; canonical L3 unchanged | LB-Q-nginx-rest |
