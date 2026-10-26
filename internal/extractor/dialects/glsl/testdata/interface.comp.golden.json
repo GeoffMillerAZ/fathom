@@ -1,0 +1,46 @@
+{
+  "symbols": [
+    {
+      "name": "Storage",
+      "kind": "GlslInterfaceBlock",
+      "package": "interface",
+      "line": 4,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "threshold",
+      "kind": "GlslVariable",
+      "package": "interface",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "clampValue",
+      "kind": "GlslFunc",
+      "package": "interface",
+      "line": 10,
+      "end_line": 12,
+      "signature": "float clampValue(float value)",
+      "calls": [
+        "clamp"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "main",
+      "kind": "GlslFunc",
+      "package": "interface",
+      "line": 14,
+      "end_line": 17,
+      "signature": "void main()",
+      "calls": [
+        "clampValue",
+        "float",
+        "vec4"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

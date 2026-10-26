@@ -1,0 +1,12 @@
+{
+  "prior": "native-position-protocol-r3.json",
+  "binding_review": "tools-pgbouncer-l1-r1: the previous syntax error at a chosen line did not tie that line to the enumerated token; the L1 A claim is withdrawn pending this full rerun",
+  "rules": [
+    "For every native callback i at proposed line L, corrupt before its token and require native error line L AND logged callbacks exactly equal to the full positive native prefix events[:i].",
+    "Insert a fresh invalid line immediately after L; require native error line L+1 AND logged callbacks exactly equal events[:i+1]. Together the native observations bracket callback i onto L, rather than merely echoing a chosen line.",
+    "Only the explicitly redirected private logfile value is normalized across profile directories; native section/key/order and all other values remain exact. Existing original-value and observation-verbosity checks remain in force.",
+    "A shifted or reversed locator must be refused. Add a committed candidates-line +1 mutant receipt and a focused prefix-guard mutant that FAILs then restores GREEN. Rerun all six canonical inputs and both brackets for all 161 callbacks, preserving required kinds and all populations.",
+    "Accept an explicit per-build receipt flag, verifying pinned archives/native source hashes and actual observed version/binary identity. Binary SHA is per-build, not portable; never edit historical committed receipts to reproduce a new build.",
+    "Record exact tracked before/after receipts, current load/nice conditions, source/build identities, counts/hashes only. Delete completed subjects/builds; no Docker, global install, L3 or ENGINE work. Before READY run X-R2/X-R3/X-R5 and appropriate race/round-trip checks."
+  ]
+}

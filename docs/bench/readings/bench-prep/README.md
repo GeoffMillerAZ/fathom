@@ -1,6 +1,19 @@
 # Subject preparation: current D26 reading
 
-D26 retains **Go 0, Python 1, TypeScript 2** preparation candidates. No BX-44
+[Application round 1](apps-r1.md) adds Slidev. The combined **BX-44 preparation
+pool is Go 0, Python 1, TypeScript 2**: pytest, redux-toolkit and Slidev.
+Class-validator remains BX-M0-only and is additional to that count. Shortfalls
+are **6 Go, 5 Python and 4 TypeScript**, with all three dev and three held-out
+assignments pending in every language. No subject has completed formal C1–C7
+admission. The new manifest, fifteen-candidate receipts and one raw archive
+are linked from that reading.
+
+## Historical library rounds
+
+The remainder of this page preserves the library-round dispositions and their
+then-current shortfalls; the application reading carries the updated totals.
+
+The library D26 screen retained **Go 0, Python 1, TypeScript 2** preparation candidates. No BX-44
 subject is admitted. Class-validator is retained for BX-M0 only because C5
 fails. C4 is unrun; C5 has zero fail-before/pass-after replays and its post-cutoff
 half awaits Q2. No plan box changed and no paid API call was made.

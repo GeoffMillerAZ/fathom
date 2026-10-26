@@ -89,6 +89,7 @@ var typedEdgeProducers = map[string]string{
 	"lua":         "syntax",
 	"luau":        "syntax",
 	"wgsl":        "syntax",
+	"glsl":        "syntax",
 	"prisma":      "syntax",
 	"solidity":    "syntax",
 	"r":           "syntax",

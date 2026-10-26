@@ -1,0 +1,21 @@
+{
+  "native_binary_sha256": "da171e53846380fec10e8f0f6d435715e0f591bf4e6701983896efe2fb9fded2",
+  "fathom_nodes_before": 5,
+  "fathom_nodes_after": 0,
+  "fathom_output_race_enabled": true,
+  "truth_before_sha256": "db2f998cb378515cee2305450ffa2bdc565a2c3a41049ece1e7b85764ae5027f",
+  "truth_after_fathom_removal_sha256": "db2f998cb378515cee2305450ffa2bdc565a2c3a41049ece1e7b85764ae5027f",
+  "truth_after_input_change_sha256": "c655040fd2cdad4d1d18c439b5aa16477bb6cfaeca984567cb7778654408f154",
+  "mutation": {
+    "mutant": "filter native refs by independent scanner refs",
+    "failure_line": "FAIL: test_native_pair_survives_an_independent_scanner_omission (test_native_population.NativePopulationControl)",
+    "restored_green": true
+  },
+  "caps": {
+    "events": 10000,
+    "event_refusal_input": 10001,
+    "stderr_bytes": 8388608,
+    "stderr_refusal_input": 8388609,
+    "whole_profile_refused": true
+  }
+}

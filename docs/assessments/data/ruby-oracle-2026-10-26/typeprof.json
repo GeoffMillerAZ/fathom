@@ -1,0 +1,155 @@
+{
+  "benchmark_product_revision": "d3e9888fb480f288f526e566f3108fb0ccd59dab",
+  "canonical_reading_changed": false,
+  "native_truth": "TypeProf native method/constant binding answers; never syntax pairs filtered by answer presence",
+  "oracle_code_sha256": {
+    "measure_typeprof.py": "6b8b5e490c3db6c0b666290d63b839c5925c4bb12febf7962a2cc03049d4da72",
+    "tracked_set.py": "26b5bfca3744d2e37bd8e82eb3d9c37b2229ac0c6124b9e42370a49ce433aeb1",
+    "typeprof_export.rb": "2b262b196e24fc35d2c1796cf9820eb1e222acc41f621259dd7a1d160bf37db9"
+  },
+  "ruby": {
+    "archive_sha256": "7645e2d653a335798030f6502e7834dfdbeeec5629429a1a34da5dbb2c57d63e",
+    "binary": "runtime/portable-ruby/3.3.8/bin/ruby",
+    "checksum_source": "Homebrew/brew tag 4.4.30 Library/Homebrew/vendor/portable-ruby-arm64-darwin",
+    "version": "3.3.8"
+  },
+  "ruling": "OL-R10",
+  "scope_code_sha256": {
+    "ruby-locals.scm": "9fa12ea4bc78ce5f2f2111c3f3341aedbf810a2bfb20e042c298b98c3bea59e2",
+    "ruby-tags.scm": "00e110eb9e87ca020bc63f6c7c3c329511ce557644cb457e9860f692799cb26c",
+    "tags_oracle.py": "7efd27a0968443b9e5279a4c4f6140181d176286b56fcf55a0a3f37234a90d4b"
+  },
+  "subjects": {
+    "jekyll": {
+      "attested_written_pairs": 3659,
+      "current_bytes": 709051,
+      "current_files": 183,
+      "full_matched_fraction_with_unresolved_as_misses": 0.7052814186584425,
+      "full_unattested_fraction": 0.29471858134155743,
+      "full_unattested_pairs": 1529,
+      "generated_untracked_or_ignored_paths": 0,
+      "historical_reading_bytes": 694927,
+      "historical_reading_files": 165,
+      "historical_written_pairs": 5137,
+      "native": {
+        "ambiguous_native_callers": 0,
+        "bytes": 709051,
+        "files": 183,
+        "loaded": 183,
+        "native_scope_sites": 7240,
+        "original_full_population_audit": "measure_typeprof.py records every unmatched independent written pair as a miss",
+        "rejected": 0,
+        "unresolved_native_sites": 1997,
+        "unresolved_policy": "misses, never dropped"
+      },
+      "native_oracle_sha256": "80fcc12dea10fe1cc3ea4a3b5eed7857edd8e4237645075144727ef14ad660c7",
+      "native_pairs": 4365,
+      "resolved_native_pair_counts": {
+        "call_fathom": 5138,
+        "call_fathom_in_truth": 3653,
+        "call_truth": 4365,
+        "call_truth_found": 3653
+      },
+      "resolved_native_pair_precision": 0.711,
+      "resolved_native_pair_recall": 0.8369,
+      "revision": "1f319fb273b6cdf876bc6edd38d7477935cdda8c",
+      "syntax_population_sha256": "b6078ba1615b59905c4971b64fa9458edf4c9827a4570d38af3a73e80b2d75b5",
+      "tracked_after": {
+        "bytes": 3251760,
+        "entries": 812,
+        "files": 803,
+        "gitlinks": 0,
+        "sha256": "19fd688eef75327c4d4aab6da126fcb533b0d2158aba89b85fba2c6b8aec5110",
+        "symlinks": 9
+      },
+      "tracked_before": {
+        "bytes": 3251760,
+        "entries": 812,
+        "files": 803,
+        "gitlinks": 0,
+        "sha256": "19fd688eef75327c4d4aab6da126fcb533b0d2158aba89b85fba2c6b8aec5110",
+        "symlinks": 9
+      },
+      "written_pairs": 5188
+    },
+    "sinatra": {
+      "attested_written_pairs": 1999,
+      "current_bytes": 675263,
+      "current_files": 151,
+      "full_matched_fraction_with_unresolved_as_misses": 0.6010222489476849,
+      "full_unattested_fraction": 0.3989777510523151,
+      "full_unattested_pairs": 1327,
+      "generated_untracked_or_ignored_paths": 0,
+      "historical_reading_bytes": 675263,
+      "historical_reading_files": 151,
+      "historical_written_pairs": 3326,
+      "native": {
+        "ambiguous_native_callers": 0,
+        "bytes": 675263,
+        "files": 151,
+        "loaded": 151,
+        "native_scope_sites": 5183,
+        "original_full_population_audit": "measure_typeprof.py records every unmatched independent written pair as a miss",
+        "rejected": 0,
+        "unresolved_native_sites": 1958,
+        "unresolved_policy": "misses, never dropped"
+      },
+      "native_oracle_sha256": "2e42c9cb3e25c70ac580db71d766a5c2eaea025021f642fc3f6c38adbd237c81",
+      "native_pairs": 2570,
+      "resolved_native_pair_counts": {
+        "call_fathom": 3327,
+        "call_fathom_in_truth": 1988,
+        "call_truth": 2570,
+        "call_truth_found": 1988
+      },
+      "resolved_native_pair_precision": 0.5975,
+      "resolved_native_pair_recall": 0.7735,
+      "revision": "599a007a779dc9940e49f34e9077220f4c209f4b",
+      "syntax_population_sha256": "a455f24e3fe68300918754fc2e2c98b01182b5ea87855e6329e714c73ec26d3d",
+      "tracked_after": {
+        "bytes": 933350,
+        "entries": 292,
+        "files": 292,
+        "gitlinks": 0,
+        "sha256": "92352934f2ec5385f6417ac3b17ae44a69e2a50cd2ce116345c9183f0511c0ac",
+        "symlinks": 0
+      },
+      "tracked_before": {
+        "bytes": 933350,
+        "entries": 292,
+        "files": 292,
+        "gitlinks": 0,
+        "sha256": "92352934f2ec5385f6417ac3b17ae44a69e2a50cd2ce116345c9183f0511c0ac",
+        "symlinks": 0
+      },
+      "written_pairs": 3326
+    }
+  },
+  "tools": {
+    "cgi": "0.4.2",
+    "did_you_mean": "1.6.3",
+    "digest": "3.1.1",
+    "error_highlight": "0.6.0",
+    "fileutils": "1.7.2",
+    "find": "0.2.0",
+    "io-console": "0.7.1",
+    "json": "2.7.2",
+    "logger": "1.6.0",
+    "open3": "0.2.1",
+    "optparse": "0.4.0",
+    "pathname": "0.3.0",
+    "pp": "0.5.0",
+    "prettyprint": "0.2.0",
+    "prism": "2.0.0",
+    "psych": "5.1.2",
+    "rbs": "4.2.0",
+    "set": "1.1.0",
+    "singleton": "0.2.0",
+    "stringio": "3.1.1",
+    "strscan": "3.0.9",
+    "syntax_suggest": "2.0.1",
+    "tsort": "0.2.0",
+    "typeprof": "0.33.2",
+    "yaml": "0.3.0"
+  }
+}

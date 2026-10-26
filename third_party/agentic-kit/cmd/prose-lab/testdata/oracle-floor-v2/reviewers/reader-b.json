@@ -1,0 +1,1162 @@
+{
+  "version": "prose-lab.oracle-assessments/1",
+  "packet_digest": "f5fc178e7fea3042e3e5ff8f70aa8b00046891b8f13f9961703a03908d198e65",
+  "criterion_id": "cited-entailment/1",
+  "criterion_sha256": "bb12ed77442b05cc9912247881fce489a35d5de4749fb1efe364c5c2011acaac",
+  "rows": [
+    {
+      "case_id": "architecture-decision--n-01",
+      "case_digest": "61bbd3a9382a2aa266d8c745791aa9018b9c6c1c6f510b992c6fc9a66e3682a4",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "missing-premise",
+      "premise_fact_ids": [
+        "f-04"
+      ],
+      "counter_fact_ids": [
+        "f-18"
+      ],
+      "basis": "architecture-decision (f-04): f-04 supports only sequence recovery after a restart; f-18 says checkpoint corruption review is still pending.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "architecture-decision--n-02",
+      "case_digest": "9d599ddbfc5aea6fca050ed55da093c0523379647df9358e44a52500340cb397",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-05"
+      ],
+      "counter_fact_ids": [
+        "f-05"
+      ],
+      "basis": "architecture-decision (f-05): f-05 reports 14 seconds in that test, not 41.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "architecture-decision--n-03",
+      "case_digest": "4c2c7dffd1c8c5e6d05e2b147ffca2cbaa41da9e23d31d002125fbd931250b9b",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-02"
+      ],
+      "counter_fact_ids": [
+        "f-02"
+      ],
+      "basis": "architecture-decision (f-02): f-02 identifies one active writer and two read-only reporters.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "architecture-decision--n-04",
+      "case_digest": "012f67b8dcdd7b5cd364ed4833f43d1a8bd9fb8d7411185f38ccf634ce910364",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "missing-premise",
+      "premise_fact_ids": [
+        "f-09"
+      ],
+      "counter_fact_ids": [],
+      "basis": "architecture-decision (f-09): f-09 assumes a network dependency for a shared database. It says nothing about inevitable acknowledged-event loss.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "architecture-decision--n-05",
+      "case_digest": "9dc6805e5cbf4f4590c718862ace15ce3b2e70138a43479db9a33bf03b048d24",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-11"
+      ],
+      "counter_fact_ids": [
+        "f-11"
+      ],
+      "basis": "architecture-decision (f-11): f-11 says retry IDs were present in 92 percent, not every request.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "architecture-decision--n-06",
+      "case_digest": "e7312d12ea3390b4a309ac01b4deeb85be0cb9282b574a3dcb6865ae2557306a",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-18"
+      ],
+      "counter_fact_ids": [
+        "f-18"
+      ],
+      "basis": "architecture-decision (f-18): f-18 says the decision is pending a three-restart pilot and corruption review; no permanent production approval follows.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "architecture-decision--n-07",
+      "case_digest": "23c798ee578108ae9b33ae68cc3ff7e1eb5e63475ce333b54ed9aa152db27808",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-16"
+      ],
+      "counter_fact_ids": [
+        "f-16"
+      ],
+      "basis": "architecture-decision (f-16): f-16 expressly says checkpoint format is not yet an approved public compatibility contract.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "architecture-decision--p-01",
+      "case_digest": "64f0dba9e1eec48c135f2de3d8b521a59a568dab7b8accbff4c5f408252f1544",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "sufficient-premises",
+      "premise_fact_ids": [
+        "f-01"
+      ],
+      "counter_fact_ids": [],
+      "basis": "architecture-decision (f-01): f-01 states the current append-only-log-before-acknowledgment behavior.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "architecture-decision--p-02",
+      "case_digest": "39bb85dbc4cf6e0375b42212759c7b86e2676353084d4a91785d666ae955eab3",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "sufficient-premises",
+      "premise_fact_ids": [
+        "f-03"
+      ],
+      "counter_fact_ids": [],
+      "basis": "architecture-decision (f-03): f-03 is copied as a definition of the exercise target.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "architecture-decision--p-03",
+      "case_digest": "a1b1b91d13c2bcee4393dbaa50d66d59d54de8d7ee39549a788c15d398dfa02d",
+      "disposition": "affirmed",
+      "interpretation": "faithful-paraphrase",
+      "reason_code": "sufficient-premises",
+      "premise_fact_ids": [
+        "f-01"
+      ],
+      "counter_fact_ids": [],
+      "basis": "architecture-decision (f-01): f-01 states that accepted events are written locally before caller acknowledgment.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "architecture-decision--p-04",
+      "case_digest": "e9d1839e815e6c01acae700c609b0782a57203e9ee605772e137ac014ae6e894",
+      "disposition": "affirmed",
+      "interpretation": "faithful-paraphrase",
+      "reason_code": "sufficient-premises",
+      "premise_fact_ids": [
+        "f-04",
+        "f-05"
+      ],
+      "counter_fact_ids": [],
+      "basis": "architecture-decision (f-04, f-05): f-04 supplies recovery in the 10,000-event restart test; f-05 gives the 14-second replay time on that host.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "draft-service-agreement--n-01",
+      "case_digest": "e9d067b328227f5eadf7354559e3fd521b8df11a108ed9fa58bf287a7c2917f6",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-10"
+      ],
+      "counter_fact_ids": [
+        "f-01",
+        "f-10"
+      ],
+      "basis": "draft-service-agreement (f-10): f-01 says unsigned and unaccepted; f-10 proposes payment only after written acceptance, not immediate payment.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "draft-service-agreement--n-02",
+      "case_digest": "a813588ce64a1b4821caae6f9252bdb3483c6b24a4eaaf829278b52a0b8dbe13",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-03"
+      ],
+      "counter_fact_ids": [
+        "f-03"
+      ],
+      "basis": "draft-service-agreement (f-03): f-03 proposes up to 40 files, not 400.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "draft-service-agreement--n-03",
+      "case_digest": "0d5a684f03e5317b0a8b4db73adf24e8cd80c237ceb26fa04c2e29daf5aeafca",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-06"
+      ],
+      "counter_fact_ids": [
+        "f-02",
+        "f-06"
+      ],
+      "basis": "draft-service-agreement (f-06): f-06 puts input supply on the requester; f-02 identifies Maple Bridge Studio as provider.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "draft-service-agreement--n-04",
+      "case_digest": "5022e98a4d0adbc24193d1641d701a128097511e0309086abac894d94c754b55",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "missing-premise",
+      "premise_fact_ids": [
+        "f-15"
+      ],
+      "counter_fact_ids": [
+        "f-15"
+      ],
+      "basis": "draft-service-agreement (f-15): f-15 proposes deletion of provider working copies within 30 days after acceptance or termination. It cannot guarantee that no copy survives.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "draft-service-agreement--n-05",
+      "case_digest": "1b8499df96a9c437ec85214b4b8a7873a851828dd5716cedbcfd16d66f15f052",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-16"
+      ],
+      "counter_fact_ids": [
+        "f-16"
+      ],
+      "basis": "draft-service-agreement (f-16): f-16 says governing law and forum have not been agreed.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "draft-service-agreement--n-06",
+      "case_digest": "80c424f4d05937dc51cae8afd78831610ff9767fb2a1121d06fd1556b55c95aa",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-17"
+      ],
+      "counter_fact_ids": [
+        "f-17"
+      ],
+      "basis": "draft-service-agreement (f-17): f-17 says the liability cap is unagreed; f-10's 2,400 credits is a proposed fee, not a cap.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "draft-service-agreement--n-07",
+      "case_digest": "ea67dfb839c28d7d27712463c601a6a49b088184d3eb62dd4970b6171b8164ef",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-01"
+      ],
+      "counter_fact_ids": [
+        "f-01"
+      ],
+      "basis": "draft-service-agreement (f-01): f-01 says neither party signed or accepted the proposal; f-20 denies any real legal obligation.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "draft-service-agreement--p-01",
+      "case_digest": "a3099448e099d5f17ad0e03a3abbe19dfe72f3db5ddc72189c0013d867ce058c",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "sufficient-premises",
+      "premise_fact_ids": [
+        "f-01"
+      ],
+      "counter_fact_ids": [],
+      "basis": "draft-service-agreement (f-01): f-01 is copied with proposal and nonacceptance status intact.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "draft-service-agreement--p-02",
+      "case_digest": "33f8136caf9c9287c376133d6e96444c30140d5909675cbd2b8501ca44cd7162",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "sufficient-premises",
+      "premise_fact_ids": [
+        "f-02"
+      ],
+      "counter_fact_ids": [],
+      "basis": "draft-service-agreement (f-02): f-02 names the fictional parties and roles exactly.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "draft-service-agreement--p-03",
+      "case_digest": "59932869e610fae5334853ae11501ec153c5efcc6bfe82c4f56f337225d31a45",
+      "disposition": "affirmed",
+      "interpretation": "faithful-paraphrase",
+      "reason_code": "sufficient-premises",
+      "premise_fact_ids": [
+        "f-03"
+      ],
+      "counter_fact_ids": [],
+      "basis": "draft-service-agreement (f-03): f-03 proposes up to 40 synthetic CSV conversions into a documented JSON schema.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "draft-service-agreement--p-04",
+      "case_digest": "7703f8d242ded2a27bba605ed8d94b93ecea4baa199c931a95bd04588b7e70a7",
+      "disposition": "affirmed",
+      "interpretation": "faithful-paraphrase",
+      "reason_code": "sufficient-premises",
+      "premise_fact_ids": [
+        "f-01",
+        "f-03"
+      ],
+      "counter_fact_ids": [],
+      "basis": "draft-service-agreement (f-01, f-03): f-01 says unsigned and unaccepted; f-03 gives the proposed service and 40-file ceiling.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "freeform-brief--n-01",
+      "case_digest": "b7ca5e51c6aa625fd5ae132b408e536afe6291a8ab074dc2b2b8c965ac53a8c6",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "missing-premise",
+      "premise_fact_ids": [
+        "f-02"
+      ],
+      "counter_fact_ids": [
+        "f-08"
+      ],
+      "basis": "freeform-brief (f-02): f-02 establishes seat use only; f-08 says reading outcomes were not measured.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "freeform-brief--n-02",
+      "case_digest": "17e77e785a97e1b82cd22e1a52b9f58822dac3353e810dbfc19191bf150ef4e4",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-03"
+      ],
+      "counter_fact_ids": [
+        "f-03"
+      ],
+      "basis": "freeform-brief (f-03): f-03 reports 34 reservations, not 43.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "freeform-brief--n-03",
+      "case_digest": "f495f0c7d81265cc801686cd9d20751c97913f608fe6027640592ec92ff35d7b",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-01"
+      ],
+      "counter_fact_ids": [
+        "f-01"
+      ],
+      "basis": "freeform-brief (f-01): f-01 reports a two-week pilot; f-06 concerns an unstarted four-week extension.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "freeform-brief--n-04",
+      "case_digest": "99d9abc7657770b760fe76c70001b5ae3dd275536ab3285b95ca84abb44ae5bf",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "missing-premise",
+      "premise_fact_ids": [
+        "f-10"
+      ],
+      "counter_fact_ids": [
+        "f-10"
+      ],
+      "basis": "freeform-brief (f-10): f-10 says reasons for the six no-shows are unknown; discomfort is an invented cause.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "freeform-brief--n-05",
+      "case_digest": "89c8d0fd4ddb184f681bcce0520dd1db8a78d363b253d3ceebcae64e7882d06a",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-07"
+      ],
+      "counter_fact_ids": [
+        "f-07"
+      ],
+      "basis": "freeform-brief (f-07): f-07 says the extension is pending and has not started.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "freeform-brief--n-06",
+      "case_digest": "b9d9f3f82fc2766683179d511a90df9371fde765de3b3d24a1d2464cf3a33cdb",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-08"
+      ],
+      "counter_fact_ids": [
+        "f-08"
+      ],
+      "basis": "freeform-brief (f-08): f-08 says the pilot did not measure reading-outcome improvement; the fragment claims measured improvement.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "freeform-brief--n-07",
+      "case_digest": "e5b9867947ff339fc79423b38f43594a000cb05e3cc590a72bfc2f700816412e",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "missing-premise",
+      "premise_fact_ids": [
+        "f-06"
+      ],
+      "counter_fact_ids": [
+        "f-07"
+      ],
+      "basis": "freeform-brief (f-06): f-06 proposes the extension; f-07 says reviewer decision is still pending.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "freeform-brief--p-01",
+      "case_digest": "4cf85bf68fff088f6f5985742f3a8c7b60ae83f217589f5cd510820d65615ff9",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "sufficient-premises",
+      "premise_fact_ids": [
+        "f-01"
+      ],
+      "counter_fact_ids": [],
+      "basis": "freeform-brief (f-01): f-01 states the two-week pilot, 12 invented participants, and fictional setting.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "freeform-brief--p-02",
+      "case_digest": "1e4086f4cba9bd46ce063586e792f7d5479a982f87d906cd2ab123b1662b287f",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "sufficient-premises",
+      "premise_fact_ids": [
+        "f-04"
+      ],
+      "counter_fact_ids": [],
+      "basis": "freeform-brief (f-04): f-04 is copied with its pilot-rule limit intact.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "freeform-brief--p-03",
+      "case_digest": "2d80bc0f125ba5357de386b8ffb62b30a6dfcb01c00f1bcda985d8b321ca8435",
+      "disposition": "affirmed",
+      "interpretation": "faithful-paraphrase",
+      "reason_code": "sufficient-premises",
+      "premise_fact_ids": [
+        "f-02"
+      ],
+      "counter_fact_ids": [],
+      "basis": "freeform-brief (f-02): f-02 reports nine participants used a reserved seat at least once during the pilot.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "freeform-brief--p-04",
+      "case_digest": "170a8b20ec0a5a4a2175475784f66b63f1779afa852fedf1686ac06b11933cd7",
+      "disposition": "affirmed",
+      "interpretation": "faithful-paraphrase",
+      "reason_code": "sufficient-premises",
+      "premise_fact_ids": [
+        "f-01",
+        "f-03"
+      ],
+      "counter_fact_ids": [],
+      "basis": "freeform-brief (f-01, f-03): f-01 gives duration and participants; f-03 gives 34 reservations and six no-shows.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "incident-summary--n-01",
+      "case_digest": "5e5b90c978b9b3a8c9871086c96c87da54e2fd5b618d07a76a453fdd612dc181",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-02"
+      ],
+      "counter_fact_ids": [
+        "f-01",
+        "f-03"
+      ],
+      "basis": "incident-summary (f-02): f-02 gives the affected total, not when all were detected; f-01 only dates first elevated-delay detection. f-03 says none was lost.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "incident-summary--n-02",
+      "case_digest": "c639249b4cea9f2f9756a7647ea11b165e152fdee93ecf677ad820b9a9f3dd7c",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-02"
+      ],
+      "counter_fact_ids": [
+        "f-02"
+      ],
+      "basis": "incident-summary (f-02): f-02 says 18 of 240, not 81.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "incident-summary--n-03",
+      "case_digest": "a089b03bcda422f2d83342eb46c33834bee1527721ed49e4cd20ff61ec758516",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-01"
+      ],
+      "counter_fact_ids": [
+        "f-01"
+      ],
+      "basis": "incident-summary (f-01): f-01 dates first detection 2026-03-04, not 2026-03-05.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "incident-summary--n-04",
+      "case_digest": "7c2ce70257866180ac92e13303f88680e810dead32d5a80a2b4fbfb805bb521e",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-07"
+      ],
+      "counter_fact_ids": [
+        "f-07",
+        "f-11"
+      ],
+      "basis": "incident-summary (f-07): f-07 says temporal association does not prove sole causation; f-11 says root cause remains unconfirmed.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "incident-summary--n-05",
+      "case_digest": "fa508a7c4a02532839200dc32238acfe82872d2d3462e56f0b4f8a71f493cc76",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-03"
+      ],
+      "counter_fact_ids": [
+        "f-03"
+      ],
+      "basis": "incident-summary (f-03): f-03 reports all 18 were delivered and none lost.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "incident-summary--n-06",
+      "case_digest": "6c11131840f4e274a1fbe76c1cea690950c0c731ff2902e4e983808956084f59",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-11"
+      ],
+      "counter_fact_ids": [
+        "f-11"
+      ],
+      "basis": "incident-summary (f-11): f-11 explicitly leaves root cause unconfirmed pending a controlled replay.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "incident-summary--n-07",
+      "case_digest": "33f17db3f729cec1a305ce3d6c1ef00349372c665370c21262a6b51adf406f4b",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-10"
+      ],
+      "counter_fact_ids": [
+        "f-10"
+      ],
+      "basis": "incident-summary (f-10): f-10 calls the guard a proposed follow-up, not already mandatory policy.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "incident-summary--p-01",
+      "case_digest": "7885bb07551f7034349845f94d40282920ca13385372aab8b9a58239e07a4c4f",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "sufficient-premises",
+      "premise_fact_ids": [
+        "f-01"
+      ],
+      "counter_fact_ids": [],
+      "basis": "incident-summary (f-01): f-01 states this exact first-detection event and timestamp.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "incident-summary--p-02",
+      "case_digest": "c68c176e1f65963d8ed11b8dd4f80902c395b4b84c7d0234f1b54800bff7efe5",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "sufficient-premises",
+      "premise_fact_ids": [
+        "f-10"
+      ],
+      "counter_fact_ids": [],
+      "basis": "incident-summary (f-10): f-10 is copied with its proposed status intact.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "incident-summary--p-03",
+      "case_digest": "400e686650fd94a8216c69673698fd5506b722d0669334d9728ac07f5fe9f841",
+      "disposition": "affirmed",
+      "interpretation": "faithful-paraphrase",
+      "reason_code": "sufficient-premises",
+      "premise_fact_ids": [
+        "f-03"
+      ],
+      "counter_fact_ids": [],
+      "basis": "incident-summary (f-03): f-03 reports delivery of all 18 by 09:41 UTC with no loss.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "incident-summary--p-04",
+      "case_digest": "efa6e410ad400636fdc98674009d38782258818f3cb4d4d9867a89741238fea6",
+      "disposition": "affirmed",
+      "interpretation": "faithful-paraphrase",
+      "reason_code": "sufficient-premises",
+      "premise_fact_ids": [
+        "f-02",
+        "f-04"
+      ],
+      "counter_fact_ids": [],
+      "basis": "incident-summary (f-02, f-04): f-02 supplies the affected count and submission interval; f-04 supplies maximum delay and objective.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "operational-runbook--n-01",
+      "case_digest": "41544bed0b95864d4d0266af04b432b0f56ea341ec1350ffb773b96052ecbad0",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-17"
+      ],
+      "counter_fact_ids": [
+        "f-18"
+      ],
+      "basis": "operational-runbook (f-17): f-17 describes one backlog trial; f-18 expressly denies proof for delivery-error backlogs.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "operational-runbook--n-02",
+      "case_digest": "02f3a08af82634dfdeb1226e0f51d6e543d283dd4cf914dd724cd2557dd25c2a",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-03"
+      ],
+      "counter_fact_ids": [
+        "f-03"
+      ],
+      "basis": "operational-runbook (f-03): f-03 sets critical above 500, not 50, for ten minutes.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "operational-runbook--n-03",
+      "case_digest": "898c7319da4c944a5e4cedca8c756870bc228a656e71e607f8d4feaaf56cb328",
+      "disposition": "affirmed",
+      "interpretation": "normative-direction",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-14"
+      ],
+      "counter_fact_ids": [
+        "f-14"
+      ],
+      "basis": "operational-runbook (f-14): f-14 assigns the replay decision to the controller, expressly excluding the operator.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "operational-runbook--n-04",
+      "case_digest": "289701dde7ceaff26047ed1456b6050bfe3b184bf77f689377400d24d564cb1f",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "missing-premise",
+      "premise_fact_ids": [
+        "f-18"
+      ],
+      "counter_fact_ids": [
+        "f-18"
+      ],
+      "basis": "operational-runbook (f-18): f-18 identifies delivery-error backlogs as a distinct possibility; f-02's threshold gives no universal cause.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "operational-runbook--n-05",
+      "case_digest": "05e4ab8e6b010d66b8248996cab8fce645fb216686639100b31997b0beec133a",
+      "disposition": "affirmed",
+      "interpretation": "normative-direction",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-07"
+      ],
+      "counter_fact_ids": [
+        "f-07"
+      ],
+      "basis": "operational-runbook (f-07): f-07 expressly forbids restarting a worker with an active lease.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "operational-runbook--n-06",
+      "case_digest": "b711ef04729312ab5ec14fe220a1e81dc5c1c692bf2e70475451b3847d0bd9a9",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-11"
+      ],
+      "counter_fact_ids": [
+        "f-11"
+      ],
+      "basis": "operational-runbook (f-11): f-11 requires three measures below limits for two consecutive checks; one pending-count check is insufficient.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "operational-runbook--n-07",
+      "case_digest": "8b2c79f4b3ede50c4cbb7a589a0ab9a339b87c15d6a875d143a1fcb02e1c00cd",
+      "disposition": "affirmed",
+      "interpretation": "normative-direction",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-09"
+      ],
+      "counter_fact_ids": [
+        "f-09"
+      ],
+      "basis": "operational-runbook (f-09): f-09 requires controller approval above four workers.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "operational-runbook--p-01",
+      "case_digest": "aba601bc10f6ab7d00631a3d5efbd0f91a32330ce322372d62ae27ecd2ffa18d",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "sufficient-premises",
+      "premise_fact_ids": [
+        "f-01"
+      ],
+      "counter_fact_ids": [],
+      "basis": "operational-runbook (f-01): f-01 states the runbook's exact scope.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "operational-runbook--p-02",
+      "case_digest": "af09762b8a10f1246831b9986898e231bf2f5db41274a22943c7caca815288dd",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "sufficient-premises",
+      "premise_fact_ids": [
+        "f-02"
+      ],
+      "counter_fact_ids": [],
+      "basis": "operational-runbook (f-02): f-02 defines the warning threshold exactly.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "operational-runbook--p-03",
+      "case_digest": "82f2d287cc7121fd309a52694e0b418fc17bc486aa9832ed08eacca402d84a3f",
+      "disposition": "revise",
+      "interpretation": "normative-direction",
+      "reason_code": "missing-premise",
+      "premise_fact_ids": [
+        "f-06"
+      ],
+      "counter_fact_ids": [
+        "f-06",
+        "f-07"
+      ],
+      "basis": "operational-runbook (f-06): f-06 permits a restart after confirmed expiry, and f-07 forbids an active lease. Neither establishes a sole permission rule for every other or earlier state.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "operational-runbook--p-04",
+      "case_digest": "ef2527a1d5b37de78a28090d76a0c3c6c7cb6287932c1e459ff83899b0c722d6",
+      "disposition": "affirmed",
+      "interpretation": "faithful-paraphrase",
+      "reason_code": "sufficient-premises",
+      "premise_fact_ids": [
+        "f-02",
+        "f-03"
+      ],
+      "counter_fact_ids": [],
+      "basis": "operational-runbook (f-02, f-03): f-02 and f-03 define the warning and critical thresholds with these counts and durations.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "technical-design--lp-document-absence",
+      "case_digest": "9689cc5866b0f26dfe303175ba471fc172e56989236cbc43d2d8b4023ffb70e9",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-29"
+      ],
+      "counter_fact_ids": [
+        "f-04"
+      ],
+      "basis": "technical-design (f-29): f-29 makes the pilot a proposal, but f-04 describes the current exercise receiver's actual memory-map behavior. The assertion's document-wide no-enacted-behavior clause overreaches.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "technical-design--lp-rhetorical-scope",
+      "case_digest": "90f74024a9ffc73eac7d171dd818f98a439b7af4275ca2120a47f8ddfcd67e7b",
+      "disposition": "affirmed",
+      "interpretation": "faithful-paraphrase",
+      "reason_code": "sufficient-premises",
+      "premise_fact_ids": [
+        "f-05"
+      ],
+      "counter_fact_ids": [],
+      "basis": "technical-design (f-05): f-05 defines this pilot design goal; narrow refers to the stated restart scope.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "technical-design--material-scope-exclusion",
+      "case_digest": "a10c52edb1d9bd0cdfff50717742af87a6d48a64fac4844707e7ef529b1aa0d0",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-05",
+        "f-16",
+        "f-27"
+      ],
+      "counter_fact_ids": [
+        "f-16",
+        "f-27"
+      ],
+      "basis": "technical-design (f-05, f-16, f-27): f-05 states the recovery goal, but f-16 includes whole-batch validation behavior and f-27 makes retry and conflict handling pilot acceptance requirements.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "technical-design--n-01",
+      "case_digest": "064ea09e891c7ef9d22f3201150c23023d66d3c68a1f462d99b776fe69d93ca4",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "missing-premise",
+      "premise_fact_ids": [
+        "f-13"
+      ],
+      "counter_fact_ids": [
+        "f-37"
+      ],
+      "basis": "technical-design (f-13): f-13 proposes a local log; f-37 expressly leaves cross-host failover unspecified.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "technical-design--n-02",
+      "case_digest": "27ed60c68c3817bf0019eba782fd8589649efbbd3b3f65821f56b44a4cb9860f",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-06"
+      ],
+      "counter_fact_ids": [
+        "f-06"
+      ],
+      "basis": "technical-design (f-06): f-06 proposes at most 100 readings and rejects larger requests.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "technical-design--n-03",
+      "case_digest": "9a823696ac26ea922c17a90531b38e113412f02d83deb3494cbaef75b7582b3f",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-20"
+      ],
+      "counter_fact_ids": [
+        "f-20"
+      ],
+      "basis": "technical-design (f-20): f-20 assigns TLS termination and principal authentication to the host application, not the library.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "technical-design--n-04",
+      "case_digest": "899ebca48ba01fa1365a2bfaa29bc560d6b3935f2495ff364f8d626cb1f441ba",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "missing-premise",
+      "premise_fact_ids": [
+        "f-31"
+      ],
+      "counter_fact_ids": [
+        "f-31"
+      ],
+      "basis": "technical-design (f-31): f-31 says p99 persistence latency has not been measured; no under-20-ms result or guarantee is established.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "technical-design--n-05",
+      "case_digest": "8ef11be6852407097dc10e023290fe7af4947c6b19e0c1c369c1e1c19e54953d",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-16"
+      ],
+      "counter_fact_ids": [
+        "f-16"
+      ],
+      "basis": "technical-design (f-16): f-16 proposes whole-batch rejection when readings mix valid and invalid.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "technical-design--n-06",
+      "case_digest": "78137e9d644bcbdbb15a59429da3fde0318a32fb3cd3ff2df2ac4481ccfb3688",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-18"
+      ],
+      "counter_fact_ids": [
+        "f-18"
+      ],
+      "basis": "technical-design (f-18): f-18 explicitly says a 503 cannot prove absence; a write may have completed.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "technical-design--n-07",
+      "case_digest": "7f9a7efcf744dd0b818672a851b504490535ac22340e881499c3a74c1d72f468",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-29"
+      ],
+      "counter_fact_ids": [
+        "f-29"
+      ],
+      "basis": "technical-design (f-29): f-29 describes a proposed isolated synthetic pilot with no production device connection; approval is not established.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "technical-design--n-08",
+      "case_digest": "260841fd0875edfdee6a2fb98be1198a60539d9c48fee9ae5ceb2abc3dd0e166",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "contradiction",
+      "premise_fact_ids": [
+        "f-32"
+      ],
+      "counter_fact_ids": [
+        "f-32"
+      ],
+      "basis": "technical-design (f-32): f-32 says retention is unresolved, with no approved 30-day period.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "technical-design--p-01",
+      "case_digest": "655edc7f457aa3eb48fc57b1736ad5f2cee405df5380dce677bd4465ad2326c8",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "sufficient-premises",
+      "premise_fact_ids": [
+        "f-01"
+      ],
+      "counter_fact_ids": [],
+      "basis": "technical-design (f-01): f-01 supplies both device count and reading rate.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "technical-design--p-02",
+      "case_digest": "56d6e5c7ef305a361e353812ef47aa60ccd5a2364f77ac84e2a5ca13aec01810",
+      "disposition": "affirmed",
+      "interpretation": "literal",
+      "reason_code": "sufficient-premises",
+      "premise_fact_ids": [
+        "f-02"
+      ],
+      "counter_fact_ids": [],
+      "basis": "technical-design (f-02): f-02 lists these five fields exactly.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "technical-design--p-03",
+      "case_digest": "a353d5ba087f2a1efbf62f9eadd841e2ebe7100d0ba76ef4b4ad903519a5fbee",
+      "disposition": "affirmed",
+      "interpretation": "faithful-paraphrase",
+      "reason_code": "sufficient-premises",
+      "premise_fact_ids": [
+        "f-04"
+      ],
+      "counter_fact_ids": [],
+      "basis": "technical-design (f-04): f-04 says the current memory-map receiver loses readings on restart.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    },
+    {
+      "case_id": "technical-design--p-04",
+      "case_digest": "ba4b05dfd006d14adc0d8f53c5c21767293e7b91a377f9a75690e518df0d8290",
+      "disposition": "affirmed",
+      "interpretation": "faithful-paraphrase",
+      "reason_code": "sufficient-premises",
+      "premise_fact_ids": [
+        "f-06",
+        "f-07"
+      ],
+      "counter_fact_ids": [],
+      "basis": "technical-design (f-06, f-07): f-06 gives the proposed 100-reading maximum and rejection timing; f-07 gives the proposed decoded-body cap.",
+      "assessor_kind": "agent",
+      "assessor_ref": "reader-b",
+      "proposed_fact_ids": []
+    }
+  ]
+}

@@ -158,6 +158,37 @@ func TestCmdLangOracle(t *testing.T) {
 	}
 }
 
+func TestCmdLangOracleScopeNoteFamilies(t *testing.T) {
+	for _, tc := range []struct {
+		name, oracle, want string
+	}{
+		{"calls only", `{"tool":"neutral","tier":"B","definitions":[],"scope":["main.ts"],"calls":[{"path":"main.ts","from":"run","to":"greet"}]}`, "neutral grades calls on its scope"},
+		{"scope asserts zero calls", `{"tool":"neutral","tier":"B","definitions":[],"scope":["main.ts"],"calls":[]}`, "neutral grades calls on its scope"},
+		{"definitions and calls", `{"tool":"neutral","tier":"B","definitions":[{"path":"main.ts","name":"run","line":3,"kind":"function_declaration"}],"scope":["main.ts"],"calls":[{"path":"main.ts","from":"run","to":"greet"}]}`, "neutral grades definitions and calls on its scope"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			subject := tsFixtureSubject(t)
+			dir := t.TempDir()
+			oracle := filepath.Join(dir, "oracle.json")
+			if err := os.WriteFile(oracle, []byte(tc.oracle), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			out := filepath.Join(dir, "reading.json")
+			var stdout, stderr bytes.Buffer
+			args := []string{"-dialect", "typescript", "-subject", subject, "-subject-name", "fixture/ts",
+				"-ctags", filepath.Join(dir, "absent"), "-tool-oracle", oracle, "-out", out,
+				"-queue", filepath.Join("..", "..", "docs", "plans", "language-breadth.queue.json")}
+			if code := cmdLangOracle(args, &stdout, &stderr); code != 0 {
+				t.Fatalf("exit %d: %s", code, stderr.String())
+			}
+			r, _ := readValidReading(t, out)
+			if notes := strings.Join(r.Notes, "\n"); !strings.Contains(notes, tc.want) {
+				t.Fatalf("scope note missing %q: %s", tc.want, notes)
+			}
+		})
+	}
+}
+
 // TestOwnedSourceRefsRoutesCppHeaders (LB-Q-cpp, LB-F80): a C++ subject's .h
 // headers are measured when the header router (the C++ sniff) sends them to C++
 // — and a C subject's when it does not; no dialect claims .h; every other dialect owns exactly what

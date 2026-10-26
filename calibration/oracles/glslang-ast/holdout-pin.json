@@ -1,0 +1,33 @@
+{
+  "purpose": "Post-acceptance catalog binding for the independent GLSL holdout selection record; final catalog fields were added after acceptance",
+  "repository": "g-truc/ogl-samples",
+  "commit_sha": "38cada7a9458864265e25415ae61586d500ff5fc",
+  "pinned_at_utc": "2026-10-26T05:45:49+00:00",
+  "commit_api": "https://api.github.com/repos/g-truc/ogl-samples/commits/master",
+  "archive_api": "https://api.github.com/repos/g-truc/ogl-samples/tarball/38cada7a9458864265e25415ae61586d500ff5fc",
+  "archive_bytes": 37508521,
+  "archive_sha256": "cb8ee47813d93ff68ffd8efa579ef65d50ca2fc168fc70a7e6812b0f3b4a6d7a",
+  "baseline_catalog_sha256": "b0da4128d106468636a49f08889ef0412cae3fc7bbb450efda92dde0792a0bb5",
+  "core_catalog_sha256": "6f6681d1b422c5bb11c54c97fa2550f6c3893b9da1971aecb0a7b59e91bbd458",
+  "extension_catalog_sha256": "43e34f4c96a7ad9ce2aaae7cc1427e16e46d1a4a1f1bd996d5653b088cd1159d",
+  "accepted_extension_sources": [
+    {
+      "repository": "KhronosGroup/GLSL",
+      "revision": "0099bf83b0288469917fc2e2972cb0a2b74d6711",
+      "archive_sha256": "4ffb1bb817c970670644ea2d19168dc1127a1d5502eb6bbfeb6600859090a23d",
+      "source_count": 96
+    },
+    {
+      "repository": "KhronosGroup/OpenGL-Registry",
+      "revision": "6af574a14089ccfee87efe230ebcdd8742859813",
+      "archive_sha256": "fa80b86e5c2d91c3088b67a128d4070f2520dac6bb823f0538f4870ec9e50942",
+      "source_count": 1025
+    }
+  ],
+  "baseline_constructors_sha256": "86c330fb37b909e7c611ec1dac7e570ad4ed5381a2878c8822c8d5bd17d583ee",
+  "frozen_selection_record": {
+    "file": "holdout-selection-pin.json",
+    "sha256": "b83d54e75fa3d99e1be04db9fc9979afdd9358bc0f430aa6790eecbb958139e1",
+    "original_record_sha256": "e94d8db894e0d61622d93a821ebeae467631e2e0491020c735832a6ef9f6842e"
+  }
+}
