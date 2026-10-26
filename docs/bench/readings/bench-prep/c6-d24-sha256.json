@@ -1,0 +1,105 @@
+{
+  "method": "sha256 of complete D24 recount JSON, sorted rows and full sites; Python regenerated with committed c6_python.py on CPython 3.12.15",
+  "outputs": [
+    {
+      "subject_id": "Textualize--rich",
+      "sha256": "94070c5b0f7d325ad291fc20e5082329d93bbf3b210bde19a9ce5fcaf10ebf20",
+      "qualifying_symbols": 7
+    },
+    {
+      "subject_id": "encode--starlette",
+      "sha256": "4f5dca9b57db9d24ad22416621e7df7ec091eebc39441c62efb51672ed24f2b1",
+      "qualifying_symbols": 12
+    },
+    {
+      "subject_id": "go-chi--chi",
+      "sha256": "143dcca94919891d5f02fa84866ef0df2ed6e3dc24cc95306425d45074a0b2d5",
+      "qualifying_symbols": 0
+    },
+    {
+      "subject_id": "go-git--go-git",
+      "sha256": "4a5351cdd7008f6933a042eb85a892166096f596ce18527640c454c79dd05c0e",
+      "qualifying_symbols": 85
+    },
+    {
+      "subject_id": "immerjs--immer",
+      "sha256": "e937954369413f7c793ee2d0003fc762d7513d36e3d63d711f11677fe9c7d984",
+      "qualifying_symbols": 0
+    },
+    {
+      "subject_id": "marshmallow-code--marshmallow",
+      "sha256": "8c63764f6748e19ffcd9ae7e4c00fd9960bbe4810678f223d60804ac7b1f6e2b",
+      "qualifying_symbols": 6
+    },
+    {
+      "subject_id": "microsoft--tsyringe",
+      "sha256": "f4a3a3f914d2974447c0c9af034e0df4e386049611b0ea92cbfdbbf7e99479a8",
+      "qualifying_symbols": 0
+    },
+    {
+      "subject_id": "pallets--click",
+      "sha256": "4d2a5ff7f93a2a08d488f8dcac2865b8a1e13077865a3113fc3faf829464f3e3",
+      "qualifying_symbols": 17
+    },
+    {
+      "subject_id": "pressly--goose",
+      "sha256": "c4e123903d7b931059e68824987af81a69bceadc67dc4ee12ac7b4fa870395ad",
+      "qualifying_symbols": 0
+    },
+    {
+      "subject_id": "pytest-dev--pytest",
+      "sha256": "43103530fc9b00f1f287ad0f10527d64be2229429c340606237b9045c0c8d8e3",
+      "qualifying_symbols": 14
+    },
+    {
+      "subject_id": "python-attrs--attrs",
+      "sha256": "dc3d7beb25c147893c7b043fcd6e9d579488155b5d491e5e663ff4f2bbdc1fb8",
+      "qualifying_symbols": 3
+    },
+    {
+      "subject_id": "reduxjs--redux",
+      "sha256": "c7b63fa37dd831b9444cb1f6b2d98103b2b634b042d1cf5d7283f62221bfc31c",
+      "qualifying_symbols": 0
+    },
+    {
+      "subject_id": "reduxjs--redux-toolkit",
+      "sha256": "d8ba4ad8972fce9f8eb3828e61ea902cebcebc3348fd9646ec18e3dc1ee7cb9c",
+      "qualifying_symbols": 26
+    },
+    {
+      "subject_id": "remeda--remeda",
+      "sha256": "3fbb26692caa27005db488f4f43593bd075fbfc15e70922ed0dd13af9d15f4c3",
+      "qualifying_symbols": 0
+    },
+    {
+      "subject_id": "spf13--cobra",
+      "sha256": "617a3d7024235851d6b64f21a8172ee435043cf7c5ce2820c5ff81da2df91a9c",
+      "qualifying_symbols": 0
+    },
+    {
+      "subject_id": "stretchr--testify",
+      "sha256": "7912fa942f380211242809f111c9fc6e27f67ccaa682633fcd710263e2ce0fd6",
+      "qualifying_symbols": 8
+    },
+    {
+      "subject_id": "trpc--trpc",
+      "sha256": "490712909b880ad0fab50f575217777869849bc64bd5140a72af3453e1f0abaf",
+      "qualifying_symbols": 13
+    },
+    {
+      "subject_id": "typestack--class-transformer",
+      "sha256": "5b704841e5c24696916062b611ce62b96e975306a473fdd03a53d97bbf2284a5",
+      "qualifying_symbols": 4
+    },
+    {
+      "subject_id": "typestack--class-validator",
+      "sha256": "c4e8b7d581d4c356cce4da8ec23ba74aa85cd45157016de3d7f67f32ef707fb5",
+      "qualifying_symbols": 12
+    },
+    {
+      "subject_id": "urfave--cli",
+      "sha256": "2444d917ede5b6dbcb535525bd29c1cae60221a21e918649c1a2a8ca24841a5d",
+      "qualifying_symbols": 0
+    }
+  ]
+}
