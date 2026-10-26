@@ -74,7 +74,7 @@ def legacy(values, wire, value):
         raise WireError("legacy range has wrong wire type")
 
 
-def valid_range(numbers):
+def valid_sign_order(numbers):
     if len(numbers) == 3:
         line, start, end = numbers
         return min(numbers) >= 0 and end >= start
@@ -128,15 +128,15 @@ def relative_path(value):
 
 
 def bucket():
-    return {"documents": 0, "occurrences": 0, "definitions": 0,
+    return {"documents": 0, "position_encoding": {}, "occurrences": 0, "definitions": 0,
             "legacy_present": 0, "legacy_empty": 0, "legacy_valid_3": 0, "legacy_valid_4": 0,
             "legacy_invalid": 0, "typed_single": 0, "typed_multi": 0,
-            "typed_invalid_bounds": 0, "both_legacy_typed": 0,
+            "typed_invalid_sign_order": 0, "both_legacy_typed": 0,
             "both_typed_forms": 0, "no_range": 0, "zero_width": 0,
             "enclosing_legacy": 0, "enclosing_legacy_empty": 0, "enclosing_legacy_valid_3": 0,
             "enclosing_legacy_valid_4": 0, "enclosing_legacy_invalid": 0,
             "enclosing_typed_single": 0, "enclosing_typed_multi": 0,
-            "enclosing_typed_invalid_bounds": 0, "enclosing_both": 0,
+            "enclosing_typed_invalid_sign_order": 0, "enclosing_both": 0,
             "samples": {key: [] for key in ("legacy", "typed_single", "typed_multi", "no_range",
                                                 "both", "enclosing_legacy", "enclosing_typed_single",
                                                 "enclosing_typed_multi")}}
@@ -156,13 +156,13 @@ def add_occurrence(stats, path, raw):
         stats["legacy_present"] += 1
         stats["legacy_empty"] += int(not own)
         shape = len(own)
-        key = f"legacy_valid_{shape}" if shape in (3, 4) and valid_range(own) else "legacy_invalid"
+        key = f"legacy_valid_{shape}" if shape in (3, 4) and valid_sign_order(own) else "legacy_invalid"
         stats[key] += 1
         sample(stats, "legacy", path, own)
     kinds = {kind for kind, _ in typed}
     for kind, numbers in typed:
         stats["typed_" + kind] += 1
-        stats["typed_invalid_bounds"] += int(not valid_range(numbers))
+        stats["typed_invalid_sign_order"] += int(not valid_sign_order(numbers))
         sample(stats, "typed_" + kind, path, numbers)
     if len(kinds) > 1:
         stats["both_typed_forms"] += 1
@@ -180,12 +180,12 @@ def add_occurrence(stats, path, raw):
         stats["enclosing_legacy"] += 1
         stats["enclosing_legacy_empty"] += int(not enclosing)
         shape = len(enclosing)
-        key = f"enclosing_legacy_valid_{shape}" if shape in (3, 4) and valid_range(enclosing) else "enclosing_legacy_invalid"
+        key = f"enclosing_legacy_valid_{shape}" if shape in (3, 4) and valid_sign_order(enclosing) else "enclosing_legacy_invalid"
         stats[key] += 1
         sample(stats, "enclosing_legacy", path, enclosing)
     for kind, numbers in enclosed_typed:
         stats["enclosing_typed_" + kind] += 1
-        stats["enclosing_typed_invalid_bounds"] += int(not valid_range(numbers))
+        stats["enclosing_typed_invalid_sign_order"] += int(not valid_sign_order(numbers))
         sample(stats, "enclosing_typed_" + kind, path, numbers)
     stats["enclosing_both"] += int(bool(enclosing and enclosed_typed))
 
@@ -193,6 +193,7 @@ def add_occurrence(stats, path, raw):
 def document(data, all_stats, kotlin_stats):
     path = None
     language = ""
+    position_encoding = 0
     occurrences = []
     for number, wire, value in fields(data):
         if number == 1:
@@ -210,6 +211,10 @@ def document(data, all_stats, kotlin_stats):
                 language = value.decode("utf-8")
             except UnicodeDecodeError as exc:
                 raise WireError("language is not UTF-8") from exc
+        elif number == 6:
+            if wire != 0:
+                raise WireError("position_encoding has wrong wire type")
+            position_encoding = value
     if path is None:
         raise WireError("document has no relative_path")
     groups = [all_stats]
@@ -217,6 +222,8 @@ def document(data, all_stats, kotlin_stats):
         groups.append(kotlin_stats)
     for stats in groups:
         stats["documents"] += 1
+        encoding = str(position_encoding)
+        stats["position_encoding"][encoding] = stats["position_encoding"].get(encoding, 0) + 1
         for raw in occurrences:
             add_occurrence(stats, path, raw)
 
@@ -245,21 +252,95 @@ def wire(number, value, kind=2):
 
 
 def self_test():
-    single = wire(1, 4, 0) + wire(2, 2, 0) + wire(3, 6, 0)
-    multi = wire(1, 5, 0) + wire(2, 0, 0) + wire(3, 6, 0) + wire(4, 1, 0)
-    occ1 = wire(1, b"\x04\x02\x06") + wire(8, single) + wire(3, 1, 0) + wire(10, single)
-    occ2 = wire(9, multi) + wire(11, multi)
-    doc = wire(1, b"src/A.kt") + wire(4, b"kotlin") + wire(2, occ1) + wire(2, occ2)
-    result = census(wire(2, doc))
+    def packed(*numbers):
+        return b"".join(encode_varint(n if n >= 0 else (1 << 64) + n) for n in numbers)
+
+    def single(*numbers):
+        return b"".join(wire(i, n if n >= 0 else (1 << 64) + n, 0) for i, n in enumerate(numbers, 1))
+
+    def multi(*numbers):
+        return single(*numbers)
+
+    s = single(4, 2, 6)
+    m = multi(5, 0, 6, 1)
+    both_last = multi(9, 0, 10, 1)
+    occurrences = [
+        wire(1, packed(4, 2, 6)) + wire(8, s) + wire(3, 1, 0) +
+        wire(7, packed(4, 2, 6)) + wire(10, s),
+        wire(9, m) + wire(11, m),
+        wire(9, multi(7, 0, 8, 1)) + wire(11, multi(7, 0, 8, 1)),
+        wire(1, packed(9, 0, 1)) + wire(8, single(9, 2, 2)) + wire(9, both_last) +
+        wire(10, single(9, 2, 3)) + wire(11, both_last),
+        wire(8, single(3, 1, 1)) + wire(10, single(3, 1, 2)),
+        wire(8, single(3, -1, 2)) + wire(10, single(3, -1, 2)),
+        wire(9, multi(5, 4, 5, 1)) + wire(11, multi(5, 4, 5, 1)),
+        wire(7, b""),
+        wire(1, b""),
+        wire(1, packed(1, 0, 2, 0)) + wire(7, packed(1, 0, 2, 0)),
+        wire(1, packed(-1, 0, 1)) + wire(7, packed(-1, 0, 1)),
+        wire(1, packed(2, 2, 1, 1)) + wire(7, packed(2, 2, 1, 1)),
+        wire(1, packed(6, 1, 2)) + wire(7, packed(6, 1, 2)),
+        wire(9, multi(11, 0, 12, 1)) + wire(10, single(11, 0, 1)),
+    ]
+    doc = wire(1, b"src/A.kt") + wire(4, b"kotlin") + wire(6, 2, 0)
+    doc += b"".join(wire(2, raw) for raw in occurrences)
+    other_kotlin = wire(1, b"src/B.kts")
+    other = wire(1, b"src/C.txt") + wire(6, 1, 0)
+    result = census(wire(2, doc) + wire(2, other_kotlin) + wire(2, other))
     k = result["kotlin"]
-    assert k["documents"] == 1 and k["occurrences"] == 2 and k["definitions"] == 1
-    assert k["legacy_valid_3"] == 1 and k["typed_single"] == 1 and k["typed_multi"] == 1
-    assert k["both_legacy_typed"] == 1 and k["enclosing_typed_single"] == 1 and k["enclosing_typed_multi"] == 1
-    empty = census(wire(2, wire(1, b"src/Empty.kt") + wire(2, wire(1, b""))))["kotlin"]
-    assert empty["legacy_present"] == 1 and empty["legacy_empty"] == 1 and empty["no_range"] == 1
-    for malformed in (b"\x80" * 11, b"\x12\x05x", b"\x0b"):
+    expected = {
+        "documents": 2, "position_encoding": {"0": 1, "2": 1},
+        "occurrences": 14, "definitions": 1,
+        "legacy_present": 7, "legacy_empty": 1, "legacy_valid_3": 3, "legacy_valid_4": 1,
+        "legacy_invalid": 3, "typed_single": 4, "typed_multi": 5,
+        "typed_invalid_sign_order": 2, "both_legacy_typed": 2,
+        "both_typed_forms": 1, "no_range": 2, "zero_width": 1,
+        "enclosing_legacy": 6, "enclosing_legacy_empty": 1, "enclosing_legacy_valid_3": 2,
+        "enclosing_legacy_valid_4": 1, "enclosing_legacy_invalid": 3,
+        "enclosing_typed_single": 5, "enclosing_typed_multi": 4,
+        "enclosing_typed_invalid_sign_order": 2, "enclosing_both": 1,
+    }
+    assert {name: value for name, value in k.items() if name != "samples"} == expected
+    assert result["all"]["documents"] == 3
+    assert result["all"]["position_encoding"] == {"0": 1, "1": 1, "2": 1}
+    assert result["all"]["occurrences"] == 14
+    assert k["samples"]["both"][1]["range"] == [9, 0, 10, 1]
+    assert k["samples"]["legacy"][0]["relative_path"] == "src/A.kt"
+    assert {name: len(items) for name, items in k["samples"].items()} == {
+        "legacy": 3, "typed_single": 3, "typed_multi": 3, "no_range": 2,
+        "both": 2, "enclosing_legacy": 3, "enclosing_typed_single": 3,
+        "enclosing_typed_multi": 3,
+    }
+
+    malformed = (
+        b"\x80" * 11,                         # varint over ten bytes
+        b"\xff" * 9 + b"\x02",               # tenth byte overflows uint64
+        b"\x80",                              # truncated varint
+        b"\x12\x05x",                         # truncated length-delimited field
+        b"\x09x",                             # truncated fixed64
+        b"\x0dx",                             # truncated fixed32
+        b"\x0b",                              # unsupported wire type
+        b"\x00",                              # field number zero
+        wire(2, 1, 0),                         # documents wrong wire
+        wire(2, wire(1, 1, 0)),               # path wrong wire
+        wire(2, wire(1, b"a.kt") + wire(2, 1, 0)),  # occurrence wrong wire
+        wire(2, wire(1, b"a.kt") + wire(4, 1, 0)),  # language wrong wire
+        wire(2, wire(1, b"a.kt") + wire(6, b"x")),  # position encoding wrong wire
+        wire(2, wire(1, b"a.kt") + wire(2, wire(8, 1, 0))),  # typed wrong wire
+        wire(2, wire(1, b"a.kt") + wire(2, wire(8, wire(1, b"x")))),  # typed integer wrong wire
+        wire(2, wire(1, b"a.kt") + wire(2, b"\x0dxxxx")),  # legacy wrong wire
+        wire(2, wire(1, b"a.kt") + wire(2, wire(3, b"x"))),  # role wrong wire
+        wire(2, wire(1, b"/absolute.kt")),
+        wire(2, wire(1, b"../escape.kt")),
+        wire(2, wire(1, b"a//b.kt")),
+        wire(2, wire(1, b"C:\\a.kt")),
+        wire(2, wire(1, b"")),
+        wire(2, wire(1, b"\xff.kt")),
+        wire(2, wire(1, b"a.kt") + wire(4, b"\xff")),
+    )
+    for raw in malformed:
         try:
-            census(malformed)
+            census(raw)
         except WireError:
             pass
         else:
