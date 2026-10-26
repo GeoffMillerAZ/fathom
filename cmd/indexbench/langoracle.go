@@ -1183,7 +1183,11 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 				res.notes = append(res.notes, toolOracleDisclosures(spec.Manifest, name, tf)...) // wave lf5: the oracle's own counts
 				if len(tf.Scope) > 0 {
 					in, _ := toolOracleScope(tf.Scope, inScope, nil)
-					res.notes = append(res.notes, fmt.Sprintf(noteToolOracleScope, name, tf.Tool, len(in), len(inScope)))
+					families := "calls"
+					if l1 != nil {
+						families = "definitions and calls"
+					}
+					res.notes = append(res.notes, fmt.Sprintf(noteToolOracleScope, name, tf.Tool, families, len(in), len(inScope)))
 				}
 			}
 		}
@@ -1514,7 +1518,7 @@ func toolOracleScope(scope []string, inScope map[string]bool, nodes []core.Symbo
 }
 
 // noteToolOracleScope discloses a tool oracle's scope (H5-R4).
-const noteToolOracleScope = "%s: %s grades definitions and calls on its scope, %d of %d measured files (the files it reads); a file outside is neither a recall nor a precision miss, while tenancy and file edges cover every measured file"
+const noteToolOracleScope = "%s: %s grades %s on its scope, %d of %d measured files (the files it reads); a file outside is neither a recall nor a precision miss, while tenancy and file edges cover every measured file"
 
 var universalCtagsRE = regexp.MustCompile(`Universal Ctags ([0-9][^,( ]*)`)
 
