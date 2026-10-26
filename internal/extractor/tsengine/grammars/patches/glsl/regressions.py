@@ -34,6 +34,16 @@ ARRAY_CONSTRUCTORS = {
     'multidimensional': 'void main() { vec4[1][1] x = vec4[1][1](); }',
 }
 
+# These C-style declarators already parse independently of the constructor at
+# upstream HEAD. They isolate the constructor callee tree from the separate
+# type-first T[N] x declarator correction exercised above.
+C_STYLE_ARRAY_CONSTRUCTORS = {
+    'vector_sized': 'void main() { vec4 x[2] = vec4[2](vec4(1), vec4(2)); }',
+    'vector_sized_alt': 'void main() { vec3 x[3] = vec3[3](vec3(1), vec3(2), vec3(3)); }',
+    'matrix_sized': 'void main() { mat4 x[2] = mat4[2](mat4(1), mat4(2)); }',
+    'user_type_sized': 'void main() { Sample x[2] = Sample[2](Sample(), Sample()); }',
+}
+
 INDEXING_CASES = {
     'single': ('void main() { float a[2]; float x = a[0]; }', 1),
     'single_vector': ('void main() { vec4 b[2]; vec4 x = b[0]; }', 1),
@@ -79,6 +89,26 @@ class GLSLRegressions(unittest.TestCase):
                     and node.child_by_field_name('function').type == 'array_type_specifier'
                 ]
                 self.assertEqual(1, len(constructors), str(root))
+
+    def test_c_style_constructor_callee_shape(self):
+        expected = os.environ.get('GLSL_C_STYLE_CALLEE', 'array_type_specifier')
+        if expected not in ('array_type_specifier', 'subscript_expression'):
+            raise ValueError('invalid expected C-style constructor callee')
+        for name, source in C_STYLE_ARRAY_CONSTRUCTORS.items():
+            with self.subTest(name=name):
+                root = self.parser.parse(source.encode()).root_node
+                self.assertFalse(root.has_error, str(root))
+                constructors = [
+                    node for node in self._walk(root)
+                    if node.type == 'call_expression'
+                    and node.child_by_field_name('function') is not None
+                    and node.child_by_field_name('function').type
+                    in ('array_type_specifier', 'subscript_expression')
+                ]
+                self.assertEqual(1, len(constructors), str(root))
+                self.assertEqual(expected, constructors[0].child_by_field_name('function').type)
+                declarators = [node for node in self._walk(root) if node.type == 'array_declarator']
+                self.assertEqual(1, len(declarators), str(root))
 
     def test_indexing_stays_subscript_expression(self):
         for name, (source, expected_count) in INDEXING_CASES.items():
