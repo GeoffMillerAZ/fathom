@@ -9,11 +9,13 @@ import (
 	"sort"
 	"strings"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/gitro"
-	"gopkg.in/yaml.v3"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 // ConcernBasis states whether the index and the requested commit agree.
@@ -148,7 +150,7 @@ func ConcernDeltas(ctx context.Context, in Input) (ConcernDeltaReport, error) {
 	if err != nil {
 		return ConcernDeltaReport{}, err
 	}
-	projectConfig, _, err := in.BaseFile(".fathom/config.toml")
+	projectConfig, _, err := in.BaseFile(projectdir.Config.Rel())
 	if err != nil {
 		return ConcernDeltaReport{}, err
 	}
