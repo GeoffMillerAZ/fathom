@@ -874,7 +874,7 @@ references per model from any of `graphicalInterface.json`, its `.xml`, the inli
 string in it past `SimulinkMaxValue` (checked on its bytes first), no value nested past
 `SimulinkMaxDepth`, each reference one element of the shared budget. Each is an
 `ErrSimulinkCap`, never a truncated list, and a model-references part over a cap or not parsing
-refuses the whole model as a system part does. An endpoint resolves to a block index and a
+(data after its top-level value included) refuses the whole model as a system part does. An endpoint resolves to a block index and a
 signal is deduped on its pair of indexes, so no path is hashed per endpoint and each is built
 once; and `.mdl` lines of at most `MaxSimulinkLine` 4 MiB, a longer one a cap error, never a
 partial model. The calibration corpus's largest model sits far inside each (depth 38, 96,366
@@ -902,7 +902,14 @@ maximum taken: the most any shape is 143 MiB over (the `.slx` fan pairs, refused
 hashburn at the cap); the `.mdl` maximum is 61 MiB (the block flood); refflood 66 MiB, hugeref 66
 MiB, short fan pairs 140 MiB (`.slx`), duplicate sources 9 MiB. Round 4's 195 MiB `.mdl` figure was
 a hashburn of 500,000 endpoints, an 11 MB file ingest's fetch cap never reads. Before these caps,
-refflood reached 456 MiB over and 5.7 s of CPU, hugeref 130 MiB, short fan pairs 490,000 signals
+refflood reached 456 MiB over and 5.7 s of CPU and hugeref 130 MiB, measured (Linux, VmHWM) on
+round 6's S5-R2 packages of 2.9 MB and 5.6 MB, which are past the fetch cap, not on the 1.2 MB and
+1.9 MB shapes above; re-measured on those committed shapes with the reader of 97eede986 (the commit
+before S5-R2), on macOS arm64 (peak resident set from getrusage), 3 runs each, the maximum taken,
+refflood is 481 MiB over an empty model's and 0.9 s of CPU and hugeref 127 MiB, against 66 MiB and
+67 MiB with the caps on the same machine (command: `go test -c ./internal/extractor`, then
+`FATHOM_SIMULINK_HEAP_INPUT=<shape> <test binary> -test.run '^TestReadSimulinkModelHeapBound$'`,
+the child mode the test runs, for each shape and for an empty `.mdl`). Also before these caps, short fan pairs 490,000 signals
 at 189 MiB, and duplicate sources 8.3M Call entries, which failed a whole service's ingest at the
 store; before round 4's signal caps, fan pairs reached 465 MiB and 19.6 GB of emitted Calls and
 the hashburn 361 MiB and 43 s of CPU. `TestSimulinkHashburnCPU` holds each hashburn within the
@@ -911,7 +918,9 @@ the hashburn 361 MiB and 43 s of CPU. `TestSimulinkHashburnCPU` holds each hashb
 (plus 50 ms) the CPU of a one-byte path, which a path-keyed dedupe fails (711 ms against a 125 ms
 bound; the reader 31 ms). These three run without the race detector in validate's
 `simulink-gate` step. A package over a cap, or one that does not parse, yields no
-symbols, never a partial model. Ingest's 2 MiB `MaxExtractSize` still applies, to the compressed bytes. Every other
+symbols, never a partial model, and its extract returns `extractor.ErrModelRefused` wrapping the
+cap error, which ingest counts on the in-memory `Report.ModelsRefused` and names in one stderr line
+(I38: a refused model is never an empty file stored without a trace; no store change). Ingest's 2 MiB `MaxExtractSize` still applies, to the compressed bytes. Every other
 NUL-sniffed file stays excluded, a `.zip`, `.docx` or `.mlx` included, until a manifest claims
 its extension. Plan row: LB-F587 (`docs/plans/language-breadth.simulink.md`). **Decision
 models.** None applies (ADR-073; DP-41 enforces): whether a file is a claimed container is a
@@ -921,7 +930,8 @@ dialect that drops `match.container` withdraws. Measurement: the dialect's readi
 (LB-Q-simulink), whose throughput counts compressed bytes, `TestReadSimulinkModelCaps`, `TestReadSimulinkModelRealRatio`, `TestReadSimulinkModelAdversarial`,
 `TestReadSimulinkModelSignalBytes`, `TestSimulinkExtractDocOutputBound`, and
 `TestReadSimulinkModelCountCaps`, `TestReadSimulinkModelRefCaps`,
-`TestReadSimulinkModelRefsPartRefused`, and `TestSimulinkCalibrationIdentity` (with
+`TestReadSimulinkModelRefsPartRefused`, `TestReadSimulinkModelJSONRefsSpendElementBudget`,
+`TestIngest_RefusedSimulinkModelKeepsService` (the count), and `TestSimulinkCalibrationIdentity` (with
 `CALIBRATION_DIR` set, the 194 calibration models' per-model counts and two digests, sha256 over
 the sorted `Src\x00Dst` signal lines and over each emitted node's name and sorted Calls, against
 their golden). **Revisit

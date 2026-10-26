@@ -45,13 +45,61 @@ kept value; ADR-021 lists them). Ingest's 2 MiB cap applies to the compressed by
 - The MATLAB code a model calls (MATLAB Function blocks, callbacks, S-functions): a handoff to
   the matlab dialect, not this one.
 
-## Reading (2026-10-25)
+## Reading (2026-10-26)
 
-Tier C only (owner ruling 2026-10-24 (d)): `calibration/oracles/simulink-walk/walk.py`, an
-independent zipfile and expat walk that reads model references from the ModelReference
-blocks rather than the graphicalInterface part. Every level is capped at good. Five subjects
-(WEC-Sim v7.1.0, Thermodynamics v1.3.1, LADAC, FMT-Model, etherlab-examples); the queue's
-sixth, PID_MATLAB_Learn, did not resolve to a repository and is not measured. L3 rests on 2
-joined model references (FMT-Model's harnesses; 7 more are ambiguous by name), a thin
-denominator. The queue's cross-checks (data-explorer-core, miss-hit-core, rustylink,
-SLX2MDL) were not run in this reading.
+Measured at 01b45866, tier C only (owner ruling 2026-10-24 (d)): `calibration/oracles/simulink-walk/walk.py`,
+a zipfile and expat walk that reads model references from the ModelReference blocks rather than the
+graphicalInterface part. It mirrors the reader's decisions, so its agreement is capped at good: every
+level is good at most. Five subjects (WEC-Sim v7.1.0, Thermodynamics v1.3.1, LADAC, FMT-Model,
+etherlab-examples); the queue's sixth, PID_MATLAB_Learn, did not resolve to a repository and is not
+measured. Throughput was re-timed with `indexbench lang-retime` (3 runs, median 21.69 MB/CPU-s on
+darwin/arm64, the machine class the reading's note names; the VM's 9.53 is withdrawn).
+
+Cross-checks (ungraded, `calibration/oracles/simulink-walk/CROSSCHECK.md`): miss-hit-core 0.9.44
+reproduced 2026-10-25 in round 3's VM, 163 of 178 `.slx` parsed (15 Thermodynamics models refused by its
+parser), every block it reports agrees (105 of them only by a trailing line break the reader keeps as a
+space), and the reader adds 3,660 chart-internal blocks; data-explorer-core v1.46.0 is unreproduced (round
+2's figures only); rustylink and SLX2MDL did not run. No tool checks the signal lines, the whole of L2's
+reference family. L3 rests on 2 resolvable model references in one subject (the bar is 20 across 2), so the
+level stays L2.
+
+Caps: every cap enforced while the reader reads, the input as tested, the test, the refusal. Each test is
+in `internal/extractor/` and runs as `go test -race -count=1 -run '^<Test>$' ./internal/extractor`
+(`GOWORK=off`); `(cap+1)` marks an input exactly one past the cap, any other input is further past it, and a
+cap with no case at all is named under Gaps.
+
+- Caps: entries, 4,096; 4,097 parts (cap+1); `simulink_test.go` `TestReadSimulinkModelCaps/entries`; ErrSimulinkCap `4097 entries, cap 4096`.
+- Caps: inflated bytes, 32 MiB; 33 parts of about 1 MiB; `TestReadSimulinkModelCaps/inflated_bytes`; ErrSimulinkCap `parts inflate past`.
+- Caps: inflate ratio, 200:1; a 4 MiB run of spaces (about 1,000:1) and a false declared size; `TestReadSimulinkModelCaps/ratio` and `TestReadSimulinkModelRealRatio`; ErrSimulinkCap `inflates past 200:1`.
+- Caps: nesting depth, 1,024; 1,025 mdl levels (cap+1), 1,048,576 nested slx elements, a spliced chain deeper than any part; `TestReadSimulinkModelStructureCaps` (`deep mdl`, `deep slx`, `wide spliced`); ErrSimulinkCap `nest past`.
+- Caps: elements, 524,288; 524,289 mdl nodes (cap+1) and `flat flood` slx; `TestReadSimulinkModelStructureCaps/flat_mdl`, `TestReadSimulinkModelAdversarial/flat_flood`; ErrSimulinkCap `past 524288 elements`.
+- Caps: blocks, 65,536; the block floods read at the cap (`TestReadSimulinkModelHeapBound`, no case past it); see Gaps.
+- Caps: kept value, 64 KiB; an 8 MiB attribute, 8 MiB text and a 1 MiB mdl attribute; `TestReadSimulinkModelAdversarial` (`huge attribute`, `huge kept text`, `huge mdl attribute`), and 64 KiB + 1 in `TestReadSimulinkModelRefCaps`; ErrSimulinkCap `is longer than 65536 bytes`.
+- Caps: start tag, 1 MiB; a 1 MiB attribute value (a tag a few bytes past 1 MiB); `TestReadSimulinkModelAdversarial/long_start_tag`; ErrSimulinkCap `a start tag spans past`.
+- Caps: attributes per start tag, 256; 257 (cap+1); `TestReadSimulinkModelAdversarial/attribute_flood`, `TestSimulinkDecoderStrict` (bare names); ErrSimulinkCap `a start tag carries past`.
+- Caps: block path, 16 KiB; 16,385 bytes (cap+1); `simulink_shapes_test.go` `TestReadSimulinkModelPathCap`; ErrSimulinkCap `a block path is longer than`.
+- Caps: bytes of block paths, 32 MiB; 2,040 children of a 16,000-byte name read at the cap (`TestReadSimulinkModelHeapBound`, `long names at the cap`), no case past it; see Gaps.
+- Caps: bytes of signal endpoint paths, 32 MiB; 64 children of a 16,000-byte parent, every pair joined; `TestReadSimulinkModelSignalBytes`; ErrSimulinkCap `signals hold past`.
+- Caps: bytes of emitted Call paths, 32 MiB; 3 sources named alike over 1,000 long destinations; `TestSimulinkExtractDocOutputBound`; `ErrModelRefused` wrapping ErrSimulinkCap `emitted calls hold past`.
+- Caps: distinct signals, 65,536; 257 short children (65,792 signals) and 700; `simulink_shapes_test.go` `TestReadSimulinkModelCountCaps`; ErrSimulinkCap `past 65536 signals`, asserted; 256 children (65,536) read in full.
+- Caps: emitted calls, 65,536; 64 sources x 1,024 destinations = 65,536 reads in full, one more line of one call = 65,537 (cap+1) is refused; `TestReadSimulinkModelCountCaps`; ErrSimulinkCap `past 65536 emitted calls`, asserted, with no symbols.
+- Caps: model references, 4,096; 4,097 (cap+1) from the json, the xml, the inline interface and an mdl; `TestReadSimulinkModelRefCaps`; ErrSimulinkCap `past 4096 model references`.
+- Caps: graphicalInterface.json strings and depth, 64 KiB per string and 1,024 deep; a 64 KiB + 1 BlockPath, ModelName and skipped string, and 1,025 nested arrays; `TestReadSimulinkModelRefCaps`; ErrSimulinkCap `a string is longer than` and `JSON values nest past`.
+- Caps: model references spend the shared element budget, 524,288; 2 references read and 3 are refused after a part that leaves room for 2 (cap+1); `TestReadSimulinkModelJSONRefsSpendElementBudget`; ErrSimulinkCap `past 524288 elements`.
+- Caps: a model-references part that does not parse or has data after its top-level value refuses the whole model; `TestReadSimulinkModelRefsPartRefused`; ErrSimulinkCap naming the part.
+- Caps: mdl line, 4 MiB; a Note line of 4 MiB of text plus its key (7 bytes past); `TestReadSimulinkModelAdversarial/long_line_mdl`; ErrSimulinkCap (the scanner's token-too-long).
+- Gaps: no test refuses a model past the block cap (65,536) or the block-path byte cap, and none sits exactly one past the value, start-tag, signal-byte, call-byte or mdl-line caps (the inputs above are further past), so an off-by-one at those caps is not killed by a test.
+
+Mutation: `internal/extractor/simulink.go` `resolveSignals`, the signal dedupe `seen` keyed on the endpoints'
+paths (`map[string]bool` keyed on `Path+"\x00"+Path`) in place of the index pair, run at d3af7eff6 in a
+scratch worktree: `GOWORK=off go test -p 2 -count=1 -v -run '^TestSimulinkResolveHashWork$' ./internal/extractor`
+FAILs: `simulink_heap_test.go:307: a 16 KiB path took 9.820338s of CPU to resolve, a one-byte one 31.831ms: want at most 113.662ms, so path length does not reach the dedupe` and `--- FAIL: TestSimulinkResolveHashWork (15.10s)`; restored, `--- PASS: TestSimulinkResolveHashWork (0.10s)` and `ok github.com/geoffmilleraz/fathom/internal/extractor 0.556s`.
+
+Mutation: three more at d3af7eff6, each killed then restored green: no trailing-data check in
+`jsonModelRefs` (`TestReadSimulinkModelRefsPartRefused` FAILs on `json data after the object`, `json second value` and
+`json data after a non-object`); `budget.take` removed from `jsonRefList` (`TestReadSimulinkModelJSONRefsSpendElementBudget`
+FAILs `3 references: 3 model refs, <nil>; want ErrSimulinkCap past 524288 elements`); the call cap moved to
+`calls > SimulinkMaxCalls+1` (`TestReadSimulinkModelCountCaps` FAILs `65,537 calls: 1089 blocks, 1025 signals, 1090 nodes, <nil>; want ErrSimulinkCap`).
+
+Not measured: L3 rests on 2 resolvable references; no independent tool checks the signal lines; every
+heap figure in ADR-021 is from one Linux VM (VmHWM) except the macOS arm64 re-measure it names.
