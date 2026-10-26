@@ -112,10 +112,28 @@ before and after, reject all library symlinks and any mismatch, retain saved
 archive hashes, and disclose the setup. Only Perl-Critic's own cpanfile was
 installed; Mojo uses core and its own source. No install occurs during compile.
 
-The B::Xref census uses the same source and dependency restrictions, includes
-all source units and failed files, and retains private raw dumps. Its stock
-1.07 synthetic control exposes a limit: direct sub calls have target names,
-but modern named-method operations may appear as receiver/unknown records
-without a method target. Count these gaps; never relabel them as attested
-calls or promote the existing tier-C call reading from a partial census.
-The primary PPI call oracle and acceptance thresholds remain unchanged.
+The planned B::Xref census uses the same source and dependency restrictions,
+includes all source units and failed files, and retains private raw dumps. Its
+stock 1.07 synthetic control exposes a limit: direct sub calls have target
+names, but modern named-method operations may appear as receiver/unknown
+records without a method target. Count these gaps; never relabel them as
+attested calls or promote the existing tier-C call reading from a partial
+census. The primary PPI call oracle and acceptance thresholds remain unchanged.
+
+## C-R9 Xref attribution and load-budget erratum
+
+The first stock Xref census used `-d`. That result is withdrawn as invalid,
+not gradeable: debugger COPs use `dbstate`, while B::Xref 1.07 only handles
+`nextstate` when refreshing source file and line. This leaves stale locations
+and can misattribute records. The corrected Xref control and census load
+`FathomPerlCompileGuard.pm` explicitly, then run `-MO=Xref,-r -c` without
+`-d` or a subject `-I` override. The guard establishes approved `@INC` and
+checks loaded module paths at CHECK. The native control must verify direct
+calls at fixture lines 6 and 7 and unknown-target method calls at lines 9 and
+10. The withdrawn census supplies no oracle evidence and receives no grade.
+
+The first compliant Mojo attempt had 30 unresolved files: 10 compile failures,
+19 load-wait skips, and 1 compile timeout. Load wait is machine scheduling time,
+not compiler runtime and not evidence of a language ceiling. Load waits count
+against the 600-second total deadline; each 2-second compile budget starts only
+after load falls to 9 or below. Every source remains in the denominator.

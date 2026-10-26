@@ -18,7 +18,7 @@ from dependencies import library_fingerprint
 EXTENSIONS = {".pm", ".pl", ".t", ".psgi", ".plx", ".perl"}
 TOTAL_SECONDS = 600
 PER_FILE_SECONDS = 2
-OBSERVER = Path(__file__).resolve().with_name("observer.pl")
+OBSERVER = Path(__file__).resolve().with_name("FathomPerlCompileGuard.pm")
 SANDBOX_EXEC = Path("/usr/bin/sandbox-exec")
 SANDBOX_PROFILE = "(version 1) (allow default) (deny network*)"
 NICE_BINARY = Path("/usr/bin/nice")
@@ -116,6 +116,12 @@ def wait_for_load(deadline):
     return True
 
 
+def compiler_deadline(total_deadline, now=None):
+    """Start the per-file compile budget after any total-budget load wait."""
+    started = time.monotonic() if now is None else now
+    return min(total_deadline, started + PER_FILE_SECONDS)
+
+
 def stop_group(proc):
     def signal_group(sig):
         try:
@@ -148,6 +154,7 @@ def stop_group(proc):
 def observe(perl, root, rel, raw_out, deadline, env, inc_context):
     if not wait_for_load(deadline):
         return None, "total_timeout_waiting_for_load"
+    compile_deadline = compiler_deadline(deadline)
     env = env.copy()
     env["PERL5DB"] = 'BEGIN { require "' + str(OBSERVER).replace('\\', '\\\\').replace('"', '\\"') + '" }'
     env["FATHOM_DB_RANGE_OUT"] = str(raw_out)
@@ -163,7 +170,7 @@ def observe(perl, root, rel, raw_out, deadline, env, inc_context):
     )
     try:
         try:
-            proc.communicate(timeout=min(PER_FILE_SECONDS, max(0.01, deadline - time.monotonic())))
+            proc.communicate(timeout=max(0.01, compile_deadline - time.monotonic()))
         except subprocess.TimeoutExpired:
             return None, "file_timeout"
     finally:
@@ -480,14 +487,14 @@ def main():
     for number, entry in enumerate(before["files"]):
         rel = entry["path"]
         raw = log_dir / f"{number:06d}.json"
-        file_deadline = min(deadline, time.monotonic() + PER_FILE_SECONDS)
+        file_deadline = compiler_deadline(deadline)
         reasons = []
         try:
             tags = ctags_subs(str(Path(args.ctags).resolve()), root, rel, file_deadline)
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError, ValueError, json.JSONDecodeError):
             tags = None
             reasons.append("ctags_error_or_timeout")
-        data, failure = observe(str(perl_binary), root, rel, raw, file_deadline, env, inc_context)
+        data, failure = observe(str(perl_binary), root, rel, raw, deadline, env, inc_context)
         if failure:
             reasons.append(failure)
         native = None if failure else collect_ranges(root, rel, data)

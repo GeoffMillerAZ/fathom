@@ -2,7 +2,7 @@ package DB;
 use strict;
 use warnings;
 
-# Loaded by PERL5DB before the subject is compiled. Never delegate to a
+# Loaded by PERL5DB for range collection or -M for Xref. Never delegate to a
 # debugger or call a subject subroutine. Perl itself populates %DB::sub.
 sub DB { }
 

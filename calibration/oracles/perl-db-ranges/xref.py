@@ -13,13 +13,14 @@ import time
 import runner
 
 
-def parse_xref(raw, source_prefix, caller=None):
+def parse_xref(raw, source_prefix, caller=None, include_lines=False):
     """Count only source-file subused rows; method targets remain unknown."""
     direct = 0
     methods = 0
     emitted_method_targets = 0
     non_direct_unknown = 0
     malformed = 0
+    source_lines = {"direct": [], "non_direct_unknown": []}
     for line in raw.splitlines():
         if not line.startswith(source_prefix):
             continue
@@ -39,15 +40,23 @@ def parse_xref(raw, source_prefix, caller=None):
             continue
         if len(fields) >= 4 and fields[-3] == "&":
             direct += 1
+            category = "direct"
         elif len(fields) >= 3 and fields[-2] and fields[-1] == "subused":
             non_direct_unknown += 1
+            category = "non_direct_unknown"
         else:
             malformed += 1
-    return {"direct_call_records": direct,
+            continue
+        if len(fields) >= 2 and fields[1].isdigit():
+            source_lines[category].append(int(fields[1]))
+    result = {"direct_call_records": direct,
             "method_call_records": methods,
             "method_target_emitted_records": emitted_method_targets,
             "non_direct_target_unknown_records": non_direct_unknown,
             "malformed_subused_records": malformed}
+    if include_lines:
+        result["source_lines"] = source_lines
+    return result
 
 
 def synthetic_test():
@@ -70,19 +79,18 @@ def synthetic_test():
 
 def launch_xref(perl, source, root, env, inc, prefix, deadline):
     """Run one compile through the shared C-R9 Xref invocation path."""
-    observer_json = prefix.with_suffix(".observer.json")
+    observer_json = prefix.with_suffix(".guard.json")
     stdout_path = prefix.with_suffix(".stdout.raw")
     stderr_path = prefix.with_suffix(".stderr.raw")
     run_env = env.copy()
-    observer = str(runner.OBSERVER.resolve(strict=True)).replace("\\", "\\\\").replace('"', '\\"')
-    run_env["PERL5DB"] = 'BEGIN { require "' + observer + '" }'
     run_env["FATHOM_DB_RANGE_OUT"] = str(observer_json)
     run_env["FATHOM_ALLOWED_INC"] = os.pathsep.join(inc["inc"])
     run_env["FATHOM_ALLOWED_ROOTS"] = os.pathsep.join(inc["roots"])
     run_env["FATHOM_PATH_SEP"] = os.pathsep
     core_args = ["-I" + core for core in inc["core"]]
+    guard_args = ["-I" + str(runner.OBSERVER.parent), "-MFathomPerlCompileGuard"]
     command = runner.sandbox_command(
-        perl, *core_args, "-d", "-MO=Xref,-r", "-c", "-I" + str(root / "lib"), str(source),
+        perl, *core_args, *guard_args, "-MO=Xref,-r", "-c", str(source),
         profile=inc["filesystem_read_profile"])
     with stdout_path.open("wb") as out, stderr_path.open("wb") as err:
         proc = subprocess.Popen(command, cwd=root, env=run_env, stdout=out, stderr=err,
@@ -145,16 +153,20 @@ die 'ordinary body must not execute';
     if info["version"] != "1.07":
         raise RuntimeError("native control requires B::Xref 1.07")
     runner.core_module_identity(info["module"], inc["core"])
-    deadline = time.monotonic() + runner.PER_FILE_SECONDS
+    deadline = time.monotonic() + runner.TOTAL_SECONDS
     if not runner.wait_for_load(deadline):
         raise RuntimeError("native control skipped because system load exceeds 9")
+    compile_deadline = runner.compiler_deadline(deadline)
     out, failure = launch_xref(perl, source, scratch, env, inc, scratch / "control",
-                               deadline)
+                               compile_deadline)
     if failure:
         raise RuntimeError("native B::Xref control unresolved: " + failure)
-    counts = parse_xref(out, str(source) + " ", caller="Sample::caller")
+    counts = parse_xref(out, str(source) + " ", caller="Sample::caller", include_lines=True)
     if counts["direct_call_records"] != 2 or counts["non_direct_target_unknown_records"] != 2:
         raise RuntimeError("native B::Xref control counts differ: " + json.dumps(counts, sort_keys=True))
+    if {key: sorted(lines) for key, lines in counts["source_lines"].items()} != {
+            "direct": [6, 7], "non_direct_unknown": [9, 10]}:
+        raise RuntimeError("native B::Xref source attribution differs: " + json.dumps(counts, sort_keys=True))
     return {"perl_version": version, "counts": counts,
             "body_not_executed": True, "network_denial": "EPERM"}
 
@@ -246,10 +258,10 @@ def main():
         if time.monotonic() >= deadline:
             failures += 1
             continue
-        file_deadline = min(deadline, time.monotonic() + runner.PER_FILE_SECONDS)
-        if not runner.wait_for_load(file_deadline):
+        if not runner.wait_for_load(deadline):
             failures += 1
             continue
+        file_deadline = runner.compiler_deadline(deadline)
         source = (root / rel).resolve(strict=True)
         raw, failure = launch_xref(perl, source, root, env, inc,
                                    logs / f"{index:06d}", file_deadline)

@@ -12,9 +12,10 @@ untrusted subjects**. All native Perl invocations use the fixed macOS sandbox
 profile `(version 1) (allow default) (deny network*)`; execution fails closed
 if `/usr/bin/sandbox-exec` is unavailable. A preflight loopback TCP control to
 `127.0.0.1` must fail with `EPERM`, so connection-refused is not accepted as
-proof of network denial. The subject body is not run. The tiny debugger observer
-reads compiler-populated data at `CHECK`; it does not parse source or call
-subject subroutines. Universal Ctags 6.2.1 independently supplies the
+proof of network denial. The subject body is not run. The compile guard
+`FathomPerlCompileGuard.pm` resets include paths and validates modules at
+`CHECK`; range compilation also reads compiler-populated debugger data, without
+parsing source or calling subject subroutines. Universal Ctags 6.2.1 independently supplies the
 source-written subroutine name and declaration line. A native entry joins
 only to a tag in the same file within two lines whose name matches the full
 compiler key or its terminal component, and only when the match is unique in
@@ -59,15 +60,18 @@ dependencies remain unresolved.
 `xref.py` is a separate diagnostic census for stock B::Xref 1.07. It applies
 the same source snapshot, sandbox, dependency lock, timeouts, and include-path
 controls. Its preflight records the exact core-relative B::Xref module path and
-hash; compiler `-MO` loads with the same core roots first. Raw stdout and
-stderr stay in the required private log directory. It counts direct calls,
-explicit `meth` events, and target-unknown non-direct `subused` rows separately.
-The result is diagnostic only and never receives a neutral grade.
+hash; compiler `-MO` loads with the same core roots first. Xref must run without
+`-d`: debugger COPs use `dbstate`, which stock B::Xref 1.07 does not handle,
+leaving stale file and line attribution. The guard is explicitly loaded before
+Xref. Raw stdout and stderr stay in the private log directory. It counts direct
+calls, explicit `meth` events, and target-unknown non-direct `subused` rows
+separately. Earlier `-d` census output is withdrawn as invalid; Xref remains
+diagnostic only and never receives a neutral grade.
 
 
 The runner clears inherited `PERL5LIB`, `PERLLIB`, and `PERL5OPT` and never
 puts the local dependency prefix in the process environment. Before each
-subject compile, the debugger observer resets `@INC` to the pinned Perl
+subject compile, the guard resets `@INC` to the pinned Perl
 `Config` `privlibexp` and `archlibexp` core roots, subject `lib`, and the
 explicitly locked local `lib/perl5` plus its `Config` `archname` directory.
 Subject `use lib` directives may add subject paths such as `t/lib`. At `CHECK`,
@@ -75,7 +79,7 @@ every loaded module path must resolve under the core roots, the subject checkout
 or the locked local library. Other site/vendor paths fail the compile and leave
 the file unresolved against coverage. All compiles still run in the fixed
 network-denying sandbox. The per-compile profile also denies `file-read-data`
-outside an allowlist containing the exact Perl executable, observer, and
+outside an allowlist containing the exact Perl executable, guard, and
 `nice`, Perl Config core directories, the subject checkout, the locked local
 library, `/` as a literal path for dyld cache discovery, Darwin loader
 directories (`/usr/lib`, `/System/Library/dyld`, the two OS Cryptex dyld
@@ -94,8 +98,9 @@ outside-checkout symlinks are rejected. The separate local library fingerprint
 rejects every symlink, including internal links.
 It hashes every listed source file and checks Git HEAD/cleanliness, scope, and bytes before
 and after. Each file runs `perl -d -c -I<subject>/lib` from the checkout root,
-with `nice -n 10`, a 1-minute load ceiling of 9, a 2-second file timeout,
-and a 10-minute total limit. Timed-out process groups receive TERM then KILL.
+with `nice -n 10`, after load falls to 9 or below, and a 2-second compile
+timeout that starts after the load wait. Load waits count against the 10-minute
+total limit but not the compile timeout. Timed-out process groups receive TERM then KILL.
 Every file stays in `units`; failures count in `errored`, with per-file reasons
 in the sibling `.meta.json` artifact. That metadata also holds the manifest,
 verified ctags version and binary SHA-256, compiler keys/native starts/ends,

@@ -23,6 +23,15 @@ def rejects_dirty(root):
     raise AssertionError("dirty source snapshot was accepted")
 
 
+def load_wait_budget_control():
+    # Simulate a long load wait; the compiler still receives its own full cap.
+    total_deadline = 600.0
+    after_wait = 587.0
+    compile_deadline = runner.compiler_deadline(total_deadline, now=after_wait)
+    assert compile_deadline - after_wait == runner.PER_FILE_SECONDS, compile_deadline
+    assert runner.compiler_deadline(588.0, now=587.0) == 588.0
+
+
 def descendant_cleanup(base):
     marker = base / "descendant-pid"
     child = (
@@ -162,6 +171,7 @@ def main():
     ap.add_argument("--perl", required=True)
     ap.add_argument("--ctags", required=True)
     args = ap.parse_args()
+    load_wait_budget_control()
     # The compiler may start at a multiline body's opening brace, while the
     # source-written tag names the declaration. The compiler end is immutable.
     native = [{"path": "example.pl", "name": "Pkg::Multiline", "kind": "function", "line": 4, "end": 6},
