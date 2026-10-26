@@ -453,6 +453,11 @@ var extClassMap = map[string]classification{
 	// too) and .h are the dialect's through match.sniff and the header router.
 	".mm": {core.SourceKind("ObjCInterface"), "objective-c"},
 
+	// CUDA (LB-Q-cuda): a new tree-sitter dialect over tree-sitter-cuda, no
+	// incumbent; a .h a CUDA file includes is C or C++'s through the header router.
+	".cu":  {core.SourceKind("CudaFunc"), "cuda"},
+	".cuh": {core.SourceKind("CudaFunc"), "cuda"},
+
 	// HLSL (LB-Q-hlsl, wave 5): .hlsl, .hlsli and .fxh by extension; .fx (also a
 	// Flux config extension) by the dialect's match.sniff.
 	".hlsl":  {core.SourceKind("HlslFunc"), "hlsl"},

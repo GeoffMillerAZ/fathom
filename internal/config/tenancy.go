@@ -132,6 +132,7 @@ func ResolveTenancyConfigNotes(l Loaded, getenv func(string) string) (tenancy.Co
 	h := sub("host")
 	str(h, "shed_on_pressure", &cfg.Host.ShedOnPressure)
 	str(h, "refuse_on_pressure", &cfg.Host.RefuseOnPressure)
+	str(h, "floor_on_pressure", &cfg.Host.FloorOnPressure)
 	size(h, "refuse_on_swap_growth", &cfg.Host.RefuseOnSwapGrowth)
 	dur(h, "swap_growth_window", &cfg.Host.SwapGrowthWindow)
 	size(h, "min_swap_volume_free", &cfg.Host.MinSwapVolumeFree)

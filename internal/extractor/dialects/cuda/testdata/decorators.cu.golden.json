@@ -1,0 +1,78 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "CudaModule",
+      "package": "decorators",
+      "line": 1,
+      "end_line": 21,
+      "tier": "verified"
+    },
+    {
+      "name": "coeffs",
+      "kind": "CudaVariable",
+      "package": "decorators",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "counter",
+      "kind": "CudaVariable",
+      "package": "decorators",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "shared_buf",
+      "kind": "CudaVariable",
+      "package": "decorators",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "bump",
+      "kind": "CudaFunc",
+      "package": "decorators",
+      "line": 8,
+      "end_line": 8,
+      "signature": "__device__ __noinline__ int bump(int v)",
+      "tier": "verified"
+    },
+    {
+      "name": "tile",
+      "kind": "CudaFunc",
+      "package": "decorators",
+      "line": 10,
+      "end_line": 17,
+      "signature": "__global__ void tile(float *out, const float *__restrict__ in)",
+      "calls": [
+        "__syncthreads",
+        "bump"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "host_entry",
+      "kind": "CudaFunc",
+      "package": "decorators",
+      "line": 19,
+      "end_line": 21,
+      "signature": "void host_entry(float *out, const float *in)",
+      "calls": [
+        "tile"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "<cuda_runtime.h>",
+      "module": "<cuda_runtime.h>",
+      "kind": "whole",
+      "line": 2
+    }
+  ]
+}

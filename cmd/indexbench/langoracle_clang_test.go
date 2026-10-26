@@ -51,7 +51,7 @@ func TestCmdLangOracleClangCallSites(t *testing.T) {
 	out := filepath.Join(t.TempDir(), "cpp.json")
 	unm := filepath.Join(t.TempDir(), "unmatched.json")
 	args := []string{"-dialect", "cpp", "-manifest", filepath.Join("..", "..", "internal", "extractor", "dialects", "cpp", "dialect.json"), "-subject", subject,
-		"-ctags", filepath.Join(t.TempDir(), "none"), "-scip", scip, "-scip-defs", "-tool-oracle", sites, "-unmatched", unm,
+		"-ctags", filepath.Join(t.TempDir(), "none"), "-scip", scip, "-scip-tier", "A", "-scip-defs", "-tool-oracle", sites, "-unmatched", unm,
 		"-out", out, "-queue", filepath.Join("..", "..", "docs", "plans", "language-breadth.queue.json")}
 	var stdout, stderr bytes.Buffer
 	if code := cmdLangOracle(args, &stdout, &stderr); code != 0 {

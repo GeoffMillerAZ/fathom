@@ -165,6 +165,7 @@ exampleTenancy: #Config & {
 		host: {
 			shed_on_pressure:      "warn"
 			refuse_on_pressure:    "critical"
+			floor_on_pressure:     "warn"
 			refuse_on_swap_growth: "2GiB"
 			swap_growth_window:    "5m"
 			min_swap_volume_free:  "5GiB"
@@ -303,3 +304,7 @@ exampleShellWrappers: #Config & {shell: wrappers: [
 gateEvidence: #Config & {
 	gate: {accept_receipts: false, allow_receipt_acceptance: true, receipts_dir: "workspace/receipts", host_label: "helper"}
 }
+
+// All supported swap-volume floor pressure levels.
+floorAtNormal: #Config & {tenancy: host: floor_on_pressure: "normal"}
+floorAtCritical: #Config & {tenancy: host: floor_on_pressure: "critical"}

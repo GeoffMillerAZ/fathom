@@ -159,6 +159,21 @@
       "gz_bytes": 74133
     },
     {
+      "blob": "cuda",
+      "repo": "tree-sitter-grammars/tree-sitter-cuda",
+      "tag": "d58080a327756e4d1d16ec329ba7cb2048f6c6cd",
+      "commit": "d58080a327756e4d1d16ec329ba7cb2048f6c6cd",
+      "tarball_sha256": "18f7bcaf6115c7b9ca57505653e787c565f4cdc7886caf76a004c36e8aa1548a",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_cuda"],
+      "scanner": true,
+      "generate": false,
+      "abi": 15,
+      "blob_sha256": "82344832ffd95a2335d30a37665cec8285e41bf18526d88792d3d25b2b5d0129",
+      "blob_bytes": 3265801,
+      "gz_bytes": 741305
+    },
+    {
       "blob": "dart",
       "repo": "UserNobody14/tree-sitter-dart",
       "tag": "be07cf7118d3dba06236a3f19541685a68209934",

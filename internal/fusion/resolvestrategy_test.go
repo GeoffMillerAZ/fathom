@@ -322,6 +322,7 @@ func TestFileResolveLangsFromManifests(t *testing.T) {
 	want["thrift"] = "file-symbol" // LB-Q-thrift (wave lang7): include "x.thrift", beside the including file first
 	want["nix"] = "relative-path"  // LB-Q-nix (wave lang8): a path literal, and a name only where Nix binds it (u = import ./u.nix)
 	want["conan"] = "global-name"  // conan:global-name (L3 file edges)
+	want["cuda"] = "include-path"  // LB-Q-cuda: #include, the C/C++ convention
 	want["hlsl"] = "include-path"  // LB-Q-hlsl: #include "x.hlsli", beside the including file first
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("FileResolveLangs = %v, want %v", got, want)

@@ -274,14 +274,35 @@ func includeBase(spec string) string {
 // a header's text over-approximates what its parse would give (a commented
 // include counts), so nothing a parse would reach is left out.
 func reachableForeign(own map[string]extractor.FileSpecs, hs []foreignHeader) []foreignHeader {
+	src := make(map[string][]byte, len(hs))
+	paths := make([]string, len(hs))
+	for i, h := range hs {
+		src[h.path], paths[i] = h.src, h.path
+	}
+	return reachableForeignRead(own, paths, func(p string) ([]byte, bool) { b, ok := src[p]; return b, ok })
+}
+
+// reachableForeignRead is reachableForeign over header paths, read only once
+// an include names their base name (round 3 F6): a repository's unrelated
+// headers are never read, where the eager pass read every one to prune them.
+// A header read fails (ok false) is skipped, as an unreadable one was.
+func reachableForeignRead(own map[string]extractor.FileSpecs, paths []string, read func(string) ([]byte, bool)) []foreignHeader {
+	got := make([][]byte, len(paths))
+	ok := make([]bool, len(paths))
+	taken := make([]bool, len(paths))
 	if foreignPruneOff {
-		return hs
+		var out []foreignHeader
+		for _, p := range paths {
+			if b, ok := read(p); ok {
+				out = append(out, foreignHeader{p, b})
+			}
+		}
+		return out
 	}
 	byBase := map[string][]int{}
-	for i, h := range hs {
-		byBase[path.Base(h.path)] = append(byBase[path.Base(h.path)], i)
+	for i, p := range paths {
+		byBase[path.Base(p)] = append(byBase[path.Base(p)], i)
 	}
-	taken := make([]bool, len(hs))
 	var queue []string
 	for _, sp := range own {
 		for _, im := range sp.Imports {
@@ -298,7 +319,10 @@ func reachableForeign(own map[string]extractor.FileSpecs, hs []foreignHeader) []
 				continue
 			}
 			taken[i] = true
-			for _, line := range includeLineRE.FindAll(hs[i].src, -1) {
+			if got[i], ok[i] = read(paths[i]); !ok[i] {
+				continue
+			}
+			for _, line := range includeLineRE.FindAll(got[i], -1) {
 				for _, m := range includeTokenRE.FindAllSubmatch(line, -1) {
 					op := m[1]
 					if op == nil {
@@ -312,9 +336,9 @@ func reachableForeign(own map[string]extractor.FileSpecs, hs []foreignHeader) []
 		}
 	}
 	var out []foreignHeader
-	for i, h := range hs {
-		if taken[i] {
-			out = append(out, h)
+	for i, p := range paths {
+		if taken[i] && ok[i] {
+			out = append(out, foreignHeader{p, got[i]})
 		}
 	}
 	return out

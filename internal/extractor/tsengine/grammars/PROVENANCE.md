@@ -37,6 +37,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `cpp` | tree-sitter/tree-sitter-cpp | v0.23.4 | `f41e1a044c8a84ea9fa8577fdd2eab92ec96de02` | MIT | `tree_sitter_cpp` | `7a2c55afe3028f4105f25762ea58cc16537d1f5a1dcd9cca90410b3cd5d46051` |
 | `csharp` | tree-sitter/tree-sitter-c-sharp | v0.23.5 | `cac6d5fb595f5811a076336682d5d595ac1c9e85` | MIT | `tree_sitter_c_sharp` | `9628b164369071019368618bdefa446f0aab8acaac47b75d5dfb209e93b8903b` |
 | `css` | tree-sitter/tree-sitter-css | v0.25.0 | `dda5cfc5722c429eaba1c910ca32c2c0c5bb1a3f` | MIT | `tree_sitter_css` | `03965344d8c0435dc54fb45b281578420bb7db8b99df4d34e7e74105a274cb79` |
+| `cuda` | tree-sitter-grammars/tree-sitter-cuda | d58080a327756e4d1d16ec329ba7cb2048f6c6cd | `d58080a327756e4d1d16ec329ba7cb2048f6c6cd` | MIT | `tree_sitter_cuda` | `18f7bcaf6115c7b9ca57505653e787c565f4cdc7886caf76a004c36e8aa1548a` |
 | `dart` | UserNobody14/tree-sitter-dart | be07cf7118d3dba06236a3f19541685a68209934 | `be07cf7118d3dba06236a3f19541685a68209934` | MIT | `tree_sitter_dart` | `b126efb8dfeeba8b71f0c6ae1f0cd09cf8b205560786b31d44cc16b283e782f2` |
 | `dockerfile` | camdencheek/tree-sitter-dockerfile | v0.2.0 | `868e44ce378deb68aac902a9db68ff82d2299dd0` | MIT | `tree_sitter_dockerfile` | `8cbdf50838cc55e841aa9585a1a09e5b8c41454ae30ce0a93a7bd71adb140818` |
 | `elisp` | Wilfred/tree-sitter-elisp | 1.7.2 | `c0417c751a3dcc8724d1f2f6d1437a99dee1e090` | MIT | `tree_sitter_elisp` | `6a5c3df34b5bb1b4fbc1386fc0f24a205ddfff0720801899c3d1b3e3593fa670` |
@@ -95,6 +96,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `cpp` | (root) | yes | 14 | 1,935,648 | 420,154 | `b5ca4b0cd346bc1cd1060fdc2151125a11ad7695da595157667a5e8b30b03e34` |
 | `csharp` | (root) | yes | 15 | 3,056,786 | 603,861 | `b0700502f93f8e6fa577c47faa1dfcd53ae8b7467d16c621102238e75de8159f` |
 | `css` | (root) | yes | 15 | 250,838 | 74,133 | `e99413feca59f90b54899d5257f0068ea82fea71e30aeb55f6342a104c23fd2f` |
+| `cuda` | (root) | yes | 15 | 3,265,801 | 741,305 | `82344832ffd95a2335d30a37665cec8285e41bf18526d88792d3d25b2b5d0129` |
 | `dart` | (root) | yes | 15 | 914,734 | 205,433 | `50a95508f349684542905dae851d05c6833f7ff517b2db2ecd34bf91219ca4e8` |
 | `dockerfile` | (root) | yes | 14 | 171,375 | 69,325 | `81274400989b6ac9f9d9d0cc9618b0ca5045214742468279fdf089d214e5b6ac` |
 | `elisp` | (root) | no | 15 | 176,723 | 62,982 | `f207321d3e54d07838a585601113055624294da210c90c9de637cf31a2a6b397` |

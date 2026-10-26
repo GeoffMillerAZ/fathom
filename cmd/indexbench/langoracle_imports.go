@@ -245,7 +245,11 @@ func scoreImportsOracle(path string, si *subjectImports, sub *langbench.Subject)
 	for _, e := range stmts {
 		refs = append(refs, langbench.OracleImport{Path: e.Path, Line: e.Line, ToPath: e.ToPath, Explicit: true})
 	}
-	if err := si.score(refs, orDefault(tf.Tier, "A"), orDefault(tf.Tool, path), sub); err != nil {
+	tier, err := oracleFileTier(path, tf.Tier) // round 4 C4-R2
+	if err != nil {
+		return err
+	}
+	if err := si.score(refs, tier, orDefault(tf.Tool, path), sub); err != nil {
 		return err
 	}
 	if si.ok {
@@ -307,12 +311,16 @@ func scoreImportFileEdges(ctx context.Context, path, lang, root, name string, fi
 	if _, done := sub.Families[langbench.FamilyFileEdges]; done {
 		return nil, nil, fmt.Errorf("%s: file-edge truth given alongside another (an earlier file's imports); measure one per subject", orDefault(tf.Tool, path))
 	}
+	tier, err := oracleFileTier(path, tf.Tier) // round 4 C4-R2
+	if err != nil {
+		return nil, nil, err
+	}
 	edges, rep := fusion.ResolveFileEdges(ctx, lang, root, files, nodes)
 	if rep.Skipped {
 		return []string{name + ": file-resolved edges not measured: " + rep.SkipReason}, nil, nil
 	}
 	langbench.ScoreFileEdges(truth, edges, nodes, sub.Counts)
-	sub.Families[langbench.FamilyFileEdges] = orDefault(tf.Tier, "A")
+	sub.Families[langbench.FamilyFileEdges] = tier
 	diff = &fileEdgeDiff{truth: truth, mine: fileEdgePairs(edges, nodes), via: fileEdgeVia(edges, nodes)}
 	diff.by = fileEdgeBy(edges, nodes)
 	notes = []string{noteFileEdgesFromImports}
@@ -378,6 +386,10 @@ func scoreRangeCompanion(toolOracle string, si *subjectImports, sub *langbench.S
 	if err := json.Unmarshal(b, &rc); err != nil {
 		return fmt.Errorf("%s: %w", rangeCompanionFile(toolOracle), err)
 	}
+	tier, err := oracleFileTier(rangeCompanionFile(toolOracle), rc.Tier) // round 4 C4-R2
+	if err != nil {
+		return err
+	}
 	if _, ok := sub.Families[langbench.FamilyL1]; !ok {
 		return nil // no L1 oracle ran for this subject: range_agreement has no family
 	}
@@ -408,7 +420,6 @@ func scoreRangeCompanion(toolOracle string, si *subjectImports, sub *langbench.S
 	res := langbench.ScoreL1(m, rangeCompanionOracle, si.nodes, defs)
 	sub.Counts[langbench.CntRangeEligible] += res.Counts[langbench.CntRangeEligible]
 	sub.Counts[langbench.CntRangeOK] += res.Counts[langbench.CntRangeOK]
-	tier := orDefault(rc.Tier, "A")
 	if rc.Scope == "" {
 		si.notes = append(si.notes, fmt.Sprintf("%s: "+noteRangeCompanion, si.name, orDefault(rc.Tool, "clang"), tier, orDefault(rc.Version, "unversioned"), rc.Units, rc.Errored, res.Counts[langbench.CntRangeEligible]))
 		return nil

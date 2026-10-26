@@ -80,7 +80,7 @@ func TestCmdLangOracleScipClangImportsFromDump(t *testing.T) {
 	subject := copyFixture(t, "cfixture")
 	out := filepath.Join(t.TempDir(), "c.json")
 	args := []string{"-dialect", "c", "-manifest", filepath.Join("..", "..", "internal", "extractor", "dialects", "c", "dialect.json"), "-subject", subject, "-ctags", filepath.Join(t.TempDir(), "none"),
-		"-scip", clangFixtureIndex(t), "-tool-oracle", filepath.Join("testdata", "clang-includes-cfixture.json"),
+		"-scip", clangFixtureIndex(t), "-scip-tier", "A", "-tool-oracle", filepath.Join("testdata", "clang-includes-cfixture.json"),
 		"-out", out, "-queue", filepath.Join("..", "..", "docs", "plans", "language-breadth.queue.json")}
 	var stdout, stderr bytes.Buffer
 	if code := cmdLangOracle(args, &stdout, &stderr); code != 0 {
@@ -120,7 +120,7 @@ func TestCmdLangOracleScipClangDefsScopedToIndexedFiles(t *testing.T) {
 	}
 	out := filepath.Join(t.TempDir(), "c.json")
 	args := []string{"-dialect", "c", "-manifest", filepath.Join("..", "..", "internal", "extractor", "dialects", "c", "dialect.json"), "-subject", subject,
-		"-ctags", filepath.Join(t.TempDir(), "none"), "-scip", scip, "-scip-defs",
+		"-ctags", filepath.Join(t.TempDir(), "none"), "-scip", scip, "-scip-tier", "A", "-scip-defs",
 		"-out", out, "-queue", filepath.Join("..", "..", "docs", "plans", "language-breadth.queue.json")}
 	var stdout, stderr bytes.Buffer
 	if code := cmdLangOracle(args, &stdout, &stderr); code != 0 {
@@ -171,7 +171,7 @@ func TestCmdLangOracleScipClangDefsDropInactiveLines(t *testing.T) {
 	run := func(extra ...string) (langbench.Reading, []byte) {
 		out := filepath.Join(t.TempDir(), "c.json")
 		args := append([]string{"-dialect", "c", "-manifest", filepath.Join("..", "..", "internal", "extractor", "dialects", "c", "dialect.json"), "-subject", subject,
-			"-ctags", filepath.Join(t.TempDir(), "none"), "-scip", scip, "-scip-defs",
+			"-ctags", filepath.Join(t.TempDir(), "none"), "-scip", scip, "-scip-tier", "A", "-scip-defs",
 			"-out", out, "-queue", filepath.Join("..", "..", "docs", "plans", "language-breadth.queue.json")}, extra...)
 		var stdout, stderr bytes.Buffer
 		if code := cmdLangOracle(args, &stdout, &stderr); code != 0 {
@@ -203,7 +203,7 @@ func TestCmdLangOracleFileEdgeTruthScopedToMeasuredFiles(t *testing.T) {
 	subject := copyFixture(t, "cfixture")
 	out := filepath.Join(t.TempDir(), "c.json")
 	args := []string{"-dialect", "c", "-manifest", filepath.Join("..", "..", "internal", "extractor", "dialects", "c", "dialect.json"), "-subject", subject,
-		"-ctags", filepath.Join(t.TempDir(), "none"), "-scip", clangFixtureIndex(t), "-only", "main.c",
+		"-ctags", filepath.Join(t.TempDir(), "none"), "-scip", clangFixtureIndex(t), "-scip-tier", "A", "-only", "main.c",
 		"-out", out, "-queue", filepath.Join("..", "..", "docs", "plans", "language-breadth.queue.json")}
 	var stdout, stderr bytes.Buffer
 	if code := cmdLangOracle(args, &stdout, &stderr); code != 0 {
@@ -233,7 +233,7 @@ func TestCmdLangOracleFileEdgesDropInactiveCallers(t *testing.T) {
 	run := func(extra ...string) (langbench.Reading, []byte) {
 		out := filepath.Join(t.TempDir(), "c.json")
 		args := append([]string{"-dialect", "c", "-manifest", filepath.Join("..", "..", "internal", "extractor", "dialects", "c", "dialect.json"), "-subject", subject,
-			"-ctags", filepath.Join(t.TempDir(), "none"), "-scip", clangFixtureIndex(t),
+			"-ctags", filepath.Join(t.TempDir(), "none"), "-scip", clangFixtureIndex(t), "-scip-tier", "A",
 			"-out", out, "-queue", filepath.Join("..", "..", "docs", "plans", "language-breadth.queue.json")}, extra...)
 		var stdout, stderr bytes.Buffer
 		if code := cmdLangOracle(args, &stdout, &stderr); code != 0 {

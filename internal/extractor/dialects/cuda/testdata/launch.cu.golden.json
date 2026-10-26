@@ -1,0 +1,57 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "CudaModule",
+      "package": "launch",
+      "line": 1,
+      "end_line": 26,
+      "tier": "verified"
+    },
+    {
+      "name": "run",
+      "kind": "CudaFunc",
+      "package": "launch",
+      "line": 5,
+      "end_line": 12,
+      "signature": "static void run(float *d_out, const float *d_in, int n)",
+      "calls": [
+        "cudaDeviceSynchronize",
+        "kern.fill",
+        "kern.scale"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "main",
+      "kind": "CudaFunc",
+      "package": "launch",
+      "line": 14,
+      "end_line": 26,
+      "signature": "int main(int argc, char **argv)",
+      "calls": [
+        "cudaFree",
+        "cudaMalloc",
+        "printf",
+        "r.add",
+        "r.total",
+        "run"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "kernels.cuh",
+      "module": "kernels.cuh",
+      "kind": "whole",
+      "line": 2
+    },
+    {
+      "local": "<cstdio>",
+      "module": "<cstdio>",
+      "kind": "whole",
+      "line": 3
+    }
+  ]
+}

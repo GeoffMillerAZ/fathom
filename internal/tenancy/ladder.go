@@ -267,7 +267,7 @@ func StepLadder(st *LadderState, s *Sample, b *Budget) Transition {
 		refuse = whyPressureCritical
 	case combined >= b.Shed && st.swapGrowth(s, b.Host.SwapGrowthWindow) > b.Host.SwapGrowth:
 		refuse = whySwapGrowth
-	case s.SwapVolumeFree >= 0 && s.SwapVolumeFree < b.Host.MinSwapVolumeFree:
+	case pressureAtLeast(s.Pressure, b.Host.FloorOnPressure) && s.SwapVolumeFree >= 0 && s.SwapVolumeFree < b.Host.MinSwapVolumeFree:
 		refuse = whySwapVolume
 	}
 	exit := whyNone

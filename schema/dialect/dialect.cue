@@ -99,13 +99,16 @@ import "struct"
 	// (O148). "cpp-macros" blanks C++ decorator macros by where they are
 	// written and reads try and catch macros as the keywords, at equal byte
 	// length, then also blanks the conditional directive lines (O455).
+	// "cuda-macros" blanks `__align__(N)` and explicit instantiations
+	// (`template class K<float>;`), reads `typeid` as `sizeof` (typeid of a
+	// builtin type), then runs the C++ step, at equal byte length (LB-Q-cuda).
 	// "objc-macros" reads `typedef NS_ENUM(T, Name)` and its siblings as
 	// `enum Name`, at equal byte length (LB-Q-objective-c). "jinja-templates"
 	// blanks a text line's `# ` and reads `in` / `not in` outside a for header
 	// as `==` / `!=`, at equal byte length (LB-Q-jinja2). "hlsl-macros"
 	// blanks a cbuffer or tbuffer header's register clause, at equal byte
 	// length (LB-Q-hlsl).
-	preprocess?: "csharp-conditionals" | "cpp-macros" | "objc-macros" | "tailwind-at-rules" | "jinja-templates" | "hlsl-macros"
+	preprocess?: "csharp-conditionals" | "cpp-macros" | "cuda-macros" | "objc-macros" | "tailwind-at-rules" | "jinja-templates" | "hlsl-macros"
 
 	// imports.strategy is from §6's closed set; the parameters are the
 	// closed set extractor.ImportParams decodes (LB-F11) — each strategy

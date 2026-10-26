@@ -230,9 +230,9 @@ func TestLadder_SwapFractionAloneNeverSheds(t *testing.T) {
 	}
 	r.want(LevelShed, "slow swap growth")
 
-	// Swap-volume free space below 5 GiB refuses whatever the footprint.
+	// Swap-volume free space below 5 GiB refuses at warn whatever the footprint.
 	r = newRig(t)
-	r.h.swapVolFree = 4 * GiB
+	r.h.pressure, r.h.swapVolFree = PressureWarn, 4*GiB
 	r.stepN(2)
 	r.want(LevelRefuse, "swap volume under 5 GiB free")
 }
@@ -328,8 +328,7 @@ func TestHostSampler_UnknownDisclosedNeverTriggers(t *testing.T) {
 // or above the host allowance ([tenancy.host] allowance × budget, default
 // 0.45 = 0.6 × shed_at; an explicit 0 is the old rule). A pressure-entered
 // rung steps down when pressure clears, or when combined stays under 0.6 ×
-// the allowance for 60 s. Pressure critical and the swap-volume floor are
-// unchanged.
+// the allowance for 60 s. Pressure critical still refuses at any footprint.
 func TestLadder_PressureBelowAllowanceStaysNormal(t *testing.T) {
 	host := HostFacts{RAM: 32 * GiB, NumCPU: 12, Managed: true} // 4 GiB budget, shed 3 GiB
 	t.Run("the allowance resolves with its derivation", func(t *testing.T) {
@@ -438,14 +437,69 @@ func TestLadder_PressureBelowAllowanceStaysNormal(t *testing.T) {
 		r.stepN(1)
 		r.want(LevelNormal, "pressure cleared: 60 s below 0.6 × the shed mark")
 	})
-	t.Run("a floor refuse at normal pressure is unchanged", func(t *testing.T) {
+	t.Run("the floor at normal pressure stays normal by default", func(t *testing.T) {
 		r := newRig(t)
-		r.h.footprint = 70 * MiB
 		r.h.swapVolFree = 3 * GiB
-		tr := r.stepN(2)
-		r.want(LevelRefuse, "swap volume under 5 GiB at normal pressure")
-		if tr.Cause.Trigger != TriggerSwapVolume || !strings.Contains(tr.Reason, "swap volume free") {
-			t.Fatalf("the floor names itself: %+v", tr)
+		r.stepN(100)
+		r.want(LevelNormal, "swap volume under 5 GiB at normal pressure")
+	})
+}
+
+func TestLadder_SwapVolumeFloorOnPressure(t *testing.T) {
+	t.Run("warn refuses after two samples with a host floor cause", func(t *testing.T) {
+		r := newRig(t)
+		r.h.pressure, r.h.swapVolFree = PressureWarn, 3*GiB
+		if tr := r.step(0); tr.Changed {
+			t.Fatalf("one floor sample moved the ladder: %+v", tr)
 		}
+		r.want(LevelNormal, "one floor sample")
+		tr := r.step(0)
+		r.want(LevelRefuse, "two floor samples at warn")
+		if tr.Cause.Kind != CauseHost || tr.Cause.Trigger != TriggerSwapVolume || !strings.Contains(tr.Reason, "swap volume free") {
+			t.Fatalf("floor must retain its host cause and trigger: %+v", tr)
+		}
+	})
+	t.Run("normal restores the floor at normal pressure", func(t *testing.T) {
+		r := newRig(t)
+		r.b, _ = ResolveBudget(Config{Host: HostConfig{FloorOnPressure: "normal"}}, HostFacts{RAM: 32 * GiB, Managed: true})
+		r.h.swapVolFree = 3 * GiB
+		r.step(0)
+		r.want(LevelNormal, "one floor sample")
+		r.step(0)
+		r.want(LevelRefuse, "configured normal floor")
+	})
+	t.Run("critical ignores the floor at warn", func(t *testing.T) {
+		r := newRig(t)
+		r.b, _ = ResolveBudget(Config{Host: HostConfig{FloorOnPressure: "critical"}}, HostFacts{RAM: 32 * GiB, Managed: true})
+		r.h.pressure, r.h.swapVolFree = PressureWarn, 3*GiB
+		r.stepN(100)
+		r.want(LevelNormal, "warn below configured critical floor")
+	})
+	t.Run("normal pressure clears confirmation", func(t *testing.T) {
+		r := newRig(t)
+		r.h.pressure, r.h.swapVolFree = PressureWarn, 3*GiB
+		r.step(0)
+		r.h.pressure = PressureNormal
+		r.step(0)
+		r.h.pressure = PressureWarn
+		r.step(0)
+		r.want(LevelNormal, "warn samples separated by normal do not confirm")
+		r.step(0)
+		r.want(LevelRefuse, "two consecutive warn floor samples")
+	})
+	t.Run("a floor refuse steps down when pressure returns to normal", func(t *testing.T) {
+		r := newRig(t)
+		r.h.pressure, r.h.swapVolFree = PressureWarn, 3*GiB
+		r.stepN(2)
+		r.want(LevelRefuse, "floor at warn")
+		r.stepN(40)
+		r.want(LevelRefuse, "warn holds the floor refuse")
+		r.h.pressure = PressureNormal
+		r.stepN(30)
+		r.want(LevelRefuse, "normal pressure for 58 s")
+		r.step(0)
+		r.want(LevelShed, "normal pressure for 60 s steps down one rung")
+		r.stepN(31)
+		r.want(LevelNormal, "another 60 s steps down to normal")
 	})
 }

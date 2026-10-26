@@ -141,6 +141,10 @@ bad16: #Config & {
 		refuse_at: 0.5
 	}
 }`},
+		{"[tenancy.host] floor_on_pressure cannot be off", `
+badFloorOnPressure: #Config & {
+	tenancy: host: floor_on_pressure: "off"
+}`},
 		{"[tenancy.host] allowance above 1", `
 bad42: #Config & {
 	tenancy: host: allowance: 1.5

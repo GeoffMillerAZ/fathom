@@ -503,8 +503,10 @@ package config
 	notify?:            bool
 
 	host?: {
-		shed_on_pressure?:      #Pressure
-		refuse_on_pressure?:    #Pressure
+		shed_on_pressure?:   #Pressure
+		refuse_on_pressure?: #Pressure
+		// Swap-volume floor applies at or above this pressure; unset = warn.
+		floor_on_pressure?:     "normal" | "warn" | "critical"
 		refuse_on_swap_growth?: #Size
 		swap_growth_window?:    #Duration
 		min_swap_volume_free?:  #Size
