@@ -388,7 +388,9 @@ type SCIPOptions struct {
 	TypeLiteralMembers bool
 	// DefScope is the documents the reading measures (lang-oracle's inScope:
 	// the dialect's files, a variant's included, inside -only, that ingest's
-	// gates keep), handed over when DefScoped; nil scopes nothing.
+	// gates keep). It scopes def_mapping only when DefScoped; scip-go counts a
+	// miss in another document by it (scip_go_defs_unmeasured). nil scopes
+	// nothing.
 	DefScope map[string]bool
 	// FileEdgesOracleBlind: lang-oracle leaves out of the file-edge comparison
 	// a pair the truth lacks whose every written site has no occurrence of the
@@ -652,7 +654,7 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 				continue
 			}
 			_, mappedOK := mapTo(name, true)
-			goDefs.count(o.GetSymbol(), mappedOK) // scip_go.go: Go's def_mapping misses by descriptor class (LB-F299)
+			goDefs.count(o.GetSymbol(), mappedOK, opts.DefScope == nil || opts.DefScope[def.doc]) // scip_go.go: Go's def_mapping misses by descriptor class (LB-F299)
 			if mappedOK {
 				if !generated && !namespace && !objectLiteral && !outOfScope && !typeLiteral {
 					res.Counts[CntScipDefsMapped]++

@@ -330,6 +330,7 @@ func TestGoSCIPNotes(t *testing.T) {
 		"scip_go_defs_unmapped_field": 3, "scip_go_defs_unmapped_func": 2,
 		langbench.CntScipEdges: 1000, langbench.CntScipEdgesTyped: 990, langbench.CntScipEdgesNamespaceTarget: 100,
 		"scip_go_unmapped_to_field": 7, "scip_go_unmapped_from_field": 3,
+		langbench.CntScipGoDefsUnmeasured: 2, "scip_go_test_unmapped_to_field": 4,
 	}
 	notes := strings.Join(goSCIPNotes("s/x", counts), "\n")
 	for _, want := range []string{
@@ -338,6 +339,8 @@ func TestGoSCIPNotes(t *testing.T) {
 		"scip-go's 100 named definitions, 95 mapped to a fathom symbol; unmapped definitions by class: field 3, func 2",
 		"20 package-clause definitions name a Go package, a namespace (K18): out of def_mapping, counted (scip_defs_namespace)",
 		"of scip-go's 1000 edges between definitions, 990 import as typed edges; unmapped endpoints by class: from_field 3, to_field 7",
+		"2 of them in a file the reading does not measure (a directory fathom's corpus prunes by name, RT-145's default list: no symbol to map to, still counted)",
+		"of those endpoints, a reference in a _test.go file: to_field 4 (a member pass storing no field reference from a test file, O673's first lever, would still miss them)",
 		"100 references to a Go package are a namespace's (K18): out of typed_recall, counted (scip_edges_namespace_target)",
 	} {
 		if !strings.Contains(notes, want) {

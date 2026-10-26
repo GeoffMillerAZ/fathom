@@ -7,6 +7,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	fscip "github.com/geoffmilleraz/fathom/internal/scip"
 	scippb "github.com/geoffmilleraz/fathom/third_party/scip"
 )
 
@@ -203,5 +204,63 @@ func TestScoreSCIPGoDropsDocumentsOutsideTheSubject(t *testing.T) {
 	}
 	if got := res.Counts[CntScipGoDocsOutside]; got != 1 {
 		t.Errorf("%s = %d, want 1", CntScipGoDocsOutside, got)
+	}
+}
+
+// TestScoreSCIPGoUnmeasuredDocumentMisses: a definition scip-go writes in a
+// document the reading does not measure (a directory fathom's corpus prunes
+// by name, cli/cli's internal/build under RT-145's default list) has no
+// fathom symbol to map to. It stays in def_mapping, whose denominator only an
+// owner ruling narrows (L5 is TypeScript's and JavaScript's), and is counted
+// as a subset of its class's misses (scip_go_defs_unmeasured), so the reading
+// names it apart from a field.
+func TestScoreSCIPGoUnmeasuredDocumentMisses(t *testing.T) {
+	const pkg = "scip-go gomod example.com/m v0.0.0 `example.com/m/build`/"
+	def := func(sym string, enc []int32, rng ...int32) *scippb.Occurrence {
+		return &scippb.Occurrence{Symbol: sym, Range: rng, EnclosingRange: enc, SymbolRoles: int32(scippb.SymbolRole_Definition)}
+	}
+	idx := &scippb.Index{Metadata: &scippb.Metadata{ToolInfo: &scippb.ToolInfo{Name: "scip-go", Version: "0.2.7"}},
+		Documents: []*scippb.Document{
+			{RelativePath: "build/build.go", Occurrences: []*scippb.Occurrence{def(pkg+"Version.", nil, 2, 4, 11), def(pkg+"init().", []int32{4, 0, 6, 1}, 4, 5, 9)}},
+			{RelativePath: "main.go", Occurrences: []*scippb.Occurrence{def(pkg+"Run().", []int32{2, 0, 2, 14}, 2, 5, 8), def(pkg+"T#f.", nil, 3, 1, 2)}},
+		}}
+	raw, err := proto.Marshal(idx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nodes := []core.SymbolNode{{Service: "s", Package: "build", Name: "Run", FilePath: "main.go", Line: 3, EndLine: 3, Kind: core.KindGoFunc}}
+	opts := SCIPOptionsFor("go", nil)
+	opts.DefScope = map[string]bool{"main.go": true}
+	res, err := ScoreSCIPWith(raw, "s", nodes, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for k, want := range map[string]int{
+		CntScipDefs: 4, CntScipDefsMapped: 1, CntScipGoDefsUnmeasured: 2,
+		"scip_go_defs_unmapped_field": 1, "scip_go_defs_unmapped_func": 1, "scip_go_defs_unmapped_package-var": 1,
+	} {
+		if got := res.Counts[k]; got != want {
+			t.Errorf("%s = %d, want %d (counts %v)", k, got, want, res.Counts)
+		}
+	}
+	opts.DefScope = nil
+	if res, err = ScoreSCIPWith(raw, "s", nodes, opts); err != nil {
+		t.Fatal(err)
+	}
+	if got := res.Counts[CntScipGoDefsUnmeasured]; got != 0 {
+		t.Errorf("no scope handed over: %s = %d, want 0", CntScipGoDefsUnmeasured, got)
+	}
+}
+
+// TestGoSkipCountsTestFileSubset (O673's first lever measured): an unmapped
+// endpoint counted again under scip.SkipTestFilePrefix becomes
+// scip_go_test_unmapped_<side>_<class>, outside the scip_go_unmapped_ class
+// list it is a subset of.
+func TestGoSkipCountsTestFileSubset(t *testing.T) {
+	counts := map[string]int{}
+	goSkipCounts(map[string]int{"to:field": 5, fscip.SkipTestFilePrefix + "to:field": 2}, counts)
+	want := map[string]int{"scip_go_unmapped_to_field": 5, "scip_go_test_unmapped_to_field": 2}
+	if !reflect.DeepEqual(counts, want) {
+		t.Errorf("counts = %v, want %v", counts, want)
 	}
 }

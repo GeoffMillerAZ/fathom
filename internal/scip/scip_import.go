@@ -854,7 +854,7 @@ func fromIndex(service string, idx *scippb.Index, nodes []core.SymbolNode) Impor
 			fromDef := enclosingFrom(st.defs, di)
 			if !fromDef.mapped {
 				rep.Skipped["unmapped-endpoint"]++
-				rep.noteGoSkip("from", fromDef.scipSymbol)
+				rep.noteGoSkip("from", fromDef.scipSymbol, st.doc.GetRelativePath())
 				continue
 			}
 			fromKey := fromDef.node.Key()
@@ -870,7 +870,7 @@ func fromIndex(service string, idx *scippb.Index, nodes []core.SymbolNode) Impor
 				// OWN mapping failed — never emit an edge to a key that
 				// does not exist (O115).
 				rep.Skipped["unmapped-endpoint"]++
-				rep.noteGoSkip("to", toSym)
+				rep.noteGoSkip("to", toSym, st.doc.GetRelativePath())
 				continue
 			default:
 				edge = core.Edge{FromService: service, FromFile: st.doc.GetRelativePath(), FromSymbol: fromKey, ToSymbol: unresolvedMarker(toSym), Kind: core.EdgeUnresolved}

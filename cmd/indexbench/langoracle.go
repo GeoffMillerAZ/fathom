@@ -1024,9 +1024,9 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 				scipOpts.ClangScope = inScope // LB-F292: L4 over the files the reading measures
 			}
 		}
-		if scipOpts.DefScoped {
-			scipOpts.DefScope = inScope // ruling L5 (LB-F467): def_mapping over the files the reading measures
-		}
+		// ruling L5 (LB-F467): def_mapping over the files the reading measures
+		// when DefScoped; scip-go counts its misses outside them, scoping nothing
+		scipOpts.DefScope = inScope
 		if spec.Manifest.ID == "csharp" {
 			// LB-F287: the C# compiler's semantic model, when an oracle file
 			// carries its call sites (langoracle_csharp.go).
