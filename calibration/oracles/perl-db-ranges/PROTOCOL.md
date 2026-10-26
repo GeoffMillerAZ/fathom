@@ -137,3 +137,20 @@ The first compliant Mojo attempt had 30 unresolved files: 10 compile failures,
 not compiler runtime and not evidence of a language ceiling. Load waits count
 against the 600-second total deadline; each 2-second compile budget starts only
 after load falls to 9 or below. Every source remains in the denominator.
+
+## Canonical result and bounded method control before holdout
+
+The compliant repeat is complete: 527/543 units compiled for range evidence;
+2,870/2,922 named subroutine ends paired uniquely, all agreeing with Fathom.
+The candidate reading remains L2 good with PPI calls at tier C; L1 becomes
+excellent. Uncompiled units remain unresolved and counted. Stock Xref's
+7,747 direct records and 11,408 non-direct unknown records are a diagnostic
+census, not a grade. Earlier debugger-mode Xref records are invalid.
+
+Before the independent validation, a fixed synthetic METHOP adapter control
+checks literal method-name availability. It exposes two literal names but
+leaves an anonymous-closure call and an optimized constant call unresolved.
+It changes no canonical source, PPI call rule, range join or acceptance bar.
+The companion remains range-only; no call-oracle promotion is preregistered.
+The committed count/hash collector projects the full repeat without subject
+file lists or people. Dancer2 remains unspent until this instrument is frozen.
