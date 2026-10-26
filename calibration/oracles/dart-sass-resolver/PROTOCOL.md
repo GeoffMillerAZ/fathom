@@ -73,3 +73,9 @@ python3 /path/to/provenance-checkout/calibration/oracles/dart-sass-resolver/coll
 tracked and untracked SCSS symlink, and primary hash controls without Dart,
 package setup, or corpus reads. Synthetic adapter behavior belongs to
 `test/synthetic.dart`; it also runs only against synthetic inputs.
+
+Pre-corpus wrapper erratum: the first launch refused before starting Dart
+because sass_api publishes a valid JSON-form pubspec.yaml. Parse that JSON
+form as well as block-YAML name/version fields, with both formats and a wrong
+pin covered by synthetic controls. No source, oracle rule, threshold or
+holdout changed, and no native corpus measurement preceded this fix.

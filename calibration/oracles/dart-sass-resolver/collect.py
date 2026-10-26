@@ -183,10 +183,18 @@ def package_pins(config_path: Path) -> tuple[dict[str, str], dict[str, str]]:
         if not manifest.is_file():
             raise Refusal(f"{name} package has no pubspec.yaml")
         contents = manifest.read_text()
-        found_name = re.search(r"(?m)^name:\s*['\"]?([^'\"\s]+)", contents)
-        found_version = re.search(r"(?m)^version:\s*['\"]?([^'\"\s]+)", contents)
-        actual_name = found_name.group(1) if found_name else ""
-        actual_version = found_version.group(1) if found_version else ""
+        try:
+            identity = json.loads(contents)
+        except json.JSONDecodeError:
+            # Pub accepts JSON pubspecs because JSON is a YAML subset.
+            found_name = re.search(r"(?m)^name:\s*['\"]?([^'\"\s]+)", contents)
+            found_version = re.search(r"(?m)^version:\s*['\"]?([^'\"\s]+)", contents)
+            identity = {"name": found_name.group(1) if found_name else "",
+                        "version": found_version.group(1) if found_version else ""}
+        if not isinstance(identity, dict):
+            raise Refusal(f"{name} pubspec is not a mapping")
+        actual_name = identity.get("name", "")
+        actual_version = identity.get("version", "")
         if actual_name != name or actual_version != version:
             raise Refusal(f"package pin mismatch for {name}: {actual_name} {actual_version}")
         versions[name] = actual_version
@@ -299,7 +307,26 @@ def selftest() -> None:
                 raise AssertionError("invalid primary enrichment accepted")
             except Refusal:
                 pass
-    print("selftest: scope/inventory, dirty subject, symlinks, primary hash, preservation/schema controls: PASS")
+    with tempfile.TemporaryDirectory(prefix="sass-package-selftest-") as tmp:
+        base = Path(tmp)
+        packages = []
+        for name, version in (("sass_api", PINNED_SASS_API), ("sass", PINNED_SASS)):
+            folder = base / name
+            folder.mkdir()
+            body = json.dumps({"name": name, "version": version}) if name == "sass_api" else f"name: {name}\nversion: {version}\n"
+            (folder / "pubspec.yaml").write_text(body)
+            packages.append({"name": name, "rootUri": folder.as_uri()})
+        config = base / "package_config.json"
+        config.write_text(json.dumps({"packages": packages}))
+        versions, _ = package_pins(config)
+        assert versions == {"sass_api": PINNED_SASS_API, "sass": PINNED_SASS}
+        (base / "sass_api/pubspec.yaml").write_text('{"name":"sass_api","version":"0.0.0"}')
+        try:
+            package_pins(config)
+            raise AssertionError("wrong JSON package pin accepted")
+        except Refusal:
+            pass
+    print("selftest: scope/inventory, source, preservation/schema, JSON/YAML package pins: PASS")
 
 
 def main() -> int:
