@@ -13,6 +13,7 @@ HERE = Path(__file__).resolve().parent
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-cache', type=Path, required=True)
+    parser.add_argument('-observe-upstreams', action='store_true', help='bench-only native parser population observer')
     args = parser.parse_args()
     cache = args.cache.resolve()
     cache.mkdir(parents=True, exist_ok=True)
@@ -36,6 +37,16 @@ if __name__ == '__main__':
                 tar.extractall(cache)
     versions = {item['name'].split('-')[0]: item['name'] for item in protocol['build_inputs']}
     source = cache / versions['nginx']
+    observation = None
+    if args.observe_upstreams:
+        # Restore just these pinned originals on a resumed build: never apply
+        # the observer twice or alter the native function bodies.
+        with tarfile.open(cache / (versions['nginx'] + '.tar.gz'), 'r:gz') as archive:
+            for domain in ('http', 'stream'):
+                relative = 'src/' + domain + '/ngx_' + domain + '_upstream.c'
+                (source / relative).write_bytes(archive.extractfile(versions['nginx'] + '/' + relative).read())
+        from instrument_source import instrument
+        observation = instrument(source)
     features = ['--with-threads', '--with-pcre-jit', '--with-http_ssl_module', '--with-http_v2_module',
                 '--with-http_v3_module', '--with-http_realip_module', '--with-http_addition_module',
                 '--with-http_sub_module', '--with-http_dav_module', '--with-http_flv_module',
@@ -56,5 +67,7 @@ if __name__ == '__main__':
     receipt = {'version': protocol['version'], 'binary_sha256': hashlib.sha256(binary.read_bytes()).hexdigest(),
                'build_inputs': protocol['build_inputs'], 'configure_features': features,
                'backend_requests_executed': False, 'server_started': False}
+    if observation:
+        receipt['native_population_observer'] = observation
     (cache / 'build-receipt.json').write_text(json.dumps(receipt, indent=2) + '\n')
     print(protocol['version'], receipt['binary_sha256'])
