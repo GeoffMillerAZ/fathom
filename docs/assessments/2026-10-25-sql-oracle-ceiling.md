@@ -5,7 +5,7 @@ attest all **17** inline foreign-key pairs in the unchanged D2 scopes, including
 three Pagila temporal pairs absent from sqlglot's truth. The new
 [reading](../bench/readings/lang/sql.json) has call precision and recall 1 at tier A;
 L1 metrics are unchanged. The replay's median of three pooled measurements is
-2.02 MB/CPU-s (2.09, 2.02, 1.95), with zero faults. This withdraws the added
+2.09 MB/CPU-s (2.10, 2.09, 1.98), with zero faults. This withdraws the added
 LB-Q-sql-l2-rest deferral; LB-Q-sql-rest retains its existing checkbox and L1
 contract. No generated tracker, extractor, corpus scope or plan box changed.
 
@@ -20,7 +20,7 @@ contract. No generated tracker, extractor, corpus scope or plan box changed.
 | Python sqlite3, whole-file route | SQLite 3.43.2 | Historical fresh-database `executescript`: 17/28 Sqitch files complete. Wrong engine for eight PostgreSQL fixtures; missing prerequisites stop upgrades. This failed setup was not an impossibility result. |
 | PGlite, whole-file route without vector | 0.5.11, PostgreSQL 18.6 | Historical Pagila main schema stops at missing vector; temporal file stops at unsupported DML. Whole-file parsing hides valid DDL. Superseded below. |
 | Native SQLite statement catalogs | Python 3.13.5, SQLite 3.49.1 | All SQLite CREATE TABLE statements accepted; native authorizer and `foreign_key_list` attest inline pairs before later errors/renames. Tier A for declared L2 FK references, not L3 resolution. |
-| Native PostgreSQL statement catalogs | PGlite 0.5.11 / PostgreSQL 18.6, pgvector 0.0.12, bundled btree_gist | Version-matched vector extension loads; Sqitch PostgreSQL fixtures run on PostgreSQL in dependency order; every scoped CREATE TABLE accepted. Catalog deltas attest all three Pagila temporal pairs. Tier A, selected. |
+| Native PostgreSQL statement catalogs | PGlite 0.5.11 / PostgreSQL 18.6, pgvector 0.0.12, bundled btree_gist | Version-matched vector extension loads; Sqitch PostgreSQL fixtures run on PostgreSQL in a hand-ordered scenario following script dependency headers; every scoped CREATE TABLE accepted. Catalog deltas attest all three Pagila temporal pairs. Tier A, selected. |
 
 **Measured:** executable candidate checks and their output are in
 [data](data/sql-oracle-2026-10-25/candidate-checks.json), with
@@ -35,8 +35,7 @@ with native execution available. No parser's names were relabelled native truth.
 
 **Measured:** Sqitch `ce0550c45ade3527d0c7f981c934e1ea4bdd6c19` contributes the same
 28 files and Pagila `9baf49c4149e43229f6021e6218d6b2ac8ef4f34` the same three files.
-Their Git blob hashes were checked against the immutable source trees. Original
-statement bytes, file hashes, statement hashes, source lines and native outcomes
+Their Git blob hashes were checked against the immutable source trees. File and statement SHA-256 digests, source lines and native outcomes
 are retained in the [Sqitch report](data/sql-oracle-2026-10-25/sqitch-native-report.json)
 and [Pagila report](data/sql-oracle-2026-10-25/pagila-native-report.json).
 The two [strict](data/sql-oracle-2026-10-25/sqitch-native.json)
@@ -58,7 +57,9 @@ Six Sqitch failures remain: missing legacy data for INSERTs and missing old tabl
 for DROPs in the upgrade scenarios. Six Pagila failures remain: four INSERTs need
 out-of-scope data (23503); UPDATE and DELETE FOR PORTION OF fail (42601). Each is
 named by path, line and code in the reports. All PostgreSQL deploy/verify/revert
-fixtures are now run on PostgreSQL with their prerequisites. Files retain fresh
+fixtures are now run on PostgreSQL in a hand-ordered deploy/verify/revert/rework
+scenario following each script's `-- requires:` header; the verify script belongs
+to the separate t/sql project, and the order is not derived from sqitch.plan. Files retain fresh
 session settings while sharing their scenario database; SQL is not rewritten.
 
 **Claimed by a vendor, confirmed by measured execution:** PostgreSQL
@@ -90,4 +91,18 @@ metrics and grades across all three full runs and hashes the oracle sources.
 Historic whole-file probes and outputs are committed beside it under `original_*`
 and `original-*`; they reproduce the superseded experiment, not the new grade.
 No general data-execution, L3 or L4 improvement is claimed. Controller regeneration
-of the computed tracker is required after integrating the changed reading.
+of the computed tracker is required after integrating the changed reading. Both
+TestLanguagesTrackerIsGenerated and TestCmdLangTracker currently report the same
+expected generated-surface drift.
+
+
+## Delta-review replay correction
+
+**Measured:** the repaired replay expands the established -only globs before
+calling the ranges companion. It now completes on full Pagila at the pinned
+commit, with pagila-data.sql, pagila-insert-data.sql and pg_partman-setup.sql
+present but outside the measured scope. The three complete runs preserve every
+count, metric, tier, grade and oracle identity from the accepted native reading;
+the latest median run and source hashes replace the timing receipt. Native oracle
+and statement-report JSON remain identical. The committed replay command in the
+recipe works for either full checkouts or verified scoped copies.

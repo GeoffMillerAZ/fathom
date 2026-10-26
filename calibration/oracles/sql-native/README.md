@@ -37,7 +37,8 @@ A source copy without `.git` uses lang-oracle's explicit `-subject-sha`; verify
 its file blobs against that immutable tree before measuring. The measured copies
 contained every file of the existing `-only` scopes (28 Sqitch, 3 Pagila), each
 verified by Git blob SHA1. No scope was narrowed. Replay writes all native receipts,
-ranges companions, mismatches and three complete readings. It asserts equal counts,
+ranges companions restricted to the same expanded scope globs (even on full
+checkouts), mismatches and three complete readings. It asserts equal counts,
 metrics, tiers and grades, then copies the median CPU-throughput run to `sql.json`.
 Use a fresh output directory. It never writes the committed reading implicitly.
 
@@ -64,7 +65,8 @@ Pagila's main schema runs before its temporal file, with pgvector and btree_gist
 available. Each file starts with fresh-session settings (`RESET ALL` over the same
 database), matching separate psql invocations; subject SQL is not rewritten. Its
 JSONB schema runs separately. Sqitch's PostgreSQL deploy/verify/revert fixtures run
-in their declared dependency order; reworked deploy/revert follows in the same
+in a hand-ordered deploy/verify/revert/rework scenario following each script's
+`-- requires:` header; reworked deploy/revert follows in the same
 scenario. SQLite registry files and upgrades run individually, statement by
 statement. Missing legacy data causes named INSERT/DROP errors, but every original
 CREATE TABLE executes and attests all three upgrade FK pairs.

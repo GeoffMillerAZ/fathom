@@ -37,15 +37,15 @@
   "metrics_equal": true,
   "oracle_code_sha256": {
     "pg_catalog.mjs": "4fda8d828fb5c11a40e545e86ba8a2840465603c9081d7a678389842fb1ada4e",
-    "replay.py": "683f0098fd369d10b4637d3081f91e0ce27e810cda80d08217c895bde2739369",
+    "replay.py": "89af31b6ae34ddec62ca1ab61a449da82aaf0c83e6805f22be4a85c86e654e43",
     "sql_native.py": "1de905e86b98fcc9f6befcceff395f3d727d379a7089ff583ebcd1a72cffaa22",
     "test_pg_native.mjs": "a794eb56954a7e700a9f8eadba78ea858b17608d4460f9ec40af539815b7b719",
     "test_sql_native.py": "5cd97054dd57b8d81e511d5c2c8730456f70279db3650d5184adfe49ef60b71a"
   },
   "runs_mb_per_cpu_second": [
+    2.1,
     2.09,
-    2.02,
-    1.95
+    1.98
   ],
   "selected_run": 2
 }

@@ -10,7 +10,7 @@
     "L4": "not-attempted"
   },
   "measured_at": "2026-10-26",
-  "fathom_commit": "371042e1b",
+  "fathom_commit": "94ad898ab",
   "extractor": "dialect",
   "subjects": [
     {
@@ -51,9 +51,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 3,
-        "extract_ms": 44.365,
-        "extract_cpu_ms": 48.497,
-        "max_file_ms": 46,
+        "extract_ms": 43.699000000000005,
+        "extract_cpu_ms": 47.245,
+        "max_file_ms": 45,
         "peak_module_pages": 601,
         "compiled_bytes": 0
       }
@@ -95,8 +95,8 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 3,
-        "extract_ms": 4.056000000000001,
-        "extract_cpu_ms": 4.210000000000001,
+        "extract_ms": 3.6759999999999997,
+        "extract_cpu_ms": 3.807,
         "max_file_ms": 0,
         "peak_module_pages": 559,
         "compiled_bytes": 0
@@ -170,10 +170,10 @@
     "faults": 0,
     "faulting_files": [],
     "files_with_error": 6,
-    "throughput_mb_s": 2.02,
+    "throughput_mb_s": 2.09,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 2.2,
-    "max_file_ms": 46,
+    "wall_throughput_mb_s": 2.25,
+    "max_file_ms": 45,
     "peak_module_pages": 601,
     "compiled_bytes": 0
   },

@@ -37,11 +37,15 @@ def main():
             raise ValueError('load above 6; retry in a fresh output directory')
         return subprocess.run([str(a) for a in argv], check=True, **kwargs)
 
-    for item, _name, subject, _sha, _scope in subjects:
+    for item, _name, subject, _sha, scope in subjects:
         run([sys.executable, here / 'sql_native.py', '--subject', subject, '--item', item,
              '--pglite-root', args.tools, '--out', out / (item + '.json')])
         with (out / (item + '.ranges.json')).open('w') as target:
-            run([sys.executable, repo / 'calibration/oracles/parser-ranges/pglast_ranges.py', subject], stdout=target)
+            files = sorted({p.relative_to(subject).as_posix() for pattern in scope.split(',')
+                            for p in Path(subject).glob(pattern) if p.is_file()})
+            if not files:
+                raise ValueError('no scoped range inputs for ' + item)
+            run([sys.executable, repo / 'calibration/oracles/parser-ranges/pglast_ranges.py', subject, *files], stdout=target)
     runs = []
     for number in range(1, 4):
         reading = out / f'run-{number}.json'
