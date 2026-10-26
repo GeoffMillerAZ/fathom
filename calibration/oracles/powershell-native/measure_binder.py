@@ -27,7 +27,7 @@ def main():
     out.mkdir(parents=True,exist_ok=False)
     public={'ruling':'OL-R11','subjects':{},'canonical_reading_changed':False,
             'benchmark_product_revision':subprocess.check_output(['git','rev-parse','HEAD'],cwd=repo,text=True).strip(),
-            'oracle_code_sha256':{p:digest(here/p) for p in ['ResolveCalls.ps1','measure_binder.py','tracked_set.py']}}
+            'oracle_code_sha256':{p:digest(here/p) for p in ['ResolveCalls.ps1','DiscoverHarness.ps1','measure_binder.py','tracked_set.py']}}
     reading=json.loads((repo/'docs/bench/readings/lang/powershell.json').read_text())
     for name,(repository,pin,subpath) in SUBJECTS.items():
         ready()
@@ -55,6 +55,8 @@ def main():
             if b'\0' in p.read_bytes()[:8000]:binaries+=1
         files=target/'files.json'
         files.write_text(json.dumps(sorted(paths))+'\n')
+        repository_files=target/'repository-files.json'
+        repository_files.write_text(json.dumps([os.fsdecode(p) for p in subprocess.check_output(['git','-C',str(root),'ls-files','-z']).split(b'\0') if p and Path(os.fsdecode(p)).suffix.lower() in ['.ps1','.psm1','.psd1']])+'\n')
         module='Pester' if name=='pester' else 'PSScriptAnalyzer'
         version='6.2.0' if name=='pester' else '1.25.0'
         manifest_path=base/'pester/bin/Pester.psd1' if name=='pester' else base/'modules'/module/version/(module+'.psd1')
@@ -63,7 +65,7 @@ def main():
         with (target/'binder.log').open('w') as log:
             result=subprocess.run([str(base/'runtime/pwsh'),'-NoLogo','-NoProfile','-NonInteractive',
                 '-File',str(here/'ResolveCalls.ps1'),'-Subject',str(subject),'-FilesJson',str(files),
-                '-Manifest',str(manifest_path),'-Harness',name,
+                '-Manifest',str(manifest_path),'-Harness',name,'-Repository',str(root),'-TrackedJson',str(repository_files),
                 '-TestDependencyManifest',str(base/'modules/Pester/5.7.1/Pester.psd1'),'-Out',str(raw)],env=env,cwd=target,stdout=log,stderr=log,timeout=600)
         if result.returncode!=0:raise RuntimeError('native binder refused; inspect private log for '+name)
         answers=json.loads(raw.read_text())

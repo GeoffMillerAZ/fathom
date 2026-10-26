@@ -1,2 +1,2 @@
 ### Changed
-- Measure PowerShell native command discovery with complete declared helpers and admitted runtime cmdlets and initial functions; disclose unresolved classes, executed-pair miss causes, test outcomes and recipe hashes.
+- Measure PowerShell native command discovery with parser-derived declared helpers, hashed loads and explicit refusals; disclose session-wide private-helper answers, unresolved classes and executed-pair limits.

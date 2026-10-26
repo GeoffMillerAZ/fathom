@@ -96,6 +96,30 @@
     "restored": "GREEN"
   },
   {
+    "FAIL": "FAIL: test_every_declared_helper_is_loaded_or_named (__main__.InventoryTests.test_every_declared_helper_is_loaded_or_named)",
+    "file": "DiscoverHarness.ps1",
+    "mutant": "drop-parser-enumerated-module",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_every_declared_helper_is_loaded_or_named (__main__.InventoryTests.test_every_declared_helper_is_loaded_or_named)",
+    "file": "ResolveCalls.ps1",
+    "mutant": "omit-module-variable-private-ancestor",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_every_declared_helper_is_loaded_or_named (__main__.InventoryTests.test_every_declared_helper_is_loaded_or_named)",
+    "file": "ResolveCalls.ps1",
+    "mutant": "leak-refused-helper-class-across-files",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_every_declared_helper_is_loaded_or_named (__main__.InventoryTests.test_every_declared_helper_is_loaded_or_named)",
+    "file": "DiscoverHarness.ps1",
+    "mutant": "invent-code-hash-for-absent-target",
+    "restored": "GREEN"
+  },
+  {
     "FAIL": "FAIL: test_declared_dependencies_and_complete_breakdown (__main__.DeclaredHarnessTests.test_declared_dependencies_and_complete_breakdown)",
     "file": "measure_binder.py",
     "mutant": "omit-declared-harness",

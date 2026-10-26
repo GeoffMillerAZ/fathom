@@ -64,19 +64,38 @@ names and aliases come from `$ExecutionContext.InvokeCommand.GetCommand`, never
 from Fathom output. Autoload is disabled before the preamble. Six explicit
 pinned-runtime modules are imported and asserted: Archive, Host, Management,
 Security, ThreadJob and Utility. The matching subject manifest and its original
-declared test harness are loaded. Pester uses Axiom, p, PTestHelpers and the exact TestHelpers
-body compiled from its original driver AST; PSScriptAnalyzer uses declared
-Pester 5.7.1 plus its original PSScriptAnalyzerTestHelper module. Pester also
-loads the original Pester.Runtime.Wrapper body compiled from its declared test
-driver AST, with that driver's utility preamble; the surrounding test body is
-not executed. Dynamic TestHelpers metadata is captured directly from New-Module,
-which exports the functions without registering in Get-Module. No test body is
-dot-sourced or executed merely to satisfy a query. Native loader-owned source files
-use that module's session; ordinary test files use the global session, so private
-module functions cannot answer unrelated test-file queries. The receipt records
+declared test harness are loaded. `DiscoverHarness.ps1` uses the native parser
+on every original tracked test file and the root test loader. It enumerates
+literal in-repository Import-Module paths, PSScriptRoot-relative dot-sources,
+and driver-level New-Module blocks. Join-Path, Split-Path -Parent and uniquely
+assigned literal path variables are interpreted structurally, never evaluated.
+Dynamic expressions and named external modules do not establish local paths;
+no undeclared state is invented to answer their calls. The declared external
+Pester dependency remains pinned at 5.7.1 for PSScriptAnalyzer.
+
+Every enumerated target is either loaded with its code hash or retained in
+`declared_not_loaded` with a stable declaration id, concrete reason and affected
+unresolved-site count. The private inventory holds paths; public receipts hold
+counts and hashes. Original definition-only preambles may be dot-sourced;
+definition-file conditionals may only read Get-Variable and dot-source support
+files. Surrounding test bodies are never executed. Original top-level module
+bodies are compiled from their ScriptBlockAst. Missing targets, undeclared CWD or
+PSDrive paths, and executable test/fixture bodies are refused and retained.
+Refused-helper classes apply only in declaring files or the refused source,
+including qualified calls to a missing module; unrelated same-name functions do
+not inherit that class. The proof checks the enumerated set equals the hashed
+loaded-input set plus the named refusal set, and checks build/format/type helpers.
+
+The binder deliberately uses a **session-wide union** of declared helpers,
+including per-file private product utility preambles. Native loader-owned source
+files use their module's private session; ordinary test files use global lookup
+with that union. This can answer private helper queries outside their declaring
+files; the receipt counts those sites explicitly. It does not model each test
+file's isolated load order. The assessment discloses the resulting 13 Pester
+sites, including all 12 identified in review. The receipt records
 module names/versions/code hashes, definition-origin counts/content hashes and
 all unresolved sites partitioned into member, harness, same-file/BeforeAll,
-private-module, external-application, found-but-not-admitted and missing classes. These classes diagnose
+private-module, declared-not-loaded, external-application, found-but-not-admitted and missing classes. These classes diagnose
 source context without inventing targets. A found but rejected command is never
 labelled missing. Cmdlet admission includes a ModuleBase exactly equal to the
 pinned PSHOME as well as its descendants: the runtime's nested command DLLs live
@@ -90,7 +109,7 @@ later function with the same name cannot qualify. Their definition-code hashes
 and counts are recorded separately from file-origin hashes.
 External applications, undeclared state, unbound functions
 and literal member invocations remain unresolvable, never dropped or counted
-as hits. No fixture is dot-sourced to manufacture a successful binding.
+as hits. Executable test/fixture bodies are not dot-sourced to manufacture a binding.
 
 Pester's original source scope is 272 files / 2,713,762 bytes. PSScriptAnalyzer
 has 241 original PowerShell files / 865,136 bytes in `Tests`, including 17 files
@@ -160,8 +179,8 @@ nice -n 10 python3.13 -B calibration/oracles/powershell-native/prove_harness.py 
   --out workspace/artifacts/lang-powershell/harness
 ```
 
-This runs the complete native binder and asserts both original subjects' declared
-harness/load state and the complete unresolved partition. Run it while Pester's
+This runs the complete native binder and checks both subjects' parser-derived
+declaration/load partition and complete unresolved partition. Run it while Pester's
 load-only bin still exists, before clean_score_scope.py. Its regression first
 fails against the reviewed narrow session, then passes with declared helpers.
 
@@ -172,14 +191,25 @@ fabricated pairs; native truth digests must stay equal. Changing the native alia
 from NativeOne to NativeTwo changes exactly two known caller/target pairs in each
 route. No extractor pairs enter native truth.
 
-Seventeen mutants cover caller/alias pairing, callbacks, caps, both declared phases,
+Twenty-one mutants cover caller/alias pairing, callbacks, caps, both declared phases,
 native tier, private scope, autoload, script-qualified breakpoints, omitted
 declared harness, explicit runtime baseline, stopped-phase status, mock attribution, rejected baseline-root cmdlets and
 misclassification of found-but-rejected commands and rejection of an unchanged
-initial-runtime function. Each must
+initial-runtime function, dropping a parser-enumerated helper, missing module-variable privacy and leaking a refused-helper class across files and inventing a code hash for an absent target. Each must
 reach `FAIL:` and restore GREEN. Pure regressions cover exact-column ambiguity,
 unexecuted member retention, malformed JSON, wrong runtime, raw refusal and each
-cap at reduced-limit cap+1. Hard limits: 2,048 original files, 64 MiB source,
+cap at reduced-limit cap+1. Hard limits: 2,048 original files / 64 MiB source and a separate 2,048-file / 64 MiB helper-inventory bound,
 1,000,000 static sites/native rows, 128 MiB raw trace and a fixed two-phase union
 with the same total-byte/row bounds. All refuse the entire affected unit; native
 cap refusal emits no accepted partial oracle.
+
+```sh
+nice -n 10 python3.13 -B calibration/oracles/powershell-native/prove_inventory.py \
+  --tools workspace/tools/powershell-native \
+  --out workspace/artifacts/lang-powershell/inventory-proof
+```
+
+This authored native fixture fails if a declared module is omitted, checks that
+an executable fixture is refused, and proves helper-inventory file/byte caps at
+reduced-limit cap+1 without accepting partial output. It also checks an
+`& $subjectModule { ... }` private-scope ancestor and per-file refusal attribution.

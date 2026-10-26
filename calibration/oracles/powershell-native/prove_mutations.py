@@ -62,6 +62,15 @@ def main():
     for filename,old,new,name in owners:
         common=[sys.executable,'-B',str(here/'prove_native.py'),'--tools',str(args.tools.resolve()),'--indexbench',str(args.indexbench.resolve())]
         run_mutant(filename,old,new,name,common+['--out',str(out/(name+'-mutant'))],common+['--out',str(out/(name+'-restored'))])
+    common=[sys.executable,'-B',str(here/'prove_inventory.py'),'--tools',str(args.tools.resolve())]
+    inventory_mutants=[
+        ('DiscoverHarness.ps1', '@($declarations.Values | Sort-Object { $_.kind + ":" + $_.target })', '@($declarations.Values | Where-Object { $_.kind -ne "module" } | Sort-Object { $_.kind + ":" + $_.target })', 'drop-parser-enumerated-module'),
+        ('ResolveCalls.ps1', "$parent.InvocationOperator -eq 'Ampersand'", "$parent.InvocationOperator -eq 'Unknown'", 'omit-module-variable-private-ancestor'),
+        ('ResolveCalls.ps1', "$matches = @($excludedNames[$name] | Where-Object { $_.target -eq $queryPath -or $_.declaring_files.Contains($queryPath) })", "$matches = @($excludedNames[$name])", 'leak-refused-helper-class-across-files'),
+    ]
+    inventory_mutants.append(('DiscoverHarness.ps1', "} else { $null }\n                    $declarations[$identity]", "} else { 'fabricated-code-hash' }\n                    $declarations[$identity]", 'invent-code-hash-for-absent-target'))
+    for filename,old,new,name in inventory_mutants:
+        run_mutant(filename,old,new,name,common+['--out',str(out/(name+'-mutant'))],common+['--out',str(out/(name+'-restored'))])
     common=[sys.executable,'-B',str(here/'prove_harness.py'),'--tools',str(args.tools.resolve()),'--indexbench',str(args.indexbench.resolve())]
     run_mutant('measure_binder.py',"'-Harness',name", "'-Harness','none'",'omit-declared-harness',
                common+['--out',str(out/'harness-mutant')],common+['--out',str(out/'harness-restored')])

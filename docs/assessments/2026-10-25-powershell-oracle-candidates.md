@@ -22,19 +22,45 @@ Autoload is disabled before the preamble. The chosen pinned-runtime baseline is
 explicitly imported and asserted: Archive, Host, Management, Security, ThreadJob
 and Utility; package-management and interactive-editing modules are not part of
 that named baseline. Its membership no longer depends on preamble side effects.
-Pester loads its original Axiom, p and PTestHelpers modules, plus precisely the
-TestHelpers ScriptBlockAst from its original test driver. It also loads the
-original Pester.Runtime.Wrapper module body and its declared utility preamble,
-without executing the surrounding tests. PSScriptAnalyzer loads its declared
-Pester 5.7.1 and PSScriptAnalyzerTestHelper. Each input has a content hash.
-The latter helper's fourth export names an undefined function; only its three
-actual native exports are available. Dynamic TestHelpers is recorded
-explicitly because Get-Module does not list a New-Module-only instance, although
-native CommandInfo reports that module on its exported functions. Native module-loader source files use that module's private
-session; ordinary test files use global resolution. A module's private functions
-cannot answer arbitrary test-file queries. No fixture is dot-sourced to make its
-functions resolvable. External applications, missing functions, undeclared state
-and literal member invocations remain unresolved and count as misses.
+The native parser inventories local Import-Module paths, PSScriptRoot-relative
+dot-sources and top-level New-Module bodies across every original tracked test
+file and the root loader. Literal path assignments, Join-Path and Split-Path
+-Parent are interpreted structurally; source expressions are never evaluated to
+invent paths. Dynamic expressions do not establish declared local load state.
+Each enumerated target is loaded with its hash or retained in the named
+`declared_not_loaded` list with a stable declaration id, reason and site count.
+The proof compares that inventory with the hashed loaded inputs plus refusals;
+there is no hand-maintained helper allowlist.
+
+This includes Pester's original Format and TypeClass sources and PSScriptAnalyzer's
+build module, alongside both same-named test-helper modules. PSScriptAnalyzer's
+external Pester dependency remains pinned at 5.7.1. Original module blocks are
+compiled from their native ScriptBlockAst without running surrounding tests.
+Pester has 30 distinct declared targets / 115 declarations: 24 targets load and
+six are refused. PSScriptAnalyzer has seven / 33: three load and four are refused.
+Public receipts store only aggregate counts, hashes and declaration-id refusals;
+private inventories retain paths.
+
+The binder uses a **session-wide union** of declared per-file helpers, including
+private product utility preambles. Native module-loader sources use that
+module's private session; ordinary files use global lookup with the helper
+union. This does not model isolated per-file loading. The union answers **13
+Pester sites outside their private helper's declaring files**: the 12 identified
+in review, plus one Format-Number site after Format.ps1 is loaded. Ten of the
+reviewed sites call utility functions; two sit inside `& $pesterModule { ... }`.
+The native diagnostic class now recognises that module-variable ancestor as
+private scope when an answer is absent. No blanket claim that private helpers
+cannot answer unrelated test files is made.
+
+Executable test bodies are not dot-sourced. Refusals comprise one executable
+Pester coverage fixture (three unresolved references) and five undeclared CWD or
+PSDrive paths; PSScriptAnalyzer has three executable test-file dot-sources (one
+unresolved reference) and the absent DSC fixture module (seven module-qualified
+references). The pinned Git tree contains no PSDSCxMachine.psm1, so its nine
+imports cannot be loaded; these calls stay in a separate unresolved class.
+Refusal attribution is scoped to declaring/source files, avoiding unrelated
+same-name functions. External applications, undeclared state and literal member
+invocations remain unresolved and count as misses.
 
 Actual targets come from native CommandInfo.Name / AliasInfo.ResolvedCommand.
 The native AST supplies only original source scope and caller declarations;
@@ -52,34 +78,34 @@ from a command absent from the declared session.
 
 | Original subject / pin | Full original PowerShell scope | Native resolved sites | Unresolved sites retained | Resolved-pair diagnostic P / R |
 |---|---:|---:|---:|---:|
-| Pester 6.2.0 `98e56d65da16` | 272 files / 2,713,762 bytes | 15,676/18,842 (83.20%) | 3,166 (16.80%) | 2,701/4,217 (.6405) / 2,701/2,728 (.9901) |
-| PSScriptAnalyzer 1.25.0 `f05704df81b2`, `Tests` | 241 files / 865,136 bytes | 5,246/5,838 (89.86%) | 592 (10.14%) | 1,127/1,435 (.7854) / 1,127/1,162 (.9699) |
+| Pester 6.2.0 `98e56d65da16` | 272 files / 2,713,762 bytes | 15,716/18,842 (83.41%) | 3,126 (16.59%) | 2,722/4,217 (.6455) / 2,722/2,749 (.9902) |
+| PSScriptAnalyzer 1.25.0 `f05704df81b2`, `Tests` | 241 files / 865,136 bytes | 5,258/5,838 (90.07%) | 580 (9.93%) | 1,133/1,435 (.7895) / 1,133/1,168 (.9700) |
 
 These pair diagnostics compare with the resolved native subset, not complete
 source truth. Predictions outside that subset may be unattested, not false
 calls. Resolved-only recall cannot hide the full unresolved-site counts above.
-Correcting runtime admission and loading all declared helpers resolves another
-2,275 / 660 sites over the earlier partial declared session. Those gains repair
-the measurement and do not represent a producer improvement. The remaining
-unresolved share exceeds 10% on each subject. PSScriptAnalyzer is nine sites
-above the maximum integer count of 583; Pester binds more strongly, with 2,175
-member sites alone exceeding 10% of its 18,842 sites. This chosen declared-state
-probe does not establish an excellent whole-population L2 grade.
+Parser-derived helper loading resolves 40 / 12 additional sites over the
+previous session, with zero lost or retargeted answers and an unchanged literal
+population. These are measurement repairs, not producer improvements.
+PSScriptAnalyzer is **three sites below** its maximum integer unresolved count
+of 583. Pester remains above 10%; its 2,175 member sites alone exceed that share
+of 18,842. The each-subject condition therefore remains unsatisfied, and no
+excellent whole-population L2 grade is established.
 
 Pester has 16,667 command sites and 2,175 member sites. Native loader metadata
 identifies 106 original source files belonging to its module; 1,486 command
 queries use module scope and 15,181 use global scope. Resolved definition origins
-are 13,226 site answers in original source and 2,450 in the pinned runtime, with
-116 distinct file-origin/content-hash entries. PSScriptAnalyzer has 5,551 commands /
+are 13,266 site answers in original source and 2,450 in the pinned runtime, with
+117 distinct file-origin/content-hash entries. PSScriptAnalyzer has 5,551 commands /
 287 members, all global queries; 4,112 answers come from its matching released
-module plus declared test dependency, 74 from original source and 1,060 from
-the runtime, with seven distinct file-origin/content-hash entries and one
-source-less runtime definition-code hash. The harness supplies 5,022 / 3,289
-resolved sites. No harness-export site remains unresolved.
+module plus declared test dependency, 86 from original source and 1,060 from
+the runtime, with nine distinct file-origin/content-hash entries and one
+source-less runtime definition-code hash. The harness supplies 12,422 / 3,301
+resolved sites, counting the declared subject-module re-import in the union. No admitted harness-export site remains unresolved; the refused declarations remain explicit misses.
 
 Unresolved classes partition all original unknown sites; these are diagnostic
 source-context classes, not fabricated native targets. Private-scope means the
-site is inside an InModuleScope/InPesterModuleScope AST ancestor. Same-file means
+site is inside an InModuleScope/InPesterModuleScope or module-variable invocation AST ancestor. Same-file means
 a definition exists in that file, including BeforeAll-defined functions; it does
 not claim that the definition has executed or is visible in the clean session.
 Found-but-not-admitted records a native command rejected by the provenance
@@ -92,12 +118,13 @@ executed merely to make its static query succeed.
 |---|---:|---:|
 | Literal member | 2,175 | 287 |
 | Declared harness export | 0 | 0 |
-| Same-file / BeforeAll definition | 389 | 196 |
-| Private module scope | 471 | 0 |
+| Same-file / BeforeAll definition | 386 | 194 |
+| Private module scope | 470 | 0 |
+| Declared but not loaded | 3 | 8 |
 | External application (not admitted as a hit) | 16 | 5 |
 | Found but not admitted | 0 | 0 |
-| Missing in declared session | 115 | 104 |
-| Total | 3,166 | 592 |
+| Missing in declared session | 76 | 86 |
+| Total | 3,126 | 580 |
 
 The native population retains **17 original UTF-16/NUL-containing files** in
 PSScriptAnalyzer. Product discovery excludes them as binary: 224 files / 775,189
@@ -272,18 +299,18 @@ Independence: real `lang-probe` output is placed inside both the subject and nat
 output directories and replaced with fabricated pairs. Native binder/runtime
 truth digests remain equal. Changing the known native alias from NativeOne to
 NativeTwo changes exactly two expected caller/target pairs in each route.
-The [proof](data/powershell-oracle-2026-10-26/proof.json) also verifies private
+The [inventory proof](data/powershell-oracle-2026-10-26/inventory-proof.json) exercises discovery, a dropped-helper regression, per-file refusal attribution and helper caps. The [proof](data/powershell-oracle-2026-10-26/proof.json) also verifies private
 module visibility, disabled undeclared autoload and unresolved external/member
 calls. The runtime source fixture's New-Module remains valid with the fixed hook.
 
 Mutation: `python3.13 -B calibration/oracles/powershell-native/prove_mutations.py --tools workspace/tools/powershell-native --indexbench workspace/tools/indexbench --out workspace/artifacts/lang-powershell/mutations-final`
-kills seventeen mutations: parser caller substitution, written-alias substitution,
+kills twenty-one mutations: parser caller substitution, written-alias substitution,
 callback-guard removal, raw-byte-cap bypass, dropping the second declared phase,
 A-to-C tier, undeclared autoload, private-module scope leakage, static-site-cap
 bypass, script-qualified breakpoints, omitted declared harness, changed explicit
 runtime baseline, stopped phase mislabelled success, unsupported mock attribution,
 rejected runtime-root cmdlets, rejected initial-runtime functions and mislabelled
-found-but-rejected commands. Each reaches a focused `FAIL:`; source
+found-but-rejected commands, dropping a parser-enumerated helper, missing module-variable privacy and leaking refusal attribution across files and fabricating a code hash for an absent target. Each reaches a focused `FAIL:`; source
 is restored in `finally` and GREEN rerun. [Mutation summaries](data/powershell-oracle-2026-10-26/mutations.json)
 record each assertion. The pure decoder/phase-combination suite passes 26 tests.
 

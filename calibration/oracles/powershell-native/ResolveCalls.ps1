@@ -4,7 +4,9 @@ param(
     [Parameter(Mandatory)][string]$Manifest,
     [Parameter(Mandatory)][string]$Out,
     [ValidateSet('none','pester','psa')][string]$Harness = 'none',
-    [string]$TestDependencyManifest
+    [string]$TestDependencyManifest,
+    [string]$Repository,
+    [string]$TrackedJson
 )
 $ErrorActionPreference = 'Stop'
 $PSModuleAutoLoadingPreference = 'None'
@@ -59,9 +61,9 @@ $dynamicModules = @()
 $dynamicModuleHashes = @{}
 function Get-OracleModules {
     @((@(Get-Module) + $dynamicModules) | Sort-Object Name | ForEach-Object {
-        $hash = if ($_.Path -and [IO.File]::Exists($_.Path)) { (Get-FileHash -LiteralPath $_.Path -Algorithm SHA256).Hash.ToLowerInvariant() } else { $dynamicModuleHashes[$_.Name] }
-        [ordered]@{ name = $_.Name; version = $_.Version.ToString(); code_sha256 = $hash }
-    })
+        $hash = if ($_.Path -and [IO.File]::Exists($_.Path)) { (Get-FileHash -LiteralPath $_.Path -Algorithm SHA256).Hash.ToLowerInvariant() } else { $dynamicModuleHashes[$_.GetHashCode()] }
+        [pscustomobject][ordered]@{ name = $_.Name; version = $_.Version.ToString(); code_sha256 = $hash }
+    } | Sort-Object name,version,code_sha256 -Unique)
 }
 $PSModuleAutoLoadingPreference = 'None'
 $before = @(Get-OracleModules)
@@ -69,52 +71,87 @@ $module = Import-Module -Name $manifestPath -PassThru -ErrorAction Stop
 if ($module.Count -gt 1) { throw 'whole-unit refusal: ambiguous root module' }
 $harnessInputs = [Collections.Generic.List[object]]::new()
 $harnessSourceFiles = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-if ($Harness -eq 'pester') {
-    foreach ($relative in @('tst/axiom/Axiom.psm1','tst/p.psm1','tst/PTestHelpers.psm1')) {
-        $path = Join-Path $root $relative
-        Import-Module -Name $path -DisableNameChecking -ErrorAction Stop
-        $harnessInputs.Add([ordered]@{ name = [IO.Path]::GetFileNameWithoutExtension($path); code_sha256 = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant() })
-    }
-    # Compile precisely the subject driver's declared TestHelpers body with
-    # its original file/extent. Never dot-source tests or synthesize helpers.
-    $driver = Join-Path $root 'test.ps1'
-    $driverAst = [Management.Automation.Language.Parser]::ParseFile($driver, [ref]$null, [ref]$null)
-    $helpers = @($driverAst.FindAll({ param($n) $n -is [Management.Automation.Language.CommandAst] -and $n.GetCommandName() -eq 'New-Module' -and $n.Extent.Text -match '-Name TestHelpers ' }, $true))
-    if ($helpers.Count -ne 1) { throw 'whole-unit refusal: declared TestHelpers block changed' }
-    $body = @($helpers[0].CommandElements | Where-Object { $_ -is [Management.Automation.Language.ScriptBlockExpressionAst] })
-    if ($body.Count -ne 1) { throw 'whole-unit refusal: ambiguous TestHelpers body' }
-    $dynamicModules = @(New-Module -Name TestHelpers -ScriptBlock $body[0].ScriptBlock.GetScriptBlock())
-    $dynamicModuleHashes['TestHelpers'] = (Get-FileHash -LiteralPath $driver -Algorithm SHA256).Hash.ToLowerInvariant()
-    $harnessInputs.Add([ordered]@{ name = 'TestHelpers'; code_sha256 = (Get-FileHash -LiteralPath $driver -Algorithm SHA256).Hash.ToLowerInvariant(); block_sha256 = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($body[0].Extent.Text))).ToLowerInvariant() })
-    # The pinned test driver declares this wrapper and its utility preamble.
-    # Compile only that original module body, never the surrounding tests.
-    $utility = Join-Path $root 'src/Pester.Utility.ps1'
-    . $utility
-    $wrapperDriver = Join-Path $root 'tst/Pester.Runtime.ts.ps1'
-    $wrapperAst = [Management.Automation.Language.Parser]::ParseFile($wrapperDriver, [ref]$null, [ref]$null)
-    $wrapper = @($wrapperAst.FindAll({ param($n) $n -is [Management.Automation.Language.CommandAst] -and $n.GetCommandName() -eq 'New-Module' -and $n.Extent.Text -match '-Name Pester.Runtime.Wrapper ' }, $true))
-    if ($wrapper.Count -ne 1) { throw 'whole-unit refusal: declared runtime wrapper changed' }
-    $wrapperBody = @($wrapper[0].CommandElements | Where-Object { $_ -is [Management.Automation.Language.ScriptBlockExpressionAst] })
-    if ($wrapperBody.Count -ne 1) { throw 'whole-unit refusal: ambiguous runtime wrapper body' }
-    New-Module -Name Pester.Runtime.Wrapper -ScriptBlock $wrapperBody[0].ScriptBlock.GetScriptBlock() | Import-Module -DisableNameChecking
-    $dynamicModuleHashes['Pester.Runtime.Wrapper'] = (Get-FileHash -LiteralPath $wrapperDriver -Algorithm SHA256).Hash.ToLowerInvariant()
-    foreach ($item in @(@('Pester.Runtime.Wrapper',$wrapperDriver),@('Pester.Utility preamble',$utility),@('Pester.Runtime source',(Join-Path $root 'src/Pester.Runtime.ps1')))) {
-        $harnessInputs.Add([ordered]@{ name = $item[0]; code_sha256 = (Get-FileHash -LiteralPath $item[1] -Algorithm SHA256).Hash.ToLowerInvariant() })
-    }
-} elseif ($Harness -eq 'psa') {
-    if (-not $TestDependencyManifest) { throw 'whole-unit refusal: missing declared Pester dependency' }
-    $dependency = Import-Module -Name $TestDependencyManifest -PassThru -ErrorAction Stop
-    if ($dependency.Name -ne 'Pester' -or $dependency.Version.ToString() -ne '5.7.1') { throw 'whole-unit refusal: wrong declared test dependency' }
-    $harnessInputs.Add([ordered]@{ name = 'Pester'; code_sha256 = (Get-FileHash -LiteralPath $dependency.Path -Algorithm SHA256).Hash.ToLowerInvariant() })
-    $helperPath = Join-Path $root 'PSScriptAnalyzerTestHelper.psm1'
-    Import-Module -Name $helperPath -DisableNameChecking -ErrorAction Stop
-    $harnessInputs.Add([ordered]@{ name = 'PSScriptAnalyzerTestHelper'; code_sha256 = (Get-FileHash -LiteralPath $helperPath -Algorithm SHA256).Hash.ToLowerInvariant() })
-}
+# All repository-local helper declarations come from the owner's parser.
+# Keep per-declaration load results; no hand-maintained helper allowlist.
+. (Join-Path $PSScriptRoot 'DiscoverHarness.ps1')
+$harnessInventory = @()
+$excludedNames = @{}
 $harnessNames = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
-foreach ($provider in @((@(Get-Module) + $dynamicModules) | Where-Object { $_.Name -in @('Axiom','p','PTestHelpers','TestHelpers','Pester.Runtime.Wrapper','PSScriptAnalyzerTestHelper') -or ($Harness -eq 'psa' -and $_.Name -eq 'Pester') })) {
-    foreach ($function in @($provider.ExportedFunctions.Values)) {
-        $null = $harnessNames.Add($function.Name)
-        if ($function.ScriptBlock.File) { $null = $harnessSourceFiles.Add($function.ScriptBlock.File) }
+if ($Harness -ne 'none') {
+    if (-not $Repository -or -not $TrackedJson) { throw 'whole-unit refusal: missing original repository inventory' }
+    $repositoryRoot = [IO.Path]::GetFullPath($Repository).TrimEnd('/')
+    $trackedFiles = @(Get-Content -LiteralPath $TrackedJson -Raw | ConvertFrom-Json)
+    $harnessInventory = @(Get-OracleHarnessInventory $repositoryRoot $trackedFiles)
+    if ($Harness -eq 'psa') {
+        if (-not $TestDependencyManifest) { throw 'whole-unit refusal: missing declared Pester dependency' }
+        $dependency = Import-Module -Name $TestDependencyManifest -PassThru -ErrorAction Stop
+        if ($dependency.Name -ne 'Pester' -or $dependency.Version.ToString() -ne '5.7.1') { throw 'whole-unit refusal: wrong declared test dependency' }
+        $harnessInputs.Add([ordered]@{ name = 'Pester'; code_sha256 = (Get-FileHash -LiteralPath $dependency.Path -Algorithm SHA256).Hash.ToLowerInvariant() })
+        foreach ($function in @($dependency.ExportedFunctions.Values)) {
+            $null = $harnessNames.Add($function.Name)
+            if ($function.ScriptBlock.File) { $null = $harnessSourceFiles.Add($function.ScriptBlock.File) }
+        }
+    }
+    foreach ($declaration in $harnessInventory) {
+        if ($declaration.owner_block) { continue }
+        if ($declaration.cwd_relative) {
+            $declaration.status = 'declared_not_loaded'; $declaration.reason = 'relative literal path requires undeclared working directory'; continue
+        }
+        if (-not [IO.File]::Exists(($declaration.target -split '#')[0])) {
+            $declaration.status = 'declared_not_loaded'; $declaration.reason = 'declared target absent from original pinned repository'; continue
+        }
+        if ($declaration.kind -eq 'dot-source') {
+            if (-not (Get-OracleDefinitionOnly $declaration.target)) {
+                $declaration.status = 'declared_not_loaded'; $declaration.reason = 'dot-sourced test/fixture has top-level executable statements; no test body executed for binder'; continue
+            }
+            . $declaration.target
+            $null = $harnessSourceFiles.Add($declaration.target)
+        } elseif ($declaration.kind -eq 'module') {
+            try {
+                $provider = Import-Module -Name $declaration.target -DisableNameChecking -PassThru -ErrorAction Stop
+                foreach ($function in @($provider.ExportedFunctions.Values)) {
+                    $null = $harnessNames.Add($function.Name)
+                    if ($function.ScriptBlock.File) { $null = $harnessSourceFiles.Add($function.ScriptBlock.File) }
+                }
+            } catch {
+                $declaration.status = 'declared_not_loaded'
+                $declaration.reason = 'native module import refused: ' + $_.Exception.GetType().FullName
+                continue
+            }
+        } else {
+            # Original top-level New-Module block; no surrounding test body.
+            $provider = New-Module -Name $declaration.name -ScriptBlock $declaration.block.GetScriptBlock()
+            $dynamicModules += $provider
+            $dynamicModuleHashes[$provider.GetHashCode()] = Get-OracleDeclarationId $declaration.block.Extent.Text
+            $provider | Import-Module -DisableNameChecking
+            foreach ($function in @($provider.ExportedFunctions.Values)) {
+                $null = $harnessNames.Add($function.Name)
+                if ($function.ScriptBlock.File) { $null = $harnessSourceFiles.Add($function.ScriptBlock.File) }
+            }
+        }
+        $declaration.status = 'loaded'; $declaration.reason = 'original parser-enumerated declaration loaded in session-wide helper union'
+        $harnessInputs.Add([ordered]@{ name = $declaration.name; code_sha256 = $declaration.code_sha256; declaration_id = $declaration.id })
+    }
+    foreach ($declaration in $harnessInventory | Where-Object owner_block) {
+        $owner = @($harnessInventory | Where-Object { $_.block_id -eq $declaration.owner_block })
+        if ($owner.Count -ge 1 -and @($owner | Where-Object { $_.status -ne 'loaded' }).Count -eq 0) {
+            $declaration.status = 'loaded'; $declaration.reason = 'loaded by original declared module block; not dot-sourced globally'
+            $harnessInputs.Add([ordered]@{ name = $declaration.name; code_sha256 = $declaration.code_sha256; declaration_id = $declaration.id })
+        } else { $declaration.status = 'declared_not_loaded'; $declaration.reason = 'enclosing module block is not an admitted driver-level declaration' }
+    }
+    foreach ($declaration in $harnessInventory) {
+        if ($declaration.status -eq 'pending') { throw 'whole-unit refusal: unclassified helper declaration' }
+        $target = ($declaration.target -split '#')[0]
+        if ([IO.File]::Exists($target)) {
+            $helperAst = [Management.Automation.Language.Parser]::ParseFile($target, [ref]$null, [ref]$null)
+            foreach ($definition in @($helperAst.FindAll({ param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] }, $true))) {
+                $name = Get-OracleBare $definition.Name
+                if ($declaration.status -eq 'declared_not_loaded') {
+                    if (-not $excludedNames.ContainsKey($name)) { $excludedNames[$name] = @() }
+                    $excludedNames[$name] += $declaration
+                } elseif ($declaration.kind -eq 'dot-source' -and -not $declaration.owner_block) { $null = $harnessNames.Add($name) }
+            }
+        }
     }
 }
 $lookup = { param($Name) $ExecutionContext.InvokeCommand.GetCommand($Name, [Management.Automation.CommandTypes]::All) }
@@ -130,6 +167,9 @@ $moduleContextSites = 0
 $globalContextSites = 0
 $lookupCache = @{}
 $definitionCache = @{}
+$definitionPathCache = @{}
+$privateHelperCache = @{}
+$sessionUnionNonlocalPrivateSites = 0
 $fileHashCache = @{}
 $targetFiles = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $targetIntrinsics = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
@@ -141,12 +181,22 @@ $parseErrors = 0
 $unknown = 0
 $commandSites = 0
 $memberSites = 0
-$unresolvedClasses = @{ member = 0; harness = 0; same_file_or_BeforeAll = 0; private_module_scope = 0; external_application = 0; found_not_admitted = 0; missing = 0 }
+$unresolvedClasses = @{ member = 0; harness = 0; declared_not_loaded = 0; same_file_or_BeforeAll = 0; private_module_scope = 0; external_application = 0; found_not_admitted = 0; missing = 0 }
 $resolvedHarness = 0
 $lookupClasses = @{}
 foreach ($relative in $files) {
     $tokens = $null; $errors = $null
     $ast = [Management.Automation.Language.Parser]::ParseFile((Join-Path $root $relative), [ref]$tokens, [ref]$errors)
+    $unloadedForFile = @{}
+    $unloadedModulesForFile = @{}
+    $queryPath = [IO.Path]::GetFullPath((Join-Path $root $relative))
+    foreach ($name in $excludedNames.Keys) {
+        $matches = @($excludedNames[$name] | Where-Object { $_.target -eq $queryPath -or $_.declaring_files.Contains($queryPath) })
+        if ($matches.Count) { $unloadedForFile[$name] = $matches }
+    }
+    foreach ($d in $harnessInventory) {
+        if ($d.status -eq 'declared_not_loaded' -and $d.kind -eq 'module' -and $d.declaring_files.Contains($queryPath)) { $unloadedModulesForFile[$d.name] = $d }
+    }
     $localFunctions = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     foreach ($definition in @($ast.FindAll({ param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] }, $true))) { $null = $localFunctions.Add((Get-OracleBare $definition.Name)) }
     if ($errors.Count) { $parseErrors++ }
@@ -185,30 +235,42 @@ foreach ($relative in $files) {
                 }
                 $lookupCache[$cacheKey] = if ($allowed) { Get-OracleBare $command.Name } else { $null }
                 $definitionCache[$cacheKey] = $null
+                $definitionPathCache[$cacheKey] = $null
+                $privateHelperCache[$cacheKey] = $allowed -and ($command -is [Management.Automation.FunctionInfo]) -and -not $module.ExportedFunctions.ContainsKey($command.Name)
                 if ($isRuntimeIntrinsic) {
                     $definitionCache[$cacheKey] = @('pinned-runtime', $oracleInitialRuntimeFunctions[$command.Name].sha256, 'runtime-intrinsic')
                 } elseif ($allowed) {
                     $definitionPath = if ($command -is [Management.Automation.FunctionInfo]) { $command.ScriptBlock.File } elseif ($command.Module -and $command.Module.Path) { $command.Module.Path } else { $command.ImplementingType.Assembly.Location }
                     if ($definitionPath -and [IO.File]::Exists($definitionPath)) {
+                        $definitionPathCache[$cacheKey] = $definitionPath
                         if (-not $fileHashCache.ContainsKey($definitionPath)) { $fileHashCache[$definitionPath] = (Get-FileHash -LiteralPath $definitionPath -Algorithm SHA256).Hash.ToLowerInvariant() }
-                        $definitionScope = if ($definitionPath.StartsWith($root + '/', [StringComparison]::Ordinal)) { 'original-subject' } elseif ($definitionPath.StartsWith($PSHOME + '/', [StringComparison]::Ordinal)) { 'pinned-runtime' } else { 'declared-subject-module' }
+                        $definitionScope = if (($definitionPath.StartsWith($root + '/', [StringComparison]::Ordinal) -or ($repositoryRoot -and $definitionPath.StartsWith($repositoryRoot + '/', [StringComparison]::Ordinal)))) { 'original-subject' } elseif ($definitionPath.StartsWith($PSHOME + '/', [StringComparison]::Ordinal)) { 'pinned-runtime' } else { 'declared-subject-module' }
                         $definitionCache[$cacheKey] = @($definitionScope, $fileHashCache[$definitionPath])
                     }
                 }
             }
             $answer = $lookupCache[$cacheKey]
         }
+        $nonlocalPrivateHelper = $false
+        if ($isCommand -and $answer -and $scope -eq 'global' -and $privateHelperCache[$cacheKey] -and $definitionPathCache[$cacheKey] -and $moduleSources.Contains($definitionPathCache[$cacheKey])) {
+            $declaredHere = @($harnessInventory | Where-Object { $_.status -eq 'loaded' -and ($_.target -eq $definitionPathCache[$cacheKey] -or $_.kind -eq 'module-block') -and $_.declaring_files.Contains((Join-Path $root $relative)) })
+            if (-not $declaredHere.Count) { $nonlocalPrivateHelper = $true; $sessionUnionNonlocalPrivateSites++ }
+        }
         $unresolvedClass = $null
         if (-not $answer) {
             $unknown++
-            $unresolvedClass = if (-not $isCommand) { 'member' } elseif ($lookupClasses[$cacheKey] -eq 'found_not_admitted') { 'found_not_admitted' } elseif ($harnessNames.Contains($written)) { 'harness' } elseif ($lookupClasses[$cacheKey] -eq 'external_application') { 'external_application' } else { 'missing' }
+            $unresolvedClass = if (-not $isCommand) { 'member' } elseif ($lookupClasses[$cacheKey] -eq 'found_not_admitted') { 'found_not_admitted' } elseif ($unloadedForFile.ContainsKey((Get-OracleBare $written)) -or ($written.Contains('\') -and $unloadedModulesForFile.ContainsKey($written.Split('\')[0]))) { 'declared_not_loaded' } elseif ($harnessNames.Contains($written)) { 'harness' } elseif ($lookupClasses[$cacheKey] -eq 'external_application') { 'external_application' } else { 'missing' }
             if ($isCommand -and $unresolvedClass -eq 'missing') {
                 if ($localFunctions.Contains((Get-OracleBare $written))) { $unresolvedClass = 'same_file_or_BeforeAll' }
                 for ($parent = $node.Parent; $null -ne $parent; $parent = $parent.Parent) {
-                    if ($parent -is [Management.Automation.Language.CommandAst] -and $parent.GetCommandName() -in @('InModuleScope','InPesterModuleScope')) { $unresolvedClass = 'private_module_scope'; break }
+                    if ($parent -is [Management.Automation.Language.CommandAst] -and ($parent.GetCommandName() -in @('InModuleScope','InPesterModuleScope') -or ($parent.InvocationOperator -eq 'Ampersand' -and $parent.CommandElements[0] -is [Management.Automation.Language.VariableExpressionAst] -and $parent.CommandElements[0].VariablePath.UserPath -match '(?i)module$'))) { $unresolvedClass = 'private_module_scope'; break }
                 }
             }
             $unresolvedClasses[$unresolvedClass]++
+            if ($unresolvedClass -eq 'declared_not_loaded') {
+                if ($unloadedForFile.ContainsKey((Get-OracleBare $written))) { foreach ($d in $unloadedForFile[(Get-OracleBare $written)]) { $d.site_count++ } }
+                elseif ($written.Contains('\') -and $unloadedModulesForFile.ContainsKey($written.Split('\')[0])) { $unloadedModulesForFile[$written.Split('\')[0]].site_count++ }
+            }
         } elseif ($harnessNames.Contains($written)) { $resolvedHarness++ }
         $definition = if ($isCommand -and $answer) { $definitionCache[$cacheKey] } else { $null }
         if ($definition) {
@@ -217,7 +279,7 @@ foreach ($relative in $files) {
             $definitionScopes[$definition[0]]++
         }
         $sites.Add([ordered]@{ path = $relative; line = $node.Extent.StartLineNumber; column = $node.Extent.StartColumnNumber;
-            from = $caller; written = $written; kind = $(if ($isCommand) { 'command' } else { 'member' }); resolved = $answer; resolved_definition = $definition; unresolved_class = $unresolvedClass })
+            from = $caller; written = $written; kind = $(if ($isCommand) { 'command' } else { 'member' }); resolved = $answer; session_union_nonlocal_private_helper = $nonlocalPrivateHelper; resolved_definition = $definition; unresolved_class = $unresolvedClass })
         if ($sites.Count -gt $siteCap) { throw 'whole-unit refusal: site count cap' }
         if ($answer) {
             $key = "$relative`t$caller`t$answer"
@@ -225,9 +287,12 @@ foreach ($relative in $files) {
         }
     }
 }
+$declarationCount = 0
+foreach ($d in $harnessInventory) { $declarationCount += $d.declaration_count }
 $receipt = [ordered]@{
     tool = 'PowerShell native InvokeCommand.GetCommand in declared module session'; version = '7.6.9'; tier = 'A';
     calls = $calls.ToArray(); sites = $sites.ToArray();
+    harness_inventory = @($harnessInventory | ForEach-Object { [ordered]@{ id = $_.id; target = $_.target; kind = $_.kind; status = $_.status; reason = $_.reason; code_sha256 = $_.code_sha256; declaration_count = $_.declaration_count; declaring_files = @($_.declaring_files); site_count = $_.site_count } });
     receipt = [ordered]@{ files = $files.Count; bytes = $bytes; literal_sites = $sites.Count; command_sites = $commandSites;
         member_sites = $memberSites; native_module_source_files = $moduleSources.Count; module_context_sites = $moduleContextSites; global_context_sites = $globalContextSites; unresolved_sites = $unknown; parse_error_files = $parseErrors;
         resolved_definition_file_contents = $targetFiles.Count; resolved_definition_scope_sites = $definitionScopes;
@@ -237,9 +302,12 @@ $receipt = [ordered]@{
         resolved_definition_sources_sha256 = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes([string]::Join("`n", @($targetFiles | Sort-Object -CaseSensitive))))).ToLowerInvariant();
         subject_module = $module.Name; subject_module_version = $module.Version.ToString();
         manifest_sha256 = (Get-FileHash -LiteralPath $manifestPath -Algorithm SHA256).Hash.ToLowerInvariant();
+        load_identity_policy = 'unique module name/version/code hash, not instance counts; every declared block retains a separate declaration id';
         load_before = $before; load_after = @(Get-OracleModules); explicit_runtime_modules = $runtimeModules;
-        declared_harness_inputs = $harnessInputs.ToArray(); resolved_harness_sites = $resolvedHarness; unresolved_by_class = $unresolvedClasses;
-        unresolvable_policy = 'all literal members, undeclared external commands/state and missing functions remain misses; no dot-sourcing of fixtures; native loader-owned source files use module context, ordinary test files use global context';
+        session_union_nonlocal_private_helper_sites = $sessionUnionNonlocalPrivateSites;
+        declared_harness_inputs = $harnessInputs.ToArray();
+        declared_inventory = [ordered]@{ targets = $harnessInventory.Count; declarations = $declarationCount; loaded = @($harnessInventory | Where-Object status -eq 'loaded').Count; declared_not_loaded = @($harnessInventory | Where-Object status -eq 'declared_not_loaded' | ForEach-Object { [ordered]@{ declaration_id = $_.id; kind = $_.kind; reason = $_.reason; site_count = $_.site_count; code_sha256 = $_.code_sha256 } }); policy = 'native parser enumeration of all tracked test files and root loader; loaded plus named declaration-id refusals partition inventory; helper union is session-wide, including private product utility definitions' };  resolved_harness_sites = $resolvedHarness; unresolved_by_class = $unresolvedClasses;
+        unresolvable_policy = 'all literal members, undeclared external commands/state and missing functions remain misses; no dot-sourcing of fixtures; native loader-owned source files use module context, ordinary test files use global context with session-wide declared-helper union, including per-file private utility preambles';
         module_loading_policy = 'autoload disabled before preamble; explicit six-module pinned-runtime baseline asserted; matching subject manifest and original declared test harness only; profile disabled' }
 }
 $receipt | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $Out -Encoding utf8NoBOM
