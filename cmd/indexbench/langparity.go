@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -65,6 +66,7 @@ func cmdLangParity(args []string, stdout, stderr io.Writer) int {
 	fs.Var(&toolOracles, "tool-oracle", "tool-native oracle JSON for a subject, `[name=]path` (repeatable, also more than once per subject: definitions and calls may come from different tools)")
 	fs.Var(&onlys, "only", "comma-separated globs measuring only these files of a subject, `[name=]globs` (repeatable; as lang-oracle's -only, so a parity run scores the files the reading does)")
 	ctagsPath := fs.String("ctags", "", "universal-ctags binary (as lang-oracle)")
+	scipTier := fs.String("scip-tier", "", "the -scip indexes' tier, as lang-oracle's -scip-tier: required for a scip-clang index (round 5 C5-R4)")
 	scipDefs := fs.Bool("scip-defs", false, "score L1 against each subject's -scip index definitions instead of universal-ctags (as lang-oracle's -scip-defs, owner decision D2)")
 	queuePath := fs.String("queue", "docs/plans/language-breadth.queue.json", "the queue (for the dialect's target level)")
 	target := fs.String("target", "", "target level (default: the queue entry's)")
@@ -85,6 +87,10 @@ func cmdLangParity(args []string, stdout, stderr io.Writer) int {
 	}
 	if *dialect == "" || len(subjects) == 0 || fs.NArg() != 0 {
 		fmt.Fprintln(stderr, "usage: indexbench lang-parity -dialect <id> [-incumbent <extractor>] -subject [name=]dir ... [-ctags <bin>] [-scip [name=]path] [-tool-oracle [name=]path] [-out <report.json>]")
+		return 2
+	}
+	if *scipTier != "" && !slices.Contains([]string{"A", "B", "C", "D"}, *scipTier) {
+		fmt.Fprintf(stderr, "lang-parity: -scip-tier %q: want A, B, C or D\n", *scipTier)
 		return 2
 	}
 	if *scipDefs && len(scips) == 0 {
@@ -204,7 +210,7 @@ func cmdLangParity(args []string, stdout, stderr io.Writer) int {
 			r     *langbench.Reading
 			kinds map[string]int
 		}{{incSpec, incX, &incR, incKinds}, {spec, dialX, &dialR, dialKinds}} {
-			m, err := measureSubject(ctx, side.spec, s.dir, s.name, oracleOpts{ctags: *ctagsPath, scip: s.scip, scipDefs: *scipDefs && s.scip != "", tools: s.tools, only: s.only}, side.x)
+			m, err := measureSubject(ctx, side.spec, s.dir, s.name, oracleOpts{ctags: *ctagsPath, scip: s.scip, scipTier: *scipTier, scipDefs: *scipDefs && s.scip != "", tools: s.tools, only: s.only}, side.x)
 			if err != nil {
 				fmt.Fprintln(stderr, "lang-parity:", err)
 				return 2

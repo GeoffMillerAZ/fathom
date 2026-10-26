@@ -2,6 +2,7 @@ package langbench
 
 import (
 	"bytes"
+	"cmp"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -230,6 +231,8 @@ type ClangLinkage struct {
 	unplaced   map[[2]string]bool         // pairs drawn as ruling 3 draws: the includes reach no copy
 	functions  map[string][]clangFunction // document -> the compiler's function definitions (round 4 C4-R1)
 	rangesTier string                     // the weakest tier of the ranges companions read (round 4 C4-R3)
+	rangesRun  OracleRun                  // the ranges companion as an oracle of the reading (round 5 C5-R4)
+	unitsRun   OracleRun                  // the link-unit companion as one
 	unitsTier  string                     // the weakest tier of the link-unit companions read
 	read       bool                       // Read ran over at least one oracle file
 }
@@ -528,6 +531,8 @@ func (l *ClangLinkage) Read(toolOracles []string, companion func(string) string)
 		l.read = true
 		if ub, err := os.ReadFile(unitsCompanionFile(p)); err == nil {
 			var lu struct {
+				Tool      string              `json:"tool"`
+				Version   string              `json:"version"`
 				Tier      string              `json:"tier"`
 				LinkUnits map[string][]string `json:"link_units"`
 			}
@@ -537,6 +542,7 @@ func (l *ClangLinkage) Read(toolOracles []string, companion func(string) string)
 			if l.unitsTier, err = companionTier(unitsCompanionFile(p), lu.Tier, l.unitsTier); err != nil {
 				return err
 			}
+			l.unitsRun = OracleRun{Tier: l.unitsTier, Tool: cmp.Or(lu.Tool, "link-units"), Version: cmp.Or(l.unitsRun.Version, lu.Version)}
 			for unit, srcs := range lu.LinkUnits {
 				for _, src := range srcs {
 					l.LinkUnit(unit, src)
@@ -552,6 +558,7 @@ func (l *ClangLinkage) Read(toolOracles []string, companion func(string) string)
 			return err
 		}
 		var lk struct {
+			Version         string `json:"version"`
 			Tier            string `json:"tier"`
 			InternalLinkage []struct {
 				Path string `json:"path"`
@@ -572,6 +579,9 @@ func (l *ClangLinkage) Read(toolOracles []string, companion func(string) string)
 		if l.rangesTier, err = companionTier(companion(p), lk.Tier, l.rangesTier); err != nil {
 			return err
 		}
+		// clang-ast-defs names itself clang-ast, as clang-calls does: the
+		// reading lists it under its own name (round 5 C5-R4)
+		l.rangesRun = OracleRun{Tier: l.rangesTier, Tool: "clang-ast-defs", Version: cmp.Or(l.rangesRun.Version, lk.Version)}
 		for _, d := range lk.InternalLinkage {
 			l.FileLocal(d.Path, d.Name)
 		}
@@ -602,6 +612,22 @@ func (l *ClangLinkage) FeedTier(tier string) string {
 		return tier
 	}
 	return max(tier, l.rangesTier, l.unitsTier)
+}
+
+// Oracles are the companions the rule read, each an oracle of the reading's
+// own (round 5 C5-R4): the ranges companion as clang-ast-defs and the
+// link-unit companion under its tool's name. A nil rule has none.
+func (l *ClangLinkage) Oracles() []OracleRun {
+	if l == nil {
+		return nil
+	}
+	var out []OracleRun
+	for _, o := range []OracleRun{l.rangesRun, l.unitsRun} {
+		if o.Tool != "" {
+			out = append(out, o)
+		}
+	}
+	return out
 }
 
 // RangesTier is the weaker of tier and the ranges companions' own tier: the
