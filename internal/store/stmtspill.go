@@ -24,9 +24,11 @@ import (
 // default. SQLite's own src/os_unix.c seekAndWriteFd asserts nBuf==(nBuf&0x1ffff),
 // then masks nBuf with 0x1ffff. memjrnlCreateFile flushes the in-memory journal in a
 // spill-threshold-sized chunk via one xWrite; at 131,072 bytes or more the unix VFS
-// short write yields SQLITE_FULL, even with free disk. This is the exact safe maximum
-// for every page size, on all unix targets (including Linux), also with cgo; Windows
-// is unaffected. A driver upgrade alone cannot justify raising it.
+// short write yields SQLITE_FULL, even with free disk. 131,071 is a safe bound: any
+// spill at or under 0x1ffff keeps every flush write unmasked, for every page size, on
+// all unix targets (including Linux), also with cgo; Windows is unaffected. (A journal
+// of k*(page+4) bytes never lands on exactly 2^17, so 131,072 also passes in practice,
+// but nothing here pins that.) A driver upgrade alone cannot justify raising it.
 //
 // Cost: LB-F208 raised this to 4 MiB to keep a typical row's roughly 60-page (246 KB)
 // journal in memory, avoiding a temp file per row (3.5 s of a 17 s polyglot build).
