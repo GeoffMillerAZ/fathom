@@ -3791,7 +3791,7 @@
       "c6_artifact": "receipts/fatedier--frp-d26.json",
       "c6_qualifying_symbols": 30,
       "refusals": [
-        "C3: UID-witnessed listener-release timing flake: TestNewServiceReleasesListenersOnWebServerFailure/port_conflict fails UDP rebinding in warm-up and run1, then run2 and run3 pass; D28 refuses flakes"
+        "C3: UID-witnessed listener-release timing flake: TestNewServiceReleasesListenersOnWebServerFailure fails UDP rebinding in warm-up (subtest port_conflict) and run1 (subtest invalid_TLS_certificate), then run2 and run3 pass; D28 refuses flakes"
       ],
       "band": "middle",
       "module": "github.com/fatedier/frp",
@@ -32461,10 +32461,7 @@
     "calibration/bench/tools/test_remeasure.py": "fccf9901516248f421cb441a4c8d2b0e2b29d466c2540e5dec9d2753c9202a87",
     "calibration/bench/tools/verify_apps_r2.py": "2f6deaa9e766f9b696f861da6606cefe08f4fefcbb879b433c8af354d5063376",
     "calibration/bench/tools/test_verify_apps_r2.py": "94d2bb5dfc02b0f111c1a78e6d8a571283e074169d75577514f7b1a4c2cb44f5",
-    "calibration/bench/tools/README-r2.md": "c2848598829301183c7281a761e8049701966a1773d9314a06d10d57cc39c9d8",
-    "calibration/bench.d/apps-r2-setup.py": "832ab6ca8d4d9b32e986eccda8313131bdc2d8b8e9fdd985581bf570b89b1b4a",
-    "calibration/bench.d/apps-r2-tools.json": "154ce3d89c9def35084652247eb800b937758de78b93cfd1a75d97cd1e0f8dac",
-    "calibration/bench.d/apps-r2-python-tools.txt": "7e70d7413d245eba8c5ec963f91a4d3e4d4bca3a109f9490a4966e83a8ca1e59"
+    "calibration/bench/tools/README-r2.md": "c2848598829301183c7281a761e8049701966a1773d9314a06d10d57cc39c9d8"
   },
   "archive": {
     "path": "raw/bench-apps-r2-logs.tar.xz",

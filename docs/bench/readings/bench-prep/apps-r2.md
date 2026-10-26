@@ -22,7 +22,7 @@ The carried pool is pytest and redux-toolkit, not remeasured here. Slidev is dev
 | Python | python-poetry/poetry / 1fe5e0a57928572eb1d08f83b0cf0179043280dd | 81,877 / large | 37 | 102 | 4 | C3: native unprivileged locked setup exited 132 with Illegal instruction; no test trials |
 | TypeScript | verdaccio/verdaccio / 377d8b15074bbf75040b7eef72e0862e2559c06c | 84,769 / large | 150 | 93 | 6 | C3: four repeating login leaf failures expect HTTP 200 but get 404; no logged D28 network, privilege, date or missing-service cause |
 | TypeScript | slidevjs/slidev / a42aff28dd75f26eb5abbf3d616ea022c3d08924 | 29,266 / middle | 41 | 31 | 7 | kept for preparation |
-| Go | fatedier/frp / 93b52799bb7e6dad7ae1152c8b593eefcc17d595 | 63,934 / middle | 67 | 31 | 30 | C3: UID-witnessed listener-release timing flake: TestNewServiceReleasesListenersOnWebServerFailure/port_conflict fails UDP rebinding in warm-up and run1, then run2 and run3 pass; D28 refuses flakes |
+| Go | fatedier/frp / 93b52799bb7e6dad7ae1152c8b593eefcc17d595 | 63,934 / middle | 67 | 31 | 30 | C3: UID-witnessed listener-release timing flake: TestNewServiceReleasesListenersOnWebServerFailure fails UDP rebinding in warm-up (subtest port_conflict) and run1 (subtest invalid_TLS_certificate), then run2 and run3 pass; D28 refuses flakes |
 | Go | gotenberg/gotenberg / 764c7f2c256af9100787d40d2306c2bd0d7b2990 | 44,765 / middle | 23 | 92 | 30 | kept for preparation |
 | Go | usememos/memos / 0bfa31e89ec550c7cc6a1dea3888af2d0de107c2 | 146,367 / large | 51 | 114 | 18 | C3: Docker-dependent store drivers and missing PostgreSQL DSN exceed the amended 2% environment-exclusion budget; external DSNs cannot bypass the upstream Docker-health guard |
 | Go | restic/restic / dd09b6bd01af220b1d5d95c0d4d7d472e05e05c4 | 88,548 / large | 60 | 40 | 60 | C3: missing python and fusermount executables, plus UID mismatches on the unprivileged bind mount; preparation gap, no exclusions inferred |
@@ -81,7 +81,7 @@ The table retains historical phases for refused subjects and separately identifi
 | unjs/nitro | 149.384 / 0 | 378.217 / 1 | 366.735 / 1, 381.432 / 1, 396.603 / 1 |
 | streetsidesoftware/cspell | 214.19 / 0 | 63.541 / 1 | 62.751 / 1, 65.046 / 1, 67.713 / 1 |
 
-k9s remains refused under D28: its round-two warm-up and three timed processes passed, but the known round-one 1 ms expiry timing failure is a flake. FRP’s new UID-witnessed warm-up and run1 failed UDP rebinding in TestNewServiceReleasesListenersOnWebServerFailure/port_conflict; run2 and run3 passed. A later pass does not repair either refusal.
+k9s remains refused under D28: its round-two warm-up and three timed processes passed, but the known round-one 1 ms expiry timing failure is a flake. FRP’s new UID-witnessed warm-up and run1 failed UDP rebinding in TestNewServiceReleasesListenersOnWebServerFailure (warm-up subtest port_conflict, run1 subtest invalid_TLS_certificate), a race that moves between subtests; run2 and run3 passed. A later pass does not repair either refusal. GoReleaser's three setup pins (`apps-r2-tools.json`, `apps-r2-python-tools.txt`, `apps-r2-setup.py`) are kept only in the archive as `instruments/bx85-*`: no kept subject's manifest reads them, so they are not in `calibration/bench.d`, and `calibration/bench/tools/README-r2.md` describes them as measured.
 
 ## Final GoReleaser setup attempt
 
