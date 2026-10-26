@@ -126,7 +126,7 @@ item's target; the last column also needs every level up to the target graded ex
 
 | Tier | Kind | Items | L1 | L2 | L3 | L4 | None | Refused | Tolerated | Unsupported | At target | At target, all excellent |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| T1 | language | 33 | 0 | 3 | 13 | 10 | 1 | 5 | 0 | 1 | 23 | 8 |
+| T1 | language | 33 | 0 | 3 | 13 | 10 | 1 | 6 | 0 | 0 | 23 | 10 |
 | T1 | tool format | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |
 | T2 | tool format | 23 | 0 | 6 | 15 | 0 | 1 | 0 | 0 | 1 | 20 | 15 |
 | T3 | tool format | 16 | 0 | 5 | 11 | 0 | 0 | 0 | 0 | 0 | 15 | 5 |
@@ -136,7 +136,7 @@ item's target; the last column also needs every level up to the target graded ex
 | T6 | language | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | T6 | tool format | 4 | 0 | 3 | 1 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
 | T7 | tool format | 4 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
-| **Total** | language | 37 | 0 | 3 | 15 | 10 | 1 | 6 | 0 | 2 | 24 | 8 |
+| **Total** | language | 37 | 0 | 3 | 15 | 10 | 1 | 7 | 0 | 1 | 24 | 10 |
 | **Total** | tool format | 63 | 0 | 21 | 39 | 0 | 1 | 0 | 0 | 2 | 58 | 32 |
 
 ### T1
@@ -150,7 +150,7 @@ item's target; the last column also needs every level up to the target graded ex
 | Python (.py .pyi) | language | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | excellent at target |
 | HTML (.html .htm) | language | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | CSS (.css) | language | L3 | L3 (L1 good, L2 excellent, L3 excellent) | L1 good: range_agreement not measured |
-| SQL (.sql; schema and migrations) | language | L2 | L2 (L1 excellent, L2 good) | L2 good: oracle tier C caps at good |
+| SQL (.sql; schema and migrations) | language | L2 | L2 (L1 excellent, L2 excellent) | excellent at target |
 | Shell / Bash (.sh .bash, shebangs) | language | L3 | L3 (L1 excellent, L2 good, L3 good) | L2 good: oracle tier C caps at good |
 | Java (.java) | language | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | excellent at target |
 | C# (.cs) | language | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | excellent at target |
@@ -165,8 +165,8 @@ item's target; the last column also needs every level up to the target graded ex
 | Ruby (.rb, Rakefile, Gemfile by basename) | language | L3 | L3 (L1 excellent, L2 good, L3 good) | L2 good: oracle tier C caps at good |
 | Dart (.dart) | language | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | excellent at target |
 | Swift (.swift) | language | L3 | refused | re-plan (LB-Q-swift-rest refused) |
-| SCSS (.scss) | language | L3 | L3 (L1 good, L2 excellent, L3 excellent) | L1 good: range_agreement not measured |
-| Sass (indented syntax) (.sass) | language | L3 | unsupported | no dialect (LB-Q-sass) |
+| SCSS (.scss) | language | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
+| Sass (indented syntax) (.sass) | language | L3 | refused | re-plan (LB-Q-sass-rest refused) |
 | Tailwind CSS v4 at-rules and custom utilities (.css) | language | L2 | L3 (L1 good, L2 excellent, L3 excellent) | L1 good: range_agreement not measured |
 | Less (.less) | language | L3 | refused | re-plan (LB-Q-less-rest refused) |
 | Perl (.pl .pm .t by sniff) | language | L2 | L2 (L1 good, L2 good) | L1 good: range_agreement not measured |
@@ -234,7 +234,7 @@ item's target; the last column also needs every level up to the target graded ex
 | Rego / OPA policy (.rego) | language | L3 | L3 (L1 excellent, L2 excellent, L3 good) | L3 good: file_edge_recall 0.3858 < 0.5 |
 | Kyverno policies (ClusterPolicy, Policy, PolicyException) | tool format | L2 | L3 (L1 excellent, L2 excellent, L3 good) | excellent at target |
 | OPA Gatekeeper ConstraintTemplates and constraints | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
-| Conftest policies (policy/*.rego, conftest.toml) | tool format | L2 | unsupported | no dialect (LB-Q-conftest) |
+| Conftest configuration (conftest.toml; policies ride Rego) | tool format | L1 | unsupported | no dialect (LB-Q-conftest) |
 | Cedar policies and schemas (.cedar .cedarschema) | language | L3 | refused | re-plan (LB-Q-cedar-rest refused) |
 | AWS IAM policy documents (JSON by content, inline in CloudFormation and Terraform) | tool format | L2 | L2 (L1 excellent, L2 excellent) | excellent at target |
 | Azure Policy definitions and initiatives (policyRule JSON) | tool format | L2 | L2 (L1 good, L2 good) | L1 good: oracle tier C caps at good |
@@ -253,7 +253,7 @@ item's target; the last column also needs every level up to the target graded ex
 | Kong declarative configuration (decK, DB-less) | tool format | L3 | L3 (L1 excellent, L2 good, L3 excellent) | L2 good: oracle tier C caps at good |
 | Traefik static and file-provider configuration | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | PgBouncer configuration (pgbouncer.ini) | tool format | L2 | L2 (L1 good, L2 good) | L1 good: oracle tier C caps at good |
-| ProxySQL configuration (proxysql.cnf) | tool format | L2 | L2 (L1 good, L2 excellent) | L1 good: sym_precision 0.9544 < 0.98 |
+| ProxySQL configuration (proxysql.cnf) | tool format | L2 | L2 (L1 good, L2 excellent) | L1 good: sym_precision 0.9571 < 0.98 |
 
 ### T6
 
@@ -285,8 +285,8 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 reached (languages at L1 40, L1 excellent 28, L2 35, L3 28, L4 10; tool formats at target 67)
-Milestone M2 progress: languages at L1 40/45, at L1 excellent 28/35, at L2 35/25, at L3 28/14, at L4 10/10; tool formats at target 67/30
+Milestone M1 reached (languages at L1 40, L1 excellent 29, L2 35, L3 28, L4 10; tool formats at target 67)
+Milestone M2 progress: languages at L1 40/45, at L1 excellent 29/35, at L2 35/25, at L3 28/14, at L4 10/10; tool formats at target 67/30
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -299,7 +299,7 @@ Milestone M2 progress: languages at L1 40/45, at L1 excellent 28/35, at L2 35/25
 | HTML (.html .htm) | language | tags | tree-sitter/tree-sitter-html (MIT) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A lychee 0.24.2; A parse5 8.0.1; B universal-ctags 6.2.1 | file | 2026-10-11 | at target (LB-Q-html) |
 | GitHub Actions workflows and composite actions | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 good) | A @actions/workflow-parser (parseWorkflow + convertWorkflowTemplate; parseAction + convertActionTemplate) @actions/workflow-parser 0.3.61; C @actions/workflow-parser (parseWorkflow + convertWorkflowTemplate; parseAction + convertActionTemplate) + local uses: directory rule @actions/workflow-parser 0.3.61 | — | 2026-10-15 | at target (LB-Q-github-actions) |
 | CSS (.css) | language | tags | tree-sitter/tree-sitter-css (MIT) | L3 | L3 (L1 good, L2 excellent, L3 excellent) | A lightningcss 1.33.0 | file | 2026-10-10 | at target (LB-Q-css) |
-| SQL (.sql; schema and migrations) | language | tags | DerekStride/tree-sitter-sql (MIT) | L2 | L2 (L1 excellent, L2 good) | C sqlglot 27.8.0; B universal-ctags 6.2.1 | syntax | 2026-10-10 | at target (LB-Q-sql) |
+| SQL (.sql; schema and migrations) | language | tags | DerekStride/tree-sitter-sql (MIT) | L2 | L2 (L1 excellent, L2 excellent) | A sql-native-catalog SQLite 3.49.1; PGlite 0.5.11 PostgreSQL 18.6; pgvector 0.0.12; B universal-ctags 6.2.1 | syntax | 2026-10-26 | at target (LB-Q-sql) |
 | npm/pnpm/yarn package manifests (package.json, workspaces) | tool format | doc | pure-go:encoding/json (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A npm query ':root' (each manifest as npm loads it) 11.19.1; A npm query (workspace members) + pnpm 10.33.0 ls -r --filter '{<project>}...' (one project's dependency maps at a time) npm 11.19.1; pnpm 10.33.0; A npm query (workspace members) + yarn 4.10.3 workspaces list -v (the subject's own release, .yarn/releases/yarn-4.10.3.cjs) npm 11.19.1; yarn 4.10.3 | syntax | 2026-10-02 | at target (LB-Q-package-json) |
 | Shell / Bash (.sh .bash, shebangs) | language | tags | tree-sitter/tree-sitter-bash (MIT) | L3 | L3 (L1 excellent, L2 good, L3 good) | B bash-source v3.14.1 (mvdan.cc/sh/v3 syntax, -ln bash); bash 5 lookup, cwd the script's directory then the subject root; checked by ShellCheck 0.11.0; C tree-sitter-tags:bash-tags.scm py-tree-sitter 0.25.2, tree-sitter-bash 0.25.1; B universal-ctags 6.2.1 | — | 2026-10-11 | at target (LB-Q-bash) |
 | Java (.java) | language | tags | tree-sitter/tree-sitter-java (MIT) | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | B javaparser 3.28.2; A scip-java 0.12.3 | scip:scip-java | 2026-10-10 | at target (LB-Q-java) |
@@ -325,8 +325,8 @@ Milestone M2 progress: languages at L1 40/45, at L1 excellent 28/35, at L2 35/25
 | Cargo manifests (Cargo.toml, workspaces) | tool format | doc | pure-go:github.com/pelletier/go-toml/v2 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A cargo metadata (--no-deps, and --all-features for the resolved graph) cargo 1.98.1 (797e8a9bc 2026-08-05) | syntax | 2026-09-29 | at target (LB-Q-cargo) |
 | Swift (.swift) | language | tags | alex-pinkus/tree-sitter-swift (MIT) | L3 | refused; measured L2 (L1 excellent, L2 good) | B swiftc -frontend -dump-parse 6.4 | — | 2026-09-29 | re-plan (LB-Q-swift-rest refused) |
 | Go modules (go.mod, go.work) | tool format | native | native:golang.org/x/mod (BSD-3-Clause) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A go mod edit -json, go work edit -json, go list -e -m -json all go1.26.3 darwin/arm64 | syntax | 2026-09-29 | at target (LB-Q-go-mod) |
-| SCSS (.scss) | language | tags | tree-sitter-grammars/tree-sitter-scss (MIT (verify at pin)) | L3 | L3 (L1 good, L2 excellent, L3 excellent) | A dart-sass sass 1.105.1, sass-parser 0.4.57 | file | 2026-10-20 | at target (LB-Q-scss) |
-| Sass (indented syntax) (.sass) | language | tags | none pinned: no tree-sitter grammar parses the indented syntax (O853) (n/a (no grammar pinned)) | L3 | unsupported (disclosed) | — | — | — | LB-Q-sass |
+| SCSS (.scss) | language | tags | P233/tree-sitter-scss (MIT) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A dart-sass sass 1.105.1, sass-parser 0.4.57 | file | 2026-10-26 | at target (LB-Q-scss) |
+| Sass (indented syntax) (.sass) | language | tags | bajrangCoder/tree-sitter-sass (candidate not pinned: 56.16% of files in error at fb280c41) (MIT (LICENSE read at fb280c41b070657e4ff4d4e5e6eea6cb19efd9b8)) | L3 | refused | — | — | — | re-plan (LB-Q-sass-rest refused) |
 | Tailwind CSS v4 at-rules and custom utilities (.css) | language | tags | tree-sitter/tree-sitter-css (the css dialect's grammar) (MIT) | L2 | L3 (L1 good, L2 excellent, L3 excellent) | A tailwindcss 4.3.2 | — | 2026-10-20 | at target (LB-Q-tailwind) |
 | Less (.less) | language | tags | jimliang/tree-sitter-less (verify at pin) | L3 | refused | — | — | — | re-plan (LB-Q-less-rest refused) |
 | MSBuild projects (.csproj .fsproj .vbproj .props .targets, .sln) | tool format | doc | pure-go:encoding/xml (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A dotnet msbuild (-getItem, -getProperty and -preprocess) MSBuild 18.9.11.42413; .NET SDK 10.0.401 | syntax | 2026-09-29 | at target (LB-Q-msbuild) |
@@ -457,7 +457,7 @@ Milestone M2 progress: languages at L1 40/45, at L1 excellent 28/35, at L2 35/25
 | Timoni modules and bundles (timoni.cue, values.cue, templates/*.cue, bundle.cue, runtime.cue) | tool format | native | native:cuelang.org/go (Apache-2.0) | L3 | L2 (L1 good, L2 good) | A timoni 0.35.0 (cue 0.17.1) timoni 0.35.0 (cue 0.17.1); C timoni oracle: a CUE syntax walk gated by timoni 0.35.0 (cue 0.17.1) timoni 0.35.0 (cue 0.17.1) | — | 2026-10-24 | LB-Q-timoni |
 | Kyverno policies (ClusterPolicy, Policy, PolicyException) | tool format | doc | yaml.v3 (n/a) | L2 | L3 (L1 excellent, L2 excellent, L3 good) | A Kyverno's own loaders (github.com/kyverno/kyverno v1.18.1 cmd/cli/kubectl-kyverno policy.Load and test.LoadTest) + gopkg.in/yaml.v3 for lines kyverno v1.18.1; C kyverno-oracle policy walk (independent gopkg.in/yaml.v3) over the loader-attested policies gopkg.in/yaml.v3 v3.0.1 | — | 2026-10-02 | at target (LB-Q-kyverno) |
 | OPA Gatekeeper ConstraintTemplates and constraints | tool format | doc | yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A Gatekeeper's own match (github.com/open-policy-agent/gatekeeper/v3 v3.23.1 pkg/target K8sValidationTarget.ToMatcher + Match) over the dialect's object set, the dialect's nearest-first join gatekeeper/v3 v3.23.1; A gator verify (gator version v3.23.1 (Feature State: beta), opa/v1.17.1, frameworks/v0.0.0-20260616163050-e1eaa1bf6d62) + gopkg.in/yaml.v3 for names and lines gator version v3.23.1 (Feature State: beta), opa/v1.17.1, frameworks/v0.0.0-20260616163050-e1eaa1bf6d62 | — | 2026-10-02 | at target (LB-Q-gatekeeper) |
-| Conftest policies (policy/*.rego, conftest.toml) | tool format | tags+doc | rides LB-Q-rego's grammar + pure-go:go-toml/v2 (verify at pin) | L2 | unsupported (disclosed) | — | — | — | LB-Q-conftest |
+| Conftest configuration (conftest.toml; policies ride Rego) | tool format | doc | pure-go:github.com/pelletier/go-toml/v2 (n/a) | L1 | unsupported (disclosed) | — | — | — | LB-Q-conftest |
 | Cedar policies and schemas (.cedar .cedarschema) | language | tags | chrnorm/tree-sitter-cedar 5092204d or cedar-go v1.8.0, both refused at pin (LB-Q-cedar-rest) (MIT (tree-sitter-cedar LICENCE); Apache-2.0 (cedar-go)) | L3 | refused | — | — | — | re-plan (LB-Q-cedar-rest refused) |
 | AWS IAM policy documents (JSON by content, inline in CloudFormation and Terraform) | tool format | doc | encoding/json (n/a) | L2 | L2 (L1 excellent, L2 excellent) | A aws-cdk-lib aws_iam PolicyDocument.fromJson and PolicyStatement.fromJson (AWS) + jsonc-parser for lines aws-cdk-lib 2.272.0, jsonc-parser 3.3.1 | — | 2026-10-02 | at target (LB-Q-aws-iam-policy) |
 | Azure Policy definitions and initiatives (policyRule JSON) | tool format | doc | encoding/json (n/a) | L2 | L2 (L1 good, L2 good) | C azure-policy JSON walk (the definition schema's structure, an independent JSON reader) 1 | — | 2026-10-02 | at target (LB-Q-azure-policy) |
@@ -465,7 +465,7 @@ Milestone M2 progress: languages at L1 40/45, at L1 excellent 28/35, at L2 35/25
 | Checkov custom policies (YAML graph checks, Python checks) | tool format | tags+doc | yaml.v3 + tree-sitter/tree-sitter-python (n/a) | L2 | L2 (L1 excellent, L2 excellent) | A checkov (--external-checks-dir loaders) 3.2.500 | — | 2026-10-24 | at target (LB-Q-checkov-policies) |
 | HashiCorp Sentinel policies (.sentinel) | language | tags | none open (verify at pin) (verify at pin) | L2 | unsupported (disclosed) | — | — | — | LB-Q-sentinel |
 | PgBouncer configuration (pgbouncer.ini) | tool format | doc | pure-go:INI parser (n/a) | L2 | L2 (L1 good, L2 good) | C pgbouncer PgBouncer 1.26.1 + line scanner | — | 2026-10-24 | at target (LB-Q-pgbouncer) |
-| ProxySQL configuration (proxysql.cnf) | tool format | doc | pure-go:libconfig parser (verify at pin) (n/a) | L2 | L2 (L1 good, L2 excellent) | A proxysql ProxySQL version 3.0.9-618-g7ddb3dc, codename Truls + line scanner | — | 2026-10-24 | at target (LB-Q-proxysql) |
+| ProxySQL configuration (proxysql.cnf) | tool format | doc | pure-go:libconfig parser (verify at pin) (n/a) | L2 | L2 (L1 good, L2 excellent) | A proxysql ProxySQL version 4.0.9-0-g7ddb3dc_DEBUG, codename Truls + line scanner | — | 2026-10-26 | at target (LB-Q-proxysql) |
 | fathom configuration (.fathom/config.toml) | tool format | doc | pure-go:go-toml/v2 (n/a) | L2 | L2 (L1 good, L2 good) | C python tomllib (TOML decode) + a line scanner of its own python 3.14.7 tomllib | — | 2026-10-03 | at target (LB-Q-fathom-config) |
 | fathom concerns (.fathom/concerns.cue) | tool format | native | native:cuelang.org/go (n/a) | L2 | L2 (L1 excellent, L2 excellent) | A cue export + cue lsp (concerns) v0.16.1 | — | 2026-10-24 | at target (LB-Q-fathom-concerns) |
 | fathom layer packs (.fathom/layers/*/layer.cue, .fathom/rules/*.cue) | tool format | native | native:cuelang.org/go (n/a) | L2 | L2 (L1 excellent, L2 excellent) | A cue export + cue lsp (layer-packs) v0.16.1 | — | 2026-10-24 | at target (LB-Q-fathom-layer-packs) |

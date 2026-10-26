@@ -1,0 +1,3294 @@
+{
+  "claim": "feasibility run; tier A requires >=90% executed literal-statement coverage; no grade changed",
+  "coverage": 0.8101,
+  "covered_literal_statements": 192,
+  "file_loads": [
+    {
+      "exit": 0,
+      "path": "ftplugin/TelescopePrompt.lua"
+    },
+    {
+      "exit": 0,
+      "path": "ftplugin/TelescopeResults.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/_.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/_extensions/init.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/actions/generate.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/actions/history.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/actions/init.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/actions/layout.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/actions/mt.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/actions/set.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/actions/state.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/actions/utils.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/algos/fzy.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/algos/linked_list.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/algos/string_distance.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/builtin/__diagnostics.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/builtin/__files.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/builtin/__git.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/builtin/__internal.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/builtin/__lsp.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/builtin/init.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/command.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/config/resolve.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/config.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/debounce.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/entry_manager.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/finders/async_job_finder.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/finders/async_oneshot_finder.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/finders/async_static_finder.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/finders.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/from_entry.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/health.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/init.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/log.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/make_entry.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/mappings.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/operators.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/pickers/entry_display.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/pickers/highlights.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/pickers/layout.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/pickers/layout_strategies.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/pickers/multi.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/pickers/scroller.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/pickers/window.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/pickers.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/previewers/buffer_previewer.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/previewers/init.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/previewers/previewer.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/previewers/term_previewer.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/previewers/utils.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/sorters.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/state.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/testharness/helpers.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/testharness/init.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/testharness/runner.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/themes.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/telescope/utils.lua"
+    },
+    {
+      "exit": 1,
+      "path": "lua/tests/automated/action_spec.lua"
+    },
+    {
+      "exit": 1,
+      "path": "lua/tests/automated/command_spec.lua"
+    },
+    {
+      "exit": 1,
+      "path": "lua/tests/automated/entry_display_spec.lua"
+    },
+    {
+      "exit": 1,
+      "path": "lua/tests/automated/entry_manager_spec.lua"
+    },
+    {
+      "exit": 1,
+      "path": "lua/tests/automated/layout_strategies_spec.lua"
+    },
+    {
+      "exit": 1,
+      "path": "lua/tests/automated/linked_list_spec.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/tests/automated/pickers/find_files_spec.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/tests/automated/pickers/live_grep_spec.lua"
+    },
+    {
+      "exit": 1,
+      "path": "lua/tests/automated/resolver_spec.lua"
+    },
+    {
+      "exit": 1,
+      "path": "lua/tests/automated/scroller_spec.lua"
+    },
+    {
+      "exit": 1,
+      "path": "lua/tests/automated/sorters_spec.lua"
+    },
+    {
+      "exit": 1,
+      "path": "lua/tests/automated/telescope_spec.lua"
+    },
+    {
+      "exit": 1,
+      "path": "lua/tests/automated/utils_spec.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/tests/helpers.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/tests/pickers/find_files__readme.lua"
+    },
+    {
+      "exit": 0,
+      "path": "lua/tests/pickers/find_files__scrolling_descending_cycle.lua"
+    },
+    {
+      "exit": 0,
+      "path": "plugin/telescope.lua"
+    },
+    {
+      "exit": 1,
+      "path": "scripts/gendocs.lua"
+    }
+  ],
+  "literal_in_subject_statements": 237,
+  "nvim_version": "NVIM v0.12.6",
+  "observed": [
+    {
+      "line": 3,
+      "module": "plenary.class",
+      "path": "lua/telescope/_.lua",
+      "to_path": null
+    },
+    {
+      "line": 4,
+      "module": "plenary.log",
+      "path": "lua/telescope/_.lua",
+      "to_path": null
+    },
+    {
+      "line": 4,
+      "module": "plenary.path",
+      "path": "lua/telescope/_.lua",
+      "to_path": null
+    },
+    {
+      "line": 6,
+      "module": "plenary.async",
+      "path": "lua/telescope/_.lua",
+      "to_path": null
+    },
+    {
+      "line": 6,
+      "module": "plenary.async.async",
+      "path": "lua/telescope/_.lua",
+      "to_path": null
+    },
+    {
+      "line": 6,
+      "module": "plenary.async.tests",
+      "path": "lua/telescope/_.lua",
+      "to_path": null
+    },
+    {
+      "line": 7,
+      "module": "plenary.async",
+      "path": "lua/telescope/_.lua",
+      "to_path": null
+    },
+    {
+      "line": 7,
+      "module": "plenary.async.control",
+      "path": "lua/telescope/_.lua",
+      "to_path": null
+    },
+    {
+      "line": 8,
+      "module": "telescope.utils",
+      "path": "lua/telescope/_.lua",
+      "to_path": "lua/telescope/utils.lua"
+    },
+    {
+      "line": 26,
+      "module": "telescope.actions",
+      "path": "lua/telescope/actions/generate.lua",
+      "to_path": "lua/telescope/actions/init.lua"
+    },
+    {
+      "line": 27,
+      "module": "telescope.config",
+      "path": "lua/telescope/actions/generate.lua",
+      "to_path": "lua/telescope/config.lua"
+    },
+    {
+      "line": 28,
+      "module": "telescope.actions.state",
+      "path": "lua/telescope/actions/generate.lua",
+      "to_path": "lua/telescope/actions/state.lua"
+    },
+    {
+      "line": 29,
+      "module": "telescope.finders",
+      "path": "lua/telescope/actions/generate.lua",
+      "to_path": "lua/telescope/finders.lua"
+    },
+    {
+      "line": 1,
+      "module": "telescope.config",
+      "path": "lua/telescope/actions/history.lua",
+      "to_path": "lua/telescope/config.lua"
+    },
+    {
+      "line": 2,
+      "module": "plenary.path",
+      "path": "lua/telescope/actions/history.lua",
+      "to_path": null
+    },
+    {
+      "line": 3,
+      "module": "telescope.utils",
+      "path": "lua/telescope/actions/history.lua",
+      "to_path": "lua/telescope/utils.lua"
+    },
+    {
+      "line": 57,
+      "module": "telescope.config",
+      "path": "lua/telescope/actions/init.lua",
+      "to_path": "lua/telescope/config.lua"
+    },
+    {
+      "line": 58,
+      "module": "telescope.state",
+      "path": "lua/telescope/actions/init.lua",
+      "to_path": "lua/telescope/state.lua"
+    },
+    {
+      "line": 59,
+      "module": "telescope.utils",
+      "path": "lua/telescope/actions/init.lua",
+      "to_path": "lua/telescope/utils.lua"
+    },
+    {
+      "line": 60,
+      "module": "plenary.popup",
+      "path": "lua/telescope/actions/init.lua",
+      "to_path": null
+    },
+    {
+      "line": 60,
+      "module": "plenary.popup.utils",
+      "path": "lua/telescope/actions/init.lua",
+      "to_path": null
+    },
+    {
+      "line": 60,
+      "module": "plenary.window",
+      "path": "lua/telescope/actions/init.lua",
+      "to_path": null
+    },
+    {
+      "line": 60,
+      "module": "plenary.window.border",
+      "path": "lua/telescope/actions/init.lua",
+      "to_path": null
+    },
+    {
+      "line": 61,
+      "module": "telescope.pickers.scroller",
+      "path": "lua/telescope/actions/init.lua",
+      "to_path": "lua/telescope/pickers/scroller.lua"
+    },
+    {
+      "line": 63,
+      "module": "telescope.actions.state",
+      "path": "lua/telescope/actions/init.lua",
+      "to_path": "lua/telescope/actions/state.lua"
+    },
+    {
+      "line": 64,
+      "module": "telescope.actions.utils",
+      "path": "lua/telescope/actions/init.lua",
+      "to_path": "lua/telescope/actions/utils.lua"
+    },
+    {
+      "line": 65,
+      "module": "telescope.actions.set",
+      "path": "lua/telescope/actions/init.lua",
+      "to_path": "lua/telescope/actions/set.lua"
+    },
+    {
+      "line": 66,
+      "module": "telescope.pickers.entry_display",
+      "path": "lua/telescope/actions/init.lua",
+      "to_path": "lua/telescope/pickers/entry_display.lua"
+    },
+    {
+      "line": 67,
+      "module": "telescope.from_entry",
+      "path": "lua/telescope/actions/init.lua",
+      "to_path": "lua/telescope/from_entry.lua"
+    },
+    {
+      "line": 69,
+      "module": "telescope.actions.mt",
+      "path": "lua/telescope/actions/init.lua",
+      "to_path": "lua/telescope/actions/mt.lua"
+    },
+    {
+      "line": 70,
+      "module": "telescope.config.resolve",
+      "path": "lua/telescope/actions/init.lua",
+      "to_path": "lua/telescope/config/resolve.lua"
+    },
+    {
+      "line": 10,
+      "module": "telescope.pickers.layout_strategies",
+      "path": "lua/telescope/actions/layout.lua",
+      "to_path": "lua/telescope/pickers/layout_strategies.lua"
+    },
+    {
+      "line": 12,
+      "module": "telescope.actions.mt",
+      "path": "lua/telescope/actions/layout.lua",
+      "to_path": "lua/telescope/actions/mt.lua"
+    },
+    {
+      "line": 8,
+      "module": "telescope.actions.state",
+      "path": "lua/telescope/actions/layout.lua",
+      "to_path": "lua/telescope/actions/state.lua"
+    },
+    {
+      "line": 9,
+      "module": "telescope.state",
+      "path": "lua/telescope/actions/layout.lua",
+      "to_path": "lua/telescope/state.lua"
+    },
+    {
+      "line": 16,
+      "module": "telescope.log",
+      "path": "lua/telescope/actions/set.lua",
+      "to_path": "lua/telescope/log.lua"
+    },
+    {
+      "line": 17,
+      "module": "plenary.path",
+      "path": "lua/telescope/actions/set.lua",
+      "to_path": null
+    },
+    {
+      "line": 18,
+      "module": "telescope.state",
+      "path": "lua/telescope/actions/set.lua",
+      "to_path": "lua/telescope/state.lua"
+    },
+    {
+      "line": 19,
+      "module": "telescope.utils",
+      "path": "lua/telescope/actions/set.lua",
+      "to_path": "lua/telescope/utils.lua"
+    },
+    {
+      "line": 21,
+      "module": "telescope.actions.state",
+      "path": "lua/telescope/actions/set.lua",
+      "to_path": "lua/telescope/actions/state.lua"
+    },
+    {
+      "line": 23,
+      "module": "telescope.actions.mt",
+      "path": "lua/telescope/actions/set.lua",
+      "to_path": "lua/telescope/actions/mt.lua"
+    },
+    {
+      "line": 10,
+      "module": "telescope.state",
+      "path": "lua/telescope/actions/state.lua",
+      "to_path": "lua/telescope/state.lua"
+    },
+    {
+      "line": 11,
+      "module": "telescope.config",
+      "path": "lua/telescope/actions/state.lua",
+      "to_path": "lua/telescope/config.lua"
+    },
+    {
+      "line": 10,
+      "module": "telescope.actions.state",
+      "path": "lua/telescope/actions/utils.lua",
+      "to_path": "lua/telescope/actions/state.lua"
+    },
+    {
+      "line": 11,
+      "module": "telescope.utils",
+      "path": "lua/telescope/actions/utils.lua",
+      "to_path": "lua/telescope/utils.lua"
+    },
+    {
+      "line": 10,
+      "module": "ffi",
+      "path": "lua/telescope/algos/fzy.lua",
+      "to_path": null
+    },
+    {
+      "line": 10,
+      "module": "plenary.bit",
+      "path": "lua/telescope/algos/fzy.lua",
+      "to_path": null
+    },
+    {
+      "line": 10,
+      "module": "plenary.functional",
+      "path": "lua/telescope/algos/fzy.lua",
+      "to_path": null
+    },
+    {
+      "line": 10,
+      "module": "plenary.path",
+      "path": "lua/telescope/algos/fzy.lua",
+      "to_path": null
+    },
+    {
+      "line": 1,
+      "module": "telescope.config",
+      "path": "lua/telescope/builtin/__diagnostics.lua",
+      "to_path": "lua/telescope/config.lua"
+    },
+    {
+      "line": 2,
+      "module": "telescope.finders",
+      "path": "lua/telescope/builtin/__diagnostics.lua",
+      "to_path": "lua/telescope/finders.lua"
+    },
+    {
+      "line": 3,
+      "module": "telescope.make_entry",
+      "path": "lua/telescope/builtin/__diagnostics.lua",
+      "to_path": "lua/telescope/make_entry.lua"
+    },
+    {
+      "line": 4,
+      "module": "telescope.pickers",
+      "path": "lua/telescope/builtin/__diagnostics.lua",
+      "to_path": "lua/telescope/pickers.lua"
+    },
+    {
+      "line": 5,
+      "module": "telescope.utils",
+      "path": "lua/telescope/builtin/__diagnostics.lua",
+      "to_path": "lua/telescope/utils.lua"
+    },
+    {
+      "line": 10,
+      "module": "telescope.sorters",
+      "path": "lua/telescope/builtin/__files.lua",
+      "to_path": "lua/telescope/sorters.lua"
+    },
+    {
+      "line": 11,
+      "module": "telescope.utils",
+      "path": "lua/telescope/builtin/__files.lua",
+      "to_path": "lua/telescope/utils.lua"
+    },
+    {
+      "line": 12,
+      "module": "telescope.config",
+      "path": "lua/telescope/builtin/__files.lua",
+      "to_path": "lua/telescope/config.lua"
+    },
+    {
+      "line": 13,
+      "module": "telescope.log",
+      "path": "lua/telescope/builtin/__files.lua",
+      "to_path": "lua/telescope/log.lua"
+    },
+    {
+      "line": 15,
+      "module": "plenary.path",
+      "path": "lua/telescope/builtin/__files.lua",
+      "to_path": null
+    },
+    {
+      "line": 3,
+      "module": "telescope.actions.state",
+      "path": "lua/telescope/builtin/__files.lua",
+      "to_path": "lua/telescope/actions/state.lua"
+    },
+    {
+      "line": 4,
+      "module": "telescope.actions.set",
+      "path": "lua/telescope/builtin/__files.lua",
+      "to_path": "lua/telescope/actions/set.lua"
+    },
+    {
+      "line": 5,
+      "module": "telescope.actions",
+      "path": "lua/telescope/builtin/__files.lua",
+      "to_path": "lua/telescope/actions/init.lua"
+    },
+    {
+      "line": 6,
+      "module": "telescope.finders",
+      "path": "lua/telescope/builtin/__files.lua",
+      "to_path": "lua/telescope/finders.lua"
+    },
+    {
+      "line": 7,
+      "module": "telescope.make_entry",
+      "path": "lua/telescope/builtin/__files.lua",
+      "to_path": "lua/telescope/make_entry.lua"
+    },
+    {
+      "line": 8,
+      "module": "telescope.pickers",
+      "path": "lua/telescope/builtin/__files.lua",
+      "to_path": "lua/telescope/pickers.lua"
+    },
+    {
+      "line": 9,
+      "module": "telescope.previewers",
+      "path": "lua/telescope/builtin/__files.lua",
+      "to_path": "lua/telescope/previewers/init.lua"
+    },
+    {
+      "line": 10,
+      "module": "telescope.utils",
+      "path": "lua/telescope/builtin/__git.lua",
+      "to_path": "lua/telescope/utils.lua"
+    },
+    {
+      "line": 11,
+      "module": "telescope.pickers.entry_display",
+      "path": "lua/telescope/builtin/__git.lua",
+      "to_path": "lua/telescope/pickers/entry_display.lua"
+    },
+    {
+      "line": 12,
+      "module": "plenary.strings",
+      "path": "lua/telescope/builtin/__git.lua",
+      "to_path": null
+    },
+    {
+      "line": 13,
+      "module": "plenary.path",
+      "path": "lua/telescope/builtin/__git.lua",
+      "to_path": null
+    },
+    {
+      "line": 15,
+      "module": "telescope.config",
+      "path": "lua/telescope/builtin/__git.lua",
+      "to_path": "lua/telescope/config.lua"
+    },
+    {
+      "line": 3,
+      "module": "telescope.actions",
+      "path": "lua/telescope/builtin/__git.lua",
+      "to_path": "lua/telescope/actions/init.lua"
+    },
+    {
+      "line": 4,
+      "module": "telescope.actions.state",
+      "path": "lua/telescope/builtin/__git.lua",
+      "to_path": "lua/telescope/actions/state.lua"
+    },
+    {
+      "line": 5,
+      "module": "telescope.finders",
+      "path": "lua/telescope/builtin/__git.lua",
+      "to_path": "lua/telescope/finders.lua"
+    },
+    {
+      "line": 6,
+      "module": "telescope.make_entry",
+      "path": "lua/telescope/builtin/__git.lua",
+      "to_path": "lua/telescope/make_entry.lua"
+    },
+    {
+      "line": 7,
+      "module": "telescope.operators",
+      "path": "lua/telescope/builtin/__git.lua",
+      "to_path": "lua/telescope/operators.lua"
+    },
+    {
+      "line": 8,
+      "module": "telescope.pickers",
+      "path": "lua/telescope/builtin/__git.lua",
+      "to_path": "lua/telescope/pickers.lua"
+    },
+    {
+      "line": 9,
+      "module": "telescope.previewers",
+      "path": "lua/telescope/builtin/__git.lua",
+      "to_path": "lua/telescope/previewers/init.lua"
+    },
+    {
+      "line": 10,
+      "module": "telescope.previewers",
+      "path": "lua/telescope/builtin/__internal.lua",
+      "to_path": "lua/telescope/previewers/init.lua"
+    },
+    {
+      "line": 11,
+      "module": "telescope.pickers.window",
+      "path": "lua/telescope/builtin/__internal.lua",
+      "to_path": "lua/telescope/pickers/window.lua"
+    },
+    {
+      "line": 12,
+      "module": "telescope.state",
+      "path": "lua/telescope/builtin/__internal.lua",
+      "to_path": "lua/telescope/state.lua"
+    },
+    {
+      "line": 13,
+      "module": "telescope.utils",
+      "path": "lua/telescope/builtin/__internal.lua",
+      "to_path": "lua/telescope/utils.lua"
+    },
+    {
+      "line": 15,
+      "module": "telescope.config",
+      "path": "lua/telescope/builtin/__internal.lua",
+      "to_path": "lua/telescope/config.lua"
+    },
+    {
+      "line": 3,
+      "module": "telescope.actions",
+      "path": "lua/telescope/builtin/__internal.lua",
+      "to_path": "lua/telescope/actions/init.lua"
+    },
+    {
+      "line": 4,
+      "module": "telescope.actions.set",
+      "path": "lua/telescope/builtin/__internal.lua",
+      "to_path": "lua/telescope/actions/set.lua"
+    },
+    {
+      "line": 5,
+      "module": "telescope.actions.state",
+      "path": "lua/telescope/builtin/__internal.lua",
+      "to_path": "lua/telescope/actions/state.lua"
+    },
+    {
+      "line": 6,
+      "module": "telescope.finders",
+      "path": "lua/telescope/builtin/__internal.lua",
+      "to_path": "lua/telescope/finders.lua"
+    },
+    {
+      "line": 7,
+      "module": "telescope.make_entry",
+      "path": "lua/telescope/builtin/__internal.lua",
+      "to_path": "lua/telescope/make_entry.lua"
+    },
+    {
+      "line": 8,
+      "module": "plenary.path",
+      "path": "lua/telescope/builtin/__internal.lua",
+      "to_path": null
+    },
+    {
+      "line": 9,
+      "module": "telescope.pickers",
+      "path": "lua/telescope/builtin/__internal.lua",
+      "to_path": "lua/telescope/pickers.lua"
+    },
+    {
+      "line": 10,
+      "module": "telescope.finders",
+      "path": "lua/telescope/builtin/__lsp.lua",
+      "to_path": "lua/telescope/finders.lua"
+    },
+    {
+      "line": 11,
+      "module": "telescope.make_entry",
+      "path": "lua/telescope/builtin/__lsp.lua",
+      "to_path": "lua/telescope/make_entry.lua"
+    },
+    {
+      "line": 12,
+      "module": "telescope.pickers",
+      "path": "lua/telescope/builtin/__lsp.lua",
+      "to_path": "lua/telescope/pickers.lua"
+    },
+    {
+      "line": 13,
+      "module": "telescope.utils",
+      "path": "lua/telescope/builtin/__lsp.lua",
+      "to_path": "lua/telescope/utils.lua"
+    },
+    {
+      "line": 6,
+      "module": "plenary.async.async",
+      "path": "lua/telescope/builtin/__lsp.lua",
+      "to_path": null
+    },
+    {
+      "line": 6,
+      "module": "plenary.async.control",
+      "path": "lua/telescope/builtin/__lsp.lua",
+      "to_path": null
+    },
+    {
+      "line": 6,
+      "module": "plenary.async.structs",
+      "path": "lua/telescope/builtin/__lsp.lua",
+      "to_path": null
+    },
+    {
+      "line": 6,
+      "module": "plenary.tbl",
+      "path": "lua/telescope/builtin/__lsp.lua",
+      "to_path": null
+    },
+    {
+      "line": 7,
+      "module": "telescope.actions",
+      "path": "lua/telescope/builtin/__lsp.lua",
+      "to_path": "lua/telescope/actions/init.lua"
+    },
+    {
+      "line": 8,
+      "module": "telescope.sorters",
+      "path": "lua/telescope/builtin/__lsp.lua",
+      "to_path": "lua/telescope/sorters.lua"
+    },
+    {
+      "line": 9,
+      "module": "telescope.config",
+      "path": "lua/telescope/builtin/__lsp.lua",
+      "to_path": "lua/telescope/config.lua"
+    },
+    {
+      "line": 36,
+      "module": "telescope.builtin.__files",
+      "path": "lua/telescope/builtin/init.lua",
+      "to_path": "lua/telescope/builtin/__files.lua"
+    },
+    {
+      "line": 547,
+      "module": "telescope.config",
+      "path": "lua/telescope/builtin/init.lua",
+      "to_path": "lua/telescope/config.lua"
+    },
+    {
+      "line": 45,
+      "module": "telescope.themes",
+      "path": "lua/telescope/command.lua",
+      "to_path": "lua/telescope/themes.lua"
+    },
+    {
+      "line": 46,
+      "module": "telescope.builtin",
+      "path": "lua/telescope/command.lua",
+      "to_path": "lua/telescope/builtin/init.lua"
+    },
+    {
+      "line": 47,
+      "module": "telescope._extensions",
+      "path": "lua/telescope/command.lua",
+      "to_path": "lua/telescope/_extensions/init.lua"
+    },
+    {
+      "line": 48,
+      "module": "telescope.config",
+      "path": "lua/telescope/command.lua",
+      "to_path": "lua/telescope/config.lua"
+    },
+    {
+      "line": 49,
+      "module": "telescope.utils",
+      "path": "lua/telescope/command.lua",
+      "to_path": "lua/telescope/utils.lua"
+    },
+    {
+      "line": 1,
+      "module": "ffi",
+      "path": "lua/telescope/config.lua",
+      "to_path": null
+    },
+    {
+      "line": 1,
+      "module": "plenary.path",
+      "path": "lua/telescope/config.lua",
+      "to_path": null
+    },
+    {
+      "line": 1,
+      "module": "plenary.strings",
+      "path": "lua/telescope/config.lua",
+      "to_path": null
+    },
+    {
+      "line": 2,
+      "module": "telescope.sorters",
+      "path": "lua/telescope/config.lua",
+      "to_path": "lua/telescope/sorters.lua"
+    },
+    {
+      "line": 3,
+      "module": "plenary.path",
+      "path": "lua/telescope/config.lua",
+      "to_path": null
+    },
+    {
+      "line": 891,
+      "module": "telescope.previewers",
+      "path": "lua/telescope/config.lua",
+      "to_path": "lua/telescope/previewers/init.lua"
+    },
+    {
+      "line": 1,
+      "module": "telescope.log",
+      "path": "lua/telescope/entry_manager.lua",
+      "to_path": "lua/telescope/log.lua"
+    },
+    {
+      "line": 3,
+      "module": "telescope.algos.linked_list",
+      "path": "lua/telescope/entry_manager.lua",
+      "to_path": "lua/telescope/algos/linked_list.lua"
+    },
+    {
+      "line": 1,
+      "module": "plenary.compat",
+      "path": "lua/telescope/finders.lua",
+      "to_path": null
+    },
+    {
+      "line": 1,
+      "module": "plenary.functional",
+      "path": "lua/telescope/finders.lua",
+      "to_path": null
+    },
+    {
+      "line": 1,
+      "module": "plenary.job",
+      "path": "lua/telescope/finders.lua",
+      "to_path": null
+    },
+    {
+      "line": 3,
+      "module": "telescope.make_entry",
+      "path": "lua/telescope/finders.lua",
+      "to_path": "lua/telescope/make_entry.lua"
+    },
+    {
+      "line": 4,
+      "module": "telescope.log",
+      "path": "lua/telescope/finders.lua",
+      "to_path": "lua/telescope/log.lua"
+    },
+    {
+      "line": 6,
+      "module": "telescope.finders.async_static_finder",
+      "path": "lua/telescope/finders.lua",
+      "to_path": "lua/telescope/finders/async_static_finder.lua"
+    },
+    {
+      "line": 7,
+      "module": "telescope.finders.async_oneshot_finder",
+      "path": "lua/telescope/finders.lua",
+      "to_path": "lua/telescope/finders/async_oneshot_finder.lua"
+    },
+    {
+      "line": 8,
+      "module": "telescope.finders.async_job_finder",
+      "path": "lua/telescope/finders.lua",
+      "to_path": "lua/telescope/finders/async_job_finder.lua"
+    },
+    {
+      "line": 1,
+      "module": "telescope._",
+      "path": "lua/telescope/finders/async_job_finder.lua",
+      "to_path": "lua/telescope/_.lua"
+    },
+    {
+      "line": 2,
+      "module": "telescope._",
+      "path": "lua/telescope/finders/async_job_finder.lua",
+      "to_path": "lua/telescope/_.lua"
+    },
+    {
+      "line": 4,
+      "module": "telescope.make_entry",
+      "path": "lua/telescope/finders/async_job_finder.lua",
+      "to_path": "lua/telescope/make_entry.lua"
+    },
+    {
+      "line": 5,
+      "module": "telescope.log",
+      "path": "lua/telescope/finders/async_job_finder.lua",
+      "to_path": "lua/telescope/log.lua"
+    },
+    {
+      "line": 1,
+      "module": "plenary.async",
+      "path": "lua/telescope/finders/async_oneshot_finder.lua",
+      "to_path": null
+    },
+    {
+      "line": 1,
+      "module": "plenary.async.async",
+      "path": "lua/telescope/finders/async_oneshot_finder.lua",
+      "to_path": null
+    },
+    {
+      "line": 1,
+      "module": "plenary.async.tests",
+      "path": "lua/telescope/finders/async_oneshot_finder.lua",
+      "to_path": null
+    },
+    {
+      "line": 2,
+      "module": "telescope._",
+      "path": "lua/telescope/finders/async_oneshot_finder.lua",
+      "to_path": "lua/telescope/_.lua"
+    },
+    {
+      "line": 3,
+      "module": "telescope._",
+      "path": "lua/telescope/finders/async_oneshot_finder.lua",
+      "to_path": "lua/telescope/_.lua"
+    },
+    {
+      "line": 5,
+      "module": "telescope.make_entry",
+      "path": "lua/telescope/finders/async_oneshot_finder.lua",
+      "to_path": "lua/telescope/make_entry.lua"
+    },
+    {
+      "line": 1,
+      "module": "plenary.async",
+      "path": "lua/telescope/finders/async_static_finder.lua",
+      "to_path": null
+    },
+    {
+      "line": 1,
+      "module": "plenary.async.async",
+      "path": "lua/telescope/finders/async_static_finder.lua",
+      "to_path": null
+    },
+    {
+      "line": 1,
+      "module": "plenary.async.tests",
+      "path": "lua/telescope/finders/async_static_finder.lua",
+      "to_path": null
+    },
+    {
+      "line": 1,
+      "module": "plenary.async.util",
+      "path": "lua/telescope/finders/async_static_finder.lua",
+      "to_path": null
+    },
+    {
+      "line": 3,
+      "module": "telescope.make_entry",
+      "path": "lua/telescope/finders/async_static_finder.lua",
+      "to_path": "lua/telescope/make_entry.lua"
+    },
+    {
+      "line": 10,
+      "module": "telescope.utils",
+      "path": "lua/telescope/from_entry.lua",
+      "to_path": "lua/telescope/utils.lua"
+    },
+    {
+      "line": 3,
+      "module": "telescope._extensions",
+      "path": "lua/telescope/health.lua",
+      "to_path": "lua/telescope/_extensions/init.lua"
+    },
+    {
+      "line": 4,
+      "module": "telescope",
+      "path": "lua/telescope/health.lua",
+      "to_path": "lua/telescope/init.lua"
+    },
+    {
+      "line": 1,
+      "module": "telescope._extensions",
+      "path": "lua/telescope/init.lua",
+      "to_path": "lua/telescope/_extensions/init.lua"
+    },
+    {
+      "line": 133,
+      "module": "telescope.config",
+      "path": "lua/telescope/init.lua",
+      "to_path": "lua/telescope/config.lua"
+    },
+    {
+      "line": 134,
+      "module": "telescope.config",
+      "path": "lua/telescope/init.lua",
+      "to_path": "lua/telescope/config.lua"
+    },
+    {
+      "line": 154,
+      "module": "telescope._extensions",
+      "path": "lua/telescope/init.lua",
+      "to_path": "lua/telescope/_extensions/init.lua"
+    },
+    {
+      "line": 1,
+      "module": "plenary.log",
+      "path": "lua/telescope/log.lua",
+      "to_path": null
+    },
+    {
+      "line": 1,
+      "module": "plenary.path",
+      "path": "lua/telescope/log.lua",
+      "to_path": null
+    },
+    {
+      "line": 39,
+      "module": "telescope.pickers.entry_display",
+      "path": "lua/telescope/make_entry.lua",
+      "to_path": "lua/telescope/pickers/entry_display.lua"
+    },
+    {
+      "line": 40,
+      "module": "telescope.utils",
+      "path": "lua/telescope/make_entry.lua",
+      "to_path": "lua/telescope/utils.lua"
+    },
+    {
+      "line": 41,
+      "module": "plenary.strings",
+      "path": "lua/telescope/make_entry.lua",
+      "to_path": null
+    },
+    {
+      "line": 42,
+      "module": "plenary.path",
+      "path": "lua/telescope/make_entry.lua",
+      "to_path": null
+    },
+    {
+      "line": 128,
+      "module": "telescope.actions",
+      "path": "lua/telescope/mappings.lua",
+      "to_path": "lua/telescope/actions/init.lua"
+    },
+    {
+      "line": 129,
+      "module": "telescope.config",
+      "path": "lua/telescope/mappings.lua",
+      "to_path": "lua/telescope/config.lua"
+    },
+    {
+      "line": 1,
+      "module": "telescope",
+      "path": "lua/telescope/pickers.lua",
+      "to_path": "lua/telescope/init.lua"
+    },
+    {
+      "line": 10,
+      "module": "telescope.actions",
+      "path": "lua/telescope/pickers.lua",
+      "to_path": "lua/telescope/actions/init.lua"
+    },
+    {
+      "line": 11,
+      "module": "telescope.config",
+      "path": "lua/telescope/pickers.lua",
+      "to_path": "lua/telescope/config.lua"
+    },
+    {
+      "line": 12,
+      "module": "telescope.debounce",
+      "path": "lua/telescope/pickers.lua",
+      "to_path": "lua/telescope/debounce.lua"
+    },
+    {
+      "line": 13,
+      "module": "telescope.log",
+      "path": "lua/telescope/pickers.lua",
+      "to_path": "lua/telescope/log.lua"
+    },
+    {
+      "line": 14,
+      "module": "telescope.mappings",
+      "path": "lua/telescope/pickers.lua",
+      "to_path": "lua/telescope/mappings.lua"
+    },
+    {
+      "line": 15,
+      "module": "telescope.state",
+      "path": "lua/telescope/pickers.lua",
+      "to_path": "lua/telescope/state.lua"
+    },
+    {
+      "line": 16,
+      "module": "telescope.utils",
+      "path": "lua/telescope/pickers.lua",
+      "to_path": "lua/telescope/utils.lua"
+    },
+    {
+      "line": 18,
+      "module": "telescope.pickers.entry_display",
+      "path": "lua/telescope/pickers.lua",
+      "to_path": "lua/telescope/pickers/entry_display.lua"
+    },
+    {
+      "line": 19,
+      "module": "telescope.pickers.highlights",
+      "path": "lua/telescope/pickers.lua",
+      "to_path": "lua/telescope/pickers/highlights.lua"
+    },
+    {
+      "line": 20,
+      "module": "telescope.pickers.scroller",
+      "path": "lua/telescope/pickers.lua",
+      "to_path": "lua/telescope/pickers/scroller.lua"
+    },
+    {
+      "line": 21,
+      "module": "telescope.pickers.window",
+      "path": "lua/telescope/pickers.lua",
+      "to_path": "lua/telescope/pickers/window.lua"
+    },
+    {
+      "line": 22,
+      "module": "telescope.pickers.layout",
+      "path": "lua/telescope/pickers.lua",
+      "to_path": "lua/telescope/pickers/layout.lua"
+    },
+    {
+      "line": 24,
+      "module": "telescope.entry_manager",
+      "path": "lua/telescope/pickers.lua",
+      "to_path": "lua/telescope/entry_manager.lua"
+    },
+    {
+      "line": 241,
+      "module": "telescope.actions.mt",
+      "path": "lua/telescope/pickers.lua",
+      "to_path": "lua/telescope/actions/mt.lua"
+    },
+    {
+      "line": 25,
+      "module": "telescope.pickers.multi",
+      "path": "lua/telescope/pickers.lua",
+      "to_path": "lua/telescope/pickers/multi.lua"
+    },
+    {
+      "line": 27,
+      "module": "plenary.strings",
+      "path": "lua/telescope/pickers.lua",
+      "to_path": null
+    },
+    {
+      "line": 276,
+      "module": "telescope.sorters",
+      "path": "lua/telescope/pickers.lua",
+      "to_path": "lua/telescope/sorters.lua"
+    },
+    {
+      "line": 28,
+      "module": "plenary.strings",
+      "path": "lua/telescope/pickers.lua",
+      "to_path": null
+    },
+    {
+      "line": 5,
+      "module": "plenary.async",
+      "path": "lua/telescope/pickers.lua",
+      "to_path": null
+    },
+    {
+      "line": 5,
+      "module": "plenary.async.async",
+      "path": "lua/telescope/pickers.lua",
+      "to_path": null
+    },
+    {
+      "line": 5,
+      "module": "plenary.async.tests",
+      "path": "lua/telescope/pickers.lua",
+      "to_path": null
+    },
+    {
+      "line": 6,
+      "module": "plenary.async.util",
+      "path": "lua/telescope/pickers.lua",
+      "to_path": null
+    },
+    {
+      "line": 7,
+      "module": "plenary.async.control",
+      "path": "lua/telescope/pickers.lua",
+      "to_path": null
+    },
+    {
+      "line": 8,
+      "module": "plenary.popup",
+      "path": "lua/telescope/pickers.lua",
+      "to_path": null
+    },
+    {
+      "line": 8,
+      "module": "plenary.popup.utils",
+      "path": "lua/telescope/pickers.lua",
+      "to_path": null
+    },
+    {
+      "line": 8,
+      "module": "plenary.window",
+      "path": "lua/telescope/pickers.lua",
+      "to_path": null
+    },
+    {
+      "line": 8,
+      "module": "plenary.window.border",
+      "path": "lua/telescope/pickers.lua",
+      "to_path": null
+    },
+    {
+      "line": 61,
+      "module": "ffi",
+      "path": "lua/telescope/pickers/entry_display.lua",
+      "to_path": null
+    },
+    {
+      "line": 61,
+      "module": "plenary.path",
+      "path": "lua/telescope/pickers/entry_display.lua",
+      "to_path": null
+    },
+    {
+      "line": 61,
+      "module": "plenary.strings",
+      "path": "lua/telescope/pickers/entry_display.lua",
+      "to_path": null
+    },
+    {
+      "line": 62,
+      "module": "telescope.state",
+      "path": "lua/telescope/pickers/entry_display.lua",
+      "to_path": "lua/telescope/state.lua"
+    },
+    {
+      "line": 63,
+      "module": "telescope.config.resolve",
+      "path": "lua/telescope/pickers/entry_display.lua",
+      "to_path": "lua/telescope/config/resolve.lua"
+    },
+    {
+      "line": 2,
+      "module": "telescope.log",
+      "path": "lua/telescope/pickers/highlights.lua",
+      "to_path": "lua/telescope/log.lua"
+    },
+    {
+      "line": 3,
+      "module": "telescope.config",
+      "path": "lua/telescope/pickers/highlights.lua",
+      "to_path": "lua/telescope/config.lua"
+    },
+    {
+      "line": 128,
+      "module": "telescope.config",
+      "path": "lua/telescope/pickers/layout_strategies.lua",
+      "to_path": "lua/telescope/config.lua"
+    },
+    {
+      "line": 55,
+      "module": "telescope.config.resolve",
+      "path": "lua/telescope/pickers/layout_strategies.lua",
+      "to_path": "lua/telescope/config/resolve.lua"
+    },
+    {
+      "line": 56,
+      "module": "telescope.pickers.window",
+      "path": "lua/telescope/pickers/layout_strategies.lua",
+      "to_path": "lua/telescope/pickers/window.lua"
+    },
+    {
+      "line": 1,
+      "module": "telescope.config.resolve",
+      "path": "lua/telescope/pickers/window.lua",
+      "to_path": "lua/telescope/config/resolve.lua"
+    },
+    {
+      "line": 7,
+      "module": "telescope.pickers.layout_strategies",
+      "path": "lua/telescope/pickers/window.lua",
+      "to_path": "lua/telescope/pickers/layout_strategies.lua"
+    },
+    {
+      "line": 3,
+      "module": "telescope.from_entry",
+      "path": "lua/telescope/previewers/buffer_previewer.lua",
+      "to_path": "lua/telescope/from_entry.lua"
+    },
+    {
+      "line": 4,
+      "module": "plenary.path",
+      "path": "lua/telescope/previewers/buffer_previewer.lua",
+      "to_path": null
+    },
+    {
+      "line": 5,
+      "module": "telescope.utils",
+      "path": "lua/telescope/previewers/buffer_previewer.lua",
+      "to_path": "lua/telescope/utils.lua"
+    },
+    {
+      "line": 6,
+      "module": "telescope.previewers.utils",
+      "path": "lua/telescope/previewers/buffer_previewer.lua",
+      "to_path": "lua/telescope/previewers/utils.lua"
+    },
+    {
+      "line": 7,
+      "module": "telescope.previewers.previewer",
+      "path": "lua/telescope/previewers/buffer_previewer.lua",
+      "to_path": "lua/telescope/previewers/previewer.lua"
+    },
+    {
+      "line": 8,
+      "module": "telescope.config",
+      "path": "lua/telescope/previewers/buffer_previewer.lua",
+      "to_path": "lua/telescope/config.lua"
+    },
+    {
+      "line": 9,
+      "module": "telescope.state",
+      "path": "lua/telescope/previewers/buffer_previewer.lua",
+      "to_path": "lua/telescope/state.lua"
+    },
+    {
+      "line": 25,
+      "module": "telescope.previewers.previewer",
+      "path": "lua/telescope/previewers/init.lua",
+      "to_path": "lua/telescope/previewers/previewer.lua"
+    },
+    {
+      "line": 26,
+      "module": "telescope.previewers.term_previewer",
+      "path": "lua/telescope/previewers/init.lua",
+      "to_path": "lua/telescope/previewers/term_previewer.lua"
+    },
+    {
+      "line": 27,
+      "module": "telescope.previewers.buffer_previewer",
+      "path": "lua/telescope/previewers/init.lua",
+      "to_path": "lua/telescope/previewers/buffer_previewer.lua"
+    },
+    {
+      "line": 1,
+      "module": "telescope.utils",
+      "path": "lua/telescope/previewers/previewer.lua",
+      "to_path": "lua/telescope/utils.lua"
+    },
+    {
+      "line": 3,
+      "module": "telescope.config",
+      "path": "lua/telescope/previewers/term_previewer.lua",
+      "to_path": "lua/telescope/config.lua"
+    },
+    {
+      "line": 4,
+      "module": "telescope.utils",
+      "path": "lua/telescope/previewers/term_previewer.lua",
+      "to_path": "lua/telescope/utils.lua"
+    },
+    {
+      "line": 5,
+      "module": "plenary.path",
+      "path": "lua/telescope/previewers/term_previewer.lua",
+      "to_path": null
+    },
+    {
+      "line": 6,
+      "module": "telescope.from_entry",
+      "path": "lua/telescope/previewers/term_previewer.lua",
+      "to_path": "lua/telescope/from_entry.lua"
+    },
+    {
+      "line": 7,
+      "module": "telescope.previewers.previewer",
+      "path": "lua/telescope/previewers/term_previewer.lua",
+      "to_path": "lua/telescope/previewers/previewer.lua"
+    },
+    {
+      "line": 8,
+      "module": "telescope.previewers.utils",
+      "path": "lua/telescope/previewers/term_previewer.lua",
+      "to_path": "lua/telescope/previewers/utils.lua"
+    },
+    {
+      "line": 3,
+      "module": "telescope.utils",
+      "path": "lua/telescope/previewers/utils.lua",
+      "to_path": "lua/telescope/utils.lua"
+    },
+    {
+      "line": 4,
+      "module": "plenary.strings",
+      "path": "lua/telescope/previewers/utils.lua",
+      "to_path": null
+    },
+    {
+      "line": 5,
+      "module": "telescope.config",
+      "path": "lua/telescope/previewers/utils.lua",
+      "to_path": "lua/telescope/config.lua"
+    },
+    {
+      "line": 7,
+      "module": "plenary.job",
+      "path": "lua/telescope/previewers/utils.lua",
+      "to_path": null
+    },
+    {
+      "line": 8,
+      "module": "plenary.path",
+      "path": "lua/telescope/previewers/utils.lua",
+      "to_path": null
+    },
+    {
+      "line": 1,
+      "module": "telescope.log",
+      "path": "lua/telescope/sorters.lua",
+      "to_path": "lua/telescope/log.lua"
+    },
+    {
+      "line": 2,
+      "module": "telescope.utils",
+      "path": "lua/telescope/sorters.lua",
+      "to_path": "lua/telescope/utils.lua"
+    },
+    {
+      "line": 440,
+      "module": "telescope.algos.fzy",
+      "path": "lua/telescope/sorters.lua",
+      "to_path": "lua/telescope/algos/fzy.lua"
+    },
+    {
+      "line": 1,
+      "module": "luassert",
+      "path": "lua/telescope/testharness/init.lua",
+      "to_path": null
+    },
+    {
+      "line": 1,
+      "module": "luassert.array",
+      "path": "lua/telescope/testharness/init.lua",
+      "to_path": null
+    },
+    {
+      "line": 1,
+      "module": "luassert.assert",
+      "path": "lua/telescope/testharness/init.lua",
+      "to_path": null
+    },
+    {
+      "line": 1,
+      "module": "luassert.assertions",
+      "path": "lua/telescope/testharness/init.lua",
+      "to_path": null
+    },
+    {
+      "line": 1,
+      "module": "luassert.formatters",
+      "path": "lua/telescope/testharness/init.lua",
+      "to_path": null
+    },
+    {
+      "line": 1,
+      "module": "luassert.languages.en",
+      "path": "lua/telescope/testharness/init.lua",
+      "to_path": null
+    },
+    {
+      "line": 1,
+      "module": "luassert.matchers",
+      "path": "lua/telescope/testharness/init.lua",
+      "to_path": null
+    },
+    {
+      "line": 1,
+      "module": "luassert.modifiers",
+      "path": "lua/telescope/testharness/init.lua",
+      "to_path": null
+    },
+    {
+      "line": 3,
+      "module": "ffi",
+      "path": "lua/telescope/testharness/init.lua",
+      "to_path": null
+    },
+    {
+      "line": 3,
+      "module": "plenary.bit",
+      "path": "lua/telescope/testharness/init.lua",
+      "to_path": null
+    },
+    {
+      "line": 3,
+      "module": "plenary.functional",
+      "path": "lua/telescope/testharness/init.lua",
+      "to_path": null
+    },
+    {
+      "line": 3,
+      "module": "plenary.path",
+      "path": "lua/telescope/testharness/init.lua",
+      "to_path": null
+    },
+    {
+      "line": 1,
+      "module": "telescope.builtin",
+      "path": "lua/telescope/testharness/runner.lua",
+      "to_path": "lua/telescope/builtin/init.lua"
+    },
+    {
+      "line": 10,
+      "module": "ffi",
+      "path": "lua/telescope/utils.lua",
+      "to_path": null
+    },
+    {
+      "line": 10,
+      "module": "plenary.bit",
+      "path": "lua/telescope/utils.lua",
+      "to_path": null
+    },
+    {
+      "line": 10,
+      "module": "plenary.functional",
+      "path": "lua/telescope/utils.lua",
+      "to_path": null
+    },
+    {
+      "line": 10,
+      "module": "plenary.path",
+      "path": "lua/telescope/utils.lua",
+      "to_path": null
+    },
+    {
+      "line": 11,
+      "module": "plenary.compat",
+      "path": "lua/telescope/utils.lua",
+      "to_path": null
+    },
+    {
+      "line": 11,
+      "module": "plenary.functional",
+      "path": "lua/telescope/utils.lua",
+      "to_path": null
+    },
+    {
+      "line": 11,
+      "module": "plenary.job",
+      "path": "lua/telescope/utils.lua",
+      "to_path": null
+    },
+    {
+      "line": 13,
+      "module": "telescope.log",
+      "path": "lua/telescope/utils.lua",
+      "to_path": "lua/telescope/log.lua"
+    },
+    {
+      "line": 15,
+      "module": "ffi",
+      "path": "lua/telescope/utils.lua",
+      "to_path": null
+    },
+    {
+      "line": 15,
+      "module": "plenary.path",
+      "path": "lua/telescope/utils.lua",
+      "to_path": null
+    },
+    {
+      "line": 15,
+      "module": "plenary.strings",
+      "path": "lua/telescope/utils.lua",
+      "to_path": null
+    },
+    {
+      "line": 16,
+      "module": "telescope.state",
+      "path": "lua/telescope/utils.lua",
+      "to_path": "lua/telescope/state.lua"
+    },
+    {
+      "line": 371,
+      "module": "telescope.config",
+      "path": "lua/telescope/utils.lua",
+      "to_path": "lua/telescope/config.lua"
+    },
+    {
+      "line": 1,
+      "module": "telescope.actions",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": "lua/telescope/actions/init.lua"
+    },
+    {
+      "line": 120,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 121,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 122,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 123,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 126,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 158,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 159,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 16,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 160,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 163,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 183,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 184,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 2,
+      "module": "telescope.actions.set",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": "lua/telescope/actions/set.lua"
+    },
+    {
+      "line": 204,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 205,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 226,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 227,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 228,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 251,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 252,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 282,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 31,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 312,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 345,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 369,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 370,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 383,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 4,
+      "module": "telescope.actions.mt",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": "lua/telescope/actions/mt.lua"
+    },
+    {
+      "line": 415,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 416,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 417,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 474,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 475,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 476,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 477,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 478,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 479,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 487,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 488,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 49,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 66,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 69,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 88,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 89,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 90,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 93,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/action_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 1,
+      "module": "telescope.command",
+      "path": "lua/tests/automated/command_spec.lua",
+      "to_path": "lua/telescope/command.lua"
+    },
+    {
+      "line": 9,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/command_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 1,
+      "module": "telescope.pickers.entry_display",
+      "path": "lua/tests/automated/entry_display_spec.lua",
+      "to_path": "lua/telescope/pickers/entry_display.lua"
+    },
+    {
+      "line": 29,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/entry_display_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 1,
+      "module": "telescope.entry_manager",
+      "path": "lua/tests/automated/entry_manager_spec.lua",
+      "to_path": "lua/telescope/entry_manager.lua"
+    },
+    {
+      "line": 100,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/entry_manager_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 101,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/entry_manager_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 103,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/entry_manager_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 11,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/entry_manager_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 115,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/entry_manager_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 128,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/entry_manager_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 137,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/entry_manager_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 152,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/entry_manager_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 154,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/entry_manager_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 155,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/entry_manager_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 162,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/entry_manager_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 170,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/entry_manager_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 171,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/entry_manager_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 178,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/entry_manager_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 186,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/entry_manager_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 187,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/entry_manager_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 20,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/entry_manager_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 22,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/entry_manager_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 23,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/entry_manager_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 57,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/entry_manager_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 58,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/entry_manager_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 60,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/entry_manager_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 71,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/entry_manager_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 72,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/entry_manager_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 99,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/entry_manager_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 1,
+      "module": "telescope.config",
+      "path": "lua/tests/automated/layout_strategies_spec.lua",
+      "to_path": "lua/telescope/config.lua"
+    },
+    {
+      "line": 2,
+      "module": "telescope.config.resolve",
+      "path": "lua/tests/automated/layout_strategies_spec.lua",
+      "to_path": "lua/telescope/config/resolve.lua"
+    },
+    {
+      "line": 21,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/layout_strategies_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 3,
+      "module": "telescope.pickers.layout_strategies",
+      "path": "lua/tests/automated/layout_strategies_spec.lua",
+      "to_path": "lua/telescope/pickers/layout_strategies.lua"
+    },
+    {
+      "line": 48,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/layout_strategies_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 1,
+      "module": "telescope.algos.linked_list",
+      "path": "lua/tests/automated/linked_list_spec.lua",
+      "to_path": "lua/telescope/algos/linked_list.lua"
+    },
+    {
+      "line": 101,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/linked_list_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 110,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/linked_list_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 119,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/linked_list_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 130,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/linked_list_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 14,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/linked_list_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 22,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/linked_list_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 36,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/linked_list_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 49,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/linked_list_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 64,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/linked_list_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 65,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/linked_list_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 7,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/linked_list_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 79,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/linked_list_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 91,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/linked_list_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 2,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/resolver_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 5,
+      "module": "telescope.config.resolve",
+      "path": "lua/tests/automated/resolver_spec.lua",
+      "to_path": "lua/telescope/config/resolve.lua"
+    },
+    {
+      "line": 1,
+      "module": "telescope.pickers.scroller",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": "lua/telescope/pickers/scroller.lua"
+    },
+    {
+      "line": 100,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 105,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 114,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 120,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 121,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 123,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 124,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 126,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 127,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 128,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 132,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 133,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 135,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 136,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 138,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 139,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 140,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 15,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 19,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 23,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 27,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 3,
+      "module": "telescope.log",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": "lua/telescope/log.lua"
+    },
+    {
+      "line": 31,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 39,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 43,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 47,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 51,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 56,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 64,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 68,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 72,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 76,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 80,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 88,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 92,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 96,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/scroller_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 1,
+      "module": "telescope.sorters",
+      "path": "lua/tests/automated/sorters_spec.lua",
+      "to_path": "lua/telescope/sorters.lua"
+    },
+    {
+      "line": 11,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/sorters_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 22,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/sorters_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 1,
+      "module": "telescope.pickers",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": "lua/telescope/pickers.lua"
+    },
+    {
+      "line": 109,
+      "module": "telescope.sorters",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": "lua/telescope/sorters.lua"
+    },
+    {
+      "line": 121,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 122,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 125,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 126,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 129,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 130,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 131,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 134,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 137,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 138,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 141,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 142,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 143,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 144,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 145,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 151,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 154,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 155,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 158,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 161,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 162,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 163,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 166,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 169,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 170,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 173,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 174,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 175,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 185,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 188,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 191,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 192,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 195,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 196,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 199,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 2,
+      "module": "plenary.path",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 202,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 203,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 204,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 30,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 47,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 55,
+      "module": "telescope.sorters",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": "lua/telescope/sorters.lua"
+    },
+    {
+      "line": 67,
+      "module": "telescope.sorters",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": "lua/telescope/sorters.lua"
+    },
+    {
+      "line": 78,
+      "module": "telescope.sorters",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": "lua/telescope/sorters.lua"
+    },
+    {
+      "line": 90,
+      "module": "telescope.sorters",
+      "path": "lua/tests/automated/telescope_spec.lua",
+      "to_path": "lua/telescope/sorters.lua"
+    },
+    {
+      "line": 1,
+      "module": "ffi",
+      "path": "lua/tests/automated/utils_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 1,
+      "module": "plenary.bit",
+      "path": "lua/tests/automated/utils_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 1,
+      "module": "plenary.functional",
+      "path": "lua/tests/automated/utils_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 1,
+      "module": "plenary.path",
+      "path": "lua/tests/automated/utils_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 108,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/utils_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 11,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/utils_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 122,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/utils_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 136,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/utils_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 178,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/utils_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 179,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/utils_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 180,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/utils_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 19,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/utils_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 2,
+      "module": "telescope.utils",
+      "path": "lua/tests/automated/utils_spec.lua",
+      "to_path": "lua/telescope/utils.lua"
+    },
+    {
+      "line": 202,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/utils_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 204,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/utils_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 207,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/utils_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 210,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/utils_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 212,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/utils_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 226,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/utils_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 24,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/utils_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 31,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/utils_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 316,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/utils_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 37,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/utils_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 389,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/utils_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 39,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/utils_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 57,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/utils_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 80,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/utils_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 94,
+      "module": "luassert.namespaces",
+      "path": "lua/tests/automated/utils_spec.lua",
+      "to_path": null
+    },
+    {
+      "line": 1,
+      "module": "telescope.finders",
+      "path": "lua/tests/helpers.lua",
+      "to_path": "lua/telescope/finders.lua"
+    },
+    {
+      "line": 2,
+      "module": "telescope.make_entry",
+      "path": "lua/tests/helpers.lua",
+      "to_path": "lua/telescope/make_entry.lua"
+    },
+    {
+      "line": 3,
+      "module": "telescope.previewers",
+      "path": "lua/tests/helpers.lua",
+      "to_path": "lua/telescope/previewers/init.lua"
+    },
+    {
+      "line": 4,
+      "module": "telescope.pickers",
+      "path": "lua/tests/helpers.lua",
+      "to_path": "lua/telescope/pickers.lua"
+    },
+    {
+      "line": 5,
+      "module": "telescope.sorters",
+      "path": "lua/tests/helpers.lua",
+      "to_path": "lua/telescope/sorters.lua"
+    },
+    {
+      "line": 6,
+      "module": "telescope.utils",
+      "path": "lua/tests/helpers.lua",
+      "to_path": "lua/telescope/utils.lua"
+    },
+    {
+      "line": 1,
+      "module": "telescope.testharness.helpers",
+      "path": "lua/tests/pickers/find_files__readme.lua",
+      "to_path": "lua/telescope/testharness/helpers.lua"
+    },
+    {
+      "line": 2,
+      "module": "telescope.testharness.runner",
+      "path": "lua/tests/pickers/find_files__readme.lua",
+      "to_path": "lua/telescope/testharness/runner.lua"
+    },
+    {
+      "line": 1,
+      "module": "telescope.testharness",
+      "path": "lua/tests/pickers/find_files__scrolling_descending_cycle.lua",
+      "to_path": "lua/telescope/testharness/init.lua"
+    },
+    {
+      "line": 2,
+      "module": "telescope.testharness.helpers",
+      "path": "lua/tests/pickers/find_files__scrolling_descending_cycle.lua",
+      "to_path": "lua/telescope/testharness/helpers.lua"
+    },
+    {
+      "line": 3,
+      "module": "telescope.testharness.runner",
+      "path": "lua/tests/pickers/find_files__scrolling_descending_cycle.lua",
+      "to_path": "lua/telescope/testharness/runner.lua"
+    },
+    {
+      "line": 5,
+      "module": "telescope",
+      "path": "scripts/gendocs.lua",
+      "to_path": "lua/telescope/init.lua"
+    },
+    {
+      "line": 7,
+      "module": "docgen",
+      "path": "scripts/gendocs.lua",
+      "to_path": null
+    },
+    {
+      "line": 1467,
+      "module": "vim._core.stringbuffer",
+      "path": "vim/_core/shared",
+      "to_path": null
+    },
+    {
+      "line": 1467,
+      "module": "vim._core.util",
+      "path": "vim/_core/shared",
+      "to_path": null
+    },
+    {
+      "line": 1467,
+      "module": "vim.func._memoize",
+      "path": "vim/_core/shared",
+      "to_path": null
+    },
+    {
+      "line": 1467,
+      "module": "vim.lsp._changetracking",
+      "path": "vim/_core/shared",
+      "to_path": null
+    },
+    {
+      "line": 1467,
+      "module": "vim.lsp._transport",
+      "path": "vim/_core/shared",
+      "to_path": null
+    },
+    {
+      "line": 1467,
+      "module": "vim.lsp.client",
+      "path": "vim/_core/shared",
+      "to_path": null
+    },
+    {
+      "line": 1467,
+      "module": "vim.lsp.log",
+      "path": "vim/_core/shared",
+      "to_path": null
+    },
+    {
+      "line": 1467,
+      "module": "vim.lsp.protocol",
+      "path": "vim/_core/shared",
+      "to_path": null
+    },
+    {
+      "line": 1467,
+      "module": "vim.lsp.rpc",
+      "path": "vim/_core/shared",
+      "to_path": null
+    },
+    {
+      "line": 1467,
+      "module": "vim.lsp.sync",
+      "path": "vim/_core/shared",
+      "to_path": null
+    },
+    {
+      "line": 1467,
+      "module": "vim.lsp.util",
+      "path": "vim/_core/shared",
+      "to_path": null
+    },
+    {
+      "line": 1467,
+      "module": "vim.treesitter._range",
+      "path": "vim/_core/shared",
+      "to_path": null
+    },
+    {
+      "line": 1467,
+      "module": "vim.treesitter.language",
+      "path": "vim/_core/shared",
+      "to_path": null
+    },
+    {
+      "line": 1467,
+      "module": "vim.treesitter.languagetree",
+      "path": "vim/_core/shared",
+      "to_path": null
+    },
+    {
+      "line": 1467,
+      "module": "vim.treesitter.query",
+      "path": "vim/_core/shared",
+      "to_path": null
+    },
+    {
+      "line": 8,
+      "module": "string.buffer",
+      "path": "vim/_core/stringbuffer",
+      "to_path": null
+    },
+    {
+      "line": 71,
+      "module": "vim.F",
+      "path": "vim/_init_packages",
+      "to_path": null
+    },
+    {
+      "line": 71,
+      "module": "vim.fs",
+      "path": "vim/_init_packages",
+      "to_path": null
+    },
+    {
+      "line": 71,
+      "module": "vim.func",
+      "path": "vim/_init_packages",
+      "to_path": null
+    },
+    {
+      "line": 71,
+      "module": "vim.health",
+      "path": "vim/_init_packages",
+      "to_path": null
+    },
+    {
+      "line": 71,
+      "module": "vim.hl",
+      "path": "vim/_init_packages",
+      "to_path": null
+    },
+    {
+      "line": 71,
+      "module": "vim.iter",
+      "path": "vim/_init_packages",
+      "to_path": null
+    },
+    {
+      "line": 71,
+      "module": "vim.lsp",
+      "path": "vim/_init_packages",
+      "to_path": null
+    },
+    {
+      "line": 71,
+      "module": "vim.treesitter",
+      "path": "vim/_init_packages",
+      "to_path": null
+    }
+  ],
+  "observed_in_subject_statements": 193,
+  "observed_unique_statements": 495,
+  "plenary_commit": "74b06c6c75e4eeb3108ec01852001636d85a932b",
+  "scanner_counts": {
+    "dynamic": 4,
+    "escaped": 0,
+    "files": 75,
+    "parse_errors": 0,
+    "pcall_form": 4,
+    "statements": 290,
+    "static": 286
+  },
+  "test_exit": 0
+}

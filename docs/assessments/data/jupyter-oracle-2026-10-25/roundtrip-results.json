@@ -1,0 +1,1757 @@
+{
+  "files": 187,
+  "jupytext_version": "1.19.6",
+  "passed": 113,
+  "python": "3.13.5",
+  "records": [
+    {
+      "error": "nbformat.reader.NotJSONError: Notebook does not appear to be JSON: ''",
+      "exit": 1,
+      "path": "2-Regression/1-Tools/notebook.ipynb",
+      "roundtrip_unreadable": "NotJSONError",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 23,
+      "cells_before": 23,
+      "code_sources_equal": false,
+      "error": "<subject>/2-Regression/1-Tools/solution/R/lesson_1-R.ipynb: Cells 6,8,10,12,14,16,18,20,22 differ (9/23)",
+      "exit": 1,
+      "path": "2-Regression/1-Tools/solution/R/lesson_1-R.ipynb",
+      "sha256": "87cd262e64df403068555e1123d9252d33952ebdae6c6727f578541107589874",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 16,
+      "cells_before": 16,
+      "code_sources_equal": false,
+      "error": "<subject>/2-Regression/1-Tools/solution/notebook.ipynb: Cells 10,3,14,7 differ (4/16)",
+      "exit": 1,
+      "path": "2-Regression/1-Tools/solution/notebook.ipynb",
+      "sha256": "1cc78a2bb7c8840ec445cb3ccef712e300225457e2221ed05aa4ab46c00b3963",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 1,
+      "cells_before": 1,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "2-Regression/2-Data/notebook.ipynb",
+      "sha256": "5aa9c5fc7cd79fe4b3cb2dfdba206755bcab646dfc1597dea102c95c6c611e25",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 41,
+      "cells_before": 41,
+      "code_sources_equal": false,
+      "error": "<subject>/2-Regression/2-Data/solution/R/lesson_2-R.ipynb: Cells 40,38 differ (2/41)",
+      "exit": 1,
+      "path": "2-Regression/2-Data/solution/R/lesson_2-R.ipynb",
+      "sha256": "f9086afe4fbcc405083fb834a5928d8dd679195080aac7b6b6830d547a89f7f0",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 14,
+      "cells_before": 14,
+      "code_sources_equal": false,
+      "error": "<subject>/2-Regression/2-Data/solution/notebook.ipynb: Cells 5 differ (1/14)",
+      "exit": 1,
+      "path": "2-Regression/2-Data/solution/notebook.ipynb",
+      "sha256": "c33f60baec33b479b6e0e413837cd09ad6cd78bcb9a4353979e223970e116832",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 6,
+      "cells_before": 6,
+      "code_sources_equal": false,
+      "error": "<subject>/2-Regression/3-Linear/notebook.ipynb: Cells 2,3 differ (2/6)",
+      "exit": 1,
+      "path": "2-Regression/3-Linear/notebook.ipynb",
+      "sha256": "29ca6495bfc4ebb35c7252410358a1e0d3ed57fffb01dda2ad941919f32387a3",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 54,
+      "cells_before": 54,
+      "code_sources_equal": false,
+      "error": "<subject>/2-Regression/3-Linear/solution/R/lesson_3-R.ipynb: Cells 4,43,45,15,49,51,53,25 differ (8/54)",
+      "exit": 1,
+      "path": "2-Regression/3-Linear/solution/R/lesson_3-R.ipynb",
+      "sha256": "d4817e666718d3258c34a91e92516bcbf3f2a4beda33c0f80b14281f5192dcee",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 33,
+      "cells_before": 33,
+      "code_sources_equal": false,
+      "error": "<subject>/2-Regression/3-Linear/solution/notebook.ipynb: Cells 16,3 differ (2/33)",
+      "exit": 1,
+      "path": "2-Regression/3-Linear/solution/notebook.ipynb",
+      "sha256": "9afe6659176eee1518ba35311fc7b566ca77873f3c3d29873cc7870e2100b890",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 2,
+      "cells_before": 2,
+      "code_sources_equal": false,
+      "error": "<subject>/2-Regression/4-Logistic/notebook.ipynb: Cells 2 differ (1/2)",
+      "exit": 1,
+      "path": "2-Regression/4-Logistic/notebook.ipynb",
+      "sha256": "61a52770debd412f633412a3d9197fcd3397dd708d1d5869632dc944d5f13870",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 36,
+      "cells_before": 36,
+      "code_sources_equal": false,
+      "error": "<subject>/2-Regression/4-Logistic/solution/R/lesson_4-R.ipynb: Cells 33,2,35,4,6,8,13,15,17,19,21,23,25,27,29,31 differ (16/36)",
+      "exit": 1,
+      "path": "2-Regression/4-Logistic/solution/R/lesson_4-R.ipynb",
+      "sha256": "c777cd894edbc4a4e92c902439bb9bdcbb79e7ba9b176846d0ab121d3ac0a0d3",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 24,
+      "cells_before": 24,
+      "code_sources_equal": false,
+      "error": "<subject>/2-Regression/4-Logistic/solution/notebook.ipynb: Cells 2,14 differ (2/24)",
+      "exit": 1,
+      "path": "2-Regression/4-Logistic/solution/notebook.ipynb",
+      "sha256": "309fa3ee55ce546e9737fcf903f2ca1568edafb25a855783098c8356da8357d8",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "error": "nbformat.reader.NotJSONError: Notebook does not appear to be JSON: ''",
+      "exit": 1,
+      "path": "3-Web-App/1-Web-App/notebook.ipynb",
+      "roundtrip_unreadable": "NotJSONError",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 9,
+      "cells_before": 9,
+      "code_sources_equal": false,
+      "error": "<subject>/3-Web-App/1-Web-App/solution/notebook.ipynb: Cells 8,2,6 differ (3/9)",
+      "exit": 1,
+      "path": "3-Web-App/1-Web-App/solution/notebook.ipynb",
+      "sha256": "880d0e512e38f18e9786f00c3a54eecbad1d971382a4553aa6a19c0df3739c9a",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 1,
+      "cells_before": 1,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "4-Classification/1-Introduction/notebook.ipynb",
+      "sha256": "e4b90b960317f5fad9dadaf488e36d37cc74f5b9d5b43ae0ad0b6f1fff0baebe",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 40,
+      "cells_before": 40,
+      "code_sources_equal": false,
+      "error": "<subject>/4-Classification/1-Introduction/solution/R/lesson_10-R.ipynb: Cells 3,6,8,10,11,12,14,16,18,20,22,24,26,28,29,31,33,35,37,39,40 differ (21/40)",
+      "exit": 1,
+      "path": "4-Classification/1-Introduction/solution/R/lesson_10-R.ipynb",
+      "sha256": "e0999364abe93a2aeaf22a1a6fdd9049de6e5cf9ae849860d41112f2390b3c47",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 30,
+      "cells_before": 30,
+      "code_sources_equal": false,
+      "error": "<subject>/4-Classification/1-Introduction/solution/notebook.ipynb: Cells 14,15,16,17,18,19,21,24 differ (8/30)",
+      "exit": 1,
+      "path": "4-Classification/1-Introduction/solution/notebook.ipynb",
+      "sha256": "3aec7a741c50d182c18067f409254997842a78c079c2b52663f42983babd1acc",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 1,
+      "cells_before": 1,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "4-Classification/2-Classifiers-1/notebook.ipynb",
+      "sha256": "f1eedf783dfd11b6c58593b2178f28b9600d140102a56c97edcfc7747b92887f",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 29,
+      "cells_before": 29,
+      "code_sources_equal": false,
+      "error": "<subject>/4-Classification/2-Classifiers-1/solution/R/lesson_11-R.ipynb: Cells 4,6,8,10,11,12,14,16,22 differ (9/29)",
+      "exit": 1,
+      "path": "4-Classification/2-Classifiers-1/solution/R/lesson_11-R.ipynb",
+      "sha256": "8dfdc90132bd9f4a43520145801321dc69fbfc398d6670476633cf40f67e2c53",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 10,
+      "cells_before": 10,
+      "code_sources_equal": false,
+      "error": "<subject>/4-Classification/2-Classifiers-1/solution/notebook.ipynb: Cells 10 differ (1/10)",
+      "exit": 1,
+      "path": "4-Classification/2-Classifiers-1/solution/notebook.ipynb",
+      "sha256": "7ec3592c4ca3b9167e579b38365ec6f6154ede1bd851a8291aa4ebf56c0f46a2",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 4,
+      "cells_before": 4,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "4-Classification/3-Classifiers-2/notebook.ipynb",
+      "sha256": "0d41e61fdb3b3cbd3c52fe10af20f1a73ab48da745c3a3c97e293eb1c336a35d",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 26,
+      "cells_before": 26,
+      "code_sources_equal": false,
+      "error": "<subject>/4-Classification/3-Classifiers-2/solution/R/lesson_12-R.ipynb: Cells 25 differ (1/26)",
+      "exit": 1,
+      "path": "4-Classification/3-Classifiers-2/solution/R/lesson_12-R.ipynb",
+      "sha256": "36f5fcf61da38bd6f0579c44fd77f33a6e6467596ce61c30f7bc8845e7130331",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 10,
+      "cells_before": 10,
+      "code_sources_equal": false,
+      "error": "<subject>/4-Classification/3-Classifiers-2/solution/notebook.ipynb: Cells 9 differ (1/10)",
+      "exit": 1,
+      "path": "4-Classification/3-Classifiers-2/solution/notebook.ipynb",
+      "sha256": "ce9bc9f40fd9bed779c6e575d47f03277b47c9b200720c46aff97d8506ef2198",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 1,
+      "cells_before": 1,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "4-Classification/4-Applied/notebook.ipynb",
+      "sha256": "6fa64d73214c8d5f9fcad800dfdbc8fb1e0d17af5ed620c4a984e611b7c135d8",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 12,
+      "cells_before": 12,
+      "code_sources_equal": false,
+      "error": "<subject>/4-Classification/4-Applied/solution/notebook.ipynb: Cells 9,3 differ (2/12)",
+      "exit": 1,
+      "path": "4-Classification/4-Applied/solution/notebook.ipynb",
+      "sha256": "9f21ef1d4d37af6c5f91c9442859b7568b30aff5e7278a1cf615d80c35513916",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 2,
+      "cells_before": 2,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "5-Clustering/1-Visualize/notebook.ipynb",
+      "sha256": "d75cbf47c8d1391b443e7d817fe3b10f6829818be73516956fc48efd46516508",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 25,
+      "cells_before": 25,
+      "code_sources_equal": false,
+      "error": "<subject>/5-Clustering/1-Visualize/solution/R/lesson_14-R.ipynb: Cells 1,2,4,6,8,10,12,14,16,18,20,22,24 differ (13/25)",
+      "exit": 1,
+      "path": "5-Clustering/1-Visualize/solution/R/lesson_14-R.ipynb",
+      "sha256": "0aa02d6bd56f7f8500c9fdc8325c5218cc24213cfc066f1e1f0f012c9f96bed4",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 22,
+      "cells_before": 22,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "5-Clustering/1-Visualize/solution/notebook.ipynb",
+      "sha256": "59f135102d1aadcfdf320a5997713768d24ae18fa54b12bf7b802a11d23ca063",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 7,
+      "cells_before": 7,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "5-Clustering/2-K-Means/notebook.ipynb",
+      "sha256": "39fbccfc72a62bc05273838e99866f666630a6bc5c29bd20ba60b07acf903058",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 31,
+      "cells_before": 31,
+      "code_sources_equal": false,
+      "error": "<subject>/5-Clustering/2-K-Means/solution/R/lesson_15-R.ipynb: Cells 2,4,6,8,10,12,14,16,18,20,22,24,26,28,30 differ (15/31)",
+      "exit": 1,
+      "path": "5-Clustering/2-K-Means/solution/R/lesson_15-R.ipynb",
+      "sha256": "1a0d6c936b2cb6cea198d434f498e779ce5c9276e29b144859c06f76b0a7fa93",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 24,
+      "cells_before": 24,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "5-Clustering/2-K-Means/solution/notebook.ipynb",
+      "sha256": "b397dc97588ca380e3db2fbdf94a59e024549a3c1729c791744deeb0e3434a7a",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 10,
+      "cells_before": 10,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "5-Clustering/2-K-Means/solution/tester.ipynb",
+      "sha256": "ff9cb64d45a73dde547536536249a166d2fe90adbbdc78d190e8ea3441d60ad6",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 6,
+      "cells_before": 6,
+      "code_sources_equal": false,
+      "error": "<subject>/6-NLP/3-Translation-Sentiment/solution/notebook.ipynb: Cells 1,2,4,5 differ (4/6)",
+      "exit": 1,
+      "path": "6-NLP/3-Translation-Sentiment/solution/notebook.ipynb",
+      "sha256": "d96b800b5ebb6db7f50ff5a94649355e3b203b361e8dc2b402ebbdf72559d4a4",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "error": "nbformat.reader.NotJSONError: Notebook does not appear to be JSON: ''",
+      "exit": 1,
+      "path": "6-NLP/4-Hotel-Reviews-1/notebook.ipynb",
+      "roundtrip_unreadable": "NotJSONError",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 11,
+      "cells_before": 11,
+      "code_sources_equal": false,
+      "error": "<subject>/6-NLP/4-Hotel-Reviews-1/solution/notebook.ipynb: Cells 3,4,5,6,7,8,9,11 differ (8/11)",
+      "exit": 1,
+      "path": "6-NLP/4-Hotel-Reviews-1/solution/notebook.ipynb",
+      "sha256": "ef810453cb4d6cff5e3ec068d92958ec3bef33e677e62ad3452fa758948655a9",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "error": "nbformat.reader.NotJSONError: Notebook does not appear to be JSON: ''",
+      "exit": 1,
+      "path": "6-NLP/5-Hotel-Reviews-2/notebook.ipynb",
+      "roundtrip_unreadable": "NotJSONError",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 9,
+      "cells_before": 9,
+      "code_sources_equal": false,
+      "error": "<subject>/6-NLP/5-Hotel-Reviews-2/solution/1-notebook.ipynb: Cells 2,3,4,5,6,7,8,9 differ (8/9)",
+      "exit": 1,
+      "path": "6-NLP/5-Hotel-Reviews-2/solution/1-notebook.ipynb",
+      "sha256": "c5669c5a211c126b2d7ad02199e537c6038de7edfc3dadfe0cc9a9f4777190e6",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 6,
+      "cells_before": 6,
+      "code_sources_equal": false,
+      "error": "<subject>/6-NLP/5-Hotel-Reviews-2/solution/2-notebook.ipynb: Cells 1,2,3,4,5 differ (5/6)",
+      "exit": 1,
+      "path": "6-NLP/5-Hotel-Reviews-2/solution/2-notebook.ipynb",
+      "sha256": "d0de59ec4d3c37bc35c17d11bdec0e0e281a66fd073974e82572a43e9bbff71b",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 12,
+      "cells_before": 12,
+      "code_sources_equal": false,
+      "error": "<subject>/6-NLP/5-Hotel-Reviews-2/solution/3-notebook.ipynb: Cells 1,3,4,5,6,7,8,9,10,11 differ (10/12)",
+      "exit": 1,
+      "path": "6-NLP/5-Hotel-Reviews-2/solution/3-notebook.ipynb",
+      "sha256": "43677807cca2f9322584513ef18559cd647063fd77dc966c33b9b16cedacaa5e",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 8,
+      "cells_before": 8,
+      "code_sources_equal": false,
+      "error": "<subject>/7-TimeSeries/1-Introduction/solution/notebook.ipynb: Cells 4 differ (1/8)",
+      "exit": 1,
+      "path": "7-TimeSeries/1-Introduction/solution/notebook.ipynb",
+      "sha256": "2dcccb109c1d4b27e3f38c3a35affd94025fb633c0bccbb265701a7deaa17cdb",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 1,
+      "cells_before": 1,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "7-TimeSeries/1-Introduction/working/notebook.ipynb",
+      "sha256": "7a6cdc9e82517c23507d5f6406aaaf2fe19a2c4796db97e6f5936a17e0182966",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 34,
+      "cells_before": 34,
+      "code_sources_equal": false,
+      "error": "<subject>/7-TimeSeries/2-ARIMA/solution/notebook.ipynb: Cells 19,4 differ (2/34)",
+      "exit": 1,
+      "path": "7-TimeSeries/2-ARIMA/solution/notebook.ipynb",
+      "sha256": "1959aaafe014368a4f92e06c2a3bbca58953db2eca153bc21dd2de7d40fa4281",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 2,
+      "cells_before": 2,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "7-TimeSeries/2-ARIMA/working/notebook.ipynb",
+      "sha256": "883ab3852a40394238b05915deedfbca276b51b2a673c6a28e254450ed9a4459",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 44,
+      "cells_before": 44,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "7-TimeSeries/3-SVR/solution/notebook.ipynb",
+      "sha256": "745b40f51bc4470e4ae21ba6887087521e8d5322b5753eefb5fedad78917f239",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 44,
+      "cells_before": 44,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "7-TimeSeries/3-SVR/working/notebook.ipynb",
+      "sha256": "287d26a3a03ea0029b85ac57110e832e70c7aae75fd959830258155275e9c36c",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 29,
+      "cells_before": 29,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "8-Reinforcement/1-QLearning/notebook.ipynb",
+      "sha256": "e54f0d2db27706a17092bb5469721f222269428855c30826a6d97fdcd08b7272",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 21,
+      "cells_before": 21,
+      "code_sources_equal": true,
+      "error": "<subject>/8-Reinforcement/1-QLearning/solution/assignment-solution.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "8-Reinforcement/1-QLearning/solution/assignment-solution.ipynb",
+      "sha256": "b4d926ad2dd78997b1d47939c81ef2a5f1c8f347a2d2188af1f7e09e795625c4",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 32,
+      "cells_before": 32,
+      "code_sources_equal": true,
+      "error": "<subject>/8-Reinforcement/1-QLearning/solution/notebook.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "8-Reinforcement/1-QLearning/solution/notebook.ipynb",
+      "sha256": "87fc4f19460661f9e176500f67274e5484f8dc51146ebefdec588e6171ebdb17",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 29,
+      "cells_before": 29,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "8-Reinforcement/2-Gym/notebook.ipynb",
+      "sha256": "d2b960cdf3936df6fe3a153a1b5acc64cf789c4790a937d3968a06e0f6077f84",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 29,
+      "cells_before": 29,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "8-Reinforcement/2-Gym/solution/notebook.ipynb",
+      "sha256": "8d802ba170cf5d2e7a795736adaf4567800f221ed6440e2447df5e88e0cf6b3e",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 108,
+      "cells_before": 108,
+      "code_sources_equal": false,
+      "error": "<subject>/PyTorch_Fundamentals.ipynb: Cells 24,28 differ (2/108)",
+      "exit": 1,
+      "path": "PyTorch_Fundamentals.ipynb",
+      "sha256": "48ff5cb8f653cad47eb7d38a38ddc1a80c5f174fb98dcc10f6afe10c5e80c2cf",
+      "subject": "ML-For-Beginners"
+    },
+    {
+      "cells_after": 9,
+      "cells_before": 9,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks/00.00-Preface.ipynb",
+      "sha256": "4a9dd14420392fdc6ae381bfff9b7a0561d7d219a4751c85d870029bbb71dfcf",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 2,
+      "cells_before": 2,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks/01.00-IPython-Beyond-Normal-Python.ipynb",
+      "sha256": "e90d86c143b188506c551d85bb8c7d3bd540d94b8b0c85582f880b0bc0ecbdb9",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 16,
+      "cells_before": 16,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks/01.01-Help-And-Documentation.ipynb",
+      "sha256": "02fe10e90a28fb097d77a368402846fba428dda885df0ea57259c4cb0a1673c8",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 8,
+      "cells_before": 8,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks/01.02-Shell-Keyboard-Shortcuts.ipynb",
+      "sha256": "a7dfaaa1ba8e5d01d9862ec9e7eabbe82021073c9accb3ddbfc9c17dc48a227e",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 5,
+      "cells_before": 5,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks/01.03-Magic-Commands.ipynb",
+      "sha256": "4b5198787f06be28dd575d889d02b29da12658d1140e0c2116845997bdac244f",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 8,
+      "cells_before": 8,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks/01.04-Input-Output-History.ipynb",
+      "sha256": "e9a76b91ed72060bb6ce3681ca92996031ba13523eb8e86c900e6812898f9f09",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 7,
+      "cells_before": 7,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks/01.05-IPython-And-Shell-Commands.ipynb",
+      "sha256": "b3263f38c3519a258d5b24612b9be5397f4735e332b525ea0f7363f63570c99c",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 20,
+      "cells_before": 20,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks/01.06-Errors-and-Debugging.ipynb",
+      "sha256": "ba4e51c0331047063c5d6ee62dd83d2077086dcb43da5bdd88b3e74dedfc61e1",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 34,
+      "cells_before": 34,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks/01.07-Timing-and-Profiling.ipynb",
+      "sha256": "f6217a7964f966848fda440d6b5019780e65d8f646152c6e00800607a5de949d",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 4,
+      "cells_before": 4,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks/01.08-More-IPython-Resources.ipynb",
+      "sha256": "826f69b1a018ee7072a2342b9d67d39320a5eec2f047d63f47b9094075d2a0a2",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 6,
+      "cells_before": 6,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks/02.00-Introduction-to-NumPy.ipynb",
+      "sha256": "9f8a34c954b462480fbf8e3b8b020e886bb974a6ee165921e733b87290364c8c",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 44,
+      "cells_before": 44,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks/02.01-Understanding-Data-Types.ipynb",
+      "sha256": "e6aef0d9a235b0f6081b1fd79c4b43430983b57b79c2524f9ddad289704c436e",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 90,
+      "cells_before": 90,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks/02.02-The-Basics-Of-NumPy-Arrays.ipynb",
+      "sha256": "556f718dba9187ce81bffeb2e2ffe7dc5cdabb7deac944d20f031afe91eeb915",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 70,
+      "cells_before": 70,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks/02.03-Computation-on-arrays-ufuncs.ipynb",
+      "sha256": "8978311c16a97c498fbce379d916d4ecbfd22ec2b530c279cc25d527d6018938",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 40,
+      "cells_before": 40,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks/02.04-Computation-on-arrays-aggregates.ipynb",
+      "sha256": "a5367e2c6a3a2e8947ce4e4d02c5a26e5c1760e28fca6dc27d22e5f3244db193",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 54,
+      "cells_before": 54,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks/02.05-Computation-on-arrays-broadcasting.ipynb",
+      "sha256": "26782a3127de8dc3a9c42b0b9c3266a19ef76aa5b8e864e5efd3ad7deb34a362",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 74,
+      "cells_before": 74,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/02.06-Boolean-Arrays-and-Masks.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/02.06-Boolean-Arrays-and-Masks.ipynb",
+      "sha256": "b97b8bcf3bf8faefd2c97eac92df797ceac6cbaf50ea81600be8f4edae3aacc7",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 58,
+      "cells_before": 58,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks/02.07-Fancy-Indexing.ipynb",
+      "sha256": "cdfc01cbc9d670aae7dc448227ef48d85036620d6f091a53118ea208fe270cb8",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 46,
+      "cells_before": 46,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks/02.08-Sorting.ipynb",
+      "sha256": "f79329a848b1b1b5ff870dd68a4c73669333ee8982b5a93d851bd0c7be0547ea",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 38,
+      "cells_before": 38,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/02.09-Structured-Data-NumPy.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/02.09-Structured-Data-NumPy.ipynb",
+      "sha256": "39c8459e7e5e5ed568141595b93369b2f5d9cda04fdb24cd7d3e5bade28855b1",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 8,
+      "cells_before": 8,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/03.00-Introduction-to-Pandas.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/03.00-Introduction-to-Pandas.ipynb",
+      "sha256": "1b909dd24261160dda300ed9ddf880c93b3d1590cb4a281e90f9a2c11e3ad3af",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 78,
+      "cells_before": 78,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/03.01-Introducing-Pandas-Objects.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/03.01-Introducing-Pandas-Objects.ipynb",
+      "sha256": "aafa916ead1d807c403ac5c530cb229499195a96d8de866f04466e769cc1bdef",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 67,
+      "cells_before": 67,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks/03.02-Data-Indexing-and-Selection.ipynb",
+      "sha256": "70d00d4824b58c88aae867809ae3f05f8b0704f168820b09e866d238d1f2564c",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 40,
+      "cells_before": 40,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/03.03-Operations-in-Pandas.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/03.03-Operations-in-Pandas.ipynb",
+      "sha256": "abfe26a5a3f342e4cf95860170d3f378f10375abb1f372430b2d9f9a0499f9df",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 66,
+      "cells_before": 66,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/03.04-Missing-Values.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/03.04-Missing-Values.ipynb",
+      "sha256": "26c55e6f51bb406703e16011f722d0d7f8502426c5f14d93dec525fbae07f521",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 96,
+      "cells_before": 96,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/03.05-Hierarchical-Indexing.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/03.05-Hierarchical-Indexing.ipynb",
+      "sha256": "0584fcac0f3a44523d844444ef808571b33be4152ff1afadbb338e26f8bbacf0",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 39,
+      "cells_before": 39,
+      "code_sources_equal": false,
+      "error": "<subject>/notebooks/03.06-Concat-And-Append.ipynb: Cells 7 differ (1/39) | Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/03.06-Concat-And-Append.ipynb",
+      "sha256": "485559ab2e5035dd6d0e927226801fd286b47cd0843dd3ca5f7e2ff7cce3e580",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 84,
+      "cells_before": 84,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/03.07-Merge-and-Join.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/03.07-Merge-and-Join.ipynb",
+      "sha256": "0d71fee1082d5b1e3886987a3cbb8f71d25ee09bbc3a2db2b87958c26b6e6042",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 74,
+      "cells_before": 74,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/03.08-Aggregation-and-Grouping.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/03.08-Aggregation-and-Grouping.ipynb",
+      "sha256": "fcfd81b5607e9ca0331ac96568d1141bab977e8f57d5f644b64136ccf41ece27",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 52,
+      "cells_before": 52,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/03.09-Pivot-Tables.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/03.09-Pivot-Tables.ipynb",
+      "sha256": "ca4361b5e0b5d29f695bd537c41e2fc3eaec0d1149893e35db159bc17c357bb9",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 64,
+      "cells_before": 64,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/03.10-Working-With-Strings.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/03.10-Working-With-Strings.ipynb",
+      "sha256": "f1d500ec88dafa72b06156565282481b8f14cd6db5dea42f94f5acb5ab9695ed",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 108,
+      "cells_before": 108,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/03.11-Working-with-Time-Series.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/03.11-Working-with-Time-Series.ipynb",
+      "sha256": "7a30ebac052ed41aaa6bb1a22c6bcfca687839ca9a49e534ff49a8c4fd2791d3",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 63,
+      "cells_before": 63,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/03.12-Performance-Eval-and-Query.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/03.12-Performance-Eval-and-Query.ipynb",
+      "sha256": "d7b667ce895ee99780dd335b8393dfe450f58ac60ea5f7b259fb9223c3a175ae",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 2,
+      "cells_before": 2,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks/03.13-Further-Resources.ipynb",
+      "sha256": "d1841f0786504889bb136e60a0b0ef8e16e594f5f65cf59fa7819521d613f60e",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 32,
+      "cells_before": 32,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/04.00-Introduction-To-Matplotlib.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/04.00-Introduction-To-Matplotlib.ipynb",
+      "sha256": "2739b47a80d36a2fdd72cbd383bb51f5bf7b39fa92fd234a340340d4fe74f6c6",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 37,
+      "cells_before": 37,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/04.01-Simple-Line-Plots.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/04.01-Simple-Line-Plots.ipynb",
+      "sha256": "2290c31c987c488fcee563c7238c972f1375d1983877a802ec9fbb5666c34f96",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 20,
+      "cells_before": 20,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/04.02-Simple-Scatter-Plots.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/04.02-Simple-Scatter-Plots.ipynb",
+      "sha256": "0a8eedf42ad76cdad38f1cab4d9f2bb38faec1d8b699059d1bc2a3d716b3f32c",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 13,
+      "cells_before": 13,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/04.03-Errorbars.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/04.03-Errorbars.ipynb",
+      "sha256": "13f53dd617266711abac02d2500138227485552a301f8d14dc452c4df56434f7",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 20,
+      "cells_before": 20,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/04.04-Density-and-Contour-Plots.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/04.04-Density-and-Contour-Plots.ipynb",
+      "sha256": "e8a4586baa504f9bd159d065d9415ae3a024cb458523dc50b443b34d0712e009",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 23,
+      "cells_before": 23,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/04.05-Histograms-and-Binnings.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/04.05-Histograms-and-Binnings.ipynb",
+      "sha256": "6cb27a61db92018eb411fea1cc9ce4a114a0609cde53d86b69bebf550ef0e4fb",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 24,
+      "cells_before": 24,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/04.06-Customizing-Legends.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/04.06-Customizing-Legends.ipynb",
+      "sha256": "c1fdd582f98feb6337e6e4cb44d7ec37dd175d3199399cf40b6229524a122a19",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 31,
+      "cells_before": 31,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/04.07-Customizing-Colorbars.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/04.07-Customizing-Colorbars.ipynb",
+      "sha256": "3082858294fc980d262b00cc801df5a4db1cb819e250e3623f8d2fa14d67728a",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 26,
+      "cells_before": 26,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/04.08-Multiple-Subplots.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/04.08-Multiple-Subplots.ipynb",
+      "sha256": "f57dd14fd61dbe41072c6537e8e35084aae818e971a3e7d8df03f43fdaa479fd",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 20,
+      "cells_before": 20,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/04.09-Text-and-Annotation.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/04.09-Text-and-Annotation.ipynb",
+      "sha256": "271312adffb558a2bda206d94f814aff808fabe97d4a52cd0376468e8f05fca3",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 27,
+      "cells_before": 27,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/04.10-Customizing-Ticks.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/04.10-Customizing-Ticks.ipynb",
+      "sha256": "16575104be68f9815781877e6af11ff712915b9224a9de357328d6989517daba",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 36,
+      "cells_before": 36,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/04.11-Settings-and-Stylesheets.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/04.11-Settings-and-Stylesheets.ipynb",
+      "sha256": "7a691d2072761cb55d87a319f120d1ef985b4433565cf016866c663b8d920bf4",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 38,
+      "cells_before": 38,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/04.12-Three-Dimensional-Plotting.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/04.12-Three-Dimensional-Plotting.ipynb",
+      "sha256": "cb10d921c36e9d6b5025da177145f7e9227ea09c3b9a858272e3d9ae49d5518b",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 62,
+      "cells_before": 62,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks/04.14-Visualization-With-Seaborn.ipynb",
+      "sha256": "ff05a6dd6684de0954063f9e22f1d105ac6cd10b8193bdd689ac076ecb05b2d5",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 2,
+      "cells_before": 2,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks/04.15-Further-Resources.ipynb",
+      "sha256": "227b8a5905ff2411136aafefaf434ea4a28fa71121963ce51ebccb9412a650d6",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 2,
+      "cells_before": 2,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks/05.00-Machine-Learning.ipynb",
+      "sha256": "890692d264e109345d65d093415cdc4b804c6e1e834d3c9628b59198c386db86",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 31,
+      "cells_before": 31,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks/05.01-What-Is-Machine-Learning.ipynb",
+      "sha256": "f750ee8c6e6f0cc5716b3598be6fd7e9cb0d45560ce678c9acbfa57f4d8dff7a",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 87,
+      "cells_before": 87,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/05.02-Introducing-Scikit-Learn.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/05.02-Introducing-Scikit-Learn.ipynb",
+      "sha256": "b2f66e5cc002bd163feb59f9b8600ad5b79dea6021bfc6a1db8e5b71b33a226b",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 59,
+      "cells_before": 59,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/05.03-Hyperparameters-and-Model-Validation.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/05.03-Hyperparameters-and-Model-Validation.ipynb",
+      "sha256": "57c10ede19bd471c910449cda1a2afc9e2bd1a2dc3838d1a6f24fdc3cf16291f",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 43,
+      "cells_before": 43,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/05.04-Feature-Engineering.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/05.04-Feature-Engineering.ipynb",
+      "sha256": "92131841553e91d293954ad6c5faf8c25826c325617fbb30d2467be9556030bb",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 38,
+      "cells_before": 38,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/05.05-Naive-Bayes.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/05.05-Naive-Bayes.ipynb",
+      "sha256": "432266aa9d4fe95f4bc0acea3251bdac2cd277a1f5cdab51b2b0e1d6b316deaa",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 68,
+      "cells_before": 68,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/05.06-Linear-Regression.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/05.06-Linear-Regression.ipynb",
+      "sha256": "a726ef7aee1252f3389b60fd6da4f7d5114a572353c50dd35380aecae54d95c8",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 60,
+      "cells_before": 60,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/05.07-Support-Vector-Machines.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/05.07-Support-Vector-Machines.ipynb",
+      "sha256": "8f01bffbe7f86c160fcbe89f4549b1650d262adc0e76b354719c41eec15af0a6",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 49,
+      "cells_before": 49,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/05.08-Random-Forests.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/05.08-Random-Forests.ipynb",
+      "sha256": "cc2c5c63686602c8af079e69d02fd37bc6da7202be94bb11a40a4133b88525f8",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 59,
+      "cells_before": 59,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks/05.09-Principal-Component-Analysis.ipynb",
+      "sha256": "fa00993593486ca2d2445bf4781eba2ea79bb07f3360fa9456d67f573b9da9f2",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 62,
+      "cells_before": 62,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks/05.10-Manifold-Learning.ipynb",
+      "sha256": "f7408c08b14aab1df8901e1cd741aba965ad866a3e2978837c775ac28bbc18bd",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 61,
+      "cells_before": 61,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/05.11-K-Means.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/05.11-K-Means.ipynb",
+      "sha256": "fe13a8aa33b3bc1ce52da2c8d72747d8f1bbd320bcc18598f5338b9d07592ee3",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 54,
+      "cells_before": 54,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/05.12-Gaussian-Mixtures.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/05.12-Gaussian-Mixtures.ipynb",
+      "sha256": "9438d483e156738ba8d581e54f150590061ff6fbe6147cb38ab56ae0449c07e6",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 41,
+      "cells_before": 41,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/05.13-Kernel-Density-Estimation.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/05.13-Kernel-Density-Estimation.ipynb",
+      "sha256": "b02006c0cc403a0effa4b8824e3dc60e607d2c7390729099806dc7437199055b",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 37,
+      "cells_before": 37,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/05.14-Image-Features.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/05.14-Image-Features.ipynb",
+      "sha256": "07ff8f8b63bca77399596a3bd86a2f9f830d08717fa123b098d4d513a83aed14",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 2,
+      "cells_before": 2,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks/05.15-Learning-More.ipynb",
+      "sha256": "9262221390e9857a7c5a5846aa9a745b68e3e144ff6d7fef1f237036d45e1c43",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 97,
+      "cells_before": 97,
+      "code_sources_equal": true,
+      "error": "<subject>/notebooks/06.00-Figure-Code.ipynb: Cell metadata 'tags' differ",
+      "exit": 1,
+      "path": "notebooks/06.00-Figure-Code.ipynb",
+      "sha256": "24f02d5c1cec9f243eade9be59ee73f41772f1749761f8854f77bf0dc5d2a489",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 0,
+      "cells_before": 0,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks/Untitled.ipynb",
+      "sha256": "4a62b68a633d79c53a6fd8893e8ea42dcf2b9a8a3e907b1b9861661f04f21517",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 13,
+      "cells_before": 13,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/00.00-Preface.ipynb",
+      "sha256": "218be37e37891f825a5085446836ef5231079646eca6d008b376c9e49b9b185a",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 8,
+      "cells_before": 8,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/01.00-IPython-Beyond-Normal-Python.ipynb",
+      "sha256": "6abd52b3f56b215dd3a3cd70a4079f161727719a993ce25a58ea6b1752d0a9e0",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 16,
+      "cells_before": 16,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/01.01-Help-And-Documentation.ipynb",
+      "sha256": "f5a9a5d105f62e114a418812da65f4a3c8f595a76ba64d5a969d025d59db5796",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 11,
+      "cells_before": 11,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/01.02-Shell-Keyboard-Shortcuts.ipynb",
+      "sha256": "6a38c6c7e0856c5c736e85a23e04c8d2a305f841084f5e9b0ead4cfb43a9c959",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 9,
+      "cells_before": 9,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/01.03-Magic-Commands.ipynb",
+      "sha256": "05c5b3d389a3ad6c6ca1d826796307e8ccecf448f7753a036e750cb973f1c11b",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 11,
+      "cells_before": 11,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/01.04-Input-Output-History.ipynb",
+      "sha256": "22e0a2253f37434d6744da5756a6d2cc8e90b1d29e9e091c6fe5759ac9708ebd",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 10,
+      "cells_before": 10,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/01.05-IPython-And-Shell-Commands.ipynb",
+      "sha256": "2ee5533bb9481c838c3cb06f9fb53d21c43107828368e786410949bda9a93867",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 23,
+      "cells_before": 23,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/01.06-Errors-and-Debugging.ipynb",
+      "sha256": "8d7c8e2a2f189801cca1bc76ff28e751b753ba8af98c529e75a95d28232fd391",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 36,
+      "cells_before": 36,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/01.07-Timing-and-Profiling.ipynb",
+      "sha256": "48a5d2974dbae2c22d45d03a0ed7a87897ddd8ba61e6595a0742b81e7db4b200",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 7,
+      "cells_before": 7,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/01.08-More-IPython-Resources.ipynb",
+      "sha256": "4cb06adf9082b643c07c7ea6057f520d2fb3447f96430900095ad417dc871709",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 10,
+      "cells_before": 10,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/02.00-Introduction-to-NumPy.ipynb",
+      "sha256": "ac18ad929bd99af3bc91f67faab8e5c60cdb7a18265b5787ca0cd875f4d52632",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 46,
+      "cells_before": 46,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/02.01-Understanding-Data-Types.ipynb",
+      "sha256": "94de301fff936e140b7a5ba7e1237acbd7620384af1390ca76487c851bf31f00",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 96,
+      "cells_before": 96,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/02.02-The-Basics-Of-NumPy-Arrays.ipynb",
+      "sha256": "4609d2da9cd018d926c78e1a03b466f6ee28a36e9c9a83a2838a3ec3c9e795bd",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 73,
+      "cells_before": 73,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/02.03-Computation-on-arrays-ufuncs.ipynb",
+      "sha256": "9ffcc180f9ef0392257cdf47096afe3a23ab9e1eb924080d5b35b6f8111e9859",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 44,
+      "cells_before": 44,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/02.04-Computation-on-arrays-aggregates.ipynb",
+      "sha256": "a80fef634ccc1dfab596c2e2fb126ef34b9001d1cdcd3d91a6faefc8318b4abd",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 57,
+      "cells_before": 57,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/02.05-Computation-on-arrays-broadcasting.ipynb",
+      "sha256": "d827178e5adaccac8f9209162b47b5d788718530aa684edb5881e3d2d2fddce4",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 78,
+      "cells_before": 78,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/02.06-Boolean-Arrays-and-Masks.ipynb",
+      "sha256": "ca662730202979a37612d96d3368f7429e6ba528fb9901536532c4f62d0d489a",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 61,
+      "cells_before": 61,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/02.07-Fancy-Indexing.ipynb",
+      "sha256": "8020e0bdb5e9770947467cc010ce506b9be99fde009d473b9fd011e8c0dd8d64",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 50,
+      "cells_before": 50,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/02.08-Sorting.ipynb",
+      "sha256": "d422250646b24b1c1d40bd9c83d10df1d1833160d6cfdaf24b0a96ab39ba7ae8",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 41,
+      "cells_before": 41,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/02.09-Structured-Data-NumPy.ipynb",
+      "sha256": "288b800c600fcbb06aff3bdbabaeef73e83c6661a1bed2ad5b7655e1783487ac",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 11,
+      "cells_before": 11,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/03.00-Introduction-to-Pandas.ipynb",
+      "sha256": "a83d424a7b5f24bdbaf641f4a33540ea4fd1089e3f19169d60fbc32a312ed963",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 83,
+      "cells_before": 83,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/03.01-Introducing-Pandas-Objects.ipynb",
+      "sha256": "6a5f223c036ff2cc02c5d724e72c6ce20ca0cf4c930ac86637c5fcc0c0e4788d",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 74,
+      "cells_before": 74,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/03.02-Data-Indexing-and-Selection.ipynb",
+      "sha256": "2ce25041489fab12c368727cf9aa0fa86c2b865b213208fbe697771e12485ab9",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 43,
+      "cells_before": 43,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/03.03-Operations-in-Pandas.ipynb",
+      "sha256": "4f91e37ace6d9a16270c126ee9a2a466f62079552b171ddda84dc8c2ae19fecb",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 64,
+      "cells_before": 64,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/03.04-Missing-Values.ipynb",
+      "sha256": "9cbcaf2b6ded6c525f9d20db33c550f1a3a6301162ba880f8c395816a7912de5",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 108,
+      "cells_before": 108,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/03.05-Hierarchical-Indexing.ipynb",
+      "sha256": "07c173fb84f992c6fa2b4fc687c54e3481c3d630c5685ee028ac18250f97c278",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 43,
+      "cells_before": 43,
+      "code_sources_equal": false,
+      "error": "<subject>/notebooks_v1/03.06-Concat-And-Append.ipynb: Cells 9 differ (1/43)",
+      "exit": 1,
+      "path": "notebooks_v1/03.06-Concat-And-Append.ipynb",
+      "sha256": "1a76f8ddc65a7f2eba5cb6b91fc18da589259ba2c1412d91b50a91c5645e20f1",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 86,
+      "cells_before": 86,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/03.07-Merge-and-Join.ipynb",
+      "sha256": "d5d7a5209c825e6d166107c67609e80395d08d6d7387e6ec712ffe5a44c1a74a",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 77,
+      "cells_before": 77,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/03.08-Aggregation-and-Grouping.ipynb",
+      "sha256": "bf03ae592d936fb4ca13e5c9db7b2c0122db884faa0773eea5835ac7f2f46f07",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 55,
+      "cells_before": 55,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/03.09-Pivot-Tables.ipynb",
+      "sha256": "a61046f4eccf3f066becd653996a2308e90bf1fb0d4d5a74d2791d2be2a9115d",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 75,
+      "cells_before": 75,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/03.10-Working-With-Strings.ipynb",
+      "sha256": "06f9d921e61659ce223197a72baaeaa912d80fb9fb3e197f730728af58e3bb20",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 114,
+      "cells_before": 114,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/03.11-Working-with-Time-Series.ipynb",
+      "sha256": "0a7a6773692f540be7596fc5ca68070773612436db5b87e2e6aea0b20ef713f4",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 66,
+      "cells_before": 66,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/03.12-Performance-Eval-and-Query.ipynb",
+      "sha256": "62639ae3609ee1670614b25ccfb65da3f447ff1883ad5e2fa90c9270a7d767ab",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 5,
+      "cells_before": 5,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/03.13-Further-Resources.ipynb",
+      "sha256": "0c01f79c10fbe9803e9da49d93d438c7867dd81b9ad5fe4c1783eb94e9849eab",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 36,
+      "cells_before": 36,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/04.00-Introduction-To-Matplotlib.ipynb",
+      "sha256": "6a74f6f8281aaa0ac6814961a13ad045e473eebbfe709146bfa65ae0beb0971a",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 42,
+      "cells_before": 42,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/04.01-Simple-Line-Plots.ipynb",
+      "sha256": "5f04daf9fed1657ba01e5c0f195564ac084a08b12e7c676aacf74f1f5fcd271d",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 23,
+      "cells_before": 23,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/04.02-Simple-Scatter-Plots.ipynb",
+      "sha256": "e6a986522452fd75692c007bb191dc322e53dba3e1892a1350f8ac495c6c4627",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 16,
+      "cells_before": 16,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/04.03-Errorbars.ipynb",
+      "sha256": "97586ce05e13304e631e6c3a363b6000996d019295551ee1de26d8c989865901",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 23,
+      "cells_before": 23,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/04.04-Density-and-Contour-Plots.ipynb",
+      "sha256": "002a4c6bcf5a49a27157cfa8b4a93594a94cc1c25aea013f898f089562d3393e",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 26,
+      "cells_before": 26,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/04.05-Histograms-and-Binnings.ipynb",
+      "sha256": "2d7afb6b501a0b7b458920dc74b402c02c5706168a43be00cf9b408e8bac1541",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 26,
+      "cells_before": 26,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/04.06-Customizing-Legends.ipynb",
+      "sha256": "00ef405e58e7db564baa5666590704b4dc8c694f2805cda35d049f8942f0ee59",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 36,
+      "cells_before": 36,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/04.07-Customizing-Colorbars.ipynb",
+      "sha256": "a0a4de637e8e946742f82de7568400cbb22ed31a121333067c1f67d6c481e70a",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 28,
+      "cells_before": 28,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/04.08-Multiple-Subplots.ipynb",
+      "sha256": "17ba674e90b6eddbdd409ee1afbf5fdb1a93844b2aaba05590b49a46740e9a67",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 22,
+      "cells_before": 22,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/04.09-Text-and-Annotation.ipynb",
+      "sha256": "d841fefe4737935769ccd74b9ef5fabb284514b20b182d3dbf702bea22c86f61",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 30,
+      "cells_before": 30,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/04.10-Customizing-Ticks.ipynb",
+      "sha256": "0a5eb5cdfaa1da2ca5bdc0b7b61bee8cacc2b1c8864a63828939a2e8bed548f3",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 43,
+      "cells_before": 43,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/04.11-Settings-and-Stylesheets.ipynb",
+      "sha256": "91acda73a842653e0b2de90c55d9dfae3c3dfd3b162b9f00b9319bb5e7a84019",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 41,
+      "cells_before": 41,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/04.12-Three-Dimensional-Plotting.ipynb",
+      "sha256": "862af30ab6aa999266d893784345a90f01e98301f2d9d66eee43dd0db35f6b3e",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 44,
+      "cells_before": 44,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/04.13-Geographic-Data-With-Basemap.ipynb",
+      "sha256": "be0632bd74ab17ad6dffdef00e93f405f9550fd4b3628060605ae29b136becd8",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 79,
+      "cells_before": 79,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/04.14-Visualization-With-Seaborn.ipynb",
+      "sha256": "09c99793b8e52a54896af428ed18f32dbdac85fb7e62de6b8d57b4798be15b21",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 6,
+      "cells_before": 6,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/04.15-Further-Resources.ipynb",
+      "sha256": "ecbca219be58085757038421190066df625d1189312c1d0cdde31b8ac0b2dd3b",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 5,
+      "cells_before": 5,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/05.00-Machine-Learning.ipynb",
+      "sha256": "cd8fbe0f0722882759ffff53c87ec99478abf6d0c5621b39a0a96de2c6b02751",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 34,
+      "cells_before": 34,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/05.01-What-Is-Machine-Learning.ipynb",
+      "sha256": "57e917e1e2572452148737ec3ba1f6dfbe82ac3103161c87b8dc0ae86585b0dc",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 90,
+      "cells_before": 90,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/05.02-Introducing-Scikit-Learn.ipynb",
+      "sha256": "b925b04f090996079fbf36074b986fc65b917edba98eb986b05a32020d96145f",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 62,
+      "cells_before": 62,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/05.03-Hyperparameters-and-Model-Validation.ipynb",
+      "sha256": "a3027364992f48348668599e419912cf9343a930e63c95f30dd6997cc82df0b1",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 46,
+      "cells_before": 46,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/05.04-Feature-Engineering.ipynb",
+      "sha256": "8d762e72bf94ebd3c08296f61b85ed22fcd7354212c849a962121f3a69670a05",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 41,
+      "cells_before": 41,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/05.05-Naive-Bayes.ipynb",
+      "sha256": "c36a1e56f38cd3518f369a30485aabf93f6504478ef80bbb7594a29a1f0a87f2",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 69,
+      "cells_before": 69,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/05.06-Linear-Regression.ipynb",
+      "sha256": "67e1074c5e183ea46ff2b44284dc8c8dce7f28e2d91a7068d16afd0bb04a8cea",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 62,
+      "cells_before": 62,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/05.07-Support-Vector-Machines.ipynb",
+      "sha256": "1ba786c86daab47fd2a55fa16cf0c374a5677e029b00b312560d63ac26fc8acf",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 52,
+      "cells_before": 52,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/05.08-Random-Forests.ipynb",
+      "sha256": "f6a8af1770c477cf8eea6c2ae93645f482560ccafa427d57e7e6f0e9947d5c63",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 61,
+      "cells_before": 61,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/05.09-Principal-Component-Analysis.ipynb",
+      "sha256": "e7791818cfc4332f32555de800cd93c0de19dc6944673b4954dbf80d186e2cd4",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 65,
+      "cells_before": 65,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/05.10-Manifold-Learning.ipynb",
+      "sha256": "89c4813a5a0fb6ad52c9b5ec69b9417408461d1608275eefc4fd815560f79ada",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 64,
+      "cells_before": 64,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/05.11-K-Means.ipynb",
+      "sha256": "b0eb148cc54957b48f042fb2e9dcec56dbb9137d5e7feedf4ccae530ad03e9e9",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 57,
+      "cells_before": 57,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/05.12-Gaussian-Mixtures.ipynb",
+      "sha256": "d7cded00621cbdcdf5ee5c6f03273016dd3f37d914d83e82921c2cd521983624",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 51,
+      "cells_before": 51,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/05.13-Kernel-Density-Estimation.ipynb",
+      "sha256": "98fc2019b7d194c243486b191a0f5c96b6d92358ae7539c01d33823a3b3720ee",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 39,
+      "cells_before": 39,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/05.14-Image-Features.ipynb",
+      "sha256": "3b699ac07d3dd0aef04e123d5a4aa2fcca231d0cd27cbad9bc41d7b177f5e37b",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 7,
+      "cells_before": 7,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/05.15-Learning-More.ipynb",
+      "sha256": "05023092c508b1672f1f6ea1599dc26d756e5922bd2660a051f23bd2ea1bc1bf",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 100,
+      "cells_before": 100,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/06.00-Figure-Code.ipynb",
+      "sha256": "c797e73ad5a9a9c07e8141d174b65c11f4def365176769e75fe17151b416a9bb",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 4,
+      "cells_before": 4,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/Index.ipynb",
+      "sha256": "2b1abab2279c27a23e00c9033426d16d083c7f28d2eb6ca2c8dab1a7e74669ae",
+      "subject": "PythonDataScienceHandbook"
+    },
+    {
+      "cells_after": 0,
+      "cells_before": 0,
+      "code_sources_equal": true,
+      "exit": 0,
+      "path": "notebooks_v1/Untitled.ipynb",
+      "sha256": "4a62b68a633d79c53a6fd8893e8ea42dcf2b9a8a3e907b1b9861661f04f21517",
+      "subject": "PythonDataScienceHandbook"
+    }
+  ]
+}
