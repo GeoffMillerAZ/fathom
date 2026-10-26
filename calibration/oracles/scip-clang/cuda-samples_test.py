@@ -86,6 +86,26 @@ class CUDADatabaseLocation(unittest.TestCase):
                 args = capture.read_text().splitlines()
                 self.assertEqual(args[args.index('-compdb') + 1], str(database))
 
+    def test_ast_defs_jobs(self):
+        # Round 3 R3-1: one decoded translation-unit AST peaks near 12.4 GB, so a small host
+        # runs the clang-ast-defs step at AST_DEFS_JOBS=1; unset, it keeps -jobs 2.
+        driver = DRIVER.read_text()
+        line = next(l for l in driver.splitlines() if l.startswith('( cd ') and '> "$work/preproc.ranges.json"' in l)
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            stub = work / 'go'
+            stub.write_text('#!/bin/sh\nprintf "%s\\n" "$@" > "$CAPTURE"\n')
+            stub.chmod(0o755)
+            env = {k: v for k, v in os.environ.items() if k != 'AST_DEFS_JOBS'}
+            env.update(work=str(work), subj=str(work), scip_tier='B', repo=str(HERE.parents[2]),
+                       CAPTURE=str(work / 'args.txt'), PATH=str(work) + os.pathsep + env['PATH'])
+            for jobs, want in ((None, '2'), ('1', '1')):
+                if jobs:
+                    env['AST_DEFS_JOBS'] = jobs
+                subprocess.run(['bash', '-eu', '-c', line], env=env, check=True)
+                args = (work / 'args.txt').read_text().splitlines()
+                self.assertEqual(args[args.index('-jobs') + 1], want)
+
 
 if __name__ == '__main__':
     unittest.main()
