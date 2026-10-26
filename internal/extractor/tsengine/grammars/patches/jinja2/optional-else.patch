@@ -3,10 +3,10 @@
 @@ -144,7 +144,7 @@
        $._statement_start, 'endfor', $._statement_end,
      ),
- 
+
 -    for_condition: $ => seq('if', $._expression),
 +    for_condition: $ => prec(PREC.CONDITIONAL + 1, seq('if', $._expression)),
- 
+
      block_statement: $ => seq(
        $._statement_start, 'block', field('name', $.identifier), optional('scoped'), $._statement_end,
 @@ -314,8 +314,7 @@

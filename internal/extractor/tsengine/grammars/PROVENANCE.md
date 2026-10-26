@@ -88,7 +88,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 
 | Blob | Order | Patch | sha256 |
 |---|--:|---|---|
-| `jinja2` (patched) | 1 | `patches/jinja2/optional-else.patch` | `3f907a87e66f7e219057a1735fbfebcddbf10dde69063c52070f4ee659b7be32` |
+| `jinja2` (patched) | 1 | `patches/jinja2/optional-else.patch` | `ac3e0825cd149da56ed02cac14ea2e7f96b92d8b8f10c1c0a3cc9e9f4410be86` |
 
 ### Committed blobs
 
