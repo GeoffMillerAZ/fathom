@@ -17,6 +17,7 @@ import shlex
 import selectors
 import shutil
 import signal
+import stat
 import subprocess
 import sys
 import time
@@ -42,6 +43,12 @@ POPULATION = {"fmt": (51, 31, 0), "json": (93, 78, 0), "spdlog": (141, 34, 107)}
 INDEX_BINARY = {"v0.4.0": "ff042fbc8a029f09f4b69fc7692e290e21c52923593207ee52d4e7439473ec64",
                 "v0.4.1": "34a2eb7a5ef9bbe9849cded59f4eb22a2331bd5b64a5cec2b17ee09b8aa515de"}
 SCIP_LICENSE = "96b8b909d18f94921214e3995e4c12483826b12ca64dd93fc710b87e1bc5a08a"
+BUILD_FILE_CAP = 10000
+BUILD_ENTRY_CAP = 20000
+BUILD_BYTE_CAP = 1024 * 1024 * 1024
+BUILD_DEPTH_CAP = 64
+BUILD_FANOUT_CAP = 4096
+FETCHED_PINS = {"spdlog": {"catch2-src": "53d0d913a422d356b23dd927547febdf69ee9081"}}
 
 
 class Refusal(Exception):
@@ -139,6 +146,120 @@ def compiler_digests(compdb):
     return tuple(sorted(digest(path) for path in paths))
 
 
+def build_inputs(subject, compdb):
+    """Bounded identity of the complete build tree, including fetched inputs."""
+    build = compdb.parent.resolve(strict=True)
+    subject = subject.resolve(strict=True)
+    def covered(path):
+        return any(under(path, root) and ".git" not in path.relative_to(root).parts
+                   for root in (subject, build))
+    db = load_json(compdb)
+    if not isinstance(db, list):
+        raise Refusal("compilation database malformed")
+    for entry in db:
+        if not isinstance(entry, dict) or not entry.get("file") or not entry.get("directory"):
+            raise Refusal("compilation entry malformed")
+        directory = Path(entry["directory"]).resolve(strict=True)
+        source = Path(entry["file"])
+        source = (source if source.is_absolute() else directory / source).resolve(strict=True)
+        if not covered(source):
+            raise Refusal("compilation source escapes subject and build")
+        argv = entry.get("arguments") or shlex.split(entry.get("command", ""))
+        if not argv:
+            raise Refusal("compilation entry lacks command")
+        flags = ("-include-pch", "-iframework", "-idirafter", "-isystem", "-imacros",
+                 "-iquote", "-include", "-I", "-F")
+        i = 1
+        while i < len(argv):
+            arg = argv[i]
+            if arg.startswith("@"):
+                raise Refusal("unexpanded compilation response file")
+            flag = next((name for name in flags if arg == name or
+                         (arg.startswith(name) and len(arg) > len(name))), None)
+            if flag is not None:
+                if arg == flag:
+                    i += 1
+                    if i >= len(argv):
+                        raise Refusal("include argument missing path")
+                    value = argv[i]
+                else:
+                    value = arg[len(flag):]
+                if value.startswith("="):
+                    value = value[1:]
+                path = Path(value)
+                path = (path if path.is_absolute() else directory / path).resolve(strict=True)
+                if not covered(path):
+                    raise Refusal("explicit include escapes subject and build")
+            i += 1
+
+    h = hashlib.sha256()
+    files = links = total = entries_seen = 0
+    def walk(directory, depth):
+        nonlocal files, links, total, entries_seen
+        if depth > BUILD_DEPTH_CAP:
+            raise Refusal("build tree depth cap exceeded")
+        try:
+            entries = []
+            with os.scandir(directory) as scan:
+                for entry in scan:
+                    entries.append(entry)
+                    if len(entries) > BUILD_FANOUT_CAP:
+                        raise Refusal("build tree fanout cap exceeded")
+            entries.sort(key=lambda item: item.name)
+        except OSError as error:
+            raise Refusal("build tree unreadable") from error
+        for entry in entries:
+            if entry.name == ".git":
+                continue
+            entries_seen += 1
+            if entries_seen > BUILD_ENTRY_CAP:
+                raise Refusal("build tree entry cap exceeded")
+            path = Path(entry.path)
+            relative = path.relative_to(build).as_posix().encode()
+            try:
+                mode = entry.stat(follow_symlinks=False).st_mode
+                if stat.S_ISLNK(mode):
+                    target = path.resolve(strict=True)
+                    if not under(target, build):
+                        raise Refusal("build symlink escapes build tree")
+                    if ".git" in target.relative_to(build).parts:
+                        raise Refusal("build symlink enters excluded metadata")
+                    links += 1
+                    h.update(b"L\0" + relative + b"\0" + os.fsencode(os.readlink(path)) + b"\0")
+                elif stat.S_ISDIR(mode):
+                    walk(path, depth + 1)
+                elif stat.S_ISREG(mode):
+                    size = entry.stat(follow_symlinks=False).st_size
+                    files += 1
+                    total += size
+                    if files > BUILD_FILE_CAP or total > BUILD_BYTE_CAP:
+                        raise Refusal("build tree size cap exceeded")
+                    h.update(b"F\0" + relative + b"\0" + bytes.fromhex(digest(path, BUILD_BYTE_CAP)))
+                else:
+                    raise Refusal("unsupported build tree entry")
+            except OSError as error:
+                raise Refusal("build tree unreadable") from error
+    walk(build, 0)
+    dependencies = []
+    deps = build / "_deps"
+    if deps.exists():
+        sources = sorted(p for p in deps.iterdir() if p.name.endswith("-src"))
+        for ordinal, source in enumerate(sources, 1):
+            if not source.is_dir() or source.is_symlink() or \
+                    git(source, "rev-parse", "--show-toplevel") != str(source.resolve()) or \
+                    git(source, "rev-parse", "HEAD") != FETCHED_PINS.get(subject.name, {}).get(source.name) or \
+                    git(source, "status", "--porcelain", "--untracked-files=all"):
+                raise Refusal("fetched source revision or cleanliness mismatch")
+            dependencies.append({"label": f"dependency_{ordinal}",
+                                 "head": git(source, "rev-parse", "HEAD")})
+        if set(p.name for p in sources) != set(FETCHED_PINS.get(subject.name, {})):
+            raise Refusal("fetched source set mismatch")
+    elif FETCHED_PINS.get(subject.name):
+        raise Refusal("fetched source absent")
+    return {"files": files, "symlinks": links, "bytes": total,
+            "sha256": h.hexdigest(), "dependencies": dependencies}
+
+
 def subjects(args):
     found = {}
     for slug, (pin, _, _) in PINS.items():
@@ -162,6 +283,8 @@ def subjects(args):
             if not file.is_absolute():
                 file = Path(entry["directory"]) / file
             file = file.resolve(strict=True)
+            if not under(file, subject) and not under(file, compdb.parent.resolve(strict=True)):
+                raise Refusal("compilation source escapes subject and build")
             (own if under(file, subject) else outside).add(file)
         if (len(own), len(outside)) != POPULATION[slug][1:]:
             raise Refusal("compilation database own/outside population mismatch")
@@ -310,6 +433,7 @@ def index_evidence(args, found):
                     row.get("tracked_sha256") != tracked_manifest(subject) or
                     row.get("language_inventory") != list(language_inventory(subject)) or
                     row.get("compiler_sha256") != list(compiler_digests(db)) or
+                    row.get("build_inputs") != build_inputs(subject, db) or
                     row.get("scip_sha256") != digest(index) or row.get("scip_bytes") != index.stat().st_size):
                 raise Refusal("index receipt does not attest frozen input")
             digest(log, LOG_CAP)
@@ -338,6 +462,7 @@ def index_evidence(args, found):
 def index_stamp(args, subject, compdb, binary, license_path):
     return (git(subject, "rev-parse", "HEAD"), tracked_manifest(subject),
             language_inventory(subject), digest(compdb), compiler_digests(compdb),
+            build_inputs(subject, compdb),
             digest(binary), digest(license_path), digest(Path(__file__)))
 
 
@@ -406,6 +531,7 @@ def index_phase(args, found):
                          "tracked_sha256": tracked_manifest(subject),
                          "language_inventory": list(language_inventory(subject)),
                          "compiler_sha256": list(compiler_digests(compdb)),
+                         "build_inputs": build_inputs(subject, compdb),
                          "scip_sha256": digest(index), "scip_bytes": index.stat().st_size,
                          "index_log_sha256": digest(log), "stdout_log_sha256": digest(stdout_log),
                          "indexed_units": entries,
@@ -526,10 +652,12 @@ def native_inputs(args, found, binaries):
                for name, module, _ in ORACLES}
     return {"subjects": {slug: {"sha": PINS[slug][0], "entries": item[2],
                                 "tracked_sha256": tracked_manifest(item[0]),
-                                "language_inventory": language_inventory(item[0]),
+                                "language_inventory": list(language_inventory(item[0])),
                                 "compdb_sha256": digest(item[1]),
-                                "compiler_sha256": list(compiler_digests(item[1]))}
+                                "compiler_sha256": list(compiler_digests(item[1])),
+                                "build_inputs": build_inputs(item[0], item[1])}
                          for slug, item in found.items()},
+            "index_evidence": index_evidence(args, found),
             "binaries": {name: digest(path) for name, path in binaries.items()},
             "module_sources": modules,
             "clang_sha256": digest(args.clang),
@@ -543,14 +671,16 @@ def native_outputs(work):
 
 def native_command_stamp(args, slug, subject, compdb, binary, module):
     return (git(subject, "rev-parse", "HEAD"), tracked_manifest(subject), language_inventory(subject),
-            digest(compdb), compiler_digests(compdb), digest(binary), digest(args.clang),
+            digest(compdb), compiler_digests(compdb), build_inputs(subject, compdb),
+            digest(args.index_receipt), digest(binary), digest(args.clang),
             tuple((p.name, digest(p)) for p in sorted((REPO / module).glob("*.go"))),
             digest(REPO / module / "go.mod"))
 
 
 def grade_command_stamp(args, slug, subject, compdb, index):
     return (git(subject, "rev-parse", "HEAD"), tracked_manifest(subject), language_inventory(subject),
-            digest(compdb), compiler_digests(compdb), digest(index), digest(args.indexbench), digest(args.ctags),
+            digest(compdb), compiler_digests(compdb), build_inputs(subject, compdb),
+            digest(index), digest(args.indexbench), digest(args.ctags),
             digest(args.work_dir / "native" / slug / "preproc.json", JSON_CAP),
             digest(args.work_dir / "native" / slug / "calls.json", JSON_CAP),
             digest(args.work_dir / "native" / slug / "preproc.ranges.json", JSON_CAP),

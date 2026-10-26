@@ -70,3 +70,59 @@ filters to the full run. `python3 calibration/oracles/scip-clang/cpp-audit_test.
 DriverTest.test_grade_scope_and_tool_flags` failed with `FAIL:
 test_grade_scope_and_tool_flags`; restoring the exact driver bytes passed.
 These controls prove the orchestration checks, not a C++ support level.
+
+## Dependency provenance repair before publication
+
+The first six index productions remain diagnostic. They hashed the subject
+checkout, compilation database, compiler and producer, but did not hash the
+107 outside spdlog compilation sources or fetched dependency headers. A
+source hash taken later cannot attest their index-time bytes. No source-frozen
+grade or ceiling follows from those indexes. The native exploratory repeat
+was interrupted after this gap was established; its receipt stays failed,
+with partial counters retained rather than published as a complete run.
+
+The only fetched source checkout is Catch2 v3.5.0, clean at commit
+`53d0d913a422d356b23dd927547febdf69ee9081`, as declared by spdlog's own build.
+The collector now binds the complete build input tree,
+fetched source pin, generated include inputs and compiler database at every
+index, native and grade boundary. It will reject old receipts without those
+identities. All six indexes and native companions must run afresh from the
+repaired committed collector before publication; no retrospective receipt
+repair is allowed. The subject manifests still match their original hashes.
+
+The exploratory counters are limited to what each adapter actually walks.
+Fmt's preprocessor and calls use 36 normalized commands from 51 entries;
+its ranges dump 31 unique files and skip 20 repeated entries. Json uses
+93 commands for calls/preprocessing, with 78 range dumps and 15 repeated
+entries skipped. All those completed families report zero stopped/errored
+units. Spdlog's 141 preprocessor and call commands completed with zero stopped
+units; its range collection was interrupted. The range adapter keeps the
+first command per source file, so no all-configuration range-coverage claim
+is made. Ctags remains the range metric's tier-B population.
+
+Catch2's license is Boost Software License 1.0, license-file SHA-256
+`c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566`.
+The dependency manifest excludes Git metadata, rejects resolved compiler
+inputs and links into that excluded tree, and caps total entries as well as
+regular-file bytes, directory fanout and depth. It publishes counts and hashes,
+not dependency file lists or Git identities other than the pinned commit.
+The compiler/SDK arguments retain their separate toolchain identity; this
+manifest does not claim to hash the entire operating-system SDK.
+
+The external-source mutation control was RED: changing an outside source
+left the old index stamp unchanged. Receipt-round-trip and manifest-boundary
+controls also reproduced the tuple/list and missing-entry-cap failures. After
+repair, all 17 Python controls pass, including outside source/header mutation,
+legacy receipt refusal, JSON replay, entry/byte/fanout caps and metadata paths.
+The independent final review found no remaining material issue. No new
+source-frozen index, native receipt or grade has been produced by the repaired
+collector yet. These controls validate the method, not a language level.
+
+The directory-fanout control also verifies streaming refusal: with a cap of
+two entries and seven available, the old walk consumed all seven before
+refusing. The repaired walk reads exactly three and refuses before sorting.
+The earlier live stdout/stderr caps remain unchanged. One exploratory
+control attempt detected its output cap and then received a process-group
+permission denial during cleanup; the full committed suite subsequently
+passes. This is retained as a failed diagnostic, not claimed as an oracle
+production result. No unsupported signal-handling change was made.

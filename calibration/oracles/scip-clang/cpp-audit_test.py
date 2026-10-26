@@ -16,6 +16,181 @@ spec.loader.exec_module(audit)
 
 
 class DriverTest(unittest.TestCase):
+    def test_build_fanout_refuses_at_cap_plus_one_without_draining(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subject, db = root / "subject", root / "compile_commands.json"
+            subject.mkdir()
+            db.write_text("[]")
+            for number in range(5):
+                (root / str(number)).write_text("input")
+            with audit.os.scandir(root) as scan:
+                entries = list(scan)
+            reads = []
+            class Scan:
+                def __iter__(self):
+                    for entry in entries:
+                        reads.append(entry.name)
+                        yield entry
+                def __enter__(self):
+                    return self
+                def __exit__(self, *args):
+                    pass
+            with mock.patch.object(audit, "BUILD_FANOUT_CAP", 2), \
+                    mock.patch.object(audit.os, "scandir", return_value=Scan()):
+                with self.assertRaisesRegex(audit.Refusal, "fanout cap"):
+                    audit.build_inputs(subject, db)
+            self.assertEqual(len(reads), 3, "refuse before draining an unbounded directory")
+
+    def test_native_inputs_survive_json_receipt_roundtrip(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subject, db, binary = root / "subject", root / "compile_commands.json", root / "clang"
+            subject.mkdir()
+            db.write_text("[]")
+            binary.write_text("clang")
+            args = mock.Mock(clang=binary)
+            found = {"fmt": (subject, db, 1, ())}
+            with mock.patch.object(audit, "tracked_manifest", return_value="a" * 64), \
+                    mock.patch.object(audit, "language_inventory", return_value=(1, "b" * 64)), \
+                    mock.patch.object(audit, "compiler_digests", return_value=("c" * 64,)), \
+                    mock.patch.object(audit, "build_inputs", return_value={"files": 1, "sha256": "d" * 64}), \
+                    mock.patch.object(audit, "index_evidence", return_value={"receipt_sha256": "e" * 64}):
+                inputs = audit.native_inputs(args, found, {"preproc": binary})
+            self.assertEqual(inputs, json.loads(json.dumps(inputs)))
+
+    def test_build_manifest_refuses_cap_fanout_and_escaping_inputs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subject, build = root / "subject", root / "build"
+            subject.mkdir()
+            build.mkdir()
+            source = subject / "unit.cpp"
+            source.write_text("int value;\n")
+            db = build / "compile_commands.json"
+            def command(file=source, flags=None):
+                db.write_text(json.dumps([{"directory": str(build), "file": str(file),
+                    "arguments": ["c++", *(flags or []), "-c", str(file)]}]))
+            command()
+            first = audit.build_inputs(subject, db)
+            self.assertEqual(first["files"], 1)
+            (build / "generated.h").write_text("#define VALUE 1\n")
+            self.assertNotEqual(first["sha256"], audit.build_inputs(subject, db)["sha256"])
+            with mock.patch.object(audit, "BUILD_FILE_CAP", 1), \
+                    self.assertRaisesRegex(audit.Refusal, "size cap"):
+                audit.build_inputs(subject, db)
+            with mock.patch.object(audit, "BUILD_BYTE_CAP", audit.build_inputs(subject, db)["bytes"] - 1), \
+                    self.assertRaisesRegex(audit.Refusal, "size cap"):
+                audit.build_inputs(subject, db)
+            with mock.patch.object(audit, "BUILD_FANOUT_CAP", 1), \
+                    self.assertRaisesRegex(audit.Refusal, "fanout cap"):
+                audit.build_inputs(subject, db)
+            for ordinal in range(3):
+                (build / f"empty-{ordinal}").mkdir()
+            with mock.patch.object(audit, "BUILD_ENTRY_CAP", 4), \
+                    self.assertRaisesRegex(audit.Refusal, "entry cap"):
+                audit.build_inputs(subject, db)
+            outside = root / "outside.h"
+            outside.write_text("external")
+            command(flags=["-include", str(outside)])
+            with self.assertRaisesRegex(audit.Refusal, "explicit include escapes"):
+                audit.build_inputs(subject, db)
+            command(file=outside)
+            with self.assertRaisesRegex(audit.Refusal, "compilation source escapes"):
+                audit.build_inputs(subject, db)
+            command()
+            (build / "escape.h").symlink_to(outside)
+            with self.assertRaisesRegex(audit.Refusal, "symlink escapes"):
+                audit.build_inputs(subject, db)
+            (build / "escape.h").unlink()
+            metadata = build / ".git"
+            metadata.mkdir()
+            (metadata / "hidden.h").write_text("unhashed")
+            (build / "hidden.h").symlink_to(metadata / "hidden.h")
+            with self.assertRaisesRegex(audit.Refusal, "symlink.*metadata"):
+                audit.build_inputs(subject, db)
+            (build / "hidden.h").unlink()
+            command(file=metadata / "hidden.h")
+            with self.assertRaisesRegex(audit.Refusal, "compilation source escapes"):
+                audit.build_inputs(subject, db)
+            command(flags=["-I", str(metadata)])
+            with self.assertRaisesRegex(audit.Refusal, "explicit include escapes"):
+                audit.build_inputs(subject, db)
+
+    def test_fetched_source_requires_pinned_clean_head(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subject, build = root / "subject", root / "build"
+            subject.mkdir()
+            source = subject / "unit.cpp"
+            source.write_text("int value;\n")
+            fetched = build / "_deps" / "fixture-src"
+            fetched.mkdir(parents=True)
+            (fetched / "header.h").write_text("#define VALUE 1\n")
+            db = build / "compile_commands.json"
+            db.write_text(json.dumps([{"directory": str(build), "file": str(source),
+                "arguments": ["c++", "-I", str(fetched), "-c", str(source)]}]))
+            head = "a" * 40
+            def clean_git(repo, *args):
+                return str(fetched.resolve()) if args[-1] == "--show-toplevel" else (
+                    head if args[-1] == "HEAD" else "")
+            with mock.patch.object(audit, "FETCHED_PINS", {"subject": {"fixture-src": head}}), \
+                    mock.patch.object(audit, "git", side_effect=clean_git):
+                identity = audit.build_inputs(subject, db)
+                self.assertEqual(identity["dependencies"], [{"label": "dependency_1", "head": head}])
+                self.assertNotIn("fixture-src", json.dumps(identity))
+                with mock.patch.object(audit, "git", side_effect=lambda repo, *args: (
+                        " M header.h" if args[0] == "status" else clean_git(repo, *args))), \
+                        self.assertRaisesRegex(audit.Refusal, "cleanliness mismatch"):
+                    audit.build_inputs(subject, db)
+            with mock.patch.object(audit, "FETCHED_PINS", {"subject": {"fixture-src": "b" * 40}}), \
+                    mock.patch.object(audit, "git", side_effect=clean_git), \
+                    self.assertRaisesRegex(audit.Refusal, "revision or cleanliness mismatch"):
+                audit.build_inputs(subject, db)
+
+    def test_external_build_source_and_header_change_index_stamp(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subject, build = root / "subject", root / "build"
+            subject.mkdir()
+            build.mkdir()
+            source = build / "external.cpp"
+            header = build / "generated.h"
+            source.write_text("int value = 1;\n")
+            header.write_text("#define VALUE 1\n")
+            compdb = build / "compile_commands.json"
+            compdb.write_text(json.dumps([{"directory": str(build), "file": str(source),
+                "arguments": ["c++", "-I", str(build), "-c", str(source)]}]))
+            binary, license_path = root / "binary", root / "LICENSE"
+            binary.write_text("binary")
+            license_path.write_text("license")
+            native_dir = root / "work" / "native" / "subject"
+            native_dir.mkdir(parents=True)
+            for filename in ("preproc.json", "calls.json", "preproc.ranges.json"):
+                (native_dir / filename).write_text("{}")
+            logs = root / "logs"
+            logs.mkdir()
+            for filename in ("subject-binary-index.log", "subject-binary-stdout.log"):
+                (logs / filename).write_text("log")
+            args = mock.Mock(builds_root=root, clang=binary, index_receipt=license_path,
+                             indexbench=binary, ctags=binary, work_dir=root / "work",
+                             index_logs_dir=logs)
+            with mock.patch.object(audit, "git", return_value="a" * 40), \
+                    mock.patch.object(audit, "tracked_manifest", return_value="b" * 64), \
+                    mock.patch.object(audit, "compiler_digests", return_value=("c" * 64,)):
+                def stamps():
+                    return (audit.index_stamp(args, subject, compdb, binary, license_path),
+                            audit.native_command_stamp(args, "subject", subject, compdb, binary,
+                                                       "calibration/oracles/scip-clang/preproc"),
+                            audit.grade_command_stamp(args, "subject", subject, compdb, binary))
+                before = stamps()
+                source.write_text("int value = 2;\n")
+                after_source = stamps()
+                self.assertTrue(all(left != right for left, right in zip(before, after_source)))
+                header.write_text("#define VALUE 2\n")
+                after_header = stamps()
+                self.assertTrue(all(left != right for left, right in zip(after_source, after_header)))
+
     def test_output_confinement_refuses_subject_and_tracked_repo(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -155,6 +330,7 @@ class DriverTest(unittest.TestCase):
                     mock.patch.object(audit, "tracked_manifest", return_value="a" * 64), \
                     mock.patch.object(audit, "language_inventory", return_value=(1, "b" * 64)), \
                     mock.patch.object(audit, "compiler_digests", return_value=("c" * 64,)), \
+                    mock.patch.object(audit, "build_inputs", return_value={"files": 1, "sha256": "d" * 64}), \
                     mock.patch.object(audit, "index_stamp", return_value=("frozen",)), \
                     mock.patch.object(audit, "run", side_effect=fake_run):
                 audit.index_phase(args, found)
@@ -164,6 +340,15 @@ class DriverTest(unittest.TestCase):
             self.assertEqual(json.loads(receipt)["status"], "complete")
             self.assertEqual(len(json.loads(receipt)["rows"]), 6)
             self.assertEqual(len(evidence["indexes"]), 3)
+            legacy = json.loads(receipt)
+            del legacy["rows"][0]["build_inputs"]
+            args.index_receipt.write_text(json.dumps(legacy))
+            with mock.patch.object(audit, "tracked_manifest", return_value="a" * 64), \
+                    mock.patch.object(audit, "language_inventory", return_value=(1, "b" * 64)), \
+                    mock.patch.object(audit, "compiler_digests", return_value=("c" * 64,)), \
+                    mock.patch.object(audit, "build_inputs", return_value={"files": 1, "sha256": "d" * 64}), \
+                    self.assertRaisesRegex(audit.Refusal, "does not attest frozen input"):
+                audit.index_evidence(args, found)
 
     def test_runner_refuses_failed_timeout_and_cap(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -235,3 +235,12 @@ or compiler output. Synthetic controls run without subjects or oracles:
 ```bash
 PYTHONDONTWRITEBYTECODE=1 python3 calibration/oracles/scip-clang/cpp-audit_test.py
 ```
+
+The first audit indexes and exploratory native outputs predate complete
+dependency input attestation and remain diagnostic. Fresh production must
+use the dependency-aware collector: its pre/post stamps cover the build
+input tree, fetched source pins and generated include inputs as well as the
+subject, compiler and database. Old receipts cannot be upgraded in place.
+The range adapter dumps the first command per distinct source file and
+reports repeated entries as skipped; report both counters, and retain the
+Ctags tier-B range population rather than claiming all compiler variants.
