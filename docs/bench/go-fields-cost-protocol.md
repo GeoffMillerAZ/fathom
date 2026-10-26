@@ -1,7 +1,8 @@
 # Go field-only Q2 cost and calibration protocol
 
 Owner Q2 authorizes top-level struct field definitions without native reference edges.
-The candidate is 61131a969, built on main 5b84aa5b4. Interface-method definitions and native
+The field extractor is 61131a969, built on main 5b84aa5b4. The measured candidate also
+excludes fields from bare plan-anchor matching while retaining exact Owner.Field lookup. Interface-method definitions and native
 field read/write/reference edges are unchanged. I54 governs level claims, I23 call truth,
 and K17/K26 allow at most +15% wall time and +20% store bytes without another owner ruling.
 
@@ -16,7 +17,15 @@ commit. Run baseline and candidate alternately, three runs each, serially under 
 uptime before every heavy run and wait while one-minute load exceeds 9. Use the same local
 Go module/build caches, GOWORK=off, GOFLAGS=-p=2, GOMAXPROCS=2 and GOTOOLCHAIN=local. Record
 source SHA, binary digests, all wall times and store bytes, discovery/extraction counts,
-read failures, typed packages/edges and skipped/failed work. Compare medians. A baseline that
+read failures, typed packages/edges and skipped/failed work. Store row counts use immutable read-only access only after the process exits and no
+nonempty WAL remains. An initial collector failed its read-only WAL initialization after a
+healthy baseline ingest; that interrupted sequence is excluded and all six measured runs
+are repeated with fresh stores. A first complete sequence then exposed 25 lost plan-anchor
+edges: fields competed with functions for bare anchors. Its +15.9% wall/+6.3% store result
+is not accepted as equivalent work. After a failing regression test and the narrow anchor
+repair, repeat all six controls again. Thresholds and source controls are unchanged.
+
+Compare medians. A baseline that
 skipped the changed work is invalid under K27. Any unavailable or mismatched work blocks a
 passing cost claim until explained.
 
