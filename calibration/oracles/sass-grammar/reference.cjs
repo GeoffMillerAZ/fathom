@@ -29,7 +29,11 @@ const gate = JSON.parse(fs.readFileSync(gatePath, 'utf8'));
 if (gate.files !== 219 || gate.subjects.length !== FROZEN.size) {
   throw new Error('gate JSON does not cover the frozen 219-file corpus');
 }
-const version = require('sass-parser/package.json').version;
+// The pinned package exports only its parser entry, not ./package.json.
+const parserRoot = path.resolve(path.dirname(require.resolve('sass-parser')), '..', '..');
+const metadata = JSON.parse(fs.readFileSync(path.join(parserRoot, 'package.json'), 'utf8'));
+if (metadata.name !== 'sass-parser') throw new Error('unexpected parser package root');
+const version = metadata.version;
 if (version !== '0.4.57') throw new Error(`sass-parser ${version}; expected 0.4.57`);
 const results = [];
 for (const subject of gate.subjects) {
