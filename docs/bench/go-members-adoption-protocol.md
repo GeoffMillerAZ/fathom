@@ -24,7 +24,10 @@ field, active-run load spikes, complete-work/typed/plan-anchor equivalence and
 binary/source identities. A failed gate remains failed unless owner rules.
 
 K29 impact inventory on this main: lang/go.json (cli/cli 45ffa3c6 and
-cobra 40b5bc14) and routes/node.json (fauxtown: six Go routes in two files).
+cobra 40b5bc14). Correction before regrading: routes/node.json has 65 active
+JS/TS subjects and no Go subject; its fauxtown note is a historical unchanged
+control. Verify the mixed-Go fauxtown L0 goldens and Go route fixture tests
+separately; do not manufacture a Node reading impact.
 Historical lang/baseline/go.json is not a current claim; go-mod uses another
 extractor. Regrade every affected current reading, not generated boards.
 
@@ -45,3 +48,30 @@ A dated assessment, committed actual readings and a lane-unique change fragment
 record the observable new field symbols. X-R2/X-R3 and the integration gates
 precede READY. Landing is serialized after Azure #44 in wave B and before any
 CSS ENGINE wave. Building these branches does not wait for landing slots.
+
+## Current-main gate result before adoption
+
+The first registered current-main six-ingest run FAILS: baseline wall trials
+85.340/80.441/77.325s, candidate 96.479/85.353/95.389s. Medians 80.441 and
+95.389s give +18.583% wall, over +15%; store 205312000 to 218238976 bytes,
++6.296%, below +20%. Equivalent complete work passed. All launches were <=9;
+the first baseline reached active-run load 14.48 and remains included. CPU
+medians 85.170 to 99.781s (+17.15%) are diagnostic, not a substitute wall gate.
+Implementation c975fbbe3 remains frozen for this result. The earlier PR #52
+critic-reproduced +11.62%/+6.30% pass is historical evidence on its named base;
+it does not turn this failed ENGINE run into a pass. Keep the branch unready,
+investigate the cost, and leave Gin unspent while the gate is unresolved.
+
+The committed collector writes every raw measured field; the public receipt
+adds only an annotations object for baseline/build identities and interpretation.
+Reproduce after building both named source trees and setting the isolated Go
+cache/environment described above, with fresh stores and logs:
+
+```sh
+python3 calibration/oracles/go-fields-cost/cost.py \
+  --baseline "$BASELINE_BINARY" --candidate "$CANDIDATE_BINARY" \
+  --subject "$FROZEN_SOURCE_ROOT" --stores "$FRESH_STORES" \
+  --log-dir "$FRESH_LOGS" --out "$FRESH_RECEIPT" \
+  --source-commit 5b84aa5b4d179460a2f9b7a96973a89a6cd8b322 \
+  --candidate-commit c975fbbe38e9244bca839029cce58d483613c3ed
+```
