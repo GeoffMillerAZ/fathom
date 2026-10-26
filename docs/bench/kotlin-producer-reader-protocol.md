@@ -55,3 +55,35 @@ active. This is an audit of those modules, not a full-corpus grade or buildSrc p
 Do not disable any requested module task or substitute source. Verify a clean subject
 before/after and retain a hash of tracked Kotlin sources. Stop the combined warm-up
 and producer attempt after20minutes. Any new failure stays a named route limit.
+
+
+The committed init script is
+`calibration/oracles/scip-wire-census/skip-prebuilt-buildsrc.gradle`. From the clean
+pinned subject, with `SCIP_JAVA` naming the checksum-verified release launcher and
+`KOTLIN_AUDIT_INIT` naming that script by absolute path, the second route is:
+
+```sh
+./gradlew help --no-daemon --max-workers=2 \
+  '-Dorg.gradle.jvmargs=-Xmx640m -XX:ActiveProcessorCount=2' \
+  -Pkotlin.compiler.execution.strategy=in-process
+"$SCIP_JAVA" index --output "$KOTLIN_AUDIT_SCRATCH/exposed-prebuilt.scip" -- \
+  --no-daemon --max-workers=2 \
+  '-Dorg.gradle.jvmargs=-Xmx640m -XX:ActiveProcessorCount=2' \
+  -Pkotlin.compiler.execution.strategy=in-process \
+  --init-script "$KOTLIN_AUDIT_INIT" \
+  :exposed-core:compileKotlin :exposed-dao:compileKotlin :exposed-jdbc:compileKotlin
+```
+
+## Measured outcome
+
+Both indexing routes failed with missing
+`org.jetbrains.kotlin.extensions.ExtensionPointDescriptor`. The first failed in
+buildSrc (Gradle reported 57 seconds). The pristine warmup succeeded in 81.745 seconds;
+the second index then failed at `exposed-core:compileKotlin` in 13.842 seconds.
+No SCIP file was emitted. The subject's tracked Kotlin source hash and clean checkout
+were unchanged. The official checksum-verified release launcher reports its version
+as `0.0.0-SNAPSHOT`; nested producer artifacts identify 0.13.2. No index exists for a
+wire census, so the reader hypothesis remains unproven and no language grade changes.
+The [sanitized result](../assessments/data/2026-10-26-core-t1-kotlin-producer.json)
+records source identity and log hashes. Raw logs contain local build paths and stay
+in workspace.

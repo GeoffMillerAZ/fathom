@@ -1,0 +1,51 @@
+{
+  "protocol": "X-R1 bounded Kotlin SCIP producer check",
+  "subject": {
+    "name": "JetBrains/Exposed",
+    "commit": "a68a26884952875722c1802ef42b382876d7d056",
+    "kotlin_files": 794,
+    "source_manifest_sha256": "7d04b393dfbdaae834941732dcbebaeb112c4722b8526d1537cf4eb75b89fc1e"
+  },
+  "producer": {
+    "name": "scip-java",
+    "release": "v0.13.2",
+    "binary_sha256": "5248136592d19ea2c468f64ebd18587d32de7c961536ff19346f8a025af1d13c",
+    "reported_version": "0.0.0-SNAPSHOT",
+    "nested_artifact_version": "0.13.2"
+  },
+  "routes": [
+    {
+      "name": "direct official producer on three Exposed modules",
+      "result": "failed",
+      "stage": "buildSrc:compileKotlin",
+      "gradle_reported_seconds": 57,
+      "error": "NoClassDefFoundError: org.jetbrains.kotlin.extensions.ExtensionPointDescriptor",
+      "log_sha256": "6b79974cd48470896a77e9821bd84f73ac4995e7c70caae5a08423b9ac28316a"
+    },
+    {
+      "name": "pristine buildSrc warmup, then official producer with only second buildSrc compile skipped",
+      "warmup": {
+        "result": "passed",
+        "wall_seconds": 81.745
+      },
+      "result": "failed",
+      "wall_seconds": 13.842,
+      "stage": "exposed-core:compileKotlin",
+      "error": "NoClassDefFoundError: org.jetbrains.kotlin.extensions.ExtensionPointDescriptor",
+      "log_sha256": "a31b4be9cc8ff76183324f1700eb02626887b04990c8b117d7a14cb7dcf4f22f"
+    }
+  ],
+  "source_unchanged_and_checkout_clean_after_bounded_route": true,
+  "scip_index_emitted": false,
+  "range_wire_census": "not run: no index",
+  "reader_typed_range_hypothesis": "unproven",
+  "reading_or_grade_changed": false,
+  "next_trigger": "compatible producer artifact for pinned Exposed, or separately scoped compiler-plugin compatibility work; do not downgrade subject source or compiler to force a reading",
+  "toolchain": {
+    "jdk": "Temurin 17.0.21+9",
+    "gradle": "8.14.4",
+    "subject_kotlin": "2.3.20",
+    "buildlogic_embedded_kotlin": "2.0.21",
+    "producer_kotlin_plugin": "2.4.21"
+  }
+}
