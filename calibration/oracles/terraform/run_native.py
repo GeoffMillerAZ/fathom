@@ -37,7 +37,8 @@ def run_subject(cache, oracle, scanner, phase, subject_pin):
     preseed = pathlib.Path(__file__).with_name("preseed_modules.py")
     pinned_modules = json.loads(subprocess.check_output(("python3", str(preseed),
         "--cache", str(cache), "--scanner-bin", str(scanner), "--subject", str(subject),
-        "--scratch", str(cache / "native" / slug))))
+        "--scratch", str(cache / "native" / slug), "--tofu", str(cache / "tools" / "tofu-1.13.0"),
+        "--mirror", str(cache / "mirror"))))
     args = (str(oracle), "-subject", str(subject), "-scratch", str(cache / "native" / slug),
             "-mirror", str(cache / "mirror"), "-tofu", str(cache / "tools" / "tofu-1.13.0"),
             "-files-out", str(files))
@@ -57,6 +58,8 @@ def run_subject(cache, oracle, scanner, phase, subject_pin):
                "measured_file_count": len([x for x in files.read_text().splitlines() if x]),
                "measured_file_list_sha256": sha256(files.read_bytes()),
                "pinned_module_instances": pinned_modules["module_instances"],
+               "native_local_agreements": pinned_modules["native_local_agreements"],
+               "native_registry_alias_agreements": pinned_modules["native_registry_alias_agreements"],
                "pinned_module_manifest_sha256": sha256(json.dumps(
                    pinned_modules["manifest_receipts"], sort_keys=True).encode())}
     if phase == "after":
@@ -65,6 +68,8 @@ def run_subject(cache, oracle, scanner, phase, subject_pin):
                 or receipt["tracked_entries"] != before["tracked_entries"]
                 or receipt["oracle_raw_sha256"] != before["oracle_raw_sha256"]
                 or receipt["measured_file_list_sha256"] != before["measured_file_list_sha256"]
+                or receipt["native_local_agreements"] != before["native_local_agreements"]
+                or receipt["native_registry_alias_agreements"] != before["native_registry_alias_agreements"]
                 or receipt["pinned_module_manifest_sha256"] != before["pinned_module_manifest_sha256"]):
             raise RuntimeError("subject set or raw native truth changed across engine fix: " + repo)
     output.write_bytes(data)

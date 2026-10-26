@@ -29,26 +29,39 @@ The older archive extracts are not Git checkouts and cannot supply this proof.
 Keep full manifests and untracked lists local; publish counts and digests only.
 
 Build the separate oracle and `preseedscan` modules into `$CACHE/tools/`
-from the repository root. Use an absolute cache path and the already fetched
-Go module dependencies:
+from the repository root. Use an absolute cache path. Fetch Go module
+dependencies once before the read-only test and build commands:
 
 ```sh
 mkdir -p "$CACHE/tools"
-(cd calibration/oracles/terraform && GOPROXY=off go test -race -count=1 ./... && GOPROXY=off go build -o "$CACHE/tools/terraform-oracle" .)
-(cd calibration/oracles/terraform/preseedscan && GOPROXY=off go test -race -count=1 ./... && GOPROXY=off go build -o "$CACHE/tools/terraform-preseedscan" .)
+(cd calibration/oracles/terraform && go mod download && go test -mod=readonly -race -count=1 ./... && go build -mod=readonly -o "$CACHE/tools/terraform-oracle" .)
+(cd calibration/oracles/terraform/preseedscan && go mod download && go test -mod=readonly -race -count=1 ./... && go build -mod=readonly -o "$CACHE/tools/terraform-preseedscan" .)
 python3 calibration/oracles/terraform/smoke_preseed.py \
   --cache "$CACHE" --scanner-bin "$CACHE/tools/terraform-preseedscan" \
   --oracle-bin "$CACHE/tools/terraform-oracle"
 ```
 
-`preseed_modules.py` populates per-root `modules.json` with original source
-addresses, exact selected versions and paths to the pinned Git checkouts.
-It does not rewrite subject files. The oracle uses `tofu init -get=false`,
-so registry module resolution and downloads are disabled. Then
+`preseed_modules.py` checks the scratch `.tf` path set and bytes against the
+clean pinned subject, removes every cached local manifest record, writes only
+root and exact pinned registry records, then runs plain
+`tofu init -backend=false -input=false` in each copied root. If installing a
+local ancestor invalidates pinned registry descendants, the helper keeps the
+new native local records, restores only missing exact pinned registry records
+and their verified checkout symlinks, and retries within the 16-ancestor
+bound. A failed partial install never feeds the oracle. OpenTofu supplies every
+local module record. The helper compares native keys, sources, versions and
+destinations to its separate proposal;
+any difference rejects the whole subject. It records each native manifest
+hash and local agreement count. It does not rewrite subject files. Subject-local
+destinations are compared lexically. For a local child of
+a pinned registry module, OpenTofu may write the physical checkout path in
+place of its cache symlink; only equal resolved targets pass, and the receipt
+counts these aliases separately. The native `Dir` is never rewritten. The oracle
+uses `tofu init -get=false` only after native installer preflight. Then
 run `run_native.py --phase before` and later `--phase after`. It uses a
 dedicated scratch directory per subject under `$CACHE/native/`, the packed
 `$CACHE/mirror`, and the checksum-verified OpenTofu binary. The same scratch
-directory is reused across phases, so initialized module trees remain fixed.
+directory is reused across phases; preflight checks native manifests again.
 The oracle fails if any root fails or any native definition cannot be located.
 Provider installation is mirror-only. It invokes
 `tofu graph -type=plan`, but never `tofu plan`, `tofu apply`, or a cloud API.

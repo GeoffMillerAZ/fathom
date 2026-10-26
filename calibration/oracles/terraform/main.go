@@ -13,9 +13,10 @@
 //   - `tofu init -backend=false -get=false -input=false`, providers from the shared
 //     offline filesystem mirror only (a CLI configuration with one
 //     filesystem_mirror and no direct installation; TF_DATA_DIR and the
-//     plugin cache under -scratch). A registry module a root calls is
-//     preseeded from an exact pinned Git checkout; init cannot select or
-//     download a newer registry module.
+//     plugin cache under -scratch). Preparation first pins registry modules
+//     removes cached local entries and runs plain native init to install them,
+//     checking every entry against a separate scanner proposal. This oracle
+//     then consumes the native manifest; it does not choose local Dir values.
 //   - `tofu show -json -config`: the tool's own reading of the configuration
 //     tree (every module call's configuration nested in its caller's): the
 //     resources, data sources, variables, outputs and module calls each module

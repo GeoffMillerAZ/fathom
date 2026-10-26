@@ -33,7 +33,9 @@ def main():
         before, after = receipts
         identity = ("subject_sha", "tracked_manifest_sha256", "tracked_entries", "tracked_bytes",
                     "measured_file_count", "measured_file_list_sha256", "pinned_module_instances",
-                    "pinned_module_manifest_sha256", "oracle_raw_sha256", "xref_truth",
+                    "native_local_agreements", "native_registry_alias_agreements",
+                    "pinned_module_manifest_sha256",
+                    "oracle_raw_sha256", "xref_truth",
                     "xref_truth_floor", "definitions", "references")
         if any(before[key] != after[key] for key in identity):
             raise RuntimeError("native before/after evidence differs: " + repo)
