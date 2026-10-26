@@ -864,6 +864,9 @@ func (p *Pipeline) resolveExtractor(relPath string, content []byte, idx *sibling
 				kind := Classify(relPath, content, idx)
 				toolKind = kind
 				if kind == ToolUnclassified {
+					if ae, ak, aok := azurePipelineDispatch(relPath, content, idx); aok {
+						return ae, ak, true, false
+					}
 					return nil, kind, false, true
 				}
 				e, ok = p.toolExts[kind]

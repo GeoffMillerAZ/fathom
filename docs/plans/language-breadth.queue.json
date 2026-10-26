@@ -2682,7 +2682,7 @@
     "grammar_source": "pure-go:gopkg.in/yaml.v3",
     "licence": "n/a",
     "oracle": [
-      "az pipelines validation (network: unavailable) → reference parse (C)"
+      "independent PyYAML 6.0.3 entity/dependency walk (tier C); Microsoft language service inspected, no offline Azure execution oracle demonstrated"
     ],
     "calibration_subjects": [
       "microsoft/azure-pipelines-yaml",
@@ -2700,7 +2700,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-azure-pipelines",
     "worker_model": "sonnet",
-    "notes": "new; stages, jobs, dependsOn edges, template: file edges"
+    "notes": "T-R4: measured L2 good (L1 good, tier C), 227/228 definitions and 16/16 explicit dependency pairs on two pinned sparse subjects. No template expansion, runtime binding or L3 claim; target remains L3 and waits for D19/native template truth. Source identity and three-run timing recorded in azure-pipelines.json."
   },
   {
     "id": "cue",
