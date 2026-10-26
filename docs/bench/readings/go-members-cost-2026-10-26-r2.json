@@ -28,7 +28,62 @@
       "GOWORK": "off",
       "MACOSX_DEPLOYMENT_TARGET": "14.0"
     },
-    "toolchain": "go version go1.27.3 darwin/arm64"
+    "toolchain": "go version go1.27.3 darwin/arm64",
+    "pass_cpu_seconds": {
+      "baseline": {
+        "centrality": {
+          "runs": [
+            6.285483,
+            6.593233,
+            6.692238
+          ],
+          "median": 6.593233
+        },
+        "extract": {
+          "runs": [
+            13.587322,
+            14.181315,
+            13.860872
+          ],
+          "median": 13.860872
+        },
+        "typed_go": {
+          "runs": [
+            32.766359,
+            32.630081,
+            32.514451
+          ],
+          "median": 32.630081
+        }
+      },
+      "candidate": {
+        "centrality": {
+          "runs": [
+            11.380452,
+            11.937954,
+            11.362627
+          ],
+          "median": 11.380452
+        },
+        "extract": {
+          "runs": [
+            14.242633,
+            14.193873,
+            14.832844
+          ],
+          "median": 14.242633
+        },
+        "typed_go": {
+          "runs": [
+            32.52975,
+            33.849721,
+            32.562866
+          ],
+          "median": 32.562866
+        }
+      }
+    },
+    "raw_receipt_sha256": "61d8ebb6e427818bd4296d5ce229d4be3dc8ae62b408e2480aafd4de2bca0656"
   },
   "baseline": {
     "median_store_bytes": 205312000,

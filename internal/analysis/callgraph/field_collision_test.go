@@ -16,6 +16,10 @@ func TestGoFieldNeverSyntaxCallTarget(t *testing.T) {
 	if g.EdgeCount() != 0 {
 		t.Fatalf("field fabricated %d call edges", g.EdgeCount())
 	}
+	patched := g.ReplacePackage("sample", nodes[1:], nil)
+	if got := patched.EdgeCount(); got != g.EdgeCount() {
+		t.Errorf("refresh fabricated %d call edges; Build has %d", got, g.EdgeCount())
+	}
 }
 
 func TestGoFieldDoesNotHideMethodCandidate(t *testing.T) {
@@ -30,5 +34,12 @@ func TestGoFieldDoesNotHideMethodCandidate(t *testing.T) {
 	}
 	if got := callgraph.RenameImpact(g, "svc::pkg/Worker.Worker.Run"); len(got) != 1 {
 		t.Fatalf("method callers = %v, want one", got)
+	}
+	patched := g.ReplacePackage("sample", nodes[2:], nil)
+	if got := patched.EdgeCount(); got != g.EdgeCount() {
+		t.Errorf("refresh has %d call edges; Build has %d", got, g.EdgeCount())
+	}
+	if got := callgraph.RenameImpact(patched, "svc::pkg/Worker.Worker.Run"); len(got) != 1 {
+		t.Errorf("method callers after refresh = %v, want one", got)
 	}
 }

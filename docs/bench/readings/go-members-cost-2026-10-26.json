@@ -39,7 +39,61 @@
     },
     "collector_sha256": "d52d503c165671811c1810cb02be3271179ca9696d3be5bd67c1ae2aad9a3709",
     "interpretation": "FAIL current-main ENGINE cost gate; prior critic-reproduced +11.62% wall pass remains historical. No adoption or holdout reading authorized by this result.",
-    "raw_receipt_sha256": "17696446df8b42a7975f7226b4ba5203c4df0191923c919a3f465c689eab9ab2"
+    "raw_receipt_sha256": "17696446df8b42a7975f7226b4ba5203c4df0191923c919a3f465c689eab9ab2",
+    "pass_cpu_seconds": {
+      "baseline": {
+        "centrality": {
+          "runs": [
+            8.163742,
+            6.534921,
+            6.830616
+          ],
+          "median": 6.830616
+        },
+        "extract": {
+          "runs": [
+            14.719807,
+            14.223562,
+            13.536036
+          ],
+          "median": 14.223562
+        },
+        "typed_go": {
+          "runs": [
+            34.472391,
+            36.098472,
+            32.383695
+          ],
+          "median": 34.472391
+        }
+      },
+      "candidate": {
+        "centrality": {
+          "runs": [
+            13.755015,
+            11.406346,
+            13.771176
+          ],
+          "median": 13.755015
+        },
+        "extract": {
+          "runs": [
+            14.940974,
+            14.265032,
+            14.977096
+          ],
+          "median": 14.940974
+        },
+        "typed_go": {
+          "runs": [
+            34.75831,
+            31.748703,
+            34.274696
+          ],
+          "median": 34.274696
+        }
+      }
+    }
   },
   "baseline": {
     "median_store_bytes": 205312000,

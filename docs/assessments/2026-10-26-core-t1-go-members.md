@@ -4,8 +4,7 @@ C-R11 authorizes the C-R2 lever, field symbols without reference edges, subject
 to K17/K26 and every affected reading. This branch starts on Wave A main
 2b6f341e, with PR #52's reviewed cost proof merged as a declared prerequisite.
 The production port is the previously measured implementation; it preserves
-call targets and bare plan anchors. Five-package race verification passed,
-and independent review found no implementation issue.
+call targets and bare plan anchors. Five-package race verification passed.
 
 The first Wave-A-main cost gate **FAILS**: median wall 80.441 -> 95.389s (+18.583%,
 limit +15%), store 205312000 -> 218238976 bytes (+6.296%, limit +20%). All six
@@ -35,8 +34,8 @@ store 205312000 -> 218238976 bytes (+6.296%). All six launches were <=9;
 candidate trial 2's active-run load spike to 14.20 is retained. Complete work
 and typed edges match. See the [actual collector receipt](../bench/readings/go-members-cost-2026-10-26-r2.json).
 
-The full seven-package post-merge race suite passes. An independent review
-found no issue. At 4,096 isolated fields, the allocation control fell from
+The full seven-package post-merge race suite passes. At 4,096 isolated fields,
+the allocation control fell from
 3,580,568 to 1,483,416 bytes/op and 8,254 to 4,158 allocations/op. Every one
 of the 84,101 centrality rows is semantically identical across the old
 candidate and all three optimized trials, including all 21,564 added zero-
@@ -57,11 +56,18 @@ retain computed grades and median-of-three extraction throughput.
 A same-oracle Wave B main control gives def_mapping .5891 and typed_recall
 .6714. Call precision/recall (.9254/.9241), file-edge precision/recall
 (.9956/.7030) and import resolution (1) are identical before and after the
-member pass. Their differences from the historical reading are producer/
-toolchain drift, not member-pass regressions. The harness reports 692
+member pass. The L2 difference from the 2026-10-10 reading predates this
+branch on main and is consistent with TypedEdgeEpoch 7 / O1237, not a
+producer or toolchain change. The same-oracle main control establishes that
+the member pass caused no L2 regression. The harness reports 692
 unmapped definitions, including 689 field-category terms; this records its
 counts without reclassifying issue #17. No interface methods or reference
 edges were added. No L4-excellent claim follows from the cost pass.
+
+The canonical, independent and cost measurements use full ingest, which
+builds the graph from scratch. The incremental refresh correction in
+`ReplacePackage` does not change their measured path, so the published
+readings and cost receipt remain valid for the measured full-ingest code.
 
 ## Frozen Gin validation
 

@@ -79,7 +79,7 @@ python3 calibration/oracles/go-fields-cost/cost.py \
 
 ## Cost-directed empty-reach optimization preregistration
 
-The retained pass_times identify centrality: baseline/candidate median CPU
+The per-run pass CPU summaries in the r1 receipt identify centrality: baseline/candidate median CPU
 6.831/13.755s, +6.924s; extract +0.717s and typed_go -0.198s. On the first
 complete store pair, all 62,537 existing centrality rows are identical; the
 21,564 added rows have zero callers. Their inclusion must remain unchanged.
@@ -115,5 +115,30 @@ normalized centrality rows hash to the failed candidate's unchanged semantic
 hash ff28cb5b75e07b3d9d200dd595de7b8b938388198d74f2cc8947277e3fd0556f.
 The first failed run remains recorded. The committed collector is unchanged.
 The raw six-trial schema is preserved in go-members-cost-2026-10-26-r2.json;
-only annotations add build identities, CPU summaries and semantic controls.
+only annotations add build identities, raw-receipt hashes, per-run centrality,
+extract and typed_go CPU summaries, and semantic controls. The r1 receipt
+carries the same pass summaries and its original raw-receipt hash.
 Canonical and independent oracle grading precede the frozen Gin validation.
+
+The canonical, independent, Gin and six-trial cost runs all used full ingest.
+The subsequent `ReplacePackage` correction applies only to incremental
+refresh, leaving those measurements on their original code path. The L2
+difference from the 2026-10-10 historical Go reading predates this branch on
+main; it is consistent with TypedEdgeEpoch 7 / O1237. The same-oracle main
+control shows no L2 change from this member pass.
+
+Binding review F1/F3-F7 follow-up: patch-time call indexes and incoming
+edges exclude field targets, including a same-key method-to-field edit.
+Real extractor fixtures and transition controls compare refresh with Build.
+SCIP export now reports new field symbols as Field, retaining term descriptors.
+The seven-package race suite plus memo and SCIP export passes; the generated
+language tracker test is reserved for controller regeneration under this brief.
+Both cost receipts retain their original collector data and now carry per-run
+centrality, extract and typed-Go CPU summaries; r2 includes its raw receipt hash.
+Per-trial UTC timestamps were not collected and cannot be reconstructed from
+those CPU summaries. No new cost run or holdout tuning was performed.
+
+C-R13 landing dependency: issue #17's classification branch lands first. This
+branch must then merge main, never rebase or merge that topic branch directly,
+and regrade the canonical and independent readings from the same frozen SCIP
+indexes using the combined harness. Those regrades remain pending.
