@@ -70,6 +70,89 @@ func simulinkHashburn(depth int, name string, dsts int, mdl bool) string {
 	return simulinkNested(depth, name, `<Block Name="x" SID="1"/><Line><P Name="Src">1#out:1</P>`+b.String()+`</Line>`)
 }
 
+// simulinkDupSources is a model of dups blocks named A, then dsts (at most 1,296) blocks of
+// two letters, and one line from A to each of them: every A carries the line's calls, 8,300 of
+// them to 1,000 just under the byte cap in a model named m. A .mdl when mdl, else a
+// .slx system part.
+func simulinkDupSources(dups, dsts int, mdl bool) string {
+	var b strings.Builder
+	const set = "abcdefghijklmnopqrstuvwxyz0123456789" // 1,296 two-letter names
+	name := func(i int) string { return string(set[i/36%36]) + string(set[i%36]) }
+	if mdl {
+		b.WriteString("Model {\n System {\n")
+		b.WriteString(strings.Repeat("Block {\nName \"A\"\n}\n", dups))
+		for i := 0; i < dsts; i++ {
+			fmt.Fprintf(&b, "Block {\nName \"%s\"\n}\n", name(i))
+		}
+		b.WriteString("Line {\nSrcBlock \"A\"\n")
+		for i := 0; i < dsts; i++ {
+			fmt.Fprintf(&b, "Branch {\nDstBlock \"%s\"\n}\n", name(i))
+		}
+		b.WriteString("}\n }\n}\n")
+		return b.String()
+	}
+	b.WriteString(`<System>`)
+	for i := 0; i < dups; i++ { // each its own SID, so the part compresses inside the ratio cap
+		fmt.Fprintf(&b, `<Block Name="A" SID="%d"/>`, i+1)
+	}
+	for i := 0; i < dsts; i++ {
+		fmt.Fprintf(&b, `<Block Name="%s"/>`, name(i))
+	}
+	b.WriteString(`<Line><P Name="SrcBlock">A</P>`)
+	for i := 0; i < dsts; i++ {
+		fmt.Fprintf(&b, `<P Name="DstBlock">%s</P>`, name(i))
+	}
+	b.WriteString(`</Line></System>`)
+	return b.String()
+}
+
+// TestReadSimulinkModelCountCaps is S5-R1: short names pass the byte caps, so a model holds
+// at most SimulinkMaxSignals distinct signals and its blocks at most SimulinkMaxCalls emitted
+// call entries, else it is ErrSimulinkCap, read as nothing and extracted to nothing; a model
+// at either cap reads in full.
+func TestReadSimulinkModelCountCaps(t *testing.T) {
+	root := "simulink/systems/system_root.xml"
+	for _, mdl := range []bool{false, true} {
+		read := func(src string) (SimulinkModel, DocResult, error) {
+			rel, b := "m.slx", []byte(src)
+			if mdl {
+				rel = "m.mdl"
+			} else {
+				b = slxPackage(t, root, src)
+			}
+			m, err := ReadSimulinkModel(rel, b)
+			r, xerr := NewSimulinkExtractor().ExtractDoc("svc", rel, b)
+			if xerr != nil {
+				t.Fatal(xerr)
+			}
+			return m, r, err
+		}
+		// 256 short-named children, every pair joined: 65,536 signals, at the cap.
+		if m, _, err := read(simulinkFanPairs(256, "p", mdl)); err != nil || len(m.Signals) != SimulinkMaxSignals {
+			t.Errorf("mdl=%v: 256 children: %d signals, %v; want %d", mdl, len(m.Signals), err, SimulinkMaxSignals)
+		}
+		// 65 sources named A, 1,000 destinations: 65,000 emitted calls, inside the cap.
+		if m, r, err := read(simulinkDupSources(65, 1000, mdl)); err != nil || len(m.Signals) != 1000 || len(r.Nodes) != 1066 {
+			t.Errorf("mdl=%v: 65 sources: %d signals, %d nodes, %v; want 1,000 and 1,066", mdl, len(m.Signals), len(r.Nodes), err)
+		}
+		for name, src := range map[string]string{
+			"257 short children":   simulinkFanPairs(257, "p", mdl),
+			"700 short children":   simulinkFanPairs(700, "p", mdl),
+			"66 sources named A":   simulinkDupSources(66, 1000, mdl),
+			"8300 sources named A": simulinkDupSources(8300, 1000, mdl),
+		} {
+			if name == "700 short children" && mdl {
+				continue // 12 MB of .mdl; the heap test's shape is 260 children
+			}
+			m, r, err := read(src)
+			if !errors.Is(err, ErrSimulinkCap) || len(m.Blocks) != 0 || len(m.Signals) != 0 || len(r.Nodes) != 0 {
+				t.Errorf("mdl=%v: %s: %d blocks, %d signals, %d nodes, %v; want ErrSimulinkCap and nothing",
+					mdl, name, len(m.Blocks), len(m.Signals), len(r.Nodes), err)
+			}
+		}
+	}
+}
+
 // TestReadSimulinkModelSignalBytes is S4-R1: a model's distinct signals hold at most
 // SimulinkMaxPathBytes of endpoint paths together, else the model is ErrSimulinkCap and read as
 // nothing; a model just inside the budget reads in full.
@@ -111,7 +194,9 @@ func TestReadSimulinkModelPathCap(t *testing.T) {
 
 // TestSimulinkExtractDocOutputBound is S4-R1's output bound: the Calls ExtractDoc emits hold
 // at most SimulinkMaxPathBytes together, so blocks that share a path (each given its calls)
-// cannot multiply a signal set inside its budget; past it the file yields nothing.
+// cannot multiply a signal set inside its budget; past it the file yields nothing. Three
+// sources of 1,000 long destinations are 3,000 calls, inside SimulinkMaxCalls, so the byte
+// cap is the one that ends it.
 func TestSimulinkExtractDocOutputBound(t *testing.T) {
 	parent := simulinkLetters(14_000, 9)
 	build := func(dups int) string {
@@ -133,7 +218,7 @@ func TestSimulinkExtractDocOutputBound(t *testing.T) {
 	if err != nil || len(one.Nodes) != 1003 {
 		t.Fatalf("one source: %d nodes, %v; want 1,003", len(one.Nodes), err)
 	}
-	many, err := x.ExtractDoc("svc", "m.slx", slxPackage(t, "simulink/systems/system_root.xml", build(1000)))
+	many, err := x.ExtractDoc("svc", "m.slx", slxPackage(t, "simulink/systems/system_root.xml", build(3)))
 	calls := 0
 	for _, n := range many.Nodes {
 		for _, c := range n.Calls {
@@ -141,7 +226,7 @@ func TestSimulinkExtractDocOutputBound(t *testing.T) {
 		}
 	}
 	if err != nil || len(many.Nodes) != 0 {
-		t.Errorf("1,000 sources sharing a path: %d nodes, %d bytes of calls, %v; want none", len(many.Nodes), calls, err)
+		t.Errorf("3 sources sharing a path: %d nodes, %d bytes of calls, %v; want none", len(many.Nodes), calls, err)
 	}
 }
 

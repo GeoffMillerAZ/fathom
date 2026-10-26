@@ -110,6 +110,13 @@ func TestReadSimulinkModelHeapBound(t *testing.T) {
 		// finding is past the path cap now.
 		{"hashburn slx", slx(simulinkHashburn(15, simulinkLetters(SimulinkMaxValue, 7), 500_000, false)), true},
 		{"hashburn at the cap slx", slx(simulinkHashburn(1, simulinkLetters(16_000, 7), 500_000, false)), false},
+		// S5-R1: short names pass the byte caps. 700 one-letter children, every pair joined, are
+		// 490,000 signals; 8,300 blocks named A with one line to 1,000 others emit 8.3M calls.
+		// The count caps end both; the .mdl fan pairs are 260 children, 1.7 MB.
+		{"short fan pairs slx", slx(simulinkFanPairs(700, "p", false)), true},
+		{"duplicate sources slx", slx(simulinkDupSources(8300, 1000, false)), true},
+		{"short fan pairs mdl", []byte(simulinkFanPairs(260, "p", true)), true},
+		{"duplicate sources mdl", []byte(simulinkDupSources(8300, 1000, true)), true},
 		{"element flood mdl", []byte("Model {\n" + strings.Repeat("A {\n}\n", SimulinkMaxElements-2) + "}\n"), false},
 		{"block flood mdl", []byte("Model {\nSystem {\n" + mdlBlocks.String() + "}\n}\n"), false},
 		{"property flood mdl", []byte("Model {\nSystem {\nBlock {\nName \"b\"\n" + strings.Repeat("Note 1\nName \"c\"\n", 2<<20) + "}\n}\n}\n"), false},

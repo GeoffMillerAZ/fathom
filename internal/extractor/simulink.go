@@ -89,6 +89,16 @@ const (
 	// the most the Calls the extractor emits for it may. The most a calibration model's paths
 	// hold is 569,136 bytes, its signals' endpoints 1,316,079 and its Calls 660,200.
 	SimulinkMaxPathBytes = SimulinkMaxInflated
+	// SimulinkMaxSignals is the most distinct signals a model may hold. The byte caps count
+	// path bytes only, so short names would pass them: 700 one-letter children, every pair
+	// joined, are 490,000 signals in a 172 KB package. The most a calibration model holds
+	// is 6,665.
+	SimulinkMaxSignals = 1 << 16
+	// SimulinkMaxCalls is the most Call entries the extractor may emit for a model, a block
+	// sharing its path with others carrying its calls each time: 8,300 blocks named A, one
+	// line to 1,000 others, are 8.3M entries in a 5.8 KB package. The most a calibration model
+	// emits is 6,665.
+	SimulinkMaxCalls = 1 << 16
 )
 
 // simulinkPaths is what is left of a model's path caps as its blocks are read.
@@ -331,8 +341,26 @@ func ReadSimulinkModel(relPath string, src []byte) (SimulinkModel, error) {
 					return SimulinkModel{Name: m.Name, SIDPath: map[string]string{}},
 						fmt.Errorf("%w: signals hold past %d bytes of endpoint paths", ErrSimulinkCap, SimulinkMaxPathBytes)
 				}
+				if len(m.pairs) == SimulinkMaxSignals {
+					return SimulinkModel{Name: m.Name, SIDPath: map[string]string{}},
+						fmt.Errorf("%w: past %d signals", ErrSimulinkCap, SimulinkMaxSignals)
+				}
 				m.pairs = append(m.pairs, p)
 			}
+		}
+	}
+	// Each block is given its canonical block's calls, so the Calls emitted are the out
+	// degrees summed over the blocks, counted before any is built.
+	seen = nil
+	out := make([]int, len(m.Blocks))
+	for _, p := range m.pairs {
+		out[p.src]++
+	}
+	calls := 0
+	for i := range m.Blocks {
+		if calls += out[canon[i]]; calls > SimulinkMaxCalls {
+			return SimulinkModel{Name: m.Name, SIDPath: map[string]string{}},
+				fmt.Errorf("%w: past %d emitted calls", ErrSimulinkCap, SimulinkMaxCalls)
 		}
 	}
 	m.Signals = make([]SimulinkSignal, len(m.pairs))
