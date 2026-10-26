@@ -69,6 +69,8 @@ builds the graph from scratch. The incremental refresh correction in
 `ReplacePackage` does not change their measured path, so the published
 readings and cost receipt remain valid for the measured full-ingest code.
 
+Landing-base K17 rerun (critic, base `6db920e72`, candidate `d0faef431`): wall +12.85% (86.637 -> 97.768s), store +6.30% (205312000 -> 218238976B), PASS with 2.15 wall points of margin; receipt [`core-t1-go-members-r1-cost-rerun-wave-c.json`](data/core-t1-go-members-r1-cost-rerun-wave-c.json).
+
 ## Frozen Gin validation
 
 Measured once after evidence freeze 85ee60563031bba3fb1da2cc9f22bc0a8bcf72fa:
@@ -136,3 +138,13 @@ The final Wave C nine-package race suite passed (331.81s), including the
 field refresh/build-equality controls. Only the controller-owned generated
 tracker assertion was excluded. Wave C focused reading/SCIP controls, X-R2,
 X-R3 and merge-debris checks passed. No new production change followed the regrade.
+
+
+## F8 deletion coverage
+
+The reader-backed deletion regression reproduced the false proven-zero answer
+for T.n using its bare, package-qualified and canonical keys. Deletion checks
+now preserve recorded referents, report field_references_indexed false and
+say field references are not indexed. This query-only correction changes no
+full-ingest reading or cost path. The pre-existing missing-target and Go
+variable/constant cases are filed separately as CT1-SD-1, outside this branch.

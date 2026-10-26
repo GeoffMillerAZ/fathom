@@ -176,7 +176,8 @@ func safeDeleteCheckAnswer(ctx context.Context, s *Server, backend QueryInterfac
 	_, indexCommit, metaFound, _ := backend.ServiceMeta(ctx, service)
 
 	// referent_count: 0 alongside an empty referents array IS the
-	// proven-zero receipt — checked_edges names what was actually
+	// proven-zero receipt for targets with indexed reference coverage. Module
+	// symbols and Go fields qualify that result below. checked_edges names what was actually
 	// checked to reach it, and index_commit (when the backend can
 	// name one) anchors it to a commit a stranger can re-derive
 	// against. Always the same three fields either way, never a
@@ -209,6 +210,18 @@ func safeDeleteCheckAnswer(ctx context.Context, s *Server, backend QueryInterfac
 			resp["file"] = moduleFile
 		}
 		return withSummary(moduleSymbolDeleteSummary(symbol, moduleFile, referents), resp), nil
+	}
+	// Fields stay out of the call-target indexes. Also check a canonical
+	// package-qualified key supplied without its service prefix.
+	targets := append(callgraph.CandidateKeys(navs.Both, symbol), service+"::"+symbol)
+	for _, key := range targets {
+		if target, ok := byKey[key]; ok && target.Kind == core.KindGoField {
+			// The field-only pass records definitions, not their readers or
+			// writers. Keep any referents found, but never prove absence.
+			resp["field_references_indexed"] = false
+			summary := fmt.Sprintf("field references are not indexed; %d recorded referent%s for %s", len(referents), pluralS(len(referents)), symbol)
+			return withSummary(capSummary(summary), resp), nil
+		}
 	}
 	return withSummary(safeDeleteSummary(symbol, referents, checkedEdges), resp), nil
 }
