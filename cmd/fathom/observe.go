@@ -72,7 +72,7 @@ func cmdObserve(args []string, stdout, stderr io.Writer) int {
 // and our create (EEXIST) moves to the next id; no existing file is ever
 // opened for writing, so no entry can be lost or clobbered and the legacy
 // log is never touched.
-func mintObservationEntry(root, symptom, tool, expected, actual, repro string, lab ...string) (int, string, error) {
+func mintObservationEntry(root, symptom, tool, expected, actual, repro, lab string) (int, string, error) {
 	dir := observationsDir(root)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return 0, "", fmt.Errorf("creating %s: %w", dir, err)
@@ -102,7 +102,7 @@ func mintObservationEntry(root, symptom, tool, expected, actual, repro string, l
 		if err != nil {
 			return 0, "", fmt.Errorf("creating %s: %w", path, err)
 		}
-		_, werr := f.WriteString(formatObservationEntry(id, symptom, tool, expected, actual, repro, lab...))
+		_, werr := f.WriteString(formatObservationEntry(id, symptom, tool, expected, actual, repro, lab))
 		if cerr := f.Close(); werr == nil {
 			werr = cerr
 		}
@@ -121,7 +121,7 @@ func mintObservationEntry(root, symptom, tool, expected, actual, repro string, l
 // that weren't given are marked TODO too, rather than left blank, so a
 // human or agent scanning the file later sees "not yet supplied" instead
 // of an ambiguous empty line.
-func formatObservationEntry(id int, symptom, tool, expected, actual, repro string, lab ...string) string {
+func formatObservationEntry(id int, symptom, tool, expected, actual, repro, lab string) string {
 	td := func(s string) string {
 		if strings.TrimSpace(s) == "" {
 			return "TODO"
@@ -131,8 +131,8 @@ func formatObservationEntry(id int, symptom, tool, expected, actual, repro strin
 	var b strings.Builder
 	fmt.Fprintf(&b, "### O%d — %s\n\n", id, symptom)
 	fmt.Fprintf(&b, "- **Symptom:** %s\n", symptom)
-	if len(lab) > 0 && lab[0] != "" {
-		fmt.Fprintf(&b, "- **Lab:** %s\n", lab[0])
+	if lab != "" {
+		fmt.Fprintf(&b, "- **Lab:** %s\n", lab)
 	}
 	fmt.Fprintln(&b, "- **Evidence:**")
 	fmt.Fprintf(&b, "  - **Tool:** %s\n", td(tool))

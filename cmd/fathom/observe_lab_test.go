@@ -2,8 +2,10 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -99,10 +101,20 @@ func TestObserveLabReaders(t *testing.T) {
 					t.Fatalf("fleet: %v, %s", n, note)
 				}
 			case "adoption":
-				n := countOpenObservations(content)
-				r := buildAdoptionReport("", false, "", nil, 0, nil, "", &n, observationsPath(root), nil)
+				isolateVerifyLedger(t)
+				var stdout, stderr bytes.Buffer
+				// Explicit local inputs and an invalid daemon URL prevent live reads.
+				code := cmdInstrumentAdoption([]string{"--json", "--root", root,
+					"--call-log", filepath.Join(root, "missing-calls.jsonl"), "--url", "://offline"}, &stdout, &stderr)
+				if code != 0 {
+					t.Fatalf("adoption: %d: %s", code, stderr.String())
+				}
+				var r AdoptionReport
+				if err := json.Unmarshal(stdout.Bytes(), &r); err != nil {
+					t.Fatal(err)
+				}
 				if r.OpenObservationCount == nil || *r.OpenObservationCount != 1 {
-					t.Fatalf("adoption: %+v", r.OpenObservationCount)
+					t.Fatalf("adoption did not read linked entry: %+v", r.OpenObservationCount)
 				}
 			case "research-report":
 				now := time.Date(2026, 10, 25, 0, 0, 0, 0, time.UTC)
@@ -130,5 +142,14 @@ func TestObserveLabReaders(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestObserveLabHelpersSingleLink(t *testing.T) {
+	for _, helper := range []any{mintObservationEntry, formatObservationEntry} {
+		typ := reflect.TypeOf(helper)
+		if typ.IsVariadic() || typ.In(typ.NumIn()-1).Kind() != reflect.String {
+			t.Errorf("observation helper must take one lab string: %s", typ)
+		}
 	}
 }
