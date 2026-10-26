@@ -16,11 +16,8 @@ package main
 // command text, output text, a path, a session id or a project name.
 
 import (
-	"bufio"
-	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -37,6 +34,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/harness"
 	"github.com/geoffmilleraz/fathom/internal/readout"
 	"github.com/geoffmilleraz/fathom/internal/shellcmd"
+	"github.com/geoffmilleraz/fathom/internal/transcript"
 )
 
 // readoutProjectsDir is Claude Code's transcript root and readoutNow the
@@ -57,15 +55,15 @@ func defaultReadoutProjectsDir() string {
 }
 
 const (
-	replayFollowers     = 5        // "within five calls"
-	replayRecent        = 32       // calls kept to feed a result that arrives after later calls
-	replayLongRead      = 200      // a whole-file read over this many lines is a long read
-	replayMinEvaluated  = 200      // lean eligibility: evaluated readouts
-	replayMinCleanLower = 0.90     // lean eligibility: the clean share's Wilson lower bound
-	replayTopShapes     = 25       // shapes listed before the rest fold into "(other)"
-	replayLineMax       = 64 << 20 // a transcript line longer than this is skipped, counted
-	replayPersistedMax  = 16 << 20 // the most of a persisted output file read
-	replayTokenMax      = 4096     // dropped-only tokens kept per readout
+	replayFollowers     = 5                  // "within five calls"
+	replayRecent        = 32                 // calls kept to feed a result that arrives after later calls
+	replayLongRead      = 200                // a whole-file read over this many lines is a long read
+	replayMinEvaluated  = 200                // lean eligibility: evaluated readouts
+	replayMinCleanLower = 0.90               // lean eligibility: the clean share's Wilson lower bound
+	replayTopShapes     = 25                 // shapes listed before the rest fold into "(other)"
+	replayLineMax       = transcript.LineMax // a transcript line longer than this is skipped, counted
+	replayPersistedMax  = 16 << 20           // the most of a persisted output file read
+	replayTokenMax      = 4096               // dropped-only tokens kept per readout
 )
 
 type replayReport struct {
@@ -443,39 +441,18 @@ type replayWatch struct {
 
 // file streams one transcript; true when it counted a call.
 func (a *replayAgg) file(p string) bool {
-	f, err := os.Open(p)
-	if err != nil {
-		return false
-	}
-	defer f.Close()
-	a.rep.Corpus.Files++
 	st := &replayFile{pending: map[string]replayPending{}}
 	sz := a.sizing.open(p)
-	br := bufio.NewReaderSize(f, 1<<20)
-	var buf []byte
-	over := false
-	for {
-		chunk, rerr := br.ReadSlice('\n')
-		if len(buf)+len(chunk) <= replayLineMax {
-			buf = append(buf, chunk...)
-		} else {
-			over = true
-		}
-		if errors.Is(rerr, bufio.ErrBufferFull) {
-			continue
-		}
-		switch {
-		case over:
-			a.rep.Corpus.LinesOversize++
-		case len(buf) > 0:
-			a.line(st, buf)
-			a.sizing.line(sz, buf)
-		}
-		buf, over = buf[:0], false
-		if rerr != nil {
-			break
-		}
+	coverage := transcript.WalkFile(p, func(_ int, l *transcript.Line, blocks []transcript.Block) {
+		a.decodedLine(st, l, blocks)
+		a.sizing.decodedLine(sz, l, blocks)
+	})
+	if coverage.UnreadableFiles > 0 {
+		return false
 	}
+	a.rep.Corpus.Files++
+	a.rep.Corpus.LinesUnparsed += coverage.MalformedLines
+	a.rep.Corpus.LinesOversize += coverage.OversizeLines
 	for _, s := range st.open {
 		a.finish(s)
 	}
@@ -488,56 +465,29 @@ func (a *replayAgg) file(p string) bool {
 	return st.counted
 }
 
-type replayTranscriptLine struct {
-	Type      string `json:"type"`
-	SessionID string `json:"sessionId"`
-	Timestamp string `json:"timestamp"`
-	Cwd       string `json:"cwd"`
-	Message   *struct {
-		Content json.RawMessage `json:"content"`
-	} `json:"message"`
-	ToolUseResult json.RawMessage `json:"toolUseResult"`
-}
-
-type replayBlock struct {
-	Type      string          `json:"type"`
-	ID        string          `json:"id"`
-	Name      string          `json:"name"`
-	Input     json.RawMessage `json:"input"`
-	ToolUseID string          `json:"tool_use_id"`
-	Content   json.RawMessage `json:"content"`
-	IsError   bool            `json:"is_error"`
-}
+// Compatibility names for the readout consumers; the Claude envelope and
+// decoding live in internal/transcript.
+type replayTranscriptLine = transcript.Line
+type replayBlock = transcript.Block
 
 func (a *replayAgg) line(st *replayFile, raw []byte) {
-	if !bytes.Contains(raw, []byte(`"tool_`)) {
-		return
-	}
-	var l replayTranscriptLine
-	if err := json.Unmarshal(raw, &l); err != nil {
+	l, blocks, err := transcript.DecodeLine(raw)
+	if err != nil {
 		a.rep.Corpus.LinesUnparsed++
 		return
 	}
-	if l.Message == nil || len(l.Message.Content) == 0 || l.Message.Content[0] != '[' {
-		return
-	}
-	var blocks []replayBlock
-	if json.Unmarshal(l.Message.Content, &blocks) != nil {
-		a.rep.Corpus.LinesUnparsed++
-		return
-	}
-	results := 0
-	for _, b := range blocks {
-		if b.Type == "tool_result" {
-			results++
-		}
-	}
-	for _, b := range blocks {
+	a.decodedLine(st, &l, blocks)
+}
+
+func (a *replayAgg) decodedLine(st *replayFile, l *replayTranscriptLine, blocks []replayBlock) {
+	single := transcript.ResultCount(blocks) == 1
+	for i := range blocks {
+		b := &blocks[i]
 		switch b.Type {
 		case "tool_use":
-			a.use(st, &l, &b)
+			a.use(st, l, b)
 		case "tool_result":
-			a.result(st, &l, &b, results == 1)
+			a.result(st, l, b, single)
 		}
 	}
 }
@@ -635,12 +585,7 @@ func (a *replayAgg) finish(s *replaySubject) {
 	}
 }
 
-type replayToolResult struct {
-	Stdout              *string `json:"stdout"`
-	Stderr              string  `json:"stderr"`
-	Interrupted         bool    `json:"interrupted"`
-	PersistedOutputPath string  `json:"persistedOutputPath"`
-}
+type replayToolResult = transcript.ToolResult
 
 // result counts one Bash call once its result arrives.
 func (a *replayAgg) result(st *replayFile, l *replayTranscriptLine, b *replayBlock, single bool) {
@@ -672,9 +617,7 @@ func (a *replayAgg) result(st *replayFile, l *replayTranscriptLine, b *replayBlo
 		}
 	}
 
-	var tr replayToolResult
-	structured := single && len(l.ToolUseResult) > 0 && l.ToolUseResult[0] == '{' &&
-		json.Unmarshal(l.ToolUseResult, &tr) == nil && tr.Stdout != nil
+	tr, structured := transcript.StructuredResult(l, single)
 	var stdout, persistedText string
 	switch {
 	case b.IsError:
@@ -1314,30 +1257,8 @@ func readPersistedOutput(p string) (string, bool) {
 	return string(data), true
 }
 
-// resultText is a tool_result's content: a string, or its text blocks.
-func resultText(raw json.RawMessage) string {
-	if len(raw) == 0 {
-		return ""
-	}
-	var s string
-	if raw[0] == '"' && json.Unmarshal(raw, &s) == nil {
-		return s
-	}
-	var blocks []struct {
-		Type string `json:"type"`
-		Text string `json:"text"`
-	}
-	if json.Unmarshal(raw, &blocks) != nil {
-		return ""
-	}
-	var b strings.Builder
-	for _, bl := range blocks {
-		if bl.Type == "text" {
-			b.WriteString(bl.Text)
-		}
-	}
-	return b.String()
-}
+// resultText shares the transcript content decoder with the report and labs.
+func resultText(raw json.RawMessage) string { return transcript.ResultText(raw) }
 
 func walkJSONStrings(v any, fn func(string)) {
 	switch x := v.(type) {

@@ -27,6 +27,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/ask"
 	"github.com/geoffmilleraz/fathom/internal/testrun"
+	"github.com/geoffmilleraz/fathom/internal/transcript"
 	heartbeat "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/heartbeat"
 )
 
@@ -305,12 +306,8 @@ func blReadFile(p string, wantID map[string]bool, invs [][]string) []*blCall {
 }
 
 func blLine(raw []byte, p string, seq int, wantID map[string]bool, invs [][]string, all, active *[]*blCall, byID map[string]*blCall) int {
-	var l replayTranscriptLine
-	if json.Unmarshal(raw, &l) != nil || l.Message == nil || len(l.Message.Content) == 0 || l.Message.Content[0] != '[' {
-		return seq
-	}
-	var blocks []replayBlock
-	if json.Unmarshal(l.Message.Content, &blocks) != nil {
+	l, blocks, err := transcript.DecodeLine(raw)
+	if err != nil {
 		return seq
 	}
 	for i := range blocks {

@@ -29,7 +29,6 @@ package main
 // reaches the output: a shape is a command head, everything else a count.
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -42,6 +41,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/shellcmd"
+	"github.com/geoffmilleraz/fathom/internal/transcript"
 )
 
 const (
@@ -241,18 +241,7 @@ type sizingOpen struct {
 	reread map[string]struct{}
 }
 
-type sizingLine struct {
-	Type      string `json:"type"`
-	Subtype   string `json:"subtype"`
-	UUID      string `json:"uuid"`
-	Timestamp string `json:"timestamp"`
-	Cwd       string `json:"cwd"`
-	Message   *struct {
-		ID      string          `json:"id"`
-		Content json.RawMessage `json:"content"`
-	} `json:"message"`
-	ToolUseResult json.RawMessage `json:"toolUseResult"`
-}
+type sizingLine = transcript.Line
 
 // open starts a transcript's state, classing it by its path: a subagent's
 // transcript is <session>/subagents/agent-*.jsonl, a workflow subagent's
@@ -276,23 +265,21 @@ func (z *replaySizing) open(p string) *sizingFile {
 
 // line reads one transcript line.
 func (z *replaySizing) line(st *sizingFile, raw []byte) {
-	if !st.subagent || st.timed {
-		if !bytes.Contains(raw, []byte(`"tool_`)) && !bytes.Contains(raw, []byte(`"assistant"`)) &&
-			!bytes.Contains(raw, []byte(`"compact_boundary"`)) {
-			return
-		}
-	}
-	var l sizingLine
-	if json.Unmarshal(raw, &l) != nil {
-		return // replay's corpus figures count the line
-	}
+	l, blocks, err := transcript.DecodeLine(raw)
+	if err != nil {
+		return
+	} // replay's corpus figures count the line
+	z.decodedLine(st, &l, blocks)
+}
+
+func (z *replaySizing) decodedLine(st *sizingFile, l *sizingLine, blocks []replayBlock) {
 	ts, err := time.Parse(time.RFC3339Nano, l.Timestamp)
 	timed := err == nil
 	if st.subagent && !st.timed && timed {
 		st.first, st.timed = ts, true
 	}
 	if l.Type == "system" && l.Subtype == "compact_boundary" {
-		z.boundary(st, &l, ts, timed)
+		z.boundary(st, l, ts, timed)
 		return
 	}
 	if l.Message == nil {
@@ -301,26 +288,14 @@ func (z *replaySizing) line(st *sizingFile, raw []byte) {
 	if l.Type == "assistant" {
 		z.turn(st, l.Message.ID)
 	}
-	if len(l.Message.Content) == 0 || l.Message.Content[0] != '[' {
-		return
-	}
-	var blocks []replayBlock
-	if json.Unmarshal(l.Message.Content, &blocks) != nil {
-		return
-	}
 	inWindow := !timed || !ts.Before(z.cutoff)
-	results := 0
-	for _, b := range blocks {
-		if b.Type == "tool_result" {
-			results++
-		}
-	}
+	single := transcript.ResultCount(blocks) == 1
 	for i := range blocks {
 		switch blocks[i].Type {
 		case "tool_use":
-			z.use(st, &l, &blocks[i], inWindow)
+			z.use(st, l, &blocks[i], inWindow)
 		case "tool_result":
-			z.result(st, &l, &blocks[i], results == 1)
+			z.result(st, l, &blocks[i], single)
 		}
 	}
 }
