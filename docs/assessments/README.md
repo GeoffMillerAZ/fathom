@@ -63,6 +63,7 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-25 | [matlab-free-oracle-ceiling](2026-10-25-matlab-free-oracle-ceiling.md) | Reviewed free tools do not yet supply independent call and resolution truth across the unchanged MATLAB corpus | LB-Q-matlab-rest |
 | 2026-10-25 | [wgsl-native-l3-ceiling](2026-10-25-wgsl-native-l3-ceiling.md) | Standard WGSL has no native import denominator; existing WESL and naga_oil resolvers need separately ruled queue populations | LB-Q-wgsl-rest |
 | 2026-10-25 | [refused-swift](2026-10-25-refused-swift.md) | Measured: the 36/642 ERROR-node count reproduces the original reading; the current ERROR-or-MISSING gate is 123/642, so the refusal holds | LB-Q-swift-rest reconciliation and P-R1 retry route under ADR-048 |
+| 2026-10-26 | [core-t1-astro-ceiling](2026-10-26-core-t1-astro-ceiling.md) | Measured extractor gap has an existing oracle; serialize its shared-query repair and re-read language plus route consumers | C-R4 (#20), LB-Q-astro-rest, K29 |
 | 2026-10-26 | [core-t1-cpp-ceiling](2026-10-26-core-t1-cpp-ceiling.md) | C++ remains on the CUDA/HLSL integration hold; candidate limits are recorded. | LB-Q-cpp-rest |
 | 2026-10-26 | [core-t1-css-ceiling](2026-10-26-core-t1-css-ceiling.md) | A span parser exists, but a tier-A CSS rule-end oracle remains unproven. | LB-Q-css-rest |
 | 2026-10-26 | [core-t1-cue-ceiling](2026-10-26-core-t1-cue-ceiling.md) | The package-key file target limits recall; LSP definitions support a future SCIP writer. | LB-Q-cue-rest |
