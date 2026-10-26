@@ -4,7 +4,7 @@ Scripts and result tables behind
 [`../cv-m13-reading-set-calibration-2026-09-25.md`](../cv-m13-reading-set-calibration-2026-09-25.md),
 kept so the reading can be re-derived after the scratch directory it ran in is gone.
 
-- `fathom/` — the fathom ranges: `attest.sh` (a commit-bound test-kit envelope, the
+- `fathom/` — the fathom ranges: `attest.sh` (a commit-bound test kit envelope, the
   `tests:attest` recipe), `readingset.sh` (the static reading set plus a class dump),
   `cover.sh` (execution truth: `go test -coverpkg=./... -coverprofile`),
   `join.py` / `wholejoin.py` (join classes to `go tool cover -func`).
@@ -20,4 +20,4 @@ kept so the reading can be re-derived after the scratch directory it ran in is g
 
 Every script reads its working directory from `CVM13_DIR` (the original run used a
 session scratch directory); set it before running. Tools: fathom built at d41cdf14 and
-test-kit's `surveyor` from platform-engineering (`kits/test-kit/cmd/surveyor`).
+the test kit's CLI, built from its own checkout.

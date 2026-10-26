@@ -30,8 +30,8 @@ came from runs at the registered root on 2026-09-19 at `d8770983`, while the pre
 gate's runs at the commit the root is on (in its detached clone) passed. After the fix,
 on a fresh copy of the fleet: 27 attention items across 18 projects and **no gate
 failure**. Six proof items: geoffmiller-cloud's 11 plans have no recorded verify run;
-agentic-kit and platform-engineering each have one plan never verified; and
-platform-engineering (24 plans), agentic-kit (28) and resume_as_code (4) were last
+agentic-kit and platform each have one plan never verified; and
+platform (24 plans), agentic-kit (28) and svc-c (4) were last
 verified before their HEAD, each stated as history with its commits and dates. One
 stale index, 13 projects with certificate gaps (512 declared targets, 0 live) and 7
 with open observations. "Since you last looked" lists 136 changes in the week:
@@ -118,7 +118,7 @@ macOS TCC verdict wedged for the daemon's process (the known EPERM wedge): git a
 `.fathom/observations.md` reads failed. The pages did what I38 asks — the stat
 band read "≥ 1 wired and fresh, freshness unknown for 17 of 18 projects", the
 queue turned partial ("not read: observations files (unreadable in fathom,
-platform-engineering, resume_as_code and 3 more) — the queue is a lower bound"),
+platform, svc-c and 3 more) — the queue is a lower bound"),
 its index items said "freshness cannot be determined — unknown is never read as
 fresh", and the open-observations tile read "unreadable", never a smaller total.
 The views above were retaken after `tccutil reset`. *Corrected 2026-09-26:* the

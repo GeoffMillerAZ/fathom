@@ -3,10 +3,10 @@
 **Verdict: nine proven rows in two services rest on a guess, and RF-5 refuses them.** Across the
 2,737 claimed rows the current verify proves in the seven fleet services that can flip, nine pass
 `reachable_from` (edge_wired) or `wired` only through a call edge of resolution tier `heuristic`: six
-in fathom's own plans and three in platform-engineering's. The other 2,728 hold over typed edges
+in fathom's own plans and three in platform's. The other 2,728 hold over typed edges
 alone. Five of fathom's six are rows whose symbol is a type or a constant (a type or a constant is
 never the target of a typed call edge, so only a syntax-only reference "reached" it); the sixth and
-the three platform-engineering rows passed through a name the syntax pass matched to the wrong
+the three platform rows passed through a name the syntax pass matched to the wrong
 function. The count is small and every row is named below, so RF-5 ships with a `### Breaking` line
 and this migration note.
 
@@ -26,7 +26,7 @@ Both were built with `go build ./cmd/fathom` (CGO on, as the gate builds), $0, n
 The fleet holds 19 services (`fathom fleet report`, 2026-10-11). A row can flip only if a plan in
 `docs/plans/` claims it `[x]` with a `reachable_from:`, or with a `symbol:` that `wired` evaluates
 (a Go function in a service with a `package main`). Twelve services hold no such row and were not
-ingested: car-assistant, growing-gardens-bi, iam_horcrux, planning, pulumi-eks, pulumi_eks_component,
+ingested: svc-e, svc-d, iam-repo, svc-m, svc-i, svc-h,
 study, throughline and workstation_as_code have no plan; cue-wasm and imbue have no claimed row with
 either key; my-gods-eye's 11 symbol rows name no Go source and it has no `reachable_from`. The seven
 below were measured at the owner's committed HEAD.
@@ -38,7 +38,7 @@ below were measured at the owner's committed HEAD.
 | conjure | `2d95c9795d11` | 6 | 136 | 64 | 42 | 0 |
 | fathom | `c39875f301d0` | 69 | 2949 | 1991 | 1495 | 6 |
 | geoffmiller-cloud | `66ef3be8c69f` | 11 | 37 | 28 | 17 | 0 |
-| platform-engineering | `84f9d4101045` | 25 | 874 | 343 | 225 | 3 |
+| platform | `84f9d4101045` | 25 | 874 | 343 | 225 | 3 |
 | resume_as_code | `04be1238bae1` | 4 | 202 | 183 | 160 | 0 |
 | **total** | | 148 | 4621 | 2737 | 2001 | **9** |
 
@@ -60,7 +60,7 @@ below were measured at the owner's committed HEAD.
 
 Three modules failed the scratch ingest's typed pass, each for a reason of the clone, not of the
 service: app-kit's `spikes/wails-gallery` and geoffmiller-cloud's `studio` (go/packages returned no
-package), and platform-engineering's `portal/ui` (an embedded `app.css` the clone lacks, generated
+package), and the platform's portal UI package (an embedded `app.css` the clone lacks, generated
 and uncommitted). A row reached only through those packages would read heuristic here and typed on
 the operator's tree. None of the nine runs through them, and no other row in those services flipped.
 
@@ -85,9 +85,9 @@ on it.
 | fathom | `docs/plans/observatory-console.md` | OC-13 | edge_wired (`reachable_from: TestEventBus_ReplayBoundAndKeepalive`) | `internal/console/console_test.TestEventBus_ReplayBoundAndKeepalive -> internal/console/console.EventBus` (type-ref: a type) |
 | fathom | `docs/plans/refactor-conservation.md` | CV-24 | edge_wired (`reachable_from: TestReview_ConservationDimension`) | `internal/analysis/review/review_test.TestReview_ConservationDimension -> internal/analysis/review/review.DimConservation` (syntax-only: a constant) |
 | fathom | `docs/plans/test-certifications.md` | TC-10 | edge_wired (`reachable_from: TestReview_CertificationsDimension`) | `internal/analysis/review/review_test.TestReview_CertificationsDimension -> internal/analysis/review/review.DimCertifications` (syntax-only: a constant) |
-| platform-engineering | `docs/plans/phase-3a-capstan.md` | P3A-3 | wired (`symbol: Attest`) | `cli/cmd/cmd.ciDoctorDiagnose -> capstan/witness/conformance/conformance.checks` (syntax-only: `checks[name]()` calls a local map the syntax pass bound to the unexported package variable of that name) |
-| platform-engineering | `docs/plans/phase-3a-capstan.md` | P3A-31 | wired (`symbol: Strongest`) | the same edge |
-| platform-engineering | `docs/plans/phase-3a-capstan.md` | P3A-33 | wired (`symbol: Attest`) | the same edge |
+| platform | a coordination-plane plan | row A | wired (`symbol: Attest`) | `<cli doctor command> -> <conformance package>.checks` (syntax-only: `checks[name]()` calls a local map the syntax pass bound to the unexported package variable of that name) |
+| platform | a coordination-plane plan | row B | wired (`symbol: Strongest`) | the same edge |
+| platform | a coordination-plane plan | row C | wired (`symbol: Attest`) | the same edge |
 
 What each owner does:
 
@@ -98,9 +98,9 @@ What each owner does:
   TC-10): no typed call edge ever reaches a type or a constant, so the criterion cannot pass. The rows
   are unchecked with a reason naming RF-5; each re-closes when its row anchors on the function that
   does the work.
-- **A row whose product wiring was a mis-bound name** (P3A-3, P3A-31, P3A-33): no product binary
-  calls `witness.Attest` or `Registry.Strongest`. Call them from a product entry point, or declare
-  `library: true` with a reason that predates the claim. That fix is platform-engineering's.
+- **A row whose product wiring was a mis-bound name** (rows A, B and C): no product binary
+  calls the coordination plane's `Attest` or `Strongest`. Call them from a product entry point, or declare
+  `library: true` with a reason that predates the claim. That fix is platform's.
 - **A non-Go row with a `reachable_from`**: every call edge outside Go's typed pass is heuristic today (a
   syntax-only call or a file-resolved import match, `core.EdgeConfidenceOf`), so such a row cannot pass
   `edge_wired` until its language gains a typed pass. No fleet row carries one (the count above). Its

@@ -1,7 +1,7 @@
 {
  "tools": {
   "fathom_commit": "d41cdf1441d284c96e8517c10bcf581bb14811cb (pushclone HEAD; reading set incl. 1d7598e1 fixes)",
-  "surveyor": "pe-land/kits/test-kit ./cmd/surveyor",
+  "test-kit": "the test kit's checkout, its CLI",
   "go": "go1.26.3 darwin/arm64"
  },
  "ranges": {

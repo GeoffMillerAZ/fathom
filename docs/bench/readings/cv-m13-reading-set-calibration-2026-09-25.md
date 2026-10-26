@@ -67,7 +67,7 @@ never a shared store:
 1. **Fathom on itself**, two ranges chosen to match CV-M12's own dogfood
    ranges: `c75b70e8..4957b916` ("r1") and `5afeee42..78e508d3` ("r2"). Per
    range: `task tests:attest`'s exact shape (`go test -json ./...` piped
-   through test-kit's `surveyor go-test-json` adapter, commit-bound) for the
+   through the test kit's go-test-json adapter, commit-bound) for the
    attestation envelope
    (`method/attest.sh`); a second, separate `go test -json -coverpkg=./...
    -coverprofile=... ./...` run at the *same* head for execution truth
@@ -388,7 +388,7 @@ count (CV-68), classifying each changed function `attested`/`partial`/
 (CV-69), falling back to static reach with a named reason when it isn't
 (CV-70), reconciling `changed` against classified-plus-`unanalyzed`
 (CV-71), joining test cases to symbols by package when a bare name is
-ambiguous (CV-72), and Review Kit's `refactoring.uncovered-behaviour`
+ambiguous (CV-72), and the review kit's `refactoring.uncovered-behaviour`
 gate reading the new classes (CV-73, cross-repo, skipped here). None of
 CV-67..73 is implemented; this reading measured the *current*
 static-reach-only classifier against coverage taken as a separate,

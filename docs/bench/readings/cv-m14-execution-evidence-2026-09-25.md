@@ -50,8 +50,8 @@ opt-in."
 
 Built the fathom binary once from this checkout's `exec-evidence` branch
 HEAD (`1ccba65e`, the commit that carries the design §3.5 coverage feature,
-CV-67..72) via `go build -o bin/fathom ./cmd/fathom`. Built test-kit's
-`surveyor` once from the platform-engineering `kits/test-kit` checkout.
+CV-67..72) via `go build -o bin/fathom ./cmd/fathom`. Built the test kit's
+the test kit's CLI once from its checkout.
 
 For fathom's own range, cloned this checkout into a scratch directory and
 checked out `78e508d3` (the head; `5afeee42` is the base — this reads
@@ -64,7 +64,7 @@ matching the Taskfile's current implementation line for line: `go test
 -json -coverpkg=./... -coverprofile=coverage.out ./...`, then a
 hand-written `coverage.meta.json` (`schema: fathom.coverage/v1`, `commit`,
 `dirty: false`, `race: false`, `profile: coverage.out`, `passed: true`),
-`surveyor ingest --format go-test-json --commit <head>`, a scratch `fathom
+`test-kit ingest --format go-test-json --commit <head>`, a scratch `fathom
 ingest` (own index, own store, never the shared one), `fathom tests
 ingest`, then `fathom conserve --since 5afeee42 --json --coverage-meta
 coverage.meta.json`.

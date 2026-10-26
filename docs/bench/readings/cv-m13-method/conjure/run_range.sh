@@ -17,8 +17,8 @@ store=$C/workspace/tmp/c-$tag.sqlite; rm -f $store
 started=$(date -u +%Y-%m-%dT%H:%M:%SZ); echo $started > $CT/started.txt
 dirtyarg=""; [ -z "$(git status --porcelain)" ] || dirtyarg="--dirty"
 go test -json ./... > $out/go-test.jsonl; echo "go test exit $?" > $CT/go-test-exit.txt
-$B/surveyor ingest --format go-test-json --component conjure --suite unit --class unit --started-at "$started" --commit "$commit" $dirtyarg < $out/go-test.jsonl > $out/envelope.json
-echo "surveyor exit $?" >> $CT/go-test-exit.txt
+$B/test-kit ingest --format go-test-json --component svc-f --suite unit --class unit --started-at "$started" --commit "$commit" $dirtyarg < $out/go-test.jsonl > $out/envelope.json
+echo "test-kit exit $?" >> $CT/go-test-exit.txt
 cp $out/go-test.jsonl $out/envelope.json $CT/
 $B/fathom ingest --json --service conjure --path $C --store $store > $CT/ingest.json 2> $CT/ingest.stderr; echo "ingest exit $?" >> $CT/go-test-exit.txt
 $B/fathom tests ingest --service conjure --manifest $C --results $out --store $store > $CT/tests-ingest.out 2>&1; echo "tests ingest exit $?" >> $CT/go-test-exit.txt

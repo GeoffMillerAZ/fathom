@@ -12,7 +12,7 @@ At most 4,775 of the 12,249 rule rows the edit hook served from 2026-10-08 02:17
 |---|---:|---:|---:|
 | fathom | 3,040 | 3,821 | 55.7% |
 | app-kit | 2,827 | 1,762 | 38.4% |
-| platform-engineering | 58 | 290 | 83.3% |
+| platform | 58 | 290 | 83.3% |
 | workstation_as_code | 3 | 185 | 98.4% |
 | agentic-kit | 106 | 148 | 58.3% |
 | conjure | 5 | 4 | 44.4% |
