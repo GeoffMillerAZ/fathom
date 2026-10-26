@@ -120,6 +120,19 @@ class PreprocessorReceiptTests(unittest.TestCase):
 
 
 class PrivateLayoutTests(unittest.TestCase):
+    def test_every_non_summary_artifact_is_routed_below_private(self):
+        with tempfile.TemporaryDirectory() as temp:
+            work = Path(temp) / "replay"
+            work.mkdir()
+
+            layout = replay.make_private_layout(work)
+
+            private = work / "private"
+            self.assertEqual(set(work.iterdir()), {private})
+            for path in layout.values():
+                self.assertTrue(path == private or private in path.parents)
+            self.assertFalse(layout["database"].exists())
+
     def test_entrypoint_creates_fresh_nested_out_before_generation(self):
         class GenerationReached(RuntimeError):
             pass
