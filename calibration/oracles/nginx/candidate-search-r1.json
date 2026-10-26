@@ -1,0 +1,129 @@
+{
+  "date": "2026-10-26",
+  "purpose": "X-R4 source search; canonical L3 deferred by D19, not missing-tool ceiling",
+  "sources": [
+    {
+      "source_id": "crossplane-readme",
+      "sha256": "1afe3b638a77dffe9ace59b4853b07f05c4f861ddadc8527780c73231ddcbd96",
+      "bytes": 15553
+    },
+    {
+      "source_id": "gh-lsp",
+      "sha256": "6ed058746abc96fab73ebf873ff86f8ae935b1d37b5d5e48d9e577ecac87b860",
+      "bytes": 169384
+    },
+    {
+      "source_id": "gh-scip",
+      "sha256": "90bf27a9427f4547974efa03829efc0c12d604fac9a2390f1f9adae5d431d682",
+      "bytes": 6684
+    },
+    {
+      "source_id": "lsif-list",
+      "sha256": "68868168415bed91536d4895abdf94f9d73c18e4a83a4e1f750e7b7ee3336e99",
+      "bytes": 5463
+    },
+    {
+      "source_id": "lsp-readme",
+      "sha256": "82c6cdae4c509249bdbf87953417d1cc562a7acb6ff98511424da06aefe1fd14",
+      "bytes": 3531
+    },
+    {
+      "source_id": "native-debug",
+      "sha256": "ccf55dbd981852842a3a878f8ef8e865d950a086e662977f6d045c7dc1745b7b",
+      "bytes": 5644
+    },
+    {
+      "source_id": "native-flags",
+      "sha256": "58dc358c51562238aa4d004dd8f0c9fb06a5fef50f0af8384bdf0281ab364feb",
+      "bytes": 4664
+    },
+    {
+      "source_id": "npm-parser",
+      "sha256": "499954a31aa91e6226f723634d3117d85142e29eb69ca0d541e26dcf84c29ff8",
+      "bytes": 1929
+    },
+    {
+      "source_id": "pypi-crossplane",
+      "sha256": "5b163afdd3eeecc1a79893212dfcaf42232fc839561a907042c1be11e25bcd70",
+      "bytes": 19606
+    },
+    {
+      "source_id": "pypi-lsp",
+      "sha256": "fca3abcc9ed270a8a20ab54c765f258ee0d79fb7cfca11f4629100b4f6a692cc",
+      "bytes": 24999
+    },
+    {
+      "source_id": "scip-list",
+      "sha256": "fce767acbc4242c6f589fedf6f81a3089d6da766789e4d5a0a5673d2f6a927c0",
+      "bytes": 3176
+    },
+    {
+      "source_id": "tree-license",
+      "sha256": "5edebab3318dc8aabfaf032f62aec7c4a597745948102f5c4a4ab0e1dd218c72",
+      "bytes": 1071
+    }
+  ],
+  "results": [
+    {
+      "category": "owner_toolchain",
+      "candidate": "nginx",
+      "version": "1.31.6",
+      "license": "BSD-2-Clause",
+      "sources": [
+        "https://nginx.org/en/docs/switches.html",
+        "https://nginx.org/en/docs/debugging_log.html"
+      ],
+      "result": "-t validates; -T additionally dumps accepted source files; native lexer/upstream observers used at A. Include dump/ablation remains an available route held by D19, not absent."
+    },
+    {
+      "category": "SCIP_LSIF",
+      "candidate": "Sourcegraph recommended indexers and GitHub scip-nginx repository query",
+      "version": "lists queried 2026-10-26",
+      "license": "documentation search; no candidate indexer identified",
+      "sources": [
+        "https://sourcegraph.com/docs/code-navigation/writing-an-indexer",
+        "https://docs.sourcegraph.com/code_intelligence/references/indexers",
+        "https://api.github.com/search/repositories?q=scip-nginx"
+      ],
+      "result": "Current Sourcegraph list read through web tool: no nginx indexer. Legacy Sourcegraph LSIF URL redirects to that list; direct urllib routes 403, separate /docs/4.5 route inaccessible. SCIP README and Microsoft LSIF README also read. GitHub repository query returned one unrelated nginx Docker deployment; no producer found, not a global nonexistence proof.",
+      "github_hits": 1
+    },
+    {
+      "category": "language_servers",
+      "candidate": "nginx-language-server",
+      "version": "0.9.0",
+      "license": "GPL-3.0-only",
+      "sources": [
+        "https://pypi.org/pypi/nginx-language-server/json",
+        "https://raw.githubusercontent.com/pappasam/nginx-language-server/v0.9.0/README.md",
+        "https://api.github.com/search/repositories?q=nginx+language+server"
+      ],
+      "result": "Primary versioned README advertises completion/hover only, no definition/references/include resolution. Registry license is nonpermissive; not installed or executed. GitHub search also found editor clients and unrelated nginx application servers; no alternative native semantic oracle identified."
+    },
+    {
+      "category": "registry_parsers_AST",
+      "candidate": "crossplane / tree-sitter-nginx",
+      "version": "0.5.8 / 1.0.1",
+      "license": "Apache-2.0 / MIT",
+      "sources": [
+        "https://pypi.org/pypi/crossplane/0.5.8/json",
+        "https://raw.githubusercontent.com/nginxinc/crossplane/v0.5.8/README.md",
+        "https://registry.npmjs.org/tree-sitter-nginx/1.0.1",
+        "https://raw.githubusercontent.com/opa-oz/tree-sitter-nginx/47ade644d754cce57974aac44d2c9450e823d4f4/LICENSE"
+      ],
+      "result": "crossplane emits parsed AST with lines and includes indices; --combine expands includes. Canonical historical B rationale retained, with P-T1 third-party C caveat; native acceptance cross-check does not turn all parsed fields into owner evaluation. tree-sitter-nginx is MIT syntax grammar/editor queries, independent C, not native include/upstream binding evaluation; not built. Stronger native instrument is already measured."
+    },
+    {
+      "category": "runtime_tracing",
+      "candidate": "nginx debug log and read-only configuration observers",
+      "version": "1.31.6",
+      "license": "BSD-2-Clause",
+      "sources": [
+        "https://nginx.org/en/docs/debugging_log.html",
+        "calibration/oracles/nginx/instrument_tokens.py",
+        "calibration/oracles/nginx/instrument_source.py"
+      ],
+      "result": "Official --with-debug logging route exists; chosen complete lexer/upstream callbacks avoid task/server execution and preserve owner results. No dynamic require/call tracer is needed for this declarative syntax. Native -T include evaluation/ablation remains open after D19. tunnel_pass calls native upstream registration but is currently unclassified; whole-family refusal, trigger new subject or dialect support."
+    }
+  ]
+}
