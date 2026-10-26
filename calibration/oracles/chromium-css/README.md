@@ -86,3 +86,8 @@ changes or a 20-minute native timeout abort without writing a partial companion.
 Profiles/processes are closed on success, failure and SIGTERM. Controls are instrument
 proof only. The independent holdout pin stays in docs/bench/css-browser-holdout.yaml,
 outside the canonical corpus, and must not be tuned after its first reading.
+
+For a pooled audit, all subjects share the protocol's 20-minute actual-execution
+budget. Set CSS_BROWSER_TIMEOUT_MS to the remaining positive milliseconds before
+each invocation (maximum 1200000), subtract completed native invocation wall time,
+and stop when no budget remains. Time waiting for the load gate is excluded.

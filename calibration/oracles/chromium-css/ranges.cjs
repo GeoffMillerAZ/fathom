@@ -110,7 +110,11 @@ async function rangeCompanion(binary, pin, subject, primary, scratch, dirs = [],
   };
   const onTerm = () => cancel(new Error('SIGTERM interrupted native CSS range run'));
   process.once('SIGTERM', onTerm);
-  const deadline = setTimeout(() => cancel(new Error('native CSS range run exceeded 20 minutes')), TIME_LIMIT_MS);
+  const budgetMs = process.env.CSS_BROWSER_TIMEOUT_MS === undefined ? TIME_LIMIT_MS : Number(process.env.CSS_BROWSER_TIMEOUT_MS);
+  if (!Number.isInteger(budgetMs) || budgetMs <= 0 || budgetMs > TIME_LIMIT_MS) {
+    throw new Error('CSS_BROWSER_TIMEOUT_MS must be a positive integer no greater than 1200000');
+  }
+  const deadline = setTimeout(() => cancel(new Error('native CSS range run exceeded its bounded execution budget')), budgetMs);
   const check = () => { if (cancelled) throw cancelled; };
   const stats = { files: files.length, candidates: 0, accepted: 0, rejected: 0,
     total: totals, attested: { selector: 0, custom_property: 0, keyframes: 0 } };
