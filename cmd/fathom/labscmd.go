@@ -128,9 +128,12 @@ func cmdLabsFire(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	if *write {
-		for flagName, value := range map[string]string{"--run-id": *runID, "--criterion": *criterion, "--prereg-sha": *preregSHA} {
-			if strings.TrimSpace(value) == "" {
-				fmt.Fprintf(stderr, "error: labs fire --write requires %s\n", flagName)
+		// A fixed order, so the first missing flag named is always the
+		// same one: map iteration order must never reach output.
+		required := []struct{ name, value string }{{"--run-id", *runID}, {"--criterion", *criterion}, {"--prereg-sha", *preregSHA}}
+		for _, flag := range required {
+			if strings.TrimSpace(flag.value) == "" {
+				fmt.Fprintf(stderr, "error: labs fire --write requires %s\n", flag.name)
 				return 1
 			}
 		}
