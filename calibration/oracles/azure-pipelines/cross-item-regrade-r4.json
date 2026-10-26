@@ -1,0 +1,216 @@
+{
+  "openapi": {
+    "subjects": 4,
+    "before": {
+      "counts": {
+        "fathom_defs": 3372,
+        "kind_equal": 3372,
+        "matched": 3372,
+        "oracle_defs": 3372,
+        "ref_fathom": 3805,
+        "ref_fathom_in_truth": 3805,
+        "ref_truth": 3805,
+        "ref_truth_found": 3805,
+        "xref_fathom": 25,
+        "xref_fathom_in_truth": 25,
+        "xref_truth": 25,
+        "xref_truth_found": 25
+      },
+      "metrics": {
+        "ref_precision": 1,
+        "ref_recall": 1,
+        "sym_precision": 1,
+        "sym_recall": 1,
+        "xref_precision": 1,
+        "xref_recall": 1
+      },
+      "metric_tiers": {
+        "ref_precision": "C",
+        "ref_recall": "C",
+        "sym_precision": "C",
+        "sym_recall": "C",
+        "xref_precision": "C",
+        "xref_recall": "C"
+      },
+      "grade": {
+        "L1": "good",
+        "L2": "good",
+        "L3": "good",
+        "L4": "not-applicable"
+      },
+      "level_met": "L3",
+      "excluded_by_kind": {}
+    },
+    "after": {
+      "counts": {
+        "fathom_defs": 3372,
+        "kind_equal": 3372,
+        "matched": 3372,
+        "oracle_defs": 3372,
+        "ref_fathom": 3805,
+        "ref_fathom_in_truth": 3805,
+        "ref_truth": 3805,
+        "ref_truth_found": 3805,
+        "xref_fathom": 25,
+        "xref_fathom_in_truth": 25,
+        "xref_truth": 25,
+        "xref_truth_found": 25
+      },
+      "metrics": {
+        "ref_precision": 1,
+        "ref_recall": 1,
+        "sym_precision": 1,
+        "sym_recall": 1,
+        "xref_precision": 1,
+        "xref_recall": 1
+      },
+      "metric_tiers": {
+        "ref_precision": "C",
+        "ref_recall": "C",
+        "sym_precision": "C",
+        "sym_recall": "C",
+        "xref_precision": "C",
+        "xref_recall": "C"
+      },
+      "grade": {
+        "L1": "good",
+        "L2": "good",
+        "L3": "good",
+        "L4": "not-applicable"
+      },
+      "level_met": "L3",
+      "excluded_by_kind": {}
+    },
+    "differences": [],
+    "baseline_commit": "c86095291",
+    "baseline_instrument_commit": "953c6b487",
+    "candidate_commit": "56529ac87",
+    "subject_pins": [
+      {
+        "name": "Azure/azure-rest-api-specs",
+        "sha": "06f410c3524282f63f72f7f332df5423b3d52f31"
+      },
+      {
+        "name": "OAI/OpenAPI-Specification",
+        "sha": "b8953109f2eb4d9eebcc7f702f70456b2e074567"
+      },
+      {
+        "name": "Redocly/openapi-starter",
+        "sha": "9cf62a576cac37ac90c875337fdebb3f09a072c6"
+      },
+      {
+        "name": "kubernetes/kubernetes",
+        "sha": "ad950d1cc78b0183c476bd4d3f1934c104229727"
+      }
+    ]
+  },
+  "cloudformation": {
+    "subjects": 4,
+    "before": {
+      "counts": {
+        "fathom_defs": 8857,
+        "kind_equal": 8857,
+        "matched": 8857,
+        "oracle_defs": 8857,
+        "ref_fathom": 8093,
+        "ref_fathom_in_truth": 8093,
+        "ref_truth": 8093,
+        "ref_truth_found": 8093,
+        "xref_fathom": 427,
+        "xref_fathom_in_truth": 427,
+        "xref_truth": 427,
+        "xref_truth_found": 427
+      },
+      "metrics": {
+        "ref_precision": 1,
+        "ref_recall": 1,
+        "sym_precision": 1,
+        "sym_recall": 1,
+        "xref_precision": 1,
+        "xref_recall": 1
+      },
+      "metric_tiers": {
+        "ref_precision": "A",
+        "ref_recall": "A",
+        "sym_precision": "A",
+        "sym_recall": "A",
+        "xref_precision": "C",
+        "xref_recall": "C"
+      },
+      "grade": {
+        "L1": "excellent",
+        "L2": "excellent",
+        "L3": "good",
+        "L4": "not-applicable"
+      },
+      "level_met": "L3",
+      "excluded_by_kind": {
+        "fathom:TelemetryIdentity": 86
+      }
+    },
+    "after": {
+      "counts": {
+        "fathom_defs": 8857,
+        "kind_equal": 8857,
+        "matched": 8857,
+        "oracle_defs": 8857,
+        "ref_fathom": 8093,
+        "ref_fathom_in_truth": 8093,
+        "ref_truth": 8093,
+        "ref_truth_found": 8093,
+        "xref_fathom": 427,
+        "xref_fathom_in_truth": 427,
+        "xref_truth": 427,
+        "xref_truth_found": 427
+      },
+      "metrics": {
+        "ref_precision": 1,
+        "ref_recall": 1,
+        "sym_precision": 1,
+        "sym_recall": 1,
+        "xref_precision": 1,
+        "xref_recall": 1
+      },
+      "metric_tiers": {
+        "ref_precision": "A",
+        "ref_recall": "A",
+        "sym_precision": "A",
+        "sym_recall": "A",
+        "xref_precision": "C",
+        "xref_recall": "C"
+      },
+      "grade": {
+        "L1": "excellent",
+        "L2": "excellent",
+        "L3": "good",
+        "L4": "not-applicable"
+      },
+      "level_met": "L3",
+      "excluded_by_kind": {
+        "fathom:TelemetryIdentity": 86
+      }
+    },
+    "differences": [],
+    "baseline_commit": "c86095291",
+    "baseline_instrument_commit": "953c6b487",
+    "candidate_commit": "56529ac87",
+    "subject_pins": [
+      {
+        "name": "aws-cloudformation/aws-cloudformation-templates",
+        "sha": "a0f43bc6d20813052892546f445037cf84c75b54"
+      },
+      {
+        "name": "aws-powertools/powertools-lambda-python",
+        "sha": "4770746a8a46ecbd89aa8e09363662983937919b"
+      },
+      {
+        "name": "aws-samples/serverless-patterns",
+        "sha": "a6cb0af285a2c326cbc35acd3ee5dc0c659db75d"
+      },
+      {
+        "name": "aws/serverless-application-model",
+        "sha": "e0f7eba2cfeb53242daa1f3f626a85d1db20c7a4"
+      }
+    ]
+  }
+}

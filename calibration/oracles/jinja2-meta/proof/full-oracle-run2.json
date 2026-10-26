@@ -1,0 +1,216 @@
+{
+  "dialect": "jinja2",
+  "kind": "language",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "excellent",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-10-26",
+  "fathom_commit": "85b73ee11",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "openstack/kolla",
+      "sha": "27e42412114c29669f70a298f89c54abc6a7f4ac",
+      "files": 189,
+      "bytes": 192662,
+      "counts": {
+        "call_fathom": 659,
+        "call_fathom_in_truth": 659,
+        "call_truth": 659,
+        "call_truth_found": 659,
+        "callables": 13,
+        "callables_signed": 13,
+        "fathom_defs": 1021,
+        "file_edges_agree": 188,
+        "file_edges_fathom": 188,
+        "file_edges_truth": 188,
+        "import_edges_agree": 188,
+        "import_edges_fathom": 188,
+        "import_edges_truth": 188,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "imports": 188,
+        "imports_in_repo": 188,
+        "imports_resolved_agree": 188,
+        "kind_equal": 1021,
+        "matched": 1021,
+        "oracle_defs": 1021,
+        "range_eligible": 1021,
+        "range_ok": 1021
+      },
+      "families": {
+        "calls": "A",
+        "file_edges": "A",
+        "imports": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "macro",
+        "section",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "fathom:JinjaTemplate": 189
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 1,
+        "extract_ms": 63.065,
+        "extract_cpu_ms": 57.08000000000002,
+        "max_file_ms": 2,
+        "peak_module_pages": 277,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "openstack/kolla-ansible",
+      "sha": "4b493ef36ace2b90257ecf94feb00e2c6e8014c9",
+      "files": 331,
+      "bytes": 541914,
+      "counts": {
+        "call_fathom": 28,
+        "call_fathom_in_truth": 28,
+        "call_truth": 28,
+        "call_truth_found": 28,
+        "callables": 3,
+        "callables_signed": 3,
+        "fathom_defs": 103,
+        "file_edges_agree": 1,
+        "file_edges_fathom": 1,
+        "file_edges_truth": 1,
+        "import_edges_agree": 1,
+        "import_edges_fathom": 1,
+        "import_edges_truth": 1,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "imports": 1,
+        "imports_in_repo": 1,
+        "imports_resolved_agree": 1,
+        "kind_equal": 103,
+        "matched": 103,
+        "oracle_defs": 103,
+        "range_eligible": 103,
+        "range_ok": 103
+      },
+      "families": {
+        "calls": "A",
+        "file_edges": "A",
+        "imports": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "macro",
+        "section",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "fathom:JinjaTemplate": 331
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 2,
+        "extract_ms": 104.91399999999996,
+        "extract_cpu_ms": 92.10399999999997,
+        "max_file_ms": 2,
+        "peak_module_pages": 279,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "jinja2.meta.find_referenced_templates",
+      "version": "3.1.6"
+    }
+  ],
+  "metrics": {
+    "call_precision": 1,
+    "call_recall": 1,
+    "def_mapping": null,
+    "file_edge_precision": 1,
+    "file_edge_recall": 1,
+    "import_resolution": 1,
+    "kind_agreement": 1,
+    "range_agreement": 1,
+    "signature_coverage": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "A",
+    "call_recall": "A",
+    "file_edge_precision": "A",
+    "file_edge_recall": "A",
+    "import_resolution": "A",
+    "kind_agreement": "A",
+    "range_agreement": "A",
+    "signature_coverage": "A",
+    "sym_precision": "A",
+    "sym_recall": "A"
+  },
+  "required_kinds": [
+    "macro",
+    "section"
+  ],
+  "kind_intersection": [
+    "macro",
+    "section",
+    "variable"
+  ],
+  "counts": {
+    "call_fathom": 687,
+    "call_fathom_in_truth": 687,
+    "call_truth": 687,
+    "call_truth_found": 687,
+    "callables": 16,
+    "callables_signed": 16,
+    "fathom_defs": 1124,
+    "file_edges_agree": 189,
+    "file_edges_fathom": 189,
+    "file_edges_truth": 189,
+    "import_edges_agree": 189,
+    "import_edges_fathom": 189,
+    "import_edges_truth": 189,
+    "import_oracle_out_of_scope": 0,
+    "import_oracle_unpaired": 0,
+    "imports": 189,
+    "imports_in_repo": 189,
+    "imports_resolved_agree": 189,
+    "kind_equal": 1124,
+    "matched": 1124,
+    "oracle_defs": 1124,
+    "range_eligible": 1124,
+    "range_ok": 1124
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 3,
+    "throughput_mb_s": 4.92,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 4.37,
+    "max_file_ms": 2,
+    "peak_module_pages": 279,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:JinjaTemplate": 520
+  },
+  "notes": [
+    "file_edge_precision and file_edge_recall measured against an import dump's (file, imported file) pairs, there being no SCIP index: the truth is what each file's import statements name, not the files its references reach as a SCIP index's cross-file edges are, so a file reached without an import of its own (a file another one required, an autoloaded constant) is outside the truth and a resolved edge to it counts against precision, while a file imported and never referenced is in it (LB-F57)",
+    "import_resolution: 189 of 189 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 1 (189 of 189) and recall 1 (189 of 189); 0 of 189 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
+    "openstack/kolla-ansible: include-path resolution read 0 compile database(s); 0 quoted include(s) resolved only rooted at an ancestor directory of the includer; header-prototype binding bound 0 call(s) (caller file and name) to the one file defining the function (0 of them chosen among definers by the files the build compiles), left 0 unbound for two or more definers, 0 for no definer among the files read and 0 for definers the build does not compile",
+    "openstack/kolla: include-path resolution read 0 compile database(s); 0 quoted include(s) resolved only rooted at an ancestor directory of the includer; header-prototype binding bound 0 call(s) (caller file and name) to the one file defining the function (0 of them chosen among definers by the files the build compiles), left 0 unbound for two or more definers, 0 for no definer among the files read and 0 for definers the build does not compile",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

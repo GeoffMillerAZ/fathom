@@ -21,7 +21,12 @@ Run, one subject at a time:
   search path is this run's configuration, as `-I` is for the Ruby require dump; a name
   that resolves to no file of the subject is dropped. A computed name (`{% include x %}`)
   is counted on stderr, never a pair.
-- `calls`: a call whose callee is a bare name (a macro, a global) or an attribute (`forms.input()`, `x.items()`), by the callee's name.
+- `calls`: a call whose callee is a bare name (a macro, a global) or an attribute (`forms.input()`, `x.items()`), by the qualified AST callee name. Namespace aliases are retained (`forms.input`),
+  as are chained attributes. Argument and index contents are omitted in receivers
+  (`factory().input`, `values[].input`); a parenthesized filter result has no
+  static receiver name and is `().method`. Unsupported receiver shapes fail the oracle
+  rather than dropping a call. Bare built-in globals are excluded, but a same-named
+  member such as `forms.range()` is a call.
   The caller is `<module>`: a macro's body is not a definition range in the tags dialect.
 - Files Jinja cannot parse (a Salt `import_yaml`, an Ansible-only tag) are counted on
   stderr and left out.
@@ -32,3 +37,19 @@ Run, one subject at a time:
       {"command": "python3", "args": ["-I", "calibration/oracles/jinja2-meta/jinja2_meta_dump.py",
        "-subject", "{subject}", "-pythonpath", "workspace/tools/jinja2pkg", "-out", "{out}"],
        "format": "tool"}}
+
+Independent adapter regression controls (Jinja 3.1.6 installed as above):
+
+    python3 calibration/oracles/jinja2-meta/test_dump.py -pythonpath workspace/tools/jinja2pkg
+
+
+Grammar syntax controls (independent of the adapter controls):
+
+    python3 -I calibration/oracles/jinja2-meta/syntax_controls.py -pythonpath workspace/tools/jinja2pkg
+    go test -race -count=1 -run TestJinja2SyntaxControls ./internal/extractor
+
+`syntax_controls.py -write` regenerates only Jinja's verdicts. The Go test uses
+actual embedded WASM and the harness ERROR-or-MISSING query. The JSON explicitly
+records one pre-existing loop over-acceptance, instead of calling it oracle
+agreement. Full patched/unpatched parse-gate and authored stress reproduction
+are documented in [PATCH-PROOF.md](PATCH-PROOF.md).
