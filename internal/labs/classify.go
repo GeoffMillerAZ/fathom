@@ -75,7 +75,21 @@ func ClassifyDecisionPoint(p Point) (Label, Reason) {
 	if call.Kind == "skill" {
 		return Unclassified, ReasonNoPromptText
 	}
-	if verb, ok := mcpVerb(call.Name); ok {
+	verb, isVerb := mcpVerb(call.Name)
+	// A file read naming a line range re-reads a cited range; one naming
+	// no range is open discovery. Both read_source and Read take an
+	// optional numeric window beside the path, and Shape carries the
+	// argument types with no keys or values, so the pair is readable
+	// without any text. This is the one surface whose own call and its
+	// substitute are classified by the same rule, which is what makes
+	// its recall a reading rather than an artefact of the framing.
+	if call.Name == "Read" || isVerb && verb == "read_source" {
+		if boundedRead(call.Shape) {
+			return ShouldFire, ReasonBoundedReread
+		}
+		return ShouldNot, ReasonOpenDiscovery
+	}
+	if isVerb {
 		if definitionCheckVerbs[verb] {
 			return Unclassified, ReasonNeedsDefinitionCheck
 		}
@@ -84,25 +98,36 @@ func ClassifyDecisionPoint(p Point) (Label, Reason) {
 	if editTools[call.Name] {
 		return Unclassified, ReasonHookSeam
 	}
-	if call.Name == "Read" {
-		// A Read naming a line range re-reads a cited range; a Read of a
-		// whole file is open discovery. Shape carries the argument types
-		// with no keys or values, so the pair is readable without text.
-		if boundedRead(call.Shape) {
-			return ShouldFire, ReasonBoundedReread
-		}
-		return ShouldNot, ReasonOpenDiscovery
-	}
 	if substituteTools[call.Name] {
 		return Unclassified, ReasonNeedsArgument
 	}
 	return ShouldNot, ReasonNoCompetingSurface
 }
 
-// boundedRead reports a Read whose arguments name a numeric window beside
-// the path: "object{number,number,string}" and its one-bound forms.
+// boundedRead reports a file read whose arguments name a numeric window
+// beside the path: "object{number,number,string}", read_source's
+// "object{number,number,string,string}" and their one-bound forms.
 func boundedRead(shape string) bool {
 	return strings.HasPrefix(shape, "object{number,") && strings.HasSuffix(shape, "string}")
+}
+
+// RuleSurface is the shipped surface a decided rule concerns, or "" when
+// the rule names no measurable surface. ReasonSubagentSpawn's lab is a
+// hook surface, measured from AD-20's log rather than from calls, so it
+// has no surface here (owner ruling R3).
+func RuleSurface(r Reason) string {
+	switch r {
+	case ReasonBoundedReread, ReasonOpenDiscovery:
+		return "mcp:read_source"
+	}
+	return ""
+}
+
+// UniversalShouldNot reports a should-not reason that holds for every
+// shipped surface: at such a point no fathom verb should fire, so the
+// point belongs to every surface's quiet margin.
+func UniversalShouldNot(r Reason) bool {
+	return r == ReasonNoCompetingSurface
 }
 
 // SurfaceKey is the shipped surface key a call names, built as the closure

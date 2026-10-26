@@ -20,6 +20,8 @@ func TestClassifyDecisionPointRules(t *testing.T) {
 		{"near miss: a plain tool call is no spawn", Point{Call: Call{Kind: "tool_use", Name: "TodoWrite", Shape: "object{array[object{string,string}]}"}}, ShouldNot, ReasonNoCompetingSurface},
 		{"a Grep needs its query text", Point{Call: Call{Kind: "tool_use", Name: "Grep", Shape: "object{string}"}}, Unclassified, ReasonNeedsArgument},
 		{"near miss: a WebFetch competes with no surface", Point{Call: Call{Kind: "tool_use", Name: "WebFetch", Shape: "object{string,string}"}}, ShouldNot, ReasonNoCompetingSurface},
+		{"a bounded read_source is a cited re-read", Point{Call: Call{Kind: "tool_use", Name: "mcp__fathom__read_source", Shape: "object{number,number,string,string}"}}, ShouldFire, ReasonBoundedReread},
+		{"near miss: a whole-file read_source is open discovery", Point{Call: Call{Kind: "tool_use", Name: "mcp__fathom__read_source", Shape: "object{string,string}"}}, ShouldNot, ReasonOpenDiscovery},
 		{"a fathom verb's own rule reads its argument", Point{Call: Call{Kind: "tool_use", Name: "mcp__fathom__find_symbol", Shape: "object{string}"}}, Unclassified, ReasonNeedsArgument},
 		{"a blast_radius point needs a definition check", Point{Call: Call{Kind: "tool_use", Name: "mcp__fathom__blast_radius", Shape: "object{string}"}}, Unclassified, ReasonNeedsDefinitionCheck},
 		{"a skill point needs the prompt", Point{Call: Call{Kind: "skill", Name: "fathom-plan", Shape: "object{string}"}}, Unclassified, ReasonNoPromptText},
