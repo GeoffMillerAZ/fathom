@@ -5,7 +5,7 @@
 > of the observations it holds, much of it written while the project was still
 > named sextant.
 
-A living log of how sextant's MCP tools behave **in real fleet sessions** (throughline,
+A living log of how sextant's MCP tools behave **in real fleet sessions** (svc-a,
 agentic-kit, app-kit, sextant). Kept current by whoever is dogfooding the index: every
 session that hits a recall gap, a latency cliff, a contract mismatch, or a pleasant
 surprise records it here while the evidence is fresh. This is the feeder queue for
@@ -90,7 +90,7 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
 - **Symptom:** the 16-repo verification sweep found four cross-check
   inconsistencies between `fathom capabilities` and `fathom doctor` run
   against the SAME repo at the same moment:
-  1. workstation_as_code: capabilities reports obligation rules absent
+  1. svc-j: capabilities reports obligation rules absent
      while doctor's `obligations_served` PASSes.
   2. app-kit: doctor's summary says "4 capabilities operating" while the
      capabilities verb says 3 of 9.
@@ -199,7 +199,7 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
      not under the repo being doctored. Hooks were in fact firing.
   3. `obligations_served FAIL` because it probes `CLAUDE.md` specifically,
      and this repo's compiled rules are code-scoped (`**/*.go`). Verified
-     directly: the same service serves **6 rules on `cmd/conjure/main.go`**.
+     directly: the same service serves **6 rules on `cmd/svc-f/main.go`**.
      The message is honest about the ambiguity ("or CLAUDE.md specifically
      is not in any compiled rule's scope"), but as a *check* it reports FAIL
      for a correctly-working install.
@@ -470,9 +470,9 @@ hypothesis has not been tested, and that line stays uncitable until it is.
   since 2026-07-18T05:09Z**, while `hooks_firing`-style traffic evidence
   makes the stack look perfectly healthy.
 - **Evidence (verbatim probes, 2026-07-24):**
-  - `list_services` (live daemon): `agentic-kit, app-kit, car-assistant,
-    crossplane-platform, fathom, geoffmiller-cloud, growing-gardens-bi,
-    resume_as_code, throughline` — no `sextant`.
+  - `list_services` (live daemon): `agentic-kit, app-kit, svc-e,
+    crossplane-platform, fathom, svc-b, svc-d,
+    svc-c, svc-a` — no `sextant`.
   - Call-log sample (`workspace/logs/mcp-calls.jsonl`, 7,630 rows):
     edit-hook-origin `obligations` rows split `service=sextant n=1035
     (first 2026-07-16T16:17:39Z, last 2026-07-24T06:08:27Z)` vs
@@ -860,7 +860,7 @@ hypothesis has not been tested, and that line stays uncitable until it is.
 
 ### O1 — `outline` ignored its "repo-relative" contract; needed an absolute path — FIXED
 - **Tool:** `outline`. **Severity:** high (core discovery tool silently returned nothing).
-- **Symptom:** `outline{service:"throughline", file:"app/participants/participant.go"}`
+- **Symptom:** `outline{service:"svc-a", file:"app/participants/participant.go"}`
   → `{"symbols":[]}`, as if the file weren't indexed.
 - **Evidence:** `find_symbol{name:"Participant"}` returned the symbol with
   `file_path:"/Volumes/.../app/participants/participant.go", tier:"verified"` (so the file
@@ -950,7 +950,7 @@ hypothesis has not been tested, and that line stays uncitable until it is.
 ### O5 — one Nix/devbox symlink aborted a whole-repo ingest — FIXED
 - **Tool:** `ingest` (LocalConnector). **Severity:** high — a single stray symlink made
   an entire repo un-indexable, so the repo silently never joined the fleet.
-- **Symptom:** ingesting `resume_as_code` failed hard:
+- **Symptom:** ingesting `svc-c` failed hard:
   `error: ingest failed: fusion: fetch: read .../.devbox/nix/profile/default-9-link: is a directory`.
   No symbols stored; the repo could not be added as a service at all.
 - **Evidence (verbatim probe):** the failing path is a **symlink to a directory** (a Nix
@@ -962,9 +962,9 @@ hypothesis has not been tested, and that line stays uncitable until it is.
   including symlinks/devices/sockets/pipes — none of which `os.ReadFile` can read as a
   source file.
 - **Fix (this commit):** `Discover` now gates on `d.Type().IsRegular()`, skipping all
-  non-regular entries. `resume_as_code` went from a hard abort to **1,160 symbols, 0
+  non-regular entries. `svc-c` went from a hard abort to **1,160 symbols, 0
   skipped**, with the Nix store behind the link correctly excluded (not indexed as noise).
-  Regression: `TestLocalConnector_Discover_SkipsSymlinkToDir`. `resume_as_code` added to
+  Regression: `TestLocalConnector_Discover_SkipsSymlinkToDir`. `svc-c` added to
   `scripts/reingest-fleet.sh`.
 - **Status:** fixed. **Impact:** any real-world repo with Nix/devbox, vendored symlinks,
   or build-tool profile links now ingests instead of aborting.
@@ -973,7 +973,7 @@ hypothesis has not been tested, and that line stays uncitable until it is.
 
 ## Confirmed-good (keep regression coverage)
 
-- **`ingest` hash-gated refresh** — `ingest{service:"throughline"}` at session start
+- **`ingest` hash-gated refresh** — `ingest{service:"svc-a"}` at session start
   returned `{"ok":true}` fast with no rework when clean, as documented. Single-writer lock
   behaves.
 - **`find_symbol` on types/consts/free funcs and qualified methods** — exact-name lookup
