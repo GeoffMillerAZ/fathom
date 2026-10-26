@@ -23,6 +23,15 @@ One per reading. The kill each one carries is in the bars section.
 
 - **H-M0 (census).** At least 10% of the three frameworks' items are fully `code-answerable` at a commit: every
   part is answerable by a fact kind fathom stores or a WAE- row plans.
+  - **KEEP denominator:** the AWS, Azure and Google rows of `docs/bench/readings/platform/census-items.csv` at the
+    commit that merges this file. The 6 PRR areas are reported separately and never counted.
+  - **AWS pin:** the 2024-06-27 release, read from the MIT-0 mirror at `b933408`, for reproducibility. The live
+    document-revisions page lists a later major update (2024-11-06), and the `2025-02-25` framework path resolves.
+    This is information, not a reading input. Revisit when a mirror of the newer AWS release exists or an adopter
+    names the newer release.
+  - **Weighting:** the bar reads on the pooled framework rows. AWS supplies 308 of the 404 framework rows (about
+    76%), Azure 59 and Google 37. The reading reports each framework's `code-answerable` share beside the pooled
+    share, so a pooled KEEP carried by AWS alone is visible.
 - **H-M1 (baseline).** No direction is predicted. The reading measures what v0.20's verbs answer on each
   `code-answerable` item at the pins, beside grep. Later readings are compared with it.
 - **H-M2 (delta replay).** A per-commit concern delta over Kubernetes facts matches the structural-YAML oracle's
@@ -71,7 +80,7 @@ directories, mesh `VirtualService` resources).
 | Subject | Mesh-only retries | Helm-templated values | Kustomize overlays | Notes |
 |---|---|---|---|---|
 | opentelemetry-demo | no | no | no | At the pin the repository carries Compose files and no Kubernetes manifests (deviation 5) |
-| microservices-demo | partial: `kustomize/components/service-mesh-istio/` routes through a `VirtualService` with no explicit retry stanza | yes: `helm-chart/` | yes: `kustomize/components/` (18 component kustomizations) | Covers all three strata |
+| microservices-demo | partial: `kustomize/components/service-mesh-istio/` routes through a `VirtualService` with no explicit retry stanza | yes: `helm-chart/` | yes: `kustomize/components/` (15 component kustomizations) | Helm and Kustomize; mesh routing only, pending deviation 6 |
 | kube-prometheus | no | no | no: one root `kustomization.yaml` over jsonnet-generated `manifests/` | Alert-rule subject for WAE-M0 |
 | istio samples | partial: `VirtualService` routing, no explicit retry stanza found at the pin | yes: `samples/ambient-argo/tag-chart/` | no | Mesh stratum |
 | terraform-aws-eks | no | no | no | IaC subject; Terraform facts only |
@@ -96,9 +105,10 @@ One ordering applies wherever a draw is made. Candidates are ranked by the lower
   mesh routing, Helm-templated, Kustomize overlay, or plain. Draw in seed order, filling each of the three T5
   strata to an equal quota of 15 commits where its population allows, then fill from plain commits until the total
   is at least 60. A stratum with a population under its quota contributes all it has, and the shortfall is recorded.
-  No commit is drawn twice.
+  No commit is drawn twice. For the istio subject only paths under `samples/` count, and for the alternate only
+  `charts/opentelemetry-demo/`.
 - **PLT-M3 (receipt classes).** The 3 subjects are microservices-demo, flux2-kustomize-helm-example and the istio
-  samples, which together cover all three strata. Every subject-and-kind pair of PLT-7 on those three is graded.
+  samples, which together cover Helm and Kustomize, and mesh routing only pending deviation 6. Every subject-and-kind pair of PLT-7 on those three is graded.
   Nothing is sampled.
 - **PLT-M5 (skills lab).** Prompts are drawn in seed order over the census `item_id`s that PLT-M0 classed
   `code-answerable` or `partly`. Draws alternate train, test, train, test. The fresh test draw for the one allowed
@@ -133,6 +143,9 @@ Each bar below is copied verbatim from `docs/plans/platform-engineering.md`.
   under 0.6. KEEP when at least 10% of the three frameworks' items read fully `code-answerable` (`partly` is
   reported, never counted); CUT removes PLT-11 under a `gone:` row and refuses PLT-D9; either way the item-to-kind
   table is handed to the review kit as data"
+  - Reading rules for this bar (H-M0 holds the detail): "the three frameworks' items" means the pooled AWS, Azure
+    and Google rows of `census-items.csv`; PRR areas are reported separately, never counted; each framework's share
+    is reported beside the pooled share; AWS stays pinned to 2024-06-27.
 - **PLT-M1:** "for each `code-answerable` item of PLT-M0, whether v0.20's verbs (`symbol_context`, `search`,
   `obligations`, `review --since`) return an answer that agrees with WAE-M0's labels and whose anchors pass `receipt
   verify`, beside grep's; builds nothing; the reading later ones are compared with"
@@ -163,9 +176,9 @@ the drop is logged here. Nothing is excluded after a reading starts.
 ## Decision models
 
 PLT-M0 is the one reading that asks a typed question through the hexagonal port: kind `choice`, over
-`code-answerable`, `partly` and `attestation-only`, per census item, with a named provider. The deterministic
-fallback is provider `none`, which answers `unclassified` for every item. Its ledger row sits beside the provider's
-row. There is no opt-out beyond not running PLT-M0. The measurement is the 20% owner audit: the reading is void under
+`code-answerable`, `partly` and `attestation-only`, per census item, with a named provider. With provider
+`none` no call is made and no answer is returned. The deterministic fallback writes `unclassified` for every item,
+and that ledger row sits beside the provider's. There is no opt-out beyond not running PLT-M0. The measurement is the 20% owner audit: the reading is void under
 kappa 0.6. No other reading here asks the port.
 
 ## Deviation log
@@ -178,9 +191,10 @@ kappa 0.6. No other reading here asks the port.
    match the plan pattern. PLT-L0 stays open.
 3. **No `platform.json`.** `#Prereg` (`schema/bench/schema.cue`) models arm comparisons (arms, a baseline arm,
    strata, a per-hypothesis MEI and Holm's family at alpha 0.05). It cannot carry Wilson lower bounds, kappa or a zero false-clean bar, so this prereg is prose only.
-4. **Census sources.** The framework hosts did not resolve from the session that drafted this file. PLT-M0's
-   inventory (`docs/bench/readings/platform/census.md`) was read from pinned git mirrors and web-search listings,
-   and its count discrepancies are recorded there.
+4. **Census sources.** The AWS framework hosts did not resolve from the session that drafted the census, so AWS is
+   read from the pinned MIT-0 mirror. Azure and Google were re-read directly from the live pages on 2026-10-26. The
+   count discrepancies, including the superseded OE numbering in the WARP file, are recorded in
+   `docs/bench/readings/platform/census.md`.
 5. **opentelemetry-demo has no Kubernetes manifests at its pin.** The tree carries Compose files only. The demo's
    Kubernetes workloads live in the opentelemetry-helm-charts chart (the alternate). The owner chooses at sign-off:
    keep #1 for Compose-only probes and add the alternate (2 subjects for open-telemetry, within C7), or replace #1
