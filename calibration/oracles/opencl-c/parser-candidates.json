@@ -1,0 +1,217 @@
+{
+  "schema": "opencl-c-parser-candidates-v1",
+  "date": "2026-10-26",
+  "scope": "Pinned parser/source inventory and one bounded stock scip-clang probe. The two independent syntax-parser candidates remain untried. No language level or ceiling is established.",
+  "ceiling": null,
+  "candidates": [
+    {
+      "id": "pycparserext",
+      "kind": "independent OpenCL C syntax parser",
+      "status": "UNTRIED",
+      "version": "2026.1",
+      "license": "MIT",
+      "license_sha256": "2fd4003583e4c5124dc1bd13385700f247d9502cf5b07da03c44d96d3238e004",
+      "python_requires": "~=3.10",
+      "source": {
+        "repository": "https://github.com/inducer/pycparserext",
+        "tag": "v2026.1",
+        "commit": "b31efb8b18186c811670ccdc9c25e63caa9454d5",
+        "tag_api": "https://api.github.com/repos/inducer/pycparserext/tags?per_page=100",
+        "tag_api_raw_sha256": "a9a4c971249353b1fea77c059ad800ddda0dadcdf8c4df630548fdff9b8be62d",
+        "archive_url": "https://github.com/inducer/pycparserext/archive/b31efb8b18186c811670ccdc9c25e63caa9454d5.tar.gz",
+        "archive_sha256": "98a06ff5bd00820dcca2b347f1d84a1683eb87856844f7fbeacded4c34f8f4ea",
+        "inspection": "The tagged package sources and PyPI sdist package sources compare byte-for-byte."
+      },
+      "pypi": {
+        "metadata_url": "https://pypi.org/pypi/pycparserext/2026.1/json",
+        "metadata_raw_sha256": "92f207e24e7612871929df1ce47251ed73c5e6ed4d0241919b842ac3224d5b99",
+        "sdist_url": "https://files.pythonhosted.org/packages/88/96/17516940cbd34f9eca2700bd2c24f7fd3dd2226b0fb05a37a939ca4af4df/pycparserext-2026.1.tar.gz",
+        "sdist_sha256": "33c9b724e7e78832075b3eb0d8569f5def5b9667944d22b6651d828796dc512a",
+        "wheel_url": "https://files.pythonhosted.org/packages/9b/c6/2ae48b3a9453e562376a7ef33de9e5666e657f236aad033df20f77f23303/pycparserext-2026.1-py3-none-any.whl",
+        "wheel_sha256": "e9fb328da6a4e3dc89db1ffbd31df64aad2aa5cf16491e2caaf69e992f0803da"
+      },
+      "dependencies": [
+        {
+          "name": "pycparser",
+          "declared": ">=3.0",
+          "probe_pin": "3.0",
+          "reason": "Use the declared minimum instead of assuming compatibility with a later release.",
+          "python_requires": ">=3.10",
+          "dependencies": [],
+          "license": "BSD-3-Clause",
+          "license_sha256": "0c846399369ea76ddd7b5c44fe6d16497415fcf015f5cbb508c24bf98b81c5b1",
+          "metadata_url": "https://pypi.org/pypi/pycparser/3.0/json",
+          "metadata_raw_sha256": "13939b01403db93c94e8f9c5b0e3441c9cdccb4304e43ec6820031f7da71a793",
+          "sdist_url": "https://files.pythonhosted.org/packages/1b/7d/92392ff7815c21062bea51aa7b87d45576f649f16458d78b7cf94b9ab2e6/pycparser-3.0.tar.gz",
+          "sdist_sha256": "600f49d217304a5902ac3c37e1281c9fe94e4d0489de643a9504c5cdfdfc6b29",
+          "wheel_url": "https://files.pythonhosted.org/packages/0c/c3/44f3fbbfa403ea2a7c779186dc20772604442dde72947e7d01069cbe98e3/pycparser-3.0-py3-none-any.whl",
+          "wheel_sha256": "b727414169a36b7d524c1c3e31839a521725078d7b2ff038656844266160a992"
+        }
+      ],
+      "api": "from pycparserext.ext_c_parser import OpenCLCParser; OpenCLCParser().parse(text, filename='', debuglevel=0, initial_type_symbols=frozenset())",
+      "output": "pycparser.c_ast.FileAST. Definitions use FuncDef and Decl. Syntactic calls use FuncCall(name, args, coord); a direct callee is an ID. OpenCL kernel, address-space and access qualifiers remain declaration function/qualifier strings.",
+      "locations": "Coord contains file, line and optional column only. It has no end position or byte offsets.",
+      "semantic_limit": "No typechecking, name binding, call resolution or file resolution is exposed.",
+      "preprocessing": "OpenCLCParser.parse consumes text. Realistic sources require preprocessed input; pycparser.parse_file may be given parser=OpenCLCParser(), use_cpp=True and an explicit preprocessor command/options.",
+      "future_probe": {
+        "python": "3.13",
+        "note": "The observed system Python 3.9 cannot satisfy these pins. Python -I ignores PYTHONPATH, so insert both reviewed wheel paths explicitly.",
+        "command": "workspace/tools/python/bin/python -I -B -c 'import sys; sys.path[:0]=[\"workspace/tools/opencl-parser/pycparserext-2026.1-py3-none-any.whl\",\"workspace/tools/opencl-parser/pycparser-3.0-py3-none-any.whl\"]; from pycparserext.ext_c_parser import OpenCLCParser; ast=OpenCLCParser().parse(\"__kernel void k(__global int *p){p[get_global_id(0)]=0;}\", filename=\"probe.cl\"); ast.show(showcoord=True)'"
+      }
+    },
+    {
+      "id": "openclio",
+      "kind": "LLVM IR kernel-argument dataflow analyzer",
+      "status": "UNTRIED",
+      "version": "0.3",
+      "license": "MIT",
+      "license_sha256": "d305594335bd2d35c43573a5dde6894f77d17ea88adb9739e315b8a51038537c",
+      "python_requires": ">=3.6",
+      "source": {
+        "repository": "https://github.com/sniarchos/openclio",
+        "tag": "v0.3-alpha",
+        "commit": "8c84eb2ebc90f27bf5569b00b32d3e21b268d69f",
+        "tag_api": "https://api.github.com/repos/zehanort/openclio/tags?per_page=100",
+        "tag_api_raw_sha256": "3b43960dc5fb17a54c05eef7d78408005d139897925692f8ec2a01c9ee5d451f",
+        "archive_url": "https://github.com/zehanort/openclio/archive/8c84eb2ebc90f27bf5569b00b32d3e21b268d69f.tar.gz",
+        "archive_sha256": "bbc74be65a56188258febb2d8c1053a741cdf83d6b49d8d7703966e1d52b9089",
+        "inspection": "The tagged package sources and PyPI sdist package sources compare byte-for-byte."
+      },
+      "pypi": {
+        "metadata_url": "https://pypi.org/pypi/openclio/0.3/json",
+        "metadata_raw_sha256": "1615da014b831c4af9470d2e32558503c96b6de0bdfb0052c3a972f17bad5fc2",
+        "sdist_url": "https://files.pythonhosted.org/packages/24/78/b24156312e156fc050cf66a2498c14e575b1d9e2930f69ce62d58ec41c9b/openclio-0.3.tar.gz",
+        "sdist_sha256": "e358ec6e69fa151db941f41777317e56c3f2d8287b8617757199cdbb8400edb8",
+        "wheel_url": "https://files.pythonhosted.org/packages/6b/6a/e2ec589e8a654c5cf2c506b5783c1ff3073805957424fe7acbf4766ca290/openclio-0.3-py3-none-any.whl",
+        "wheel_sha256": "807ea83adc27b3f81d4052df12b365022ff4f8dae5db48ff515ff624e7a30d6c"
+      },
+      "dependencies": [
+        "llvmlite>=0.36.0",
+        "pandas>=1.2.4",
+        "tabulate>=0.8.9"
+      ],
+      "api": "from openclio import argsIOrole; argsIOrole(kernelname, source, filename=None, arglist=False)",
+      "source_frontend": "For .cl input the implementation invokes clang -c -x cl -emit-llvm -S -cl-std=CL2.0 -Xclang -finclude-default-header -fno-discard-value-names, then parses LLVM IR with llvmlite. It also accepts LLVM IR directly.",
+      "output": "A mapping from LLVM argument spelling/type to input, output or input/output; optional argument list. The CLI emits a table or CSV.",
+      "scope_limit": "It analyzes one named kernel's argument I/O roles. It does not emit source definitions, calls or source ranges.",
+      "route": "Keep as an untried semantic adjunct. Its use of Clang is a dependency and scope fact, not a measured failure or reason to discard it."
+    }
+  ],
+  "registry_searches": [
+    {
+      "registry": "npm",
+      "request": "https://registry.npmjs.org/tree-sitter-opencl",
+      "date": "2026-10-26",
+      "bound": "exact package endpoint",
+      "result": "HTTP 404; 21-byte Not Found response",
+      "raw_sha256": "c8d3eae160a892e32837db3dcae515e843e5383fef52b8141940c8bcf8b6d59f"
+    },
+    {
+      "registry": "npm",
+      "request": "https://registry.npmjs.org/-/v1/search?text=keywords%3Aopencl&size=100",
+      "date": "2026-10-26",
+      "bound": "first 100 keyword results",
+      "result": "No OpenCL source parser, typechecker or AST package identified in the bounded response.",
+      "raw_sha256": "4df094ac492e70ff61e99b8f53111973f4ec07adfef9f821f56a7e60f2048844"
+    },
+    {
+      "registry": "crates.io",
+      "request": "https://crates.io/api/v1/crates?q=opencl-language-server",
+      "date": "2026-10-26",
+      "bound": "initial exact-name search without the later explicit client header/page bound",
+      "result": "HTTP 403 with an empty response. This access fact remains distinct from the later successful request.",
+      "raw_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "registry": "crates.io",
+      "request": "https://crates.io/api/v1/crates?q=opencl-language-server&per_page=20",
+      "request_header": "User-Agent: fathom-language-research/1.0",
+      "date": "2026-10-26",
+      "bound": "exact-name search, 20-result page",
+      "result": "HTTP 200; total 0.",
+      "raw_sha256": "d7387f5dcd24fdc0d26627015f545d5af97cdb03e877a77bc41ab9e0514ef98c"
+    },
+    {
+      "registry": "crates.io",
+      "request": "https://crates.io/api/v1/crates?q=opencl&per_page=100",
+      "request_header": "User-Agent: fathom-language-research/1.0",
+      "date": "2026-10-26",
+      "bound": "first 100 of 319 results",
+      "result": "No OpenCL source parser, typechecker or AST crate identified in the bounded response.",
+      "raw_sha256": "2a28dc4279cad3c1afd03c54ccd27bdae9fe9272f4399c3145e843be269dc2a3"
+    }
+  ],
+  "compiler_qualification": {
+    "status": "QUALIFIED_ON_ONE_PLATFORM",
+    "actual": "LLVM 21.1.8 macOS ARM64 replayed the ten-unit OpenCL SDK context successfully.",
+    "unqualified": [
+      "Linux X64",
+      "Linux ARM64",
+      "all other planned or unlisted platforms"
+    ],
+    "assessment": "../../../docs/assessments/2026-10-26-opencl-c-compiler.md"
+  },
+  "scip_clang_opencl": {
+    "status": "STOCK_INPUT_FILTER_REFUSAL",
+    "version": "0.4.0",
+    "source_commit": "1860adf8deab7870fed2199eadc190e3965a92ff",
+    "embedded_llvm_commit": "2078da43e25a4623cab2d0d60decddf709aaea28",
+    "binary_sha256": "ff042fbc8a029f09f4b69fc7692e290e21c52923593207ee52d4e7439473ec64",
+    "platform": "macos/arm64",
+    "database_entries": 10,
+    "opencl_entries": 10,
+    "flags_retained": [
+      "-x cl",
+      "-cl-std=CL3.0"
+    ],
+    "index_produced": false,
+    "index_bytes": 0,
+    "wrapper_exit": 125,
+    "driver_exit": null,
+    "driver_exit_note": "The wrapper replaced the leader exit with cleanup status because its worker group outlived the leader; the original leader exit was not recorded.",
+    "reason": "Production main-file extension allowlist omits .cl and filters every database entry before Clang semantic analysis. The outer git-root message is a warning, not this failure.",
+    "source_evidence": {
+      "allowlist": "https://github.com/sourcegraph/scip-clang/blob/1860adf8deab7870fed2199eadc190e3965a92ff/indexer/CompilationDatabase.cc#L871-L903",
+      "filter": "https://github.com/sourcegraph/scip-clang/blob/1860adf8deab7870fed2199eadc190e3965a92ff/indexer/CompilationDatabase.cc#L952-L956",
+      "empty_database": "https://github.com/sourcegraph/scip-clang/blob/1860adf8deab7870fed2199eadc190e3965a92ff/indexer/Driver.cc#L714-L721",
+      "cli_flags": "https://github.com/sourcegraph/scip-clang/blob/1860adf8deab7870fed2199eadc190e3965a92ff/indexer/main.cc#L31-L170"
+    },
+    "cleanup": {
+      "group_empty_after_cleanup": true,
+      "group_empty_at_normal_check": false,
+      "leader_reaped": true
+    },
+    "prepared_inputs_unchanged": true,
+    "private_log_sha256": {
+      "index.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "index.stderr": "6523eba84663aed6329e230616befa966b478c5fbbad23b02011b8002756828d"
+    },
+    "remaining_routes": [
+      {
+        "route": "Add .cl to the pinned indexer allowlist and rebuild",
+        "status": "UNTRIED"
+      },
+      {
+        "route": "Separate .c aliases retaining -x cl, then deterministic document-path remapping",
+        "status": "UNTRIED"
+      }
+    ],
+    "semantic_capability": "not tested; do not infer that OpenCL cannot be indexed",
+    "reproducibility": "Diagnostic invocation of the existing committed scip-clang/run.sh with a qualified SDK database and one worker. The private process wrapper is not a committed reproducible harness; no Verified command or support claim is attached.",
+    "latest_source_check": {
+      "version": "0.4.1",
+      "source_commit": "14423f07d164e640b7ffe2de937789653d63708c",
+      "source": "https://github.com/sourcegraph/scip-clang/blob/14423f07d164e640b7ffe2de937789653d63708c/indexer/CompilationDatabase.cc",
+      "status": "SOURCE_AUDITED_NOT_RUN",
+      "result": "The same production main-file extension allowlist still omits .cl; production filtering remains enabled.",
+      "new_binary_run": false
+    }
+  },
+  "candidate_license_evidence": {
+    "receipt": "search-receipts.json",
+    "scip-clang-v0.4.0": "Apache-2.0; scip-clang-v0.4.0-license",
+    "scip-clang-v0.4.1": "Apache-2.0; scip-clang-v0.4.1-license",
+    "clangd-LLVM-e4840295": "Apache-2.0 WITH LLVM-exception; llvm-clangd-license",
+    "Galarius-c3b8b8c": "MIT; galarius-opencl-language-server-license"
+  }
+}

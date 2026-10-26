@@ -1,12 +1,12 @@
 {
-  "status": "proposal-only; activate after GLSL lands under G-R1",
+  "status": "implementation native grammar-gate refusal proposal under G-R6; canonical disposition is controller-owned",
   "item": {
     "id": "opencl",
     "name": "OpenCL C (.cl)",
     "kind": "language",
     "tier": "T3",
     "target_level": "L2",
-    "grammar_source": "P-R1 grammar repair required; both unmodified native candidates fail on the outcome-blind production pool. Compare general OpenCL fixes over pinned dedicated/C grammars on that same pool.",
+    "grammar_source": "Experimental P-R1 OpenCL C patch over tree-sitter-c v0.24.2, source and patch hashes in grammar-candidates.json. Native fixed pool remains 63/386 ERROR-or-MISSING, zero faults; no product blob registered.",
     "licence": "MIT",
     "oracle": [
       "synthesized OpenCL compile database following cuda-compdb.py -> existing clang-calls + clang-ast-defs + scip-clang/preproc active_lines, tier B"
@@ -27,9 +27,9 @@
     "engine": "tags",
     "plan_row": "LB-Q-opencl",
     "worker_model": "sonnet",
-    "notes": "Initial .cl-only proposal, no support claim. Membership is fixed by pool-rule.json using licence, whole-project pin, predeclared roles and the named hashcat structural exception. Hashcat's diagnostic role was assigned after its round-1 screen because computed includes and qualifier macros require a compiler-evidenced context; review accepted the exception. The historical inclusive pool would fail at 1,482/1,735 (85.42%). The seven previously screened OSI primary populations fail natively: dedicated 133/378 = 35.19%. PyOpenCL enters under that same rule before its screen. HandsOn CC-BY-3.0 is diagnostic-only and cannot calibrate under design §13.3 step 16. Preserve every .cl including fragments and duplicates in tenancy. Positive C/OpenCL sniff, Lisp/Cool negatives, ambiguous refusal, tier-B reconstructed CL3.0/SPIR64 context and shared active_lines filtering remain required. No L3/L4 claim. The full frozen eight-project pool now fails at 138/386 = 35.75%, including PyOpenCL at 5/8; none of those results changes membership."
+    "notes": "Initial .cl-only proposal, no support claim. Membership is fixed by pool-rule.json using licence, whole-project pin, predeclared roles and the named hashcat structural exception. Hashcat's diagnostic role was assigned after its round-1 screen because computed includes and qualifier macros require a compiler-evidenced context; review accepted the exception. The historical inclusive pool would fail at 1,482/1,735 (85.42%). The seven previously screened OSI primary populations fail natively: dedicated 133/378 = 35.19%. PyOpenCL enters under that same rule before its screen. HandsOn CC-BY-3.0 is diagnostic-only and cannot calibrate under design \u00a713.3 step 16. Preserve every .cl including fragments and duplicates in tenancy. Positive C/OpenCL sniff, Lisp/Cool negatives, ambiguous refusal, tier-B reconstructed CL3.0/SPIR64 context and shared active_lines filtering remain required. No L3/L4 claim. The full frozen eight-project pool now fails at 138/386 = 35.75%, including PyOpenCL at 5/8; none of those results changes membership. After G-R1 opened implementation, all five named native grammar candidates still fail admission. The patched candidate improves dedicated 138/386 to 63/386 with zero regressions/faults. The separate pre-tuning holdout improves 25/53 to 2/53 and never enters the primary gate. No language level is claimed. G-R6 bars the requested clBLAS prepass because the other 23 failures alone exceed the maximum 19/386."
   },
-  "ordering": "GLSL lands, then OpenCL C ships, then Slang starts",
+  "ordering": "GLSL landed; OpenCL C native admission is proposed for refusal. Controller review and canonical disposition precede Slang under G-R1.",
   "activation": "The controller adds/proves the queue and plan rows; this file does not alter the canonical queue.",
   "diagnostic_subjects": [
     "hashcat/hashcat",
@@ -38,14 +38,29 @@
     "sschaetz/nvidia-opencl-examples"
   ],
   "implementation_gates": [
-    "GLSL lands before implementation ships (G-R1).",
-    "Repair general OpenCL constructs under P-R1, then measure the unchanged frozen primary pool in native and product WASM. Its rule was registered after seven outcomes and before PyOpenCL. The current unmodified dedicated grammar fails natively at 133/378 = 35.19% before PyOpenCL; no gate pass or level is claimed. The complete eight-project baseline is 138/386 = 35.75% dedicated and 380/386 = 98.45% C, with 386 files and 382 distinct blobs; preserve duplicates in tenancy. Report hashcat's dedicated and C rates beside every future fixed-pool patch measurement.",
-    "Pin and verify official upstream LLVM archive from llvm-plan.json; regenerate compiler/header pins and replay all facts, no claimed Apple/LLVM parity.",
-    "Reconstruct and evidence each primary subject compiler context and meet per-subject oracle coverage without removing any file from tenancy. HandsOn and unresolved-EULA subjects are ineligible for calibration. Membership cannot change after patch results.",
-    "Reuse written-site mapping, compiler-derived stand-ins and active_lines in existing clang tools; prove oracle independence and explicit zero-call scope before L2. Tier B caps good.",
-    "Cheap next probe: scip-clang pinned0.4.0 with -x cl; current release0.4.1 is not silently substituted.",
+    "MET: GLSL PR61 landed on main 6db920e72 before OpenCL implementation.",
+    "UNMET: General OpenCL grammar repair was measured on the unchanged eight-project pool: patched 63/386 ERROR-or-MISSING versus dedicated 138/386 and C/both C++ revisions 380/386, zero faults. All 386 files/382 blobs stay in tenancy. Native admission fails; product WASM qualification was not attempted. Hashcat dedicated/C remain 1344/1349 under the reviewed diagnostic exception.",
+    "MET ON macOS ARM64 ONLY: Official LLVM 21.1.8 archive, compiler and two resource-header pins verified; SDK replay through the existing clang pipeline passed. Linux X64/ARM64 remain unqualified; no cross-platform parity claimed.",
+    "FUTURE AFTER NATIVE ADMISSION: Reconstruct and evidence each primary subject compiler context and meet per-subject oracle coverage without removing any file from tenancy. HandsOn and unresolved-EULA subjects are ineligible for calibration. Membership cannot change after patch results.",
+    "FUTURE AFTER NATIVE ADMISSION: Reuse written-site mapping, compiler-derived stand-ins and active_lines in existing clang tools; prove oracle independence and explicit zero-call scope before L2. Tier B caps good.",
+    "PROBED: Stock scip-clang v0.4.0 with -x cl refuses all ten SDK .cl entries at its extension allowlist, before semantic analysis. Extension-patch and alias/remap routes remain untried; v0.4.1 is not silently substituted.",
     "For link-unit truth, use evidenced clCreateProgramWithSource/clBuildProgram source assembly as CUDA uses build link lines. Never infer one program per file. No L3 claim.",
     "Any hashcat prepass requires independently reconstructed compiler context and proof it removes nothing graded. No such prepass is authorized or claimed here."
   ],
-  "pool_rule": "calibration/oracles/opencl-c/pool-rule.json"
+  "pool_rule": "calibration/oracles/opencl-c/pool-rule.json",
+  "grammar_gate_disposition": {
+    "status": "proposed refusal; no support registration",
+    "assessment": "docs/assessments/2026-10-26-opencl-c-grammar-gate.md",
+    "primary_files": 386,
+    "error_or_missing_files": 63,
+    "faults": 0,
+    "maximum_errors_at_five_percent": 19,
+    "classes": {
+      "host_string_templates": 40,
+      "macro_expansion": 11,
+      "configuration_fragments": 11,
+      "conditional_linkage_wrapper": 1
+    },
+    "retry_trigger": "A future licensed grammar revision or independently justified product-context solution handles the recorded residual classes; remeasure the whole unchanged pool. G-R6 requires other failures to be within the 5% budget before revisiting the clBLAS template prepass, and any prepass must be runtime behavior justified by a convention in two independent projects. Native and product WASM gates must pass before activation."
+  }
 }
