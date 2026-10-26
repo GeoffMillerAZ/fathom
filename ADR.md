@@ -4965,8 +4965,8 @@ and its observability coverage. Design `docs/design/platform-engineering.md` (de
 - The concern-delta file (`fathom conserve --since B --concern-deltas FILE`) is decision 5's ratchet delivery. It is
   information only: never a loss, never counted by `--strict`, never a registered plane, so it is never a second gate.
 - TX-4's consumer half is met when a review kit's facts lane reads fathom's facts, promoted through WAE-.
-- Investigations and reviews use the existing verbs through two shipped skills, and a feature-labs card measures them
-  before any new output is built. The fact at the edit rides platform modules and guarded edits, with no code.
+- Investigations and reviews use the existing verbs through two skills fathom will ship (PLT-10 and PLT-11, unbuilt
+  at this amendment), and a feature-labs card measures them before any new output is built. The fact at the edit rides platform modules and guarded edits, with no code.
 - Measurement joins bench prep (subjects tagged `platform`, bars in a prereg) and feature labs (`lab-platform-skills`,
   rows in the labs ledger). The goal is G37, widened, and there is no new goal.
 - **Decision models.** One site runs, in a lab and not in the product: PLT-M0's census classification, kind `choice`
