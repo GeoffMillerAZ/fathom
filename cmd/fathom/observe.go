@@ -18,11 +18,14 @@ package main
 // but never written.
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/geoffmilleraz/fathom/internal/labs"
 )
 
 // cmdObserve implements the "observe" subcommand.
@@ -33,6 +36,7 @@ func cmdObserve(args []string, stdout, stderr io.Writer) int {
 	expected := fs.String("expected", "", "what you expected to happen")
 	actual := fs.String("actual", "", "what actually happened")
 	repro := fs.String("repro", "", "how to reproduce it (a verbatim command/call is ideal)")
+	lab := fs.String("lab", "", "optional lab/case pointer, for example lab-find-symbol/find-definition (not proof)")
 	root := fs.String("root", ".", "project root — .fathom/observations/ lives under here")
 	if err := fs.Parse(args); err != nil {
 		return 0
@@ -42,8 +46,18 @@ func cmdObserve(args []string, stdout, stderr io.Writer) int {
 		fs.Usage()
 		return 1
 	}
+	labSet := false
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "lab" {
+			labSet = true
+		}
+	})
+	if labSet && !labs.ValidObservationLabLink(*lab) {
+		fmt.Fprintln(stderr, "error: --lab must name <lab>/<case>, for example lab-find-symbol/find-definition")
+		return 1
+	}
 
-	id, path, mErr := mintObservationEntry(*root, *symptom, *tool, *expected, *actual, *repro)
+	id, path, mErr := mintObservationEntry(*root, *symptom, *tool, *expected, *actual, *repro, *lab)
 	if mErr != nil {
 		fmt.Fprintf(stderr, "error: recording observation: %v\n", mErr)
 		return 1
@@ -58,7 +72,7 @@ func cmdObserve(args []string, stdout, stderr io.Writer) int {
 // and our create (EEXIST) moves to the next id; no existing file is ever
 // opened for writing, so no entry can be lost or clobbered and the legacy
 // log is never touched.
-func mintObservationEntry(root, symptom, tool, expected, actual, repro string) (int, string, error) {
+func mintObservationEntry(root, symptom, tool, expected, actual, repro string, lab ...string) (int, string, error) {
 	dir := observationsDir(root)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return 0, "", fmt.Errorf("creating %s: %w", dir, err)
@@ -88,7 +102,7 @@ func mintObservationEntry(root, symptom, tool, expected, actual, repro string) (
 		if err != nil {
 			return 0, "", fmt.Errorf("creating %s: %w", path, err)
 		}
-		_, werr := f.WriteString(formatObservationEntry(id, symptom, tool, expected, actual, repro))
+		_, werr := f.WriteString(formatObservationEntry(id, symptom, tool, expected, actual, repro, lab...))
 		if cerr := f.Close(); werr == nil {
 			werr = cerr
 		}
@@ -107,7 +121,7 @@ func mintObservationEntry(root, symptom, tool, expected, actual, repro string) (
 // that weren't given are marked TODO too, rather than left blank, so a
 // human or agent scanning the file later sees "not yet supplied" instead
 // of an ambiguous empty line.
-func formatObservationEntry(id int, symptom, tool, expected, actual, repro string) string {
+func formatObservationEntry(id int, symptom, tool, expected, actual, repro string, lab ...string) string {
 	td := func(s string) string {
 		if strings.TrimSpace(s) == "" {
 			return "TODO"
@@ -117,6 +131,9 @@ func formatObservationEntry(id int, symptom, tool, expected, actual, repro strin
 	var b strings.Builder
 	fmt.Fprintf(&b, "### O%d — %s\n\n", id, symptom)
 	fmt.Fprintf(&b, "- **Symptom:** %s\n", symptom)
+	if len(lab) > 0 && lab[0] != "" {
+		fmt.Fprintf(&b, "- **Lab:** %s\n", lab[0])
+	}
 	fmt.Fprintln(&b, "- **Evidence:**")
 	fmt.Fprintf(&b, "  - **Tool:** %s\n", td(tool))
 	fmt.Fprintf(&b, "  - **Expected:** %s\n", td(expected))
