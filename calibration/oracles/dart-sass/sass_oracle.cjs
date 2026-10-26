@@ -15,14 +15,13 @@
 //                (node_modules) is served an empty stylesheet by a stub importer so the compile goes on; it is
 //                no file of the subject. A statement in a file no successful compile loaded, or naming no
 //                loaded file (a branch not taken, a package), is counted and written with no `to_path`;
-//                `sass:` built-in modules name no file.
+//                `sass:` built-in modules name no file. Optional load paths and a preamble let the
+//                compiler evaluate a subject with external setup; only successful loadedUrls attest loads.
 //
 // A file sass-parser cannot parse (0.4.57 rejects a keyframe selector written as a percentage, `0% { }`, which
 // Dart Sass itself compiles) has no definition truth, and a file whose loads no successful compile evaluated has
-// no import truth: both are named on stderr and left out of `-files-out`, the files the reading measures
-// (`lang-oracle -only`). The tier is A for what each part attests (§1.3: the
-// language's own implementation); end lines are not written (a rule's end is not on sass-parser's nodes), so
-// range_agreement is not measured.
+// no import truth: both are named on stderr. The tier is A for what each part attests (§1.3: the
+// language's own implementation); source.end is exclusive and is converted to an inclusive end line.
 //
 //   calls        design 1.8 W5 (w5_refs.cjs): the name references of the module graph, walked from the same trees
 //                (@include, user function calls, $variable reads, @extend %placeholder), with call_exclusions for the
@@ -31,7 +30,7 @@
 // Bench-only, MIT, installed into scratch:
 //     npm install --prefix <scratch>/npm sass-parser@0.4.57 sass@1.105.1
 //     NODE_PATH=<scratch>/npm/node_modules node calibration/oracles/dart-sass/sass_oracle.cjs <subject> <files.txt> \
-//         [-files-out <parsed.txt>] > <out>.json
+//         [-files-out <parsed.txt>] [-load-path <directory> ...] [-preamble <file>] > <out>.json
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -45,9 +44,23 @@ const root = path.resolve(args[0]);
 const files = fs.readFileSync(args[1], 'utf8').split('\n').filter(Boolean).sort();
 const fo = args.indexOf('-files-out');
 const filesOut = fo >= 0 ? args[fo + 1] : '';
+const loadPaths = [];
+let preambleFile = '';
+for (let i = 2; i < args.length; i++) {
+  const flag = args[i];
+  if (!['-files-out', '-load-path', '-preamble'].includes(flag) || !args[i + 1]) {
+    throw new Error('expected -files-out <file>, -load-path <directory>, or -preamble <file>');
+  }
+  const value = args[++i];
+  if (flag === '-load-path') loadPaths.push(path.resolve(value));
+  else if (flag === '-preamble') preambleFile = path.resolve(value);
+}
+const preamble = preambleFile ? fs.readFileSync(preambleFile, 'utf8') : '';
 
 const out = { tool: 'dart-sass', version: '', tier: 'A', definitions: [], imports: [] };
 const stats = { files: files.length, parse_failures: [], compiled_ok: 0, compile_failed: 0, statements: 0, paired: 0,
+  compile_fallback_attempted: 0, compile_fallback_succeeded: 0, compile_fallback_attested: [], compile_fallback_failed: 0,
+  setup: { load_paths: loadPaths.length, preamble: Boolean(preambleFile) },
   unattested_file: 0, no_loaded_target: 0, ambiguous: 0, builtin: 0, plain_css: 0, definitions: {} };
 const statements = []; // {path, line, url, kind}
 const parsed = [];
@@ -63,9 +76,84 @@ const asWritten = (src, node, re, value) => {
 };
 const def = (rel, kind, name, node) => {
   const line = node && node.source && node.source.start ? node.source.start.line : 0;
-  out.definitions.push({ path: rel, name, line, end: 0, kind });
+  const endPosition = node && node.source && node.source.end;
+  if (!line || !endPosition || endPosition.offset <= node.source.start.offset) {
+    throw new Error(`missing or empty source span for ${rel}: ${kind} ${name}`);
+  }
+  const end = endPosition.column === 1 ? endPosition.line - 1 : endPosition.line;
+  out.definitions.push({ path: rel, name, line, end, kind });
   stats.definitions[kind] = (stats.definitions[kind] || 0) + 1;
 };
+
+// The loop node spans its body. Its declared variables are source tokens before the expression.
+// Match only the names the AST declares, in order, so comments and later reads cannot become definitions.
+function loopVariables(src, node, names, expression) {
+  const start = node.source && node.source.start && node.source.start.offset;
+  const limit = expression && expression.source && expression.source.start && expression.source.start.offset;
+  if (!Number.isInteger(start) || !Number.isInteger(limit) || limit <= start) {
+    throw new Error(`missing loop header span at ${node.source && node.source.start && node.source.start.line}`);
+  }
+  const header = src.slice(start, limit);
+  const tokens = [];
+  let i = 0;
+  let line = node.source.start.line;
+  const advance = (to) => {
+    for (; i < to; i++) {
+      if (header[i] === '\n' || (header[i] === '\r' && header[i + 1] !== '\n')) line++;
+    }
+  };
+  while (i < header.length) {
+    if (header.startsWith('/*', i)) {
+      const close = header.indexOf('*/', i + 2);
+      if (close < 0) throw new Error(`unterminated loop header comment at line ${line}`);
+      advance(close + 2);
+      continue;
+    }
+    if (header.startsWith('//', i)) {
+      const close = header.slice(i).search(/[\r\n]/);
+      advance(close < 0 ? header.length : i + close);
+      continue;
+    }
+    if (header[i] !== '$') { advance(i + 1); continue; }
+    const offset = start + i;
+    const tokenLine = line;
+    let j = i + 1;
+    let last = j;
+    let written = '';
+    let canonical = '';
+    while (j < header.length) {
+      const ch = header[j];
+      if (/[A-Za-z0-9_-]/.test(ch) || ch.charCodeAt(0) >= 0x80) {
+        written += ch; canonical += ch; j++; last = j;
+      } else if (ch === '\\' && j + 1 < header.length && !/[\r\n\f]/.test(header[j + 1])) {
+        const hex = /^[0-9a-fA-F]{1,6}/.exec(header.slice(j + 1));
+        if (hex) {
+          written += '\\' + hex[0];
+          const code = parseInt(hex[0], 16);
+          canonical += String.fromCodePoint(code === 0 || code > 0x10ffff || (code >= 0xd800 && code <= 0xdfff) ? 0xfffd : code);
+          j += 1 + hex[0].length;
+          last = j;
+          if (header.slice(j, j + 2) === '\r\n') j += 2;
+          else if (/[ \t\r\n\f]/.test(header[j] || '')) j++;
+        } else {
+          written += header.slice(j, j + 2); canonical += header[j + 1]; j += 2; last = j;
+        }
+      } else break;
+    }
+    if (!written) { advance(i + 1); continue; }
+    advance(last);
+    const endLine = line;
+    advance(j);
+    tokens.push({ name: written, canonical, source: { start: { line: tokenLine, offset }, end: { line: endLine, column: 2, offset: start + last } } });
+  }
+  let next = 0;
+  return names.map((name) => {
+    const wanted = String(name).replace(/_/g, '-');
+    while (next < tokens.length && tokens[next].canonical.replace(/_/g, '-') !== wanted) next++;
+    if (next === tokens.length) throw new Error(`missing loop variable $${name} at line ${node.source.start.line}`);
+    return tokens[next++];
+  });
+}
 
 function selectorNames(rel, node) {
   let ps;
@@ -100,8 +188,8 @@ for (const rel of files) {
       case 'mixin-rule': def(rel, 'mixin', asWritten(src, n, /^@mixin\s+([\w-]+)/, n.mixinName), n); break;
       case 'function-rule': def(rel, 'function', asWritten(src, n, /^@function\s+([\w-]+)/, n.functionName), n); break;
       case 'variable-declaration': def(rel, 'variable', asWritten(src, n, /^(?:[\w-]+\.)?\$([\w-]+)/, n.variableName), n); break;
-      case 'each-rule': for (const v of n.variables) def(rel, 'variable', v, n); break;
-      case 'for-rule': def(rel, 'variable', n.variable, n); break;
+      case 'each-rule': for (const v of loopVariables(src, n, n.variables, n.eachExpression)) def(rel, 'variable', v.name, v); break;
+      case 'for-rule': for (const v of loopVariables(src, n, [n.variable], n.fromExpression)) def(rel, 'variable', v.name, v); break;
       case 'rule': selectorNames(rel, n); break;
       case 'decl': {
         const prop = String(n.propInterpolation !== undefined ? n.propInterpolation : n.prop);
@@ -130,22 +218,43 @@ for (const rel of files) {
 const loadedBy = []; // sets of repo-relative paths, one per successful compile
 const silent = { warn() {}, debug() {} };
 let stubbed = 0;
+// A custom importer runs before Sass's loadPaths. Defer URLs that those paths can load so the
+// real compiler records their file: URLs; the stub remains for unresolved external packages.
+const onLoadPath = (url) => !path.isAbsolute(url) && loadPaths.some((dir) =>
+  candidates('entry.scss', url).some((candidate) => fs.existsSync(path.join(dir, candidate))));
 const stub = {
-  canonicalize(url) { return url.startsWith('sass:') ? null : new URL('stub:' + encodeURIComponent(url)); },
+  canonicalize(url) { return url.startsWith('sass:') || onLoadPath(url) ? null : new URL('stub:' + encodeURIComponent(url)); },
   load() { stubbed++; return { contents: '', syntax: 'scss' }; },
 };
 for (const rel of files) {
+  const filename = path.join(root, rel);
+  const options = { logger: silent, style: 'expanded', importers: [stub], loadPaths };
+  let compiled;
   try {
-    const r = sass.compile(path.join(root, rel), { logger: silent, style: 'expanded', importers: [stub] });
+    compiled = sass.compile(filename, options);
+  } catch (e) {
+    if (preambleFile) {
+      stats.compile_fallback_attempted++;
+      try {
+        compiled = sass.compileString(preamble + fs.readFileSync(filename, 'utf8'),
+          { ...options, url: pathToFileURL(filename) });
+        stats.compile_fallback_succeeded++;
+        stats.compile_fallback_attested.push(rel);
+      } catch (fallbackError) {
+        stats.compile_fallback_failed++;
+      }
+    }
+  }
+  if (compiled) {
     const set = new Set();
-    for (const u of r.loadedUrls) {
+    for (const u of compiled.loadedUrls) {
       if (u.protocol !== 'file:') continue;
       const p = path.relative(root, fileURLToPath(u)).split(path.sep).join('/');
-      if (!p.startsWith('../')) set.add(p);
+      if (p !== '..' && !p.startsWith('../') && !path.isAbsolute(p)) set.add(p);
     }
     loadedBy.push(set);
     stats.compiled_ok++;
-  } catch (e) {
+  } else {
     stats.compile_failed++;
   }
 }
@@ -193,10 +302,11 @@ for (const st of statements) {
   ];
 }
 out.version = 'sass ' + sass.info.split('\n')[0].split('\t')[1] + ', sass-parser ' + pkgVersion('sass-parser');
+stats.version = out.version;
 const byPath = (a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 out.definitions.sort((a, b) => byPath(a, b) || a.line - b.line || (a.kind + a.name < b.kind + b.name ? -1 : 1));
 out.imports.sort((a, b) => byPath(a, b) || a.line - b.line || (a.module < b.module ? -1 : 1));
-// -files-out: the files both parts attest, the reading's -only scope: sass-parser parsed it, and no compile left
+// -files-out: optional diagnostic list of files both parts attest: sass-parser parsed it, and no compile left
 // its loads unevaluated (a file whose every compile failed, on a test framework's mixins or a package's
 // variables, has statements with no truth).
 const unevaluated = new Set(statements.filter((st) => !st.url.startsWith('sass:') && !loadedBy.some((l) => l.has(st.path))).map((st) => st.path));
