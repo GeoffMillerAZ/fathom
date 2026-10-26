@@ -321,7 +321,7 @@ type Store interface {
 	// themselves are deleted. removed is false, with no error, when the
 	// service had no rows anywhere — the call is idempotent. This is
 	// registry surgery for duplicate/malformed service rows — the
-	// `../geoffmiller-cloud` twin (USAGE_JOURNAL 2026-06-16) and the O1
+	// `../svc-a` twin (USAGE_JOURNAL 2026-06-16) and the O1
 	// shadow-service repair (.fathom/observations.md, fix (d) context) both
 	// previously required hand-run sqlite against the store file under the
 	// daemon lock.
