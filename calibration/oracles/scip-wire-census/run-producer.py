@@ -32,13 +32,16 @@ def jdk_identity(jdk):
     return {'release': actual, 'java_version': version.stderr.strip(), 'java_binary_sha256': sha(jdk/'bin/java')}
 
 
-def snapshot(subject):
+def snapshot(subject, require_pristine=False):
     def git(*args):
         return subprocess.check_output(['git', '-C', str(subject), *args])
     if git('rev-parse', 'HEAD').decode().strip() != SUBJECT_COMMIT:
         raise ValueError('subject commit mismatch')
-    if git('status', '--porcelain', '--untracked-files=all').strip():
-        raise ValueError('subject checkout is not clean')
+    status_args = ['status', '--porcelain', '--untracked-files=all']
+    if require_pristine:
+        status_args.append('--ignored')
+    if git(*status_args).strip():
+        raise ValueError('subject checkout is not pristine' if require_pristine else 'subject checkout changed outside ignored build outputs')
     paths = sorted(p for p in git('ls-files', '-z').split(b'\0') if p.endswith((b'.kt', b'.kts')))
     digest = hashlib.sha256()
     for name in paths:
@@ -47,7 +50,7 @@ def snapshot(subject):
             'manifest_recipe': 'byte-sorted git ls-files .kt/.kts; SHA256(path bytes + NUL + raw SHA256(file bytes)) concatenated'}
 
 
-def run(command, cwd, env, log, seconds):
+def run(command, cwd, env, log, seconds, grace_seconds=5):
     started = time.monotonic()
     with log.open('wb') as output:
         child = subprocess.Popen(command, cwd=cwd, env=env, stdout=output, stderr=subprocess.STDOUT, start_new_session=True)
@@ -56,20 +59,23 @@ def run(command, cwd, env, log, seconds):
             code = child.wait(timeout=seconds)
         except subprocess.TimeoutExpired:
             timed_out = True
-            os.killpg(child.pid, signal.SIGTERM)
-            grace_end = time.monotonic() + 5
+            try:
+                os.killpg(child.pid, signal.SIGTERM)
+            except (ProcessLookupError, PermissionError):
+                pass
+            grace_end = time.monotonic() + grace_seconds
             while time.monotonic() < grace_end:
                 child.poll()
                 try:
                     os.killpg(child.pid, 0)
-                except ProcessLookupError:
+                except (ProcessLookupError, PermissionError):
                     break
                 time.sleep(.05)
             # The launcher may have exited before a descendant. Kill the group
             # independently of launcher wait status.
             try:
                 os.killpg(child.pid, signal.SIGKILL)
-            except ProcessLookupError:
+            except (ProcessLookupError, PermissionError):
                 pass
             child.wait()
             code = 124
@@ -78,6 +84,7 @@ def run(command, cwd, env, log, seconds):
 
 def self_test():
     import tempfile
+    global SUBJECT_COMMIT
     with tempfile.TemporaryDirectory() as scratch:
         root = Path(scratch)
         (root/'release').write_text('JAVA_RUNTIME_VERSION=21\n')
@@ -87,13 +94,42 @@ def self_test():
             pass
         else:
             raise AssertionError('wrong JDK accepted')
+        subject = root/'subject'
+        subject.mkdir()
+        (subject/'.gitignore').write_text('build/\n')
+        (subject/'source.kt').write_text('class Example\n')
+        subprocess.run(['git', 'init', '-q', str(subject)], check=True)
+        subprocess.run(['git', '-C', str(subject), 'add', '.'], check=True)
+        subprocess.run(['git', '-C', str(subject), '-c', 'user.name=Fixture', '-c', 'user.email=fixture@test.invalid',
+                        'commit', '-qm', 'fixture'], check=True)
+        saved_commit = SUBJECT_COMMIT
+        try:
+            SUBJECT_COMMIT = subprocess.check_output(['git', '-C', str(subject), 'rev-parse', 'HEAD'], text=True).strip()
+            source_before = snapshot(subject, require_pristine=True)
+            (subject/'build').mkdir()
+            (subject/'build'/'warmup.bin').write_bytes(b'warmup')
+            try:
+                snapshot(subject, require_pristine=True)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError('ignored warmup output passed pristine initial check')
+            assert snapshot(subject) == source_before, 'expected ignored warmup output changed source snapshot'
+        finally:
+            SUBJECT_COMMIT = saved_commit
         result = run([sys.executable, '-c', 'print("ok")'], root, os.environ.copy(), root/'ok.log', 5)
         assert result['exit_code'] == 0 and not result['timed_out']
-        result = run([sys.executable, '-c', 'import time; time.sleep(30)'], root, os.environ.copy(), root/'timeout.log', .05)
-        assert result['exit_code'] == 124 and result['timed_out']
-        code = 'import subprocess,sys,time; subprocess.Popen([sys.executable,"-c", "import signal,time; signal.signal(signal.SIGTERM,signal.SIG_IGN); time.sleep(30)"]); time.sleep(30)'
-        result = run([sys.executable, '-c', code], root, os.environ.copy(), root/'descendant.log', .3)
-        assert result['exit_code'] == 124 and result['timed_out'] and result['wall_seconds'] < 7
+        for iteration in range(20):
+            result = run([sys.executable, '-c', 'import time; time.sleep(30)'], root, os.environ.copy(), root/f'timeout-{iteration}.log', .02, grace_seconds=.02)
+            assert result['exit_code'] == 124 and result['timed_out'], result
+            marker = root/f'descendant-{iteration}.ready'
+            child_code = ('import signal,time,pathlib; '
+                          'signal.signal(signal.SIGTERM,signal.SIG_IGN); '
+                          f'pathlib.Path({str(marker)!r}).write_text("ready"); time.sleep(30)')
+            code = f'import subprocess,sys,time; subprocess.Popen([sys.executable,"-c",{child_code!r}]); time.sleep(30)'
+            result = run([sys.executable, '-c', code], root, os.environ.copy(), root/f'descendant-{iteration}.log', .25, grace_seconds=.02)
+            assert marker.exists(), 'descendant did not start before timeout'
+            assert result['exit_code'] == 124 and result['timed_out'] and result['wall_seconds'] < 1, result
     print('RUNNER SELF-TEST PASS')
 
 
@@ -115,16 +151,17 @@ def main():
     if sha(producer) != PRODUCER_SHA:
         raise ValueError('producer checksum mismatch')
     identity = jdk_identity(jdk)
-    before = snapshot(subject)
-    scratch.mkdir(parents=True, exist_ok=True)
-    if (scratch/'index.scip').exists():
-        raise ValueError('scratch already contains an index; use fresh scratch')
+    before = snapshot(subject, require_pristine=True)
+    if scratch.is_relative_to(subject) or scratch.exists():
+        raise ValueError('scratch must be a fresh path outside the subject; existing outputs are preserved')
+    scratch.mkdir(parents=True)
     env = os.environ.copy()
     for key in ['GRADLE_OPTS', 'JDK_JAVA_OPTIONS', '_JAVA_OPTIONS']:
         env.pop(key, None)
     env.update(JAVA_HOME=str(jdk), PATH=str(jdk/'bin') + os.pathsep + env['PATH'], JAVA_TOOL_OPTIONS='-XX:ActiveProcessorCount=2', JAVA_OPTS='-Xmx256m -XX:ActiveProcessorCount=2', GRADLE_USER_HOME=str(scratch/'gradle'), COURSIER_CACHE=str(scratch/'coursier'), TMPDIR=str(scratch/'tmp'))
     (scratch/'tmp').mkdir(exist_ok=True)
-    receipt = {'jdk': identity, 'route': args.route, 'source': before, 'producer_sha256': PRODUCER_SHA,
+    receipt = {'jdk': identity, 'route': args.route, 'source': before, 'pristine_initial': True,
+               'producer_sha256': PRODUCER_SHA,
                'caps': {'timeout_seconds_combined': 1200, 'indexer_heap_mb': 256, 'gradle_heap_mb': 640, 'active_processors': 2, 'gradle_workers': 2, 'nice': 10}, 'phases': []}
     budget = 1200.0
     commands = []

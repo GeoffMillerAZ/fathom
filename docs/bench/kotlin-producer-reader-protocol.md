@@ -94,14 +94,18 @@ in workspace.
 ## Committed bounded runner and evidence
 
 Run from the repository root with caller-supplied absolute paths. The producer
-checksum is fixed in the runner. Use a fresh scratch directory for each route:
+checksum is fixed in the runner. Use a separate pristine checkout of the pinned
+subject commit and a nonexistent scratch path for **each** route. The runner
+rejects ignored build output before starting, then permits the prebuilt route's
+warmup to create expected ignored outputs. It never deletes a prior checkout or
+scratch output:
 
 ```sh
 python3 calibration/oracles/scip-wire-census/run-producer.py --self-test
 python3 calibration/oracles/scip-wire-census/run-producer.py \
   --producer "$SCIP_JAVA" --jdk "$KOTLIN_AUDIT_JDK" \
   --subject "$KOTLIN_AUDIT_SUBJECT" --scratch "$KOTLIN_AUDIT_SCRATCH" --route direct
-# Repeat with a different fresh scratch directory for --route prebuilt.
+# Repeat with a different pristine subject checkout and nonexistent scratch path for --route prebuilt.
 ```
 
 The runner verifies the pinned subject and producer, rejects a JDK whose release
@@ -112,7 +116,8 @@ nice 10, a combined 1,200-second active-command timeout, two processors/workers,
 explicit 640 MB Gradle JVM argument. The pinned launcher header expands JAVA_OPTS.
 A timeout terminates the process group, then kills it after five seconds if needed.
 Gradle and Coursier caches, temporary files, logs and exact local argv stay in
-scratch. The JSON receipt records exit codes, applied caps and source checks.
+scratch. The JSON receipt records exit codes, applied caps, pristine initial
+state, and source checks after warmup and indexing.
 
 This runner was added after the original measurements; its self-test checks exit
 and timeout cleanup, not a replay of the subject. The original workspace drivers
