@@ -81,6 +81,7 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-25 | [react-oracle-candidates](2026-10-25-react-oracle-candidates.md), [probe](data/react-oracle-2026-10-25/summary.json) | Compiler selection omits class components; docgen and typed TS graphs do not supply complete native React roles | ADR-048, LB-Q-react-rest |
 | 2026-10-25 | [rego-oracle-candidates](2026-10-25-rego-oracle-candidates.md) | OPA already provides complete native A import truth; OPA1.21.4 and Regal0.43.0 routes cannot repair missing product import edges | ADR-048, LB-Q-rego-rest |
 | 2026-10-25 | [jupyter-oracle-candidates](2026-10-25-jupyter-oracle-ceiling.md), [modern diagnostic](data/jupyter-oracle-2026-10-25/modern-comparison-summary.json) | Direct notebook coverage 1,945/2,071; pair diagnostics are AST-derived C, not resolved targets; canonical support unchanged | ADR-048, LB-Q-jupyter-rest, OL-R4 |
+| 2026-10-25 | [language-onboarding](2026-10-25-language-onboarding.md), [GPU cases](data/2026-10-25-language-onboarding-cases.json), [mechanical](data/2026-10-25-language-onboarding-mechanical.json), [criteria / null](data/2026-10-25-language-onboarding-criteria.json) | New preflight/importer rejected for now; ten source-history defects inform the existing worker checklist | ADR-048, ADR-073, ADR-075, G15; LH-R2 and [unnumbered draft](../design/language-onboarding-decision-draft.md) |
 
 ## Companion pages
 
