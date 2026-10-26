@@ -3,6 +3,7 @@ package bench_test
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -25,6 +26,9 @@ func fixture(t *testing.T, name string) (cue.Value, map[string]any) {
 	v := ctx.CompileString(string(schema) + "\n" + strings.Replace(string(positive), "package bench", "", 1))
 	if err := v.Validate(cue.Concrete(true)); err != nil {
 		t.Fatalf("positive fixtures: %v", err)
+	}
+	if !v.LookupPath(cue.ParsePath(name)).Exists() {
+		t.Fatalf("positive fixture %q does not exist", name)
 	}
 	var data map[string]any
 	if err := v.LookupPath(cue.ParsePath(name)).Decode(&data); err != nil {
@@ -56,6 +60,96 @@ func TestBenchSchemaValid(t *testing.T) {
 			}
 			if err := def.Unify(def.Context().CompileBytes(b)).Validate(cue.Concrete(true)); err != nil {
 				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestBenchPriorReadFixture(t *testing.T) {
+	_, data := fixture(t, "priorReadSubject")
+	bench := data["bench"].(map[string]any)
+	if bench["split"] != "dev" {
+		t.Fatalf("prior-read fixture split = %v, want dev", bench["split"])
+	}
+	reads := bench["contamination"].(map[string]any)["prior_reads"].([]any)
+	if len(reads) == 0 {
+		t.Fatal("prior-read fixture must contain concrete prior reads")
+	}
+}
+
+func TestBenchManifestPriorReadsExist(t *testing.T) {
+	repoRoot := filepath.Join("..", "..")
+	manifests, err := filepath.Glob(filepath.Join(repoRoot, "calibration", "bench.d", "*.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(manifests) == 0 {
+		t.Fatal("no bench manifests found")
+	}
+	for _, manifest := range manifests {
+		t.Run(filepath.Base(manifest), func(t *testing.T) {
+			b, err := os.ReadFile(manifest)
+			if err != nil {
+				t.Fatal(err)
+			}
+			// These YAML manifests contain JSON with full-line comments.
+			var source strings.Builder
+			for _, line := range strings.Split(string(b), "\n") {
+				if !strings.HasPrefix(strings.TrimSpace(line), "#") {
+					source.WriteString(line + "\n")
+				}
+			}
+			var data struct {
+				Bench struct {
+					Contamination struct {
+						PriorReads []string `json:"prior_reads"`
+					} `json:"contamination"`
+				} `json:"bench"`
+			}
+			if err := json.Unmarshal([]byte(source.String()), &data); err != nil {
+				t.Fatal(err)
+			}
+			for _, path := range data.Bench.Contamination.PriorReads {
+				if path == "" || filepath.IsAbs(path) || !filepath.IsLocal(path) {
+					t.Errorf("prior read must be a nonempty repository-relative path: %q", path)
+					continue
+				}
+				info, err := os.Stat(filepath.Join(repoRoot, path))
+				if err != nil {
+					t.Errorf("prior read %q: %v", path, err)
+				} else if !info.Mode().IsRegular() {
+					t.Errorf("prior read %q is not a regular file", path)
+				}
+			}
+		})
+	}
+}
+
+func TestBenchSubjectSplitAndPriorReads(t *testing.T) {
+	for _, mode := range []string{"unassigned", "prior-read", "empty-prior-reads"} {
+		t.Run(mode, func(t *testing.T) {
+			def, data := fixture(t, "subject")
+			bench := data["bench"].(map[string]any)
+			delete(bench, "split")
+			contamination := bench["contamination"].(map[string]any)
+			if mode == "prior-read" {
+				contamination["prior_reads"] = []string{"docs/bench/scenario-runs.md"}
+			} else if mode == "empty-prior-reads" {
+				contamination["prior_reads"] = []string{}
+			}
+			b, err := json.Marshal(data)
+			if err != nil {
+				t.Fatal(err)
+			}
+			value := def.Unify(def.Context().CompileBytes(b))
+			if err := value.Validate(cue.Concrete(true)); err != nil {
+				t.Fatal(err)
+			}
+			if mode == "prior-read" {
+				split, err := value.LookupPath(cue.ParsePath("bench.split")).String()
+				if err != nil || split != "dev" {
+					t.Fatalf("prior read must force dev: %q, %v", split, err)
+				}
 			}
 		})
 	}
@@ -97,6 +191,9 @@ func TestBenchSchemaNegatives(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.Name, func(t *testing.T) {
+			if tc.Name == "held-out prior read" && (tc.Fixture != "priorReadSubject" || tc.Path != "bench.split" || tc.Value != "held-out" || tc.Remove) {
+				t.Fatal("held-out prior-read case must change only priorReadSubject.bench.split to held-out")
+			}
 			def, data := fixture(t, tc.Fixture)
 			var node any = data
 			parts := strings.Split(tc.Path, ".")

@@ -1,5 +1,5 @@
 // INVALID examples, fully commented so cue vet ./... stays green.
-// Each case changes exactly one field of subject or prereg in valid.cue:
+// Each case changes exactly one field of a positive fixture in valid.cue:
 // path is dotted, with numeric list indices; remove deletes a required field,
 // otherwise value replaces it. schema_test.go reads this case list and asserts
 // every resulting complete instance fails through the CUE Go API, naming the
@@ -23,6 +23,8 @@
 // {"name": "too few flake runs", "fixture": "subject", "path": "bench.flake_runs", "value": 2},
 // {"name": "missing reading", "fixture": "subject", "path": "bench.l0_reading", "remove": true},
 // {"name": "unknown split", "fixture": "subject", "path": "bench.split", "value": "training"},
+// {"name": "held-out prior read", "fixture": "priorReadSubject", "path": "bench.split", "value": "held-out"},
+// {"name": "empty prior read entry", "fixture": "subject", "path": "bench.contamination.prior_reads", "value": [""]},
 // {"name": "empty sources", "fixture": "subject", "path": "bench.task_sources", "value": []},
 // {"name": "missing source revision", "fixture": "subject", "path": "bench.task_sources.0.revision", "remove": true},
 // {"name": "missing source licence", "fixture": "subject", "path": "bench.task_sources.0.licence", "remove": true},
