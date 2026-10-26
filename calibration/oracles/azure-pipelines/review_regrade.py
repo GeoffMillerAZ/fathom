@@ -33,7 +33,7 @@ def prepare_subject(repo, root):
     actual = subprocess.check_output(['git', '-C', str(dest), 'rev-parse', 'HEAD'], text=True).strip()
     if actual != repo['sha'] or subprocess.check_output(['git', '-C', str(dest), 'status', '--porcelain'], text=True).strip():
         raise ValueError('subject pin/cleanliness mismatch: ' + repo['name'])
-    return dest / repo.get('subpath', '')
+    return dest  # the pinned sparse checkout itself is the complete measured scope
 
 
 if __name__ == '__main__':
@@ -73,7 +73,7 @@ if __name__ == '__main__':
                                           ('candidate', args.candidate, args.candidate_commit)):
                 output = args.out / (dialect + '-' + label + '.json')
                 cmd = [binary.resolve(), 'lang-oracle', '-dialect', dialect, '-subject', subject,
-                       '-subject-name', repo['name'], '-tool-oracle', truth, '-out', output, '-commit', commit,
+                       '-subject-name', repo['name'], '-subject-sha', repo['sha'], '-tool-oracle', truth, '-out', output, '-commit', commit,
                        '-note', 'Binding Azure dispatch review regression replay; identical native/independent truth for baseline and candidate. OpenAPI third-party evidence is C under P-T1.']
                 if xref.exists():
                     cmd += ['-tool-oracle', xref]

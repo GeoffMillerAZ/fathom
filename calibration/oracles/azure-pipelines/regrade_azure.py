@@ -31,13 +31,15 @@ if __name__ == '__main__':
             raise SystemExit('wrong subject pin')
         if subprocess.check_output(['git', '-C', str(checkout), 'status', '--porcelain'], text=True).strip():
             raise SystemExit('dirty subject')
-        subject = checkout / repo.get('subpath', '')
+        # Sparse checkout already bounds the subject to the shard's paths.
+        # Keep the repository root so identity-checked retiming has its own HEAD.
+        subject = checkout
         data, rejected = measure(subject)
         truth = args.out / (repo['name'].replace('/', '--') + '.json')
         truth.write_text(json.dumps(data, indent=2) + '\n')
         print(repo['name'], 'truth definitions', len(data['definitions']), 'refs', len(data['references']), 'rejected', rejected, flush=True)
         subprocess.run([str(args.indexbench.resolve()), 'lang-oracle', '-dialect', 'azure-pipelines',
-                        '-subject', str(subject), '-subject-name', repo['name'], '-tool-oracle', str(truth),
+                        '-subject', str(subject), '-subject-name', repo['name'], '-subject-sha', repo['sha'], '-tool-oracle', str(truth),
                         '-out', str(reading), '-note', NOTE], check=True)
         retime += ['-subject', repo['name'] + '=' + str(subject)]
     subprocess.run(retime, check=True)
