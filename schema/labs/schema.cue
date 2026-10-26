@@ -34,8 +34,11 @@ package labs
 // Existing benches retain their instrument names rather than a new runner.
 #Harness: "replay" | "fork" | "scenario" | "hook-path" | "decide" | "indexbench" | "reviewbench" | "contextbench" | "langbench"
 
+// production-captured cases are refused at commit by the case loader
+// (the kit's scenariobank.Validate), not by this schema.
 #Case: {
 	#Scenario
+	id:                 string & =~"^[A-Za-z0-9][A-Za-z0-9._-]*$"
 	provenance!:        #Provenance
 	decisive_eligible!: bool
 	input!: {...}
@@ -51,7 +54,7 @@ package labs
 }
 
 #Stage: {
-	value!: number
+	value!: number & >=interval[0] & <=interval[1]
 	interval!: [number, number]
 	interval: [<=interval[1], >=interval[0]]
 	n!: int & >0
@@ -62,7 +65,9 @@ package labs
 	task_id!: #Text
 	arm!:     #Text
 	trials!:  int & >=0
-	evaluation!: {criterion_id!: #Text, verdict!: "confirmed" | "refuted" | "inconclusive", reason!: #Text}
+	// LAB-12 maps the prereg three-outcome rule when writing a row:
+	// confirmed -> pass, refuted -> fail, inconclusive -> indeterminate.
+	evaluation!: {criterion_id!: #Text, verdict!: "pass" | "fail" | "indeterminate", reason!: #Text}
 	surface_unused?:    bool
 	instrument_defect?: #Text
 	lab!:               #LabID
