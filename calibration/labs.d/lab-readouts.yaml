@@ -1,0 +1,19 @@
+# Seed: docs/design/feature-labs.md section 4.3. Kill: owner ruling L-R1.
+id: "lab-readouts"
+features: []
+surface: ["hook:readout-hook --event post-tool", "hook:readout-hook --event tool-failure"]
+firing:
+  should: "Bash output a rule matches"
+  should_not: "output no rule matches"
+  grader: "hook_context"
+helped:
+  metric: "RO's readings (acted on in the next 3 calls is the acted stage)"
+  arm: "plugin-minus-readouts"
+  direction: "increase"
+  minimum_effect_of_interest: 0.01
+quality: []
+fixtures: ["internal/connector/testdata/fauxtown"]
+harness: ["hook-path", "scenario"]
+kill: [{"criterion": "K4: A knob that raises firing and leaves helped harmed, or inconclusive toward harm, is reverted.", "reading": "docs/bench/readings/labs/lab-readouts.md"}, {"criterion": "K1: A classifier surface with TPR or TNR Wilson lower bound under 0.80 on 40 labeled points per class reports counts only.", "reading": "docs/bench/readings/labs/lab-readouts.md"}]
+knobs: [{"name": "hook text", "kind": "text", "location": "cmd/fathom/readouthook.go"}]
+owners: ["readouts.md#RO-M1", "readouts.md#RO-M4", "readouts.md#RO-M5", "readouts.md#RO-M6", "readouts.md#RO-M7", "readouts.md#RO-M8", "readouts.md#RO-M9", "readouts.md#RO-M10"]

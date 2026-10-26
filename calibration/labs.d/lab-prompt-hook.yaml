@@ -1,0 +1,19 @@
+# Seed: docs/design/feature-labs.md section 4.3. Kill: owner ruling L-R1.
+id: "lab-prompt-hook"
+features: ["F-28"]
+surface: ["hook:prompt-hook"]
+firing:
+  should: "a prompt naming an indexed identifier"
+  should_not: "a prompt naming none"
+  grader: "hook_context"
+helped:
+  metric: "calls to the gold definition (the definitions line used in the next 3 calls is acted on, not helped)"
+  arm: "plugin-minus-prompt-hook"
+  direction: "decrease"
+  minimum_effect_of_interest: 1
+quality: []
+fixtures: ["internal/connector/testdata/fauxtown"]
+harness: ["hook-path", "scenario"]
+kill: [{"criterion": "K4: A knob that raises firing and leaves helped harmed, or inconclusive toward harm, is reverted.", "reading": "docs/bench/readings/labs/lab-prompt-hook.md"}, {"criterion": "K1: A classifier surface with TPR or TNR Wilson lower bound under 0.80 on 40 labeled points per class reports counts only.", "reading": "docs/bench/readings/labs/lab-prompt-hook.md"}]
+knobs: [{"name": "hook text", "kind": "text", "location": "cmd/fathom/prompthook.go"}]
+owners: ["ADR-076"]

@@ -1,0 +1,18 @@
+# Seed: docs/design/feature-labs.md section 4.3. Kill: owner ruling L-R1.
+id: "lab-stanza"
+features: ["F-58", "F-86"]
+surface: ["stanza:agents-md"]
+firing:
+  mode: "n/a"
+  reason: "The stanza is always loaded. First-3-calls tool choice per task shape is observed, not a conditional firing rule."
+helped:
+  metric: "task outcome against the wired arm with the stanza block removed (first-3-calls tool choice per task shape is its firing)"
+  arm: "plugin-minus-stanza"
+  direction: "increase"
+  minimum_effect_of_interest: 0.01
+quality: []
+fixtures: ["internal/connector/testdata/fauxtown"]
+harness: ["scenario"]
+kill: [{"criterion": "K4: A knob that raises firing and leaves helped harmed, or inconclusive toward harm, is reverted.", "reading": "docs/bench/readings/labs/lab-stanza.md"}, {"criterion": "K1: A classifier surface with TPR or TNR Wilson lower bound under 0.80 on 40 labeled points per class reports counts only.", "reading": "docs/bench/readings/labs/lab-stanza.md"}]
+knobs: [{"name": "description", "kind": "text", "location": "dist/agents"}]
+owners: ["agents-md.md#AG-OP1"]

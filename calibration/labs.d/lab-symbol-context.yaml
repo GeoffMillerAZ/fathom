@@ -1,0 +1,19 @@
+# Seed: docs/design/feature-labs.md section 4.3. Kill: owner ruling L-R1.
+id: "lab-symbol-context"
+features: ["F-03"]
+surface: ["mcp:symbol_context"]
+firing:
+  should: "who calls a named symbol"
+  should_not: "a definition lookup"
+  grader: "tool_used"
+helped:
+  metric: "calls and tokens to an answer naming every caller in the key"
+  arm: "plugin-minus-symbol-context"
+  direction: "decrease"
+  minimum_effect_of_interest: 1
+quality: [{"instrument": "indexbench", "reading": "caller recall"}, {"instrument": "langbench", "reading": "caller recall"}, {"instrument": "EW-76", "reading": "abandons: T01, T06, T07"}]
+fixtures: ["internal/connector/testdata/fauxtown"]
+harness: ["replay", "fork"]
+kill: [{"criterion": "K4: A knob that raises firing and leaves helped harmed, or inconclusive toward harm, is reverted.", "reading": "docs/bench/readings/labs/lab-symbol-context.md"}, {"criterion": "K1: A classifier surface with TPR or TNR Wilson lower bound under 0.80 on 40 labeled points per class reports counts only.", "reading": "docs/bench/readings/labs/lab-symbol-context.md"}]
+knobs: [{"name": "description", "kind": "text", "location": "internal/mcp"}]
+owners: ["responsible-tenant.md#RT-M14", "efficiency-wave.md#EW-76"]

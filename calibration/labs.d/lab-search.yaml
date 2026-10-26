@@ -1,0 +1,19 @@
+# Seed: docs/design/feature-labs.md section 4.3. Kill: owner ruling L-R1.
+id: "lab-search"
+features: ["F-09"]
+surface: ["mcp:search"]
+firing:
+  should: "literal text, a log line, a config value"
+  should_not: "a symbol definition"
+  grader: "tool_used"
+helped:
+  metric: "calls to the first correct hit"
+  arm: "plugin-minus-search"
+  direction: "decrease"
+  minimum_effect_of_interest: 1
+quality: [{"instrument": "EW-76", "reading": "abandons: T02, T03"}]
+fixtures: ["internal/connector/testdata/fauxtown"]
+harness: ["replay", "fork"]
+kill: [{"criterion": "K4: A knob that raises firing and leaves helped harmed, or inconclusive toward harm, is reverted.", "reading": "docs/bench/readings/labs/lab-search.md"}, {"criterion": "K1: A classifier surface with TPR or TNR Wilson lower bound under 0.80 on 40 labeled points per class reports counts only.", "reading": "docs/bench/readings/labs/lab-search.md"}]
+knobs: [{"name": "description", "kind": "text", "location": "internal/mcp"}]
+owners: ["efficiency-wave.md#EW-76"]

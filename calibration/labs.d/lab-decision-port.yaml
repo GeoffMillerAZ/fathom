@@ -1,0 +1,18 @@
+# Seed: docs/design/feature-labs.md section 4.3. Kill: owner ruling L-R1.
+id: "lab-decision-port"
+features: ["F-69", "F-70", "F-71"]
+surface: ["decide:route", "decide:compile_prefilter", "decide:obligations_rerank", "decide:certify_suggest", "decide:assess", "decide:preflight", "decide:readout_mode", "decide:compact_advice"]
+firing:
+  mode: "n/a"
+  reason: "Sites are configuration. The configured site decides eligibility; no shared should-fire or should-not rule applies."
+helped:
+  metric: "per-site TPR and TNR against provider `none`, coverage"
+  arm: "plugin-minus-decide:{site}"
+  direction: "increase"
+  minimum_effect_of_interest: 0.01
+quality: []
+fixtures: ["internal/connector/testdata/fauxtown"]
+harness: ["decide"]
+kill: [{"criterion": "K4: A knob that raises firing and leaves helped harmed, or inconclusive toward harm, is reverted.", "reading": "docs/bench/readings/labs/lab-decision-port.md"}, {"criterion": "K1: A classifier surface with TPR or TNR Wilson lower bound under 0.80 on 40 labeled points per class reports counts only.", "reading": "docs/bench/readings/labs/lab-decision-port.md"}]
+knobs: [{"name": "description", "kind": "text", "location": "internal/decide"}]
+owners: ["decision-port.md#DP", "agentic-decisions.md#EXP", "judgment-foundations.md#JF"]

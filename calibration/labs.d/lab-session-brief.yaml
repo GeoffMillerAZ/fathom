@@ -1,0 +1,18 @@
+# Seed: docs/design/feature-labs.md section 4.3. Kill: owner ruling L-R1.
+id: "lab-session-brief"
+features: ["F-48"]
+surface: ["hook:session-hook"]
+firing:
+  mode: "n/a"
+  reason: "Session start is deterministic: every session start loads the brief; there is no should-not firing class."
+helped:
+  metric: "calls to the first correct tool for the task's shape"
+  arm: "plugin-minus-session-brief"
+  direction: "decrease"
+  minimum_effect_of_interest: 1
+quality: []
+fixtures: ["internal/connector/testdata/fauxtown"]
+harness: ["hook-path", "scenario"]
+kill: [{"criterion": "K4: A knob that raises firing and leaves helped harmed, or inconclusive toward harm, is reverted.", "reading": "docs/bench/readings/labs/lab-session-brief.md"}, {"criterion": "K1: A classifier surface with TPR or TNR Wilson lower bound under 0.80 on 40 labeled points per class reports counts only.", "reading": "docs/bench/readings/labs/lab-session-brief.md"}]
+knobs: [{"name": "hook text", "kind": "text", "location": "cmd/fathom/sessionhook.go"}]
+owners: []

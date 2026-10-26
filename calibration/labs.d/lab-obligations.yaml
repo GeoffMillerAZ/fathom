@@ -1,0 +1,19 @@
+# Seed: docs/design/feature-labs.md section 4.3. Kill: owner ruling L-R1.
+id: "lab-obligations"
+features: ["F-26", "F-27", "F-64", "F-65"]
+surface: ["mcp:obligations", "hook:edit-hook"]
+firing:
+  should: "an edit to a governed file"
+  should_not: "an edit outside every scope"
+  grader: "hook_context"
+helped:
+  metric: "compliance, relevance (AD-20's holdouts are this arm)"
+  arm: "plugin-minus-obligations"
+  direction: "increase"
+  minimum_effect_of_interest: 0.01
+quality: []
+fixtures: ["internal/connector/testdata/fauxtown"]
+harness: ["hook-path", "scenario"]
+kill: [{"criterion": "K4: A knob that raises firing and leaves helped harmed, or inconclusive toward harm, is reverted.", "reading": "docs/bench/readings/labs/lab-obligations.md"}, {"criterion": "K1: A classifier surface with TPR or TNR Wilson lower bound under 0.80 on 40 labeled points per class reports counts only.", "reading": "docs/bench/readings/labs/lab-obligations.md"}]
+knobs: [{"name": "hook text", "kind": "text", "location": "internal/mcp"}]
+owners: ["advice-delivery.md#AD-20", "advice-delivery.md#AD-21", "advice-delivery.md#AD-M1", "advice-delivery.md#AD-M2", "advice-delivery.md#AD-M3", "advice-delivery.md#AD-M4"]

@@ -1,0 +1,19 @@
+# Seed: docs/design/feature-labs.md section 4.3. Kill: owner ruling L-R1.
+id: "lab-verify-plan"
+features: ["F-36", "F-37", "F-39"]
+surface: ["mcp:verify_plan", "hook:stop-hook"]
+firing:
+  should: "a plan box claimed in the session, a done claim at Stop"
+  should_not: "no plan touched"
+  grader: "hook_context"
+helped:
+  metric: "false done claims reaching Stop"
+  arm: "plugin-minus-verify-plan"
+  direction: "decrease"
+  minimum_effect_of_interest: 1
+quality: [{"instrument": "fathom's own tests", "reading": "verify correctness: T10, T11, T15"}]
+fixtures: ["internal/connector/testdata/fauxtown"]
+harness: ["hook-path", "scenario"]
+kill: [{"criterion": "K4: A knob that raises firing and leaves helped harmed, or inconclusive toward harm, is reverted.", "reading": "docs/bench/readings/labs/lab-verify-plan.md"}, {"criterion": "K1: A classifier surface with TPR or TNR Wilson lower bound under 0.80 on 40 labeled points per class reports counts only.", "reading": "docs/bench/readings/labs/lab-verify-plan.md"}]
+knobs: [{"name": "hook text", "kind": "text", "location": "internal/mcp"}]
+owners: ["bench-prep.md#H1"]
