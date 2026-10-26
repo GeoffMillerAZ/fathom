@@ -40,11 +40,14 @@ type HopRequest struct {
 // HopResult is a covariate, never a stratum. Distance is nonnegative when
 // Bucket is empty; otherwise it is -1 and Bucket is "no-graph-path" (an
 // oracle exists, but no named source reaches gold) or "no-oracle" (truth
-// is unavailable or incomplete). Oracle discloses the graph semantics.
+// is unavailable or incomplete). Sources counts distinct resolved subject
+// seeds, distinguishing unnamed issues from disconnected named symbols.
+// Oracle discloses the graph semantics.
 type HopResult struct {
 	Distance int    `json:"distance"`
 	Bucket   string `json:"bucket,omitempty"`
 	Oracle   string `json:"oracle,omitempty"`
+	Sources  int    `json:"sources"`
 }
 
 type hopNode struct {
@@ -61,8 +64,10 @@ type hopGraph struct {
 // HopDistance finds the shortest directed path from ANY function named
 // in the issue to ANY gold function. Whole identifierToken tokens are
 // matched exactly, case-sensitively, against oracle symbols, including
-// plain prose names. The stratum's shape/length/stopword filters do not
-// apply. Qualified names are never reduced to their leaf (bare names
+// plain prose names. The stratum's length/stopword filters do not
+// apply. Edges are traversed forward only (caller to callee for Go,
+// containing definition to referenced symbol for SCIP), as recorded in Oracle.
+// Qualified names are never reduced to their leaf (bare names
 // intentionally select all matching subject functions).
 //
 // Go truth uses go/packages, go/types-backed SSA and CHA. CHA is chosen
@@ -73,8 +78,10 @@ type hopGraph struct {
 // module, checksum and toolchain downloads are disabled, as are workspaces
 // and module updates. No subject code or test is executed.
 //
-// SCIP truth uses reference occurrences within the innermost definition's
-// half-open EnclosingRange, not relationships or fathom-extracted nodes.
+// SCIP truth requires a named independent producer in metadata; fathom
+// producers and fathom-service project roots are refused to avoid circular
+// truth from our own index. Oracle records the producer. References belong
+// to the innermost definition's half-open EnclosingRange, not relationships or fathom-extracted nodes.
 // It measures a reference graph, which may contain non-call references.
 // Missing definition extents are refused rather than invented from token
 // ranges. A missing oracle yields no-oracle; malformed or incomplete truth
@@ -98,10 +105,15 @@ func HopDistance(ctx context.Context, req HopRequest) (HopResult, error) {
 	var graph hopGraph
 	var err error
 	if req.SCIP != nil {
-		result.Oracle = "scip-references"
+		metadata := req.SCIP.GetMetadata()
+		producer := strings.TrimSpace(metadata.GetToolInfo().GetName())
+		if producer == "" || strings.EqualFold(producer, "fathom") || strings.HasPrefix(strings.ToLower(strings.TrimSpace(metadata.GetProjectRoot())), "fathom-service://") {
+			return result, fmt.Errorf("hop distance: SCIP requires a named independent producer and non-fathom project root")
+		}
+		result.Oracle = "scip-references;producer=" + producer + ";direction=forward"
 		graph, err = scipHopGraph(req.SCIP)
 	} else {
-		result.Oracle = "go/types+cha"
+		result.Oracle = "go/types+cha;direction=forward"
 		graph, err = goHopGraph(ctx, req.Root)
 	}
 	if err != nil {
@@ -149,6 +161,7 @@ func HopDistance(ctx context.Context, req HopRequest) (HopResult, error) {
 			}
 		}
 	}
+	result.Sources = len(queue)
 	for head := 0; head < len(queue); head++ {
 		if err := ctx.Err(); err != nil {
 			return result, err

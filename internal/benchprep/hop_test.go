@@ -3,6 +3,7 @@ package benchprep
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -39,7 +40,7 @@ func TestHopDistanceGoTypesCHA(t *testing.T) {
 				Root: root, Issue: tt.issue,
 				GoldFunctions: []FunctionRef{{Path: "leaf/leaf.go", Name: "Gold"}},
 			})
-			if err != nil || got.Distance != tt.distance || got.Bucket != tt.bucket || got.Oracle != "go/types+cha" {
+			if err != nil || got.Distance != tt.distance || got.Bucket != tt.bucket || got.Oracle != "go/types+cha;direction=forward" {
 				t.Fatalf("hop = %+v, %v", got, err)
 			}
 		})
@@ -91,7 +92,7 @@ func TestHopDistanceSCIPReferences(t *testing.T) {
 					Root: "testdata/absent", SCIP: index, Issue: tt.issue,
 					GoldFunctions: []FunctionRef{{Path: "subject.ts", Name: "Gold"}},
 				})
-				if err != nil || got.Distance != tt.distance || got.Bucket != tt.bucket || got.Oracle != "scip-references" {
+				if err != nil || got.Distance != tt.distance || got.Bucket != tt.bucket || got.Oracle != "scip-references;producer=scip-typescript;direction=forward" {
 					t.Fatalf("SCIP hop = %+v, %v", got, err)
 				}
 				if prior.Oracle != "" && !reflect.DeepEqual(got, prior) {
@@ -128,8 +129,8 @@ func TestHopDistanceSCIPRefusesMissingRanges(t *testing.T) {
 }
 
 func TestHopDistanceNamesResolvedAgainstTruth(t *testing.T) {
-	// Unlike the stratum's code-like query, graph seeds include any exact
-	// symbol named in prose. The oracle disambiguates them, not casing.
+	// Graph seeds include any exact symbol named in prose, without the
+	// lexical length/stopword filters. The oracle resolves the names.
 	got, err := HopDistance(context.Background(), HopRequest{
 		Root: "testdata/hops", Issue: "Middle fails",
 		GoldFunctions: []FunctionRef{{Path: "leaf/leaf.go", Name: "Gold"}},
@@ -171,7 +172,7 @@ func hopSCIPFixture() *scippb.Index {
 	ref := func(name string, line int32) *scippb.Occurrence {
 		return &scippb.Occurrence{Symbol: prefix + name, Range: []int32{line, 1, 4}}
 	}
-	return &scippb.Index{Documents: []*scippb.Document{{RelativePath: "subject.ts", Occurrences: []*scippb.Occurrence{
+	return &scippb.Index{Metadata: &scippb.Metadata{ToolInfo: &scippb.ToolInfo{Name: "scip-typescript"}}, Documents: []*scippb.Document{{RelativePath: "subject.ts", Occurrences: []*scippb.Occurrence{
 		def("Type#", 0, 20),
 		def("Type#Entry().", 1, 5), ref("Middle().", 2),
 		def("Middle().", 6, 9), ref("Gold().", 7),
@@ -180,4 +181,66 @@ func hopSCIPFixture() *scippb.Index {
 		def("Boundary().", 16, 18), ref("Gold().", 18),
 		ref("Gold().", 19), // class-owned, not Entry-owned
 	}}}}
+}
+
+func TestHopDistanceSCIPRequiresIndependentProducer(t *testing.T) {
+	for _, tt := range []struct {
+		name     string
+		metadata *scippb.Metadata
+	}{
+		{"missing metadata", nil},
+		{"missing tool", &scippb.Metadata{}},
+		{"unnamed producer", &scippb.Metadata{ToolInfo: &scippb.ToolInfo{}}},
+		{"blank producer", &scippb.Metadata{ToolInfo: &scippb.ToolInfo{Name: " "}}},
+		{"fathom producer", &scippb.Metadata{ToolInfo: &scippb.ToolInfo{Name: "fathom"}}},
+		{"fathom producer casing", &scippb.Metadata{ToolInfo: &scippb.ToolInfo{Name: " Fathom "}}},
+		{"fathom root", &scippb.Metadata{ToolInfo: &scippb.ToolInfo{Name: "scip-typescript"}, ProjectRoot: "fathom-service://subject"}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			index := hopSCIPFixture()
+			index.Metadata = tt.metadata
+			got, err := HopDistance(context.Background(), HopRequest{SCIP: index, Issue: "Entry", GoldFunctions: []FunctionRef{{Path: "subject.ts", Name: "Gold"}}})
+			if err == nil || got.Bucket != "no-oracle" || got.Distance != -1 {
+				t.Fatalf("accepted non-independent SCIP = %+v, %v", got, err)
+			}
+		})
+	}
+}
+
+func TestHopDistanceSourceCounts(t *testing.T) {
+	for _, tt := range []struct {
+		issue             string
+		sources, distance int
+		bucket            string
+	}{
+		{"no symbol is named", 0, -1, "no-graph-path"},
+		{"Unreachable", 1, -1, "no-graph-path"},
+		{"Entry Entry Middle", 2, 1, ""},
+	} {
+		t.Run(tt.issue, func(t *testing.T) {
+			got, err := HopDistance(context.Background(), HopRequest{SCIP: hopSCIPFixture(), Issue: tt.issue, GoldFunctions: []FunctionRef{{Path: "subject.ts", Name: "Gold"}}})
+			// Assert the serialized count too: zero seeds must remain observable.
+			data, marshalErr := json.Marshal(got)
+			if marshalErr != nil {
+				t.Fatal(marshalErr)
+			}
+			var fields map[string]json.RawMessage
+			if err := json.Unmarshal(data, &fields); err != nil {
+				t.Fatal(err)
+			}
+			if err != nil || string(fields["sources"]) != fmt.Sprint(tt.sources) || got.Distance != tt.distance || got.Bucket != tt.bucket {
+				t.Fatalf("seed count = %s, %v", data, err)
+			}
+		})
+	}
+}
+
+func TestHopDistanceExcludesDependencySeeds(t *testing.T) {
+	got, err := HopDistance(context.Background(), HopRequest{
+		Root: "testdata/external", Issue: "fmt.Println fails",
+		GoldFunctions: []FunctionRef{{Path: "external.go", Name: "Gold"}},
+	})
+	if err != nil || got.Sources != 0 || got.Bucket != "no-graph-path" || got.Distance != -1 {
+		t.Fatalf("dependency cannot seed the subject graph = %+v, %v", got, err)
+	}
 }
