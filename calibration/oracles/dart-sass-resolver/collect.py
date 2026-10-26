@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import posixpath
 import re
+import selectors
 import signal
 import subprocess
 import sys
@@ -17,6 +18,8 @@ import time
 import urllib.parse
 
 TIMEOUT_SECONDS = 600
+STDOUT_LIMIT = 256 * 1024 * 1024
+STDERR_LIMIT = 16 * 1024 * 1024
 EXPECTED_TIER = "A"
 PINNED_DART = "3.13.7"
 PINNED_SASS_API = "18.1.0"
@@ -28,51 +31,72 @@ class Refusal(RuntimeError):
 
 
 def run(argv: list[str], *, cwd: Path | None = None, timeout: int = TIMEOUT_SECONDS,
-        capture: bool = True) -> subprocess.CompletedProcess[str]:
-    kwargs: dict[str, object] = {"cwd": cwd, "text": True, "start_new_session": True}
+        capture: bool = True, stdout_limit: int = STDOUT_LIMIT,
+        stderr_limit: int = STDERR_LIMIT) -> subprocess.CompletedProcess[str]:
+    kwargs: dict[str, object] = {"cwd": cwd, "start_new_session": True}
     if capture:
         kwargs["stdout"] = subprocess.PIPE
         kwargs["stderr"] = subprocess.PIPE
     proc = subprocess.Popen(argv, **kwargs)  # type: ignore[arg-type]
-    try:
-        out, err = proc.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        def signal_group(sig: int, retry_seconds: float) -> bool:
-            deadline = time.monotonic() + retry_seconds
+    def stop_group() -> None:
+        for sig in (signal.SIGTERM, signal.SIGKILL):
+            # Darwin may briefly deny signals during file-access checks.
+            retry_deadline = time.monotonic() + 5
             while True:
                 try:
                     os.killpg(proc.pid, sig)
-                    return True
+                    break
                 except ProcessLookupError:
-                    return True
+                    break
                 except PermissionError:
-                    if time.monotonic() >= deadline:
-                        return False
+                    if time.monotonic() >= retry_deadline:
+                        raise Refusal(f"could not signal process group for {argv[0]}")
                     time.sleep(0.25)
-
-        signal_group(signal.SIGTERM, 5)
-        deadline = time.monotonic() + 5
-        while time.monotonic() < deadline:
-            try:
-                os.killpg(proc.pid, 0)
-            except ProcessLookupError:
-                break
-            except PermissionError:  # Darwin may transiently deny signaling during file-access checks.
-                pass
-            time.sleep(0.1)
-        # Always target the group, even if its leader exited after SIGTERM.
-        if not signal_group(signal.SIGKILL, 5):
-            raise Refusal(f"timed out and could not kill process group for {argv[0]}")
         try:
-            out, err = proc.communicate(timeout=5)
+            proc.wait(timeout=5)
         except subprocess.TimeoutExpired:
-            out, err = "", ""
-        raise Refusal(f"timed out after {timeout}s: {argv[0]}")
-    if isinstance(out, str) and len(out.encode()) > 256 * 1024 * 1024:
-        raise Refusal("command stdout exceeded 256 MiB limit")
-    if isinstance(err, str) and len(err.encode()) > 16 * 1024 * 1024:
-        raise Refusal("command stderr exceeded 16 MiB limit")
-    return subprocess.CompletedProcess(argv, proc.returncode, out or "", err or "")
+            raise Refusal(f"could not kill process group for {argv[0]}")
+
+    try:
+        if not capture:
+            proc.wait(timeout=timeout)
+            return subprocess.CompletedProcess(argv, proc.returncode, "", "")
+        chunks: dict[str, bytearray] = {"stdout": bytearray(), "stderr": bytearray()}
+        limits = {"stdout": stdout_limit, "stderr": stderr_limit}
+        deadline = time.monotonic() + timeout
+        with selectors.DefaultSelector() as selected:
+            assert proc.stdout is not None and proc.stderr is not None
+            selected.register(proc.stdout, selectors.EVENT_READ, "stdout")
+            selected.register(proc.stderr, selectors.EVENT_READ, "stderr")
+            while selected.get_map():
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise Refusal(f"timed out after {timeout}s: {argv[0]}")
+                for key, _ in selected.select(min(remaining, 0.25)):
+                    name = key.data
+                    block = os.read(key.fd, min(65536, limits[name] + 1 - len(chunks[name])))
+                    if not block:
+                        selected.unregister(key.fileobj)
+                        continue
+                    chunks[name].extend(block)
+                    if len(chunks[name]) > limits[name]:
+                        raise Refusal(f"command {name} exceeded {limits[name]} byte limit")
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise Refusal(f"timed out after {timeout}s: {argv[0]}")
+        proc.wait(timeout=remaining)
+        return subprocess.CompletedProcess(argv, proc.returncode,
+                                           chunks["stdout"].decode(), chunks["stderr"].decode())
+    except subprocess.TimeoutExpired as exc:
+        stop_group()
+        raise Refusal(f"timed out after {timeout}s: {argv[0]}") from exc
+    except BaseException:
+        stop_group()
+        raise
+    finally:
+        for stream in (proc.stdout, proc.stderr):
+            if stream is not None:
+                stream.close()
 
 
 def checked(argv: list[str], *, cwd: Path | None = None) -> str:
@@ -265,6 +289,18 @@ def validate_primary_enrichment(primary: dict, output: object, native_dependenci
 
 def selftest() -> None:
     """Cheap synthetic controls; never launches Dart or reads a corpus."""
+    for stream in ("stdout", "stderr"):
+        for size in (2048, 2049, 65536):
+            bomb = ("import sys; sys.%s.buffer.write(b'x' * %d)" % (stream, size))
+            if size == 2048:
+                run([sys.executable, "-c", bomb], stdout_limit=2048, stderr_limit=2048)
+                continue
+            try:
+                run([sys.executable, "-c", bomb], stdout_limit=2048, stderr_limit=2048)
+                raise AssertionError(f"{stream} size bomb accepted")
+            except Refusal as exc:
+                if f"command {stream} exceeded 2048 byte limit" not in str(exc):
+                    raise
     with tempfile.TemporaryDirectory(prefix="sass-provenance-selftest-") as tmp:
         root = Path(tmp) / "subject"
         root.mkdir()

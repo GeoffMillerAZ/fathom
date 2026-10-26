@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import re
+import resource
 import signal
 import subprocess
 import sys
@@ -101,7 +102,7 @@ def snapshot(root):
     if git(root, "rev-parse", "--show-toplevel") != str(root):
         raise ValueError("subject must be the Git repository root")
     commit = git(root, "rev-parse", "HEAD")
-    if len(commit) != 40 or git(root, "status", "--porcelain", "--untracked-files=all"):
+    if len(commit) != 40 or git(root, "status", "--porcelain", "--untracked-files=all", "--ignored=matching"):
         raise ValueError("subject must have a clean, full-commit Git checkout")
     entries = [{"path": rel, "sha256": sha256((root / rel).read_bytes())} for rel in files_under(root)]
     encoded = json.dumps(entries, sort_keys=True, separators=(",", ":")).encode()
@@ -120,6 +121,20 @@ def compiler_deadline(total_deadline, now=None):
     """Start the per-file compile budget after any total-budget load wait."""
     started = time.monotonic() if now is None else now
     return min(total_deadline, started + PER_FILE_SECONDS)
+
+
+def file_limit(bytes_per_file):
+    def apply():
+        resource.setrlimit(resource.RLIMIT_FSIZE, (bytes_per_file, bytes_per_file))
+    return apply
+
+
+def compiler_profile(inc_context, scratch):
+    """Subject compilation may write only its fresh per-file scratch and /dev/null."""
+    scratch = Path(scratch).resolve(strict=True)
+    return (inc_context["filesystem_read_profile"] +
+            ' (deny file-write* (require-not (require-any '
+            f'(subpath {json.dumps(str(scratch))}) (literal "/dev/null"))))')
 
 
 def stop_group(proc):
@@ -161,20 +176,24 @@ def observe(perl, root, rel, raw_out, deadline, env, inc_context):
     env["FATHOM_ALLOWED_INC"] = os.pathsep.join(inc_context["inc"])
     env["FATHOM_ALLOWED_ROOTS"] = os.pathsep.join(inc_context["roots"])
     env["FATHOM_PATH_SEP"] = os.pathsep
+    stderr_path = raw_out.with_suffix(".stderr.raw")
     # No app body execution: -c compiles only, but BEGIN/CHECK/use can execute.
-    proc = subprocess.Popen(
-        sandbox_command(perl, "-d", "-c", "-I" + str(root / "lib"), rel,
-                        profile=inc_context["filesystem_read_profile"]),
-        cwd=root, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
-        start_new_session=True,
-    )
-    try:
+    with stderr_path.open("wb") as stderr:
+        proc = subprocess.Popen(
+            sandbox_command(perl, "-d", "-c", "-I" + str(root / "lib"), rel,
+                            profile=compiler_profile(inc_context, raw_out.parent)),
+            cwd=root, env=env, stdout=subprocess.DEVNULL, stderr=stderr,
+            start_new_session=True, preexec_fn=file_limit(16 * 1024 * 1024),
+        )
         try:
-            proc.communicate(timeout=max(0.01, compile_deadline - time.monotonic()))
-        except subprocess.TimeoutExpired:
-            return None, "file_timeout"
-    finally:
-        stop_group(proc)
+            try:
+                proc.wait(timeout=max(0.01, compile_deadline - time.monotonic()))
+            except subprocess.TimeoutExpired:
+                return None, "file_timeout"
+        finally:
+            stop_group(proc)
+    if stderr_path.stat().st_size >= 16 * 1024 * 1024:
+        return None, "output_limit"
     if proc.returncode or not raw_out.exists():
         # Store no raw diagnostics or host paths in the neutral artifact.
         return None, "compile_error" if proc.returncode else "missing_observer_output"
@@ -486,7 +505,8 @@ def main():
     joining = new_joining()
     for number, entry in enumerate(before["files"]):
         rel = entry["path"]
-        raw = log_dir / f"{number:06d}.json"
+        raw = log_dir / f"{number:06d}" / "guard.json"
+        raw.parent.mkdir()
         file_deadline = compiler_deadline(deadline)
         reasons = []
         try:

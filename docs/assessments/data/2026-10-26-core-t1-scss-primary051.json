@@ -328,5 +328,33 @@
     },
     "package_config_sha256": "sha256:ee489675b234cec7b1c1d48bda17a1e37084bec35b02dfb3d1a19db97379ca52",
     "registry_source": "https://registry.npmjs.org/sass-parser/0.5.1"
+  },
+  "annotated_canonical_sha256": "sha256:26af8f805852aff637ee91d1c5788887edcebb7540a6ca6407e8286e778605ff",
+  "canonical_annotation": "The candidate SHA above identifies the frozen measurement; the annotated canonical reading adds disclosure notes only. Counts and numeric metrics are unchanged.",
+  "primary_setup": {
+    "bootstrap": {
+      "parser_rejections": 3,
+      "parser_inputs": 122,
+      "compiled_ok": 44,
+      "compile_failed": 78,
+      "load_paths": 1,
+      "load_path": "sass-true 9.0.0 sass directory (external support, not subject source)",
+      "preamble": true,
+      "preamble_sha256": "sha256:8574bf7e82ae2e6057d0a2d76363eb1246a2535a0ed3d2dcf6dcb94fb913f7a8",
+      "compile_fallback_attempted": 84,
+      "compile_fallback_succeeded": 6,
+      "compile_fallback_failed": 78
+    },
+    "primer": {
+      "parser_rejections": 5,
+      "parser_inputs": 113,
+      "compiled_ok": 60,
+      "compile_failed": 53,
+      "load_paths": 0,
+      "preamble": false,
+      "compile_fallback_attempted": 0,
+      "compile_fallback_succeeded": 0,
+      "compile_fallback_failed": 0
+    }
   }
 }

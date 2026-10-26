@@ -28,6 +28,18 @@ external, CSS, and out-of-scope targets do not assert negative file edges. The
 source SHA-256 map is captured before and after; source inventory or content
 changes fail the run.
 
+A primary parser rejection is recorded by the primary and remains in its file
+denominator. If that rejected file declares a native dependency, the missing
+positioned primary statement makes strict composition refuse the entire subject.
+Spectre demonstrated this mode: its primary attested 76/80 statements, but the
+composite produced no grade. This refusal is distinct from the parser rejection
+count and requires a separate primary-only reading if the subject must be graded.
+
+Native-only resolved-pair gains in the committed measurements are Bootstrap 0,
+Primer 0, and Bourbon 0; Foundation gained 25 post hoc. Bourbon's preregistered
+run excluded its runner load paths, leaving 40 in-repo targets outside the graded
+population. A fresh validation of the native-only route remains open.
+
 Native family counts represent unique URLs per source and dependency kind, not
 syntactic occurrences. In particular, `findDependencies` does not traverse
 `@include` content blocks, so its URL sets are not a complete import inventory.
@@ -90,3 +102,18 @@ remain errors. The controls write only under `workspace/tmp`:
 ```
 
 Pinned Dart SDK archive: `https://storage.googleapis.com/dart-archive/channels/stable/release/3.13.7/sdk/dartsdk-macos-arm64-release.zip`, SHA-256 `9f972ee1e1139cb4f845f35c7c77bef269dd2ec727b239fb17a2ebcb66d0fb2f` (225,890,953 bytes). SDK license BSD-3-Clause; Sass and sass_api MIT. The committed pubspec.lock pins package archives. Subject measurements use collect.py so clean source inventory, native attestations and primary preservation are checked.
+
+### Publishing the spent Bourbon runner-path result
+
+Run on the completed post-hoc artifacts, not a fresh subject:
+
+```sh
+python3 calibration/oracles/dart-sass-resolver/publish_posthoc.py --self-test
+python3 calibration/oracles/dart-sass-resolver/publish_posthoc.py \
+  --scratch "$SCSS_POSTHOC_RESULTS" --subject "$BOURBON_ROOT" \
+  --receipt workspace/tmp/scss-posthoc-receipt.json \
+  --reading workspace/tmp/scss-posthoc-reading.json
+```
+
+Both outputs must be new paths. This projects explicit numeric fields and
+hashes only. All raw source manifests, dependencies and diagnostics stay private.

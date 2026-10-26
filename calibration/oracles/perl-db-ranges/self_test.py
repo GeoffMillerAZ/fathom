@@ -109,6 +109,14 @@ def sandbox_controls(perl, base):
             raise AssertionError("missing sandbox-exec did not fail closed")
     finally:
         runner.SANDBOX_EXEC = original
+    writable = base / "per-file-scratch"
+    writable.mkdir()
+    forbidden = base / "outside-write-marker"
+    profile = runner.compiler_profile({"filesystem_read_profile": runner.SANDBOX_PROFILE}, writable)
+    attempt = subprocess.run(runner.sandbox_command(perl, "-e",
+        "open my $f, '>', $ARGV[0] or die $!; print {$f} 'escaped'", str(forbidden),
+        profile=profile), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
+    assert attempt.returncode != 0 and not forbidden.exists(), "write escaped per-file scratch"
 
     saved = {key: os.environ.get(key) for key in (*runner.PERL_ENV_KEYS, *runner.LOCALE_ENV)}
     try:
@@ -214,6 +222,13 @@ def main():
     with tempfile.TemporaryDirectory(prefix="perl-db-ranges-", dir=scratch_root) as scratch:
         base = Path(scratch)
         sandbox_controls(args.perl, base)
+        capped = base / "size-limit.raw"
+        with capped.open("wb") as output:
+            bomb = subprocess.run([sys.executable, "-c",
+                "import os; assert os.write(1, b'x' * 1024) == 1024; os.write(1, b'y')"],
+                stdout=output, stderr=subprocess.DEVNULL,
+                preexec_fn=runner.file_limit(1024), timeout=5)
+        assert bomb.returncode != 0 and capped.stat().st_size == 1024, "live output cap failed"
         root = base / "subject"
         root.mkdir()
         (root / "lib").mkdir()
@@ -243,7 +258,7 @@ def main():
         (root / "outside-require.pl").write_text(
             "BEGIN { require $ENV{OUTSIDE_MODULE}; delete $INC{$ENV{OUTSIDE_MODULE}}; }\n"
         )
-        marker = base / "begin-marker"
+        marker = base / "logs" / "000003" / "begin-marker"
         (root / "example.pl").write_text(
             "BEGIN { open my $f, '>', $ENV{DB_RANGE_BEGIN_MARKER} or die $!; print {$f} 'ran'; close $f; }\n"
             "sub Forward ($);\n"
@@ -260,6 +275,8 @@ def main():
         subprocess.run(["git", "init", "-q", str(root)], check=True)
         subprocess.run(["git", "-C", str(root), "add", "."], check=True)
         subprocess.run(["git", "-C", str(root), "-c", "user.name=Range test", "-c", "user.email=range@test.invalid", "commit", "-qm", "fixture"], check=True)
+        rejects_dirty(root)  # ignored.pl is still a dirty source-side artifact.
+        (root / "ignored.pl").unlink()
         before = runner.snapshot(root)
         assert [e["path"] for e in before["files"]] == [
             "allowed-do.pl", "bad.pl", "contamination.pl", "example.pl", "inside-load.pl",

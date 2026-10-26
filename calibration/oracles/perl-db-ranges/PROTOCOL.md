@@ -61,7 +61,7 @@ the first partial sequence as the final measurement. Dancer2 remains unspent.
 
 ## Preregistered isolated-dependency follow-up
 
-The no-install canonical trial produced 1,329 exact paired ends, but only 39.72%
+The no-install canonical trial produced 1,329 ends paired within one line, but only 39.72%
 of 3,346 matched definitions. Mojo had 10/280 compilation failures; Perl-Critic
 had 251/263. It is a conditional candidate reading, never a canonical adoption.
 
@@ -89,6 +89,9 @@ transport produced no index. Use the explicit cURL transport above. No compiler
 run, acceptance rule, source pin, install cap, or holdout decision changed.
 
 ## C-R9 environment freeze before compliant measurements
+
+C-R9 controller ruling as recorded in the project status history:
+> compiler5.34.1 nativeends/B::Xref1.07 tierA only actuallycompiledpopulation; networkdenied and subjectdeclareddependencies only; every uncompiled unit unresolved againstcoverage.
 
 C-R9 assigns `%DB::sub` and B::Xref tier A only for the population the pinned
 interpreter actually compiles. Earlier range trials lacked verified network
@@ -154,3 +157,30 @@ It changes no canonical source, PPI call rule, range join or acceptance bar.
 The companion remains range-only; no call-oracle promotion is preregistered.
 The committed count/hash collector projects the full repeat without subject
 file lists or people. Dancer2 remains unspent until this instrument is frozen.
+
+## Dancer2 one-shot disposition and next-holdout amendment
+
+The frozen `500a867de528dfe651b3ec5b61d1779625c6e595` instrument spent
+Dancer2 at its first clone. The complete one-shot run compiled 279/343 units,
+paired 624/676 named ends, and the reading found 623 eligible ends, all agreeing
+within one line. Median-of-three throughput was 2.29 MB/CPU-s. No minimum
+compiler coverage or named-pairing coverage had been frozen before first read.
+The result is diagnostic only: it cannot authorize canonical adoption, and
+Dancer2 cannot be reused as a fresh holdout. The earlier conditional sentence
+about an incomplete audit leaving it unspent does not apply after first read.
+
+Before selecting or first reading any further holdout, commit a generic
+count/hash collector and these independent population gates: at least 95% of
+all tracked Perl units compile, and at least 95% of independently tagged named
+ends pair uniquely. The harness must measure the full native population; a count mismatch fails
+acceptance and remains published. Any Ctags-unknown file fails the named-pairing population
+gate; a failed gate still gets a count/hash receipt. Every future phase record
+must bind the full instrument and source commits, and build/grade/retime phases
+must bind the grading binary SHA256. Dancer2's old phase records contain only
+labels, exit states and launch loads, so their provenance is incomplete and
+the diagnostic receipt says so. Require the subject's own declared dependencies only,
+with an unchanged isolated library fingerprint and saved archive hashes; an
+undeclared setup gives no borrowed dependencies. Every failed unit and every
+unpaired tag remains in the denominator. Preserve the existing >=.90 range
+agreement and all L1, timing and fault gates. No further holdout is pinned by
+this amendment.

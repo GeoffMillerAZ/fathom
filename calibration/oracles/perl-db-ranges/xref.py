@@ -91,10 +91,11 @@ def launch_xref(perl, source, root, env, inc, prefix, deadline):
     guard_args = ["-I" + str(runner.OBSERVER.parent), "-MFathomPerlCompileGuard"]
     command = runner.sandbox_command(
         perl, *core_args, *guard_args, "-MO=Xref,-r", "-c", str(source),
-        profile=inc["filesystem_read_profile"])
+        profile=runner.compiler_profile(inc, prefix.parent))
     with stdout_path.open("wb") as out, stderr_path.open("wb") as err:
         proc = subprocess.Popen(command, cwd=root, env=run_env, stdout=out, stderr=err,
-                                start_new_session=True)
+                                start_new_session=True,
+                                preexec_fn=runner.file_limit(32 * 1024 * 1024))
         timed_out = False
         try:
             try:
@@ -106,7 +107,7 @@ def launch_xref(perl, source, root, env, inc, prefix, deadline):
     size = stdout_path.stat().st_size + stderr_path.stat().st_size
     if timed_out:
         return None, "file_timeout"
-    if size > 64 * 1024 * 1024:
+    if size >= 64 * 1024 * 1024 or max(stdout_path.stat().st_size, stderr_path.stat().st_size) >= 32 * 1024 * 1024:
         return None, "output_limit"
     if proc.returncode or not observer_json.is_file():
         return None, "compile_error" if proc.returncode else "missing_observer_output"
@@ -263,8 +264,10 @@ def main():
             continue
         file_deadline = runner.compiler_deadline(deadline)
         source = (root / rel).resolve(strict=True)
+        per_file = logs / f"{index:06d}"
+        per_file.mkdir()
         raw, failure = launch_xref(perl, source, root, env, inc,
-                                   logs / f"{index:06d}", file_deadline)
+                                   per_file / "xref", file_deadline)
         if failure:
             failures += 1
             continue

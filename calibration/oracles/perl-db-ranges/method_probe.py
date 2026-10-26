@@ -113,9 +113,9 @@ def run(args):
     # The guard resets @INC; explicitly retain the instrument's adapter root.
     inc["inc"].append(str(HERE))
     inc["roots"].append(str(HERE))
-    profile = inc["filesystem_read_profile"]
     outdir = checked_output_dir(args.output_dir)
     outdir.mkdir(parents=True)
+    profile = runner.compiler_profile(inc, outdir)
     run_env = env.copy()
     run_env.update({"FATHOM_DB_RANGE_OUT": str(outdir / "guard.json"),
                     "FATHOM_ALLOWED_INC": os.pathsep.join(inc["inc"]),
