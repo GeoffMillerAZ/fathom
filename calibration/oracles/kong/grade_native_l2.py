@@ -116,6 +116,10 @@ def project(rel, native, located):
 
 
 def measure(args):
+    start = dict(load_1m=os.getloadavg()[0], nice=os.getpriority(os.PRIO_PROCESS, 0),
+                 free_gib=shutil.disk_usage(Path.home()).free / 1024**3)
+    if start['load_1m'] > 9 or start['nice'] < 10 or start['free_gib'] < 20:
+        raise ValueError('T-R10 correctness start requires load<=9, nice>=10, free>=20 GiB')
     import yaml
     protocol = json.loads((HERE / 'native-protocol-r2.json').read_text())
     identity = json.loads(args.build_receipt.read_text())
@@ -194,7 +198,8 @@ def measure(args):
     summary = dict(kind='full original-population Kong L1/L2 diagnostic; canonical reading unchanged',
                    native_binary_sha256=identity['binary_sha256'], cohorts=all_rows, refusals=refused,
                    status='native_family_refused' if refused else 'native_population_complete',
-                   canonical_counts_before=prior['counts'], canonical_grades_before=prior['grade'])
+                   canonical_counts_before=prior['counts'], canonical_grades_before=prior['grade'],
+                   correctness_start_conditions=start)
     if not refused:
         # Complete every native input first; no partial family is graded.
         for ordinal, target, source_sha, scope, folder in comparisons:
@@ -206,13 +211,23 @@ def measure(args):
         timing = dict(start_load_1m=os.getloadavg()[0], nice=os.getpriority(os.PRIO_PROCESS, 0),
                       machine_class=platform.system() + '/' + platform.machine(),
                       serial_lane_job=True, shared_host_other_activity='uncontrolled')
-        run([args.indexbench, 'lang-retime', '-reading', reading, '-runs', '3', '-write', *mappings])
+        timed = timing['start_load_1m'] <= 6
+        if timed:
+            run([args.indexbench, 'lang-retime', '-reading', reading, '-runs', '3', '-write', *mappings])
+            timing['end_load_1m'] = os.getloadavg()[0]
+            timed = timing['end_load_1m'] <= 6
+        timing['runs'] = 3 if timed else 0
+        timing['status'] = 'measured_median_of_3' if timed else 'unmeasured'
+        # Initial correctness-run timings cannot establish a performance grade.
+        # Keep their raw reading private, and omit them from public evidence.
+
         measured = json.loads(reading.read_text())
         summary.update(counts=measured['counts'], metrics=measured['metrics'], metric_tiers=measured['metric_tiers'],
-                       grade=measured['grade'], timing_conditions=timing, tenancy=measured['tenancy'],
+                       grade=measured['grade'] if timed else 'unmeasured: performance gate not established',
+                       timing_conditions=timing, tenancy=measured['tenancy'] if timed else dict(faults=measured['tenancy']['faults']),
                        per_cohort=[{key: row[key] for key in ('sha', 'files', 'bytes', 'counts', 'families')} for row in measured['subjects']],
                        scope_exclusion_counts=dict(notes=sum('skipped by ingest' in note or 'tool-oracle entries on files' in note for note in measured['notes'])),
-                       timing_notes=[note for note in measured['notes'] if note.startswith('throughput (design 1.9 T1, T2)')])
+                       timing_notes=[note for note in measured['notes'] if note.startswith('throughput (design 1.9 T1, T2)')] if timed else ['Throughput unmeasured under T-R10; correctness replay only.'])
     summary['oracle_sources'] = [dict(path=name, sha256=sha((HERE / name).read_bytes())) for name in
                                  ('native/main.go', 'instrument_native.py', 'probe_native_controls.py', 'grade_native_l2.py', 'locations.go', 'main.go')]
     (args.out / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')

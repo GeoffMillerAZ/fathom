@@ -73,7 +73,10 @@ held T-R2. This is open measurement work, not an unavailable-oracle ceiling.
 
 Use private TMPDIR/GOTMPDIR/GOCACHE/GOMODCACHE, GOWORK=off,
 GOTOOLCHAIN=local and MACOSX_DEPLOYMENT_TARGET=14.0 on Darwin. Before each
-heavy step require free disk >=20GiB, load<=6, one serial nice10 job. Use fresh
+heavy step require free disk >=20GiB and one serial nice10 job. T-R10 allows
+the full correctness replay to start at 1-minute load<=9; other heavy steps
+retain load<=6. Throughput needs load<=6, median of three and named conditions;
+otherwise it and the performance-dependent diagnostic grade are unmeasured. Use fresh
 output directories. A private Python venv with PyYAML is needed for the full
 replay only; the probe/build/control scripts otherwise use the standard library.
 

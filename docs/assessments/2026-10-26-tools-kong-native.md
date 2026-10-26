@@ -66,3 +66,9 @@ module test run attempted docker compose config and failed without starting a
 container. That selection was wrong for this helper: only the focused new
 L1/L2 location tests are verified; the held L3 test is explicitly unverified,
 and no test or golden was weakened. No model decision applies.
+
+T-R10 permits the full correctness replay at start load<=9, nice10, one heavy
+job and free>=20GiB. The driver separately gates three-run timing at load<=6
+and discloses conditions; otherwise throughput and the performance-dependent
+grade remain unmeasured. Azure T-R9 branch9a36618c9 stays frozen for review
+and the controller-provided Linux x64 receipt.
