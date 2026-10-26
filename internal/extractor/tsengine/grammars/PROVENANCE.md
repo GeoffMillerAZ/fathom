@@ -36,7 +36,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `c` | tree-sitter/tree-sitter-c | v0.24.2 | `b780e47fc780ddc8da13afa35a3f4ed5c157823d` | MIT | `tree_sitter_c` | `2eeb4db31f8fa0865e45488503d13403923bcb485a1bdb637abff8c42dd97364` |
 | `cmake` | uyha/tree-sitter-cmake | v0.7.5 | `e997bd0b275ca525ce9befecedf5299031183661` | MIT | `tree_sitter_cmake` | `b1c664921d06a6609f2b4fdfbd6685baea35066873ae5b75e11be55317d281f9` |
 | `commonlisp` | tree-sitter-grammars/tree-sitter-commonlisp | v0.4.1 | `9db594efb43574c5fe4a1f880568b1f0d0ee6057` | MIT | `tree_sitter_commonlisp` | `f9767782bf94e82b847094f632f2db95b342e0ab54b1b8c8234cc1d6ac6c69a5` |
-| `cpp` | taku25/tree-sitter-unreal-cpp | 920e9810cc64a47fa05cfcf30c7caecb85b5f2c3 | `920e9810cc64a47fa05cfcf30c7caecb85b5f2c3` | MIT | `tree_sitter_cpp` | `285ad7c2969a03254ed7a77068e0effca26cb8f014bc5b9d300bd4415ec0b17b` |
+| `cpp` | tree-sitter/tree-sitter-cpp | v0.23.4 | `f41e1a044c8a84ea9fa8577fdd2eab92ec96de02` | MIT | `tree_sitter_cpp` | `7a2c55afe3028f4105f25762ea58cc16537d1f5a1dcd9cca90410b3cd5d46051` |
 | `csharp` | tree-sitter/tree-sitter-c-sharp | v0.23.5 | `cac6d5fb595f5811a076336682d5d595ac1c9e85` | MIT | `tree_sitter_c_sharp` | `9628b164369071019368618bdefa446f0aab8acaac47b75d5dfb209e93b8903b` |
 | `css` | tree-sitter/tree-sitter-css | v0.25.0 | `dda5cfc5722c429eaba1c910ca32c2c0c5bb1a3f` | MIT | `tree_sitter_css` | `03965344d8c0435dc54fb45b281578420bb7db8b99df4d34e7e74105a274cb79` |
 | `cuda` | tree-sitter-grammars/tree-sitter-cuda | d58080a327756e4d1d16ec329ba7cb2048f6c6cd | `d58080a327756e4d1d16ec329ba7cb2048f6c6cd` | MIT | `tree_sitter_cuda` | `18f7bcaf6115c7b9ca57505653e787c565f4cdc7886caf76a004c36e8aa1548a` |
@@ -104,7 +104,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `c` | (root) | no | 15 | 564,097 | 136,140 | `22362d4cc55c6ccc6bada0775a97fb86d3dc801de439b54d06a8c870604eca33` |
 | `cmake` | (root) | yes | 14 | 198,511 | 68,052 | `2250d3af489e7bef560a788f0b14ef436bd94003b8eb2d7472aecea9c55c3e1c` |
 | `commonlisp` | (root) | no | 14 | 839,432 | 158,920 | `f9cbfce7bf5a6723d457925aa258cd9e224ebeab8988f369b710fe7a11581c12` |
-| `cpp` | (root) | yes | 15 | 3,975,018 | 881,960 | `613af35868891df920a1e5c12fb67b2c2e83eb6a7c9cab6d3a1247acd20d22df` |
+| `cpp` | (root) | yes | 14 | 1,935,648 | 420,154 | `b5ca4b0cd346bc1cd1060fdc2151125a11ad7695da595157667a5e8b30b03e34` |
 | `csharp` | (root) | yes | 15 | 3,056,786 | 603,861 | `b0700502f93f8e6fa577c47faa1dfcd53ae8b7467d16c621102238e75de8159f` |
 | `css` | (root) | yes | 15 | 250,838 | 74,133 | `e99413feca59f90b54899d5257f0068ea82fea71e30aeb55f6342a104c23fd2f` |
 | `cuda` | (root) | yes | 15 | 3,265,801 | 741,305 | `82344832ffd95a2335d30a37665cec8285e41bf18526d88792d3d25b2b5d0129` |
