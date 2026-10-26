@@ -180,17 +180,7 @@ func EnrichCUEEdges(ctx context.Context, st store.Store, serviceID, repoPath str
 		return report, fmt.Errorf("fusion: CUE typed-edge load %q: no cue.mod/module.cue", repoPath)
 	}
 
-	cfg := &load.Config{
-		Dir:     repoPath,
-		Package: "*", // every package; files with no package clause -> "_"
-		// Hermetic: this pass never needs a registry lookup (first-party
-		// intra-module imports and stdlib-only builtin packages are
-		// resolved locally); an inline-empty registry keeps a broken or
-		// slow $CUE_REGISTRY in the caller's real environment from ever
-		// reaching this load, mirroring TypedEdgeEnv's GOWORK=off posture.
-		Env: []string{"CUE_REGISTRY=inline:{}"},
-	}
-	insts := load.Instances([]string{"./..."}, cfg)
+	insts := load.Instances([]string{"./..."}, cueTypedLoadConfig(repoPath))
 	report.PackagesTotal = len(insts)
 	if len(insts) == 0 {
 		report.Duration = time.Since(start)
@@ -244,6 +234,9 @@ func EnrichCUEEdges(ctx context.Context, st store.Store, serviceID, repoPath str
 
 		if inst.Err != nil {
 			report.PackagesFailed++
+			if len(report.FailedPackages) < 5 {
+				report.FailedPackages = append(report.FailedPackages, FailedTypedPackage{PkgID: inst.ImportPath, Err: inst.Err.Error()})
+			}
 			continue
 		}
 
