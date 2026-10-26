@@ -1,111 +1,22 @@
 {
-  "counts": {
-    "call_fathom": 45956,
-    "call_fathom_in_truth": 45956,
-    "call_truth": 45956,
-    "call_truth_found": 45956,
-    "css_w2_fathom_outside_closure": 1365,
-    "css_w2_oracle_outside_closure": 1365,
-    "fathom_defs": 137732,
-    "file_edges_agree": 88,
-    "file_edges_fathom": 88,
-    "file_edges_truth": 88,
-    "import_edges_agree": 88,
-    "import_edges_fathom": 88,
-    "import_edges_truth": 88,
-    "import_oracle_out_of_scope": 0,
-    "import_oracle_unpaired": 0,
-    "imports": 90,
-    "imports_in_repo": 88,
-    "imports_resolved_agree": 88,
-    "kind_equal": 137732,
-    "matched": 137732,
-    "oracle_defs": 137732,
-    "range_eligible": 134456,
-    "range_ok": 134456
-  },
   "dialect": "css",
-  "disposition": null,
-  "excluded_by_kind": {
-    "fathom:CSSModule": 212
-  },
-  "extractor": "dialect",
-  "fathom_commit": "9fe4f9c2c",
+  "kind": "language",
+  "target_level": "L3",
+  "level_met": "L3",
   "grade": {
     "L1": "good",
     "L2": "excellent",
     "L3": "excellent",
     "L4": "not-attempted"
   },
-  "kind": "language",
-  "kind_intersection": [
-    "rule",
-    "selector",
-    "variable"
-  ],
-  "level_met": "L3",
   "measured_at": "2026-10-26",
-  "metric_tiers": {
-    "call_precision": "A",
-    "call_recall": "A",
-    "file_edge_precision": "A",
-    "file_edge_recall": "A",
-    "import_resolution": "A",
-    "kind_agreement": "A",
-    "range_agreement": "C",
-    "sym_precision": "A",
-    "sym_recall": "A"
-  },
-  "metrics": {
-    "call_precision": 1,
-    "call_recall": 1,
-    "def_mapping": null,
-    "file_edge_precision": 1,
-    "file_edge_recall": 1,
-    "import_resolution": 1,
-    "kind_agreement": 1,
-    "range_agreement": 1,
-    "signature_coverage": null,
-    "sym_precision": 1,
-    "sym_recall": 1,
-    "typed_recall": null
-  },
-  "not_applicable": [
-    "signature_coverage"
-  ],
-  "notes": [
-    "C-R7/P-T1 tier ruling is recorded in docs/design/language-breadth.md section1.3, dated amendment2026-10-26; it attests native ranges only, without an automatic coverage floor.",
-    "Population: Lightning CSS definitions; Chromium attests native ends and does not enumerate. Canonical attested coverage 97.62%; excluded 3,276 = 2,837 selectors + 439 keyframes. No coverage floor has been ruled; owner ruling required before canonical adoption. Tachyons used the unchanged nesting walk, has no nesting, and did not discharge O849; walk nesting before pinning/reading a new holdout, never reuse spent holdouts.",
-    "Timing correction 2026-10-26: three full extraction trials against unchanged frozen primary/companion files; each subject launched under nice 10 at one-minute load<=9. Throughputs [2.15, 2.1, 2.13] MB/CPU-s; actual median run 3: 2.13. Launch/end load by subject: run 1: normalize.css 4.034/4.034,pico 4.034/4.017,gitea 4.017/4.017; run 2: normalize.css 4.017/4.017,pico 4.017/4.482,gitea 4.482/4.482; run 3: normalize.css 4.482/4.482,pico 4.482/4.845,gitea 4.845/4.845. All original counts and metrics reproduced. Earlier timings did not persist individual loads and are not a controlled performance comparison.",
-    "W2 (design 1.8): lightningcss attests no cascade, so a var() or animation-name pair is graded as a name reference: kept when its name is a custom property or @keyframes rule defined in the file or its @import closure, every other pair out of both sides, counted",
-    "file_edge_precision and file_edge_recall measured against an import dump's (file, imported file) pairs, there being no SCIP index: the truth is what each file's import statements name, not the files its references reach as a SCIP index's cross-file edges are, so a file reached without an import of its own (a file another one required, an autoloaded constant) is outside the truth and a resolved edge to it counts against precision, while a file imported and never referenced is in it (LB-F57)",
-    "gitea: 1247 oracle and 1247 fathom name pairs name nothing defined in their file's @import closure (W2), out of both",
-    "gitea: range_agreement measured against Chromium DevTools Protocol CSS.setStyleTexts (tier C, 156.0.8078.47: 92 files, 0 it could not parse): Native-validated CSSStyle body ranges for eligible selectors and CSSProperty ranges for custom properties; nested-parent selectors and keyframes without a native range are unmeasured, 3955 of fathom's definitions paired (L1's own pairing: same file and name, |\u0394line| <= 2); only the range counts are taken, so the L1 oracle is unchanged",
-    "gitea: restricted to web_src/css/** (-only; the files outside are a disclosed gap, not measured)",
-    "import_resolution: 88 of 88 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent >= 0.95, good >= 0.85); import edges precision 1 (88 of 88) and recall 1 (88 of 88); 0 of 90 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
-    "normalize.css: lightningcss resolves none of fathom's imports to a file of the subject, so import_resolution has no denominator here",
-    "normalize.css: range_agreement measured against Chromium DevTools Protocol CSS.setStyleTexts (tier C, 156.0.8078.47: 1 files, 0 it could not parse): Native-validated CSSStyle body ranges for eligible selectors and CSSProperty ranges for custom properties; nested-parent selectors and keyframes without a native range are unmeasured, 68 of fathom's definitions paired (L1's own pairing: same file and name, |\u0394line| <= 2); only the range counts are taken, so the L1 oracle is unchanged",
-    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "pico: 118 oracle and 118 fathom name pairs name nothing defined in their file's @import closure (W2), out of both",
-    "pico: 119 files skipped by ingest's gates (generated)",
-    "pico: 198451 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (\u00a71.4)",
-    "pico: lightningcss resolves none of fathom's imports to a file of the subject, so import_resolution has no denominator here",
-    "pico: range_agreement measured against Chromium DevTools Protocol CSS.setStyleTexts (tier C, 156.0.8078.47: 238 files, 0 it could not parse): Native-validated CSSStyle body ranges for eligible selectors and CSSProperty ranges for custom properties; nested-parent selectors and keyframes without a native range are unmeasured, 130433 of fathom's definitions paired (L1's own pairing: same file and name, |\u0394line| <= 2); only the range counts are taken, so the L1 oracle is unchanged",
-    "pico: restricted to css/** (-only; the files outside are a disclosed gap, not measured)",
-    "C2-F1 correction: proposal-selected ranges are tier C; a coverage floor alone cannot grant tier A. Historical source/oracle data and timing are preserved; the receipt records the classification harness commit and original hashes."
-  ],
-  "oracles": [
-    {
-      "tier": "A",
-      "tool": "lightningcss",
-      "version": "1.33.0"
-    }
-  ],
-  "required_kinds": [
-    "selector"
-  ],
+  "fathom_commit": "9fe4f9c2c",
+  "extractor": "dialect",
   "subjects": [
     {
+      "name": "gitea",
+      "sha": "4ebd5e319b6a9e629bfd7a04292a6fe85b08dee9",
+      "files": 92,
       "bytes": 353080,
       "counts": {
         "call_fathom": 100,
@@ -132,9 +43,6 @@
         "range_eligible": 3955,
         "range_ok": 3955
       },
-      "excluded_by_kind": {
-        "fathom:CSSModule": 92
-      },
       "families": {
         "calls": "A",
         "file_edges": "A",
@@ -142,26 +50,29 @@
         "l1": "A",
         "ranges": "C"
       },
-      "files": 92,
       "kind_intersection": [
         "rule",
         "selector",
         "variable"
       ],
-      "name": "gitea",
-      "sha": "4ebd5e319b6a9e629bfd7a04292a6fe85b08dee9",
+      "excluded_by_kind": {
+        "fathom:CSSModule": 92
+      },
       "tenancy": {
-        "compiled_bytes": 0,
-        "extract_cpu_ms": 156.7999999999999,
-        "extract_ms": 155.94699999999997,
-        "faulting_files": [],
         "faults": 0,
+        "faulting_files": [],
         "files_with_error": 2,
+        "extract_ms": 155.94699999999997,
+        "extract_cpu_ms": 156.7999999999999,
         "max_file_ms": 16,
-        "peak_module_pages": 288
+        "peak_module_pages": 288,
+        "compiled_bytes": 0
       }
     },
     {
+      "name": "normalize.css",
+      "sha": "dafaf9ee60ff76173954aca755c78a6912a0ee6c",
+      "files": 1,
       "bytes": 7546,
       "counts": {
         "fathom_defs": 70,
@@ -171,34 +82,34 @@
         "range_eligible": 68,
         "range_ok": 68
       },
-      "excluded_by_kind": {
-        "fathom:CSSModule": 1
-      },
       "families": {
         "imports": "A",
         "l1": "A",
         "ranges": "C"
       },
-      "files": 1,
       "kind_intersection": [
         "rule",
         "selector",
         "variable"
       ],
-      "name": "normalize.css",
-      "sha": "dafaf9ee60ff76173954aca755c78a6912a0ee6c",
+      "excluded_by_kind": {
+        "fathom:CSSModule": 1
+      },
       "tenancy": {
-        "compiled_bytes": 0,
-        "extract_cpu_ms": 1.737,
-        "extract_ms": 1.718,
-        "faulting_files": [],
         "faults": 0,
+        "faulting_files": [],
         "files_with_error": 0,
+        "extract_ms": 1.718,
+        "extract_cpu_ms": 1.737,
         "max_file_ms": 1,
-        "peak_module_pages": 270
+        "peak_module_pages": 270,
+        "compiled_bytes": 0
       }
     },
     {
+      "name": "pico",
+      "sha": "1039a4788d6abc368d5485ae6bac84a8f0e3096f",
+      "files": 119,
       "bytes": 10216590,
       "counts": {
         "call_fathom": 45856,
@@ -214,45 +125,135 @@
         "range_eligible": 130433,
         "range_ok": 130433
       },
-      "excluded_by_kind": {
-        "fathom:CSSModule": 119
-      },
       "families": {
         "calls": "A",
         "imports": "A",
         "l1": "A",
         "ranges": "C"
       },
-      "files": 119,
       "kind_intersection": [
         "rule",
         "selector",
         "variable"
       ],
-      "name": "pico",
-      "sha": "1039a4788d6abc368d5485ae6bac84a8f0e3096f",
+      "excluded_by_kind": {
+        "fathom:CSSModule": 119
+      },
       "tenancy": {
-        "compiled_bytes": 0,
-        "extract_cpu_ms": 4806.696,
-        "extract_ms": 4762.448999999999,
-        "faulting_files": [],
         "faults": 0,
+        "faulting_files": [],
         "files_with_error": 118,
+        "extract_ms": 4762.448999999999,
+        "extract_cpu_ms": 4806.696,
         "max_file_ms": 52,
-        "peak_module_pages": 312
+        "peak_module_pages": 312,
+        "compiled_bytes": 0
       }
     }
   ],
-  "target_level": "L3",
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "lightningcss",
+      "version": "1.33.0"
+    }
+  ],
+  "metrics": {
+    "call_precision": 1,
+    "call_recall": 1,
+    "def_mapping": null,
+    "file_edge_precision": 1,
+    "file_edge_recall": 1,
+    "import_resolution": 1,
+    "kind_agreement": 1,
+    "range_agreement": 1,
+    "signature_coverage": null,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "A",
+    "call_recall": "A",
+    "file_edge_precision": "A",
+    "file_edge_recall": "A",
+    "import_resolution": "A",
+    "kind_agreement": "A",
+    "range_agreement": "C",
+    "sym_precision": "A",
+    "sym_recall": "A"
+  },
+  "not_applicable": [
+    "signature_coverage"
+  ],
+  "required_kinds": [
+    "selector"
+  ],
+  "kind_intersection": [
+    "rule",
+    "selector",
+    "variable"
+  ],
+  "counts": {
+    "call_fathom": 45956,
+    "call_fathom_in_truth": 45956,
+    "call_truth": 45956,
+    "call_truth_found": 45956,
+    "css_w2_fathom_outside_closure": 1365,
+    "css_w2_oracle_outside_closure": 1365,
+    "fathom_defs": 137732,
+    "file_edges_agree": 88,
+    "file_edges_fathom": 88,
+    "file_edges_truth": 88,
+    "import_edges_agree": 88,
+    "import_edges_fathom": 88,
+    "import_edges_truth": 88,
+    "import_oracle_out_of_scope": 0,
+    "import_oracle_unpaired": 0,
+    "imports": 90,
+    "imports_in_repo": 88,
+    "imports_resolved_agree": 88,
+    "kind_equal": 137732,
+    "matched": 137732,
+    "oracle_defs": 137732,
+    "range_eligible": 134456,
+    "range_ok": 134456
+  },
   "tenancy": {
-    "compiled_bytes": 0,
-    "faulting_files": [],
     "faults": 0,
+    "faulting_files": [],
     "files_with_error": 120,
+    "throughput_mb_s": 2.13,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 2.15,
     "max_file_ms": 52,
     "peak_module_pages": 312,
-    "throughput_basis": "cpu",
-    "throughput_mb_s": 2.13,
-    "wall_throughput_mb_s": 2.15
-  }
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:CSSModule": 212
+  },
+  "notes": [
+    "C-R7/P-T1 tier ruling is recorded in docs/design/language-breadth.md section1.3, dated amendment2026-10-26; it attests native ranges only, without an automatic coverage floor.",
+    "C2-F1 correction: proposal-selected ranges are tier C; a coverage floor alone cannot grant tier A. Historical source/oracle data and timing are preserved; the receipt records the classification harness commit and original hashes.",
+    "Population: Lightning CSS definitions; Chromium attests native ends and does not enumerate. Canonical attested coverage 97.62%; excluded 3,276 = 2,837 selectors + 439 keyframes. No coverage floor has been ruled; owner ruling required before canonical adoption. Tachyons used the unchanged nesting walk, has no nesting, and did not discharge O849; walk nesting before pinning/reading a new holdout, never reuse spent holdouts.",
+    "Timing correction 2026-10-26: three full extraction trials against unchanged frozen primary/companion files; each subject launched under nice 10 at one-minute load\u003c=9. Throughputs [2.15, 2.1, 2.13] MB/CPU-s; actual median run 3: 2.13. Launch/end load by subject: run 1: normalize.css 4.034/4.034,pico 4.034/4.017,gitea 4.017/4.017; run 2: normalize.css 4.017/4.017,pico 4.017/4.482,gitea 4.482/4.482; run 3: normalize.css 4.482/4.482,pico 4.482/4.845,gitea 4.845/4.845. All original counts and metrics reproduced. Earlier timings did not persist individual loads and are not a controlled performance comparison.",
+    "W2 (design 1.8): lightningcss attests no cascade, so a var() or animation-name pair is graded as a name reference: kept when its name is a custom property or @keyframes rule defined in the file or its @import closure, every other pair out of both sides, counted",
+    "file_edge_precision and file_edge_recall measured against an import dump's (file, imported file) pairs, there being no SCIP index: the truth is what each file's import statements name, not the files its references reach as a SCIP index's cross-file edges are, so a file reached without an import of its own (a file another one required, an autoloaded constant) is outside the truth and a resolved edge to it counts against precision, while a file imported and never referenced is in it (LB-F57)",
+    "gitea: 1247 oracle and 1247 fathom name pairs name nothing defined in their file's @import closure (W2), out of both",
+    "gitea: range_agreement measured against Chromium DevTools Protocol CSS.setStyleTexts (tier C, 156.0.8078.47: 92 files, 0 it could not parse): Native-validated CSSStyle body ranges for eligible selectors and CSSProperty ranges for custom properties; nested-parent selectors and keyframes without a native range are unmeasured, 3955 of fathom's definitions paired (L1's own pairing: same file and name, |Δline| \u003c= 2); only the range counts are taken, so the L1 oracle is unchanged",
+    "gitea: restricted to web_src/css/** (-only; the files outside are a disclosed gap, not measured)",
+    "import_resolution: 88 of 88 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 1 (88 of 88) and recall 1 (88 of 88); 0 of 90 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
+    "normalize.css: lightningcss resolves none of fathom's imports to a file of the subject, so import_resolution has no denominator here",
+    "normalize.css: range_agreement measured against Chromium DevTools Protocol CSS.setStyleTexts (tier C, 156.0.8078.47: 1 files, 0 it could not parse): Native-validated CSSStyle body ranges for eligible selectors and CSSProperty ranges for custom properties; nested-parent selectors and keyframes without a native range are unmeasured, 68 of fathom's definitions paired (L1's own pairing: same file and name, |Δline| \u003c= 2); only the range counts are taken, so the L1 oracle is unchanged",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "pico: 118 oracle and 118 fathom name pairs name nothing defined in their file's @import closure (W2), out of both",
+    "pico: 119 files skipped by ingest's gates (generated)",
+    "pico: 198451 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "pico: lightningcss resolves none of fathom's imports to a file of the subject, so import_resolution has no denominator here",
+    "pico: range_agreement measured against Chromium DevTools Protocol CSS.setStyleTexts (tier C, 156.0.8078.47: 238 files, 0 it could not parse): Native-validated CSSStyle body ranges for eligible selectors and CSSProperty ranges for custom properties; nested-parent selectors and keyframes without a native range are unmeasured, 130433 of fathom's definitions paired (L1's own pairing: same file and name, |Δline| \u003c= 2); only the range counts are taken, so the L1 oracle is unchanged",
+    "pico: restricted to css/** (-only; the files outside are a disclosed gap, not measured)",
+    "regraded at 43af9034cf1d42c1ce480ffb879077b8ba2f67b9 from the recorded subject counts (harness rules only; extraction as measured at 9fe4f9c2c)"
+  ],
+  "disposition": null
 }

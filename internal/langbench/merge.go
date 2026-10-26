@@ -170,7 +170,7 @@ func recompute(r *Reading) {
 	if companionTier, ok := tiers[FamilyRanges]; ok && (!measured(FamilyL1) || tierRank[companionTier] < tierRank[rangeTier]) {
 		rangeTier = companionTier
 	}
-	if rangeTier != "" && counts[CntRangeEligible] > 0 {
+	if slices.Contains(keys, MRangeAgreement) && rangeTier != "" && counts[CntRangeEligible] > 0 {
 		all[MRangeAgreement] = ratio(counts[CntRangeOK], counts[CntRangeEligible])
 		if all[MRangeAgreement] != nil {
 			metricTiers[MRangeAgreement] = rangeTier

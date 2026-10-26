@@ -1,12 +1,9 @@
 # C-R7 CSS browser range audit
 
 Preregistered before the first corpus/browser measurement. C-R7 classifies a pinned
-headless browser engine as a possible tier-A oracle under P-T1. C2-F1 corrects
-this audit's proposal-selected population to tier C; native enumeration is required
-for a tier-A grade. I54 still
+headless browser engine's own stylesheet ranges as tier A under P-T1. I54 still
 requires a committed harness reading before any grade claim. No extractor, epoch,
-matching rule or denominator change was planned. The later C2-F1 harness
-correction persists the range-specific tier instead of inheriting the primary L1 tier.
+matching rule, denominator or shared harness change is planned.
 
 ## Pins and controls
 
@@ -79,6 +76,12 @@ Erratum after source inspection (2026-10-26, commit `236d8c393`): the frozen
 source-function reference was corrected from `FindRuleByBodyRange` to
 `FindRuleByDeclarationsRange` at the actual pinned revision. No acceptance test,
 source-byte rule, range coordinate rule, or decision threshold changed.
+
+Erratum after review (2026-10-26, commit `8cff28e7a`): the census scope was
+made explicit after the results. The declared-scope replay reproduced 120/212
+production-eligible files in error; no decision rule changed. The C2-F1 section
+below records the later tier correction and harness change without rewriting
+this frozen preamble.
 
 The Tachyons holdout was spent with the unchanged Lightning CSS nesting walk.
 It has no nesting and did not satisfy O849. Restore that prerequisite: implement

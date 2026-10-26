@@ -191,3 +191,26 @@ The replay corrects the existing candidate files in place at
 the original reading hashes, timing and Fathom commit identities, classification
 harness commit, frozen artifact hashes and command templates; Git history retains
 the original reading bytes.
+
+The classified `lang-oracle` replay writes to `$CSS_OUT/candidate-reading.json`
+and `$CSS_OUT/holdout-reading.json`. Its extraction timing and commit label are
+new, while the published readings retain the recorded historical timing and
+Fathom commit. Reproduce that explicit postprocessing step from the repository
+root, with `$CSS_INDEXBENCH` set to the binary whose hash is in the receipt and
+`CSS_HARNESS_COMMIT=43af9034cf1d42c1ce480ffb879077b8ba2f67b9`:
+
+```sh
+python3 calibration/oracles/chromium-css/postprocess_reading.py --self-test
+mkdir -p workspace/tmp/css-browser-postprocess
+git show 43af9034c:docs/bench/readings/css-browser-2026-10-26.json > workspace/tmp/css-browser-postprocess/historical-candidate.json
+git show 43af9034c:docs/bench/readings/css-browser-holdout-2026-10-26.json > workspace/tmp/css-browser-postprocess/historical-holdout.json
+python3 calibration/oracles/chromium-css/postprocess_reading.py --historical workspace/tmp/css-browser-postprocess/historical-candidate.json --replay "$CSS_OUT/candidate-reading.json" --out workspace/tmp/css-browser-postprocess/candidate.json
+python3 calibration/oracles/chromium-css/postprocess_reading.py --historical workspace/tmp/css-browser-postprocess/historical-holdout.json --replay "$CSS_OUT/holdout-reading.json" --out workspace/tmp/css-browser-postprocess/holdout.json
+"$CSS_INDEXBENCH" lang-regrade -commit "$CSS_HARNESS_COMMIT" workspace/tmp/css-browser-postprocess/candidate.json workspace/tmp/css-browser-postprocess/holdout.json
+shasum -a 256 workspace/tmp/css-browser-postprocess/candidate.json workspace/tmp/css-browser-postprocess/holdout.json
+```
+
+The two hashes must match `candidate_reading_sha256` in the receipt. The
+postprocessor checks unchanged counts, numeric metrics and subject identity;
+`lang-regrade` adds its harness provenance note and writes the committed
+`langbench.MarshalReading` format. This step reads only persisted results.

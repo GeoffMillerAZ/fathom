@@ -77,3 +77,20 @@ source and timing identities are preserved in the dated receipt. Twelve
 companion-reading scratch copies (22 subjects) regrade without any count,
 metric, tier, grade or subject change; originals remain untouched. This is a
 harness compatibility check, with no subject extraction or oracle execution.
+
+R3-F1 correction: the range merge is now guarded by the metric keys for the
+reading kind. All 41 committed tooling readings with range counts retain
+every metric, tier, grade and level after regrade; none gains range_agreement.
+The earlier 12-reading check covered language companions only. R4-F1 adds a
+committed postprocessor for the explicit historical identity/timing restoration,
+then uses the harness serializer and its regrade provenance note. Both candidate
+reading hashes in the receipt describe those reproducible bytes. C2-F2 has a
+symlinked-temporary-root regression control; C2-F3 restores the frozen protocol
+preamble and appends the census-scope erratum.
+
+Mutation: removing `slices.Contains(keys, MRangeAgreement)` through a Go
+build overlay makes `TestCommittedToolingReadingsKeepMetricsOnRegrade` fail
+with tooling-acquired-range errors. The unchanged committed source passes
+`bash scripts/fathom-go.sh test -race -count=1 -run TestCommittedToolingReadingsKeepMetricsOnRegrade ./internal/langbench`.
+The committed postprocessing commands reproduce both published candidate
+files byte for byte, including the serializer's provenance note.

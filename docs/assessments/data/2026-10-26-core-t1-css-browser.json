@@ -196,8 +196,8 @@
   "review_corrections": {
     "c2_f1_retier_replay": {
       "candidate_reading_sha256": {
-        "css-browser-2026-10-26.json": "2510f0825fd8d3e6e11465751e1d574cd89b3c812c38d182fe5431eb36ebd546",
-        "css-browser-holdout-2026-10-26.json": "cccee2a3fd08a79b3b63f95cc7736b58e99026ef1b68621fab59f8661d77df0b"
+        "css-browser-2026-10-26.json": "75717b4e08ee0c18057f8f77f3c4bff361adc9c0080f62290569f3c4cf76e371",
+        "css-browser-holdout-2026-10-26.json": "6cb37af8d0d9173cb57922706fd7c1de84d2cc43dd10b9db2e3ff49b1ac2e053"
       },
       "classification": "Chromium proposal companion tier A -> C; no browser/source rerun",
       "classification_binary_sha256": "1d5e6157bad319a3e93e9bd85cb1cd7eda633bd5b3eb722f5da9273dfde8bd79",
@@ -216,7 +216,7 @@
         "tachyons-css/tachyons.source.json": "b463d94d06ac1677edb5f9d4945303acce80b1eba0bf17853df2bc50b4079124"
       },
       "classification_harness_commit": "43af9034cf1d42c1ce480ffb879077b8ba2f67b9",
-      "command_context": "Run from the repo root with CSS_INDEXBENCH, CSS_SUBJECTS, CSS_CLASSIFIED and CSS_OUT set; source scopes and subject flags match the documented replay.",
+      "command_context": "Run from the repo root with CSS_INDEXBENCH (the binary whose SHA-256 is classification_binary_sha256), CSS_HARNESS_COMMIT=43af9034cf1d42c1ce480ffb879077b8ba2f67b9, CSS_SUBJECTS, CSS_CLASSIFIED and CSS_OUT set; source scopes and subject flags match the documented replay.",
       "command_templates": [
         "\"$CSS_INDEXBENCH\" lang-oracle -dialect css -commit \"$CSS_HARNESS_COMMIT\" -subject \"$CSS_SUBJECTS/normalize-css\" -subject-name normalize.css -tool-oracle \"$CSS_CLASSIFIED/normalize.json\" -out \"$CSS_OUT/candidate-reading.json\"",
         "\"$CSS_INDEXBENCH\" lang-oracle -dialect css -commit \"$CSS_HARNESS_COMMIT\" -subject \"$CSS_SUBJECTS/pico\" -subject-name pico -only 'css/**' -tool-oracle \"$CSS_CLASSIFIED/pico.json\" -out \"$CSS_OUT/candidate-reading.json\"",
@@ -268,11 +268,18 @@
         "subject_count": 22
       },
       "numeric_equality": "counts and numeric metrics match each historical reading exactly",
+      "postprocessing": "After lang-oracle replay, run postprocess_reading.py with each raw replay and its historical reading at commit 43af9034c. It verifies unchanged counts, numeric metrics, subjects and non-range families; restores historical fathom_commit, measured_at, tenancy and timing notes; and carries the new range classification and disclosed -only scopes. Then run indexbench lang-regrade -commit $CSS_HARNESS_COMMIT on each intermediate reading. That step recomputes grades from persisted subjects, adds its provenance note, and writes langbench.MarshalReading bytes. No source, browser, oracle or holdout rerun occurs in postprocessing.",
       "published_readings": [
         "css-browser-2026-10-26.json",
         "css-browser-holdout-2026-10-26.json"
       ],
-      "result": "verified; counts and numeric metrics unchanged; range tier and grades corrected, existing source scopes disclosed"
+      "result": "verified; counts and numeric metrics unchanged; range tier and grades corrected, existing source scopes disclosed",
+      "tooling_regrade_compatibility": {
+        "all_metrics_tiers_grades_levels_unchanged": true,
+        "command": "bash scripts/fathom-go.sh test -race -count=1 -run TestCommittedToolingReadingsKeepMetricsOnRegrade ./internal/langbench",
+        "new_range_metrics": 0,
+        "reading_count": 41
+      }
     },
     "declared_scope_census_replay": {
       "official": {

@@ -2,6 +2,9 @@ package langbench
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
+	"reflect"
 	"testing"
 )
 
@@ -47,5 +50,49 @@ func TestRangeTierLegacyFallbackAndWeakestContributor(t *testing.T) {
 	MergeSubject(&r, Subject{Name: "c", Counts: map[string]int{CntRangeEligible: 1}, Families: map[string]string{FamilyRanges: "C"}})
 	if got := r.MetricTiers[MRangeAgreement]; got != "C" {
 		t.Fatalf("combined range tier %s, want weakest contributor C", got)
+	}
+}
+
+// Tooling intentionally has no range metric. Regrading the committed corpus
+// must not acquire one merely because a subject recorded range counts.
+func TestCommittedToolingReadingsKeepMetricsOnRegrade(t *testing.T) {
+	paths, err := filepath.Glob(filepath.Join("..", "..", "docs", "bench", "readings", "lang", "*.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	more, err := filepath.Glob(filepath.Join("..", "..", "docs", "bench", "readings", "*.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	paths = append(paths, more...)
+	if len(paths) == 0 {
+		t.Fatal("no committed readings")
+	}
+	withRanges := 0
+	for _, path := range paths {
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var r Reading
+		if err := json.Unmarshal(raw, &r); err != nil || r.Kind != "tooling" {
+			continue // Other top-level JSON schemas are not harness readings.
+		}
+		if r.Counts[CntRangeEligible] > 0 {
+			withRanges++
+		}
+		beforeMetrics, beforeTiers := r.Metrics, r.MetricTiers
+		beforeGrade, beforeLevel := r.Grade, r.LevelMet
+		Regrade(&r)
+		if !reflect.DeepEqual(r.Metrics, beforeMetrics) || !reflect.DeepEqual(r.MetricTiers, beforeTiers) ||
+			r.Grade != beforeGrade || r.LevelMet != beforeLevel {
+			t.Errorf("%s: tooling grade or metrics changed on regrade", path)
+		}
+		if _, present := r.Metrics[MRangeAgreement]; present {
+			t.Errorf("%s: tooling acquired range_agreement", path)
+		}
+	}
+	if withRanges != 41 {
+		t.Errorf("tooling readings with range counts = %d, want 41", withRanges)
 	}
 }
