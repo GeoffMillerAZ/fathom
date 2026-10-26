@@ -138,6 +138,7 @@ class PrivateLayoutTests(unittest.TestCase):
             pass
 
         workspace = replay.ROOT / "workspace"
+        workspace.mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(dir=workspace) as temp:
             root = Path(temp)
             sdk = root / "sdk"

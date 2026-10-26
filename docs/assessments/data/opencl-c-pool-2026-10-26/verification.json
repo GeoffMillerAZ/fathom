@@ -2,7 +2,7 @@
   "base_main": "6db920e72898abb20bf86c22652b401902e34598",
   "baseline_policy_unchanged_through_measurement": true,
   "checks": {
-    "TestNoOrgSpecificNames": "pass 2.415s",
+    "TestNoOrgSpecificNames": "pass 2.348s",
     "X-R5": "47 changed/new OpenCL files inspected; 13 lexical hits are 8 repository/pin identifiers, 3 synthetic email fixtures and 2 scan-description lines. No subject people or private paths in evidence.",
     "merge_debris_full": "pass",
     "merge_debris_staged": "pass",
@@ -36,10 +36,11 @@
     "pool-counts.json": "c88d8722e2e8afee001d101fbd4d0179d0cb56686b3851c7cf61bf7f5f8cfbfd"
   },
   "regressions": {
+    "fresh_checkout_replay_test": "RED: 8 tests with FileNotFoundError when workspace is absent; GREEN: 8 tests after test-parent creation",
     "isolated_pool_cli": "RED ModuleNotFoundError, GREEN exact isolated CLI and 11-test suite",
     "nested_replay_output": "RED FileNotFoundError before parents=True, GREEN entrypoint and real SDK replay"
   },
-  "scope": "Current round-3 triage checks; original baseline receipt policy identities retained separately from the later policy amendment. No product support level.",
+  "scope": "Current round-4 triage checks; original baseline receipt policy identities retained separately from the later policy amendment. No product support level.",
   "source_sha256": {
     "calibration/oracles/opencl-c/compdb.py": "2933410a9f6eefa873388e6e750bd0a431ea8f5bfe877c6cb1a952342dbc0777",
     "calibration/oracles/opencl-c/compiler_probe.py": "55bca097457253311e1dce32bfa427ef0344e438550527534ccdaaa820890edb",
@@ -48,7 +49,7 @@
     "calibration/oracles/opencl-c/test_compdb.py": "1e5cd5f9d696d7b1754d7d4160e14b5369dd92ad92edd2c179ae58854b95c0ff",
     "calibration/oracles/opencl-c/test_compiler_probe.py": "6b59c762242582820ef7829cfa4c7ade3c196a398d15e65119afbf0ee2dac3ec",
     "calibration/oracles/opencl-c/test_pool_audit.py": "26cb39533eaaa58e1b490e942719d252b017ffec8e75d50ee6b6971bd454e376",
-    "calibration/oracles/opencl-c/test_replay_sdk.py": "8a0be73daed23fac74e8c0c66bebe174183b54eb7706cafc7e630617cc962741",
+    "calibration/oracles/opencl-c/test_replay_sdk.py": "4e26ec2e10030b00ae63aea0c3242b536d5b28af2205c5ebb79c63ec5337bfd6",
     "calibration/oracles/opencl-c/test_triage.py": "a584815c766d4be6e3bd28cde22056a6c0f40fec69d368e320978306cb42d239",
     "calibration/oracles/opencl-c/triage.py": "3e43fbd6cc7c9cd8cdbab9de969d7da00b997091bc01dd928aec6f34a83b542a"
   },
