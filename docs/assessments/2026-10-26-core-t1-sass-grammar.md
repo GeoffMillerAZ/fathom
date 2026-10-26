@@ -31,10 +31,15 @@ and load `tree_sitter_sass` into py-tree-sitter 0.25.2 (ABI 15). Parse each trac
 as a faulting file. Independently parse those same files with sass-parser 0.4.57's indented
 parser. Toolchains, clones, binaries and raw logs remain under workspace.
 
-The result is a refused candidate and no support level. No production WASM blob, dialect,
-dispatch rule, generated board, epoch or plan checkbox changes. Retry only when a newer
+The result is a refused candidate and no support level. LB-Q-sass-rest changes from
+deferred to refused under design section 14.2; controller board regeneration therefore
+shows Sass as refused and moves its count from deferred to refused. No production WASM blob, dialect, dispatch rule, epoch or plan checkbox changes.
+The generated board is left to the controller. Retry only when a newer
 licensed pin passes the complete frozen corpus, then prove the production engine and L1-L3
-against Dart Sass. An upstream patch or fork remains a prepared proposal for the maintainer.
+against Dart Sass. No upstream patch, fork or issue proposal has been prepared. Measured diagnostic review
+identifies multiline comma-continued selector lists in at least 65 of 123 error files.
+Sibling combinators and interpolated selectors are additional observed failure shapes;
+fixing comma continuation alone would still leave the candidate above the 5% gate.
 
 ## Named routes and reproduction (X-R1)
 
