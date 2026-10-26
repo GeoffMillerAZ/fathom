@@ -1,0 +1,515 @@
+{
+  "scope": "Frozen runtime dependencies, Linux arm64/four CPUs; build-isolation tools not in runtime lock; no C4 or fix replay",
+  "subjects": [
+    {
+      "id": "encode--starlette",
+      "language": "Python",
+      "lock": "uv.lock",
+      "setup": {
+        "command": "python -m venv /work/tools && /work/tools/bin/pip install uv==0.13.5 && /work/tools/bin/uv --version && /work/tools/bin/uv sync --frozen --no-default-groups --group dev",
+        "seconds": 82.998,
+        "exit_code": 0,
+        "network": "bridge",
+        "log": "encode--starlette-setup.log",
+        "log_sha256": "0aa9100caedd7aad8490e3b68f1154a5850cb2eda58ddccb6675349a87699781"
+      },
+      "test": "/work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/pytest-temp",
+      "sha": "8aa828ceaff764a2e57932fb42fdf105a47c4c83",
+      "image": "python@sha256:14a4933e6cef421424f7a66d89a3f4eafcbd0d90e0a822251f298e05132dc735",
+      "platform": "linux/arm64",
+      "cpus": 4,
+      "lockfile_sha256": "796d45e1e449f7e70e9290fbc1bfd9394d9182fdaf66e5059f42f8b1df7196ed",
+      "runs": [
+        {
+          "command": "/work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/pytest-temp",
+          "seconds": 13.118,
+          "started_at": "2026-10-26T05:18:39.609266Z",
+          "exit_code": 0,
+          "network": "none",
+          "log": "encode--starlette-run1.log",
+          "log_sha256": "b59c41d3a99e0137bf5d537e2e09953143cfbf64e6a5771d89d43733dc7ba858"
+        },
+        {
+          "command": "/work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/pytest-temp",
+          "seconds": 16.943,
+          "started_at": "2026-10-26T05:25:11.477670Z",
+          "exit_code": 0,
+          "network": "none",
+          "log": "encode--starlette-run2.log",
+          "log_sha256": "74348e9b0ed45362485c1b1599ce9a4c9b54a9bd7c7fd3d2d22211e4139f0fcf"
+        },
+        {
+          "command": "/work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/pytest-temp",
+          "seconds": 11.149,
+          "started_at": "2026-10-26T05:28:37.093977Z",
+          "exit_code": 0,
+          "network": "none",
+          "log": "encode--starlette-run3.log",
+          "log_sha256": "23f5e444197bcbc78eccdeb0727dfd2f52ce2b396843d944795631bdc23b34b1"
+        }
+      ],
+      "network_probe": {
+        "command": "curl --noproxy \"*\" -I --connect-timeout 2 --max-time 3 https://1.1.1.1",
+        "seconds": 0.183,
+        "started_at": "2026-10-26T05:10:14.029997Z",
+        "exit_code": 7,
+        "network": "none",
+        "log": "encode--starlette-network-probe.log",
+        "log_sha256": "f9cf55b50dba65ca08df39180414f845e67c0f97277b46e404c346152653260d"
+      },
+      "warmup": {
+        "command": "/work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/pytest-temp",
+        "seconds": 12.761,
+        "started_at": "2026-10-26T05:17:15.724325Z",
+        "exit_code": 0,
+        "network": "none",
+        "log": "encode--starlette-warmup.log",
+        "log_sha256": "e86f6196648bd005ebfa3f6ae0814b8fde100a0d883bdab5e013099cf39453b7"
+      },
+      "tracked_diff": [],
+      "installed_distributions": [
+        "anyio==4.15.1",
+        "ast_serialize==0.6.0",
+        "attrs==25.3.0",
+        "backports.zstd==1.7.0",
+        "blockbuster==1.5.28",
+        "certifi==2026.10.19",
+        "cffi==2.0.0",
+        "charset-normalizer==3.4.3",
+        "coverage==7.16.1",
+        "cryptography==50.0.0",
+        "docutils==0.22",
+        "forbiddenfruit==0.1.4",
+        "h11==0.16.0",
+        "httpcore2==2.13.1",
+        "httpcore==1.0.9",
+        "httpx2==2.13.1",
+        "httpx==0.28.1",
+        "id==1.5.0",
+        "idna==3.18",
+        "importlib_metadata==9.0.1",
+        "iniconfig==2.1.0",
+        "itsdangerous==2.2.0",
+        "jaraco.classes==3.4.0",
+        "jaraco.context==6.0.1",
+        "jaraco.functools==4.3.0",
+        "jeepney==0.9.0",
+        "Jinja2==3.1.6",
+        "keyring==25.6.0",
+        "librt==0.13.0",
+        "markdown-it-py==4.0.0",
+        "MarkupSafe==3.0.2",
+        "mdurl==0.1.2",
+        "more-itertools==10.8.0",
+        "mypy==2.3.1",
+        "mypy_extensions==1.1.0",
+        "nh3==0.3.0",
+        "opentelemetry-api==1.44.0",
+        "opentelemetry-sdk==1.44.0",
+        "opentelemetry-semantic-conventions==0.65b0",
+        "outcome==1.3.0.post0",
+        "packaging==26.2",
+        "pathspec==1.0.4",
+        "pluggy==1.6.0",
+        "pycparser==2.22",
+        "Pygments==2.20.0",
+        "pytest-codspeed==5.0.3",
+        "pytest==9.1.1",
+        "python-multipart==0.0.32",
+        "PyYAML==6.0.3",
+        "readme_renderer==44.0",
+        "requests-toolbelt==1.0.0",
+        "requests==2.33.0",
+        "rfc3986==2.0.0",
+        "rich==15.0.0",
+        "ruff==0.16.8",
+        "SecretStorage==3.3.3",
+        "sniffio==1.3.1",
+        "sortedcontainers==2.4.0",
+        "starlette==1.10.0",
+        "trio==0.34.0",
+        "truststore==0.10.4",
+        "twine==7.0.0",
+        "types-PyYAML==6.0.12.20260906",
+        "typing_extensions==4.16.0",
+        "urllib3==2.8.0",
+        "zipp==3.23.0"
+      ],
+      "round1_seconds": [
+        15.016,
+        14.93,
+        15.263
+      ],
+      "round2_mean_delta_seconds": -1.333,
+      "timed_environment_lock": "uv.lock",
+      "timed_environment_lock_sha256": "796d45e1e449f7e70e9290fbc1bfd9394d9182fdaf66e5059f42f8b1df7196ed"
+    },
+    {
+      "id": "marshmallow-code--marshmallow",
+      "language": "Python",
+      "lock": "uv.lock",
+      "setup": {
+        "command": "python -m venv /work/tools && /work/tools/bin/pip install uv==0.13.5 && /work/tools/bin/uv --version && /work/tools/bin/uv sync --frozen --no-default-groups --group tests",
+        "seconds": 25.321,
+        "started_at": "2026-10-26T04:59:54.215490Z",
+        "exit_code": 0,
+        "network": "bridge",
+        "log": "marshmallow-code--marshmallow-setup.log",
+        "log_sha256": "a0db7e97e329f3613e8c334a322bcfc2350d87eb2ab96f5d517c8550b50a71ca"
+      },
+      "test": "/work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/pytest-temp",
+      "sha": "b762ea2d59ca52fe5df76b90de14bed7e5ec5607",
+      "image": "python@sha256:14a4933e6cef421424f7a66d89a3f4eafcbd0d90e0a822251f298e05132dc735",
+      "platform": "linux/arm64",
+      "cpus": 4,
+      "lockfile_sha256": "e4ce0fdc1b34b3919f912890ddebccf42c74c0a4be6b68539e346de4fef514da",
+      "runs": [
+        {
+          "command": "/work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/pytest-temp",
+          "seconds": 5.259,
+          "started_at": "2026-10-26T05:19:50.314932Z",
+          "exit_code": 0,
+          "network": "none",
+          "log": "marshmallow-code--marshmallow-run1.log",
+          "log_sha256": "ab57faf25b8c8a61f25d4e795fe9bf006e27759c3de9f55f123145ad6c5b52a1"
+        },
+        {
+          "command": "/work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/pytest-temp",
+          "seconds": 1.323,
+          "started_at": "2026-10-26T05:25:28.611119Z",
+          "exit_code": 0,
+          "network": "none",
+          "log": "marshmallow-code--marshmallow-run2.log",
+          "log_sha256": "7d88174429ba134aaf5dd61986db4c2e4e2b1ff0ddf4f63d3129e088afaa1da6"
+        },
+        {
+          "command": "/work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/pytest-temp",
+          "seconds": 1.577,
+          "started_at": "2026-10-26T05:30:01.427795Z",
+          "exit_code": 0,
+          "network": "none",
+          "log": "marshmallow-code--marshmallow-run3.log",
+          "log_sha256": "3bf74fa4f249ed5a57ba039d3aa9d2a0999b8ebcd73bf06bfa787697dd2f15ad"
+        }
+      ],
+      "network_probe": {
+        "command": "curl --noproxy \"*\" -I --connect-timeout 2 --max-time 3 https://1.1.1.1",
+        "seconds": 0.189,
+        "started_at": "2026-10-26T05:10:14.456654Z",
+        "exit_code": 7,
+        "network": "none",
+        "log": "marshmallow-code--marshmallow-network-probe.log",
+        "log_sha256": "f9cf55b50dba65ca08df39180414f845e67c0f97277b46e404c346152653260d"
+      },
+      "warmup": {
+        "command": "/work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/pytest-temp",
+        "seconds": 1.776,
+        "started_at": "2026-10-26T05:18:05.374974Z",
+        "exit_code": 0,
+        "network": "none",
+        "log": "marshmallow-code--marshmallow-warmup.log",
+        "log_sha256": "1a0060f15871dca843b4c39894096fa1af4693689141c2c22f0b63998450a3de"
+      },
+      "tracked_diff": [],
+      "installed_distributions": [
+        "iniconfig==2.3.0",
+        "marshmallow==4.3.1",
+        "packaging==26.3",
+        "pluggy==1.6.0",
+        "Pygments==2.21.0",
+        "pytest==9.1.1",
+        "simplejson==4.1.2"
+      ],
+      "round1_seconds": [
+        4.554,
+        4.518,
+        4.54
+      ],
+      "round2_mean_delta_seconds": -1.818,
+      "timed_environment_lock": "uv.lock",
+      "timed_environment_lock_sha256": "e4ce0fdc1b34b3919f912890ddebccf42c74c0a4be6b68539e346de4fef514da"
+    },
+    {
+      "id": "pallets--click",
+      "language": "Python",
+      "lock": "uv.lock",
+      "setup": {
+        "command": "mkdir -p /work/os-tools && dpkg-deb --fsys-tarfile /work/less.deb | tar --no-same-owner -x -C /work/os-tools && python -m venv /work/tools && /work/tools/bin/pip install uv==0.13.5 && /work/tools/bin/uv --version && /work/tools/bin/uv sync --frozen --no-default-groups --group tests",
+        "seconds": 12.732,
+        "started_at": "2026-10-26T05:30:03.059136Z",
+        "exit_code": 0,
+        "network": "bridge",
+        "log": "pallets--click-setup.log",
+        "log_sha256": "dece736e25caf366067ca694adcddc2488856af349f531f7246ed720536b5af3"
+      },
+      "test": "PATH=/work/os-tools/usr/bin:$PATH /work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/tmp/pytest-temp",
+      "sha": "2247b35ea1c47c727d7a06e51fa280e12a863ff6",
+      "image": "python@sha256:14a4933e6cef421424f7a66d89a3f4eafcbd0d90e0a822251f298e05132dc735",
+      "platform": "linux/arm64",
+      "cpus": 4,
+      "lockfile_sha256": "742507a6bbb80c093d2ebefc073357e3ef0cb504e9299def5348377f0d585d54",
+      "runs": [
+        {
+          "command": "PATH=/work/os-tools/usr/bin:$PATH /work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/tmp/pytest-temp",
+          "seconds": 4.331,
+          "started_at": "2026-10-26T05:44:00.264478Z",
+          "exit_code": 0,
+          "network": "none",
+          "log": "pallets--click-run1.log",
+          "log_sha256": "57eaa69c39c560e2abfd005fd900d43c0b3537750d4aac5d3005fd16f958e0e9"
+        },
+        {
+          "command": "PATH=/work/os-tools/usr/bin:$PATH /work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/tmp/pytest-temp",
+          "seconds": 18.352,
+          "started_at": "2026-10-26T05:44:13.533068Z",
+          "exit_code": 0,
+          "network": "none",
+          "log": "pallets--click-run2.log",
+          "log_sha256": "7dc73a50a5d796e50cbf39aaf4d8a6005a440056e7de265542a0e963f70ccdc9"
+        },
+        {
+          "command": "PATH=/work/os-tools/usr/bin:$PATH /work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/tmp/pytest-temp",
+          "seconds": 7.507,
+          "started_at": "2026-10-26T05:44:46.127032Z",
+          "exit_code": 0,
+          "network": "none",
+          "log": "pallets--click-run3.log",
+          "log_sha256": "2bea2be4820a0fcb04ce11b1d14197432a9320197e3e747370e3f69a172b3568"
+        }
+      ],
+      "network_probe": {
+        "command": "curl --noproxy \"*\" -I --connect-timeout 2 --max-time 3 https://1.1.1.1",
+        "seconds": 0.187,
+        "started_at": "2026-10-26T05:43:16.251853Z",
+        "exit_code": 7,
+        "network": "none",
+        "log": "pallets--click-network-probe.log",
+        "log_sha256": "f9cf55b50dba65ca08df39180414f845e67c0f97277b46e404c346152653260d"
+      },
+      "warmup": {
+        "command": "PATH=/work/os-tools/usr/bin:$PATH /work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/tmp/pytest-temp",
+        "seconds": 3.599,
+        "started_at": "2026-10-26T05:43:31.512275Z",
+        "exit_code": 0,
+        "network": "none",
+        "log": "pallets--click-warmup.log",
+        "log_sha256": "7c401131c17dc936b6f887e644febd4b6d5f835294ed3002e3ff67df27d68028"
+      },
+      "tracked_diff": [],
+      "installed_distributions": [
+        "click==8.6.0.dev0",
+        "iniconfig==2.3.0",
+        "packaging==26.0",
+        "pluggy==1.6.0",
+        "Pygments==2.20.0",
+        "pytest==9.0.2"
+      ],
+      "round1_seconds": [
+        11.442,
+        11.386,
+        11.375
+      ],
+      "round2_mean_delta_seconds": -1.338,
+      "timed_environment_lock": "uv.lock",
+      "timed_environment_lock_sha256": "742507a6bbb80c093d2ebefc073357e3ef0cb504e9299def5348377f0d585d54"
+    },
+    {
+      "id": "python-attrs--attrs",
+      "language": "Python",
+      "lock": "uv.lock",
+      "setup": {
+        "command": "python -m venv /work/tools && /work/tools/bin/pip install uv==0.13.5 && /work/tools/bin/uv --version && /work/tools/bin/uv sync --frozen --no-default-groups --group tests",
+        "seconds": 17.507,
+        "started_at": "2026-10-26T05:42:32.080063Z",
+        "exit_code": 0,
+        "network": "bridge",
+        "log": "python-attrs--attrs-setup.log",
+        "log_sha256": "4b463878d9a53fd45ab519c7880ed5c1af46590b5d22734c77db1cea4327a23e"
+      },
+      "test": "/work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/pytest-temp",
+      "sha": "c8bb9bfaa2843e7844b5bb13bed4370b51feec4f",
+      "image": "python@sha256:14a4933e6cef421424f7a66d89a3f4eafcbd0d90e0a822251f298e05132dc735",
+      "platform": "linux/arm64",
+      "cpus": 4,
+      "lockfile_sha256": "617977f3b91f711e94b46bd6a61c879109631c8dab54150b2fb1af376dbe292d",
+      "runs": [
+        {
+          "command": "/work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/pytest-temp",
+          "seconds": 8.937,
+          "started_at": "2026-10-26T05:44:04.595988Z",
+          "exit_code": 0,
+          "network": "none",
+          "log": "python-attrs--attrs-run1.log",
+          "log_sha256": "ded5ac91794fa507a4f8a7b02a85dece34f7d23ee59f62cbc019b7be99c086f6"
+        },
+        {
+          "command": "/work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/pytest-temp",
+          "seconds": 14.241,
+          "started_at": "2026-10-26T05:44:31.885499Z",
+          "exit_code": 0,
+          "network": "none",
+          "log": "python-attrs--attrs-run2.log",
+          "log_sha256": "95892285714c050cf145cf57cf359e58a3d299e8fe4a5951393b9339bd6e7fea"
+        },
+        {
+          "command": "/work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/pytest-temp",
+          "seconds": 6.851,
+          "started_at": "2026-10-26T05:44:53.940800Z",
+          "exit_code": 0,
+          "network": "none",
+          "log": "python-attrs--attrs-run3.log",
+          "log_sha256": "468340bcb935a31c9553f75f1595ddaaa5cb0d2d3e7641cd713a576b40309dc0"
+        }
+      ],
+      "network_probe": {
+        "command": "curl --noproxy \"*\" -I --connect-timeout 2 --max-time 3 https://1.1.1.1",
+        "seconds": 0.125,
+        "started_at": "2026-10-26T05:43:16.439497Z",
+        "exit_code": 7,
+        "network": "none",
+        "log": "python-attrs--attrs-network-probe.log",
+        "log_sha256": "f9cf55b50dba65ca08df39180414f845e67c0f97277b46e404c346152653260d"
+      },
+      "warmup": {
+        "command": "/work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/pytest-temp",
+        "seconds": 7.63,
+        "started_at": "2026-10-26T05:43:35.110500Z",
+        "exit_code": 0,
+        "network": "none",
+        "log": "python-attrs--attrs-warmup.log",
+        "log_sha256": "0bd55e29f93934855eb84207fa258e7f2d637784cddc1fb8e7ec78d64b6bea19"
+      },
+      "tracked_diff": [],
+      "installed_distributions": [
+        "attrs==26.1.1.dev82",
+        "cloudpickle==3.1.2",
+        "execnet==2.1.2",
+        "hypothesis==6.168.1",
+        "iniconfig==2.3.0",
+        "packaging==26.3",
+        "pluggy==1.6.0",
+        "psutil==7.2.2",
+        "Pygments==2.21.0",
+        "Pympler==1.1",
+        "pytest-xdist==3.8.0",
+        "pytest==9.1.1",
+        "sortedcontainers==2.4.0"
+      ],
+      "round1_seconds": [
+        9.023,
+        9.021,
+        8.85
+      ],
+      "round2_mean_delta_seconds": 1.045,
+      "timed_environment_lock": "uv.lock",
+      "timed_environment_lock_sha256": "617977f3b91f711e94b46bd6a61c879109631c8dab54150b2fb1af376dbe292d"
+    },
+    {
+      "id": "Textualize--rich",
+      "language": "Python",
+      "lock": "poetry.lock",
+      "setup": {
+        "command": "python -m venv /work/venv && /work/venv/bin/pip install --require-hashes -r /work/requirements.txt && /work/venv/bin/pip install --no-deps -e .",
+        "seconds": 27.325,
+        "started_at": "2026-10-26T05:45:00.866511Z",
+        "exit_code": 0,
+        "network": "bridge",
+        "log": "Textualize--rich-setup.log",
+        "log_sha256": "372763abf5f068b17ad8e0664512a6c3c02a390fb3b6a3ebd7af78875d687738"
+      },
+      "test": "/work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/pytest-temp",
+      "sha": "9d8f9a372cc5916fd4781fec207ced7ddac2f08f",
+      "image": "python@sha256:14a4933e6cef421424f7a66d89a3f4eafcbd0d90e0a822251f298e05132dc735",
+      "platform": "linux/arm64",
+      "cpus": 4,
+      "lockfile_sha256": "b7ef18e9e25d31bcc21853b3774cbec13f0874d517bc023156a526dd5ada1908",
+      "runs": [
+        {
+          "command": "/work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/pytest-temp",
+          "seconds": 5.154,
+          "started_at": "2026-10-26T05:46:13.219297Z",
+          "exit_code": 0,
+          "network": "none",
+          "log": "Textualize--rich-run1.log",
+          "log_sha256": "a3f17ced8bf3b94e2bc40a798c22a1f933ff3bbeb2e53964ecabe98a6d86c8d6"
+        },
+        {
+          "command": "/work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/pytest-temp",
+          "seconds": 5.306,
+          "started_at": "2026-10-26T05:46:21.797644Z",
+          "exit_code": 0,
+          "network": "none",
+          "log": "Textualize--rich-run2.log",
+          "log_sha256": "7cc13f8c425025c304a2440fc7d0b76a061f3d3a4688c4a13a1c6d4e535b29f0"
+        },
+        {
+          "command": "/work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/pytest-temp",
+          "seconds": 4.945,
+          "started_at": "2026-10-26T05:46:27.104541Z",
+          "exit_code": 0,
+          "network": "none",
+          "log": "Textualize--rich-run3.log",
+          "log_sha256": "b5b8eacf21d97cb5db0a608165c7ebde60a317038ea7b0dc03b617c545b472d4"
+        }
+      ],
+      "network_probe": {
+        "command": "curl --noproxy \"*\" -I --connect-timeout 2 --max-time 3 https://1.1.1.1",
+        "seconds": 0.183,
+        "started_at": "2026-10-26T05:45:44.211219Z",
+        "exit_code": 7,
+        "network": "none",
+        "log": "Textualize--rich-network-probe.log",
+        "log_sha256": "f9cf55b50dba65ca08df39180414f845e67c0f97277b46e404c346152653260d"
+      },
+      "warmup": {
+        "command": "/work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/pytest-temp",
+        "seconds": 6.724,
+        "started_at": "2026-10-26T05:46:02.551454Z",
+        "exit_code": 0,
+        "network": "none",
+        "log": "Textualize--rich-warmup.log",
+        "log_sha256": "fdd56ea66059f728a16ed5dae5e778a5e6c016fbd82fefa306964a0b508b6b87"
+      },
+      "tracked_diff": [],
+      "installed_distributions": [
+        "attrs==21.4.0",
+        "black==22.12.0",
+        "cfgv==3.4.0",
+        "click==8.1.8",
+        "coverage==7.6.1",
+        "distlib==0.4.0",
+        "filelock==3.16.1",
+        "identify==2.6.1",
+        "iniconfig==2.1.0",
+        "markdown-it-py==3.0.0",
+        "mdurl==0.1.2",
+        "mypy==1.14.1",
+        "mypy_extensions==1.1.0",
+        "nodeenv==1.9.1",
+        "packaging==25.0",
+        "pathspec==0.12.1",
+        "pip==25.0.1",
+        "platformdirs==4.3.6",
+        "pluggy==1.5.0",
+        "pre-commit==2.21.0",
+        "Pygments==2.19.2",
+        "pytest-cov==3.0.0",
+        "pytest==7.4.4",
+        "PyYAML==6.0.3",
+        "rich==15.0.0",
+        "typing_extensions==4.13.2",
+        "virtualenv==20.34.0"
+      ],
+      "round1_seconds": [
+        8.077,
+        8.073,
+        7.887
+      ],
+      "round2_mean_delta_seconds": -2.877,
+      "upstream_poetry_lock_sha256": "b7ef18e9e25d31bcc21853b3774cbec13f0874d517bc023156a526dd5ada1908",
+      "timed_environment_lock": "calibration/bench.d/textualize-rich-requirements.txt",
+      "timed_environment_lock_sha256": "623a2f8b54791115ccd1d748ce5541fe2ff3ec8e58693a4a6c00f767c6a3e991",
+      "poetry_export_base": "041406ca9b60af8fcc00cd7fc1b2973ab51eb851"
+    }
+  ]
+}
