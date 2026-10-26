@@ -6,10 +6,14 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/extractor"
 	"github.com/geoffmilleraz/fathom/internal/langbench"
 )
 
@@ -141,6 +145,19 @@ func TestCmdLangRetime(t *testing.T) {
 	if len(notes) != 1 || !strings.Contains(notes[0], "earlier: "+earlierTiming) || !strings.Contains(notes[0], "original") || !strings.Contains(notes[0], "median run 1") {
 		t.Fatalf("disclosure: %v", notes)
 	}
+	for _, want := range []string{"run 1: 1.63 MB/CPU-s", "run 2: 1.22 MB/CPU-s", "run 3: 1.83 MB/CPU-s", "median run 1: 1.63 MB/CPU-s"} {
+		if !slices.Contains(strings.Split(notes[0], "; "), want) {
+			t.Errorf("disclosure lacks %q: %s", want, notes[0])
+		}
+	}
+	if !strings.Contains(notes[0], ": "+runtime.GOOS+"/"+runtime.GOARCH+" ") {
+		t.Errorf("disclosure lacks machine class: %s", notes[0])
+	}
+	if hostname, err := os.Hostname(); err != nil {
+		t.Fatal(err)
+	} else if hostname != "" && strings.Contains(notes[0], hostname) {
+		t.Fatal("disclosure contains hostname")
+	}
 	for _, want := range []string{"run 1", "run 2", "run 3", "median", "none -> L1", "grade"} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("summary lacks %q: %s", want, &out)
@@ -159,14 +176,61 @@ func TestCmdLangRetimeRefuses(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(root, "a.lua"), []byte("function changed() end\n"), 0600); err != nil {
 				t.Fatal(err)
 			}
-		}, "bytes", 1},
+		}, "dirty checkout", 1},
 		{"all measured files removed", func(t *testing.T, root, path string) {
 			for _, name := range []string{"a.lua", "b.lua"} {
 				if err := os.Remove(filepath.Join(root, name)); err != nil {
 					t.Fatal(err)
 				}
 			}
-		}, "files", 1},
+		}, "dirty checkout", 1},
+		{"same-size edit", func(t *testing.T, root, path string) {
+			p := filepath.Join(root, "a.lua")
+			b, err := os.ReadFile(p)
+			if err != nil {
+				t.Fatal(err)
+			}
+			line := strings.SplitN(string(b), "\n", 2)[0]
+			replacement := "function zz() return 2 end"
+			b = []byte(strings.Replace(string(b), line, replacement+strings.Repeat(" ", len(line)-len(replacement)), 1))
+			if err := os.WriteFile(p, b, 0600); err != nil {
+				t.Fatal(err)
+			}
+		}, "dirty checkout", 1},
+		{"untracked file outside scope", func(t *testing.T, root, path string) {
+			if err := os.WriteFile(filepath.Join(root, "untracked.txt"), []byte("new"), 0600); err != nil {
+				t.Fatal(err)
+			}
+		}, "dirty checkout", 1},
+		{"extractor mismatch outside repo", func(t *testing.T, root, path string) {
+			t.Chdir(t.TempDir())
+		}, "extractor", 1},
+		{"fathom definitions mismatch", func(t *testing.T, root, path string) {
+			r := readReading(t, path)
+			r.Subjects[0].Counts[langbench.CntFathomDefs]++
+			saveRetimeReading(t, path, r)
+		}, "counts.fathom_defs", 1},
+		{"callables mismatch", func(t *testing.T, root, path string) {
+			r := readReading(t, path)
+			r.Subjects[0].Counts[langbench.CntCallables]++
+			saveRetimeReading(t, path, r)
+		}, "counts.callables", 1},
+		{"signed callables mismatch", func(t *testing.T, root, path string) {
+			r := readReading(t, path)
+			r.Subjects[0].Counts[langbench.CntCallablesSigned]--
+			saveRetimeReading(t, path, r)
+		}, "counts.callables_signed", 1},
+		{"excluded kind disappears", func(t *testing.T, root, path string) {
+			r := readReading(t, path)
+			r.Subjects[0].ExcludedByKind["fathom:OldKind"] = 1
+			saveRetimeReading(t, path, r)
+		}, "excluded_by_kind.fathom:OldKind", 1},
+		{"imports mismatch", func(t *testing.T, root, path string) {
+			r := readReading(t, path)
+			r.Subjects[0].Families[langbench.FamilyImports] = "A"
+			r.Subjects[0].Counts[langbench.CntImports] = 1
+			saveRetimeReading(t, path, r)
+		}, "counts.imports", 1},
 		{"sha mismatch", func(t *testing.T, root, path string) {
 			r := readReading(t, path)
 			r.Subjects[0].SHA = strings.Repeat("0", 40)
@@ -246,7 +310,7 @@ func TestCmdLangRetimeChecksEveryRun(t *testing.T) {
 	if code := mainRun(append(retimeArgs(root, path), "-write"), &out, &errs); code != 1 {
 		t.Fatalf("exit %d: %s", code, &errs)
 	}
-	for _, want := range []string{"run 2 first", "bytes", "full re-measure"} {
+	for _, want := range []string{"run 2 first", "dirty checkout", "full re-measure"} {
 		if !strings.Contains(errs.String(), want) {
 			t.Fatalf("missing %q: %s", want, &errs)
 		}
@@ -254,5 +318,108 @@ func TestCmdLangRetimeChecksEveryRun(t *testing.T) {
 	got, _ := os.ReadFile(path)
 	if !bytes.Equal(got, original) {
 		t.Fatal("late refusal wrote reading")
+	}
+}
+
+type retimeMovedExtractor struct{ extractor.Extractor }
+
+func (e retimeMovedExtractor) Extract(service, path string, src []byte) ([]core.SymbolNode, error) {
+	nodes, err := e.Extractor.Extract(service, path, src)
+	for i := range nodes {
+		if nodes[i].Kind == "LuaFunction" {
+			nodes[i].Kind = "MovedDefinition"
+		}
+	}
+	return nodes, err
+}
+
+func TestRetimeMovedDefinition(t *testing.T) {
+	root, path := retimeFixture(t)
+	r := readReading(t, path)
+	spec, source, err := resolveBenchSpec(r.Dialect, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	with, close, err := langOracleExtractor(spec.Manifest, source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer close()
+	// The subject stays clean and identical. Only extractor output changes,
+	// as when tags.scm moves a definition outside the scored kinds.
+	opts := oracleOpts{noOracles: true, retimeKinds: r.Subjects[0].KindIntersection, only: []string{"a.lua", "b.lua"}, ctags: "missing", scip: "missing", tools: []string{"missing"}}
+	unchanged, err := measureSubject(t.Context(), spec, root, r.Subjects[0].Name, opts, with)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{langbench.CntFathomDefs, langbench.CntCallables, langbench.CntCallablesSigned} {
+		if unchanged.subject.Counts[key] != r.Subjects[0].Counts[key] {
+			t.Errorf("no-oracle %s = %d, want %d", key, unchanged.subject.Counts[key], r.Subjects[0].Counts[key])
+		}
+	}
+	measured, err := measureSubject(t.Context(), spec, root, r.Subjects[0].Name, opts, retimeMovedExtractor{with})
+	if err != nil {
+		t.Fatal(err)
+	}
+	diff := strings.Join(retimeIdentityDiff(r.Subjects[0], measured.subject), "\n")
+	for _, want := range []string{"counts.fathom_defs", "counts.callables", "counts.callables_signed", "excluded_by_kind.fathom:MovedDefinition"} {
+		if !strings.Contains(diff, want) {
+			t.Errorf("missing %q in diff: %s", want, diff)
+		}
+	}
+}
+
+func TestRetimeParseErrorFailureNote(t *testing.T) {
+	root, path := retimeFixture(t)
+	stubFileClocks(t, time.Millisecond, time.Millisecond, true)
+	var calls int
+	fileClocks.wall = func() time.Time {
+		calls++
+		if calls == 4 { // extraction has read both files; the error counter reads next
+			if err := os.Remove(filepath.Join(root, "b.lua")); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return time.Unix(0, int64(calls)*int64(time.Millisecond))
+	}
+	var out, errs bytes.Buffer
+	if code := mainRun(append(retimeArgs(root, path), "-write"), &out, &errs); code != 1 {
+		t.Fatalf("exit %d: %s", code, &errs)
+	}
+	if !strings.Contains(errs.String(), "files_with_error not measured:") || !strings.Contains(errs.String(), "no such file or directory") {
+		t.Fatalf("measurement failure note lost: %s", &errs)
+	}
+}
+
+func TestRetimeImportCountsWithoutOracle(t *testing.T) {
+	root := copyFixture(t, "rustfixture")
+	// One external import is also a fathom-only count, excluded from imports.
+	f, err := os.OpenFile(filepath.Join(root, "src", "main.rs"), os.O_APPEND|os.O_WRONLY, 0600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, writeErr := f.WriteString("\nuse std::fmt;\n")
+	closeErr := f.Close()
+	if writeErr != nil || closeErr != nil {
+		t.Fatalf("append import: %v, %v", writeErr, closeErr)
+	}
+	t.Chdir(filepath.Join("..", ".."))
+	spec, source, err := resolveBenchSpec("rust", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	with, closeExtractor, err := langOracleExtractor(spec.Manifest, source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closeExtractor()
+	measured, err := measureSubject(t.Context(), spec, root, "fixture", oracleOpts{noOracles: true, retimeImports: true, ctags: "missing", scip: "missing", tools: []string{"missing"}}, with)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for key, want := range map[string]int{langbench.CntImports: 4, langbench.CntImportsExternal: 1, langbench.CntImportEdgesFathom: 4} {
+		if got := measured.subject.Counts[key]; got != want {
+			t.Errorf("no-oracle %s = %d, want %d", key, got, want)
+		}
 	}
 }

@@ -64,6 +64,9 @@ func cmdLangRetime(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return refuse(err)
 	}
+	if source != r.Extractor {
+		return refuse(fmt.Errorf("extractor recorded %q, resolved %q; the reading needs a full re-measure", r.Extractor, source))
+	}
 	with, closeExtractor, err := langOracleExtractor(spec.Manifest, source)
 	if err != nil {
 		return refuse(err)
@@ -100,19 +103,32 @@ func cmdLangRetime(args []string, stdout, stderr io.Writer) int {
 		for _, i := range order {
 			original := r.Subjects[i]
 			root := roots[original.Name]
+			if err := retimeCleanSubject(ctx, root); err != nil {
+				return refuse(fmt.Errorf("run %d %s: %w", run+1, original.Name, err))
+			}
 			sha := gitOut(ctx, root, "rev-parse", "HEAD")
 			if sha == "" || sha != original.SHA {
 				return refuse(fmt.Errorf("run %d %s: sha recorded %q, measured %q", run+1, original.Name, original.SHA, sha))
 			}
-			measured, err := measureSubject(ctx, spec, root, original.Name, oracleOpts{only: scopes[original.Name], noOracles: true}, with)
+			measured, err := measureSubject(ctx, spec, root, original.Name, oracleOpts{
+				only: scopes[original.Name], noOracles: true,
+				retimeKinds:   original.KindIntersection,
+				retimeImports: original.Families[langbench.FamilyImports] != "",
+			}, with)
 			if err != nil {
 				return refuse(fmt.Errorf("run %d %s: %w", run+1, original.Name, err))
 			}
+			measurementRefusal := func(err error) int {
+				return refuse(fmt.Errorf("run %d %s: %w\n%s", run+1, original.Name, err, strings.Join(measured.notes, "\n")))
+			}
+			if err := retimeCleanSubject(ctx, root); err != nil {
+				return measurementRefusal(err)
+			}
 			if measured.subject.SHA != original.SHA {
-				return refuse(fmt.Errorf("run %d %s: sha changed during measurement", run+1, original.Name))
+				return measurementRefusal(fmt.Errorf("sha changed during measurement"))
 			}
 			if diff := retimeIdentityDiff(original, measured.subject); len(diff) > 0 {
-				return refuse(fmt.Errorf("run %d %s:\n  %s\nextraction changed; the reading needs a full re-measure, not a re-time", run+1, original.Name, strings.Join(diff, "\n  ")))
+				return measurementRefusal(fmt.Errorf("\n  %s\nextraction changed; the reading needs a full re-measure, not a re-time", strings.Join(diff, "\n  ")))
 			}
 			t := measured.subject.Tenancy
 			if t.ExtractCPUMS <= 0 || math.IsNaN(t.ExtractCPUMS) || math.IsInf(t.ExtractCPUMS, 0) {
@@ -171,6 +187,17 @@ func cmdLangRetime(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
+func retimeCleanSubject(ctx context.Context, root string) error {
+	status, err := exec.CommandContext(ctx, "git", "-C", root, "status", "--porcelain").Output()
+	if err != nil {
+		return fmt.Errorf("git status failed: %w", err)
+	}
+	if len(status) > 0 {
+		return fmt.Errorf("dirty checkout (including untracked files); restore the recorded subject before a re-time or do a full re-measure")
+	}
+	return nil
+}
+
 // retimeIdentityDiff compares only facts measured before any oracle is read.
 // Oracle-scored counts cannot be reconstructed by a re-time.
 func retimeIdentityDiff(recorded, measured langbench.Subject) []string {
@@ -197,15 +224,28 @@ func retimeIdentityDiff(recorded, measured langbench.Subject) []string {
 		return fmt.Sprint(*p)
 	}
 	compare("files_with_error", parseErrors(recorded.Tenancy.FilesWithError), parseErrors(measured.Tenancy.FilesWithError))
-	// type_refs is the pre-oracle counter, including when its measured value
-	// is zero and absent from the sparse map. Include any other counters the
-	// extraction-only path computes so future additions are also checked.
-	keys := map[string]bool{"type_refs": true}
+	// Include zero values absent from sparse maps, plus future extraction-only
+	// counters. Oracle-dependent counters in the reading stay untouched.
+	keys := map[string]bool{
+		"type_refs": true, langbench.CntFathomDefs: true,
+		langbench.CntCallables: true, langbench.CntCallablesSigned: true,
+	}
 	for k := range measured.Counts {
 		keys[k] = true
 	}
 	for _, k := range sortedKeys(keys) {
 		compare("counts."+k, recorded.Counts[k], measured.Counts[k])
+	}
+	excluded := map[string]bool{}
+	for _, counts := range []map[string]int{recorded.ExcludedByKind, measured.ExcludedByKind} {
+		for k := range counts {
+			if strings.HasPrefix(k, "fathom:") {
+				excluded[k] = true
+			}
+		}
+	}
+	for _, k := range sortedKeys(excluded) {
+		compare("excluded_by_kind."+k, recorded.ExcludedByKind[k], measured.ExcludedByKind[k])
 	}
 	return diff
 }

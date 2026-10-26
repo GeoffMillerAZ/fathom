@@ -345,11 +345,13 @@ type subjectMeasurement struct {
 
 // oracleOpts are one subject's oracles and scope.
 type oracleOpts struct {
-	noOracles bool   // return the extraction identity before reading or discovering any oracle
-	ctags     string // universal-ctags binary ("" = workspace/tools/ctags, then PATH)
-	scip      string // SCIP index
-	scipTier  string // the index's tier (-scip-tier; "" is A)
-	scipDefs  bool   // the SCIP index's definitions are the L1 oracle (D2)
+	retimeImports bool     // the reading measured the imports family
+	retimeKinds   []string // recorded L1 kind intersection, without consulting an oracle
+	noOracles     bool     // return the extraction identity before reading or discovering any oracle
+	ctags         string   // universal-ctags binary ("" = workspace/tools/ctags, then PATH)
+	scip          string   // SCIP index
+	scipTier      string   // the index's tier (-scip-tier; "" is A)
+	scipDefs      bool     // the SCIP index's definitions are the L1 oracle (D2)
 	// callsFromTool: the -tool-oracle files' calls grade L2 beside -scip
 	// (LB-F204, O264); the index's call truth, its call counts and its call
 	// notes are not part of the reading.
@@ -830,6 +832,42 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 	}
 
 	if opts.noOracles {
+		// Fathom-only count measures: type_refs (above), fathom_defs,
+		// callables, callables_signed, and excluded_by_kind's fathom:* keys.
+		// L1 uses the recorded kind intersection, never an oracle file.
+		// If imports were measured: imports, imports_external, and
+		// import_edges_fathom. Other counts need oracle scope, truth, or
+		// matching (xref_fathom also needs the oracle's file/entity grain).
+		// File/byte totals and parser faults/errors are in Subject/Tenancy above.
+		for _, n := range nodes {
+			canonical, callable, ok := spec.Manifest.CanonicalForSource(string(n.Kind))
+			if !ok || !slices.Contains(opts.retimeKinds, canonical) {
+				sub.ExcludedByKind["fathom:"+string(n.Kind)]++
+				continue
+			}
+			sub.Counts[langbench.CntFathomDefs]++
+			if callable {
+				sub.Counts[langbench.CntCallables]++
+				if strings.TrimSpace(n.Signature) != "" {
+					sub.Counts[langbench.CntCallablesSigned]++
+				}
+			}
+		}
+		if opts.retimeImports {
+			inScope := map[string]bool{}
+			for _, f := range files {
+				inScope[f] = true
+			}
+			imps := subjectImports{ctx: ctx, dialect: spec.Manifest.HostID(), root: root, name: name, files: srcFiles, nodes: nodes, inScope: inScope}
+			if !imps.resolve() {
+				return res, fmt.Errorf("%s", strings.Join(imps.notes, "; "))
+			}
+			counts := map[string]int{}
+			langbench.ScoreImports(nil, imps.sites, inScope, counts)
+			for _, key := range []string{langbench.CntImports, langbench.CntImportsExternal, langbench.CntImportEdgesFathom} {
+				sub.Counts[key] = counts[key]
+			}
+		}
 		res.subject = sub
 		return res, nil
 	}
