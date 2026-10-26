@@ -4,7 +4,7 @@ package verify
 // section 6.2): the bytes an anchor cites and their digest, in one place.
 // The excerpt is the bytes from the first byte of start_line through the
 // last byte of end_line, that line's newline included when it has one, with
-// no normalization (a CR stays a CR). Its digest is Review Kit's
+// no normalization (a CR stays a CR). Its digest is the review kit's
 // SpanRef.ContentHash formula: the lowercase hex SHA-256 of the raw bytes,
 // no prefix. The digest is SARIF's partialFingerprints["fathomExcerpt/v1"],
 // so a finding keeps its fingerprint when lines move above it. The shared

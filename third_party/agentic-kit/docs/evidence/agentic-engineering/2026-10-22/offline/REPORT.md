@@ -1,0 +1,23 @@
+# Offline uplift evaluation, 2026-10-22
+
+**Result:** `AssessProfile` returned `required_status=fail`, `soft_score=null`: 11 scoped component passes, 2 absent target capabilities, 5 unknown composition/adoption criteria. `Assessment.Trust=caller-declared`. This is a source/test audit, not independent certification, a full repository gate, a live provider test, or a universal quality score.
+
+Subject: `531e9c0e47e591cbf8b62c1c3972dbb8d7c2dd34` (Go 1.26.3). `subject_manifest.json` pins source file hashes and initial dirty state (`VISION.md`, `docs/intent/scope.md` edited by the main thread). Additional untracked design drafts appeared during execution; none are assessment sources. All scratch artifacts are outside the repo. Exact commands and exit codes: `execution.json`, `commands.json`, `negative_scans.json`; raw test output: five `*.log` files. The five `go test -count=1` groups all exited 0. Both CUE shape checks exited 0. Each C01-C18 definition/evidence artifact and its SHA-256 binding is retained beside `input.json`, `profile.json`, `assessment.json`.
+
+## Findings
+
+- **C04 -- missing Google port (fail).** Current provider inventory in `docs/intent/scope.md` names Anthropic, Bedrock, OpenAI, ClaudeCLI, CodexCLI. The bounded source search over `foundations/llmclient` and `foundations/decision` for Gemini/GenerativeLanguage/Vertex returned no matches (`google_provider-scan.log`, exit 1). This does not assess an adapter outside the searched source roots.
+- **C17 -- missing GitHub issue ingestion (fail).** Bounded source search over `foundations`, `kits`, `runtimes`, `cmd` for issue API/ingestion names returned no matches (`github_issue_ingestion-scan.log`, exit 1). General GitHub module-import strings are unrelated. A proposed ingestion component still needs authorization, provenance, cursor, and permission behavior before a pass.
+- **C02, C08, C11, C15, C18 -- unknown.** No retained site-calibration holdout for a named decision question; no consumer RBAC decision receipt; no actual Review Kit exchange receipt; no held-out security screening miss/false-refusal measurement across a composed entrypoint; no live negative-case parity for Claude, Codex, and Antigravity. `docs/evidence/native-hosts/2026-09-13/README.md` limits Claude/Codex evidence; the Antigravity host search returned no matches. These are not passed by local component tests.
+- **C01, C03, C05-C07, C09-C10, C12-C14, C16 -- scoped pass.** Named behavior tests in the CXX evidence files were found in pinned source and their package groups passed uncached: typed decision/refusal conformance, offline OpenAI Decisions wire, provenance rejection, catalog exact binding, HITL remote ambiguity, vault shred, sourced prose refusal, investigation contradiction, USD budget refusal, decision cache identity, and independent lesson adoption. The source/test combination proves those local behaviors only.
+
+## Design and enforcement distinctions
+
+`docs/intent/assurance.md` separates implemented, integrated, adopted, measured, and structural/deterministic/heuristic/advisory. The CXX profile intentionally puts desired composition gates beside component gates, all required, so the result cannot turn package availability into readiness. C03 is offline `httptest`, not a successful live OpenAI Decisions answer. C09 does not verify a consumer-owned durable vault. C10 does not measure prose truth/quality. C13 proves local budget guard semantics, not charge coverage over every paid entrypoint. C16 proves a synthetic lesson-receiver protocol, not reduced recurrence in production. `task validate` and affected `task downstream-check` were not run by this bounded audit.
+
+## Immediate uses and next tests
+
+1. Reuse the local passing foundations in a single consumer workflow and test missing/expired evidence, denied effect, unknown remote, and budget refusal at its actual entrypoint. Retain a versioned coverage receipt, not a package inventory.
+2. Choose one calibrated decision site with a provider-none baseline and labelled holdout; keep model authority advisory until the stated acceptance bar passes. This requires a separate permitted campaign for live calls.
+3. Get a real Review Kit criterion/finding exchange and a native-host negative-case matrix. Let Review Kit own judgment and app-kit own visual/UI contracts. No source hashes or local tests grant cross-kit authority.
+4. Review the 0011-0014 2026-10-16 trigger. The operational ledger says 0013's missing-dependency trigger closed, while dated adoption/benefit review remains unproven. F5's second self-auditing workload trigger has not been evidenced. 0022's historical tokenomics measurement does not answer its fresh 14/30-day `agent-hooks report` revisit thresholds.

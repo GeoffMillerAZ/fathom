@@ -1,22 +1,17 @@
 package store
 
-// stmtspill.go — LB-F208 (wave lg, LB-M5): SQLite's statement journal stays in memory.
+// stmtspill.go — LB-F208 (wave lg, LB-M5): raise SQLite's statement-journal spill threshold.
 //
 // An INSERT into observations fires the call-index trigger (derived.go), so inside the
 // ingest's explicit transaction every row is a multi-write statement and SQLite opens a
 // statement journal for it: the original image of each page the statement touches, kept in
-// memory until it passes SQLITE_STMTJRNL_SPILL (64 KiB) and then spilled to a temporary
-// file. A function that calls thirty things writes about sixty random index pages through
-// observation_calls' two name indexes, so a row's journal is a few hundred KiB: each such
-// statement created, wrote (sixty pwrites) and deleted a temp file. On the polyglot set
-// that was 3.5 s of the 17 s base build's CPU and 3.5 s of the head's, 70% of
-// PutObservations, all of it system time (docs/bench/readings/lang/footprint.md, wave lg).
+// memory until it passes SQLITE_STMTJRNL_SPILL (64 KiB by default) and then spilled to a
+// temporary file. Raising the threshold avoids that file for small call-index updates.
 //
 // The spill threshold is a process-wide sqlite3_config option that only takes effect before
 // SQLite initializes, so it is set once, before the first connection of any store opens.
-// Memory is bounded by the largest single statement's journal (freed when it finishes) and
-// by the hard heap limit applyTenancyPragmas sets; nothing else about the journal changes,
-// so the rows written are the rows written before.
+// Keep that threshold within SQLite's unix VFS write limit so large statements can spill.
+// Memory remains bounded by the threshold and the hard heap limit applyTenancyPragmas sets.
 
 import (
 	"sync"
@@ -25,9 +20,23 @@ import (
 	sqlite3 "modernc.org/sqlite/lib"
 )
 
-// stmtJournalSpillBytes is the in-memory statement journal's size before it spills to a
-// temporary file: 4 MiB, 64 times SQLite's default.
-const stmtJournalSpillBytes int32 = 4 << 20
+// stmtJournalSpillBytes keeps small journals in memory, at almost twice SQLite's 64 KiB
+// default. SQLite's own src/os_unix.c seekAndWriteFd asserts nBuf==(nBuf&0x1ffff),
+// then masks nBuf with 0x1ffff. memjrnlCreateFile flushes the in-memory journal in a
+// spill-threshold-sized chunk via one xWrite; at 131,072 bytes or more the unix VFS
+// short write yields SQLITE_FULL, even with free disk. 131,071 is a safe bound: any
+// spill at or under 0x1ffff keeps every flush write unmasked, for every page size, on
+// all unix targets (including Linux), also with cgo; Windows is unaffected. (A journal
+// of k*(page+4) bytes never lands on exactly 2^17, so 131,072 also passes in practice,
+// but nothing here pins that.) A driver upgrade alone cannot justify raising it.
+//
+// Cost: LB-F208 raised this to 4 MiB to keep a typical row's roughly 60-page (246 KB)
+// journal in memory, avoiding a temp file per row (3.5 s of a 17 s polyglot build).
+// At 4 KiB pages this cap holds about 31 pages, so typical rows spill again. A noisy
+// review micro-benchmark saw system CPU of 3.4-5.0 s versus 1.6-2.3 s before, not a
+// stable performance estimate. LB-F208-bulk defers replacing the per-row call-index
+// trigger with one bulk statement per batch, measured before and after.
+const stmtJournalSpillBytes int32 = (128 << 10) - 1
 
 var (
 	stmtSpillOnce    sync.Once

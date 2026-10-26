@@ -192,7 +192,7 @@ fathom older than G2-5 reads.
 
 `test_reaches` means a `Test*` function **statically reaches** the symbol via
 the call graph — never that the test passes or even runs. `runtime_pass` reads
-the newest attested run of the row's certifying tests (a test-kit envelope
+the newest attested run of the row's certifying tests (a test kit envelope
 `fathom tests ingest` recorded): Pass or Fail with its commit and age, Unknown
 when none exists. It is informational and never changes a row's status; verify
 never runs a test (TC-29, I8).
@@ -211,7 +211,7 @@ bin/fathom verify --service <svc> --plan docs/plans/<slug>.md
 ```
 
 Exit codes: 0 every claimed row proven, 1 a claimed row unproven, 2 operational (fail-open).
-An unproven row whose evidence could not be read (index-stale, graph fallback, unanswered) is
+An unproven row whose evidence could not be read (index-stale, graph fallback, unanswered, platform-excluded: a symbol declared only in Go files the index's build context excludes) is
 operational: exit 2 when every unproven row is one. The rows stay Unknown (I44). Index-stale:
 a `gone:` row held back by a dirty tree or a commit after the ingest, named by one `index-stale:`
 line (also `index_stale` in `--json` and the daemon's `verify_plan`) with the reason, the first

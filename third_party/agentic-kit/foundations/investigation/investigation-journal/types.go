@@ -7,7 +7,7 @@
 //
 // # Hash-chaining and Tier-1 ledger
 //
-// This package is a higher-level projection layer, not Throughline's Tier-1
+// This package is a higher-level projection layer, not Consumer-a's Tier-1
 // append-only ledger. Per-entry hash-chaining and content-addressed identity
 // (PrevHash pointers, chain-verification) are the responsibility of the
 // provenance/event-store foundation, which provides a replayable,
@@ -214,7 +214,7 @@ func (j *Journal) AppendUnchecked(e Entry) {
 //  4. Stores a defensive copy of SpanRefs (nil in → nil stored).
 //
 // AppendTraced is the preferred entry point for any step where the producer
-// (human or AI) is known — it enforces Throughline invariant 1 (provenance
+// (human or AI) is known — it enforces Consumer-a invariant 1 (provenance
 // mandatory) at the point of write.
 //
 // Like Append, AppendTraced delivers the entry to any attached sink (see

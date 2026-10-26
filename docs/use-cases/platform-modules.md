@@ -56,8 +56,10 @@ excellence benches already proved: the edit-hook and the `obligations`
 tool. Module rules render **module-tagged** (`[platform-standards]`),
 tier- and staleness-flagged exactly like repo-local rules — never
 silently blended in unattributed. Repo rules keep priority inside the
-shared budget; a binding naming a module this daemon does not have
-mounted produces an explicit note, never silence.
+shared budget. With at least one module mounted, a binding naming an unmounted
+module produces a note. With no `--module` at all, `obligations` skips binding
+lookup and is silent. Run `fathom doctor` after binding and inspect
+`binding_modules_mounted`; a skipped check does not confirm delivery.
 
 **Guarded edits — the pre-edit channel for expensive-to-get-wrong
 scopes.** The PostToolUse edit-hook (rules injected AFTER every edit,
@@ -97,8 +99,12 @@ binding's scope unrestricted (the module's own scopes apply everywhere)
 rather than the intended restriction, the exact inverse of "intersects,
 never widens."
 
-Commit it. The next `obligations` call for a matching file now unions in
-the module's rules:
+Commit it and run `fathom doctor`. Its `binding_modules_mounted` check fails
+loudly for a missing mount when the daemon can list mounted modules. Current
+daemons do not expose `list_modules`, so the check is skipped with that reason;
+verify the operator's mounts and an actual module-tagged response before claiming
+delivery. Once mounted and bound, an `obligations` call for a matching file
+unions in the module's rules:
 
 ```json
 obligations { "service": "my-repo", "file": "infra/main.tf" }
@@ -164,7 +170,9 @@ opt-in.
 
 **Doctor checks (`fathom doctor`):** `binding_file`/`guard_file` (loud on
 a malformed CUE file); `binding_modules_mounted` (loud — a binding naming
-a module this daemon does not have mounted); `binding_module_readiness`
+a module this daemon does not have mounted, when mounted-module listing is
+available; otherwise skipped, including on current daemons without
+`list_modules`); `binding_module_readiness`
 (warn — a bound module below the phase-J readiness ladder's `servable`
 level, checked via the module's own local manifest when resolvable, else
 honestly "not checkable: module not local"); `guard_dead_scopes` (warn — a
@@ -175,7 +183,8 @@ Warn checks never fail the `doctor` exit code — they are visibility, not a
 wiring-broken verdict.
 
 **`include_modules` gates DISPLAY, not the daemon's computation:** the
-daemon always computes module rules once a binding exists; a guard's
+daemon computes module rules once a binding exists and a module host is
+mounted; a guard's
 `include_modules:false` (the default) only hides module-tagged rules from
 the PRE-edit preview — they still reach the PostToolUse render, and the
 pre/post dedup stamp is built from what was actually shown, so a

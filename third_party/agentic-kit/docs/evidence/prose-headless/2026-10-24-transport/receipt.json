@@ -1,0 +1,105 @@
+{
+  "version": "prose-headless.transport-observation/1",
+  "date": "2026-10-24",
+  "datasetKind": "synthetic",
+  "scope": "transport-only",
+  "expectedCases": 2,
+  "observedCases": 2,
+  "cases": [
+    {
+      "id": "generation-canary",
+      "provider": "anthropic",
+      "requestedModel": "claude-haiku-5-5",
+      "resolvedModel": "claude-haiku-5-5",
+      "httpStatus": 200,
+      "wireDigest": "f1944018f47885c8b9b1de6322d1589b0f48c11945a7cfd244fb70217942db0d",
+      "inputTokens": 52,
+      "outputTokens": 11,
+      "usagePresent": true,
+      "usagePricedMicroUSD": 12,
+      "latencyNanoseconds": 542974250,
+      "stopReason": "end_turn",
+      "expectedSyntheticObjectMatched": true
+    },
+    {
+      "id": "decision-canary",
+      "provider": "openrouter-jev",
+      "requestedModel": "typesafe/jev-1.14",
+      "resolvedModel": "typesafe/jev-1.14-20261014",
+      "httpStatus": 200,
+      "wireDigest": "b0db5f9b5c7608eb8b5fd16db2d5d73dfeaec60772c60940a29f15302a637d87",
+      "inputTokens": 401,
+      "outputTokens": 44,
+      "usagePresent": true,
+      "usagePricedMicroUSD": 17,
+      "latencyNanoseconds": 363489458,
+      "expectedChoice": "investigate",
+      "observedChoice": "investigate",
+      "probabilities": {
+        "clear": 0,
+        "investigate": 1,
+        "unknown": 0
+      },
+      "providerReportedCostUSD": 1.6842e-05,
+      "confidenceQualification": "heuristic, one seeded case; not calibrated"
+    }
+  ],
+  "usagePricedMicroUSD": 29,
+  "pricing": "published rates with per-class ceiling to integer micro-USD; not an invoice",
+  "binarySHA256": "689ef84bb21cf186f05ccdd61747605792a4c42348be78b2e3df1cb9b7acb120",
+  "sourceSnapshot": {
+    "base": "3e9349c79176d28473ef564cad1cfd814ff7e779",
+    "files": {
+      "provider.go": "d17a4e85c24ad41c75a055baba7f827ed75fc52a1e70ddc3fe236dfab3562c35",
+      "schema_test.go": "a5041b5e814c07b2a308b4cb470fc7eb65917b8d2217dd6b8f9e9a7a8194b2a7",
+      "provider_test.go": "aac37d099a2eaeb644a96a7a0d433b5d25bd6075407af2b2241ebcbc5c861b81",
+      "ledger.go": "ca91584b0a1ddc95bd527a4471d85693760cd09cda6edf0b926438339b888c10",
+      "ledger_test.go": "525e9e039b50e578cc88935e479d7fc4b5dcb295cf36abd6a0b52bf526866054",
+      "README.md": "f828e7746b381693c5ff6887654005e446e91c25919cc54be2540c916519bc61",
+      "schema.cue": "b42947c5a5f4da7008844e31404cad903abb91f895216b79fb9ba6afd04aa1ef",
+      "doc.go": "f1ec8da407e2a6802c6f01e87e035d60f07b75c779d219d773e5a7f71ea57fb3",
+      "main.go": "88018671f3eba1907701edd122b05490a7664211973b4d1bf8679374a8948a2e",
+      "codec.go": "75b192088c27d1a5150a2cefd2cfb475065214686c28383e299cb75f0c23a9b9",
+      "main_test.go": "a3d1c1736d86d56cfa1c0751b81d4e502c6d910fdcddf4e1ff53d06d51330d21"
+    }
+  },
+  "studyDigest": "947675110ac803e265597c14960ec6732b6dfc4f0f16c930c8e80a71f210832c",
+  "postObservationChange": "exact resolved model IDs replace configured family patterns; offline guard tests qualify refinement, not a second provider run",
+  "unqualified": [
+    "representative document cohort",
+    "semantic support accuracy",
+    "source truth outside synthetic ports",
+    "goal acceptance",
+    "publication composition",
+    "cost savings",
+    "calibrated confidence",
+    "UI entry",
+    "production deployment"
+  ],
+  "hostedExecution": {
+    "commit": "d9469e6f6bc0d31db2254eb0c7feaf327675d988",
+    "status": "startup-refused-execution-unobserved",
+    "jobs": 8,
+    "steps": 0,
+    "annotatedRestriction": "account payment or spending limit; precise account state not independently inferred",
+    "runs": [
+      {
+        "id": 40164559395,
+        "jobs": 1,
+        "url": "https://github.com/GeoffMillerAZ/agentic-kit/actions/runs/40164559395"
+      },
+      {
+        "id": 40164559408,
+        "jobs": 1,
+        "url": "https://github.com/GeoffMillerAZ/agentic-kit/actions/runs/40164559408"
+      },
+      {
+        "id": 40164559398,
+        "jobs": 6,
+        "url": "https://github.com/GeoffMillerAZ/agentic-kit/actions/runs/40164559398"
+      }
+    ],
+    "automaticRetry": false,
+    "accountChanges": false
+  }
+}

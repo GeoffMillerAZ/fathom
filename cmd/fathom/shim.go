@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 )
 
-// The PATH shim (plan IO-20; observation O2 in platform-engineering's
+// The PATH shim (plan IO-20; observation O2 in a sibling repository's
 // observations, the fleet audit's anomaly 4): every hook and gate that
 // spells an absolute binary path drifts the moment the checkout moves or
 // the deploy lands elsewhere — and a gate that cannot be invoked looks

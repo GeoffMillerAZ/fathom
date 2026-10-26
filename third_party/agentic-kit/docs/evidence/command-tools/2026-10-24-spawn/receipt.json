@@ -1,0 +1,619 @@
+{
+  "version": "harnessctl.spawn-observations/1",
+  "sourceRevision": "773014a0184641b55199dddb0400ed190ccdecfb",
+  "sourceIdentity": {
+    "baseRevision": "002ed135fdbb582be56b519806639d34bf18a2d1",
+    "selectedFiles": 99,
+    "manifestSHA256": "02cad75b5514604b7b3ab9805c3e3f1f726822b6a1c5a6dc0fb928b2b9666495",
+    "beforeAfterEqual": true,
+    "matchesSourceCommit": true,
+    "buildVCSModified": true,
+    "bitReproducibleBuild": "unqualified"
+  },
+  "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+  "goVersion": "go1.26.3",
+  "buildTags": {
+    "receiver": "harness_maintenance",
+    "fullGate": "command_classifier,harness_maintenance"
+  },
+  "binarySHA256": {
+    "agent-hooks": "65098aca291c0f32ae117bda4c18f6507a3b494928201ee3c18896269bba6c66",
+    "agent-hooks-before": "5a4270b4602909db3da474ed54c59e98dc9736d0e65b1bfc439389593766a17f",
+    "harnessctl": "4f761aaf62b8991fe069700d91d957720fb337d22428f02c8eff18e2acf6f252",
+    "harnessctl-default": "379a0dacd83f65f5cca125c9bf70057e4363df7eb375b3fe85e8dc812fa7542c"
+  },
+  "nativeClock": {
+    "binarySHA256": "fdeaa95f1f325e1cd22d4de299f2c99564274c72f97aee16c7238ebbcaeddbe2",
+    "sourceSHA256": "1bf207ebe6d27996c86f2a549a3a847eb50c08dc747b6fc34464be1c673e267a",
+    "provenance": "reused checksum-verified HMT a5 build; source unchanged",
+    "operations": "stamp only"
+  },
+  "ordinaryFullGate": "pass",
+  "combinedFullGate": "pass",
+  "independentSourceAndGuideReview": "complete-no-remaining-concrete-finding-in-reviewed-scope",
+  "strictPlanProof": {
+    "claimed": 10,
+    "fail": 0,
+    "runtimeAttestation": "not-ingested-static-proof-only"
+  },
+  "ownedMacCLI": {
+    "total": 63,
+    "functional": 44,
+    "receiverPerformanceSamples": 19,
+    "allPassed": true,
+    "syntheticDriverEffects": 2,
+    "codingHostEffect": "unqualified",
+    "cases": [
+      {
+        "id": "init-codex-full",
+        "exit": 0,
+        "code": "ok",
+        "millis": 241.593416
+      },
+      {
+        "id": "init-codex-zero",
+        "exit": 0,
+        "code": "ok",
+        "millis": 113.732208
+      },
+      {
+        "id": "init-codex-half",
+        "exit": 0,
+        "code": "ok",
+        "millis": 137.245875
+      },
+      {
+        "id": "init-claude-full",
+        "exit": 0,
+        "code": "ok",
+        "millis": 166.271917
+      },
+      {
+        "id": "codex-pass-full",
+        "exit": 0,
+        "code": "ok",
+        "millis": 272.5095
+      },
+      {
+        "id": "codex-pass-zero",
+        "exit": 0,
+        "code": "ok",
+        "millis": 243.086125
+      },
+      {
+        "id": "codex-pass-half",
+        "exit": 0,
+        "code": "ok",
+        "millis": 280.010541
+      },
+      {
+        "id": "codex-no-model-full",
+        "exit": 1,
+        "code": "spawn_denied",
+        "millis": 275.01225
+      },
+      {
+        "id": "codex-no-model-zero",
+        "exit": 1,
+        "code": "spawn_denied",
+        "millis": 245.100334
+      },
+      {
+        "id": "codex-no-model-half",
+        "exit": 1,
+        "code": "spawn_denied",
+        "millis": 249.01025
+      },
+      {
+        "id": "codex-no-effort",
+        "exit": 1,
+        "code": "spawn_denied",
+        "millis": 241.434791
+      },
+      {
+        "id": "codex-unknown-model",
+        "exit": 1,
+        "code": "spawn_denied",
+        "millis": 241.995208
+      },
+      {
+        "id": "codex-tier-denied",
+        "exit": 1,
+        "code": "spawn_denied",
+        "millis": 244.392625
+      },
+      {
+        "id": "codex-critic-explicit",
+        "exit": 0,
+        "code": "ok",
+        "millis": 245.187458
+      },
+      {
+        "id": "codex-context-denied",
+        "exit": 1,
+        "code": "spawn_denied",
+        "millis": 228.679792
+      },
+      {
+        "id": "codex-context-marked",
+        "exit": 0,
+        "code": "ok",
+        "millis": 244.714458
+      },
+      {
+        "id": "codex-context-additive",
+        "exit": 1,
+        "code": "spawn_denied",
+        "millis": 288.531542
+      },
+      {
+        "id": "codex-context-contradiction",
+        "exit": 2,
+        "code": "input_invalid",
+        "millis": 132.114416
+      },
+      {
+        "id": "codex-model-wrong-type",
+        "exit": 2,
+        "code": "input_invalid",
+        "millis": 108.780542
+      },
+      {
+        "id": "claude-pass",
+        "exit": 0,
+        "code": "ok",
+        "millis": 243.054167
+      },
+      {
+        "id": "claude-fork-denied",
+        "exit": 1,
+        "code": "spawn_denied",
+        "millis": 227.76375
+      },
+      {
+        "id": "claude-fork-marked",
+        "exit": 0,
+        "code": "ok",
+        "millis": 239.238541
+      },
+      {
+        "id": "claude-resume",
+        "exit": 0,
+        "code": "resume_not_spawn",
+        "millis": 237.339333
+      },
+      {
+        "id": "claude-resume-fork-conflict",
+        "exit": 2,
+        "code": "input_invalid",
+        "millis": 112.916542
+      },
+      {
+        "id": "repeat-deny-1",
+        "exit": 1,
+        "code": "spawn_denied",
+        "millis": 223.540584
+      },
+      {
+        "id": "repeat-deny-2",
+        "exit": 1,
+        "code": "spawn_denied",
+        "millis": 248.682458
+      },
+      {
+        "id": "repeat-deny-3",
+        "exit": 1,
+        "code": "spawn_denied",
+        "millis": 256.866583
+      },
+      {
+        "id": "repeat-deny-4",
+        "exit": 1,
+        "code": "spawn_denied",
+        "millis": 315.375625
+      },
+      {
+        "id": "native-pass",
+        "exit": 0,
+        "millis": 271.980875
+      },
+      {
+        "id": "native-deny",
+        "exit": 2,
+        "millis": 278.121417
+      },
+      {
+        "id": "native-malformed",
+        "exit": 2,
+        "millis": 138.1165
+      },
+      {
+        "id": "native-resume",
+        "exit": 0,
+        "millis": 281.4465
+      },
+      {
+        "id": "wrong-cwd",
+        "exit": 2,
+        "code": "input_invalid",
+        "millis": 135.3185
+      },
+      {
+        "id": "used-null",
+        "exit": 2,
+        "code": "input_invalid",
+        "millis": 136.105417
+      },
+      {
+        "id": "duplicate-key",
+        "exit": 2,
+        "code": "input_invalid",
+        "millis": 133.390625
+      },
+      {
+        "id": "invalid-unicode",
+        "exit": 2,
+        "code": "input_invalid",
+        "millis": 131.012125
+      },
+      {
+        "id": "policy-drift",
+        "exit": 2,
+        "code": "policy_invalid",
+        "millis": 62.556833
+      },
+      {
+        "id": "profile-drift",
+        "exit": 2,
+        "code": "profile_invalid",
+        "millis": 62.255916
+      },
+      {
+        "id": "evaluator-drift",
+        "exit": 2,
+        "code": "evaluator_unavailable",
+        "millis": 115.093916
+      },
+      {
+        "id": "controller-pin",
+        "exit": 2,
+        "code": "controller_changed",
+        "millis": 8.631292
+      },
+      {
+        "id": "unregistered-host",
+        "exit": 2,
+        "code": "hook_unregistered",
+        "millis": 6.587041
+      },
+      {
+        "id": "default-before-input",
+        "exit": 2,
+        "code": "unsupported",
+        "millis": 146.7905
+      },
+      {
+        "id": "native-factory-negative",
+        "exit": 2,
+        "code": "native_unavailable",
+        "millis": 6.735333
+      },
+      {
+        "id": "native-hook-factory-negative",
+        "exit": 2,
+        "code": "native_unavailable",
+        "millis": 8.632208
+      },
+      {
+        "id": "perf-receiver-0",
+        "exit": 0,
+        "code": "ok",
+        "millis": 276.554917
+      },
+      {
+        "id": "perf-receiver-1",
+        "exit": 0,
+        "code": "ok",
+        "millis": 286.09625
+      },
+      {
+        "id": "perf-receiver-2",
+        "exit": 0,
+        "code": "ok",
+        "millis": 277.020125
+      },
+      {
+        "id": "perf-receiver-3",
+        "exit": 0,
+        "code": "ok",
+        "millis": 231.617583
+      },
+      {
+        "id": "perf-receiver-4",
+        "exit": 0,
+        "code": "ok",
+        "millis": 234.8925
+      },
+      {
+        "id": "perf-receiver-5",
+        "exit": 0,
+        "code": "ok",
+        "millis": 235.089542
+      },
+      {
+        "id": "perf-receiver-6",
+        "exit": 0,
+        "code": "ok",
+        "millis": 222.996333
+      },
+      {
+        "id": "perf-receiver-7",
+        "exit": 0,
+        "code": "ok",
+        "millis": 227.963625
+      },
+      {
+        "id": "perf-receiver-8",
+        "exit": 0,
+        "code": "ok",
+        "millis": 230.872416
+      },
+      {
+        "id": "perf-receiver-9",
+        "exit": 0,
+        "code": "ok",
+        "millis": 234.523541
+      },
+      {
+        "id": "perf-receiver-10",
+        "exit": 0,
+        "code": "ok",
+        "millis": 230.440333
+      },
+      {
+        "id": "perf-receiver-11",
+        "exit": 0,
+        "code": "ok",
+        "millis": 219.118
+      },
+      {
+        "id": "perf-receiver-12",
+        "exit": 0,
+        "code": "ok",
+        "millis": 212.123291
+      },
+      {
+        "id": "perf-receiver-13",
+        "exit": 0,
+        "code": "ok",
+        "millis": 206.759792
+      },
+      {
+        "id": "perf-receiver-14",
+        "exit": 0,
+        "code": "ok",
+        "millis": 226.932167
+      },
+      {
+        "id": "perf-receiver-15",
+        "exit": 0,
+        "code": "ok",
+        "millis": 234.897917
+      },
+      {
+        "id": "perf-receiver-16",
+        "exit": 0,
+        "code": "ok",
+        "millis": 239.241375
+      },
+      {
+        "id": "perf-receiver-17",
+        "exit": 0,
+        "code": "ok",
+        "millis": 223.587541
+      },
+      {
+        "id": "perf-receiver-18",
+        "exit": 0,
+        "code": "ok",
+        "millis": 218.0295
+      }
+    ]
+  },
+  "dualCUE": {
+    "versions": [
+      "0.16.1",
+      "0.17.1"
+    ],
+    "actualRecords": 99,
+    "checks": 198,
+    "allPassed": true
+  },
+  "observedOperatorCounters": {
+    "nativeStampAttempts": 138,
+    "nativeStampInvoked": 138,
+    "nativeStampCompleted": 138,
+    "stateWritesAttempted": 88,
+    "stateWritesCommitted": 88,
+    "evaluatorAttempts": 40,
+    "evaluatorInvoked": 40,
+    "evaluatorCompleted": 40
+  },
+  "purePerformance": {
+    "count": 31,
+    "p50Millis": 7.761958,
+    "p95Millis": 10.909958,
+    "maxMillis": 46.078333,
+    "allMillis": [
+      46.078333,
+      6.475375,
+      6.71475,
+      7.401167,
+      9.794542,
+      7.787292,
+      8.7655,
+      8.500375,
+      6.157292,
+      8.691625,
+      7.835208,
+      5.663333,
+      7.382542,
+      8.488833,
+      6.338041,
+      7.87275,
+      8.705916,
+      7.514416,
+      7.664417,
+      8.727334,
+      6.7155,
+      5.770917,
+      8.058333,
+      6.809125,
+      6.358625,
+      9.155917,
+      10.909958,
+      7.558208,
+      6.847625,
+      10.140083,
+      7.761958
+    ],
+    "firstSampleMillis": 46.078333,
+    "p95LimitMillis": 25
+  },
+  "receiverPerformance": {
+    "count": 19,
+    "p50Millis": 230.872416,
+    "p95Millis": 286.09625,
+    "maxMillis": 286.09625,
+    "allMillis": [
+      276.554917,
+      286.09625,
+      277.020125,
+      231.617583,
+      234.8925,
+      235.089542,
+      222.996333,
+      227.963625,
+      230.872416,
+      234.523541,
+      230.440333,
+      219.118,
+      212.123291,
+      206.759792,
+      226.932167,
+      234.897917,
+      239.241375,
+      223.587541,
+      218.0295
+    ],
+    "firstSampleMillis": 276.554917,
+    "p95LimitMillis": 500,
+    "maxLimitMillis": 1500
+  },
+  "legacyPerformance": {
+    "pairs": [
+      {
+        "before": 26.306417,
+        "after": 9.049708
+      },
+      {
+        "after": 8.044542,
+        "before": 9.566125
+      },
+      {
+        "before": 9.742,
+        "after": 8.012125
+      },
+      {
+        "after": 7.022792,
+        "before": 9.963209
+      },
+      {
+        "before": 9.381125,
+        "after": 8.257458
+      },
+      {
+        "after": 7.955,
+        "before": 9.701417
+      },
+      {
+        "before": 9.402125,
+        "after": 7.5865
+      },
+      {
+        "after": 11.8325,
+        "before": 9.700334
+      },
+      {
+        "before": 8.682291,
+        "after": 5.93425
+      }
+    ],
+    "beforeMedianMillis": 9.700334,
+    "afterMedianMillis": 8.012125,
+    "ratio": 0.8259638276372752,
+    "bytesEqual": true,
+    "medianOverheadMaxRatio": 1.25,
+    "stateIsolation": "separate synthetic per binary/pair"
+  },
+  "performanceScope": "new process each invocation; shared local gate/cross-build load; OS/filesystem caches not reset; first sample is not a cold-cache claim",
+  "crossBuild": {
+    "windows-amd64": "test binary compiled, not executed",
+    "linux-amd64": "test binary compiled, not executed"
+  },
+  "nativeApprovalInvocations": 0,
+  "installation": "unobserved",
+  "hostedSourceExecution": {
+    "publishedHead": "2f0ed915811abb8cf0f8a456c835295d604f04d8",
+    "status": "startup-refused-execution-unobserved",
+    "runs": [
+      {
+        "id": 40155382402,
+        "url": "https://github.com/GeoffMillerAZ/agentic-kit/actions/runs/40155382402",
+        "jobs": 1,
+        "steps": 0
+      },
+      {
+        "id": 40155382476,
+        "url": "https://github.com/GeoffMillerAZ/agentic-kit/actions/runs/40155382476",
+        "jobs": 1,
+        "steps": 0
+      },
+      {
+        "id": 40155382432,
+        "url": "https://github.com/GeoffMillerAZ/agentic-kit/actions/runs/40155382432",
+        "jobs": 6,
+        "steps": 0
+      }
+    ],
+    "jobs": 8,
+    "zeroStepJobs": 8,
+    "startupRestrictionJobs": 8,
+    "unknownJobs": 0
+  },
+  "retainedFailures": [
+    "66-character synthetic sampling key rejected",
+    "driver expected controller_invalid instead of existing controller_changed",
+    "shared legacy once-state contaminated first comparison",
+    "INC-25 typed-nil factories reproduced and repaired",
+    "test race-runtime exit drain and Darwin FIFO deadline unsupported",
+    "CUE observation roster initially included legacy hook envelopes"
+  ],
+  "unqualified": [
+    "coding-host delivery and denial",
+    "live protected-key presence or enrollment",
+    "installed hook authority or migration",
+    "Windows/Linux native approval",
+    "physical power-loss durability",
+    "production workload economics",
+    "journal recipient and retention"
+  ],
+  "sourcePublication": {
+    "normalPrePush": "pass",
+    "validateSeconds": 124.51,
+    "fathomVerifySeconds": 65.47,
+    "sourceManifestStillMatches": true,
+    "removedOwnedWorktrees": 2,
+    "removedMergedLocalBranches": 3
+  }
+}

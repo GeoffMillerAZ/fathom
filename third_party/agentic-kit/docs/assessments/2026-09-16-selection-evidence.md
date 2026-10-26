@@ -1,7 +1,7 @@
 # Assessment: evidence-based workload selection
 
 Reviewed 2026-09-16. Baseline kit `2e1b1bbfd6277bc4f8835928e200b7ef516ff1be`;
-resume_as_code `7a6c56a26dd10a7cf80128d23ef13bab90377ae8`, verified on disk.
+consumer-c `7a6c56a26dd10a7cf80128d23ef13bab90377ae8`, verified on disk.
 Independent audits covered catalog/consumer selection, evaluation/accounting and
 retrieval/security; exact source reads checked the important index findings.
 
@@ -104,7 +104,7 @@ hash/statistics primitives and consumer persistence. No package expansion is nec
 The implementation reports caller-declared evidence; it cannot prove model calls,
 hidden-call coverage, representative data or grader correctness from submitted JSON.
 
-The prospective real consumer is resume_as_code's bounded red-team workflow:
+The prospective real consumer is consumer-c's bounded red-team workflow:
 `cmd/generate.go:buildRedTeamPanel`, `cmd/ops/redteam.go` and `cmd/redteam/provider_test.go`.
 It already has configured role models, usage accounting, two-round stopping and
 request-scoped family checks. Next integration should instrument that real path and
@@ -118,7 +118,7 @@ fingerprints; bounded terminal trials with acceptance-artifact references; failu
 summaries with explicit cost bases; reproducible task-clustered comparisons that refuse
 incompatible, stale, unknown or non-live declarations. No second evaluator was added.
 The synthetic real-consumer bridge and retained receipt pass, as do the kit gate and
-Throughline compatibility checks. Fathom/GGB retain their known unrelated test failures.
+Consumer-a compatibility checks. Fathom/GGB retain their known unrelated test failures.
 [Commands, revisions, negative control and intent health](../evidence/benchmarks/2026-09-16/README.md).
 
 Assumptions: a trusted collector can observe all material calls; sufficiently independent

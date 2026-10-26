@@ -14,7 +14,6 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -29,6 +28,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/ask"
 	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/readout"
+	"github.com/geoffmilleraz/fathom/internal/transcript"
 	heartbeat "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/heartbeat"
 )
 
@@ -480,35 +480,12 @@ func roPathNamesSession(p string, sessions map[string]bool) bool {
 
 // readoutReportFile streams one transcript with replay's decoder types.
 func readoutReportFile(p string, want map[string]bool, out map[string]*roCall) {
-	f, err := os.Open(p)
-	if err != nil {
-		return
-	}
-	defer f.Close()
 	open := map[string]*roCall{}
 	byFollower := map[string]*roFollower{}
 	seq := 0
-	br := bufio.NewReaderSize(f, 1<<20)
-	var buf []byte
-	over := false
-	for {
-		chunk, rerr := br.ReadSlice('\n')
-		if len(buf)+len(chunk) <= replayLineMax {
-			buf = append(buf, chunk...)
-		} else {
-			over = true
-		}
-		if errors.Is(rerr, bufio.ErrBufferFull) {
-			continue
-		}
-		if !over && bytes.Contains(buf, []byte(`"tool_`)) {
-			seq = readoutReportLine(buf, seq, want, out, open, byFollower)
-		}
-		buf, over = buf[:0], false
-		if rerr != nil {
-			break
-		}
-	}
+	transcript.WalkFile(p, func(_ int, l *transcript.Line, blocks []transcript.Block) {
+		seq = readoutReportDecodedLine(l, blocks, seq, want, out, open, byFollower)
+	})
 	for id, c := range open {
 		if c.resulted {
 			out[id] = c
@@ -517,20 +494,15 @@ func readoutReportFile(p string, want map[string]bool, out map[string]*roCall) {
 }
 
 func readoutReportLine(raw []byte, seq int, want map[string]bool, out, open map[string]*roCall, byFollower map[string]*roFollower) int {
-	var l replayTranscriptLine
-	if json.Unmarshal(raw, &l) != nil || l.Message == nil || len(l.Message.Content) == 0 || l.Message.Content[0] != '[' {
+	l, blocks, err := transcript.DecodeLine(raw)
+	if err != nil {
 		return seq
 	}
-	var blocks []replayBlock
-	if json.Unmarshal(l.Message.Content, &blocks) != nil {
-		return seq
-	}
-	results := 0
-	for _, b := range blocks {
-		if b.Type == "tool_result" {
-			results++
-		}
-	}
+	return readoutReportDecodedLine(&l, blocks, seq, want, out, open, byFollower)
+}
+
+func readoutReportDecodedLine(l *replayTranscriptLine, blocks []replayBlock, seq int, want map[string]bool, out, open map[string]*roCall, byFollower map[string]*roFollower) int {
+	single := transcript.ResultCount(blocks) == 1
 	for i := range blocks {
 		b := &blocks[i]
 		switch b.Type {
@@ -549,7 +521,7 @@ func readoutReportLine(raw []byte, seq int, want map[string]bool, out, open map[
 			}
 			seq++
 		case "tool_result":
-			stdout, stderr, tr := roResultOf(&l, b, results == 1)
+			stdout, stderr, tr := roResultOf(l, b, single)
 			if c := open[b.ToolUseID]; c != nil && !c.resulted {
 				c.stdout, c.stderr, c.interrupted, c.persisted, c.resulted = stdout, stderr, tr.Interrupted, tr.PersistedOutputPath, true
 			}
@@ -596,11 +568,7 @@ func roFollowerOf(b *replayBlock, roots ...string) (*roFollower, string) {
 // structured stdout and stderr when the line carries one result, else the
 // result's content; never the persisted file (the hook got its path only).
 func roResultOf(l *replayTranscriptLine, b *replayBlock, single bool) (stdout, stderr string, tr replayToolResult) {
-	if single && len(l.ToolUseResult) > 0 && l.ToolUseResult[0] == '{' &&
-		json.Unmarshal(l.ToolUseResult, &tr) == nil && tr.Stdout != nil && !b.IsError {
-		return *tr.Stdout, tr.Stderr, tr
-	}
-	return resultText(b.Content), "", replayToolResult{}
+	return transcript.ResultOf(l, b, single)
 }
 
 // printReadoutReport writes the report's text form.

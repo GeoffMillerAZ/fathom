@@ -229,7 +229,7 @@ func TestCmdResearchBundle_Adversarial_SecretsNeverLeak(t *testing.T) {
 		t.Fatal(err)
 	}
 	obsBody := observationsHeader + "\n" + formatObservationEntry(1,
-		"leaked "+secrets[0], "tool "+secrets[3], "expected "+secrets[2], "actual "+secrets[1], "repro "+secrets[4])
+		"leaked "+secrets[0], "tool "+secrets[3], "expected "+secrets[2], "actual "+secrets[1], "repro "+secrets[4], "")
 	if err := os.WriteFile(obsPath, []byte(obsBody), 0o644); err != nil {
 		t.Fatal(err)
 	}

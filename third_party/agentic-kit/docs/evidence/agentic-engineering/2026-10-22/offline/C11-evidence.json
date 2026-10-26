@@ -1,0 +1,12 @@
+{
+  "id": "C11",
+  "axis": "composition",
+  "acceptance": "An actual Review Kit exchange preserves its criterion and finding authority",
+  "outcome": "unknown",
+  "source": "docs/intent/decisions/0024-independent-kits-share-identity-not-authority.md",
+  "source_sha256": "cd36a96f6de940c0dc74ce6c4a21502499f02aa14d29e935434595cdf8bbd04e",
+  "test": null,
+  "group": null,
+  "scope_note": "Component test does not prove consumer adoption, live model quality, or all entrypoints.",
+  "reason": "Current source lacks a retained end-to-end criterion-specific adoption or measured-quality receipt."
+}

@@ -190,12 +190,12 @@ func TestObligationsTool_RuleFromDeletedSourceFileWithheldAndCounted(t *testing.
 	fake := &perLayerCovFakeBackend{
 		rawFallbackFakeBackend: rawFallbackFakeBackend{semanticFakeBackend: semanticFakeBackend{
 			obligations: semantic.Obligations{Service: "svc", File: "go.mod", Rules: []semantic.Obligation{
-				{Rule: "Ghost rule.", Src: "capstan/CLAUDE.md#L3-L3", Tier: "doc-claimed", Layer: "obligations", Subject: "capstan/CLAUDE.md#guide", Status: "contradicted"},
+				{Rule: "Ghost rule.", Src: "widget/CLAUDE.md#L3-L3", Tier: "doc-claimed", Layer: "obligations", Subject: "widget/CLAUDE.md#guide", Status: "contradicted"},
 				{Rule: "Live rule.", Src: "AGENTS.md#L5-L6", Tier: "doc-claimed", Layer: "obligations", Subject: "AGENTS.md#gate"},
 			}},
 		}},
 		covs: map[string]semantic.LayerCoverage{
-			semantic.LayerObligations: {SectionsTotal: 1, SectionsCompiled: 1, MissingSources: []string{"capstan/CLAUDE.md"}},
+			semantic.LayerObligations: {SectionsTotal: 1, SectionsCompiled: 1, MissingSources: []string{"widget/CLAUDE.md"}},
 		},
 	}
 	payload := extractPayload(t, obligationsCall(t, fake))

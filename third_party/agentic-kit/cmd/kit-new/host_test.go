@@ -27,7 +27,7 @@ func newHostFixture(t *testing.T, host string) hostFixture {
 	}
 	t.Cleanup(func() { _ = root.Close() })
 	binary := filepath.Join(t.TempDir(), "kit-new ' fixture")
-	if err := os.WriteFile(binary, []byte("offline fake executable\n"), 0700); err != nil {
+	if err := os.WriteFile(binary, []byte("offline fake executable\n"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	return hostFixture{root: root, dir: dir, binary: binary, host: host, policy: hostPolicy{Version: 1, DenyTools: []string{"forbidden*"}, DenyPaths: []string{"private"}, Required: []string{"tool"}, Instructions: "Respect project instructions."}}
@@ -35,13 +35,14 @@ func newHostFixture(t *testing.T, host string) hostFixture {
 
 func (f hostFixture) write(t *testing.T, path string, raw []byte) {
 	t.Helper()
-	if err := f.root.MkdirAll(filepath.Dir(path), 0700); err != nil {
+	if err := f.root.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.root.WriteFile(path, raw, 0600); err != nil {
+	if err := f.root.WriteFile(path, raw, 0o600); err != nil {
 		t.Fatal(err)
 	}
 }
+
 func (f hostFixture) install(t *testing.T) hostPlan {
 	t.Helper()
 	p, err := planHostInstall(f.root, f.dir, f.host, f.binary, f.policy)
@@ -53,6 +54,7 @@ func (f hostFixture) install(t *testing.T) hostPlan {
 	}
 	return p
 }
+
 func (f hostFixture) guard(t *testing.T, event hostHookInput) (int, string) {
 	t.Helper()
 	var out, errOut bytes.Buffer
@@ -62,6 +64,7 @@ func (f hostFixture) guard(t *testing.T, event hostHookInput) (int, string) {
 	}
 	return code, out.String()
 }
+
 func fakeHostDeps(host string) hostDeps {
 	return hostDeps{now: func() time.Time { return time.Date(2026, 9, 13, 0, 0, 0, 0, time.UTC) }, command: func(_ context.Context, _, _ string, args ...string) (string, error) {
 		if args[0] == "--version" {
@@ -76,6 +79,7 @@ func fakeHostDeps(host string) hostDeps {
 		return "Usage: mocked host\n", nil
 	}}
 }
+
 func control(receipt hostReceipt, name string) hostControl {
 	for _, c := range receipt.Controls {
 		if c.Name == name {
@@ -93,7 +97,7 @@ func TestHostInstallRoundTrip(t *testing.T) {
 			foreign := []byte(`{"permissions":{"allow":["Read"]},"hooks":{"PreToolUse":[{"matcher":"foreign","hooks":[{"type":"command","command":"foreign"}]}]}}`)
 			f.write(t, config, foreign)
 			f.write(t, instructions, []byte("User-owned instructions\n"))
-			if err := f.root.Chmod(config, 0640); err != nil {
+			if err := f.root.Chmod(config, 0o640); err != nil {
 				t.Fatal(err)
 			}
 			plan, err := planHostInstall(f.root, f.dir, host, f.binary, f.policy)
@@ -109,7 +113,7 @@ func TestHostInstallRoundTrip(t *testing.T) {
 			if err := applyHostPlan(f.root, plan); err != nil {
 				t.Fatal(err)
 			}
-			if stat, err := f.root.Stat(config); err != nil || stat.Mode().Perm() != 0640 {
+			if stat, err := f.root.Stat(config); err != nil || stat.Mode().Perm() != 0o640 {
 				t.Fatalf("permissions changed %v %v", stat, err)
 			}
 			own, _, err := validateInstalledHost(f.root, f.dir, host)
@@ -415,11 +419,11 @@ func TestHostReceiptEvidenceAndFailures(t *testing.T) {
 			case "policy-drift":
 				f.write(t, policy, []byte("{}"))
 			case "binary-drift":
-				if err := os.WriteFile(f.binary, []byte("changed"), 0700); err != nil {
+				if err := os.WriteFile(f.binary, []byte("changed"), 0o700); err != nil {
 					t.Fatal(err)
 				}
 			case "binary-permission":
-				if err := os.Chmod(f.binary, 0600); err != nil {
+				if err := os.Chmod(f.binary, 0o600); err != nil {
 					t.Fatal(err)
 				}
 			default:

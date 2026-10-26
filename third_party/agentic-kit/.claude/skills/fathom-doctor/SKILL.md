@@ -4,7 +4,7 @@ description: >
   Run and interpret `fathom doctor`, the deterministic wiring-diagnosis
   checklist for a fathom-adopting repo — MCP registration, daemon
   reachability, binary freshness, the hook stack (installed AND firing),
-  the CLAUDE.md/AGENTS.md stanza, shipped skills, config validity,
+  the AGENTS.md stanza and whether Claude Code loads it, shipped skills, config validity,
   obligations serving, and surface traffic. Use when asked "is fathom
   actually wired here", when troubleshooting missing or silent fathom
   behavior, right after `fathom init`, or before trusting a fresh
@@ -16,71 +16,106 @@ description: >
 ## 1. Run the checklist
 
 ```sh
-fathom doctor [--harness=claude|codex|auto] [--path <dir>] [--service <id>] [--url <base>] [--json]
+fathom doctor [--harness=claude|codex|auto|<registry id>] [--path <dir>] [--service <id>] [--url <base>] [--json]
 ```
 
-- `--harness` defaults to `auto` (detects claude vs codex from `.claude/settings.json`/`~/.claude.json` vs `.codex/config.toml`/`~/.codex/config.toml`; falls back to `claude` with no evidence either way). Pass it explicitly when you know which harness you're diagnosing.
-- `--path` defaults to cwd; `--service` defaults to the same candidate identities the hooks probe (dir basename, then the git toplevel's), resolved against the daemon's actual service list — so a repo whose directory name doesn't match its indexed service is surfaced, not guessed over.
-- `--url` defaults to `http://localhost:7575` (or `$FATHOM_HTTP`) — the daemon doctor queries read-only.
-- `--json` for machine output; otherwise a human table.
+- `--harness` defaults to `auto`: the first harness whose config markers
+  exist (`fathom harness list` shows the registry), else `claude`. Pass it
+  explicitly when you know which harness you are diagnosing.
+- `--path` defaults to the current directory. `--service` defaults to the
+  identities the hooks probe (the directory's basename, then the git
+  toplevel's), checked against the daemon's service list, so a repository
+  indexed under another name is named rather than guessed.
+- `--url` defaults to `http://localhost:7575` (or `$FATHOM_HTTP`); doctor
+  only reads from the daemon.
+- `--json` for machine output; otherwise a table.
 
-Exit codes: `0` every check passed; `1` at least one check failed (a real, fixable problem); `2` doctor itself could not run (bad flags, unresolvable `--path`) — an operational error, not a verdict on the repo's wiring.
+Exit codes: `0` no row failed; `1` at least one row failed; `2` doctor
+itself could not run (bad flags, an unresolvable `--path`).
 
 ## 2. Read the report honestly
 
-Every row is `{name, status, reason, remedy}`. Four statuses, and they mean different things — do not collapse them when you summarize for the operator:
+Every row is `{name, status, reason, remedy}`. Keep the four statuses apart
+when you summarize:
 
-- **pass** — verified true, with the evidence in `reason`.
-- **fail** — a real, observable problem. `remedy` is always one command.
-- **warn** — a real, observable condition worth attention (phase O: a dead guard, a bound module below `servable`) that **never fails the exit code** — it is a config-quality signal, not a wiring-broken verdict. Report it as its own bucket, not folded into pass or fail.
-- **skipped** — doctor could not check it (unreadable config, unresolvable home directory, daemon unreachable so a dependent check can't run). **Skipped is not failed, and it is never a guessed pass either.** Report it as "could not verify: <reason>", not as either extreme.
+- **PASS**: verified true; the evidence is in `reason`.
+- **FAIL**: an observable problem; `remedy` is one command.
+- **WARN**: worth attention, never fails the exit code (a dead guard, a
+  leftover scratch daemon).
+- **SKIP**: doctor could not check it (daemon down, no call log, a feature
+  not configured). It is neither a failure nor a pass. Report it as "could
+  not verify: <reason>".
 
-The checklist doctor runs (so you know what each row means before you explain it):
+**A fresh install, read correctly.** In v0.11.0 a correct `fathom init
+--skills` usually prints about 60 rows with three FAIL rows that are not
+wiring faults:
 
-| Check | What it proves |
+| Row | Why it fails on day one | What to do |
+|---|---|---|
+| `lefthook_gates` | The repository has no `lefthook.yml` with a `fathom verify` pre-push step | Nothing, unless you want the gate (`fathom-verify` skill) |
+| `obligations_served` | The obligations layer has never been compiled | Optional, and it spends LLM tokens: `fathom compile --service <svc> --dry-run=false` |
+| `surface_traffic` | No MCP tool call has reached the daemon yet | Make one call (`find_symbol`) after restarting the session |
+
+Rows that SKIP on day one and need nothing: `mcp_registration` (until the
+harness config is readable), `binary_fresh` outside fathom's own checkout,
+`hooks_firing` and `stanza_loaded` (no session has run yet), the provider
+rows (`providers`, `compile_layer`, `decision_provider`) with the default
+provider `none`, and the module-binding rows when no module is bound.
+
+The rows that decide whether fathom works:
+
+| Row | What it proves |
 |---|---|
-| `mcp_registration` | The harness's own MCP config points fathom at `/rpc/agent` (or `/rpc/companion`) |
 | `daemon_reachable` | `GET /healthz` answers |
-| `binary_fresh` | The binary you just ran `doctor` with matches `git rev-parse HEAD` of the checked repo — a LOCAL proxy (there's no remote "ask the daemon its version" call yet); every pass says the daemon's installed copy is unverified, a dirty build surfaces `vcs.modified`, and both worktree caveats (a mismatch inside a linked worktree; a match in a checkout with nested worktrees, whose stamps can be poisoned) are printed only when doctor verifies they apply |
-| `hooks_installed` (claude only) | The full fathom hook stack (session-start, session-end + pre-compact continuity deposits, edit, guard-pre, stop) is wired in SOME settings scope — project `.claude/settings.json`, `.claude/settings.local.json`, or user `~/.claude/settings.json`; user-scope wiring passes with a scope note. If no readable scope wires them but the call log shows them firing, doctor names that contradiction instead of the init remedy — re-running init there would install duplicates |
-| `lefthook_gates` | `lefthook.yml`'s pre-push has a `fathom verify` step (harness-agnostic — Codex uses the identical git-native gate) |
-| `hooks_firing` (claude only) | The call log has actually seen `edit-hook` traffic — configured is not the same as firing |
-| `stanza_present` | `CLAUDE.md`/`AGENTS.md` carry a well-formed fathom marker pair |
-| `skills_installed` | Every shipped skill is present, fathom-owned, and byte-current for the resolved harness |
-| `config_valid` | `.fathom/config.toml` (user + project) validates against the CUE schema |
-| `obligations_served` | The service resolves the way the hooks resolve it (every candidate identity, intersected with the daemon's service list — a repo whose candidates match no indexed service gets a distinct not-indexed verdict, which also means injection cannot fire there) AND the obligations layer serves compiled claims for `CLAUDE.md`; drift-flagged (stale/contradicted) rules are counted into the reason, never hidden in a clean-shaped pass |
-| `surface_traffic` | The `agent` surface has been called since this daemon process started (the counters are process-lifetime — they reset on restart) |
-| `binding_file` / `guard_file` (phase O) | `.fathom/modules.cue`/`.fathom/guard.cue`, when present, parse and validate — **fail** (loud) on a malformed file; absence is reported `pass` ("no bindings/guards configured"), never skipped |
-| `binding_modules_mounted` (phase O) | Every module a binding names is actually mounted on this daemon (`list_modules`) — **fail** (loud) on an unmounted bound module: its rules can never reach an edit |
-| `binding_module_readiness` (phase O) | Each bound module's phase-J readiness ladder verdict, checked via the module's own local manifest **when resolvable on this machine** — **warn** if below `servable`; honestly `skipped: not checkable: module not local` otherwise (never a guessed verdict) |
-| `guard_dead_scopes` (phase O) | Each file-scoped guard's globs match at least one indexed file (`list_sources`) — **warn** on a guard matching zero (a prune candidate, never auto-removed); command-scoped guards are noted as not checkable this way, not silently skipped |
-| `guard_include_modules_unbound` (phase O) | A guard with `include_modules:true` has at least one binding to actually include — **warn** if none |
-| `capabilities` (phase T) | ONE row for the whole registry: **fail** only when a capability is switched ON yet not operating (config-says-yes, reality-says-no); off-by-choice is listed in the reason, never failed. `fathom capabilities` has the detail |
-| `concerns` (config custodian, vision 22) | The registered config contracts still hold: **fail** on a concerns.cue that does not load or a violated concern (an instruction in the config that is no longer true — remedy: `fathom config audit` for evidence; fathom reports, the operator edits); zero concerns registered is a passing row that names the absence |
+| `mcp_registration` | The harness's MCP config points at `/rpc/agent` (or `/rpc/extended`) |
+| `hooks_installed` | The hook stack is wired in some settings scope (project, local or user) |
+| `hooks_firing` | The call log has seen hook traffic: configured is not the same as firing |
+| `stanza_present` | `AGENTS.md` has a well-formed fathom region; it WARNs when Claude Code will not load `AGENTS.md` (a root `CLAUDE.md` without `@AGENTS.md`, a parent CLAUDE file, the agents-md plugin's `instructionFiles` setting at `claude-md` or `managed-only`, or Claude Code older than 2.1.277). The plugin is `cc-plugin-agents-md@builtin` from Claude Code 2.1.285 and `agents-md@builtin` in 2.1.277 through 2.1.284; its setting is user-global, so fathom never writes it |
+| `skills_installed` | Every shipped skill is present, fathom-owned and current; each missing one is named |
+| `wiring_drift` | Hooks, stanza and skills match the shipped template; `fathom fleet reconcile --repo .` shows the diff |
+| `config_valid` | `.fathom/config.toml` (user and project) validates |
+| `concerns` | Every registered config concern holds (`fathom config audit` has the evidence) |
 
-## 3. Apply remedies — with operator approval, one at a time
+## 3. Apply remedies with the operator's approval, one at a time
 
-Every `fail` row's `remedy` is a single command, but **never run one without saying what it does and getting the operator's go-ahead first** — several remedies are not harmless:
+Never run a remedy without saying what it does and getting the operator's
+go-ahead:
 
-- `fathom init [--skills=<harness>] [--path <dir>]` — safe and idempotent (stanza repair, hooks, skills); still confirm before writing to the operator's repo.
-- **The deploy command** (`binary_fresh`, `surface_traffic`) restarts the shared daemon (`launchctl kickstart …`). **Never run a daemon restart from an agent's own sandboxed session** — it can wedge. Tell the operator the exact command and ask them to run it from a real terminal.
-- **The recompile command** (`obligations_served`: `fathom compile --service <svc> --dry-run=false`) spends real tokens against a configured LLM profile. Confirm the operator wants to spend before running it — `--dry-run` (the default) estimates cost first if they want to see the number.
+- `fathom init [--harness <id>] [--skills] [--path <dir>]` is idempotent
+  (stanza, hooks, skills; `--json` lists every write); still confirm before
+  writing to the operator's repository.
+- **Daemon down** (`daemon_reachable`): on macOS the remedy names this
+  machine's launchd label, or `fathom daemon install` when none exists;
+  elsewhere it is `fathom serve-http` under the operator's own supervisor.
+  Never restart a daemon from an agent's own sandboxed shell: hand the
+  operator the exact command.
+- **A new binary** (`binary_fresh`): the daemon must be restarted on the new
+  build. Never copy over a running daemon's binary, which truncates it.
+- **A recompile** (`obligations_served`) spends real tokens with a
+  configured LLM provider. `--dry-run` (the default) prints the estimate.
 
-After a remedy, re-run `fathom doctor` rather than assuming it worked — the checklist is cheap and read-only, so there is no reason to guess.
+Re-run `fathom doctor` after each remedy instead of assuming it worked.
 
-## 4. The tie-in / optimize layer (once the checklist is all-pass)
+## 4. Prove the session sees it
 
-An all-pass `doctor` proves *configuration*; it does not prove the harness has *loaded* it this session, and it does not prove the hot-path hooks are cheap. Two more steps close that gap:
+A clean report proves configuration, not that this session loaded it. A
+session started before registration or before a daemon restart never sees
+the tools. Make one real call (`find_symbol` on a symbol you know exists);
+a connection error despite a clean report means "restart this session".
 
-1. **Prove the harness actually sees the tools.** Registration in config and a live daemon are necessary but not sufficient — a session started before registration (or before a daemon restart) never picks up the change (the "restart caveat" — see `docs/adoption/claude-code.md` §6). Make one real tool call (`capabilities`, or `find_symbol` against a symbol you know exists) and confirm a real response, not a connection error. If it fails despite an all-pass `doctor`, the fix is "restart this session," not another wiring change.
-2. **Check hook latency against the budget ledger** (`docs/design/coding-agent-excellence.md` §2). The obligations payload is capped at ≤150 tokens and should cost 0 tokens on a clean file (zero-output-on-clean); `edit-hook`'s own Claude Code timeout is 5s. Time one manual invocation:
+To check the edit hook's cost, time one call (the hook's own timeout is
+5 s; its payload is capped at about 150 tokens and is empty on a clean
+file):
 
-   ```sh
-   time bin/fathom edit-hook <<< '{"tool_input":{"file_path":"<a real file in the repo>"}}'
-   ```
+```sh
+time fathom edit-hook <<< '{"tool_input":{"file_path":"<a real file in the repo>"}}'
+```
 
-   Comfortably under a second is healthy; regularly approaching the 5s timeout means the hook is silently being dropped by Claude Code on slow runs — worth a `fathom observe` (see the `fathom-feedback` skill) rather than a silent shrug.
+Well under a second is healthy. A hook that nears 5 s is dropped by Claude
+Code on slow runs: file it with `fathom observe` (the `fathom-feedback`
+skill).
 
-## 5. Reporting back
+## 5. Report back
 
-Summarize as a short pass/fail/skipped tally plus the specific remedy for each failure — never a bare "N checks failed." An operator acting on your summary should be able to copy-paste the remedy line directly.
+Give a short PASS/FAIL/WARN/SKIP tally and the remedy for each failure,
+ready to copy. Never a bare "N checks failed".

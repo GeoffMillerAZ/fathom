@@ -1707,7 +1707,7 @@ func checkConfigValid(root string) doctorCheck {
 // for a repository still on the older layout. O23 (docs/dogfood-observations.md): a
 // service whose compiled obligations are code-scoped (e.g. "**/*.go") can
 // serve real rules while CLAUDE.md alone answers zero — live evidence: the
-// same daemon served 6 rules on cmd/conjure/main.go while probing CLAUDE.md
+// same daemon served 6 rules on cmd/app/main.go while probing CLAUDE.md
 // alone found none. checkObligationsServed now probes a real INDEXED
 // source file (obligationsProbeCandidates) ahead of this fallback, so a
 // code-scoped-only install reports the real PASS it deserves instead of a
@@ -1901,7 +1901,7 @@ func obligationsLayerCompiled(hc *http.Client, baseURL, svc string) (bool, error
 //
 // O23 (docs/dogfood-observations.md): probing CLAUDE.md alone reports FAIL
 // for a genuinely healthy, code-scoped-only install (live: 6 rules served
-// on cmd/conjure/main.go, zero on CLAUDE.md). This now probes SEVERAL
+// on cmd/app/main.go, zero on CLAUDE.md). This now probes SEVERAL
 // candidates (obligationsProbeCandidates: a real indexed source file first,
 // then CLAUDE.md/AGENTS.md) and, only when every probe comes back empty,
 // distinguishes "never compiled" (FAIL, remedy = compile) from "compiled,

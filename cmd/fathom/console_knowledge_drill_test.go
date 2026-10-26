@@ -209,11 +209,11 @@ func TestConsolePacks_TruthBesideEveryFigure(t *testing.T) {
 	m := console.PacksView{
 		Layers: []console.LayerPack{
 			{Name: "resume-standards", Source: console.PackProject, Note: "broken project pack ignored: layer.cue does not satisfy #Layer", Contributes: console.Absent[int]("never compiled")},
-			{Name: "imbue-standards", Source: console.PackUnknown, Origin: "no readable pack defines this layer, but the pack catalog of imbue could not be read", Contributes: console.Measured(4, "x")},
+			{Name: "svc-a-standards", Source: console.PackUnknown, Origin: "no readable pack defines this layer, but the pack catalog of svc-a could not be read", Contributes: console.Measured(4, "x")},
 		},
 	}
 	got := renderLayerPackTable(m)
-	if !strings.Contains(got, "does not satisfy #Layer") || !strings.Contains(got, "pack catalog of imbue could not be read") || strings.Count(got, ">unknown<") < 3 {
+	if !strings.Contains(got, "does not satisfy #Layer") || !strings.Contains(got, "pack catalog of svc-a could not be read") || strings.Count(got, ">unknown<") < 3 {
 		t.Errorf("broken and unknown packs must show their reason and no invented stratum or role:\n%s", got)
 	}
 	if strings.Contains(got, ">concern<") || strings.Contains(got, ">governs<") {
@@ -244,11 +244,11 @@ func TestConsoleSourceBadge_IsTheKitBadge(t *testing.T) {
 // shortened, never clipped at its first letters.
 func TestHeatmapLabel_FitsTheGutterByWidth(t *testing.T) {
 	for in, want := range map[string]string{
-		"resume_as_code":     "resume_a…",
-		"growing-gardens-bi": "growing-g…",
-		"pulumi_eks_cluster": "pulumi_ek…",
-		"fathom":             "fathom",
-		"ledger-service":     "ledger-ser…",
+		"billing_as_code":     "billing_as…",
+		"inventory-api-bi":    "inventory-…",
+		"storage_eks_cluster": "storage_e…",
+		"fathom":              "fathom",
+		"ledger-service":      "ledger-ser…",
 	} {
 		if got := heatmapLabel(in); got != want {
 			t.Errorf("heatmapLabel(%q) = %q, want %q", in, got, want)

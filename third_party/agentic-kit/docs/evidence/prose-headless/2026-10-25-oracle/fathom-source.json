@@ -1,0 +1,49 @@
+{
+  "service": "agentic-kit",
+  "summary": {
+    "fail": 0,
+    "pass": 1,
+    "total": 1,
+    "unknown": 0
+  },
+  "tasks": [
+    {
+      "criteria": [
+        {
+          "detail": "runReviewOracle at cmd/prose-lab/oracle.go:294",
+          "name": "symbol_present",
+          "status": "pass"
+        },
+        {
+          "detail": "verified (>= required verified)",
+          "name": "tier",
+          "status": "pass"
+        },
+        {
+          "detail": "28 test(s) statically reach it, e.g. agentic-kit::cmd/prose-lab/main.TestDocumentReviewEntrypointPinnedOffline",
+          "name": "test_reaches",
+          "status": "pass"
+        },
+        {
+          "detail": "no conflicting evidence",
+          "name": "no_contradiction",
+          "status": "pass"
+        },
+        {
+          "detail": "product entry point agentic-kit::cmd/prose-lab/main.main reaches it",
+          "name": "wired",
+          "status": "pass"
+        },
+        {
+          "detail": "no attested run in test_runs for TestDocumentReviewEntrypointPinnedOffline, TestOracleAssessmentCUEParityAndUTF8, TestOracleCUEForgedRosterAndContent, TestOracleCompleteStructuralAndRefusals, TestOracleEntrypointsAndCoverage, TestOracleHelpFlagsAndCancellation, TestOracleIOPrivacyAndBounds, TestOracleReportCUECounterRefusal, TestOracleReportContentProjection, TestOracleSemanticBindingSurvivesStudyChange, TestOwnerDocumentAdjudicationCUECannotOverstate, TestOwnerDocumentAdjudicationDeclaredEvidence, TestOwnerDocumentAdjudicationHardLengthCannotBeDeclaredAway, TestOwnerDocumentAdjudicationHelpIsDiscoverable, TestOwnerDocumentAdjudicationReadOnlyAndOutputFailures, TestOwnerDocumentAdjudicationSidecarCannotChoosePolicy, TestOwnerOracleActualSourceLineage, TestOwnerOracleAssessmentStateReasonParity, TestOwnerOracleCUEFactReferenceConsistency, TestOwnerOracleCanonicalProjectionAndReuse, TestOwnerOracleDeclaredCoverageAndHolds, TestOwnerOracleExaminedCounterAndAmbiguityProposal, TestOwnerOracleHeldExample, TestOwnerOracleHelpCancellationAndOutput, TestOwnerOracleInputRefusals, TestOwnerPairedHelpAndOutputFailures, TestOwnerPairedLegacyWireCompatibility, TestReviewPrepareAndReportNoEffects (the tests that statically reach it); ingest a test-kit envelope with `fathom tests ingest --results`",
+          "name": "runtime_pass",
+          "status": "unknown"
+        }
+      ],
+      "id": "HP-19",
+      "label": "verified",
+      "status": "pass",
+      "title": "Offline source-bound oracle review preparation and reporting"
+    }
+  ]
+}

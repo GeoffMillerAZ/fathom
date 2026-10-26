@@ -1,0 +1,2 @@
+{"tool":"shell_command","command":"git status --short"}
+{"tool":"Read","command":""}

@@ -1,0 +1,110 @@
+{
+  "method": "Non-merge test/non-test co-changes, 2024-10-25T00:00:00Z through 2026-10-26T00:00:00Z; subject regex \\b(fix|bug|regression)\\b, case insensitive; not replayed fix truth.",
+  "counts": {
+    "Textualize--rich": {
+      "test_and_non_test_commits": 31,
+      "fix_message_subset": 10,
+      "primary_language_source_commits": 31,
+      "primary_language_source_fix_message_subset": 10,
+      "replayed": 0
+    },
+    "encode--starlette": {
+      "test_and_non_test_commits": 135,
+      "fix_message_subset": 7,
+      "primary_language_source_commits": 130,
+      "primary_language_source_fix_message_subset": 6,
+      "replayed": 0
+    },
+    "go-chi--chi": {
+      "test_and_non_test_commits": 42,
+      "fix_message_subset": 7,
+      "primary_language_source_commits": 41,
+      "primary_language_source_fix_message_subset": 7,
+      "replayed": 0
+    },
+    "immerjs--immer": {
+      "test_and_non_test_commits": 37,
+      "fix_message_subset": 30,
+      "primary_language_source_commits": 36,
+      "primary_language_source_fix_message_subset": 29,
+      "replayed": 0
+    },
+    "marshmallow-code--marshmallow": {
+      "test_and_non_test_commits": 68,
+      "fix_message_subset": 17,
+      "primary_language_source_commits": 65,
+      "primary_language_source_fix_message_subset": 17,
+      "replayed": 0
+    },
+    "microsoft--tsyringe": {
+      "test_and_non_test_commits": 3,
+      "fix_message_subset": 0,
+      "primary_language_source_commits": 3,
+      "primary_language_source_fix_message_subset": 0,
+      "replayed": 0
+    },
+    "pallets--click": {
+      "test_and_non_test_commits": 135,
+      "fix_message_subset": 35,
+      "primary_language_source_commits": 132,
+      "primary_language_source_fix_message_subset": 35,
+      "replayed": 0
+    },
+    "pressly--goose": {
+      "test_and_non_test_commits": 21,
+      "fix_message_subset": 6,
+      "primary_language_source_commits": 20,
+      "primary_language_source_fix_message_subset": 5,
+      "replayed": 0
+    },
+    "python-attrs--attrs": {
+      "test_and_non_test_commits": 48,
+      "fix_message_subset": 8,
+      "primary_language_source_commits": 36,
+      "primary_language_source_fix_message_subset": 4,
+      "replayed": 0
+    },
+    "reduxjs--redux": {
+      "test_and_non_test_commits": 5,
+      "fix_message_subset": 3,
+      "primary_language_source_commits": 4,
+      "primary_language_source_fix_message_subset": 3,
+      "replayed": 0
+    },
+    "spf13--cobra": {
+      "test_and_non_test_commits": 15,
+      "fix_message_subset": 2,
+      "primary_language_source_commits": 13,
+      "primary_language_source_fix_message_subset": 2,
+      "replayed": 0
+    },
+    "stretchr--testify": {
+      "test_and_non_test_commits": 30,
+      "fix_message_subset": 5,
+      "primary_language_source_commits": 29,
+      "primary_language_source_fix_message_subset": 5,
+      "replayed": 0
+    },
+    "typestack--class-transformer": {
+      "test_and_non_test_commits": 0,
+      "fix_message_subset": 0,
+      "primary_language_source_commits": 0,
+      "primary_language_source_fix_message_subset": 0,
+      "replayed": 0
+    },
+    "typestack--class-validator": {
+      "test_and_non_test_commits": 6,
+      "fix_message_subset": 1,
+      "primary_language_source_commits": 6,
+      "primary_language_source_fix_message_subset": 1,
+      "replayed": 0
+    },
+    "urfave--cli": {
+      "test_and_non_test_commits": 204,
+      "fix_message_subset": 134,
+      "primary_language_source_commits": 196,
+      "primary_language_source_fix_message_subset": 127,
+      "replayed": 0
+    }
+  }
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Diagnose Catalogs"
+  short_description: "Diagnose catalog drift, integrity and missing evidence"
+  default_prompt: "Use $catalog-doctor to diagnose this catalog resolution."

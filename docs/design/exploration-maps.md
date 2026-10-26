@@ -198,19 +198,19 @@ suspect list after calibration (XM-D9), fathom never mitigates (XM-X3) and there
 Owner question 2026-09-29, architect decision. Can live maps carry review concerns, well-architected concerns
 and incident readiness? The scope of a concern and the prepared paths of an incident, yes. The findings, no.
 
-**Findings are not maps.** A finding is a point claim with a severity and a lifecycle, under Review Kit's
+**Findings are not maps.** A finding is a point claim with a severity and a lifecycle, under the review kit's
 authority (ADR-040, ADR-055): a verdict on one place. A map is a working set: a purpose and the code that
 matters for it. Fathom serves an imported finding beside the governing rules at the edit and never converts,
 scores or judges one, and a finding is never stored as a map entry.
 
 **A concern's scope is a live map** (rows XM-23 to XM-25, each needs XM-D1). A review or well-architected concern
 ("every outbound network call", "every write path to table X", "every flag reader") is a set of code, and
-findings are the violations inside it. Review Kit concern packs may declare that scope as a fathom live-map
+findings are the violations inside it. The review kit concern packs may declare that scope as a fathom live-map
 query carried over the evidence contract (ADR-055 decision 8), so a review always covers the current code and
 code that newly enters a concern's scope is caught, where a fixed file list goes stale. Fathom's side is an
 optional `scope` field on the evidence contract, a query in the layers' vocabulary that fathom evaluates and
-serves as a map whose entries carry the clause that selected them (section 3b, item 2). Review Kit's side is a
-future on its own plan; a pack with no scope field works exactly as it does today, and Review Kit keeps its
+serves as a map whose entries carry the clause that selected them (section 3b, item 2). The review kit's side is a
+future on its own plan; a pack with no scope field works exactly as it does today, and the review kit keeps its
 fathom-less path. Fathom computes membership. It does not choose which concerns matter or decide whether the
 code inside one conforms (future F52).
 
@@ -252,7 +252,7 @@ holding its own authority, can act. The flow is read-only (XM-28), inside the di
    XM-M6 asks, on incidents over mapped paths, whether `localize` named the map and whether its suspect list held
    the change that proved to be the cause. The bar is fixed before the run.
 2. **A readiness report per critical incident map.** Owners present, runbook link present, live certificates,
-   flags present, change volume. Review Kit owns the standard of what ready means; fathom computes the facts and
+   flags present, change volume. The review kit owns the standard of what ready means; fathom computes the facts and
    grades nothing. Reading XM-M7 asks whether a gap the report named was later confirmed by a real incident or
    review and closed by an owner. The bar is fixed before the run.
 

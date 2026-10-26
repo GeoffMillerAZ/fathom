@@ -4,7 +4,7 @@
 
 The loop works on real binaries, with no model and no network between the two
 systems. The review kit published five findings from its outbox into a fathom
-store through `leadsman findings publish --target fathom` and got a receipt
+store through the review kit's `findings publish --target fathom` and got a receipt
 (five delivered); a coding agent's pre-edit hook on the anchored file then
 showed the open finding beside the governing rules, with its class, producer,
 rule id, remedy, citation, observation time and source revision; a closure
@@ -12,7 +12,7 @@ event published the same way retired it, and the next pre-edit hook on that
 file served nothing about it; replaying the original outbox produced four
 duplicates and one stale event, none delivered; the neighborhood query still
 lists the closed finding as precedent, labeled superseded. This is the tracer
-platform-engineering ADR-0103 asks for before any "implemented" claim (RP-9),
+the review kit's projection-port decision asks for before any "implemented" claim,
 and the first executable proof of fathom ADR-040 decisions 2, 3, 5 and 7. It
 is a mechanism proof on one repository with one producer. It is not a
 measurement of whether an agent acts on the finding: that is the
@@ -24,7 +24,7 @@ measurement of whether an agent acts on the finding: that is the
   store ingested from the same tree, a scratch `serve-http` daemon on a local
   port, and the pre-edit hook invoked exactly as Claude Code invokes it
   (PreToolUse JSON on stdin).
-- `leadsman` built from platform-engineering `kits/review-kit` at the
+- The review kit's CLI (`$REVIEW_KIT` below), built from its repository at the
   findings-projection change, run from a scratch git repository holding the
   outbox the `findings-loop` corpus materializes.
 
@@ -81,17 +81,17 @@ findings near "recordPurge" (hops<=2)
   (`anchor_current: false`); a revocation. Each is covered by conformance
   fixtures under `testdata/contracts/findings-import/`, not by this run.
 - Organizational admission: a receipt is delivery evidence, never approval
-  (platform-engineering ADR-0103).
+  (the review kit's projection-port decision).
 
 ## Reproduce
 
 ```
 go build -o <bin>/fathom ./cmd/fathom
 fathom ingest --store <scratch>.sqlite --service fathom --path <checkout>
-(cd <platform-engineering>/kits/review-kit && go build -o <bin>/leadsman ./cmd/leadsman)
+# build the review kit's CLI from its repository; call it $REVIEW_KIT
 mkdir -p <scratch-repo>/.reviewkit/outbox && cd <scratch-repo> && git init
 # copy the outbox the findings-loop corpus materializes (testdata/scenariobench/findings-loop.json, subject.setup)
-leadsman findings publish --target fathom --outbox .reviewkit/outbox/projection.json --receipt-out .reviewkit/outbox/receipt.json \
+"$REVIEW_KIT" findings publish --target fathom --outbox .reviewkit/outbox/projection.json --receipt-out .reviewkit/outbox/receipt.json \
   --fathom-bin <bin>/fathom --fathom-store <scratch>.sqlite --fathom-service fathom \
   --organization geoffmilleraz --repository fathom --component fathom
 fathom serve-http --store <scratch>.sqlite --addr 127.0.0.1:<port> &

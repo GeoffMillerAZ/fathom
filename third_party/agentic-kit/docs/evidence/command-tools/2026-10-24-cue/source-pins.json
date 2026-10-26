@@ -1,0 +1,20 @@
+{
+  "version": "agentic-kit.cue-compat-pins/1",
+  "baseline": "dd2e47fcfd716da4edd73b95e88c6960c189485e",
+  "files": {
+    "cmd/command-guard/schema.cue": "12aeb250f591670c60a0fb275656ca970288ecc13b66874ee8c4a9845a57aac9",
+    "cmd/command-guard/schema_test.go": "dbba59b20372cda3ee126c6d05813ae633daad3d802af995e05e9703cbb76bb4",
+    "cmd/harnessctl/schema.cue": "e616a7e8c8322ad20a88fe1c1d05431b606bc14e2900b6c38ef5f5aa84a62df2",
+    "cmd/harnessctl/schema_test.go": "20ed544a919c500ffd5966a97783cf1828ec8874a3229fe2b22ec03c21dee46d"
+  },
+  "validators": {
+    "16": {
+      "sha256": "1beeaa386ae3a8872382ce2af0f8a5e912a6f487c491e48d2be9aeb1d61c84ad",
+      "version": "cue version v0.16.1"
+    },
+    "17": {
+      "sha256": "a0b0685605dea83443aa2f0e91da25de72ed4e9768c80a821fbe94891c7badfe",
+      "version": "cue version v0.17.1"
+    }
+  }
+}

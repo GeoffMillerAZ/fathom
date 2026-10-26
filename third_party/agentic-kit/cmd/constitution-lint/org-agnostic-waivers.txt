@@ -4,7 +4,7 @@
 # # comments and blank lines are ignored; a stated reason is required.
 
 # docs/plans/2026-07-uplift.md:183 quotes the historical scrub sentence
-# itself ("org-agnostic doc scrub (s1m/Throughline/Muster/Testament names
+# itself ("org-agnostic doc scrub (s1m/Consumer-a/Muster/Testament names
 # out)") — a historical decision record documenting a past scrub, legitimate
 # meta-reference, not a live leak.
 docs/plans/2026-07-uplift.md:183

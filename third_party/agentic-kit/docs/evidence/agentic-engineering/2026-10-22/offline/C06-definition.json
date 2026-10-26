@@ -1,0 +1,11 @@
+{
+  "id": "C06",
+  "slug": "catalog-binding",
+  "axis": "component",
+  "acceptance": "Prepared catalog decision binds exact definition and evidence bytes; mismatch refuses",
+  "method": "deterministic source plus scoped test",
+  "source": "kits/catalog-kit/decision_test.go",
+  "test": "TestPrepareDecisionBindsExactDefinition",
+  "group": "evidence_catalog",
+  "non_guarantee": "Component test does not prove consumer adoption, live model quality, or all entrypoints."
+}

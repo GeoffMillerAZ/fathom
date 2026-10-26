@@ -19,7 +19,7 @@ Baseline: agentic-kit `3db571b` (2026-09-02), with the pre-existing uncommitted
 `Taskfile.yml` fourth-consumer check preserved. Inspection covered all root intent
 documents, indexed decision records, the practices ledger and roadmap, selected code
 and tests, and four consumers' integration points. Consumer source revisions inspected:
-fathom `f67f06a`, throughline `7717f99`, growing-gardens-bi `7503dd1`, resume_as_code
+fathom `f67f06a`, consumer-a `7717f99`, consumer-b `7503dd1`, consumer-c
 `dd234df`. Source inspection establishes integration evidence, not production uptime.
 
 `task validate` passed on the assessment baseline and after the intent changes: formatting, vet, CUE/schema
@@ -40,10 +40,10 @@ exhaustive security audit or a measured production-quality benchmark.
 | High | `task validate` passes despite bare regeneration timestamps and two upward foundation imports. [pipeline.go](../../kits/governed-prose-kit/pipeline.go), lines 178/204; [run-report](../../foundations/review/run-report/render.go); [otel-genai](../../foundations/telemetry/otel-genai/types.go) | Declared determinism and layering exceed enforcement. Record INC-8, repair the code and add appropriate regression checks before claiming these invariants. |
 | Medium | `claudecli` and `codexcli` reject caller tools and accept text-only messages. [Claude adapter](../../foundations/llmclient/claudecli/client.go), [Codex adapter](../../foundations/llmclient/codexcli/client.go) | Completion adapters do not integrate governance with a host coding agent. Build and probe native host adapters separately. |
 | Medium | Budget USD is an estimate; zero is valid. [Config.EstimatedUSDPerCall](../../kits/agent-harness/types.go), lines 113–122 | Request limits can hold while actual spend differs. Distinguish estimates, per-attempt reservations, actuals, retries and delegated spend. |
-| Medium | Throughline bypasses the chain's detection stage to retain structured findings and advisory semantics. [untrusted.go](../../../throughline/app/chat/untrusted.go), lines 48–59 | Solve TRACKING F8 with typed findings and explicit decision policy. A more convenient composition must preserve the consumer's useful semantics. |
-| Medium | Resume_as_code reproduces structured-output handling, routes effort through provider parameters, and discovers family through an optional naming seam. [kitclient.go](../../../resume_as_code/cmd/llm/kitclient.go), lines 24–49 | Provider capabilities and identity need a supported contract; reduce glue that consumers must copy (G5). |
+| Medium | Consumer-a bypasses the chain's detection stage to retain structured findings and advisory semantics. [untrusted.go](../../../consumer-a/app/chat/untrusted.go), lines 48–59 | Solve TRACKING F8 with typed findings and explicit decision policy. A more convenient composition must preserve the consumer's useful semantics. |
+| Medium | Consumer-c reproduces structured-output handling, routes effort through provider parameters, and discovers family through an optional naming seam. [kitclient.go](../../../consumer-c/cmd/llm/kitclient.go), lines 24–49 | Provider capabilities and identity need a supported contract; reduce glue that consumers must copy (G5). |
 | Medium | Lessons were parked behind central memory (former F3→F2), although the owner explicitly wants workloads to learn from each other | Admit versioned lesson/reproducer/remedy transfer independently of memory (0006, G7). |
-| Medium | Missing downstream checkouts can report successful skips; the pending `racli-check` rewrites a consumer's module/vendor tree and requires a clean kit tree | Run compatibility in isolated checkouts with revision/coverage receipts. Separate verification from adoption writes. Preserve the existing uncommitted change for review. |
+| Medium | Missing downstream checkouts can report successful skips; the pending `consumer-c-check` rewrites a consumer's module/vendor tree and requires a clean kit tree | Run compatibility in isolated checkouts with revision/coverage receipts. Separate verification from adoption writes. Preserve the existing uncommitted change for review. |
 
 The most important change of direction is G5 plus G6: make the adoption path prove
 its controls, and use precisely sourced prose to test the evidence architecture end
@@ -70,9 +70,9 @@ to end. That is a more valuable next milestone than adding another broad family 
 | Consumer | Observed use | Most useful lesson for the kit |
 |---|---|---|
 | Fathom | imported heartbeat/read coverage and model primitives; fleet indexing and obligations | transferable incidents need precise evidence, coverage limits and a checked failure case; audit results must not improve when reads fail |
-| Throughline | guardrails wrapping, direct injection findings, evidence citations | preserve structured findings and domain-specific advisory/blocking policy; factual support can be contested |
-| Growing-gardens-bi | document extraction and format handlers in [chat intake](../../../growing-gardens-bi/internal/web/handlers_chat.go) | the next composition should retain page/cell provenance from ingestion through proposed data changes and human review |
-| Resume_as_code | vendored client adapter and AI provenance in authored artifacts | constrained fact-to-prose is a strong first pilot; provider glue and vendor integrity are adoption costs worth eliminating |
+| Consumer-a | guardrails wrapping, direct injection findings, evidence citations | preserve structured findings and domain-specific advisory/blocking policy; factual support can be contested |
+| Consumer-b | document extraction and format handlers in [chat intake](../../../consumer-b/internal/web/handlers_chat.go) | the next composition should retain page/cell provenance from ingestion through proposed data changes and human review |
+| Consumer-c | vendored client adapter and AI provenance in authored artifacts | constrained fact-to-prose is a strong first pilot; provider glue and vendor integrity are adoption costs worth eliminating |
 
 These are candidate transfers, not instructions to modify those repositories. A lesson
 earns shared status when a recipient reruns its independently specified failure case
@@ -83,7 +83,7 @@ and adopts the remedy. Deleting copied code is useful evidence of completed extr
 | Record / condition | Assessment | Disposition |
 |---|---|---|
 | P1, D2 retirement criterion, uplift amendment 2 | owner direction explicitly changes the subscriber-only premise | superseded by bounded incubation 0004; D8 nesting remains |
-| D3: fourth subscriber arrives | fired: resume_as_code imports the kit | consumer map corrected; isolated verification remains G5 |
+| D3: fourth subscriber arrives | fired: consumer-c imports the kit | consumer map corrected; isolated verification remains G5 |
 | D13: two live consumers by next release | cannot establish for every D13 package from this sample | no tier promotion; evaluate per package at the next value review |
 | F2: consumers own memory | fired for the proposed central-store direction | narrow F2 to adapters; 0006 preserves consumer ownership |
 | F3: repeated lessons | owner-sponsored requirement now explicit | promoted to G7, independent of F2 |
@@ -189,7 +189,7 @@ This was not a controlled time/token benchmark; no numeric productivity gain is 
 | `list_services`, targeted `references` | found the fourth consumer and precise guardrail/client integration files without a fleet-wide shell sweep | preserve this workflow; add path/include/exclude filtering for deeper reviews |
 | `query_symbols("prose")`, `outline`, `read_source` | led directly to the all-references-per-line defect and exact code; line-capped reads are useful | retain clear paths, tiers and range continuation |
 | `references` over several services | response was truncated to 28 occurrences, all from the first service, despite requesting 160; narrower service queries found the others | fair per-service allocation, pagination/cursor and explicit explanation of all active caps |
-| `references` for prose imports | returned four binary-looking records from throughline's built executable alongside the real source import | exclude binary/generated artifacts consistently, including occurrence search |
+| `references` for prose imports | returned four binary-looking records from consumer-a's built executable alongside the real source import | exclude binary/generated artifacts consistently, including occurrence search |
 | `symbol_context("Pipeline.Generate")` | legacy `callers`/`related_tests` were empty, while `typed_edges.callers` contained six tests; legacy callees included an unrelated recording-client append | prefer one coherent typed view; label heuristic edges separately and derive related tests from it |
 | `repo_map` | ranked large test functions and repeated `main.run` entries with no source paths; less useful for product/component orientation | optional package/directory map, entrypoint grouping and paths |
 | `pack_context("codexcli")` | returned only a helper, a test and a plan heading (79 tokens), omitting adapter behavior | expose concern matching/fallback and include relevant definitions or request clarification |

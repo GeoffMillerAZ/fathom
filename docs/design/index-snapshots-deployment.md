@@ -1,7 +1,7 @@
 # Index snapshots: deployment
 
 Companion to the main design, `docs/design/index-snapshots.md`. Status: accepted as research, parked with the
-design (2026-10-11); nothing is built. Read at fathom `1639b37c` and platform-engineering `84f9d41`.
+design (2026-10-11); nothing is built. Read at fathom `1639b37c` and an adopting platform's records (kept private).
 
 **Names.** This research was written in parallel with the design's naming critique and normalized to its final
 names when it landed (2026-10-11): index snapshot (one service at one commit), lineup and lineup change, environment
@@ -12,7 +12,7 @@ in-place change only as the design's question 8 fallback: built only if IXS-M7's
 is not `reload`.
 
 How to read this file:
-- Plain paths are fathom. `pe:` is platform-engineering. `rk:` is `pe:kits/review-kit/`.
+- Plain paths are fathom. The adopter's records are cited by role, not by path.
 - [J] marks a judgment. [S#] is a source in section 9. Every source was read on 2026-10-11. Every AWS or
   Kubernetes fact and every price is "read 2026-10-11, verify at use": prices change, and all prices are
   us-east-1 unless stated.
@@ -39,23 +39,22 @@ Usage profiles used throughout:
 
 ## 1. Verdict
 
-**Recommended for the owner now: the Kubernetes recipe on the existing platform (option K1).** Run `fathom-prod`
-as one always-on Deployment in the shared-services cluster class (pe:docs/adr/0005-cluster-topology.md), never in
-the general cluster it investigates. The pod has three parts: the daemon on loopback, the authenticating proxy as
+**Recommended for an adopter that already runs a Kubernetes platform: the Kubernetes recipe on that platform
+(option K1).** Run `fathom-prod` as one always-on Deployment in a shared-services cluster, never in
+the workload cluster it investigates. The pod has three parts: the daemon on loopback, the authenticating proxy as
 a same-pod sidecar, and a delivery step (an init container) that pulls and verifies the lineup's index snapshots
 with ORAS and cosign. A lineup change is a rolling update: a new pod delivers, composes and turns ready before the
 old one drains. Marginal cost at P1 is about $15 to $25 a month. Why:
-- The platform already runs flux, ingress, cert-manager, an identity-aware proxy, signed images (pe ADR-0115) and
-  observability. The recipe adds one Helm chart or Kustomize base and nothing new to operate [J].
+- Such a platform typically already runs a GitOps controller, ingress, cert-manager, an authenticating proxy,
+  signed images and observability. The recipe adds one Helm chart or Kustomize base and nothing new to operate [J].
 - Always-on means the first incident question pays no cold start, for less than an engineer-hour a month [J].
 - A lineup change is a Kubernetes rolling update (design section 3.4): no fathom verb, no control socket. An
   in-place change is the design's question 8 fallback, only if IXS-M7's compose bar fails.
 - It fits every accepted constraint as written: same-pod proxy over loopback, no non-loopback bind in fathom,
   delivery and signature checks in operator-owned steps (I56; ADR-068 decision 7).
 - Its weakness is a shared failure domain: same account, region, identity provider and platform control plane as
-  prod. At compact scale, control-plane and shared-services collapse into one cluster, and for the smallest
-  organizations general may collapse in too (pe:docs/adr/0005-cluster-topology.md:31-35). Then it fails with
-  prod. Placement in shared-services is the minimum. A second region or account is the stronger answer.
+  prod. A small platform may run shared services in the same cluster as its workloads. Then it fails with
+  prod. Placement in a shared-services cluster is the minimum. A second region or account is the stronger answer.
 
 **Cheapest capable AWS option: AWS Lambda, arm64 container image, in a separate tooling account (option A).**
 The Lambda Web Adapter fronts `serve-http` on loopback. A Function URL with `AWS_IAM` auth and response streaming
@@ -102,7 +101,7 @@ for every option. Sizes are the fathom-sized upper bound (1.55 GB composed lineu
 
 | Situation | Recommended | Why |
 |---|---|---|
-| The owner: an existing Kubernetes platform on AWS, low and bursty use | K1 in shared-services | lowest effort, always warm, full constraint fit |
+| An adopter with an existing Kubernetes platform on AWS, low and bursty use | K1 in a shared-services cluster | lowest effort, always warm, full constraint fit |
 | No cluster, or the incident tool must survive a platform outage | A2, or A1 with pre-warm, in a tooling account | cheapest, independent of the platform |
 | A composed lineup above about 9 GB, or answers above 200 MB | K1 or D | Lambda's 10 GB image and 200 MB stream caps [S3] |
 | Every question must be fast, independent of the platform | A3 or D | always warm |
@@ -128,7 +127,7 @@ for every option. Sizes are the fathom-sized upper bound (1.55 GB composed lineu
 | Lifetime bounds | unmanaged daemons exit after 20 min idle and 8 h (servehttp_config.go:65-66; internal/tenancy/unmanaged.go:20-21); SIGHUP exits an unmanaged daemon (cmd/fathom/servehttp_lifecycle.go:268) | idle exit is a free scale-to-zero lever (B2); an environment daemon turns both off |
 | Module mounts | `--module` mounts read-only at start (servehttp_lifecycle.go:104-125), feeding `obligations` only | the precedent for start-time mounts |
 | CLI client | `FATHOM_HTTP` names the daemon (pkg/client/caller_transport.go:13,50); nothing in pkg/client or cmd/fathom sets an `Authorization` header [J: grep] | a remote caller's credentials come from an operator adapter |
-| Gate adapter | Review Kit shells out to the fathom binary (rk:internal/evidence/adapters.go:341-343); `Admit` at rk:internal/assurance/assurance.go:583; `runAdmit` at rk:internal/cli/assurance.go:589 | the gate is a driving adapter outside fathom |
+| Gate adapter | the review kit shells out to the fathom binary from its own admit command | the gate is a driving adapter outside fathom |
 
 ### 2.2 Ports and adapters
 
@@ -139,7 +138,7 @@ Driving ports (who asks):
 | MCP over Streamable HTTP | `serve-http`, `/rpc/agent` on loopback | fathom (exists) |
 | stdio MCP | `serve-mcp --url` | fathom (exists) |
 | CLI | `fathom` verbs with `FATHOM_HTTP` | fathom (exists) |
-| CD gate admit | Review Kit's fathom adapter | Review Kit (exists) |
+| CD gate admit | the review kit's fathom adapter | the review kit (exists) |
 | Lifecycle | a process started with `--lineup`, and its readiness answer (seam 4) | fathom (changes 14 and 17) |
 | Transport front | Lambda Web Adapter, oauth2-proxy, an AgentCore path shim | operator |
 
@@ -159,7 +158,7 @@ Driven ports (what the core needs), with an adapter per platform:
 flowchart LR
   subgraph callers["Callers"]
     IR["incident responder or agent<br/>MCP client"]
-    GATE["CD gate<br/>Review Kit admit"]
+    GATE["CD gate<br/>the review kit admit"]
   end
   subgraph edge["Operator edge adapters"]
     AUTH["Auth at the edge<br/>oauth2-proxy, Function URL IAM, AgentCore JWT"]
@@ -259,7 +258,7 @@ Rejected seam: an in-process read-only SQLite VFS over S3 range requests. The dr
 | Tooling | `aws s3 cp` | `oras push`, `oras pull` [S31]; one report of a 405 on `oras copy -r` of referrers [S30] |
 
 Recommendation [J]: S3 is the archive that enforces the retention cap. ECR holds only what is pulled as an image:
-the lineup images of variant A2, and, where image-kit's flow wants it, the index snapshot as a referrer of the
+the lineup images of variant A2, and, where the image kit's flow wants it, the index snapshot as a referrer of the
 deployed image digest. A sketch of the S3 layout and rules:
 - `s3://<bucket>/main/<repo-id>/<commit>.sqlite.zst`: expire by age, set per merge rate. The last 20 merges
   are 2 workdays at P2's 10 a day and 5 at P1's 4 [J]. For an exact count, also write a versioned
@@ -273,8 +272,8 @@ deployed image digest. A sketch of the S3 layout and rules:
 - `s3://<bucket>/lineups/<env>/<lineup-digest>.cue` and, with seam 6, `composed/<env>/<lineup-digest>.sqlite`.
 
 **Signing, by the operator.** `cosign sign-blob --key awskms:///alias/index-snapshots` signs each file [S34]. The
-KMS key costs $1 a month and an asymmetric sign $0.15 per 10,000 [S33]. The key never leaves KMS, which suits pe
-ADR-0115's key mode with no public transparency log [J]. For artifacts kept in ECR, Notation with AWS Signer costs
+KMS key costs $1 a month and an asymmetric sign $0.15 per 10,000 [S33]. The key never leaves KMS, which suits a
+key mode with no public transparency log [J]. For artifacts kept in ECR, Notation with AWS Signer costs
 nothing extra [S32]. Verification runs in the operator's delivery step: `cosign verify-blob` with the public key.
 
 **Pre-warm and failure domain**: sections 3.F and 3.G.
@@ -358,8 +357,8 @@ Reading:
 2. Human MCP clients do not sign SigV4. AWS's `mcp-proxy-for-aws` (generally available 2025-10-31) is a local
    stdio bridge that signs with the caller's AWS credentials [S43].
 3. The CD gate path is the same, with a different client: the job assumes a role through GitHub OIDC (no stored
-   keys [S48]), runs `aws-sigv4-proxy` on loopback [S44], and points `FATHOM_HTTP` at it. Review Kit shells out to
-   fathom as today (rk:internal/evidence/adapters.go:341-343). Whether `aws-sigv4-proxy` signs Function URL
+   keys [S48]), runs `aws-sigv4-proxy` on loopback [S44], and points `FATHOM_HTTP` at it. The review kit shells out to
+   fathom as today. Whether `aws-sigv4-proxy` signs Function URL
    requests with `--name lambda` is undocumented: test it [S44].
 4. Fathom answers JSON per POST, so the buffered mode works up to 6 MB per answer. Response streaming raises it to
    200 MB, at 2 MBps after the first 6 MB [S3][S8]. Function URLs cannot stream from inside a VPC [S8], so A runs
@@ -623,9 +622,8 @@ An environment daemon that runs inside the production cluster it investigates fa
 pressure, a broken CNI, an IdP outage at the cluster's proxy, or a bad platform rollout takes the incident tool
 down with the incident [J]. Independence, from weakest to strongest [J]:
 1. K0, inside the prod workload cluster: shared fate. Do not use for incidents.
-2. K1, in the shared-services class: a different cluster, same account, region, IdP and control plane. At
-   compact scale, shared-services shares a cluster with control-plane, and general may join them for the smallest
-   organizations (pe:docs/adr/0005-cluster-topology.md:31-35); then most of the gain is lost.
+2. K1, in a shared-services cluster: a different cluster, same account, region, IdP and control plane. On a
+   small platform shared services may share a cluster with the workloads; then most of the gain is lost.
 3. D or B in a tooling account: no cluster, but a VPC and a region.
 4. A, E1 or E2 in a tooling account or a second region: no cluster, no VPC; depends on Lambda, S3, IAM and STS
    in that region.
@@ -689,7 +687,7 @@ spec:
       automountServiceAccountToken: false
       securityContext: {runAsNonRoot: true, seccompProfile: {type: RuntimeDefault}}
       initContainers:
-        - name: deliver            # operator image: oras, cosign and the operator's deliver script; signed by image-kit; no fathom in it
+        - name: deliver            # operator image: oras, cosign and the operator's deliver script; signed by the image kit; no fathom in it
           image: registry.example/fathom-delivery@sha256:...
           args: [deliver, --lineup, /lineup/prod.lineup.cue, --to, /snapshots, --key, /keys/snapshots.pub]
           volumeMounts: [{name: lineup, mountPath: /lineup, readOnly: true},
@@ -794,10 +792,10 @@ Use it when the platform runs v1.36 and the init container becomes the bottlenec
 
 ### 4.6 Packaging and marginal cost (prices read 2026-10-11, verify at use)
 
-- A Helm chart or Kustomize base `fathom-environment-daemon` in pe's substrates, instantiated per environment, with
-  the lineup ConfigMap generated from the GitOps repository [J]. The chart is an operator recipe. Fathom documents
-  it; platform-engineering owns it (design section 9.2).
-- Ingress: the cluster's existing Gateway or NLB (pe ADR-0012, referenced in ADR-0005) adds $0 marginal [J].
+- A Helm chart or Kustomize base `fathom-environment-daemon` in the adopter's platform repository, instantiated per
+  environment, with the lineup ConfigMap generated from the GitOps repository [J]. The chart is an operator recipe.
+  Fathom documents it; the adopter owns it (design section 9.2).
+- Ingress: the cluster's existing Gateway or NLB adds $0 marginal [J].
 - Marginal compute at P1: 0.25 vCPU and 3 GiB is 3/8 of an m7g.large (2 vCPU, 8 GiB, $0.0816 an hour on demand,
   $0.045 spot [S24]): $22.34 a month on demand or $12.32 on spot nodes. The proxy adds about $0.50 [J].
 - Storage: emptyDir on node disk at no marginal cost; S3 for index snapshots as in section 3.0.
@@ -866,8 +864,8 @@ jobs:
 ```
 
 Notes:
-- The cosign v3 flags for key mode with no transparency log follow pe ADR-0115 (a signing config with no
-  services); the sketch elides them [J].
+- The cosign v3 flags for key mode with no transparency log use a signing config with no services; the sketch
+  elides them [J].
 - Compression and dedup ratios are unmeasured (IXS-M7). zstd is a [J] choice.
 - The runner: `ubuntu-24.04-arm` has 2 CPUs, 8 GB RAM and 14 GB SSD, and is available to private repositories
   [S46]. 8 GB covers the 2.09 GB peak. Two CPUs will be slower than the bench host [J, unmeasured: IXS-M1 must read
@@ -882,9 +880,9 @@ Notes:
 cache-from download is S3 data transfer to the internet: $0.09 per GB after the first 100 GB a month [S26]. At P2
 that is 10,500 downloads of up to 155 MB, about 1.6 TB, or about $137 a month, more than any daemon option. Avoid it
 in one of three ways:
-- run the publisher on runners inside AWS (CodeBuild, or the shared-services cluster's CI runners, which pe
-  ADR-0005 names as GitLab runners with a Kubernetes executor, pe:docs/adr/0005-cluster-topology.md:22-24; a
-  GitHub Actions workflow would need self-hosted runners there instead [J]);
+- run the publisher on runners inside AWS (CodeBuild, or CI runners in the shared-services cluster, for example
+  GitLab runners with a Kubernetes executor; a GitHub Actions workflow would need self-hosted runners there
+  instead [J]);
 - keep the cache-from snapshot in the repository's Actions cache and use S3 only for uploads, which are free inbound
   [J: check the Actions cache size limit];
 - publish only at deploy candidates (4 a day per service at P2, not 10), which cuts builds by 60% but loses
@@ -959,7 +957,7 @@ Readings [J]:
 ## 7. Recommendation and phasing
 
 **Build first: the Kubernetes recipe (K1)**, as the guide section "## Run an environment daemon" plus the chart
-base in platform-engineering. Run it in the shared-services class, one replica, always-on. Put the AWS Lambda
+base in the adopter's platform repository. Run it in a shared-services cluster, one replica, always-on. Put the AWS Lambda
 recipe (A2 with an A1 fallback) beside it as a measured option, not a default.
 
 Mapping onto the design's phases (design section 12):
@@ -982,7 +980,7 @@ Mapping onto the design's phases (design section 12):
 | Cold start p95, incident question | from the first MCP call of a session to its answer, with the daemon idle for an hour before; 20 trials | K1: under 2 s; A2: under 5 s; A1 with pre-warm: under 5 s |
 | Alert to warm | page to the first warm answer, with pre-warm on | under 60 s |
 | Lineup-change time | the deploy job's commit to the new pod's start line `serving lineup <env>@<digest>`, or to the alias switch on Lambda | under 5 minutes; a failed lineup change keeps the old pod serving (design section 3.4) |
-| Monthly cost | OpenCost for the namespace (pe ADR-0005 runs OpenCost); Cost Explorer by tag on AWS | under $30 at P1 |
+| Monthly cost | OpenCost for the namespace where the platform runs it; Cost Explorer by tag on AWS | under $30 at P1 |
 | Daemon RSS | IXS-M7, with 1, 5 and 20 snapshots | sets the memory rows above |
 
 **Kill and switch criteria** [J]:

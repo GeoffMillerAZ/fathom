@@ -2,6 +2,7 @@ package langbench
 
 import (
 	"bytes"
+	"cmp"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -230,6 +231,8 @@ type ClangLinkage struct {
 	unplaced   map[[2]string]bool         // pairs drawn as ruling 3 draws: the includes reach no copy
 	functions  map[string][]clangFunction // document -> the compiler's function definitions (round 4 C4-R1)
 	rangesTier string                     // the weakest tier of the ranges companions read (round 4 C4-R3)
+	rangesRun  OracleRun                  // the ranges companion as an oracle of the reading (round 5 C5-R4)
+	unitsRun   OracleRun                  // the link-unit companion as one
 	unitsTier  string                     // the weakest tier of the link-unit companions read
 	read       bool                       // Read ran over at least one oracle file
 }
@@ -378,16 +381,18 @@ type clangFunction struct {
 	externC   bool
 }
 
-// clangStandIns are the compiler's function definitions (Function), in the
-// documents covered holds, that the index writes no definition for (none at its
-// line, none of its name within two lines): scip-clang 0.4.0 writes none for a
-// function in an `extern "C"` linkage specification. Each stands in over the
-// compiler's own lines, under the compiler's own name (round 4 C4-R1: a fathom
-// node never shapes the truth). externC counts those an `extern "C"` block
-// holds. A nil rule, or one that read no ranges, has none.
-func (l *ClangLinkage) clangStandIns(defsByDoc map[string][]*scipDef, covered func(doc string) bool) (out []*scipDef, externC int) {
+// readRanges reports whether the rule holds the compiler's function ranges (a
+// ranges companion read, or Function called).
+func (l *ClangLinkage) readRanges() bool {
+	return l != nil && (l.rangesTier != "" || len(l.functions) > 0)
+}
+
+// compilerFunctions calls each for the compiler's function definitions in the
+// documents covered holds, documents sorted, each document's by line then name,
+// one definition dumped by several translation units once.
+func (l *ClangLinkage) compilerFunctions(covered func(doc string) bool, each func(doc string, f clangFunction)) {
 	if l == nil {
-		return nil, 0
+		return
 	}
 	docs := make([]string, 0, len(l.functions))
 	for doc := range l.functions {
@@ -407,26 +412,69 @@ func (l *ClangLinkage) clangStandIns(defsByDoc map[string][]*scipDef, covered fu
 		})
 		for _, f := range fs {
 			if seen[[2]int{f.line, f.end}] {
-				continue // one definition dumped by several translation units
-			}
-			seen[[2]int{f.line, f.end}] = true
-			defined := false
-			for _, d := range defsByDoc[doc] {
-				if d.line == f.line || (d.name == f.name || d.fathomDef == f.name) && d.line >= f.line-2 && d.line <= f.line+2 {
-					defined = true
-					break
-				}
-			}
-			if defined {
 				continue
 			}
-			lo, hi := int32(f.line-1), int32(max(f.end, f.line)-1)
-			out = append(out, &scipDef{doc: doc, line: f.line, name: f.name, fathomDef: f.name, enc: [4]int32{lo, 0, hi, 1 << 30}, hasEnc: true})
-			if f.externC {
-				externC++
-			}
+			seen[[2]int{f.line, f.end}] = true
+			each(doc, f)
 		}
 	}
+}
+
+// compilerDef is the compiler's function f in doc as a definition of the
+// truth: over the compiler's own lines, under the compiler's own name.
+func compilerDef(doc string, f clangFunction) *scipDef {
+	lo, hi := int32(f.line-1), int32(max(f.end, f.line)-1)
+	return &scipDef{doc: doc, line: f.line, name: f.name, fathomDef: f.name, enc: [4]int32{lo, 0, hi, 1 << 30}, hasEnc: true}
+}
+
+// clangBlindRanges are the compiler's function definitions, in the documents
+// covered holds, whose lines hold no occurrence of the index but a macro's
+// (occLines): the index did not index that code, so the compiler's range is
+// the caller its sites are scored against (round 5 C5-R3: under CUDA a fathom
+// node never shapes the truth, as clangBlindDefs' would).
+func (l *ClangLinkage) clangBlindRanges(occLines map[string]map[int32]bool, covered func(doc string) bool) (out []*scipDef) {
+	l.compilerFunctions(covered, func(doc string, f clangFunction) {
+		for ln := f.line - 1; ln <= max(f.end, f.line)-1; ln++ {
+			if occLines[doc][int32(ln)] {
+				return
+			}
+		}
+		out = append(out, compilerDef(doc, f))
+	})
+	return out
+}
+
+// clangStandIns are the compiler's function definitions (Function), in the
+// documents covered holds, that the index writes no definition for (none at its
+// line, none of its name within two lines, in indexDefs, the index's own
+// definitions: round 5 C5-R3) and that are no blind caller already: scip-clang
+// 0.4.0 writes none for a function in an `extern "C"` linkage specification.
+// Each stands in over the compiler's own lines, under the compiler's own name
+// (round 4 C4-R1: a fathom node never shapes the truth). externC counts those
+// an `extern "C"` block holds. A nil rule, or one that read no ranges, has none.
+func (l *ClangLinkage) clangStandIns(indexDefs map[string][]*scipDef, blind []*scipDef, covered func(doc string) bool) (out []*scipDef, externC int) {
+	taken := map[string]map[[2]int32]bool{}
+	for _, d := range blind {
+		if taken[d.doc] == nil {
+			taken[d.doc] = map[[2]int32]bool{}
+		}
+		taken[d.doc][[2]int32{d.enc[0], d.enc[2]}] = true
+	}
+	l.compilerFunctions(covered, func(doc string, f clangFunction) {
+		def := compilerDef(doc, f)
+		if taken[doc][[2]int32{def.enc[0], def.enc[2]}] {
+			return
+		}
+		for _, d := range indexDefs[doc] {
+			if d.line == f.line || (d.name == f.name || d.fathomDef == f.name) && d.line >= f.line-2 && d.line <= f.line+2 {
+				return
+			}
+		}
+		out = append(out, def)
+		if f.externC {
+			externC++
+		}
+	})
 	return out, externC
 }
 
@@ -483,6 +531,8 @@ func (l *ClangLinkage) Read(toolOracles []string, companion func(string) string)
 		l.read = true
 		if ub, err := os.ReadFile(unitsCompanionFile(p)); err == nil {
 			var lu struct {
+				Tool      string              `json:"tool"`
+				Version   string              `json:"version"`
 				Tier      string              `json:"tier"`
 				LinkUnits map[string][]string `json:"link_units"`
 			}
@@ -492,6 +542,7 @@ func (l *ClangLinkage) Read(toolOracles []string, companion func(string) string)
 			if l.unitsTier, err = companionTier(unitsCompanionFile(p), lu.Tier, l.unitsTier); err != nil {
 				return err
 			}
+			l.unitsRun = OracleRun{Tier: l.unitsTier, Tool: cmp.Or(lu.Tool, "link-units"), Version: cmp.Or(l.unitsRun.Version, lu.Version)}
 			for unit, srcs := range lu.LinkUnits {
 				for _, src := range srcs {
 					l.LinkUnit(unit, src)
@@ -507,6 +558,7 @@ func (l *ClangLinkage) Read(toolOracles []string, companion func(string) string)
 			return err
 		}
 		var lk struct {
+			Version         string `json:"version"`
 			Tier            string `json:"tier"`
 			InternalLinkage []struct {
 				Path string `json:"path"`
@@ -527,6 +579,9 @@ func (l *ClangLinkage) Read(toolOracles []string, companion func(string) string)
 		if l.rangesTier, err = companionTier(companion(p), lk.Tier, l.rangesTier); err != nil {
 			return err
 		}
+		// clang-ast-defs names itself clang-ast, as clang-calls does: the
+		// reading lists it under its own name (round 5 C5-R4)
+		l.rangesRun = OracleRun{Tier: l.rangesTier, Tool: "clang-ast-defs", Version: cmp.Or(l.rangesRun.Version, lk.Version)}
 		for _, d := range lk.InternalLinkage {
 			l.FileLocal(d.Path, d.Name)
 		}
@@ -557,6 +612,22 @@ func (l *ClangLinkage) FeedTier(tier string) string {
 		return tier
 	}
 	return max(tier, l.rangesTier, l.unitsTier)
+}
+
+// Oracles are the companions the rule read, each an oracle of the reading's
+// own (round 5 C5-R4): the ranges companion as clang-ast-defs and the
+// link-unit companion under its tool's name. A nil rule has none.
+func (l *ClangLinkage) Oracles() []OracleRun {
+	if l == nil {
+		return nil
+	}
+	var out []OracleRun
+	for _, o := range []OracleRun{l.rangesRun, l.unitsRun} {
+		if o.Tool != "" {
+			out = append(out, o)
+		}
+	}
+	return out
 }
 
 // RangesTier is the weaker of tier and the ranges companions' own tier: the

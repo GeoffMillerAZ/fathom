@@ -26,7 +26,7 @@ were not completed. Provider access, approval and evidence validity have since e
   A small challenge-set result is not production safety, current model quality or a
   universal architecture ranking. No production defaults or selection change.
 - The consumer owns an executable follow-up specification at
-  `resume_as_code/docs/evaluation/live-study-todo.md`: authority prerequisites, immutable
+  `consumer-c/docs/evaluation/live-study-todo.md`: authority prerequisites, immutable
   inputs, budgets, stages, hard thresholds, graders, comparisons, failure accounting,
   artifacts, stopping rules and acceptance. Link it from the completion ledger.
 - Delivery may be called implementation-complete only when the amended ledger's

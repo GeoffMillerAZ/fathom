@@ -1,0 +1,133 @@
+{
+  "version": "command-guard.entrypoint-trial/1",
+  "platform": "darwin-arm64",
+  "go": "go1.26.3",
+  "corpus": "synthetic-only",
+  "binarySha256": "84707aed46c1a7b8291b081cffcd749fc72249aadcc72c5bd6832c8d76fcbc92",
+  "cases": [
+    {
+      "case": "read",
+      "expectedExit": 0,
+      "observedExit": 0,
+      "report": {
+        "version": "command-guard.report/1",
+        "status": "no-findings",
+        "code": "ok",
+        "noActionAuthority": true,
+        "filesRead": 1,
+        "bytesRead": 25,
+        "bytesScanned": 25,
+        "scope": "selected-files-only",
+        "scanner": "configured-regex-only",
+        "limitation": "not-proof-of-secret-or-pii-absence",
+        "totalMatches": 2,
+        "returned": 2,
+        "omitted": 0,
+        "truncated": false,
+        "rows": [
+          {
+            "file": 0,
+            "line": 1,
+            "text": "public alpha"
+          },
+          {
+            "file": 0,
+            "line": 2,
+            "text": "public beta"
+          }
+        ]
+      }
+    },
+    {
+      "case": "search",
+      "expectedExit": 0,
+      "observedExit": 0,
+      "report": {
+        "version": "command-guard.report/1",
+        "status": "no-findings",
+        "code": "ok",
+        "noActionAuthority": true,
+        "filesRead": 1,
+        "bytesRead": 25,
+        "bytesScanned": 25,
+        "scope": "selected-files-only",
+        "scanner": "configured-regex-only",
+        "limitation": "not-proof-of-secret-or-pii-absence",
+        "totalMatches": 1,
+        "returned": 1,
+        "omitted": 0,
+        "truncated": false,
+        "rows": [
+          {
+            "file": 0,
+            "line": 2,
+            "text": "public beta"
+          }
+        ]
+      }
+    },
+    {
+      "case": "late-finding",
+      "expectedExit": 1,
+      "observedExit": 1,
+      "report": {
+        "version": "command-guard.report/1",
+        "status": "blocked",
+        "code": "rule",
+        "noActionAuthority": true,
+        "filesRead": 1,
+        "bytesRead": 49,
+        "bytesScanned": 49,
+        "scope": "selected-files-only",
+        "scanner": "configured-regex-only",
+        "limitation": "not-proof-of-secret-or-pii-absence",
+        "totalMatches": 0,
+        "returned": 0,
+        "omitted": 0,
+        "truncated": false
+      }
+    },
+    {
+      "case": "missing-layer",
+      "expectedExit": 2,
+      "observedExit": 2,
+      "report": {
+        "version": "command-guard.report/1",
+        "status": "incomplete",
+        "code": "invalid",
+        "noActionAuthority": true,
+        "filesRead": 0,
+        "bytesRead": 0,
+        "bytesScanned": 0,
+        "scope": "selected-files-only",
+        "scanner": "configured-regex-only",
+        "limitation": "not-proof-of-secret-or-pii-absence",
+        "totalMatches": 0,
+        "returned": 0,
+        "omitted": 0,
+        "truncated": false
+      }
+    },
+    {
+      "case": "later-file-missing",
+      "expectedExit": 2,
+      "observedExit": 2,
+      "report": {
+        "version": "command-guard.report/1",
+        "status": "incomplete",
+        "code": "invalid",
+        "noActionAuthority": true,
+        "filesRead": 1,
+        "bytesRead": 25,
+        "bytesScanned": 25,
+        "scope": "selected-files-only",
+        "scanner": "configured-regex-only",
+        "limitation": "not-proof-of-secret-or-pii-absence",
+        "totalMatches": 0,
+        "returned": 0,
+        "omitted": 0,
+        "truncated": false
+      }
+    }
+  ]
+}

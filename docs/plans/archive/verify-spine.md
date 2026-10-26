@@ -7,7 +7,7 @@
 > verify gate is the proven spine — these two observations are its known
 > erosion paths).
 >
-> **Covenant (ADR-0070 class):** failing test first, `task validate`
+> **Covenant (test-first class):** failing test first, `task validate`
 > green before commit, dated CHANGELOG entry, boxes flip only on
 > `fathom verify --service fathom --plan docs/plans/verify-spine.md`.
 
@@ -19,7 +19,7 @@
 ## O3 — CUE joins the call graph
 
 - [x] the CUE extractor emits reference edges it currently discards: unification (`#Kit: #Block & {…}` is an edge #Kit → #Block), field type references (`profile: #Profile`), list element types (`uses: [...#Block]`), and cross-package imports — restoring `find_callers`/`references` for CUE definitions so "what composes this contract?" is answerable {id: VS-3, symbol: cueReferenceEdges, package: internal/extractor, reachable_from: TestCUEReferenceEdgesWiredDirect}
-- [x] `testdata/*.cue` unification is the CUE analogue of test-reaches: a fixture that unifies a definition maps onto the existing test-reaches edge kind, so `reachable_from` becomes satisfiable for a CUE row with no new plan grammar — the twelve `skip_test: true` escapes in one platform-engineering plan stop being the only exit {id: VS-4, symbol: cueTestdataReaches, package: internal/extractor, reachable_from: TestCUETestdataReachesWiredDirect}
+- [x] `testdata/*.cue` unification is the CUE analogue of test-reaches: a fixture that unifies a definition maps onto the existing test-reaches edge kind, so `reachable_from` becomes satisfiable for a CUE row with no new plan grammar — the twelve `skip_test: true` escapes in one platform monorepo's plan stop being the only exit {id: VS-4, symbol: cueTestdataReaches, package: internal/extractor, reachable_from: TestCUETestdataReachesWiredDirect}
 
 ## The resolver — reachability that cannot flip
 

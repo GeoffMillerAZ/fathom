@@ -19,7 +19,7 @@ honest verdict on whether this reinvented existing wheels.
 
 ## 1. What was integrated (one day, 2026-06-12)
 
-- Fleet index: throughline + agentic-kit + app-kit + fathom in one store
+- Fleet index: svc-a + agentic-kit + app-kit + fathom in one store
   (DuckDB at the time; SQLite since ADR-025) — ~12k symbols, 531 doc chunks,
   CUE definitions, Templ components; ~4 MB; full rebuild seconds; hash-gated
   no-op re-ingest ~0.2 s.
@@ -46,7 +46,7 @@ keyword fallback (query_symbols/pack_context were dead over MCP), staleness
 report trimmed from ~6 KB of fresh-file rows per query to stale-only +
 counts (~100×), bare-name `find_symbol`, `cross_repo_callers` (returned 0
 always — matcher never handled the `pkg.Name` edge format the Go extractor
-emits), result dedup, and a Templ extractor (Throughline's entire UI layer —
+emits), result dedup, and a Templ extractor (svc-a's entire UI layer —
 128 components incl. Go→Templ call edges — was invisible).
 
 ## At a glance

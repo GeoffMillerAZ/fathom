@@ -93,6 +93,35 @@ func TestBuildDocsIndexesFacetValuesNotAxisNames(t *testing.T) {
 	}
 }
 
+func TestBuildDocsIndexesIDAndStableKeyWithoutChangingRanker(t *testing.T) {
+	cat, err := New([]Node{{ParentID: "group", Slug: "entry-47", Title: "Ordinary", StableKey: "durable-review-key"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	docs := BuildDocs(cat)
+	for _, term := range []string{"group", "entry", "47", "durable", "review", "key"} {
+		found := false
+		for _, got := range docs[0].Terms {
+			if got == term {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("identity term %q absent: %+v", term, docs[0])
+		}
+	}
+	for _, query := range []string{"group", "durable"} {
+		if Search(cat, query, NewBM25Ranker()).NoMatch() {
+			t.Fatalf("identity query %q not found", query)
+		}
+	}
+	custom := constantRanker{order: []string{"group/entry-47"}}
+	if got := Search(cat, "durable", custom); len(got.Results) != 1 || got.Results[0].NodeID != "group/entry-47" {
+		t.Fatalf("custom ranker changed: %+v", got)
+	}
+}
+
 // injectedRanker lets a test prove the Ranker seam works: a consumer's
 // own ranker (e.g. semantic) can be injected without this package
 // depending on it.

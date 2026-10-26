@@ -70,7 +70,7 @@ verb agree with each other, and both are wrong about what fathom caught.
     `FATHOM_THREADS`, `FATHOM_CONSOLE_VIEWS`, `FATHOM_SUPPRESSIONS`, `FATHOM_PURGES` and
     `FATHOM_SESSION_STAMPS`.
   - The daemon log holds no warning or error beyond the known broken
-    `resume-as-code-standards` layer pack, which `/layers` also names.
+    `svc-c-standards` layer pack, which `/layers` also names.
   - The live daemon on 7575 and its store were not touched.
 - **Data:**
   - a `sqlite3 .backup` of `workspace/db/fleet.sqlite` (188 MB, 18 services listed);
@@ -158,7 +158,7 @@ list: certifications, the fleet, intent, Operate's tools and sessions.
 | T4 | What did fathom catch this week? | Impact → 7 days | 2 / 3 | 282: verify refusals 217, conserve losses 55, integrity catches 2, guard refusals 8 | `metrics catches --days 7 --json`: the same (but see finding 4) | yes |
 | T5 | What is the daemon's p95? | Operate | 1 / 2 | agent surface p95 5.7 s (3,256 calls); unscoped p95 11.4 s | `metrics traffic --json`: agent `p95_ms` 5,678; (unscoped) 11,376 | yes |
 | T6 | Which of fathom's certification targets lack a live certificate? | Now's queue ("show the other items") → fathom, or Certifications → fathom | 2 / 2 | 77 targets, 0 live, 77 gaps; the gap table pages 50 at a time | `certify status --json`: declared 77, live 0, gaps 77. `certify gaps`: 77 targets | yes |
-| T7 | Which projects' indexes are behind HEAD? | on Now | 0 / 0 | app-kit (54f5fac8 → 406297dc), platform-engineering (6c1f9d73 → 2beec118) | `fleet report --json`: the same two stale, same commits | yes |
+| T7 | Which projects' indexes are behind HEAD? | on Now | 0 / 0 | app-kit (54f5fac8 → 406297dc), platform (6c1f9d73 → 2beec118) | `fleet report --json`: the same two stale, same commits | yes |
 | T8 | How many of fathom's intent claims are unproven, over how many invariants? | Now's fleet pulse → fathom → Intent tab | 2 / 2 | invariants 46, unproven claims ≥ 113 | `intent audit --read-only --json`: 46 invariants, 113 unproven (U4 97, U12 10, U1 4, U6 2) | yes |
 | T9 | Which registered tools has no one ever called? | Operate | 1 / 2 | 23 of 59, named (`api_diff` … `traverse`) | `instrument --adoption --json`: the same 23 of 59 | yes |
 | T10 | Which sessions ran in the OFF arm? | Sessions → Arm: off → Apply | 3 / 4 | 11 sessions, ids in order | `metrics sessions --arm off --json`: matching 11, the same rows | yes |
@@ -256,7 +256,7 @@ chips.
 - a 1,807-turn session, 172 KB;
 - `/claims?page=63`, 86 KB;
 - `/?since_page=3`, 166 KB;
-- `/projects/platform-engineering/intent`, 140 KB;
+- `/projects/platform/intent`, 140 KB;
 - `/fleet?sort=symbols`, 188 KB;
 - the rest are under 133 KB.
 

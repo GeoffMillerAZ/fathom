@@ -1,0 +1,22 @@
+{
+  "version": "command-guard.source-pins/1",
+  "baseline": "46a56291a70eec57afb5e235604723796be354c8",
+  "files": {
+    "cmd/command-guard/README.md": "04d8a4affaa0b08457ed2bf2381db9ef5d47c59ca76cd0e9a6c90fb5a9e89d66",
+    "cmd/command-guard/codec.go": "c474f75498be1c266be18296f497692bdab757a63191545afe2bc141b7a21c94",
+    "cmd/command-guard/hardening_test.go": "5c43847e7b4a0a1e8a4c29935393771ee41c042ea04ec32f2dc1545332f88031",
+    "cmd/command-guard/main.go": "2b84cc99a8f6d1bfb827f0c983b69e9a9f292f459a9e51b788e801b4af885ed7",
+    "cmd/command-guard/main_test.go": "41715cfc10e8e5f9602b07507961e192fd382dd80fa82e618c826763420afd29",
+    "cmd/command-guard/nonblock_unix.go": "e852157b0109e779c33533c4c23145b96cdd916dcbbccaed398b1d117108e845",
+    "cmd/command-guard/nonblock_windows.go": "c1edb4d9f5163828139787241c24309b78a6fb6b281990cb2b922aa329395547",
+    "cmd/command-guard/schema.cue": "87e82e5dd8131abe6a29df486cccd6a5c0a240b124af54063b8d9741ace01869",
+    "cmd/command-guard/special_unix_test.go": "d980c9c3fd0ec184b584318fe18aad378297f9ce53e436140d0dc01c76b01a22",
+    "cmd/command-guard/testdata/policy.json": "de450b01a9fe3ff20baa773af6d0a2eb7d354e1e3a55fe59ae54db951a8bd76f",
+    "cmd/command-guard/testdata/report-read.json": "926d63f757153ac6c48c862e45032019af0a7e92df62e93f3590e3d6eeb658eb",
+    "cmd/command-guard/testdata/request-read.json": "9565b394060262a7a1489940d2f7f960ec57b64adeff28f5ae33a75c3223b191",
+    "cmd/command-guard/testdata/request-search.json": "4dbf06e9c29ca6712402062afea4229c3af60ccf53b88552e4d92e71cbae0a63",
+    "cmd/command-guard/testdata/sample.txt": "05cb9d7a279bdf0bfbe8ff166efb93ce5fbebc990a909e73090a10f464b1ce11",
+    "cmd/command-guard/testdata/scope.json": "1f3ce22cd218173631aae81cf10b4af2aea30bb80475189f20f78ce021507f4c",
+    "cmd/command-guard/testdata/valid.cue": "2e48584ce0cead7d298b09403c268f8789868e3390f28539e46940abb111f24e"
+  }
+}

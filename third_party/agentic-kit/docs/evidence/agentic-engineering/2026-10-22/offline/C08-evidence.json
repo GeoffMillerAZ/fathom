@@ -1,0 +1,12 @@
+{
+  "id": "C08",
+  "axis": "target-gap",
+  "acceptance": "A consumer runs role/resource/action authorization with denied effect negative tests",
+  "outcome": "unknown",
+  "source": "docs/intent/assurance.md",
+  "source_sha256": "5ff9500e015853a2f56a5c9706522a7b5eeed4e5ca9b48f4df429b93fe639244",
+  "test": null,
+  "group": null,
+  "scope_note": "Component test does not prove consumer adoption, live model quality, or all entrypoints.",
+  "reason": "Current source lacks a retained end-to-end criterion-specific adoption or measured-quality receipt."
+}

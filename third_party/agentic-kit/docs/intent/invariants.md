@@ -29,7 +29,7 @@ remain violations until repaired. Workflow guarantees use `assurance.md`.
 | I18 | The kit never requires ownership of the consumer's `main()` or process; the harness loop is an opt-in composition. | stated | VISION §What the kit is NOT |
 | I19 | Every measurement channel has an existence check; a metric whose source can vanish silently is theater. | `guard` (telemetry scope); `heartbeat.CheckExistence` | `guard-pack.cue` §telemetry; INC-1 |
 | I20 | `coordination/*` and `topology/live-graph` are plan-only: they never spawn or execute workers. | stated | `compat.md`; uplift D7 |
-| I21 | Affected consumer checks (`fathom`, `throughline`, `growing-gardens-bi`, `racli`) identify their revisions and pass against the proposed kit change; missing consumers are untested. | `task downstream-check` partially enforces; missing siblings exit successfully, so a skip is not a pass. Delivery records all four pinned outcomes, including two pre-existing failures; main remains gated. | README §Downstream; D3; 0005 |
+| I21 | Affected consumer checks (`fathom`, `consumer-a`, `consumer-b`, `consumer-c`) identify their revisions and pass against the proposed kit change; missing consumers are untested. | `task downstream-check` exercises configured targets; missing siblings remain explicitly untested. Prepared four-consumer passes and prerequisites are recorded in the dated integration evidence; they do not upgrade original workspaces. | README §Downstream; D3; 0005 |
 | I22 | Commits carry no co-author trailer; only trailers the harness adds. | stated | AGENTS.md §Git |
 
 Revisit when: I12, I13, I14 gain a checked enforcement path; remove a known-violation

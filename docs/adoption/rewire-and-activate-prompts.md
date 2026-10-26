@@ -97,7 +97,7 @@ run Prompt 1's rewire first if doctor shows wiring drift).
    holding the 5–10 most load-bearing, glob-scoped rules from this
    repo's doctrine — these are injected at edit time on matching files.
    Follow the working example's format exactly:
-   platform-engineering/.fathom/layers/platform-standards/ (KILL.md
+   a sibling platform monorepo's .fathom/layers/<standards pack>/ (KILL.md
    rule-file convention). UI-active repos: scope UI globs (ui/**,
    **/*.templ, **/*.css, portal/**) to the house UI pipeline — search
    the appkit MCP corpus before writing markup, kit role tokens never

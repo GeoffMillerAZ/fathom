@@ -19,7 +19,7 @@ const (
 )
 
 // Author carries the provenance of the entity that produced a Correction or
-// Dismissal. Throughline invariant 1 requires that every evidence span be
+// Dismissal. Consumer-a invariant 1 requires that every evidence span be
 // traceable to its exact producer.
 //
 // For human authors, IdentityID is the reviewer's identity (e.g. email or UUID).
@@ -155,7 +155,7 @@ type Correction struct {
 	Confidence int
 
 	// Author optionally carries the full provenance of who or what produced this
-	// correction (Throughline invariant 1). Nil means not recorded (permitted for
+	// correction (Consumer-a invariant 1). Nil means not recorded (permitted for
 	// backwards compatibility; new callers should always supply Author).
 	Author *Author
 
@@ -185,7 +185,7 @@ type Dismissal struct {
 	DismissedAt time.Time
 
 	// Author optionally carries the full provenance of who or what produced this
-	// dismissal (Throughline invariant 1). Nil means not recorded (permitted for
+	// dismissal (Consumer-a invariant 1). Nil means not recorded (permitted for
 	// backwards compatibility; new callers should always supply Author).
 	Author *Author
 }

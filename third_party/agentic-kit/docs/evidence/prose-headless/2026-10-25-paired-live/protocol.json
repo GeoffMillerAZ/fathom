@@ -1,0 +1,38 @@
+{
+  "version": "prose-lab.paired-live-protocol/1",
+  "id": "hp17-paired-9036e94",
+  "source_commit": "9036e94175f6fae611cf6f91338f9274a75a3948",
+  "question": "Does the candidate prompt preserve all fixed support floors and remove the observed nonmaterial-framing hold without a new critical false support?",
+  "case_count": 70,
+  "planned_executions": 140,
+  "positive_controls": 25,
+  "negative_controls": 45,
+  "order": "lexical logical case ID; baseline immediately followed by candidate",
+  "expected_labels": "pinned independent source controls; two pilot-derived development judgments and one authored contrast; no held-out or human labeling claim",
+  "exposure_deduplication": "all 140 exact native requests are distinct; variants differ in system prompt only, no response-cache reuse selected",
+  "new_journal_cap_micro_usd": 5000000,
+  "prior_direct_micro_usd": 424414,
+  "direct_stage_cap_micro_usd": 10000000,
+  "reservation_per_call_micro_usd": 4040960,
+  "execution_policy": "Sequential; reconcile each reservation/outcome before next dispatch. No overlap, retry, repair, fallback, alternate root or dropped denominator.",
+  "stop_rule": "Stop on native/usage/accounting/protocol/model/price-category failure, timeout/cancellation, or first candidate mismatch/inconclusive. A baseline semantic mismatch still runs its paired candidate. Keep every planned/unexecuted position.",
+  "qualification": "Both variants 70 valid known completions; all candidate positives supported, all candidate negatives unsupported; no candidate error/inconclusive/missing/pending/failed/unknown/invalid. If baseline also matches, report no demonstrated quality improvement rather than attribute benefit.",
+  "authority": "Cohort observation only; no automatic adoption, source truth, independent document acceptance, human identity or publication authority. No generation or UI entry.",
+  "thinking": "Provider defaults retained. No effort/thinking override. Inspect metadata and ordinary answer only; never hidden reasoning text.",
+  "cache": "No caching requested. Require zero cache usage; unexpected usage is unqualified, retain conservative reservation and stop.",
+  "pricing_verified_at": "2026-10-25T21:15:18.639712+00:00",
+  "pricing_sources": [
+    "https://platform.claude.com/docs/en/models/sonnet-5-5/overview",
+    "https://platform.claude.com/docs/en/about-claude/pricing"
+  ],
+  "price_categories": "standard service tier, global inference, standard speed. Unexpected/missing category metadata stops; do not treat an unqualified priced journal value as actual cost.",
+  "environment": "Only PATH=os.defpath, LANG=C, TZ=UTC and explicitly loaded ANTHROPIC_API_KEY in live child. No ambient proxy, SSLKEYLOGFILE, other credentials, global changes or installs.",
+  "process_limits": {
+    "per_capture_seconds": 180,
+    "cohort_seconds": 1800,
+    "cancel_grace_seconds": 30,
+    "report_seconds": 180
+  },
+  "custody": "Existing private synthetic inputs and keys. Raw native responses/reasons stay private. Hashes identify bytes, not authenticated provider custody. Paid charges are local usage-priced estimates, not invoices.",
+  "preserve": "Failed original v1 cell/repair and failed required long pilot remain failed. HP-A14/18, actual human goals, whole-document/HITL/UI and governed-command goal remain open."
+}

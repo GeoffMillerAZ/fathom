@@ -1,0 +1,7 @@
+[
+ {"task":"kept","null":[false,false,false],"oracle":[true,true,true],"wrong-patch":[false,false,false],"reason":""},
+ {"task":"null-passed","null":[true,true,true],"oracle":[true,true,true],"wrong-patch":[false,false,false],"reason":"null passed"},
+ {"task":"oracle-failed","null":[false,false,false],"oracle":[false,false,false],"wrong-patch":[false,false,false],"reason":"oracle failed"},
+ {"task":"wrong-passed","null":[false,false,false],"oracle":[true,true,true],"wrong-patch":[true,true,true],"reason":"wrong patch passed"},
+ {"task":"flaky","null":[false,false,false],"oracle":[true,false,true],"wrong-patch":[false,false,false],"reason":"flaky"}
+]
