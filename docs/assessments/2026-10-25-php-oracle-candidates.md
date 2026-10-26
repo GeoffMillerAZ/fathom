@@ -23,9 +23,9 @@ from the syntax dump. The dump supplies the population denominator only.
 
 | Producer and checked pin | Release / licence / classification | Guzzle full unattested pairs | Monolog full unattested pairs |
 |---|---|---:|---:|
-| ArtemisMucaj/scip-php (Mago), `04b34f724c9464256891345153b5c2c0a6c23bc8` | Released v0.3.0; MIT declared in Cargo.toml and README, no standalone licence file. Six tags through 2026-04-06; A eligibility is conditional on maintained-indexer admission. Even granting A, the blind cap fails. | 597/2,571 (23.22%) | 713/4,558 (15.64%) |
-| michalboryczko/scip-php, `40288605f28ea0111b42f81a8760ad5b79b8c3a0` | MIT; call-site/experimental fork, no tags, C under OL-R9 | 1,171/2,571 (45.55%) | 189/4,558 (4.15%) |
-| devmdeniz/scip-php, `9af23514a898dd63a8123b02b567711fbef5dd99` | MIT; php-parser 5 / PHP 8.4 fork, no tags, C under OL-R9 | 1,661/2,571 (64.61%) | 1,228/4,558 (26.94%) |
+| ArtemisMucaj/scip-php (Mago), [04b34f724c94](https://github.com/ArtemisMucaj/scip-php/tree/04b34f724c9464256891345153b5c2c0a6c23bc8) | Released v0.3.0; MIT declared in Cargo.toml and README, no standalone licence file. Six tags through 2026-04-06; A eligibility is conditional on maintained-indexer admission. Even granting A, the blind cap fails. | 597/2,571 (23.22%) | 713/4,558 (15.64%) |
+| michalboryczko/scip-php, [40288605f28e](https://github.com/michalboryczko/scip-php/tree/40288605f28ea0111b42f81a8760ad5b79b8c3a0) | MIT; call-site/experimental fork, no tags, C under OL-R9 | 1,171/2,571 (45.55%) | 189/4,558 (4.15%) |
+| devmdeniz/scip-php, [9af23514a898](https://github.com/devmdeniz/scip-php/tree/9af23514a898dd63a8123b02b567711fbef5dd99) | MIT; php-parser 5 / PHP 8.4 fork, no tags, C under OL-R9 | 1,661/2,571 (64.61%) | 1,228/4,558 (26.94%) |
 
 The call-site fork was run with its documented experimental mode. Its native
 SCIP section is transported to protobuf with document/occurrence counts checked;
