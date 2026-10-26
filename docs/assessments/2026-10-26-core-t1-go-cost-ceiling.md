@@ -1,45 +1,34 @@
-# Go field-only cost ceiling, C-R5 and X-R1
+# Go field-only cost audit: wall result reopened
 
-Ruling C-R2 (#20) selected struct-field definitions without native reference edges. The measured
-experiment emits owner-qualified top-level fields, no interface-method definitions, and
-excludes fields from call-target lookup. A plan-anchor collision found during work-equivalence
-auditing was repaired before the completed sequence below. All experimental runtime, tests
-and epoch changes are reverted in the final branch. The [canonical Go reading](../bench/readings/lang/go.json) holds the unchanged grades.
-No new language grade is claimed.
+C-R2 selected struct-field definitions without native reference edges. The wall result is **not settled**: one equivalent-work median-of-three sequence read +26.7% wall (CPU +20.9%) under asymmetric load; an independent rerun with the committed collector and same source/commits read +6.9% wall (CPU +10.8%). The earlier non-equivalent sequence read +15.9%. Store growth +6.3% reproduces. Neither passing nor failing this lever is established by those noisy sequences.
 
-| Three-run control | Baseline | Field-only |
-|---|---:|---:|
-| Wall seconds | 99.362,78.461,78.329 | 110.404,89.340,99.412 |
-| Median wall | 78.461 | 99.412 (+26.7%, gate +15%) |
-| Store bytes, each run | 205312000 | 218238976 (+6.3%, gate +20%) |
-| Observed symbols, each run | 63329 | 84893 |
-| Typed packages / native edges | 330 /150810 | 330 /150810 |
+C-R5 recorded the originally reported failure. Runtime, tests and epoch remain reverted under the preregistered stop rule while the controller-required strict remeasurement is prepared. The [canonical Go reading](../bench/readings/lang/go.json) remains unchanged; no new L4 grade or holdout result is claimed.
 
-Both arms ingest the same archived main source 5b84aa5b4 into fresh direct CLI stores with
-GOMAXPROCS2, GOFLAGS-p2, nice10 and decisions off. Discovery/extraction, exclusions, read
-failures, typed package/edge counts and every persisted edge-kind count match. No source
-changed. All six ingests succeeded with zero read or typed-package failures.
-
-The receipt discloses a protocol deviation: baseline1 started at load9.01 after source
-hashing delayed the original <=9 check. That run is retained, not passed off as fully
-compliant. A strict post-hashing-guard repeat began, but machine load rose above190 and
-that sequence was stopped during its later idle load wait. It contributes no median.
-Under owner C-R5, retain the measured failed wall gate and close this lever conservatively.
-This is no passing performance proof. No frozen Gin holdout or new oracle reading was
-consumed after rejection, preserving independent validation for a viable later candidate.
-
-| Named candidate or route | Version / pin | Concrete outcome |
+| Historical sequence | Wall result | Store result / limitation |
 |---|---|---|
-| Earlier full member pass | 5b49d9774 / O673 | L4 excellent historically, but self-ingest +30% wall/+34% store; reverted. Exported-only variant +26%/+22% also failed. |
-| Struct fields, no native reference edges | measured original fe42b1e0d; source-equivalent review 68ef5163780197afde9346bddad720b6076677d9 | Completed equivalent-work receipt above misses wall gate. Its launch-load caveat is explicit. C-R5 rejects runtime adoption; no L4 uplift inferred. |
-| Go semantic oracle | scip-go0.2.7 | Installed for the planned measurement; no new index run after cost rejection. Existing main reading already uses this version. It is not declared unavailable. |
-| Go syntax oracle | Universal Ctags6.2.1 | Available independently. It cannot make an over-cost runtime lever acceptable; no unnecessary fresh holdout is spent. |
-| Other O673 levers | skip test references; call-only centrality; interface methods alone | Not authorized as the selected C-R2 lever and not measured here. They remain explicit future experiments, not failed candidates or nonexistent tools. |
+| First field implementation | +15.9% | Non-equivalent: 25 plan-anchor edges lost; excluded. |
+| Anchor-corrected original | +26.7% (78.461 to 99.412 s medians) | +6.3%; one baseline launch 9.01, all candidate runs encountered higher peak load than baseline counterparts. |
+| Independent committed-collector rerun | +6.9% (87.577 to 93.659 s medians) | +6.3%; peak load reached 22.67, so this is not quiet passing proof either. |
 
-Reproduction lives in `calibration/oracles/go-fields-cost/README.md` and `cost.py`, with a
-post-manifest launch guard. The receipt preserves the actual binary hashes and measured
-commit identity. The review candidate has byte-identical `cmd/`, `internal/`,
-`calibration/oracles/`, `go.mod` and `go.sum` trees; only review metadata/holdout placement
-changed after measurement. No fresh primary or historical reading is silently rewritten.
-Retry another owner-selected lever under unchanged K17 gates, with proper oracle grades
-and independent validation only after it demonstrates an acceptable cost.
+The fixed source snapshot is archived main 5b84aa5b4, unchanged before/after every run. All six runs of the original corrected sequence preserved 330 typed packages, 150,810 native typed edges and each persisted edge-kind count; symbols grew from 63,329 to 84,893. Original wall arrays were baseline 99.362/78.461/78.329 and candidate 110.404/89.340/99.412. The independent arrays were baseline 77.613/125.932/87.577 and candidate 112.837/93.659/93.598. Do not substitute a minimum or CPU result for the preregistered median-wall gate.
+
+## Provenance correction and remeasurement
+
+The original receipt at commit 327002766 was assembled from an earlier **uncommitted collector revision**, then annotated by hand. It was not emitted by the current committed `cost.py`; its field names and comparison schema differ. Its numerical history remains in Git, but it must not be presented as a re-runnable output of that collector. The binding rerun will replace it with the committed collector's actual schema and measured verdict, keeping editorial/historical notes only under `annotations`.
+
+The original extractor commit is publicly reachable b9a23a7dd; the anchor-corrected candidate is 68ef5163780197afde9346bddad720b6076677d9. Its measured unpublished original was tree-identical over the paths listed in the README, but unpublished identities are not reproduction inputs. Binary hashes identify local executables, not portable builds. The original candidate's focused regressions passed but four touched-package golden/count tests were stale. The rerun must first freeze a fully green candidate, with expectation-only repairs and no production-code change.
+
+The [protocol](../bench/go-fields-cost-protocol.md) retains three alternating runs per arm, the same source snapshot, load <= 9 at launch after hashing, nice 10, GOMAXPROCS=2, GOFLAGS=-p=2, +15% median wall and +20% store gates. Sampled active-run loads are evidence, not a new rejection/filter rule. The controller explicitly requested remeasurement; no CPU co-gate or ABBA redesign is substituted. Gin remains unspent outside the canonical shard. If the rerun passes both gates with equivalent work, Go L4 reopens for independent oracle measurement.
+
+## Named routes and concrete limits
+
+| Candidate / route | Version / pin | Result / next condition |
+|---|---|---|
+| Historical full member pass | 5b49d9774, O673 | Historical +30% wall/+34% store; exported-only +26%/+22%. Those are separate implementations, not proof against field-only. |
+| Field symbols without reference edges | b9a23a7dd, anchor repair 68ef51637 | C-R2 measured lever; wall result inconclusive across sequences, reproducible +6.3% store. Strict rerun pending. |
+| Profile field-arm CPU delta | same candidate; unmeasured | Added nodes may enlarge O(nodes) call-target scans. A side index or narrower scans could change implementation cost; no intrinsic-cost ceiling is claimed. |
+| Native semantic oracle | scip-go 0.2.7 | Available; unchanged Go reading already uses it. No new index or grade after original rollback. |
+| Syntax oracle | Universal Ctags 6.2.1 | Available. Oracle choice does not establish runtime cost. |
+| Other O673 levers | skip test references; call-only centrality; interface methods alone | Not selected by C-R2 and unmeasured; remain future experiments. |
+
+This records a measured uncertainty, not an exhausted-tool ceiling. Governing rows `LB-F342` and `LB-Q-go-rest` identify field-only as already measured under C-R2 and link this audit. Runtime adoption remains subject to the cost and language-proof gates.

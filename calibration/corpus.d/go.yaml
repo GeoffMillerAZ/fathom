@@ -1,8 +1,7 @@
 id: go
 language: Go
-# Field-only Q2 experiment. Source pins match the historical reading's actual checkouts.
-# Cobra v1.9.1 is annotated: a655097f is the tag object, 40b5bc14 its source commit.
-# Freeze these subjects before any candidate oracle reading.
+# Go calibration subjects; pins match docs/bench/readings/lang/go.json.
+# Cobra v1.9.1: a655097f is the annotated tag object, 40b5bc14 its source commit.
 # Independent holdout: docs/bench/go-fields-holdout.yaml (outside the canonical corpus).
 repos:
   - name: spf13/cobra

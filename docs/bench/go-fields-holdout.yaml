@@ -1,4 +1,4 @@
-# Q2 independent holdout, frozen before any candidate index or reading.
+# C-R2 independent holdout, frozen before any candidate index or reading.
 # X-R1: never load this record into the canonical corpus.
 id: core-t1-go-fields-holdout
 holdout:

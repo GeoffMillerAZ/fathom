@@ -47,3 +47,29 @@ git -C "$GO_FIELDS_SCRATCH/cobra" checkout 40b5bc1437a564fc795d388b23835e84f54cd
 ```
 
 The reading commands write only to scratch. Review the generated level, grade, definition and call metrics against the committed reading before claiming any support level.
+
+## Review corrections and source identity
+
+The original collector receipt at commit 327002766 was assembled from an earlier
+uncommitted revision. It is historical evidence, not output of this committed
+collector. The binding rerun uses `cost.py` unchanged and preserves its emitted
+schema/verdict. Any historical commentary belongs only under `annotations`.
+The original corrected candidate had stale golden/count tests; the rerun freezes
+expectation-only repairs after a full touched-package race suite passes.
+
+Public original commits are b9a23a7dd (fields), 62383387b (protocol), and
+68ef5163780197afde9346bddad720b6076677d9 (anchor repair). An unpublished measured
+original was tree-identical to 68ef51637 over these paths. Reproduce that identity
+hash on each available commit with:
+
+```sh
+git ls-tree -r 68ef5163780197afde9346bddad720b6076677d9 -- cmd internal calibration/oracles go.mod go.sum | shasum -a 256
+```
+
+The historical listing hash is
+e619d6ebad42da55d2cb070ee173eea2b7ccb3b8d5365bd4c2fe680a2779c053.
+This is a tree-listing identity, not a portable executable hash. Binary digests
+are local identity only: host, toolchain, path and VCS stamping can change them.
+For new controlled builds use the same flags for both arms (`-trimpath
+-buildvcs=false`) and record the Go version/architecture and applied settings.
+Keep the source snapshot fixed even when candidate test expectations change.
