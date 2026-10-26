@@ -1,0 +1,73 @@
+{
+  "source_commit": "85b73ee1115541cb881314d4e4388c14fef9dd1a",
+  "command": "python3 calibration/oracles/jinja2-meta/prove_patch.py",
+  "builder": "internal/extractor/tsengine/grammars/build.sh jinja2",
+  "baseline_blob": {
+    "blob_sha256": "8ae8b2090154f9bba92ac71ba5a091de454f0c3a1f326f96db32191627f72b19",
+    "blob_bytes": 211860,
+    "gz_bytes": 71277
+  },
+  "patched_blob": {
+    "blob_sha256": "71680f5fead32c2881a5e486e8dc79a71656e3be60fff7b714667673b5f30e25",
+    "blob_bytes": 212061,
+    "gz_bytes": 71302
+  },
+  "baseline": [
+    {
+      "name": "kolla",
+      "files": 189,
+      "bytes": 192662,
+      "content_sha256": "d5350133761bf79df4635308fae3c4805a1eb54e96834de9a8586c1267bbea51",
+      "errors": 1,
+      "error_set_sha256": "7e23efb57a68275b39127615bada480ec5c94af0fe70e947a20e9d1ca212b91d",
+      "faults": 0,
+      "fault_set_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "kolla-ansible",
+      "files": 331,
+      "bytes": 541914,
+      "content_sha256": "ff601172f44a81e677c6ac69ae921eeddf72509d158e9daee071b6aea6cdfdc5",
+      "errors": 26,
+      "error_set_sha256": "c332a8e3a4bca5e74c121924689f9dd3c3f4962873ad3737635f624d3298431b",
+      "faults": 0,
+      "fault_set_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "patched": [
+    {
+      "name": "kolla",
+      "files": 189,
+      "bytes": 192662,
+      "content_sha256": "d5350133761bf79df4635308fae3c4805a1eb54e96834de9a8586c1267bbea51",
+      "errors": 1,
+      "error_set_sha256": "7e23efb57a68275b39127615bada480ec5c94af0fe70e947a20e9d1ca212b91d",
+      "faults": 0,
+      "fault_set_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "kolla-ansible",
+      "files": 331,
+      "bytes": 541914,
+      "content_sha256": "ff601172f44a81e677c6ac69ae921eeddf72509d158e9daee071b6aea6cdfdc5",
+      "errors": 2,
+      "error_set_sha256": "c509fc744d66dad567b40c05a0cc9691164e845648191ec0c66dd7e85a7e776b",
+      "faults": 0,
+      "fault_set_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "comparison": [
+    {
+      "name": "kolla",
+      "repaired": 0,
+      "repaired_set_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "new_errors": 0
+    },
+    {
+      "name": "kolla-ansible",
+      "repaired": 24,
+      "repaired_set_sha256": "112a73994028f5cba51c5328547e68c30ffe12a9613b1998a9ffc9215adf2860",
+      "new_errors": 0
+    }
+  ]
+}

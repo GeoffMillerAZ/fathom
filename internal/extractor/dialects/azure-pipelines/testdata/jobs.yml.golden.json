@@ -1,0 +1,25 @@
+[
+  {
+    "Name": "azure-pipelines.yml",
+    "Kind": "AzurePipelineFile",
+    "Line": 1,
+    "End": 6,
+    "Calls": null
+  },
+  {
+    "Name": "build",
+    "Kind": "AzurePipelineJob",
+    "Line": 2,
+    "End": 3,
+    "Calls": null
+  },
+  {
+    "Name": "test",
+    "Kind": "AzurePipelineJob",
+    "Line": 4,
+    "End": 6,
+    "Calls": [
+      "build"
+    ]
+  }
+]
