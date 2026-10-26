@@ -57,7 +57,10 @@ type hclRef struct {
 type hclDef struct {
 	refs   []hclRef
 	source string
-	inputs []hclInput
+	// sourcePresent distinguishes an omitted override source from an explicit
+	// nonlocal or unevaluable one. Extract never reads sibling files.
+	sourcePresent bool
+	inputs        []hclInput
 	// identities are the identity references a resource makes (LB-F371): an
 	// alarm's metric, a log group named /aws/lambda/<name>.
 	identities []tfIdentityRef
@@ -168,6 +171,7 @@ func (h *HCLExtractor) extract(service, relPath string, src []byte) ([]core.Symb
 			d := &hclDef{refs: collectRefs(b.Body, "providers")}
 			if b.Body != nil {
 				if attr, ok := b.Body.Attributes["source"]; ok {
+					d.sourcePresent = true
 					if v, diags := attr.Expr.Value(nil); !diags.HasErrors() && v.Type() == cty.String {
 						sig = fmt.Sprintf("module %q { source = %q }", mName, v.AsString())
 						d.source = v.AsString()
@@ -546,6 +550,10 @@ const hclModuleLabel = "terraform.module"
 // hclLocalSourceDirLabel records only a bounded, literal local module source.
 const hclLocalSourceDirLabel = "terraform.local_source_dir"
 
+// hclSourcePresentLabel records that the block explicitly sets source, even
+// when its value does not identify a bounded local directory.
+const hclSourcePresentLabel = "terraform.source_present"
+
 // Edges of the terraform dialect's cross-file references.
 const (
 	hclEdgeReferences   = "references"
@@ -590,12 +598,15 @@ func (h *HCLExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 			}
 		}
 	}
-	for _, n := range nodes {
+	for i, n := range nodes {
 		if n.Kind == core.KindTerraformProvider || n.Kind == KindTerraformMetric || n.Kind == KindTelemetryIdentity {
 			continue // a provider and an identity are no address a reference names
 		}
 		labels := map[string]string{hclAddressLabel: n.Name, hclModuleLabel: dir}
 		if n.Kind == core.KindTerraformModule {
+			if d := defs[i]; d != nil && d.sourcePresent {
+				labels[hclSourcePresentLabel] = "true"
+			}
 			if c, ok := childDir[n.Name]; ok {
 				labels[hclLocalSourceDirLabel] = c
 			}

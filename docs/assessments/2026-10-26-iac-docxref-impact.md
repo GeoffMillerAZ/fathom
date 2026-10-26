@@ -89,9 +89,12 @@ the newly pinned ancillary-provider caveat.
 
 **Measured code and regression evidence:** extraction retains output intent
 without opening sibling files. Fusion makes exactly two indexed hops and checks
-the declaration's kind and source provenance. Duplicate calls/outputs and
-same-file address collisions stay unresolved; repeated identical labels do not
-create ambiguity. Every output intent enters one resolved/refusal counter, and
+the declaration's kind and source provenance. Duplicate ordinary calls/outputs and same-file address collisions stay
+unresolved; repeated identical labels do not create ambiguity. Valid
+`override.tf` and `*_override.tf` declarations merge in lexical filename order.
+Outputs retain the primary source site; calls inherit source unless an override
+explicitly sets it, including an unsupported source. The source-presence label
+keeps those two cases distinct without sibling reads during extraction. Every output intent enters one resolved/refusal counter, and
 ingest discloses those counts. Registry, remote, escaping, caller-directory and
 nonliteral sources remain unresolved. OpenTofu constant source expressions are
 counted unsupported in this pass, rather than called invalid.

@@ -49,7 +49,8 @@ func (s terraformOutputStats) unresolved() int { return s.Intents - s.Resolved }
 
 // resolveTerraformModuleOutputs builds a bounded two-hop join. One call in the
 // caller's directory must name one local child directory, and one output in
-// that child directory must match. Duplicate definitions stay unresolved.
+// that child directory must match. Override files merge in native load order;
+// duplicate primary definitions stay unresolved.
 func resolveTerraformModuleOutputs(files []DocFile) func(extractor.DocCrossFileRef) (terraformXrefEntity, terraformOutputReason) {
 	// Keep file provenance beside every label without relying on map iteration.
 	type candidate struct {
@@ -123,6 +124,46 @@ func resolveTerraformModuleOutputs(files []DocFile) func(extractor.DocCrossFileR
 			index[ls.Scope][address] = append(index[ls.Scope][address], candidate{f.Path, ls})
 		}
 	}
+	// Materialize once so repeated references never rescan a declaration set.
+	type effective struct {
+		candidate candidate
+		child     string
+		count     int
+	}
+	effectiveIndex := map[string]map[string]effective{}
+	for scope, addresses := range index {
+		effectiveIndex[scope] = map[string]effective{}
+		for address, candidates := range addresses {
+			var primary candidate
+			var primaryCount int
+			var firstOverride, lastSourceOverride candidate
+			for _, c := range candidates {
+				if !terraformOverrideFile(c.file) {
+					primaryCount++
+					primary = c
+					continue
+				}
+				if firstOverride.file == "" || terraformOverrideLess(c.file, firstOverride.file) {
+					firstOverride = c
+				}
+				if c.set.Labels["terraform.source_present"] == "true" && (lastSourceOverride.file == "" || terraformOverrideLess(lastSourceOverride.file, c.file)) {
+					lastSourceOverride = c
+				}
+			}
+			e := effective{candidate: primary, count: primaryCount}
+			if primaryCount == 0 && firstOverride.file != "" {
+				e.candidate = firstOverride
+				e.count = 1
+			}
+			if strings.HasPrefix(address, "module.") {
+				e.child = e.candidate.set.Labels["terraform.local_source_dir"]
+				if lastSourceOverride.file != "" {
+					e.child = lastSourceOverride.set.Labels["terraform.local_source_dir"]
+				}
+			}
+			effectiveIndex[scope][address] = e
+		}
+	}
 	return func(ref extractor.DocCrossFileRef) (terraformXrefEntity, terraformOutputReason) {
 		if ref.Strategy != "terraform-module-output" || ref.Edge != "module-output" || !strings.HasPrefix(ref.Scope, "terraform:") {
 			return terraformXrefEntity{}, terraformOutputMissingCall
@@ -132,31 +173,46 @@ func resolveTerraformModuleOutputs(files []DocFile) func(extractor.DocCrossFileR
 		if !strings.HasPrefix(call, "module.") || !strings.HasPrefix(output, "output.") {
 			return terraformXrefEntity{}, terraformOutputMissingCall
 		}
-		calls := index[ref.Scope][call]
+		callDef := effectiveIndex[ref.Scope][call]
 		if collisions[ref.Scope][call] {
 			return terraformXrefEntity{}, terraformOutputAmbiguousCall
 		}
-		if len(calls) == 0 {
+		if callDef.count == 0 {
 			return terraformXrefEntity{}, terraformOutputMissingCall
 		}
-		if len(calls) > 1 {
+		if callDef.count > 1 {
 			return terraformXrefEntity{}, terraformOutputAmbiguousCall
 		}
-		child := calls[0].set.Labels["terraform.local_source_dir"]
+		child := callDef.child
 		if child == "" {
 			return terraformXrefEntity{}, terraformOutputNonlocalSource
 		}
 		outputScope := "terraform:" + child
-		outputs := index[outputScope][output]
+		outputDef := effectiveIndex[outputScope][output]
 		if collisions[outputScope][output] {
 			return terraformXrefEntity{}, terraformOutputAmbiguousOutput
 		}
-		if len(outputs) == 0 {
+		if outputDef.count == 0 {
 			return terraformXrefEntity{}, terraformOutputMissingOutput
 		}
-		if len(outputs) > 1 {
+		if outputDef.count > 1 {
 			return terraformXrefEntity{}, terraformOutputAmbiguousOutput
 		}
-		return terraformXrefEntity{outputs[0].file, outputs[0].set.Entity}, terraformOutputResolved
+		return terraformXrefEntity{outputDef.candidate.file, outputDef.candidate.set.Entity}, terraformOutputResolved
 	}
+}
+
+func terraformOverrideFile(file string) bool {
+	base := path.Base(file)
+	return base == "override.tf" || strings.HasSuffix(base, "_override.tf")
+}
+
+// Terraform applies override.tf before the remaining override files in
+// lexical filename order, regardless of the DocFile input order.
+func terraformOverrideLess(a, b string) bool {
+	aBase, bBase := path.Base(a), path.Base(b)
+	if aBase == "override.tf" || bBase == "override.tf" {
+		return aBase == "override.tf" && bBase != "override.tf"
+	}
+	return aBase < bBase
 }

@@ -576,8 +576,8 @@ func TestHCLExtractor_ExtractDoc(t *testing.T) {
 		"aws_subnet.a terraform:stack map[terraform.address:aws_subnet.a terraform.module:stack]",
 		"aws_vpc.this terraform:stack map[terraform.address:aws_vpc.this terraform.module:stack]",
 		"local.tags terraform:stack map[terraform.address:local.tags terraform.module:stack]",
-		"module.net terraform:stack map[terraform.address:module.net terraform.local_source_dir:modules/net terraform.module:stack]",
-		"module.remote terraform:stack map[terraform.address:module.remote terraform.module:stack]",
+		"module.net terraform:stack map[terraform.address:module.net terraform.local_source_dir:modules/net terraform.module:stack terraform.source_present:true]",
+		"module.remote terraform:stack map[terraform.address:module.remote terraform.module:stack terraform.source_present:true]",
 	}
 	if !reflect.DeepEqual(labels, wantLabels) {
 		t.Errorf("labels\n got %q\nwant %q", labels, wantLabels)

@@ -160,6 +160,9 @@ func TestTerraformModuleSourceBounds(t *testing.T) {
 						if got := ls.Labels["terraform.local_source_dir"]; got != tc.wantDir {
 							t.Fatalf("local source label = %q, want %q", got, tc.wantDir)
 						}
+						if got := ls.Labels["terraform.source_present"]; got != "true" {
+							t.Fatalf("explicit source label = %q, want true", got)
+						}
 					}
 				}
 				if f.Path == "app/outputs.tf" {
@@ -431,6 +434,114 @@ func TestTerraformModuleOutputRepeatedAddressIndex(t *testing.T) {
 				t.Fatalf("repeated labels: stats %+v, edges %d", tf, edges)
 			}
 		})
+	}
+}
+
+func TestTerraformModuleOutputOverrides(t *testing.T) {
+	for _, tc := range []struct {
+		name, callOverride, outputOverride, wantFile string
+		want                                         terraformOutputReason
+	}{
+		{"output-merge", "", `output "id" { value = 2 }`, "modules/net/outputs.tf", terraformOutputResolved},
+		{"call-merge", `module "net" { source = "../modules/net" }`, "", "modules/net/outputs.tf", terraformOutputResolved},
+		{"source-inherited", `module "net" { depends_on = [] }`, "", "modules/net/outputs.tf", terraformOutputResolved},
+		{"source-changed", `module "net" { source = "../modules/other" }`, "", "modules/other/outputs.tf", terraformOutputResolved},
+		{"source-remote", `module "net" { source = "example/net/test" }`, "", "", terraformOutputNonlocalSource},
+		{"source-dynamic", `module "net" { source = var.module_source }`, "", "", terraformOutputNonlocalSource},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			corpus := map[string]string{
+				"app/main.tf":              `module "net" { source = "../modules/net" }`,
+				"app/outputs.tf":           `output "result" { value = module.net.id }`,
+				"modules/net/outputs.tf":   `output "id" { value = 1 }`,
+				"modules/other/outputs.tf": `output "id" { value = 3 }`,
+			}
+			if tc.callOverride != "" {
+				corpus["app/override.tf"] = tc.callOverride
+			}
+			if tc.outputOverride != "" {
+				corpus["modules/net/outputs_override.tf"] = tc.outputOverride
+			}
+			files := terraformTwoHopFiles(t, corpus)
+			if tc.name == "source-inherited" {
+				for _, f := range files {
+					if f.Path == "app/override.tf" {
+						if got := f.Result.Labels[0].Labels["terraform.source_present"]; got != "" {
+							t.Fatalf("source-absent override marked present: %q", got)
+						}
+						if got := f.Result.Labels[0].Labels["terraform.local_source_dir"]; got != "" {
+							t.Fatalf("extractor read sibling source: %q", got)
+						}
+					}
+				}
+			}
+			for _, order := range []string{"forward", "reverse"} {
+				if order == "reverse" {
+					slices.Reverse(files)
+				}
+				resolve := resolveTerraformModuleOutputs(files)
+				ref := extractor.DocCrossFileRef{Strategy: "terraform-module-output", Edge: "module-output", Scope: "terraform:app", Labels: map[string]string{"terraform.module_call": "module.net", "terraform.output": "output.id"}}
+				got, reason := resolve(ref)
+				if reason != tc.want || got.file != tc.wantFile {
+					t.Fatalf("%s: got %q / %v, want %q / %v", order, got.file, reason, tc.wantFile, tc.want)
+				}
+				var targets []string
+				for _, edge := range ResolveDocXrefs(files) {
+					if edge.FromFile == "app/outputs.tf" && edge.Edge == "module-output" {
+						targets = append(targets, edge.ToFile)
+					}
+				}
+				var want []string
+				if tc.want == terraformOutputResolved {
+					want = []string{tc.wantFile}
+				}
+				if !reflect.DeepEqual(targets, want) {
+					t.Fatalf("%s: targets %v, want %v", order, targets, want)
+				}
+			}
+		})
+	}
+}
+
+func TestTerraformModuleOutputOverrideOrder(t *testing.T) {
+	corpus := map[string]string{
+		"app/main.tf":              `module "net" { source = "../modules/net" }`,
+		"app/outputs.tf":           `output "result" { value = module.net.id }`,
+		"app/override.tf":          `module "net" { source = "../modules/other" }`,
+		"app/z_override.tf":        `module "net" { source = "../modules/last" }`,
+		"modules/net/outputs.tf":   `output "id" { value = 1 }`,
+		"modules/other/outputs.tf": `output "id" { value = 2 }`,
+		"modules/last/outputs.tf":  `output "id" { value = 3 }`,
+	}
+	files := terraformTwoHopFiles(t, corpus)
+	for i := 0; i < 2; i++ {
+		resolve := resolveTerraformModuleOutputs(files)
+		got, reason := resolve(extractor.DocCrossFileRef{Strategy: "terraform-module-output", Edge: "module-output", Scope: "terraform:app", Labels: map[string]string{"terraform.module_call": "module.net", "terraform.output": "output.id"}})
+		if reason != terraformOutputResolved || got.file != "modules/last/outputs.tf" {
+			t.Fatalf("pass %d: got %q / %v", i, got.file, reason)
+		}
+		slices.Reverse(files)
+	}
+}
+
+// An override block with no primary declaration is a new block. Its symbol
+// site is the earliest override; subsequent files can still change source.
+func TestTerraformModuleOutputOverrideOnly(t *testing.T) {
+	files := terraformTwoHopFiles(t, map[string]string{
+		"app/outputs.tf":            `output "result" { value = module.net.id }`,
+		"app/override.tf":           `module "net" { source = "../modules/other" }`,
+		"app/a_override.tf":         `module "net" { source = "../modules/net" }`,
+		"modules/net/override.tf":   `output "id" { value = 1 }`,
+		"modules/net/z_override.tf": `output "id" { value = 2 }`,
+		"modules/other/outputs.tf":  `output "id" { value = 3 }`,
+	})
+	ref := extractor.DocCrossFileRef{Strategy: "terraform-module-output", Edge: "module-output", Scope: "terraform:app", Labels: map[string]string{"terraform.module_call": "module.net", "terraform.output": "output.id"}}
+	for i := 0; i < 2; i++ {
+		got, reason := resolveTerraformModuleOutputs(files)(ref)
+		if reason != terraformOutputResolved || got.file != "modules/net/override.tf" {
+			t.Fatalf("pass %d: got %q / %v", i, got.file, reason)
+		}
+		slices.Reverse(files)
 	}
 }
 
