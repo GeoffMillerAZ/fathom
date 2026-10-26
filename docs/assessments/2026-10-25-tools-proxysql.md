@@ -22,7 +22,7 @@ and every mismatch stay in scope. No product extractor changed.
 
 The two GenAI literals `var1` and `var2` are placeholders absent from both
 source and the measured native registry: genuine false positives under the
-current known-variable contract. The 14 MCP literals require controller Q5:
+current known-variable contract. Q5 retains strict literal membership for the 14 MCP literals:
 the sample uses `mcp_enabled`, `mcp_port`, etc., but the native registry reports
 `mcp-enabled`, `mcp-port`, etc. The unchanged oracle qualifies literal keys as
 `mcp-mcp_enabled`, `mcp-mcp_port`, etc.; none exists. Dropping the extra `mcp_`
@@ -32,10 +32,13 @@ already present `mcp-` prefix only, not `mcp_`. Also, the sample does not load
 the plugin, so merely building the feature does not change its loaded profile.
 
 The committed native registry and comparison JSON, source/build hashes and
-runnable recipes are under `calibration/oracles/proxysql/`. Q5 requests a
-ruling on these actual literal names before a final ceiling is claimed. The
-recommendation is to preserve the current native contract and count the 16
-misses honestly, rather than invent aliases or drop declarations. No trigger
+runnable recipes are under `calibration/oracles/proxysql/`. Q5 explicitly retains the current native contract and all 16 genuine
+misses. The syntactic document reader emits scalar children as variable
+declarations without a version/plugin-aware native-name registry. That is the
+product ceiling; no oracle or build-availability ceiling is claimed. A future
+general variable classifier must preserve unknown source keys while avoiding
+false variable declarations, followed by the unchanged native recipe. No
+subject-specific alias normalization, exclusion or adjudication is authorized. No trigger
 requires an impossible all-variables match or a macOS binary.
 
 Timing retains three identity-checked product runs: 26.24, 26.74 and 25.85

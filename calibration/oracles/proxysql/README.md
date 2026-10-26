@@ -11,7 +11,7 @@ The file is labelled tier A: ProxySQL decides which entities exist and what each
 left out and counted; the scanner refuses a bare word as libconfig does, so the dialect and the oracle drop the same file.
 The original regular 3.0.9 binary leaves 17 definitions unmatched. A matching debug binary and a successfully
 built source-matched PROXYSQL40 debug instrument attest debug, leaving 16. Two are GenAI placeholders. The 14 MCP
-literal names have an extra `mcp_` compared with the native registry; controller Q5 is pending, and no alias
+literal names have an extra `mcp_` compared with the native registry; controller Q5 retains the strict contract and 16 genuine misses; no alias
 normalization or adjudication changes the recipe. See the dated assessment and committed registry comparison.
 
 
@@ -38,7 +38,9 @@ For `task lang:loop`, a `runners.json` keyed by the queue's oracle name:
 
 ## Source-matched debug and registry reproduction
 
-All source/build artifacts remain in lane scratch. Run one heavy job at nice 10,
+The following reproduction targets a separately provisioned Linux environment.
+The completed build and runtime scratch were removed after measurement.
+All source/build artifacts remain in the selected scratch root. Run one heavy job at nice 10,
 starting only when one-minute load is at most 6. Containers expose no ports;
 native measurements use `--network none`. Only configuration loading and admin
 variable-name queries execute; no backend, pipeline, policy or model is invoked.
