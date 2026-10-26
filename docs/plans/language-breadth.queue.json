@@ -1271,11 +1271,11 @@
     "kind": "language",
     "tier": "T1",
     "target_level": "L3",
-    "grammar_source": "tree-sitter-grammars/tree-sitter-scss",
-    "licence": "MIT (verify at pin)",
+    "grammar_source": "P233/tree-sitter-scss",
+    "licence": "MIT",
     "oracle": [
-      "ctags",
-      "dart-sass loadedUrls (A, the import graph)"
+      "sass-parser 0.4.57 (A, Dart Sass definitions and spans)",
+      "dart-sass 1.105.1 loadedUrls (A, compiled import graph)"
     ],
     "calibration_subjects": [
       "twbs/bootstrap",
@@ -1303,7 +1303,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-scss",
     "worker_model": "sonnet",
-    "notes": "new; fleet gap; mixins, functions, variables, placeholders; @use/@import/@forward edges",
+    "notes": "Measured L1-L3 excellent on the full discovered bootstrap v5.3.8 and primer/css v22.3.2 corpus (234 files, no -only): range_agreement 1, sym_precision .9649, call_precision .9741 and import/file precision and recall 1. The reference parser exposes exclusive source.end spans; the oracle converts them to inclusive ends and reads loop-variable token spans. Bootstrap test loads use its unchanged runner preamble with sass-true 9.0.0. Fresh foundation-sites v6.9.0 holdout, pinned before reading, reads L2: L1/L2 excellent, L3 unmet on file_edge_precision .8239 (25 of 142 file pairs unattested). LB-Q-scss-rest records the full-scope oracle ceiling; the earlier angular/components holdout remains historical evidence under the old oracle and restricted scope.",
     "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): oracle gains dart-sass loadedUrls (tier A, the import graph)"
   },
   {
@@ -1312,14 +1312,14 @@
     "kind": "language",
     "tier": "T1",
     "target_level": "L3",
-    "grammar_source": "none pinned: no tree-sitter grammar parses the indented syntax (O853)",
-    "licence": "n/a (no grammar pinned)",
+    "grammar_source": "bajrangCoder/tree-sitter-sass (candidate not pinned: 56.16% of files in error at fb280c41)",
+    "licence": "MIT (LICENSE read at fb280c41b070657e4ff4d4e5e6eea6cb19efd9b8)",
     "oracle": [
       "dart-sass loadedUrls (A, the import graph)"
     ],
     "calibration_subjects": [
-      "twbs/bootstrap",
-      "primer/css"
+      "jgthms/bulma",
+      "vuetifyjs/vuetify"
     ],
     "depends_on": [
       "LB-F1",
@@ -1343,7 +1343,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-sass",
     "worker_model": "sonnet",
-    "notes": "the indented syntax; disclosed unsupported until a grammar passes the 5% ERROR-file gate (O853). target L3 is SCSS's: the same Sass module graph (@use, @forward, @import) read by Dart Sass's loadedUrls, so the oracle and the level carry over; the tree-sitter-scss grammar parses SCSS only",
+    "notes": "Unsupported, no production grammar pinned. The latest upstream/editor pin fb280c41b070657e4ff4d4e5e6eea6cb19efd9b8 is MIT but fails the frozen native parse gate: 123 of 219 real .sass files in error (56.16%; bulma 53/91, vuetify source 70/128). Independent Dart Sass syntax cross-check accepts 213 files; the candidate errors in 117 of those (54.93%), so invalid inputs do not explain the refusal. No files trimmed and no support level claimed. calibration/corpus.d/sass.yaml replaces the prior SCSS-only subjects. Retry a newer licensed grammar under the <=5% complete-source gate, then production WASM and independent L1-L3 oracle. LB-Q-sass-rest records the measured refusal.",
     "retargeted": "2026-10-11 (wave lf6, owner ruling M5, O853): split from the scss entry, which named .sass beside .scss though no dialect parses it, so the generated unsupported table dropped it"
   },
   {
