@@ -16,14 +16,15 @@
 # FATHOM_CALL_LOG env var. See internal/mcp/calllog.go + cmd/fathom/servehttp.go.
 #
 #   bash scripts/fathom-adoption.sh app-kit
-#   bash scripts/fathom-adoption.sh app-kit resume_as_code fathom
+#   bash scripts/fathom-adoption.sh app-kit agentic-kit fathom
 #   HOOK_DATE=2026-06-17 bash scripts/fathom-adoption.sh app-kit
 #
 # Args: one or more project names (substring-matched against the encoded
 # ~/.claude/projects dir names, so the ~/code-symlink variants are all caught).
 # Name aliasing: "fathom" also matches dirs containing "sextant" (and vice versa)
 # to handle the sextant→fathom rename; results are reported under the requested name.
-# Defaults to the whole fleet if none are given.
+# Defaults to the whole fleet if none are given: the gitignored
+# workspace/fleet-services (one name per line), fathom alone without it.
 #
 # After each project's per-session table a per-ISO-week rollup is printed so a
 # weekly adoption baseline can be read directly.
@@ -34,10 +35,15 @@ set -euo pipefail
 
 PROJECTS_DIR="$HOME/.claude/projects"
 HOOK_DATE="${HOOK_DATE:-2026-06-17}"   # when the SessionStart adoption hook went live
-DEFAULT_NAMES=(fathom agentic-kit app-kit throughline geoffmiller-cloud resume_as_code growing-gardens-bi car-assistant crossplane-platform)
+FATHOM_REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 names=("$@")
-[ ${#names[@]} -eq 0 ] && names=("${DEFAULT_NAMES[@]}")
+if [ ${#names[@]} -eq 0 ]; then
+  # shellcheck source=scripts/lib/fleet-services.sh
+  source "$FATHOM_REPO/scripts/lib/fleet-services.sh"
+  fathom_fleet_services "$FATHOM_REPO"
+  names=("${SERVICES[@]}")
+fi
 
 [ -d "$PROJECTS_DIR" ] || { echo "no transcripts dir at $PROJECTS_DIR"; exit 1; }
 

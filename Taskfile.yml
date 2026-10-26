@@ -334,6 +334,7 @@ tasks:
         bash scripts/prepush-receipts_test.sh
         bash scripts/test-shards_test.sh
         bash scripts/scratch-home_test.sh
+        bash scripts/fleet-services_test.sh
         bash scripts/gdev/cold-arm_test.sh
         bash scripts/tenancy-stress_test.sh
         bash scripts/pipefail-grep_test.sh
