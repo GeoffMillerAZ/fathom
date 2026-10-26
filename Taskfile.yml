@@ -327,6 +327,7 @@ tasks:
           bash -n "$f" || { echo "bash -n FAILED: $f"; rc=1; }
         done
         [ "$rc" -eq 0 ] || exit "$rc"
+        bash scripts/git-env-scrub_test.sh
         bash scripts/check-merge-debris_test.sh
         bash scripts/commit-msg-check_test.sh
         bash scripts/boundary-hooks_test.sh

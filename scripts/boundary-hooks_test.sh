@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # BE-4/BE-5: execute the configured hook bodies with deterministic fixtures.
 set -euo pipefail
+# A git hook exports GIT_DIR to its children: scrub it so this test's scratch repositories
+# never write the pushing repository's index (O48, O1505).
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX GIT_COMMON_DIR GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 real_git=$(command -v git)
 shell=$(command -v sh)
