@@ -21,8 +21,7 @@
 // Dart Sass itself compiles) has no definition truth, and a file whose loads no successful compile evaluated has
 // no import truth: both are named on stderr and left out of `-files-out`, the files the reading measures
 // (`lang-oracle -only`). The tier is A for what each part attests (§1.3: the
-// language's own implementation); end lines are not written (a rule's end is not on sass-parser's nodes), so
-// range_agreement is not measured.
+// language's own implementation); source.end is exclusive and is converted to an inclusive end line.
 //
 //   calls        design 1.8 W5 (w5_refs.cjs): the name references of the module graph, walked from the same trees
 //                (@include, user function calls, $variable reads, @extend %placeholder), with call_exclusions for the
@@ -63,9 +62,84 @@ const asWritten = (src, node, re, value) => {
 };
 const def = (rel, kind, name, node) => {
   const line = node && node.source && node.source.start ? node.source.start.line : 0;
-  out.definitions.push({ path: rel, name, line, end: 0, kind });
+  const endPosition = node && node.source && node.source.end;
+  if (!line || !endPosition || endPosition.offset <= node.source.start.offset) {
+    throw new Error(`missing or empty source span for ${rel}: ${kind} ${name}`);
+  }
+  const end = endPosition.column === 1 ? endPosition.line - 1 : endPosition.line;
+  out.definitions.push({ path: rel, name, line, end, kind });
   stats.definitions[kind] = (stats.definitions[kind] || 0) + 1;
 };
+
+// The loop node spans its body. Its declared variables are source tokens before the expression.
+// Match only the names the AST declares, in order, so comments and later reads cannot become definitions.
+function loopVariables(src, node, names, expression) {
+  const start = node.source && node.source.start && node.source.start.offset;
+  const limit = expression && expression.source && expression.source.start && expression.source.start.offset;
+  if (!Number.isInteger(start) || !Number.isInteger(limit) || limit <= start) {
+    throw new Error(`missing loop header span at ${node.source && node.source.start && node.source.start.line}`);
+  }
+  const header = src.slice(start, limit);
+  const tokens = [];
+  let i = 0;
+  let line = node.source.start.line;
+  const advance = (to) => {
+    for (; i < to; i++) {
+      if (header[i] === '\n' || (header[i] === '\r' && header[i + 1] !== '\n')) line++;
+    }
+  };
+  while (i < header.length) {
+    if (header.startsWith('/*', i)) {
+      const close = header.indexOf('*/', i + 2);
+      if (close < 0) throw new Error(`unterminated loop header comment at line ${line}`);
+      advance(close + 2);
+      continue;
+    }
+    if (header.startsWith('//', i)) {
+      const close = header.slice(i).search(/[\r\n]/);
+      advance(close < 0 ? header.length : i + close);
+      continue;
+    }
+    if (header[i] !== '$') { advance(i + 1); continue; }
+    const offset = start + i;
+    const tokenLine = line;
+    let j = i + 1;
+    let last = j;
+    let written = '';
+    let canonical = '';
+    while (j < header.length) {
+      const ch = header[j];
+      if (/[A-Za-z0-9_-]/.test(ch) || ch.charCodeAt(0) >= 0x80) {
+        written += ch; canonical += ch; j++; last = j;
+      } else if (ch === '\\' && j + 1 < header.length && !/[\r\n\f]/.test(header[j + 1])) {
+        const hex = /^[0-9a-fA-F]{1,6}/.exec(header.slice(j + 1));
+        if (hex) {
+          written += '\\' + hex[0];
+          const code = parseInt(hex[0], 16);
+          canonical += String.fromCodePoint(code === 0 || code > 0x10ffff || (code >= 0xd800 && code <= 0xdfff) ? 0xfffd : code);
+          j += 1 + hex[0].length;
+          last = j;
+          if (header.slice(j, j + 2) === '\r\n') j += 2;
+          else if (/[ \t\r\n\f]/.test(header[j] || '')) j++;
+        } else {
+          written += header.slice(j, j + 2); canonical += header[j + 1]; j += 2; last = j;
+        }
+      } else break;
+    }
+    if (!written) { advance(i + 1); continue; }
+    advance(last);
+    const endLine = line;
+    advance(j);
+    tokens.push({ name: written, canonical, source: { start: { line: tokenLine, offset }, end: { line: endLine, column: 2, offset: start + last } } });
+  }
+  let next = 0;
+  return names.map((name) => {
+    const wanted = String(name).replace(/_/g, '-');
+    while (next < tokens.length && tokens[next].canonical.replace(/_/g, '-') !== wanted) next++;
+    if (next === tokens.length) throw new Error(`missing loop variable $${name} at line ${node.source.start.line}`);
+    return tokens[next++];
+  });
+}
 
 function selectorNames(rel, node) {
   let ps;
@@ -100,8 +174,8 @@ for (const rel of files) {
       case 'mixin-rule': def(rel, 'mixin', asWritten(src, n, /^@mixin\s+([\w-]+)/, n.mixinName), n); break;
       case 'function-rule': def(rel, 'function', asWritten(src, n, /^@function\s+([\w-]+)/, n.functionName), n); break;
       case 'variable-declaration': def(rel, 'variable', asWritten(src, n, /^(?:[\w-]+\.)?\$([\w-]+)/, n.variableName), n); break;
-      case 'each-rule': for (const v of n.variables) def(rel, 'variable', v, n); break;
-      case 'for-rule': def(rel, 'variable', n.variable, n); break;
+      case 'each-rule': for (const v of loopVariables(src, n, n.variables, n.eachExpression)) def(rel, 'variable', v.name, v); break;
+      case 'for-rule': for (const v of loopVariables(src, n, [n.variable], n.fromExpression)) def(rel, 'variable', v.name, v); break;
       case 'rule': selectorNames(rel, n); break;
       case 'decl': {
         const prop = String(n.propInterpolation !== undefined ? n.propInterpolation : n.prop);

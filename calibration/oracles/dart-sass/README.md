@@ -8,10 +8,13 @@ writes the neutral oracle file `indexbench lang-oracle -tool-oracle` reads:
   Sass's own parser exposed as a tree): every `@mixin`, `@function`, `$variable` declaration at any
   depth, `@each` and `@for` loop variable, `@keyframes` rule and custom property, and every class,
   id and placeholder a style rule's selector list writes, read from Dart Sass's selector parser
-  (`parsedSelector`, pseudo-class arguments included), each at its own line. A member's name is
+  (`parsedSelector`, pseudo-class arguments included), each with its own inclusive source span.
+  The parser's `source.end` is exclusive; an end at column 1 belongs to the preceding line.
+  Loop variable spans are derived from the declared `$name` tokens before `eachExpression` or
+  `fromExpression`, skipping comments and decoding CSS escapes to match the parser's names; they
+  do not cover the loop body. Unicode and escaped names retain their source spelling in output. A member's name is
   read as written at the node's offset: Dart Sass hands it back normalized (`_` read as `-`).
-  Parameters are not definitions here (the dialect has no parameter kind). No end line: L1 is
-  capped at good (design 1.2). Universal-ctags' SCSS parser is deficient as an L1 oracle on the
+  Parameters are not definitions here (the dialect has no parameter kind). Universal-ctags' SCSS parser is deficient as an L1 oracle on the
   subjects (O851): it tags numbers as classes (`25rem`, `5`), skips a class after `+` and the
   variables of a multi-variable `@each`, and writes no end line, so the parser is the L1 oracle
   (D2's precedent).
@@ -46,3 +49,5 @@ MIT; bench-only, installed into scratch:
         -files-out parsed.txt > out.json
     indexbench lang-oracle -dialect scss -subject <subject> -tool-oracle out.json -only "$(paste -sd, parsed.txt)" \
         -out docs/bench/readings/lang/scss.json
+
+Regression test: `NODE_PATH=<scratch>/npm/node_modules node --test calibration/oracles/dart-sass/sass_oracle.test.cjs`.
